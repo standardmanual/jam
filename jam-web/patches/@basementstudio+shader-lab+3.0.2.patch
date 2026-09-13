@@ -1,0 +1,238 @@
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js
+new file mode 100644
+index 0000000..0c70133
+--- /dev/null
++++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js
+@@ -0,0 +1,198 @@
++import { float, texture as tslTexture, uv, vec2, vec4 } from "three/tsl";
++import * as THREE from "three/webgpu";
++import {
++    ShaderMount,
++    defaultObjectSizing,
++    getShaderColorFromString,
++    liquidMetalFragmentShader,
++    LiquidMetalShapes,
++    ShaderFitOptions,
++} from "@paper-design/shaders";
++import { createPipelinePlaceholder, PassNode } from "./pass-node.js";
++const TRANSPARENT_PIXEL = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
++export class LiquidMetalPass extends PassNode {
++    placeholder;
++    textureNode;
++    liquidTexture = null;
++    mirrorCanvas = null;
++    mirrorContext = null;
++    container;
++    shaderMount = null;
++    params = {};
++    width = 1;
++    height = 1;
++    transparentPixelImage = null;
++    constructor(layerId) {
++        super(layerId);
++        this.placeholder = createPipelinePlaceholder();
++        this.textureNode = tslTexture(this.placeholder, vec2(uv().x, float(1).sub(uv().y)));
++        // JAM! 확장(원본 basement.studio에는 없음, 티켓 20260913_1948): @paper-design/shaders
++        // (순수 WebGL2 GLSL)를 이 WebGPU 파이프라인에 연결하려고, 뷰포트 좌상단에 겹치되
++        // 시각적으로 숨긴 <div>에 ShaderMount를 마운트한다. display:none이나 화면 밖 좌표
++        // (left:-9999px)는 쓰지 않는다 — ShaderMount의 IntersectionObserver가 "화면 밖"으로
++        // 판정해 렌더링을 자동 정지시키기 때문(실측 확인, 완료 기록 참고). opacity:0 +
++        // pointer-events:none으로 화면에는 보이지 않으면서 뷰포트 교차 상태는 유지한다.
++        this.container = document.createElement("div");
++        Object.assign(this.container.style, {
++            position: "fixed",
++            top: "0",
++            left: "0",
++            width: "1px",
++            height: "1px",
++            opacity: "0",
++            pointerEvents: "none",
++            overflow: "hidden",
++            zIndex: "-1",
++        });
++        document.body.appendChild(this.container);
++        // 핵심 버그 수정: PassNode 생성자(super(layerId))가 실행되는 도중 서브클래스의
++        // buildEffectNode()가 이미 한 번 호출된다 — 그 시점엔 this.textureNode가 아직
++        // undefined라 buildEffectNode()의 "!this.textureNode" 분기(완전 투명한
++        // vec4(0,0,0,0))로 effectNode/material.colorNode가 영구 고정돼버린다. text-pass.js/
++        // fluid-pass.js가 하듯 필드 설정 후 rebuildEffectNode()를 명시적으로 다시 불러야
++        // 실제 텍스처 노드로 갱신된다(이 한 줄이 빠져서 렌더 결과가 항상 완전 검정이었다 —
++        // WebGL 셰이더 자체는 readPixels로 정상 렌더링을 확인했었다. 완료 기록 참고).
++        this.rebuildEffectNode();
++        // 코어 ShaderMount(react 래퍼가 아닌 순수 클래스)는 u_image 유니폼으로 문자열(URL)을
++        // 받지 못하고 HTMLImageElement만 받는다(react 패키지의 ShaderMount 컴포넌트가 문자열
++        // ->이미지 변환을 대신 해줄 뿐, 코어 클래스 자체엔 그 로직이 없다 — 실측으로 확인:
++        // 문자열을 넘기면 "Unsupported uniform type for u_image: string" 경고만 내고 무시한다).
++        // 이번 범위는 이미지 업로드를 지원하지 않으므로 1x1 투명 픽셀을 미리 로드해 재사용한다.
++        void getTransparentPixelImage().then((img) => {
++            this.transparentPixelImage = img;
++            this.mountShaderIfReady();
++        });
++    }
++    mountShaderIfReady() {
++        if (this.shaderMount || !this.transparentPixelImage) {
++            return;
++        }
++        this.container.style.width = `${this.width}px`;
++        this.container.style.height = `${this.height}px`;
++        const uniforms = buildLiquidMetalUniforms(this.params, this.transparentPixelImage);
++        // preserveDrawingBuffer:true가 필수다 — 기본값(false)이면 브라우저가 그리기 직후
++        // WebGL 백버퍼를 지울 수 있어, 나중에 THREE.CanvasTexture가 이 canvas를 읽을 때
++        // 빈 화면만 보인다(실측: readPixels 직후엔 정상 픽셀이 나오지만 WebGPU 쪽 최종
++        // 합성 결과는 항상 검정이었다 — 이 옵션으로 해결 확인).
++        this.shaderMount = new ShaderMount(this.container, liquidMetalFragmentShader, uniforms, { preserveDrawingBuffer: true }, 1, 0, 1, undefined, ["u_image"]);
++    }
++    render(renderer, inputTexture, outputTarget, time, delta) {
++        if (this.shaderMount) {
++            const sourceCanvas = this.shaderMount.canvasElement;
++            if (!this.mirrorCanvas) {
++                // WebGPURenderer가 WebGL 컨텍스트를 가진 canvas를 THREE.CanvasTexture
++                // 소스로 직접 받았을 때 텍스처가 갱신되지 않는 현상을 실측으로 확인했다
++                // (readPixels로는 WebGL 쪽 렌더링이 정상임을 확인했지만 WebGPU 합성
++                // 결과는 항상 빈 화면이었다). text-pass.js가 이미 검증한 2D 캔버스
++                // 브릿지 패턴을 그대로 재사용해 우회한다 — 매 프레임 WebGL 캔버스를
++                // 일반 2D 캔버스로 복사한 뒤 그 2D 캔버스를 텍스처 소스로 쓴다.
++                this.mirrorCanvas = document.createElement("canvas");
++                this.mirrorCanvas.width = sourceCanvas.width;
++                this.mirrorCanvas.height = sourceCanvas.height;
++                this.mirrorContext = this.mirrorCanvas.getContext("2d");
++                this.liquidTexture = new THREE.CanvasTexture(this.mirrorCanvas);
++                this.liquidTexture.flipY = false;
++                this.liquidTexture.generateMipmaps = false;
++                this.liquidTexture.magFilter = THREE.LinearFilter;
++                this.liquidTexture.minFilter = THREE.LinearFilter;
++                this.liquidTexture.wrapS = THREE.ClampToEdgeWrapping;
++                this.liquidTexture.wrapT = THREE.ClampToEdgeWrapping;
++                this.liquidTexture.colorSpace = THREE.SRGBColorSpace;
++                this.textureNode.value = this.liquidTexture;
++            }
++            if (this.mirrorCanvas.width !== sourceCanvas.width || this.mirrorCanvas.height !== sourceCanvas.height) {
++                this.mirrorCanvas.width = sourceCanvas.width;
++                this.mirrorCanvas.height = sourceCanvas.height;
++            }
++            this.mirrorContext.drawImage(sourceCanvas, 0, 0);
++            this.liquidTexture.needsUpdate = true;
++            this.textureNode.value = this.liquidTexture;
++        }
++        super.render(renderer, inputTexture, outputTarget, time, delta);
++    }
++    updateParams(params) {
++        this.params = params;
++        if (!this.shaderMount) {
++            this.mountShaderIfReady();
++            return;
++        }
++        this.shaderMount.setUniforms(buildLiquidMetalUniforms(params, this.transparentPixelImage));
++    }
++    resize(width, height) {
++        this.width = Math.max(1, width);
++        this.height = Math.max(1, height);
++        this.container.style.width = `${this.width}px`;
++        this.container.style.height = `${this.height}px`;
++    }
++    needsContinuousRender() {
++        // 줄무늬 패턴이 항상 흐르는 것이 이 레이어의 정체성이다(플루이드·픽셀 트레일과
++        // 같은 카테고리) — 티켓 20260913_1819에서 제거한 "정적 이미지의 불필요한 자동
++        // 애니메이션"과는 성격이 다르다.
++        return true;
++    }
++    dispose() {
++        this.shaderMount?.dispose();
++        this.container.remove();
++        this.liquidTexture?.dispose();
++        this.mirrorCanvas = null;
++        this.mirrorContext = null;
++        this.placeholder.dispose();
++        super.dispose();
++    }
++    buildEffectNode() {
++        if (!this.textureNode) {
++            return vec4(float(0), float(0), float(0), float(0));
++        }
++        return vec4(this.textureNode.rgb, this.textureNode.a);
++    }
++}
++let transparentPixelImagePromise = null;
++function getTransparentPixelImage() {
++    if (!transparentPixelImagePromise) {
++        transparentPixelImagePromise = new Promise((resolve, reject) => {
++            const img = new Image();
++            img.onload = () => resolve(img);
++            img.onerror = () => reject(new Error("Failed to load transparent pixel placeholder image."));
++            img.src = TRANSPARENT_PIXEL;
++        });
++    }
++    return transparentPixelImagePromise;
++}
++function buildLiquidMetalUniforms(params, imageElement) {
++    const colorBack = typeof params.colorBack === "string" ? params.colorBack : "#AAAAAC";
++    const colorTint = typeof params.colorTint === "string" ? params.colorTint : "#ffffff";
++    const repetition = typeof params.repetition === "number" ? params.repetition : 2;
++    const softness = typeof params.softness === "number" ? params.softness : 0.1;
++    const shiftRed = typeof params.shiftRed === "number" ? params.shiftRed : 0.3;
++    const shiftBlue = typeof params.shiftBlue === "number" ? params.shiftBlue : 0.3;
++    const distortion = typeof params.distortion === "number" ? params.distortion : 0.07;
++    const contour = typeof params.contour === "number" ? params.contour : 0.4;
++    const angle = typeof params.angle === "number" ? params.angle : 70;
++    const shapeKey = typeof params.shape === "string" && params.shape in LiquidMetalShapes
++        ? params.shape
++        : "diamond";
++    return {
++        u_colorBack: getShaderColorFromString(colorBack),
++        u_colorTint: getShaderColorFromString(colorTint),
++        u_image: imageElement,
++        u_imageAspectRatio: 1,
++        u_isImage: false,
++        u_repetition: repetition,
++        u_softness: softness,
++        u_shiftRed: shiftRed,
++        u_shiftBlue: shiftBlue,
++        u_distortion: distortion,
++        u_contour: contour,
++        u_angle: angle,
++        u_shape: LiquidMetalShapes[shapeKey],
++        u_fit: ShaderFitOptions[defaultObjectSizing.fit],
++        u_scale: 1,
++        u_rotation: defaultObjectSizing.rotation,
++        u_offsetX: defaultObjectSizing.offsetX,
++        u_offsetY: defaultObjectSizing.offsetY,
++        u_originX: defaultObjectSizing.originX,
++        u_originY: defaultObjectSizing.originY,
++        u_worldWidth: 0,
++        u_worldHeight: 0,
++    };
++}
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
+index 1c1439f..212ecef 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
++++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
+@@ -17,6 +17,7 @@ import { FluidPass } from "./fluid-pass.js";
+ import { GradientPass } from "./gradient-pass.js";
+ import { HalftonePass } from "./halftone-pass.js";
+ import { InkPass } from "./ink-pass.js";
++import { LiquidMetalPass } from "./liquid-metal-pass.js";
+ import { LivePass } from "./live-pass.js";
+ import { MagnifyLensPass } from "./magnify-lens-pass.js";
+ import { MediaPass } from "./media-pass.js";
+@@ -431,6 +432,9 @@ export class PipelineManager {
+         if (layer.kind === "source" && layer.type === "text") {
+             return new TextPass(layer.id);
+         }
++        if (layer.kind === "source" && layer.type === "liquid-metal") {
++            return new LiquidMetalPass(layer.id);
++        }
+         if (layer.kind === "source" && layer.type === "custom-shader") {
+             return new CustomShaderPass(layer.id, this.onRuntimeError);
+         }
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/types.d.ts b/node_modules/@basementstudio/shader-lab/dist/src/types.d.ts
+index c82a982..b6a4376 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/types.d.ts
++++ b/node_modules/@basementstudio/shader-lab/dist/src/types.d.ts
+@@ -1,6 +1,6 @@
+ export type ShaderLabParameterValue = number | string | boolean | [number, number] | [number, number, number];
+ export type ShaderLabLayerKind = "effect" | "source";
+-export type ShaderLabSourceLayerType = "custom-shader" | "fluid" | "gradient" | "image" | "live" | "magnify-lens" | "pixel-trail" | "text" | "video";
++export type ShaderLabSourceLayerType = "custom-shader" | "fluid" | "gradient" | "image" | "liquid-metal" | "live" | "magnify-lens" | "pixel-trail" | "text" | "video";
+ export type ShaderLabEffectLayerType = "ascii" | "blob-tracking" | "bloom" | "circuit-bent" | "directional-blur" | "chromatic-aberration" | "crt" | "displacement-map" | "dithering" | "edge-detect" | "fluted-glass" | "halftone" | "ink" | "particle-grid" | "pattern" | "pixelation" | "pixel-sorting" | "plotter" | "posterize" | "slice" | "smear" | "threshold" | "voxel";
+ export type ShaderLabLayerType = ShaderLabEffectLayerType | ShaderLabSourceLayerType;
+ export type ShaderLabBlendMode = "normal" | "multiply" | "screen" | "overlay" | "darken" | "lighten" | "color-dodge" | "color-burn" | "hard-light" | "soft-light" | "difference" | "exclusion" | "hue" | "saturation" | "color" | "luminosity";

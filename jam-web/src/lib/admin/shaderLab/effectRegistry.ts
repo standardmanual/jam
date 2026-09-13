@@ -106,6 +106,8 @@ export const SHADER_LAB_LAYER_TYPES = [
   'pixel-trail',
   'magnify-lens',
   'gradient',
+  // 티켓 20260913_1948 — 리퀴드 메탈(원본 basement.studio에 없는 JAM! 확장, @paper-design/shaders 통합)
+  'liquid-metal',
   // 2차 2차분 — 이펙트 Core 9종
   'ink',
   'pattern',
@@ -708,6 +710,52 @@ const gradientFields: ShaderLabFieldDefinitions = [
   { key: 'vignetteStrength', label: '비네트 강도', type: 'number', defaultValue: 0.12, min: 0, max: 1, step: 0.01, group: '마무리' },
   { key: 'vignetteRadius', label: '비네트 반경', type: 'number', defaultValue: 1.5, min: 0, max: 1.5, step: 0.01, group: '마무리' },
   { key: 'vignetteSoftness', label: '비네트 부드러움', type: 'number', defaultValue: 1, min: 0.01, max: 1, step: 0.01, group: '마무리' },
+]
+
+// ============================================================================
+// 티켓 20260913_1948 — 리퀴드 메탈 (원본 basement.studio에 없는 JAM! 확장)
+// ============================================================================
+
+/**
+ * `@paper-design/shaders`(Apache 2.0, https://shaders.paper.design)의 "Liquid Metal" GLSL
+ * 셰이더를 통합했다. 이 레이어는 원본 basement.studio 저장소에는 존재하지 않는다 — 사용자
+ * 요청으로 JAM!이 자체 추가한 소스 타입이다. 실제 렌더링은 `renderer/liquid-metal-pass.js`
+ * (patch-package로 신규 추가, `patches/@basementstudio+shader-lab+3.0.2.patch` 참고)가
+ * `@paper-design/shaders`의 `ShaderMount`를 숨겨진 DOM에 마운트해 그 WebGL 캔버스를
+ * `THREE.CanvasTexture`로 이 WebGPU 파이프라인에 공급하는 방식이다.
+ *
+ * 원본 `LiquidMetalParams`는 로고 이미지를 업로드해 마스크로 쓰는 기능(`image`,
+ * `toProcessedLiquidMetal()`)이 핵심이지만, 그 전처리가 무거운 비동기 canvas 로직이라 이번
+ * 범위에서는 제외했다 — `shape`(도형 프리셋) 기반으로만 동작한다. 라이브러리 내장
+ * "Backdrop" 프리셋(`shape: "none"`)이 이미 이미지 없이 전체 화면을 채우는 표준 사용법이라
+ * 이 범위로도 정상적인 시각 효과를 낸다. 오브젝트 배치(fit/scale/rotation/offset 등)는
+ * "Backdrop" 프리셋 고정값을 그대로 쓰고 UI에는 노출하지 않는다(범위 최소화).
+ */
+const liquidMetalFields: ShaderLabFieldDefinitions = [
+  {
+    key: 'shape',
+    label: '모양',
+    type: 'select',
+    defaultValue: 'none',
+    group: '모양',
+    description: '전체 화면을 채우려면 "없음"을 선택하세요.',
+    options: [
+      { label: '없음(전체 화면)', value: 'none' },
+      { label: '원', value: 'circle' },
+      { label: '데이지', value: 'daisy' },
+      { label: '다이아몬드', value: 'diamond' },
+      { label: '메타볼', value: 'metaballs' },
+    ],
+  },
+  { key: 'colorBack', label: '배경 색상', type: 'color', defaultValue: '#AAAAAC', group: '색상' },
+  { key: 'colorTint', label: '틴트 색상', type: 'color', defaultValue: '#ffffff', group: '색상' },
+  { key: 'repetition', label: '줄무늬 밀도', type: 'number', defaultValue: 1.5, min: 1, max: 10, step: 0.1, group: '패턴' },
+  { key: 'softness', label: '경계 부드러움', type: 'number', defaultValue: 0.05, min: 0, max: 1, step: 0.01, group: '패턴' },
+  { key: 'distortion', label: '왜곡', type: 'number', defaultValue: 0.1, min: 0, max: 1, step: 0.01, group: '패턴' },
+  { key: 'contour', label: '윤곽 강도', type: 'number', defaultValue: 0.4, min: 0, max: 1, step: 0.01, group: '패턴' },
+  { key: 'angle', label: '방향', type: 'number', defaultValue: 90, min: 0, max: 360, step: 1, group: '패턴' },
+  { key: 'shiftRed', label: '빨강 채널 분산', type: 'number', defaultValue: 0.3, min: -1, max: 1, step: 0.01, group: '색수차' },
+  { key: 'shiftBlue', label: '파랑 채널 분산', type: 'number', defaultValue: 0.3, min: -1, max: 1, step: 0.01, group: '색수차' },
 ]
 
 // ============================================================================
@@ -1315,6 +1363,13 @@ export const SHADER_LAB_LAYER_REGISTRY: Record<SupportedShaderLabLayerType, Laye
     defaultName: '메시 그라디언트',
     description: '여러 색 포인트를 노이즈로 왜곡해 그라디언트를 만들어요.',
     fields: gradientFields,
+  },
+  'liquid-metal': {
+    kind: 'source',
+    label: '리퀴드 메탈',
+    defaultName: '리퀴드 메탈',
+    description: '흐르는 금속 질감의 줄무늬 패턴을 그려요.',
+    fields: liquidMetalFields,
   },
   ink: {
     kind: 'effect',
