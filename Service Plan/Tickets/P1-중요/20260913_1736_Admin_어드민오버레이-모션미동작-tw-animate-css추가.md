@@ -2,8 +2,9 @@
 id: 20260913_1736
 category: Admin
 priority: P1
-status: OPEN
+status: CLOSED
 created: 2026-09-13
+closed: 2026-09-13
 ---
 
 # [Admin] 어드민 오버레이 전반 모션 미동작 — tw-animate-css 추가
@@ -121,9 +122,13 @@ jam-web/src/app/globals.css  (@import "tw-animate-css" 추가)
 - [x] 해당 없음 — 사용자 노출 텍스트 변경이 전혀 없는 순수 CSS/의존성 변경
 
 ### 배포 정보
-- 배포일: (미정 — 사용자 승인 후 오케스트레이터가 처리)
-- 환경: (미정)
-- 커밋: (미정)
+- 배포일: 2026-09-13 (staging 병합·push 완료, 오케스트레이터)
+- 환경: staging (`stage.j-a-m.app`) - 프로덕션(main) 승격은 이 티켓 범위 밖, `/jam-ship`
+  진행 시 사용자 승인 필요
+- 커밋: `b7268b00`(review 브랜치 `claude/jamwork-20260913_1736-tw-animate-css`,
+  origin/staging 기점에서 fast-forward로 정상 병합). 게이트 리뷰 판정: PASS(2026-09-13,
+  conservative-reviewer가 postcss `@apply` 직접 컴파일로 클래스 매칭을 독립 재현, diff
+  범위·node_modules 부수효과·tsc/lint/vitest 전부 재확인).
 
 ### 주요 의사결정 / 핵심 메모
 1. `npm install` 과정에서 이 워크트리의 `node_modules`가 (다른 워크트리와 공유하던)
