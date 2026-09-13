@@ -50,20 +50,26 @@ async function main() {
   let totalCredits = 0
   for (const item of items) {
     process.stdout.write(`생성 중: ${item.filename} ... `)
+    const body = {
+      prompt: item.prompt,
+      model,
+      style_id,
+      style,
+      size,
+      n: 1,
+      negative_prompt,
+      response_format: 'b64_json',
+    }
+    // 일부 모델(recraftv4_1 등)은 no_text 컨트롤 자체를 지원하지 않아, config에 no_text가
+    // 명시된 경우에만 controls 필드를 보낸다.
+    if (typeof no_text !== 'undefined') {
+      body.controls = { no_text: !!no_text }
+    }
+
     const res = await fetch('https://external.api.recraft.ai/v1/images/generations', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: item.prompt,
-        model,
-        style_id,
-        style,
-        size,
-        n: 1,
-        negative_prompt,
-        response_format: 'b64_json',
-        controls: { no_text: !!no_text },
-      }),
+      body: JSON.stringify(body),
     })
 
     if (!res.ok) {
