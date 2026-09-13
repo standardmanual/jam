@@ -471,6 +471,11 @@ const halftoneFields: ShaderLabFieldDefinitions = [
  * (`patches/@basementstudio+shader-lab+3.0.2.patch`)로 `rebuildTextTexture()`를 고쳐
  * `\n` 기준으로 줄바꿈을 지원하도록 확장했다 — 자세한 내용은 그 패치 파일과
  * `THIRD_PARTY_NOTICES.md` 참고.
+ *
+ * `textColor` 투명도(티켓 20260913_2110): `field.alpha: true`로 지정했다 — Canvas 2D의
+ * `context.fillStyle`이 8자리 hex(`#RRGGBBAA`)를 표준으로 지원함을 실측 확인(패치 불필요,
+ * UI가 8자리 hex를 그대로 넘기기만 하면 된다). `backgroundColor`는 이미 별도의
+ * `backgroundAlpha` 숫자 필드로 투명도를 지원하고 있어 그대로 둔다(중복 방지).
  */
 const textFields: ShaderLabFieldDefinitions = [
   {
@@ -527,7 +532,7 @@ const textFields: ShaderLabFieldDefinitions = [
     description: '이 폰트 슬롯이 실제로 반영하는 범위로 맞췄어요(자세한 근거는 textFontOptions.ts 참고).',
   },
   { key: 'letterSpacing', label: '자간', type: 'number', defaultValue: -0.05, min: -0.2, max: 0.3, step: 0.01, group: '글꼴' },
-  { key: 'textColor', label: '텍스트 색상', type: 'color', defaultValue: '#ffffff', group: '색상' },
+  { key: 'textColor', label: '텍스트 색상', type: 'color', alpha: true, defaultValue: '#ffffffff', group: '색상' },
   { key: 'backgroundColor', label: '배경 색상', type: 'color', defaultValue: '#000000', group: '색상' },
   { key: 'backgroundAlpha', label: '배경 투명도', type: 'number', defaultValue: 1, min: 0, max: 1, step: 0.01, group: '색상' },
 ]
@@ -742,30 +747,21 @@ const gradientFields: ShaderLabFieldDefinitions = [
  * `@paper-design/shaders`의 `ShaderMount`를 숨겨진 DOM에 마운트해 그 WebGL 캔버스를
  * `THREE.CanvasTexture`로 이 WebGPU 파이프라인에 공급하는 방식이다.
  *
- * 원본 `LiquidMetalParams`는 로고 이미지를 업로드해 마스크로 쓰는 기능(`image`,
- * `toProcessedLiquidMetal()`)이 핵심이지만, 그 전처리가 무거운 비동기 canvas 로직이라 이번
- * 범위에서는 제외했다 — `shape`(도형 프리셋) 기반으로만 동작한다. 라이브러리 내장
- * "Backdrop" 프리셋(`shape: "none"`)이 이미 이미지 없이 전체 화면을 채우는 표준 사용법이라
- * 이 범위로도 정상적인 시각 효과를 낸다. 오브젝트 배치(fit/scale/rotation/offset 등)는
- * "Backdrop" 프리셋 고정값을 그대로 쓰고 UI에는 노출하지 않는다(범위 최소화).
+ * 이미지 마스크 지원(티켓 20260913_2110): 원본 `LiquidMetalParams`의 핵심 기능인 로고
+ * 이미지 업로드(`toProcessedLiquidMetal()`)를 이번에 통합했다 — `layer.asset`(image 레이어와
+ * 같은 공용 필드)에 이미지가 있으면 그 형태를 마스크로 리퀴드 메탈을 입히고, 없으면 배경
+ * 전체에 적용한다(라이브러리 내장 "Backdrop" 프리셋과 동일). `shape`(도형 프리셋) 파라미터는
+ * 이미지 유무로만 분기하도록 바뀌면서 UI에서 제거했다 — 실제 셰이더 유니폼은
+ * `liquid-metal-pass.js`가 항상 `u_shape=none`으로 고정한다. 오브젝트 배치(fit/scale/
+ * rotation/offset 등)는 "Backdrop" 프리셋 고정값을 그대로 쓰고 UI에는 노출하지 않는다
+ * (범위 최소화).
+ *
+ * `colorBack`은 `field.alpha: true`로 배경 투명도를 지원한다(같은 티켓) —
+ * `getShaderColorFromString`(paper-design/shaders)이 8자리 hex(`#RRGGBBAA`)를 이미
+ * 완전히 지원함을 확인했다.
  */
 const liquidMetalFields: ShaderLabFieldDefinitions = [
-  {
-    key: 'shape',
-    label: '모양',
-    type: 'select',
-    defaultValue: 'none',
-    group: '모양',
-    description: '전체 화면을 채우려면 "없음"을 선택하세요.',
-    options: [
-      { label: '없음(전체 화면)', value: 'none' },
-      { label: '원', value: 'circle' },
-      { label: '데이지', value: 'daisy' },
-      { label: '다이아몬드', value: 'diamond' },
-      { label: '메타볼', value: 'metaballs' },
-    ],
-  },
-  { key: 'colorBack', label: '배경 색상', type: 'color', defaultValue: '#AAAAAC', group: '색상' },
+  { key: 'colorBack', label: '배경 색상', type: 'color', alpha: true, defaultValue: '#AAAAACFF', group: '색상' },
   { key: 'colorTint', label: '틴트 색상', type: 'color', defaultValue: '#ffffff', group: '색상' },
   { key: 'repetition', label: '줄무늬 밀도', type: 'number', defaultValue: 1.5, min: 1, max: 10, step: 0.1, group: '패턴' },
   { key: 'softness', label: '경계 부드러움', type: 'number', defaultValue: 0.05, min: 0, max: 1, step: 0.01, group: '패턴' },

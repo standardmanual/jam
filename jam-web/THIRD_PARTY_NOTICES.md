@@ -47,12 +47,14 @@ Apache License 2.0 §4가 요구하는 원본 저작권 고지·라이선스 사
 - **NOTICE 고지**("Powered by Paper Shaders: https://shaders.paper.design")
 - **이식 시점**: 2026-09-13 (npm `@paper-design/shaders@0.0.80`)
 - **통합 범위**: 순수 WebGL2 GLSL 셰이더(`liquidMetalFragmentShader`, `ShaderMount` 코어
-  클래스)를 npm 의존성으로 그대로 설치해 쓴다. 코드를 복사하지 않았다 — `@basementstudio/
-  shader-lab`(WebGPU + TSL) 파이프라인과 다른 렌더링 백엔드를 쓰는 라이브러리라, 위
-  패치(`liquid-metal-pass.js`)로 두 파이프라인을 텍스처 브릿지(숨겨진 DOM에 WebGL 셰이더를
-  마운트하고 그 canvas를 `THREE.CanvasTexture`로 공급)로 연결했다. 로고 이미지 업로드
-  기능(`toProcessedLiquidMetal()`)은 이번 범위에서 제외했다 — `shape` 프리셋 기반으로만
-  동작한다.
+  클래스)와 이미지 처리 유틸(`toProcessedLiquidMetal()`)을 npm 의존성으로 그대로 설치해
+  쓴다. 코드를 복사하지 않았다 — `@basementstudio/shader-lab`(WebGPU + TSL) 파이프라인과
+  다른 렌더링 백엔드를 쓰는 라이브러리라, 위 패치(`liquid-metal-pass.js`)로 두 파이프라인을
+  텍스처 브릿지(숨겨진 DOM에 WebGL 셰이더를 마운트하고 그 canvas를 `THREE.CanvasTexture`로
+  공급)로 연결했다. 이미지(PNG·SVG 포함)를 올리면 `toProcessedLiquidMetal()`이 포아송
+  방정식으로 그 형태의 엣지 마스크를 계산해 이미지 위에만 리퀴드 메탈을 입히고, 올리지
+  않으면 캔버스 전체에 적용된다(티켓 20260913_2110) — 원·데이지·다이아몬드·메타볼 등
+  `shape` 프리셋은 이미지 유무로만 분기하도록 완전히 제거했다.
 
 ---
 

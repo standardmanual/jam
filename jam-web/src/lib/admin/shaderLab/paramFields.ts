@@ -42,7 +42,19 @@ export type SelectFieldDefinition = FieldBase<'select', string> & {
   options: readonly { label: string; value: string }[]
 }
 
-export type ColorFieldDefinition = FieldBase<'color', string>
+/**
+ * 색상. `alpha`가 true면(티켓 20260913_2110) hex6 컬러피커 + 알파 슬라이더 조합으로
+ * 렌더링하고 값은 8자리 hex(`#RRGGBBAA`)로 저장한다 — 기본은 false(6자리 hex, 기존
+ * 동작 그대로)라, 텍스트 레이어의 `textColor`와 리퀴드 메탈의 `colorBack` 외 다른
+ * 색상 필드는 영향받지 않는다. 원본 `@basementstudio/shader-lab`의 TSL 기반 레이어
+ * (그라디언트·하프톤 등) 대부분은 hex를 항상 6자리로 잘라 알파를 구조적으로 버리므로
+ * (`gradient-pass.js`의 `hexToRgb` 확인), 이 옵션은 실제로 알파를 반영하는 런타임
+ * (Canvas 2D `fillStyle`을 쓰는 텍스트 레이어, `getShaderColorFromString`을 쓰는
+ * 리퀴드 메탈)에만 켠다.
+ */
+export type ColorFieldDefinition = FieldBase<'color', string> & {
+  alpha?: boolean
+}
 
 export type Vec2FieldDefinition = FieldBase<'vec2', [number, number]> & {
   min?: number
