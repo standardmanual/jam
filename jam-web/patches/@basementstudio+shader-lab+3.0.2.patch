@@ -1,9 +1,9 @@
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js
 new file mode 100644
-index 0000000..ff07909
+index 0000000..2d39a5b
 --- /dev/null
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js
-@@ -0,0 +1,213 @@
+@@ -0,0 +1,288 @@
 +import { float, texture as tslTexture, uv, vec2, vec4 } from "three/tsl";
 +import * as THREE from "three/webgpu";
 +import {
@@ -13,6 +13,7 @@ index 0000000..ff07909
 +    liquidMetalFragmentShader,
 +    LiquidMetalShapes,
 +    ShaderFitOptions,
++    toProcessedLiquidMetal,
 +} from "@paper-design/shaders";
 +import { createPipelinePlaceholder, PassNode } from "./pass-node.js";
 +const TRANSPARENT_PIXEL = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
@@ -29,6 +30,13 @@ index 0000000..ff07909
 +    height = 1;
 +    transparentPixelImage = null;
 +    disposed = false;
++    // 티켓 20260913_2110 — 이미지(SVG 포함) 업로드 시 그 형태를 마스크로 리퀴드 메탈을
++    // 입힌다. 업로드가 없으면(uploadedImage=null) 배경 전체 모드로 동작한다.
++    uploadedImageSrc = null;
++    uploadedImage = null;
++    uploadedObjectUrl = null;
++    uploadedImageAspectRatio = 1;
++    imageLoadNonce = 0;
 +    constructor(layerId) {
 +        super(layerId);
 +        this.placeholder = createPipelinePlaceholder();
@@ -64,7 +72,7 @@ index 0000000..ff07909
 +        // 받지 못하고 HTMLImageElement만 받는다(react 패키지의 ShaderMount 컴포넌트가 문자열
 +        // ->이미지 변환을 대신 해줄 뿐, 코어 클래스 자체엔 그 로직이 없다 — 실측으로 확인:
 +        // 문자열을 넘기면 "Unsupported uniform type for u_image: string" 경고만 내고 무시한다).
-+        // 이번 범위는 이미지 업로드를 지원하지 않으므로 1x1 투명 픽셀을 미리 로드해 재사용한다.
++        // 이미지 미업로드 상태(배경 전체 모드)에서는 1x1 투명 픽셀을 u_image에 채운다.
 +        // media-pass.js의 mediaLoadNonce 패턴과 동일한 목적의 가드: dispose() 이후에
 +        // 이 콜백이 실행되면 이미 정리된 인스턴스에 새 ShaderMount(WebGL 컨텍스트+canvas)를
 +        // 만들어버릴 수 있다(게이트 리뷰 20260913_1948 지적, 실사용 경로에서 재현하려면
@@ -78,13 +86,79 @@ index 0000000..ff07909
 +            this.mountShaderIfReady();
 +        });
 +    }
++    /**
++     * 티켓 20260913_2110 — image 레이어와 같은 공용 `layer.asset` 필드를 받는다.
++     * `toProcessedLiquidMetal()`(paper-design/shaders, 순수 브라우저 API·SVG 지원)로
++     * 이미지를 전처리해 PNG blob을 얻고, Object URL을 거쳐 `HTMLImageElement`로 로드한다
++     * (코어 ShaderMount는 문자열 URL을 u_image로 받지 못해서 — 위 생성자 주석 참고).
++     * `pipeline-manager.js`의 patch(`applyLayerState`)가 이 메서드를 호출한다.
++     */
++    setImageAsset(src) {
++        if (this.uploadedImageSrc === src) {
++            return;
++        }
++        this.uploadedImageSrc = src;
++        this.imageLoadNonce += 1;
++        const requestId = this.imageLoadNonce;
++        if (!src) {
++            this.clearUploadedImage();
++            this.refreshImageState();
++            return;
++        }
++        void toProcessedLiquidMetal(src)
++            .then((result) => {
++            if (this.disposed || requestId !== this.imageLoadNonce) {
++                return;
++            }
++            const objectUrl = URL.createObjectURL(result.pngBlob);
++            const img = new Image();
++            img.onload = () => {
++                if (this.disposed || requestId !== this.imageLoadNonce) {
++                    URL.revokeObjectURL(objectUrl);
++                    return;
++                }
++                this.clearUploadedImage();
++                this.uploadedImage = img;
++                this.uploadedObjectUrl = objectUrl;
++                this.uploadedImageAspectRatio = result.imageData.width / Math.max(1, result.imageData.height);
++                this.refreshImageState();
++            };
++            img.onerror = () => {
++                URL.revokeObjectURL(objectUrl);
++            };
++            img.src = objectUrl;
++        })
++            .catch(() => {
++            // 이미지 전처리 실패(지원하지 않는 형식 등) 시 조용히 무시하고 배경 전체
++            // 모드로 남긴다 — 이 pass엔 CustomShaderPass 같은 onRuntimeError 콜백이 없다.
++        });
++    }
++    clearUploadedImage() {
++        if (this.uploadedObjectUrl) {
++            URL.revokeObjectURL(this.uploadedObjectUrl);
++        }
++        this.uploadedImage = null;
++        this.uploadedObjectUrl = null;
++        this.uploadedImageAspectRatio = 1;
++    }
++    refreshImageState() {
++        if (this.shaderMount) {
++            this.shaderMount.setUniforms(buildLiquidMetalUniforms(this.params, this.resolveImageState()));
++        }
++    }
++    resolveImageState() {
++        if (this.uploadedImage) {
++            return { aspectRatio: this.uploadedImageAspectRatio, image: this.uploadedImage, isImage: true };
++        }
++        return { aspectRatio: 1, image: this.transparentPixelImage, isImage: false };
++    }
 +    mountShaderIfReady() {
 +        if (this.shaderMount || !this.transparentPixelImage) {
 +            return;
 +        }
 +        this.container.style.width = `${this.width}px`;
 +        this.container.style.height = `${this.height}px`;
-+        const uniforms = buildLiquidMetalUniforms(this.params, this.transparentPixelImage);
++        const uniforms = buildLiquidMetalUniforms(this.params, this.resolveImageState());
 +        // preserveDrawingBuffer:true가 필수다 — 기본값(false)이면 브라우저가 그리기 직후
 +        // WebGL 백버퍼를 지울 수 있어, 나중에 THREE.CanvasTexture가 이 canvas를 읽을 때
 +        // 빈 화면만 보인다(실측: readPixels 직후엔 정상 픽셀이 나오지만 WebGPU 쪽 최종
@@ -131,7 +205,7 @@ index 0000000..ff07909
 +            this.mountShaderIfReady();
 +            return;
 +        }
-+        this.shaderMount.setUniforms(buildLiquidMetalUniforms(params, this.transparentPixelImage));
++        this.shaderMount.setUniforms(buildLiquidMetalUniforms(params, this.resolveImageState()));
 +    }
 +    resize(width, height) {
 +        this.width = Math.max(1, width);
@@ -152,6 +226,7 @@ index 0000000..ff07909
 +        this.liquidTexture?.dispose();
 +        this.mirrorCanvas = null;
 +        this.mirrorContext = null;
++        this.clearUploadedImage();
 +        this.placeholder.dispose();
 +        super.dispose();
 +    }
@@ -174,13 +249,15 @@ index 0000000..ff07909
 +    }
 +    return transparentPixelImagePromise;
 +}
-+function buildLiquidMetalUniforms(params, imageElement) {
++function buildLiquidMetalUniforms(params, imageState) {
 +    // 게이트 리뷰(20260913_1948) 지적: 이 fallback들은 effectRegistry.ts의 liquidMetalFields
 +    // 기본값(라이브러리 내장 "Backdrop" 프리셋 기준)과 정확히 일치시킨다 — 정상 경로에서는
 +    // layerFactory가 registry 기본값으로 params를 채운 뒤 곧바로 updateParams()가 호출되므로
 +    // 이 fallback 자체가 실행될 일은 없지만(코드 추적으로 확인), 실사용 기본값과 다른 값을
 +    // fallback으로 남겨두는 건 잠재적 함정이라 명시적으로 맞춰둔다.
-+    const colorBack = typeof params.colorBack === "string" ? params.colorBack : "#AAAAAC";
++    // colorBack은 8자리 hex(#RRGGBBAA)로 투명도를 지원한다(티켓 20260913_2110) —
++    // getShaderColorFromString이 이미 완전히 지원함을 확인했다.
++    const colorBack = typeof params.colorBack === "string" ? params.colorBack : "#AAAAACFF";
 +    const colorTint = typeof params.colorTint === "string" ? params.colorTint : "#ffffff";
 +    const repetition = typeof params.repetition === "number" ? params.repetition : 1.5;
 +    const softness = typeof params.softness === "number" ? params.softness : 0.05;
@@ -189,15 +266,12 @@ index 0000000..ff07909
 +    const distortion = typeof params.distortion === "number" ? params.distortion : 0.1;
 +    const contour = typeof params.contour === "number" ? params.contour : 0.4;
 +    const angle = typeof params.angle === "number" ? params.angle : 90;
-+    const shapeKey = typeof params.shape === "string" && params.shape in LiquidMetalShapes
-+        ? params.shape
-+        : "none";
 +    return {
 +        u_colorBack: getShaderColorFromString(colorBack),
 +        u_colorTint: getShaderColorFromString(colorTint),
-+        u_image: imageElement,
-+        u_imageAspectRatio: 1,
-+        u_isImage: false,
++        u_image: imageState.image,
++        u_imageAspectRatio: imageState.aspectRatio,
++        u_isImage: imageState.isImage,
 +        u_repetition: repetition,
 +        u_softness: softness,
 +        u_shiftRed: shiftRed,
@@ -205,7 +279,8 @@ index 0000000..ff07909
 +        u_distortion: distortion,
 +        u_contour: contour,
 +        u_angle: angle,
-+        u_shape: LiquidMetalShapes[shapeKey],
++        // 티켓 20260913_2110 — shape 파라미터를 UI에서 제거했다(이미지 유무로만 분기).
++        u_shape: LiquidMetalShapes.none,
 +        u_fit: ShaderFitOptions[defaultObjectSizing.fit],
 +        u_scale: 1,
 +        u_rotation: defaultObjectSizing.rotation,
@@ -218,7 +293,7 @@ index 0000000..ff07909
 +    };
 +}
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
-index 1c1439f..212ecef 100644
+index 1c1439f..4585bfe 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
 @@ -17,6 +17,7 @@ import { FluidPass } from "./fluid-pass.js";
@@ -229,7 +304,21 @@ index 1c1439f..212ecef 100644
  import { LivePass } from "./live-pass.js";
  import { MagnifyLensPass } from "./magnify-lens-pass.js";
  import { MediaPass } from "./media-pass.js";
-@@ -431,6 +432,9 @@ export class PipelineManager {
+@@ -341,6 +342,13 @@ export class PipelineManager {
+                 pass.clearMedia();
+             }
+         }
++        if (pass instanceof LiquidMetalPass) {
++            // 티켓 20260913_2110 — image 레이어(MediaPass)와 같은 공용 layer.asset 필드를
++            // 리퀴드 메탈에도 연결한다. 업로드된 이미지가 있으면 그 형태를 마스크로 쓰고,
++            // 없으면(asset이 없거나 kind가 image가 아니면) 배경 전체 모드로 되돌린다.
++            const asset = layer.asset;
++            pass.setImageAsset(asset?.kind === "image" ? asset.src : null);
++        }
+         if (pass instanceof LivePass) {
+             const facingMode = typeof layer.params.facingMode === "string"
+                 ? layer.params.facingMode
+@@ -431,6 +439,9 @@ export class PipelineManager {
          if (layer.kind === "source" && layer.type === "text") {
              return new TextPass(layer.id);
          }
