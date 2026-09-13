@@ -56,11 +56,23 @@ const DropdownMenuSubContent = React.forwardRef<
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName
 
+interface DropdownMenuContentProps
+  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
+  /**
+   * Radix Portal이 렌더링될 DOM 컨테이너. 지정하지 않으면 `document.body`(기본값)로
+   * 포털된다. shadcn 어드민 테마 실값은 `[data-admin-theme]` 스코프 안에만 존재하므로
+   * (globals.css 참고), 그 값을 참조하는 메뉴(예: `text-destructive`)는 이 prop으로
+   * admin 스코프 노드를 명시해야 스타일이 정상 적용된다 (select.tsx/popover.tsx와 동일
+   * 패턴, 20260826_016 — 티켓 20260913_1613에서 이 컴포넌트에 처음 필요해져 추가함).
+   */
+  container?: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>["container"]
+}
+
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPrimitive.Portal>
+  DropdownMenuContentProps
+>(({ className, sideOffset = 4, container, ...props }, ref) => (
+  <DropdownMenuPrimitive.Portal container={container}>
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}

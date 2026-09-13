@@ -2,7 +2,8 @@
 
 import { useMemo, useRef, useState } from 'react'
 import type { ShaderLabLayerConfig } from '@basementstudio/shader-lab'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/admin/ui/card'
+import { IconInfoCircle } from '@tabler/icons-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/card'
 import { buildComposition } from '@/lib/admin/shaderLab/composition'
 import { createLayer } from '@/lib/admin/shaderLab/layerFactory'
 import type { SupportedShaderLabLayerType } from '@/lib/admin/shaderLab/effectRegistry'
@@ -23,6 +24,10 @@ import ShaderLabSavePanel from './ShaderLabSavePanel'
  * 애플리케이션 UI(레이어 사이드바·속성 패널·캔버스 뷰포트)만 JAM! 어드민 스타일로 재작성해
  * 이식했다. 커뮤니티(씬 공유·좋아요·리믹스·신고)·자체 인증·MCP 에이전트 브릿지는 제외했다.
  * 원본 32종 중 비디오·카메라·커스텀 셰이더 3종은 범위 밖(사용자 결정, 티켓 20260912_2157).
+ *
+ * UI 개선(티켓 20260913_1613): 저장/불러오기를 제목 우측 컴팩트 폼으로 옮기고, 정보성이
+ * 낮은 카드 설명 문구를 정리했다. "레이어" 카드의 순서 설명만은 정보 아이콘 호버로 남겨뒀다
+ * (합성 순서가 직관과 반대라 유일한 안내 수단 — `handleAdd` 주석 참고).
  *
  * 라이선스 고지는 `jam-web/THIRD_PARTY_NOTICES.md` 참고.
  */
@@ -82,51 +87,48 @@ export default function ShaderLabPage() {
 
   return (
     <div className="max-w-[1400px] space-y-6 p-4 md:p-8">
-      <div>
-        <h1 className="text-2xl font-bold md:text-3xl">쉐이더 랩</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          레이어를 쌓아 이미지 위에 이펙트를 합성해요. 소스 6종(이미지·텍스트·플루이드·픽셀
-          트레일·매그니파이 렌즈·메시 그라디언트)과 이펙트 23종, 1:1 1280×1280 PNG 내보내기를
-          지원해요.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold md:text-3xl">쉐이더 랩</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            레이어를 쌓아 이미지 위에 이펙트를 합성해요. 소스 6종(이미지·텍스트·플루이드·픽셀
+            트레일·매그니파이 렌즈·메시 그라디언트)과 이펙트 23종, 1:1 1280×1280 PNG 내보내기를
+            지원해요.
+          </p>
+        </div>
+        <ShaderLabSavePanel layers={layers} onLoad={handleLoadComposition} />
       </div>
 
       <ShaderLabWebGpuGate>
         <div className="grid gap-6 lg:grid-cols-[260px_1fr_320px]">
-          <div className="flex flex-col gap-6">
-            <Card>
-              <CardHeader>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-1.5">
                 <CardTitle>레이어</CardTitle>
-                <CardDescription>목록 위쪽일수록 나중에(위에) 그려져요.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ShaderLabLayerSidebar
-                  layers={layers}
-                  selectedLayerId={selectedLayerId}
-                  onSelect={setSelectedLayerId}
-                  onAdd={handleAdd}
-                  onRemove={handleRemove}
-                  onToggleVisible={handleToggleVisible}
-                  onMove={handleMove}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>저장/불러오기</CardTitle>
-                <CardDescription>작업 유실 방지용 최소 저장이에요.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ShaderLabSavePanel layers={layers} onLoad={handleLoadComposition} />
-              </CardContent>
-            </Card>
-          </div>
+                <span
+                  title="목록 위쪽일수록 나중에(위에) 그려져요."
+                  className="inline-flex cursor-help text-muted-foreground"
+                >
+                  <IconInfoCircle className="h-4 w-4" />
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ShaderLabLayerSidebar
+                layers={layers}
+                selectedLayerId={selectedLayerId}
+                onSelect={setSelectedLayerId}
+                onAdd={handleAdd}
+                onRemove={handleRemove}
+                onToggleVisible={handleToggleVisible}
+                onMove={handleMove}
+              />
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>미리보기</CardTitle>
-              <CardDescription>이 캔버스가 그대로 결과물로 내보내져요(WYSIWYG).</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <ShaderLabViewport ref={canvasRef} config={config} playing={playing} onTogglePlaying={() => setPlaying((p) => !p)} />
@@ -137,7 +139,6 @@ export default function ShaderLabPage() {
           <Card>
             <CardHeader>
               <CardTitle>속성</CardTitle>
-              <CardDescription>선택한 레이어의 값을 조정해요.</CardDescription>
             </CardHeader>
             <CardContent>
               <ShaderLabPropertiesPanel layer={selectedLayer} onChange={handleUpdateLayer} />
