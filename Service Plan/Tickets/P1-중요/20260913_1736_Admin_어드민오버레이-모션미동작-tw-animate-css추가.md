@@ -79,30 +79,63 @@ Tailwind v4용 후속 패키지 `tw-animate-css`도 없음, `@plugin` 지시어�
 
 ### 구현 내용 요약
 
+1. `jam-web`에 `tw-animate-css`를 설치했다(`npm install tw-animate-css`).
+2. `jam-web/src/app/globals.css`의 `@import "tailwindcss";` 바로 다음에
+   `@import "tw-animate-css";`를 추가했다(근거 주석 포함).
+3. 패키지 자체(`node_modules/tw-animate-css/dist/tw-animate.css`)를 열어
+   `@utility fade-in-*`/`@utility zoom-in-*`/`@utility slide-in-from-top-*` 등이
+   기존 컴포넌트가 쓰던 클래스 이름과 정확히 일치하는 Tailwind v4 `@utility` 매크로로
+   정의돼 있음을 직접 확인했다.
+
 ### 변경된 파일
 ```
--
+jam-web/package.json         (tw-animate-css 의존성 추가)
+jam-web/package-lock.json
+jam-web/src/app/globals.css  (@import "tw-animate-css" 추가)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npx tsc --noEmit` — 오류 0건
+- [x] `npm run lint`(전체) — 0 errors, 13 warnings(전부 `design-system/**` 기존 경고, 무관)
+- [x] `npx vitest run`(전체) — 91개 파일 중 90개 통과, 1452/1455 통과. 실패 3건은
+      `gate-family-options-contract.test.ts`로 이 티켓과 무관한 기존 실패
+- [x] postcss로 실제 `globals.css`를 컴파일해 `.fade-in-0{--tw-enter-opacity:0}`,
+      `.zoom-in-95{--tw-enter-scale:.95}`, `.data-\[side\=bottom\]\:slide-in-from-top-2`
+      등이 실제로 생성됨을 확인(수정 전에는 전혀 생성되지 않던 클래스들)
+- [x] **실제 브라우저에서 애니메이션 재생 여부를 Web Animations API로 실측**
+      (esbuild+playwright, 워크트리 `next dev`/`build` 제약으로 대체): 실제 소스로 번들한
+      `ShaderLabLayerSidebar`를 마운트해
+      - "레이어 추가" `Popover` 오픈 → `PopoverContent`(`data-state="open"`)에서
+        `getAnimations()`가 `animationName: "enter"`, `playState: "running"`인 실행 중
+        애니메이션 1건을 반환함을 확인(수정 전에는 이 클래스들이 무정의라 애니메이션
+        자체가 생성되지 않았을 것)
+      - 레이어 행의 "⋮ 더보기" `DropdownMenu` 오픈 → 동일하게 `role="menu"` 요소에서
+        `enter` 애니메이션이 `running` 상태로 확인됨 — Select/Dialog/AlertDialog/Sheet
+        등 동일 패턴을 쓰는 다른 어드민 오버레이에도 동일하게 적용될 것으로 판단(전부
+        같은 shadcn 원시 컴포넌트 클래스 패턴 공유)
+      - 검증 스크립트는 스크래치 산출물이라 커밋하지 않음(기존 관례)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
 
-- [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
-- [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)
-- [ ] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
-- [ ] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
-- [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
+- [x] 해당 없음 — 사용자 노출 텍스트 변경이 전혀 없는 순수 CSS/의존성 변경
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: (미정 — 사용자 승인 후 오케스트레이터가 처리)
+- 환경: (미정)
+- 커밋: (미정)
 
 ### 주요 의사결정 / 핵심 메모
-> 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
+1. `npm install` 과정에서 이 워크트리의 `node_modules`가 (다른 워크트리와 공유하던)
+   심링크에서 독립된 실제 디렉터리로 전환됐다(`npm warn reify Removing non-directory
+   .../node_modules`). 메인 트리의 `node_modules`(심링크 원본)는 개수·핵심 패키지 전부
+   그대로임을 확인했다 — 이 워크트리만 별도 사본을 갖게 된 것으로, 오히려 다른 세션과의
+   격리성이 높아진 부수 효과다. 문제로 보지 않았다.
+2. `motion`(Framer Motion)으로 어드민 전역을 통일하는 대안은 채택하지 않았다(위 티켓
+   본문 "검토 및 사용자 결정" 참고) — `tw-animate-css`는 기존 코드를 전혀 안 고쳐도 되는
+   반면, `motion` 전환은 어드민 공용 컴포넌트 수십 개를 재작성해야 해 범위가 훨씬 크다.
 
 ### 잔여 이슈
--
+- 이번 실측은 Popover·DropdownMenu 2종만 직접 확인했다. Dialog·AlertDialog·Sheet·
+  Select 등 동일 패턴을 쓰는 나머지 오버레이는 구조적으로 동일하게 고쳐질 것으로
+  판단했으나 개별 실측은 하지 않았다 — 실사용 중 문제가 발견되면 후속 조치한다.

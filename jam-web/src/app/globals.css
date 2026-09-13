@@ -1,5 +1,11 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 @import "tailwindcss";
+/* 20260913_1736 — 어드민 오버레이(Select/Popover/DropdownMenu/Dialog 등)가 기존에 이미
+ * 쓰던 animate-in/fade-in-0/zoom-in-95/slide-in-from-* 클래스를 정의하는 플러그인이
+ * 프로젝트에 없어 모션이 전혀 재생되지 않던 문제를 고친다. 원본 shader-lab은 motion
+ * (Framer Motion)을 쓰지만, 문제 컴포넌트는 JAM! 자체 shadcn 프리미티브(어드민 전역
+ * 공유)라 코드 무수정으로 끝나는 이 CSS 유틸리티 플러그인을 대신 채택했다(사용자 승인). */
+@import "tw-animate-css";
 @import "../components/dotmatrix-loader.css";
 @import "../components/transitions.css";
 
