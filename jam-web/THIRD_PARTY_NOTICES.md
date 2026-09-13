@@ -22,6 +22,29 @@ Apache License 2.0 §4가 요구하는 원본 저작권 고지·라이선스 사
     원본 에디터 앱의 `src/lib/editor/config/layer-registry.ts`(비공개 앱 소스)가 정의한 필드
     구성을 참고해 대표 6종만 추려 다시 작성했다.
 - 이식한 각 파일 상단에는 출처 주석(원본 저장소 URL·라이선스·이식 시점)을 남겼다.
+- **패치(Apache License 2.0 §4(b) 고지, 티켓 20260913_1948)**: 설치된 npm 패키지
+  `@basementstudio/shader-lab@3.0.2`에 리퀴드 메탈 레이어를 추가하려고 `patch-package`로
+  신규 파일 `dist/src/renderer/liquid-metal-pass.js`를 추가하고, `dist/src/renderer/
+  pipeline-manager.js`(레이어 타입→pass 클래스 매핑에 케이스 추가)와 `dist/src/types.d.ts`
+  (공개 타입 `ShaderLabSourceLayerType`에 `"liquid-metal"` 추가)를 함께 수정했다. 패치
+  파일은 `patches/@basementstudio+shader-lab+3.0.2.patch`에 있고, `postinstall` 스크립트가
+  자동 재적용한다.
+
+## 리퀴드 메탈 (`/admin/shader-lab`의 "리퀴드 메탈" 레이어)
+
+- **원본 저장소**: [paper-design/shaders](https://github.com/paper-design/shaders)
+  (npm `@paper-design/shaders`)
+- **라이선스**: Apache License 2.0 (전문은 이 문서 하단 참고)
+- **원저작권자**: Copyright 2026 Paper
+- **NOTICE 고지**("Powered by Paper Shaders: https://shaders.paper.design")
+- **이식 시점**: 2026-09-13 (npm `@paper-design/shaders@0.0.80`)
+- **통합 범위**: 순수 WebGL2 GLSL 셰이더(`liquidMetalFragmentShader`, `ShaderMount` 코어
+  클래스)를 npm 의존성으로 그대로 설치해 쓴다. 코드를 복사하지 않았다 — `@basementstudio/
+  shader-lab`(WebGPU + TSL) 파이프라인과 다른 렌더링 백엔드를 쓰는 라이브러리라, 위
+  패치(`liquid-metal-pass.js`)로 두 파이프라인을 텍스처 브릿지(숨겨진 DOM에 WebGL 셰이더를
+  마운트하고 그 canvas를 `THREE.CanvasTexture`로 공급)로 연결했다. 로고 이미지 업로드
+  기능(`toProcessedLiquidMetal()`)은 이번 범위에서 제외했다 — `shape` 프리셋 기반으로만
+  동작한다.
 
 ---
 

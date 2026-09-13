@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "patch-package",
     "dev": "next dev",
     "dev:webpack": "next dev --webpack",
     "build": "node scripts/build.mjs",
@@ -22,6 +23,7 @@
   "dependencies": {
     "@basementstudio/shader-lab": "^3.0.2",
     "@next/third-parties": "^16.2.10",
+    "@paper-design/shaders": "0.0.80",
     "@paper-design/shaders-react": "^0.0.80",
     "@radix-ui/react-accordion": "^1.2.20",
     "@radix-ui/react-alert-dialog": "^1.1.23",
@@ -66,6 +68,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "eslint-plugin-storybook": "^10.5.8",
+    "patch-package": "^8.0.1",
     "playwright": "latest",
     "storybook": "^10.5.8",
     "tailwindcss": "^4",
