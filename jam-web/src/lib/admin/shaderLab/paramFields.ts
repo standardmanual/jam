@@ -50,9 +50,15 @@ export type Vec2FieldDefinition = FieldBase<'vec2', [number, number]> & {
   step?: number
 }
 
-/** 자유 입력 한 줄 텍스트. ASCII의 커스텀 문자 세트, 텍스트 레이어의 본문 등에 쓴다. */
+/**
+ * 자유 입력 텍스트. ASCII의 커스텀 문자 세트, 텍스트 레이어의 본문 등에 쓴다.
+ * `multiline`이 true면(텍스트 레이어 전용, 티켓 20260913_1901) 줄바꿈을 입력할 수 있는
+ * textarea로 렌더링한다 — 기본은 false(한 줄 input)라 ASCII의 커스텀 문자 세트 등
+ * 기존 필드는 영향받지 않는다.
+ */
 export type TextFieldDefinition = FieldBase<'text', string> & {
   maxLength?: number
+  multiline?: boolean
 }
 
 export type ShaderLabFieldDefinition =

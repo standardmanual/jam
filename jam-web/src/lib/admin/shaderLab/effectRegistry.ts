@@ -465,9 +465,27 @@ const halftoneFields: ShaderLabFieldDefinitions = [
  * 그려 텍스처로 올리는 방식이다 — `text`/`anchor`/`offset`/`fontSize`/`fontFamily`/
  * `fontWeight`/`letterSpacing`/`textColor`/`backgroundColor`/`backgroundAlpha` 키를 그대로
  * 읽는다(파라미터 이름 전부 대조 완료).
+ *
+ * 다중 줄 입력(티켓 20260913_1901): 원본 `text-pass.js`는 `text` 값을 항상 한 줄로만
+ * 그렸다(원본 저장소 자체도 단일 줄만 지원 — 대조 확인). `patch-package`
+ * (`patches/@basementstudio+shader-lab+3.0.2.patch`)로 `rebuildTextTexture()`를 고쳐
+ * `\n` 기준으로 줄바꿈을 지원하도록 확장했다 — 자세한 내용은 그 패치 파일과
+ * `THIRD_PARTY_NOTICES.md` 참고.
  */
 const textFields: ShaderLabFieldDefinitions = [
-  { key: 'text', label: '텍스트', type: 'text', defaultValue: 'basement.studio', maxLength: 32, group: '내용' },
+  {
+    key: 'text',
+    label: '텍스트',
+    type: 'text',
+    defaultValue: 'basement.studio',
+    // 다중 줄 지원(티켓 20260913_1901, patch-package로 text-pass.js 확장) 전에는 32였다.
+    // 여러 줄(줄바꿈 포함)을 감안해 100으로 올렸다 — 배지·미션·컬렉션 대표이미지 1:1
+    // 정적 렌더 용도라 너무 길면 오히려 가독성이 떨어지므로, 한 줄당 대략 20자 × 5줄
+    // 안팎을 기준으로 넉넉히 잡았다(엄격한 산식은 아니고 실사용 감안 경험값).
+    maxLength: 100,
+    multiline: true,
+    group: '내용',
+  },
   {
     key: 'anchor',
     label: '기준점',
