@@ -22,6 +22,15 @@ Apache License 2.0 §4가 요구하는 원본 저작권 고지·라이선스 사
     원본 에디터 앱의 `src/lib/editor/config/layer-registry.ts`(비공개 앱 소스)가 정의한 필드
     구성을 참고해 대표 6종만 추려 다시 작성했다.
 - 이식한 각 파일 상단에는 출처 주석(원본 저장소 URL·라이선스·이식 시점)을 남겼다.
+- **패치(Apache License 2.0 §4(b) 고지, 티켓 20260913_1901)**: 설치된 npm 패키지
+  `@basementstudio/shader-lab@3.0.2`의
+  `dist/src/renderer/text-pass.js`(`TextPass.rebuildTextTexture()`)를 `patch-package`로
+  직접 수정했다. 원본은 텍스트 레이어 입력값을 항상 한 줄로만 렌더링하는데(원본 저장소 자체도
+  `lineHeight` 등 다중 줄 관련 파라미터가 없어 단일 줄만 지원), JAM! 요구사항(줄바꿈 포함
+  다중 줄 입력)을 만족시키기 위해 `\n` 기준으로 줄을 나눠 각 줄을 독립적으로 배치하고 전체
+  블록 기준으로 세로 정렬을 계산하도록 바꿨다. 패치 파일은
+  `patches/@basementstudio+shader-lab+3.0.2.patch`에 있고, `package.json`의
+  `postinstall` 스크립트가 `npm install` 시 자동 재적용한다.
 
 ---
 

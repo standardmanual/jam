@@ -1,7 +1,8 @@
 'use client'
 
 /**
- * 쉐이더 랩 — 파라미터 필드 제너릭 렌더러 (티켓 20260912_1951, `text` 타입 추가 20260912_2157)
+ * 쉐이더 랩 — 파라미터 필드 제너릭 렌더러 (티켓 20260912_1951, `text` 타입 추가 20260912_2157,
+ * `text` 타입의 `multiline` 분기 추가 20260913_1901)
  *
  * `effectRegistry.ts`의 `ShaderLabFieldDefinition` 하나를 받아 타입에 맞는 입력 UI를
  * 그린다. 어드민 화면이라 MODULAR 대상이 아니다(정책) — 네이티브 range/color, shadcn
@@ -10,11 +11,16 @@
  * 필드 타입 분기(number/boolean/select/color/vec2/text)는 원본 저장소
  * (`src/components/editor/properties-sidebar-fields.tsx`, 비공개 앱 소스)의 필드 렌더러
  * 개념을 참고했다. 출처: https://github.com/basementstudio/shader-lab (Apache License 2.0)
+ *
+ * `text` 타입은 `field.multiline`(텍스트 레이어의 본문 입력에만 켜짐)에 따라 shadcn
+ * Textarea/Input 둘 중 하나로 갈린다 — ASCII의 커스텀 문자 세트처럼 한 줄이어야 하는
+ * 다른 `text` 타입 필드는 `multiline`이 없어(기본 false) 그대로 Input을 쓴다.
  */
 import type { ChangeEvent } from 'react'
 import { Input } from '@/components/admin/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Switch } from '@/components/admin/ui/switch'
+import { Textarea } from '@/components/admin/ui/textarea'
 import type { ShaderLabFieldDefinition } from '@/lib/admin/shaderLab/paramFields'
 
 interface ShaderLabParamFieldProps {
@@ -109,6 +115,18 @@ export default function ShaderLabParamField({ field, value, onChange }: ShaderLa
 
   if (field.type === 'text') {
     const current = typeof value === 'string' ? value : field.defaultValue
+    if (field.multiline) {
+      return (
+        <FieldShell label={field.label} hint={field.description}>
+          <Textarea
+            value={current}
+            maxLength={field.maxLength}
+            rows={4}
+            onChange={(e: ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
+          />
+        </FieldShell>
+      )
+    }
     return (
       <FieldShell label={field.label} hint={field.description}>
         <Input
