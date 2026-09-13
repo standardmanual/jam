@@ -2,7 +2,7 @@
 id: 20260913_2207
 category: Infra
 priority: P1
-status: OPEN
+status: CLOSED
 created: 2026-09-13
 ---
 
@@ -118,9 +118,10 @@ jam-web/package-lock.json   (npm install 재실행으로 인한 하네스 메타
 
 ### 배포 정보
 - 배포일: 2026-09-13 (staging 직접 커밋·push, 오케스트레이터)
-- 환경: staging
-- 커밋: (2차 커밋 push 후 기록 — 1차 커밋 `a7ccd72a`는 효과 없는 것으로 확인돼 이 커밋으로
-  덮어써 고친다)
+- 환경: staging(`stage.j-a-m.app`) — Vercel 배포 `jam-stage-o4nrty1tr`(commit `9d6206ee`)
+  Ready 확인, alias 정상 연결 확인. 캐시가 다시 복원된 상태에서도 "added 1 package" →
+  patch-package `✔`로 정상 적용됨을 실제 배포 로그로 재확인
+- 커밋: `9d6206ee`(1차 시도 커밋 `a7ccd72a`는 효과가 없어 이 커밋으로 정정)
 
 ### 주요 의사결정 / 핵심 메모
 
