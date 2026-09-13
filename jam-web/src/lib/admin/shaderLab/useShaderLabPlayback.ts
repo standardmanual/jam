@@ -88,7 +88,7 @@ export function useShaderLabPlayback(
       try {
         update(timeRef.current, delta)
       } catch (error) {
-        console.error('[shader-lab] 프레임 렌더링 중 오류가 발생했지만 재생 루프는 계속돼요.', error)
+        console.error('[shader-lab] 프레임 렌더링 중 오류가 발생했지만 렌더 루프는 계속 돌아가요.', error)
       }
     }
 
