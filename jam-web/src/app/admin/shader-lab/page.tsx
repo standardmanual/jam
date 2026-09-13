@@ -87,15 +87,8 @@ export default function ShaderLabPage() {
 
   return (
     <div className="max-w-[1400px] space-y-6 p-4 md:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold md:text-3xl">쉐이더 랩</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            레이어를 쌓아 이미지 위에 이펙트를 합성해요. 소스 6종(이미지·텍스트·플루이드·픽셀
-            트레일·매그니파이 렌즈·메시 그라디언트)과 이펙트 23종, 1:1 1280×1280 PNG 내보내기를
-            지원해요.
-          </p>
-        </div>
+      <div className="flex flex-nowrap items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold md:text-3xl">쉐이더 랩</h1>
         <ShaderLabSavePanel layers={layers} onLoad={handleLoadComposition} />
       </div>
 
