@@ -1,6 +1,7 @@
 {
   "regions": ["icn1"],
   "ignoreCommand": "bash \"$(git rev-parse --show-toplevel)/jam-web/scripts/vercel-ignore.sh\"",
+  "installCommand": "rm -rf node_modules/@basementstudio/shader-lab && npm install",
   "crons": [
     {
       "path": "/api/cron/poi-cleanup",
