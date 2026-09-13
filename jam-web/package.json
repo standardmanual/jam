@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "preinstall": "rm -rf node_modules/@basementstudio/shader-lab",
     "postinstall": "patch-package",
     "dev": "next dev",
     "dev:webpack": "next dev --webpack",
