@@ -29,12 +29,17 @@ import ShaderLabSavePanel from './ShaderLabSavePanel'
  * 낮은 카드 설명 문구를 정리했다. "레이어" 카드의 순서 설명만은 정보 아이콘 호버로 남겨뒀다
  * (합성 순서가 직관과 반대라 유일한 안내 수단 — `handleAdd` 주석 참고).
  *
+ * 재생 기능 제거(티켓 20260913_1819): 이 도구의 산출물은 1:1 정적 PNG라 재생/정지 개념이
+ * 불필요해 완전히 없앴다. `playing` state·`applyDisabled` prop이 여기 있었는데, 시간이
+ * 지나면 스스로 움직이던 6개 레이어의 파라미터 자체를 `effectRegistry.ts`에서 제거했으므로
+ * 재생 여부와 무관하게 화면은 항상 정지 상태로 보인다(플루이드·픽셀 트레일·매그니파이
+ * 렌즈의 마우스 반응은 시간과 무관하게 그대로 동작 — `useShaderLabPlayback.ts` 참고).
+ *
  * 라이선스 고지는 `jam-web/THIRD_PARTY_NOTICES.md` 참고.
  */
 export default function ShaderLabPage() {
   const [layers, setLayers] = useState<ShaderLabLayerConfig[]>([])
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null)
-  const [playing, setPlaying] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   const config = useMemo(() => buildComposition(layers), [layers])
@@ -82,7 +87,6 @@ export default function ShaderLabPage() {
   function handleLoadComposition(loadedLayers: ShaderLabLayerConfig[]) {
     setLayers(loadedLayers)
     setSelectedLayerId(loadedLayers[0]?.id ?? null)
-    setPlaying(false)
   }
 
   return (
@@ -124,8 +128,8 @@ export default function ShaderLabPage() {
               <CardTitle>미리보기</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ShaderLabViewport ref={canvasRef} config={config} playing={playing} onTogglePlaying={() => setPlaying((p) => !p)} />
-              <ShaderLabExportPanel canvasRef={canvasRef} applyDisabled={playing} />
+              <ShaderLabViewport ref={canvasRef} config={config} />
+              <ShaderLabExportPanel canvasRef={canvasRef} />
             </CardContent>
           </Card>
 

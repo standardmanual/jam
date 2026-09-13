@@ -254,25 +254,6 @@ const ditheringFields: ShaderLabFieldDefinitions = [
     group: '효과',
     description: '20260912_2157 감사에서 발견한 누락 필드 — 원본·런타임 모두 지원해요.',
   },
-  {
-    key: 'animateDither',
-    label: '디더 애니메이션',
-    type: 'boolean',
-    defaultValue: false,
-    group: '효과',
-    description: '재생 중일 때만 패턴이 움직여요.',
-  },
-  {
-    key: 'ditherSpeed',
-    label: '애니메이션 속도',
-    type: 'number',
-    defaultValue: 1,
-    min: 0,
-    max: 3,
-    step: 0.5,
-    group: '효과',
-    visibleWhen: { key: 'animateDither', equals: true },
-  },
   { key: 'chromaticSplit', label: '색수차', type: 'boolean', defaultValue: false, group: '효과' },
 ]
 
@@ -707,19 +688,6 @@ const gradientFields: ShaderLabFieldDefinitions = [
   { key: 'warpBias', label: '왜곡 편향', type: 'number', defaultValue: 0.5, min: 0, max: 1, step: 0.01, group: '왜곡' },
   { key: 'vortexAmount', label: '소용돌이량', type: 'number', defaultValue: 0.69, min: -1, max: 1, step: 0.01, group: '왜곡' },
   { key: 'falloff', label: '감쇠 반경', type: 'number', defaultValue: 2.05, min: 0.5, max: 4, step: 0.01, group: '왜곡' },
-  { key: 'animate', label: '애니메이션', type: 'boolean', defaultValue: true, group: '애니메이션' },
-  { key: 'motionAmount', label: '움직임 양', type: 'number', defaultValue: 1, min: 0, max: 1, step: 0.01, group: '애니메이션' },
-  {
-    key: 'motionSpeed',
-    label: '움직임 속도',
-    type: 'number',
-    defaultValue: 0.4,
-    min: 0,
-    max: 2,
-    step: 0.01,
-    group: '애니메이션',
-    visibleWhen: { key: 'animate', equals: true },
-  },
   {
     key: 'tonemapMode',
     label: '톤맵',
@@ -756,7 +724,6 @@ const inkFields: ShaderLabFieldDefinitions = [
   { key: 'dripWeight', label: '흘러내림 두께', type: 'number', defaultValue: 0.4, min: 0.2, max: 2, step: 0.1, group: '잉크 번짐' },
   { key: 'fluidNoise', label: '유체 노이즈', type: 'number', defaultValue: 0.02, min: 0, max: 2, step: 0.01, group: '잉크 번짐' },
   { key: 'noiseScale', label: '노이즈 스케일', type: 'number', defaultValue: 1.2, min: 0.5, max: 8, step: 0.1, group: '잉크 번짐' },
-  { key: 'smokeSpeed', label: '연기 속도', type: 'number', defaultValue: 0.36, min: 0, max: 2, step: 0.01, group: '잉크 번짐' },
   { key: 'smokeTurbulence', label: '연기 난류', type: 'number', defaultValue: 0, min: 0, max: 1.5, step: 0.01, group: '잉크 번짐' },
   { key: 'blurSpread', label: '번짐 확산', type: 'number', defaultValue: 1.6, min: 0.5, max: 4, step: 0.1, group: '잉크 번짐' },
   {
@@ -916,9 +883,6 @@ const particleGridFields: ShaderLabFieldDefinitions = [
   { key: 'pointSize', label: '포인트 크기', type: 'number', defaultValue: 4, min: 1, max: 32, step: 1 },
   { key: 'displacement', label: '변위', type: 'number', defaultValue: 0.1, min: -2, max: 2, step: 0.01 },
   { key: 'backgroundColor', label: '배경', type: 'color', defaultValue: '#000000' },
-  { key: 'noiseAmount', label: '양', type: 'number', defaultValue: 0, min: 0, max: 2, step: 0.01, group: '모션' },
-  { key: 'noiseScale', label: '스케일', type: 'number', defaultValue: 3, min: 0.5, max: 10, step: 0.1, group: '모션' },
-  { key: 'noiseSpeed', label: '속도', type: 'number', defaultValue: 0.5, min: 0, max: 3, step: 0.01, group: '모션' },
   { key: 'bloomEnabled', label: '블룸 사용', type: 'boolean', defaultValue: false, group: '블룸' },
   { key: 'bloomIntensity', label: '강도', type: 'number', defaultValue: 1.25, min: 0, max: 2, step: 0.01, group: '블룸', visibleWhen: { key: 'bloomEnabled', equals: true } },
   { key: 'bloomThreshold', label: '임계값', type: 'number', defaultValue: 0.6, min: 0, max: 1, step: 0.01, group: '블룸', visibleWhen: { key: 'bloomEnabled', equals: true } },
@@ -1145,7 +1109,6 @@ const circuitBentFields: ShaderLabFieldDefinitions = [
     ],
   },
   { key: 'noiseAmount', label: '양', type: 'number', defaultValue: 1, min: 0, max: 1, step: 0.01, group: '노이즈' },
-  { key: 'scrollSpeed', label: '스크롤 속도', type: 'number', defaultValue: 4, min: 0, max: 4, step: 0.01, group: '애니메이션' },
 ]
 
 const directionalBlurFields: ShaderLabFieldDefinitions = [
@@ -1199,7 +1162,6 @@ const sliceFields: ShaderLabFieldDefinitions = [
   { key: 'blockWidth', label: '블록 너비', type: 'number', defaultValue: 120, min: 8, max: 640, step: 1, unit: 'px' },
   { key: 'density', label: '밀도', type: 'number', defaultValue: 0.58, min: 0, max: 1, step: 0.01 },
   { key: 'dispersion', label: '분산', type: 'number', defaultValue: 0.18, min: 0, max: 0.5, step: 0.01 },
-  { key: 'speed', label: '속도', type: 'number', defaultValue: 0.2, min: 0, max: 2, step: 0.01 },
   {
     key: 'direction',
     label: '방향',
@@ -1486,8 +1448,28 @@ export function getLayerTypeDefinition(type: SupportedShaderLabLayerType): Layer
   return SHADER_LAB_LAYER_REGISTRY[type]
 }
 
+/**
+ * 티켓 20260913_1819 — 재생/정지 기능 제거에 맞춰, 시간에 따라 스스로 움직이던 6개
+ * 레이어의 "자동 애니메이션" 파라미터를 UI에서 완전히 없앴다. 필드 자체는 위에서 삭제했지만,
+ * 그 필드가 없을 때(params 객체에 undefined) 런타임(`@basementstudio/shader-lab`)이 켜진
+ * 상태를 기본값으로 삼는 레이어가 있어(gradient/circuit-bent/ink/particle-grid/slice —
+ * 소스 확인, 아래 각 줄 참고) 명시적으로 "꺼짐" 값을 강제한다. 디더링은 런타임이 엄격한
+ * `=== true` 비교라 필드 삭제만으로 이미 꺼짐이지만, 다른 레이어와 같은 원리를 명시적으로
+ * 남겨 나중에 런타임 버전이 바뀌어도 안전하게 해뒀다.
+ */
+const SHADER_LAB_FORCED_STATIC_PARAMS: Partial<Record<SupportedShaderLabLayerType, Record<string, ShaderLabParameterValue>>> = {
+  dithering: { animateDither: false }, // dithering-pass.js: `params.animateDither === true`(엄격 비교) — undefined도 이미 꺼짐
+  gradient: { animate: false }, // gradient-pass.js: `params.animate !== false` — undefined면 켜짐이라 명시 필요
+  'circuit-bent': { scrollSpeed: 0 }, // circuit-bent-pass.js: 미지정 시 기본값 4(최대 속도)
+  ink: { smokeSpeed: 0 }, // ink-pass.js: 미지정 시 기본값 0.2
+  'particle-grid': { noiseAmount: 0 }, // particle-grid-pass.js: `isAnimated = noiseAmount > 0` — amount가 실제 스위치
+  slice: { speed: 0 }, // slice-pass.js: 미지정 시 기본값 0.2
+}
+
 export function getDefaultParamsForType(type: SupportedShaderLabLayerType): Record<string, ShaderLabParameterValue> {
-  return buildDefaultParams(SHADER_LAB_LAYER_REGISTRY[type].fields) as Record<string, ShaderLabParameterValue>
+  const base = buildDefaultParams(SHADER_LAB_LAYER_REGISTRY[type].fields) as Record<string, ShaderLabParameterValue>
+  const forced = SHADER_LAB_FORCED_STATIC_PARAMS[type]
+  return forced ? { ...base, ...forced } : base
 }
 
 export function isSupportedLayerType(type: string): type is SupportedShaderLabLayerType {
