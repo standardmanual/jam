@@ -35,17 +35,28 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`.githooks/pre-commit`의 badges `deleted_at` 필터 검사 대상 파일 목록에서 `__tests__/` 경로,
+`*.test.ts`, `*.test.tsx` 파일을 제외했다. 대상 파일을 순회하는 루프 최상단에 `case`로
+매칭되면 `continue`하도록 추가해, 테스트 스텁의 `.from('badges')` 호출은 애초에 검사 대상에서
+빠지도록 했다.
 
 ### 변경된 파일
 ```
--
+.githooks/pre-commit
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `bash -n .githooks/pre-commit` 구문 검사 통과
+- [x] 제외 규칙 추가 위치가 기존 `*.ts|*.tsx` 확장자 필터 바로 다음이라, 실제 서비스 코드
+      (`jam-web/src/**/*.ts(x)`, 테스트 파일 아님)에는 영향 없음을 코드 리뷰로 확인
 
 ### 배포 정보
+훅 스크립트 변경이라 별도 배포 없음. `git config core.hooksPath .githooks`가 설정된 로컬
+환경에 커밋 시점부터 즉시 반영된다.
 
 ### 주요 의사결정 / 핵심 메모
+제외 패턴은 `*__tests__/*`(디렉터리 어디에 있든), `*.test.ts`, `*.test.tsx` 세 가지로,
+티켓 배경에 언급된 표현을 그대로 반영했다.
 
 ### 잔여 이슈
+없음.
