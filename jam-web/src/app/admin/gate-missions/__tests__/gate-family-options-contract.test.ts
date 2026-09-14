@@ -14,7 +14,9 @@
  * 배지의 게이트 판정과 같은 경로), 어드민 화면의 필터만 풀어주면 된다 — 이 테스트는 그
  * 예외 분기가 실제로 있는지 소스 대조로 지킨다.
  *
- * page.tsx는 서버 컴포넌트(next/headers 의존)라 직접 렌더 테스트가 무겁다 —
+ * 계열 조립 로직은 원래 서버 컴포넌트 page.tsx에 있었으나, 티켓 20260911_2035(폼이
+ * new/[id] 페이지로 분리)로 `formData.ts`(`loadGateMissionFormData`)로 옮겨졌다. page.tsx는
+ * 여전히 서버 컴포넌트(next/headers 의존)라 직접 렌더 테스트는 무겁다 —
  * `api/admin/badges/__tests__/route-contract.test.ts`와 같은 소스 대조 방식을 쓴다.
  *
  * 실행: `npx vitest run src/app/admin/gate-missions/__tests__/gate-family-options-contract.test.ts`
@@ -30,7 +32,7 @@ function codeOf(path: string): string {
     .join('\n')
 }
 
-const pageCode = codeOf('src/app/admin/gate-missions/page.tsx')
+const pageCode = codeOf('src/app/admin/gate-missions/formData.ts')
 
 describe('families 조립 — family_key 없어도 admin_category=jam이면 예외로 포함한다', () => {
   it("필터가 !!f.familyKey 단독이 아니라 f.adminCategory === 'jam'도 OR로 받는다", () => {
