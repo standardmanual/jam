@@ -18,19 +18,12 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
 import { getCombinePolicy } from '@/lib/combine/policy'
-import { isInventoryFull } from '@/lib/inventory/slots'
+import {
+  isInventoryFull,
+  type GrantInventoryItemResult,
+  type ReleaseInventorySlotsResult,
+} from '@/lib/inventory/slots'
 import type { CombinationRecipeRow, CombineFailReason, InventoryItemRow } from '@/types/database'
-import type { Database } from '@/types/database.generated'
-
-/**
- * `inventory_items.serial_number`는 NOT NULL인데 DEFAULT가 없어(migrations/034) 생성 타입이
- * Insert 필수 컬럼으로 잡지만, 실제 값은 BEFORE INSERT 트리거 `assign_random_serial()`
- * (migrations/108)이 채운다. 이 한 컬럼만 `Omit`으로 떼어내고 나머지 컬럼은 이름·타입 검사를
- * 그대로 받게 둔다 — 억제(`@ts-expect-error`)로 덮으면 컬럼명 오타까지 같이 통과한다
- * (티켓 20260831_1213).
- */
-type InventoryItemInsert = Database['public']['Tables']['inventory_items']['Insert']
-type InventoryItemInsertByTrigger = Omit<InventoryItemInsert, 'serial_number'>
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -149,16 +142,23 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
   }
 
   // used_slots 감소 — 소각한 재료 개수만큼 인벤토리 칸을 반환한다(20260912_2101).
-  // 음수 방지 클램프는 111_item_slot_atomic_rpc.sql의 GREATEST(0, ...) 패턴을 그대로 따른다.
-  const usedSlotsAfterDestroy = Math.max(0, inventory.used_slots - destroyedRows.length)
-  const { error: slotDecError } = await supabase
-    .from('inventory')
-    .update({ used_slots: usedSlotsAfterDestroy })
-    .eq('id', inventory.id)
-  if (slotDecError) {
-    console.error('[combineItems] used_slots 감소 오류:', slotDecError)
+  // release_inventory_slots() RPC(마이그레이션 173, 티켓 20260914_1813)가 inventory 행을
+  // 잠근 채로 감소시키므로, 아래 grantBadge()의 지급 증가와 같은 인벤토리 행을 두고
+  // 서로 다른 시점에 read-then-write하던 레이스가 사라진다. 클램프(GREATEST(0, ...))는
+  // RPC 내부에서 처리한다.
+  const { data: releaseRpcResult, error: releaseRpcError } = await supabase.rpc('release_inventory_slots', {
+    p_inventory_id: inventory.id,
+    p_count: destroyedRows.length,
+  })
+  if (releaseRpcError) {
+    console.error('[combineItems] release_inventory_slots RPC 오류:', releaseRpcError)
   } else {
-    inventory.used_slots = usedSlotsAfterDestroy
+    const releaseResult = releaseRpcResult as ReleaseInventorySlotsResult
+    if (releaseResult.ok) {
+      inventory.used_slots = releaseResult.usedSlots
+    } else {
+      console.error('[combineItems] release_inventory_slots 실패:', releaseResult.reason)
+    }
   }
 
   // Consume 이벤트 — actor 유저명을 스냅샷으로 기록한다(라이브 조인 의존 금지).
@@ -294,29 +294,30 @@ async function grantBadge(
     return null
   }
 
-  const q = supabase.from('inventory_items')
-  const payload: InventoryItemInsertByTrigger = {
-    inventory_id: inventory.id,
-    badge_id: badgeId,
-    obtained_by: 'system_event',
-    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-  }
-  const { error: insertError } = await q.insert(payload as InventoryItemInsert)
-
-  if (insertError) {
-    console.error('[combineItems] 보상 아이템 추가 오류:', insertError)
+  // "삽입 + used_slots 증가"를 원자 트랜잭션으로 묶은 grant_inventory_item() RPC
+  // (마이그레이션 173, 티켓 20260914_1813) — 위 사전 체크와 이 RPC 사이의 레이스는
+  // RPC 내부 SELECT ... FOR UPDATE 재확인이 최종적으로 막는다.
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('grant_inventory_item', {
+    p_inventory_id: inventory.id,
+    p_badge_id: badgeId,
+    p_obtained_by: 'system_event',
+    p_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  })
+  if (rpcError) {
+    console.error('[combineItems] grant_inventory_item RPC 오류:', rpcError)
     return null
   }
-
-  const { error: slotIncError } = await supabase
-    .from('inventory')
-    .update({ used_slots: inventory.used_slots + 1 })
-    .eq('id', inventory.id)
-  if (slotIncError) {
-    console.error('[combineItems] used_slots 증가 오류:', slotIncError)
-  } else {
-    inventory.used_slots += 1
+  const result = rpcResult as GrantInventoryItemResult
+  if (!result.ok) {
+    // slot_full: 다른 지급 경로와 동시에 슬롯이 찬 경우 — 정책대로 조용히 skip
+    if (result.reason === 'slot_full') {
+      console.info('[combineItems] 인벤토리 슬롯 부족으로 보상 배지 지급을 생략함:', badgeId)
+    } else {
+      console.error('[combineItems] 보상 아이템 추가 오류:', result.reason)
+    }
+    return null
   }
+  inventory.used_slots = result.usedSlots
 
   return badge
 }
