@@ -57,6 +57,7 @@ import {
 // `@/lib/today/cards`에서 값으로 import하면 그 파일의 `next/headers` 의존까지 클라이언트
 // 번들에 딸려 들어가 빌드 오류가 난다 — `TodayCardWithHref`는 타입만 필요하니 그대로 가져온다.
 import { resolveTargetHref } from '@/lib/today/targetHref'
+import { toKstLocalInputValue } from '@/lib/admin/kst-format'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import TodayCardStack from '@/app/(main)/TodayCardStack'
 import type { TodayCardRow, TodayCardTemplateType, TodayCardLayoutType } from '@/types/database'
@@ -96,13 +97,6 @@ interface TodayCardFormProps {
 
 // Radix Select는 SelectItem value=""를 허용하지 않는다 — "선택 안 함"을 나타내는 전용 값.
 const NONE_VALUE = '__none__'
-
-/** ISO(UTC) 문자열을 datetime-local input이 요구하는 "YYYY-MM-DDTHH:mm" 로컬 형식으로 변환 */
-function toLocalInputValue(iso: string) {
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
 
 /** 저장 시 누락 필드로 포커스를 옮길 때 쓰는 DOM id */
 const FOCUS_ID = {
@@ -164,10 +158,10 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const [targetHref, setTargetHref] = useState(card?.target_href ?? '')
   const [exposureTags, setExposureTags] = useState<string[]>(card?.exposure_tags ?? ['all'])
   const [startsAt, setStartsAt] = useState(() => {
-    if (card) return toLocalInputValue(card.starts_at)
+    if (card) return toKstLocalInputValue(card.starts_at)
     return initialDate ? `${initialDate}T00:00` : ''
   })
-  const [endsAt, setEndsAt] = useState(card ? toLocalInputValue(card.ends_at) : '')
+  const [endsAt, setEndsAt] = useState(card ? toKstLocalInputValue(card.ends_at) : '')
   const [sortOrder, setSortOrder] = useState(card?.sort_order?.toString() ?? '0')
   const [isActive, setIsActive] = useState(card?.is_active ?? true)
 
