@@ -539,7 +539,10 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
   // §08 H(진행 미지원 고지) 어드민 절반 — 배지 트리 화면(`/badges/tree`)이 실제로 조회하는
   // 대상은 `type: 'activity'` 배지뿐이다. JAM! 카테고리도 activity_types=[]로 저장되는 설계라
   // 배지 트리에 노출되지 않아 제외한다(티켓 20260904_1426, 20260911_0202).
-  const progressIssue = type === 'activity' && !isJamCategory ? explainUnsupportedProgress(condPreview ?? {}) : null
+  // 조건이 비어 있으면(키가 하나도 없으면) 경고를 계산하지 않는다 — 오탐 방지(티켓 20260911_1019).
+  const hasCondition = !!condPreview && Object.keys(condPreview).length > 0
+  const progressIssue =
+    type === 'activity' && !isJamCategory && hasCondition ? explainUnsupportedProgress(condPreview ?? {}) : null
 
   // 「평가 대기」 — 레지스트리에 선언은 됐지만 엔진이 아직 평가하지 않는 필드가 든 조건은
   // fail-closed로 막힌다. 저장은 되지만 **발급은 되지 않는다**는 걸 화면에서 알린다.
