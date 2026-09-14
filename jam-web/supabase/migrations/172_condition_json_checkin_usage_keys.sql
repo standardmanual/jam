@@ -1,4 +1,4 @@
--- 171: condition_json 허용 키 확장 — 체크인 배지 보유 조건 2종 (JAM! 카테고리)
+-- 172: condition_json 허용 키 확장 — 체크인 배지 보유 조건 2종 (JAM! 카테고리)
 --      (티켓 20260914_1725)
 --
 -- 배경:
@@ -84,7 +84,7 @@ ALTER TABLE public.badges
         'follower_count', 'following_count', 'daily_sync_count',
         -- 메타데이터 필드 — 연속 동기화 일수 1종 (161, 티켓 20260911_2304)
         'daily_sync_streak_days',
-        -- 메타데이터 필드 — 체크인 배지 보유 조건 2종 (171, 이 파일 — 티켓 20260914_1725)
+        -- 메타데이터 필드 — 체크인 배지 보유 조건 2종 (172, 이 파일 — 티켓 20260914_1725)
         'checkin_category_count', 'checkin_badge_count'
       ]::text[]
     ) = '{}'::jsonb
@@ -103,7 +103,7 @@ COMMIT;
 -- DECLARE v_id UUID;
 -- BEGIN
 --   INSERT INTO public.badges (name, description, type, rarity, activity_types, condition_json)
---   VALUES ('__smoke_171__', '스모크', 'activity', 'common', ARRAY[]::text[],
+--   VALUES ('__smoke_172__', '스모크', 'activity', 'common', ARRAY[]::text[],
 --           '{"checkin_category_count": {"category": "train_subway", "count": 5}, "checkin_badge_count": {"checkin_badge_names": ["a", "b"], "count": 1}}'::jsonb)
 --   RETURNING id INTO v_id;
 --   RAISE EXCEPTION '롤백: checkin_category_count/checkin_badge_count INSERT 통과 (id=%)', v_id;
@@ -112,7 +112,7 @@ COMMIT;
 --
 -- -- ③ 미등록 키는 여전히 거부되는지 (실패해야 정상)
 -- -- INSERT INTO public.badges (name, description, type, rarity, activity_types, condition_json)
--- -- VALUES ('__smoke_171_reject__', '스모크', 'activity', 'common', ARRAY[]::text[],
+-- -- VALUES ('__smoke_172_reject__', '스모크', 'activity', 'common', ARRAY[]::text[],
 -- --         '{"checkin_unknown_key": 1}'::jsonb);
 
 -- ↩️ 롤백 DDL

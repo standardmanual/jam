@@ -499,12 +499,12 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
   // 155(티켓 20260910_1557, JAM! 카테고리 서비스 사용량 3종)부터 **두 마커가 갈라진다** —
   // 155는 CHECK 제약만 다시 쓰고 트리거 함수(measurable_keys)는 건드리지 않는다(신규 3종이
   // role: 'meta'라 measurable_keys 대상이 아니므로, 131·140이 필터 전용 필드를 뺀 것과 같은
-  // 이유). 161(티켓 20260911_2304, 연속 동기화 일수 1종)·171(티켓 20260914_1725, 체크인
+  // 이유). 161(티켓 20260911_2304, 연속 동기화 일수 1종)·172(티켓 20260914_1725, 체크인
   // 배지 보유 조건 2종)도 같은 이유로 CHECK 제약만 다시 쓴다. 그래서 CHECK 제약은 최신
-  // 마커(171)를, 트리거 관련 검사는 여전히 140을 읽는다.
+  // 마커(172)를, 트리거 관련 검사는 여전히 140을 읽는다.
   const sql = readFileSync(join(process.cwd(), 'supabase/migrations/140_condition_keys_v5_extension.sql'), 'utf-8')
   const sqlCheckLatest = readFileSync(
-    join(process.cwd(), 'supabase/migrations/171_condition_json_checkin_usage_keys.sql'),
+    join(process.cwd(), 'supabase/migrations/172_condition_json_checkin_usage_keys.sql'),
     'utf-8'
   )
 
