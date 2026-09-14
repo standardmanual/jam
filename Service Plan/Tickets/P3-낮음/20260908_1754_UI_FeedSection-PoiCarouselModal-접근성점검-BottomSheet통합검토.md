@@ -2,9 +2,9 @@
 id: 20260908_1754
 category: UI
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-08
-closed:
+closed: 2026-09-14
 ---
 
 # [UI] FeedSection·PoiCarouselModal 접근성 점검 및 BottomSheet 병존 구현 통합 검토

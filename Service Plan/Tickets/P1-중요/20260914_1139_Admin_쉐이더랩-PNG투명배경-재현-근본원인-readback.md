@@ -2,8 +2,9 @@
 id: 20260914_1139
 category: Admin
 priority: P1
-status: OPEN
+status: CLOSED
 created: 2026-09-14
+closed: 2026-09-14
 ---
 
 # [Admin] 쉐이더 랩 — PNG 투명배경 여전히 미반영 (티켓 20260914_1045 재발, 새 근본 원인 확인)
