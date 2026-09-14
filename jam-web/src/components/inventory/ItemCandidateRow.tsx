@@ -79,6 +79,10 @@ export default function ItemCandidateRow({
   return (
     <ListRowCard
       onClick={onClick}
+      // `muted`는 시각 억제뿐 아니라 키보드 Tab/Enter도 막아야 한다(티켓 20260908_0055 #3) —
+      // `disabled`로 네이티브 차단, `className`의 `pointer-events-none`은 마우스 커서 억제용으로
+      // 남겨둔다(disabled 버튼도 클릭 자체는 막히지만 커서 모양은 className이 정한다).
+      disabled={muted}
       // ListRowCard에는 선택 상태 시각이 없어(active:scale만 있다) 탭 즉시 반응이 사라진다 —
       // 프라이머리 링으로 «지금 이 행»을 표시한다. 배경톤 대신 inset 링을 쓰는 이유: 카드
       // 기본 배경(bg-surface-elevated)과 배경 유틸리티가 경합하지 않아 결과가 규칙 순서에

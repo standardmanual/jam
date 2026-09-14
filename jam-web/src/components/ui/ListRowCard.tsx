@@ -18,6 +18,12 @@ export interface ListRowCardProps {
    * Link 이동 직전에 부수효과(예: 잔존 location.hash 제거)를 실행하고 싶을 때 사용한다.
    */
   onNavigate?: () => void
+  /**
+   * `onClick`(button 변형)에서만 의미가 있다 — 마우스 클릭뿐 아니라 키보드 Tab/Enter도
+   * 함께 차단한다(네이티브 `disabled` 속성). `className`으로 `opacity-40 pointer-events-none`만
+   * 주면 시각적으로만 억제되고 키보드 포커스는 여전히 닿는다(티켓 20260908_0055 #3).
+   */
+  disabled?: boolean
   className?: string
   /**
    * 아코디언 헤더로 쓸 때의 펼침 상태 (20260827_018 프로필 피드 활동 묶음 카드).
@@ -42,6 +48,7 @@ export default function ListRowCard({
   href,
   onClick,
   onNavigate,
+  disabled = false,
   className = '',
   'aria-expanded': ariaExpanded,
   'aria-controls': ariaControls,
@@ -92,9 +99,10 @@ export default function ListRowCard({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-expanded={ariaExpanded}
       aria-controls={ariaControls}
-      className={`w-full text-left ${cls}`}
+      className={`w-full text-left disabled:cursor-default ${cls}`}
     >
       {content}
     </button>
