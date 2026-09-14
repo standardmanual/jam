@@ -2,9 +2,9 @@
 id: 20260910_1804
 category: BadgeEngine
 priority: P1
-status: OPEN
+status: CLOSED
 created: 2026-09-10
-closed:
+closed: 2026-09-14
 ---
 
 # [BadgeEngine] POI·체크인 배지 발급 경로에도 섀도우밴 게이트가 없다 — GPS 스푸핑에 직접 노출
@@ -101,9 +101,9 @@ jam-web/src/lib/strava/__tests__/sync-poi-checkin-shadow-ban.test.ts (신규)
 - [x] 해당 없음 (사용자 노출 텍스트 변경 없음 — 서버 로그 문구만 추가)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-09-14 (staging 머지)
+- 환경: staging → production 예정 (`/jam-ship`으로 별도 승격)
+- 커밋: `6d42615a`(머지 시점)
 
 ### 주요 의사결정 / 핵심 메모
 - checkin 경로의 "action==='increment'/'issue'" 개념은 실제 코드에 그런 필드가 없어,
