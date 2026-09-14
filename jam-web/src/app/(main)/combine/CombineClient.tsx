@@ -92,7 +92,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
       })
       const data = await res.json()
 
-      if (data.success) {
+      if (data.success && ((data.resultBadges ?? []).length > 0 || (data.pointsAwarded ?? 0) > 0)) {
         const resultBadges = (data.resultBadges ?? []) as { id: string; name: string }[]
         trackEvent('combine_success', {
           item_count: selected.length,
@@ -101,6 +101,14 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
         const names = resultBadges.map((b) => b.name)
         // 20260910_1408: 레시피 보상은 배지·포인트를 함께 줄 수 있다(둘 중 하나만일 수도 있다).
         setResult({ success: true, names, points: data.pointsAwarded ?? 0 })
+        setSelected([])
+        router.refresh()
+      } else if (data.success) {
+        // 20260910_1515: 레시피는 매칭됐지만(success: true) 보상 배지가 소프트 삭제 등으로
+        // 하나도 지급되지 않고 포인트도 0인 경우 — 재료는 이미 소각됐으니 유저에게는
+        // 실패에 가깝다. "0 포인트 획득!"처럼 정직하지 않은 성공 문구를 띄우지 않는다.
+        trackEvent('combine_success', { item_count: selected.length, result_badge_ids: '' })
+        setResult({ success: false, reason: d.combine.recipeFail })
         setSelected([])
         router.refresh()
       } else {

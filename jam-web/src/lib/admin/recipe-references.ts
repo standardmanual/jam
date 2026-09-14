@@ -61,3 +61,54 @@ export async function collectRecipeReferences(
   void recipeIds
   return { blockingTotal: 0, cascadeTotal: 0, total: 0, error: null }
 }
+
+export interface BadgeInRecipeReferenceReport {
+  /** 이 배지를 재료로 쓰는 레시피 id */
+  ingredientRecipeIds: string[]
+  /** 이 배지를 보상으로 주는 레시피 id */
+  rewardRecipeIds: string[]
+  total: number
+  error: string | null
+}
+
+/**
+ * 배지 하나가 레시피의 `ingredient_badge_ids`·`reward_badge_ids`(둘 다 uuid[])에 남아 있는
+ * 레시피 수를 센다 (티켓 20260910_1515).
+ *
+ * `combination_recipes`가 레시피 행을 참조하는 인바운드 참조는 없지만(파일 상단 주석),
+ * **반대 방향**(레시피가 배지를 참조하는 방향)은 배열 컬럼이라 FK가 걸리지 않는다. 그래서
+ * 소프트 삭제(`badges` PATCH)가 이 참조를 막지는 않되, 운영이 탐지할 수 있도록 경고만
+ * 남긴다 — `badge-references.ts`가 하드 삭제 차단용으로 이미 세는 것과 같은 컬럼을 보되,
+ * 목적은 «차단»이 아니라 «소프트 삭제 시 경고»다.
+ *
+ * 배열 컬럼 매칭은 PostgREST `.overlaps()`(Postgres `&&` 연산자)로 센다 — 전체 레시피를
+ * 메모리로 끌어와 필터링하지 않는다.
+ */
+export async function countRecipesReferencingBadge(
+  supabase: ServiceClient,
+  badgeId: string
+): Promise<BadgeInRecipeReferenceReport> {
+  const [ingredientResult, rewardResult] = await Promise.all([
+    supabase.from('combination_recipes').select('id').overlaps('ingredient_badge_ids', [badgeId]),
+    supabase.from('combination_recipes').select('id').overlaps('reward_badge_ids', [badgeId]),
+  ])
+
+  if (ingredientResult.error || rewardResult.error) {
+    return {
+      ingredientRecipeIds: [],
+      rewardRecipeIds: [],
+      total: 0,
+      error: (ingredientResult.error ?? rewardResult.error)?.message ?? '알 수 없는 오류',
+    }
+  }
+
+  const ingredientRecipeIds = ((ingredientResult.data ?? []) as { id: string }[]).map((r) => r.id)
+  const rewardRecipeIds = ((rewardResult.data ?? []) as { id: string }[]).map((r) => r.id)
+
+  return {
+    ingredientRecipeIds,
+    rewardRecipeIds,
+    total: ingredientRecipeIds.length + rewardRecipeIds.length,
+    error: null,
+  }
+}
