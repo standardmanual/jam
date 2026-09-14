@@ -10,6 +10,7 @@
 import { forwardRef, useEffect, useState } from 'react'
 import type { ShaderLabConfig } from '@basementstudio/shader-lab'
 import { useShaderLabPlayback } from '@/lib/admin/shaderLab/useShaderLabPlayback'
+import { SHADER_LAB_OUTPUT_SIZE } from '@/lib/admin/shaderLab/composition'
 
 interface ShaderLabViewportProps {
   config: ShaderLabConfig
@@ -58,7 +59,9 @@ const ShaderLabViewport = forwardRef<HTMLCanvasElement, ShaderLabViewportProps>(
           </div>
         )}
       </div>
-      <p className="text-center text-xs text-muted-foreground">1280×1280</p>
+      <p className="text-center text-xs text-muted-foreground">
+        {SHADER_LAB_OUTPUT_SIZE}×{SHADER_LAB_OUTPUT_SIZE}
+      </p>
     </div>
   )
 })

@@ -2,8 +2,8 @@
 
 // 쉐이더 랩 -> PNG 내보내기 + 배지/미션/컬렉션 적용 (티켓 20260912_1951, 20260913_0414)
 // 로컬 PNG 다운로드는 그대로 유지하고, 배지/미션/컬렉션(아이템북) 대표이미지로 곧바로
-// 적용하는 탭 3종을 추가했다(3차, 티켓 20260913_0414). 1:1 1280x1280 고정 - 캔버스 백킹
-// 스토어 자체가 이미 그 크기다(ShaderLabViewport 참고).
+// 적용하는 탭 3종을 추가했다(3차, 티켓 20260913_0414). 1:1 1920x1920 고정(티켓 20260914_1045,
+// 1280에서 상향) - 캔버스 백킹 스토어 자체가 이미 그 크기다(ShaderLabViewport 참고).
 import { useState, type RefObject } from 'react'
 import { IconDownload } from '@tabler/icons-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/admin/ui/alert'
