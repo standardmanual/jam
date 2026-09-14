@@ -2,9 +2,9 @@
 id: 20260914_1725
 category: BadgeEngine
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-14
-closed:
+closed: 2026-09-14
 ---
 
 # [BadgeEngine] 어드민 배지 생성 — JAM! 종목 "체크인 배지 보유" 조건 2종 추가
@@ -242,9 +242,10 @@ Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md (③ 섹션·비교표 �
 - [x] 표기 규칙: 해당 없음(수치·날짜 표기 신규 노출 없음)
 
 ### 배포 정보
-- 배포일: (미배포 — review 브랜치 push까지만)
-- 환경: (해당 없음)
-- 커밋: (아래 push 브랜치 참고)
+- 배포일: 2026-09-14
+- 환경: staging (main 승격은 별도 `/jam-ship` 진행 대기), Supabase `jam-prod`(staging·프로덕션
+  공용 단일 DB) — 마이그레이션 172 실행 완료
+- 커밋: `09082ac8`(staging 머지), review 브랜치 `claude/jamwork-20260914_1725-checkin-badge-usage-count`
 
 ### 주요 의사결정 / 핵심 메모
 > 목록 지정 지표는 UUID가 아니라 배지 이름(CSV)로 입력받는다 — `prerequisite_badge_names`
@@ -264,7 +265,8 @@ Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md (③ 섹션·비교표 �
 > (레지스트리 나머지 select들은 그대로 정적 옵션).
 
 ### 잔여 이슈
-- 마이그레이션 171(CHECK 제약 확장)은 작성만 했고 실행하지 않았다 — 사용자 승인 후
-  오케스트레이터가 실행해야 어드민에서 이 2종 조건을 저장할 수 있다.
-- 실제 배지 콘텐츠(카테고리·이름 목록·임계값 확정) 생성은 범위 밖 — 마이그레이션 실행
-  후 사용자가 어드민에서 직접 생성.
+- 없음 — 마이그레이션 172(CHECK 제약 확장)를 오케스트레이터가 직접 실행 완료. 기존 배지
+  636건 CHECK 통과 확인, 신규 키 2종 INSERT 스모크(롤백)·미등록 키 거부 스모크 전부 확인.
+  보안 어드바이저(`get_advisors`)에도 이번 변경으로 인한 신규 경고 없음(기존 경고만 남음).
+- 실제 배지 콘텐츠(카테고리·이름 목록·임계값 확정) 생성은 범위 밖 — 사용자가 어드민에서
+  직접 생성.
