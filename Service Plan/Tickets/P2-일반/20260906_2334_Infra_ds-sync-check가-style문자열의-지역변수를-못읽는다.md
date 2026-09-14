@@ -41,16 +41,25 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`checkUndefinedTokens()`의 지역 변수 수집 정규식을 `['"](--[\w-]+)['"]\s*:`(JS 객체 키만)에서
+`['"]?(--[\w-]+)['"]?\s*:`(따옴표 유무 무관, `:` 로 끝나는 선언 전부)로 넓혔다. `var(--x)` 참조는
+이름 뒤에 `,` 또는 `)` 가 오지 `:` 가 오지 않으므로 이 패턴에 자연히 걸리지 않는다 — 별도 lookahead
+없이도 선언과 참조가 구분된다. 이로써 `<style>{STATIC_CSS}</style>` 문자열 리터럴 안에 있는
+`--x: value` CSS 선언도 JS 객체 키와 동일하게 지역 변수로 인식된다.
 
 ### 변경된 파일
 ```
--
+jam-web/scripts/ds-sync-check.mjs
 ```
 
 ### 테스트 결과
-- [ ] `<style>` 문자열에 지역 변수를 선언한 컴포넌트가 오탐되지 않음
-- [ ] 진짜 미정의 토큰은 여전히 잡힘 (픽스처로 확인)
-- [ ] `npm run ds:check` staging 기준선(오류 0) 유지
+- [x] `<style>` 문자열에 지역 변수를 선언한 컴포넌트가 오탐되지 않음 — 정규식만 떼어낸 스크립트로
+  `STATIC_CSS` 안에 `--ds-rail-thumb`·`--ds-rail-gap` 을 선언하고 `var()` 로 참조하는 케이스를
+  재현해 미정의로 남는 항목이 0개임을 확인
+- [x] 진짜 미정의 토큰은 여전히 잡힘 — `design-system/components/_fixture_tmp/FixtureUndefinedToken.jsx`
+  에 `var(--color-does-not-exist-xyz)` 만 쓰고 선언은 하지 않는 픽스처를 만들어 실제
+  `node scripts/ds-sync-check.mjs` 실행 결과 `TOKEN_UNDEFINED` 로 잡히는 것을 확인 후 픽스처 삭제
+- [x] `npm run ds:check` staging 기준선(오류 0) 유지 — 변경 전후 모두 `오류 0 · 경고 32 · 참고 8`
 
 ### 배포 정보
 - 배포일:
@@ -58,6 +67,8 @@ closed:
 - 커밋:
 
 ### 주요 의사결정 / 핵심 메모
+- lookbehind/lookahead 없이 "콜론 직후" 조건만으로 선언·참조를 구분할 수 있음을 확인했다.
+  `var(--x)` 형태는 문법상 이름 뒤에 콜론이 올 수 없으므로 별도 예외 처리가 불필요했다.
 
 ### 잔여 이슈
 -

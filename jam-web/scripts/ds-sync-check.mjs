@@ -604,7 +604,11 @@ function checkUndefinedTokens() {
     const src = readFileSync(f, 'utf8');
     const missing = new Set();
     // 컴포넌트가 자기 style 로 주입하는 지역 변수(`'--eye-color': eyeColor`)는 토큰이 아니다.
-    const localVars = new Set([...src.matchAll(/['"](--[\w-]+)['"]\s*:/g)].map((m) => m[1]));
+    // `<style>{STATIC_CSS}</style>` 처럼 템플릿 리터럴 문자열 안에서 CSS 선언으로
+    // `--x: value` 를 정의하는 경우도 지역 변수다 (BadgeStageRail 오탐 사례, 티켓 20260906_2334).
+    // 단 `var(--x)` 참조는 선언이 아니므로 걸러낸다 — `var(` 바로 뒤에 오는 형태는 제외.
+    // `var(--x)` 참조는 이름 뒤에 `,` 나 `)` 가 오지 `:` 가 오지 않으므로 이 패턴에 걸리지 않는다.
+    const localVars = new Set([...src.matchAll(/['"]?(--[\w-]+)['"]?\s*:/g)].map((m) => m[1]));
     for (const m of src.matchAll(/var\((--[\w-]+)(\*?)\s*(,?)/g)) {
       if (m[2] === '*') continue;                    // var(--weight-*) 는 설명문 속 와일드카드 표기
       if (m[3] === ',') continue;                    // fallback 이 있으면 비어도 렌더가 살아 있다
