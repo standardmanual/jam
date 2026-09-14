@@ -9,6 +9,7 @@ import {
   type BadgeTreeLock,
 } from '@/lib/badgeTree'
 import { hasUnfulfilledGate } from '@/lib/badgeTreeConditionStatus'
+import { isMissionExposed } from '@/lib/missions/visibility'
 import { collectConditionCheckTargets, computeConditionMetBadgeIds } from '@/lib/badgeTreeConditionCheck.server'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 import {
@@ -24,7 +25,7 @@ import {
 import { badgeKindOf } from '@/lib/badge-engine/badgeKind'
 import { getMetricLabels } from '@/lib/badge-engine/metricLabels'
 import type { SearchParamValue } from '@/lib/searchParams'
-import type { ActivityType, BadgeCondition } from '@/types/database'
+import type { ActivityType, BadgeCondition, MissionExposureMode } from '@/types/database'
 import BadgeTreeClient from './BadgeTreeClient'
 
 /**
@@ -134,7 +135,10 @@ export default async function BadgeTreePage({ searchParams }: Props) {
     { data: earnedBadgesRaw, error: earnedBadgesError },
   ] = await Promise.all([
     fetchAllActivityBadges(supabase),
-    service.from('missions').select('id, title, gated_badge_id, image_url').not('gated_badge_id', 'is', null),
+    service
+      .from('missions')
+      .select('id, title, gated_badge_id, image_url, exposure_mode, exposure_at, starts_at')
+      .not('gated_badge_id', 'is', null),
     // badges/page.tsx(27~38행)와 동일한 패턴 — 미획득 배지를 흑백으로 구분하기 위해
     // 이 유저의 실제 획득 여부를 조회한다(티켓 20260831_2250).
     supabase
@@ -157,7 +161,19 @@ export default async function BadgeTreePage({ searchParams }: Props) {
     condition_json: b.condition_json,
     sort_order: b.sort_order,
   }))
-  const missions = (missionsRaw ?? []) as BadgeTreeSourceMission[]
+  // 숨김 게이트 미션(exposure_mode='hidden' 등)의 제목·이미지를 그대로 노출하지 않는다
+  // (티켓 20260912_0158). 항목 자체는 남긴다 — 지워버리면 `missionByGatedBadgeId`에서
+  // 빠져 이 배지의 게이트 그룹 자체가 사라지고, `hasUnfulfilledGate`가 «게이트 없음»으로
+  // 오판해 실제로는 잠긴 배지가 화면에서 잠금 해제된 것처럼 보인다.
+  type RawMission = BadgeTreeSourceMission & {
+    exposure_mode: MissionExposureMode | null
+    exposure_at: string | null
+    starts_at: string
+  }
+  const missions: BadgeTreeSourceMission[] = ((missionsRaw ?? []) as unknown as RawMission[]).map((m) => {
+    if (isMissionExposed(m)) return { id: m.id, title: m.title, gated_badge_id: m.gated_badge_id, image_url: m.image_url }
+    return { id: m.id, title: '다음 미션 공개 예정', gated_badge_id: m.gated_badge_id, image_url: null }
+  })
 
   // 소프트 삭제된 배지(badges.deleted_at)는 이미 badges 조회에서 빠져 트리에 그려지지 않으므로
   // 여기서 걸러도 실질적 영향은 없지만, badges/page.tsx와 동일한 필터링 원칙을 유지한다.
