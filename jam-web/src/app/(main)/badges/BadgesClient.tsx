@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ActivityType, BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
-import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
+import { BADGE_ACTIVITY_FILTER_LABELS } from '@/lib/utils'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
@@ -228,7 +228,7 @@ export default function BadgesClient({
                 >
                   <option value="all">{d.badges.filterActivityAll}</option>
                   {ACTIVITY_TYPE_ORDER.map((tp) => (
-                    <option key={tp} value={tp}>{ACTIVITY_TYPE_LABELS[tp] ?? tp}</option>
+                    <option key={tp} value={tp}>{BADGE_ACTIVITY_FILTER_LABELS[tp] ?? tp}</option>
                   ))}
                 </select>
                 <select
