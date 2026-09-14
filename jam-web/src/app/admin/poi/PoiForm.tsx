@@ -30,7 +30,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
   const [latitude, setLatitude] = useState<string>(poi?.latitude.toString() ?? '')
   const [longitude, setLongitude] = useState<string>(poi?.longitude.toString() ?? '')
   const [radiusMeters, setRadiusMeters] = useState<string>(poi?.radius_meters.toString() ?? '50')
-  const [category, setCategory] = useState<PoiCategory>(poi?.category ?? categories[0]?.slug ?? 'other')
+  const [category, setCategory] = useState<PoiCategory>(poi?.category ?? categories[0]?.slug ?? 'unassigned')
   const [linkedBadgeId, setLinkedBadgeId] = useState<string>(poi?.linked_badge_id ?? '')
   // 티켓 20260907_1811 — 신규 등록은 항상 "임시등록"(비활성·검토대기)으로 저장한다(서버도
   // POST에서 이 값을 강제한다). 수정 화면에서만 활성화 여부를 직접 고를 수 있다.
