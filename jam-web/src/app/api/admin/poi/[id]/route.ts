@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
 import { POI_REFERENCE_SOURCES, collectPoiReferences } from '@/lib/admin/poi-references'
+import { validatePoiCategoryExists } from '@/lib/admin/poi-category-validation'
 
 /**
  * pending_review는 마이그레이션 143에서 추가된 컬럼이라 생성 타입(database.generated.ts)에
@@ -36,6 +37,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { name, latitude, longitude, radius_meters, category, linked_badge_id, is_active } = body
 
   const supabase = createServiceClient()
+
+  const categoryValidation = await validatePoiCategoryExists(supabase, category)
+  if (!categoryValidation.valid) {
+    return NextResponse.json({ error: categoryValidation.error }, { status: categoryValidation.status })
+  }
+
   const resolvedIsActive = is_active !== undefined ? is_active : true
   const updatePayload: Parameters<PoiUpdateWithReviewColumn['update']>[0] = {
     name,
@@ -97,14 +104,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (is_active !== undefined) updatePayload.is_active = is_active
 
   if (category !== undefined) {
-    const { data: categoryRow, error: categoryError } = await supabase
-      .from('poi_categories')
-      .select('slug')
-      .eq('slug', category)
-      .maybeSingle()
-    if (categoryError) return NextResponse.json({ error: categoryError.message }, { status: 500 })
-    if (!categoryRow) {
-      return NextResponse.json({ error: '존재하지 않는 카테고리입니다.' }, { status: 400 })
+    const categoryValidation = await validatePoiCategoryExists(supabase, category)
+    if (!categoryValidation.valid) {
+      return NextResponse.json({ error: categoryValidation.error }, { status: categoryValidation.status })
     }
 
     const { data: existing, error: existingError } = await supabase
