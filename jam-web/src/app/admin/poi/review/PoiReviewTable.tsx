@@ -59,12 +59,18 @@ interface CategoryDialogState {
  * POI 검토 큐 테이블(티켓 20260907_1242) — `admin/poi/PoiTable.tsx`·`admin/missions/MissionTable.tsx`와
  * 동일한 다중선택 패턴을 재사용한다.
  *
- * 행 단건 승인/거부는 즉시 실행한다(확인 다이얼로그 없음) — `PoiActiveToggleButton`과 같은
- * 이유로, 삭제가 아니라 되돌릴 수 있는 상태 변경이기 때문이다(승인은 재검토 큐에서 사라질
- * 뿐 `/admin/poi/[id]`에서 다시 바꿀 수 있고, 거부도 카테고리를 되돌리면 복구된다). 다중선택
- * 일괄 액션만 다른 화면들과 동일하게 확인 다이얼로그를 거친다 — 한 번의 클릭으로 여러 행에
- * 영향을 주기 때문이다. 카테고리 변경(단건·일괄 공통)은 대상 카테고리를 반드시 골라야 하므로
- * 그 선택 자체가 확인 단계를 겸한다.
+ * 행 단건 승인(표시 레이블은 "활성화")/거부는 즉시 실행한다(확인 다이얼로그 없음) —
+ * `PoiActiveToggleButton`과 같은 이유로, 삭제가 아니라 되돌릴 수 있는 상태 변경이기 때문이다
+ * (승인은 재검토 큐에서 사라질 뿐 `/admin/poi/[id]`에서 다시 바꿀 수 있고, 거부도 카테고리를
+ * 되돌리면 복구된다). 다중선택 일괄 액션만 다른 화면들과 동일하게 확인 다이얼로그를 거친다 —
+ * 한 번의 클릭으로 여러 행에 영향을 주기 때문이다. 카테고리 변경(단건·일괄 공통)은 대상
+ * 카테고리를 반드시 골라야 하므로 그 선택 자체가 확인 단계를 겸한다.
+ *
+ * 티켓 20260908_1755: "승인" 버튼의 표시 레이블을 "활성화"로 바꿔 `/admin/poi/[id]` 편집
+ * 화면의 "활성화"와 개념을 통일했다 — 동작·API(`approvePendingPois`)는 그대로다. 20260911_1343
+ * 이후 이 액션은 `pending_review` 해제와 함께 배정 카테고리의 `display_on_map`이 참이면
+ * `is_active`도 함께 올려주므로(거짓이면 비노출 유지) 대부분의 경우 "활성화" 레이블과
+ * 실제 동작이 일치한다.
  */
 export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
   const router = useRouter()
@@ -111,7 +117,7 @@ export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
         body: JSON.stringify({ action: 'approve', category }),
       })
       const data = await res.json().catch(() => null)
-      if (!res.ok) toast.error(data?.error ?? '승인 중 오류가 발생했습니다.')
+      if (!res.ok) toast.error(data?.error ?? '활성화 처리 중 오류가 발생했습니다.')
       refreshAfterAction()
     } finally {
       setActionLoading(false)
@@ -267,7 +273,7 @@ export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
               disabled={actionLoading}
               onClick={() => handleApprove(row.original.id)}
             >
-              승인
+              활성화
             </Button>
             <Button
               type="button"
@@ -321,7 +327,7 @@ export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
           disabled={actionLoading}
           onClick={() => setBulkConfirmAction('approve')}
         >
-          선택 항목 일괄 승인
+          선택 항목 일괄 활성화
         </Button>
         <Button
           type="button"
@@ -330,7 +336,7 @@ export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
           disabled={actionLoading}
           onClick={() => setCategoryDialog({ ids: selectedIds, category: '' })}
         >
-          카테고리 변경 후 일괄 승인
+          카테고리 변경 후 일괄 활성화
         </Button>
         <Button
           type="button"
@@ -345,7 +351,7 @@ export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
 
       <DataTable table={table} columnCount={columns.length} emptyMessage="검토 대기 중인 POI가 없습니다." />
 
-      {/* 카테고리 변경 다이얼로그 — 행 단건("카테고리 변경") · 일괄("카테고리 변경 후 일괄 승인") 공용 */}
+      {/* 카테고리 변경 다이얼로그 — 행 단건("카테고리 변경") · 일괄("카테고리 변경 후 일괄 활성화") 공용 */}
       <Dialog
         open={categoryDialog !== null}
         onOpenChange={(open) => {
@@ -354,7 +360,7 @@ export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
       >
         <DialogContent container={themeContainer ?? undefined}>
           <DialogHeader>
-            <DialogTitle>카테고리 변경 후 승인</DialogTitle>
+            <DialogTitle>카테고리 변경 후 활성화</DialogTitle>
           </DialogHeader>
           <Select
             value={categoryDialog?.category ?? ''}
@@ -384,7 +390,7 @@ export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
                 else runBulk(categoryDialog.ids, 'approve', categoryDialog.category)
               }}
             >
-              변경 후 승인
+              변경 후 활성화
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -400,12 +406,12 @@ export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
         <AlertDialogContent container={themeContainer ?? undefined}>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {bulkConfirmAction === 'reject' ? 'POI 일괄 거부' : 'POI 일괄 승인'}
+              {bulkConfirmAction === 'reject' ? 'POI 일괄 거부' : 'POI 일괄 활성화'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {bulkConfirmAction === 'reject'
                 ? `선택한 ${selectedIds.length}개 POI를 거부합니다. 미분류(거부됨) 카테고리로 이관되고 지도에서 숨겨집니다. 필요하면 나중에 POI 상세화면에서 다시 되돌릴 수 있습니다.`
-                : `선택한 ${selectedIds.length}개 POI를 현재 배정된 카테고리 그대로 승인합니다.`}
+                : `선택한 ${selectedIds.length}개 POI를 현재 배정된 카테고리 그대로 활성화합니다.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -418,7 +424,7 @@ export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
               disabled={actionLoading}
               onClick={() => bulkConfirmAction && runBulk(selectedIds, bulkConfirmAction)}
             >
-              {bulkConfirmAction === 'reject' ? '거부' : '승인'}
+              {bulkConfirmAction === 'reject' ? '거부' : '활성화'}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
