@@ -837,6 +837,8 @@ export type Database = {
           reward_points: number
           story_text: string | null
           tribe_id: string | null
+          valid_from: string | null
+          valid_until: string | null
         }
         Insert: {
           background_animation?: Json | null
@@ -857,6 +859,8 @@ export type Database = {
           reward_points?: number
           story_text?: string | null
           tribe_id?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
         }
         Update: {
           background_animation?: Json | null
@@ -877,6 +881,8 @@ export type Database = {
           reward_points?: number
           story_text?: string | null
           tribe_id?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
         }
         Relationships: [
           {

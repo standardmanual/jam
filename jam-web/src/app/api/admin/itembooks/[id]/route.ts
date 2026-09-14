@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
-import { cascadeActivateItemBookBadges, cascadeDeactivateItemBookBadges } from '@/lib/admin/itembook-deactivation'
 import { collectItemBookReferences, ITEM_BOOK_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
 import type { ItemBookRow } from '@/types/database'
 
@@ -39,6 +38,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       tribe_id: body.tribe_id !== undefined ? body.tribe_id : existing.tribe_id,
       story_text: body.story_text !== undefined ? body.story_text : existing.story_text,
       is_active: nextIsActive,
+      // 노출 기간(마이그레이션 171, 티켓 20260914_1729) — badges.valid_from/valid_until과
+      // 동일한 부분 병합 패턴. 컬렉션이 비활성(기간 밖 포함)이어도 소속 배지는 건드리지 않는다.
+      valid_from: body.valid_from !== undefined ? body.valid_from : existing.valid_from,
+      valid_until: body.valid_until !== undefined ? body.valid_until : existing.valid_until,
       background_color: body.background_color !== undefined ? body.background_color : existing.background_color,
       background_shader_id: body.background_shader_id !== undefined ? body.background_shader_id : existing.background_shader_id,
       background_image_url: body.background_image_url !== undefined ? body.background_image_url : existing.background_image_url,
@@ -52,33 +55,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // 컬렉션 비활성화 → 소속 아이템배지 연쇄 소프트삭제 (20260823_004). PATCH(즉시 토글)와
-  // 공유하는 캐스케이드 함수 — cascadeDeactivateItemBookBadges 주석 참조.
-  if (nextIsActive === false) {
-    const { error: badgesError } = await cascadeDeactivateItemBookBadges(supabase, id)
-
-    if (badgesError) {
-      return NextResponse.json(
-        {
-          error: `컬렉션은 비활성화됐지만 소속 배지 회수에 실패했습니다: ${badgesError}. 다시 저장을 시도해주세요.`,
-        },
-        { status: 500 }
-      )
-    }
-  }
-
   return NextResponse.json({ itemBook: data })
 }
 
 /**
  * 목록/상세 화면의 즉시 토글용 — 폼의 전체 저장 PUT과 별개(20260823_006).
  * body: { is_active: boolean }. is_active 컬럼만 갱신한다.
- * true→false(비활성화)는 PUT과 동일하게 소속 배지를 연쇄 소프트삭제한다.
- * false→true(재활성화)는 이 컬렉션 캐스케이드로 죽었던 배지만 연쇄로 되살린다
- * (`cascadeActivateItemBookBadges`, 티켓 20260908_2129 2차) — 개별 사유로 비활성화된 배지는
- * 건드리지 않는다. 이전에는 "배지는 건드리지 않는다"가 의도적 결정이었으나, "컬렉션 비활성화로
- * 죽은 배지와 개별 사유로 죽은 배지를 구분할 수 없다"는 그 이유가 `deactivated_by_item_book_id`
- * 컬럼 추가로 해소되면서 사용자 확정에 따라 뒤집혔다.
+ *
+ * 티켓 20260914_1729: 소속 아이템배지 연쇄 소프트삭제/복구(`cascadeDeactivateItemBookBadges`/
+ * `cascadeActivateItemBookBadges`)를 완전히 폐지했다 — 컬렉션의 활성/비활성(및 노출 기간)은
+ * 소속 배지의 활성 여부와 이제 완전히 독립적이다. 컬렉션이 비활성이어도 배지의 `item_book_id`
+ * 배정 관계는 그대로 유지되고, 배지 자체의 활성 여부는 배지 쪽 PATCH(`/api/admin/badges/[id]`)로만
+ * 관리된다.
  */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -102,30 +90,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  if (is_active === false) {
-    const { error: badgesError } = await cascadeDeactivateItemBookBadges(supabase, id)
-
-    if (badgesError) {
-      return NextResponse.json(
-        {
-          error: `컬렉션은 비활성화됐지만 소속 배지 회수에 실패했습니다: ${badgesError}. 다시 시도해주세요.`,
-        },
-        { status: 500 }
-      )
-    }
-  } else if (is_active === true) {
-    const { error: badgesError } = await cascadeActivateItemBookBadges(supabase, id)
-
-    if (badgesError) {
-      return NextResponse.json(
-        {
-          error: `컬렉션은 활성화됐지만 소속 배지 복구에 실패했습니다: ${badgesError}. 다시 시도해주세요.`,
-        },
-        { status: 500 }
-      )
-    }
-  }
 
   return NextResponse.json({ itemBook: data })
 }

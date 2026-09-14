@@ -28,10 +28,14 @@ export interface CompletableItemBook {
 export async function findCompletableItemBooks(userId: string): Promise<CompletableItemBook[]> {
   const supabase = createServiceClient()
 
+  // 컬렉션 노출 판정 = is_active && 노출 기간 내(마이그레이션 171, 티켓 20260914_1729).
+  const now = new Date().toISOString()
   const { data: booksRaw, error: booksError } = await supabase
     .from('item_books')
     .select('id, name')
     .eq('is_active', true)
+    .or(`valid_from.is.null,valid_from.lte.${now}`)
+    .or(`valid_until.is.null,valid_until.gte.${now}`)
 
   if (booksError) {
     console.error('[findCompletableItemBooks] item_books 조회 오류:', booksError)
