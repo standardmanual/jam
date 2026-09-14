@@ -10,6 +10,7 @@
  *
  * 실행: jest 또는 vitest (프레임워크 무관 — describe/it/expect 호환)
  */
+import { vi, beforeAll, afterAll } from 'vitest'
 import {
   computeUserPeriodMetrics,
   classifyBadgeProgressKind,
@@ -20,6 +21,21 @@ import {
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition } from '@/types/database'
 import type { BadgeTreeLock } from '@/lib/badgeTree'
+
+// 티켓 20260910_2317 — "이번 주/이번 달" 경계 테스트가 `new Date()`(실행 시각)에 의존해
+// 자정·주 경계 부근 실행 시 flaky했다. 고정 시각을 주입해 실행 시점과 무관하게 결정적으로
+// 동작하도록 한다. 2026-07-15(수) 정오 — 주/월의 중간이라 "+1시간"·"10일 전" 같은 상대
+// 연산으로도 요일·월 경계를 넘지 않는다.
+const FIXED_NOW = new Date('2026-07-15T12:00:00')
+
+beforeAll(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(FIXED_NOW)
+})
+
+afterAll(() => {
+  vi.useRealTimers()
+})
 
 // ── 테스트용 활동 팩토리 ──────────────────────────────────────────────────
 

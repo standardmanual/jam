@@ -42,14 +42,27 @@ created: 2026-09-10
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`badgeProgress.test.ts`의 모든 테스트가 `new Date()`(실행 시각) 기준 상대 날짜로 "이번 주"·
+"이번 달" 경계를 검증하고 있었다. `vi.useFakeTimers()` + `vi.setSystemTime()`으로 파일
+전체에 고정 시각(`2026-07-15T12:00:00`, 수요일 정오 — 주/월 중간이라 "+1시간"·"10일 전" 같은
+상대 연산으로도 요일·월 경계를 넘지 않음)을 주입해, 실행 시점(요일·자정 부근)과 무관하게
+`new Date()`가 항상 같은 값을 반환하도록 했다. `beforeAll`/`afterAll`로 파일 스코프에 적용하고
+개별 테스트 코드(날짜 연산 로직 자체)는 건드리지 않았다.
+
+배지 진행률 계산 로직(`badgeProgress.ts`) 자체에는 결함이 없었다 — 순수하게 테스트의 시각
+의존성 문제였다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/lib/badge-engine/__tests__/badgeProgress.test.ts
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npx vitest run src/lib/badge-engine/__tests__/badgeProgress.test.ts` 3회 반복 실행 — 47건 모두 통과 (flaky 재현 안 됨)
+- [x] `npx vitest run` 전체 스위트 — badgeProgress 관련 91개 파일 중 이 파일은 통과. 무관한
+      `gate-family-options-contract.test.ts` 1개 파일(3건)이 실패했으나 이번 변경과 무관한
+      기존 실패로 확인(범위 밖)
+- [x] `npm run lint` 전체 실행 — 에러 0건, 경고 14건(모두 기존 파일, 이번 변경과 무관)
 
 ### 배포 정보
 - 배포일:
@@ -57,6 +70,10 @@ created: 2026-09-10
 - 커밋:
 
 ### 주요 의사결정 / 핵심 메모
+개별 테스트마다 각자 `now` 변수를 만들던 구조를 유지하되(변경 범위 최소화), 그 `now` 값
+자체를 `vi.setSystemTime`으로 고정해 실행 시점 의존성을 제거하는 방식을 택했다. `now` 변수를
+전부 상수로 치환하는 대안도 가능했지만 각 테스트가 `new Date()`를 호출하는 방식을 유지하는
+편이 diff를 최소화하면서 원인(실행 시각 의존)을 정확히 제거한다.
 
 ### 잔여 이슈
--
+- `gate-family-options-contract.test.ts` 실패 3건은 이 티켓 범위 밖의 기존 이슈로 별도 확인 필요
