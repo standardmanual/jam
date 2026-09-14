@@ -12,6 +12,7 @@ import {
   type SortingState,
   type Updater,
 } from '@tanstack/react-table'
+import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import {
@@ -27,6 +28,7 @@ import { DataTable } from '@/components/admin/data-table/data-table'
 import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-column-header'
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
 import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table-bulk-action-bar'
+import { toastBulkDeleteBlocked } from '@/components/admin/ui/toast-helpers'
 import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeCondition, BadgeRarity } from '@/types/database'
 import type { BadgeListRow } from './BadgeList'
@@ -329,7 +331,7 @@ export default function BadgesTable({ badges, tribeMap = new Map() }: BadgesTabl
         if (!res.ok) failCount += 1
       }
       if (failCount > 0) {
-        alert(`${failCount}개 배지의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
+        toast.error(`${failCount}개 배지의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
       }
       router.refresh()
       setRowSelection({})
@@ -353,7 +355,7 @@ export default function BadgesTable({ badges, tribeMap = new Map() }: BadgesTabl
         if (!res.ok) failCount += 1
       }
       if (failCount > 0) {
-        alert(`${failCount}개 배지의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
+        toast.error(`${failCount}개 배지의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
       }
       router.refresh()
       setRowSelection({})
@@ -376,14 +378,13 @@ export default function BadgesTable({ badges, tribeMap = new Map() }: BadgesTabl
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) {
-        alert(data?.error ?? '일괄 삭제 중 오류가 발생했습니다.')
+        toast.error(data?.error ?? '일괄 삭제 중 오류가 발생했습니다.')
       } else {
         const blocked = (data?.blocked ?? []) as { id: string; reason: string }[]
         const deleted = (data?.deleted ?? []) as string[]
         if (blocked.length > 0) {
           const nameOf = (id: string) => selectedRows.find((r) => r.id === id)?.name ?? id
-          const detail = blocked.map((b) => `${nameOf(b.id)}: ${b.reason}`).join(' / ')
-          alert(`${deleted.length}개 삭제됨, ${blocked.length}개는 참조가 있어 건너뜀 (${detail})`)
+          toastBulkDeleteBlocked(deleted.length, blocked, nameOf, '개')
         }
       }
       router.refresh()

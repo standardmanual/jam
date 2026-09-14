@@ -11,6 +11,7 @@ import {
   type SortingState,
   type Updater,
 } from '@tanstack/react-table'
+import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import {
@@ -229,7 +230,7 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap, categories }: PoiTa
         if (!res.ok) failCount += 1
       }
       if (failCount > 0) {
-        alert(`${failCount}개 POI 삭제에 실패했습니다. 다시 시도해주세요.`)
+        toast.error(`${failCount}개 POI 삭제에 실패했습니다. 다시 시도해주세요.`)
       }
       router.refresh()
       setRowSelection({})
@@ -255,7 +256,7 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap, categories }: PoiTa
         if (!res.ok) failCount += 1
       }
       if (failCount > 0) {
-        alert(`${failCount}개 POI의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
+        toast.error(`${failCount}개 POI의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
       }
       router.refresh()
       setRowSelection({})
@@ -280,7 +281,7 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap, categories }: PoiTa
         if (!res.ok) failCount += 1
       }
       if (failCount > 0) {
-        alert(`${failCount}개 POI의 카테고리 변경에 실패했습니다. 다시 시도해주세요.`)
+        toast.error(`${failCount}개 POI의 카테고리 변경에 실패했습니다. 다시 시도해주세요.`)
       }
       router.refresh()
       setRowSelection({})
