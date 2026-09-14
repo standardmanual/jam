@@ -76,11 +76,15 @@ async function collectionCandidates(userId: string): Promise<ProgressCandidate[]
   const candidateIds = startedIds.filter((id) => !completedBooks.has(id))
   if (candidateIds.length === 0) return []
 
+  // 컬렉션 노출 판정 = is_active && 노출 기간 내(마이그레이션 171, 티켓 20260914_1729).
+  const now = new Date().toISOString()
   const { data: booksRaw } = await supabase
     .from('item_books')
     .select('id, name')
     .in('id', candidateIds)
     .eq('is_active', true)
+    .or(`valid_from.is.null,valid_from.lte.${now}`)
+    .or(`valid_until.is.null,valid_until.gte.${now}`)
   const books = (booksRaw ?? []) as { id: string; name: string }[]
   if (books.length === 0) return []
   const bookIds = books.map((b) => b.id)
