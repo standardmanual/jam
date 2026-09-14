@@ -46,14 +46,20 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+정책 결정에 따라 별도 임계값을 신설하지 않고, `trail_running`을 `THRESHOLD_FIELD_BY_ACTIVITY_TYPE`에
+추가해 러닝과 동일한 `transit_run_max_speed_kmh`(27km/h)를 재사용하도록 했다. 어드민 필드 추가는
+없다(정책상 불필요).
 
 ### 변경된 파일
 ```
--
+jam-web/src/lib/strava/transitSegment.ts
+jam-web/src/lib/strava/__tests__/transitSegment.test.ts
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npx vitest run src/lib/strava/__tests__/transitSegment.test.ts` — 9개 테스트 전체 통과
+      (trail_running 재사용 케이스 1건 추가)
+- [x] `npm run lint` 전체 실행 — 0 에러, 14 경고 (모두 기존 파일, 이번 변경과 무관)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조

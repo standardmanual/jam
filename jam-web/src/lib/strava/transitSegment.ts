@@ -1,6 +1,6 @@
 /**
- * 걷기·러닝·자전거 활동에 섞인 교통수단(지하철·버스 등) 구간을 감지해 거리·시간을 재산정한다
- * (티켓 20260909_1012).
+ * 걷기·러닝·트레일 러닝·자전거 활동에 섞인 교통수단(지하철·버스 등) 구간을 감지해 거리·시간을
+ * 재산정한다 (티켓 20260909_1012, trail_running 추가는 티켓 20260909_1031).
  *
  * 배경: 걷기 활동 중간에 지하철을 타는 경우처럼, 전체 평균속도(`averageSpeedKmh`)로는 짧은
  * 교통수단 구간이 걸러지지 않는다(짧은 구간이 전체 평균을 크게 끌어올리지 않기 때문). 이 모듈은
@@ -31,12 +31,17 @@ export type TransitDetectionPolicy = Pick<
   | 'transit_segment_min_duration_sec'
 >
 
-/** jamActivityType → 정책의 임계값 필드 매핑. 걷기·러닝·자전거만 대상이다(티켓 범위) */
+/**
+ * jamActivityType → 정책의 임계값 필드 매핑. 걷기·러닝·자전거만 대상이다(티켓 범위).
+ * trail_running은 러닝과 동일한 임계값(transit_run_max_speed_kmh)을 재사용한다 — 별도
+ * 임계값 신설이나 어드민 필드 추가 없이 러닝과 같은 정책을 적용하기로 결정했다(티켓 20260909_1031).
+ */
 const THRESHOLD_FIELD_BY_ACTIVITY_TYPE: Partial<
   Record<string, keyof TransitDetectionPolicy>
 > = {
   walking: 'transit_walk_max_speed_kmh',
   running: 'transit_run_max_speed_kmh',
+  trail_running: 'transit_run_max_speed_kmh',
   cycling: 'transit_cycling_max_speed_kmh',
 }
 
