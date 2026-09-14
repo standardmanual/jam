@@ -720,8 +720,8 @@ export const ko = {
     completedTitle: '컬렉션 완성!',
     completedBody: '모든 아이템 배지를 슬롯에 장착했어요',
     slotLoginRequired: '로그인이 필요해요.',
-    slotFailed: '슬롯에 실패했어요.',
-    unslotFailed: '슬롯 해제에 실패했어요.',
+    slotFailed: '장착에 실패했어요.',
+    unslotFailed: '장착 해제에 실패했어요.',
     swapFailed: '교체에 실패했어요.',
     networkError: '네트워크 오류가 발생했어요.',
     /** 요청이 15초 안에 끝나지 않아 끊었을 때(티켓 20260908_0055 #2). 응답이 하염없이
