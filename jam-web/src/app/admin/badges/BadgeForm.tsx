@@ -589,6 +589,13 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
 
   const classSection = (
     <BadgeSectionCard {...sectionHeader('class')}>
+      {/* 세그먼트 컨트롤을 Tabs로 바꿀지 검토했다(티켓 20260911_1019 P3). 배경 방식 선택
+          (`BackgroundGeneratorPreview`)은 선택값이 곧바로 그 자리의 패널 하나를 통째로 바꾸는
+          구조라 Tabs의 tab/tabpanel 의미가 그대로 맞았다. 반면 이 `type`은 이 섹션 뒤로도 폼
+          전체에 흩어진 조건부 렌더링(872·667·857·895·1099행 등)을 좌우한다 — 값 하나가 여러
+          곳의 TabsContent에 나뉘어 걸치는 모양이라 tab/tabpanel로 표현할 수 없다. 전체를 하나의
+          Tabs 트리로 감싸려면 폼 구조 자체를 새로 짜야 해서 이 티켓 범위를 넘어선다. 현재
+          구현(버튼 + `role="radiogroup"`)을 유지한다. */}
       <SegmentedControl
         label="배지 타입"
         wide
