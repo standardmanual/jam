@@ -73,6 +73,17 @@ const stub = vi.hoisted(() => ({
   /** `user_daily_sync_counts` 조회가 돌려줄 동기화 발생일(KST) 목록 — daily_sync_streak_days 평가용 */
   syncStreakDates: [] as string[],
   syncStreakDatesError: null as { message: string } | null,
+
+  // ── evaluateCheckinUsageBadges() 전용 (티켓 20260914_1725) ────────────────
+  /** `user_checkin_badge_earns` 조회가 돌려줄, 유저가 획득한(distinct) 체크인 배지 id */
+  checkinEarnedBadgeIds: [] as string[],
+  checkinEarnsQueryFails: false,
+  /** 획득한 체크인 배지의 `badges.category`(어드민 직접 지정) — { id, category } */
+  badgeCategoryRows: [] as { id: string; category: string | null }[],
+  /** 획득한 체크인 배지에 연결된 poi의 카테고리(effective category 폴백) — { linked_badge_id, category } */
+  poiCategoryRows: [] as { linked_badge_id: string; category: string }[],
+  /** `checkin_badge_count`의 이름→id 해석에 쓰이는 `type='checkin'` 배지 카탈로그 */
+  checkinBadgesByName: [] as { id: string; name: string }[],
 }))
 
 const getUserBanLevelMock = vi.hoisted(() =>
@@ -89,6 +100,11 @@ function resetStub() {
   stub.syncCountRpcError = null
   stub.syncStreakDates = []
   stub.syncStreakDatesError = null
+  stub.checkinEarnedBadgeIds = []
+  stub.checkinEarnsQueryFails = false
+  stub.badgeCategoryRows = []
+  stub.poiCategoryRows = []
+  stub.checkinBadgesByName = []
   getUserBanLevelMock.mockReset()
   getUserBanLevelMock.mockResolvedValue('none')
 }
@@ -96,14 +112,26 @@ function resetStub() {
 /** supabase-js 쿼리 빌더 흉내 — badge-engine-v5.test.ts의 mockSupabase()와 같은 최소 체인 */
 function mockSupabase() {
   const from = (table: string) => {
+    // 같은 `badges` 테이블을 세 가지 다른 select로 부른다(후보 조회 `*`, 카테고리 조회
+    // `id, category`, 이름 해석 `id, name` + `type='checkin'` 필터) — 체인에 쌓인 select·eq·in을
+    // 기록해 `.then`에서 구분한다.
+    const state: { select?: string; eq: Record<string, unknown>; in: Record<string, unknown[]> } = { eq: {}, in: {} }
     const builder: Record<string, unknown> = {}
-    const self = () => builder
-    builder.select = self
-    builder.eq = self
-    builder.is = self
-    builder.or = self
-    builder.in = self
-    builder.order = self
+    builder.select = (cols: string) => {
+      state.select = cols
+      return builder
+    }
+    builder.eq = (col: string, val: unknown) => {
+      state.eq[col] = val
+      return builder
+    }
+    builder.is = () => builder
+    builder.or = () => builder
+    builder.in = (col: string, vals: unknown[]) => {
+      state.in[col] = vals
+      return builder
+    }
+    builder.order = () => builder
     // `dailySyncStreak.ts`의 fetchCurrentSyncStreakDays()가 마지막에 부르는 체인 끝 —
     // user_daily_sync_counts만 스텁 값을 돌려주고, 그 외 테이블은 빈 결과로 폴백한다.
     builder.limit = () => {
@@ -123,15 +151,42 @@ function mockSupabase() {
     }
     builder.then = (resolve: (v: unknown) => void) => {
       if (table === 'badges') {
-        if (stub.badgesQueryFails) {
-          return Promise.resolve({ data: null, error: { message: 'DB 장애' } }).then(resolve)
+        if (state.select === '*') {
+          // evaluateUsageBadges/evaluateCheckinUsageBadges의 후보 조회
+          if (stub.badgesQueryFails) {
+            return Promise.resolve({ data: null, error: { message: 'DB 장애' } }).then(resolve)
+          }
+          return Promise.resolve({ data: stub.badges, error: null }).then(resolve)
         }
-        return Promise.resolve({ data: stub.badges, error: null }).then(resolve)
+        if (state.eq.type === 'checkin') {
+          // checkin_badge_count 이름→id 해석 — type='checkin' + name in (...)
+          const names = (state.in.name ?? []) as string[]
+          const rows = stub.checkinBadgesByName.filter((r) => names.includes(r.name))
+          return Promise.resolve({ data: rows, error: null }).then(resolve)
+        }
+        // checkin_category_count의 획득 배지 카테고리 조회 — id in (...)
+        const ids = (state.in.id ?? []) as string[]
+        const rows = stub.badgeCategoryRows.filter((r) => ids.includes(r.id))
+        return Promise.resolve({ data: rows, error: null }).then(resolve)
       }
       if (table === 'user_activity_badges') {
         return Promise.resolve({ data: stub.ownedBadgeIds.map((id) => ({ badge_id: id })), error: null }).then(
           resolve
         )
+      }
+      if (table === 'user_checkin_badge_earns') {
+        if (stub.checkinEarnsQueryFails) {
+          return Promise.resolve({ data: null, error: { message: 'DB 장애' } }).then(resolve)
+        }
+        return Promise.resolve({
+          data: stub.checkinEarnedBadgeIds.map((id) => ({ badge_id: id })),
+          error: null,
+        }).then(resolve)
+      }
+      if (table === 'poi') {
+        const ids = (state.in.linked_badge_id ?? []) as string[]
+        const rows = stub.poiCategoryRows.filter((r) => ids.includes(r.linked_badge_id))
+        return Promise.resolve({ data: rows, error: null }).then(resolve)
       }
       return Promise.resolve({ data: null, error: null }).then(resolve)
     }
@@ -160,7 +215,7 @@ vi.mock('@/lib/abusing/policy', async (importOriginal) => {
   return { ...actual, getAbusingPolicy: vi.fn(async () => actual.DEFAULT_POLICY) }
 })
 
-import { evaluateUsageBadges, recordDailySyncAndEvaluate } from '../usageBadges'
+import { evaluateUsageBadges, recordDailySyncAndEvaluate, evaluateCheckinUsageBadges } from '../usageBadges'
 
 beforeEach(() => {
   resetStub()
@@ -455,5 +510,197 @@ describe('recordDailySyncAndEvaluate — 연속 동기화 일수 평가', () => 
 
     const earned = await recordDailySyncAndEvaluate('user-1')
     expect(new Set(earned.map((e) => e.id))).toEqual(new Set(['sync-3', 'streak-1']))
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// ⑤ evaluateCheckinUsageBadges() — 체크인 배지 보유 조건 2종 (티켓 20260914_1725)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('evaluateCheckinUsageBadges — checkin_category_count(카테고리 보유 개수)', () => {
+  it('effective category(badges.category 우선) 기준으로 보유 개수를 세어 발급한다', async () => {
+    stub.badges = [
+      makeBadge({ id: 'cat-badge', condition_json: { checkin_category_count: { category: 'train_subway', count: 2 } } }),
+    ]
+    stub.checkinEarnedBadgeIds = ['station-a', 'station-b', 'restaurant-a']
+    stub.badgeCategoryRows = [
+      { id: 'station-a', category: 'train_subway' },
+      { id: 'station-b', category: 'train_subway' },
+      { id: 'restaurant-a', category: 'michelin' },
+    ]
+
+    const earned = await evaluateCheckinUsageBadges('user-1')
+    expect(earned.map((e) => e.id)).toEqual(['cat-badge'])
+    expect(stub.insertedBadgeIds).toEqual(['cat-badge'])
+  })
+
+  it('badges.category가 없으면 연결된 poi.category로 폴백한다', async () => {
+    stub.badges = [
+      makeBadge({ id: 'cat-badge', condition_json: { checkin_category_count: { category: 'michelin', count: 1 } } }),
+    ]
+    stub.checkinEarnedBadgeIds = ['restaurant-a']
+    stub.badgeCategoryRows = [{ id: 'restaurant-a', category: null }]
+    stub.poiCategoryRows = [{ linked_badge_id: 'restaurant-a', category: 'michelin' }]
+
+    const earned = await evaluateCheckinUsageBadges('user-1')
+    expect(earned.map((e) => e.id)).toEqual(['cat-badge'])
+  })
+
+  it('보유 개수가 조건 미만이면 발급되지 않는다', async () => {
+    stub.badges = [
+      makeBadge({ id: 'cat-badge', condition_json: { checkin_category_count: { category: 'train_subway', count: 5 } } }),
+    ]
+    stub.checkinEarnedBadgeIds = ['station-a']
+    stub.badgeCategoryRows = [{ id: 'station-a', category: 'train_subway' }]
+
+    const earned = await evaluateCheckinUsageBadges('user-1')
+    expect(earned).toEqual([])
+  })
+})
+
+describe('evaluateCheckinUsageBadges — checkin_badge_count(지정 목록 보유 개수)', () => {
+  it('지정한 이름 목록 중 보유한 이름 개수 ≥ count면 발급된다', async () => {
+    stub.badges = [
+      makeBadge({
+        id: 'list-badge',
+        condition_json: { checkin_badge_count: { checkin_badge_names: ['성수역', '왕십리역', '건대입구역'], count: 2 } },
+      }),
+    ]
+    stub.checkinBadgesByName = [
+      { id: 'seongsu', name: '성수역' },
+      { id: 'wangsimni', name: '왕십리역' },
+      { id: 'konkuk', name: '건대입구역' },
+    ]
+    stub.checkinEarnedBadgeIds = ['seongsu', 'wangsimni']
+
+    const earned = await evaluateCheckinUsageBadges('user-1')
+    expect(earned.map((e) => e.id)).toEqual(['list-badge'])
+  })
+
+  it('목록에 존재하지 않는 이름은 무시하고 나머지 이름만으로 판정한다 (AC5 — 평가 시점 방어)', async () => {
+    stub.badges = [
+      makeBadge({
+        id: 'list-badge',
+        condition_json: { checkin_badge_count: { checkin_badge_names: ['성수역', '존재하지않는이름'], count: 1 } },
+      }),
+    ]
+    stub.checkinBadgesByName = [{ id: 'seongsu', name: '성수역' }]
+    stub.checkinEarnedBadgeIds = ['seongsu']
+
+    const earned = await evaluateCheckinUsageBadges('user-1')
+    expect(earned.map((e) => e.id)).toEqual(['list-badge'])
+  })
+
+  it('보유한 이름 개수가 조건 미만이면 발급되지 않는다', async () => {
+    stub.badges = [
+      makeBadge({
+        id: 'list-badge',
+        condition_json: { checkin_badge_count: { checkin_badge_names: ['성수역', '왕십리역'], count: 2 } },
+      }),
+    ]
+    stub.checkinBadgesByName = [
+      { id: 'seongsu', name: '성수역' },
+      { id: 'wangsimni', name: '왕십리역' },
+    ]
+    stub.checkinEarnedBadgeIds = ['seongsu']
+
+    const earned = await evaluateCheckinUsageBadges('user-1')
+    expect(earned).toEqual([])
+  })
+
+  it('동명이인 방지 — 이름은 type=checkin 배지로만 해석한다(§2.8)', async () => {
+    // 카탈로그에 같은 이름의 checkin 배지 없이 activity 배지만 있으면(모킹상 badges 테이블의
+    // type='checkin' 필터로만 조회하므로) 그 이름은 매칭되지 않는다.
+    stub.badges = [
+      makeBadge({
+        id: 'list-badge',
+        condition_json: { checkin_badge_count: { checkin_badge_names: ['성수역'], count: 1 } },
+      }),
+    ]
+    stub.checkinBadgesByName = [] // type='checkin' 카탈로그에 '성수역'이 없음(동명이인은 activity 배지)
+    stub.checkinEarnedBadgeIds = ['some-activity-badge-with-same-name']
+
+    const earned = await evaluateCheckinUsageBadges('user-1')
+    expect(earned).toEqual([])
+  })
+})
+
+describe('evaluateCheckinUsageBadges — 등급형/레벨형·섀도우밴 재사용 확인', () => {
+  it('등급형은 이름 그룹 내 최상위 tier 1개만 발급된다', async () => {
+    stub.badges = [
+      makeBadge({
+        id: 'cat-common',
+        name: '지하철 마스터',
+        rarity: 'common',
+        condition_json: { checkin_category_count: { category: 'train_subway', count: 2 } },
+      }),
+      makeBadge({
+        id: 'cat-rare',
+        name: '지하철 마스터',
+        rarity: 'rare',
+        condition_json: { checkin_category_count: { category: 'train_subway', count: 5 } },
+      }),
+    ]
+    stub.checkinEarnedBadgeIds = ['s1', 's2', 's3', 's4', 's5']
+    stub.badgeCategoryRows = ['s1', 's2', 's3', 's4', 's5'].map((id) => ({ id, category: 'train_subway' }))
+
+    const earned = await evaluateCheckinUsageBadges('user-1')
+    expect(earned.map((e) => e.id)).toEqual(['cat-rare'])
+  })
+
+  it('레벨형은 보유 레벨+1부터 연속 발급된다', async () => {
+    const fam = 'checkin-family'
+    stub.badges = [
+      makeBadge({
+        id: `${fam}-lv1`,
+        rarity: null,
+        level: 1,
+        family_key: fam,
+        condition_json: { checkin_category_count: { category: 'train_subway', count: 1 } },
+      }),
+      makeBadge({
+        id: `${fam}-lv2`,
+        rarity: null,
+        level: 2,
+        family_key: fam,
+        condition_json: { checkin_category_count: { category: 'train_subway', count: 3 } },
+      }),
+    ]
+    stub.checkinEarnedBadgeIds = ['s1', 's2', 's3']
+    stub.badgeCategoryRows = ['s1', 's2', 's3'].map((id) => ({ id, category: 'train_subway' }))
+
+    const earned = await evaluateCheckinUsageBadges('user-1')
+    expect(earned.map((e) => e.id)).toEqual([`${fam}-lv1`, `${fam}-lv2`])
+  })
+
+  it('hard 밴 유저는 mystic 등급형 배지가 차단된다', async () => {
+    getUserBanLevelMock.mockResolvedValue('hard')
+    stub.badges = [
+      makeBadge({ id: 'cat-mystic', rarity: 'mystic', condition_json: { checkin_category_count: { category: 'train_subway', count: 1 } } }),
+    ]
+    stub.checkinEarnedBadgeIds = ['s1']
+    stub.badgeCategoryRows = [{ id: 's1', category: 'train_subway' }]
+
+    const earned = await evaluateCheckinUsageBadges('user-1')
+    expect(earned).toEqual([])
+  })
+})
+
+describe('evaluateCheckinUsageBadges — 조회 실패·후보 없음은 예외를 던지지 않는다', () => {
+  it('후보 배지가 없으면 조회 없이 빈 배열을 반환한다', async () => {
+    stub.badges = [makeBadge({ id: 'unrelated', condition_json: { follower_count: 10 } })]
+    const earned = await evaluateCheckinUsageBadges('user-1')
+    expect(earned).toEqual([])
+  })
+
+  it('체크인 이력 조회가 실패하면 빈 배열을 반환한다', async () => {
+    stub.badges = [
+      makeBadge({ id: 'cat-badge', condition_json: { checkin_category_count: { category: 'train_subway', count: 1 } } }),
+    ]
+    stub.checkinEarnsQueryFails = true
+
+    const earned = await evaluateCheckinUsageBadges('user-1')
+    expect(earned).toEqual([])
+    expect(stub.insertedBadgeIds).toEqual([])
   })
 })

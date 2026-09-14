@@ -11,7 +11,8 @@
  * 실행: `npx vitest run src/lib/admin/__tests__/badge-validation.test.ts`
  */
 
-import { findUnknownConditionKeyError, findCumulativeConditionError, findBadgeConditionSaveError } from '../badge-validation'
+import { findUnknownConditionKeyError, findCumulativeConditionError, findBadgeConditionSaveError, findCheckinBadgeNamesNotFoundError } from '../badge-validation'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { ALL_CONDITION_KEYS } from '@/lib/badge-engine/condition-schema'
 import type { BadgeCondition } from '@/types/database'
 
@@ -122,5 +123,59 @@ describe('findBadgeConditionSaveError — 사용량 지표 + repeat_count 조합
     expect(findBadgeConditionSaveError(badge, 'activity', { following_count: 50 })).toBeNull()
     expect(findBadgeConditionSaveError(badge, 'activity', { daily_sync_count: 7 })).toBeNull()
     expect(findBadgeConditionSaveError(badge, 'activity', { daily_sync_streak_days: 7 })).toBeNull()
+  })
+})
+
+// findCheckinBadgeNamesNotFoundError — checkin_badge_count의 이름 목록 존재 검증
+// (AC5, 티켓 20260914_1725 — "구현 중 택1, 저장 시점 검증을 우선한다")
+describe('findCheckinBadgeNamesNotFoundError', () => {
+  function makeSupabase(existingCheckinBadgeNames: string[]): SupabaseClient {
+    const from = () => {
+      const builder: Record<string, unknown> = {
+        select: () => builder,
+        eq: () => builder,
+        in: (col: string, names: string[]) => {
+          const found = names.filter((n) => existingCheckinBadgeNames.includes(n))
+          return Promise.resolve({ data: found.map((name) => ({ name })), error: null })
+        },
+      }
+      return builder
+    }
+    return { from } as unknown as SupabaseClient
+  }
+
+  it('condition이 null이거나 checkin_badge_count가 없으면 통과한다', async () => {
+    const supabase = makeSupabase([])
+    expect(await findCheckinBadgeNamesNotFoundError(null, supabase)).toBeNull()
+    expect(await findCheckinBadgeNamesNotFoundError({ distance_km: 10 }, supabase)).toBeNull()
+  })
+
+  it('목록의 이름이 전부 실제 체크인 배지면 통과한다', async () => {
+    const supabase = makeSupabase(['성수역', '왕십리역'])
+    const cond: BadgeCondition = { checkin_badge_count: { checkin_badge_names: ['성수역', '왕십리역'], count: 1 } }
+    expect(await findCheckinBadgeNamesNotFoundError(cond, supabase)).toBeNull()
+  })
+
+  it('존재하지 않는 이름이 있으면 저장을 막고 그 이름을 메시지에 담는다', async () => {
+    const supabase = makeSupabase(['성수역'])
+    const cond: BadgeCondition = { checkin_badge_count: { checkin_badge_names: ['성수역', '존재하지않는역'], count: 1 } }
+    const error = await findCheckinBadgeNamesNotFoundError(cond, supabase)
+    expect(error).not.toBeNull()
+    expect(error).toContain('존재하지않는역')
+    expect(error).not.toContain('checkin_badge_names": ["성수역"')
+  })
+
+  it('DB 조회가 실패하면 저장을 막지 않는다(평가 시점이 최종 안전망)', async () => {
+    const failingSupabase = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            in: () => Promise.resolve({ data: null, error: { message: 'DB 장애' } }),
+          }),
+        }),
+      }),
+    } as unknown as SupabaseClient
+    const cond: BadgeCondition = { checkin_badge_count: { checkin_badge_names: ['성수역'], count: 1 } }
+    expect(await findCheckinBadgeNamesNotFoundError(cond, failingSupabase)).toBeNull()
   })
 })

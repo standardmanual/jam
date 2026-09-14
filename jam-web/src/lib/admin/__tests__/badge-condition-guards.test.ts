@@ -211,6 +211,23 @@ describe('⑥ 사용량 지표(팔로워·팔로잉·일일동기화) + 회차 �
     expect(error).toContain('daily_sync_streak_days')
   })
 
+  it('checkin_category_count + repeat_count는 막는다 (티켓 20260914_1725)', () => {
+    const cond = { checkin_category_count: { category: 'train_subway', count: 5 }, repeat_count: 3 } as unknown as BadgeCondition
+    const error = findUsageMetricRepeatConflictError(cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('checkin_category_count')
+  })
+
+  it('checkin_badge_count + repeat_count는 막는다 (티켓 20260914_1725)', () => {
+    const cond = {
+      checkin_badge_count: { checkin_badge_names: ['성수역', '왕십리역'], count: 1 },
+      repeat_count: 2,
+    } as unknown as BadgeCondition
+    const error = findUsageMetricRepeatConflictError(cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('checkin_badge_count')
+  })
+
   it('사용량 지표 2개 이상이 함께 있으면 전부 메시지에 나열한다', () => {
     const cond = { follower_count: 100, following_count: 50, repeat_count: 3 } as unknown as BadgeCondition
     const error = findUsageMetricRepeatConflictError(cond)!
@@ -260,6 +277,22 @@ describe('⑦ 사용량 지표 + 다른 measurable 조합은 저장에서 거부
 
   it('daily_sync_count + duration_minutes는 막는다', () => {
     const cond = { daily_sync_count: 7, duration_minutes: 30 } as unknown as BadgeCondition
+    expect(findUsageMetricOtherMeasurableConflictError(cond)).not.toBeNull()
+  })
+
+  it('checkin_category_count + distance_km은 막는다 (티켓 20260914_1725)', () => {
+    const cond = { checkin_category_count: { category: 'train_subway', count: 5 }, distance_km: 10 } as unknown as BadgeCondition
+    const error = findUsageMetricOtherMeasurableConflictError(cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('checkin_category_count')
+    expect(error).toContain('distance_km')
+  })
+
+  it('checkin_badge_count + total_count는 막는다 (티켓 20260914_1725)', () => {
+    const cond = {
+      checkin_badge_count: { checkin_badge_names: ['성수역'], count: 1 },
+      total_count: 5,
+    } as unknown as BadgeCondition
     expect(findUsageMetricOtherMeasurableConflictError(cond)).not.toBeNull()
   })
 
