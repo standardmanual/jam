@@ -2,9 +2,9 @@
 id: 20260908_0040
 category: UI
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-08
-closed:
+closed: 2026-09-14
 ---
 
 # [UI] ItemSerialCode의 일련번호가 보조기술에 두 번 읽힐 소지가 있다

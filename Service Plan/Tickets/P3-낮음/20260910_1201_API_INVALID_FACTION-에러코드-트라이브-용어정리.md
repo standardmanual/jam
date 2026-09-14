@@ -2,9 +2,9 @@
 id: 20260910_1201
 category: API
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-10
-closed:
+closed: 2026-09-14
 ---
 
 # [API] INVALID_FACTION 에러 코드를 트라이브 용어로 정리
@@ -75,9 +75,9 @@ jam-web/src/app/(main)/onboarding/page.tsx
       선택해 주세요.")가 표시된다.
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-09-14 이전 시점에 이미 staging 반영 확인
+- 환경: staging
+- 커밋: `c2a5ecd7`
 
 ### 주요 의사결정 / 핵심 메모
 
