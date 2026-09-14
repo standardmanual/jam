@@ -32,14 +32,20 @@ violation이 500으로 노출될 수 있다.
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`poi_categories` 존재 검증 로직을 `src/lib/admin/poi-category-validation.ts`의
+`validatePoiCategoryExists` 공용 함수로 뽑아, `POST /api/admin/poi`·
+`PUT /api/admin/poi/[id]`·`PATCH /api/admin/poi/[id]` 3개 엔드포인트가 모두 이 함수를
+쓰도록 통일했다. 존재하지 않는 슬러그는 400, 조회 자체 실패는 500으로 응답한다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/lib/admin/poi-category-validation.ts (신규)
+jam-web/src/app/api/admin/poi/route.ts (POST에 검증 추가)
+jam-web/src/app/api/admin/poi/[id]/route.ts (PUT에 검증 추가, PATCH를 공용 함수로 교체)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npm run lint` 전체 실행 — 에러 0건, 경고 14건(모두 이번 변경과 무관한 기존 파일)
 
 ### 잔여 이슈
 -
