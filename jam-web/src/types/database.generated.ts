@@ -2769,6 +2769,15 @@ export type Database = {
         Returns: Json
       }
       expire_stale_poi_drops: { Args: never; Returns: Json }
+      grant_inventory_item: {
+        Args: {
+          p_badge_id: string
+          p_expires_at?: string | null
+          p_inventory_id: string
+          p_obtained_by: string
+        }
+        Returns: Json
+      }
       increment_activity_badge_earn: {
         Args: {
           p_badge_id: string
@@ -2798,6 +2807,10 @@ export type Database = {
       }
       pickup_drop: {
         Args: { p_drop_id: string; p_inventory_id: string; p_picker_id: string }
+        Returns: Json
+      }
+      release_inventory_slots: {
+        Args: { p_count: number; p_inventory_id: string }
         Returns: Json
       }
       set_inventory_max_slots: {

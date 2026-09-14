@@ -93,18 +93,71 @@ closed:
 
 ### 구현 내용 요약
 
+마이그레이션 173에 `grant_inventory_item()`·`release_inventory_slots()` 두 RPC를 신설했다.
+둘 다 111_item_slot_atomic_rpc.sql과 동일하게 `inventory` 행을 `SELECT ... FOR UPDATE`로
+잠근 뒤 재확인·반영까지 한 트랜잭션으로 묶는다.
+
+- `grant_inventory_item(p_inventory_id, p_badge_id, p_obtained_by, p_expires_at?)`:
+  `used_slots < max_slots` 재확인 → `inventory_items` INSERT(트리거가 일련번호 부여) →
+  `used_slots` 증가. 실패 시 `{ ok: false, reason: 'slot_full' | 'inventory_not_found' }`,
+  성공 시 `{ ok: true, itemId, usedSlots }`.
+- `release_inventory_slots(p_inventory_id, p_count)`: `used_slots`를 `GREATEST(0, ...)`
+  클램프로 감소. combine의 재료 소각 직후 칸 반환에 쓴다.
+
+세 지급 경로를 모두 이 RPC 호출로 전환했다:
+- `drop-engine/index.ts`의 `insertDrop()` — 직접 INSERT 대신 `grant_inventory_item` RPC 호출.
+  기존에는 루프가 끝난 뒤 `used_slots`를 배치로 한 번에 덮어썼는데, 이제 RPC가 지급마다
+  즉시 원자적으로 반영하므로 그 배치 업데이트 블록을 제거했다. 루프의 슬롯 사전 체크
+  (`isInventoryFull`)는 조기 종료 최적화로 유지하되, 최종 진실은 RPC 응답의 `usedSlots`로
+  갱신한다.
+- `missions/rewards.ts`의 아이템배지 지급 분기 — INSERT + `.update({used_slots})` 두 호출을
+  `grant_inventory_item` RPC 한 번으로 교체.
+- `combine/index.ts` — 소각 직후 `release_inventory_slots` RPC로 칸 반환, `grantBadge()`의
+  보상 지급을 `grant_inventory_item` RPC로 교체.
+
+세 곳 모두 `slot_full` 사유는 기존과 동일하게 로그만 남기고 조용히 skip한다(에러로 취급하지
+않음) — 유저 화면 문구는 건드리지 않았다.
+
+기존 `isInventoryFull()`은 그대로 유지 — 화면 사전 판정·루프 조기 종료용으로 쓰고, RPC가
+지급/소각 시점의 최종·원자적 확인을 맡는 역할 분리 구조.
+
+반환 타입은 `src/lib/inventory/slots.ts`에 `GrantInventoryItemResult`·
+`ReleaseInventorySlotsResult` 판별 유니온으로 정의해 세 호출부가 공유한다 — `ok: false`
+분기를 빠뜨리면 타입 에러가 나도록 강제했다(티켓이 요구한 "네 번째 지급 경로 추가 시
+케이스 누락 방지" 목적).
+
+`src/types/database.generated.ts`에 두 RPC의 `Args`/`Returns` 타입을 수동 추가했다(Supabase
+CLI가 이 환경에 없어 `generate_typescript_types` MCP로 재생성하는 대신, 기존 RPC 타입 정의
+패턴을 그대로 따라 手기 반영 — 마이그레이션 실행 후 MCP로 대조 검증 필요).
+
 ### 변경된 파일
 ```
--
+jam-web/supabase/migrations/173_atomic_inventory_slot_grant.sql (신규)
+jam-web/src/types/database.generated.ts
+jam-web/src/lib/inventory/slots.ts
+jam-web/src/lib/drop-engine/index.ts
+jam-web/src/lib/missions/rewards.ts
+jam-web/src/lib/combine/index.ts
+jam-web/src/lib/combine/__tests__/combine-engine.test.ts
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npm run typecheck` — 에러 0건
+- [x] `npm run lint` — 에러 0건, 경고 14건(모두 이번 변경과 무관한 기존 경고 — design-system
+      stories/foundations, scripts/recraft)
+- [x] `npx vitest run` — 94개 파일 1,499개 테스트 전부 통과 (combine-engine.test.ts 14건 포함,
+      RPC 전환에 맞춰 `.from().update()` 목을 `.rpc()` 목으로 교체해 갱신)
+- RPC 자체(SQL 함수)의 "슬롯 가득 참 시 거부" 직접 단위 테스트는 이 저장소에 로컬 Postgres
+  테스트 하네스가 없어(Supabase CLI 미설치) 작성하지 못했다 — 대신 `combine-engine.test.ts`의
+  `.rpc()` 목이 동일 계약(슬롯 가득 참 → `{ ok: false, reason: 'slot_full' }`)을 시뮬레이션하는
+  TS 레벨 회귀 테스트("소각으로 반환된 칸보다 보상 배지가 많으면 칸이 찬 시점부터 지급을
+  생략한다")로 대체했다. 실제 RPC의 동시성 동작은 마이그레이션 실행 후 스테이징에서 수동
+  검증이 필요하다(아래 alerts 참고).
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
 
-- [ ] 해당 없음 — 유저 노출 문구 변경 없음
+- [x] 해당 없음 — 유저 노출 문구 변경 없음
 
 ### 배포 정보
 - 배포일:
@@ -120,4 +173,9 @@ closed:
   강제한다.
 
 ### 잔여 이슈
--
+- 마이그레이션 173은 작성만 했고 아직 실행하지 않았다 — 사용자 승인 후 오케스트레이터가
+  직접 실행해야 한다. 실행 전까지는 `grant_inventory_item`/`release_inventory_slots` RPC가
+  DB에 존재하지 않으므로 이 코드는 배포해도 런타임 오류(`PGRST202` 등)가 난다 — 반드시
+  마이그레이션 실행과 코드 배포를 같은 순서로 묶어야 한다.
+- 마이그레이션 실행 후 Supabase MCP `generate_typescript_types`로 `database.generated.ts`를
+  재생성해 이번에 손으로 반영한 RPC 타입과 대조 검증이 필요하다.

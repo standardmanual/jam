@@ -27,19 +27,9 @@ import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 import { checkCondition, passesWalkingGate } from '@/lib/badge-engine/index'
 import { getDropPolicy, type DropPolicy } from './policy'
-import { isInventoryFull } from '@/lib/inventory/slots'
+import { isInventoryFull, type GrantInventoryItemResult } from '@/lib/inventory/slots'
 import { fetchAllRows } from '@/lib/notifications/batch/shared'
-import type { Database, Json } from '@/types/database.generated'
-
-/**
- * `inventory_items.serial_number`는 NOT NULL인데 DEFAULT가 없어(migrations/034) 생성 타입이
- * Insert 필수 컬럼으로 잡지만, 실제 값은 BEFORE INSERT 트리거 `assign_random_serial()`
- * (migrations/108)이 채운다. 이 한 컬럼만 `Omit`으로 떼어내고 나머지 컬럼은 이름·타입 검사를
- * 그대로 받게 둔다 — 억제(`@ts-expect-error`)로 덮으면 컬럼명 오타까지 같이 통과한다
- * (티켓 20260831_1213).
- */
-type InventoryItemInsert = Database['public']['Tables']['inventory_items']['Insert']
-type InventoryItemInsertByTrigger = Omit<InventoryItemInsert, 'serial_number'>
+import type { Json } from '@/types/database.generated'
 
 import {
   rollRarityV2,
@@ -491,7 +481,12 @@ async function applyShadowBanCap(userId: string, rarity: BadgeRarity): Promise<B
 }
 
 /**
- * 인벤토리 삽입. 성공 시 생성된 `inventory_items.id`, 실패 시 null (슬롯은 호출부에서 사전 체크)
+ * 인벤토리 지급 — "삽입 + used_slots 증가"를 원자 트랜잭션으로 묶은 `grant_inventory_item()`
+ * RPC(마이그레이션 173, 티켓 20260914_1813) 호출로 전환. 이전에는 이 함수가 삽입만 하고
+ * 호출부(`tryItemDrop`)가 루프가 끝난 뒤 `used_slots`를 배치로 한 번에 덮어썼는데, 그 사이
+ * 다른 지급 경로(미션 보상·조합 보상)가 같은 인벤토리에 동시에 쓰면 카운터가 어긋날 수
+ * 있었다(read-then-write 레이스). RPC가 호출마다 즉시 원자적으로 확인·반영하므로 루프
+ * 로직이 오히려 단순해진다.
  *
  * 20260824_019 — 반환을 boolean에서 id로 넓혔다. 소식 #3(아이템 배지 획득)의 착지점이
  * 배지 도감이 아니라 **인벤토리 인스턴스**(`/inventory/[itemId]`)라 그 id가 필요하다.
@@ -509,26 +504,24 @@ async function insertDrop(
    * ⚠️ 배치 전체(`activities`)의 id를 싣지 않는다 — 귀속 입도가 어긋난다.
    */
   stravaActivityId?: number | null
-): Promise<string | null> {
+): Promise<GrantInventoryItemResult> {
   const supabase = createServiceClient()
   const expiresAt = picked.valid_until ?? null
 
-  const inventoryItemsTable = supabase.from('inventory_items')
-  const insertPayload: InventoryItemInsertByTrigger = {
-    inventory_id: inventoryId,
-    badge_id: picked.id,
-    obtained_by: 'drop',
-    expires_at: expiresAt,
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('grant_inventory_item', {
+    p_inventory_id: inventoryId,
+    p_badge_id: picked.id,
+    p_obtained_by: 'drop',
+    p_expires_at: expiresAt,
+  })
+  if (rpcError) {
+    console.error(`[tryItemDrop] grant_inventory_item RPC 오류 (badge_id: ${picked.id}):`, rpcError)
+    return { ok: false, reason: 'inventory_not_found' }
   }
-  const { data: insertedRaw, error: insertError } = await inventoryItemsTable
-    .insert(insertPayload as InventoryItemInsert)
-    .select('id')
-    .single()
-  if (insertError) {
-    console.error(`[tryItemDrop] inventory_items 삽입 오류 (badge_id: ${picked.id}):`, insertError)
-    return null
-  }
-  const inventoryItemId = (insertedRaw as { id: string }).id
+  const result = rpcResult as GrantInventoryItemResult
+  if (!result.ok) return result
+
+  const inventoryItemId = result.itemId
 
   // 잼 포인트 지급 — 아이템배지에 point_reward가 붙어 있으면 획득 직후 1회 지급.
   // (아이템배지도 badges 테이블이므로 point_reward를 가질 수 있음. 0이면 스킵.)
@@ -557,7 +550,7 @@ async function insertDrop(
     // badge_earned와 같은 규약으로 0이면 싣지 않는다.
     ...(pointReward > 0 ? { point_reward: pointReward } : {}),
   }, activityStartDate, stravaActivityId ?? null)
-  return inventoryItemId
+  return result
 }
 
 // ────────────────────────────────────────────────────────────
@@ -665,7 +658,7 @@ export async function tryItemDrop(
       continue
     }
 
-    const insertedInventoryItemId = await insertDrop(
+    const grantResult = await insertDrop(
       structure.inventory.id,
       userId,
       result.badge,
@@ -674,12 +667,23 @@ export async function tryItemDrop(
       activityStartDate,
       act?.stravaId ?? null
     )
-    if (!insertedInventoryItemId) {
+    if (!grantResult.ok) {
+      // slot_full은 grant_inventory_item() RPC의 원자적 재확인이 사전 체크(위 isInventoryFull)와
+      // 다른 지급 경로(미션 보상·조합 보상)의 동시 요청으로 어긋난 경우다 — 에러가 아니라
+      // 정책대로 조용한 스킵(§3.1)이므로 slot_full 전용 outcome으로 구분해 기록한다.
       await logEngineDecision('drop', 'drop_attempt', userId, {
-        attempt: i, outcome: 'insert_failed', badgeId: result.badge.id, rolledRarity: rolled, cappedRarity: capped,
+        attempt: i,
+        outcome: grantResult.reason === 'slot_full' ? 'slot_full' : 'insert_failed',
+        badgeId: result.badge.id,
+        rolledRarity: rolled,
+        cappedRarity: capped,
+        usedSlots,
+        maxSlots: structure.inventory.max_slots,
       })
       break
     }
+    const insertedInventoryItemId = grantResult.itemId
+    usedSlots = grantResult.usedSlots
 
     await logEngineDecision('drop', 'drop_attempt', userId, {
       attempt: i,
@@ -697,7 +701,6 @@ export async function tryItemDrop(
       pityCounters: state.last_piece_pity,
     })
 
-    usedSlots += 1
     droppedBadgeIds.push(result.badge.id)
     // 결산 알림(RecapItemBadge)은 등급 문구를 전제로 한 구조라 등급 없는 배지를 담을 수 없다.
     // 아이템 배지에는 무한레벨형이 없지만(v5의 레벨형은 활동 배지 전용, 마이그레이션 130)
@@ -732,15 +735,8 @@ export async function tryItemDrop(
     )
   }
 
-  // used_slots 일괄 반영
-  if (usedSlots !== structure.inventory.used_slots) {
-    const supabase = createServiceClient()
-    const { error } = await supabase
-      .from('inventory')
-      .update({ used_slots: usedSlots })
-      .eq('id', structure.inventory.id)
-    if (error) console.error('[tryItemDrop] used_slots 업데이트 오류:', error)
-  }
+  // used_slots는 더 이상 여기서 일괄 반영하지 않는다 — grant_inventory_item() RPC가
+  // 지급마다 원자적으로 반영했다(티켓 20260914_1813).
 
   state.last_activity_at = activityStartDate
   await saveDropState(state)

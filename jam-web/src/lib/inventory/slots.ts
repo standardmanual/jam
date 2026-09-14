@@ -14,3 +14,22 @@ export interface InventorySlotState {
 export function isInventoryFull(inventory: InventorySlotState): boolean {
   return inventory.used_slots >= inventory.max_slots
 }
+
+/**
+ * `grant_inventory_item()` RPC(마이그레이션 173, 티켓 20260914_1813)의 반환 형태.
+ * "지급 + used_slots 증가"를 한 트랜잭션으로 묶어 read-then-write 레이스를 없앤다 —
+ * drop-engine/index.ts · missions/rewards.ts · combine/index.ts 세 지급 경로가 공용한다.
+ * `slot_full`을 판별 가능한 유니온으로 노출해, 새 지급 경로가 추가될 때 이 분기를
+ * 빠뜨리면 타입 에러가 나게 한다.
+ */
+export type GrantInventoryItemResult =
+  | { ok: true; itemId: string; usedSlots: number }
+  | { ok: false; reason: 'slot_full' | 'inventory_not_found' }
+
+/**
+ * `release_inventory_slots()` RPC(마이그레이션 173)의 반환 형태. 조합(combine) 소각 직후
+ * 칸을 반환하는 반대 방향 — 마찬가지로 inventory 행 락 안에서 원자적으로 처리된다.
+ */
+export type ReleaseInventorySlotsResult =
+  | { ok: true; usedSlots: number }
+  | { ok: false; reason: 'inventory_not_found' }

@@ -57,9 +57,37 @@ vi.mock('@/lib/combine/policy', () => ({
   getCombinePolicy: async () => ({ fail_reward_points: stub.failRewardPoints }),
 }))
 
+/**
+ * 티켓 20260914_1813 — 지급/소각+카운터 갱신이 grant_inventory_item()·
+ * release_inventory_slots() RPC(마이그레이션 173)로 원자화되면서, 이 스텁도 `.from().update()`
+ * 대신 `.rpc()` 호출을 시뮬레이션한다. 두 RPC 모두 "inventory 행을 잠근 뒤 재확인 →
+ * 반영"을 한 트랜잭션으로 하므로, 스텁은 그 최종 결과(성공/슬롯 가득 참)만 흉내낸다.
+ */
+async function rpcStub(fnName: string, args: Record<string, unknown>): Promise<{ data: unknown; error: unknown }> {
+  if (fnName === 'grant_inventory_item') {
+    if (stub.usedSlots >= stub.maxSlots) {
+      return { data: { ok: false, reason: 'slot_full' }, error: null }
+    }
+    stub.usedSlots += 1
+    stub.usedSlotsHistory.push(stub.usedSlots)
+    stub.grantedBadgeIds.push(args.p_badge_id as string)
+    return {
+      data: { ok: true, itemId: `generated-item-${stub.grantedBadgeIds.length}`, usedSlots: stub.usedSlots },
+      error: null,
+    }
+  }
+  if (fnName === 'release_inventory_slots') {
+    stub.usedSlots = Math.max(0, stub.usedSlots - (args.p_count as number))
+    stub.usedSlotsHistory.push(stub.usedSlots)
+    return { data: { ok: true, usedSlots: stub.usedSlots }, error: null }
+  }
+  return { data: null, error: null }
+}
+
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: (): SupabaseClient => ({
     from: (table: string) => makeBuilder(table),
+    rpc: (fnName: string, args: Record<string, unknown>) => rpcStub(fnName, args),
   }) as unknown as SupabaseClient,
 }))
 
@@ -75,22 +103,12 @@ function makeBuilder(table: string) {
       if (table === 'user_combine_fail_logs') {
         stub.failLogs.push(state.payload as Record<string, unknown>)
       }
-      if (table === 'inventory_items') {
-        const payload = state.payload as { badge_id: string }
-        stub.grantedBadgeIds.push(payload.badge_id)
-      }
       return { data: null, error: null }
     }
     if (state.op === 'update' && table === 'inventory_items') {
       // 소각 — 요청한 개체 전부가 파괴된 정상 경로
       stub.destroyedItemIds = [ITEM_1, ITEM_2]
       return { data: [{ id: ITEM_1 }, { id: ITEM_2 }], error: null }
-    }
-    if (state.op === 'update' && table === 'inventory') {
-      const payload = state.payload as { used_slots: number }
-      stub.usedSlots = payload.used_slots
-      stub.usedSlotsHistory.push(payload.used_slots)
-      return { data: null, error: null }
     }
     switch (table) {
       case 'inventory':
