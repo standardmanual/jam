@@ -2,7 +2,8 @@
 id: 20260913_1938
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
+closed: 2026-09-14
 created: 2026-09-13
 ---
 
