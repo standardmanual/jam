@@ -24,6 +24,7 @@ import { selectCompletableDrafts } from '@/lib/notifications/batch/collections'
 import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
 import { logEngineDecision } from '@/lib/engine-log'
 import { getAbusingPolicy, DEFAULT_POLICY } from '@/lib/abusing/policy'
+import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 // JAM! 카테고리 — 서비스 사용량 배지(티켓 20260910_1557). 카운터 증가·판정 로직은
 // recordDailySyncAndEvaluate() 한 곳(usageBadges.ts)에 있다 — 이 파일은 synced>0 게이트만 쥔다.
@@ -743,6 +744,25 @@ export async function processFetchedActivities(
     }
   }
 
+  // 섀도우밴 게이트 (티켓 20260910_1804) — POI·체크인 배지 발급 경로에도 20260910_1719가
+  // 액티비티 배지(evaluateBadgesDetailed)·usageBadges.ts에 붙인 것과 동일한 정책을 적용한다:
+  // rarity가 있는 배지만 대상, 강등 없이 미발급으로 처리한다.
+  //   - 체크인 반복 획득(2번째 이후 방문 — isFirstEarn === false)은 이미 보유한 배지의
+  //     방문 횟수만 늘리는 카운터 증가와 동등하다(usageBadges.ts·index.ts의 "action==='increment'
+  //     는 대상 아님" 원칙과 동일). 최초 획득(isFirstEarn === true)에만 게이트를 적용한다.
+  //   - 레거시 activity+poi_id 경로는 항상 최초 1회 지급(existing 체크로 중복 차단)이므로
+  //     매번 게이트 대상이다.
+  // 조회 비용은 최초 발급 후보가 실제로 있을 때만 든다(banLevel·policy를 지연 조회 + 캐시).
+  let shadowBanLevel: Awaited<ReturnType<typeof getUserBanLevel>> | null = null
+  let shadowBanPolicy: Awaited<ReturnType<typeof getAbusingPolicy>> | null = null
+  const isBlockedByShadowBan = async (rarity: BadgeRarity | null): Promise<boolean> => {
+    if (!rarity) return false
+    if (shadowBanLevel === null) shadowBanLevel = await getUserBanLevel(userId)
+    if (shadowBanLevel === 'none') return false
+    if (shadowBanPolicy === null) shadowBanPolicy = await getAbusingPolicy()
+    return !shouldAllowDrop(rarity, shadowBanLevel, shadowBanPolicy)
+  }
+
   // 배지 타입별 발급
   //   - checkin 타입: user_checkin_badge_earns에 매번 새 행(반복 획득). 보유 여부 체크 없음.
   //   - 그 외(레거시 activity): 기존 user_activity_badges 경로 그대로(1인 1회)
@@ -769,6 +789,14 @@ export async function processFetchedActivities(
         }
         const visitCount = (priorEarnCount ?? 0) + 1
         const isFirstEarn = visitCount === 1
+
+        // 섀도우밴 게이트 — 최초 획득만 대상(반복 방문은 카운터 증가와 동등, 위 주석 참고).
+        if (isFirstEarn && (await isBlockedByShadowBan(badge.rarity))) {
+          console.info(
+            `[processFetchedActivities] 섀도우밴으로 체크인 배지 발급 차단 — userId: ${userId}, badge: ${badge.name}, rarity: ${badge.rarity}`
+          )
+          continue
+        }
 
         const earnPayload = {
           user_id: userId,
@@ -828,6 +856,14 @@ export async function processFetchedActivities(
         .maybeSingle()
 
       if (existing) continue
+
+      // 섀도우밴 게이트 — 레거시 경로는 항상 최초 1회 지급이므로 매번 대상.
+      if (await isBlockedByShadowBan(badge.rarity)) {
+        console.info(
+          `[processFetchedActivities] 섀도우밴으로 POI 배지 발급 차단 — userId: ${userId}, badge: ${badge.name}, rarity: ${badge.rarity}`
+        )
+        continue
+      }
 
       const legacyEarnPayload = {
         user_id: userId,
