@@ -2,7 +2,7 @@
 id: 20260907_2138
 category: UI
 priority: P2
-status: OPEN
+status: IN_PROGRESS
 created: 2026-09-07
 closed:
 ---
@@ -33,30 +33,59 @@ closed:
   (`DESIGN_RENEWAL_SPEC.md`의 "기하값은 `offsetHeight`로 실측" 원칙)
 
 ## 구현 계획
-> 착수 시 작성.
+1. `BadgeGridCard`의 썸네일 클래스를 `w-[90px] h-[90px]` 고정에서 `w-full aspect-square`로 변경
+2. 썸네일을 감싸는 `relative` wrapper에 `w-full max-w-[90px]`를 명시해 순환 참조(부모
+   `items-center`의 shrink-to-fit ↔ 자식 `w-full`) 문제를 끊는다
+3. Playwright 실렌더로 360px/390px/430px에서 boundingBox가 0×0이 아님을 확인
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`src/components/ui/BadgeGridCard.tsx`의 썸네일을 고정폭(`w-[90px] h-[90px]`)에서
+반응형(`w-full aspect-square`)으로 바꿨다. 직전 시도에서 게이트 리뷰 FAIL의 원인이었던
+"relative wrapper에 폭이 없어 순환 참조로 0×0 collapse"를 막기 위해 wrapper 자체에도
+`w-full max-w-[90px]`를 명시했다. `BadgeGridCard`는 인벤토리 목록(`InventoryGrid.tsx`)·
+드랍 바텀시트·장착 선택 시트(`SlotGrid.tsx`) 등 모든 사용처에서 공유하는 단일 컴포넌트라
+이 한 곳의 수정으로 세 사용처 모두에 반영된다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/components/ui/BadgeGridCard.tsx
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `npm run lint` 전체 실행 — 0 errors, 14 warnings(모두 이번 변경과 무관한 기존 경고:
+      design-system stories/컴포넌트의 `<img>`·미사용 변수 등)
+- [x] Playwright 실렌더 검증 — env 미설정(`.env.local` 없음)으로 실제 앱 페이지 대신, 컴포넌트가
+      실제로 렌더링하는 클래스 조합(`flex flex-col items-center` 부모 + `grid-cols-3` + 수정된
+      썸네일 클래스)을 Tailwind CDN으로 그대로 재현한 정적 HTML을 만들어 360px/390px/430px
+      뷰포트에서 `boundingBox()` 실측:
+      - 카드 폭 114.66px(패딩 제외 90.66px 여유)일 때: 썸네일 `{width:90, height:90}` — 0×0
+        아님, `max-w-[90px]` 캡 정상 작동
+      - 카드 폭 94.66px(패딩 제외 70.66px)로 좁혔을 때: 썸네일 `{width:70.66, height:70.66}` —
+        클리핑 없이 패딩 박스에 맞춰 정상 축소(고정폭이었다면 90px로 넘쳐 잘렸을 상황)
+      - 세 뷰포트(360/390/430) 모두 동일 결과(그리드 폭이 뷰포트가 아니라 컨테이너 폭에 좌우되므로
+        예상대로 동일치)
+- [ ] 실제 `/inventory`·드랍 바텀시트·장착 선택 시트 화면에서의 브라우저 확인은 이 워크트리에
+      `.env.local`이 없어 수행하지 못함 — staging 병합 후 실제 화면 확인 필요(잔여 이슈 참고)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-- [ ] 해당 없음 (텍스트 변경 없음)
+- [x] 해당 없음 (텍스트 변경 없음)
 
 ### 배포 정보
-- 배포일: 
-- 환경: 
-- 커밋: 
+- 배포일: (미배포 — review 브랜치 push까지만 수행)
+- 환경: -
+- 커밋: (아래 push 브랜치 참조)
 
 ### 주요 의사결정 / 핵심 메모
+- 직전 FAIL의 근본 원인은 "썸네일 자체를 `w-full`로 바꾼 것"이 아니라 "그 부모(relative
+  wrapper)에 폭이 없는 상태에서 `w-full` 자식을 넣은 것"이었다. 이번엔 wrapper에도
+  `w-full max-w-[90px]`를 명시해 폭 결정 체인이 끊기지 않게 했다.
+- `max-w-[90px]`를 유지해 기존 90px보다 커지지 않도록 했다(카드가 넓어져도 썸네일이
+  과도하게 커지는 것을 방지).
 
 ### 잔여 이슈
--
+- 이 워크트리에는 Supabase 접속용 `.env.local`이 없어 `/inventory`·드랍 바텀시트·장착 선택
+  시트 실제 화면에서의 최종 육안 확인은 수행하지 못했다. staging 병합 후 `jam-stage.vercel.app`
+  또는 `/api/dev-login`이 동작하는 로컬 환경에서 세 화면 모두 재확인 필요.
