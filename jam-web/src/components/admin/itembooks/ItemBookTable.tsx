@@ -201,12 +201,9 @@ export function ItemBookTable({
   const selectedIds = selectedRows.map((r) => r.id)
 
   // 일괄 활성화 — 단건 활성화(ItemBookActiveToggleButton)가 확인 없이 즉시 반영하는 것과
-  // 동일하게 확인 다이얼로그 없이 즉시 실행한다(20260908_2129). **소속 아이템배지는 연쇄
-  // 활성화하지 않는다** — PATCH 라우트의 재활성화 경로가 의도적으로 배지를 건드리지 않기
-  // 때문이다(20260823_004 "재활성화 시 배지 자동 복구는 하지 않는다" 설계 결정: 컬렉션
-  // 비활성화로 인해 소프트 삭제된 배지와, 그 이전에 개별 사유로 이미 삭제돼 있던 배지를
-  // 구분할 방법이 없어 잘못 되살릴 위험이 있다). 되살릴 배지가 있다면 배지 목록에서
-  // 개별적으로 활성화한다.
+  // 동일하게 확인 다이얼로그 없이 즉시 실행한다(20260908_2129). 컬렉션의 활성/비활성은 소속
+  // 아이템배지의 활성 여부와 완전히 독립적이다(티켓 20260914_1729 — 연쇄 활성화/비활성화
+  // 폐지). 배지 활성 여부는 배지 목록에서 개별적으로 관리한다.
   const handleBulkActivate = async () => {
     setBulkLoading(true)
     try {
@@ -230,8 +227,8 @@ export function ItemBookTable({
   }
 
   // 일괄 비활성화 전용 API는 없다 — 기존 단건 PATCH(is_active 토글)를 선택된 행 전체에 순차
-  // 호출한다(20260826_014 배지 파일럿과 동일 방식). 컬렉션 비활성화는 소속 아이템배지를
-  // 연쇄 소프트삭제한다(`cascadeDeactivateItemBookBadges`, PATCH 라우트가 처리).
+  // 호출한다(20260826_014 배지 파일럿과 동일 방식). 컬렉션 비활성화는 유저에게 컬렉션 자체를
+  // 더 이상 노출하지 않을 뿐, 소속 아이템배지는 건드리지 않는다(티켓 20260914_1729).
   const handleBulkDeactivate = async () => {
     setBulkLoading(true)
     try {
@@ -315,8 +312,8 @@ export function ItemBookTable({
           <AlertDialogHeader>
             <AlertDialogTitle>컬렉션 일괄 비활성화</AlertDialogTitle>
             <AlertDialogDescription>
-              선택한 {selectedIds.length}개 컬렉션을 비활성화하면 소속 아이템배지도 함께 비활성화되고,
-              이미 획득한 유저에게서 회수됩니다. 계속하시겠습니까?
+              선택한 {selectedIds.length}개 컬렉션을 비활성화하면 유저에게 더 이상 노출되지 않습니다.
+              소속 아이템배지에는 영향을 주지 않습니다. 계속하시겠습니까?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -192,7 +192,14 @@ async function fetchDropStructure(
   const now = new Date().toISOString()
 
   const [{ data: booksRaw }, { data: inventoryRaw }, { data: tribesRaw }] = await Promise.all([
-    supabase.from('item_books').select('id, tribe_id').eq('is_active', true).eq('drop_excluded', false),
+    // 컬렉션 노출 판정 = is_active && 노출 기간 내(마이그레이션 171, 티켓 20260914_1729).
+    supabase
+      .from('item_books')
+      .select('id, tribe_id')
+      .eq('is_active', true)
+      .eq('drop_excluded', false)
+      .or(`valid_from.is.null,valid_from.lte.${now}`)
+      .or(`valid_until.is.null,valid_until.gte.${now}`),
     supabase.from('inventory').select('id, used_slots, max_slots').eq('user_id', userId).single(),
     supabase.from('tribes').select('id, name'),
   ])
@@ -203,10 +210,11 @@ async function fetchDropStructure(
   for (const b of books) {
     if (b.tribe_id) tribeOfBook.set(b.id, b.tribe_id)
   }
-  // 위 item_books 조회가 is_active=true·drop_excluded=false로 이미 걸렀으므로, 이 목록으로
-  // 조회하는 배지(badgeIdsOfBook 포함)도 자연히 드랍 제외 컬렉션을 제외한다. is_active=false
-  // 컬렉션이 기존에도 완성률 계산(badgeIdsOfBook)에서 빠졌던 것과 동일한 동작 범위다 — 이
-  // drop-engine 모듈 밖의 별도 완성 보상 판정(아이템북 완성 시 잼 포인트 지급)에는 영향 없음.
+  // 위 item_books 조회가 is_active=true·drop_excluded=false·노출 기간 내로 이미 걸렀으므로,
+  // 이 목록으로 조회하는 배지(badgeIdsOfBook 포함)도 자연히 드랍 제외/비노출 컬렉션을
+  // 제외한다. 비노출 컬렉션이 기존에도 완성률 계산(badgeIdsOfBook)에서 빠졌던 것과 동일한
+  // 동작 범위다 — 이 drop-engine 모듈 밖의 별도 완성 보상 판정(아이템북 완성 시 잼 포인트
+  // 지급)에는 영향 없음.
   const activeBookIds = [...tribeOfBook.keys()]
 
   // PostgREST 기본 max-rows(보통 1,000행) 제한을 넘는 테이블을 안전하게 전체 조회.

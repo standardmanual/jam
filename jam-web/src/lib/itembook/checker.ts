@@ -32,11 +32,14 @@ export interface ItemBookCompletionResult {
 export async function checkItemBookCompletion(userId: string): Promise<ItemBookCompletionResult> {
   const supabase = createServiceClient()
 
-  // 1. 활성 item_books 전체 조회
+  // 1. 활성 item_books 전체 조회 — is_active && 노출 기간 내(마이그레이션 171, 티켓 20260914_1729).
+  const now = new Date().toISOString()
   const { data: itemBooksRaw, error: itemBooksError } = await supabase
     .from('item_books')
     .select('*')
     .eq('is_active', true)
+    .or(`valid_from.is.null,valid_from.lte.${now}`)
+    .or(`valid_until.is.null,valid_until.gte.${now}`)
 
   const itemBooks = itemBooksRaw as ItemBookRow[] | null
 
