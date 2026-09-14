@@ -12,6 +12,7 @@ import {
   findUnpairedConditionError,
   findRepeatRestConflictError,
   findUsageMetricRepeatConflictError,
+  findUsageMetricOtherMeasurableConflictError,
   findCrossGateShapeError,
   findRarityLevelError,
   findConditionShapeSaveError,
@@ -235,6 +236,57 @@ describe('⑥ 사용량 지표(팔로워·팔로잉·일일동기화) + 회차 �
     const error = findConditionShapeSaveError(badge, cond)
     expect(error).not.toBeNull()
     expect(error).toContain('daily_sync_count')
+  })
+})
+
+describe('⑦ 사용량 지표 + 다른 measurable 조합은 저장에서 거부된다 (티켓 20260910_1804)', () => {
+  // 배경: 메인 엔진의 fail-closed 분기는 measurable 필드가 하나도 없을 때만 발동한다.
+  // distance_km 같은 다른 measurable 필드가 섞이면 메인 엔진은 follower_count를 전혀 보지
+  // 않고 distance_km만으로 발급을 진행할 수 있고, usageBadges.ts는 반대로 distance_km을
+  // 전혀 보지 않고 follower_count만으로 후보에 포함시킨다 — 두 경로 중 먼저 조건을 채운
+  // 쪽에서 조용히 단독 발급되어 AND 조건이 깨진다.
+  it('follower_count + distance_km은 막는다', () => {
+    const cond = { follower_count: 100, distance_km: 5 } as unknown as BadgeCondition
+    const error = findUsageMetricOtherMeasurableConflictError(cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('follower_count')
+    expect(error).toContain('distance_km')
+  })
+
+  it('following_count + total_count는 막는다', () => {
+    const cond = { following_count: 50, total_count: 10 } as unknown as BadgeCondition
+    expect(findUsageMetricOtherMeasurableConflictError(cond)).not.toBeNull()
+  })
+
+  it('daily_sync_count + duration_minutes는 막는다', () => {
+    const cond = { daily_sync_count: 7, duration_minutes: 30 } as unknown as BadgeCondition
+    expect(findUsageMetricOtherMeasurableConflictError(cond)).not.toBeNull()
+  })
+
+  it('사용량 지표만 있으면 통과한다 (정상 케이스)', () => {
+    expect(findUsageMetricOtherMeasurableConflictError({ follower_count: 100 } as unknown as BadgeCondition)).toBeNull()
+  })
+
+  it('회귀: 사용량 지표가 아닌 기존 활동 기반 조합은 영향받지 않는다', () => {
+    expect(findUsageMetricOtherMeasurableConflictError({ distance_km: 100, total_count: 10 })).toBeNull()
+  })
+
+  it('repeat_count와의 조합은 findUsageMetricRepeatConflictError가 전담하므로 여기서는 통과한다', () => {
+    // repeat_count는 measurable이 아니라(role: filter 성격) 여기 검사 대상이 아니다 — 중복 에러 방지
+    expect(
+      findUsageMetricOtherMeasurableConflictError({ follower_count: 100, repeat_count: 3 } as unknown as BadgeCondition)
+    ).toBeNull()
+  })
+
+  it('조건이 없으면 통과한다', () => {
+    expect(findUsageMetricOtherMeasurableConflictError(null)).toBeNull()
+  })
+
+  it('findConditionShapeSaveError 진입점에서도 동일하게 거부된다', () => {
+    const cond = { follower_count: 100, distance_km: 5 } as unknown as BadgeCondition
+    const error = findConditionShapeSaveError(badge, cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('distance_km')
   })
 })
 

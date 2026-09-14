@@ -22,9 +22,14 @@
  *
  * | 경로 | 판정 |
  * |---|---|
- * | 사용량 지표 + 회차 조합 | `findUsageMetricRepeatConflictError` (이 파일, 신규) |
+ * | 사용량 지표 + 회차 조합 | `findUsageMetricRepeatConflictError` (이 파일) |
+ * | 사용량 지표 + 다른 measurable 조합 | `findUsageMetricOtherMeasurableConflictError` (이 파일, 신규, 티켓 20260910_1804) |
  */
-import { findBlockingConditionKeys, getConditionField } from '@/lib/badge-engine/conditionRegistry'
+import {
+  findBlockingConditionKeys,
+  getConditionField,
+  MEASURABLE_CONDITION_KEYS,
+} from '@/lib/badge-engine/conditionRegistry'
 import { restConditionKeysIn } from '@/lib/badge-engine/activityFilters'
 // 휴식 키가 정확히 1개면 회차와 함께 저장할 수 있다(티켓 20260906_2056, §B-10 재설계) —
 // 엔진(index.ts)의 회차 차단 분기·진행 계산(badgeProgress.ts)과 같은 판정을 봐야
@@ -113,6 +118,38 @@ export function findUsageMetricRepeatConflictError(condition: BadgeCondition | n
 }
 
 /**
+ * 사용량 지표(팔로워·팔로잉·일일동기화·연속동기화일수)와 **다른** measurable 필드(예:
+ * `distance_km`)의 조합을 막는다(티켓 20260910_1804).
+ *
+ * 메인 엔진(`badge-engine/index.ts`)의 fail-closed 분기는 "measurable 필드가 하나도 없을 때"만
+ * 발동한다. `distance_km` 같은 다른 measurable 필드가 하나라도 섞이면 이 분기를 통과해,
+ * `follower_count` 값은 전혀 보지 않은 채 그 필드만으로 발급이 진행될 수 있다. 동시에
+ * `usageBadges.ts`의 `evaluateUsageBadges()`도 `distance_km`을 전혀 보지 않고 사용량 지표
+ * 조건만으로 같은 배지를 후보에 포함시킨다 — 두 경로 중 먼저 조건을 채운 쪽이 조용히 단독
+ * 발급되어 `CONDITION_JSON_SPEC.md` §4의 "모든 필드는 AND" 원칙이 깨진다.
+ *
+ * `repeat_count`와의 조합은 `findUsageMetricRepeatConflictError`가 이미 막으므로 여기서는
+ * 제외한다(같은 조합에 두 에러가 동시에 뜨지 않게).
+ */
+export function findUsageMetricOtherMeasurableConflictError(condition: BadgeCondition | null): string | null {
+  if (!condition) return null
+  const present = Object.keys(condition).filter((key) =>
+    (USAGE_METRIC_CONDITION_KEYS as readonly string[]).includes(key)
+  )
+  if (present.length === 0) return null
+  const otherMeasurable = Object.keys(condition).filter(
+    (key) =>
+      key !== 'repeat_count' &&
+      !(USAGE_METRIC_CONDITION_KEYS as readonly string[]).includes(key) &&
+      (MEASURABLE_CONDITION_KEYS as readonly string[]).includes(key)
+  )
+  if (otherMeasurable.length === 0) return null
+  const usageLabels = present.map((key) => `${getConditionField(key)?.label ?? key}(${key})`)
+  const otherLabels = otherMeasurable.map((key) => `${getConditionField(key)?.label ?? key}(${key})`)
+  return `저장할 수 없습니다. 서비스 사용량 지표(${usageLabels.join(', ')})는 다른 활동 조건(${otherLabels.join(', ')})과 함께 쓸 수 없습니다. 사용량 지표만 남기거나 다른 조건만 남겨주세요.`
+}
+
+/**
  * 등급형/레벨형 배타 규칙 (티켓 20260905_0032 A-3).
  *
  * DB가 `CHECK ((rarity IS NULL) = (level IS NOT NULL))`로 강제하지만(마이그레이션 130),
@@ -157,6 +194,7 @@ export function findConditionShapeSaveError(
     findUnpairedConditionError(condition) ??
     findRepeatRestConflictError(condition) ??
     findUsageMetricRepeatConflictError(condition) ??
+    findUsageMetricOtherMeasurableConflictError(condition) ??
     findCrossGateShapeError(badge, condition)
   )
 }
