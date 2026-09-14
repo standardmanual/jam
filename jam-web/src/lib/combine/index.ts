@@ -183,6 +183,17 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
       if (granted) resultBadges.push(granted)
     }
 
+    // 20260910_1515: reward_badge_ids가 비어있지 않은데 실제 지급이 전부 비었으면(보상 배지가
+    // 전부 소프트 삭제됐거나 슬롯 부족 등으로 skip됨) 재료만 소각되고 빈손이 되는 사고다.
+    // 운영이 탐지할 수 있게 레시피 id·의도했던 배지 id를 로그로 남긴다.
+    if ((matched.reward_badge_ids ?? []).length > 0 && resultBadges.length === 0) {
+      console.error('[combineItems] 레시피 보상 배지가 전부 지급되지 않음 — 재료만 소각된 빈손 성공 발생:', {
+        recipeId: matched.id,
+        rewardBadgeIds: matched.reward_badge_ids,
+        userId,
+      })
+    }
+
     let pointsAwarded = 0
     if (matched.reward_points > 0) {
       const ok = await awardPoints(userId, matched.reward_points, 'combine_recipe_reward')
