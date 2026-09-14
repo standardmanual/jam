@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRow, ItemBookRow } from '@/types/database'
@@ -65,7 +66,31 @@ export default async function DropExclusionsPage({ searchParams }: Props) {
       .order('name', { ascending: true })
       .range(from, from + PAGE_SIZE - 1)
     badges = (badgesRaw ?? []) as ExclusionBadgeRow[]
-    totalBadges = count ?? 0
+
+    if (count === null && page > 1) {
+      // .range()의 offset이 실제 행 수를 초과하면 PostgREST가 416을 반환하며 count가
+      // null로 돌아온다(count ?? 0 처리 시 실제로는 데이터가 있는데도 "총 0개"로 오표시됨).
+      // 실제 총 건수를 별도로 다시 조회해 정확한 페이지 수를 계산한다.
+      const { count: recount } = await supabase
+        .from('badges')
+        .select('id', { count: 'exact', head: true })
+        .eq('type', 'item')
+        .is('deleted_at', null)
+        .in('item_book_id', visibleItemBookIds)
+      totalBadges = recount ?? 0
+      const totalPages = Math.max(1, Math.ceil(totalBadges / PAGE_SIZE))
+      if (page > totalPages) {
+        const redirectParams = new URLSearchParams(
+          Object.entries(params).filter(
+            (entry): entry is [string, string] => entry[0] !== 'page' && entry[1] !== undefined,
+          ),
+        )
+        const query = redirectParams.toString()
+        redirect(`/admin/drop-policy/exclusions${query ? `?${query}` : ''}`)
+      }
+    } else {
+      totalBadges = count ?? 0
+    }
   }
   const totalBadgePages = Math.max(1, Math.ceil(totalBadges / PAGE_SIZE))
 
