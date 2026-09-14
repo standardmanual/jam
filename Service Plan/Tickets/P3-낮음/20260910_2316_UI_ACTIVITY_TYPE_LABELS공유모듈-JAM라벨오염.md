@@ -2,7 +2,8 @@
 id: 20260910_2316
 category: UI
 priority: P3
-status: OPEN
+status: CLOSED
+closed: 2026-09-14
 created: 2026-09-10
 ---
 

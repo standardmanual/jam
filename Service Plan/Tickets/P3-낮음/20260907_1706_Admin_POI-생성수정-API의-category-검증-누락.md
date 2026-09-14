@@ -2,9 +2,9 @@
 id: 20260907_1706
 category: Admin
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-07
-closed:
+closed: 2026-09-14
 ---
 
 # [Admin] POI 생성/전체수정 API가 category를 존재 여부로 검증하지 않음

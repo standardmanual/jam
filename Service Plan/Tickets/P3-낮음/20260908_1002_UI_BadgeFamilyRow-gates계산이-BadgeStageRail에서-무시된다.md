@@ -2,9 +2,9 @@
 id: 20260908_1002
 category: UI
 priority: P3
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-09-08
-closed:
+closed: 2026-09-14
 ---
 
 # [UI] `BadgeFamilyRow.tsx`의 `gates` 계산이 이제 `BadgeStageRail`에서 무시된다
