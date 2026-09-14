@@ -1,9 +1,9 @@
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js
 new file mode 100644
-index 0000000..2d39a5b
+index 0000000..800a0bb
 --- /dev/null
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js
-@@ -0,0 +1,288 @@
+@@ -0,0 +1,300 @@
 +import { float, texture as tslTexture, uv, vec2, vec4 } from "three/tsl";
 +import * as THREE from "three/webgpu";
 +import {
@@ -168,17 +168,34 @@ index 0000000..2d39a5b
 +    render(renderer, inputTexture, outputTarget, time, delta) {
 +        if (this.shaderMount) {
 +            const sourceCanvas = this.shaderMount.canvasElement;
-+            if (!this.mirrorCanvas) {
-+                // WebGPURenderer가 WebGL 컨텍스트를 가진 canvas를 THREE.CanvasTexture
-+                // 소스로 직접 받았을 때 텍스처가 갱신되지 않는 현상을 실측으로 확인했다
-+                // (readPixels로는 WebGL 쪽 렌더링이 정상임을 확인했지만 WebGPU 합성
-+                // 결과는 항상 빈 화면이었다). text-pass.js가 이미 검증한 2D 캔버스
-+                // 브릿지 패턴을 그대로 재사용해 우회한다 — 매 프레임 WebGL 캔버스를
-+                // 일반 2D 캔버스로 복사한 뒤 그 2D 캔버스를 텍스처 소스로 쓴다.
-+                this.mirrorCanvas = document.createElement("canvas");
++            // WebGPURenderer가 WebGL 컨텍스트를 가진 canvas를 THREE.CanvasTexture
++            // 소스로 직접 받았을 때 텍스처가 갱신되지 않는 현상을 실측으로 확인했다
++            // (readPixels로는 WebGL 쪽 렌더링이 정상임을 확인했지만 WebGPU 합성
++            // 결과는 항상 빈 화면이었다). text-pass.js가 이미 검증한 2D 캔버스
++            // 브릿지 패턴을 그대로 재사용해 우회한다 — 매 프레임 WebGL 캔버스를
++            // 일반 2D 캔버스로 복사한 뒤 그 2D 캔버스를 텍스처 소스로 쓴다.
++            const sizeChanged = !this.mirrorCanvas ||
++                this.mirrorCanvas.width !== sourceCanvas.width ||
++                this.mirrorCanvas.height !== sourceCanvas.height;
++            if (sizeChanged) {
++                // 티켓 20260914_0953 — 실측 근본 원인: mountShaderIfReady()가 ShaderMount를
++                // 생성한 직후(ResizeObserver 첫 콜백이 아직 실행되기 전) sourceCanvas는
++                // 브라우저 <canvas> 기본 크기(300x150)다. 그런데 이 pass의 render()가 같은
++                // 프레임(파이프라인의 syncLayers() 직후 render() 호출)에서 바로 실행되므로,
++                // 이 시점에 THREE.CanvasTexture를 300x150 크기로 만들어버리는 경우가 있다.
++                // 이후 sourceCanvas가 ResizeObserver에 의해 실제 크기(예: 1280x1280)로
++                // 정정돼도, 기존 텍스처 객체에 needsUpdate=true만 주는 것으로는 WebGPU
++                // 백엔드가 GPU 텍스처 자체를 새 크기로 재할당하지 않는다(실측 확인 — 이
++                // 상태에서는 패턴의 한쪽 귀퉁이만 전체 프레임에 확대되어 나타난다). 크기가
++                // 바뀔 때마다 텍스처 객체 자체를 새로 만들어 GPU 텍스처도 항상 최신 소스
++                // 크기로 재할당되도록 한다.
++                if (!this.mirrorCanvas) {
++                    this.mirrorCanvas = document.createElement("canvas");
++                    this.mirrorContext = this.mirrorCanvas.getContext("2d");
++                }
 +                this.mirrorCanvas.width = sourceCanvas.width;
 +                this.mirrorCanvas.height = sourceCanvas.height;
-+                this.mirrorContext = this.mirrorCanvas.getContext("2d");
++                this.liquidTexture?.dispose();
 +                this.liquidTexture = new THREE.CanvasTexture(this.mirrorCanvas);
 +                this.liquidTexture.flipY = false;
 +                this.liquidTexture.generateMipmaps = false;
@@ -187,11 +204,6 @@ index 0000000..2d39a5b
 +                this.liquidTexture.wrapS = THREE.ClampToEdgeWrapping;
 +                this.liquidTexture.wrapT = THREE.ClampToEdgeWrapping;
 +                this.liquidTexture.colorSpace = THREE.SRGBColorSpace;
-+                this.textureNode.value = this.liquidTexture;
-+            }
-+            if (this.mirrorCanvas.width !== sourceCanvas.width || this.mirrorCanvas.height !== sourceCanvas.height) {
-+                this.mirrorCanvas.width = sourceCanvas.width;
-+                this.mirrorCanvas.height = sourceCanvas.height;
 +            }
 +            this.mirrorContext.drawImage(sourceCanvas, 0, 0);
 +            this.liquidTexture.needsUpdate = true;
