@@ -85,10 +85,6 @@ export const ko = {
     emptyItembooksOther: '{name}님이 아직 발견한 컬렉션이 없어요',
     emptyFollowersOther: EMPTY_FOLLOWERS_OTHER,
     emptyFollowingOther: EMPTY_FOLLOWING_OTHER,
-
-    // 아이템북 카드
-    itembookCompleted: '완성',
-    itembookProgress: '{done}/{total}',
   },
 
   /** 프로필 통계바 탭 */
@@ -107,7 +103,6 @@ export const ko = {
 
     /** 팔로잉 통합 활동 피드(/feed, 티켓 20260830_2030) — 투데이 홈 "친구 활동" 셀의 목적지 */
     friendFeedTitle: '친구 활동',
-    friendFeedEmptyTitle: '아직 친구 활동이 없어요',
     friendFeedEmptyBody: '팔로우한 친구가 활동하면 여기에 모여요',
 
     // 필터 탭
@@ -296,29 +291,21 @@ export const ko = {
      */
     earnCountAria: '{count}번 획득했어요',
     tabActivity: '액티비티',
-    tabItem: '아이템',
     tabCheckin: '체크인',
     tabItembook: '컬렉션',
 
     emptyActivityTitle: '아직 획득한 배지가 없어요',
     emptyActivityBody: 'Strava를 동기화하고 활동하면 배지를 획득할 수 있어요',
-    emptyItemTitle: '아직 아이템 배지가 없어요',
-    emptyItemBody: '활동을 완료하면 확률로 아이템 배지가 드랍돼요',
     emptyCheckinTitle: '아직 획득한 체크인 배지가 없어요',
     emptyCheckinBody: '산, 지하철역 같은 지점을 지나는 활동이 기록되면 자동으로 획득돼요',
     emptyItembookTitle: '아직 컬렉션이 없어요',
     emptyItembookBody: '아이템배지를 획득하면 컬렉션이 나타납니다',
-
-    expiringSoon: '곧 만료',
-    itembookCompleted: '완성',
 
     // 상세 페이지
     pointRewardEarned: '이 배지는 {points} 포인트를 함께 드렸어요',
     pointRewardPending: '이 배지를 획득하면 {points} 포인트를 함께 드려요',
 
     prerequisiteTitle: '선행 배지',
-    prerequisiteBody: '아래 배지 중 하나를 먼저 획득해야 이 배지를 받을 수 있어요.',
-    prerequisiteOwned: '보유',
 
     conditionTitle: '획득 조건',
     /** 체크인 배지 획득 조건 — 이 한 문장이 유일한 정본이다(20260826_004).
@@ -327,7 +314,6 @@ export const ko = {
 
     earnHistoryTitle: '획득 이력',
     earnHistoryCount: '총 {count}회',
-    earnHistoryUnknownPlace: '알 수 없는 지점',
 
     earnInfoTitle: '획득 정보',
     earnedAt: '획득 일시',
@@ -338,7 +324,6 @@ export const ko = {
     viewOnStrava: 'Strava에서 보기',
 
     connectedLocationTitle: '연결 위치',
-    viewOnMap: '{name} 지도에서 보기',
     viewOnMapButton: '지도에서 보기',
 
     physicalPatchButton: '실물 패치 보기',
@@ -366,11 +351,7 @@ export const ko = {
 
     checkinSafetyNotice: '이 배지는 표시된 위치 반경 {radius}m 안을 지나기만 해도 체크인돼요. 위험한 곳까지 굳이 들어갈 필요 없어요. 접근이 까다로운 곳이라면 알려주세요. 도와드릴게요.',
 
-    earnedTag: '획득',
-    notEarnedTag: '미획득',
-    filterActivityLabel: '액티비티',
     filterActivityAll: '전체',
-    filterRarityLabel: '등급',
     filterRarityAll: '전체',
     filterCheckinCategoryAll: '전체',
     sortCheckinLatest: '최신순',
@@ -389,10 +370,8 @@ export const ko = {
 
   /** 인벤토리 목록/상세 */
   inventory: {
-    eyebrow: '내 아이템',
     title: '인벤토리',
     combineButton: '믹스하기',
-    slotsRemaining: '{count}개 슬롯 남음',
     slotsDetail: '{used} / {max} 슬롯 사용중 · {remaining}개 남음',
     emptyTitle: '아직 아이템이 없어요',
     emptyBody: '활동을 완료하면 아이템 배지가 드랍돼요',
@@ -403,23 +382,16 @@ export const ko = {
       '인벤토리 슬롯이 가득 찼어요. 이 상태에서는 활동을 동기화해도 새 아이템 배지가 드랍되지 않아요. 드랍하기를 눌러 슬롯을 비워보세요.',
     fullNoticeCta: '드랍하기',
 
-    backToInventory: '인벤토리',
-    infoSectionTitle: '아이템 정보',
-    descSectionTitle: '이 아이템 정보',
-    serialNumber: '일련번호',
     obtainMethod: '획득 방법',
     obtainedAt: '획득일',
     expiresAt: '만료일',
     expiresNone: '없음',
     expiringSuffix: ' 만료',
     rarity: '희귀도',
-    noDescription: '설명이 없어요',
-    belongsToItembook: '속한 컬렉션',
     expiringSoonTitle: '만료 임박',
     expiringSoonBody: '7일 이내에 이 아이템이 만료돼요',
 
     historyTitle: '획득 이력',
-    historyLoading: '불러오는 중',
     historyError: '이력을 불러올 수 없어요',
     historyEmpty: '이력이 없어요',
     historyEmptyBody: '아직 이 아이템에 대한 기록이 없어요',
@@ -430,8 +402,6 @@ export const ko = {
     obtainBySystem: '시스템 지급',
     eventDropped: '지점 드랍',
     eventPickedUp: '지점 픽업',
-
-    backToInventoryLong: '인벤토리로 돌아가기',
   },
 
   /** 드랍/픽업 (지도) */
@@ -459,8 +429,6 @@ export const ko = {
     noNearbyPlaces: '주변 {m}m에 드랍/픽업할 수 있는 지점이 없어요',
     moveCloser: '지점에서 {m}m 이내로 가면 드랍/픽업할 수 있어요',
     checking: '확인 중',
-    pickupItemsTitle: '픽업할 아이템',
-    thisPlaceTitle: '이 지점',
     droppedBy: '{name}이(가) 드랍',
     anonymous: '익명',
     // 20260829_2101: 유저 드랍은 기한·회수 액션 없이 픽업될 때까지 무기한 대기하는 정책이
@@ -534,37 +502,22 @@ export const ko = {
     pickupLocationUnverified: '위치 정보를 확인할 수 없어요. 잠시 후 다시 시도해 주세요',
     // 좌표 없이 요청이 나간 경우 — 드랍·픽업 양쪽에서 함께 쓴다.
     locationMissing: '위치를 확인하지 못했어요. 위치 권한을 허용하고 다시 시도해 주세요',
-    droppedAtPlace: '이 지점에 드랍됨',
-    droppedAtPlaceBody: '{place}에 놓여 있는 아이템이에요',
     back: '뒤로',
   },
 
   /** 미션 목록/상세/현황 */
   missions: {
-    eyebrow: '단기 목표',
     title: '미션',
     tabOngoing: '진행중',
     tabJoined: '참가중',
     // 20260825_028: 상시 미션은 종료일이 없어 '종료' 조건에 영원히 안 걸린다 —
     // 완료한 미션의 성취 이력을 볼 수 있도록 탭 범위를 확장 (완료 + 참여했던 종료 미션)
     tabEnded: '종료',
-    filterButton: '필터',
-    filterReset: '필터 초기화',
-    sortLabel: '정렬',
     sortNewest: '최신순',
     sortOldest: '오래된순',
     sortEndingSoon: '종료임박순',
-    activityTypeLabel: '활동 종류',
     activityTypeAll: '전체',
     missionTypeLabel: '미션 유형',
-    missionTypeAll: '전체',
-    missionTypeDistance: '거리',
-    missionTypeActivityCount: '횟수',
-    missionTypeCheckin: '체크인',
-    missionTypeItemCollect: '아이템 픽업',
-    missionTypeStreakDays: '연속 일수',
-    missionTypeDurationMinutes: '단일 활동 시간',
-    missionTypeElevationGainM: '단일 활동 고도',
     emptyFiltered: '조건에 맞는 미션이 없어요',
     emptyFilteredBody: '다른 조건으로 다시 찾아보세요',
     emptyOngoing: '진행 중인 미션이 없어요',
@@ -590,12 +543,10 @@ export const ko = {
     joinErrorLockedGeneric: '아직 참가할 수 없는 미션이에요. 앞 단계 배지를 먼저 획득하면 열려요.',
     timeLeftSuffix: '남음',
     limitedSlots: '선착순 {count}명',
-    rewardLabel: '보상',
     rewardNone: '없음',
     rewardBadgeCount: '배지 {count}개',
     rewardPoints: '{points} 포인트',
 
-    backToList: '뒤로',
     backToDetail: '미션',
     goalDistance: '달성 거리',
     goalActivityCount: '활동 횟수',
@@ -610,29 +561,23 @@ export const ko = {
     myProgressTitle: '나의 진행 상황',
     achieved: '달성',
     notAchieved: '미달성',
-    progressDone: '달성 완료',
     progressPct: '{pct}% 달성',
     rewardSectionTitle: '보상',
     /** 20260827_014 — 「JAM 포인트」·「1200P」 표기는 UX 가이드 §3 Bad. 「1,200 포인트」로 통일 */
     rewardPointsLine: '{points} 포인트',
     statusViewButton: '미션 상황 보기',
     joinConfirmBody: '한번 참가하면 취소할 수 없어요. 참가할까요?',
-    joinConfirming: '처리 중',
     joinConfirmButton: '참가 확정',
-    joinButton: '미션 참가하기',
     joinNote: '참가 후에는 취소할 수 없어요',
     joinSuccess: '미션에 참가했어요',
     joinError: '오류가 발생했어요',
     joinNetworkError: '네트워크 오류가 발생했어요. 다시 시도해주세요',
-    completedBanner: '달성 완료!',
 
-    statusEyebrow: '미션 상황',
     statusAchievementLabel: '달성 현황',
     statusIndividualLabel: '나의 현황',
     statusParticipants: '참가자 {count}명',
     statusAllRanks: '전체 랭킹',
     statusLoadError: '불러오지 못했어요',
-    statusMeRanking: '— 내 순위 —',
     statusMeAchievement: '— 나 —',
     statusNoParticipants: '아직 참가자가 없어요',
     statusNoParticipantsBody: '가장 먼저 도전해보세요',
@@ -665,7 +610,6 @@ export const ko = {
     errorFormat: '영문, 숫자, ., _ 만 사용할 수 있어요',
     errorDot: '점(.)으로 시작하거나 끝날 수 없어요',
     errorDoubleDot: '점(.)을 연속으로 사용할 수 없어요',
-    nameEmptyError: '이름을 입력해 주세요',
     available: '사용 가능한 아이디예요',
     taken: '이미 사용 중인 아이디예요',
     genericError: '오류가 발생했어요. 다시 시도해 주세요.',
@@ -748,7 +692,6 @@ export const ko = {
 
   /** 팔로워/팔로잉 목록 */
   social: {
-    followersCount: '팔로워 {count}명',
     followingCount: '팔로잉 {count}명',
     emptyFollowers: '팔로워가 없어요',
     emptyFollowersBody: '누군가 팔로우하면 여기에 표시돼요',
@@ -762,19 +705,12 @@ export const ko = {
 
   /** 아이템북 목록/상세 */
   itembooks: {
-    eyebrow: '컬렉션',
     title: '컬렉션',
     subtitle: '아이템 배지를 모아 컬렉션을 완성해보세요',
     emptyTitle: '아직 발견한 컬렉션이 없어요.',
     emptyBody: '아이템 배지를 모아봐요!',
-    userEyebrowPrefix: '님이 발견한 컬렉션',
     completed: '완성',
-    discoveredCount: '{discovered} / {total} 발견',
-    discoveredCountSimple: '{count}개 발견',
     backToDetail: '배지 상세',
-    backToList: '뒤로',
-    slotHint: '보유한 아이템 배지를 슬롯에 장착해 컬렉션을 완성해요',
-    slotsTitle: '아이템배지 슬롯',
     noBadgesTitle: '아직 이 컬렉션에 등록된 배지가 없어요.',
     noBadgesBody: '관리자가 배지를 등록하면 여기에 표시돼요',
     checkinSectionTitle: '체크인 배지',
@@ -783,7 +719,6 @@ export const ko = {
     checkinNotEarned: '미획득',
     completedTitle: '컬렉션 완성!',
     completedBody: '모든 아이템 배지를 슬롯에 장착했어요',
-    unknownBadge: '???',
     slotLoginRequired: '로그인이 필요해요.',
     slotFailed: '슬롯에 실패했어요.',
     unslotFailed: '슬롯 해제에 실패했어요.',
@@ -813,7 +748,6 @@ export const ko = {
      *  완전히 대체해 순수 해제 경로가 사라진 회귀)을 반영해 시트 안에 해제 경로를 되살린다. */
     swapSheetUnslotButton: '해제하기',
     processing: '처리 중',
-    ownedPrefix: '보유 ',
   },
 
   /**
@@ -987,7 +921,6 @@ export const ko = {
 
   /** 아이템 믹스 */
   combine: {
-    eyebrow: '아이템 믹스',
     title: '믹스',
     selectedCount: '선택한 아이템 ({count}/{max})',
     slotOnboarding: '인벤토리에서 아이템을 골라 믹스해 보세요',
