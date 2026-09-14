@@ -133,11 +133,15 @@ export default async function UserProfilePage({ params }: Props) {
         bookIdsForCount = bookIdsForCount.filter((id) => slottedBookIds.has(id))
       }
       if (bookIdsForCount.length > 0) {
+        // 컬렉션 노출 판정 = is_active && 노출 기간 내(마이그레이션 171, 티켓 20260914_1729).
+        const now = new Date().toISOString()
         const { count, error: countError } = await service
           .from('item_books')
           .select('*', { count: 'exact', head: true })
           .in('id', bookIdsForCount)
           .eq('is_active', true)
+          .or(`valid_from.is.null,valid_from.lte.${now}`)
+          .or(`valid_until.is.null,valid_until.gte.${now}`)
         if (countError) console.error('[[username]/page] item_books 카운트 조회 실패', countError)
         itemBookCount = count ?? 0
       }
