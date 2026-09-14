@@ -1,6 +1,7 @@
 /**
  * JAM! 공통 유틸리티
  */
+import { twMerge } from 'tailwind-merge'
 
 /**
  * 한국 지역 목록 (시/도)
@@ -110,10 +111,14 @@ export function getUserFriendlyError(error: unknown): string {
 }
 
 /**
- * cn — Tailwind 클래스 병합 헬퍼 (clsx 없이 간단 버전)
+ * cn — Tailwind 클래스 병합 헬퍼.
+ * tailwind-merge로 충돌하는 유틸리티 클래스(예: 기본 `h-10`과 호출부 `h-11`)는
+ * 뒤에 오는 값이 이기도록 정리한다. 단순 문자열 이어붙이기(join)였던 이전 구현은
+ * 충돌 클래스가 둘 다 남아 Tailwind 생성 순서에 따라 우연히 결과가 정해지는 문제가
+ * 있었다 (티켓 20260911_1019).
  */
 export function cn(...classes: (string | undefined | null | false)[]): string {
-  return classes.filter(Boolean).join(' ')
+  return twMerge(classes.filter(Boolean).join(' '))
 }
 
 /**
