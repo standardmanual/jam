@@ -162,9 +162,6 @@ export default function BadgeFamilyRow({
     href: `/badges/${stage.id}`,
     // 아직 도달하지 않은 눈금의 캡션 자리 — 상태 라벨('—') 대신 이 조건값을 적는다(§7).
     conditionText: stage.conditionText,
-    // 게이트마다 «이미 통과했는지»를 함께 넘긴다 — 없으면 미션을 이미 깬 상태에서도
-    // 자물쇠 2개가 같게 그려져 무엇이 남았는지 안 읽힌다.
-    gates: stage.gateGroups.map((g) => ({ kind: g.kind, met: g.fulfilled })),
   }))
 
   const nextStop = stops.find((s) => s.status !== 'earned')
