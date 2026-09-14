@@ -34,7 +34,10 @@ const KOREAN_WRITING_TYPES = ['copy', 'ui', 'content']
 const devResult = await agent(
   `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n요청: ${userRequest}\n` +
   `${reuseDecision ? `\nUI 재사용 판정(오케스트레이터 결정, 이대로 따를 것):\n${reuseDecision}\n` : ''}` +
-  `${retryReason ? `\n이전 게이트 리뷰 FAIL 사유 — 반드시 해결할 것:\n${retryReason}\n` : ''}` +
+  `${retryReason ? `\n이전 게이트 리뷰 FAIL 사유 — 반드시 해결할 것:\n${retryReason}\n` +
+    `재시도이므로 review 브랜치를 체크아웃하기 전에 직전 시도가 남긴 낡은 워크트리가 같은 ` +
+    `브랜치명을 점유하고 있지 않은지 먼저 확인하고(있으면 제거 후 진행) 작업하라(자세한 절차는 ` +
+    `프로필의 절대 규칙 5번 참고).\n` : ''}` +
   `${KOREAN_WRITING_TYPES.includes(workType) ? `\n신규·변경되는 사용자 노출 한국어 문구(UI 카피, 배지·미션·POI 설명, 알림·토스트 등)를 ` +
     `작성할 때는 .claude/output-styles/fluent-korean.md를 읽고 그 지침을 따라 작성하라.\n` : ''}` +
   `\n이 티켓을 읽고 구현을 진행하라.`,

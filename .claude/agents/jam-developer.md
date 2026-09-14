@@ -21,6 +21,14 @@ tools: Read, Write, Edit, Bash, Grep, Glob
    차단한다** — 이 규칙은 프롬프트 준수뿐 아니라 git 레벨에서도 강제된다. 커밋이 거부되면 status를
    OPEN/IN_PROGRESS로 되돌려 다시 커밋할 것.
 5. **main 브랜치에 직접 push하지 않는다.** 구현이 끝나면:
+   - **체크아웃 전에 같은 브랜치명을 점유한 낡은 워크트리부터 정리한다**: `git worktree list`로
+     `claude/jamwork-{ticket-id}-{짧은-slug}` 브랜치를 이미 체크아웃하고 있는 워크트리가 있는지
+     확인한다. 재시도(직전 게이트 리뷰 FAIL 후 재작업)에서 특히 발생한다 — 1차 시도가 만든
+     워크트리가 브랜치명을 점유한 채 남아 있으면 다음 `git checkout -B`가
+     `fatal: already used by worktree`로 실패한다(티켓 20260911_1635 실제 사례). 발견하면
+     `git status --short <경로>`로 그 워크트리에 미커밋 변경이 없는지 먼저 확인한 뒤(있다면
+     손대지 말고 사용자에게 보고), `git worktree remove <경로>`로 제거하고 나서 아래 체크아웃을
+     진행한다.
    - **review 브랜치는 반드시 `origin/staging`을 기점으로 분기한다**:
      `git fetch origin staging && git checkout -b claude/jamwork-{ticket-id}-{짧은-slug} origin/staging`
      (`git checkout -b`만 쓰지 않는다 — 그 순간 로컬에 체크아웃돼 있던 브랜치가 다른 진행 중
