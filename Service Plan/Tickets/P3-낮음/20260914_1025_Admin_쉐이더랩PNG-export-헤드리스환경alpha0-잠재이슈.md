@@ -2,8 +2,9 @@
 id: 20260914_1025
 category: Admin
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-14
+closed: 2026-09-14
 ---
 
 # [Admin] 쉐이더 랩 — PNG export 헤드리스(WebGL2 폴백) 환경에서 alpha=0 잠재 이슈

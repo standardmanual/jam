@@ -2,9 +2,9 @@
 id: 20260910_1502
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-10
-closed:
+closed: 2026-09-14
 ---
 
 # [Infra] pre-commit의 deleted_at 필터 검사가 테스트 스텁을 오탐한다

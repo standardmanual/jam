@@ -2,9 +2,9 @@
 id: 20260909_1031
 category: Service
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-09
-closed:
+closed: 2026-09-14
 ---
 
 # [Service] trail_running 활동은 교통수단 구간 감지 대상에서 빠져 있음
