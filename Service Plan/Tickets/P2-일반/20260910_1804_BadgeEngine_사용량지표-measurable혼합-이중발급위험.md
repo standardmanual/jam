@@ -52,16 +52,39 @@ closed:
 
 ### 구현 내용 요약
 
+1. **프로덕션 실태 조사** — 서비스 롤 키로 `badges` 테이블 전체(`condition_json`이 있는
+   636건)를 REST API로 직접 조회해, 사용량 지표 3종(`follower_count`/`following_count`/
+   `daily_sync_count`, `daily_sync_streak_days` 포함 4종 모두 확인)과 다른 measurable
+   필드가 함께 저장된 배지가 있는지 확인했다. **해당하는 배지는 0건** — 컨텐츠 정리는
+   불필요하다.
+2. **저장 시점 가드 추가** — `findConditionShapeSaveError` 체인(`badge-condition-guards.ts`)에
+   `findUsageMetricOtherMeasurableConflictError`를 새로 추가했다. 사용량 지표 4종
+   (`USAGE_METRIC_CONDITION_KEYS`, role: meta) 중 하나라도 있는 조건에 `repeat_count`를
+   제외한 다른 `role: 'measurable'` 필드(예: `distance_km`, `total_count`,
+   `duration_minutes`)가 섞여 있으면 저장을 거부한다.
+   - `repeat_count`는 `MEASURABLE_CONDITION_KEYS`에 포함돼 있지만, 그 조합은 이미
+     `findUsageMetricRepeatConflictError`(티켓 20260910_1719)가 전담하므로 이 가드에서는
+     명시적으로 제외했다(같은 조합에 두 에러가 겹쳐 뜨는 것을 방지).
+3. **회귀 테스트** — 신규 가드 단독 케이스(사용량 지표 × 3종 각각 + distance_km/
+   total_count/duration_minutes 조합, 정상 케이스, repeat_count 조합 제외 확인, null 조건)
+   와 `findConditionShapeSaveError` 진입점 통합 케이스를 추가했다.
+
 ### 변경된 파일
 ```
--
+jam-web/src/lib/admin/badge-condition-guards.ts
+jam-web/src/lib/admin/__tests__/badge-condition-guards.test.ts
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npx vitest run src/lib/admin/__tests__/badge-condition-guards.test.ts` — 44개 전체 통과
+- [x] `npm run lint` (jam-web 전체) — 0 errors, 14 warnings (모두 이번 변경과 무관한 기존 경고
+      — design-system stories/foundations의 미사용 변수·`<img>` 권고 등)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-- [ ] 어드민 에러 메시지를 추가한다면 UX Writing 가이드 검증 필요
+- [x] 새 에러 메시지("저장할 수 없습니다. 서비스 사용량 지표(...)는 다른 활동 조건(...)과
+      함께 쓸 수 없습니다...")는 기존 `findUsageMetricRepeatConflictError`·
+      `findRepeatRestConflictError` 등과 동일한 [현상]→[원인]→[해결책] 3단 구조·해요체를
+      그대로 따랐다.
 
 ### 배포 정보
 - 배포일:
@@ -69,6 +92,11 @@ closed:
 - 커밋:
 
 ### 주요 의사결정 / 핵심 메모
+- 프로덕션에 사용량 지표 + 다른 measurable 필드 혼합 조합이 실제로는 존재하지 않아, 이번
+  작업은 순수 예방 가드로 마무리했다. 컨텐츠 정리 별도 작업은 불필요.
+- 가드 위치는 티켓이 지정한 대로 `findConditionShapeSaveError` 체인
+  (`findUsageMetricRepeatConflictError` 바로 다음)에 추가해, 어드민 조건 폼(클라이언트)과
+  저장 API(`badge-validation.ts`) 양쪽이 같은 문자열로 거부하도록 했다.
 
 ### 잔여 이슈
 -
