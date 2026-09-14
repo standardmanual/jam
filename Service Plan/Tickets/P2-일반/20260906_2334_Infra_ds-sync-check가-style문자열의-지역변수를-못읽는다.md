@@ -2,9 +2,9 @@
 id: 20260906_2334
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-06
-closed:
+closed: 2026-09-14
 ---
 
 # [Infra] ds-sync-check가 `<style>` 문자열 안의 지역 CSS 변수를 못 읽어 오탐한다
@@ -62,9 +62,9 @@ jam-web/scripts/ds-sync-check.mjs
 - [x] `npm run ds:check` staging 기준선(오류 0) 유지 — 변경 전후 모두 `오류 0 · 경고 32 · 참고 8`
 
 ### 배포 정보
-- 배포일:
-- 환경:
-- 커밋:
+- 배포일: 2026-09-14 (staging 머지)
+- 환경: staging → production 예정 (`/jam-ship`으로 별도 승격)
+- 커밋: `7ecc1775`(머지 시점)
 
 ### 주요 의사결정 / 핵심 메모
 - lookbehind/lookahead 없이 "콜론 직후" 조건만으로 선언·참조를 구분할 수 있음을 확인했다.
