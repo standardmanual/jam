@@ -2,9 +2,9 @@
 id: 20260914_1145
 category: Admin
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-14
-closed:
+closed: 2026-09-14
 ---
 
 # [Admin] 드랍 제외 관리 화면 — 초과 page 파라미터 접근 시 count null로 "총 0개" 오표시
