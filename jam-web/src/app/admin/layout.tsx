@@ -5,6 +5,7 @@ import { AdminSidebar } from '@/components/admin/AdminSidebar'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { AdminBodyThemeFix } from '@/components/admin/AdminBodyThemeFix'
 import { SidebarInset, SidebarProvider } from '@/components/admin/ui/sidebar'
+import { Toaster } from '@/components/admin/ui/sonner'
 import { hasAdminAccess } from '@/lib/admin/auth'
 
 // 어드민 전용 서체 — Pretendard (globals.css 최상단에 CDN import로 전역 로드됨,
@@ -64,6 +65,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           {children}
         </SidebarInset>
       </SidebarProvider>
+      <Toaster />
     </div>
   )
 }
