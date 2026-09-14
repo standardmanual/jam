@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { name, description, image_url, required_activity_badge_id, reward_badge_id, reward_points, tribe_id, story_text, is_active, background_color, background_shader_id, background_image_url, background_video_url, background_animation } = body
+  const { name, description, image_url, required_activity_badge_id, reward_badge_id, reward_points, tribe_id, story_text, is_active, valid_from, valid_until, background_color, background_shader_id, background_image_url, background_video_url, background_animation } = body
 
   if (!name || !description || !required_activity_badge_id) {
     return NextResponse.json({ error: '필수 필드가 누락되었습니다.' }, { status: 400 })
@@ -34,6 +34,9 @@ export async function POST(req: NextRequest) {
     tribe_id: tribe_id ?? null,
     story_text: story_text ?? null,
     is_active: is_active ?? true,
+    // 노출 기간(마이그레이션 171, 티켓 20260914_1729) — badges 테이블과 동일한 패턴.
+    valid_from: valid_from ?? null,
+    valid_until: valid_until ?? null,
     background_color: background_color ?? null,
     background_shader_id: background_shader_id ?? null,
     background_image_url: background_image_url ?? null,

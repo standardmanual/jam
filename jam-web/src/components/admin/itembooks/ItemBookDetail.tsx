@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/card'
 import { Badge } from '@/components/admin/ui/badge'
 import type { ItemBookRow } from '@/types/database'
+import { formatKstYmd } from '@/lib/admin/kst-format'
 
 interface ItemBookDetailProps {
   itemBook: ItemBookRow
@@ -64,6 +65,14 @@ export function ItemBookDetail({
                 ) : (
                   '없음'
                 )}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">노출 기간</p>
+              <p className="text-sm">
+                {itemBook.valid_from || itemBook.valid_until
+                  ? `${itemBook.valid_from ? formatKstYmd(itemBook.valid_from) : '처음부터'} ~ ${itemBook.valid_until ? formatKstYmd(itemBook.valid_until) : '종료일 없음'}`
+                  : '상시 노출'}
               </p>
             </div>
           </div>

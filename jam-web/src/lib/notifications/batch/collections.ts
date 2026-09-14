@@ -229,8 +229,15 @@ interface BookBadgeRow {
 export async function buildCollectionDrafts(ctx: BatchContext): Promise<StepOutput> {
   const { supabase } = ctx
 
+  // 컬렉션 노출 판정 = is_active && 노출 기간 내(마이그레이션 171, 티켓 20260914_1729).
+  const now = new Date().toISOString()
   const books = await fetchAllRows<CollectionBook>('item_books', 'id', () =>
-    supabase.from('item_books').select('id, name').eq('is_active', true)
+    supabase
+      .from('item_books')
+      .select('id, name')
+      .eq('is_active', true)
+      .or(`valid_from.is.null,valid_from.lte.${now}`)
+      .or(`valid_until.is.null,valid_until.gte.${now}`)
   )
   if (books.length === 0) return { drafts: [], scanned: 0 }
 
