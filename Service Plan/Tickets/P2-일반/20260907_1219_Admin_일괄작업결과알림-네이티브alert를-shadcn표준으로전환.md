@@ -2,8 +2,9 @@
 id: 20260907_1219
 category: Admin
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-07
+closed: 2026-09-14
 ---
 
 # [Admin] 어드민 일괄작업 결과 알림을 네이티브 `alert()`에서 shadcn 표준으로 전환
@@ -104,9 +105,9 @@ jam-web/src/components/admin/badges/BadgeActiveToggleButton.tsx
 - [x] 에러 메시지 3단계 구조 — 기존 문구 구조를 바꾸지 않았으므로 기존 상태 유지
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-09-14 (staging 머지)
+- 환경: staging → production 예정 (`/jam-ship`으로 별도 승격)
+- 커밋: `14b89d9e`(머지 시점)
 
 ### 주요 의사결정 / 핵심 메모
 - 서비스 본체 `ui/Toast.tsx`를 재사용하지 않고 어드민 전용으로 shadcn `sonner`를 새로 도입한

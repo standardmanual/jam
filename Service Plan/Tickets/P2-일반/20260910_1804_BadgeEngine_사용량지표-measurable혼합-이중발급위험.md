@@ -2,9 +2,9 @@
 id: 20260910_1804
 category: BadgeEngine
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-10
-closed:
+closed: 2026-09-14
 ---
 
 # [BadgeEngine] 사용량 지표(follower_count 등)를 다른 measurable 필드와 섞으면 두 엔진이 각자 독립 판정해 AND가 깨진다
@@ -87,9 +87,9 @@ jam-web/src/lib/admin/__tests__/badge-condition-guards.test.ts
       그대로 따랐다.
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-09-14 (staging 머지)
+- 환경: staging → production 예정 (`/jam-ship`으로 별도 승격)
+- 커밋: `c23f42ca`(머지 시점)
 
 ### 주요 의사결정 / 핵심 메모
 - 프로덕션에 사용량 지표 + 다른 measurable 필드 혼합 조합이 실제로는 존재하지 않아, 이번
