@@ -1,11 +1,11 @@
 /**
  * 쉐이더 랩 — 컴포지션(레이어 스택) 기본값·직렬화 헬퍼 (티켓 20260912_1951)
  *
- * 1차 출력 규격은 1:1 고정, 1280×1280을 그대로 따른다(티켓 명시).
+ * 1차 출력 규격은 1:1 고정, 1920×1920을 그대로 따른다(티켓 20260914_1045, 1280에서 상향).
  */
 import type { ShaderLabConfig, ShaderLabLayerConfig } from '@basementstudio/shader-lab'
 
-export const SHADER_LAB_OUTPUT_SIZE = 1280
+export const SHADER_LAB_OUTPUT_SIZE = 1920
 
 /** 키프레임이 없는 1차 범위라 duration/loop는 화면에 노출하지 않는다(2차: 타임라인 UI). */
 const DEFAULT_TIMELINE = { duration: 6, loop: true, tracks: [] } as const
