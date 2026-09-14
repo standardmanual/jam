@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/
 import { buildComposition } from '@/lib/admin/shaderLab/composition'
 import { createLayer } from '@/lib/admin/shaderLab/layerFactory'
 import type { SupportedShaderLabLayerType } from '@/lib/admin/shaderLab/effectRegistry'
+import type { ShaderLabCaptureFrameFn } from '@/lib/admin/shaderLab/captureShaderLabFrameToBlob'
 import ShaderLabWebGpuGate from './ShaderLabWebGpuGate'
 import ShaderLabLayerSidebar from './ShaderLabLayerSidebar'
 import ShaderLabViewport from './ShaderLabViewport'
@@ -41,6 +42,7 @@ export default function ShaderLabPage() {
   const [layers, setLayers] = useState<ShaderLabLayerConfig[]>([])
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const captureFrameRef = useRef<ShaderLabCaptureFrameFn | null>(null)
 
   const config = useMemo(() => buildComposition(layers), [layers])
   const selectedLayer = layers.find((l) => l.id === selectedLayerId) ?? null
@@ -128,8 +130,8 @@ export default function ShaderLabPage() {
               <CardTitle>미리보기</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ShaderLabViewport ref={canvasRef} config={config} />
-              <ShaderLabExportPanel canvasRef={canvasRef} />
+              <ShaderLabViewport ref={canvasRef} config={config} captureFrameRef={captureFrameRef} />
+              <ShaderLabExportPanel canvasRef={canvasRef} captureFrameRef={captureFrameRef} />
             </CardContent>
           </Card>
 

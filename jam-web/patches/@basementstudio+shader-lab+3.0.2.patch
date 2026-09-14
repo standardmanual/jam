@@ -22,13 +22,75 @@ index 3edd440..f6c7b9d 100644
      }
      const source = maskConfig?.source ?? "luminance";
      let maskValue;
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/contracts.d.ts b/node_modules/@basementstudio/shader-lab/dist/src/renderer/contracts.d.ts
+index 19dc562..79bcd00 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/contracts.d.ts
++++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/contracts.d.ts
+@@ -22,6 +22,7 @@ export interface RuntimeRenderer {
+     initialize(): Promise<void>;
+     render(frame: RendererFrame): boolean;
+     resize(size: RendererSize, pixelRatio: number): void;
++    captureFrame(x: number, y: number, width: number, height: number): Promise<Uint8ClampedArray | null>;
+ }
+ export declare const DEFAULT_RENDERER_SIZE: RendererSize;
+ export declare function buildRendererFrame(config: ShaderLabConfig, time: number, delta: number, pixelRatio: number, viewportSize: RendererSize, options?: {
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/create-webgpu-renderer.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/create-webgpu-renderer.js
-index fa00441..aa836e7 100644
+index fa00441..5113758 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/create-webgpu-renderer.js
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/create-webgpu-renderer.js
-@@ -4,8 +4,11 @@ export function browserSupportsWebGPU() {
+@@ -3,9 +3,61 @@ import { PipelineManager } from "./pipeline-manager.js";
+ export function browserSupportsWebGPU() {
      return typeof navigator !== "undefined" && "gpu" in navigator;
  }
++// 티켓 20260914_1139 — 렌더타겟 포맷(RENDER_TARGET_OPTIONS.type = THREE.HalfFloatType,
++// pipeline-manager.js)은 rgba16float이라, readRenderTargetPixelsAsync()가 반환하는
++// 버퍼는 Uint16Array(각 채널을 half-float의 raw 16비트 패턴으로 재해석한 값)다. 8bit RGBA로
++// 쓰려면 직접 half-float -> float 변환이 필요하다(IEEE 754 half-precision, 표준 비트 연산).
++function halfFloatBitsToFloat(bits) {
++    const sign = bits & 0x8000 ? -1 : 1;
++    const exponent = (bits & 0x7c00) >> 10;
++    const fraction = bits & 0x03ff;
++    if (exponent === 0) {
++        return sign * Math.pow(2, -14) * (fraction / 1024);
++    }
++    if (exponent === 0x1f) {
++        return fraction ? Number.NaN : sign * Number.POSITIVE_INFINITY;
++    }
++    return sign * Math.pow(2, exponent - 15) * (1 + fraction / 1024);
++}
++// RGBA16Float은 텍셀당 8바이트(4채널 * 2바이트)다. WebGPU의 copyTextureToBuffer는 각 행을
++// 256바이트 경계로 정렬해 패딩을 넣으므로(WebGPUTextureUtils.js copyTextureToBuffer 참고),
++// 실제 텍셀 값을 읽으려면 이 정렬된 행 보폭(stride)을 감안해야 한다.
++const BYTES_PER_HALF_FLOAT_TEXEL = 8;
++function rowStrideInTexels(width) {
++    const bytesPerRow = Math.ceil((width * BYTES_PER_HALF_FLOAT_TEXEL) / 256) * 256;
++    return bytesPerRow / 2; // Uint16Array 원소 단위(원소당 2바이트)
++}
++/**
++ * raw half-float RGBA(Uint16Array, 행 패딩 포함)를 8bit RGBA(Uint8ClampedArray, 패딩 없음)로
++ * 변환한다. 렌더타겟 텍스처는 캔버스 최종 blit 단계의 UV 플립(pipeline-manager.js의
++ * `blitInputNode`가 vec2(uv().x, 1 - uv().y)로 Y를 뒤집어 캔버스에 그린다)을 거치지 않은
++ * "뒤집히지 않은" 좌표계라, 여기서 행 순서를 뒤집어(dstRow = height - 1 - row) 최종 화면에
++ * 보이는 것과 같은 방향의 이미지가 되도록 맞춘다.
++ */
++function decodeHalfFloatRgbaToUint8(raw, width, height) {
++    const texelsPerRow = rowStrideInTexels(width);
++    const out = new Uint8ClampedArray(width * height * 4);
++    for (let row = 0; row < height; row += 1) {
++        const srcRowStart = row * texelsPerRow;
++        const dstRow = height - 1 - row;
++        for (let col = 0; col < width; col += 1) {
++            const srcIndex = srcRowStart + col * 4;
++            const dstIndex = (dstRow * width + col) * 4;
++            for (let channel = 0; channel < 4; channel += 1) {
++                const value = halfFloatBitsToFloat(raw[srcIndex + channel]);
++                const clamped = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
++                out[dstIndex + channel] = Math.round(clamped * 255);
++            }
++        }
++    }
++    return out;
++}
  export async function createWebGPURenderer(canvas, onRuntimeError) {
 +    // 티켓 20260914_1045 — alpha:false로 생성하면 WebGPU 캔버스 컨텍스트 자체가 알파 채널을
 +    // 지원하지 않는 opaque 프레젠테이션으로 만들어져, 아래 파이프라인에서 알파를 아무리
@@ -39,7 +101,7 @@ index fa00441..aa836e7 100644
          antialias: false,
          canvas,
      });
-@@ -22,7 +25,11 @@ export async function createWebGPURenderer(canvas, onRuntimeError) {
+@@ -22,7 +74,11 @@ export async function createWebGPURenderer(canvas, onRuntimeError) {
              await renderer.init();
              renderer.outputColorSpace = THREE.SRGBColorSpace;
              renderer.toneMapping = THREE.NoToneMapping;
@@ -52,6 +114,27 @@ index fa00441..aa836e7 100644
          },
          resize(size, pixelRatio) {
              currentPixelRatio = pixelRatio;
+@@ -38,6 +94,20 @@ export async function createWebGPURenderer(canvas, onRuntimeError) {
+             pipeline.syncLayers([...frame.layers].reverse());
+             return pipeline.render(frame.clock.time, frame.clock.delta);
+         },
++        // 티켓 20260914_1139 — 직전 render() 프레임의 렌더타겟에서 raw RGBA(straight alpha)를
++        // 직접 읽어 8bit Uint8ClampedArray로 반환한다. width/height는 호출부가 캔버스의 실제
++        // 디바이스 픽셀 크기(canvas.width/height)를 넘겨야 한다 — 렌더타겟 크기와 다르면
++        // WebGPU copyTextureToBuffer가 범위를 벗어나 에러를 던진다.
++        async captureFrame(x, y, width, height) {
++            if (!pipeline) {
++                return null;
++            }
++            const raw = await pipeline.readPixelsAsync(x, y, width, height);
++            if (!raw) {
++                return null;
++            }
++            return decodeHalfFloatRgbaToUint8(raw, width, height);
++        },
+         dispose() {
+             renderer.setAnimationLoop(null);
+             pipeline?.dispose();
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js
 new file mode 100644
 index 0000000..800a0bb
@@ -358,8 +441,20 @@ index 0000000..800a0bb
 +        u_worldHeight: 0,
 +    };
 +}
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.d.ts b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.d.ts
+index e90a93a..a534354 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.d.ts
++++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.d.ts
+@@ -28,6 +28,7 @@ export declare class PipelineManager {
+     }, onRuntimeError?: (message: string | null) => void);
+     syncLayers(layers: ShaderLabLayerConfig[]): void;
+     render(time: number, delta: number): boolean;
++    readPixelsAsync(x: number, y: number, width: number, height: number): Promise<ArrayBufferView | null>;
+     renderToTexture(time: number, delta: number, inputTexture?: THREE.Texture): THREE.Texture | null;
+     resize(size: {
+         height: number;
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
-index 1c1439f..0c6e64c 100644
+index 1c1439f..57cc530 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
 @@ -1,4 +1,4 @@
@@ -394,7 +489,54 @@ index 1c1439f..0c6e64c 100644
          const baseMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), baseMaterial);
          baseMesh.frustumCulled = false;
          this.baseScene.add(baseMesh);
-@@ -341,6 +351,13 @@ export class PipelineManager {
+@@ -194,12 +204,13 @@ export class PipelineManager {
+         if (!(this.dirty || needsContinuousRender)) {
+             return false;
+         }
+-        if (activePasses.length === 0) {
+-            this.renderer.setRenderTarget(null);
+-            this.renderer.render(this.baseScene, this.baseCamera);
+-            this.dirty = false;
+-            return true;
+-        }
++        // 티켓 20260914_1139 — 이전에는 activePasses.length === 0일 때 baseScene을 화면(null
++        // 타겟)에 직접 렌더링해 rtA/rtB(렌더타겟)를 전혀 거치지 않았다. 그러면 이 특수
++        // 경로에서는 this.lastReadTarget이 갱신되지 않아, 레이어가 없는 상태에서
++        // readPixelsAsync()를 호출하면 예전 프레임(또는 null)을 읽게 된다. 아래처럼 항상
++        // rtA에 baseScene을 렌더링한 뒤 블릿하는 경로로 통일해, activePasses가 비어 있어도
++        // this.lastReadTarget이 항상 그 프레임의 렌더타겟을 정확히 가리키게 한다
++        // (renderToTexture()가 이미 쓰던 패턴과 동일 — 회귀 없음, GPU 패스 1회 추가뿐).
+         this.renderer.setRenderTarget(this.rtA);
+         this.renderer.render(this.baseScene, this.baseCamera);
+         let readTarget = this.rtA;
+@@ -210,12 +221,26 @@ export class PipelineManager {
+             readTarget = writeTarget;
+             writeTarget = previousRead;
+         }
++        this.lastReadTarget = readTarget;
+         this.blitInputNode.value = readTarget.texture;
+         this.renderer.setRenderTarget(null);
+         this.renderer.render(this.blitScene, this.blitCamera);
+         this.dirty = false;
+         return true;
+     }
++    /**
++     * 티켓 20260914_1139 — WebGPU 캔버스 swap chain(alphaMode: 'premultiplied')을 우회해,
++     * 직전 render() 호출이 만든 렌더타겟(this.lastReadTarget, HalfFloatType RGBA, straight
++     * alpha)의 raw 픽셀을 직접 읽는다. 캔버스에서 toDataURL()/toBlob()/drawImage()로 읽으면
++     * premultiplied 프레젠테이션 규칙과 straight-alpha 파이프라인 출력 간 불일치로 항상
++     * alpha=255가 나오는 문제(완료 기록 참고)를 이 경로로 우회한다.
++     */
++    async readPixelsAsync(x, y, width, height) {
++        if (!this.lastReadTarget) {
++            return null;
++        }
++        return this.renderer.readRenderTargetPixelsAsync(this.lastReadTarget, x, y, width, height);
++    }
+     renderToTexture(time, delta, inputTexture) {
+         const activePasses = this.passes.filter((pass) => pass.enabled &&
+             (!this.compilingPasses.has(pass.layerId) ||
+@@ -341,6 +366,13 @@ export class PipelineManager {
                  pass.clearMedia();
              }
          }
@@ -408,7 +550,7 @@ index 1c1439f..0c6e64c 100644
          if (pass instanceof LivePass) {
              const facingMode = typeof layer.params.facingMode === "string"
                  ? layer.params.facingMode
-@@ -431,6 +448,9 @@ export class PipelineManager {
+@@ -431,6 +463,9 @@ export class PipelineManager {
          if (layer.kind === "source" && layer.type === "text") {
              return new TextPass(layer.id);
          }
@@ -542,6 +684,38 @@ index cf82971..a370d8a 100644
          if (!this.textTexture) {
              this.textTexture = new THREE.CanvasTexture(canvas);
              this.textTexture.flipY = false;
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/shader-lab-canvas-source.d.ts b/node_modules/@basementstudio/shader-lab/dist/src/shader-lab-canvas-source.d.ts
+index 1f74b8e..b11398a 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/shader-lab-canvas-source.d.ts
++++ b/node_modules/@basementstudio/shader-lab/dist/src/shader-lab-canvas-source.d.ts
+@@ -18,6 +18,7 @@ export declare class ShaderLabCanvasSource {
+     initialize(): Promise<void>;
+     update(time: number, delta: number): HTMLCanvasElement;
+     setConfig(config: ShaderLabConfig): void;
++    captureFrame(x: number, y: number, width: number, height: number): Promise<Uint8ClampedArray | null>;
+     resize(width: number, height: number, pixelRatio?: number): void;
+     dispose(): void;
+     get element(): HTMLCanvasElement;
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/shader-lab-canvas-source.js b/node_modules/@basementstudio/shader-lab/dist/src/shader-lab-canvas-source.js
+index e514d9c..1866b42 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/shader-lab-canvas-source.js
++++ b/node_modules/@basementstudio/shader-lab/dist/src/shader-lab-canvas-source.js
+@@ -50,6 +50,15 @@ export class ShaderLabCanvasSource {
+     setConfig(config) {
+         this.config = config;
+     }
++    // 티켓 20260914_1139 — WebGPU 캔버스 swap chain(premultiplied) readback 대신, 렌더타겟의
++    // raw RGBA를 직접 읽는다. x/y/width/height는 호출부가 캔버스의 디바이스 픽셀 크기 기준으로
++    // 넘겨야 한다.
++    async captureFrame(x, y, width, height) {
++        if (!this.runtimeRenderer || this.disposed) {
++            return null;
++        }
++        return this.runtimeRenderer.captureFrame(x, y, width, height);
++    }
+     resize(width, height, pixelRatio) {
+         this.width = width;
+         this.height = height;
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/types.d.ts b/node_modules/@basementstudio/shader-lab/dist/src/types.d.ts
 index c82a982..b6a4376 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/types.d.ts
@@ -554,3 +728,41 @@ index c82a982..b6a4376 100644
  export type ShaderLabEffectLayerType = "ascii" | "blob-tracking" | "bloom" | "circuit-bent" | "directional-blur" | "chromatic-aberration" | "crt" | "displacement-map" | "dithering" | "edge-detect" | "fluted-glass" | "halftone" | "ink" | "particle-grid" | "pattern" | "pixelation" | "pixel-sorting" | "plotter" | "posterize" | "slice" | "smear" | "threshold" | "voxel";
  export type ShaderLabLayerType = ShaderLabEffectLayerType | ShaderLabSourceLayerType;
  export type ShaderLabBlendMode = "normal" | "multiply" | "screen" | "overlay" | "darken" | "lighten" | "color-dodge" | "color-burn" | "hard-light" | "soft-light" | "difference" | "exclusion" | "hue" | "saturation" | "color" | "luminosity";
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/use-shader-lab-canvas-source.d.ts b/node_modules/@basementstudio/shader-lab/dist/src/use-shader-lab-canvas-source.d.ts
+index 784ee9e..f7ae384 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/use-shader-lab-canvas-source.d.ts
++++ b/node_modules/@basementstudio/shader-lab/dist/src/use-shader-lab-canvas-source.d.ts
+@@ -5,6 +5,7 @@ export interface UseShaderLabCanvasSourceResult {
+     ready: boolean;
+     resize: (width: number, height: number, pixelRatio?: number) => void;
+     update: (time: number, delta: number) => HTMLCanvasElement | null;
++    captureFrame: (x: number, y: number, width: number, height: number) => Promise<Uint8ClampedArray | null>;
+ }
+ export type UseShaderLabCanvasSourceOptions = ShaderLabCanvasSourceOptions;
+ export declare function useShaderLabCanvasSource(config: ShaderLabConfig, options?: UseShaderLabCanvasSourceOptions): UseShaderLabCanvasSourceResult;
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/use-shader-lab-canvas-source.js b/node_modules/@basementstudio/shader-lab/dist/src/use-shader-lab-canvas-source.js
+index ba3059b..402be77 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/use-shader-lab-canvas-source.js
++++ b/node_modules/@basementstudio/shader-lab/dist/src/use-shader-lab-canvas-source.js
+@@ -48,10 +48,20 @@ export function useShaderLabCanvasSource(config, options) {
+         source.setConfig(configRef.current);
+         return source.update(time, delta);
+     }, []);
++    // 티켓 20260914_1139 — WebGPU 캔버스 swap chain(premultiplied) readback 우회용 raw 픽셀
++    // 캡처. x/y/width/height는 호출부가 캔버스의 디바이스 픽셀 크기 기준으로 넘겨야 한다.
++    const captureFrame = useCallback((x, y, width, height) => {
++        const source = sourceRef.current;
++        if (!source) {
++            return Promise.resolve(null);
++        }
++        return source.captureFrame(x, y, width, height);
++    }, []);
+     return useMemo(() => ({
+         canvas: canvasRef.current,
+         ready,
+         resize,
+         update,
+-    }), [ready, resize, update]);
++        captureFrame,
++    }), [ready, resize, update, captureFrame]);
+ }

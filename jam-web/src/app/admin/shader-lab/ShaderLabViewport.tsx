@@ -4,25 +4,36 @@
  * 쉐이더 랩 — 캔버스 뷰포트 (티켓 20260912_1951, 재생 기능 제거 20260913_1819)
  *
  * 실시간 프리뷰(WYSIWYG). 내부 렌더링 배관은 `useShaderLabPlayback.ts` 참고.
- * 내보내기(`ShaderLabExportPanel`)는 이 컴포넌트가 갖는 `<canvas>`를 그대로
- * `canvas.toBlob()`한다 — 별도 오프스크린 렌더링을 만들지 않는다.
+ * 내보내기(`ShaderLabExportPanel`)는 WebGPU 캔버스를 직접 toBlob()하지 않고, 이 컴포넌트가
+ * `captureFrameRef`로 넘겨주는 `captureFrame()`(렌더타겟 raw 픽셀 readback)을 쓴다 —
+ * 티켓 20260914_1139, `canvas.toDataURL()`/`toBlob()`로는 alpha가 항상 255로 고정되는
+ * premultiplied swap chain 문제를 우회하기 위함(완료 기록 참고).
  */
-import { forwardRef, useEffect, useState } from 'react'
+import { forwardRef, useEffect, useState, type RefObject } from 'react'
 import type { ShaderLabConfig } from '@basementstudio/shader-lab'
 import { useShaderLabPlayback } from '@/lib/admin/shaderLab/useShaderLabPlayback'
+import type { ShaderLabCaptureFrameFn } from '@/lib/admin/shaderLab/captureShaderLabFrameToBlob'
 import { SHADER_LAB_OUTPUT_SIZE } from '@/lib/admin/shaderLab/composition'
 
 interface ShaderLabViewportProps {
   config: ShaderLabConfig
+  captureFrameRef: RefObject<ShaderLabCaptureFrameFn | null>
 }
 
 const ShaderLabViewport = forwardRef<HTMLCanvasElement, ShaderLabViewportProps>(function ShaderLabViewport(
-  { config },
+  { config, captureFrameRef },
   canvasRef
 ) {
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
   const [runtimeError, setRuntimeError] = useState<string | null>(null)
-  const { ready } = useShaderLabPlayback(config, { canvas: canvasEl })
+  const { ready, captureFrame } = useShaderLabPlayback(config, { canvas: canvasEl })
+
+  useEffect(() => {
+    captureFrameRef.current = captureFrame
+    return () => {
+      if (captureFrameRef.current === captureFrame) captureFrameRef.current = null
+    }
+  }, [captureFrameRef, captureFrame])
 
   // 렌더러 초기화 실패는 useShaderLabCanvasSource가 예외를 던지지 않고 조용히
   // `ready=false`로 남는다(패키지 소스 확인) — 일정 시간 후에도 준비되지 않으면 안내한다.

@@ -39,13 +39,21 @@ interface UseShaderLabPlaybackOptions {
 
 export interface UseShaderLabPlaybackResult {
   ready: boolean
+  /**
+   * 티켓 20260914_1139 — WebGPU 캔버스(`canvas.toDataURL()`/`toBlob()`/`drawImage()`)로
+   * 픽셀을 읽으면 premultiplied 프레젠테이션과 straight-alpha 파이프라인 출력 간 불일치로
+   * 알파가 항상 255로 고정된다(티켓 20260914_1045 재발 조사 결과, 완료 기록 참고). 대신
+   * 패키지가 새로 공개한 `captureFrame()`(렌더타겟 raw 픽셀 직접 readback)을 그대로
+   * 노출한다. x/y/width/height는 캔버스의 디바이스 픽셀 크기 기준이어야 한다.
+   */
+  captureFrame: (x: number, y: number, width: number, height: number) => Promise<Uint8ClampedArray | null>
 }
 
 export function useShaderLabPlayback(
   config: ShaderLabConfig,
   { canvas }: UseShaderLabPlaybackOptions
 ): UseShaderLabPlaybackResult {
-  const { ready, update } = useShaderLabCanvasSource(config, canvas ? { canvas } : undefined)
+  const { ready, update, captureFrame } = useShaderLabCanvasSource(config, canvas ? { canvas } : undefined)
 
   const timeRef = useRef(0)
   const lastFrameRef = useRef<number | null>(null)
@@ -100,5 +108,5 @@ export function useShaderLabPlayback(
     }
   }, [canvas, update])
 
-  return { ready }
+  return { ready, captureFrame }
 }

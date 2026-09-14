@@ -129,30 +129,111 @@ JAM! 쪽 실험 코드도 커밋하지 않고 삭제).
 
 ### 구현 내용 요약
 
+티켓 5번 절 계획대로 `readRenderTargetPixelsAsync` 기반 경로를 구현했다.
+
+1. **`pipeline-manager.js`**: `render()`가 `activePasses.length === 0`일 때도 항상 `rtA`에
+   `baseScene`을 렌더링한 뒤 블릿하도록 통일해, `this.lastReadTarget`이 매 프레임 정확한
+   렌더타겟(HalfFloatType, straight alpha)을 가리키게 했다. `async readPixelsAsync(x,y,w,h)`를
+   추가해 `renderer.readRenderTargetPixelsAsync(this.lastReadTarget, ...)`로 캔버스 swap chain을
+   우회한 raw readback을 노출한다.
+2. **`create-webgpu-renderer.js`**: half-float(비트패턴 Uint16Array) → 8bit 변환
+   (`decodeHalfFloatRgbaToUint8`)을 추가했다. WebGPU `copyTextureToBuffer`가 각 행을 256바이트
+   경계로 패딩하는 것(`WebGPUTextureUtils.js`)을 감안해 행 보폭을 직접 계산해 스트리핑하고,
+   렌더타겟이 최종 블릿의 UV 플립(`vec2(uv().x, 1-uv().y)`)을 거치지 않은 좌표계라는 점도
+   감안해 디코딩 중 행 순서를 뒤집어(Y flip) 최종 화면과 같은 방향이 되게 했다.
+   `captureFrame(x,y,w,h)`를 렌더러 반환 객체에 추가.
+3. **`shader-lab-canvas-source.js`** / **`use-shader-lab-canvas-source.js`**: `captureFrame`을
+   각 계층의 공개 API로 그대로 릴레이(`ShaderLabCanvasSource.captureFrame` →
+   `useShaderLabCanvasSource().captureFrame`)했다. 관련 `.d.ts` 4개(`contracts.d.ts`,
+   `pipeline-manager.d.ts`, `shader-lab-canvas-source.d.ts`,
+   `use-shader-lab-canvas-source.d.ts`)에 타입 선언을 추가했다.
+4. **JAM! 쪽**: `useShaderLabPlayback.ts`가 `captureFrame`을 그대로 노출하도록 하고,
+   신규 `captureShaderLabFrameToBlob.ts`(2D 캔버스에 `putImageData()` 후 `toBlob()` — 2D
+   캔버스는 premultiplied swap chain 문제와 무관하다)를 추가했다. `ShaderLabViewport.tsx`가
+   `captureFrameRef`(부모가 주는 ref)에 `captureFrame`을 채워 넣고, `page.tsx`가 이 ref를
+   `ShaderLabExportPanel`/`ShaderLabApplyTab`에 전달한다. 두 컴포넌트의 PNG export·미리보기
+   스냅샷·적용 3개 경로 모두 `canvas.toDataURL()`/`toBlob()`(WebGPU 캔버스 직접 읽기) 대신
+   `captureShaderLabFrameToBlob()`을 쓰도록 교체했다. `ShaderLabApplyTab`의 미리보기는
+   `toDataURL()` 결과 대신 `Blob`의 Object URL을 쓰므로, 재스냅샷마다 이전 URL을 `revokeObjectURL`
+   하는 누수 방지 로직도 함께 추가했다.
+5. 20260914_1045의 패치 3곳(alpha:true, baseMesh 알파=0, blend-modes 알파 공식)은 그대로 유지했다
+   (티켓 6번 절대로 — 렌더타겟 자체의 알파 계산이 정확해야 한다는 전제 조건).
+
+**최소 스파이크 검증에 대한 중요한 한계 (반드시 읽을 것)**: 이 작업을 수행한 서브에이전트 실행
+환경(격리 워크트리, 샌드박스)은 `navigator.gpu`가 존재하지 않는다 — playwright(headless/headful
+둘 다)로 직접 확인했다(`chromium.launch({ args: ['--enable-unsafe-webgpu'] })` 후
+`navigator.gpu` 존재 여부 체크, 결과: "no navigator.gpu"). 즉 **이 구현은 실제 WebGPU 렌더로
+"alpha가 이제 정확히 비례한다"는 것을 브라우저에서 직접 확인하지 못한 상태**다. 대신 다음 두
+가지로 최대한 간접 검증했다:
+- three.js 소스(`WebGPUBackend.js`, `WebGPUTextureUtils.js`)를 직접 읽어
+  `readRenderTargetPixelsAsync` → `copyTextureToBuffer`가 `RGBA16Float` 포맷에 대해
+  `Uint16Array`(half-float 비트패턴, 행 256바이트 정렬 패딩 포함)를 반환함을 코드 레벨로 확인.
+- half-float→float 변환 함수를 Node.js에서 알려진 비트패턴(0x0000→0, 0x3C00→1, 0x3800→0.5,
+  최소 subnormal)으로 단위 검증했고, 행 패딩 스트리핑 + Y flip 로직도 합성 데이터(width=100,
+  2행, 각 행 다른 색+알파)로 재현해 정확히 분리·반전됨을 확인했다. 참고로 실제 출력 크기
+  1920×1920에서는 1920×8bytes=15360이 이미 256의 배수라 패딩이 발생하지 않는다(우연이지만
+  실사용 경로에서는 패딩 스트리핑 로직이 사실상 no-op에 가깝다 — 그래도 일반성을 위해 로직은
+  유지).
+- `npx tsc --noEmit`, `npm run lint`, `npx vitest run`(93개 파일 1473개 테스트 전부 통과) 확인.
+
+**따라서 이 구현은 "방향과 저수준 산술은 코드 레벨·단위 테스트로 검증됨" 상태이고, 티켓이
+요구한 "half-float→8bit 변환 후 실제로 정확한 alpha가 나오는지 픽셀 단위 확인"(브라우저
+실측)은 아직 수행되지 못했다.** 실제 WebGPU 하드웨어가 있는 환경(오케스트레이터의 로컬 머신,
+이전 티켓 20260914_1045/1139 조사를 직접 수행한 환경)에서 다음을 반드시 재확인해야 한다:
+1. 텍스트 레이어 `textColor` 알파, 리퀴드 메탈 `colorBack` 알파 0/0.5/1 조합으로 export PNG의
+   alpha 채널이 실제로 비례하는지.
+2. 이미지가 좌우/상하로 뒤집히지 않았는지(Y flip 로직이 실제 렌더 결과와 맞는지).
+3. 알파를 안 쓰는 나머지 레이어 타입들의 기존 export 결과가 이번 변경으로 달라지지 않았는지
+   (특히 `render()`의 활성 패스 0개 특수 경로 제거가 시각적으로 동일한지).
+
 ### 변경된 파일
 ```
--
+jam-web/patches/@basementstudio+shader-lab+3.0.2.patch (재생성 — pipeline-manager.js,
+  create-webgpu-renderer.js, shader-lab-canvas-source.js, use-shader-lab-canvas-source.js와
+  대응 .d.ts 4개, contracts.d.ts에 readPixelsAsync/captureFrame 추가)
+jam-web/src/lib/admin/shaderLab/useShaderLabPlayback.ts (captureFrame 노출)
+jam-web/src/lib/admin/shaderLab/captureShaderLabFrameToBlob.ts (신규 — half-float 캡처 → Blob)
+jam-web/src/app/admin/shader-lab/ShaderLabViewport.tsx (captureFrameRef prop 추가)
+jam-web/src/app/admin/shader-lab/page.tsx (captureFrameRef 생성·전달)
+jam-web/src/app/admin/shader-lab/ShaderLabExportPanel.tsx (PNG export를 captureFrame 기반으로 교체)
+jam-web/src/app/admin/shader-lab/ShaderLabApplyTab.tsx (미리보기 스냅샷·적용을 captureFrame 기반으로 교체)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npx tsc --noEmit` — 오류 0건
+- [x] `npm run lint` — 오류 0건, 경고 14건(전부 이번 변경과 무관한 기존 경고 —
+      design-system stories/foundations, scripts/recraft)
+- [x] `npx vitest run` — 93개 파일, 1473개 테스트 전부 통과
+- [x] half-float 디코드 로직 Node.js 단위 검증(알려진 비트패턴 4종 + 행 패딩/Y flip 합성 데이터)
+- [x] `rm -rf node_modules/@basementstudio && npm install` — patch-package 재적용 성공 확인
+- [ ] **미수행(환경 제약)**: 실제 WebGPU 브라우저 실렌더로 alpha 채널 픽셀 단위 확인 — 위
+      "최소 스파이크 검증에 대한 중요한 한계" 절 참고
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
-
-- [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
-- [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)
-- [ ] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
-- [ ] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
-- [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
+사용자 노출 텍스트 변경 없음(기존 에러 메시지 문구·구조 그대로 유지, 호출 경로만 교체).
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: (미배포 — review 브랜치 push까지만)
+- 환경: -
+- 커밋: (아래 push한 브랜치 참고)
 
 ### 주요 의사결정 / 핵심 메모
-> 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
+- `render()`의 "activePasses 0개" 특수 경로(블릿 없이 baseScene을 화면에 직접 렌더)를
+  제거하고 항상 rtA→블릿 경로로 통일했다 — `lastReadTarget`을 모든 프레임에서 일관되게
+  채우기 위한 목적. GPU 패스가 레이어 없는 상태에서 1회 늘지만(블릿 1회 추가), 60fps
+  에디터 미리보기 용도에서 성능 영향은 무시 가능하다고 판단했다. 검증 안 됨(하드웨어 접근
+  불가) — 시각적으로 동일한지 실측 필요.
+- half-float→float 변환을 직접 구현(수동 비트 연산)하고 `Float16Array`(최근 브라우저가
+  지원하기 시작한 표준 타입) 사용을 선택하지 않았다 — 사용자 브라우저의 실제 Chrome 버전을
+  알 수 없어 호환성 리스크를 피했다.
+- 미리보기(`ShaderLabApplyTab`)는 기존 `canvas.toDataURL()`(data URL) 대신 Blob +
+  `URL.createObjectURL()`로 바꿨다 — `captureFrame()`이 만드는 오프스크린 2D 캔버스가
+  `toDataURL()`보다 `toBlob()`이 더 자연스러운 API(비동기, 메모리 효율)라 판단했다. 이 때문에
+  Object URL revoke 누수 방지 로직이 새로 필요해졌다(추가함).
 
 ### 잔여 이슈
--
+- 위 "최소 스파이크 검증에 대한 중요한 한계" 절의 3가지 실측 확인이 필수로 남아있다.
+  실제 WebGPU 브라우저 환경(오케스트레이터 로컬 머신 등)에서 확인 전까지는 "방향이 맞다"는
+  코드 레벨 추론일 뿐, "실제로 고쳐졌다"는 확정된 사실이 아니다.
+- 만약 실측 결과 여전히 문제가 있거나(예: Y flip 반대, 다른 레이어 타입 회귀) 새로운 문제가
+  발견되면, 이 티켓을 재오픈하거나 후속 티켓으로 분리해야 한다.

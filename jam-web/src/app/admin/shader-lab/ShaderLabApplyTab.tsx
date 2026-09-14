@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { IconCircleCheck, IconCircleX, IconSearch } from '@tabler/icons-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/admin/ui/alert'
 import { Button } from '@/components/admin/ui/button'
 import { Input } from '@/components/admin/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/admin/ui/table'
-import { canvasToBlob } from '@/app/admin/badges/bakePreviewToBlob'
+import { captureShaderLabFrameToBlob, type ShaderLabCaptureFrameFn } from '@/lib/admin/shaderLab/captureShaderLabFrameToBlob'
 import { MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
 
 // 쉐이더 랩 -> 배지/미션/컬렉션 적용 탭 (티켓 20260913_0414)
@@ -14,6 +14,8 @@ import { MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
 // 재사용하도록 일반화했다. image_gen_params 저장/복원(재편집)은 이번에 넣지 않는다 -
 // 사용자 확정 요구사항은 검색/선택/미리보기/적용까지이고, 세 대상 테이블 중 badges만
 // 그 컬럼이 있어 형평에 맞지 않는다(완료 기록의 주요 의사결정 참고).
+// PNG 투명배경 근본 원인 수정(티켓 20260914_1139): 미리보기 스냅샷·적용 둘 다 WebGPU 캔버스를
+// 직접 읽지 않고 `captureFrameRef`(렌더타겟 raw 픽셀 readback)를 거친다.
 export type ShaderLabApplyTarget = 'badge' | 'mission' | 'collection'
 
 interface SearchItem {
@@ -93,9 +95,10 @@ async function applyToTarget(target: ShaderLabApplyTarget, id: string, blob: Blo
 interface ShaderLabApplyTabProps {
   target: ShaderLabApplyTarget
   canvasRef: RefObject<HTMLCanvasElement | null>
+  captureFrameRef: RefObject<ShaderLabCaptureFrameFn | null>
 }
 
-export default function ShaderLabApplyTab({ target, canvasRef }: ShaderLabApplyTabProps) {
+export default function ShaderLabApplyTab({ target, canvasRef, captureFrameRef }: ShaderLabApplyTabProps) {
   const [query, setQuery] = useState('')
   const [searchLoading, setSearchLoading] = useState(false)
   const [results, setResults] = useState<SearchItem[] | null>(null)
@@ -103,10 +106,19 @@ export default function ShaderLabApplyTab({ target, canvasRef }: ShaderLabApplyT
 
   const [selected, setSelected] = useState<SearchItem | null>(null)
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null)
+  // 티켓 20260914_1139 — previewDataUrl이 이제 data URL이 아니라 Object URL이라, 새 미리보기를
+  // 만들 때마다 이전 URL을 명시적으로 해제해야 한다(안 하면 매 클릭마다 메모리 누수).
+  const previewUrlRef = useRef<string | null>(null)
 
   const [applying, setApplying] = useState(false)
   const [applyError, setApplyError] = useState<string | null>(null)
   const [applyResult, setApplyResult] = useState<ApplyResult | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    }
+  }, [])
 
   async function runSearch() {
     setSearchError(null)
@@ -124,15 +136,27 @@ export default function ShaderLabApplyTab({ target, canvasRef }: ShaderLabApplyT
 
   function selectItem(item: SearchItem) {
     setSelected(item)
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current)
+      previewUrlRef.current = null
+    }
     setPreviewDataUrl(null)
     setApplyError(null)
     setApplyResult(null)
   }
 
-  function snapshotPreview() {
+  async function snapshotPreview() {
     const canvas = canvasRef.current
-    if (!canvas) return
-    setPreviewDataUrl(canvas.toDataURL('image/png'))
+    const captureFrame = captureFrameRef.current
+    if (!canvas || !captureFrame) return
+    // 티켓 20260914_1139 — WebGPU 캔버스를 canvas.toDataURL()로 직접 읽으면 premultiplied
+    // swap chain 문제로 alpha가 항상 255로 고정된다. 렌더타겟 raw 픽셀을 읽어 만든 Blob을
+    // Object URL로 바꿔 미리보기에 쓴다.
+    const blob = await captureShaderLabFrameToBlob(captureFrame, canvas.width, canvas.height)
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    const url = URL.createObjectURL(blob)
+    previewUrlRef.current = url
+    setPreviewDataUrl(url)
   }
 
   async function runApply() {
@@ -141,8 +165,10 @@ export default function ShaderLabApplyTab({ target, canvasRef }: ShaderLabApplyT
     setApplying(true)
     try {
       const canvas = canvasRef.current
+      const captureFrame = captureFrameRef.current
       if (!canvas) throw new Error('캔버스를 찾지 못했어요.')
-      const blob = await canvasToBlob(canvas)
+      if (!captureFrame) throw new Error('렌더러가 아직 준비되지 않았어요.')
+      const blob = await captureShaderLabFrameToBlob(captureFrame, canvas.width, canvas.height)
       if (blob.size > MAX_APPLY_IMAGE_BYTES) {
         const mb = (blob.size / 1024 / 1024).toFixed(1)
         throw new Error(`이미지가 너무 커요(${mb}MB). 5MB 이하만 반영할 수 있어요.`)
