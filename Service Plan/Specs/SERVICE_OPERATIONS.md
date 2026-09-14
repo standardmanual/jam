@@ -839,6 +839,13 @@ hard 밴:
   있는 배지(등급형·반복형 등급 사다리)만 대상. 레벨형(`rarity` NULL)은 등급 서열이 없어
   대상이 아니다. 강등 없이 차단되며, 그 배치에서는 단순 미발급으로 남는다(조건 자체는
   유지되므로 밴이 풀린 뒤 다음 평가에서 정상 발급된다)
+- 서비스 사용량 배지(`src/lib/badge-engine/usageBadges.ts`, 팔로우 API·동기화 API 트리거) —
+  rarity가 있는 배지만 대상, 액티비티 배지와 동일한 판정(강등 없이 미발급)
+- POI·체크인 배지 발급(`src/lib/strava/sync.ts`의 `processFetchedActivities`) — checkin
+  타입(`user_checkin_badge_earns`)은 최초 획득에만 적용(반복 방문 카운터 증가는 대상 밖),
+  레거시 `activity`+`poi_id` 타입(`user_activity_badges`)은 항상 최초 1회 지급이라 매번
+  적용. 어드민 시뮬레이터(`/api/admin/simulate`)는 실유저 발급과 분리된 진단 도구라
+  의도적으로 게이트 밖에 있다
 
 > ⚠️ 위는 **설계 의도**다. **Epic 차단은 현재 꺼져 있다**(soft/hard 모두 배율 1.00).
 > 경위와 판단 보류 사유는 [12-6](#12-6-어뷰징-정책-싱글톤-abusing_policy) 참조.

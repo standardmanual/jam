@@ -2,9 +2,9 @@
 id: 20260910_1443
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-10
-closed:
+closed: 2026-09-14
 ---
 
 # [Infra] jam-web/CLAUDE.md의 db:types 지시가 실행 불가한 명령을 가리킨다
@@ -37,17 +37,27 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`package.json`의 `db:types` 스크립트(supabase CLI 필요, 실패 시 파일을 빈 값으로 덮어씀)를
+제거하고, `jam-web/CLAUDE.md`의 지시를 Supabase MCP의 `generate_typescript_types`로
+정정했다. 다른 활성 문서·githooks·스킬에서 `db:types`를 참조하는 곳이 없음을 grep으로 확인.
 
 ### 변경된 파일
 ```
--
+jam-web/package.json
+jam-web/CLAUDE.md
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] grep으로 `.githooks`·`.claude/skills`에 `db:types` 참조 없음 확인
 
 ### 배포 정보
+- 배포일: 2026-09-14
+- 환경: staging
+- 커밋: (직접 커밋)
 
 ### 주요 의사결정 / 핵심 메모
+- 스크립트를 "실패해도 안전하게" 감싸는 대신 아예 제거했다 — 이 환경에서 애초에 실행
+  가능한 경로가 없으므로 감싸는 방어 코드 자체가 불필요하다는 판단.
 
 ### 잔여 이슈
+- 없음

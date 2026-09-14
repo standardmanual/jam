@@ -37,10 +37,14 @@ cd jam-web && npm run storybook   # http://localhost:6006
   motion·materials)을 직접 `@import`한다. 토큰을 고치면 서비스 화면이 바로 따라온다.
   (`colors.light.css`만 의도적으로 제외 — 서비스는 다크 전용)
 
-- **연결된 컴포넌트 9종 — 서비스에 즉시 반영.**
-  서비스 27개 파일이 `@ds/*`를 **47건** import한다. 실사용 목록:
-  `Button` · `IconButton` · `Card` · `RarityBadge` · `EmptyState` · `ProgressBar` ·
-  `WanderingEyesLoader` · `Carousel` · `TopNav`
+- **연결된 컴포넌트 21종 — 서비스에 즉시 반영.** *(2026-09-14 실측 기준)*
+  서비스 45개 파일이 `@ds/components/*`를 **86건** import한다. 실사용 목록:
+  `Button` · `IconButton` · `Card` · `RarityBadge` · `BadgeLevelChip` · `EmptyState` ·
+  `ProgressBar` · `WanderingEyesLoader` · `Accordion` · `Carousel` · `TopNav` ·
+  `BadgeFamilyCardHeader` · `BadgeLevelGauge` · `BadgeProgressRingCard` ·
+  `BadgeRevealCarousel` · `BadgeStageRail` · `BadgeStampRow` · `BadgeStatusSection` ·
+  `BadgeTreeSummaryHeader` · `DualAxisGauge` · `ItemSerialCode` · `UnlockConditionSheetContent`
+  (`Accordion`은 이전 조사에서 "미도입"으로 분류됐으나 이후 연결됨을 확인해 이동했다.)
 
 - **병존 구현 8종 — 스토리북에만 반영. ⚠️ 양쪽을 함께 고쳐야 한다.**
   `TabBar` · `BottomSheet` · `Toast` · `SlidingTabs` · `BadgeGridCard` ·
@@ -49,8 +53,8 @@ cd jam-web && npm run storybook   # http://localhost:6006
   DS만 고치면 서비스는 따라오지 않는다. 서비스 구현이 DS보다 기능이 많은 경우도 있으므로
   (`BottomSheet`의 드래그-투-클로즈, `Skeleton`의 cross-fade reveal) 단순 스왑도 위험하다.
 
-- **미도입 8종 — 스토리북 전용.**
-  `Checkbox` · `Input` · `Select` · `Textarea` · `ModalToast` · `ShapeTag` · `BadgeFrame` · `Accordion`
+- **미도입 7종 — 스토리북 전용.** *(2026-09-14 실측 기준, `Accordion` 연결 확인으로 8→7)*
+  `Checkbox` · `Input` · `Select` · `Textarea` · `ModalToast` · `ShapeTag` · `BadgeFrame`
   → 서비스에 대응 개념이 없다. 티켓 20260820_010에서 "유지/보류"로 확정됐으므로 **새로
   도입하려면 별도 판단이 필요하다** (임의로 서비스에 끌어다 쓰지 말 것).
 

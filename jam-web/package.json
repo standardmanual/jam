@@ -14,7 +14,6 @@
     "test": "vitest run && npm run test:node",
     "test:node": "for f in src/lib/today/__tests__/*.test.ts src/lib/missions/__tests__/*.test.ts src/app/admin/missions/__tests__/*.test.ts src/lib/admin/__tests__/today-calendar.test.ts; do echo \"→ $f\"; tsx \"$f\" || exit 1; done",
     "test:watch": "vitest",
-    "db:types": "supabase gen types typescript --project-id ceehnkzdbecxwzxrhhns > src/types/database.generated.ts",
     "ds:check": "node scripts/ds-sync-check.mjs",
     "ds:manifest": "node scripts/ds-manifest-sync.mjs",
     "storybook": "storybook dev -p 6006",
