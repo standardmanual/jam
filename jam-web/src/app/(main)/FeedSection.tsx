@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import type { ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
@@ -34,6 +34,12 @@ const PAGE_SIZE = 20
  * 알림 결산의 F2 임계값(활동 2건)과 같은 판단이다 — RECAP_CASEBOOK R9.
  */
 const GROUP_MIN_SIZE = 2
+
+/** 포커스 트랩이 순환 대상으로 삼는 요소 셀렉터 — `BottomSheet.tsx`(20260908_0040)와 동일 정의.
+ *  `DetailSheet`는 BottomSheet를 쓰지 않는 별도 시트 구현이라 접근성 로직을 이 파일에서
+ *  자체적으로 갖는다(20260908_1754). */
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 /** 묶음 카드 접힘 상태에 노출하는 대표 썸네일 최대 개수 */
 const GROUP_THUMB_MAX = 4
@@ -240,6 +246,8 @@ export function DetailSheet({
 }) {
   const router = useRouter()
   const [shown, setShown] = useState(false)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
 
   useEffect(() => {
     if (open) {
@@ -254,6 +262,58 @@ export function DetailSheet({
       clearTimeout(timer)
     }
   }, [open, onClosed])
+
+  // 20260908_1754: 포커스 트랩·복귀·Escape 닫기 — `BottomSheet.tsx`(20260908_0040)와
+  // 같은 패턴. 이 시트는 BottomSheet를 쓰지 않는 별도 구현이라 여기서 직접 적용한다.
+  useEffect(() => {
+    if (!open) return
+    const sheetEl = sheetRef.current
+    const previouslyFocused = document.activeElement as HTMLElement | null
+
+    const focusFirst = () => {
+      const focusable = sheetEl?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+      const first = focusable?.[0]
+      if (first) first.focus()
+      else sheetEl?.focus()
+    }
+    focusFirst()
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab' || !sheetEl) return
+
+      const focusable = Array.from(sheetEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+      if (focusable.length === 0) {
+        e.preventDefault()
+        sheetEl.focus()
+        return
+      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+      if (e.shiftKey) {
+        if (active === first || !sheetEl.contains(active)) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (active === last || !sheetEl.contains(active)) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      if (previouslyFocused && document.contains(previouslyFocused)) previouslyFocused.focus()
+    }
+  }, [open, onClose])
 
   const meta = item.metadata as Record<string, string | number | null>
   const rarity = meta.rarity ? String(meta.rarity) : null
@@ -276,6 +336,11 @@ export function DetailSheet({
       */}
       <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center pointer-events-none">
       <div
+        ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className="t-panel-slide relative w-full max-w-[430px] bg-surface text-text rounded-t-[var(--radius-cards)] px-[var(--spacing-24)] pt-[var(--spacing-16)] pb-[calc(env(safe-area-inset-bottom)+var(--spacing-32))]"
         data-open={shown}
         style={{ '--panel-translate-y': '100%' } as CSSProperties}
@@ -294,7 +359,7 @@ export function DetailSheet({
           </div>
         </div>
         <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 mb-1 line-clamp-2">{eventLabel(item)}</p>
-        <h2 className="text-center text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text mb-[var(--spacing-16)]">{title}</h2>
+        <h2 id={titleId} className="text-center text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text mb-[var(--spacing-16)]">{title}</h2>
         {/* 레벨형은 등급이 없어 Lv.N 칩으로 갈라진다. 등급형 common은 기존대로 칩을 그리지 않는다. */}
         {(level != null || (rarity && rarity !== 'common')) && (
           <div className="flex justify-center mb-[var(--spacing-16)]">

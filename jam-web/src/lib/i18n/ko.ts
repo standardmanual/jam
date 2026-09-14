@@ -436,6 +436,9 @@ export const ko = {
 
   /** 드랍/픽업 (지도) */
   drops: {
+    // 20260908_1754: PoiCarouselModal의 dialog aria-label — 화면에 노출되지 않고
+    // 스크린리더에만 전달된다.
+    poiCarouselAriaLabel: '지점 드랍·픽업',
     locationUnsupported: '이 브라우저는 위치 기능을 지원하지 않아요',
     locationDenied: '위치 권한을 허용해 주세요',
     retry: '다시 시도',
