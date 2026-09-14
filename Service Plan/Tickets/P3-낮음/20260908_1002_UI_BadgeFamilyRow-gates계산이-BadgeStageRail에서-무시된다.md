@@ -2,7 +2,7 @@
 id: 20260908_1002
 category: UI
 priority: P3
-status: OPEN
+status: IN_PROGRESS
 created: 2026-09-08
 closed:
 ---
@@ -45,14 +45,24 @@ gates: stage.gateGroups.map((g) => ({ kind: g.kind, met: g.fulfilled })),
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`gateGroups` 전체 사용처를 추적한 결과, `stage.gateGroups` 자체는
+`computeStopStatus`(눈금 상태 계산)에도 쓰이는 살아있는 데이터라 걷어내지 않았다.
+죽은 코드는 그중 `BadgeFamilyRow.tsx`가 `BadgeStageRail`에 넘기던 `gates:` 매핑
+한 줄뿐이었다 — `BadgeStageRail.jsx`(DS) 구현을 확인한 결과 `stop.gates`를 실제로
+읽는 코드가 없다(자물쇠 게이트 시각 표현은 `status`만으로 그린다).
+
+`BadgeStageRail`의 `.d.ts`/`gates` prop 타입 자체는 제거하지 않았다 — DS의
+`BadgeStageRail.stories.tsx`가 "gates prop을 넘겨도 렌더가 깨지지 않는지"를 의도적으로
+계속 테스트 중이며(티켓 20260906_2333 이후에도 하위호환 목적으로 유지), 이는 호출부
+정리 범위를 벗어난 DS 자체 결정이라 손대지 않았다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/components/badges/BadgeFamilyRow.tsx
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npm run lint` 전체 실행 — 에러 0건 / 경고 14건(모두 기존 코드, 변경 파일과 무관)
 
 ### 배포 정보
 - 배포일:
@@ -60,6 +70,9 @@ gates: stage.gateGroups.map((g) => ({ kind: g.kind, met: g.fulfilled })),
 - 커밋:
 
 ### 주요 의사결정 / 핵심 메모
+- `gateGroups` 자체는 살아있는 데이터(`computeStopStatus` 등)이므로 유지, `gates:` 매핑만 제거
+- `BadgeStageRail.d.ts`의 `gates` prop 타입은 DS 쪽에서 하위호환 테스트용으로 의도적으로
+  유지 중이라 이 티켓 범위에서는 그대로 둠
 
 ### 잔여 이슈
 -
