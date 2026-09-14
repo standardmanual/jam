@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
+import { validatePoiCategoryExists } from '@/lib/admin/poi-category-validation'
 
 export async function GET() {
   const admin = await getAdminUser()
@@ -44,6 +45,12 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServiceClient()
+
+  const categoryValidation = await validatePoiCategoryExists(supabase, category)
+  if (!categoryValidation.valid) {
+    return NextResponse.json({ error: categoryValidation.error }, { status: categoryValidation.status })
+  }
+
   // 티켓 20260907_1811 — 자동수집 중단·수동등록 전환에 따라, 어드민에서 신규 등록하는 모든
   // POI는 클라이언트가 무엇을 보내든 항상 "임시등록"(비활성·검토대기)으로 저장한다. 최종
   // 노출(is_active=true)은 검토 큐/편집 화면에서 확인·수정 후 명시적으로 활성화해야만 이뤄진다
