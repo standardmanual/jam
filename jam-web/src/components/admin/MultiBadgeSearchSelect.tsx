@@ -64,6 +64,7 @@ export default function MultiBadgeSearchSelect({
   const [itemBookId, setItemBookId] = useState(ALL)
   const [rarity, setRarity] = useState(ALL)
   const [results, setResults] = useState<BadgeSearchResult[]>([])
+  const [truncated, setTruncated] = useState(false)
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -93,8 +94,10 @@ export default function MultiBadgeSearchSelect({
         const res = await fetch(`/api/admin/badges/search?${params.toString()}`)
         const data = await res.json()
         setResults((data.badges ?? []) as BadgeSearchResult[])
+        setTruncated(Boolean(data.truncated))
       } catch {
         setResults([])
+        setTruncated(false)
       } finally {
         setLoading(false)
       }
@@ -203,6 +206,11 @@ export default function MultiBadgeSearchSelect({
                   </button>
                 )
               })}
+            {!loading && truncated && (
+              <p className="px-3 py-2 text-xs text-amber-600 border-t border-border">
+                결과가 많아 일부만 표시했습니다. 검색어를 추가해 좁혀보세요.
+              </p>
+            )}
           </div>
         )}
       </div>

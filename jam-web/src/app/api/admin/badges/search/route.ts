@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
   if (!query && !hasFilter) return NextResponse.json({ badges: [] })
 
   const supabase = createServiceClient()
+  // MAX_RESULTS보다 1개 더 가져와서, 초과분이 있으면 "상한에 잘렸다"는 신호로만 쓰고
+  // 응답에는 다시 MAX_RESULTS까지만 잘라 내려준다(티켓 20260910_1442).
   let q = supabase
     .from('badges')
     // point_reward: MissionList의 "보상 배지 포인트 포함 여부" 경고에 필요. 나머지 호출부는
@@ -46,7 +48,7 @@ export async function GET(req: NextRequest) {
     .select('id, name, rarity, type, point_reward, admin_category, image_url')
     .is('deleted_at', null)
     .order('name', { ascending: true })
-    .limit(MAX_RESULTS)
+    .limit(MAX_RESULTS + 1)
 
   if (query) q = q.ilike('name', `%${query}%`)
   if (type) q = q.eq('type', type)
@@ -57,5 +59,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ badges: data ?? [] })
+  const rows = data ?? []
+  const truncated = rows.length > MAX_RESULTS
+  return NextResponse.json({ badges: rows.slice(0, MAX_RESULTS), truncated })
 }
