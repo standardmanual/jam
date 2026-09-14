@@ -47,14 +47,25 @@ created: 2026-09-10
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+티켓 본문의 1안(별도 상수 분리)을 채택했다. `ACTIVITY_TYPE_LABELS`에서 `jam` 키를 제거해
+원래 목적인 "종목 전용" 맵으로 되돌렸고, 배지 메뉴 액티비티 탭 필터 전용으로
+`BADGE_ACTIVITY_FILTER_LABELS`(`ACTIVITY_TYPE_LABELS` 스프레드 + `jam: 'JAM!'`)를 신설했다.
+소비처는 `BadgesClient.tsx`(`/badges` 액티비티 탭 필터 드롭다운) 한 곳뿐이라 그 파일의 import만
+교체했다. 어드민 종목 검색 필터(`activity-badge-image/page.tsx`)·미션 상세
+(`missions/[id]/MissionDetailClient.tsx`) 등 나머지 소비처는 `ACTIVITY_TYPE_LABELS`를 그대로
+쓰므로 "JAM!" 옵션이 더 이상 섞이지 않는다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/lib/utils.ts
+jam-web/src/app/(main)/badges/BadgesClient.tsx
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npm run lint` 전체 실행 — 0 errors, 14 warnings (모두 이번 변경과 무관한 기존 경고:
+  design-system stories 미사용 변수, `<img>` LCP 경고 등)
+- [x] `grep`으로 `ACTIVITY_TYPE_LABELS` 전체 소비처(9개 파일) 확인 — `BadgesClient.tsx` 외
+  모두 종목 라벨만 참조하고 `jam` 키에 의존하지 않음을 재확인
 
 ### 배포 정보
 - 배포일:
@@ -62,6 +73,10 @@ created: 2026-09-10
 - 커밋:
 
 ### 주요 의사결정 / 핵심 메모
+- 대안(소비처마다 `jam` 제외 필터 추가)은 소비처가 늘 때마다 반복 로직이 필요해 기각 — 티켓
+  본문이 제시한 별도 상수 분리를 그대로 채택
+- `BADGE_ACTIVITY_FILTER_LABELS`는 `ACTIVITY_TYPE_LABELS`를 스프레드해 구성하므로 종목 라벨이
+  바뀌면 자동으로 따라간다 — 별도 동기화 불필요
 
 ### 잔여 이슈
 -

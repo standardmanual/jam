@@ -38,8 +38,17 @@ export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   trail_running: '트레일러닝',
   hiking: '등산',
   walking: '걷기',
-  /** 실제 종목이 아니라 서비스 사용량 지표 배지 분류(`badges.admin_category='jam'`)의
-   *  필터 라벨이다 — 배지 메뉴 액티비티 탭 분류 필터 전용(티켓 20260910_2258) */
+}
+
+/**
+ * 배지 메뉴 액티비티 탭 분류 필터 전용 라벨(티켓 20260910_2258, 20260910_2316).
+ *
+ * `jam`은 실제 종목이 아니라 서비스 사용량 지표 배지 분류(`badges.admin_category='jam'`)의
+ * 필터 라벨이다. `ACTIVITY_TYPE_LABELS`는 종목 전용 공유 모듈이라 다른 소비처(어드민 종목
+ * 검색 필터, 미션 상세 등)를 오염시키므로 이 상수에서만 종목 5개 + JAM!을 관리한다.
+ */
+export const BADGE_ACTIVITY_FILTER_LABELS: Record<string, string> = {
+  ...ACTIVITY_TYPE_LABELS,
   jam: 'JAM!',
 }
 
