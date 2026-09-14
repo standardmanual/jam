@@ -60,9 +60,10 @@ interface PoiInsertWithGateColumns {
 
 // 20260907_1242: 카테고리별 requires_review가 켜져 있으면 네이버 원본 분류(naverCategory)를
 // 기대 카테고리와 대조해 3단계로 나눈다 — 자동거부는 애초에 insert 목록에서 빠지고(저장하지
-// 않음), 자동승인/검토대기는 둘 다 저장되되 pending_review 값만 다르다(노출은 동일, 게이트와
-// 노출 로직은 분리 — 티켓 완료기록 참고). requires_review가 꺼진 카테고리는 기존처럼 게이트
-// 없이 전부 자동승인 취급한다.
+// 않음), 자동승인/검토대기는 둘 다 저장되되 pending_review 값만 다르다. requires_review가
+// 꺼진 카테고리는 기존처럼 게이트 없이 전부 자동승인 취급한다.
+// (노출 여부는 게이트와 별개로 is_active가 결정한다 — 20260911_1343: 검토대기면
+// display_on_map과 무관하게 is_active=false 강제. 아래 gated.map() 부근 주석 참고.)
 function gatePois(
   pois: NaverPlace[],
   requiresReviewByCategory: Map<string, boolean>

@@ -52,7 +52,10 @@
   어긋나는 **한 컬럼 단위로** 좁힌다(`Omit<Insert, 'serial_number'>` 형태).
 - **페이로드에 `Record<string, unknown>` 반환 함수를 스프레드하지 않는다.** 그 키들은 타입에서
   사라져 오타가 통과한다.
-- **마이그레이션을 추가하면 `npm run db:types`로 생성 타입을 재생성해 같은 커밋에 넣는다.**
-  생성 타입이 낡으면 올바른 코드가 잘못된 컴파일 오류를 낸다.
+- **마이그레이션을 추가하면 생성 타입을 재생성해 같은 커밋에 넣는다.** 이 환경에는 supabase
+  CLI가 없어 `npm run db:types`(제거됨)는 실행 불가하고, 실행하면 실패하며 파일을 빈 값으로
+  덮어쓴다. Supabase MCP의 `generate_typescript_types`로 최신 타입을 받아 기존
+  `src/types/database.generated.ts`와 대조해 반영한다. 생성 타입이 낡으면 올바른 코드가
+  잘못된 컴파일 오류를 낸다.
 
 배경과 실측은 `../Service Plan/Tickets/20260831_1213_Service_Supabase제네릭-생성타입전환-쓰기타입검사-복구.md` 참조.

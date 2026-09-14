@@ -2,9 +2,9 @@
 id: 20260911_1402
 category: Service
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-11
-closed:
+closed: 2026-09-14
 ---
 
 # [Service] drops/route.ts 구주석과 신규 동작 상충 정리
@@ -36,11 +36,21 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+61~65행 구주석에서 "노출은 동일, 게이트와 노출 로직은 분리"라는 상충 서술을 제거하고,
+실제 노출 판정은 127~131행 부근(`is_active` 계산부, 20260911_1343)을 참조하도록 정리했다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/app/api/drops/route.ts
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npx eslint src/app/api/drops/route.ts` — 에러 0건 (주석만 변경, 동작 무변경)
+
+### 배포 정보
+- 배포일: 2026-09-14
+- 환경: staging
+- 커밋: (직접 커밋)
+
+### 잔여 이슈
+- 없음
