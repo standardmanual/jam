@@ -256,10 +256,33 @@ def gate_requirement(family_keys, min_rarity=None, min_level=None):
 # 반환: [(family_key, rarity, patch_dict, note), ...]
 results = []
 skipped_no_gate = []  # (family_key, rarity, 사유) — 감사용
+# 레벨형(무한레벨) 축 게이트 — 티켓 20260908_1028. 등급형(graded/repeatable)과 별도 리스트로
+# 관리한다: 레벨형 계열은 rarity가 전부 NULL이라 아래 등급형 루프의 rarity 기반 매칭(칼럼
+# `rarity = '{rarity}'`)이 아예 적용되지 않는다 — "자기 최고 레벨 행"에 건다(등급형의 Mystic
+# 자리에 대응, 근거는 티켓 20260908_1017 완료기록).
+leveled_results = []  # (family_key, level, patch, note)
 
 for f in FAMS:
+    if f.kind == 'leveled':
+        sport = f.sport_key
+        axis = f.axis
+        if axis in (None, '', '기록', '보너스'):
+            skipped_no_gate.append((f.family_key, 'leveled', f'축({axis}) 게이트 대상 아님'))
+            continue
+        mission_code = MISSION_MAP.get(sport, {}).get(axis)
+        if not mission_code:
+            skipped_no_gate.append((f.family_key, 'leveled', f'{sport}:{axis} 미션 매핑 없음(레벨형)'))
+            continue
+        levels = [lv for r, lv, c in f.rows if lv is not None]
+        if not levels:
+            skipped_no_gate.append((f.family_key, 'leveled', '레벨 행 없음'))
+            continue
+        max_level = max(levels)
+        patch = {'gate_mission_badge': gate_requirement([f'{sport}:{mission_code}'])}
+        leveled_results.append((f.family_key, max_level, patch, f'{sport}:{axis}:{f.code}:leveled_top'))
+        continue
     if f.kind not in ('graded', 'repeatable'):
-        continue  # leveled(누적 자기 자신의 Lv.5+/Lv.8+ 게이트)·auto(기록)·mission은 이 티켓 범위 밖
+        continue  # auto(기록)·mission은 이 티켓 범위 밖
     sport = f.sport_key
     axis = f.axis
     rset = rarities_of(f)
@@ -375,6 +398,7 @@ min_level_rows = [r for r in results if 'min_level' in json.dumps(r[2])]
 assert len(min_level_rows) == 15, f'min_level 포함 행 수 어긋남: {len(min_level_rows)}'
 
 print('총 패치 대상 행', len(results), '(epic', len(epic_rows), '/ mystic', len(mystic_rows), ')')
+print('레벨형(무한레벨) 축 패치 대상 행', len(leveled_results), '(티켓 20260908_1028)')
 print('게이트 없음(의도된 예외) 행', len(skipped_no_gate))
 print('min_level 포함 행', len(min_level_rows), '— 11건의 축쌍(row) 중 실제 배지가 존재하는', end=' ')
 print(len({r[3].rsplit(":", 1)[0] for r in min_level_rows}), '개 축쌍에서 발생')
@@ -390,11 +414,17 @@ mapping_out = {
         'mystic_패치': len(mystic_rows),
         'min_level_값': MIN_LEVEL,
         'min_level_포함_행': len(min_level_rows),
+        '레벨형_패치_행': len(leveled_results),
         '게이트_없음_의도된_예외': [{'family_key': r[0], 'rarity': r[1], '사유': r[2]} for r in skipped_no_gate],
     },
     '패치': [
         {'family_key': fk, 'rarity': rarity, 'condition_patch': patch, '출처': note}
         for fk, rarity, patch, note in sorted(results, key=lambda r: (r[0], r[1]))
+    ],
+    # 레벨형(무한레벨) 축 — rarity가 없어 「자기 최고 레벨」로 식별한다(티켓 20260908_1028)
+    '레벨형_패치': [
+        {'family_key': fk, 'level': level, 'condition_patch': patch, '출처': note}
+        for fk, level, patch, note in sorted(leveled_results, key=lambda r: (r[0], r[1]))
     ],
 }
 with open(OUT_MAP, 'w', encoding='utf-8') as fp:
@@ -449,6 +479,21 @@ for fk, rarity, patch, note in sorted(results, key=lambda r: (r[0], r[1])):
         f"WHERE family_key = '{fk}' AND rarity = '{rarity}' AND type = 'activity' "
         "AND deleted_at IS NULL;"
     )
+
+if leveled_results:
+    A('')
+    A(f'-- 레벨형(무한레벨) 축 게이트 — {len(leveled_results)}건 (자기 최고 레벨 행에')
+    A('--   gate_mission_badge 연결. rarity가 없는 계열이라 level로 식별한다. 티켓 20260908_1028)')
+    for fk, level, patch, note in sorted(leveled_results, key=lambda r: (r[0], r[1])):
+        patch_json = json.dumps(patch, ensure_ascii=False)
+        A(f"-- {note}")
+        A(
+            "UPDATE public.badges SET condition_json = condition_json || "
+            f"'{patch_json}'::jsonb "
+            f"WHERE family_key = '{fk}' AND level = {level} AND rarity IS NULL AND type = 'activity' "
+            "AND deleted_at IS NULL;"
+        )
+
 A('')
 A('COMMIT;')
 
