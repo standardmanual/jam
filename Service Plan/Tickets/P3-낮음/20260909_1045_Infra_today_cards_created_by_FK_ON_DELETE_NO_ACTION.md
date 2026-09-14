@@ -2,9 +2,9 @@
 id: 20260909_1045
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-09
-closed:
+closed: 2026-09-14
 ---
 
 # [Infra] today_cards.created_by FK가 ON DELETE NO ACTION — 유저 완전삭제 시 잠재적 500 위험
@@ -56,9 +56,14 @@ jam-web/supabase/migrations/170_today_cards_created_by_fk_set_null.sql (신규)
 - [ ] 마이그레이션 미실행 (SQL 파일 작성까지만 진행, 실행은 사용자 승인 후 오케스트레이터)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-09-14
+- 환경: production (Supabase 단일 DB — staging/prod 공용, 오케스트레이터가 직접 적용 확인)
+- 커밋: (staging 머지 커밋 참고)
+
+### 주요 의사결정 / 핵심 메모 (오케스트레이터 추가)
+- 제약명이 실제로 `today_cards_created_by_fkey`임을 `pg_constraint` 조회로 확인 후
+  마이그레이션을 실행했다. 실행 전 `confdeltype='a'`(NO ACTION), 실행 후 `'n'`(SET NULL)
+  확인 완료.
 
 ### 주요 의사결정 / 핵심 메모
 - 컬럼 제거 방향은 1차 시도에서 "데드 컬럼" 전제가 틀렸음이 확인돼 폐기하고, FK
