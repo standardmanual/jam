@@ -16,7 +16,7 @@ import {
   type FrontierCaption,
 } from '@/lib/badgeProgressText'
 import { RARITY_LABEL } from '@/lib/rarity'
-import { frontierStageOf } from '@/lib/badgeTree'
+import { frontierStageOf, hasNextStage } from '@/lib/badgeTree'
 import type { BadgeFamily, BadgeFamilyStage } from '@/lib/badgeTree'
 import type { BadgeProgress, RegretLineData } from '@/lib/badge-engine/badgeProgress'
 
@@ -98,6 +98,7 @@ export default function BadgeFamilyRow({
     const values = rawProgress ? formatFamilyRowValues(rawProgress, progressConditionText) : null
     // 헤더 2행 — 다음 목표 레벨. 값 행(120 / 150km)이 본문에 이미 있으므로 조건값은 잇지 않는다.
     const nextLevel = frontierStage?.level ?? null
+    const hasNext = hasNextStage(family, frontierStage, earnedBadgeIds)
     return (
       <FamilyRowShell stage={frontierStage} onLockClick={onLockClick} label={family.name}>
         <BadgeLevelGauge
@@ -110,7 +111,7 @@ export default function BadgeFamilyRow({
           next={values?.next ?? '—'}
           left={values?.left ?? null}
           fraction={values?.fraction ?? 0}
-          metaText={nextLevel != null ? `다음 Lv.${nextLevel}` : null}
+          metaText={hasNext ? `다음 Lv.${nextLevel}` : null}
           imageUrl={frontierStage?.imageUrl ?? null}
           alt={family.name}
         />
@@ -126,6 +127,7 @@ export default function BadgeFamilyRow({
     const stampFraction =
       rawProgress && rawProgress.kind !== 'unsupported' ? rawProgress.progress : null
     const frontierEarned = frontierStage ? earnedBadgeIds.has(frontierStage.id) : false
+    const hasNext = hasNextStage(family, frontierStage, earnedBadgeIds)
     return (
       <FamilyRowShell stage={frontierStage} onLockClick={onLockClick} label={family.name}>
         <BadgeStampRow
@@ -137,9 +139,9 @@ export default function BadgeFamilyRow({
           // 프런티어 눈금이 이미 획득된 상태면(최고 등급까지 다 받음) 「다음 {등급}」을
           // 적지 않는다 — 더 다음이 없다(티켓 20260908_1727).
           metaText={
-            frontierStage && !frontierEarned
+            hasNext
               ? formatFamilyMetaLine(
-                  frontierStage.rarity ? (RARITY_LABEL[frontierStage.rarity] ?? null) : null,
+                  frontierStage!.rarity ? (RARITY_LABEL[frontierStage!.rarity] ?? null) : null,
                   null
                 )
               : null
@@ -167,7 +169,8 @@ export default function BadgeFamilyRow({
     gates: stage.gateGroups.map((g) => ({ kind: g.kind, met: g.fulfilled })),
   }))
 
-  const nextStop = stops.find((s) => s.status !== 'earned')
+  const gradedHasNext = hasNextStage(family, frontierStage, earnedBadgeIds)
+  const nextStop = gradedHasNext ? stops.find((s) => s.id === frontierStage!.id) : undefined
   const nextRarityLabel = nextStop?.rarity ? (RARITY_LABEL[nextStop.rarity] ?? nextStop.rarity) : null
 
   const frontierProgress = buildFrontierCaption(rawProgress, progressConditionText)

@@ -223,6 +223,25 @@ export function frontierStageOf(
   return family.kind === 'repeatable' ? family.stages[family.stages.length - 1] : undefined
 }
 
+/**
+ * 계열에 «다음 단계»가 남아 있는지 — 등급형·레벨형·반복형 세 분기가 각각 다른 방식으로
+ * 판정하던 것을 하나로 합친다(티켓 20260908_1733, 20260908_1727의 후속 정리).
+ *
+ * `frontierStageOf`가 돌려준 프런티어 눈금을 받아 그 눈금이 «아직 갈 곳»인지만 가른다.
+ * 등급형·레벨형은 `frontierStageOf`가 이미 `undefined`로 「다 받음」을 표현하지만, 반복형은
+ * 다 받은 뒤에도 마지막 눈금을 계속 프런티어로 돌려준다(다음 회차가 진행 중이라서) — 그래서
+ * 반복형만 한 번 더 획득 여부를 확인해야 「다음 등급」이 없는데 칩이 뜨는 사고가 안 난다.
+ */
+export function hasNextStage(
+  family: BadgeFamily,
+  frontierStage: BadgeFamilyStage | undefined,
+  earnedBadgeIds: Set<string>
+): boolean {
+  if (!frontierStage) return false
+  if (family.kind === 'repeatable') return !earnedBadgeIds.has(frontierStage.id)
+  return true
+}
+
 /** 계열의 «입구» 눈금 — 잠금 칩이 링크할 대표 배지(등급형은 Common, 레벨형은 Lv.1) */
 function entryStageOf(variants: BadgeTreeSourceBadge[]): BadgeTreeSourceBadge | undefined {
   return [...variants].sort(
