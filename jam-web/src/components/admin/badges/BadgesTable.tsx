@@ -15,6 +15,7 @@ import {
 import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
+import { formatKstYmd } from '@/lib/admin/kst-format'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -47,15 +48,6 @@ const RARITY_LABEL: Record<BadgeRarity, string> = {
   rare: 'Rare',
   epic: 'Epic',
   mystic: 'Mystic',
-}
-
-/** "YYYY.MM.DD" 형식으로 날짜 포맷 */
-function formatYmd(iso: string): string {
-  const d = new Date(iso)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}.${m}.${day}`
 }
 
 /**
@@ -191,7 +183,7 @@ export default function BadgesTable({ badges, tribeMap = new Map() }: BadgesTabl
           const deletedAt = getValue()
           return deletedAt ? (
             <span className="inline-flex items-center px-2 py-1 bg-red-50 border border-red-200 rounded-full text-red-600 text-xs font-semibold whitespace-nowrap">
-              비활성화됨 · {formatYmd(deletedAt)} 회수
+              비활성화됨 · {formatKstYmd(deletedAt)} 회수
             </span>
           ) : (
             <span className="text-gray-500 text-xs">활성</span>

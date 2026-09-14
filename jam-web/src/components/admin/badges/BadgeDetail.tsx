@@ -23,6 +23,7 @@ import {
   ReadOnlyGrid,
   ReadOnlyItem,
 } from './BadgeEditorLayout'
+import { formatKstYmd } from '@/lib/admin/kst-format'
 import { cn } from '@/lib/utils'
 import BadgeRailPreview from '@/app/admin/badges/BadgeRailPreview'
 import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
@@ -52,15 +53,6 @@ const RARITY_LABEL: Record<BadgeRarity, string> = {
   rare: 'Rare',
   epic: 'Epic',
   mystic: 'Mystic',
-}
-
-/** "YYYY.MM.DD" 형식으로 날짜 포맷 */
-function formatYmd(iso: string): string {
-  const d = new Date(iso)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}.${m}.${day}`
 }
 
 /** 연결된 지점 1곳 — `[id]/page.tsx`가 서버에서 조회해 넘긴다(티켓 20260911_0901) */
@@ -284,7 +276,7 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
         </ReadOnlyItem>
         <ReadOnlyItem label="유효기간">
           {badge.valid_from || badge.valid_until ? (
-            `${badge.valid_from ? formatYmd(badge.valid_from) : '처음부터'} ~ ${badge.valid_until ? formatYmd(badge.valid_until) : '종료일 없음'}`
+            `${badge.valid_from ? formatKstYmd(badge.valid_from) : '처음부터'} ~ ${badge.valid_until ? formatKstYmd(badge.valid_until) : '종료일 없음'}`
           ) : (
             <Empty>{badge.type === 'item' ? '상시 드랍' : '상시 평가'}</Empty>
           )}
@@ -394,7 +386,7 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
               <h1 className="text-2xl font-bold">{badge.name}</h1>
               {badge.deleted_at && (
                 <span className="inline-flex items-center whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600">
-                  비활성화됨 · {formatYmd(badge.deleted_at)} 회수
+                  비활성화됨 · {formatKstYmd(badge.deleted_at)} 회수
                 </span>
               )}
             </div>

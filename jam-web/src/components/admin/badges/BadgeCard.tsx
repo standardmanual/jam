@@ -9,6 +9,7 @@ import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeCondition, BadgeRarity } from '@/types/database'
 import type { BadgeListRow } from './BadgeList'
 import { badgeTypeLabel } from '@/lib/admin/badge-labels'
+import { formatKstYmd } from '@/lib/admin/kst-format'
 
 const RARITY_BADGE_COLOR: Record<string, string> = {
   common: 'bg-gray-200 text-gray-800',
@@ -22,15 +23,6 @@ const RARITY_LABEL: Record<BadgeRarity, string> = {
   rare: 'Rare',
   epic: 'Epic',
   mystic: 'Mystic',
-}
-
-/** "YYYY.MM.DD" 형식으로 날짜 포맷 */
-function formatYmd(iso: string): string {
-  const d = new Date(iso)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}.${m}.${day}`
 }
 
 interface BadgeCardProps {
@@ -76,7 +68,7 @@ export default function BadgeCard({ badge }: BadgeCardProps) {
               </span>
               {badge.deleted_at && (
                 <span className="inline-block px-2 py-1 text-xs font-semibold bg-red-50 border border-red-200 text-red-600 rounded-full whitespace-nowrap">
-                  비활성화됨 · {formatYmd(badge.deleted_at)} 회수
+                  비활성화됨 · {formatKstYmd(badge.deleted_at)} 회수
                 </span>
               )}
             </div>

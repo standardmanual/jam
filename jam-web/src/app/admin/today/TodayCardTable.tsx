@@ -144,8 +144,8 @@ function TodayCardTableInner({ cards, selectedDate, onToggleActive, onDelete }: 
         enableHiding: false,
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
-            {new Date(row.original.starts_at).toLocaleDateString('ko-KR')} ~<br />
-            {new Date(row.original.ends_at).toLocaleDateString('ko-KR')}
+            {new Date(row.original.starts_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })} ~<br />
+            {new Date(row.original.ends_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })}
           </span>
         ),
       }),

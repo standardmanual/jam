@@ -44,6 +44,7 @@ import {
 // 순수 함수라 서버 전용 의존이 없는 targetHref.ts에서 가져온다(TodayCardForm.tsx와 동일 이유
 // — `@/lib/today/cards`를 값으로 import하면 next/headers까지 클라이언트 번들에 딸려 들어간다).
 import { resolveTargetHref } from '@/lib/today/targetHref'
+import { formatKstYmdHm } from '@/lib/admin/kst-format'
 import type { TodayCardRow } from '@/types/database'
 import { cn } from '@/lib/utils'
 
@@ -77,13 +78,6 @@ function layoutLabel(value: string): string {
 }
 function exposureTagLabel(value: string): string {
   return TODAY_EXPOSURE_TAG_OPTIONS.find((t) => t.value === value)?.label ?? value
-}
-
-/** "YYYY.MM.DD HH:mm" 형식으로 날짜·시각 포맷 */
-function formatYmdHm(iso: string): string {
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 export default function TodayCardDetail({ card, linkedBadges, missionTitle, itemBookName, rankingModeTitle, returnDate }: TodayCardDetailProps) {
@@ -229,8 +223,8 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
   const periodSection = (
     <TodaySectionCard {...sectionHeader('period')}>
       <ReadOnlyGrid>
-        <ReadOnlyItem label="시작 일시">{formatYmdHm(card.starts_at)}</ReadOnlyItem>
-        <ReadOnlyItem label="종료 일시">{formatYmdHm(card.ends_at)}</ReadOnlyItem>
+        <ReadOnlyItem label="시작 일시">{formatKstYmdHm(card.starts_at)}</ReadOnlyItem>
+        <ReadOnlyItem label="종료 일시">{formatKstYmdHm(card.ends_at)}</ReadOnlyItem>
         <ReadOnlyItem label="정렬 순서">{card.sort_order}</ReadOnlyItem>
         <ReadOnlyItem label="활성화">{card.is_active ? '활성' : '비활성'}</ReadOnlyItem>
       </ReadOnlyGrid>
