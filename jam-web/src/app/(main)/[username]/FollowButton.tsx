@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Button from '@/components/ui/Button'
-import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
+import { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { useTextSwap } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d } from '@/lib/i18n'
@@ -13,11 +13,19 @@ interface FollowResponse {
   earnedBadgesMore?: number
 }
 
-export function FollowButton({ targetUserId, initialFollowing }: { targetUserId: string; initialFollowing: boolean }) {
+interface FollowButtonProps {
+  targetUserId: string
+  initialFollowing: boolean
+  /**
+   * 팔로우로 배지를 획득하면 호출된다 — 리빌 오버레이는 이 버튼이 아니라 상위(목록 페이지)가
+   * 소유한다 (티켓 20260910_2133). 목록 페이지에 행마다 독립된 오버레이를 두면 두 사람을
+   * 연달아 팔로우했을 때 여러 오버레이가 동시에 뜰 수 있어, 상태를 페이지 레벨로 끌어올렸다.
+   */
+  onEarnBadges: (badges: RevealBadge[], moreCount: number) => void
+}
+
+export function FollowButton({ targetUserId, initialFollowing, onEarnBadges }: FollowButtonProps) {
   const [following, setFollowing] = useState(initialFollowing)
-  const [revealOpen, setRevealOpen] = useState(false)
-  const [earnedBadges, setEarnedBadges] = useState<RevealBadge[]>([])
-  const [earnedBadgesMore, setEarnedBadgesMore] = useState(0)
 
   // 팔로우/팔로잉 라벨 — 즉시 전환 대신 Text states swap (04)
   const label = following ? d.social.followingButton : d.social.followButton
@@ -39,35 +47,23 @@ export function FollowButton({ targetUserId, initialFollowing }: { targetUserId:
       const data: FollowResponse = await res.json().catch(() => ({}))
       const badges = data.earnedBadges ?? []
       if (badges.length > 0) {
-        setEarnedBadges(badges)
-        setEarnedBadgesMore(data.earnedBadgesMore ?? 0)
-        setRevealOpen(true)
+        onEarnBadges(badges, data.earnedBadgesMore ?? 0)
       }
     }
   }
 
   return (
-    <>
-      <Button
-        variant={following ? 'outline' : 'primary'}
-        surface="sub"
-        size="sm"
-        onClick={toggle}
-        className="shrink-0"
-        // ListRowCard(--color-surface-elevated) 위라 outline 기본 채움(라이트 전용 4% 블랙 틴트)이
-        // 안 보임 — 다크 카드에서도 항상 구분되는 그레이 토큰으로 오버라이드 (2026-08-17)
-        style={following ? { backgroundColor: 'var(--color-chip-gray)', color: 'var(--color-text)' } : undefined}
-      >
-        <span ref={labelRef} className="t-text-swap">{initialText}</span>
-      </Button>
-
-      <BadgeRevealOverlay
-        open={revealOpen}
-        items={earnedBadges}
-        moreCount={earnedBadgesMore}
-        profileHref="/profile"
-        onClose={() => setRevealOpen(false)}
-      />
-    </>
+    <Button
+      variant={following ? 'outline' : 'primary'}
+      surface="sub"
+      size="sm"
+      onClick={toggle}
+      className="shrink-0"
+      // ListRowCard(--color-surface-elevated) 위라 outline 기본 채움(라이트 전용 4% 블랙 틴트)이
+      // 안 보임 — 다크 카드에서도 항상 구분되는 그레이 토큰으로 오버라이드 (2026-08-17)
+      style={following ? { backgroundColor: 'var(--color-chip-gray)', color: 'var(--color-text)' } : undefined}
+    >
+      <span ref={labelRef} className="t-text-swap">{initialText}</span>
+    </Button>
   )
 }

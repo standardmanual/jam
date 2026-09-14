@@ -1,11 +1,8 @@
 import { notFound, redirect } from 'next/navigation'
-import Image from 'next/image'
-import Link from 'next/link'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { FollowButton } from '../FollowButton'
-import ListRowCard from '@/components/ui/ListRowCard'
+import FollowUserList from '../FollowUserList'
 import TopNav from '@/components/ui/TopNav'
-import { UserIcon, UsersIcon } from '@/components/ui/icons'
+import { UsersIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d, t } from '@/lib/i18n'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
@@ -91,23 +88,7 @@ export default async function FollowingPage({ params }: Props) {
             description={isOwnProfile ? d.social.emptyFollowingBody : undefined}
           />
         ) : (
-          followingList.map((u) => (
-            <ListRowCard
-              key={u.id}
-              trailing={u.id !== user.id ? <FollowButton targetUserId={u.id} initialFollowing={u.isFollowing} /> : undefined}
-            >
-              <Link href={`/${u.username}`} className="flex items-center gap-[var(--spacing-16)] flex-1 min-w-0 active:opacity-70 transition-opacity">
-                {u.avatar_url ? (
-                  <Image src={u.avatar_url} alt={getDisplayName(u)} width={40} height={40} className="w-10 h-10 rounded-full object-cover shrink-0" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center shrink-0">
-                    <UserIcon className="w-4 h-4 text-text/50" />
-                  </div>
-                )}
-                <span className="text-[length:var(--text-body)] leading-[var(--leading-body)] truncate">{getDisplayName(u)}</span>
-              </Link>
-            </ListRowCard>
-          ))
+          <FollowUserList users={followingList} currentUserId={user.id} />
         )}
       </div>
     </div>
