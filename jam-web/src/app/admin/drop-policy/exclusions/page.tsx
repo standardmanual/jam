@@ -6,6 +6,7 @@ import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchPar
 import { ExclusionFilterBar } from './ExclusionFilterBar'
 import { DropExclusionCollectionsTable } from '@/components/admin/drop-policy/DropExclusionCollectionsTable'
 import { DropExclusionBadgesTable } from '@/components/admin/drop-policy/DropExclusionBadgesTable'
+import Pagination from '../../poi/Pagination'
 
 interface Props {
   searchParams: SearchParamsPromise
@@ -13,6 +14,8 @@ interface Props {
 
 type CollectionRow = Pick<ItemBookRow, 'id' | 'name' | 'tribe_id' | 'drop_excluded'>
 type ExclusionBadgeRow = Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'item_book_id' | 'drop_excluded'>
+
+const PAGE_SIZE = 500
 
 /**
  * 드랍 정책 — 아이템배지 드랍 제외 관리(티켓 20260911_2220).
@@ -30,6 +33,7 @@ export default async function DropExclusionsPage({ searchParams }: Props) {
   const params = pickSingleQueryParams(await searchParams)
   const filterTribeId = params.tribe_id
   const filterItemBookId = params.item_book_id
+  const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
 
   const supabase = createServiceClient()
 
@@ -49,17 +53,21 @@ export default async function DropExclusionsPage({ searchParams }: Props) {
     : collections.map((c) => c.id)
 
   let badges: ExclusionBadgeRow[] = []
+  let totalBadges = 0
   if (visibleItemBookIds.length > 0) {
-    const { data: badgesRaw } = await supabase
+    const from = (page - 1) * PAGE_SIZE
+    const { data: badgesRaw, count } = await supabase
       .from('badges')
-      .select('id, name, image_url, rarity, item_book_id, drop_excluded')
+      .select('id, name, image_url, rarity, item_book_id, drop_excluded', { count: 'exact' })
       .eq('type', 'item')
       .is('deleted_at', null)
       .in('item_book_id', visibleItemBookIds)
       .order('name', { ascending: true })
-      .limit(500)
+      .range(from, from + PAGE_SIZE - 1)
     badges = (badgesRaw ?? []) as ExclusionBadgeRow[]
+    totalBadges = count ?? 0
   }
+  const totalBadgePages = Math.max(1, Math.ceil(totalBadges / PAGE_SIZE))
 
   const collectionNameById = new Map(collections.map((c) => [c.id, c.name]))
 
@@ -88,7 +96,14 @@ export default async function DropExclusionsPage({ searchParams }: Props) {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">아이템배지 개별 드랍 제외</h2>
+        <div className="text-sm text-muted-foreground">총 {totalBadges}개</div>
         <DropExclusionBadgesTable badges={badges} collectionNameById={collectionNameById} />
+        <Pagination
+          page={page}
+          totalPages={totalBadgePages}
+          searchParams={params}
+          basePath="/admin/drop-policy/exclusions"
+        />
       </section>
     </div>
   )

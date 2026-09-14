@@ -27,6 +27,9 @@ export function ExclusionFilterBar({ tribes, itemBooks }: ExclusionFilterBarProp
       if (value === null || value === 'all') params.delete(key)
       else params.set(key, value)
     }
+    // 필터가 바뀌면 이전 페이지 번호가 새 목록 범위를 벗어날 수 있어 1페이지로 되돌린다
+    // (`/admin/badges`의 BadgesFilterBar와 동일 패턴).
+    params.delete('page')
     router.push(`/admin/drop-policy/exclusions?${params.toString()}`)
   }
 
