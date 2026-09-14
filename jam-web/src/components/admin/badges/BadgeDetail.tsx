@@ -3,6 +3,7 @@
 import { Fragment, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import {
   AlertDialog,
@@ -96,7 +97,7 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
   const condition = badge.condition_json as BadgeCondition | null
 
   // 삭제 확인 + 실행 (티켓 20260830_1344). 20260830_1912부터 DELETE는 이력이 없을 때만 실제 하드
-  // 삭제를 수행하고, 이력이 있으면 409와 함께 안내 메시지를 반환한다 — 아래 alert()가 그대로 노출한다.
+  // 삭제를 수행하고, 이력이 있으면 409와 함께 안내 메시지를 반환한다 — 아래 toast.error()가 그대로 노출한다.
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   // AlertDialog(Radix Portal)는 [data-admin-theme] 스코프 밖(document.body)에 렌더링되면 테마
@@ -111,7 +112,7 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
       const res = await fetch(`/api/admin/badges/${badge.id}`, { method: 'DELETE' })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        alert(data.error ?? '삭제에 실패했습니다. 다시 시도해주세요.')
+        toast.error(data.error ?? '삭제에 실패했습니다. 다시 시도해주세요.')
         return
       }
       router.push('/admin/badges')

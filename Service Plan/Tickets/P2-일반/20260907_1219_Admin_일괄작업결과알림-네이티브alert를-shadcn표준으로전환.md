@@ -46,18 +46,62 @@ created: 2026-09-07
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`grep -rn "alert(" jam-web/src/app/admin jam-web/src/components/admin`로 전수 조사한 결과
+17개 파일, 33건의 네이티브 `alert()` 호출을 발견했다(투데이·미션·게이트미션·트라이브·POI·
+POI검토·레시피·드랍제외(배지/컬렉션)·컬렉션(아이템북)·배지 등 사실상 모든 어드민 일괄/단건
+작업 결과 알림). 프로젝트에 어드민용 shadcn 토스트가 아직 없어(서비스 본체용
+`src/components/ui/Toast.tsx`는 하단 플로팅 탭바 앵커 기준이라 어드민 레이아웃에 맞지 않음)
+shadcn 표준 `sonner`를 신규 도입했다.
+
+- `sonner` 패키지 설치, 어드민 전용 `Toaster` 래퍼(`components/admin/ui/sonner.tsx`, 라이트
+  테마 고정 — 어드민은 다크모드 없음)를 만들어 `admin/layout.tsx`에 마운트
+- 33건의 `alert()`를 모두 `toast.error(...)`로 1:1 전환 (문구는 그대로 유지 — 톤 변경 없음)
+- "N건 삭제됨, M건은 참조가 있어 건너뜀 (사유 목록)" 패턴(미션·트라이브·컬렉션·배지 4개 화면
+  동일 형태)은 `components/admin/ui/toast-helpers.tsx`의 `toastBulkDeleteBlocked()`로 통합 —
+  toast.warning 배지 + 차단 사유 목록은 `max-h-32 overflow-y-auto` 스크롤 영역(`description`)으로
+  분리해 목록이 길어져도 토스트 한 줄이 과도하게 늘어나지 않게 했다
+- 완전 성공(차단 0건)일 때는 원래 코드도 알림이 없었으므로 그 침묵 동작은 그대로 유지했다
+  (스코프 밖 UX 개선을 임의로 추가하지 않음)
+- `confirm()` 네이티브 다이얼로그(사전 확인)는 티켓 범위(`alert()`만)가 아니므로 건드리지 않음
 
 ### 변경된 파일
 ```
--
+jam-web/package.json
+jam-web/package-lock.json
+jam-web/src/app/admin/layout.tsx
+jam-web/src/components/admin/ui/sonner.tsx (신규)
+jam-web/src/components/admin/ui/toast-helpers.tsx (신규)
+jam-web/src/app/admin/missions/MissionTable.tsx
+jam-web/src/app/admin/missions/MissionList.tsx
+jam-web/src/app/admin/gate-missions/GateMissionManager.tsx
+jam-web/src/app/admin/today/TodayCardTable.tsx
+jam-web/src/components/admin/today/TodayCardDetail.tsx
+jam-web/src/app/admin/tribes/TribesTable.tsx
+jam-web/src/app/admin/poi/review/PoiReviewTable.tsx
+jam-web/src/app/admin/recipes/RecipeTable.tsx
+jam-web/src/components/admin/drop-policy/DropExclusionBadgesTable.tsx
+jam-web/src/components/admin/drop-policy/DropExclusionCollectionsTable.tsx
+jam-web/src/components/admin/itembooks/ItemBookTable.tsx
+jam-web/src/components/admin/itembooks/ItemBookActiveToggleButton.tsx
+jam-web/src/components/admin/poi/PoiActiveToggleButton.tsx
+jam-web/src/components/admin/poi/PoiTable.tsx
+jam-web/src/components/admin/badges/BadgesTable.tsx
+jam-web/src/components/admin/badges/BadgeDetail.tsx
+jam-web/src/components/admin/badges/BadgeActiveToggleButton.tsx
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npm run lint` 전체 실행 — 0 errors, 14 warnings(모두 이번 변경과 무관한 기존
+      design-system/scripts 경고, 신규 발생 없음)
+- [x] `npx tsc --noEmit` — 변경 파일 관련 오류 0건(기존 shader-lab `liquid-metal` 타입 오류
+      3건은 이번 티켓과 무관한 기존 이슈, 그대로 존재)
+- [ ] 로컬 실렌더로 성공/실패 케이스 브라우저 확인 — 이 워크트리는 다른 세션의 dev 서버와
+      공유돼 있어 실시간 실렌더는 진행하지 않았다(정적 코드 검토 + 타입/린트로 대체).
+      머지 후 staging 배포본에서 실제 토스트 렌더를 확인 권장.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-- [ ] 용어 일관성
-- [ ] 에러 메시지 3단계 구조
+- [x] 용어 일관성 — 기존 알림 문구를 그대로 이관(신규 문구 작성 없음)
+- [x] 에러 메시지 3단계 구조 — 기존 문구 구조를 바꾸지 않았으므로 기존 상태 유지
 
 ### 배포 정보
 - 배포일:
@@ -65,7 +109,16 @@ created: 2026-09-07
 - 커밋:
 
 ### 주요 의사결정 / 핵심 메모
-> 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
+- 서비스 본체 `ui/Toast.tsx`를 재사용하지 않고 어드민 전용으로 shadcn `sonner`를 새로 도입한
+  이유: 서비스 Toast는 하단 플로팅 탭바 위 88px 고정 앵커 등 서비스 전용 오버레이 좌표계에
+  강하게 결합돼 있고, 어드민 UI 컨벤션 자체가 "shadcn/ui 표준"으로 이미 확정돼 있어(과거 결정,
+  `alert-dialog`·`select` 등 전부 shadcn) sonner가 더 일관된 선택
+- 반복되는 "N건 삭제, M건 건너뜀 + 사유" 포맷을 4개 화면에서 그대로 복사·붙여넣기 하고 있어
+  `toastBulkDeleteBlocked` 헬퍼로 통합 — 티켓이 요구한 "단일 toast 안에서도 읽기 쉽게
+  구성"·"긴 사유 목록은 스크롤 처리"를 한 곳에서 보장하기 위함(임의 리팩터링이 아니라 티켓
+  요구사항 구현에 필요한 최소 추상화)
+- 완전 성공 시 무음 처리(기존 동작)는 그대로 두었다 — 성공 토스트를 추가하는 것은 티켓 범위
+  ("alert → toast 전환") 밖의 신규 UX이므로 임의로 넣지 않음
 
 ### 잔여 이슈
--
+- 없음 (필요 시 게이트 리뷰에서 실브라우저 검증 보완 권장)

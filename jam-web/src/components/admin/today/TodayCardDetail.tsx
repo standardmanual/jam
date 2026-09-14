@@ -10,6 +10,7 @@
 import { Fragment, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import SafeImage from '@/components/SafeImage'
 import {
@@ -100,7 +101,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
       const res = await fetch(`/api/admin/today/${card.id}`, { method: 'DELETE' })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        alert(data.error ?? '삭제에 실패했습니다. 다시 시도해주세요.')
+        toast.error(data.error ?? '삭제에 실패했습니다. 다시 시도해주세요.')
         return
       }
       router.push(`/admin/today?date=${returnDate}`)
@@ -121,7 +122,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        alert(data.error ?? '상태 변경에 실패했습니다. 다시 시도해주세요.')
+        toast.error(data.error ?? '상태 변경에 실패했습니다. 다시 시도해주세요.')
         return
       }
       router.refresh()
