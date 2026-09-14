@@ -37,9 +37,17 @@ interface ConditionSimulationPanelProps {
   /** Radix Select 포털 컨테이너 — 가상 활동 폼 안의 Select를 상위 테마 스코프에 렌더링하기 위함
    *  (BadgeForm 등 shadcn 테마 스코프가 있는 화면에서 넘긴다. 없으면 기본 body에 렌더링) */
   themeContainer?: HTMLElement | null
+  /** 통과 문구에 쓸 동사 — 배지는 "발급", 미션은 "달성"(어드민 미션 화면 전반의 고정 용어).
+   *  호출부가 컨텍스트를 지정하지 않으면 기존 동작대로 "발급"을 쓴다(티켓 20260908_1700). */
+  passVerb?: '발급' | '달성'
 }
 
-export default function ConditionSimulationPanel({ condition, apiPath, themeContainer }: ConditionSimulationPanelProps) {
+export default function ConditionSimulationPanel({
+  condition,
+  apiPath,
+  themeContainer,
+  passVerb = '발급',
+}: ConditionSimulationPanelProps) {
   const [simOpen, setSimOpen] = useState(false)
   const [simTargetMode, setSimTargetMode] = useState<'user' | 'virtual'>('user')
   const [simUserQuery, setSimUserQuery] = useState('')
@@ -119,7 +127,7 @@ export default function ConditionSimulationPanel({ condition, apiPath, themeCont
         <div>
           <p className="text-sm font-semibold text-foreground">판정 시뮬레이션</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            저장하지 않은 지금 조건값 그대로, 선택한 대상에 대입해 발급 엔진 판정 결과를
+            저장하지 않은 지금 조건값 그대로, 선택한 대상에 대입해 {passVerb} 엔진 판정 결과를
             미리 확인해요. 저장은 되지 않아요.
           </p>
         </div>
@@ -246,9 +254,9 @@ export default function ConditionSimulationPanel({ condition, apiPath, themeCont
                 }`}
               >
                 {simResult.kind === 'pass'
-                  ? '판정 통과 — 이 유저는 이 조건으로 발급 가능해요'
+                  ? `판정 통과 — 이 유저는 이 조건으로 ${passVerb} 가능해요`
                   : simResult.kind === 'blocked'
-                    ? '구조적으로 차단됨 — 활동과 무관하게 영원히 발급될 수 없어요'
+                    ? `구조적으로 차단됨 — 활동과 무관하게 영원히 ${passVerb}될 수 없어요`
                     : '조건 미충족 — 아직 활동이 이 조건에 못 미쳐요'}
               </p>
               <p className="text-xs text-foreground/80">사유: {simResult.result.reason}</p>
