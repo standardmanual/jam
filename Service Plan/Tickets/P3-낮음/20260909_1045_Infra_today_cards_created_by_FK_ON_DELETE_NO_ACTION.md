@@ -18,6 +18,10 @@ closed:
 컬럼에 값을 쓰지 않는다(사실상 데드 컬럼) — 그래서 지금 당장은 유저 완전 삭제 기능에 영향이
 없다.
 
+> **정정 (2026-09-14)**: 위 "데드 컬럼" 전제는 틀렸다. `jam-web/src/app/api/admin/today/route.ts`의
+> POST 핸들러가 어드민 투데이카드 생성 시 `created_by`에 실제 관리자 id를 채워 넣는 실사용
+> 컬럼이다. 따라서 컬럼 제거가 아니라 FK를 `ON DELETE SET NULL`로 재정의하는 방향으로 진행한다.
+
 ## 상세 요구사항
 
 ### 서비스/코드베이스 관점
@@ -35,14 +39,21 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`today_cards.created_by`는 어드민 투데이카드 생성 API(`admin/today` POST)가 실제로 채워 쓰는
+컬럼임이 확인돼, 컬럼 제거 대신 FK 제약을 `ON DELETE SET NULL`로 재정의하는 마이그레이션을
+작성했다. 기존 제약(`today_cards_created_by_fkey`, 기본 명명 규칙 추정)을 `DROP CONSTRAINT IF
+EXISTS`로 제거한 뒤 `ON DELETE SET NULL`로 재생성한다. 어드민 계정이 완전 삭제돼도
+`today_cards` 행은 유지되고 `created_by`만 NULL로 바뀐다.
+
+SQL 파일만 작성했으며 실행은 오케스트레이터가 사용자 승인 후 진행한다.
 
 ### 변경된 파일
 ```
--
+jam-web/supabase/migrations/170_today_cards_created_by_fk_set_null.sql (신규)
 ```
 
 ### 테스트 결과
-- [ ]
+- [ ] 마이그레이션 미실행 (SQL 파일 작성까지만 진행, 실행은 사용자 승인 후 오케스트레이터)
 
 ### 배포 정보
 - 배포일:
@@ -50,6 +61,13 @@ closed:
 - 커밋:
 
 ### 주요 의사결정 / 핵심 메모
+- 컬럼 제거 방향은 1차 시도에서 "데드 컬럼" 전제가 틀렸음이 확인돼 폐기하고, FK
+  `ON DELETE SET NULL` 재정의로 방향을 정정했다.
+- 기존 FK 제약명을 실제 DB에서 직접 조회하지 못했다(이 세션은 DB 실행 권한이 없는
+  jam-developer 역할). `today_cards_created_by_fkey`는 Postgres 기본 명명 규칙 추정치이며,
+  실제 이름이 다르면 `DROP CONSTRAINT IF EXISTS`가 조용히 no-op 처리돼 신규 제약만 추가되고
+  구 제약(NO ACTION)이 남을 수 있다 — 실행 전 오케스트레이터가 실제 제약명을 확인할 것.
 
 ### 잔여 이슈
--
+- 마이그레이션 실행 후 `\d today_cards`(또는 동등 조회)로 FK 액션이 `SET NULL`로 정확히
+  하나만 남았는지 확인 필요.
