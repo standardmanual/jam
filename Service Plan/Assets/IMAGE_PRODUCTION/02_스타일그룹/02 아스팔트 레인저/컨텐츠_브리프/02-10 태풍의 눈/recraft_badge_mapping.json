@@ -1,0 +1,104 @@
+{
+  "collection_id": "02-10",
+  "items": [
+    {
+      "filename": "02-10_1_날아간모자챙.png",
+      "slug": "item-02-10-1",
+      "name": "날아간 모자 챙",
+      "ids": [
+        "9321abaa-1e57-4935-a49f-d8527ccc6b61",
+        "59a525e1-c1b3-411f-b4db-e0ab3b3fafbd",
+        "cf07ff9b-4937-41d8-b567-ae44cf4a61b5",
+        "6e694ef5-8198-40a2-a918-d182212596e3"
+      ]
+    },
+    {
+      "filename": "02-10_2_뒤집힌우산살대.png",
+      "slug": "item-02-10-2",
+      "name": "뒤집힌 우산 살대",
+      "ids": [
+        "8ce783b3-7356-4b5e-bdb0-5001ba14d952",
+        "ace1bcbd-b253-4ce9-a6bd-55ad44fb4e29",
+        "83e27c26-5394-4b51-a156-b923c07b8162",
+        "d2ba4194-192f-48cd-8ee5-65163a65dadf"
+      ]
+    },
+    {
+      "filename": "02-10_3_강풍에찢긴깃발.png",
+      "slug": "item-02-10-3",
+      "name": "강풍에 찢긴 깃발",
+      "ids": [
+        "a4b93ede-0c88-4b7c-b80d-a42454b05a1b",
+        "cf46561c-34c6-4103-aed7-91b517b633d2",
+        "d9d5bde7-2c6e-4989-afce-a97e40bfe035",
+        "016c11ca-23c7-4e7e-9884-01d239eab6d2"
+      ]
+    },
+    {
+      "filename": "02-10_4_바람에날아온신문지.png",
+      "slug": "item-02-10-4",
+      "name": "바람에 날아온 신문지",
+      "ids": [
+        "dcbdb3c6-1e2d-4801-885a-3fd8bd4460e8",
+        "8e1f0d38-6700-480e-a8ed-8f79ab30dde0",
+        "8f8abbe5-1cc2-4cfd-88e2-4a73a337c9cd",
+        "43013e2d-9774-4652-90aa-8e048e9b01da"
+      ]
+    },
+    {
+      "filename": "02-10_5_짠내나는비구름.png",
+      "slug": "item-02-10-5",
+      "name": "짠 내 나는 비구름",
+      "ids": [
+        "960d2a4e-caab-4cfd-a0f6-46e2fc9ade35",
+        "a004f72d-aef5-4dd1-a32e-0e2849f47066",
+        "5a399be7-095c-4cfb-ae30-bd73490d776b",
+        "d81e823b-0526-448a-bd72-b93a43ed3e56"
+      ]
+    },
+    {
+      "filename": "02-10_6_꺾인나뭇가지.png",
+      "slug": "item-02-10-6",
+      "name": "꺾인 나뭇가지",
+      "ids": [
+        "730a9ad1-163a-40b6-a8cc-d26c1abaf2e9",
+        "945540fc-cae4-484d-909e-b5223b35d745",
+        "a6cba1d3-bb77-4fbb-90d5-307de89b8431",
+        "20266577-66de-4bd6-a100-d8dcdc29dbcc"
+      ]
+    },
+    {
+      "filename": "02-10_7_태풍경보재난문자.png",
+      "slug": "item-02-10-7",
+      "name": "태풍 경보 재난문자",
+      "ids": [
+        "bc4cf4de-40f3-4ea2-917b-a5a8a6833cc0",
+        "3951e42c-1dbd-42b8-afed-27023a108a6b",
+        "788fa4bb-09f3-472c-b958-1f36f77122a3",
+        "7fec87b6-1b9f-454e-b832-1ecb5ef4a13a"
+      ]
+    },
+    {
+      "filename": "02-10_8_돌풍의파동.png",
+      "slug": "item-02-10-8",
+      "name": "돌풍의 파동",
+      "ids": [
+        "3238df42-af16-4945-a3fa-7c37ca20c942",
+        "f468b14e-70df-4a17-9127-953e9d523f14",
+        "fccd6a5d-0bf5-4713-84ad-b7689f4f3da4",
+        "7b6f516e-7f20-4ca3-8594-25484b4ae848"
+      ]
+    },
+    {
+      "filename": "02-10_9_고요한태풍의눈.png",
+      "slug": "item-02-10-9",
+      "name": "고요한 태풍의 눈",
+      "ids": [
+        "89588aa8-f6d7-46a5-90dc-cac54e4ba38f",
+        "cce1b0b2-5156-4078-95c8-436e6ff8845f",
+        "80d71c9e-f295-4eba-9d21-d5f1684ac4e4",
+        "1c08ab15-6c8c-4e3e-9b78-9aee3bf63566"
+      ]
+    }
+  ]
+}
