@@ -1,6 +1,14 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-09-11 (JAM! 종목 조건에 **연속 동기화 일수**(`daily_sync_streak_days`)
+> 최종 업데이트: 2026-09-14 (POI·체크인 배지 발급 경로에 섀도우밴 게이트 신설 — 액티비티
+> 배지(20260910_1719)·서비스 사용량 배지(usageBadges.ts)에 이미 연결된 게이트가 세 번째
+> 경로 `processFetchedActivities`의 POI 매칭 후 지급 블록(checkin 반복 획득·레거시
+> activity+poi_id)에는 빠져 있었다. `isBlockedByShadowBan` 헬퍼로 `getUserBanLevel()`·
+> `shouldAllowDrop()` 재사용, checkin은 최초 획득에만 적용(반복 방문 카운터 증가는 제외),
+> 레거시 경로는 매번 적용. 어드민 시뮬레이터는 실유저 발급과 분리된 별도 함수라 게이트 밖에
+> 의도적으로 유지. 자세한 판정은 §2.3의 `poi_id` 행 참고 — 티켓 20260910_1804)
+>
+> 이전: 2026-09-11 (JAM! 종목 조건에 **연속 동기화 일수**(`daily_sync_streak_days`)
 > 1종 추가 — `daily_sync_count`(하루 누적 횟수)와 별개로, "오늘 기준 현재 연속 동기화
 > 일수가 N일 이상이 되는 순간 달성"을 판정한다(역대 최장이 아니라 하루라도 거르면 리셋되는
 > 진행 중 스트릭 — 사용자 확정 기준). 계산은 신규 `src/lib/badge-engine/dailySyncStreak.ts`
@@ -296,7 +304,7 @@ Step 8. initial_sync_done 갱신
 | `season` + `season_count` | 해당 계절 활동 횟수 ≥ 조건값 |
 | `temperature_min_c` / `temperature_max_c` | Strava average_temp ≥/≤ 조건값 (폭염/혹한) — 날씨 데이터 없으면 fail |
 | `time_range` | startDateLocal의 HH:MM이 {start,end} 범위 내 (자정 걸침 지원) |
-| `poi_id` | ⚠️ 엔진 내 평가 불가 — GPS 경로 매칭(matchPoisForActivity)으로 별도 발급 |
+| `poi_id` | ⚠️ 엔진 내 평가 불가 — GPS 경로 매칭(matchPoisForActivity)으로 별도 발급. **섀도우밴 게이트** (2026-09-14, 티켓 20260910_1804): `processFetchedActivities`의 POI 매칭 후 지급 블록에 `getUserBanLevel()`·`shouldAllowDrop()` 재사용 헬퍼 `isBlockedByShadowBan`을 연결 — checkin 타입(`user_checkin_badge_earns`)은 최초 획득(`isFirstEarn === true`)에만 적용하고 반복 방문(카운터 증가)은 대상 밖, 레거시 `type='activity'`+`poi_id`(`user_activity_badges`)는 항상 최초 1회 지급이라 매번 적용. rarity가 있는 배지만 대상, 차단 시 강등 없이 미발급. 어드민 시뮬레이터(`/api/admin/simulate`)는 실유저 발급 경로와 분리된 별도 함수로 확인되어 의도적으로 게이트 밖에 유지(밴과 무관하게 조건 충족 여부만 진단하는 도구) |
 | `day_of_week` (2026-08-08 신규) | 단일값: `time_range`처럼 AND 필터. 배열+`total_count` 동시 지정 시 "요일별 독립 카운터" 특수모드(배열의 각 요일이 각각 `total_count` 충족 필요) — 현재 T08 전용 |
 | `active_days_count` (2026-08-08 신규) | 축1 게이트 통과 활동의 `(startDateLocal ?? startDate).slice(0,10)` 고유 날짜 `Set` 크기 ≥ 조건값 (연속 아님) |
 | `season_count_all` (2026-08-08 신규) | 봄/여름/가을/겨울 각 계절 활동 횟수가 전부 조건값 이상 (계절별 독립 카운터, `season`+`season_count`와 별개 필드) |
