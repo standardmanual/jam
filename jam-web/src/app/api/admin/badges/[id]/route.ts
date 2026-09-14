@@ -4,6 +4,7 @@ import { getAdminUser } from '@/lib/admin/auth'
 import { findBadgeConditionSaveError, findRarityLevelError } from '@/lib/admin/badge-validation'
 import { invalidateUnclaimedDrops } from '@/lib/admin/poi-drops'
 import { BADGE_REFERENCE_SOURCES, collectBadgeReferences } from '@/lib/admin/badge-references'
+import { countRecipesReferencingBadge } from '@/lib/admin/recipe-references'
 import type { BadgeRow } from '@/types/database'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -264,6 +265,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // 되살릴 때는 드랍을 자동 부활시키지 않는다 — 관리자가 명시적으로 새로 드랍해야 한다.
   if (!active) {
     await invalidateUnclaimedDrops(supabase, [id], 'admin badges PATCH')
+
+    // 20260910_1515: 소프트 삭제된 배지가 믹스 레시피의 재료·보상으로 여전히 지정돼 있으면
+    // 유저가 그 레시피를 성공시켰을 때 재료만 소각되고 빈손이 되는 사고로 이어진다. 이
+    // PATCH는 하드 삭제 가드처럼 차단하지는 않는다(가역적 토글이라는 기존 성격 유지) —
+    // 운영이 탐지할 수 있게 경고 로그만 남긴다.
+    const recipeReferences = await countRecipesReferencingBadge(supabase, id)
+    if (recipeReferences.error) {
+      console.error('[badges PATCH] 레시피 참조 조회 실패 — 소프트 삭제는 진행됨:', recipeReferences.error, { badgeId: id })
+    } else if (recipeReferences.total > 0) {
+      console.warn('[badges PATCH] 소프트 삭제된 배지가 믹스 레시피에서 여전히 참조되고 있음:', {
+        badgeId: id,
+        ingredientRecipeIds: recipeReferences.ingredientRecipeIds,
+        rewardRecipeIds: recipeReferences.rewardRecipeIds,
+      })
+    }
   }
 
   return NextResponse.json({ badge: data })
