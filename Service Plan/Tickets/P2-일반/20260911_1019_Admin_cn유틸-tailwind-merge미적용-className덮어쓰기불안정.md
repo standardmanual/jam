@@ -2,8 +2,9 @@
 id: 20260911_1019
 category: Admin
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-11
+closed: 2026-09-14
 ---
 
 # [Admin] `cn` 유틸이 tailwind-merge를 쓰지 않아 shadcn 컴포넌트의 className 덮어쓰기가 불안정함
