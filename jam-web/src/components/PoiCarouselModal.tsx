@@ -118,6 +118,12 @@ function isRowExpiringSoon(expiresAt: string | null | undefined): boolean {
   return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
 }
 
+/** 포커스 트랩이 순환 대상으로 삼는 요소 셀렉터 — `BottomSheet.tsx`(20260908_0040)와 동일 정의.
+ *  이 모달은 BottomSheet를 쓰지 않는 별도 오버레이 구현이라 접근성 로직을 자체적으로
+ *  갖는다(20260908_1754). */
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 /** 최초 공개 카드 수 + 윈도우가 확장될 때마다 추가되는 카드 수 */
 const INITIAL_WINDOW_SIZE = 3
 const WINDOW_STEP = 3
@@ -148,6 +154,7 @@ export default function PoiCarouselModal({
   onDropOrPickupSuccess,
 }: PoiCarouselModalProps) {
   const { toast } = useToast()
+  const modalRef = useRef<HTMLDivElement>(null)
 
   // 이 캐러셀은 반경 내(드랍/픽업 가능) POI만 다룬다 — 반경 밖 POI는 이 기능
   // 범위에 존재하지 않는다(마커 클릭 단계에서 이미 걸러지지만, 반경 내 다른
@@ -194,6 +201,63 @@ export default function PoiCarouselModal({
     if (activePoi) onCenterChange(activePoi)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePoi?.id])
+
+  // 20260908_1754: 포커스 트랩·복귀·Escape 닫기 — `BottomSheet.tsx`(20260908_0040)와 같은
+  // 패턴. 이 모달은 부모가 조건부 렌더로 마운트/언마운트하므로(별도 `open` prop 없음)
+  // 마운트 시 1회만 적용한다. `onClose`는 호출부에서 인라인 화살표로 넘어와 매 렌더
+  // 새 아이덴티티를 가지므로 ref로 최신 값만 참조하고 effect 의존성에서는 뺀다.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
+  useEffect(() => {
+    const modalEl = modalRef.current
+    const previouslyFocused = document.activeElement as HTMLElement | null
+
+    const focusFirst = () => {
+      const focusable = modalEl?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+      const first = focusable?.[0]
+      if (first) first.focus()
+      else modalEl?.focus()
+    }
+    focusFirst()
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onCloseRef.current()
+        return
+      }
+      if (e.key !== 'Tab' || !modalEl) return
+
+      const focusable = Array.from(modalEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+      if (focusable.length === 0) {
+        e.preventDefault()
+        modalEl.focus()
+        return
+      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+      if (e.shiftKey) {
+        if (active === first || !modalEl.contains(active)) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (active === last || !modalEl.contains(active)) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      if (previouslyFocused && document.contains(previouslyFocused)) previouslyFocused.focus()
+    }
+  }, [])
 
   // ── POI별 드랍(픽업 가능 배지) 목록 캐시 — 이미 열람한 POI는 재호출하지 않는다 ──
   const [dropsCache, setDropsCache] = useState<Record<string, PickupDrop[]>>({})
@@ -466,7 +530,15 @@ export default function PoiCarouselModal({
   if (visiblePois.length === 0) return null
 
   return (
-    <div className="fixed inset-0 z-30" style={{ maxWidth: 430, margin: '0 auto' }}>
+    <div
+      ref={modalRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={d.drops.poiCarouselAriaLabel}
+      tabIndex={-1}
+      className="fixed inset-0 z-30"
+      style={{ maxWidth: 430, margin: '0 auto' }}
+    >
       {/* 배경 오버레이 — 탭하면 닫힘 */}
       <div ref={backdropRef} className="absolute inset-0 bg-surface/70 t-panel-backdrop" data-open="false" onClick={onClose} />
 
