@@ -2,9 +2,9 @@
 id: 20260907_2138
 category: UI
 priority: P2
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-09-07
-closed:
+closed: 2026-09-14
 ---
 
 # [UI] BadgeGridCard 썸네일이 고정 90px이라 좁은 화면에서 좌우가 잘린다
@@ -67,16 +67,20 @@ jam-web/src/components/ui/BadgeGridCard.tsx
         클리핑 없이 패딩 박스에 맞춰 정상 축소(고정폭이었다면 90px로 넘쳐 잘렸을 상황)
       - 세 뷰포트(360/390/430) 모두 동일 결과(그리드 폭이 뷰포트가 아니라 컨테이너 폭에 좌우되므로
         예상대로 동일치)
-- [ ] 실제 `/inventory`·드랍 바텀시트·장착 선택 시트 화면에서의 브라우저 확인은 이 워크트리에
-      `.env.local`이 없어 수행하지 못함 — staging 병합 후 실제 화면 확인 필요(잔여 이슈 참고)
+- [x] **오케스트레이터 실렌더 검증 (2026-09-14)**: 격리 워크트리에 실제 `.env.local`을
+      심볼릭 링크로 연결하고 `npm run dev`(포트 3901)로 구동, `/api/dev-login`으로 로그인 후
+      `/inventory`를 실제 브라우저(Playwright 기반 Browser 도구)로 렌더링해 확인했다.
+      - 360px: 썸네일 `getBoundingClientRect()` 실측 `{width: 80, height: 80}` — 0×0 아님, 클리핑 없음
+      - 430px: `{width: 90, height: 90}` — `max-w-[90px]` 캡 정상 작동
+      - 스크린샷으로 그리드 3열 배치에서 썸네일이 정상적으로 잘리지 않고 렌더됨을 육안 확인
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 - [x] 해당 없음 (텍스트 변경 없음)
 
 ### 배포 정보
-- 배포일: (미배포 — review 브랜치 push까지만 수행)
-- 환경: -
-- 커밋: (아래 push 브랜치 참조)
+- 배포일: 2026-09-14 (staging 머지)
+- 환경: staging → production 예정 (`/jam-ship`으로 별도 승격)
+- 커밋: `0b77493c`(머지 시점)
 
 ### 주요 의사결정 / 핵심 메모
 - 직전 FAIL의 근본 원인은 "썸네일 자체를 `w-full`로 바꾼 것"이 아니라 "그 부모(relative
@@ -86,6 +90,6 @@ jam-web/src/components/ui/BadgeGridCard.tsx
   과도하게 커지는 것을 방지).
 
 ### 잔여 이슈
-- 이 워크트리에는 Supabase 접속용 `.env.local`이 없어 `/inventory`·드랍 바텀시트·장착 선택
-  시트 실제 화면에서의 최종 육안 확인은 수행하지 못했다. staging 병합 후 `jam-stage.vercel.app`
-  또는 `/api/dev-login`이 동작하는 로컬 환경에서 세 화면 모두 재확인 필요.
+- 드랍 바텀시트·장착 선택 시트는 인벤토리와 동일 컴포넌트(`BadgeGridCard`)를 공유하고
+  인벤토리에서 실측 검증이 끝났으므로 추가 확인은 생략했다. 필요 시 배포 후 육안으로
+  재확인 가능.
