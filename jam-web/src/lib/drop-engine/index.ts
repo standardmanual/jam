@@ -161,6 +161,27 @@ interface DropStructure {
   inventory: Pick<InventoryRow, 'id' | 'used_slots' | 'max_slots'> | null
 }
 
+/**
+ * 컬렉션 완성률 분모(badgeIdsOfBook)를 구성한다. 개별 배지 `drop_excluded=true`는
+ * 분모에서 제외한다 — 드랍으로 영원히 얻을 수 없는 배지를 분모에 남겨두면 그 컬렉션은
+ * 드랍만으로는 완성 불가능해진다(티켓 20260911_2235). 정책상 "드랍 제외 배지는 컬렉션
+ * 완성 조건에서도 제외"로 확정 — 이미 그 배지를 보유한 유저도 이 분모로 재계산되어
+ * 즉시 완성 처리된다(의도된 동작).
+ */
+export function buildBadgeIdsOfBook(
+  badges: Pick<DropBadge, 'id' | 'item_book_id' | 'drop_excluded'>[]
+): Map<string, string[]> {
+  const badgeIdsOfBook = new Map<string, string[]>()
+  for (const b of badges) {
+    if (!b.item_book_id) continue
+    if (b.drop_excluded) continue
+    const list = badgeIdsOfBook.get(b.item_book_id) ?? []
+    list.push(b.id)
+    badgeIdsOfBook.set(b.item_book_id, list)
+  }
+  return badgeIdsOfBook
+}
+
 async function fetchDropStructure(
   userId: string,
   lastTribeId: string | null,
@@ -231,13 +252,7 @@ async function fetchDropStructure(
   }
 
   const allBadges = (badgesRaw ?? []) as DropBadge[]
-  const badgeIdsOfBook = new Map<string, string[]>()
-  for (const b of allBadges) {
-    if (!b.item_book_id) continue
-    const list = badgeIdsOfBook.get(b.item_book_id) ?? []
-    list.push(b.id)
-    badgeIdsOfBook.set(b.item_book_id, list)
-  }
+  const badgeIdsOfBook = buildBadgeIdsOfBook(allBadges)
 
   const droppable = allBadges.filter((b) => {
     if (b.drop_excluded) return false
