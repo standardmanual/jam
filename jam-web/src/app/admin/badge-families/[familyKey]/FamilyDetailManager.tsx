@@ -37,7 +37,6 @@ import {
   LEVEL_STEP_RULE_LABEL,
   buildNextLevelDraft,
   editableAxisKeysOf,
-  numericAxisKeysOf,
   slotLabelOf,
   type BadgeFamily,
   type LevelStepRule,
@@ -117,18 +116,11 @@ export default function FamilyDetailManager({
   }, [family])
 
   /**
-   * 일괄 재계산이 다룰 수 있는 축 — **측정 지표(measurable)만**이다. 재계산 API
-   * (`/api/admin/badge-families/recalculate`)가 `MEASURABLE_CONDITION_KEYS`로만 축을 검증하므로
-   * `daily_sync_count` 같은 사용량 지표(meta)를 여기 섞으면 「다시 계산할 수 없는 지표입니다」
-   * 에러가 난다 — 인라인 표(`axisKeys`)와 다른 목록을 써야 한다(티켓 20260911_2321).
+   * 일괄 재계산이 다룰 수 있는 축 — 인라인 표와 같은 「편집 가능한」 축 목록이다(측정 지표 +
+   * meta 사용량 지표). 재계산 API도 `editableAxisKeysOf` 기준으로 축을 검증하도록 맞춰서
+   * 'JAM! 출석!'처럼 meta 지표만 쓰는 계열도 일괄 재계산을 쓸 수 있다(티켓 20260911_2334).
    */
-  const recalcAxisKeys = useMemo(() => {
-    const keys = new Set<ConditionKey>()
-    for (const variant of family.variants) {
-      for (const key of numericAxisKeysOf(variant.condition_json)) keys.add(key)
-    }
-    return [...keys]
-  }, [family])
+  const recalcAxisKeys = axisKeys
 
   /** state가 아직 새 데이터를 따라오지 못한 렌더에서도 안전하게 읽는다 */
   const rowOf = (id: string): RowDraft => rows[id] ?? initialRows[id]

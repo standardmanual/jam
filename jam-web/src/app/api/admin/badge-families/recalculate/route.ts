@@ -16,12 +16,13 @@ import {
   LEVEL_STEP_RULES,
   applyAxisValue,
   buildRecalculationPlan,
+  editableAxisKeysOf,
   findRecalculationConfirmError,
   groupBadgesIntoFamilies,
   type LevelStepRule,
   type RecalculationSpec,
 } from '@/lib/admin/badge-families'
-import { MEASURABLE_CONDITION_KEYS, type ConditionKey } from '@/lib/badge-engine/conditionRegistry'
+import type { ConditionKey } from '@/lib/badge-engine/conditionRegistry'
 import type { Json } from '@/types/database.generated'
 import { findBadgeConditionSaveError } from '@/lib/admin/badge-validation'
 
@@ -35,9 +36,6 @@ export async function POST(req: NextRequest) {
   const rule = body.rule as LevelStepRule
 
   if (!familyKey) return NextResponse.json({ error: '계열을 지정해주세요.' }, { status: 400 })
-  if (!MEASURABLE_CONDITION_KEYS.includes(axis)) {
-    return NextResponse.json({ error: `다시 계산할 수 없는 지표입니다(${String(axis)}).` }, { status: 400 })
-  }
   if (!LEVEL_STEP_RULES.includes(rule)) {
     return NextResponse.json({ error: '증가 규칙을 선택해주세요.' }, { status: 400 })
   }
@@ -61,6 +59,17 @@ export async function POST(req: NextRequest) {
 
   const family = groupBadgesIntoFamilies(badges).find((f) => f.key === familyKey)
   if (!family) return NextResponse.json({ error: '계열을 찾을 수 없습니다.' }, { status: 404 })
+
+  // 축 검증은 이 계열이 실제로 편집 가능한 지표(measurable + meta 사용량 지표)로 좁혀서 한다 —
+  // `MEASURABLE_CONDITION_KEYS`만 허용하면 'JAM! 출석!'처럼 meta 지표만 쓰는 계열은 이 기능을
+  // 전혀 쓸 수 없다(티켓 20260911_2334).
+  const editableAxisKeys = new Set<ConditionKey>()
+  for (const variant of family.variants) {
+    for (const key of editableAxisKeysOf(variant.condition_json)) editableAxisKeys.add(key)
+  }
+  if (!editableAxisKeys.has(axis)) {
+    return NextResponse.json({ error: `다시 계산할 수 없는 지표입니다(${String(axis)}).` }, { status: 400 })
+  }
 
   const plan = buildRecalculationPlan(family, spec)
 
