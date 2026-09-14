@@ -2,9 +2,9 @@
 id: 20260907_1707
 category: Admin
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-07
-closed:
+closed: 2026-09-14
 ---
 
 # [Admin] PoiForm.tsx의 삭제된 'other' 카테고리 폴백 정리
