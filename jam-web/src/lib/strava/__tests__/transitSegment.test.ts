@@ -146,4 +146,19 @@ describe('detectAndExcludeTransitSegments', () => {
     const cyclingResult = detectAndExcludeTransitSegments(cycling, cyclingStreams, POLICY)
     expect(cyclingResult).toBe(cycling)
   })
+
+  it('trail_running은 러닝과 동일한 임계값(27km/h)을 재사용한다 (티켓 20260909_1031)', () => {
+    // 트레일 러닝 30km/h 90초 지속 — 러닝과 동일한 임계값(27km/h) 초과이므로 재산정 대상
+    const { velocitySmooth, time } = makeUniformStreams([30, 30, 30], 30)
+    const trailRunning = baseActivity({
+      jamActivityType: 'trail_running',
+      maxSpeedKmh: 30,
+      distanceKm: 8,
+      movingTimeSec: 2400,
+    })
+
+    const result = detectAndExcludeTransitSegments(trailRunning, { velocitySmooth, time }, POLICY)
+
+    expect(result.movingTimeSec).toBe(2400 - 90)
+  })
 })
