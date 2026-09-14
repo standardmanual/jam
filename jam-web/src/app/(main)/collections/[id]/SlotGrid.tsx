@@ -125,6 +125,25 @@ export default function SlotGrid({
   }
 
   /**
+   * 슬롯 API 호출 타임아웃(ms) — 응답이 이 시간 안에 안 오면 요청을 끊고 실패로 취급한다.
+   * 이게 없으면 네트워크가 끊긴 동안 시트가 닫히지 않는 채로 무한정 남는다(티켓 20260908_0055
+   * #2). 15초는 정상 응답 시간(수백ms) 대비 넉넉하되, 사용자가 "먹통이다"라고 느끼기 전에
+   * 끊어내는 값으로 잡았다.
+   */
+  const SLOT_REQUEST_TIMEOUT_MS = 15000
+
+  /** `fetch`에 타임아웃을 씌운다 — 시간 초과 시 `AbortController`로 요청을 끊는다. */
+  async function fetchWithTimeout(input: string, init: RequestInit): Promise<Response> {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), SLOT_REQUEST_TIMEOUT_MS)
+    try {
+      return await fetch(input, { ...init, signal: controller.signal })
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  /**
    * 장착 요청. **실패 사유를 문자열로 돌려주고(성공이면 null) 표시 위치는 호출부가 정한다.**
    * 그리드 버튼에서 호출하면 그리드 상단 배너에, 선택 시트에서 호출하면 시트 안에 띄운다
    * (20260907_2059 — 시트를 먼저 닫으면 실패 배너가 화면 밖일 수 있었다).
@@ -134,7 +153,7 @@ export default function SlotGrid({
     try {
       const token = await getToken()
       if (!token) return d.itembooks.slotLoginRequired
-      const res = await fetch(`/api/itembooks/${itemBookId}/slot`, {
+      const res = await fetchWithTimeout(`/api/itembooks/${itemBookId}/slot`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,12 +163,18 @@ export default function SlotGrid({
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
+        // 실패해도 후보 목록을 다시 조회한다 — 409(이미 다른 개체가 장착됨) 같은 경합
+        // 실패는 그 사이 후보 구성이 바뀌었다는 뜻이라, 갱신하지 않으면 시트가 이미
+        // 사라진 후보를 계속 보여준다(티켓 20260908_0055 #4).
+        router.refresh()
         return data.error ?? d.itembooks.slotFailed
       }
       router.refresh()
       return null
-    } catch {
-      return d.itembooks.networkError
+    } catch (e) {
+      return e instanceof DOMException && e.name === 'AbortError'
+        ? d.itembooks.slotTimeout
+        : d.itembooks.networkError
     } finally {
       setPendingBadgeId(null)
     }
@@ -176,7 +201,7 @@ export default function SlotGrid({
     try {
       const token = await getToken()
       if (!token) return d.itembooks.slotLoginRequired
-      const res = await fetch(`/api/itembooks/${itemBookId}/slot`, {
+      const res = await fetchWithTimeout(`/api/itembooks/${itemBookId}/slot`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -186,12 +211,16 @@ export default function SlotGrid({
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
+        // requestSlot과 같은 이유(위 주석 참고) — 교체 실패도 후보 구성이 바뀐 채일 수 있다.
+        router.refresh()
         return data.error ?? d.itembooks.swapFailed
       }
       router.refresh()
       return null
-    } catch {
-      return d.itembooks.networkError
+    } catch (e) {
+      return e instanceof DOMException && e.name === 'AbortError'
+        ? d.itembooks.slotTimeout
+        : d.itembooks.networkError
     } finally {
       setPendingBadgeId(null)
     }
@@ -207,7 +236,7 @@ export default function SlotGrid({
     try {
       const token = await getToken()
       if (!token) return d.itembooks.slotLoginRequired
-      const res = await fetch(`/api/itembooks/${itemBookId}/slot`, {
+      const res = await fetchWithTimeout(`/api/itembooks/${itemBookId}/slot`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -221,8 +250,10 @@ export default function SlotGrid({
       }
       router.refresh()
       return null
-    } catch {
-      return d.itembooks.networkError
+    } catch (e) {
+      return e instanceof DOMException && e.name === 'AbortError'
+        ? d.itembooks.slotTimeout
+        : d.itembooks.networkError
     } finally {
       setPendingBadgeId(null)
     }
