@@ -20,7 +20,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@basementstudio/shader-lab": "^3.0.2",
+    "@basementstudio/shader-lab": "3.0.2",
     "@next/third-parties": "^16.2.10",
     "@paper-design/shaders": "0.0.80",
     "@paper-design/shaders-react": "^0.0.80",
