@@ -89,6 +89,20 @@ export interface BadgeConditionSectionProps {
   pendingConditionKeys: readonly string[]
   progressIssue: ProgressUnsupportedReason | null
   themeContainer: HTMLElement | null
+  /** `checkin_category_count` 조건의 카테고리 select 선택지(`poi_categories` 재사용, 티켓
+   *  20260914_1725) — DB 테이블 기준이라 레지스트리에 정적으로 선언할 수 없어 여기서 주입한다. */
+  poiCategories: { slug: string; label: string }[]
+}
+
+/** 레지스트리가 정적으로 선언하지 못하는 select 컨트롤의 동적 선택지 — 필드명 → 옵션 목록 */
+function dynamicSelectOptions(
+  field: string,
+  poiCategories: { slug: string; label: string }[]
+): { value: string; label: string }[] | undefined {
+  if (field === 'checkinCategoryCountCategory') {
+    return poiCategories.map((c) => ({ value: c.slug, label: c.label }))
+  }
+  return undefined
 }
 
 /** 그룹 안에서 값이 있는 조건 수 — 요약 칩과 같은 기준(저장될 JSON의 키) */
@@ -115,6 +129,7 @@ export default function BadgeConditionSection({
   pendingConditionKeys,
   progressIssue,
   themeContainer,
+  poiCategories,
 }: BadgeConditionSectionProps) {
   const jam = type === 'activity' && isJam
   // 발급 방식(자동/미션)은 일반 액티비티 배지에서만 고른다. 아이템·JAM!에서는 숨긴다.
@@ -238,6 +253,7 @@ export default function BadgeConditionSection({
 
     if (control.kind === 'select') {
       const current = text(control.field) || NONE_VALUE
+      const options = dynamicSelectOptions(control.field, poiCategories) ?? control.options ?? []
       return (
         <Select value={current} onValueChange={(v) => setCondField(control.field, v === NONE_VALUE ? '' : v)} disabled={disabled}>
           <SelectTrigger id={domId} aria-label={ariaLabel} aria-describedby={describedBy} aria-invalid={invalid || undefined}>
@@ -245,7 +261,7 @@ export default function BadgeConditionSection({
           </SelectTrigger>
           <SelectContent container={themeContainer ?? undefined}>
             <SelectItem value={NONE_VALUE}>{control.noneLabel ?? '— 없음 —'}</SelectItem>
-            {(control.options ?? []).map((o) => (
+            {options.map((o) => (
               <SelectItem key={o.value} value={o.value}>
                 {o.label}
               </SelectItem>

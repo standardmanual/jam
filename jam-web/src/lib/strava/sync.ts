@@ -28,7 +28,7 @@ import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 // JAM! 카테고리 — 서비스 사용량 배지(티켓 20260910_1557). 카운터 증가·판정 로직은
 // recordDailySyncAndEvaluate() 한 곳(usageBadges.ts)에 있다 — 이 파일은 synced>0 게이트만 쥔다.
-import { recordDailySyncAndEvaluate, type UsageBadgeEarned } from '@/lib/badge-engine/usageBadges'
+import { recordDailySyncAndEvaluate, evaluateCheckinUsageBadges, type UsageBadgeEarned } from '@/lib/badge-engine/usageBadges'
 import { computeUserPeriodMetrics, computeBadgeProgress } from '@/lib/badge-engine/badgeProgress'
 // 배지 «종류» 판정의 단일 출처 — 계열 프런티어 산출이 발급 엔진과 같은 기준을 본다
 // (티켓 20260905_0031, 0030이 넘긴 「레벨형 계열 통째 누락」 항목).
@@ -728,12 +728,14 @@ export async function processFetchedActivities(
       )
     )
   )
-  type LinkedBadge = { id: string; type: BadgeType; name: string; image_url: string | null; rarity: BadgeRarity }
+  // `category`(어드민 직접 지정 카테고리) — 체크인 배지 발급 직후 JAM! 카테고리 체크인 지표
+  // (`checkin_category_count`, 티켓 20260914_1725)를 평가할 때 effective category 판정에 쓴다.
+  type LinkedBadge = { id: string; type: BadgeType; name: string; image_url: string | null; rarity: BadgeRarity; category: string | null }
   const badgeById = new Map<string, LinkedBadge>()
   if (linkedBadgeIds.length > 0) {
     const { data: linkedBadgesRaw, error: linkedBadgeError } = await supabase
       .from('badges')
-      .select('id, type, name, image_url, rarity')
+      .select('id, type, name, image_url, rarity, category')
       .in('id', linkedBadgeIds)
       .is('deleted_at', null)
     if (linkedBadgeError) {
@@ -830,6 +832,18 @@ export async function processFetchedActivities(
         poiEarn.visitCounts.push(visitCount)
         poiEarnsByActivity.set(rawActivity.id, poiEarn)
         console.info(`[processFetchedActivities] 체크인 배지 획득 — userId: ${userId}, poi: ${poi.name}, badge_id: ${badge.id}, visitCount: ${visitCount}`)
+
+        // JAM! 카테고리 — 체크인 배지 보유 조건 2종 (티켓 20260914_1725). 이 체크인 배지
+        // insert가 DB에 커밋된 직후라 「지정 카테고리 n개 이상」·「지정 목록 중 n개 이상」
+        // 판정이 이번 건까지 반영된 최신 보유 현황을 본다. 실패해도 체크인 배지 자체의 발급·
+        // 동기화 API 응답은 계속 진행돼야 하므로 try/catch로 격리한다(daily_sync_count와
+        // 같은 패턴, 위 recordDailySyncAndEvaluate 주석 참고).
+        try {
+          const checkinUsageEarned = await evaluateCheckinUsageBadges(userId, supabase)
+          earnedBadgeIds.push(...checkinUsageEarned.map((b) => b.id))
+        } catch (checkinUsageBadgeError) {
+          console.error(`[processFetchedActivities] 체크인 사용량 배지 평가 실패 (userId: ${userId}):`, checkinUsageBadgeError)
+        }
 
         // 20260826_001 — isFirstEarn 여부와 무관하게 항상 기록한다. poi_name·visit_count를
         // 함께 실어 프론트(FeedSection)가 "체크인 했어요" / "N번째 체크인 했어요"로

@@ -141,6 +141,9 @@ describe('condition_json ↔ 폼 라운드트립 (티켓 20260905_0032)', () => 
     daily_sync_count: 7,
     // JAM! 카테고리 — 연속 동기화 일수 1종 (티켓 20260911_2304)
     daily_sync_streak_days: 7,
+    // JAM! 카테고리 — 체크인 배지 보유 조건 2종 (티켓 20260914_1725)
+    checkin_category_count: { category: 'train_subway', count: 5 },
+    checkin_badge_count: { checkin_badge_names: ['성수역', '왕십리역'], count: 1 },
   }
 
   it('표본이 폼 지원 필드를 전부 덮는다 — 새 필드를 추가하면 여기도 채워야 한다', () => {
@@ -417,7 +420,10 @@ describe('조건 폼 그룹 재편 (티켓 20260911_0901)', () => {
     )
     // mission_reward는 입력 컨트롤 없이 획득 조건 섹션 맨 위의 「발급 방식」 세그먼트가 다룬다
     expect(fieldsOf('meta')).toEqual(
-      new Set(['follower_count', 'following_count', 'daily_sync_count', 'daily_sync_streak_days', 'mission_reward'])
+      new Set([
+        'follower_count', 'following_count', 'daily_sync_count', 'daily_sync_streak_days', 'mission_reward',
+        'checkin_category_count', 'checkin_badge_count',
+      ])
     )
   })
 

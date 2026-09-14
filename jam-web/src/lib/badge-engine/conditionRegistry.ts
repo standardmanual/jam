@@ -1751,6 +1751,99 @@ export const CONDITION_FIELDS = [
       help: '오늘까지 하루라도 거르지 않고 동기화한 일수예요. 하루라도 거르면 리셋돼요.',
     }),
   }),
+
+  // ── JAM! 카테고리 — 체크인 배지 보유 조건 2종 (티켓 20260914_1725) ──────────
+  //
+  // "Strava 활동을 얼마나 했는가"가 아니라 "체크인 배지(GPS 매칭으로 발급)를 얼마나
+  // 모았는가"를 재는 지표. `role: 'meta'` + `evaluation: 'external'`은 위 4종과 같은 이유다.
+  // 실제 판정·발급은 `usageBadges.ts`가 전담하되, 이 2종은 후보 배지마다 자기 조건값
+  // (카테고리·배지 이름 목록)이 달라 "호출부가 미리 계산한 값 하나"를 그대로 쓸 수 없다 —
+  // `usageBadges.ts`가 후보별로 현재값을 계산하는 별도 경로로 분기한다.
+  field({
+    key: 'checkin_category_count',
+    label: '체크인 카테고리 보유 개수',
+    unit: '개',
+    role: 'meta',
+    input: 'object',
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `${c.checkin_category_count!.category} 체크인 ${c.checkin_category_count!.count}개↑`,
+    detail: (c) => `${c.checkin_category_count!.category} 카테고리 체크인 배지 ${c.checkin_category_count!.count}개 이상 보유`,
+    form: {
+      fields: ['checkinCategoryCountCategory', 'checkinCategoryCountCount'],
+      read: (f) => {
+        const category = typeof f.checkinCategoryCountCategory === 'string' ? f.checkinCategoryCountCategory : ''
+        const count = int(f.checkinCategoryCountCount)
+        return category && count !== undefined ? { category, count } : undefined
+      },
+      write: (v) => ({
+        checkinCategoryCountCategory: v?.category ?? '',
+        checkinCategoryCountCount: typeof v?.count === 'number' ? String(v.count) : '',
+      }),
+      controls: [
+        {
+          field: 'checkinCategoryCountCategory',
+          kind: 'select',
+          label: '지점 카테고리',
+          // 실제 선택지(poi_categories)는 DB 테이블 기준이라 정적으로 선언할 수 없다 —
+          // 어드민 화면(BadgeConditionSection.tsx)이 이 필드만 동적으로 주입한다.
+          options: [],
+          span: 2,
+        },
+        {
+          field: 'checkinCategoryCountCount',
+          kind: 'number',
+          label: '보유 개수',
+          placeholder: '5',
+          suffix: '개',
+        },
+      ],
+      section: 'meta',
+    },
+  }),
+  field({
+    key: 'checkin_badge_count',
+    label: '지정 체크인 배지 보유 개수',
+    unit: '개',
+    role: 'meta',
+    input: 'object',
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `지정 배지 ${c.checkin_badge_count!.checkin_badge_names.length}개 중 ${c.checkin_badge_count!.count}개↑`,
+    detail: (c) =>
+      `지정한 체크인 배지(${c.checkin_badge_count!.checkin_badge_names.join(', ')}) 중 ${c.checkin_badge_count!.count}개 이상 보유`,
+    form: {
+      fields: ['checkinBadgeCountNames', 'checkinBadgeCountCount'],
+      read: (f) => {
+        const names = csv(f.checkinBadgeCountNames)
+        const count = int(f.checkinBadgeCountCount)
+        return names.length > 0 && count !== undefined ? { checkin_badge_names: names, count } : undefined
+      },
+      write: (v) => ({
+        checkinBadgeCountNames: Array.isArray(v?.checkin_badge_names) ? v.checkin_badge_names.join(', ') : '',
+        checkinBadgeCountCount: typeof v?.count === 'number' ? String(v.count) : '',
+      }),
+      controls: [
+        {
+          field: 'checkinBadgeCountNames',
+          kind: 'text',
+          label: '체크인 배지 이름',
+          placeholder: '성수역, 왕십리역, 건대입구역',
+          span: 3,
+          help: '쉼표로 구분해요. 존재하는 체크인 배지 이름만 입력할 수 있어요.',
+        },
+        {
+          field: 'checkinBadgeCountCount',
+          kind: 'number',
+          label: '보유 개수',
+          placeholder: '2',
+          suffix: '개',
+          help: '지정한 배지 중 몇 개 이상 보유해야 하는지예요.',
+        },
+      ],
+      section: 'meta',
+    },
+  }),
 ] as const
 
 // ── 파생 목록 ────────────────────────────────────────────────────────────

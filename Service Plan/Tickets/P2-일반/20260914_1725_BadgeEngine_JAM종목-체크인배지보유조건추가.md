@@ -187,34 +187,84 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+설계대로 구현했다. 조건 필드 2종(`checkin_category_count`·`checkin_badge_count`)을
+`conditionRegistry.ts`에 `role:'meta'`+`evaluation:'external'`+`input:'object'`로 등록하고,
+`usageBadges.ts`의 등급형/레벨형 순차 발급·섀도우밴 로직을 `issueQualifyingBadges()`로
+공유 함수화한 뒤 기존 `evaluateUsageBadges()`(4종, "호출부가 미리 계산한 값 하나" 전제)는
+그대로 두고, 신규 `evaluateCheckinUsageBadges()`(체크인 2종, "후보별로 현재값 계산")를
+추가했다. `sync.ts`의 `user_checkin_badge_earns` insert 성공 직후 이 함수를 호출하도록
+연결했고(`LinkedBadge`에 `category` 필드 추가), 실패해도 체크인 배지 발급·동기화 API
+응답이 끊기지 않도록 try/catch로 격리했다(AC11). 저장 시점 가드
+(`USAGE_METRIC_CONDITION_KEYS`)에 2종을 추가했고, AC5는 "저장 시점 검증 우선"을 택해
+`findCheckinBadgeNamesNotFoundError`(신규, 어드민 POST/PUT 양쪽에서 await)로 배지 이름
+목록의 모든 이름이 실제 `type='checkin'` 배지인지 검증하며, 평가 시점에도 카탈로그에 없는
+이름은 무시하고 나머지로 판정하는 안전망을 함께 뒀다. 어드민 폼은 `checkin_category_count`의
+카테고리 select가 DB 테이블(`poi_categories`) 기준이라 레지스트리에 정적으로 선언할 수
+없어, `BadgeConditionSection.tsx`가 `poiCategories` prop을 받아 그 필드만 동적으로 옵션을
+주입하는 방식으로 확장했다(기존 폼 자동 렌더 구조는 그대로 유지).
 
 ### 변경된 파일
 ```
--
+jam-web/src/lib/badge-engine/usageBadges.ts (issueQualifyingBadges 공유 함수 추출 + evaluateCheckinUsageBadges 신설)
+jam-web/src/lib/badge-engine/conditionRegistry.ts (조건 필드 2종 등록)
+jam-web/src/lib/strava/sync.ts (체크인 insert 직후 평가 훅, LinkedBadge에 category 추가)
+jam-web/src/lib/admin/badge-condition-guards.ts (USAGE_METRIC_CONDITION_KEYS에 2종 추가)
+jam-web/src/lib/admin/badge-validation.ts (findCheckinBadgeNamesNotFoundError 신설)
+jam-web/src/app/admin/badges/conditionFormFields.ts (폼 필드 4개 추가)
+jam-web/src/app/admin/badges/BadgeConditionSection.tsx (poiCategories 동적 select 옵션 주입)
+jam-web/src/app/admin/badges/BadgeForm.tsx (poiCategories prop 전달)
+jam-web/src/app/api/admin/badges/route.ts (findCheckinBadgeNamesNotFoundError 저장 시점 검증 연결)
+jam-web/src/app/api/admin/badges/[id]/route.ts (동일)
+jam-web/src/types/database.ts (BadgeCondition에 2종 타입 추가)
+jam-web/supabase/migrations/171_condition_json_checkin_usage_keys.sql (CHECK 제약 확장, 신규·미실행)
+jam-web/src/lib/badge-engine/__tests__/usage-badges.test.ts (evaluateCheckinUsageBadges 유닛 테스트 +13)
+jam-web/src/lib/admin/__tests__/badge-condition-guards.test.ts (신규 2종 × repeat_count/measurable 충돌 +4)
+jam-web/src/lib/admin/__tests__/badge-validation.test.ts (findCheckinBadgeNamesNotFoundError +4)
+jam-web/src/lib/strava/__tests__/sync-checkin-usage-badge-hook.test.ts (신규, 훅 연결·격리 +3)
+jam-web/src/lib/badge-engine/__tests__/condition-registry.test.ts (58종 카운트·CHECK 대조 갱신)
+jam-web/src/app/admin/badges/__tests__/conditionFormFields.test.ts (샘플·meta 그룹 갱신)
+Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md (§3·§4 갱신)
+Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md (③ 섹션·비교표 갱신)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `cd jam-web && npx vitest run` — 94 파일 / 1499개 테스트 전체 통과
+- [x] `cd jam-web && npx tsc --noEmit -p tsconfig.json` — 오류 0건
+- [x] `cd jam-web && npm run lint` — 오류 0건, 경고 14건(전부 이번 변경과 무관한 기존 경고)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
 
-- [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
-- [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)
-- [ ] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
-- [ ] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
-- [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
+- [x] 용어 일관성: "체크인" 고정 용어 사용, 신규 용어 도입 없음
+- [x] 톤앤매너: 어드민 저장 거부 메시지는 기존 가드 문구와 동일한 단호한 톤("저장할 수 없습니다. …")
+- [x] 에러 메시지: `findCheckinBadgeNamesNotFoundError` — [존재하지 않는 이름 나열] → [type='checkin' 배지와 정확히 일치해야 함] → [무엇을 고쳐야 하는지] 구조
+- [x] 문장 규칙: 해요체 아님(어드민 내부 메시지, 기존 가드들과 동일하게 문어체 — 기존 관례 유지)
+- [x] 표기 규칙: 해당 없음(수치·날짜 표기 신규 노출 없음)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: (미배포 — review 브랜치 push까지만)
+- 환경: (해당 없음)
+- 커밋: (아래 push 브랜치 참고)
 
 ### 주요 의사결정 / 핵심 메모
 > 목록 지정 지표는 UUID가 아니라 배지 이름(CSV)로 입력받는다 — `prerequisite_badge_names`
 > 선례 재사용, 신규 멀티셀렉트 UI 개발 회피. "지정한 n개 중 획득 개수"는 `count` 필드로
 > 명시적으로 분리해, 목록 전체 필수(count=목록 길이)와 부분 충족(count<목록 길이) 둘 다
 > 지원한다.
+>
+> AC5(존재하지 않는 이름 처리)는 "저장 시점 검증 우선"을 택했다 — API 라우트가 이미
+> `createServiceClient()`를 갖고 있어 DB 조회 추가 비용이 낮고, 어드민이 오탈자를 즉시
+> 알 수 있는 편이 카탈로그 정합성에 유리하다고 판단했다. 다만 평가 시점(`evaluateCheckinUsageBadges`)
+> 에도 "카탈로그에 없는 이름은 무시" 안전망을 함께 남겼다 — 저장 시점 검증을 우회하는
+> 경로(직접 DB 조작 등)가 있어도 평가가 예외로 죽지 않게 하기 위함이다.
+>
+> 카테고리 select의 옵션(`poi_categories`)은 DB 테이블 기준이라 조건 레지스트리(순수
+> 모듈, DB 접근 없음)에 정적으로 선언할 수 없었다 — `BadgeConditionSection.tsx`가
+> `checkinCategoryCountCategory` 필드 하나만 동적으로 옵션을 주입하는 방식으로 풀었다
+> (레지스트리 나머지 select들은 그대로 정적 옵션).
 
 ### 잔여 이슈
--
+- 마이그레이션 171(CHECK 제약 확장)은 작성만 했고 실행하지 않았다 — 사용자 승인 후
+  오케스트레이터가 실행해야 어드민에서 이 2종 조건을 저장할 수 있다.
+- 실제 배지 콘텐츠(카테고리·이름 목록·임계값 확정) 생성은 범위 밖 — 마이그레이션 실행
+  후 사용자가 어드민에서 직접 생성.

@@ -199,14 +199,15 @@ const V5_SAMPLE_VALUES: Record<(typeof V5_NEW_20_KEYS)[number], unknown> = {
 }
 
 describe('레지스트리 — 필드 구성', () => {
-  it('56종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1)을 선언한다', () => {
+  it('58종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1 + 체크인 배지 보유 2)을 선언한다', () => {
     // v5 확장 3종(티켓 20260906_0110) — cumulative_duration_hours · monthly_count ·
     // personal_record_break_metric. 서비스 사용량 3종(티켓 20260910_1557, JAM! 카테고리) —
     // follower_count · following_count · daily_sync_count. 연속 동기화 일수 1종
-    // (티켓 20260911_2304) — daily_sync_streak_days.
-    expect(CONDITION_FIELDS.length).toBe(56)
-    expect(ALL_CONDITION_KEYS.length).toBe(56)
-    expect(new Set(ALL_CONDITION_KEYS).size).toBe(56) // 중복 키 없음
+    // (티켓 20260911_2304) — daily_sync_streak_days. 체크인 배지 보유 조건 2종
+    // (티켓 20260914_1725) — checkin_category_count · checkin_badge_count.
+    expect(CONDITION_FIELDS.length).toBe(58)
+    expect(ALL_CONDITION_KEYS.length).toBe(58)
+    expect(new Set(ALL_CONDITION_KEYS).size).toBe(58) // 중복 키 없음
   })
 
   it('기존 25종이 전부 들어 있고, route를 뺀 24종은 평가 주체가 있다', () => {
@@ -234,6 +235,8 @@ describe('레지스트리 — 필드 구성', () => {
     // 직접 수치·필터 검사」를 뜻하는 값이라, 유저 보유 배지를 봐야 하는 이 넷은 external이다
     // (티켓 20260905_0030 B2). 실질 효과는 동일 — fail-closed를 통과하고 엔진이 실제로 본다.
     expect(byEval('external').sort()).toEqual([
+      'checkin_badge_count',
+      'checkin_category_count',
       'cross_between_axis',
       'cross_in_axis',
       'daily_sync_count',
@@ -496,11 +499,12 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
   // 155(티켓 20260910_1557, JAM! 카테고리 서비스 사용량 3종)부터 **두 마커가 갈라진다** —
   // 155는 CHECK 제약만 다시 쓰고 트리거 함수(measurable_keys)는 건드리지 않는다(신규 3종이
   // role: 'meta'라 measurable_keys 대상이 아니므로, 131·140이 필터 전용 필드를 뺀 것과 같은
-  // 이유). 161(티켓 20260911_2304, 연속 동기화 일수 1종)도 같은 이유로 CHECK 제약만 다시
-  // 쓴다. 그래서 CHECK 제약은 최신 마커(161)를, 트리거 관련 검사는 여전히 140을 읽는다.
+  // 이유). 161(티켓 20260911_2304, 연속 동기화 일수 1종)·171(티켓 20260914_1725, 체크인
+  // 배지 보유 조건 2종)도 같은 이유로 CHECK 제약만 다시 쓴다. 그래서 CHECK 제약은 최신
+  // 마커(171)를, 트리거 관련 검사는 여전히 140을 읽는다.
   const sql = readFileSync(join(process.cwd(), 'supabase/migrations/140_condition_keys_v5_extension.sql'), 'utf-8')
   const sqlCheckLatest = readFileSync(
-    join(process.cwd(), 'supabase/migrations/161_condition_json_sync_streak_key.sql'),
+    join(process.cwd(), 'supabase/migrations/171_condition_json_checkin_usage_keys.sql'),
     'utf-8'
   )
 
