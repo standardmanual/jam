@@ -126,34 +126,84 @@ JAM! 쪽 실험 코드도 커밋하지 않고 삭제).
    (postinstall) 확인.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
 
+jam-developer가 5번 절 설계대로 `readRenderTargetPixelsAsync` 기반 캡처 경로를 구현했다
+(`pipeline-manager.js`에 `readPixelsAsync()`, `create-webgpu-renderer.js`에 half-float→8bit
+디코딩을 포함한 `captureFrame()`, JAM! 쪽에 `captureShaderLabFrameToBlob.ts` 신규 및 export
+3경로 리팩토링). 다만 이 서브에이전트 환경에 실제 GPU가 없어 시각적 검증을 못 한 채
+`confidence: low`로 제출했고, 게이트 리뷰도 이를 이유로 **FAIL** 판정했다.
+
+**오케스트레이터가 실제 GPU 환경(로컬 실렌더)에서 review 브랜치를 직접 검증**한 결과,
+게이트의 우려가 실제 실패로 확인됐다 — `captureFrame()` 자체(half-float 디코딩, 256바이트
+행 패딩 스트리핑, Y flip)는 정확했으나(raw 값을 half-float 비트 패턴 단위로 직접 확인),
+**렌더타겟(rtA/rtB)에 저장되는 실제 알파값이 애초에 항상 1.0(0x3C00)으로 고정**되어 있었다.
+
+추가 조사로 새 근본 원인을 확정했다: three.js WebGPU `NodeMaterial`이 `material.transparent
+=== false && material.blending === NormalBlending && material.alphaToCoverage === false`
+(=`isOpaque()`)일 때 GPU 셰이더 컴파일 단계에서 `diffuseColor.a.assign(1.0)`을 강제한다.
+baseMesh·각 레이어 pass·blit 단계 모두 이 조건에 해당했다. `transparent=true`,
+`blending=NoBlending`, `alphaToCoverage=true`, `material.outputNode` 직접 지정(이론상
+`isOpaque()` 체크를 완전히 우회하는 경로) 네 가지를 순서대로 로컬 실측 시도했으나 전부
+렌더타겟 레벨에서는 실패했다 — `outputNode`가 swap chain(화면 표시, `drawImage`로 읽었을 때)
+에서는 효과가 있는 것처럼 보였지만, `readRenderTargetPixelsAsync`가 읽는 rtA/rtB는
+`blitMaterial`(swap chain 담당)과 무관한 별개 렌더타겟이라는 것을 재확인했을 뿐, 실제
+데이터는 여전히 alpha=1.0이었다.
+
+사용자와 논의해 "알파를 별도 그레이스케일 채널로 병행 렌더링"하는 새 설계로 방향을 바꿨다 —
+후속 티켓 [20260914_1227](20260914_1227_Admin_쉐이더랩-PNG투명배경-알파마스크병행렌더설계.md)에서
+이어간다.
+
 ### 변경된 파일
 ```
--
+(review 브랜치 claude/jamwork-20260914_1139-shader-lab-readback-spike에 남아있으나
+staging에 머지하지 않음 — 시각적 검증 실패로 폐기)
+jam-web/patches/@basementstudio+shader-lab+3.0.2.patch (스파이크, 미채택)
+jam-web/src/lib/admin/shaderLab/useShaderLabPlayback.ts (스파이크, 미채택)
+jam-web/src/lib/admin/shaderLab/captureShaderLabFrameToBlob.ts (스파이크, 신규, 미채택)
+jam-web/src/app/admin/shader-lab/ShaderLabViewport.tsx (스파이크, 미채택)
+jam-web/src/app/admin/shader-lab/page.tsx (스파이크, 미채택)
+jam-web/src/app/admin/shader-lab/ShaderLabExportPanel.tsx (스파이크, 미채택)
+jam-web/src/app/admin/shader-lab/ShaderLabApplyTab.tsx (스파이크, 미채택)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] jam-developer: `npx tsc --noEmit`, `npm run lint`(전체, 0 errors/14 warnings),
+      `npx vitest run`(93 파일/1473 테스트 통과) — 정적 검증은 클린
+- [x] 오케스트레이터: 실제 GPU 로컬 실렌더로 `readRenderTargetPixelsAsync` 캡처 결과 직접
+      확인 — **alpha 채널이 레이어 알파값과 무관하게 항상 1.0으로 고정됨을 재현·확정**
+      (텍스트 불투명도 슬라이더 0/0.5/1, 리퀴드 메탈 `colorBack` 알파 0 각각 테스트)
+- [ ] 실제 export PNG의 alpha 채널 정확도 — **이 설계로는 달성 실패**
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
-
-- [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
-- [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)
-- [ ] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
-- [ ] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
-- [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
+- 해당 없음 — 사용자 노출 텍스트 변경 없음(렌더링 파이프라인 내부 스파이크)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 해당 없음 — staging에 머지하지 않음(시각적 검증 실패)
+- 환경: 해당 없음
+- 커밋: 해당 없음(review 브랜치 `claude/jamwork-20260914_1139-shader-lab-readback-spike`에만
+  존재, 폐기)
 
 ### 주요 의사결정 / 핵심 메모
-> 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
+
+- **`readRenderTargetPixelsAsync` 기반 raw readback 접근 자체는 유효하고 재사용 가능하다** —
+  실패한 것은 "렌더타겟에 저장되는 데이터"이지 "그 데이터를 읽어오는 메커니즘"이 아니다.
+  `decodeHalfFloatRgbaToUint8()`(half-float 디코딩·행 패딩·Y flip)는 실측으로 정확함이
+  확인됐으므로, 후속 티켓(20260914_1227)의 알파 마스크 렌더타겟을 읽을 때도 그대로
+  재사용한다.
+- **`isOpaque()` 강제는 material 속성 조정으로 우회 불가능하다는 결론**: `transparent`·
+  `blending`·`alphaToCoverage`·`outputNode` 네 가지 공식 우회 경로를 모두 실측 시도했음에도
+  실패했다는 사실은, 이 최적화가 three.js WebGPU 백엔드 내부에 문서화되지 않은 방식으로
+  더 깊이 박혀 있음을 시사한다. 정확한 내부 메커니즘(파이프라인 캐시 키 계산 문제인지, 다른
+  강제 지점이 있는지)은 규명하지 못했다 — 더 깊은 조사(예: three.js 자체 patch)는 유지보수
+  부담이 크다고 판단해 배제하고, "알파 개념 자체를 우회하는" 새 설계로 방향을 바꿨다.
+- **swap chain(`drawImage`) readback은 절대 신뢰하면 안 된다는 교훈이 재확인됐다** —
+  `outputNode` 실험에서 swap chain 표시 결과만으로 "성공했다"고 오판할 뻔했다. 검증은
+  반드시 `readRenderTargetPixelsAsync`(또는 그에 준하는 렌더타�터 직접 readback)로만
+  해야 한다.
 
 ### 잔여 이슈
--
+- 후속 티켓 [20260914_1227](20260914_1227_Admin_쉐이더랩-PNG투명배경-알파마스크병행렌더설계.md)
+  (알파 그레이스케일 마스크 병행 렌더 설계)로 이어간다.
