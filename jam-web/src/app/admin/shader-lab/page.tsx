@@ -123,7 +123,7 @@ export default function ShaderLabPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="lg:sticky lg:top-[4.5rem] lg:self-start">
             <CardHeader>
               <CardTitle>미리보기</CardTitle>
             </CardHeader>
