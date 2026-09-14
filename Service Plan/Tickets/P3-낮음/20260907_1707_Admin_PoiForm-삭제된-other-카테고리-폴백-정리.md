@@ -29,10 +29,13 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`PoiForm.tsx`의 `category` 초깃값 폴백 `?? 'other'`를 `?? 'unassigned'`로 교체했다.
+`categories` 배열이 항상 채워져 있어 실질적으로 도달하지 않는 경로지만, 이미 삭제된
+`other` 카테고리 문자열을 코드에 남겨두지 않기 위한 정리.
 
 ### 변경된 파일
 ```
--
+jam-web/src/app/admin/poi/PoiForm.tsx
 ```
 
 ### 잔여 이슈
