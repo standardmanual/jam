@@ -19,6 +19,12 @@
  *   - 레벨형(`rarity` NULL): 같은 계열(`family_key`) 안에서 보유 레벨 + 1부터 조건을
  *     만족하는 동안 연속 발급한다(최상위 1개가 아니다).
  * 선행 배지·교차 게이트(`prerequisite_badge_names` 등)는 평가하지 않는다.
+ *
+ * 체크인 배지 보유 조건 2종(`checkin_category_count`·`checkin_badge_count`, 티켓
+ * 20260914_1725)도 이 파일이 담당하지만 `evaluateCheckinUsageBadges()`라는 별도 진입점이다 —
+ * 위 4종과 달리 "유저당 미리 계산한 숫자 하나"가 아니라 후보 배지의 `condition_json`(카테고리·
+ * 배지 목록)마다 현재값이 달라, 발급 로직(등급형·레벨형 순차 발급)만 `issueQualifyingBadges`로
+ * 공유하고 현재값 계산 경로는 갈린다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -86,6 +92,38 @@ export async function evaluateUsageBadges(
   )
   if (candidates.length === 0) return []
 
+  return issueQualifyingBadges(
+    supabase,
+    userId,
+    candidates,
+    (b) => b.condition_json?.[metric] as number,
+    () => currentValue,
+    () => `usage_metric:${metric}`,
+    `evaluateUsageBadges(metric: ${metric})`
+  )
+}
+
+/**
+ * 등급형(이름 그룹 최상위 tier 1개)·레벨형(family_key 보유 레벨+1부터 연속) 순차 발급 —
+ * `evaluateUsageBadges`(팔로워·팔로잉·동기화 4종)와 `evaluateCheckinUsageBadges`(체크인
+ * 카테고리·목록 2종, 티켓 20260914_1725)가 공유하는 발급 로직.
+ *
+ * 4종은 "유저 단위로 한 번 계산한 숫자 하나"를 모든 후보에 그대로 비교했지만, 체크인 2종은
+ * 후보 배지마다 자기 `condition_json`(어떤 카테고리인지·어떤 배지 목록인지)이 달라 **후보별로**
+ * 현재값·임계값을 다시 계산해야 한다 — 그래서 `currentValue: number` 하나가 아니라
+ * `thresholdOf`/`currentValueOf` 함수를 받는다. `triggeredByOf`도 마찬가지로 후보마다 다른
+ * `triggered_by` 문자열을 만들 수 있게 함수로 받는다(체크인 카테고리 지표는 카테고리 값을
+ * 함께 남긴다).
+ */
+async function issueQualifyingBadges(
+  supabase: SupabaseClient,
+  userId: string,
+  candidates: BadgeRow[],
+  thresholdOf: (badge: BadgeRow) => number,
+  currentValueOf: (badge: BadgeRow) => number,
+  triggeredByOf: (badge: BadgeRow) => string,
+  logContext: string
+): Promise<UsageBadgeEarned[]> {
   const { data: ownedRaw, error: ownedError } = await supabase
     .from('user_activity_badges')
     .select('badge_id')
@@ -93,7 +131,7 @@ export async function evaluateUsageBadges(
     .in('badge_id', candidates.map((b) => b.id))
 
   if (ownedError) {
-    console.error(`[evaluateUsageBadges] 보유 배지 조회 오류 (metric: ${metric}):`, ownedError)
+    console.error(`[issueQualifyingBadges] 보유 배지 조회 오류 (${logContext}):`, ownedError)
     return []
   }
   const ownedIds = new Set((ownedRaw ?? []).map((r: { badge_id: string }) => r.badge_id))
@@ -124,8 +162,7 @@ export async function evaluateUsageBadges(
     const eligible = group.filter((b) => {
       if (ownedIds.has(b.id)) return false
       if (rarityTier(b.rarity) <= highestOwned) return false
-      const threshold = b.condition_json?.[metric] as number
-      return currentValue >= threshold
+      return currentValueOf(b) >= thresholdOf(b)
     })
     if (eligible.length === 0) continue
     eligible.sort((a, b) => rarityTier(b.rarity) - rarityTier(a.rarity))
@@ -148,8 +185,7 @@ export async function evaluateUsageBadges(
         continue
       }
       if (level > expected) continue // 이전 레벨 미획득 — 이 계열의 프런티어가 아니다
-      const threshold = b.condition_json?.[metric] as number
-      if (currentValue < threshold) continue // 프런티어가 막힘 — 위 레벨도 계속 이 분기에서 스킵된다
+      if (currentValueOf(b) < thresholdOf(b)) continue // 프런티어가 막힘 — 위 레벨도 계속 이 분기에서 스킵된다
       toIssue.push(b)
       expected = level + 1
     }
@@ -167,26 +203,26 @@ export async function evaluateUsageBadges(
   for (const badge of toIssue) {
     if (badge.rarity && policy && !shouldAllowDrop(badge.rarity, banLevel, policy)) {
       console.info(
-        `[evaluateUsageBadges] 섀도우밴으로 발급 차단 — userId: ${userId}, badge: ${badge.name}, rarity: ${badge.rarity}`
+        `[issueQualifyingBadges] 섀도우밴으로 발급 차단 — userId: ${userId}, badge: ${badge.name}, rarity: ${badge.rarity}`
       )
       continue
     }
 
     const { error: insertError } = await supabase
       .from('user_activity_badges')
-      .insert({ user_id: userId, badge_id: badge.id, triggered_by: `usage_metric:${metric}` })
+      .insert({ user_id: userId, badge_id: badge.id, triggered_by: triggeredByOf(badge) })
 
     if (insertError) {
       // 23505(중복키)는 «이미 보유»다 — 동시 호출이 같은 배지를 동시에 채운 경우뿐이므로
       // 조용히 넘긴다. 어느 쪽이든 부수효과는 일으키지 않는다.
       if (insertError.code !== '23505') {
-        console.error(`[evaluateUsageBadges] 배지 발급 오류 (badge_id: ${badge.id}):`, insertError)
+        console.error(`[issueQualifyingBadges] 배지 발급 오류 (badge_id: ${badge.id}, ${logContext}):`, insertError)
       }
       continue
     }
 
     console.info(
-      `[evaluateUsageBadges] 배지 발급 — userId: ${userId}, badge: ${badge.name}, metric: ${metric}, value: ${currentValue}`
+      `[issueQualifyingBadges] 배지 발급 — userId: ${userId}, badge: ${badge.name} (${logContext})`
     )
     earned.push({ id: badge.id, name: badge.name })
 
@@ -208,6 +244,159 @@ export async function evaluateUsageBadges(
   }
 
   return earned
+}
+
+/** `checkin_category_count` 값 형태 가드 — jsonb라 형태 보장이 없다(카탈로그 오류 방어) */
+function isCheckinCategoryCountValue(v: unknown): v is { category: string; count: number } {
+  return (
+    !!v &&
+    typeof v === 'object' &&
+    typeof (v as { category?: unknown }).category === 'string' &&
+    typeof (v as { count?: unknown }).count === 'number'
+  )
+}
+
+/** `checkin_badge_count` 값 형태 가드 — jsonb라 형태 보장이 없다(카탈로그 오류 방어) */
+function isCheckinBadgeCountValue(v: unknown): v is { checkin_badge_names: string[]; count: number } {
+  return (
+    !!v &&
+    typeof v === 'object' &&
+    Array.isArray((v as { checkin_badge_names?: unknown }).checkin_badge_names) &&
+    typeof (v as { count?: unknown }).count === 'number'
+  )
+}
+
+/**
+ * JAM! 카테고리 — 체크인 배지 보유 조건 2종 판정·발급 (티켓 20260914_1725)
+ *
+ * ① `checkin_category_count` — 지정된 체크인 카테고리(effective category, `badges.category`
+ *    우선 없으면 연결된 `poi.category` 폴백 — `admin/badges/page.tsx`의 정의와 동일) 내에서
+ *    유저가 보유한(distinct) 체크인 배지 개수 ≥ 조건값.
+ * ② `checkin_badge_count` — 어드민이 CSV로 지정한 체크인 배지 이름 목록 중 유저가 보유한
+ *    이름 개수 ≥ 조건값. 이름은 `type='checkin'` 배지로만 해석한다(§2.8 "이름은 유일 식별자가
+ *    아니다" — 동명이인이 있어도 체크인 배지로 한정하면 판정 대상이 명확하다). 목록에 실제로
+ *    존재하지 않는 이름(카탈로그 오탈자)은 저장을 막지 않은 대신, 평가 시점에 조용히
+ *    무시하고 나머지 이름만으로 판정한다(AC5, "구현 중 택1" 중 평가 시점 방어 쪽을 택함).
+ *
+ * `evaluateUsageBadges`와 달리 "유저당 미리 계산한 숫자 하나"를 받지 않는다 — 후보 배지마다
+ * 자기 `condition_json`이 가리키는 카테고리·이름 목록이 달라 후보별로 현재값을 계산해야
+ * 한다(`issueQualifyingBadges`의 `currentValueOf`). 체크인 배지 발급(`sync.ts`) 직후 호출한다.
+ *
+ * DB 조회 실패는 예외를 던지지 않고 빈 배열로 폴백한다(로그만 남긴다) — 체크인 배지 자체의
+ * 발급·동기화 API 응답은 이 판정과 무관하게 계속 성공해야 한다.
+ */
+export async function evaluateCheckinUsageBadges(userId: string, client?: SupabaseClient): Promise<UsageBadgeEarned[]> {
+  const supabase = client ?? createServiceClient()
+  const now = new Date().toISOString()
+
+  const { data: allBadgesRaw, error: badgesError } = await supabase
+    .from('badges')
+    .select('*')
+    .eq('type', 'activity')
+    .is('deleted_at', null)
+    .or(`valid_from.is.null,valid_from.lte.${now}`)
+    .or(`valid_until.is.null,valid_until.gte.${now}`)
+
+  if (badgesError) {
+    console.error('[evaluateCheckinUsageBadges] 배지 목록 조회 오류:', badgesError)
+    return []
+  }
+
+  const candidates = ((allBadgesRaw as BadgeRow[] | null) ?? []).filter(
+    (b) =>
+      isCheckinCategoryCountValue(b.condition_json?.checkin_category_count) ||
+      isCheckinBadgeCountValue(b.condition_json?.checkin_badge_count)
+  )
+  if (candidates.length === 0) return []
+
+  // 유저가 지금까지 획득한(반복 방문 무관, distinct) 체크인 배지 id
+  const { data: earnsRaw, error: earnsError } = await supabase
+    .from('user_checkin_badge_earns')
+    .select('badge_id')
+    .eq('user_id', userId)
+
+  if (earnsError) {
+    console.error('[evaluateCheckinUsageBadges] 체크인 배지 이력 조회 오류:', earnsError)
+    return []
+  }
+  const earnedBadgeIds = new Set((earnsRaw ?? []).map((r: { badge_id: string }) => r.badge_id))
+
+  // ① 카테고리 지표 — effective category(badges.category 우선, 없으면 연결된 poi.category)별
+  // distinct 보유 개수. `admin/badges/page.tsx`의 effectiveCategory 정의와 동일한 우선순위.
+  const categoryCandidates = candidates.filter((b) => isCheckinCategoryCountValue(b.condition_json?.checkin_category_count))
+  const categoryCounts = new Map<string, number>()
+  if (categoryCandidates.length > 0 && earnedBadgeIds.size > 0) {
+    const earnedIdList = [...earnedBadgeIds]
+    const [{ data: earnedBadgesRaw, error: earnedBadgesError }, { data: linkedPoiRaw, error: linkedPoiError }] = await Promise.all([
+      supabase.from('badges').select('id, category').in('id', earnedIdList),
+      supabase.from('poi').select('linked_badge_id, category').in('linked_badge_id', earnedIdList),
+    ])
+    if (earnedBadgesError) console.error('[evaluateCheckinUsageBadges] 보유 체크인 배지 카테고리 조회 오류:', earnedBadgesError)
+    if (linkedPoiError) console.error('[evaluateCheckinUsageBadges] 연결 지점 카테고리 조회 오류:', linkedPoiError)
+
+    const poiCategoryByBadge = new Map<string, string>()
+    for (const row of (linkedPoiRaw ?? []) as { linked_badge_id: string; category: string }[]) {
+      if (!poiCategoryByBadge.has(row.linked_badge_id)) poiCategoryByBadge.set(row.linked_badge_id, row.category)
+    }
+    for (const row of (earnedBadgesRaw ?? []) as { id: string; category: string | null }[]) {
+      const effectiveCategory = row.category ?? poiCategoryByBadge.get(row.id) ?? null
+      if (!effectiveCategory) continue
+      categoryCounts.set(effectiveCategory, (categoryCounts.get(effectiveCategory) ?? 0) + 1)
+    }
+  }
+
+  // ② 목록 지표 — CSV로 지정한 체크인 배지 이름 중 실제로 보유(이름→id 해석 후 매칭)한 이름 집합.
+  const listCandidates = candidates.filter((b) => isCheckinBadgeCountValue(b.condition_json?.checkin_badge_count))
+  const ownedNames = new Set<string>()
+  if (listCandidates.length > 0) {
+    const allNames = [
+      ...new Set(
+        listCandidates.flatMap((b) => (b.condition_json!.checkin_badge_count as { checkin_badge_names: string[] }).checkin_badge_names)
+      ),
+    ]
+    if (allNames.length > 0) {
+      const { data: namedBadgesRaw, error: namedBadgesError } = await supabase
+        .from('badges')
+        .select('id, name')
+        .eq('type', 'checkin') // §2.8 — 이름은 유일 식별자가 아니다. 체크인 배지로 한정한다.
+        .in('name', allNames)
+      if (namedBadgesError) {
+        console.error('[evaluateCheckinUsageBadges] 배지 이름 조회 오류:', namedBadgesError)
+      } else {
+        const idsByName = new Map<string, string[]>()
+        for (const row of (namedBadgesRaw ?? []) as { id: string; name: string }[]) {
+          if (!idsByName.has(row.name)) idsByName.set(row.name, [])
+          idsByName.get(row.name)!.push(row.id)
+        }
+        for (const name of allNames) {
+          const ids = idsByName.get(name) ?? [] // 카탈로그에 없는 이름 — 무시하고 나머지로 판정
+          if (ids.some((id) => earnedBadgeIds.has(id))) ownedNames.add(name)
+        }
+      }
+    }
+  }
+
+  const thresholdOf = (b: BadgeRow): number => {
+    const cat = b.condition_json?.checkin_category_count
+    if (isCheckinCategoryCountValue(cat)) return cat.count
+    const list = b.condition_json?.checkin_badge_count
+    if (isCheckinBadgeCountValue(list)) return list.count
+    return 0
+  }
+  const currentValueOf = (b: BadgeRow): number => {
+    const cat = b.condition_json?.checkin_category_count
+    if (isCheckinCategoryCountValue(cat)) return categoryCounts.get(cat.category) ?? 0
+    const list = b.condition_json?.checkin_badge_count
+    if (isCheckinBadgeCountValue(list)) return list.checkin_badge_names.filter((n) => ownedNames.has(n)).length
+    return 0
+  }
+  const triggeredByOf = (b: BadgeRow): string => {
+    const cat = b.condition_json?.checkin_category_count
+    if (isCheckinCategoryCountValue(cat)) return `checkin_category_count:${cat.category}`
+    return 'checkin_badge_count'
+  }
+
+  return issueQualifyingBadges(supabase, userId, candidates, thresholdOf, currentValueOf, triggeredByOf, 'evaluateCheckinUsageBadges')
 }
 
 /**

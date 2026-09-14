@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { CUMULATIVE_CONDITION_FIELDS } from '@/lib/drop-engine/index'
 import { ALL_CONDITION_KEYS } from '@/lib/badge-engine/condition-schema'
 // 순수 판정은 서버 전용 의존이 없는 파일에 있다 — 어드민 조건 폼(클라이언트 컴포넌트)이
@@ -49,6 +50,35 @@ export function findUnknownConditionKeyError(condition: BadgeCondition | null): 
   const unknown = Object.keys(condition).filter((key) => !allowed.has(key))
   if (unknown.length === 0) return null
   return `condition_json에 엔진이 모르는 필드(${unknown.join(', ')})가 있습니다. 허용된 필드만 저장할 수 있습니다.`
+}
+
+/**
+ * `checkin_badge_count`의 배지 이름 목록(CSV로 입력)에 실제로 존재하지 않는 체크인 배지
+ * 이름이 있으면 저장을 막는다(AC5, 티켓 20260914_1725 — "구현 중 택1, 저장 시점 검증을
+ * 우선한다"). 이름은 `type='checkin'` 배지로만 해석한다(§2.8 "이름은 유일 식별자가 아니다" —
+ * 동명이인이 있어도 체크인 배지로 한정하면 판정 대상이 명확하다).
+ *
+ * DB 조회가 필요해(체크인 배지 카탈로그 대조) 이 파일의 나머지 검사와 달리 **비동기**다 —
+ * `findBadgeConditionSaveError`의 동기 체인에 합류시키지 않고 API 라우트가 별도로 await한다.
+ * 조회 자체가 실패하면(DB 장애) 저장을 막지 않는다 — 평가 시점(`evaluateCheckinUsageBadges`)의
+ * "카탈로그에 없는 이름은 무시" 처리가 최종 안전망이다.
+ */
+export async function findCheckinBadgeNamesNotFoundError(
+  condition: BadgeCondition | null,
+  supabase: SupabaseClient
+): Promise<string | null> {
+  const names = condition?.checkin_badge_count?.checkin_badge_names
+  if (!names || names.length === 0) return null
+
+  const { data, error } = await supabase.from('badges').select('name').eq('type', 'checkin').in('name', names)
+  if (error) {
+    console.error('[findCheckinBadgeNamesNotFoundError] 체크인 배지 이름 조회 오류:', error)
+    return null
+  }
+  const found = new Set((data ?? []).map((r: { name: string }) => r.name))
+  const missing = names.filter((n) => !found.has(n))
+  if (missing.length === 0) return null
+  return `저장할 수 없습니다. 체크인 배지 이름 목록에 존재하지 않는 이름이 있습니다 — ${missing.join(', ')}. 실제 체크인 배지(type='checkin') 이름과 정확히 일치해야 저장할 수 있어요.`
 }
 
 /**

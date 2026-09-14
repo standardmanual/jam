@@ -818,6 +818,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
         pendingConditionKeys={pendingConditionKeys}
         progressIssue={progressIssue}
         themeContainer={themeContainer}
+        poiCategories={poiCategories}
       />
     </BadgeSectionCard>
   )

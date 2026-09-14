@@ -1323,6 +1323,27 @@ export interface BadgeCondition {
    * `user_daily_sync_counts` 기준 — `lib/badge-engine/dailySyncStreak.ts`가 계산한다.
    */
   daily_sync_streak_days?: number
+
+  // ── JAM! 카테고리 — 체크인 배지 보유 조건 2종 (티켓 20260914_1725) ────────
+  //
+  // 위 4종과 마찬가지로 `evaluation: 'external'`이다. Strava 활동이 아니라 "체크인 배지를
+  // 얼마나 모았는가"를 재는 지표라 후보 배지마다 자기 조건값(카테고리·이름 목록)을 참조해야
+  // 하므로 `usageBadges.ts`가 후보별로 현재값을 계산한다(팔로워 수 등 4종처럼 호출부가
+  // 미리 계산한 값 하나를 모든 후보에 그대로 비교할 수 없다).
+
+  /**
+   * [JAM!] 지정된 체크인 카테고리(`poi_categories.slug`, `badges.category` 우선·없으면
+   * 연결된 `poi.category` 폴백 — "effective category") 내 체크인 배지 보유 개수 ≥ count.
+   * `user_checkin_badge_earns` × `badges`(effective category) distinct count 기준.
+   */
+  checkin_category_count?: { category: string; count: number }
+  /**
+   * [JAM!] 지정한 체크인 배지 이름(`type='checkin'`) 목록 중 보유 개수 ≥ count.
+   * 이름은 유일 식별자가 아니지만(§2.8) 이 조건은 `type='checkin'`인 배지로 판정 대상을
+   * 한정한다. `checkin_badge_names`는 저장 시점에 실제 체크인 배지 이름인지 검증된다
+   * (`findCheckinBadgeNamesNotFoundError`).
+   */
+  checkin_badge_count?: { checkin_badge_names: string[]; count: number }
 }
 
 // =========================================
