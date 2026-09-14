@@ -9,6 +9,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
 import { logEngineDecision } from '@/lib/engine-log'
+import { isInventoryFull } from '@/lib/inventory/slots'
 import type { MissionRow } from '@/types/database'
 import type { Database } from '@/types/database.generated'
 
@@ -126,7 +127,7 @@ export async function grantMissionRewards(
           continue
         }
         if (ownedInventoryBadgeIds.has(badge.id)) continue // 이미 보유 → skip
-        if (inventory.used_slots >= inventory.max_slots) continue // 슬롯 부족 → skip
+        if (isInventoryFull(inventory)) continue // 슬롯 부족 → skip
         const { error } = await supabase
           .from('inventory_items')
           .insert({

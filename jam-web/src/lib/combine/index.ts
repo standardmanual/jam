@@ -18,6 +18,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
 import { getCombinePolicy } from '@/lib/combine/policy'
+import { isInventoryFull } from '@/lib/inventory/slots'
 import type { CombinationRecipeRow, CombineFailReason, InventoryItemRow } from '@/types/database'
 import type { Database } from '@/types/database.generated'
 
@@ -288,7 +289,7 @@ async function grantBadge(
   // 지급하는 경우(reward_badge_ids 배열)엔 그래도 칸이 모자랄 수 있다. 미션 보상 지급
   // (missions/rewards.ts)과 동일하게 "슬롯 부족 → 조용히 skip" 정책을 따른다 — 인벤토리
   // 칸을 초과해서 지급하지 않는다(20260912_2101).
-  if (inventory.used_slots >= inventory.max_slots) {
+  if (isInventoryFull(inventory)) {
     console.info('[combineItems] 인벤토리 슬롯 부족으로 보상 배지 지급을 생략함:', badgeId)
     return null
   }

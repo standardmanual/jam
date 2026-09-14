@@ -27,6 +27,7 @@ import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 import { checkCondition, passesWalkingGate } from '@/lib/badge-engine/index'
 import { getDropPolicy, type DropPolicy } from './policy'
+import { isInventoryFull } from '@/lib/inventory/slots'
 import { fetchAllRows } from '@/lib/notifications/batch/shared'
 import type { Database, Json } from '@/types/database.generated'
 
@@ -619,7 +620,7 @@ export async function tryItemDrop(
 
   for (let i = 0; i < dropCount; i++) {
     // 슬롯 사전 체크 — "최소 1개"의 유일한 예외
-    if (usedSlots >= structure.inventory.max_slots) {
+    if (isInventoryFull({ used_slots: usedSlots, max_slots: structure.inventory.max_slots })) {
       console.info(`[tryItemDrop] 슬롯 초과 — 드랍 취소 (userId: ${userId}, ${usedSlots}/${structure.inventory.max_slots})`)
       await logEngineDecision('drop', 'drop_attempt', userId, {
         attempt: i, outcome: 'slot_full', usedSlots, maxSlots: structure.inventory.max_slots,
