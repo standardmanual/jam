@@ -195,6 +195,10 @@ while IFS= read -r -d '' f; do
     *.ts|*.tsx) ;;
     *) continue ;;
   esac
+  # 테스트 스텁은 실제 조회가 아니므로 deleted_at 필터가 있을 수 없다 (티켓 20260910_1502).
+  case "$f" in
+    *__tests__/*|*.test.ts|*.test.tsx) continue ;;
+  esac
   # 이번 커밋에서 새로 추가된 hunk만 훑어서, +.from('badges') 라인이 있는데 같은 hunk 안에
   # deleted_at 언급이 전혀 없는 경우만 추린다.
   hunk=""
