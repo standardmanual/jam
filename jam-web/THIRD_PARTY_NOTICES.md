@@ -37,6 +37,15 @@ Apache License 2.0 §4가 요구하는 원본 저작권 고지·라이선스 사
 - 위 두 패치는 `patches/@basementstudio+shader-lab+3.0.2.patch` 하나의 파일에 통합돼
   있고(같은 npm 패키지에 대한 패치라 patch-package 관례상 파일이 하나다), `package.json`의
   `postinstall` 스크립트가 `npm install` 시 자동 재적용한다.
+- **버전 고정(티켓 20260913_1938)**: `package.json`의 `@basementstudio/shader-lab` 버전은
+  caret range(`^3.0.2`)가 아니라 `3.0.2`로 정확히 고정돼 있다. caret range로 두면
+  `npm install`이 이후 마이너/패치 버전을 새로 끌어올 수 있는데, 그 새 버전에서
+  `text-pass.js`·`pipeline-manager.js`·`types.d.ts`의 원본 내용이 바뀌어 있으면
+  `patch-package`가 diff 컨텍스트 불일치로 적용에 실패하고 `postinstall`(따라서
+  `npm install`) 자체가 에러로 멈춘다. **향후 이 패키지 버전을 의도적으로 올릴 때는**
+  ① `npm install @basementstudio/shader-lab@<새버전>`으로 새 버전을 받고, ② 위 세 파일에
+  대해 패치 내용을 수동으로 재검증·재작성한 뒤, ③ `npx patch-package @basementstudio/shader-lab`으로
+  패치 파일을 재생성하고, ④ 정확한 새 버전 문자열로 다시 고정한다.
 
 ## 리퀴드 메탈 (`/admin/shader-lab`의 "리퀴드 메탈" 레이어)
 
