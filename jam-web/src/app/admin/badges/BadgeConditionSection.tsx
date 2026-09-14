@@ -695,7 +695,12 @@ export default function BadgeConditionSection({
       {/* 판정 시뮬레이션 — 저장 전 실제 발급 엔진으로 미리 돌려본다(티켓 20260908_1554).
           JAM!은 usageBadges.ts가 판정해 엔진 시뮬레이션이 무의미하므로 숨긴다 */}
       {!jam && (
-        <ConditionSimulationPanel condition={condPreview} apiPath="/api/admin/badges/simulate-condition" themeContainer={themeContainer} />
+        <ConditionSimulationPanel
+          condition={condPreview}
+          apiPath="/api/admin/badges/simulate-condition"
+          themeContainer={themeContainer}
+          passVerb="발급"
+        />
       )}
     </>
   )

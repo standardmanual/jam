@@ -281,6 +281,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
             <ConditionSimulationPanel
               condition={missionConditionPreview}
               apiPath="/api/admin/missions/simulate-condition"
+              passVerb="달성"
             />
           </div>
         )}
