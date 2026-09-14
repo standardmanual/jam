@@ -188,7 +188,15 @@ export function checkMissionCondition(
 ): MissionConditionCheck {
   if (condition === undefined) return OK
 
-  if (typeof condition !== 'object' || condition === null || Array.isArray(condition)) {
+  if (condition === null) {
+    return {
+      error:
+        '조건 JSON을 저장하지 못했어요. 조건은 중괄호로 감싼 객체여야 하는데, 필드를 모두 비운 채로 저장하려고 해서 값이 비어(null) 있어요. 최소 하나 이상의 조건 필드를 채우고 다시 저장해주세요.',
+      warning: null,
+    }
+  }
+
+  if (typeof condition !== 'object' || Array.isArray(condition)) {
     return {
       error: `조건 JSON을 저장하지 못했어요. 조건은 중괄호로 감싼 객체여야 하는데 지금은 ${describeShape(condition)} 형태예요. {"distance_km": 50} 같은 형태로 고쳐서 다시 저장해주세요.`,
       warning: null,
