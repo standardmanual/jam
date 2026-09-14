@@ -10,6 +10,7 @@
 import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import type { MissionRow } from '@/types/database'
 import { MISSION_GATE_STAGES } from '@/types/database'
 import {
@@ -56,7 +57,7 @@ export default function GateMissionManager({ missions }: Props) {
     const res = await fetch(`/api/admin/missions/${id}`, { method: 'DELETE' })
     if (!res.ok) {
       const payload = await res.json().catch(() => null)
-      alert(typeof payload?.error === 'string' ? payload.error : '미션을 삭제하지 못했어요.')
+      toast.error(typeof payload?.error === 'string' ? payload.error : '미션을 삭제하지 못했어요.')
       return
     }
     router.refresh()

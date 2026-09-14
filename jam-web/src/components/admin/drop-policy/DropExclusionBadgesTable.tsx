@@ -10,6 +10,7 @@ import {
   type ColumnVisibilityState,
   type RowSelectionState,
 } from '@tanstack/react-table'
+import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import { Badge as StatusBadge } from '@/components/admin/ui/badge'
@@ -175,7 +176,7 @@ export function DropExclusionBadgesTable({
         if (!res.ok) failCount += 1
       }
       if (failCount > 0) {
-        alert(`${failCount}개 배지의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
+        toast.error(`${failCount}개 배지의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
       }
       router.refresh()
       setRowSelection({})

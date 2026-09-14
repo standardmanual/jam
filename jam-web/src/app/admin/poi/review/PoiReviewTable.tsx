@@ -9,6 +9,7 @@ import {
   type ColumnVisibilityState,
   type RowSelectionState,
 } from '@tanstack/react-table'
+import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
@@ -110,7 +111,7 @@ export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
         body: JSON.stringify({ action: 'approve', category }),
       })
       const data = await res.json().catch(() => null)
-      if (!res.ok) alert(data?.error ?? '승인 중 오류가 발생했습니다.')
+      if (!res.ok) toast.error(data?.error ?? '승인 중 오류가 발생했습니다.')
       refreshAfterAction()
     } finally {
       setActionLoading(false)
@@ -127,7 +128,7 @@ export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
         body: JSON.stringify({ action: 'reject' }),
       })
       const data = await res.json().catch(() => null)
-      if (!res.ok) alert(data?.error ?? '거부 중 오류가 발생했습니다.')
+      if (!res.ok) toast.error(data?.error ?? '거부 중 오류가 발생했습니다.')
       refreshAfterAction()
     } finally {
       setActionLoading(false)
@@ -144,7 +145,7 @@ export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
         body: JSON.stringify({ ids, action, category }),
       })
       const data = await res.json().catch(() => null)
-      if (!res.ok) alert(data?.error ?? '처리 중 오류가 발생했습니다.')
+      if (!res.ok) toast.error(data?.error ?? '처리 중 오류가 발생했습니다.')
       refreshAfterAction()
     } finally {
       setActionLoading(false)

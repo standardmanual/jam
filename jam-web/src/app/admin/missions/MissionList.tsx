@@ -3,6 +3,7 @@
 import { useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import type { MissionRow } from '@/types/database'
 import { MissionTable } from './MissionTable'
 
@@ -32,7 +33,7 @@ export default function MissionList({ missions, completionCounts }: Props) {
     // 확인하지 않으면 실패해도 목록이 그냥 새로고침돼 "삭제된 것처럼" 보인다.
     if (!res.ok) {
       const payload = await res.json().catch(() => null)
-      alert(typeof payload?.error === 'string' ? payload.error : '미션을 삭제하지 못했어요. 잠시 후 다시 시도해주세요.')
+      toast.error(typeof payload?.error === 'string' ? payload.error : '미션을 삭제하지 못했어요. 잠시 후 다시 시도해주세요.')
       return
     }
     router.refresh()

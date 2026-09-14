@@ -9,6 +9,7 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
+import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import {
@@ -204,7 +205,7 @@ function RecipeTableInner({ recipes, badgeMap, onEdit, onDelete }: RecipeTablePr
         if (!res.ok) failCount += 1
       }
       if (failCount > 0) {
-        alert(`${failCount}개 레시피 삭제에 실패했습니다. 다시 시도해주세요.`)
+        toast.error(`${failCount}개 레시피 삭제에 실패했습니다. 다시 시도해주세요.`)
       }
       router.refresh()
       setRowSelection({})

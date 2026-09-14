@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { Card } from '@/components/admin/ui/card'
 import { Switch } from '@/components/admin/ui/switch'
 import { Badge } from '@/components/admin/ui/badge'
@@ -32,7 +33,7 @@ export function DropExclusionCollectionsTable({ collections }: DropExclusionColl
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        alert(data.error ?? '상태 변경에 실패했습니다. 다시 시도해주세요.')
+        toast.error(data.error ?? '상태 변경에 실패했습니다. 다시 시도해주세요.')
         return
       }
       router.refresh()

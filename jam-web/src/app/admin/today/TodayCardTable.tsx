@@ -10,6 +10,7 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
+import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import {
@@ -217,7 +218,7 @@ function TodayCardTableInner({ cards, selectedDate, onToggleActive, onDelete }: 
         if (!res.ok) failCount += 1
       }
       if (failCount > 0) {
-        alert(`${failCount}개 카드의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
+        toast.error(`${failCount}개 카드의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
       }
       router.refresh()
       setRowSelection({})
@@ -239,7 +240,7 @@ function TodayCardTableInner({ cards, selectedDate, onToggleActive, onDelete }: 
       })
       if (!res.ok) {
         const data = await res.json().catch(() => null)
-        alert(data?.error ?? '일괄 삭제 중 오류가 발생했습니다.')
+        toast.error(data?.error ?? '일괄 삭제 중 오류가 발생했습니다.')
       }
       router.refresh()
       setRowSelection({})

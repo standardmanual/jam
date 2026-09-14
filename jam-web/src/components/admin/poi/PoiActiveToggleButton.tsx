@@ -2,6 +2,7 @@
 
 import { useState, type MouseEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 
 interface PoiActiveToggleButtonProps {
@@ -32,7 +33,7 @@ export function PoiActiveToggleButton({ poiId, isActive, className }: PoiActiveT
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        alert(data.error ?? '상태 변경에 실패했습니다. 다시 시도해주세요.')
+        toast.error(data.error ?? '상태 변경에 실패했습니다. 다시 시도해주세요.')
         return
       }
       router.refresh()
