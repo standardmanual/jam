@@ -99,7 +99,9 @@ export default function BadgeGridCard({
   const thumbDimmed = !earned || undiscovered
 
   const thumbnailCls = [
-    'w-[90px] h-[90px] rounded-[var(--radius-card)] overflow-hidden',
+    // 티켓 20260907_2138: 고정 90px 대신 컨테이너 폭에 반응하도록. w-full로 카드 콘텐츠 폭을
+    // 그대로 따라가고, max-w로 넓은 화면에서 과도하게 커지는 것만 막는다.
+    'relative w-full aspect-square max-w-[90px] rounded-[var(--radius-card)] overflow-hidden',
     'flex items-center justify-center',
     thumbDimmed && 'grayscale opacity-40',
   ]
@@ -117,9 +119,9 @@ export default function BadgeGridCard({
             <Image
               src={imageUrl}
               alt={undiscovered ? '???' : name}
-              width={90}
-              height={90}
-              className="w-full h-full object-contain p-1"
+              fill
+              sizes="90px"
+              className="object-contain p-1"
             />
           ) : (
             <MedalIcon className="w-10 h-10 text-text/30" />
