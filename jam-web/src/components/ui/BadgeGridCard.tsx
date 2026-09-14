@@ -99,7 +99,7 @@ export default function BadgeGridCard({
   const thumbDimmed = !earned || undiscovered
 
   const thumbnailCls = [
-    'w-[90px] h-[90px] rounded-[var(--radius-card)] overflow-hidden',
+    'w-full aspect-square rounded-[var(--radius-card)] overflow-hidden',
     'flex items-center justify-center',
     thumbDimmed && 'grayscale opacity-40',
   ]
@@ -110,8 +110,14 @@ export default function BadgeGridCard({
 
   const content = (
     <>
-      {/* 카운터 필의 기준점 — 썸네일 자체에 relative를 걸면 grayscale 필터가 필까지 먹는다 */}
-      <div className="relative">
+      {/*
+        카운터 필의 기준점 — 썸네일 자체에 relative를 걸면 grayscale 필터가 필까지 먹는다.
+        w-full max-w-[90px]로 폭을 명시해야 한다: 부모(BASE)가 flex-col items-center라 자식
+        폭이 stretch가 아닌 shrink-to-fit으로 결정되는데, 이 wrapper에 폭이 없으면 그 안의
+        thumbnailCls(w-full)가 부모의 100%를 요구하는 순환 참조가 생겨 0×0으로 collapse된다
+        (티켓 20260907_2138, 직전 시도 게이트 리뷰 FAIL 사유).
+      */}
+      <div className="relative w-full max-w-[90px]">
         <div className={thumbnailCls}>
           {imageUrl ? (
             <Image
