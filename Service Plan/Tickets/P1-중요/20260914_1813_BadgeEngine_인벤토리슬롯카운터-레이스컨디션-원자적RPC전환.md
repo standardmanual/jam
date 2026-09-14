@@ -2,9 +2,9 @@
 id: 20260914_1813
 category: BadgeEngine
 priority: P1
-status: OPEN
+status: CLOSED
 created: 2026-09-14
-closed:
+closed: 2026-09-14
 ---
 
 # [BadgeEngine] 인벤토리 슬롯 카운터 레이스 컨디션 — 원자적 RPC 전환
@@ -160,9 +160,10 @@ jam-web/src/lib/combine/__tests__/combine-engine.test.ts
 - [x] 해당 없음 — 유저 노출 문구 변경 없음
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-09-14 (마이그레이션 173 실행), staging 머지 2026-09-14 (프로덕션 코드 배포는
+  `/jam-ship`으로 별도 진행)
+- 환경: production (DB 공용 — [[project_supabase_shared_staging_prod]]), staging (코드)
+- 커밋: 2a04fcdc (머지 커밋)
 
 ### 주요 의사결정 / 핵심 메모
 > 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
@@ -171,11 +172,23 @@ jam-web/src/lib/combine/__tests__/combine-engine.test.ts
   ① 카운터만이 아니라 지급+카운터를 한 원자 단위로 묶는다, ② Postgres RPC로 구현한다(기존
   컨벤션), ③ 세 호출부를 한 번에 전환한다, ④ 유저 화면 문구는 바꾸지 않고 코드 쪽 처리만
   강제한다.
+- **개선 리뷰 단계에서 "코드가 실제로는 반영 안 된 것 같다"는 오탐 보고가 있었다** — 서브
+  에이전트가 격리 워크트리가 아닌 다른 위치를 본 것으로 추정된다. 오케스트레이터가 review
+  브랜치(`git show origin/claude/jamwork-...`)를 직접 열어 실제로는 마이그레이션·세 호출부
+  수정·테스트 갱신이 전부 정상 반영돼 있음을 확인한 뒤 머지를 진행했다. 이 오탐이 지적한
+  "범위 밖 발견물"(코드 상태 불일치)은 사실이 아니므로 별도 후속 티켓을 만들지 않았다.
+- `BADGE_ENGINE_UNIFIED.md` §3.5-2 "표준 불변식 1"에 `grant_inventory_item()`·
+  `release_inventory_slots()` 두 RPC를 추가해 문서를 갱신했다(개선 리뷰의 유효한 제안 채택).
 
 ### 잔여 이슈
-- 마이그레이션 173은 작성만 했고 아직 실행하지 않았다 — 사용자 승인 후 오케스트레이터가
-  직접 실행해야 한다. 실행 전까지는 `grant_inventory_item`/`release_inventory_slots` RPC가
-  DB에 존재하지 않으므로 이 코드는 배포해도 런타임 오류(`PGRST202` 등)가 난다 — 반드시
-  마이그레이션 실행과 코드 배포를 같은 순서로 묶어야 한다.
-- 마이그레이션 실행 후 Supabase MCP `generate_typescript_types`로 `database.generated.ts`를
-  재생성해 이번에 손으로 반영한 RPC 타입과 대조 검증이 필요하다.
+- 마이그레이션 173을 Supabase MCP `apply_migration`으로 프로덕션 DB에 직접 실행 완료
+  (`success: true`). `generate_typescript_types`로 재생성한 타입과 손으로 반영해둔
+  `database.generated.ts`의 `grant_inventory_item`/`release_inventory_slots` 타입을 대조해
+  정확히 일치함을 확인했다 — 재생성본으로 덮어쓸 필요 없음.
+- `get_advisors(security)` 확인 — 신규 RPC 2종은 다른 기존 RPC 18종과 동일하게
+  `function_search_path_mutable`(WARN) 하나만 뜬다(이 프로젝트의 기존 컨벤션 갭이지 이번
+  변경이 새로 만든 문제가 아님). `anon`/`authenticated` 실행 권한 회수는 정상 작동해 별도
+  경고 없음.
+- RPC 자체의 동시성 락 동작(두 요청이 진짜로 동시에 들어왔을 때)은 로컬 테스트 하네스 부재로
+  자동화 검증은 못 했다 — 다음 실사용 중 이상 신호가 있으면 `engine_decision_log`의
+  `drop_attempt` 로그로 확인할 것.

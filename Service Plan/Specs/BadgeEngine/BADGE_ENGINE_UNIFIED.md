@@ -1,6 +1,14 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-09-14 (JAM! 종목 조건에 **체크인 배지 보유 조건 2종** 추가 —
+> 최종 업데이트: 2026-09-14 (**인벤토리 슬롯 카운터 원자적 RPC 전환** — 드랍엔진·미션
+> 보상(`missions/rewards.ts`)·아이템 조합 보상(`combine/index.ts`) 세 지급 경로가 각자
+> `inventory.used_slots`를 read-then-write하던 구조를 `grant_inventory_item()`·
+> `release_inventory_slots()` 신규 RPC(마이그레이션 173, `SELECT ... FOR UPDATE` 원자
+> 트랜잭션)로 전환 — 두 지급 경로가 같은 유저에게 겹칠 때 슬롯 상한이 조용히 뚫리는 레이스
+> 컨디션을 제거했다. §3.5-2 "표준 불변식 1"에 편입. 유저 화면 문구 변경 없음 — 티켓
+> 20260914_1813)
+>
+> 이전: 2026-09-14 (JAM! 종목 조건에 **체크인 배지 보유 조건 2종** 추가 —
 > `checkin_category_count`(지정 카테고리 내 보유 개수)·`checkin_badge_count`(지정 목록 중
 > 보유 개수). 위 4종(사용량 지표)과 달리 값이 object라 후보 배지마다 카테고리·배지 목록이
 > 달라 "유저당 미리 계산한 값 하나"로 판정할 수 없다 — `usageBadges.ts`의 신규
@@ -1391,6 +1399,8 @@ DB 트리거(`log_orphan_custody_events()`)로 구현돼 있다 — 이 저장�
 | `admin_reassign_orphaned_item()` | Orphaned → Held(새 소유자) | `inventory_items` → `inventory` |
 | `slot_item_into_book()` | Held → Slotted | `inventory` → `inventory_items` |
 | `unslot_item_from_book()` | Slotted → Held | `user_item_book_slots` → `inventory` → `inventory_items` |
+| `grant_inventory_item()` | (신규 발급) → Held | `inventory` → `inventory_items` |
+| `release_inventory_slots()` | — (슬롯 카운터만 갱신, 상태 전이 없음) | `inventory` |
 
 `slot_item_into_book()`/`unslot_item_from_book()`(마이그레이션
 `111_item_slot_atomic_rpc.sql`)은 이 목록에서 가장 늦게 합류했다 — 기존
@@ -1401,6 +1411,17 @@ DB 트리거(`log_orphan_custody_events()`)로 구현돼 있다 — 이 저장�
 모두 `inventory`를 `inventory_items`보다 먼저 잠그도록 다른 RPC들과 통일돼 있다 —
 순서가 반대인 RPC 쌍이 있으면 같은 두 테이블을 동시에 노리는 요청끼리 AB-BA
 데드락이 발생할 수 있기 때문이다.
+
+**`grant_inventory_item()`/`release_inventory_slots()`(마이그레이션
+`173_atomic_inventory_slot_grant.sql`, 티켓 20260914_1813)는 같은 규율을 `inventory.used_slots`
+카운터로 확장한 것이다** — 드랍엔진(`drop-engine/index.ts`)·미션 보상(`missions/rewards.ts`)·
+아이템 조합 보상(`combine/index.ts`)이 각자 `used_slots`를 read-then-write(읽고 → 메모리에서
+계산 → 절대값으로 덮어쓰기)하던 구조라, 두 지급 경로가 같은 유저에게 겹치면 슬롯 상한이 조용히
+뚫리거나 카운터가 실제 상태와 어긋날 수 있는 타이밍 윈도우가 있었다. `grant_inventory_item()`은
+"`inventory_items` INSERT + `used_slots` 증가"를, `release_inventory_slots()`(조합 소각 직후
+칸 반환)는 "감소"만을 `inventory` 행 락 안에서 원자적으로 처리한다. 기존 `isInventoryFull()`
+(`src/lib/inventory/slots.ts`)은 화면 단 사전 판정·루프 조기 종료 최적화용으로 그대로 유지되고,
+이 두 RPC가 지급/소각 시점의 최종 확인을 맡는 역할 분리 구조다.
 
 ### 3.6 데이터 모델
 
