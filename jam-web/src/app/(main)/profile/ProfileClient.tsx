@@ -27,6 +27,13 @@ import {
 } from '@/components/ui/icons'
 import type { UserRow, StravaConnectionRow, ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
 import FeedSection, { DetailSheet, earnCountOf, badgeLevelOf } from '../FeedSection'
+import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
+
+/** `POST /api/follows` 응답 중 배지 리빌 연출에 필요한 조각(sync.ts EarnedBadgePayload와 동일 계약) */
+interface FollowResponse {
+  earnedBadges?: RevealBadge[]
+  earnedBadgesMore?: number
+}
 
 // ─── 탭 ─────────────────────────────────────────────────────────────────────
 
@@ -129,6 +136,12 @@ export default function ProfileClient({
   const [sheetOpen, setSheetOpen] = useState(false)
   const closeSheet = useCallback(() => setSheetOpen(false), [])
   const handleSheetClosed = useCallback(() => setSelectedItem(null), [])
+
+  // ── 배지 리빌 오버레이(팔로우로 배지 획득 시) — FollowButton.tsx(20260910_2056)와 동일 패턴,
+  // 헤더 팔로우 버튼·팔로워/팔로잉 탭 리스트 두 호출부가 공유한다 (20260910_2132).
+  const [revealOpen, setRevealOpen] = useState(false)
+  const [earnedBadges, setEarnedBadges] = useState<RevealBadge[]>([])
+  const [earnedBadgesMore, setEarnedBadgesMore] = useState(0)
 
   // ── 팔로우 (프로필 헤더) ───────────────────────────────────────────────────
   const [following, setFollowing] = useState(isFollowing)
@@ -265,6 +278,17 @@ export default function ProfileClient({
         })
       }
       if (!res.ok) throw new Error(res.statusText)
+      // JAM! 카테고리 — 팔로우로 획득한 배지가 있으면 리빌 연출 (티켓 20260910_2132).
+      // 언팔로우(current === true)에는 배지 지급이 없으므로 신규 팔로우일 때만 파싱한다.
+      if (!current) {
+        const data: FollowResponse = await res.json().catch(() => ({}))
+        const badges = data.earnedBadges ?? []
+        if (badges.length > 0) {
+          setEarnedBadges(badges)
+          setEarnedBadgesMore(data.earnedBadgesMore ?? 0)
+          setRevealOpen(true)
+        }
+      }
     } catch {
       setListFollowStates(prev => ({ ...prev, [targetId]: current }))
     } finally {
@@ -300,6 +324,14 @@ export default function ProfileClient({
           body: JSON.stringify({ target_user_id: targetUserId }),
         })
         if (!res.ok) throw new Error(res.statusText)
+        // JAM! 카테고리 — 팔로우로 획득한 배지가 있으면 리빌 연출 (티켓 20260910_2132).
+        const data: FollowResponse = await res.json().catch(() => ({}))
+        const badges = data.earnedBadges ?? []
+        if (badges.length > 0) {
+          setEarnedBadges(badges)
+          setEarnedBadgesMore(data.earnedBadgesMore ?? 0)
+          setRevealOpen(true)
+        }
       } catch {
         setFollowing(prev)
         setFollowerCnt(prevCnt)
@@ -700,6 +732,15 @@ export default function ProfileClient({
           badgeLinkQuery={`?u=${username}`}
         />
       )}
+
+      {/* 배지 리빌 오버레이 — 헤더 팔로우 버튼·팔로워/팔로잉 탭 리스트 공용 (20260910_2132) */}
+      <BadgeRevealOverlay
+        open={revealOpen}
+        items={earnedBadges}
+        moreCount={earnedBadgesMore}
+        profileHref="/profile"
+        onClose={() => setRevealOpen(false)}
+      />
     </div>
   )
 }
