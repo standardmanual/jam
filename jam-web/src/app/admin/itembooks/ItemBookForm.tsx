@@ -9,6 +9,7 @@ import BadgeMultiSearchSelect from '@/components/admin/BadgeMultiSearchSelect'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { Switch } from '@/components/admin/ui/switch'
+import { Input } from '@/components/admin/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import {
   AlertDialog,
@@ -74,6 +75,11 @@ export default function ItemBookForm({
   const [tribeId, setTribeId] = useState(book?.tribe_id ?? '')
   const [storyText, setStoryText] = useState(book?.story_text ?? '')
   const [isActive, setIsActive] = useState(book?.is_active ?? true)
+  // 노출 기간(20260914_1729) — badges.valid_from/valid_until(BadgeForm.tsx)과 동일한 패턴.
+  // date input은 시각 없이 날짜만 다루므로 저장 시 ISO 문자열로 변환한다.
+  const toDateInput = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : '')
+  const [validFrom, setValidFrom] = useState<string>(toDateInput(book?.valid_from))
+  const [validUntil, setValidUntil] = useState<string>(toDateInput(book?.valid_until))
   // 배경 테마 (20260818_004) — 컬렉션 자체에는 렌더링되지 않고, "하위 배지에 일괄 적용" 버튼으로
   // 소속 배지들의 background_color에 1회성으로 복사하는 원본 값. 제너레이터(패턴/애니메이션/Paper
   // 필터)와 배경 쉐이더 드롭다운은 티켓 20260901_1929에서 제거.
@@ -92,10 +98,9 @@ export default function ItemBookForm({
   // ── 켜짐 → 꺼짐 전환 확인 (20260823_004) ──────────────────────────
   // 저장 전 임시 상태이므로, 확인 모달을 취소하면 API 호출 없이 로컬 isActive를 그대로 둔다
   // (Switch를 끄는 순간에는 아직 isActive를 false로 바꾸지 않고, "계속"을 눌러야만 확정한다).
+  // 티켓 20260914_1729: 컬렉션 비활성화는 소속 배지에 더 이상 영향을 주지 않아 영향 범위
+  // 조회(badgeCount/holderUserCount)를 제거하고 정적 확인 문구로 바꿨다.
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false)
-  const [deactivationImpactLoading, setDeactivationImpactLoading] = useState(false)
-  const [deactivationImpact, setDeactivationImpact] = useState<{ badgeCount: number; holderUserCount: number } | null>(null)
-  const [deactivationImpactFailed, setDeactivationImpactFailed] = useState(false)
 
   // ── 하위 배지 일괄 적용 ──────────────────────────────────────────
   const [bulkApplyLoading, setBulkApplyLoading] = useState(false)
@@ -130,6 +135,8 @@ export default function ItemBookForm({
       tribe_id: tribeId || null,
       story_text: storyText || null,
       is_active: isActive,
+      valid_from: validFrom ? new Date(validFrom).toISOString() : null,
+      valid_until: validUntil ? new Date(validUntil).toISOString() : null,
       // [20260901_1944] 애니메이션 모드에서는 배경색을 검증하지 않으므로 hex가 아닌 값은 null로
       // 정리한다. 배경색 모드는 위에서 이미 검증돼 동작이 달라지지 않는다.
       background_color: HEX_COLOR_PATTERN.test(trimmedBackgroundColor) ? trimmedBackgroundColor : null,
@@ -260,33 +267,21 @@ export default function ItemBookForm({
     if (res.ok) router.refresh()
   }
 
-  /** Switch 토글 핸들러. 꺼짐 → 켜짐은 확인 없이 즉시 반영, 켜짐 → 꺼짐은 영향 범위를 조회한
-   *  뒤 확인 모달을 띄운다 — 모달에서 "계속"을 눌러야만 isActive가 false로 확정된다. */
-  const handleActiveToggle = async (checked: boolean) => {
+  /** Switch 토글 핸들러. 꺼짐 → 켜짐은 확인 없이 즉시 반영, 켜짐 → 꺼짐은 확인 모달을 띄운다 —
+   *  모달에서 "계속"을 눌러야만 isActive가 false로 확정된다. 티켓 20260914_1729: 컬렉션
+   *  비활성화가 소속 배지에 더 이상 영향을 주지 않아 영향 범위 조회는 제거했다. */
+  const handleActiveToggle = (checked: boolean) => {
     if (checked) {
       setIsActive(true)
       return
     }
     if (!isEdit) {
-      // 신규 등록 화면은 아직 소속 배지가 있을 수 없으므로 확인 없이 그대로 반영.
+      // 신규 등록 화면은 확인 없이 그대로 반영.
       setIsActive(false)
       return
     }
 
-    setDeactivationImpact(null)
-    setDeactivationImpactFailed(false)
     setShowDeactivateConfirm(true)
-    setDeactivationImpactLoading(true)
-    try {
-      const res = await fetch(`/api/admin/itembooks/${book!.id}/deactivation-impact`)
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? '영향 범위 조회 실패')
-      setDeactivationImpact({ badgeCount: data.badgeCount, holderUserCount: data.holderUserCount })
-    } catch {
-      setDeactivationImpactFailed(true)
-    } finally {
-      setDeactivationImpactLoading(false)
-    }
   }
 
   const handleDeactivateConfirm = () => {
@@ -405,6 +400,44 @@ export default function ItemBookForm({
         <FieldMessage id="itembook-reward-points-help">
           컬렉션을 완성하는 순간 1번 지급돼요. 나중에 바꿔도 이미 지급한 포인트는 그대로예요. 0이면 지급하지 않아요.
         </FieldMessage>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <FieldLabel id="itembook-period-label">노출 기간</FieldLabel>
+        <div
+          role="group"
+          aria-labelledby="itembook-period-label"
+          aria-describedby="itembook-period-help"
+          className="grid max-w-[440px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2"
+        >
+          <Input type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} aria-label="시작일" />
+          <span className="text-xs text-muted-foreground" aria-hidden="true">
+            ~
+          </span>
+          <Input
+            type="date"
+            value={validUntil}
+            onChange={(e) => setValidUntil(e.target.value)}
+            min={validFrom || undefined}
+            aria-label="종료일"
+          />
+        </div>
+        <FieldMessage id="itembook-period-help">
+          설정하면 해당 기간에만 컬렉션이 노출돼요. 비워 두면 상시 노출이에요. 기간 밖이거나
+          비활성 상태면 컬렉션만 숨겨지고, 소속 아이템배지의 배정·활성 상태는 그대로 유지돼요.
+        </FieldMessage>
+        {(validFrom || validUntil) && (
+          <button
+            type="button"
+            onClick={() => {
+              setValidFrom('')
+              setValidUntil('')
+            }}
+            className="self-start text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            기간 설정 초기화
+          </button>
+        )}
       </div>
 
       <label className="flex items-center gap-3 cursor-pointer">
@@ -602,24 +635,20 @@ export default function ItemBookForm({
         </div>
       )}
 
-      {/* 컬렉션 비활성화 확인 — 켜짐 → 꺼짐 전환 시 소속 배지 연쇄 회수 경고 (20260823_004) */}
+      {/* 컬렉션 비활성화 확인 (20260823_004, 티켓 20260914_1729 — 소속 배지 연쇄 회수 폐지) */}
       <AlertDialog open={showDeactivateConfirm} onOpenChange={(open) => { if (!open) handleDeactivateCancel() }}>
         <AlertDialogContent container={themeContainer ?? undefined}>
           <AlertDialogHeader>
             <AlertDialogTitle>컬렉션 비활성화</AlertDialogTitle>
             <AlertDialogDescription>
-              {deactivationImpactLoading && '영향 범위를 확인하는 중이에요...'}
-              {!deactivationImpactLoading && deactivationImpactFailed &&
-                '영향 범위를 확인할 수 없습니다 — 신중히 진행하세요.'}
-              {!deactivationImpactLoading && !deactivationImpactFailed && deactivationImpact &&
-                `이 컬렉션을 비활성화하면 소속 아이템배지 ${deactivationImpact.badgeCount}개가 함께 비활성화되고, 이미 획득한 유저 ${deactivationImpact.holderUserCount}명에게서 회수됩니다. 계속하시겠습니까?`}
+              이 컬렉션을 비활성화하면 유저에게 더 이상 노출되지 않습니다. 소속 아이템배지에는
+              영향을 주지 않습니다. 계속하시겠습니까?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <button
               type="button"
               onClick={handleDeactivateConfirm}
-              disabled={deactivationImpactLoading}
               className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               계속

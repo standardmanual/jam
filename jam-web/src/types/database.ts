@@ -439,6 +439,11 @@ export interface ItemBookRow {
    *  `is_active`(화면 노출 자체 차단)와는 별개 — true여도 기존 노출·보유자 화면은 그대로 두고
    *  신규 드랍 후보에서만 소속 배지 전체를 뺀다. */
   drop_excluded: boolean
+  /** 컬렉션 노출 시작/종료 시각(마이그레이션 171, 티켓 20260914_1729). badges.valid_from/
+   *  valid_until과 동일한 패턴 — null이면 처음부터/종료 없음. `is_active`와 함께 AND로
+   *  평가되며, 소속 아이템배지의 활성 여부와는 완전히 독립적이다(컬렉션 캐스케이드 폐지). */
+  valid_from: string | null
+  valid_until: string | null
 }
 
 export interface PoiRow {

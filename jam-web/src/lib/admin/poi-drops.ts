@@ -7,9 +7,10 @@ import type { createServiceClient } from '@/lib/supabase/server'
  * 요청을 실패시키지 않고 로그만 남긴다 — 크론 안전망(api/cron/poi-cleanup)이 재시도 없이도
  * 다음 소각 주기에 정리한다.
  *
- * 단일 배지 삭제(api/admin/badges/[id]/route.ts)와 컬렉션 연쇄 삭제
- * (lib/admin/itembook-deactivation.ts)가 공유한다 — badgeIds가 빈 배열이면 쿼리를 실행하지
- * 않고 조기 리턴한다(빈 배열로 `.in()` 호출 시 전체 매치되는 사고 방지).
+ * 단일 배지 삭제(api/admin/badges/[id]/route.ts)가 사용한다 — badgeIds가 빈 배열이면 쿼리를
+ * 실행하지 않고 조기 리턴한다(빈 배열로 `.in()` 호출 시 전체 매치되는 사고 방지).
+ * (컬렉션 연쇄 비활성화 호출부는 티켓 20260914_1729에서 폐지 — 컬렉션 활성 상태는 이제
+ * 소속 배지의 활성 여부와 무관하다.)
  */
 export async function invalidateUnclaimedDrops(
   supabase: ReturnType<typeof createServiceClient>,

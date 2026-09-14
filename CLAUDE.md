@@ -70,6 +70,20 @@ DB 스키마/데이터 변경은 사용자에게 대신 실행해달라고 요�
 
 ---
 
+## Agent skills
+
+### Issue tracker
+
+이슈는 GitHub Issues가 아니라 `Service Plan/Tickets/`의 마크다운 티켓으로 추적한다. 자세한
+내용은 `docs/agents/issue-tracker.md` 참고.
+
+### Domain docs
+
+단일 컨텍스트. `CONTEXT.md`/ADR 대신 `Service Plan/Specs/`의 PRD·컨텐츠·배지엔진·서비스플랜
+문서 체계를 사용한다. 자세한 내용은 `docs/agents/domain.md` 참고.
+
+---
+
 ## 문서 체계 개요
 
 `Service Plan/`은 5가지 카테고리로 구성된다. 개선사항이 어느 카테고리에 해당하는지 먼저 판단하고,

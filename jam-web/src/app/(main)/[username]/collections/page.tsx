@@ -86,6 +86,9 @@ export default async function UserItemBooksPage({ params }: Props) {
     const bookIds = [...discoveredByBook.keys()]
 
     if (bookIds.length > 0) {
+      // 컬렉션 노출 판정 = is_active && 노출 기간 내(마이그레이션 171, 티켓 20260914_1729).
+      // 소속 아이템배지의 활성 여부와는 독립적 — 컬렉션이 비활성/기간 밖이면 컬렉션만 숨긴다.
+      const now = new Date().toISOString()
       const [
         { data: booksRaw, error: booksError },
         { data: bookBadgesRaw, error: bookBadgesError },
@@ -96,7 +99,9 @@ export default async function UserItemBooksPage({ params }: Props) {
           .from('item_books')
           .select('*, tribe:tribes(id, name, image_url)')
           .in('id', bookIds)
-          .eq('is_active', true),
+          .eq('is_active', true)
+          .or(`valid_from.is.null,valid_from.lte.${now}`)
+          .or(`valid_until.is.null,valid_until.gte.${now}`),
         service
           .from('badges')
           .select('id, item_book_id')

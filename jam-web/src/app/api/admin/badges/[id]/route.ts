@@ -235,11 +235,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
  * 하드 삭제하고, 이력이 있으면 차단한다. 이 PATCH는 이력 유무와 무관하게 항상 소프트
  * 삭제/복원만 수행하는 가역적 토글로 그대로 유지한다.
  *
- * 개별 조작이 있을 때마다 `deactivated_by_item_book_id`를 NULL로 리셋한다(티켓 20260908_2129
- * 2차) — active 값에 관계없이, 이 배지가 "컬렉션 캐스케이드 관리 대상"에서 "개별 관리"로
- * 전환됐다는 뜻이다. 이래야 "컬렉션 비활성화로 죽은 배지를 관리자가 개별로 다시 살렸다가,
- * 이후 컬렉션이 재활성화될 때 또 건드려지는" 이중 처리를 막는다(배지 목록의 일괄 활성화/
- * 비활성화도 결국 이 API를 순차 호출하므로 자동으로 같은 규칙을 따른다).
+ * `deactivated_by_item_book_id` 컬럼(마이그레이션 146)은 컬렉션 연쇄 비활성화 캐스케이드를
+ * 지원하기 위해 추가됐었다 — 그 캐스케이드는 티켓 20260914_1729에서 완전히 폐지됐다(컬렉션의
+ * 활성/비활성은 소속 배지와 이제 무관). 이 컬럼을 채우는 코드는 더 이상 없으므로 이 PATCH도
+ * 더 이상 리셋하지 않는다. 컬럼 자체는 과거 데이터가 남아 있을 수 있어 이번 티켓 범위에서는
+ * 삭제하지 않았다(후속 티켓에서 컬럼 제거 여부를 재검토).
  */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -256,7 +256,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('badges')
-    .update({ deleted_at: active ? null : new Date().toISOString(), deactivated_by_item_book_id: null })
+    .update({ deleted_at: active ? null : new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()
