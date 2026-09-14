@@ -485,6 +485,9 @@ export default function BadgeConditionSection({
       {!jam && (
       <div className="flex flex-wrap items-center justify-between gap-3">
         {showIssuance ? (
+          // Tabs 전환 검토(티켓 20260911_1019 P3): 이 값은 아래 조건 그룹을 통째로 다른 패널로
+          // 바꾸지 않고, 경고 배너를 띄우고 기존 조건 그룹을 흐리게(`opacity-50`)만 만든다 —
+          // 콘텐츠가 패널 단위로 갈리지 않아 tab/tabpanel 모델이 맞지 않는다. 현재 구현 유지.
           <SegmentedControl
             label="발급 방식"
             value={condFields.missionReward ? 'mission' : 'auto'}
