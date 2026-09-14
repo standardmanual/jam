@@ -22,6 +22,13 @@
   "완료 조건 문장"만 있고 `MissionCondition` 필드 매핑은 없다 — 티켓 20260906_2231이
   32건(+걷기 8건)을 전수 대조해 확정한 매핑을 `CONDITION_BY_CODE`에 그대로 적었다.
   이 매핑이 이 산출물의 유일한 콘텐츠 판단 지점이다(감사 시 이 딕셔너리만 검토하면 된다).
+
+## 레벨형(무한레벨) 축 게이트 처리 (티켓 20260908_1028)
+`visibility_rule_json`은 대상 축이 등급형인지 레벨형인지를 FAMS(`f.kind`)로 기계적으로
+판정해 분기한다 — 레벨형이면 `min_rarity` 대신 `min_level`(대상 계열 중 최단 사다리 상한/그
+절반)을 쓴다. 원래 40종 전부를 등급형으로 취급하던 하드코딩(티켓 20260908_1017에서 발견,
+"누적" 축 5종만 데이터로 임시 교정)을 스크립트 레벨에서 일반화한 것 — 새 레벨형 축이 추가돼도
+같은 버그가 재발하지 않는다.
 """
 import json
 import os
@@ -45,6 +52,15 @@ _gate_ns = {'__file__': GATE_BUILD, '__name__': '__v5_gate_build_helpers_only__'
 exec(compile(_gate_src[:_cut], GATE_BUILD, 'exec'), _gate_ns)
 family_keys_of_axis = _gate_ns['family_keys_of_axis']
 MISSION_MAP = _gate_ns['MISSION_MAP']
+# 티켓 20260908_1028 — 레벨형(무한레벨) 축 게이트 처리 일반화. FAMS를 재사용해 「이 축이
+# 등급형인지 레벨형인지」를 기계적으로 판정한다(더 이상 "누적" 축을 특별 취급하는 하드코딩 없음).
+FAMS = _gate_ns['FAMS']
+FAM_BY_KEY = {f.family_key: f for f in FAMS}
+
+
+def max_level_of(fam):
+    levels = [lv for r, lv, c in fam.rows if lv is not None]
+    return max(levels) if levels else None
 
 # ─────────────────────────────────────────────────────────────────────────
 # 시간대 상수 — v5_seed_build.py 정본 값 재사용(실제 시딩된 배지 time_range와 동일)
@@ -246,10 +262,24 @@ A('')
 
 for r in sorted(rows, key=lambda r: (r['sport'], r['axis'])):
     condition_json = json.dumps(r['condition_json'], ensure_ascii=False)
-    visibility_json = json.dumps({
-        'require_owned': {'family_keys': r['visibility_family_keys'], 'min_rarity': 'epic'},
-        'hide_when_owned': {'family_keys': r['visibility_family_keys'], 'min_rarity': 'mystic'},
-    }, ensure_ascii=False)
+    vis_fams = [FAM_BY_KEY[fk] for fk in r['visibility_family_keys'] if fk in FAM_BY_KEY]
+    # 티켓 20260908_1028: 대상 축이 레벨형(무한레벨, rarity 없음)이면 min_rarity가 영원히
+    # 불충족이다(rarityTier(null)=0) — min_level로 교체한다. 값 산정 기준은 티켓 20260908_1017의
+    # 수기 확정과 동일: hide_when_owned = 대상 계열 중 최단 사다리 상한, require_owned = 그 절반
+    # (반올림 없이 내림).
+    if vis_fams and all(f.kind == 'leveled' for f in vis_fams):
+        max_levels = [max_level_of(f) for f in vis_fams]
+        assert all(lv is not None for lv in max_levels), f"{r['gate_axis']} 레벨형 계열에 레벨 행 없음"
+        shortest_max = min(max_levels)
+        visibility_json = json.dumps({
+            'require_owned': {'family_keys': r['visibility_family_keys'], 'min_level': shortest_max // 2},
+            'hide_when_owned': {'family_keys': r['visibility_family_keys'], 'min_level': shortest_max},
+        }, ensure_ascii=False)
+    else:
+        visibility_json = json.dumps({
+            'require_owned': {'family_keys': r['visibility_family_keys'], 'min_rarity': 'epic'},
+            'hide_when_owned': {'family_keys': r['visibility_family_keys'], 'min_rarity': 'mystic'},
+        }, ensure_ascii=False)
     A(f"-- {r['gate_axis']} → {r['reward_family_key']} ({r['title']})")
     A("INSERT INTO public.missions (")
     A("  title, description, mission_type, condition_json, reward_badge_ids,")
