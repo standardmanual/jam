@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
-import { findBadgeConditionSaveError, findRarityLevelError } from '@/lib/admin/badge-validation'
+import { findBadgeConditionSaveError, findCheckinBadgeNamesNotFoundError, findRarityLevelError } from '@/lib/admin/badge-validation'
 import { invalidateUnclaimedDrops } from '@/lib/admin/poi-drops'
 import { BADGE_REFERENCE_SOURCES, collectBadgeReferences } from '@/lib/admin/badge-references'
 import { countRecipesReferencingBadge } from '@/lib/admin/recipe-references'
@@ -53,6 +53,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   )
   if (conditionError) {
     return NextResponse.json({ error: conditionError }, { status: 400 })
+  }
+
+  // 체크인 배지 이름 목록(checkin_badge_count) 검증 — DB 조회가 필요해 별도로 await한다
+  // (티켓 20260914_1725, AC5).
+  const checkinBadgeNamesError = await findCheckinBadgeNamesNotFoundError(conditionJson ?? null, supabase)
+  if (checkinBadgeNamesError) {
+    return NextResponse.json({ error: checkinBadgeNamesError }, { status: 400 })
   }
 
   const { data, error } = await supabase

@@ -345,6 +345,8 @@ interface BadgeGateRequirement {
 | `following_count` | `number` | [JAM! 카테고리] 팔로잉 수 ≥ 조건값 | 위와 동일 — `evaluateUsageBadges()`가 `POST /api/follows` 성공 직후 판정 |
 | `daily_sync_count` | `number` | [JAM! 카테고리] 그날(KST) 누적 동기화 성공 횟수 ≥ 조건값 | 위와 동일 — `evaluateUsageBadges()`가 `syncStravaActivities()`에서 `synced > 0`일 때만 판정(카운터는 `user_daily_sync_counts` + `increment_daily_sync_count()` RPC) |
 | `daily_sync_streak_days` | `number` | [JAM! 카테고리] 오늘 기준 «현재» 연속 동기화 일수 ≥ 조건값. **역대 최장이 아니다** — 하루라도 거르면 0으로 리셋된다 | 위와 동일 — `evaluateUsageBadges()`가 `daily_sync_count`와 같은 시점(`increment_daily_sync_count()` RPC 직후)에 `dailySyncStreak.ts`의 `fetchCurrentSyncStreakDays()`로 계산해 판정 |
+| `checkin_category_count` | `{ category: string; count: number }` | [JAM! 카테고리] 지정된 체크인 카테고리(effective category — `badges.category` 우선, 없으면 연결된 `poi.category` 폴백) 내에서 유저가 보유한(distinct) 체크인 배지 개수 ≥ `count` | badge-engine 내 **항상 fail** — `usageBadges.ts`의 `evaluateCheckinUsageBadges()`가 체크인 배지(`user_checkin_badge_earns`) insert 성공 직후 별도 판정·발급. 후보 배지마다 카테고리가 달라 팔로워 수 등 4종처럼 "호출부가 미리 계산한 값 하나"로 판정할 수 없다 |
+| `checkin_badge_count` | `{ checkin_badge_names: string[]; count: number }` | [JAM! 카테고리] 지정한 체크인 배지 이름(CSV로 입력, `type='checkin'`으로 한정 해석) 목록 중 유저가 보유한 이름 개수 ≥ `count` | 위와 동일 — 저장 시점에 `findCheckinBadgeNamesNotFoundError`가 목록의 모든 이름이 실제 `type='checkin'` 배지 이름인지 검증한다(존재하지 않는 이름은 저장 자체를 거부). 평가 시점에도 카탈로그에 없는 이름은 무시하고 나머지로 판정하는 안전망이 있다 |
 
 > ⚠️ 배경(티켓 20260825_028): 마이그레이션 `084_badge_condition_cleanup.sql`이 배지 상세화면
 > 표시용으로 미션보상배지 15종에 `{"mission_reward": true}`를 넣었는데, 당시 badge-engine은
@@ -373,6 +375,14 @@ interface BadgeGateRequirement {
 > `/badges` 일반 목록·프로필은 `type==='activity'`만 보므로 정상 노출된다. 발급 규칙(등급형
 > 성장 티어·레벨형 연속 발급)은 BADGE_ENGINE_UNIFIED.md §2.2(Step 3-A/3-B)와 같은 정책을
 > `usageBadges.ts`가 최소 재구현한다. 섀도우밴은 rarity가 있는(등급형) 배지만 차단 대상이다.
+>
+> **체크인 배지 보유 조건 2종** (2026-09-14, 티켓 20260914_1725): `checkin_category_count`·
+> `checkin_badge_count`도 같은 자리(`role: 'meta'` + `evaluation: 'external'`)이지만 값이
+> **object**다(`activities_within_hours`와 같은 선례) — 카테고리·배지 목록이 배지마다 달라
+> "유저당 미리 계산한 숫자 하나"로 판정할 수 없다. `usageBadges.ts`의
+> `evaluateCheckinUsageBadges()`가 후보 배지마다 자기 `condition_json`을 참조해 현재값을
+> 계산한다(카테고리 지표 = `user_checkin_badge_earns` × effective category distinct count,
+> 목록 지표 = 지정 이름 중 보유한 이름 개수). `sync.ts`의 체크인 배지 insert 성공 직후 호출된다.
 
 ---
 
@@ -404,14 +414,16 @@ interface BadgeGateRequirement {
 - 휴식 4종(§2.13)은 **`repeat_count`와 휴식 키 1개까지 조합 가능하다**(2026-09-06, 티켓
   20260906_2056) — 전용 술어가 "휴식 조건을 만족한 복귀 사건"만 센다. 휴식 키 2개 이상은
   사건 경계가 정의되지 않아 여전히 「회차와 함께 쓸 수 없는 조건」으로 막힌다
-- **사용량 지표 4종(§3 — `follower_count`·`following_count`·`daily_sync_count`·
-  `daily_sync_streak_days`)은 `repeat_count`와 함께 쓸 수 없다**(2026-09-10, 티켓 20260910_1719;
-  20260911_2304에서 4번째 키로 확장) — `usageBadges.ts`의
+- **사용량 지표 6종(§3 — `follower_count`·`following_count`·`daily_sync_count`·
+  `daily_sync_streak_days`·`checkin_category_count`·`checkin_badge_count`)은 `repeat_count`와
+  함께 쓸 수 없다**(2026-09-10, 티켓 20260910_1719; 20260911_2304에서 4번째 키로 확장;
+  20260914_1725에서 체크인 배지 보유 2종 추가) — `usageBadges.ts`의
   발급 경로는 등급형(이름 그룹 내 최상위 tier 1개만)·레벨형(family_key 연속 발급)만
   구현돼 있다. `badgeKindOf()`가 아니라 `isLeveledBadge()`(rarity==null 이진 판정)로만
   갈라 반복형(세 번째 종류)을 구분하지 못하므로, 등급형 경로로 흘러가 회차가 조용히
   무시된다 — 저장 시점에 `findUsageMetricRepeatConflictError`(`badge-condition-guards.ts`)가
-  막는다
+  막는다. 같은 함수(`findUsageMetricOtherMeasurableConflictError`)가 이 6종과 다른
+  measurable 필드(예: `distance_km`)의 조합도 막는다
 - 교차 게이트 3종(§2.12)도 fail-closed 대상이 **아니다** — 다만 값의 형태가 깨지면
   **그 게이트 때문에 발급이 막힌다**(통과가 아니다). 게이트는 조건 평가가 아니라 후보
   선별 단계에서 판정되므로, 수치 조건이 하나도 없는 배지는 여전히 「평가 가능한 조건 없음」이다

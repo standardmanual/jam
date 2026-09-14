@@ -83,8 +83,9 @@ export function findRepeatRestConflictError(condition: BadgeCondition | null): s
 }
 
 /**
- * 서비스 사용량 지표 4종(팔로워·팔로잉·일일동기화·연속동기화일수, 티켓 20260910_1557·
- * 20260911_2304) — `usageBadges.ts`의 발급 경로는 등급형(이름 그룹 내 최상위 tier 1개만
+ * 서비스 사용량 지표 6종(팔로워·팔로잉·일일동기화·연속동기화일수, 티켓 20260910_1557·
+ * 20260911_2304 + 체크인 카테고리 보유·체크인 배지 보유, 티켓 20260914_1725) —
+ * `usageBadges.ts`의 발급 경로는 등급형(이름 그룹 내 최상위 tier 1개만
  * 순차 발급)·레벨형(family_key 내 보유 레벨+1부터 연속 발급)만 구현돼 있다.
  *
  * ⚠️ 이 배열은 `conditionRegistry.ts`(단일 소스)가 아니라 여기 직접 선언한다 — 이 가드는
@@ -97,6 +98,10 @@ const USAGE_METRIC_CONDITION_KEYS = [
   'following_count',
   'daily_sync_count',
   'daily_sync_streak_days',
+  // 체크인 배지 보유 조건 2종 (티켓 20260914_1725) — 등급형·레벨형 순차 발급만 구현돼 있어
+  // 위 4종과 동일한 제약(repeat_count·다른 measurable 필드와 조합 불가)이 적용된다.
+  'checkin_category_count',
+  'checkin_badge_count',
 ] as const
 
 /**

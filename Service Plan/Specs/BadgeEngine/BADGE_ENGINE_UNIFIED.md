@@ -1,6 +1,17 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-09-14 (POI·체크인 배지 발급 경로에 섀도우밴 게이트 신설 — 액티비티
+> 최종 업데이트: 2026-09-14 (JAM! 종목 조건에 **체크인 배지 보유 조건 2종** 추가 —
+> `checkin_category_count`(지정 카테고리 내 보유 개수)·`checkin_badge_count`(지정 목록 중
+> 보유 개수). 위 4종(사용량 지표)과 달리 값이 object라 후보 배지마다 카테고리·배지 목록이
+> 달라 "유저당 미리 계산한 값 하나"로 판정할 수 없다 — `usageBadges.ts`의 신규
+> `evaluateCheckinUsageBadges()`가 후보별로 현재값을 계산한다(카테고리 = effective
+> category distinct count, 목록 = 지정 이름 중 보유 개수). `sync.ts`의 체크인 배지
+> (`user_checkin_badge_earns`) insert 성공 직후 호출. 등급형·레벨형 순차 발급·섀도우밴은
+> 4종과 같은 로직(`issueQualifyingBadges`)을 공유한다. CHECK 제약 확장(마이그레이션 171,
+> 미실행), `checkin_badge_count`의 이름 목록은 저장 시점에 실제 `type='checkin'` 배지
+> 이름인지 검증(`findCheckinBadgeNamesNotFoundError`) — 티켓 20260914_1725)
+>
+> 이전: 2026-09-14 (POI·체크인 배지 발급 경로에 섀도우밴 게이트 신설 — 액티비티
 > 배지(20260910_1719)·서비스 사용량 배지(usageBadges.ts)에 이미 연결된 게이트가 세 번째
 > 경로 `processFetchedActivities`의 POI 매칭 후 지급 블록(checkin 반복 획득·레거시
 > activity+poi_id)에는 빠져 있었다. `isBlockedByShadowBan` 헬퍼로 `getUserBanLevel()`·
@@ -107,11 +118,24 @@ Strava 싱크
 | 게이미피케이션 역할 | 장기 목표·티어 성장 (mastery) | 세션 보상·트라이브 서사·수집 (variable reward) |
 
 **③ JAM! 카테고리 — 서비스 사용량 배지 (2026-09-10, 티켓 20260910_1557; 연속 동기화 일수
-1종 추가 — 2026-09-11, 티켓 20260911_2304)** — badge-engine 밖의 세 번째 평가 경로.
+1종 추가 — 2026-09-11, 티켓 20260911_2304; 체크인 배지 보유 조건 2종 추가 — 2026-09-14,
+티켓 20260914_1725)** — badge-engine 밖의 세 번째 평가 경로.
 `type='activity'`(위 ①과 같은 테이블)이지만 Strava 활동 이력이 아니라 팔로워 수·팔로잉 수·
-하루 동기화 횟수·연속 동기화 일수 같은 "서비스를 어떻게 쓰는가"를 잰다.
+하루 동기화 횟수·연속 동기화 일수·체크인 배지 보유 개수 같은 "서비스를 어떻게 쓰는가"를 잰다.
 `badge_type` enum을 늘리는 대신 기존 `activity` 타입 안에서 `activity_types=[]`로 저장해
 배지 트리에는 노출하지 않는다(`/badges` 일반 목록·프로필엔 정상 노출).
+
+**체크인 배지 보유 조건 2종은 나머지 4종과 판정 구조가 다르다** — `follower_count` 등은
+"유저 단위로 한 번 계산한 숫자"를 모든 후보에 그대로 비교하지만, `checkin_category_count`
+(지정 카테고리 내 보유 개수)·`checkin_badge_count`(지정 목록 중 보유 개수)는 후보 배지마다
+`condition_json`이 가리키는 카테고리·이름 목록이 달라 **후보별로** 현재값을 계산해야 한다.
+그래서 `usageBadges.ts`는 발급 로직(등급형 성장 티어·레벨형 연속 발급, 섀도우밴)만
+`issueQualifyingBadges()`로 공유하고, 현재값 계산 경로는 `evaluateUsageBadges()`(4종)와
+`evaluateCheckinUsageBadges()`(체크인 2종)로 갈린다. 카테고리는 "effective category" —
+`badges.category`(어드민 직접 지정) 우선, 없으면 연결된 `poi.category` 폴백 — 정의를
+`admin/badges/page.tsx`와 공유한다. 트리거는 `sync.ts`의 `user_checkin_badge_earns` insert
+성공 직후(체크인 배지 자체의 발급과는 별개 호출, try/catch로 격리해 이 평가가 실패해도
+체크인 배지 발급·동기화 API 응답은 계속 성공한다).
 
 **어드민 분류는 `admin_category='jam'`(마이그레이션 156, 티켓 20260910_2055)** — 위
 평가 로직과는 별개로, 어드민이 이 배지들을 목록 필터·계열관리·게이트미션·아이템북·
@@ -150,10 +174,10 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
 
 | | ① 액티비티배지 엔진 | ③ 서비스 사용량 배지 |
 |---|---|---|
-| 트리거 | Strava 동기화 1회(배치) | `POST /api/follows`(팔로우 성공 직후) · `syncStravaActivities()`(`synced>0`일 때만) |
-| 조건 필드 | `evaluation: 'engine'` — badge-engine이 직접 수치 검사 | `follower_count`/`following_count`/`daily_sync_count`/`daily_sync_streak_days`, `role: 'meta'` + `evaluation: 'external'`(`mission_reward`와 같은 자리) — badge-engine의 `evaluateConditionDetailed`는 이 필드들을 **항상 fail** 처리(measurable 필드 없음) |
-| 실제 평가·발급 | `src/lib/badge-engine/index.ts`의 `evaluateBadgesDetailed()` | `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()` — §2.2 Step 3-A(등급형 성장 티어)·Step 3-B(레벨형 연속 발급)와 같은 정책을 최소 재구현(선행 배지·교차 게이트·**반복형(`repeat_count`) 미지원** — `isLeveledBadge()` 이진 판정만 써서 등급형/레벨형만 가른다. 저장 시점 가드는 아래 참고, 티켓 20260910_1719) |
-| 카운터 원천 | `strava_activities` | `user_follows`(COUNT) · `user_daily_sync_counts`(신규, `increment_daily_sync_count()` RPC로 원자 증가 — `daily_sync_count`·`daily_sync_streak_days` 둘 다 이 테이블에서 파생) |
+| 트리거 | Strava 동기화 1회(배치) | `POST /api/follows`(팔로우 성공 직후) · `syncStravaActivities()`(`synced>0`일 때만) · `user_checkin_badge_earns` insert 성공 직후(체크인 배지 발급 직후) |
+| 조건 필드 | `evaluation: 'engine'` — badge-engine이 직접 수치 검사 | `follower_count`/`following_count`/`daily_sync_count`/`daily_sync_streak_days`/`checkin_category_count`/`checkin_badge_count`, `role: 'meta'` + `evaluation: 'external'`(`mission_reward`와 같은 자리) — badge-engine의 `evaluateConditionDetailed`는 이 필드들을 **항상 fail** 처리(measurable 필드 없음) |
+| 실제 평가·발급 | `src/lib/badge-engine/index.ts`의 `evaluateBadgesDetailed()` | `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()`(4종)·`evaluateCheckinUsageBadges()`(체크인 2종) — 둘 다 §2.2 Step 3-A(등급형 성장 티어)·Step 3-B(레벨형 연속 발급)와 같은 정책을 `issueQualifyingBadges()`로 공유 재구현(선행 배지·교차 게이트·**반복형(`repeat_count`) 미지원** — `isLeveledBadge()` 이진 판정만 써서 등급형/레벨형만 가른다. 저장 시점 가드는 아래 참고, 티켓 20260910_1719·20260914_1725) |
+| 카운터 원천 | `strava_activities` | `user_follows`(COUNT) · `user_daily_sync_counts`(`increment_daily_sync_count()` RPC로 원자 증가 — `daily_sync_count`·`daily_sync_streak_days` 파생) · `user_checkin_badge_earns` × effective category(카테고리 지표) · `user_checkin_badge_earns` × 이름→id 해석(목록 지표) |
 
 필드 스펙은 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §3(메타데이터 필드) 참고.
 언팔로우(`DELETE /api/follows/[userId]`)는 평가를 트리거하지 않는다 — 감소만 일어나고
