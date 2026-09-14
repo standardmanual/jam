@@ -2,9 +2,9 @@
 id: 20260908_0010
 category: Content
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-08
-closed:
+closed: 2026-09-14
 ---
 
 # [Content] 참조가 사라진 i18n 키 정리 (itembooks)
