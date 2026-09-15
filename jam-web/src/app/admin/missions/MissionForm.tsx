@@ -47,8 +47,8 @@ const statusDisplayTypes = [
   { value: 'individual', label: '개인형 (본인 진행상황만)' },
 ] as const
 
-// 미션 노출 옵션 (티켓 20260912_0139)
-const exposureModes = [
+// 미션 노출 옵션 (티켓 20260912_0139) — MissionTable.tsx 노출 컬럼에서도 재사용
+export const exposureModes = [
   { value: 'hidden', label: '숨김' },
   { value: 'start_date', label: '시작일 노출' },
   { value: 'scheduled', label: '노출일 지정' },
