@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import { formatRelativeTime, getDisplayName } from '@/lib/utils'
+import { getDisplayName } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
 import { Card } from '@ds/components/cards/Card'
@@ -22,7 +22,6 @@ import {
   UsersIcon,
   MedalIcon,
   BookIcon,
-  ActivityIcon,
   ChevronRightIcon,
 } from '@/components/ui/icons'
 import type { UserRow, StravaConnectionRow, ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
@@ -668,44 +667,6 @@ export default function ProfileClient({
               </div>
             </div>
           </section>
-        )}
-
-        {/* Strava 연동 — 본인 + 기본뷰(해시 없음)일 때 */}
-        {isOwnProfile && !isTabView && (
-          <Card tone="inverse">
-            <h2 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] mb-[var(--spacing-16)]">
-              {d.profile.stravaTitle}
-            </h2>
-            {strava ? (
-              <div className="flex items-center gap-[var(--spacing-8)]">
-                <ActivityIcon className="w-5 h-5 text-text-inverse" />
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse">
-                  {d.profile.stravaConnected}
-                </span>
-                {strava.last_synced_at && (
-                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">
-                    · {formatRelativeTime(strava.last_synced_at)}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-[var(--spacing-16)]">
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">
-                  {d.profile.stravaDisconnected}
-                </span>
-                {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- 규칙 오탐:
-                    `/api/strava/auth`는 페이지가 아니라 OAuth 리다이렉트용 API 라우트다.
-                    next/link로 바꾸면 클라이언트 내비게이션이 되어 스트라바 인증 리다이렉트가
-                    깨진다 — 전체 페이지 이동이 필요하므로 <a>가 정답이다. */}
-                <a
-                  href="/api/strava/auth"
-                  className="inline-flex items-center justify-center gap-2 min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-pill-buttons)] bg-surface text-text text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100 shrink-0"
-                >
-                  {d.profile.stravaConnectButton}
-                </a>
-              </div>
-            )}
-          </Card>
         )}
 
         {/* Feed — 기본뷰(해시 없음)일 때, 본인/타인 관계없이 노출 (20260830_2115).
