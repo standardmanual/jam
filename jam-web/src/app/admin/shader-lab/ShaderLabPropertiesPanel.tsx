@@ -84,6 +84,16 @@ export default function ShaderLabPropertiesPanel({ layer, onChange }: ShaderLabP
           <Switch checked={layer.visible} onCheckedChange={(v) => patch({ visible: v })} />
         </div>
 
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col">
+            <span className="text-sm text-foreground">아래 레이어에 클리핑</span>
+            <span className="text-xs text-muted-foreground">
+              아래 레이어의 투명 영역 밖으로 이 레이어가 번지지 않아요.
+            </span>
+          </div>
+          <Switch checked={layer.clipToBelow === true} onCheckedChange={(v) => patch({ clipToBelow: v })} />
+        </div>
+
         <label className="flex flex-col gap-1.5">
           <span className="text-sm text-foreground">
             투명도 <span className="font-mono text-xs text-muted-foreground">{layer.opacity.toFixed(2)}</span>
