@@ -826,6 +826,32 @@ export const ko = {
      *  완전히 대체해 순수 해제 경로가 사라진 회귀)을 반영해 시트 안에 해제 경로를 되살린다. */
     swapSheetUnslotButton: '해제하기',
     processing: '처리 중',
+
+    // ── API 에러 메시지 — src/app/api/itembooks/[id]/slot/route.ts, itembooks/route.ts
+    // (ADR 0001 서버-클라이언트 단일 진실 소스, 티켓 20260915_2239)
+    // §1.3 "장착" 고정 용어 — 데이터 모델 내부 명칭 「슬롯」은 이 메시지들에도 쓰지 않는다.
+    /** 필수 값 누락 — 정상 UI 흐름에서는 도달하지 않는 방어용 문구 */
+    slotMissingInventoryItemId: '장착할 아이템 정보가 없어요. 다시 시도해 주세요.',
+    unslotMissingSlotId: '해제할 장착 정보가 없어요. 다시 시도해 주세요.',
+    swapMissingParams: '교체할 장착 정보나 아이템 정보가 없어요. 다시 시도해 주세요.',
+    inventoryNotFound: '인벤토리를 찾을 수 없어요.',
+    itemNotFound: '인벤토리에서 이 아이템을 찾을 수 없어요.',
+    alreadyDropped: '이미 드랍한 아이템이에요. 장착할 수 없어요.',
+    notOwner: '본인이 보유한 아이템만 장착할 수 있어요.',
+    alreadySlotted: '이미 장착된 아이템이에요.',
+    badgeNotFound: '배지를 찾을 수 없어요.',
+    wrongItemBook: '이 배지는 해당 컬렉션에 속하지 않아요.',
+    slotNotFound: '장착 정보를 찾을 수 없어요.',
+    /**
+     * [20260915_2239] 개인 인벤토리 확장 기능은 없다 — max_slots는 어드민이 전체 유저에게
+     * 일괄 적용하는 전역 정책(`inventory-policy`)이다. 기존 하드코딩 문구 "인벤토리를
+     * 늘려보세요"는 유저가 할 수 없는 행동을 해결책으로 제시하고 있었다. 같은 상황의 다른
+     * 문구(`inventory.fullNoticeBody`, `drops.pickupInventoryFull`)와 같은 "정리하고 다시
+     * 시도" 해결책으로 통일한다.
+     */
+    inventoryFullForUnslot: '인벤토리가 꽉 차 해제할 수 없어요. 아이템을 정리하고 다시 시도해 주세요.',
+    wrongBadge: '같은 배지의 아이템만 교체할 수 있어요.',
+    sameItem: '이미 장착된 개체예요.',
   },
 
   /**

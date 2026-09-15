@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { d } from '@/lib/i18n'
 import type {
   InventoryRow,
   InventoryItemRow,
@@ -14,7 +15,7 @@ import type {
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
 
   // 1) 유저 인벤토리
   const { data: invRaw } = await supabase
