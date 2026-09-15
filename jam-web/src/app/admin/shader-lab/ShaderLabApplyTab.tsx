@@ -90,10 +90,35 @@ async function searchTarget(target: ShaderLabApplyTarget, query: string): Promis
 const DOWNSCALE_STEP = 0.9
 const MAX_DOWNSCALE_ATTEMPTS = 20
 
+/**
+ * PNG blob을 디코딩된 `<img>`로 로드한다. 축소 루프의 그리기 소스로 쓴다 — 쉐이더 랩 캔버스는
+ * WebGPU 컨텍스트라, `drawImage(webgpuCanvas, ...)`로 직접 축소하면 빈 화면(완전 투명)이
+ * 그려지는 걸 실측으로 확인했다(같은 프로젝트가 이미 겪은 WebGL↔WebGPU 캔버스 브릿지 문제와
+ * 같은 종류 — `liquid-metal-pass.js`가 WebGL 캔버스를 2D로 매 프레임 미러링하는 이유와 동일).
+ * `canvas.toBlob()`으로 먼저 표준 PNG를 만든 뒤 그걸 `<img>`로 디코딩하면, 이후 축소는 순수
+ * 2D 캔버스 간 `drawImage`라 문제없이 동작한다.
+ */
+function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(img)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('이미지를 불러오지 못했어요.'))
+    }
+    img.src = url
+  })
+}
+
 async function compressCanvasPngToTarget(sourceCanvas: HTMLCanvasElement, targetBytes: number): Promise<Blob> {
   let blob = await canvasToBlob(sourceCanvas)
   if (blob.size <= targetBytes) return blob
 
+  const sourceImage = await loadImageFromBlob(blob)
   let width = sourceCanvas.width
   let height = sourceCanvas.height
 
@@ -107,7 +132,7 @@ async function compressCanvasPngToTarget(sourceCanvas: HTMLCanvasElement, target
     const ctx = scaledCanvas.getContext('2d')
     if (!ctx) break
     ctx.clearRect(0, 0, width, height)
-    ctx.drawImage(sourceCanvas, 0, 0, width, height)
+    ctx.drawImage(sourceImage, 0, 0, width, height)
 
     blob = await canvasToBlob(scaledCanvas)
 
