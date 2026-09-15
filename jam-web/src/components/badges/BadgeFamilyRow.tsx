@@ -16,6 +16,7 @@ import {
   type FrontierCaption,
 } from '@/lib/badgeProgressText'
 import { RARITY_LABEL } from '@/lib/rarity'
+import { d, t } from '@/lib/i18n'
 import { frontierStageOf, hasNextStage } from '@/lib/badgeTree'
 import type { BadgeFamily, BadgeFamilyStage } from '@/lib/badgeTree'
 import type { BadgeProgress, RegretLineData } from '@/lib/badge-engine/badgeProgress'
@@ -111,7 +112,7 @@ export default function BadgeFamilyRow({
           next={values?.next ?? '—'}
           left={values?.left ?? null}
           fraction={values?.fraction ?? 0}
-          metaText={hasNext ? `다음 Lv.${nextLevel}` : null}
+          metaText={hasNext ? t(d.badges.treeNextLevelMeta, { level: nextLevel! }) : null}
           imageUrl={frontierStage?.imageUrl ?? null}
           alt={family.name}
         />
@@ -235,7 +236,7 @@ function FamilyRowShell({
   if (!stage) return <>{children}</>
   if (hasUnfulfilledGate(stage.gateGroups)) {
     return (
-      <button type="button" style={base} onClick={() => onLockClick(stage.id)} aria-label={`${label} 받는 방법 보기`}>
+      <button type="button" style={base} onClick={() => onLockClick(stage.id)} aria-label={t(d.badges.treeUnlockAriaLabel, { label })}>
         {children}
       </button>
     )

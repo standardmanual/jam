@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { clusterPoiBadges, shouldCluster, CLUSTER_ZOOM_THRESHOLD } from '@/lib/poi/badge-clustering'
+import { d } from '@/lib/i18n'
 
 // GET /api/checkin-badges?swLat=&swLng=&neLat=&neLng=&zoom=
 //
@@ -52,15 +53,15 @@ export async function GET(req: NextRequest) {
   const zoom = parseFloat(searchParams.get('zoom') ?? '')
 
   if ([swLat, swLng, neLat, neLng].some((v) => !Number.isFinite(v))) {
-    return NextResponse.json({ error: 'swLat, swLng, neLat, neLng 파라미터 필요' }, { status: 400 })
+    return NextResponse.json({ error: d.badges.checkinMapMissingBoundsError }, { status: 400 })
   }
   if (!Number.isFinite(zoom)) {
-    return NextResponse.json({ error: 'zoom 파라미터 필요' }, { status: 400 })
+    return NextResponse.json({ error: d.badges.checkinMapMissingZoomError }, { status: 400 })
   }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
 
   const service = createServiceClient()
 
@@ -88,7 +89,7 @@ export async function GET(req: NextRequest) {
 
   const { data: poisRaw, error: poiError } = await query.limit(MAX_POIS)
   if (poiError) {
-    return NextResponse.json({ error: 'POI 조회 실패' }, { status: 500 })
+    return NextResponse.json({ error: d.badges.checkinMapPoiLoadError }, { status: 500 })
   }
 
   const candidatePois = (poisRaw ?? []) as PoiPick[]
@@ -118,7 +119,7 @@ export async function GET(req: NextRequest) {
     .or(`valid_until.is.null,valid_until.gte.${now}`)
 
   if (badgeError) {
-    return NextResponse.json({ error: '배지 조회 실패' }, { status: 500 })
+    return NextResponse.json({ error: d.badges.checkinMapBadgeLoadError }, { status: 500 })
   }
 
   const badgeById = new Map<string, BadgePick>(
