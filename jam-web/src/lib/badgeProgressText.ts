@@ -15,6 +15,7 @@ import {
 import type { BadgeCondition, BadgeRarity } from '@/types/database'
 import type { BadgeStopStatus } from '@/lib/badgeTreeConditionStatus'
 import { NEAR_THRESHOLD as DS_NEAR_THRESHOLD } from '@ds/components/patterns/BadgeFamilyCardHeader'
+import { d, t } from '@/lib/i18n'
 
 /**
  * 「거의 다」로 넘어가는 임계값(0.8) — 티켓 20260906_2140 A.
@@ -48,7 +49,7 @@ export const NEAR_THRESHOLD = DS_NEAR_THRESHOLD
  */
 
 /** "진행 표시 준비 중" — §08 H, computeBadgeProgress가 'unsupported'를 반환할 때 공통으로 쓴다. */
-const UNSUPPORTED_TEXT = '진행 표시 준비 중'
+const UNSUPPORTED_TEXT = d.badges.progressUnsupported
 
 // ── 조건값 표기 (티켓 20260906_1323 §7·§9) ────────────────────────────────
 
@@ -172,9 +173,10 @@ function formatCounterAxisText(kind: BadgeProgress['kind'], axis: BadgeProgressA
   const current = formatCurrentValue(axis.key, axis.current)
   const target = formatAxisNumber(axis.key, axis.target)
   const unit = axis.unit ?? ''
+  const range = `${current}/${target}${unit}`
   // 「휴식」은 UX Writing 가이드 용어표의 고정 용어다. 휴식 조건 4종(연속 후·장거리 후·
   // 복귀 전·활동 간격) 모두 「쉰 일수」를 세므로 접두어 하나로 읽힌다.
-  return kind === 'rest' ? `휴식 ${current}/${target}${unit}` : `${current}/${target}${unit}`
+  return kind === 'rest' ? t(d.badges.restCounterPrefix, { range }) : range
 }
 
 export type FrontierCaption = {
@@ -220,11 +222,14 @@ export function formatFrontierProgressText(
   if (!axis) return null
 
   if (progress.kind === 'periodic') {
-    const periodNoun = axis.key === 'monthly_km' ? '이번 달' : '이번 주'
+    const periodNoun = axis.key === 'monthly_km' ? d.badges.periodMonthNoun : d.badges.periodWeekNoun
     const daysLeft = progress.periodEndsAt
       ? Math.max(0, Math.ceil((new Date(progress.periodEndsAt).getTime() - now.getTime()) / 86_400_000))
       : 0
-    return { text: `${periodNoun} ${formatAxisRange(axis)} · ${daysLeft}일 남음`, fraction: progress.progress }
+    return {
+      text: t(d.badges.periodicCaption, { noun: periodNoun, range: formatAxisRange(axis), days: daysLeft }),
+      fraction: progress.progress,
+    }
   }
 
   if (progress.kind === 'repeat' || progress.kind === 'rest') {
@@ -248,10 +253,16 @@ export function formatFrontierProgressText(
  * import하지 않으므로(서비스 비의존 원칙) 두 곳에 같은 문구가 각각 선언돼 있다. */
 // 문구는 UX_WRITING_GUIDELINE.md 갱신분(커밋 00ead78f)을 따른다 — 「충족」은 전면 금지어다.
 const GRID_CELL_STATUS_LABEL: Record<BadgeStopStatus, string> = {
-  earned: '획득', ready: '조건을 다 채웠어요', locked: '잠김', 'not-reached': '—',
+  earned: d.badges.statusEarned,
+  ready: d.badges.statusReady,
+  locked: d.badges.statusLocked,
+  'not-reached': d.badges.statusNotReached,
 }
 const GRID_CELL_STATUS_ARIA_LABEL: Record<BadgeStopStatus, string> = {
-  earned: '획득', ready: '조건을 다 채웠어요', locked: '잠김', 'not-reached': '아직',
+  earned: d.badges.statusEarned,
+  ready: d.badges.statusReady,
+  locked: d.badges.statusLocked,
+  'not-reached': d.badges.statusAriaNotReached,
 }
 
 export type GridCellCaption = {
@@ -347,14 +358,14 @@ export function formatGridProgressLine(progress: BadgeProgress): FrontierCaption
 export function formatRemainingText(kind: BadgeProgress['kind'], axis: BadgeProgressAxis): string | null {
   if (kind === 'rest') return null
   if (axis.met || axis.remaining == null || axis.remaining <= 0) return null
-  if (axis.key === 'max_pace_sec_per_km') return `${Math.ceil(axis.remaining)}초 남음`
+  if (axis.key === 'max_pace_sec_per_km') return t(d.badges.remainingSecSuffix, { sec: Math.ceil(axis.remaining) })
   const decimals = ONE_DECIMAL_KEYS.has(axis.key) ? 1 : 0
   const factor = 10 ** decimals
   // 남은 양은 항상 올림 — 반올림으로 0이 되면 실제로 남았는데 「0 남음」이 된다
   // (`formatRegretLineText`와 같은 원칙).
   const rounded = Math.ceil(axis.remaining * factor) / factor
   const text = decimals === 1 ? rounded.toFixed(1) : String(rounded)
-  return `${text}${axis.unit ?? ''} 남음`
+  return t(d.badges.remainingSuffix, { value: `${text}${axis.unit ?? ''}` })
 }
 
 /**
@@ -435,7 +446,10 @@ export function formatFamilyMetaLine(
   nextRarityLabel: string | null,
   conditionText: string | null
 ): string | null {
-  const parts = [nextRarityLabel ? `다음 ${nextRarityLabel}` : null, conditionText].filter(
+  const parts = [
+    nextRarityLabel ? t(d.badges.familyMetaNextRarity, { rarity: nextRarityLabel }) : null,
+    conditionText,
+  ].filter(
     (part): part is string => part != null && part.length > 0
   )
   return parts.length > 0 ? parts.join(' · ') : null
@@ -479,14 +493,13 @@ export function formatDualAxisGaugeProps(progress: BadgeProgress): DualAxisGauge
     met: axis.met,
   })) as [DualAxisLine, DualAxisLine]
 
-  const ruleText = progress.sameActivity
-    ? '한 번의 활동에서 두 조건을 동시에 채워야 해요.'
-    : '두 조건은 각각 다른 활동에서 채워도 돼요.'
+  const ruleText = progress.sameActivity ? d.badges.dualAxisRuleSame : d.badges.dualAxisRuleDifferent
 
   const metAxes = axes.filter((a) => a.met)
   // 정확히 하나만 met일 때만 "병목"이 성립한다 — 0개(아직 둘 다 남음)·2개(이미 둘 다 채움,
   // 게이트만 대기)는 지목할 대상이 없어 null(§05 "또는 사용 안 함").
-  const bottleneckNote = metAxes.length === 1 ? `${metAxes[0].label} 조건은 이미 채웠어요.` : null
+  const bottleneckNote =
+    metAxes.length === 1 ? t(d.badges.dualAxisBottleneckNote, { label: metAxes[0].label }) : null
 
   return { axes, ruleText, bottleneckNote }
 }
@@ -504,7 +517,7 @@ export function formatRegretLineText(regret: RegretLineData, rarity: BadgeRarity
     // 남은 양은 항상 올림 — 반올림으로 0이 되면 실제로 남았는데 "0초 모자랐어요"가 된다
     // (개선 리뷰 지적, 티켓 20260904_0921).
     const diffSec = Math.max(0, Math.ceil(regret.current - regret.target))
-    return `지난 활동 페이스는 ${formatPaceSecPerKm(regret.current)}. ${rarityLabel}까지 ${diffSec}초 모자랐어요.`
+    return t(d.badges.regretLinePace, { current: formatPaceSecPerKm(regret.current), rarity: rarityLabel, diff: diffSec })
   }
 
   const lowerBetter = LOWER_IS_BETTER_KEYS.has(regret.key)
@@ -519,7 +532,12 @@ export function formatRegretLineText(regret: RegretLineData, rarity: BadgeRarity
   const unit = regret.unit ?? ''
   // regret.label을 문장에 포함 — 없으면 단위만으로 "기록"이 뭘 가리키는지 유추해야 했다
   // (개선 리뷰 지적, 티켓 20260904_0921).
-  return `지난 활동 ${regret.label} 기록은 ${current}${unit}. ${rarityLabel}까지 ${diff}${unit} 모자랐어요.`
+  return t(d.badges.regretLineGeneral, {
+    label: regret.label,
+    current: `${current}${unit}`,
+    rarity: rarityLabel,
+    diff: `${diff}${unit}`,
+  })
 }
 
 // ── 3b. 직전 동기화 비교(RecentSyncBanner) — 티켓 20260904_1425 ────────────────
@@ -613,7 +631,7 @@ export function formatSyncComparisonText(
   if (axisKey === 'max_pace_sec_per_km') {
     const deltaSec = Math.floor(deltaRaw)
     if (deltaSec <= 0) return null
-    return `직전 동기화보다 ${label} ${deltaSec}초 가까워졌어요`
+    return t(d.badges.syncComparisonPace, { label, delta: deltaSec })
   }
 
   const decimals = ONE_DECIMAL_KEYS.has(axisKey) ? 1 : 0
@@ -622,5 +640,5 @@ export function formatSyncComparisonText(
   if (deltaRounded <= 0) return null
   const deltaText = decimals === 1 ? deltaRounded.toFixed(1) : String(deltaRounded)
   const unitSuffix = unit ?? ''
-  return `직전 동기화보다 ${label} ${deltaText}${unitSuffix} 가까워졌어요`
+  return t(d.badges.syncComparisonGeneral, { label, delta: `${deltaText}${unitSuffix}` })
 }
