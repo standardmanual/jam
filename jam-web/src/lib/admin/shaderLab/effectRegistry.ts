@@ -755,7 +755,10 @@ const gradientFields: ShaderLabFieldDefinitions = [
  * 완전히 지원함을 확인했다.
  */
 const liquidMetalFields: ShaderLabFieldDefinitions = [
-  { key: 'colorBack', label: '배경 색상', type: 'color', alpha: true, defaultValue: '#AAAAACFF', group: '색상' },
+  // 티켓 20260915_1103 후속 — 스테이지는 항상 투명이어야 한다는 원칙에 맞춰 기본값을
+  // 불투명(FF)에서 완전 투명(00)으로 바꿨다. 알파 자체는 이미 지원되고 있었고(위 주석
+  // 참고), 값을 켜는 건 사용자 선택으로 남겨둔다.
+  { key: 'colorBack', label: '배경 색상', type: 'color', alpha: true, defaultValue: '#AAAAAC00', group: '색상' },
   { key: 'colorTint', label: '틴트 색상', type: 'color', defaultValue: '#ffffff', group: '색상' },
   { key: 'repetition', label: '줄무늬 밀도', type: 'number', defaultValue: 1.5, min: 1, max: 10, step: 0.1, group: '패턴' },
   { key: 'softness', label: '경계 부드러움', type: 'number', defaultValue: 0.05, min: 0, max: 1, step: 0.01, group: '패턴' },
@@ -796,7 +799,8 @@ const inkFields: ShaderLabFieldDefinitions = [
   { key: 'coreColor', label: '중심 색상', type: 'color', defaultValue: '#fffde8', group: '글로우 색상', visibleWhen: { key: 'colorMode', equals: 'gradient' } },
   { key: 'midColor', label: '중간 색상', type: 'color', defaultValue: '#FFA700', group: '글로우 색상', visibleWhen: { key: 'colorMode', equals: 'gradient' } },
   { key: 'edgeColor', label: '가장자리 색상', type: 'color', defaultValue: '#7192F1', group: '글로우 색상', visibleWhen: { key: 'colorMode', equals: 'gradient' } },
-  { key: 'backgroundColor', label: '배경', type: 'color', defaultValue: '#000000', group: '색상' },
+  // 티켓 20260915_1103 후속 — 패턴이 없는 영역(배경)의 알파를 지원한다(ink-pass.js patch).
+  { key: 'backgroundColor', label: '배경', type: 'color', alpha: true, defaultValue: '#00000000', group: '색상' },
   { key: 'grainEnabled', label: '그레인 사용', type: 'boolean', defaultValue: false, group: '그레인' },
   { key: 'grainIntensity', label: '그레인 강도', type: 'number', defaultValue: 0.3, min: 0, max: 0.3, step: 0.005, group: '그레인' },
   { key: 'grainScale', label: '그레인 스케일', type: 'number', defaultValue: 1.5, min: 0.5, max: 5, step: 0.1, group: '그레인' },
@@ -857,7 +861,8 @@ const patternFields: ShaderLabFieldDefinitions = [
     description: '팔레트 매핑을 어둠 또는 밝음 쪽으로 치우치게 해요.',
     visibleWhen: { key: 'colorMode', equals: 'custom' },
   },
-  { key: 'customBgColor', label: '배경', type: 'color', defaultValue: '#F5F5F0', visibleWhen: { key: 'colorMode', equals: 'custom' } },
+  // 티켓 20260915_1103 후속 — 패턴 없는 영역(gap)의 알파를 지원한다(pattern-pass.js patch).
+  { key: 'customBgColor', label: '배경', type: 'color', alpha: true, defaultValue: '#F5F5F000', visibleWhen: { key: 'colorMode', equals: 'custom' } },
   { key: 'customColor1', label: '그림자', type: 'color', defaultValue: '#0d1014', visibleWhen: { key: 'colorMode', equals: 'custom' } },
   { key: 'customColor2', label: '중간톤/하이라이트', type: 'color', defaultValue: '#4d5057', visibleWhen: { key: 'colorMode', equals: 'custom' } },
   // 원본 그대로: customColor3/4는 colorMode가 아니라 customColorCount 값만으로 표시 여부가
@@ -938,7 +943,8 @@ const particleGridFields: ShaderLabFieldDefinitions = [
   },
   { key: 'pointSize', label: '포인트 크기', type: 'number', defaultValue: 4, min: 1, max: 32, step: 1 },
   { key: 'displacement', label: '변위', type: 'number', defaultValue: 0.1, min: -2, max: 2, step: 0.01 },
-  { key: 'backgroundColor', label: '배경', type: 'color', defaultValue: '#000000' },
+  // 티켓 20260915_1103 후속 — 파티클 사이 배경의 알파를 지원한다(particle-grid-pass.js patch).
+  { key: 'backgroundColor', label: '배경', type: 'color', alpha: true, defaultValue: '#00000000' },
   { key: 'bloomEnabled', label: '블룸 사용', type: 'boolean', defaultValue: false, group: '블룸' },
   { key: 'bloomIntensity', label: '강도', type: 'number', defaultValue: 1.25, min: 0, max: 2, step: 0.01, group: '블룸', visibleWhen: { key: 'bloomEnabled', equals: true } },
   { key: 'bloomThreshold', label: '임계값', type: 'number', defaultValue: 0.6, min: 0, max: 1, step: 0.01, group: '블룸', visibleWhen: { key: 'bloomEnabled', equals: true } },
@@ -1004,7 +1010,8 @@ const plotterFields: ShaderLabFieldDefinitions = [
   { key: 'crossAngle', label: '교차 각도', type: 'number', defaultValue: 135, min: 0, max: 180, step: 1, visibleWhen: { key: 'crosshatch', equals: true } },
   { key: 'threshold', label: '임계값', type: 'number', defaultValue: 0.5, min: 0, max: 1, step: 0.01 },
   { key: 'wobble', label: '흔들림', type: 'number', defaultValue: 0.3, min: 0, max: 1, step: 0.01 },
-  { key: 'paperColor', label: '종이 색상', type: 'color', defaultValue: '#f5f0e8' },
+  // 티켓 20260915_1103 후속 — 선이 없는 영역(종이)의 알파를 지원한다(plotter-pass.js patch).
+  { key: 'paperColor', label: '종이 색상', type: 'color', alpha: true, defaultValue: '#f5f0e800' },
   { key: 'inkColor', label: '잉크 색상', type: 'color', defaultValue: '#1a1a1a', visibleWhen: { key: 'colorMode', equals: 'ink' } },
 ]
 
@@ -1247,7 +1254,8 @@ const edgeDetectFields: ShaderLabFieldDefinitions = [
     ],
   },
   { key: 'lineColor', label: '선 색상', type: 'color', defaultValue: '#ffffff', visibleWhen: { key: 'colorMode', equals: 'mono' } },
-  { key: 'bgColor', label: '배경', type: 'color', defaultValue: '#000000', visibleWhen: { key: 'colorMode', equals: 'mono' } },
+  // 티켓 20260915_1103 후속 — 엣지 라인 없는 영역(배경)의 알파를 지원한다(edge-detect-pass.js patch).
+  { key: 'bgColor', label: '배경', type: 'color', alpha: true, defaultValue: '#00000000', visibleWhen: { key: 'colorMode', equals: 'mono' } },
 ]
 
 const chromaticAberrationFields: ShaderLabFieldDefinitions = [

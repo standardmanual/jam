@@ -52,9 +52,176 @@ index fa00441..aa836e7 100644
          },
          resize(size, pixelRatio) {
              currentPixelRatio = pixelRatio;
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/edge-detect-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/edge-detect-pass.js
+index 6598b9b..1bb3c88 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/edge-detect-pass.js
++++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/edge-detect-pass.js
+@@ -9,6 +9,15 @@ function hexToVec3(hex) {
+     const color = new THREE.Color(`#${normalized}`);
+     return [color.r, color.g, color.b];
+ }
++// 티켓 20260915_1103 후속 — bgColor의 8자리 hex(#RRGGBBAA) 알파를 추출한다.
++function hexToAlpha(hex) {
++    const normalized = hex.trim().replace("#", "");
++    if (normalized.length !== 8) {
++        return 1;
++    }
++    const alphaByte = Number.parseInt(normalized.slice(6, 8), 16);
++    return Number.isNaN(alphaByte) ? 1 : alphaByte / 255;
++}
+ function toColorModeValue(value) {
+     switch (value) {
+         case "mono":
+@@ -30,6 +39,7 @@ export class EdgeDetectPass extends PassNode {
+     bgColorRUniform;
+     bgColorGUniform;
+     bgColorBUniform;
++    bgAlphaUniform;
+     logicalWidthUniform;
+     logicalHeightUniform;
+     sourceTextureNodes = [];
+@@ -46,6 +56,7 @@ export class EdgeDetectPass extends PassNode {
+         this.bgColorRUniform = uniform(0);
+         this.bgColorGUniform = uniform(0);
+         this.bgColorBUniform = uniform(0);
++        this.bgAlphaUniform = uniform(1);
+         this.logicalWidthUniform = uniform(1);
+         this.logicalHeightUniform = uniform(1);
+         this.rebuildEffectNode();
+@@ -86,6 +97,7 @@ export class EdgeDetectPass extends PassNode {
+             this.bgColorRUniform.value = r;
+             this.bgColorGUniform.value = g;
+             this.bgColorBUniform.value = b;
++            this.bgAlphaUniform.value = hexToAlpha(params.bgColor);
+         }
+     }
+     trackSourceTextureNode(uvNode) {
+@@ -138,7 +150,9 @@ export class EdgeDetectPass extends PassNode {
+         if (this.colorMode === COLOR_MODE_MONO) {
+             const lineCol = vec3(this.lineColorRUniform, this.lineColorGUniform, this.lineColorBUniform);
+             const bgCol = vec3(this.bgColorRUniform, this.bgColorGUniform, this.bgColorBUniform);
+-            return vec4(mix(bgCol, lineCol, finalEdge), float(1));
++            // 티켓 20260915_1103 후속 — 엣지 라인이 없는(배경만 보이는) 영역은 bgColor
++            // 자신의 알파를, 라인이 그려진 영역은 항상 완전 불투명(1)을 쓴다.
++            return vec4(mix(bgCol, lineCol, finalEdge), mix(this.bgAlphaUniform, float(1), finalEdge));
+         }
+         if (this.colorMode === COLOR_MODE_SOURCE) {
+             return vec4(centerColor.rgb.mul(finalEdge), float(1));
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/ink-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/ink-pass.js
+index b02e6da..db801f2 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/ink-pass.js
++++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/ink-pass.js
+@@ -29,6 +29,17 @@ function hexToRgb(hex) {
+     const color = new THREE.Color(`#${value}`);
+     return [color.r, color.g, color.b];
+ }
++// 티켓 20260915_1103 후속 — backgroundColor의 8자리 hex(#RRGGBBAA) 알파를 추출한다.
++// hexToRgb()는 항상 RGB 6자리만 보므로 별도 함수로 뒀다. 6자리 이하 입력은 완전 불투명(1)으로
++// 취급해 기존 저장된 값(알파 없이 저장된 6자리 hex)과 호환된다.
++function hexToAlpha(hex) {
++    const normalized = hex.trim().replace("#", "");
++    if (normalized.length !== 8) {
++        return 1;
++    }
++    const alphaByte = Number.parseInt(normalized.slice(6, 8), 16);
++    return Number.isNaN(alphaByte) ? 1 : alphaByte / 255;
++}
+ function resolveInkColorMode(value) {
+     return value === "source" ? "source" : "gradient";
+ }
+@@ -109,7 +120,7 @@ export class InkPass extends PassNode {
+         this.bloomRadiusUniform = uniform(6);
+         this.bloomSoftnessUniform = uniform(0.35);
+         this.bloomThresholdUniform = uniform(0.6);
+-        this.backgroundColorUniform = uniform(new THREE.Vector3(0.039, 0.043, 0.051));
++        this.backgroundColorUniform = uniform(new THREE.Vector4(0.039, 0.043, 0.051, 1));
+         this.coreColorUniform = uniform(new THREE.Vector3(1.0, 0.992, 0.91));
+         this.midColorUniform = uniform(new THREE.Vector3(0.784, 0.961, 0.259));
+         this.edgeColorUniform = uniform(new THREE.Vector3(0.0, 0.788, 0.655));
+@@ -147,6 +158,11 @@ export class InkPass extends PassNode {
+         copyMesh.frustumCulled = false;
+         this.copyScene.add(copyMesh);
+         this.compositeMaterial = new THREE.MeshBasicNodeMaterial();
++        // 티켓 20260915_1103 후속 — 이 pass 전용 머티리얼은 PassNode 기본 생성자가 patch하는
++        // this.material과 별개라 알파 강제 클로버링(three.js NodeMaterial.js isOpaque())을
++        // 그대로 맞는다. compositeTarget의 알파(backgroundColor 알파)가 buildEffectNode까지
++        // 살아남으려면 여기서도 켜야 한다.
++        this.compositeMaterial.alphaToCoverage = true;
+         this.compositeMaterial.colorNode = this.buildCompositeNode();
+         const compositeMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.compositeMaterial);
+         compositeMesh.frustumCulled = false;
+@@ -242,7 +258,7 @@ export class InkPass extends PassNode {
+         this.grainScaleUniform.value =
+             typeof params.grainScale === "number" ? Math.max(0.5, params.grainScale) : 1.5;
+         this.colorModeUniform.value = toInkColorModeValue(resolveInkColorMode(params.colorMode));
+-        this.setColorUniform(this.backgroundColorUniform, typeof params.backgroundColor === "string" ? params.backgroundColor : "#0a0b0d");
++        this.setBackgroundColorUniform(typeof params.backgroundColor === "string" ? params.backgroundColor : "#0a0b0dff");
+         this.setColorUniform(this.coreColorUniform, typeof params.coreColor === "string" ? params.coreColor : "#fffde8");
+         this.setColorUniform(this.midColorUniform, typeof params.midColor === "string" ? params.midColor : "#c8f542");
+         this.setColorUniform(this.edgeColorUniform, typeof params.edgeColor === "string" ? params.edgeColor : "#00c9a7");
+@@ -298,16 +314,20 @@ export class InkPass extends PassNode {
+     }
+     buildEffectNode() {
+         if (!this.finalInputNode) {
+-            return vec4(float(0), float(0), float(0), float(1));
++            return vec4(float(0), float(0), float(0), float(0));
+         }
+         const baseColor = vec3(this.finalInputNode.r, this.finalInputNode.g, this.finalInputNode.b);
+         if (!this.bloomEnabled) {
+-            return vec4(baseColor, float(1));
++            // compositeTarget이 이미 backgroundColor의 알파를 반영해 기록했으므로
++            // (buildCompositeNode 참고) 여기서는 그 알파를 그대로 읽어 전달한다.
++            return vec4(baseColor, this.finalInputNode.a);
+         }
+         if (!this.bloomCompositor) {
+             this.bloomCompositor = new BloomCompositor();
+         }
+         this.applyBloomSettings();
++        // 알려진 한계(티켓 20260915_1103): BloomCompositor는 공용 컴포지터라 알파를
++        // 항상 1로 반환한다 — 블룸 활성화 시에는 배경 투명도가 아직 반영되지 않는다.
+         return this.bloomCompositor.build(baseColor);
+     }
+     buildBlurNode() {
+@@ -396,6 +416,7 @@ export class InkPass extends PassNode {
+         const blurR = this.trackCompositeBlurNode(texUv.add(vec2(texelSize.x.mul(2), texelSize.y))).r;
+         const blurB = this.trackCompositeBlurNode(texUv.sub(vec2(texelSize.x.mul(2), texelSize.y))).b;
+         const backgroundColor = vec3(float(this.backgroundColorUniform.x), float(this.backgroundColorUniform.y), float(this.backgroundColorUniform.z));
++        const backgroundAlpha = float(this.backgroundColorUniform.w);
+         const edgeColor = vec3(float(this.edgeColorUniform.x), float(this.edgeColorUniform.y), float(this.edgeColorUniform.z));
+         const midColor = vec3(float(this.midColorUniform.x), float(this.midColorUniform.y), float(this.midColorUniform.z));
+         const coreColor = vec3(float(this.coreColorUniform.x), float(this.coreColorUniform.y), float(this.coreColorUniform.z));
+@@ -415,11 +436,16 @@ export class InkPass extends PassNode {
+             .sub(0.5)
+             .mul(this.grainIntensityUniform);
+         combined = select(this.grainEnabledUniform.greaterThan(float(0.5)), combined.add(vec3(grain, grain, grain)), combined);
+-        const alpha = max(fluidMask, crispMask);
+-        let finalColor = mix(backgroundColor, combined, smoothstep(float(0.01), float(0.85), alpha));
++        const mask = max(fluidMask, crispMask);
++        const maskT = smoothstep(float(0.01), float(0.85), mask);
++        let finalColor = mix(backgroundColor, combined, maskT);
+         const vignetteUv = texUv.mul(2).sub(vec2(1, 1));
+         finalColor = finalColor.mul(float(1).sub(vignetteUv.dot(vignetteUv).mul(0.15)));
+-        return vec4(clamp(finalColor, vec3(0, 0, 0), vec3(1, 1, 1)), float(1));
++        // 티켓 20260915_1103 후속 — 잉크 패턴이 없는(배경만 보이는) 영역은 backgroundColor
++        // 자신의 알파를, 패턴이 그려진 영역은 항상 완전 불투명(1)을 쓴다. RGB와 동일한
++        // maskT 보간을 알파에도 적용해 경계가 자연스럽게 이어지도록 한다.
++        const finalAlpha = mix(backgroundAlpha, float(1), maskT);
++        return vec4(clamp(finalColor, vec3(0, 0, 0), vec3(1, 1, 1)), finalAlpha);
+     }
+     applyColorGradient(intensity, bgColor, edgeColor, midColor, coreColor) {
+         const t1 = smoothstep(float(0.6), float(0.95), intensity);
+@@ -464,4 +490,8 @@ export class InkPass extends PassNode {
+         const [r, g, b] = hexToRgb(value);
+         target.value.set(r, g, b);
+     }
++    setBackgroundColorUniform(value) {
++        const [r, g, b] = hexToRgb(value);
++        this.backgroundColorUniform.value.set(r, g, b, hexToAlpha(value));
++    }
+ }
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js
 new file mode 100644
-index 0000000..800a0bb
+index 0000000..f51ecd6
 --- /dev/null
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js
 @@ -0,0 +1,300 @@
@@ -323,7 +490,7 @@ index 0000000..800a0bb
 +    // fallback으로 남겨두는 건 잠재적 함정이라 명시적으로 맞춰둔다.
 +    // colorBack은 8자리 hex(#RRGGBBAA)로 투명도를 지원한다(티켓 20260913_2110) —
 +    // getShaderColorFromString이 이미 완전히 지원함을 확인했다.
-+    const colorBack = typeof params.colorBack === "string" ? params.colorBack : "#AAAAACFF";
++    const colorBack = typeof params.colorBack === "string" ? params.colorBack : "#AAAAAC00";
 +    const colorTint = typeof params.colorTint === "string" ? params.colorTint : "#ffffff";
 +    const repetition = typeof params.repetition === "number" ? params.repetition : 1.5;
 +    const softness = typeof params.softness === "number" ? params.softness : 0.05;
@@ -392,6 +559,70 @@ index dfa5260..f727dca 100644
          return mix(this.mediaTextureNode, contained, useContain);
      }
      releaseCurrentMedia() {
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/particle-grid-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/particle-grid-pass.js
+index 22e2098..14594e9 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/particle-grid-pass.js
++++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/particle-grid-pass.js
+@@ -32,6 +32,15 @@ function resolveGridResolution(value) {
+ function clamp01(value) {
+     return Math.max(0, Math.min(1, value));
+ }
++// 티켓 20260915_1103 후속 — backgroundColor의 8자리 hex(#RRGGBBAA) 알파를 추출한다.
++function hexToAlpha(hex) {
++    const normalized = hex.trim().replace("#", "");
++    if (normalized.length !== 8) {
++        return 1;
++    }
++    const alphaByte = Number.parseInt(normalized.slice(6, 8), 16);
++    return Number.isNaN(alphaByte) ? 1 : alphaByte / 255;
++}
+ export class ParticleGridPass extends PassNode {
+     perspScene;
+     perspCamera;
+@@ -60,6 +69,7 @@ export class ParticleGridPass extends PassNode {
+     mesh = null;
+     meshMaterial = null;
+     bgColor = new THREE.Color(0x000000);
++    bgAlpha = 1;
+     gridResolution = 64;
+     isAnimated = false;
+     needsRebuild = true;
+@@ -115,7 +125,7 @@ export class ParticleGridPass extends PassNode {
+         if (this.isAnimated) {
+             renderer.compute(this.noiseComputeNode);
+         }
+-        renderer.setClearColor(this.bgColor, 1);
++        renderer.setClearColor(this.bgColor, this.bgAlpha);
+         renderer.setRenderTarget(this.internalRT);
+         renderer.render(this.perspScene, this.perspCamera);
+         this.blitInputNode.value = this.internalRT.texture;
+@@ -142,9 +152,11 @@ export class ParticleGridPass extends PassNode {
+         }
+         this.displacementUniform.value =
+             typeof params.displacement === "number" ? params.displacement : 0.5;
+-        this.bgColor.set(typeof params.backgroundColor === "string"
+-            ? params.backgroundColor
+-            : "#000000");
++        const nextBackgroundColor = typeof params.backgroundColor === "string" ? params.backgroundColor : "#00000000";
++        // THREE.Color.set()은 #RRGGBB(6자리)만 인식한다 — 8자리 알파 접미사를 떼고 넘긴다.
++        const rgbHex = nextBackgroundColor.trim().replace("#", "").padEnd(6, "0").slice(0, 6);
++        this.bgColor.set(`#${rgbHex}`);
++        this.bgAlpha = hexToAlpha(nextBackgroundColor);
+         const noiseAmount = typeof params.noiseAmount === "number" ? params.noiseAmount : 0;
+         this.noiseAmountUniform.value = noiseAmount;
+         this.noiseScaleUniform.value =
+@@ -207,7 +219,10 @@ export class ParticleGridPass extends PassNode {
+         }
+         const baseColor = vec3(this.blitInputNode.r, this.blitInputNode.g, this.blitInputNode.b);
+         if (!this.bloomEnabled) {
+-            return vec4(baseColor, float(1));
++            // internalRT는 배경(bgAlpha로 클리어)과 파티클(circleMask) 모두 실제 알파를
++            // 갖고 블렌딩됐으므로(위 render(), rebuildGrid()의 material.transparent=true
++            // 참고) 그 알파를 그대로 읽어 전달한다.
++            return vec4(baseColor, this.blitInputNode.a);
+         }
+         if (!this.bloomCompositor) {
+             this.bloomCompositor = new BloomCompositor();
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js
 index 406d6f2..d14ff90 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js
@@ -412,6 +643,74 @@ index 406d6f2..d14ff90 100644
          nextMaterial.colorNode = this.composeColorNode(nextEffectNode);
          const standbyScene = new THREE.Scene();
          const standbyMesh = new THREE.Mesh(this.compositeGeometry, nextMaterial);
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pattern-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pattern-pass.js
+index 3f53698..ebc93c7 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pattern-pass.js
++++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pattern-pass.js
+@@ -6,6 +6,15 @@ import { createPipelinePlaceholder, PassNode } from "./pass-node.js";
+ function clamp01(value) {
+     return Math.max(0, Math.min(1, value));
+ }
++// 티켓 20260915_1103 후속 — customBgColor의 8자리 hex(#RRGGBBAA) 알파를 추출한다.
++function hexToAlpha(hex) {
++    const normalized = hex.trim().replace("#", "");
++    if (normalized.length !== 8) {
++        return 1;
++    }
++    const alphaByte = Number.parseInt(normalized.slice(6, 8), 16);
++    return Number.isNaN(alphaByte) ? 1 : alphaByte / 255;
++}
+ function parseCssColorRgb(value) {
+     const rgba = value.match(/rgba?\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*[\d.]+)?\s*\)/i);
+     if (rgba) {
+@@ -67,7 +76,7 @@ export class PatternPass extends PassNode {
+         this.colorModeUniform = uniform(0);
+         this.customColorCountUniform = uniform(4);
+         this.customLuminanceBiasUniform = uniform(0);
+-        this.customBgColorUniform = uniform(new THREE.Vector3(0.96, 0.96, 0.94));
++        this.customBgColorUniform = uniform(new THREE.Vector4(0.96, 0.96, 0.94, 1));
+         this.customColor1Uniform = uniform(new THREE.Vector3(0.05, 0.063, 0.078));
+         this.customColor2Uniform = uniform(new THREE.Vector3(0.302, 0.314, 0.341));
+         this.customColor3Uniform = uniform(new THREE.Vector3(0.588, 0.604, 0.635));
+@@ -124,7 +133,7 @@ export class PatternPass extends PassNode {
+         this.monoRedUniform.value = red;
+         this.monoGreenUniform.value = green;
+         this.monoBlueUniform.value = blue;
+-        this.setCustomColorUniform(this.customBgColorUniform, typeof params.customBgColor === "string" ? params.customBgColor : "#F5F5F0");
++        this.setCustomBgColorUniform(typeof params.customBgColor === "string" ? params.customBgColor : "#F5F5F000");
+         this.setCustomColorUniform(this.customColor1Uniform, typeof params.customColor1 === "string" ? params.customColor1 : "#0d1014");
+         this.setCustomColorUniform(this.customColor2Uniform, typeof params.customColor2 === "string" ? params.customColor2 : "#4d5057");
+         this.setCustomColorUniform(this.customColor3Uniform, typeof params.customColor3 === "string" ? params.customColor3 : "#969aa2");
+@@ -173,6 +182,7 @@ export class PatternPass extends PassNode {
+         const quantizeLevels = vec3(float(7), float(7), float(3));
+         const inverseQuantizeLevels = vec3(float(1 / 7), float(1 / 7), float(1 / 3));
+         const customBgVec = vec3(float(this.customBgColorUniform.x), float(this.customBgColorUniform.y), float(this.customBgColorUniform.z));
++        const customBgAlpha = float(this.customBgColorUniform.w);
+         const customColor1Vec = vec3(float(this.customColor1Uniform.x), float(this.customColor1Uniform.y), float(this.customColor1Uniform.z));
+         const customColor2Vec = vec3(float(this.customColor2Uniform.x), float(this.customColor2Uniform.y), float(this.customColor2Uniform.z));
+         const customColor3Vec = vec3(float(this.customColor3Uniform.x), float(this.customColor3Uniform.y), float(this.customColor3Uniform.z));
+@@ -211,7 +221,11 @@ export class PatternPass extends PassNode {
+             const patternColor = select(this.colorModeUniform.lessThan(float(0.5)), sourceColor, select(this.colorModeUniform.lessThan(float(1.5)), quantizedColor, select(this.colorModeUniform.lessThan(float(2.5)), monochromeColor, customColor)));
+             const sourceBackground = sourceColor.mul(this.bgOpacityUniform);
+             const backgroundColor = select(this.colorModeUniform.lessThan(float(0.5)), sourceBackground, select(this.colorModeUniform.lessThan(float(2.5)), vec3(float(0), float(0), float(0)), customBgVec));
+-            return vec4(mix(backgroundColor, patternColor, patternMask), float(1));
++            // 티켓 20260915_1103 후속 — "원본"·"단색" 배경은 이번 범위 밖이라 그대로 불투명
++            // 1을 쓰고, "커스텀" 배경(customBgColor)만 자신의 알파를 패턴 없는 영역(gap)에
++            // 반영한다. 패턴이 그려진 영역(patternMask≈1)은 항상 불투명이다.
++            const backgroundAlpha = select(this.colorModeUniform.lessThan(float(2.5)), float(1), customBgAlpha);
++            return vec4(mix(backgroundColor, patternColor, patternMask), mix(backgroundAlpha, float(1), patternMask));
+         };
+         const baseSample = samplePattern(renderTargetUv);
+         if (!this.bloomEnabled) {
+@@ -281,4 +295,8 @@ export class PatternPass extends PassNode {
+         const [r, g, b] = parseCssColorRgb(value);
+         target.value.set(r, g, b);
+     }
++    setCustomBgColorUniform(value) {
++        const [r, g, b] = parseCssColorRgb(value);
++        this.customBgColorUniform.value.set(r, g, b, hexToAlpha(value));
++    }
+ }
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
 index 1c1439f..261585a 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
@@ -481,6 +780,60 @@ index 1c1439f..261585a 100644
          if (layer.kind === "source" && layer.type === "custom-shader") {
              return new CustomShaderPass(layer.id, this.onRuntimeError);
          }
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/plotter-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/plotter-pass.js
+index 10d8f9a..f48f29f 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/plotter-pass.js
++++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/plotter-pass.js
+@@ -17,6 +17,14 @@ function parseHexColor(hex, fallback) {
+     }
+     return [r, g, b];
+ }
++// 티켓 20260915_1103 후속 — paperColor의 8자리 hex(#RRGGBBAA) 알파를 추출한다.
++function parseHexAlpha(hex, fallback) {
++    if (typeof hex !== "string" || hex.replace("#", "").length !== 8) {
++        return fallback;
++    }
++    const alphaByte = Number.parseInt(hex.slice(7, 9), 16);
++    return Number.isNaN(alphaByte) ? fallback : alphaByte / 255;
++}
+ export class PlotterPass extends PassNode {
+     colorModeUniform;
+     gapUniform;
+@@ -29,6 +37,7 @@ export class PlotterPass extends PassNode {
+     paperColorRUniform;
+     paperColorGUniform;
+     paperColorBUniform;
++    paperAlphaUniform;
+     inkColorRUniform;
+     inkColorGUniform;
+     inkColorBUniform;
+@@ -47,6 +56,7 @@ export class PlotterPass extends PassNode {
+         this.paperColorRUniform = uniform(0.96);
+         this.paperColorGUniform = uniform(0.94);
+         this.paperColorBUniform = uniform(0.91);
++        this.paperAlphaUniform = uniform(1);
+         this.inkColorRUniform = uniform(0.1);
+         this.inkColorGUniform = uniform(0.1);
+         this.inkColorBUniform = uniform(0.1);
+@@ -92,6 +102,7 @@ export class PlotterPass extends PassNode {
+         this.paperColorRUniform.value = pr;
+         this.paperColorGUniform.value = pg;
+         this.paperColorBUniform.value = pb;
++        this.paperAlphaUniform.value = parseHexAlpha(params.paperColor, 1);
+         const [ir, ig, ib] = parseHexColor(params.inkColor, [0.1, 0.1, 0.1]);
+         this.inkColorRUniform.value = ir;
+         this.inkColorGUniform.value = ig;
+@@ -133,6 +144,9 @@ export class PlotterPass extends PassNode {
+         const isSourceMode = this.colorModeUniform.greaterThan(float(0.5));
+         const lineColor = vec3(select(isSourceMode, sourceColor.x, inkColor.x), select(isSourceMode, sourceColor.y, inkColor.y), select(isSourceMode, sourceColor.z, inkColor.z));
+         const result = mix(paperColor, lineColor, combinedHatch);
+-        return vec4(result, float(1));
++        // 티켓 20260915_1103 후속 — 선이 없는(종이만 보이는) 영역은 paperColor 자신의
++        // 알파를, 선이 그려진 영역은 항상 완전 불투명(1)을 쓴다.
++        const resultAlpha = mix(this.paperAlphaUniform, float(1), combinedHatch);
++        return vec4(result, resultAlpha);
+     }
+ }
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/text-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/text-pass.js
 index cf82971..a370d8a 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/text-pass.js
