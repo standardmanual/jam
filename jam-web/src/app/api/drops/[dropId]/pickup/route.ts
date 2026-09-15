@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { isUserNearPoi } from '@/lib/poi/proximity'
+import { isUserNearPoi, DROP_RADIUS_METERS } from '@/lib/poi/proximity'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { createNotification, sixHourGroupKey } from '@/lib/notifications'
 import type { PoiRow, PoiDropRow } from '@/types/database'
@@ -9,11 +9,12 @@ import { isPoiBlocked, blockPoiForUser } from '@/lib/abusing/poi-block'
 import { checkAndUpdateLocation } from '@/lib/abusing/gps-detector'
 import { applyBan, logAbusingEvent } from '@/lib/abusing/shadow-ban'
 import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
+import { d, t } from '@/lib/i18n'
 
-// 20260826_002: 이 라우트의 `error` 필드는 **항상 안정적인 snake_case 코드**만 담는다.
-// 한국어 원문을 섞어 돌려주면 클라이언트의 코드 매핑이 빗나가 개발자용 축약 문구
-// ('드랍 없음' 등)가 그대로 토스트에 노출된다(20260825_039에서 실제로 드러난 문제).
-// 사용자 문구는 전부 src/lib/i18n/ko.ts의 drops 섹션에서 관리한다.
+// 20260915_2241 — ADR 0001에 따라 이 라우트의 `error` 필드는 `src/lib/i18n/ko.ts`의 drops
+// 네임스페이스로 완성한 사용자 문구를 담아 돌려준다. 클라이언트는 이 문구를 그대로 신뢰해
+// 노출한다(코드로 재매핑하지 않는다). (이전에는 snake_case 코드만 돌려주고 클라이언트가
+// 코드→문구 매핑을 따로 들고 있었다 — 20260826_002, 20260825_039.)
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ dropId: string }> }
@@ -22,13 +23,13 @@ export async function POST(
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: d.drops.sessionExpired }, { status: 401 })
 
   const body = await req.json()
   const { user_lat, user_lng } = body
 
   if (isNaN(user_lat) || isNaN(user_lng)) {
-    return NextResponse.json({ error: 'missing_params' }, { status: 400 })
+    return NextResponse.json({ error: d.drops.locationMissing }, { status: 400 })
   }
 
   const service = createServiceClient()
@@ -41,14 +42,14 @@ export async function POST(
     .single()
 
   if (dropError || !dropRaw) {
-    return NextResponse.json({ error: 'drop_not_found' }, { status: 404 })
+    return NextResponse.json({ error: d.drops.pickupDropNotFound }, { status: 404 })
   }
 
   const drop = dropRaw as PoiDropRow
 
   if (!drop.is_available) {
-    // 20260825_039: 클라이언트가 코드로 매핑하는 RPC 경로(already_picked_up)와 값을 맞춘다.
-    return NextResponse.json({ error: 'already_picked_up' }, { status: 409 })
+    // 20260825_039: RPC 경로(already_picked_up)와 같은 문구로 맞춘다.
+    return NextResponse.json({ error: d.drops.pickupAlreadyDone }, { status: 409 })
   }
 
   // POI 조회 + 드랍 반경(DROP_RADIUS_METERS) 검증
@@ -59,11 +60,11 @@ export async function POST(
     .single()
 
   if (poiError || !poiRaw) {
-    return NextResponse.json({ error: 'poi_not_found' }, { status: 404 })
+    return NextResponse.json({ error: d.drops.pickupPoiNotFound }, { status: 404 })
   }
 
   if (!isUserNearPoi(user_lat, user_lng, poiRaw as PoiRow)) {
-    return NextResponse.json({ error: 'out_of_range' }, { status: 403 })
+    return NextResponse.json({ error: t(d.drops.pickupOutOfRange, { m: DROP_RADIUS_METERS }) }, { status: 403 })
   }
 
   const policy = await getAbusingPolicy()
@@ -71,7 +72,7 @@ export async function POST(
   // POI 블록 확인 (GPS 조작 감지 후 차단된 경우)
   const blocked = await isPoiBlocked(user.id, drop.poi_id)
   if (blocked) {
-    return NextResponse.json({ error: 'poi_blocked' }, { status: 403 })
+    return NextResponse.json({ error: d.drops.pickupPoiBlocked }, { status: 403 })
   }
 
   // GPS 조작 감지
@@ -109,14 +110,14 @@ export async function POST(
         e
       )
     }
-    return NextResponse.json({ error: 'location_unverified' }, { status: 403 })
+    return NextResponse.json({ error: d.drops.pickupLocationUnverified }, { status: 403 })
   }
 
   // 인벤토리 조회 — 없으면 즉석 생성한다(get-or-create, 티켓 20260906_2217 회귀 방지).
   const inventoryId = await getOrCreateInventoryId(service, user.id)
 
   if (!inventoryId) {
-    return NextResponse.json({ error: 'inventory_not_found' }, { status: 404 })
+    return NextResponse.json({ error: d.drops.loadInventoryFailed }, { status: 404 })
   }
 
   // RPC로 원자 트랜잭션 실행
@@ -129,26 +130,34 @@ export async function POST(
 
   if (rpcError) {
     console.error('[pickup] RPC 오류:', rpcError)
-    return NextResponse.json({ error: 'pickup_failed' }, { status: 500 })
+    return NextResponse.json({ error: d.drops.pickupFailed }, { status: 500 })
   }
 
   const result = rpcResult as { ok: boolean; error?: string; inventory_item_id?: string }
 
   if (!result.ok) {
+    const code = result.error ?? ''
+    // RPC가 돌려주는 값은 snake_case 코드다 — 여기서 사용자 문구로 완성해 돌려준다
+    // (ADR 0001, 클라이언트는 이 문구를 그대로 신뢰해 노출한다).
+    const messageMap: Record<string, string> = {
+      already_picked_up: d.drops.pickupAlreadyDone,
+      cannot_pickup_own_drop: d.drops.pickupOwnDrop,
+      inventory_not_found: d.drops.loadInventoryFailed,
+      inventory_full: d.drops.pickupInventoryFull,
+      // 20260829_2101: pickup_drop() 재작성 — 신규 INSERT를 제거하고 기존 개체를 재사용한다.
+      // item_not_found는 이론상 도달하지 않아야 하는 방어적 경로(모든 활성 드랍은
+      // 마이그레이션으로 개체가 연결돼 있어야 함)라 전용 문구 없이 일반 실패 문구로 흘린다.
+    }
     const statusMap: Record<string, number> = {
       already_picked_up: 409,
       cannot_pickup_own_drop: 403,
       inventory_not_found: 404,
       inventory_full: 422,
-      // 20260829_2101: pickup_drop() 재작성 — 신규 INSERT를 제거하고 기존 개체를 재사용한다.
-      // 이론상 도달하지 않아야 하는 방어적 경로(모든 활성 드랍은 마이그레이션으로 개체가
-      // 연결돼 있어야 함)지만 방어 코드가 반환할 수 있는 값이라 매핑을 추가해 둔다.
       item_not_found: 404,
     }
-    // RPC가 돌려주는 값도 snake_case 코드다. 값이 비어 있으면 일반 실패 코드로 흘린다.
     return NextResponse.json(
-      { error: result.error ?? 'pickup_failed' },
-      { status: statusMap[result.error ?? ''] ?? 400 }
+      { error: messageMap[code] ?? d.drops.pickupFailed },
+      { status: statusMap[code] ?? 400 }
     )
   }
 

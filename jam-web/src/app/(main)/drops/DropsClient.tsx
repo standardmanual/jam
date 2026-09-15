@@ -118,12 +118,19 @@ export default function DropsClient({ focusPoi = null }: { focusPoi?: DropsFocus
   }, [])
 
   // 근처 POI 로드
+  // ADR 0001(서버-클라이언트 단일 진실 소스, 티켓 20260915_2241): 서버가 완성한 에러 문구를
+  // 그대로 신뢰해 노출한다 — 이전에는 res.ok를 확인하지 않아 서버 오류(예: 세션 만료)가
+  // "주변에 지점이 없음"으로 조용히 위장됐다.
   const loadNearbyPois = useCallback(async () => {
     if (userLat === null || userLng === null) return
     setPoisLoading(true)
     try {
       const res = await fetch(`/api/drops?lat=${userLat}&lng=${userLng}`)
       const json = await res.json()
+      if (!res.ok) {
+        toast(json.error ?? d.drops.loadPoiFailed, 'error')
+        return
+      }
       setPois(json.pois ?? [])
     } catch {
       toast(d.drops.loadPoiFailed, 'error')
