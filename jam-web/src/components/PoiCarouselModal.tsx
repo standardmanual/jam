@@ -568,7 +568,7 @@ export default function PoiCarouselModal({
             activeIndex={activeIndex}
             onActiveIndexChange={setActiveIndex}
             getItemKey={(poi: NearbyPoi) => poi.id}
-            ariaLabel="주변 지점 목록"
+            ariaLabel={d.drops.poiCarouselListAriaLabel}
             renderItem={(poi: NearbyPoi, { isActive }) => (
               <PoiCard
                 poi={poi}
