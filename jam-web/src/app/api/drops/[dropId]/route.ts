@@ -5,7 +5,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { PoiDropRow } from '@/types/database'
 import { getDisplayName } from '@/lib/utils'
+import { d } from '@/lib/i18n'
 
+// 20260915_2241 — ADR 0001에 맞춰 `error` 필드를 완성된 사용자 문구로 정정했다. 조사 결과
+// 이 라우트를 호출하는 클라이언트 코드는 현재 없다(`/api/drops/poi/[poiId]`가 대체)
+// — 그대로 두되 재사용 시 가이드에 맞는 문구가 나가도록 고쳐 둔다.
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ dropId: string }> }
@@ -14,7 +18,7 @@ export async function GET(
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: d.drops.sessionExpired }, { status: 401 })
 
   const service = createServiceClient()
 
@@ -36,7 +40,7 @@ export async function GET(
   // 20260901_1848: 조회 실패도 !data와 함께 "드랍 없음" 404로 위장된다 — 로그로 구분
   if (error) console.error('[api/drops/[dropId]] poi_drops 단건 조회 실패', error)
   if (error || !data) {
-    return NextResponse.json({ error: '드랍 없음' }, { status: 404 })
+    return NextResponse.json({ error: d.drops.pickupDropNotFound }, { status: 404 })
   }
 
   const drop = data as PoiDropRow & {
@@ -54,7 +58,7 @@ export async function GET(
     badge_name: drop.badges.name,
     badge_rarity: drop.badges.rarity,
     badge_image_url: drop.badges.image_url,
-    dropper_name: (drop.users && getDisplayName(drop.users)) || '익명',
+    dropper_name: (drop.users && getDisplayName(drop.users)) || d.drops.anonymous,
     dropped_at: drop.dropped_at,
     is_available: drop.is_available,
     is_own: drop.dropper_user_id === user.id,
