@@ -358,6 +358,40 @@ index 0000000..800a0bb
 +        u_worldHeight: 0,
 +    };
 +}
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/media-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/media-pass.js
+index dfa5260..f727dca 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/media-pass.js
++++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/media-pass.js
+@@ -20,7 +20,7 @@ export class MediaPass extends PassNode {
+         super(layerId);
+         this.placeholder = new THREE.Texture();
+         this.canvasAspectUniform = uniform(1);
+-        this.fitModeUniform = uniform(0);
++        this.fitModeUniform = uniform(1);
+         this.offsetXUniform = uniform(0);
+         this.offsetYUniform = uniform(0);
+         this.scaleUniform = uniform(1);
+@@ -70,7 +70,10 @@ export class MediaPass extends PassNode {
+         this.releaseCurrentMedia();
+     }
+     updateParams(params) {
+-        this.fitModeUniform.value = params.fitMode === "contain" ? 1 : 0;
++        // JAM! 정책 — "채우기" 옵션을 없애고 항상 비율 유지(contain)로 고정한다(티켓
++        // 20260915_1042 후속). params.fitMode는 더 이상 UI에서 설정되지 않지만, 기존
++        // 저장된 컴포지션에 남아있는 "cover" 값도 무시하도록 여기서 강제한다.
++        this.fitModeUniform.value = 1;
+         this.scaleUniform.value =
+             typeof params.scale === "number" ? 1 / Math.max(params.scale, 0.01) : 1;
+         if (Array.isArray(params.offset) && params.offset.length === 2) {
+@@ -128,7 +131,7 @@ export class MediaPass extends PassNode {
+             .and(sampledUv.x.lessThanEqual(1))
+             .and(sampledUv.y.greaterThanEqual(0))
+             .and(sampledUv.y.lessThanEqual(1));
+-        const contained = select(inBounds, this.mediaTextureNode, vec4(0, 0, 0, 1));
++        const contained = select(inBounds, this.mediaTextureNode, vec4(0, 0, 0, 0));
+         return mix(this.mediaTextureNode, contained, useContain);
+     }
+     releaseCurrentMedia() {
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js
 index 406d6f2..d14ff90 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js

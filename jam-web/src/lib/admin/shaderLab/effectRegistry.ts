@@ -140,17 +140,11 @@ interface LayerTypeDefinition {
   fields: ShaderLabFieldDefinitions
 }
 
+// 티켓 20260915_1042 후속 — "채우기"(cover/contain) 선택지를 없애고 항상 비율 유지로
+// 고정했다. cover는 원본 비율이 캔버스와 다르면 상/하 또는 좌/우가 잘려나가는데, 배지처럼
+// 원본 형태를 그대로 보존해야 하는 용도에는 맞지 않는다는 판단(사용자 결정). 실제 렌더링
+// 강제는 패키지 patch(`media-pass.js`의 `updateParams`)에서 한다.
 const imageFields: ShaderLabFieldDefinitions = [
-  {
-    key: 'fitMode',
-    label: '채우기',
-    type: 'select',
-    defaultValue: 'cover',
-    options: [
-      { label: '캔버스 채우기', value: 'cover' },
-      { label: '비율 유지', value: 'contain' },
-    ],
-  },
   { key: 'scale', label: '확대/축소', type: 'number', defaultValue: 1, min: 0.25, max: 4, step: 0.01 },
   { key: 'offset', label: '위치 오프셋', type: 'vec2', defaultValue: [0, 0], min: -1, max: 1, step: 0.01 },
 ]
