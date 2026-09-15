@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { CLUSTER_ZOOM_THRESHOLD } from '@/lib/poi/badge-clustering'
+import { d } from '@/lib/i18n'
 
 export interface PoiMarker {
   id: string
@@ -318,7 +319,7 @@ export default function MapView({
           anchor: new naver.maps.Point(10, 10),
         },
         zIndex: 10,
-        title: '현재 위치',
+        title: d.map.myLocationMarkerLabel,
       })
 
       userCircleRef.current = new naver.maps.Circle({
@@ -537,7 +538,7 @@ export default function MapView({
       <button
         type="button"
         onClick={handleLocateClick}
-        aria-label="현재 위치로 이동"
+        aria-label={d.map.myLocationButtonAriaLabel}
         disabled={locating}
         className="absolute right-4 z-10 w-11 h-11 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25)] flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
         style={{ bottom: 'calc(env(safe-area-inset-bottom) + 96px)' }}

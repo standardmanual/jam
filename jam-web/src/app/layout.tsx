@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import { NavigationLoader } from "@/components/NavigationLoader";
+import { d } from "@/lib/i18n";
 
 // 어드민 테마 컬러 기능 완전 제거(티켓 20260908_1806)로 DB 조회 대신 고정값을 쓴다.
 // 제거 시점 활성 프리셋 색상과 동일(코발트/아이스).
@@ -19,8 +20,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "JAM!",
-  description: "피지털 게이미피케이션 플랫폼",
+  title: d.common.seoTitle,
+  description: d.common.seoDescription,
 };
 
 export const viewport: Viewport = {
