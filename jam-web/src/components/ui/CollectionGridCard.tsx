@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import SafeImage from '@/components/SafeImage'
+import { d } from '@/lib/i18n'
 import { BookIcon } from '@/components/ui/icons'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
@@ -63,7 +64,7 @@ export default function CollectionGridCard({
             {rarity && <RarityBadge rarity={rarity} />}
             {completed && (
               <span className="bg-[color:var(--color-primary)] text-white text-[length:var(--text-caption)] leading-none px-2 py-0.5 rounded-full font-bold">
-                완성
+                {d.itembooks.completed}
               </span>
             )}
           </div>
