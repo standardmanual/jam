@@ -436,14 +436,15 @@ export const ko = {
   inventory: {
     title: '인벤토리',
     combineButton: '믹스하기',
-    slotsDetail: '{used} / {max} 슬롯 사용중 · {remaining}개 남음',
+    // §1.3 "인벤토리" 항목 — 내부 명칭 「슬롯」은 사용자 노출 화면에 쓰지 않는다 (티켓 20260915_2243)
+    slotsDetail: '{used} / {max}개 사용 중 · {remaining}개 남음',
     emptyTitle: '아직 아이템이 없어요',
     emptyBody: '활동을 완료하면 아이템 배지가 드랍돼요',
 
-    // 슬롯 포화 안내 (20260912_1940): 슬롯이 가득 찬 동안 드랍이 스킵되는 상황을
+    // 포화 안내 (20260912_1940): 인벤토리가 가득 찬 동안 드랍이 스킵되는 상황을
     // [현상 → 원인 → 해결책] 구조로 즉시 안내한다.
     fullNoticeBody:
-      '인벤토리 슬롯이 가득 찼어요. 이 상태에서는 활동을 동기화해도 새 아이템 배지가 드랍되지 않아요. 드랍하기를 눌러 슬롯을 비워보세요.',
+      '인벤토리가 가득 찼어요. 이 상태에서는 활동을 동기화해도 새 아이템 배지가 드랍되지 않아요. 드랍하기를 눌러 자리를 비워보세요.',
     fullNoticeCta: '드랍하기',
 
     obtainMethod: '획득 방법',
@@ -458,7 +459,8 @@ export const ko = {
     historyTitle: '획득 이력',
     historyError: '이력을 불러올 수 없어요',
     historyEmpty: '이력이 없어요',
-    historyEmptyBody: '아직 이 아이템에 대한 기록이 없어요',
+    // §7.1 "~에 대한" 번역투 제거 (티켓 20260915_2243)
+    historyEmptyBody: '아직 이 아이템의 기록이 없어요',
     historyUnknownUser: '알 수 없는 유저',
     obtainByDrop: '활동 드랍',
     obtainByDropEvent: '이벤트 드랍',
@@ -466,6 +468,13 @@ export const ko = {
     obtainBySystem: '시스템 지급',
     eventDropped: '지점 드랍',
     eventPickedUp: '지점 픽업',
+
+    /** ADR 0001 — /api/inventory/items GET 500 응답 (티켓 20260915_2243) */
+    fetchFailed: '인벤토리 아이템을 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
+    /** ADR 0001 — /api/inventory/items/[itemId]/history GET 404 응답(아이템·소유 인벤토리 없음) */
+    historyItemNotFound: '이 아이템을 찾을 수 없어요',
+    /** ADR 0001 — /api/inventory/items/[itemId]/history GET 403 응답(다른 사용자의 아이템) */
+    historyForbidden: '이 아이템의 이력을 볼 수 없어요',
   },
 
   /**
