@@ -100,7 +100,7 @@ export default function SyncButton({ username }: { username: string | null }) {
         variant="outline"
         surface="sub"
         size="xs"
-        style={{ backgroundColor: 'var(--color-secondary)', color: 'var(--color-base-white)' }}
+        style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-base-white)' }}
         onClick={handleSync}
         disabled={loading}
         loading={showLoading}
