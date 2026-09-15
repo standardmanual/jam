@@ -29,6 +29,7 @@ import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table
 import type { MissionRow } from '@/types/database'
 import { missionTypeLabel } from '@/lib/admin/badge-labels'
 import { checkMissionConditionValue } from '@/lib/missions/condition-keys'
+import { exposureModes } from './MissionForm'
 
 interface MissionTableProps {
   missions: MissionRow[]
@@ -196,6 +197,25 @@ function MissionTableInner({ missions, completionCounts, onEdit, onDelete }: Mis
                 ? 'bg-neutral-100 text-neutral-500'
                 : 'bg-amber-50 text-amber-600'
           return <span className={`text-xs px-2 py-0.5 rounded-full ${cls}`}>{status}</span>
+        },
+      }),
+      columnHelper.accessor((r) => r.mission.exposure_mode, {
+        id: 'exposure',
+        header: '노출',
+        enableSorting: false,
+        meta: { label: '노출' },
+        cell: ({ row }) => {
+          const m = row.original.mission
+          const label = exposureModes.find((mode) => mode.value === m.exposure_mode)?.label ?? m.exposure_mode
+          const cls = m.exposure_mode === 'hidden' ? 'bg-neutral-100 text-neutral-500' : 'bg-sky-50 text-sky-600'
+          return (
+            <span className={`text-xs px-2 py-0.5 rounded-full ${cls}`}>
+              {label}
+              {m.exposure_mode === 'scheduled' && m.exposure_at && (
+                <> · {new Date(m.exposure_at).toLocaleDateString('ko-KR')}</>
+              )}
+            </span>
+          )
         },
       }),
       columnHelper.display({
