@@ -625,13 +625,27 @@ export const ko = {
     joinErrorCompleted: '이미 완료한 미션이에요. 종료 탭에서 다시 볼 수 있어요.',
     joinErrorLocked: '아직 참가할 수 없는 미션이에요. {badge} {rarity} 배지를 먼저 획득하면 열려요.',
     joinErrorLockedGeneric: '아직 참가할 수 없는 미션이에요. 앞 단계 배지를 먼저 획득하면 열려요.',
+    /** ADR 0001 — /api/missions/[id]/join POST 404 응답(미션 없음·비노출 공통, 티켓 20260915_2244) */
+    missionNotFound: '미션을 찾을 수 없어요',
+    /** ADR 0001 — /api/missions/[id]/join POST 400 응답(이미 종료된 미션) */
+    alreadyEndedError: '이미 종료된 미션이에요',
+    /** ADR 0001 — /api/missions/[id]/join POST 409 응답(참가 레코드 중복) */
+    alreadyJoinedError: '이미 참가 중인 미션이에요',
+    /** ADR 0001 — /api/missions/[id]/join POST 500 응답(참가 처리 실패) */
+    joinProcessError: '참가 처리 중 오류가 발생했어요',
+    /** ADR 0001 — /api/missions/[id]/status GET 403 응답(미참가자의 상황 조회) */
+    statusForbidden: '참가한 유저만 미션 상황을 볼 수 있어요',
     timeLeftSuffix: '남음',
     limitedSlots: '선착순 {count}명',
     rewardNone: '없음',
     rewardBadgeCount: '배지 {count}개',
     rewardPoints: '{points} 포인트',
+    /** 목록 카드의 보상 배지 표기(티켓 20260915_2244) */
+    rewardBadgeName: '{name} 배지',
 
     backToDetail: '미션',
+    /** 대표 이미지 alt 텍스트(티켓 20260915_2244) */
+    thumbnailAlt: '{title} 썸네일',
     goalDistance: '달성 거리',
     goalActivityCount: '활동 횟수',
     goalCheckin: '체크인',
@@ -642,6 +656,12 @@ export const ko = {
     goalEngineCondition: '미션 완료',
     goalDefault: '목표',
     conditionTitle: '달성 조건',
+    /** 대표 이미지가 없을 때 보여주는 자리표시 문구(티켓 20260915_2244) */
+    imagePlaceholder: '이미지 영역',
+    /** 달성 조건 카드의 활동 종류 항목(티켓 20260915_2244) */
+    conditionActivityType: '활동 종류: {type}',
+    /** 달성 조건 카드 안내 — §1.3 "충족" 금지어를 피해 "채우면"으로 서술(티켓 20260915_2244) */
+    conditionAutoCompleteHint: '미션 참가 후 조건을 채우면 자동으로 완료돼요',
     myProgressTitle: '나의 진행 상황',
     achieved: '달성',
     notAchieved: '미달성',
@@ -649,6 +669,10 @@ export const ko = {
     rewardSectionTitle: '보상',
     /** 20260827_014 — 「JAM 포인트」·「1200P」 표기는 UX 가이드 §3 Bad. 「1,200 포인트」로 통일 */
     rewardPointsLine: '{points} 포인트',
+    /** 보상 배지 행 캡션(티켓 20260915_2244) */
+    rewardBadgeCaption: '미션 완료 시 획득',
+    /** 보상 포인트 행 캡션 — §1.3 "지급"은 어드민 전용이라 유저 화면에 쓰지 않는다(티켓 20260915_2244) */
+    rewardPointsCaption: '미션 완료 즉시 받아요',
     statusViewButton: '미션 상황 보기',
     joinConfirmBody: '한번 참가하면 취소할 수 없어요. 참가할까요?',
     joinConfirmButton: '참가 확정',
@@ -656,6 +680,10 @@ export const ko = {
     joinSuccess: '미션에 참가했어요',
     joinError: '오류가 발생했어요',
     joinNetworkError: '네트워크 오류가 발생했어요. 다시 시도해주세요',
+    /** 참가 전 CTA 버튼(티켓 20260915_2244) */
+    joinButton: '참가하기',
+    /** 완료 후 종료된 미션의 비활성 CTA 버튼(티켓 20260915_2244) */
+    ctaEnded: '종료',
 
     statusAchievementLabel: '달성 현황',
     statusIndividualLabel: '나의 현황',

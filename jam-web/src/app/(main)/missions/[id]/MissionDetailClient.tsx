@@ -180,11 +180,11 @@ export default function MissionDetailClient({
         <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden bg-surface-elevated flex items-center justify-center">
           <SafeImage
             src={mission.image_url}
-            alt={`${mission.title} 썸네일`}
+            alt={t(d.missions.thumbnailAlt, { title: mission.title })}
             className={locked ? 'object-cover grayscale opacity-50' : 'object-cover'}
             sizes="(max-width: 640px) 100vw, 640px"
             priority
-            fallback={<span className="text-[length:var(--text-body-sm)] text-text-secondary">이미지 영역</span>}
+            fallback={<span className="text-[length:var(--text-body-sm)] text-text-secondary">{d.missions.imagePlaceholder}</span>}
           />
         </div>
 
@@ -237,12 +237,12 @@ export default function MissionDetailClient({
             {condition.activity_type && (
               <div className="flex items-start gap-2 text-[14px] leading-[1.43] text-text">
                 <span className="text-[var(--color-primary)] text-base leading-[1.2] flex-shrink-0 mt-px">•</span>
-                <span>활동 종류: {ACTIVITY_TYPE_LABELS[condition.activity_type] ?? condition.activity_type}</span>
+                <span>{t(d.missions.conditionActivityType, { type: ACTIVITY_TYPE_LABELS[condition.activity_type] ?? condition.activity_type })}</span>
               </div>
             )}
             <div className="flex items-start gap-2 text-[14px] leading-[1.43] text-text-secondary">
               <span className="text-base leading-[1.2] flex-shrink-0 mt-px opacity-50">•</span>
-              <span>미션 참가 후 언제든지 조건을 충족하면 자동 완료</span>
+              <span>{d.missions.conditionAutoCompleteHint}</span>
             </div>
           </div>
         </InfoCard>
@@ -332,7 +332,7 @@ export default function MissionDetailClient({
                     <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
                       <RarityBadge rarity={badge.rarity} />
                       <p className="text-[16px] font-bold leading-[1.2] text-text truncate">{badge.name}</p>
-                      <p className="text-[13px] leading-[1.3] text-text-secondary">미션 완료 시 획득</p>
+                      <p className="text-[13px] leading-[1.3] text-text-secondary">{d.missions.rewardBadgeCaption}</p>
                     </div>
                   </div>
                 </Link>
@@ -348,7 +348,7 @@ export default function MissionDetailClient({
                     </div>
                   }
                   title={t(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}
-                  subtitle="미션 완료 즉시 지급"
+                  subtitle={d.missions.rewardPointsCaption}
                 />
               ) : null}
             </div>
@@ -379,7 +379,7 @@ export default function MissionDetailClient({
             className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] cursor-default"
             style={{ background: 'var(--color-surface-elevated)', color: 'var(--color-text-secondary)' }}
           >
-            종료
+            {d.missions.ctaEnded}
           </button>
         ) : participating ? (
           /* 참가 중 (disabled) */
@@ -427,7 +427,7 @@ export default function MissionDetailClient({
                 className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] cursor-pointer active:scale-95 transition-transform duration-100"
                 style={{ background: '#fff', color: '#000' }}
               >
-                참가하기
+                {d.missions.joinButton}
               </button>
               <p className="text-[length:var(--text-caption)] text-text-secondary text-center">{d.missions.joinNote}</p>
             </div>
