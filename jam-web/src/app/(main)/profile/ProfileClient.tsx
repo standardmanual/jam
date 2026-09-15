@@ -556,10 +556,10 @@ export default function ProfileClient({
                   alt={d.profile.avatarAlt}
                   width={96}
                   height={96}
-                  className="w-24 h-24 rounded-[var(--radius-cards)] object-cover"
+                  className="w-24 h-24 rounded-full object-cover"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated text-text flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full bg-surface-elevated text-text flex items-center justify-center">
                   <UserIcon className="w-10 h-10" />
                 </div>
               )}
