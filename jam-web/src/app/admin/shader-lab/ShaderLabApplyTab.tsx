@@ -7,7 +7,7 @@ import { Button } from '@/components/admin/ui/button'
 import { Input } from '@/components/admin/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/admin/ui/table'
 import { canvasToBlob } from '@/app/admin/badges/bakePreviewToBlob'
-import { MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
+import { MAX_APPLY_IMAGE_BYTES, TARGET_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
 
 // 쉐이더 랩 -> 배지/미션/컬렉션 적용 탭 (티켓 20260913_0414)
 // ShaderTextBadgeApply.tsx(검색 -> 선택 -> 미리보기 -> 적용)의 UI 패턴을 target별로
@@ -78,6 +78,45 @@ async function searchTarget(target: ShaderLabApplyTarget, query: string): Promis
   return searchItemBooks(query)
 }
 
+/**
+ * 배지/미션/컬렉션 대표이미지로 "적용"할 캔버스를 목표 용량(`TARGET_APPLY_IMAGE_BYTES`)
+ * 이하로 자동으로 줄인다(티켓 20260915 후속). PNG는 무손실이라 JPEG처럼 "화질"을 낮춰
+ * 용량을 줄일 수 없어서, 해상도를 단계적으로 줄여가며 재인코딩하는 방식을 쓴다 — 최대
+ * `MAX_DOWNSCALE_ATTEMPTS`번까지 매번 90%로 축소하고, 그래도 목표에 못 미치면 마지막으로
+ * 얻은(가장 작은) 결과를 그대로 반환한다(호출부의 `MAX_APPLY_IMAGE_BYTES` 체크가 최종
+ * 안전망 역할을 한다). 일반 PNG 다운로드(`ShaderLabExportPanel.downloadPng`)에는 쓰지
+ * 않는다 — 사용자가 직접 받는 파일은 원본 해상도를 그대로 유지해야 한다.
+ */
+const DOWNSCALE_STEP = 0.9
+const MAX_DOWNSCALE_ATTEMPTS = 20
+
+async function compressCanvasPngToTarget(sourceCanvas: HTMLCanvasElement, targetBytes: number): Promise<Blob> {
+  let blob = await canvasToBlob(sourceCanvas)
+  if (blob.size <= targetBytes) return blob
+
+  let width = sourceCanvas.width
+  let height = sourceCanvas.height
+
+  for (let attempt = 0; attempt < MAX_DOWNSCALE_ATTEMPTS && blob.size > targetBytes; attempt += 1) {
+    width = Math.max(1, Math.round(width * DOWNSCALE_STEP))
+    height = Math.max(1, Math.round(height * DOWNSCALE_STEP))
+
+    const scaledCanvas = document.createElement('canvas')
+    scaledCanvas.width = width
+    scaledCanvas.height = height
+    const ctx = scaledCanvas.getContext('2d')
+    if (!ctx) break
+    ctx.clearRect(0, 0, width, height)
+    ctx.drawImage(sourceCanvas, 0, 0, width, height)
+
+    blob = await canvasToBlob(scaledCanvas)
+
+    if (width <= 32 || height <= 32) break
+  }
+
+  return blob
+}
+
 async function applyToTarget(target: ShaderLabApplyTarget, id: string, blob: Blob): Promise<ApplyResult> {
   const form = new FormData()
   form.append('target', target)
@@ -142,7 +181,7 @@ export default function ShaderLabApplyTab({ target, canvasRef }: ShaderLabApplyT
     try {
       const canvas = canvasRef.current
       if (!canvas) throw new Error('캔버스를 찾지 못했어요.')
-      const blob = await canvasToBlob(canvas)
+      const blob = await compressCanvasPngToTarget(canvas, TARGET_APPLY_IMAGE_BYTES)
       if (blob.size > MAX_APPLY_IMAGE_BYTES) {
         const mb = (blob.size / 1024 / 1024).toFixed(1)
         throw new Error(`이미지가 너무 커요(${mb}MB). 5MB 이하만 반영할 수 있어요.`)
