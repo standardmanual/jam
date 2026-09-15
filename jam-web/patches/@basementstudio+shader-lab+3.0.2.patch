@@ -915,6 +915,77 @@ index 10d8f9a..f48f29f 100644
 +        return vec4(result, resultAlpha);
      }
  }
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js
+index 752fde3..b694e1f 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js
++++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js
+@@ -3,6 +3,10 @@ import { createPipelinePlaceholder, PassNode } from "./pass-node.js";
+ const SLICE_DIRECTION_BOTH = 0;
+ const SLICE_DIRECTION_RIGHT = 1;
+ const SLICE_DIRECTION_LEFT = 2;
++// 티켓 20260915 후속(JAM! 확장) — 세로 방향(위/아래) 추가. 3 이상이면 세로축으로 자르고
++// 세로로 미는 걸로 간주한다(buildEffectNode의 isVertical 분기 참고).
++const SLICE_DIRECTION_DOWN = 3;
++const SLICE_DIRECTION_UP = 4;
+ function hash2(x, y) {
+     return fract(sin(dot(vec2(x, y), vec2(127.1, 311.7))).mul(43758.5453123));
+ }
+@@ -12,6 +16,10 @@ function toSliceDirection(value) {
+             return SLICE_DIRECTION_LEFT;
+         case "both":
+             return SLICE_DIRECTION_BOTH;
++        case "down":
++            return SLICE_DIRECTION_DOWN;
++        case "up":
++            return SLICE_DIRECTION_UP;
+         default:
+             return SLICE_DIRECTION_RIGHT;
+     }
+@@ -101,8 +109,13 @@ export class SlicePass extends PassNode {
+         this.sourceTextureNodes = [];
+         const renderTargetUv = vec2(uv().x, float(1).sub(uv().y));
+         const pixelCoord = vec2(renderTargetUv.x.mul(this.logicalWidthUniform), renderTargetUv.y.mul(this.logicalHeightUniform));
+-        const sliceIndex = floor(pixelCoord.y.div(this.sliceHeightUniform));
+-        const blockIndex = floor(pixelCoord.x.div(this.blockWidthUniform));
++        // 티켓 20260915 후속 — "위"/"아래"는 세로축으로 자르고(세로 밴드) 세로로 미는 방향이다.
++        // 기존 가로축(가로 밴드를 가로로 미는) 로직과 축만 서로 바꿔 재사용한다 — 자르는 축의
++        // 좌표(sliceIndex)와 이웃 축의 좌표(blockIndex)를 select()로 스왑하고, 최종 이동량은
++        // vec2 전체를 써서 어느 축이든 동일한 식으로 계산한다.
++        const isVertical = this.directionUniform.greaterThan(float(2.5));
++        const sliceIndex = select(isVertical, floor(pixelCoord.x.div(this.sliceHeightUniform)), floor(pixelCoord.y.div(this.sliceHeightUniform)));
++        const blockIndex = select(isVertical, floor(pixelCoord.y.div(this.blockWidthUniform)), floor(pixelCoord.x.div(this.blockWidthUniform)));
+         const timeBucket = floor(this.timeUniform.mul(this.speedUniform).mul(float(6)));
+         const bandNoise = hash2(sliceIndex.add(float(0.37)), timeBucket.add(float(11.13)));
+         const blockNoise = hash2(blockIndex.add(timeBucket.mul(float(0.73))).add(float(2.4)), sliceIndex.add(float(19.7)));
+@@ -110,17 +123,20 @@ export class SlicePass extends PassNode {
+         const randomDirection = hash2(sliceIndex.add(float(7.2)), timeBucket.add(float(31.4)))
+             .mul(float(2))
+             .sub(float(1));
+-        const signedDirection = select(this.directionUniform.greaterThan(float(1.5)), float(-1), select(this.directionUniform.greaterThan(float(0.5)), float(1), randomDirection));
++        const horizontalDirection = select(this.directionUniform.greaterThan(float(1.5)), float(-1), select(this.directionUniform.greaterThan(float(0.5)), float(1), randomDirection));
++        const verticalDirection = select(this.directionUniform.greaterThan(float(3.5)), float(-1), float(1));
++        const signedDirection = select(isVertical, verticalDirection, horizontalDirection);
+         const sliceStrength = pow(bandNoise, float(1.35))
+             .mul(this.amountUniform)
+             .mul(gate);
+-        const offsetUv = vec2(sliceStrength.mul(signedDirection).div(this.logicalWidthUniform), float(0));
+-        const chromaOffsetUv = vec2(offsetUv.x.mul(this.dispersionUniform), float(0));
+-        const trailOffsetUv = vec2(offsetUv.x.mul(float(0.35)), float(0));
+-        const redSample = this.trackSourceTextureNode(vec2(renderTargetUv.x.add(offsetUv.x).add(chromaOffsetUv.x), renderTargetUv.y));
+-        const greenSample = this.trackSourceTextureNode(vec2(renderTargetUv.x.add(offsetUv.x), renderTargetUv.y));
+-        const blueSample = this.trackSourceTextureNode(vec2(renderTargetUv.x.add(offsetUv.x).sub(chromaOffsetUv.x), renderTargetUv.y));
+-        const trailSample = this.trackSourceTextureNode(vec2(renderTargetUv.x.add(trailOffsetUv.x), renderTargetUv.y));
++        const shiftAmount = sliceStrength.mul(signedDirection);
++        const offsetUv = select(isVertical, vec2(float(0), shiftAmount.div(this.logicalHeightUniform)), vec2(shiftAmount.div(this.logicalWidthUniform), float(0)));
++        const chromaOffsetUv = offsetUv.mul(this.dispersionUniform);
++        const trailOffsetUv = offsetUv.mul(float(0.35));
++        const redSample = this.trackSourceTextureNode(renderTargetUv.add(offsetUv).add(chromaOffsetUv));
++        const greenSample = this.trackSourceTextureNode(renderTargetUv.add(offsetUv));
++        const blueSample = this.trackSourceTextureNode(renderTargetUv.add(offsetUv).sub(chromaOffsetUv));
++        const trailSample = this.trackSourceTextureNode(renderTargetUv.add(trailOffsetUv));
+         const slicedColor = vec3(redSample.r, greenSample.g, blueSample.b);
+         const smearMix = gate.mul(bandNoise.mul(float(0.42)).add(float(0.18)));
+         return vec4(mix(slicedColor, trailSample.rgb, smearMix), float(1));
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/text-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/text-pass.js
 index cf82971..a370d8a 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/text-pass.js

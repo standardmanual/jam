@@ -1234,6 +1234,8 @@ const sliceFields: ShaderLabFieldDefinitions = [
       { label: '오른쪽', value: 'right' },
       { label: '왼쪽', value: 'left' },
       { label: '양쪽', value: 'both' },
+      { label: '아래', value: 'down' },
+      { label: '위', value: 'up' },
     ],
   },
 ]
