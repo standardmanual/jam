@@ -19,7 +19,6 @@ import '@/components/transitions-pages.css'
 import type { NearbyPoi } from '@/types/drops'
 import type { BadgeRarity } from '@/types/database'
 import { d, t } from '@/lib/i18n'
-import { DROP_RADIUS_METERS } from '@/lib/poi/proximity'
 import { trackEvent } from '@/lib/analytics/gtag'
 
 // 20260820_018: 드랍(지도) POI 모달 캐러셀 개편
@@ -271,10 +270,12 @@ export default function PoiCarouselModal({
     try {
       const res = await fetch(`/api/drops/poi/${poiId}`)
       const json = await res.json()
-      // 20260826_002: 서버 응답의 error는 snake_case 코드다. 목록 조회 실패는
-      // 사용자가 취할 행동이 하나뿐(다시 시도)이라 코드 구분 없이 같은 문구로 안내한다.
-      // 예전에는 `json.error`를 그대로 던져 서버 원문이 토스트에 노출됐다.
-      if (!res.ok) throw new Error(d.drops.loadDropsFailed)
+      // ADR 0001(티켓 20260915_2241): 서버가 완성한 문구를 그대로 신뢰해 노출한다
+      // (이전에는 서버 응답을 무시하고 이 컴포넌트가 고정 문구로 덮어썼다).
+      if (!res.ok) {
+        toast(json.error ?? d.drops.loadDropsFailed, 'error')
+        return
+      }
       setDropsCache((prev) => ({ ...prev, [poiId]: (json.drops ?? []) as PickupDrop[] }))
     } catch {
       toast(d.drops.loadDropsFailed, 'error')
@@ -373,22 +374,10 @@ export default function PoiCarouselModal({
         }),
       })
       if (!res.ok) {
+        // ADR 0001(티켓 20260915_2241): 서버(api/drops POST)가 이미 완성된 사용자 문구를
+        // 돌려준다 — 여기서 코드를 문구로 재매핑하지 않고 그대로 신뢰해 노출한다.
         const err = await res.json()
-        // 20260826_002: 픽업과 동일하게 서버 코드 → 사용자 문구 매핑만 노출한다.
-        // 예전에는 `err.error ?? ...`라 서버의 개발자용 축약 문구('POI 없음' 등)가
-        // 그대로 토스트에 떴다. 매핑되지 않은 코드는 일반 실패 문구로 흘린다.
-        const msg: Record<string, string> = {
-          out_of_range: t(d.drops.dropOutOfRange, { m: DROP_RADIUS_METERS }),
-          poi_not_found: d.drops.dropPoiNotFound,
-          inventory_not_found: d.drops.loadInventoryFailed,
-          item_not_found: d.drops.dropItemNotFound,
-          already_dropped: d.drops.dropAlreadyDropped,
-          item_slotted: d.drops.dropItemSlotted,
-          missing_params: d.drops.locationMissing,
-          // 20260826_002 후속: 401은 재시도로 풀리지 않으므로 재로그인을 안내한다.
-          unauthorized: d.drops.sessionExpired,
-        }
-        toast(msg[err.error] ?? d.drops.dropFailed, 'error')
+        toast(err.error ?? d.drops.dropFailed, 'error')
         return
       }
       toast(d.drops.dropSuccess, 'success')
@@ -448,28 +437,10 @@ export default function PoiCarouselModal({
         body: JSON.stringify({ user_lat: userLat, user_lng: userLng }),
       })
       if (!res.ok) {
+        // ADR 0001(티켓 20260915_2241): 서버(api/drops/[dropId]/pickup)가 이미 완성된
+        // 사용자 문구를 돌려준다 — 여기서 코드를 문구로 재매핑하지 않고 그대로 신뢰해 노출한다.
         const err = await res.json()
-        const msg: Record<string, string> = {
-          already_picked_up: d.drops.pickupAlreadyDone,
-          inventory_full: d.drops.pickupInventoryFull,
-          // 20260826_002: inventory_not_found(인벤토리 레코드 자체가 없음)를
-          // '인벤토리가 꽉 찼어요'로 안내하던 것을 바로잡았다 — 다른 상황이다.
-          inventory_not_found: d.drops.loadInventoryFailed,
-          cannot_pickup_own_drop: d.drops.pickupOwnDrop,
-          out_of_range: t(d.drops.pickupOutOfRange, { m: DROP_RADIUS_METERS }),
-          // 20260826_002: 서버에 한국어 원문으로 남아 있던 나머지 실패 경로도 코드화됐다.
-          drop_not_found: d.drops.pickupDropNotFound,
-          poi_not_found: d.drops.pickupPoiNotFound,
-          poi_blocked: d.drops.pickupPoiBlocked,
-          location_unverified: d.drops.pickupLocationUnverified,
-          missing_params: d.drops.locationMissing,
-          // 20260826_002 후속: 401은 재시도로 풀리지 않으므로 재로그인을 안내한다.
-          unauthorized: d.drops.sessionExpired,
-        }
-        // 20260825_039: `?? err.error` 폴백을 제거했다 — 서버가 돌려주는 개발자용 축약 문구
-        // ('드랍 없음', 'POI 없음' 등)가 그대로 토스트에 노출되던 경로다. 매핑되지 않은
-        // 코드는 전부 일반 실패 문구로 흘린다.
-        toast(msg[err.error] ?? d.drops.pickupFailed, 'error')
+        toast(err.error ?? d.drops.pickupFailed, 'error')
         return
       }
       toast(d.drops.pickupSuccess, 'success')

@@ -1,12 +1,16 @@
 // GET /api/drops/poi/[poiId] — POI에 드랍된 픽업 가능 아이템 목록
 //
-// 20260826_002: `error` 필드는 안정적인 snake_case 코드만 담는다. DB 원문 오류(detail)는
-// 응답에 싣지 않고 서버 로그로만 남긴다 — 클라이언트가 그대로 토스트에 노출하던 경로였다.
+// 20260915_2241 — ADR 0001에 따라 `error` 필드는 `src/lib/i18n/ko.ts`의 drops 네임스페이스로
+// 완성한 사용자 문구를 담는다. 클라이언트는 이 문구를 그대로 신뢰해 노출한다. DB 원문
+// 오류(detail)는 여전히 응답에 싣지 않고 서버 로그로만 남긴다.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
 import { getDisplayName } from '@/lib/utils'
+// 이 파일은 poi_drops 행 변수명으로 `d`를 이미 쓰고 있어(아래 rows.map((d) => ...)),
+// 딕셔너리 임포트는 이름 충돌을 피해 `dict`로 별칭한다.
+import { d as dict } from '@/lib/i18n'
 
 export async function GET(
   _req: NextRequest,
@@ -16,7 +20,7 @@ export async function GET(
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: dict.drops.sessionExpired }, { status: 401 })
 
   const service = createServiceClient()
 
@@ -39,7 +43,7 @@ export async function GET(
 
   if (error) {
     console.error('[poi drops] 조회 오류:', error.message)
-    return NextResponse.json({ error: 'drops_load_failed' }, { status: 500 })
+    return NextResponse.json({ error: dict.drops.loadDropsFailed }, { status: 500 })
   }
 
   // Supabase 조인 결과의 생성 타입은 `badges`를 배열로 추론해 아래 접근과 맞지 않는다.
@@ -56,7 +60,7 @@ export async function GET(
   const rows = (data ?? []) as unknown as PoiDropRow[]
 
   // dropper username 별도 조회 (FK 중복으로 조인 불가)
-  // 프로덕션에서는 스테이징 전용 테스트 계정을 조회 대상에서 빼 이름 대신 '익명'으로 표시한다.
+  // 프로덕션에서는 스테이징 전용 테스트 계정을 조회 대상에서 빼 이름 대신 d.drops.anonymous로 표시한다.
   const excludedIds = excludedTestUserIds()
   const dropperIds = [...new Set(rows
     .map((d) => d.dropper_user_id)
@@ -78,7 +82,7 @@ export async function GET(
     badge_name: d.badges?.name,
     badge_rarity: d.badges?.rarity,
     badge_image_url: d.badges?.image_url,
-    dropper_name: (d.dropper_user_id ? nameById[d.dropper_user_id] : undefined) ?? '익명',
+    dropper_name: (d.dropper_user_id ? nameById[d.dropper_user_id] : undefined) ?? dict.drops.anonymous,
     dropped_at: d.dropped_at,
     serial: d.inventory_items
       ? `${d.inventory_items.serial_prefix ?? '????'}${String(d.inventory_items.serial_number).padStart(6, '0')}`
