@@ -106,24 +106,16 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
       } else if (data.success) {
         // 20260910_1515: 레시피는 매칭됐지만(success: true) 보상 배지가 소프트 삭제 등으로
         // 하나도 지급되지 않고 포인트도 0인 경우 — 재료는 이미 소각됐으니 유저에게는
-        // 실패에 가깝다. "0 포인트 획득!"처럼 정직하지 않은 성공 문구를 띄우지 않는다.
+        // 실패에 가깝다. ADR 0001에 따라 서버가 이미 판정해 붙인 message를 그대로 신뢰한다.
         trackEvent('combine_success', { item_count: selected.length, result_badge_ids: '' })
-        setResult({ success: false, reason: d.combine.recipeFail })
+        setResult({ success: false, reason: data.message ?? d.combine.genericFail })
         setSelected([])
         router.refresh()
       } else {
-        // 20260910_1408: 확률 실패(`recipe_fail`·`fail`)가 사라지고 「레시피 미매칭」
-        // (`no_recipe_match`) 하나로 통합됐다.
-        const msgs: Record<string, string> = {
-          invalid_count: d.combine.selectRangeError,
-          items_not_found: d.combine.itemsNotFound,
-          no_recipe_match: d.combine.recipeFail,
-        }
-        let reason = msgs[data.reason] ?? d.combine.genericFail
-        if (data.pointsAwarded > 0) {
-          reason += t(d.combine.consolationPoints, { points: data.pointsAwarded })
-        }
-        setResult({ success: false, reason })
+        // ADR 0001(서버-클라이언트 단일 진실 소스, 티켓 20260915_2240): API route가
+        // d.combine.*로 완성한 message를 그대로 신뢰해 노출한다. 사유 코드를 클라이언트가
+        // 재조립하지 않는다.
+        setResult({ success: false, reason: data.message ?? d.combine.genericFail })
         setSelected([])
         router.refresh()
       }
@@ -222,7 +214,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
           className="w-full py-4 rounded-[var(--radius-pill-buttons)] bg-text text-surface text-[length:var(--text-body)] active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
         >
           {loading && <span className="w-4 h-4 border-2 border-surface border-t-transparent rounded-full animate-spin" />}
-          {d.combine.combineButton}
+          {loading ? d.combine.combineButtonLoading : d.combine.combineButton}
         </button>
       </div>
 

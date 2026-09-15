@@ -1023,30 +1023,40 @@ export const ko = {
     msgPointsOutNoReason: '{points}가 빠져나갔어요',
   },
 
-  /** 아이템 믹스 */
+  /**
+   * 아이템 믹스. 에러 문구는 ADR 0001(서버-클라이언트 단일 진실 소스)에 따라
+   * `api/combine/route.ts`가 이 딕셔너리로 최종 메시지를 완성해 내려주고,
+   * `CombineClient.tsx`는 그 메시지를 그대로 신뢰해 노출한다(티켓 20260915_2240).
+   */
   combine: {
     title: '믹스',
     selectedCount: '선택한 아이템 ({count}/{max})',
     slotOnboarding: '인벤토리에서 아이템을 골라 믹스해 보세요',
     combineButton: '믹스하기',
+    /** §5.3 처리 중 상태 — 문장·버튼 모두 기본형(동사형)을 쓴다 */
+    combineButtonLoading: '믹스하는 중',
     hintsTitle: '힌트',
     hintUnknown: '???',
     recipesTitle: '공개 레시피',
     recipeLine: '재료 {count}개 → 보상 획득',
     myItemsTitle: '내 아이템',
-    emptyInventory: '인벤토리가 비어 있어요.',
+    emptyInventory: '인벤토리가 비어 있어요',
     emptyInventoryBody: '활동을 완료하면 믹스할 아이템이 드랍돼요',
     successResult: '{names} 획득!',
     /** 20260910_1408: 레시피 보상이 포인트만인 경우 */
     successPointsOnly: '{points} 포인트 획득!',
     /** 배지와 포인트를 함께 받은 경우 successResult 뒤에 붙는다 */
     successPointsSuffix: ' (+{points} 포인트)',
-    selectRangeError: '아이템 2~10개를 선택해주세요.',
-    itemsNotFound: '아이템을 찾을 수 없어요.',
-    recipeFail: '믹스에 실패했어요. 아이템이 소각됐어요.',
-    consolationPoints: ' (실패 보상 +{points})',
-    genericError: '오류가 발생했어요.',
-    genericFail: '믹스 실패',
+    /** §4.2 인라인 검증 축약 — [현상+해결책] 한 문장, CTA 없음 */
+    selectRangeError: '아이템은 2개에서 10개까지 선택할 수 있어요',
+    itemsNotFound: '선택한 아이템을 찾을 수 없어요. 인벤토리를 새로고침하고 다시 선택해 주세요',
+    /** §1.2 "드랍/아이템 계열은 트라이브 속 사건처럼" 예시 문구를 그대로 채택 */
+    recipeFail: '재료가 뒤섞이더니 흔적도 없이 사라졌어요',
+    consolationPoints: ' (실패 보상 +{points} 포인트)',
+    /** 네트워크 예외(fetch 실패) 등 응답 자체를 못 받았을 때만 클라이언트가 직접 쓴다 */
+    genericError: '지금은 믹스할 수 없어요. 잠시 후 다시 시도해 주세요',
+    /** 서버가 보낸 reason이 알려진 값이 아닐 때의 방어적 폴백 */
+    genericFail: '오류가 발생했어요',
   },
 
   /**
