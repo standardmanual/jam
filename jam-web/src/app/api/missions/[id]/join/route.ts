@@ -13,7 +13,7 @@ export async function POST(_req: Request, { params }: Params) {
   const { id: missionId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
 
   const service = createServiceClient()
 
@@ -39,15 +39,15 @@ export async function POST(_req: Request, { params }: Params) {
         | null
     }
 
-  if (!mission) return NextResponse.json({ error: '미션을 찾을 수 없어요.' }, { status: 404 })
+  if (!mission) return NextResponse.json({ error: d.missions.missionNotFound }, { status: 404 })
   // 관리자 수동 노출 제어(티켓 20260912_0139) — 숨김/노출 예정 미션은 없는 것과 동일하게
   // 취급한다(존재 여부를 노출하지 않는다).
   if (!isMissionExposed(mission)) {
-    return NextResponse.json({ error: '미션을 찾을 수 없어요.' }, { status: 404 })
+    return NextResponse.json({ error: d.missions.missionNotFound }, { status: 404 })
   }
   // ends_at이 null이면 상시 미션(종료 없음) — 종료 체크 건너뜀
   if (mission.ends_at !== null && new Date(mission.ends_at) < new Date()) {
-    return NextResponse.json({ error: '이미 종료된 미션이에요.' }, { status: 400 })
+    return NextResponse.json({ error: d.missions.alreadyEndedError }, { status: 400 })
   }
 
   // 20260825_028 서버 가드 — UI에서 숨기더라도 URL 직접 호출을 막지 못하므로
@@ -75,9 +75,9 @@ export async function POST(_req: Request, { params }: Params) {
 
   if (error) {
     if (error.code === '23505') {
-      return NextResponse.json({ error: '이미 참가 중인 미션이에요.' }, { status: 409 })
+      return NextResponse.json({ error: d.missions.alreadyJoinedError }, { status: 409 })
     }
-    return NextResponse.json({ error: '참가 처리 중 오류가 발생했어요.' }, { status: 500 })
+    return NextResponse.json({ error: d.missions.joinProcessError }, { status: 500 })
   }
 
   await recordFeedEvent(user.id, 'mission_joined', { mission_id: missionId, mission_title: mission.title })

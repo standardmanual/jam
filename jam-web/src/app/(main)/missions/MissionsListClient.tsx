@@ -82,7 +82,7 @@ function rewardBadgeNode(id: string, badgeNames: Record<string, RewardBadgeInfo>
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
       {info.level != null ? <BadgeLevelChip level={info.level} /> : <RarityBadge rarity={info.rarity ?? undefined} />}
-      {`${info.name} 배지`}
+      {t(d.missions.rewardBadgeName, { name: info.name })}
     </span>
   )
 }
