@@ -23,7 +23,7 @@ import type { BadgeProgress, RegretLineData } from '@/lib/badge-engine/badgeProg
  * 넘친다(티켓 20260831_2208 후속 — 모바일 실기기 확인 결과).
  */
 const TREE_TAB_LABELS: Partial<Record<ActivityType, string>> = {
-  trail_running: '트레일',
+  trail_running: d.badges.treeTabTrailShort,
 }
 
 /**
@@ -289,11 +289,11 @@ export default function BadgeTreeClient({
     gridGoals.length > 0 ? (
       <section
         key="grid"
-        aria-label="한 번에 끝나는 배지"
+        aria-label={d.badges.treeOneShotSectionTitle}
         className="rounded-[var(--radius-card)] bg-[var(--color-surface-elevated)] p-[var(--spacing-16)]"
       >
         <h3 className="mb-[var(--spacing-16)] text-[length:var(--text-small)] font-bold text-text">
-          한 번에 끝나는 배지
+          {d.badges.treeOneShotSectionTitle}
         </h3>
         <div className="grid grid-cols-3 gap-x-[var(--spacing-8)] gap-y-[var(--spacing-16)]">
         {gridGoals.map(({ family, progressBadgeId }) => (
@@ -380,7 +380,7 @@ export default function BadgeTreeClient({
               title={d.badges.treeSectionNext}
               count={nextGoals.length}
               collapsible={false}
-              note={nextGoals.length > 0 ? '진행률 높은 순' : null}
+              note={nextGoals.length > 0 ? d.badges.treeSortNoteHighest : null}
               emptyText={d.badges.treeSectionNextEmpty}
             >
               {/* 빈 배열이 아니라 null을 넘긴다 — 그래야 emptyText가 뜬다 */}

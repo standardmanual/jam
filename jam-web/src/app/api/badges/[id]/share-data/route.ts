@@ -16,15 +16,22 @@
  *   404 { error: 'badge_not_found' }             — 배지 없음
  *   400 { error: 'not_activity_or_poi' }         — item 배지에 잘못 호출한 경우
  *   404 { error: 'not_earned' }                  — 조회 대상 유저가 아직 획득하지 않음
- *   404 { error: 'no_strava_trigger' }           — 획득은 했으나 연결된 스트라바 활동이 없음(레거시/어드민 발급)
- *   404 { error: 'strava_disconnected' }         — 스트라바 연동 해제 또는 토큰 갱신 실패(재인증 필요)
- *   404 { error: 'strava_activity_not_found' }   — 스트라바 활동이 삭제되었거나 비공개로 전환됨
- *   502 { error: 'strava_fetch_failed' }         — 스트라바 API 조회 실패(레이트리밋·5xx 등)
+ *   404 { error: 'no_strava_trigger', title, body }           — 획득은 했으나 연결된 스트라바 활동이 없음(레거시/어드민 발급)
+ *   404 { error: 'strava_disconnected', title, body }         — 스트라바 연동 해제 또는 토큰 갱신 실패(재인증 필요)
+ *   404 { error: 'strava_activity_not_found', title, body }   — 스트라바 활동이 삭제되었거나 비공개로 전환됨
+ *   502 { error: 'strava_fetch_failed', title, body }         — 스트라바 API 조회 실패(레이트리밋·5xx 등)
+ *
+ * ADR 0001(서버-클라이언트 단일 진실 소스, 티켓 20260915_2238): 클라이언트가 재현 가능한 사유
+ * 4종(no_strava_trigger·strava_disconnected·strava_activity_not_found·strava_fetch_failed)은
+ * 이 라우트가 `d.badges.*`로 title/body를 직접 완성해 함께 내려보낸다. 클라이언트
+ * (`BadgeShareButton.tsx`)는 이 값을 그대로 신뢰해 노출하고, 값이 없는 나머지 사유(로그인·
+ * 권한·존재 여부 등 클릭 전에 이미 걸러지는 사유)는 기존처럼 일반 실패 문구로 폴백한다.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { decrypt, encrypt } from '@/lib/utils'
 import { getActivityById, refreshStravaToken } from '@/lib/strava/api'
+import { d } from '@/lib/i18n'
 import type { BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserCheckinBadgeEarnRow } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -33,6 +40,21 @@ interface ShareStats {
   distanceKm: number
   paceSecPerKm: number | null
   elapsedTimeSec: number | null
+}
+
+/** 클라이언트가 그대로 신뢰해 노출하는 사유 4종의 title/body — d.badges.* 단일 출처 (ADR 0001) */
+const RECOVERABLE_ERROR_COPY = {
+  strava_disconnected: { title: d.badges.shareErrorStravaDisconnectedTitle, body: d.badges.shareErrorStravaDisconnectedBody },
+  no_strava_trigger: { title: d.badges.shareErrorNoTriggerTitle, body: d.badges.shareErrorNoTriggerBody },
+  strava_fetch_failed: { title: d.badges.shareErrorFetchFailedTitle, body: d.badges.shareErrorFetchFailedBody },
+  strava_activity_not_found: { title: d.badges.shareErrorActivityNotFoundTitle, body: d.badges.shareErrorActivityNotFoundBody },
+} as const
+
+function recoverableErrorResponse(
+  error: keyof typeof RECOVERABLE_ERROR_COPY,
+  status: number
+): NextResponse {
+  return NextResponse.json({ error, ...RECOVERABLE_ERROR_COPY[error] }, { status })
 }
 
 export async function GET(
@@ -122,7 +144,7 @@ export async function GET(
   if (distanceKm === null || stravaId === null) {
     // 거리·트리거 활동 스냅샷이 없는 레거시/어드민 발급 케이스 — 공유 이미지의
     // 필수 요소(DISTANCE)를 채울 수 없어 페이스·시간 재조회 없이 바로 실패 처리한다.
-    return NextResponse.json({ error: 'no_strava_trigger' }, { status: 404 })
+    return recoverableErrorResponse('no_strava_trigger', 404)
   }
 
   const { data: connectionRaw } = await service
@@ -132,7 +154,7 @@ export async function GET(
     .maybeSingle()
   const connection = connectionRaw as StravaConnectionRow | null
   if (!connection) {
-    return NextResponse.json({ error: 'strava_disconnected' }, { status: 404 })
+    return recoverableErrorResponse('strava_disconnected', 404)
   }
 
   let accessToken: string
@@ -168,24 +190,24 @@ export async function GET(
     // refresh_token이 만료됐거나(유저가 Strava 쪽에서 앱 연동을 해제) 복호화 실패 —
     // 이 유저는 재동기화 전까지 스트라바 데이터를 다시 가져올 수 없다
     console.error('[/api/badges/[id]/share-data] 토큰 갱신 실패 — 연동 해제로 간주:', err)
-    return NextResponse.json({ error: 'strava_disconnected' }, { status: 404 })
+    return recoverableErrorResponse('strava_disconnected', 404)
   }
 
   const activityResult = await getActivityById(stravaId, accessToken)
   if ('error' in activityResult) {
     if (activityResult.status === 401) {
-      return NextResponse.json({ error: 'strava_disconnected' }, { status: 404 })
+      return recoverableErrorResponse('strava_disconnected', 404)
     }
     if (activityResult.status === 404) {
       // 스트라바 쪽에서 활동이 삭제되었거나 비공개로 전환된 경우 — 재시도해도 동일하게
       // 실패하므로 일시적 오류(strava_fetch_failed)와 구분해 별도 사유로 반환한다.
-      return NextResponse.json({ error: 'strava_activity_not_found' }, { status: 404 })
+      return recoverableErrorResponse('strava_activity_not_found', 404)
     }
     console.error(
       `[/api/badges/[id]/share-data] 스트라바 활동 조회 실패 (status: ${activityResult.status}):`,
       activityResult.error
     )
-    return NextResponse.json({ error: 'strava_fetch_failed' }, { status: 502 })
+    return recoverableErrorResponse('strava_fetch_failed', 502)
   }
 
   const paceSecPerKm = distanceKm > 0 ? activityResult.moving_time / distanceKm : null
