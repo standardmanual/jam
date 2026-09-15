@@ -4,6 +4,7 @@ import type { MissionStatusDisplayType } from '@/types/database'
 import { compareMissionRank } from '@/lib/missions/ranking'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
 import { getDisplayName } from '@/lib/utils'
+import { d } from '@/lib/i18n'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -42,7 +43,7 @@ export async function GET(_req: Request, { params }: Params) {
   const { id: missionId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
 
   const service = createServiceClient()
 
@@ -53,7 +54,7 @@ export async function GET(_req: Request, { params }: Params) {
     .eq('id', missionId)
     .maybeSingle() as { data: { id: string; status_display_type: MissionStatusDisplayType; visible_rank_count: number | null } | null }
 
-  if (!missionRaw) return NextResponse.json({ error: '미션을 찾을 수 없어요.' }, { status: 404 })
+  if (!missionRaw) return NextResponse.json({ error: d.missions.missionNotFound }, { status: 404 })
 
   // 참가 여부 확인 — 미참가자는 미션 상황 조회 불가
   const { data: myParticipation } = await service
@@ -64,7 +65,7 @@ export async function GET(_req: Request, { params }: Params) {
     .maybeSingle()
 
   if (!myParticipation) {
-    return NextResponse.json({ error: '참가한 유저만 미션 상황을 볼 수 있어요.' }, { status: 403 })
+    return NextResponse.json({ error: d.missions.statusForbidden }, { status: 403 })
   }
 
   // 개인형 — 티켓 20260813_001: 다른 참가자 조회 없이 본인 진행상황/달성여부만 반환
@@ -111,7 +112,7 @@ export async function GET(_req: Request, { params }: Params) {
   // 20260830_0113: 표시 이름 우선, 없으면 username 폴백까지 서버가 미리 계산해 내려준다
   const nameOf = (userId: string) => {
     const u = userMap.get(userId)
-    return (u && getDisplayName(u)) || '익명'
+    return (u && getDisplayName(u)) || d.profile.anonymous
   }
   // 20260831_2038: 표시용 이름(nameOf)은 display_name 우선이라 라우팅용 username과 다를 수
   // 있다 — 프로필 링크는 반드시 원본 users.username 컬럼값을 그대로 써야 한다(탈퇴 등으로
