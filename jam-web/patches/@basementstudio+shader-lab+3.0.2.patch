@@ -221,10 +221,10 @@ index b02e6da..db801f2 100644
  }
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js
 new file mode 100644
-index 0000000..f51ecd6
+index 0000000..5b5d585
 --- /dev/null
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/liquid-metal-pass.js
-@@ -0,0 +1,300 @@
+@@ -0,0 +1,308 @@
 +import { float, texture as tslTexture, uv, vec2, vec4 } from "three/tsl";
 +import * as THREE from "three/webgpu";
 +import {
@@ -426,6 +426,14 @@ index 0000000..f51ecd6
 +                this.liquidTexture.wrapT = THREE.ClampToEdgeWrapping;
 +                this.liquidTexture.colorSpace = THREE.SRGBColorSpace;
 +            }
++            // 티켓 20260915_1147 후속 — clearRect 없이 매 프레임 drawImage만 하면 2D 캔버스의
++            // 기본 합성 방식(source-over)상 새 프레임의 알파가 낮은 픽셀은 이전 프레임의
++            // 불투명한 내용을 지우지 못하고 그 아래 그대로 남는다. "이미지 업로드 후에도
++            // 배경 채우기 효과가 안 사라짐", "배경색 알파 슬라이더가 안 먹힘" 두 증상 모두
++            // 이 누적 때문이었다(다른 설정을 바꾸다 캔버스 리사이즈가 걸리면 mirrorCanvas가
++            // 통째로 새로 만들어져 누적이 초기화되는 것으로 오인됨). 매 프레임 지우고 새로
++            // 그린다.
++            this.mirrorContext.clearRect(0, 0, this.mirrorCanvas.width, this.mirrorCanvas.height);
 +            this.mirrorContext.drawImage(sourceCanvas, 0, 0);
 +            this.liquidTexture.needsUpdate = true;
 +            this.textureNode.value = this.liquidTexture;
