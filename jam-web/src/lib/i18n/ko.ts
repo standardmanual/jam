@@ -57,12 +57,6 @@ export const ko = {
     followingButton: '팔로잉',
     logoutButton: '로그아웃',
 
-    // Strava 동기화
-    stravaTitle: 'Strava 동기화',
-    stravaConnected: '동기화됨',
-    stravaDisconnected: '동기화 안됨',
-    stravaConnectButton: 'Strava 동기화',
-
     // Strava 콜백 도착 피드백 토스트 (20260824_008) — 배지 연출이 뜨지 않는 경우
     // (배지 0개 성공 / 실패)에 연동 결과를 알려준다
     stravaConnectSuccessToast: 'Strava 동기화를 완료했어요. 앞으로 활동하면 배지를 자동 획득해요',
