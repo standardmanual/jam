@@ -358,8 +358,28 @@ index 0000000..800a0bb
 +        u_worldHeight: 0,
 +    };
 +}
+diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js
+index 406d6f2..d14ff90 100644
+--- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js
++++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js
+@@ -44,6 +44,7 @@ export class PassNode {
+         this.scene = new THREE.Scene();
+         this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+         this.material = new THREE.MeshBasicNodeMaterial();
++        this.material.alphaToCoverage = true;
+         this.opacityUniform = uniform(1);
+         this.hueUniform = uniform(0);
+         this.saturationUniform = uniform(1);
+@@ -165,6 +166,7 @@ export class PassNode {
+         }
+         const generation = ++this.effectSwapGeneration;
+         const nextMaterial = new THREE.MeshBasicNodeMaterial();
++        nextMaterial.alphaToCoverage = true;
+         nextMaterial.colorNode = this.composeColorNode(nextEffectNode);
+         const standbyScene = new THREE.Scene();
+         const standbyMesh = new THREE.Mesh(this.compositeGeometry, nextMaterial);
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
-index 1c1439f..0c6e64c 100644
+index 1c1439f..261585a 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
 @@ -1,4 +1,4 @@
@@ -376,7 +396,7 @@ index 1c1439f..0c6e64c 100644
  import { LivePass } from "./live-pass.js";
  import { MagnifyLensPass } from "./magnify-lens-pass.js";
  import { MediaPass } from "./media-pass.js";
-@@ -129,7 +130,16 @@ export class PipelineManager {
+@@ -129,7 +130,17 @@ export class PipelineManager {
          this.logicalHeight = this.height;
          this.baseScene = new THREE.Scene();
          this.baseCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -390,11 +410,20 @@ index 1c1439f..0c6e64c 100644
 +        // 기록(replace)하므로 다른 레이어 타입(29종)이 기대하는 "완전 불투명 덮어쓰기" 동작은
 +        // 그대로 유지되고, 알파 채널만 0으로 바뀐다.
 +        const baseMaterial = new THREE.MeshBasicNodeMaterial();
++        baseMaterial.alphaToCoverage = true;
 +        baseMaterial.colorNode = vec4(vec3(float(8 / 255), float(8 / 255), float(8 / 255)), float(0));
          const baseMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), baseMaterial);
          baseMesh.frustumCulled = false;
          this.baseScene.add(baseMesh);
-@@ -341,6 +351,13 @@ export class PipelineManager {
+@@ -140,6 +151,7 @@ export class PipelineManager {
+         const blitUv = vec2(uv().x, float(1).sub(uv().y));
+         this.blitInputNode = tslTexture(createPipelinePlaceholder(), blitUv);
+         this.blitMaterial = new THREE.MeshBasicNodeMaterial();
++        this.blitMaterial.alphaToCoverage = true;
+         this.blitMaterial.colorNode = this.blitInputNode;
+         const blitMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.blitMaterial);
+         blitMesh.frustumCulled = false;
+@@ -341,6 +353,13 @@ export class PipelineManager {
                  pass.clearMedia();
              }
          }
@@ -408,7 +437,7 @@ index 1c1439f..0c6e64c 100644
          if (pass instanceof LivePass) {
              const facingMode = typeof layer.params.facingMode === "string"
                  ? layer.params.facingMode
-@@ -431,6 +448,9 @@ export class PipelineManager {
+@@ -431,6 +450,9 @@ export class PipelineManager {
          if (layer.kind === "source" && layer.type === "text") {
              return new TextPass(layer.id);
          }
