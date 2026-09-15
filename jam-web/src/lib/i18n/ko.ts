@@ -28,6 +28,8 @@ export const ko = {
     back: '뒤로',
     countItems: '{count}개',
     networkError: '네트워크 오류가 발생했어요',
+    /** 서버 API의 401 인증 필요 응답 — ADR 0001, 티켓 20260915_2238에서 badges 라우트가 먼저 참조한다 */
+    authRequired: '인증이 필요해요',
     footerSlogan: 'JAM!은 삐끗할 때도 있습니다.\n하지만 곧 바로 잡습니다.',
     footerPhilosophy: 'Philosophy',
     footerPrivacy: '개인정보처리방침',
@@ -366,6 +368,68 @@ export const ko = {
     treeSectionNextEmpty: '이 종목의 배지를 모두 받았어요',
     // 잠금 해제 조건 시트 — 미션 게이트일 때만 붙는 하단 CTA (§5.1 예측 가능한 행동 동사)
     treeUnlockMissionCta: '미션 하러 가기',
+    /** 트레일러닝 탭 전용 축약 라벨 — 5탭 균등분할 폭에서 "트레일러닝"(5자)이 넘친다 (티켓 20260915_2238) */
+    treeTabTrailShort: '트레일',
+    /** 눈금 1개 계열을 묶는 그리드 카드 제목 — §1.3 고정 용어 "한 번에 끝나는 배지" (티켓 20260915_2238) */
+    treeOneShotSectionTitle: '한 번에 끝나는 배지',
+    /** 「다음 목표」 섹션의 정렬 기준 안내 */
+    treeSortNoteHighest: '진행률 높은 순',
+    /** 무한레벨형 계열 헤더 2행 — "다음 Lv.N" */
+    treeNextLevelMeta: '다음 Lv.{level}',
+    /** 계열 카드(레벨 게이지·스탬프 행) 전체를 감싸는 잠금 버튼의 aria-label */
+    treeUnlockAriaLabel: '{label} 받는 방법 보기',
+    /** 「받는 방법」 시트 — 선행 배지 잠금 항목 하단 note. 등급 제한 유무로 갈린다 */
+    unlockNoteMinRarity: '배지 · {rarity} 이상',
+    unlockNoteAnyRarity: '배지 · 어느 등급이든 1개',
+    /** 「받는 방법」 시트 — 교차 게이트(축 내/축 간) 및 미션 게이트가 N개 이상 필요할 때의 note */
+    unlockNoteMinCount: '이 중 {count}개 이상 필요해요',
+    /** 게이트 미션이 숨김(exposure_mode) 상태일 때 배지 트리에 노출하는 대체 제목 */
+    gatedMissionHiddenTitle: '다음 미션 공개 예정',
+
+    // 공유 시트 캐러셀(20260911_1102) — 스크린리더 전용 aria-label
+    shareCarouselAriaLabel: '공유 이미지 선택',
+    shareCardGroupLabel: '통계 포함 공유 카드',
+    shareBadgeGroupLabel: '배지 이미지 단독',
+
+    // 배지 트리 진행 표시 — badgeProgressText.ts 전용 (티켓 20260915_2238)
+    /** §08 H(진행 미지원) 공통 임시 상태 표기 */
+    progressUnsupported: '진행 표시 준비 중',
+    /** 배지 트리 그리드 셀 상태 라벨 — §1.3 고정 용어와 동일 */
+    statusEarned: '획득',
+    statusReady: '조건을 다 채웠어요',
+    statusLocked: '잠김',
+    statusNotReached: '—',
+    /** not-reached 상태의 스크린리더 전용 라벨 — §1.3 "아직" 행 참고 */
+    statusAriaNotReached: '아직',
+    /** 주기형(월간/주간) 진행 캡션의 기간 명사 */
+    periodMonthNoun: '이번 달',
+    periodWeekNoun: '이번 주',
+    /** 주기형 진행 캡션 — "{노운} {현재/목표} · {일수}일 남음" */
+    periodicCaption: '{noun} {range} · {days}일 남음',
+    /** 2축형(dual) 게이지 — 두 조건을 같은 활동에서 채워야 하는지 여부 */
+    dualAxisRuleSame: '한 번의 활동에서 두 조건을 동시에 채워야 해요.',
+    dualAxisRuleDifferent: '두 조건은 각각 다른 활동에서 채워도 돼요.',
+    /** 2축형 게이지 — 한 축만 이미 채웠을 때 남은 축을 가리키는 보조 문구 */
+    dualAxisBottleneckNote: '{label} 조건은 이미 채웠어요.',
+    /** 계열 카드 헤더 2행(메타 줄) — "다음 {등급}" */
+    familyMetaNextRarity: '다음 {rarity}',
+    /** 휴식 축 진행 표기 접두어 — §1.3 "휴식"은 상태만 표기(권유형 금지) */
+    restCounterPrefix: '휴식 {range}',
+    /** 남은 양 한 줄 — 페이스 축은 초 단위로 표기 */
+    remainingSecSuffix: '{sec}초 남음',
+    remainingSuffix: '{value} 남음',
+    /** 기록형 "아쉬움 줄" — 페이스 축과 그 외 축은 단위 표기가 달라 분리한다 */
+    regretLinePace: '지난 활동 페이스는 {current}. {rarity}까지 {diff}초 모자랐어요.',
+    regretLineGeneral: '지난 활동 {label} 기록은 {current}. {rarity}까지 {diff} 모자랐어요.',
+    /** 직전 동기화 대비 진전 배너(RecentSyncBanner) 비교 문장 */
+    syncComparisonPace: '직전 동기화보다 {label} {delta}초 가까워졌어요',
+    syncComparisonGeneral: '직전 동기화보다 {label} {delta} 가까워졌어요',
+
+    // 체크인 배지 지도 마커 API(/api/checkin-badges) — 서버 에러 메시지 단일 소스(ADR 0001)
+    checkinMapMissingBoundsError: '지도 범위 정보가 없어요. 지도를 다시 불러와 주세요',
+    checkinMapMissingZoomError: '지도 확대 정보가 없어요. 지도를 다시 불러와 주세요',
+    checkinMapPoiLoadError: '주변 체크인 배지를 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
+    checkinMapBadgeLoadError: '체크인 배지 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
   },
 
   /** 인벤토리 목록/상세 */

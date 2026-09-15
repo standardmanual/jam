@@ -10,6 +10,7 @@ import {
 } from '@/lib/badge-engine/crossGate'
 import { rarityTier } from '@/lib/rarity'
 import { formatStopConditionValue } from '@/lib/badgeProgressText'
+import { d, t } from '@/lib/i18n'
 
 /**
  * 배지 트리(`/badges/tree`) 전용 그래프 빌더 — 티켓 20260831_2208, 20260905_0037(전면 리뉴얼).
@@ -413,7 +414,9 @@ export function buildBadgeActivityTrees(
         fulfilled,
         imageUrl: entry.image_url,
         // 참인 문장만 적는다 — 등급 제한이 없으면 「어느 등급이든 1개」, 있으면 그 등급 이상.
-        note: req.minRarityLabel ? `배지 · ${req.minRarityLabel} 이상` : '배지 · 어느 등급이든 1개',
+        note: req.minRarityLabel
+          ? t(d.badges.unlockNoteMinRarity, { rarity: req.minRarityLabel })
+          : d.badges.unlockNoteAnyRarity,
       }
     }
 
@@ -524,7 +527,7 @@ export function buildBadgeActivityTrees(
               relation: maxMinCount > 1 ? 'and' : 'or',
               fulfilled,
               title: null,
-              note: maxMinCount > 1 ? `이 중 ${maxMinCount}개 이상 필요해요` : null,
+              note: maxMinCount > 1 ? t(d.badges.unlockNoteMinCount, { count: maxMinCount }) : null,
               locks,
             })
           }
@@ -540,7 +543,7 @@ export function buildBadgeActivityTrees(
               relation: gateMissionReq.minCount > 1 ? 'and' : 'or',
               fulfilled: locks.filter((l) => l.fulfilled).length >= gateMissionReq.minCount,
               title: null,
-              note: gateMissionReq.minCount > 1 ? `이 중 ${gateMissionReq.minCount}개 이상 필요해요` : null,
+              note: gateMissionReq.minCount > 1 ? t(d.badges.unlockNoteMinCount, { count: gateMissionReq.minCount }) : null,
               locks,
             })
           }

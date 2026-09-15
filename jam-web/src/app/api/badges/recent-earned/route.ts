@@ -19,11 +19,12 @@
  *
  * 응답:
  *   200 { earnedBadges: EarnedBadgeSummary[], earnedBadgesMore: number, isFirstBadgeEver: boolean }
- *   401 { error: '인증이 필요합니다.' }
+ *   401 { error: d.common.authRequired }
  */
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { buildEarnedBadgePayload } from '@/lib/strava/sync'
+import { d } from '@/lib/i18n'
 import type { ActivityFeedEventType } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -55,7 +56,7 @@ export async function GET() {
   } = await supabase.auth.getUser()
 
   if (authError || !user) {
-    return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
+    return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
   }
 
   const service = createServiceClient()

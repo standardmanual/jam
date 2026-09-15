@@ -43,7 +43,7 @@ type ShareErrorReason =
 type ShareItemState =
   | { kind: 'loading' }
   | { kind: 'ready'; blobUrl: string; blob: Blob }
-  | { kind: 'error'; reason: ShareErrorReason }
+  | { kind: 'error'; reason: ShareErrorReason; serverCopy?: { title: string; body: string } }
 
 /**
  * 공유 시트 캐러셀 2항목 (티켓 20260911_1102). `card`는 기존 통계 포함 공유 카드(1080×1920),
@@ -78,19 +78,18 @@ function disabledReasonCopy(reason: DisabledReason): { title: string; body: stri
     : { title: d.badges.shareErrorStravaDisconnectedTitle, body: d.badges.shareErrorStravaDisconnectedBody }
 }
 
-function errorCopy(reason: ShareErrorReason): { title: string; body: string } {
-  switch (reason) {
-    case 'strava_disconnected':
-      return { title: d.badges.shareErrorStravaDisconnectedTitle, body: d.badges.shareErrorStravaDisconnectedBody }
-    case 'no_strava_trigger':
-      return { title: d.badges.shareErrorNoTriggerTitle, body: d.badges.shareErrorNoTriggerBody }
-    case 'strava_fetch_failed':
-      return { title: d.badges.shareErrorFetchFailedTitle, body: d.badges.shareErrorFetchFailedBody }
-    case 'strava_activity_not_found':
-      return { title: d.badges.shareErrorActivityNotFoundTitle, body: d.badges.shareErrorActivityNotFoundBody }
-    default:
-      return { title: d.badges.shareErrorUnknownTitle, body: d.badges.shareErrorUnknownBody }
-  }
+/**
+ * 서버(`/api/badges/[id]/share-data`)가 이미 `d.badges.*`로 완성해 내려보낸 title/body가
+ * 있으면 그대로 신뢰해 노출한다(ADR 0001, 티켓 20260915_2238) — 클라이언트가 `reason` 코드로
+ * 같은 문구를 다시 조립하지 않는다. 서버가 모르는 사유(로그인 세션 만료 등 이 컴포넌트가
+ * 열리기 전에 이미 걸러지는 상태)만 일반 실패 문구로 폴백한다.
+ */
+function errorCopy(state: { reason: ShareErrorReason; serverCopy?: { title: string; body: string } }): {
+  title: string
+  body: string
+} {
+  if (state.serverCopy) return state.serverCopy
+  return { title: d.badges.shareErrorUnknownTitle, body: d.badges.shareErrorUnknownBody }
 }
 
 /** navigator.share가 File 공유를 지원하는지 — 지원 시 OS 공유시트, 미지원(주로 데스크톱) 시 다운로드로 대체 */
@@ -212,11 +211,13 @@ export default function BadgeShareButton({
           const qs = subjectUsername ? `?u=${encodeURIComponent(subjectUsername)}` : ''
           const res = await fetch(`/api/badges/${badgeId}/share-data${qs}`)
           if (!res.ok) {
-            const body: { error?: string } = await res.json().catch(() => ({}))
+            // 서버가 이미 title/body를 완성해 내려보낸다(ADR 0001) — 그대로 신뢰해 저장한다.
+            const body: { error?: string; title?: string; body?: string } = await res.json().catch(() => ({}))
             const reason = KNOWN_ERROR_REASONS.includes(body.error as ShareErrorReason)
               ? (body.error as ShareErrorReason)
               : 'unknown'
-            if (!cancelled) setState((prev) => ({ ...prev, card: { kind: 'error', reason } }))
+            const serverCopy = body.title && body.body ? { title: body.title, body: body.body } : undefined
+            if (!cancelled) setState((prev) => ({ ...prev, card: { kind: 'error', reason, serverCopy } }))
             return
           }
           stats = (await res.json()) as BadgeShareStats
@@ -434,7 +435,7 @@ export default function BadgeShareButton({
               activeIndex={activeIndex}
               onActiveIndexChange={setActiveIndex}
               getItemKey={(kind: ShareItemKind) => kind}
-              ariaLabel="공유 이미지 선택"
+              ariaLabel={d.badges.shareCarouselAriaLabel}
               style={{ height: '100%', alignItems: 'stretch' }}
               renderItem={(kind: ShareItemKind) => {
                 const itemState = effectiveState[kind]
@@ -442,7 +443,7 @@ export default function BadgeShareButton({
                 return (
                   <div
                     role="group"
-                    aria-label={kind === 'card' ? '통계 포함 공유 카드' : '배지 이미지 단독'}
+                    aria-label={kind === 'card' ? d.badges.shareCardGroupLabel : d.badges.shareBadgeGroupLabel}
                     className="relative w-full h-full rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center"
                     style={{
                       backgroundImage:
@@ -475,10 +476,10 @@ export default function BadgeShareButton({
                       // 두 번 읽는다(인터페이스 리뷰 지적, 티켓 20260911_1156).
                       <div className="px-[var(--spacing-24)] text-center" aria-hidden="true">
                         <p className="whitespace-pre-line text-[length:var(--text-body)] text-[var(--color-text-inverse)]">
-                          {errorCopy(itemState.reason).title}
+                          {errorCopy(itemState).title}
                         </p>
                         <p className="mt-1 whitespace-pre-line text-[length:var(--text-caption)] text-[var(--color-text-inverse)]/70">
-                          {errorCopy(itemState.reason).body}
+                          {errorCopy(itemState).body}
                         </p>
                       </div>
                     ) : showLoader ? (
@@ -494,7 +495,7 @@ export default function BadgeShareButton({
             // 안내 문구 자체는 캐러셀 프레임 안(renderItem)에 직접 표시한다 — 이 블록은 스크린
             // 리더 알림 역할만 유지하고 화면에는 노출하지 않는다(중복 방지).
             <span role="status" aria-live="polite" className="sr-only">
-              {errorCopy(activeItemState.reason).title} {errorCopy(activeItemState.reason).body}
+              {errorCopy(activeItemState).title} {errorCopy(activeItemState).body}
             </span>
           )}
           {activeItemState.kind === 'loading' && (

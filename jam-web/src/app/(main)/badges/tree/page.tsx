@@ -27,6 +27,7 @@ import { getMetricLabels } from '@/lib/badge-engine/metricLabels'
 import type { SearchParamValue } from '@/lib/searchParams'
 import type { ActivityType, BadgeCondition, MissionExposureMode } from '@/types/database'
 import BadgeTreeClient from './BadgeTreeClient'
+import { d } from '@/lib/i18n'
 
 /**
  * PostgREST 기본 페이지 상한. 이 크기로 끝까지 훑는다 — `badges/page.tsx`(46~52행)에
@@ -172,7 +173,7 @@ export default async function BadgeTreePage({ searchParams }: Props) {
   }
   const missions: BadgeTreeSourceMission[] = ((missionsRaw ?? []) as unknown as RawMission[]).map((m) => {
     if (isMissionExposed(m)) return { id: m.id, title: m.title, gated_badge_id: m.gated_badge_id, image_url: m.image_url }
-    return { id: m.id, title: '다음 미션 공개 예정', gated_badge_id: m.gated_badge_id, image_url: null }
+    return { id: m.id, title: d.badges.gatedMissionHiddenTitle, gated_badge_id: m.gated_badge_id, image_url: null }
   })
 
   // 소프트 삭제된 배지(badges.deleted_at)는 이미 badges 조회에서 빠져 트리에 그려지지 않으므로
