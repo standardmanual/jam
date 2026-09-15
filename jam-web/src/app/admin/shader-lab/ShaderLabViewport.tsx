@@ -7,13 +7,28 @@
  * 내보내기(`ShaderLabExportPanel`)는 이 컴포넌트가 갖는 `<canvas>`를 그대로
  * `canvas.toBlob()`한다 — 별도 오프스크린 렌더링을 만들지 않는다.
  */
-import { forwardRef, useEffect, useState } from 'react'
+import { forwardRef, useEffect, useState, type CSSProperties } from 'react'
 import type { ShaderLabConfig } from '@basementstudio/shader-lab'
 import { useShaderLabPlayback } from '@/lib/admin/shaderLab/useShaderLabPlayback'
 import { SHADER_LAB_OUTPUT_SIZE } from '@/lib/admin/shaderLab/composition'
 
 interface ShaderLabViewportProps {
   config: ShaderLabConfig
+}
+
+// 티켓 20260915_1042 후속 — 스테이지는 항상 투명이어야 하므로, 캔버스 뒤 배경을 단색이
+// 아니라 체크보드 패턴으로 깔아 어디가 실제로 투명한 영역인지 눈으로 바로 구분되게 한다
+// (포토샵·피그마의 투명도 표시 관례와 동일).
+const CHECKERBOARD_TILE_PX = 16
+const CHECKERBOARD_BACKGROUND_STYLE: CSSProperties = {
+  backgroundColor: '#3a3a3a',
+  backgroundImage:
+    'linear-gradient(45deg, #4d4d4d 25%, transparent 25%), ' +
+    'linear-gradient(-45deg, #4d4d4d 25%, transparent 25%), ' +
+    'linear-gradient(45deg, transparent 75%, #4d4d4d 75%), ' +
+    'linear-gradient(-45deg, transparent 75%, #4d4d4d 75%)',
+  backgroundSize: `${CHECKERBOARD_TILE_PX}px ${CHECKERBOARD_TILE_PX}px`,
+  backgroundPosition: `0 0, 0 ${CHECKERBOARD_TILE_PX / 2}px, ${CHECKERBOARD_TILE_PX / 2}px -${CHECKERBOARD_TILE_PX / 2}px, -${CHECKERBOARD_TILE_PX / 2}px 0px`,
 }
 
 const ShaderLabViewport = forwardRef<HTMLCanvasElement, ShaderLabViewportProps>(function ShaderLabViewport(
@@ -39,7 +54,10 @@ const ShaderLabViewport = forwardRef<HTMLCanvasElement, ShaderLabViewportProps>(
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative mx-auto aspect-square w-full max-w-[560px] overflow-hidden rounded-md border border-border bg-[#0a0d10]">
+      <div
+        className="relative mx-auto aspect-square w-full max-w-[560px] overflow-hidden rounded-md border border-border"
+        style={CHECKERBOARD_BACKGROUND_STYLE}
+      >
         <canvas
           ref={(node) => {
             setCanvasEl(node)
