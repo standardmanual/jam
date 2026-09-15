@@ -1,8 +1,17 @@
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/blend-modes.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/blend-modes.js
-index 3edd440..f6c7b9d 100644
+index 3edd440..d1b297c 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/blend-modes.js
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/blend-modes.js
-@@ -150,7 +150,18 @@ export function buildBlendNode(mode, base, blend, opacity, compositeMode = "filt
+@@ -93,7 +93,7 @@ function color(base, blend) {
+ function luminosity(base, blend) {
+     return setLum(base, lum(blend));
+ }
+-export function buildBlendNode(mode, base, blend, opacity, compositeMode = "filter", maskConfig) {
++export function buildBlendNode(mode, base, blend, opacity, compositeMode = "filter", maskConfig, clipToBelow = false) {
+     const baseRgb = base.rgb;
+     const blendRgb = blend.rgb;
+     const normalizedOpacity = float(clamp(opacity, float(0), float(1)));
+@@ -150,7 +150,26 @@ export function buildBlendNode(mode, base, blend, opacity, compositeMode = "filt
              break;
      }
      if (compositeMode === "filter") {
@@ -16,8 +25,16 @@ index 3edd440..f6c7b9d 100644
 +        // 동작에서는 이 결과가 이전과 동일하다(0 + t·(1-0) = t와, base.a=1일 때 1 + t·0 = 1
 +        // 두 경우 모두 기존 출력과 일치).
 +        const baseAlpha = float(clamp(base.a, float(0), float(1)));
-+        const blendFactor = normalizedOpacity.mul(blendAlpha);
-+        const outAlpha = baseAlpha.add(blendFactor.mul(float(1).sub(baseAlpha)));
++        const rawBlendFactor = normalizedOpacity.mul(blendAlpha);
++        // JAM! 확장(20260915 후속) — "아래 레이어에 클리핑"이 켜져 있으면 이 레이어는 base가
++        // 이미 차지한 영역 안에서만 섞이고(blendFactor에 baseAlpha를 한 번 더 곱함), 최종
++        // 알파도 base 그대로 유지한다(절대 그 이상으로 넓어지지 않는다) — 이미지 레이어의
++        // 투명 영역 위에 올린 이펙트가 그 바깥으로 번지는 걸 막는다. 꺼져 있으면(기본값)
++        // 기존 표준 소스-오버 공식 그대로다. clipToBelow는 레이어 설정이 바뀔 때만 colorNode
++        // 자체를 다시 빌드하는 JS 상수라(pass-node.js의 colorNodeDirty 패턴과 동일) 셰이더
++        // 그래프 안에서는 런타임 select()가 아니라 빌드 시점 분기로 처리한다.
++        const blendFactor = clipToBelow ? rawBlendFactor.mul(baseAlpha) : rawBlendFactor;
++        const outAlpha = clipToBelow ? baseAlpha : baseAlpha.add(blendFactor.mul(float(1).sub(baseAlpha)));
 +        return vec4(mix(baseRgb, composited, blendFactor), outAlpha);
      }
      const source = maskConfig?.source ?? "luminance";
@@ -632,10 +649,18 @@ index 22e2098..14594e9 100644
          if (!this.bloomCompositor) {
              this.bloomCompositor = new BloomCompositor();
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js
-index 406d6f2..d14ff90 100644
+index 406d6f2..ff24c23 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pass-node.js
-@@ -44,6 +44,7 @@ export class PassNode {
+@@ -35,6 +35,7 @@ export class PassNode {
+     effectSwapGeneration = 0;
+     blendMode = "normal";
+     compositeMode = "filter";
++    clipToBelow = false;
+     maskSource = "luminance";
+     maskMode = "multiply";
+     maskInvert = false;
+@@ -44,6 +45,7 @@ export class PassNode {
          this.scene = new THREE.Scene();
          this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
          this.material = new THREE.MeshBasicNodeMaterial();
@@ -643,7 +668,22 @@ index 406d6f2..d14ff90 100644
          this.opacityUniform = uniform(1);
          this.hueUniform = uniform(0);
          this.saturationUniform = uniform(1);
-@@ -165,6 +166,7 @@ export class PassNode {
+@@ -91,6 +93,14 @@ export class PassNode {
+         this.colorNodeDirty = true;
+         return true;
+     }
++    updateClipToBelow(clipToBelow) {
++        if (clipToBelow === this.clipToBelow) {
++            return false;
++        }
++        this.clipToBelow = clipToBelow;
++        this.colorNodeDirty = true;
++        return true;
++    }
+     updateMaskConfig(config) {
+         const structuralChange = config.source !== this.maskSource ||
+             config.mode !== this.maskMode ||
+@@ -165,6 +175,7 @@ export class PassNode {
          }
          const generation = ++this.effectSwapGeneration;
          const nextMaterial = new THREE.MeshBasicNodeMaterial();
@@ -651,6 +691,15 @@ index 406d6f2..d14ff90 100644
          nextMaterial.colorNode = this.composeColorNode(nextEffectNode);
          const standbyScene = new THREE.Scene();
          const standbyMesh = new THREE.Mesh(this.compositeGeometry, nextMaterial);
+@@ -205,7 +216,7 @@ export class PassNode {
+                 mode: this.maskMode,
+                 source: this.maskSource,
+             }
+-            : undefined);
++            : undefined, this.clipToBelow);
+     }
+     applySharedColorAdjustments(sourceNode) {
+         const sourceColor = vec3(float(sourceNode.r), float(sourceNode.g), float(sourceNode.b));
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pattern-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pattern-pass.js
 index 3f53698..ebc93c7 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pattern-pass.js
@@ -720,7 +769,7 @@ index 3f53698..ebc93c7 100644
 +    }
  }
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
-index 1c1439f..261585a 100644
+index 1c1439f..c117560 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/pipeline-manager.js
 @@ -1,4 +1,4 @@
@@ -737,7 +786,23 @@ index 1c1439f..261585a 100644
  import { LivePass } from "./live-pass.js";
  import { MagnifyLensPass } from "./magnify-lens-pass.js";
  import { MediaPass } from "./media-pass.js";
-@@ -129,7 +130,17 @@ export class PipelineManager {
+@@ -62,6 +63,7 @@ function createLayerSignature(layer) {
+             layer.saturation.toFixed(4),
+             layer.blendMode,
+             layer.compositeMode,
++            layer.clipToBelow ? "1" : "0",
+             layer.maskConfig?.source ?? "luminance",
+             layer.maskConfig?.mode ?? "multiply",
+             layer.maskConfig?.invert ? "1" : "0",
+@@ -92,6 +94,7 @@ function createLayerSignature(layer) {
+         layer.saturation.toFixed(4),
+         layer.blendMode,
+         layer.compositeMode,
++        layer.clipToBelow ? "1" : "0",
+         layer.maskConfig?.source ?? "luminance",
+         layer.maskConfig?.mode ?? "multiply",
+         layer.maskConfig?.invert ? "1" : "0",
+@@ -129,7 +132,17 @@ export class PipelineManager {
          this.logicalHeight = this.height;
          this.baseScene = new THREE.Scene();
          this.baseCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -756,7 +821,7 @@ index 1c1439f..261585a 100644
          const baseMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), baseMaterial);
          baseMesh.frustumCulled = false;
          this.baseScene.add(baseMesh);
-@@ -140,6 +151,7 @@ export class PipelineManager {
+@@ -140,6 +153,7 @@ export class PipelineManager {
          const blitUv = vec2(uv().x, float(1).sub(uv().y));
          this.blitInputNode = tslTexture(createPipelinePlaceholder(), blitUv);
          this.blitMaterial = new THREE.MeshBasicNodeMaterial();
@@ -764,7 +829,15 @@ index 1c1439f..261585a 100644
          this.blitMaterial.colorNode = this.blitInputNode;
          const blitMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.blitMaterial);
          blitMesh.frustumCulled = false;
-@@ -341,6 +353,13 @@ export class PipelineManager {
+@@ -318,6 +332,7 @@ export class PipelineManager {
+         pass.updateBlendMode(layer.blendMode);
+         const compositeMode = layer.compositeMode === "mask" ? "mask" : "filter";
+         pass.updateCompositeMode(compositeMode);
++        pass.updateClipToBelow(layer.clipToBelow === true);
+         pass.updateMaskConfig(layer.maskConfig ?? DEFAULT_MASK_CONFIG);
+         pass.updateLayerColorAdjustments(layer.hue, layer.saturation);
+         pass.updateParams(layer.params);
+@@ -341,6 +356,13 @@ export class PipelineManager {
                  pass.clearMedia();
              }
          }
@@ -778,7 +851,7 @@ index 1c1439f..261585a 100644
          if (pass instanceof LivePass) {
              const facingMode = typeof layer.params.facingMode === "string"
                  ? layer.params.facingMode
-@@ -431,6 +450,9 @@ export class PipelineManager {
+@@ -431,6 +453,9 @@ export class PipelineManager {
          if (layer.kind === "source" && layer.type === "text") {
              return new TextPass(layer.id);
          }
@@ -967,7 +1040,7 @@ index cf82971..a370d8a 100644
              this.textTexture = new THREE.CanvasTexture(canvas);
              this.textTexture.flipY = false;
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/types.d.ts b/node_modules/@basementstudio/shader-lab/dist/src/types.d.ts
-index c82a982..b6a4376 100644
+index c82a982..7b26bc4 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/types.d.ts
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/types.d.ts
 @@ -1,6 +1,6 @@
@@ -978,3 +1051,13 @@ index c82a982..b6a4376 100644
  export type ShaderLabEffectLayerType = "ascii" | "blob-tracking" | "bloom" | "circuit-bent" | "directional-blur" | "chromatic-aberration" | "crt" | "displacement-map" | "dithering" | "edge-detect" | "fluted-glass" | "halftone" | "ink" | "particle-grid" | "pattern" | "pixelation" | "pixel-sorting" | "plotter" | "posterize" | "slice" | "smear" | "threshold" | "voxel";
  export type ShaderLabLayerType = ShaderLabEffectLayerType | ShaderLabSourceLayerType;
  export type ShaderLabBlendMode = "normal" | "multiply" | "screen" | "overlay" | "darken" | "lighten" | "color-dodge" | "color-burn" | "hard-light" | "soft-light" | "difference" | "exclusion" | "hue" | "saturation" | "color" | "luminosity";
+@@ -75,6 +75,9 @@ export interface ShaderLabTimelineConfig {
+ export interface ShaderLabLayerConfig {
+     asset?: ShaderLabAssetSource;
+     blendMode: ShaderLabBlendMode;
++    /** 티켓 20260915 후속(JAM! 확장) — true면 이 레이어가 아래 레이어들의 누적 알파 밖으로
++     * 번지지 않는다(Photoshop "아래 레이어에 클리핑"과 동일). 기본 false. */
++    clipToBelow?: boolean;
+     compositeMode: ShaderLabCompositeMode;
+     maskConfig?: ShaderLabMaskConfig;
+     hue: number;

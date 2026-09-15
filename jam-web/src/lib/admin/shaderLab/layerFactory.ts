@@ -25,6 +25,7 @@ export function createLayer(type: SupportedShaderLabLayerType): ShaderLabLayerCo
     saturation: 1,
     blendMode: 'normal',
     compositeMode: 'filter',
+    clipToBelow: false,
     params: getDefaultParamsForType(type),
   }
 }
