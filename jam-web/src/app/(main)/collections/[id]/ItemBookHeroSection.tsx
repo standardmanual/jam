@@ -66,7 +66,15 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
         <div
           className={[
             'relative overflow-hidden w-full aspect-square rounded-[var(--radius-cards)] flex flex-col p-6',
-            backgroundAnimation ? 'bg-transparent' : 'bg-surface-elevated',
+            // [20260915_2006, 게이트 리뷰 재작업] bg-surface-elevated(#1f1f1f)와 페이지 배경
+            // --color-surface(#1a1a1a)의 명도차가 5/255뿐이라 카드 경계가 육안으로 거의
+            // 안 보였다(배지 상세는 배지 이미지 자체가 카드를 꽉 채워 이미지로 경계가
+            // 드러나지만, 컬렉션 대표 이미지는 200x200 아이콘이라 카드 여백이 그대로
+            // 노출됨). 새 색상값을 만들지 않고 기존 카드 테두리 토큰 --color-border
+            // (#2a2a2a, ModalToast·RarityBadge 스토리 등에서 이미 쓰는 값)를 그대로 사용해
+            // 1px 테두리로 경계를 보정한다. 애니메이션 모드는 카드 전체가 별도 배경색으로
+            // 채워져 이미 페이지 배경과 구분되므로 테두리를 더하지 않는다.
+            backgroundAnimation ? 'bg-transparent' : 'bg-surface-elevated border border-[var(--color-border)]',
           ].join(' ')}
           style={backgroundAnimation ? { backgroundColor: backgroundAnimation.bgColor } : undefined}
         >
