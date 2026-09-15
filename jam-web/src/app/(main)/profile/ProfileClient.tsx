@@ -599,7 +599,7 @@ export default function ProfileClient({
                   <span />
                 )}
                 <Button
-                  surface="sub"
+                  surface="main"
                   variant="outline"
                   size="xs"
                   onClick={() => router.push('/profile/edit')}
