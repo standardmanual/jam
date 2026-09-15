@@ -1,3 +1,5 @@
+import { d } from '@/lib/i18n'
+
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg'
   className?: string
@@ -13,7 +15,7 @@ export default function LoadingSpinner({ size = 'md', className = '' }: LoadingS
   return (
     <span
       role="status"
-      aria-label="로딩 중"
+      aria-label={d.common.loading}
       className={[
         'inline-block rounded-full border-text border-t-transparent animate-spin',
         sizeClasses[size],

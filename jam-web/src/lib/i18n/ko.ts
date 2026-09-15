@@ -7,7 +7,8 @@
  * - 동적 값은 `{변수}` 보간 패턴을 사용한다. 예) "{count} 포인트" → t(ko.profile.pointBalance, { count })
  * - Phase 1 범위는 ko 로케일만 채운다 (en 등 실제 번역은 별도 작업).
  *
- * namespace 규칙: common / nav / profile / tabs / feed / today / todayCard
+ * namespace 규칙: common / nav / profile / tabs / feed / today / todayCard (그 외 화면별
+ * 네임스페이스는 아래 딕셔너리 본문의 섹션 주석을 참고)
  */
 
 /**
@@ -31,6 +32,11 @@ export const ko = {
     footerPhilosophy: 'Philosophy',
     footerPrivacy: '개인정보처리방침',
     footerCopyright: '© 2026 Standard Manual',
+    /** 여러 화면이 공유하는 범용 로딩 스피너(`LoadingSpinner`)의 보조기술 라벨 (티켓 20260915_2237) */
+    loading: '로딩 중',
+    /** `app/layout.tsx` SEO 메타데이터 — §2.5 예외로 명사형 종결 허용 (티켓 20260915_2237) */
+    seoTitle: 'JAM!',
+    seoDescription: '피지털 게이미피케이션 플랫폼',
   },
 
   /** 바텀 탭바(글로벌 네비게이션) 라벨 */
@@ -403,6 +409,9 @@ export const ko = {
     // 20260908_1754: PoiCarouselModal의 dialog aria-label — 화면에 노출되지 않고
     // 스크린리더에만 전달된다.
     poiCarouselAriaLabel: '지점 드랍·픽업',
+    /** 캐러셀 내부 지점 목록 자체의 aria-label(티켓 20260915_2237) — 위 다이얼로그 라벨과는
+     *  별개로, 목록을 순회하는 캐러셀 요소에 붙는다. */
+    poiCarouselListAriaLabel: '주변 지점 목록',
     locationUnsupported: '이 브라우저는 위치 기능을 지원하지 않아요',
     locationDenied: '위치 권한을 허용해 주세요',
     retry: '다시 시도',
@@ -673,6 +682,17 @@ export const ko = {
     reasonEventPromotion: '이벤트·프로모션',
     reasonAbuseReclaim: '이용 정책 위반',
     reasonRetroactiveAdjustment: '과거 활동 반영',
+  },
+
+  /**
+   * 지도(`MapView`) — 드랍/픽업(`/drops`)과 미션(`/missions`) 화면이 함께 쓰는
+   * 서비스 공용 지도 컴포넌트의 고정 문구 (티켓 20260915_2237).
+   */
+  map: {
+    /** 지도 위 내 위치 마커의 네이티브 title(마커 호버 시 노출) */
+    myLocationMarkerLabel: '현재 위치',
+    /** 현재 위치로 지도를 이동시키는 버튼의 aria-label */
+    myLocationButtonAriaLabel: '현재 위치로 이동',
   },
 
   /** 유저 검색 결과 */
