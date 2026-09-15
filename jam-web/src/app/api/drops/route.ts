@@ -9,13 +9,15 @@ import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
 import { classifyNaverCategory } from '@/lib/poi/category-gate'
 import type { PoiRow } from '@/types/database'
 import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
+import { d, t } from '@/lib/i18n'
 
 // GET /api/drops?lat=&lng=  — T1(DB) + T2(네이버 지역검색, 카테고리 레벨 기반) 통합
 // POST /api/drops            — 드랍 실행
 //
-// 20260826_002: 두 핸들러의 `error` 필드는 **항상 안정적인 snake_case 코드**만 담는다.
-// 한국어 원문을 섞어 돌려주면 클라이언트가 그것을 그대로 토스트에 노출하게 된다.
-// 사용자 문구는 전부 src/lib/i18n/ko.ts의 drops 섹션에서 관리한다.
+// 20260915_2241 — ADR 0001에 따라 두 핸들러의 `error` 필드는 `src/lib/i18n/ko.ts`의
+// drops 네임스페이스로 완성한 사용자 문구를 담아 돌려준다. 클라이언트는 이 문구를
+// 그대로 신뢰해 노출한다(코드로 재매핑하지 않는다). (이전에는 snake_case 코드만
+// 돌려주고 클라이언트가 코드→문구 매핑을 따로 들고 있었다 — 20260826_002.)
 
 const NAVER_RADIUS_M = 500  // T2 네이버 POI는 넓게 표시 (지도 탐색용)
 
@@ -205,12 +207,12 @@ export async function GET(req: NextRequest) {
   const lng = parseFloat(searchParams.get('lng') ?? '')
 
   if (isNaN(lat) || isNaN(lng)) {
-    return NextResponse.json({ error: 'missing_params' }, { status: 400 })
+    return NextResponse.json({ error: d.drops.locationMissing }, { status: 400 })
   }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: d.drops.sessionExpired }, { status: 401 })
 
   const service = createServiceClient()
 
@@ -293,13 +295,13 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: d.drops.sessionExpired }, { status: 401 })
 
   const body = await req.json()
   const { poi_id, inventory_item_id, user_lat, user_lng } = body
 
   if (!poi_id || !inventory_item_id || isNaN(user_lat) || isNaN(user_lng)) {
-    return NextResponse.json({ error: 'missing_params' }, { status: 400 })
+    return NextResponse.json({ error: d.drops.locationMissing }, { status: 400 })
   }
 
   const service = createServiceClient()
@@ -314,19 +316,19 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (poiError || !poiRaw) {
-    return NextResponse.json({ error: 'poi_not_found' }, { status: 404 })
+    return NextResponse.json({ error: d.drops.dropPoiNotFound }, { status: 404 })
   }
 
   const poi = poiRaw as PoiRow
   // 20260830_1620: is_active=false는 지도/목록에서 이미 숨겨지므로 정상 흐름에서는 도달하지
   // 않지만, 클라이언트가 들고 있던 캐시된 poi_id로 요청할 수 있어 서버에서도 막는다.
-  // 신규 드랍 시도만 막는 것이라 poi_not_found와 동일하게 취급한다(사용자에게는 '존재하지
-  // 않는 지점'과 동일한 문구가 이미 매핑돼 있음, components/PoiCarouselModal.tsx 참고).
+  // 신규 드랍 시도만 막는 것이라 dropPoiNotFound와 동일한 문구로 취급한다(사용자에게는
+  // '존재하지 않는 지점'과 같은 안내가 이미 자연스럽다).
   if (!poi.is_active) {
-    return NextResponse.json({ error: 'poi_not_found' }, { status: 404 })
+    return NextResponse.json({ error: d.drops.dropPoiNotFound }, { status: 404 })
   }
   if (!isUserNearPoi(user_lat, user_lng, poi)) {
-    return NextResponse.json({ error: 'out_of_range' }, { status: 403 })
+    return NextResponse.json({ error: t(d.drops.dropOutOfRange, { m: DROP_RADIUS_METERS }) }, { status: 403 })
   }
 
   // 인벤토리 존재 확인 — 없으면 즉석 생성한다(get-or-create, 티켓 20260906_2217 회귀 방지).
@@ -335,7 +337,7 @@ export async function POST(req: NextRequest) {
   const inventoryExists = await getOrCreateInventoryId(service, user.id)
 
   if (!inventoryExists) {
-    return NextResponse.json({ error: 'inventory_not_found' }, { status: 404 })
+    return NextResponse.json({ error: d.drops.loadInventoryFailed }, { status: 404 })
   }
 
   // 20260829_2101: 개체 정체성 모델 — 소유권을 바꾸는 액션은 원자적 락(SELECT ... FOR UPDATE)
@@ -352,12 +354,21 @@ export async function POST(req: NextRequest) {
 
   if (rpcError) {
     console.error('[drops] create_user_drop RPC 오류:', rpcError)
-    return NextResponse.json({ error: 'drop_failed' }, { status: 500 })
+    return NextResponse.json({ error: d.drops.dropFailed }, { status: 500 })
   }
 
   const result = rpcResult as { ok: boolean; error?: string; drop_id?: string }
 
   if (!result.ok) {
+    const code = result.error ?? ''
+    // RPC가 돌려주는 값은 snake_case 코드다 — 여기서 사용자 문구로 완성해 돌려준다
+    // (ADR 0001, 클라이언트는 이 문구를 그대로 신뢰해 노출한다).
+    const messageMap: Record<string, string> = {
+      inventory_not_found: d.drops.loadInventoryFailed,
+      item_not_found: d.drops.dropItemNotFound,
+      item_slotted: d.drops.dropItemSlotted,
+      already_dropped: d.drops.dropAlreadyDropped,
+    }
     const statusMap: Record<string, number> = {
       inventory_not_found: 404,
       item_not_found: 404,
@@ -365,8 +376,8 @@ export async function POST(req: NextRequest) {
       already_dropped: 409,
     }
     return NextResponse.json(
-      { error: result.error ?? 'drop_failed' },
-      { status: statusMap[result.error ?? ''] ?? 400 }
+      { error: messageMap[code] ?? d.drops.dropFailed },
+      { status: statusMap[code] ?? 400 }
     )
   }
 
