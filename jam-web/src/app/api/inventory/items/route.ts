@@ -3,11 +3,12 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
+import { d } from '@/lib/i18n'
 
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
 
   const service = createServiceClient()
 
@@ -32,7 +33,7 @@ export async function GET() {
     .is('slotted_in', null)
     .order('obtained_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: '조회 실패' }, { status: 500 })
+  if (error) return NextResponse.json({ error: d.inventory.fetchFailed }, { status: 500 })
 
   // 소프트 삭제된 배지(badges.deleted_at)는 드랍 선택 목록에서 제외한다 —
   // 메인 인벤토리 목록(inventory/page.tsx)과 동일하게 조인 결과를 사후 필터한다.
