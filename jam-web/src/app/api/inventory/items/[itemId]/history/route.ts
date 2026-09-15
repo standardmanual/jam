@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { getDisplayName } from '@/lib/utils'
+import { d } from '@/lib/i18n'
 
 export interface HistoryEvent {
   type: 'obtained' | 'dropped' | 'picked_up'
@@ -25,7 +26,7 @@ export async function GET(
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
 
   const service = createServiceClient()
 
@@ -37,7 +38,7 @@ export async function GET(
   // 20260901_1848: 조회 실패도 !itemRaw로 걸려 "아이템 없음" 404로 위장된다 — 로그로 구분
   if (itemError) console.error('[api/inventory/items/[itemId]/history] inventory_items 단건 조회 실패', itemError)
 
-  if (!itemRaw) return NextResponse.json({ error: '아이템 없음' }, { status: 404 })
+  if (!itemRaw) return NextResponse.json({ error: d.inventory.historyItemNotFound }, { status: 404 })
 
   const item = itemRaw as {
     id: string
@@ -48,7 +49,7 @@ export async function GET(
 
   // 소유 확인 — 현재 소유자만 조회 가능. 드랍/고아 상태(inventory_id NULL)면 조회 대상이
   // 아니므로 자연히 404가 된다(기존과 동일한 원칙 — 본인이 지금 보유 중인 개체만 이력 조회).
-  if (!item.inventory_id) return NextResponse.json({ error: '없음' }, { status: 404 })
+  if (!item.inventory_id) return NextResponse.json({ error: d.inventory.historyItemNotFound }, { status: 404 })
 
   const { data: invCheck, error: invCheckError } = await service
     .from('inventory')
@@ -57,10 +58,10 @@ export async function GET(
     .single()
   if (invCheckError) console.error('[api/inventory/items/[itemId]/history] inventory 소유권 확인 조회 실패', invCheckError)
 
-  if (!invCheck) return NextResponse.json({ error: '없음' }, { status: 404 })
+  if (!invCheck) return NextResponse.json({ error: d.inventory.historyItemNotFound }, { status: 404 })
 
   const ownerUserId = (invCheck as { user_id: string }).user_id
-  if (ownerUserId !== user.id) return NextResponse.json({ error: '권한 없음' }, { status: 403 })
+  if (ownerUserId !== user.id) return NextResponse.json({ error: d.inventory.historyForbidden }, { status: 403 })
 
   // 이 개체가 실제로 거쳐온 드랍/픽업 사이클 전체(반복 드랍 가능) — 오래된 순
   const { data: dropsRaw, error: dropsError } = await service
