@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { d } from '@/lib/i18n'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
@@ -20,27 +21,27 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
+    return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
   }
 
   let formData: FormData
   try {
     formData = await request.formData()
   } catch {
-    return NextResponse.json({ error: 'INVALID_REQUEST' }, { status: 400 })
+    return NextResponse.json({ error: d.profileEdit.uploadError }, { status: 400 })
   }
 
   const file = formData.get('file') as File | null
   if (!file) {
-    return NextResponse.json({ error: 'INVALID_FILE' }, { status: 400 })
+    return NextResponse.json({ error: d.profileEdit.fileTypeError }, { status: 400 })
   }
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    return NextResponse.json({ error: 'INVALID_FILE' }, { status: 400 })
+    return NextResponse.json({ error: d.profileEdit.fileTypeError }, { status: 400 })
   }
 
   if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: 'FILE_TOO_LARGE' }, { status: 400 })
+    return NextResponse.json({ error: d.profileEdit.fileSizeError }, { status: 400 })
   }
 
   const ext = extFromMime(file.type)
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
 
   if (uploadError) {
     console.error('[profile/avatar] 업로드 오류:', uploadError.message)
-    return NextResponse.json({ error: 'UPLOAD_FAILED' }, { status: 500 })
+    return NextResponse.json({ error: d.profileEdit.uploadError }, { status: 500 })
   }
 
   const {
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
 
   if (updateError) {
     console.error('[profile/avatar] DB 업데이트 오류:', updateError.message)
-    return NextResponse.json({ error: 'DB_UPDATE_FAILED' }, { status: 500 })
+    return NextResponse.json({ error: d.profileEdit.uploadError }, { status: 500 })
   }
 
   return NextResponse.json({ avatar_url: publicUrl })
