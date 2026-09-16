@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * 배지 이미지 모서리 라운드(radius 12px) + 배경 투명화 일괄 처리
- * (티켓 20260916_2251)
+ * 배지 이미지 모서리 라운드(radius 72px) + 배경 투명화 일괄 처리
+ * (티켓 20260916_2251, radius는 12→24→48→72px 순으로 샘플링해 사용자가 72px로 확정)
  *
  * 대상: "JAM! 레벨 0" 컬렉션(shader-lab, 19개) + "아스팔트 레인저" 트라이브
  *       (factions/02-01~02-10, 90개), 총 109개 배지 이미지.
  *
- * 처리 로직: 이미지를 실제 크기(w×h)로 로드 → radius 12px 라운드 사각형 SVG 마스크를
+ * 처리 로직: 이미지를 실제 크기(w×h)로 로드 → radius 72px 라운드 사각형 SVG 마스크를
  * 같은 크기로 생성 → composite(dest-in)로 마스크 바깥을 투명화 → PNG(알파 포함) 저장.
  * 이미 네 모서리가 투명 처리된 이미지는 멱등성 확보를 위해 건너뛴다.
  *
@@ -26,7 +26,7 @@ const fs = require('fs')
 const path = require('path')
 const sharp = require('sharp')
 
-const RADIUS = 12
+const RADIUS = 72
 const BUCKET = 'images'
 const SUPABASE_URL = 'https://ceehnkzdbecxwzxrhhns.supabase.co'
 
@@ -85,7 +85,7 @@ async function isAlreadyProcessed(buf) {
   })
 }
 
-/** radius 12px 라운드 사각형 마스크를 씌워 모서리 바깥을 투명화한 버퍼 반환 */
+/** radius 72px 라운드 사각형 마스크를 씌워 모서리 바깥을 투명화한 버퍼 반환 */
 async function applyRoundCornerMask(buf) {
   const img = sharp(buf)
   const { width, height } = await img.metadata()
