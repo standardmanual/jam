@@ -880,17 +880,17 @@ export const ko = {
      * 내역 행 기본 제목 — `reason` 값별 일반 라벨 (20260915_2247, `api/points/route.ts`
      * `REASON_KIND`가 참조). 배지/미션 보상은 이름 조회가 실패했을 때의 폴백으로도 쓴다.
      */
-    reasonKindBadgeReward: '배지 획득',
-    reasonKindMissionReward: '미션 완료',
+    reasonKindBadgeReward: '배지 보상',
+    reasonKindMissionReward: '미션 보상',
     /**
      * admin_grant/admin_deduct의 기본 제목. `userFacingReasonLabel()`이 구체적인 사유
      * 라벨을 못 찾았을 때만 쓰는 최종 폴백이라, 어드민 원장 용어 「지급」·「회수」(유저
      * 노출 금지, §1.3)를 쓰지 않고 방향과 무관한 중립 표현으로 통일한다.
      */
-    reasonKindAdminAdjustment: '운영자 조정',
-    reasonKindCombineFailReward: '믹스 실패',
-    reasonKindCombineRecipeReward: '믹스 성공',
-    reasonKindItemBookCompletionReward: '컬렉션 완성',
+    reasonKindAdminAdjustment: '포인트 조정',
+    reasonKindCombineFailReward: '믹스 실패 보상',
+    reasonKindCombineRecipeReward: '믹스 보상',
+    reasonKindItemBookCompletionReward: '컬렉션 완성 보상',
   },
 
   /**
