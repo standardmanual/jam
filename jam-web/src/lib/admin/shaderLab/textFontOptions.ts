@@ -40,15 +40,21 @@
  * 셈이라, **UI 범위 자체를 400~900으로 맞췄다**(원본이나 Pretendard 실제 축을 그대로 노출하지
  * 않기로 한 판단, 완료 기록 참고).
  *
- * ## 추후 폰트 추가 시
+ * ## 구글 폰트 자유 선택 (티켓 20260916_2001)
  *
- * 위에서 아직 안 쓴 슬롯(`adhesion`/`blob`/`bunker`/`caniche`/`carpenter`/`curia`/`ffflauta`/
- * `numero`/`xer0`/`trovador`/`b-mecha`/`impact`)을 골라 그 `cssVariable`을 이 파일이 하는
- * 방식대로 덮어쓰면 된다 — 단, 전부 고정 굵기 1개짜리 슬롯이라 가변 폰트를 얹어도 굵기 슬라이더
- * 자체가 의미 없어진다(패키지가 웨이트를 무조건 그 고정값으로 스냅한다). 진짜 가변 폰트를
- * 추가하려면 `sans`/`mono`/`bsmnt-grotesque` 중 하나를 재활용해야 하는데, 이미 이 3개 슬롯이
- * 전부 쓰이고 나면(sans/mono=ASCII, bsmnt-grotesque=텍스트) 더 이상 남는 range 슬롯이 없다 —
- * 이 경우 패키지 자체의 한계이므로 별도 검토가 필요하다.
+ * 위에서 아직 안 쓴 슬롯 중 `cssVariable`이 있는 11개(`adhesion`/`blob`/`bunker`/`caniche`/
+ * `carpenter`/`curia`/`ffflauta`/`numero`/`xer0`/`trovador`/`b-mecha` — 실측 확인,
+ * `impact`은 `cssVariable`이 없어 하이재킹 대상에서 제외)를 이 파일이 하는 방식대로
+ * 런타임에 동적으로 덮어써서, 사용자가 검색해 고른 임의의 구글 폰트를 텍스트 레이어에 반영한다
+ * (`useGoogleFontSlots.ts`가 레이어 ↔ 슬롯 ↔ 폰트 이름 배정을 관리, `googleFonts.ts`가 폰트
+ * 검색·CSS 로드를 담당). 전부 고정 굵기 1개짜리 슬롯이라(400) 구글 폰트는 굵기 조절이
+ * 불가능하다 — 사용자 결정으로 1차는 이 제약을 그대로 받아들이고 고정 굵기 1개로 시작한다.
+ * 동시에 쓸 수 있는 서로 다른 구글 폰트 수는 슬롯 개수(11개)로 제한된다.
+ *
+ * 진짜 가변 폰트(굵기 슬라이더가 의미 있는)를 추가하려면 `sans`/`mono`/`bsmnt-grotesque` 중
+ * 하나를 재활용해야 하는데, 이미 이 3개 슬롯이 전부 쓰이고 나면(sans/mono=ASCII,
+ * bsmnt-grotesque=Pretendard) 더 이상 남는 range 슬롯이 없다 — 이 경우 패키지 자체의
+ * 한계이므로 별도 검토가 필요하다.
  */
 
 /** 패키지가 하이재킹 대상으로 고른 슬롯의 CSS 커스텀 프로퍼티 이름. `layout.tsx`가 이 값을
@@ -78,8 +84,9 @@ export interface ShaderLabTextFontOption {
   fontWeightRange: { min: number; max: number; default: number }
 }
 
-/** JAM! 텍스트 레이어의 폰트 선택지. 현재는 Pretendard Variable 단일 옵션(사용자 결정,
- *  구글 폰트 등 추가는 범위 밖) — 배열 구조라 항목만 추가하면 선택지가 늘어난다. */
+/** JAM! 텍스트 레이어의 고정 폰트 선택지(Pretendard Variable, 배열 구조라 항목만 추가하면
+ *  선택지가 늘어난다). 구글 폰트는 고정 배열이 아니라 `googleFontsCatalog.json` 카탈로그에서
+ *  런타임에 검색해 고르므로 이 배열에 포함하지 않는다 — `ShaderLabTextFontField.tsx` 참고. */
 export const SHADER_LAB_TEXT_FONT_OPTIONS: readonly ShaderLabTextFontOption[] = [
   {
     label: 'Pretendard Variable',
@@ -89,3 +96,60 @@ export const SHADER_LAB_TEXT_FONT_OPTIONS: readonly ShaderLabTextFontOption[] = 
 ]
 
 export const SHADER_LAB_DEFAULT_TEXT_FONT = SHADER_LAB_TEXT_FONT_OPTIONS[0]
+
+/**
+ * 구글 폰트 하이재킹 대상 슬롯 11개. `cssVariable`이 있는 미사용 슬롯 전부(패키지
+ * `text-fonts.js`의 `TEXT_FONT_DEFINITIONS` 실측 대조, `impact`는 `cssVariable`이 없어 제외).
+ * 전부 `{ kind: 'fixed', weights: [400] }`라 굵기는 400 고정이다.
+ */
+export const GOOGLE_FONT_SLOT_IDS = [
+  'adhesion',
+  'blob',
+  'bunker',
+  'caniche',
+  'carpenter',
+  'curia',
+  'ffflauta',
+  'numero',
+  'xer0',
+  'trovador',
+  'b-mecha',
+] as const
+
+export type GoogleFontSlotId = (typeof GOOGLE_FONT_SLOT_IDS)[number]
+
+/** 각 슬롯이 참조하는 CSS 커스텀 프로퍼티 이름(패키지 `text-fonts.js` 실측 대조). */
+export const GOOGLE_FONT_SLOT_CSS_VARIABLES: Record<GoogleFontSlotId, string> = {
+  adhesion: '--adhesion',
+  blob: '--blob',
+  bunker: '--bunker',
+  caniche: '--caniche',
+  carpenter: '--carpenter',
+  curia: '--curia',
+  ffflauta: '--ffflauta',
+  numero: '--numero',
+  xer0: '--xer0',
+  trovador: '--trovador',
+  'b-mecha': '--b-mecha',
+}
+
+/** 구글 폰트 슬롯은 전부 고정 굵기 1개(400)뿐이다 — 연속 굵기 축이 있는 슬롯은 이미
+ *  ASCII(`sans`/`mono`)·Pretendard(`bsmnt-grotesque`)가 점유 중이라(파일 상단 주석 참고). */
+export const GOOGLE_FONT_SLOT_WEIGHT = 400
+
+export function isGoogleFontSlotId(value: string): value is GoogleFontSlotId {
+  return (GOOGLE_FONT_SLOT_IDS as readonly string[]).includes(value)
+}
+
+/** `fontFamily` 값(고정 슬롯 또는 구글 폰트 슬롯)에 맞는 굵기 UI 범위를 돌려준다 —
+ *  구글 폰트 슬롯이면 400 고정, 아니면 기존 `SHADER_LAB_DEFAULT_TEXT_FONT` 범위. */
+export function getTextFontWeightRange(fontFamilyValue: string): {
+  min: number
+  max: number
+  default: number
+} {
+  if (isGoogleFontSlotId(fontFamilyValue)) {
+    return { min: GOOGLE_FONT_SLOT_WEIGHT, max: GOOGLE_FONT_SLOT_WEIGHT, default: GOOGLE_FONT_SLOT_WEIGHT }
+  }
+  return SHADER_LAB_DEFAULT_TEXT_FONT.fontWeightRange
+}

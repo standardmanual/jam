@@ -14,13 +14,17 @@
 import { useRef } from 'react'
 import type { ShaderLabBlendMode, ShaderLabLayerConfig, ShaderLabParameterValue } from '@basementstudio/shader-lab'
 import { IconUpload } from '@tabler/icons-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import { Input } from '@/components/admin/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Switch } from '@/components/admin/ui/switch'
 import { getLayerTypeDefinition, isSupportedLayerType } from '@/lib/admin/shaderLab/effectRegistry'
 import { isFieldVisible } from '@/lib/admin/shaderLab/paramFields'
+import { SHADER_LAB_DEFAULT_TEXT_FONT, getTextFontWeightRange } from '@/lib/admin/shaderLab/textFontOptions'
 import ShaderLabParamField from './ShaderLabParamField'
+import ShaderLabTextFontField from './ShaderLabTextFontField'
+import type { GoogleFontAssignResult } from './useGoogleFontSlots'
 
 const BLEND_MODE_OPTIONS: { value: ShaderLabBlendMode; label: string }[] = [
   { value: 'normal', label: '표준' },
@@ -44,9 +48,12 @@ const BLEND_MODE_OPTIONS: { value: ShaderLabBlendMode; label: string }[] = [
 interface ShaderLabPropertiesPanelProps {
   layer: ShaderLabLayerConfig | null
   onChange: (next: ShaderLabLayerConfig) => void
+  /** 텍스트 레이어의 구글 폰트 슬롯 배정(티켓 20260916_2001, `useGoogleFontSlots.ts` 참고) —
+   *  전체 레이어를 봐야 슬롯 재사용/초과를 판단할 수 있어 `page.tsx`에서 끌어올려 받는다. */
+  assignGoogleFont: (layerId: string, family: string) => GoogleFontAssignResult
 }
 
-export default function ShaderLabPropertiesPanel({ layer, onChange }: ShaderLabPropertiesPanelProps) {
+export default function ShaderLabPropertiesPanel({ layer, onChange, assignGoogleFont }: ShaderLabPropertiesPanelProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   if (!layer) {
@@ -207,14 +214,74 @@ export default function ShaderLabPropertiesPanel({ layer, onChange }: ShaderLabP
         <div className="flex flex-col gap-4">
           {definition.fields
             .filter((field) => isFieldVisible(field, layer.params))
-            .map((field) => (
-              <ShaderLabParamField
-                key={field.key}
-                field={field}
-                value={layer.params[field.key]}
-                onChange={(value) => patchParam(field.key, value)}
-              />
-            ))}
+            .map((field) => {
+              // 텍스트 레이어의 `fontFamily`는 정적 select가 아니라 구글 폰트 검색 콤보박스로
+              // 특별 취급한다(티켓 20260916_2001, 파일 상단 import 주석 참고).
+              if (layer.type === 'text' && field.key === 'fontFamily') {
+                const fontFamilyValue = typeof layer.params.fontFamily === 'string' ? layer.params.fontFamily : field.defaultValue
+                const googleFontFamily = typeof layer.params.googleFontFamily === 'string' ? layer.params.googleFontFamily : null
+                return (
+                  <ShaderLabTextFontField
+                    key={field.key}
+                    fontFamilyValue={fontFamilyValue}
+                    googleFontFamily={googleFontFamily}
+                    onSelectPretendard={() => {
+                      const range = getTextFontWeightRange(SHADER_LAB_DEFAULT_TEXT_FONT.value)
+                      onChange({
+                        ...layer,
+                        params: {
+                          ...layer.params,
+                          fontFamily: SHADER_LAB_DEFAULT_TEXT_FONT.value,
+                          googleFontFamily: '',
+                          fontWeight: range.default,
+                        },
+                      })
+                    }}
+                    onSelectGoogleFont={(family) => {
+                      const result = assignGoogleFont(layer.id, family)
+                      if (!result.ok || !result.slotValue) {
+                        toast.error(result.errorMessage ?? '폰트를 배정하지 못했어요.')
+                        return
+                      }
+                      const range = getTextFontWeightRange(result.slotValue)
+                      onChange({
+                        ...layer,
+                        params: {
+                          ...layer.params,
+                          fontFamily: result.slotValue,
+                          googleFontFamily: family,
+                          fontWeight: range.default,
+                        },
+                      })
+                    }}
+                  />
+                )
+              }
+
+              // 텍스트 레이어의 `fontWeight` 범위는 현재 선택된 폰트 슬롯에 따라 달라진다
+              // (구글 폰트 슬롯은 400 고정 — `getTextFontWeightRange` 참고).
+              if (layer.type === 'text' && field.key === 'fontWeight' && field.type === 'number') {
+                const fontFamilyValue = typeof layer.params.fontFamily === 'string' ? layer.params.fontFamily : SHADER_LAB_DEFAULT_TEXT_FONT.value
+                const range = getTextFontWeightRange(fontFamilyValue)
+                return (
+                  <ShaderLabParamField
+                    key={field.key}
+                    field={{ ...field, min: range.min, max: range.max, defaultValue: range.default }}
+                    value={layer.params[field.key]}
+                    onChange={(value) => patchParam(field.key, value)}
+                  />
+                )
+              }
+
+              return (
+                <ShaderLabParamField
+                  key={field.key}
+                  field={field}
+                  value={layer.params[field.key]}
+                  onChange={(value) => patchParam(field.key, value)}
+                />
+              )
+            })}
         </div>
       )}
     </div>

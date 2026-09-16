@@ -506,15 +506,22 @@ const textFields: ShaderLabFieldDefinitions = [
   { key: 'offset', label: '위치 오프셋', type: 'vec2', defaultValue: [0, 0], min: -1, max: 1, step: 0.01, group: '배치' },
   { key: 'fontSize', label: '글자 크기', type: 'number', defaultValue: 48, min: 48, max: 600, step: 1, group: '글꼴' },
   {
+    // 이 필드는 `ShaderLabPropertiesPanel.tsx`가 `type: 'select'`로 그리지 않고
+    // `ShaderLabTextFontField.tsx`(구글 폰트 검색 콤보박스)로 특별 취급해 렌더링한다
+    // (티켓 20260916_2001). `options`는 그 콤보박스가 쓰지 않지만, `buildDefaultParams` 등
+    // `field.defaultValue`만 읽는 공통 로직과의 타입 호환을 위해 필드 형태는 유지한다.
     key: 'fontFamily',
     label: '폰트',
     type: 'select',
     defaultValue: SHADER_LAB_DEFAULT_TEXT_FONT.value,
     group: '글꼴',
-    description: '추후 폰트가 추가될 예정이에요(현재는 Pretendard Variable 단일 옵션).',
+    description: 'Pretendard Variable 또는 구글 폰트를 검색해 고를 수 있어요.',
     options: SHADER_LAB_TEXT_FONT_OPTIONS,
   },
   {
+    // min/max/defaultValue는 선택된 폰트에 따라 `ShaderLabPropertiesPanel.tsx`가 렌더링
+    // 시점에 `getTextFontWeightRange()`로 다시 계산해 덮어쓴다(구글 폰트 슬롯은 400 고정) —
+    // 여기 값은 기본 폰트(Pretendard Variable) 기준 초기값이다.
     key: 'fontWeight',
     label: '굵기',
     type: 'number',
