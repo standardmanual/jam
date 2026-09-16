@@ -422,6 +422,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
     return null
   })()
   const isLastPiece = item.event_type === 'item_dropped' && meta.is_last_piece === true
+  const badgeChip = BadgeChip({ item })
   // 체크인·액티비티 배지 공용 «×N». 액티비티 배지는 예전엔 poi_name이 없다는 이유로
   // 카운터가 아예 붙지 않았다(티켓 20260905_0038 ①).
   const earnCount = earnCountOf(item)
@@ -448,15 +449,17 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
       <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 line-clamp-2">{eventLabel(item)}</p>
       <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text truncate">{title}</p>
       {sub && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 truncate">{sub}</p>}
-      <span className="inline-flex items-center gap-[var(--spacing-8)] mt-1">
-        <BadgeChip item={item} />
-        {isLastPiece && (
-          <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
-            <PuzzleIcon className="w-3 h-3" />
-            {d.feed.lastPiece}
-          </span>
-        )}
-      </span>
+      {(badgeChip || isLastPiece) && (
+        <span className="inline-flex items-center gap-[var(--spacing-8)] mt-1">
+          {badgeChip}
+          {isLastPiece && (
+            <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
+              <PuzzleIcon className="w-3 h-3" />
+              {d.feed.lastPiece}
+            </span>
+          )}
+        </span>
+      )}
     </ListRowCard>
   )
 }
