@@ -1,6 +1,7 @@
 'use client'
 
 import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { d } from '@/lib/i18n'
 
 /** error.tsx 전용 경고 아이콘 — EmptyState 기본 아이콘(빈 상자)은 "결과 없음"을 뜻해
  * 여기서 쓰이는 "문제가 생겼다"는 의미와 다르므로 커스텀 아이콘을 넘긴다. */
@@ -40,9 +41,9 @@ export default function RootError({
       <div className="w-full max-w-md px-6">
         <EmptyState
           icon={<WarningIcon />}
-          title="페이지를 불러오지 못했어요"
-          description={isEnvError ? '환경변수 설정이 빠져 있어요.' : error.message}
-          action={{ label: '다시 시도', onClick: unstable_retry }}
+          title={d.common.rootErrorTitle}
+          description={isEnvError ? d.common.rootErrorEnvDescription : error.message}
+          action={{ label: d.common.rootErrorRetry, onClick: unstable_retry }}
         />
         {isEnvError && (
           <div className="text-left bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-sm mt-4">
