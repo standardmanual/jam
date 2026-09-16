@@ -39,6 +39,11 @@ export const ko = {
     /** `app/layout.tsx` SEO 메타데이터 — §2.5 예외로 명사형 종결 허용 (티켓 20260915_2237) */
     seoTitle: 'JAM!',
     seoDescription: '피지털 게이미피케이션 플랫폼',
+    /** `app/error.tsx` 루트 에러 바운더리 — 렌더 도중 발생한 미처리 예외 공통 화면 (티켓 20260915_2252) */
+    rootErrorTitle: '페이지를 불러오지 못했어요',
+    /** 환경변수 누락으로 추정될 때(SUPABASE 관련 메시지 포함)의 안내 — 그 외에는 error.message를 그대로 보여준다 */
+    rootErrorEnvDescription: '환경변수 설정이 빠져 있어요.',
+    rootErrorRetry: '다시 시도',
   },
 
   /** 바텀 탭바(글로벌 네비게이션) 라벨 */
@@ -69,7 +74,7 @@ export const ko = {
     // (배지 0개 성공 / 실패)에 연동 결과를 알려준다
     stravaConnectSuccessToast: 'Strava 동기화를 완료했어요. 앞으로 활동하면 배지를 자동 획득해요',
     stravaConnectCancelledToast: 'Strava 동기화를 취소했어요. 다시 시도하려면 동기화 버튼을 눌러주세요',
-    stravaConnectFailedToast: 'Strava 동기화에 실패했어요. 네트워크가 불안정했거나 일시적인 오류일 수 있어요. 잠시 후 다시 시도해주세요',
+    stravaConnectFailedToast: 'Strava 동기화에 실패했어요. 네트워크가 불안정했거나 일시적인 오류일 수 있어요. 잠시 후 다시 시도해 주세요',
 
     // 빈 상태 (본인 시점 — 2인칭 행동 유도)
     emptyBadges: '아직 획득한 배지가 없어요',
@@ -188,7 +193,7 @@ export const ko = {
     // Strava 동기화 상태 카드
     syncButton: '동기화',
     syncDone: '동기화 완료',
-    syncFailed: '동기화 실패. 잠시 후 다시 시도해주세요',
+    syncFailed: '동기화 실패. 잠시 후 다시 시도해 주세요',
 
     // 유저 검색
     searchPlaceholder: '아이디 또는 이메일로 유저 검색',
@@ -335,18 +340,18 @@ export const ko = {
     shareActionDownload: '저장하기',
     shareImageLoading: '공유 이미지를 준비하고 있어요',
     shareSaveSuccess: '이미지를 저장했어요',
-    shareSaveError: '이미지를 저장하지 못했어요. 잠시 후 다시 시도해주세요',
+    shareSaveError: '이미지를 저장하지 못했어요. 잠시 후 다시 시도해 주세요',
     shareSaveIOSHint: '곧 열리는 공유 시트에서 \'저장\'을 눌러주세요',
     shareErrorStravaDisconnectedTitle: 'Strava 동기화가 끊겼어요',
     shareErrorStravaDisconnectedBody: '페이스·시간 데이터를 다시 가져오려면 Strava를 다시 동기화해야 해요',
     shareErrorNoTriggerTitle: '이 배지는 공유 이미지를 만들 수 없어요',
     shareErrorNoTriggerBody: '연결된 Strava 활동 기록이 없어 거리·페이스 정보를 채울 수 없어요',
     shareErrorFetchFailedTitle: '지금은 이미지를 만들 수 없어요',
-    shareErrorFetchFailedBody: '잠시 후 다시 시도해주세요',
+    shareErrorFetchFailedBody: '잠시 후 다시 시도해 주세요',
     shareErrorActivityNotFoundTitle: 'Strava에서\n기록을 확인할 수 없어요.',
     shareErrorActivityNotFoundBody: '활동이 삭제되지 않았는지\n확인해보세요.',
     shareErrorUnknownTitle: '이미지를 만들지 못했어요',
-    shareErrorUnknownBody: '잠시 후 다시 시도해주세요',
+    shareErrorUnknownBody: '잠시 후 다시 시도해 주세요',
 
     notEarnedTitle: '아직 획득하지 못한 배지예요',
     notEarnedBody: '조건을 달성하면 자동으로 획득돼요',
@@ -508,7 +513,7 @@ export const ko = {
     // 20260826_002 후속: 반경을 '50m'로 하드코딩하고 있었으나 실제 DROP_RADIUS_METERS는 500이다.
     // 바로 아래 noNearbyPlaces가 이미 '500m'라 같은 블록 안에서 값이 어긋나 있었다.
     // 문구에 숫자를 박지 말고 상수를 주입한다({m}).
-    outOfRange: '{name}까지 {distance}m — {m}m 이내로 이동하면 드랍/픽업할 수 있어요',
+    outOfRange: '{name}까지 {distance}m 남았어요. {m}m 이내로 이동하면 드랍/픽업할 수 있어요',
     exploring: '주변 탐색 중',
     noNearbyPlaces: '주변 {m}m에 드랍/픽업할 수 있는 지점이 없어요',
     moveCloser: '지점에서 {m}m 이내로 가면 드랍/픽업할 수 있어요',
@@ -679,7 +684,7 @@ export const ko = {
     joinNote: '참가 후에는 취소할 수 없어요',
     joinSuccess: '미션에 참가했어요',
     joinError: '오류가 발생했어요',
-    joinNetworkError: '네트워크 오류가 발생했어요. 다시 시도해주세요',
+    joinNetworkError: '네트워크 오류가 발생했어요. 다시 시도해 주세요',
     /** 참가 전 CTA 버튼(티켓 20260915_2244) */
     joinButton: '참가하기',
     /** 완료 후 종료된 미션의 비활성 CTA 버튼(티켓 20260915_2244) */
@@ -700,8 +705,8 @@ export const ko = {
   auth: {
     wordmark: 'JAM!',
     googleLogin: '구글로 시작하기',
-    errorFailed: '로그인에 실패했어요. 다시 시도해주세요.',
-    errorGeneric: '오류가 발생했어요. 잠시 후 다시 시도해주세요.',
+    errorFailed: '로그인에 실패했어요. 다시 시도해 주세요.',
+    errorGeneric: '오류가 발생했어요. 잠시 후 다시 시도해 주세요.',
     terms: '계속하면 JAM!의 이용약관 및 개인정보처리방침에 동의하는 것으로 간주돼요.',
     devLogin: '테스트 로그인 (개발 전용)',
     /** `/api/strava/sync` 수동 동기화 500 오류 (ADR 0001 — API route가 직접 참조) */
@@ -978,10 +983,10 @@ export const ko = {
     sectionEarlier: '이전',
     emptyTitle: '아직 도착한 소식이 없어요',
     emptyBody: '배지를 획득하거나 누군가 내 드랍을 픽업하면 여기에 쌓여요',
-    loadError: '소식을 불러오지 못했어요. 잠시 후 다시 시도해주세요',
+    loadError: '소식을 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
     /** 첫 페이지 조회 자체가 실패했을 때 — "소식 0건"과 반드시 구분해서 보여준다 */
     errorTitle: '소식을 불러오지 못했어요',
-    errorBody: '연결 상태를 확인하고 다시 시도해주세요',
+    errorBody: '연결 상태를 확인하고 다시 시도해 주세요',
     /** POST /api/notifications/seen 실패 응답 — 클라이언트는 이 값을 화면에 노출하지 않고
      *  조용히 재시도 대상으로만 삼는다(NotificationsClient). ADR 0001에 따라 서버가
      *  완성된 문구로 내려보낸다 */
@@ -1184,6 +1189,13 @@ export const ko = {
     paginationAriaLabel: '페이지 이동',
     paginationPrev: '이전',
     paginationNext: '다음',
+    /**
+     * 문의 상태 표시 라벨 (티켓 20260915_2252) — api/voc/route.ts가 이 값을 참조해
+     * 화면에 노출할 status 필드를 완성한다. Google Sheets 원본 데이터값(ANSWERED_STATUS
+     * 매칭 로직)과는 별개이며, 이 라벨은 표시 전용이다.
+     */
+    statusAnswered: '답변완료',
+    statusPending: '문의중',
   },
 } as const
 
