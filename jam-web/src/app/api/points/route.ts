@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { getWallet, listTransactions } from '@/lib/points'
 import { userFacingReasonLabel } from '@/lib/points/reasons'
 import type { PointTransactionRow } from '@/types/database'
+import { d } from '@/lib/i18n'
 
 /** 포인트 내역 화면이 렌더링할 항목 (사유 라벨 + 관련 배지/미션 링크 포함) */
 export interface PointHistoryItem {
@@ -19,13 +20,16 @@ export interface PointHistoryItem {
 }
 
 const REASON_KIND: Record<PointTransactionRow['reason'], string> = {
-  badge_point_reward: '배지 보상',
-  mission_point_reward: '미션 보상',
-  admin_grant: '운영자 지급',
-  admin_deduct: '운영자 회수',
-  combine_fail_reward: '믹스 실패 보상',
-  combine_recipe_reward: '믹스 보상',
-  item_book_completion_point_reward: '컬렉션 완성 보상',
+  badge_point_reward: d.points.reasonKindBadgeReward,
+  mission_point_reward: d.points.reasonKindMissionReward,
+  // 유저 노출 화면이므로 어드민 원장 용어(「지급」·「회수」)를 쓰지 않는다 —
+  // UX_WRITING_GUIDELINE §1.3. userFacingReasonLabel()이 구체적인 사유를 찾으면
+  // 아래 title 계산에서 이 값을 덮어쓴다(admin_grant/admin_deduct 분기 참고).
+  admin_grant: d.points.reasonKindAdminAdjustment,
+  admin_deduct: d.points.reasonKindAdminAdjustment,
+  combine_fail_reward: d.points.reasonKindCombineFailReward,
+  combine_recipe_reward: d.points.reasonKindCombineRecipeReward,
+  item_book_completion_point_reward: d.points.reasonKindItemBookCompletionReward,
 }
 
 export async function GET(req: NextRequest) {
@@ -33,7 +37,7 @@ export async function GET(req: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
 
   const cursor = req.nextUrl.searchParams.get('cursor')
 
@@ -66,14 +70,14 @@ export async function GET(req: NextRequest) {
     let href: string | null = null
 
     if (t.reason === 'badge_point_reward' && t.source_badge_id) {
-      title = badgeName.get(t.source_badge_id) ?? '배지 보상'
+      title = badgeName.get(t.source_badge_id) ?? d.points.reasonKindBadgeReward
       href = `/badges/${t.source_badge_id}`
     } else if (t.reason === 'mission_point_reward' && t.source_mission_id) {
-      title = missionTitle.get(t.source_mission_id) ?? '미션 보상'
+      title = missionTitle.get(t.source_mission_id) ?? d.points.reasonKindMissionReward
       href = `/missions/${t.source_mission_id}`
     } else if (t.reason === 'admin_grant' || t.reason === 'admin_deduct') {
       // 유저 노출 화면이므로 어드민 원장 라벨(「지급」·「회수」 포함)을 쓰지 않는다 —
-      // UX_WRITING_GUIDELINE §1-3. 라벨이 없으면 기존 기본 제목을 유지한다.
+      // UX_WRITING_GUIDELINE §1.3. 라벨이 없으면 기존 기본 제목(중립 표현)을 유지한다.
       title = userFacingReasonLabel(t.admin_reason_label) ?? title
     }
 
