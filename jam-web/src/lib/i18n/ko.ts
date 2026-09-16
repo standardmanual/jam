@@ -549,7 +549,7 @@ export const ko = {
     // 20260826_002 후속: 반경을 '50m'로 하드코딩하고 있었으나 실제 DROP_RADIUS_METERS는 500이다.
     // 바로 아래 noNearbyPlaces가 이미 '500m'라 같은 블록 안에서 값이 어긋나 있었다.
     // 문구에 숫자를 박지 말고 상수를 주입한다({m}).
-    outOfRange: '{name}까지 {distance}m 남았어요. {m}m 이내로 이동하면 드랍/픽업할 수 있어요.',
+    outOfRange: '{name}까지 {distance}m 남았어요. {m}m 이내로 이동하면 드랍하거나 픽업할 수 있어요.',
     exploring: '주변 탐색 중',
     noNearbyPlaces: '주변 {m}m에 드랍/픽업할 수 있는 지점이 없어요',
     moveCloser: '지점에서 {m}m 이내로 가면 드랍/픽업할 수 있어요',

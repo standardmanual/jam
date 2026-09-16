@@ -2,9 +2,9 @@
 id: 20260916_2244
 category: Content
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-16
-closed:
+closed: 2026-09-16
 ---
 
 # [Content] drops.outOfRange "드랍/픽업" 슬래시 잔존
@@ -41,3 +41,42 @@ outOfRange: '{name}까지 {distance}m 남았어요. {m}m 이내로 이동하면 
 
 ## 구현 계획
 - `ko.ts`의 `outOfRange` 값만 수정한다(호출부 로직 변경 불필요, 문구만 조정).
+
+---
+## 완료 기록
+
+### 구현 내용 요약
+호출부(`DropsClient.tsx`의 `handlePoiSelect`)를 확인한 결과, 이 문구는 `poi.in_drop_range`
+가 `false`일 때 한 가지 경우에만 뜬다. POI 데이터 모델(`PoiBadgeMarker`)에는 "드랍 전용/
+픽업 전용"을 구분하는 별도 필드가 없다 — 이 화면은 드랍과 픽업을 한 지도에서 함께 다루는
+통합 화면이라, 반경 안에 들어가면 그 POI에서 드랍할 수도 픽업할 수도 있다. 즉 "드랍/픽업"은
+어느 한쪽이 아니라 두 행위 모두를 아우르려던 의도였음을 확인했다.
+
+`outOfRange`를 `'{name}까지 {distance}m 남았어요. {m}m 이내로 이동하면
+드랍/픽업할 수 있어요.'` → `'{name}까지 {distance}m 남았어요. {m}m 이내로 이동하면
+드랍하거나 픽업할 수 있어요.'`로 교정했다(슬래시를 접속사 "~하거나"로 풀어씀).
+
+### 변경된 파일
+```
+jam-web/src/lib/i18n/ko.ts
+```
+
+### 테스트 결과
+- [x] `npx eslint jam-web/src/lib/i18n/ko.ts` 통과 (변경 파일 단독 실행, 경미 수정 기준)
+- [x] 값 교체 후 grep 대조로 구 문자열 잔존 없음 확인
+
+### UX Writing 검증
+- [x] 표기 규칙: 슬래시 병기를 접속사로 풀어씀(§3)
+- [x] 톤앤매너/문장 규칙: 기존 문장 구조 유지, 해당 부분만 교정
+
+### 배포 정보
+- 배포일: 2026-09-16 (staging 직접 커밋)
+- 환경: staging
+- 커밋: 이 커밋 참조
+
+### 주요 의사결정 / 핵심 메모
+- `/jam-work` 0.1절 "경미 수정" 기준(변경 파일 1개, diff 1줄, 원인-결과 1:1 명확)에
+  해당해 Workflow 파이프라인 없이 오케스트레이터가 직접 처리했다.
+
+### 잔여 이슈
+- 없음
