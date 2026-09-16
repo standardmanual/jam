@@ -143,14 +143,14 @@ export default function BadgeGridCard({
         )}
       </div>
       <div className="flex flex-col items-center gap-[var(--spacing-4)] pt-[var(--spacing-8)] w-full">
-        <p className="text-[13px] font-bold text-text text-center line-clamp-2 w-full leading-tight">
+        <p className="text-[length:var(--text-small)] font-bold text-text text-center line-clamp-2 w-full leading-tight">
           {undiscovered ? '???' : name}
         </p>
         {/* ×N은 aria-hidden이라 보조기술에는 이 문장만이 횟수를 전달한다 */}
         {showCount && (
           <span className="sr-only">{countAriaText ?? t(d.badges.earnCountAria, { count: String(count) })}</span>
         )}
-        {!undiscovered && (level != null ? <BadgeLevelChip level={level} /> : <RarityBadge rarity={rarity ?? undefined} />)}
+        {!undiscovered && (level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={rarity ?? undefined} size="md" />)}
       </div>
       {children && <div className="w-full mt-[var(--spacing-4)]">{children}</div>}
     </>
