@@ -935,22 +935,23 @@ export const ko = {
     followButton: '팔로우',
     followingButton: '팔로잉',
     /**
-     * 유저 프로필(`[username]/page.tsx`) SEO 메타데이터 title 템플릿 (티켓 20260915_2249).
-     * §7.3 엠대시 금지 — `notifications/page.tsx`가 쓰는 `— JAM!` 접미 관례는 같은 위반이라
-     * 그대로 따르지 않고 파이프(|) 구분자로 새로 정한다.
+     * 유저 프로필(`[username]/page.tsx`) SEO 메타데이터 title 템플릿 (티켓 20260915_2249,
+     * 20260916_1010에서 구분자 정정). §7.3 엠대시 금지는 유저가 읽는 화면 문구 대상이고
+     * SEO 메타데이터(§2.5)는 예외라, 같은 자리를 쓰는 `notifications/page.tsx`의
+     * `— JAM!` 관례를 그대로 따른다 — 화면마다 구분자가 갈라지지 않도록 통일.
      */
-    profileTitle: '{username} | JAM!',
+    profileTitle: '{username} — JAM!',
     /**
      * ADR 0001 — API route(`api/follows/route.ts`)가 직접 참조해 완성한 문구를 그대로
      * 반환한다. §2.4 "소셜 액션 vs 되돌릴 수 없는 확정" 원칙대로 팔로우/언팔로우 실패는
-     * 담담한 톤으로 짧게 재시도를 안내한다(티켓 20260915_2249).
+     * 담담한 톤으로 짧게 재시도를 안내한다(티켓 20260915_2249, 20260916_1010에서 톤 정정).
      */
-    followError: '지금은 팔로우할 수 없어요. 잠시 후 다시 시도해 주세요.',
-    unfollowError: '지금은 언팔로우할 수 없어요. 잠시 후 다시 시도해 주세요.',
+    followError: '팔로우가 안 됐어요. 잠시 뒤에 다시 눌러 주세요.',
+    unfollowError: '언팔로우가 안 됐어요. 잠시 뒤에 다시 눌러 주세요.',
     /** 자기 자신 팔로우 방지 — DB CHECK와 이중 검증된 방어적 케이스 */
-    selfFollowError: '자기 자신은 팔로우할 수 없어요',
+    selfFollowError: '나를 팔로우할 수는 없어요',
     /** `api/users/[username]/followers|following` — 대상 유저를 찾지 못한 경우 */
-    userNotFound: '이 유저를 찾을 수 없어요',
+    userNotFound: '찾는 프로필이 없어요',
   },
 
   /** 아이템북 목록/상세 */
