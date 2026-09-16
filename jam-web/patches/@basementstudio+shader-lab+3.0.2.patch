@@ -551,7 +551,7 @@ index 0000000..5b5d585
 +    };
 +}
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/media-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/media-pass.js
-index dfa5260..f727dca 100644
+index dfa5260..ae30783 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/media-pass.js
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/media-pass.js
 @@ -20,7 +20,7 @@ export class MediaPass extends PassNode {
@@ -575,7 +575,28 @@ index dfa5260..f727dca 100644
          this.scaleUniform.value =
              typeof params.scale === "number" ? 1 / Math.max(params.scale, 0.01) : 1;
          if (Array.isArray(params.offset) && params.offset.length === 2) {
-@@ -128,7 +131,7 @@ export class MediaPass extends PassNode {
+@@ -120,7 +123,19 @@ export class MediaPass extends PassNode {
+         const useContain = this.fitModeUniform;
+         const scaleX = mix(coverScaleX, containScaleX, useContain);
+         const scaleY = mix(coverScaleY, containScaleY, useContain);
+-        const sampledUv = vec2(centeredUv.x.div(scaleX).sub(this.offsetXUniform).add(0.5), centeredUv.y.div(scaleY).sub(this.offsetYUniform).add(0.5));
++        // 티켓 20260916_1956 — 오프셋 슬라이더(-1~1)를 실제 uv 이동량으로 그대로 쓰면
++        // scale(확대/축소)이 1이 아니거나 scaleX/scaleY(레터박스)가 1이 아닐 때 슬라이더
++        // 끝(±1)에 도달해도 이미지가 캔버스 가장자리까지 이동하지 못한다. 슬라이더 끝값이
++        // "텍스처 가장자리가 캔버스 가장자리에 닿는 지점"이 되도록, 현재 scale·scaleX/scaleY
++        // 기준으로 동적 계수(maxOffset)를 구해 사용자 입력에 곱한다. maxOffset은
++        // "sampledUv=1이 되는 데 필요한 offset 값"을 그대로 구한 것이라, 사용자 입력이
++        // ±1일 때 정확히 캔버스 양 끝에 대응하고 부호도 자동으로 맞는다(대칭이므로 반대편
++        // 끝은 -maxOffset과 같다).
++        const maxOffsetX = float(0.5).mul(this.scaleUniform).div(scaleX).sub(float(0.5));
++        const maxOffsetY = float(0.5).mul(this.scaleUniform).div(scaleY).sub(float(0.5));
++        const effectiveOffsetX = this.offsetXUniform.mul(maxOffsetX);
++        const effectiveOffsetY = this.offsetYUniform.mul(maxOffsetY);
++        const sampledUv = vec2(centeredUv.x.div(scaleX).sub(effectiveOffsetX).add(0.5), centeredUv.y.div(scaleY).sub(effectiveOffsetY).add(0.5));
+         const safeUv = clamp(sampledUv, vec2(0, 0), vec2(1, 1));
+         this.mediaTextureNode = tslTexture(this.placeholder, safeUv);
+         const inBounds = sampledUv.x
+@@ -128,7 +143,7 @@ export class MediaPass extends PassNode {
              .and(sampledUv.x.lessThanEqual(1))
              .and(sampledUv.y.greaterThanEqual(0))
              .and(sampledUv.y.lessThanEqual(1));
