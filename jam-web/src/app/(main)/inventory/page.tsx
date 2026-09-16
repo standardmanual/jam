@@ -88,7 +88,7 @@ export default async function InventoryPage() {
             className="mt-[var(--spacing-12)] rounded-[var(--radius-card)] px-[var(--spacing-16)] py-[var(--spacing-12)] bg-surface-elevated"
           >
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text">
-              {d.inventory.fullNoticeBody}
+              {t(d.inventory.fullNoticeBody, { max: maxSlots })}
             </p>
             <Link
               href="/drops"

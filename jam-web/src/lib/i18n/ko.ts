@@ -461,14 +461,18 @@ export const ko = {
     title: '인벤토리',
     combineButton: '믹스하기',
     // §1.3 "인벤토리" 항목 — 내부 명칭 「슬롯」은 사용자 노출 화면에 쓰지 않는다 (티켓 20260915_2243)
-    slotsDetail: '{used} / {max}개 사용 중 · {remaining}개 남음',
+    // 20260916_0844: 슬래시 앞뒤 공백 제거(§3 표기 규칙, "Lv.3" 등과 통일)
+    slotsDetail: '{used}/{max}개 사용 중 · {remaining}개 남음',
     emptyTitle: '아직 아이템이 없어요',
     emptyBody: '활동을 완료하면 아이템 배지가 드랍돼요',
 
     // 포화 안내 (20260912_1940): 인벤토리가 가득 찬 동안 드랍이 스킵되는 상황을
     // [현상 → 원인 → 해결책] 구조로 즉시 안내한다.
+    // 20260916_0844: "가득 찼어요"는 §1.3 고정 용어 "꽉 찼어요"와 어긋났다 → 통일.
+    // [원인] 자리에 [결과]가 들어가 있던 것을 실제 보관 한도({max})로 교체하고, 시스템 동작을
+    // 가리키는 자리에서 "드랍"의 이중 의미(시스템 드랍 vs 유저 드랍 행위)를 제거했다.
     fullNoticeBody:
-      '인벤토리가 가득 찼어요. 이 상태에서는 활동을 동기화해도 새 아이템 배지가 드랍되지 않아요. 드랍하기를 눌러 자리를 비워보세요.',
+      '인벤토리가 꽉 찼어요. {max}개까지만 보관할 수 있어서, 지금 활동을 동기화해도 새 아이템 배지를 받을 수 없어요. 아이템을 드랍해 자리를 비워 주세요.',
     fullNoticeCta: '드랍하기',
 
     obtainMethod: '획득 방법',
@@ -493,12 +497,21 @@ export const ko = {
     eventDropped: '지점 드랍',
     eventPickedUp: '지점 픽업',
 
-    /** ADR 0001 — /api/inventory/items GET 500 응답 (티켓 20260915_2243) */
-    fetchFailed: '인벤토리 아이템을 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
-    /** ADR 0001 — /api/inventory/items/[itemId]/history GET 404 응답(아이템·소유 인벤토리 없음) */
-    historyItemNotFound: '이 아이템을 찾을 수 없어요',
-    /** ADR 0001 — /api/inventory/items/[itemId]/history GET 403 응답(다른 사용자의 아이템) */
-    historyForbidden: '이 아이템의 이력을 볼 수 없어요',
+    /**
+     * ADR 0001 — /api/inventory/items GET 500 응답 (티켓 20260915_2243)
+     * 20260916_0844: [원인]이 빠져 있던 것을 보완 + 마침표 추가(§3 표기 규칙)
+     */
+    fetchFailed: '인벤토리를 불러오지 못했어요. 연결이 잠깐 끊겼을 수 있어요.',
+    /**
+     * ADR 0001 — /api/inventory/items/[itemId]/history GET 404 응답(아이템·소유 인벤토리 없음)
+     * 20260916_0844: [원인]이 빠져 있던 것을 보완
+     */
+    historyItemNotFound: '이 아이템을 더 이상 볼 수 없어요. 만료됐거나 다른 유저에게 갔을 수 있어요.',
+    /**
+     * ADR 0001 — /api/inventory/items/[itemId]/history GET 403 응답(다른 사용자의 아이템)
+     * 20260916_0844: "이력"→"기록"으로 용어 통일(historyEmptyBody와 일치)
+     */
+    historyForbidden: '이 아이템의 기록은 주인만 볼 수 있어요',
   },
 
   /**
