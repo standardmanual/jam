@@ -1175,9 +1175,12 @@ export const ko = {
     severityLabel: '심각도 {severity}/5',
     answerLabel: '답변',
     loading: '불러오는 중',
-    loadError: '문의 내역을 불러오지 못했어요. 잠시 후 다시 시도해주세요',
+    // ADR 0001 — API route(api/voc/route.ts)가 이 문구를 그대로 응답에 담아 완성하고,
+    // 클라이언트는 서버 메시지가 없을 때(네트워크 단절 등)의 최종 폴백으로만 재사용한다
+    // (티켓 20260915_2251).
+    loadFailed: '문의 내역을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
     emptyTitle: '아직 등록된 문의가 없어요',
-    emptyBody: '문의하기 버튼을 눌러 첫 문의를 남겨보세요',
+    emptyBody: '문의하기 버튼을 눌러 첫 문의를 남겨 보세요',
     paginationAriaLabel: '페이지 이동',
     paginationPrev: '이전',
     paginationNext: '다음',

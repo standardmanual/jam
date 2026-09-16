@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { fetchSheetValues } from '@/lib/googleSheets'
+import { d } from '@/lib/i18n'
 
 /**
  * VOC CS 게시판 피드 API (티켓 20260828_1921).
@@ -81,7 +82,9 @@ export async function GET(req: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // ADR 0001 — 서버가 완성한 문구를 반환한다. authRequired 값 자체는 티켓
+  // 20260916_0904에서 별도로 손보는 중이라 여기서는 참조만 한다(티켓 20260915_2251).
+  if (!user) return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
 
   const { searchParams } = req.nextUrl
   const sort: VocSortKey = searchParams.get('sort') === 'answered' ? 'answered' : 'latest'
@@ -127,7 +130,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ items, page, totalPages, totalCount })
   } catch (err) {
+    // ADR 0001 — 원인은 서버 로그에만 남기고, 클라이언트에는 딕셔너리로 완성한 문구만 내려준다.
     console.error('[api/voc] Google Sheets 조회 실패', err)
-    return NextResponse.json({ error: 'fetch_failed' }, { status: 502 })
+    return NextResponse.json({ error: d.voc.loadFailed }, { status: 502 })
   }
 }
