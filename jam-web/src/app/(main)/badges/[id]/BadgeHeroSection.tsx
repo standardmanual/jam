@@ -107,7 +107,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
               미지 값을 그리지 않으므로(티켓 20260905_0036) 그대로 넘기면 **칩이 조용히
               사라진다** — 상세 화면에서 등급/레벨을 알 수 없게 된다.
               `BadgeTrophyGridCard.tsx:119`가 같은 분기를 쓴다(티켓 20260905_0037). */}
-          {badge.level != null ? <BadgeLevelChip level={badge.level} /> : <RarityBadge rarity={badge.rarity ?? undefined} />}
+          {badge.level != null ? <BadgeLevelChip level={badge.level} size="md" /> : <RarityBadge rarity={badge.rarity ?? undefined} />}
           <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badge.name}</h1>
         </div>
       </div>
