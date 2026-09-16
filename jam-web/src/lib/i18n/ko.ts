@@ -28,8 +28,10 @@ export const ko = {
     back: '뒤로',
     countItems: '{count}개',
     networkError: '네트워크 오류가 발생했어요',
-    /** 서버 API의 401 인증 필요 응답 — ADR 0001, 티켓 20260915_2238에서 badges 라우트가 먼저 참조한다 */
-    authRequired: '인증이 필요해요',
+    /** 서버 API의 401 인증 필요 응답 — ADR 0001, 티켓 20260915_2238에서 badges 라우트가 먼저 참조한다.
+     * 배지·컬렉션/아이템북·조합·알림·인벤토리·미션·포인트·프로필·검색·VOC 등 여러 도메인 route가 공유하는
+     * 단일 진실 소스 — 값 교정은 이 키만 고치면 전체에 반영된다 (티켓 20260916_0904) */
+    authRequired: '로그인이 필요해요. 다시 로그인해 주세요',
     footerSlogan: 'JAM!은 삐끗할 때도 있습니다.\n하지만 곧 바로 잡습니다.',
     footerPhilosophy: 'Philosophy',
     footerPrivacy: '개인정보처리방침',
