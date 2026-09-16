@@ -783,7 +783,7 @@ export const ko = {
     /** `StravaStatusCard` 미연동 상태 — 조사 결과 현재 어디서도 렌더되지 않는 고아 컴포넌트지만
      *  하드코딩 제거 대상이라 편입한다 (티켓 20260915_2246). 톤 교정은 20260916_0917 */
     stravaNotConnectedTitle: '아직 Strava를 동기화하지 않았어요',
-    stravaConnectPrompt: 'Strava를 동기화하면 달린 기록으로 액티비티배지를 획득할 수 있어요',
+    stravaConnectPrompt: 'Strava를 동기화하면 활동 기록으로 액티비티배지를 획득할 수 있어요',
     stravaConnectButton: 'Strava 동기화하기',
     stravaConnectedTitle: 'Strava와 동기화하고 있어요',
     stravaLastSyncedLabel: '마지막 동기화',
