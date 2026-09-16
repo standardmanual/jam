@@ -185,7 +185,7 @@ export default function VocPage() {
             <EmptyState
               icon={<InboxIcon className="w-8 h-8" />}
               title={error}
-              action={{ label: d.voc.reload, onClick: () => { setError(null); setData(null); setRetryKey((k) => k + 1) } }}
+              action={{ label: d.voc.retry, onClick: () => { setError(null); setData(null); setRetryKey((k) => k + 1) } }}
             />
           )}
 
