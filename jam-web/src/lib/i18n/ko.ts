@@ -1063,10 +1063,13 @@ export const ko = {
     /** 첫 페이지 조회 자체가 실패했을 때 — "소식 0건"과 반드시 구분해서 보여준다 */
     errorTitle: '소식을 불러오지 못했어요',
     errorBody: '연결 상태를 확인하고 다시 시도해 주세요',
+    /** GET /api/notifications(더 불러오기) 실패 응답 — 서버가 완성 문구로 내려보낸다.
+     *  화면 제목용 errorTitle/errorBody와는 역할이 달라 별도 키로 둔다(티켓 20260916_0905) */
+    fetchFailed: '소식을 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
     /** POST /api/notifications/seen 실패 응답 — 클라이언트는 이 값을 화면에 노출하지 않고
      *  조용히 재시도 대상으로만 삼는다(NotificationsClient). ADR 0001에 따라 서버가
      *  완성된 문구로 내려보낸다 */
-    markSeenError: '읽음 처리에 실패했어요',
+    markSeenError: '읽음 표시를 저장하지 못했어요',
     retry: '다시 시도',
     loadingMore: '불러오는 중',
     /** ⑧ 계정·시스템 경고 아이콘의 스크린리더 라벨 */
