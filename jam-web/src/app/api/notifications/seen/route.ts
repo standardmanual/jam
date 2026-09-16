@@ -13,16 +13,17 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { markNotificationsSeen } from '@/lib/notifications/feed'
+import { d } from '@/lib/i18n'
 
 export async function POST() {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
 
   const ok = await markNotificationsSeen(user.id)
-  if (!ok) return NextResponse.json({ error: '읽음 처리 실패' }, { status: 500 })
+  if (!ok) return NextResponse.json({ error: d.notifications.markSeenError }, { status: 500 })
 
   return NextResponse.json({ ok: true })
 }
