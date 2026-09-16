@@ -6,6 +6,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { createNotification, dailyGroupKey } from '@/lib/notifications'
 import { evaluateUsageBadges } from '@/lib/badge-engine/usageBadges'
 import { buildEarnedBadgePayload, notifyActivityBadgesEarned, type EarnedBadgeSummary } from '@/lib/strava/sync'
+import { d } from '@/lib/i18n'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -13,20 +14,22 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // ADR 0001 — 서버가 완성한 문구를 반환한다. authRequired 값 자체는 티켓 20260916_0904에서
+  // 별도로 손보는 중이라 여기서는 참조만 한다(티켓 20260915_2249).
   if (!user) {
-    return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
+    return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
   }
 
   const body = (await request.json().catch(() => ({}))) as { target_user_id?: string }
   const targetUserId = body.target_user_id
 
   if (!targetUserId) {
-    return NextResponse.json({ error: 'MISSING_TARGET' }, { status: 400 })
+    return NextResponse.json({ error: d.social.followError }, { status: 400 })
   }
 
   // 자기 자신 팔로우 방지 (DB CHECK와 이중 검증)
   if (targetUserId === user.id) {
-    return NextResponse.json({ error: 'SELF_FOLLOW' }, { status: 400 })
+    return NextResponse.json({ error: d.social.selfFollowError }, { status: 400 })
   }
 
   const { error } = await supabase
@@ -39,7 +42,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, already: true })
     }
     console.error('[follows] insert 오류:', error.message)
-    return NextResponse.json({ error: 'SERVER_ERROR' }, { status: 500 })
+    return NextResponse.json({ error: d.social.followError }, { status: 500 })
   }
 
   // 소식 #26(팔로우) — 티켓 20260824_019 → 20260827_014
