@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow } from '@/types/database'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
+import { d } from '@/lib/i18n'
 
 interface UserSearchResult {
   id: string
@@ -17,8 +18,10 @@ export async function GET(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // ADR 0001 — 서버가 완성한 문구를 반환한다. authRequired 값 자체는 티켓 20260916_0904에서
+  // 별도로 손보는 중이라 여기서는 참조만 한다(티켓 20260915_2250).
   if (!user) {
-    return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
+    return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
   }
 
   // 2. 검색어 전처리: trim → 2자 미만 빈 결과 → ilike 와일드카드(%, _) 제거
@@ -49,7 +52,9 @@ export async function GET(req: NextRequest) {
     .limit(30)
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    // ADR 0001 — 원인은 서버 로그에만 남기고, 클라이언트에는 딕셔너리로 완성한 문구만 내려준다.
+    console.error('[api/users/search] 유저 검색 조회 실패', error)
+    return NextResponse.json({ error: d.search.searchFailed }, { status: 500 })
   }
 
   // 4. 정렬: 정확 일치(lower(username) == lower(q)) 우선 → username 오름차순
