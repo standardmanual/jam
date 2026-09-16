@@ -414,8 +414,9 @@ export default function MissionDetailClient({
                   >
                     {d.drops.cancel}
                   </Button>
+                  {/* 20260916_0856: 참가 처리 중에는 joinButtonPending("참가하는 중")으로 라벨 교체 */}
                   <Button fullWidth loading={loading} onClick={handleJoin}>
-                    {d.missions.joinConfirmButton}
+                    {loading ? d.missions.joinButtonPending : d.missions.joinConfirmButton}
                   </Button>
                 </div>
               </div>
