@@ -41,8 +41,11 @@ export const ko = {
     seoDescription: '피지털 게이미피케이션 플랫폼',
     /** `app/error.tsx` 루트 에러 바운더리 — 렌더 도중 발생한 미처리 예외 공통 화면 (티켓 20260915_2252) */
     rootErrorTitle: '페이지를 불러오지 못했어요',
-    /** 환경변수 누락으로 추정될 때(SUPABASE 관련 메시지 포함)의 안내 — 그 외에는 error.message를 그대로 보여준다 */
-    rootErrorEnvDescription: '환경변수 설정이 빠져 있어요.',
+    /** 환경변수 누락으로 추정될 때(SUPABASE 관련 메시지 포함)의 안내 */
+    rootErrorEnvDescription: '환경변수 설정이 빠져 있어요',
+    /** 그 외 일반 예외 — §4.0에 따라 원본 error.message(로그성 문자열)를 화면에 노출하지 않는다.
+     * 개발 환경에서는 화면 하단 디버그 패널에 원문을 별도로 보여준다(티켓 20260916 한국어 리뷰 B3) */
+    rootErrorDescription: '다시 시도하면 정상적으로 열릴 수 있어요',
     rootErrorRetry: '다시 시도',
   },
 
