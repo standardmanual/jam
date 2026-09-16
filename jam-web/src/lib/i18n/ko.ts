@@ -697,7 +697,7 @@ export const ko = {
     /** ADR 0001 — /api/missions/[id]/status GET 403 응답(미참가자의 상황 조회)
      * 20260916_0856: §1.2 위반("유저") 제거, 1인칭 시점 재작성 + 3단계 구조. CTA "참가하기"는
      * 이 응답이 페이지 본문에 텍스트로만 노출되고 버튼이 없어 문구만 완성 — 잔여 이슈. */
-    statusForbidden: '미션에 참가하면 상황을 볼 수 있어요.',
+    statusForbidden: '참가하면 미션 상황을 볼 수 있어요',
     timeLeftSuffix: '남음',
     limitedSlots: '선착순 {count}명',
     rewardNone: '없음',
@@ -754,7 +754,7 @@ export const ko = {
     joinButtonPending: '참가하는 중',
     /** 완료 후 종료된 미션의 비활성 CTA 버튼(티켓 20260915_2244)
      * 20260916_0856: §5.1 단독 명사 CTA 금지 + §1.3 미션 상태 행("끝난")에 맞춰 재작성 */
-    ctaEnded: '끝난 미션',
+    ctaEnded: '종료',
 
     statusAchievementLabel: '달성 현황',
     statusIndividualLabel: '나의 현황',
