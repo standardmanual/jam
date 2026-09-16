@@ -3,6 +3,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { d } from '@/lib/i18n'
 
 export async function DELETE(
   _request: Request,
@@ -13,8 +14,9 @@ export async function DELETE(
     data: { user },
   } = await supabase.auth.getUser()
 
+  // ADR 0001 — authRequired 값 자체는 티켓 20260916_0904에서 별도로 손보는 중(티켓 20260915_2249)
   if (!user) {
-    return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
+    return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
   }
 
   const { userId } = await params
@@ -27,7 +29,7 @@ export async function DELETE(
 
   if (error) {
     console.error('[follows] delete 오류:', error.message)
-    return NextResponse.json({ error: 'SERVER_ERROR' }, { status: 500 })
+    return NextResponse.json({ error: d.social.unfollowError }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

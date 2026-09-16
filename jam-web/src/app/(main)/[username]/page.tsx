@@ -4,6 +4,7 @@ import type { UserRow, StravaConnectionRow, ActivityFeedRow } from '@/types/data
 import ProfileClient from '../profile/ProfileClient'
 import { hydrateFeedBadgeInfo } from '@/lib/activity-feed/hydrate'
 import { getWallet } from '@/lib/points'
+import { d, t } from '@/lib/i18n'
 
 interface Props {
   params: Promise<{ username: string }>
@@ -11,7 +12,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props) {
   const { username } = await params
-  return { title: `${username} — JAM!` }
+  return { title: t(d.social.profileTitle, { username }) }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

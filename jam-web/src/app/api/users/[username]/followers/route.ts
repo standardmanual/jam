@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserFollowRow, UserRow } from '@/types/database'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
+import { d } from '@/lib/i18n'
 
 export async function GET(
   _request: Request,
@@ -29,8 +30,9 @@ export async function GET(
   // 20260901_1848: 조회 실패도 !targetRaw로 걸려 404로 위장된다 — 로그로 구분
   if (targetError) console.error('[api/users/[username]/followers] 대상 유저(users) 조회 실패', targetError)
 
+  // ADR 0001 — 서버가 완성한 문구를 반환한다(티켓 20260915_2249)
   if (!targetRaw) {
-    return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 })
+    return NextResponse.json({ error: d.social.userNotFound }, { status: 404 })
   }
   const targetId = (targetRaw as { id: string }).id
 

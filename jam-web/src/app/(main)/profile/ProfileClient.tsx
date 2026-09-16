@@ -27,11 +27,14 @@ import {
 import type { UserRow, StravaConnectionRow, ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
 import FeedSection, { DetailSheet, earnCountOf, badgeLevelOf } from '../FeedSection'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
+import { useToast } from '@/components/ui/Toast'
 
 /** `POST /api/follows` 응답 중 배지 리빌 연출에 필요한 조각(sync.ts EarnedBadgePayload와 동일 계약) */
 interface FollowResponse {
   earnedBadges?: RevealBadge[]
   earnedBadgesMore?: number
+  /** ADR 0001 — 서버가 완성한 에러 문구(티켓 20260915_2249) */
+  error?: string
 }
 
 // ─── 탭 ─────────────────────────────────────────────────────────────────────
@@ -114,6 +117,7 @@ export default function ProfileClient({
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { toast } = useToast()
   // 알림함에서 진입했으면(?from=notifications) `<` 버튼이 알림으로 직행해야 한다 —
   // 통계탭 클릭(handleTabClick)이 해시 이동마다 히스토리 엔트리를 쌓아서, 순수
   // router.back()이면 알림이 아니라 그 탭 히스토리를 되짚는다(20260831_2201).
@@ -276,11 +280,16 @@ export default function ProfileClient({
           body: JSON.stringify({ target_user_id: targetId }),
         })
       }
-      if (!res.ok) throw new Error(res.statusText)
+      // ADR 0001 — 서버가 완성한 문구를 그대로 신뢰한다(티켓 20260915_2249)
+      const data: FollowResponse = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setListFollowStates(prev => ({ ...prev, [targetId]: current }))
+        toast(data.error ?? (current ? d.social.unfollowError : d.social.followError), 'error')
+        return
+      }
       // JAM! 카테고리 — 팔로우로 획득한 배지가 있으면 리빌 연출 (티켓 20260910_2132).
       // 언팔로우(current === true)에는 배지 지급이 없으므로 신규 팔로우일 때만 파싱한다.
       if (!current) {
-        const data: FollowResponse = await res.json().catch(() => ({}))
         const badges = data.earnedBadges ?? []
         if (badges.length > 0) {
           setEarnedBadges(badges)
@@ -290,6 +299,7 @@ export default function ProfileClient({
       }
     } catch {
       setListFollowStates(prev => ({ ...prev, [targetId]: current }))
+      toast(d.common.networkError, 'error')
     } finally {
       setListFollowingSet(prev => { const next = new Set(prev); next.delete(targetId); return next })
     }
@@ -306,10 +316,17 @@ export default function ProfileClient({
       setFollowerCnt(c => c - 1)
       try {
         const res = await fetch(`/api/follows/${targetUserId}`, { method: 'DELETE' })
-        if (!res.ok) throw new Error(res.statusText)
+        if (!res.ok) {
+          // ADR 0001 — 서버가 완성한 문구를 그대로 신뢰한다(티켓 20260915_2249)
+          const data: FollowResponse = await res.json().catch(() => ({}))
+          setFollowing(prev)
+          setFollowerCnt(prevCnt)
+          toast(data.error ?? d.social.unfollowError, 'error')
+        }
       } catch {
         setFollowing(prev)
         setFollowerCnt(prevCnt)
+        toast(d.common.networkError, 'error')
       } finally {
         setFollowLoading(false)
       }
@@ -322,9 +339,15 @@ export default function ProfileClient({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ target_user_id: targetUserId }),
         })
-        if (!res.ok) throw new Error(res.statusText)
-        // JAM! 카테고리 — 팔로우로 획득한 배지가 있으면 리빌 연출 (티켓 20260910_2132).
         const data: FollowResponse = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          // ADR 0001 — 서버가 완성한 문구를 그대로 신뢰한다(티켓 20260915_2249)
+          setFollowing(prev)
+          setFollowerCnt(prevCnt)
+          toast(data.error ?? d.social.followError, 'error')
+          return
+        }
+        // JAM! 카테고리 — 팔로우로 획득한 배지가 있으면 리빌 연출 (티켓 20260910_2132).
         const badges = data.earnedBadges ?? []
         if (badges.length > 0) {
           setEarnedBadges(badges)
@@ -334,6 +357,7 @@ export default function ProfileClient({
       } catch {
         setFollowing(prev)
         setFollowerCnt(prevCnt)
+        toast(d.common.networkError, 'error')
       } finally {
         setFollowLoading(false)
       }
