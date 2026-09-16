@@ -20,14 +20,14 @@ function ItemCardContent({ entry }: { entry: ItemEarnEntry }) {
       <div className="flex justify-between items-center">
         <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.obtainedAt}</span>
         <span className="text-[14px] text-text">
-          <LocalDate iso={entry.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
+          <LocalDate iso={entry.obtained_at} korean={{ year: true }} />
         </span>
       </div>
       <div className="flex justify-between items-center">
         <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.expiresAt}</span>
         <span className="text-[14px] text-text">
           {entry.expires_at
-            ? <LocalDate iso={entry.expires_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
+            ? <LocalDate iso={entry.expires_at} korean={{ year: true }} />
             : d.inventory.expiresNone}
         </span>
       </div>
@@ -80,7 +80,7 @@ export default function ItemEarnHistory({
           trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />}
         >
           <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text">
-            <LocalDate iso={entry.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
+            <LocalDate iso={entry.obtained_at} korean={{ year: true }} />
           </p>
         </ListRowCard>
       ))}

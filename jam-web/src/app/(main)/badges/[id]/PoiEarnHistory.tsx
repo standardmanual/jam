@@ -23,7 +23,7 @@ function EarnCardContent({ e }: { e: PoiEarnItem }) {
       <div className="flex justify-between items-center">
         <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.earnedAt}</span>
         <span className="text-[14px] text-text">
-          <LocalDate iso={e.earned_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
+          <LocalDate iso={e.earned_at} korean={{ year: true, time: true }} />
         </span>
       </div>
       {e.triggered_by_activity_name && (
@@ -82,7 +82,7 @@ export default function PoiEarnHistory({ poiEarns }: { poiEarns: PoiEarnItem[] }
           trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />}
         >
           <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text">
-            <LocalDate iso={e.earned_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
+            <LocalDate iso={e.earned_at} korean={{ year: true, time: true }} />
           </p>
         </ListRowCard>
       ))}

@@ -9,13 +9,8 @@ import ListRowCard from '@/components/ui/ListRowCard'
 import { CoinIcon } from '@/components/ui/icons'
 import { useDigitPopIn } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
+import { formatKoreanDateTime } from '@/components/LocalDate'
 import { d, t } from '@/lib/i18n'
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('ko-KR', {
-    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  })
-}
 
 function formatAmount(n: number): string {
   const sign = n > 0 ? '+' : '−'
@@ -141,7 +136,7 @@ export default function PointsPage() {
                     subtitle={
                       <div className="flex flex-col">
                         {it.note && <span className="text-[length:var(--text-caption)] text-text/50 truncate">{it.note}</span>}
-                        <span className="text-[length:var(--text-caption)] text-text/40">{formatDate(it.created_at)}</span>
+                        <span className="text-[length:var(--text-caption)] text-text/40">{formatKoreanDateTime(it.created_at, { year: true, time: true })}</span>
                       </div>
                     }
                     trailing={
