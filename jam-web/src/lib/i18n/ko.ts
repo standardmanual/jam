@@ -79,7 +79,7 @@ export const ko = {
     // (배지 0개 성공 / 실패)에 연동 결과를 알려준다
     stravaConnectSuccessToast: 'Strava 동기화를 완료했어요. 앞으로 활동하면 배지를 자동 획득해요',
     stravaConnectCancelledToast: 'Strava 동기화를 취소했어요. 다시 시도하려면 동기화 버튼을 눌러주세요',
-    stravaConnectFailedToast: 'Strava 동기화에 실패했어요. 네트워크가 불안정했거나 일시적인 오류일 수 있어요. 잠시 후 다시 시도해 주세요',
+    stravaConnectFailedToast: 'Strava 동기화에 실패했어요. 네트워크가 불안정했거나 일시적인 오류일 수 있어요. 잠시 후 다시 시도해 주세요.',
 
     // 빈 상태 (본인 시점 — 2인칭 행동 유도)
     emptyBadges: '아직 획득한 배지가 없어요',
@@ -198,7 +198,7 @@ export const ko = {
     // Strava 동기화 상태 카드
     syncButton: '동기화',
     syncDone: '동기화 완료',
-    syncFailed: '동기화 실패. 잠시 후 다시 시도해 주세요',
+    syncFailed: 'Strava 동기화에 실패했어요. 잠시 후 다시 시도해 주세요.',
 
     // 유저 검색
     searchPlaceholder: '아이디 또는 이메일로 유저 검색',
@@ -345,7 +345,7 @@ export const ko = {
     shareActionDownload: '저장하기',
     shareImageLoading: '공유 이미지를 준비하고 있어요',
     shareSaveSuccess: '이미지를 저장했어요',
-    shareSaveError: '이미지를 저장하지 못했어요. 잠시 후 다시 시도해 주세요',
+    shareSaveError: '이미지를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
     shareSaveIOSHint: '곧 열리는 공유 시트에서 \'저장\'을 눌러주세요',
     shareErrorStravaDisconnectedTitle: 'Strava 동기화가 끊겼어요',
     shareErrorStravaDisconnectedBody: '페이스·시간 데이터를 다시 가져오려면 Strava를 다시 동기화해야 해요',
@@ -747,7 +747,7 @@ export const ko = {
     joinNote: '참가 후에는 취소할 수 없어요',
     joinSuccess: '미션에 참가했어요',
     joinError: '오류가 발생했어요',
-    joinNetworkError: '네트워크 오류가 발생했어요. 다시 시도해 주세요',
+    joinNetworkError: '네트워크 오류가 발생했어요. 다시 시도해 주세요.',
     /** 참가 전 CTA 버튼(티켓 20260915_2244) */
     joinButton: '참가하기',
     /** joinButton 클릭 후 참가 처리 중(비동기 대기) 라벨 — §5.3 기본형(티켓 20260916_0856 신설) */
@@ -1068,7 +1068,7 @@ export const ko = {
     sectionEarlier: '이전',
     emptyTitle: '아직 도착한 소식이 없어요',
     emptyBody: '배지를 획득하거나 누군가 내 드랍을 픽업하면 여기에 쌓여요',
-    loadError: '소식을 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
+    loadError: '소식을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
     /** 첫 페이지 조회 자체가 실패했을 때 — "소식 0건"과 반드시 구분해서 보여준다 */
     errorTitle: '소식을 불러오지 못했어요',
     errorBody: '연결 상태를 확인하고 다시 시도해 주세요',
