@@ -218,7 +218,10 @@ export default function ShaderLabPropertiesPanel({ layer, onChange, assignGoogle
               // 텍스트 레이어의 `fontFamily`는 정적 select가 아니라 구글 폰트 검색 콤보박스로
               // 특별 취급한다(티켓 20260916_2001, 파일 상단 import 주석 참고).
               if (layer.type === 'text' && field.key === 'fontFamily') {
-                const fontFamilyValue = typeof layer.params.fontFamily === 'string' ? layer.params.fontFamily : field.defaultValue
+                const fontFamilyValue =
+                  typeof layer.params.fontFamily === 'string'
+                    ? layer.params.fontFamily
+                    : SHADER_LAB_DEFAULT_TEXT_FONT.value
                 const googleFontFamily = typeof layer.params.googleFontFamily === 'string' ? layer.params.googleFontFamily : null
                 return (
                   <ShaderLabTextFontField
