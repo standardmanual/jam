@@ -38,7 +38,7 @@ export default function StravaStatusCard({ connection }: StravaStatusCardProps) 
       </div>
       {connection.last_synced_at ? (
         <p className="text-white/40 text-xs">
-          {d.auth.stravaLastSyncedLabel} <LocalDate iso={connection.last_synced_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
+          {d.auth.stravaLastSyncedLabel} <LocalDate iso={connection.last_synced_at} korean={{ year: true, time: true }} />
         </p>
       ) : (
         <p className="text-white/40 text-xs">{d.auth.stravaNoSyncYet}</p>

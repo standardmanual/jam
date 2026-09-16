@@ -9,6 +9,7 @@ import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { InboxIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
+import { formatKoreanDateTime } from '@/components/LocalDate'
 import type { VocItem, VocSortKey } from '@/app/api/voc/route'
 import VocPagination from './VocPagination'
 
@@ -33,9 +34,7 @@ const SORT_TABS: SlidingTabItem<VocSortKey>[] = [
 function formatDateTime(iso: string): string {
   const parsed = new Date(iso)
   if (Number.isNaN(parsed.getTime())) return iso
-  return parsed.toLocaleDateString('ko-KR', {
-    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  })
+  return formatKoreanDateTime(iso, { year: true, time: true })
 }
 
 const CHIP_BASE_CLASS =
