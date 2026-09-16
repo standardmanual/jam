@@ -391,19 +391,24 @@ export const ko = {
     /** 「받는 방법」 시트 — 선행 배지 잠금 항목 하단 note. 등급 제한 유무로 갈린다 */
     unlockNoteMinRarity: '배지 · {rarity} 이상',
     unlockNoteAnyRarity: '배지 · 어느 등급이든 1개',
-    /** 「받는 방법」 시트 — 교차 게이트(축 내/축 간) 및 미션 게이트가 N개 이상 필요할 때의 note */
-    unlockNoteMinCount: '이 중 {count}개 이상 필요해요',
+    /**
+     * 「받는 방법」 시트 — 교차 게이트(축 내/축 간) 및 미션 게이트가 N개 이상 필요할 때의
+     * note. §1.3 '잠김' 행이 해제 안내는 '열려요'로 고정한다고 명시해 그 형태로 교정
+     * (티켓 20260916_0734)
+     */
+    unlockNoteMinCount: '{count}개 이상 모으면 열려요',
     /** 게이트 미션이 숨김(exposure_mode) 상태일 때 배지 트리에 노출하는 대체 제목 */
-    gatedMissionHiddenTitle: '다음 미션 공개 예정',
+    gatedMissionHiddenTitle: '다음 미션은 곧 열려요',
 
     // 공유 시트 캐러셀(20260911_1102) — 스크린리더 전용 aria-label
     shareCarouselAriaLabel: '공유 이미지 선택',
-    shareCardGroupLabel: '통계 포함 공유 카드',
-    shareBadgeGroupLabel: '배지 이미지 단독',
+    /** '통계'는 배지 트리의 '지표'/'축'과 갈라지는 미등록 용어라 이미 쓰는 '기록'으로 통일 (티켓 20260916_0734) */
+    shareCardGroupLabel: '기록이 담긴 공유 카드',
+    shareBadgeGroupLabel: '배지 이미지만',
 
     // 배지 트리 진행 표시 — badgeProgressText.ts 전용 (티켓 20260915_2238)
-    /** §08 H(진행 미지원) 공통 임시 상태 표기 */
-    progressUnsupported: '진행 표시 준비 중',
+    /** §08 H(진행 미지원) 공통 임시 상태 표기. '진행 표시'는 내부 용어라 사용자 시점으로 교체(티켓 20260916_0734) */
+    progressUnsupported: '진행률을 표시할 수 없어요',
     /** 배지 트리 그리드 셀 상태 라벨 — §1.3 고정 용어와 동일 */
     statusEarned: '획득',
     statusReady: '조건을 다 채웠어요',
@@ -417,10 +422,10 @@ export const ko = {
     /** 주기형 진행 캡션 — "{노운} {현재/목표} · {일수}일 남음" */
     periodicCaption: '{noun} {range} · {days}일 남음',
     /** 2축형(dual) 게이지 — 두 조건을 같은 활동에서 채워야 하는지 여부 */
-    dualAxisRuleSame: '한 번의 활동에서 두 조건을 동시에 채워야 해요.',
-    dualAxisRuleDifferent: '두 조건은 각각 다른 활동에서 채워도 돼요.',
+    dualAxisRuleSame: '한 번의 활동에서 두 조건을 동시에 채워야 해요',
+    dualAxisRuleDifferent: '두 조건은 각각 다른 활동에서 채워도 돼요',
     /** 2축형 게이지 — 한 축만 이미 채웠을 때 남은 축을 가리키는 보조 문구 */
-    dualAxisBottleneckNote: '{label} 조건은 이미 채웠어요.',
+    dualAxisBottleneckNote: '{label} 조건은 이미 채웠어요',
     /** 계열 카드 헤더 2행(메타 줄) — "다음 {등급}" */
     familyMetaNextRarity: '다음 {rarity}',
     /** 휴식 축 진행 표기 접두어 — §1.3 "휴식"은 상태만 표기(권유형 금지) */
@@ -429,17 +434,26 @@ export const ko = {
     remainingSecSuffix: '{sec}초 남음',
     remainingSuffix: '{value} 남음',
     /** 기록형 "아쉬움 줄" — 페이스 축과 그 외 축은 단위 표기가 달라 분리한다 */
-    regretLinePace: '지난 활동 페이스는 {current}. {rarity}까지 {diff}초 모자랐어요.',
-    regretLineGeneral: '지난 활동 {label} 기록은 {current}. {rarity}까지 {diff} 모자랐어요.',
-    /** 직전 동기화 대비 진전 배너(RecentSyncBanner) 비교 문장 */
-    syncComparisonPace: '직전 동기화보다 {label} {delta}초 가까워졌어요',
-    syncComparisonGeneral: '직전 동기화보다 {label} {delta} 가까워졌어요',
+    // 명사로 끊고 마침표를 찍으면 문장이 토막나 보여 완성 문장으로 교정 (티켓 20260916_0734)
+    regretLinePace: '지난 활동 페이스는 {current}였어요. {rarity}까지 {diff}초 모자랐어요.',
+    regretLineGeneral: '지난 활동 {label} 기록은 {current}였어요. {rarity}까지 {diff} 모자랐어요.',
+    /**
+     * 직전 동기화 대비 진전 배너(RecentSyncBanner) 비교 문장. "직전 동기화보다"는 시스템
+     * 이벤트 시점 언어라 "지난번보다"로, 목적어 누락은 이미 쓰는 '기록' 용어를 끼워
+     * 보완했다 (티켓 20260916_0734)
+     */
+    syncComparisonPace: '지난번보다 {label} 기록이 {delta}초 가까워졌어요',
+    syncComparisonGeneral: '지난번보다 {label} 기록이 {delta} 가까워졌어요',
 
     // 체크인 배지 지도 마커 API(/api/checkin-badges) — 서버 에러 메시지 단일 소스(ADR 0001)
-    checkinMapMissingBoundsError: '지도 범위 정보가 없어요. 지도를 다시 불러와 주세요',
-    checkinMapMissingZoomError: '지도 확대 정보가 없어요. 지도를 다시 불러와 주세요',
-    checkinMapPoiLoadError: '주변 체크인 배지를 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
-    checkinMapBadgeLoadError: '체크인 배지 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
+    /**
+     * bounds·zoom 누락은 사용자가 구분할 수 없고 해결책도 "지도를 다시 불러와 주세요"로
+     * 동일해 하나로 통합했다 — 내부 상태명(범위·확대 정보)을 그대로 노출하지 않는다
+     * (티켓 20260916_0734). API route가 두 에러 코드 모두 이 키를 참조한다.
+     */
+    checkinMapViewportError: '지도를 아직 다 불러오지 못했어요.',
+    checkinMapPoiLoadError: '주변 체크인 배지를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+    checkinMapBadgeLoadError: '체크인 배지 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
   },
 
   /** 인벤토리 목록/상세 */

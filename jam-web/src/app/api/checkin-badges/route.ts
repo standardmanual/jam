@@ -52,11 +52,13 @@ export async function GET(req: NextRequest) {
   const neLng = parseFloat(searchParams.get('neLng') ?? '')
   const zoom = parseFloat(searchParams.get('zoom') ?? '')
 
+  // bounds·zoom 중 무엇이 빠졌든 사용자에게는 구분할 수 없고 해결책도 같으므로
+  // 하나의 문구(checkinMapViewportError)를 공유한다 (티켓 20260916_0734)
   if ([swLat, swLng, neLat, neLng].some((v) => !Number.isFinite(v))) {
-    return NextResponse.json({ error: d.badges.checkinMapMissingBoundsError }, { status: 400 })
+    return NextResponse.json({ error: d.badges.checkinMapViewportError }, { status: 400 })
   }
   if (!Number.isFinite(zoom)) {
-    return NextResponse.json({ error: d.badges.checkinMapMissingZoomError }, { status: 400 })
+    return NextResponse.json({ error: d.badges.checkinMapViewportError }, { status: 400 })
   }
 
   const supabase = await createClient()
