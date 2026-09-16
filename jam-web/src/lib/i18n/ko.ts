@@ -918,7 +918,7 @@ export const ko = {
     checkinEarned: '획득',
     checkinNotEarned: '미획득',
     completedTitle: '컬렉션 완성!',
-    completedBody: '모든 아이템 배지를 슬롯에 장착했어요',
+    completedBody: '모든 아이템 배지를 장착했어요',
     slotLoginRequired: '로그인이 필요해요.',
     slotFailed: '장착에 실패했어요.',
     unslotFailed: '장착 해제에 실패했어요.',
@@ -952,28 +952,38 @@ export const ko = {
     // ── API 에러 메시지 — src/app/api/itembooks/[id]/slot/route.ts, itembooks/route.ts
     // (ADR 0001 서버-클라이언트 단일 진실 소스, 티켓 20260915_2239)
     // §1.3 "장착" 고정 용어 — 데이터 모델 내부 명칭 「슬롯」은 이 메시지들에도 쓰지 않는다.
-    /** 필수 값 누락 — 정상 UI 흐름에서는 도달하지 않는 방어용 문구 */
-    slotMissingInventoryItemId: '장착할 아이템 정보가 없어요. 다시 시도해 주세요.',
-    unslotMissingSlotId: '해제할 장착 정보가 없어요. 다시 시도해 주세요.',
-    swapMissingParams: '교체할 장착 정보나 아이템 정보가 없어요. 다시 시도해 주세요.',
-    inventoryNotFound: '인벤토리를 찾을 수 없어요.',
-    itemNotFound: '인벤토리에서 이 아이템을 찾을 수 없어요.',
-    alreadyDropped: '이미 드랍한 아이템이에요. 장착할 수 없어요.',
-    notOwner: '본인이 보유한 아이템만 장착할 수 있어요.',
-    alreadySlotted: '이미 장착된 아이템이에요.',
-    badgeNotFound: '배지를 찾을 수 없어요.',
-    wrongItemBook: '이 배지는 해당 컬렉션에 속하지 않아요.',
-    slotNotFound: '장착 정보를 찾을 수 없어요.',
+    // [티켓 20260916_0750] 한국어 리뷰 반영 — "찾을 수 없어요" 직역 반복을 원인별로
+    // 구체화하고, 내부어("개체"·서버 파라미터명)를 제거하고, 뭉개진 에러 쌍을 구분했다.
+    /** 필수 값 누락 3종(slot/unslot/swap) — 정상 UI 흐름에서는 도달하지 않는 방어용 문구라
+     *  하나의 문구로 통합한다. 서버 내부 파라미터명(`slot_id` 등)은 노출하지 않는다. */
+    slotMissingInventoryItemId: '요청이 제대로 전달되지 않았어요. 화면을 새로고침한 뒤 다시 골라 주세요.',
+    unslotMissingSlotId: '요청이 제대로 전달되지 않았어요. 화면을 새로고침한 뒤 다시 골라 주세요.',
+    swapMissingParams: '요청이 제대로 전달되지 않았어요. 화면을 새로고침한 뒤 다시 골라 주세요.',
+    inventoryNotFound: '인벤토리를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.',
+    itemNotFound: '인벤토리에 없는 아이템이에요. 목록을 새로고침해 주세요.',
+    alreadyDropped: '장착할 수 없어요. 지점에 드랍해 둔 아이템이라, 픽업한 뒤에 장착할 수 있어요.',
+    notOwner: '내 아이템만 장착할 수 있어요',
+    /** 다른 자리에 이미 장착 — 같은 자리에 이미 장착된 경우(`sameItem`)와 뜻이 뭉개지지
+     *  않도록 "그 자리"를 명시해 구분한다 */
+    alreadySlotted: '이미 다른 자리에 장착한 아이템이에요. 그 자리를 해제한 뒤 다시 장착해 주세요.',
+    badgeNotFound: '배지 정보를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.',
+    wrongItemBook: '이 컬렉션에 들어가는 배지가 아니에요',
+    /** 해제 대상 자리가 이미 사라진 경우 */
+    slotNotFound: '이미 해제된 자리예요. 컬렉션을 새로고침해 주세요.',
     /**
      * [20260915_2239] 개인 인벤토리 확장 기능은 없다 — max_slots는 어드민이 전체 유저에게
      * 일괄 적용하는 전역 정책(`inventory-policy`)이다. 기존 하드코딩 문구 "인벤토리를
      * 늘려보세요"는 유저가 할 수 없는 행동을 해결책으로 제시하고 있었다. 같은 상황의 다른
      * 문구(`inventory.fullNoticeBody`, `drops.pickupInventoryFull`)와 같은 "정리하고 다시
-     * 시도" 해결책으로 통일한다.
+     * 시도" 해결책으로 통일한다. [20260916_0750] §4.1 3단계 구조([현상]→[원인]→[해결책])로
+     * 보완하고 보관 한도(50개)를 명시한다. CTA 버튼 추가는 이 티켓 범위(딕셔너리 값만 수정)
+     * 밖이라 다음 UI 작업으로 남긴다.
      */
-    inventoryFullForUnslot: '인벤토리가 꽉 차 해제할 수 없어요. 아이템을 정리하고 다시 시도해 주세요.',
-    wrongBadge: '같은 배지의 아이템만 교체할 수 있어요.',
-    sameItem: '이미 장착된 개체예요.',
+    inventoryFullForUnslot: '인벤토리가 꽉 차서 해제할 수 없어요. 50개까지만 보관할 수 있어요.',
+    wrongBadge: '같은 배지끼리만 교체할 수 있어요. 일련번호가 다른 같은 배지를 골라 주세요.',
+    /** 지금 장착 중인 그 자리에 같은 개체를 다시 고른 경우 — §1.3 '일련번호'로 개체를
+     *  가리킨다("개체" 내부어 금지) */
+    sameItem: '이미 이 자리에 장착한 아이템이에요. 다른 일련번호를 골라 주세요.',
   },
 
   /**
