@@ -104,7 +104,8 @@ export default function ProfileEditPage() {
       if (json.avatar_url) {
         setAvatarUrl(json.avatar_url)
       } else {
-        setUploadError(d.profileEdit.uploadError)
+        // ADR 0001 — 서버가 완성한 문구를 그대로 신뢰한다(티켓 20260915_2248)
+        setUploadError(json.error ?? d.profileEdit.uploadError)
       }
     } catch {
       setUploadError(d.onboarding.networkError)
@@ -145,13 +146,14 @@ export default function ProfileEditPage() {
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/username/check?username=${encodeURIComponent(raw)}`)
-        const json = await res.json() as { available: boolean }
+        const json = await res.json() as { available: boolean; message?: string }
+        // ADR 0001 — 서버가 완성한 문구를 그대로 신뢰한다(티켓 20260915_2248)
         if (json.available) {
           setCheckStatus('available')
-          setCheckMessage(d.onboarding.available)
+          setCheckMessage(json.message ?? d.onboarding.available)
         } else {
           setCheckStatus('taken')
-          setCheckMessage(d.onboarding.taken)
+          setCheckMessage(json.message ?? d.onboarding.taken)
         }
       } catch {
         setCheckStatus('idle')
@@ -187,13 +189,16 @@ export default function ProfileEditPage() {
         body: JSON.stringify(payload),
       })
       const json = await res.json() as { success?: boolean; error?: string }
+      // ADR 0001 — 서버가 완성한 문구를 그대로 신뢰한다(티켓 20260915_2248).
+      // 409(아이디 중복)만 인라인 필드 메시지로, 그 외는 하단 배너로 보낸다 — 위치 분기는
+      // 클라이언트가 유지하되 문구 자체는 서버 응답을 그대로 쓴다.
       if (json.success) {
         router.push('/profile')
-      } else if (json.error === 'DUPLICATE') {
+      } else if (res.status === 409) {
         setCheckStatus('taken')
-        setCheckMessage(d.onboarding.taken)
+        setCheckMessage(json.error ?? d.onboarding.taken)
       } else {
-        setSaveError(d.profileEdit.saveError)
+        setSaveError(json.error ?? d.profileEdit.saveError)
       }
     } catch {
       setSaveError(d.onboarding.networkError)

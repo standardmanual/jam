@@ -3,13 +3,15 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { d } from '@/lib/i18n'
 
+/** ADR 0001 — username/check와 동일 규칙이라 같은 문구를 공유한다(티켓 20260915_2248) */
 function validateUsernameFormat(username: string): string | null {
-  if (username.length === 0) return 'EMPTY'
-  if (username.length > 30) return 'TOO_LONG'
-  if (!/^[a-z0-9._]+$/.test(username)) return 'INVALID_CHARS'
-  if (username.startsWith('.') || username.endsWith('.')) return 'DOT_EDGE'
-  if (username.includes('..')) return 'CONSECUTIVE_DOTS'
+  if (username.length === 0) return d.onboarding.errorEmpty
+  if (username.length > 30) return d.onboarding.errorTooLong
+  if (!/^[a-z0-9._]+$/.test(username)) return d.onboarding.errorFormat
+  if (username.startsWith('.') || username.endsWith('.')) return d.onboarding.errorDot
+  if (username.includes('..')) return d.onboarding.errorDoubleDot
   return null
 }
 
@@ -20,7 +22,7 @@ export async function PATCH(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
+    return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
   }
 
   const body = await request.json() as { username?: string; display_name?: string }
@@ -33,7 +35,7 @@ export async function PATCH(request: NextRequest) {
   if (body.display_name !== undefined) {
     const trimmed = body.display_name.trim()
     if (trimmed.length > 30) {
-      return NextResponse.json({ error: 'INVALID_FORMAT' }, { status: 400 })
+      return NextResponse.json({ error: d.onboarding.errorTooLong }, { status: 400 })
     }
 
     const usersTable = serviceClient.from('users')
@@ -41,7 +43,7 @@ export async function PATCH(request: NextRequest) {
 
     if (error) {
       console.error('[profile] display_name 업데이트 오류:', error.message)
-      return NextResponse.json({ error: 'SERVER_ERROR' }, { status: 500 })
+      return NextResponse.json({ error: d.profileEdit.saveError }, { status: 500 })
     }
   }
 
@@ -50,7 +52,7 @@ export async function PATCH(request: NextRequest) {
 
     const formatError = validateUsernameFormat(lowerUsername)
     if (formatError) {
-      return NextResponse.json({ error: 'INVALID_FORMAT' }, { status: 400 })
+      return NextResponse.json({ error: formatError }, { status: 400 })
     }
 
     // 자기 자신 제외한 중복 체크
@@ -62,7 +64,7 @@ export async function PATCH(request: NextRequest) {
       .maybeSingle()
 
     if (existing) {
-      return NextResponse.json({ error: 'DUPLICATE' }, { status: 409 })
+      return NextResponse.json({ error: d.onboarding.taken }, { status: 409 })
     }
 
     // username 업데이트
@@ -71,7 +73,7 @@ export async function PATCH(request: NextRequest) {
 
     if (error) {
       console.error('[profile] username 업데이트 오류:', error.message)
-      return NextResponse.json({ error: 'SERVER_ERROR' }, { status: 500 })
+      return NextResponse.json({ error: d.profileEdit.saveError }, { status: 500 })
     }
   }
 
