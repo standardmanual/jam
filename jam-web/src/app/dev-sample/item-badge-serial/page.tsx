@@ -61,7 +61,7 @@ export default function ItemBadgeSerialSamplePage() {
               <div className="flex justify-between items-center">
                 <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.obtainedAt}</span>
                 <span className="text-[14px] text-text">
-                  <LocalDate iso={mockItem.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
+                  <LocalDate iso={mockItem.obtained_at} korean={{ year: true }} />
                 </span>
               </div>
               <div className="flex justify-between items-center">

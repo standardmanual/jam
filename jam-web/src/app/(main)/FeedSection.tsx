@@ -12,6 +12,7 @@ import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import Button from '@/components/ui/Button'
 import ListRowCard from '@/components/ui/ListRowCard'
+import { formatKoreanDateTime } from '@/components/LocalDate'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import {
   MedalIcon,
@@ -209,12 +210,6 @@ function eventLabel(item: ActivityFeedRow): ReactNode {
 }
 
 
-function formatFullDate(iso: string) {
-  return new Date(iso).toLocaleDateString('ko-KR', {
-    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  })
-}
-
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 py-[var(--spacing-8)]">
@@ -390,7 +385,7 @@ export function DetailSheet({
           )}
           {/* 20260824_006 — 표시 기준을 created_at(획득 시각, 항상 정확)으로 변경.
               event_at(Strava 활동 시작 시각)은 로컬 벽시계 오해석 버그로 미래가 찍힐 수 있었다. */}
-          <Row label={d.feed.rowDate} value={formatFullDate(item.created_at)} />
+          <Row label={d.feed.rowDate} value={formatKoreanDateTime(item.created_at, { year: true, time: true })} />
         </div>
         {isBadgeEvent ? (
           <Button
