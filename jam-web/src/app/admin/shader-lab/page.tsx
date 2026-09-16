@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ShaderLabLayerConfig } from '@basementstudio/shader-lab'
 import { IconInfoCircle } from '@tabler/icons-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/card'
@@ -45,9 +45,22 @@ export default function ShaderLabPage() {
 
   const config = useMemo(() => buildComposition(layers), [layers])
   const selectedLayer = layers.find((l) => l.id === selectedLayerId) ?? null
+  // 구글 폰트 실제 다운로드가 완료된 뒤(티켓 20260916_2118) 해당 레이어 params의 시그니처를
+  // 한 번 더 바꿔 `TextPass.dirty`를 다시 세운다 — `<link>` 삽입 시점에 곧바로 params를 바꾸면
+  // 아직 폰트가 폴백 상태라 미리보기가 갱신되지 않는 문제의 수정.
+  const bumpGoogleFontRevision = useCallback((layerId: string) => {
+    setLayers((prev) =>
+      prev.map((l) => {
+        if (l.id !== layerId || l.type !== 'text') return l
+        const currentRevision = typeof l.params.googleFontRevision === 'number' ? l.params.googleFontRevision : 0
+        return { ...l, params: { ...l.params, googleFontRevision: currentRevision + 1 } }
+      })
+    )
+  }, [])
+
   // 구글 폰트 슬롯 배정(티켓 20260916_2001) — 텍스트 레이어 하나만 봐선 슬롯 재사용/초과를
   // 판단할 수 없어 전체 레이어를 보는 이 레벨에서 관리하고 속성 패널로 내려보낸다.
-  const { assignFont } = useGoogleFontSlots(layers)
+  const { assignFont } = useGoogleFontSlots(layers, bumpGoogleFontRevision)
 
   function handleAdd(type: SupportedShaderLabLayerType) {
     const layer = createLayer(type)
