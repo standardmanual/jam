@@ -44,7 +44,11 @@ export async function POST(req: NextRequest) {
   if (!result.success) {
     let message = FAIL_REASON_MESSAGE[result.reason] ?? d.combine.genericFail
     if (result.pointsAwarded > 0) {
-      message += t(d.combine.consolationPoints, { points: result.pointsAwarded })
+      // §3 표기 규칙(천 단위 콤마) + [현상]과 [그래도 포인트가 남았어요] 두 문장을
+      // 잇는 마침표를 여기서 채운다(ko.ts는 원문에 마침표를 미리 넣지 않는다 — 단일
+      // 문장으로만 쓰일 때는 마침표를 찍지 않는 §3 규칙과 충돌하지 않기 위해).
+      const pointsText = t(d.combine.consolationPoints, { points: result.pointsAwarded.toLocaleString() })
+      message = `${message.replace(/[.]+$/, '')}. ${pointsText}`
     }
     return NextResponse.json({ ...result, message })
   }
