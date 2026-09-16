@@ -775,16 +775,19 @@ export const ko = {
     errorGeneric: '오류가 발생했어요. 잠시 후 다시 시도해 주세요.',
     terms: '계속하면 JAM!의 이용약관 및 개인정보처리방침에 동의하는 것으로 간주돼요.',
     devLogin: '테스트 로그인 (개발 전용)',
-    /** `/api/strava/sync` 수동 동기화 500 오류 (ADR 0001 — API route가 직접 참조) */
-    stravaSyncError: 'Strava 동기화 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요.',
-    /** `StravaStatusCard` 미연동 상태 — 조사 결과 현재 어디서도 렌더되지 않는 컴포넌트지만
-     *  하드코딩 제거 대상이라 편입한다 (티켓 20260915_2246) */
-    stravaNotConnectedTitle: 'Strava 동기화 안 됨',
-    stravaConnectPrompt: 'Strava를 동기화하면 활동 기반 배지를 자동으로 획득할 수 있어요',
+    /** `/api/strava/sync` 수동 동기화 500 오류 (ADR 0001 — API route가 직접 참조).
+     *  §4.1 [현상]→[원인]→[해결책] 3단계로 교정 (티켓 20260916_0917).
+     *  CTA는 이 API를 호출하는 화면(`SyncButton.tsx`)이 별도 토스트(`today.syncFailed`)를
+     *  쓰고 이 값을 읽지 않아 실제로 노출되지 않는다 — 잔여 이슈로 기록. */
+    stravaSyncError: 'Strava 동기화가 끊겼어요. 동기화 권한이 해제됐거나 Strava 연결이 잠시 불안정했을 수 있어요.',
+    /** `StravaStatusCard` 미연동 상태 — 조사 결과 현재 어디서도 렌더되지 않는 고아 컴포넌트지만
+     *  하드코딩 제거 대상이라 편입한다 (티켓 20260915_2246). 톤 교정은 20260916_0917 */
+    stravaNotConnectedTitle: '아직 Strava를 동기화하지 않았어요',
+    stravaConnectPrompt: 'Strava를 동기화하면 달린 기록으로 액티비티배지를 획득할 수 있어요',
     stravaConnectButton: 'Strava 동기화하기',
-    stravaConnectedTitle: 'Strava 동기화됨',
-    stravaLastSyncedLabel: '마지막 동기화:',
-    stravaNoSyncYet: '아직 동기화된 데이터가 없어요',
+    stravaConnectedTitle: 'Strava와 동기화하고 있어요',
+    stravaLastSyncedLabel: '마지막 동기화',
+    stravaNoSyncYet: '아직 불러온 활동이 없어요',
   },
 
   /**
