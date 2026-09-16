@@ -2,15 +2,15 @@
  * 쉐이더 랩 — 레이어 정의 (티켓 20260912_1951 — 1차 6종, 티켓 20260912_2157 — 2차 1차분:
  * 텍스트 레이어 추가 + 기존 6종 범위 감사, 2차 2차분: 나머지 소스 4종 + 이펙트 18종 신규 구현)
  *
- * `@basementstudio/shader-lab` 런타임(npm `@basementstudio/shader-lab@3.0.2`)은 아래 29종
+ * `@basementstudio/shader-lab` 런타임(npm `@basementstudio/shader-lab@3.0.2`)은 아래 항목
  * 전부(비디오·카메라·커스텀 셰이더 3종 제외)를 지원한다. 1차는 속성 패널 UI를 새로 이식해야
  * 하는 작업량을 고려해 6종만 노출했고(미디어(이미지)·디스플레이스먼트맵·블룸·디더링·ASCII·
- * 하프톤), 2차 1차분에서 텍스트(Text)를 추가했다. 이번 2차 2차분(20260912_2157)에서 나머지
- * 전부를 추가해 총 29종을 노출한다:
+ * 하프톤), 2차 1차분에서 텍스트(Text)를 추가했다. 2차 2차분(20260912_2157)에서 나머지
+ * 전부를 추가해 총 29종을 노출했으나, 이후 티켓 20260916_2154에서 소스 3종(플루이드·
+ * 픽셀 트레일·매그니파이 렌즈)을 삭제해 현재는 26종을 노출한다:
  *
- * - 소스 4종(신규): 플루이드(fluid)·픽셀 트레일(pixel-trail)·매그니파이 렌즈(magnify-lens)·
- *   메시 그라디언트(gradient — 패키지 내부 타입명은 `gradient`이지만 사용자 요구로 라벨은
- *   "메시 그라디언트")
+ * - 소스(신규분 중 남은 것): 메시 그라디언트(gradient — 패키지 내부 타입명은 `gradient`이지만
+ *   사용자 요구로 라벨은 "메시 그라디언트")
  * - 이펙트 Core 9종(신규): 잉크(ink)·패턴(pattern)·CRT(crt)·파티클 그리드(particle-grid)·
  *   픽셀레이션(pixelation)·복셀(voxel)·포스터라이즈(posterize)·쓰레숄드(threshold)·
  *   플로터(plotter)
@@ -92,7 +92,8 @@ import { buildDefaultParams, type ShaderLabFieldDefinitions } from './paramField
 import { SHADER_LAB_DEFAULT_TEXT_FONT, SHADER_LAB_TEXT_FONT_OPTIONS } from './textFontOptions'
 
 /** 지금까지 노출한 레이어 타입(2차 2차분에서 비디오·카메라·커스텀 셰이더 3종을 제외한
- *  전부인 29종으로 확장했다). */
+ *  전부인 29종으로 확장했으나, 티켓 20260916_2154에서 플루이드·픽셀 트레일·매그니파이
+ *  렌즈 3종을 삭제해 현재는 26종). */
 export const SHADER_LAB_LAYER_TYPES = [
   'image',
   'displacement-map',
@@ -101,10 +102,8 @@ export const SHADER_LAB_LAYER_TYPES = [
   'ascii',
   'halftone',
   'text',
-  // 2차 2차분(20260912_2157) — 소스 4종
-  'fluid',
-  'pixel-trail',
-  'magnify-lens',
+  // 2차 2차분(20260912_2157) — 소스(메시 그라디언트만 남음, 플루이드·픽셀 트레일·
+  // 매그니파이 렌즈는 티켓 20260916_2154에서 삭제)
   'gradient',
   // 티켓 20260913_1948 — 리퀴드 메탈(원본 basement.studio에 없는 JAM! 확장, @paper-design/shaders 통합)
   'liquid-metal',
@@ -539,53 +538,9 @@ const textFields: ShaderLabFieldDefinitions = [
 ]
 
 // ============================================================================
-// 2차 2차분(20260912_2157) — 소스 4종
+// 2차 2차분(20260912_2157) — 소스 (플루이드·픽셀 트레일·매그니파이 렌즈는
+// 티켓 20260916_2154에서 삭제, 메시 그라디언트만 남음)
 // ============================================================================
-
-const fluidFields: ShaderLabFieldDefinitions = [
-  { key: 'simRes', label: '시뮬레이션 해상도', type: 'number', defaultValue: 192, min: 32, max: 512, step: 32 },
-  { key: 'dyeRes', label: '염료 해상도', type: 'number', defaultValue: 1024, min: 128, max: 2048, step: 64 },
-  { key: 'iterations', label: '반복 횟수', type: 'number', defaultValue: 20, min: 1, max: 32, step: 1 },
-  { key: 'densityDissipation', label: '밀도 감쇠', type: 'number', defaultValue: 4, min: 0, max: 8, step: 0.01 },
-  { key: 'velocityDissipation', label: '속도 감쇠', type: 'number', defaultValue: 0.2, min: 0, max: 4, step: 0.01 },
-  { key: 'pressureDissipation', label: '압력 감쇠', type: 'number', defaultValue: 0, min: 0, max: 1, step: 0.01 },
-  { key: 'curlStrength', label: '소용돌이', type: 'number', defaultValue: 30, min: 0, max: 80, step: 1 },
-  { key: 'radius', label: '반경', type: 'number', defaultValue: 1, min: 0.05, max: 2, step: 0.01 },
-  { key: 'splatForce', label: '터치 힘', type: 'number', defaultValue: 6000, min: 500, max: 15000, step: 100 },
-  { key: 'autoSplats', label: '자동 스플랫', type: 'boolean', defaultValue: true },
-  { key: 'brightness', label: '밝기', type: 'number', defaultValue: 1.6, min: 0.1, max: 4, step: 0.01 },
-  {
-    key: 'colorMode',
-    label: '색상 모드',
-    type: 'select',
-    defaultValue: 'monochrome',
-    options: [
-      { label: '단색', value: 'monochrome' },
-      { label: '듀오톤', value: 'duotone' },
-      { label: '원본 색상', value: 'source' },
-    ],
-  },
-  { key: 'monoDark', label: '단색 - 어두움', type: 'color', defaultValue: '#000000', visibleWhen: { key: 'colorMode', equals: 'monochrome' } },
-  { key: 'monoLight', label: '단색 - 밝음', type: 'color', defaultValue: '#ffffff', visibleWhen: { key: 'colorMode', equals: 'monochrome' } },
-  { key: 'duotoneDark', label: '듀오톤 - 어두운색', type: 'color', defaultValue: '#101010', visibleWhen: { key: 'colorMode', equals: 'duotone' } },
-  { key: 'duotoneLight', label: '듀오톤 - 밝은색', type: 'color', defaultValue: '#f3f3ef', visibleWhen: { key: 'colorMode', equals: 'duotone' } },
-]
-
-const pixelTrailFields: ShaderLabFieldDefinitions = [
-  { key: 'cellSize', label: '셀 크기', type: 'number', defaultValue: 24, min: 4, max: 128, step: 1, unit: 'px' },
-  { key: 'radius', label: '반경', type: 'number', defaultValue: 0.04, min: 0.005, max: 0.3, step: 0.005 },
-  { key: 'decay', label: '감쇠', type: 'number', defaultValue: 0.9, min: 0.5, max: 0.999, step: 0.001 },
-  { key: 'displaceAmount', label: '변위량', type: 'number', defaultValue: 0.02, min: 0, max: 0.2, step: 0.001 },
-  { key: 'intensity', label: '강도', type: 'number', defaultValue: 1, min: 0, max: 2, step: 0.05 },
-]
-
-const magnifyLensFields: ShaderLabFieldDefinitions = [
-  { key: 'radius', label: '반경', type: 'number', defaultValue: 0.18, min: 0.02, max: 0.5, step: 0.005 },
-  { key: 'softness', label: '부드러움', type: 'number', defaultValue: 0.4, min: 0, max: 1, step: 0.01 },
-  { key: 'zoom', label: '확대 배율', type: 'number', defaultValue: 1.8, min: 1, max: 4, step: 0.05 },
-  { key: 'chromaStrength', label: '색수차 강도', type: 'number', defaultValue: 0.012, min: 0, max: 0.05, step: 0.001 },
-  { key: 'followLag', label: '추적 지연', type: 'number', defaultValue: 0.2, min: 0, max: 0.95, step: 0.01 },
-]
 
 /**
  * 메시 그라디언트(패키지 내부 타입명 `gradient`). 원본 `preset`(Custom/Forest/Ember/Abyss/
@@ -1360,27 +1315,6 @@ export const SHADER_LAB_LAYER_REGISTRY: Record<SupportedShaderLabLayerType, Laye
     defaultName: '텍스트',
     description: '문구를 캔버스에 직접 그려요.',
     fields: textFields,
-  },
-  fluid: {
-    kind: 'source',
-    label: '플루이드',
-    defaultName: '플루이드',
-    description: '포인터 움직임에 반응하는 유체 시뮬레이션을 그려요.',
-    fields: fluidFields,
-  },
-  'pixel-trail': {
-    kind: 'source',
-    label: '픽셀 트레일',
-    defaultName: '픽셀 트레일',
-    description: '포인터가 지나간 자리에 픽셀 격자 잔상을 남겨요.',
-    fields: pixelTrailFields,
-  },
-  'magnify-lens': {
-    kind: 'source',
-    label: '매그니파이 렌즈',
-    defaultName: '매그니파이 렌즈',
-    description: '포인터 주변을 돋보기처럼 확대해요.',
-    fields: magnifyLensFields,
   },
   gradient: {
     kind: 'source',
