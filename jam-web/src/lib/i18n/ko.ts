@@ -943,11 +943,11 @@ export const ko = {
     profileTitle: '{username} — JAM!',
     /**
      * ADR 0001 — API route(`api/follows/route.ts`)가 직접 참조해 완성한 문구를 그대로
-     * 반환한다. §2.4 "소셜 액션 vs 되돌릴 수 없는 확정" 원칙대로 팔로우/팔로우 해제 실패는
+     * 반환한다. §2.4 "소셜 액션 vs 되돌릴 수 없는 확정" 원칙대로 팔로우/언팔로우 실패는
      * 담담한 톤으로 짧게 재시도를 안내한다(티켓 20260915_2249, 20260916_1010에서 톤 정정).
      */
     followError: '팔로우가 안 됐어요. 잠시 뒤에 다시 눌러 주세요.',
-    unfollowError: '팔로우 해제가 안 됐어요. 잠시 뒤에 다시 눌러 주세요.',
+    unfollowError: '언팔로우가 안 됐어요. 잠시 뒤에 다시 눌러 주세요.',
     /** 자기 자신 팔로우 방지 — DB CHECK와 이중 검증된 방어적 케이스 */
     selfFollowError: '나를 팔로우할 수는 없어요',
     /** `api/users/[username]/followers|following` — 대상 유저를 찾지 못한 경우 */
