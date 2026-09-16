@@ -42,9 +42,12 @@ export default function RootError({
         <EmptyState
           icon={<WarningIcon />}
           title={d.common.rootErrorTitle}
-          description={isEnvError ? d.common.rootErrorEnvDescription : error.message}
+          description={isEnvError ? d.common.rootErrorEnvDescription : d.common.rootErrorDescription}
           action={{ label: d.common.rootErrorRetry, onClick: unstable_retry }}
         />
+        {process.env.NODE_ENV === 'development' && !isEnvError && (
+          <p className="text-left text-white/40 text-xs mt-4 break-all">{error.message}</p>
+        )}
         {isEnvError && (
           <div className="text-left bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-sm mt-4">
             <p className="font-semibold text-yellow-400 mb-2">환경변수 설정 필요</p>
