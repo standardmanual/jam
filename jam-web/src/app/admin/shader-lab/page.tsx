@@ -13,6 +13,7 @@ import ShaderLabViewport from './ShaderLabViewport'
 import ShaderLabPropertiesPanel from './ShaderLabPropertiesPanel'
 import ShaderLabExportPanel from './ShaderLabExportPanel'
 import ShaderLabSavePanel from './ShaderLabSavePanel'
+import { useGoogleFontSlots } from './useGoogleFontSlots'
 
 /**
  * 쉐이더 랩 — 1차: 에디터 골격 + 핵심 이펙트 6종 + 1:1 PNG 내보내기 (티켓 20260912_1951),
@@ -44,6 +45,9 @@ export default function ShaderLabPage() {
 
   const config = useMemo(() => buildComposition(layers), [layers])
   const selectedLayer = layers.find((l) => l.id === selectedLayerId) ?? null
+  // 구글 폰트 슬롯 배정(티켓 20260916_2001) — 텍스트 레이어 하나만 봐선 슬롯 재사용/초과를
+  // 판단할 수 없어 전체 레이어를 보는 이 레벨에서 관리하고 속성 패널로 내려보낸다.
+  const { assignFont } = useGoogleFontSlots(layers)
 
   function handleAdd(type: SupportedShaderLabLayerType) {
     const layer = createLayer(type)
@@ -138,7 +142,7 @@ export default function ShaderLabPage() {
               <CardTitle>속성</CardTitle>
             </CardHeader>
             <CardContent>
-              <ShaderLabPropertiesPanel layer={selectedLayer} onChange={handleUpdateLayer} />
+              <ShaderLabPropertiesPanel layer={selectedLayer} onChange={handleUpdateLayer} assignGoogleFont={assignFont} />
             </CardContent>
           </Card>
         </div>
