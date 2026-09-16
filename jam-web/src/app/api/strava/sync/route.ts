@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { syncStravaActivities } from '@/lib/strava/sync'
+import { d } from '@/lib/i18n'
 
 // 백필(최초 연동) 시 Strava Streams 조회 + 드랍/배지 평가로 수 초~수십 초가 걸릴 수 있어
 // Vercel 기본 타임아웃(플랜별 10~15초)보다 넉넉한 실행 시간을 확보한다.
@@ -18,7 +19,7 @@ export async function POST() {
   const { data: { user }, error } = await supabase.auth.getUser()
 
   if (error || !user) {
-    return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
+    return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
   }
 
   try {
@@ -27,7 +28,7 @@ export async function POST() {
   } catch (err) {
     console.error('[/api/strava/sync] 동기화 오류:', err)
     return NextResponse.json(
-      { error: 'Strava 동기화 중 오류가 발생했습니다.' },
+      { error: d.auth.stravaSyncError },
       { status: 500 }
     )
   }
