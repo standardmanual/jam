@@ -12,7 +12,7 @@
  * `params.fontFamily`/`params.googleFontFamily`)에서 파생한다 — 레이어가 삭제되거나 다른
  * 폰트로 바뀌면 그 레이어가 점유하던 슬롯은 다음 렌더에서 자동으로 "빈 슬롯" 후보에 들어간다.
  */
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type { ShaderLabLayerConfig } from '@basementstudio/shader-lab'
 import {
   GOOGLE_FONT_SLOT_CSS_VARIABLES,
@@ -20,7 +20,11 @@ import {
   isGoogleFontSlotId,
   type GoogleFontSlotId,
 } from '@/lib/admin/shaderLab/textFontOptions'
-import { applyGoogleFontToSlot, ensureGoogleFontLoaded } from '@/lib/admin/shaderLab/googleFonts'
+import {
+  applyGoogleFontToSlot,
+  ensureGoogleFontLoaded,
+  waitForGoogleFontLoaded,
+} from '@/lib/admin/shaderLab/googleFonts'
 
 export interface GoogleFontAssignResult {
   ok: boolean
@@ -33,7 +37,13 @@ interface GoogleFontAssignment {
   family: string
 }
 
-export function useGoogleFontSlots(layers: readonly ShaderLabLayerConfig[]) {
+export function useGoogleFontSlots(
+  layers: readonly ShaderLabLayerConfig[],
+  /** 폰트 다운로드가 실제로 완료된 뒤 호출된다 — `page.tsx`가 이 레이어의 params 시그니처를
+   *  다시 한번 바꿔(`bumpGoogleFontRevision`) `TextPass`가 재렌더링하도록 만드는 데 쓴다
+   *  (티켓 20260916_2118, 파일 상단 주석 참고). */
+  onFontLoaded?: (layerId: string) => void
+) {
   const assignments = useMemo(() => {
     const map = new Map<string, GoogleFontAssignment>()
     for (const layer of layers) {
@@ -64,15 +74,30 @@ export function useGoogleFontSlots(layers: readonly ShaderLabLayerConfig[]) {
 
   const occupiedSlots = useMemo(() => new Set(slotUsers.keys()), [slotUsers])
 
+  // 이 세션에서 "레이어 id + 폰트명" 조합별로 다운로드 완료를 이미 기다린 적 있는지 기록한다 —
+  // 같은 조합에 대해 매 렌더마다(예: 다른 레이어 편집으로 `layers`가 바뀔 때) 중복으로
+  // `onFontLoaded`를 호출해 불필요하게 재렌더링을 트리거하지 않기 위해서다.
+  const notifiedRef = useRef(new Set<string>())
+
   // 컴포지션 불러오기(`ShaderLabSavePanel`) 직후에는 레이어 params에 배정 정보(fontFamily=
   // 슬롯 id, googleFontFamily=폰트명)가 있어도 CSS 변수·구글 폰트 `<link>`는 아직 이 세션에
   // 반영되지 않은 상태다 — assignments가 바뀔 때마다(불러오기 포함) 실제 반영까지 동기화한다.
+  //
+  // 또한 `<link>` 삽입은 다운로드 완료를 보장하지 않으므로(티켓 20260916_2118), 다운로드가
+  // 실제로 끝난 뒤 `onFontLoaded`로 해당 레이어의 재렌더링을 트리거한다.
   useEffect(() => {
-    for (const assignment of assignments.values()) {
+    for (const [layerId, assignment] of assignments) {
       applyGoogleFontToSlot(GOOGLE_FONT_SLOT_CSS_VARIABLES[assignment.slotValue], assignment.family)
       ensureGoogleFontLoaded(assignment.family)
+
+      const notifyKey = `${layerId}:${assignment.family}`
+      if (notifiedRef.current.has(notifyKey)) continue
+      notifiedRef.current.add(notifyKey)
+      void waitForGoogleFontLoaded(assignment.family).then(() => {
+        onFontLoaded?.(layerId)
+      })
     }
-  }, [assignments])
+  }, [assignments, onFontLoaded])
 
   const assignFont = useCallback(
     (layerId: string, family: string): GoogleFontAssignResult => {

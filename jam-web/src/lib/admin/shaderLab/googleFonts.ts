@@ -74,3 +74,22 @@ export function applyGoogleFontToSlot(cssVariable: string, family: string): void
   if (typeof document === 'undefined') return
   document.documentElement.style.setProperty(cssVariable, `"${family}"`)
 }
+
+/**
+ * 이 구글 폰트(굵기 400 고정 — `GOOGLE_FONT_SLOT_WEIGHT`)가 브라우저에 실제로 다운로드·파싱
+ * 완료될 때까지 기다린다(티켓 20260916_2118). `ensureGoogleFontLoaded`는 `<link>`만 삽입하고
+ * 완료를 기다리지 않아서, 그 직후 캔버스 2D `context.font`를 설정하면 아직 폴백 글꼴로 조용히
+ * 그려지고 폰트가 나중에 로드돼도 다시 그려지지 않는 경합이 있었다(원인 상세는 티켓 참고).
+ *
+ * `document.fonts.load()`로 해당 굵기·패밀리를 명시적으로 요청하고, 이미 로드돼 캐시된
+ * 폰트라면 즉시(거의 지연 없이) resolve된다. 네트워크 실패 등으로 reject돼도 폴백 글꼴로 계속
+ * 렌더링되면 그만이므로 에러를 삼킨다.
+ */
+export async function waitForGoogleFontLoaded(family: string, weight = 400): Promise<void> {
+  if (typeof document === 'undefined' || !document.fonts) return
+  try {
+    await document.fonts.load(`${weight} 16px "${family}"`)
+  } catch {
+    // 폰트 로드 실패는 폴백 글꼴로 계속 렌더링되는 것으로 충분하다 — 상위에서 별도 처리 불필요.
+  }
+}
