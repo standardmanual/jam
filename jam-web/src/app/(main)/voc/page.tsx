@@ -117,7 +117,9 @@ export default function VocPage() {
   const [sort, setSort] = useState<VocSortKey>('latest')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<VocResponse | null>(null)
-  const [error, setError] = useState(false)
+  // ADR 0001 — 서버(api/voc/route.ts)가 완성한 메시지를 그대로 신뢰해 노출한다.
+  // 서버 응답을 아예 받지 못한 경우(네트워크 단절 등)에만 d.voc.loadFailed로 폴백한다.
+  const [error, setError] = useState<string | null>(null)
   // data===null인 동안만 초기 로딩 상태 — 정렬/페이지 전환 시에는 이전 목록을 유지한 채
   // 백그라운드로 갱신한다(이펙트 본문에서 동기 setState를 피하려 setLoading을 따로 두지
   // 않는다 — InventoryItemHistorySheet.tsx와 동일 패턴, react-hooks/set-state-in-effect).
@@ -126,17 +128,18 @@ export default function VocPage() {
   useEffect(() => {
     let active = true
     fetch(`/api/voc?sort=${sort}&page=${page}`, { cache: 'no-store' })
-      .then((res) => {
-        if (!res.ok) throw new Error('failed')
-        return res.json() as Promise<VocResponse>
+      .then(async (res) => {
+        const json = await res.json().catch(() => null)
+        if (!res.ok) throw new Error(json?.error ?? d.voc.loadFailed)
+        return json as VocResponse
       })
       .then((json) => {
         if (!active) return
         setData(json)
-        setError(false)
+        setError(null)
       })
-      .catch(() => {
-        if (active) setError(true)
+      .catch((err: unknown) => {
+        if (active) setError(err instanceof Error ? err.message : d.voc.loadFailed)
       })
     return () => {
       active = false
@@ -176,7 +179,7 @@ export default function VocPage() {
           )}
 
           {!loading && error && (
-            <EmptyState icon={<InboxIcon className="w-8 h-8" />} title={d.voc.loadError} />
+            <EmptyState icon={<InboxIcon className="w-8 h-8" />} title={error} />
           )}
 
           {!loading && !error && data && data.items.length === 0 && (
