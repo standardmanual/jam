@@ -850,8 +850,12 @@ export const ko = {
     emptyFollowingOther: EMPTY_FOLLOWING_OTHER,
     followButton: '팔로우',
     followingButton: '팔로잉',
-    /** 유저 프로필(`[username]/page.tsx`) SEO 메타데이터 title 템플릿 (티켓 20260915_2249) */
-    profileTitle: '{username} — JAM!',
+    /**
+     * 유저 프로필(`[username]/page.tsx`) SEO 메타데이터 title 템플릿 (티켓 20260915_2249).
+     * §7.3 엠대시 금지 — `notifications/page.tsx`가 쓰는 `— JAM!` 접미 관례는 같은 위반이라
+     * 그대로 따르지 않고 파이프(|) 구분자로 새로 정한다.
+     */
+    profileTitle: '{username} | JAM!',
     /**
      * ADR 0001 — API route(`api/follows/route.ts`)가 직접 참조해 완성한 문구를 그대로
      * 반환한다. §2.4 "소셜 액션 vs 되돌릴 수 없는 확정" 원칙대로 팔로우/언팔로우 실패는
