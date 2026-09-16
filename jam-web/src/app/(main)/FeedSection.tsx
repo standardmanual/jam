@@ -217,8 +217,8 @@ function eventLabel(item: ActivityFeedRow): ReactNode {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 py-[var(--spacing-8)]">
-      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{label}</span>
-      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text text-right max-w-[60%]">{value}</span>
+      <span className="shrink-0 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{label}</span>
+      <span className="whitespace-nowrap text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text text-right">{value}</span>
     </div>
   )
 }
