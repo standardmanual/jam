@@ -504,7 +504,7 @@ const textFields: ShaderLabFieldDefinitions = [
     ],
   },
   { key: 'offset', label: '위치 오프셋', type: 'vec2', defaultValue: [0, 0], min: -1, max: 1, step: 0.01, group: '배치' },
-  { key: 'fontSize', label: '글자 크기', type: 'number', defaultValue: 48, min: 48, max: 600, step: 1, group: '글꼴' },
+  { key: 'fontSize', label: '글자 크기', type: 'number', defaultValue: 48, min: 48, max: 1200, step: 1, group: '글꼴' },
   {
     // 이 필드는 `ShaderLabPropertiesPanel.tsx`가 `type: 'select'`로 그리지 않고
     // `ShaderLabTextFontField.tsx`(구글 폰트 검색 콤보박스)로 특별 취급해 렌더링한다
