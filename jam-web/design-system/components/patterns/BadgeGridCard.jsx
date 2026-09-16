@@ -130,7 +130,7 @@ export function BadgeGridCard({
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-4)', paddingTop: 'var(--spacing-8)', width: '100%' }}>
         <p style={{
-          fontSize: 13, fontWeight: 700, color: 'var(--color-text)',
+          fontSize: 'var(--text-small)', fontWeight: 700, color: 'var(--color-text)',
           textAlign: 'center', width: '100%', lineHeight: 1.3,
           fontFamily: 'var(--font-family-base)',
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
@@ -138,7 +138,7 @@ export function BadgeGridCard({
         }}>
           {undiscovered ? '???' : name}
         </p>
-        {!undiscovered && (level != null ? <BadgeLevelChip level={level} /> : <RarityBadge rarity={rarity} />)}
+        {!undiscovered && (level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={rarity} size="md" />)}
       </div>
       {children && <div style={{ width: '100%', marginTop: 'var(--spacing-4)' }}>{children}</div>}
     </>
