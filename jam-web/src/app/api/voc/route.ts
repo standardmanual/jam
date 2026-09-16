@@ -42,13 +42,15 @@ interface ParsedEntry extends VocItem {
   sortAnswered: number
 }
 
+// Google Sheets 원본 데이터값과의 매칭 기준 — 화면 표시 라벨(d.voc.statusAnswered/statusPending)과는
+// 별개다. 시트 값 자체가 바뀌면 이 상수를 고치되, 표시 라벨은 딕셔너리에서만 관리한다(티켓 20260915_2252).
 const ANSWERED_STATUS = '답변완료'
 
 function parseRow(row: string[], fallbackOrder: number): ParsedEntry | null {
   const submittedAt = row[2]?.trim()
   if (!submittedAt) return null // 빈 행 스킵
 
-  const status = row[9]?.trim() || '문의중'
+  const rawStatus = row[9]?.trim() || '문의중'
   const categories = (row[4] ?? '')
     .split(',')
     .map((c) => c.trim())
@@ -56,7 +58,9 @@ function parseRow(row: string[], fallbackOrder: number): ParsedEntry | null {
   const text = row[5]?.trim() ?? ''
   const severityNum = Number(row[6])
   const severity = Number.isFinite(severityNum) ? severityNum : 0
-  const isAnswered = status === ANSWERED_STATUS
+  const isAnswered = rawStatus === ANSWERED_STATUS
+  // 화면에 노출하는 status는 시트 원문이 아니라 딕셔너리 라벨로 완성한다(ADR 0001, 티켓 20260915_2252).
+  const status = isAnswered ? d.voc.statusAnswered : d.voc.statusPending
   const answer = isAnswered && row[10]?.trim() ? row[10].trim() : null
   const answeredAt = isAnswered && row[11]?.trim() ? row[11].trim() : null
 
