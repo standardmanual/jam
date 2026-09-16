@@ -6,20 +6,21 @@
  */
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { d } from '@/lib/i18n'
 
 export async function GET() {
   const supabase = await createClient()
   const { data: { user }, error } = await supabase.auth.getUser()
 
   if (error || !user) {
-    return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
+    return NextResponse.json({ error: d.common.authRequired }, { status: 401 })
   }
 
   const clientId = process.env.STRAVA_CLIENT_ID
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
 
   if (!clientId || !baseUrl) {
-    return NextResponse.json({ error: '서버 설정 오류' }, { status: 500 })
+    return NextResponse.json({ error: d.auth.errorGeneric }, { status: 500 })
   }
 
   const redirectUri = `${baseUrl}/api/strava/callback`
