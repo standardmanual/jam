@@ -607,7 +607,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               <div className="flex justify-between items-center">
                 <span className="text-[length:var(--text-small)] text-[var(--color-text-secondary)]">{d.badges.earnedAt}</span>
                 <span className="text-[length:var(--text-small)] text-text">
-                  <LocalDate iso={earned.earned_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
+                  <LocalDate iso={earned.earned_at} korean={{ year: true, time: true }} />
                 </span>
               </div>
               {earned.triggered_by_activity_name && (

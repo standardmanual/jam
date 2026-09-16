@@ -7,6 +7,7 @@ import BottomSheet from '@/components/ui/BottomSheet'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { useSkeletonReveal } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
+import { formatKoreanDateTime } from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
 
 interface Props {
@@ -25,17 +26,6 @@ function eventLabel(event: HistoryEvent): string {
   if (event.type === 'dropped') return d.inventory.eventDropped
   if (event.type === 'picked_up') return d.inventory.eventPickedUp
   return ''
-}
-
-function formatTs(iso: string): string {
-  const dt = new Date(iso)
-  return dt.toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props) {
@@ -122,7 +112,7 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
                   <ol className="flex flex-col gap-[var(--spacing-16)]">
                     {events.map((ev, i) => (
                       <li key={i} className="flex flex-col gap-0.5">
-                        <span className="text-[length:var(--text-caption)] text-text/40 font-mono">{formatTs(ev.timestamp)}</span>
+                        <span className="text-[length:var(--text-caption)] text-text/40 font-mono">{formatKoreanDateTime(ev.timestamp, { year: true, time: true })}</span>
                         <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
                           {ev.username ?? d.inventory.historyUnknownUser} · {eventLabel(ev)}
                         </p>
