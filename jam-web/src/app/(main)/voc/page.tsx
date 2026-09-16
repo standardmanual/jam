@@ -120,6 +120,9 @@ export default function VocPage() {
   // ADR 0001 — 서버(api/voc/route.ts)가 완성한 메시지를 그대로 신뢰해 노출한다.
   // 서버 응답을 아예 받지 못한 경우(네트워크 단절 등)에만 d.voc.loadFailed로 폴백한다.
   const [error, setError] = useState<string | null>(null)
+  // "다시 불러오기" 버튼용 — 값을 바꿔 아래 이펙트를 재실행시킨다(의존성 배열의 sort/page가
+  // 그대로여도 재조회가 필요한 경우를 위한 트리거, 티켓 20260916_1031).
+  const [retryKey, setRetryKey] = useState(0)
   // data===null인 동안만 초기 로딩 상태 — 정렬/페이지 전환 시에는 이전 목록을 유지한 채
   // 백그라운드로 갱신한다(이펙트 본문에서 동기 setState를 피하려 setLoading을 따로 두지
   // 않는다 — InventoryItemHistorySheet.tsx와 동일 패턴, react-hooks/set-state-in-effect).
@@ -144,7 +147,7 @@ export default function VocPage() {
     return () => {
       active = false
     }
-  }, [sort, page])
+  }, [sort, page, retryKey])
 
   const handleSortChange = (key: VocSortKey) => {
     setSort(key)
@@ -179,7 +182,11 @@ export default function VocPage() {
           )}
 
           {!loading && error && (
-            <EmptyState icon={<InboxIcon className="w-8 h-8" />} title={error} />
+            <EmptyState
+              icon={<InboxIcon className="w-8 h-8" />}
+              title={error}
+              action={{ label: d.voc.reload, onClick: () => { setError(null); setData(null); setRetryKey((k) => k + 1) } }}
+            />
           )}
 
           {!loading && !error && data && data.items.length === 0 && (
