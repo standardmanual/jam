@@ -19,7 +19,7 @@ PROJECT_SKILLS="$SCRIPT_DIR/skills"
 GLOBAL_SKILLS="$HOME/.claude/skills"
 
 # JAM! 전용 — 글로벌 미러링 제외 대상
-EXCLUDE=("jam-work" "jam-docs" "jam-design" "jam-ship")
+EXCLUDE=("jam-work" "jam-docs" "jam-design" "jam-ship" "jam-plan" "jam-story")
 
 APPLY=0
 [ "${1:-}" = "--apply" ] && APPLY=1

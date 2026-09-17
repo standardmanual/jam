@@ -2,21 +2,22 @@
 
 # jam-web 작업 규칙
 
-## UI를 만들기 전에 — MODULAR 먼저 탐색한다
+## UI를 만들기 전에 — 채원의 판정을 따른다
 
-새 UI가 필요하면 **코드부터 짜지 않는다.** 순서:
+새 UI가 필요하면 **코드부터 짜지 않는다.** 어떤 컴포넌트를 쓸지, 새로 만들지, MODULAR에 올릴지는
+채원(`jam-designer`) 모드 ①의 **사전 판정**이 정한다.
 
-1. **탐색** — `design-system/_ds_manifest.json`(컴포넌트 색인) → `design-system/readme.md` 색인 →
-   `**/*.stories.*`(변형·사용례) 순으로 검색한다. Storybook 웹 UI(`npm run storybook`, :6006)는
-   사람이 눈으로 확인할 때 쓰고, 코드 탐색에는 위 파일들을 쓴다.
-2. **재사용 판단** — 기존 컴포넌트로 해결되면 신규 UI를 만들지 않는다.
-3. **신규가 필요하면** — MODULAR에 추가할 가치가 있는지 먼저 판단한다.
-   판단 기준과 의사결정 트리는 `/jam-design` 스킬 참조.
-4. **MODULAR에 추가하면 Storybook Story를 함께 작성한다.** 컴포넌트만 고치고 Story를 빠뜨리면
+1. **판정이 있으면 그대로 따른다.** 재사용하기로 한 컴포넌트를 두고 새로 만들지 않는다.
+   판정에 적힌 토큰·상태 목록·텍스트 배치도를 빠짐없이 구현한다.
+2. **판정이 없는데 UI 작업이 필요하면 멈추고 요청한다** (`needs_design`). 직접 고르지 않는다.
+3. **MODULAR을 고쳤으면 Storybook Story를 함께 작성한다.** 컴포넌트만 고치고 Story를 빠뜨리면
    `.githooks/pre-commit`이 경고한다.
 
-**예외**: `src/app/admin/` 어드민 화면은 MODULAR 적용 대상이 아니다 (정책 결정).
-어드민 UI는 이 탐색 절차를 거치지 않고 service-specific으로 구현한다.
+판정 기준과 의사결정 트리는 `/jam-design` 스킬에 있다. 리뷰 점검표는
+`.claude/skills/jam-design/references/ui-review-checklist.md`.
+
+**예외**: `src/app/admin/` 어드민 화면은 MODULAR 적용 대상이 아니고 채원의 판정 대상도 아니다
+(정책 결정). 어드민 UI는 바로 service-specific으로 구현한다.
 
 ## 오버레이(시트·모달·토스트)를 만들거나 고치기 전에
 
