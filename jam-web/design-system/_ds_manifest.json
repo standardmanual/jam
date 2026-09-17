@@ -110,6 +110,10 @@
       "sourcePath": "components/patterns/BadgeRevealCarousel.jsx"
     },
     {
+      "name": "MixerSlot",
+      "sourcePath": "components/patterns/MixerSlot.jsx"
+    },
+    {
       "name": "IconCatalog",
       "sourcePath": "components/icons/IconCatalog.jsx"
     },
