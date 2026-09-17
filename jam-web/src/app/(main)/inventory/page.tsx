@@ -56,7 +56,7 @@ export default async function InventoryPage() {
   return (
     <div className="min-h-full text-text">
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
-      <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
+      <TopNav logo />
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-24)]">
       {/* 헤더 */}

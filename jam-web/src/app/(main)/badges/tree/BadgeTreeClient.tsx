@@ -338,7 +338,6 @@ export default function BadgeTreeClient({
       <TopNav
         title={d.badges.title}
         backHref="/badges"
-        headerStyle={{ background: 'var(--color-surface)' }}
       />
 
       {/* 화면 제목 `<h1>배지 트리</h1>`를 두지 않는다(티켓 20260906_2140 E①) —

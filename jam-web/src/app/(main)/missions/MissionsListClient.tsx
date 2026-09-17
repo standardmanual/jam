@@ -268,7 +268,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
   return (
     <div className="min-h-full text-text">
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
-      <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
+      <TopNav logo />
 
       {/* 헤더 — 배지 메뉴와 동일한 구조 */}
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)]">

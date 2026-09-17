@@ -190,7 +190,7 @@ export default function BadgesClient({
   return (
     <div className="min-h-full text-text">
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
-      <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
+      <TopNav logo />
 
       {/* 헤더 — 인벤토리/미션과 동일한 크기의 타이틀. 우측 끝에 배지 트리 진입 버튼(요구사항 9) */}
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] flex justify-between items-center gap-[var(--spacing-12)]">
