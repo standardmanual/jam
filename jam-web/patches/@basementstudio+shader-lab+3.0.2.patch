@@ -954,19 +954,19 @@ index 4f2c88c..d1093e5 100644
      private readonly logicalWidthUniform;
      private readonly logicalHeightUniform;
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js
-index 752fde3..bfe76e7 100644
+index 752fde3..f831ea9 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js
-@@ -1,29 +1,20 @@
+@@ -1,29 +1,23 @@
 -import { dot, float, floor, fract, mix, pow, select, sin, step, texture as tslTexture, uniform, uv, vec2, vec3, vec4, } from "three/tsl";
-+import { cos, dot, float, floor, fract, mix, sin, step, texture as tslTexture, uniform, uv, vec2, vec3, vec4, } from "three/tsl";
++import { cos, float, floor, mix, mod, sin, step, texture as tslTexture, uniform, uv, vec2, vec3, vec4, } from "three/tsl";
  import { createPipelinePlaceholder, PassNode } from "./pass-node.js";
 -const SLICE_DIRECTION_BOTH = 0;
 -const SLICE_DIRECTION_RIGHT = 1;
 -const SLICE_DIRECTION_LEFT = 2;
- function hash2(x, y) {
-     return fract(sin(dot(vec2(x, y), vec2(127.1, 311.7))).mul(43758.5453123));
- }
+-function hash2(x, y) {
+-    return fract(sin(dot(vec2(x, y), vec2(127.1, 311.7))).mul(43758.5453123));
+-}
 -function toSliceDirection(value) {
 -    switch (value) {
 -        case "left":
@@ -982,6 +982,12 @@ index 752fde3..bfe76e7 100644
      sliceHeightUniform;
 -    blockWidthUniform;
      densityUniform;
++    // 티켓 20260917_1348 — density를 "몇 밴드마다 한 번씩 선택할지" 정하는 규칙적 간격
++    // 패턴으로 바꾸며 추가한 두 유니폼. periodUniform은 그 간격(정수, JS에서
++    // Math.round(1/density)로 미리 계산), densityEnabledUniform은 density<=0일 때
++    // (간격이 무한대가 되는 특수 케이스) 밴드를 아예 선택하지 않기 위한 스위치다.
++    periodUniform;
++    densityEnabledUniform;
      dispersionUniform;
      speedUniform;
 -    directionUniform;
@@ -994,12 +1000,14 @@ index 752fde3..bfe76e7 100644
      timeUniform;
      logicalWidthUniform;
      logicalHeightUniform;
-@@ -35,11 +26,10 @@ export class SlicePass extends PassNode {
+@@ -35,11 +29,12 @@ export class SlicePass extends PassNode {
          this.placeholder = createPipelinePlaceholder();
          this.amountUniform = uniform(180);
          this.sliceHeightUniform = uniform(28);
 -        this.blockWidthUniform = uniform(120);
          this.densityUniform = uniform(0.58);
++        this.periodUniform = uniform(2);
++        this.densityEnabledUniform = uniform(1);
          this.dispersionUniform = uniform(0.18);
          this.speedUniform = uniform(0.2);
 -        this.directionUniform = uniform(SLICE_DIRECTION_RIGHT);
@@ -1007,7 +1015,7 @@ index 752fde3..bfe76e7 100644
          this.timeUniform = uniform(0);
          this.logicalWidthUniform = uniform(1);
          this.logicalHeightUniform = uniform(1);
-@@ -64,10 +54,6 @@ export class SlicePass extends PassNode {
+@@ -64,14 +59,16 @@ export class SlicePass extends PassNode {
              typeof params.sliceHeight === "number"
                  ? Math.max(2, Math.min(240, Math.round(params.sliceHeight)))
                  : 28;
@@ -1015,10 +1023,24 @@ index 752fde3..bfe76e7 100644
 -            typeof params.blockWidth === "number"
 -                ? Math.max(8, Math.min(640, Math.round(params.blockWidth)))
 -                : 120;
-         this.densityUniform.value =
-             typeof params.density === "number"
-                 ? Math.max(0, Math.min(1, params.density))
-@@ -81,7 +67,10 @@ export class SlicePass extends PassNode {
+-        this.densityUniform.value =
+-            typeof params.density === "number"
+-                ? Math.max(0, Math.min(1, params.density))
+-                : 0.58;
++        const density = typeof params.density === "number" ? Math.max(0, Math.min(1, params.density)) : 0.58;
++        this.densityUniform.value = density;
++        // 티켓 20260917_1348 — 간격(period)은 셰이더 안에서가 아니라 여기 JS에서 미리
++        // round()로 계산해 정수 유니폼으로 넘긴다(three/tsl에 정수 round 노드가 마땅치
++        // 않고, density는 매 프레임이 아니라 파라미터가 바뀔 때만 갱신되므로 JS 계산이
++        // 더 간단하고 정확하다). density=1 → period=1 → 모든 밴드 선택(기존 "density=1이면
++        // 모든 밴드" 동작 유지). density<=0 → densityEnabledUniform을 0으로 꺼서 gate를
++        // 항상 0으로 만든다(간격이 무한대가 되는 경우라 period 값 자체는 의미가 없다).
++        this.densityEnabledUniform.value = density > 0 ? 1 : 0;
++        this.periodUniform.value = density > 0 ? Math.max(1, Math.round(1 / density)) : 1;
+         this.dispersionUniform.value =
+             typeof params.dispersion === "number"
+                 ? Math.max(0, Math.min(0.5, params.dispersion))
+@@ -81,7 +78,10 @@ export class SlicePass extends PassNode {
                  ? Math.max(0, Math.min(2, params.speed))
                  : 0.2;
          this.speedUniform.value = this.speedValue;
@@ -1030,7 +1052,7 @@ index 752fde3..bfe76e7 100644
      }
      needsContinuousRender() {
          return this.speedValue > 0.0001;
-@@ -101,28 +90,49 @@ export class SlicePass extends PassNode {
+@@ -101,28 +101,53 @@ export class SlicePass extends PassNode {
          this.sourceTextureNodes = [];
          const renderTargetUv = vec2(uv().x, float(1).sub(uv().y));
          const pixelCoord = vec2(renderTargetUv.x.mul(this.logicalWidthUniform), renderTargetUv.y.mul(this.logicalHeightUniform));
@@ -1064,17 +1086,21 @@ index 752fde3..bfe76e7 100644
 +        const centered = pixelCoord.sub(center);
 +        const rotated = vec2(centered.x.mul(cosA).sub(centered.y.mul(sinA)), centered.x.mul(sinA).add(centered.y.mul(cosA)));
 +        const sliceIndex = floor(rotated.y.div(this.sliceHeightUniform));
-+        // 티켓 20260917_1256 — 목표 1(균일 패턴): 게이팅 결정(bandNoise/gate)에서 매 프레임
-+        // 바뀌는 timeBucket 의존을 제거해 "어느 밴드가 얼마나 튀어나올지"가 프레임 간
-+        // 고정되도록 한다(시드 고정). 애니메이션은 아래에서 위상(phase)이 고정된 sin 파형으로만
-+        // 부드럽게 더한다 — 매 프레임 다른 밴드를 골라 흔드는 대신, 같은 밴드가 같은 위상으로
-+        // 숨쉬듯 움직인다.
-+        const bandNoise = hash2(sliceIndex.add(float(0.37)), float(11.13));
-+        const gate = step(float(1).sub(this.densityUniform), bandNoise);
-+        // 티켓 20260917_1324 — 목표 2(이동량 균일화): `bandNoise`는 "어느 밴드를 밀지"만
-+        // 고르는 gate에만 쓰고, 크기 스케일링(`pow(bandNoise, 1.35)`)과 밴드별 위상차
-+        // (`bandPhase`)는 제거한다. 게이트로 선택된 모든 밴드가 같은 위상의 breathe로 동일한
-+        // `amount` 강도로 밀리도록 한다.
++        // 티켓 20260917_1256 — 목표 1(균일 패턴): 게이팅 결정에서 매 프레임 바뀌는 timeBucket
++        // 의존을 제거해 "어느 밴드가 얼마나 튀어나올지"가 프레임 간 고정되도록 한다(시드 고정).
++        // 애니메이션은 아래에서 위상(phase)이 고정된 sin 파형으로만 부드럽게 더한다 — 매 프레임
++        // 다른 밴드를 골라 흔드는 대신, 같은 밴드가 같은 위상으로 숨쉬듯 움직인다.
++        // 티켓 20260917_1348 — 기존에는 gate가 bandNoise(밴드 인덱스별 해시값)에 기반한
++        // 확률적 선택이라, 선택된 밴드 사이 간격이 무작위로 흔들려 화면 한쪽에 몰리는
++        // 클러스터링·불규칙 공백이 생겼다. period 밴드마다 정확히 하나씩 규칙적으로
++        // 선택하도록 mod(sliceIndex, period)==0 패턴으로 바꾼다. three/tsl의 mod()는 음수
++        // sliceIndex에도 항상 [0, period) 범위를 반환하므로(x - y*floor(x/y)) 회전각에
++        // 따라 sliceIndex가 음수가 되는 경우도 동일하게 규칙적이다. 해시 기반 bandNoise는
++        // 더 이상 어디에도 쓰이지 않아 이 티켓에서 hash2 함수와 함께 제거했다.
++        const gate = float(1).sub(step(float(0.5), mod(sliceIndex, this.periodUniform))).mul(this.densityEnabledUniform);
++        // 티켓 20260917_1324 — 목표 2(이동량 균일화): 크기 스케일링(`pow(bandNoise, 1.35)`)과
++        // 밴드별 위상차(`bandPhase`)는 제거한다. 게이트로 선택된 모든 밴드가 같은 위상의
++        // breathe로 동일한 `amount` 강도로 밀리도록 한다.
 +        const breathe = sin(this.timeUniform.mul(this.speedUniform))
 +            .mul(float(0.5))
 +            .add(float(0.5));
