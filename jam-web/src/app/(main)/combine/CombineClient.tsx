@@ -50,13 +50,6 @@ const TYPE_ICON: Record<CombineSlotBadgeType, ReactNode> = {
   checkin: <PinIcon className="w-6 h-6" />,
 }
 
-const BAG_TABS: Array<{ key: 'all' | CombineSlotBadgeType; label: keyof typeof d.combine }> = [
-  { key: 'all', label: 'bagTabAll' },
-  { key: 'item', label: 'bagTabItem' },
-  { key: 'activity', label: 'bagTabActivity' },
-  { key: 'checkin', label: 'bagTabCheckin' },
-]
-
 /** 슬롯을 채운 값 — item 타입은 인벤토리 개체 id, activity/checkin은 배지 id가 refId다 */
 interface SlotFill {
   refId: string
@@ -65,13 +58,19 @@ interface SlotFill {
   imageUrl: string | null
 }
 
-/** 가방(바텀시트) 목록 한 줄 — 레시피 안의 모든 슬롯 후보 중 유저가 실제로 보유한 것만 담는다 */
-interface BagEntry {
-  refId: string
+/**
+ * 가방(바텀시트) 목록 한 줄 — 탭한 슬롯의 후보(`slot.candidates`) 전체를 그대로 담는다
+ * (티켓 20260917_1655 개정: 유저 보유 배지만 훑던 방식에서 슬롯 후보 전체 노출로 변경).
+ * `refId`는 보유한 후보에만 있고(개체 id 또는 조건 배지 id), 미보유 후보는 `refId`가 없다.
+ */
+interface BagRow {
+  key: string
+  refId: string | null
   badgeId: string
   name: string
   imageUrl: string | null
-  badgeType: CombineSlotBadgeType
+  /** active: 탭해서 채울 수 있음 · used: 다른 슬롯에 이미 씀 · needed: 아예 보유하지 않음 */
+  state: 'active' | 'used' | 'needed'
 }
 
 function recipeThumb(recipe: RecipeWithSlots): BadgeDetail | undefined {
@@ -84,7 +83,6 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
   const [fills, setFills] = useState<Record<string, SlotFill>>({})
   const [switchSheetOpen, setSwitchSheetOpen] = useState(false)
   const [bagSlotId, setBagSlotId] = useState<string | null>(null)
-  const [bagTab, setBagTab] = useState<'all' | CombineSlotBadgeType>('all')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{
     success: boolean
@@ -139,50 +137,59 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
     setFills({})
   }
 
-  // 슬롯 하나에 넣을 수 있는 "보유한" 후보만 모은다 — 가방은 안 가진 배지를 보여주지 않는다.
-  function bagEntriesFor(recipe: RecipeWithSlots): BagEntry[] {
-    const seen = new Set<string>()
-    const entries: BagEntry[] = []
-    for (const slot of recipe.slots) {
-      for (const candidate of slot.candidates) {
-        if (slot.badge_type === 'item') {
-          const owned = itemsByBadgeId.get(candidate.id) ?? []
-          for (const inv of owned) {
-            if (seen.has(inv.id)) continue
-            seen.add(inv.id)
-            entries.push({
-              refId: inv.id,
-              badgeId: candidate.id,
-              name: inv.badge.name,
-              imageUrl: inv.badge.image_url,
-              badgeType: 'item',
-            })
-          }
-        } else {
-          if (!ownedConditionSet.has(candidate.id)) continue
-          if (seen.has(candidate.id)) continue
-          seen.add(candidate.id)
-          entries.push({
-            refId: candidate.id,
+  /**
+   * 탭한 슬롯의 후보 전체를 가방 목록 한 줄씩으로 만든다 — 보유 여부와 무관하게 후보 전체를
+   * 보여줘서, 잠긴 슬롯을 탭해도 "뭘 구해야 하는지"를 확인할 수 있게 한다(티켓 20260917_1655 개정).
+   */
+  function bagRowsFor(slot: RecipeSlotWithCandidates): BagRow[] {
+    const rows: BagRow[] = []
+    for (const candidate of slot.candidates) {
+      if (slot.badge_type === 'item') {
+        const owned = itemsByBadgeId.get(candidate.id) ?? []
+        if (owned.length === 0) {
+          rows.push({ key: candidate.id, refId: null, badgeId: candidate.id, name: candidate.name, imageUrl: candidate.image_url, state: 'needed' })
+          continue
+        }
+        for (const inv of owned) {
+          const usedElsewhere = Object.entries(fills).some(([sId, f]) => sId !== slot.id && f.refId === inv.id)
+          rows.push({
+            key: inv.id,
+            refId: inv.id,
             badgeId: candidate.id,
-            name: candidate.name,
-            imageUrl: candidate.image_url,
-            badgeType: slot.badge_type,
+            name: inv.badge.name,
+            imageUrl: inv.badge.image_url,
+            state: usedElsewhere ? 'used' : 'active',
           })
         }
+      } else {
+        if (!ownedConditionSet.has(candidate.id)) {
+          rows.push({ key: candidate.id, refId: null, badgeId: candidate.id, name: candidate.name, imageUrl: candidate.image_url, state: 'needed' })
+          continue
+        }
+        const usedElsewhere = Object.entries(fills).some(([sId, f]) => sId !== slot.id && f.refId === candidate.id)
+        rows.push({
+          key: candidate.id,
+          refId: candidate.id,
+          badgeId: candidate.id,
+          name: candidate.name,
+          imageUrl: candidate.image_url,
+          state: usedElsewhere ? 'used' : 'active',
+        })
       }
     }
-    return entries
+    return rows
   }
 
-  function fillSlot(slotId: string, entry: BagEntry) {
+  function fillSlot(slotId: string, row: BagRow) {
+    if (!row.refId) return
+    const refId = row.refId
     setFills((prev) => {
       const next = { ...prev }
       // 같은 refId(개체/배지)는 슬롯 하나에만 대응한다 — 다른 슬롯에 이미 쓰였다면 그쪽에서 뺀다.
       for (const key of Object.keys(next)) {
-        if (next[key].refId === entry.refId) delete next[key]
+        if (next[key].refId === refId) delete next[key]
       }
-      next[slotId] = { refId: entry.refId, badgeId: entry.badgeId, name: entry.name, imageUrl: entry.imageUrl }
+      next[slotId] = { refId, badgeId: row.badgeId, name: row.name, imageUrl: row.imageUrl }
       return next
     })
     setBagSlotId(null)
@@ -197,7 +204,6 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
   }
 
   function openBagFor(slot: RecipeSlotWithCandidates) {
-    setBagTab(slot.badge_type)
     setBagSlotId(slot.id)
   }
 
@@ -310,8 +316,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
   }
 
   const bagSlot = selectedRecipe?.slots.find((s) => s.id === bagSlotId) ?? null
-  const bagEntries = selectedRecipe ? bagEntriesFor(selectedRecipe) : []
-  const bagFiltered = bagEntries.filter((e) => bagTab === 'all' || e.badgeType === bagTab)
+  const bagRows = bagSlot ? bagRowsFor(bagSlot) : []
 
   return (
     <div className="flex flex-col min-h-full bg-surface text-text">
@@ -455,58 +460,45 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
             </div>
           </BottomSheet>
 
-          {/* 가방 — 슬롯 하나를 지정해서 여는 시트 */}
+          {/*
+            가방 — 슬롯 하나를 지정해서 여는 시트. 빈 슬롯뿐 아니라 잠긴 슬롯을 탭해도 열리고,
+            그 슬롯의 후보(slot.candidates) 전체를 보여준다(티켓 20260917_1655 개정) —
+            슬롯 하나의 후보는 항상 같은 타입이라 타입 탭 구분은 없앴다.
+          */}
           <BottomSheet open={!!bagSlot} onClose={() => setBagSlotId(null)} title={d.combine.bagTitle}>
             <div className="pb-[var(--spacing-24)]">
-              <div className="flex gap-[var(--spacing-8)] mb-[var(--spacing-16)] overflow-x-auto">
-                {BAG_TABS.map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setBagTab(tab.key)}
-                    className={[
-                      'shrink-0 px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-pill-buttons)] text-[length:var(--text-caption)]',
-                      bagTab === tab.key ? 'bg-text text-surface' : 'bg-surface text-text/60',
-                    ].join(' ')}
-                  >
-                    {d.combine[tab.label] as string}
-                  </button>
-                ))}
-              </div>
-
-              {bagFiltered.length === 0 ? (
+              {bagRows.length === 0 ? (
                 <EmptyState icon={<PackageIcon className="w-8 h-8" />} title={d.combine.bagEmpty} />
               ) : (
                 <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
-                  {bagFiltered.map((entry) => {
-                    const fitsTargetSlot = !!bagSlot && bagSlot.candidates.some((c) => c.id === entry.badgeId)
-                    const usedElsewhere = Object.entries(fills).some(
-                      ([slotId, f]) => slotId !== bagSlot?.id && f.refId === entry.refId
-                    )
-                    const active = fitsTargetSlot && !usedElsewhere
+                  {bagRows.map((row) => {
+                    const active = row.state === 'active'
                     return (
                       <button
-                        key={entry.refId}
+                        key={row.key}
                         type="button"
                         disabled={!active}
-                        onClick={() => bagSlot && active && fillSlot(bagSlot.id, entry)}
+                        onClick={() => bagSlot && active && fillSlot(bagSlot.id, row)}
                         className={[
                           'flex flex-col items-center gap-[var(--spacing-4)] p-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-surface',
                           active ? 'active:scale-95' : 'opacity-40',
                         ].join(' ')}
                       >
                         <div className="w-16 h-16 rounded-[var(--radius-card)] bg-surface-elevated flex items-center justify-center overflow-hidden">
-                          {entry.imageUrl ? (
-                            <Image src={entry.imageUrl} alt={entry.name} width={64} height={64} className="object-contain w-full h-full" />
+                          {row.imageUrl ? (
+                            <Image src={row.imageUrl} alt={row.name} width={64} height={64} className="object-contain w-full h-full" />
                           ) : (
                             <PackageIcon className="w-6 h-6 text-text/40" />
                           )}
                         </div>
                         <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-text text-center line-clamp-2">
-                          {entry.name}
+                          {row.name}
                         </p>
-                        {usedElsewhere && (
+                        {row.state === 'used' && (
                           <span className="text-[length:var(--text-caption)] text-text/40">{d.combine.bagUsedLabel}</span>
+                        )}
+                        {row.state === 'needed' && (
+                          <span className="text-[length:var(--text-caption)] text-text/40">{d.combine.bagNeededLabel}</span>
                         )}
                       </button>
                     )
