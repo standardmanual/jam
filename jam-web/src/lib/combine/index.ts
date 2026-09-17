@@ -1,5 +1,5 @@
 /**
- * 아이템 믹스 로직 v4 — 슬롯 기반 OR 매칭 (서버 사이드 전용) — 티켓 20260917_1427
+ * 아이템 믹스 로직 v5 — 레시피 선택형 단일 검증 (서버 사이드 전용) — 티켓 20260917_1427
  *
  * 두 갈래 구조는 그대로 유지한다.
  *  1) 레시피 매칭 → 레시피가 지정한 보상(포인트 + 배지 전부)을 **확정 지급**.
@@ -11,6 +11,18 @@
  *  - badge_type = 'activity'|'checkin' : 유저가 보유한 배지 중 allowed_badge_ids에 속하는
  *                           것이 1개 이상 존재(보유만 확인, 소각 없음)
  *  하나라도 대응/보유 실패 시 그 레시피는 미매칭.
+ *
+ * v4(같은 티켓 앞 단계, 어드민 슬롯 재설계)까지는 유저가 투입한 아이템만 받아 **공개·
+ * 비공개 레시피 전체를 순회**하며 매칭되는 첫 레시피를 채택했다. 이 방식은 OR 매칭
+ * 도입으로 한 유저의 투입이 여러 레시피 조건을 동시에 만족할 수 있게 되면서 "배열 순회
+ * 순서로 우선순위가 갈리는" medium-confidence 문제를 안고 있었다(게이트 리뷰 지적).
+ *
+ * v5(유저 화면 레시피 선택형 플로우)는 유저가 공개 레시피 목록에서 먼저 하나를 선택하고,
+ * 서버는 `combineRecipeAttempt()`로 **선택된 레시피 하나만** 검증한다 — 전체 스캔이
+ * 사라지므로 우선순위 문제 자체가 발생하지 않는다. `matchesRecipeSlots()`는 이미 슬롯
+ * ↔ 투입 아이템의 최적 대응을 백트래킹으로 찾으므로, 클라이언트가 슬롯별 배지 인스턴스를
+ * 지정해 보내지 않고 투입 아이템 id 목록만 보내도 매칭 판정은 동일하게 성립한다(슬롯 id
+ * 매핑은 UI 표시 편의를 위한 것일 뿐 서버 판정에 필요하지 않다).
  *
  * 이전(v3, 티켓 20260910_1408)의 "정확 집합 일치" 방식을 완전히 대체한다 — 슬롯당 후보
  * 1개로 표현하면 기존 레시피와 동등하므로 하위 호환 손실 없음.
@@ -48,17 +60,32 @@ export type CombineResult =
       pointsAwarded: number
     }
 
-const MIN_ITEMS = 2
 const MAX_ITEMS = 10
 
 /**
- * `combineItems()` 실행 중 갱신되는 `inventory.used_slots` 캐시 카운터의 로컬 사본.
+ * `combineRecipeAttempt()` 실행 중 갱신되는 `inventory.used_slots` 캐시 카운터의 로컬 사본.
  * 소각·지급이 일어날 때마다 이 값을 갱신하며 DB에도 함께 반영한다(20260912_2101).
  */
 type InventorySlotState = { id: string; used_slots: number; max_slots: number }
 
-export async function combineItems(userId: string, itemIds: string[]): Promise<CombineResult> {
-  if (itemIds.length < MIN_ITEMS || itemIds.length > MAX_ITEMS || new Set(itemIds).size !== itemIds.length) {
+/**
+ * 유저가 선택한 레시피 하나만 검증한다(티켓 20260917_1427) — 이전 `combineItems()`처럼
+ * 전체 레시피를 스캔하지 않는다. `itemIds`는 유저가 인벤토리에서 골라 슬롯에 채운 아이템
+ * 배지 개체 id 목록이다(아이템 슬롯 개수만큼, 액티비티·체크인 슬롯은 보유 여부만 서버가
+ * 직접 조회하므로 별도 입력이 필요 없다).
+ */
+export async function combineRecipeAttempt(
+  userId: string,
+  recipeId: string,
+  itemIds: string[]
+): Promise<CombineResult> {
+  if (
+    typeof recipeId !== 'string' ||
+    !recipeId ||
+    !Array.isArray(itemIds) ||
+    itemIds.length > MAX_ITEMS ||
+    new Set(itemIds).size !== itemIds.length
+  ) {
     // 재료를 특정할 수 없는 단계라 소각·포인트 없이 이력만 남긴다.
     const supabase = createServiceClient()
     await logFailure(supabase, userId, [], 'invalid_count', 0)
@@ -66,6 +93,25 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
   }
 
   const supabase = createServiceClient()
+
+  // 0. 선택된 레시피 존재 확인 — 여기서부터는 이 레시피 하나만 검증 대상이다.
+  const { data: recipeRaw } = await supabase
+    .from('combination_recipes')
+    .select('*')
+    .eq('id', recipeId)
+    .maybeSingle()
+  const recipe = recipeRaw as CombinationRecipeRow | null
+  if (!recipe) {
+    await logFailure(supabase, userId, [], 'recipe_not_found', 0)
+    return { success: false, reason: 'recipe_not_found', pointsAwarded: 0 }
+  }
+
+  const { data: slotsRaw } = await supabase
+    .from('combination_recipe_slots')
+    .select('*')
+    .eq('recipe_id', recipe.id)
+    .order('slot_order', { ascending: true })
+  const recipeSlots = (slotsRaw ?? []) as CombinationRecipeSlotRow[]
 
   // 1. 인벤토리 조회 — used_slots/max_slots도 함께 가져와 소각·지급 시 카운터 증감에 쓴다
   const { data: invRaw } = await supabase
@@ -99,33 +145,8 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
 
   const badgeIds = items.map((i) => i.badge_id)
 
-  // 3. 레시피 슬롯 매칭 탐색 — 슬롯 하나당 후보(OR) 중 하나만 대응/보유하면 충족.
-  //    아이템 슬롯은 투입한 아이템 배지와 1:1 대응(여분 투입 불허), 액티비티·체크인 슬롯은
-  //    보유 여부만 확인한다(소각 없음).
-  const { data: recipesRaw } = await supabase.from('combination_recipes').select('*')
-  const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
-  const recipeIds = recipes.map((r) => r.id)
-
-  const { data: slotsRaw } =
-    recipeIds.length > 0
-      ? await supabase.from('combination_recipe_slots').select('*').in('recipe_id', recipeIds)
-      : { data: [] as CombinationRecipeSlotRow[] }
-  const slots = (slotsRaw ?? []) as CombinationRecipeSlotRow[]
-  const slotsByRecipe = new Map<string, CombinationRecipeSlotRow[]>()
-  for (const slot of slots) {
-    const list = slotsByRecipe.get(slot.recipe_id) ?? []
-    list.push(slot)
-    slotsByRecipe.set(slot.recipe_id, list)
-  }
-
-  let matched: CombinationRecipeRow | undefined
-  for (const candidate of recipes) {
-    const candidateSlots = (slotsByRecipe.get(candidate.id) ?? []).sort((a, b) => a.slot_order - b.slot_order)
-    if (await matchesRecipeSlots(supabase, userId, candidateSlots, badgeIds)) {
-      matched = candidate
-      break
-    }
-  }
+  // 3. 선택된 레시피의 슬롯 충족 여부만 판정한다(전체 레시피 스캔 없음).
+  const matched = (await matchesRecipeSlots(supabase, userId, recipeSlots, badgeIds)) ? recipe : undefined
 
   // 4. 원본 아이템 소각 — 성공/실패 무관 항상 소각
   // 20260829_2101: 개체 파괴 방식이 소프트 삭제로 확정됐다(하드 삭제하면 CustodyEvent
@@ -147,13 +168,13 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
     .select('id')
 
   if (destroyError) {
-    console.error('[combineItems] 아이템 소각 오류:', destroyError)
+    console.error('[combineRecipeAttempt] 아이템 소각 오류:', destroyError)
     await logFailure(supabase, userId, badgeIds, 'items_not_found', 0)
     return { success: false, reason: 'items_not_found', pointsAwarded: 0 }
   }
 
   if (!destroyedRows || destroyedRows.length !== itemIds.length) {
-    console.error('[combineItems] 소각된 행 수 불일치 — 동시 믹스 시도로 판단, 처리 중단', {
+    console.error('[combineRecipeAttempt] 소각된 행 수 불일치 — 동시 믹스 시도로 판단, 처리 중단', {
       expected: itemIds.length,
       actual: destroyedRows?.length ?? 0,
       userId,
@@ -172,13 +193,13 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
     p_count: destroyedRows.length,
   })
   if (releaseRpcError) {
-    console.error('[combineItems] release_inventory_slots RPC 오류:', releaseRpcError)
+    console.error('[combineRecipeAttempt] release_inventory_slots RPC 오류:', releaseRpcError)
   } else {
     const releaseResult = releaseRpcResult as ReleaseInventorySlotsResult
     if (releaseResult.ok) {
       inventory.used_slots = releaseResult.usedSlots
     } else {
-      console.error('[combineItems] release_inventory_slots 실패:', releaseResult.reason)
+      console.error('[combineRecipeAttempt] release_inventory_slots 실패:', releaseResult.reason)
     }
   }
 
@@ -194,7 +215,7 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
   }))
   const { error: consumeEventError } = await consumeEventsQuery.insert(consumeEventsPayload)
   if (consumeEventError) {
-    console.error('[combineItems] Consume 이벤트 기록 오류:', consumeEventError)
+    console.error('[combineRecipeAttempt] Consume 이벤트 기록 오류:', consumeEventError)
   }
 
   // 5-a. 매칭 성공 — 지정 보상 확정 지급 (확률 없음)
@@ -209,7 +230,7 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
     // 전부 소프트 삭제됐거나 슬롯 부족 등으로 skip됨) 재료만 소각되고 빈손이 되는 사고다.
     // 운영이 탐지할 수 있게 레시피 id·의도했던 배지 id를 로그로 남긴다.
     if ((matched.reward_badge_ids ?? []).length > 0 && resultBadges.length === 0) {
-      console.error('[combineItems] 레시피 보상 배지가 전부 지급되지 않음 — 재료만 소각된 빈손 성공 발생:', {
+      console.error('[combineRecipeAttempt] 레시피 보상 배지가 전부 지급되지 않음 — 재료만 소각된 빈손 성공 발생:', {
         recipeId: matched.id,
         rewardBadgeIds: matched.reward_badge_ids,
         userId,
@@ -305,7 +326,7 @@ async function getOwnedConditionBadgeIds(
     ])
 
   if (activityError || checkinError) {
-    console.error('[combineItems] 보유 조건 배지 조회 실패 — 매칭을 보류합니다:', activityError ?? checkinError)
+    console.error('[combineRecipeAttempt] 보유 조건 배지 조회 실패 — 매칭을 보류합니다:', activityError ?? checkinError)
     return null
   }
 
@@ -333,7 +354,7 @@ async function grantBadge(
   const badge = (badgeRaw as { id: string; name: string; rarity: string } | null) ?? null
 
   if (!badge) {
-    console.error('[combineItems] 보상 배지가 삭제 상태라 지급을 생략함:', badgeId)
+    console.error('[combineRecipeAttempt] 보상 배지가 삭제 상태라 지급을 생략함:', badgeId)
     return null
   }
 
@@ -342,7 +363,7 @@ async function grantBadge(
   // (missions/rewards.ts)과 동일하게 "슬롯 부족 → 조용히 skip" 정책을 따른다 — 인벤토리
   // 칸을 초과해서 지급하지 않는다(20260912_2101).
   if (isInventoryFull(inventory)) {
-    console.info('[combineItems] 인벤토리 슬롯 부족으로 보상 배지 지급을 생략함:', badgeId)
+    console.info('[combineRecipeAttempt] 인벤토리 슬롯 부족으로 보상 배지 지급을 생략함:', badgeId)
     return null
   }
 
@@ -356,16 +377,16 @@ async function grantBadge(
     p_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   })
   if (rpcError) {
-    console.error('[combineItems] grant_inventory_item RPC 오류:', rpcError)
+    console.error('[combineRecipeAttempt] grant_inventory_item RPC 오류:', rpcError)
     return null
   }
   const result = rpcResult as GrantInventoryItemResult
   if (!result.ok) {
     // slot_full: 다른 지급 경로와 동시에 슬롯이 찬 경우 — 정책대로 조용히 skip
     if (result.reason === 'slot_full') {
-      console.info('[combineItems] 인벤토리 슬롯 부족으로 보상 배지 지급을 생략함:', badgeId)
+      console.info('[combineRecipeAttempt] 인벤토리 슬롯 부족으로 보상 배지 지급을 생략함:', badgeId)
     } else {
-      console.error('[combineItems] 보상 아이템 추가 오류:', result.reason)
+      console.error('[combineRecipeAttempt] 보상 아이템 추가 오류:', result.reason)
     }
     return null
   }
@@ -389,5 +410,5 @@ async function logFailure(
     fail_reason: failReason,
     points_awarded: pointsAwarded,
   })
-  if (error) console.error('[combineItems] 실패 이력 기록 오류:', error)
+  if (error) console.error('[combineRecipeAttempt] 실패 이력 기록 오류:', error)
 }
