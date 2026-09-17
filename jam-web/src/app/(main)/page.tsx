@@ -56,7 +56,7 @@ export default async function HomePage() {
       <HomeViewTracker />
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) — 기존 자체
           로고 헤더 블록을 대체한다 */}
-      <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
+      <TopNav logo />
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
       {/* 압축 인사말 + 검색 아이콘화 (티켓 20260830_2030) — 기존 큰 인사말(h1)·상시 노출

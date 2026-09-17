@@ -117,7 +117,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // 지점이 다르며, 애니메이션이 켜져 있으면 위 두 함수가 전체 레이어를 비운다(우선순위 규칙은
   // badgeBackgroundTheme.ts 한 곳에서 결정).
   const badgeCardAnimation = getBadgeBackgroundAnimation(badgeRow)
-  const topNavStyle: React.CSSProperties = { background: themedBackground ? 'transparent' : 'var(--color-surface)' }
+  const topNavStyle: React.CSSProperties = { background: themedBackground ? 'transparent' : undefined }
 
   // 뷰포트 전체(헤더 아래~본문~푸터)를 덮는 고정 배경 레이어 — [20260818_002 스코프 수정]
   // (main)/layout.tsx의 main(비-positioned, bg-surface 불투명)보다 위, TopNav(sticky, z-30)보다는

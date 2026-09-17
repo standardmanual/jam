@@ -290,7 +290,6 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
       */}
       <TopNav
         title={d.combine.title}
-        headerStyle={{ background: 'var(--color-surface)' }}
         onBack={selectedRecipe ? closeMixer : undefined}
       />
 

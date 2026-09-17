@@ -558,7 +558,7 @@ export default function ProfileClient({
           화면이라 알림 종이 필요하다. 타인 프로필은 back+닉네임이라 종이 붙지 않는다.
           TopNav가 safe-area-inset-top을 이미 처리하므로 본문 상단 여백도 함께 줄인다. */}
       {isOwnProfile ? (
-        <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
+        <TopNav logo />
       ) : (
         <TopNav title="" showBack backHref={fromNotifications ? '/notifications' : undefined} />
       )}
