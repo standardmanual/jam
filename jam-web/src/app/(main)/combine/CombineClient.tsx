@@ -270,6 +270,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
       <RecipeRewardRow
         key={recipe.id}
         title={recipeDisplayName(recipe)}
+        slotCount={recipe.slots.length}
         badges={recipe.rewardBadges}
         points={recipe.reward_points}
         onClick={() => onPick(recipe.id)}
@@ -332,6 +333,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
           <div className="px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[var(--spacing-16)]">
             <RecipeRewardRow
               title={recipeDisplayName(selectedRecipe)}
+              slotCount={selectedRecipe.slots.length}
               badges={selectedRecipe.rewardBadges}
               points={selectedRecipe.reward_points}
             />
