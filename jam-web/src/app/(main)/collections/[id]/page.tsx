@@ -35,7 +35,10 @@ interface Props {
 
 type ItemBookWithTribe = ItemBookRow & { tribe: TribeRow | null }
 
-const PAGE_BG = 'var(--color-surface)'
+// 티켓 20260917_2105: 페이지 배경은 (main)/layout.tsx의 그라데이션이 담당한다 — 여기서
+// 불투명 배경을 깔면 그 위를 덮어 가려버린다. 테마가 없을 때도 undefined로 둬 상위
+// 그라데이션이 그대로 비치게 한다(테마가 있을 때의 'transparent'와 결과적으로 동일).
+const PAGE_BG = undefined
 const CARD_BG = '#000000'
 const THUMB_BG = '#333333'
 const TEXT_SECONDARY = '#B2B2B2'
