@@ -7,17 +7,19 @@
  * 하는 작업량을 고려해 6종만 노출했고(미디어(이미지)·디스플레이스먼트맵·블룸·디더링·ASCII·
  * 하프톤), 2차 1차분에서 텍스트(Text)를 추가했다. 2차 2차분(20260912_2157)에서 나머지
  * 전부를 추가해 총 29종을 노출했으나, 이후 티켓 20260916_2154에서 소스 3종(플루이드·
- * 픽셀 트레일·매그니파이 렌즈)을 삭제해 현재는 26종을 노출한다:
+ * 픽셀 트레일·매그니파이 렌즈)을 삭제해 26종이 됐고, 슬라이스(slice)는 4차례 반복 수정
+ * (티켓 20260917_1256·1324·1421·1348)에도 사용자가 만족스럽지 않다고 판단해 이펙트 자체를
+ * 완전히 제거해 현재는 25종을 노출한다:
  *
  * - 소스(신규분 중 남은 것): 메시 그라디언트(gradient — 패키지 내부 타입명은 `gradient`이지만
  *   사용자 요구로 라벨은 "메시 그라디언트")
  * - 이펙트 Core 9종(신규): 잉크(ink)·패턴(pattern)·CRT(crt)·파티클 그리드(particle-grid)·
  *   픽셀레이션(pixelation)·복셀(voxel)·포스터라이즈(posterize)·쓰레숄드(threshold)·
  *   플로터(plotter)
- * - 이펙트 Distort 9종(신규): 블롭 트래킹(blob-tracking)·서킷 벤트(circuit-bent)·방향성
- *   블러(directional-blur)·픽셀 소팅(pixel-sorting)·슬라이스(slice)·엣지 디텍트(edge-detect)·
- *   색수차(chromatic-aberration)·프로그레시브 블러(smear — 패키지 내부 타입명은 `smear`,
- *   원본 라벨은 "Progressive Blur")·플루티드 글래스(fluted-glass)
+ * - 이펙트 Distort 8종(신규 9종에서 슬라이스 제거): 블롭 트래킹(blob-tracking)·서킷
+ *   벤트(circuit-bent)·방향성 블러(directional-blur)·픽셀 소팅(pixel-sorting)·엣지
+ *   디텍트(edge-detect)·색수차(chromatic-aberration)·프로그레시브 블러(smear — 패키지 내부
+ *   타입명은 `smear`, 원본 라벨은 "Progressive Blur")·플루티드 글래스(fluted-glass)
  *
  * 각 필드 목록은 원본 저장소(Apache 2.0) 에디터 앱의 `layer-registry.ts`가 정의한 파라미터
  * 세트를 참고해 다시 정리했다. 하프톤은 원본이 CMYK 인쇄 각도·프리셋까지 세분화하지만, 1차는
@@ -122,7 +124,6 @@ export const SHADER_LAB_LAYER_TYPES = [
   'circuit-bent',
   'directional-blur',
   'pixel-sorting',
-  'slice',
   'edge-detect',
   'chromatic-aberration',
   'smear',
@@ -1006,7 +1007,6 @@ const SHADER_LAB_BLOB_INNER_EFFECT_OPTIONS: readonly { label: string; value: str
   { label: '픽셀 소팅', value: 'pixel-sorting' },
   { label: '플로터', value: 'plotter' },
   { label: '포스터라이즈', value: 'posterize' },
-  { label: '슬라이스', value: 'slice' },
   { label: '프로그레시브 블러', value: 'smear' },
   { label: '쓰레숄드', value: 'threshold' },
   { label: '복셀', value: 'voxel' },
@@ -1179,24 +1179,6 @@ const pixelSortingFields: ShaderLabFieldDefinitions = [
   },
   { key: 'reverse', label: '반전 정렬', type: 'boolean', defaultValue: false },
   { key: 'range', label: '범위', type: 'number', defaultValue: 0.3, min: 0, max: 1, step: 0.01 },
-]
-
-// 티켓 20260917_1256 — 균일 패턴·교차 라인·360도 회전각 추가. 기존 5개 옵션 select
-// `direction` 필드는 폐지하고 `rotation`(0~360도 슬라이더)으로 대체했다. 회전각이 밴드가
-// 잘리는 축과 밀리는 방향을 함께 결정한다(0도 = 기존 "오른쪽"과 동일한 가로 밴드).
-// 기존 저장된 레이어에 남아있던 `direction` 값은 새 셰이더가 더 이상 읽지 않으므로 무시되고
-// `rotation` 기본값(0도)이 적용된다 — 어드민 프리뷰 전용 도구라 데이터 마이그레이션 없이도
-// 영향이 제한적이라고 판단했다(완료 기록 참고).
-// 티켓 20260917_1324 — 교차선 기능이 만족스럽지 않아 완전히 제거. `블록 너비`·`교차선 간격`
-// 필드를 삭제하고, 셰이더에서도 교차선 렌더링·관련 유니폼을 모두 제거했다(완료 기록 참고).
-// 티켓 20260917_1421 — 밀도(density) 기반 밴드 게이팅을 완전히 제거해 모든 밴드가 예외 없이
-// 동일한 강도로 밀리도록 셰이더를 단순화했다. 그 결과 밴드 폭을 정하던 `조각 높이`
-// (sliceHeight)도 출력에 더 이상 영향을 주지 않는 죽은 컨트롤이 되어 필드 자체를 삭제했다
-// (완료 기록 참고).
-const sliceFields: ShaderLabFieldDefinitions = [
-  { key: 'amount', label: '이동량', type: 'number', defaultValue: 180, min: 0, max: 480, step: 1, unit: 'px' },
-  { key: 'dispersion', label: '분산', type: 'number', defaultValue: 0.18, min: 0, max: 0.5, step: 0.01 },
-  { key: 'rotation', label: '회전 방향', type: 'number', defaultValue: 0, min: 0, max: 360, step: 1, unit: '°' },
 ]
 
 const edgeDetectFields: ShaderLabFieldDefinitions = [
@@ -1418,13 +1400,6 @@ export const SHADER_LAB_LAYER_REGISTRY: Record<SupportedShaderLabLayerType, Laye
     description: '밝기·색상·채도 기준으로 픽셀을 줄 단위로 정렬해요.',
     fields: pixelSortingFields,
   },
-  slice: {
-    kind: 'effect',
-    label: '슬라이스',
-    defaultName: '슬라이스',
-    description: '이미지를 가로 조각으로 잘라 어긋나게 밀어요.',
-    fields: sliceFields,
-  },
   'edge-detect': {
     kind: 'effect',
     label: '엣지 디텍트',
@@ -1463,7 +1438,7 @@ export function getLayerTypeDefinition(type: SupportedShaderLabLayerType): Layer
  * 티켓 20260913_1819 — 재생/정지 기능 제거에 맞춰, 시간에 따라 스스로 움직이던 6개
  * 레이어의 "자동 애니메이션" 파라미터를 UI에서 완전히 없앴다. 필드 자체는 위에서 삭제했지만,
  * 그 필드가 없을 때(params 객체에 undefined) 런타임(`@basementstudio/shader-lab`)이 켜진
- * 상태를 기본값으로 삼는 레이어가 있어(gradient/circuit-bent/ink/particle-grid/slice —
+ * 상태를 기본값으로 삼는 레이어가 있어(gradient/circuit-bent/ink/particle-grid —
  * 소스 확인, 아래 각 줄 참고) 명시적으로 "꺼짐" 값을 강제한다. 디더링은 런타임이 엄격한
  * `=== true` 비교라 필드 삭제만으로 이미 꺼짐이지만, 다른 레이어와 같은 원리를 명시적으로
  * 남겨 나중에 런타임 버전이 바뀌어도 안전하게 해뒀다.
@@ -1474,7 +1449,6 @@ const SHADER_LAB_FORCED_STATIC_PARAMS: Partial<Record<SupportedShaderLabLayerTyp
   'circuit-bent': { scrollSpeed: 0 }, // circuit-bent-pass.js: 미지정 시 기본값 4(최대 속도)
   ink: { smokeSpeed: 0 }, // ink-pass.js: 미지정 시 기본값 0.2
   'particle-grid': { noiseAmount: 0 }, // particle-grid-pass.js: `isAnimated = noiseAmount > 0` — amount가 실제 스위치
-  slice: { speed: 0 }, // slice-pass.js: 미지정 시 기본값 0.2
 }
 
 export function getDefaultParamsForType(type: SupportedShaderLabLayerType): Record<string, ShaderLabParameterValue> {
