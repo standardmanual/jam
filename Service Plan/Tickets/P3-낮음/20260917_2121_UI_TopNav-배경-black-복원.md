@@ -49,6 +49,7 @@ jam-web/src/app/(main)/inventory/page.tsx
 jam-web/src/app/(main)/badges/BadgesClient.tsx
 jam-web/src/app/(main)/badges/tree/BadgeTreeClient.tsx
 jam-web/src/app/(main)/badges/[id]/page.tsx
+jam-web/src/app/(main)/collections/[id]/page.tsx
 ```
 
 ### 테스트 결과
@@ -62,12 +63,12 @@ jam-web/src/app/(main)/badges/[id]/page.tsx
 
 ### 주요 의사결정 / 핵심 메모
 - 경미 수정 기준(원인-결과 명확한 stale 값 제거) 충족으로 오케스트레이터가 직접 처리.
-- **범위 밖 발견물**: `src/app/(main)/collections/[id]/page.tsx`는 자체 `PAGE_BG =
+- **후속 처리**: `src/app/(main)/collections/[id]/page.tsx`가 자체 `PAGE_BG =
   'var(--color-surface)'` 상수를 페이지 루트와 TopNav 양쪽에 인라인 스타일로 쓰고 있어,
-  티켓 `20260917_2105`의 grep(className 기반)에 걸리지 않아 그라데이션 적용에서 빠졌다.
-  이 페이지는 여전히 불투명 `--color-surface`를 깔고 있다 — 이번 요청(TopNav만)의
-  범위를 넘어서고, 컬렉션 상세의 테마 배경(`themedBackground`) 로직과 얽혀 있어 별도
-  검토가 필요하다고 판단해 이번엔 손대지 않았다.
+  티켓 `20260917_2105`의 grep(className 기반)에 걸리지 않아 그라데이션 적용에서 빠져
+  있었다(사용자 확인 후 함께 정리). `PAGE_BG`를 `undefined`로 바꿔 테마가 없을 때도
+  상위 그라데이션이 그대로 비치게 했다 — 테마가 있을 때의 `'transparent'` 분기와
+  결과가 같아져 로직이 단순해졌다.
 
 ### 잔여 이슈
-- `collections/[id]/page.tsx`의 `PAGE_BG` 불투명 배경 — 후속 확인 필요(범위 밖 발견물).
+- 없음
