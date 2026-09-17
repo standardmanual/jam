@@ -7,13 +7,17 @@ import { Button } from '@/components/admin/ui/button'
 import { Input } from '@/components/admin/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/admin/ui/table'
 import { canvasToBlob } from '@/app/admin/badges/bakePreviewToBlob'
-import { MAX_APPLY_IMAGE_BYTES, TARGET_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
+import { MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
+import { APPLY_IMAGE_SIZE_PX, APPLY_ROUND_RADIUS_PX, canvasToImage, drawImageToCanvas } from './shaderLabCanvasUtils'
 
 // 쉐이더 랩 -> 배지/미션/컬렉션 적용 탭 (티켓 20260913_0414)
 // ShaderTextBadgeApply.tsx(검색 -> 선택 -> 미리보기 -> 적용)의 UI 패턴을 target별로
 // 재사용하도록 일반화했다. image_gen_params 저장/복원(재편집)은 이번에 넣지 않는다 -
 // 사용자 확정 요구사항은 검색/선택/미리보기/적용까지이고, 세 대상 테이블 중 badges만
 // 그 컬럼이 있어 형평에 맞지 않는다(완료 기록의 주요 의사결정 참고).
+// 저장 크기 600x600 고정 + 모서리 라운드 토글 연동(티켓 20260917_1443) — 반복 축소 방식
+// (`compressCanvasPngToTarget`)은 매번 결과 해상도가 달라져 제거하고, 항상 600x600으로
+// 리사이즈하는 방식으로 바꿨다. `MAX_APPLY_IMAGE_BYTES` 상한 체크는 안전망으로 유지한다.
 export type ShaderLabApplyTarget = 'badge' | 'mission' | 'collection'
 
 interface SearchItem {
@@ -78,70 +82,6 @@ async function searchTarget(target: ShaderLabApplyTarget, query: string): Promis
   return searchItemBooks(query)
 }
 
-/**
- * 배지/미션/컬렉션 대표이미지로 "적용"할 캔버스를 목표 용량(`TARGET_APPLY_IMAGE_BYTES`)
- * 이하로 자동으로 줄인다(티켓 20260915 후속). PNG는 무손실이라 JPEG처럼 "화질"을 낮춰
- * 용량을 줄일 수 없어서, 해상도를 단계적으로 줄여가며 재인코딩하는 방식을 쓴다 — 최대
- * `MAX_DOWNSCALE_ATTEMPTS`번까지 매번 90%로 축소하고, 그래도 목표에 못 미치면 마지막으로
- * 얻은(가장 작은) 결과를 그대로 반환한다(호출부의 `MAX_APPLY_IMAGE_BYTES` 체크가 최종
- * 안전망 역할을 한다). 일반 PNG 다운로드(`ShaderLabExportPanel.downloadPng`)에는 쓰지
- * 않는다 — 사용자가 직접 받는 파일은 원본 해상도를 그대로 유지해야 한다.
- */
-const DOWNSCALE_STEP = 0.9
-const MAX_DOWNSCALE_ATTEMPTS = 20
-
-/**
- * PNG blob을 디코딩된 `<img>`로 로드한다. 축소 루프의 그리기 소스로 쓴다 — 쉐이더 랩 캔버스는
- * WebGPU 컨텍스트라, `drawImage(webgpuCanvas, ...)`로 직접 축소하면 빈 화면(완전 투명)이
- * 그려지는 걸 실측으로 확인했다(같은 프로젝트가 이미 겪은 WebGL↔WebGPU 캔버스 브릿지 문제와
- * 같은 종류 — `liquid-metal-pass.js`가 WebGL 캔버스를 2D로 매 프레임 미러링하는 이유와 동일).
- * `canvas.toBlob()`으로 먼저 표준 PNG를 만든 뒤 그걸 `<img>`로 디코딩하면, 이후 축소는 순수
- * 2D 캔버스 간 `drawImage`라 문제없이 동작한다.
- */
-function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(blob)
-    const img = new Image()
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      resolve(img)
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('이미지를 불러오지 못했어요.'))
-    }
-    img.src = url
-  })
-}
-
-async function compressCanvasPngToTarget(sourceCanvas: HTMLCanvasElement, targetBytes: number): Promise<Blob> {
-  let blob = await canvasToBlob(sourceCanvas)
-  if (blob.size <= targetBytes) return blob
-
-  const sourceImage = await loadImageFromBlob(blob)
-  let width = sourceCanvas.width
-  let height = sourceCanvas.height
-
-  for (let attempt = 0; attempt < MAX_DOWNSCALE_ATTEMPTS && blob.size > targetBytes; attempt += 1) {
-    width = Math.max(1, Math.round(width * DOWNSCALE_STEP))
-    height = Math.max(1, Math.round(height * DOWNSCALE_STEP))
-
-    const scaledCanvas = document.createElement('canvas')
-    scaledCanvas.width = width
-    scaledCanvas.height = height
-    const ctx = scaledCanvas.getContext('2d')
-    if (!ctx) break
-    ctx.clearRect(0, 0, width, height)
-    ctx.drawImage(sourceImage, 0, 0, width, height)
-
-    blob = await canvasToBlob(scaledCanvas)
-
-    if (width <= 32 || height <= 32) break
-  }
-
-  return blob
-}
-
 async function applyToTarget(target: ShaderLabApplyTarget, id: string, blob: Blob): Promise<ApplyResult> {
   const form = new FormData()
   form.append('target', target)
@@ -157,9 +97,10 @@ async function applyToTarget(target: ShaderLabApplyTarget, id: string, blob: Blo
 interface ShaderLabApplyTabProps {
   target: ShaderLabApplyTarget
   canvasRef: RefObject<HTMLCanvasElement | null>
+  roundEnabled: boolean
 }
 
-export default function ShaderLabApplyTab({ target, canvasRef }: ShaderLabApplyTabProps) {
+export default function ShaderLabApplyTab({ target, canvasRef, roundEnabled }: ShaderLabApplyTabProps) {
   const [query, setQuery] = useState('')
   const [searchLoading, setSearchLoading] = useState(false)
   const [results, setResults] = useState<SearchItem[] | null>(null)
@@ -206,7 +147,9 @@ export default function ShaderLabApplyTab({ target, canvasRef }: ShaderLabApplyT
     try {
       const canvas = canvasRef.current
       if (!canvas) throw new Error('캔버스를 찾지 못했어요.')
-      const blob = await compressCanvasPngToTarget(canvas, TARGET_APPLY_IMAGE_BYTES)
+      const image = await canvasToImage(canvas)
+      const resized = drawImageToCanvas(image, APPLY_IMAGE_SIZE_PX, roundEnabled ? APPLY_ROUND_RADIUS_PX : null)
+      const blob = await canvasToBlob(resized)
       if (blob.size > MAX_APPLY_IMAGE_BYTES) {
         const mb = (blob.size / 1024 / 1024).toFixed(1)
         throw new Error(`이미지가 너무 커요(${mb}MB). 5MB 이하만 반영할 수 있어요.`)
