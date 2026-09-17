@@ -310,7 +310,7 @@ function OnboardingContent() {
 
   if (!loaded) {
     return (
-      <div className="min-h-full bg-surface text-text flex items-center justify-center">
+      <div className="min-h-full bg-bg text-text flex items-center justify-center">
         <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -318,7 +318,7 @@ function OnboardingContent() {
 
   if (step === 'account') {
     return (
-      <div className="min-h-full bg-surface text-text flex flex-col items-center justify-start px-[var(--spacing-24)] py-[var(--spacing-48)]">
+      <div className="min-h-full bg-bg text-text flex flex-col items-center justify-start px-[var(--spacing-24)] py-[var(--spacing-48)]">
         <div className="w-full max-w-sm flex flex-col items-center gap-[var(--spacing-32)]">
 
           <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center whitespace-pre-line">
@@ -455,7 +455,7 @@ function OnboardingContent() {
 
   // ── 2단계: 트라이브 선택 + 프로필이미지 ──────────────────────────────────
   return (
-    <div className="min-h-full bg-surface text-text flex flex-col items-center px-[var(--spacing-24)] py-[var(--spacing-48)]">
+    <div className="min-h-full bg-bg text-text flex flex-col items-center px-[var(--spacing-24)] py-[var(--spacing-48)]">
       <div className="w-full max-w-sm flex flex-col items-center gap-[var(--spacing-32)]">
 
         <div className="flex flex-col items-center gap-[var(--spacing-16)]">

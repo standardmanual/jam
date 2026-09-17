@@ -213,7 +213,7 @@ const FAQ_ITEMS: { title: string; content: ReactNode }[] = [
 
 export default function PhilosophyPage() {
   return (
-    <div className="min-h-full bg-surface text-text">
+    <div className="min-h-full bg-bg text-text">
       <TopNav title={PAGE_TITLE} />
 
       <article className="px-[var(--spacing-16)] pt-[var(--spacing-64)] pb-[var(--spacing-64)] flex flex-col gap-[var(--spacing-64)]">

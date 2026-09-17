@@ -313,7 +313,7 @@ export default function NotificationsClient({
   )
 
   return (
-    <div className="min-h-full bg-surface text-text">
+    <div className="min-h-full bg-bg text-text">
       <TopNav title={d.notifications.title} />
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-8)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-8)]">

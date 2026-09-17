@@ -282,7 +282,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
   const bagRows = bagSlot ? bagRowsFor(bagSlot) : []
 
   return (
-    <div className="flex flex-col min-h-full bg-surface text-text">
+    <div className="flex flex-col min-h-full bg-bg text-text">
       {/*
         티켓 20260917_1655: /combine은 인벤토리 하위 화면이라 points와 동일한 뒤로가기형 TopNav를
         쓴다. 믹서 화면에서는 뒤로가기가 라우트를 벗어나지 않고 먼저 레시피 탐색으로

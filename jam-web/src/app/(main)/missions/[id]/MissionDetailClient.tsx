@@ -163,7 +163,7 @@ export default function MissionDetailClient({
   }
 
   return (
-    <div className="min-h-full bg-surface text-text">
+    <div className="min-h-full bg-bg text-text">
       <TopNav title={d.missions.backToDetail} backHref="/missions" headerStyle={{ background: 'var(--color-surface)' }} />
 
       <div className="flex flex-col px-6 pt-0 pb-10 gap-6">

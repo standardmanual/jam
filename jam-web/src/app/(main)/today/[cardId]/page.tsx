@@ -25,7 +25,7 @@ export default async function TodayArticlePage({ params }: Props) {
     .filter(Boolean)
 
   return (
-    <div className="min-h-full bg-surface text-text pb-[var(--spacing-40)]">
+    <div className="min-h-full bg-bg text-text pb-[var(--spacing-40)]">
       {/* 20260816_012: hr 대체용 하단 구분선 제거 — 이미지 경계 자체로 구분됨 */}
       {/* 20260824_004: 홈 카드와 같은 cover_image_url(어드민 자유 입력)이라 SafeImage 경유 */}
       <SafeImage

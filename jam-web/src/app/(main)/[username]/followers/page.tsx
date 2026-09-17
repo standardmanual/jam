@@ -77,7 +77,7 @@ export default async function FollowersPage({ params }: Props) {
     .filter((u) => u.id)
 
   return (
-    <div className="min-h-full bg-surface text-text">
+    <div className="min-h-full bg-bg text-text">
       <TopNav title={getDisplayName(target)} backHref={`/${username}`} />
 
       <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-16)]">

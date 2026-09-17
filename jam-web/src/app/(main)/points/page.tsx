@@ -72,7 +72,7 @@ export default function PointsPage() {
   }, [])
 
   return (
-    <div className="min-h-full bg-surface text-text">
+    <div className="min-h-full bg-bg text-text">
       <TopNav title={d.common.back} />
 
       <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
