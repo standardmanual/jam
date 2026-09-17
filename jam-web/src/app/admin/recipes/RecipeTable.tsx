@@ -24,24 +24,26 @@ import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/da
 import { DataTable } from '@/components/admin/data-table/data-table'
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
 import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table-bulk-action-bar'
-import type { CombinationRecipeRow } from '@/types/database'
+import type { CombinationRecipeRow, CombinationRecipeSlotRow } from '@/types/database'
+
+export type RecipeWithSlots = CombinationRecipeRow & { slots: CombinationRecipeSlotRow[] }
 
 interface RecipeTableProps {
-  recipes: CombinationRecipeRow[]
+  recipes: RecipeWithSlots[]
   badgeMap: Map<string, string>
-  onEdit: (recipe: CombinationRecipeRow) => void
+  onEdit: (recipe: RecipeWithSlots) => void
   onDelete: (id: string) => void
 }
 
-const columnHelper = createColumnHelper<DataTableFeatures, CombinationRecipeRow>()
+const columnHelper = createColumnHelper<DataTableFeatures, RecipeWithSlots>()
 
 /**
  * 레시피 목록 테이블(20260826_015). 20260910_1408에서 성공률 컬럼을 제거하고 결과 배지 1종
  * 컬럼을 "보상(포인트 + 배지 다중)"으로, 필수 액티비티 컬럼을 "보유 조건(액티비티·체크인 다중)"
  * 으로 바꿨다. — `RecipeList.tsx`의 저작 폼과 분리된 자식 컴포넌트로,
  * 3단계a 공용 Data Table 컴포넌트로 전환했다. 소규모라 서버 페이지네이션은 두지 않는다
- * (사전 조사 결과). 레시피는 하드 DELETE만 있고(`is_public`은 삭제/비활성화가 아니라
- * 재료 공개 여부) 소프트 삭제 개념이 없다 — 20260826_015에서는 이 이유로 행 선택/일괄
+ * (사전 조사 결과). 레시피는 하드 DELETE만 있고 소프트 삭제 개념이 없다 —
+ * 20260826_015에서는 이 이유로 행 선택/일괄
  * 액션을 제외했으나, 20260827_011에서 사용자 재확인 후 명시적 경고와 함께 일괄 하드
  * 삭제를 추가하기로 결정했다(완료 기록 참고).
  */
@@ -94,26 +96,34 @@ function RecipeTableInner({ recipes, badgeMap, onEdit, onDelete }: RecipeTablePr
         enableHiding: false,
       }),
       columnHelper.display({
-        id: 'ingredients',
-        header: '재료',
+        id: 'slots',
+        header: '슬롯',
         enableSorting: false,
         enableHiding: false,
-        cell: ({ row }) => (
-          <span className="text-sm">
-            {row.original.ingredient_badge_ids.map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join(' + ')}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const slots = row.original.slots
+          const itemCount = slots.filter((s) => s.badge_type === 'item').length
+          const conditionCount = slots.length - itemCount
+          return (
+            <span className="text-sm">
+              슬롯 {slots.length}개(아이템 {itemCount} · 조건 {conditionCount})
+            </span>
+          )
+        },
       }),
       columnHelper.display({
-        id: 'required',
-        header: '보유 조건',
+        id: 'slotDetail',
+        header: '슬롯 상세',
         enableSorting: false,
-        meta: { label: '보유 조건' },
+        meta: { label: '슬롯 상세' },
         cell: ({ row }) => {
-          const ids = row.original.required_badge_ids ?? []
+          const slots = [...row.original.slots].sort((a, b) => a.slot_order - b.slot_order)
+          if (slots.length === 0) return <span className="text-xs text-muted-foreground">—</span>
           return (
             <span className="text-xs text-muted-foreground">
-              {ids.length === 0 ? '—' : ids.map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join(', ')}
+              {slots
+                .map((s) => s.allowed_badge_ids.map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join('/'))
+                .join(' + ')}
             </span>
           )
         },
@@ -136,29 +146,6 @@ function RecipeTableInner({ recipes, badgeMap, onEdit, onDelete }: RecipeTablePr
             <span className="text-xs text-red-600">보상 미지정</span>
           )
         },
-      }),
-      columnHelper.accessor('is_public', {
-        id: 'isPublic',
-        header: '공개',
-        enableSorting: false,
-        meta: { label: '공개' },
-        cell: ({ getValue }) => {
-          const isPublic = getValue()
-          return (
-            <span className={`text-xs px-2 py-0.5 rounded-full ${isPublic ? 'bg-emerald-50 text-emerald-600' : 'bg-neutral-100 text-neutral-500'}`}>
-              {isPublic ? '공개' : '비공개'}
-            </span>
-          )
-        },
-      }),
-      columnHelper.accessor('hint_text', {
-        id: 'hint',
-        header: '힌트',
-        enableSorting: false,
-        meta: { label: '힌트' },
-        cell: ({ getValue }) => (
-          <span className="text-xs text-muted-foreground max-w-[200px] block truncate">{getValue() ?? '—'}</span>
-        ),
       }),
       columnHelper.display({
         id: 'actions',

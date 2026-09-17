@@ -85,9 +85,10 @@ export interface BadgeReferenceSource {
  * 배지를 가리키는 자리 전부. FK 규칙은 마이그레이션 실측이다
  * (001·011·017·030·053·056·061·080·101).
  *
- * ⚠️ `combination_recipes.ingredient_badge_ids`를 «해제 가능»으로 두지 않는다 — 재료는
- * 2~3개 조합이 곧 레시피의 정체성이라, 한 개만 빼면 다른 레시피가 된다. 목록으로 보여주고
- * 레시피 화면에서 고치게 한다.
+ * ⚠️ `combination_recipe_slots.allowed_badge_ids`를 «해제 가능»으로 두지 않는다 — 슬롯 구성이
+ * 곧 레시피의 정체성이라, 후보 하나만 빼면 다른 레시피가 된다. 목록으로 보여주고
+ * 레시피 화면에서 고치게 한다(티켓 20260917_1427: 슬롯 기반 재설계로 재료·보유 조건 배열
+ * 컬럼이 `combination_recipe_slots`로 이관됐다).
  */
 export const BADGE_REFERENCE_SOURCES: BadgeReferenceSource[] = [
   {
@@ -183,8 +184,8 @@ export const BADGE_REFERENCE_SOURCES: BadgeReferenceSource[] = [
   {
     key: 'recipes_ingredient',
     group: 'content',
-    label: '믹스 레시피 재료',
-    location: 'combination_recipes.ingredient_badge_ids',
+    label: '믹스 레시피 재료(아이템 슬롯)',
+    location: "combination_recipe_slots.allowed_badge_ids (badge_type='item')",
     blocksDelete: false,
     cascades: false,
     detachable: false,
@@ -201,8 +202,8 @@ export const BADGE_REFERENCE_SOURCES: BadgeReferenceSource[] = [
   {
     key: 'recipes_required',
     group: 'content',
-    label: '믹스 레시피 보유 조건',
-    location: 'combination_recipes.required_badge_ids',
+    label: '믹스 레시피 보유 조건(액티비티·체크인 슬롯)',
+    location: "combination_recipe_slots.allowed_badge_ids (badge_type in ('activity','checkin'))",
     blocksDelete: true,
     cascades: false,
     detachable: false,
@@ -424,25 +425,41 @@ export async function collectBadgeReferences(
     }
   }
 
-  // 마이그레이션 153: 결과 배지 1종 → 보상 배지 배열, 필수 액티비티 배지 1종 → 보유 조건 배열
+  // 마이그레이션 174(티켓 20260917_1427): 재료·보유 조건 배열이 `combination_recipe_slots`
+  // (슬롯 단위 badge_type + allowed_badge_ids)로 이관됐다. 레시피 단위 카운트는 슬롯을
+  // recipe_id로 묶어 badge_type으로 아이템/보유 조건을 가른다.
   const recipesResult = await fetchAllRows<{
     id: string
-    ingredient_badge_ids: string[] | null
     reward_badge_ids: string[] | null
-    required_badge_ids: string[] | null
   }>((from, to) =>
-    supabase
-      .from('combination_recipes')
-      .select('id, ingredient_badge_ids, reward_badge_ids, required_badge_ids')
-      .order('id')
-      .range(from, to)
+    supabase.from('combination_recipes').select('id, reward_badge_ids').order('id').range(from, to)
   )
   if (recipesResult.error) errors.push(`combination_recipes: ${recipesResult.error}`)
   for (const recipe of recipesResult.rows) {
-    if (hits(recipe.ingredient_badge_ids ?? []).length > 0) counts.recipes_ingredient += 1
     if (hits(recipe.reward_badge_ids ?? []).length > 0) counts.recipes_result += 1
-    if (hits(recipe.required_badge_ids ?? []).length > 0) counts.recipes_required += 1
   }
+
+  const recipeSlotsResult = await fetchAllRows<{
+    recipe_id: string
+    badge_type: string
+    allowed_badge_ids: string[]
+  }>((from, to) =>
+    supabase
+      .from('combination_recipe_slots')
+      .select('recipe_id, badge_type, allowed_badge_ids')
+      .order('recipe_id')
+      .range(from, to)
+  )
+  if (recipeSlotsResult.error) errors.push(`combination_recipe_slots: ${recipeSlotsResult.error}`)
+  const ingredientRecipeIds = new Set<string>()
+  const requiredRecipeIds = new Set<string>()
+  for (const slot of recipeSlotsResult.rows) {
+    if (hits(slot.allowed_badge_ids ?? []).length === 0) continue
+    if (slot.badge_type === 'item') ingredientRecipeIds.add(slot.recipe_id)
+    else requiredRecipeIds.add(slot.recipe_id)
+  }
+  counts.recipes_ingredient += ingredientRecipeIds.size
+  counts.recipes_required += requiredRecipeIds.size
 
   const itemBooksResult = await fetchAllRows<{
     id: string
