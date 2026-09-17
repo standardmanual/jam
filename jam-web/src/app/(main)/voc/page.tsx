@@ -154,7 +154,7 @@ export default function VocPage() {
   }
 
   return (
-    <div className="min-h-full bg-surface text-text">
+    <div className="min-h-full text-text">
       <TopNav title={d.voc.pageTitle} />
 
       <div className="px-[var(--spacing-16)] pt-[50px] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">

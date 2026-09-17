@@ -38,7 +38,7 @@ export default async function FriendFeedPage() {
 
   if (followingIds.length === 0) {
     return (
-      <div className="min-h-full bg-surface text-text">
+      <div className="min-h-full text-text">
         <TopNav title={d.feed.friendFeedTitle} />
         <div className="px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[var(--spacing-32)]">
           <EmptyState
@@ -87,7 +87,7 @@ export default async function FriendFeedPage() {
   }
 
   return (
-    <div className="min-h-full bg-surface text-text">
+    <div className="min-h-full text-text">
       <TopNav title={d.feed.friendFeedTitle} />
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[var(--spacing-32)]">
         <FeedSection feedItems={feedItems} title={d.feed.friendFeedTitle} activityNames={activityNames} />

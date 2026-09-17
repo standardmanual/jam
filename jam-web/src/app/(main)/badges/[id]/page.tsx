@@ -334,7 +334,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     const showSerial = isOwnBadge && representativeSerial !== null
 
     return (
-      <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
+      <div className="min-h-full text-text" style={themedTextStyle}>
         {badgeBackgroundLayer}
         <TopNav
           title={d.common.back}
@@ -447,7 +447,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // ========== 변형 3: 체크인 배지 ==========
   if (badgeRow.type === 'checkin') {
     return (
-      <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
+      <div className="min-h-full text-text" style={themedTextStyle}>
         {badgeBackgroundLayer}
         <TopNav
           title={d.common.back}
@@ -519,7 +519,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
   // ========== 변형 1: 액티비티 배지 (catch-all) ==========
   return (
-    <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
+    <div className="min-h-full text-text" style={themedTextStyle}>
       {badgeBackgroundLayer}
       <TopNav
         title={d.common.back}
