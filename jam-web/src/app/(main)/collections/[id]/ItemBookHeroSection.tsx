@@ -40,12 +40,11 @@ interface ItemBookHeroSectionProps {
  * 자동 줄바꿈(`splitDescriptionSentences`)을 그대로 적용한다. 진행도 바는 이 카드의 대상이
  * 아니다(사용자 명시 지시) — 카드 밖, 부모(`page.tsx`)의 별도 렌더링으로 유지한다.
  *
- * 카드 배경 테두리(`border border-[var(--color-border)]`)는 배지 상세와 다르게 의도적으로
- * 남겨둔 값이다(20260915_2006) — 컬렉션 대표 이미지는 200x200 아이콘이라 카드 여백이 그대로
- * 노출돼 배경(bg-surface-elevated #1f1f1f)과 페이지 배경(--color-surface #1a1a1a)의 명도차
- * 5/255만으로는 경계가 거의 안 보였다. 배지 상세는 배지 이미지 자체가 카드를 꽉 채워 이미지로
- * 경계가 드러나므로 테두리가 필요 없다 — 양쪽 다른 이유로 다른 값을 쓰는 것이지 매칭 누락이
- * 아니다.
+ * [20260917_1303-보완] 카드 배경 테두리(`border border-[var(--color-border)]`, 20260915_2006
+ * 컨트라스트 보정용)는 사용자 확인 결과 배지 상세와 다르게 도드라져 보여 제거했다 — 두 상세화면의
+ * 시각적 일치를 우선한다. 페이지 컨테이너 좌우 padding 차이(컬렉션 px-4=16px vs 배지
+ * BadgeHeroSection 자체 px-6=24px)로 카드 폭도 달라 보였던 문제는 이 컴포넌트의 카드에
+ * `mx-2`(8px)를 더해 16+8=24px로 맞췄다.
  */
 export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCount, backgroundAnimation }: ItemBookHeroSectionProps) {
   const pct = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
@@ -64,10 +63,12 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
           영상 배경의 poster와 같은 역할. */}
       <div
         className={[
-          'relative overflow-hidden w-full aspect-square rounded-[var(--radius-cards)] flex flex-col items-center p-6',
-          // [20260915_2006, 게이트 리뷰 재작업] 이 테두리는 배지 상세와 의도적으로 다른 값이다
-          // (위 컴포넌트 주석 참조) — 컨트라스트 보정 목적으로 유지한다.
-          backgroundAnimation ? 'bg-transparent' : 'bg-surface-elevated border border-[var(--color-border)]',
+          // [20260917_1303-보완] 페이지 컨테이너가 px-4(16px)라 배지 상세(BadgeHeroSection의
+          // 자체 px-6=24px)보다 카드가 더 넓어 보였다 — mx-2(8px)를 더해 16+8=24px로 맞춘다.
+          // 테두리도 사용자 확인 결과 배지와 다르게 보여 제거했다 — 20260915_2006에서 남겼던
+          // 컨트라스트 보정용 테두리보다 두 상세화면의 시각적 일치를 우선한다.
+          'relative overflow-hidden w-full aspect-square rounded-[var(--radius-cards)] flex flex-col items-center p-6 mx-2',
+          backgroundAnimation ? 'bg-transparent' : 'bg-surface-elevated',
         ].join(' ')}
         style={backgroundAnimation ? { backgroundColor: backgroundAnimation.bgColor } : undefined}
       >
@@ -121,7 +122,9 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
           20px로 맞춘다 — 부모(page.tsx)의 `flex flex-col gap-3`(12px)를 직접 바꾸면 진행도 바
           다음에 오는 다른 형제 섹션과의 간격도 함께 바뀌므로, 이 래퍼에 보정 마진
           `mt-[var(--spacing-8)]`(8px)을 더해 12+8=20px를 만든다. [20260917_1303] */}
-      <div className="flex items-center gap-3 mt-[var(--spacing-8)]">
+      {/* mx-2 — 위 카드에 추가한 mx-2와 좌우 폭을 맞춰, 카드보다 진행도 바가 더 넓어 보이는
+          어긋남을 막는다. */}
+      <div className="flex items-center gap-3 mt-[var(--spacing-8)] mx-2">
         <ProgressBar percent={pct} />
         <span style={{ color: 'var(--color-primary)', fontSize: '13px', lineHeight: '1', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
           {slottedCount}/{totalBadgeCount}
