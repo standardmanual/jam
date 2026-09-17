@@ -550,8 +550,12 @@ export interface CombinePolicyRow {
   updated_at: string
 }
 
-/** 믹스 실패 이력 (어드민 조회 전용 — 마이그레이션 153) */
-export type CombineFailReason = 'no_recipe_match' | 'items_not_found' | 'invalid_count'
+/**
+ * 믹스 실패 이력 (어드민 조회 전용 — 마이그레이션 153)
+ * `recipe_not_found`는 티켓 20260917_1427(유저 화면 레시피 선택형 전환)에서 추가됐다 —
+ * 유저가 선택한 recipe_id가 존재하지 않거나 비활성화된 경우다.
+ */
+export type CombineFailReason = 'no_recipe_match' | 'items_not_found' | 'invalid_count' | 'recipe_not_found'
 
 export interface UserCombineFailLogRow {
   id: string
