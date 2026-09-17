@@ -59,6 +59,7 @@ function checkinSlot(ids: string[]) {
 describe('buildRecipeRow — 슬롯 타입 일치 + 보상 배지는 아이템 배지만 허용', () => {
   it('아이템·액티비티·체크인 슬롯이 섞여 있어도 각 슬롯 타입이 일치하면 통과한다', async () => {
     const result = await buildRecipeRow(makeClient(), {
+      name: '테스트 레시피',
       slots: [itemSlot([ITEM_A, ITEM_B]), activitySlot([ACT]), checkinSlot([CHK])],
       reward_points: 50,
       reward_badge_ids: [REWARD_ITEM],
@@ -78,6 +79,7 @@ describe('buildRecipeRow — 슬롯 타입 일치 + 보상 배지는 아이템 �
 
   it('슬롯이 선언한 타입과 실제 배지 타입이 다르면 거부한다', async () => {
     const result = await buildRecipeRow(makeClient(), {
+      name: '테스트 레시피',
       // ACT는 실제로 activity 타입인데 item 슬롯에 넣음
       slots: [itemSlot([ITEM_A, ACT]), activitySlot([CHK])],
       reward_points: 10,
@@ -89,6 +91,7 @@ describe('buildRecipeRow — 슬롯 타입 일치 + 보상 배지는 아이템 �
 
   it('아이템 타입 슬롯이 하나도 없으면 거부한다', async () => {
     const result = await buildRecipeRow(makeClient(), {
+      name: '테스트 레시피',
       slots: [activitySlot([ACT]), checkinSlot([CHK])],
       reward_points: 10,
     })
@@ -99,6 +102,7 @@ describe('buildRecipeRow — 슬롯 타입 일치 + 보상 배지는 아이템 �
 
   it('액티비티 배지를 보상으로 지정하면 거부하고 사유를 돌려준다', async () => {
     const result = await buildRecipeRow(makeClient(), {
+      name: '테스트 레시피',
       slots: [itemSlot([ITEM_A]), itemSlot([ITEM_B])],
       reward_badge_ids: [ACT],
     })
@@ -109,6 +113,7 @@ describe('buildRecipeRow — 슬롯 타입 일치 + 보상 배지는 아이템 �
 
   it('체크인 배지를 보상으로 지정해도 거부한다', async () => {
     const result = await buildRecipeRow(makeClient(), {
+      name: '테스트 레시피',
       slots: [itemSlot([ITEM_A]), itemSlot([ITEM_B])],
       reward_points: 10,
       reward_badge_ids: [REWARD_ITEM, CHK],
@@ -120,6 +125,7 @@ describe('buildRecipeRow — 슬롯 타입 일치 + 보상 배지는 아이템 �
 
   it('삭제되었거나 존재하지 않는 슬롯 후보 배지가 있으면 거부한다', async () => {
     const result = await buildRecipeRow(makeClient(), {
+      name: '테스트 레시피',
       slots: [itemSlot(['ghost-badge']), itemSlot([ITEM_B])],
       reward_points: 10,
     })

@@ -512,6 +512,8 @@ export interface TradeRow {
 
 export interface CombinationRecipeRow {
   id: string
+  /** 표시용 이름(마이그레이션 175) — 기존 레시피는 NULL일 수 있다. 화면은 폴백 문구를 쓴다. */
+  name: string | null
   /** 매칭 성공 시 확정 지급하는 잼 포인트 — 0이면 미지급 */
   reward_points: number
   /** 매칭 성공 시 확정 지급하는 배지 — 무작위 없이 전부 지급 */

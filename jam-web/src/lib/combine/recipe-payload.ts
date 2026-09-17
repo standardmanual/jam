@@ -34,6 +34,8 @@ export interface RecipeSlotInput {
 }
 
 export interface RecipePayloadInput {
+  /** 표시용 이름(마이그레이션 175) — 믹서 화면 상단 요약·레시피 탐색 목록에 노출한다 */
+  name?: unknown
   /** 어드민이 구성한 슬롯 배열 */
   slots?: unknown
   reward_points?: unknown
@@ -41,6 +43,7 @@ export interface RecipePayloadInput {
 }
 
 export interface NormalizedRecipePayload {
+  name: string
   slots: NormalizedSlot[]
   rewardPoints: number
   rewardBadgeIds: string[]
@@ -54,6 +57,9 @@ export interface NormalizedRecipePayload {
 export function normalizeRecipePayload(
   body: RecipePayloadInput
 ): { ok: true; value: NormalizedRecipePayload } | { ok: false; error: string } {
+  const name = typeof body.name === 'string' ? body.name.trim() : ''
+  if (!name) return { ok: false, error: '레시피 이름을 입력해 주세요.' }
+
   const slots = normalizeSlots(body.slots)
   if (!slots) return { ok: false, error: '슬롯 구성이 올바르지 않아요. 슬롯을 다시 확인해 주세요.' }
   if (slots.length < MIN_SLOTS) {
@@ -86,7 +92,7 @@ export function normalizeRecipePayload(
 
   return {
     ok: true,
-    value: { slots, rewardPoints, rewardBadgeIds },
+    value: { name, slots, rewardPoints, rewardBadgeIds },
   }
 }
 

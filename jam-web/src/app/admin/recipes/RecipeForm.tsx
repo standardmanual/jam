@@ -66,6 +66,7 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
   const editingId = recipe?.id ?? null
   const badgeMap = useMemo(() => new Map(badges.map((b) => [b.id, b])), [badges])
 
+  const [name, setName] = useState(recipe?.name ?? '')
   const [slots, setSlots] = useState<SlotState[]>(
     initialSlotsRaw && initialSlotsRaw.length > 0
       ? slotsFromRecipe(initialSlotsRaw, badgeMap)
@@ -84,6 +85,11 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
 
   async function handleSave() {
     setError(null)
+
+    if (!name.trim()) {
+      setError('레시피 이름을 입력해 주세요.')
+      return
+    }
 
     const emptySlotIdx = slots.findIndex((s) => s.badges.length === 0)
     if (emptySlotIdx !== -1) {
@@ -116,6 +122,7 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
 
     setSaving(true)
     const payload = {
+      name: name.trim(),
       slots: slots.map((s) => ({
         badge_type: s.badgeType,
         allowed_badge_ids: s.badges.map((b) => b.id),
@@ -168,6 +175,20 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
   return (
     <div className="bg-white border border-border rounded-2xl p-6 space-y-5">
       <h2 className="font-bold">{editingId ? '레시피 수정' : '새 레시피'}</h2>
+
+      {/* 표시용 이름(티켓 20260917_1828) — 믹서 화면 상단 요약·레시피 탐색 목록에 노출한다 */}
+      <div>
+        <label className="text-xs text-muted-foreground mb-2 block">
+          레시피 이름 — 유저 화면(믹서 상단 요약·레시피 탐색 목록)에 노출돼요
+        </label>
+        <Input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="예: 체크섬 조각 세트"
+          className="max-w-md"
+        />
+      </div>
 
       {/* 슬롯 — 슬롯 하나에 후보 배지(OR)를 여러 개 담는다. 첫 후보로 타입이 고정된다 */}
       <div>

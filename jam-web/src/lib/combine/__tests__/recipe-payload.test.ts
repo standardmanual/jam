@@ -25,6 +25,7 @@ function activitySlot(ids: string[]) {
 describe('normalizeRecipePayload — 슬롯 구조·개수·보상 3분기 검증', () => {
   it('슬롯 2개(아이템 1 + 액티비티 1)와 포인트 보상이면 통과한다', () => {
     const result = normalizeRecipePayload({
+      name: '테스트 레시피',
       slots: [itemSlot([ITEM_A]), activitySlot([ACT])],
       reward_points: 100,
     })
@@ -39,19 +40,20 @@ describe('normalizeRecipePayload — 슬롯 구조·개수·보상 3분기 검�
   })
 
   it('슬롯이 1개면 거부한다', () => {
-    const result = normalizeRecipePayload({ slots: [itemSlot([ITEM_A])], reward_points: 10 })
+    const result = normalizeRecipePayload({ name: '테스트 레시피', slots: [itemSlot([ITEM_A])], reward_points: 10 })
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.error).toContain('2개 이상')
   })
 
   it('슬롯이 11개면 거부한다', () => {
     const slots = Array.from({ length: 11 }, (_, i) => itemSlot([`item-${i}`]))
-    const result = normalizeRecipePayload({ slots, reward_points: 10 })
+    const result = normalizeRecipePayload({ name: '테스트 레시피', slots, reward_points: 10 })
     expect(result.ok).toBe(false)
   })
 
   it('슬롯 안 후보가 비어 있으면 거부한다', () => {
     const result = normalizeRecipePayload({
+      name: '테스트 레시피',
       slots: [itemSlot([ITEM_A]), itemSlot([])],
       reward_points: 10,
     })
@@ -60,9 +62,10 @@ describe('normalizeRecipePayload — 슬롯 구조·개수·보상 3분기 검�
   })
 
   it('slots가 배열이 아니거나 badge_type이 잘못되면 거부한다', () => {
-    expect(normalizeRecipePayload({ slots: 'nope', reward_points: 10 }).ok).toBe(false)
+    expect(normalizeRecipePayload({ name: '테스트 레시피', slots: 'nope', reward_points: 10 }).ok).toBe(false)
     expect(
       normalizeRecipePayload({
+        name: '테스트 레시피',
         slots: [{ badge_type: 'weapon', allowed_badge_ids: [ITEM_A] }, itemSlot([ITEM_B])],
         reward_points: 10,
       }).ok
@@ -71,6 +74,7 @@ describe('normalizeRecipePayload — 슬롯 구조·개수·보상 3분기 검�
 
   it('슬롯 후보에 중복 id가 있으면 거부한다', () => {
     const result = normalizeRecipePayload({
+      name: '테스트 레시피',
       slots: [itemSlot([ITEM_A, ITEM_A]), itemSlot([ITEM_B])],
       reward_points: 10,
     })
@@ -78,7 +82,7 @@ describe('normalizeRecipePayload — 슬롯 구조·개수·보상 3분기 검�
   })
 
   it('포인트만 있어도 통과한다', () => {
-    const base = { slots: [itemSlot([ITEM_A]), itemSlot([ITEM_B])] }
+    const base = { name: '테스트 레시피', slots: [itemSlot([ITEM_A]), itemSlot([ITEM_B])] }
     const result = normalizeRecipePayload({ ...base, reward_points: 100 })
     expect(result.ok).toBe(true)
     if (result.ok) {
@@ -88,20 +92,29 @@ describe('normalizeRecipePayload — 슬롯 구조·개수·보상 3분기 검�
   })
 
   it('배지만 있어도 통과한다', () => {
-    const base = { slots: [itemSlot([ITEM_A]), itemSlot([ITEM_B])] }
+    const base = { name: '테스트 레시피', slots: [itemSlot([ITEM_A]), itemSlot([ITEM_B])] }
     const result = normalizeRecipePayload({ ...base, reward_badge_ids: [ACT] })
     expect(result.ok).toBe(true)
     if (result.ok) expect(result.value.rewardPoints).toBe(0)
   })
 
   it('보상이 하나도 없으면 거부한다', () => {
-    const base = { slots: [itemSlot([ITEM_A]), itemSlot([ITEM_B])] }
+    const base = { name: '테스트 레시피', slots: [itemSlot([ITEM_A]), itemSlot([ITEM_B])] }
     const result = normalizeRecipePayload({ ...base, reward_points: 0, reward_badge_ids: [] })
     expect(result.ok).toBe(false)
   })
 
+  it('이름이 비어 있으면 거부한다(티켓 20260917_1828)', () => {
+    const result = normalizeRecipePayload({
+      slots: [itemSlot([ITEM_A]), itemSlot([ITEM_B])],
+      reward_points: 10,
+    })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toContain('이름')
+  })
+
   it('음수·소수 포인트는 거부한다', () => {
-    const base = { slots: [itemSlot([ITEM_A]), itemSlot([ITEM_B])] }
+    const base = { name: '테스트 레시피', slots: [itemSlot([ITEM_A]), itemSlot([ITEM_B])] }
     expect(normalizeRecipePayload({ ...base, reward_points: -1 }).ok).toBe(false)
     expect(normalizeRecipePayload({ ...base, reward_points: 1.5 }).ok).toBe(false)
   })
