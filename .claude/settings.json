@@ -1,5 +1,6 @@
 {
   "outputStyle": "fluent-korean",
+  "model": "sonnet",
   "permissions": {
     "allow": [
       "Bash(git status*)",
@@ -56,8 +57,22 @@
     "deny": [
       "Bash(git push --force*)",
       "Bash(git push -f *)",
+      "Bash(git commit --no-verify*)",
+      "Bash(git push --no-verify*)",
       "Bash(xargs rm *)",
       "Bash(rm -rf /*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/ticket-dashboard.mjs\""
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {
