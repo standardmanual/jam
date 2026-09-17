@@ -1,0 +1,76 @@
+#!/usr/bin/env node
+// 어드민 API 읽기 — 미션·배지·유저·드랍 정책·배지 지표 라벨 현황을 어드민 API 경유로 조회한다.
+// (티켓 20260918_0421, 근거: JAM-WORK/05_자동화목록.md A5)
+//
+// service_role 키를 쓰지 않는다. DB 직접 접근이 아니라 반드시 /api/admin/* HTTP 경유로만
+// 조회한다 — 권한 검사·검증 로직을 그대로 타기 위함이다(JAM-WORK/05_자동화목록.md 원칙).
+//
+// 인증: 어드민 화이트리스트 계정(ADMIN_EMAILS)으로 브라우저에서 /admin에 로그인한 뒤,
+// 개발자도구 Network 탭에서 Cookie 헤더 값을 복사해 ADMIN_API_COOKIE로 넘긴다.
+// (Google OAuth 세션이라 스크립트가 자체적으로 로그인할 수 없다 — 사람이 한 번 발급)
+//
+// 참고: 어드민 API에는 "지표"(서비스 KPI) 전용 엔드포인트가 없다. badge-metric-labels로
+// 가장 근접한 값을 대신 조회한다 — 실제 KPI 대시보드가 생기면 이 스크립트도 갱신해야 한다.
+//
+// 사용법:
+//   ADMIN_API_BASE_URL=https://jam-stage.vercel.app \
+//   ADMIN_API_COOKIE="sb-xxx-auth-token=...; sb-xxx-auth-token.1=..." \
+//     node scripts/admin-api-read.mjs
+
+const BASE_URL = process.env.ADMIN_API_BASE_URL || 'http://localhost:3000'
+const COOKIE = process.env.ADMIN_API_COOKIE
+
+if (!COOKIE) {
+  console.error(
+    'ADMIN_API_COOKIE가 필요합니다. 어드민 계정으로 /admin에 로그인한 뒤 쿠키를 복사해 넘기세요.'
+  )
+  process.exit(1)
+}
+
+async function getJson(path) {
+  const res = await fetch(`${BASE_URL}${path}`, { headers: { Cookie: COOKIE } })
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText}`)
+  }
+  return res.json()
+}
+
+const TARGETS = [
+  ['missions', '/api/admin/missions'],
+  ['badges', '/api/admin/badges'],
+  ['users', '/api/admin/users'],
+  ['dropPolicy', '/api/admin/drop-policy'],
+  ['badgeMetricLabels', '/api/admin/badge-metric-labels'],
+]
+
+async function main() {
+  const results = {}
+  for (const [key, path] of TARGETS) {
+    try {
+      results[key] = await getJson(path)
+    } catch (e) {
+      results[key] = { __error: String(e.message ?? e) }
+    }
+  }
+
+  console.log(`## 어드민 현황 (${BASE_URL})`)
+
+  if (results.missions.__error) console.log(`- 미션: 조회 실패 (${results.missions.__error})`)
+  else console.log(`- 미션: ${results.missions.length}건`)
+
+  if (results.badges.__error) console.log(`- 배지: 조회 실패 (${results.badges.__error})`)
+  else console.log(`- 배지: ${results.badges.badges?.length ?? 0}건`)
+
+  if (results.users.__error) console.log(`- 유저(최근 20): 조회 실패 (${results.users.__error})`)
+  else console.log(`- 유저(최근 20): ${results.users.users?.length ?? 0}건`)
+
+  if (results.dropPolicy.__error)
+    console.log(`- 드랍 정책: 조회 실패 (${results.dropPolicy.__error})`)
+  else console.log(`- 드랍 정책: ${JSON.stringify(results.dropPolicy.policy)}`)
+
+  if (results.badgeMetricLabels.__error)
+    console.log(`- 배지 지표 라벨: 조회 실패 (${results.badgeMetricLabels.__error})`)
+  else console.log(`- 배지 지표 라벨: ${results.badgeMetricLabels.labels?.length ?? 0}건`)
+}
+
+main()
