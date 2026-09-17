@@ -127,32 +127,39 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
             <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
           )}
         </div>
-        <div className="relative z-10 flex-shrink-0 flex flex-col items-center gap-1 pt-2" style={cardTextStyle}>
-          {/* v5는 배지 종류가 셋이고 레벨형은 `rarity`가 NULL이다(193종). `RarityBadge`는
-              미지 값을 그리지 않으므로(티켓 20260905_0036) 그대로 넘기면 **칩이 조용히
-              사라진다** — 상세 화면에서 등급/레벨을 알 수 없게 된다.
-              `BadgeTrophyGridCard.tsx:119`가 같은 분기를 쓴다(티켓 20260905_0037). */}
-          {badge.level != null ? <BadgeLevelChip level={badge.level} size="md" /> : <RarityBadge rarity={badge.rarity ?? undefined} size="md" />}
-          <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badge.name}</h1>
-        </div>
-        {badge.description && (
-          // [20260917_1211] 설명을 카드 안으로 통합. 마침표(문장 종결) 기준으로 나눠 각 문장을
-          // 별도 줄로 그린다 — 원본 `\n`에만 반응하던 `whitespace-pre-line`으로는 실제 배지
-          // 설명(마침표로 끝나는 문장 나열)에서 줄바꿈이 거의 일어나지 않았다.
-          <div
-            className="relative z-10 flex-1 min-h-0 flex flex-col justify-start gap-0.5 pt-1 overflow-hidden"
-            style={backgroundAnimation ? getBadgeThemedTextStyle(true) : undefined}
-          >
-            {splitDescriptionSentences(badge.description).map((sentence, index) => (
-              <p
-                key={index}
-                className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)]"
-              >
-                {sentence}
-              </p>
-            ))}
+        {/* [20260917_1245-보완] 등급칩+이름과 설명을 하나의 flex-1 그룹으로 묶어 카드 하단
+            쪽에 함께 붙인다. 이전에는 이름 블록이 이미지 바로 아래(flex-shrink-0)에 고정되고
+            설명만 남은 공간을 차지해, 설명 쪽 정렬을 아무리 바꿔도 "이름이 이미지에 붙어
+            있고 설명만 멀리 떨어진" 모양이 안 바뀌었다 — 사용자 피드백대로 이름 쪽을
+            아래로 옮겨야 두 텍스트가 실제로 가까워진다. */}
+        <div
+          className="relative z-10 flex-1 min-h-0 flex flex-col items-center justify-end gap-1 overflow-hidden"
+          style={cardTextStyle}
+        >
+          <div className="flex-shrink-0 flex flex-col items-center gap-1">
+            {/* v5는 배지 종류가 셋이고 레벨형은 `rarity`가 NULL이다(193종). `RarityBadge`는
+                미지 값을 그리지 않으므로(티켓 20260905_0036) 그대로 넘기면 **칩이 조용히
+                사라진다** — 상세 화면에서 등급/레벨을 알 수 없게 된다.
+                `BadgeTrophyGridCard.tsx:119`가 같은 분기를 쓴다(티켓 20260905_0037). */}
+            {badge.level != null ? <BadgeLevelChip level={badge.level} size="md" /> : <RarityBadge rarity={badge.rarity ?? undefined} size="md" />}
+            <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badge.name}</h1>
           </div>
-        )}
+          {badge.description && (
+            // [20260917_1211] 설명을 카드 안으로 통합. 마침표(문장 종결) 기준으로 나눠 각 문장을
+            // 별도 줄로 그린다 — 원본 `\n`에만 반응하던 `whitespace-pre-line`으로는 실제 배지
+            // 설명(마침표로 끝나는 문장 나열)에서 줄바꿈이 거의 일어나지 않았다.
+            <div className="flex-shrink-0 flex flex-col gap-0.5">
+              {splitDescriptionSentences(badge.description).map((sentence, index) => (
+                <p
+                  key={index}
+                  className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)]"
+                >
+                  {sentence}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
