@@ -1213,9 +1213,7 @@ export const ko = {
     combineButton: '믹스하기',
     /** §5.3 처리 중 상태 — 문장·버튼 모두 기본형(동사형)을 쓴다 */
     combineButtonLoading: '믹스하는 중',
-    hintsTitle: '힌트',
-    hintUnknown: '???',
-    recipesTitle: '공개 레시피',
+    recipesTitle: '레시피',
     recipeLine: '재료 {count}개 → 보상 획득',
     myItemsTitle: '내 아이템',
     emptyInventory: '아직 가진 아이템이 없어요',

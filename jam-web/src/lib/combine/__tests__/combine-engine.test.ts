@@ -25,8 +25,6 @@ interface RecipeStub {
   id: string
   reward_points: number
   reward_badge_ids: string[]
-  hint_text: string | null
-  is_public: boolean
   created_at: string
 }
 
@@ -193,8 +191,6 @@ function recipe(overrides: Partial<RecipeStub> = {}): RecipeStub {
     id: 'recipe-1',
     reward_points: 0,
     reward_badge_ids: [REWARD],
-    hint_text: null,
-    is_public: false,
     created_at: '2026-09-10T00:00:00.000Z',
     ...overrides,
   }

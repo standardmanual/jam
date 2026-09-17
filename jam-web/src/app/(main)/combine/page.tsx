@@ -27,13 +27,13 @@ export default async function CombinePage() {
   if (invError) console.error('[combine/page] inventory 조회 실패(무인벤토리 포함)', invError)
   if (recipesError) console.error('[combine/page] combination_recipes 조회 실패', recipesError)
 
+  // 티켓 20260917_1427(비공개 레시피 스펙 아웃): 모든 레시피를 공개로 취급한다.
   const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
-  const publicRecipeRows = recipes.filter((r) => r.is_public)
+  const publicRecipeRows = recipes
   const publicRecipeIds = publicRecipeRows.map((r) => r.id)
 
-  // 티켓 20260917_1427: 유저 화면이 레시피 선택형 플로우로 바뀌면서, 공개 레시피는 슬롯
-  // 목록과 슬롯별 후보 배지 상세(이름·이미지)까지 함께 내려줘야 슬롯 채우기 화면을 그릴 수
-  // 있다. 비공개 레시피는 힌트 문구로만 노출되므로 슬롯 상세는 조회하지 않는다.
+  // 유저 화면이 레시피 선택형 플로우로 바뀌면서, 레시피는 슬롯 목록과 슬롯별 후보 배지
+  // 상세(이름·이미지)까지 함께 내려줘야 슬롯 채우기 화면을 그릴 수 있다.
   const { data: slotsFullRaw, error: slotsError } =
     publicRecipeIds.length > 0
       ? await service
@@ -102,9 +102,6 @@ export default async function CombinePage() {
     ...r,
     slots: (slotsByRecipe.get(r.id) ?? []).sort((a, b) => a.slot_order - b.slot_order),
   }))
-  const hints = recipes
-    .filter((r) => !r.is_public && r.hint_text)
-    .map((r) => ({ hint_text: r.hint_text }))
 
   let items: Array<Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'> & { badge: Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'> }> = []
 
@@ -152,7 +149,6 @@ export default async function CombinePage() {
   return (
     <CombineClient
       items={items}
-      hints={hints}
       publicRecipes={publicRecipes}
       ownedConditionBadgeIds={ownedConditionBadgeIds}
     />
