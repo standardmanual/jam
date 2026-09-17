@@ -10,7 +10,7 @@ import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOv
 import { MixerSlot } from '@ds/components/patterns/MixerSlot'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { SearchIcon, PackageIcon } from '@/components/ui/icons'
-import RecipeRewardBlock from './RecipeRewardBlock'
+import RecipeRewardRow from './RecipeRewardRow'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
@@ -267,22 +267,13 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
 
   function renderRecipeRow(recipe: RecipeWithSlots, onPick: (id: string) => void) {
     return (
-      <button
+      <RecipeRewardRow
         key={recipe.id}
-        type="button"
+        title={recipeDisplayName(recipe)}
+        badges={recipe.rewardBadges}
+        points={recipe.reward_points}
         onClick={() => onPick(recipe.id)}
-        className="w-full flex items-center gap-[var(--spacing-12)] p-[var(--spacing-12)] rounded-[var(--radius-cards)] bg-surface-elevated text-left active:scale-[0.99] transition-transform"
-      >
-        <div className="flex-1 min-w-0">
-          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text truncate">
-            {recipeDisplayName(recipe)}
-          </p>
-          <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-text/50">
-            {t(d.combine.slotCountLabel, { count: recipe.slots.length })}
-          </p>
-        </div>
-        <RecipeRewardBlock badges={recipe.rewardBadges} points={recipe.reward_points} className="shrink-0" />
-      </button>
+      />
     )
   }
 
@@ -339,18 +330,11 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
             레시피 전환은 TopNav 뒤로가기가 담당한다(closeMixer → 탐색 화면 → 다시 뒤로가기 시 라우트 이탈).
           */}
           <div className="px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[var(--spacing-16)]">
-            <div className="flex items-center gap-[var(--spacing-12)] p-[var(--spacing-12)] rounded-[var(--radius-cards)] bg-surface-elevated">
-              <div className="flex-1 min-w-0">
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text truncate">
-                  {recipeDisplayName(selectedRecipe)}
-                </p>
-              </div>
-              <RecipeRewardBlock
-                badges={selectedRecipe.rewardBadges}
-                points={selectedRecipe.reward_points}
-                className="shrink-0"
-              />
-            </div>
+            <RecipeRewardRow
+              title={recipeDisplayName(selectedRecipe)}
+              badges={selectedRecipe.rewardBadges}
+              points={selectedRecipe.reward_points}
+            />
           </div>
 
           {/* 믹서 슬롯 그리드 */}
