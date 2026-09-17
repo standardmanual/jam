@@ -67,7 +67,10 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
           // 자체 px-6=24px)보다 카드가 더 넓어 보였다 — mx-2(8px)를 더해 16+8=24px로 맞춘다.
           // 테두리도 사용자 확인 결과 배지와 다르게 보여 제거했다 — 20260915_2006에서 남겼던
           // 컨트라스트 보정용 테두리보다 두 상세화면의 시각적 일치를 우선한다.
-          'relative overflow-hidden w-full aspect-square rounded-[var(--radius-cards)] flex flex-col items-center p-6 mx-2',
+          // `w-full`은 부모 폭의 100%로 고정되므로 여기에 `mx-2`를 더하면 박스가 총
+          // 100%+16px가 되어 오른쪽으로 넘쳐 좌우 여백이 달라 보였다(사용자 확인). 너비 자체를
+          // `calc(100%-16px)`로 줄여야 마진을 더해도 부모 폭 안에 대칭으로 들어간다.
+          'relative overflow-hidden w-[calc(100%-16px)] aspect-square rounded-[var(--radius-cards)] flex flex-col items-center p-6 mx-2',
           backgroundAnimation ? 'bg-transparent' : 'bg-surface-elevated',
         ].join(' ')}
         style={backgroundAnimation ? { backgroundColor: backgroundAnimation.bgColor } : undefined}
