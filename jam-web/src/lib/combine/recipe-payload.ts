@@ -38,16 +38,12 @@ export interface RecipePayloadInput {
   slots?: unknown
   reward_points?: unknown
   reward_badge_ids?: unknown
-  hint_text?: unknown
-  is_public?: unknown
 }
 
 export interface NormalizedRecipePayload {
   slots: NormalizedSlot[]
   rewardPoints: number
   rewardBadgeIds: string[]
-  hintText: string | null
-  isPublic: boolean
 }
 
 /**
@@ -88,20 +84,9 @@ export function normalizeRecipePayload(
     return { ok: false, error: '보상을 하나 이상 지정해 주세요. 포인트나 배지 중 최소 하나가 필요해요.' }
   }
 
-  const hintTextRaw = body.hint_text
-  if (hintTextRaw !== undefined && hintTextRaw !== null && typeof hintTextRaw !== 'string') {
-    return { ok: false, error: '힌트 문구가 올바르지 않아요.' }
-  }
-  const hintText = typeof hintTextRaw === 'string' && hintTextRaw.trim() ? hintTextRaw.trim() : null
-
-  const isPublicRaw = body.is_public
-  if (isPublicRaw !== undefined && typeof isPublicRaw !== 'boolean') {
-    return { ok: false, error: '공개 여부가 올바르지 않아요.' }
-  }
-
   return {
     ok: true,
-    value: { slots, rewardPoints, rewardBadgeIds, hintText, isPublic: isPublicRaw === true },
+    value: { slots, rewardPoints, rewardBadgeIds },
   }
 }
 

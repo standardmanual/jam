@@ -16,10 +16,6 @@ interface InventoryItemWithBadge extends Pick<InventoryItemRow, 'id' | 'badge_id
   badge: Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>
 }
 
-interface PublicHint {
-  hint_text: string | null
-}
-
 /** 슬롯 하나에 딸린 후보(OR) 배지 상세 — 티켓 20260917_1427 */
 export interface RecipeSlotWithCandidates {
   id: string
@@ -35,7 +31,6 @@ export interface RecipeWithSlots extends CombinationRecipeRow {
 
 interface Props {
   items: InventoryItemWithBadge[]
-  hints: PublicHint[]
   publicRecipes: RecipeWithSlots[]
   /** 유저가 실제로 보유한 조건 슬롯(액티비티·체크인) 후보 배지 id — 서버가 미리 조회해 내려준다 */
   ownedConditionBadgeIds: string[]
@@ -46,7 +41,7 @@ const conditionSlotTypeLabel: Record<Exclude<CombineSlotBadgeType, 'item'>, stri
   checkin: '체크인 배지',
 }
 
-export default function CombineClient({ items, hints, publicRecipes, ownedConditionBadgeIds }: Props) {
+export default function CombineClient({ items, publicRecipes, ownedConditionBadgeIds }: Props) {
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
   /** 아이템 슬롯 id → 채운 인벤토리 아이템 개체 id */
   const [itemFills, setItemFills] = useState<Record<string, string>>({})
@@ -213,20 +208,6 @@ export default function CombineClient({ items, hints, publicRecipes, ownedCondit
 
       {!selectedRecipe ? (
         <>
-          {/* 힌트 */}
-          {hints.length > 0 && (
-            <div className="px-[var(--spacing-16)] pb-[var(--spacing-16)]">
-              <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.hintsTitle}</p>
-              <div className="flex flex-col gap-[var(--spacing-8)]">
-                {hints.map((h, i) => (
-                  <Card tone="inverse" key={i}>
-                    <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{h.hint_text ?? d.combine.hintUnknown}</p>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* 공개 레시피 — 탭해서 선택 */}
           <div className="px-[var(--spacing-16)] pb-[var(--spacing-24)]">
             <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.recipesTitle}</p>

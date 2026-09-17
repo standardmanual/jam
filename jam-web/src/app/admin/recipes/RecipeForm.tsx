@@ -75,8 +75,6 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
   const [rewardBadges, setRewardBadges] = useState<SelectedBadge[]>(
     recipe ? rewardBadgesFromRecipe(recipe, badgeMap) : []
   )
-  const [hintText, setHintText] = useState(recipe?.hint_text ?? '')
-  const [isPublic, setIsPublic] = useState(recipe?.is_public ?? false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -124,8 +122,6 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
       })),
       reward_points: points,
       reward_badge_ids: rewardBadges.map((b) => b.id),
-      hint_text: hintText,
-      is_public: isPublic,
     }
     try {
       const res = await fetch(
@@ -268,23 +264,6 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
           />
         </div>
       </div>
-
-      {/* 힌트 */}
-      <div>
-        <label className="text-xs text-muted-foreground mb-2 block">힌트 문구 (비공개 레시피용)</label>
-        <Input
-          type="text"
-          value={hintText}
-          onChange={(e) => setHintText(e.target.value)}
-          placeholder="예: 겨울 등반에 필요한 것들..."
-        />
-      </div>
-
-      {/* 공개 여부 */}
-      <label className="flex items-center gap-3 cursor-pointer">
-        <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
-        <span className="text-sm">공개 레시피 (재료 공개)</span>
-      </label>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

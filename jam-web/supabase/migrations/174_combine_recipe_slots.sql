@@ -46,3 +46,14 @@ ALTER TABLE public.combination_recipes DROP CONSTRAINT IF EXISTS combination_rec
 ALTER TABLE public.combination_recipes
   DROP COLUMN IF EXISTS ingredient_badge_ids,
   DROP COLUMN IF EXISTS required_badge_ids;
+
+-- ----------------------------------------------------------------
+-- 3. combination_recipes — 비공개 레시피 기능 스펙 아웃(2026-09-17 추가)
+--
+-- 레시피 선택형 플로우로 전환하면서 비공개 레시피의 힌트 노출→우연한 발견 경로가
+-- 사라졌다. 별도 발견 경로를 만들지 않고 비공개 레시피 기능 자체를 제거한다.
+-- 모든 레시피는 공개로 취급하고, 유저는 노출된 레시피 목록에서 바로 선택한다.
+-- ----------------------------------------------------------------
+ALTER TABLE public.combination_recipes
+  DROP COLUMN IF EXISTS is_public,
+  DROP COLUMN IF EXISTS hint_text;

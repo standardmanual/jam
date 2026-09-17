@@ -451,25 +451,19 @@ export type Database = {
       combination_recipes: {
         Row: {
           created_at: string
-          hint_text: string | null
           id: string
-          is_public: boolean
           reward_badge_ids: string[]
           reward_points: number
         }
         Insert: {
           created_at?: string
-          hint_text?: string | null
           id?: string
-          is_public?: boolean
           reward_badge_ids?: string[]
           reward_points?: number
         }
         Update: {
           created_at?: string
-          hint_text?: string | null
           id?: string
-          is_public?: boolean
           reward_badge_ids?: string[]
           reward_points?: number
         }

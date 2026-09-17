@@ -516,8 +516,6 @@ export interface CombinationRecipeRow {
   reward_points: number
   /** 매칭 성공 시 확정 지급하는 배지 — 무작위 없이 전부 지급 */
   reward_badge_ids: string[]
-  hint_text: string | null
-  is_public: boolean
   created_at: string
 }
 
