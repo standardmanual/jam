@@ -1187,14 +1187,14 @@ const pixelSortingFields: ShaderLabFieldDefinitions = [
 // 기존 저장된 레이어에 남아있던 `direction` 값은 새 셰이더가 더 이상 읽지 않으므로 무시되고
 // `rotation` 기본값(0도)이 적용된다 — 어드민 프리뷰 전용 도구라 데이터 마이그레이션 없이도
 // 영향이 제한적이라고 판단했다(완료 기록 참고).
+// 티켓 20260917_1324 — 교차선 기능이 만족스럽지 않아 완전히 제거. `블록 너비`·`교차선 간격`
+// 필드를 삭제하고, 셰이더에서도 교차선 렌더링·관련 유니폼을 모두 제거했다(완료 기록 참고).
 const sliceFields: ShaderLabFieldDefinitions = [
   { key: 'amount', label: '이동량', type: 'number', defaultValue: 180, min: 0, max: 480, step: 1, unit: 'px' },
   { key: 'sliceHeight', label: '조각 높이', type: 'number', defaultValue: 28, min: 2, max: 240, step: 1, unit: 'px' },
-  { key: 'blockWidth', label: '블록 너비', type: 'number', defaultValue: 120, min: 8, max: 640, step: 1, unit: 'px' },
   { key: 'density', label: '밀도', type: 'number', defaultValue: 0.58, min: 0, max: 1, step: 0.01 },
   { key: 'dispersion', label: '분산', type: 'number', defaultValue: 0.18, min: 0, max: 0.5, step: 0.01 },
   { key: 'rotation', label: '회전 방향', type: 'number', defaultValue: 0, min: 0, max: 360, step: 1, unit: '°' },
-  { key: 'crossLineSpacing', label: '교차선 간격', type: 'number', defaultValue: 120, min: 8, max: 640, step: 1, unit: 'px' },
 ]
 
 const edgeDetectFields: ShaderLabFieldDefinitions = [
