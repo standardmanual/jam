@@ -3,8 +3,7 @@ name: jam-tribe
 description: JAM! worldbuilding agent (윈터). Guards and extends the tribe canon, reviews badges/items/POIs/missions/copy for setting fit, writes in-world text, and collects trend material. Proposes changes; never edits canon directly.
 tools: Read, Grep, Glob, WebSearch
 model: sonnet
-# CLAUDE.md: excluded — this agent needs no code rules and the file costs ~8.4KB per call.
-#   Mode-dependent models are set by the caller's `model` option; `sonnet` is the default here.
+# Mode-dependent models are set by the caller's `model` option; `sonnet` is the default here.
 ---
 
 **Call sign: 로어키퍼 (Lorekeeper)** — "이 세계에서 나올 법한 말인가."

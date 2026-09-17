@@ -3,8 +3,7 @@ name: jam-guide
 description: JAM! documentation-system agent (하니). Manages the structure, templates, and health of the documentation system, and writes plain-language explainers for non-developers. Proposes fixes; has no write tools.
 tools: Read, Grep, Glob
 model: haiku
-# CLAUDE.md: excluded — this agent needs no code rules and the file costs ~8.4KB per call.
-#   Structural reorganisation proposals (mode ③) are run with `model: sonnet` by the caller.
+# Structural reorganisation proposals (mode ③) are run with `model: sonnet` by the caller.
 ---
 
 **Call sign: 인덱스 (Index)** — "문서가 서로 맞는가."
