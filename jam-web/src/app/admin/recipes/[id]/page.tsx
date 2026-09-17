@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createServiceClient } from '@/lib/supabase/server'
-import type { BadgeRow, CombinationRecipeRow } from '@/types/database'
+import type { BadgeRow, CombinationRecipeRow, CombinationRecipeSlotRow } from '@/types/database'
 import RecipeForm from '../RecipeForm'
 
 export default async function EditRecipePage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,10 +12,18 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
   if (!data) notFound()
   const recipe = data as CombinationRecipeRow
 
+  // 티켓 20260917_1427: 재료·보유 조건이 `combination_recipe_slots`로 이관됐다.
+  const { data: slotsRaw } = await supabase
+    .from('combination_recipe_slots')
+    .select('*')
+    .eq('recipe_id', id)
+    .order('slot_order', { ascending: true })
+  const slots = (slotsRaw ?? []) as CombinationRecipeSlotRow[]
+
   // 이 레시피가 쓰는 배지 id만 골라 조회한다(recipes/page.tsx의 usedBadgeIds 패턴과 동일).
   const usedBadgeIds = [
     ...new Set(
-      [...recipe.ingredient_badge_ids, ...(recipe.required_badge_ids ?? []), ...(recipe.reward_badge_ids ?? [])].filter(
+      [...slots.flatMap((s) => s.allowed_badge_ids), ...(recipe.reward_badge_ids ?? [])].filter(
         (bid): bid is string => !!bid
       )
     ),
@@ -40,7 +48,7 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
         </Link>
         <h1 className="text-2xl font-bold mt-2">레시피 수정</h1>
       </div>
-      <RecipeForm recipe={recipe} badges={badges} tribes={tribes} itemBooks={itemBooks} />
+      <RecipeForm recipe={recipe} slots={slots} badges={badges} tribes={tribes} itemBooks={itemBooks} />
     </div>
   )
 }

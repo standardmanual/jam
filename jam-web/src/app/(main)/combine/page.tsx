@@ -1,8 +1,13 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import type { BadgeRow, CombinationRecipeRow, InventoryItemRow } from '@/types/database'
-import CombineClient from './CombineClient'
+import type {
+  BadgeRow,
+  CombinationRecipeRow,
+  CombinationRecipeSlotRow,
+  InventoryItemRow,
+} from '@/types/database'
+import CombineClient, { type RecipeWithSlots } from './CombineClient'
 
 export default async function CombinePage() {
   const supabase = await createClient()
@@ -22,11 +27,81 @@ export default async function CombinePage() {
   if (invError) console.error('[combine/page] inventory 조회 실패(무인벤토리 포함)', invError)
   if (recipesError) console.error('[combine/page] combination_recipes 조회 실패', recipesError)
 
+  // 티켓 20260917_1427(비공개 레시피 스펙 아웃): 모든 레시피를 공개로 취급한다.
   const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
-  const publicRecipes = recipes.filter((r) => r.is_public)
-  const hints = recipes
-    .filter((r) => !r.is_public && r.hint_text)
-    .map((r) => ({ hint_text: r.hint_text }))
+  const publicRecipeRows = recipes
+  const publicRecipeIds = publicRecipeRows.map((r) => r.id)
+
+  // 유저 화면이 레시피 선택형 플로우로 바뀌면서, 레시피는 슬롯 목록과 슬롯별 후보 배지
+  // 상세(이름·이미지)까지 함께 내려줘야 슬롯 채우기 화면을 그릴 수 있다.
+  const { data: slotsFullRaw, error: slotsError } =
+    publicRecipeIds.length > 0
+      ? await service
+          .from('combination_recipe_slots')
+          .select('*')
+          .in('recipe_id', publicRecipeIds)
+          .order('slot_order', { ascending: true })
+      : { data: [] as CombinationRecipeSlotRow[], error: null }
+  if (slotsError) console.error('[combine/page] combination_recipe_slots 조회 실패', slotsError)
+  const slotRows = (slotsFullRaw ?? []) as CombinationRecipeSlotRow[]
+
+  const allowedBadgeIds = [...new Set(slotRows.flatMap((s) => s.allowed_badge_ids))]
+  const { data: allowedBadgesRaw, error: allowedBadgesError } =
+    allowedBadgeIds.length > 0
+      ? await service.from('badges').select('id, name, image_url').in('id', allowedBadgeIds).is('deleted_at', null)
+      : { data: [] as Pick<BadgeRow, 'id' | 'name' | 'image_url'>[], error: null }
+  if (allowedBadgesError) console.error('[combine/page] 슬롯 후보 배지 상세 조회 실패', allowedBadgesError)
+  const badgeDetailMap = new Map(
+    ((allowedBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'image_url'>[]).map((b) => [b.id, b])
+  )
+
+  // 조건 슬롯(액티비티·체크인)은 유저가 실제로 보유한 후보만 "충족"으로 표시한다 —
+  // 소각하지 않고 보유 여부만 확인하는 슬롯이라 서버가 미리 조회해 내려준다.
+  const conditionCandidateIds = [
+    ...new Set(slotRows.filter((s) => s.badge_type !== 'item').flatMap((s) => s.allowed_badge_ids)),
+  ]
+  const [{ data: ownedActivityRaw, error: activityError }, { data: ownedCheckinRaw, error: checkinError }] =
+    conditionCandidateIds.length > 0
+      ? await Promise.all([
+          service
+            .from('user_activity_badges')
+            .select('badge_id')
+            .eq('user_id', user.id)
+            .in('badge_id', conditionCandidateIds),
+          service
+            .from('user_checkin_badge_earns')
+            .select('badge_id')
+            .eq('user_id', user.id)
+            .in('badge_id', conditionCandidateIds),
+        ])
+      : [{ data: [] as { badge_id: string }[], error: null }, { data: [] as { badge_id: string }[], error: null }]
+  if (activityError) console.error('[combine/page] user_activity_badges 조회 실패', activityError)
+  if (checkinError) console.error('[combine/page] user_checkin_badge_earns 조회 실패', checkinError)
+  const ownedConditionBadgeIds = [
+    ...new Set([
+      ...((ownedActivityRaw ?? []) as { badge_id: string }[]).map((r) => r.badge_id),
+      ...((ownedCheckinRaw ?? []) as { badge_id: string }[]).map((r) => r.badge_id),
+    ]),
+  ]
+
+  const slotsByRecipe = new Map<string, RecipeWithSlots['slots']>()
+  for (const slot of slotRows) {
+    const list = slotsByRecipe.get(slot.recipe_id) ?? []
+    list.push({
+      id: slot.id,
+      slot_order: slot.slot_order,
+      badge_type: slot.badge_type,
+      candidates: slot.allowed_badge_ids
+        .map((id) => badgeDetailMap.get(id))
+        .filter((b): b is Pick<BadgeRow, 'id' | 'name' | 'image_url'> => Boolean(b)),
+    })
+    slotsByRecipe.set(slot.recipe_id, list)
+  }
+
+  const publicRecipes: RecipeWithSlots[] = publicRecipeRows.map((r) => ({
+    ...r,
+    slots: (slotsByRecipe.get(r.id) ?? []).sort((a, b) => a.slot_order - b.slot_order),
+  }))
 
   let items: Array<Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'> & { badge: Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'> }> = []
 
@@ -71,5 +146,11 @@ export default async function CombinePage() {
     }
   }
 
-  return <CombineClient items={items} hints={hints} publicRecipes={publicRecipes} />
+  return (
+    <CombineClient
+      items={items}
+      publicRecipes={publicRecipes}
+      ownedConditionBadgeIds={ownedConditionBadgeIds}
+    />
+  )
 }

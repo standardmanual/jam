@@ -11,6 +11,12 @@ import type { BadgeRarity } from '@/types/database'
 export interface SelectedBadge {
   id: string
   label: string
+  /**
+   * 실제 배지 타입 — 믹스 레시피 슬롯 카드(티켓 20260917_1427)가 최초 추가된 배지의 타입으로
+   * 슬롯 타입을 고정할 때 쓴다. 보상 배지 칸처럼 타입이 폼 레벨에서 이미 확정된 호출부는
+   * 채우지 않아도 된다.
+   */
+  type?: string
 }
 
 interface MultiBadgeSearchSelectProps {
@@ -20,6 +26,14 @@ interface MultiBadgeSearchSelectProps {
   tribes: { id: string; name: string }[]
   itemBooks: { id: string; name: string }[]
   placeholder?: string
+  /**
+   * 검색 대상 배지 타입.
+   *  - 생략(undefined): 보상 배지 칸의 기존 관례대로 'item' 고정.
+   *  - `null`: 타입 필터 없이 전체 타입 검색(믹스 레시피 슬롯 카드가 아직 타입을
+   *    고정하지 않은 빈 슬롯에서 쓴다 — 첫 배지를 고른 순간 그 타입으로 슬롯이 고정된다).
+   *  - 문자열: 그 타입으로 제한(슬롯이 타입을 고정한 이후).
+   */
+  badgeType?: 'item' | 'activity' | 'checkin' | null
 }
 
 const RARITIES: { value: BadgeRarity; label: string }[] = [
@@ -32,11 +46,12 @@ const RARITIES: { value: BadgeRarity; label: string }[] = [
 const ALL = 'all'
 
 /**
- * 보상 배지는 아이템 배지로 고정한다 — 엔진의 배지 지급 경로가 `inventory_items` 개체 생성
- * 하나뿐이라, 액티비티·체크인 배지를 보상으로 두면 획득 기록 테이블과 어긋난다.
- * 저장 단계(`lib/admin/recipe-write.ts`)도 같은 규칙으로 거부한다.
+ * 기본 검색 타입 — 보상 배지 칸은 아이템 배지로 고정한다. 엔진의 배지 지급 경로가
+ * `inventory_items` 개체 생성 하나뿐이라, 액티비티·체크인 배지를 보상으로 두면 획득 기록
+ * 테이블과 어긋난다. 저장 단계(`lib/admin/recipe-write.ts`)도 같은 규칙으로 거부한다.
+ * 슬롯 카드처럼 다른 타입이 필요한 호출부는 `badgeType` prop으로 덮어쓴다.
  */
-const REWARD_BADGE_TYPE = 'item'
+const DEFAULT_BADGE_TYPE = 'item'
 
 export function badgeLabel(badge: { name: string; type: string; rarity: string | null }): string {
   return `${badge.name} [${badge.type}/${badge.rarity ?? '-'}]`
@@ -58,6 +73,7 @@ export default function MultiBadgeSearchSelect({
   tribes,
   itemBooks,
   placeholder,
+  badgeType,
 }: MultiBadgeSearchSelectProps) {
   const [query, setQuery] = useState('')
   const [tribeId, setTribeId] = useState(ALL)
@@ -87,7 +103,8 @@ export default function MultiBadgeSearchSelect({
       try {
         const params = new URLSearchParams()
         if (query.trim()) params.set('query', query.trim())
-        params.set('type', REWARD_BADGE_TYPE)
+        const effectiveType = badgeType === undefined ? DEFAULT_BADGE_TYPE : badgeType
+        if (effectiveType) params.set('type', effectiveType)
         if (tribeId !== ALL) params.set('tribe_id', tribeId)
         if (itemBookId !== ALL) params.set('item_book_id', itemBookId)
         if (rarity !== ALL) params.set('rarity', rarity)
@@ -103,7 +120,7 @@ export default function MultiBadgeSearchSelect({
       }
     }, 250)
     return () => clearTimeout(handle)
-  }, [query, tribeId, itemBookId, rarity, hasCriteria])
+  }, [query, tribeId, itemBookId, rarity, hasCriteria, badgeType])
 
   // 조건이 비면(필터를 초기화하고 검색어도 지웠을 때) 직전 결과를 그대로 안 보여준다
   // — effect에서 setState로 비우면 캐스케이딩 렌더가 된다(BadgeSearchSelect와 동일 패턴).
@@ -111,7 +128,7 @@ export default function MultiBadgeSearchSelect({
 
   function add(badge: BadgeSearchResult) {
     if (selected.some((s) => s.id === badge.id)) return
-    onChange([...selected, { id: badge.id, label: badgeLabel(badge) }])
+    onChange([...selected, { id: badge.id, label: badgeLabel(badge), type: badge.type }])
   }
 
   function remove(id: string) {
