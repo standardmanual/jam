@@ -1,12 +1,15 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import TopNav from '@/components/ui/TopNav'
 import { useToast } from '@/components/ui/Toast'
-import { Card } from '@ds/components/cards/Card'
-import BadgeGridCard from '@/components/ui/BadgeGridCard'
-import { PackageIcon } from '@/components/ui/icons'
+import BottomSheet from '@/components/ui/BottomSheet'
+import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
+import { MixerSlot } from '@ds/components/patterns/MixerSlot'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { SearchIcon, PackageIcon, ActivityIcon, PinIcon, CoinIcon } from '@/components/ui/icons'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
@@ -16,6 +19,8 @@ interface InventoryItemWithBadge extends Pick<InventoryItemRow, 'id' | 'badge_id
   badge: Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>
 }
 
+type BadgeDetail = Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'description'>
+
 /** 슬롯 하나에 딸린 후보(OR) 배지 상세 — 티켓 20260917_1427 */
 export interface RecipeSlotWithCandidates {
   id: string
@@ -24,9 +29,11 @@ export interface RecipeSlotWithCandidates {
   candidates: Pick<BadgeRow, 'id' | 'name' | 'image_url'>[]
 }
 
-/** 공개 레시피 + 슬롯 상세(티켓 20260917_1427, 레시피 선택형 플로우) */
+/** 공개 레시피 + 슬롯 상세 + 보상 배지 상세(티켓 20260917_1655, 슬롯 기반 크래프팅 UI) */
 export interface RecipeWithSlots extends CombinationRecipeRow {
   slots: RecipeSlotWithCandidates[]
+  /** 레시피 목록 미리보기·결과 캐러셀에 쓰는 보상 배지 상세(name·image_url·rarity·description) */
+  rewardBadges: BadgeDetail[]
 }
 
 interface Props {
@@ -36,19 +43,55 @@ interface Props {
   ownedConditionBadgeIds: string[]
 }
 
-const conditionSlotTypeLabel: Record<Exclude<CombineSlotBadgeType, 'item'>, string> = {
-  activity: '액티비티 배지',
-  checkin: '체크인 배지',
+/** 슬롯 타입별 아이콘 — 빈/잠김 슬롯, 가방 탭에서 공유한다 */
+const TYPE_ICON: Record<CombineSlotBadgeType, ReactNode> = {
+  item: <PackageIcon className="w-6 h-6" />,
+  activity: <ActivityIcon className="w-6 h-6" />,
+  checkin: <PinIcon className="w-6 h-6" />,
+}
+
+const BAG_TABS: Array<{ key: 'all' | CombineSlotBadgeType; label: keyof typeof d.combine }> = [
+  { key: 'all', label: 'bagTabAll' },
+  { key: 'item', label: 'bagTabItem' },
+  { key: 'activity', label: 'bagTabActivity' },
+  { key: 'checkin', label: 'bagTabCheckin' },
+]
+
+/** 슬롯을 채운 값 — item 타입은 인벤토리 개체 id, activity/checkin은 배지 id가 refId다 */
+interface SlotFill {
+  refId: string
+  badgeId: string
+  name: string
+  imageUrl: string | null
+}
+
+/** 가방(바텀시트) 목록 한 줄 — 레시피 안의 모든 슬롯 후보 중 유저가 실제로 보유한 것만 담는다 */
+interface BagEntry {
+  refId: string
+  badgeId: string
+  name: string
+  imageUrl: string | null
+  badgeType: CombineSlotBadgeType
+}
+
+function recipeThumb(recipe: RecipeWithSlots): BadgeDetail | undefined {
+  return recipe.rewardBadges[0]
 }
 
 export default function CombineClient({ items, publicRecipes, ownedConditionBadgeIds }: Props) {
+  const [search, setSearch] = useState('')
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
-  /** 아이템 슬롯 id → 채운 인벤토리 아이템 개체 id */
-  const [itemFills, setItemFills] = useState<Record<string, string>>({})
+  const [fills, setFills] = useState<Record<string, SlotFill>>({})
+  const [switchSheetOpen, setSwitchSheetOpen] = useState(false)
+  const [bagSlotId, setBagSlotId] = useState<string | null>(null)
+  const [bagTab, setBagTab] = useState<'all' | CombineSlotBadgeType>('all')
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<
-    { success: boolean; names?: string[]; points?: number; reason?: string } | null
-  >(null)
+  const [result, setResult] = useState<{
+    success: boolean
+    badges: RevealBadge[]
+    points: number
+    message?: string
+  } | null>(null)
   const { toast } = useToast()
   const router = useRouter()
 
@@ -63,104 +106,153 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
     return map
   }, [items])
 
-  const selectedRecipe = publicRecipes.find((r) => r.id === selectedRecipeId) ?? null
-  const itemSlots = selectedRecipe?.slots.filter((s) => s.badge_type === 'item') ?? []
-  const conditionSlots = selectedRecipe?.slots.filter((s) => s.badge_type !== 'item') ?? []
-  const allItemSlotsFilled = itemSlots.length > 0 && itemSlots.every((s) => itemFills[s.id])
-  const allConditionSlotsOwned = conditionSlots.every((s) =>
-    s.candidates.some((c) => ownedConditionSet.has(c.id))
+  // 검색 대상 텍스트 — 레시피에 이름이 없어 슬롯 후보·보상 배지 이름을 합쳐서 찾는다
+  // (마이그레이션 174: combination_recipes에는 표시용 이름 컬럼이 없다).
+  function recipeMatchesSearch(recipe: RecipeWithSlots, query: string): boolean {
+    if (!query) return true
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    const names = [
+      ...recipe.rewardBadges.map((b) => b.name),
+      ...recipe.slots.flatMap((s) => s.candidates.map((c) => c.name)),
+    ]
+    return names.some((name) => name.toLowerCase().includes(q))
+  }
+
+  const filteredRecipes = useMemo(
+    () => publicRecipes.filter((r) => recipeMatchesSearch(r, search)),
+    [publicRecipes, search]
   )
-  const canSubmit = allItemSlotsFilled && allConditionSlotsOwned
 
-  // 조합 성공 배너 — Success check (10).
-  // stroke-dasharray는 플레이스홀더가 아니라 실제 path의 getTotalLength()로 주입한다.
-  const checkRef = useRef<HTMLSpanElement | null>(null)
-  useEffect(() => {
-    if (!result?.success) return
-    const wrapper = checkRef.current
-    if (!wrapper) return
-
-    const path = wrapper.querySelector('path')
-    if (path) {
-      const len = Math.ceil(path.getTotalLength()) // 서브픽셀 흔들림 흡수를 위해 올림
-      path.style.strokeDasharray = String(len)
-      path.style.strokeDashoffset = String(len)
-    }
-
-    // 이미 보이는 상태에서 다시 성공했을 때도 처음부터 재생되도록 리셋 → 리플로우 → 재생
-    wrapper.setAttribute('data-state', 'out')
-    void wrapper.offsetWidth // 리플로우 강제
-    wrapper.setAttribute('data-state', 'in')
-  }, [result])
+  const selectedRecipe = publicRecipes.find((r) => r.id === selectedRecipeId) ?? null
+  const canSubmit = !!selectedRecipe && selectedRecipe.slots.every((s) => fills[s.id])
 
   function selectRecipe(recipeId: string) {
     setSelectedRecipeId(recipeId)
-    setItemFills({})
+    setFills({})
     setResult(null)
+    setSwitchSheetOpen(false)
   }
 
-  function backToRecipeList() {
+  function closeMixer() {
     setSelectedRecipeId(null)
-    setItemFills({})
+    setFills({})
   }
 
-  function toggleSlotItem(slotId: string, itemId: string) {
-    setItemFills((prev) => {
+  // 슬롯 하나에 넣을 수 있는 "보유한" 후보만 모은다 — 가방은 안 가진 배지를 보여주지 않는다.
+  function bagEntriesFor(recipe: RecipeWithSlots): BagEntry[] {
+    const seen = new Set<string>()
+    const entries: BagEntry[] = []
+    for (const slot of recipe.slots) {
+      for (const candidate of slot.candidates) {
+        if (slot.badge_type === 'item') {
+          const owned = itemsByBadgeId.get(candidate.id) ?? []
+          for (const inv of owned) {
+            if (seen.has(inv.id)) continue
+            seen.add(inv.id)
+            entries.push({
+              refId: inv.id,
+              badgeId: candidate.id,
+              name: inv.badge.name,
+              imageUrl: inv.badge.image_url,
+              badgeType: 'item',
+            })
+          }
+        } else {
+          if (!ownedConditionSet.has(candidate.id)) continue
+          if (seen.has(candidate.id)) continue
+          seen.add(candidate.id)
+          entries.push({
+            refId: candidate.id,
+            badgeId: candidate.id,
+            name: candidate.name,
+            imageUrl: candidate.image_url,
+            badgeType: slot.badge_type,
+          })
+        }
+      }
+    }
+    return entries
+  }
+
+  function fillSlot(slotId: string, entry: BagEntry) {
+    setFills((prev) => {
       const next = { ...prev }
-      if (next[slotId] === itemId) {
-        delete next[slotId]
-        return next
-      }
-      // 같은 아이템 개체는 슬롯 하나에만 대응한다 — 다른 슬롯에 이미 쓰였다면 그쪽에서 뺀다.
+      // 같은 refId(개체/배지)는 슬롯 하나에만 대응한다 — 다른 슬롯에 이미 쓰였다면 그쪽에서 뺀다.
       for (const key of Object.keys(next)) {
-        if (next[key] === itemId) delete next[key]
+        if (next[key].refId === entry.refId) delete next[key]
       }
-      next[slotId] = itemId
+      next[slotId] = { refId: entry.refId, badgeId: entry.badgeId, name: entry.name, imageUrl: entry.imageUrl }
+      return next
+    })
+    setBagSlotId(null)
+  }
+
+  function removeSlot(slotId: string) {
+    setFills((prev) => {
+      const next = { ...prev }
+      delete next[slotId]
       return next
     })
   }
 
+  function openBagFor(slot: RecipeSlotWithCandidates) {
+    setBagTab(slot.badge_type)
+    setBagSlotId(slot.id)
+  }
+
   async function handleCombine() {
     if (!selectedRecipe || !canSubmit) return
+    const itemIds = selectedRecipe.slots
+      .filter((s) => s.badge_type === 'item')
+      .map((s) => fills[s.id]?.refId)
+      .filter((id): id is string => Boolean(id))
+
     setLoading(true)
     setResult(null)
-    trackEvent('combine_attempt', { item_count: Object.keys(itemFills).length })
+    trackEvent('combine_attempt', { item_count: itemIds.length })
 
     try {
       const res = await fetch('/api/combine', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipe_id: selectedRecipe.id, item_ids: Object.values(itemFills) }),
+        body: JSON.stringify({ recipe_id: selectedRecipe.id, item_ids: itemIds }),
       })
       const data = await res.json()
 
-      if (data.success && ((data.resultBadges ?? []).length > 0 || (data.pointsAwarded ?? 0) > 0)) {
-        const resultBadges = (data.resultBadges ?? []) as { id: string; name: string }[]
+      const resultBadges = (data.resultBadges ?? []) as { id: string; name: string }[]
+      const points = data.pointsAwarded ?? 0
+      // 20260910_1408: 레시피 보상은 배지·포인트를 함께 줄 수 있다. 캐러셀에 넘길 상세는
+      // 이미 로드해 둔 selectedRecipe.rewardBadges에서 찾는다(API는 id·name·rarity만 준다).
+      const revealBadges: RevealBadge[] = resultBadges.map((b) => {
+        const detail = selectedRecipe.rewardBadges.find((rb) => rb.id === b.id)
+        return {
+          id: b.id,
+          name: detail?.name ?? b.name,
+          description: detail?.description ?? '',
+          imageUrl: detail?.image_url,
+          rarity: detail?.rarity,
+        }
+      })
+
+      if (data.success) {
         trackEvent('combine_success', {
-          item_count: Object.keys(itemFills).length,
+          item_count: itemIds.length,
           result_badge_ids: resultBadges.map((b) => b.id).join(','),
         })
-        const names = resultBadges.map((b) => b.name)
-        // 20260910_1408: 레시피 보상은 배지·포인트를 함께 줄 수 있다(둘 중 하나만일 수도 있다).
-        setResult({ success: true, names, points: data.pointsAwarded ?? 0 })
-        backToRecipeList()
-        router.refresh()
-      } else if (data.success) {
-        // 20260910_1515: 레시피는 매칭됐지만(success: true) 보상 배지가 소프트 삭제 등으로
-        // 하나도 지급되지 않고 포인트도 0인 경우 — 재료는 이미 소각됐으니 유저에게는
-        // 실패에 가깝다. ADR 0001에 따라 서버가 이미 판정해 붙인 message를 그대로 신뢰한다.
-        trackEvent('combine_success', { item_count: Object.keys(itemFills).length, result_badge_ids: '' })
-        setResult({ success: false, reason: data.message ?? d.combine.genericFail })
-        backToRecipeList()
-        router.refresh()
-      } else {
-        // ADR 0001(서버-클라이언트 단일 진실 소스, 티켓 20260915_2240): API route가
-        // d.combine.*로 완성한 message를 그대로 신뢰해 노출한다. 사유 코드를 클라이언트가
-        // 재조립하지 않는다.
-        setResult({ success: false, reason: data.message ?? d.combine.genericFail })
-        backToRecipeList()
-        router.refresh()
       }
+
+      // 성공(배지 없이 포인트만) · 실패 모두 message는 서버가 완성해 내려준다(ADR 0001, 티켓 20260915_2240).
+      const message =
+        revealBadges.length === 0
+          ? data.success
+            ? t(d.combine.successPointsOnly, { points })
+            : (data.message ?? d.combine.genericFail)
+          : undefined
+
+      setResult({ success: !!data.success, badges: revealBadges, points, message })
+      // 재료 소각·조합 결과 반영 — 슬롯만 비우고 같은 레시피 화면은 유지한다(오버레이를 닫을 때 처리).
+      router.refresh()
     } catch {
       toast(d.combine.genericError, 'error')
     } finally {
@@ -168,173 +260,272 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
     }
   }
 
+  function closeResult() {
+    setResult(null)
+    // 티켓 요구사항: 오버레이를 닫으면 같은 레시피 화면에 슬롯만 비운 채로 남는다.
+    setFills({})
+  }
+
+  function renderRecipeRow(recipe: RecipeWithSlots, onPick: (id: string) => void) {
+    const thumb = recipeThumb(recipe)
+    return (
+      <button
+        key={recipe.id}
+        type="button"
+        onClick={() => onPick(recipe.id)}
+        className="w-full flex items-center gap-[var(--spacing-12)] p-[var(--spacing-12)] rounded-[var(--radius-cards)] bg-surface-elevated text-left active:scale-[0.99] transition-transform"
+      >
+        <div className="flex -space-x-2 shrink-0">
+          {recipe.rewardBadges.slice(0, 3).map((b) => (
+            <div key={b.id} className="w-11 h-11 rounded-[var(--radius-pill)] bg-surface flex items-center justify-center overflow-hidden ring-2 ring-surface-elevated">
+              {b.image_url ? (
+                <Image src={b.image_url} alt={b.name} width={44} height={44} className="object-contain w-full h-full" />
+              ) : (
+                <PackageIcon className="w-5 h-5 text-text/40" />
+              )}
+            </div>
+          ))}
+          {recipe.rewardBadges.length === 0 && (
+            <div className="w-11 h-11 rounded-[var(--radius-pill)] bg-surface flex items-center justify-center">
+              <PackageIcon className="w-5 h-5 text-text/40" />
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text truncate">
+            {thumb ? thumb.name : t(d.combine.slotCountLabel, { count: recipe.slots.length })}
+          </p>
+          <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-text/50">
+            {t(d.combine.slotCountLabel, { count: recipe.slots.length })}
+          </p>
+        </div>
+        {recipe.reward_points > 0 && (
+          <div className="flex items-center gap-1 shrink-0 text-[length:var(--text-caption)] text-text/70">
+            <CoinIcon className="w-4 h-4" />
+            <span>{recipe.reward_points.toLocaleString()}</span>
+          </div>
+        )}
+      </button>
+    )
+  }
+
+  const bagSlot = selectedRecipe?.slots.find((s) => s.id === bagSlotId) ?? null
+  const bagEntries = selectedRecipe ? bagEntriesFor(selectedRecipe) : []
+  const bagFiltered = bagEntries.filter((e) => bagTab === 'all' || e.badgeType === bagTab)
+
   return (
     <div className="flex flex-col min-h-full bg-surface text-text">
-      {/* 헤더 */}
-      <div className="px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-24)]">
-        <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.combine.title}</h1>
-      </div>
-
-      {/* 결과 알림 */}
-      {result && (
-        <Card tone="inverse" className="mx-[var(--spacing-16)] mb-[var(--spacing-16)] text-center">
-          {result.success ? (
-            <div className="flex flex-col items-center gap-[var(--spacing-16)]">
-              <span ref={checkRef} className="t-success-check" data-state="out" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" className="w-10 h-10">
-                  <path
-                    d="M4 12.5 L9.5 18 L20 6.5"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-              <p>
-                {(result.names ?? []).length > 0
-                  ? t(d.combine.successResult, { names: (result.names ?? []).join(', ') }) +
-                    ((result.points ?? 0) > 0
-                      ? t(d.combine.successPointsSuffix, { points: result.points ?? 0 })
-                      : '')
-                  : t(d.combine.successPointsOnly, { points: result.points ?? 0 })}
-              </p>
-            </div>
-          ) : (
-            result.reason
-          )}
-        </Card>
-      )}
+      {/*
+        티켓 20260917_1655: /combine은 인벤토리 하위 화면이라 points와 동일한 뒤로가기형 TopNav를
+        쓴다. 믹서 화면에서는 뒤로가기가 라우트를 벗어나지 않고 먼저 레시피 탐색으로
+        돌아온다(closeMixer) — 라우트 이탈은 탐색 화면에서 한 번 더 눌러야 일어난다.
+      */}
+      <TopNav
+        title={d.combine.title}
+        headerStyle={{ background: 'var(--color-surface)' }}
+        onBack={selectedRecipe ? closeMixer : undefined}
+      />
 
       {!selectedRecipe ? (
         <>
-          {/* 공개 레시피 — 탭해서 선택 */}
-          <div className="px-[var(--spacing-16)] pb-[var(--spacing-24)]">
-            <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.recipesTitle}</p>
-            {publicRecipes.length === 0 ? (
-              <EmptyState
-                icon={<PackageIcon className="w-8 h-8" />}
-                title={d.combine.emptyInventory}
-                description={d.combine.recipeSelectPrompt}
+          {/* 검색 */}
+          <div className="px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[var(--spacing-16)]">
+            <div className="flex items-center gap-[var(--spacing-8)] px-[var(--spacing-16)] py-[var(--spacing-12)] rounded-[var(--radius-pill-buttons)] bg-surface-elevated">
+              <SearchIcon className="w-4 h-4 text-text/40 shrink-0" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={d.combine.searchPlaceholder}
+                className="flex-1 bg-transparent outline-none text-[length:var(--text-body-sm)] text-text placeholder:text-text/40"
               />
+            </div>
+          </div>
+
+          {/* 레시피 탐색 목록 */}
+          <div className="flex-1 px-[var(--spacing-16)] pb-[var(--spacing-24)]">
+            {publicRecipes.length === 0 ? (
+              <EmptyState icon={<PackageIcon className="w-8 h-8" />} title={d.combine.noRecipes} />
+            ) : filteredRecipes.length === 0 ? (
+              <EmptyState icon={<SearchIcon className="w-8 h-8" />} title={d.combine.searchNoResult} />
             ) : (
-              <>
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-[var(--color-text-secondary)] mb-[var(--spacing-16)]">
-                  {d.combine.recipeSelectPrompt}
-                </p>
-                <div className="flex flex-col gap-[var(--spacing-8)]">
-                  {publicRecipes.map((r) => (
-                    <button key={r.id} type="button" onClick={() => selectRecipe(r.id)} className="text-left w-full">
-                      <Card
-                        tone="inverse"
-                        className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70 active:scale-[0.99] transition-transform"
-                      >
-                        {t(d.combine.recipeLine, { count: r.slots.length })}
-                      </Card>
-                    </button>
-                  ))}
-                </div>
-              </>
+              <div className="flex flex-col gap-[var(--spacing-8)]">
+                {filteredRecipes.map((r) => renderRecipeRow(r, selectRecipe))}
+              </div>
             )}
           </div>
         </>
       ) : (
         <>
-          {/* 슬롯 채우기 */}
-          <div className="px-[var(--spacing-16)] pb-[var(--spacing-24)]">
-            <div className="flex items-center justify-between mb-[var(--spacing-16)]">
-              <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest">{d.combine.fillSlotsTitle}</p>
-              <button type="button" onClick={backToRecipeList} className="text-[length:var(--text-body-sm)] text-[var(--color-text-secondary)] underline underline-offset-2">
-                {d.combine.backToRecipeList}
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-[var(--spacing-16)]">
-              {itemSlots.map((slot) => {
-                const filledItemId = itemFills[slot.id]
-                const candidateItems = slot.candidates.flatMap((c) => itemsByBadgeId.get(c.id) ?? [])
-                return (
-                  <div key={slot.id}>
-                    {candidateItems.length === 0 ? (
-                      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-[var(--color-text-secondary)]">
-                        {d.combine.itemSlotEmpty}
-                      </p>
+          {/* 믹서 상단 요약 바 */}
+          <div className="px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[var(--spacing-16)]">
+            <div className="flex items-center gap-[var(--spacing-12)] p-[var(--spacing-12)] rounded-[var(--radius-cards)] bg-surface-elevated">
+              <div className="flex -space-x-2 shrink-0">
+                {selectedRecipe.rewardBadges.slice(0, 3).map((b) => (
+                  <div key={b.id} className="w-11 h-11 rounded-[var(--radius-pill)] bg-surface flex items-center justify-center overflow-hidden ring-2 ring-surface-elevated">
+                    {b.image_url ? (
+                      <Image src={b.image_url} alt={b.name} width={44} height={44} className="object-contain w-full h-full" />
                     ) : (
-                      <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
-                        {candidateItems.map((item) => {
-                          const isSelected = filledItemId === item.id
-                          return (
-                            <BadgeGridCard
-                              key={item.id}
-                              onClick={() => toggleSlotItem(slot.id, item.id)}
-                              name={item.badge.name}
-                              imageUrl={item.badge.image_url}
-                              rarity={item.badge.rarity as import('@/types/database').BadgeRarity}
-                              selected={isSelected}
-                              className={isSelected ? '' : 'opacity-60'}
-                            />
-                          )
-                        })}
-                      </div>
+                      <PackageIcon className="w-5 h-5 text-text/40" />
                     )}
                   </div>
-                )
-              })}
+                ))}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text truncate">
+                  {t(d.combine.slotCountLabel, { count: selectedRecipe.slots.length })}
+                </p>
+                {selectedRecipe.reward_points > 0 && (
+                  <div className="flex items-center gap-1 text-[length:var(--text-caption)] text-text/50">
+                    <CoinIcon className="w-3.5 h-3.5" />
+                    <span>{selectedRecipe.reward_points.toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSwitchSheetOpen(true)}
+                className="shrink-0 text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-text/70 underline underline-offset-2"
+              >
+                {d.combine.switchRecipeButton}
+              </button>
+            </div>
+          </div>
 
-              {conditionSlots.map((slot) => {
-                const owned = slot.candidates.some((c) => ownedConditionSet.has(c.id))
+          {/* 믹서 슬롯 그리드 */}
+          <div className="flex-1 px-[var(--spacing-16)] pb-[var(--spacing-24)]">
+            <div className="grid grid-cols-4 gap-[var(--spacing-8)]">
+              {selectedRecipe.slots.map((slot) => {
+                const fill = fills[slot.id]
+                const hasOwnedCandidate =
+                  slot.badge_type === 'item'
+                    ? slot.candidates.some((c) => (itemsByBadgeId.get(c.id) ?? []).length > 0)
+                    : slot.candidates.some((c) => ownedConditionSet.has(c.id))
+                const status: 'empty' | 'locked' | 'filled' = fill ? 'filled' : hasOwnedCandidate ? 'empty' : 'locked'
+                const label = slot.candidates.map((c) => c.name).join(' · ')
+
                 return (
-                  <Card key={slot.id} tone="inverse" className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
-                    <p className="text-text-inverse/70">
-                      {conditionSlotTypeLabel[slot.badge_type as 'activity' | 'checkin']}
-                      {' · '}
-                      {slot.candidates.map((c) => c.name).join(', ')}
-                    </p>
-                    <p className={owned ? 'text-text-inverse' : 'text-text-inverse/40'}>
-                      {owned ? d.combine.conditionSlotOwned : d.combine.conditionSlotMissing}
-                    </p>
-                  </Card>
+                  <MixerSlot
+                    key={slot.id}
+                    status={status}
+                    icon={TYPE_ICON[slot.badge_type]}
+                    label={label}
+                    name={fill?.name}
+                    imageUrl={fill?.imageUrl}
+                    onClick={() => (fill ? undefined : openBagFor(slot))}
+                    onRemove={fill ? () => removeSlot(slot.id) : undefined}
+                  />
                 )
               })}
             </div>
+          </div>
 
+          {/* CTA */}
+          <div className="px-[var(--spacing-16)] pb-[var(--spacing-24)]">
             <button
               onClick={handleCombine}
               disabled={loading || !canSubmit}
-              className="mt-[var(--spacing-24)] w-full py-4 rounded-[var(--radius-pill-buttons)] bg-text text-surface text-[length:var(--text-body)] active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-[var(--radius-pill-buttons)] bg-text text-surface text-[length:var(--text-body)] active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
             >
               {loading && <span className="w-4 h-4 border-2 border-surface border-t-transparent rounded-full animate-spin" />}
               {loading ? d.combine.combineButtonLoading : d.combine.combineButton}
             </button>
           </div>
+
+          {/* "다른 레시피" — 레시피 목록을 다시 시트로 */}
+          <BottomSheet open={switchSheetOpen} onClose={() => setSwitchSheetOpen(false)} title={d.combine.recipesTitle}>
+            <div className="pb-[var(--spacing-24)]">
+              <div className="flex items-center gap-[var(--spacing-8)] px-[var(--spacing-16)] py-[var(--spacing-12)] mb-[var(--spacing-12)] rounded-[var(--radius-pill-buttons)] bg-surface">
+                <SearchIcon className="w-4 h-4 text-text/40 shrink-0" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={d.combine.searchPlaceholder}
+                  className="flex-1 bg-transparent outline-none text-[length:var(--text-body-sm)] text-text placeholder:text-text/40"
+                />
+              </div>
+              {filteredRecipes.length === 0 ? (
+                <EmptyState icon={<SearchIcon className="w-8 h-8" />} title={d.combine.searchNoResult} />
+              ) : (
+                <div className="flex flex-col gap-[var(--spacing-8)]">
+                  {filteredRecipes.map((r) => renderRecipeRow(r, selectRecipe))}
+                </div>
+              )}
+            </div>
+          </BottomSheet>
+
+          {/* 가방 — 슬롯 하나를 지정해서 여는 시트 */}
+          <BottomSheet open={!!bagSlot} onClose={() => setBagSlotId(null)} title={d.combine.bagTitle}>
+            <div className="pb-[var(--spacing-24)]">
+              <div className="flex gap-[var(--spacing-8)] mb-[var(--spacing-16)] overflow-x-auto">
+                {BAG_TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setBagTab(tab.key)}
+                    className={[
+                      'shrink-0 px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-pill-buttons)] text-[length:var(--text-caption)]',
+                      bagTab === tab.key ? 'bg-text text-surface' : 'bg-surface text-text/60',
+                    ].join(' ')}
+                  >
+                    {d.combine[tab.label] as string}
+                  </button>
+                ))}
+              </div>
+
+              {bagFiltered.length === 0 ? (
+                <EmptyState icon={<PackageIcon className="w-8 h-8" />} title={d.combine.bagEmpty} />
+              ) : (
+                <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+                  {bagFiltered.map((entry) => {
+                    const fitsTargetSlot = !!bagSlot && bagSlot.candidates.some((c) => c.id === entry.badgeId)
+                    const usedElsewhere = Object.entries(fills).some(
+                      ([slotId, f]) => slotId !== bagSlot?.id && f.refId === entry.refId
+                    )
+                    const active = fitsTargetSlot && !usedElsewhere
+                    return (
+                      <button
+                        key={entry.refId}
+                        type="button"
+                        disabled={!active}
+                        onClick={() => bagSlot && active && fillSlot(bagSlot.id, entry)}
+                        className={[
+                          'flex flex-col items-center gap-[var(--spacing-4)] p-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-surface',
+                          active ? 'active:scale-95' : 'opacity-40',
+                        ].join(' ')}
+                      >
+                        <div className="w-16 h-16 rounded-[var(--radius-card)] bg-surface-elevated flex items-center justify-center overflow-hidden">
+                          {entry.imageUrl ? (
+                            <Image src={entry.imageUrl} alt={entry.name} width={64} height={64} className="object-contain w-full h-full" />
+                          ) : (
+                            <PackageIcon className="w-6 h-6 text-text/40" />
+                          )}
+                        </div>
+                        <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-text text-center line-clamp-2">
+                          {entry.name}
+                        </p>
+                        {usedElsewhere && (
+                          <span className="text-[length:var(--text-caption)] text-text/40">{d.combine.bagUsedLabel}</span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </BottomSheet>
         </>
       )}
 
-      {/* 인벤토리 — 참고용 전체 목록(선택은 위 슬롯 채우기에서만) */}
-      {!selectedRecipe && (
-        <div className="flex-1 px-[var(--spacing-16)] py-[var(--spacing-24)]">
-          <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.myItemsTitle}</p>
-          {items.length === 0 ? (
-            <EmptyState
-              icon={<PackageIcon className="w-8 h-8" />}
-              title={d.combine.emptyInventory}
-              description={d.combine.emptyInventoryBody}
-            />
-          ) : (
-            <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
-              {items.map((item) => (
-                <BadgeGridCard
-                  key={item.id}
-                  name={item.badge.name}
-                  imageUrl={item.badge.image_url}
-                  rarity={item.badge.rarity as import('@/types/database').BadgeRarity}
-                  className="opacity-60"
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {/* 결과 오버레이 — 성공 시 BadgeRevealCarousel, 실패(또는 배지 없이 포인트만)는 같은 셸에 메시지 */}
+      <BadgeRevealOverlay
+        open={!!result}
+        items={result?.badges ?? []}
+        profileHref="/profile"
+        onClose={closeResult}
+        emptyMessage={result?.message}
+      />
     </div>
   )
 }
