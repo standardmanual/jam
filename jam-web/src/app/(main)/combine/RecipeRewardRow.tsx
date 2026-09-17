@@ -14,7 +14,7 @@ export interface RecipeRewardBadge {
 interface Props {
   /** 레시피 이름 — combination_recipes.name (마이그레이션 175, 티켓 20260917_1828) */
   title: string
-  /** 슬롯 개수 — 타이틀 우측에 회색 칩 "(n)"으로 표시 (티켓 20260917_2014 후속 조정) */
+  /** 슬롯 개수 — 타이틀 우측에 회색 원형 배지 안 숫자로 표시 (티켓 20260917_2028 후속 조정) */
   slotCount: number
   badges: RecipeRewardBadge[]
   points: number
@@ -35,7 +35,7 @@ interface Props {
  * - 포인트만: icon=포인트 아이콘, subtitle 없음, trailing=포인트 값
  *
  * 보상 배지가 여러 개면 대표(첫 번째)만 노출하고 "+N"을 붙인다.
- * 타이틀 우측에는 슬롯 개수를 회색 칩 "(n)"으로 표시한다 — `ListRowCard`의 `title`이
+ * 타이틀 우측에는 슬롯 개수를 회색 원형 배지 안 숫자로 표시한다 — `ListRowCard`의 `title`이
  * string만 받아 칩을 인라인으로 못 붙이므로 `children`(전체 커스텀 렌더링)으로 우회한다.
  */
 export default function RecipeRewardRow({ title, slotCount, badges, points, onClick, className = '' }: Props) {
@@ -88,8 +88,8 @@ export default function RecipeRewardRow({ title, slotCount, badges, points, onCl
         <span className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text truncate">
           {title}
         </span>
-        <span className="shrink-0 text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)] bg-surface rounded-[var(--radius-pill)] px-[var(--spacing-6)]">
-          ({slotCount})
+        <span className="shrink-0 w-5 h-5 flex items-center justify-center text-[length:var(--text-caption)] leading-none text-[var(--color-text-secondary)] bg-surface rounded-[var(--radius-pill)]">
+          {slotCount}
         </span>
       </p>
       {subtitle !== undefined && <div className="mt-0.5">{subtitle}</div>}
