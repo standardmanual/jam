@@ -92,7 +92,7 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
       if ! head -1 "$f" | grep -q '^---$' || ! head -8 "$f" | grep -qE '^status:'; then
         echo "차단(pre-commit): 티켓에 YAML frontmatter status가 없습니다." >&2
         echo "  파일: $f" >&2
-        echo "  첫 줄부터 ---, 8줄 안에 'status: OPEN|IN_PROGRESS|CLOSED' 가 있어야 합니다." >&2
+        echo "  첫 줄부터 ---, 8줄 안에 'status: OPEN|IN_PROGRESS|WAITING|CLOSED' 가 있어야 합니다." >&2
         echo "  템플릿: Service Plan/Tickets/_TEMPLATE.md" >&2
         doclint=1
       fi
@@ -119,6 +119,26 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
           echo "  파일: $f" >&2
           echo "  'Service Plan/Business/서비스플랜/02 JAM! 서비스 플랜.md' 를 직접 수정하세요." >&2
           echo "  버전 이력은 git 이 보관합니다 (v3.0~v4.3 사본 15개가 누적된 전례가 있습니다)." >&2
+          doclint=1
+        fi
+        ;;
+    esac
+
+    # ④-2 세계관 문서(TRIBES) 버전 사본 생성 차단 — 이력 폴더는 예외 (2026-09-18, 티켓 20260918_0423)
+    #   결정: 세계관 기준 문서는 TRIBES.md 한 파일로 관리하고, 버전 사본은
+    #   Service Plan/Specs/Content/TRIBES_이력/ 안에서만 허용한다. 인접 그래프가 드랍 확률에
+    #   쓰이므로 설정 변경 전 스냅샷을 남길 수 있게 하되, 판단 근거는 항상 현재본이어야 한다.
+    case "$f" in
+      "Service Plan/Specs/Content/TRIBES_이력/"*)
+        : # 이력 폴더는 예외 — 버전 사본 허용
+        ;;
+      "Service Plan/Specs/Content/TRIBES"*)
+        if [ "$st" = "A" ] && basename "$f" | grep -qE '(_[0-9]{8}|_?v[0-9]+\.[0-9]+)\.md$'; then
+          echo "차단(pre-commit): 세계관 기준 문서(TRIBES)는 버전 사본을 만들지 않습니다." >&2
+          echo "  파일: $f" >&2
+          echo "  현재본은 'Service Plan/Specs/Content/TRIBES.md' 하나로 유지하세요." >&2
+          echo "  버전 이력이 필요하면 'Service Plan/Specs/Content/TRIBES_이력/' 폴더에 두세요" >&2
+          echo "  (그 폴더 안은 예외입니다)." >&2
           doclint=1
         fi
         ;;
