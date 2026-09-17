@@ -221,14 +221,14 @@ export default function ProfileEditPage() {
 
   if (loading) {
     return (
-      <div className="min-h-full bg-surface text-text flex items-center justify-center">
+      <div className="min-h-full text-text flex items-center justify-center">
         <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-full bg-surface text-text flex flex-col">
+    <div className="min-h-full text-text flex flex-col">
       <TopNav title={d.profile.title} />
 
       <div className="flex-1 flex flex-col px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] gap-[var(--spacing-32)]">

@@ -160,7 +160,7 @@ export default async function UserItemBooksPage({ params }: Props) {
   }
 
   return (
-    <div className="flex flex-col min-h-full bg-surface text-text">
+    <div className="flex flex-col min-h-full text-text">
       <TopNav title={`${d.itembooks.title} · ${getDisplayName(target)}`} backHref={`/${username}`} />
 
       <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)]">
