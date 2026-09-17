@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import TopNav from '@/components/ui/TopNav'
@@ -9,7 +9,8 @@ import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { MixerSlot } from '@ds/components/patterns/MixerSlot'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import { SearchIcon, PackageIcon, ActivityIcon, PinIcon, CoinIcon } from '@/components/ui/icons'
+import { SearchIcon, PackageIcon } from '@/components/ui/icons'
+import RecipeRewardBlock from './RecipeRewardBlock'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
@@ -43,13 +44,6 @@ interface Props {
   ownedConditionBadgeIds: string[]
 }
 
-/** 슬롯 타입별 아이콘 — 빈/잠김 슬롯, 가방 탭에서 공유한다 */
-const TYPE_ICON: Record<CombineSlotBadgeType, ReactNode> = {
-  item: <PackageIcon className="w-6 h-6" />,
-  activity: <ActivityIcon className="w-6 h-6" />,
-  checkin: <PinIcon className="w-6 h-6" />,
-}
-
 /** 슬롯을 채운 값 — item 타입은 인벤토리 개체 id, activity/checkin은 배지 id가 refId다 */
 interface SlotFill {
   refId: string
@@ -73,15 +67,15 @@ interface BagRow {
   state: 'active' | 'used' | 'needed'
 }
 
-function recipeThumb(recipe: RecipeWithSlots): BadgeDetail | undefined {
-  return recipe.rewardBadges[0]
+/** 표시용 이름 — 기존 레시피(마이그레이션 175 이전 데이터)는 name이 NULL일 수 있다(티켓 20260917_1828) */
+function recipeDisplayName(recipe: RecipeWithSlots): string {
+  return recipe.name ?? d.combine.unnamedRecipe
 }
 
 export default function CombineClient({ items, publicRecipes, ownedConditionBadgeIds }: Props) {
   const [search, setSearch] = useState('')
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
   const [fills, setFills] = useState<Record<string, SlotFill>>({})
-  const [switchSheetOpen, setSwitchSheetOpen] = useState(false)
   const [bagSlotId, setBagSlotId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{
@@ -129,7 +123,6 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
     setSelectedRecipeId(recipeId)
     setFills({})
     setResult(null)
-    setSwitchSheetOpen(false)
   }
 
   function closeMixer() {
@@ -273,7 +266,6 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
   }
 
   function renderRecipeRow(recipe: RecipeWithSlots, onPick: (id: string) => void) {
-    const thumb = recipeThumb(recipe)
     return (
       <button
         key={recipe.id}
@@ -281,36 +273,15 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
         onClick={() => onPick(recipe.id)}
         className="w-full flex items-center gap-[var(--spacing-12)] p-[var(--spacing-12)] rounded-[var(--radius-cards)] bg-surface-elevated text-left active:scale-[0.99] transition-transform"
       >
-        <div className="flex -space-x-2 shrink-0">
-          {recipe.rewardBadges.slice(0, 3).map((b) => (
-            <div key={b.id} className="w-11 h-11 rounded-[var(--radius-pill)] bg-surface flex items-center justify-center overflow-hidden ring-2 ring-surface-elevated">
-              {b.image_url ? (
-                <Image src={b.image_url} alt={b.name} width={44} height={44} className="object-contain w-full h-full" />
-              ) : (
-                <PackageIcon className="w-5 h-5 text-text/40" />
-              )}
-            </div>
-          ))}
-          {recipe.rewardBadges.length === 0 && (
-            <div className="w-11 h-11 rounded-[var(--radius-pill)] bg-surface flex items-center justify-center">
-              <PackageIcon className="w-5 h-5 text-text/40" />
-            </div>
-          )}
-        </div>
         <div className="flex-1 min-w-0">
           <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text truncate">
-            {thumb ? thumb.name : t(d.combine.slotCountLabel, { count: recipe.slots.length })}
+            {recipeDisplayName(recipe)}
           </p>
           <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-text/50">
             {t(d.combine.slotCountLabel, { count: recipe.slots.length })}
           </p>
         </div>
-        {recipe.reward_points > 0 && (
-          <div className="flex items-center gap-1 shrink-0 text-[length:var(--text-caption)] text-text/70">
-            <CoinIcon className="w-4 h-4" />
-            <span>{recipe.reward_points.toLocaleString()}</span>
-          </div>
-        )}
+        <RecipeRewardBlock badges={recipe.rewardBadges} points={recipe.reward_points} className="shrink-0" />
       </button>
     )
   }
@@ -362,38 +333,23 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
         </>
       ) : (
         <>
-          {/* 믹서 상단 요약 바 */}
+          {/*
+            믹서 상단 요약 바(티켓 20260917_1828) — "슬롯 N개" 대신 레시피 이름을, "다른 레시피"
+            링크 자리에는 조건별 보상 블록(레시피 탐색 목록 행과 동일 컴포넌트 공유)을 보여준다.
+            레시피 전환은 TopNav 뒤로가기가 담당한다(closeMixer → 탐색 화면 → 다시 뒤로가기 시 라우트 이탈).
+          */}
           <div className="px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[var(--spacing-16)]">
             <div className="flex items-center gap-[var(--spacing-12)] p-[var(--spacing-12)] rounded-[var(--radius-cards)] bg-surface-elevated">
-              <div className="flex -space-x-2 shrink-0">
-                {selectedRecipe.rewardBadges.slice(0, 3).map((b) => (
-                  <div key={b.id} className="w-11 h-11 rounded-[var(--radius-pill)] bg-surface flex items-center justify-center overflow-hidden ring-2 ring-surface-elevated">
-                    {b.image_url ? (
-                      <Image src={b.image_url} alt={b.name} width={44} height={44} className="object-contain w-full h-full" />
-                    ) : (
-                      <PackageIcon className="w-5 h-5 text-text/40" />
-                    )}
-                  </div>
-                ))}
-              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text truncate">
-                  {t(d.combine.slotCountLabel, { count: selectedRecipe.slots.length })}
+                  {recipeDisplayName(selectedRecipe)}
                 </p>
-                {selectedRecipe.reward_points > 0 && (
-                  <div className="flex items-center gap-1 text-[length:var(--text-caption)] text-text/50">
-                    <CoinIcon className="w-3.5 h-3.5" />
-                    <span>{selectedRecipe.reward_points.toLocaleString()}</span>
-                  </div>
-                )}
               </div>
-              <button
-                type="button"
-                onClick={() => setSwitchSheetOpen(true)}
-                className="shrink-0 text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-text/70 underline underline-offset-2"
-              >
-                {d.combine.switchRecipeButton}
-              </button>
+              <RecipeRewardBlock
+                badges={selectedRecipe.rewardBadges}
+                points={selectedRecipe.reward_points}
+                className="shrink-0"
+              />
             </div>
           </div>
 
@@ -407,14 +363,11 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
                     ? slot.candidates.some((c) => (itemsByBadgeId.get(c.id) ?? []).length > 0)
                     : slot.candidates.some((c) => ownedConditionSet.has(c.id))
                 const status: 'empty' | 'locked' | 'filled' = fill ? 'filled' : hasOwnedCandidate ? 'empty' : 'locked'
-                const label = slot.candidates.map((c) => c.name).join(' · ')
 
                 return (
                   <MixerSlot
                     key={slot.id}
                     status={status}
-                    icon={TYPE_ICON[slot.badge_type]}
-                    label={label}
                     name={fill?.name}
                     imageUrl={fill?.imageUrl}
                     onClick={() => (fill ? undefined : openBagFor(slot))}
@@ -425,40 +378,17 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
             </div>
           </div>
 
-          {/* CTA */}
-          <div className="px-[var(--spacing-16)] pb-[var(--spacing-24)]">
+          {/* CTA — 화면 전체 폭을 채우지 않는다(티켓 20260917_1828, 요구사항 8) */}
+          <div className="px-[var(--spacing-16)] pb-[var(--spacing-24)] flex justify-center">
             <button
               onClick={handleCombine}
               disabled={loading || !canSubmit}
-              className="w-full py-4 rounded-[var(--radius-pill-buttons)] bg-text text-surface text-[length:var(--text-body)] active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+              className="w-full max-w-[220px] py-4 rounded-[var(--radius-pill-buttons)] bg-text text-surface text-[length:var(--text-body)] active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
             >
               {loading && <span className="w-4 h-4 border-2 border-surface border-t-transparent rounded-full animate-spin" />}
               {loading ? d.combine.combineButtonLoading : d.combine.combineButton}
             </button>
           </div>
-
-          {/* "다른 레시피" — 레시피 목록을 다시 시트로 */}
-          <BottomSheet open={switchSheetOpen} onClose={() => setSwitchSheetOpen(false)} title={d.combine.recipesTitle}>
-            <div className="pb-[var(--spacing-24)]">
-              <div className="flex items-center gap-[var(--spacing-8)] px-[var(--spacing-16)] py-[var(--spacing-12)] mb-[var(--spacing-12)] rounded-[var(--radius-pill-buttons)] bg-surface">
-                <SearchIcon className="w-4 h-4 text-text/40 shrink-0" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={d.combine.searchPlaceholder}
-                  className="flex-1 bg-transparent outline-none text-[length:var(--text-body-sm)] text-text placeholder:text-text/40"
-                />
-              </div>
-              {filteredRecipes.length === 0 ? (
-                <EmptyState icon={<SearchIcon className="w-8 h-8" />} title={d.combine.searchNoResult} />
-              ) : (
-                <div className="flex flex-col gap-[var(--spacing-8)]">
-                  {filteredRecipes.map((r) => renderRecipeRow(r, selectRecipe))}
-                </div>
-              )}
-            </div>
-          </BottomSheet>
 
           {/*
             가방 — 슬롯 하나를 지정해서 여는 시트. 빈 슬롯뿐 아니라 잠긴 슬롯을 탭해도 열리고,
@@ -466,13 +396,21 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
             슬롯 하나의 후보는 항상 같은 타입이라 타입 탭 구분은 없앴다.
           */}
           <BottomSheet open={!!bagSlot} onClose={() => setBagSlotId(null)} title={d.combine.bagTitle}>
-            <div className="pb-[var(--spacing-24)]">
+            {/*
+              여백은 앱 내 다른 BottomSheet 사용처(예: BadgeUnlockSheet)와 동일하게 맞춘다
+              (티켓 20260917_1828, 요구사항 4) — 이 시트만 좌우 패딩이 빠져 있었다.
+            */}
+            <div className="px-[var(--spacing-16)] pt-[var(--spacing-8)] pb-[var(--spacing-24)]">
               {bagRows.length === 0 ? (
                 <EmptyState icon={<PackageIcon className="w-8 h-8" />} title={d.combine.bagEmpty} />
               ) : (
                 <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
                   {bagRows.map((row) => {
                     const active = row.state === 'active'
+                    // 미보유 후보(needed)는 그레이스케일로만 표현한다(인벤토리·컬렉션 화면의
+                    // 미획득 처리와 동일한 grayscale+opacity 조합, 티켓 20260917_1828 — "필요"
+                    // 텍스트는 제거).
+                    const needed = row.state === 'needed'
                     return (
                       <button
                         key={row.key}
@@ -484,7 +422,12 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
                           active ? 'active:scale-95' : 'opacity-40',
                         ].join(' ')}
                       >
-                        <div className="w-16 h-16 rounded-[var(--radius-card)] bg-surface-elevated flex items-center justify-center overflow-hidden">
+                        <div
+                          className={[
+                            'w-16 h-16 rounded-[var(--radius-card)] bg-surface-elevated flex items-center justify-center overflow-hidden',
+                            needed ? 'grayscale opacity-40' : '',
+                          ].join(' ')}
+                        >
                           {row.imageUrl ? (
                             <Image src={row.imageUrl} alt={row.name} width={64} height={64} className="object-contain w-full h-full" />
                           ) : (
@@ -496,9 +439,6 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
                         </p>
                         {row.state === 'used' && (
                           <span className="text-[length:var(--text-caption)] text-text/40">{d.combine.bagUsedLabel}</span>
-                        )}
-                        {row.state === 'needed' && (
-                          <span className="text-[length:var(--text-caption)] text-text/40">{d.combine.bagNeededLabel}</span>
                         )}
                       </button>
                     )
