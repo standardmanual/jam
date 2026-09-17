@@ -188,7 +188,7 @@ export default function BadgesClient({
   })
 
   return (
-    <div className="min-h-full bg-surface text-text">
+    <div className="min-h-full text-text">
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
       <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
 

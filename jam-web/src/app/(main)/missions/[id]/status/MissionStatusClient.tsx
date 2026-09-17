@@ -382,7 +382,7 @@ export default function MissionStatusClient({
     data?.type !== 'individual' && data?.me?.userId === userId
 
   return (
-    <div className="min-h-full bg-surface text-text">
+    <div className="min-h-full text-text">
       <TopNav title={d.missions.backToDetail} />
 
       {/* 로딩 — 다른 화면(배지 획득 연출·공유 카드 등)과 동일한 눈모양 로더.

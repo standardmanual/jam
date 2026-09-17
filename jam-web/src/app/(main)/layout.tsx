@@ -45,8 +45,19 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     <ToastProvider>
       <TopNavDataProvider value={{ username, avatarUrl, stravaConnected, hasUnreadNotifications }}>
         <div className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative">
-          {/* 메인 컨텐츠 — 각 페이지가 자체 원색 풀블리드 배경과 상단 브랜딩을 지정 */}
-          <main className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] bg-surface">
+          {/* 메인 컨텐츠 — 각 페이지가 자체 원색 풀블리드 배경과 상단 브랜딩을 지정.
+              배경은 피그마 디자인(티켓 20260917_2105)의 세로 그라데이션 —
+              위쪽 74.038%는 순정 검정(--color-bg), 그 아래부터 #3d3d3d로 밝아진다.
+              #3d3d3d는 대응하는 기존 토큰이 없어 리터럴로 둔다(단발성 사용).
+              background-attachment: fixed로 스크롤해도 뷰포트에 고정되게 한다. */}
+          <main
+            className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))]"
+            style={{
+              background:
+                'linear-gradient(to bottom, var(--color-bg) 0%, var(--color-bg) 74.038%, #3d3d3d 100%)',
+              backgroundAttachment: 'fixed',
+            }}
+          >
             {/* sticky footer 트릭: 컨텐츠 래퍼가 뷰포트 높이(dvh)를 항상 확보해, 컨텐츠가 짧아도
                 Footer가 화면 중간이 아닌 항상 그 아래로 밀려나게 한다.
                 main은 flex-basis:0%로 크기가 정해지는 flex 아이템이라 `height` computed value가
