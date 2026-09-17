@@ -140,7 +140,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
           // 별도 줄로 그린다 — 원본 `\n`에만 반응하던 `whitespace-pre-line`으로는 실제 배지
           // 설명(마침표로 끝나는 문장 나열)에서 줄바꿈이 거의 일어나지 않았다.
           <div
-            className="relative z-10 flex-1 min-h-0 flex flex-col justify-center gap-0.5 pt-2 overflow-hidden"
+            className="relative z-10 flex-1 min-h-0 flex flex-col justify-center gap-0.5 pt-1 overflow-hidden"
             style={backgroundAnimation ? getBadgeThemedTextStyle(true) : undefined}
           >
             {splitDescriptionSentences(badge.description).map((sentence, index) => (
