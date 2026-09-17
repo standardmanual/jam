@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { StravaConnectionRow, UserRow } from '@/types/database'
 import TopNav from '@/components/ui/TopNav'
-import Footer from '@/components/ui/Footer'
 import TodayCardStack from './TodayCardStack'
 import TodayStatusStrip from './TodayStatusStrip'
 import HomeViewTracker from './HomeViewTracker'
@@ -86,7 +85,6 @@ export default async function HomePage() {
       <TodayCardStack cards={todayCards} currentUserId={userId} />
 
       </div>
-      <Footer />
     </div>
   )
 }
