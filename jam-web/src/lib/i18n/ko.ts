@@ -211,23 +211,6 @@ export const ko = {
     cardReadArticle: '기사 읽기',
     cardReadMore: '자세히 보기',
     cardViewAll: '전체 보기',
-
-    // 최근 배지
-    recentBadgesTitle: '최근 배지',
-    recentBadgesViewAll: '더보기',
-    recentBadgesEmptyTitle: '아직 획득한 배지가 없어요',
-    recentBadgesEmptyBody: 'Strava 동기화 후 활동하면 배지가 생겨요',
-
-    // 바로가기
-    shortcutsTitle: '바로가기',
-    shortcutMissionTitle: '미션',
-    shortcutMissionBody: '달성하고 보상 받기',
-    shortcutInventoryTitle: '인벤토리',
-    shortcutInventoryBody: '아이템 관리',
-    shortcutDropsTitle: '드랍',
-    shortcutDropsBody: '가까운 지점에서 드랍·픽업',
-    shortcutCombineTitle: '믹스',
-    shortcutCombineBody: '아이템 믹스하기',
   },
 
   /**
