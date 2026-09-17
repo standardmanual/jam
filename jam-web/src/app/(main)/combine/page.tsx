@@ -23,7 +23,22 @@ export default async function CombinePage() {
   if (recipesError) console.error('[combine/page] combination_recipes 조회 실패', recipesError)
 
   const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
-  const publicRecipes = recipes.filter((r) => r.is_public)
+
+  // 티켓 20260917_1427: 슬롯 기반 재설계로 "재료 개수" 표시는 레시피의 전체 슬롯 개수다.
+  const recipeIds = recipes.map((r) => r.id)
+  const { data: slotsRaw, error: slotsError } =
+    recipeIds.length > 0
+      ? await service.from('combination_recipe_slots').select('recipe_id').in('recipe_id', recipeIds)
+      : { data: [] as { recipe_id: string }[], error: null }
+  if (slotsError) console.error('[combine/page] combination_recipe_slots 조회 실패', slotsError)
+  const slotCountByRecipe = new Map<string, number>()
+  for (const slot of (slotsRaw ?? []) as { recipe_id: string }[]) {
+    slotCountByRecipe.set(slot.recipe_id, (slotCountByRecipe.get(slot.recipe_id) ?? 0) + 1)
+  }
+
+  const publicRecipes = recipes
+    .filter((r) => r.is_public)
+    .map((r) => ({ ...r, slotCount: slotCountByRecipe.get(r.id) ?? 0 }))
   const hints = recipes
     .filter((r) => !r.is_public && r.hint_text)
     .map((r) => ({ hint_text: r.hint_text }))

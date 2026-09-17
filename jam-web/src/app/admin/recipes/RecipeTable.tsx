@@ -24,16 +24,18 @@ import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/da
 import { DataTable } from '@/components/admin/data-table/data-table'
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
 import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table-bulk-action-bar'
-import type { CombinationRecipeRow } from '@/types/database'
+import type { CombinationRecipeRow, CombinationRecipeSlotRow } from '@/types/database'
+
+export type RecipeWithSlots = CombinationRecipeRow & { slots: CombinationRecipeSlotRow[] }
 
 interface RecipeTableProps {
-  recipes: CombinationRecipeRow[]
+  recipes: RecipeWithSlots[]
   badgeMap: Map<string, string>
-  onEdit: (recipe: CombinationRecipeRow) => void
+  onEdit: (recipe: RecipeWithSlots) => void
   onDelete: (id: string) => void
 }
 
-const columnHelper = createColumnHelper<DataTableFeatures, CombinationRecipeRow>()
+const columnHelper = createColumnHelper<DataTableFeatures, RecipeWithSlots>()
 
 /**
  * 레시피 목록 테이블(20260826_015). 20260910_1408에서 성공률 컬럼을 제거하고 결과 배지 1종
@@ -94,26 +96,34 @@ function RecipeTableInner({ recipes, badgeMap, onEdit, onDelete }: RecipeTablePr
         enableHiding: false,
       }),
       columnHelper.display({
-        id: 'ingredients',
-        header: '재료',
+        id: 'slots',
+        header: '슬롯',
         enableSorting: false,
         enableHiding: false,
-        cell: ({ row }) => (
-          <span className="text-sm">
-            {row.original.ingredient_badge_ids.map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join(' + ')}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const slots = row.original.slots
+          const itemCount = slots.filter((s) => s.badge_type === 'item').length
+          const conditionCount = slots.length - itemCount
+          return (
+            <span className="text-sm">
+              슬롯 {slots.length}개(아이템 {itemCount} · 조건 {conditionCount})
+            </span>
+          )
+        },
       }),
       columnHelper.display({
-        id: 'required',
-        header: '보유 조건',
+        id: 'slotDetail',
+        header: '슬롯 상세',
         enableSorting: false,
-        meta: { label: '보유 조건' },
+        meta: { label: '슬롯 상세' },
         cell: ({ row }) => {
-          const ids = row.original.required_badge_ids ?? []
+          const slots = [...row.original.slots].sort((a, b) => a.slot_order - b.slot_order)
+          if (slots.length === 0) return <span className="text-xs text-muted-foreground">—</span>
           return (
             <span className="text-xs text-muted-foreground">
-              {ids.length === 0 ? '—' : ids.map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join(', ')}
+              {slots
+                .map((s) => s.allowed_badge_ids.map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join('/'))
+                .join(' + ')}
             </span>
           )
         },

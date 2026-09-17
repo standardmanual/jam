@@ -283,7 +283,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     } else if (recipeReferences.total > 0) {
       console.warn('[badges PATCH] 소프트 삭제된 배지가 믹스 레시피에서 여전히 참조되고 있음:', {
         badgeId: id,
-        ingredientRecipeIds: recipeReferences.ingredientRecipeIds,
+        slotRecipeIds: recipeReferences.slotRecipeIds,
         rewardRecipeIds: recipeReferences.rewardRecipeIds,
       })
     }

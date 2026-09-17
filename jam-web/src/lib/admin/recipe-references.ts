@@ -6,9 +6,10 @@
  * combination_recipes` 패턴 + `database.generated.ts`의 Relationships 블록 대조)로 재확인한
  * 결과, **`combination_recipes.id`를 참조하는 테이블은 하나도 없다.**
  *
- * `combination_recipes`는 `ingredient_badge_ids`·`required_badge_ids`·`reward_badge_ids`로
- * **배지를 참조하는 방향**만 있고(마이그레이션 153에서 세 컬럼 모두 uuid[] 배열이 됐다),
- * 반대로 레시피 행을 가리키는 인바운드 FK나 uuid[] 참조는 존재하지 않는다.
+ * `combination_recipes`는 `reward_badge_ids`로, `combination_recipe_slots`는
+ * `allowed_badge_ids`로 **배지를 참조하는 방향**만 있고(마이그레이션 174, 티켓 20260917_1427
+ * 에서 재료·보유 조건 배열이 슬롯 테이블로 이관됐다), 반대로 레시피 행을 가리키는 인바운드
+ * FK나 uuid[] 참조는 존재하지 않는다.
  *
  * 그래서 이 파일은 `badge-references.ts`/`poi-references.ts`와 **같은 계약**
  * (`collect*References` → `blockingTotal`/`cascadeTotal`/`total`/`error`)을 유지하되,
@@ -63,8 +64,8 @@ export async function collectRecipeReferences(
 }
 
 export interface BadgeInRecipeReferenceReport {
-  /** 이 배지를 재료로 쓰는 레시피 id */
-  ingredientRecipeIds: string[]
+  /** 이 배지를 슬롯 후보(재료·보유 조건)로 쓰는 레시피 id */
+  slotRecipeIds: string[]
   /** 이 배지를 보상으로 주는 레시피 id */
   rewardRecipeIds: string[]
   total: number
@@ -72,14 +73,15 @@ export interface BadgeInRecipeReferenceReport {
 }
 
 /**
- * 배지 하나가 레시피의 `ingredient_badge_ids`·`reward_badge_ids`(둘 다 uuid[])에 남아 있는
- * 레시피 수를 센다 (티켓 20260910_1515).
+ * 배지 하나가 `combination_recipe_slots.allowed_badge_ids` 또는 `combination_recipes.
+ * reward_badge_ids`(둘 다 uuid[])에 남아 있는 레시피 수를 센다 (티켓 20260910_1515,
+ * 슬롯 이관은 티켓 20260917_1427).
  *
  * `combination_recipes`가 레시피 행을 참조하는 인바운드 참조는 없지만(파일 상단 주석),
- * **반대 방향**(레시피가 배지를 참조하는 방향)은 배열 컬럼이라 FK가 걸리지 않는다. 그래서
- * 소프트 삭제(`badges` PATCH)가 이 참조를 막지는 않되, 운영이 탐지할 수 있도록 경고만
- * 남긴다 — `badge-references.ts`가 하드 삭제 차단용으로 이미 세는 것과 같은 컬럼을 보되,
- * 목적은 «차단»이 아니라 «소프트 삭제 시 경고»다.
+ * **반대 방향**(레시피/슬롯이 배지를 참조하는 방향)은 배열 컬럼이라 FK가 걸리지 않는다.
+ * 그래서 소프트 삭제(`badges` PATCH)가 이 참조를 막지는 않되, 운영이 탐지할 수 있도록
+ * 경고만 남긴다 — `badge-references.ts`가 하드 삭제 차단용으로 이미 세는 것과 같은 컬럼을
+ * 보되, 목적은 «차단»이 아니라 «소프트 삭제 시 경고»다.
  *
  * 배열 컬럼 매칭은 PostgREST `.overlaps()`(Postgres `&&` 연산자)로 센다 — 전체 레시피를
  * 메모리로 끌어와 필터링하지 않는다.
@@ -88,27 +90,29 @@ export async function countRecipesReferencingBadge(
   supabase: ServiceClient,
   badgeId: string
 ): Promise<BadgeInRecipeReferenceReport> {
-  const [ingredientResult, rewardResult] = await Promise.all([
-    supabase.from('combination_recipes').select('id').overlaps('ingredient_badge_ids', [badgeId]),
+  const [slotResult, rewardResult] = await Promise.all([
+    supabase.from('combination_recipe_slots').select('recipe_id').overlaps('allowed_badge_ids', [badgeId]),
     supabase.from('combination_recipes').select('id').overlaps('reward_badge_ids', [badgeId]),
   ])
 
-  if (ingredientResult.error || rewardResult.error) {
+  if (slotResult.error || rewardResult.error) {
     return {
-      ingredientRecipeIds: [],
+      slotRecipeIds: [],
       rewardRecipeIds: [],
       total: 0,
-      error: (ingredientResult.error ?? rewardResult.error)?.message ?? '알 수 없는 오류',
+      error: (slotResult.error ?? rewardResult.error)?.message ?? '알 수 없는 오류',
     }
   }
 
-  const ingredientRecipeIds = ((ingredientResult.data ?? []) as { id: string }[]).map((r) => r.id)
+  const slotRecipeIds = [
+    ...new Set(((slotResult.data ?? []) as { recipe_id: string }[]).map((r) => r.recipe_id)),
+  ]
   const rewardRecipeIds = ((rewardResult.data ?? []) as { id: string }[]).map((r) => r.id)
 
   return {
-    ingredientRecipeIds,
+    slotRecipeIds,
     rewardRecipeIds,
-    total: ingredientRecipeIds.length + rewardRecipeIds.length,
+    total: slotRecipeIds.length + rewardRecipeIds.length,
     error: null,
   }
 }

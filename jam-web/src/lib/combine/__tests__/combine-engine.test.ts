@@ -1,9 +1,9 @@
 /**
- * combineItems() v3 — 레시피 확정 보상 / 보유 조건 / 미매칭 고정 포인트 (티켓 20260910_1408)
+ * combineItems() v4 — 슬롯 기반 OR 매칭 / 레시피 확정 보상 / 미매칭 고정 포인트 (티켓 20260917_1427)
  *
  * 검증 대상:
- *  1) 재료 정확 일치 + 보유 조건 충족 → reward_points와 reward_badge_ids 전부 100% 지급
- *  2) 보유 조건 미충족 → 실패로 처리되고 **아이템만 소각**되며 실패 로그가 1건 쌓인다
+ *  1) 아이템 슬롯 대응 + 조건 슬롯(액티비티·체크인) 보유 → reward_points·reward_badge_ids 전부 지급
+ *  2) 슬롯 하나라도 미충족 → 실패로 처리되고 **아이템만 소각**되며 실패 로그가 1건 쌓인다
  *  3) 미매칭 → 배지 없이 정책의 고정 포인트만 지급 + 실패 로그 적재
  *
  * 실행: cd jam-web && npx vitest run src/lib/combine/__tests__/combine-engine.test.ts
@@ -22,8 +22,6 @@ const REWARD = 'badge-reward'
 
 interface RecipeStub {
   id: string
-  ingredient_badge_ids: string[]
-  required_badge_ids: string[]
   reward_points: number
   reward_badge_ids: string[]
   hint_text: string | null
@@ -31,8 +29,16 @@ interface RecipeStub {
   created_at: string
 }
 
+interface SlotStub {
+  recipe_id: string
+  slot_order: number
+  badge_type: 'item' | 'activity' | 'checkin'
+  allowed_badge_ids: string[]
+}
+
 const stub = vi.hoisted(() => ({
   recipes: [] as unknown[],
+  slots: [] as SlotStub[],
   /** 유저가 보유한 액티비티 배지 id */
   ownedActivityBadgeIds: [] as string[],
   ownedCheckinBadgeIds: [] as string[],
@@ -123,6 +129,8 @@ function makeBuilder(table: string) {
         }
       case 'combination_recipes':
         return { data: stub.recipes, error: null }
+      case 'combination_recipe_slots':
+        return { data: stub.slots, error: null }
       case 'user_activity_badges':
         return { data: stub.ownedActivityBadgeIds.map((badge_id) => ({ badge_id })), error: null }
       case 'user_checkin_badge_earns':
@@ -166,8 +174,6 @@ import { combineItems } from '../index'
 function recipe(overrides: Partial<RecipeStub> = {}): RecipeStub {
   return {
     id: 'recipe-1',
-    ingredient_badge_ids: [BADGE_A, BADGE_B],
-    required_badge_ids: [],
     reward_points: 0,
     reward_badge_ids: [REWARD],
     hint_text: null,
@@ -177,8 +183,17 @@ function recipe(overrides: Partial<RecipeStub> = {}): RecipeStub {
   }
 }
 
+/** 아이템 슬롯 2개(BADGE_A, BADGE_B)만 있는 기본 슬롯 구성 — 조건 슬롯은 옵션으로 덧붙인다. */
+function itemSlots(recipeId = 'recipe-1'): SlotStub[] {
+  return [
+    { recipe_id: recipeId, slot_order: 0, badge_type: 'item', allowed_badge_ids: [BADGE_A] },
+    { recipe_id: recipeId, slot_order: 1, badge_type: 'item', allowed_badge_ids: [BADGE_B] },
+  ]
+}
+
 beforeEach(() => {
   stub.recipes = []
+  stub.slots = []
   stub.ownedActivityBadgeIds = []
   stub.ownedCheckinBadgeIds = []
   stub.failLogs = []
@@ -192,9 +207,10 @@ beforeEach(() => {
   awardPointsMock.mockResolvedValue({ id: 'tx-1' })
 })
 
-describe('레시피 정확 매칭 → 확정 보상', () => {
-  it('보상 배지와 포인트를 모두 지급한다 (확률 없음)', async () => {
+describe('슬롯 전체 충족 → 확정 보상', () => {
+  it('아이템 슬롯만 있는 레시피는 투입 배지가 슬롯 후보와 대응되면 매칭된다', async () => {
     stub.recipes = [recipe({ reward_points: 120, reward_badge_ids: [REWARD] })]
+    stub.slots = itemSlots()
 
     const result = await combineItems(USER, [ITEM_1, ITEM_2])
 
@@ -214,6 +230,7 @@ describe('레시피 정확 매칭 → 확정 보상', () => {
 
   it('포인트만 지정한 레시피는 배지 없이 포인트만 지급한다', async () => {
     stub.recipes = [recipe({ reward_points: 30, reward_badge_ids: [] })]
+    stub.slots = itemSlots()
 
     const result = await combineItems(USER, [ITEM_1, ITEM_2])
 
@@ -225,26 +242,42 @@ describe('레시피 정확 매칭 → 확정 보상', () => {
     expect(stub.grantedBadgeIds).toEqual([])
   })
 
-  it('보유 조건(액티비티 배지)을 가진 유저는 매칭된다', async () => {
-    stub.recipes = [recipe({ required_badge_ids: [REQ_ACT] })]
+  it('액티비티 조건 슬롯을 보유한 유저는 매칭된다', async () => {
+    stub.recipes = [recipe()]
+    stub.slots = [...itemSlots(), { recipe_id: 'recipe-1', slot_order: 2, badge_type: 'activity', allowed_badge_ids: [REQ_ACT] }]
     stub.ownedActivityBadgeIds = [REQ_ACT]
 
     const result = await combineItems(USER, [ITEM_1, ITEM_2])
     expect(result.success).toBe(true)
   })
 
-  it('보유 조건이 체크인 배지여도 보유하면 매칭된다', async () => {
-    stub.recipes = [recipe({ required_badge_ids: [REQ_ACT] })]
+  it('체크인 조건 슬롯을 보유해도 매칭된다', async () => {
+    stub.recipes = [recipe()]
+    stub.slots = [...itemSlots(), { recipe_id: 'recipe-1', slot_order: 2, badge_type: 'checkin', allowed_badge_ids: [REQ_ACT] }]
     stub.ownedCheckinBadgeIds = [REQ_ACT]
+
+    const result = await combineItems(USER, [ITEM_1, ITEM_2])
+    expect(result.success).toBe(true)
+  })
+
+  it('조건 슬롯 후보(OR) 중 하나만 보유해도 충족된다', async () => {
+    const OTHER_CANDIDATE = 'badge-other-candidate'
+    stub.recipes = [recipe()]
+    stub.slots = [
+      ...itemSlots(),
+      { recipe_id: 'recipe-1', slot_order: 2, badge_type: 'activity', allowed_badge_ids: [REQ_ACT, OTHER_CANDIDATE] },
+    ]
+    stub.ownedActivityBadgeIds = [OTHER_CANDIDATE]
 
     const result = await combineItems(USER, [ITEM_1, ITEM_2])
     expect(result.success).toBe(true)
   })
 })
 
-describe('보유 조건 미충족 → 실패', () => {
-  it('아이템만 소각되고 배지·포인트를 주지 않으며 실패 로그가 1건 쌓인다', async () => {
-    stub.recipes = [recipe({ required_badge_ids: [REQ_ACT], reward_points: 500 })]
+describe('슬롯 미충족 → 실패', () => {
+  it('조건 슬롯을 보유하지 못하면 아이템만 소각되고 실패 로그가 1건 쌓인다', async () => {
+    stub.recipes = [recipe({ reward_points: 500 })]
+    stub.slots = [...itemSlots(), { recipe_id: 'recipe-1', slot_order: 2, badge_type: 'activity', allowed_badge_ids: [REQ_ACT] }]
     // 보유하지 않음
 
     const result = await combineItems(USER, [ITEM_1, ITEM_2])
@@ -257,6 +290,29 @@ describe('보유 조건 미충족 → 실패', () => {
     expect(stub.failLogs).toHaveLength(1)
     expect(stub.failLogs[0].fail_reason).toBe('no_recipe_match')
     expect(stub.failLogs[0].ingredient_badge_ids).toEqual([BADGE_A, BADGE_B])
+  })
+
+  it('아이템 슬롯 후보와 투입 배지가 대응되지 않으면 미매칭된다', async () => {
+    stub.recipes = [recipe()]
+    stub.slots = [
+      { recipe_id: 'recipe-1', slot_order: 0, badge_type: 'item', allowed_badge_ids: [BADGE_A] },
+      { recipe_id: 'recipe-1', slot_order: 1, badge_type: 'item', allowed_badge_ids: ['badge-c'] },
+    ]
+
+    const result = await combineItems(USER, [ITEM_1, ITEM_2])
+    expect(result.success).toBe(false)
+  })
+
+  it('아이템 슬롯 개수와 투입 개수가 다르면 미매칭된다', async () => {
+    stub.recipes = [recipe()]
+    stub.slots = [
+      { recipe_id: 'recipe-1', slot_order: 0, badge_type: 'item', allowed_badge_ids: [BADGE_A] },
+      { recipe_id: 'recipe-1', slot_order: 1, badge_type: 'item', allowed_badge_ids: [BADGE_B] },
+      { recipe_id: 'recipe-1', slot_order: 2, badge_type: 'item', allowed_badge_ids: ['badge-c'] },
+    ]
+
+    const result = await combineItems(USER, [ITEM_1, ITEM_2])
+    expect(result.success).toBe(false)
   })
 })
 
@@ -288,24 +344,6 @@ describe('레시피 미매칭 → 고정 포인트만', () => {
   })
 })
 
-describe('재료 매칭은 배지 종류 집합 비교 — 중복 재료 레시피는 미지원', () => {
-  it('재료 종류가 다르면 매칭되지 않는다', async () => {
-    stub.recipes = [recipe({ ingredient_badge_ids: [BADGE_A, 'badge-c'] })]
-
-    const result = await combineItems(USER, [ITEM_1, ITEM_2])
-    expect(result.success).toBe(false)
-  })
-
-  it('같은 배지를 2회 요구하는 레시피는 집합상 1종이라 2종 투입과 매칭되지 않는다', async () => {
-    // 저장 단계(normalizeRecipePayload)가 중복 재료를 거부하는 것이 정본 사양이고,
-    // 엔진도 집합 비교라 이런 행이 있어도 매칭되지 않는다.
-    stub.recipes = [recipe({ ingredient_badge_ids: [BADGE_A, BADGE_A] })]
-
-    const result = await combineItems(USER, [ITEM_1, ITEM_2])
-    expect(result.success).toBe(false)
-  })
-})
-
 describe('재료 개수 오류', () => {
   it('1개만 넣으면 invalid_count로 거부하고 소각하지 않는다', async () => {
     const result = await combineItems(USER, [ITEM_1])
@@ -322,6 +360,7 @@ describe('인벤토리 used_slots 카운터 (티켓 20260912_2101)', () => {
     stub.usedSlots = 5
     stub.maxSlots = 10
     stub.recipes = [recipe({ reward_badge_ids: [REWARD] })]
+    stub.slots = itemSlots()
 
     const result = await combineItems(USER, [ITEM_1, ITEM_2])
 
@@ -352,6 +391,7 @@ describe('인벤토리 used_slots 카운터 (티켓 20260912_2101)', () => {
     const REWARD_2 = 'badge-reward-2'
     const REWARD_3 = 'badge-reward-3'
     stub.recipes = [recipe({ reward_badge_ids: [REWARD, REWARD_2, REWARD_3] })]
+    stub.slots = itemSlots()
 
     const result = await combineItems(USER, [ITEM_1, ITEM_2])
 
@@ -369,6 +409,7 @@ describe('인벤토리 used_slots 카운터 (티켓 20260912_2101)', () => {
     stub.usedSlots = 6
     stub.maxSlots = 10
     stub.recipes = [recipe({ reward_badge_ids: [] })] // 배지 없이 포인트만 지급하는 레시피
+    stub.slots = itemSlots()
 
     const result = await combineItems(USER, [ITEM_1, ITEM_2])
 

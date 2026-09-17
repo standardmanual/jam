@@ -1,52 +1,66 @@
 /**
- * 믹스 레시피 저장 페이로드 → DB 행 변환 (티켓 20260910_1408)
+ * 믹스 레시피 저장 페이로드 → DB 행 변환 — 슬롯 기반 OR 매칭 (티켓 20260917_1427)
  *
- * 어드민 폼은 재료 슬롯 하나에서 배지 타입을 가리지 않고 고른다. **분류는 서버가
- * 배지 타입으로 수행한다** — 클라이언트가 보낸 분류를 신뢰하지 않는다.
+ * 어드민 폼은 슬롯마다 배지 타입을 고정하고 후보(OR)를 여러 개 담는다. **타입 일치
+ * 검증은 서버가 배지 실제 타입으로 수행한다** — 클라이언트가 보낸 분류를 신뢰하지 않는다.
  * POST/PATCH 두 라우트가 같은 규칙을 쓰도록 이 파일이 단일 출처다.
+ *
+ * 슬롯 저장은 `combination_recipe_slots`에 대한 delete-then-insert(레시피 수정 시 슬롯
+ * 전체 교체) 방식이다 — 실제 delete-then-insert 실행은 이 파일을 호출하는 API 라우트가
+ * 레시피 upsert 성공 이후 수행한다(레시피 id가 먼저 확정돼야 슬롯의 recipe_id를 채울 수
+ * 있어 신규 생성 시 순서상 분리가 불가피하다).
  */
 import type { createServiceClient } from '@/lib/supabase/server'
 import {
-  classifyIngredients,
   normalizeRecipePayload,
-  validateClassified,
+  validateSlotTypes,
+  type NormalizedSlot,
   type RecipePayloadInput,
 } from '@/lib/combine/recipe-payload'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
 export interface RecipeRow {
-  ingredient_badge_ids: string[]
-  required_badge_ids: string[]
   reward_points: number
   reward_badge_ids: string[]
   hint_text: string | null
   is_public: boolean
 }
 
+export interface RecipeSlotRow {
+  slot_order: number
+  badge_type: NormalizedSlot['badgeType']
+  allowed_badge_ids: string[]
+}
+
 export async function buildRecipeRow(
   supabase: ServiceClient,
   body: RecipePayloadInput
-): Promise<{ ok: true; row: RecipeRow } | { ok: false; error: string }> {
+): Promise<{ ok: true; row: RecipeRow; slots: RecipeSlotRow[] } | { ok: false; error: string }> {
   const normalized = normalizeRecipePayload(body)
   if (!normalized.ok) return normalized
 
-  const { badgeIds, rewardPoints, rewardBadgeIds, hintText, isPublic } = normalized.value
+  const { slots, rewardPoints, rewardBadgeIds, hintText, isPublic } = normalized.value
 
-  // 재료 배지의 타입 조회 — 삭제된 배지는 재료로 쓸 수 없다.
+  // 슬롯 후보 배지 전체의 실제 타입 조회 — 삭제된 배지는 후보로 쓸 수 없다.
+  const allowedBadgeIds = [...new Set(slots.flatMap((s) => s.allowedBadgeIds))]
   const { data: badgesRaw, error } = await supabase
     .from('badges')
     .select('id, type')
-    .in('id', badgeIds)
+    .in('id', allowedBadgeIds)
     .is('deleted_at', null)
   if (error) {
-    console.error('[recipe-write] 재료 배지 타입 조회 실패:', error)
-    return { ok: false, error: '재료 배지를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.' }
+    console.error('[recipe-write] 슬롯 후보 배지 타입 조회 실패:', error)
+    return { ok: false, error: '슬롯 후보 배지를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.' }
   }
   const badges = (badgesRaw ?? []) as { id: string; type: string }[]
-  if (badges.length !== badgeIds.length) {
-    return { ok: false, error: '선택한 재료 배지 중 삭제되었거나 존재하지 않는 배지가 있어요. 다시 선택해 주세요.' }
+  if (badges.length !== allowedBadgeIds.length) {
+    return { ok: false, error: '슬롯에 지정한 후보 중 삭제되었거나 존재하지 않는 배지가 있어요. 다시 선택해 주세요.' }
   }
+
+  const actualTypeById = new Map(badges.map((b) => [b.id, b.type]))
+  const validSlots = validateSlotTypes(slots, actualTypeById)
+  if (!validSlots.ok) return validSlots
 
   // 보상 배지는 존재·미삭제 + **아이템 배지 여부**를 확인한다.
   // 엔진의 배지 지급은 inventory_items에 개체를 꽂는 경로뿐이라, 액티비티·체크인 배지를
@@ -74,23 +88,49 @@ export async function buildRecipeRow(
     }
   }
 
-  // 폼이 보낸 순서를 보존한다(어드민이 슬롯을 배치한 순서 = 목록 표시 순서).
-  const typeById = new Map(badges.map((b) => [b.id, b.type]))
-  const ordered = badgeIds.map((id) => ({ id, type: typeById.get(id) ?? '' }))
-  const classified = classifyIngredients(ordered)
-
-  const valid = validateClassified(classified)
-  if (!valid.ok) return valid
-
   return {
     ok: true,
     row: {
-      ingredient_badge_ids: classified.ingredientBadgeIds,
-      required_badge_ids: classified.requiredBadgeIds,
       reward_points: rewardPoints,
       reward_badge_ids: rewardBadgeIds,
       hint_text: hintText,
       is_public: isPublic,
     },
+    slots: slots.map((s, idx) => ({
+      slot_order: idx,
+      badge_type: s.badgeType,
+      allowed_badge_ids: s.allowedBadgeIds,
+    })),
   }
+}
+
+/** 레시피 슬롯 전체 교체 — delete-then-insert. */
+export async function replaceRecipeSlots(
+  supabase: ServiceClient,
+  recipeId: string,
+  slots: RecipeSlotRow[]
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error: deleteError } = await supabase
+    .from('combination_recipe_slots')
+    .delete()
+    .eq('recipe_id', recipeId)
+  if (deleteError) {
+    console.error('[recipe-write] 기존 슬롯 삭제 실패:', deleteError)
+    return { ok: false, error: '슬롯을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.' }
+  }
+
+  const { error: insertError } = await supabase.from('combination_recipe_slots').insert(
+    slots.map((s) => ({
+      recipe_id: recipeId,
+      slot_order: s.slot_order,
+      badge_type: s.badge_type,
+      allowed_badge_ids: s.allowed_badge_ids,
+    }))
+  )
+  if (insertError) {
+    console.error('[recipe-write] 슬롯 저장 실패:', insertError)
+    return { ok: false, error: '슬롯을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.' }
+  }
+
+  return { ok: true }
 }
