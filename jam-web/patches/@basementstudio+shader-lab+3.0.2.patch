@@ -937,26 +937,29 @@ index 10d8f9a..f48f29f 100644
      }
  }
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.d.ts b/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.d.ts
-index 4f2c88c..daed2c3 100644
+index 4f2c88c..d1093e5 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.d.ts
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.d.ts
-@@ -10,7 +10,8 @@ export declare class SlicePass extends PassNode {
+@@ -6,11 +6,10 @@ type Node = TSLNode;
+ export declare class SlicePass extends PassNode {
+     private readonly amountUniform;
+     private readonly sliceHeightUniform;
+-    private readonly blockWidthUniform;
      private readonly densityUniform;
      private readonly dispersionUniform;
      private readonly speedUniform;
 -    private readonly directionUniform;
 +    private readonly rotationUniform;
-+    private readonly crossLineSpacingUniform;
      private readonly timeUniform;
      private readonly logicalWidthUniform;
      private readonly logicalHeightUniform;
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js
-index 752fde3..a3569be 100644
+index 752fde3..bfe76e7 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js
-@@ -1,21 +1,8 @@
+@@ -1,29 +1,20 @@
 -import { dot, float, floor, fract, mix, pow, select, sin, step, texture as tslTexture, uniform, uv, vec2, vec3, vec4, } from "three/tsl";
-+import { abs, cos, dot, float, floor, fract, min, mix, mod, pow, sin, step, texture as tslTexture, uniform, uv, vec2, vec3, vec4, } from "three/tsl";
++import { cos, dot, float, floor, fract, mix, sin, step, texture as tslTexture, uniform, uv, vec2, vec3, vec4, } from "three/tsl";
  import { createPipelinePlaceholder, PassNode } from "./pass-node.js";
 -const SLICE_DIRECTION_BOTH = 0;
 -const SLICE_DIRECTION_RIGHT = 1;
@@ -977,7 +980,7 @@ index 752fde3..a3569be 100644
  export class SlicePass extends PassNode {
      amountUniform;
      sliceHeightUniform;
-@@ -23,7 +10,14 @@ export class SlicePass extends PassNode {
+-    blockWidthUniform;
      densityUniform;
      dispersionUniform;
      speedUniform;
@@ -988,22 +991,34 @@ index 752fde3..a3569be 100644
 +    // 위/왼쪽/아래 프리셋과 거의 대응한다. 기존 저장된 레이어의 `direction` 문자열 값은 더 이상
 +    // 읽지 않는다(완료 기록에 마이그레이션 판단 근거 기록).
 +    rotationUniform;
-+    // 티켓 20260917_1256 — 슬라이스 밴드를 가로지르는 교차선의 간격(px).
-+    crossLineSpacingUniform;
      timeUniform;
      logicalWidthUniform;
      logicalHeightUniform;
-@@ -39,7 +33,8 @@ export class SlicePass extends PassNode {
+@@ -35,11 +26,10 @@ export class SlicePass extends PassNode {
+         this.placeholder = createPipelinePlaceholder();
+         this.amountUniform = uniform(180);
+         this.sliceHeightUniform = uniform(28);
+-        this.blockWidthUniform = uniform(120);
          this.densityUniform = uniform(0.58);
          this.dispersionUniform = uniform(0.18);
          this.speedUniform = uniform(0.2);
 -        this.directionUniform = uniform(SLICE_DIRECTION_RIGHT);
 +        this.rotationUniform = uniform(0);
-+        this.crossLineSpacingUniform = uniform(120);
          this.timeUniform = uniform(0);
          this.logicalWidthUniform = uniform(1);
          this.logicalHeightUniform = uniform(1);
-@@ -81,7 +76,14 @@ export class SlicePass extends PassNode {
+@@ -64,10 +54,6 @@ export class SlicePass extends PassNode {
+             typeof params.sliceHeight === "number"
+                 ? Math.max(2, Math.min(240, Math.round(params.sliceHeight)))
+                 : 28;
+-        this.blockWidthUniform.value =
+-            typeof params.blockWidth === "number"
+-                ? Math.max(8, Math.min(640, Math.round(params.blockWidth)))
+-                : 120;
+         this.densityUniform.value =
+             typeof params.density === "number"
+                 ? Math.max(0, Math.min(1, params.density))
+@@ -81,7 +67,10 @@ export class SlicePass extends PassNode {
                  ? Math.max(0, Math.min(2, params.speed))
                  : 0.2;
          this.speedUniform.value = this.speedValue;
@@ -1012,14 +1027,10 @@ index 752fde3..a3569be 100644
 +            typeof params.rotation === "number"
 +                ? ((params.rotation % 360) + 360) % 360
 +                : 0;
-+        this.crossLineSpacingUniform.value =
-+            typeof params.crossLineSpacing === "number"
-+                ? Math.max(8, Math.min(640, Math.round(params.crossLineSpacing)))
-+                : 120;
      }
      needsContinuousRender() {
          return this.speedValue > 0.0001;
-@@ -101,28 +103,59 @@ export class SlicePass extends PassNode {
+@@ -101,28 +90,49 @@ export class SlicePass extends PassNode {
          this.sourceTextureNodes = [];
          const renderTargetUv = vec2(uv().x, float(1).sub(uv().y));
          const pixelCoord = vec2(renderTargetUv.x.mul(this.logicalWidthUniform), renderTargetUv.y.mul(this.logicalHeightUniform));
@@ -1033,31 +1044,8 @@ index 752fde3..a3569be 100644
 -            .mul(float(2))
 -            .sub(float(1));
 -        const signedDirection = select(this.directionUniform.greaterThan(float(1.5)), float(-1), select(this.directionUniform.greaterThan(float(0.5)), float(1), randomDirection));
-+        // 티켓 20260917_1256 — 회전각(도)을 라디안으로 변환해 화면 중심 기준으로 픽셀 좌표를
-+        // 회전시킨다. 회전된 좌표계에서 y축을 따라 밴드를 나누고(sliceIndex), x축을 따라
-+        // 교차선/블록을 나눈다(blockIndex). 0도일 때 기존 "오른쪽" 방향과 동일한 가로 밴드가
-+        // 나오도록 축을 맞췄다.
-+        const angleRad = this.rotationUniform.mul(Math.PI / 180);
-+        const cosA = cos(angleRad);
-+        const sinA = sin(angleRad);
-+        const center = vec2(this.logicalWidthUniform.mul(0.5), this.logicalHeightUniform.mul(0.5));
-+        const centered = pixelCoord.sub(center);
-+        const rotated = vec2(centered.x.mul(cosA).sub(centered.y.mul(sinA)), centered.x.mul(sinA).add(centered.y.mul(cosA)));
-+        const sliceIndex = floor(rotated.y.div(this.sliceHeightUniform));
-+        const blockIndex = floor(rotated.x.div(this.blockWidthUniform));
-+        // 티켓 20260917_1256 — 목표 1(균일 패턴): 게이팅 결정(bandNoise/gate)에서 매 프레임
-+        // 바뀌는 timeBucket 의존을 제거해 "어느 밴드가 얼마나 튀어나올지"가 프레임 간
-+        // 고정되도록 한다(시드 고정). 애니메이션은 아래에서 위상(phase)이 고정된 sin 파형으로만
-+        // 부드럽게 더한다 — 매 프레임 다른 밴드를 골라 흔드는 대신, 같은 밴드가 같은 위상으로
-+        // 숨쉬듯 움직인다.
-+        const bandNoise = hash2(sliceIndex.add(float(0.37)), float(11.13));
-+        const gate = step(float(1).sub(this.densityUniform), bandNoise);
-+        const bandPhase = hash2(sliceIndex.add(float(5.21)), float(2.3)).mul(float(6.2831853));
-+        const breathe = sin(this.timeUniform.mul(this.speedUniform).add(bandPhase))
-+            .mul(float(0.5))
-+            .add(float(0.5));
-         const sliceStrength = pow(bandNoise, float(1.35))
-             .mul(this.amountUniform)
+-        const sliceStrength = pow(bandNoise, float(1.35))
+-            .mul(this.amountUniform)
 -            .mul(gate);
 -        const offsetUv = vec2(sliceStrength.mul(signedDirection).div(this.logicalWidthUniform), float(0));
 -        const chromaOffsetUv = vec2(offsetUv.x.mul(this.dispersionUniform), float(0));
@@ -1066,8 +1054,31 @@ index 752fde3..a3569be 100644
 -        const greenSample = this.trackSourceTextureNode(vec2(renderTargetUv.x.add(offsetUv.x), renderTargetUv.y));
 -        const blueSample = this.trackSourceTextureNode(vec2(renderTargetUv.x.add(offsetUv.x).sub(chromaOffsetUv.x), renderTargetUv.y));
 -        const trailSample = this.trackSourceTextureNode(vec2(renderTargetUv.x.add(trailOffsetUv.x), renderTargetUv.y));
-+            .mul(gate)
-+            .mul(breathe);
++        // 티켓 20260917_1256 — 회전각(도)을 라디안으로 변환해 화면 중심 기준으로 픽셀 좌표를
++        // 회전시킨다. 회전된 좌표계에서 y축을 따라 밴드를 나눈다(sliceIndex). 0도일 때 기존
++        // "오른쪽" 방향과 동일한 가로 밴드가 나오도록 축을 맞췄다.
++        const angleRad = this.rotationUniform.mul(Math.PI / 180);
++        const cosA = cos(angleRad);
++        const sinA = sin(angleRad);
++        const center = vec2(this.logicalWidthUniform.mul(0.5), this.logicalHeightUniform.mul(0.5));
++        const centered = pixelCoord.sub(center);
++        const rotated = vec2(centered.x.mul(cosA).sub(centered.y.mul(sinA)), centered.x.mul(sinA).add(centered.y.mul(cosA)));
++        const sliceIndex = floor(rotated.y.div(this.sliceHeightUniform));
++        // 티켓 20260917_1256 — 목표 1(균일 패턴): 게이팅 결정(bandNoise/gate)에서 매 프레임
++        // 바뀌는 timeBucket 의존을 제거해 "어느 밴드가 얼마나 튀어나올지"가 프레임 간
++        // 고정되도록 한다(시드 고정). 애니메이션은 아래에서 위상(phase)이 고정된 sin 파형으로만
++        // 부드럽게 더한다 — 매 프레임 다른 밴드를 골라 흔드는 대신, 같은 밴드가 같은 위상으로
++        // 숨쉬듯 움직인다.
++        const bandNoise = hash2(sliceIndex.add(float(0.37)), float(11.13));
++        const gate = step(float(1).sub(this.densityUniform), bandNoise);
++        // 티켓 20260917_1324 — 목표 2(이동량 균일화): `bandNoise`는 "어느 밴드를 밀지"만
++        // 고르는 gate에만 쓰고, 크기 스케일링(`pow(bandNoise, 1.35)`)과 밴드별 위상차
++        // (`bandPhase`)는 제거한다. 게이트로 선택된 모든 밴드가 같은 위상의 breathe로 동일한
++        // `amount` 강도로 밀리도록 한다.
++        const breathe = sin(this.timeUniform.mul(this.speedUniform))
++            .mul(float(0.5))
++            .add(float(0.5));
++        const sliceStrength = this.amountUniform.mul(gate).mul(breathe);
 +        // 회전된 로컬 좌표계에서 밴드와 수직인 x'축 방향(양의 방향 고정)으로 미는 벡터를
 +        // 만들고, 역회전해 원본 픽셀 좌표계의 (dx, dy)로 변환한다. 회전각이 곧 슬라이스가
 +        // 밀리는 방향까지 함께 결정한다.
@@ -1081,21 +1092,14 @@ index 752fde3..a3569be 100644
 +        const blueSample = this.trackSourceTextureNode(renderTargetUv.add(offsetUv).sub(chromaOffsetUv));
 +        const trailSample = this.trackSourceTextureNode(renderTargetUv.add(trailOffsetUv));
          const slicedColor = vec3(redSample.r, greenSample.g, blueSample.b);
-         const smearMix = gate.mul(bandNoise.mul(float(0.42)).add(float(0.18)));
+-        const smearMix = gate.mul(bandNoise.mul(float(0.42)).add(float(0.18)));
 -        return vec4(mix(slicedColor, trailSample.rgb, smearMix), float(1));
++        // 티켓 20260917_1324 — smearMix(트레일 블렌드 강도)도 같은 원칙으로 밴드 간 균일하게
++        // 고정값(gate * 0.39, 기존 bandNoise 평균값 근사)으로 바꾼다. 이동량과 별개로 트레일
++        // 세기까지 밴드마다 다르면 "얼룩진 느낌"이 그대로 남기 때문이다.
++        const smearMix = gate.mul(float(0.39));
 +        const blended = mix(slicedColor, trailSample.rgb, smearMix);
-+        // 티켓 20260917_1256 — 목표 4/5: 슬라이스 라인과 수직으로 교차하는 짧은 분할선을
-+        // 그린다. 회전된 로컬 x축(blockIndex를 나누는 좌표) 기준 `crossLineSpacing` 간격마다
-+        // 얇은 선을 어둡게 그려 넣는다. `blockWidth`는 기존처럼 블록 인덱스(노이즈 시드) 용도로
-+        // 남기고, 교차선 간격은 별도 필드(`crossLineSpacing`)로 분리했다 — 블록 노이즈 시드
-+        // 간격과 화면에 보이는 선 간격을 독립적으로 조절할 수 있어야 한다는 판단.
-+        const crossCoord = rotated.x;
-+        const crossLineWidthPx = float(1.5);
-+        const crossMod = mod(crossCoord, this.crossLineSpacingUniform);
-+        const distFromLine = min(crossMod, this.crossLineSpacingUniform.sub(crossMod));
-+        const crossLineMask = step(distFromLine, crossLineWidthPx);
-+        const withCrossLines = mix(blended, vec3(0), crossLineMask.mul(0.55));
-+        return vec4(withCrossLines, float(1));
++        return vec4(blended, float(1));
      }
  }
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/text-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/text-pass.js
