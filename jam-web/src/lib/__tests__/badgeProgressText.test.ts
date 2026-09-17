@@ -73,10 +73,11 @@ describe('formatFrontierProgressText', () => {
     expect(formatFrontierProgressText({ ...dual, kind: 'multi' }, new Date())).toBeNull()
   })
 
-  it('unsupported는 중립색 "진행 표시 준비 중"이다 (조건값도 없을 때 — 20260906_1323 §9)', () => {
+  it('unsupported는 중립색 "진행률을 표시할 수 없어요"다 (조건값도 없을 때 — 20260906_1323 §9)', () => {
     const result = formatFrontierProgressText({ kind: 'unsupported', conditionKeys: ['mission_reward'] }, new Date())
     // pending: 「임시 상태 표기」라 기울임으로 그린다. 조건값을 넘기면 이 플래그가 붙지 않는다.
-    expect(result).toEqual({ text: '진행 표시 준비 중', fraction: 0, muted: true, pending: true })
+    // 문구는 티켓 20260916_0734에서 "진행 표시"(내부 용어)를 사용자 시점으로 교체했다.
+    expect(result).toEqual({ text: '진행률을 표시할 수 없어요', fraction: 0, muted: true, pending: true })
   })
 })
 
@@ -135,7 +136,8 @@ describe('formatDualAxisGaugeProps', () => {
       progress: 1180 / 1500, bottleneck: 'elevation_gain_m', sameActivity: false, periodEndsAt: null, gate: null, level: null, crossGated: false,
     }
     const result = formatDualAxisGaugeProps(dual)
-    expect(result?.ruleText).toBe('두 조건은 각각 다른 활동에서 채워도 돼요.')
+    // UX_WRITING_GUIDELINE.md §3 — 한 문장 본문은 마침표 없음(티켓 20260916_0734에서 정정).
+    expect(result?.ruleText).toBe('두 조건은 각각 다른 활동에서 채워도 돼요')
   })
 
   it('met인 축이 정확히 하나면 그 축을 지목하는 병목 안내를 만든다', () => {
@@ -146,7 +148,8 @@ describe('formatDualAxisGaugeProps', () => {
       progress: 1180 / 1500, bottleneck: 'elevation_gain_m', sameActivity: false, periodEndsAt: null, gate: null, level: null, crossGated: false,
     }
     const result = formatDualAxisGaugeProps(dual)
-    expect(result?.bottleneckNote).toBe('속도 조건은 이미 채웠어요.')
+    // UX_WRITING_GUIDELINE.md §3 — 한 문장 본문은 마침표 없음(티켓 20260916_0734에서 정정).
+    expect(result?.bottleneckNote).toBe('속도 조건은 이미 채웠어요')
   })
 
   it('met인 축이 0개면 병목 안내가 없다', () => {
@@ -175,7 +178,8 @@ describe('formatDualAxisGaugeProps', () => {
       progress: 12.4 / 15, bottleneck: 'distance_km', sameActivity: true, periodEndsAt: null, gate: null, level: null, crossGated: false,
     }
     const result = formatDualAxisGaugeProps(dual)
-    expect(result?.ruleText).toBe('한 번의 활동에서 두 조건을 동시에 채워야 해요.')
+    // UX_WRITING_GUIDELINE.md §3 — 한 문장 본문은 마침표 없음(티켓 20260916_0734에서 정정).
+    expect(result?.ruleText).toBe('한 번의 활동에서 두 조건을 동시에 채워야 해요')
     expect(result?.axes[0].rangeText).toBe('12.4/15.0km')
   })
 
@@ -193,7 +197,8 @@ describe('formatRegretLineText', () => {
     const regret: RegretLineData = { key: 'duration_minutes', current: 44.6, target: 45, unit: '분', label: '이동시간' }
     const text = formatRegretLineText(regret, 'rare')
     // diff = 45 - 44.6 = 0.4 → ceil(0.4) = 1, current는 내림(44)
-    expect(text).toBe('지난 활동 이동시간 기록은 44분. Rare까지 1분 모자랐어요.')
+    // 티켓 20260916_0734 — 명사로 끊긴 문장을 완성 문장으로 교정("...였어요. ...모자랐어요.")
+    expect(text).toBe('지난 활동 이동시간 기록은 44분였어요. Rare까지 1분 모자랐어요.')
   })
 
   it('regret.label을 문장에 포함한다', () => {
@@ -206,7 +211,8 @@ describe('formatRegretLineText', () => {
     // 7:30/km(450초) → target 7:00/km(420초), diff = 30초
     const regret: RegretLineData = { key: 'max_pace_sec_per_km', current: 450, target: 420, unit: null, label: '페이스' }
     const text = formatRegretLineText(regret, 'common')
-    expect(text).toBe('지난 활동 페이스는 7:30/km. Common까지 30초 모자랐어요.')
+    // 티켓 20260916_0734 — 명사로 끊긴 문장을 완성 문장으로 교정("...였어요. ...모자랐어요.")
+    expect(text).toBe('지난 활동 페이스는 7:30/km였어요. Common까지 30초 모자랐어요.')
   })
 })
 
@@ -266,19 +272,22 @@ describe('formatSyncComparisonText (티켓 20260904_1425)', () => {
     const candidate: SyncComparisonCandidate = { axisKey: 'distance_km', prevValue: 3.24, currentValue: 4.58 }
     const labelMap = new Map([['distance_km', { label: '누적 거리', unit: 'km' }]])
     // delta = 1.3399999999999999(부동소수점) → floor 1자리 = 1.3
-    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 누적 거리 1.3km 가까워졌어요')
+    // 티켓 20260916_0734 — "직전 동기화보다"(시스템 시점) → "지난번보다", 목적어 누락 보완("기록이")
+    expect(formatSyncComparisonText(candidate, labelMap)).toBe('지난번보다 누적 거리 기록이 1.3km 가까워졌어요')
   })
 
   it('lower-is-better 축(페이스)은 mm:ss가 아니라 정수 초 단위 델타를 쓴다', () => {
     const candidate: SyncComparisonCandidate = { axisKey: 'max_pace_sec_per_km', prevValue: 450, currentValue: 410 }
     const labelMap = new Map([['max_pace_sec_per_km', { label: '페이스', unit: null }]])
-    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 페이스 40초 가까워졌어요')
+    // 티켓 20260916_0734 — "직전 동기화보다"(시스템 시점) → "지난번보다", 목적어 누락 보완("기록이")
+    expect(formatSyncComparisonText(candidate, labelMap)).toBe('지난번보다 페이스 기록이 40초 가까워졌어요')
   })
 
   it('정수 축(횟수)은 라벨 단위를 그대로 붙인다', () => {
     const candidate: SyncComparisonCandidate = { axisKey: 'total_count', prevValue: 2, currentValue: 5 }
     const labelMap = new Map([['total_count', { label: '횟수', unit: '회' }]])
-    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 횟수 3회 가까워졌어요')
+    // 티켓 20260916_0734 — "직전 동기화보다"(시스템 시점) → "지난번보다", 목적어 누락 보완("기록이")
+    expect(formatSyncComparisonText(candidate, labelMap)).toBe('지난번보다 횟수 기록이 3회 가까워졌어요')
   })
 
   it('내림 결과가 0 이하면(미세 변화) 빈 비교문 대신 null을 반환한다', () => {
@@ -294,13 +303,15 @@ describe('formatSyncComparisonText (티켓 20260904_1425)', () => {
     const labelMap = new Map<string, { label: string; unit: string | null }>()
     const text = formatSyncComparisonText(candidate, labelMap)
     expect(text).not.toContain('streak_days')
-    expect(text).toBe('직전 동기화보다 연속 일수 2일 가까워졌어요')
+    // 티켓 20260916_0734 — "직전 동기화보다"(시스템 시점) → "지난번보다", 목적어 누락 보완("기록이")
+    expect(text).toBe('지난번보다 연속 일수 기록이 2일 가까워졌어요')
   })
 
   it('레지스트리에도 없는 키만 원문으로 떨어진다 (최후 폴백)', () => {
     const candidate: SyncComparisonCandidate = { axisKey: 'not_a_real_key', prevValue: 1, currentValue: 3 }
     const labelMap = new Map<string, { label: string; unit: string | null }>()
-    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 not_a_real_key 2 가까워졌어요')
+    // 티켓 20260916_0734 — "직전 동기화보다"(시스템 시점) → "지난번보다", 목적어 누락 보완("기록이")
+    expect(formatSyncComparisonText(candidate, labelMap)).toBe('지난번보다 not_a_real_key 기록이 2 가까워졌어요')
   })
 
   it('휴식 축은 이 배너의 후보가 되지 않는다 — 「휴식 재촉」 금지', () => {
@@ -422,15 +433,16 @@ describe('formatStopConditionValue (티켓 20260906_1323 §7)', () => {
 describe('unsupported 자리의 획득 조건 표시 (티켓 20260906_1323 §9)', () => {
   const unsupported: BadgeProgress = { kind: 'unsupported', conditionKeys: ['streak_days', 'repeat_count'] }
 
-  it('conditionText가 있으면 「진행 표시 준비 중」 대신 조건을 적고 기울이지 않는다', () => {
+  it('conditionText가 있으면 「진행률을 표시할 수 없어요」 대신 조건을 적고 기울이지 않는다', () => {
     const caption = formatFrontierProgressText(unsupported, new Date('2026-09-06'), '6일 연속 · 5회 충족')
     expect(caption).toEqual({ text: '6일 연속 · 5회 충족', fraction: 0, muted: true })
     expect(caption?.pending).toBeUndefined()
   })
 
-  it('조건도 만들 수 없으면 「진행 표시 준비 중」으로 폴백하고 임시 표기(pending)로 남는다', () => {
+  it('조건도 만들 수 없으면 「진행률을 표시할 수 없어요」로 폴백하고 임시 표기(pending)로 남는다', () => {
     const caption = formatFrontierProgressText(unsupported, new Date('2026-09-06'), null)
-    expect(caption).toEqual({ text: '진행 표시 준비 중', fraction: 0, muted: true, pending: true })
+    // 티켓 20260916_0734 — "진행 표시"(내부 용어)를 사용자 시점 문구로 교체
+    expect(caption).toEqual({ text: '진행률을 표시할 수 없어요', fraction: 0, muted: true, pending: true })
   })
 
   it('레벨형 값 행은 목표값 자리에만 조건을 넣고 현재값은 null로 둔다(「—」를 그리지 않는다)', () => {
@@ -440,8 +452,9 @@ describe('unsupported 자리의 획득 조건 표시 (티켓 20260906_1323 §9)'
     expect(formatFamilyRowValues(unsupported)).toBeNull()
   })
 
-  it('반복형 캡션도 조건 → 「진행 표시 준비 중」 순으로 폴백한다', () => {
+  it('반복형 캡션도 조건 → 「진행률을 표시할 수 없어요」 순으로 폴백한다', () => {
     expect(formatStampCaption(unsupported, '5회 충족')).toBe('5회 충족')
-    expect(formatStampCaption(unsupported)).toBe('진행 표시 준비 중')
+    // 티켓 20260916_0734 — "진행 표시"(내부 용어)를 사용자 시점 문구로 교체
+    expect(formatStampCaption(unsupported)).toBe('진행률을 표시할 수 없어요')
   })
 })
