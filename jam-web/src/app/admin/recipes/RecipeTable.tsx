@@ -96,6 +96,15 @@ function RecipeTableInner({ recipes, badgeMap, onEdit, onDelete }: RecipeTablePr
         enableHiding: false,
       }),
       columnHelper.display({
+        id: 'name',
+        header: '이름',
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) => (
+          <span className="text-sm">{row.original.name ?? <span className="text-muted-foreground">—</span>}</span>
+        ),
+      }),
+      columnHelper.display({
         id: 'slots',
         header: '슬롯',
         enableSorting: false,

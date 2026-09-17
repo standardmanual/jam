@@ -2,27 +2,27 @@ import React from 'react';
 
 /**
  * MixerSlot — 믹스(크래프팅) 슬롯 카드. 아이템·액티비티·체크인 등 배지 타입 구분 없이
- * 시각적으로 동일하게 그리는 슬롯 UI (티켓 20260917_1655).
+ * 시각적으로 동일하게 그리는 슬롯 UI (티켓 20260917_1655, 폴리시 수정 티켓 20260917_1828).
  *
  * 상태 3가지:
- *   empty  — 점선 테두리 + 타입 아이콘 + 필요 배지 이름. 탭하면 채울 수 있다.
- *   locked — 후보 배지를 하나도 보유하지 못한 슬롯. 사선 패턴으로 empty와 구분한다.
- *            탭해도 채울 배지가 없다는 뜻이라 상호작용은 호출부가 막는다(이 컴포넌트는
- *            시각만 담당 — onClick 자체는 그대로 전달된다).
- *   filled — 채운 배지 카드(썸네일+이름) + 우상단 제거 버튼(X 서클).
+ *   empty  — 채울 수 있는(후보를 하나 이상 보유한) 슬롯. 중앙에 '+' 아이콘만 표시하고,
+ *            테두리를 컬러(--color-primary)로 표현해 잠긴 슬롯과 구분한다. 탭하면 채울 수 있다.
+ *   locked — 후보 배지를 하나도 보유하지 못한 슬롯. 사선 패턴 없이 불투명도만으로 empty와
+ *            구분한다(티켓 20260917_1828 — 사선 패턴 제거). 탭해도 채울 배지가 없다는 뜻이라
+ *            상호작용은 호출부가 막는다(이 컴포넌트는 시각만 담당 — onClick 자체는 그대로 전달된다).
+ *   filled — 채운 배지 카드(썸네일+이름) + 우상단 제거 버튼(X 서클, 작고 어두운 네거티브 배경).
  *
  * 완료 여부는 이 슬롯의 시각 상태만으로 표현한다 — 진행률 텍스트는 이 컴포넌트도,
  * 호출부도 별도로 그리지 않는다(티켓 확정 사항).
+ *
+ * empty/locked는 타입 아이콘·후보 이름 텍스트를 그리지 않는다(티켓 20260917_1828) — 슬롯이
+ * 무엇을 요구하는지는 탭해서 여는 "내 배지" 시트에서 확인한다.
  *
  * 배지 드랍·픽업 화면에서도 "빈칸 채우기" 패턴이 재사용될 여지가 있다고 판단해
  * 서비스 전용이 아니라 MODULAR 정식 컴포넌트로 둔다(티켓 20260917_1655 사용자 결정).
  */
 export function MixerSlot({
   status = 'empty',
-  /** empty/locked일 때 보여줄 타입 아이콘 (예: 아이템/액티비티/체크인 아이콘) */
-  icon,
-  /** empty/locked일 때 보여줄 안내 문구(필요 배지 이름 등) */
-  label,
   /** filled일 때 배지 썸네일 URL */
   imageUrl,
   /** filled일 때 배지 이름 */
@@ -32,11 +32,13 @@ export function MixerSlot({
   /** filled일 때만 렌더되는 제거 버튼 핸들러 */
   onRemove,
   removeLabel = '슬롯에서 빼기',
+  emptyLabel = '슬롯 채우기',
   className = '',
   style = {},
 }) {
   const filled = status === 'filled';
   const locked = status === 'locked';
+  const fillable = status === 'empty';
 
   const baseStyle = {
     position: 'relative',
@@ -47,17 +49,15 @@ export function MixerSlot({
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 'var(--spacing-4)',
-    padding: 'var(--spacing-8)',
     boxSizing: 'border-box',
     textAlign: 'center',
     fontFamily: 'var(--font-family-base)',
-    border: filled ? 'none' : '1px dashed var(--color-border)',
-    background: filled
-      ? 'var(--color-surface-elevated)'
-      : locked
-        ? 'repeating-linear-gradient(135deg, var(--color-surface-elevated) 0px, var(--color-surface-elevated) 6px, var(--color-surface) 6px, var(--color-surface) 12px)'
-        : 'var(--color-surface)',
+    border: filled
+      ? 'none'
+      : fillable
+        ? '1px solid var(--color-primary)'
+        : '1px dashed var(--color-border)',
+    background: filled ? 'var(--color-surface-elevated)' : 'var(--color-surface)',
     color: 'var(--color-text)',
     opacity: locked ? 0.5 : 1,
     cursor: onClick ? 'pointer' : undefined,
@@ -70,15 +70,13 @@ export function MixerSlot({
       onClick={onClick}
       className={className}
       style={baseStyle}
-      aria-label={filled ? name : label}
+      aria-label={filled ? name : emptyLabel}
     >
       {filled ? (
         <>
           <div style={{ width: '68%', aspectRatio: '1 / 1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {imageUrl ? (
+            {imageUrl && (
               <img src={imageUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-            ) : (
-              <span aria-hidden="true" style={{ opacity: 0.3 }}>{icon}</span>
             )}
           </div>
           <p
@@ -90,6 +88,7 @@ export function MixerSlot({
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              marginTop: 'var(--spacing-4)',
             }}
           >
             {name}
@@ -112,17 +111,17 @@ export function MixerSlot({
               }}
               style={{
                 position: 'absolute',
-                top: -6,
-                right: -6,
-                width: 22,
-                height: 22,
+                top: -4,
+                right: -4,
+                width: 16,
+                height: 16,
                 borderRadius: 'var(--radius-pill)',
-                background: 'var(--color-surface-inverse)',
-                color: 'var(--color-text-inverse)',
+                background: 'var(--color-base-black)',
+                color: 'var(--color-base-white)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 12,
+                fontSize: 9,
                 lineHeight: 1,
                 cursor: 'pointer',
               }}
@@ -132,25 +131,9 @@ export function MixerSlot({
           )}
         </>
       ) : (
-        <>
-          <span aria-hidden="true" style={{ opacity: 0.4 }}>{icon}</span>
-          {label && (
-            <p
-              style={{
-                fontSize: 'var(--text-caption)',
-                lineHeight: 'var(--leading-caption)',
-                color: 'var(--color-text)',
-                opacity: 0.6,
-                width: '100%',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {label}
-            </p>
-          )}
-        </>
+        <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, opacity: fillable ? 0.8 : 0.4, color: 'var(--color-text)' }}>
+          +
+        </span>
       )}
     </button>
   );
