@@ -937,13 +937,14 @@ index 10d8f9a..f48f29f 100644
      }
  }
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.d.ts b/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.d.ts
-index 4f2c88c..7b5d670 100644
+index 4f2c88c..5c3f440 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.d.ts
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.d.ts
-@@ -6,11 +6,9 @@ type Node = TSLNode;
+@@ -5,12 +5,9 @@ import { PassNode } from "./pass-node";
+ type Node = TSLNode;
  export declare class SlicePass extends PassNode {
      private readonly amountUniform;
-     private readonly sliceHeightUniform;
+-    private readonly sliceHeightUniform;
 -    private readonly blockWidthUniform;
 -    private readonly densityUniform;
      private readonly dispersionUniform;
@@ -954,10 +955,10 @@ index 4f2c88c..7b5d670 100644
      private readonly logicalWidthUniform;
      private readonly logicalHeightUniform;
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js
-index 752fde3..6c3fe5f 100644
+index 752fde3..2425b70 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/slice-pass.js
-@@ -1,29 +1,16 @@
+@@ -1,29 +1,15 @@
 -import { dot, float, floor, fract, mix, pow, select, sin, step, texture as tslTexture, uniform, uv, vec2, vec3, vec4, } from "three/tsl";
 +import { cos, float, mix, sin, texture as tslTexture, uniform, uv, vec2, vec3, vec4, } from "three/tsl";
  import { createPipelinePlaceholder, PassNode } from "./pass-node.js";
@@ -979,7 +980,7 @@ index 752fde3..6c3fe5f 100644
 -}
  export class SlicePass extends PassNode {
      amountUniform;
-     sliceHeightUniform;
+-    sliceHeightUniform;
 -    blockWidthUniform;
 -    densityUniform;
      dispersionUniform;
@@ -994,10 +995,11 @@ index 752fde3..6c3fe5f 100644
      timeUniform;
      logicalWidthUniform;
      logicalHeightUniform;
-@@ -35,11 +22,9 @@ export class SlicePass extends PassNode {
+@@ -34,12 +20,9 @@ export class SlicePass extends PassNode {
+         super(layerId);
          this.placeholder = createPipelinePlaceholder();
          this.amountUniform = uniform(180);
-         this.sliceHeightUniform = uniform(28);
+-        this.sliceHeightUniform = uniform(28);
 -        this.blockWidthUniform = uniform(120);
 -        this.densityUniform = uniform(0.58);
          this.dispersionUniform = uniform(0.18);
@@ -1007,10 +1009,14 @@ index 752fde3..6c3fe5f 100644
          this.timeUniform = uniform(0);
          this.logicalWidthUniform = uniform(1);
          this.logicalHeightUniform = uniform(1);
-@@ -64,14 +49,6 @@ export class SlicePass extends PassNode {
-             typeof params.sliceHeight === "number"
-                 ? Math.max(2, Math.min(240, Math.round(params.sliceHeight)))
-                 : 28;
+@@ -60,18 +43,6 @@ export class SlicePass extends PassNode {
+             typeof params.amount === "number"
+                 ? Math.max(0, Math.min(480, params.amount))
+                 : 180;
+-        this.sliceHeightUniform.value =
+-            typeof params.sliceHeight === "number"
+-                ? Math.max(2, Math.min(240, Math.round(params.sliceHeight)))
+-                : 28;
 -        this.blockWidthUniform.value =
 -            typeof params.blockWidth === "number"
 -                ? Math.max(8, Math.min(640, Math.round(params.blockWidth)))
@@ -1022,7 +1028,7 @@ index 752fde3..6c3fe5f 100644
          this.dispersionUniform.value =
              typeof params.dispersion === "number"
                  ? Math.max(0, Math.min(0.5, params.dispersion))
-@@ -81,7 +58,10 @@ export class SlicePass extends PassNode {
+@@ -81,7 +52,10 @@ export class SlicePass extends PassNode {
                  ? Math.max(0, Math.min(2, params.speed))
                  : 0.2;
          this.speedUniform.value = this.speedValue;
@@ -1034,7 +1040,7 @@ index 752fde3..6c3fe5f 100644
      }
      needsContinuousRender() {
          return this.speedValue > 0.0001;
-@@ -100,29 +80,33 @@ export class SlicePass extends PassNode {
+@@ -100,29 +74,33 @@ export class SlicePass extends PassNode {
          }
          this.sourceTextureNodes = [];
          const renderTargetUv = vec2(uv().x, float(1).sub(uv().y));

@@ -1189,12 +1189,12 @@ const pixelSortingFields: ShaderLabFieldDefinitions = [
 // 영향이 제한적이라고 판단했다(완료 기록 참고).
 // 티켓 20260917_1324 — 교차선 기능이 만족스럽지 않아 완전히 제거. `블록 너비`·`교차선 간격`
 // 필드를 삭제하고, 셰이더에서도 교차선 렌더링·관련 유니폼을 모두 제거했다(완료 기록 참고).
-// 티켓 20260917_1421 — 밀도(density) 기반 밴드 게이팅을 완전히 제거. `밀도` 필드를 삭제하고,
-// sliceHeight로 나뉜 모든 밴드가 예외 없이 동일한 강도로 밀리도록 셰이더를 단순화했다
+// 티켓 20260917_1421 — 밀도(density) 기반 밴드 게이팅을 완전히 제거해 모든 밴드가 예외 없이
+// 동일한 강도로 밀리도록 셰이더를 단순화했다. 그 결과 밴드 폭을 정하던 `조각 높이`
+// (sliceHeight)도 출력에 더 이상 영향을 주지 않는 죽은 컨트롤이 되어 필드 자체를 삭제했다
 // (완료 기록 참고).
 const sliceFields: ShaderLabFieldDefinitions = [
   { key: 'amount', label: '이동량', type: 'number', defaultValue: 180, min: 0, max: 480, step: 1, unit: 'px' },
-  { key: 'sliceHeight', label: '조각 높이', type: 'number', defaultValue: 28, min: 2, max: 240, step: 1, unit: 'px' },
   { key: 'dispersion', label: '분산', type: 'number', defaultValue: 0.18, min: 0, max: 0.5, step: 0.01 },
   { key: 'rotation', label: '회전 방향', type: 'number', defaultValue: 0, min: 0, max: 360, step: 1, unit: '°' },
 ]
