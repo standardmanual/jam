@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { BadgeRevealCarousel } from '@ds/components/patterns/BadgeRevealCarousel'
 import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
+import { IconButton } from '@ds/components/buttons/IconButton'
 import { pushTabBarHidden } from '@/lib/uiOverlay'
 import { d, t } from '@/lib/i18n'
 
@@ -62,6 +63,13 @@ interface Props {
   profileHref: string
   /** 닫기 버튼·Escape·"배지 전부 보기" 이동 직전에 호출된다 */
   onClose: () => void
+  /**
+   * `items`가 비어 있을 때 캐러셀 대신 같은 오버레이 셸에 보여줄 문구(티켓 20260917_1655).
+   * `BadgeRevealCarousel`은 0장이면 아무것도 렌더하지 않는 설계라(캐러셀 자체 미노출이
+   * 정상 경로) 믹스 실패처럼 "결과가 나왔지만 배지가 없다"는 상태는 호출부가 직접
+   * 처리해야 한다. 지정하지 않으면 기존 동작(0장 시 미노출)을 그대로 유지한다.
+   */
+  emptyMessage?: string
 }
 
 /** 캐러셀 오버레이(zIndex 60)와 같은 층에 두는 대기 화면 */
@@ -77,6 +85,7 @@ export default function BadgeRevealOverlay({
   moreCount = 0,
   profileHref,
   onClose,
+  emptyMessage,
 }: Props) {
   const router = useRouter()
 
@@ -104,6 +113,7 @@ export default function BadgeRevealOverlay({
   const revealing = open && !loading
   const cardCount = items.length + moreCount
   const announcement = revealing && cardCount > 0 ? t(d.badgeReveal.opened, { count: cardCount }) : ''
+  const showEmptyState = revealing && cardCount === 0 && Boolean(emptyMessage)
 
   function handleMoreClick() {
     onClose()
@@ -135,8 +145,40 @@ export default function BadgeRevealOverlay({
         </div>
       )}
 
+      {showEmptyState && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            ...COLUMN_STYLE,
+            zIndex: OVERLAY_Z_INDEX,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 'var(--spacing-24)',
+            padding: 'var(--spacing-24)',
+            background: 'var(--color-overlay)',
+          }}
+        >
+          <p
+            style={{
+              color: 'var(--color-base-white)',
+              fontSize: 'var(--text-body)',
+              lineHeight: 'var(--leading-body)',
+              textAlign: 'center',
+            }}
+          >
+            {emptyMessage}
+          </p>
+          <IconButton icon="close" label={d.common.close} surface="light" onClick={onClose} />
+        </div>
+      )}
+
       <BadgeRevealCarousel
-        open={revealing}
+        open={revealing && !showEmptyState}
         items={items}
         moreCount={moreCount}
         onMoreClick={handleMoreClick}
