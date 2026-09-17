@@ -5,9 +5,9 @@ import Link from 'next/link'
 import { d } from '@/lib/i18n'
 
 /**
- * 전역 하단 푸터 — 투데이(홈, `/`)는 상단에 이미 로고를 노출하므로 제외한다.
+ * 전역 하단 푸터.
  *
- * `/drops`도 제외한다: `DropsClient.tsx`가 `fixed inset-0`로 문서 흐름을 완전히 이탈하는
+ * `/drops`는 제외한다: `DropsClient.tsx`가 `fixed inset-0`로 문서 흐름을 완전히 이탈하는
  * 풀스크린 지도 화면이라, `(main)/layout.tsx`의 sticky-footer 트릭(children 래퍼 `min-h-dvh`)이
  * "콘텐츠가 fixed로 이탈해 실제 높이가 0"인 케이스를 감안하지 못해 Footer가 `main` 스크롤에
  * 끌려 올라오는 버그가 있었다(20260831_2106). 향후 같은 종류의 풀스크린 이탈 화면이 늘어나면
@@ -17,8 +17,11 @@ import { d } from '@/lib/i18n'
  * 그 화면 하단에 같은 링크가 다시 노출되는 순환을 막는다 (20260901_2125).
  *
  * `/privacy`도 같은 이유로 제외한다: '개인정보처리방침' 링크의 목적지 자신이다 (20260901_2217).
+ *
+ * 홈(`/`)은 기존에 "상단 로고 중복" 우려로 제외돼 있었으나, 바로가기·최근배지 섹션 제거로
+ * 화면이 짧아져 우려가 완화됐다고 판단해 제외 목록에서 뺐다(티켓 20260917_1203).
  */
-const FOOTER_EXCLUDED_PATHS = ['/', '/drops', '/philosophy', '/privacy']
+const FOOTER_EXCLUDED_PATHS = ['/drops', '/philosophy', '/privacy']
 
 export default function Footer() {
   const pathname = usePathname()
