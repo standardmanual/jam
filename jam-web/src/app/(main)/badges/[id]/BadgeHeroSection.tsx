@@ -7,6 +7,27 @@ import { getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBac
 import BlobAnimationBackground from '@/components/BlobAnimationBackground'
 import type { BlobAnimationParams } from '@/lib/blobAnimation'
 
+// [20260917_1211] 마침표 뒤에 삽입해 문장 경계로 쓰는 표식. 배지 설명에 실제로 등장할 가능성이
+// 없는 임의 토큰이면 되므로 굳이 제어문자를 쓰지 않는다.
+const SENTENCE_BREAK_MARK = '@@SENTENCE_BREAK@@'
+
+/**
+ * 배지 설명을 마침표(문장 종결) 기준으로 줄바꿈한다. — [20260917_1211]
+ * 원본 문자열의 `\n`에만 반응하는 `whitespace-pre-line`으로는 "~했습니다." 같은 실제
+ * 문장 종결 마침표에서 줄바꿈이 일어나지 않아, 마침표 뒤를 직접 분리선으로 쓴다.
+ *
+ * "42.195"처럼 숫자 사이 소수점은 문장 종결이 아니다(`seed_v5_activity_badges.rows.json`
+ * 실제 사례: "42.195라는 숫자를 몸으로 통과했습니다."). 그래서 마침표 앞뒤에 숫자가 오면
+ * 분리하지 않는다 — `(?<!\d)\.(?!\d)`로 숫자 사이 소수점만 제외하고 나머지 마침표에서 자른다.
+ */
+function splitDescriptionSentences(description: string): string[] {
+  return description
+    .replace(/(?<!\d)\.(?!\d)/g, `.${SENTENCE_BREAK_MARK}`)
+    .split(SENTENCE_BREAK_MARK)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0)
+}
+
 /**
  * 배지 상세화면 hero-section (item/poi/activity 3변형 공통) — [20260818_002]
  * 3중 복사돼 있던 마크업을 추출한 순수 리팩터링. 렌더링 결과는 기존과 동일해야 한다.
@@ -74,10 +95,14 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
     <div className="relative z-10 px-6 pt-0 pb-[32px]">
       {/* [20260901_1944] 애니메이션 배경은 이 카드 안에만 그린다 — overflow-hidden으로 라운드 안에
           가두고, 캔버스는 절대배치 최하단(z-0)에 두어 이미지·이름은 그 위(z-10)에 그대로 남는다.
-          애니메이션이 카드 배경 자체가 되므로 bg-surface-elevated는 깔지 않는다. */}
+          애니메이션이 카드 배경 자체가 되므로 bg-surface-elevated는 깔지 않는다.
+          [20260917_1211] 카드 전체(이미지+등급칩+이름+설명)를 1:1 비율로 묶는다 — 이전에는
+          이미지 서브블록만 aspect-square였고 설명은 카드 밖에 별도 문단으로 있었다. 이미지
+          200×200은 최우선으로 유지하고(flex-shrink-0), 공간이 부족하면 이미지가 아니라
+          요소 사이 간격(gap/pt)부터 줄인다. */}
       <div
         className={[
-          'relative overflow-hidden w-full aspect-square rounded-[var(--radius-cards)] flex flex-col p-6',
+          'relative overflow-hidden w-full aspect-square rounded-[var(--radius-cards)] flex flex-col items-center p-6',
           backgroundAnimation || themed ? 'bg-transparent' : 'bg-surface-elevated',
         ].join(' ')}
         // 애니메이션 모드의 첫 페인트 폴백 — 캔버스는 클라이언트에서 컨텍스트를 얻은 뒤에야
@@ -87,7 +112,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
         style={backgroundAnimation ? { backgroundColor: backgroundAnimation.bgColor } : undefined}
       >
         {backgroundAnimation && <BlobAnimationBackground params={backgroundAnimation} />}
-        <div className="relative z-10 flex-1 flex items-center justify-center">
+        <div className="relative z-10 flex-shrink-0 flex items-center justify-center">
           {badge.image_url ? (
             <div className="w-[200px] h-[200px] flex items-center justify-center">
               <Image
@@ -102,7 +127,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
             <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
           )}
         </div>
-        <div className="relative z-10 flex flex-col items-center gap-2 pt-4" style={cardTextStyle}>
+        <div className="relative z-10 flex-shrink-0 flex flex-col items-center gap-1 pt-2" style={cardTextStyle}>
           {/* v5는 배지 종류가 셋이고 레벨형은 `rarity`가 NULL이다(193종). `RarityBadge`는
               미지 값을 그리지 않으므로(티켓 20260905_0036) 그대로 넘기면 **칩이 조용히
               사라진다** — 상세 화면에서 등급/레벨을 알 수 없게 된다.
@@ -110,17 +135,25 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
           {badge.level != null ? <BadgeLevelChip level={badge.level} size="md" /> : <RarityBadge rarity={badge.rarity ?? undefined} size="md" />}
           <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badge.name}</h1>
         </div>
+        {badge.description && (
+          // [20260917_1211] 설명을 카드 안으로 통합. 마침표(문장 종결) 기준으로 나눠 각 문장을
+          // 별도 줄로 그린다 — 원본 `\n`에만 반응하던 `whitespace-pre-line`으로는 실제 배지
+          // 설명(마침표로 끝나는 문장 나열)에서 줄바꿈이 거의 일어나지 않았다.
+          <div
+            className="relative z-10 flex-1 min-h-0 flex flex-col justify-center gap-0.5 pt-2 overflow-hidden"
+            style={backgroundAnimation ? getBadgeThemedTextStyle(true) : undefined}
+          >
+            {splitDescriptionSentences(badge.description).map((sentence, index) => (
+              <p
+                key={index}
+                className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)]"
+              >
+                {sentence}
+              </p>
+            ))}
+          </div>
+        )}
       </div>
-      {badge.description && (
-        // 설명은 카드 바깥(페이지 배경 위)이지만, 애니메이션 모드에서는 페이지가 걸던 그림자
-        // 보정이 꺼지므로 이미지·영상 배경 모드와 동일한 보정을 여기서 유지한다.
-        <p
-          className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6 whitespace-pre-line"
-          style={backgroundAnimation ? getBadgeThemedTextStyle(true) : undefined}
-        >
-          {badge.description}
-        </p>
-      )}
     </div>
   )
 }
