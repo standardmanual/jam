@@ -452,18 +452,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          name: string | null
           reward_badge_ids: string[]
           reward_points: number
         }
         Insert: {
           created_at?: string
           id?: string
+          name?: string | null
           reward_badge_ids?: string[]
           reward_points?: number
         }
         Update: {
           created_at?: string
           id?: string
+          name?: string | null
           reward_badge_ids?: string[]
           reward_points?: number
         }

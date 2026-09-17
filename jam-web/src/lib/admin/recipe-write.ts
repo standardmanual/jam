@@ -21,6 +21,7 @@ import {
 type ServiceClient = ReturnType<typeof createServiceClient>
 
 export interface RecipeRow {
+  name: string
   reward_points: number
   reward_badge_ids: string[]
 }
@@ -38,7 +39,7 @@ export async function buildRecipeRow(
   const normalized = normalizeRecipePayload(body)
   if (!normalized.ok) return normalized
 
-  const { slots, rewardPoints, rewardBadgeIds } = normalized.value
+  const { name, slots, rewardPoints, rewardBadgeIds } = normalized.value
 
   // 슬롯 후보 배지 전체의 실제 타입 조회 — 삭제된 배지는 후보로 쓸 수 없다.
   const allowedBadgeIds = [...new Set(slots.flatMap((s) => s.allowedBadgeIds))]
@@ -89,6 +90,7 @@ export async function buildRecipeRow(
   return {
     ok: true,
     row: {
+      name,
       reward_points: rewardPoints,
       reward_badge_ids: rewardBadgeIds,
     },
