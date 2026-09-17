@@ -6,7 +6,8 @@ import React from 'react';
  *
  * 상태 3가지:
  *   empty  — 채울 수 있는(후보를 하나 이상 보유한) 슬롯. 중앙에 '+' 아이콘만 표시하고,
- *            테두리를 컬러(--color-primary)로 표현해 잠긴 슬롯과 구분한다. 탭하면 채울 수 있다.
+ *            테두리를 밝은 그레이(--color-text-secondary) 3px로 굵게 표현해 잠긴 슬롯과
+ *            구분한다(티켓 20260917_1828 후속 조정). 탭하면 채울 수 있다.
  *   locked — 후보 배지를 하나도 보유하지 못한 슬롯. 사선 패턴 없이 불투명도만으로 empty와
  *            구분한다(티켓 20260917_1828 — 사선 패턴 제거). 탭해도 채울 배지가 없다는 뜻이라
  *            상호작용은 호출부가 막는다(이 컴포넌트는 시각만 담당 — onClick 자체는 그대로 전달된다).
@@ -55,7 +56,7 @@ export function MixerSlot({
     border: filled
       ? 'none'
       : fillable
-        ? '1px solid var(--color-primary)'
+        ? '3px solid var(--color-text-secondary)'
         : '1px dashed var(--color-border)',
     background: filled ? 'var(--color-surface-elevated)' : 'var(--color-surface)',
     color: 'var(--color-text)',
