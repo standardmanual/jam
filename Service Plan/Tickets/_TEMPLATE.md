@@ -1,13 +1,24 @@
 ---
 id: YYYYMMDD_HHMM
 category: Infra | Admin | Service | Feature | Content | BadgeEngine | UI | API
-priority: P0 | P1 | P2 | P3
-status: OPEN | IN_PROGRESS | CLOSED
+priority: P0 | P1 | P2 | P3 | (비움 = 분류 대기, 카즈하 예약 세션의 초안 전용)
+status: OPEN | IN_PROGRESS | WAITING | CLOSED
 created: YYYY-MM-DD
 closed: YYYY-MM-DD
 ---
 
 # [카테고리] 제목 요약
+
+> 초안(분류 대기)일 때는 제목 앞에 `[분류 대기]`를 붙이고, `priority`는 비운 채
+> `Service Plan/Tickets/` 최상위에 둔다. 카리나가 우선순위를 확정하면 값을 채우고 해당
+> `P{0-3}` 폴더로 옮긴다.
+
+## 핵심 요약
+> 카리나가 아현·민지 등에게 티켓 전체 대신 이 절만 전달할 수 있도록 한두 줄로 채운다.
+
+- 요구사항:
+- 구현 계획:
+- 관련 파일:
 
 ## 배경 / 문제 정의
 > 왜 이 작업이 필요한가. 현재 상태와 기대 상태의 차이.
@@ -25,6 +36,13 @@ closed: YYYY-MM-DD
 
 ## 구현 계획
 > 어떻게 구현할지. 접근 방법, 영향 범위, 주요 변경 포인트.
+
+## 완료 조건
+> 무엇을 어떻게 확인하면 끝인지, 검증 가능한 문장으로. (예: "같은 활동을 두 번 동기화해도
+> 배지가 1개만 발급된다. 재현 경로: 어드민 시뮬레이터에서 같은 배치 2회 실행" — "배지 중복
+> 문제를 해결한다"처럼 확인 불가능한 문장은 피한다.) 완료 조건이 비어 있으면 민지가 판정하지
+> 않고 돌려보낸다.
+-
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
