@@ -45,14 +45,25 @@ export default async function CombinePage() {
   if (slotsError) console.error('[combine/page] combination_recipe_slots 조회 실패', slotsError)
   const slotRows = (slotsFullRaw ?? []) as CombinationRecipeSlotRow[]
 
-  const allowedBadgeIds = [...new Set(slotRows.flatMap((s) => s.allowed_badge_ids))]
+  // 슬롯 후보 배지 + 보상 배지를 한 번에 조회한다 — 보상 배지는 레시피 목록 미리보기
+  // (아이콘+포인트)와 결과 캐러셀(BadgeRevealCarousel, name·image_url·rarity·description
+  // 필요) 양쪽에 쓰인다(티켓 20260917_1655).
+  const rewardBadgeIds = [...new Set(publicRecipeRows.flatMap((r) => r.reward_badge_ids))]
+  const allowedBadgeIds = [...new Set([...slotRows.flatMap((s) => s.allowed_badge_ids), ...rewardBadgeIds])]
   const { data: allowedBadgesRaw, error: allowedBadgesError } =
     allowedBadgeIds.length > 0
-      ? await service.from('badges').select('id, name, image_url').in('id', allowedBadgeIds).is('deleted_at', null)
-      : { data: [] as Pick<BadgeRow, 'id' | 'name' | 'image_url'>[], error: null }
-  if (allowedBadgesError) console.error('[combine/page] 슬롯 후보 배지 상세 조회 실패', allowedBadgesError)
+      ? await service
+          .from('badges')
+          .select('id, name, image_url, rarity, description')
+          .in('id', allowedBadgeIds)
+          .is('deleted_at', null)
+      : { data: [] as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'description'>[], error: null }
+  if (allowedBadgesError) console.error('[combine/page] 슬롯 후보·보상 배지 상세 조회 실패', allowedBadgesError)
   const badgeDetailMap = new Map(
-    ((allowedBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'image_url'>[]).map((b) => [b.id, b])
+    ((allowedBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'description'>[]).map((b) => [
+      b.id,
+      b,
+    ])
   )
 
   // 조건 슬롯(액티비티·체크인)은 유저가 실제로 보유한 후보만 "충족"으로 표시한다 —
@@ -93,7 +104,7 @@ export default async function CombinePage() {
       badge_type: slot.badge_type,
       candidates: slot.allowed_badge_ids
         .map((id) => badgeDetailMap.get(id))
-        .filter((b): b is Pick<BadgeRow, 'id' | 'name' | 'image_url'> => Boolean(b)),
+        .filter((b): b is NonNullable<typeof b> => Boolean(b)),
     })
     slotsByRecipe.set(slot.recipe_id, list)
   }
@@ -101,6 +112,9 @@ export default async function CombinePage() {
   const publicRecipes: RecipeWithSlots[] = publicRecipeRows.map((r) => ({
     ...r,
     slots: (slotsByRecipe.get(r.id) ?? []).sort((a, b) => a.slot_order - b.slot_order),
+    rewardBadges: r.reward_badge_ids
+      .map((id) => badgeDetailMap.get(id))
+      .filter((b): b is NonNullable<typeof b> => Boolean(b)),
   }))
 
   let items: Array<Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'> & { badge: Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'> }> = []
