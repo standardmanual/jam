@@ -702,10 +702,10 @@ function PoiCard({
       {/* 본문 — peek(비활성) 카드는 POI 기본 정보만 노출하고 본문 자체를
           렌더하지 않는다. 배지 데이터는 이 카드가 중앙(활성)에 도착한
           시점에만 불러온다(20260820_025). 세로 높이는 콘텐츠(드랍된 배지 수)
-          만큼 자연스럽게 자란다. 카드 하단이 항상 같은 기준선(캐러셀
-          컨테이너 bottom)에서 시작하므로 배지가 많을수록 카드가 위로만
-          길어진다(하단 정렬). 이 캐러셀에는 반경 내(in_drop_range) POI만
-          들어오므로 반경 밖 안내는 없다. */}
+          만큼 자연스럽게 자라되, 목록 자체는 `max-h-[50vh] overflow-y-auto`로
+          제한된다(20260917) — 보유·드랍 아이템이 많으면 카드가 화면 위(로고·
+          TopNav)까지 밀고 올라가던 문제를 막기 위함. 이 캐러셀에는 반경 내
+          (in_drop_range) POI만 들어오므로 반경 밖 안내는 없다. */}
       {!isActive ? null : loading || drops === undefined ? (
         <div className="flex justify-center py-[var(--spacing-24)]">
           <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
@@ -746,7 +746,9 @@ function PoiCard({
         ) : (
           // 20260908_0217: 그리드 카드 대신 픽업 목록과 같은 행 형태(ItemRow)로 통일.
           // dropGridItems(배지 종류별 그룹 — 개수·만료일 포함)는 그대로 두고 렌더링만 교체.
-          <div className="flex flex-col gap-2">
+          // 20260917: 보유 아이템이 많으면 카드가 화면 위로 무한정 자라 상단(로고·TopNav)을
+          // 밀어내던 문제 수정 — 목록에 최대 높이 + 내부 스크롤을 둔다.
+          <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto">
             {dropGridItems.map((item) => (
               <ItemRow
                 key={item.id}
@@ -771,7 +773,7 @@ function PoiCard({
             // 묶는다(같은 배지를 여러 명이 드랍해도 행 하나 + 개수 서클). 그룹 클릭 시
             // 개체가 1개면 지금까지처럼 즉시, 2개 이상이면 개체 선택 시트로 이어진다
             // (handleSelectPickupGroup).
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto">
               {groupPickupDrops(drops).map((group) => (
                 <ItemRow
                   key={group.badgeId}
