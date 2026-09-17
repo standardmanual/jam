@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
 import { collectRecipeReferences } from '@/lib/admin/recipe-references'
-import { buildRecipeRow } from '@/lib/admin/recipe-write'
+import { buildRecipeRow, replaceRecipeSlots } from '@/lib/admin/recipe-write'
 
 /**
  * 하드 삭제 — 참조 카운트 가드는 `lib/admin/recipe-references.ts`가 단일 출처다(티켓
@@ -62,7 +62,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const supabase = createServiceClient()
   // 티켓 20260910_1408: 이전에는 body를 `as never`로 캐스팅해 그대로 update했다. POST와 같은
-  // 검증·자동 분류 규칙을 `buildRecipeRow()` 한 곳에서 공유한다.
+  // 검증 규칙을 `buildRecipeRow()` 한 곳에서 공유한다. 티켓 20260917_1427: 슬롯 기반 재설계로
+  // 재료 분류가 슬롯 배열 검증으로 바뀌었다 — 슬롯은 레시피 update 성공 후 전체 교체한다.
   const built = await buildRecipeRow(supabase, body)
   if (!built.ok) return NextResponse.json({ error: built.error }, { status: 400 })
 
@@ -73,5 +74,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .select()
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+
+  const slotResult = await replaceRecipeSlots(supabase, id, built.slots)
+  if (!slotResult.ok) return NextResponse.json({ error: slotResult.error }, { status: 500 })
+
+  return NextResponse.json({ ...data, slots: built.slots })
 }

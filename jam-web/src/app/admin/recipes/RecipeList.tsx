@@ -3,11 +3,10 @@
 import { useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import type { CombinationRecipeRow } from '@/types/database'
-import { RecipeTable } from './RecipeTable'
+import { RecipeTable, type RecipeWithSlots } from './RecipeTable'
 
 interface Props {
-  recipes: CombinationRecipeRow[]
+  recipes: RecipeWithSlots[]
   badgeMap: Map<string, string>
 }
 
@@ -19,7 +18,7 @@ export default function RecipeList({ recipes, badgeMap }: Props) {
   const router = useRouter()
 
   const startEdit = useCallback(
-    (r: CombinationRecipeRow) => {
+    (r: RecipeWithSlots) => {
       router.push(`/admin/recipes/${r.id}`)
     },
     [router]

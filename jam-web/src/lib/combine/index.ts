@@ -1,16 +1,19 @@
 /**
- * 아이템 믹스 로직 v3 (서버 사이드 전용) — 티켓 20260910_1408
+ * 아이템 믹스 로직 v4 — 슬롯 기반 OR 매칭 (서버 사이드 전용) — 티켓 20260917_1427
  *
- * 두 갈래로 단순화했다.
- *  1) 레시피 정확 매칭 → 레시피가 지정한 보상(포인트 + 배지 전부)을 **확정 지급**.
+ * 두 갈래 구조는 그대로 유지한다.
+ *  1) 레시피 매칭 → 레시피가 지정한 보상(포인트 + 배지 전부)을 **확정 지급**.
  *  2) 미매칭 → 배지를 전혀 지급하지 않고 정책의 고정 포인트(`fail_reward_points`)만 지급.
  *
- * 매칭 성립 = (유저가 투입한 아이템 배지 집합 == ingredient_badge_ids, 순서 무관 완전 일치)
- *            AND (required_badge_ids의 모든 배지를 유저가 보유)
+ * 매칭 성립(슬롯 기반) = 레시피의 모든 슬롯에 대해,
+ *  - badge_type = 'item'  : 유저가 투입한 아이템 배지 중 allowed_badge_ids에 속하는 것이
+ *                           정확히 1개 대응(슬롯당 서로 다른 배지 인스턴스, 여분 투입 불허)
+ *  - badge_type = 'activity'|'checkin' : 유저가 보유한 배지 중 allowed_badge_ids에 속하는
+ *                           것이 1개 이상 존재(보유만 확인, 소각 없음)
+ *  하나라도 대응/보유 실패 시 그 레시피는 미매칭.
  *
- * 폐기된 것(v2까지 있던 것): 트라이브 다양성 티어 확률 경로(경로 B), 피티 확률 보정·계단식
- * 포인트, `success_rate`. 경로 B는 아이템 배지 보유 트라이브가 2종뿐인 실제 카탈로그에서
- * "소재 트라이브 제외" 후보가 0종이 되는 인센티브 역전을 일으켰다.
+ * 이전(v3, 티켓 20260910_1408)의 "정확 집합 일치" 방식을 완전히 대체한다 — 슬롯당 후보
+ * 1개로 표현하면 기존 레시피와 동등하므로 하위 호환 손실 없음.
  *
  * 재료로 투입한 아이템 개체는 성공/실패 무관하게 항상 소각된다. 보유 조건 배지
  * (액티비티·체크인)는 소각되지 않는다.
@@ -23,7 +26,12 @@ import {
   type GrantInventoryItemResult,
   type ReleaseInventorySlotsResult,
 } from '@/lib/inventory/slots'
-import type { CombinationRecipeRow, CombineFailReason, InventoryItemRow } from '@/types/database'
+import type {
+  CombinationRecipeRow,
+  CombinationRecipeSlotRow,
+  CombineFailReason,
+  InventoryItemRow,
+} from '@/types/database'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -91,16 +99,29 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
 
   const badgeIds = items.map((i) => i.badge_id)
 
-  // 3. 레시피 정확 매칭 탐색 (순서 무관) — 재료가 일치해도 required_badge_ids(액티비티·체크인
-  //    배지, 소각되지 않는 보유 조건)를 전부 보유해야 최종 매칭으로 인정한다.
+  // 3. 레시피 슬롯 매칭 탐색 — 슬롯 하나당 후보(OR) 중 하나만 대응/보유하면 충족.
+  //    아이템 슬롯은 투입한 아이템 배지와 1:1 대응(여분 투입 불허), 액티비티·체크인 슬롯은
+  //    보유 여부만 확인한다(소각 없음).
   const { data: recipesRaw } = await supabase.from('combination_recipes').select('*')
   const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
+  const recipeIds = recipes.map((r) => r.id)
 
-  const ingredientMatches = recipes.filter((r) => sameBadgeSet(r.ingredient_badge_ids, badgeIds))
+  const { data: slotsRaw } =
+    recipeIds.length > 0
+      ? await supabase.from('combination_recipe_slots').select('*').in('recipe_id', recipeIds)
+      : { data: [] as CombinationRecipeSlotRow[] }
+  const slots = (slotsRaw ?? []) as CombinationRecipeSlotRow[]
+  const slotsByRecipe = new Map<string, CombinationRecipeSlotRow[]>()
+  for (const slot of slots) {
+    const list = slotsByRecipe.get(slot.recipe_id) ?? []
+    list.push(slot)
+    slotsByRecipe.set(slot.recipe_id, list)
+  }
 
   let matched: CombinationRecipeRow | undefined
-  for (const candidate of ingredientMatches) {
-    if (await hasAllRequiredBadges(supabase, userId, candidate.required_badge_ids ?? [])) {
+  for (const candidate of recipes) {
+    const candidateSlots = (slotsByRecipe.get(candidate.id) ?? []).sort((a, b) => a.slot_order - b.slot_order)
+    if (await matchesRecipeSlots(supabase, userId, candidateSlots, badgeIds)) {
       matched = candidate
       break
     }
@@ -216,51 +237,82 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
 }
 
 /**
- * 순서 무관 완전 일치 — **배지 종류 집합**을 비교한다.
- *
- * 같은 배지를 2개 이상 요구하는 레시피(중복 재료)는 지원하지 않는 것이 확정 사양이다
- * (저장 단계 `normalizeRecipePayload()`의 중복 거부가 정본). 그래서 개수까지 세는
- * 다중집합 비교가 아니라 집합 비교로 판정한다.
+ * 레시피 슬롯 전체 충족 여부를 판정한다.
+ *  - 아이템 슬롯: 투입한 아이템 배지 개수와 아이템 슬롯 개수가 정확히 같아야 하고, 각
+ *    슬롯이 서로 다른 아이템 인스턴스에 1:1 대응돼야 한다(여분 투입 불허, 중복 대응 불허).
+ *  - 액티비티·체크인 슬롯: 후보(OR) 중 하나라도 보유하면 충족(소각 없음).
  */
-function sameBadgeSet(recipeIds: string[], inputBadgeIds: string[]): boolean {
-  const recipeSet = new Set(recipeIds)
-  const inputSet = new Set(inputBadgeIds)
-  if (recipeSet.size !== inputSet.size) return false
-  for (const id of recipeSet) {
-    if (!inputSet.has(id)) return false
-  }
-  return true
+async function matchesRecipeSlots(
+  supabase: ServiceClient,
+  userId: string,
+  slots: CombinationRecipeSlotRow[],
+  inputBadgeIds: string[]
+): Promise<boolean> {
+  const itemSlots = slots.filter((s) => s.badge_type === 'item')
+  const conditionSlots = slots.filter((s) => s.badge_type !== 'item')
+
+  if (inputBadgeIds.length !== itemSlots.length) return false
+  if (!findItemSlotAssignment(itemSlots, inputBadgeIds)) return false
+
+  if (conditionSlots.length === 0) return true
+
+  const allowedUnion = [...new Set(conditionSlots.flatMap((s) => s.allowed_badge_ids))]
+  const owned = await getOwnedConditionBadgeIds(supabase, userId, allowedUnion)
+  if (owned === null) return false // fail-closed: 조회 실패 시 매칭 보류
+
+  return conditionSlots.every((slot) => slot.allowed_badge_ids.some((id) => owned.has(id)))
 }
 
 /**
- * 보유 조건 검증 — 액티비티 배지는 `user_activity_badges`, 체크인 배지는
- * `user_checkin_badge_earns`에 기록된다. 어느 쪽에서든 발견되면 보유로 인정한다
- * (레시피가 배지 타입을 따로 저장하지 않으므로 두 테이블을 함께 조회한다).
+ * 아이템 슬롯 ↔ 투입 아이템 배지의 1:1 대응을 찾는다(같은 배지 인스턴스가 여러 슬롯에
+ * 중복 대응되지 않도록 백트래킹). 슬롯·아이템 모두 최대 10개라 지수 폭발 우려 없음.
  */
-async function hasAllRequiredBadges(
-  supabase: ServiceClient,
-  userId: string,
-  requiredBadgeIds: string[]
-): Promise<boolean> {
-  if (requiredBadgeIds.length === 0) return true
+function findItemSlotAssignment(itemSlots: CombinationRecipeSlotRow[], inputBadgeIds: string[]): boolean {
+  const used = new Array(inputBadgeIds.length).fill(false)
 
-  const [{ data: activityRaw, error: activityError }, { data: checkinRaw, error: checkinError }] =
-    await Promise.all([
-      supabase.from('user_activity_badges').select('badge_id').eq('user_id', userId).in('badge_id', requiredBadgeIds),
-      supabase.from('user_checkin_badge_earns').select('badge_id').eq('user_id', userId).in('badge_id', requiredBadgeIds),
-    ])
-
-  // fail-closed: 조회가 실패하면 "보유함"으로 오판하지 않는다(보상 오지급 방지).
-  if (activityError || checkinError) {
-    console.error('[combineItems] 보유 조건 배지 조회 실패 — 매칭을 보류합니다:', activityError ?? checkinError)
+  function backtrack(slotIdx: number): boolean {
+    if (slotIdx === itemSlots.length) return true
+    const allowed = new Set(itemSlots[slotIdx].allowed_badge_ids)
+    for (let i = 0; i < inputBadgeIds.length; i++) {
+      if (used[i] || !allowed.has(inputBadgeIds[i])) continue
+      used[i] = true
+      if (backtrack(slotIdx + 1)) return true
+      used[i] = false
+    }
     return false
   }
 
-  const owned = new Set<string>([
+  return backtrack(0)
+}
+
+/**
+ * 보유 조건 배지 조회 — 액티비티 배지는 `user_activity_badges`, 체크인 배지는
+ * `user_checkin_badge_earns`에 기록된다. 어느 쪽에서든 발견되면 보유로 인정한다
+ * (조회 대상은 슬롯 타입과 무관하게 후보 id 전체로 넓혀 두 테이블을 함께 조회한다).
+ * 조회 실패 시 `null`을 반환한다 — fail-closed(보상 오지급 방지).
+ */
+async function getOwnedConditionBadgeIds(
+  supabase: ServiceClient,
+  userId: string,
+  candidateBadgeIds: string[]
+): Promise<Set<string> | null> {
+  if (candidateBadgeIds.length === 0) return new Set()
+
+  const [{ data: activityRaw, error: activityError }, { data: checkinRaw, error: checkinError }] =
+    await Promise.all([
+      supabase.from('user_activity_badges').select('badge_id').eq('user_id', userId).in('badge_id', candidateBadgeIds),
+      supabase.from('user_checkin_badge_earns').select('badge_id').eq('user_id', userId).in('badge_id', candidateBadgeIds),
+    ])
+
+  if (activityError || checkinError) {
+    console.error('[combineItems] 보유 조건 배지 조회 실패 — 매칭을 보류합니다:', activityError ?? checkinError)
+    return null
+  }
+
+  return new Set<string>([
     ...((activityRaw ?? []) as { badge_id: string }[]).map((r) => r.badge_id),
     ...((checkinRaw ?? []) as { badge_id: string }[]).map((r) => r.badge_id),
   ])
-  return requiredBadgeIds.every((id) => owned.has(id))
 }
 
 async function grantBadge(

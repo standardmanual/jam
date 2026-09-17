@@ -24,7 +24,8 @@ interface PublicHint {
 interface Props {
   items: InventoryItemWithBadge[]
   hints: PublicHint[]
-  publicRecipes: CombinationRecipeRow[]
+  /** 티켓 20260917_1427: 슬롯 기반 재설계로 "재료 개수"는 레시피의 전체 슬롯 개수다 */
+  publicRecipes: (CombinationRecipeRow & { slotCount: number })[]
 }
 
 // DS v2 희귀도 링 — 5-슬롯 미리보기 영역 전용
@@ -239,7 +240,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
           <div className="flex flex-col gap-[var(--spacing-8)]">
             {publicRecipes.map((r) => (
               <Card tone="inverse" key={r.id} className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">
-                {t(d.combine.recipeLine, { count: r.ingredient_badge_ids.length })}
+                {t(d.combine.recipeLine, { count: r.slotCount })}
               </Card>
             ))}
           </div>

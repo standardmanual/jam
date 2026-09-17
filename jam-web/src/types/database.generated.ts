@@ -453,9 +453,7 @@ export type Database = {
           created_at: string
           hint_text: string | null
           id: string
-          ingredient_badge_ids: string[]
           is_public: boolean
-          required_badge_ids: string[]
           reward_badge_ids: string[]
           reward_points: number
         }
@@ -463,9 +461,7 @@ export type Database = {
           created_at?: string
           hint_text?: string | null
           id?: string
-          ingredient_badge_ids: string[]
           is_public?: boolean
-          required_badge_ids?: string[]
           reward_badge_ids?: string[]
           reward_points?: number
         }
@@ -473,13 +469,43 @@ export type Database = {
           created_at?: string
           hint_text?: string | null
           id?: string
-          ingredient_badge_ids?: string[]
           is_public?: boolean
-          required_badge_ids?: string[]
           reward_badge_ids?: string[]
           reward_points?: number
         }
         Relationships: []
+      }
+      combination_recipe_slots: {
+        Row: {
+          allowed_badge_ids: string[]
+          badge_type: string
+          id: string
+          recipe_id: string
+          slot_order: number
+        }
+        Insert: {
+          allowed_badge_ids: string[]
+          badge_type: string
+          id?: string
+          recipe_id: string
+          slot_order: number
+        }
+        Update: {
+          allowed_badge_ids?: string[]
+          badge_type?: string
+          id?: string
+          recipe_id?: string
+          slot_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "combination_recipe_slots_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "combination_recipes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       combine_policy: {
         Row: {

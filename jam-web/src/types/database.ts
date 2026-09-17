@@ -512,10 +512,6 @@ export interface TradeRow {
 
 export interface CombinationRecipeRow {
   id: string
-  /** 소각되는 재료 — 아이템 배지만. 유저 투입 집합과 순서 무관 완전 일치해야 매칭된다 */
-  ingredient_badge_ids: string[]
-  /** 소각되지 않는 보유 조건 — 액티비티·체크인 배지. 전부 보유해야 매칭된다 (마이그레이션 153) */
-  required_badge_ids: string[]
   /** 매칭 성공 시 확정 지급하는 잼 포인트 — 0이면 미지급 */
   reward_points: number
   /** 매칭 성공 시 확정 지급하는 배지 — 무작위 없이 전부 지급 */
@@ -523,6 +519,23 @@ export interface CombinationRecipeRow {
   hint_text: string | null
   is_public: boolean
   created_at: string
+}
+
+/** 슬롯 단위 배지 타입 — 슬롯 안 후보는 전부 같은 타입이어야 한다 (마이그레이션 174) */
+export type CombineSlotBadgeType = 'item' | 'activity' | 'checkin'
+
+/**
+ * 믹스 레시피 슬롯 (마이그레이션 174, 티켓 20260917_1427) — 슬롯 하나에 배지 후보(OR)
+ * 여러 개를 지정한다. 유저는 슬롯당 후보 중 하나만 채우면 그 슬롯이 충족되고, 전체
+ * 슬롯이 충족되면 레시피 매칭 성공이다. `badge_type`이 'item'이면 매칭 시 항상 소각,
+ * 'activity'|'checkin'이면 항상 비소각(보유 여부만 확인).
+ */
+export interface CombinationRecipeSlotRow {
+  id: string
+  recipe_id: string
+  slot_order: number
+  badge_type: CombineSlotBadgeType
+  allowed_badge_ids: string[]
 }
 
 /**
@@ -1811,6 +1824,12 @@ export interface Database {
         Row: CombinationRecipeRow
         Insert: Omit<CombinationRecipeRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
         Update: Partial<Omit<CombinationRecipeRow, 'id'>>
+        Relationships: []
+      }
+      combination_recipe_slots: {
+        Row: CombinationRecipeSlotRow
+        Insert: Omit<CombinationRecipeSlotRow, 'id'> & { id?: string }
+        Update: Partial<Omit<CombinationRecipeSlotRow, 'id'>>
         Relationships: []
       }
       combine_policy: {
