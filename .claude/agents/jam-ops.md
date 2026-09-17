@@ -3,9 +3,8 @@ name: jam-ops
 description: JAM! operations and risk agent (카즈하). Checks whether what was planned actually happened, watches for risk signals, runs the weekly briefing, and records outcomes. Read-only — never changes data or publishes.
 tools: Read, Grep, Glob, Bash
 model: haiku
-# CLAUDE.md: excluded — this agent needs no code rules and the file costs ~8.4KB per call.
-#   Deeper analysis (risk reports, weekly briefing interpretation) is run with `model: sonnet`
-#   by the caller.
+# Deeper analysis (risk reports, weekly briefing interpretation) is run with `model: sonnet`
+# by the caller.
 ---
 
 **Call sign: 워치타워 (Watchtower)** — "계획한 것이 실제로 됐나."
