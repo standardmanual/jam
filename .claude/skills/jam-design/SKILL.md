@@ -73,11 +73,22 @@ MODULAR 변경 → 컴포넌트 반영 → Story 작성/수정 → Storybook 확
               서비스 전용으로 만든 UI가 반복 사용되면 ─┘ MODULAR 승격 검토
 ```
 
-`/jam-work`의 progressive-reviewer가 "이 서비스 전용 UI는 MODULAR 승격 가치가 있다"를 제안하므로,
-역방향 흐름은 리뷰 단계에서 자동으로 포착된다.
+`/jam-work` 파이프라인의 **채원② 사후 리뷰**(`jam-designer` 모드 ②)가 "이 서비스 전용 UI는
+MODULAR 승격 가치가 있다"를 `promotionCandidates`로 제안하므로, 역방향 흐름은 리뷰 단계에서
+자동으로 포착된다.
+
+## 5. 이 문서를 쓰는 주체
+
+탐색과 판정은 **채원(`jam-designer`)** 이 한다. 오케스트레이터가 직접 MODULAR을 뒤지지 않는다.
+
+| 모드 | 언제 | 이 문서의 어느 절 |
+|---|---|---|
+| ① 사전 판정 | `ui`·`ds` 구현 전 | 1·2절 (탐색 순서, 의사결정 트리) |
+| ② 사후 리뷰 | 게이트 통과 후 | `references/ui-review-checklist.md` |
 
 ## 참고 문서
 
+- `.claude/skills/jam-design/references/ui-review-checklist.md` — 채원② 화면 리뷰 점검표
 - `jam-web/design-system/readme.md` — 파운데이션·폰트 설정·색인
 - `jam-web/docs/storybook/` — 아키텍처(03), 접근성 감사(09), 컴포넌트 후보(08), 빌드 리포트(12)
 - `Service Plan/Tickets/Moduler/` — MODULAR 개선 티켓 (DS-NNN)
