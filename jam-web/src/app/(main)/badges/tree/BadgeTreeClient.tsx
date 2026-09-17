@@ -333,7 +333,7 @@ export default function BadgeTreeClient({
       : [...railCards.slice(0, gridInsertIndex), gridSection, ...railCards.slice(gridInsertIndex)]
 
   return (
-    <div className="min-h-full bg-surface text-text">
+    <div className="min-h-full text-text">
       {/* TopNav title은 "어디로 돌아가는가"를 뜻하는 back-label (UX_WRITING_GUIDELINE.md §6) */}
       <TopNav
         title={d.badges.title}
