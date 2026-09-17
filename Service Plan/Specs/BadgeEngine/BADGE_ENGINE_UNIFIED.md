@@ -1340,16 +1340,22 @@ POST /api/admin/badges/reevaluate-all
   다른 개체에 재부여될 수 있으나, `custody_events`(아래 §3.5-1) 이력으로 항상 구분 가능하다.
 - 유저 드랍은 기한 개념이 없다 — 회수 액션도, 만료도 없이 픽업될 때까지 무기한 대기한다
   (`poi_drops.expires_at`은 유저 드랍이든 시스템 드랍이든 항상 NULL).
-- **믹스(`Consume`) 판정은 두 갈래다** (2026-09-10, 티켓 20260910_1408 — 상세 정책은
+- **믹스(`Consume`) 판정은 슬롯 기반 OR 매칭이다** (2026-09-17, 티켓 20260917_1427이
+  2026-09-10 티켓 20260910_1408의 "정확 집합 일치" 구조를 대체 — 상세 정책은
   `Specs/Content/COMBINE_RECIPES.md`가 단일 출처):
-  ① 투입한 아이템 배지 집합이 레시피 `ingredient_badge_ids`와 순서 무관 완전 일치하고
-  `required_badge_ids`(액티비티·체크인 배지, 소각되지 않는 보유 조건)를 전부 보유하면
-  레시피의 `reward_points`·`reward_badge_ids`를 **확률 없이 전부 확정 지급**한다.
-  보상 배지는 아이템 배지만 지정할 수 있다(지급 경로가 `inventory_items` 개체 생성뿐이다).
-  ② 매칭되는 레시피가 없으면 배지를 전혀 지급하지 않고 `combine_policy.fail_reward_points`
-  (기본 10) 고정 포인트만 준다. 어느 갈래든 투입 아이템 개체는 항상 소각되며, 실패는
-  `user_combine_fail_logs`에 1건 적재된다. 확률형 경로(트라이브 다양성 티어)와 피티는 폐기됐다
-  — 배지 지급은 어드민이 등록한 레시피를 통해서만 일어난다.
+  레시피는 `combination_recipe_slots`(슬롯 2~10개)로 구성되고, 슬롯 하나는 `badge_type`
+  (item/activity/checkin 중 하나로 고정)과 `allowed_badge_ids`(같은 타입 배지 후보, OR)를
+  가진다. **유저가 레시피를 먼저 선택**하고(전체 레시피 스캔은 하지 않음) 슬롯마다 후보 중
+  배지 하나씩 채워 시도한다.
+  ① 전체 슬롯이 충족되면(아이템 슬롯은 투입한 배지가 그 슬롯의 `allowed_badge_ids`에
+  속함, 조건 슬롯은 `allowed_badge_ids` 중 하나를 보유) 레시피의 `reward_points`·
+  `reward_badge_ids`를 **확률 없이 전부 확정 지급**한다. 보상 배지는 아이템 배지만
+  지정할 수 있다(지급 경로가 `inventory_items` 개체 생성뿐이다).
+  ② 슬롯 중 하나라도 미충족이면 배지를 전혀 지급하지 않고 `combine_policy.
+  fail_reward_points`(기본 10) 고정 포인트만 준다. 어느 갈래든 아이템 슬롯에 대응된 개체는
+  항상 소각되고 액티비티·체크인 슬롯은 소각되지 않으며, 실패는 `user_combine_fail_logs`에
+  1건 적재된다. 비공개 레시피 개념은 2026-09-17 스펙 아웃됐다 — 모든 레시피는 공개고
+  유저는 노출된 목록에서 직접 선택한다.
 - **인벤토리 슬롯 처리** (2026-09-12, 티켓 20260912_2101): 재료 소각 직후 그 개수만큼
   `inventory.used_slots`를 반환한다. 보상 배지(①의 `reward_badge_ids`)를 지급하는
   시점에 슬롯이 가득 차 있으면(`used_slots >= max_slots`) — 소각한 재료 수보다 보상 배지

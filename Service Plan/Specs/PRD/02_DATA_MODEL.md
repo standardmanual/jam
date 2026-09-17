@@ -35,8 +35,8 @@
                 users ─1:1─ user_drop_state (드랍 모멘텀/피티 상태)
                 drop_policy (싱글톤 파라미터)
 
-[조합]          combination_recipes (재료 2~10개 → 결과 배지)
-                combine_policy (싱글톤) / user_combine_state (유저별 피티)
+[조합]          combination_recipes (보상만) + combination_recipe_slots (슬롯 2~10개, OR 후보)
+                combine_policy (싱글톤 — 실패 시 고정 포인트)
 
 [미션]          missions ─1:N─ user_mission_participations (참가+진행도)
                           └─1:N─ user_mission_completions   (완료 기록)
@@ -391,11 +391,18 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 
 ## 7. 조합 (combine) — 신규 도메인
 
-### combination_recipes
-`ingredient_badge_ids[]`(2~3개 → **2~10개로 확장**), `result_badge_id`(nullable — 배지 삭제돼도 레시피 보존), `success_rate`, `hint_text`, `is_public`, `required_activity_badge_id`(소모되지 않는 필수 보유 조건).
+### combination_recipes (티켓 20260917_1427 — 슬롯 구조로 재설계)
+`reward_points`, `reward_badge_ids[]`(아이템 배지만). 재료 배열 컬럼(`ingredient_badge_ids`·
+`required_badge_ids`)과 비공개 레시피 컬럼(`is_public`·`hint_text`)은 제거됐다 — 모든 레시피는
+공개고, 재료는 아래 `combination_recipe_slots`로 옮겨졌다.
 
-### combine_policy / user_combine_state (신규)
-트라이브 다양성 티어별 확률 정책(싱글톤) + 유저별 연속 실패 피티 카운터.
+### combination_recipe_slots (신규, 티켓 20260917_1427)
+레시피당 슬롯 2~10개(최소 1개는 아이템 타입). `slot_order`, `badge_type`(item/activity/checkin,
+슬롯 단위로 고정), `allowed_badge_ids[]`(같은 타입 배지 후보, OR — 유저는 슬롯당 하나만 채운다).
+
+### combine_policy (싱글톤)
+`fail_reward_points`(미매칭 시 지급할 고정 포인트) 하나만 남아 있다. 트라이브 다양성 티어
+확률 정책·피티 카운터(`user_combine_state`)는 2026-09-10 폐기됐다.
 
 > 조합 시스템은 v1(2026-07 초 계획) → v2(2026-07-27 재설계, "정석 레시피/재료 정확 매칭")로 갈아엎어짐. 현재 상세는 [Specs/Content/COMBINE_RECIPES.md](COMBINE_RECIPES.md) 참고.
 
