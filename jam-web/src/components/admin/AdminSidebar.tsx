@@ -41,12 +41,19 @@ import { DASHBOARD_ITEM, NAV_GROUPS, activeNavGroupId, isNavItemActive, mostSpec
  */
 export function AdminSidebar() {
   const pathname = usePathname()
-  const { state, isMobile } = useSidebar()
+  const { state, isMobile, setOpenMobile } = useSidebar()
   const isIconMode = !isMobile && state === 'collapsed'
   const defaultOpenGroup = activeNavGroupId(pathname)
   // 겹치는 href(예: /admin/item-badges vs /admin/item-badges/orphaned)에서 항목 하나만
   // 활성으로 표시하기 위해 한 번만 계산 — adminNavItems.ts의 mostSpecificActiveItem 참고.
   const activeItem = mostSpecificActiveItem(pathname)
+  // 모바일에서 메뉴 항목을 눌러 페이지를 이동하면 드로어(Sheet)를 닫는다. 닫지 않으면
+  // Sheet가 열린 채로 남아 이동한 페이지를 가리고, Radix Dialog의 스크롤 잠금
+  // (`document.body.style.pointerEvents = 'none'`)도 풀리지 않아 이후 토글 버튼까지
+  // 먹통이 된다(20260917_1833 — 실측 재현으로 확인). 데스크탑에서는 아무 영향 없음.
+  const handleNavClick = () => {
+    if (isMobile) setOpenMobile(false)
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -75,9 +82,9 @@ export function AdminSidebar() {
                   isActive={isNavItemActive(pathname, DASHBOARD_ITEM)}
                   tooltip={DASHBOARD_ITEM.label}
                 >
-                  <Link href={DASHBOARD_ITEM.href}>
+                  <Link href={DASHBOARD_ITEM.href} onClick={handleNavClick}>
                     <DASHBOARD_ITEM.icon />
-                    <span>{DASHBOARD_ITEM.label}</span>
+                    <span className="group-data-[collapsible=icon]:hidden">{DASHBOARD_ITEM.label}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -101,9 +108,9 @@ export function AdminSidebar() {
                         isActive={activeItem?.href === item.href}
                         tooltip={item.label}
                       >
-                        <Link href={item.href}>
+                        <Link href={item.href} onClick={handleNavClick}>
                           <item.icon />
-                          <span>{item.label}</span>
+                          <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -134,9 +141,9 @@ export function AdminSidebar() {
                           isActive={activeItem?.href === item.href}
                           tooltip={item.label}
                         >
-                          <Link href={item.href}>
+                          <Link href={item.href} onClick={handleNavClick}>
                             <item.icon />
-                            <span>{item.label}</span>
+                            <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
