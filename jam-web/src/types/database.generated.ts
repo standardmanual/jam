@@ -1760,6 +1760,38 @@ export type Database = {
           },
         ]
       }
+      strava_sync_failures: {
+        Row: {
+          error_message: string | null
+          failure_type: string
+          id: string
+          occurred_at: string
+          user_id: string
+        }
+        Insert: {
+          error_message?: string | null
+          failure_type: string
+          id?: string
+          occurred_at?: string
+          user_id: string
+        }
+        Update: {
+          error_message?: string | null
+          failure_type?: string
+          id?: string
+          occurred_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strava_sync_failures_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       theme_presets: {
         Row: {
           created_at: string

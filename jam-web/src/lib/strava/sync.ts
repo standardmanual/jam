@@ -26,6 +26,7 @@ import { logEngineDecision } from '@/lib/engine-log'
 import { getAbusingPolicy, DEFAULT_POLICY } from '@/lib/abusing/policy'
 import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
+import { classifyStravaSyncFailure, recordStravaSyncFailure } from '@/lib/strava/syncFailures'
 // JAM! 카테고리 — 서비스 사용량 배지(티켓 20260910_1557). 카운터 증가·판정 로직은
 // recordDailySyncAndEvaluate() 한 곳(usageBadges.ts)에 있다 — 이 파일은 synced>0 게이트만 쥔다.
 import { recordDailySyncAndEvaluate, evaluateCheckinUsageBadges, type UsageBadgeEarned } from '@/lib/badge-engine/usageBadges'
@@ -1158,6 +1159,12 @@ export async function syncStravaActivities(
         groupKey: dailyGroupKey('strava_disconnected'),
         mode: 'once',
       })
+      await recordStravaSyncFailure(
+        supabase,
+        userId,
+        'token_refresh_failed',
+        err instanceof Error ? err.message : String(err)
+      )
       throw err
     }
     accessToken = refreshed.access_token
@@ -1269,6 +1276,12 @@ export async function syncStravaActivities(
     }
   } catch (err) {
     console.error(`[syncStravaActivities] 처리 중 오류 — last_synced_at 롤백 (userId: ${userId}):`, err)
+    await recordStravaSyncFailure(
+      supabase,
+      userId,
+      classifyStravaSyncFailure(err),
+      err instanceof Error ? err.message : String(err)
+    )
     const { error: rollbackError } = await supabase
       .from('strava_connections')
       .update({ last_synced_at: connection.last_synced_at })
