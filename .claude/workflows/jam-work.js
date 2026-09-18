@@ -136,10 +136,11 @@ const KOREAN_WRITING_TYPES = ['copy', 'ui', 'content']
 const devT0 = tokensSpent()
 const devResult = await agent(
   `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n요청: ${userRequest}\n` +
-  `\n배정된 워크트리는 호출 시점의 메인 트리 기준으로 만들어져 최신 origin/staging보다 뒤처져 ` +
-  `있을 수 있다(티켓 20260918_1148). 어떤 파일을 읽거나 판단을 내리기 전에 반드시 ` +
-  `\`git fetch origin staging\`을 먼저 실행하고, 정의의 5번 규칙대로 \`origin/staging\`에서 ` +
-  `분기한 뒤 작업하라 — 워크트리의 기존 HEAD를 그대로 믿지 마라.\n` +
+  `\n배정된 워크트리는 기본 브랜치(main) 기준으로 만들어져 staging에만 있는 변경이 빠져 있다` +
+  `(티켓 20260918_1158 중단 사례: main에 없는 채원 정의를 "없다"고 오판). 티켓을 포함해 어떤 ` +
+  `파일도 읽기 전에, **첫 명령으로** \`git fetch origin staging && git checkout --detach ` +
+  `origin/staging\`을 실행하라. 그 전에 본 파일 내용은 무효다. 브랜치는 그 뒤 정의의 5번 ` +
+  `규칙대로 만든다.\n` +
   `${designDecision ? `\n채원 사전 판정(이대로 따를 것):\n${designDecision}\n` : ''}` +
   `${retryReason ? `\n이전 리뷰 재작업 사유 — 반드시 해결할 것:\n${retryReason}\n` +
     `재시도이므로 review 브랜치를 체크아웃하기 전에 직전 시도가 남긴 낡은 워크트리가 같은 ` +

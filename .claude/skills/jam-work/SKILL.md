@@ -296,7 +296,9 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   (`subagent_tokens`)과 소요 시간(`duration_ms`)이 들어 있으므로 카리나는 이 값을 기록한다
   (2026-09-18 1148 실행에서 확인: 2명·170,729토큰·528초).
 - **워크트리 최신성** (티켓 20260918_1148): `isolation: 'worktree'`로 만들어지는 격리 워크트리는
-  호출 시점의 메인 트리 기준으로 생성되므로 그 순간 `origin/staging`보다 뒤처져 있을 수 있다.
+  **기본 브랜치(main) 기준으로 생성된다**(2026-09-18 1158 중단 사례로 확인: 워크트리가 main과
+  같은 옛 정의를 담고 있었다). staging에만 있는 변경은 보이지 않으므로, 아현의 **첫 명령**을
+  `git fetch origin staging && git checkout --detach origin/staging`으로 못 박았다.
   jam-developer 정의의 5번 규칙(`git fetch origin staging && git checkout -B ... origin/staging`)이
   아현에게는 이미 있었으나, conservative-reviewer 정의에는 같은 지시가 없어 민지가 뒤처진
   `origin/staging` 참조로 diff를 재는 사례가 있었다. `jam-work.js`가 아현·민지 양쪽 프롬프트에
