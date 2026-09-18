@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { getAdminUser } from '@/lib/admin/auth'
+import { requireAdminRead } from '@/lib/admin/auth'
 
 export async function GET(req: NextRequest) {
-  const admin = await getAdminUser()
-  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const authError = await requireAdminRead(req)
+  if (authError) return authError
 
   const q = req.nextUrl.searchParams.get('q') ?? ''
   const supabase = createServiceClient()
