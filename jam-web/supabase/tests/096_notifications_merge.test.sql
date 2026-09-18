@@ -1,5 +1,5 @@
 -- 096_notifications.sql 적용 후 검증 스크립트 — 티켓 20260824_019
--- 스펙: Specs/PRD/Notification/DATA_MODEL.md §4 · §4-1
+-- 스펙: docs/specs/prd/notification/DATA_MODEL.md §4 · §4-1
 --
 -- ⚠️ 이 파일은 **마이그레이션이 아니다.** supabase/migrations/ 에 두지 말 것.
 --    096을 적용한 뒤 한 번 돌려 병합 규칙이 실제로 성립하는지 확인하는 용도다.

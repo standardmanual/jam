@@ -12,7 +12,7 @@ closed: 2026-08-30
 ## 배경 / 문제 정의
 
 티켓 [20260825_031](20260825_031_BadgeEngine_condition-json-데이터계약-검증-도입.md) 게이트·
-개선 리뷰 중 발견. `Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md`는 `condition_json`의
+개선 리뷰 중 발견. `docs/specs/badge-engine/CONDITION_JSON_SPEC.md`는 `condition_json`의
 "단일 출처(source of truth)"를 표방하지만, 실제 코드(`src/types/database.ts`의
 `BadgeCondition`, `src/lib/badge-engine/condition-schema.ts`의 `ALL_CONDITION_KEYS`)에는
 있는데 문서 필드 표에는 없는 필드가 있다:
@@ -61,7 +61,7 @@ closed: 2026-08-30
 
 ### 변경된 파일
 ```
-Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
+docs/specs/badge-engine/CONDITION_JSON_SPEC.md
 ```
 
 ### 테스트 결과

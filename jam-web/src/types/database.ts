@@ -1541,7 +1541,7 @@ export interface EngineDecisionLogRow {
 
 // =========================================
 // 알림(소식) — 마이그레이션 096 / 티켓 20260824_019
-// Specs/PRD/Notification/PRD.md · DATA_MODEL.md
+// docs/specs/prd/notification/PRD.md · DATA_MODEL.md
 // =========================================
 
 /**

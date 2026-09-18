@@ -164,7 +164,7 @@ jam-web/src/app/admin/badges/BadgeForm.tsx
 jam-web/src/components/admin/BadgeMultiSearchSelect.tsx
 jam-web/src/components/admin/badges/BadgeCard.tsx
 jam-web/src/components/admin/badges/BadgeDetail.tsx
-Service Plan/Tickets/20260827_011_...md → 20260827_012_...md (rename)
+docs/tickets/20260827_011_...md → 20260827_012_...md (rename)
 ```
 
 ### 테스트 결과
@@ -178,7 +178,7 @@ Service Plan/Tickets/20260827_011_...md → 20260827_012_...md (rename)
       머지 전 직접 수행(아래 "승인 처리" 참고).
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 용어 일관성: 어드민 내부 화면이라 "POI"·"레시피" 등 기존 어드민 표기를 그대로 유지
       (사용자 노출 화면이 아니므로 "지점" 등 유저向 고정 용어 표로 치환하지 않음 — 기존

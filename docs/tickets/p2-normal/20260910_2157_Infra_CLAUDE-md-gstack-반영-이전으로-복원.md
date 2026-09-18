@@ -147,7 +147,7 @@ gstack과 무관한 변경을 함께 포함하고 있는지 각각 diff로 확�
 ### 변경된 파일
 ```
 CLAUDE.md                                                                    (gstack 절 2개 제거)
-Service Plan/Tickets/P2-일반/20260910_2157_Infra_CLAUDE-md-gstack-반영-이전으로-복원.md  (신규 — 이 파일)
+docs/tickets/p2-normal/20260910_2157_Infra_CLAUDE-md-gstack-반영-이전으로-복원.md  (신규 — 이 파일)
 ~/.claude/skills/gstack/                                                     (삭제 — 저장소 밖, git 미추적)
 ~/.claude/skills/_gstack-command/                                           (삭제 — 저장소 밖, git 미추적)
 ~/.claude/skills/gstack-upgrade/                                            (삭제 — 저장소 밖, git 미추적)

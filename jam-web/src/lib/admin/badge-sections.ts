@@ -12,7 +12,7 @@ import { formatConditionChipEntries } from '@/lib/badge-engine/conditionRegistry
 
 // ── 분류 ─────────────────────────────────────────────────────────────────
 
-/** 분류 태그 순서 — 목업(`Assets/20260911_badge-form-renewal-prototype.html`) 순서를 따른다 */
+/** 분류 태그 순서 — 목업(`jam-doc/assets/prototypes/20260911_badge-form-renewal-prototype.html`) 순서를 따른다 */
 export const ADMIN_ACTIVITY_TYPES: readonly ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
 
 /**

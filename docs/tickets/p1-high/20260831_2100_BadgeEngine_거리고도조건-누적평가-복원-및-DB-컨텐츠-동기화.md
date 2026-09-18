@@ -266,8 +266,8 @@ jam-web/src/app/admin/badges/__tests__/conditionFormFields.test.ts
 jam-web/supabase/migrations/117_condition_json_same_activity_flag.sql (신규, 미실행)
 jam-web/supabase/migrations/118_reapply_walking_badges_v4.sql (신규, 미실행)
 jam-web/supabase/migrations/119_sync_activity_badge_conditions_to_v4.sql (신규, 미실행)
-Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md
-Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
+docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
+docs/specs/badge-engine/CONDITION_JSON_SPEC.md
 ```
 
 ### 테스트 결과
@@ -353,9 +353,9 @@ Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
 ```
 jam-web/supabase/migrations/120_same_activity_flag_t23.sql (신규, 미실행)
 jam-web/src/lib/badge-engine/__tests__/cumulative-conditions.test.ts
-Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md
-Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
-Service Plan/Tickets/20260831_2100_BadgeEngine_거리고도조건-누적평가-복원-및-DB-컨텐츠-동기화.md (본 파일 — A-3·요구사항·계획·잔여이슈 갱신)
+docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
+docs/specs/badge-engine/CONDITION_JSON_SPEC.md
+docs/tickets/20260831_2100_BadgeEngine_거리고도조건-누적평가-복원-및-DB-컨텐츠-동기화.md (본 파일 — A-3·요구사항·계획·잔여이슈 갱신)
 ```
 
 ### 테스트 결과

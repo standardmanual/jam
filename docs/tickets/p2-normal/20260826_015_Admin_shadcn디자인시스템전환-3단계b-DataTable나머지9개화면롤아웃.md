@@ -14,7 +14,7 @@ closed: 2026-08-26
 3단계a(`20260826_014`, CLOSED)에서 공용 Data Table 컴포넌트(`src/components/admin/
 data-table/`)를 구축하고 배지 목록 화면에서 검증을 마쳤다. 이 티켓은 그 컴포넌트를
 나머지 9개 화면에 롤아웃한다 — **새 아키텍처 설계는 필요 없다, 이미 검증된 패턴을
-그대로 재사용할 것.** 시작 전 `Service Plan/Specs/PRD/AdminUI/PHASES.md`의 "Phase 3" 절
+그대로 재사용할 것.** 시작 전 `docs/specs/prd/admin-ui/PHASES.md`의 "Phase 3" 절
 (3단계a 구현 노트 포함)과 `20260826_014` 티켓 전체를 반드시 먼저 읽을 것 — TanStack
 Table v9 API(v8 아님), Radix Portal 스코프 함정, 필터가 모바일 카드뷰와 공용이라
 `DataTableFacetedFilter`가 `column`이 아니라 값을 직접 받는 이유 등이 전부 정리돼 있다.

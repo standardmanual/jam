@@ -22,7 +22,7 @@ closed:
   `.claude/workflows/jam-work.js:288`, `.claude/workflows/jam-work.test.mjs`,
   `.claude/agents/jam-developer.md`, `.claude/agents/jam-designer.md`, `CLAUDE.md`,
   `.claude/skills/jam-work/SKILL.md`, `.claude/skills/jam-work/references/team-composition.md`,
-  `Service Plan/Specs/SLOP_DICTIONARY.md`, `Service Plan/Specs/UX_WRITING_GUIDELINE.md`,
+  `docs/specs/SLOP_DICTIONARY.md`, `docs/specs/UX_WRITING_GUIDELINE.md`,
   `docs/agents/issue-tracker.md`
 
 ## 배경 / 문제 정의
@@ -47,15 +47,15 @@ closed:
   `jam-reviewer`로 교체 (라벨이 바뀌었으므로 목(mock) 응답도 새 라벨을 봐야 매칭된다)
 
 ### 문서 관점
-- 현재 유효한 문서(Specs·SKILL·에이전트 정의·CLAUDE.md)만 교체하고, `Service Plan/Tickets/`의
+- 현재 유효한 문서(Specs·SKILL·에이전트 정의·CLAUDE.md)만 교체하고, `docs/tickets/`의
   과거 완료 티켓 본문은 작업 이력이므로 그대로 둔다 — 폴더 수명주기 규칙(`Tickets/` = 신규 생성,
   기존 파일 수정 금지에 준함).
-- `docs/agents/Workflow/`(2026-09-17 "구상 단계, 아직 반영 안 함" 표기가 있는 계획 초안 폴더)도
+- `docs/agents/workflow/`(2026-09-17 "구상 단계, 아직 반영 안 함" 표기가 있는 계획 초안 폴더)도
   당시 논의 기록이므로 건드리지 않는다.
 
 ## 완료 조건
 - `grep -rn "conservative-reviewer" .claude/agents .claude/skills .claude/workflows CLAUDE.md
-  "Service Plan/Specs" docs/agents/issue-tracker.md`가 빈 결과를 반환한다.
+  "docs/specs" docs/agents/issue-tracker.md`가 빈 결과를 반환한다.
 - `node --test .claude/workflows/jam-work.test.mjs`가 전부 통과한다.
 - `.claude/agents/jam-reviewer.md`가 존재하고 frontmatter `name: jam-reviewer`다.
 
@@ -68,7 +68,7 @@ closed:
 바꿔 파이프라인이 끊기지 않게 했다. 현재 유효한 문서 8곳(`CLAUDE.md`, `jam-developer.md`,
 `jam-designer.md`, `SKILL.md`, `team-composition.md`, `SLOP_DICTIONARY.md`,
 `UX_WRITING_GUIDELINE.md`, `issue-tracker.md`)의 참조도 함께 교체했다. 과거 완료 티켓과
-`docs/agents/Workflow/`(2026-09-17 구상 단계 기록)는 작업 이력이라 손대지 않았다.
+`docs/agents/workflow/`(2026-09-17 구상 단계 기록)는 작업 이력이라 손대지 않았다.
 
 ### 변경된 파일
 ```
@@ -80,11 +80,11 @@ closed:
 CLAUDE.md
 .claude/skills/jam-work/SKILL.md
 .claude/skills/jam-work/references/team-composition.md
-Service Plan/Specs/SLOP_DICTIONARY.md
-Service Plan/Specs/UX_WRITING_GUIDELINE.md
+docs/specs/SLOP_DICTIONARY.md
+docs/specs/UX_WRITING_GUIDELINE.md
 docs/agents/issue-tracker.md
 ```
 
 ### 테스트 결과
-- [x] `grep -rn "conservative-reviewer" .claude/agents .claude/skills .claude/workflows CLAUDE.md "Service Plan/Specs" docs/agents/issue-tracker.md` — 빈 결과
+- [x] `grep -rn "conservative-reviewer" .claude/agents .claude/skills .claude/workflows CLAUDE.md "docs/specs" docs/agents/issue-tracker.md` — 빈 결과
 - [x] `node --test .claude/workflows/jam-work.test.mjs` — 5개 테스트 전체 통과

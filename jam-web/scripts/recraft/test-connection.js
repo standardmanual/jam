@@ -3,7 +3,7 @@
  * Recraft API 연결 테스트 (2026-08-18)
  *
  * GET /v1/users/me 호출로 API 키 유효성과 크레딧 잔액을 확인한다.
- * 배지 이미지 대량 생성 워크플로우(Service Plan/Specs/Content/IMAGE_PRODUCTION/) 착수 전
+ * 배지 이미지 대량 생성 워크플로우(jam-doc/assets/image-production/) 착수 전
  * 연결 확인용.
  *
  * 필요 환경변수 (.env.local): RECRAFT_API_KEY

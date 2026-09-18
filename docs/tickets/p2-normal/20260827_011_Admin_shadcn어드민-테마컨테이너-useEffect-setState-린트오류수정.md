@@ -127,7 +127,7 @@ src/components/admin/badges/BadgeActiveToggleButton.tsx
 - [x] `setThemeContainer` 참조가 코드베이스에 더 이상 남아 있지 않음을 grep으로 확인
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 - [x] 해당 없음 (사용자 노출 텍스트 변경 없음, 순수 리팩터링)
 
 ### 배포 정보

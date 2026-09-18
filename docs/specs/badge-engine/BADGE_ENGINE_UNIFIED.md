@@ -166,7 +166,7 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
 - 알려진 잔여 이슈: `utils.ts`의 `ACTIVITY_TYPE_LABELS`가 배지 메뉴 전용이 아니라
   `/admin/activity-badge-image`와 공유하는 맵이라, JAM! 라벨 추가가 그 화면의 종목 검색
   드롭다운에도 새어 들어간다(검색 API가 이미 `admin_category='jam'`을 제외해 선택해도
-  결과는 0건 — 기능 오작동은 없음). 정리는 후속 티켓([20260910_2316](../../Tickets/P3-낮음/20260910_2316_UI_ACTIVITY_TYPE_LABELS공유모듈-JAM라벨오염.md)) 참고.
+  결과는 0건 — 기능 오작동은 없음). 정리는 후속 티켓([20260910_2316](../../tickets/p3-low/20260910_2316_UI_ACTIVITY_TYPE_LABELS공유모듈-JAM라벨오염.md)) 참고.
 
 **발급 시 알림함(`/notifications`) 반영(2026-09-10, 티켓 20260910_2258)** — 새
 `NotificationType`을 만들지 않고 기존 `activity_recap` 결산을 그대로 재사용한다.
@@ -205,7 +205,7 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
   게이트는 그대로 유지. 호출 경로는 `src/lib/strava/sync.ts`의 `processFetchedActivities`
   최상단 이른 반환(`rawActivities.length === 0`)과 `activitiesFiltered.length > 0` 삼항
   게이트 두 곳 — 배지 평가에 한해서만 무조건 호출로 바뀌었다.
-- **수동 입력 활동은 현재 걸러지지 않는다** ⚠️ *(2026-09-05 실측 정정)*: 2026-08-10에 Strava `manual=true` 활동을 `getActivities()` 반환 단계에서 제외하는 필터를 넣었으나, 정상 활동까지 누락되는 버그가 나 커밋 `86380c55`("revert: Strava manual 필터 제거")로 되돌려졌다. **`src/lib/strava/{api,sync}.ts`에 `manual` 참조가 0건이며**, 수동 입력 활동은 지금도 두 엔진 평가 대상에 들어오고 `strava_activities`에도 기록된다. 재도입 여부는 미결이다 — v5 카탈로그(티켓 20260905_0035)가 «수동 입력은 걸러진다»를 어뷰징 전제로 삼으면 그대로 어긋난다. `device_name`(기록 기기) 기반의 "조작된 파일 업로드" 필터도 상세 API 추가 호출이 필요해 미구현이다 — [Tickets/20260810_001](../../Tickets/20260810_001_Service_Strava-수동입력-활동-동기화-제외.md) 참고.
+- **수동 입력 활동은 현재 걸러지지 않는다** ⚠️ *(2026-09-05 실측 정정)*: 2026-08-10에 Strava `manual=true` 활동을 `getActivities()` 반환 단계에서 제외하는 필터를 넣었으나, 정상 활동까지 누락되는 버그가 나 커밋 `86380c55`("revert: Strava manual 필터 제거")로 되돌려졌다. **`src/lib/strava/{api,sync}.ts`에 `manual` 참조가 0건이며**, 수동 입력 활동은 지금도 두 엔진 평가 대상에 들어오고 `strava_activities`에도 기록된다. 재도입 여부는 미결이다 — v5 카탈로그(티켓 20260905_0035)가 «수동 입력은 걸러진다»를 어뷰징 전제로 삼으면 그대로 어긋난다. `device_name`(기록 기기) 기반의 "조작된 파일 업로드" 필터도 상세 API 추가 호출이 필요해 미구현이다 — [docs/tickets/20260810_001](../../tickets/20260810_001_Service_Strava-수동입력-활동-동기화-제외.md) 참고.
 
 ---
 
@@ -596,9 +596,9 @@ CHECK 제약·어드민 API 검증과 단일 소스를 공유한다(전체 허�
 함께 지웠다 — 배지가 폐기되면 `visibility.ts`가 게이트 배지를 못 찾아 `OPEN`을 반환해
 **잠금이 전부 풀리기 때문이다**(§2.11).
 
-전체 목록·조건값·설명: **`Specs/Content/ACTIVITY_BADGES.md`**.
+전체 목록·조건값·설명: **`jam-doc/planning/content/ACTIVITY_BADGES.md`**.
 DB 시드: `jam-web/supabase/migrations/seed_v5_activity_badges.sql`
-(생성기 `Specs/Content/v5_seed_build.py` — 손으로 고치지 말 것).
+(생성기 `jam-doc/planning/content/v5_seed_build.py` — 손으로 고치지 말 것).
 
 ⚠️ **카탈로그가 엔진 능력을 일부 앞선 상태다.** 630종 시딩 시점(0035)에는 엔진이 평가할 수
 있는 것이 약 269종(그중 40종은 미션 전용)뿐이었다. 티켓 `20260906_0110`(CLOSED)이 v5 스칼라
@@ -625,9 +625,9 @@ DB 시드: `jam-web/supabase/migrations/seed_v5_activity_badges.sql`
 > ⚠️ **2026-09-05 갱신** — 이 절이 설명하던 「걷기 v4 신규 배지 32종」은 v5 전면 교체로
 > 폐기됐다(§2.9). **아래에서 지금도 유효한 것은 「축1 게이트」와 「하루 1회 상한」 두
 > 엔진 규칙뿐이고, 배지 목록·조건값은 더 이상 사실이 아니다.**
-> 현행 걷기 카탈로그는 47계열 153종이며 `Specs/Content/ACTIVITY_BADGES.md`에 있다.
+> 현행 걷기 카탈로그는 47계열 153종이며 `jam-doc/planning/content/ACTIVITY_BADGES.md`에 있다.
 >
-> 배경·튜닝 파라미터 상세: `Service Plan/Tickets/20260808_001_Content_걷기배지체계-v4-전면개편.md`
+> 배경·튜닝 파라미터 상세: `docs/tickets/20260808_001_Content_걷기배지체계-v4-전면개편.md`
 
 **축1 게이트** — 걷기(`activity_type='walking'`) 조건 평가 전 사전 필터. `evaluateConditionDetailed`가 `filtered`를 구성하는 시점에 `condition.activity_type==='walking'`인 경우에만 적용되며, 걷기가 아닌 종목에는 영향 없음.
 
@@ -643,7 +643,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 
 **하루 1회 상한** (`dedupeOnePerDay`, 걷기 전용) — `weekly_count`(W3 소급 적용, 조건값 불변) / `day_of_week`(단일)+`total_count`(T05~T07, T09~T11) / `day_of_week`(배열)+`total_count`(T08, 요일별 서브풀 각각) 에 적용. `streak_days`(W4)는 기존 `calcMaxStreak`가 `uniqueDates`로 이미 압축 계산해 변경 불필요. 순수 `total_count`만 있는 경우(T01~T04, T12~T14, T22, T23)는 상한 미적용(예: T01 "누적 10만 번"에 상한을 걸면 영구 미달성이 되는 설계 모순).
 
-**신규 배지 32종**: D01~D11(누적 활동일수 체크포인트, `active_days_count`) + 트로피 매트릭스 21종(T01~T18, T20, T22, T23 — T19·T21은 제외 확정). 전체 목록: `Specs/Content/ACTIVITY_BADGES.md` 걷기 섹션. 전부 `prerequisite_badge_names` 없는 독립 배지(성장 티어 dedup·진행 트랙 병합 대상 아님).
+**신규 배지 32종**: D01~D11(누적 활동일수 체크포인트, `active_days_count`) + 트로피 매트릭스 21종(T01~T18, T20, T22, T23 — T19·T21은 제외 확정). 전체 목록: `jam-doc/planning/content/ACTIVITY_BADGES.md` 걷기 섹션. 전부 `prerequisite_badge_names` 없는 독립 배지(성장 티어 dedup·진행 트랙 병합 대상 아님).
 
 **버그 수정 2건** (걷기 v4 구현 중 발견, 다른 종목에도 적용됨):
 
@@ -661,7 +661,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > **현행(v5)**: 미션 게이팅은 `missions.gated_badge_id`(배지 1개 지목)가 아니라
 > **`gate_axis` · `gate_stage` · `visibility_rule_json`**(축·단계·노출 조건)으로 한다
 > — 마이그레이션 135, 티켓 `20260905_0033`. 미션 보상 배지는 종목당 8개 × 5종목 = **40종**이고
-> 각각 «여는 축»이 지정돼 있다(`Specs/Content/v5_mission_badges.json`).
+> 각각 «여는 축»이 지정돼 있다(`jam-doc/planning/content/v5_mission_badges.json`).
 > 판정은 `resolveMissionVisibility()`(`lib/missions/visibility.ts`)가 하며, 규칙 형태가
 > 깨지면 `OPEN`이 아니라 `locked`로 **fail-closed**한다.
 >
@@ -671,7 +671,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > 요약」류)에 게이트가 걸렸고, 그 86종과 같은 계열의 Epic 79종에도 축 내/축 간 교차
 > 조건이 매핑됐다(`seed_v5_gate_conditions.sql`, 165행). 레벨형 계열 11건은 `min_level=6`
 > (5종목 누적축 사다리 중 가장 짧은 것의 상한 — 콘텐츠 재검토 여지 있음, confidence:
-> medium)으로 통일했다. 축→계열 상세 규칙표는 `Specs/Content/v5_gate_mapping.json`.
+> medium)으로 통일했다. 축→계열 상세 규칙표는 `jam-doc/planning/content/v5_gate_mapping.json`.
 > 무한레벨형(누적) 계열 자신의 Lv.5+/Lv.8+ 자체 게이트는 이번 매핑 범위 밖 — 별도
 > 콘텐츠 작업으로 남았다.
 >
@@ -697,7 +697,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > 축 교차만으로 충분하고 미션이 필요 없다(0033 설계, v5 게이트 확정 이전 가정이 남아 있었다).
 >
 > **미션 40종(걷기 8 + 4종목 32, 실제 DB 행은 축 중복으로 53행) 시딩 SQL** —
-> `Service Plan/Specs/Content/v5_mission_seed_build.py`가 `v5_gate_build.py`(1947)의
+> `jam-doc/planning/content/v5_mission_seed_build.py`가 `v5_gate_build.py`(1947)의
 > `MISSION_MAP`·`family_keys_of_axis`를 그대로 재사용해 생성한다
 > (`jam-web/supabase/migrations/seed_v5_gate_missions.sql`, **미실행** — 사용자 승인 후
 > 오케스트레이터가 처리). 마이그레이션 135가 남긴 "레거시 게이트 미션 15개 폐기 + v5 40개
@@ -707,7 +707,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > 실행 전까지는 `gate_mission_badge` 요구가 걸린 Mystic은 미션이 없어 그 보상 배지를 얻을
 > 방법이 없으므로 계속 막혀 있다(fail-closed 방향이라 잘못 열리지는 않는다).
 >
-> 폐기된 v4 방식 기록 (티켓 `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`):
+> 폐기된 v4 방식 기록 (티켓 `docs/tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`):
 
 종목별로 "운동 목표 달성감이 가장 큰" 대표 배지 1종씩(5개 트리) — 걷기 `동네 산책러`, 러닝 `첫 숨결`, 사이클 `언덕의 도전자`, 등산 `첫 고도`, 트레일러닝 `야생의 주자` — 는 Rare 이상에서 기존 크로스게이트(`prerequisite_badge_names`에 같은 종목 다른 속성 배지 2개 OR)를 쓰지 않고, **미션 완료로만 얻는 전용 배지 1개**를 선행조건으로 요구한다. 나머지 142개 배지는 기존 크로스게이트 그대로 유지.
 
@@ -1342,7 +1342,7 @@ POST /api/admin/badges/reevaluate-all
   (`poi_drops.expires_at`은 유저 드랍이든 시스템 드랍이든 항상 NULL).
 - **믹스(`Consume`) 판정은 슬롯 기반 OR 매칭이다** (2026-09-17, 티켓 20260917_1427이
   2026-09-10 티켓 20260910_1408의 "정확 집합 일치" 구조를 대체 — 상세 정책은
-  `Specs/Content/COMBINE_RECIPES.md`가 단일 출처):
+  `jam-doc/planning/content/COMBINE_RECIPES.md`가 단일 출처):
   레시피는 `combination_recipe_slots`(슬롯 2~10개)로 구성되고, 슬롯 하나는 `badge_type`
   (item/activity/checkin 중 하나로 고정)과 `allowed_badge_ids`(같은 타입 배지 후보, OR)를
   가진다. **유저가 레시피를 먼저 선택**하고(전체 레시피 스캔은 하지 않음) 슬롯마다 후보 중
@@ -1539,13 +1539,13 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 ### 3.12 앰비언트(시스템) POI 드랍 — 3축(카테고리/등급비율/대상컬렉션) 배치 (재도입 2026-08-26)
 
 > 유저 행동과 무관하게 시스템이 POI에 아이템배지를 직접 배치하는 판정. 2026-08-25에 한 차례
-> 전면 제거됐다가([20260825_004](../../Tickets/20260825_004_Feature_앰비언트-드랍-기능-제거.md))
-> 2026-08-26에 재설계 재도입됐다([20260826_009](../../Tickets/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)).
+> 전면 제거됐다가([20260825_004](../../tickets/20260825_004_Feature_앰비언트-드랍-기능-제거.md))
+> 2026-08-26에 재설계 재도입됐다([20260826_009](../../tickets/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)).
 > 코드: `src/lib/ambient-drop/`.
 
 **제거 판단 경위 (오해 방지를 위해 유지)**: 제거 당시 `poi_drops`에 `source='system'` 행이
 0건이었던 것은 기능 결함이 아니라 미들웨어가 `/api/cron/*`를 307로 가로채 cron 자체가
-실행되지 않았기 때문이었다([20260825_003](../../Tickets/20260825_003_bug_미들웨어가-cron-요청을-차단.md)).
+실행되지 않았기 때문이었다([20260825_003](../../tickets/20260825_003_bug_미들웨어가-cron-요청을-차단.md)).
 그럼에도 사용자가 관측과 무관하게 쓰지 않기로 결정했었고, 이후 드랍엔진 v2·컨텐츠·POI 체계가
 성숙한 만큼 **옛 설계(전역 커버리지 목표치 모델, `ambient_drop_policy`)를 복원하지 않고
 배치 실행형으로 새로 설계**했다.
@@ -1556,7 +1556,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 (§3.13). **만료 메커니즘 없음** — 상시 존재를 전제로 하며, 특정 배지를 한시적으로만 노출하고
 싶으면 `badges.valid_from`/`valid_until`을 쓴다.
 
-**트리거 — 예약 배포 + 즉시 배포, 상호 배제** (2026-09-06 리뉴얼, [20260906_1206](../../Tickets/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)):
+**트리거 — 예약 배포 + 즉시 배포, 상호 배제** (2026-09-06 리뉴얼, [20260906_1206](../../tickets/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)):
 - **예약 배포**: 어드민이 정한 시각(`ambient_drop_config.schedule_hour_kst`, **KST 정시 0~23**)에
   매일 1회 자동 배포한다. Vercel의 cron 표현식은 동적일 수 없으므로 `/api/cron/ambient-drop`은
   **매시 정각**(`"0 * * * *"`)에 호출되고, 핸들러가 지금이 설정 시각인지 판정해 아니면 즉시
@@ -1632,7 +1632,7 @@ rare 12% / epic 2%, 커버리지 0.15, POI당 최대 1개, 보충 배치 30개, 
 
 ### 3.13 유저 드랍/픽업 운영 정책 (PRD 04_PROJECT_SPEC.md에서 이관, 2026-08-06)
 
-> 4카테고리 문서 체계 재정리 시, `Specs/PRD/04_PROJECT_SPEC.md`의 "핵심 비즈니스 규칙"에 있던 드랍/픽업 판정 로직 4개 항목을 이 문서로 이관했다.
+> 4카테고리 문서 체계 재정리 시, `docs/specs/prd/04_PROJECT_SPEC.md`의 "핵심 비즈니스 규칙"에 있던 드랍/픽업 판정 로직 4개 항목을 이 문서로 이관했다.
 
 - **드랍/픽업은 Supabase RPC로 처리**: 원자 트랜잭션 필요 — API Route에서 직접 두 테이블 업데이트 금지.
 - **자기 드랍 픽업 허용**: 2026-07-10 정책 변경. `dropper_user_id` = 현재 유저 필터링 로직 제거.
@@ -1675,7 +1675,7 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
   **[[20260826_001]]부터 반복 획득(2회차 이상)도 피드·알림에 노출된다** (기존에는 최초 획득만
   피드에 기록되고 반복 획득은 알림에만 고정 문구로 떴다). 문구는 [[20260826_004]]에서
   피드 `'체크인 했어요'` / `'{N}번째 체크인 했어요'`, 알림 `'{지점}에서 {N}번째 체크인 했어요'`로 통일됐다.
-  상세 문구·N 산정 기준(badge_id 단위)·묶음 알림 합성 규칙은 `Specs/PRD/Notification/PRD.md` §3 참조.
+  상세 문구·N 산정 기준(badge_id 단위)·묶음 알림 합성 규칙은 `docs/specs/prd/notification/PRD.md` §3 참조.
 - **재현용 SQL**: `supabase/seed_poi_badges_20260727.sql` (INSERT/UPDATE 전량 기록, service_role 키로 직접 실행됨).
 
 > **2026-09-12 추가([[20260912_1025]])**: `michelin`(미쉐린 가이드 서울 스타 레스토랑, 42곳)도
@@ -1716,7 +1716,7 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 
 ### 3.15 종목별 드랍 가중치 — 걷기 계수 0.4 (2026-08-08)
 
-> 배경: 걷기는 다른 종목 대비 MET(운동강도)가 낮아 활동당 아이템 드랍 기대값을 낮출 필요가 있어 도입. 상세: `Service Plan/Tickets/20260808_001_Content_걷기배지체계-v4-전면개편.md`.
+> 배경: 걷기는 다른 종목 대비 MET(운동강도)가 낮아 활동당 아이템 드랍 기대값을 낮출 필요가 있어 도입. 상세: `docs/tickets/20260808_001_Content_걷기배지체계-v4-전면개편.md`.
 
 `jam-web/src/lib/drop-engine/constants.ts`에 `ACTIVITY_TYPE_DROP_WEIGHT`(walking: 0.4) + `DEFAULT_ACTIVITY_DROP_WEIGHT`(그 외 1.0) 추가. `getActivityDropWeight(act)`는 걷기이면서 축1 게이트(§2.10)를 통과한 활동에만 0.4를 반환.
 
@@ -1819,12 +1819,12 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 
 ```
 [운영 문서 — 단일 진실 원천]
-Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md ← 이 문서. 발급·드랍 로직 전체
-Specs/Content/ACTIVITY_BADGES.md          액티비티배지 115종 전체 목록·조건·설명
-Specs/Content/ITEMBOOKS.xlsx              아이템배지 ~900종 목록 + '트라이브 인접' 시트
-Specs/Content/COMBINE_RECIPES.md          믹스 판정 정책 · 레시피 카탈로그 현황
-Specs/Content/TRIBES.md                  트라이브 10종 개요·컬렉션 매핑·인접 그래프
-Specs/Content/POI.md                      지점(POI) 컨텐츠 (스텁)
+docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md ← 이 문서. 발급·드랍 로직 전체
+jam-doc/planning/content/ACTIVITY_BADGES.md          액티비티배지 115종 전체 목록·조건·설명
+jam-doc/planning/content/ITEMBOOKS.xlsx              아이템배지 ~900종 목록 + '트라이브 인접' 시트
+jam-doc/planning/content/COMBINE_RECIPES.md          믹스 판정 정책 · 레시피 카탈로그 현황
+jam-doc/planning/content/TRIBES.md                  트라이브 10종 개요·컬렉션 매핑·인접 그래프
+jam-doc/planning/content/POI.md                      지점(POI) 컨텐츠 (스텁)
 
 [코드]
 src/lib/badge-engine/index.ts             액티비티배지 엔진 (구현)

@@ -94,7 +94,7 @@ jam-web/src/app/api/admin/badges/[id]/route.ts
       select-확인 패턴이라 회귀 위험 낮음으로 판단.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
 새로 노출되는 텍스트는 PUT에서 이미 쓰던 `'배지를 찾을 수 없습니다.'`를 그대로 재사용한 것으로,
 신규 문구 작성은 아니다.

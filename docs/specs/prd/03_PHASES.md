@@ -1,11 +1,11 @@
 # JAM! 유저 모바일 웹 — 개발 이력 & 현재 상태
 
 > **2026-08-06 전면 재작성**: 기존 Phase 번호 로드맵(2026-07-09~10 작성)은 실제 개발
-> 순서와 맞지 않아 폐기하고, `Tickets/`의 실제 티켓 72건(2026-07-15~
+> 순서와 맞지 않아 폐기하고, `docs/tickets/`의 실제 티켓 72건(2026-07-15~
 > 2026-08-06)을 시간순으로 재구성했다. 원래의 계획 원문은 이력 자료로
-> [Archive/PHASES_ROADMAP_ARCHIVE.md](PHASES_ROADMAP_ARCHIVE.md)에 보관.
+> [jam-doc/archive/PHASES_ROADMAP_ARCHIVE.md](../../../jam-doc/archive/PHASES_ROADMAP_ARCHIVE.md)에 보관.
 >
-> 신규 개선사항 작업 시에는 이 문서보다 [Tickets/](../../Tickets/)의
+> 신규 개선사항 작업 시에는 이 문서보다 [docs/tickets/](../../tickets/)의
 > 최신 티켓을 먼저 확인할 것 — 이 문서는 "지금까지 무엇이 만들어졌는지"를 훑어보는 용도.
 
 ---
@@ -23,7 +23,7 @@
 ### 2026-07-09~10 — 초기 구축 (Phase 1~7 원안)
 온보딩(구글 로그인·프로필)·Strava 연동·배지 자동발급·공유카드·POI 사후인증·인벤토리·
 확률 드랍·어드민 패널·유저 드랍/픽업(당시 Google Maps)·OSM 기반 T2 POI·아이템 일련번호.
-계획대로 완료된 것으로 확인됨. 상세는 [Archive/PHASES_ROADMAP_ARCHIVE.md](PHASES_ROADMAP_ARCHIVE.md).
+계획대로 완료된 것으로 확인됨. 상세는 [jam-doc/archive/PHASES_ROADMAP_ARCHIVE.md](../../../jam-doc/archive/PHASES_ROADMAP_ARCHIVE.md).
 
 ### 2026-07-15~20 — 배지 엔진 안정화
 POI 매칭 바운딩박스 사전필터, 배지 이름당 최상위 레어리티 1개만 노출하는 "성장 티어"
@@ -32,7 +32,7 @@ POI 매칭 바운딩박스 사전필터, 배지 이름당 최상위 레어리티
 ### 2026-07-21 — 유저 검색 + 드랍엔진 v2 전면 교체
 유저 검색 기능(`api/users/search`) 추가. **아이템배지 드랍엔진을 v2로 전면 교체**
 — 활동당 최소 1개 확정 드랍 + 트라이브 서사 모멘텀(마르코프 가중 추첨) 도입, 상세는
-[BadgeEngine 문서](BADGE_ENGINE_UNIFIED.md) §3 참고. 동시에 Strava 싱크
+[BadgeEngine 문서](../badge-engine/BADGE_ENGINE_UNIFIED.md) §3 참고. 동시에 Strava 싱크
 파이프라인 안정화(동시 싱크 잠금, 첫 싱크 드랍 1회 제한, 무한대기 타임아웃 수정),
 홈/프로필 피드 중복 표시 버그 수정.
 
@@ -42,10 +42,10 @@ OpenStreetMap → 네이버 지역검색 오픈API로 전환** (인프라 전면
 아이템배지 전량에 샘플 이미지 랜덤 배정, 피드가 배지 정보 변경을 반영 못하던 구조적
 문제 수정. **POI 앰비언트(시스템) 아이템배지 드랍** 신규 도입 — 유저 행동과 무관하게
 시스템이 주기적으로 POI에 아이템을 배치. (→ **2026-08-25 전면 제거**, 티켓
-[20260825_004](../../Tickets/20260825_004_Feature_앰비언트-드랍-기능-제거.md).
+[20260825_004](../../tickets/20260825_004_Feature_앰비언트-드랍-기능-제거.md).
 미완성이 아니라 쓰지 않기로 한 제품 결정이었다 — → **2026-08-26 재설계 재도입**, 티켓
-[20260826_009](../../Tickets/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md).
-현재 상태는 [BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) §3.12 참고)
+[20260826_009](../../tickets/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md).
+현재 상태는 [BADGE_ENGINE_UNIFIED.md](../badge-engine/BADGE_ENGINE_UNIFIED.md) §3.12 참고)
 **잼 포인트 시스템 1a단계**(유저별 잔액/
 `point_wallets`) 신규 구축. Vercel Hobby 플랜의 Cron 빈도 제한으로 배포 실패했던
 근본 원인 해결.
@@ -87,7 +87,7 @@ Custom Domain 전환 시 재검토 예정).
 
 ## 과거 Phase 번호와 실제 구현의 대응 관계 (참고용)
 
-계획 문서(`Archive/PHASES_ROADMAP_ARCHIVE.md`)의 Phase 번호가 티켓 제목에 종종
+계획 문서(`jam-doc/archive/PHASES_ROADMAP_ARCHIVE.md`)의 Phase 번호가 티켓 제목에 종종
 그대로 쓰였지만, 원래 계획된 내용과는 다른 경우가 많다.
 
 | 계획상 Phase 번호 | 원래 계획 | 실제 그 번호로 불린 작업 |
@@ -106,7 +106,7 @@ Custom Domain 전환 시 재검토 예정).
 ---
 
 ## 관련 문서
-- [Tickets/](../../Tickets/) — 실제 개발 작업 이력 원본 (신규 개선사항은 여기부터 확인)
-- [Archive/PHASES_ROADMAP_ARCHIVE.md](PHASES_ROADMAP_ARCHIVE.md) — 원래 계획 원문 (참고용, 실행 안 됨)
-- [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) — 배지·드랍 엔진 최신 로직
+- [docs/tickets/](../../tickets/) — 실제 개발 작업 이력 원본 (신규 개선사항은 여기부터 확인)
+- [jam-doc/archive/PHASES_ROADMAP_ARCHIVE.md](../../../jam-doc/archive/PHASES_ROADMAP_ARCHIVE.md) — 원래 계획 원문 (참고용, 실행 안 됨)
+- [docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md](../badge-engine/BADGE_ENGINE_UNIFIED.md) — 배지·드랍 엔진 최신 로직
 - [01_PRD.md](01_PRD.md) §6-2 — 미구현 기능 목록

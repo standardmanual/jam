@@ -120,7 +120,7 @@ jam-web/src/app/admin/factions/FactionsTable.tsx
       권한이 이 서브에이전트에 위임되지 않음 — 절대 규칙 3, 5). 로컬 테스트 방법은 요약 참조.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 용어 일관성: 신규/변경된 사용자 노출 문구 없음(기존 404 에러 메시지 `트라이브을 찾을 수
       없습니다.`를 GET 핸들러와 동일하게 재사용했을 뿐, 문구 자체는 이번 티켓에서 새로 만들지
@@ -131,7 +131,7 @@ jam-web/src/app/admin/factions/FactionsTable.tsx
 - [x] 표기 규칙: 해당 없음(문구 변경 없음)
 
 ### 문서 갱신
-- `Service Plan/Specs/PRD/02_DATA_MODEL.md` "5. 트라이브 (faction)" 섹션에 `PUT /api/admin/factions/[id]`가
+- `docs/specs/prd/02_DATA_MODEL.md` "5. 트라이브 (faction)" 섹션에 `PUT /api/admin/factions/[id]`가
   부분 body 병합을 지원한다는 API 계약을 명시했다(개선 리뷰 제안 반영).
 
 ### 배포 정보
@@ -160,6 +160,6 @@ jam-web/src/app/admin/factions/FactionsTable.tsx
   `?? null` 부분 body 버그가 남아있다(이번 티켓 범위 밖, sideFinding) — 별도 작업 칩으로 분리함.
 - `FactionsTable.tsx`의 `themeContainer` useEffect에 `react-hooks/set-state-in-effect` 린트
   에러가 20260827_002부터 존재(이번 범위 밖) — 별도 작업 칩으로 분리함.
-- `Service Plan/Archive/Operations/SERVICE_OPERATIONS.md`에 여러 어드민 엔드포인트(factions·
+- `jam-doc/archive/operations/SERVICE_OPERATIONS.md`에 여러 어드민 엔드포인트(factions·
   badges·itembooks·missions·poi 등)가 실제로는 PUT인데 문서상 PATCH로 잘못 기재됨(이번 범위 밖) —
   별도 작업 칩으로 분리함.

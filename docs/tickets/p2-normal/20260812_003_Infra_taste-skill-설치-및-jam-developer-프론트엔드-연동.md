@@ -61,7 +61,7 @@ Next.js 앱이라 그대로 적용하면 안 맞는 부분이 있어 범위를 �
 ~/.claude/skills/taste-skill/SKILL.md (신규, 글로벌)
 ~/.claude/skills/taste-skill/references/*.md (신규, 글로벌)
 .claude/agents/jam-developer.md (규칙 8번 추가)
-Service Plan/Tickets/20260812_003_Infra_taste-skill-설치-및-jam-developer-프론트엔드-연동.md
+docs/tickets/20260812_003_Infra_taste-skill-설치-및-jam-developer-프론트엔드-연동.md
 ```
 
 ### 테스트 결과
@@ -106,7 +106,7 @@ Service Plan/Tickets/20260812_003_Infra_taste-skill-설치-및-jam-developer-프
 ```
 .claude/skills/taste-skill/ (삭제, 프로젝트+글로벌)
 .claude/agents/jam-developer.md (규칙 8번 삭제)
-Service Plan/Tickets/20260812_003_..._taste-skill-설치-및-jam-developer-프론트엔드-연동.md (이 섹션 추가)
+docs/tickets/20260812_003_..._taste-skill-설치-및-jam-developer-프론트엔드-연동.md (이 섹션 추가)
 ```
 
 ### 커밋

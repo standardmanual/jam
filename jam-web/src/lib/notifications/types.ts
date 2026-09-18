@@ -1,7 +1,7 @@
 /**
  * 알림(소식) 타입 계약 — 티켓 20260824_019 / 20260827_014(전면 개편)
- * 스펙: Specs/PRD/Notification/PRD.md §3 / DATA_MODEL.md §5·§6
- *       Specs/PRD/Notification/RECAP_CASEBOOK.md · REST_CASEBOOK.md (문구 규칙 R1~R15)
+ * 스펙: docs/specs/prd/notification/PRD.md §3 / DATA_MODEL.md §5·§6
+ *       docs/specs/prd/notification/RECAP_CASEBOOK.md · REST_CASEBOOK.md (문구 규칙 R1~R15)
  */
 import type { BadgeRarity, NotificationType } from '@/types/database'
 

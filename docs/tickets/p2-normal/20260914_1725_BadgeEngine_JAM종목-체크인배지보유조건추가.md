@@ -167,8 +167,8 @@ closed: 2026-09-14
 | `jam-web/src/lib/admin/badge-condition-guards.ts` | `USAGE_METRIC_CONDITION_KEYS`에 2종 추가 |
 | `jam-web/src/app/admin/badges/conditionFormFields.ts` | 폼 필드 4개(카테고리/개수 × 2, 이름목록/개수) 추가 |
 | `jam-web/supabase/migrations/NNN_condition_json_checkin_keys.sql` | CHECK 제약 확장 (신규, 미실행) |
-| `Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md` | §3에 2종 추가 |
-| `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` | 서비스 사용량 배지 평가 경로 설명 갱신 |
+| `docs/specs/badge-engine/CONDITION_JSON_SPEC.md` | §3에 2종 추가 |
+| `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` | 서비스 사용량 배지 평가 경로 설명 갱신 |
 
 ### Out of Scope
 
@@ -179,8 +179,8 @@ closed: 2026-09-14
 
 ### 완료 시 갱신할 문서
 
-- `Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md` — §3 신규 2종 추가
-- `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` — 서비스 사용량 배지 평가 경로에
+- `docs/specs/badge-engine/CONDITION_JSON_SPEC.md` — §3 신규 2종 추가
+- `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` — 서비스 사용량 배지 평가 경로에
   체크인 지표 추가 설명
 
 ---
@@ -223,8 +223,8 @@ jam-web/src/lib/admin/__tests__/badge-validation.test.ts (findCheckinBadgeNamesN
 jam-web/src/lib/strava/__tests__/sync-checkin-usage-badge-hook.test.ts (신규, 훅 연결·격리 +3)
 jam-web/src/lib/badge-engine/__tests__/condition-registry.test.ts (58종 카운트·CHECK 대조 갱신)
 jam-web/src/app/admin/badges/__tests__/conditionFormFields.test.ts (샘플·meta 그룹 갱신)
-Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md (§3·§4 갱신)
-Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md (③ 섹션·비교표 갱신)
+docs/specs/badge-engine/CONDITION_JSON_SPEC.md (§3·§4 갱신)
+docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md (③ 섹션·비교표 갱신)
 ```
 
 ### 테스트 결과
@@ -233,7 +233,7 @@ Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md (③ 섹션·비교표 �
 - [x] `cd jam-web && npm run lint` — 오류 0건, 경고 14건(전부 이번 변경과 무관한 기존 경고)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 용어 일관성: "체크인" 고정 용어 사용, 신규 용어 도입 없음
 - [x] 톤앤매너: 어드민 저장 거부 메시지는 기존 가드 문구와 동일한 단호한 톤("저장할 수 없습니다. …")

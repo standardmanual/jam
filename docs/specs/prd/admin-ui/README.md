@@ -102,7 +102,7 @@
 | (없음) | `ADMIN_UI_PROJECT_SPEC_20260805.md` | **신규**: 코드 작성 규칙 |
 
 **기존 문서 유지:**
-- ✅ `Specs/SERVICE_OPERATIONS.md` (계속 유지 — 2026-08-27 `Archive/Operations/`에서 이전)
+- ✅ `docs/specs/SERVICE_OPERATIONS.md` (계속 유지 — 2026-08-27 `jam-doc/archive/operations/`에서 이전)
 - ✅ `01_PRD.md`, `02_DATA_MODEL.md`, `03_PHASES.md` (계속 참조)
 - ✅ `04_PROJECT_SPEC.md` (프로젝트 전체 규칙)
 
@@ -301,11 +301,11 @@ className="grid grid-cols-1 md:grid-cols-2"  // 모바일: 1열, 데스크탑: 2
 - `jam-web/src/lib/simulator.ts` — 시뮬레이터 로직
 
 ### 배지 시스템 이해
-- `Service Plan/Specs/PRD/01_PRD.md` — 배지 전체 개념
-- `Service Plan/Specs/PRD/02_DATA_MODEL.md` — 데이터 구조
-- `Service Plan/Specs/PRD/PointSystem/OBJECT_MODEL.md` — 포인트 + 배지 상호작용
-- `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` — 배지·드랍 엔진 로직
-- `Service Plan/Specs/Content/ACTIVITY_BADGES.md`, `Content/ITEMBOOKS.xlsx` — 배지 컨텐츠 목록
+- `docs/specs/prd/01_PRD.md` — 배지 전체 개념
+- `docs/specs/prd/02_DATA_MODEL.md` — 데이터 구조
+- `docs/specs/prd/point-system/OBJECT_MODEL.md` — 포인트 + 배지 상호작용
+- `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` — 배지·드랍 엔진 로직
+- `jam-doc/planning/content/ACTIVITY_BADGES.md`, `jam-doc/planning/content/ITEMBOOKS.xlsx` — 배지 컨텐츠 목록
 
 ---
 

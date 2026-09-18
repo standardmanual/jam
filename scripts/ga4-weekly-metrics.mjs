@@ -19,6 +19,8 @@
 //     node scripts/ga4-weekly-metrics.mjs
 
 import { createSign } from 'node:crypto'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // [이벤트명, 표시 라벨] — GA4_EVENTS.md "주간 브리핑 지표 정의"와 동기화한다.
 const EVENT_METRICS = [
@@ -186,7 +188,8 @@ async function main() {
   }
 }
 
-// 테스트에서 이 모듈을 import할 때는 실행하지 않는다.
-if (import.meta.url === `file://${process.argv[1]}`) {
+// 테스트에서 이 모듈을 import할 때는 실행하지 않는다. 한글 경로는 URL에서 퍼센트 인코딩되므로
+// 문자열이 아니라 파일 경로로 바꿔 비교한다.
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   main()
 }

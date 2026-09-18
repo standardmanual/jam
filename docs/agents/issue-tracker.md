@@ -1,6 +1,6 @@
 # 이슈 트래커: JAM! 자체 티켓 체계
 
-이 저장소는 GitHub Issues를 쓰지 않는다. 이슈·작업 계획은 `Service Plan/Tickets/`에 마크다운
+이 저장소는 GitHub Issues를 쓰지 않는다. 이슈·작업 계획은 `docs/tickets/`에 마크다운
 파일로 기록하며, 파일명·frontmatter·상태값 규칙은 `/jam-docs` 스킬이 정의하고
 `.githooks/pre-commit`이 형식을 기계적으로 검증한다.
 
@@ -9,7 +9,7 @@
 - **티켓 생성**: 파일명은 `P{우선순위}-{기한}/{YYYYMMDD}_{HHMM}_{제목}-{작업자}-{상태}.md` 형식을
   따른다. 정확한 규칙은 `/jam-docs` 스킬 참조. 새 티켓 생성 요청은 `/jam-work` 또는 `/jam-docs`로
   라우팅한다.
-- **티켓 조회**: `Service Plan/Tickets/` 하위를 파일명·frontmatter(status 필드 등)로 검색한다.
+- **티켓 조회**: `docs/tickets/` 하위를 파일명·frontmatter(status 필드 등)로 검색한다.
 - **티켓 상태 변경**: frontmatter의 status 필드를 갱신하고, CLOSED 처리는 `/jam-docs` 절차를
   따른다(원격 staging 기준 브랜치에서 커밋).
 - **작업 파이프라인**: 티켓 검토 → 채원 사전 판정(`jam-designer`, `ui`·`ds` 유형) →
@@ -24,8 +24,8 @@
 
 ## 스킬이 "이슈 트래커에 발행"이라고 말할 때
 
-`Service Plan/Tickets/`에 규칙에 맞는 새 마크다운 티켓 파일을 만드는 것으로 해석한다.
+`docs/tickets/`에 규칙에 맞는 새 마크다운 티켓 파일을 만드는 것으로 해석한다.
 
 ## 스킬이 "관련 티켓을 가져오라"고 말할 때
 
-`Service Plan/Tickets/`에서 관련 파일을 찾아 읽는 것으로 해석한다.
+`docs/tickets/`에서 관련 파일을 찾아 읽는 것으로 해석한다.

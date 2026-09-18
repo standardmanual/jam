@@ -1,6 +1,6 @@
 /**
  * 알림함 시간 구간 헤더 — 오늘 / 이번 주 / 이번 달 / 이전 (티켓 20260824_021)
- * 스펙: Specs/PRD/Notification/PRD.md §6-1
+ * 스펙: docs/specs/prd/notification/PRD.md §6-1
  *
  * **KST 기준**이다. 서버(Vercel)는 UTC로 돌고 개발 머신은 KST라 로컬 벽시계 API
  * (`getDate()`·`toLocaleDateString`)에 의존하면 환경마다 구간이 갈린다 — `kst.ts`와 같은

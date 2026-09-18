@@ -63,7 +63,7 @@ MODULAR 변경 → 컴포넌트 반영 → Story 작성/수정 → Storybook 확
   함께 변경되지 않으면 `.githooks/pre-commit`이 경고한다.
 - 새 컴포넌트는 `.d.ts` 타입 정의와 Story를 함께 제공한다.
 - 토큰을 새로 추가했으면 `tokens/`와 `guidelines/`에 반영한다.
-- 사용자 노출 문구가 있으면 `Service Plan/Specs/UX_WRITING_GUIDELINE.md`를 확인한다.
+- 사용자 노출 문구가 있으면 `docs/specs/UX_WRITING_GUIDELINE.md`를 확인한다.
 
 ## 4. 선순환
 
@@ -91,4 +91,4 @@ MODULAR 승격 가치가 있다"를 `promotionCandidates`로 제안하므로, �
 - `.claude/skills/jam-design/references/ui-review-checklist.md` — 채원② 화면 리뷰 점검표
 - `jam-web/design-system/readme.md` — 파운데이션·폰트 설정·색인
 - `jam-web/docs/storybook/` — 아키텍처(03), 접근성 감사(09), 컴포넌트 후보(08), 빌드 리포트(12)
-- `Service Plan/Tickets/Moduler/` — MODULAR 개선 티켓 (DS-NNN)
+- `docs/tickets/modular/` — MODULAR 개선 티켓 (DS-NNN)

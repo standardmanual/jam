@@ -18,7 +18,7 @@ closed: 2026-09-15
 ## 상세 요구사항
 
 ### 서비스/코드베이스 관점
-- `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 303줄 전체를 재검토한다.
+- `docs/specs/UX_WRITING_GUIDELINE.md` 303줄 전체를 재검토한다.
 - 서버-클라이언트 에러 메시지 규칙(`docs/adr/0001-server-error-message-single-source.md`)을 가이드 본문에 명문화한다 — 서버 API route가 `d.*`를 직접 참조하고, 클라이언트는 서버 메시지를 그대로 신뢰해 노출한다는 원칙.
 - 기존 용어표·등급명·톤 매트릭스·에러 메시지 3단계 구조·CTA 버튼 규칙에서 누락되었거나 모호한 항목을 찾아 보완한다.
 - `/im-not-ai`가 참조할 anti-slop 판단 기준(번역투, 상투적 표현, 부자연스러운 어미 등)을 가이드 안에서 식별 가능하게 정리한다.
@@ -26,13 +26,13 @@ closed: 2026-09-15
 ## 구현 계획
 - 가이드 전문을 정독하며 02~16 도메인 티켓이 실제로 참조할 만큼 구체적인지 점검한다.
 - 누락·모호 항목을 발견하면 그 자리에서 덮어쓰기로 갱신한다 (버전 사본 금지).
-- 완료 후 `Service Plan/Specs/UX_WRITING_GUIDELINE.md`의 `최종수정` 날짜를 갱신한다.
+- 완료 후 `docs/specs/UX_WRITING_GUIDELINE.md`의 `최종수정` 날짜를 갱신한다.
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
-`Service Plan/Specs/UX_WRITING_GUIDELINE.md` 303줄 전체를 재검토하고, 아래 항목을 보완해
+`docs/specs/UX_WRITING_GUIDELINE.md` 303줄 전체를 재검토하고, 아래 항목을 보완해
 덮어썼다(버전 사본 없이 직접 수정).
 
 1. **서버-클라이언트 단일 진실 소스 (§4.0 신설)**: `docs/adr/0001-server-error-message-single-source.md`의
@@ -80,7 +80,7 @@ closed: 2026-09-15
 
 ### 변경된 파일
 ```
-Service Plan/Specs/UX_WRITING_GUIDELINE.md
+docs/specs/UX_WRITING_GUIDELINE.md
 ```
 
 ### 테스트 결과
@@ -90,7 +90,7 @@ Service Plan/Specs/UX_WRITING_GUIDELINE.md
 - [x] 딕셔너리 편입 후 실렌더 대조 — 해당 없음(코드 변경 없는 순수 문서 작업).
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
 이 티켓 자체는 사용자 노출 텍스트를 직접 변경하지 않는다(가이드 문서 보완). 신설 섹션 안의
 예시 문구(Good/Bad 쌍)는 §7 anti-slop 기준을 스스로 적용해 작성했다.

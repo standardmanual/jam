@@ -9,6 +9,16 @@ description: JAM! 프로젝트를 로컬(여러 PC)과 GitHub 사이에 동기�
 시크릿 파일(`.mcp.json`, `.vercel`, `jam-web/.env.local`)만 아이클라우드의 `JAM-secrets` 폴더에
 두고 심볼릭 링크로 연결한 구조다. 이 스킬은 그 구조를 전제로 동작한다.
 
+**저장소는 두 개다** (2026-09-18, 티켓 20260918_2105). 작업 폴더 자체가 코드 저장소
+`standardmanual/jam`(브랜치 `staging`)이고, 그 안의 `jam-doc/`이 문서 저장소
+`standardmanual/jam-doc`(브랜치 `main`)의 중첩 복제본이다. `jam`은 `.gitignore`로 `jam-doc/`을
+무시한다. **아래 모든 단계를 두 저장소에 각각 수행하고, 결과도 저장소별로 보고한다.**
+
+| 저장소 | 경로 | 기준 브랜치 |
+|---|---|---|
+| jam | `<repo>` | `staging` |
+| jam-doc | `<repo>/jam-doc` | `main` |
+
 **인자 없이 호출되면 상황을 진단해서 push/pull 중 뭘 해야 하는지 자동 판단한다.**
 `/jam-sync push` 또는 `/jam-sync pull`로 강제 지정도 가능하다.
 
@@ -19,7 +29,16 @@ git -C "<repo>" status --short
 git -C "<repo>" fetch origin --quiet
 git -C "<repo>" log --oneline HEAD..origin/staging   # 로컬이 뒤쳐진 커밋
 git -C "<repo>" log --oneline origin/staging..HEAD   # 로컬에만 있는(미푸시) 커밋
+# jam-doc도 같은 방식으로 (기준 브랜치 main)
+git -C "<repo>/jam-doc" status --short
+git -C "<repo>/jam-doc" fetch origin --quiet
+git -C "<repo>/jam-doc" log --oneline HEAD..origin/main
+git -C "<repo>/jam-doc" log --oneline origin/main..HEAD
 ```
+
+`<repo>/jam-doc`이 없으면(새 PC이거나 분리 이전에 마지막으로 연 PC) B 흐름의 **jam-doc 복제**부터 한다.
+
+분기는 저장소마다 따로 판정한다. 예를 들어 jam은 pull, jam-doc은 push일 수 있다.
 
 분기:
 - **미커밋 변경이 있음** → A. 마무리(push) 흐름
@@ -39,12 +58,22 @@ git -C "<repo>" log --oneline origin/staging..HEAD   # 로컬에만 있는(미�
    - 원래 이름 파일도 존재하고 내용이 다르면: 둘 다 진짜 다른 파일이니 임의로 합치지 않는다
    - 내용이 완전히 같으면: 순수 중복이니 접미사 붙은 쪽을 삭제
 3. 변경 내용을 요약해 한국어 커밋 메시지를 작성한다 (프로젝트 커밋 컨벤션 준수).
-4. `git add -A && git commit -m "..." && git push origin staging`
+4. jam: `git add -A && git commit -m "..." && git push origin staging`
+   jam-doc: `git -C jam-doc add -A && git -C jam-doc commit -m "..." && git -C jam-doc push origin main`
+   (양쪽을 함께 바꾼 작업이면 두 커밋 메시지에 같은 티켓 번호를 적는다)
 5. push 후 가벼운 무결성 점검: `git fsck --no-progress` — 에러가 있으면 바로 보고한다.
 
 ## B. 시작(pull) 흐름 — 다른 PC에서 이어가거나 오랜만에 열 때
 
 1. `git pull origin staging` (fast-forward만 허용. 안 되면 상황을 보고하고 판단을 구한다).
+   jam-doc도 `git -C jam-doc pull --ff-only origin main`.
+   - **jam-doc 복제** (`<repo>/jam-doc`이 없을 때): jam pull을 먼저 끝낸 뒤(`.gitignore`에
+     `/jam-doc/`이 있어야 한다) 아래를 실행한다. 이미지 제작물 때문에 수백 MB를 받는다.
+     ```bash
+     git clone https://github.com/standardmanual/jam-doc.git "<repo>/jam-doc"
+     ```
+   - pull 뒤 `<repo>`에 `Service Plan/`이나 `Asset/` 폴더가 남아 있으면(분리 이전 PC의 잔재 —
+     `.DS_Store`나 무시 파일만 남은 빈 폴더) 안에 추적 대상 파일이 없는지 확인하고 보고한 뒤 지운다.
 2. **시크릿 심볼릭 링크 상태 확인**:
    ```bash
    ls -la "<repo>/.mcp.json" "<repo>/.vercel" "<repo>/jam-web/.env.local"
@@ -59,11 +88,12 @@ git -C "<repo>" log --oneline origin/staging..HEAD   # 로컬에만 있는(미�
    ```
    (최초 셋업이 안 된 새 PC라면 이 단계에서 처음 만드는 것도 정상이다.)
 3. `git config core.hooksPath`가 `.githooks`로 설정되어 있는지 확인하고, 아니면 설정한다.
+   jam-doc도 같다: `git -C jam-doc config core.hooksPath .githooks`
 4. 이번 pull에 `jam-web/package-lock.json` 변경이 포함됐으면 `npm install` 필요 여부를 안내한다.
 
 ## 공통 — 항상 보고할 것
 
-- 오간 커밋이 몇 개인지, 무슨 내용인지 (한국어 요약)
+- 저장소별로 오간 커밋이 몇 개인지, 무슨 내용인지 (한국어 요약)
 - 시크릿 심볼릭 링크 3개 상태 (정상/재연결함/문제있음)
 - 문제가 있으면 무엇이 문제고 사용자가 뭘 해야 하는지 구체적으로
 
@@ -72,4 +102,5 @@ git -C "<repo>" log --oneline origin/staging..HEAD   # 로컬에만 있는(미�
 - diverge 상태에서 임의로 merge/rebase하지 않는다 — 반드시 커밋 목록을 보여주고 지시를 받는다
 - `.mcp.json` / `.vercel` / `jam-web/.env.local` 내용(토큰 등)을 절대 출력하거나 커밋하지 않는다
 - `.claude/settings.local.json`은 동기화 대상이 아니다 — 건드리지 않는다
-- staging 외 다른 브랜치로의 push나 main 승격은 하지 않는다 (그건 `/jam-ship`의 영역)
+- jam은 staging 외 다른 브랜치로 push하거나 main으로 승격하지 않는다 (그건 `/jam-ship`의 영역).
+  jam-doc은 배포가 없어 `main`에 바로 push한다

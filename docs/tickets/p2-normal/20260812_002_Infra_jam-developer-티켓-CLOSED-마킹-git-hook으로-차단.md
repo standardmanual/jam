@@ -23,7 +23,7 @@ closed: 2026-08-12
 
 ### 서비스/코드베이스 관점
 - `.githooks/pre-commit` 신설: 현재 브랜치가 `claude/jamwork-*` 패턴이고, staged된 티켓 파일
-  (`Service Plan/Tickets/*.md`)의 diff에 `+status: CLOSED`가 있으면 커밋을 거부.
+  (`docs/tickets/*.md`)의 diff에 `+status: CLOSED`가 있으면 커밋을 거부.
 - `main` 브랜치에서는 차단하지 않음 — 오케스트레이터가 사용자 승인 후 CLOSED 처리하는 정상 흐름은
   그대로 허용돼야 함.
 - 저장소가 `core.hooksPath`를 `.githooks`로 쓰도록 로컬 git config 설정 (`.git/hooks/`는 git이
@@ -56,7 +56,7 @@ closed: 2026-08-12
 .githooks/pre-commit (신규)
 .claude/agents/jam-developer.md
 CLAUDE.md
-Service Plan/Tickets/20260812_002_Infra_jam-developer-티켓-CLOSED-마킹-git-hook으로-차단.md
+docs/tickets/20260812_002_Infra_jam-developer-티켓-CLOSED-마킹-git-hook으로-차단.md
 ```
 
 ### 테스트 결과

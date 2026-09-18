@@ -134,7 +134,7 @@ jam-web/src/app/api/follows/__tests__/route.test.ts (신규 2건)
       staging pull 후 확인 필요(잔여 이슈 참고)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
 리빌 오버레이가 표시하는 배지 이름·설명은 기존 배지 데이터 그대로이며 이번 변경으로 새로
 추가된 사용자 노출 문구는 없다(순수 프론트 배선).

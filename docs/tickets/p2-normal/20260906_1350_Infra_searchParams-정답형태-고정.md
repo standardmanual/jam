@@ -151,7 +151,7 @@ jam-web/src/app/admin/item-badges/orphaned/page.tsx
 jam-web/src/app/admin/itembooks/page.tsx
 jam-web/src/app/admin/poi/page.tsx
 .githooks/pre-commit
-Service Plan/Tickets/20260906_1350_Infra_searchParams-정답형태-고정.md (이 문서)
+docs/tickets/20260906_1350_Infra_searchParams-정답형태-고정.md (이 문서)
 ```
 
 ### 테스트 결과

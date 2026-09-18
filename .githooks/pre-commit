@@ -11,7 +11,7 @@ branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
 case "$branch" in
   claude/jamwork-*)
     blocked=0
-    # 파일명에 공백이 있을 수 있으므로(예: "Service Plan/...") NUL 구분으로 안전하게 순회한다.
+    # 파일명에 공백이 있을 수 있으므로 NUL 구분으로 안전하게 순회한다.
     while IFS= read -r -d '' f; do
       if git diff --cached -- "$f" | grep -qE '^\+status: CLOSED\b'; then
         echo "차단(pre-commit): review 브랜치 '${branch}'에서는 티켓 status를 CLOSED로 커밋할 수 없습니다." >&2
@@ -20,7 +20,7 @@ case "$branch" in
         echo "  완료 기록 내용은 남기되 status는 OPEN/IN_PROGRESS로 두고 closed: 필드는 비워두세요." >&2
         blocked=1
       fi
-    done < <(git diff --cached --name-only -z --diff-filter=ACM -- "Service Plan/Tickets/*.md")
+    done < <(git diff --cached --name-only -z --diff-filter=ACM -- "docs/tickets/*.md")
     if [ "$blocked" -eq 1 ]; then
       exit 1
     fi
@@ -68,15 +68,15 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
     # 티켓 폴더 공통 제외 대상
     skip_ticket=0
     case "$f" in
-      "Service Plan/Tickets/Moduler/"*) skip_ticket=1 ;;
-      "Service Plan/Tickets/_TEMPLATE.md"|"Service Plan/Tickets/README.md") skip_ticket=1 ;;
-      "Service Plan/Tickets/"*.md) ;;
+      "docs/tickets/modular/"*) skip_ticket=1 ;;
+      "docs/tickets/_TEMPLATE.md"|"docs/tickets/README.md") skip_ticket=1 ;;
+      "docs/tickets/"*.md) ;;
       *) skip_ticket=1 ;;
     esac
 
     # ① 신규 티켓 파일명: YYYYMMDD_HHMM_[카테고리8종]_제목.md
     #    기존 YYYYMMDD_NNN 티켓은 소급 개명하지 않으므로 '신규 추가'에만 적용한다.
-    #    Tickets/Moduler/ 는 NNN_P{우선순위}_{동작}_ 규칙이라 대상이 아니다.
+    #    docs/tickets/modular/ 는 NNN_P{우선순위}_{동작}_ 규칙이라 대상이 아니다.
     if [ "$skip_ticket" -eq 0 ] && [ "$st" = "A" ]; then
       if ! basename "$f" | grep -qE "^[0-9]{8}_[0-9]{4}_(${CATS})_.+\.md$"; then
         echo "차단(pre-commit): 신규 티켓 파일명이 규칙에 맞지 않습니다." >&2
@@ -93,52 +93,22 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
         echo "차단(pre-commit): 티켓에 YAML frontmatter status가 없습니다." >&2
         echo "  파일: $f" >&2
         echo "  첫 줄부터 ---, 8줄 안에 'status: OPEN|IN_PROGRESS|WAITING|CLOSED' 가 있어야 합니다." >&2
-        echo "  템플릿: Service Plan/Tickets/_TEMPLATE.md" >&2
+        echo "  템플릿: docs/tickets/_TEMPLATE.md" >&2
         doclint=1
       fi
     fi
 
-    # ③ Archive/ 는 읽기 전용 — 신규 파일 생성만 막는다 (git mv 이동은 R이므로 통과)
+    # ③ 기획·운영 문서가 이 저장소로 되돌아오는 것을 막는다 (티켓 20260918_2105).
+    #   기획·마케팅·운영 자료와 제작 자산은 standardmanual/jam-doc(JAM!/jam-doc/)에 둔다.
+    #   옛 경로(Service Plan/·Asset/)가 다시 생기면 대개 경로를 갱신하지 못한 자동화나 스킬이다.
+    #   아카이브·서비스플랜·세계관 문서의 버전 사본 규칙은 jam-doc/.githooks/pre-commit 이 맡는다.
     case "$f" in
-      "Service Plan/Archive/"*)
+      "Service Plan/"*|"Asset/"*)
         if [ "$st" = "A" ]; then
-          echo "차단(pre-commit): Archive/ 는 읽기 전용 아카이브입니다 — 신규 파일을 만들 수 없습니다." >&2
+          echo "차단(pre-commit): 옛 문서 경로에 파일을 추가하려 합니다." >&2
           echo "  파일: $f" >&2
-          echo "  현행 문서는 Specs/ 에, 작업 이력은 Tickets/ 에 남깁니다." >&2
-          echo "  기존 문서를 아카이브하려면 git mv 로 '이동'하세요 (이동은 통과합니다)." >&2
-          doclint=1
-        fi
-        ;;
-    esac
-
-    # ④ 서비스플랜 버전 사본 생성 차단 — 단일 파일 직접 수정이 원칙
-    case "$f" in
-      "Service Plan/Business/"*)
-        if [ "$st" = "A" ] && basename "$f" | grep -qE 'v[0-9]+\.[0-9]+'; then
-          echo "차단(pre-commit): 서비스플랜은 버전 사본을 만들지 않습니다." >&2
-          echo "  파일: $f" >&2
-          echo "  'Service Plan/Business/서비스플랜/02 JAM! 서비스 플랜.md' 를 직접 수정하세요." >&2
-          echo "  버전 이력은 git 이 보관합니다 (v3.0~v4.3 사본 15개가 누적된 전례가 있습니다)." >&2
-          doclint=1
-        fi
-        ;;
-    esac
-
-    # ④-2 세계관 문서(TRIBES) 버전 사본 생성 차단 — 이력 폴더는 예외 (2026-09-18, 티켓 20260918_0423)
-    #   결정: 세계관 기준 문서는 TRIBES.md 한 파일로 관리하고, 버전 사본은
-    #   Service Plan/Specs/Content/TRIBES_이력/ 안에서만 허용한다. 인접 그래프가 드랍 확률에
-    #   쓰이므로 설정 변경 전 스냅샷을 남길 수 있게 하되, 판단 근거는 항상 현재본이어야 한다.
-    case "$f" in
-      "Service Plan/Specs/Content/TRIBES_이력/"*)
-        : # 이력 폴더는 예외 — 버전 사본 허용
-        ;;
-      "Service Plan/Specs/Content/TRIBES"*)
-        if [ "$st" = "A" ] && basename "$f" | grep -qE '(_[0-9]{8}|_?v[0-9]+\.[0-9]+)\.md$'; then
-          echo "차단(pre-commit): 세계관 기준 문서(TRIBES)는 버전 사본을 만들지 않습니다." >&2
-          echo "  파일: $f" >&2
-          echo "  현재본은 'Service Plan/Specs/Content/TRIBES.md' 하나로 유지하세요." >&2
-          echo "  버전 이력이 필요하면 'Service Plan/Specs/Content/TRIBES_이력/' 폴더에 두세요" >&2
-          echo "  (그 폴더 안은 예외입니다)." >&2
+          echo "  코드 쪽 문서는 docs/(tickets·specs·adr·agents)에, 기획·마케팅·운영 자료는" >&2
+          echo "  jam-doc/ 저장소에 둡니다. 경로를 참조하는 자동화·스킬이 옛 경로를 쓰고 있지 않은지 확인하세요." >&2
           doclint=1
         fi
         ;;
@@ -204,7 +174,7 @@ fi
 # badges 테이블 조회에 deleted_at 필터가 빠졌을 가능성이 있는 신규 호출을 경고한다.
 #
 # 배경: `deleted_at IS NULL` 필터 누락 패턴이 004→005→007→009→015→016→017(x2)→020→021→022로
-# 반복됐다(Service Plan/Tickets/20260825_022 참고). grep만으로는
+# 반복됐다(docs/tickets/p1-high/20260825_022 참고). grep만으로는
 # "select+JS 사후 필터" 같은 정상 패턴을 오탐할 수 있어(017 인수인계 중 실제 발생) 완전
 # 차단은 하지 않고, 새로 추가된 `.from('badges')` 호출부 근처(같은 diff hunk)에 `deleted_at`
 # 언급이 전혀 없을 때만 리뷰어에게 체크리스트 알림을 준다. 이력/피드성 조회처럼 의도적으로
@@ -254,7 +224,7 @@ if [ -n "$badges_hits" ]; then
   printf "%b" "$badges_hits" >&2
   echo "  노출/카운트/지급 로직이면 .is('deleted_at', null) 필터가 필요할 수 있습니다." >&2
   echo "  이력/피드성 조회거나 관리자 편집 화면처럼 의도적으로 필터를 넣지 않는 경우도 있으니" >&2
-  echo "  직접 판단하세요 (Service Plan/Tickets/20260825_022 참고)." >&2
+  echo "  직접 판단하세요 (docs/tickets/p1-high/20260825_022 참고)." >&2
   echo "  (경고만 하고 커밋은 진행합니다)" >&2
   echo "" >&2
 fi

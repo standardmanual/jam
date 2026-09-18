@@ -21,7 +21,7 @@
 
 ## 오버레이(시트·모달·토스트)를 만들거나 고치기 전에
 
-**`../Service Plan/Specs/PRD/2026-08-15 DESIGN_RENEWAL_SPEC.md`의 "z-index 레이어 체계" 절을
+**`../docs/specs/prd/2026-08-15 DESIGN_RENEWAL_SPEC.md`의 "z-index 레이어 체계" 절을
 먼저 읽는다.** 층 서열, "같은 z에서는 DOM 순서가 이긴다"는 규칙, `document.body` 포털 원칙,
 하단 점유 높이 신고(`src/lib/uiOverlay.ts`), 새 오버레이 체크리스트가 있다.
 
@@ -32,7 +32,7 @@
 ## 사용자 노출 텍스트는 UX Writing 가이드를 따른다
 
 화면 텍스트·버튼·에러 메시지·알림 등 모든 노출 문구는
-`../Service Plan/Specs/UX_WRITING_GUIDELINE.md`를 먼저 확인한다. 핵심:
+`../docs/specs/UX_WRITING_GUIDELINE.md`를 먼저 확인한다. 핵심:
 
 - **용어**: "획득·드랍·픽업·체크인" 등 문서에 정의된 고정 용어만 사용 (신용어는 문서 추가 후)
 - **톤**: 상황에 맞게 (배지 획득=신남, 거래=단호, 오류=전문)
@@ -59,4 +59,4 @@
   `src/types/database.generated.ts`와 대조해 반영한다. 생성 타입이 낡으면 올바른 코드가
   잘못된 컴파일 오류를 낸다.
 
-배경과 실측은 `../Service Plan/Tickets/20260831_1213_Service_Supabase제네릭-생성타입전환-쓰기타입검사-복구.md` 참조.
+배경과 실측은 `../docs/tickets/20260831_1213_Service_Supabase제네릭-생성타입전환-쓰기타입검사-복구.md` 참조.

@@ -1,5 +1,5 @@
 -- 알림(소식) 스키마 — 티켓 20260824_019
--- 스펙: Service Plan/Specs/PRD/Notification/PRD.md + DATA_MODEL.md
+-- 스펙: docs/specs/prd/notification/PRD.md + DATA_MODEL.md
 --
 -- 구성
 --   1) notification_type ENUM (28종) — PRD §3의 28종과 1:1 대응

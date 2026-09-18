@@ -1,6 +1,6 @@
 # Storybook Content Audit — UX Writing 준수 검토
 
-> 기준 문서: `Service Plan/Specs/UX_WRITING_GUIDELINE.md`
+> 기준 문서: `docs/specs/UX_WRITING_GUIDELINE.md`
 > 검토일: 2026-08-16
 > 검토 범위: `jam-web/design-system/components/**/*.stories.tsx` 전체
 

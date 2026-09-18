@@ -267,7 +267,7 @@ INSERT 실패로 바꾼다 — 아래 중 하나를 반드시 적용한다.
    1·2가 여전히 필요하다.
 
 기존 `seed_phase13_missions_30.sql`은 이미 실행된 1회성 이력이라 소급 수정하지 않는다
-(문서 지침 — `Tickets/`는 신규 생성, `Archive/`는 읽기 전용에 준해 실행 완료 시드도 사후 편집
+(문서 지침 — `docs/tickets/`는 신규 생성, `jam-doc/archive/`는 읽기 전용에 준해 실행 완료 시드도 사후 편집
 대상이 아니다).
 
 ### 패턴 12 — App Router가 `_` 접두사 폴더를 라우팅에서 조용히 제외한다
@@ -364,7 +364,7 @@ PostgreSQL의 `CREATE OR REPLACE FUNCTION`은 **파라미터 타입 목록이 �
 | `strava_activities` 테이블/컬럼 | `src/lib/strava/sync.ts`, `src/types/database.ts`의 `StravaActivityRow`·`NormalizedActivity`, `src/lib/badge-engine/index.ts`, `src/lib/drop-engine/index.ts`(둘 다 `normalized` 스냅샷을 그대로 읽음) |
 | `strava_connections.last_synced_at` (동기화 커서) | `src/lib/strava/sync.ts`의 잠금(4-1)·롤백(catch) 로직, `/api/admin/users/[id]/reset` (수동 복구 경로) |
 | `inventory` / `inventory_items` | DB 트리거 `handle_new_user()`(가입 시 자동 생성), `src/lib/drop-engine/index.ts`의 `fetchDropStructure`, `pickup_drop()` RPC |
-| `badges` 테이블(조건·보상 필드) | `src/lib/badge-engine/index.ts`(activity 타입), `src/lib/drop-engine/index.ts`(item 타입), `src/lib/strava/sync.ts`(poi 타입), `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` |
+| `badges` 테이블(조건·보상 필드) | `src/lib/badge-engine/index.ts`(activity 타입), `src/lib/drop-engine/index.ts`(item 타입), `src/lib/strava/sync.ts`(poi 타입), `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` |
 | `award_points()` RPC / `point_*` 테이블 | `src/lib/points/index.ts`(유일한 호출 경로), 호출부 6곳(배지·드랍·미션×2·조합·어드민 지급) — 새 보상 지급 지점을 추가해도 반드시 이 함수를 거치게 할 것, 직접 INSERT/UPDATE 금지 |
 | `abusing_policy`(섀도우밴 배율·GPS/차량 속도 임계값) | `src/lib/abusing/policy.ts`(정규화·폴백·관측을 거치는 정식 경로), `src/lib/abusing/shadow-ban.ts`(`BAN_RATE_KEY` 맵으로 등급 → 배율 키를 고정 — 20260831_1259 이전에는 `${banLevel}_${rarity}_rate` 문자열 조합 + `?? 1.0` fail-open이라 컬럼명이 바뀌면 차단이 조용히 꺼졌다. **`DEFAULT_POLICY`를 폴백 소스로 공유하므로 DB 배율을 바꿀 땐 `policy.ts`도 같이 바꾼다**), `src/lib/strava/sync.ts`(`vehicle_speed_filter_kmh`로 활동을 거른다. 정식 경로 `getAbusingPolicy(supabase)`를 쓰되 **주입된 클라이언트를 넘긴다** — 여기서 걸러진 결과가 배지·아이템 드랍·미션 셋 다로 흘러가므로 임계값이 틀리면 보상 루프 전체가 멈춘다. 소비 지점은 `<= 0`·비유한수만 막는 페일세이프이고, 하한 20km/h 검증은 정책 라우트가 소유한다 — 20260831_1300), `src/app/api/admin/abusing/policy/route.ts`(화이트리스트가 사실상 키 목록의 정의), `src/app/admin/abusing/AbusingClient.tsx` |
 | `poi` 테이블(반경·좌표) | `src/lib/poi/matcher.ts`(활동-POI 매칭), `src/app/api/drops/route.ts`(드랍 지도), `src/app/api/checkin-badges/route.ts`(체크인 배지 탭) — 셋 다 max-rows 대응이 되어 있어야 함(패턴 3) |

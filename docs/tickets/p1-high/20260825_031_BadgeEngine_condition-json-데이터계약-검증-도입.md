@@ -69,7 +69,7 @@ closed: 2026-08-25
 
 ### 문서 관점 (④ 배지 드랍 로직)
 
-- `Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md`:
+- `docs/specs/badge-engine/CONDITION_JSON_SPEC.md`:
   - "조건 필드"(§2, 발급 판정에 관여)와 "메타데이터 필드"(신규 절, 판정에 관여하지 않음 —
     `mission_reward`)를 명확히 분리
   - 단일 소스 파일(`condition-schema.ts`) 경로 명시, DB CHECK 제약 존재를 명시
@@ -135,8 +135,8 @@ jam-web/src/app/admin/badges/conditionFormFields.ts                    (신규)
 jam-web/supabase/migrations/102_condition_json_check_constraint.sql    (신규, 미실행)
 jam-web/src/lib/admin/__tests__/badge-validation.test.ts               (신규)
 jam-web/src/app/admin/badges/__tests__/conditionFormFields.test.ts     (신규)
-Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md                  (수정)
-Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md                 (수정)
+docs/specs/badge-engine/CONDITION_JSON_SPEC.md                  (수정)
+docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md                 (수정)
 ```
 
 ### 테스트 결과
@@ -151,7 +151,7 @@ Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md                 (수정)
       변경 전 상태에서도 동일하게 실패)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
 변경된 사용자 노출 텍스트는 어드민 전용 화면(`src/app/admin/badges/`)에 한정된다: `BadgeForm.tsx`
 신규 체크박스 라벨·안내문, `findUnknownConditionKeyError`의 에러 메시지.

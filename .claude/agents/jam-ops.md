@@ -84,8 +84,8 @@ validation logic the product does. You have **no service-role key** and no direc
 ## Scheduled runs (weekly briefing)
 
 Specification: `.claude/skills/jam-work/references/scheduled-jobs.md`. In a scheduled cloud run you
-may read the repo, save and commit the report under `Service Plan/Reports/`, draft `분류 대기`
-tickets, and post to Slack. Save the weekly briefing to `Service Plan/Reports/주간/YYYY-Www.md` in
+may read the repo, save and commit the report under `jam-doc/operations/reports/`, draft `분류 대기`
+tickets, and post to Slack. Save the weekly briefing to `jam-doc/operations/reports/weekly/YYYY-Www.md` in
 the `forms/weekly-briefing-format.md` shape. If one data source fails, retry it once, then finish
 with the rest and put `수집 실패: 출처 (사유) → 비어 있는 항목` at the top.
 

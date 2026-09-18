@@ -40,7 +40,7 @@ SERVICE_OPERATIONS_20260731_0241 문서 기반 작업 (Specs/ 폴더에서 이�
 - 원본 문서: SERVICE_OPERATIONS_20260731_0241.md (Specs → Archive/Operations 아카이브 이동)
 
 ### 주요 의사결정 / 핵심 메모
-> 상세 내용은 Service Plan/Archive/Operations/SERVICE_OPERATIONS_20260731_0241.md 참조
+> 상세 내용은 jam-doc/archive/operations/SERVICE_OPERATIONS_20260731_0241.md 참조
 
 ### 잔여 이슈
 > 문서에 명시된 내용 참고

@@ -2,13 +2,13 @@
 /**
  * Recraft 커스텀 스타일 등록 (트라이브 1개당 1회)
  *
- * 레퍼런스_이미지/ 폴더의 이미지들로 POST /v1/styles 호출 → style_id 발급.
+ * references/ 폴더의 이미지들로 POST /v1/styles 호출 → style_id 발급.
  * 결과를 해당 트라이브 폴더의 recraft_style.json에 저장한다 (재사용 위해).
  *
  * 필요 환경변수 (.env.local): RECRAFT_API_KEY
  * 실행: node scripts/recraft/register-style.js "<트라이브 폴더 절대경로>" <baseStyle> <model>
  *   예: node scripts/recraft/register-style.js \
- *     "/Users/.../02_스타일그룹/01 낭만 미식가" digital_illustration recraftv3
+ *     "/Users/.../02-style-groups/01 낭만 미식가" digital_illustration recraftv3
  */
 const fs = require('fs')
 const path = require('path')
@@ -39,7 +39,7 @@ async function main() {
     process.exit(1)
   }
 
-  const refDir = path.join(worldDir, '레퍼런스_이미지')
+  const refDir = path.join(worldDir, 'references')
   const files = fs
     .readdirSync(refDir)
     .filter((f) => MIME[path.extname(f).toLowerCase()])

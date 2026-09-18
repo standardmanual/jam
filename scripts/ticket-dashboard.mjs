@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 현황판 생성 — Service Plan/Tickets/의 frontmatter를 훑어 진행 중·대기 티켓 목록을 만든다.
+// 현황판 생성 — docs/tickets/의 frontmatter를 훑어 진행 중·대기 티켓 목록을 만든다.
 // (티켓 20260918_0421, 근거: JAM-WORK/05_자동화목록.md A3)
 // 이어서 docs/agents/orchestrator.md의 "카리나 카드" 절(CARD:START~END 마커 사이)을 그대로
 // 잘라 출력한다 — 원본은 orchestrator.md 한 곳에 유지 (티켓 20260918_1146).
@@ -10,7 +10,8 @@
 // 예약 작업 리포트 누락 감지 (티켓 20260918_1153): 예약 시각·켜짐 여부는
 // .claude/skills/jam-work/references/scheduled-jobs.md의 주간·월간 표 '상태' 행에서 읽는다.
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { execSync } from 'node:child_process'
 
 const TARGET_STATUSES = new Set(['OPEN', 'IN_PROGRESS', 'WAITING'])
@@ -178,13 +179,20 @@ export function checkMissingReports(repoRoot, kstDate = nowKST()) {
     return warnings // 문서가 없으면 조용히 건너뛴다 (이 hook 자체의 부가 기능이라 필수 아님)
   }
 
+  // 리포트는 중첩 저장소 jam-doc에 있다. 복제 전이면 "리포트 없음" 오경보 대신 복제 안내만 낸다.
+  const reportsDir = join(repoRoot, 'jam-doc', 'operations', 'reports')
+  if (!existsSync(join(repoRoot, 'jam-doc'))) {
+    warnings.push('[경고] jam-doc 저장소가 복제되어 있지 않아 리포트 누락 점검을 건너뜁니다. /jam-sync로 복제하세요.')
+    return warnings
+  }
+
   const weekly = parseWeeklySchedule(scheduleText)
   if (weekly?.enabled && weeklyDeadlinePassed(kstDate, weekly)) {
     const label = isoWeekLabel(kstDate)
-    const reportPath = join(repoRoot, 'Service Plan', 'Reports', '주간', `${label}.md`)
+    const reportPath = join(reportsDir, 'weekly', `${label}.md`)
     if (!existsSync(reportPath)) {
       warnings.push(
-        `[경고] 이번 주 예약 시각이 지났는데 주간 리포트(Service Plan/Reports/주간/${label}.md)가 없습니다.`
+        `[경고] 이번 주 예약 시각이 지났는데 주간 리포트(jam-doc/operations/reports/weekly/${label}.md)가 없습니다.`
       )
     }
   }
@@ -192,10 +200,10 @@ export function checkMissingReports(repoRoot, kstDate = nowKST()) {
   const monthly = parseMonthlySchedule(scheduleText)
   if (monthly?.enabled && monthlyDeadlinePassed(kstDate, monthly)) {
     const label = monthLabel(kstDate)
-    const reportPath = join(repoRoot, 'Service Plan', 'Reports', '월간', `${label}.md`)
+    const reportPath = join(reportsDir, 'monthly', `${label}.md`)
     if (!existsSync(reportPath)) {
       warnings.push(
-        `[경고] 이번 달 예약 시각이 지났는데 월간 리포트(Service Plan/Reports/월간/${label}.md)가 없습니다.`
+        `[경고] 이번 달 예약 시각이 지났는데 월간 리포트(jam-doc/operations/reports/monthly/${label}.md)가 없습니다.`
       )
     }
   }
@@ -210,7 +218,7 @@ function main() {
     console.log(warning)
   }
 
-  const ticketsDir = join(repoRoot, 'Service Plan', 'Tickets')
+  const ticketsDir = join(repoRoot, 'docs', 'tickets')
   const files = walkMarkdownFiles(ticketsDir)
 
   const rows = []
@@ -245,7 +253,8 @@ function main() {
   printKarinaCard(repoRoot)
 }
 
-// 테스트에서 이 모듈을 import할 때는 실행하지 않는다.
-if (import.meta.url === `file://${process.argv[1]}`) {
+// 테스트에서 이 모듈을 import할 때는 실행하지 않는다. 한글 경로는 URL에서 퍼센트 인코딩되므로
+// 문자열이 아니라 파일 경로로 바꿔 비교한다.
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   main()
 }

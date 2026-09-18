@@ -3,8 +3,8 @@
 > 현재 운영 중인 코드 기준으로 작성된 기술 운영 문서. 항상 현재 상태만 담는다.
 > 갱신 이력은 git이 보관한다 — `git log --follow`로 조회할 것.
 
-> **범위 주의**: 배지·드랍 판정 로직의 단일 진실 원천은 `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`,
-> 데이터 모델의 단일 진실 원천은 `Specs/PRD/02_DATA_MODEL.md`다.
+> **범위 주의**: 배지·드랍 판정 로직의 단일 진실 원천은 `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md`,
+> 데이터 모델의 단일 진실 원천은 `docs/specs/prd/02_DATA_MODEL.md`다.
 > 이 문서의 §4·§5·§15·§16은 그 문서들과 내용이 겹치며 일부는 이미 어긋나 있다(§16 테이블 25개 vs 31개).
 > 정리 전까지는 해당 항목에서 두 문서가 다를 경우 **위 두 문서를 따른다.**
 
@@ -964,7 +964,7 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 
 ## 13. Cron 작업
 
-**크론의 단일 진실 원천은 [`Specs/PRD/04_PROJECT_SPEC.md` 「Vercel Cron 작업」](04_PROJECT_SPEC.md#vercel-cron-작업)이다.**
+**크론의 단일 진실 원천은 [`docs/specs/prd/04_PROJECT_SPEC.md` 「Vercel Cron 작업」](04_PROJECT_SPEC.md#vercel-cron-작업)이다.**
 경로·스케줄·인증 방식·제거된 크론의 이력이 모두 그곳에 있다. 실체는 `jam-web/vercel.json`의
 `crons` 배열이므로, 문서와 어긋나면 항상 그 파일이 옳다.
 

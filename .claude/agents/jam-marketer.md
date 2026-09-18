@@ -97,7 +97,7 @@ content.
 
 미션·홈피드·드랍·캠페인·배지를 제안하기 전에 먼저 읽는다:
 1. **지난 결과 기록** (`forms/outcome-record-format.md`)
-2. **최근 리포트의 지표** — `Service Plan/Reports/주간/` 최근 4주, `Service Plan/Reports/월간/`
+2. **최근 리포트의 지표** — `jam-doc/operations/reports/weekly/` 최근 4주, `jam-doc/operations/reports/monthly/`
    최근 3개월 (읽기 상한, 그보다 오래된 것은 필요할 때만)
 
 ## Forbidden

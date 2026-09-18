@@ -11,24 +11,30 @@ CLAUDE.md에는 "어느 카테고리에 해당하는지" 판단 기준만 있다
 
 | # | 카테고리 | 대상 | 위치 | 수정 방식 |
 |---|---|---|---|---|
-| ① | PRD | 기능·스펙·로직 정의 | `Service Plan/Specs/PRD/` | 기존 파일 직접 수정 |
-| ② | 티켓 | 실행 계획·작업 이력 | `Service Plan/Tickets/` | 신규 파일 생성 |
-| ③ | 컨텐츠 | 배지·아이템북·트라이브·POI | `Service Plan/Specs/Content/` | 기존 파일 직접 수정 |
-| ④ | 배지엔진 | 발급·드랍 판정 로직 | `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` | 기존 파일 직접 수정 |
-| ⑤ | 서비스플랜 | 비전·장기 전략 | `Service Plan/Business/서비스플랜/` | 기존 파일 직접 수정 |
+| ① | PRD | 기능·스펙·로직 정의 | `docs/specs/prd/` | 기존 파일 직접 수정 |
+| ② | 티켓 | 실행 계획·작업 이력 | `docs/tickets/` | 신규 파일 생성 |
+| ③ | 컨텐츠 | 배지·아이템북·트라이브·POI | `jam-doc/planning/content/` | 기존 파일 직접 수정 |
+| ④ | 배지엔진 | 발급·드랍 판정 로직 | `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` | 기존 파일 직접 수정 |
+| ⑤ | 서비스플랜 | 비전·장기 전략 | `jam-doc/planning/business-plan/` | 기존 파일 직접 수정 |
 
 하나의 변경이 여러 카테고리에 걸치면 **각 카테고리 문서를 모두** 갱신한다.
+
+**두 저장소 (2026-09-18, 티켓 20260918_2105).** ①②④는 코드 저장소(`standardmanual/jam`)의
+`docs/`에, ③⑤는 작업 폴더 안에 중첩 복제한 문서 저장소(`standardmanual/jam-doc`, 폴더 `jam-doc/`)에
+있다. `jam-doc/` 아래 파일을 고쳤다면 그 저장소에서 따로 커밋하고 `git -C jam-doc push origin main`한다.
+한 작업이 양쪽을 건드리면 두 커밋 메시지에 같은 티켓 번호를 적는다. 경로는 항상 작업 폴더 기준으로
+적는다(`docs/specs/prd/01_PRD.md`, `jam-doc/planning/content/TRIBES.md`). 폴더명은 영문 소문자다.
 
 ---
 
 ## ② 티켓 (가장 자주 쓰는 절차)
 
 ### 파일명
-`Service Plan/Tickets/YYYYMMDD_HHMM_[카테고리]_[제목].md`
+`docs/tickets/YYYYMMDD_HHMM_[카테고리]_[제목].md`
 
 - `HHMM`: **티켓 생성 시각(KST, 24시간)**. 기존 파일을 조회해 번호를 계산하지 않는다.
 - `제목`: 한국어 또는 영어, 공백 대신 `-`
-- 템플릿: `Service Plan/Tickets/_TEMPLATE.md`
+- 템플릿: `docs/tickets/_TEMPLATE.md`
 - `id` 프론트매터도 파일명과 동일하게 `YYYYMMDD_HHMM`
 
 > **2026-08-27 규칙 전환.** 구 규칙은 `NNN`(당일 최대 번호 +1)이었으나, 병렬 세션이 같은
@@ -56,16 +62,19 @@ CLAUDE.md에는 "어느 카테고리에 해당하는지" 판단 기준만 있다
 **2026-09-07 도입, 신규 티켓부터 적용한다.** 그 시점 기존 티켓 582개(OPEN 15·CLOSED 567)는
 소급 이동하지 않는다 — 필요해지면 별도로 요청해서 진행한다.
 
-폴더로 표시한다: `Service Plan/Tickets/P{0-3}-{라벨}/YYYYMMDD_HHMM_[카테고리]_[제목].md`.
+폴더로 표시한다: `docs/tickets/p{0-3}-{라벨}/YYYYMMDD_HHMM_[카테고리]_[제목].md`.
 **파일명 규칙은 폴더 안에서도 그대로**다 — pre-commit 검사는 파일명(basename)만 보므로
 서브폴더에 넣어도 그대로 통과한다(2026-09-07 검증 완료).
 
 | 폴더 | 기준 |
 |---|---|
-| `P0-긴급` | 장애·매출·보안에 직결 |
-| `P1-중요` | 핵심 서비스 로직(배지엔진·드랍엔진·인증·결제 등) |
-| `P2-일반` | 일반 기능·UI |
-| `P3-낮음` | 사소한 개선·문서 |
+| `p0-urgent` | 장애·매출·보안에 직결 |
+| `p1-high` | 핵심 서비스 로직(배지엔진·드랍엔진·인증·결제 등) |
+| `p2-normal` | 일반 기능·UI |
+| `p3-low` | 사소한 개선·문서 |
+
+> 2026-09-18 폴더명을 영문 소문자로 바꾸면서 중복이던 `P2-일반`·`P2-보통`을 `p2-normal` 하나로 합쳤다.
+> frontmatter `priority:` 값은 그대로 `P0`~`P3`이다.
 
 frontmatter `priority:`도 폴더와 같은 값으로 채운다 — 폴더를 옮기지 않고도 grep으로 조회하기
 위함이며, 폴더와 값이 어긋나면 안 된다.
@@ -89,8 +98,8 @@ frontmatter `priority:`도 폴더와 같은 값으로 채운다 — 폴더를 �
 ### 초안(분류 대기) 티켓
 
 카즈하(예약 세션)가 만드는 티켓 초안은 `priority`를 비우고 제목 앞에 `[분류 대기]`를 붙여
-`Service Plan/Tickets/` **최상위**(P폴더 밖)에 둔다. 카리나가 우선순위를 확정하면 값을 채우고
-해당 `P{0-3}` 폴더로 옮긴다.
+`docs/tickets/` **최상위**(P폴더 밖)에 둔다. 카리나가 우선순위를 확정하면 값을 채우고
+해당 `p{0-3}-…` 폴더로 옮긴다.
 
 ### 핵심 요약 · 완료 조건 칸 (2026-09-18 추가)
 
@@ -99,7 +108,7 @@ frontmatter `priority:`도 폴더와 같은 값으로 채운다 — 폴더를 �
 - **완료 조건**: "무엇을 어떻게 확인하면 끝인지"를 검증 가능한 문장으로 적는다. 비어 있으면
   민지(판정 리뷰)가 판정하지 않고 돌려보낸다 (팀 공통 규칙 22번).
 
-두 칸 모두 `Service Plan/Tickets/_TEMPLATE.md`에 있다.
+두 칸 모두 `docs/tickets/_TEMPLATE.md`에 있다.
 
 ### 언제 만드는가
 1. **개선·기능 요청 접수 시** → `status: OPEN` 초안 생성. 뭉뚱그려진 요구사항은 카테고리·범위별로 분리.
@@ -109,7 +118,7 @@ frontmatter `priority:`도 폴더와 같은 값으로 채운다 — 폴더를 �
 
 ### 접수 시 기존 티켓 먼저 검토 (필수)
 구현 전에 반드시:
-1. Ticket 폴더에서 유사·관련 티켓 확인
+1. `docs/tickets/`에서 유사·관련 티켓 확인
 2. 파악할 것: 이미 완료된 작업인지(재구현 방지) / 미채택 대안과 이유(반복 검토 방지) / 잔여 이슈인지(이어서 처리)
 3. 컨텍스트 확보 후 구현 시작 — **티켓은 PRD와 함께 코드보다 우선하는 정보 소스**
 
@@ -133,8 +142,8 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 **대상 변경**: 신규 기능 페이지 추가 / `jam-web/src/app/api/` 라우트 추가·변경·삭제 / 기존 기능의 정책·플로우 변경
 
 **절차**:
-1. `Service Plan/Specs/PRD/` 하위 관련 문서 확인 (`01_PRD.md`, `02_DATA_MODEL.md`, `03_PHASES.md`, `04_PROJECT_SPEC.md`, 주제별 폴더 `PRD/{주제}/`)
-2. 새 기능 영역이면 `PRD/{주제}/` 하위 폴더 신설 (예: `PRD/AdminUI/`). 파일명에 날짜·Phase 접두어를 붙이지 않고 폴더로 구분
+1. `docs/specs/prd/` 하위 관련 문서 확인 (`01_PRD.md`, `02_DATA_MODEL.md`, `03_PHASES.md`, `04_PROJECT_SPEC.md`, 주제별 폴더 `docs/specs/prd/{주제}/`)
+2. 새 기능 영역이면 `docs/specs/prd/{주제}/` 하위 폴더 신설 (예: `docs/specs/prd/admin-ui/`, 영문 소문자 케밥 표기). 파일명에 날짜·Phase 접두어를 붙이지 않고 폴더로 구분
 3. **기존 파일 직접 수정** — PRD는 "현재 기준 최신 스펙"이 원칙
 4. 문서 간 상호 링크를 경로 변경 시 함께 갱신
 
@@ -146,17 +155,17 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 
 | 문서 | 대상 |
 |---|---|
-| `Content/ACTIVITY_BADGES.md` | 액티비티배지 전체 목록·조건·설명 |
-| `Content/ITEMBOOKS.xlsx` | 아이템북 + 아이템배지 목록, 트라이브 인접 그래프 |
-| `Content/COMBINE_RECIPES.md` | 조합 레시피 |
-| `Content/TRIBES.md` | 트라이브(tribe) |
-| `Content/POI.md` | 장소(POI) |
+| `jam-doc/planning/content/ACTIVITY_BADGES.md` | 액티비티배지 전체 목록·조건·설명 |
+| `jam-doc/planning/content/ITEMBOOKS.xlsx` | 아이템북 + 아이템배지 목록, 트라이브 인접 그래프 |
+| `jam-doc/planning/content/COMBINE_RECIPES.md` | 조합 레시피 |
+| `jam-doc/planning/content/TRIBES.md` | 트라이브(tribe) |
+| `jam-doc/planning/content/POI.md` | 장소(POI) |
 
 **기존 파일 직접 수정** — 컨텐츠는 "현재 상태"가 원칙, 버전 이력은 티켓에 남긴다.
 
-> **예외 (2026-09-18, 티켓 20260918_0423):** `Content/TRIBES.md`는 인접 그래프가 드랍 확률에
-> 쓰이는 세계관 기준 문서라, 큰 설정 변경 전에는 `Content/TRIBES_이력/`에 변경 전 스냅샷을
-> 남길 수 있다. 이 폴더는 `.githooks/pre-commit`의 버전 사본 차단에서 예외다. 현재본은 항상
+> **예외 (2026-09-18, 티켓 20260918_0423):** `TRIBES.md`는 인접 그래프가 드랍 확률에
+> 쓰이는 세계관 기준 문서라, 큰 설정 변경 전에는 `jam-doc/planning/content/tribes-history/`에 변경 전
+> 스냅샷을 남길 수 있다. 이 폴더는 `jam-doc/.githooks/pre-commit`의 버전 사본 차단에서 예외다. 현재본은 항상
 > `TRIBES.md` 하나이고 판단 근거는 언제나 그 현재본이다.
 
 ---
@@ -165,7 +174,7 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 
 **대상 변경**: `jam-web/src/lib/badge-engine/`·`drop-engine/` 로직 변경 / 새 조건 타입 구현 / 정책 변경(홍수방지·성장티어·첫싱크게이트·pity) / 드랍 확률·파라미터 변경
 
-**위치**: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` — 단일 진실 원천, 자립 문서로 유지. 기존 파일 직접 수정. 컨텐츠 목록(③)과는 분리 관리.
+**위치**: `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` — 단일 진실 원천, 자립 문서로 유지. 기존 파일 직접 수정. 컨텐츠 목록(③)과는 분리 관리.
 
 ---
 
@@ -173,7 +182,7 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 
 **대상 변경**: 기능 레벨의 추가·변경·삭제 (①에 해당하는 수준). 사소한 버그 수정·경미한 UI 조정은 대상 아님.
 
-**위치**: `Service Plan/Business/서비스플랜/`
+**위치**: `jam-doc/planning/business-plan/` (문서 저장소 — 고친 뒤 `jam-doc`에서 커밋·푸시)
 
 **갱신 방식** — ①에 해당하는 수준의 변경이 발생한 작업에서 함께 갱신한다:
 1. 폴더 내 단일 현행 파일 `02 JAM! 서비스 플랜.md`를 연다
@@ -190,5 +199,5 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 ## 폐기된 규칙
 
 `SERVICE_OPERATIONS_YYYYMMDD_HHMM.md` 타임스탬프 파일 생성 방식은 티켓 시스템으로 대체됐다.
-더 이상 생성하지 않으며, 기존 파일은 `Service Plan/Archive/Operations/`에 읽기 전용으로 보관한다.
-현행 운영 로직 문서는 `Service Plan/Specs/SERVICE_OPERATIONS.md`다 (2026-08-27 승격).
+더 이상 생성하지 않으며, 기존 파일은 `jam-doc/archive/operations/`에 읽기 전용으로 보관한다.
+현행 운영 로직 문서는 `docs/specs/SERVICE_OPERATIONS.md`다 (2026-08-27 승격).

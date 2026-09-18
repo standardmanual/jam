@@ -15,7 +15,7 @@
  * 스토리북이 통째로 사라져 404). 지금은 **모든 환경에서 일관되게 없는 것**이 규칙이라
  * 그때와 같은 "어떤 배포에는 있고 어떤 배포에는 없는" 상태 자체가 생기지 않는다.
  *
- * 티켓: Service Plan/Tickets/20260906_1142_Infra_*.md (이전 경위는 20260827_020_Infra_*.md)
+ * 티켓: docs/tickets/20260906_1142_Infra_*.md (이전 경위는 20260827_020_Infra_*.md)
  */
 import { spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync, writeFileSync } from 'node:fs';

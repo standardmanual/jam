@@ -1,6 +1,6 @@
 # JAM! 알림(소식) — 데이터 모델
 
-> 최초 작성: 2026-08-24 / 티켓 [20260824_018](../../../Tickets/20260824_018_Feature_알림소식-PRD수립.md)
+> 최초 작성: 2026-08-24 / 티켓 [20260824_018](../../../tickets/20260824_018_Feature_알림소식-PRD수립.md)
 > 기능 정의는 [PRD.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/PRD.md) 참고. 전체 데이터 모델은 [../02_DATA_MODEL.md](02_DATA_MODEL.md).
 
 ---

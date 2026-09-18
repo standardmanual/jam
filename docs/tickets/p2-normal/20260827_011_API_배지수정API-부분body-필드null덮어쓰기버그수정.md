@@ -101,7 +101,7 @@ jam-web/src/app/api/admin/badges/[id]/route.ts
       테스트는 미실시 — factions/item_books와 동일 패턴이라 회귀 위험 낮음으로 판단.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
 새로 추가된 노출 텍스트는 404 에러 메시지 `'배지를 찾을 수 없습니다.'` 하나뿐이며
 factions(`'트라이브을 찾을 수 없습니다.'`)·item_books(`'아이템북을 찾을 수 없습니다.'`)와

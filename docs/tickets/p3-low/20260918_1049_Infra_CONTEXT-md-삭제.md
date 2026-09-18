@@ -11,7 +11,7 @@ closed: 2026-09-18
 
 ## 배경 / 문제 정의
 루트에 `CONTEXT.md`(서비스 텍스트 최종 정비 프로젝트의 인터뷰 스크래치 문서, 2026-09-15)가
-CLAUDE.md 문서 체계(`CONTEXT.md`/ADR 대신 `Service Plan/Specs/` 사용) 밖에 남아 있었다.
+CLAUDE.md 문서 체계(`CONTEXT.md`/ADR 대신 `docs/specs/` 사용) 밖에 남아 있었다.
 사용자 요청으로 삭제한다.
 
 ## 완료 기록

@@ -39,11 +39,11 @@ closed: 2026-08-06
 
 ### 변경된 파일
 ```
-Service Plan/Business/          ← 철학·사업모델 6개 문서 이동
-Service Plan/Specs/             ← 최신 PRD, badge/, SERVICE_OPERATIONS
-Service Plan/Specs/badge/       ← 배지 관련 명세
+jam-doc/planning/business-plan/          ← 철학·사업모델 6개 문서 이동
+docs/specs/             ← 최신 PRD, badge/, SERVICE_OPERATIONS
+docs/specs/badge/       ← 배지 관련 명세
 Service Plan/History/           ← Phase7~17, DesignRenewal
-Service Plan/Archive/Operations/ ← 과거 SERVICE_OPERATIONS 54개
+jam-doc/archive/operations/ ← 과거 SERVICE_OPERATIONS 54개
 ```
 
 ### 테스트 결과
@@ -59,7 +59,7 @@ Service Plan/Archive/Operations/ ← 과거 SERVICE_OPERATIONS 54개
 ### 주요 의사결정 / 핵심 메모
 - 폴더명을 처음엔 한국어(기획, 명세, 이력)로 설정했다가 영어(Business/Specs/History)로 변경 — git/터미널 경로 취급 일관성을 위해
 - Obsidian symlink 첫 시도 시 경로 오류(`Work/JAM!`이 존재하지 않음). 올바른 Obsidian vault 루트 경로 `589132427/JAM!/`를 사용자가 직접 확인 후 재생성
-- CLAUDE.md의 SERVICE_OPERATIONS 저장 경로를 `Service Plan/PRD/` → `Service Plan/Specs/`로 2회 업데이트 (중간 한국어 경로 거침)
+- CLAUDE.md의 SERVICE_OPERATIONS 저장 경로를 `Service Plan/PRD/` → `docs/specs/`로 2회 업데이트 (중간 한국어 경로 거침)
 
 ### 잔여 이슈
 - 없음

@@ -198,7 +198,7 @@ src/app/(main)/inventory/page.tsx
   사유로 잔여 이슈에 남겨두고 별도 확인 예정
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 용어 일관성: 새 문구 없음 — 기존 `d.today.syncButton`("동기화"), `d.profile.title`/
   `avatarAlt`만 재사용

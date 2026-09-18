@@ -1,6 +1,6 @@
 /**
  * ① 활동 결산 기록 (서버 사이드 전용) — 티켓 20260827_014
- * 스펙: Specs/PRD/Notification/RECAP_CASEBOOK.md
+ * 스펙: docs/specs/prd/notification/RECAP_CASEBOOK.md
  *
  * ## 왜 한 곳에서 조립하지 않고 점진 병합인가
  *

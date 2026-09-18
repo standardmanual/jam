@@ -54,17 +54,17 @@ closed: 2026-09-05
 
 ## 참고 문서
 
-- `Service Plan/Tickets/20260903_1949_Service_타인프로필-통계탭-컬렉션수-미슬롯북-제외.md`
+- `docs/tickets/20260903_1949_Service_타인프로필-통계탭-컬렉션수-미슬롯북-제외.md`
   (이 발견물의 출처, "범위 밖 발견물" 절 1번)
-- `Service Plan/Tickets/20260824_016_UI_컬렉션-미슬롯시-타인노출차단.md` (슬롯 노출 정책 원본)
-- `Service Plan/Specs/PRD/01_PRD.md` 컬렉션 행 (정책이 명문화된 위치)
+- `docs/tickets/20260824_016_UI_컬렉션-미슬롯시-타인노출차단.md` (슬롯 노출 정책 원본)
+- `docs/specs/prd/01_PRD.md` 컬렉션 행 (정책이 명문화된 위치)
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
 호출부 재확인 결과 `jam-web/src` 전체(fetch/axios 호출, 어드민 화면 포함)와 `Service Plan/` 문서
-grep에서 실제 호출 흔적은 하나도 없었다. `Service Plan/Tickets/`의 언급은 전부 과거 작업 이력
+grep에서 실제 호출 흔적은 하나도 없었다. `docs/tickets/`의 언급은 전부 과거 작업 이력
 기록이고, `Specs/SERVICE_OPERATIONS.md`는 엔드포인트 목록에 항목만 남아있던 것이었다. 계획대로
 `jam-web/src/app/api/users/[username]/stats/route.ts`를 삭제하고, `SERVICE_OPERATIONS.md`
 엔드포인트 목록에서 해당 행을 제거했다. 실제 프로필 통계는 `(main)/[username]/page.tsx`가
@@ -73,7 +73,7 @@ grep에서 실제 호출 흔적은 하나도 없었다. `Service Plan/Tickets/`�
 ### 변경된 파일
 ```
 D  jam-web/src/app/api/users/[username]/stats/route.ts
-M  Service Plan/Specs/SERVICE_OPERATIONS.md
+M  docs/specs/SERVICE_OPERATIONS.md
 ```
 
 ### 테스트 결과

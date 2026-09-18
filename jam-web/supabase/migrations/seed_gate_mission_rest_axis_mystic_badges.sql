@@ -9,7 +9,7 @@
 --   (trail_running:Q7 · hiking:Q7 · cycling:Q7 미션의 보상 배지가 아무 배지도 열지 못함)의
 --   근본 원인 — 세 계열의 "휴식" 축(cycling:X1/hiking:X1/trail_running:X1)이 Epic까지만
 --   시딩돼 있어 Mystic 게이트를 걸 대상 배지 자체가 없었다. 새 Mystic 배지를 만들어
---   해결한다. 상세: Service Plan/Tickets/P2-일반/20260908_1033_*.md
+--   해결한다. 상세: docs/tickets/p2-normal/20260908_1033_*.md
 --
 -- 대상 3계열은 이번 범위에서 X1만 다룬다(X2는 포함하지 않음 — 사유는 티켓 완료기록·
 -- 잔여 이슈 참고).

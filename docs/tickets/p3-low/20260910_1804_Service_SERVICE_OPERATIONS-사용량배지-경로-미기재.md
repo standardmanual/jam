@@ -14,7 +14,7 @@ closed: 2026-09-14
 티켓 [20260910_1719(액티비티 배지 섀도우밴 미적용)](../P1-중요/20260910_1719_BadgeEngine_액티비티배지-섀도우밴-미적용.md)의
 게이트·개선 리뷰 양쪽에서 독립적으로 발견한 범위 밖 이슈.
 
-`Service Plan/Specs/SERVICE_OPERATIONS.md` §12-3 "적용 경로" 목록에는 현재 "아이템 드랍"·
+`docs/specs/SERVICE_OPERATIONS.md` §12-3 "적용 경로" 목록에는 현재 "아이템 드랍"·
 "액티비티 배지 발급" 2개 항목만 있다. 티켓 20260910_1557이 만든 세 번째 평가 경로(서비스
 사용량 배지, `usageBadges.ts`)에 대한 언급이 `grep` 기준 0건 — 전혀 서술되어 있지 않다.
 `BADGE_ENGINE_UNIFIED.md` §1은 1557 자신이 갱신했지만, 횡단 참조 문서인
@@ -44,7 +44,7 @@ closed: 2026-09-14
 
 ### 변경된 파일
 ```
-Service Plan/Specs/SERVICE_OPERATIONS.md
+docs/specs/SERVICE_OPERATIONS.md
 ```
 
 ### 테스트 결과

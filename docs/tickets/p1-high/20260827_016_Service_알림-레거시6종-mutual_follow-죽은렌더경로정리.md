@@ -135,10 +135,10 @@ jam-web/src/lib/notifications/__tests__/message-href.test.ts
 jam-web/src/lib/notifications/__tests__/create-notification.test.ts
 jam-web/src/lib/notifications/__tests__/kst-group-key.test.ts
 jam-web/src/lib/notifications/__tests__/feed-cursor.test.ts
-Service Plan/Specs/PRD/Notification/DATA_MODEL.md
-Service Plan/Specs/PRD/Notification/PRD.md
-Service Plan/Specs/PRD/Notification/REST_CASEBOOK.md      (머지 시 추가 — 시점 표기)
-Service Plan/Specs/PRD/Notification/RECAP_CASEBOOK.md     (머지 시 추가 — 시점 표기)
+docs/specs/prd/notification/DATA_MODEL.md
+docs/specs/prd/notification/PRD.md
+docs/specs/prd/notification/REST_CASEBOOK.md      (머지 시 추가 — 시점 표기)
+docs/specs/prd/notification/RECAP_CASEBOOK.md     (머지 시 추가 — 시점 표기)
 ```
 
 ### 테스트 결과

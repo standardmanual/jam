@@ -40,7 +40,7 @@ POI 픽업 시 `cannot_pickup_own_drop` 오류 재발 수정 — `pickup_drop()`
 - 원본 문서: SERVICE_OPERATIONS_20260725_1948.md
 
 ### 주요 의사결정 / 핵심 메모
-> 상세 내용은 Service Plan/Archive/Operations/SERVICE_OPERATIONS_20260725_1948.md 참조
+> 상세 내용은 jam-doc/archive/operations/SERVICE_OPERATIONS_20260725_1948.md 참조
 
 ### 잔여 이슈
 > 문서에 명시된 내용 참고

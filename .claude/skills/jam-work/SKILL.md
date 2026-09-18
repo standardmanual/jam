@@ -98,14 +98,14 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 
 ## 1. 사전 준비 (모든 유형 공통, 위임하지 않음)
 
-1. `Service Plan/Tickets/`에서 유사·관련 티켓 검토 (재구현 방지, 미채택 대안 확인)
+1. `docs/tickets/`에서 유사·관련 티켓 검토 (재구현 방지, 미채택 대안 확인)
 2. `_TEMPLATE.md` 형식으로 신규 티켓을 `status: OPEN`으로 생성.
    파일명 `YYYYMMDD_HHMM_[카테고리]_[제목].md` — **모든 유형에서 티켓을 만든다.**
    `HHMM`은 **티켓을 만드는 시각(KST)** 이다. 기존 파일을 훑어 번호를 계산하지 않는다 —
    구 규칙(`NNN` = 당일 최대 +1)은 병렬 세션이 같은 번호를 동시에 선점해 충돌 32건과
    재번호 커밋을 낳았다. 시각은 조회 없이 정해지므로 경합 구간 자체가 없다.
-   **우선순위(P0~P3)도 함께 판정**해 frontmatter `priority:`를 채우고 `Service Plan/
-   Tickets/P{0-3}-{라벨}/` 폴더 안에 만든다 (기준은 `/jam-docs` 참조).
+   **우선순위(P0~P3)도 함께 판정**해 frontmatter `priority:`를 채우고 `docs/tickets/
+   p{0-3}-{라벨}/` 폴더 안에 만든다 (기준은 `/jam-docs` 참조).
 3. 티켓 경로와 사용자 요청 원문을 다음 단계 컨텍스트로 준비
 
 ### 1.5 UI 판정은 채원이 한다 (위임한다)
@@ -223,7 +223,9 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
      멈추고 사용자에게 경위를 보고한다 — 다른 진행 중 티켓의 미승인 커밋을 조상으로 물고 들어왔을
      가능성이 있다 (jam-developer.md 5번, 티켓 20260820_019 사고 참고).
 2. 아현의 `문서 갱신안`을 `/jam-docs` 규칙에 맞게 반영 (민지가 점검표 11번에서 누락을 지적했으면
-   그 내용까지 함께)
+   그 내용까지 함께). 갱신안에 `jam-doc/`(③ 컨텐츠·⑤ 서비스플랜·마케팅·운영) 파일이 있으면 **메인
+   작업 폴더에서 카리나가 직접** 고치고 `jam-doc` 저장소에 따로 커밋한다 — 격리 워크트리에는
+   `jam-doc/`이 없어 아현은 갱신안만 적는다. 커밋 메시지에는 같은 티켓 번호를 적는다
 3. 티켓을 `status: CLOSED`로 변경하고 완료 기록 작성 (`ui`·`ds` 유형이면 채원① 판정 결과와
    연결 범위도 함께 기록). Workflow 결과의 `tokenUsage`(에이전트별 출력 토큰, 티켓
    20260918_1148)를 완료 기록에 함께 남긴다. **전체 토큰(입력 포함)·소요 시간·에이전트 수는
@@ -231,7 +233,8 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
    옮겨 적는다** — 이 값이 티켓 간 비교(안건 1-3 성공 기준)의 기준 수치다.
 4. jam-developer가 SQL 마이그레이션 파일을 남겼다면 **이 시점에** 사용자 승인 하에 직접 실행
    (jam-developer는 파일 작성까지만 했음)
-5. 1~4가 모두 끝난 뒤 **`git push origin staging`을 한 번만** 실행한다
+5. 1~4가 모두 끝난 뒤 **`git push origin staging`을 한 번만** 실행한다. `jam-doc`에 커밋이 있으면
+   `git -C jam-doc push origin main`도 함께 한다 (문서 저장소는 배포가 없어 push 횟수 제한이 없다)
 6. 프로덕션 반영은 `/jam-ship`으로 별도 진행 — main 머지는 사용자 명시 승인이 있을 때만
 
 ### 4.1 staging push는 티켓당 한 번
@@ -248,7 +251,7 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
 - 예외: 병렬 세션이 같은 파일을 건드리고 있어 먼저 올려두는 편이 안전할 때. 이때는
   사유를 사용자에게 한 줄로 알린다
 
-**문서만 바꾼 push는 빌드를 만들지 않는다** — `jam-web/` 밖(`Service Plan/`·`.claude/` 등)만
+**문서만 바꾼 push는 빌드를 만들지 않는다** — `jam-web/` 밖(`docs/`·`.claude/` 등)만
 바뀐 구간은 `ignoreCommand`가 건너뛴다. 판정 기준은 직전 커밋이 아니라 **직전에 실제로 빌드한
 커밋**이라, 한 push에 코드 커밋과 문서 커밋이 섞여도 코드 변경을 놓치지 않는다
 (`jam-web/scripts/vercel-ignore.sh`).
@@ -270,7 +273,7 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   티켓화 경로를 탄다.
 - `copy`·`ui`·`content` 유형의 한국어 문구는 **구현 단계**에서 아현이
   `.claude/output-styles/fluent-korean.md` 지침을 따라 쓰고, **게이트 리뷰**에서 민지가
-  체크리스트 12번으로 자연스러움을 판정한다(판정에 실질적으로 영향, `Specs/SLOP_DICTIONARY.md`
+  체크리스트 12번으로 자연스러움을 판정한다(판정에 실질적으로 영향, `docs/specs/SLOP_DICTIONARY.md`
   §4 기준). 패턴 매칭 가능한 금칙어·금지 문장은 `scripts/check-slop.mjs`가 `verify.sh` 단계에서
   이미 기계적으로 거른 뒤이므로, 민지는 문맥 판단이 필요한 것만 본다.
 - 2026-09-18 이전에는 이 역할을 별도 `humanize-korean` 플러그인(5번째 파이프라인 단계)이

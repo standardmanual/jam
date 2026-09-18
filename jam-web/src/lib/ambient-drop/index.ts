@@ -8,7 +8,7 @@
  * - 커버리지 계산 없음 — 실행마다 batch_size개를 그때그때 배치하는 배치 실행형 모델
  *   (구 ambient_drop_policy의 "전역 상시 커버리지 목표치" 모델과 다름 — 티켓 20260826_009)
  *
- * 로직 문서: Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md §3.12
+ * 로직 문서: docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md §3.12
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { logEngineDecision } from '@/lib/engine-log'

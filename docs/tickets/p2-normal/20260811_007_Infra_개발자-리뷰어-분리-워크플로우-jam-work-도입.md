@@ -53,7 +53,7 @@ closed: 2026-08-11
 .claude/agents/conservative-reviewer.md
 .claude/agents/progressive-reviewer.md
 .claude/skills/jam-work/SKILL.md
-Service Plan/Tickets/20260811_007_Infra_개발자-리뷰어-분리-워크플로우-jam-work-도입.md
+docs/tickets/20260811_007_Infra_개발자-리뷰어-분리-워크플로우-jam-work-도입.md
 ```
 
 ### 테스트 결과

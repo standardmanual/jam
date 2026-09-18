@@ -109,7 +109,7 @@ jam-web/.gitignore                         (.eslintcache 추가)
 .claude/workflows/jam-work.js              (progressive·interface 리뷰 model 지정)
 .claude/agents/conservative-reviewer.md    (typecheck 필수화 + staleness 대응 지침)
 .claude/skills/jam-work/SKILL.md           (참고 절에 3종 변경 기록)
-Service Plan/Tickets/P2-일반/20260910_2211_Infra_jam-work-부가최적화-eslint캐시-리뷰모델-typecheck복구.md  (신규 — 이 파일)
+docs/tickets/p2-normal/20260910_2211_Infra_jam-work-부가최적화-eslint캐시-리뷰모델-typecheck복구.md  (신규 — 이 파일)
 ```
 
 ### 테스트 결과

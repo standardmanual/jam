@@ -77,7 +77,7 @@ jam-web/src/app/(main)/FeedSection.tsx
 - [ ] 실기기/브라우저 육안 확인 — staging 배포 후 `jam-stage.vercel.app`에서 확인 필요
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
 - 해당 없음: 신규/변경 노출 텍스트 없음(버튼 제거만 수행)
 

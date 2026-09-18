@@ -1,7 +1,7 @@
 # 주간 브리핑 양식 (카즈하, 월요일 09:00)
 
 > 티켓 20260918_0423에서 파일화, 티켓 20260918_1155에서 운영 정비 결정 반영.
-> `scheduled-jobs.md`의 주간 예약 작업이 이 형식으로 `Service Plan/Reports/주간/YYYY-Www.md`에 저장한다.
+> `scheduled-jobs.md`의 주간 예약 작업이 이 형식으로 `jam-doc/operations/reports/weekly/YYYY-Www.md`에 저장한다.
 
 ## 파일 구성
 

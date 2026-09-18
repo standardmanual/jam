@@ -136,7 +136,7 @@ jam-web/src/types/database.generated.ts
       동작을 눈으로 확인 필요
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
 `AdminRoleToggle.tsx`의 안내 문구·확인 다이얼로그 텍스트는 일반 유저(플레이어) 대상이 아니라
 어드민(운영자) 내부 화면 전용이라 가이드라인의 배지/거래 톤 규정 적용 대상이 아니다. 같은

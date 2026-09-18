@@ -40,7 +40,7 @@ export interface AbusingPolicy {
  * 값 출처: 2026-08-31 12:59 `abusing_policy` id=1 실측.
  * Epic 배율이 1.00인 경위는 마이그레이션 `115_rename_rarity_epic_mystic.sql` §5
  * (사용자 확인 2026-08-31, "유저 체감 동작을 바꾸지 않는다")와
- * `Service Plan/Specs/SERVICE_OPERATIONS.md` §12-5 참조.
+ * `docs/specs/SERVICE_OPERATIONS.md` §12-5 참조.
  *
  * ⚠️ **DB의 배율을 바꾸면 같은 티켓에서 이 상수도 함께 바꾼다.** 한쪽만 바꾸면
  * 폴백 경로와 정상 경로의 판정이 갈리고, 그 차이는 무음으로 드러나지 않는다.

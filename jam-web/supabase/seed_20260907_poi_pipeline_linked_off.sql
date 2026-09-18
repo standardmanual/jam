@@ -4,7 +4,7 @@
 -- 10개 카테고리(government/convenience/nature/tourist_attraction/stadium/school/park/
 -- hospital/pharmacy/food) 전부 pipeline_linked=false로 전환한다.
 --
--- 배경: 티켓 문서(Service Plan/Tickets/P2-일반/20260907_1811_...)의 "배경/문제 정의" 참고.
+-- 배경: 티켓 문서(docs/tickets/p2-normal/20260907_1811_...)의 "배경/문제 정의" 참고.
 -- 네이버 지역검색 API의 반경/밀도 한계, 검증 게이트 사실상 비활성 상태, 포괄 명사 키워드의
 -- 명칭 오염(음식점이 편의점으로 저장되는 등) 다수 실측 확인. 좌표기반 서드파티 대안도 전무
 -- (NCP Maps 미지원, 카카오는 이용정책상 영구저장 금지)해 자동수집을 전면 중단하고 수동등록으로

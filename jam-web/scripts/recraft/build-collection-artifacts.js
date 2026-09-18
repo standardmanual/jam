@@ -15,9 +15,9 @@
  * }
  *
  * 출력:
- * - {tribe_dir}/컨텐츠_브리프/{collectionId} {collectionName}_프롬프트/{collectionId}_{index}_{name무공백}_프롬프트.md
- * - {tribe_dir}/컨텐츠_브리프/{collectionId} {collectionName}/recraft_batch_config.json
- * - {tribe_dir}/컨텐츠_브리프/{collectionId} {collectionName}/recraft_badge_mapping.json
+ * - {tribe_dir}/briefs/{collectionId} {collectionName}_프롬프트/{collectionId}_{index}_{name무공백}_프롬프트.md
+ * - {tribe_dir}/briefs/{collectionId} {collectionName}/recraft_batch_config.json
+ * - {tribe_dir}/briefs/{collectionId} {collectionName}/recraft_badge_mapping.json
  *
  * 실행: node scripts/recraft/build-collection-artifacts.js <spec.json>
  */
@@ -33,7 +33,7 @@ function main() {
   const spec = JSON.parse(fs.readFileSync(specPath, 'utf8'))
   const { tribe_dir, collection_id, collection_name, tribe_name, style_id, model, size, items } = spec
 
-  const briefRoot = path.join(tribe_dir, '컨텐츠_브리프')
+  const briefRoot = path.join(tribe_dir, 'briefs')
   const collectionDir = path.join(briefRoot, `${collection_id} ${collection_name}`)
   const promptDir = path.join(briefRoot, `${collection_id} ${collection_name}_프롬프트`)
   fs.mkdirSync(collectionDir, { recursive: true })

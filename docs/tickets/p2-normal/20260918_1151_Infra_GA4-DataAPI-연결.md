@@ -58,7 +58,7 @@ GA4 Data API의 `runReport`를 사용한다. 공식 문서를 확인하고 구�
 ```
 scripts/ga4-weekly-metrics.mjs (신규)
 scripts/ga4-weekly-metrics.test.mjs (신규)
-Service Plan/Specs/PRD/Analytics/GA4_EVENTS.md
+docs/specs/prd/analytics/GA4_EVENTS.md
 ```
 
 ### 테스트 결과

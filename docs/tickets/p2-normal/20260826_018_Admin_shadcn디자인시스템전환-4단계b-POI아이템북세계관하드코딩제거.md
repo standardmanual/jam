@@ -16,7 +16,7 @@ closed: 2026-08-26
 전환도 마쳤다. 이 티켓(4단계b)은 그 기반 위에서 POI·아이템북·트라이브 도메인의 하드코딩을
 제거한다 — **인프라는 이미 갖춰져 있으니 재작업 불필요, 매핑 작업만 하면 된다.**
 
-시작 전 `Service Plan/Specs/PRD/AdminUI/PHASES.md`의 "Phase 4" 절과 `20260826_017` 티켓의
+시작 전 `docs/specs/prd/admin-ui/PHASES.md`의 "Phase 4" 절과 `20260826_017` 티켓의
 "구현 기록"(색상 매핑 규칙 예시: `#111111`→`text-foreground`/`bg-primary`, `#374151`→
 `text-foreground`, `#6b7280`/`#898989`/`#9ca3af`→`text-muted-foreground`, `#e5e7eb`/
 `#f3f4f6`→`border-border`, `#f5f5f5`/`#f8f9fa`→`bg-muted` 등)를 반드시 먼저 읽고 동일한

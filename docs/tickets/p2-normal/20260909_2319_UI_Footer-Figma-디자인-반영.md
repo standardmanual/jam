@@ -50,7 +50,7 @@ Figma 디자인(https://www.figma.com/design/UXcBEgFagmO5ARwH5F0mMW/asset?node-i
   값도 함께 갱신할 것
 - 저작권 문구도 Figma는 "© 2026 Standard Manual"이고 기존 i18n은 "© 2026 Standard Manual
   All Rights Reserved."다. **Figma 문구 그대로 반영**하고 `footerCopyright` 값도 갱신할 것
-- 두 문구 모두 `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 기준에 맞는지 함께 확인
+- 두 문구 모두 `docs/specs/UX_WRITING_GUIDELINE.md` 기준에 맞는지 함께 확인
 - Footer는 전역 컴포넌트이므로, 배경색이 투명 → 짙은 회색으로 바뀌면서 Footer를 노출하는
   모든 화면(홈/드랍/철학/개인정보처리방침 제외 전체)에서 페이지 배경과 어색하게 끊기지
   않는지 확인할 것

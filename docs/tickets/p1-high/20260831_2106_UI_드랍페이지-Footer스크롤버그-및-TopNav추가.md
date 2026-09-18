@@ -35,7 +35,7 @@ closed: 2026-08-31
 ### 2. TopNav 부재 (기존에는 의도된 설계였으나 이번 요청으로 변경)
 - `/drops`가 TopNav를 렌더링하지 않는 것은 `1d7a8d55`(2026-07-29) 커밋에서 노치·홈
   인디케이터까지 채우는 완전 풀블리드 지도를 만들기 위한 **의도적 결정**이었고,
-  `TopNav.tsx:44,80`의 코드 주석과 `Service Plan/Specs/PRD/2026-08-15
+  `TopNav.tsx:44,80`의 코드 주석과 `docs/specs/prd/2026-08-15
   DESIGN_RENEWAL_SPEC.md:353`("그 화면(`/drops`)에는 TopNav가 없음")에 명시적으로
   문서화돼 있다.
 - 사용자 확인 결과, 이 기존 설계 결정을 뒤집고 **TopNav를 추가하기로 결정**했다(풀스크린
@@ -55,7 +55,7 @@ closed: 2026-08-31
    `<TopNav logo .../>`를 추가한다.
 3. TopNav 추가로 지도 컨테이너 상단이 가려지는 만큼, 지도 초기 위치·POI 마커·현재 위치
    버튼 등 기존 UI 요소가 TopNav와 겹치지 않는지 확인하고 필요 시 지도 영역의 top 오프셋을
-   조정한다. `Service Plan/Specs/PRD/2026-08-15 DESIGN_RENEWAL_SPEC.md`의 z-index 레이어
+   조정한다. `docs/specs/prd/2026-08-15 DESIGN_RENEWAL_SPEC.md`의 z-index 레이어
    체계·"기하값은 실측한다" 절을 참고해 임의 추정값을 쓰지 않는다.
 4. 완료 후 `2026-08-15 DESIGN_RENEWAL_SPEC.md:353`의 "그 화면(`/drops`)에는 TopNav가
    없음" 서술과 `TopNav.tsx:44,80`의 관련 주석을 실제 상태에 맞게 갱신한다(`/jam-docs` 규칙에
@@ -116,7 +116,7 @@ closed: 2026-08-31
 jam-web/src/components/ui/Footer.tsx
 jam-web/src/app/(main)/drops/DropsClient.tsx
 jam-web/src/components/ui/TopNav.tsx
-Service Plan/Specs/PRD/2026-08-15 DESIGN_RENEWAL_SPEC.md
+docs/specs/prd/2026-08-15 DESIGN_RENEWAL_SPEC.md
 ```
 
 ### 테스트 결과
@@ -138,7 +138,7 @@ Service Plan/Specs/PRD/2026-08-15 DESIGN_RENEWAL_SPEC.md
   기존 로컬 환경 제약). TopNav·Footer 레이어링 검증에는 영향 없음.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 해당 없음 (텍스트 문구 변경 없음, 레이아웃·컴포넌트 배치만 수정)
 

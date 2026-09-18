@@ -4,11 +4,11 @@ status: implemented
 
 > **구현 현황(2026-09-08):**
 > 1차 범위(배지 화면 + 기존 유저 선택 방식 + fail-closed 사유 구분 표시, 티켓
-> [20260908_1554](../../../Tickets/P2-일반/20260908_1554_Admin_배지미션-조건-사전시뮬레이션.md))는
+> [20260908_1554](../../../tickets/p2-normal/20260908_1554_Admin_배지미션-조건-사전시뮬레이션.md))는
 > 구현 완료. §8 2차 범위 중 가상 활동 입력 연결(GPX·수치 직접입력을 판정 대상으로 쓰는 경로,
-> 티켓 [20260908_1631](../../../Tickets/P2-일반/20260908_1631_Admin_배지-가상활동-사전시뮬레이션-입력.md))과
+> 티켓 [20260908_1631](../../../tickets/p2-normal/20260908_1631_Admin_배지-가상활동-사전시뮬레이션-입력.md))과
 > 미션 화면(`mission_type='engine_condition'` 전용) 적용(티켓
-> [20260908_1632](../../../Tickets/P2-일반/20260908_1632_Admin_미션-조건-사전시뮬레이션-적용.md))도
+> [20260908_1632](../../../tickets/p2-normal/20260908_1632_Admin_미션-조건-사전시뮬레이션-적용.md))도
 > 완료했다 — 판정 함수(`@/lib/admin/conditionSimulation.ts`의 `simulateCondition`)와 시뮬레이션
 > UI(`ConditionSimulationPanel.tsx`)를 배지·미션이 공유하고, 대상은 "기존 유저"/"가상 활동"
 > (`VirtualActivityForm.tsx`, `/admin/simulator` 폼 재사용) 두 방식 중 하나로 고른다. 단,

@@ -39,7 +39,7 @@ YYYYMMDD_HHMM_[카테고리]_[제목].md
 | 2026-08-06 | 전수 티켓화. YAML 프론트매터 + 템플릿 구조로 전환 [[feedback_operations_ticketized]] |
 | 2026-08-27 | `Tickets/` → `Tickets/`로 승격. README만 들고 있던 두 계층 제거.<br>파일명을 `NNN`(경합 발생) → `HHMM`으로 전환 |
 
-> 폐기된 원본은 `Service Plan/Archive/Operations/`에 읽기 전용으로 있다.
+> 폐기된 원본은 `jam-doc/archive/operations/`에 읽기 전용으로 있다.
 
 ## 관련 기억사항
 

@@ -35,17 +35,23 @@ A script finds most of these. You supply judgement and a fix proposal for what i
 
 | 폴더 | 쓰기 방식 |
 |---|---|
-| `Specs/` | 덮어쓰기. 지금 사실만 담고 변경 이력을 본문에 쌓지 않는다 |
-| `Tickets/` | 신규 생성. 완료 후에도 지식베이스로 남는다 |
-| `Business/` | 덮어쓰기. 버전 사본을 만들지 않는다 |
-| `Archive/` | 읽기 전용. 신규 파일 추가·기존 파일 수정 금지 |
-| `Assets/` | 생성 산출물. 문서 검색 대상 아님 |
+| `docs/specs/`, `jam-doc/planning/`, `jam-doc/marketing/` | 덮어쓰기. 지금 사실만 담고 변경 이력을 본문에 쌓지 않는다. 서비스플랜은 버전 사본을 만들지 않는다 |
+| `docs/tickets/` | 신규 생성. 완료 후에도 지식베이스로 남는다 |
+| `jam-doc/operations/reports/` | 신규 생성. 쌓기만 하고 덮어쓰지 않는다 |
+| `jam-doc/archive/` | 읽기 전용. 신규 파일 추가·기존 파일 수정 금지 |
+| `jam-doc/assets/` | 생성 산출물. 문서 검색 대상 아님 |
+
+Documents live in two repositories: `docs/` belongs to the code repo (`standardmanual/jam`),
+`jam-doc/` is a nested clone of `standardmanual/jam-doc`. Folder names are lowercase English;
+paths are always written relative to the JAM! workspace root. A document in the wrong repository
+is a lifecycle violation: it belongs in `docs/` only if it must change in the same commit as
+deployed code.
 
 버전 사본(`v3.1`, `_20260827`)은 만들지 않는다 — 이력은 git이 보관한다.
 
 ## ② 템플릿 관리
 
-티켓 템플릿에 **완료 조건** 칸을 유지하고, `.githooks/pre-commit`의 검사 규칙과 항상 쌍으로
+티켓 템플릿에 **완료 조건** 칸을 유지하고, `.githooks/pre-commit`(문서 쪽은 `jam-doc/.githooks/pre-commit`)의 검사 규칙과 항상 쌍으로
 관리한다. 상위 티켓 ↔ 하위 티켓 연결 표기 방식과 공용 처리 규칙표의 구조(담당별 섹션)도 여기서
 정한다.
 

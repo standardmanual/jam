@@ -7,7 +7,7 @@
 ## 생성 방식
 
 세션 시작 hook(`.claude/settings.json`의 `SessionStart`)이 `scripts/ticket-dashboard.mjs`를
-실행해 그 출력을 카리나에게 바로 전달한다. 스크립트는 `Service Plan/Tickets/`의 frontmatter를
+실행해 그 출력을 카리나에게 바로 전달한다. 스크립트는 `docs/tickets/`의 frontmatter를
 훑어 `OPEN`·`IN_PROGRESS`·`WAITING` 티켓 목록을 stdout에 출력할 뿐, 파일에 쓰지 않는다.
 
 - **진행 중**: `status: OPEN` 또는 `IN_PROGRESS`인 티켓.

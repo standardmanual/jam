@@ -1,6 +1,6 @@
 /**
  * T2 배치 공통 기반 — 티켓 20260825_002
- * 스펙: Specs/PRD/Notification/PRD.md §4(T2 11종) · §4-1(스케줄) / DATA_MODEL.md §4-2
+ * 스펙: docs/specs/prd/notification/PRD.md §4(T2 11종) · §4-1(스케줄) / DATA_MODEL.md §4-2
  *
  * ## 이 파일이 강제하는 4가지
  *

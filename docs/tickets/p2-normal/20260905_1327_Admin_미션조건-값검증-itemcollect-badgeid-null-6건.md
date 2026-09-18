@@ -127,7 +127,7 @@ jsonb_build_object('badge_id',
 - 미션 목록(`MissionTable.tsx`)에서 조건이 깨진 미션을 알아볼 수 있게 한다. 최소한
   「목표 미지정」 같은 표시가 목록에 보여야 한다 — 지금은 편집 폼을 열어야만 알 수 있다.
 - 표시 판정은 ②의 검증 함수를 그대로 재사용한다(별도 판정 로직을 만들지 않는다).
-- 문구는 `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 기준.
+- 문구는 `docs/specs/UX_WRITING_GUIDELINE.md` 기준.
 
 ### ④ 시드 파일의 조용한 실패 차단
 
@@ -213,7 +213,7 @@ jam-web/supabase/seed_*.sql                       ①의 결정에 따른 데이
 
 ### ④ 시드 조용한 실패 차단
 `seed_phase13_missions_30.sql`은 문서 지침대로 수정하지 않았다. 대신
-`Service Plan/Specs/DEV_PROCESS_GUARDRAILS.md`에 "패턴 11"로 규약을 남겼다 — 이름 조회로
+`docs/specs/DEV_PROCESS_GUARDRAILS.md`에 "패턴 11"로 규약을 남겼다 — 이름 조회로
 조건/보상 필드를 채우는 시드는 조회 실패를 INSERT 실패로 바꿔야 한다(서브쿼리 결과 NULL 체크
 후 `RAISE EXCEPTION`, 또는 NOT NULL/CHECK 제약, 또는 이번 티켓처럼 API 저장 검증층 — 단
 저장 검증층은 시드의 직접 DB 쓰기는 막지 못한다는 한계도 함께 적었다).
@@ -234,7 +234,7 @@ jam-web/supabase/seed_*.sql                       ①의 결정에 따른 데이
 - `jam-web/src/app/admin/missions/MissionTable.tsx` — 목록에 "목표 미지정" 표시
 - `jam-web/src/lib/missions/__tests__/condition-values.test.ts` — 신규, 값 검증 유닛 테스트
 - `jam-web/src/lib/missions/__tests__/checker-logic.test.ts` — 필수 키 ↔ 실제 로직 일치 실측 테스트 2건 추가
-- `Service Plan/Specs/DEV_PROCESS_GUARDRAILS.md` — 패턴 11 추가
+- `docs/specs/DEV_PROCESS_GUARDRAILS.md` — 패턴 11 추가
 - `jam-web/supabase/seed_terminate_orphaned_item_collect_missions_20260905.sql` — 신규, 미실행
 
 ### 검증

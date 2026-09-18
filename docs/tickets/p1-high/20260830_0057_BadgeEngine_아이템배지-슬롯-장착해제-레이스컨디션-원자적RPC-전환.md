@@ -150,5 +150,5 @@ jam-web/src/app/api/itembooks/[id]/slot/route.ts
   이 티켓의 발견을 촉발한 조사 티켓 (§3)
 - [20260829_2101](20260829_2101_BadgeEngine_아이템배지-개체정체성-드랍픽업-일련번호유지.md) —
   "표준 불변식" 정의 출처
-- `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` §3.5-2 — 이 티켓으로 갱신,
+- `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` §3.5-2 — 이 티켓으로 갱신,
   원자적 소유권 이전 RPC 전체 목록·락 순서 표

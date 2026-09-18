@@ -12,6 +12,8 @@
 
 ### 3. 작업 완료 후 staging에 commit + push
 작업이 끝나면 별도 요청이 없어도 `git add` → `git commit`(한국어 메시지) → `git push origin staging`.
+`jam-doc/`(기획·운영 문서 저장소)을 바꿨다면 그 저장소에서도 커밋하고 `git -C jam-doc push origin main`한다.
+두 저장소는 커밋이 따로 남으므로, 한 작업이 양쪽을 건드리면 두 커밋 메시지에 같은 티켓 번호를 적는다.
 
 **main 브랜치로의 머지는 사용자의 명시적 승인이 있을 때만 한다.**
 프로덕션 배포는 `/jam-ship`으로 처리한다 (staging 검증 → main 승격 → Vercel 확인).
@@ -19,9 +21,10 @@
 
 ### 4. 로컬과 git을 항상 동일하게 유지
 - 작업 후 `git status`로 untracked·modified 파일이 없도록 처리
-- `.gitignore`에 새 항목 추가 금지 (보안 예외: 토큰/시크릿 파일은 허용)
+- `.gitignore`에 새 항목 추가 금지 (예외: 토큰/시크릿 파일, 그리고 중첩 저장소 `/jam-doc/`)
 - 이 저장소는 `.githooks/`를 hooks 경로로 쓴다. 새로 클론한 환경에서는 최초 1회
-  `git config core.hooksPath .githooks` 실행 필요
+  `git config core.hooksPath .githooks` 실행 필요. `jam-doc/`도 같은 설정이 필요하다
+  (`git -C jam-doc config core.hooksPath .githooks`)
 - **작업 폴더의 절대경로는 PC마다 다르다.** 특정 절대경로를 전제하지 않고, 현재 저장소가 열려
   있는 경로를 그대로 기준으로 삼는다 (PC별 경로·아이클라우드 주의사항은
   `docs/agents/orchestrator.md`)
@@ -93,50 +96,61 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 
 ### Issue tracker
 
-이슈는 GitHub Issues가 아니라 `Service Plan/Tickets/`의 마크다운 티켓으로 추적한다. 자세한
+이슈는 GitHub Issues가 아니라 `docs/tickets/`의 마크다운 티켓으로 추적한다. 자세한
 내용은 `docs/agents/issue-tracker.md` 참고.
 
 ### Domain docs
 
-단일 컨텍스트. `CONTEXT.md`/ADR 대신 `Service Plan/Specs/`의 PRD·컨텐츠·배지엔진·서비스플랜
-문서 체계를 사용한다. 자세한 내용은 `docs/agents/domain.md` 참고.
+단일 컨텍스트. `CONTEXT.md` 대신 아래 "문서 체계 개요"의 두 저장소 문서를 사용한다.
+자세한 내용은 `docs/agents/domain.md` 참고.
 
 ---
 
 ## 문서 체계 개요
 
-`Service Plan/`은 5가지 카테고리로 구성된다. 개선사항이 어느 카테고리에 해당하는지 먼저 판단하고,
-여러 카테고리에 걸치면 각 문서를 모두 갱신한다.
+문서는 두 저장소에 나뉘어 있다. 기준은 **"Vercel에 배포되는 코드와 같은 커밋 안에서 함께
+바뀌어야 하는가"** 하나다 (티켓 20260918_2105).
+
+| 저장소 | 위치 | 담는 것 |
+|---|---|---|
+| `standardmanual/jam` | 작업 폴더 루트 | 배포되는 코드(`jam-web/`) + 코드가 따라야 할 스펙 + 작업 이력(`docs/`) |
+| `standardmanual/jam-doc` | `jam-doc/` (중첩 복제, `jam`은 무시) | 기획·마케팅·운영 자료와 제작 자산 |
+
+**경로는 항상 작업 폴더(JAM!) 기준으로 적는다.** 코드 쪽은 `docs/specs/prd/01_PRD.md`,
+문서 쪽은 `jam-doc/planning/content/TRIBES.md`처럼 쓴다. 폴더명은 영문 소문자다.
+
+개선사항이 어느 카테고리에 해당하는지 먼저 판단하고, 여러 카테고리에 걸치면 각 문서를 모두 갱신한다.
 
 | # | 카테고리 | 내용 | 위치 |
 |---|---|---|---|
-| ① | PRD | 기능·스펙·로직 정의 | `Service Plan/Specs/PRD/` |
-| ② | 티켓 | 실행 계획·작업 이력 | `Service Plan/Tickets/` |
-| ③ | 컨텐츠 | 액티비티배지·아이템북·아이템배지·트라이브·POI | `Service Plan/Specs/Content/` |
-| ④ | 배지 드랍 로직 | 배지 발급·드랍 엔진 판정 로직 | `Service Plan/Specs/BadgeEngine/` |
-| ⑤ | 서비스 플랜 | 비전·장기 전략, 현재/향후 구분 | `Service Plan/Business/서비스플랜/` |
+| ① | PRD | 기능·스펙·로직 정의 | `docs/specs/prd/` |
+| ② | 티켓 | 실행 계획·작업 이력 | `docs/tickets/` |
+| ③ | 컨텐츠 | 액티비티배지·아이템북·아이템배지·트라이브·POI | `jam-doc/planning/content/` |
+| ④ | 배지 드랍 로직 | 배지 발급·드랍 엔진 판정 로직 | `docs/specs/badge-engine/` |
+| ⑤ | 서비스 플랜 | 비전·장기 전략, 현재/향후 구분 | `jam-doc/planning/business-plan/` |
 
-> `Specs/UX_WRITING_GUIDELINE.md`·`Specs/SERVICE_OPERATIONS.md`·`Specs/DEV_PROCESS_GUARDRAILS.md`처럼
-> 4개 카테고리에 속하지 않는 횡단 참조 문서는 `Specs/` 루트에 유지한다.
+> 카테고리에 속하지 않는 횡단 참조 문서는 두 곳에 있다. 코드와 함께 바뀌는
+> `UX_WRITING_GUIDELINE`·`SERVICE_OPERATIONS`·`DEV_PROCESS_GUARDRAILS`·`SLOP_DICTIONARY`·
+> `PRIVACY_POLICY`는 `docs/specs/` 루트에, 마케팅 자료는 `jam-doc/marketing/`에 둔다.
 
-### 폴더 = 수명주기 (2026-08-27 재편)
+### 폴더 = 수명주기 (2026-08-27 재편, 2026-09-18 저장소 분리)
 
 폴더가 곧 **"이 문서를 어떻게 쓰나"** 를 지시한다. 새 문서를 만들 때 어느 폴더인지부터 정한다.
 
 | 폴더 | 수명주기 | 쓰기 방식 |
 |---|---|---|
-| `Specs/` | 현재 상태 | **덮어쓰기.** 항상 지금 사실만 담는다. 변경 이력을 본문에 누적하지 않는다 |
-| `Tickets/` | 작업 이력 | **신규 생성.** 완료 후에도 지식베이스로 남아 계속 검색된다 |
-| `Reports/` | 시점별 기록 | **신규 생성, 쌓기만 하고 덮어쓰지 않음.** 주간·월간 리포트. 에이전트는 주간 최근 4주·월간 최근 3개월만 읽는다 |
-| `Business/` | 비전·전략 | 덮어쓰기. 버전 사본을 만들지 않는다 |
-| `Archive/` | 폐기된 기록 | **읽기 전용.** 신규 파일 추가 금지, 기존 파일 수정 금지 |
-| `Assets/` | 생성 산출물 | 파이프라인이 만든 결과물. 문서가 아니므로 문서 검색 대상에서 제외 |
+| `docs/specs/`, `jam-doc/planning/`, `jam-doc/marketing/` | 현재 상태 | **덮어쓰기.** 항상 지금 사실만 담는다. 변경 이력을 본문에 누적하지 않는다 |
+| `docs/tickets/` | 작업 이력 | **신규 생성.** 완료 후에도 지식베이스로 남아 계속 검색된다 |
+| `jam-doc/operations/reports/` | 시점별 기록 | **신규 생성, 쌓기만 하고 덮어쓰지 않음.** 주간·월간·배포 리포트. 에이전트는 주간 최근 4주·월간 최근 3개월만 읽는다 |
+| `jam-doc/archive/` | 폐기된 기록 | **읽기 전용.** 신규 파일 추가 금지, 기존 파일 수정 금지 |
+| `jam-doc/assets/` | 생성 산출물 | 파이프라인이 만든 결과물. 문서가 아니므로 문서 검색 대상에서 제외 |
 
 - **버전 사본(`v3.1`, `_20260827` 등)을 만들지 않는다.** 이력은 git이 보관한다.
-- **`Archive/`의 문서를 근거로 현재 상태를 판단하지 않는다.** 낡은 정보다.
+- **`jam-doc/archive/`의 문서를 근거로 현재 상태를 판단하지 않는다.** 낡은 정보다.
 
-이 규칙들은 `.githooks/pre-commit`이 기계적으로 막는다 — 티켓 파일명 형식·frontmatter status
-누락·`Archive/` 신규 파일·서비스플랜 버전 사본. 정당한 예외는 `JAM_SKIP_DOCLINT=1`로 우회하되
+이 규칙들은 각 저장소의 `.githooks/pre-commit`이 기계적으로 막는다 — `jam`은 티켓 파일명 형식·
+frontmatter status 누락·옛 경로(`Service Plan/`) 재생성을, `jam-doc`은 `archive/` 신규 파일·
+서비스플랜과 세계관 문서의 버전 사본을 막는다. 정당한 예외는 `JAM_SKIP_DOCLINT=1`로 우회하되
 사유를 커밋 메시지에 남긴다.
 
 ### 새 세션 시작 시 읽기 순서
@@ -144,10 +158,10 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 서비스 전체를 파악해야 할 때 **코드부터 탐색하지 않는다.** 전체 코드 탐색은 토큰 낭비가 크고,
 아래 문서에 서비스 로직·정책·데이터 모델이 이미 정리되어 있다:
 
-1. `Tickets/`의 관련 최신 티켓 (유사 작업·의사결정 확인)
-2. `Specs/PRD/01_PRD.md` (필요 시 `02_DATA_MODEL.md`, 주제별 폴더 `PRD/{주제}/`)
-3. `Specs/Content/` (배지·아이템·트라이브·POI 관련 시)
-4. `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` (배지·드랍 로직 관련 시)
+1. `docs/tickets/`의 관련 최신 티켓 (유사 작업·의사결정 확인)
+2. `docs/specs/prd/01_PRD.md` (필요 시 `02_DATA_MODEL.md`, 주제별 폴더 `docs/specs/prd/{주제}/`)
+3. `jam-doc/planning/content/` (배지·아이템·트라이브·POI 관련 시)
+4. `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` (배지·드랍 로직 관련 시)
 5. 위에서 찾지 못한 경우에만 코드(`jam-web/src/`) 탐색
 
 ---

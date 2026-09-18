@@ -50,7 +50,7 @@ closed: 2026-08-11
 .claude/agents/conservative-reviewer.md
 .claude/agents/progressive-reviewer.md
 .claude/skills/jam-work/SKILL.md
-Service Plan/Tickets/20260811_008_Infra_jam-work-크루-페르소나-콜사인-적용.md
+docs/tickets/20260811_008_Infra_jam-work-크루-페르소나-콜사인-적용.md
 ```
 
 ### 테스트 결과

@@ -1,6 +1,6 @@
 /**
  * 알림(소식) 생성 라이브러리 (서버 사이드 전용) — 티켓 20260824_019
- * 스펙: Specs/PRD/Notification/PRD.md · DATA_MODEL.md
+ * 스펙: docs/specs/prd/notification/PRD.md · DATA_MODEL.md
  *
  * 다른 코드가 한 줄로 소식을 남길 수 있게 하는 것이 이 모듈의 목적이다.
  *

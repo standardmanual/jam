@@ -10,7 +10,7 @@ closed: 2026-08-27
 # [API] SERVICE_OPERATIONS.md 어드민 API HTTP 메서드 표기 오류 정정
 
 ## 배경 / 문제 정의
-`Service Plan/Archive/Operations/SERVICE_OPERATIONS.md`의 "어드민" API 엔드포인트 표(16번
+`jam-doc/archive/operations/SERVICE_OPERATIONS.md`의 "어드민" API 엔드포인트 표(16번
 섹션 직전, 어드민 API 목록)에서 factions·badges·itembooks·missions·poi·abusing 등 여러
 엔드포인트의 HTTP 메서드가 실제 코드(`jam-web/src/app/api/admin/*/[id]/route.ts` 등)와
 다르게 기재돼 있다. 예: `/api/admin/factions/[id]`는 문서상 `PATCH`지만 실제 구현은 `PUT`이다.
@@ -58,7 +58,7 @@ recipes, users, simulate)은 손대지 않는다.
 
 ### 변경된 파일
 ```
-Service Plan/Archive/Operations/SERVICE_OPERATIONS.md
+jam-doc/archive/operations/SERVICE_OPERATIONS.md
 ```
 
 ### 테스트 결과

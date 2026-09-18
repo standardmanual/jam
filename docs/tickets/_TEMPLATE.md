@@ -10,7 +10,7 @@ closed: YYYY-MM-DD
 # [카테고리] 제목 요약
 
 > 초안(분류 대기)일 때는 제목 앞에 `[분류 대기]`를 붙이고, `priority`는 비운 채
-> `Service Plan/Tickets/` 최상위에 둔다. 카리나가 우선순위를 확정하면 값을 채우고 해당
+> `docs/tickets/` 최상위에 둔다. 카리나가 우선순위를 확정하면 값을 채우고 해당
 > `P{0-3}` 폴더로 옮긴다.
 
 ## 핵심 요약
@@ -59,7 +59,7 @@ closed: YYYY-MM-DD
 - [ ] 
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
 - [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
 - [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)

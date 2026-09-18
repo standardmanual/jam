@@ -228,7 +228,7 @@ mythic 48건 / 3단계 설명의 "전설" 18건).
 ### 잔재 검증 기준 (구 이름이 완전히 소멸하므로 성립)
 
 ```
-rg -i "legendary|mythic" jam-web/src jam-web/design-system "Service Plan/Specs" "Service Plan/Business"
+rg -i "legendary|mythic" jam-web/src jam-web/design-system "docs/specs" "jam-doc/planning/business-plan"
 ```
 → **0건**이어야 한다. (`legend`는 `epic`으로 갔으므로 역시 0건. 단 `Tickets/`·`Archive/`·
 `Assets/`·과거 마이그레이션 SQL은 제외 대상)
@@ -281,7 +281,7 @@ rg -i "legendary|mythic" jam-web/src jam-web/design-system "Service Plan/Specs" 
 ### 잔재 검증 결과
 
 - `jam-web/src` · `jam-web/design-system`(벤더 제외): **0건**
-- `Service Plan/Specs` · `Business`: 아래 2종만 의도적으로 남김
+- `docs/specs` · `Business`: 아래 2종만 의도적으로 남김
   - `UX_WRITING_GUIDELINE.md`의 «등급명 표기» 절 — 매핑 이력을 적는 곳이므로 옛 이름이
     있어야 한다(K항이 명시적으로 요구). 이 절이 **옛 이름을 적어 두는 유일한 곳**임을
     문서 안에 못박았다.

@@ -36,7 +36,7 @@ run_step typecheck npm run typecheck
 run_step test npm test
 run_step ds npm run ds:check
 
-# 슬롭/금칙어 검사: Service Plan/Specs/SLOP_DICTIONARY.md의 금칙 단어·금지 문장을
+# 슬롭/금칙어 검사: docs/specs/SLOP_DICTIONARY.md의 금칙 단어·금지 문장을
 # origin/staging 대비 diff의 추가 라인에서 찾는다 (티켓 20260918_0951).
 if ! ( cd "$REPO_ROOT" && node scripts/check-slop.mjs ) >"$LOG_PREFIX.slop" 2>&1; then
   FAILED+=("slop")

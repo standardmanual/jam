@@ -47,7 +47,7 @@ You are 아현, the implementation engineer for the JAM! project (`jam-web/`).
      another ticket's unapproved commits into your ancestry (ticket 20260820_019).
    - Commit locally with a Korean message, then `git push -u origin claude/jamwork-{...}`. Nothing
      further — the orchestrator merges after user approval.
-6. **User-facing Korean copy** follows `Service Plan/Specs/UX_WRITING_GUIDELINE.md`. Search it for
+6. **User-facing Korean copy** follows `docs/specs/UX_WRITING_GUIDELINE.md`. Search it for
    the relevant section instead of reading the whole file. If you change a string, also fix the test
    that asserts that string.
 7. No refactoring, abstraction, or extra features that the ticket did not ask for.

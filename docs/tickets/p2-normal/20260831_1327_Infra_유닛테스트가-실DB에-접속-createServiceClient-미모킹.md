@@ -53,7 +53,7 @@ closed: 2026-09-01
 4. `npx vitest run src` 전체가 green이 되는지 확인 — **이게 이 티켓의 완료 조건**
 
 ### 참고 문서
-- `Service Plan/Tickets/20260831_1259_Service_어뷰징정책-폴백이-섀도우밴-판정을-뒤집음.md` (분리 출처)
+- `docs/tickets/20260831_1259_Service_어뷰징정책-폴백이-섀도우밴-판정을-뒤집음.md` (분리 출처)
 - `jam-web/src/lib/abusing/__tests__/policy-save.test.ts` (모킹 대조 사례)
 
 ---
@@ -122,7 +122,7 @@ jam-web/vitest.setup.ts  (신규 — Supabase 관련 env를 테스트 전 비움
 - 없음
 
 ### 개선 리뷰(progressive-reviewer) 제안 반영
-- `Service Plan/Specs/DEV_PROCESS_GUARDRAILS.md`에 "패턴 10 — 테스트가 진입점만 모킹하고,
+- `docs/specs/DEV_PROCESS_GUARDRAILS.md`에 "패턴 10 — 테스트가 진입점만 모킹하고,
   내부에서 새로 열리는 접속 경로는 새어나감"으로 반영 완료.
 - 공용 모킹 헬퍼 추출·env 이름 변경 시 주석 남기기·CI 스크립트화는 리뷰어도 "지금 당장은
   불필요"로 판단한 제안이라 보류(패턴 10 규칙 3에 "세 번째 발견 시 고려"로 기록해둠).
