@@ -15,6 +15,21 @@ const STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token'
 /** Strava가 응답 없이 지연될 때 요청이 무한 대기하지 않도록 하는 타임아웃 (ms) */
 const STRAVA_FETCH_TIMEOUT_MS = 8_000
 
+/**
+ * Strava API 호출 실패를 나타내는 오류. HTTP 상태 코드를 `status` 필드로 들고 있어
+ * 호출부(`syncFailures.ts`)가 에러 메시지 문구가 아니라 상태 코드로 429(레이트리밋)를
+ * 판정할 수 있다 (티켓 20260918_1519).
+ */
+export class StravaApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number
+  ) {
+    super(message)
+    this.name = 'StravaApiError'
+  }
+}
+
 // =========================================
 // Rate Limit 헬퍼
 // =========================================
@@ -43,7 +58,7 @@ async function stravaFetch<T>(url: string, accessToken: string): Promise<T> {
 
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`Strava API 오류 ${res.status}: ${body}`)
+    throw new StravaApiError(`Strava API 오류 ${res.status}: ${body}`, res.status)
   }
 
   return res.json() as Promise<T>
