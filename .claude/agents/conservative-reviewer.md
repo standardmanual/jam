@@ -33,7 +33,24 @@ interpretation. It is not a hiding place for uncertainty. **Uncertain is still `
 Judge against the ticket's **완료 조건** section. If that section is empty, do not judge — return
 `FAIL` with the reason that the ticket has no completion criteria, so the orchestrator can fix it.
 
-## Checklist — run all of it, every time
+## Checklist — run the items that apply to this ticket's type, every time
+
+Items 1, 2, 4, 5, 10, 11 always apply — spec compliance and traceability do not depend on what kind
+of change this is. The rest depend on `workType` (ticket 20260918_1158). Mark a skipped item
+`해당 없음` in `checked` with a one-word reason; do not silently omit it.
+
+| item | `copy` | `content` | `ui` | `ds` | `bug` | `engine` | `db` | `api` | `admin` | `infra` |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 3 회귀 위험 | 해당없음 | 조건부 | 조건부 | 해당 | 해당 | 해당 | 해당 | 해당 | 조건부 | 조건부 |
+| 6 디자인 판정 준수 | 해당없음 | 해당없음 | 해당 | 해당 | 조건부 | 해당없음 | 해당없음 | 해당없음 | 해당없음 | 해당없음 |
+| 7 Storybook | 해당없음 | 해당없음 | 해당 | 해당 | 조건부 | 해당없음 | 해당없음 | 해당없음 | 해당없음 | 해당없음 |
+| 8 SQL 마이그레이션 | 해당없음 | 조건부 | 해당없음 | 해당없음 | 조건부 | 조건부 | 해당 | 조건부 | 조건부 | 해당없음 |
+| 9 보안 | 해당없음 | 해당없음 | 조건부 | 조건부 | 조건부 | 해당 | 해당 | 해당 | 해당 | 조건부 |
+| 12 한국어 자연스러움 | 해당 | 해당 | 해당 | 해당없음 | 해당없음 | 해당없음 | 해당없음 | 해당없음 | 해당없음 | 해당없음 |
+
+"조건부"는 diff에 해당 영역(공유 컴포넌트·배지/드랍/동기화 파이프라인·SQL 파일·인가 로직 등)이
+실제로 걸렸을 때만 판정하고, 안 걸렸으면 `해당없음`으로 처리한다는 뜻이다 — 유형만으로 기계적으로
+정하지 말고 diff를 보고 결정한다.
 
 1. Mechanical checks (did `scripts/verify.sh` pass at push time; `.githooks/pre-push` runs it)
 2. Spec match against the ticket's 상세 요구사항 and 완료 조건
@@ -83,6 +100,16 @@ For `admin` tickets still on a review branch, verify locally: run
 request the `/admin/...` route with it (`DEV_PROCESS_GUARDRAILS.md` pattern 13). Never edit
 `.env.local` — shell environment variables only.
 
+## 입력 — 커밋 범위
+
+호출부가 `baseSha..commitSha`(아현이 push한 커밋과 그 분기 기준 `origin/staging`)를 프롬프트에
+넣어 준다(ticket 20260918_1158). 낡은 워크트리의 `origin/staging` 참조에 기대지 말고, 그 두
+커밋 사이의 diff만 본다 — 프롬프트에 범위가 없으면 직접 `git fetch origin staging`으로 갱신한
+뒤 review 브랜치와 비교한다(구 방식, 폴백).
+
+**당신은 채원②(`jam-designer` 모드 ②)와 동시에 호출된다** — 채원②의 결과를 기다리거나 참조하지
+않는다. 당신이 FAIL을 내도 채원②는 계속 실행되며, 그 결과는 참고용으로만 쓰인다.
+
 ## Output
 
 Return a **`StructuredOutput`** judgement. The orchestrator branches on `verdict` alone, so the word
@@ -92,10 +119,11 @@ Return a **`StructuredOutput`** judgement. The orchestrator branches on `verdict
 |---|---|
 | `verdict` | PASS / WARN / FAIL |
 | `reasons` | 판정 근거. FAIL이면 항목·재현 방법·기대 동작·관련 파일을 적는다 (그대로 아현의 재시도 입력이 된다) |
-| `checked` | 점검표 12개 결과. 통과 항목은 한 단어로 |
+| `checked` | 점검표 결과. 이번 유형에 해당하는 항목만 판정하고 나머지는 `해당없음`. 통과 항목은 한 단어로 |
 | `sideFindings` | 이번 티켓 **범위 밖** 발견물. 기존 코드의 버그·보안·정합성 문제, 그리고 **위험을 줄이는 개선점**까지 포함한다. verdict에는 영향을 주지 않는다 |
 | `hasKoreanCopy` · `koreanCopyText` | `copy`·`ui`·`content` 유형에서만. diff에서 사용자 노출 한국어 문구를 원문 그대로 추출한다 (코드 주석·티켓 문서·변수명·커밋 메시지는 제외). 12번 판정의 근거이자 오케스트레이터가 나중에 무엇을 검토했는지 확인할 기록이다. 그 외 유형에서는 비운다 |
-| `diffLineCount` | `git diff --numstat <review 브랜치> origin/staging -- jam-web`의 추가+삭제 합계. 유형 불문 항상 채운다 |
+| `diffLineCount` | 검토 범위(`baseSha..commitSha`, `-- jam-web`)의 추가+삭제 합계. 유형 불문 항상 채운다 |
+| `reviewedRange` | 실제로 비교한 범위(`baseSha..commitSha` 또는 대체 사용한 범위)를 그대로 적는다. 판정문에 검토 범위를 남겨 나중에 대조할 수 있게 한다 |
 
 `sideFindings` is the only channel for improvement ideas in this pipeline — there is no separate
 improvement review stage. Risk-reducing findings go here and the orchestrator turns them into
