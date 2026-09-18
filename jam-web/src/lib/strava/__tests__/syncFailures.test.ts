@@ -1,24 +1,31 @@
 /**
- * Strava 동기화 실패 기록 — 단위 테스트 (티켓 20260918_1307)
+ * Strava 동기화 실패 기록 — 단위 테스트 (티켓 20260918_1307, 20260918_1519)
  *
  * 지키는 것:
  * 1. classifyStravaSyncFailure가 429(레이트리밋)만 따로 구분하고 나머지는
- *    strava_api_error로 뭉뚱그린다
+ *    strava_api_error로 뭉뚱그린다 — 판정은 에러 메시지 문구가 아니라
+ *    StravaApiError의 구조화된 status 필드를 본다(티켓 20260918_1519)
  * 2. recordStravaSyncFailure가 strava_sync_failures에 유형·시각을 기록한다
  * 3. 기록 자체가 실패(DB 오류·예외)해도 예외를 던지지 않는다(동기화를 막지 않는다)
  */
 import { describe, it, expect, vi } from 'vitest'
 import { classifyStravaSyncFailure, recordStravaSyncFailure } from '../syncFailures'
+import { StravaApiError } from '../api'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 describe('classifyStravaSyncFailure', () => {
-  it('429 레이트리밋 오류를 rate_limited로 분류한다', () => {
-    const err = new Error('Strava API 오류 429: rate limit exceeded')
+  it('429 상태 코드를 가진 StravaApiError를 rate_limited로 분류한다', () => {
+    const err = new StravaApiError('Strava API 오류 429: rate limit exceeded', 429)
     expect(classifyStravaSyncFailure(err)).toBe('rate_limited')
   })
 
-  it('그 외 Strava API 오류·일반 예외는 strava_api_error로 분류한다', () => {
-    expect(classifyStravaSyncFailure(new Error('Strava API 오류 500: server error'))).toBe(
+  it('에러 메시지 문구가 바뀌어도 status 필드가 429면 rate_limited로 분류한다', () => {
+    const err = new StravaApiError('요청이 너무 잦습니다. 나중에 다시 시도하세요.', 429)
+    expect(classifyStravaSyncFailure(err)).toBe('rate_limited')
+  })
+
+  it('429가 아닌 StravaApiError·일반 예외는 strava_api_error로 분류한다', () => {
+    expect(classifyStravaSyncFailure(new StravaApiError('Strava API 오류 500: server error', 500))).toBe(
       'strava_api_error'
     )
     expect(classifyStravaSyncFailure(new Error('네트워크 오류'))).toBe('strava_api_error')
