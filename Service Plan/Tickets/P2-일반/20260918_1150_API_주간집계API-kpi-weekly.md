@@ -2,9 +2,9 @@
 id: 20260918_1150
 category: API
 priority: P2
-status: WAITING
+status: CLOSED
 created: 2026-09-18
-closed:
+closed: 2026-09-18
 ---
 
 # [API] 주간 집계 API /api/admin/kpi/weekly
@@ -37,7 +37,7 @@ GA4는 광고 차단기 유저를 놓치고 일부 이벤트는 특정 경로에
 - 프로덕션 배포 후 1회 호출해 값이 어드민 화면의 수치와 맞는지 대조한다
 
 ---
-## 완료 기록 *(2026-09-18 staging 머지, 프로덕션 대조 대기로 WAITING)*
+## 완료 기록 *(2026-09-18)*
 
 ### 구현 내용 요약
 `GET /api/admin/kpi/weekly?days=N` (기본 7일 KST, 1~90 범위 밖은 기본값). 인증은 `requireAdminRead(req)`(GET만 export). 읽기 쿼리만 쓴다.
@@ -62,11 +62,16 @@ jam-web/src/app/api/admin/kpi/weekly/__tests__/route-contract.test.ts (신규)
 ### 테스트 결과
 - [x] `scripts/verify.sh` 통과 (민지 재실행 확인)
 - [x] 개인 식별 필드 미노출·GET 전용·`requireAdminRead` 사용을 계약 테스트로 확인
-- [ ] 프로덕션 배포 후 1회 호출해 어드민 화면 수치와 대조 (1149 토큰 등록 후)
+- [x] 프로덕션 배포 후 1회 호출해 대조 (2026-09-18). 어드민에 이 지표를 보여 주는 화면이 없어, 카리나가 같은 기간·같은 정의로
+  프로덕션 DB를 읽기 전용 조회해 대조했다
+  - 기간 2026-09-11T04:35:56Z ~ 2026-09-18T04:35:56Z
+  - 미션 달성자 수: API 0 = DB 0 ✅ (미션 71개, 전체 참가 기록 1건, 달성 기록은 지금까지 0건 — 공개 준비 단계라 참여자가 거의 없음. 고장 아님)
+  - 배지 발급량: API 40 = DB 40 ✅
+  - 나머지 3개: 예정대로 `null` + 사유
 
 ### 배포 정보
 - 배포일: 2026-09-18 (staging)
-- 환경: staging
+- 환경: staging → production (`/jam-ship`, main 4d4763db)
 - 커밋: 8122b161 (머지 ec3e922f)
 
 ### 주요 의사결정 / 핵심 메모
