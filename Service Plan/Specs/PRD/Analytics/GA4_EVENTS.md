@@ -55,6 +55,28 @@ GA4 측정 ID가 1개(`G-7K884Q399P`)뿐이라 스트림을 나누지 않는다.
    1회만 보낸다 — 클라이언트 상태(세션스토리지 등)로 자체 판정하지 않는다. 배지 INSERT
    자체가 유니크 제약이라 실제 DB 카운트는 재요청·새로고침에도 항상 정확하다.
 
+## 주간 브리핑 지표 정의 (GA4 Data API)
+
+카즈하의 주간 브리핑(`Service Plan/Reports/주간/`)이 읽는 성장·행동 지표와 GA4 소스의 매핑이다.
+`scripts/ga4-weekly-metrics.mjs`가 GA4 Data API `runReport`로 지난 7일(`7daysAgo`~`yesterday`)
+값을 조회한다(티켓 20260918_1151, 상위 20260918_1101 안건 4-7). 미션 달성자 수·배지 발급량·
+Strava 동기화 실패·앰비언트 드랍 만료처럼 GA가 못 보거나 실제보다 적게 세는 운영 이상 4개는
+GA4가 아니라 어드민 집계 API(`/api/admin/kpi/weekly`)로 따로 읽는다 — 위 "알려진 계측 공백" 참고.
+
+| 지표 | GA4 소스 | 이벤트명/측정항목 |
+|---|---|---|
+| 활성 유저 | 표준 측정항목 | `activeUsers` |
+| 가입 완료 | 이벤트 카운트 | `sign_up_complete` |
+| 온보딩 완료 | 이벤트 카운트 | `onboarding_complete` |
+| 드랍 | 이벤트 카운트 | `item_drop` |
+| 픽업 | 이벤트 카운트 | `item_pickup` |
+| 믹스 성공 | 이벤트 카운트 | `combine_success` |
+| 미션 참가 | 이벤트 카운트 | `mission_join` |
+
+인증은 서비스 계정 키(GA 관리 화면에서 뷰어 권한만 부여)로 JWT Bearer 흐름을 거쳐 발급받은
+액세스 토큰을 쓴다. 키는 `GA4_SERVICE_ACCOUNT_KEY` 환경변수(서비스 계정 키 JSON 전체 내용)로만
+받고 저장소에는 두지 않는다. 사용법은 스크립트 상단 주석 참고.
+
 ## 알려진 계측 공백 (의도적 범위 제한)
 
 - **`first_badge_earned`/`mission_complete` 커버리지 = Strava 동기화 경로만.** 두 이벤트 모두
