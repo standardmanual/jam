@@ -282,8 +282,13 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         headerStyle={topNavStyle}
       />
 
-      {/* 스크롤 컨테이너 — 외부: padding 16 / gap 12 */}
-      <div className="relative z-10 flex-1 flex flex-col px-4 pt-0 pb-10 gap-3">
+      {/* 스크롤 컨테이너 — 외부: padding 24 / gap 12. [20260915_2016] 배지 상세(px-6)와
+          좌우 여백을 맞추기 위해 px-4(16px)에서 px-6(24px)로 통일했다 — 서비스 내 상세화면
+          컨벤션(배지 상세·미션 상세)이 24px 쪽으로 우세하다. 이전에는 Hero 카드에만 `mx-2` 핵을
+          더해 시각적으로 맞췄으나(20260917_1303), 페이지 안의 다른 섹션(슬롯 그리드·체크인
+          그리드·완성 배너)은 16px 그대로라 내부 불일치가 생겼다 — 컨테이너 값 자체를 올려
+          근본적으로 해결한다. */}
+      <div className="relative z-10 flex-1 flex flex-col px-6 pt-0 pb-10 gap-3">
 
         <ItemBookHeroSection
           book={{ name: book.name, description: book.description, image_url: book.image_url }}
