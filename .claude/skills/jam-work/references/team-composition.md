@@ -15,7 +15,7 @@
 | 혜린 | PM (기획·타당성·리스크) | `jam-pm` | Sonnet (조사 Haiku) |
 | 윈터 | 세계관 | `jam-tribe` | 모드별 (Opus/Sonnet/Haiku) |
 | 윤진 | 마케팅 | `jam-marketer` | Sonnet (수집 Haiku) |
-| 카즈하 | 운영·리스크 | `jam-ops` | 모드별 (Haiku/Sonnet) |
+| 카즈하 | 운영·리스크 + Workflow 개선점 발견 | `jam-ops` | 모드별 (Haiku/Sonnet) |
 | 하니 | 문서 체계 | `jam-guide` | Haiku (개편 제안 Sonnet) |
 
 **삭제:** `progressive-reviewer` — 개선 리뷰 단계를 없애고 그 역할을 아현·민지·채원으로 분산했다.
@@ -24,7 +24,7 @@
 
 | 구분 | 스킬 |
 | --- | --- |
-| 기존 유지 | `/jam-work` `/jam-docs` `/jam-design` `/jam-ds` `/jam-img` `/jam-ship` `/jam-sync` |
+| 기존 유지 | `/jam-work`(카리나) `/jam-docs` `/jam-design` `/jam-ds` `/jam-img` `/jam-ship` `/jam-sync` |
 | 신규 | `/jam-plan`(혜린) `/jam-story`(윈터·윤진 협업) |
 
 ## 개발 파이프라인 (`ui`·`ds` 유형)

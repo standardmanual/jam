@@ -5,8 +5,8 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 
 # /jam-work — JAM! 표준 작업 워크플로우
 
-> **담당**: 카리나(오케스트레이터=나, 콜사인 베이스캠프) · 채원(`jam-designer`, 팔레트) ·
-> 아현(`jam-developer`, 트레일메이커) · 민지(`conservative-reviewer`, 체크포인트)
+> **담당**: 카리나(오케스트레이터=나) · 채원(`jam-designer`) · 아현(`jam-developer`) ·
+> 민지(`conservative-reviewer`) — 콜사인은 전부 본인 이름과 같다.
 >
 > 평소 개발 흐름에 관여하는 건 이 넷이다. 혜린·윈터·윤진·카즈하·하니는 상황이 있을 때만
 > 부른다 (각 정의는 `.claude/agents/`).
@@ -213,7 +213,7 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
 
 사용자 보고 시 "범위 밖 발견물" 섹션에 생성된 티켓 경로를 우선순위와 함께 나열한다.
 
-## 4. 승인 후 처리 — 베이스캠프 모자를 쓴다 (위임하지 않음)
+## 4. 승인 후 처리 — 카리나가 직접 처리한다 (위임하지 않음)
 
 1. review 브랜치(`claude/jamwork-*`)를 **staging에 머지**한다 (push는 아직 하지 않는다 —
    아래 「staging push는 티켓당 한 번」 참고)
