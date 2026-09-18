@@ -120,7 +120,9 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
   // 로고가 노출되는 탭 최상위 화면(logo=true)에만 자연히 노출된다.
   const logoNode = logo ? (
     <>
-      <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-[26px] w-auto" priority />
+      <Link href="/" aria-label="홈으로 이동" className="shrink-0">
+        <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-[26px] w-auto" priority />
+      </Link>
       <Button variant="outline" surface="main" size="xs" onClick={() => router.push('/voc')}>
         {d.voc.inquiryButton}
       </Button>
