@@ -60,8 +60,8 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 
 ### 유형별 파이프라인 분기표
 
-**디자인 파이프라인** — 채원① 사전 판정 → 구현 → 게이트 리뷰 → 채원② 사후 리뷰
-(diff가 15줄 미만이면 채원②는 생략된다 — `gate.diffLineCount` 기준)
+**디자인 파이프라인** — 채원① 사전 판정 → 구현 → 게이트 리뷰(민지)·채원② 사후 리뷰 **동시 실행**
+(diff가 15줄 미만이면 채원②는 생략된다 — 아현이 보고하는 `devResult.diffLineCount` 기준)
 
 | 유형 | 대상 | 추가 절차 | 티켓 카테고리 |
 |---|---|---|---|
@@ -116,12 +116,16 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 `.claude/skills/jam-work/references/ds-connection-scope.md` 기준 **연결 범위**도 함께 판정한다.
 
 - 같은 화면에 대한 **이전 판정이 이미 있으면** 그 내용을 `reuseDecision` 인자로 넘긴다.
-  값이 있으면 채원①을 건너뛰고 그 판정을 그대로 쓴다 (중복 호출 방지).
-- 채원①이 `needs_approval`에 항목을 올렸으면(새 토큰·새 컴포넌트·눈에 보이는 변경), Workflow가
+  값이 있으면 채원①을 건너뛰고 그 판정을 그대로 쓴다 (중복 호출 방지). `reuseDecision`은
+  Workflow가 이전에 반환한 `designDecision` 객체를 그대로 넣는다 — 채원①이 구조화 출력
+  (`StructuredOutput`)으로 반환하므로 문자열로 옮겨 적지 않는다(티켓 20260918_1158).
+- 채원①이 `needsApproval: true`를 반환했으면(새 토큰·새 컴포넌트·눈에 보이는 변경), Workflow가
   아현을 호출하지 않고 **여기서 자동으로 멈춘다** (`stoppedAt: '채원 사전 판정'`, 안건 1-1,
-  티켓 20260918_1148). 카리나는 `needsApprovalItems`를 사용자에게 그대로 보고하고 승인 여부를
-  묻는다. 승인되면 `reuseDecision`에 `designDecision`을 넣어 Workflow를 다시 호출한다(채원①은
-  건너뛰고 아현부터 이어서 돈다). 거절되면 티켓 방향을 다시 논의한다.
+  티켓 20260918_1148). 이 판단은 표 안 글자 검색이 아니라 스키마 필드(`needsApproval`)로
+  내려진다(1148 민지 발견물 ①, 티켓 20260918_1158). 카리나는 `needsApprovalItems`를 사용자에게
+  그대로 보고하고 승인 여부를 묻는다. 승인되면 `reuseDecision`에 `designDecision`을 넣어
+  Workflow를 다시 호출한다(채원①은 건너뛰고 아현부터 이어서 돈다). 거절되면 티켓 방향을 다시
+  논의한다.
 - 판정 결과는 승인 후 처리 단계에서 티켓 완료 기록에 남긴다.
 
 ## 2. Workflow 호출
@@ -131,7 +135,7 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 파이프라인 스크립트는 `.claude/workflows/jam-work.js`에 있다. `Workflow` 도구를 아래처럼 호출한다.
 
 ```
-Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason, route })
+Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route })
 ```
 
 - `name`은 `.claude/workflows/`의 사전 정의 워크플로를 가리킨다. 파일 경로로 직접 지정하려면
@@ -146,6 +150,10 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   `needs_approval`을 사용자가 승인했을 때 그 내용을 넣는다. 없으면 비운다(비우면 워크플로가
   채원①을 호출한다).
 - `retryReason`은 최초 실행 시 비우고, 재시도 시에만 이전 재작업 사유(`reworkReasons`)를 넣는다.
+- `retryBranch`도 최초 실행 시 비우고, 재시도 시에만 직전 시도의 review 브랜치명
+  (`devResult.branch`)을 넣는다. 값이 있으면 아현이 새 브랜치를 만들지 않고 그 브랜치를
+  체크아웃해 커밋을 이어서 쌓는다(티켓 20260918_1158) — 사람이 `retryReason` 문장 안에 브랜치명을
+  적어 넣지 않아도 된다.
 - `route`는 0.1.5절의 경로 값이다. 경로 ②(가벼운 UI)면 `route: 'light'`를 넘긴다 — 채원①·②를
   건너뛴다. 경로 ③(표준)이면 비운다(기본값).
 - 스크립트를 고쳐야 하면 `.claude/workflows/jam-work.js`를 직접 편집한 뒤 다시 호출한다
@@ -174,8 +182,9 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
 재작업 여부는 `needsRework` 하나로 판단한다 — 게이트 `FAIL` **또는** 채원② 중대 문제다.
 
 - **재작업 (`needsRework: true`)**: `reworkReasons`를 그대로 보고하고 재시도 여부를 **사용자에게
-  묻는다.** 임의 재시도 금지. 승인받아 재시도할 때는 `reworkReasons`를 `retryReason`에 넣어 다시
-  호출한다 (같은 실수 반복 방지).
+  묻는다.** 임의 재시도 금지. 승인받아 재시도할 때는 `reworkReasons`를 `retryReason`에, 직전
+  `devResult.branch`를 `retryBranch`에 넣어 다시 호출한다 (같은 실수 반복 방지, 아현이 기존
+  review 브랜치를 이어받는다).
   **동일 티켓에서 재작업이 2회 연속 발생하면**, 재시도 전에 "워크플로우 규칙이나 티켓 스펙 자체에
   문제가 있을 수 있습니다 — 규칙을 검토할까요?"라고 먼저 묻는다 (정책 갱신 피드백 루프).
 - **WARN**: WARN 사유를 사용자에게 알리되, 사후 단계는 정상 진행한다.
@@ -268,17 +277,28 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   맡았으나, 제안형이라 판정에 영향을 주지 않아 실효성이 낮고 파이프라인만 복잡하게 만들어
   민지의 체크리스트로 흡수했다(티켓 20260918_1033). 플러그인 자체는 여전히 설치돼 있어도
   되고 없어도 무방 — 이 파이프라인은 더 이상 호출하지 않는다.
+- 민지의 점검표 12개 항목 중 유형에 해당하지 않는 항목은 `해당없음`으로 처리한다 — 표는
+  `conservative-reviewer.md`의 「Checklist」 절에 있다(티켓 20260918_1158). 예: `copy` 유형은
+  DB 마이그레이션·보안·디자인 판정 항목을 건너뛴다.
 - 채원② 사후 리뷰의 점검표는 `.claude/skills/jam-design/references/ui-review-checklist.md`다.
   외부 스킬 5종(`interface-review`·`better-*`, `~/.agents/skills/`를 가리키던 심볼릭 링크)에
   의존하던 인터페이스 리뷰를 이 JAM 전용 점검표로 대체했다(2026-09-18) — 이제 외부 폴더에
   의존하는 경로가 없다. 라이팅 품질은 게이트(민지)가 담당하므로 점검표에서 의도적으로 뺐다.
-- 채원②는 `gate.diffLineCount`(민지가 `git diff --numstat`으로 잰 jam-web 변경 라인 수)가
+- 채원②는 `devResult.diffLineCount`(아현이 `git diff --numstat`으로 잰 jam-web 변경 라인 수)가
   `SMALL_DIFF_LINE_THRESHOLD`(15) 미만이면 건너뛴다 — 패딩 1줄 조정까지 점검표 전체를 도는
   건 낭비이기 때문(2026-09-08 신설된 기준을 그대로 이어받았다). 값이 없으면 안전하게 실행
-  쪽으로 기운다. `diffLineCount`는 유형 불문 항상 채워진다.
-- 채원②는 게이트 리뷰 이후 단독 실행된다(2026-09-18 이전에는 한국어 리뷰와 `parallel()`로
-  동시 실행했으나, 한국어 리뷰 단계가 사라지며 자연히 단일 호출로 단순화됐다). 채원②의
-  모델은 `ds` 유형만 Sonnet, 나머지는 Haiku다(파급 범위 기준).
+  쪽으로 기운다. `diffLineCount`는 유형 불문 항상 채워진다. 민지의 게이트 리뷰와 채원②를
+  전역 `parallel()`로 동시에 돌리기 때문에(티켓 20260918_1158), 게이트가 다시 재는
+  `diffLineCount`가 아니라 병렬 시작 **전에** 이미 알 수 있는 아현의 값으로 실행 여부를
+  정한다.
+- 민지(게이트)와 채원②(사후 리뷰)는 둘 다 아현의 결과만 참조하고 서로를 참조하지 않으므로
+  전역 `parallel()`(배리어, 실패한 작업은 null)로 동시에 호출한다(티켓 20260918_1158 —
+  2026-09-18 1033 이전에는 한국어 리뷰와 `parallel()`로 동시 실행했다가, 한국어 리뷰가 게이트
+  체크리스트 12번으로 흡수되며 잠시 단일 호출로 단순화됐던 것을 다시 병렬화했다). 민지가
+  FAIL이어도 채원②는 계속 진행되며 그 결과는 참고용으로만 쓰인다. 두 호출이 동시에 진행돼
+  `budget.spent()` 전후 차이를 에이전트별로 쪼갤 수 없어 `tokenUsage`에는
+  `gate+jam-designer-post` 하나로 합산해 기록한다. 채원②의 모델은 `ds` 유형만 Sonnet, 나머지는
+  Haiku다(파급 범위 기준).
 - 기계 검사는 `scripts/verify.sh` 하나로 통합됐다(lint·typecheck·test·ds:check·slop).
   아현이 제출 전에 직접 돌리고, push 시점 `.githooks/pre-push`가 다시 돌린다. 민지는 확신도가
   낮거나 알림이 있거나 결과가 불분명할 때만 재실행한다 — 그 외에는 중복 실행하지 않는다.
@@ -301,6 +321,8 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   `git fetch origin staging && git checkout --detach origin/staging`으로 못 박았다.
   jam-developer 정의의 5번 규칙(`git fetch origin staging && git checkout -B ... origin/staging`)이
   아현에게는 이미 있었으나, conservative-reviewer 정의에는 같은 지시가 없어 민지가 뒤처진
-  `origin/staging` 참조로 diff를 재는 사례가 있었다. `jam-work.js`가 아현·민지 양쪽 프롬프트에
-  "먼저 `git fetch origin staging`을 실행하라"는 지시를 명시적으로 넣어, 배정된 워크트리의
-  초기 HEAD를 신뢰하지 않고 항상 최신 `origin/staging` 기준으로 작업·비교하도록 고쳤다.
+  `origin/staging` 참조로 diff를 재는 사례가 있었다. **티켓 20260918_1158부터는** fetch 지시를
+  따르는지에 기대는 대신, 아현이 push한 `baseSha..commitSha`를 `jam-work.js`가 민지·채원②
+  프롬프트에 그대로 박아 넣는다 — 두 에이전트는 그 고정된 두 커밋 사이의 diff만 보므로, 워크트리의
+  `origin/staging` 참조가 뒤처져 있어도 결과가 흔들리지 않는다(1148 민지 발견물 ②). 아현이 범위를
+  채우지 못한 예외 상황에서만 "먼저 `git fetch origin staging`을 실행하라"는 옛 방식으로 폴백한다.

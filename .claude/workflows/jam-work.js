@@ -21,7 +21,7 @@ export const meta = {
 // 호출부의 입력 오타이지만, 실패 시 조용히 undefined로 넘어가는 대신 최소한 명확한
 // SyntaxError로 드러나도록 방어적으로 파싱한다.
 const parsedArgs = typeof args === 'string' ? JSON.parse(args) : args
-const { ticketPath, userRequest, workType, reuseDecision, retryReason, route } = parsedArgs
+const { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route } = parsedArgs
 
 // 경로 3단 분기(안건 1-2, 티켓 20260918_1148). 경로 ①(경미)은 Workflow를 아예 호출하지
 // 않으므로(SKILL.md 0.1절, 카리나 직접 처리) 여기서는 ②·③만 받는다. 카리나가 유형 판정
@@ -44,6 +44,66 @@ function trackTokens(label, before) {
   if (before != null && after != null) tokenUsage[label] = after - before
 }
 
+// 아현의 인수인계도 자유 문장의 `status:` 글자 검색 대신 구조화 출력으로 받는다
+// (티켓 20260918_1158). 파이프라인이 직접 판단하는 필드만 스키마로 뽑고, 사람이 읽는
+// 나머지 항목(원인·변경 내용·검증 결과·테스트·문서 갱신안·확신도·alerts 등)은 자유
+// 마크다운인 `summary`에 담아 형식을 그대로 유지한다.
+const DEV_RESULT = {
+  type: 'object',
+  properties: {
+    status: { enum: ['done', 'plan_only', 'needs_design', 'halted'] },
+    branch: { type: 'string' },
+    commitSha: { type: 'string' },
+    baseSha: { type: 'string' },
+    diffLineCount: { type: 'number' },
+    summary: { type: 'string' },
+  },
+  required: ['status', 'summary'],
+}
+
+// 채원①의 needs_approval도 표 안 글자 검색 대신 구조화 출력으로 받는다(티켓 20260918_1158,
+// 1148 민지 발견물 ①). 나머지 판정 항목은 자유 텍스트 그대로 두되 하나의 스키마에 담아,
+// 아현·민지·채원②에게 넘길 때는 formatDesignDecision()으로 다시 마크다운 표로 펼친다.
+const DESIGN_PRE = {
+  type: 'object',
+  properties: {
+    decision: { type: 'string' },
+    components: { type: 'string' },
+    tokens: { type: 'string' },
+    layout: { type: 'string' },
+    states: { type: 'string' },
+    motion: { type: 'string' },
+    deviceNotes: { type: 'string' },
+    craftNotes: { type: 'string' },
+    scope: { type: 'string' },
+    completionCriteria: { type: 'string' },
+    needsApproval: { type: 'boolean' },
+    approvalItems: { type: 'array', items: { type: 'string' } },
+    reason: { type: 'string' },
+  },
+  required: ['decision', 'needsApproval'],
+}
+
+function formatDesignDecision(d) {
+  if (!d) return ''
+  if (typeof d === 'string') return d // reuseDecision으로 옛 형식(문자열)이 넘어온 경우 방어
+  const rows = [
+    ['decision', d.decision],
+    ['components', d.components],
+    ['tokens', d.tokens],
+    ['layout', d.layout],
+    ['states', d.states],
+    ['motion', d.motion],
+    ['device_notes', d.deviceNotes],
+    ['craft_notes', d.craftNotes],
+    ['scope', d.scope],
+    ['완료 조건', d.completionCriteria],
+    ['needs_approval', d.needsApproval ? (d.approvalItems ?? []).join('; ') || '있음' : '없음'],
+    ['reason', d.reason],
+  ]
+  return rows.filter(([, v]) => v != null && v !== '').map(([k, v]) => `| ${k} | ${v} |`).join('\n')
+}
+
 // 게이트 판정은 자유 텍스트가 아니라 구조화 출력으로 받는다.
 // (FAIL 판정문 본문에 "PASS"라는 단어가 들어가도 오라우팅되지 않도록)
 const VERDICT = {
@@ -56,6 +116,7 @@ const VERDICT = {
     hasKoreanCopy: { type: 'boolean' },
     koreanCopyText: { type: 'string' },
     diffLineCount: { type: 'number' },
+    reviewedRange: { type: 'string' },
   },
   required: ['verdict', 'reasons'],
 }
@@ -97,23 +158,22 @@ if (!designDecision && DESIGN_TYPES.includes(workType) && !isLightRoute) {
     `${workType === 'ds' ? `\n\`ds\` 유형이므로 ` +
       `.claude/skills/jam-work/references/ds-connection-scope.md 기준 네 부류 중 이번 변경이 ` +
       `어디에 해당하는지 \`scope\`에 명시하라.\n` : ''}`,
-    { agentType: 'jam-designer', label: 'jam-designer-pre' }
+    { agentType: 'jam-designer', label: 'jam-designer-pre', schema: DESIGN_PRE }
   )
   trackTokens('jam-designer-pre', t0)
   calledDesignerPre = true
 }
 
 // needs_approval 항목이 있으면 파이프라인을 여기서 멈춘다(안건 1-1, 티켓 20260918_1148).
-// 채원①은 자유 텍스트를 반환하므로 needs_approval 칸의 값을 텍스트로 추출해 "없음"이 아닌지
-// 확인한다. 사용자 승인 후에는 이 판정을 reuseDecision으로 다시 넘겨 채원①을 건너뛴다.
+// 채원①이 구조화 출력으로 반환하는 needsApproval 불리언을 그대로 판단 기준으로 쓴다 — 글자
+// 검색 없이 스키마 필드로 정지 여부를 정한다(티켓 20260918_1158, 1148 민지 발견물 ①).
+// 사용자 승인 후에는 이 판정을 reuseDecision으로 다시 넘겨 채원①을 건너뛴다.
 if (calledDesignerPre) {
-  const naMatch = String(designDecision).match(/needs_approval[`*]*\s*[:|]\s*([^\n|]+)/i)
-  const naValue = (naMatch?.[1] ?? '').trim()
-  const hasNeedsApproval = naValue !== '' && !/^없음/.test(naValue)
+  const hasNeedsApproval = designDecision?.needsApproval === true
   if (hasNeedsApproval) {
     return {
       stoppedAt: '채원 사전 판정',
-      needsApprovalItems: naValue,
+      needsApprovalItems: (designDecision.approvalItems ?? []).join('; '),
       designDecision,
       devStatus: null,
       devResult: null,
@@ -133,6 +193,7 @@ phase('구현')
 // 게이트 리뷰 중 실측: 오케스트레이터가 남긴 문서 편집이 흔적 없이 사라짐). 격리 워크트리는
 // 이 트리 밖에서 분기·커밋하므로 다른 세션의 작업과 절대 겹치지 않는다.
 const KOREAN_WRITING_TYPES = ['copy', 'ui', 'content']
+const designDecisionText = formatDesignDecision(designDecision)
 const devT0 = tokensSpent()
 const devResult = await agent(
   `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n요청: ${userRequest}\n` +
@@ -141,15 +202,16 @@ const devResult = await agent(
   `파일도 읽기 전에, **첫 명령으로** \`git fetch origin staging && git checkout --detach ` +
   `origin/staging\`을 실행하라. 그 전에 본 파일 내용은 무효다. 브랜치는 그 뒤 정의의 5번 ` +
   `규칙대로 만든다.\n` +
-  `${designDecision ? `\n채원 사전 판정(이대로 따를 것):\n${designDecision}\n` : ''}` +
-  `${retryReason ? `\n이전 리뷰 재작업 사유 — 반드시 해결할 것:\n${retryReason}\n` +
-    `재시도이므로 review 브랜치를 체크아웃하기 전에 직전 시도가 남긴 낡은 워크트리가 같은 ` +
-    `브랜치명을 점유하고 있지 않은지 먼저 확인하고(있으면 제거 후 진행) 작업하라(자세한 절차는 ` +
-    `정의의 5번 규칙 참고).\n` : ''}` +
+  `${designDecisionText ? `\n채원 사전 판정(이대로 따를 것):\n${designDecisionText}\n` : ''}` +
+  `${retryBranch ? `\n재시도다. 새 브랜치를 만들지 말고 기존 review 브랜치를 이어서 쓴다: ` +
+    `\`git fetch origin ${retryBranch} && git checkout ${retryBranch}\`. 직전 시도가 남긴 낡은 ` +
+    `워크트리가 같은 브랜치명을 점유하고 있지 않은지 먼저 확인하라(있으면 제거 후 진행, 정의의 ` +
+    `5번 규칙 참고). 이 브랜치 위에 커밋을 이어서 쌓고 같은 브랜치로 다시 push한다.\n` : ''}` +
+  `${retryReason ? `\n이전 리뷰 재작업 사유 — 반드시 해결할 것:\n${retryReason}\n` : ''}` +
   `${KOREAN_WRITING_TYPES.includes(workType) ? `\n신규·변경되는 사용자 노출 한국어 문구(UI 카피, 배지·미션·POI 설명, 알림·토스트 등)를 ` +
     `작성할 때는 .claude/output-styles/fluent-korean.md를 읽고 그 지침을 따라 작성하라.\n` : ''}` +
   `\n이 티켓을 읽고 구현을 진행하라.`,
-  { agentType: 'jam-developer', label: 'jam-developer', isolation: 'worktree' }
+  { agentType: 'jam-developer', label: 'jam-developer', isolation: 'worktree', schema: DEV_RESULT }
 )
 trackTokens('jam-developer', devT0)
 
@@ -158,8 +220,9 @@ trackTokens('jam-developer', devT0)
 //   plan_only    : 파일 5개 초과 또는 100줄 이상 예상 → 구현 계획만 반환
 //   needs_design : UI 작업인데 채원 사전 판정이 없음
 //   halted       : [중단] 급 이상 발견
+// devResult.status는 구조화 필드다 — 문장에서 글자 검색으로 찾지 않는다(티켓 20260918_1158).
 const STOP_STATES = ['plan_only', 'needs_design', 'halted']
-const devStatus = (String(devResult).match(/status:\s*([a-z_]+)/i)?.[1] ?? '').toLowerCase()
+const devStatus = devResult?.status ?? ''
 if (STOP_STATES.includes(devStatus)) {
   return {
     stoppedAt: '구현',
@@ -183,53 +246,64 @@ if (STOP_STATES.includes(devStatus)) {
 //    먼저 거른다(verify.sh 단계, 이 워크플로 밖).
 // ─────────────────────────────────────────────────────────────────────────────
 phase('게이트 리뷰')
-const gateT0 = tokensSpent()
-const gate = await agent(
-  `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult}\n` +
-  `${designDecision ? `\n채원 사전 판정(점검표 6번 대조 기준):\n${designDecision}\n` : ''}` +
-  `\ndiffLineCount를 재기 전에 \`git fetch origin staging\`을 먼저 실행해 로컬 origin/staging ` +
-  `참조를 최신으로 갱신하라 — 배정된 워크트리가 호출 시점 메인 트리 기준이라 origin/staging ` +
-  `참조가 뒤처져 있을 수 있다(티켓 20260918_1148). 이후 \`git diff --numstat <review 브랜치> ` +
-  `origin/staging\`으로 비교하라.\n` +
-  `\n스펙대로 동작하는지 판정하라.`,
-  { agentType: 'conservative-reviewer', label: 'conservative-reviewer', schema: VERDICT }
-)
-trackTokens('conservative-reviewer', gateT0)
+// 커밋 범위(baseSha..commitSha)를 아현에게서 받아 그대로 넘긴다 — 민지·채원②가 branch 이름과
+// 그때그때의 origin/staging을 다시 fetch해 비교하지 않고, 아현이 push한 두 커밋 사이의 diff만
+// 보게 한다(1148 민지 발견물 ②, 티켓 20260918_1158). 워크트리 fetch 여부에 기대는 대신 SHA
+// 대조로 구조적으로 보완한다.
+const commitRange = devResult?.baseSha && devResult?.commitSha
+  ? `${devResult.baseSha}..${devResult.commitSha}` : null
+const rangeInstruction = commitRange
+  ? `\n검토 범위는 \`${commitRange}\`다. \`git fetch origin ${devResult.branch}\`로 review ` +
+    `브랜치를 가져온 뒤 \`git diff --numstat ${commitRange} -- jam-web\`으로 비교하고, ` +
+    `\`reviewedRange\`에 \`${commitRange}\`를 그대로 적어라.\n`
+  : `\n아현이 커밋 범위를 채우지 않았다 — \`git fetch origin staging\`으로 origin/staging을 ` +
+    `갱신한 뒤 \`git diff --numstat <review 브랜치> origin/staging -- jam-web\`으로 비교하고, ` +
+    `\`reviewedRange\`에 실제로 비교한 범위를 적어라.\n`
 
 // 작은 diff 기준선 — 패딩 1줄 조정까지 화면 리뷰 전체를 돌리는 건 낭비다(2026-09-08 신설).
 // 2026-09-18부터는 채원② 사후 리뷰 생략 판단에만 쓴다 — 개선 리뷰 단계 자체가 사라졌기
-// 때문이다(티켓 20260918_0422). 값이 없으면 안전하게 실행 쪽으로 기운다.
+// 때문이다(티켓 20260918_0422). 게이트·채원②를 병렬로 돌리므로(티켓 20260918_1158) 게이트가
+// 끝나기를 기다리지 않고 아현이 직접 보고한 diffLineCount로 실행 여부를 정한다.
 const SMALL_DIFF_LINE_THRESHOLD = 15
-const diffLineCount = gate.diffLineCount ?? Infinity
+const preDiffLineCount = devResult?.diffLineCount ?? Infinity
+const runDesignReview = DESIGN_TYPES.includes(workType) &&
+  preDiffLineCount >= SMALL_DIFF_LINE_THRESHOLD && !isLightRoute
 
-const gatePassed = gate.verdict === 'PASS' || gate.verdict === 'WARN'
-
-// WARN도 "동작은 한다"이므로 사후 단계는 진행한다 (사용자 알림은 결과 보고에서).
-// 경로 ②(가벼운 UI)면 채원①·② 둘 다 호출하지 않는다(안건 1-2, 티켓 20260918_1148).
-const runDesignReview = gatePassed &&
-  DESIGN_TYPES.includes(workType) && diffLineCount >= SMALL_DIFF_LINE_THRESHOLD && !isLightRoute
-
+// 민지(게이트)와 채원②(사후 리뷰)는 둘 다 아현의 결과만 보고 서로를 참조하지 않으므로 전역
+// parallel()(배리어, 실패한 작업은 null)로 동시에 돌린다(티켓 20260918_1158). 민지가 FAIL이어도
+// 채원②는 멈추지 않고 끝까지 진행하되, 그 결과는 참고용으로만 쓴다 — needsRework는 여전히
+// 게이트 FAIL 또는 채원② 중대 문제 중 하나로만 판단한다.
 // 채원②의 모델: 핵심 화면은 Sonnet, 그 외는 Haiku로 낮춘다(채원 정의의 모드표). 여기서는
 // 핵심 화면 여부를 워크플로가 판단할 수 없으므로 `ds` 유형(디자인 시스템 자체 변경 = 파급이
 // 크다)만 Sonnet으로 두고 나머지는 Haiku로 부른다.
-const designReviewT0 = tokensSpent()
-const designReview = runDesignReview ? await agent(
-  `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult}\n\n` +
-  `게이트 리뷰 근거:\n${gate.reasons.join('\n')}\n` +
-  `${designDecision ? `\n이번 티켓의 채원 사전 판정:\n${designDecision}\n` : '\n이번 티켓에는 사전 판정이 없다. 점검표 0절은 건너뛴다.\n'}` +
-  `\n모드 ② 사후 리뷰로 진행하라. ` +
-  `.claude/skills/jam-design/references/ui-review-checklist.md를 읽고 그 점검표대로 ` +
-  `이번 티켓의 diff(review 브랜치 vs origin/staging)만 검토하라. 손대지 않은 기존 코드는 ` +
-  `다루지 마라. 라이팅 품질은 게이트 리뷰(민지)가 이미 판정했으므로 여기서 다시 보지 않는다.`,
-  {
-    agentType: 'jam-designer',
-    label: 'jam-designer-post',
-    phase: '채원 사후 리뷰',
-    schema: DESIGN_REVIEW,
-    ...(workType === 'ds' ? {} : { model: 'claude-haiku-4-5-20251001' }),
-  }
-) : null
-if (runDesignReview) trackTokens('jam-designer-post', designReviewT0)
+// 병렬 호출이라 전후 토큰 차이를 에이전트별로 쪼갤 수 없다 — 두 호출을 묶어 하나로 기록한다.
+const parallelT0 = tokensSpent()
+const [gate, designReview] = await parallel([
+  () => agent(
+    `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult?.summary ?? devResult}\n` +
+    `${designDecisionText ? `\n채원 사전 판정(점검표 6번 대조 기준):\n${designDecisionText}\n` : ''}` +
+    rangeInstruction +
+    `\n스펙대로 동작하는지 판정하라.`,
+    { agentType: 'conservative-reviewer', label: 'conservative-reviewer', schema: VERDICT }
+  ),
+  () => runDesignReview ? agent(
+    `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult?.summary ?? devResult}\n` +
+    `${designDecisionText ? `\n이번 티켓의 채원 사전 판정:\n${designDecisionText}\n` : '\n이번 티켓에는 사전 판정이 없다. 점검표 0절은 건너뛴다.\n'}` +
+    rangeInstruction +
+    `\n모드 ② 사후 리뷰로 진행하라. ` +
+    `.claude/skills/jam-design/references/ui-review-checklist.md를 읽고 그 점검표대로 ` +
+    `위 검토 범위의 diff만 검토하라. 손대지 않은 기존 코드는 다루지 마라. 라이팅 품질은 민지가 ` +
+    `동시에 게이트 리뷰에서 판정하므로 여기서 다시 보지 않는다.`,
+    {
+      agentType: 'jam-designer',
+      label: 'jam-designer-post',
+      phase: '채원 사후 리뷰',
+      schema: DESIGN_REVIEW,
+      ...(workType === 'ds' ? {} : { model: 'claude-haiku-4-5-20251001' }),
+    }
+  ) : Promise.resolve(null),
+])
+trackTokens('gate+jam-designer-post', parallelT0)
 
 // 채원②의 중대 문제는 게이트 FAIL과 동등하게 재작업으로 연결된다. 오케스트레이터가 이
 // 플래그를 보고 사용자에게 재시도 여부를 묻고, `retryReason`에 `reworkReasons`를 넣어

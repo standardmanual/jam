@@ -42,9 +42,11 @@ Reuse a previous decision for the same screen instead of re-deriving it.
 Decision tree and MODULAR promotion criteria: `.claude/skills/jam-design/SKILL.md` §2.
 Connection-scope classification (`ds` tickets): `.claude/skills/jam-work/references/ds-connection-scope.md`.
 
-Return, in Korean:
+Return a **`StructuredOutput`** — the orchestrator branches on `needsApproval` alone (a boolean),
+so it never has to text-search a `needs_approval` cell for the word "없음" (ticket 20260918_1158,
+1148 발견물 ①). Free-text fields stay Korean.
 
-| 칸 | 내용 |
+| field | 내용 |
 |---|---|
 | `decision` | 재사용 / MODULAR 확장 / 서비스 전용 |
 | `components` | 쓸 컴포넌트 경로와 variant. 신규라면 사유 |
@@ -52,17 +54,22 @@ Return, in Korean:
 | `layout` | 텍스트 배치도 (화면 구조를 글로 그린다) |
 | `states` | 기본·로딩·빈·오류·비활성·선택 등 구현해야 할 상태 목록 |
 | `motion` | 전환·피드백 동작 |
-| `device_notes` | 작은 화면·안전영역·터치 영역 |
-| `craft_notes` | 시각 슬롭 경고 (의미 없는 그라디언트·유리질·습관적 가운데 정렬 등) |
+| `deviceNotes` | 작은 화면·안전영역·터치 영역 |
+| `craftNotes` | 시각 슬롭 경고 (의미 없는 그라디언트·유리질·습관적 가운데 정렬 등) |
 | `scope` | `ds` 유형이면 연결 범위 네 부류 중 어디인지 |
-| `완료 조건` | 이 화면이 어떻게 보이면 완료인지 |
-| `needs_approval` | 사용자 승인이 필요한 항목 (없으면 "없음") |
+| `completionCriteria` | 이 화면이 어떻게 보이면 완료인지 |
+| `needsApproval` | 사용자 승인이 필요한 항목이 있는가 (boolean) |
+| `approvalItems` | `needsApproval`이 true일 때 그 항목 목록. 없으면 빈 배열 |
 | `reason` | 판정 근거 |
 
 ## ② 사후 리뷰
 
-Review only this ticket's diff (review branch vs `origin/staging`). Never comment on code the ticket
-did not touch. Work through `.claude/skills/jam-design/references/ui-review-checklist.md`.
+You run in **parallel with 민지** (`conservative-reviewer`), not after her — the caller hands you
+the same `baseSha..commitSha` range it hands her, so review only that range (ticket 20260918_1158).
+Never comment on code the ticket did not touch. Work through
+`.claude/skills/jam-design/references/ui-review-checklist.md`. If 민지's verdict turns out to be
+`FAIL`, your result is still returned but is used only as reference input for the retry, not as a
+blocking verdict on its own.
 
 **중대 문제 — these fail the ticket and send it back to 아현:**
 
