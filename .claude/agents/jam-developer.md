@@ -125,7 +125,7 @@ Return a **`StructuredOutput`** — the orchestrator branches on `status`, `bran
 - **주의**: 리뷰어가 주의 깊게 봐야 할 부분
 - **중단**: 구현을 멈추고 즉시 반환해야 할 문제
 
-This summary is consumed verbatim by `conservative-reviewer` and `jam-designer` — leave no field out.
+This summary is consumed verbatim by `jam-reviewer` and `jam-designer` — leave no field out.
 
 ## Token discipline
 

@@ -13,7 +13,7 @@
 - **티켓 상태 변경**: frontmatter의 status 필드를 갱신하고, CLOSED 처리는 `/jam-docs` 절차를
   따른다(원격 staging 기준 브랜치에서 커밋).
 - **작업 파이프라인**: 티켓 검토 → 채원 사전 판정(`jam-designer`, `ui`·`ds` 유형) →
-  구현(`jam-developer`) → 게이트 리뷰(`conservative-reviewer`, 한국어 자연스러움 포함) →
+  구현(`jam-developer`) → 게이트 리뷰(`jam-reviewer`, 한국어 자연스러움 포함) →
   채원 사후 리뷰 → 승인 후 머지·문서 갱신까지는 `/jam-work` 스킬이 전체를 처리한다.
 
 ## PR을 트리아지 대상으로 볼지

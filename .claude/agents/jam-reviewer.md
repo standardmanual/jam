@@ -1,5 +1,5 @@
 ---
-name: conservative-reviewer
+name: jam-reviewer
 description: JAM! gatekeeping reviewer (민지). Judges only whether the implementation matches the ticket and causes no regression. Never proposes improvements.
 tools: Read, Grep, Glob, Bash
 model: sonnet

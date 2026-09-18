@@ -70,7 +70,7 @@ async function test2_needsApprovalNoneProceedsInParallel() {
           diffLineCount: 20,
         }
       }
-      if (opts.label === 'conservative-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 20, reviewedRange: 'bbbb000..cccc111' }
+      if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 20, reviewedRange: 'bbbb000..cccc111' }
       if (opts.label === 'jam-designer-post') return { hasCritical: false, proposals: [] }
       throw new Error(`예상치 못한 호출: ${opts.label}`)
     },
@@ -78,7 +78,7 @@ async function test2_needsApprovalNoneProceedsInParallel() {
   const result = await run({ ticketPath: 't.md', userRequest: 'r', workType: 'ui' })
   assert.equal(result.stoppedAt, null)
   assert.equal(calls.length, 4, '표준 경로면 채원①·아현·민지·채원②가 모두 호출돼야 한다')
-  const gateCall = calls.find((c) => c.label === 'conservative-reviewer')
+  const gateCall = calls.find((c) => c.label === 'jam-reviewer')
   const designPostCall = calls.find((c) => c.label === 'jam-designer-post')
   assert.ok(gateCall && designPostCall, '민지와 채원②가 동시에(같은 parallel() 배치로) 호출돼야 한다')
   const devCall = calls.find((c) => c.label === 'jam-developer')
@@ -92,7 +92,7 @@ async function test3_lightRouteSkipsDesigner() {
   const { run, calls } = makeRunner({
     agentImpl: (prompt, opts) => {
       if (opts.label === 'jam-developer') return { status: 'done', summary: '구현 완료', diffLineCount: 20 }
-      if (opts.label === 'conservative-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 20 }
+      if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 20 }
       throw new Error(`예상치 못한 호출: ${opts.label}`)
     },
   })
@@ -109,7 +109,7 @@ async function test4_retryBranchResumesExistingBranch() {
   const { run, calls } = makeRunner({
     agentImpl: (prompt, opts) => {
       if (opts.label === 'jam-developer') return { status: 'done', summary: '재작업 완료', diffLineCount: 5 }
-      if (opts.label === 'conservative-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 5 }
+      if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 5 }
       throw new Error(`예상치 못한 호출: ${opts.label}`)
     },
   })
@@ -129,7 +129,7 @@ async function test5_smallDiffSkipsDesignReviewByDevReportedCount() {
       if (opts.label === 'jam-designer-pre') return { decision: '재사용', needsApproval: false }
       // diffLineCount는 게이트가 아니라 아현이 채운다 — 게이트 호출 전에 병렬 여부를 정해야 하므로.
       if (opts.label === 'jam-developer') return { status: 'done', summary: '패딩 조정', diffLineCount: 3 }
-      if (opts.label === 'conservative-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 3 }
+      if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 3 }
       throw new Error(`예상치 못한 호출: ${opts.label}`)
     },
   })
