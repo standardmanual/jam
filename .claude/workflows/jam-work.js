@@ -1,12 +1,11 @@
 export const meta = {
   name: 'jam-work',
-  description: 'JAM! 에이전트 팀 파이프라인 (채원①·아현·민지·채원②·한국어)',
+  description: 'JAM! 에이전트 팀 파이프라인 (채원①·아현·민지·채원②)',
   phases: [
     { title: '채원 사전 판정' },
     { title: '구현' },
     { title: '게이트 리뷰' },
     { title: '채원 사후 리뷰' },
-    { title: '한국어 리뷰' },
   ],
 }
 
@@ -114,12 +113,18 @@ if (STOP_STATES.includes(devStatus)) {
     devResult,
     gate: null,
     designReview: null,
-    koreanReview: null,
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. 게이트 리뷰 (민지)
+// 3. 게이트 리뷰 (민지) — 한국어 자연스러움 판정도 여기서 함께 한다
+//    이전에는 게이트가 hasKoreanCopy/koreanCopyText만 뽑아 별도 humanize-korean
+//    플러그인에게 넘겼으나(제안형, 판정에 영향 없음), 그 결과가 실효성이 낮았고
+//    파이프라인만 5단계로 복잡해졌다. 문맥 판단이 필요한 AI-tell 패턴(대명사 지시
+//    모호성·리듬 균일성·완곡 중첩 등, Specs/SLOP_DICTIONARY.md §4 참고)을 민지의
+//    체크리스트 12번으로 흡수해 판정에 실질적으로 반영되게 했다(티켓 20260918_1033).
+//    패턴 매칭 가능한 금칙어·금지 문장은 여전히 scripts/check-slop.mjs가 기계적으로
+//    먼저 거른다(verify.sh 단계, 이 워크플로 밖).
 // ─────────────────────────────────────────────────────────────────────────────
 phase('게이트 리뷰')
 const gate = await agent(
@@ -141,51 +146,25 @@ const gatePassed = gate.verdict === 'PASS' || gate.verdict === 'WARN'
 const runDesignReview = gatePassed &&
   DESIGN_TYPES.includes(workType) && diffLineCount >= SMALL_DIFF_LINE_THRESHOLD
 
-// UX Writing 문안이 나올 가능성이 있는 유형만 대상. 추출은 별도 에이전트를 새로 띄우지 않고
-// 게이트 리뷰(conservative-reviewer)가 이미 diff를 읽은 김에 VERDICT.hasKoreanCopy/koreanCopyText로
-// 함께 판정한다 — humanize-korean 에이전트는 "받은 텍스트를 그대로 처리"하는 계약이라, 직접
-// diff를 뒤지게 하지 않는다.
-const KOREAN_COPY_TYPES = ['copy', 'ui', 'content']
-const runKoreanReview = gatePassed &&
-  KOREAN_COPY_TYPES.includes(workType) && gate.hasKoreanCopy && gate.koreanCopyText
-
-// 채원②와 한국어 리뷰는 서로의 결과를 참조하지 않고 devResult·gate만 본다 — 순서대로 await할
-// 이유가 없어 동시 실행한다. 각 agent()에 opts.phase를 개별 지정해 병렬 실행 중에도 진행
-// 표시가 올바른 제목으로 묶이게 한다. 조건이 꺼진 단계는 agent()를 아예 부르지 않고 즉시
-// null로 해소되는 thunk를 넣어 parallel() 호출 형태(결과 배열 순서 고정)는 유지한다.
-//
 // 채원②의 모델: 핵심 화면은 Sonnet, 그 외는 Haiku로 낮춘다(채원 정의의 모드표). 여기서는
 // 핵심 화면 여부를 워크플로가 판단할 수 없으므로 `ds` 유형(디자인 시스템 자체 변경 = 파급이
-// 크다)만 Sonnet으로 두고 나머지는 Haiku로 부른다. 한국어 리뷰(humanize-korean)는 model을
-// 지정하지 않는다 — 그 플러그인이 route_hint로 내부 모델·콜 수를 이미 조절하므로, 여기서
-// 덮어쓰면 그 판단을 무력화한다. 게이트(민지)는 판정 정확도가 핵심이라 정의의 model을 따른다.
-const [designReview, koreanReview] = await parallel([
-  () => runDesignReview ? agent(
-    `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult}\n\n` +
-    `게이트 리뷰 근거:\n${gate.reasons.join('\n')}\n` +
-    `${designDecision ? `\n이번 티켓의 채원 사전 판정:\n${designDecision}\n` : '\n이번 티켓에는 사전 판정이 없다. 점검표 0절은 건너뛴다.\n'}` +
-    `\n모드 ② 사후 리뷰로 진행하라. ` +
-    `.claude/skills/jam-design/references/ui-review-checklist.md를 읽고 그 점검표대로 ` +
-    `이번 티켓의 diff(review 브랜치 vs origin/staging)만 검토하라. 손대지 않은 기존 코드는 ` +
-    `다루지 마라. 라이팅 품질은 한국어 리뷰 단계가 따로 담당하므로 여기서 보지 않는다.`,
-    {
-      agentType: 'jam-designer',
-      label: 'jam-designer-post',
-      phase: '채원 사후 리뷰',
-      schema: DESIGN_REVIEW,
-      ...(workType === 'ds' ? {} : { model: 'claude-haiku-4-5-20251001' }),
-    }
-  ) : Promise.resolve(null),
-
-  () => runKoreanReview ? agent(
-    `다음은 이번 티켓에서 새로 추가·변경된 사용자 노출 한국어 문구다. 두 가지를 함께 점검하라:\n` +
-    `1) 번역투·과도한 수동태·AI 특유의 상투구 같은 어색한 표현이 있는지\n` +
-    `2) Service Plan/Specs/UX_WRITING_GUIDELINE.md 기준(용어 일관성, 톤앤매너, 에러 메시지 3단계 ` +
-    `구조, 해요체, 표기 규칙)을 충족하는지\n` +
-    `두 관점의 문제를 구분해 지적하고 자연스러운 대안을 제시하라:\n\n${gate.koreanCopyText}`,
-    { agentType: 'humanize-korean:humanize-monolith', label: 'korean-writing-reviewer', phase: '한국어 리뷰' }
-  ) : Promise.resolve(null),
-])
+// 크다)만 Sonnet으로 두고 나머지는 Haiku로 부른다.
+const designReview = runDesignReview ? await agent(
+  `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult}\n\n` +
+  `게이트 리뷰 근거:\n${gate.reasons.join('\n')}\n` +
+  `${designDecision ? `\n이번 티켓의 채원 사전 판정:\n${designDecision}\n` : '\n이번 티켓에는 사전 판정이 없다. 점검표 0절은 건너뛴다.\n'}` +
+  `\n모드 ② 사후 리뷰로 진행하라. ` +
+  `.claude/skills/jam-design/references/ui-review-checklist.md를 읽고 그 점검표대로 ` +
+  `이번 티켓의 diff(review 브랜치 vs origin/staging)만 검토하라. 손대지 않은 기존 코드는 ` +
+  `다루지 마라. 라이팅 품질은 게이트 리뷰(민지)가 이미 판정했으므로 여기서 다시 보지 않는다.`,
+  {
+    agentType: 'jam-designer',
+    label: 'jam-designer-post',
+    phase: '채원 사후 리뷰',
+    schema: DESIGN_REVIEW,
+    ...(workType === 'ds' ? {} : { model: 'claude-haiku-4-5-20251001' }),
+  }
+) : null
 
 // 채원②의 중대 문제는 게이트 FAIL과 동등하게 재작업으로 연결된다. 오케스트레이터가 이
 // 플래그를 보고 사용자에게 재시도 여부를 묻고, `retryReason`에 `reworkReasons`를 넣어
@@ -203,7 +182,6 @@ return {
   devResult,
   gate,
   designReview,
-  koreanReview,
   needsRework,
   reworkReasons,
 }

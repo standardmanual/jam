@@ -46,6 +46,21 @@ Judge against the ticket's **완료 조건** section. If that section is empty, 
 9. Security — authorization, RLS, secret handling
 10. Error handling matches the spec's expected behaviour
 11. Documentation update proposal — is 아현's `문서 갱신안` complete for what actually changed
+12. **Korean naturalness** (`copy`·`ui`·`content` types only, when the diff has new/changed
+    user-facing Korean text). Two sources, both context-dependent — pattern matching already
+    caught the rest at `verify.sh` time (`scripts/check-slop.mjs`):
+    - `Service Plan/Specs/UX_WRITING_GUIDELINE.md` §7 (Anti-slop 판단 기준) — JAM-specific
+      translationese/cliché/structure patterns (e.g. "~에 대해" overuse, "~하시기 바랍니다"
+      formality clash, service-voice clichés, mixed sentence endings).
+    - `Service Plan/Specs/SLOP_DICTIONARY.md` §4 — general context-dependent AI-tell patterns
+      (pronoun reference ambiguity, mechanically uniform sentence endings, stacked hedging,
+      register drift within one document, awkward 형식명사/당위 constructions, anthropomorphised
+      abstract subjects, dense repetition of connectives or 결산 lexicon).
+
+    A meaning-breaking violation (register collapse, ambiguous pronoun reference, a tone-matrix
+    mismatch that changes how the message reads) is `FAIL` material; a minor one is `WARN`.
+    State only what is wrong in `reasons` — do not suggest the rewritten phrasing (that stays 아현's
+    job on retry, same as any other `FAIL`).
 
 ### Re-running checks yourself
 
@@ -77,9 +92,9 @@ Return a **`StructuredOutput`** judgement. The orchestrator branches on `verdict
 |---|---|
 | `verdict` | PASS / WARN / FAIL |
 | `reasons` | 판정 근거. FAIL이면 항목·재현 방법·기대 동작·관련 파일을 적는다 (그대로 아현의 재시도 입력이 된다) |
-| `checked` | 점검표 11개 결과. 통과 항목은 한 단어로 |
+| `checked` | 점검표 12개 결과. 통과 항목은 한 단어로 |
 | `sideFindings` | 이번 티켓 **범위 밖** 발견물. 기존 코드의 버그·보안·정합성 문제, 그리고 **위험을 줄이는 개선점**까지 포함한다. verdict에는 영향을 주지 않는다 |
-| `hasKoreanCopy` · `koreanCopyText` | `copy`·`ui`·`content` 유형에서만. diff에서 사용자 노출 한국어 문구를 원문 그대로 추출한다 (코드 주석·티켓 문서·변수명·커밋 메시지는 제외). 그 외 유형에서는 비운다 |
+| `hasKoreanCopy` · `koreanCopyText` | `copy`·`ui`·`content` 유형에서만. diff에서 사용자 노출 한국어 문구를 원문 그대로 추출한다 (코드 주석·티켓 문서·변수명·커밋 메시지는 제외). 12번 판정의 근거이자 오케스트레이터가 나중에 무엇을 검토했는지 확인할 기록이다. 그 외 유형에서는 비운다 |
 | `diffLineCount` | `git diff --numstat <review 브랜치> origin/staging -- jam-web`의 추가+삭제 합계. 유형 불문 항상 채운다 |
 
 `sideFindings` is the only channel for improvement ideas in this pipeline — there is no separate

@@ -158,9 +158,11 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   `proposals`와 `promotionCandidates`를 요약한다. 제안형이라 머지를 막지 않는다.
   `designReview`가 `null`이면 diff 규모(15줄 미만) 또는 유형 때문에 생략됐다는 사실을 밝힌다 —
   필요하면 사용자가 수동으로 요청할 수 있다.
-- **한국어 리뷰**(`copy`·`ui`·`content` 유형이고 사용자 노출 문구가 있었을 때, `koreanReview`가
-  있을 때): 별도 섹션 "한국어 표현 리뷰 제안"으로 요약한다(번역투·자연스러움 + UX 라이팅 가이드
-  준수 여부 포함). 제안형이라 판정에 영향을 주지 않으며, 대안 문구 채택 여부는 사용자가 결정한다.
+- **한국어 자연스러움**(민지 체크리스트 12번, `copy`·`ui`·`content` 유형이고 사용자 노출
+  문구가 있었을 때): 이건 별도 리뷰 단계가 아니라 게이트 판정 자체의 일부다. 지적됐으면
+  `reasons`·`checked`에 이미 포함되어 있으므로 그대로 요약하면 된다. 판정에 실질적으로
+  영향을 주므로(FAIL/WARN 사유가 될 수 있음) 사용자에게 별도로 "제안형"이라고 안내하지
+  않는다.
 
 ### 3.2 범위 밖 발견물 처리 — 자동 티켓화
 
@@ -226,25 +228,26 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
 - **개선 리뷰 단계는 없다** (2026-09-18, 티켓 20260918_0422). 위험을 줄이는 개선점은 민지의
   `sideFindings`로, 화면 품질 제안은 채원②의 `proposals`로 들어온다. 둘 다 3.2절의 자동
   티켓화 경로를 탄다.
-- `copy`·`ui`·`content` 유형의 한국어 문구 작성·점검은 2단계로 나뉜다: **구현 단계**에서
-  아현이 `.claude/output-styles/fluent-korean.md` 지침을 따라 쓰고, **한국어 리뷰 단계**에서
-  그 결과물을 `humanize-korean`으로 점검한다(제안형, 판정에 영향 없음). 번역투·자연스러움과
-  `UX_WRITING_GUIDELINE.md` 준수 여부를 한 번에 본다.
-- 한국어 리뷰 단계는 `humanize-korean` 플러그인(에이전트: `humanize-korean:humanize-monolith`)이
-  설치돼 있어야 동작한다. 플러그인을 제거하면 이 단계도 함께 걷어낼 것 — 없는 에이전트 타입을
-  호출하면 Workflow가 해당 phase에서 에러를 낸다. `.claude/output-styles/fluent-korean.md`를
-  제거하면 구현 단계의 참조 지시도 함께 걷어낼 것.
+- `copy`·`ui`·`content` 유형의 한국어 문구는 **구현 단계**에서 아현이
+  `.claude/output-styles/fluent-korean.md` 지침을 따라 쓰고, **게이트 리뷰**에서 민지가
+  체크리스트 12번으로 자연스러움을 판정한다(판정에 실질적으로 영향, `Specs/SLOP_DICTIONARY.md`
+  §4 기준). 패턴 매칭 가능한 금칙어·금지 문장은 `scripts/check-slop.mjs`가 `verify.sh` 단계에서
+  이미 기계적으로 거른 뒤이므로, 민지는 문맥 판단이 필요한 것만 본다.
+- 2026-09-18 이전에는 이 역할을 별도 `humanize-korean` 플러그인(5번째 파이프라인 단계)이
+  맡았으나, 제안형이라 판정에 영향을 주지 않아 실효성이 낮고 파이프라인만 복잡하게 만들어
+  민지의 체크리스트로 흡수했다(티켓 20260918_1033). 플러그인 자체는 여전히 설치돼 있어도
+  되고 없어도 무방 — 이 파이프라인은 더 이상 호출하지 않는다.
 - 채원② 사후 리뷰의 점검표는 `.claude/skills/jam-design/references/ui-review-checklist.md`다.
   외부 스킬 5종(`interface-review`·`better-*`, `~/.agents/skills/`를 가리키던 심볼릭 링크)에
   의존하던 인터페이스 리뷰를 이 JAM 전용 점검표로 대체했다(2026-09-18) — 이제 외부 폴더에
-  의존하는 경로가 없다. 라이팅 품질은 한국어 리뷰 단계가 담당하므로 점검표에서 의도적으로 뺐다.
+  의존하는 경로가 없다. 라이팅 품질은 게이트(민지)가 담당하므로 점검표에서 의도적으로 뺐다.
 - 채원②는 `gate.diffLineCount`(민지가 `git diff --numstat`으로 잰 jam-web 변경 라인 수)가
   `SMALL_DIFF_LINE_THRESHOLD`(15) 미만이면 건너뛴다 — 패딩 1줄 조정까지 점검표 전체를 도는
   건 낭비이기 때문(2026-09-08 신설된 기준을 그대로 이어받았다). 값이 없으면 안전하게 실행
   쪽으로 기운다. `diffLineCount`는 유형 불문 항상 채워진다.
-- 채원②와 한국어 리뷰는 서로 결과를 참조하지 않으므로 `parallel()`로 동시 실행한다.
-  채원②의 모델은 `ds` 유형만 Sonnet, 나머지는 Haiku다(파급 범위 기준). 한국어 리뷰는
-  플러그인이 자체 `route_hint`로 모델·콜 수를 조절하므로 지정하지 않는다.
+- 채원②는 게이트 리뷰 이후 단독 실행된다(2026-09-18 이전에는 한국어 리뷰와 `parallel()`로
+  동시 실행했으나, 한국어 리뷰 단계가 사라지며 자연히 단일 호출로 단순화됐다). 채원②의
+  모델은 `ds` 유형만 Sonnet, 나머지는 Haiku다(파급 범위 기준).
 - 기계 검사는 `scripts/verify.sh` 하나로 통합됐다(lint·typecheck·test·ds:check·slop).
   아현이 제출 전에 직접 돌리고, push 시점 `.githooks/pre-push`가 다시 돌린다. 민지는 확신도가
   낮거나 알림이 있거나 결과가 불분명할 때만 재실행한다 — 그 외에는 중복 실행하지 않는다.

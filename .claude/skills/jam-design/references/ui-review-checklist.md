@@ -2,7 +2,8 @@
 
 외부 스킬 5종(`interface-review`·`better-accessibility`·`better-layout`·`better-typography`·
 `better-colors`·`better-ui`)에 의존하던 인터페이스 리뷰를 JAM 기준으로 대체한 문서다
-(티켓 20260918_0422). 라이팅 품질은 여기서 보지 않는다 — 한국어 리뷰 단계가 담당한다.
+(티켓 20260918_0422). 라이팅 품질은 여기서 보지 않는다 — 게이트 리뷰(민지, 체크리스트
+12번)가 담당한다(2026-09-18, 티켓 20260918_1033).
 
 **대상은 이번 티켓의 diff뿐이다.** 손대지 않은 기존 코드는 다루지 않는다.
 diff 확인: `git diff <review 브랜치> origin/staging -- jam-web`
