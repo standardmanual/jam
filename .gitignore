@@ -8,3 +8,5 @@ skills-lock.json
 .env*
 # Supabase personal access token 하드코딩됨 — 절대 커밋 금지
 .mcp.json
+# 기획·운영 문서는 별도 저장소(standardmanual/jam-doc)를 이 자리에 중첩 복제해 쓴다 (티켓 20260918_2105)
+/jam-doc/
