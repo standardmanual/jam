@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // 현황판 생성 — Service Plan/Tickets/의 frontmatter를 훑어 진행 중·대기 티켓 목록을 만든다.
 // (티켓 20260918_0421, 근거: JAM-WORK/05_자동화목록.md A3)
+// 이어서 docs/agents/orchestrator.md의 "카리나 카드" 절(CARD:START~END 마커 사이)을 그대로
+// 잘라 출력한다 — 원본은 orchestrator.md 한 곳에 유지 (티켓 20260918_1146).
 //
 // 사용법: node scripts/ticket-dashboard.mjs
 //   (.claude/settings.json의 SessionStart hook이 세션 시작 시 자동 호출한다)
@@ -40,6 +42,20 @@ function parseFrontmatter(text) {
   return fm
 }
 
+function printKarinaCard(repoRoot) {
+  const orchestratorPath = join(repoRoot, 'docs', 'agents', 'orchestrator.md')
+  let text
+  try {
+    text = readFileSync(orchestratorPath, 'utf8')
+  } catch {
+    return // 문서가 없으면 카드 없이 현황판만 출력
+  }
+  const m = text.match(/<!-- CARD:START -->\n([\s\S]*?)\n<!-- CARD:END -->/)
+  if (!m) return
+  console.log()
+  console.log(m[1].trim())
+}
+
 function main() {
   const repoRoot = findRepoRoot()
   const ticketsDir = join(repoRoot, 'Service Plan', 'Tickets')
@@ -66,6 +82,7 @@ function main() {
 
   if (rows.length === 0) {
     console.log('## 티켓 현황판\n진행 중·대기 티켓 없음')
+    printKarinaCard(repoRoot)
     return
   }
 
@@ -73,6 +90,7 @@ function main() {
   for (const r of rows) {
     console.log(`- [${r.status}] ${r.priority} ${r.id} — ${r.title}`)
   }
+  printKarinaCard(repoRoot)
 }
 
 main()
