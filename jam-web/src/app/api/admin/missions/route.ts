@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireAdmin } from '@/lib/admin/auth'
+import { requireAdmin, requireAdminRead } from '@/lib/admin/auth'
 import { checkMissionCondition, checkMissionConditionValue } from '@/lib/missions/condition-keys'
 import { findGateMissionSaveError } from '@/lib/missions/gateMissions'
 import type { MissionType } from '@/types/database'
 
-export async function GET() {
-  const authError = await requireAdmin()
+export async function GET(req: NextRequest) {
+  const authError = await requireAdminRead(req)
   if (authError) return authError
 
   const supabase = createServiceClient()

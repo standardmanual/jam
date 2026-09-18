@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { getAdminUser } from '@/lib/admin/auth'
+import { getAdminUser, requireAdminRead } from '@/lib/admin/auth'
 import { findBadgeConditionSaveError, findCheckinBadgeNamesNotFoundError, findRarityLevelError } from '@/lib/admin/badge-validation'
 import { isValidFamilyKey } from '@/lib/admin/badge-families'
 import type { BadgeRow } from '@/types/database'
 
-export async function GET() {
-  const admin = await getAdminUser()
-  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+export async function GET(req: NextRequest) {
+  const authError = await requireAdminRead(req)
+  if (authError) return authError
 
   const supabase = createServiceClient()
 
