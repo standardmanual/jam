@@ -6,11 +6,24 @@
 //
 // 사용법: node scripts/ticket-dashboard.mjs
 //   (.claude/settings.json의 SessionStart hook이 세션 시작 시 자동 호출한다)
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+//
+// 예약 작업 리포트 누락 감지 (티켓 20260918_1153): 예약 시각·켜짐 여부는
+// .claude/skills/jam-work/references/scheduled-jobs.md의 주간·월간 표 '상태' 행에서 읽는다.
+import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { execSync } from 'node:child_process'
 
 const TARGET_STATUSES = new Set(['OPEN', 'IN_PROGRESS', 'WAITING'])
+const SCHEDULED_JOBS_DOC = ['.claude', 'skills', 'jam-work', 'references', 'scheduled-jobs.md']
+const KOREAN_WEEKDAY_TO_ISO_DOW = {
+  월요일: 1,
+  화요일: 2,
+  수요일: 3,
+  목요일: 4,
+  금요일: 5,
+  토요일: 6,
+  일요일: 7,
+}
 
 function findRepoRoot() {
   return execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
@@ -48,16 +61,155 @@ function printKarinaCard(repoRoot) {
   try {
     text = readFileSync(orchestratorPath, 'utf8')
   } catch {
-    return // 문서가 없으면 카드 없이 현황판만 출력
+    console.log()
+    console.log('[경고] docs/agents/orchestrator.md를 찾을 수 없어 카리나 카드를 건너뜁니다.')
+    return
   }
   const m = text.match(/<!-- CARD:START -->\n([\s\S]*?)\n<!-- CARD:END -->/)
-  if (!m) return
+  if (!m) {
+    console.log()
+    console.log(
+      '[경고] docs/agents/orchestrator.md에서 카리나 카드 마커(CARD:START/END)를 찾지 못했습니다.'
+    )
+    return
+  }
   console.log()
   console.log(m[1].trim())
 }
 
+// -- 예약 작업 리포트 누락 감지 (티켓 20260918_1153) --------------------------------
+
+function parseStatusEnabled(cellText) {
+  // 상태 표기 규칙(scheduled-jobs.md에 문서화): 값이 정확히 "켜짐"이어야 켜진 것으로 본다.
+  const clean = cellText.replace(/\*\*/g, '').trim()
+  const label = clean.split('—')[0].trim()
+  return label === '켜짐'
+}
+
+function extractStatusCell(section) {
+  const m = section.match(/\|\s*상태\s*\|\s*(.+?)\s*\|\s*$/m)
+  return m ? m[1] : null
+}
+
+export function parseWeeklySchedule(scheduleText) {
+  const start = scheduleText.indexOf('## 주간')
+  const end = scheduleText.indexOf('## 월간')
+  if (start === -1) return null
+  const section = end === -1 ? scheduleText.slice(start) : scheduleText.slice(start, end)
+  const heading = section.match(/^## 주간 — (\S+요일) (\d{2}):(\d{2}) KST/m)
+  const statusCell = extractStatusCell(section)
+  if (!heading || statusCell === null) return null
+  const isoDow = KOREAN_WEEKDAY_TO_ISO_DOW[heading[1]]
+  if (!isoDow) return null
+  return {
+    isoDow,
+    hour: Number(heading[2]),
+    minute: Number(heading[3]),
+    enabled: parseStatusEnabled(statusCell),
+  }
+}
+
+export function parseMonthlySchedule(scheduleText) {
+  const start = scheduleText.indexOf('## 월간')
+  if (start === -1) return null
+  const nextHeadingIdx = scheduleText.indexOf('\n## ', start + 1)
+  const section =
+    nextHeadingIdx === -1 ? scheduleText.slice(start) : scheduleText.slice(start, nextHeadingIdx)
+  const heading = section.match(/^## 월간 — 매월\s*(\d+)일 (\d{2}):(\d{2}) KST/m)
+  const statusCell = extractStatusCell(section)
+  if (!heading || statusCell === null) return null
+  return {
+    dayOfMonth: Number(heading[1]),
+    hour: Number(heading[2]),
+    minute: Number(heading[3]),
+    enabled: parseStatusEnabled(statusCell),
+  }
+}
+
+// KST(UTC+9)로 계산한다. 반환된 Date는 UTC getter(getUTCFullYear 등)로 KST 벽시계 값을
+// 그대로 읽을 수 있도록 실제 시각에 9시간을 더해 둔 값이다 — 실행 서버의 로컬 타임존과 무관하다.
+export function nowKST() {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000)
+}
+
+function isoDowOf(kstDate) {
+  const w = kstDate.getUTCDay()
+  return w === 0 ? 7 : w
+}
+
+export function isoWeekLabel(kstDate) {
+  const d = new Date(Date.UTC(kstDate.getUTCFullYear(), kstDate.getUTCMonth(), kstDate.getUTCDate()))
+  const dayNum = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7)
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`
+}
+
+export function monthLabel(kstDate) {
+  return `${kstDate.getUTCFullYear()}-${String(kstDate.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+export function weeklyDeadlinePassed(kstDate, schedule) {
+  const nowIsoDow = isoDowOf(kstDate)
+  const nowMinutes = kstDate.getUTCHours() * 60 + kstDate.getUTCMinutes()
+  const targetMinutes = schedule.hour * 60 + schedule.minute
+  if (nowIsoDow > schedule.isoDow) return true
+  if (nowIsoDow < schedule.isoDow) return false
+  return nowMinutes >= targetMinutes
+}
+
+export function monthlyDeadlinePassed(kstDate, schedule) {
+  const day = kstDate.getUTCDate()
+  const nowMinutes = kstDate.getUTCHours() * 60 + kstDate.getUTCMinutes()
+  const targetMinutes = schedule.hour * 60 + schedule.minute
+  if (day > schedule.dayOfMonth) return true
+  if (day < schedule.dayOfMonth) return false
+  return nowMinutes >= targetMinutes
+}
+
+// repoRoot·kstDate를 주입받아 테스트 가능하게 만든다.
+export function checkMissingReports(repoRoot, kstDate = nowKST()) {
+  const warnings = []
+  let scheduleText
+  try {
+    scheduleText = readFileSync(join(repoRoot, ...SCHEDULED_JOBS_DOC), 'utf8')
+  } catch {
+    return warnings // 문서가 없으면 조용히 건너뛴다 (이 hook 자체의 부가 기능이라 필수 아님)
+  }
+
+  const weekly = parseWeeklySchedule(scheduleText)
+  if (weekly?.enabled && weeklyDeadlinePassed(kstDate, weekly)) {
+    const label = isoWeekLabel(kstDate)
+    const reportPath = join(repoRoot, 'Service Plan', 'Reports', '주간', `${label}.md`)
+    if (!existsSync(reportPath)) {
+      warnings.push(
+        `[경고] 이번 주 예약 시각이 지났는데 주간 리포트(Service Plan/Reports/주간/${label}.md)가 없습니다.`
+      )
+    }
+  }
+
+  const monthly = parseMonthlySchedule(scheduleText)
+  if (monthly?.enabled && monthlyDeadlinePassed(kstDate, monthly)) {
+    const label = monthLabel(kstDate)
+    const reportPath = join(repoRoot, 'Service Plan', 'Reports', '월간', `${label}.md`)
+    if (!existsSync(reportPath)) {
+      warnings.push(
+        `[경고] 이번 달 예약 시각이 지났는데 월간 리포트(Service Plan/Reports/월간/${label}.md)가 없습니다.`
+      )
+    }
+  }
+
+  return warnings
+}
+
 function main() {
   const repoRoot = findRepoRoot()
+
+  for (const warning of checkMissingReports(repoRoot)) {
+    console.log(warning)
+  }
+
   const ticketsDir = join(repoRoot, 'Service Plan', 'Tickets')
   const files = walkMarkdownFiles(ticketsDir)
 
@@ -93,4 +245,7 @@ function main() {
   printKarinaCard(repoRoot)
 }
 
-main()
+// 테스트에서 이 모듈을 import할 때는 실행하지 않는다.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main()
+}
