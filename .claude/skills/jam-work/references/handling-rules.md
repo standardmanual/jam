@@ -7,11 +7,23 @@
 
 ## 카리나 (오케스트레이터)
 
+> 2026-09-18 개인 메모리에 있던 운영 교훈을 이 표로 옮겼다(티켓 20260918_1147, 안건 0-5).
+> 운영 규칙의 원본은 이 표다. 개인 메모리에는 사용자 개인 선호만 남긴다.
+
 | 상황 | 처리 방식 | 근거 티켓 |
 | --- | --- | --- |
-| 새 티켓·마이그레이션 번호가 병렬 세션과 충돌 | 원격 staging 기준으로 번호를 잡고, push 직전 재확인 | 운영 기록(메모리: ticket_number_collision) |
-| 티켓 상태를 staging과 동기화 | 머지 대신 리베이스 — 머지하면 pre-commit이 남의 CLOSED 티켓을 오탐 | 운영 기록(메모리: staging_sync_rebase) |
-| 병렬 세션과 워크트리·브랜치가 겹칠 위험 | `origin/staging`에서 새 브랜치를 판 격리 워크트리로 작업 | 운영 기록(메모리: isolate_via_worktree) |
+| 마이그레이션 번호가 병렬 세션과 충돌 | 원격 staging 기준(`git ls-tree -r --name-only origin/staging`)으로 번호를 잡고 push 직전 다시 확인. 재번호 시 코드 주석·마이그레이션 헤더의 참조까지 바꾼다. (티켓 번호는 생성 시각이라 경합 없음. 한 번에 여러 건을 만들 때만 1분 간격으로 배정하고 원격과 대조) | 2026-08-27 충돌 32건, 티켓 20260918_1101 분리 |
+| review 브랜치를 최신 staging에 맞춤 | 머지 대신 `git rebase origin/staging`. 머지하면 딸려 온 남의 CLOSED 티켓을 pre-commit이 막는다. `--no-verify` 우회 금지 | 티켓 009·010·011(훅 도입 배경) |
+| 메인 트리의 브랜치가 작업 중에 바뀌거나 남의 미커밋 파일이 많음 | `git worktree add .claude/worktrees/<슬러그> -b <브랜치> origin/staging`으로 격리 워크트리에서 작업 → rebase → `git push origin HEAD:staging` | 2026-09-01 사례 |
+| 커밋할 때 | `git add -A`·`git add .` 금지. 파일을 명시적으로 나열하고 `add && commit`을 한 명령으로 묶는다. 스테이징에 모르는 파일이 보이면 남의 작업이다. 사고가 나도 히스토리를 재작성하지 않고 보고한다 | 2026-09-01 `/jam-ds` 사고 |
+| 파이프라인 호출 전 | `git fetch origin staging && git log --oneline HEAD..origin/staging`으로 전제가 바뀌었는지 본다. 사용자가 "별도 작업이 예정돼 있다"고 하면 그 티켓의 상태·머지 여부부터 확인. 머지 전 오염 검사가 실패하면 자동 리베이스 말고 들어온 내용을 먼저 읽는다 | 티켓 20260831_1149(구현 폐기), 20260831_1213(리베이스로 살림) |
+| 새 티켓을 만든 직후 파이프라인 호출 | 티켓을 먼저 커밋·push한다. 격리 워크트리에는 로컬에만 있는 파일이 없다 | 티켓 20260908_1727 |
+| 티켓 CLOSED 처리 | review 브랜치(`claude/jamwork-*`)에서는 pre-commit이 막는다. 메인 트리 staging에서 하거나, 워크트리라면 `docs/{티켓id}-close` 브랜치에서 커밋해 `git push origin HEAD:staging` | 티켓 009·010·011 |
+| DB와 정적 파일을 함께 바꿈 | DB는 staging·프로덕션 공용이라 쓰는 즉시 프로덕션에 반영된다. **파일 배포(main) → DB UPDATE** 순서로 한다 | 2026-08-24 배지 이미지 경로 사고 |
+| 어드민 화면 변경 확인 | staging에서는 어드민을 확인할 수 없다. 로컬 실렌더(아현 섹션) 또는 프로덕션 배포 후 확인 | 2026-08-22 사용자 확인 |
+| staging 배포 확인 | Vercel 프로젝트가 둘이다. staging은 `jam-stage`(`vercel ls jam-stage`, 도메인 `stage.j-a-m.app`). `jam` 프로젝트의 staging 배포는 의도적으로 Canceled라 정상이다 | 운영 확인 |
+| 범용 PM 스킬(`/pm-execution:create-prd` 등)로 티켓 작성 | 스킬 기본 형식이 아니라 `/jam-docs` 파일명·frontmatter·템플릿 규칙을 따른다 | 운영 확인 |
+| 서브에이전트가 "없다"·"불일치"라고 보고 | 보고 전에 직접 대조한다. 스킬 목록은 카리나 세션에서, 코드는 `git show origin/<브랜치>:<경로>`로 확인. 격리 워크트리는 main 기준으로 만들어져 staging 변경이 안 보일 수 있다 | 티켓 20260910_1246(내장 스킬 오탐), 20260917_1211·1303(낡은 워크트리 오탐), 20260918_1158(main 기준 워크트리로 중단) |
 
 ## 아현 (개발)
 
@@ -19,6 +31,10 @@
 | --- | --- | --- |
 | 화면 변경인데 채원 판정이 없음 | 임의로 만들지 않고 `needs_design`으로 멈춘다 | 티켓 20260918_0422 |
 | 같은 오류가 3회 반복 | 재시도를 멈추고 주의 신호와 함께 반환 | 아현 정의(공통 규칙) |
+| 어드민 UI를 새로 만듦 | 네이티브 `<select>` 등 대신 `jam-web/src/components/ui/`의 shadcn 컴포넌트를 쓴다. 네이티브 폼 요소는 시스템 다크모드를 따라가 어드민 라이트 테마와 어긋난다 | 티켓 20260822_002 |
+| DB 타입 갱신이 필요 | `npm run db:types` 실행 금지 — supabase CLI가 없어 리다이렉트가 `database.generated.ts`를 0바이트로 비운다. Supabase MCP `generate_typescript_types` 출력과 대조한다 | 운영 확인 |
+| 어드민 화면 로컬 실렌더 | `preview_start`는 환경변수를 못 받는다. `.claude/launch.json`을 백업하고 임시 설정(`runtimeExecutable: env`, `ADMIN_EMAILS=<DEV_USER_EMAIL> npm run dev -- -p 3100`, `cwd: jam-web`)으로 연 뒤 원복. dev 계정은 `api/dev-login/route.ts`의 `DEV_USER_EMAIL`. **공용 DB라 저장하지 말고 읽기만** | 2026-09-10 믹스 v3 검증, `DEV_PROCESS_GUARDRAILS.md` 패턴 13 |
+| 캔버스 합성 이미지 확인 | 배포 없이 로컬에서 굽는다: 합성 함수를 부르는 entry를 `npx esbuild --bundle --format=iife --alias:@=./src`로 번들 → 최소 HTML → playwright로 `canvas.toDataURL()` → PNG 확인. playwright 스크립트는 `jam-web/` 안에서 실행 | 운영 확인 |
 
 ## 민지 (판정 리뷰)
 
