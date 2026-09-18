@@ -62,7 +62,10 @@ of change this is. The rest depend on `workType` (ticket 20260918_1158). Mark a 
 8. SQL migration file present, unexecuted, syntactically sound
 9. Security — authorization, RLS, secret handling
 10. Error handling matches the spec's expected behaviour
-11. Documentation update proposal — is 아현's `문서 갱신안` complete for what actually changed
+11. Documentation update proposal — is 아현's `문서 갱신안` complete for what actually changed.
+    Changes to `jam-doc/` (content, business plan, marketing, operations) never appear in the review
+    diff — 아현 only proposes them and the orchestrator applies them after approval. Judge the
+    proposal, not the diff, for those files
 12. **Korean naturalness** (`copy`·`ui`·`content` types only, when the diff has new/changed
     user-facing Korean text). Two sources, both context-dependent — pattern matching already
     caught the rest at `verify.sh` time (`scripts/check-slop.mjs`):

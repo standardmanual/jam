@@ -197,7 +197,8 @@ node jam-web/scripts/recraft/register-badge-images.js "<컬렉션 폴더 절대�
 - 재업로드 시에도 이 스크립트가 자동으로 `?v=<timestamp>` 캐시버스팅 쿼리스트링을 붙인다
   (Vercel Image Optimization 엣지 캐시가 예전 이미지를 서빙하는 문제 방지).
 - 실행한 UPDATE문은 스크립트가 컬렉션 폴더에 `seed_{collection_id}_badge_images.sql`로 자동
-  저장 — 이 파일과 이미지 파일들을 staging에 커밋+push한다 (레포 관례).
+  저장 — 이 파일과 이미지 파일들은 문서 저장소에 있으므로 `jam-doc`에서 커밋하고
+  `git -C jam-doc push origin main`한다 (jam의 staging에는 커밋하지 않는다, 티켓 20260918_2105).
 - 컬렉션 대표 이미지(`item_books.image_url`)를 함께 갱신해야 하면(보통 등록이 끝난 컬렉션은
   첫 번째 아이템 이미지를 대표 이미지로도 반영하는 것이 기본 규칙) 별도 UPDATE 후 SQL로 기록한다.
 
@@ -213,5 +214,6 @@ node jam-web/scripts/recraft/test-connection.js
 
 ## 완료 후
 
-- staging에 커밋+push는 CLAUDE.md 절대 규칙 3에 따라 항상 수행.
+- 커밋+push는 CLAUDE.md 절대 규칙 3에 따라 항상 수행한다. 이미지·브리프·시드 SQL 기록은
+  `jam-doc`(main)에, 스크립트 등 코드 변경이 있으면 그것만 `jam`(staging)에 커밋한다.
 - main 배포는 사용자의 명시적 요청이 있을 때만 `/jam-ship`으로 처리한다.

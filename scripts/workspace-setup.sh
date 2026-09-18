@@ -3,7 +3,7 @@
 # (티켓 20260918_0421, 근거: JAM-WORK/05_자동화목록.md A6)
 #
 # 사용법:
-#   scripts/workspace-setup.sh link <새-워크트리-경로>   # jam-web/node_modules 심볼릭 링크 연결
+#   scripts/workspace-setup.sh link <새-워크트리-경로>   # jam-web/node_modules·jam-doc 심볼릭 링크 연결
 #   scripts/workspace-setup.sh cleanup                    # staging에 병합됐고 미커밋 변경 없는 워크트리 제거
 set -uo pipefail
 
@@ -39,6 +39,26 @@ link_node_modules() {
   mkdir -p "$(dirname "$target_nm")"
   ln -s "$source" "$target_nm"
   echo "연결: $target_nm → $source"
+}
+
+# 문서 저장소 jam-doc은 jam이 무시하는 중첩 복제본이라 격리 워크트리에 따라오지 않는다
+# (티켓 20260918_2105). 메인 작업 폴더의 것을 링크해 같은 상대 경로로 읽게 한다. 링크를 거쳐도
+# 파일은 메인 작업 폴더의 것 하나뿐이므로, 워크트리 쪽 에이전트는 읽기만 하고 고치지 않는다.
+link_jam_doc() {
+  local target="${1:?대상 워크트리 경로가 필요합니다}"
+  local main_root
+  main_root="$(git worktree list --porcelain | awk '/^worktree /{sub(/^worktree /, ""); print; exit}')"
+
+  if [ -e "$target/jam-doc" ]; then
+    echo "이미 존재함: $target/jam-doc"
+    return 0
+  fi
+  if [ ! -d "$main_root/jam-doc/.git" ]; then
+    echo "메인 작업 폴더에 jam-doc이 없어 연결하지 않습니다 (/jam-sync로 복제)." >&2
+    return 0
+  fi
+  ln -s "$main_root/jam-doc" "$target/jam-doc"
+  echo "연결: $target/jam-doc → $main_root/jam-doc"
 }
 
 cleanup_worktrees() {
@@ -77,7 +97,7 @@ cleanup_worktrees() {
 }
 
 case "$CMD" in
-  link) link_node_modules "${2:-}" ;;
+  link) link_node_modules "${2:-}"; rc=$?; link_jam_doc "${2:-}"; exit $rc ;;
   cleanup) cleanup_worktrees ;;
   *)
     echo "사용법: $0 link <워크트리-경로> | $0 cleanup" >&2

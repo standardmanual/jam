@@ -85,9 +85,14 @@ DB 스키마·데이터 변경은 사용자에게 대신 실행해달라고 요�
 ## 5. 로컬과 git을 같게 유지한다
 
 - 작업 후 `git status`로 untracked·modified 파일이 남지 않게 처리한다
-- `.gitignore`에 새 항목을 추가하지 않는다 (보안 예외: 토큰·시크릿 파일은 허용)
+- `.gitignore`에 새 항목을 추가하지 않는다 (예외: 토큰·시크릿 파일, 그리고 중첩 저장소 `/jam-doc`)
 - 이 저장소는 `.githooks/`를 hooks 경로로 쓴다. 새로 클론한 환경에서는 최초 1회
-  `git config core.hooksPath .githooks` 실행이 필요하다
+  `git config core.hooksPath .githooks` 실행이 필요하다. 문서 저장소 `jam-doc/`도 같다
+  (`git -C jam-doc config core.hooksPath .githooks`)
+- **두 저장소를 모두 확인한다** (티켓 20260918_2105). `jam-doc/`은 `jam`의 `git status`에 나오지
+  않으므로 `git -C jam-doc status --short`를 따로 본다. 격리 워크트리에는 `jam-doc`이 메인 작업
+  폴더로 향하는 심볼릭 링크로 들어가므로, 워크트리 쪽 에이전트가 거기에 남긴 변경은 메인 작업
+  폴더의 `jam-doc`에 미커밋 상태로 나타난다
 
 ## 6. 티켓 생성 권한
 
