@@ -2,7 +2,7 @@
 id: 20260918_1150
 category: API
 priority: P2
-status: OPEN
+status: WAITING
 created: 2026-09-18
 closed:
 ---
@@ -32,32 +32,49 @@ GA4는 광고 차단기 유저를 놓치고 일부 이벤트는 특정 경로에
 각 지표의 정의(어느 테이블·어느 조건)를 먼저 티켓에 적고 구현한다. 공용 프로덕션 DB라 읽기 쿼리만 쓴다.
 
 ## 완료 조건
-- 읽기 토큰으로 호출하면 4개 지표가 숫자로 반환된다
+- ~~읽기 토큰으로 호출하면 4개 지표가 숫자로 반환된다~~ → (2026-09-18 사용자 결정으로 수정) 원천 데이터가 있는 지표는 숫자로, 없는 지표는 `null`과 사유로 반환된다. 값이 없는 지표 3개 중 Strava 동기화 실패만 [20260918_1307](20260918_1307_API_Strava-동기화실패-기록과-주간집계.md)에서 기록 경로를 만들고, 배지 중복 발급·앰비언트 드랍 만료는 구조상 발생하지 않는 사건이라 브리핑 지표에서 뺀다
 - 응답 JSON에 개인 식별 필드가 없다 (테스트로 확인)
 - 프로덕션 배포 후 1회 호출해 값이 어드민 화면의 수치와 맞는지 대조한다
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록 *(2026-09-18 staging 머지, 프로덕션 대조 대기로 WAITING)*
 
 ### 구현 내용 요약
+`GET /api/admin/kpi/weekly?days=N` (기본 7일 KST, 1~90 범위 밖은 기본값). 인증은 `requireAdminRead(req)`(GET만 export). 읽기 쿼리만 쓴다.
+
+지표 정의:
+| 지표 | 정의 | 반환 |
+|---|---|---|
+| 미션 달성자 수 | `user_mission_completions.completed_at`이 기간 안인 행의 `user_id` 고유 개수 | 숫자 |
+| 배지 발급량 | `user_activity_badges.earned_at`이 기간 안인 행 개수 (반복 획득은 `earn_count`만 올려 발급으로 세지 않음) | 숫자 |
+| 배지 중복 발급 | `UNIQUE(user_id, badge_id)`로 구조상 발생 불가 | `null` + 사유 |
+| Strava 동기화 실패 | 실패가 DB에 기록되지 않음(`console.error`만) | `null` + 사유 |
+| 앰비언트 드랍 만료 | `source='system'` 드랍은 `expires_at`이 항상 NULL | `null` + 사유 |
 
 ### 변경된 파일
 ```
--
+jam-web/src/lib/admin/kpiWeekly.ts (신규)
+jam-web/src/app/api/admin/kpi/weekly/route.ts (신규)
+jam-web/src/lib/admin/__tests__/kpi-weekly.test.ts (신규)
+jam-web/src/app/api/admin/kpi/weekly/__tests__/route-contract.test.ts (신규)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `scripts/verify.sh` 통과 (민지 재실행 확인)
+- [x] 개인 식별 필드 미노출·GET 전용·`requireAdminRead` 사용을 계약 테스트로 확인
+- [ ] 프로덕션 배포 후 1회 호출해 어드민 화면 수치와 대조 (1149 토큰 등록 후)
 
 ### 배포 정보
-- 배포일: 
-- 환경: 
-- 커밋: 
+- 배포일: 2026-09-18 (staging)
+- 환경: staging
+- 커밋: 8122b161 (머지 ec3e922f)
 
 ### 주요 의사결정 / 핵심 메모
+- 게이트(민지): **FAIL** — 원 완료 조건 1("4개 지표가 숫자로")을 문자 그대로 충족하지 못함. 구현 결함이 아니라 완료 조건이
+  실제 DB와 맞지 않은 것이라는 데 아현·민지 의견이 같았다
+- 사용자 결정: 지금 머지하고 완료 조건을 고친다. 후속 티켓은 Strava 동기화 실패만 만든다(1307). 배지 중복 발급·앰비언트 드랍 만료는 브리핑 지표에서 제외한다(API는 `null`과 사유를 계속 반환)
+- 1149 리뷰 메모의 "읽기 라우트에서만" 원칙 준수 확인: GET만 export하고 다른 메서드는 없다
+- 토큰: 149,602 (2명·614초, 출력 아현 46,363 · 민지 6,646)
 
 ### 잔여 이슈
--
-
-> **1149 리뷰 메모(2026-09-18):** `requireAdminRead(req)`는 `jam-web/src/lib/admin/auth.ts`에 export되어 있다.
-> 이 라우트에서 재사용할 때 GET 핸들러에서만 쓰는지 게이트 리뷰에서 확인한다.
+- 후속: [20260918_1307 Strava 동기화 실패 기록과 주간 집계](20260918_1307_API_Strava-동기화실패-기록과-주간집계.md)

@@ -80,7 +80,7 @@ jam-web/
 
 1. **`proxy.ts` 레벨**: `/admin/*` 요청 시 Supabase Auth 세션 확인 → `ADMIN_EMAILS`(쉼표 구분) 화이트리스트 대조 → 불일치 시 `/forbidden`
 2. **보조 인증**: `ADMIN_SECRET` 비밀번호 기반 쿠키(`admin_token`) — `api/admin/auth`, `api/admin/test/simulate` 등 일부 API가 사용. 시뮬레이터처럼 세션 없이도 호출해야 하는 경로용.
-3. **자동화 읽기 토큰**: `x-admin-read-token` 헤더가 `ADMIN_API_READ_TOKEN`과 일치하면 **GET 요청만** 통과한다. `requireAdminRead(req)`(`src/lib/admin/auth.ts`)를 쓰는 읽기 라우트(missions·badges·users·drop-policy·badge-metric-labels)에만 적용되고, `proxy.ts`는 이 조건일 때만 로그인 리다이렉트를 건너뛴다. 쓰기 메서드·다른 라우트는 기존 세션 검사(`requireAdmin()`)만 받는다. 클라우드 예약 작업(`scripts/admin-api-read.mjs`)용이다.
+3. **자동화 읽기 토큰**: `x-admin-read-token` 헤더가 `ADMIN_API_READ_TOKEN`과 일치하면 **GET 요청만** 통과한다. `requireAdminRead(req)`(`src/lib/admin/auth.ts`)를 쓰는 읽기 라우트(missions·badges·users·drop-policy·badge-metric-labels·kpi/weekly)에만 적용되고, `proxy.ts`는 이 조건일 때만 로그인 리다이렉트를 건너뛴다. 쓰기 메서드·다른 라우트는 기존 세션 검사(`requireAdmin()`)만 받는다. 클라우드 예약 작업(`scripts/admin-api-read.mjs`)용이다.
 
 코드 작성 시 어느 인증 경로를 쓰는지 명확히 구분할 것 — 새 어드민 API가 필요하면 기존 라우트가 둘 중 어느 방식을 쓰는지 먼저 확인.
 
