@@ -38,6 +38,21 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 
 해당하지 않으면 아래 유형 판정으로 진행한다.
 
+### 0.1.5 경로 3단 분기 (안건 1-2, 티켓 20260918_1148)
+
+0.1의 경미 수정에 해당하지 않으면 아래 세 경로 중 하나로 진행한다. **카리나가 유형 판정 때
+경로를 정해 사용자에게 먼저 알린다.**
+
+| 경로 | 대상 | 절차 | Workflow 인자 |
+|---|---|---|---|
+| ① 경미 | 파일 1~2개·10줄 이내, 원인·수정이 명백 | 0.1절 — 카리나 직접, Workflow 호출 없음 | 해당 없음 |
+| ② 가벼운 UI | 로직 변경 없는 스타일·문구 수정이고 고칠 내용이 티켓에 확정됨 | 아현 → 민지 (채원①·② 생략) | `route: 'light'` |
+| ③ 표준 | 그 외 전부 | 채원① → 아현 → 민지 → 채원② | 생략(기본값) |
+
+경로 ②는 `ui`·`ds` 유형이어도 채원①·②를 건너뛴다는 점에서 0.2절의 유형별 분기표와 다르다 —
+`route: 'light'`가 유형 판정보다 우선한다. 확신이 없으면 경로 ③으로 기운다(경미 판정과 같은
+원칙).
+
 ### 0.2 유형 자동 판정
 
 인자로 유형이 주어지면(`/jam-work ui`) 그대로 쓴다. **없으면 요청 내용으로 판정하고,
@@ -102,8 +117,11 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 
 - 같은 화면에 대한 **이전 판정이 이미 있으면** 그 내용을 `reuseDecision` 인자로 넘긴다.
   값이 있으면 채원①을 건너뛰고 그 판정을 그대로 쓴다 (중복 호출 방지).
-- 채원①이 `needs_approval`에 항목을 올렸으면(새 토큰·새 컴포넌트·눈에 보이는 변경) 구현 전에
-  **사용자에게 먼저 묻는다.**
+- 채원①이 `needs_approval`에 항목을 올렸으면(새 토큰·새 컴포넌트·눈에 보이는 변경), Workflow가
+  아현을 호출하지 않고 **여기서 자동으로 멈춘다** (`stoppedAt: '채원 사전 판정'`, 안건 1-1,
+  티켓 20260918_1148). 카리나는 `needsApprovalItems`를 사용자에게 그대로 보고하고 승인 여부를
+  묻는다. 승인되면 `reuseDecision`에 `designDecision`을 넣어 Workflow를 다시 호출한다(채원①은
+  건너뛰고 아현부터 이어서 돈다). 거절되면 티켓 방향을 다시 논의한다.
 - 판정 결과는 승인 후 처리 단계에서 티켓 완료 기록에 남긴다.
 
 ## 2. Workflow 호출
@@ -113,16 +131,23 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 파이프라인 스크립트는 `.claude/workflows/jam-work.js`에 있다. `Workflow` 도구를 아래처럼 호출한다.
 
 ```
-Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason })
+Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason, route })
 ```
 
 - `name`은 `.claude/workflows/`의 사전 정의 워크플로를 가리킨다. 파일 경로로 직접 지정하려면
   `scriptPath: '.claude/workflows/jam-work.js'`를 쓴다(`scriptPath`가 `name`보다 우선한다).
 - `args`는 스크립트에 전역 `args`로 그대로 노출된다. 문자열화하지 말고 실제 JSON 값으로 넘긴다.
-- `ticketPath`·`userRequest`·`workType`은 0~1단계 값으로 채운다.
-- `reuseDecision`은 **선택**이다. 같은 화면에 대한 이전 채원 사전 판정이 있을 때만 그 내용을
-  넣고, 없으면 비운다(비우면 워크플로가 채원①을 호출한다).
+- `ticketPath`·`workType`은 0~1단계 값으로 채운다.
+- `userRequest`는 **짧게 줄인다** — 티켓 경로와 한 줄 지시면 충분하다("이 티켓을 읽고 구현을
+  진행하라" 정도). 아현·민지 등은 정의상 `핵심 요약` 절부터 읽으므로 요청문에 상세 요구사항을
+  다시 풀어 쓸 필요가 없다(공통규칙 2번, 안건 1 결정). 예외: 티켓에 없는 추가 지시(재시도 시
+  구체적 수정 방향 등)가 있을 때만 그 지시를 덧붙인다.
+- `reuseDecision`은 **선택**이다. 같은 화면에 대한 이전 채원 사전 판정이 있을 때, 또는 채원①의
+  `needs_approval`을 사용자가 승인했을 때 그 내용을 넣는다. 없으면 비운다(비우면 워크플로가
+  채원①을 호출한다).
 - `retryReason`은 최초 실행 시 비우고, 재시도 시에만 이전 재작업 사유(`reworkReasons`)를 넣는다.
+- `route`는 0.1.5절의 경로 값이다. 경로 ②(가벼운 UI)면 `route: 'light'`를 넘긴다 — 채원①·②를
+  건너뛴다. 경로 ③(표준)이면 비운다(기본값).
 - 스크립트를 고쳐야 하면 `.claude/workflows/jam-work.js`를 직접 편집한 뒤 다시 호출한다
   (같은 세션에서 이어 돌릴 때는 `resumeFromRunId`를 함께 넘긴다).
 
@@ -130,6 +155,9 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
 
 ### 3.0 구현 단계 중단 처리 (Workflow 결과 수신 직후, 판정 보고 전)
 
+0. **`stoppedAt: '채원 사전 판정'`**: 채원①이 `needs_approval`에 항목을 올려 아현 호출 전에
+   멈췄다는 뜻이다(1.5절). `needsApprovalItems`를 사용자에게 그대로 보고하고 승인 여부를 묻는다.
+   승인되면 `reuseDecision: designDecision`으로 다시 호출한다.
 1. **`stoppedAt: '구현'`**: 아현이 게이트 진입 전에 멈췄다는 뜻이다. `devStatus`별로:
    - `plan_only` — 작업이 크다(파일 5개 초과 또는 100줄 이상). 구현 계획을 사용자에게 보고하고
      **티켓을 쪼갤지** 묻는다. 승인되면 계획을 `userRequest`에 넣어 다시 호출한다.
@@ -188,7 +216,10 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
 2. 아현의 `문서 갱신안`을 `/jam-docs` 규칙에 맞게 반영 (민지가 점검표 11번에서 누락을 지적했으면
    그 내용까지 함께)
 3. 티켓을 `status: CLOSED`로 변경하고 완료 기록 작성 (`ui`·`ds` 유형이면 채원① 판정 결과와
-   연결 범위도 함께 기록)
+   연결 범위도 함께 기록). Workflow 결과의 `tokenUsage`(에이전트별 출력 토큰, 티켓
+   20260918_1148)를 완료 기록에 함께 남긴다. 소요 시간은 워크플로가 재지 않으므로(스크립트
+   안에서 시각 조회 불가) 카리나가 Workflow 호출 전후로 직접 잰다. `tokenUsage`가 비어 있으면
+   (`budget.spent()`를 못 쓰는 환경) 그 사실만 적고 `journal.jsonl`로 전체 사용량을 보완한다.
 4. jam-developer가 SQL 마이그레이션 파일을 남겼다면 **이 시점에** 사용자 승인 하에 직접 실행
    (jam-developer는 파일 작성까지만 했음)
 5. 1~4가 모두 끝난 뒤 **`git push origin staging`을 한 번만** 실행한다
@@ -257,3 +288,17 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
 - `.next/types` 캐시가 낡으면 이미 삭제된 라우트를 가리키는 유령 `Cannot find module` 에러가
   난다. `npm run typecheck`가 그 캐시를 먼저 지우고 `tsc --noEmit`을 돌린다 — 지우고도 남는
   에러는 실제 타입 에러다.
+- **토큰 사용량 측정의 한계** (티켓 20260918_1148): Workflow 도구는 `agent()` 호출이 쓴 토큰을
+  직접 돌려주지 않는다. 전역 `budget.spent()`가 이번 턴의 출력 토큰 누계를 주므로,
+  `jam-work.js`는 각 `agent()` 호출 전후 차이로 에이전트별 **출력 토큰만** `tokenUsage`에
+  담는다. 입력 토큰(프롬프트·컨텍스트)은 스크립트에서 알 방법이 없다 — 전체 사용량(입력 포함)이
+  필요하면 카리나가 실행 기록 `journal.jsonl`로 보완한다. 같은 이유로 스크립트 안에서
+  `Date.now()`/`new Date()`를 쓸 수 없어 소요 시간도 이 파일에서 재지 않는다 — 카리나가
+  Workflow 호출 전후로 직접 기록한다.
+- **워크트리 최신성** (티켓 20260918_1148): `isolation: 'worktree'`로 만들어지는 격리 워크트리는
+  호출 시점의 메인 트리 기준으로 생성되므로 그 순간 `origin/staging`보다 뒤처져 있을 수 있다.
+  jam-developer 정의의 5번 규칙(`git fetch origin staging && git checkout -B ... origin/staging`)이
+  아현에게는 이미 있었으나, conservative-reviewer 정의에는 같은 지시가 없어 민지가 뒤처진
+  `origin/staging` 참조로 diff를 재는 사례가 있었다. `jam-work.js`가 아현·민지 양쪽 프롬프트에
+  "먼저 `git fetch origin staging`을 실행하라"는 지시를 명시적으로 넣어, 배정된 워크트리의
+  초기 HEAD를 신뢰하지 않고 항상 최신 `origin/staging` 기준으로 작업·비교하도록 고쳤다.
