@@ -6,14 +6,17 @@
  * 2. 잘못된 `days`(음수·0·문자·상한 초과)는 기본값으로 폴백한다 — 조용히 이상한
  *    범위로 집계되지 않는다
  * 3. 미션 달성자 수는 distinct user_id, 배지 발급량은 기간 내 건수로 집계된다
- * 4. 원천 데이터가 없는 3개 서브지표(배지 중복 발급·Strava 동기화 실패·앰비언트 드랍
- *    만료)는 추측 없이 `null` + `reason`을 반환한다
+ * 3-1. Strava 동기화 실패 건수는 strava_sync_failures 기간 내 건수로 집계된다(티켓
+ *    20260918_1307 — 이전에는 원천 데이터 없음으로 null이었다)
+ * 4. 원천 데이터가 없는 서브지표(배지 중복 발급·앰비언트 드랍 만료)는 추측 없이
+ *    `null` + `reason`을 반환한다
  * 5. 응답 어디에도 user_id 같은 개인 식별 값이 그대로 실리지 않는다(개수만 남는다)
  */
 import { vi } from 'vitest'
 
 const mockMissionRows = vi.fn()
 const mockBadgeCount = vi.fn()
+const mockStravaSyncFailureCount = vi.fn()
 
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
@@ -32,6 +35,15 @@ vi.mock('@/lib/supabase/server', () => ({
           select: () => ({
             gte: () => ({
               lt: async () => mockBadgeCount(),
+            }),
+          }),
+        }
+      }
+      if (table === 'strava_sync_failures') {
+        return {
+          select: () => ({
+            gte: () => ({
+              lt: async () => mockStravaSyncFailureCount(),
             }),
           }),
         }
@@ -74,6 +86,7 @@ describe('computeKpiWeeklyMetrics', () => {
       error: null,
     })
     mockBadgeCount.mockResolvedValue({ count: 5, error: null })
+    mockStravaSyncFailureCount.mockResolvedValue({ count: 0, error: null })
 
     const metrics = await computeKpiWeeklyMetrics(range)
     expect(metrics.missionAchievers.value).toBe(2)
@@ -82,20 +95,30 @@ describe('computeKpiWeeklyMetrics', () => {
   it('배지 발급량은 기간 내 건수를 그대로 담는다', async () => {
     mockMissionRows.mockResolvedValue({ data: [], error: null })
     mockBadgeCount.mockResolvedValue({ count: 7, error: null })
+    mockStravaSyncFailureCount.mockResolvedValue({ count: 0, error: null })
 
     const metrics = await computeKpiWeeklyMetrics(range)
     expect(metrics.badgeIssuance.issued.value).toBe(7)
   })
 
-  it('원천 데이터가 없는 3개 서브지표는 null + reason이다', async () => {
+  it('Strava 동기화 실패 건수는 기간 내 건수를 그대로 담는다', async () => {
     mockMissionRows.mockResolvedValue({ data: [], error: null })
     mockBadgeCount.mockResolvedValue({ count: 0, error: null })
+    mockStravaSyncFailureCount.mockResolvedValue({ count: 3, error: null })
+
+    const metrics = await computeKpiWeeklyMetrics(range)
+    expect(metrics.stravaSyncFailures.value).toBe(3)
+    expect(metrics.stravaSyncFailures.definition).not.toMatch(/원천 데이터 없음/)
+  })
+
+  it('원천 데이터가 없는 2개 서브지표는 null + reason이다', async () => {
+    mockMissionRows.mockResolvedValue({ data: [], error: null })
+    mockBadgeCount.mockResolvedValue({ count: 0, error: null })
+    mockStravaSyncFailureCount.mockResolvedValue({ count: 0, error: null })
 
     const metrics = await computeKpiWeeklyMetrics(range)
     expect(metrics.badgeIssuance.duplicate.value).toBeNull()
     expect(metrics.badgeIssuance.duplicate.reason).toMatch(/원천 데이터 없음/)
-    expect(metrics.stravaSyncFailures.value).toBeNull()
-    expect(metrics.stravaSyncFailures.reason).toMatch(/원천 데이터 없음/)
     expect(metrics.ambientDropExpired.value).toBeNull()
     expect(metrics.ambientDropExpired.reason).toMatch(/원천 데이터 없음/)
   })
@@ -106,6 +129,7 @@ describe('computeKpiWeeklyMetrics', () => {
       error: null,
     })
     mockBadgeCount.mockResolvedValue({ count: 1, error: null })
+    mockStravaSyncFailureCount.mockResolvedValue({ count: 0, error: null })
 
     const metrics = await computeKpiWeeklyMetrics(range)
     expect(JSON.stringify(metrics)).not.toContain('sensitive-user-id-abc')
@@ -114,6 +138,7 @@ describe('computeKpiWeeklyMetrics', () => {
   it('쿼리 오류는 예외로 전파한다(라우트가 500 처리)', async () => {
     mockMissionRows.mockResolvedValue({ data: null, error: { message: 'db down' } })
     mockBadgeCount.mockResolvedValue({ count: 0, error: null })
+    mockStravaSyncFailureCount.mockResolvedValue({ count: 0, error: null })
 
     await expect(computeKpiWeeklyMetrics(range)).rejects.toBeTruthy()
   })
