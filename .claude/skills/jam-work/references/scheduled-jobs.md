@@ -7,7 +7,10 @@
 > **현재 상태: 두 작업 모두 켜짐** (2026-09-18 사용자 결정, 티켓 20260918_1156). 첫 자동 실행은 주간 2026-09-21 09:00 KST, 월간 2026-10-01 09:00 KST.
 > - 주간: 루틴 `trig_01Y7GEKLMq9f14WDocxmmaPb` · 월간: 루틴 `trig_016GQ8bA7HASY4uCHS1qrN9Y`
 > - 환경 `jam-ops`(`env_01MKAxUHmjTbwAKrrUEb2zMe`): 네트워크 Custom(`j-a-m.app`·`stage.j-a-m.app`
->   [2026-09-18 티켓 20260918_1650 시험 실행에서 스테이징 접속 차단 발견 후 추가] + 기본 목록), 환경변수
+>   [2026-09-18 티켓 20260918_1650 시험 실행에서 스테이징 접속 차단 발견 후 추가], `the-edit.co.kr`·
+>   `maily.so`·`joomaltory.com`·`uppity.co.kr`·`www.openads.co.kr`·`buybrand.stibee.com`
+>   [2026-09-18 월간 트렌드 수집 1회차 EGRESS_BLOCKED 확인 후 사용자가 추가, 다음 자동 실행(2026-10-01)에서
+>   재검증 예정] + 기본 목록), 환경변수
 >   `ADMIN_API_READ_TOKEN`·`GA4_PROPERTY_ID`·`GA4_SERVICE_ACCOUNT_KEY`. 커넥터는 Slack만 붙인다
 > - 루틴 지시문의 원본은 루틴 자체다(claude.ai/code/routines). 이 문서를 바꾸면 루틴 지시문도 함께 고친다
 >
@@ -219,7 +222,7 @@ git checkout staging
 
 ### 월간 트렌드 출처 (티켓 20260918_1157)
 
-윤진은 월간 트렌드 수집을 이 7곳부터 시작한다(WebFetch). **1회차(2026-09-18)에는 7곳 모두 읽지 못했다** — 6곳은 `jam-ops` 네트워크 허용 목록에 없어 차단(EGRESS_BLOCKED), `blog.naver.com`은 WebFetch 미지원. 허용 목록에 도메인을 추가하는 것은 사용자 작업이다. 읽지 못한 곳은 리포트 "트렌드 노트"
+윤진은 월간 트렌드 수집을 이 7곳부터 시작한다(WebFetch). **1회차(2026-09-18)에는 7곳 모두 읽지 못했다** — 6곳은 `jam-ops` 네트워크 허용 목록에 없어 차단(EGRESS_BLOCKED), `blog.naver.com`은 WebFetch 미지원. **6곳은 2026-09-18에 사용자가 `jam-ops` 허용 목록에 추가했다** — 다음 자동 실행(2026-10-01)에서 실제로 읽히는지 재검증한다. `blog.naver.com`은 네트워크 문제가 아니라 WebFetch 도구 자체가 이 도메인을 지원하지 않는 것이라 허용 목록 추가로는 해결되지 않는다 — 계속 막히면 이 출처는 웹 검색으로 대체하거나 목록에서 뺄지 사용자 판단이 필요하다. 읽지 못한 곳은 리포트 "트렌드 노트"
 절에 `읽기 실패: 출처 (사유)`로 표시하고 내용을 추측하지 않는다.
 
 | 주소 |
