@@ -217,9 +217,9 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
    그 내용까지 함께)
 3. 티켓을 `status: CLOSED`로 변경하고 완료 기록 작성 (`ui`·`ds` 유형이면 채원① 판정 결과와
    연결 범위도 함께 기록). Workflow 결과의 `tokenUsage`(에이전트별 출력 토큰, 티켓
-   20260918_1148)를 완료 기록에 함께 남긴다. 소요 시간은 워크플로가 재지 않으므로(스크립트
-   안에서 시각 조회 불가) 카리나가 Workflow 호출 전후로 직접 잰다. `tokenUsage`가 비어 있으면
-   (`budget.spent()`를 못 쓰는 환경) 그 사실만 적고 `journal.jsonl`로 전체 사용량을 보완한다.
+   20260918_1148)를 완료 기록에 함께 남긴다. **전체 토큰(입력 포함)·소요 시간·에이전트 수는
+   Workflow 완료 알림의 `<usage>` 블록(`subagent_tokens`·`duration_ms`·`agent_count`)에서 그대로
+   옮겨 적는다** — 이 값이 티켓 간 비교(안건 1-3 성공 기준)의 기준 수치다.
 4. jam-developer가 SQL 마이그레이션 파일을 남겼다면 **이 시점에** 사용자 승인 하에 직접 실행
    (jam-developer는 파일 작성까지만 했음)
 5. 1~4가 모두 끝난 뒤 **`git push origin staging`을 한 번만** 실행한다
@@ -291,10 +291,10 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
 - **토큰 사용량 측정의 한계** (티켓 20260918_1148): Workflow 도구는 `agent()` 호출이 쓴 토큰을
   직접 돌려주지 않는다. 전역 `budget.spent()`가 이번 턴의 출력 토큰 누계를 주므로,
   `jam-work.js`는 각 `agent()` 호출 전후 차이로 에이전트별 **출력 토큰만** `tokenUsage`에
-  담는다. 입력 토큰(프롬프트·컨텍스트)은 스크립트에서 알 방법이 없다 — 전체 사용량(입력 포함)이
-  필요하면 카리나가 실행 기록 `journal.jsonl`로 보완한다. 같은 이유로 스크립트 안에서
-  `Date.now()`/`new Date()`를 쓸 수 없어 소요 시간도 이 파일에서 재지 않는다 — 카리나가
-  Workflow 호출 전후로 직접 기록한다.
+  담는다. 입력 토큰(프롬프트·컨텍스트)은 스크립트에서 알 방법이 없고, 스크립트 안에서
+  `Date.now()`/`new Date()`도 쓸 수 없다. 대신 Workflow 완료 알림의 `<usage>` 블록에 전체 토큰
+  (`subagent_tokens`)과 소요 시간(`duration_ms`)이 들어 있으므로 카리나는 이 값을 기록한다
+  (2026-09-18 1148 실행에서 확인: 2명·170,729토큰·528초).
 - **워크트리 최신성** (티켓 20260918_1148): `isolation: 'worktree'`로 만들어지는 격리 워크트리는
   호출 시점의 메인 트리 기준으로 생성되므로 그 순간 `origin/staging`보다 뒤처져 있을 수 있다.
   jam-developer 정의의 5번 규칙(`git fetch origin staging && git checkout -B ... origin/staging`)이
