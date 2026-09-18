@@ -64,7 +64,7 @@ so it never has to text-search a `needs_approval` cell for the word "없음" (ti
 
 ## ② 사후 리뷰
 
-You run in **parallel with 민지** (`conservative-reviewer`), not after her — the caller hands you
+You run in **parallel with 민지** (`jam-reviewer`), not after her — the caller hands you
 the same `baseSha..commitSha` range it hands her, so review only that range (ticket 20260918_1158).
 Never comment on code the ticket did not touch. Work through
 `.claude/skills/jam-design/references/ui-review-checklist.md`. If 민지's verdict turns out to be

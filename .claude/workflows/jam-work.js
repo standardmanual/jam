@@ -285,7 +285,7 @@ const [gate, designReview] = await parallel([
     `${designDecisionText ? `\n채원 사전 판정(점검표 6번 대조 기준):\n${designDecisionText}\n` : ''}` +
     rangeInstruction +
     `\n스펙대로 동작하는지 판정하라.`,
-    { agentType: 'conservative-reviewer', label: 'conservative-reviewer', schema: VERDICT }
+    { agentType: 'jam-reviewer', label: 'jam-reviewer', schema: VERDICT }
   ),
   () => runDesignReview ? agent(
     `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult?.summary ?? devResult}\n` +

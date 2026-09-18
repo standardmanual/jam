@@ -6,7 +6,7 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 # /jam-work — JAM! 표준 작업 워크플로우
 
 > **담당**: 카리나(오케스트레이터=나) · 채원(`jam-designer`) · 아현(`jam-developer`) ·
-> 민지(`conservative-reviewer`) — 콜사인은 전부 본인 이름과 같다.
+> 민지(`jam-reviewer`) — 콜사인은 전부 본인 이름과 같다.
 >
 > 평소 개발 흐름에 관여하는 건 이 넷이다. 혜린·윈터·윤진·카즈하·하니는 상황이 있을 때만
 > 부른다 (각 정의는 `.claude/agents/`).
@@ -23,7 +23,7 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
    조건 연산자 하나 수정처럼 원인-결과가 1:1로 명확한 버그 수정). 원인이 불확실하거나 영향
    범위가 여러 파일·여러 기능에 걸치면 해당하지 않는다.
 
-확신이 없으면 안전하게 아래 유형 판정으로 넘어간다 — conservative-reviewer가 판정을 확신하지
+확신이 없으면 안전하게 아래 유형 판정으로 넘어간다 — jam-reviewer가 판정을 확신하지
 못할 때 FAIL 쪽으로 기우는 것과 같은 원칙이다.
 
 해당하면:
@@ -278,7 +278,7 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   민지의 체크리스트로 흡수했다(티켓 20260918_1033). 플러그인 자체는 여전히 설치돼 있어도
   되고 없어도 무방 — 이 파이프라인은 더 이상 호출하지 않는다.
 - 민지의 점검표 12개 항목 중 유형에 해당하지 않는 항목은 `해당없음`으로 처리한다 — 표는
-  `conservative-reviewer.md`의 「Checklist」 절에 있다(티켓 20260918_1158). 예: `copy` 유형은
+  `jam-reviewer.md`의 「Checklist」 절에 있다(티켓 20260918_1158). 예: `copy` 유형은
   DB 마이그레이션·보안·디자인 판정 항목을 건너뛴다.
 - 채원② 사후 리뷰의 점검표는 `.claude/skills/jam-design/references/ui-review-checklist.md`다.
   외부 스킬 5종(`interface-review`·`better-*`, `~/.agents/skills/`를 가리키던 심볼릭 링크)에
@@ -320,7 +320,7 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   같은 옛 정의를 담고 있었다). staging에만 있는 변경은 보이지 않으므로, 아현의 **첫 명령**을
   `git fetch origin staging && git checkout --detach origin/staging`으로 못 박았다.
   jam-developer 정의의 5번 규칙(`git fetch origin staging && git checkout -B ... origin/staging`)이
-  아현에게는 이미 있었으나, conservative-reviewer 정의에는 같은 지시가 없어 민지가 뒤처진
+  아현에게는 이미 있었으나, jam-reviewer 정의에는 같은 지시가 없어 민지가 뒤처진
   `origin/staging` 참조로 diff를 재는 사례가 있었다. **티켓 20260918_1158부터는** fetch 지시를
   따르는지에 기대는 대신, 아현이 push한 `baseSha..commitSha`를 `jam-work.js`가 민지·채원②
   프롬프트에 그대로 박아 넣는다 — 두 에이전트는 그 고정된 두 커밋 사이의 diff만 보므로, 워크트리의
