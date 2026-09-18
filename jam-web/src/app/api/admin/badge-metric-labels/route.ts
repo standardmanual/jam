@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { getAdminUser } from '@/lib/admin/auth'
+import { getAdminUser, requireAdminRead } from '@/lib/admin/auth'
 
 // 소문자/숫자/밑줄만 허용 — condition_json 필드 키·day_of_week/season 값과 동일한 표기 규칙
 // (poi-categories의 SLUG_RE와 동일 패턴, 티켓 20260904_0430)
 const METRIC_KEY_RE = /^[a-z][a-z0-9_]*$/
 
-export async function GET() {
-  const admin = await getAdminUser()
-  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+export async function GET(req: NextRequest) {
+  const authError = await requireAdminRead(req)
+  if (authError) return authError
 
   const supabase = createServiceClient()
   const { data, error } = await supabase.from('badge_metric_labels').select('*').order('metric_key')

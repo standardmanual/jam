@@ -44,3 +44,45 @@ export async function requireAdmin(): Promise<NextResponse | null> {
   if (!admin) return NextResponse.json({ error: '어드민 권한이 필요합니다.' }, { status: 403 })
   return null
 }
+
+// 문자열 길이가 달라도 즉시 반환하지 않고 끝까지 비교해 타이밍 차이를 줄인다.
+// node:crypto의 timingSafeEqual은 미들웨어(Edge 런타임)에서 쓸 수 없어 순수 JS로 둔다
+// (티켓 20260918_1149).
+function timingSafeEqual(a: string, b: string): boolean {
+  const len = Math.max(a.length, b.length)
+  let mismatch = a.length === b.length ? 0 : 1
+  for (let i = 0; i < len; i++) {
+    const ca = i < a.length ? a.charCodeAt(i) : 0
+    const cb = i < b.length ? b.charCodeAt(i) : 0
+    mismatch |= ca ^ cb
+  }
+  return mismatch === 0
+}
+
+/**
+ * 어드민 자동화 읽기 토큰 검사 (티켓 20260918_1149). `ADMIN_API_READ_TOKEN` 환경변수와
+ * 요청 헤더 값이 일치하면 true. 환경변수가 비어 있으면(미설정) 항상 false — 값을 바꾸면
+ * 이전 토큰은 즉시 무효가 된다.
+ */
+export function isValidAdminReadToken(token: string | null | undefined): boolean {
+  const expected = process.env.ADMIN_API_READ_TOKEN
+  if (!expected || !token) return false
+  return timingSafeEqual(token, expected)
+}
+
+/**
+ * 어드민 GET 전용 자동화 토큰 인증 (티켓 20260918_1149). 클라우드 예약 작업이 관리자
+ * 로그인 쿠키 없이 어드민 API를 읽을 수 있게 한다.
+ *
+ * - GET + 유효한 `x-admin-read-token` 헤더 → 통과(null)
+ * - 그 외(POST/PUT/PATCH/DELETE, 토큰 없음/오류, 환경변수 미설정) → 기존 관리자 세션 검사
+ *   (`requireAdmin`)로 폴백한다. 즉 쓰기 메서드는 토큰으로 절대 통과하지 못하고, 사람이
+ *   쿠키로 접근하던 기존 경로도 그대로 유지된다.
+ * - 읽기 라우트에서만 쓴다. `requireAdmin()` 본체는 건드리지 않는다.
+ */
+export async function requireAdminRead(req: Request): Promise<NextResponse | null> {
+  if (req.method === 'GET' && isValidAdminReadToken(req.headers.get('x-admin-read-token'))) {
+    return null
+  }
+  return requireAdmin()
+}
