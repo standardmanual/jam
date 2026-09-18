@@ -76,10 +76,11 @@ jam-web/
 
 ---
 
-## 어드민 인증 (이중 구조)
+## 어드민 인증 (삼중 구조)
 
 1. **`proxy.ts` 레벨**: `/admin/*` 요청 시 Supabase Auth 세션 확인 → `ADMIN_EMAILS`(쉼표 구분) 화이트리스트 대조 → 불일치 시 `/forbidden`
 2. **보조 인증**: `ADMIN_SECRET` 비밀번호 기반 쿠키(`admin_token`) — `api/admin/auth`, `api/admin/test/simulate` 등 일부 API가 사용. 시뮬레이터처럼 세션 없이도 호출해야 하는 경로용.
+3. **자동화 읽기 토큰**: `x-admin-read-token` 헤더가 `ADMIN_API_READ_TOKEN`과 일치하면 **GET 요청만** 통과한다. `requireAdminRead(req)`(`src/lib/admin/auth.ts`)를 쓰는 읽기 라우트(missions·badges·users·drop-policy·badge-metric-labels)에만 적용되고, `proxy.ts`는 이 조건일 때만 로그인 리다이렉트를 건너뛴다. 쓰기 메서드·다른 라우트는 기존 세션 검사(`requireAdmin()`)만 받는다. 클라우드 예약 작업(`scripts/admin-api-read.mjs`)용이다.
 
 코드 작성 시 어느 인증 경로를 쓰는지 명확히 구분할 것 — 새 어드민 API가 필요하면 기존 라우트가 둘 중 어느 방식을 쓰는지 먼저 확인.
 
@@ -201,6 +202,7 @@ vercel --prod
 | `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` | Strava 앱 OAuth 키 | |
 | `ENCRYPTION_KEY` | Strava 토큰 암호화 키 (hex) | `openssl rand -hex 32` |
 | `ADMIN_EMAILS` | `/admin/*` 접근 허용 이메일 화이트리스트 (쉼표 구분) | `proxy.ts` |
+| `ADMIN_API_READ_TOKEN` | 어드민 자동화 읽기 토큰 (GET 전용, 값을 바꾸면 이전 토큰 즉시 차단) | `requireAdminRead`, `proxy.ts` |
 | `ADMIN_SECRET` | 어드민 보조 인증 비밀번호 (쿠키 토큰 발급용) | 시뮬레이터 등 |
 | `CRON_SECRET` | Vercel Cron 요청 인증 | 4개 Cron 라우트 공통 |
 | `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | 네이버 지도 SDK 클라이언트 ID | |

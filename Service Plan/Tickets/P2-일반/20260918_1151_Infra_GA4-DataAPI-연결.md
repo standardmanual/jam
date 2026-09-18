@@ -2,7 +2,7 @@
 id: 20260918_1151
 category: Infra
 priority: P2
-status: OPEN
+status: WAITING
 created: 2026-09-18
 closed:
 ---
@@ -44,24 +44,37 @@ GA4 Data API의 `runReport`를 사용한다. 공식 문서를 확인하고 구�
 - 저장소에 키 관련 파일이 없다
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록 *(2026-09-18 staging 머지, 키 발급·실측 대기로 WAITING)*
 
 ### 구현 내용 요약
+- `scripts/ga4-weekly-metrics.mjs`: 서비스 계정 키(`GA4_SERVICE_ACCOUNT_KEY`)로 JWT를 서명해 액세스 토큰을 받고,
+  GA4 Data API `runReport`로 지난 7일(`7daysAgo`~`yesterday`)의 `activeUsers`와 이벤트 6종
+  (`sign_up_complete`·`onboarding_complete`·`item_drop`·`item_pickup`·`combine_success`·`mission_join`)을 숫자로만 출력한다
+- 환경변수 누락·키 파싱 실패·토큰 발급 실패·`runReport` 실패를 각각 한 줄 메시지 + 종료 코드 1로 처리한다
+- OAuth 범위는 `analytics.readonly`
+- `GA4_EVENTS.md`에 "주간 브리핑 지표 정의" 절(지표-이벤트 매핑·인증 방식)을 추가했다
 
 ### 변경된 파일
 ```
--
+scripts/ga4-weekly-metrics.mjs (신규)
+scripts/ga4-weekly-metrics.test.mjs (신규)
+Service Plan/Specs/PRD/Analytics/GA4_EVENTS.md
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `node scripts/ga4-weekly-metrics.test.mjs` 통과 (집계·누락 이벤트 0 처리·환경변수 누락 실패 경로)
+- [x] 가짜 서비스 계정으로 Google OAuth 엔드포인트 왕복 확인 (`invalid_grant`로 흐름 도달 확인)
+- [x] 저장소에 키 파일 없음
+- [ ] 실제 키로 로컬 실행 시 지표 출력 (사용자 작업 완료 후)
 
 ### 배포 정보
-- 배포일: 
-- 환경: 
-- 커밋: 
+- 배포일: 2026-09-18 (staging)
+- 환경: staging (스크립트라 배포 영향 없음)
+- 커밋: e0250b64 (머지 5bbdd234)
 
 ### 주요 의사결정 / 핵심 메모
+- 게이트(민지): WARN — 코드 결함이 아니라 완료 조건 1개가 사용자 작업 대기로 미검증
+- 토큰: 112,570 (2명·472초, 출력 아현 73,579 · 민지 18,301)
 
 ### 잔여 이슈
--
+- 사용자 작업: GCP 서비스 계정·키 발급, GA 뷰어 권한 부여, 클라우드 환경 등록. 완료 후 1회 실행 검증
