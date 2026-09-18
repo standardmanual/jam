@@ -81,6 +81,8 @@ async function test2_needsApprovalNoneProceedsInParallel() {
   const gateCall = calls.find((c) => c.label === 'conservative-reviewer')
   const designPostCall = calls.find((c) => c.label === 'jam-designer-post')
   assert.ok(gateCall && designPostCall, '민지와 채원②가 동시에(같은 parallel() 배치로) 호출돼야 한다')
+  const devCall = calls.find((c) => c.label === 'jam-developer')
+  assert.ok(devCall.prompt.includes('scripts/workspace-setup.sh link'), '아현 프롬프트 첫 명령에 작업 폴더(node_modules) 연결이 포함돼야 한다(티켓 20260918_1553)')
   assert.ok(gateCall.prompt.includes('bbbb000..cccc111'), '민지 프롬프트에 baseSha..commitSha 범위가 적혀야 한다')
   assert.ok(designPostCall.prompt.includes('bbbb000..cccc111'), '채원②도 같은 커밋 범위만 봐야 한다')
   console.log('PASS test2_needsApprovalNoneProceedsInParallel')

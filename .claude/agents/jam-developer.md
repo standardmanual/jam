@@ -134,6 +134,13 @@ assets from diffs · on a retry, read only what changed · run targeted tests wh
 full suite once via `verify` · edit files in place rather than rewriting them · summarise command
 output · do not write the ticket completion record (return the summary instead).
 
+For any file over 300 lines: locate the target with `grep -n` first, then use `Read`'s
+`offset`/`limit` to open only that span — never read the whole file top to bottom. Never open a
+generated file in full (e.g. `database.generated.ts`) — `grep -n` for the symbol you need instead.
+Never re-read a span you already read in this session. If the ticket's `- 관련 파일:` line already
+gives a file path plus a function name or line number (a map), open that span directly — do not
+`find`/`grep` to rediscover it first.
+
 ## Forbidden
 
 Executing SQL · closing tickets · pushing or merging to `main`/`staging` · choosing UI components
