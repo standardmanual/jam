@@ -80,6 +80,10 @@ Service Plan/Specs/PRD/Analytics/GA4_EVENTS.md
 
 ### 잔여 이슈
 - 클라우드 환경 등록은 1156으로 이관
-- 이 값은 staging 트래픽을 포함한다: GA 스트림이 하나라 `environment` 파라미터로만 구분하는데, 스크립트가 이 값으로 거르지 않는다
-  (2026-09-18 카리나 발견, 티켓화 여부는 사용자 답변 대기)
-- 가입 완료 0 · 온보딩 완료 2는 선후가 맞지 않아 보인다. `GA4_EVENTS.md` "알려진 계측 공백"과 관련 있는지 브리핑 운영 때 확인
+- **메모 (2026-09-18, 사용자 결정: 티켓으로 만들지 않고 이 메모로 남긴다)**
+  - staging 트래픽 혼입: GA 스트림이 하나라 prod·staging을 `environment` 파라미터(`production`|`staging`)로만 구분하는데,
+    `scripts/ga4-weekly-metrics.mjs`는 이 값으로 거르지 않는다. 주간 지표에 staging 테스트 이벤트가 섞일 수 있다.
+    고친다면 `runReport`의 `dimensionFilter`에 `customEvent:environment = production` 조건을 `andGroup`으로 더한다
+  - 가입·온보딩 수치 불일치: 첫 실측에서 가입 완료 0 · 온보딩 완료 2로 선후가 맞지 않았다. 가입 이벤트가 일부 경로에서
+    전송되지 않는 계측 공백일 수 있다(`GA4_EVENTS.md` "알려진 계측 공백" 참고)
+  - 주간 브리핑을 해석할 때 두 가지를 감안한다
