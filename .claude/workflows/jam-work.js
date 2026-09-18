@@ -14,7 +14,15 @@ export const meta = {
 // `reuseDecision`은 2026-09-18부터 "오케스트레이터가 직접 내린 재사용 판정"이 아니라
 // "이미 있는 채원 사전 판정을 재사용하라"는 선택적 입력이다 — 값이 있으면 채원①을
 // 건너뛰고 그 판정을 그대로 쓴다 (티켓 20260918_0422).
-const { ticketPath, userRequest, workType, reuseDecision, retryReason } = args
+//
+// 호출부가 넘긴 args 텍스트에 잘못된 유니코드 이스케이프가 하나라도 섞여 있으면, 상위
+// 파서가 조용히 실패하며 args를 파싱된 객체가 아니라 원본 문자열 그대로 넘기는 현상을
+// 확인했다(2026-09-18, 티켓 20260918_0423 재시도 3회 — 오타 있는 텍스트를 그대로 재사용해
+// 매번 재현됨, 에러 없이 전 필드가 undefined가 되어 원인 추적이 오래 걸렸다). 근본 원인은
+// 호출부의 입력 오타이지만, 실패 시 조용히 undefined로 넘어가는 대신 최소한 명확한
+// SyntaxError로 드러나도록 방어적으로 파싱한다.
+const parsedArgs = typeof args === 'string' ? JSON.parse(args) : args
+const { ticketPath, userRequest, workType, reuseDecision, retryReason } = parsedArgs
 
 // 게이트 판정은 자유 텍스트가 아니라 구조화 출력으로 받는다.
 // (FAIL 판정문 본문에 "PASS"라는 단어가 들어가도 오라우팅되지 않도록)
