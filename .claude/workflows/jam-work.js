@@ -200,8 +200,9 @@ const devResult = await agent(
   `\n배정된 워크트리는 기본 브랜치(main) 기준으로 만들어져 staging에만 있는 변경이 빠져 있다` +
   `(티켓 20260918_1158 중단 사례: main에 없는 채원 정의를 "없다"고 오판). 티켓을 포함해 어떤 ` +
   `파일도 읽기 전에, **첫 명령으로** \`git fetch origin staging && git checkout --detach ` +
-  `origin/staging\`을 실행하라. 그 전에 본 파일 내용은 무효다. 브랜치는 그 뒤 정의의 5번 ` +
-  `규칙대로 만든다.\n` +
+  `origin/staging && scripts/workspace-setup.sh link "$(pwd)"\`를 실행하라(마지막 명령은 ` +
+  `기존 워크트리의 jam-web/node_modules를 심볼릭 링크로 연결한다 — npm install을 다시 돌리지 ` +
+  `않는다). 그 전에 본 파일 내용은 무효다. 브랜치는 그 뒤 정의의 5번 규칙대로 만든다.\n` +
   `${designDecisionText ? `\n채원 사전 판정(이대로 따를 것):\n${designDecisionText}\n` : ''}` +
   `${retryBranch ? `\n재시도다. 새 브랜치를 만들지 말고 기존 review 브랜치를 이어서 쓴다: ` +
     `\`git fetch origin ${retryBranch} && git checkout ${retryBranch}\`. 직전 시도가 남긴 낡은 ` +
