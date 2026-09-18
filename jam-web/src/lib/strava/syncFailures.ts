@@ -10,6 +10,7 @@
  * 바뀌지 않는다")에 따라 항상 try/catch로 격리한다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { StravaApiError } from '@/lib/strava/api'
 
 export type StravaSyncFailureType = 'token_refresh_failed' | 'rate_limited' | 'strava_api_error'
 
@@ -17,14 +18,14 @@ export type StravaSyncFailureType = 'token_refresh_failed' | 'rate_limited' | 's
  * syncStravaActivities()가 던진 오류를 실패 유형으로 분류한다.
  *
  * - 토큰 갱신 실패는 호출부가 이미 알고 있으므로(별도 catch) 이 함수는 쓰지 않는다.
- * - 그 외(Strava API 호출·이후 처리)는 `lib/strava/api.ts`의 `Strava API 오류 {status}: ...`
- *   메시지 포맷에서 상태 코드를 읽어 429(레이트리밋)만 따로 구분하고, 나머지는 뭉뚱그려
+ * - 그 외(Strava API 호출·이후 처리)는 `lib/strava/api.ts`가 던지는 `StravaApiError`의
+ *   구조화된 `status` 필드로 429(레이트리밋)만 따로 구분하고, 나머지는 뭉뚱그려
  *   'strava_api_error'로 남긴다 — 배지 엔진·DB 오류 등도 이 경로를 타지만 세분화할 원천
- *   데이터가 없어 더 나누지 않는다(완료 조건의 "유형별 건수는 선택").
+ *   데이터가 없어 더 나누지 않는다(완료 조건의 "유형별 건수는 선택"). 에러 메시지 문구가
+ *   바뀌어도 흔들리지 않도록 문자열 정규식이 아니라 상태 코드 필드를 본다(티켓 20260918_1519).
  */
 export function classifyStravaSyncFailure(err: unknown): StravaSyncFailureType {
-  const message = err instanceof Error ? err.message : String(err)
-  if (/Strava API 오류 429/.test(message)) return 'rate_limited'
+  if (err instanceof StravaApiError && err.status === 429) return 'rate_limited'
   return 'strava_api_error'
 }
 
