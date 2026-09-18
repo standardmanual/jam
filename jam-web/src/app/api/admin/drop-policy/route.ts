@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminUser } from '@/lib/admin/auth'
+import { getAdminUser, requireAdminRead } from '@/lib/admin/auth'
 import { getDropPolicy, updateDropPolicy, DEFAULT_DROP_POLICY, type DropPolicy } from '@/lib/drop-engine/policy'
 
-export async function GET() {
-  const admin = await getAdminUser()
-  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+export async function GET(req: NextRequest) {
+  const authError = await requireAdminRead(req)
+  if (authError) return authError
 
   const policy = await getDropPolicy()
   return NextResponse.json({ policy })

@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { hasAdminAccess } from '@/lib/admin/auth'
+import { hasAdminAccess, isValidAdminReadToken } from '@/lib/admin/auth'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -56,7 +56,15 @@ export async function proxy(request: NextRequest) {
   const publicPaths = ['/login', '/auth/callback', '/forbidden', '/api/dev-login', '/spike', '/api/cron']
   const isPublicPath = publicPaths.some((p) => pathname === p || pathname.startsWith(p + '/'))
 
-  if (!user && !isPublicPath) {
+  // 어드민 자동화 읽기 토큰 (티켓 20260918_1149): GET /api/admin/* + 유효 토큰이면 로그인
+  // 리다이렉트를 건너뛴다. 최종 인증은 각 라우트의 requireAdminRead(req)가 다시 검사한다
+  // (여기서 통과시켜도 라우트가 한 번 더 확인하는 defense-in-depth).
+  const isAdminReadTokenRequest =
+    request.method === 'GET' &&
+    pathname.startsWith('/api/admin/') &&
+    isValidAdminReadToken(request.headers.get('x-admin-read-token'))
+
+  if (!user && !isPublicPath && !isAdminReadTokenRequest) {
     // STAGING_MODE: 미인증 유저를 /login 대신 /api/dev-login으로 자동 진입
     // (staging 환경에서는 로그인 화면 없이 테스트 계정으로 바로 진입)
     const isStagingMode = process.env.STAGING_MODE === 'true'
