@@ -36,13 +36,16 @@ run_step typecheck npm run typecheck
 run_step test npm test
 run_step ds npm run ds:check
 
-# 슬롭/금칙어 검사: JAM 문장 사전이 아직 없어 항상 통과하는 플레이스홀더다.
-# 실제 금칙어 목록(상투구·번역투·과장 표현)은 별도 티켓으로 넘긴다
-# (근거: JAM-WORK/01_공통규칙.md "슬롭 제거 기준" — 사전이 먼저 있어야 검사가 의미 있다).
-run_step slop true
+# 슬롭/금칙어 검사: Service Plan/Specs/SLOP_DICTIONARY.md의 금칙 단어·금지 문장을
+# origin/staging 대비 diff의 추가 라인에서 찾는다 (티켓 20260918_0951).
+if ! ( cd "$REPO_ROOT" && node scripts/check-slop.mjs ) >"$LOG_PREFIX.slop" 2>&1; then
+  FAILED+=("slop")
+else
+  rm -f "$LOG_PREFIX.slop"
+fi
 
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · ds:check · slop(플레이스홀더)"
+  echo "verify 통과: lint · typecheck · test · ds:check · slop"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"
