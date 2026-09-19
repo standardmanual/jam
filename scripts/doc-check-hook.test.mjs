@@ -67,8 +67,21 @@ test('없는 경로로 링크를 추가한 커밋은 차단된다', () => {
   write(dir, 'docs/a.md', '본문\n[x](nope.md)\n')
   const r = commit(dir)
   assert.notEqual(r.status, 0)
-  assert.match(r.stderr, /차단\(pre-commit\): 문서 링크·참조 오류/)
+  assert.match(r.stderr, /차단\(pre-commit\): 문서 검사 오류/)
+  assert.match(r.stderr, /링크: 새로 추가한 링크는/)
+  assert.doesNotMatch(r.stderr, /DOCUMENT_SCHEMA/)
   assert.equal(run('git', ['rev-list', '--count', 'HEAD'], dir).stdout.trim(), '1', '커밋이 만들어지지 않아야 한다')
+})
+
+test('필드 오류는 링크 안내 대신 frontmatter 안내를 출력한다', () => {
+  const dir = makeRepo()
+  write(dir, 'scripts/doc-check.config.json', JSON.stringify({ ...CFG, severity: { field: 'error' } }))
+  write(dir, 'docs/c.md', '본문만 있는 문서\n')
+  const r = commit(dir)
+  assert.notEqual(r.status, 0)
+  assert.match(r.stderr, /차단\(pre-commit\): 문서 검사 오류/)
+  assert.match(r.stderr, /frontmatter: .*DOCUMENT_SCHEMA\.md/)
+  assert.doesNotMatch(r.stderr, /링크: 새로 추가한 링크는/)
 })
 
 test('올바른 링크를 추가한 커밋은 통과한다', () => {

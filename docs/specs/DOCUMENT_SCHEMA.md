@@ -1,16 +1,12 @@
 ---
 type: guideline
-description: JAM! 문서의 type, frontmatter 필드, 연결 규칙, 태그 어휘를 정의하는 문서 체계 스키마 (초안)
-status: draft
+description: JAM! 문서의 type, frontmatter 필드, 연결 규칙, 태그 어휘를 정의하는 문서 체계 스키마다.
+status: active
 basis:
   - docs/specs/UX_WRITING_GUIDELINE.md
 ---
 
 # JAM! 문서 스키마
-
-> **상태: 초안 (아직 어떤 검사도 이 문서를 근거로 돌지 않는다).** 티켓 20260919_1223에서
-> 검사기와 적용 작업을 진행하며, 적용이 끝나면 `status`를 `active`로 바꾼다.
-> 이 문서는 자기 자신에게도 적용된다(위 frontmatter 참고).
 
 문서 종류를 `type`으로 구분하고, frontmatter로 검색·검증·색인을 가능하게 하며, 서로 다른 주제의
 문서 사이 연결을 명시하기 위한 규칙이다. 폴더 = 수명주기 원칙(`CLAUDE.md`)과 카테고리 ①~⑤는
@@ -212,3 +208,21 @@ D2C 실물 패치, B2B 브랜드 스폰서십, 지자체 이벤트, SNS 연동, 
 공유한다**(범용 type 7개, 공통 필드, 검사기, 설정 파일 템플릿, 폴더 = 수명주기 관례). 두 묶음
 사이에 참조 관계를 두지 않으며, 프로젝트 에이전트는 개인 지식에 접근하지 않는다. 개인 지식에서
 서비스로 가는 유일한 통로는 사람이 승격한 `insight` 카드다.
+
+## 10. 검사
+
+커밋할 때 `.githooks/pre-commit`이 `scripts/doc-check.mjs --staged`를 실행한다. 적용 범위, 활성 type,
+필드 규칙, 태그 어휘, 등급은 `scripts/doc-check.config.json`에 있다.
+
+| 검사 | 등급 |
+|---|---|
+| 링크 대상이 없음(추가한 줄, 이동·삭제한 파일을 가리키는 문서) | 오류(차단) |
+| `type`·`description` 누락, type별 필수 필드 누락, 허용값 위반, 어휘 밖 태그, 금지 표기 태그 | 오류(차단) |
+| 백틱 경로가 없음, 경로를 해석할 수 없음(`jam-doc/`가 없는 환경 등) | 경고 |
+| 미지의 type·필드, 활성화되지 않은 type | 경고 |
+
+- 위반은 종료 코드 10으로 커밋을 차단한다. 엔진 자체의 실패(설정 파싱 오류, 엔진 파일 없음 등)는
+  경고를 내고 커밋을 통과시킨다.
+- 정당한 예외는 `JAM_SKIP_DOCLINT=1 git commit ...`으로 우회하고 사유를 커밋 메시지에 남긴다.
+- `node scripts/doc-check.mjs --all --summary`로 전체 문서의 현황을 본다.
+- `jam-doc` 문서는 아직 이 커밋 검사의 대상이 아니다(티켓 20260919_1246).

@@ -642,9 +642,14 @@ function main(argv) {
       console.error(formatProblems(warns).join('\n'))
     }
     if (errors.length > 0) {
-      console.error(`\n차단(pre-commit): 문서 링크·참조 오류 ${errors.length}건`)
+      console.error(`\n차단(pre-commit): 문서 검사 오류 ${errors.length}건`)
       console.error(formatProblems(errors).join('\n'))
-      console.error('  새로 추가한 링크는 존재하는 경로여야 하고, 이동·삭제한 파일을 가리키는 문서는 같은 커밋에서 고쳐야 합니다.')
+      if (errors.some((p) => p.kind !== 'field')) {
+        console.error('  링크: 새로 추가한 링크는 존재하는 경로여야 하고, 이동·삭제한 파일을 가리키는 문서는 같은 커밋에서 고쳐야 합니다.')
+      }
+      if (errors.some((p) => p.kind === 'field')) {
+        console.error('  frontmatter: type·description 등 필드 규칙은 docs/specs/DOCUMENT_SCHEMA.md를 참고하세요.')
+      }
       return EXIT_VIOLATION
     }
     return 0

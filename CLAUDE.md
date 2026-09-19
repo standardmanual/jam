@@ -131,7 +131,10 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 
 > 카테고리에 속하지 않는 횡단 참조 문서는 두 곳에 있다. 코드와 함께 바뀌는
 > `UX_WRITING_GUIDELINE`·`SERVICE_OPERATIONS`·`DEV_PROCESS_GUARDRAILS`·`SLOP_DICTIONARY`·
-> `PRIVACY_POLICY`는 `docs/specs/` 루트에, 마케팅 자료는 `jam-doc/marketing/`에 둔다.
+> `PRIVACY_POLICY`·`DOCUMENT_SCHEMA`는 `docs/specs/` 루트에, 마케팅 자료는 `jam-doc/marketing/`에 둔다.
+
+> 티켓을 뺀 모든 문서는 frontmatter에 `type`과 `description`이 필요하다(커밋 시 검사).
+> 규칙은 `docs/specs/DOCUMENT_SCHEMA.md`, 작성 절차는 `/jam-docs`에 있다.
 
 ### 폴더 = 수명주기 (2026-08-27 재편, 2026-09-18 저장소 분리)
 
