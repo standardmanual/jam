@@ -115,6 +115,26 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
     esac
   done <<< "$staged"
 
+  # ④ 문서 링크·참조 검사 (티켓 20260919_1245, docs/specs/DOCUMENT_SCHEMA.md §5).
+  #    커밋에서 추가된 줄의 링크와, 삭제·이동된 파일을 가리키는 모든 문서를 검사한다.
+  #    새로 깨지는 링크(마크다운 링크)는 차단하고, 백틱 경로·frontmatter는 경고만 한다.
+  #    기존에 깨진 링크는 건드리지 않는다(추가된 줄만 보므로 기준선 목록이 없다).
+  #    엔진이 스스로 실패하면(위반 코드 10이 아닌 비정상 종료) 경고만 내고 통과시킨다 —
+  #    검사기 오류가 모든 커밋을 막아서는 안 된다.
+  if [ -f scripts/doc-check.mjs ] && [ -f scripts/doc-check.config.json ]; then
+    if command -v node >/dev/null 2>&1; then
+      node scripts/doc-check.mjs --staged --config scripts/doc-check.config.json
+      doccheck_rc=$?
+      if [ "$doccheck_rc" -eq 10 ]; then
+        doclint=1
+      elif [ "$doccheck_rc" -ne 0 ]; then
+        echo "경고(pre-commit): 문서 링크 검사기가 비정상 종료했습니다(종료 코드 ${doccheck_rc}) — 검사를 건너뛰고 커밋을 진행합니다." >&2
+      fi
+    else
+      echo "경고(pre-commit): node를 찾을 수 없어 문서 링크 검사를 건너뜁니다." >&2
+    fi
+  fi
+
   if [ "$doclint" -eq 1 ]; then
     echo "" >&2
     echo "  문서 체계 규칙: CLAUDE.md '폴더 = 수명주기' 절 참조" >&2

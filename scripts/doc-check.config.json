@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "1",
+  "strict": false,
+  "scope": {
+    "include": ["docs/specs/", "docs/agents/", "docs/tickets/", "jam-doc/planning/", "jam-doc/marketing/", "jam-doc/operations/", "jam-doc/inbox/"],
+    "exclude": ["docs/tickets/modular/", "docs/tickets/_TEMPLATE.md", "jam-doc/archive/", "jam-doc/assets/", "**/CLAUDE.md", "**/AGENTS.md"]
+  },
+  "externalPrefixes": ["jam-doc/"],
+  "codeSpanRoots": ["docs/", "jam-doc/", "jam-web/", "scripts/", ".claude/", ".githooks/"],
+  "severity": {
+    "link": "error",
+    "codespan": "warn",
+    "unresolvable": "warn",
+    "field": "warn"
+  },
+  "fields": {
+    "required": ["type", "description"],
+    "common": ["type", "description", "status", "tags", "related", "basis"],
+    "ignored": ["title"]
+  },
+  "typeByPath": [{ "pattern": "^docs/tickets/p[0-3]-[^/]+/", "type": "ticket" }],
+  "statusSets": {
+    "doc": ["draft", "active", "stub"],
+    "ticket": ["OPEN", "IN_PROGRESS", "WAITING", "CLOSED"],
+    "campaign": ["draft", "approved", "running", "done", "dropped"],
+    "insight": ["new", "reviewing", "adopted", "parked", "rejected"]
+  },
+  "types": {
+    "guideline": { "active": true, "statusSet": "doc" },
+    "log": { "active": true },
+    "report": {
+      "active": true,
+      "required": ["period", "from", "to"],
+      "fields": ["period", "from", "to"],
+      "enums": { "period": ["weekly", "monthly", "deploy"] }
+    },
+    "research-note": {
+      "active": true,
+      "required": ["tags"],
+      "fields": ["sources", "confidence"],
+      "enums": { "confidence": ["높음", "보통", "낮음"] }
+    },
+    "catalog": {
+      "active": true,
+      "statusSet": "doc",
+      "required": ["tags", "source_of_truth"],
+      "fields": ["source_of_truth", "source", "snapshot"],
+      "enums": { "source_of_truth": ["db", "doc"] }
+    },
+    "insight": {
+      "active": false,
+      "statusSet": "insight",
+      "required": ["status", "tags"],
+      "fields": ["source", "confidence", "outcome"],
+      "enums": { "confidence": ["높음", "보통", "낮음"] }
+    },
+    "index": { "active": true, "statusSet": "doc" },
+    "ticket": {
+      "active": true,
+      "statusSet": "ticket",
+      "exempt": ["type", "description"],
+      "fields": ["id", "category", "priority", "created", "closed", "parent", "specs"]
+    },
+    "prd": { "active": true, "statusSet": "doc", "fields": ["code"] },
+    "data-model": { "active": true, "statusSet": "doc", "fields": ["code"] },
+    "engine-spec": { "active": true, "statusSet": "doc", "fields": ["code"] },
+    "agent-profile": { "active": true, "statusSet": "doc", "fields": ["agent"] },
+    "workflow-rule": { "active": true, "statusSet": "doc" },
+    "service-plan": { "active": true, "statusSet": "doc" },
+    "campaign": {
+      "active": false,
+      "statusSet": "campaign",
+      "required": ["status"],
+      "fields": ["start", "end"]
+    }
+  },
+  "tags": {
+    "vocabulary": [
+      "배지", "등급", "컬렉션", "트라이브", "체크인", "체크인배지", "드랍", "믹스", "인벤토리",
+      "미션", "포인트", "랭킹", "알림", "피드", "프로필", "팔로우", "Strava동기화", "어드민",
+      "자전거", "걷기", "러닝", "트레일러닝", "등산",
+      "리텐션", "획득", "어뷰징"
+    ],
+    "forbidden": [
+      "아이템북", "컬렉션북", "도감", "조합", "합성", "POI", "장소배지", "POI배지", "방문배지",
+      "트레킹", "세계관", "팩션", "진영", "순위", "랭크", "Strava연동", "스트라바연동", "인벤", "수집"
+    ]
+  },
+  "report": {
+    "groups": [{ "name": "티켓", "prefix": "docs/tickets/" }]
+  }
+}
