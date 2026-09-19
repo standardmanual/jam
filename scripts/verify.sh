@@ -44,6 +44,23 @@ else
   rm -f "$LOG_PREFIX.slop"
 fi
 
+# jam-doc 문서 검사 엔진 복사본 해시 일치 검증 (티켓 20260919_1246).
+# jam-doc은 jam 없이 단독 복제된 환경(클라우드 예약 루틴 등)에서도 자체 pre-commit으로
+# 문서를 검사해야 하므로 scripts/doc-check.mjs 복사본을 jam-doc/scripts/doc-check.mjs에 둔다.
+# 두 파일이 벌어지면 두 저장소의 훅 동작이 갈라지므로 여기서 막는다.
+JAM_DOC_ENGINE="$REPO_ROOT/jam-doc/scripts/doc-check.mjs"
+if [ -f "$JAM_DOC_ENGINE" ]; then
+  if ! cmp -s "$REPO_ROOT/scripts/doc-check.mjs" "$JAM_DOC_ENGINE"; then
+    FAILED+=("doc-check-engine-sync")
+    {
+      echo "scripts/doc-check.mjs 와 jam-doc/scripts/doc-check.mjs 가 다릅니다."
+      echo "jam-doc 쪽 복사본을 scripts/doc-check.mjs 내용으로 다시 덮어써 동기화하세요."
+    } >"$LOG_PREFIX.doc-check-engine-sync"
+  fi
+else
+  echo "참고: jam-doc/scripts/doc-check.mjs가 없어 엔진 해시 검증을 건너뜁니다."
+fi
+
 if [ ${#FAILED[@]} -eq 0 ]; then
   echo "verify 통과: lint · typecheck · test · ds:check · slop"
   exit 0
