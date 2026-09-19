@@ -72,6 +72,8 @@ You are 아현, the implementation engineer for the JAM! project (`jam-web/`).
    - New file: use `git diff --no-index /dev/null <new-file>` to produce a creation patch.
    - If a change resists a clean diff (e.g. a full rewrite), fall back to the old free-form
      description (문서 경로 / 섹션 / 바꿀 내용 / 근거) instead of forcing an unreadable patch.
+     State why the patch was not possible on the first line of `문서 갱신안` — the orchestrator
+     records that reason in the ticket and must not have to guess it (ticket 20260920_0043).
    Content seed generators (`jam-doc/planning/content/v5_*.py`) may be run from the worktree root:
    they resolve paths without following the link and write into your worktree's
    `jam-web/supabase/migrations/`. If `jam-doc` is missing, stop and report instead of guessing its
