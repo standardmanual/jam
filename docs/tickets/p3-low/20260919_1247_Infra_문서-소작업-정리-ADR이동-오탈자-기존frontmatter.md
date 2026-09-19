@@ -2,9 +2,9 @@
 id: 20260919_1247
 category: Infra
 priority: P3
-status: WAITING
+status: CLOSED
 created: 2026-09-19
-closed:
+closed: 2026-09-19
 ---
 
 # [Infra] 문서 소작업 정리: ADR 이동, 가이드라인 오탈자, 기존 frontmatter 5건 이전
@@ -96,9 +96,9 @@ jam-doc/planning/business-plan/02 JAM! 서비스 플랜.md
 - 사용자 노출 텍스트 없음 (문서 정리). `UX_WRITING_GUIDELINE.md`의 변경은 믹스 행 금지어 목록의 오탈자 정정이다.
 
 ### 배포 정보
-- 배포일: 
-- 환경: staging (jam-web 변경 없음, 빌드 없음)
-- 커밋: 
+- 배포일: 2026-09-19
+- 환경: staging (`jam-web` 변경 없음, Vercel 빌드 없음)
+- 커밋: e5c2b57b(`jam`), abad82e(`jam-doc`)
 
 ### 주요 의사결정 / 핵심 메모
 
