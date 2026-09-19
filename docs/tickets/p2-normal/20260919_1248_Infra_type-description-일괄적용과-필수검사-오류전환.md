@@ -2,7 +2,7 @@
 id: 20260919_1248
 category: Infra
 priority: P2
-status: OPEN
+status: IN_PROGRESS
 created: 2026-09-19
 closed:
 ---
