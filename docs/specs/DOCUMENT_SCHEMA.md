@@ -228,5 +228,7 @@ D2C 실물 패치, B2B 브랜드 스폰서십, 지자체 이벤트, SNS 연동, 
 - `jam-doc` 문서도 같은 방식으로 검사된다. `jam-doc` 저장소는 `jam` 없이 단독 복제된 환경(클라우드
   예약 루틴 등)에서도 커밋 시점에 스스로 검사할 수 있도록, `scripts/doc-check.mjs`의 바이트 동일
   복사본과 전용 설정(`jam-doc/scripts/doc-check.config.json`)을 갖고 있다(티켓 20260919_1246).
-  두 엔진 복사본이 어긋나면 `scripts/verify.sh`가 실패한다. `jam-doc` 설정은 `report` type(자동
-  예약 리포트)의 필드 검사를 경고로 낮춘 것을 빼면 `jam`과 같다.
+  두 엔진 복사본이 어긋나면 `scripts/verify.sh`가 실패한다. `jam-doc` 설정의 등급(`severity`)은
+  `jam`과 동일하다(`field`도 오류·차단). 무인 예약 루틴이 쓰는 `report`(주간·월간·배포 리포트)는
+  `operations/reports/`가 두 설정 모두 `scope.exclude`에 있어 검사 대상 자체에서 빠지므로, 필드
+  검사 등급과 무관하게 항상 통과한다.
