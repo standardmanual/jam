@@ -2,7 +2,7 @@
 id: 20260919_2254
 category: Infra
 priority: P2
-status: OPEN
+status: WAITING
 created: 2026-09-19
 closed:
 ---
@@ -93,23 +93,51 @@ closed:
 
 ### 구현 내용 요약
 
+`jam-developer.md` 규칙 9(jam-doc read-only)에 diff 생성 절차를 추가했다: ①워크트리 안
+`jam-doc/<경로>` 원본 읽기 → ②스크래치 파일에 수정본 작성 → ③`diff -u`로 patch 생성 →
+④ ` ```diff ` 펜스 블록으로 "문서 갱신안" 칸에 첨부(파일별 별도 블록). 새 파일은
+`git diff --no-index`, patch화가 부자연스러운 경우(전체 재작성 등)는 기존처럼 자유 서술
+폴백을 명시했다. `jam-work/SKILL.md` 4단계 2번 항목에 "갱신안이 diff 패치 블록이면
+`git -C jam-doc apply` 시도 → 성공 시 커밋 → 실패 시 수동 반영" 분기를 추가했다.
+
+게이트 리뷰 PASS. jam-web 변경은 0줄(순수 규칙 파일 수정)이라 review 브랜치를 staging에
+머지만 했다.
+
+**성공 기준(다음 실제 jam-doc 관련 티켓에서 새 형식 동작 관찰)은 아직 채워지지 않았다.**
+공교롭게도 이 개선이 머지되기 직전에 20260919_1956(jam-doc 4개 파일 15곳 정정)이 기존
+방식(자유 서술)으로 이미 마무리됐다 — 순서가 엇갈렸다. 다음 jam-doc 관련 티켓에서 검증하고
+CLOSED로 전환한다.
+
 ### 변경된 파일
 ```
--
+jam:
+  .claude/agents/jam-developer.md (규칙 9 diff 생성 절차, "문서 갱신안" 서식 갱신)
+  .claude/skills/jam-work/SKILL.md (4단계 2번 git apply 분기 추가)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `jam-developer.md`에 diff 생성 절차가 예시(신규 파일 `git diff --no-index`, 폴백 조건)와 함께 적혀 있음 (게이트 확인)
+- [x] `jam-work/SKILL.md` 4단계에 `git apply` 시도 → 실패 시 수동 반영 분기가 적혀 있음 (게이트 확인)
+- [x] `scripts/verify.sh` 통과 (jam-web 변경 없어 영향 없음)
+- [ ] 성공 기준: 다음 실제 jam-doc 관련 티켓에서 검증 (미관찰, WAITING 사유)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 - 사용자 노출 텍스트 없음 (내부 운영 규칙)
 
 ### 배포 정보
-- 배포일:
-- 환경:
-- 커밋:
+- 배포일: 2026-09-19 (staging, 문서·설정만이라 빌드 없음)
+- 환경: staging
+- 커밋: 머지 커밋(review 브랜치 `claude/jamwork-20260919_2254-jam-doc-diff-format`, 구현 `9fe6103c`)
 
 ### 주요 의사결정 / 핵심 메모
 
+- patch화가 어려운 경우(전체 재작성 등)는 자유 서술로 폴백하도록 예외를 남겼다 — 모든
+  jam-doc 변경을 강제로 diff화하면 오히려 부자연스러운 사례(예: 파일 전체를 새로 쓰는 경우)가
+  생길 수 있어서다.
+- 병렬 세션 충돌 방지를 위해 아현이 jam-doc에 직접 쓰지 못하게 하는 근본 제약은 그대로
+  유지했다 — 이번 개선은 오케스트레이터에게 넘기는 형식만 구조화했다.
+- 실행 비용: 에이전트 2명(아현·민지), 94,510토큰, 242,344ms(약 4분).
+
 ### 잔여 이슈
--
+- 성공 기준 관찰 대기. 다음 jam-doc 관련 티켓에서 새 diff 형식이 실제로 동작하는지 확인하고
+  CLOSED로 전환한다.
