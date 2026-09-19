@@ -13,9 +13,11 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  backlinks,
   checkFrontmatter,
   cleanLinkTarget,
   extractRefs,
+  findOrphans,
   inScope,
   loadConfig,
   makeExistence,
@@ -43,6 +45,7 @@ const RAW_CFG = {
   },
   tags: { vocabulary: ['alpha', 'beta'], forbidden: ['gamma'] },
   report: { groups: [{ name: 'entries', prefix: 'docs/entries/' }] },
+  orphans: { excludeTypes: ['entry'] },
 }
 const cfg = normalizeConfig(RAW_CFG)
 
@@ -381,6 +384,55 @@ test('--all 실측: 코드 블록을 제외하고 그룹별로 센다', () => {
   assert.match(r.stdout, /entries: 깨진 링크 2/)
   assert.match(r.stdout, /기타: 깨진 링크 1/)
   assert.match(r.stdout, /합계: 깨진 링크 3/)
+})
+
+// ───────── 역링크·고아 문서(티켓 20260919_1249) ─────────
+
+const FM_NOTAGS = '---\ntype: note\ndescription: d\n---\n'
+
+test('backlinks: 마크다운 링크·basis·related로 가리키는 문서를 찾고 백틱 경로는 제외한다', () => {
+  const files = {
+    'docs/target.md': `${FM_NOTAGS}t\n`,
+    'docs/a.md': `${FM_NOTAGS}[t](target.md)\n`,
+    'docs/b.md': '---\ntype: note\ndescription: d\nbasis:\n  - docs/target.md\n---\nb\n',
+    'docs/c.md': '---\ntype: note\ndescription: d\nrelated:\n  - docs/target.md\n---\nc\n',
+    'docs/d.md': `${FM_NOTAGS}\`docs/target.md\` 코드 스팬만 있음\n`,
+  }
+  const dir = makeRepo(files)
+  assert.deepEqual(backlinks(cfg, dir, 'docs/target.md'), ['docs/a.md', 'docs/b.md', 'docs/c.md'])
+  assert.deepEqual(backlinks(cfg, dir, 'docs/none.md'), [])
+})
+
+test('orphans: 참조도 태그도 없는 문서만 나열하고 설정에 지정한 type은 제외한다', () => {
+  const files = {
+    'docs/target.md': `${FM_NOTAGS}t\n`, // a.md가 링크 -> 고아 아님
+    'docs/a.md': `${FM}[t](target.md)\n`, // 태그 있음(FM) -> 고아 아님
+    'docs/tagged.md': `${FM}본문\n`, // 참조는 없지만 태그가 있음 -> 고아 아님
+    'docs/orphan.md': `${FM_NOTAGS}참조도 태그도 없음\n`, // 고아
+    'docs/entries/e.md': '---\nstatus: OPEN\n---\n참조·태그 없지만 제외 type\n',
+  }
+  const dir = makeRepo(files)
+  assert.deepEqual(findOrphans(cfg, dir), ['docs/orphan.md'])
+})
+
+test('CLI --backlinks·--orphans는 산출물을 만들지 않고 종료 코드 0을 낸다', () => {
+  const files = {
+    'docs/target.md': `${FM_NOTAGS}t\n`,
+    'docs/a.md': `${FM}[t](target.md)\n`,
+    'docs/orphan.md': `${FM_NOTAGS}고아\n`,
+  }
+  const dir = makeRepo(files)
+  let r = run('node', [ENGINE, '--backlinks', 'docs/target.md', '--config', 'check.config.json'], dir)
+  assert.equal(r.status, 0, r.stderr)
+  assert.match(r.stdout, /docs\/a\.md/)
+
+  r = run('node', [ENGINE, '--orphans', '--config', 'check.config.json'], dir)
+  assert.equal(r.status, 0, r.stderr)
+  assert.match(r.stdout, /고아 문서 1개/)
+  assert.match(r.stdout, /docs\/orphan\.md/)
+
+  const status = run('git', ['status', '--porcelain'], dir)
+  assert.equal(status.stdout.trim(), '', '조회 명령은 새 파일을 만들지 않는다')
 })
 
 for (const d of tmpDirs) rmSync(d, { recursive: true, force: true })

@@ -11,6 +11,10 @@
 // 사용법
 //   node scripts/doc-check.mjs --staged [--config <경로>]   스테이지된 변경 검사 (pre-commit용)
 //   node scripts/doc-check.mjs --all    [--config <경로>] [--summary]   전체 문서 실측
+//   node scripts/doc-check.mjs --backlinks <문서 경로> [--config <경로>]   역링크 조회
+//   node scripts/doc-check.mjs --orphans [--config <경로>]   고아 문서 조회
+//
+// 역링크·고아 문서 조회는 커밋되는 산출물을 만들지 않는 조회 명령이다(항상 종료 코드 0).
 //
 // 종료 코드: 0 = 통과(경고 포함), 10 = 오류 있음(차단), 그 밖 = 엔진 자체 실패(호출자가 경고 후 통과 처리).
 // 차단 코드를 node의 기본 실패 코드(1)와 다르게 잡은 것은, 엔진 파일이 깨져 SyntaxError 같은 예외로
@@ -65,6 +69,7 @@ export function normalizeConfig(cfg) {
     statusSets: cfg.statusSets ?? {},
     tags: { vocabulary: [], forbidden: [], ...(cfg.tags ?? {}) },
     report: { groups: [], ...(cfg.report ?? {}) },
+    orphans: { excludeTypes: [], ...(cfg.orphans ?? {}) },
   }
   for (const key of ['include', 'exclude']) {
     if (!Array.isArray(c.scope[key])) throw new Error(`scope.${key}는 배열이어야 합니다`)
@@ -603,6 +608,69 @@ export function checkAll(cfg, cwd) {
   return { problems, totals }
 }
 
+// ───────────────────────── 역링크·고아 문서 ─────────────────────────
+
+// 저장소 전체 문서에서 마크다운 링크·basis·related로 만들어지는 참조 그래프를 수집한다.
+// 백틱 경로(codespan)는 예시 경로 오탐이 있어 역링크·고아 판정에 넣지 않는다(스키마 §5).
+export function collectDocGraph(cfg, cwd) {
+  const tracked = git(['ls-files', '-z'], cwd).split('\0').filter(Boolean)
+  const external = cfg.externalPrefixes.flatMap((pre) => walkExternal(cwd, pre))
+  const docs = [...new Set([...tracked, ...external].map(nfc))].filter((f) => inScope(f, cfg))
+  const referencedBy = new Map() // 대상 경로 -> 그 경로를 참조한 문서 Set
+  const tags = new Map() // 문서 경로 -> tags 배열
+  const addRef = (target, from) => {
+    if (!target) return
+    if (!referencedBy.has(target)) referencedBy.set(target, new Set())
+    referencedBy.get(target).add(from)
+  }
+  for (const file of docs) {
+    let text
+    try {
+      text = readFileSync(join(cwd, file), 'utf8')
+    } catch {
+      continue
+    }
+    for (const ref of extractRefs(text, cfg)) {
+      if (ref.kind !== 'link') continue
+      addRef(resolveTarget(file, ref), file)
+    }
+    const data = parseFrontmatter(text)?.data ?? {}
+    for (const field of ['basis', 'related']) {
+      const v = data[field]
+      const items = Array.isArray(v) ? v : v ? [v] : []
+      for (const item of items) addRef(resolveTarget(file, { kind: 'codespan', target: item }), file)
+    }
+    tags.set(file, Array.isArray(data.tags) ? data.tags : data.tags ? [data.tags] : [])
+  }
+  return { docs, referencedBy, tags }
+}
+
+function normalizeQueryPath(p) {
+  return posix.normalize(nfc(p).replace(/^\.\//, '')).replace(/\/+$/, '')
+}
+
+// target 문서를 마크다운 링크·basis·related로 가리키는 문서 목록(정렬됨).
+export function backlinks(cfg, cwd, target) {
+  const { referencedBy } = collectDocGraph(cfg, cwd)
+  return [...(referencedBy.get(normalizeQueryPath(target)) ?? [])].sort()
+}
+
+function typeOf(file, cfg) {
+  const derived = cfg.typeByPath.find((r) => new RegExp(r.pattern).test(file))?.type
+  return derived ?? null
+}
+
+// 어디서도 링크·basis·related로 언급되지 않고 태그도 없는 문서(정렬됨).
+// 조회 대상에서 뺄 type은 설정의 orphans.excludeTypes에서 읽는다(`jam`에서는 'ticket').
+export function findOrphans(cfg, cwd) {
+  const { docs, referencedBy, tags } = collectDocGraph(cfg, cwd)
+  const excluded = new Set(cfg.orphans.excludeTypes)
+  return docs
+    .filter((f) => !excluded.has(typeOf(f, cfg)))
+    .filter((f) => !(referencedBy.get(f)?.size > 0) && (tags.get(f) ?? []).length === 0)
+    .sort()
+}
+
 // ───────────────────────── 보고 ─────────────────────────
 
 function groupOf(file, cfg) {
@@ -671,7 +739,32 @@ function main(argv) {
     return problems.some((p) => p.severity === 'error') ? EXIT_VIOLATION : 0
   }
 
-  console.error('사용법: node scripts/doc-check.mjs (--staged | --all [--summary]) [--config <경로>]')
+  if (args.includes('--backlinks')) {
+    const target = args[args.indexOf('--backlinks') + 1]
+    if (!target || target.startsWith('--')) {
+      console.error('사용법: node scripts/doc-check.mjs --backlinks <문서 경로> [--config <경로>]')
+      return 2
+    }
+    const result = backlinks(cfg, cwd, target)
+    if (result.length === 0) {
+      console.log(`${target}을(를) 링크·basis·related로 가리키는 문서가 없습니다.`)
+    } else {
+      console.log(`${target}을(를) 가리키는 문서 ${result.length}개:`)
+      for (const f of result) console.log(`  ${f}`)
+    }
+    return 0
+  }
+
+  if (args.includes('--orphans')) {
+    const result = findOrphans(cfg, cwd)
+    console.log(`고아 문서 ${result.length}개(링크·basis·related·태그 어디에도 없음, 티켓 제외):`)
+    for (const f of result) console.log(`  ${f}`)
+    return 0
+  }
+
+  console.error(
+    '사용법: node scripts/doc-check.mjs (--staged | --all [--summary] | --backlinks <경로> | --orphans) [--config <경로>]',
+  )
   return 2
 }
 
