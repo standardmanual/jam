@@ -2,9 +2,9 @@
 id: 20260919_1248
 category: Infra
 priority: P2
-status: WAITING
+status: CLOSED
 created: 2026-09-19
-closed:
+closed: 2026-09-19
 ---
 
 # [Infra] type·description 일괄 적용과 필수 검사 오류 전환
@@ -93,6 +93,7 @@ marketing 3건, planning/business-plan 3건, planning/content 6건 (frontmatter 
 - [x] 초안의 `code`·`source` 경로와 `agent` 정의명이 실제로 존재함을 전수 확인했다.
 - [x] 제외 목록(아래).
 - 사용자 검수: 파일 → type 배정표와 description 표본 10건을 제시했고, 사용자는 배정표·표본에 대한 이의 없이 결정 3건(어휘 확장, 폐기 문서 삭제, `status` 제안 수용)에 답했다. 표본 밖 51건의 description은 사용자가 개별 검수하지 않았다.
+- 종료 승인: 사용자가 2026-09-19에 완료 기록을 확인하고 표본 밖 description의 개별 검수 없이 T4 종료와 staging 푸시를 승인했다.
 
 **제외 목록**
 - `jam-doc/operations/reports/README.md`, `monthly/2026-09.md`, `weekly/2026-W38.md` (무인 예약 루틴이 커밋)
