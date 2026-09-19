@@ -1,5 +1,7 @@
 ---
-status: implemented
+type: prd
+description: 어드민이 배지·미션을 저장하기 전에 조건이 드랍엔진에서 어떻게 판정되는지 미리 계산해 보여 주는 기능의 PRD
+status: active
 ---
 
 > **구현 현황(2026-09-08):**

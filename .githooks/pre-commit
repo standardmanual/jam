@@ -107,7 +107,7 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
         if [ "$st" = "A" ]; then
           echo "차단(pre-commit): 옛 문서 경로에 파일을 추가하려 합니다." >&2
           echo "  파일: $f" >&2
-          echo "  코드 쪽 문서는 docs/(tickets·specs·adr·agents)에, 기획·마케팅·운영 자료는" >&2
+          echo "  코드 쪽 문서는 docs/(tickets·specs·agents)에, 기획·마케팅·운영 자료는" >&2
           echo "  jam-doc/ 저장소에 둡니다. 경로를 참조하는 자동화·스킬이 옛 경로를 쓰고 있지 않은지 확인하세요." >&2
           doclint=1
         fi

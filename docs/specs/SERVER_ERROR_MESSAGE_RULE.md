@@ -1,4 +1,12 @@
+---
+type: guideline
+description: 서버 API 에러 메시지는 i18n 딕셔너리를 단일 소스로 삼고, 클라이언트는 서버가 보낸 메시지를 그대로 노출한다
+status: active
+---
+
 # 서버 API 에러 메시지는 딕셔너리를 단일 진실 소스로 삼는다
+
+> 코드 주석과 티켓에서는 이 문서를 'ADR 0001'이라고 부른다. 옛 파일명은 0001-server-error-message-single-source였고 2026-09-19에 `docs/adr/`에서 이 위치로 옮겼다.
 
 조사 결과 `app/api/**` 내 다수의 비관리자용 라우트가 에러 메시지를 하드코딩하고 있었고, 클라이언트가 이를 처리하는 방식도 파일마다 달랐다 — `DropsClient.tsx`/`CombineClient.tsx`는 서버 메시지를 무시하고 자체 딕셔너리 문구를 표시하는 반면, `MissionDetailClient.tsx`는 서버가 보낸 하드코딩된 한글 원문을 그대로 토스트에 노출했다. 이런 혼재가 서비스 전반의 톤 불일치를 낳은 구체적 원인 중 하나로 확인됐다.
 

@@ -2,7 +2,7 @@
 id: 20260919_1247
 category: Infra
 priority: P3
-status: IN_PROGRESS
+status: WAITING
 created: 2026-09-19
 closed:
 ---
@@ -60,27 +60,53 @@ closed:
 - 상위 20260919_1223, 병행 20260919_1245(T1), 후속 20260919_1248(T4)
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
 
+- ADR을 `docs/specs/SERVER_ERROR_MESSAGE_RULE.md`로 이동(`git mv`)하고 `type: guideline`·`description`·`status: active`를 추가했다. 코드 주석과 티켓이 부르는 옛 명칭 'ADR 0001'을 알리는 안내를 본문 첫머리에 넣었다. `docs/adr/` 폴더는 없앴다.
+- `UX_WRITING_GUIDELINE.md`: §1.3 믹스 행 X 목록에서 `믹스`를 제거하고, 옛 ADR 경로를 새 경로로 고쳤다.
+- `.githooks/pre-commit` 안내 문구에서 adr 언급을 뺐다.
+- 기존 frontmatter 5건을 이전했다: `PRIVACY_POLICY.md`(`last_updated` 삭제, `published`를 `active`로), `CONDITION_PRECHECK_PRD.md`(`implemented`를 `active`로), 서비스 플랜 `00`·`01`·`02`(`Title`·`modified` 제거, `jam-doc`에서 별도 커밋).
+- `DOCUMENT_SCHEMA.md` §4.1의 `title` 규칙에 예외를 반영했다(아래 의사결정 참고).
+
 ### 변경된 파일
 ```
--
+.githooks/pre-commit
+docs/specs/DOCUMENT_SCHEMA.md
+docs/specs/PRIVACY_POLICY.md
+docs/specs/SERVER_ERROR_MESSAGE_RULE.md (docs/adr/0001-server-error-message-single-source.md에서 이동)
+docs/specs/UX_WRITING_GUIDELINE.md
+docs/specs/prd/admin-ui/CONDITION_PRECHECK_PRD.md
+jam-doc/planning/business-plan/00 JAM! 비즈니스 개념.md
+jam-doc/planning/business-plan/01 JAM! 철학.md
+jam-doc/planning/business-plan/02 JAM! 서비스 플랜.md
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `docs/adr/` 폴더가 없다.
+- [x] `last_updated`·`modified`·`Title` 필드와 `status: published`·`implemented` 값이 `docs/specs`, `docs/agents`, `jam-doc`의 planning·marketing·operations에서 검색되지 않는다(소문자 `title`은 아래 예외 2건에 남아 있다).
+- [x] 이전한 5건과 이동한 ADR에 `type`과 `description`이 있다.
+- [x] `docs/specs/UX_WRITING_GUIDELINE.md` 믹스 행의 X 목록에 `믹스`가 없고, 옛 경로 언급이 새 파일을 가리키며 그 파일이 존재한다.
+- [x] `node scripts/check-slop.mjs` 통과(48개 패턴).
+- [x] 서비스 플랜 3건이 `jam-doc`에 별도로 커밋·푸시됐고 두 커밋 메시지에 같은 티켓 번호가 있다.
+- 링크 검사기(T1)가 아직 없어 링크 유효성은 새 경로 파일의 존재로 수동 확인했다.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-- 사용자 노출 텍스트 없음 (문서 정리). `UX_WRITING_GUIDELINE.md` 오탈자 수정은 고정 용어 목록 정정이다.
+- 사용자 노출 텍스트 없음 (문서 정리). `UX_WRITING_GUIDELINE.md`의 변경은 믹스 행 금지어 목록의 오탈자 정정이다.
 
 ### 배포 정보
 - 배포일: 
-- 환경: 
+- 환경: staging (jam-web 변경 없음, 빌드 없음)
 - 커밋: 
 
 ### 주요 의사결정 / 핵심 메모
 
+- **§4.0 제목의 "ADR 0001" 표기를 유지했다(티켓 계획에서 벗어남).** 착수 후 확인해 보니 `jam-web`의 API 라우트, 컴포넌트, `src/lib/i18n/ko.ts` 등 코드 주석 60여 곳이 이 문서를 'ADR 0001'이라는 이름으로 부른다. 주석을 고치는 것은 `jam-web` 변경이라 lint·배포 검사가 걸리는 범위 밖 작업이므로, 이름은 그대로 두고 이동한 문서 첫머리에 별칭 안내를 남겼다.
+- **`Title` 제거는 서비스 플랜 `00`에만 적용했다(티켓 계획에서 벗어남).** `01`은 첫 H1이 "[이슈 1] …"이고 `02`는 H1이 아예 없어서 지우면 문서의 제목을 잃는다. 두 건은 소문자 `title`로 남기고 `DOCUMENT_SCHEMA.md` §4.1에 "H1이 없거나 대표하지 않으면 `title`을 쓸 수 있고 H1보다 우선한다"는 예외를 넣었다.
+- `PRIVACY_POLICY.md`는 `title`을 남겼다(H1과 같은 값, 본문은 손대지 않는다). 게시일은 본문 서두의 "2026-09-01 게시 완료(v1.0)"에 남아 있다.
+- 서비스 플랜 frontmatter를 읽는 자동화가 없음을 확인하고 `modified`를 제거했다.
+- 옛 `docs/adr/...` 경로를 언급하는 티켓은 이력이므로 고치지 않았다.
+
 ### 잔여 이슈
--
+- 코드 주석의 'ADR 0001' 표기를 새 문서 이름으로 바꿀지는 별도로 판단한다(필요하면 별도 티켓).

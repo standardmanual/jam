@@ -1,7 +1,8 @@
 ---
+type: guideline
 title: JAM! 개인정보 처리방침
-status: published
-last_updated: 2026-09-01
+description: 개인정보 처리방침 원고(서비스 /privacy 페이지의 출처 문서)
+status: active
 ---
 
 > **이 문서의 성격**: 개인정보보호위원회 「개인정보 처리방침 작성지침」(2025.4.)과 실제 서비스 코드·데이터
