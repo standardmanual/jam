@@ -1,3 +1,9 @@
+---
+type: workflow-rule
+description: "JAM! 자체 마크다운 티켓 체계와 이슈 추적 규칙을 정의한다."
+tags: [워크플로]
+---
+
 # 이슈 트래커: JAM! 자체 티켓 체계
 
 이 저장소는 GitHub Issues를 쓰지 않는다. 이슈·작업 계획은 `docs/tickets/`에 마크다운
