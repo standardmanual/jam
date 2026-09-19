@@ -89,5 +89,8 @@
   },
   "report": {
     "groups": [{ "name": "티켓", "prefix": "docs/tickets/" }]
+  },
+  "orphans": {
+    "excludeTypes": ["ticket"]
   }
 }
