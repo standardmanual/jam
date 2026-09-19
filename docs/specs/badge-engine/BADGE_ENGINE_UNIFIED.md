@@ -1,3 +1,12 @@
+---
+type: engine-spec
+description: "액티비티배지 엔진과 아이템배지 드랍 엔진의 배지 획득·드랍 판정 로직과 두 엔진의 역할 분담을 정의한 통합 문서다."
+tags: [배지, 드랍, 획득]
+code:
+  - "jam-web/src/lib/badge-engine"
+  - "jam-web/src/lib/drop-engine"
+---
+
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
 > 최종 업데이트: 2026-09-14 (**인벤토리 슬롯 카운터 원자적 RPC 전환** — 드랍엔진·미션

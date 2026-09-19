@@ -1,3 +1,13 @@
+---
+type: data-model
+description: "미션에서 분리된 독립 랭킹 엔티티 `ranking_modes`의 대상·지표 필드와 정렬 지표 규칙을 정리한 랭킹 객체 모델이다."
+tags: [랭킹]
+code:
+  - "jam-web/src/lib/ranking"
+  - "jam-web/supabase/migrations/158_ranking_modes.sql"
+  - "jam-web/src/app/admin/ranking-modes"
+---
+
 # JAM! 랭킹 — 객체 모델
 
 > ✅ 구현 완료 (2026-09-11) — 마이그레이션 158, 랭킹 도메인 모듈(`lib/ranking/`), 어드민

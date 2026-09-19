@@ -1,3 +1,13 @@
+---
+type: prd
+description: "배지 상세 페이지에서 배지를 이미지로 만들어 공유하거나 기기에 저장하는 기능의 플로우와 플랫폼별 동작을 정의한 PRD다."
+tags: [배지]
+code:
+  - "jam-web/src/app/(main)/badges/[id]/BadgeShareButton.tsx"
+  - "jam-web/src/app/(main)/badges/[id]/buildBadgeShareBlob.ts"
+  - "jam-web/src/app/api/badges/[id]/share-data/route.ts"
+---
+
 # 배지 공유 기능 — PRD
 
 > 생성일: 2026-08-21

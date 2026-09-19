@@ -1,3 +1,11 @@
+---
+type: prd
+description: "어드민의 배지·지점(POI)·컬렉션 관리, 시뮬레이터, 유저 조회 기능과 화면 구성, 기술 스펙을 정의한 어드민 PRD다."
+tags: [어드민, 배지]
+code:
+  - "jam-web/src/app/admin"
+---
+
 # JAM! 어드민 — PRD (Product Requirements Document)
 
 > 생성일: 2026-07-09

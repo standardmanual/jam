@@ -1,3 +1,12 @@
+---
+type: engine-spec
+description: "배지 조건(`condition_json`)에 쓸 수 있는 모든 필드의 타입, 의미, 평가 방식을 정의한 단일 출처 문서다."
+tags: [배지]
+code:
+  - "jam-web/src/lib/badge-engine/conditionRegistry.ts"
+  - "jam-web/src/lib/badge-engine/condition-schema.ts"
+---
+
 # 배지 발급 조건 필드 전체 스펙 (`condition_json`)
 
 > 최초 생성: 2026-08-07  

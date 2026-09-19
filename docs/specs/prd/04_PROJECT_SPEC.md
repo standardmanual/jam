@@ -1,3 +1,11 @@
+---
+type: prd
+description: "기술 스택, 프로젝트 구조, 어드민 인증, Cron, 금지 사항, 환경변수, 핵심 비즈니스 규칙을 정리한 프로젝트 스펙이다."
+code:
+  - "jam-web/src/proxy.ts"
+  - "jam-web/vercel.json"
+---
+
 # JAM! 유저 모바일 웹 — 프로젝트 스펙
 
 > AI가 코드를 짤 때 지켜야 할 규칙과 절대 하면 안 되는 것.

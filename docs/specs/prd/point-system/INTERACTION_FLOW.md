@@ -1,3 +1,12 @@
+---
+type: prd
+description: "포인트 시스템 1a단계에서 유저와 어드민이 어느 화면에서 무엇을 하고 어디로 이동하는지 정리한 화면 흐름 문서다."
+tags: [포인트]
+code:
+  - "jam-web/src/app/(main)/points/page.tsx"
+  - "jam-web/src/app/admin/points/page.tsx"
+---
+
 # JAM! 잼 포인트 시스템 — 화면 흐름 (1a단계)
 
 > ✅ **1a단계 구현 완료 (2026-07-23)** — 흐름 A(유저: 프로필 잔액·포인트 내역·배지 상세 안내)와 흐름 B(운영자: `/admin/points` 대시보드·정합성 배너·유저 지급/회수 공용 폼·배지/미션 에디터 확장) 모두 코드 반영됨. 구현 상세: `PRD/SERVICE_OPERATIONS_20260723_1501.md`.

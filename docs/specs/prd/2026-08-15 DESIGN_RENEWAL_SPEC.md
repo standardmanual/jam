@@ -1,3 +1,11 @@
+---
+type: prd
+description: "서비스 UI 리뉴얼의 목표, 디자인 원칙, 시각 방향, 컴포넌트·레이아웃·UX 규칙과 변경 금지·필수 변경 항목을 정한 스펙이다."
+tags: [디자인시스템]
+code:
+  - "jam-web/design-system"
+---
+
 # Design Renewal Specification
 **버전:** 1.0  
 **작성일:** 2026-08-15  

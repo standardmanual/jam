@@ -1,3 +1,12 @@
+---
+type: prd
+description: "어드민을 shadcn/ui 디자인시스템으로 전환하는 원칙, 폴더 분리, 프리셋 값과 미리보기 예외를 정의한 PRD다."
+tags: [어드민, 디자인시스템]
+code:
+  - "jam-web/src/app/admin"
+  - "jam-web/src/components/admin"
+---
+
 # JAM! 어드민 — UI 디자인시스템 전환 PRD
 
 > **최초 작성:** 2026-08-05

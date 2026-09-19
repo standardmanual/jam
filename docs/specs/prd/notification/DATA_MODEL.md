@@ -1,3 +1,13 @@
+---
+type: data-model
+description: "알림의 `notifications` 테이블과 `notification_type`, 읽음·묶음 모델, `group_key`, `payload` 스키마를 정의한 데이터 모델이다."
+tags: [알림]
+code:
+  - "jam-web/supabase/migrations/096_notifications.sql"
+  - "jam-web/supabase/migrations/105_notification_recap_type.sql"
+  - "jam-web/src/lib/notifications/types.ts"
+---
+
 # JAM! 알림(소식) — 데이터 모델
 
 > 최초 작성: 2026-08-24 / 티켓 [20260824_018](../../../tickets/20260824_018_Feature_알림소식-PRD수립.md)

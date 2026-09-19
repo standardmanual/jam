@@ -1,3 +1,10 @@
+---
+type: data-model
+description: "유저 모바일 웹의 도메인별 테이블 구조와 관계, 원안 대비 변경 요약을 개념 수준으로 정리한 데이터 모델 문서다."
+code:
+  - "jam-web/supabase/migrations"
+---
+
 # JAM! 유저 모바일 웹 — 데이터 모델
 
 > 이 문서는 앱에서 다루는 핵심 데이터의 구조를 정의합니다.

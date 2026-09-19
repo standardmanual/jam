@@ -1,3 +1,11 @@
+---
+type: data-model
+description: "포인트 지갑(PointWallet), 내역(PointTransaction), 발행 장부(PointTreasury)와 적립 규칙을 정의한 포인트 시스템 객체 모델이다."
+tags: [포인트]
+code:
+  - "jam-web/src/lib/points"
+---
+
 # JAM! 잼 포인트(Point) 시스템 — 객체 모델
 
 > ✅ **1a단계 구현 완료 (2026-07-23)** — PointWallet/PointTransaction/PointTreasury(마이그레이션 045) + award_points RPC + 배지·드랍·미션 적립 연동 + 유저/어드민 화면까지 코드 반영됨. PointSink(1.4, 포인트 상점)와 2단계(유저 간 거래)는 이번 범위 아님(설계만 유지). 구현 상세: `PRD/Phase12_*`, `PRD/SERVICE_OPERATIONS_20260723_1501.md`.

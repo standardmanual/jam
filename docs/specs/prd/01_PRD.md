@@ -1,3 +1,10 @@
+---
+type: prd
+description: "유저 모바일 웹의 제품 개요, 사용자, 핵심 기능과 구현 상태, 화면 구성, 성공 기준, 만들지 않는 것을 정의한 PRD다."
+code:
+  - "jam-web/src/app"
+---
+
 # JAM! 유저 모바일 웹 — PRD (Product Requirements Document)
 
 > 최초 생성일: 2026-07-09 / 생성 도구: Show Me The PRD

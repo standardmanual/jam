@@ -1,3 +1,11 @@
+---
+type: prd
+description: "GA4 커스텀 이벤트의 연동 구조, staging·production 트래픽 분리, 이벤트별 트리거와 파라미터, 계측 위치를 정리한 명세다."
+tags: [계측]
+code:
+  - "jam-web/src/lib/analytics/gtag.ts"
+---
+
 # GA4 커스텀 이벤트 계측 명세
 
 > ① PRD 카테고리 — "현재 기준 최신 스펙" 문서. 이벤트를 추가·변경하면 이 표를 그대로
