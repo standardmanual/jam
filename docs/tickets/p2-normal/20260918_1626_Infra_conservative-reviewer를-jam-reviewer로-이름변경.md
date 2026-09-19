@@ -2,9 +2,9 @@
 id: 20260918_1626
 category: Infra
 priority: P2
-status: WAITING
+status: CLOSED
 created: 2026-09-18
-closed:
+closed: 2026-09-19
 ---
 
 # [Infra] `conservative-reviewer`를 `jam-reviewer`로 이름 변경
@@ -88,3 +88,17 @@ docs/agents/issue-tracker.md
 ### 테스트 결과
 - [x] `grep -rn "conservative-reviewer" .claude/agents .claude/skills .claude/workflows CLAUDE.md "docs/specs" docs/agents/issue-tracker.md` — 빈 결과
 - [x] `node --test .claude/workflows/jam-work.test.mjs` — 5개 테스트 전체 통과
+- [x] `.claude/agents/jam-reviewer.md` 존재, `conservative-reviewer.md` 삭제 확인 (2026-09-19 재검증)
+
+### 배포 정보
+- 배포일: 2026-09-18 (staging, 문서·설정만이라 빌드 없음)
+- 환경: staging
+- 커밋: ebd0fd5
+
+### 주요 의사결정 / 핵심 메모
+- 완료 조건 3개(grep 빈 결과·테스트 통과·`jam-reviewer.md` 존재)를 2026-09-19에 재검증해 모두
+  충족을 확인했다. WAITING 상태로 남아 있던 건 상태 전환 누락이었다(20260918_1223 상위 티켓
+  세션에서 다른 WAITING 티켓 일괄 점검 중 발견).
+
+### 잔여 이슈
+- 없음
