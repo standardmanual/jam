@@ -181,6 +181,8 @@ test('엄격 모드에서는 미지의 type이 오류가 되고, 등급 설정�
   assert.equal(checkFrontmatter('docs/a.md', '---\ntype: nope\ndescription: d\n---\n', strict)[0].severity, 'error')
   const hard = normalizeConfig({ ...RAW_CFG, severity: { field: 'error' } })
   assert.equal(checkFrontmatter('docs/a.md', '본문', hard)[0].severity, 'error')
+  // 필드 등급을 오류로 올려도 미지의 type은 경고로 남는다(strict일 때만 오류)
+  assert.equal(checkFrontmatter('docs/a.md', '---\ntype: nope\ndescription: d\n---\n', hard)[0].severity, 'warn')
 })
 
 // ───────── git 출력 파싱 ─────────

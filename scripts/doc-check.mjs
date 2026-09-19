@@ -316,8 +316,9 @@ export function parseFrontmatter(text) {
   return { data, endLine: end }
 }
 
+// 미지의 type·필드는 등급 설정과 무관하게 경고이며 strict일 때만 오류다(스키마 §7.3).
 function fieldSeverity(cfg, unknownKind) {
-  if (unknownKind && cfg.strict) return 'error'
+  if (unknownKind) return cfg.strict ? 'error' : 'warn'
   return cfg.severity.field
 }
 

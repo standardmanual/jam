@@ -3,7 +3,8 @@
   "strict": false,
   "scope": {
     "include": ["docs/specs/", "docs/agents/", "docs/tickets/", "jam-doc/planning/", "jam-doc/marketing/", "jam-doc/operations/", "jam-doc/inbox/"],
-    "exclude": ["docs/tickets/modular/", "docs/tickets/_TEMPLATE.md", "jam-doc/archive/", "jam-doc/assets/", "**/CLAUDE.md", "**/AGENTS.md"]
+    "exclude": ["docs/tickets/modular/", "docs/tickets/_TEMPLATE.md", "jam-doc/archive/",
+      "jam-doc/operations/reports/", "jam-doc/assets/", "**/CLAUDE.md", "**/AGENTS.md"]
   },
   "externalPrefixes": ["jam-doc/"],
   "codeSpanRoots": ["docs/", "jam-doc/", "jam-web/", "scripts/", ".claude/", ".githooks/"],
@@ -11,7 +12,7 @@
     "link": "error",
     "codespan": "warn",
     "unresolvable": "warn",
-    "field": "warn"
+    "field": "error"
   },
   "fields": {
     "required": ["type", "description"],
