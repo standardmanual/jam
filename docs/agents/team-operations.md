@@ -17,22 +17,32 @@ tags: [워크플로]
 > 3. 워크트리 생성·정리 방식이 바뀔 때 (`scripts/workspace-setup.sh`)
 > 4. 예약 루틴을 켜고 끄거나 주기·담당을 바꿀 때
 > 5. 접근 범위(어느 에이전트가 어디를 읽고 쓰는가)가 바뀔 때
+>
+> **생성 구간(`<!-- BEGIN generated: ... -->`)은 손으로 고치지 않는다.** 근거가 되는 설정
+> 파일을 고친 뒤 `node scripts/gen-team-doc.mjs`를 실행한다. 손으로 고치면 pre-commit이 막는다.
+> 환경에 대한 새 주장을 이 문서에 적을 때는 `docs/agents/contract.json`에 검사 줄을 함께
+> 추가한다. 검사받지 않는 주장은 반드시 낡는다.
 
 ---
 
 ## 1. 한눈에 보기
 
-| 이름 | 정의 파일 | 기본 모델 | 도구 | 쓰기 권한 | 평소 관여 |
-|---|---|---|---|---|---|
-| 카리나 (오케스트레이터) | `docs/agents/orchestrator.md` | 세션 설정 | 전부 | **있음** (유일하게 머지·DB 실행) | 항상 |
-| 아현 (구현) | `.claude/agents/jam-developer.md` | Sonnet | Read·Write·Edit·Bash·Grep·Glob | **있음** (자기 브랜치에만) | 항상 |
-| 민지 (게이트 리뷰) | `.claude/agents/jam-reviewer.md` | Sonnet | Read·Grep·Glob·Bash | 없음 | 항상 |
-| 채원 (디자인) | `.claude/agents/jam-designer.md` | Sonnet | Read·Grep·Glob·Bash | 없음 | UI·DS 작업 시 |
-| 혜린 (기획) | `.claude/agents/jam-pm.md` | Sonnet | Read·Grep·Glob | 없음 | 호출 시 |
-| 윈터 (세계관) | `.claude/agents/jam-tribe.md` | Sonnet | Read·Grep·Glob·WebSearch | 없음 | 호출 시 · 월간 |
-| 윤진 (마케팅) | `.claude/agents/jam-marketer.md` | Sonnet | Read·Grep·Glob·WebSearch·WebFetch | 없음 | 호출 시 · 주간 · 월간 |
-| 카즈하 (운영·리스크) | `.claude/agents/jam-ops.md` | Haiku | Read·Grep·Glob·Bash | 없음 | 주간 |
-| 하니 (문서 체계) | `.claude/agents/jam-guide.md` | Haiku | Read·Grep·Glob | 없음 | 월간 |
+> 아래 표는 `.claude/agents/*.md`의 frontmatter에서 **자동 생성**된다. 손으로 고치지 말고
+> 정의 파일을 고친 뒤 `node scripts/gen-team-doc.mjs`를 실행한다. 어긋나면 커밋이 막힌다.
+
+<!-- BEGIN generated: agent-table -->
+| 이름 | 역할 | 정의 파일 | 기본 모델 | 도구 | 쓰기 권한 | 평소 관여 |
+|---|---|---|---|---|---|---|
+| 카리나 | 오케스트레이터 (메인 대화) | `docs/agents/orchestrator.md` | 세션 설정 | 전부 | **있음** | 항상 |
+| 아현 | 구현 | `.claude/agents/jam-developer.md` | Sonnet | Read·Write·Edit·Bash·Grep·Glob | **있음** | 항상 |
+| 민지 | 게이트 리뷰 | `.claude/agents/jam-reviewer.md` | Sonnet | Read·Grep·Glob·Bash | 없음 | 항상 |
+| 채원 | 디자인 | `.claude/agents/jam-designer.md` | Sonnet | Read·Grep·Glob·Bash | 없음 | UI·DS 작업 시 |
+| 혜린 | 기획 | `.claude/agents/jam-pm.md` | Sonnet | Read·Grep·Glob | 없음 | 호출 시 |
+| 윈터 | 세계관 | `.claude/agents/jam-tribe.md` | Sonnet | Read·Grep·Glob·WebSearch | 없음 | 호출 시 · 월간 |
+| 윤진 | 마케팅 | `.claude/agents/jam-marketer.md` | Sonnet | Read·Grep·Glob·WebSearch·WebFetch | 없음 | 호출 시 · 주간 · 월간 |
+| 카즈하 | 운영·리스크 | `.claude/agents/jam-ops.md` | Haiku | Read·Grep·Glob·Bash | 없음 | 주간 |
+| 하니 | 문서 체계 | `.claude/agents/jam-guide.md` | Haiku | Read·Grep·Glob | 없음 | 월간 |
+<!-- END generated: agent-table -->
 
 **쓰기 권한을 가진 주체는 둘뿐이다.** 카리나와 아현이며, 아현조차 자기 review 브랜치에만 쓴다.
 나머지 일곱은 읽고 판단만 한다. 이 비대칭이 팀 구조의 뼈대다.
@@ -103,8 +113,12 @@ tags: [워크플로]
 
 ## 4. 워크트리 — 누가 어디서 도는가
 
-**격리 워크트리에서 도는 것은 아현 하나뿐이다.** `.claude/workflows/jam-work.js`에서 아현만
-`isolation: 'worktree'`로 호출된다. 나머지 에이전트는 메인 작업 폴더에서 읽는다.
+<!-- BEGIN generated: worktree-isolation -->
+격리 워크트리에서 도는 에이전트는 **아현(`jam-developer`)** 뿐이다. 나머지 에이전트는 메인 작업 폴더에서 읽는다.
+<!-- END generated: worktree-isolation -->
+
+근거는 `.claude/workflows/jam-work.js`의 `isolation: 'worktree'` 호출이며, 위 문장은 그 파일에서
+자동 생성된다.
 
 이유는 동시성이다. 여러 `/jam-work`가 병렬로 돌 때 모두 메인 트리에서 `git checkout`을 하면
 서로의 작업을 덮어쓴다. 아현만 브랜치를 만들고 커밋하므로, 아현만 격리하면 충분하다.
@@ -198,6 +212,19 @@ tags: [워크플로]
 이진 신호만 확인하기 때문이다(티켓 20260918_1650, 사용자 명시 승인). 다른 루틴에는 이 예외가
 적용되지 않는다.
 
+### 세션을 열 때 자동으로 도는 것
+
+<!-- BEGIN generated: session-hooks -->
+| 실행 | 하는 일 |
+|---|---|
+| `scripts/ticket-dashboard.mjs` | 열려 있는 티켓 현황판과 오케스트레이터 카드를 출력한다 |
+| `scripts/check-routine-reports.mjs` | 예정 시각이 지났는데 예약 리포트가 없으면 경고한다 |
+| `scripts/workspace-setup.sh` | staging에 머지된 격리 워크트리를 정리한다 |
+<!-- END generated: session-hooks -->
+
+위 표는 `.claude/settings.json`의 `SessionStart` 훅에서 자동 생성된다. 무인 루틴이 실패했을 때
+사람이 알아차리는 경로이므로, 훅을 지우면 그 경로가 사라진다.
+
 ### 무엇을 예약하고 무엇을 예약하지 않나
 
 - **예약한다**: 점검형(카즈하·하니)과 형식이 고정된 반복 초안(윤진의 홈피드 7일치).
@@ -249,22 +276,34 @@ tags: [워크플로]
 ## 9. 알려진 빈틈
 
 현재 구조에 남아 있는 취약점이다. 아직 사고로 이어지지 않았거나, 감수하기로 한 것들이다.
+해결된 항목은 지우지 않고 무엇으로 막았는지 남긴다.
 
-**① 문서와 실제가 어긋나도 아무도 잡지 않는다.**
+**① 문서와 실제가 어긋나는 문제 — 기계 검사로 막았다 (티켓 20260920_1907).**
 `jam-developer.md` 규칙 9는 "`jam-doc`이 심볼릭 링크로 연결된다"고 적었고 `jam-work/SKILL.md`는
 "워크트리에 `jam-doc`이 없다"고 적었다. 두 문장이 정면으로 모순된 채 며칠간 방치됐고, 실제로는
-후자가 맞았다. 에이전트 정의는 실행되는 코드가 아니라서 어떤 검사도 거치지 않는다.
-**대응**: 정의 문서가 환경을 서술할 때는 명령으로 확인한 결과만 적는다. 확인 비용은 대개
-`ls` 한 줄이다.
+후자가 맞았다. 후속 조사에서 같은 종류의 드리프트가 세 건 더 나왔다. 근원은 **검사의
+비대칭**이었다. 코드는 lint·typecheck·test·ds:check로 4중 검사를 받는데 문서는 링크와
+frontmatter 형식만 검사받으면서, 에이전트에게는 코드와 똑같은 구속력을 가졌다.
 
-**② 워크트리 정리가 자동이 아니다.**
-`workspace-setup.sh cleanup`은 누가 부르지 않으면 돌지 않는다. 티켓 0045 작업이 끝난 뒤에도
-워크트리 하나와 브랜치 두 개가 남아 있었다. 쌓이면 디스크를 먹고, 같은 브랜치명을 점유해
-다음 실행을 막는다.
+지금은 `scripts/check-contract.mjs`가 `docs/agents/contract.json`의 주장을 실제 환경과
+대조하고, `scripts/gen-team-doc.mjs`가 이 문서의 사실 표를 설정에서 생성한다. 둘 다
+`verify.sh`와 pre-commit에 물려 있어 어긋나면 커밋이 막힌다. **남은 위험**은 검사 선언 자체가
+빈약해지는 것이다. 새로운 환경 주장을 문서에 적을 때는 `contract.json`에 검사 줄을 함께
+추가한다.
 
-**③ 예약 루틴의 실패를 사람이 늦게 안다.**
-무인 세션이 실패하면 Slack에 알림이 가지만, Slack 채널이 아직 없으면 그 경로가 통째로 비어
-있다. 실패가 조용히 누적될 수 있다.
+**② 워크트리 정리 — 세션 시작에 자동화했다 (티켓 20260920_1907).**
+`workspace-setup.sh cleanup`은 누가 부르지 않으면 돌지 않았고, 티켓 0045 작업이 끝난 뒤에도
+워크트리 하나와 브랜치 두 개가 남아 있었다. 지금은 세션을 열 때마다 자동으로 돌며, staging에
+머지됐고 미커밋 변경이 없는 워크트리만 지운다. **남은 위험**은 브랜치다. 워크트리는 지워져도
+로컬 브랜치는 남으므로 가끔 `git branch --list 'claude/*'`로 확인한다.
+
+**③ 예약 루틴 실패 감지 — 훅을 실제로 만들었다 (티켓 20260920_1907).**
+`scheduled-jobs.md`는 "세션 시작 hook이 예정 시각이 지났는데 리포트가 없으면 감지한다"고 적어
+두었으나 그런 훅도 스크립트도 없었다. 서술만 있고 구현이 없는 상태가 빈틈 ①의 전형이었다.
+지금은 `scripts/check-routine-reports.mjs`가 세션마다 주간·월간 리포트의 존재를 확인하고,
+없으면 경고한다. Slack 채널(`#jam-alert`·`#jam-report`)은 개설돼 있어 루틴 자체의 알림 경로도
+살아 있다. **남은 위험**은 리포트 파일이 있으면서 내용이 부실한 경우다. 존재만 보고 품질은
+보지 않는다.
 
 **④ 원격 세션은 shallow clone이다.**
 클라우드 세션의 저장소는 이력이 잘려 있다(`jam` 73커밋). `git log`로 과거 결정을 추적하는 일이

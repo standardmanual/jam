@@ -70,6 +70,14 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/scripts/ticket-dashboard.mjs\""
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/check-routine-reports.mjs\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/workspace-setup.sh\" cleanup 2>/dev/null | grep -E \"^제거\" || true"
           }
         ]
       }

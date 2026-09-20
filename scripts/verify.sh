@@ -44,25 +44,25 @@ else
   rm -f "$LOG_PREFIX.slop"
 fi
 
-# jam-doc 문서 검사 엔진 복사본 해시 일치 검증 (티켓 20260919_1246).
-# jam-doc은 jam 없이 단독 복제된 환경(클라우드 예약 루틴 등)에서도 자체 pre-commit으로
-# 문서를 검사해야 하므로 scripts/doc-check.mjs 복사본을 jam-doc/scripts/doc-check.mjs에 둔다.
-# 두 파일이 벌어지면 두 저장소의 훅 동작이 갈라지므로 여기서 막는다.
-JAM_DOC_ENGINE="$REPO_ROOT/jam-doc/scripts/doc-check.mjs"
-if [ -f "$JAM_DOC_ENGINE" ]; then
-  if ! cmp -s "$REPO_ROOT/scripts/doc-check.mjs" "$JAM_DOC_ENGINE"; then
-    FAILED+=("doc-check-engine-sync")
-    {
-      echo "scripts/doc-check.mjs 와 jam-doc/scripts/doc-check.mjs 가 다릅니다."
-      echo "jam-doc 쪽 복사본을 scripts/doc-check.mjs 내용으로 다시 덮어써 동기화하세요."
-    } >"$LOG_PREFIX.doc-check-engine-sync"
-  fi
+# 문서가 환경에 대해 주장하는 사실을 실제와 대조한다 (티켓 20260920_1907).
+# 에이전트 정의·스킬 문서는 실행되지 않아 서술이 틀려도 아무 검사에 걸리지 않았다. 실제로
+# 규칙 9와 SKILL.md가 정면으로 모순된 채 방치됐고, 같은 드리프트가 하루 조사에서 네 건 나왔다.
+if ! ( cd "$REPO_ROOT" && node scripts/check-contract.mjs ) >"$LOG_PREFIX.contract" 2>&1; then
+  FAILED+=("contract")
 else
-  echo "참고: jam-doc/scripts/doc-check.mjs가 없어 엔진 해시 검증을 건너뜁니다."
+  rm -f "$LOG_PREFIX.contract"
+fi
+
+# team-operations.md의 사실 표가 실제 설정에서 생성된 최신본인지 확인한다 (같은 티켓).
+# 손으로 쓴 표는 반드시 낡으므로, 표를 고치는 대신 근거 설정을 고치고 생성기를 돌려야 한다.
+if ! ( cd "$REPO_ROOT" && node scripts/gen-team-doc.mjs --check ) >"$LOG_PREFIX.team-doc" 2>&1; then
+  FAILED+=("team-doc")
+else
+  rm -f "$LOG_PREFIX.team-doc"
 fi
 
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · ds:check · slop"
+  echo "verify 통과: lint · typecheck · test · ds:check · slop · contract · team-doc"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"
