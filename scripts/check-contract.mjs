@@ -258,7 +258,10 @@ function checkStalePhrases(c) {
     } catch { continue }
     if (src.includes('\u0000')) continue  // 바이너리
 
-    for (const { text, reason } of spec.phrases ?? []) {
+    for (const { text, reason, allow_in } of spec.phrases ?? []) {
+      // 낡은 문구를 '쓰지 말라'고 지시하는 문서는 그 문구를 인용할 수밖에 없다.
+      // allow_in에 적힌 파일에서는 등장을 허용한다.
+      if ((allow_in ?? []).some((a) => f === a || f.startsWith(a))) continue
       const idx = src.indexOf(text)
       if (idx === -1) continue
       const line = src.slice(0, idx).split('\n').length

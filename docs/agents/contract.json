@@ -106,7 +106,9 @@
     "scope": ["CLAUDE.md", "docs/", ".claude/", "scripts/", ".githooks/", "jam-doc/README.md"],
     "exclude": ["docs/tickets/", "jam-doc/archive/", "jam-doc/operations/reports/"],
     "phrases": [
-      { "text": "git -C jam-doc push", "reason": "jam-doc은 2026-09-20 재통합 이후 같은 저장소다 (티켓 20260920_1412)" },
+      { "text": "git -C jam-doc push", "reason": "jam-doc은 2026-09-20 재통합 이후 같은 저장소다 (티켓 20260920_1412)",
+        "allow_in": [".claude/skills/jam-work/references/scheduled-jobs.md", ".githooks/pre-push"],
+        "_allow_why": "예약 루틴 프롬프트는 저장소 밖에 있어 재통합 때 함께 고쳐지지 못했다. 이 두 파일은 그 낡은 명령을 '쓰지 말라'고 지시하는 자리이므로 인용이 불가피하다 (티켓 20260920_1933)." },
       { "text": "중첩 복제", "reason": "jam-doc은 더 이상 중첩 저장소가 아니다" },
       { "text": "아직 없으면 이 절차를 건너뛴다", "reason": "Slack 채널은 개설돼 채널 ID가 scheduled-jobs.md에 박혀 있다" },
       { "text": "jam-doc 갱신안", "reason": "갱신안 패치 절차는 재통합으로 폐지됐다" }

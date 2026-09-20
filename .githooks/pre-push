@@ -30,6 +30,19 @@ while read -r _local_ref local_sha remote_ref remote_sha; do
     echo "" >&2
     echo "  프로덕션에 반영하려면 사용자에게 '배포해줘'라고 요청받은 뒤 /jam-ship 을 사용하세요." >&2
     echo "" >&2
+    # 예약 루틴 구제 안내 (티켓 20260920_1933).
+    #   루틴 프롬프트는 저장소 밖에 있어 2026-09-20 재통합 때 함께 고쳐지지 못했고, 아직
+    #   'git -C jam-doc push origin main'을 담고 있다. jam-doc/에 .git이 없으므로 그 명령은
+    #   여기(jam의 main)로 온다. 루틴이 이 메시지를 읽고 스스로 고쳐 잡을 수 있게 안내한다.
+    echo "  ── 예약 루틴이라면 ──" >&2
+    echo "  'git -C jam-doc push origin main'으로 여기 도달했다면, 그 명령은 2026-09-20" >&2
+    echo "  저장소 재통합(티켓 20260920_1412) 이전의 낡은 지시입니다. jam-doc/은 이제 이" >&2
+    echo "  저장소 안의 폴더이므로 'git -C jam-doc' 접두사 없이 다음을 실행하세요:" >&2
+    echo "" >&2
+    echo "    git add <리포트 파일> && git commit -m \"...\" && git push origin staging" >&2
+    echo "" >&2
+    echo "  자세한 대응표: .claude/skills/jam-work/references/scheduled-jobs.md 「공통 원칙」 첫 절" >&2
+    echo "" >&2
     exit 1
   fi
 
