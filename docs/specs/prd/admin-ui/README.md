@@ -303,8 +303,7 @@ className="grid grid-cols-1 md:grid-cols-2"  // 모바일: 1열, 데스크탑: 2
 
 ### 프로젝트 내 참고
 - `jam-web/src/app/api/admin/` — 기존 API
-- `jam-web/src/lib/badge-engine.ts` — 배지 로직
-- `jam-web/src/lib/simulator.ts` — 시뮬레이터 로직
+- `jam-web/src/lib/badge-engine/` — 배지 로직
 
 ### 배지 시스템 이해
 - `docs/specs/prd/01_PRD.md` — 배지 전체 개념

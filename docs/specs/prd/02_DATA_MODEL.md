@@ -378,7 +378,7 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 
 > ⚠️ **생성 타입이 낡으면 이제는 올바른 코드가 잘못된 컴파일 오류를 낸다.** 실제로 20260831_1158
 > 조사 시점에 `badges.category`·`poi.is_active`가 그 상태였다. 마이그레이션을 추가하면
-> `npm run db:types`로 재생성해 같은 커밋에 함께 넣을 것.
+> Supabase MCP `generate_typescript_types`로 받아 반영해 같은 커밋에 함께 넣을 것(`npm run db:types`는 제거돼 실행 불가).
 
 ### ambient_drop_config (재도입 — 2026-08-26, 마이그레이션 104)
 앰비언트(시스템) POI 드랍 배치 설정 싱글톤(id=1). 카테고리(`poi_categories` 13종 또는 전체)·

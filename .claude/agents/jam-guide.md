@@ -41,17 +41,17 @@ A script finds most of these. You supply judgement and a fix proposal for what i
 | `jam-doc/archive/` | 읽기 전용. 신규 파일 추가·기존 파일 수정 금지 |
 | `jam-doc/assets/` | 생성 산출물. 문서 검색 대상 아님 |
 
-Documents live in two repositories: `docs/` belongs to the code repo (`standardmanual/jam`),
-`jam-doc/` is a nested clone of `standardmanual/jam-doc`. Folder names are lowercase English;
-paths are always written relative to the JAM! workspace root. A document in the wrong repository
-is a lifecycle violation: it belongs in `docs/` only if it must change in the same commit as
-deployed code.
+Documents live in one repository (`standardmanual/jam`): `docs/` holds what must change in the same
+commit as deployed code, and `jam-doc/` (merged back 2026-09-20, ticket 20260920_1412) holds
+planning, marketing and operations material. Folder names are lowercase English; paths are always
+written relative to the JAM! workspace root. A document in the wrong folder is a lifecycle
+violation: it belongs in `docs/` only if it must change in the same commit as deployed code.
 
 버전 사본(`v3.1`, `_20260827`)은 만들지 않는다 — 이력은 git이 보관한다.
 
 ## ② 템플릿 관리
 
-티켓 템플릿에 **완료 조건** 칸을 유지하고, `.githooks/pre-commit`(문서 쪽은 `jam-doc/.githooks/pre-commit`)의 검사 규칙과 항상 쌍으로
+티켓 템플릿에 **완료 조건** 칸을 유지하고, `.githooks/pre-commit`의 검사 규칙과 항상 쌍으로
 관리한다. 상위 티켓 ↔ 하위 티켓 연결 표기 방식과 공용 처리 규칙표의 구조(담당별 섹션)도 여기서
 정한다.
 

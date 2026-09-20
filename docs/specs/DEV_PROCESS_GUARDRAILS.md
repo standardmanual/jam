@@ -374,7 +374,7 @@ PostgreSQL의 `CREATE OR REPLACE FUNCTION`은 **파라미터 타입 목록이 �
 | `abusing_policy`(섀도우밴 배율·GPS/차량 속도 임계값) | `src/lib/abusing/policy.ts`(정규화·폴백·관측을 거치는 정식 경로), `src/lib/abusing/shadow-ban.ts`(`BAN_RATE_KEY` 맵으로 등급 → 배율 키를 고정 — 20260831_1259 이전에는 `${banLevel}_${rarity}_rate` 문자열 조합 + `?? 1.0` fail-open이라 컬럼명이 바뀌면 차단이 조용히 꺼졌다. **`DEFAULT_POLICY`를 폴백 소스로 공유하므로 DB 배율을 바꿀 땐 `policy.ts`도 같이 바꾼다**), `src/lib/strava/sync.ts`(`vehicle_speed_filter_kmh`로 활동을 거른다. 정식 경로 `getAbusingPolicy(supabase)`를 쓰되 **주입된 클라이언트를 넘긴다** — 여기서 걸러진 결과가 배지·아이템 드랍·미션 셋 다로 흘러가므로 임계값이 틀리면 보상 루프 전체가 멈춘다. 소비 지점은 `<= 0`·비유한수만 막는 페일세이프이고, 하한 20km/h 검증은 정책 라우트가 소유한다 — 20260831_1300), `src/app/api/admin/abusing/policy/route.ts`(화이트리스트가 사실상 키 목록의 정의), `src/app/admin/abusing/AbusingClient.tsx` |
 | `poi` 테이블(반경·좌표) | `src/lib/poi/matcher.ts`(활동-POI 매칭), `src/app/api/drops/route.ts`(드랍 지도), `src/app/api/checkin-badges/route.ts`(체크인 배지 탭) — 셋 다 max-rows 대응이 되어 있어야 함(패턴 3) |
 | `engine_decision_log` 이벤트 타입 | `src/lib/engine-log/index.ts`의 `EngineDecisionEvent` 유니언 — 새 실패/판정 지점을 로깅할 땐 여기 타입부터 추가 |
-| `users` 테이블 컬럼 | **기준은 `src/types/database.generated.ts`**(`npm run db:types`로 재생성 — Supabase 클라이언트 제네릭의 진실 원천). `src/types/database.ts`의 `UserRow`는 도메인 타입이므로 생성본에 맞춰 갱신한다. 방향을 반대로 잡지 말 것 — 실제로 `UserRow.gps_daily_distance_km`가 수기 쪽 오류로 드러났다(20260831_1213) |
+| `users` 테이블 컬럼 | **기준은 `src/types/database.generated.ts`**(Supabase MCP `generate_typescript_types`로 재생성 — `npm run db:types`는 제거돼 실행 불가. Supabase 클라이언트 제네릭의 진실 원천). `src/types/database.ts`의 `UserRow`는 도메인 타입이므로 생성본에 맞춰 갱신한다. 방향을 반대로 잡지 말 것 — 실제로 `UserRow.gps_daily_distance_km`가 수기 쪽 오류로 드러났다(20260831_1213) |
 
 ---
 

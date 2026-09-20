@@ -32,7 +32,6 @@ JAM!/                          ← standardmanual/jam (Vercel에 배포되는 �
 │   │   ├── badge-engine/      ← 배지 발급·드랍 판정 로직
 │   │   └── (루트)             ← UX_WRITING_GUIDELINE 등 코드와 함께 바뀌는 횡단 참조 문서
 │   ├── tickets/               ← 작업 이력 (신규 생성, 지식베이스로 계속 검색됨)
-│   ├── adr/                   ← 아키텍처 결정 기록
 │   └── agents/                ← 에이전트 팀 설계
 └── jam-doc/                   ← 기획·운영 문서 (같은 저장소의 폴더, 티켓 20260920_1412)
     ├── planning/content/      ← 배지·아이템북·트라이브·POI 정의

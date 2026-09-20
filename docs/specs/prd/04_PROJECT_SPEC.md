@@ -152,8 +152,8 @@ jam-web/
 - **핵심 루프(위 DEV_PROCESS_GUARDRAILS.md 의존성 지도 대상)를 건드리는 작업은 시작 전에
   "어떤 테이블/파일에 영향 주는지"를 평문 한국어로 먼저 보고하고 진행 확인받기** — 비개발자인
   사용자도 코드를 안 읽고 범위만으로 판단할 수 있게 하기 위함
-- **`users` 테이블 등 DB 컬럼을 참조하는 타입을 새로 쓰거나 의심될 땐 `npm run db:types`로
-  `database.generated.ts`를 재생성해 `database.ts`와 대조** — 손으로 쓴 타입이 실제 스키마와
+- **`users` 테이블 등 DB 컬럼을 참조하는 타입을 새로 쓰거나 의심될 땐 Supabase MCP의
+  `generate_typescript_types`로 최신 타입을 받아 `database.ts`와 대조**(`npm run db:types`는 제거돼 실행 불가) — 손으로 쓴 타입이 실제 스키마와
   어긋나 있어도 지금 구조에선 자동으로 안 걸러짐(2026-08-11 UserRow 5개 컬럼 누락 사례)
 
 ---
