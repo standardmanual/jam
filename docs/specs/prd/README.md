@@ -19,7 +19,7 @@ description: "PRD 폴더의 문서 구성, 읽는 시점, 주제별 PRD 하위 �
 | [02_DATA_MODEL.md](02_DATA_MODEL.md) | 데이터 구조, 엔티티 상세, 관계도 | DB 설계할 때 / 새 기능 추가할 때 |
 | [03_PHASES.md](03_PHASES.md) | 실제 개발 이력(티켓 기준 시간순) + 현재 상태 요약 | 지금까지 뭐가 만들어졌는지 훑어볼 때 |
 | [04_PROJECT_SPEC.md](04_PROJECT_SPEC.md) | 기술 스택, 절대 금지 목록, 환경변수 | AI에게 코드 시킬 때마다 함께 공유 |
-| [../UX_WRITING_GUIDELINE.md](UX_WRITING_GUIDELINE.md) | 화면 문구·알림·에러 메시지 작성 기준 | 신규 기능 문구 작성 시 / 기존 문구 수정 시 항상 |
+| [../UX_WRITING_GUIDELINE.md](../UX_WRITING_GUIDELINE.md) | 화면 문구·알림·에러 메시지 작성 기준 | 신규 기능 문구 작성 시 / 기존 문구 수정 시 항상 |
 
 > **2026-08-06 전면 갱신 완료**: 위 4개 문서를 `jam-web/src/app` 라우트 전체,
 > `supabase/migrations/` 001~074 전수, 프로젝트 설정을 코드와 대조해 현재 상태
@@ -32,11 +32,11 @@ description: "PRD 폴더의 문서 구성, 읽는 시점, 주제별 PRD 하위 �
 
 | 폴더 | 주제 |
 |------|------|
-| [AdminUI/](./AdminUI/) | 어드민 UI 리디자인 (기존 `05_ADMIN_PRD.md` → `AdminUI/ADMIN_PRD.md`로 이동, 기능 기준 문서로 유지) |
-| [PointSystem/](./PointSystem/) | 포인트 시스템 |
-| [Notification/](./Notification/) | 알림(소식) — 인앱 소식 히스토리 28종. 푸시 알림 아님 |
-| [Analytics/](./Analytics/) | GA4 커스텀 이벤트 계측 명세 |
-| [Inventory/](./Inventory/) | 인벤토리 포화 인지·드랍 순환 유도 |
+| [AdminUI/](./admin-ui/) | 어드민 UI 리디자인 (기존 `05_ADMIN_PRD.md` → `AdminUI/ADMIN_PRD.md`로 이동, 기능 기준 문서로 유지) |
+| [PointSystem/](./point-system/) | 포인트 시스템 |
+| [Notification/](./notification/) | 알림(소식) — 인앱 소식 히스토리 28종. 푸시 알림 아님 |
+| [Analytics/](./analytics/) | GA4 커스텀 이벤트 계측 명세 |
+| [Inventory/](./inventory/) | 인벤토리 포화 인지·드랍 순환 유도 |
 
 새 주제별 PRD 세트 생성 시 `docs/specs/prd/{주제}/` 하위 폴더로 구분한다 (파일명 접두어 사용 안 함).
 

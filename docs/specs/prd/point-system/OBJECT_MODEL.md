@@ -16,7 +16,7 @@ code:
 
 ## 0. 왜 이 문서가 필요한가
 
-지금 코드에는 포인트를 실제로 지급하는 로직이 없다. 그런데 화면에는 이미 포인트가 있는 것처럼 보이는 부분이 있다 — 미션 화면과 피드에 "+100P"라고 표시되는 숫자([`missions/page.tsx`](../jam-web/src/app/(main)/missions/page.tsx:19), [`HomeFeedSection.tsx`](../jam-web/src/app/(main)/HomeFeedSection.tsx:92))가 그것이다. 이 숫자는 지금 **아무 지갑에도 쌓이지 않는 장식**이다. 이번 설계의 1차 목표는 이 숫자를 진짜로 모이는 잔액으로 만드는 것이다.
+지금 코드에는 포인트를 실제로 지급하는 로직이 없다. 그런데 화면에는 이미 포인트가 있는 것처럼 보이는 부분이 있다 — 미션 화면과 피드에 "+100P"라고 표시되는 숫자(`jam-web/src/app/(main)/missions/page.tsx:19`, `jam-web/src/app/(main)/HomeFeedSection.tsx:92`)가 그것이다. 이 숫자는 지금 **아무 지갑에도 쌓이지 않는 장식**이다. 이번 설계의 1차 목표는 이 숫자를 실제로 모이는 잔액으로 만드는 것이다.
 
 ## 0.1 작업 순서
 

@@ -214,7 +214,7 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
   게이트는 그대로 유지. 호출 경로는 `src/lib/strava/sync.ts`의 `processFetchedActivities`
   최상단 이른 반환(`rawActivities.length === 0`)과 `activitiesFiltered.length > 0` 삼항
   게이트 두 곳 — 배지 평가에 한해서만 무조건 호출로 바뀌었다.
-- **수동 입력 활동은 현재 걸러지지 않는다** ⚠️ *(2026-09-05 실측 정정)*: 2026-08-10에 Strava `manual=true` 활동을 `getActivities()` 반환 단계에서 제외하는 필터를 넣었으나, 정상 활동까지 누락되는 버그가 나 커밋 `86380c55`("revert: Strava manual 필터 제거")로 되돌려졌다. **`src/lib/strava/{api,sync}.ts`에 `manual` 참조가 0건이며**, 수동 입력 활동은 지금도 두 엔진 평가 대상에 들어오고 `strava_activities`에도 기록된다. 재도입 여부는 미결이다 — v5 카탈로그(티켓 20260905_0035)가 «수동 입력은 걸러진다»를 어뷰징 전제로 삼으면 그대로 어긋난다. `device_name`(기록 기기) 기반의 "조작된 파일 업로드" 필터도 상세 API 추가 호출이 필요해 미구현이다 — [docs/tickets/20260810_001](../../tickets/20260810_001_Service_Strava-수동입력-활동-동기화-제외.md) 참고.
+- **수동 입력 활동은 현재 걸러지지 않는다** ⚠️ *(2026-09-05 실측 정정)*: 2026-08-10에 Strava `manual=true` 활동을 `getActivities()` 반환 단계에서 제외하는 필터를 넣었으나, 정상 활동까지 누락되는 버그가 나 커밋 `86380c55`("revert: Strava manual 필터 제거")로 되돌려졌다. **`src/lib/strava/{api,sync}.ts`에 `manual` 참조가 0건이며**, 수동 입력 활동은 지금도 두 엔진 평가 대상에 들어오고 `strava_activities`에도 기록된다. 재도입 여부는 미결이다 — v5 카탈로그(티켓 20260905_0035)가 «수동 입력은 걸러진다»를 어뷰징 전제로 삼으면 그대로 어긋난다. `device_name`(기록 기기) 기반의 "조작된 파일 업로드" 필터도 상세 API 추가 호출이 필요해 미구현이다 — [docs/tickets/20260810_001](../../tickets/p1-high/20260810_001_Service_Strava-수동입력-활동-동기화-제외.md) 참고.
 
 ---
 
@@ -271,7 +271,7 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
   잘못 좁혀진 반환 타입만 `StravaDetailedActivity`로 고쳤다(수집 경로는 만들지 않았다)
 - 기존 활동(2026-09-05 실측 873행)은 일반 싱크로 채워지지 않는다 — `getProcessedStravaIds`가
   전부 걸러내기 때문이다. 전용 백필 경로가 `src/lib/strava/backfill.ts` +
-  `scripts/backfill-strava-extended-fields.ts`이며 **목록 엔드포인트만 쓰고 배지·드랍·미션·소식을
+  `jam-web/scripts/backfill-strava-extended-fields.ts`이며 **목록 엔드포인트만 쓰고 배지·드랍·미션·소식을
   일절 호출하지 않는다**(재평가하면 배지 홍수가 난다). 갱신한 행은 `processed_via = 'manual_backfill'`
 
 ### 2.2 발급 파이프라인
@@ -636,7 +636,7 @@ DB 시드: `jam-web/supabase/migrations/seed_v5_activity_badges.sql`
 > 엔진 규칙뿐이고, 배지 목록·조건값은 더 이상 사실이 아니다.**
 > 현행 걷기 카탈로그는 47계열 153종이며 `jam-doc/planning/content/ACTIVITY_BADGES.md`에 있다.
 >
-> 배경·튜닝 파라미터 상세: `docs/tickets/20260808_001_Content_걷기배지체계-v4-전면개편.md`
+> 배경·튜닝 파라미터 상세: `docs/tickets/p2-normal/20260808_001_Content_걷기배지체계-v4-전면개편.md`
 
 **축1 게이트** — 걷기(`activity_type='walking'`) 조건 평가 전 사전 필터. `evaluateConditionDetailed`가 `filtered`를 구성하는 시점에 `condition.activity_type==='walking'`인 경우에만 적용되며, 걷기가 아닌 종목에는 영향 없음.
 
@@ -716,7 +716,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > 실행 전까지는 `gate_mission_badge` 요구가 걸린 Mystic은 미션이 없어 그 보상 배지를 얻을
 > 방법이 없으므로 계속 막혀 있다(fail-closed 방향이라 잘못 열리지는 않는다).
 >
-> 폐기된 v4 방식 기록 (티켓 `docs/tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`):
+> 폐기된 v4 방식 기록 (티켓 `docs/tickets/p1-high/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`):
 
 종목별로 "운동 목표 달성감이 가장 큰" 대표 배지 1종씩(5개 트리) — 걷기 `동네 산책러`, 러닝 `첫 숨결`, 사이클 `언덕의 도전자`, 등산 `첫 고도`, 트레일러닝 `야생의 주자` — 는 Rare 이상에서 기존 크로스게이트(`prerequisite_badge_names`에 같은 종목 다른 속성 배지 2개 OR)를 쓰지 않고, **미션 완료로만 얻는 전용 배지 1개**를 선행조건으로 요구한다. 나머지 142개 배지는 기존 크로스게이트 그대로 유지.
 
@@ -1548,13 +1548,13 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 ### 3.12 앰비언트(시스템) POI 드랍 — 3축(카테고리/등급비율/대상컬렉션) 배치 (재도입 2026-08-26)
 
 > 유저 행동과 무관하게 시스템이 POI에 아이템배지를 직접 배치하는 판정. 2026-08-25에 한 차례
-> 전면 제거됐다가([20260825_004](../../tickets/20260825_004_Feature_앰비언트-드랍-기능-제거.md))
-> 2026-08-26에 재설계 재도입됐다([20260826_009](../../tickets/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)).
+> 전면 제거됐다가([20260825_004](../../tickets/p1-high/20260825_004_Feature_앰비언트-드랍-기능-제거.md))
+> 2026-08-26에 재설계 재도입됐다([20260826_009](../../tickets/p1-high/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)).
 > 코드: `src/lib/ambient-drop/`.
 
 **제거 판단 경위 (오해 방지를 위해 유지)**: 제거 당시 `poi_drops`에 `source='system'` 행이
 0건이었던 것은 기능 결함이 아니라 미들웨어가 `/api/cron/*`를 307로 가로채 cron 자체가
-실행되지 않았기 때문이었다([20260825_003](../../tickets/20260825_003_bug_미들웨어가-cron-요청을-차단.md)).
+실행되지 않았기 때문이었다([20260825_003](../../tickets/p1-high/20260825_003_bug_미들웨어가-cron-요청을-차단.md)).
 그럼에도 사용자가 관측과 무관하게 쓰지 않기로 결정했었고, 이후 드랍엔진 v2·컨텐츠·POI 체계가
 성숙한 만큼 **옛 설계(전역 커버리지 목표치 모델, `ambient_drop_policy`)를 복원하지 않고
 배치 실행형으로 새로 설계**했다.
@@ -1565,7 +1565,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 (§3.13). **만료 메커니즘 없음** — 상시 존재를 전제로 하며, 특정 배지를 한시적으로만 노출하고
 싶으면 `badges.valid_from`/`valid_until`을 쓴다.
 
-**트리거 — 예약 배포 + 즉시 배포, 상호 배제** (2026-09-06 리뉴얼, [20260906_1206](../../tickets/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)):
+**트리거 — 예약 배포 + 즉시 배포, 상호 배제** (2026-09-06 리뉴얼, [20260906_1206](../../tickets/p1-high/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)):
 - **예약 배포**: 어드민이 정한 시각(`ambient_drop_config.schedule_hour_kst`, **KST 정시 0~23**)에
   매일 1회 자동 배포한다. Vercel의 cron 표현식은 동적일 수 없으므로 `/api/cron/ambient-drop`은
   **매시 정각**(`"0 * * * *"`)에 호출되고, 핸들러가 지금이 설정 시각인지 판정해 아니면 즉시
@@ -1693,7 +1693,7 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 > 붙는다. 재현용 SQL은 `supabase/migrations/164_michelin_checkin_badges.sql`(실행 완료,
 > 42/42/42 확인). **커스텀 배지 이미지 42개도 생성 완료**됐다 — Figma(fileKey
 > `UXcBEgFagmO5ARwH5F0mMW`, node `15:127`, 텍스트 레이어 `15:113` 'POI') 디자인을 배경
-> SVG로 조립해 `scripts/badge-image-gen/configs/michelin-poi-badge.config.js`를 신규
+> SVG로 조립해 `jam-web/scripts/badge-image-gen/configs/michelin-poi-badge.config.js`를 신규
 > 작성하고 `generate.js`로 42개를 렌더링했다(다른 POI 배지와 달리 지하철역·산과 동일하게
 > 배지별로 서로 다른 이미지를 쓰는 방식). 이미지가 프로덕션(`j-a-m.app`)에 배포된 것을
 > 확인한 뒤 `supabase/seed/update_michelin-poi-badge_images.sql`로 `image_url`을
@@ -1725,7 +1725,7 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 
 ### 3.15 종목별 드랍 가중치 — 걷기 계수 0.4 (2026-08-08)
 
-> 배경: 걷기는 다른 종목 대비 MET(운동강도)가 낮아 활동당 아이템 드랍 기대값을 낮출 필요가 있어 도입. 상세: `docs/tickets/20260808_001_Content_걷기배지체계-v4-전면개편.md`.
+> 배경: 걷기는 다른 종목 대비 MET(운동강도)가 낮아 활동당 아이템 드랍 기대값을 낮출 필요가 있어 도입. 상세: `docs/tickets/p2-normal/20260808_001_Content_걷기배지체계-v4-전면개편.md`.
 
 `jam-web/src/lib/drop-engine/constants.ts`에 `ACTIVITY_TYPE_DROP_WEIGHT`(walking: 0.4) + `DEFAULT_ACTIVITY_DROP_WEIGHT`(그 외 1.0) 추가. `getActivityDropWeight(act)`는 걷기이면서 축1 게이트(§2.10)를 통과한 활동에만 0.4를 반환.
 
