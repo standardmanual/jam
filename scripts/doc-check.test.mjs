@@ -8,7 +8,7 @@
 
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -19,6 +19,7 @@ import {
   extractRefs,
   findOrphans,
   inScope,
+  isCodeSpanIgnored,
   loadConfig,
   makeExistence,
   normalizeConfig,
@@ -306,6 +307,14 @@ test('codeSpanIgnore에 걸리는 백틱 경로는 검사하지 않는다', () =
   const dir = makeRepo({ 'docs/a.md': `${FM}본문\n` }, STRICT_SPAN_CFG)
   const r = staged(dir, (d) => writeFile(d, 'docs/a.md', `${FM}본문 \`docs/inbox/x.md\` \`docs/YYYY-Www.md\`\n`))
   assert.equal(r.status, 0, r.stderr)
+})
+
+test('실제 설정의 자리표시자 패턴은 파일명 위치에서만 일치한다', () => {
+  const cfg = JSON.parse(readFileSync(new URL('./doc-check.config.json', import.meta.url), 'utf8'))
+  assert.equal(isCodeSpanIgnored('jam-doc/operations/reports/weekly/YYYY-Www.md', cfg), true)
+  assert.equal(isCodeSpanIgnored('jam-web/supabase/migrations/0XX_설명.sql', cfg), true)
+  assert.equal(isCodeSpanIgnored('docs/YYYYtypo/real.md', cfg), false)
+  assert.equal(isCodeSpanIgnored('docs/0XX_dir/real.md', cfg), false)
 })
 
 test('codespanWarnPaths 아래 문서는 깨진 백틱 경로도 경고만 한다', () => {

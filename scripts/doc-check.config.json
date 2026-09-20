@@ -11,8 +11,8 @@
   "codeSpanIgnore": [
     "^jam-web/\\.env",
     "^jam-web/node_modules",
-    "YYYY",
-    "0XX_",
+    "/[^/]*YYYY[^/]*$",
+    "/0XX_[^/]*$",
     "^jam-doc/inbox/",
     "^docs/adr/"
   ],
