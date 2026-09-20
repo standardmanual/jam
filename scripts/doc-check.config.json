@@ -8,9 +8,18 @@
   },
   "externalPrefixes": [],
   "codeSpanRoots": ["docs/", "jam-doc/", "jam-web/", "scripts/", ".claude/", ".githooks/"],
+  "codeSpanIgnore": [
+    "^jam-web/\\.env",
+    "^jam-web/node_modules",
+    "YYYY",
+    "0XX_",
+    "^jam-doc/inbox/",
+    "^docs/adr/"
+  ],
+  "codespanWarnPaths": ["docs/tickets/"],
   "severity": {
     "link": "error",
-    "codespan": "warn",
+    "codespan": "error",
     "unresolvable": "warn",
     "field": "error"
   },

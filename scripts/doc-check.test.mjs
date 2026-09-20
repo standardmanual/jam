@@ -287,6 +287,34 @@ test('백틱 경로가 깨지면 경고만 하고 통과', () => {
   assert.match(r.stderr, /\[경고\] 경로가 없습니다: docs\/none\.md/)
 })
 
+const STRICT_SPAN_CFG = {
+  ...RAW_CFG,
+  scope: { include: ['docs/'], exclude: [] },
+  severity: { codespan: 'error' },
+  codeSpanIgnore: ['^docs/inbox/', 'YYYY'],
+  codespanWarnPaths: ['docs/tickets/'],
+}
+
+test('codespan을 error로 올리면 깨진 백틱 경로가 커밋을 막는다', () => {
+  const dir = makeRepo({ 'docs/a.md': `${FM}본문\n` }, STRICT_SPAN_CFG)
+  const r = staged(dir, (d) => writeFile(d, 'docs/a.md', `${FM}본문 \`docs/none.md\`\n`))
+  assert.equal(r.status, EXIT_VIOLATION, r.stderr)
+  assert.match(r.stderr, /\[오류\] 경로가 없습니다: docs\/none\.md/)
+})
+
+test('codeSpanIgnore에 걸리는 백틱 경로는 검사하지 않는다', () => {
+  const dir = makeRepo({ 'docs/a.md': `${FM}본문\n` }, STRICT_SPAN_CFG)
+  const r = staged(dir, (d) => writeFile(d, 'docs/a.md', `${FM}본문 \`docs/inbox/x.md\` \`docs/YYYY-Www.md\`\n`))
+  assert.equal(r.status, 0, r.stderr)
+})
+
+test('codespanWarnPaths 아래 문서는 깨진 백틱 경로도 경고만 한다', () => {
+  const dir = makeRepo({ 'docs/tickets/t.md': `본문\n` }, STRICT_SPAN_CFG)
+  const r = staged(dir, (d) => writeFile(d, 'docs/tickets/t.md', `본문 \`docs/none.md\`\n`))
+  assert.equal(r.status, 0, r.stderr)
+  assert.match(r.stderr, /\[경고\] 경로가 없습니다: docs\/none\.md/)
+})
+
 test('링크된 파일을 git mv 하면 차단, 참조 문서를 같은 커밋에서 고치면 통과', () => {
   const files = { 'docs/a.md': `${FM}[t](target.md)\n`, 'docs/target.md': `${FM}t\n`, 'docs/c/other.md': `${FM}o\n` }
   const dir = makeRepo(files)

@@ -57,6 +57,8 @@ export function normalizeConfig(cfg) {
     scope: { include: [], exclude: [], ...(cfg.scope ?? {}) },
     externalPrefixes: cfg.externalPrefixes ?? [],
     codeSpanRoots: cfg.codeSpanRoots ?? [],
+    codeSpanIgnore: cfg.codeSpanIgnore ?? [],
+    codespanWarnPaths: cfg.codespanWarnPaths ?? [],
     severity: { link: 'error', codespan: 'warn', unresolvable: 'warn', field: 'warn', ...(cfg.severity ?? {}) },
     fields: {
       required: ['type', 'description'],
@@ -174,6 +176,12 @@ export function cleanLinkTarget(raw) {
   return t
 }
 
+// 설정의 codeSpanIgnore(정규식 문자열 배열)에 걸리는 백틱 경로는 검사에서 뺀다.
+// 자리표시자·시크릿·예정 위치처럼 일부러 존재하지 않는 경로를 적는 경우를 위한 예외다.
+export function isCodeSpanIgnored(target, cfg) {
+  return (cfg.codeSpanIgnore ?? []).some((re) => new RegExp(re).test(target))
+}
+
 export function cleanCodeSpanPath(content, roots) {
   let t = content.trim()
   if (!roots.some((r) => t.startsWith(r))) return null
@@ -216,7 +224,7 @@ export function extractRefs(text, cfg) {
     }
     for (const span of spans) {
       const target = cleanCodeSpanPath(span, cfg.codeSpanRoots)
-      if (target) refs.push({ line: lineNo, kind: 'codespan', target })
+      if (target && !isCodeSpanIgnored(target, cfg)) refs.push({ line: lineNo, kind: 'codespan', target })
     }
   }
   return refs
@@ -419,7 +427,11 @@ function refProblem(file, ref, existence, cfg, via) {
     file,
     line: ref.line,
     kind: ref.kind,
-    severity: cfg.severity[ref.kind],
+    // 이력 문서(codespanWarnPaths, 예: 티켓)는 옛 경로 인용이 관례라 백틱 경로를 계속 경고로 둔다.
+    severity:
+      ref.kind === 'codespan' && (cfg.codespanWarnPaths ?? []).some((pre) => file.startsWith(pre))
+        ? 'warn'
+        : cfg.severity[ref.kind],
     message: `${msg}: ${ref.target}`,
     resolved,
   }
