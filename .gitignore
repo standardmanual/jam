@@ -8,8 +8,5 @@ skills-lock.json
 .env*
 # Supabase personal access token 하드코딩됨 — 절대 커밋 금지
 .mcp.json
-# 기획·운영 문서는 별도 저장소(standardmanual/jam-doc)를 이 자리에 중첩 복제해 쓴다 (티켓 20260918_2105).
-# 끝에 슬래시를 붙이지 않는다 — 격리 워크트리에는 폴더 대신 심볼릭 링크로 연결되는데, '/jam-doc/'은 링크를 무시하지 못한다.
-/jam-doc
 # jam-work 파이프라인이 만드는 격리 워크트리 산출물(아현·민지 작업 폴더). 커밋 대상 아님.
 /.claude/worktrees/

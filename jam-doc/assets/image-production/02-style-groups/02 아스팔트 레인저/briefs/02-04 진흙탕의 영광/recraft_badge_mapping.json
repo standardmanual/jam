@@ -1,0 +1,104 @@
+{
+  "collection_id": "02-04",
+  "items": [
+    {
+      "filename": "02-04_1_진흙덮인클릿슈즈.png",
+      "slug": "item-02-04-1",
+      "name": "진흙 덮인 클릿 슈즈",
+      "ids": [
+        "534fed5a-d388-44dd-a9d9-435936c2f893",
+        "533cc406-2497-4bfe-adc7-2dcb0157adf9",
+        "617c8e58-be7a-47ae-b925-e52d58800cf3",
+        "bbf0fae9-3cf6-4bee-9fec-523fa197b93a"
+      ]
+    },
+    {
+      "filename": "02-04_2_풀잎엉킨스프라켓.png",
+      "slug": "item-02-04-2",
+      "name": "풀잎 엉킨 스프라켓",
+      "ids": [
+        "0e9beb0c-c6d8-49d9-b7ff-fafd1d8dc809",
+        "55af95f1-31e3-47ea-b0d8-85ca1eb594d4",
+        "ae1e077d-0f1b-469a-a2a2-88f3c58fa581",
+        "429467f7-c16f-4ac5-88b3-620dfa1b9825"
+      ]
+    },
+    {
+      "filename": "02-04_3_나뭇가지꽂힌헬멧.png",
+      "slug": "item-02-04-3",
+      "name": "나뭇가지 꽂힌 헬멧",
+      "ids": [
+        "6b9cc59a-dd5d-4f09-8556-157dbca8acb1",
+        "0307e885-7b40-449d-b24f-4567e77f5fe3",
+        "a8418d39-ba38-4352-8652-4f759c58543f",
+        "cbfc09bc-3c4b-47d3-a347-871ba7c51a87"
+      ]
+    },
+    {
+      "filename": "02-04_4_흙투성이무릎보호대.png",
+      "slug": "item-02-04-4",
+      "name": "흙투성이 무릎 보호대",
+      "ids": [
+        "7aef9d10-10f7-415d-b216-a5faa2d71f5d",
+        "573221f9-d217-43d9-950a-0fae32b2e376",
+        "1452d807-d230-4db7-90aa-875ca5e8b837",
+        "307d61b0-4edb-4029-bbba-03e08362f6b2"
+      ]
+    },
+    {
+      "filename": "02-04_5_마른진흙가루.png",
+      "slug": "item-02-04-5",
+      "name": "마른 진흙 가루",
+      "ids": [
+        "53220472-402e-4cd7-8fef-9bf21e4e9fbe",
+        "18f8314f-e9eb-4b7e-8118-744f35dfcab3",
+        "6af99cbd-c020-4300-bc9d-104ddd509614",
+        "9ffaeed6-dd48-41a9-a452-cb2c8e91e521"
+      ]
+    },
+    {
+      "filename": "02-04_6_야생동물의털.png",
+      "slug": "item-02-04-6",
+      "name": "야생 동물의 털",
+      "ids": [
+        "bcc476ae-da4b-428e-a33d-d0e3ba80752d",
+        "f54ad07b-6514-44ec-bdbc-bfa793e149ef",
+        "223390d8-ae9c-469d-b56f-a9de8a432400",
+        "4c3e286f-2bb2-4ad9-9da6-5d4d5fd55586"
+      ]
+    },
+    {
+      "filename": "02-04_7_긁힌프레임도장.png",
+      "slug": "item-02-04-7",
+      "name": "긁힌 프레임 도장",
+      "ids": [
+        "30e2190d-257b-4783-9b6d-253795660410",
+        "73833188-f021-4414-8cab-bae0bf78ca49",
+        "1edf2a26-49f0-4925-a775-22b2e6fd6bfb",
+        "eb7ac6d9-7d1c-4065-ab16-963c6aa8bf6b"
+      ]
+    },
+    {
+      "filename": "02-04_8_세차장동전뭉치.png",
+      "slug": "item-02-04-8",
+      "name": "세차장 동전 뭉치",
+      "ids": [
+        "0999ce2f-25af-4ce2-8050-1e66a7d963f8",
+        "17e01ad8-5aac-453d-8813-7e34571894c1",
+        "5576fb38-e485-4ce7-9899-f1c00d917efc",
+        "b364b8cc-7dbb-40af-bb0b-d4ff3dd219a2"
+      ]
+    },
+    {
+      "filename": "02-04_9_흙맛나는땀방울.png",
+      "slug": "item-02-04-9",
+      "name": "흙 맛 나는 땀방울",
+      "ids": [
+        "d868533a-3294-452f-beec-17f94a204957",
+        "d83b138f-9be6-4f84-869f-2c3f27890a14",
+        "92fc0027-0ebf-4ed2-a954-c169afac31f4",
+        "c1b0f1ac-b94d-4bca-bf86-de8c49d4d763"
+      ]
+    }
+  ]
+}

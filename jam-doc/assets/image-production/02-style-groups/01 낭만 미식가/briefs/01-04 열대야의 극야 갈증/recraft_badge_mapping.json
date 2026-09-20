@@ -1,0 +1,77 @@
+{
+  "collection_id": "01-04",
+  "items": [
+    {
+      "filename": "item-01-04-1.png",
+      "slug": "item-01-04-1",
+      "name": "성에 낀 생맥주잔",
+      "ids": [
+        "13069000-6544-4c92-8d4d-2bac482cd50c"
+      ]
+    },
+    {
+      "filename": "item-01-04-2.png",
+      "slug": "item-01-04-2",
+      "name": "녹아내린 얼음 컵",
+      "ids": [
+        "2076b883-37b8-4ab6-be3a-2e81f6271d2c"
+      ]
+    },
+    {
+      "filename": "item-01-04-3.png",
+      "slug": "item-01-04-3",
+      "name": "수박바 막대기",
+      "ids": [
+        "f42c9682-8dc8-401f-86c1-8f5b53404d3d"
+      ]
+    },
+    {
+      "filename": "item-01-04-4.png",
+      "slug": "item-01-04-4",
+      "name": "포카리 페트병",
+      "ids": [
+        "2b21dc00-99da-4023-9861-ab5cbaf6546b"
+      ]
+    },
+    {
+      "filename": "item-01-04-5.png",
+      "slug": "item-01-04-5",
+      "name": "맺힌 이슬방울",
+      "ids": [
+        "a16821f5-1b65-4303-a25b-a4dad250361f"
+      ]
+    },
+    {
+      "filename": "item-01-04-6.png",
+      "slug": "item-01-04-6",
+      "name": "얼어붙은 생수통",
+      "ids": [
+        "9ea6b5c9-227e-4e8b-8fa0-bcf84b178644"
+      ]
+    },
+    {
+      "filename": "item-01-04-7.png",
+      "slug": "item-01-04-7",
+      "name": "쭈쭈바 꼭지",
+      "ids": [
+        "c0e1ddb1-cf8e-4de5-b1c9-6b9720a4f3a1"
+      ]
+    },
+    {
+      "filename": "item-01-04-8.png",
+      "slug": "item-01-04-8",
+      "name": "레몬 슬라이스",
+      "ids": [
+        "bef294e7-d2ce-411f-ac1a-dc33b6ee908d"
+      ]
+    },
+    {
+      "filename": "item-01-04-9.png",
+      "slug": "item-01-04-9",
+      "name": "바닥난 얼음틀",
+      "ids": [
+        "16fed937-2f96-4177-821c-40dad1355a90"
+      ]
+    }
+  ]
+}

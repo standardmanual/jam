@@ -1,0 +1,77 @@
+{
+  "collection_id": "01-03",
+  "items": [
+    {
+      "filename": "item-01-03-1.png",
+      "slug": "item-01-03-1",
+      "name": "삼각김밥 껍질",
+      "ids": [
+        "3dbcf0a5-a49b-41f8-a14a-74a203229f3f"
+      ]
+    },
+    {
+      "filename": "item-01-03-2.png",
+      "slug": "item-01-03-2",
+      "name": "전자레인지에 데운 핫바",
+      "ids": [
+        "be56370b-f160-4b1b-9415-59b173991597"
+      ]
+    },
+    {
+      "filename": "item-01-03-3.png",
+      "slug": "item-01-03-3",
+      "name": "바나나맛 우유 뚜껑",
+      "ids": [
+        "b4c2da9a-7a89-46fc-8676-3d65f60fbb97"
+      ]
+    },
+    {
+      "filename": "item-01-03-4.png",
+      "slug": "item-01-03-4",
+      "name": "차가운 도시락 용기",
+      "ids": [
+        "082d4810-5707-42e0-b4cc-235c1959426c"
+      ]
+    },
+    {
+      "filename": "item-01-03-5.png",
+      "slug": "item-01-03-5",
+      "name": "2+1 행사 바코드",
+      "ids": [
+        "667884e2-a877-48dd-a216-d41a214ab25c"
+      ]
+    },
+    {
+      "filename": "item-01-03-6.png",
+      "slug": "item-01-03-6",
+      "name": "구겨진 캔맥주",
+      "ids": [
+        "ca9bbdd1-1ac7-4608-b564-0df7dd95b42b"
+      ]
+    },
+    {
+      "filename": "item-01-03-7.png",
+      "slug": "item-01-03-7",
+      "name": "매운 컵라면 용기",
+      "ids": [
+        "2fb9833f-8266-433e-a9d1-d32787f53d2b"
+      ]
+    },
+    {
+      "filename": "item-01-03-8.png",
+      "slug": "item-01-03-8",
+      "name": "플라스틱 숟가락",
+      "ids": [
+        "73c6d98e-83a2-43c9-a524-fc3c31c80b09"
+      ]
+    },
+    {
+      "filename": "item-01-03-9.png",
+      "slug": "item-01-03-9",
+      "name": "검은 비닐봉지",
+      "ids": [
+        "ae350e6a-dd9d-4704-93d3-2cc74599fa97"
+      ]
+    }
+  ]
+}

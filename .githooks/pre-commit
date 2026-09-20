@@ -98,24 +98,62 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
       fi
     fi
 
-    # ③ 기획·운영 문서가 이 저장소로 되돌아오는 것을 막는다 (티켓 20260918_2105).
-    #   기획·마케팅·운영 자료와 제작 자산은 standardmanual/jam-doc(JAM!/jam-doc/)에 둔다.
-    #   옛 경로(Service Plan/·Asset/)가 다시 생기면 대개 경로를 갱신하지 못한 자동화나 스킬이다.
-    #   아카이브·서비스플랜·세계관 문서의 버전 사본 규칙은 jam-doc/.githooks/pre-commit 이 맡는다.
+    # ③ 옛 문서 경로가 되살아나는 것을 막는다 (티켓 20260918_2105).
+    #   코드 쪽 문서는 docs/(tickets·specs·agents)에, 기획·마케팅·운영 자료와 제작 자산은
+    #   jam-doc/ 폴더에 둔다. 옛 경로(Service Plan/·Asset/)가 다시 생기면 대개 경로를 갱신하지
+    #   못한 자동화나 스킬이다.
+    #
+    #   아래 ④⑤⑥은 원래 jam-doc이 별도 저장소였을 때 그쪽 pre-commit이 맡던 규칙이다.
+    #   저장소를 재통합하면서 경로 앞에 jam-doc/ 을 붙여 이리로 옮겨 왔다 (티켓 20260920_1412).
     case "$f" in
       "Service Plan/"*|"Asset/"*)
         if [ "$st" = "A" ]; then
           echo "차단(pre-commit): 옛 문서 경로에 파일을 추가하려 합니다." >&2
           echo "  파일: $f" >&2
           echo "  코드 쪽 문서는 docs/(tickets·specs·agents)에, 기획·마케팅·운영 자료는" >&2
-          echo "  jam-doc/ 저장소에 둡니다. 경로를 참조하는 자동화·스킬이 옛 경로를 쓰고 있지 않은지 확인하세요." >&2
+          echo "  jam-doc/ 폴더에 둡니다. 경로를 참조하는 자동화·스킬이 옛 경로를 쓰고 있지 않은지 확인하세요." >&2
+          doclint=1
+        fi
+        ;;
+
+      # ④ jam-doc/archive/ 는 읽기 전용 — 신규 파일 생성만 막는다 (git mv 이동은 R이라 통과한다)
+      "jam-doc/archive/"*)
+        if [ "$st" = "A" ]; then
+          echo "차단(pre-commit): jam-doc/archive/ 는 읽기 전용입니다 — 신규 파일을 만들 수 없습니다." >&2
+          echo "  파일: $f" >&2
+          echo "  기존 문서를 보관하려면 git mv 로 '이동'하세요 (이동은 통과합니다)." >&2
+          doclint=1
+        fi
+        ;;
+
+      # ⑤ 서비스플랜 버전 사본 차단 — 단일 파일을 직접 고치고, 이력은 git이 보관한다
+      "jam-doc/planning/business-plan/"*)
+        if [ "$st" = "A" ] && basename "$f" | grep -qE 'v[0-9]+\.[0-9]+'; then
+          echo "차단(pre-commit): 서비스플랜은 버전 사본을 만들지 않습니다." >&2
+          echo "  파일: $f" >&2
+          echo "  'jam-doc/planning/business-plan/02 JAM! 서비스 플랜.md' 를 직접 수정하세요." >&2
+          doclint=1
+        fi
+        ;;
+
+      # ⑥ 세계관 기준 문서(TRIBES) 버전 사본 차단 — 이력 폴더는 예외로 둔다.
+      #   인접 그래프가 드랍 확률에 쓰이므로 설정 변경 전 스냅샷은 남길 수 있게 하되,
+      #   판단 근거는 항상 현재본(TRIBES.md)이어야 한다 (티켓 20260918_0423).
+      "jam-doc/planning/content/tribes-history/"*)
+        ;;
+      "jam-doc/planning/content/TRIBES"*)
+        if [ "$st" = "A" ] && basename "$f" | grep -qE '(_[0-9]{8}|_?v[0-9]+\.[0-9]+)\.md$'; then
+          echo "차단(pre-commit): 세계관 기준 문서(TRIBES)는 버전 사본을 만들지 않습니다." >&2
+          echo "  파일: $f" >&2
+          echo "  현재본은 'jam-doc/planning/content/TRIBES.md' 하나로 유지하고," >&2
+          echo "  버전 이력이 필요하면 'jam-doc/planning/content/tribes-history/' 에 두세요." >&2
           doclint=1
         fi
         ;;
     esac
   done <<< "$staged"
 
-  # ④ 문서 링크·참조 검사 (티켓 20260919_1245, docs/specs/DOCUMENT_SCHEMA.md §5).
+  # ⑦ 문서 링크·참조 검사 (티켓 20260919_1245, docs/specs/DOCUMENT_SCHEMA.md §5).
   #    커밋에서 추가된 줄의 링크와, 삭제·이동된 파일을 가리키는 모든 문서를 검사한다.
   #    새로 깨지는 링크(마크다운 링크)는 차단하고, 백틱 경로·frontmatter는 경고만 한다.
   #    기존에 깨진 링크는 건드리지 않는다(추가된 줄만 보므로 기준선 목록이 없다).

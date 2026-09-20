@@ -34,7 +34,7 @@ JAM!/                          ← standardmanual/jam (Vercel에 배포되는 �
 │   ├── tickets/               ← 작업 이력 (신규 생성, 지식베이스로 계속 검색됨)
 │   ├── adr/                   ← 아키텍처 결정 기록
 │   └── agents/                ← 에이전트 팀 설계
-└── jam-doc/                   ← standardmanual/jam-doc (중첩 복제, jam 저장소는 무시)
+└── jam-doc/                   ← 기획·운영 문서 (같은 저장소의 폴더, 티켓 20260920_1412)
     ├── planning/content/      ← 배지·아이템북·트라이브·POI 정의
     ├── planning/business-plan/← 비전·장기 전략 (덮어쓰기)
     ├── marketing/             ← 마케팅 플레이북·브랜드 보이스·트렌드 노트

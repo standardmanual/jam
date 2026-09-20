@@ -197,8 +197,8 @@ node jam-web/scripts/recraft/register-badge-images.js "<컬렉션 폴더 절대�
 - 재업로드 시에도 이 스크립트가 자동으로 `?v=<timestamp>` 캐시버스팅 쿼리스트링을 붙인다
   (Vercel Image Optimization 엣지 캐시가 예전 이미지를 서빙하는 문제 방지).
 - 실행한 UPDATE문은 스크립트가 컬렉션 폴더에 `seed_{collection_id}_badge_images.sql`로 자동
-  저장 — 이 파일과 이미지 파일들은 문서 저장소에 있으므로 `jam-doc`에서 커밋하고
-  `git -C jam-doc push origin main`한다 (jam의 staging에는 커밋하지 않는다, 티켓 20260918_2105).
+  저장한다. 이 파일과 이미지 파일들은 `jam-doc/` 아래에 있지만 같은 저장소이므로 다른 변경과
+  함께 `git push origin staging` 한 번으로 올린다 (2026-09-20 재통합, 티켓 20260920_1412).
 - 컬렉션 대표 이미지(`item_books.image_url`)를 함께 갱신해야 하면(보통 등록이 끝난 컬렉션은
   첫 번째 아이템 이미지를 대표 이미지로도 반영하는 것이 기본 규칙) 별도 UPDATE 후 SQL로 기록한다.
 

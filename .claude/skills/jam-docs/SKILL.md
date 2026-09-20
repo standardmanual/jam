@@ -19,11 +19,10 @@ CLAUDE.md에는 "어느 카테고리에 해당하는지" 판단 기준만 있다
 
 하나의 변경이 여러 카테고리에 걸치면 **각 카테고리 문서를 모두** 갱신한다.
 
-**두 저장소 (2026-09-18, 티켓 20260918_2105).** ①②④는 코드 저장소(`standardmanual/jam`)의
-`docs/`에, ③⑤는 작업 폴더 안에 중첩 복제한 문서 저장소(`standardmanual/jam-doc`, 폴더 `jam-doc/`)에
-있다. `jam-doc/` 아래 파일을 고쳤다면 그 저장소에서 따로 커밋하고 `git -C jam-doc push origin main`한다.
-한 작업이 양쪽을 건드리면 두 커밋 메시지에 같은 티켓 번호를 적는다. 경로는 항상 작업 폴더 기준으로
-적는다(`docs/specs/prd/01_PRD.md`, `jam-doc/planning/content/TRIBES.md`). 폴더명은 영문 소문자다.
+**저장소는 하나다.** ①②④는 `docs/` 아래에, ③⑤는 `jam-doc/` 아래에 있지만 둘 다 같은 저장소
+(`standardmanual/jam`)에 속한다. 한 작업이 양쪽을 건드려도 커밋 하나·push 하나로 끝난다
+(2026-09-20 재통합, 티켓 20260920_1412). 경로는 항상 작업 폴더 기준으로 적는다
+(`docs/specs/prd/01_PRD.md`, `jam-doc/planning/content/TRIBES.md`). 폴더명은 영문 소문자다.
 
 ---
 

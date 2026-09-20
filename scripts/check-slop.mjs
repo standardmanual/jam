@@ -10,7 +10,7 @@
 // "안티 슬롭 구조 원칙"(서론 없는 본론 진입 등)과 "이모지 남발"은 문자열 매칭으로
 // 판단할 수 없어 이 스크립트의 대상이 아니다 — 한국어 리뷰·사람 검토가 담당한다.
 import { execSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 
 const DICT_PATH = 'docs/specs/SLOP_DICTIONARY.md'
 
@@ -88,15 +88,15 @@ function collectAddedLines() {
   execSync('git fetch origin staging --quiet', { stdio: 'ignore' })
   // pathspec으로 범위를 좁히면 이동 전 경로가 빠져 이름 변경을 감지하지 못하고, 옮긴 파일 전체가
   // '추가된 줄'로 잡힌다. 전체 diff로 이름 변경을 감지한 뒤 대상 경로는 여기서 거른다.
-  const inScope = (f) => f && (f.startsWith('jam-web/') || f.startsWith('docs/')) && !f.startsWith('docs/tickets/')
+  const inScope = (f) =>
+    f &&
+    (f.startsWith('jam-web/') || f.startsWith('docs/') || f.startsWith('jam-doc/')) &&
+    !f.startsWith('docs/tickets/') &&
+    !f.startsWith('jam-doc/archive/') &&
+    !f.startsWith('jam-doc/assets/')
   const added = parseAddedLines(execSync('git diff --find-renames origin/staging...HEAD', opts)).filter((a) =>
     inScope(a.file),
   )
-  // 격리 워크트리에는 jam-doc이 없다 — 있을 때만 검사한다.
-  if (existsSync('jam-doc/.git')) {
-    execSync('git -C jam-doc fetch origin main --quiet', { stdio: 'ignore' })
-    added.push(...parseAddedLines(execSync('git -C jam-doc diff origin/main...HEAD', opts), 'jam-doc/'))
-  }
   return added
 }
 

@@ -1,0 +1,77 @@
+{
+  "collection_id": "01-01",
+  "items": [
+    {
+      "filename": "item-01-01-1.png",
+      "slug": "item-01-01-1",
+      "name": "매콤달콤 떡볶이",
+      "ids": [
+        "848729b0-9acd-4aac-b0fb-ffd588373a74"
+      ]
+    },
+    {
+      "filename": "item-01-01-2.png",
+      "slug": "item-01-01-2",
+      "name": "한 입 베어문 핫도그",
+      "ids": [
+        "fd066b1c-acc6-4c03-83ea-bf39610a482c"
+      ]
+    },
+    {
+      "filename": "item-01-01-3.png",
+      "slug": "item-01-01-3",
+      "name": "황금 슈크림 붕어빵",
+      "ids": [
+        "7748c696-d219-40c9-bfb1-e2ca3c2bf3f8"
+      ]
+    },
+    {
+      "filename": "item-01-01-4.png",
+      "slug": "item-01-01-4",
+      "name": "반으로 갈라진 나무젓가락",
+      "ids": [
+        "3fdb8e3f-81bd-4ebb-bf0d-fc4e2201a501"
+      ]
+    },
+    {
+      "filename": "item-01-01-5.png",
+      "slug": "item-01-01-5",
+      "name": "기름 묻은 종이봉투",
+      "ids": [
+        "d88c2000-a743-4948-baee-c95d6dd2e7a9"
+      ]
+    },
+    {
+      "filename": "item-01-01-6.png",
+      "slug": "item-01-01-6",
+      "name": "식어버린 타코야끼",
+      "ids": [
+        "c8f9755b-bc16-4841-8e90-be02932375fb"
+      ]
+    },
+    {
+      "filename": "item-01-01-7.png",
+      "slug": "item-01-01-7",
+      "name": "바닥난 양념치킨 소스",
+      "ids": [
+        "fa216981-356e-4506-b1f6-f0121f5d046d"
+      ]
+    },
+    {
+      "filename": "item-01-01-8.png",
+      "slug": "item-01-01-8",
+      "name": "길거리 트럭 뻥튀기",
+      "ids": [
+        "78857d60-bd5a-426b-8ba0-e0d6ea76fe9b"
+      ]
+    },
+    {
+      "filename": "item-01-01-9.png",
+      "slug": "item-01-01-9",
+      "name": "마지막 남은 어묵 국물",
+      "ids": [
+        "052a5fa1-3a25-46db-80d5-99c564de3d03"
+      ]
+    }
+  ]
+}

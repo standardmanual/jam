@@ -202,8 +202,8 @@ const devResult = await agent(
   `파일도 읽기 전에, **첫 명령으로** \`git fetch origin staging && git checkout --detach ` +
   `origin/staging && scripts/workspace-setup.sh link "$(pwd)"\`를 실행하라(마지막 명령은 ` +
   `기존 워크트리의 jam-web/node_modules를 심볼릭 링크로 연결한다 — npm install을 다시 돌리지 ` +
-  `않는다. 같은 명령이 문서 저장소 jam-doc/도 메인 작업 폴더의 것으로 링크한다 — 읽기 전용이며, ` +
-  `고칠 내용은 문서 갱신안에만 적는다). 그 전에 본 파일 내용은 무효다. 브랜치는 그 뒤 정의의 5번 규칙대로 만든다.\n` +
+  `않는다). 기획·운영 문서 jam-doc/ 은 같은 저장소의 폴더라 워크트리에 그대로 따라오므로 ` +
+  `필요하면 직접 고쳐 커밋한다. 그 전에 본 파일 내용은 무효다. 브랜치는 그 뒤 정의의 5번 규칙대로 만든다.\n` +
   `${designDecisionText ? `\n채원 사전 판정(이대로 따를 것):\n${designDecisionText}\n` : ''}` +
   `${retryBranch ? `\n재시도다. 새 브랜치를 만들지 말고 기존 review 브랜치를 이어서 쓴다: ` +
     `\`git fetch origin ${retryBranch} && git checkout ${retryBranch}\`. 직전 시도가 남긴 낡은 ` +
