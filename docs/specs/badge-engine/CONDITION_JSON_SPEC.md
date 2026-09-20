@@ -10,7 +10,7 @@ code:
 # 배지 발급 조건 필드 전체 스펙 (`condition_json`)
 
 > 최초 생성: 2026-08-07  
-> 관련 문서: [BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) (엔진 평가 로직), [../Content/ACTIVITY_BADGES.md](ACTIVITY_BADGES.md) (배지 전체 목록)  
+> 관련 문서: [BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) (엔진 평가 로직), [../Content/ACTIVITY_BADGES.md](../../../jam-doc/planning/content/ACTIVITY_BADGES.md) (배지 전체 목록)  
 > DB 컬럼: `badges.condition_json` (JSONB)
 
 이 문서는 `condition_json`에 들어올 수 있는 **모든 필드의 타입·의미·평가 방식**을 정의하는 단일 출처(source of truth)이다.  
@@ -483,7 +483,7 @@ interface BadgeGateRequirement {
 | v5 신규 20종 — 잔여 2종 | ❌ 평가 미구현 — `daily_once_count`·`negative_split`. fail-closed로 막히므로 발급되지 않는다. 나머지 18종(휴식 4종·스칼라 7종·`weekly_streak`·`personal_record_break`·잔여 5종)은 평가가 구현됐다(티켓 20260905_0030 B3, 20260906_0110 ②, 20260906_2055, 20260908_1318) |
 | `personal_record_break`·`personal_record_break_metric` | ✅ 평가 구현됨 (2026-09-06, 티켓 20260906_2055 · 2026-09-08, 티켓 20260908_1438에서 페이스 방향 지원 추가) — `activityFilters.ts`의 `countPersonalRecordBreaks()`가 가입 시점 이후 활동에서 지표별 역대 최고 기록 갱신을 판정한다. **콘텐츠 값이 채워진 지표는 4종**(`single_distance_km`·`duration_minutes`·`max_elevation_m`·`max_pace_sec_per_km`) — 나머지 지표나 `personal_record_break_metric` 자체가 비어 있는 계열은 짝 필드 강제(`unpaired`) 또는 「미지원 지표」 가드로 계속 막힌다. `walking:B3/B4`·`running:R3`·`cycling:R2`(32종)는 티켓 20260908_1318에서, `cycling:R1`·`running:R1`·`running:R2`(24종, `running:R2`는 페이스 지표)는 티켓 20260908_1438에서 짝 필드를 채웠다 |
 | `distinct_time_bands`·`day_of_month`·`activities_within_hours`·`month_over_month_ratio`·`vs_personal_average` | ✅ 평가 구현됨 (2026-09-08, 티켓 20260908_1318) — §2.10 참조. `month_over_month_ratio`/`vs_personal_average`는 지표를 거리(km)로 고정 |
-| 스칼라 7종·`weekly_streak`의 **평가** | ✅ 구현됨 (2026-09-06, 티켓 20260906_0110 ②) — 원천 데이터는 그 전에(티켓 20260905_0029) `normalizeActivity`가 Strava Summary 응답에서 심박·파워·케이던스·최고속도·최고도달고도·경과시간을 읽어 `normalized`에 저장해 둔 상태였다. 조건 키 ↔ 정규화 필드 대응은 `CONDITION_ACTIVITY_FIELD`. 기존 활동은 `scripts/backfill-strava-extended-fields.ts`로 채운다 |
+| 스칼라 7종·`weekly_streak`의 **평가** | ✅ 구현됨 (2026-09-06, 티켓 20260906_0110 ②) — 원천 데이터는 그 전에(티켓 20260905_0029) `normalizeActivity`가 Strava Summary 응답에서 심박·파워·케이던스·최고속도·최고도달고도·경과시간을 읽어 `normalized`에 저장해 둔 상태였다. 조건 키 ↔ 정규화 필드 대응은 `CONDITION_ACTIVITY_FIELD`. 기존 활동은 `jam-web/scripts/backfill-strava-extended-fields.ts`로 채운다 |
 | 케이던스 단위 | ✅ 러닝·트레일러닝만 ×2 정규화(양발 합계 spm), 사이클은 rpm 그대로 — 저장 시점(신규 싱크+백필)에 적용(티켓 20260906_0110 ⑤). 기존 저장분은 마이그레이션 141로 재정규화 완료 |
 | `negative_split` (`splits_metric`) | ❌ **v5 1차 범위 밖** (티켓 20260905_0029 확정) — 상세 엔드포인트에만 있어 활동 1건당 호출 1회가 든다(백필 697회). 상한을 두면 배지가 비결정적이 되므로 별도 티켓으로 분리했다. `StravaDetailedActivity` 타입은 신설됐지만 **수집하지 않는다** |
 | `poi_id` badge-engine 평가 | ❌ 항상 fail — GPS 파이프라인 전용 |

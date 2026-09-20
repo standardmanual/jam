@@ -102,7 +102,7 @@ Strava 동기화 실패 기록(마이그레이션 176). `failure_type`(`token_re
 6필드(심박·파워·케이던스·최고속도·최고도달고도·경과시간)가 함께 저장되며, **측정값이 없으면
 키 자체가 없다**(`null`이 아니다 — 티켓 20260905_0029). 컬럼 변경은 없다(jsonb).
 확장 필드를 소급 채운 행은 `normalized.extendedBackfilledAt`(ISO 문자열)로 표시한다 — **`processed_via`는 덮어쓰지 않는다.** 그 값은 «이 행이 어떤 경로로 들어왔는가»이지 «나중에 무엇으로 채워졌는가»가 아니며, 덮어쓰면 유입 경로 이력이 사라진다
-(`scripts/backfill-strava-extended-fields.ts`). `'reconcile'`은 2026-08-10 이전 과거 데이터에만
+(`jam-web/scripts/backfill-strava-extended-fields.ts`). `'reconcile'`은 2026-08-10 이전 과거 데이터에만
 있고 신규 기록은 없다.
 
 ---
@@ -197,7 +197,7 @@ badges / item_books / tribes 세 테이블이 같은 배경 컬럼 세트를 갖
 계정 탈퇴로 FK가 비어도 스냅샷은 남는다. 계정 탈퇴 시 `Orphan` 이벤트는 앱 로직이 아니라
 `BEFORE DELETE ON public.users` 트리거(`log_orphan_custody_events()`)로 기록된다. 상세는
 [BadgeEngine 문서](../badge-engine/BADGE_ENGINE_UNIFIED.md) §3.5-1 참고. 어드민 조회 화면은
-별도 티켓([20260829_2139](../../tickets/20260829_2139_Admin_아이템배지-발급현황-이력조회-화면.md)).
+별도 티켓([20260829_2139](../../tickets/p2-normal/20260829_2139_Admin_아이템배지-발급현황-이력조회-화면.md)).
 
 ---
 
@@ -234,7 +234,7 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 ## 5. 트라이브 (tribe) — 신규 도메인
 
 ### tribes
-10개 트라이브. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [jam-doc/planning/content/TRIBES.md](../Content/TRIBES.md) 참고.
+10개 트라이브. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [jam-doc/planning/content/TRIBES.md](../../../jam-doc/planning/content/TRIBES.md) 참고.
 
 `background_color`/`background_shader_id`(20260818_004) 외에 `background_image_url`/`background_video_url`
 (nullable, 20260819_013), `background_animation`(jsonb nullable, 20260901_1944) 보유. 트라이브 자체는
@@ -263,7 +263,7 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 | osm_id | (구) OpenStreetMap 연동 흔적, 현재 신규 수집은 미사용 |
 | naver_id | **현재 T2 자동 수집 소스** — 네이버 지역검색 오픈API 연동 키 |
 | linked_badge_id | 연결된 체크인 배지(1:1). **배지가 소프트 삭제(`badges.deleted_at`)돼도 이 FK는 정리되지 않는다** — 배지를 삭제해도 POI 쪽 연결은 그대로 남는다. 화면에서 연결 배지 이름을 표시할 때는 반드시 `badges.deleted_at`도 함께 조회해 비활성화 여부를 구분해야 한다(누락 시 삭제된 배지 이름이 계속 노출되는 버그가 됨 — 20260830_1547) |
-| naver_category | **신규(2026-09-07, [20260907_1242](../../tickets/20260907_1242_Infra_POI-네이버원본분류검증게이트및-어드민검토큐.md))** — 네이버 지역검색 응답의 원본 분류 문자열(가공 없이 저장). 수동 등록(T1)은 NULL |
+| naver_category | **신규(2026-09-07, [20260907_1242](../../tickets/p2-normal/20260907_1242_Infra_POI-네이버원본분류검증게이트및-어드민검토큐.md))** — 네이버 지역검색 응답의 원본 분류 문자열(가공 없이 저장). 수동 등록(T1)은 NULL |
 | naver_keyword | 위와 동일 티켓 신규 — 이 POI를 찾은 실제 네이버 검색 키워드. 수동 등록(T1)은 NULL |
 | pending_review | 위와 동일 티켓 신규 — 수집 시 3단계 판정(자동승인/자동거부/검토대기) 중 "검토대기"로 저장된 행 표시. `is_active`(노출 여부)와는 분리된 개념 — 검토 대기 중에도 게이트 통과분과 동일하게 노출된다 |
 
@@ -280,10 +280,10 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 | 필드 | 운영 기준 |
 |------|------|
 | `pipeline_linked` | `true`인 카테고리만 자동 검색 대상으로 로드된다. `false`는 수동 등록 전용 |
-| `tier` | **2026-09-07([20260907_1243](../../tickets/20260907_1243_Infra_POI-카테고리체계-재정리-및-기존POI재분류.md))부터 파이프라인 연동 카테고리 전부 `1`로 통일** — 컬럼·코드의 `tier===1\|\|tier===2` 필터(`categories.ts`)는 남아있지만 `tier=2`인 행이 없어 사실상 전부 "매 요청마다 검색"으로 동작한다. `pipeline_linked=false`는 `tier=NULL` |
+| `tier` | **2026-09-07([20260907_1243](../../tickets/p2-normal/20260907_1243_Infra_POI-카테고리체계-재정리-및-기존POI재분류.md))부터 파이프라인 연동 카테고리 전부 `1`로 통일** — 컬럼·코드의 `tier===1\|\|tier===2` 필터(`categories.ts`)는 남아있지만 `tier=2`인 행이 없어 사실상 전부 "매 요청마다 검색"으로 동작한다. `pipeline_linked=false`는 `tier=NULL` |
 | `keywords` | **2026-09-07부터 `text[]`→`jsonb` 전환.** 각 원소 `{"keyword": string, "scope": "dong"\|"gu"\|"sido"}` — `scope`는 역지오코딩 결과(`{sido, gu, dong}`, `reverse-geocode.ts`) 중 이 키워드에 접두어로 붙일 지역 단위. 카테고리 하나 안에서도 키워드별로 다른 지역 단위를 쓸 수 있다(예: government의 주민센터=동, 구청=구, 시청=시도). **검색 결과의 카테고리는 그 키워드를 소유한 슬러그로 고정**되며, POI 이름은 판정에 쓰이지 않는다 |
 | `display_on_map` | **신규(2026-09-07)** — `false`면 자동수집은 계속하되 지도(드랍/픽업 화면)에는 노출하지 않는다. 노출 여부와 게이트 통과 여부(`pending_review`)는 서로 무관 — 검토 대기 중에도 `display_on_map`을 그대로 따른다 |
-| `requires_review` | **신규(2026-09-07, [20260907_1242](../../tickets/20260907_1242_Infra_POI-네이버원본분류검증게이트및-어드민검토큐.md))** — `true`면 수집 시 네이버 원본 분류를 카테고리별 allow/reject 패턴(`src/lib/poi/category-gate.ts`)과 대조해 자동거부(미저장)/자동승인/검토대기 3단계로 분기한다. 기본 `false`(기존처럼 무조건 저장). 검토대기분은 어드민 `/admin/poi/review`에서 승인·카테고리 변경·거부 처리. 거부된 POI는 삭제 대신 `unassigned`(미분류·거부됨) 홀딩 카테고리로 이관돼 보관된다(`pipeline_linked=false`라 재수집·재검토 큐 어느 쪽에도 다시 나타나지 않음) |
+| `requires_review` | **신규(2026-09-07, [20260907_1242](../../tickets/p2-normal/20260907_1242_Infra_POI-네이버원본분류검증게이트및-어드민검토큐.md))** — `true`면 수집 시 네이버 원본 분류를 카테고리별 allow/reject 패턴(`src/lib/poi/category-gate.ts`)과 대조해 자동거부(미저장)/자동승인/검토대기 3단계로 분기한다. 기본 `false`(기존처럼 무조건 저장). 검토대기분은 어드민 `/admin/poi/review`에서 승인·카테고리 변경·거부 처리. 거부된 POI는 삭제 대신 `unassigned`(미분류·거부됨) 홀딩 카테고리로 이관돼 보관된다(`pipeline_linked=false`라 재수집·재검토 큐 어느 쪽에도 다시 나타나지 않음) |
 
 > **카테고리를 새로 만들 때 주의**: `slug`는 `^[a-z][a-z0-9_]*$`만 허용(한글 불가, 라벨로 표기).
 > 배지 발급 근거가 되는 카테고리라면 `src/lib/poi/radius-policy.ts`의
@@ -307,7 +307,7 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 ### poi_drops
 | 필드 | 설명 |
 |------|------|
-| source | `'user'` 또는 `'system'`. 유저 드랍/앰비언트(시스템) 드랍을 구분한다. 2026-08-25~26에 앰비언트가 한 차례 제거됐다가([20260825_004](../../tickets/20260825_004_Feature_앰비언트-드랍-기능-제거.md)) 재도입됐다([20260826_009](../../tickets/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)) — 그 사이엔 전 행이 `'user'`였다 |
+| source | `'user'` 또는 `'system'`. 유저 드랍/앰비언트(시스템) 드랍을 구분한다. 2026-08-25~26에 앰비언트가 한 차례 제거됐다가([20260825_004](../../tickets/p1-high/20260825_004_Feature_앰비언트-드랍-기능-제거.md)) 재도입됐다([20260826_009](../../tickets/p1-high/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)) — 그 사이엔 전 행이 `'user'`였다 |
 | inventory_item_id | **신규(2026-08-29, 티켓 20260829_2101)** — 이 드랍이 가리키는 실제 개체(`inventory_items`). `source` 무관하게 항상 **이미 발급된** row를 참조한다(픽업은 소유권 이전일 뿐 재발급이 아니다). 마이그레이션 이전에 완료된(픽업 종료) 과거 드랍은 소급 연결되지 않아 NULL일 수 있다 |
 | badge_id | 조인 편의용 파생 컬럼 — 항상 `inventory_item_id`가 가리키는 개체의 `badge_id`와 일치(드리프트 없음). 정본은 `inventory_items.badge_id` |
 | expires_at | **2026-08-29부터 유저 드랍도 NULL(무기한 대기, 회수·만료 없음)** — 과거엔 30일 만료였으나 의도(유저 드랍은 기한 개념 없음)와 어긋나 바로잡았다. system 드랍도 여전히 NULL(만료 없음 — 상시 존재 전제, 한시 노출은 `badges.valid_from/valid_until`로 대체) |
@@ -388,14 +388,14 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 (그 시각 전후 즉시 배포 차단 창)로 예약 배포/즉시 배포 트리거의 상호 배제를 관리한다.
 `last_auto_run_on`(KST 날짜)은 매시 도는 cron이 하루 2회 배포하지 않도록 조건부 UPDATE로
 선점하는 **시스템 전용 필드**다 — 어드민 저장 경로에서 제외돼 있다(마이그레이션 137, 티켓
-[20260906_1206](../../tickets/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)).
+[20260906_1206](../../tickets/p1-high/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)).
 `batch_size`/`max_active_per_poi`는 3축에 속하지 않는 실행
 파라미터. 상세 로직은 [BadgeEngine 문서](../badge-engine/BADGE_ENGINE_UNIFIED.md) §3.12 참고.
 
 > **구 `ambient_drop_policy`(마이그레이션 044, 100에서 DROP)와는 스키마가 다르다.** 구 모델은
 > "활성 POI 수 × 커버리지 비율 → 부족분 보충"이라는 전역 목표치 모델이었고, 신규 모델은
 > 실행마다 3축을 골라 `batch_size`개를 그때그때 배치하는 배치 실행형이다 — 티켓
-> [20260826_009](../../tickets/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md).
+> [20260826_009](../../tickets/p1-high/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md).
 
 ---
 
@@ -417,7 +417,7 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 `fail_reward_points`(미매칭 시 지급할 고정 포인트) 하나만 남아 있다. 트라이브 다양성 티어
 확률 정책·피티 카운터(`user_combine_state`)는 2026-09-10 폐기됐다.
 
-> 조합 시스템은 v1(2026-07 초 계획) → v2(2026-07-27 재설계, "정석 레시피/재료 정확 매칭")로 갈아엎어짐. 현재 상세는 [jam-doc/planning/content/COMBINE_RECIPES.md](COMBINE_RECIPES.md) 참고.
+> 조합 시스템은 v1(2026-07 초 계획) → v2(2026-07-27 재설계, "정석 레시피/재료 정확 매칭")로 갈아엎어짐. 현재 상세는 [jam-doc/planning/content/COMBINE_RECIPES.md](../../../jam-doc/planning/content/COMBINE_RECIPES.md) 참고.
 
 ---
 
@@ -557,4 +557,4 @@ FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기
 - [x] `SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` 환경변수가 `.env.local`에는 있으나 코드에서 미사용 — **마이그레이션 미착수, 당장 불필요** (2026-08-07 코드 확인). `src/` 전체에서 두 키를 참조하는 코드 없음. 현재 클라이언트 초기화(`lib/supabase/server.ts`, `client.ts`)는 기존 JWT 키 체계(`NEXT_PUBLIC_SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE_KEY`)로만 작동. `.env.local`의 `sb_publishable_*`/`sb_secret_*` 값은 미사용 환경변수로만 남아 있으며 서비스에 영향 없음. Supabase가 JWT 키를 deprecated할 경우 클라이언트 라이브러리 업그레이드와 함께 마이그레이션 필요.
 - [x] `poi_categories.pipeline_linked`/`tier`/`keywords[]`의 정확한 운영 기준 문서화 (2026-08-24 위 표로 반영)
 - [ ] `user_activity_feed`의 공개 범위 정책 — 공개/비공개/팔로우 공개/전체공개 4단계 체계 **수립 예정** (2026-08-07). 현재 본인·타인 프로필 양쪽에서 동일 테이블을 사용하나 RLS·쿼리 레벨의 공개 범위 필터링이 미정의. 체계 확정 시 이 섹션 + [01_PRD.md](01_PRD.md) 동시 업데이트 필요.
-- [x] `wandering_mythic_state`(삭제된 테이블 — 옛 이름 그대로 표기)의 유저 대면 UI 완성도 — **기능 전면 제거로 해소** (2026-08-24, 티켓 [20260824_017](../../tickets/20260824_017_Infra_떠돌이신화-기능-전면제거.md)). 프로덕션 실사용 0건(배지·상태행·획득·인벤토리 전부)이 확인되어 UI를 구현하는 대신 `wandering_mythic_state` 테이블과 `badges.is_wandering` 컬럼, `/api/cron/wandering`을 제거했다.
+- [x] `wandering_mythic_state`(삭제된 테이블 — 옛 이름 그대로 표기)의 유저 대면 UI 완성도 — **기능 전면 제거로 해소** (2026-08-24, 티켓 [20260824_017](../../tickets/p2-normal/20260824_017_Infra_떠돌이신화-기능-전면제거.md)). 프로덕션 실사용 0건(배지·상태행·획득·인벤토리 전부)이 확인되어 UI를 구현하는 대신 `wandering_mythic_state` 테이블과 `badges.is_wandering` 컬럼, `/api/cron/wandering`을 제거했다.
