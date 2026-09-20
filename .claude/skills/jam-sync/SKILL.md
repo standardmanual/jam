@@ -52,7 +52,7 @@ git log --oneline origin/main..HEAD  # ② push하지 않은 커밋이 있는지
 
 ```bash
 cd "<repo>"
-rm -rf jam-doc                     # ③ 옛 복제본을 통째로 지운다 (원격 jam-doc 저장소는 그대로 남아 있다)
+rm -rf jam-doc                     # ③ 옛 복제본을 통째로 지운다
 git fetch origin staging
 git pull origin staging            # ④ 재통합된 jam-doc/ 이 여기서 새로 내려온다
 ls jam-doc/planning/content/TRIBES.md   # ⑤ 확인
