@@ -270,6 +270,42 @@ function checkStalePhrases(c) {
   }
 }
 
+// ── ⑩ 이 클론의 저장소 설정 ───────────────────────────────────────────────────
+// 다른 검사는 추적되는 파일을 대조하지만 이 검사는 저장소 설정의 실효값을 읽는다. 값이 비면
+// .githooks/pre-commit 자체가 돌지 않으므로 커밋 훅으로는 잡을 수 없다. 그 자리는 세션 시작
+// 스크립트(scripts/ensure-hooks-path.sh)와 verify.sh가 맡는다 (티켓 20260921_0841).
+function readGitConfig(key) {
+  try {
+    return execFileSync('git', ['config', '--get', key], {
+      cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    }).replace(/\n$/, '')
+  } catch (e) {
+    if (e.status === 1) return null   // 종료 코드 1 = 설정 없음
+    console.error(`check-contract: git config --get ${key} 를 실행하지 못했습니다 — ${e.message}`)
+    process.exit(2)
+  }
+}
+
+function checkGitConfig(c) {
+  const spec = c.git_config
+  if (!spec) return
+  for (const [key, want] of Object.entries(spec.values ?? {})) {
+    const actual = readGitConfig(key)
+    if (actual === want) continue
+    const fix = `git config ${key} ${want} 를 직접 실행하거나, 다음 Claude Code 세션이 시작될 때 scripts/ensure-hooks-path.sh가 자동으로 맞춥니다.`
+    const hooks = key === 'core.hooksPath'
+    if (actual === null || actual === '') {
+      violate('git_config', `${key}가 비어 있습니다 (선언 ${want})`,
+        `${hooks ? '이 클론에서는 pre-commit·pre-push가 돌지 않습니다. ' : ''}${fix}`)
+    } else if (path.isAbsolute(actual)) {
+      violate('git_config', `${key}가 절대경로입니다 (선언 ${want} · 실제 ${actual})`,
+        `${hooks ? '워크트리에서 커밋해도 이 경로에 있는 훅이 실행됩니다. 메인 체크아웃의 훅을 고치는 작업은 자기 커밋에 적용되지 않습니다. ' : ''}${fix}`)
+    } else {
+      violate('git_config', `${key}가 선언과 다릅니다 (선언 ${want} · 실제 ${actual})`, fix)
+    }
+  }
+}
+
 // ── 실행 ──────────────────────────────────────────────────────────────────────
 const contract = readContract()
 checkPathsExist(contract)
@@ -281,6 +317,7 @@ checkWorktreeIsolation(contract)
 checkWorktreeContains(contract)
 checkHooks(contract)
 checkStalePhrases(contract)
+checkGitConfig(contract)
 
 for (const n of notes) console.log(`참고: ${n}`)
 

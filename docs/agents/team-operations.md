@@ -220,6 +220,7 @@ tags: [워크플로]
 | `scripts/ticket-dashboard.mjs` | 열려 있는 티켓 현황판과 오케스트레이터 카드를 출력한다 |
 | `scripts/check-routine-reports.mjs` | 예정 시각이 지났는데 예약 리포트가 없으면 경고한다 |
 | `scripts/workspace-setup.sh` | staging에 머지된 격리 워크트리를 정리한다 |
+| `scripts/ensure-hooks-path.sh` | 이 클론의 core.hooksPath가 .githooks가 아니면 맞춘다 |
 <!-- END generated: session-hooks -->
 
 위 표는 `.claude/settings.json`의 `SessionStart` 훅에서 자동 생성된다. 무인 루틴이 실패했을 때

@@ -25,8 +25,10 @@
 ### 4. 로컬과 git을 항상 동일하게 유지
 - 작업 후 `git status`로 untracked·modified 파일이 없도록 처리
 - `.gitignore`에 새 항목 추가 금지 (예외: 토큰/시크릿 파일)
-- 이 저장소는 `.githooks/`를 hooks 경로로 쓴다. 새로 클론한 환경에서는 최초 1회
-  `git config core.hooksPath .githooks`를 실행해야 한다
+- 이 저장소는 `.githooks/`를 hooks 경로로 쓴다. Claude Code 세션이 시작될 때
+  `scripts/ensure-hooks-path.sh`가 `core.hooksPath`를 `.githooks`로 맞춘다. Claude Code를 거치지
+  않고 터미널에서 먼저 커밋하는 새 클론에서만 `git config core.hooksPath .githooks`를 손으로
+  실행해야 한다. 값이 어긋나 있으면 `scripts/verify.sh`의 계약 검사가 잡아낸다
 - **작업 폴더의 절대경로는 PC마다 다르다.** 특정 절대경로를 전제하지 않고, 현재 저장소가 열려
   있는 경로를 그대로 기준으로 삼는다 (PC별 경로·아이클라우드 주의사항은
   `docs/agents/orchestrator.md`)
