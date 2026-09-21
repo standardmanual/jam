@@ -1,0 +1,150 @@
+-- ============================================================
+-- Migration 179: slot_item_into_book() 완성 분모 예외 — 등록 배지가 전부 드랍 제외이면 등록 배지 전체를 센다
+--
+-- 티켓: 20260921_1142 (상위 20260914_1130, 직전 178)
+--
+-- 178의 정의에서 바뀐 곳은 "완성 체크" 두 쿼리(분모 v_total_badges, 분자 v_slotted_count)뿐이다.
+-- 시그니처·ON CONFLICT·ROW_COUNT 중복 방지·포인트 지급·REVOKE/GRANT는 178과 같다
+-- (파라미터를 바꾸면 오버로드가 생긴다 — DEV_PROCESS_GUARDRAILS 패턴 14).
+-- 이미 쌓인 완성 기록·보상은 건드리지 않는다.
+--
+-- 적용 후 확인 쿼리(읽기 전용 SELECT) — 함수가 하나이고 본문에 예외가 있는지:
+--   SELECT count(*), bool_or(pg_get_functiondef(oid) LIKE '%20260921_1142%')
+--   FROM pg_proc WHERE proname = 'slot_item_into_book';
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.slot_item_into_book(
+  p_user_id           UUID,
+  p_item_book_id      UUID,
+  p_inventory_item_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_inv              RECORD;
+  v_item             RECORD;
+  v_badge            RECORD;
+  v_slot             RECORD;
+  v_username         TEXT;
+  v_total_badges     INTEGER;
+  v_slotted_count    INTEGER;
+  v_reward_points    INTEGER;
+  v_newly_completed  INTEGER;
+BEGIN
+  SELECT * INTO v_inv FROM public.inventory WHERE user_id = p_user_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'inventory_not_found');
+  END IF;
+
+  SELECT * INTO v_item FROM public.inventory_items WHERE id = p_inventory_item_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'item_not_found');
+  END IF;
+
+  IF v_item.destroyed_at IS NOT NULL THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'item_not_found');
+  END IF;
+
+  -- 개체 정체성 모델(108)에서 "드랍됨"은 inventory_id가 NULL로 비는 것으로 표현된다.
+  -- NULL이면 현재 아무도 소유하지 않은(드랍된) 개체 — "본인 소유 아님"과는 구분해
+  -- 기존 409 "이미 드랍된 아이템입니다." 응답을 정확히 복원한다.
+  IF v_item.inventory_id IS NULL THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'already_dropped');
+  END IF;
+
+  IF v_item.inventory_id IS DISTINCT FROM v_inv.id THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'not_owner');
+  END IF;
+
+  IF v_item.slotted_in IS NOT NULL THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'already_slotted');
+  END IF;
+
+  SELECT id, item_book_id INTO v_badge FROM public.badges WHERE id = v_item.badge_id;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'badge_not_found');
+  END IF;
+
+  IF v_badge.item_book_id IS DISTINCT FROM p_item_book_id THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'wrong_item_book');
+  END IF;
+
+  BEGIN
+    INSERT INTO public.user_item_book_slots (user_id, item_book_id, badge_id, inventory_item_id)
+    VALUES (p_user_id, p_item_book_id, v_item.badge_id, p_inventory_item_id)
+    RETURNING * INTO v_slot;
+  EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'slot_insert_failed');
+  END;
+
+  UPDATE public.inventory_items SET slotted_in = v_slot.id WHERE id = p_inventory_item_id;
+
+  -- 아이템북에 들어간 아이템은 인벤토리 칸을 더 이상 차지하지 않음 — 칸 반환
+  UPDATE public.inventory SET used_slots = GREATEST(0, v_inv.used_slots - 1) WHERE id = v_inv.id;
+
+  SELECT username INTO v_username FROM public.users WHERE id = p_user_id;
+  INSERT INTO public.custody_events (inventory_item_id, event_type, actor_user_id, actor_username)
+  VALUES (p_inventory_item_id, 'Slot', p_user_id, v_username);
+
+  -- 완성 체크 (티켓 20260921_1111, 예외 20260921_1142): 분모는 드랍 제외 배지(drop_excluded = true)를 뺀
+  -- 배지 수, 분자는 슬롯 중 분모에 속한 배지만 센 수(교집합). 단, 제외가 아닌 배지가 0개이면
+  -- (등록 배지가 전부 드랍 제외) 제외 여부와 무관한 소프트 삭제되지 않은 배지 전체를 분모·분자 기준으로 쓴다.
+  -- 소프트 삭제 배지(deleted_at)는 기존대로 분모에서 제외한다(통일은 티켓 20260921_1114).
+  SELECT COUNT(*) INTO v_total_badges
+  FROM public.badges
+  WHERE item_book_id = p_item_book_id AND deleted_at IS NULL AND drop_excluded = false;
+
+  IF v_total_badges > 0 THEN
+    SELECT COUNT(DISTINCT s.badge_id) INTO v_slotted_count
+    FROM public.user_item_book_slots s
+    JOIN public.badges b ON b.id = s.badge_id
+    WHERE s.user_id = p_user_id AND s.item_book_id = p_item_book_id
+      AND b.item_book_id = p_item_book_id AND b.deleted_at IS NULL AND b.drop_excluded = false;
+  ELSE
+    SELECT COUNT(*) INTO v_total_badges
+    FROM public.badges
+    WHERE item_book_id = p_item_book_id AND deleted_at IS NULL;
+
+    SELECT COUNT(DISTINCT s.badge_id) INTO v_slotted_count
+    FROM public.user_item_book_slots s
+    JOIN public.badges b ON b.id = s.badge_id
+    WHERE s.user_id = p_user_id AND s.item_book_id = p_item_book_id
+      AND b.item_book_id = p_item_book_id AND b.deleted_at IS NULL;
+  END IF;
+
+  IF v_total_badges > 0 AND v_slotted_count >= v_total_badges THEN
+    INSERT INTO public.user_item_book_completions (user_id, item_book_id)
+    VALUES (p_user_id, p_item_book_id)
+    ON CONFLICT (user_id, item_book_id) DO NOTHING;
+
+    -- ON CONFLICT DO NOTHING이 실제로 새 행을 삽입한 경우(최초 완성)에만 지급한다.
+    -- 이미 완성돼 있던 컬렉션에 재슬롯 등으로 재진입해 아무 것도 삽입되지 않은 경우는
+    -- 중복 지급하지 않는다.
+    GET DIAGNOSTICS v_newly_completed = ROW_COUNT;
+
+    IF v_newly_completed > 0 THEN
+      SELECT reward_points INTO v_reward_points FROM public.item_books WHERE id = p_item_book_id;
+
+      IF v_reward_points IS NOT NULL AND v_reward_points > 0 THEN
+        PERFORM public.award_points(
+          p_user_id,
+          v_reward_points,
+          'item_book_completion_point_reward',
+          NULL,
+          NULL,
+          NULL,
+          NULL,
+          p_item_book_id
+        );
+      END IF;
+    END IF;
+  END IF;
+
+  RETURN jsonb_build_object('ok', TRUE, 'slot', to_jsonb(v_slot));
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.slot_item_into_book(uuid, uuid, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.slot_item_into_book(uuid, uuid, uuid) TO service_role;
