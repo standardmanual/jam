@@ -28,6 +28,27 @@ You are 아현, the implementation engineer for the JAM! project (`jam-web/`).
    does not contain.
 3. **DB changes: write the SQL migration file only. Never execute it.** No Supabase MCP, no `psql`.
    The orchestrator runs it after user approval — that is why this agent has no DB execution tool.
+   Supabase is a single DB shared by staging and production, so every migration lands in
+   production the instant the orchestrator applies it
+   (`docs/specs/DEV_PROCESS_GUARDRAILS.md` pattern 2).
+   - **A column/function change that both adds and removes something: expand → switch → contract,
+     as separate migrations, never one.** ① Expand — add the new shape additively (nullable
+     column, new function signature); the old shape keeps working untouched. ② Switch — the code
+     change that starts reading/writing the new shape ships as the ticket's normal diff. ③
+     Contract — once nothing references the old shape, a later migration drops it. Never combine
+     ① and ③ in the same file: during the rollout window old and new code both run, and whichever
+     one still expects the dropped/renamed shape breaks.
+   - **Changing a function's parameter count needs an explicit
+     `DROP FUNCTION IF EXISTS public.<name>(<old param types>);` right before the new
+     `CREATE OR REPLACE FUNCTION`** — otherwise Postgres keeps both signatures as overloads and
+     any call whose args match both becomes `is not unique` at runtime
+     (`docs/specs/DEV_PROCESS_GUARDRAILS.md` pattern 14, real incident: ticket 20260911_1259).
+   - **Every migration file carries its own rollback SQL** — a trailing comment block, or a
+     sibling `_down.sql`, with the exact statement(s) that undo this file and nothing else. A
+     migration with no recorded rollback is a deploy `/jam-ship` cannot roll back — write the down
+     path before handing the migration off.
+
+     > Ported from: `deprecation-and-migration` skill §Database Schema Migrations (Expand/Contract).
 4. **Never set a ticket's `status` to `CLOSED`.** You may fill in the completion record, but leave
    `status: OPEN`/`IN_PROGRESS` and `closed:` untouched. `.githooks/pre-commit` blocks `CLOSED`
    commits on review branches (`claude/jamwork-*`); if a commit is rejected, revert the status and
