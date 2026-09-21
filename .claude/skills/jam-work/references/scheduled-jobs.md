@@ -5,7 +5,7 @@
 > 한다. 등록 전에 반드시 1회 수동 실행한다(안건 2-3).
 >
 > **현재 상태: 두 작업 모두 켜짐** (2026-09-18 사용자 결정, 티켓 20260918_1156). 첫 자동 실행은 주간 2026-09-21 09:00 KST, 월간 2026-10-01 09:00 KST.
-> - 주간: 루틴 `trig_01Y7GEKLMq9f14WDocxmmaPb` · 월간: 루틴 `trig_016GQ8bA7HASY4uCHS1qrN9Y`
+> - 주간: 루틴 `trig_01DrqvaJccpp17ZBKyTgQgeX` · 월간: 루틴 `trig_01A4aC3MVkh72FtGCk97oLHK` (2026-09-21 저장소 재통합 반영으로 재생성, 티켓 20260920_1933)
 > - 환경 `jam-ops`(`env_01MKAxUHmjTbwAKrrUEb2zMe`): 네트워크 Custom(`j-a-m.app`·`stage.j-a-m.app`
 >   [2026-09-18 티켓 20260918_1650 시험 실행에서 스테이징 접속 차단 발견 후 추가], `the-edit.co.kr`·
 >   `maily.so`·`joomaltory.com`·`uppity.co.kr`·`www.openads.co.kr`·`buybrand.stibee.com`
@@ -19,34 +19,6 @@
 > 그대로 읽어 리포트 누락을 감지하므로, 1156에서 켜는 시점에 카리나가 이 값을 `켜짐`으로 고친다.
 
 ## 공통 원칙
-
-### ⚠️ 루틴 프롬프트의 `git -C jam-doc ...` 지시는 무효다 (2026-09-20)
-
-**무인 실행 중인 루틴이 이 절을 읽고 있다면, 아래 내용이 네 프롬프트보다 우선한다.**
-주간·월간 리포트 루틴의 프롬프트는 "규칙의 원본을 먼저 읽는다 ... 아래 지시와 충돌하면 이
-문서를 따른다"고 지시하고 있으므로, 충돌 시 이 절이 이긴다.
-
-2026-09-20에 문서 저장소 `standardmanual/jam-doc`을 코드 저장소 `standardmanual/jam` 안으로
-재통합했다(티켓 20260920_1412). `jam-doc/`은 이제 **이 저장소 안의 평범한 폴더**이며 독립
-저장소가 아니다. 루틴 프롬프트는 저장소 밖(claude.ai/code/routines)에 저장돼 있어 재통합
-때 함께 고쳐지지 못했고, 아직 옛 구조를 전제한 명령을 담고 있다.
-
-| 프롬프트에 적힌 낡은 지시 | 실제로 해야 할 것 |
-|---|---|
-| `git clone https://github.com/standardmanual/jam-doc.git jam-doc` | **아무것도 하지 않는다.** 폴더는 이미 체크아웃돼 있다 |
-| `git -C jam-doc pull origin main` | **실행하지 않는다.** `git pull origin staging` 하나로 끝났다 |
-| `git -C jam-doc add <파일>` | `git add <파일>` |
-| `git -C jam-doc commit -m "..."` | `git commit -m "..."` |
-| `git -C jam-doc push origin main` | `git push origin staging` |
-| Slack 링크 `github.com/standardmanual/jam-doc/blob/main/operations/...` | `github.com/standardmanual/jam/blob/staging/jam-doc/operations/...` |
-| "`jam` 저장소(staging)에는 리포트를 커밋하지 않는다" | **반대다.** 리포트는 staging에 커밋한다 |
-
-**`git -C jam-doc ...` 형태를 그대로 실행하면 안 되는 이유.** `jam-doc/`에는 `.git`이 없으므로
-git이 상위로 올라가 `jam` 저장소를 잡는다. 따라서 `git -C jam-doc push origin main`은 문서
-저장소가 아니라 **프로덕션 `main`에 push하려는 명령**이 되고, `.githooks/pre-push`가 이를
-차단한다. 리포트는 커밋됐는데 push만 실패하는 상태로 끝난다.
-
-리포트 경로 자체는 바뀌지 않았다(`jam-doc/operations/reports/...`). 저장소가 하나가 됐을 뿐이다.
 
 ### 무엇을 예약 실행하나 (안건 2·4-8)
 
@@ -201,7 +173,7 @@ staging 대기: N건
 5. **승인 없음(답장 없음·거절·메시지 자체를 못 찾음)** → main을 건드리지 않는다. "이번 주 배포
    보류"로 기록한다.
 6. 이번 실행 결과(대기 커밋 수·확인 메시지 존재 여부·승인 여부와 근거·배포 실행 여부·Vercel
-   검증 결과)를 `jam-doc/operations/reports/deploy/YYYY-MM-DD.md`에 기록하고 `jam-doc`의 `main`에 커밋·push한다.
+   검증 결과)를 `jam-doc/operations/reports/deploy/YYYY-MM-DD.md`에 기록하고 `staging`에 커밋·push한다.
 
 ### 배포 실행 (승인 + 스테이징 정상일 때만, `/jam-ship`의 1·3·4단계를 무인으로 그대로 수행)
 
@@ -231,7 +203,7 @@ git checkout staging
 | 상태 | 등록됨(꺼짐) — 1회 수동 실행으로 검증 후 사용자 승인 시 켠다 |
 
 > 등록 정보: 확인 루틴 `trig_01XKT6nNQC1tgftdtzkYhw9R`(cron `0 6 * * 4` = 목요일 15:00 KST),
-> 실행 루틴 `trig_01Ti3kXLMUcRutfBfuPu1M9i`(cron `59 14 * * 4` = 목요일 23:59 KST). 둘 다
+> 실행 루틴 `trig_01JRRY1cXt6uWGin8xbtS1Sk`(2026-09-21 재생성, cron `59 14 * * 4` = 목요일 23:59 KST). 둘 다
 > 환경 `jam-ops`, 커넥터 Slack만 붙임. 등록 시점(2026-09-18)에는 둘 다 `enabled: false` —
 > 아직 1회 수동 실행 검증 전이라 자동 실행되지 않는다.
 
