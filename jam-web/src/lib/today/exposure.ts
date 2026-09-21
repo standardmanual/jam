@@ -8,6 +8,7 @@
  * service_role 클라이언트 사용 (RLS 우회, 존재 여부만 LIMIT 1 로 확인).
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
 
 export type TimeOfDayTag =
   | 'time_dawn'
@@ -97,13 +98,15 @@ async function hasIncompleteItemBook(userId: string): Promise<boolean> {
   // 유저가 슬롯을 채우기 시작한 북들
   const { data: slotsRaw } = await supabase
     .from('user_item_book_slots')
-    .select('item_book_id')
+    .select('item_book_id, badge_id')
     .eq('user_id', userId)
-  const slotCountByBook = new Map<string, number>()
-  for (const s of (slotsRaw ?? []) as { item_book_id: string }[]) {
-    slotCountByBook.set(s.item_book_id, (slotCountByBook.get(s.item_book_id) ?? 0) + 1)
+  const filledBadgeIds = new Set<string>()
+  const startedSet = new Set<string>()
+  for (const s of (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]) {
+    filledBadgeIds.add(s.badge_id)
+    startedSet.add(s.item_book_id)
   }
-  const startedBookIds = [...slotCountByBook.keys()]
+  const startedBookIds = [...startedSet]
   if (startedBookIds.length === 0) return false
 
   // 이미 완성한 북 제외
@@ -117,23 +120,27 @@ async function hasIncompleteItemBook(userId: string): Promise<boolean> {
   const candidateBookIds = startedBookIds.filter((id) => !completedBooks.has(id))
   if (candidateBookIds.length === 0) return false
 
-  // 각 북의 전체 아이템 배지 수와 비교 → 슬롯 < 전체면 미완성
+  // 분모(드랍 제외 배지를 뺀 아이템 배지)와 채운 배지의 교집합을 비교 → 미완성 여부
   const { data: badgesRaw } = await supabase
     .from('badges')
-    .select('id, item_book_id')
+    .select('id, item_book_id, type, drop_excluded')
     .in('item_book_id', candidateBookIds)
     .eq('type', 'item')
     .is('deleted_at', null)
-  const totalByBook = new Map<string, number>()
-  for (const b of (badgesRaw ?? []) as { id: string; item_book_id: string | null }[]) {
-    if (!b.item_book_id) continue
-    totalByBook.set(b.item_book_id, (totalByBook.get(b.item_book_id) ?? 0) + 1)
-  }
 
+  return hasIncompleteBook(candidateBookIds, (badgesRaw ?? []) as CompletionBadgeInput[], filledBadgeIds)
+}
+
+/** 후보 북 중 분모가 있고 아직 다 채우지 못한 북이 있는지 (순수 함수 — 테스트 대상, 티켓 20260921_1113) */
+export function hasIncompleteBook(
+  candidateBookIds: string[],
+  badges: CompletionBadgeInput[],
+  filledBadgeIds: ReadonlySet<string>
+): boolean {
+  const completion = computeBookCompletion(badges, filledBadgeIds, { types: ['item'] })
   return candidateBookIds.some((bookId) => {
-    const total = totalByBook.get(bookId) ?? 0
-    const filled = slotCountByBook.get(bookId) ?? 0
-    return total > 0 && filled < total
+    const c = completion.get(bookId)
+    return !!c && c.total > 0 && !c.complete
   })
 }
 

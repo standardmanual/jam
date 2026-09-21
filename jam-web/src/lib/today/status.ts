@@ -13,6 +13,7 @@ import type { MissionCondition, MissionType } from '@/types/database'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
 import { d } from '@/lib/i18n'
 import { getDisplayName } from '@/lib/utils'
+import { computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
 
 // ─── 좌: 내 진행도 ──────────────────────────────────────────────────────
 
@@ -53,19 +54,21 @@ async function collectionCandidates(userId: string): Promise<ProgressCandidate[]
 
   const { data: slotsRaw } = await supabase
     .from('user_item_book_slots')
-    .select('item_book_id, slotted_at')
+    .select('item_book_id, badge_id, slotted_at')
     .eq('user_id', userId)
-  const slots = (slotsRaw ?? []) as { item_book_id: string; slotted_at: string }[]
+  const slots = (slotsRaw ?? []) as { item_book_id: string; badge_id: string; slotted_at: string }[]
   if (slots.length === 0) return []
 
-  const filledByBook = new Map<string, number>()
+  const filledBadgeIds = new Set<string>()
+  const startedSet = new Set<string>()
   const lastByBook = new Map<string, number>()
   for (const s of slots) {
-    filledByBook.set(s.item_book_id, (filledByBook.get(s.item_book_id) ?? 0) + 1)
+    filledBadgeIds.add(s.badge_id)
+    startedSet.add(s.item_book_id)
     const t = new Date(s.slotted_at).getTime()
     lastByBook.set(s.item_book_id, Math.max(lastByBook.get(s.item_book_id) ?? 0, t))
   }
-  const startedIds = [...filledByBook.keys()]
+  const startedIds = [...startedSet]
 
   const { data: compsRaw } = await supabase
     .from('user_item_book_completions')
@@ -91,25 +94,38 @@ async function collectionCandidates(userId: string): Promise<ProgressCandidate[]
 
   const { data: badgesRaw } = await supabase
     .from('badges')
-    .select('id, item_book_id')
+    .select('id, item_book_id, type, drop_excluded')
     .in('item_book_id', bookIds)
     .eq('type', 'item')
     .is('deleted_at', null)
-  const totalByBook = new Map<string, number>()
-  for (const b of (badgesRaw ?? []) as { id: string; item_book_id: string | null }[]) {
-    if (!b.item_book_id) continue
-    totalByBook.set(b.item_book_id, (totalByBook.get(b.item_book_id) ?? 0) + 1)
-  }
 
+  return buildCollectionProgress(
+    books,
+    (badgesRaw ?? []) as CompletionBadgeInput[],
+    filledBadgeIds,
+    lastByBook
+  )
+}
+
+/**
+ * 진행 중 컬렉션 후보 계산 (순수 함수 — 테스트 대상).
+ * 분모는 드랍 제외 배지를 뺀 집합, 분자는 분모와 채운 배지의 교집합이다 (티켓 20260921_1113).
+ */
+export function buildCollectionProgress(
+  books: { id: string; name: string }[],
+  badges: CompletionBadgeInput[],
+  filledBadgeIds: ReadonlySet<string>,
+  lastByBook: ReadonlyMap<string, number>
+): ProgressCandidate[] {
+  const completion = computeBookCompletion(badges, filledBadgeIds, { types: ['item'] })
   const result: ProgressCandidate[] = []
   for (const book of books) {
-    const total = totalByBook.get(book.id) ?? 0
-    const filled = filledByBook.get(book.id) ?? 0
-    if (total > 0 && filled < total) {
+    const c = completion.get(book.id)
+    if (c && c.total > 0 && !c.complete) {
       result.push({
         name: book.name,
-        current: filled,
-        total,
+        current: c.filled,
+        total: c.total,
         missionType: null,
         lastActivityAt: lastByBook.get(book.id) ?? 0,
         href: `/collections/${book.id}`,

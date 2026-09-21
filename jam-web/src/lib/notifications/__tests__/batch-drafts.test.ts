@@ -188,6 +188,35 @@ describe('#9 collection_slottable / #10 collection_near_complete / #11 collectio
     expectContract(drafts)
   })
 
+  it('드랍 제외 배지는 분모에서 뺀다 — 제외 배지만 남았으면 완성 임박·장착 가능 알림을 만들지 않는다', () => {
+    const drafts = selectCollectionDrafts({
+      books,
+      badgesByBook: new Map([
+        ['book-1', [badge('b1', '첫 조각'), badge('b2', '멈춘 초시계'), { ...badge('b3', '녹슨 열쇠'), drop_excluded: true }]],
+      ]),
+      stateByUser: new Map([
+        ['u1', { filledBadgeIds: new Set(['b1', 'b2']), unslottedBadgeObtainedAt: new Map([['b3', '2026-08-25T01:00:00Z']]) }],
+      ]),
+    })
+    // 분모 {b1,b2}를 모두 채웠으므로 이미 완성 — 제외 배지 b3로 알림이 나가면 안 된다
+    expect(drafts).toHaveLength(0)
+  })
+
+  it('드랍 제외 배지를 빼면 잔여 1칸이 되어 완성 임박이 나간다', () => {
+    const drafts = selectCollectionDrafts({
+      books,
+      badgesByBook: new Map([
+        ['book-1', [badge('b1', '첫 조각'), badge('b2', '멈춘 초시계'), { ...badge('b3', '녹슨 열쇠'), drop_excluded: true }, { ...badge('b4', '빈 병'), drop_excluded: true }]],
+      ]),
+      stateByUser: new Map([
+        ['u1', { filledBadgeIds: new Set(['b1']), unslottedBadgeObtainedAt: new Map() }],
+      ]),
+    })
+    const near = drafts.filter((d) => d.type === 'collection_near_complete')
+    expect(near).toHaveLength(1)
+    expect(near[0].payload).toMatchObject({ badge_name: '멈춘 초시계' })
+  })
+
   it('R11 — 같은 종류가 컬렉션 2건 이상이면 한 행으로 접고 목록으로 보낸다', () => {
     const twoBooks = [
       { id: 'book-1', name: '오아시스 자판기' },
