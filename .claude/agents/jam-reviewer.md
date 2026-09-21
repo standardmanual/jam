@@ -54,7 +54,8 @@ of change this is. The rest depend on `workType` (ticket 20260918_1158). Mark a 
 
 1. Mechanical checks — the commit's CI status is success (GitHub Actions `verify` check,
    `.github/workflows/verify.yml`, ticket 20260921_2304). A docs-only push gets this from the
-   light-check path (`check-slop`·`check-contract`·`gen-team-doc --check`, no `npm ci`); a push
+   light-check path (`check-slop`·`check-contract`·`gen-team-doc --check` and the `.claude/workflows/*.test.mjs`
+   pipeline entry-point tests, no `npm ci`); a push
    touching `jam-web`/`scripts`/`.githooks`/`.github` gets the full `scripts/verify.sh` run
 2. Spec match against the ticket's 상세 요구사항 and 완료 조건
    Completion conditions filed under a `후속 범위` heading with a named owner and timing belong to

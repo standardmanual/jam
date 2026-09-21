@@ -6,7 +6,8 @@ name: verify
 # 2026-09-22 사용자 결정. 1주 실측 후 사용량에 여유가 있으면 staging 추가를 검토한다.
 #
 # jam-web·scripts·.githooks·.github를 건드리지 않은 push(문서만 변경)는 npm ci를 건너뛰고,
-# 설치 없이 도는 검사(check-slop·check-contract·gen-team-doc --check)만 돈다. verify.sh는
+# 설치 없이 도는 검사(check-slop·check-contract·gen-team-doc --check와 .claude/workflows 진입점
+# 테스트)만 돈다. verify.sh는
 # JAM_SKIP_* 환경변수를 전혀 참조하지 않으므로 여기서 직접 실행하면 그 변수들은 항상 무시된다.
 on:
   push:
@@ -87,3 +88,6 @@ jobs:
           node scripts/check-slop.mjs
           node scripts/check-contract.mjs
           node scripts/gen-team-doc.mjs --check
+          # 파이프라인 진입점(.claude/workflows/jam-work.js)은 .claude/ 아래라 이 경로에서만 바뀐다 —
+          # 문법·프롬프트 조립이 깨져도 CI가 초록이던 사각지대를 막는다 (티켓 20260922_0207).
+          for t in .claude/workflows/*.test.mjs; do node "$t"; done

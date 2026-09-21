@@ -44,16 +44,17 @@ else
   rm -f "$LOG_PREFIX.slop"
 fi
 
-# 루트 scripts/*.test.mjs를 순서대로 실행한다 (티켓 20260919_1306). jam-web의 npm test는 이
-# 파일들을 보지 않아, doc-check처럼 모든 커밋에서 도는 훅의 엔진이 깨져도 드러나지 않았다.
-# 하나라도 실패하면 이 단계 전체가 실패한다.
+# 루트 scripts/*.test.mjs와 .claude/workflows/*.test.mjs를 순서대로 실행한다 (티켓 20260919_1306,
+# 20260922_0207). jam-web의 npm test는 이 파일들을 보지 않아, doc-check처럼 모든 커밋에서 도는
+# 훅의 엔진이나 파이프라인 진입점(jam-work.js)이 깨져도 드러나지 않았다. 하나라도 실패하면 이
+# 단계 전체가 실패한다.
 if ! (
   cd "$REPO_ROOT" || exit 1
   # push 훅 안에서는 git이 GIT_DIR 등을 물려주고, 임시 저장소에서 git init·config를 실행하는 테스트가
   # 그 값을 받으면 실제 저장소 설정에 쓴다(티켓 20260921_1116: core.bare·core.hooksPath·user 오염).
   for v in $(env | sed -n 's/^\(GIT_[A-Za-z_]*\)=.*/\1/p'); do unset "$v"; done
   rc=0
-  for t in scripts/*.test.mjs; do
+  for t in scripts/*.test.mjs .claude/workflows/*.test.mjs; do
     node "$t" || { echo "실패: $t"; rc=1; }
   done
   exit $rc

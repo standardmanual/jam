@@ -325,7 +325,7 @@ frontmatter 형식만 검사받으면서, 에이전트에게는 코드와 똑같
 **⑦ '통과했다'는 사실을 기계가 어디에도 남기지 않았다 (티켓 20260921_2207에서 발견, 20260921_2304에서 막았다).**
 CLOSED 59건 중 22건(37%)에서 민지가 `verify.sh`·테스트를 다시 돌렸다. push가 통과했다는 근거가
 재실행뿐이었기 때문이다. 지금은 GitHub Actions(`.github/workflows/verify.yml`)가 `claude/**`
-push에서 `scripts/verify.sh`(문서만 바뀐 push는 가벼운 검사만)를 훅 없이 직접 실행해 커밋
+push에서 `scripts/verify.sh`(문서만 바뀐 push는 가벼운 검사와 `.claude/workflows/*.test.mjs`만)를 훅 없이 직접 실행해 커밋
 상태(check)로 남긴다. 민지 점검표 1번은 이 상태를 읽는다. 실측(2026-09-22, 이 티켓의 구현
 커밋): 전체 검사 2분 20~40초대(`npm ci` 포함), 가벼운 검사(문서만 바뀐 push, `npm ci` 없음)
 18초. **남은 위험**은 `staging` push에는 아직 CI가 없다는 것(비공개 저장소의 Actions 무료

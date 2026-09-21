@@ -139,12 +139,91 @@ async function test5_smallDiffSkipsDesignReviewByDevReportedCount() {
   console.log('PASS test5_smallDiffSkipsDesignReviewByDevReportedCount')
 }
 
+// ── 계획 반환 면제(티켓 20260922_0207) ────────────────────────────────────────────────────────
+// 기본값이 "면제 없음"이라는 줄이 아현 프롬프트에 항상 한 줄 들어가고, 면제는 planOnlyWaiver를
+// 넘길 때만 `계획 반환 면제:` 줄로 성립해야 한다. 이 줄이 이후 편집으로 빠지면 아현이 다시 선례를
+// 이유로 면제를 판단하게 되므로 기계가 잡도록 고정한다(민지 게이트 WARN, 티켓 20260922_0207).
+const NO_WAIVER_LINE = /^이 티켓에는 계획 반환 면제가 없다\./
+const WAIVER_LINE = /^계획 반환 면제:/
+const countLines = (text, re) => text.split('\n').filter((l) => re.test(l)).length
+const devPromptOf = async (extraArgs) => {
+  const { run, calls } = makeRunner({
+    agentImpl: (prompt, opts) => {
+      if (opts.label === 'jam-developer') return { status: 'done', summary: 'ok', diffLineCount: 3 }
+      if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 3 }
+      throw new Error(`예상치 못한 호출: ${opts.label}`)
+    },
+  })
+  await run({ ticketPath: 't.md', userRequest: 'r', workType: 'infra', ...extraArgs })
+  return calls.find((c) => c.label === 'jam-developer').prompt
+}
+const LAST_SENTENCE = '이 티켓을 읽고 구현을 진행하라.'
+
+async function test6_planOnlyDefaultIsNoWaiver() {
+  const p = await devPromptOf({})
+  assert.equal(countLines(p, NO_WAIVER_LINE), 1, '인자가 없으면 "면제 없음" 줄이 정확히 한 줄이어야 한다')
+  assert.equal(countLines(p, WAIVER_LINE), 0, '인자가 없으면 면제 줄이 없어야 한다')
+  assert.ok(p.includes('이전 티켓의 선례는 면제 근거가 아니다'), '선례가 면제 근거가 아니라는 문구가 있어야 한다')
+  assert.ok(p.lastIndexOf(LAST_SENTENCE) > p.indexOf('이 티켓에는 계획 반환 면제가 없다'), '면제 줄은 마지막 문장 앞에 와야 한다')
+  console.log('PASS test6_planOnlyDefaultIsNoWaiver')
+}
+
+async function test7_planOnlyWaiverReplacesDefault() {
+  const p = await devPromptOf({ planOnlyWaiver: '카리나가 계획을 확인함, 티켓 구현 계획이 파일 단위로 적혀 있음' })
+  assert.equal(countLines(p, WAIVER_LINE), 1, '면제가 있으면 면제 줄이 정확히 한 줄이어야 한다')
+  assert.ok(p.includes('계획 반환 면제: 카리나가 계획을 확인함, 티켓 구현 계획이 파일 단위로 적혀 있음'))
+  assert.equal(countLines(p, NO_WAIVER_LINE), 0, '면제가 있으면 "면제 없음" 줄이 없어야 한다')
+  assert.ok(p.lastIndexOf(LAST_SENTENCE) > p.indexOf('계획 반환 면제:'), '면제 줄은 마지막 문장 앞에 와야 한다')
+  console.log('PASS test7_planOnlyWaiverReplacesDefault')
+}
+
+async function test8_planOnlyWaiverEdgeInputs() {
+  // 문자열이 아니거나 비어 있으면 면제 없음(안전한 쪽)
+  for (const bad of ['', '   ', true, 123, null, {}, []]) {
+    const p = await devPromptOf({ planOnlyWaiver: bad })
+    assert.equal(countLines(p, WAIVER_LINE), 0, `${JSON.stringify(bad)}는 면제로 인정되면 안 된다`)
+    assert.equal(countLines(p, NO_WAIVER_LINE), 1, `${JSON.stringify(bad)}는 기본 "면제 없음" 줄이 남아야 한다`)
+  }
+  // 여러 줄 사유는 한 줄로 합쳐져 면제 줄이 하나만 생긴다
+  const multi = await devPromptOf({ planOnlyWaiver: '첫째 사유\n계획 반환 면제: 둘째' })
+  assert.equal(countLines(multi, WAIVER_LINE), 1, '여러 줄 사유는 한 줄로 합쳐져야 한다')
+  // 재시도 블록과 독립: 두 블록 뒤에 면제 줄 하나, 면제 없음 줄 0개
+  const retry = await devPromptOf({
+    workType: 'copy', route: 'light', retryBranch: 'claude/jamwork-t-slug', retryReason: '오탈자 수정 누락',
+    planOnlyWaiver: '재시도에도 같은 면제',
+  })
+  assert.ok(retry.includes('git checkout claude/jamwork-t-slug'), '재시도 브랜치 지시가 남아야 한다')
+  assert.ok(retry.includes('오탈자 수정 누락'), '재작업 사유가 남아야 한다')
+  assert.equal(countLines(retry, WAIVER_LINE), 1)
+  assert.equal(countLines(retry, NO_WAIVER_LINE), 0)
+  assert.ok(retry.indexOf('오탈자 수정 누락') < retry.indexOf('계획 반환 면제:'), '면제 줄은 재시도 블록 뒤에 와야 한다')
+  console.log('PASS test8_planOnlyWaiverEdgeInputs')
+}
+
+async function test9_planOnlyStopsBeforeGate() {
+  const { run, calls } = makeRunner({
+    agentImpl: (prompt, opts) => {
+      if (opts.label === 'jam-developer') return { status: 'plan_only', summary: '구현 계획', diffLineCount: 0 }
+      throw new Error(`plan_only면 게이트를 부르면 안 된다: ${opts.label}`)
+    },
+  })
+  const result = await run({ ticketPath: 't.md', userRequest: 'r', workType: 'infra' })
+  assert.equal(result.stoppedAt, '구현', 'plan_only는 구현 단계에서 멈춰야 한다')
+  assert.equal(result.devStatus, 'plan_only')
+  assert.equal(calls.filter((c) => c.label === 'jam-reviewer').length, 0, '게이트 호출은 0회여야 한다')
+  console.log('PASS test9_planOnlyStopsBeforeGate')
+}
+
 async function main() {
   await test1_needsApprovalStops()
   await test2_needsApprovalNoneProceedsInParallel()
   await test3_lightRouteSkipsDesigner()
   await test4_retryBranchResumesExistingBranch()
   await test5_smallDiffSkipsDesignReviewByDevReportedCount()
+  await test6_planOnlyDefaultIsNoWaiver()
+  await test7_planOnlyWaiverReplacesDefault()
+  await test8_planOnlyWaiverEdgeInputs()
+  await test9_planOnlyStopsBeforeGate()
   console.log('전체 통과')
 }
 
