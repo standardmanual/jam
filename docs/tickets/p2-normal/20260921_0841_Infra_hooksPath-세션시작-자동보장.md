@@ -174,5 +174,5 @@ CLAUDE.md
 **범위 밖 발견물 처리.** 예약 루틴에서 훅이 처음 켜질 위험은 티켓 20260921_0901(P2), `~/` 값 과교정은 티켓 20260921_0923(P3)로 만들었다. 테스트가 `verify.sh`에 연결되지 않은 문제는 기존 티켓 20260919_1306이 다룬다.
 
 ### 잔여 이슈
-- **후속 확인(미완)**: 새 Claude Code 세션에서 `SessionStart`가 `ensure-hooks-path.sh`를 자동 실행하는지 확인해야 한다. 정상 상태에서는 출력이 없으므로 세션을 열기만 해서는 확인되지 않는다. 절차: 세션을 닫고 `git config --unset core.hooksPath`를 실행한 뒤 새 세션을 연다. 첫 출력에 `훅 경로를 .githooks 로 맞췄습니다 (이전 값: 없음)` 한 줄이 나오고 `git config core.hooksPath`가 `.githooks`이면 통과다. 값이 비어 있는 동안에는 커밋 훅이 돌지 않으므로 그 사이에 커밋하지 않는다.
+- **후속 확인(완료, 2026-09-21 밤)**: 새 Claude Code 세션의 첫 출력에 `훅 경로를 .githooks 로 맞췄습니다 (이전 값: 없음)` 한 줄이 나왔고, 직후 `git config core.hooksPath`가 `.githooks`였다. `SessionStart`가 `ensure-hooks-path.sh`를 자동 실행하는 것이 확인됐다(티켓 20260921_2303 착수 세션에서 확인).
 - Claude Code를 거치지 않고 터미널에서 먼저 커밋하는 새 클론은 첫 커밋에 훅이 돌지 않는다. 훅 기반 자동화로는 풀 수 없는 한계이며 `CLAUDE.md` 규칙 4에 명시했다.

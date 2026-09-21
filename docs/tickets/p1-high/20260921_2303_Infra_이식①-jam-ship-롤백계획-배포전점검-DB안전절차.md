@@ -2,7 +2,7 @@
 id: "20260921_2303"
 category: Infra
 priority: P1
-status: OPEN
+status: IN_PROGRESS
 created: 2026-09-21
 parent: "20260921_2219"
 ---
@@ -31,6 +31,11 @@ parent: "20260921_2219"
 5. **`db` 유형 규칙** (`deprecation-and-migration` expand/contract): 컬럼·함수 변경은 ① 새 것을 추가(확장) → ② 코드가 새 것을 쓰게 전환 → ③ 옛 것을 제거(축소)의 세 마이그레이션으로 나눈다. 한 마이그레이션에서 삭제와 추가를 함께 하지 않는다. 모든 마이그레이션 파일에 되돌림 SQL(주석 블록 또는 `_down.sql`)을 동반한다. 가드레일 패턴 2·14와 연결한다.
 6. **완료 기준(DoD)**: `definition-of-done.md`의 Ship-readiness 항목(보안 검토·관측·롤백 경로·사람 승인)을 `/jam-ship` 절차의 마지막 관문으로 넣는다.
 7. 문서에는 "무엇을 하는가"만 적고 이식 출처는 절 끝에 한 줄로 남긴다. 원본 스킬 전문을 복사해 넣지 않는다.
+8. **관련 문서 전수 갱신** (사용자 추가 지시, 2026-09-21 착수 직후): 구현이 게이트를 통과하면 `docs/`와 `jam-doc/` 안에서 배포 절차·롤백·DB 마이그레이션 규칙을 서술하는 현재 상태 문서를 새 내용에 맞춘다.
+   - 담당: 카리나(`docs` 유형으로 직접 처리). 시점은 review 브랜치를 staging에 머지한 뒤, push하기 전이다. 아현의 구현 범위(1~7번)에는 넣지 않는다.
+   - 방식: 같은 사실을 옮겨 적지 않는다. 절차의 단일 원천은 `/jam-ship` SKILL.md와 `jam-developer.md`로 두고, 다른 문서는 낡은 서술을 고치거나 단일 원천을 가리키게 바꾼다(`CLAUDE.md` 규칙 5).
+   - 확인 후보(2026-09-21 `grep`으로 추린 목록): `docs/agents/team-operations.md`, `docs/agents/orchestrator.md`, `docs/agents/issue-tracker.md`, `docs/specs/DEV_PROCESS_GUARDRAILS.md`, `docs/specs/SERVICE_OPERATIONS.md`, `docs/specs/prd/04_PROJECT_SPEC.md`, `docs/specs/prd/02_DATA_MODEL.md`, `docs/specs/prd/README.md`, `jam-doc/planning/business-plan/02 JAM! 서비스 플랜.md`, `CLAUDE.md`, `.claude/skills/jam-work/references/`의 `handling-rules.md`·`scheduled-jobs.md`·`team-composition.md`·`forms/weekly-briefing-format.md`·`forms/implementation-summary-format.md`.
+   - 제외: `docs/tickets/`(작업 이력), `jam-doc/archive/`(읽기 전용), `jam-doc/operations/reports/`(시점별 기록), `docs/agents/workflow/`(티켓 20260921_2311에서 기록으로 동결할 예정인 설계 원본).
 
 ## 구현 계획
 
@@ -47,6 +52,7 @@ parent: "20260921_2219"
 - `jam-developer.md`에 `db` 유형의 확장→전환→축소 규칙과 되돌림 SQL 동반 규칙이 있고, `/jam-work` 분기표 `db` 행이 그 규칙을 가리킨다.
 - 원본 스킬 항목 중 제외한 것이 「제외 목록」에 사유와 함께 적혀 있다.
 - `scripts/verify.sh`가 통과한다.
+- 요구사항 8번의 확인 후보를 전부 확인했고, 고친 문서와 고칠 필요가 없던 문서가 완료 기록에 나뉘어 적혀 있다.
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
