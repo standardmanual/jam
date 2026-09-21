@@ -50,7 +50,7 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
   (가드레일 패턴 8)
 - [ ] (해당 시) 새 API 라우트의 인증·인가 —
   `git -C "<repo>" diff --name-only --diff-filter=A origin/main..origin/staging -- ':(glob)jam-web/src/app/api/**/route.ts'`로
-  새 라우트를 뽑고, 파일마다 `grep -lE "auth\.getUser|@/lib/admin/auth|CRON_SECRET" <파일>`로 인증
+  새 라우트를 뽑고, 파일마다 `grep -lE "auth\.getUser|@/lib/admin/auth|CRON_SECRET|ADMIN_SECRET" <파일>`로 인증
   확인 호출이 있는지 본다. 하나도 없는 라우트는 의도한 공개 라우트인지 해당 티켓에서 근거를
   확인하고, 근거가 없으면 승격을 멈춘다.
 
