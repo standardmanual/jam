@@ -59,20 +59,94 @@ parent: "20260921_2219"
 
 ### 구현 내용 요약
 
+세 갈래로 진행했다. 아현의 구현(커밋 90903610)은 민지의 1차 게이트에서 WARN으로 통과했고, 카리나의 보완과 문서 갱신(커밋 6766c1b5·26e0fdac·7e8cc86e)은 민지의 2차 게이트에서 PASS로 통과했다. 2차 게이트 뒤에 두 건을 더 보완했다(아래 3번의 마지막 두 항목).
+
+1. **`/jam-ship` 재편 (아현)**: 5단계였던 절차를 9단계로 나눴다. 「3. 배포 전 점검표」(코드 품질·보안·성능·접근성·인프라·문서, 항목마다 확인 명령이나 방법 동반), 「4. 롤백 계획」(트리거·절차·목표 복구 시간·DB 고려. 비어 있으면 main 승격으로 진행하지 않는다), 「5. 완료 기준」(보안 검토·관측·롤백 경로·사람 승인), 「8. 배포 후 검증」(카리나가 배포 직후 확인하는 항목과 카즈하의 ① 실행 점검이 이어서 보는 항목의 경계)을 신설했고, 「9. 보고」에 롤백 계획 요약을 필수 항목으로 넣었다.
+2. **`db` 유형 규칙 (아현)**: `jam-developer.md` Hard rule 3에 확장→전환→축소 분리 규칙과 되돌림 SQL 동반 규칙을 넣고 가드레일 패턴 2·14와 연결했다. `/jam-work` 분기표의 `db` 행은 이 규칙을 단일 원천으로 가리킨다.
+3. **카리나 보완**:
+   - 롤백 절차의 "즉시 되돌린다"가 「하지 않는 것」의 "사용자 승인 없는 재배포·롤백"과 모순이어서, 승인을 받은 뒤 실행하는 것으로 통일했다. `scheduled-jobs.md` 「안전장치」 표의 서술과도 일치한다.
+   - 트리거 조건에서 기준선이 없는 "에러율 2배"를 빼고, 7·8단계에서 확인할 수 있는 조건으로 바꿨다.
+   - 「롤백 이후의 복구」를 추가했다. Vercel은 롤백 뒤에 프로덕션 도메인 자동 할당을 끄므로, 다음 배포는 `vercel promote`로 공개해야 한다(Vercel 문서 「Performing an Instant Rollback」으로 확인).
+   - 새 API 라우트의 인증·인가 점검 항목에 확인 명령을 붙였다(민지 1차의 범위 밖 발견물). 2차 게이트의 지적에 따라 패턴에 `ADMIN_SECRET`을 더했고, 전체 117개 라우트 중 패턴에 걸리지 않는 것은 3개(`dev-login`, `strava/callback`, `username/check`)임을 확인했다.
+   - 스테이징 주소를 정정했다. `jam-stage.vercel.app`은 404로 응답하고 실제 주소는 `stage.j-a-m.app`이다(2026-09-22 `curl` 확인). 스킬·에이전트 정의 3종·스크립트 주석·pre-push 안내문을 고치고 `contract.json`에 낡은 문구 검사를 추가했다.
+   - 「주간 무인 배포와의 관계」 절을 신설했다(민지 1차의 WARN 사유 대응).
+   - 원본의 이중 쓰기 → 백필 → 읽기 전환 순서와 대형 인덱스 생성 규칙(`CREATE INDEX CONCURRENTLY`)이 아현의 규칙에서 빠져 있어 `jam-developer.md` Hard rule 3에 보완했다(2차 게이트 이후).
+4. **요구사항 8번 문서 갱신 (카리나)**: 아래 「확인 후보 전수 결과」 참고.
+
+#### 이식 / 조정 / 제외
+
+| 원본 | 처리 | JAM 위치·사유 |
+|---|---|---|
+| `shipping-and-launch` §The Pre-Launch Checklist | 이식(조정) | `/jam-ship` 3단계. JAM에 장치가 없는 7건(번들 예산, Core Web Vitals 게이트, 전체 페이지 접근성 자동 검사, 헬스체크 엔드포인트, CDN 설정, 캐싱 설정, changelog)은 같은 절의 「제외 목록」에 사유와 함께 있다 |
+| §Rollback Strategy | 이식(조정) | 4단계. 승인 후 실행, 롤백 이후 복구 절차를 JAM 값으로 채웠다 |
+| §Post-Launch Verification | 이식(조정) | 8단계. 프로덕션은 구글 로그인이 필수라서 스테이징 자동 로그인 경로로 대신 확인한다 |
+| `definition-of-done.md` Ship-readiness | 이식 | 5단계 |
+| §Feature Flag Strategy·§Staged Rollout | 제외 | Vercel 프로덕션 alias가 하나뿐이라 트래픽을 나눠 배포할 수 없다(「하지 않는 것」) |
+| §Error Budget Release Gate | 보류 | 에러율 기준선이 없다. 카즈하의 지표 정상 범위(`loop-improvements.md` 항목 7)가 정해진 뒤 도입한다 |
+| §Monitoring and Observability(지표 트리·에러 리포팅 코드) | 이번 범위 밖 | 상위 티켓 20260921_2219의 이식 순서에서 뒤 단계로 분리돼 있다. 배포 직후 부분만 8단계에 반영했다 |
+| §Common Rationalizations·§Red Flags | 제외 | 설득용 서술이라 절차 문서에 넣지 않았다(요구사항 7번). 핵심은 규칙으로 흡수했다: 롤백 계획 없는 배포 금지, 추가와 삭제의 분리, 되돌림 SQL 선작성 |
+| §Verification의 "지연 시간 정상"·"팀 공지" | 미대응 | JAM 절차에 대응하는 항목이 없다. 잔여 이슈 참고 |
+| `deprecation-and-migration` §Database Schema Migrations (Expand/Contract) | 이식 | `jam-developer.md` Hard rule 3. 이중 쓰기·백필·대형 인덱스 규칙 포함 |
+| 같은 스킬의 나머지 절(폐기 결정 기준, 공지·이전 절차, Strangler·Adapter 패턴, 좀비 코드) | 이번 범위 밖 | 상위 티켓의 이식 지도에서 채택 대상은 Expand/Contract뿐이었다 |
+
+#### 요구사항 8번: 확인 후보 전수 결과
+
+고친 문서:
+- `.claude/skills/jam-work/references/scheduled-jobs.md`: 무인 배포가 `/jam-ship` 단계를 번호가 아니라 이름으로 가리키게 했고, 새 관문이 무인 경로에 아직 적용되지 않음을 명시했다.
+- `docs/specs/prd/04_PROJECT_SPEC.md`: 「배포 방법」의 `vercel --prod` 안내를 `/jam-ship` 절차로 교체했다. DB 규칙의 낡은 번호(080)를 지우고 확장→전환→축소 규칙을 연결했다.
+- `docs/agents/orchestrator.md`: DB 실행 전에 되돌림 SQL을 확인하는 항목을 넣고, 배포 확인 절차를 `/jam-ship` 7·8단계로 연결했다.
+- `docs/specs/DEV_PROCESS_GUARDRAILS.md`: 패턴 2·14에서 `jam-developer.md` Hard rule 3으로 연결했다.
+- `CLAUDE.md`: 규칙 3의 배포 절차 요약을 갱신하고, 규칙 6에 DB 안전 절차를 가리키는 한 줄을 넣었다.
+- `.claude/agents/jam-reviewer.md`: 점검표 8번이 되돌림 SQL 동반과 확장→전환→축소 분리를 확인한다.
+- `docs/agents/team-operations.md`: 알려진 빈틈 ⑥(배포 안전 관문이 사람이 있는 경로에만 적용)을 추가했다. §3 「머지와 배포의 경계」 표는 권한 경계만 다루므로 고치지 않았다(아현·민지 판단 일치).
+
+고칠 필요가 없던 문서(민지 2차 게이트가 대조 확인):
+- `docs/agents/issue-tracker.md`(`/jam-ship`을 이름으로만 가리킨다), `docs/specs/SERVICE_OPERATIONS.md`(기능별 롤백 서술뿐이다), `docs/specs/prd/02_DATA_MODEL.md`(테이블별 마이그레이션 번호 기록뿐이다), `docs/specs/prd/README.md`(해당 서술 없음), `jam-doc/planning/business-plan/02 JAM! 서비스 플랜.md`(서비스 이력 서술뿐이다), `.claude/skills/jam-work/references/`의 `handling-rules.md`(스테이징 주소가 이미 정확하다)·`team-composition.md`(스킬 이름 목록뿐이다)·`forms/weekly-briefing-format.md`(지표 서술뿐이다)·`forms/implementation-summary-format.md`(해당 서술 없음).
+
 ### 변경된 파일
 ```
--
+.claude/skills/jam-ship/SKILL.md
+.claude/agents/jam-developer.md
+.claude/agents/jam-reviewer.md
+.claude/agents/jam-ops.md
+.claude/skills/jam-work/SKILL.md
+.claude/skills/jam-work/references/scheduled-jobs.md
+.githooks/pre-push
+scripts/admin-api-read.mjs
+CLAUDE.md
+docs/agents/contract.json
+docs/agents/orchestrator.md
+docs/agents/team-operations.md
+docs/specs/DEV_PROCESS_GUARDRAILS.md
+docs/specs/prd/04_PROJECT_SPEC.md
+docs/tickets/ (후속 티켓 3건: 20260922_0001·0002·0003)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `scripts/verify.sh` 통과: 아현의 워크트리, 민지의 1차 재실행, 카리나의 격리 워크트리에서 각각 확인했다 (lint · typecheck · test · ds:check · slop · scripts-test · contract · team-doc)
+- [x] 민지 1차 게이트 WARN(재작업 없음), 2차 게이트(보완분 `90903610..7e8cc86e`) PASS
+- [x] 새 라우트 추출 명령(`:(glob)` 경로 지정)과 인증 확인 `grep`을 실제 저장소에서 실행해 동작을 확인했다
+- [x] `contract.json`의 낡은 문구 검사를 역검증했다: 옛 주소를 한 곳에 되살리면 검사가 막고, 복원하면 통과한다
+- [x] Vercel CLI 문법(`rollback`·`promote`·`env ls`·`inspect --logs`)은 `--help`로 확인했다. 실제 롤백은 실행하지 않았다
 
 ### 배포 정보
-- 배포일: 
-- 환경: staging (빌드 없음)
-- 커밋: 
+- 배포일: 2026-09-22
+- 환경: staging (빌드 없음. `jam-web/` 변경 0줄)
+- 커밋: 90903610(아현), 이어서 카리나의 후속 티켓 생성·`/jam-ship` 보완·문서 갱신·인증 패턴 보완·완료 기록 커밋 (해시는 `git log --grep 20260921_2303`으로 조회한다)
+
+### 워크플로 수치
+- Workflow(아현 → 민지 1차): 에이전트 2명, 전체 341,102토큰, 2,542초(약 42분), 도구 호출 130회. 출력 토큰은 jam-developer 117,006, gate 69,300
+- 민지 2차 게이트(카리나가 직접 호출): 143,532토큰, 693초(약 12분), 도구 호출 43회
 
 ### 주요 의사결정 / 핵심 메모
+- 롤백은 승인 후 실행으로 통일했다. 무인 경로의 "롤백하지 않는다"(티켓 20260918_1650에서 사용자가 승인한 정책)와 같은 원칙이다.
+- 주간 무인 배포에 새 관문을 적용하는 일은 이 티켓에서 하지 않고 후속 티켓으로 분리했다. 루틴 프롬프트가 저장소 밖에 있고, 무인 프로덕션 배포의 동작을 바꾸는 일이라 별도의 사용자 승인이 필요하기 때문이다. 무인 경로의 동작은 이 티켓 이전과 같다.
+- 요구사항 8번에서 `docs/agents/workflow/`는 제외했다. 티켓 20260921_2311이 그 폴더를 기록으로 동결할 예정이다.
+- 아현은 `plan_only` 기준(100줄 초과)에 해당하는 분량이었는데도 계획 반환 없이 구현을 끝냈다. 결과가 게이트를 통과했으므로 그대로 받았다.
 
 ### 잔여 이슈
--
+- 20260922_0001 (P1): 주간 무인 배포 경로에 새 관문을 어디까지 적용할지 정하고 루틴 프롬프트를 고친다. 첫 무인 실행(2026-09-24)에는 새 관문이 적용되지 않는다.
+- 20260922_0002 (P2): `vercel rollback`·`vercel promote` 실측 연습. 목표 복구 시간 "승인 후 5분 이내"는 실측 전의 목표값이다.
+- 20260922_0003 (P3): 티켓 완료 조건에 구현 범위와 후속 범위를 나눠 적는 양식 보완.
+- 오류 예산 게이트는 카즈하의 지표 정상 범위가 정해진 뒤에 도입한다.
+- 원본 §Verification의 "지연 시간 정상"과 "팀 공지"에 대응하는 JAM 항목이 없다. 지연 시간은 측정 기준을 정한 뒤에, 공지는 Slack 배포 리포트로 대신할지 정한 뒤에 다룬다.
