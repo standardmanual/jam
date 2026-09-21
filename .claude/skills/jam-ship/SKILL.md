@@ -105,16 +105,22 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
   롤백은 「하지 않는 것」에 해당한다). 승인되면 직전 Ready 배포 URL을
   `vercel ls --scope standard-manual`(7단계와 같은 명령)으로 확인한 뒤
   `NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel rollback <그 URL> --scope standard-manual`로
-  alias를 되돌린다. 새 커밋·재빌드 없이 되돌리므로 main에 `git revert`를 만들지 않는다. 되돌린
-  뒤 7단계를 다시 확인하고 롤백 사실과 원인을 보고한다.
+  alias를 되돌린다(확인 프롬프트가 없어 `--yes`는 필요 없다). 새 커밋·재빌드 없이 되돌리므로 main에
+  `git revert`를 만들지 않는다. 되돌린 뒤 7단계를 다시 확인하고(`node scripts/deploy-gate.mjs served`가
+  읽는 서빙 배포 id가 되돌린 배포의 id로 바뀌었는지 포함) 롤백 사실과 원인을 보고한다.
 - **롤백 이후의 복구**: Vercel은 롤백을 실행한 뒤 프로덕션 도메인 자동 할당을 끈다. 그 상태에서는
   main에 push한 새 배포가 Ready가 돼도 공개되지 않는다. 원인을 고친 새 배포를 공개할 때는
   `NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel promote <새 배포 URL> --scope standard-manual`로
   승격한다. 이 명령이 자동 할당도 다시 켠다. 되돌린 배포는 그 배포를 만들 때의 환경변수와 cron
-  설정으로 돌아간다는 점도 함께 보고한다(Vercel 문서 「Performing an Instant Rollback」).
-- **목표 복구 시간**: 코드는 롤백 승인 후 5분 이내(`vercel rollback`은 재빌드 없이 alias만
-  전환한다. 실측 전의 목표값이며 티켓 20260922_0002에서 실측한다) — DB는
-  되돌림 SQL이 있으면 사용자 승인 후 즉시, 없으면 원래 이번 배포에 포함하지 않았어야 한다.
+  설정으로 돌아간다는 점도 함께 보고한다(Vercel 문서 「Performing an Instant Rollback」). 승격 뒤
+  서빙 배포가 원래 배포로 돌아온 것은 스테이징 연습에서 확인했다. 다만 **자동 할당 플래그 자체는
+  CLI와 프로젝트 조회 어디에도 노출되지 않아 직접 확인하지 못했다**(문서 근거). 복구 뒤 처음 만드는
+  배포가 자동으로 공개되는지 7단계로 확인한다.
+- **목표 복구 시간**: 코드는 롤백 승인 후 1분 이내. 스테이징(`jam-stage`) 실측(2026-09-22, 티켓
+  20260922_0002)에서 `vercel rollback` 명령이 약 5초에 끝났고(npx 기동 0.7초 포함) 페이지가 서빙하는
+  배포는 명령이 끝난 지 1초 뒤에 바뀌었다. 복구(`vercel promote`)도 명령 약 5.6초에 반영 1.2초였다.
+  프로덕션 프로젝트는 실사용자가 있어 연습하지 않았고, 같은 팀의 같은 기능이라 같다고 본다.
+  DB는 되돌림 SQL이 있으면 사용자 승인 후 즉시, 없으면 원래 이번 배포에 포함하지 않았어야 한다.
 - **DB 고려**: Supabase는 staging·프로덕션 공용 단일 DB라 코드 롤백이 DB 변경을 되돌리지
   않는다. 이번 배포에 새 번호 마이그레이션이 있으면 되돌림 SQL이 동반돼 있는지는 3단계
   「보안」의 `node scripts/deploy-gate.mjs check`가 확인한다(`jam-developer.md`의 `db` 규칙과 같은

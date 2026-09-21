@@ -2,8 +2,9 @@
 id: "20260922_0002"
 category: Infra
 priority: P2
-status: WAITING
+status: CLOSED
 created: 2026-09-22
+closed: 2026-09-22
 parent: "20260921_2303"
 ---
 
@@ -74,20 +75,42 @@ parent: "20260921_2303"
 
 ### 구현 내용 요약
 
+사용자가 "스테이징 롤백 연습 허용"을 선택해(2026-09-22) 카리나가 `jam-stage`에서 롤백과 복구를 한 번씩 실행했다. 프로덕션은 건드리지 않았다. 처음 시도한 명령은 권한 분류기가 실행 전에 거부했고(포괄 지시만으로는 허용되지 않음), 사용자가 명시적으로 허용한 뒤에 실행했다.
+
+**실행한 명령과 실측(모두 07:1x KST, 입력을 닫고 `--yes` 없이 실행):**
+
+| 단계 | 결과 |
+|---|---|
+| 시작 상태 | 서빙 배포 `jam-stage-ctzo0ychm`(`dpl_62wZTFWQ49bFPEQAnXxMnTHLoBqi`), 직전 Ready 배포 `jam-stage-17bv3ohaf`(`dpl_B1EE3uHhHzTBjAkT7KnBE6x8AHeh`) |
+| `vercel rollback https://jam-stage-17bv3ohaf-standard-manual.vercel.app --scope standard-manual` | 종료 코드 0, **5.1초**(npx 기동 약 0.7초 포함, 서버 표시 `[2s]`). 확인 프롬프트 없음 |
+| 페이지가 서빙하는 배포 id(`?dpl=`)가 롤백 대상으로 바뀜 | 명령 종료 **1.0초** 뒤(명령 시작 6.1초 뒤) |
+| 롤백 상태 확인 | `vercel rollback status`가 "rolled back to …17bv3ohaf"를 보고, `vercel inspect https://stage.j-a-m.app`의 대상이 `dpl_B1EE…`로 바뀜 |
+| `vercel promote https://jam-stage-ctzo0ychm-standard-manual.vercel.app --scope standard-manual` | 종료 코드 0, **5.6초**(서버 표시 `[2s]`) |
+| 페이지가 서빙하는 배포 id가 원래 값으로 복구됨 | 명령 종료 **1.2초** 뒤(명령 시작 6.8초 뒤) |
+| 끝 상태 | 서빙 배포가 시작 상태와 같다(`dpl_62wZ…`) |
+
+롤백과 복구 사이의 서빙 배포 전환은 페이지 HTML의 `?dpl=` 값(티켓 20260922_0001에서 발견)으로 Vercel 화면 없이 확인했다.
+
 ### 변경된 파일
 ```
--
+.claude/skills/jam-ship/SKILL.md   (4단계 절차·복구·목표 복구 시간을 실측으로 갱신)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `jam-stage`에서 롤백과 복구를 한 번씩 실행했고 단계별 소요 시간과 끝 상태(시작 상태와 동일)를 기록했다
+- [x] 두 명령 모두 확인 프롬프트가 없어 비대화형 세션에서 `--yes` 없이 종료 코드 0으로 끝난다. 티켓의 열린 질문("`--yes` 필요 여부")이 해소됐다
+- [x] `/jam-ship` 4단계 문구를 실측으로 갱신했다(목표 복구 시간 1분 이내, `--yes` 불필요, 롤백 뒤 서빙 배포 id 확인)
+- [ ] **자동 할당 플래그의 복구는 직접 확인하지 못했다.** CLI(`vercel inspect`, `vercel rollback status`, `vercel project inspect`)와 Vercel MCP `get_project` 어디에도 이 값이 노출되지 않는다. 서빙 배포가 원래대로 돌아온 것만 확인했고, "승격이 자동 할당을 다시 켠다"는 Vercel 문서 서술에 기댄다
 
 ### 배포 정보
-- 배포일: 
-- 환경: staging (빌드 없음)
-- 커밋: 
+- 배포일: 2026-09-22
+- 환경: `jam-stage`(스테이징 프로젝트)에서 실행. 저장소는 문서만 변경(빌드 없음)
+- 커밋: `git log --grep 20260922_0002`
 
 ### 주요 의사결정 / 핵심 메모
+- 실행 대상을 프로덕션에서 스테이징으로 바꾼 이유는 실사용자 영향 회피와, 구체안을 보지 못한 사용자의 포괄 지시로는 프로덕션 조작 승인이 성립하지 않는다는 판단이다. 결과적으로 자동 모드 권한 분류기도 같은 판단이었다.
+- 프로덕션 프로젝트의 롤백 시간은 실측하지 않았다. 같은 팀의 같은 기능이라 같다고 본다.
+- 이 연습이 검증하지 못한 것: 롤백 상태에서 새로 push한 배포가 공개되지 않는다는 Vercel 문서의 서술(스테이징에 불필요한 빌드를 만들지 않으려고 시험하지 않았다), 자동 할당 플래그의 복구.
 
 ### 잔여 이슈
--
+- **다음 `jam-web` 변경이 스테이징에 배포될 때(또는 빌드 안전 규칙으로 빌드가 생길 때) 그 배포가 자동으로 공개되는지 확인한다.** 공개되지 않으면(`stage.j-a-m.app`의 `?dpl=` 값이 새 배포 id로 바뀌지 않으면) 자동 할당이 꺼진 상태이므로 `vercel promote <그 배포 URL>`로 다시 승격한다. 스테이징은 쿠키가 필요해 `deploy-gate served`가 실패하므로 확인은 `curl -sL -c jar -b jar https://stage.j-a-m.app/`로 한다(티켓 20260922_0653이 다룬다)
