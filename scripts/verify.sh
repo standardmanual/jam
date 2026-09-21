@@ -1,5 +1,5 @@
 #!/bin/bash
-# verify — lint 전체 + typecheck + test 전체 + ds:check + 슬롭/금칙어 검사를 한 번에 실행한다.
+# verify — lint 전체 + typecheck + test 전체 + ds:check + 슬롭/금칙어 검사 + 루트 scripts 테스트를 한 번에 실행한다.
 # (티켓 20260918_0421, 근거: JAM-WORK/05_자동화목록.md A1)
 #
 # 출력은 통과/실패와 실패 항목만 남긴다(20줄 이내). 단계별 전체 로그는 임시 파일에 남기고
@@ -44,6 +44,22 @@ else
   rm -f "$LOG_PREFIX.slop"
 fi
 
+# 루트 scripts/*.test.mjs를 순서대로 실행한다 (티켓 20260919_1306). jam-web의 npm test는 이
+# 파일들을 보지 않아, doc-check처럼 모든 커밋에서 도는 훅의 엔진이 깨져도 드러나지 않았다.
+# 하나라도 실패하면 이 단계 전체가 실패한다.
+if ! (
+  cd "$REPO_ROOT" || exit 1
+  rc=0
+  for t in scripts/*.test.mjs; do
+    node "$t" || { echo "실패: $t"; rc=1; }
+  done
+  exit $rc
+) >"$LOG_PREFIX.scripts-test" 2>&1; then
+  FAILED+=("scripts-test")
+else
+  rm -f "$LOG_PREFIX.scripts-test"
+fi
+
 # 문서가 환경에 대해 주장하는 사실을 실제와 대조한다 (티켓 20260920_1907).
 # 에이전트 정의·스킬 문서는 실행되지 않아 서술이 틀려도 아무 검사에 걸리지 않았다. 실제로
 # 규칙 9와 SKILL.md가 정면으로 모순된 채 방치됐고, 같은 드리프트가 하루 조사에서 네 건 나왔다.
@@ -62,7 +78,7 @@ else
 fi
 
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · ds:check · slop · contract · team-doc"
+  echo "verify 통과: lint · typecheck · test · ds:check · slop · scripts-test · contract · team-doc"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"

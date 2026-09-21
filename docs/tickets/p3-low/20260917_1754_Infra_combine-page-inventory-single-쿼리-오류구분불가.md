@@ -2,8 +2,9 @@
 id: 20260917_1754
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-17
+closed: 2026-09-21
 ---
 
 # [Infra] `/combine` page.tsx 인벤토리 조회 `.single()`이 무인벤토리와 쿼리 오류를 구분 못함
@@ -26,24 +27,28 @@ created: 2026-09-17
 2. 실제 DB 쿼리 오류가 발생하면 오류 로그가 남는다.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+`combine/page.tsx`의 인벤토리 조회를 `.single()`에서 `.maybeSingle()`로 바꿨다. 무인벤토리는 error 없이 data null로 오고, 실제 쿼리 오류만 error로 잡혀 `console.error`가 실제 오류일 때만 남는다. 주석과 로그 문구에서 「무인벤토리 포함」 표현을 없앴다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/app/(main)/combine/page.tsx
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `scripts/verify.sh` 전체 통과: lint · typecheck · test · ds:check · slop · scripts-test · contract · team-doc (42초)
+- [ ] 수용 기준 1·2(무인벤토리 접속 시 로그 없음, 실제 오류 시 로그 있음)는 로그인·DB가 필요한 화면이라 실렌더로 확인하지 않았다. `.maybeSingle()`의 반환 규약(0행이면 data null·error null)에 근거한다.
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-09-21 (staging, 경미 수정·문서 경로 — 카리나 직접 처리, 리뷰 브랜치 없음)
+- 환경: staging
+- 커밋: 정리 묶음 커밋(티켓 8건 한 커밋)
 
 ### 주요 의사결정 / 핵심 메모
+- `invRaw`는 이후 `as { id: string } | null`로 다뤄지고 있어 null 반환에 대한 후속 코드 변경은 필요 없었다.
+- 파일 1개·2줄 변경이고 원인과 수정이 명확해 jam-work 0.1절 경미 수정 경로로 처리했다.
 
 ### 잔여 이슈
--
+- 없음

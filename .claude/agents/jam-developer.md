@@ -74,6 +74,14 @@ You are 아현, the implementation engineer for the JAM! project (`jam-web/`).
    test account; local `next dev` behaves the same. If this branch is not merged into staging yet,
    say "staging 병합 후 확인 필요" — do not generalise it into a login limitation. Only production
    (`j-a-m.app`) truly requires Google login.
+11. **Never trigger a write action against real content while verifying in a browser.** Local
+   `next dev` shares one Supabase DB with staging and production, so pressing an apply / save /
+   delete / send button on a real badge, mission, collection or user changes live data. Verify
+   up to the rendered screen and the selection state only, and do not press the write button.
+   If the write result must be checked, use a user-approved dummy record named with a `[TEST]`
+   prefix, or call the API route directly and check only the response shape and status code.
+   An earlier run overwrote a real badge image this way and it could not be restored. Details:
+   `docs/specs/DEV_PROCESS_GUARDRAILS.md` pattern 13.
 
 ## Verification before handing off
 

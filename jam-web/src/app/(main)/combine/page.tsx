@@ -20,11 +20,11 @@ export default async function CombinePage() {
     { data: invRaw, error: invError },
     { data: recipesRaw, error: recipesError },
   ] = await Promise.all([
-    service.from('inventory').select('id').eq('user_id', user.id).single(),
+    service.from('inventory').select('id').eq('user_id', user.id).maybeSingle(),
     service.from('combination_recipes').select('*'),
   ])
-  // .single()이라 무인벤토리도 error로 잡힘 — 실제 오류와 구분은 못 하지만 최소 가시성 확보
-  if (invError) console.error('[combine/page] inventory 조회 실패(무인벤토리 포함)', invError)
+  // .maybeSingle()이라 무인벤토리는 error 없이 data null로 오고, 실제 쿼리 오류만 error로 잡힌다
+  if (invError) console.error('[combine/page] inventory 조회 실패', invError)
   if (recipesError) console.error('[combine/page] combination_recipes 조회 실패', recipesError)
 
   // 티켓 20260917_1427(비공개 레시피 스펙 아웃): 모든 레시피를 공개로 취급한다.

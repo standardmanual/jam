@@ -2,9 +2,9 @@
 id: 20260919_1306
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-19
-closed:
+closed: 2026-09-21
 ---
 
 # [Infra] verify.sh에 루트 scripts 테스트 실행 추가
@@ -51,28 +51,32 @@ closed:
 
 - 발견 경위 20260919_1245(T1)
 
+
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+`scripts/verify.sh`에 루트 `scripts/*.test.mjs`를 순서대로 실행하는 `scripts-test` 단계를 추가했다. 하나라도 실패하면 단계가 실패하고 로그에 실패한 파일 이름이 남는다. 통과 문구와 머리 주석에도 단계를 반영했다.
 
 ### 변경된 파일
 ```
--
+scripts/verify.sh
 ```
 
 ### 테스트 결과
-- [ ] 
-
-### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-- 사용자 노출 텍스트 없음 (내부 검사 스크립트)
+- [x] 루트 테스트 5개(`doc-check-hook`·`doc-check`·`ensure-hooks-path`·`ga4-weekly-metrics`·`ticket-dashboard`)가 모두 통과한다. 합계 약 16초
+- [x] `scripts/verify.sh` 전체 통과: lint · typecheck · test · ds:check · slop · scripts-test · contract · team-doc (42초)
+- [x] 일부러 실패하는 임시 테스트 파일을 두고 실행하면 `verify 실패: scripts-test`(종료 코드 1). 파일 제거 후 통과
+- 추가된 실행 시간: 약 16초 (verify 전체 42초 중)
 
 ### 배포 정보
-- 배포일: 
-- 환경: 
-- 커밋: 
+- 배포일: 2026-09-21 (staging, 경미 수정·문서 경로 — 카리나 직접 처리, 리뷰 브랜치 없음)
+- 환경: staging
+- 커밋: 정리 묶음 커밋(티켓 8건 한 커밋)
 
 ### 주요 의사결정 / 핵심 메모
+- **`pre-push`는 바꾸지 않았다.** `verify.sh`는 리뷰 브랜치(`claude/jamwork-*`) push에서만 호출되고 staging push에서는 호출되지 않는다(staging은 jam-web 변경 시 lint만 돈다). 그래서 문서·스크립트만 바뀐 staging push는 이 테스트를 돌리지 않는다.
+- 티켓은 테스트가 4개라고 적었으나 실제로는 5개다(`ensure-hooks-path.test.mjs` 추가분).
 
 ### 잔여 이슈
--
+- staging push에서도 루트 테스트를 돌릴지는 미결정이다. 필요하면 신규 티켓으로 진행한다.

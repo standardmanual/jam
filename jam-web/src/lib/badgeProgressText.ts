@@ -48,7 +48,7 @@ export const NEAR_THRESHOLD = DS_NEAR_THRESHOLD
  * 신규 패턴)에 완성 문자열/숫자만 넘기고, 그 컴포넌트는 kind를 모른다.
  */
 
-/** "진행 표시 준비 중" — §08 H, computeBadgeProgress가 'unsupported'를 반환할 때 공통으로 쓴다. */
+/** "진행률을 표시할 수 없어요" — §08 H, computeBadgeProgress가 'unsupported'를 반환할 때 공통으로 쓴다. */
 const UNSUPPORTED_TEXT = d.badges.progressUnsupported
 
 // ── 조건값 표기 (티켓 20260906_1323 §7·§9) ────────────────────────────────
@@ -101,7 +101,7 @@ function conditionFieldValueText(meta: AnyConditionFieldMeta, condition: BadgeCo
  * 않는 이유가 이것이다 — 그 함수는 filter·meta 역할 필드까지 전부 포함해 어드민 목록용으로 길다.
  *
  * measurable이 하나도 없으면(미션 보상·수동 발급 등) `null` — 호출부가 기존 폴백
- * (레일은 `'—'`, 캡션은 「진행 표시 준비 중」)으로 떨어진다.
+ * (레일은 `'—'`, 캡션은 「진행률을 표시할 수 없어요」)으로 떨어진다.
  */
 export function formatStopConditionValue(condition: BadgeCondition | null | undefined): string | null {
   if (!condition) return null
@@ -187,7 +187,7 @@ export type FrontierCaption = {
   /** true면 §08 H(진행 미지원) — 앰버/라임 상태색 대신 중립색으로 그린다 */
   muted?: boolean
   /**
-   * true면 텍스트가 **임시 상태 표기**(「진행 표시 준비 중」)다 — 기울임으로 그린다.
+   * true면 텍스트가 **임시 상태 표기**(「진행률을 표시할 수 없어요」)다 — 기울임으로 그린다.
    *
    * `muted`와 갈라 둔 이유(티켓 20260906_1323 §9): 진행을 계산할 수 없을 때 그 자리에
    * **획득 조건**을 적게 되면서, 「중립색으로 그린다」와 「임시 표기라 기울인다」가 더 이상
@@ -204,7 +204,7 @@ export type FrontierCaption = {
  * 기반 유형과 같게 계산되므로(`badgeProgress.ts` 참고) 레벨 접두어만 붙인다.
  *
  * `conditionText`(티켓 20260906_1323 §9) — 진행을 계산할 수 없을 때(`unsupported`) 그 자리에
- * 적을 **획득 조건**. 넘기지 않거나 조건도 만들 수 없으면 기존 「진행 표시 준비 중」이다.
+ * 적을 **획득 조건**. 넘기지 않거나 조건도 만들 수 없으면 기존 「진행률을 표시할 수 없어요」이다.
  */
 export function formatFrontierProgressText(
   progress: BadgeProgress,
@@ -272,7 +272,7 @@ export type GridCellCaption = {
   fraction: number
   /** 진행 미지원(§08 H) — 링을 중립색으로 */
   muted: boolean
-  /** text가 임시 상태 표기("진행 표시 준비 중")다 — 조건값·상태 라벨은 사실 표기라 false */
+  /** text가 임시 상태 표기("진행률을 표시할 수 없어요")다 — 조건값·상태 라벨은 사실 표기라 false */
   pending: boolean
   /** aria-label 조립용 — not-reached만 화면 라벨('—')과 다르다('아직') */
   statusAriaText: string
@@ -421,7 +421,7 @@ export function formatFamilyRowValues(
 
 /**
  * 반복형 계열 행(`BadgeStampRow`)의 보조 한 줄 — 「12/26회 · 14회 남음」.
- * 진행을 계산할 수 없으면 `conditionText`(획득 조건) → 없으면 「진행 표시 준비 중」이다
+ * 진행을 계산할 수 없으면 `conditionText`(획득 조건) → 없으면 「진행률을 표시할 수 없어요」이다
  * (티켓 20260906_1323 §9).
  */
 export function formatStampCaption(progress: BadgeProgress, conditionText?: string | null): string | null {
@@ -576,7 +576,7 @@ export function pickSyncComparisonCandidate(rows: FamilyProgressAxisSnapshot[]):
     const prevByKey = new Map(row.prev.map((axis) => [axis.key, axis]))
     for (const currentAxis of row.current) {
       // ⚠️ 휴식 축은 이 배너의 후보가 아니다.
-      //    이 문구는 「직전 동기화보다 {라벨} {델타} 가까워졌어요」 형태라, 휴식 축이 뽑히면
+      //    이 문구는 「지난번보다 {라벨} 기록이 {델타} 가까워졌어요」 형태라, 휴식 축이 뽑히면
       //    「복귀 전 휴식일 2일 가까워졌어요」가 되어 **서비스가 휴식을 재촉하는 모양**이 된다.
       //    티켓 20260905_0031이 확정한 「권유형 문구 금지」의 직접 위반이다(개선 리뷰 지적).
       //    진행 캡션(「휴식 2/5일」)은 중립적 상태 표기라 그대로 두고, 이 «권유형 문장»만 막는다.
@@ -596,7 +596,7 @@ export function pickSyncComparisonCandidate(rows: FamilyProgressAxisSnapshot[]):
 }
 
 /**
- * `pickSyncComparisonCandidate()` 결과를 "직전 동기화보다 {라벨} {델타}{단위} 가까워졌어요"
+ * `pickSyncComparisonCandidate()` 결과를 "지난번보다 {라벨} 기록이 {델타}{단위} 가까워졌어요"
  * 문장으로 조립한다. 라벨/단위는 스냅샷에 저장된 값이 아니라 호출부가 새로 조회한 labelMap을
  * 쓴다 — 저장 시점(sync.ts의 updateFamilyProgressSnapshots)엔 빈 Map을 넘겨 라벨이 원문
  * key로만 채워져 있다(티켓 20260904_1156 의사결정, 라벨을 나중에 고쳐도 과거 스냅샷 표시가
