@@ -2,7 +2,7 @@
 id: "20260922_0205"
 category: Infra
 priority: P2
-status: OPEN
+status: WAITING
 created: 2026-09-22
 parent: "20260921_2304"
 ---
@@ -12,7 +12,7 @@ parent: "20260921_2304"
 ## 핵심 요약
 
 - 요구사항: 리뷰 브랜치(`claude/**`)에만 켠 GitHub Actions `verify`의 1주 사용량을 집계하고, 무료 한도 안에서 staging push까지 넓힐 여유가 있는지 사용자에게 보고해 결정받는다.
-- 구현 계획: 2026-09-29 이후에 `gh run list --workflow verify.yml --created '>=2026-09-22' --json databaseId,conclusion,createdAt,updatedAt --limit 500`으로 실행 횟수·실행별 시간·경로(전체·가벼운 검사)를 집계한다. 월 환산 사용량과 staging을 추가했을 때의 예상치를 함께 보고한다.
+- 구현 계획: 2026-09-29 이후에 `gh run list --workflow verify.yml --created '>=2026-09-21T15:00:00Z' --json databaseId,conclusion,createdAt,startedAt,updatedAt,headBranch --limit 500`으로 실행 횟수·실행별 시간·경로(전체·가벼운 검사)를 집계한다. 월 환산 사용량과 staging을 추가했을 때의 예상치를 함께 보고한다.
 - 관련 파일: `.github/workflows/verify.yml`, `docs/agents/team-operations.md` §3, `jam-doc/planning/business-plan/02 JAM! 서비스 플랜.md` §8.2 16번
 - 상위 티켓: 20260921_2304(2026-09-22 사용자 결정: "1주 실측 후 여유가 있으면 staging을 추가한다"). 경로: 카리나 직접(research). staging 추가를 결정하면 별도 infra 티켓으로 구현한다.
 
@@ -27,6 +27,12 @@ parent: "20260921_2304"
 1. 7일간의 실행 횟수, 전체 검사와 가벼운 검사의 횟수와 평균 시간, 취소된 실행 수를 집계한다.
 2. 월 환산 사용량을 계산하고, staging push(하루 push 수는 `git log origin/staging`의 push 단위가 아니므로 티켓 종료 수로 근사한다)를 추가했을 때의 예상치를 함께 낸다.
 3. 결제 설정(요금제·결제 수단)은 `gh` 권한으로 조회되지 않으므로 사용자에게 확인을 요청한다.
+
+## 사전 확인 (카리나, 2026-09-22)
+
+- **지금은 실행할 수 없다.** 1주 실측이 목적이라 2026-09-29(화) 이후에야 집계할 수 있어 상태를 `WAITING`으로 둔다(사용자 지시 "모두 실행"에도 시간 조건은 앞당길 수 없다).
+- 미리 명령을 검증했다. GitHub의 날짜 필터는 UTC 기준이라 원문의 `>=2026-09-22`는 09-22 00:00~09:00 KST에 실행된 건을 놓친다. 09-22 00:00 KST는 `2026-09-21T15:00:00Z`이므로 이 값으로 고쳤다(고친 명령이 2304 실측 5건을 정상 조회했다). 소요 시간은 `updatedAt - startedAt`으로 계산한다.
+- 기준선: 2304 실측 5건의 합계는 471초(7분 51초)이고 1분 단위로 올림하면 11분이다. 리뷰 브랜치 실험 실행이라 운영 사용량으로는 세지 않는다.
 
 ## 구현 계획
 

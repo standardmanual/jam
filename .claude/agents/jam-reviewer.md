@@ -57,6 +57,9 @@ of change this is. The rest depend on `workType` (ticket 20260918_1158). Mark a 
    light-check path (`check-slop`·`check-contract`·`gen-team-doc --check`, no `npm ci`); a push
    touching `jam-web`/`scripts`/`.githooks`/`.github` gets the full `scripts/verify.sh` run
 2. Spec match against the ticket's 상세 요구사항 and 완료 조건
+   Completion conditions filed under a `후속 범위` heading with a named owner and timing belong to
+   that owner (usually the orchestrator, after the merge). Do not judge them and do not report
+   them as unmet; judge only the `구현 범위` conditions (ticket 20260922_0003).
 3. Regression risk in code sharing the same pipeline (badge engine, drop engine, sync)
 4. Test adequacy — logic changed, so is there a test
 5. Scope creep — anything changed that the ticket did not ask for
