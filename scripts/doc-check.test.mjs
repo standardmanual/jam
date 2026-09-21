@@ -218,8 +218,13 @@ test('설정 오류는 예외로 알린다', () => {
 
 const tmpDirs = []
 
+// 훅(pre-push → verify.sh) 안에서 이 테스트가 돌면 git이 GIT_DIR 등을 물려준다. 임시 저장소에서 실행하는
+// git 명령이 그 값을 받으면 임시 저장소가 아니라 실제 저장소 설정에 쓰므로(티켓 20260921_1116 사고: core.bare,
+// core.hooksPath, user.name 오염) 물려받은 GIT_*는 버린다. 호출부가 넘긴 env는 그대로 쓴다.
+const inheritedEnv = () => Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')))
+
 function run(cmd, args, cwd, env = {}) {
-  return spawnSync(cmd, args, { cwd, encoding: 'utf8', env: { ...process.env, ...env } })
+  return spawnSync(cmd, args, { cwd, encoding: 'utf8', env: { ...inheritedEnv(), ...env } })
 }
 
 function makeRepo(files, config = RAW_CFG) {
