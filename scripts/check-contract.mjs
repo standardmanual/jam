@@ -270,6 +270,77 @@ function checkStalePhrases(c) {
   }
 }
 
+// ── ⑩ 이 클론의 저장소 설정 ───────────────────────────────────────────────────
+// 다른 검사는 추적되는 파일을 대조하지만 이 검사는 저장소 설정의 실효값을 읽는다. 값이 비면
+// .githooks/pre-commit 자체가 돌지 않으므로 커밋 훅으로는 잡을 수 없다. 그 자리는 세션 시작
+// 스크립트(scripts/ensure-hooks-path.sh)와 verify.sh가 맡는다 (티켓 20260921_0841).
+function readGitConfig(key) {
+  try {
+    return execFileSync('git', ['config', '--get', key], {
+      cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    }).replace(/\n$/, '')
+  } catch (e) {
+    if (e.status === 1) return null   // 종료 코드 1 = 설정 없음
+    console.error(`check-contract: git config --get ${key} 를 실행하지 못했습니다 — ${e.message}`)
+    process.exit(2)
+  }
+}
+
+// core.hooksPath처럼 값이 경로인 키의 정상 판정 (scripts/ensure-hooks-path.sh 의
+// resolves_to_repo_hooks 와 같은 규칙이다). 값이 비어 있지 않고, 존재하는 디렉터리이며, 현재
+// 워크트리 루트 또는 메인 체크아웃 루트(git 공용 디렉터리의 상위)의 선언 경로(want)와 같은 곳이면
+// 참이다. 상대경로는 현재 워크트리 루트 기준으로 풀고 절대경로는 그대로 쓴다. 상대·절대 형식은
+// 따지지 않는다.
+// "같은 곳"은 경로 문자열이 아니라 디바이스·아이노드로 가린다. 한글 폴더명이 든 경로는 설정에는
+// NFC로, git이 알려주는 경로는 NFD로 적혀 문자열로는 같은 폴더를 다르다고 판정한다.
+function sameDir(a, b) {
+  try {
+    const x = statSync(a, { bigint: true })
+    const y = statSync(b, { bigint: true })
+    return x.dev === y.dev && x.ino === y.ino
+  } catch {
+    return false
+  }
+}
+
+function resolvesToRepoDir(value, want) {
+  if (!value) return false
+  const dir = path.isAbsolute(value) ? value : path.join(REPO, value)
+  try {
+    if (!statSync(dir).isDirectory()) return false
+  } catch {
+    return false
+  }
+  const roots = [REPO]
+  try {
+    const common = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+      cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    if (common) roots.push(path.dirname(path.resolve(REPO, common)))
+  } catch { /* 공용 디렉터리를 못 구하면 현재 워크트리만 기준으로 본다 */ }
+  return roots.some((root) => sameDir(dir, path.join(root, want)))
+}
+
+function checkGitConfig(c) {
+  const spec = c.git_config
+  if (!spec) return
+  for (const [key, want] of Object.entries(spec.values ?? {})) {
+    const actual = readGitConfig(key)
+    const hooks = key === 'core.hooksPath'
+    if (hooks ? resolvesToRepoDir(actual, want) : actual === want) continue
+    const fix = `git config ${key} ${want} 를 직접 실행하거나, 다음 Claude Code 세션이 시작될 때 scripts/ensure-hooks-path.sh가 자동으로 맞춥니다.`
+    if (actual === null || actual === '') {
+      violate('git_config', `${key}가 비어 있습니다 (선언 ${want})`,
+        `${hooks ? '이 클론에서는 pre-commit·pre-push가 돌지 않습니다. ' : ''}${fix}`)
+    } else if (hooks && path.isAbsolute(actual)) {
+      violate('git_config', `${key}가 이 저장소의 ${want}가 아닌 절대경로입니다 (선언 ${want} · 실제 ${actual})`,
+        `다른 곳(또는 폴더를 옮기기 전 옛 위치)을 가리켜 이 저장소의 훅은 돌지 않습니다. ${fix}`)
+    } else {
+      violate('git_config', `${key}가 선언과 다릅니다 (선언 ${want} · 실제 ${actual})`, fix)
+    }
+  }
+}
+
 // ── 실행 ──────────────────────────────────────────────────────────────────────
 const contract = readContract()
 checkPathsExist(contract)
@@ -281,6 +352,7 @@ checkWorktreeIsolation(contract)
 checkWorktreeContains(contract)
 checkHooks(contract)
 checkStalePhrases(contract)
+checkGitConfig(contract)
 
 for (const n of notes) console.log(`참고: ${n}`)
 

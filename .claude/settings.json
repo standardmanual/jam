@@ -78,6 +78,10 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/workspace-setup.sh\" cleanup 2>/dev/null | grep -E \"^제거\" || true"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/ensure-hooks-path.sh\" || true"
           }
         ]
       }
