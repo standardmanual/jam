@@ -197,9 +197,10 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 아래 문서에 서비스 로직·정책·데이터 모델이 이미 정리되어 있다:
 
 1. `docs/tickets/`의 관련 최신 티켓 (유사 작업·의사결정 확인)
-2. `docs/specs/prd/01_PRD.md` (필요 시 `02_DATA_MODEL.md`, 주제별 폴더 `docs/specs/prd/{주제}/`)
-3. `jam-doc/planning/content/` (배지·아이템·트라이브·POI 관련 시)
-4. `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` (배지·드랍 로직 관련 시)
-5. 위에서 찾지 못한 경우에만 코드(`jam-web/src/`) 탐색
+2. `docs/specs/INDEX.md` (스펙·기획·마케팅 문서의 전체 목록. 자동 생성이라 손으로 고치지 않는다)
+3. `docs/specs/prd/01_PRD.md` (필요 시 `02_DATA_MODEL.md`, 주제별 폴더 `docs/specs/prd/{주제}/`)
+4. `jam-doc/planning/content/` (배지·아이템·트라이브·POI 관련 시)
+5. `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` (배지·드랍 로직 관련 시)
+6. 위에서 찾지 못한 경우에만 코드(`jam-web/src/`) 탐색
 
 ---
