@@ -306,9 +306,10 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   `budget.spent()` 전후 차이를 에이전트별로 쪼갤 수 없어 `tokenUsage`에는
   `gate+jam-designer-post` 하나로 합산해 기록한다. 채원②의 모델은 `ds` 유형만 Sonnet, 나머지는
   Haiku다(파급 범위 기준).
-- 기계 검사는 `scripts/verify.sh` 하나로 통합됐다(lint·typecheck·test·ds:check·slop).
-  아현이 제출 전에 직접 돌리고, push 시점 `.githooks/pre-push`가 다시 돌린다. 민지는 확신도가
-  낮거나 알림이 있거나 결과가 불분명할 때만 재실행한다 — 그 외에는 중복 실행하지 않는다.
+- 기계 검사는 `scripts/verify.sh` 하나로 통합됐다(lint·typecheck·test·ds:check·slop 등).
+  아현이 제출 전에 직접 돌리고, push 시점 `.githooks/pre-push`가 다시 돌린다. 리뷰 브랜치 push는
+  CI(GitHub Actions `verify`)도 같은 검사를 돌려 결과를 커밋 상태로 남긴다(티켓 20260921_2304).
+  민지는 그 상태가 없거나 실패했을 때만 재실행한다(`jam-reviewer.md` 「Re-running checks yourself」).
 - `jam-web`의 `npm run lint`·`lint:ci`에 ESLint 캐시(`--cache`)를 켰다(2026-09-10). 무캐시
   전체 실행 17.8초 → 파일 무변경 재실행 2.1초로 실측 확인(약 8배). 캐시 파일
   `.eslintcache`는 `.gitignore`에 추가했다.

@@ -13,6 +13,10 @@ on:
     branches:
       - "claude/**"
 
+# 이 워크플로는 저장소를 읽기만 한다. 저장소 기본값(현재 read)이 바뀌어도 쓰기 권한을 받지 않도록 명시한다.
+permissions:
+  contents: read
+
 concurrency:
   group: verify-${{ github.ref }}
   cancel-in-progress: true

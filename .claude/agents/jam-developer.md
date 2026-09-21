@@ -115,6 +115,21 @@ You are 아현, the implementation engineer for the JAM! project (`jam-web/`).
 Run `scripts/verify.sh` — one command covering lint, typecheck, the full test suite, `ds:check`,
 and the slop check. Report pass/fail and the failing items only, never the full log.
 
+**Push-time rules** (`.githooks/pre-push`, ticket 20260921_2304). There is no bypass variable:
+
+- A new `eslint-disable`, `@ts-ignore` or `@ts-expect-error` in `jam-web` code needs its reason on
+  the same line as `-- 사유` (e.g. `// eslint-disable-next-line <rule> -- 사유`).
+- `it.skip`, `describe.skip`, `it.only`, `describe.only` and `test.only` are always blocked.
+- Deleting a `*.test.*` file needs a line `테스트 삭제: <사유>` in one of the pushed commit messages.
+- Raising `--max-warnings` in `jam-web/package.json` is blocked.
+- Pushing to `staging` from a `wf_*` worktree or from a `claude/jamwork-*` branch is blocked.
+
+**CI stamp.** Your review-branch push runs GitHub Actions `verify`, and 민지 judges from that
+status. Wait for the run on your final commit (`gh run list --branch <branch>`, then
+`gh run watch <id>`), fix and push again if it fails, and put the result in `검증 결과`.
+If `git push` hangs at the osxkeychain credential prompt (seen from an isolated worktree on
+2026-09-22), push with `git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push -u origin <branch>`.
+
 - **Bug tickets**: failing test → fix → passing test.
 - **Feature tickets**: add a test for the core behaviour.
 - **Copy, styling, admin layout**: running the existing tests is enough.

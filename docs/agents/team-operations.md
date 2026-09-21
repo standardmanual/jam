@@ -101,8 +101,8 @@ tags: [워크플로]
 
 | 대상 | 누가 | 막는 장치 |
 |---|---|---|
-| review 브랜치 (`claude/jamwork-*`) | 아현이 push | pre-push가 `verify.sh` 실행 |
-| `staging` | 카리나가 사용자 승인 후 머지·push | pre-push가 `jam-web` lint 실행 |
+| review 브랜치 (`claude/jamwork-*`) | 아현이 push | pre-push가 `verify.sh`와 기준 방어 실행. CI(GitHub Actions `verify`)가 같은 검사를 돌려 결과를 커밋 상태로 남긴다 |
+| `staging` | 카리나가 사용자 승인 후 머지·push | pre-push가 `jam-web` lint와 기준 방어 실행. 에이전트 작업 공간(`wf_*`)과 리뷰 브랜치(`claude/jamwork-*`)에서 오는 push는 **차단**. CI는 돌지 않는다 |
 | `main` (프로덕션) | 카리나가 `/jam-ship`으로만 | pre-push가 직접 push를 **차단**, `JAM_SHIP=1`이 유일한 통로 |
 | DB | 카리나만 실행 | 아현에게 DB 도구를 주지 않음 |
 
