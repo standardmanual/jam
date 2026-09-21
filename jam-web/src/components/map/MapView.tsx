@@ -250,7 +250,7 @@ export default function MapView({
   const mapInstanceRef = useRef<naver.maps.Map | null>(null)
   const markersRef = useRef<naver.maps.Marker[]>([])
   const badgeMarkersRef = useRef<naver.maps.Marker[]>([])
-  // 현재 위치 마커/정확도 서클 — "현재 위치로 이동" 버튼을 누르면 이 위치도 함께 갱신한다
+  // 현재 위치 마커/정확도 서클 — "내 위치로 돌아가기" 버튼을 누르면 이 위치도 함께 갱신한다
   const userMarkerRef = useRef<naver.maps.Marker | null>(null)
   const userCircleRef = useRef<naver.maps.Circle | null>(null)
   const [locating, setLocating] = useState(false)
@@ -503,7 +503,7 @@ export default function MapView({
     })
   }, [badgeMarkers, badgeClusters, zoomScale])
 
-  // "현재 위치로 이동" 버튼 — 지도 회전 없이 위치만 재조회해 중심 이동 + 파란 점/서클 갱신
+  // "내 위치로 돌아가기" 버튼 — 지도 회전 없이 위치만 재조회해 중심 이동 + 파란 점/서클 갱신
   const handleLocateClick = () => {
     if (!navigator.geolocation || locating) return
     setLocating(true)

@@ -37,10 +37,10 @@ export const ko = {
     footerPrivacy: '개인정보처리방침',
     footerCopyright: '© 2026 Standard Manual',
     /** 여러 화면이 공유하는 범용 로딩 스피너(`LoadingSpinner`)의 보조기술 라벨 (티켓 20260915_2237) */
-    loading: '로딩 중',
-    /** `app/layout.tsx` SEO 메타데이터 — §2.5 예외로 명사형 종결 허용 (티켓 20260915_2237) */
+    loading: '불러오는 중',
+    /** `app/layout.tsx` SEO 메타데이터 — §2.5 예외로 명사형·합쇼체(-습니다) 종결 허용 (티켓 20260915_2237, 20260915_2315) */
     seoTitle: 'JAM!',
-    seoDescription: '피지털 게이미피케이션 플랫폼',
+    seoDescription: '운동 기록이 배지가 되는 곳. Strava 동기화로 오늘의 배지와 아이템을 획득합니다.',
     /** `app/error.tsx` 루트 에러 바운더리 — 렌더 도중 발생한 미처리 예외 공통 화면 (티켓 20260915_2252) */
     rootErrorTitle: '페이지를 불러오지 못했어요',
     /** 환경변수 누락으로 추정될 때(SUPABASE 관련 메시지 포함)의 안내 */
@@ -512,7 +512,7 @@ export const ko = {
     poiCarouselAriaLabel: '지점 드랍·픽업',
     /** 캐러셀 내부 지점 목록 자체의 aria-label(티켓 20260915_2237) — 위 다이얼로그 라벨과는
      *  별개로, 목록을 순회하는 캐러셀 요소에 붙는다. */
-    poiCarouselListAriaLabel: '주변 지점 목록',
+    poiCarouselListAriaLabel: '근처 지점 목록',
     locationUnsupported: '이 브라우저는 위치 기능을 지원하지 않아요',
     locationDenied: '위치 권한을 허용해 주세요',
     retry: '다시 시도',
@@ -882,9 +882,9 @@ export const ko = {
    */
   map: {
     /** 지도 위 내 위치 마커의 네이티브 title(마커 호버 시 노출) */
-    myLocationMarkerLabel: '현재 위치',
+    myLocationMarkerLabel: '내 위치',
     /** 현재 위치로 지도를 이동시키는 버튼의 aria-label */
-    myLocationButtonAriaLabel: '현재 위치로 이동',
+    myLocationButtonAriaLabel: '내 위치로 돌아가기',
   },
 
   /** 유저 검색 결과 */
