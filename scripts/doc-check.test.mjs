@@ -477,5 +477,34 @@ test('CLI --backlinks·--orphans는 산출물을 만들지 않고 종료 코드 
   assert.equal(status.stdout.trim(), '', '조회 명령은 새 파일을 만들지 않는다')
 })
 
+test('링크 없는 새 문서는 경고만 나오고 통과, 기존 고아와 링크된 새 문서는 경고가 없다', () => {
+  const NOTAG = '---\ntype: note\ndescription: d\n---\n'
+  const dir = makeRepo({ 'docs/a.md': `${NOTAG}본문\n`, 'docs/old-orphan.md': `${NOTAG}o\n` })
+  let r = staged(dir, (d) => writeFile(d, 'docs/new.md', `${NOTAG}n\n`))
+  assert.equal(r.status, 0, r.stderr)
+  assert.match(r.stderr, /docs\/new\.md:1 \[경고\] 새 문서가 어디서도 링크되지 않았습니다/)
+  assert.doesNotMatch(r.stderr, /old-orphan\.md:1 \[경고\] 새 문서/)
+  run('git', ['commit', '-q', '-m', 'n'], dir)
+  r = staged(dir, (d) => {
+    writeFile(d, 'docs/linked.md', `${NOTAG}l\n`)
+    writeFile(d, 'docs/a.md', `${NOTAG}[l](linked.md)\n`)
+  })
+  assert.equal(r.status, 0, r.stderr)
+  assert.doesNotMatch(r.stderr, /linked\.md:1 \[경고\] 새 문서/)
+})
+
+test('excludeSources로 지정한 문서(INDEX)만 링크한 새 문서는 여전히 고아 경고', () => {
+  const NOTAG = '---\ntype: note\ndescription: d\n---\n'
+  const cfg = { ...RAW_CFG, orphans: { excludeTypes: [], excludeSources: ['docs/INDEX.md'] } }
+  const dir = makeRepo({ 'docs/INDEX.md': `${NOTAG}없음\n` }, cfg)
+  const r = staged(dir, (d) => {
+    writeFile(d, 'docs/new.md', `${NOTAG}n\n`)
+    writeFile(d, 'docs/INDEX.md', `${NOTAG}[n](new.md)\n`)
+  })
+  assert.equal(r.status, 0, r.stderr)
+  assert.match(r.stderr, /docs\/new\.md:1 \[경고\] 새 문서가 어디서도 링크되지 않았습니다/)
+  assert.doesNotMatch(r.stderr, /INDEX\.md:1 \[경고\] 새 문서/)
+})
+
 for (const d of tmpDirs) rmSync(d, { recursive: true, force: true })
 console.log(`doc-check 테스트 ${process.exitCode ? '실패 있음' : '통과'} (${passed}건 통과)`)

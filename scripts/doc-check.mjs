@@ -71,7 +71,7 @@ export function normalizeConfig(cfg) {
     statusSets: cfg.statusSets ?? {},
     tags: { vocabulary: [], forbidden: [], ...(cfg.tags ?? {}) },
     report: { groups: [], ...(cfg.report ?? {}) },
-    orphans: { excludeTypes: [], ...(cfg.orphans ?? {}) },
+    orphans: { excludeTypes: [], excludeSources: [], ...(cfg.orphans ?? {}) },
   }
   for (const key of ['include', 'exclude']) {
     if (!Array.isArray(c.scope[key])) throw new Error(`scope.${key}는 배열이어야 합니다`)
@@ -566,6 +566,21 @@ export function checkStaged(cfg, cwd) {
       }
     }
   }
+  // ③ 이번 커밋에서 새로 추가된 문서가 어디서도 링크되지 않으면 경고한다(기존 고아는 건드리지 않는다)
+  const added = new Set(entries.filter((e) => e.status === 'A').map((e) => nfc(e.path)))
+  if (added.size > 0) {
+    const orphans = new Set(findOrphans(cfg, cwd))
+    for (const file of [...added].sort()) {
+      if (!orphans.has(file)) continue
+      problems.push({
+        file,
+        line: 1,
+        kind: 'orphan',
+        severity: 'warn',
+        message: '새 문서가 어디서도 링크되지 않았습니다. 관련 문서(상위 README나 같은 주제 문서)에 링크를 걸거나 frontmatter의 tags·related를 채우세요.',
+      })
+    }
+  }
   return { problems: dedupe(problems) }
 }
 
@@ -642,15 +657,17 @@ export function collectDocGraph(cfg, cwd) {
     } catch {
       continue
     }
+    // 자동 생성 목록(INDEX 등)은 링크 출처로 세지 않는다 — 세면 모든 문서가 링크된 것이 된다.
+    const isSource = !cfg.orphans.excludeSources.includes(file)
     for (const ref of extractRefs(text, cfg)) {
-      if (ref.kind !== 'link') continue
+      if (ref.kind !== 'link' || !isSource) continue
       addRef(resolveTarget(file, ref), file)
     }
     const data = parseFrontmatter(text)?.data ?? {}
     for (const field of ['basis', 'related']) {
       const v = data[field]
       const items = Array.isArray(v) ? v : v ? [v] : []
-      for (const item of items) addRef(resolveTarget(file, { kind: 'codespan', target: item }), file)
+      for (const item of items) if (isSource) addRef(resolveTarget(file, { kind: 'codespan', target: item }), file)
     }
     tags.set(file, Array.isArray(data.tags) ? data.tags : data.tags ? [data.tags] : [])
   }
@@ -678,7 +695,7 @@ export function findOrphans(cfg, cwd) {
   const { docs, referencedBy, tags } = collectDocGraph(cfg, cwd)
   const excluded = new Set(cfg.orphans.excludeTypes)
   return docs
-    .filter((f) => !excluded.has(typeOf(f, cfg)))
+    .filter((f) => !excluded.has(typeOf(f, cfg)) && !cfg.orphans.excludeSources.includes(f))
     .filter((f) => !(referencedBy.get(f)?.size > 0) && (tags.get(f) ?? []).length === 0)
     .sort()
 }
