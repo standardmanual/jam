@@ -2,7 +2,7 @@
 id: 20260921_1111
 category: BadgeEngine
 priority: P2
-status: OPEN
+status: WAITING
 created: 2026-09-21
 parent: "20260914_1130"
 ---
@@ -53,24 +53,51 @@ parent: "20260914_1130"
 - 정책 근거 20260911_2236(개별 배지 드랍 제외, 컬렉션 완성 분모)
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록 *(SQL 적용 대기 — 사용자가 Supabase에서 적용한 뒤 CLOSED)*
 
 ### 구현 내용 요약
+슬롯 장착 시 실시간 완성을 처리하는 SQL 함수 `slot_item_into_book`의 완성 판정을 바꾸는 마이그레이션 `178_slot_item_into_book_completion_basis.sql`을 작성했다. 가장 최신 정의(157)와 함수 본문을 비교해 바뀐 곳이 완성 체크 쿼리 두 곳뿐임을 확인했다.
+
+- 분모: `deleted_at IS NULL AND drop_excluded = false`인 배지 수
+- 분자: 슬롯 중 분모에 속한 배지만 센 `COUNT(DISTINCT badge_id)`(교집합)
+- 함수 시그니처, `ON CONFLICT`·`ROW_COUNT` 중복 방지, 포인트 지급, `REVOKE`·`GRANT`(service_role 전용)는 157과 같다.
+- 소프트 삭제 배지는 기존대로 분모에서 제외한다(통일 검토는 20260921_1114).
 
 ### 변경된 파일
 ```
--
+jam-web/supabase/migrations/178_slot_item_into_book_completion_basis.sql (신규)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] 민지 게이트 리뷰 WARN(코드 결함 없음). WARN 사유 두 가지: (1) 워크트리의 `core.hooksPath`가 `/dev/null`이라 `verify.sh` contract 항목이 실패한 환경 문제(이번 변경과 무관, 메인에서 복구 후 재검증), (2) 확인 쿼리가 SQL 머리 주석에만 있어 아래에 옮겨 적음
+- [x] 카리나가 157과 178의 함수 본문을 직접 비교해 차이가 의도한 두 쿼리뿐임을 확인
+- [ ] 실행하지 않음. 적용 후 아래 확인 쿼리로 동작을 확인한다.
+
+### 적용 후 확인 쿼리 (읽기 전용)
+```sql
+-- 제외 배지가 있는 컬렉션에서 분모가 줄어드는지
+SELECT item_book_id,
+       COUNT(*) FILTER (WHERE deleted_at IS NULL) AS 이전_분모,
+       COUNT(*) FILTER (WHERE deleted_at IS NULL AND drop_excluded = false) AS 새_분모
+FROM public.badges WHERE item_book_id IS NOT NULL
+GROUP BY item_book_id
+HAVING COUNT(*) FILTER (WHERE drop_excluded = true) > 0;
+
+-- 함수 정의가 바뀌었는지(본문에 drop_excluded가 들어 있어야 한다)
+SELECT prosrc ILIKE '%drop_excluded%' AS 적용됨
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public' AND p.proname = 'slot_item_into_book';
+```
 
 ### 배포 정보
-- 배포일:
-- 환경:
-- 커밋:
+- 배포일: 미배포. 이 SQL은 사용자가 Supabase에서 직접 적용한다(카리나의 DB 적용 호출은 권한 분류기가 거부한다).
+- 적용 시점: 판정 코어(20260921_1110) 코드가 프로덕션에 나가는 시점과 맞춘다. 코드만 먼저 나가면 실시간 완성(RPC)과 catch-up(checker) 기준이 잠시 다르다.
+- 커밋: 8f0a364d(구현), fd1fb7b7(머지)
+- 워크플로 실행: 에이전트 2명, 전체 76,569토큰, 218초(출력 토큰: 아현 5,512, 게이트 3,416)
 
 ### 주요 의사결정 / 핵심 메모
+- 아현이 보고한 `diffLineCount` 0은 틀린 값이었고 민지가 재측정한 값은 141이다.
+- 이 SQL을 적용하기 전에 커밋된 코드가 staging에 올라가도 실행 결과는 바뀌지 않는다(함수 정의는 DB에 있다).
 
 ### 잔여 이슈
--
+- 사용자의 SQL 적용과 확인 쿼리 결과 확인이 남았다. 확인되면 이 티켓을 CLOSED 처리한다.
