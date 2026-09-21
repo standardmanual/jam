@@ -2,9 +2,9 @@
 id: "20260921_1419"
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-21
-closed:
+closed: 2026-09-21
 ---
 
 # [Infra] CLAUDE.md 읽기 순서에 docs/specs/INDEX.md 추가
