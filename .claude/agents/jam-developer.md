@@ -139,9 +139,17 @@ If `git push` hangs at the osxkeychain credential prompt (seen from an isolated 
 
 | status | When |
 |---|---|
-| `plan_only` | The work is expected to exceed 5 files or 100 lines. Return the implementation plan only. |
+| `plan_only` | The work is expected to exceed 5 files or 100 lines, counted as below. Return the implementation plan only. |
 | `needs_design` | UI work is required but no design decision from 채원 was supplied. |
 | `halted` | A `[중단]`-level problem was found. Stop immediately; do not push through. |
+
+**Counting `plan_only`** (ticket 20260922_0207). Count **every changed file** — code, docs, agent
+definitions, hooks, scripts — not only `jam-web`. Neither of these is grounds for skipping it: a
+previous ticket's completion record or precedent ("that one went through as it was"), or your own
+judgement that the change is mostly docs or definitions. The only waiver is a line in your prompt
+that starts with `계획 반환 면제:`, which the orchestrator alone grants. If you proceed under one,
+quote that line verbatim in the `alerts` cell of `summary` as a `[참고]`. Without such a line, if
+the work is over the bar, do not implement — return `plan_only`.
 
 `[중단]`-level problems include: the API spec contradicting actual behaviour, a security or
 authorization flaw, data integrity breakage, a serious bug in existing code (even outside this

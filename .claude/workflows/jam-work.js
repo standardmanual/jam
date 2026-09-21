@@ -21,7 +21,7 @@ export const meta = {
 // 호출부의 입력 오타이지만, 실패 시 조용히 undefined로 넘어가는 대신 최소한 명확한
 // SyntaxError로 드러나도록 방어적으로 파싱한다.
 const parsedArgs = typeof args === 'string' ? JSON.parse(args) : args
-const { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route } = parsedArgs
+const { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route, planOnlyWaiver } = parsedArgs
 
 // 경로 3단 분기(안건 1-2, 티켓 20260918_1148). 경로 ①(경미)은 Workflow를 아예 호출하지
 // 않으므로(SKILL.md 0.1절, 카리나 직접 처리) 여기서는 ②·③만 받는다. 카리나가 유형 판정
@@ -194,6 +194,18 @@ phase('구현')
 // 이 트리 밖에서 분기·커밋하므로 다른 세션의 작업과 절대 겹치지 않는다.
 const KOREAN_WRITING_TYPES = ['copy', 'ui', 'content']
 const designDecisionText = formatDesignDecision(designDecision)
+// 아현의 `plan_only` 기준(바뀌는 모든 파일 기준 5개 초과 또는 100줄 이상)은 이전 티켓의 선례나
+// 아현의 자체 판단으로 면제되지 않는다(티켓 20260922_0207: 20260921_2303·2304가 선례를 이유로
+// 기준을 넘긴 채 진행됐다). 면제는 호출부가 `planOnlyWaiver`(사유 문자열)로 넘길 때만 성립한다.
+// 프롬프트에는 값이 있든 없든 **항상** 한 줄을 넣어 기본값이 "면제 없음"임을 매번 못 박고,
+// 문자열이 아니거나 비어 있으면 면제 없음으로 본다. 재시도(`retryBranch`·`retryReason`) 블록과는
+// 서로 독립이다 — 워크플로는 이전 실행을 기억하지 않으므로 재시도에도 같은 면제가 필요하면
+// 호출부가 다시 넘긴다.
+const planOnlyWaiverReason = typeof planOnlyWaiver === 'string' ? planOnlyWaiver.replace(/\s+/g, ' ').trim() : ''
+const planOnlyWaiverLine = planOnlyWaiverReason
+  ? `계획 반환 면제: ${planOnlyWaiverReason}`
+  : '이 티켓에는 계획 반환 면제가 없다. 기준을 넘으면 구현하지 말고 `plan_only`로 반환하라. ' +
+    '이전 티켓의 선례는 면제 근거가 아니다.'
 const devT0 = tokensSpent()
 const devResult = await agent(
   `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n요청: ${userRequest}\n` +
@@ -212,6 +224,7 @@ const devResult = await agent(
   `${retryReason ? `\n이전 리뷰 재작업 사유 — 반드시 해결할 것:\n${retryReason}\n` : ''}` +
   `${KOREAN_WRITING_TYPES.includes(workType) ? `\n신규·변경되는 사용자 노출 한국어 문구(UI 카피, 배지·미션·POI 설명, 알림·토스트 등)를 ` +
     `작성할 때는 .claude/output-styles/fluent-korean.md를 읽고 그 지침을 따라 작성하라.\n` : ''}` +
+  `\n${planOnlyWaiverLine}\n` +
   `\n이 티켓을 읽고 구현을 진행하라.`,
   { agentType: 'jam-developer', label: 'jam-developer', isolation: 'worktree', schema: DEV_RESULT }
 )
@@ -219,7 +232,7 @@ trackTokens('jam-developer', devT0)
 
 // 아현의 중단 상태는 게이트 진입 **전에** 확인한다 — 구현물이 없거나 불완전한 상태로
 // 민지를 부르면 판정할 대상 자체가 없다 (티켓 20260918_0422).
-//   plan_only    : 파일 5개 초과 또는 100줄 이상 예상 → 구현 계획만 반환
+//   plan_only    : 바뀌는 모든 파일 기준 5개 초과 또는 100줄 이상 예상, 면제 없음 → 구현 계획만 반환
 //   needs_design : UI 작업인데 채원 사전 판정이 없음
 //   halted       : [중단] 급 이상 발견
 // devResult.status는 구조화 필드다 — 문장에서 글자 검색으로 찾지 않는다(티켓 20260918_1158).

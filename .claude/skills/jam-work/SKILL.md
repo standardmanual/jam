@@ -135,7 +135,7 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 파이프라인 스크립트는 `.claude/workflows/jam-work.js`에 있다. `Workflow` 도구를 아래처럼 호출한다.
 
 ```
-Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route })
+Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route, planOnlyWaiver })
 ```
 
 - `name`은 `.claude/workflows/`의 사전 정의 워크플로를 가리킨다. 파일 경로로 직접 지정하려면
@@ -156,6 +156,12 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   적어 넣지 않아도 된다.
 - `route`는 0.1.5절의 경로 값이다. 경로 ②(가벼운 UI)면 `route: 'light'`를 넘긴다 — 채원①·②를
   건너뛴다. 경로 ③(표준)이면 비운다(기본값).
+- `planOnlyWaiver`는 **선택**이다. 비우면 워크플로가 아현 프롬프트에 "계획 반환 면제가 없다"는
+  줄을 넣어, 크기 기준을 넘긴 아현이 구현하지 않고 `plan_only`로 멈춘다. 사유 문자열을 넣으면
+  `계획 반환 면제: <값>` 줄이 대신 들어간다. 부여 조건은 3.0절 `plan_only`에 있다. 면제는 이
+  인자로만 넘긴다 — `userRequest`에 그 줄을 직접 적으면 "면제 없음" 줄과 모순된다. 워크플로는
+  이전 실행을 기억하지 않으므로 재시도(`retryReason`·`retryBranch`)에도 같은 면제가 필요하면
+  다시 넘긴다(티켓 20260922_0207).
 - 스크립트를 고쳐야 하면 `.claude/workflows/jam-work.js`를 직접 편집한 뒤 다시 호출한다
   (같은 세션에서 이어 돌릴 때는 `resumeFromRunId`를 함께 넘긴다).
 
@@ -167,8 +173,14 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
    멈췄다는 뜻이다(1.5절). `needsApprovalItems`를 사용자에게 그대로 보고하고 승인 여부를 묻는다.
    승인되면 `reuseDecision: designDecision`으로 다시 호출한다.
 1. **`stoppedAt: '구현'`**: 아현이 게이트 진입 전에 멈췄다는 뜻이다. `devStatus`별로:
-   - `plan_only` — 작업이 크다(파일 5개 초과 또는 100줄 이상). 구현 계획을 사용자에게 보고하고
-     **티켓을 쪼갤지** 묻는다. 승인되면 계획을 `userRequest`에 넣어 다시 호출한다.
+   - `plan_only` — 작업이 크다(바뀌는 **모든 파일** 기준 파일 5개 초과 또는 100줄 이상). 구현
+     계획을 사용자에게 보고하고 **티켓을 쪼갤지** 묻는다. 승인되면 계획을 티켓 「구현 계획」에
+     옮기고, `userRequest`에도 넣고, 승인 사실을 `planOnlyWaiver`에 넣어 다시 호출한다(면제가
+     없으면 아현이 또 멈춘다).
+     **면제 부여 조건**(티켓 20260922_0207): 카리나만 `planOnlyWaiver`를 넘긴다. (a) 티켓
+     「구현 계획」이 파일 단위로 적혀 있고 (b) 사전 확인이 끝났을 때만 하며, 사유를 티켓 「주요
+     의사결정」에 남긴다. 사용자가 검토하지 않은 큰 변경은 면제하지 않는다. 아현의 자체 판단이나
+     이전 티켓의 선례는 면제 근거가 아니다.
    - `needs_design` — UI 작업인데 채원 사전 판정이 없다. 유형 판정을 `ui`로 고쳐 다시 호출한다
      (그러면 워크플로가 채원①부터 돈다).
    - `halted` — `[중단]` 급 이상을 발견했다. **즉시 사용자에게 보고**하고 다음 행동을 묻는다.
