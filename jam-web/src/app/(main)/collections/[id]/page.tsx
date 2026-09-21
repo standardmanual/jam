@@ -1,3 +1,4 @@
+import { computeBookCompletion } from '@/lib/itembook/completion-basis'
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type {
@@ -230,11 +231,15 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     ((checkinEarnsRes.data ?? []) as { badge_id: string }[]).map((e) => e.badge_id)
   )
 
-  const totalBadgeCount = badges.length + checkinBadges.length
-  const slottedCount = slots.length + earnedCheckinBadgeIds.size
-  const isCompleted =
-    completionRes.data != null ||
-    (totalBadgeCount > 0 && slottedCount >= totalBadgeCount)
+  // 분모(드랍 제외 배지를 뺀 수)·분자 — 공용 함수 (티켓 20260921_1112)
+  const bookCompletion = computeBookCompletion(
+    allBookBadges,
+    new Set([...slots.map((s) => s.badge_id), ...earnedCheckinBadgeIds]),
+    { types: ['item', 'checkin'] }
+  ).get(id)
+  const totalBadgeCount = bookCompletion?.total ?? 0
+  const slottedCount = bookCompletion?.filled ?? 0
+  const isCompleted = completionRes.data != null || (bookCompletion?.complete ?? false)
 
   // [20260819_014] 배지 상세화면(20260819_011)과 동일한 원칙 — 배경은 이 고정 레이어 한 곳에서만
   // 그린다. 배경이 있는 컬렉션에서는 TopNav·본문을 투명하게 두어 아래 레이어가 그대로 비쳐 보이게

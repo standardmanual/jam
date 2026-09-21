@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRarity } from '@/types/database'
+import { computeBookCompletion } from '@/lib/itembook/completion-basis'
 
 export async function GET(
   _request: Request,
@@ -77,8 +78,8 @@ export async function GET(
       .eq('is_active', true)
       .or(`valid_from.is.null,valid_from.lte.${now}`)
       .or(`valid_until.is.null,valid_until.gte.${now}`),
-      service.from('badges').select('id, item_book_id, rarity, created_at').in('item_book_id', bookIds).eq('type', 'item').is('deleted_at', null).order('created_at', { ascending: true }),
-      service.from('user_item_book_slots').select('item_book_id').eq('user_id', userId).in('item_book_id', bookIds),
+      service.from('badges').select('id, item_book_id, type, drop_excluded, rarity, created_at').in('item_book_id', bookIds).eq('type', 'item').is('deleted_at', null).order('created_at', { ascending: true }),
+      service.from('user_item_book_slots').select('item_book_id, badge_id').eq('user_id', userId).in('item_book_id', bookIds),
       service.from('user_item_book_completions').select('item_book_id').eq('user_id', userId).in('item_book_id', bookIds),
   ])
   if (booksError) console.error('[api/users/[username]/itembooks] item_books 조회 실패', booksError)
@@ -86,17 +87,15 @@ export async function GET(
   if (slotsError) console.error('[api/users/[username]/itembooks] user_item_book_slots 조회 실패', slotsError)
   if (completionsError) console.error('[api/users/[username]/itembooks] user_item_book_completions 조회 실패', completionsError)
 
-  const totalByBook = new Map<string, number>()
   const rarityByBook = new Map<string, BadgeRarity>()
-  for (const b of (bookBadgesRaw ?? []) as { id: string; item_book_id: string; rarity: BadgeRarity; created_at: string }[]) {
-    totalByBook.set(b.item_book_id, (totalByBook.get(b.item_book_id) ?? 0) + 1)
+  const bookBadges = (bookBadgesRaw ?? []) as { id: string; item_book_id: string; type: string; drop_excluded: boolean | null; rarity: BadgeRarity; created_at: string }[]
+  for (const b of bookBadges) {
     // created_at ASC 정렬이므로 처음 만나는 항목이 최초 등록 배지
     if (!rarityByBook.has(b.item_book_id)) rarityByBook.set(b.item_book_id, b.rarity)
   }
-  const slottedByBook = new Map<string, number>()
-  for (const s of (slotsRaw ?? []) as { item_book_id: string }[]) {
-    slottedByBook.set(s.item_book_id, (slottedByBook.get(s.item_book_id) ?? 0) + 1)
-  }
+  // 분모(드랍 제외 배지를 뺀 수)·분자 — 공용 함수 (티켓 20260921_1112)
+  const filledBadgeIds = new Set(((slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]).map(s => s.badge_id))
+  const completionByBook = computeBookCompletion(bookBadges, filledBadgeIds, { types: ['item'] })
   const completedSet = new Set(((completionsRaw ?? []) as { item_book_id: string }[]).map(c => c.item_book_id))
 
   const isOwnList = currentUser?.id === userId
@@ -108,9 +107,9 @@ export async function GET(
       name: book.name,
       image_url: book.image_url,
       tribe: book.tribe,
-      totalBadgeCount: totalByBook.get(book.id) ?? 0,
-      slottedCount: slottedByBook.get(book.id) ?? 0,
-      isCompleted: completedSet.has(book.id),
+      totalBadgeCount: completionByBook.get(book.id)?.total ?? 0,
+      slottedCount: completionByBook.get(book.id)?.filled ?? 0,
+      isCompleted: completedSet.has(book.id) || (completionByBook.get(book.id)?.complete ?? false),
       rarity: rarityByBook.get(book.id) ?? 'common',
     }))
     // 타인이 볼 때는 아이템배지 슬롯이 0개인 컬렉션을 숨긴다(20260824_016).

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
+import { computeBookCompletion } from '@/lib/itembook/completion-basis'
 import type {
   InventoryRow,
   InventoryItemRow,
@@ -59,10 +60,10 @@ export async function GET() {
   const [{ data: booksRaw }, { data: allBadgesRaw }, { data: slotsRaw }, { data: compRaw }] =
     await Promise.all([
       supabase.from('item_books').select('*').in('id', bookIds),
-      supabase.from('badges').select('id, item_book_id').in('item_book_id', bookIds).eq('type', 'item').is('deleted_at', null),
+      supabase.from('badges').select('id, item_book_id, type, drop_excluded').in('item_book_id', bookIds).eq('type', 'item').is('deleted_at', null),
       supabase
         .from('user_item_book_slots')
-        .select('item_book_id')
+        .select('item_book_id, badge_id')
         .eq('user_id', user.id)
         .in('item_book_id', bookIds),
       supabase
@@ -74,18 +75,15 @@ export async function GET() {
 
   const books = (booksRaw ?? []) as ItemBookRow[]
 
-  // 북별 전체 배지 수
-  const totalMap = new Map<string, number>()
-  for (const b of (allBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'item_book_id'>[]) {
-    if (!b.item_book_id) continue
-    totalMap.set(b.item_book_id, (totalMap.get(b.item_book_id) ?? 0) + 1)
-  }
-
-  // 북별 슬롯 수
-  const slotMap = new Map<string, number>()
-  for (const s of (slotsRaw ?? []) as Pick<UserItemBookSlotRow, 'item_book_id'>[]) {
-    slotMap.set(s.item_book_id, (slotMap.get(s.item_book_id) ?? 0) + 1)
-  }
+  // 북별 분모(드랍 제외 배지를 뺀 수)·분자 — 공용 함수 (티켓 20260921_1112)
+  const filledBadgeIds = new Set(
+    ((slotsRaw ?? []) as Pick<UserItemBookSlotRow, 'badge_id'>[]).map((s) => s.badge_id)
+  )
+  const completionMap = computeBookCompletion(
+    (allBadgesRaw ?? []) as { id: string; item_book_id: string | null; type: string; drop_excluded: boolean | null }[],
+    filledBadgeIds,
+    { types: ['item'] }
+  )
 
   // 완성된 북 Set
   const completedSet = new Set(
@@ -117,10 +115,10 @@ export async function GET() {
       tribe: tribe
         ? { id: tribe.id, name: tribe.name, image_url: tribe.image_url }
         : null,
-      totalBadgeCount: totalMap.get(book.id) ?? 0,
+      totalBadgeCount: completionMap.get(book.id)?.total ?? 0,
       discoveredBadgeCount: discoveredMap.get(book.id)?.size ?? 0,
-      slottedCount: slotMap.get(book.id) ?? 0,
-      isCompleted: completedSet.has(book.id),
+      slottedCount: completionMap.get(book.id)?.filled ?? 0,
+      isCompleted: completedSet.has(book.id) || (completionMap.get(book.id)?.complete ?? false),
     }
   })
 
