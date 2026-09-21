@@ -168,8 +168,23 @@ GA4는 광고 차단기 유저를 놓치고 일부 이벤트가 특정 경로에
   `?dpl=dpl_…`)를 출력한다. 종료 코드는 0 찾음 · 2 네트워크 오류·시간 초과 · 3 식별자 없음 ·
   4 `--wait-change` 시간 안에 바뀌지 않음이다.
 
-클라우드 세션이 시작하는 브랜치에는 이 스크립트가 없을 수 있다. 두 명령을 실행하기 전에
-`git checkout --detach origin/staging`으로 staging을 체크아웃한다.
+**스크립트는 작업 트리에서 실행하지 않고 `origin/staging`에서 임시 파일로 꺼내 실행한다.**
+
+```bash
+git show origin/staging:scripts/deploy-gate.mjs > /tmp/deploy-gate.mjs && test -s /tmp/deploy-gate.mjs
+```
+
+클라우드 세션이 시작하는 브랜치에는 이 스크립트가 없을 수 있고, 확인 루틴은 `checkout`을 하지 않으며,
+실행 루틴은 `git checkout --detach`로 분리된 HEAD를 남기지 않아야 하기 때문이다. 꺼내지 못했거나 파일이
+비어 있으면 게이트를 실행하지 못한 것이므로 **통과로 보지 않는다**(빈 파일은 종료 코드 0으로 끝나므로
+`test -s`가 필요하다). 이후 명령은 `node /tmp/deploy-gate.mjs …`로 쓴다. 이 방식은 배포하려는 staging
+팁의 스크립트를 쓴다. `contract.json`의 기준선과 공개 라우트 선언도 그 팁에서 읽는다.
+
+`served`는 `j-a-m.app`이 클라우드 환경의 네트워크 허용 목록에 없으면 종료 코드 2로 끝난다. 이때 배포는
+막히지 않고 "확인 불가"로만 기록된다. 무인 루틴에서 이미 성공한 GA4 스크립트(`ga4-weekly-metrics.mjs`)도
+같은 Node 전역 `fetch`를 쓰므로 fetch 자체는 나가는 환경이다. 도메인 허용은 사용자가 환경 설정에서 한다.
+`served`는 쿠키를 저장하지 않아 자동 로그인 리다이렉트가 걸린 스테이징(`stage.j-a-m.app`)에서는
+`redirect count exceeded`로 종료 코드 2가 난다. 무인 경로는 프로덕션에만 쓰므로 영향이 없다.
 
 ### 루틴 ① 확인 — 목요일 15:00 KST
 
@@ -177,11 +192,11 @@ GA4는 광고 차단기 유저를 놓치고 일부 이벤트가 특정 경로에
    **비어 있으면 아무것도 하지 않고 조용히 종료한다** (Slack 게시 없음).
 2. `curl -s -o /dev/null -w '%{http_code}' https://stage.j-a-m.app`로 스테이징 상태를 확인해
    메시지에 같이 적는다(사용자가 "이슈 있나" 판단할 근거).
-3. `git checkout --detach origin/staging` 뒤에 배포 게이트와 프로덕션 현재 배포를 확인한다.
-   - `node scripts/deploy-gate.mjs check`: 출력의 첫 두 줄(`배포 게이트`·`신규 마이그레이션`)을
+3. 위 방식으로 게이트 스크립트를 꺼낸 뒤 배포 게이트와 프로덕션 현재 배포를 확인한다.
+   - `node /tmp/deploy-gate.mjs check`: 출력의 첫 두 줄(`배포 게이트`·`신규 마이그레이션`)을
      메시지에 그대로 옮긴다. 종료 코드가 2이거나 명령이 실행되지 않으면
      `배포 게이트: 차단(게이트 실행 오류: <사유>)`, `신규 마이그레이션: 확인 불가`로 적는다.
-   - `node scripts/deploy-gate.mjs served`: 출력된 `dpl_…`를 `프로덕션 현재 배포`에 적는다. 종료
+   - `node /tmp/deploy-gate.mjs served`: 출력된 `dpl_…`를 `프로덕션 현재 배포`에 적는다. 종료
      코드가 2이면 `확인 불가(세션 네트워크 제약)`, 3이면 `확인 불가(식별자 없음)`로 적는다.
 4. `#jam-alert`에 확인 메시지를 올린다(아래 형식). **리포트 파일은 만들지 않는다** — 최종 기록은
    저녁 루틴이 남긴다.
@@ -225,9 +240,10 @@ staging 대기: N건
 ```bash
 git fetch origin main staging
 git log --oneline origin/main..origin/staging   # 승격될 커밋 재확인 (비었으면 중단)
-git checkout --detach origin/staging            # 게이트 스크립트는 staging의 것을 쓴다
-node scripts/deploy-gate.mjs check              # 종료 코드가 0이 아니면 여기서 중단, #jam-alert
-node scripts/deploy-gate.mjs served             # 배포 전 서빙 배포 id (아래 「배포 뒤 확인」에서 쓴다)
+git show origin/staging:scripts/deploy-gate.mjs > /tmp/deploy-gate.mjs && test -s /tmp/deploy-gate.mjs \
+  && node /tmp/deploy-gate.mjs check            # 종료 코드가 0이 아니면(스크립트를 못 꺼낸 경우 포함) 여기서 중단, #jam-alert
+git diff --quiet origin/main origin/staging -- jam-web    # 종료 코드 1이면 jam-web 변경이 있다(새 프로덕션 빌드가 생긴다)
+node /tmp/deploy-gate.mjs served                # 배포 전 서빙 배포 id (아래 「배포 뒤 확인」에서 쓴다)
 git checkout main
 git merge --ff-only origin/staging              # 실패 시 즉시 중단, #jam-alert
 JAM_SHIP=1 git push origin main
@@ -243,8 +259,9 @@ git checkout staging
 1. 헬스체크: `curl -o /dev/null -w '%{http_code}' https://j-a-m.app`을 push 후 최대 2분간 30초 간격으로
    재시도한다. 사이트가 응답하는지만 본다. 롤백 뒤 자동 할당이 꺼진 상태에서는 새 배포가 공개되지
    않아도 옛 배포가 200으로 응답하므로, 새 배포가 공개됐는지는 2번이 본다.
-2. 서빙 배포 id: `check` 출력의 `jam-web 변경`이 1개 이상이면
-   `node scripts/deploy-gate.mjs served --wait-change <배포 전 id>`를 실행한다(30초 간격, 최대 6분).
+2. 서빙 배포 id: 배포 전에 jam-web 변경이 있었으면(`check` 출력의 `jam-web 변경`이 1개 이상이거나 위
+   `git diff --quiet`의 종료 코드가 1이면)
+   `node /tmp/deploy-gate.mjs served --wait-change <배포 전 id>`를 실행한다(30초 간격, 최대 6분).
    종료 코드별 행동은 아래 표와 같다.
 
 | 종료 코드 | 뜻 | 기록·행동 |
