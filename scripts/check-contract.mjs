@@ -382,6 +382,44 @@ function checkGitConfig(c) {
   }
 }
 
+// ── ⑫ 배포 게이트 선언 ────────────────────────────────────────────────────────
+// scripts/deploy-gate.mjs가 읽는 선언(deploy_gate)과 실제의 대조 (티켓 20260922_0001). 스크립트와
+// 선언은 한 쌍이다. 선언이 없으면 게이트가 실행 오류로 끝나 배포가 막히고, 스크립트가 없으면
+// 선언이 아무도 읽지 않는 낡은 값이 된다. public_routes의 각 항목에는 실제 route.ts가 있어야 한다
+// (라우트를 지웠는데 목록에 남으면 같은 이름의 새 라우트가 인증 확인 없이 통과한다).
+function checkDeployGate(c) {
+  const script = 'scripts/deploy-gate.mjs'
+  const scriptExists = existsSync(path.join(REPO, script))
+  const spec = c.deploy_gate
+  if (!spec) {
+    if (scriptExists) {
+      violate('deploy_gate', `${script}가 있는데 contract.json에 deploy_gate 선언이 없습니다`,
+        `스크립트는 이 선언(rollback_sql_required_from·public_routes)을 읽고, 없으면 실행 오류로 끝나 배포를 막습니다.`)
+    }
+    return
+  }
+  if (!scriptExists) {
+    violate('deploy_gate', `deploy_gate가 선언돼 있는데 ${script}가 없습니다`,
+      `스크립트를 되살리거나, 게이트를 없애는 것이 의도라면 선언과 이 게이트를 가리키는 문서(/jam-ship·scheduled-jobs.md)를 함께 고치세요.`)
+  }
+  if (!Number.isInteger(spec.rollback_sql_required_from) || spec.rollback_sql_required_from < 1) {
+    violate('deploy_gate', `deploy_gate.rollback_sql_required_from이 1 이상의 정수가 아닙니다 (실제 ${JSON.stringify(spec.rollback_sql_required_from)})`,
+      `되돌림 SQL을 요구하기 시작하는 마이그레이션 번호를 정수로 적으세요.`)
+  }
+  if (!Array.isArray(spec.public_routes) || spec.public_routes.some((r) => typeof r !== 'string')) {
+    violate('deploy_gate', `deploy_gate.public_routes가 문자열 배열이 아닙니다`,
+      `jam-web/src/app/api/ 아래 경로를 문자열로 나열하세요(예: "strava/callback").`)
+    return
+  }
+  for (const route of spec.public_routes) {
+    const rel = path.join('jam-web/src/app/api', route.replace(/^\/+|\/+$/g, ''), 'route.ts')
+    if (!existsSync(path.join(REPO, rel))) {
+      violate('deploy_gate', `public_routes의 "${route}"에 해당하는 라우트가 없습니다 (${rel})`,
+        `라우트를 지웠거나 이름을 바꿨다면 이 항목도 지우거나 고치세요. 남겨 두면 같은 경로에 새로 생기는 라우트가 인증 확인 없이 통과합니다.`)
+    }
+  }
+}
+
 // ── 실행 ──────────────────────────────────────────────────────────────────────
 const contract = readContract()
 checkPathsExist(contract)
@@ -395,6 +433,7 @@ checkHooks(contract)
 checkStalePhrases(contract)
 checkQualityBar(contract)
 checkGitConfig(contract)
+checkDeployGate(contract)
 
 for (const n of notes) console.log(`참고: ${n}`)
 

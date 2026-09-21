@@ -42,17 +42,18 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
   전체 verify와 CI를 돈다. staging과 main에는 CI가 없다). 이 단계가 승격 전 유일한 재검증이다.
 
 ### 보안
-- [ ] 비밀값 미노출 —
-  `git -C "<repo>" diff origin/main..origin/staging -- jam-web | grep -inE "(SUPABASE_SERVICE_ROLE_KEY|STRAVA_CLIENT_SECRET|ENCRYPTION_KEY|ADMIN_SECRET|CRON_SECRET|sb_secret_)\s*[:=]"`
-  → 매치되면 실제 값이 커밋된 것이니 승격을 멈춘다.
+- [ ] 비밀값 미노출·새 API 라우트 인증·마이그레이션 되돌림 SQL(아래 「인프라」·4단계가 같은 결과를
+  쓴다) — `node scripts/deploy-gate.mjs check`. `git fetch origin` 뒤에 실행한다. 범위 기본값은
+  `origin/main` → `origin/staging`이고 두 팁의 트리 비교라 얕은 복제에서도 돈다. 종료 코드가 0이
+  아니면(1 차단 · 2 게이트 실행 오류) 승격을 멈춘다.
+  - 비밀값: jam-web에서 추가된 줄의 실제 비밀 형태만 잡는다. 걸리면 실제 값이 커밋된 것이니
+    승격을 멈추고, 출력이 알려 주는 파일·줄에서 값을 폐기·교체한다.
+  - 새 API 라우트: 인증 확인 호출이 없는 라우트는 의도한 공개 라우트인지 해당 티켓에서 근거를
+    확인한다. 근거가 있으면 `docs/agents/contract.json`의 `deploy_gate.public_routes`에 등록해
+    staging에 반영한 뒤 다시 실행하고, 근거가 없으면 승격을 멈춘다.
 - [ ] 의존성 취약점 — `cd jam-web && npm audit --omit=dev` (critical·high 0건)
 - [ ] (해당 시) 새 `SECURITY DEFINER` 함수가 있으면 `REVOKE ... FROM PUBLIC` 처리 여부 확인
   (가드레일 패턴 8)
-- [ ] (해당 시) 새 API 라우트의 인증·인가 —
-  `git -C "<repo>" diff --name-only --diff-filter=A origin/main..origin/staging -- ':(glob)jam-web/src/app/api/**/route.ts'`로
-  새 라우트를 뽑고, 파일마다 `grep -lE "auth\.getUser|@/lib/admin/auth|CRON_SECRET|ADMIN_SECRET" <파일>`로 인증
-  확인 호출이 있는지 본다. 하나도 없는 라우트는 의도한 공개 라우트인지 해당 티켓에서 근거를
-  확인하고, 근거가 없으면 승격을 멈춘다.
 
 ### 성능
 - [ ] Vercel 빌드 로그에 경고 없음 — 7단계 `vercel inspect <url> --logs`에서 겸해 확인한다.
@@ -68,7 +69,8 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
   `jam-web/.env.example` 항목과 대조한다.
 - [ ] 마이그레이션 적용 여부 — `jam-web/supabase/migrations/`의 신규 파일이 실제 운영 DB에
   적용됐는지 확인한다(가드레일 패턴 2). `supabase_migrations.schema_migrations`는 전수 기록이
-  아니므로 의심되면 Supabase MCP로 실물을 대조한다.
+  아니므로 의심되면 Supabase MCP로 실물을 대조한다. 되돌림 SQL의 동반 여부는 「보안」의
+  `deploy-gate.mjs check`가 확인한다.
 - [ ] 루트 응답(DNS·SSL 겸함) — 7단계의 `curl https://j-a-m.app` 확인으로 겸한다.
 
 ### 문서
@@ -114,8 +116,9 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
   전환한다. 실측 전의 목표값이며 티켓 20260922_0002에서 실측한다) — DB는
   되돌림 SQL이 있으면 사용자 승인 후 즉시, 없으면 원래 이번 배포에 포함하지 않았어야 한다.
 - **DB 고려**: Supabase는 staging·프로덕션 공용 단일 DB라 코드 롤백이 DB 변경을 되돌리지
-  않는다. 이번 배포에 새 마이그레이션이 있으면 되돌림 SQL이 동반돼 있는지 확인한다
-  (`jam-developer.md`의 `db` 규칙, 3단계 「인프라」 점검 항목과 같다).
+  않는다. 이번 배포에 새 번호 마이그레이션이 있으면 되돌림 SQL이 동반돼 있는지는 3단계
+  「보안」의 `node scripts/deploy-gate.mjs check`가 확인한다(`jam-developer.md`의 `db` 규칙과 같은
+  기준이다. `seed_*.sql`은 1회성 데이터 스크립트라 요구하지 않는다).
 
 > 이식 출처: `shipping-and-launch` skill §Rollback Strategy 양식.
 
@@ -162,7 +165,15 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel inspect <최신-배포-url> --
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" https://j-a-m.app
+node scripts/deploy-gate.mjs served
 ```
+
+`served`는 프로덕션 도메인이 **실제로 서빙 중인 배포 id**를 출력한다(공개 페이지 응답 HTML의
+`?dpl=dpl_…`, Vercel 인증 불필요). 이 id를 위 `vercel inspect`가 알려 주는 최신 배포의 id와
+대조한다. 같으면 새 배포가 공개된 것이다. 다르면 아직 전환 전이거나 자동 할당이 꺼진 상태이므로
+보고하고, 롤백 뒤라면 4단계 「롤백 이후의 복구」의 `vercel promote`가 필요한지 판단한다. `curl`의
+200 응답은 옛 배포도 내므로 새 배포가 공개됐다는 증거가 되지 못한다. 종료 코드 2(네트워크 오류·
+시간 초과)·3(응답은 왔으나 식별자 없음)이면 대조하지 못한 것이므로 "확인 불가"로 보고한다.
 
 > TLS 오류(`unable to get local issuer certificate`)가 나면:
 > `security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain > /tmp/system-ca.pem`
@@ -193,10 +204,20 @@ curl -s -o /dev/null -w "%{http_code}\n" https://j-a-m.app
 
 ## 주간 무인 배포와의 관계
 
-목요일 23:59 KST 무인 배포는 이 스킬의 「사전 확인」·「main 승격」·「배포 검증」만 수행한다.
-3~5단계와 8단계는 무인 경로에 아직 적용되지 않는다. 범위와 사유의 단일 원천은
-`.claude/skills/jam-work/references/scheduled-jobs.md` 「주간 배포 승인」 절이고, 적용 방안은 티켓
-20260922_0001에서 다룬다.
+목요일 23:59 KST 무인 배포는 이 스킬의 일부만 수행한다. 범위·사유·절차의 단일 원천은
+`.claude/skills/jam-work/references/scheduled-jobs.md` 「주간 배포 승인」 절(「무인 경로에 적용하는
+점검」 표와 「배포 실행」)이다. 여기에는 단계별 대응만 적는다(티켓 20260922_0001).
+
+| 이 스킬의 단계 | 무인 경로 |
+|---|---|
+| 1 사전 확인 | 수행 |
+| 2 staging 검증 상태 | 수행 (스테이징 `curl` 확인) |
+| 3 배포 전 점검표 | 일부 수행 — `node scripts/deploy-gate.mjs check`가 보는 비밀값·마이그레이션 되돌림 SQL·새 API 라우트 인증. 그 밖의 항목(`verify.sh`·`npm audit`·환경변수·마이그레이션 적용 여부)은 미수행 |
+| 4 롤백 계획 | 롤백은 하지 않는다(이상이 보이면 `#jam-alert`) |
+| 5 완료 기준 | 미수행 |
+| 6 main 승격 | 수행 |
+| 7 배포 검증 | 수행 — 헬스체크에 더해 `node scripts/deploy-gate.mjs served`로 서빙 배포 id가 바뀌었는지 확인 |
+| 8 배포 후 검증 | 미수행 |
 
 ## 하지 않는 것
 

@@ -53,6 +53,20 @@ You are 아현, the implementation engineer for the JAM! project (`jam-web/`).
      sibling `_down.sql`, with the exact statement(s) that undo this file and nothing else. A
      migration with no recorded rollback is a deploy `/jam-ship` cannot roll back — write the down
      path before handing the migration off.
+     - **The marker is checked by a machine.** Start the trailing comment block with a line of its
+       own that begins `-- 되돌림 SQL` (or `-- ROLLBACK`), and put the undo statements below it as
+       SQL comments:
+
+       ```sql
+       -- 되돌림 SQL
+       -- DROP INDEX IF EXISTS public.idx_example;
+       ```
+
+       The other accepted form is a sibling file named after the migration and added in the same
+       branch: `181_foo.sql` → `181_foo_down.sql`. `scripts/deploy-gate.mjs check` looks for these
+       two forms in every new numbered migration from number 180 up (single source:
+       `deploy_gate.rollback_sql_required_from` in `docs/agents/contract.json`) and blocks the
+       deploy when neither is there. `seed_*.sql` files are counted but not checked.
 
      > Ported from: `deprecation-and-migration` skill §Database Schema Migrations (Expand/Contract).
 4. **Never set a ticket's `status` to `CLOSED`.** You may fill in the completion record, but leave
