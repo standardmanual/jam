@@ -235,11 +235,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
  * 하드 삭제하고, 이력이 있으면 차단한다. 이 PATCH는 이력 유무와 무관하게 항상 소프트
  * 삭제/복원만 수행하는 가역적 토글로 그대로 유지한다.
  *
- * `deactivated_by_item_book_id` 컬럼(마이그레이션 146)은 컬렉션 연쇄 비활성화 캐스케이드를
- * 지원하기 위해 추가됐었다 — 그 캐스케이드는 티켓 20260914_1729에서 완전히 폐지됐다(컬렉션의
- * 활성/비활성은 소속 배지와 이제 무관). 이 컬럼을 채우는 코드는 더 이상 없으므로 이 PATCH도
- * 더 이상 리셋하지 않는다. 컬럼 자체는 과거 데이터가 남아 있을 수 있어 이번 티켓 범위에서는
- * 삭제하지 않았다(후속 티켓에서 컬럼 제거 여부를 재검토).
+ * 컬렉션 연쇄 비활성화 캐스케이드는 티켓 20260914_1729에서 폐지됐고, 그 판별에 쓰던
+ * `deactivated_by_item_book_id` 컬럼도 마이그레이션 177로 삭제됐다. 이 PATCH는 배지 자신의
+ * `deleted_at`만 바꾼다.
  */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()

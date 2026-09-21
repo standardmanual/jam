@@ -2,9 +2,9 @@
 id: 20260914_1751
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-14
-closed:
+closed: 2026-09-21
 ---
 
 # [Infra] `deactivated_by_item_book_id` 죽은 컬럼 정리
@@ -29,30 +29,6 @@ closed:
 > 판단 단계 우선 — 삭제가 맞다고 결론나면 그 다음에 마이그레이션 작성.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
-
-### 구현 내용 요약
-
-### 변경된 파일
-```
--
-```
-
-### 테스트 결과
-- [ ]
-
-### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
-
-### 주요 의사결정 / 핵심 메모
-> 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
-
-### 잔여 이슈
--
-
----
 ## 진행 기록 (2026-09-21) — 마이그레이션 작성 완료, DB 적용 대기
 
 - **삭제 결정**: 사용자 승인(2026-09-21). 조건은 「값이 채워진 행이 없을 때」였다.
@@ -68,3 +44,39 @@ closed:
 5. `scripts/verify.sh` 통과를 확인하고 이 티켓을 CLOSED 처리한다.
 
 코드는 이 컬럼을 읽거나 쓰지 않아서(주석과 테스트 목에만 남아 있음) 적용 순서에 제약은 없다.
+
+---
+## 완료 기록
+
+### 구현 내용 요약
+`badges.deactivated_by_item_book_id` 컬럼(마이그레이션 146)을 삭제했다(마이그레이션 177). 컬럼을 채우던 캐스케이드 로직은 티켓 20260914_1729에서 이미 폐지돼 죽은 컬럼이었다. 타입·테스트 목·주석·문서의 잔여 참조를 함께 정리했다.
+
+### 변경된 파일
+```
+jam-web/supabase/migrations/177_drop_badges_deactivated_by_item_book_id.sql
+jam-web/src/types/database.ts
+jam-web/src/types/database.generated.ts
+jam-web/src/app/api/admin/badges/[id]/route.ts (주석)
+jam-web/src/lib/badge-engine/__tests__/ (5개 파일의 테스트 목)
+docs/specs/prd/02_DATA_MODEL.md
+docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
+```
+
+### 테스트 결과
+- [x] 삭제 전 확인(jam-prod 읽기 전용 조회): 값이 채워진 행 0건, 함수·뷰·정책·트리거 참조 0건
+- [x] 적용 후 확인: `information_schema.columns`와 `pg_indexes`에서 컬럼·인덱스 0건, badges 3,386행 그대로
+- [x] `scripts/verify.sh` 전체 통과 (44초)
+
+### 배포 정보
+- 배포일: 2026-09-21
+- 환경: DB는 프로덕션·staging 공용 단일 DB(사용자가 Supabase에서 직접 적용), 코드는 staging
+- 커밋: 정리 묶음 커밋
+
+### 주요 의사결정 / 핵심 메모
+- 마이그레이션 적용은 사용자가 Supabase에서 직접 했다(카리나의 `apply_migration` 호출은 권한 분류기가 거부해 우회하지 않았다).
+- 생성 타입은 MCP 재생성 대신 삭제된 항목(Row·Insert·Update 3곳과 외래키 관계 1곳)을 직접 지웠다. 출력이 파일 전체라 컨텍스트 비용이 크고, 변경이 이 컬럼뿐이라 결과가 같다.
+- `BADGE_ENGINE_UNIFIED.md`의 「캐스케이드」 단락은 이미 폐지된 동작을 현재형으로 설명하고 있어, 폐지된 현재 상태 서술로 다시 썼다.
+
+### 잔여 이슈
+- 없음
+

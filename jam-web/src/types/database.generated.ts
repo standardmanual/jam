@@ -254,7 +254,6 @@ export type Database = {
           category: string | null
           condition_json: Json | null
           created_at: string
-          deactivated_by_item_book_id: string | null
           deleted_at: string | null
           description: string
           drop_condition_json: Json | null
@@ -289,7 +288,6 @@ export type Database = {
           category?: string | null
           condition_json?: Json | null
           created_at?: string
-          deactivated_by_item_book_id?: string | null
           deleted_at?: string | null
           description: string
           drop_condition_json?: Json | null
@@ -324,7 +322,6 @@ export type Database = {
           category?: string | null
           condition_json?: Json | null
           created_at?: string
-          deactivated_by_item_book_id?: string | null
           deleted_at?: string | null
           description?: string
           drop_condition_json?: Json | null
@@ -355,13 +352,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "poi_categories"
             referencedColumns: ["slug"]
-          },
-          {
-            foreignKeyName: "badges_deactivated_by_item_book_id_fkey"
-            columns: ["deactivated_by_item_book_id"]
-            isOneToOne: false
-            referencedRelation: "item_books"
-            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "badges_item_book_id_fkey"
