@@ -51,3 +51,20 @@ closed:
 
 ### 잔여 이슈
 -
+
+---
+## 진행 기록 (2026-09-21) — 마이그레이션 작성 완료, DB 적용 대기
+
+- **삭제 결정**: 사용자 승인(2026-09-21). 조건은 「값이 채워진 행이 없을 때」였다.
+- **삭제 전 확인**(jam-prod 읽기 전용 조회): 값이 채워진 행 0건(badges 3,386행 중), 이 컬럼을 참조하는 함수·뷰·RLS 정책·트리거 0건, 인덱스는 `idx_badges_deactivated_by_item_book_id` 하나(컬럼과 함께 삭제).
+- **마이그레이션 파일 작성**: `jam-web/supabase/migrations/177_drop_badges_deactivated_by_item_book_id.sql`
+- **DB 적용이 막혔다**: `apply_migration` 호출이 프로덕션 DB를 바꾼다는 이유로 권한 분류기에서 거부됐다. 우회하지 않고 멈췄다. **DB에는 아직 적용되지 않았다.**
+
+### 남은 작업 (적용 후 같은 순서로)
+1. 177을 프로덕션에 적용하고 `information_schema.columns`로 컬럼이 사라졌는지 확인한다.
+2. 생성 타입에서 제거한다: `src/types/database.generated.ts`(257·292·327행 컬럼, 360행 외래키 관계)는 MCP `generate_typescript_types`로 재생성해 대조한다. 수기 `src/types/database.ts` 183행도 지운다.
+3. 테스트 목 5개(`shadow-ban-gate`·`usage-badges`·`first-sync-options-contract`·`walking-badges-v4`·`badge-engine-v5`)의 `deactivated_by_item_book_id: null` 줄을 지운다.
+4. 주석·문서를 정리한다: `src/app/api/admin/badges/[id]/route.ts` 238행 주석, `docs/specs/prd/02_DATA_MODEL.md` 126행 컬럼 행, `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` 569·573행의 캐스케이드 서술.
+5. `scripts/verify.sh` 통과를 확인하고 이 티켓을 CLOSED 처리한다.
+
+코드는 이 컬럼을 읽거나 쓰지 않아서(주석과 테스트 목에만 남아 있음) 적용 순서에 제약은 없다.

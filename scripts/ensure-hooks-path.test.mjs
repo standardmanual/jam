@@ -120,6 +120,58 @@ for (const [name, valueFor, normal] of kinds) {
   })
 }
 
+// ── `~` 로 시작하는 값 (티켓 20260921_0923) ───────────────────────────────────
+// git은 core.hooksPath를 경로형 설정으로 읽어 `~/...`를 홈 디렉터리로 펼친다. 두 구현이 같은 규칙으로
+// 펼치는지 홈 디렉터리를 바꿔 확인한다. ensure는 임시 홈 아래에 만든 저장소로, check-contract는
+// 이 저장소의 부모 폴더를 홈으로 삼아 `~/<저장소 폴더명>/.githooks`가 이 저장소를 가리키게 한다.
+
+const fakeHome = tmp('ensure-hooks-path-home-')
+const repoInHome = join(fakeHome, 'proj')
+mkdirSync(repoInHome)
+run('git', ['init', '-q'], repoInHome)
+mkdirSync(join(repoInHome, '.githooks'))
+const homeEnv = { ...cleanEnv(), HOME: fakeHome }
+
+test('ensure: 이 저장소의 .githooks를 가리키는 ~/ 경로는 무출력·무변경이다', () => {
+  setHooksPath(repoInHome, '~/proj/.githooks')
+  const r = ensure(repoInHome, homeEnv)
+  assert.equal(r.status, 0)
+  assert.equal(r.stdout, '')
+  assert.equal(hooksPath(repoInHome), '~/proj/.githooks')
+})
+
+test('ensure: 다른 곳을 가리키는 ~/ 경로는 .githooks로 교정한다', () => {
+  mkdirSync(join(fakeHome, 'elsewhere'), { recursive: true })
+  setHooksPath(repoInHome, '~/elsewhere')
+  const r = ensure(repoInHome, homeEnv)
+  assert.equal(r.status, 0)
+  assert.match(r.stdout, /훅 경로를 \.githooks 로 맞췄습니다/)
+  assert.equal(hooksPath(repoInHome), '.githooks')
+})
+
+test('ensure: 사라진 ~/ 경로는 .githooks로 교정한다', () => {
+  setHooksPath(repoInHome, '~/gone/.githooks')
+  const r = ensure(repoInHome, homeEnv)
+  assert.equal(r.status, 0)
+  assert.match(r.stdout, /훅 경로를 \.githooks 로 맞췄습니다/)
+  assert.equal(hooksPath(repoInHome), '.githooks')
+})
+
+const repoHomeEnv = (value) => ({ ...inject(value), HOME: dirname(ROOT) })
+const rootName = ROOT.split('/').filter(Boolean).pop()
+
+test('check-contract: 이 저장소의 .githooks를 가리키는 ~/ 경로는 통과한다', () => {
+  const r = run('node', [CHECK], ROOT, repoHomeEnv(`~/${rootName}/.githooks`))
+  assert.doesNotMatch(r.stderr, /\[git_config\]/)
+  assert.equal(r.status, 0, r.stderr)
+})
+
+test('check-contract: 다른 곳을 가리키는 ~/ 경로는 실패한다', () => {
+  const r = run('node', [CHECK], ROOT, repoHomeEnv(`~/${rootName}/no-such-hooks`))
+  assert.equal(r.status, 1)
+  assert.match(r.stderr, /\[git_config\]/)
+})
+
 // ── scripts/ensure-hooks-path.sh ──────────────────────────────────────────────
 
 test('값이 없으면 .githooks로 맞추고 한 줄만 출력한다', () => {

@@ -17,6 +17,7 @@
 
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
+import { homedir } from 'node:os'
 import path from 'node:path'
 
 const REPO = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim()
@@ -290,7 +291,8 @@ function readGitConfig(key) {
 // resolves_to_repo_hooks 와 같은 규칙이다). 값이 비어 있지 않고, 존재하는 디렉터리이며, 현재
 // 워크트리 루트 또는 메인 체크아웃 루트(git 공용 디렉터리의 상위)의 선언 경로(want)와 같은 곳이면
 // 참이다. 상대경로는 현재 워크트리 루트 기준으로 풀고 절대경로는 그대로 쓴다. 상대·절대 형식은
-// 따지지 않는다.
+// 따지지 않는다. git이 경로형 설정으로 읽어 펼치는 `~`·`~/...`는 홈 디렉터리 기준으로 펼쳐서 같은
+// 규칙을 적용한다(티켓 20260921_0923, `~사용자` 형식은 다루지 않는다).
 // "같은 곳"은 경로 문자열이 아니라 디바이스·아이노드로 가린다. 한글 폴더명이 든 경로는 설정에는
 // NFC로, git이 알려주는 경로는 NFD로 적혀 문자열로는 같은 폴더를 다르다고 판정한다.
 function sameDir(a, b) {
@@ -305,7 +307,8 @@ function sameDir(a, b) {
 
 function resolvesToRepoDir(value, want) {
   if (!value) return false
-  const dir = path.isAbsolute(value) ? value : path.join(REPO, value)
+  const expanded = value === '~' ? homedir() : value.startsWith('~/') ? path.join(homedir(), value.slice(2)) : value
+  const dir = path.isAbsolute(expanded) ? expanded : path.join(REPO, expanded)
   try {
     if (!statSync(dir).isDirectory()) return false
   } catch {
