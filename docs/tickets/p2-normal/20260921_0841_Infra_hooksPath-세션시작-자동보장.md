@@ -2,8 +2,9 @@
 id: "20260921_0841"
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-21
+closed: 2026-09-21
 ---
 
 # [Infra] core.hooksPath를 세션 시작 때 자동으로 맞추고 계약 검사에 넣는다
@@ -98,26 +99,80 @@ created: 2026-09-21
 - 실제 새 세션에서의 자동 실행 확인은 카리나가 다음 세션 시작 때 하고 완료 기록에 남긴다.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
 
+두 차례 실행했다. 첫 구현이 게이트를 통과한 뒤 설계 결함이 드러나 같은 브랜치에서 보정했고, 보정본도 게이트를 통과해 병합했다(경위는 아래 「주요 의사결정」).
+
+- `scripts/ensure-hooks-path.sh` 신설(bash, 멱등). 정상이면 아무것도 출력하지 않고, 정상이 아니면 로컬 설정 한 키만 `.githooks`로 맞추고 한 줄을 출력한다. 종료 코드는 항상 0이다.
+- `.claude/settings.json`의 `SessionStart` 네 번째 명령으로 연결했다. 기존 세 명령은 그대로다.
+- `docs/agents/contract.json`에 `paths_exist`·`hooks.SessionStart` 항목과 `git_config` 절을 추가했다.
+- `scripts/check-contract.mjs`에 `checkGitConfig`(⑩)를 추가했다. 비어 있음 / 이 저장소의 `.githooks`가 아닌 절대경로 / 그 밖의 값 세 문구로 실패하고, 고치는 명령을 함께 출력한다.
+- **정상 판정**: 값이 비어 있지 않고, 존재하는 디렉터리이며, 현재 워크트리 루트 또는 메인 체크아웃 루트의 `.githooks`와 같은 폴더이면 상대·절대 모두 정상이다. ensure와 check-contract가 같은 규칙을 쓴다.
+- `scripts/gen-team-doc.mjs`의 설명 표에 새 스크립트를 등록하고 `team-operations.md` 생성 구간을 생성기로 다시 만들었다.
+- 안내 문서: `CLAUDE.md` 규칙 4를 새 사실로 바꿨다(한계도 이 한 곳에만 적음). `docs/agents/orchestrator.md`의 중복 문장은 규칙 4를 가리키는 한 줄로 줄였다. `.claude/skills/jam-sync/SKILL.md` B.3은 "이 저장소의 `.githooks`로 해석되면 정상(상대·절대 모두)"으로 고쳤다.
+- 테스트 `scripts/ensure-hooks-path.test.mjs` 27건을 신설했다. 같은 값 표를 ensure와 check-contract 양쪽에 돌려 결과가 일치하는지 확인하고, 링크드 워크트리와 한글 폴더 NFC/NFD 표기 차이도 다룬다.
+
 ### 변경된 파일
 ```
--
+scripts/ensure-hooks-path.sh            (신규)
+scripts/ensure-hooks-path.test.mjs      (신규)
+scripts/check-contract.mjs
+scripts/gen-team-doc.mjs
+.claude/settings.json
+.claude/skills/jam-sync/SKILL.md
+docs/agents/contract.json
+docs/agents/team-operations.md          (생성 구간 재생성)
+docs/agents/orchestrator.md
+CLAUDE.md
 ```
+10개 파일, +440/-6줄. `jam-web` 변경 없음.
 
 ### 테스트 결과
-- [ ] 
+- [x] 게이트 리뷰(민지) 1차 PASS, 재작업 후 PASS
+- [x] `scripts/verify.sh` 통과(lint · typecheck · test · ds:check · slop · contract · team-doc). 민지가 재실행해 확인
+- [x] `node scripts/ensure-hooks-path.test.mjs` 27건 통과. 검증 중 이 저장소의 실제 `.git/config`는 바뀌지 않았다(민지가 실행 전후 해시로 확인)
+- [x] 환경변수 주입(`GIT_CONFIG_COUNT`·`KEY_0`·`VALUE_0`) 재현: `.githooks`·이 저장소의 절대경로는 통과, 빈 값·`/tmp/x`·사라진 경로·`hooks`는 각각 다른 문구로 실패
+- [x] 병합 후 재확인(카리나): 실제 설정값(절대경로)으로 `check-contract` 통과, `gen-team-doc --check` 최신, `settings.json`의 새 명령 문자열 실행 시 출력 없이 종료 코드 0
+- [ ] 새 Claude Code 세션에서 `SessionStart`가 자동 실행되는지(후속 확인, 「잔여 이슈」 참조)
 
 ### 배포 정보
-- 배포일: 
-- 환경: staging (빌드 없음)
-- 커밋: 
+- 배포일: 2026-09-21
+- 환경: staging (문서·스크립트만 변경되어 Vercel 빌드 없음)
+- 커밋: 병합 `0bf810fb` (구현 `c4e8430d`, 재작업 `8282a4ed`)
 
 ### 주요 의사결정 / 핵심 메모
-- 별도 스크립트로 분리한 이유: `contract.json`의 `hooks.SessionStart`는 명령 문자열에 스크립트 경로가 들어 있는지로 검사한다. `workspace-setup.sh`의 하위 명령으로 넣으면 기존 항목과 구분되지 않아 새 훅의 존재를 따로 못 박을 수 없다.
-- 선택하지 않은 대안: `.githooks`를 `core.hooksPath` 없이 쓰는 방법(`.git/hooks` 심볼릭 링크)은 링크가 클론마다 다시 필요해 같은 문제를 옮길 뿐이라 채택하지 않았다.
+
+**설계 보정 경위.** 첫 구현은 값이 문자열로 정확히 `.githooks`일 때만 정상으로 봤다. 게이트를 통과한 직후, 이 PC의 값이 절대경로(`<메인 체크아웃>/.githooks`)로 되돌아와 있는 것이 발견됐다. 그 상태로 병합하면 워크플로가 한 번 돌 때마다 메인 체크아웃의 커밋이 계약 검사에 막힌다(아현이 첫 구현 커밋에 `JAM_SKIP_DOCLINT=1`, push에 `JAM_SKIP_VERIFY=1`을 쓴 이유이고, 사유는 커밋 메시지에 남아 있다). 그래서 판정 기준을 "이 저장소의 `.githooks`로 해석되는가"로 바꿔 재작업했다(스펙 변경 커밋 `a8e5f5e0`). 재작업은 우회 없이 통과했다.
+
+**하네스 원인.** 격리 워크트리를 만드는 하네스가 워크트리를 만들 때 값을 절대경로로 쓰는 것으로 판단한다. 근거는 세 가지다.
+- 상대경로로 바꿔 둔 값이 워크플로 실행 뒤 두 번 모두 절대경로로 돌아왔다(첫 실행 전 08:2x KST, 재작업 실행 직전 09:07 KST).
+- 두 실행의 에이전트 기록을 검색했을 때 이 저장소의 `.git/config`에 값을 쓰는 명령이 없었다(쓰기 명령은 전부 임시 저장소용 테스트 코드).
+- 실사용 Claude Code 2.1.275 바이너리에 워크트리 생성 시 `core.hooksPath`를 설정하고 "메인 저장소의 훅을 쓰도록 워크트리를 설정했다"고 알리는 코드가 있다. 과거 티켓 20260827_022·20260918_0423도 워크트리의 값이 메인 체크아웃의 절대경로라고 기록했다.
+하네스만 단독으로 실행해 본 것은 아니므로 판단이라고 적는다. 문서에는 이 원인을 적지 않았고 판정 기준만 적었다.
+
+**정정: 앞선 설명.** 이 티켓의 배경 점검에서 "상대경로로 바꾸면 워크트리가 자기 `.githooks`를 실행해 티켓 20260919_1245의 문제가 해소된다"고 판단했다. 이는 `git worktree add`로 직접 만든 워크트리에서만 확인한 것이었고, 하네스가 만든 워크트리에서는 값이 절대경로로 바뀌므로 성립하지 않는다. 티켓 20260919_1245의 문제(워크트리 커밋이 메인 체크아웃의 훅으로 검사됨)는 이 티켓으로 해소되지 않았다.
+
+**스펙 정정 기록.** 구현이 티켓 본문과 다른 곳이 있어 후속 작업이 옛 문구를 스펙으로 읽지 않도록 남긴다.
+- 「상세 요구사항 ① 정상 판정」의 "realpath가 같다"는 디바이스·아이노드 비교(bash `-ef`, Node `statSync` bigint)로 구현했다. 이 PC의 값은 한글 폴더명이 NFC로 적혀 있고 `git rev-parse`가 돌려주는 경로는 NFD이며, Node의 `realpathSync` 문자열 비교로는 같은 폴더를 다르다고 판정하는 것을 실측했다. 의도(같은 폴더인가)는 그대로다.
+- 「⑤」의 설명 문구 "`.githooks`가 아니면 맞춘다"는 "이 저장소의 `.githooks`로 해석되지 않으면 맞춘다"로 바꿨다.
+- 출력 문구는 `훅 경로를 .githooks 로 맞췄습니다`로 조사 앞에 공백이 있다. 티켓의 예시와 띄어쓰기만 다르고 테스트 정규식이 이 형태로 굳어 있다.
+
+**별도 스크립트로 분리한 이유.** `contract.json`의 `hooks.SessionStart`는 명령 문자열에 스크립트 경로가 들어 있는지로 검사한다. `workspace-setup.sh`의 하위 명령으로 넣으면 기존 항목과 구분되지 않아 새 훅의 존재를 따로 못 박을 수 없다.
+
+**선택하지 않은 대안.** `.githooks`를 `core.hooksPath` 없이 쓰는 방법(`.git/hooks` 심볼릭 링크)은 링크가 클론마다 다시 필요해 같은 문제를 옮길 뿐이라 채택하지 않았다.
+
+**토큰·시간.** `tokenUsage`는 에이전트 출력 토큰만, 나머지는 워크플로 완료 알림의 값이다.
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 첫 구현 | 2 | 166,921 | 35,851 / 22,637 | 11분 18초 | 85 |
+| 재작업 | 2 | 191,061 | 45,082 / 23,749 | 14분 24초 | 78 |
+| 합계 | 4 | 357,982 | 80,933 / 46,386 | 25분 42초 | 163 |
+
+**범위 밖 발견물 처리.** 예약 루틴에서 훅이 처음 켜질 위험은 티켓 20260921_0901(P2), `~/` 값 과교정은 티켓 20260921_0923(P3)로 만들었다. 테스트가 `verify.sh`에 연결되지 않은 문제는 기존 티켓 20260919_1306이 다룬다.
 
 ### 잔여 이슈
-- Claude Code를 거치지 않고 터미널에서 먼저 커밋하는 새 클론은 여전히 첫 커밋에 훅이 돌지 않는다. 훅 기반 자동화로는 풀 수 없는 한계다.
+- **후속 확인(미완)**: 새 Claude Code 세션에서 `SessionStart`가 `ensure-hooks-path.sh`를 자동 실행하는지 확인해야 한다. 정상 상태에서는 출력이 없으므로 세션을 열기만 해서는 확인되지 않는다. 절차: 세션을 닫고 `git config --unset core.hooksPath`를 실행한 뒤 새 세션을 연다. 첫 출력에 `훅 경로를 .githooks 로 맞췄습니다 (이전 값: 없음)` 한 줄이 나오고 `git config core.hooksPath`가 `.githooks`이면 통과다. 값이 비어 있는 동안에는 커밋 훅이 돌지 않으므로 그 사이에 커밋하지 않는다.
+- Claude Code를 거치지 않고 터미널에서 먼저 커밋하는 새 클론은 첫 커밋에 훅이 돌지 않는다. 훅 기반 자동화로는 풀 수 없는 한계이며 `CLAUDE.md` 규칙 4에 명시했다.
