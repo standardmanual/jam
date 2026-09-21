@@ -30,10 +30,8 @@ describe('computeBookCompletion', () => {
     expect(computeBookCompletion(badges, new Set(['b0', 'b1'])).get('book-a')!.complete).toBe(true)
   })
 
-  it('배지가 0개(전부 제외 포함)인 컬렉션은 완성이 아니다', () => {
+  it('배지가 0개인 컬렉션은 완성이 아니다', () => {
     expect(computeBookCompletion([], new Set()).get('book-a')).toBeUndefined()
-    const r = computeBookCompletion([badge('b0', true)], new Set(['b0'])).get('book-a')
-    expect(r?.complete ?? false).toBe(false)
   })
 
   it('types 옵션이 분모에 반영된다', () => {
@@ -43,5 +41,31 @@ describe('computeBookCompletion', () => {
     const both = computeBookCompletion(badges, filled, { types: ['item', 'checkin'] }).get('book-a')!
     expect(both.total).toBe(2)
     expect(both.complete).toBe(false)
+  })
+  it('(f) 등록 배지가 전부 드랍 제외이면 등록 배지 전체가 분모이고 전부 장착하면 완성이다', () => {
+    const badges = [badge('b0', true), badge('b1', true)]
+    const partial = computeBookCompletion(badges, new Set(['b0'])).get('book-a')!
+    expect(partial.total).toBe(2)
+    expect(partial.filled).toBe(1)
+    expect(partial.complete).toBe(false)
+    const full = computeBookCompletion(badges, new Set(['b0', 'b1'])).get('book-a')!
+    expect(full.complete).toBe(true)
+  })
+
+  it('(g) 일부만 제외된 컬렉션은 기존과 같이 제외를 뺀다', () => {
+    const badges = [badge('b0'), badge('b1', true)]
+    const r = computeBookCompletion(badges, new Set(['b0'])).get('book-a')!
+    expect(r.total).toBe(1)
+    expect(r.complete).toBe(true)
+  })
+
+  it('(h) 전부 제외이지만 types 필터로 남은 배지가 없으면 완성이 아니다', () => {
+    const badges = [badge('b0', true, 'checkin')]
+    const r = computeBookCompletion(badges, new Set(['b0']), { types: ['item'] }).get('book-a')
+    expect(r?.complete ?? false).toBe(false)
+  })
+
+  it('(i) 등록 배지가 0개면 완성이 아니다', () => {
+    expect(computeBookCompletion([], new Set(['x'])).get('book-a')?.complete ?? false).toBe(false)
   })
 })
