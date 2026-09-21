@@ -1,5 +1,5 @@
 #!/bin/bash
-# verify — lint 전체 + typecheck + test 전체 + ds:check + 슬롭/금칙어 검사 + 루트 scripts 테스트를 한 번에 실행한다.
+# verify — lint 전체 + typecheck + test 전체 + ds:check + 슬롭/금칙어 검사 + 루트 scripts·.claude/workflows 테스트를 한 번에 실행한다.
 # (티켓 20260918_0421, 근거: JAM-WORK/05_자동화목록.md A1)
 #
 # 출력은 통과/실패와 실패 항목만 남긴다(20줄 이내). 단계별 전체 로그는 임시 파일에 남기고

@@ -1,6 +1,6 @@
 // doc-check.mjs 테스트 (티켓 20260919_1245)
 //
-// verify.sh는 루트 scripts/의 테스트를 돌리지 않으므로 직접 실행한다.
+// scripts/verify.sh의 scripts-test 단계가 이 파일을 돌린다(티켓 20260919_1306). 직접 실행도 된다.
 // 실행: node scripts/doc-check.test.mjs
 //
 // 순수 함수 단위 테스트 + 임시 git 저장소를 만들어 --staged 동작(차단·통과·엔진 자체 실패)을 검증한다.

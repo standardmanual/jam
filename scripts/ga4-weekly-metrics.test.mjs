@@ -1,7 +1,8 @@
 // ga4-weekly-metrics.mjs 테스트 (티켓 20260918_1151)
 //
-// verify.sh는 jam-web/ 안쪽만 검사하므로, 루트 scripts/의 순수 로직은 이 파일을 직접 실행해
-// 검증한다. 실행: node scripts/ga4-weekly-metrics.test.mjs
+// jam-web의 npm test는 루트 scripts/를 보지 않아 이 파일이 루트 scripts/의 순수 로직을 검증한다.
+// scripts/verify.sh의 scripts-test 단계가 이 파일을 돌린다(티켓 20260919_1306). 직접 실행도 된다.
+// 실행: node scripts/ga4-weekly-metrics.test.mjs
 //
 // 실 GA4 호출은 하지 않는다 — 서비스 계정 키가 필요한 인증·runReport는 주입 가능한 콜백으로
 // 분리해(fetchWeeklyMetrics의 getToken/callRunReport) 목으로 대체한다.

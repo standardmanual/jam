@@ -88,6 +88,7 @@ jobs:
           node scripts/check-slop.mjs
           node scripts/check-contract.mjs
           node scripts/gen-team-doc.mjs --check
-          # 파이프라인 진입점(.claude/workflows/jam-work.js)은 .claude/ 아래라 이 경로에서만 바뀐다 —
-          # 문법·프롬프트 조립이 깨져도 CI가 초록이던 사각지대를 막는다 (티켓 20260922_0207).
+          # 파이프라인 진입점(.claude/workflows/jam-work.js)은 .claude/ 아래라 문서·정의만 바꾼 push와 같은
+          # 이 경로로 검증되곤 한다. 본문 문법이나 프롬프트 조립이 깨져도 CI가 초록이던 사각지대를 막는다
+          # (티켓 20260922_0207). 코드 변경과 함께 push하면 전체 경로의 verify.sh가 같은 테스트를 돈다.
           for t in .claude/workflows/*.test.mjs; do node "$t"; done

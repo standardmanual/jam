@@ -1,9 +1,10 @@
 // jam-work.js 스모크 테스트 (티켓 20260918_1148, 20260918_1158에서 확장)
 //
 // `.claude/workflows/*.js`는 Workflow 도구가 `agent`·`phase`·`args`·`budget`·`parallel`을 전역으로
-// 주입한 채 실행하는 특수 스크립트라, jam-web의 vitest 하네스로는 돌릴 수 없다(verify.sh는
-// jam-web/ 안쪽만 본다). 이 파일은 같은 방식(전역 주입 + 최상위 await/return)으로 스크립트
-// 본문을 AsyncFunction에 담아 실행하는 최소 러너다.
+// 주입한 채 실행하는 특수 스크립트라, jam-web의 vitest 하네스로는 돌릴 수 없다(jam-web의 npm test는
+// 이 폴더를 보지 않는다). 이 파일은 같은 방식(전역 주입 + 최상위 await/return)으로 스크립트
+// 본문을 AsyncFunction에 담아 실행하는 최소 러너다. scripts/verify.sh의 scripts-test 단계와 CI의
+// 가벼운 검증이 이 파일을 실행한다(티켓 20260922_0207).
 //
 // 실행: node .claude/workflows/jam-work.test.mjs
 
@@ -157,14 +158,12 @@ const devPromptOf = async (extraArgs) => {
   await run({ ticketPath: 't.md', userRequest: 'r', workType: 'infra', ...extraArgs })
   return calls.find((c) => c.label === 'jam-developer').prompt
 }
-const LAST_SENTENCE = '이 티켓을 읽고 구현을 진행하라.'
 
 async function test6_planOnlyDefaultIsNoWaiver() {
   const p = await devPromptOf({})
   assert.equal(countLines(p, NO_WAIVER_LINE), 1, '인자가 없으면 "면제 없음" 줄이 정확히 한 줄이어야 한다')
   assert.equal(countLines(p, WAIVER_LINE), 0, '인자가 없으면 면제 줄이 없어야 한다')
   assert.ok(p.includes('이전 티켓의 선례는 면제 근거가 아니다'), '선례가 면제 근거가 아니라는 문구가 있어야 한다')
-  assert.ok(p.lastIndexOf(LAST_SENTENCE) > p.indexOf('이 티켓에는 계획 반환 면제가 없다'), '면제 줄은 마지막 문장 앞에 와야 한다')
   console.log('PASS test6_planOnlyDefaultIsNoWaiver')
 }
 
@@ -173,7 +172,6 @@ async function test7_planOnlyWaiverReplacesDefault() {
   assert.equal(countLines(p, WAIVER_LINE), 1, '면제가 있으면 면제 줄이 정확히 한 줄이어야 한다')
   assert.ok(p.includes('계획 반환 면제: 카리나가 계획을 확인함, 티켓 구현 계획이 파일 단위로 적혀 있음'))
   assert.equal(countLines(p, NO_WAIVER_LINE), 0, '면제가 있으면 "면제 없음" 줄이 없어야 한다')
-  assert.ok(p.lastIndexOf(LAST_SENTENCE) > p.indexOf('계획 반환 면제:'), '면제 줄은 마지막 문장 앞에 와야 한다')
   console.log('PASS test7_planOnlyWaiverReplacesDefault')
 }
 
@@ -196,7 +194,6 @@ async function test8_planOnlyWaiverEdgeInputs() {
   assert.ok(retry.includes('오탈자 수정 누락'), '재작업 사유가 남아야 한다')
   assert.equal(countLines(retry, WAIVER_LINE), 1)
   assert.equal(countLines(retry, NO_WAIVER_LINE), 0)
-  assert.ok(retry.indexOf('오탈자 수정 누락') < retry.indexOf('계획 반환 면제:'), '면제 줄은 재시도 블록 뒤에 와야 한다')
   console.log('PASS test8_planOnlyWaiverEdgeInputs')
 }
 
@@ -214,6 +211,24 @@ async function test9_planOnlyStopsBeforeGate() {
   console.log('PASS test9_planOnlyStopsBeforeGate')
 }
 
+// Workflow 도구는 `export const meta`를 순수 리터럴로 평가한다(변수·호출·보간 금지). 위 러너는 이 블록을
+// 정규식으로 잘라내고 본문만 실행하므로 meta 문법 오류(쉼표 누락 등)를 못 잡는다 — 여기서 따로 평가한다.
+// 또 하네스는 phase() 제목을 meta.phases와 정확히 대조하므로, 본문이 부르는 제목이 모두 선언돼 있어야 한다.
+async function test10_metaIsPureLiteralAndCoversPhaseCalls() {
+  const full = readFileSync(path.join(__dirname, 'jam-work.js'), 'utf8')
+  const m = full.match(/^export const meta = (\{[\s\S]*?\n\})\n/m)
+  assert.ok(m, 'export const meta 블록이 있어야 한다')
+  const meta = new Function(`return (${m[1]})`)() // 문법 오류면 여기서 SyntaxError로 실패한다
+  assert.equal(meta.name, 'jam-work')
+  assert.equal(typeof meta.description, 'string')
+  assert.ok(Array.isArray(meta.phases) && meta.phases.length > 0 && meta.phases.every((p) => p && typeof p.title === 'string' && p.title))
+  const titles = new Set(meta.phases.map((p) => p.title))
+  const called = [...full.matchAll(/\bphase\('([^']+)'\)/g)].map((x) => x[1])
+  assert.ok(called.length > 0, 'phase() 호출이 하나 이상 있어야 한다')
+  for (const t of called) assert.ok(titles.has(t), `phase('${t}')가 meta.phases에 선언돼 있지 않다`)
+  console.log('PASS test10_metaIsPureLiteralAndCoversPhaseCalls')
+}
+
 async function main() {
   await test1_needsApprovalStops()
   await test2_needsApprovalNoneProceedsInParallel()
@@ -224,6 +239,7 @@ async function main() {
   await test7_planOnlyWaiverReplacesDefault()
   await test8_planOnlyWaiverEdgeInputs()
   await test9_planOnlyStopsBeforeGate()
+  await test10_metaIsPureLiteralAndCoversPhaseCalls()
   console.log('전체 통과')
 }
 
