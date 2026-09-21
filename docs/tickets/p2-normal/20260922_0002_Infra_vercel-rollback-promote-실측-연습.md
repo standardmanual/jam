@@ -2,7 +2,7 @@
 id: "20260922_0002"
 category: Infra
 priority: P2
-status: IN_PROGRESS
+status: WAITING
 created: 2026-09-22
 parent: "20260921_2303"
 ---
@@ -49,9 +49,17 @@ parent: "20260921_2303"
 4. `vercel promote https://jam-stage-p48dsfdyt-standard-manual.vercel.app --scope standard-manual` — 명령 종료 시간, 페이지 `dpl`이 원래 값으로 돌아올 때까지의 시간.
 5. 끝 상태가 시작 상태와 같은지 확인한다. 다르면 즉시 복구하고 사유를 기록한다.
 
+### 실행 시도와 대기 사유 (2026-09-22)
+
+- 첫 명령 `vercel rollback https://jam-stage-jbiuh70o8-standard-manual.vercel.app --scope standard-manual`을 실행하려 했으나, Claude Code 자동 모드의 권한 분류기가 "공유 자원 변경"으로 **실행 전에 거부했다.** 명령은 실행되지 않았고, 읽기 전용 명령으로 확인한 결과 진행 중인 롤백이 없다(`vercel rollback status`). 사용자의 포괄 지시("모두 실행해")는 이 종류의 조작에 대한 승인으로 인정되지 않았다. 다른 도구로 우회하지 않는다.
+- **대기 조건:** 사용자가 스테이징 롤백 연습을 명시적으로 허용한다(대화로 "허용", 또는 설정에 `vercel rollback`·`vercel promote` Bash 권한 규칙 추가).
+- 시작 상태가 바뀌었다. 그 사이 `jam-stage`에 새 프로덕션 배포(`jam-stage-17bv3ohaf`, `dpl_B1EE3uHhHzTBjAkT7KnBE6x8AHeh`)가 생겼다. 원인은 빌드 로그로 확인했다: `vercel-ignore.sh`가 "직전 빌드 커밋 10ac65ba가 이 클론에 없음(얕은 클론) — 빌드합니다"라는 안전 규칙으로 문서 전용 push에서도 빌드한 것이다. 연습을 실제로 실행할 때는 그 시점의 직전 Ready 배포(지금은 `jam-stage-p48dsfdyt`)를 롤백 대상으로 다시 잡는다.
+- 열린 질문: `vercel rollback`이 비대화형 세션에서 확인 프롬프트를 요구하는지(`--yes` 필요 여부). `--help`에는 `-y, --yes`와 `--timeout <TIME>`(기본 3분)이 있다. 입력을 닫고(`< /dev/null`) 실행해 확인한다. 필요하면 `/jam-ship` 4단계 명령에 `--yes`를 넣는다.
+- `/jam-ship` 4단계의 "목표 복구 시간"은 실측 전이므로 "실측 전의 목표값" 표기를 유지한다.
+
 ## 구현 계획
 
-1. (사용자 승인 대신 위 결정에 따라) 카리나가 스테이징에서 실행한다.
+1. 사용자 허용을 받아 카리나가 스테이징에서 실행한다(위 「실행 순서」).
 2. 실행하고 결과를 이 티켓에 기록한다.
 3. 필요하면 `/jam-ship` SKILL.md를 고친다(경미 수정).
 
