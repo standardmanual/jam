@@ -122,9 +122,14 @@ assert.equal(r.json.migrations.numbered.length, 4, '_down.sql은 마이그레이
 assert.equal(r.json.migrations.seedCount, 2)
 assert.deepEqual(r.json.routes.map((x) => x.status).sort(), ['auth', 'auth', 'public'])
 assert.equal(r.json.secrets.findings.length, 0)
+assert.equal(r.json.jamWebChangedFiles, 11, '무인 루틴이 새 배포 여부를 가릴 때 쓰는 값이다')
 r = check()
 assert.equal(r.status, 0)
-assert.deepEqual(firstLines(r, 2), ['배포 게이트: 통과', '신규 마이그레이션: 번호 4건(되돌림 SQL 있음), seed 2건'])
+assert.deepEqual(firstLines(r, 3), [
+  '배포 게이트: 통과',
+  '신규 마이그레이션: 번호 4건(되돌림 SQL 있음), seed 2건',
+  '점검 범위: base → head, jam-web 변경 11개 파일',
+])
 
 // 3) 기존 비밀 형태의 줄이 있는 파일을 건드리거나 jam-web 밖에 적어도 걸리지 않는다(추가된 줄 · jam-web 아래만 검사)
 onHead('범위 밖', (put) => {
