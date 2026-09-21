@@ -93,7 +93,7 @@ verification output, never on inference.
 
 ## Verification paths you do have
 
-Do not write off verification as "구글 로그인 때문에 확인 불가." `jam-stage.vercel.app` runs with
+Do not write off verification as "구글 로그인 때문에 확인 불가." `stage.j-a-m.app` runs with
 `STAGING_MODE=true` and redirects unauthenticated requests to `/api/dev-login` (this applies once
 the branch is merged into staging; at review-branch stage it simply is not deployed yet, which is a
 different statement). You have no browser, but `curl` against rendered HTML/JSON is available.

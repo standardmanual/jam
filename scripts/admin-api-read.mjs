@@ -18,12 +18,12 @@
 // 가장 근접한 값을 대신 조회한다 — 실제 KPI 대시보드가 생기면 이 스크립트도 갱신해야 한다.
 //
 // 사용법:
-//   ADMIN_API_BASE_URL=https://jam-stage.vercel.app \
+//   ADMIN_API_BASE_URL=https://stage.j-a-m.app \
 //   ADMIN_API_READ_TOKEN=xxxxx \
 //     node scripts/admin-api-read.mjs
 //
 //   또는(기존 쿠키 방식):
-//   ADMIN_API_BASE_URL=https://jam-stage.vercel.app \
+//   ADMIN_API_BASE_URL=https://stage.j-a-m.app \
 //   ADMIN_API_COOKIE="sb-xxx-auth-token=...; sb-xxx-auth-token.1=..." \
 //     node scripts/admin-api-read.mjs
 

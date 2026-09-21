@@ -1,6 +1,6 @@
 ---
 name: jam-ship
-description: JAM! staging 검증 후 프로덕션(main) 배포. staging 미반영 변경 확인 → main 승격 → Vercel 배포 Ready·alias 검증 → 결과 보고까지 처리한다. "배포해줘", "프로덕션에 올려줘", "스테이징 확인했어 배포하자", "/jam-ship" 같은 요청에 사용.
+description: JAM! staging 검증 후 프로덕션(main) 배포. staging 미반영 변경 확인 → 배포 전 점검표 → 롤백 계획 → main 승격 → Vercel 배포 Ready·alias 검증 → 배포 후 검증 → 결과 보고까지 처리한다. "배포해줘", "프로덕션에 올려줘", "스테이징 확인했어 배포하자", "/jam-ship" 같은 요청에 사용.
 ---
 
 # /jam-ship — 프로덕션 배포
@@ -22,7 +22,7 @@ git -C "<repo>" log --oneline origin/main..origin/staging   # 승격될 커밋 �
 
 ## 2. staging 검증 상태 확인
 
-사용자가 staging 도메인(`jam-stage.vercel.app`)에서 확인을 마쳤다는 전제로 진행한다.
+사용자가 staging 도메인(`stage.j-a-m.app`)에서 확인을 마쳤다는 전제로 진행한다.
 확인 여부가 불분명하면 **묻는다** — "스테이징에서 확인하셨나요?"
 
 staging 배포 자체가 실패한 상태면 프로덕션 승격은 의미가 없으므로 먼저 확인한다:
@@ -48,7 +48,11 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
 - [ ] 의존성 취약점 — `cd jam-web && npm audit --omit=dev` (critical·high 0건)
 - [ ] (해당 시) 새 `SECURITY DEFINER` 함수가 있으면 `REVOKE ... FROM PUBLIC` 처리 여부 확인
   (가드레일 패턴 8)
-- [ ] (해당 시) 새 API 라우트가 있으면 인증·인가 체크 유무 확인
+- [ ] (해당 시) 새 API 라우트의 인증·인가 —
+  `git -C "<repo>" diff --name-only --diff-filter=A origin/main..origin/staging -- ':(glob)jam-web/src/app/api/**/route.ts'`로
+  새 라우트를 뽑고, 파일마다 `grep -lE "auth\.getUser|@/lib/admin/auth|CRON_SECRET" <파일>`로 인증
+  확인 호출이 있는지 본다. 하나도 없는 라우트는 의도한 공개 라우트인지 해당 티켓에서 근거를
+  확인하고, 근거가 없으면 승격을 멈춘다.
 
 ### 성능
 - [ ] Vercel 빌드 로그에 경고 없음 — 7단계 `vercel inspect <url> --logs`에서 겸해 확인한다.
@@ -91,14 +95,23 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
 
 아래 네 칸이 채워지지 않으면 6단계(main 승격)로 진행하지 않는다.
 
-- **트리거 조건**: 에러율이 배포 전 기준 대비 2배 이상 / 프로덕션 루트 응답이 200이 아니거나
-  타임아웃 / 사용자가 특정 기능 오류를 신고
-- **절차**: 직전 Ready 배포 URL을 `vercel ls --scope standard-manual`(7단계와 같은 명령)으로
-  확인한 뒤 `NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel rollback <그 URL> --scope
-  standard-manual`로 alias를 즉시 되돌린다. 새 커밋·재빌드 없이 되돌리므로 main에
-  `git revert`를 만들지 않는다. 되돌린 뒤 7단계를 다시 확인하고 사용자에게 롤백 사실과 원인을
-  보고한다.
-- **목표 복구 시간**: 코드 5분 이내(`vercel rollback`은 재빌드 없이 alias만 전환한다) — DB는
+- **트리거 조건**: 7단계에서 프로덕션 루트 응답이 200이 아니거나 타임아웃 / 8단계에서 배포
+  시각 이후 오류성 이벤트나 동기화 실패가 새로 나타났고 이번 배포의 변경과 관련이 있어 보임 /
+  사용자가 특정 기능 오류를 신고. 에러율 기준선이 아직 없으므로(「하지 않는 것」의 오류 예산
+  항목) "기준 대비 몇 배" 같은 수치 조건은 쓰지 않는다.
+- **절차**: 트리거 조건이 충족되면 먼저 사용자에게 상황을 보고하고 롤백 승인을 받는다(승인 없는
+  롤백은 「하지 않는 것」에 해당한다). 승인되면 직전 Ready 배포 URL을
+  `vercel ls --scope standard-manual`(7단계와 같은 명령)으로 확인한 뒤
+  `NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel rollback <그 URL> --scope standard-manual`로
+  alias를 되돌린다. 새 커밋·재빌드 없이 되돌리므로 main에 `git revert`를 만들지 않는다. 되돌린
+  뒤 7단계를 다시 확인하고 롤백 사실과 원인을 보고한다.
+- **롤백 이후의 복구**: Vercel은 롤백을 실행한 뒤 프로덕션 도메인 자동 할당을 끈다. 그 상태에서는
+  main에 push한 새 배포가 Ready가 돼도 공개되지 않는다. 원인을 고친 새 배포를 공개할 때는
+  `NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel promote <새 배포 URL> --scope standard-manual`로
+  승격한다. 이 명령이 자동 할당도 다시 켠다. 되돌린 배포는 그 배포를 만들 때의 환경변수와 cron
+  설정으로 돌아간다는 점도 함께 보고한다(Vercel 문서 「Performing an Instant Rollback」).
+- **목표 복구 시간**: 코드는 롤백 승인 후 5분 이내(`vercel rollback`은 재빌드 없이 alias만
+  전환한다. 실측 전의 목표값이며 티켓 20260922_0002에서 실측한다) — DB는
   되돌림 SQL이 있으면 사용자 승인 후 즉시, 없으면 원래 이번 배포에 포함하지 않았어야 한다.
 - **DB 고려**: Supabase는 staging·프로덕션 공용 단일 DB라 코드 롤백이 DB 변경을 되돌리지
   않는다. 이번 배포에 새 마이그레이션이 있으면 되돌림 SQL이 동반돼 있는지 확인한다
@@ -142,7 +155,9 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel inspect <최신-배포-url> --
 
 확인 항목:
 - 최신 배포 상태가 **Ready**인가 (Building이면 완료까지 기다린다)
-- **alias가 그 배포를 가리키는가** (`j-a-m.app` 등 프로덕션 도메인)
+- **alias가 그 배포를 가리키는가** (`j-a-m.app` 등 프로덕션 도메인). 최신 배포가 Ready인데
+  alias가 옛 배포에 머물러 있으면 이전 롤백으로 자동 할당이 꺼져 있는 상태다(4단계 「롤백
+  이후의 복구」).
 - Error면 빌드 로그를 확인해 원인을 보고한다 (`vercel inspect <url> --logs`)
 
 ```bash
@@ -155,7 +170,7 @@ curl -s -o /dev/null -w "%{http_code}\n" https://j-a-m.app
 ## 8. 배포 후 검증 (배포 직후)
 
 카리나가 배포 직후 확인한다:
-- 스테이징 자동 로그인 경로(`jam-stage.vercel.app`, `/api/dev-login`)로 핵심 화면(홈피드·프로필
+- 스테이징 자동 로그인 경로(`stage.j-a-m.app`, `/api/dev-login`)로 핵심 화면(홈피드·프로필
   등) 응답을 확인한다 — 프로덕션은 구글 로그인이 필수라 로그인 후 화면을 직접 볼 수 없으므로,
   같은 코드가 올라간 staging에서 대신 확인한다(`jam-developer.md` 규칙 10).
 - `engine_decision_log`에서 배포 시각 이후 오류성 이벤트(`point_award_failed`·
@@ -175,6 +190,13 @@ curl -s -o /dev/null -w "%{http_code}\n" https://j-a-m.app
 - 이번 배포에 포함된 DB 마이그레이션이 있으면 **실행 여부를 명시**
 - **롤백 계획 요약** (4단계에서 정한 트리거·절차·목표 시간·DB 고려) — 롤백 계획이 없으면
   6단계로 진행하지 않았어야 한다.
+
+## 주간 무인 배포와의 관계
+
+목요일 23:59 KST 무인 배포는 이 스킬의 「사전 확인」·「main 승격」·「배포 검증」만 수행한다.
+3~5단계와 8단계는 무인 경로에 아직 적용되지 않는다. 범위와 사유의 단일 원천은
+`.claude/skills/jam-work/references/scheduled-jobs.md` 「주간 배포 승인」 절이고, 적용 방안은 티켓
+20260922_0001에서 다룬다.
 
 ## 하지 않는 것
 

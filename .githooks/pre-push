@@ -58,7 +58,7 @@ while read -r _local_ref local_sha remote_ref remote_sha; do
     echo "" >&2
     echo "  JAM! 개발 흐름:" >&2
     echo "    1. staging 브랜치에서 개발하고 push" >&2
-    echo "    2. 스테이징 도메인(jam-stage.vercel.app)에서 확인" >&2
+    echo "    2. 스테이징 도메인(stage.j-a-m.app)에서 확인" >&2
     echo "    3. 문제없으면 /jam-ship 으로 프로덕션 배포" >&2
     echo "" >&2
     echo "  프로덕션에 반영하려면 사용자에게 '배포해줘'라고 요청받은 뒤 /jam-ship 을 사용하세요." >&2
