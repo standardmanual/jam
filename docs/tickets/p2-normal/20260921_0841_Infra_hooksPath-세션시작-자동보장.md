@@ -10,7 +10,7 @@ created: 2026-09-21
 
 ## 핵심 요약
 
-- 요구사항: 새 클론이나 옛 설정(절대경로)이 남은 PC에서도 Claude Code 세션이 시작되면 `core.hooksPath`가 `.githooks`로 자동 설정되게 하고, 이 값이 어긋나면 `scripts/verify.sh`의 계약 검사가 잡게 한다.
+- 요구사항: 새 클론이나 잘못된 설정이 남은 PC에서도 Claude Code 세션이 시작되면 `core.hooksPath`가 `.githooks`로 자동 설정되게 하고, 값이 비어 있거나 이 저장소의 `.githooks`가 아닌 곳을 가리키면 `scripts/verify.sh`의 계약 검사가 잡게 한다. 절대경로여도 이 저장소의 `.githooks`를 가리키면 정상으로 본다(2026-09-21 재작업, 아래 배경 참조).
 - 구현 계획: 세션 시작 스크립트 `scripts/ensure-hooks-path.sh`를 신설해 `.claude/settings.json`의 `SessionStart`에 연결하고, `docs/agents/contract.json`에 `git_config` 절을 추가해 `scripts/check-contract.mjs`가 실제 값과 대조한다. 생성기와 안내 문서는 함께 갱신한다.
 - 관련 파일: `scripts/ensure-hooks-path.sh`(신규), `.claude/settings.json`(`hooks.SessionStart`), `docs/agents/contract.json`(`paths_exist`·`hooks`·`git_config` 신설), `scripts/check-contract.mjs`(`checkGitConfig` 신설, 실행부 호출 추가), `scripts/gen-team-doc.mjs`(`genSessionHooks`의 `explain` 표), `docs/agents/team-operations.md`(생성 구간 재생성), `CLAUDE.md`(규칙 4), `docs/agents/orchestrator.md`(§5)
 - 선행·관련 티켓: 20260816_005(자동화 가능성만 적고 미구현), 20260919_1245(워크트리가 메인 체크아웃의 훅을 실행하던 문제), 20260920_1907(문서·실제 정합성 기계 검사)
@@ -27,6 +27,8 @@ created: 2026-09-21
 - `docs/agents/contract.json`에는 `core.hooksPath` 값을 검사하는 줄이 없다.
 - `.githooks/pre-commit`은 `check-contract.mjs`를 호출하지만, 훅 경로가 비어 있으면 `pre-commit` 자체가 돌지 않는다. 따라서 "값이 비어 있는" 상태는 커밋 훅이 아니라 세션 시작 스크립트와 `verify.sh`가 잡아야 한다.
 
+**재작업 사유 (첫 구현이 게이트를 통과한 뒤 발견).** 위 점검에서 값을 상대경로로 바꾼 뒤 워크플로가 격리 워크트리를 만들자, 메인 저장소의 `.git/config` 값이 다시 절대경로(`<메인 체크아웃>/.githooks`)로 돌아와 있었다. 실행 중인 하네스(Claude Code 2.1.275)에 워크트리를 만들 때 `core.hooksPath`를 설정하는 코드가 있고 과거 티켓 20260827_022·20260918_0423도 같은 값을 기록했지만, 하네스가 원인이라는 점은 아직 직접 재현으로 확정하지 않았다. 어느 쪽이든 첫 구현은 값이 정확히 `.githooks`일 때만 정상으로 보기 때문에, 워크플로가 한 번 돌 때마다 메인 체크아웃의 커밋이 `pre-commit` 계약 검사에 막힌다(아현이 `JAM_SKIP_DOCLINT=1`·`JAM_SKIP_VERIFY=1` 예외를 쓴 이유). 이 절대경로는 이 저장소의 `.githooks`를 가리키므로 훅은 정상 실행된다. 문제인 것은 비어 있거나, 다른 곳을 가리키거나, 폴더를 옮겨 사라진 경로다.
+
 ## 상세 요구사항
 
 ### 서비스/코드베이스 관점
@@ -35,8 +37,9 @@ created: 2026-09-21
 
 - 저장소 루트는 `workspace-setup.sh`와 같은 방식(`git rev-parse --show-toplevel`)으로 구한다.
 - 루트에 `.githooks/` 폴더가 없으면 아무것도 바꾸지 않고 종료한다(옛 브랜치 등).
-- `git config --get core.hooksPath`의 값이 `.githooks`이면 **아무것도 출력하지 않고** 종료한다. 정상 상태의 세션 시작 출력에 잡음이 생기지 않아야 한다.
-- 값이 다르면(비어 있음·절대경로·다른 값) `git config core.hooksPath .githooks`로 맞추고 한 줄만 출력한다. 예: `훅 경로를 .githooks로 맞췄습니다 (이전 값: 없음)`.
+- **정상 판정**: `git config --get core.hooksPath`의 값이 비어 있지 않고, 그 경로가 실제로 존재하는 디렉터리이며 `realpath`가 **현재 워크트리 루트의 `.githooks`** 또는 **메인 체크아웃 루트의 `.githooks`**와 같으면 정상이다. 상대경로는 현재 워크트리 루트 기준으로 해석하고 절대경로는 그대로 쓴다. 메인 체크아웃 루트는 `git rev-parse --git-common-dir`의 상위 폴더다. 이 판정은 `check-contract.mjs`와 같은 규칙이어야 한다.
+- 정상이면(값이 `.githooks`든, 이 저장소의 `.githooks`를 가리키는 절대경로든) **아무것도 출력하지 않고** 종료한다. 정상 상태의 세션 시작 출력에 잡음이 생기지 않아야 한다.
+- 정상이 아니면(비어 있음·다른 곳을 가리킴·사라진 경로) `git config core.hooksPath .githooks`로 맞추고 한 줄만 출력한다. 예: `훅 경로를 .githooks로 맞췄습니다 (이전 값: 없음)`.
 - 맞춘 뒤에도 실효값이 다르면(다른 범위의 설정이 덮어쓰는 경우) `git config --show-origin --get-all core.hooksPath` 결과를 붙여 알린다.
 - 종료 코드는 항상 0이다. 세션 시작을 막지 않는다.
 - 출력은 한국어이고, 파일을 만들거나 고치지 않으며, 저장소 로컬 설정 한 키만 바꾼다.
@@ -49,15 +52,16 @@ created: 2026-09-21
 
 - `paths_exist.paths`에 `scripts/ensure-hooks-path.sh`를 추가한다.
 - `hooks.SessionStart`에 `scripts/ensure-hooks-path.sh`를 추가한다.
-- 새 절 `git_config`를 만든다. `_why`에는 절대경로일 때 워크트리가 메인 체크아웃의 훅을 실행한다는 이유를 적고, `values`에 `"core.hooksPath": ".githooks"`를 둔다.
+- 새 절 `git_config`를 만든다. `_why`에는 "값이 비면 훅이 돌지 않고, 이 저장소의 `.githooks`가 아닌 곳을 가리키면 엉뚱한 훅이 돈다. 절대경로여도 이 저장소의 `.githooks`를 가리키면 정상이다"는 취지를 적고(원인 추정은 적지 않는다), `values`에 `"core.hooksPath": ".githooks"`를 둔다.
 
 **④ `scripts/check-contract.mjs`에 `checkGitConfig(c)` 추가 (⑩번 검사)**
 
-- `c.git_config.values`의 각 키를 `git config --get`으로 읽어 선언값과 비교한다(`cwd`는 `REPO`, 종료 코드 1은 "설정 없음"으로 취급).
-- 어긋나면 `violate('git_config', ...)`로 보고한다. 값이 비어 있을 때와 다른 값일 때 문구를 나눈다.
+- `c.git_config.values`의 각 키를 `git config --get`으로 읽는다(`cwd`는 `REPO`, 종료 코드 1은 "설정 없음"으로 취급). `core.hooksPath`처럼 값이 경로인 키는 문자열이 아니라 위 ①의 **정상 판정**(선언 경로 `.githooks`로 해석되는가)으로 비교한다. 정상이면 통과하고 아무것도 출력하지 않는다.
+- 정상이 아니면 `violate('git_config', ...)`로 보고한다. 문구를 셋으로 나눈다.
   - 비어 있음: 이 클론에서는 `pre-commit`·`pre-push`가 돌지 않는다.
-  - 다른 값: 절대경로라면 워크트리가 메인 체크아웃의 훅을 실행한다.
-  - 고치는 방법: `git config core.hooksPath .githooks`를 직접 실행하거나 다음 Claude Code 세션 시작 때 자동으로 맞춰진다.
+  - 절대경로인데 이 저장소의 `.githooks`가 아님: 다른 곳(또는 옮기기 전 옛 위치)의 훅이 실행되고 있고 이 저장소의 훅은 돌지 않는다.
+  - 그 밖의 다른 값: 선언과 다르다.
+  - 고치는 방법(공통): `git config core.hooksPath .githooks`를 직접 실행하거나 다음 Claude Code 세션 시작 때 자동으로 맞춰진다.
 - 파일 상단 주석의 검사 목록이 있으면 함께 갱신한다.
 
 **⑤ `scripts/gen-team-doc.mjs`와 `docs/agents/team-operations.md`**
@@ -69,11 +73,12 @@ created: 2026-09-21
 
 - `CLAUDE.md` 규칙 4의 "새로 클론한 환경에서는 최초 1회 `git config core.hooksPath .githooks`를 실행해야 한다"를 새 사실로 바꾼다. Claude Code 세션이 시작될 때 `scripts/ensure-hooks-path.sh`가 자동으로 맞추며, Claude Code를 거치지 않고 터미널에서 먼저 커밋하는 새 클론에서만 손으로 실행해야 한다고 적는다. 이 한계를 숨기지 않는다.
 - `docs/agents/orchestrator.md` §5의 같은 문장은 **중복이므로**(CLAUDE.md 규칙 5) 규칙 4를 가리키는 한 줄로 줄인다. 단일 원천은 `CLAUDE.md`다.
-- `.claude/skills/jam-sync/SKILL.md`의 B.3 확인 단계는 그대로 둔다. 수동 동기화 흐름의 점검으로 여전히 유효하다.
+- `.claude/skills/jam-sync/SKILL.md` B.3의 "`.githooks`로 설정되어 있는지 확인하고, 아니면 설정한다"는 상대·절대 형식을 정하지 않아 옛 절대경로 설정을 낳을 수 있으므로, "이 저장소의 `.githooks`로 해석되면 정상(상대·절대 모두), 아니면 `git config core.hooksPath .githooks`로 설정한다"로 고친다.
+- 문서에는 훅 경로가 절대경로로 바뀌는 **원인**을 적지 않는다(하네스 때문이라는 점은 아직 확정되지 않았다). 값이 어떻게 판정되는지만 적는다(CLAUDE.md 규칙 5).
 
 ## 구현 계획
 
-1. `ensure-hooks-path.sh`를 작성하고, 임시 저장소에서 세 상태(비어 있음·절대경로·이미 정상)와 `.githooks/` 부재 상태를 실행해 본다. **이 저장소의 실제 `.git/config`는 검증 중에 바꾸지 않는다.**
+1. `ensure-hooks-path.sh`를 작성하고, 임시 저장소에서 다섯 상태(비어 있음·이 저장소의 `.githooks`를 가리키는 절대경로·다른 곳을 가리키는 절대경로·사라진 절대경로·`.githooks` 상대경로)와 `.githooks/` 부재 상태, 그리고 임시 저장소의 링크드 워크트리(값이 메인의 절대경로인 경우)를 실행해 본다. **이 저장소의 실제 `.git/config`는 검증 중에 바꾸지 않는다.**
 2. `settings.json`과 `contract.json`을 고친다.
 3. `check-contract.mjs`에 검사를 추가하고, 환경변수 주입(`GIT_CONFIG_COUNT`·`GIT_CONFIG_KEY_0`·`GIT_CONFIG_VALUE_0`)으로 실제 설정을 건드리지 않고 통과·실패 양쪽을 확인한다.
 4. 생성기를 고치고 `node scripts/gen-team-doc.mjs`를 실행한다.
@@ -82,9 +87,10 @@ created: 2026-09-21
 
 ## 완료 조건
 
-- 임시 저장소에서 `core.hooksPath`가 비어 있거나 절대경로일 때 `bash scripts/ensure-hooks-path.sh`를 실행하면 한 줄을 출력하고 값이 `.githooks`가 된다. 이어서 다시 실행하면 출력이 없고 종료 코드는 0이다.
+- 임시 저장소에서 `core.hooksPath`가 비어 있거나, 이 저장소의 `.githooks`가 아닌 곳을 가리키거나, 사라진 경로일 때 `bash scripts/ensure-hooks-path.sh`를 실행하면 한 줄을 출력하고 값이 `.githooks`가 된다. 이어서 다시 실행하면 출력이 없고 종료 코드는 0이다.
+- 값이 이 저장소의 `.githooks`를 가리키는 절대경로이면(메인 체크아웃과 링크드 워크트리 양쪽에서) 아무것도 출력하지 않고 값도 바꾸지 않는다.
 - `.githooks/`가 없는 임시 저장소에서는 설정을 바꾸지 않고 종료 코드 0으로 끝난다.
-- `node scripts/check-contract.mjs`는 값이 `.githooks`일 때 통과한다. 환경변수로 값을 비우거나 절대경로로 주입하면 실패하고, 각각 다른 안내 문구와 고치는 명령을 출력한다. 재현 경로: `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/tmp/x node scripts/check-contract.mjs`
+- `node scripts/check-contract.mjs`는 값이 `.githooks`이거나 이 저장소의 `.githooks`를 가리키는 절대경로일 때 통과한다. 환경변수로 값을 비우거나, 다른 절대경로(`/tmp/x`)나 사라진 경로로 주입하거나, 엉뚱한 상대경로(`hooks`)로 주입하면 실패하고, 각각 다른 안내 문구와 고치는 명령을 출력한다. 재현 경로: `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/tmp/x node scripts/check-contract.mjs`
 - `CLAUDE_PROJECT_DIR`를 이 저장소로 지정해 `settings.json`의 새 명령 문자열을 그대로 실행하면, 정상 상태에서 출력이 없고 종료 코드 0이다.
 - `.claude/settings.json`이 유효한 JSON이고, `node scripts/gen-team-doc.mjs --check`와 `scripts/verify.sh`가 통과한다.
 - `team-operations.md`의 세션 훅 표에 새 스크립트가 "설명 미등록" 없이 나타난다.
