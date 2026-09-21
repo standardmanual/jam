@@ -2,9 +2,10 @@
 id: 20260921_1112
 category: BadgeEngine
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-21
 parent: "20260914_1130"
+closed: 2026-09-21
 ---
 
 # [BadgeEngine] 컬렉션 완성 분모 통일 ③ 컬렉션 화면·API 표시
@@ -55,24 +56,37 @@ parent: "20260914_1130"
 - 정책 근거 20260911_2236(개별 배지 드랍 제외, 컬렉션 완성 분모)
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+컬렉션 목록 API, 타인 컬렉션 API, 컬렉션 상세, 프로필 컬렉션 카드, 배지 화면의 「N/M」과 완성 여부를 공용 함수 `computeBookCompletion`으로 계산하게 했다. 각 배지 조회에 `type`·`drop_excluded` 컬럼을, 슬롯 조회에 `badge_id`를 추가했다. 기존 type 조건과 `deleted_at` 필터는 그대로다. 위치별 type 옵션은 목록·프로필·배지 화면이 `['item']`, 상세가 `['item','checkin']`이다. 상세 화면의 개별 배지 목록과 문구는 바꾸지 않았다. rarity 산출은 기존대로 전체 배지 기준이다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/app/api/itembooks/route.ts
+jam-web/src/app/api/users/[username]/itembooks/route.ts
+jam-web/src/app/(main)/collections/[id]/page.tsx
+jam-web/src/app/(main)/[username]/collections/page.tsx
+jam-web/src/app/(main)/badges/page.tsx
+jam-web/src/app/api/users/[username]/itembooks/__tests__/route.test.ts (신규)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] 타인 컬렉션 API 테스트 2건: 제외 배지가 있을 때 M이 줄어드는 경우, 제외 배지를 장착해도 분자에 세지 않는 경우, 제외 배지를 뺀 나머지를 모두 장착해 완성되는 경우
+- [x] `scripts/verify.sh` 전 항목 통과
+- [x] 민지 게이트 리뷰 WARN(코드 결함 없음): 테스트가 한 곳에만 있음, 아현의 첫 push 실패 원인 미확인
+- [ ] 브라우저 화면 확인은 하지 않았다. staging 반영 후 확인이 필요하다.
 
 ### 배포 정보
-- 배포일:
-- 환경:
-- 커밋:
+- 배포일: 미배포 (staging 머지만 했고 push는 4단계 완료 후 한다)
+- 환경: staging(로컬 머지)
+- 커밋: 28826986(구현), 603da93a(머지)
+- 워크플로 실행: 에이전트 2명, 전체 97,060토큰, 255초(출력 토큰: 아현 12,523, 게이트 2,758)
 
 ### 주요 의사결정 / 핵심 메모
+- **완성 표시 규칙이 목록·프로필·타인 API에서 넓어졌다.** 전에는 완성 기록(`user_item_book_completions`)이 있을 때만 완성으로 표시했고, 이제는 `기록 있음 OR 공용 함수의 complete`다. 상세 화면과 배지 화면이 원래 쓰던 규칙과 같다. 아현이 티켓 문장(완성 여부를 공용 함수로 계산)을 해석한 판단이고 민지가 티켓 의도 안으로 인정했다. 완성 기록이 아직 없는 사용자도 조건을 채우면 목록에서 완성으로 보일 수 있다.
+- 목록·프로필·유저 API·배지 화면에서 소프트 삭제 배지 처리 수치가 위치별로 어긋날 수 있다(티켓 20260921_1114 범위).
 
 ### 잔여 이슈
--
+- 나머지 4곳의 공용 함수 연동 테스트가 없다 → 티켓 화면 표시 연동 테스트 추가(아래 발견물 티켓)
+- 브라우저 확인은 staging 반영 후 필요하다.

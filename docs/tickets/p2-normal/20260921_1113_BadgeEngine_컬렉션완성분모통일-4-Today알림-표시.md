@@ -2,9 +2,10 @@
 id: 20260921_1113
 category: BadgeEngine
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-21
 parent: "20260914_1130"
+closed: 2026-09-21
 ---
 
 # [BadgeEngine] 컬렉션 완성 분모 통일 ④ Today·알림 표시
@@ -51,24 +52,35 @@ parent: "20260914_1130"
 - 정책 근거 20260911_2236(개별 배지 드랍 제외, 컬렉션 완성 분모)
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+Today 화면의 진행 중 컬렉션(`today/status.ts`), 미완성 컬렉션 노출 태그(`today/exposure.ts`), 컬렉션 알림 배치(`notifications/batch/collections.ts`)가 공용 함수 `computeBookCompletion`으로 분모(드랍 제외 배지를 뺀 집합)와 분자(분모와 채운 배지의 교집합)를 계산하게 했다. `status.ts`·`exposure.ts`는 슬롯 조회에 `badge_id`를, 배지 조회에 `type`·`drop_excluded`를 추가했고 type 필터는 `['item']`로 유지했다. 테스트할 수 있도록 순수 함수 `buildCollectionProgress`와 `hasIncompleteBook`을 분리했다. 알림 배치는 분모를 유저 루프 밖에서 한 번만 계산하고, 이후 #9·#10·#11 판정이 그 분모를 쓴다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/lib/today/status.ts
+jam-web/src/lib/today/exposure.ts
+jam-web/src/lib/notifications/batch/collections.ts
+jam-web/src/lib/today/__tests__/today-logic.test.ts
+jam-web/src/lib/notifications/__tests__/batch-drafts.test.ts
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] 위치별 테스트 추가: today-logic 5건(`buildCollectionProgress` 3건, `hasIncompleteBook` 2건), batch-drafts 2건. 제외 배지가 분모에서 빠지는지, 제외 배지를 장착해도 분자에 세지 않는지, 분모를 다 채우면 후보에서 빠지는지, 제외 배지를 빼면 잔여 1칸이 되어 완성 임박 알림이 나가는지를 확인
+- [x] 민지가 두 테스트 파일을 직접 실행해 통과 확인(batch-drafts 42건, today-logic 22건)
+- [x] `scripts/verify.sh` 전 항목 통과
+- [x] 민지 게이트 리뷰 PASS
 
 ### 배포 정보
-- 배포일:
-- 환경:
-- 커밋:
+- 배포일: 미배포 (staging 머지만 했고 push는 이 묶음 마무리 때 한다)
+- 환경: staging(로컬 머지)
+- 커밋: ce98a32a(구현), a2ef380a(머지)
+- 워크플로 실행: 에이전트 2명, 전체 91,110토큰, 257초(출력 토큰: 아현 14,913, 게이트 2,638)
 
 ### 주요 의사결정 / 핵심 메모
+- 알림 배치 입력에 checkin 배지가 섞여 있지만 type 필터를 걸지 않아 기존처럼 전부 분모에 남는다.
+- 소프트 삭제 배지 처리는 기존대로 유지했다(티켓 20260921_1114 범위).
 
 ### 잔여 이슈
--
+- 슬롯이 제외 배지 하나뿐인 컬렉션이 Today에 「0/N 진행 중」으로 나올 수 있다(아래 발견물 티켓)
