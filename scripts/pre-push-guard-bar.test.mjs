@@ -137,6 +137,53 @@ try {
   r = runHook(base, root, sha)
   assert.equal(r.status, 0, `--max-warnings 하향은 통과해야 한다:\n${r.stderr}`)
 
+  // 11~13) diff의 파일 경계 판별 (티켓 20260922_0206)
+  //
+  // 내용이 "++ "로 시작하는 추가 줄은 diff에서 "+++ "로 보인다. 이 줄을 파일 헤더(+++ b/경로)로
+  // 오인하면 이후 줄이 엉뚱한 파일로 귀속된다.
+
+  // 11) jam-web 파일에서 "++ " 줄 뒤에 오는 사유 없는 억제 주석도 막힌다
+  //     (오인하면 뒤 줄이 "retryCount" 파일 것이 되어 jam-web 검사를 빠져나간다)
+  reset(base, root)
+  writeAndAdd(
+    base,
+    'jam-web/src/example.ts',
+    'export const x = 1\nlet retryCount = 0\n++ retryCount\n// eslint-disable-next-line rule-in-example\nexport const y: any = retryCount\n'
+  )
+  sha = commit(base, 'plus-plus line before suppression without reason')
+  r = runHook(base, root, sha)
+  assert.equal(r.status, 1, '"++ "로 시작하는 줄 뒤의 사유 없는 억제 주석도 막혀야 한다')
+  assert.match(r.stderr, /새 억제 주석에 사유가 없습니다/)
+  assert.match(r.stderr, /rule-in-example/)
+
+  // 12) jam-web 밖 문서의 "++ jam-web/….ts" 줄이 뒤 줄을 jam-web 파일로 둔갑시키지 않는다
+  //     (오인하면 문서의 eslint-disable 언급이 jam-web 억제 주석으로 판정돼 정상 push가 막힌다)
+  reset(base, root)
+  writeAndAdd(base, 'docs/note.md', '# 메모\n++ jam-web/src/fake.ts\n이 문서는 eslint-disable를 설명한다.\n')
+  sha = commit(base, 'doc with plus-plus line naming a jam-web path')
+  r = runHook(base, root, sha)
+  assert.equal(r.status, 0, `jam-web 밖 문서의 "++ " 줄이 파일 경계를 바꾸면 안 된다:\n${r.stderr}`)
+
+  // 13) 삭제(+++ /dev/null)·신규·수정이 섞인 diff에서도 파일 경계가 정확하다
+  //     차단 메시지에는 jam-web 안의 위반 줄 둘만 나오고 문서의 언급 줄은 나오지 않는다
+  reset(base, root)
+  writeAndAdd(base, 'jam-web/src/old.ts', "export const legacyValue = 'aaaaaaaaaaaaaaaaaaaaaaaa'\n")
+  const withOldFile = commit(base, 'add old file')
+  git(['rm', '-q', 'jam-web/src/old.ts'], base)
+  writeAndAdd(base, 'docs/note.md', '이 문서는 eslint-disable rule-in-docs 를 설명한다.\n')
+  writeAndAdd(
+    base,
+    'jam-web/src/example.ts',
+    'export const x = 1\nlet retryCount = 0\n++ retryCount\n// eslint-disable-next-line rule-in-example\nexport const y: any = retryCount\n'
+  )
+  writeAndAdd(base, 'jam-web/src/z-new.ts', '// eslint-disable-next-line rule-in-new-file\nexport const fresh: any = 2\n')
+  sha = commit(base, 'mixed diff: delete, modify, add')
+  r = runHook(base, withOldFile, sha)
+  assert.equal(r.status, 1, '삭제·수정·신규가 섞인 diff에서도 사유 없는 억제 주석은 막혀야 한다')
+  assert.match(r.stderr, /rule-in-example/, '"++ " 줄 뒤의 수정 파일 위반 줄이 목록에 있어야 한다')
+  assert.match(r.stderr, /rule-in-new-file/, '삭제 헤더 뒤의 신규 파일 위반 줄이 목록에 있어야 한다')
+  assert.doesNotMatch(r.stderr, /rule-in-docs/, '문서의 언급 줄이 jam-web 위반으로 올라오면 안 된다')
+
   console.log('통과: pre-push 기준 방어(guard the bar) 검사')
 } finally {
   rmSync(base, { recursive: true, force: true })
