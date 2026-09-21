@@ -13,7 +13,7 @@ closed: 2026-09-21
 
 - 현상: jam-work 워크플로(아현 구현 → 민지 리뷰)가 끝날 때마다 메인 체크아웃의 `.git/config`에서 `core.bare = true`, `core.hooksPath = /dev/null`, `user.name = tester`, `user.email = t@example.com`이 발견됐다. `git status`·`git add`가 `fatal: this operation must be run in a work tree`로 실패했고, 훅이 꺼져 커밋 검사가 돌지 않았다. 워크플로 다섯 번 중 다섯 번 재현됐다.
 - **원인(확인함)**: 아현이 `claude/jamwork-*` 브랜치를 push하면 `.githooks/pre-push`가 `scripts/verify.sh`를 돌린다. 이 안의 `scripts-test` 단계(티켓 20260919_1306이 추가)가 루트 `scripts/*.test.mjs`를 실행하는데, 그중 `doc-check.test.mjs`(228~231행)와 `doc-check-hook.test.mjs`가 임시 저장소에서 `git init`, `git config user.email t@example.com`, `git config user.name tester`, `git config core.hooksPath /dev/null`을 실행한다. 훅 안에서는 git이 `GIT_DIR` 등을 물려주는데 두 테스트는 이를 정리하지 않아, 임시 저장소가 아니라 **실제 저장소 설정**에 쓰였다.
-- 수정: (1) 두 테스트의 `run` 헬퍼가 물려받은 `GIT_*`를 버린다. (2) `verify.sh`가 루트 테스트를 돌리기 전에 `GIT_*`를 제거한다. (3) 감시용 임시 저장소를 `GIT_DIR`로 가리킨 채 다른 루트 테스트를 실행하고 그 저장소의 설정이 바뀌면 실패하는 회귀 테스트 `scripts/test-env-isolation.test.mjs`를 추가했다. 새 루트 테스트가 생겨도 자동으로 검사 대상이 된다.
+- 수정: (1) 두 테스트의 `run` 헬퍼가 물려받은 `GIT_*`를 버린다. (2) `verify.sh`가 루트 테스트를 돌리기 전에 `GIT_*`를 제거한다. (3) 감시용 저장소의 링크드 워크트리 관리 디렉터리를 `GIT_DIR`로 가리킨 채 다른 루트 테스트를 실행하고 그 저장소의 공용 설정이 바뀌면 실패하는 회귀 테스트 `scripts/test-env-isolation.test.mjs`를 추가했다. 새 루트 테스트가 생겨도 자동으로 검사 대상이 된다.
 
 ## 배경 / 문제 정의
 
@@ -22,8 +22,8 @@ closed: 2026-09-21
 ## 재현과 검증 (2026-09-21, 실제 저장소는 건드리지 않고 복제본에서 실험)
 
 - **재현(수정 전)**: 저장소를 복제하고 `extensions.worktreeConfig = true`, 링크드 워크트리, `claude/jamwork-exp` 브랜치를 만들어 push했다. pre-push가 verify를 돌렸고 push가 막혔으며, 복제본 설정이 `bare=true`, `hooksPath=/dev/null`, `user=tester`로 바뀌었다. 실제 사고와 증상이 일치한다.
-- **부분 재현**: `GIT_DIR`만 준 채 `doc-check.test.mjs`를 실행하면 `hooksPath=/dev/null`과 테스트 사용자가 써졌다. `core.bare = true`는 이 단독 실험에서는 재현되지 않았고 실제 push 경로에서만 재현됐다. `bare`를 쓰는 정확한 명령은 확인하지 못했다.
-- **회귀 테스트가 결함을 잡는지**: 수정 전 코드에서 `test-env-isolation.test.mjs`가 실패했고(`doc-check-hook.test.mjs`가 감시 저장소 설정을 바꿈), 수정 후 통과했다.
+- **`core.bare = true`를 쓰는 명령(확정, 사용자 지시로 재조사)**: `GIT_TRACE2_EVENT`로 push 훅 안의 git 명령을 전부 기록했다. `core.bare`를 명시적으로 쓰는 명령은 없었다(`git config` 93건 중 `bare` 인자 0건, 저장소 코드 전수 검색에서도 0건). 대신 두 테스트가 임시 폴더에서 실행한 **`git init -q`**가 원인이다. 훅이 물려주는 값은 `GIT_DIR=<저장소>/.git/worktrees/<워크트리>`(링크드 워크트리의 관리 디렉터리)이고 `GIT_WORK_TREE`는 없다. 이 상태에서 다른 폴더에서 `git init`을 실행하면 git은 임시 폴더가 아니라 `GIT_DIR`가 가리키는 기존 저장소를 다시 초기화하고, `GIT_DIR`가 `<현재 폴더>/.git`가 아니므로 bare 저장소로 판단해 공용 `.git/config`에 `core.bare = true`를 쓴다. 최소 실험(git 2.54.0)으로 조건을 확정했다: `GIT_DIR`가 메인 `.git`이면 바뀌지 않고(단독 실험이 재현되지 않았던 이유), 워크트리 관리 디렉터리일 때만 바뀌며, `GIT_WORK_TREE`를 함께 주면 바뀌지 않는다. 아현은 항상 링크드 워크트리에서 push하므로 매번 재현됐다.
+- **회귀 테스트가 결함을 잡는지**: 회귀 테스트가 실제 조건(링크드 워크트리 관리 디렉터리를 `GIT_DIR`로)을 그대로 재현하도록 보강했다. 수정 전 코드에서는 `doc-check.test.mjs`·`doc-check-hook.test.mjs` 둘 다 감시 저장소에 `bare = true`를 써서 실패했고, 수정 후 통과했다.
 - **수정 후 같은 push 실험**: verify가 통과하고 push가 성공했으며 복제본 설정이 그대로였다(`bare=false`, `hooksPath=.githooks`, `user=x`).
 
 ## 완료 조건
