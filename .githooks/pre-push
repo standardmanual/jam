@@ -14,6 +14,39 @@ zero_sha="0000000000000000000000000000000000000000"
 while read -r _local_ref local_sha remote_ref remote_sha; do
   branch="${remote_ref#$remote_ref_prefix}"
 
+  # 끝 커밋 작성자 검사 (티켓 20260921_1231)
+  #
+  # 테스트가 훅 환경의 GIT_DIR를 물려받아 저장소 설정을 오염시키면 커밋이 tester <t@example.com>으로
+  # 찍히고, Vercel이 "not a member of the team"으로 배포를 막는다(티켓 20260921_1116). 오류가 배포
+  # 단계에서야 드러나므로 push 시점에 막는다. 검사 대상은 끝 커밋 하나이며 과거 이력은 보지 않는다.
+  # 브랜치 삭제 push는 제외한다. staging·main·리뷰 브랜치 모두 대상이다.
+  #
+  # 우회(사유를 커밋 메시지에 남긴다): JAM_SKIP_AUTHOR_CHECK=1 git push ...
+  if [ "$local_sha" != "$zero_sha" ]; then
+    if [ "${JAM_SKIP_AUTHOR_CHECK:-}" = "1" ]; then
+      echo "pre-push: JAM_SKIP_AUTHOR_CHECK=1 — 끝 커밋 작성자 검사를 건너뜁니다." >&2
+    else
+      tip_emails="$(git log -1 --format='%ae %ce' "$local_sha" 2>/dev/null)"
+      for tip_email in $tip_emails; do
+        case "$tip_email" in
+          *@example.com)
+            echo "" >&2
+            echo "차단(pre-push): 끝 커밋의 작성자 또는 커미터가 테스트 계정($tip_email)입니다." >&2
+            echo "" >&2
+            echo "  이 이메일로 push하면 Vercel이 팀 멤버가 아니라며 배포를 막습니다." >&2
+            echo "  원인: 테스트가 실제 저장소의 git 설정을 오염시켰을 수 있습니다(티켓 20260921_1116)." >&2
+            echo "  확인: git config user.email && git config core.bare" >&2
+            echo "  해결: git config user.email <본인 이메일>로 바로잡은 뒤" >&2
+            echo "        git commit --amend --reset-author --no-edit (끝 커밋만 다시 쓴다)" >&2
+            echo "  검사를 건너뛰려면: JAM_SKIP_AUTHOR_CHECK=1 git push ... (사유를 커밋 메시지에 남긴다)" >&2
+            echo "" >&2
+            exit 1
+            ;;
+        esac
+      done
+    fi
+  fi
+
   if [ "$branch" = "main" ]; then
     if [ "${JAM_SHIP:-}" = "1" ]; then
       echo "승인된 배포 경로(/jam-ship)로 main에 push합니다." >&2

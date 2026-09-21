@@ -41,6 +41,7 @@ git -C "<repo>" checkout staging                 # 작업 브랜치로 복귀
 ```
 
 `.githooks/pre-push`는 `JAM_SHIP=1`이 없는 main push를 차단한다. 이 스킬이 유일한 승인 경로다.
+끝 커밋 작성자가 `@example.com`이면 같은 훅이 push를 차단한다(티켓 20260921_1231).
 
 ## 4. 배포 검증 (여기까지 해야 "배포 완료"다)
 

@@ -34,6 +34,7 @@
       "scripts/ensure-hooks-path.sh",
       ".githooks/pre-commit",
       ".githooks/pre-push",
+      "scripts/pre-push-author.test.mjs",
       ".claude/workflows/jam-work.js",
       ".claude/skills/jam-work/SKILL.md",
       ".claude/skills/jam-work/references/scheduled-jobs.md",
