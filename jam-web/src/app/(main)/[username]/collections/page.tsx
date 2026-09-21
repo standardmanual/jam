@@ -1,3 +1,4 @@
+import { computeBookCompletion } from '@/lib/itembook/completion-basis'
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import SafeImage from '@/components/SafeImage'
@@ -104,13 +105,13 @@ export default async function UserItemBooksPage({ params }: Props) {
           .or(`valid_until.is.null,valid_until.gte.${now}`),
         service
           .from('badges')
-          .select('id, item_book_id')
+          .select('id, item_book_id, type, drop_excluded')
           .in('item_book_id', bookIds)
           .eq('type', 'item')
           .is('deleted_at', null),
         service
           .from('user_item_book_slots')
-          .select('item_book_id')
+          .select('item_book_id, badge_id')
           .eq('user_id', target.id)
           .in('item_book_id', bookIds),
         service
@@ -126,15 +127,15 @@ export default async function UserItemBooksPage({ params }: Props) {
 
       const books = (booksRaw ?? []) as unknown as ItemBookWithTribe[]
 
-      const totalByBook = new Map<string, number>()
-      for (const b of (bookBadgesRaw ?? []) as { id: string; item_book_id: string }[]) {
-        totalByBook.set(b.item_book_id, (totalByBook.get(b.item_book_id) ?? 0) + 1)
-      }
-
-      const slottedByBook = new Map<string, number>()
-      for (const s of (slotsRaw ?? []) as { item_book_id: string }[]) {
-        slottedByBook.set(s.item_book_id, (slottedByBook.get(s.item_book_id) ?? 0) + 1)
-      }
+      // 분모(드랍 제외 배지를 뺀 수)·분자 — 공용 함수 (티켓 20260921_1112)
+      const filledBadgeIds = new Set(
+        ((slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]).map((s) => s.badge_id)
+      )
+      const completionByBook = computeBookCompletion(
+        (bookBadgesRaw ?? []) as { id: string; item_book_id: string | null; type: string; drop_excluded: boolean | null }[],
+        filledBadgeIds,
+        { types: ['item'] }
+      )
 
       const completedSet = new Set(
         ((completionsRaw ?? []) as { item_book_id: string }[]).map((c) => c.item_book_id)
@@ -145,9 +146,9 @@ export default async function UserItemBooksPage({ params }: Props) {
       cards = books
         .map((book) => ({
           book,
-          totalBadgeCount: totalByBook.get(book.id) ?? 0,
-          slottedCount: slottedByBook.get(book.id) ?? 0,
-          isCompleted: completedSet.has(book.id),
+          totalBadgeCount: completionByBook.get(book.id)?.total ?? 0,
+          slottedCount: completionByBook.get(book.id)?.filled ?? 0,
+          isCompleted: completedSet.has(book.id) || (completionByBook.get(book.id)?.complete ?? false),
         }))
         // 타인이 볼 때는 아이템배지 슬롯이 0개인 컬렉션을 숨긴다(20260824_016).
         // 본인 열람(isOwnList)은 예외 없이 항상 노출.
