@@ -377,6 +377,20 @@ PostgreSQL의 `CREATE OR REPLACE FUNCTION`은 **파라미터 타입 목록이 �
 
 ---
 
+### 패턴 15 — 훅 안에서 도는 테스트가 GIT_DIR를 물려받아 실제 저장소 설정을 바꾼다
+
+`.githooks/pre-push`가 `scripts/verify.sh`를 돌리면 git이 `GIT_DIR` 등 `GIT_*` 환경변수를 물려준다.
+임시 저장소를 만들어 `git init`·`git config`를 실행하는 테스트가 이 값을 그대로 받으면 임시 저장소가
+아니라 **실제 저장소 설정**에 쓴다. 티켓 20260921_1116에서 `core.bare = true`(메인 체크아웃이 작업
+트리로 인식되지 않음), `core.hooksPath = /dev/null`(커밋 훅이 조용히 꺼짐), `user.name = tester`
+(커밋 작성자가 바뀜)가 실제로 메인 저장소에 써졌다. 손으로 돌릴 때는 `GIT_DIR`가 없어서 재현되지 않는다.
+
+- 임시 저장소에서 git을 실행하는 테스트는 물려받은 `GIT_*`를 버리고 시작한다. 환경에서 `GIT_`로
+  시작하는 키를 모두 뺀 뒤 필요한 값만 명시적으로 넣는다.
+- 새 루트 테스트(`scripts/*.test.mjs`)를 만들면 `scripts/test-env-isolation.test.mjs`가 자동으로
+  검사한다. 감시용 저장소를 `GIT_DIR`로 가리킨 채 그 테스트를 실행해 설정이 바뀌면 실패한다.
+- `scripts/verify.sh`의 `scripts-test` 단계는 테스트를 돌리기 전에 `GIT_*`를 제거한다.
+
 ## 핵심 루프 의존성 지도
 
 아래 테이블·함수 중 하나라도 건드리는 작업이면, **작업 시작 전에 오른쪽 열의 파일들을 전부

@@ -2,60 +2,62 @@
 id: 20260921_1116
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-21
+closed: 2026-09-21
 ---
 
-# [Infra] 워크플로 실행 중 메인 저장소의 `core.bare`가 `true`로 바뀌어 git이 작업 트리로 인식하지 못했다
+# [Infra] 워크플로 실행 중 메인 저장소의 `core.bare`·`core.hooksPath`가 바뀌어 git이 동작하지 않았다
 
 ## 핵심 요약
 
-- 현상: jam-work 워크플로(아현 구현 → 민지 리뷰)를 돌린 직후 메인 체크아웃에서 `git status`·`git add`가 `fatal: this operation must be run in a work tree`로 실패했다. `git worktree list`가 메인 체크아웃을 `(bare)`로 표시했다.
-- 확인한 사실: `.git/config`의 `core.bare`가 `true`였고, 이 파일의 수정 시각은 11:14:42 KST로 워크플로 실행 시간대(약 11:10~11:14)와 겹친다. `git config core.bare false` 한 줄로 복구됐고, 이후 `git status`가 정상이며 작업 트리 파일은 그대로였다.
-- **같은 종류의 변경이 한 번 더 확인됐다.** 두 번째 워크플로(약 11:18~11:21) 직후 `.git/config`의 `core.hooksPath`가 `/dev/null`이었다(수정 시각 11:20:00 KST). 메인 체크아웃과 격리 워크트리 두 곳 모두 같은 값이었다. 이 값이면 커밋·push 훅이 돌지 않는다. 그 사이 만든 커밋 2개(63c40af2, 24e51413)가 pre-commit 검사를 받지 못했다. `scripts/ensure-hooks-path.sh`가 `.githooks`로 되돌렸고 `node scripts/doc-check.mjs --all --summary`로 문서 frontmatter 오류 0건을 확인했다. 아현의 `verify.sh`는 이 값 때문에 contract 항목이 실패했다고 보고했다.
-- **세 번째 워크플로(약 11:24~11:28)에서는 두 값이 동시에 바뀐 채 발견됐다.** `.git/config` 수정 시각 11:27:51 KST, `core.bare = true`와 `core.hooksPath = /dev/null`이 함께였다. 워크플로가 끝날 때마다 재현되고 있다(세 번 중 세 번). 복구는 `git config core.bare false`와 `scripts/ensure-hooks-path.sh` 두 줄이다.
-- 네 번째 워크플로(약 11:30~11:34) 직후에도 같은 상태(`core.bare = true`, `core.hooksPath = /dev/null`)였다. 네 번 중 네 번 재현됐다. 아현은 이번에도 「첫 push가 훅 출력만 남기고 실패했고 재실행에서 성공했다」고 보고했다.
-- 다섯 번째 워크플로(약 11:44~11:49) 직후에도 같은 상태(`core.bare = true`, `core.hooksPath = /dev/null`)였다. 다섯 번 중 다섯 번 재현이다.
-- **이번 워크플로에서 아현이 push 훅 안의 `scripts/verify.sh`가 `fatal: this operation must be run in a work tree`로 실패했다고 보고했다**(scripts-test·contract·team-doc 세 단계). 이는 `core.bare = true`일 때 `git rev-parse --show-toplevel` 등이 내는 오류 메시지와 같다. 아현은 `JAM_SKIP_VERIFY=1`로 우회해 push했고, 수동 실행 verify는 통과했다. 앞서 두 번 보고된 「첫 push 실패」도 같은 원인일 가능성이 있으나 그때는 오류 메시지를 확인하지 못했다. 확정하지는 않았다.
-- 아현이 보고한 「첫 push는 실패했고 재시도에서 성공, 원인 미확인」이 티켓 20260921_1110과 20260921_1112 두 번 나왔다. 같은 원인인지는 확인하지 못했다.
-- 공유 `.git/config`를 여러 워크트리가 함께 쓰므로, 워크플로 실행 중 어느 쪽에서든 이 파일이 바뀌면 메인 체크아웃에 그대로 영향이 간다. 두 사고(`core.bare`, `core.hooksPath`) 모두 워크플로 실행 시간대에 일어났다.
-- **원인은 확인하지 못했다.** `core.bare`를 누가 바꿨는지 알 수 없다. 워크트리를 만들거나 지우는 git 조작, 아현의 실행 명령, 병렬로 열린 다른 세션 등이 후보이지만 어느 것도 확인하지 않았다.
-- 관련 파일: `.git/config`, `.claude/workflows/jam-work.js`, `.claude/agents/jam-developer.md`(아현의 워크트리 절차)
+- 현상: jam-work 워크플로(아현 구현 → 민지 리뷰)가 끝날 때마다 메인 체크아웃의 `.git/config`에서 `core.bare = true`, `core.hooksPath = /dev/null`, `user.name = tester`, `user.email = t@example.com`이 발견됐다. `git status`·`git add`가 `fatal: this operation must be run in a work tree`로 실패했고, 훅이 꺼져 커밋 검사가 돌지 않았다. 워크플로 다섯 번 중 다섯 번 재현됐다.
+- **원인(확인함)**: 아현이 `claude/jamwork-*` 브랜치를 push하면 `.githooks/pre-push`가 `scripts/verify.sh`를 돌린다. 이 안의 `scripts-test` 단계(티켓 20260919_1306이 추가)가 루트 `scripts/*.test.mjs`를 실행하는데, 그중 `doc-check.test.mjs`(228~231행)와 `doc-check-hook.test.mjs`가 임시 저장소에서 `git init`, `git config user.email t@example.com`, `git config user.name tester`, `git config core.hooksPath /dev/null`을 실행한다. 훅 안에서는 git이 `GIT_DIR` 등을 물려주는데 두 테스트는 이를 정리하지 않아, 임시 저장소가 아니라 **실제 저장소 설정**에 쓰였다.
+- 수정: (1) 두 테스트의 `run` 헬퍼가 물려받은 `GIT_*`를 버린다. (2) `verify.sh`가 루트 테스트를 돌리기 전에 `GIT_*`를 제거한다. (3) 감시용 임시 저장소를 `GIT_DIR`로 가리킨 채 다른 루트 테스트를 실행하고 그 저장소의 설정이 바뀌면 실패하는 회귀 테스트 `scripts/test-env-isolation.test.mjs`를 추가했다. 새 루트 테스트가 생겨도 자동으로 검사 대상이 된다.
 
 ## 배경 / 문제 정의
 
-메인 체크아웃이 bare로 인식되면 카리나의 커밋·push가 모두 막히고, 병렬 세션도 같은 영향을 받는다. 이번에는 실패 메시지로 바로 드러나 즉시 복구했지만, 값이 조용히 바뀌는 경로가 있다면 재발할 수 있다.
+메인 체크아웃이 bare로 인식되면 카리나의 커밋·push가 모두 막히고 병렬 세션도 같은 영향을 받는다. 훅이 꺼지면 커밋 검사(문서 검사·정합성 검사)가 조용히 건너뛰어진다. 사용자 이름이 바뀌면 커밋 작성자가 틀어진다. 아현이 보고한 「첫 push 실패」와 `JAM_SKIP_VERIFY=1` 우회도 같은 원인이었다(verify가 `must be run in a work tree`로 실패).
 
-## 상세 요구사항
+## 재현과 검증 (2026-09-21, 실제 저장소는 건드리지 않고 복제본에서 실험)
 
-### 서비스/코드베이스 관점
-- 워크플로가 돌 때 `core.bare`를 바꾸는 명령이 있는지 확인한다(`jam-work.js`, 아현·민지 정의, `scripts/workspace-setup.sh`, 훅). 이번 시간대의 워크트리 생성·삭제 흐름을 재현해 본다.
-- 원인을 찾으면 그 경로를 막는다. 찾지 못하면 `scripts/ensure-hooks-path.sh`처럼 세션 시작 때 `core.bare`가 `true`이면 알리거나 되돌리는 보장 장치를 둘지 판단한다.
-- 새 환경 주장이 생기면 `docs/agents/contract.json`에 검사 줄을 함께 추가한다(CLAUDE.md 규칙 5).
+- **재현(수정 전)**: 저장소를 복제하고 `extensions.worktreeConfig = true`, 링크드 워크트리, `claude/jamwork-exp` 브랜치를 만들어 push했다. pre-push가 verify를 돌렸고 push가 막혔으며, 복제본 설정이 `bare=true`, `hooksPath=/dev/null`, `user=tester`로 바뀌었다. 실제 사고와 증상이 일치한다.
+- **부분 재현**: `GIT_DIR`만 준 채 `doc-check.test.mjs`를 실행하면 `hooksPath=/dev/null`과 테스트 사용자가 써졌다. `core.bare = true`는 이 단독 실험에서는 재현되지 않았고 실제 push 경로에서만 재현됐다. `bare`를 쓰는 정확한 명령은 확인하지 못했다.
+- **회귀 테스트가 결함을 잡는지**: 수정 전 코드에서 `test-env-isolation.test.mjs`가 실패했고(`doc-check-hook.test.mjs`가 감시 저장소 설정을 바꿈), 수정 후 통과했다.
+- **수정 후 같은 push 실험**: verify가 통과하고 push가 성공했으며 복제본 설정이 그대로였다(`bare=false`, `hooksPath=.githooks`, `user=x`).
 
 ## 완료 조건
 
-- 원인이 확인돼 재현 경로가 막혀 있거나, 확인되지 않았더라도 재발 시 자동으로 드러나거나 복구되는 장치가 있다.
+- 워크플로가 돌고 push 훅에서 verify가 실행돼도 메인 저장소의 `core.bare`·`core.hooksPath`·`user.*`가 바뀌지 않는다. 다음 워크플로 실행 뒤 값을 확인해 재발이 없음을 다시 본다.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+원인을 확인하고 세 겹으로 막았다. 두 테스트 헬퍼의 `GIT_*` 정리, `verify.sh`의 `GIT_*` 제거, 감시용 저장소를 쓰는 회귀 테스트 `test-env-isolation.test.mjs`. 오염돼 있던 메인 저장소의 `user.name`·`user.email`(로컬)도 지워 전역 설정(`standardmanual`)이 다시 쓰이게 했다. `DEV_PROCESS_GUARDRAILS.md`에 패턴 15를 추가했다.
 
 ### 변경된 파일
 ```
--
+scripts/doc-check.test.mjs
+scripts/doc-check-hook.test.mjs
+scripts/verify.sh
+scripts/test-env-isolation.test.mjs (신규)
+docs/specs/DEV_PROCESS_GUARDRAILS.md (패턴 15)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `scripts/verify.sh` 전 항목 통과(48초). 회귀 테스트가 `scripts-test` 단계에 포함된다
+- [x] 수정 전 실패·수정 후 통과 확인(위 재현과 검증)
+- [x] 수정 후 복제본 push 실험에서 설정 유지 확인
 
 ### 배포 정보
-- 배포일:
-- 환경:
-- 커밋:
+- 배포일: 2026-09-21 (staging, `jam-web/` 밖 변경이라 빌드 없음)
+- 환경: 저장소 스크립트·문서
+- 커밋: 62eff343(수정), 이 티켓의 종료 커밋
 
 ### 주요 의사결정 / 핵심 메모
+- 원인은 오늘 추가한 `verify.sh`의 `scripts-test` 단계(20260919_1306)와 기존 테스트의 조합이었다. 그 단계가 훅 안에서 돌게 되면서 잠재돼 있던 결함이 드러났다. 이 단계를 되돌리지 않고 테스트 쪽을 고쳤다.
+- 테스트 헬퍼 두 곳을 고치는 것만으로는 새 테스트가 같은 결함을 다시 만들 수 있어서, 모든 루트 테스트를 자동으로 검사하는 회귀 테스트와 `verify.sh` 쪽 제거를 함께 두었다.
 
 ### 잔여 이슈
--
+- **커밋 작성자**: 사고가 난 동안 오늘 커밋 37개 중 17개가 작성자 `tester <t@example.com>`로 기록됐고 이미 staging에 push됐다. 이력을 다시 쓰는 것은 되돌릴 수 없어 하지 않았다. 처리 방법(그대로 두기, `.mailmap`으로 표시만 바꾸기, 이력 재작성)은 사용자 결정이 필요하다.
