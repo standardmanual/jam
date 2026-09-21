@@ -2,7 +2,7 @@
  * JAM! 아이템북 완성 체크 로직 (서버 사이드 전용)
  *
  * Phase 8 슬롯 기반 완성 모델:
- * - user_item_book_slots 카운트 >= badges(item_book_id) 카운트 → 완성
+ * - 완성 분모 = 소속 배지 − drop_excluded 배지, 분자 = 장착·획득 배지 id ∩ 분모 (completion-basis.ts)
  * - 완성 기록: user_item_book_completions (upsert, 최초 1회)
  * - reward_badge_id가 있는 경우 user_activity_badges에 보상 배지 발급
  *
@@ -13,6 +13,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { ItemBookRow, InventoryRow, BadgeType } from '@/types/database'
+import { computeBookCompletion } from './completion-basis'
 
 export interface ItemBookCompletionResult {
   completedIds: string[]
@@ -62,12 +63,12 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   //    완성되지 않았는데 완성으로 오판·보상 배지가 오발급될 위험이 있다. range로 페이지를
   //    끝까지 넘겨 전량을 가져온다.
   const CHECKER_BADGE_PAGE_SIZE = 1000
-  type BookBadgeRow = { id: string; item_book_id: string; type: BadgeType }
+  type BookBadgeRow = { id: string; item_book_id: string; type: BadgeType; drop_excluded: boolean }
   const bookBadges: BookBadgeRow[] = []
   for (let from = 0; ; from += CHECKER_BADGE_PAGE_SIZE) {
     const { data: pageRaw, error } = await supabase
       .from('badges')
-      .select('id, item_book_id, type')
+      .select('id, item_book_id, type, drop_excluded')
       .in('item_book_id', bookIds)
       .in('type', ['item', 'checkin'])
       .order('id')
@@ -82,11 +83,9 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     if (page.length < CHECKER_BADGE_PAGE_SIZE) break
   }
 
-  const badgeCountByBook = new Map<string, number>()
   const poiBadgesByBook = new Map<string, string[]>()
   for (const b of bookBadges) {
     if (!b.item_book_id) continue
-    badgeCountByBook.set(b.item_book_id, (badgeCountByBook.get(b.item_book_id) ?? 0) + 1)
     if (b.type === 'checkin') {
       const list = poiBadgesByBook.get(b.item_book_id) ?? []
       list.push(b.id)
@@ -94,10 +93,10 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     }
   }
 
-  // 3. 유저의 슬롯 수 (북별)
+  // 3. 유저가 장착한 배지 id (북별 분자는 분모와의 교집합으로 계산)
   const { data: slotsRaw, error: slotsError } = await supabase
     .from('user_item_book_slots')
-    .select('item_book_id')
+    .select('item_book_id, badge_id')
     .eq('user_id', userId)
     .in('item_book_id', bookIds)
 
@@ -106,9 +105,9 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     return { completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] }
   }
 
-  const slotCountByBook = new Map<string, number>()
-  for (const s of (slotsRaw ?? []) as { item_book_id: string }[]) {
-    slotCountByBook.set(s.item_book_id, (slotCountByBook.get(s.item_book_id) ?? 0) + 1)
+  const filledBadgeIds = new Set<string>()
+  for (const s of (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]) {
+    filledBadgeIds.add(s.badge_id)
   }
 
   // 3-1. Phase 16: checkin 타입 배지는 슬롯팅이 아니라 "1회 이상 획득 이력 존재"로 채움 판정
@@ -130,12 +129,7 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
       ((poiEarnsRaw ?? []) as { badge_id: string }[]).map((e) => e.badge_id)
     )
 
-    for (const [bookId, poiBadgeIds] of poiBadgesByBook) {
-      const earnedCount = poiBadgeIds.filter((id) => earnedPoiBadgeIds.has(id)).length
-      if (earnedCount > 0) {
-        slotCountByBook.set(bookId, (slotCountByBook.get(bookId) ?? 0) + earnedCount)
-      }
-    }
+    for (const id of earnedPoiBadgeIds) filledBadgeIds.add(id)
   }
 
   // 4. 기존 완성 기록 조회 (중복 처리 방지)
@@ -153,12 +147,13 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   const completedIds: string[] = []
   const completedBooks: ItemBookRow[] = []
 
-  for (const book of itemBooks) {
-    const total = badgeCountByBook.get(book.id) ?? 0
-    if (total === 0) continue // 배지 없는 북은 완성 불가
+  const completionByBook = computeBookCompletion(bookBadges, filledBadgeIds, {
+    types: ['item', 'checkin'],
+  })
 
-    const slotted = slotCountByBook.get(book.id) ?? 0
-    if (slotted < total) continue
+  for (const book of itemBooks) {
+    // 분모가 0인 북(배지 없음)은 complete=false
+    if (!completionByBook.get(book.id)?.complete) continue
 
     if (!alreadyCompletedSet.has(book.id)) {
       completedIds.push(book.id)

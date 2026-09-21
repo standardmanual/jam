@@ -13,6 +13,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeType } from '@/types/database'
+import { computeBookCompletion } from './completion-basis'
 
 export interface CompletableItemBook {
   id: string
@@ -54,12 +55,17 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
   // 넘겨 전량을 가져온다. 절단되면 완성 가능 판정(분모)이 실제보다 작게 잡혀 "완성 가능"
   // 소식이 잘못된 타이밍에 나가는 오판으로 이어질 수 있다.
   const COMPLETABLE_BADGE_PAGE_SIZE = 1000
-  type BookBadgeRow = { id: string; item_book_id: string | null; type: BadgeType }
+  type BookBadgeRow = {
+    id: string
+    item_book_id: string | null
+    type: BadgeType
+    drop_excluded: boolean
+  }
   const bookBadges: BookBadgeRow[] = []
   for (let from = 0; ; from += COMPLETABLE_BADGE_PAGE_SIZE) {
     const { data: pageRaw, error: badgesError } = await supabase
       .from('badges')
-      .select('id, item_book_id, type')
+      .select('id, item_book_id, type, drop_excluded')
       .in('item_book_id', bookIds)
       .in('type', ['item', 'checkin'])
       .order('id')
@@ -143,9 +149,14 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
     }
   }
 
+  const completionByBook = computeBookCompletion(bookBadges, filledBadgeIds, {
+    types: ['item', 'checkin'],
+  })
+
   const result: CompletableItemBook[] = []
   for (const book of books) {
-    const badgeIds = badgeIdsByBook.get(book.id) ?? []
+    // 분모 = 소속 배지 − drop_excluded (completion-basis.ts)
+    const badgeIds = completionByBook.get(book.id)?.denomIds ?? []
     if (badgeIds.length === 0) continue // 배지 없는 북은 완성 불가
 
     const remaining = badgeIds.filter((id) => !filledBadgeIds.has(id))
