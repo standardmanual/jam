@@ -3,9 +3,9 @@
  * 실행: npx tsx src/lib/today/__tests__/today-logic.test.ts
  */
 import assert from 'node:assert'
-import { timeOfDayTag, isNewUser } from '../exposure'
+import { timeOfDayTag, isNewUser, hasIncompleteBook } from '../exposure'
 import { resolveTargetHref } from '../cards'
-import { resolveFriendActivityHref } from '../status'
+import { resolveFriendActivityHref, buildCollectionProgress } from '../status'
 import type { TodayCardRow } from '@/types/database'
 
 let passed = 0
@@ -125,6 +125,33 @@ check('resolveFriendActivityHref: 1명이지만 username 없음(탈퇴 등) → 
 })
 check('resolveFriendActivityHref: 2명 이상 → /feed', () => {
   assert.equal(resolveFriendActivityHref(2, 'jaesook'), '/feed')
+})
+
+
+// ─── 컬렉션 완성 분모 통일 (티켓 20260921_1113) ─────────────────────────────
+const bk = (id: string, excluded = false) => ({ id, item_book_id: 'B', type: 'item', drop_excluded: excluded })
+const books1 = [{ id: 'B', name: '북' }]
+
+check('buildCollectionProgress: 제외 배지는 분모에서 빠진다 (2/3, 제외 1개)', () => {
+  const r = buildCollectionProgress(books1, [bk('a'), bk('b'), bk('c'), bk('x', true)], new Set(['a']), new Map())
+  assert.equal(r.length, 1)
+  assert.equal(r[0].total, 3)
+  assert.equal(r[0].current, 1)
+})
+check('buildCollectionProgress: 제외 배지를 장착해도 분자에 세지 않는다', () => {
+  const r = buildCollectionProgress(books1, [bk('a'), bk('b'), bk('x', true)], new Set(['a', 'x']), new Map())
+  assert.equal(r[0].current, 1)
+  assert.equal(r[0].total, 2)
+})
+check('buildCollectionProgress: 분모를 모두 채우면 후보에서 빠진다', () => {
+  const r = buildCollectionProgress(books1, [bk('a'), bk('b'), bk('x', true)], new Set(['a', 'b']), new Map())
+  assert.equal(r.length, 0)
+})
+check('hasIncompleteBook: 제외 배지 장착만으로 조기 완성 처리되지 않는다', () => {
+  assert.equal(hasIncompleteBook(['B'], [bk('a'), bk('b'), bk('x', true)], new Set(['a', 'x'])), true)
+})
+check('hasIncompleteBook: 분모를 다 채우면 false', () => {
+  assert.equal(hasIncompleteBook(['B'], [bk('a'), bk('b'), bk('x', true)], new Set(['a', 'b'])), false)
 })
 
 console.log(`\n${passed} passed`)

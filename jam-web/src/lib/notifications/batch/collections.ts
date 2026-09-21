@@ -32,6 +32,7 @@
  */
 import { groupedTargetsKey, scopedGroupKey } from '@/lib/notifications/groupKey'
 import { kstDateString } from '@/lib/notifications/kst'
+import { computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
 import {
   fetchAllRows,
   fetchAllRowsIn,
@@ -50,6 +51,8 @@ export interface CollectionBook {
 export interface CollectionBadge {
   id: string
   name: string
+  /** 드랍 제외 배지는 완성 분모에서 뺀다 (티켓 20260921_1113). 없으면 false로 본다 */
+  drop_excluded?: boolean | null
 }
 
 /** 유저 1명의 컬렉션 보유 현황 (DB 접근 없이 판정할 수 있는 형태) */
@@ -111,11 +114,25 @@ export function selectCompletableDrafts(
 export function selectCollectionDrafts(input: CollectionScanInput): NotificationDraft[] {
   const drafts: NotificationDraft[] = []
 
+  // 분모 = 드랍 제외 배지를 뺀 소속 배지 (공용 함수). 유저와 무관하므로 한 번만 계산한다.
+  const denomBadgesByBook = new Map<string, CollectionBadge[]>()
+  const flat: CompletionBadgeInput[] = []
+  const badgeById = new Map<string, CollectionBadge>()
+  for (const [bookId, list] of input.badgesByBook) {
+    for (const b of list) {
+      badgeById.set(b.id, b)
+      flat.push({ id: b.id, item_book_id: bookId, type: 'item', drop_excluded: b.drop_excluded ?? false })
+    }
+  }
+  for (const [bookId, c] of computeBookCompletion(flat, new Set())) {
+    denomBadgesByBook.set(bookId, c.denomIds.map((id) => badgeById.get(id)!))
+  }
+
   for (const [userId, state] of input.stateByUser) {
     const completable: CollectionBook[] = []
 
     for (const book of input.books) {
-      const badges = input.badgesByBook.get(book.id) ?? []
+      const badges = denomBadgesByBook.get(book.id) ?? []
       if (badges.length === 0) continue // 배지 없는 북은 완성 개념이 없다
 
       const remaining = badges.filter((b) => !state.filledBadgeIds.has(b.id))
@@ -218,6 +235,7 @@ interface BookBadgeRow {
   name: string
   item_book_id: string | null
   type: string
+  drop_excluded: boolean | null
 }
 
 /**
@@ -246,7 +264,7 @@ export async function buildCollectionDrafts(ctx: BatchContext): Promise<StepOutp
   const bookBadges = await fetchAllRowsIn<BookBadgeRow, string>('badges(item_book)', 'id', bookIds, (chunk) =>
     supabase
       .from('badges')
-      .select('id, name, item_book_id, type')
+      .select('id, name, item_book_id, type, drop_excluded')
       .in('item_book_id', chunk)
       .in('type', ['item', 'checkin'])
       .is('deleted_at', null)
@@ -259,7 +277,7 @@ export async function buildCollectionDrafts(ctx: BatchContext): Promise<StepOutp
   for (const b of bookBadges) {
     if (!b.item_book_id) continue
     const list = badgesByBook.get(b.item_book_id) ?? []
-    list.push({ id: b.id, name: b.name })
+    list.push({ id: b.id, name: b.name, drop_excluded: b.drop_excluded })
     badgesByBook.set(b.item_book_id, list)
     allBookBadgeIds.push(b.id)
     if (b.type === 'checkin') poiBadgeIds.push(b.id)
