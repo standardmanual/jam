@@ -94,7 +94,7 @@ ls jam-doc/planning/content/TRIBES.md   # ⑤ 확인
    ln -s "<JAM-secrets 경로>/jam-web/.env.local" "<repo>/jam-web/.env.local"
    ```
    (최초 셋업이 안 된 새 PC라면 이 단계에서 처음 만드는 것도 정상이다.)
-3. `git config core.hooksPath`가 `.githooks`로 설정되어 있는지 확인하고, 아니면 설정한다.
+3. `git config core.hooksPath`가 이 저장소의 `.githooks`로 해석되면 정상이다(상대·절대 모두). 아니면 `git config core.hooksPath .githooks`로 설정한다.
 4. 이번 pull에 `jam-web/package-lock.json` 변경이 포함됐으면 `npm install` 필요 여부를 안내한다.
 
 ## 공통 — 항상 보고할 것
