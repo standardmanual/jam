@@ -52,7 +52,10 @@ of change this is. The rest depend on `workType` (ticket 20260918_1158). Mark a 
 실제로 걸렸을 때만 판정하고, 안 걸렸으면 `해당없음`으로 처리한다는 뜻이다 — 유형만으로 기계적으로
 정하지 말고 diff를 보고 결정한다.
 
-1. Mechanical checks (did `scripts/verify.sh` pass at push time; `.githooks/pre-push` runs it)
+1. Mechanical checks — the commit's CI status is success (GitHub Actions `verify` check,
+   `.github/workflows/verify.yml`, ticket 20260921_2304). A docs-only push gets this from the
+   light-check path (`check-slop`·`check-contract`·`gen-team-doc --check`, no `npm ci`); a push
+   touching `jam-web`/`scripts`/`.githooks`/`.github` gets the full `scripts/verify.sh` run
 2. Spec match against the ticket's 상세 요구사항 and 완료 조건
 3. Regression risk in code sharing the same pipeline (badge engine, drop engine, sync)
 4. Test adequacy — logic changed, so is there a test
@@ -87,9 +90,11 @@ of change this is. The rest depend on `workType` (ticket 20260918_1158). Mark a 
 
 ### Re-running checks yourself
 
-Do **not** re-run `scripts/verify.sh` by default — `.githooks/pre-push` already ran it. Re-run it
-only when one of these holds: 아현's 확신도 is 낮음 / there is a `[주의]` or `[중단]` alert / the
-mechanical check result is missing or ambiguous.
+Do **not** re-run `scripts/verify.sh` by default — the commit's CI status already reflects it.
+Check it with `gh run list --branch <branch> --limit 1` or
+`gh api repos/{owner}/{repo}/commits/{sha}/check-runs`. Re-run it yourself only when that status is
+missing or failed — 확신도/[주의]/[중단] no longer trigger a re-run on their own, since the CI
+status is the mechanical source of truth now.
 
 For `engine` and `db` tickets, base probability and issuance judgements on the simulator's
 verification output, never on inference.

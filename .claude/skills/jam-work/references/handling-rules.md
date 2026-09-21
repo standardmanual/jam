@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | 마이그레이션 번호가 병렬 세션과 충돌 | 원격 staging 기준(`git ls-tree -r --name-only origin/staging`)으로 번호를 잡고 push 직전 다시 확인. 재번호 시 코드 주석·마이그레이션 헤더의 참조까지 바꾼다. (티켓 번호는 생성 시각이라 경합 없음. 한 번에 여러 건을 만들 때만 1분 간격으로 배정하고 원격과 대조) | 2026-08-27 충돌 32건, 티켓 20260918_1101 분리 |
 | review 브랜치를 최신 staging에 맞춤 | 머지 대신 `git rebase origin/staging`. 머지하면 딸려 온 남의 CLOSED 티켓을 pre-commit이 막는다. `--no-verify` 우회 금지 | 티켓 009·010·011(훅 도입 배경) |
-| 메인 트리의 브랜치가 작업 중에 바뀌거나 남의 미커밋 파일이 많음 | `git worktree add .claude/worktrees/<슬러그> -b <브랜치> origin/staging`으로 격리 워크트리에서 작업 → rebase → `git push origin HEAD:staging` | 2026-09-01 사례 |
+| 메인 트리의 브랜치가 작업 중에 바뀌거나 남의 미커밋 파일이 많음 | `git worktree add .claude/worktrees/<슬러그> -b <브랜치> origin/staging`으로 격리 워크트리에서 작업 → rebase → `git push origin HEAD:staging`. `<브랜치>`에 `claude/jamwork-*` 이름을 쓰지 않는다 — pre-push가 그 이름의 staging push를 차단한다 | 2026-09-01 사례, 20260921_2304 |
 | 커밋할 때 | `git add -A`·`git add .` 금지. 파일을 명시적으로 나열하고 `add && commit`을 한 명령으로 묶는다. 스테이징에 모르는 파일이 보이면 남의 작업이다. 사고가 나도 히스토리를 재작성하지 않고 보고한다 | 2026-09-01 `/jam-ds` 사고 |
 | 파이프라인 호출 전 | `git fetch origin staging && git log --oneline HEAD..origin/staging`으로 전제가 바뀌었는지 본다. 사용자가 "별도 작업이 예정돼 있다"고 하면 그 티켓의 상태·머지 여부부터 확인. 머지 전 오염 검사가 실패하면 자동 리베이스 말고 들어온 내용을 먼저 읽는다 | 티켓 20260831_1149(구현 폐기), 20260831_1213(리베이스로 살림) |
 | 새 티켓을 만든 직후 파이프라인 호출 | 티켓을 먼저 커밋·push한다. 격리 워크트리에는 로컬에만 있는 파일이 없다 | 티켓 20260908_1727 |

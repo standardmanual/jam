@@ -38,6 +38,9 @@
       ".githooks/pre-commit",
       ".githooks/pre-push",
       "scripts/pre-push-author.test.mjs",
+      "scripts/pre-push-guard-bar.test.mjs",
+      "scripts/pre-push-worktree-block.test.mjs",
+      ".github/workflows/verify.yml",
       ".claude/workflows/jam-work.js",
       ".claude/skills/jam-work/SKILL.md",
       ".claude/skills/jam-work/references/scheduled-jobs.md",
@@ -128,6 +131,23 @@
       { "text": "jam-stage.vercel.app", "reason": "스테이징 도메인은 stage.j-a-m.app이다. jam-stage.vercel.app은 404로 응답한다 (2026-09-22 curl 확인, 티켓 20260921_2303). Vercel 프로젝트 이름 jam-stage는 그대로 유효하다",
         "allow_in": [".claude/skills/jam-work/references/scheduled-jobs.md"],
         "_allow_why": "「안전장치」 표가 2026-09-18 시험 실행에서 옛 주소로 겪은 사례를 기록으로 인용한다." }
+    ]
+  },
+
+  "quality_bar": {
+    "_why": "코드 품질 기준 수치와 기준 방어(guard the bar) 패턴의 단일 원천이다 (티켓 20260921_2304). jam-web/package.json의 --max-warnings 값과 .githooks/pre-push가 실제로 막는 패턴이 여기서 벗어나면 어긋난다.",
+    "lint_max_warnings": 26,
+    "guard_patterns": [
+      "eslint-disable",
+      "@ts-ignore",
+      "@ts-expect-error",
+      "it.skip(",
+      "describe.skip(",
+      "it.only(",
+      "describe.only(",
+      "test.only(",
+      "--max-warnings",
+      "테스트 삭제:"
     ]
   }
 }

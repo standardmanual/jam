@@ -271,7 +271,45 @@ function checkStalePhrases(c) {
   }
 }
 
-// ── ⑩ 이 클론의 저장소 설정 ───────────────────────────────────────────────────
+// ── ⑩ 품질 기준(quality_bar) ──────────────────────────────────────────────────
+// package.json의 --max-warnings 값과 .githooks/pre-push가 실제로 막는 패턴이 선언(quality_bar)과
+// 일치하는가 (티켓 20260921_2304). 훅 쪽은 셸 스크립트의 정규식 이스케이프(예: it\.skip\() 때문에
+// 백슬래시를 지운 뒤 비교한다 — 선언은 백슬래시 없는 사람이 읽는 형태(it.skip()로 적는다.
+function checkQualityBar(c) {
+  const spec = c.quality_bar
+  if (!spec) return
+
+  const pkgPath = path.join(REPO, 'jam-web/package.json')
+  if (existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
+      const lintCi = pkg.scripts?.['lint:ci'] ?? ''
+      const m = lintCi.match(/--max-warnings\s+(\d+)/)
+      if (!m) {
+        violate('quality_bar', `jam-web/package.json의 lint:ci에 --max-warnings 값이 없습니다`,
+          `선언값(${spec.lint_max_warnings})을 lint:ci 스크립트에 추가하세요.`)
+      } else if (Number(m[1]) !== spec.lint_max_warnings) {
+        violate('quality_bar', `jam-web/package.json의 --max-warnings가 선언과 다릅니다 (선언 ${spec.lint_max_warnings} · 실제 ${m[1]})`,
+          `둘 중 의도한 값으로 맞추세요. 낮추는 방향이 아니라면 이유를 커밋 메시지에 남기세요.`)
+      }
+    } catch (e) {
+      violate('quality_bar', `jam-web/package.json을 읽지 못했습니다 — ${e.message}`, `JSON 형식을 확인하세요.`)
+    }
+  }
+
+  const hookPath = path.join(REPO, '.githooks/pre-push')
+  if (existsSync(hookPath)) {
+    const hookFlat = readFileSync(hookPath, 'utf8').replace(/\\/g, '')
+    for (const pattern of spec.guard_patterns ?? []) {
+      if (!hookFlat.includes(pattern)) {
+        violate('quality_bar', `.githooks/pre-push에 선언된 기준 방어 패턴이 없습니다: ${pattern}`,
+          `패턴을 훅에 추가하거나, 더 이상 막지 않는 것이 의도라면 contract.json의 guard_patterns에서 지우세요.`)
+      }
+    }
+  }
+}
+
+// ── ⑪ 이 클론의 저장소 설정 ───────────────────────────────────────────────────
 // 다른 검사는 추적되는 파일을 대조하지만 이 검사는 저장소 설정의 실효값을 읽는다. 값이 비면
 // .githooks/pre-commit 자체가 돌지 않으므로 커밋 훅으로는 잡을 수 없다. 그 자리는 세션 시작
 // 스크립트(scripts/ensure-hooks-path.sh)와 verify.sh가 맡는다 (티켓 20260921_0841).
@@ -355,6 +393,7 @@ checkWorktreeIsolation(contract)
 checkWorktreeContains(contract)
 checkHooks(contract)
 checkStalePhrases(contract)
+checkQualityBar(contract)
 checkGitConfig(contract)
 
 for (const n of notes) console.log(`참고: ${n}`)

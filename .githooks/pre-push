@@ -11,7 +11,7 @@
 remote_ref_prefix="refs/heads/"
 zero_sha="0000000000000000000000000000000000000000"
 
-while read -r _local_ref local_sha remote_ref remote_sha; do
+while read -r local_ref local_sha remote_ref remote_sha; do
   branch="${remote_ref#$remote_ref_prefix}"
 
   # 끝 커밋 작성자 검사 (티켓 20260921_1231)
@@ -77,6 +77,130 @@ while read -r _local_ref local_sha remote_ref remote_sha; do
     echo "  자세한 대응표: .claude/skills/jam-work/references/scheduled-jobs.md 「공통 원칙」 첫 절" >&2
     echo "" >&2
     exit 1
+  fi
+
+  # 기준 방어(guard the bar) — 이번 push 범위의 diff에서 검사 기준을 낮추는 변경을 막는다.
+  #
+  # constraint-driven-development §Step 6(guard the bar)을 포팅했다(티켓 20260921_2304). 새
+  # eslint-disable·@ts-ignore·@ts-expect-error(사유 주석 없이), it.skip·describe.skip·it.only·
+  # describe.only·test.only 추가, *.test.* 파일 삭제(커밋 메시지에 "테스트 삭제: <사유>" 줄이
+  # 없을 때), jam-web/package.json의 --max-warnings 상향을 막는다. main은 위에서 이미 처리돼
+  # 여기로 오지 않으므로, 이 아래로 오는 모든 브랜치(staging·claude/jamwork-*·기타)에 적용된다.
+  # 억제 주석·skip·only 검사는 jam-web의 실제 lint·타입체크 대상(ts·tsx·js·jsx·mjs·cjs)만 본다 —
+  # 이 훅·문서·contract.json 자신이 이 단어들을 설명하며 자기 자신을 오탐하는 것을 막기 위해서다.
+  #
+  # 우회 변수는 두지 않는다. 정당한 예외는 diff 안의 사유 주석(예: -- 사유) 또는 커밋 메시지의
+  # "테스트 삭제: <사유>" 줄로만 통과한다.
+  if [ "$local_sha" != "$zero_sha" ]; then
+    if [ "$remote_sha" != "$zero_sha" ]; then
+      guard_base="$remote_sha"
+    else
+      git fetch origin staging --quiet 2>/dev/null || true
+      guard_base="$(git merge-base "$local_sha" origin/staging 2>/dev/null)"
+    fi
+
+    if [ -z "$guard_base" ]; then
+      echo "pre-push: 기준 방어 검사의 비교 기준을 찾지 못해 건너뜁니다 ($branch)." >&2
+    else
+      added_with_path="$(git diff --unified=0 "$guard_base" "$local_sha" 2>/dev/null | awk '
+        /^\+\+\+ / { f = substr($0, 5); sub(/^b\//, "", f); next }
+        /^\+/      { print f "\t" substr($0, 2) }
+      ')"
+      js_ts_added="$(printf '%s\n' "$added_with_path" | awk -F'\t' '$1 ~ /^jam-web\/.*\.(ts|tsx|js|jsx|mjs|cjs)$/ { print substr($0, length($1) + 2) }')"
+
+      suppression_hits="$(printf '%s\n' "$js_ts_added" | grep -E '@ts-ignore|@ts-expect-error|eslint-disable' | grep -Ev -- '-- [^[:space:]]')"
+      if [ -n "$suppression_hits" ]; then
+        echo "" >&2
+        echo "차단(pre-push): 새 억제 주석에 사유가 없습니다 (eslint-disable·@ts-ignore·@ts-expect-error)." >&2
+        echo "" >&2
+        echo "$suppression_hits" | sed 's/^/    /' >&2
+        echo "" >&2
+        echo "  같은 줄에 \"-- 사유\" 형식으로 이유를 남기세요 (예: // eslint-disable-next-line 규칙 -- 사유)." >&2
+        echo "" >&2
+        exit 1
+      fi
+
+      skip_only_hits="$(printf '%s\n' "$js_ts_added" | grep -E 'it\.skip\(|describe\.skip\(|it\.only\(|describe\.only\(|test\.only\(')"
+      if [ -n "$skip_only_hits" ]; then
+        echo "" >&2
+        echo "차단(pre-push): 테스트를 건너뛰거나 하나만 실행하게 만든 코드가 추가됐습니다 (.skip·.only)." >&2
+        echo "" >&2
+        echo "$skip_only_hits" | sed 's/^/    /' >&2
+        echo "" >&2
+        exit 1
+      fi
+
+      deleted_test_files="$(git diff --name-status --find-renames "$guard_base" "$local_sha" 2>/dev/null | awk '$1 == "D" && $2 ~ /\.test\./ { print $2 }')"
+      if [ -n "$deleted_test_files" ]; then
+        commit_msgs="$(git log --format=%B "$guard_base".."$local_sha" 2>/dev/null)"
+        if ! printf '%s\n' "$commit_msgs" | grep -qE '^테스트 삭제: .+'; then
+          echo "" >&2
+          echo "차단(pre-push): 테스트 파일이 삭제됐습니다." >&2
+          echo "" >&2
+          echo "$deleted_test_files" | sed 's/^/    /' >&2
+          echo "" >&2
+          echo "  삭제가 정당하면 커밋 메시지에 \"테스트 삭제: <사유>\" 줄을 남기세요." >&2
+          echo "" >&2
+          exit 1
+        fi
+      fi
+
+      old_max_warnings="$(git show "$guard_base:jam-web/package.json" 2>/dev/null | grep -oE -- '--max-warnings [0-9]+' | head -1 | grep -oE '[0-9]+')"
+      new_max_warnings="$(git show "$local_sha:jam-web/package.json" 2>/dev/null | grep -oE -- '--max-warnings [0-9]+' | head -1 | grep -oE '[0-9]+')"
+      if [ -n "$old_max_warnings" ] && [ -n "$new_max_warnings" ] && [ "$new_max_warnings" -gt "$old_max_warnings" ]; then
+        echo "" >&2
+        echo "차단(pre-push): jam-web/package.json의 --max-warnings 값을 높였습니다 ($old_max_warnings → $new_max_warnings)." >&2
+        echo "" >&2
+        echo "  경고 상한은 낮추는 방향으로만 바꿉니다 (docs/agents/contract.json의 quality_bar.lint_max_warnings)." >&2
+        echo "" >&2
+        exit 1
+      fi
+    fi
+  fi
+
+  # 워크트리 차단 — staging으로 가는 push 중 에이전트 작업 공간에서 온 것을 막는다.
+  #
+  # 아현의 staging push 금지는 프롬프트 규칙뿐이었다(20260921_2207 #4). 사용자 결정
+  # (2026-09-22, 티켓 20260921_2304)으로 다음 중 하나면 막는다 — 우회 변수는 두지 않는다.
+  #   (a) 현재 위치가 링크드 워크트리이고 폴더 이름이 wf_로 시작(Workflow 에이전트 작업 공간)
+  #   (b) push하는 로컬 브랜치가 claude/jamwork-*(아현의 리뷰 브랜치). git push origin
+  #       HEAD:staging처럼 local_ref가 HEAD로 들어와도 현재 브랜치 이름으로 판정한다.
+  # 카리나의 수동 격리 워크트리(handling-rules.md 17행)는 이 이름 규칙을 쓰지 않으므로 걸리지
+  # 않는다.
+  if [ "$branch" = "staging" ] && [ "$local_sha" != "$zero_sha" ]; then
+    git_dir_abs="$(cd "$(git rev-parse --git-dir 2>/dev/null)" 2>/dev/null && pwd -P)"
+    git_common_dir_abs="$(cd "$(git rev-parse --git-common-dir 2>/dev/null)" 2>/dev/null && pwd -P)"
+    is_linked_worktree=0
+    if [ -n "$git_dir_abs" ] && [ -n "$git_common_dir_abs" ] && [ "$git_dir_abs" != "$git_common_dir_abs" ]; then
+      is_linked_worktree=1
+    fi
+    worktree_name="$(basename "$(git rev-parse --show-toplevel 2>/dev/null)")"
+
+    case "$local_ref" in
+      refs/heads/*) local_branch="${local_ref#refs/heads/}" ;;
+      *) local_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" ;;
+    esac
+
+    block_reason=""
+    case "$worktree_name" in
+      wf_*) [ "$is_linked_worktree" = "1" ] && block_reason="에이전트 작업 워크트리($worktree_name)" ;;
+    esac
+    if [ -z "$block_reason" ]; then
+      case "$local_branch" in
+        claude/jamwork-*) block_reason="리뷰 브랜치($local_branch)" ;;
+      esac
+    fi
+
+    if [ -n "$block_reason" ]; then
+      echo "" >&2
+      echo "차단(pre-push): ${block_reason}에서 staging으로 바로 push할 수 없습니다." >&2
+      echo "" >&2
+      echo "  아현의 리뷰 브랜치와 Workflow 에이전트 작업 공간은 staging에 직접 push하지 않습니다." >&2
+      echo "  카리나가 메인 트리에서 review 브랜치를 staging에 merge한 뒤 push하세요" >&2
+      echo "  (.claude/skills/jam-work/SKILL.md 4단계)." >&2
+      echo "" >&2
+      exit 1
+    fi
   fi
 
   # staging push 시 jam-web 전체 lint를 게이트로 돌린다.

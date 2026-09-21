@@ -1,0 +1,143 @@
+// pre-push 기준 방어(guard the bar) 검사 테스트 (티켓 20260921_2304)
+//
+// 임시 저장소에서 훅을 직접 실행한다. 시나리오마다 초기 커밋(root)으로 리셋한 뒤 그 위에
+// 커밋 하나만 얹어, diff가 "이번 push 범위"만 반영하도록 만든다. GIT_* 변수와 전역 설정은
+// 격리해 실제 저장소를 건드리지 않는다.
+// 실행: node scripts/pre-push-guard-bar.test.mjs
+
+import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const HOOK = join(dirname(fileURLToPath(import.meta.url)), '..', '.githooks', 'pre-push')
+
+const env = (extra = {}) => {
+  const e = {}
+  for (const [k, v] of Object.entries(process.env)) if (!k.startsWith('GIT_') && !k.startsWith('JAM_')) e[k] = v
+  return { ...e, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', ...extra }
+}
+const git = (args, cwd) => {
+  const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: env() })
+  assert.equal(r.status, 0, `git ${args.join(' ')} 실패:\n${r.stderr}`)
+  return r.stdout.trim()
+}
+const commit = (cwd, message) => {
+  git(['-c', 'user.name=x', '-c', 'user.email=dev@jam.internal', 'commit', '-q', '-m', message], cwd)
+  return git(['rev-parse', 'HEAD'], cwd)
+}
+const writeAndAdd = (cwd, relPath, content) => {
+  const abs = join(cwd, relPath)
+  mkdirSync(dirname(abs), { recursive: true })
+  writeFileSync(abs, content)
+  git(['add', relPath], cwd)
+}
+const reset = (cwd, sha) => {
+  git(['reset', '-q', '--hard', sha], cwd)
+  git(['clean', '-q', '-fd'], cwd)
+}
+const runHook = (cwd, oldSha, newSha) =>
+  spawnSync('bash', [HOOK], {
+    cwd,
+    encoding: 'utf8',
+    env: env({ JAM_SKIP_LINT: '1' }),
+    input: `refs/heads/x ${newSha} refs/heads/staging ${oldSha}\n`,
+  })
+
+const base = mkdtempSync(join(tmpdir(), 'pre-push-guard-bar-'))
+try {
+  git(['init', '-q', base], base)
+  writeAndAdd(base, 'jam-web/package.json', JSON.stringify({ scripts: { 'lint:ci': 'eslint --cache --max-warnings 26' } }))
+  writeAndAdd(base, 'jam-web/src/example.ts', 'export const x = 1\n')
+  const root = commit(base, 'init')
+
+  // 1) 사유 없는 eslint-disable 추가는 막힌다
+  reset(base, root)
+  writeAndAdd(
+    base,
+    'jam-web/src/example.ts',
+    'export const x = 1\n// eslint-disable-next-line no-explicit-any\nexport const y: any = 2\n'
+  )
+  let sha = commit(base, 'add suppression without reason')
+  let r = runHook(base, root, sha)
+  assert.equal(r.status, 1, 'eslint-disable에 사유가 없으면 막혀야 한다')
+  assert.match(r.stderr, /새 억제 주석에 사유가 없습니다/)
+
+  // 2) 같은 줄에 "-- 사유"가 있으면 통과한다
+  reset(base, root)
+  writeAndAdd(
+    base,
+    'jam-web/src/example.ts',
+    'export const x = 1\n// eslint-disable-next-line no-explicit-any -- 레거시 타입, 정리 예정\nexport const y: any = 2\n'
+  )
+  sha = commit(base, 'add suppression with reason')
+  r = runHook(base, root, sha)
+  assert.equal(r.status, 0, `사유가 있으면 통과해야 한다:\n${r.stderr}`)
+
+  // 3) @ts-ignore도 사유가 없으면 막힌다
+  reset(base, root)
+  writeAndAdd(base, 'jam-web/src/example.ts', 'export const x = 1\n// @ts-ignore\nexport const y = 2\n')
+  sha = commit(base, 'add ts-ignore')
+  r = runHook(base, root, sha)
+  assert.equal(r.status, 1, '@ts-ignore에 사유가 없으면 막혀야 한다')
+
+  // 4) jam-web 밖에서 같은 단어를 언급해도 통과한다 (훅·문서 자신을 오탐하지 않는다)
+  reset(base, root)
+  writeAndAdd(base, 'docs/note.md', '이 문서는 eslint-disable·@ts-ignore·it.skip(을 설명한다.\n')
+  sha = commit(base, 'doc mentions guard words')
+  r = runHook(base, root, sha)
+  assert.equal(r.status, 0, `jam-web 밖의 언급은 통과해야 한다:\n${r.stderr}`)
+
+  // 5) it.skip 추가는 막힌다
+  reset(base, root)
+  writeAndAdd(base, 'jam-web/src/example.test.ts', "it.skip('보류', () => {})\n")
+  sha = commit(base, 'add skip')
+  r = runHook(base, root, sha)
+  assert.equal(r.status, 1, '.skip 추가는 막혀야 한다')
+  assert.match(r.stderr, /건너뛰거나 하나만 실행/)
+
+  // 6) test.only 추가도 막힌다
+  reset(base, root)
+  writeAndAdd(base, 'jam-web/src/example.test.ts', "test.only('집중', () => {})\n")
+  sha = commit(base, 'add only')
+  r = runHook(base, root, sha)
+  assert.equal(r.status, 1, '.only 추가는 막혀야 한다')
+
+  // 7) 사유 없는 테스트 파일 삭제는 막힌다
+  reset(base, root)
+  writeAndAdd(base, 'jam-web/src/todelete.test.ts', "it('x', () => {})\n")
+  const withTestFile = commit(base, 'add test file')
+  git(['rm', '-q', 'jam-web/src/todelete.test.ts'], base)
+  sha = commit(base, 'remove test file without reason')
+  r = runHook(base, withTestFile, sha)
+  assert.equal(r.status, 1, '사유 없는 테스트 파일 삭제는 막혀야 한다')
+  assert.match(r.stderr, /테스트 파일이 삭제됐습니다/)
+
+  // 8) 커밋 메시지에 "테스트 삭제: <사유>" 줄이 있으면 통과한다
+  reset(base, withTestFile)
+  git(['rm', '-q', 'jam-web/src/todelete.test.ts'], base)
+  sha = commit(base, '중복 테스트 정리\n\n테스트 삭제: todelete는 example.test로 통합됨')
+  r = runHook(base, withTestFile, sha)
+  assert.equal(r.status, 0, `커밋 메시지에 사유가 있으면 통과해야 한다:\n${r.stderr}`)
+
+  // 9) --max-warnings 상향은 막힌다
+  reset(base, root)
+  writeAndAdd(base, 'jam-web/package.json', JSON.stringify({ scripts: { 'lint:ci': 'eslint --cache --max-warnings 40' } }))
+  sha = commit(base, 'raise max-warnings')
+  r = runHook(base, root, sha)
+  assert.equal(r.status, 1, '--max-warnings 상향은 막혀야 한다')
+  assert.match(r.stderr, /--max-warnings 값을 높였습니다/)
+
+  // 10) --max-warnings 하향은 통과한다
+  reset(base, root)
+  writeAndAdd(base, 'jam-web/package.json', JSON.stringify({ scripts: { 'lint:ci': 'eslint --cache --max-warnings 10' } }))
+  sha = commit(base, 'lower max-warnings')
+  r = runHook(base, root, sha)
+  assert.equal(r.status, 0, `--max-warnings 하향은 통과해야 한다:\n${r.stderr}`)
+
+  console.log('통과: pre-push 기준 방어(guard the bar) 검사')
+} finally {
+  rmSync(base, { recursive: true, force: true })
+}

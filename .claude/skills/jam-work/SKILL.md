@@ -222,6 +222,9 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
      종료 코드가 0이 아니면(= review 브랜치가 최신 `origin/staging` 위에서 분기하지 않음) 머지를
      멈추고 사용자에게 경위를 보고한다 — 다른 진행 중 티켓의 미승인 커밋을 조상으로 물고 들어왔을
      가능성이 있다 (jam-developer.md 5번, 티켓 20260820_019 사고 참고).
+   - **CI 상태도 함께 확인한다** (티켓 20260921_2304): `gh run list --branch claude/jamwork-{ticket-id}-{slug} --limit 1`로 최근 실행을,
+     `gh run view <run-id>` 또는 `gh api repos/{owner}/{repo}/commits/{sha}/check-runs`로 결과를
+     본다. 상태가 없거나 실패면 머지를 멈추고 원인을 먼저 본다 — 민지 점검표 1번과 같은 기준이다.
 2. 아현이 브랜치에서 직접 고친 문서를 확인한다. `docs/`와 `jam-doc/`이 한 저장소에 있으므로
    (2026-09-20 재통합, 티켓 20260920_1412) 1번의 머지에 문서 변경까지 함께 들어온다. 카리나가
    따로 반영하거나 별도로 커밋할 일은 없다
