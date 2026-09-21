@@ -59,7 +59,10 @@ of change this is. The rest depend on `workType` (ticket 20260918_1158). Mark a 
 5. Scope creep — anything changed that the ticket did not ask for
 6. Design decision compliance — did the implementation follow 채원's 사전 판정
 7. Storybook — `design-system/components/**` changed without its `*.stories.*` is a `FAIL`
-8. SQL migration file present, unexecuted, syntactically sound
+8. SQL migration file present, unexecuted, syntactically sound — and it follows
+   `jam-developer.md` Hard rule 3: rollback SQL ships with the file (trailing comment block or a
+   sibling `_down.sql`), and a change that both adds and removes a column/function is split into
+   expand → switch → contract instead of doing both in one migration
 9. Security — authorization, RLS, secret handling
 10. Error handling matches the spec's expected behaviour
 11. Documentation — did 아현 update every document the change actually affects. Since the

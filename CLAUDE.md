@@ -19,7 +19,8 @@
 한 번으로 끝난다 (2026-09-20 재통합, 티켓 20260920_1412).
 
 **main 브랜치로의 머지는 사용자의 명시적 승인이 있을 때만 한다.**
-프로덕션 배포는 `/jam-ship`으로 처리한다 (staging 검증 → main 승격 → Vercel 확인).
+프로덕션 배포는 `/jam-ship`으로 처리한다 (staging 검증 → 배포 전 점검·롤백 계획 → main 승격 →
+배포 검증·배포 후 검증).
 `.githooks/pre-push`가 승인 경로 밖의 main push를 차단한다.
 
 ### 4. 로컬과 git을 항상 동일하게 유지
@@ -58,6 +59,8 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 - **SQL 파일은 직접 실행하더라도 반드시 남긴다**: `jam-web/supabase/migrations/0XX_설명.sql`
   (스키마 변경) 또는 `seed_*.sql`(1회성 데이터)로 저장해 커밋
 - Supabase는 staging·프로덕션 **공용 단일 DB**다. DB 변경은 즉시 프로덕션에 반영된다
+- 컬럼·함수를 바꾸거나 없애는 변경은 확장→전환→축소로 나누고, 모든 마이그레이션에 되돌림 SQL을
+  동반한다 (`.claude/agents/jam-developer.md` Hard rules 3)
 - 실행 절차·권한·위험도 인식은 `docs/agents/orchestrator.md` 참고
 
 ---

@@ -126,7 +126,7 @@ jam-web/
 - **과거 데이터 소급 분석하지 마** — Strava 연동 시점 이후 활동만 처리 (단, 첫 싱크 자체는 연동 시점까지의 누적 이력을 최신 1건 기준으로 평가하는 것이 정책이므로 별개)
 - **API 키나 비밀번호를 코드에 직접 쓰지 마** — 반드시 `.env.local` 환경변수 사용
 - **Strava access_token을 평문으로 DB에 저장하지 마** — `ENCRYPTION_KEY`로 암호화 필수
-- **기존 DB 스키마를 임의로 변경하지 마** — 마이그레이션 파일 작성 후 리뷰 요청 (현재 080까지 진행, 번호 이어서 작성 — 새로 시작하기 전 `ls supabase/migrations | tail`로 직접 확인할 것, 045가 두 파일에 중복 부여됐던 전례 있음)
+- **기존 DB 스키마를 임의로 변경하지 마** — 마이그레이션 파일 작성 후 리뷰 요청 (번호는 이어서 작성한다. 시작하기 전에 `ls supabase/migrations | tail`로 직접 확인할 것, 045가 두 파일에 중복 부여됐던 전례 있음. 컬럼·함수를 바꾸거나 없애는 변경은 확장→전환→축소의 별도 마이그레이션으로 나누고 모든 마이그레이션에 되돌림 SQL을 동반한다 — 규칙의 단일 원천은 `.claude/agents/jam-developer.md` Hard rules 3)
 - **테이블뿐 아니라 함수·트리거도 마이그레이션 파일 없이 운영 DB에서 직접(SQL 에디터·MCP execute_sql 등) 재정의하지 마** — 2026-08-11 `handle_new_user()` 트리거 함수가 마이그레이션 파일 없이 운영 DB에서만 재정의되면서 인벤토리 생성 구문이 누락된 채 방치돼, 신규 유저 3명의 아이템 배지가 조용히 미발급되는 인시던트가 있었음(원인 규명 불가 — 추적 기록 자체가 없었음). `execute_sql`은 조회·데이터 백필(별도 티켓 문서화 전제)에만 쓰고, 함수/트리거/컬럼 등 스키마·로직 정의 변경은 반드시 새 마이그레이션 파일 작성 → `apply_migration`으로 적용 → 커밋까지 한 번에 끝낼 것. 프로젝트 규모상 `supabase_migrations.schema_migrations`에 이력이 다 남지 않는 경우도 있으므로, 의심 시 [BADGE_ENGINE_UNIFIED.md](../badge-engine/BADGE_ENGINE_UNIFIED.md) 같은 핵심 로직 문서보다도 `pg_get_functiondef`로 운영 DB 실물을 먼저 확인할 것 (docs/tickets/20260811_001 참고)
 - **목업/하드코딩 데이터로 완성이라고 하지 마** — 실제 Strava 계정 연동 테스트 필수
 - **package.json 의존성 버전을 임의로 변경하지 마** — 보안 패치 외 버전 고정. 특히 Next.js는 16 메이저 버전 고정 — 임의 업/다운그레이드 금지
@@ -186,16 +186,14 @@ npx supabase start
 
 ## 배포 방법
 
-```bash
-# Vercel CLI 설치 (최초 1회)
-npm i -g vercel
+프로덕션 배포는 Claude Code의 `/jam-ship` 스킬로만 진행한다. `vercel --prod`나 main 브랜치 직접
+push로 배포하지 않는다(`.githooks/pre-push`가 `JAM_SHIP=1` 없는 main push를 차단한다).
 
-# 프로덕션 배포
-vercel --prod
+1. `staging` 브랜치에 push하면 Vercel이 스테이징(`stage.j-a-m.app`)에 배포한다.
+2. 스테이징에서 확인을 마친 뒤 `/jam-ship`을 실행한다. 배포 전 점검표 → 롤백 계획 → main 승격 →
+   배포 검증 → 배포 후 검증 순서로 진행하며, 절차의 단일 원천은 `.claude/skills/jam-ship/SKILL.md`다.
 
-# 환경변수는 Vercel 대시보드에서 설정
-# vercel.com → 프로젝트 → Settings → Environment Variables
-```
+환경변수는 Vercel 대시보드(프로젝트 → Settings → Environment Variables)에서 설정한다.
 
 ---
 
