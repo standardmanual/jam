@@ -29,17 +29,30 @@ jobs:
       - name: core.hooksPath 설정 (새 체크아웃은 비어 있어 contract 검사가 이를 요구한다)
         run: git config core.hooksPath .githooks
 
-      - name: 변경 범위 판별 (origin/staging 대비)
+      - name: 변경 범위 판별 (이번 push의 변경 파일 기준)
         id: scope
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
-          git fetch origin staging --quiet
-          base="$(git merge-base HEAD origin/staging || true)"
+          zero="0000000000000000000000000000000000000000"
+          # 이번 push 직전의 브랜치 tip(github.event.before)과 비교한다 — .githooks/pre-push의
+          # remote_sha와 같은 개념이다. 브랜치의 첫 push(before가 0)이거나 그 커밋을 로컬에서
+          # 찾지 못하면(강제 push 등) origin/staging과의 병합 기준점으로 대신한다. 브랜치
+          # 전체의 누적 diff로 판별하면, 코드를 바꾼 뒤 문서만 바꾸는 이후 push까지 매번
+          # "전체 검증"으로 잘못 분류된다 — 반드시 이번 push의 델타만 봐야 한다.
+          if [ "$BEFORE_SHA" != "$zero" ] && [ -n "$BEFORE_SHA" ] && git cat-file -e "$BEFORE_SHA" 2>/dev/null; then
+            base="$BEFORE_SHA"
+          else
+            git fetch origin staging --quiet
+            base="$(git merge-base HEAD origin/staging || true)"
+          fi
+
           if [ -z "$base" ]; then
-            echo "병합 기준점을 찾지 못해 전체 검증으로 진행합니다."
+            echo "비교 기준을 찾지 못해 전체 검증으로 진행합니다."
             echo "full=true" >> "$GITHUB_OUTPUT"
           else
             changed="$(git diff --name-only "$base" HEAD)"
-            echo "origin/staging 대비 변경 파일:"
+            echo "이번 push에서 변경된 파일 (기준: $base):"
             echo "$changed"
             if echo "$changed" | grep -qE '^(jam-web/|scripts/|\.githooks/|\.github/)'; then
               echo "full=true" >> "$GITHUB_OUTPUT"
