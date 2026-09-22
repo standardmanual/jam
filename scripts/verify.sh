@@ -81,8 +81,15 @@ else
   rm -f "$LOG_PREFIX.team-doc"
 fi
 
+# .claude/skills/*/SKILL.md·.claude/agents/*.md의 frontmatter 구조 평가 (티켓 20260922_1523).
+if ! ( cd "$REPO_ROOT" && node scripts/check-skills.mjs ) >"$LOG_PREFIX.skills" 2>&1; then
+  FAILED+=("skills")
+else
+  rm -f "$LOG_PREFIX.skills"
+fi
+
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · ds:check · slop · scripts-test · contract · team-doc"
+  echo "verify 통과: lint · typecheck · test · ds:check · slop · scripts-test · contract · team-doc · skills"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"

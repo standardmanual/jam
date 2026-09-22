@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | 카리나 | 오케스트레이터 (메인 대화, 정식 에이전트 아님) | — | Sonnet |
 | 아현 | 개발 | `jam-developer` | Sonnet |
-| 민지 | 판정 리뷰 (게이트) | `jam-reviewer` | Sonnet |
+| 민지 | 판정 리뷰 (게이트) + 배포 전 점검 | `jam-reviewer` | Sonnet |
 | 채원 | 디자인 | `jam-designer` | 모드별 (Sonnet/Haiku) |
 | 혜린 | PM (기획·타당성·리스크) | `jam-pm` | Sonnet (조사 Haiku) |
 | 윈터 | 세계관 | `jam-tribe` | 모드별 (Opus/Sonnet/Haiku) |

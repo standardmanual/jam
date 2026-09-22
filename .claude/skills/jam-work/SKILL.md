@@ -438,3 +438,12 @@ Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다.
   프롬프트에 그대로 박아 넣는다 — 두 에이전트는 그 고정된 두 커밋 사이의 diff만 보므로, 워크트리의
   `origin/staging` 참조가 뒤처져 있어도 결과가 흔들리지 않는다(1148 민지 발견물 ②). 아현이 범위를
   채우지 못한 예외 상황에서만 "먼저 `git fetch origin staging`을 실행하라"는 옛 방식으로 폴백한다.
+- **스킬 라우팅 평가 실행 절차** (선택 실행, 티켓 20260922_1523): `scripts/skill-eval-cases.json`에
+  요청 문장 → 기대 스킬·기대 유형 사례가 있다. 카리나가 요청받았을 때만 돈다 — `verify.sh`에는
+  넣지 않는다(LLM 판단이 들어가 토큰이 든다). 절차: ① 각 `.claude/skills/*/SKILL.md`의
+  frontmatter `description`을 모은다. ② Haiku 서브에이전트를 불러 그 설명문 목록과 사례의
+  `request`를 주고, 각 사례마다 가장 맞는 스킬(과 `jam-work`면 0.2절 유형)을 판정시켜
+  `{ id, predictedSkill, predictedWorkType }` 배열을 받는다. ③ 그 배열을 JSON 파일로 저장하고
+  `node scripts/skill-eval.mjs <파일 경로>`로 사례와 대조한다 — 일치율(스킬·유형 각각)과 틀린
+  사례 목록이 나온다. 틀린 사례는 해당 스킬의 `description`을 고치는 티켓으로 분리한다(설명문에
+  실제 사용자 어휘가 빠졌다는 뜻이다 — 사례 문장을 스킬에 끼워 맞추지 않는다).

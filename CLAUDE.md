@@ -58,7 +58,7 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 |---|---|---|
 | 카리나 | 오케스트레이터 (메인 대화) | `docs/agents/orchestrator.md` |
 | 아현 | 개발 | `jam-developer` |
-| 민지 | 판정 리뷰 (게이트) | `jam-reviewer` |
+| 민지 | 판정 리뷰 (게이트) + 배포 전 점검 | `jam-reviewer` |
 | 채원 | 디자인 | `jam-designer` |
 | 혜린 | PM (기획·타당성·리스크) | `jam-pm` |
 | 윈터 | 세계관 | `jam-tribe` |

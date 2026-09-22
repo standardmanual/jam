@@ -1,6 +1,6 @@
 ---
 name: jam-ship
-description: JAM! staging 검증 후 프로덕션(main) 배포. staging 미반영 변경 확인 → 배포 전 점검표 → 롤백 계획 → main 승격 → Vercel 배포 Ready·alias 검증 → 배포 후 검증 → 결과 보고까지 처리한다. "배포해줘", "프로덕션에 올려줘", "스테이징 확인했어 배포하자", "/jam-ship" 같은 요청에 사용.
+description: JAM! staging 검증 후 프로덕션(main) 배포. staging 미반영 변경 확인 → 배포 전 점검표 → 롤백 계획 → 병렬 점검(민지 보안·테스트) → main 승격 → Vercel 배포 Ready·alias 검증 → 배포 후 검증 → 결과 보고까지 처리한다. "배포해줘", "프로덕션에 올려줘", "스테이징 확인했어 배포하자", "/jam-ship" 같은 요청에 사용.
 ---
 
 # /jam-ship — 프로덕션 배포
@@ -56,7 +56,7 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
   (가드레일 패턴 8)
 
 ### 성능
-- [ ] Vercel 빌드 로그에 경고 없음 — 7단계 `vercel inspect <url> --logs`에서 겸해 확인한다.
+- [ ] Vercel 빌드 로그에 경고 없음 — 8단계 `vercel inspect <url> --logs`에서 겸해 확인한다.
 - [ ] (해당 시) 새 쿼리에 인덱스가 필요하면 Supabase 성능 어드바이저로 확인
 
 ### 접근성
@@ -71,7 +71,7 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
   적용됐는지 확인한다(가드레일 패턴 2). `supabase_migrations.schema_migrations`는 전수 기록이
   아니므로 의심되면 Supabase MCP로 실물을 대조한다. 되돌림 SQL의 동반 여부는 「보안」의
   `deploy-gate.mjs check`가 확인한다.
-- [ ] 루트 응답(DNS·SSL 겸함) — 7단계의 `curl https://j-a-m.app` 확인으로 겸한다.
+- [ ] 루트 응답(DNS·SSL 겸함) — 8단계의 `curl https://j-a-m.app` 확인으로 겸한다.
 
 ### 문서
 - [ ] 이번에 승격되는 티켓들의 완료 기록·문서 갱신안이 커밋에 반영됐는지 확인한다
@@ -95,18 +95,18 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
 
 ## 4. 롤백 계획 (main 승격 전 필수)
 
-아래 네 칸이 채워지지 않으면 6단계(main 승격)로 진행하지 않는다.
+아래 네 칸이 채워지지 않으면 7단계(main 승격)로 진행하지 않는다.
 
-- **트리거 조건**: 7단계에서 프로덕션 루트 응답이 200이 아니거나 타임아웃 / 8단계에서 배포
+- **트리거 조건**: 8단계에서 프로덕션 루트 응답이 200이 아니거나 타임아웃 / 9단계에서 배포
   시각 이후 오류성 이벤트나 동기화 실패가 새로 나타났고 이번 배포의 변경과 관련이 있어 보임 /
   사용자가 특정 기능 오류를 신고. 에러율 기준선이 아직 없으므로(「하지 않는 것」의 오류 예산
   항목) "기준 대비 몇 배" 같은 수치 조건은 쓰지 않는다.
 - **절차**: 트리거 조건이 충족되면 먼저 사용자에게 상황을 보고하고 롤백 승인을 받는다(승인 없는
   롤백은 「하지 않는 것」에 해당한다). 승인되면 직전 Ready 배포 URL을
-  `vercel ls --scope standard-manual`(7단계와 같은 명령)으로 확인한 뒤
+  `vercel ls --scope standard-manual`(8단계와 같은 명령)으로 확인한 뒤
   `NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel rollback <그 URL> --scope standard-manual`로
   alias를 되돌린다(확인 프롬프트가 없어 `--yes`는 필요 없다). 새 커밋·재빌드 없이 되돌리므로 main에
-  `git revert`를 만들지 않는다. 되돌린 뒤 7단계를 다시 확인하고(`node scripts/deploy-gate.mjs served`가
+  `git revert`를 만들지 않는다. 되돌린 뒤 8단계를 다시 확인하고(`node scripts/deploy-gate.mjs served`가
   읽는 서빙 배포 id가 되돌린 배포의 id로 바뀌었는지 포함) 롤백 사실과 원인을 보고한다.
 - **롤백 이후의 복구**: Vercel은 롤백을 실행한 뒤 프로덕션 도메인 자동 할당을 끈다. 그 상태에서는
   main에 push한 새 배포가 Ready가 돼도 공개되지 않는다. 원인을 고친 새 배포를 공개할 때는
@@ -115,7 +115,7 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
   설정으로 돌아간다는 점도 함께 보고한다(Vercel 문서 「Performing an Instant Rollback」). 승격 뒤
   서빙 배포가 원래 배포로 돌아온 것은 스테이징 연습에서 확인했다. 다만 **자동 할당 플래그 자체는
   CLI와 프로젝트 조회 어디에도 노출되지 않아 직접 확인하지 못했다**(문서 근거). 복구 뒤 처음 만드는
-  배포가 자동으로 공개되는지 7단계로 확인한다.
+  배포가 자동으로 공개되는지 8단계로 확인한다.
 - **목표 복구 시간**: 코드는 롤백 승인 후 1분 이내. 스테이징(`jam-stage`) 실측(2026-09-22, 티켓
   20260922_0002)에서 `vercel rollback` 명령이 약 5초에 끝났고(npx 기동 0.7초 포함) 페이지가 서빙하는
   배포는 명령이 끝난 지 1초 뒤에 바뀌었다. 복구(`vercel promote`)도 명령 약 5.6초에 반영 1.2초였다.
@@ -128,16 +128,47 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
 
 > 이식 출처: `shipping-and-launch` skill §Rollback Strategy 양식.
 
-## 5. 완료 기준(Definition of Done) — 마지막 관문
+## 5. 병렬 점검
 
-6단계(main 승격) 직전, `definition-of-done.md`의 「배포 준비」 네 항목이 전부 충족돼야
+4단계 롤백 계획 뒤, 6단계 완료 기준 전에 돈다. 카리나가 민지(`jam-reviewer`)를 **한 턴에 모드
+②(배포 전 보안 점검)·③(배포 전 테스트 공백 점검)으로 동시에** 호출한다(순차 호출 금지 — 원본
+`ship.toml`의 제약). 커밋 범위는 1단계에서 이미 확인한 `origin/main..origin/staging`을 그대로
+넘긴다.
+
+### 생략 조건
+`git diff --numstat origin/main origin/staging -- jam-web`의 추가+삭제 합계가 0줄이면(문서만
+바뀐 배포) 병렬 점검을 건너뛰고 10단계 보고에 "해당 없음(jam-web 변경 0줄)"이라고 적는다. 그
+밖의 유인 배포는 항상 돌린다 — 원본의 "2파일 이하·50줄 미만" 같은 규모 기준은 쓰지 않는다(인증
+관련 변경은 한 줄이어도 위험할 수 있다).
+
+### 병합 규칙
+- **보안 중단급 발견** → 승격을 차단한다. 사용자에게 보고하고 진행 여부는 사용자가 결정한다.
+- **보안 주의급 발견** → 보고한다. 진행 여부는 사용자가 결정한다(차단하지 않는다).
+- **테스트 공백** → 주의로 보고한다. 차단하지 않는다.
+- 이번 배포에서 처리하지 않는 발견물은 `.claude/skills/jam-work/SKILL.md` 3.2절(범위 밖 발견물
+  처리 — 자동 티켓화)과 같은 방식으로 티켓이 된다.
+
+### `deploy-gate.mjs`와의 역할 구분
+`node scripts/deploy-gate.mjs check`(3단계 「보안」)는 비밀값·신규 API 라우트 인증·되돌림 SQL을
+기계로 잡는다. 민지 모드 ②·③은 그 기계 검사가 못 잡는, 판단이 필요한 위협 모델링·테스트
+공백을 본다 — 서로 대체하지 않는다.
+
+무인 배포 경로에는 적용하지 않는다 — 「주간 무인 배포와의 관계」 참고.
+
+결과는 10단계 보고에 「병렬 점검」 항목으로 남긴다.
+
+> 이식 출처: agent-skills 플러그인 `commands/ship.toml` Phase A·B(티켓 20260922_1523).
+
+## 6. 완료 기준(Definition of Done) — 마지막 관문
+
+7단계(main 승격) 직전, `definition-of-done.md`의 「배포 준비」 네 항목이 전부 충족돼야
 진행한다. 하나라도 비어 있으면 멈추고 보고한다.
 
 → `.claude/skills/jam-work/references/definition-of-done.md` 「배포 준비」
 
-## 6. main 승격
+## 7. main 승격
 
-5단계 완료 기준을 통과한 뒤에만 진행한다.
+6단계 완료 기준을 통과한 뒤에만 진행한다.
 
 ```bash
 git -C "<repo>" checkout main
@@ -149,7 +180,7 @@ git -C "<repo>" checkout staging                 # 작업 브랜치로 복귀
 `.githooks/pre-push`는 `JAM_SHIP=1`이 없는 main push를 차단한다. 이 스킬이 유일한 승인 경로다.
 끝 커밋 작성자가 `@example.com`이면 같은 훅이 push를 차단한다(티켓 20260921_1231).
 
-## 7. 배포 검증 (여기까지 해야 "배포 완료"다)
+## 8. 배포 검증 (여기까지 해야 "배포 완료"다)
 
 ```bash
 NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls --scope standard-manual
@@ -178,7 +209,7 @@ node scripts/deploy-gate.mjs served
 > TLS 오류(`unable to get local issuer certificate`)가 나면:
 > `security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain > /tmp/system-ca.pem`
 
-## 8. 배포 후 검증 (배포 직후)
+## 9. 배포 후 검증 (배포 직후)
 
 카리나가 배포 직후 확인한다:
 - 스테이징 자동 로그인 경로(`stage.j-a-m.app`, `/api/dev-login`)로 핵심 화면(홈피드·프로필
@@ -193,14 +224,16 @@ node scripts/deploy-gate.mjs served
 
 > 이식 출처: `shipping-and-launch` skill §Post-Launch Verification.
 
-## 9. 보고
+## 10. 보고
 
 배포 완료 후 사용자에게:
 - 프로덕션에 올라간 커밋 목록 (한국어 요약)
 - 배포 URL과 Ready 확인 결과, alias 연결 상태
 - 이번 배포에 포함된 DB 마이그레이션이 있으면 **실행 여부를 명시**
 - **롤백 계획 요약** (4단계에서 정한 트리거·절차·목표 시간·DB 고려) — 롤백 계획이 없으면
-  6단계로 진행하지 않았어야 한다.
+  7단계로 진행하지 않았어야 한다.
+- **병렬 점검 결과** (5단계) — 민지 모드 ②·③의 발견물 개수·신호 분포, 생략했으면 사유
+  ("해당 없음(jam-web 변경 0줄)"), 범위 밖 발견물로 만든 티켓 경로
 
 ## 주간 무인 배포와의 관계
 
@@ -214,18 +247,21 @@ node scripts/deploy-gate.mjs served
 | 2 staging 검증 상태 | 수행 (스테이징 `curl` 확인) |
 | 3 배포 전 점검표 | 일부 수행 — `node scripts/deploy-gate.mjs check`가 보는 비밀값·마이그레이션 되돌림 SQL·새 API 라우트 인증. 그 밖의 항목(`verify.sh`·`npm audit`·환경변수·마이그레이션 적용 여부)은 미수행 |
 | 4 롤백 계획 | 롤백은 하지 않는다(이상이 보이면 `#jam-alert`) |
-| 5 완료 기준 | 미수행 |
-| 6 main 승격 | 수행 |
-| 7 배포 검증 | 수행 — 헬스체크에 더해 `node scripts/deploy-gate.mjs served`로 서빙 배포 id가 바뀌었는지 확인 |
-| 8 배포 후 검증 | 미수행 |
+| 5 병렬 점검 | 미수행 — 무인 실행은 승인 주체가 없고 비용 상한이 있어 민지 모드 ②·③을 호출하지 않는다 |
+| 6 완료 기준 | 미수행 |
+| 7 main 승격 | 수행 |
+| 8 배포 검증 | 수행 — 헬스체크에 더해 `node scripts/deploy-gate.mjs served`로 서빙 배포 id가 바뀌었는지 확인 |
+| 9 배포 후 검증 | 미수행 |
 
 ## 하지 않는 것
 
 - 로그인이 필요한 화면의 육안 확인 (구글 로그인 필수라 불가 — 사용자 몫)
 - 사용자 승인 없는 재배포·롤백
 - staging을 건너뛴 main 직접 커밋
+- 규모 기준(파일 수·줄 수)으로 병렬 점검(5단계)을 생략하지 않는다 — `jam-web` 변경이 0줄일
+  때만 건너뛴다
 - 단계 배포(카나리·퍼센트 롤아웃)와 기능 플래그 단계 전략 — Vercel은 프로덕션 별칭(alias)이
-  하나뿐이라 트래픽을 퍼센트로 나눠 배포할 수 없다. 8단계 배포 후 검증과 4단계 롤백 계획으로
+  하나뿐이라 트래픽을 퍼센트로 나눠 배포할 수 없다. 9단계 배포 후 검증과 4단계 롤백 계획으로
   대신한다.
 - 오류 예산(Error Budget) 게이트 — 정상 에러율 기준선이 있어야 성립하는데, 카즈하의 지표 정상
   범위 정의가 아직 도입 후 과제로 남아 있다

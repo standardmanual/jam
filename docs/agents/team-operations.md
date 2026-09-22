@@ -35,7 +35,7 @@ tags: [워크플로]
 |---|---|---|---|---|---|---|
 | 카리나 | 오케스트레이터 (메인 대화) | `docs/agents/orchestrator.md` | 세션 설정 | 전부 | **있음** | 항상 |
 | 아현 | 구현 | `.claude/agents/jam-developer.md` | Sonnet | Read·Write·Edit·Bash·Grep·Glob | **있음** | 항상 |
-| 민지 | 게이트 리뷰 | `.claude/agents/jam-reviewer.md` | Sonnet | Read·Grep·Glob·Bash | 없음 | 항상 |
+| 민지 | 게이트 리뷰 · 배포 전 점검 | `.claude/agents/jam-reviewer.md` | Sonnet | Read·Grep·Glob·Bash | 없음 | 항상 · 배포 시 병렬 호출 |
 | 채원 | 디자인 | `.claude/agents/jam-designer.md` | Sonnet | Read·Grep·Glob·Bash | 없음 | UI·DS 작업 시 |
 | 혜린 | 기획 | `.claude/agents/jam-pm.md` | Sonnet | Read·Grep·Glob | 없음 | 호출 시 |
 | 윈터 | 세계관 | `.claude/agents/jam-tribe.md` | Sonnet | Read·Grep·Glob·WebSearch | 없음 | 호출 시 · 월간 |
