@@ -247,6 +247,9 @@ export function collect(repo) {
 }
 
 // ── 렌더링 ───────────────────────────────────────────────────────────────────
+// 스타일은 사용자가 준 디자인 레퍼런스(웜 크림 에디토리얼: 에그셸 → 웜 토프 → 스톤 3단 표면,
+// 잉크 검정 하나의 대비, 32px 이상 제목은 300 웨이트에 -0.02em 자간, 필(9999px) 태그·버튼,
+// 바이올렛·오렌지 스파크는 UI가 아닌 장식 비주얼에만)를 따른다. 사실을 그리는 방식은 바꾸지 않는다.
 const ORCH = { id: 'orchestrator', name: '카리나', role: '오케스트레이터 (메인 세션)', presence: '항상', model: '세션 설정', tools: ['전부'], canWrite: true, file: 'docs/agents/orchestrator.md' }
 
 function table(t, cls = '') {
@@ -258,33 +261,41 @@ function table(t, cls = '') {
 
 function chip(text, cls = '') { return `<span class="chip ${cls}">${esc(text)}</span>` }
 
+// 에이전트의 관여 부류 — 색이 아니라 선의 종류로 구분한다(레퍼런스는 97% 무채색).
+function groupOf(a, d) {
+  if (a.id === 'orchestrator') return 'hub'
+  if (d.calls.some((c) => c.agentType === a.id)) return 'pipe'
+  if (d.routineAgents.includes(a.name)) return 'routine'
+  return 'call'
+}
+const GROUP_LABEL = { hub: '오케스트레이터', pipe: '표준 파이프라인', routine: '예약 루틴', call: '필요할 때 호출' }
+
 function agentCard(a, d) {
-  const isPipeline = d.calls.some((c) => c.agentType === a.id)
-  const isRoutine = d.routineAgents.includes(a.name)
+  const group = groupOf(a, d)
   const isolated = d.worktreeIsolated.includes(a.id)
   const skills = d.skills.filter((s) => s.agents.includes(a.id)).map((s) => `/${s.name}`)
-  const group = a.id === 'orchestrator' ? 'hub' : isPipeline ? 'pipe' : isRoutine ? 'routine' : 'call'
   return `
 <article class="card ${group}" id="agent-${esc(a.id)}">
+  <p class="eyebrow">${esc(GROUP_LABEL[group])}</p>
   <header>
-    <div class="name">${esc(a.name)}</div>
+    <h3 class="name">${esc(a.name)}</h3>
     <code class="callsign">${a.id === 'orchestrator' ? '메인 세션' : esc(a.id)}</code>
   </header>
-  <div class="role">${esc(a.role)}</div>
+  <p class="role">${esc(a.role)}</p>
   <dl>
     <dt>모델</dt><dd>${esc(a.model)}</dd>
-    <dt>도구</dt><dd>${a.tools.map((t) => chip(t, ['Write', 'Edit'].includes(t) ? 'warn' : '')).join(' ')}</dd>
-    <dt>쓰기</dt><dd>${a.canWrite ? chip('있음', 'warn') : chip('없음')}</dd>
+    <dt>도구</dt><dd>${a.tools.map((t) => chip(t, ['Write', 'Edit'].includes(t) ? 'ink' : '')).join(' ')}</dd>
+    <dt>쓰기</dt><dd>${a.canWrite ? chip('있음', 'ink') : chip('없음')}</dd>
     <dt>관여</dt><dd>${esc(a.presence)}</dd>
-    ${isolated ? `<dt>실행 위치</dt><dd>${chip('격리 워크트리', 'accent')}</dd>` : ''}
+    ${isolated ? `<dt>실행 위치</dt><dd>${chip('격리 워크트리', 'dashed')}</dd>` : ''}
     ${skills.length ? `<dt>스킬</dt><dd>${skills.map((s) => `<code>${esc(s)}</code>`).join(' ')}</dd>` : ''}
   </dl>
   <footer><code>${esc(a.file)}</code></footer>
 </article>`
 }
 
-// 허브형 호출 관계도 — 카리나를 가운데 두고 나머지 8인을 원 위에 놓는다. 서브에이전트끼리의
-// 간선은 그리지 않는다(서로를 부를 도구가 없다). 예약 루틴의 "담당 A → B"만 점선으로 잇는다.
+// 허브형 호출 관계도 — 카리나를 가운데 두고 나머지를 원 위에 놓는다. 서브에이전트끼리의 간선은
+// 그리지 않는다(서로를 부를 도구가 없다). 예약 루틴의 "담당 A → B"만 점선으로 잇는다.
 function hubSvg(d) {
   const W = 960, H = 680, cx = W / 2, cy = H / 2 + 28, R = 245
   const n = d.agents.length
@@ -295,7 +306,6 @@ function hubSvg(d) {
     pos[a.id] = { x: +(cx + R * Math.cos(ang)).toFixed(1), y: +(cy + R * Math.sin(ang)).toFixed(1) }
   })
   const byName = Object.fromEntries(d.agents.map((a) => [a.name, a]))
-  const group = (a) => (d.calls.some((c) => c.agentType === a.id) ? 'pipe' : d.routineAgents.includes(a.name) ? 'routine' : 'call')
 
   const edges = d.agents.map((a) => {
     const p = pos[a.id]
@@ -330,7 +340,7 @@ function hubSvg(d) {
   const node = (id, name, sub, role, x, y, cls) => `
 <g class="node ${cls}" transform="translate(${x},${y})">
   <a href="#agent-${esc(id)}">
-    <rect x="-72" y="-36" width="144" height="72" rx="12"/>
+    <rect x="-72" y="-36" width="144" height="72" rx="20"/>
     <text class="nname" y="-13">${esc(name)}</text>
     <text class="nsub" y="5">${esc(sub)}</text>
     <text class="nrole" y="23">${esc(role)}</text>
@@ -340,7 +350,7 @@ function hubSvg(d) {
   const nodes = d.agents.map((a) => {
     const p = pos[a.id]
     const sub = `${a.id}${d.worktreeIsolated.includes(a.id) ? ' · 격리' : ''}`
-    return node(a.id, a.name, sub, a.role, p.x, p.y, group(a))
+    return node(a.id, a.name, sub, a.role, p.x, p.y, groupOf(a, d))
   }).join('\n')
 
   return `<svg class="hub" viewBox="0 0 ${W} ${H}" role="img" aria-label="카리나를 중심으로 한 에이전트 호출 관계도">
@@ -376,14 +386,14 @@ function pipelineHtml(d) {
   ${notes.length ? `<div class="notes">${notes.map((x) => `<span>${esc(x)}</span>`).join('')}</div>` : ''}
 </div>`
     }).join('\n')
-    return `<div class="phase"><div class="ptitle">${esc(ph)}</div>${items || '<div class="step empty">(호출 없음)</div>'}</div>`
+    return `<div class="phase"><p class="ptitle">${esc(ph)}</p>${items || '<div class="step empty">(호출 없음)</div>'}</div>`
   })
-  const tail = `<div class="phase after"><div class="ptitle">승인 · 머지</div>
+  const tail = `<div class="phase after"><p class="ptitle">승인 · 머지</p>
 <div class="step"><div class="who"><a href="#agent-orchestrator">카리나</a></div><div class="notes"><span>결과 해석 · 승인 요청</span></div></div>
 <div class="step"><div class="who">사용자</div><div class="notes"><span>머지 승인</span></div></div>
 <div class="step"><div class="who">staging</div><div class="notes"><span>카리나가 머지·push</span></div></div>
 </div>`
-  return `<div class="pipeline">${cols.join('<div class="arrow">→</div>')}<div class="arrow">→</div>${tail}</div>`
+  return `<div class="pipeline">${cols.join('<div class="arrow" aria-hidden="true">→</div>')}<div class="arrow" aria-hidden="true">→</div>${tail}</div>`
 }
 
 // 워크트리·브랜치 구조 — 근거는 jam-work.js의 isolation, 아현 첫 명령, 훅 차단 목록, 세션 훅.
@@ -395,19 +405,19 @@ function worktreeHtml(d) {
   return `
 <div class="wt">
   <div class="lane main">
-    <div class="lt">메인 작업 폴더 <code>JAM!/</code> — <code>staging</code> 체크아웃</div>
+    <p class="lt">메인 작업 폴더 <code>JAM!/</code> — <code>staging</code> 체크아웃</p>
     <div class="box">카리나(메인 세션)${others.length ? ` · 읽기만 하는 에이전트: ${esc(others.join('·'))}` : ''}</div>
     <div class="box dim">jam-web/node_modules 실체 · 시크릿 파일(.env.local 등)</div>
     <div class="box dim">세션 시작 훅: <ul class="hooks">${hooks}</ul></div>
   </div>
   <div class="lane iso">
-    <div class="lt">격리 워크트리 <code>.claude/worktrees/wf_*</code> — ${esc(isolatedNames.join('·') || '(없음)')} 전용</div>
+    <p class="lt">격리 워크트리 <code>.claude/worktrees/wf_*</code> — ${esc(isolatedNames.join('·') || '(없음)')} 전용</p>
     ${d.firstCommand ? `<div class="box">첫 명령: <code>git fetch origin staging</code> → <code>git checkout --detach origin/staging</code> → <code>workspace-setup.sh link</code></div>` : ''}
     <div class="box">브랜치 <code>claude/jamwork-{ticket}-{slug}</code>에 커밋 → 리뷰 브랜치로만 push</div>
     <div class="box dim">jam-web/node_modules → 메인 폴더로 향하는 심볼릭 링크 · 시크릿 없음 · <code>jam-doc/</code>는 실제 폴더로 따라옴</div>
   </div>
   <div class="lane remote">
-    <div class="lt">GitHub · Vercel</div>
+    <p class="lt">GitHub · Vercel</p>
     <div class="box"><code>claude/jamwork-*</code> push → CI <code>verify</code>가 커밋 상태(도장)를 남김 → 민지가 도장을 읽음</div>
     <div class="box"><code>staging</code> ← 카리나가 사용자 승인 후 머지·push (CI 없음)</div>
     <div class="box"><code>main</code> ← <code>/jam-ship</code>(<code>JAM_SHIP=1</code>)만 → Vercel 프로덕션</div>
@@ -430,6 +440,20 @@ function skillsHtml(d) {
   return `<div class="tw"><table class="skills"><thead><tr><th>콜사인</th><th>부르는 에이전트</th><th>용도</th></tr></thead><tbody>\n${rows}\n</tbody></table></div>`
 }
 
+// 범례 — 색 견본 대신 실제로 쓰는 선·면의 견본을 그린다.
+function legendHtml() {
+  const sw = (inner) => `<svg class="sw" viewBox="0 0 56 24" aria-hidden="true">${inner}</svg>`
+  const items = [
+    [sw('<rect x="2" y="2" width="52" height="20" rx="10" class="k-hub"/>'), '오케스트레이터 (잉크 채움)'],
+    [sw('<rect x="2" y="2" width="52" height="20" rx="10" class="k-pipe"/>'), '표준 파이프라인(<code>/jam-work</code>)에서 호출'],
+    [sw('<rect x="2" y="2" width="52" height="20" rx="10" class="k-routine"/>'), '예약 루틴 담당 (점선 테두리)'],
+    [sw('<rect x="2" y="2" width="52" height="20" rx="10" class="k-call"/>'), '필요할 때 호출 (연한 테두리)'],
+    [sw('<line x1="4" y1="12" x2="52" y2="12" class="k-write"/>'), '쓰기 권한이 있는 대상 (굵은 선)'],
+    [sw('<path d="M4,18 Q28,-6 52,18" class="k-rline"/>'), '예약 루틴에서 산출물이 넘어가는 순서'],
+  ]
+  return `<ul class="legend">${items.map(([s, t]) => `<li>${s}<span>${t}</span></li>`).join('')}</ul>`
+}
+
 export function renderHtml(d) {
   const all = [ORCH, ...d.agents]
   const sources = [
@@ -445,138 +469,226 @@ export function renderHtml(d) {
 <title>JAM! 팀 지도</title>
 <meta name="description" content="에이전트 역할·콜사인·호출 관계·워크트리 구조를 한 화면에 모은 자동 생성 지도">
 <style>
-:root{--bg:#f7f7f5;--fg:#1c1c1a;--muted:#6b6b66;--line:#dcdcd6;--card:#ffffff;--code:#efefea;
---hub:#1c1c1a;--pipe:#2f6fdc;--routine:#2a8f6a;--call:#8a63c9;--warn:#c7532b;--accent:#2f6fdc;
---pipe-bg:#e9f0fc;--routine-bg:#e6f4ee;--call-bg:#efe9f8;--iso-bg:#fff6ea;--iso:#c98a2a}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141413;--fg:#ececea;--muted:#a0a09a;--line:#33332f;--card:#1e1e1c;--code:#2a2a27;
---hub:#ececea;--pipe:#7aa6f5;--routine:#6fcf9f;--call:#b696ec;--warn:#f08a5f;--accent:#7aa6f5;
---pipe-bg:#1b2a44;--routine-bg:#183429;--call-bg:#2a2140;--iso-bg:#3a2d16;--iso:#e2ac52}}
-:root[data-theme="dark"]{--bg:#141413;--fg:#ececea;--muted:#a0a09a;--line:#33332f;--card:#1e1e1c;--code:#2a2a27;
---hub:#ececea;--pipe:#7aa6f5;--routine:#6fcf9f;--call:#b696ec;--warn:#f08a5f;--accent:#7aa6f5;
---pipe-bg:#1b2a44;--routine-bg:#183429;--call-bg:#2a2140;--iso-bg:#3a2d16;--iso:#e2ac52}
+/* 디자인 토큰 — 사용자가 준 레퍼런스의 Quick Start 값 그대로 */
+:root{
+  color-scheme:light;
+  --color-eggshell:#fdfcfc;--color-warm-taupe:#f5f3f1;--color-stone:#ebe8e4;
+  --color-ink:#000000;--color-graphite:#44403b;--color-smoke:#777169;--color-ash:#a59f97;
+  --color-violet-spark:#0447ff;--color-ember-orange:#ff4704;
+  --color-button-border:#e5e5e5;
+  --font-display:'Inter',ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI",Roboto,sans-serif;
+  --font-inter:'Inter',ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI",Roboto,sans-serif;
+  --font-geist-mono:'Geist Mono','JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  --text-caption:10px;--leading-caption:1.6;
+  --text-body-sm:14px;--leading-body-sm:1.5;--tracking-body-sm:0.14px;
+  --text-body:16px;--leading-body:1.5;--tracking-body:0.16px;
+  --text-subheading:18px;--leading-subheading:1.6;
+  --text-body-lg:20px;--leading-body-lg:1.35;
+  --text-heading-sm:32px;--leading-heading-sm:1.13;--tracking-heading-sm:-0.64px;
+  --text-heading:36px;--leading-heading:1.17;--tracking-heading:-0.72px;
+  --text-display:48px;--leading-display:1.08;--tracking-display:-0.96px;
+  --font-weight-light:300;--font-weight-regular:400;--font-weight-medium:500;
+  --spacing-4:4px;--spacing-8:8px;--spacing-12:12px;--spacing-16:16px;--spacing-20:20px;--spacing-24:24px;
+  --spacing-32:32px;--spacing-40:40px;--spacing-48:48px;--spacing-64:64px;--spacing-96:96px;
+  --page-max-width:1280px;--card-padding:32px;
+  --radius-md:4px;--radius-lg:10px;--radius-cards:20px;--radius-large-cards:24px;--radius-full:9999px;
+  --shadow-subtle:rgba(0,0,0,0.4) 0px 0px 1px 0px,rgba(0,0,0,0.04) 0px 1px 1px 0px,rgba(0,0,0,0.04) 0px 2px 4px 0px;
+  --shadow-subtle-2:rgba(0,0,0,0.075) 0px 0px 0px 0.5px inset;
+  --shadow-subtle-7:rgb(235,232,228) 0px 0px 0px 0.5px inset;
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,"Apple SD Gothic Neo",Pretendard,"Noto Sans KR",system-ui,sans-serif}
-a{color:inherit}
-code{font:0.88em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--code);padding:1px 5px;border-radius:5px}
-main{max-width:1180px;margin:0 auto;padding:0 16px 64px}
-h1{font-size:26px;margin:28px 0 4px}
-h2{font-size:20px;margin:48px 0 12px;padding-top:8px;border-top:1px solid var(--line)}
-h3{font-size:16px;margin:24px 0 8px}
-.sub{color:var(--muted);margin:0 0 10px}
-.muted{color:var(--muted)}
-nav.top{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:8px 0;margin:0 -16px;padding-left:16px;padding-right:16px;display:flex;gap:6px;flex-wrap:wrap}
-nav.top a{text-decoration:none;font-size:13px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--card)}
-.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;margin:8px 0 16px}
-.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
-.chip{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--code);margin:1px 0}
-.chip.warn{background:var(--warn);color:#fff}
-.chip.accent{background:var(--iso);color:#fff}
-.sources{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
-.card{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--c,var(--line));border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
-.card.hub{--c:var(--hub)} .card.pipe{--c:var(--pipe)} .card.routine{--c:var(--routine)} .card.call{--c:var(--call)}
-.card header{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-.card .name{font-size:19px;font-weight:700}
-.card .callsign{font-size:12px}
-.card .role{font-weight:600}
-.card dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:4px 0 0;font-size:13.5px}
-.card dt{color:var(--muted)} .card dd{margin:0}
-.card footer{margin-top:auto;font-size:12px;color:var(--muted)}
+html{background:var(--color-eggshell)}
+body{margin:0;background:var(--color-eggshell);color:var(--color-ink);
+  font:var(--font-weight-regular) var(--text-body)/var(--leading-body) var(--font-inter);letter-spacing:var(--tracking-body);
+  -webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:3px}
+code{font:var(--font-weight-regular) 13px/1.69 var(--font-geist-mono);letter-spacing:0;background:var(--color-stone);color:var(--color-graphite);padding:1px 6px;border-radius:var(--radius-md)}
+main{max-width:var(--page-max-width);margin:0 auto;padding:0 var(--spacing-64) var(--spacing-96)}
+h1{font:var(--font-weight-light) var(--text-display)/var(--leading-display) var(--font-display);letter-spacing:var(--tracking-display);margin:0}
+h2{font:var(--font-weight-light) var(--text-heading)/var(--leading-heading) var(--font-display);letter-spacing:var(--tracking-heading);margin:0 0 var(--spacing-16)}
+h3{font:var(--font-weight-regular) var(--text-body-lg)/var(--leading-body-lg) var(--font-inter);letter-spacing:0;margin:var(--spacing-40) 0 var(--spacing-12)}
+h2 code,h1 code{font-size:0.62em;vertical-align:middle;background:transparent;padding:0;color:var(--color-graphite)}
+section{padding-top:var(--spacing-64);margin-top:var(--spacing-64);border-top:1px solid var(--color-stone)}
+.sub{color:var(--color-smoke);margin:0 0 var(--spacing-24);max-width:72ch}
+.muted{color:var(--color-ash)}
+.eyebrow{font-size:12px;line-height:1.6;letter-spacing:0.02em;color:var(--color-ash);margin:0 0 var(--spacing-8)}
+
+/* 히어로 — 왼쪽 정렬 제목, 오른쪽 설명, 유일한 색 스파크(장식 구체) */
+.hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,0.9fr) auto;gap:var(--spacing-40);align-items:end;padding:var(--spacing-64) 0 var(--spacing-40)}
+.hero .lede{color:var(--color-smoke);margin:0 0 var(--spacing-16)}
+.sources{display:flex;gap:var(--spacing-8);flex-wrap:wrap}
+.sources code{background:var(--color-eggshell);box-shadow:var(--shadow-subtle-2);border-radius:var(--radius-full);padding:2px 10px;font-size:12px;color:var(--color-smoke)}
+.sphere{width:112px;height:112px;border-radius:var(--radius-full);
+  background:radial-gradient(circle at 34% 30%,#ffd1dc 0%,var(--color-ember-orange) 36%,var(--color-violet-spark) 78%,#0b2a9a 100%);
+  box-shadow:var(--shadow-subtle);justify-self:end}
+
+/* 상단 내비 — 고스트 필 링크 */
+nav.top{position:sticky;top:0;z-index:5;background:var(--color-eggshell);border-bottom:1px solid var(--color-stone);
+  padding:var(--spacing-12) 0;display:flex;gap:var(--spacing-8);flex-wrap:wrap}
+nav.top a{font:var(--font-weight-medium) var(--text-body-sm)/1.2 var(--font-inter);letter-spacing:var(--tracking-body-sm);
+  padding:8px 14px;border:1px solid var(--color-button-border);border-radius:var(--radius-full);background:transparent;color:var(--color-ink)}
+nav.top a:hover{background:var(--color-warm-taupe);text-decoration:none}
+
+/* 범례 */
+.legend{list-style:none;margin:0 0 var(--spacing-24);padding:0;display:flex;gap:var(--spacing-8) var(--spacing-24);flex-wrap:wrap;font-size:var(--text-body-sm);color:var(--color-smoke);letter-spacing:var(--tracking-body-sm)}
+.legend li{display:flex;align-items:center;gap:var(--spacing-8)}
+.legend .sw{width:56px;height:24px;flex:0 0 auto}
+.k-hub{fill:var(--color-ink)} .k-pipe{fill:var(--color-eggshell);stroke:var(--color-ink);stroke-width:1.5}
+.k-routine{fill:var(--color-eggshell);stroke:var(--color-graphite);stroke-width:1.5;stroke-dasharray:4 3}
+.k-call{fill:var(--color-eggshell);stroke:var(--color-ash);stroke-width:1.5}
+.k-write{stroke:var(--color-ink);stroke-width:3} .k-rline{fill:none;stroke:var(--color-graphite);stroke-width:1.5;stroke-dasharray:4 3}
+
+/* 태그·칩 — 전부 필 */
+.chip{display:inline-block;font-size:12px;line-height:1.6;padding:1px 10px;border-radius:var(--radius-full);background:var(--color-eggshell);color:var(--color-graphite);box-shadow:var(--shadow-subtle-2);margin:1px 0}
+.chip.ink{background:var(--color-ink);color:var(--color-eggshell);box-shadow:none}
+.chip.dashed{background:transparent;box-shadow:none;border:1px dashed var(--color-graphite)}
+
+/* 에이전트 카드 — 웜 토프 피처 카드, 카리나만 에그셸 + 속삭임 그림자로 한 단 띄운다 */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--spacing-16)}
+.card{background:var(--color-warm-taupe);border-radius:var(--radius-cards);padding:var(--spacing-24) var(--card-padding) var(--spacing-20);display:flex;flex-direction:column;gap:var(--spacing-8)}
+.card.hub{background:var(--color-eggshell);box-shadow:var(--shadow-subtle)}
+.card header{display:flex;align-items:baseline;justify-content:space-between;gap:var(--spacing-8)}
+.card .name{font:var(--font-weight-regular) var(--text-body-lg)/var(--leading-body-lg) var(--font-inter);letter-spacing:0;margin:0}
+.card .callsign{background:transparent;padding:0;font-size:12px;color:var(--color-smoke)}
+.card .role{margin:0;color:var(--color-ink)}
+.card dl{display:grid;grid-template-columns:auto 1fr;gap:var(--spacing-4) var(--spacing-12);margin:var(--spacing-4) 0 0;font-size:var(--text-body-sm);letter-spacing:var(--tracking-body-sm)}
+.card dt{color:var(--color-ash)} .card dd{margin:0;color:var(--color-graphite)}
+.card footer{margin-top:auto;padding-top:var(--spacing-8)}
+.card footer code{background:transparent;padding:0;font-size:12px;color:var(--color-ash)}
+
+/* 표 — 헤어라인 스톤 경계 */
 .tw{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:14px;background:var(--card)}
-th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
-th{background:var(--code);font-weight:600}
-svg.hub{width:100%;height:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
-svg.hub text{font:13px -apple-system,"Apple SD Gothic Neo",Pretendard,"Noto Sans KR",system-ui,sans-serif;fill:var(--fg);text-anchor:middle}
-svg.hub .edge{stroke:var(--line);stroke-width:1.5;fill:none}
-svg.hub .edge.write{stroke:var(--warn);stroke-width:3}
-svg.hub .edge.routine{stroke:var(--routine);stroke-width:1.5;stroke-dasharray:5 4;marker-end:url(#arr)}
-svg.hub .edge.user-edge{stroke:var(--fg);stroke-width:2;marker-end:url(#arr)}
-svg.hub marker path{fill:var(--fg)}
-svg.hub .elabel{font-size:11px;fill:var(--muted)}
-svg.hub .node rect{fill:var(--card);stroke:var(--c);stroke-width:2}
-svg.hub .node.hub rect{fill:var(--hub);stroke:var(--hub)}
-svg.hub .node.hub text{fill:var(--bg)}
-svg.hub .node.pipe{--c:var(--pipe)} svg.hub .node.routine{--c:var(--routine)} svg.hub .node.call{--c:var(--call)}
-svg.hub .nname{font-weight:700;font-size:15px}
-svg.hub .nsub{font-size:11px;fill:var(--muted)}
-svg.hub .nrole{font-size:11.5px;fill:var(--fg)}
-svg.hub .node.hub .nsub,svg.hub .node.hub .nrole{fill:var(--bg)}
-svg.hub .user rect{fill:var(--code);stroke:var(--line)}
-.pipeline{display:flex;gap:6px;align-items:stretch;overflow-x:auto;padding:4px 0}
-.phase{flex:1 1 0;min-width:170px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}
-.phase.after{background:transparent;border-style:dashed}
-.ptitle{font-weight:700;font-size:13px;color:var(--muted);text-transform:none}
-.step{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg)}
-.step.isolated{border-color:var(--iso);background:var(--iso-bg)}
-.step.empty{color:var(--muted);font-size:13px}
-.step .who{font-weight:700;font-size:15px}
-.step .who a{text-decoration:none}
-.step .notes{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
-.step .notes span{font-size:11.5px;color:var(--muted);background:var(--code);padding:1px 7px;border-radius:999px}
-.arrow{align-self:center;color:var(--muted);font-size:20px;flex:0 0 auto}
-.wt{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
-.lane{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--card);display:flex;flex-direction:column;gap:8px}
-.lane.iso{background:var(--iso-bg);border-color:var(--iso)}
-.lt{font-weight:700;font-size:14px}
-.box{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg);font-size:13.5px}
-.box.dim{color:var(--muted)}
-ul.hooks{margin:4px 0 0;padding-left:18px}
-.foot{margin-top:40px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
-@media (max-width:640px){h1{font-size:22px}.card .name{font-size:17px}}
+table{border-collapse:collapse;width:100%;font-size:var(--text-body-sm);letter-spacing:var(--tracking-body-sm);background:var(--color-eggshell)}
+th,td{border:1px solid var(--color-stone);padding:10px 14px;text-align:left;vertical-align:top}
+th{background:var(--color-warm-taupe);font-weight:var(--font-weight-regular);font-size:12px;color:var(--color-graphite);letter-spacing:0.02em}
+td{color:var(--color-smoke)} td:first-child{color:var(--color-ink)}
+table strong{font-weight:var(--font-weight-medium);color:var(--color-ink)}
+
+/* 호출 관계도 — 무채색, 선의 종류로 구분 */
+svg.hub{width:100%;height:auto;background:var(--color-eggshell);border:1px solid var(--color-stone);border-radius:var(--radius-cards)}
+svg.hub text{font:var(--font-weight-regular) 13px var(--font-inter);fill:var(--color-ink);text-anchor:middle}
+svg.hub .edge{stroke:var(--color-stone);stroke-width:1.5;fill:none}
+svg.hub .edge.write{stroke:var(--color-ink);stroke-width:3}
+svg.hub .edge.routine{stroke:var(--color-graphite);stroke-width:1.5;stroke-dasharray:5 4;marker-end:url(#arr)}
+svg.hub .edge.user-edge{stroke:var(--color-ink);stroke-width:1.5;marker-end:url(#arr)}
+svg.hub marker path{fill:var(--color-ink)}
+svg.hub .elabel{font-size:11px;fill:var(--color-smoke)}
+svg.hub .node rect{fill:var(--color-eggshell);stroke:var(--color-ash);stroke-width:1.5}
+svg.hub .node.pipe rect{stroke:var(--color-ink)}
+svg.hub .node.routine rect{stroke:var(--color-graphite);stroke-dasharray:5 4}
+svg.hub .node.hub rect{fill:var(--color-ink);stroke:var(--color-ink)}
+svg.hub .node.hub text{fill:var(--color-eggshell)}
+svg.hub .nname{font-size:15px}
+svg.hub .nsub{font-size:11px;fill:var(--color-smoke);font-family:var(--font-geist-mono)}
+svg.hub .nrole{font-size:11.5px;fill:var(--color-graphite)}
+svg.hub .node.hub .nsub,svg.hub .node.hub .nrole{fill:var(--color-eggshell)}
+svg.hub .user rect{fill:var(--color-eggshell);stroke:var(--color-button-border)}
+svg.hub .node a:hover rect{fill:var(--color-warm-taupe)} svg.hub .node.hub a:hover rect{fill:var(--color-graphite)}
+
+/* 파이프라인 — 토프 칸 안에 에그셸 단계 카드 */
+.pipeline{display:flex;gap:var(--spacing-8);align-items:stretch;overflow-x:auto;padding:var(--spacing-4) 0}
+.phase{flex:1 1 0;min-width:190px;background:var(--color-warm-taupe);border-radius:var(--radius-cards);padding:var(--spacing-20);display:flex;flex-direction:column;gap:var(--spacing-8)}
+.phase.after{background:transparent;border:1px dashed var(--color-stone)}
+.ptitle{margin:0 0 var(--spacing-4);font-size:12px;line-height:1.6;letter-spacing:0.02em;color:var(--color-ash)}
+.step{border-radius:var(--radius-lg);padding:var(--spacing-12) var(--spacing-16);background:var(--color-eggshell);box-shadow:var(--shadow-subtle)}
+.step.isolated{background:var(--color-stone);box-shadow:none;border:1px dashed var(--color-graphite)}
+.step.empty{color:var(--color-ash);font-size:var(--text-body-sm);box-shadow:none;background:transparent}
+.step .who{font-size:var(--text-body);color:var(--color-ink)}
+.step .lbl{display:inline-block;margin-top:2px;font-size:12px;background:transparent;padding:0;color:var(--color-smoke)}
+.step .notes{display:flex;flex-wrap:wrap;gap:var(--spacing-4);margin-top:var(--spacing-8)}
+.step .notes span{font-size:11.5px;line-height:1.6;color:var(--color-graphite);background:var(--color-eggshell);box-shadow:var(--shadow-subtle-2);padding:0 8px;border-radius:var(--radius-full)}
+.step.isolated .notes span{background:var(--color-eggshell)}
+.arrow{align-self:center;color:var(--color-ash);font-size:20px;flex:0 0 auto}
+
+/* 워크트리 레인 — 에그셸 → 토프 → 스톤 순서로 깊어진다 */
+.wt{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--spacing-16)}
+.lane{border-radius:var(--radius-cards);padding:var(--spacing-20) var(--spacing-24);background:var(--color-warm-taupe);display:flex;flex-direction:column;gap:var(--spacing-8)}
+.lane.iso{background:var(--color-stone)}
+.lt{margin:0 0 var(--spacing-4);font-size:var(--text-body-sm);letter-spacing:var(--tracking-body-sm);color:var(--color-ink)}
+.lt code{background:var(--color-eggshell)}
+.box{border-radius:var(--radius-lg);padding:var(--spacing-8) var(--spacing-12);background:var(--color-eggshell);box-shadow:var(--shadow-subtle-2);font-size:var(--text-body-sm);letter-spacing:var(--tracking-body-sm);color:var(--color-graphite)}
+.box.dim{color:var(--color-smoke)}
+ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
+
+.foot{margin-top:var(--spacing-96);font-size:var(--text-body-sm);letter-spacing:var(--tracking-body-sm);color:var(--color-smoke);border-top:1px solid var(--color-stone);padding-top:var(--spacing-24);max-width:80ch}
+
+@media (max-width:900px){.hero{grid-template-columns:1fr;align-items:start}.sphere{justify-self:start;width:80px;height:80px}}
+@media (max-width:640px){
+  main{padding:0 16px var(--spacing-64)}
+  h1{font-size:var(--text-heading);letter-spacing:var(--tracking-heading)}
+  h2{font-size:var(--text-heading-sm);letter-spacing:var(--tracking-heading-sm)}
+  section{padding-top:var(--spacing-40);margin-top:var(--spacing-40)}
+  .card{padding:var(--spacing-20) var(--spacing-24)}
+}
 </style>
 </head>
 <body>
 <main>
-<h1>JAM! 에이전트 팀 지도</h1>
-<p class="sub">누가 어떤 콜사인으로 불리고, 누가 누구를 부르며, 어디서 도는가. <strong>자동 생성</strong> — 손으로 고치지 않는다.
-근거 파일을 고친 뒤 <code>node scripts/gen-team-map.mjs</code>를 실행한다. 산문과 사고 이력은 <code>docs/agents/team-operations.md</code>에 있다.</p>
-<div class="sources">${sources.map((s) => `<code>${esc(s)}</code>`).join('')}</div>
+<header class="hero">
+  <div>
+    <p class="eyebrow">docs/agents · 자동 생성</p>
+    <h1>JAM! 에이전트 팀 지도</h1>
+  </div>
+  <div>
+    <p class="lede">누가 어떤 콜사인으로 불리고, 누가 누구를 부르며, 어디서 도는가. 손으로 고치지 않는다.
+    근거 파일을 고친 뒤 <code>node scripts/gen-team-map.mjs</code>를 실행한다. 산문과 사고 이력은 <code>docs/agents/team-operations.md</code>에 있다.</p>
+    <div class="sources">${sources.map((s) => `<code>${esc(s)}</code>`).join('')}</div>
+  </div>
+  <div class="sphere" aria-hidden="true"></div>
+</header>
 
 <nav class="top">
   <a href="#team">팀</a><a href="#graph">호출 관계</a><a href="#pipeline">파이프라인</a><a href="#worktree">워크트리</a>
   <a href="#skills">스킬 콜사인</a><a href="#access">접근 범위</a><a href="#routines">예약 루틴</a>
 </nav>
 
-<h2 id="team">1. 팀 — ${all.length}인</h2>
-<div class="legend">
-  <span style="--c:var(--hub)">오케스트레이터</span>
-  <span style="--c:var(--pipe)">표준 파이프라인(<code>/jam-work</code>)에서 호출</span>
-  <span style="--c:var(--routine)">예약 루틴 담당</span>
-  <span style="--c:var(--call)">필요할 때 호출</span>
-  <span style="--c:var(--warn)">쓰기 권한</span>
-  <span style="--c:var(--iso)">격리 워크트리</span>
-</div>
+<section id="team">
+<h2>1. 팀 — ${all.length}인</h2>
+${legendHtml()}
 <div class="cards">
 ${all.map((a) => agentCard(a, d)).join('\n')}
 </div>
+</section>
 
-<h2 id="graph">2. 호출 관계 — 모든 위임은 카리나를 거친다</h2>
+<section id="graph">
+<h2>2. 호출 관계 — 모든 위임은 카리나를 거친다</h2>
 <p class="sub">서브에이전트는 다른 서브에이전트를 부르는 도구가 없다. 실선은 카리나의 호출, 굵은 선은 쓰기 권한이 있는 대상, 점선은 예약 루틴에서 산출물이 넘어가는 순서다.</p>
 ${hubSvg(d)}
+</section>
 
-<h2 id="pipeline">3. 표준 파이프라인 <code>/jam-work</code></h2>
+<section id="pipeline">
+<h2>3. 표준 파이프라인 <code>/jam-work</code></h2>
 <p class="sub">칸의 순서는 <code>.claude/workflows/jam-work.js</code>의 <code>meta.phases</code>, 칸 안의 호출은 같은 파일의 <code>agent()</code> 호출에서 읽었다.</p>
 ${pipelineHtml(d)}
 <h3>경로 3단 분기</h3>
 ${table(d.routes)}
+</section>
 
-<h2 id="worktree">4. 워크트리 · 브랜치 — 누가 어디서 도는가</h2>
+<section id="worktree">
+<h2>4. 워크트리 · 브랜치 — 누가 어디서 도는가</h2>
 <p class="sub">격리 대상은 <code>jam-work.js</code>의 <code>isolation: 'worktree'</code>, 차단 장치는 <code>.githooks/</code>에서 읽었다.</p>
 ${worktreeHtml(d)}
 <h3>머지와 배포의 경계</h3>
 ${table(d.boundary)}
+</section>
 
-<h2 id="skills">5. 스킬 콜사인 <code>/jam-*</code></h2>
+<section id="skills">
+<h2>5. 스킬 콜사인 <code>/jam-*</code></h2>
 <p class="sub">카리나(메인 세션)가 부른다. 「부르는 에이전트」는 각 <code>SKILL.md</code>가 이름으로 언급하는 서브에이전트다.</p>
 ${skillsHtml(d)}
+</section>
 
-<h2 id="access">6. 접근 범위 — 각자 어디를 보는가</h2>
+<section id="access">
+<h2>6. 접근 범위 — 각자 어디를 보는가</h2>
 ${table(d.access)}
+</section>
 
-<h2 id="routines">7. 예약 자동화 루틴</h2>
+<section id="routines">
+<h2>7. 예약 자동화 루틴</h2>
 <p class="sub">클라우드 예약 작업에서 돈다. 원문 스펙은 <code>.claude/skills/jam-work/references/scheduled-jobs.md</code>.</p>
 ${table(d.routines)}
+</section>
 
 <p class="foot">이 파일은 <code>scripts/gen-team-map.mjs</code>가 만든다. 낡으면 pre-commit·<code>verify.sh</code>·CI가 커밋을 막는다.
 새 에이전트를 만들면 <code>.claude/agents/</code>에 정의를 두고 <code>docs/agents/contract.json</code>의 <code>agents</code>에 역할·관여를 등록한 뒤 생성기를 돌린다.</p>
