@@ -161,7 +161,7 @@ BUILD부터 시작한다(티켓이 있고 완료 조건이 채워져 있음) —
 파이프라인 스크립트는 `.claude/workflows/jam-work.js`에 있다. `Workflow` 도구를 아래처럼 호출한다.
 
 ```
-Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route, planOnlyWaiver, batch })
+Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route, planOnlyWaiver, batch, gateOnly, branch, commitRange, devResult })
 ```
 
 - `name`은 `.claude/workflows/`의 사전 정의 워크플로를 가리킨다. 파일 경로로 직접 지정하려면
@@ -211,6 +211,14 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   실패하면(뒤 티켓이 옛 `origin/staging` 기준으로 분기해 최신 커밋을 조상으로 물지 않음) 그
   티켓만 `git fetch origin staging && git rebase origin/staging`으로 재분기시킨 뒤 다시 push
   하게 하고, 나머지 절차는 그대로 4단계를 따른다.
+- `gateOnly`는 **선택**이다(티켓 20260921_2307). 좁은 재작업(적용 조건은 3.1절 "게이트만
+  재실행" 참고)일 때 채원①·아현을 건너뛰고 민지(와 해당 시 채원②)만 다시 부른다. `true`면
+  `ticketPath`·`branch`·`commitRange`(`baseSha..commitSha`)·`devResult`(카리나가 적은 패치
+  요약 — 아현이 반환하던 `summary` 형식과 같다. 문자열 또는 `{ summary, diffLineCount }`
+  객체 둘 다 받는다)가 필수다. 하나라도 비면 워크플로가 오류로 멈춘다. 반환 스키마는 표준
+  경로와 같다(`gate`·`designReview`·`needsRework`·`tokenUsage`) — `tokenUsage`에
+  `jam-developer` 항목은 없고 `orchestrator-patch: 0`으로 아현을 부르지 않았음을 명시한다.
+  기본은 비움(단일 티켓 모드, 기존 동작과 동일).
 - **드라이런**은 `node scripts/batch-tickets.mjs <상위 티켓 ID>`를 Workflow 호출 없이 그
   출력만 보는 것이다 — 실측 전 목록·순서·정지 예정 지점을 먼저 확인하고 싶으면 스크립트만
   실행해 결과를 사용자에게 보여주고, 그 단계에서는 Workflow를 부르지 않는다.
@@ -262,6 +270,22 @@ Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다.
   review 브랜치를 이어받는다).
   **동일 티켓에서 재작업이 2회 연속 발생하면**, 재시도 전에 "워크플로우 규칙이나 티켓 스펙 자체에
   문제가 있을 수 있습니다 — 규칙을 검토할까요?"라고 먼저 묻는다 (정책 갱신 피드백 루프).
+  - **게이트만 재실행(`gateOnly`, 티켓 20260921_2307)**: `reworkReasons`가 **파일 2개·10줄
+    이내로 고쳐지고, 로직 판단이 새로 필요하지 않을 때만** 아현을 다시 부르지 않고 카리나가
+    직접 패치한다. 확신이 없으면 아래 일반 재작업 경로(아현 재호출)로 기운다 — 경미 판정과
+    같은 원칙이다. 적용될 때의 절차:
+    1. 카리나는 **메인 트리에서 브랜치를 전환하지 않는다**(병렬 세션 공유). `git fetch origin
+       <review 브랜치>`로 최신을 받은 뒤 `git worktree add -b <임시 브랜치> .claude/worktrees/
+       <이름> origin/<review 브랜치>`로 임시 워크트리를 만들어 그 안에서만 패치·커밋한다
+       (`claude/jamwork-*` 이름은 쓰지 않는다, 티켓 20260921_2304 결정).
+    2. 커밋 후 같은 review 브랜치 이름으로 `git push`한다.
+    3. 끝나면 임시 워크트리를 제거한다(`git worktree remove`).
+    4. `Workflow(name: 'jam-work', args: { gateOnly: true, ticketPath, workType, branch:
+       '<review 브랜치>', commitRange: '<patch 전 baseSha>..<patch 후 commitSha>', devResult:
+       '<무엇을 왜 고쳤는지 요약>' })`로 호출해 민지(와 `ui`·`ds` 유형이고 diff 15줄 이상이면
+       채원②)만 판정받는다.
+    적용 조건을 벗어나면(파일 3개 이상, 10줄 초과, 원인 조사가 필요한 로직 판단) `gateOnly`를
+    쓰지 않고 아래 일반 재작업 경로로 아현을 다시 부른다.
 - **WARN**: WARN 사유를 사용자에게 알리되, 사후 단계는 정상 진행한다.
   사용자가 WARN 사유에 대해 추가 조치를 원하면 그때 처리한다.
 - **PASS**: 구현 요약 + PASS 근거 + 아현의 `문서 갱신안` + 채원② 제안을 한 번에 요약하고,

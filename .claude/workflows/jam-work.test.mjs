@@ -411,6 +411,67 @@ async function test15_batchWithEmptySubTickets() {
   console.log('PASS test15_batchWithEmptySubTickets')
 }
 
+// ── 게이트만 재실행(gateOnly, 티켓 20260921_2307) ─────────────────────────────────────────────
+// 재작업 사유가 좁을 때(파일 2개·10줄 이내) 카리나가 리뷰 브랜치에 직접 패치하고 채원①·아현
+// 없이 민지(와 해당 시 채원②)만 다시 부르는 경로. 필수 인자 누락은 조용히 진행하지 않고
+// 오류로 멈춰야 한다(완료 조건 2번).
+async function test20_gateOnlyMissingArgsThrows() {
+  const { run } = makeRunner({ agentImpl: () => { throw new Error('필수 인자가 없으면 agent가 호출되면 안 된다') } })
+  await assert.rejects(
+    () => run({ gateOnly: true, ticketPath: 't.md' }),
+    /gateOnly 호출에 필수 인자가 빠졌다.*branch.*commitRange.*devResult/,
+    '필수 인자(branch·commitRange·devResult)가 없으면 명확한 오류를 던져야 한다'
+  )
+  console.log('PASS test20_gateOnlyMissingArgsThrows')
+}
+
+async function test21_gateOnlySkipsDesignerAndDeveloper() {
+  const { run, calls } = makeRunner({
+    agentImpl: (prompt, opts) => {
+      if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [], reviewedRange: 'bbbb000..cccc111' }
+      throw new Error(`gateOnly는 민지만 호출해야 한다: ${opts.label}`)
+    },
+  })
+  const result = await run({
+    gateOnly: true,
+    ticketPath: 't.md',
+    workType: 'infra',
+    branch: 'claude/jamwork-t-slug',
+    commitRange: 'bbbb000..cccc111',
+    devResult: '카리나가 리뷰 브랜치에 직접 고친 내용 요약',
+  })
+  assert.equal(calls.length, 1, 'gateOnly는 채원①·아현을 건너뛰고 민지만 호출해야 한다')
+  assert.equal(result.stoppedAt, null)
+  assert.equal(result.needsRework, false)
+  assert.equal(result.tokenUsage['orchestrator-patch'], 0, "jam-developer를 부르지 않았음을 0으로 명시해야 한다")
+  assert.equal(result.tokenUsage['jam-developer'], undefined, 'jam-developer 토큰 항목이 없어야 한다')
+  const gateCall = calls.find((c) => c.label === 'jam-reviewer')
+  assert.ok(gateCall.prompt.includes('bbbb000..cccc111'), '민지 프롬프트에 카리나가 넘긴 고정 커밋 범위가 그대로 들어가야 한다')
+  assert.ok(gateCall.prompt.includes('카리나가 리뷰 브랜치에 직접 고친 내용 요약'), '카리나의 패치 요약이 devResult 자리에 들어가야 한다')
+  console.log('PASS test21_gateOnlySkipsDesignerAndDeveloper')
+}
+
+async function test22_gateOnlyRunsDesignReviewForLargeUiDiff() {
+  const { run, calls } = makeRunner({
+    agentImpl: (prompt, opts) => {
+      if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [] }
+      if (opts.label === 'jam-designer-post') return { hasCritical: false, proposals: [] }
+      throw new Error(`예상치 못한 호출: ${opts.label}`)
+    },
+  })
+  const result = await run({
+    gateOnly: true,
+    ticketPath: 't.md',
+    workType: 'ui',
+    branch: 'claude/jamwork-t-slug',
+    commitRange: 'aaa111..bbb222',
+    devResult: { summary: '버튼 라벨 수정', diffLineCount: 20 },
+  })
+  assert.equal(calls.length, 2, 'ui 유형이고 diff가 15줄 이상이면 채원②도 호출돼야 한다(기존 규칙 동일)')
+  assert.ok(result.designReview)
+  console.log('PASS test22_gateOnlyRunsDesignReviewForLargeUiDiff')
+}
+
 async function main() {
   await test1_needsApprovalStops()
   await test2_needsApprovalNoneProceedsInParallel()
@@ -431,6 +492,9 @@ async function main() {
   await test13_batchStopsAtPlannedStopAtWithoutCallingAgent()
   await test14_batchSplitsTokenUsagePerTicket()
   await test15_batchWithEmptySubTickets()
+  await test20_gateOnlyMissingArgsThrows()
+  await test21_gateOnlySkipsDesignerAndDeveloper()
+  await test22_gateOnlyRunsDesignReviewForLargeUiDiff()
   console.log('전체 통과')
 }
 
