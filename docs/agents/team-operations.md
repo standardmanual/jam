@@ -20,6 +20,11 @@ tags: [워크플로]
 >
 > **생성 구간(`<!-- BEGIN generated: ... -->`)은 손으로 고치지 않는다.** 근거가 되는 설정
 > 파일을 고친 뒤 `node scripts/gen-team-doc.mjs`를 실행한다. 손으로 고치면 pre-commit이 막는다.
+> **이 문서의 시각화 `docs/agents/team-map.html`도 손으로 고치지 않는다.** 에이전트 카드·콜사인·
+> 호출 관계도·파이프라인·워크트리 구조·스킬 콜사인·접근 범위·예약 루틴을 같은 근거 파일과 이
+> 문서의 표에서 `scripts/gen-team-map.mjs`가 생성한다. 근거를 고친 뒤
+> `node scripts/gen-team-map.mjs`를 실행한다(`--open`이면 브라우저로 바로 연다). 낡으면
+> pre-commit·`verify.sh`·CI가 막는다.
 > 환경에 대한 새 주장을 이 문서에 적을 때는 `docs/agents/contract.json`에 검사 줄을 함께
 > 추가한다. 검사받지 않는 주장은 반드시 낡는다.
 
@@ -387,6 +392,7 @@ pre-push가 (a) 폴더 이름이 `wf_`로 시작하는 링크드 워크트리, (
 | 문서 | 담는 것 |
 |---|---|
 | `CLAUDE.md` | 절대 규칙, 문서 체계, 폴더별 수명주기 |
+| `docs/agents/team-map.html` | 이 문서의 시각화 — 팀 카드·콜사인·호출 관계도·파이프라인·워크트리 구조를 한 화면에 (자동 생성, 브라우저로 연다) |
 | `docs/agents/orchestrator.md` | 카리나의 운영 규칙, PC별 경로, DB 실행 절차 |
 | `docs/agents/issue-tracker.md` | 티켓 체계 |
 | `docs/agents/domain.md` | 저장소 구조도 |

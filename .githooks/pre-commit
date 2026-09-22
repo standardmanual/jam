@@ -243,6 +243,9 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
     if [ -f scripts/gen-team-doc.mjs ] && ! node scripts/gen-team-doc.mjs --check >&2; then
       doclint=1
     fi
+    if [ -f scripts/gen-team-map.mjs ] && ! node scripts/gen-team-map.mjs --check >&2; then
+      doclint=1
+    fi
     if [ -f scripts/gen-doc-index.mjs ] && ! node scripts/gen-doc-index.mjs --check >&2; then
       doclint=1
     fi

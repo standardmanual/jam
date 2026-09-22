@@ -81,6 +81,13 @@ else
   rm -f "$LOG_PREFIX.team-doc"
 fi
 
+# docs/agents/team-map.html(팀 지도 시각화)이 같은 근거에서 생성된 최신본인지 확인한다 (티켓 20260922_2242).
+if ! ( cd "$REPO_ROOT" && node scripts/gen-team-map.mjs --check ) >"$LOG_PREFIX.team-map" 2>&1; then
+  FAILED+=("team-map")
+else
+  rm -f "$LOG_PREFIX.team-map"
+fi
+
 # .claude/skills/*/SKILL.md·.claude/agents/*.md의 frontmatter 구조 평가 (티켓 20260922_1523).
 if ! ( cd "$REPO_ROOT" && node scripts/check-skills.mjs ) >"$LOG_PREFIX.skills" 2>&1; then
   FAILED+=("skills")
@@ -89,7 +96,7 @@ else
 fi
 
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · ds:check · slop · scripts-test · contract · team-doc · skills"
+  echo "verify 통과: lint · typecheck · test · ds:check · slop · scripts-test · contract · team-doc · team-map · skills"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"
