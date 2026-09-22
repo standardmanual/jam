@@ -2,7 +2,7 @@
 id: "20260922_1112"
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-22
 parent: "20260921_2305"
 ---
