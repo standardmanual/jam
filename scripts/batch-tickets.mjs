@@ -35,7 +35,11 @@ export const CATEGORY_TO_WORKTYPE = {
 // 본문에 DB 단서가 있으면 db로 판정해 정지 조건 3번(db·engine 진입)에 걸리게 한다. 놓치면
 // 마이그레이션 티켓이 infra로 자동 실행될 수 있다(티켓 20260921_2305 재작업, 민지 게이트 FAIL —
 // 실제 사례 20260909_1045·20260914_1751 두 건 모두 Infra 카테고리이면서 마이그레이션 작업이었다).
-export const DB_CLUE_RE = /마이그레이션|migration|SQL|스키마|column|FK/i
+//
+// 「스키마」 단독은 단서에서 뺐다 — "반환 스키마"·"결과 스키마"처럼 API 응답 구조를 말하는
+// 문장에도 걸려 20260921_2307(게이트 재실행 경로, infra)을 db로 오판정했다(티켓 20260922_1055).
+// DB 한정어(DB·테이블·데이터베이스)와 결합됐을 때만 세도록 좁힌다.
+export const DB_CLUE_RE = /마이그레이션|migration|supabase\/migrations|SQL|ALTER\s+TABLE|CREATE\s+TABLE|FK|RLS|(?:DB|테이블|데이터베이스)\s*스키마/i
 
 export function parseFrontmatterField(block, key) {
   const m = block.match(new RegExp(`^${key}:\\s*"?([^"\\n]*?)"?\\s*$`, 'm'))

@@ -143,17 +143,18 @@ function test8_explicitWorkTypeFieldOverridesCategory() {
   console.log('PASS test8_explicitWorkTypeFieldOverridesCategory')
 }
 
-// ── 실제 티켓 2건 회귀 확인(민지 게이트 FAIL 지적 사례) ────────────────────────────────────────
+// ── 실제 티켓 3건 회귀 확인(민지 게이트 FAIL 지적 사례 + 티켓 20260922_1055 오판정 사례) ─────────
 async function test9_realInfraTicketsClassifyAsDb() {
-  const realTicketPaths = [
-    'docs/tickets/p3-low/20260909_1045_Infra_today_cards_created_by_FK_ON_DELETE_NO_ACTION.md',
-    'docs/tickets/p3-low/20260914_1751_Infra_deactivated_by_item_book_id-죽은컬럼-정리.md',
+  const realTicketCases = [
+    { path: 'docs/tickets/p3-low/20260909_1045_Infra_today_cards_created_by_FK_ON_DELETE_NO_ACTION.md', expected: 'db' },
+    { path: 'docs/tickets/p3-low/20260914_1751_Infra_deactivated_by_item_book_id-죽은컬럼-정리.md', expected: 'db' },
+    { path: 'docs/tickets/p2-normal/20260921_2307_Infra_게이트만-재실행-경로-gateOnly.md', expected: 'infra' },
   ]
-  for (const p of realTicketPaths) {
+  for (const { path: p, expected } of realTicketCases) {
     const text = await fsp.readFile(path.join(REPO_ROOT, p), 'utf8')
     const body = text.replace(/^---\n[\s\S]*?\n---\n/, '')
     const workType = determineWorkType({ category: 'Infra', explicitWorkType: '', fullText: body })
-    assert.equal(workType, 'db', `${p}는 db로 판정돼야 한다`)
+    assert.equal(workType, expected, `${p}는 ${expected}로 판정돼야 한다`)
   }
   console.log('PASS test9_realInfraTicketsClassifyAsDb')
 }
