@@ -211,8 +211,23 @@ export function checkMissingReports(repoRoot, kstDate = nowKST()) {
   return warnings
 }
 
+// P2·P3이면서 OPEN인 티켓은 건수만 보여 세션 시작 컨텍스트를 줄인다(티켓 20260922_1800).
+// P0·P1과 IN_PROGRESS·WAITING은 우선순위와 무관하게 전부 나열한다. `--all`이면 접지 않는다.
+export function partitionRows(rows, showAll = false) {
+  if (showAll) return { shown: rows, collapsed: {} }
+  const shown = []
+  const collapsed = {}
+  for (const r of rows) {
+    const isLowOpen = (r.priority === 'P2' || r.priority === 'P3') && r.status === 'OPEN'
+    if (isLowOpen) collapsed[r.priority] = (collapsed[r.priority] ?? 0) + 1
+    else shown.push(r)
+  }
+  return { shown, collapsed }
+}
+
 function main() {
   const repoRoot = findRepoRoot()
+  const showAll = process.argv.includes('--all')
 
   for (const warning of checkMissingReports(repoRoot)) {
     console.log(warning)
@@ -246,9 +261,15 @@ function main() {
     return
   }
 
+  const { shown, collapsed } = partitionRows(rows, showAll)
   console.log(`## 티켓 현황판 (${rows.length}건)`)
-  for (const r of rows) {
+  for (const r of shown) {
     console.log(`- [${r.status}] ${r.priority} ${r.id} — ${r.title}`)
+  }
+  const collapsedEntries = Object.entries(collapsed).sort(([a], [b]) => a.localeCompare(b))
+  if (collapsedEntries.length > 0) {
+    const summary = collapsedEntries.map(([p, n]) => `${p} OPEN ${n}건`).join(' · ')
+    console.log(`- (접힘) ${summary} — 전체 목록: node scripts/ticket-dashboard.mjs --all`)
   }
   printKarinaCard(repoRoot)
 }

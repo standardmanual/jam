@@ -49,51 +49,16 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 
 ---
 
-## 팀 구성
+## 팀
 
-에이전트 정의는 `.claude/agents/`에 **영어로** 있고, 출력은 전부 한국어다.
-평소 개발 흐름에 관여하는 건 **카리나·아현·민지·채원 넷**이고, 나머지는 상황이 있을 때만 부른다.
+에이전트 정의는 `.claude/agents/`에 **영어로** 있고, 출력은 전부 한국어다. 권한·워크트리·접근
+범위·예약 루틴·사고 이력은 `docs/agents/team-operations.md`가 단일 지도다. 메인 세션(카리나)
+전용 규칙·스킬 목록·새 세션 읽기 순서는 `docs/agents/orchestrator.md`에 있다.
 
-| 이름 | 역할 | 정의 |
-|---|---|---|
-| 카리나 | 오케스트레이터 (메인 대화) | `docs/agents/orchestrator.md` |
-| 아현 | 개발 | `jam-developer` |
-| 민지 | 판정 리뷰 (게이트) + 배포 전 점검 | `jam-reviewer` |
-| 채원 | 디자인 | `jam-designer` |
-| 혜린 | PM (기획·타당성·리스크) | `jam-pm` |
-| 윈터 | 세계관 | `jam-tribe` |
-| 윤진 | 마케팅 | `jam-marketer` |
-| 카즈하 | 운영·리스크 + Workflow 개선점 발견 | `jam-ops` |
-| 하니 | 문서 체계 | `jam-guide` |
-
-- 권한·워크트리·접근 범위·예약 루틴·사고 이력은 `docs/agents/team-operations.md`가 단일 지도다.
-  그중 하나라도 바뀌면 같은 작업 안에서 함께 고친다
-- 모델은 각 정의의 `model` 키로 고정한다 (모드별 모델은 호출부가 덮어쓴다)
 - 이상 신호는 **참고 / 주의 / 중단**, 확신도는 **높음 / 보통 / 낮음**으로 통일한다
 - 개선 리뷰 단계는 없다. 위험을 줄이는 개선점은 민지의 범위 밖 발견물로 처리한다
-
----
-
-## 작업 진행 방식
-
-서비스 코드·컨텐츠·문서 변경 요청은 **`/jam-work`로 처리한다.** 작업 유형은 요청 내용으로 자동
-판정해 먼저 보고한다. 유형별 파이프라인은 `.claude/skills/jam-work/SKILL.md` 분기표 참조.
-
-| 스킬 | 용도 |
-|---|---|
-| `/jam-work` | 개발·개선·수정 전반의 표준 워크플로우 |
-| `/jam-plan` | 기획 — 아이디어 구체화·타당성·리스크·티켓 분해안 (혜린) |
-| `/jam-story` | 세계관 검수·창작, 캠페인·홈피드·시즌 운영 (윈터·윤진) |
-| `/jam-docs` | 문서 체계 ①~⑤ 작성·갱신 절차 |
-| `/jam-design` | MODULAR 디자인 시스템·Storybook 탐색 및 재사용 판단 |
-| `/jam-ds` | 서비스 UI ↔ MODULAR ↔ Storybook ↔ claude.ai/design 정합성 진단·동기화 |
-| `/jam-img` | 배지 이미지 제작 파이프라인 (Recraft 생성→로고합성→배경제거→DB반영, 단계별 사용자 확인) |
-| `/jam-ship` | staging 검증 → 프로덕션 배포 |
-| `/jam-sync` | 로컬 ↔ GitHub 동기화 (PC 간 이어서 작업할 때, 작업 마무리할 때) |
-
-함께 읽는 문서: `docs/agents/team-operations.md`(운영 지도), `docs/agents/orchestrator.md`(메인
-세션 전용 규칙), `docs/agents/issue-tracker.md`(티켓 체계 — 이슈는 GitHub Issues가 아니라
-`docs/tickets/`로 추적), `docs/agents/domain.md`(저장소 구조도. `CONTEXT.md` 대신 아래 문서 체계를 쓴다).
+- 서비스 코드·컨텐츠·문서 변경 요청은 **`/jam-work`로 처리한다** (유형별 파이프라인은
+  `.claude/skills/jam-work/SKILL.md` 분기표)
 
 ---
 
@@ -132,15 +97,3 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 **버전 사본(`v3.1`, `_20260827` 등)을 만들지 않는다.** 이력은 git이 보관한다.
 `.githooks/pre-commit`이 이 규칙들을 기계적으로 막는다. 정당한 예외는 `JAM_SKIP_DOCLINT=1`로
 우회하되 사유를 커밋 메시지에 남긴다.
-
-### 새 세션 시작 시 읽기 순서
-
-서비스 전체를 파악해야 할 때 **코드부터 탐색하지 않는다.** 아래 문서에 로직·정책·데이터 모델이
-이미 정리되어 있다:
-
-1. `docs/tickets/`의 관련 최신 티켓 (유사 작업·의사결정 확인)
-2. `docs/specs/INDEX.md` (전체 문서 목록. 자동 생성이라 손으로 고치지 않는다)
-3. `docs/specs/prd/01_PRD.md` (필요 시 `02_DATA_MODEL.md`, `docs/specs/prd/{주제}/`)
-4. `jam-doc/planning/content/` (배지·아이템·트라이브·POI)
-5. `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` (배지·드랍 로직)
-6. 위에서 찾지 못한 경우에만 코드(`jam-web/src/`) 탐색

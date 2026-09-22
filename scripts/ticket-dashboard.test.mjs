@@ -18,6 +18,7 @@ import {
   isoWeekLabel,
   monthLabel,
   checkMissingReports,
+  partitionRows,
 } from './ticket-dashboard.mjs'
 
 const SAMPLE_ENABLED = `
@@ -164,7 +165,27 @@ function testCheckMissingReportsOnlyAsksCloneWhenJamDocAbsent() {
   }
 }
 
+// P2·P3 OPEN만 접고, P0·P1과 IN_PROGRESS·WAITING은 우선순위와 무관하게 남긴다(티켓 20260922_1800).
+function testPartitionRowsCollapsesLowPriorityOpenOnly() {
+  const rows = [
+    { id: 'a', status: 'OPEN', priority: 'P1', title: '' },
+    { id: 'b', status: 'OPEN', priority: 'P2', title: '' },
+    { id: 'c', status: 'WAITING', priority: 'P2', title: '' },
+    { id: 'd', status: 'OPEN', priority: 'P3', title: '' },
+    { id: 'e', status: 'IN_PROGRESS', priority: 'P3', title: '' },
+    { id: 'f', status: 'OPEN', priority: 'P3', title: '' },
+  ]
+  const { shown, collapsed } = partitionRows(rows)
+  assert.deepEqual(shown.map((r) => r.id), ['a', 'c', 'e'], 'P1과 WAITING·IN_PROGRESS는 남아야 한다')
+  assert.deepEqual(collapsed, { P2: 1, P3: 2 }, 'P2·P3 OPEN은 건수로 접혀야 한다')
+
+  const all = partitionRows(rows, true)
+  assert.equal(all.shown.length, rows.length, '--all이면 접지 않는다')
+  assert.deepEqual(all.collapsed, {})
+}
+
 function main() {
+  testPartitionRowsCollapsesLowPriorityOpenOnly()
   testParseWeeklyScheduleReadsHeadingAndStatus()
   testParseMonthlyScheduleReadsHeadingAndStatus()
   testWeeklyDeadlinePassed()
