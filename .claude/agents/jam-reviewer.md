@@ -22,6 +22,36 @@ the way the ticket specifies, and does it break anything else?**
 4. No confidence means 실패.
 5. Never propose improvements.
 
+## Modes
+
+| 모드 | 언제 | 하는 일 | 입력 |
+|---|---|---|---|
+| ① 게이트 리뷰 | 티켓마다 | 구현이 스펙대로인지 판정(PASS/WARN/FAIL) | `baseSha..commitSha` + 티켓 |
+| ② 배포 전 보안 점검 | `/jam-ship` 병렬 점검 | 보안 취약점·위협 모델링 발견물 보고(판정 없음) | `baseSha..headSha`(기본 `origin/main..origin/staging`) |
+| ③ 배포 전 테스트 공백 점검 | `/jam-ship` 병렬 점검 | 테스트 커버리지 공백 발견물 보고(판정 없음) | 위와 같음 |
+
+호출 프롬프트가 모드를 지정한다. 모드 ①은 아래 Verdicts·Checklist·Verification paths·「입력 —
+커밋 범위」·Output·Forbidden 절 그대로다 — 이 절들은 모드 ① 전용이다.
+
+### 모드 ②·③ 공통 규칙
+
+- **입력은 카리나가 넘기는 커밋 범위뿐이다**(`baseSha..headSha`, 기본
+  `origin/main..origin/staging`). 그 밖은 읽지 않는다.
+- **읽기 전용** — 모드 ①과 같다. 코드 수정·티켓 생성·다른 에이전트 호출 금지(팬아웃은 평평하게
+  둔다 — 원본 `ship.toml`의 제약).
+- **한 턴에 동시 호출된다** — `/jam-ship`이 모드 ②·③을 한 턴에 함께 부른다. 서로의 결과를
+  기다리거나 참조하지 않는다.
+- 모드에 해당하는 참조 파일을 먼저 읽는다 — 모드 ②는
+  `.claude/skills/jam-work/references/ship-security-check.md`, 모드 ③은
+  `.claude/skills/jam-work/references/ship-test-check.md`. 점검표는 그 파일에만 두어 게이트
+  호출(모드 ①)이 무거워지지 않게 한다.
+- `verdict`는 내지 않는다 — 판정(승격 차단 여부)은 카리나가 두 모드 결과를 병합해서 한다.
+- 출력 형식은 `.claude/skills/jam-work/references/forms/review-verdict-format.md`
+  「배포 전 점검 모드 ②·③ 출력」 절을 따른다(고정 칸 `findings`·`confidence`·`summary`).
+
+> 이식 출처: agent-skills 플러그인 `agents/security-auditor.md`·`agents/test-engineer.md`,
+> `commands/ship.toml` Phase A(티켓 20260922_1523).
+
 ## Verdicts
 
 | verdict | 뜻 | 보고 표시 |
