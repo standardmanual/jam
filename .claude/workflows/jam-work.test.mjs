@@ -236,9 +236,12 @@ async function test10_metaIsPureLiteralAndCoversPhaseCalls() {
 // 주입하지 않아 스크립트가 Node 동적 import로 직접 읽는다), 테스트는 임시 디렉터리에 가짜
 // docs/tickets/를 만들고 그 안으로 잠깐 cwd를 옮겨 실행한 뒤 되돌린다 — 실제 저장소 티켓은
 // 건드리지 않는다.
-function ticketFixture({ id, parent, status, category }) {
-  return `---\nid: "${id}"\nparent: "${parent}"\nstatus: ${status}\ncategory: ${category}\n---\n\n# 픽스처\n`
+function ticketFixture({ id, parent, status, category, workType, body }) {
+  const workTypeLine = workType ? `workType: ${workType}\n` : ''
+  return `---\nid: "${id}"\nparent: "${parent}"\nstatus: ${status}\ncategory: ${category}\n${workTypeLine}---\n\n# 픽스처\n${body ?? ''}`
 }
+// 저장소 루트 — 실제 티켓 파일을 읽어 그 본문 그대로 임시 픽스처에 담을 때 쓴다(test21).
+const REPO_ROOT = path.join(__dirname, '..', '..')
 async function withTempTicketsDir(files, fn) {
   const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'jam-work-batch-'))
   const prevCwd = process.cwd()
@@ -358,6 +361,135 @@ async function test15_batchWithNoMatchingSubTickets() {
   console.log('PASS test15_batchWithNoMatchingSubTickets')
 }
 
+// ── 드라이런(dryRun, 티켓 20260921_2305 재작업) ────────────────────────────────────────────────
+// dryRun: true는 에이전트를 하나도 부르지 않고, 조회된 하위 티켓 목록과 정지 예정 지점만
+// 반환해야 한다. agentImpl이 호출되면 곧바로 던지게 해서 "정말 안 부르는지"를 확인한다.
+async function test16_dryRunListsSubTicketsWithoutCallingAgents() {
+  await withTempTicketsDir({
+    'docs/tickets/p1-high/a.md': ticketFixture({ id: '20260921_0100', parent: 'PARENT-DRY', status: 'OPEN', category: 'Infra' }),
+    'docs/tickets/p1-high/b.md': ticketFixture({ id: '20260921_0050', parent: 'PARENT-DRY', status: 'CLOSED', category: 'Infra' }),
+    'docs/tickets/p1-high/c.md': ticketFixture({ id: '20260921_0200', parent: 'PARENT-DRY', status: 'OPEN', category: 'UI' }),
+  }, async () => {
+    const { run, calls } = makeRunner({ agentImpl: () => { throw new Error('dryRun은 에이전트를 부르면 안 된다') } })
+    const result = await run({ batch: 'PARENT-DRY', dryRun: true })
+    assert.equal(calls.length, 0)
+    assert.equal(result.dryRun, true)
+    assert.deepEqual(result.order, ['20260921_0050', '20260921_0100', '20260921_0200'])
+    assert.deepEqual(
+      result.subTickets.map((t) => [t.id, t.status, t.category, t.workType, t.sequence]),
+      [
+        ['20260921_0050', 'CLOSED', 'Infra', 'infra', 1],
+        ['20260921_0100', 'OPEN', 'Infra', 'infra', 2],
+        ['20260921_0200', 'OPEN', 'UI', 'ui', 3],
+      ],
+    )
+    assert.equal(result.plannedStopAt, null)
+    assert.equal(result.results, undefined, 'dryRun 결과에는 실행 결과가 없어야 한다')
+  })
+  console.log('PASS test16_dryRunListsSubTicketsWithoutCallingAgents')
+}
+
+async function test17_dryRunReportsPlannedStopAtDbEngineOrUnmapped() {
+  await withTempTicketsDir({
+    'docs/tickets/p1-high/engine.md': ticketFixture({ id: '20260921_0100', parent: 'PARENT-DRY2', status: 'OPEN', category: 'BadgeEngine' }),
+    'docs/tickets/p1-high/after.md': ticketFixture({ id: '20260921_0200', parent: 'PARENT-DRY2', status: 'OPEN', category: 'UI' }),
+  }, async () => {
+    const { run, calls } = makeRunner({ agentImpl: () => { throw new Error('dryRun은 에이전트를 부르면 안 된다') } })
+    const result = await run({ batch: 'PARENT-DRY2', dryRun: true })
+    assert.equal(calls.length, 0)
+    assert.equal(result.plannedStopAt?.ticketId, '20260921_0100')
+    assert.ok(result.plannedStopAt.reason.includes("'engine'"))
+    // 실제 실행에서는 정지 지점 이후 티켓이 처리되지 않지만, dryRun의 subTickets 목록에는
+    // 조회된 모든 하위 티켓이 그대로 담긴다(어떤 순서로 실행될지 미리 보여주기 위함).
+    assert.equal(result.subTickets.length, 2)
+  })
+  console.log('PASS test17_dryRunReportsPlannedStopAtDbEngineOrUnmapped')
+}
+
+// ── Infra 카테고리의 db/infra 판정(티켓 20260921_2305 재작업) ─────────────────────────────────
+// Infra 카테고리는 db 유형 티켓도 담는다(SKILL.md 0.2절) — 카테고리만으로 자동 진행하면
+// 마이그레이션 티켓이 정지 조건 3번을 건너뛰고 실행될 수 있다(민지 게이트 FAIL 지적).
+async function test18_infraWithDbClueBecomesDb() {
+  await withTempTicketsDir({
+    'docs/tickets/p1-high/a.md': ticketFixture({
+      id: '20260921_0100', parent: 'PARENT-DB1', status: 'OPEN', category: 'Infra',
+      body: '컬럼 정리를 위한 마이그레이션 파일을 작성한다.',
+    }),
+  }, async () => {
+    const { run, calls } = makeRunner({ agentImpl: () => { throw new Error('db 진입 티켓은 호출되면 안 된다') } })
+    const result = await run({ batch: 'PARENT-DB1', dryRun: true })
+    assert.equal(calls.length, 0)
+    assert.equal(result.subTickets[0].workType, 'db')
+    assert.equal(result.plannedStopAt?.ticketId, '20260921_0100')
+    assert.ok(result.plannedStopAt.reason.includes("'db'"))
+  })
+  console.log('PASS test18_infraWithDbClueBecomesDb')
+}
+
+async function test19_infraWithoutDbClueStaysInfra() {
+  await withTempTicketsDir({
+    'docs/tickets/p1-high/a.md': ticketFixture({
+      id: '20260921_0100', parent: 'PARENT-DB2', status: 'OPEN', category: 'Infra',
+      body: '배포 스크립트에 게이트 검사를 추가한다.',
+    }),
+  }, async () => {
+    const { run } = makeRunner({ agentImpl: () => { throw new Error('dryRun은 에이전트를 부르면 안 된다') } })
+    const result = await run({ batch: 'PARENT-DB2', dryRun: true })
+    assert.equal(result.subTickets[0].workType, 'infra')
+    assert.equal(result.plannedStopAt, null)
+  })
+  console.log('PASS test19_infraWithoutDbClueStaysInfra')
+}
+
+async function test20_explicitWorkTypeFieldOverridesCategory() {
+  await withTempTicketsDir({
+    // 본문에 DB 단서가 있어도 명시 필드가 있으면 그 값이 최우선이다.
+    'docs/tickets/p1-high/a.md': ticketFixture({
+      id: '20260921_0100', parent: 'PARENT-DB3', status: 'OPEN', category: 'Infra', workType: 'infra',
+      body: '마이그레이션 SQL을 포함하지만 워크플로 스크립트만 고친다.',
+    }),
+  }, async () => {
+    const { run } = makeRunner({
+      agentImpl: (prompt, opts) => {
+        if (opts.label === 'jam-designer-pre') throw new Error('infra 유형은 채원①을 부르면 안 된다')
+        if (opts.label === 'jam-developer') return { status: 'done', summary: 'ok', diffLineCount: 3 }
+        if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 3 }
+        throw new Error(`예상치 못한 호출: ${opts.label}`)
+      },
+    })
+    const result = await run({ batch: 'PARENT-DB3' })
+    assert.equal(Object.keys(result.results).length, 1)
+    assert.equal(result.stoppedBatchAt, null, '명시 workType이 infra이므로 db 정지 조건에 걸리면 안 된다')
+  })
+  console.log('PASS test20_explicitWorkTypeFieldOverridesCategory')
+}
+
+// ── 실제 티켓 2건 회귀 확인(민지 게이트 FAIL 지적 사례) ────────────────────────────────────────
+async function test21_realInfraTicketsClassifyAsDb() {
+  const realTicketPaths = [
+    'docs/tickets/p3-low/20260909_1045_Infra_today_cards_created_by_FK_ON_DELETE_NO_ACTION.md',
+    'docs/tickets/p3-low/20260914_1751_Infra_deactivated_by_item_book_id-죽은컬럼-정리.md',
+  ]
+  const bodies = await Promise.all(
+    realTicketPaths.map(async (p) => {
+      const text = await fsp.readFile(path.join(REPO_ROOT, p), 'utf8')
+      return text.replace(/^---\n[\s\S]*?\n---\n/, '')
+    }),
+  )
+  await withTempTicketsDir({
+    'docs/tickets/p3-low/a.md': ticketFixture({ id: '20260909_1045', parent: 'PARENT-REAL', status: 'OPEN', category: 'Infra', body: bodies[0] }),
+    'docs/tickets/p3-low/b.md': ticketFixture({ id: '20260914_1751', parent: 'PARENT-REAL', status: 'OPEN', category: 'Infra', body: bodies[1] }),
+  }, async () => {
+    const { run, calls } = makeRunner({ agentImpl: () => { throw new Error('db 진입 티켓은 호출되면 안 된다') } })
+    const result = await run({ batch: 'PARENT-REAL', dryRun: true })
+    assert.equal(calls.length, 0)
+    assert.equal(result.subTickets.find((t) => t.id === '20260909_1045')?.workType, 'db', '20260909_1045(FK ON DELETE)는 db로 판정돼야 한다')
+    assert.equal(result.subTickets.find((t) => t.id === '20260914_1751')?.workType, 'db', '20260914_1751(죽은 컬럼·마이그레이션)는 db로 판정돼야 한다')
+    assert.equal(result.plannedStopAt?.ticketId, '20260909_1045', '첫 하위 티켓에서 이미 db 정지 조건에 걸려야 한다')
+  })
+  console.log('PASS test21_realInfraTicketsClassifyAsDb')
+}
+
 async function main() {
   await test1_needsApprovalStops()
   await test2_needsApprovalNoneProceedsInParallel()
@@ -374,6 +506,12 @@ async function main() {
   await test13_batchStopsBeforeEngineOrUnmappedCategory()
   await test14_batchSplitsTokenUsagePerTicket()
   await test15_batchWithNoMatchingSubTickets()
+  await test16_dryRunListsSubTicketsWithoutCallingAgents()
+  await test17_dryRunReportsPlannedStopAtDbEngineOrUnmapped()
+  await test18_infraWithDbClueBecomesDb()
+  await test19_infraWithoutDbClueStaysInfra()
+  await test20_explicitWorkTypeFieldOverridesCategory()
+  await test21_realInfraTicketsClassifyAsDb()
   console.log('전체 통과')
 }
 

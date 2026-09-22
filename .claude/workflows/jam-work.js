@@ -368,9 +368,26 @@ const CATEGORY_TO_WORKTYPE = {
   Admin: 'admin',
 }
 
+// `Infra` 카테고리는 db 유형(마이그레이션·스키마 변경) 티켓도 함께 담는다(SKILL.md 0.2절 —
+// 카테고리와 workType 두 축이 1:1이 아니다). 카테고리만으로는 db와 infra를 가를 수 없으므로,
+// 본문에 DB 단서가 있으면 db로 판정해 정지 조건 3번(db·engine 진입)에 걸리게 한다. 놓치면
+// 마이그레이션 티켓이 infra로 자동 실행될 수 있다(티켓 20260921_2305 재작업, 민지 게이트 FAIL —
+// 실제 사례 20260909_1045·20260914_1751 두 건 모두 Infra 카테고리이면서 마이그레이션 작업이었다).
+const DB_CLUE_RE = /마이그레이션|migration|SQL|스키마|column|FK/i
+
 function parseFrontmatterField(block, key) {
   const m = block.match(new RegExp(`^${key}:\\s*"?([^"\\n]*?)"?\\s*$`, 'm'))
   return m ? m[1].trim() : ''
+}
+
+// 티켓 frontmatter의 명시적 `workType:` 필드가 최우선이다 — 선택 필드라 없어도 되고, 있어도
+// 티켓 frontmatter 검사(`.githooks/pre-commit`의 status 검사, 첫 8줄 안 `status:`만 본다)를
+// 막지 않는다. 명시 필드가 없으면 카테고리로 추정하되, Infra는 본문의 DB 단서 유무로
+// db/infra를 가른다.
+function determineWorkType({ category, explicitWorkType, fullText }) {
+  if (explicitWorkType) return explicitWorkType
+  if (category === 'Infra' && DB_CLUE_RE.test(fullText)) return 'db'
+  return CATEGORY_TO_WORKTYPE[category] ?? null
 }
 
 // `docs/tickets/`를 재귀로 훑어 `parent:`가 parentId와 같은 티켓을 찾는다. Workflow 스크립트는
@@ -401,12 +418,13 @@ async function findSubTickets(parentId) {
       const block = fm[1]
       if (parseFrontmatterField(block, 'parent') !== parentId) continue
       const category = parseFrontmatterField(block, 'category')
+      const explicitWorkType = parseFrontmatterField(block, 'workType')
       found.push({
         id: parseFrontmatterField(block, 'id'),
         path: full,
         status: parseFrontmatterField(block, 'status'),
         category,
-        workType: CATEGORY_TO_WORKTYPE[category] ?? null,
+        workType: determineWorkType({ category, explicitWorkType, fullText: text }),
       })
     }
   }
@@ -415,9 +433,54 @@ async function findSubTickets(parentId) {
   return found
 }
 
-async function runBatch(parentId, planOnlyWaiver) {
+// 정지 조건 3번(단일 원천: stop-conditions.md) — db·engine 유형, 또는 유형 미매핑은 에이전트를
+// 부르기 전에 이미 알 수 있는 정적 정지 지점이다. 드라이런과 실제 실행이 같은 판정을 쓰도록
+// 여기 하나로 모은다.
+function staticStopReason(t) {
+  if (t.workType === 'db' || t.workType === 'engine') {
+    return `유형 '${t.workType}' 진입 — 정지 조건 3번, 단독 호출로 사용자 확인 필요`
+  }
+  if (!t.workType) {
+    return `카테고리 '${t.category}'는 유형을 자동으로 정할 수 없음 — 사람 확인 필요`
+  }
+  return null
+}
+
+// 드라이런 — 에이전트를 하나도 부르지 않고, 조회된 하위 티켓 목록과 정지 예정 지점(db·engine
+// 진입, 유형 미매핑 — 정지 조건 3번에 해당하는 것만)을 반환한다. 게이트 FAIL·plan_only 같은
+// 실행 중 정지 조건은 실제로 돌려 보지 않고는 알 수 없으므로 여기서는 판정하지 않는다
+// (티켓 20260921_2305 재작업, 완료 조건 3의 드라이런 기록용).
+function dryRunBatch(parentId, subTickets, order) {
+  let plannedStopAt = null
+  for (const t of subTickets) {
+    if (t.status !== 'OPEN') continue
+    const reason = staticStopReason(t)
+    if (reason) {
+      plannedStopAt = { ticketId: t.id, reason }
+      break
+    }
+  }
+  return {
+    batch: true,
+    dryRun: true,
+    parentTicket: parentId,
+    order,
+    subTickets: subTickets.map((t, i) => ({
+      id: t.id,
+      path: t.path,
+      status: t.status,
+      category: t.category,
+      workType: t.workType,
+      sequence: i + 1,
+    })),
+    plannedStopAt,
+  }
+}
+
+async function runBatch(parentId, planOnlyWaiver, dryRun) {
   const subTickets = await findSubTickets(parentId)
   const order = subTickets.map((t) => t.id)
+  if (dryRun) return dryRunBatch(parentId, subTickets, order)
   const results = {}
   const tokenUsageByTicket = {}
   let stoppedBatchAt = null
@@ -425,13 +488,9 @@ async function runBatch(parentId, planOnlyWaiver) {
   for (const t of subTickets) {
     if (t.status !== 'OPEN') continue
 
-    // 정지 조건 3번(단일 원천: stop-conditions.md) — db·engine 유형은 자동 진행하지 않는다.
-    if (t.workType === 'db' || t.workType === 'engine') {
-      stoppedBatchAt = { ticketId: t.id, reason: `유형 '${t.workType}' 진입 — 정지 조건 3번, 단독 호출로 사용자 확인 필요` }
-      break
-    }
-    if (!t.workType) {
-      stoppedBatchAt = { ticketId: t.id, reason: `카테고리 '${t.category}'는 유형을 자동으로 정할 수 없음 — 사람 확인 필요` }
+    const staticReason = staticStopReason(t)
+    if (staticReason) {
+      stoppedBatchAt = { ticketId: t.id, reason: staticReason }
       break
     }
 
@@ -467,6 +526,6 @@ async function runBatch(parentId, planOnlyWaiver) {
 // 진입점 — `batch`가 있으면 묶음 실행, 없으면 지금까지와 같은 단일 티켓 실행.
 // ─────────────────────────────────────────────────────────────────────────────
 if (batch) {
-  return await runBatch(batch, parsedArgs.planOnlyWaiver)
+  return await runBatch(batch, parsedArgs.planOnlyWaiver, parsedArgs.dryRun)
 }
 return await runSingleTicket(parsedArgs)

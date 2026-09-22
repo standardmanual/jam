@@ -161,7 +161,7 @@ BUILD부터 시작한다(티켓이 있고 완료 조건이 채워져 있음) —
 파이프라인 스크립트는 `.claude/workflows/jam-work.js`에 있다. `Workflow` 도구를 아래처럼 호출한다.
 
 ```
-Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route, planOnlyWaiver, batch })
+Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route, planOnlyWaiver, batch, dryRun })
 ```
 
 - `name`은 `.claude/workflows/`의 사전 정의 워크플로를 가리킨다. 파일 경로로 직접 지정하려면
@@ -202,12 +202,23 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   실패하면(뒤 티켓이 옛 `origin/staging` 기준으로 분기해 최신 커밋을 조상으로 물지 않음) 그
   티켓만 `git fetch origin staging && git rebase origin/staging`으로 재분기시킨 뒤 다시 push
   하게 하고, 나머지 절차는 그대로 4단계를 따른다.
+- `dryRun`은 **선택**이고 `batch`가 있을 때만 의미가 있다(티켓 20260921_2305). `true`면
+  에이전트를 하나도 부르지 않는다 — 상위 티켓의 하위 티켓 목록만 조회해 반환하고, 파이프라인은
+  돌리지 않는다. 실측 전 목록·순서·정지 예정 지점을 먼저 확인할 때 쓴다. 기본은 비움(실제 실행).
 - 스크립트를 고쳐야 하면 `.claude/workflows/jam-work.js`를 직접 편집한 뒤 다시 호출한다
   (같은 세션에서 이어 돌릴 때는 `resumeFromRunId`를 함께 넘긴다).
 
 ## 3. 결과 보고 — 예외 신호 처리를 포함한다
 
-**`batch`로 호출했을 때**: 결과의 `results`(티켓 ID별 단일 티켓 결과 객체)와
+**`batch: dryRun: true`로 호출했을 때**: 에이전트를 부르지 않았으므로 3.0~3.1절 판정 처리는
+없다. 결과의 `subTickets`(티켓별 `id`·`path`·`status`·`category`·`workType`·`sequence`)를
+그대로 사용자에게 표로 보여주고, `plannedStopAt`이 있으면 어느 하위 티켓에서 왜 멈출
+예정인지(db·engine 진입 또는 유형 미매핑, 정지 조건 3번) 알린다. `plannedStopAt`이 없으면
+실제 실행 시(같은 `batch` 인자로 `dryRun` 없이 다시 호출) 모든 OPEN 하위 티켓이 최소한
+정지 조건 3번에는 걸리지 않고 파이프라인까지는 들어간다는 뜻이다 — 그 이후(게이트 FAIL·
+plan_only 등)는 실제로 돌려야 알 수 있다.
+
+**`batch`로 (드라이런 없이) 호출했을 때**: 결과의 `results`(티켓 ID별 단일 티켓 결과 객체)와
 `tokenUsageByTicket`을 받는다. `stoppedBatchAt`이 있으면 그 티켓에서 멈춘 이유가 담겨
 있다 — 이미 끝낸 하위 티켓까지는 아래 3.0~3.1절대로 각각 보고·처리하고, 멈춘 티켓은 그
 사유(정지 조건 번호)를 사용자에게 알린 뒤 다음 행동을 묻는다. `stoppedBatchAt`이 없으면
