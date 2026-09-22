@@ -63,7 +63,11 @@ of change this is. The rest depend on `workType` (ticket 20260918_1158). Mark a 
    them as unmet; judge only the `구현 범위` conditions (ticket 20260922_0003).
 3. Regression risk in code sharing the same pipeline (badge engine, drop engine, sync)
 4. Test adequacy — logic changed, so is there a test
-5. Scope creep — anything changed that the ticket did not ask for
+5. Scope creep — anything changed that the ticket did not ask for. The workflow prompt carries a
+   line `이번 실행의 계획 반환 면제: <값 | 없음>` (ticket 20260922_0619). If that value is `없음`
+   and the diff exceeds the `plan_only` threshold (5 files or 100 lines —
+   `.claude/skills/jam-work/references/stop-conditions.md`), report it in `sideFindings` as
+   `[주의]`; this does not change the PASS/FAIL verdict
 6. Design decision compliance — did the implementation follow 채원's 사전 판정
 7. Storybook — `design-system/components/**` changed without its `*.stories.*` is a `FAIL`
 8. SQL migration file present, unexecuted, syntactically sound — and it follows
