@@ -2,8 +2,9 @@
 id: "20260922_1235"
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-22
+closed: 2026-09-22
 parent: "20260922_1030"
 ---
 
@@ -38,6 +39,8 @@ parent: "20260922_1030"
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+
+- 작업 없이 종료(2026-09-22, 티켓 20260921_2311 A안 결정). 동결로 `mirror_docs` 검사 자체가 제거돼(`workflow_freeze`로 교체) 차단 전환 대상이 없다.
 
 ### 변경된 파일
 ```

@@ -2,8 +2,9 @@
 id: "20260921_2311"
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-21
+closed: 2026-09-22
 parent: "20260921_2207"
 ---
 
@@ -54,20 +55,58 @@ CLAUDE.md 규칙 5는 "같은 사실을 여러 문서에 적지 않는다. 중�
 
 ### 구현 내용 요약
 
+- `.githooks/pre-commit` ⑨: `docs/agents/workflow/` 안 파일의 신규·수정·이름변경·삭제를 차단한다
+  (`README.md`만 예외, `JAM_SKIP_DOCLINT=1`로만 우회). `README.md` 상단에 동결 고지 배너(날짜·티켓·
+  현재 규칙 위치 세 곳)를 넣고, 08_인수인계의 "새 세션은 여기부터"가 카리나 카드로 대체됐음을 표에 적었다.
+- A안: `contract.json`의 `mirror_docs` 절을 `workflow_freeze`로 교체, `check-contract.mjs`의
+  `checkMirrorDocs`를 `checkWorkflowFreeze`(동결 규칙이 훅 텍스트에 있는지 대조)로 교체,
+  `mirror-docs-hook.test.mjs` 삭제. `stop-conditions.md` 「참조하는 곳」에서 미러 문서 항목을 뺐고,
+  `team-operations.md` §10에 README 행을 더했다. 미러 문서 9개는 기록으로 남겼다.
+
 ### 변경된 파일
 ```
--
+- .githooks/pre-commit (⑨ 추가)
+- docs/agents/workflow/README.md (동결 배너)
+- docs/agents/contract.json (mirror_docs → workflow_freeze)
+- docs/agents/team-operations.md (§10)
+- scripts/check-contract.mjs (checkMirrorDocs → checkWorkflowFreeze)
+- scripts/doc-check-hook.test.mjs (⑨ 시나리오 4건)
+- scripts/mirror-docs-hook.test.mjs (삭제)
+- .claude/skills/jam-work/references/stop-conditions.md (참조 목록)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] 훅 테스트 4건(폴더 안 추가·삭제 차단, README 수정·폴더 밖 통과) 통과, `scripts/verify.sh` 통과,
+  CI `verify` 성공(run 35688714624)
+- [x] 머지 후 메인 트리 실측(2026-09-22): `03_작업로그.md`에 한 줄 추가해 커밋 시도 → "차단(pre-commit):
+  docs/agents/workflow/ 는 2026-09-22 동결된 기록입니다" 메시지로 차단됐다.
+- [x] 리뷰 커밋 트리 전체에서 `mirror_docs`·`checkMirrorDocs` 문자열이 검색되지 않는다(민지 확인).
+- [x] 후속 범위: 티켓 20260922_1235·1236·1326을 "동결로 불필요" 사유로 CLOSED 처리했다.
 
 ### 배포 정보
-- 배포일: 
+- 배포일: 2026-09-22
 - 환경: staging (빌드 없음)
-- 커밋: 
+- 커밋: 0bf948c2(구현, 아현) · aee64fd5(병합)
+
+### 실행 지표
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 첫 구현 | 2 | 185,897 | 36,476 / 13,779 | 15분 31초 | 83 |
+| 합계 | 2 | 185,897 | 36,476 / 13,779 | 15분 31초 | 83 |
 
 ### 주요 의사결정 / 핵심 메모
+- **동결 vs 미러 유지의 충돌을 착수 전에 잡았다.** 같은 날 오전에 머지된 1030의 `mirror_docs` 검사가
+  이 폴더의 수정을 요구해 동결과 양립할 수 없었다. 사용자가 A안(동결 택하고 미러 유지 장치 제거)을
+  승인했다. 근거는 `CLAUDE.md` 규칙 5 — 실행되는 정의(`.claude/agents/`)만 남긴다. 1030이 만든
+  검사·테스트는 하루 만에 걷혔다. 검사를 넣기 전에 "이 문서가 앞으로 계속 고쳐질 것인가"를 먼저 물었어야
+  했다는 교훈이 남는다.
+- **훅 적용 시점**: `core.hooksPath`가 메인 트리 절대경로라 리뷰 브랜치 안의 훅 변경은 머지 뒤부터
+  모든 워크트리에 적용된다. 티켓 원문의 "README 먼저, 훅은 마지막 커밋" 순서 제약은 실제로는 필요 없었다.
+- `plan_only` 면제 사유: 「구현 계획」·「관련 파일」·「미러 유지 장치 제거」 절이 파일 단위로 적혀
+  있었고, 카리나가 사전 확인 5건(훅 번호 구조·README·contract.json·check-contract 위치·인수인계 문장)을
+  마쳤다.
 
 ### 잔여 이슈
--
+- 20260922_1401 (P3): `checkWorkflowFreeze`가 훅 문자열 존재만 대조해 ⑨ 블록을 주석 처리해도 못 잡는다
+  + 격리 유닛 테스트 없음(민지 발견물 2건을 한 티켓으로 묶음).
+- 20260922_1301 (P3, 2307 발견물)은 `team-operations.md` §3 표를 고치는 일이라 동결과 무관하게 유효하다.
