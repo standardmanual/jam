@@ -2,7 +2,7 @@
 id: "20260922_2207"
 category: Service
 priority: P1
-status: OPEN
+status: WAITING
 created: 2026-09-22
 closed:
 specs:
@@ -132,33 +132,80 @@ Strava `GET /athlete/activities?after=`는 활동 **시작 시각** 기준으로
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
 
+> 상태 WAITING인 이유: 「구현 범위」는 게이트 PASS·staging 병합까지 끝났다. 「후속 범위」(사용자
+> 계정 동기화 1회 뒤 Vercel 로그·`strava_activities` 대조)는 배포 뒤 사용자가 동기화를 눌러야
+> 확인할 수 있어 대기 중이다. 확인되면 CLOSED로 바꾼다.
+
 ### 구현 내용 요약
+- `syncStravaActivities()` 4단계의 조회 커서(`afterTimestamp`)를 `strava_connections.last_synced_at`
+  대신 그 유저의 `strava_activities` 최신 `start_date`(내림차순 1건 조회) − `SYNC_OVERLAP_SECONDS`로
+  계산한다. 행이 없으면 기존처럼 `after` 없이 최신 페이지를 조회한다. 조회는 주입된 `supabase`
+  클라이언트를 쓴다.
+- `SYNC_OVERLAP_SECONDS` 주석과 4-1 잠금 주석을 "`last_synced_at`은 동시 싱크 잠금 키로만 쓴다"로
+  고쳤다. 4-1 잠금·실패 시 롤백 코드는 손대지 않았다.
+- 회귀 테스트 3건을 새 파일에 추가했다: ① 1회차 Strava 응답이 0건이어도 2회차 `getActivities`의
+  `after`가 여전히 `max(start_date) − 900`초 ② `strava_activities` 행이 없으면 `after`가 `undefined`
+  ③ 커넥션 조회~잠금 사이에 `last_synced_at`이 바뀐 경합은 `synced: 0`으로 조기 종료(기존 동작).
+- 문서: `SERVICE_OPERATIONS.md` 「3-2. 동기화 흐름」 3번을 "마지막으로 가져온 활동의 시작 시각 − 15분
+  이후 조회"로, 11번을 "`last_synced_at` 잠금 키 갱신"으로 고쳤다. `04_PROJECT_SPEC.md` 111행
+  각주 뒤에 2026-09-22 후속 각주를 넣어 이 티켓을 연결했다.
+- DB 마이그레이션 없음(기존 인덱스 `idx_strava_activities_user_start`, 마이그레이션 069를 그대로 탄다).
 
 ### 변경된 파일
 ```
--
+- jam-web/src/lib/strava/sync.ts
+- jam-web/src/lib/strava/__tests__/sync-cursor-last-activity.test.ts (신규)
+- docs/specs/SERVICE_OPERATIONS.md
+- docs/specs/prd/04_PROJECT_SPEC.md
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] 새 회귀 테스트 3건 통과. 아현이 `sync.ts`를 잠시 원본으로 되돌려 3건 중 2건이 실제로
+      실패함을 확인한 뒤 복원했다(나머지 1건 "행 없음 → undefined"는 옛 로직에서도 같은 결과가
+      나오는 스펙 고정용).
+- [x] Strava 테스트 15개 파일 111건 전부 통과, `scripts/verify.sh` 전 항목 통과.
+- [x] CI `verify` 성공 — 실행 35736201561, 커밋 a33a51d8, 2026-09-22 22:50 KST.
+- [x] 민지 게이트 PASS. 점검 12항목 중 1·2·3·4·5·10·11 통과, 6·7·8·9·12는 해당 없음.
+      검토 범위 2368dac3..a33a51d8.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 - 해당 없음 (사용자 노출 텍스트 변경 없음)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-09-22 (staging 병합·push). 프로덕션은 `/jam-ship`으로 별도 진행
+- 환경: staging → production 예정
+- 커밋: 구현 a33a51d8, 병합 959bcc3e (리뷰 브랜치 `claude/jamwork-20260922_2207-strava-sync-cursor`)
 
 ### 실행 지표
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1차 | 아현·민지 (채원①·② 생략) | 226,858 | 56,042 / 27,874 | 20.8분 | 112 |
+| 합계 | 2 | 226,858 | 56,042 / 27,874 | 20.8분 | 112 |
 
 ### 주요 의사결정 / 핵심 메모
+- **티켓 위치.** 이 티켓은 사용자가 웹 세션에서 작성해 `claude/sihyunrr-badge-sync-issue-lr38rn`
+  브랜치에만 있었다. 최신 staging 위에 문서 커밋 하나뿐이라 fast-forward로 staging에 올리고 문서만
+  push했다(아현 워크트리가 `origin/staging`에서 티켓을 읽기 때문). 그 브랜치는 이제 staging과 같아
+  지워도 된다.
+- **계획 반환 면제.** 카리나 1단계 규모 사전 판정: 파일 4개지만 새 테스트 파일 때문에 100줄을 넘길
+  것으로 봤다(실제 268줄). 「구현 계획」이 파일·함수·줄 위치 단위였고(조건 a), 사용자가 직접
+  작성·검토한 티켓을 `/jam-work`로 지정해 사전 확인이 끝났으므로(조건 b) 첫 호출부터
+  `planOnlyWaiver`를 넘겼다. 아현의 `plan_only` 왕복은 없었다.
+- **병합 방식.** 게이트 뒤 병렬 세션이 문서만 담긴 커밋(티켓 20260922_2242)을 staging에 먼저 올려
+  `merge-base --is-ancestor` 검사가 실패했다. 리뷰 브랜치 자체는 깨끗했다(고유 커밋 a33a51d8 하나).
+  규칙의 구제책은 리베이스 뒤 재push지만 강제 push 명령이 거부돼, 리뷰 브랜치를 다시 쓰지 않고
+  `--no-ff` 병합 커밋으로 합쳤다. 민지가 판정한 커밋이 그대로 들어가고 두 커밋이 건드리는 파일이
+  달라 충돌은 없었다.
+- **채원② 생략.** `bug` 유형이라 원래 돌지 않는다(UI 변경 없음).
+- **범위 밖 발견물.** 민지 `[정확성/참고]`: 어드민 유저 리셋이 `strava_activities`를 남겨 두어 "과거
+  이력 전체 재수집" 주석이 성립하지 않는다 → 티켓 20260922_2259(P3, Admin) 생성. 이 티켓 이전부터
+  있던 부정합이고 실제 결과(멱등 필터로 재처리 안 됨)는 달라지지 않는다.
+- 채택하지 않은 대안(컬럼 신설·겹침 확대)은 「구현 계획」 절에 있다.
 
 ### 잔여 이슈
+- **후속 범위 대기.** 배포 뒤 sihyunrr@gmail.com 계정에서 동기화 1회 → Vercel 로그에
+  `Strava 반환: 1건 이상, 신규(미처리): 1건`이 찍히고 `strava_activities`에 strava_id 20280787552
+  행이 생기는지 확인한다. 확인되면 CLOSED.
 - 같은 날 **앞선** 활동(시계, 늦게 업로드)이 **뒤** 활동(폰, 즉시 업로드) 처리 후에 올라오면 여전히
   놓친다. 필요해지면 첫 싱크에서 건너뛴 활동 id를 기록해 두고 겹침을 넓히는 후속 티켓으로 다룬다.
