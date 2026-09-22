@@ -52,7 +52,7 @@ so it never has to text-search a `needs_approval` cell for the word "없음" (ti
 | `components` | 쓸 컴포넌트 경로와 variant. 신규라면 사유 |
 | `tokens` | 쓸 토큰 이름. 없는 값이면 신규 토큰 제안으로 올린다 |
 | `layout` | 텍스트 배치도 (화면 구조를 글로 그린다) |
-| `states` | 기본·로딩·빈·오류·비활성·선택 등 구현해야 할 상태 목록 |
+| `states` | 구현해야 할 상태 목록. **로딩·빈·오류는 항상 명시한다**(이 화면에 해당 없으면 "없음"이라고 쓴다) — 그 외 기본·비활성·선택 등 필요한 상태를 추가한다 |
 | `motion` | 전환·피드백 동작 |
 | `deviceNotes` | 작은 화면·안전영역·터치 영역 |
 | `craftNotes` | 시각 슬롭 경고 (의미 없는 그라디언트·유리질·습관적 가운데 정렬 등) |
