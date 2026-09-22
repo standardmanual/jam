@@ -161,7 +161,7 @@ BUILD부터 시작한다(티켓이 있고 완료 조건이 채워져 있음) —
 파이프라인 스크립트는 `.claude/workflows/jam-work.js`에 있다. `Workflow` 도구를 아래처럼 호출한다.
 
 ```
-Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route, planOnlyWaiver, batch, dryRun })
+Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route, planOnlyWaiver, batch })
 ```
 
 - `name`은 `.claude/workflows/`의 사전 정의 워크플로를 가리킨다. 파일 경로로 직접 지정하려면
@@ -188,37 +188,46 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   인자로만 넘긴다 — `userRequest`에 그 줄을 직접 적으면 "면제 없음" 줄과 모순된다. 워크플로는
   이전 실행을 기억하지 않으므로 재시도(`retryReason`·`retryBranch`)에도 같은 면제가 필요하면
   다시 넘긴다(티켓 20260922_0207).
-- `batch`는 **선택**이다(티켓 20260921_2305). 상위 티켓 ID를 넣으면 워크플로가 `docs/tickets/`를
-  뒤져 그 티켓의 `parent:` 필드가 일치하는 **OPEN** 하위 티켓을 티켓 ID(생성 시각) 순서로 찾아
-  하나씩 표준 파이프라인(채원①→아현→민지∥채원②)에 태운다. 기본은 비움(단일 티켓 모드, 기존
-  동작과 동일) — 사용자가 상위 티켓 분해안을 승인하며 "묶음 실행"을 명시했을 때만 채운다.
+- `batch`는 **선택**이다(티켓 20260921_2305, 3차 재작업: Workflow 스크립트는 파일시스템·
+  Node API·`import()`를 쓸 수 없다 — 실제 하네스가 시작 단계에서
+  `SyntaxError: import() is not available in workflow scripts`로 거부한다. 하위 티켓 조회는
+  워크플로 밖에서 먼저 한다). 상위 티켓을 묶어 실행하려면 먼저
+  `node scripts/batch-tickets.mjs <상위 티켓 ID>`를 실행해 하위 티켓 목록(JSON:
+  `parentTicket`, 티켓별 `id`·`path`·`status`·`category`·`workType`·`sequence`를 담은
+  `subTickets`, `plannedStopAt`)을 얻는다. 그 출력 객체를 그대로 `batch` 인자에 넣어
+  Workflow를 호출하면, 워크플로는 `subTickets` 중 `status: 'OPEN'`인 것만 순서대로 표준
+  파이프라인(채원①→아현→민지∥채원②)에 태운다 — 워크플로는 `docs/tickets/`를 읽지 않고 받은
+  목록만 실행한다. 기본은 비움(단일 티켓 모드, 기존 동작과 동일) — 사용자가 상위 티켓 분해안을
+  승인하며 "묶음 실행"을 명시했을 때만 스크립트를 먼저 돌려 채운다.
   정지 조건(`.claude/skills/jam-work/references/stop-conditions.md`)에 걸리면 그 하위 티켓에서
   멈추고 이후 하위 티켓은 실행하지 않는다 — 결과에는 그때까지 처리한 티켓별 결과와 `tokenUsage`
-  (`tokenUsageByTicket`, 티켓 ID로 나뉨)가 담긴다. `db`·`engine` 유형의 하위 티켓을 만나면
-  실행하지 않고 멈춘다(정지 조건 3번) — 그 티켓은 단독 호출로 사용자 확인을 받는다.
+  (`tokenUsageByTicket`, 티켓 ID로 나뉨)가 담긴다. `db`·`engine` 유형의 하위 티켓, 또는 유형을
+  자동으로 정할 수 없는 티켓은 `batch-tickets.mjs`가 이미 `plannedStopAt`으로 알려준다 —
+  워크플로는 그 지점 앞에서 실행하지 않고 멈춘다(정지 조건 3번). 그 티켓은 단독 호출로 사용자
+  확인을 받는다.
   **머지는 순차로 한다.** 하위 티켓의 review 브랜치는 모두 `origin/staging`에서 분기하므로,
   앞 하위 티켓을 머지한 뒤에는 `origin/staging`이 바뀐다 — 4단계 머지 전 오염 검사
   (`git merge-base --is-ancestor origin/staging <브랜치>`)를 다음 하위 티켓마다 다시 실행한다.
   실패하면(뒤 티켓이 옛 `origin/staging` 기준으로 분기해 최신 커밋을 조상으로 물지 않음) 그
   티켓만 `git fetch origin staging && git rebase origin/staging`으로 재분기시킨 뒤 다시 push
   하게 하고, 나머지 절차는 그대로 4단계를 따른다.
-- `dryRun`은 **선택**이고 `batch`가 있을 때만 의미가 있다(티켓 20260921_2305). `true`면
-  에이전트를 하나도 부르지 않는다 — 상위 티켓의 하위 티켓 목록만 조회해 반환하고, 파이프라인은
-  돌리지 않는다. 실측 전 목록·순서·정지 예정 지점을 먼저 확인할 때 쓴다. 기본은 비움(실제 실행).
+- **드라이런**은 `node scripts/batch-tickets.mjs <상위 티켓 ID>`를 Workflow 호출 없이 그
+  출력만 보는 것이다 — 실측 전 목록·순서·정지 예정 지점을 먼저 확인하고 싶으면 스크립트만
+  실행해 결과를 사용자에게 보여주고, 그 단계에서는 Workflow를 부르지 않는다.
 - 스크립트를 고쳐야 하면 `.claude/workflows/jam-work.js`를 직접 편집한 뒤 다시 호출한다
   (같은 세션에서 이어 돌릴 때는 `resumeFromRunId`를 함께 넘긴다).
 
 ## 3. 결과 보고 — 예외 신호 처리를 포함한다
 
-**`batch: dryRun: true`로 호출했을 때**: 에이전트를 부르지 않았으므로 3.0~3.1절 판정 처리는
-없다. 결과의 `subTickets`(티켓별 `id`·`path`·`status`·`category`·`workType`·`sequence`)를
-그대로 사용자에게 표로 보여주고, `plannedStopAt`이 있으면 어느 하위 티켓에서 왜 멈출
-예정인지(db·engine 진입 또는 유형 미매핑, 정지 조건 3번) 알린다. `plannedStopAt`이 없으면
-실제 실행 시(같은 `batch` 인자로 `dryRun` 없이 다시 호출) 모든 OPEN 하위 티켓이 최소한
-정지 조건 3번에는 걸리지 않고 파이프라인까지는 들어간다는 뜻이다 — 그 이후(게이트 FAIL·
-plan_only 등)는 실제로 돌려야 알 수 있다.
+**`node scripts/batch-tickets.mjs <상위 티켓 ID>`만 실행했을 때(Workflow 호출 전, 드라이런)**:
+Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다. 출력의 `subTickets`(티켓별
+`id`·`path`·`status`·`category`·`workType`·`sequence`)를 그대로 사용자에게 표로 보여주고,
+`plannedStopAt`이 있으면 어느 하위 티켓에서 왜 멈출 예정인지(db·engine 진입 또는 유형 미매핑,
+정지 조건 3번) 알린다. `plannedStopAt`이 없으면 실제 실행 시(이 출력을 그대로 `batch` 인자에
+넣어 Workflow 호출) 모든 OPEN 하위 티켓이 최소한 정지 조건 3번에는 걸리지 않고 파이프라인까지는
+들어간다는 뜻이다 — 그 이후(게이트 FAIL·plan_only 등)는 실제로 돌려야 알 수 있다.
 
-**`batch`로 (드라이런 없이) 호출했을 때**: 결과의 `results`(티켓 ID별 단일 티켓 결과 객체)와
+**`batch`로 Workflow를 호출했을 때**: 결과의 `results`(티켓 ID별 단일 티켓 결과 객체)와
 `tokenUsageByTicket`을 받는다. `stoppedBatchAt`이 있으면 그 티켓에서 멈춘 이유가 담겨
 있다 — 이미 끝낸 하위 티켓까지는 아래 3.0~3.1절대로 각각 보고·처리하고, 멈춘 티켓은 그
 사유(정지 조건 번호)를 사용자에게 알린 뒤 다음 행동을 묻는다. `stoppedBatchAt`이 없으면
