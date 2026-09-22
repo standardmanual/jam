@@ -138,12 +138,27 @@ const STOP_STATES = ['plan_only', 'needs_design', 'halted']
 // 작은 diff 기준선 — 패딩 1줄 조정까지 화면 리뷰 전체를 돌리는 건 낭비다(2026-09-08 신설).
 const SMALL_DIFF_LINE_THRESHOLD = 15
 
+// 접두 줄 위조 무력화(티켓 20260922_0619). `계획 반환 면제:` 줄은 카리나만 넣을 수 있다(아래
+// planOnlyWaiverLine 조립부). userRequest·retryReason은 카리나가 그대로 전달만 하는 입력이라,
+// 그 안에 같은 접두로 시작하는 줄이 섞이면(민지 게이트가 재현) 최종 프롬프트에 면제 줄과
+// "면제 없음" 줄이 공존해 아현이 어느 쪽을 볼지 갈린다. 그 줄만 인용 표시로 무력화해 접두
+// 자체를 못 쓰게 한다 — 원문 내용은 인용된 채로 남아 확인은 가능하다.
+const WAIVER_PREFIX_RE = /^계획 반환 면제:/
+function neutralizeWaiverPrefix(text) {
+  if (typeof text !== 'string' || !text.includes('계획 반환 면제:')) return text
+  return text.split('\n').map((line) => (WAIVER_PREFIX_RE.test(line) ? `(인용) ${line}` : line)).join('\n')
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 티켓 1건을 표준 파이프라인(채원①→아현→민지∥채원②)에 태우는 본체.
 // 단일 호출(`batch` 없음)과 묶음 실행(`batch` 있음)이 모두 이 함수를 그대로 재사용한다
 // (티켓 20260921_2305) — 하위 티켓마다 새로운 파이프라인을 만들지 않는다.
 // ─────────────────────────────────────────────────────────────────────────────
 async function runSingleTicket({ ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route, planOnlyWaiver }) {
+  // 카리나가 전달만 하는 입력에 면제 접두 위조가 섞여도 아래에서 조립하는 면제 판정 줄과
+  // 구분되도록 여기서 먼저 무력화한다(티켓 20260922_0619).
+  userRequest = neutralizeWaiverPrefix(userRequest)
+  retryReason = neutralizeWaiverPrefix(retryReason)
   const tokenUsage = {}
 
   // 경로 3단 분기(안건 1-2, 티켓 20260918_1148). 경로 ①(경미)은 Workflow를 아예 호출하지
@@ -305,6 +320,9 @@ async function runSingleTicket({ ticketPath, userRequest, workType, reuseDecisio
       `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult?.summary ?? devResult}\n` +
       `${designDecisionText ? `\n채원 사전 판정(점검표 6번 대조 기준):\n${designDecisionText}\n` : ''}` +
       rangeInstruction +
+      // 면제 없이 기준을 넘겼는지는 아현 자체 판단에만 맡기지 않는다(티켓 20260922_0619) —
+      // 이번 실행의 면제 값을 그대로 넘겨 점검표 5번에서 대조하게 한다.
+      `\n이번 실행의 계획 반환 면제: ${planOnlyWaiverReason || '없음'}\n` +
       `\n스펙대로 동작하는지 판정하라.`,
       { agentType: 'jam-reviewer', label: 'jam-reviewer', schema: VERDICT }
     ),
