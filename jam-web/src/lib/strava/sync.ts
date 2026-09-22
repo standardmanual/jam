@@ -57,9 +57,16 @@ const MAX_DROP_ACTIVITIES_PER_SYNC = 3
 /** 싱크 1회당 POI 매칭(Streams API)을 수행할 최대 활동 수 (최신순). Strava rate limit·타임아웃 방지 */
 const MAX_POI_MATCH_ACTIVITIES_PER_SYNC = 10
 /**
- * 커서 overlap — Strava/Garmin 쪽 색인 지연으로 활동이 직전 동기화 시점엔 목록에
- * 안 잡혔다가 뒤늦게 나타나는 경우를 대비해, 매번 이만큼 앞선 시각부터 다시 조회한다.
- * strava_activities 멱등 처리 덕분에 겹치는 구간을 다시 훑어도 중복 보상은 없다.
+ * 커서 overlap — Strava/Garmin 쪽 색인 지연으로 활동이 마지막으로 가져온 활동의 시작
+ * 시각 시점엔 목록에 안 잡혔다가 뒤늦게 나타나는 경우를 대비해, 매번 이만큼 앞선
+ * 시각부터 다시 조회한다(티켓 20260922_2207 — 기준을 last_synced_at에서
+ * strava_activities 최신 start_date로 바꿨다). strava_activities 멱등 처리 덕분에
+ * 겹치는 구간을 다시 훑어도 중복 보상은 없다.
+ *
+ * 며칠 단위로 넓히지 않는 이유: 첫 싱크는 최신 1건만 처리하므로(아래 4-2 근처 분기) 그
+ * 값이 곧 다음 조회의 하한이 된다 — overlap을 넓히면 첫 싱크가 일부러 건너뛴 과거
+ * 이력이 두 번째 동기화에서 한꺼번에 들어와 온보딩 순간 배지가 쏟아지는 문제
+ * (20260801_001)가 되살아난다.
  */
 export const SYNC_OVERLAP_SECONDS = 15 * 60
 
@@ -1189,13 +1196,27 @@ export async function syncStravaActivities(
     }
   }
 
-  // 4. last_synced_at - overlap 이후 활동만 조회 (색인 지연 대비 — 상단 SYNC_OVERLAP_SECONDS 주석 참고)
-  const afterTimestamp = connection.last_synced_at
-    ? Math.max(0, Math.floor(new Date(connection.last_synced_at).getTime() / 1000) - SYNC_OVERLAP_SECONDS)
+  // 4. 마지막으로 가져온 활동의 시작 시각 - overlap 이후 활동만 조회 (색인 지연 대비 —
+  //    상단 SYNC_OVERLAP_SECONDS 주석 참고). Strava의 after는 활동 시작 시각 기준으로
+  //    거르므로, 커서도 같은 기준(strava_activities 최신 start_date)이어야 한다 —
+  //    동기화를 누른 벽시계 시각(last_synced_at)을 쓰면 "활동 길이 + 업로드 지연이
+  //    overlap보다 길 때" 성공(0건) 동기화가 커서를 활동 시작 시각보다 앞으로 밀어내
+  //    그 활동을 영구 누락시킨다 (티켓 20260922_2207 실측). 행이 없는 유저(연동만 하고
+  //    활동 없음·어드민 초기화 직후)는 지금처럼 after 없이 최신 페이지 1회 조회한다.
+  const { data: latestActivity } = await supabase
+    .from('strava_activities')
+    .select('start_date')
+    .eq('user_id', userId)
+    .order('start_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const afterTimestamp = latestActivity?.start_date
+    ? Math.max(0, Math.floor(new Date(latestActivity.start_date).getTime() / 1000) - SYNC_OVERLAP_SECONDS)
     : undefined
 
   // 4-1. 동시 싱크 잠금 (낙관적 잠금) — 처리 시작 전에 last_synced_at을 선점 갱신한다.
-  //      같은 커서로 들어온 두 번째 요청은 갱신 0행 → 즉시 종료 (드랍·피드 중복 방지)
+  //      같은 커서로 들어온 두 번째 요청은 갱신 0행 → 즉시 종료 (드랍·피드 중복 방지).
+  //      last_synced_at은 조회 커서 역할이 없다 — 이 잠금 키·실패 시 롤백(아래 catch) 용도로만 쓴다.
   const lockNow = new Date().toISOString()
   let lockQuery = supabase
     .from('strava_connections')
