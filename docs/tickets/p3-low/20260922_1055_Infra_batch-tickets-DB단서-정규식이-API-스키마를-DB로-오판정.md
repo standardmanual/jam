@@ -2,7 +2,7 @@
 id: "20260922_1055"
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-22
 parent: "20260921_2305"
 ---
@@ -41,21 +41,32 @@ parent: "20260921_2305"
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`scripts/batch-tickets.mjs`의 `DB_CLUE_RE`를 `마이그레이션|migration|supabase/migrations|SQL|ALTER TABLE|CREATE TABLE|FK|RLS|(DB|테이블|데이터베이스) 스키마`로
+좁혔다. 「스키마」 단독 매칭을 없애고 DB 한정어와 결합된 경우만 세며, `column` 단독 단서는 뺐다(마이그레이션·FK 단서만으로
+기존 db 픽스처 2건이 그대로 db로 판정됨을 확인). 테스트 `test9`를 실제 티켓 본문 픽스처 3건(2307→infra, 1045·1751→db)으로
+보강했다.
 
 ### 변경된 파일
 ```
--
+- scripts/batch-tickets.mjs
+- scripts/batch-tickets.test.mjs
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `scripts/batch-tickets.test.mjs` 9건 통과(민지가 워크트리에서 직접 재실행). `verify.sh`·CI(전체 경로, 2분 52초) 통과.
+- [x] 완료 조건 실측: `node scripts/batch-tickets.mjs 20260921_2207` → 2307~2311 전부 `infra`, `plannedStopAt: null`(수정 전 2307은 db).
+  `20260922_0207` → 0619·0620 모두 `infra`(수정 전 0620은 db). 카리나가 머지 뒤 staging에서 다시 실측해 같은 결과 확인.
+- [x] 게이트(민지): PASS. 2307 본문에 정규식을 직접 적용해 매칭 없음도 확인.
 
 ### 배포 정보
-- 배포일: 
+- 배포일: 2026-09-22
 - 환경: staging (빌드 없음)
-- 커밋: 
+- 커밋: 병합 c5b575d1 (review 커밋 c0398575, base c5b3e8f6)
 
 ### 주요 의사결정 / 핵심 메모
+- 사용자 지시(2026-09-22 "결과 나오면 바로 머지")에 따라 PASS 즉시 머지했다. 계획 반환 면제는 사용자 실행 지시와 파일 단위 계획을 근거로 부여.
+- 토큰·소요(Workflow `<usage>`): 에이전트 2명, 전체 128,682 토큰, 13.0분(출력 아현 48,705 / 게이트 17,611).
 
 ### 잔여 이슈
--
+- 민지 [참고]: `column` 단서를 완전히 뺐으므로, 영어 'column'만 있고 마이그레이션·SQL·FK·RLS·DB 한정 스키마 표현이 없는
+  티켓은 db가 아니라 infra로 판정될 여지가 남는다(안전하지 않은 방향의 오판정) → 티켓 20260922_1209.
