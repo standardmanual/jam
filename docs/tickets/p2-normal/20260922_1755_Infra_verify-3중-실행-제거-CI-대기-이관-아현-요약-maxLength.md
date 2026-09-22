@@ -2,9 +2,9 @@
 id: "20260922_1755"
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-22
-closed:
+closed: 2026-09-22
 parent: "20260922_1749"
 ---
 
@@ -70,30 +70,47 @@ CI 실측 143~176초(문서 전용 14~18초). 아현은 로컬에서 `verify.sh`
 
 ### 구현 내용 요약
 
+- `.githooks/pre-push`: 링크드 워크트리 판정(`is_linked_worktree`·`worktree_name`)을 루프 상단으로 올려 staging 차단 절과 verify 게이트가 공유한다. `wf_*` 워크트리에서 `claude/jamwork-*`로 push하면 `verify.sh`를 건너뛰고 "CI(verify 워크플로)가 검증합니다"만 남긴다. 기준 방어 검사 블록은 변경 없음.
+- `jam-developer.md`: 「CI stamp」를 "run URL만 `검증 결과`에 적고 기다리지 않고 반환"으로 교체. Hard rule 13 "확인하지 않은 환경 주장 금지" 추가.
+- `jam-reviewer.md`: 점검표 1번·「Re-running checks yourself」를 "진행 중이면 2~12번 먼저 → 마지막에 최대 5분 대기 → `failure`면 실패 단계명과 FAIL → 상태 없으면 직접 `verify.sh`"로 교체.
+- `jam-work.js`: `DEV_RESULT.summary`에 `maxLength: 3000`. 이번 아현 요약은 2,510자(민지가 `node .length`·`wc -m`으로 교차 확인).
+- 테스트: `pre-push-worktree-block.test.mjs` (f)(g) — 가짜 `verify.sh` 마커 방식. `jam-work.test.mjs` test23 — 스키마 텍스트 검사.
+- 문서: `team-operations.md` §9 표 review 브랜치 행, `implementation-summary-format.md` 글자 상한 문단.
+
 ### 변경된 파일
 ```
--
+.githooks/pre-push
+scripts/pre-push-worktree-block.test.mjs
+.claude/agents/jam-developer.md
+.claude/agents/jam-reviewer.md
+.claude/workflows/jam-work.js
+.claude/workflows/jam-work.test.mjs
+.claude/skills/jam-work/references/forms/implementation-summary-format.md
+docs/agents/team-operations.md
 ```
 
 ### 테스트 결과
-- [ ] `node scripts/pre-push-worktree-block.test.mjs` (a)~(g)
-- [ ] `node .claude/workflows/jam-work.test.mjs`
-- [ ] `scripts/verify.sh`
+- [x] `node scripts/pre-push-worktree-block.test.mjs` (a)~(g) 통과
+- [x] `node .claude/workflows/jam-work.test.mjs` 23개 통과
+- [x] `scripts/verify.sh` 전항목 통과 · CI `verify` success (862836b1)
 
 ### 배포 정보
-- 배포일:
+- 배포일: 2026-09-22
 - 환경: staging (빌드 없음 — jam-web 밖 변경)
-- 커밋:
+- 커밋: 862836b1 (구현) · afceef3e (병합)
 
 ### 실행 지표
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 첫 구현 (게이트 PASS, 재작업 없음) | 2 | 208,545 | 78,224 / 17,223 | 18분 10초 | 119 |
+| 합계 | 2 | 208,545 | 78,224 / 17,223 | 18분 10초 | 119 |
 
 ### 주요 의사결정 / 핵심 메모
-- 계획 반환 면제 사유: 파일 7개로 임계값 초과. 「구현 계획」이 파일 단위로 적혀 있고 카리나가 1749 검토에서 각 파일의 해당 구간을 확인했다(면제 조건 (a)(b), 티켓 20260922_1754 절차 첫 적용).
+- 계획 반환 면제 사유: 파일 7개로 임계값 초과. 「구현 계획」이 파일 단위로 적혀 있고 카리나가 1749 검토에서 각 파일의 해당 구간을 확인했다(면제 조건 (a)(b), 티켓 20260922_1754 절차 첫 적용). **결과: `plan_only` 왕복 없이 첫 호출에서 구현으로 들어갔다.**
+- 이 실행의 지표는 **최적화 전 기준선**이다. 아현은 옛 정의로 돌아 CI를 기다렸고, `core.hooksPath`가 메인 체크아웃 절대경로라 워크트리 push에도 메인 트리의 옛 pre-push(verify 실행)가 돌았다. 새 규칙은 머지 뒤 다음 티켓부터 적용된다 — 이전 표준 티켓(2308·2309·2311: 180,702~185,897토큰·13분 45초~19분 47초)과 같은 구간이다.
+- 민지 발견물 `[주의]` CI 액션 Node 20 사용 중단 → 티켓 20260922_1818로 분리.
+- 아현 `[참고]`: 워크트리에서 push해도 메인 체크아웃의 훅이 실행되는 것은 기존 구조다. 머지 후 메인 트리가 최신화되면 새 분기가 적용된다.
 
 ### 잔여 이슈
--
+- 다음 표준 티켓 실측으로 소요 시간 단축(목표 12분 이하)을 확인한다 (상위 티켓 1749 성공 기준).

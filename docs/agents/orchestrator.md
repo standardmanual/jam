@@ -90,7 +90,7 @@ DB 스키마·데이터 변경은 사용자에게 대신 실행해달라고 요�
   (스키마 변경) 또는 `seed_*.sql`(1회성 데이터)로 저장해 커밋
 - **실행 전에 되돌림 SQL을 확인한다**: 마이그레이션 파일에 되돌림 SQL(주석 블록 또는 `_down.sql`)이
   없으면 실행을 멈추고 보완을 요청한다. 컬럼·함수를 바꾸거나 없애는 변경이 확장→전환→축소로
-  나뉘어 있는지도 함께 본다 (규칙의 단일 원천은 `.claude/agents/jam-developer.md` Hard rules 3)
+  나뉘어 있는지도 함께 본다 (규칙의 단일 원천은 `.claude/skills/jam-work/references/db-migration-rules.md`)
 - **위험도 인식**: service_role 키는 RLS를 우회하는 전체 DB 권한이다. 진단·버그수정 범위를
   벗어난 대량 삭제·프로덕션 데이터 대량 변경 전에는 반드시 사용자 확인을 받는다
 - **Supabase는 staging·프로덕션 공용 단일 DB**다. DB 변경은 즉시 프로덕션에 반영된다

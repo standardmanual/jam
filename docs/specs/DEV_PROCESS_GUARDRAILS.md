@@ -53,7 +53,7 @@ JAM!의 핵심 신뢰 루프는 "활동을 하면 정확히 그에 맞는 보상
 
 **함께 지키는 규칙**: 컬럼·함수를 바꾸거나 없애는 변경은 확장→전환→축소의 별도 마이그레이션으로
 나누고, 모든 마이그레이션 파일에 되돌림 SQL을 동반한다. 규칙의 단일 원천은
-`.claude/agents/jam-developer.md` Hard rules 3이다. 배포 직전에 적용 여부를 확인하는 일은
+`.claude/skills/jam-work/references/db-migration-rules.md`이다. 배포 직전에 적용 여부를 확인하는 일은
 `/jam-ship` 3단계 「인프라」 점검 항목이 맡는다.
 
 ### 패턴 3 — 대용량 테이블을 페이지네이션 없이 조회해 조용히 잘려나감
@@ -379,7 +379,7 @@ PostgreSQL의 `CREATE OR REPLACE FUNCTION`은 **파라미터 타입 목록이 �
 "DROP 없이 CREATE OR REPLACE만 있다"는 조합을 보이면 반드시 실행 전에 지적한다 — 마이그레이션
 미실행 상태라 "실행해봐야 안다"로 넘기지 않는다. 이건 실행 여부와 무관하게 SQL만 읽어도
 정적으로 판별 가능한 결함이다. 파라미터 변경을 포함한 함수 교체의 전체 순서(확장→전환→축소)는
-`.claude/agents/jam-developer.md` Hard rules 3을 따른다.
+`.claude/skills/jam-work/references/db-migration-rules.md`을 따른다.
 
 ---
 

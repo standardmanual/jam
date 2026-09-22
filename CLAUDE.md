@@ -44,8 +44,8 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 
 - SQL 파일은 직접 실행하더라도 `jam-web/supabase/migrations/`에 반드시 남긴다
 - Supabase는 staging·프로덕션 **공용 단일 DB**다. DB 변경은 즉시 프로덕션에 반영된다
-- 확장→전환→축소 분할과 되돌림 SQL은 `.claude/agents/jam-developer.md` Hard rules 3, 실행 절차는
-  `docs/agents/orchestrator.md` §4
+- 확장→전환→축소 분할과 되돌림 SQL 규칙은 `.claude/skills/jam-work/references/db-migration-rules.md`,
+  실행 절차는 `docs/agents/orchestrator.md` §4
 
 ---
 

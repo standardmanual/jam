@@ -43,18 +43,55 @@ parent: "20260922_1749"
 
 ### 구현 내용 요약
 
+**1차분 (커밋 0e52afb7)**
+- `CLAUDE.md`: 「팀 구성」표·스킬 표·「새 세션 읽기 순서」를 `orchestrator.md` §7로 옮기고 「팀」 절 세 줄로 대체.
+- `scripts/ticket-dashboard.mjs`: `partitionRows()` export — P2·P3 `OPEN`은 건수로 접고 `--all`로 전체. 테스트 추가.
+
+**2차분 (1755 머지 뒤)**
+- `jam-developer.md`: Hard rule 3의 마이그레이션 상세를 `references/db-migration-rules.md`로 분리(정의는 "파일 쓰기 전에 읽는다" 한 줄). 규칙 5·9·11·12·13, 「CI stamp」, 「Return format」에서 티켓 번호·날짜·사고 경위 제거. 「Return format」에 `summary` 3,000자 상한 명시.
+- `jam-reviewer.md`: 「모드 ②·③ 공통 규칙」 15줄을 한 문단으로 압축(이식 출처 제거). 점검표 1·2·5·8·11번과 「입력」절에서 티켓 번호 제거. 1번과 중복이던 「Re-running checks yourself」 절 제거(내용은 1번 끝에 한 문장). 8번은 `db-migration-rules.md`를 가리킨다.
+- `SKILL.md`: 각 절의 "(티켓 XXXX, 2026-09-XX …)" 괄호와 4.1절 실측 서사를 `references/rationale.md`(절 번호별)로 옮김. 「참고」절은 규칙성 항목만 남기고 이력(플러그인 흡수·외부 스킬 대체·병렬화 이력·실측 수치)을 같은 파일로. 1단계 2번에 "관련 파일 지도" 규칙 흡수. `db` 행·참고 절을 1755 변경(verify 생략·CI 대기 이관)에 맞게 갱신.
+- `team-operations.md` §8: 옮겨 온 사고 10행 추가(티켓 번호 충돌·checkout -b 오염·워크트리 강제 제거·배지 이미지 덮어씀·함수 오버로드·osxkeychain·요약 형식 위반·Build CPU·정의 서사 혼입).
+- `CLAUDE.md` 규칙 6·`orchestrator.md` §4·`DEV_PROCESS_GUARDRAILS.md` 2곳·`04_PROJECT_SPEC.md`: "jam-developer.md Hard rules 3" 참조를 `db-migration-rules.md`로 교체.
+
 ### 변경된 파일
 ```
--
+CLAUDE.md
+docs/agents/orchestrator.md
+docs/agents/team-operations.md
+docs/specs/DEV_PROCESS_GUARDRAILS.md
+docs/specs/prd/04_PROJECT_SPEC.md
+scripts/ticket-dashboard.mjs
+scripts/ticket-dashboard.test.mjs
+.claude/agents/jam-developer.md
+.claude/agents/jam-reviewer.md
+.claude/skills/jam-work/SKILL.md
+.claude/skills/jam-work/references/rationale.md (신규)
+.claude/skills/jam-work/references/db-migration-rules.md (신규)
 ```
 
 ### 테스트 결과
-- [ ] check-contract · check-skills · gen-team-doc --check · ticket-dashboard.test.mjs
+- [x] `scripts/verify.sh` 전항목 통과 (lint·typecheck·test·ds:check·slop·scripts-test·contract·team-doc·skills, 1분 49초) — 2026-09-22 18:40 KST
+- [x] `node scripts/ticket-dashboard.test.mjs` 통과 (`partitionRows` 케이스 포함)
+
+### 크기 전후 (바이트, `wc -c`)
+
+| 파일 | 전 | 후 | 변화 |
+|---|---|---|---|
+| `CLAUDE.md` (서브에이전트 전원, 호출마다) | 9,477 | 6,758 | −29% |
+| 세션 시작 현황판 출력 | 7,315 | 4,066 | −44% |
+| `jam-developer.md` | 16,811 | 13,252 | −21% |
+| `jam-reviewer.md` | 14,433 | 12,443 | −14% |
+| `jam-work/SKILL.md` (카리나) | 40,506 | 35,886 | −11% |
+| 신규 `rationale.md` (필요할 때만) | — | 6,840 | |
+| 신규 `db-migration-rules.md` (`db` 유형만) | — | 3,636 | |
+
+표준 티켓(아현 1회 + 민지 1회) 기준 호출당 약 11KB(≈ 3천 토큰) 감소. `db` 유형이 아니면 마이그레이션 규칙 3.6KB도 더 이상 실리지 않는다.
 
 ### 배포 정보
-- 배포일:
+- 배포일: 2026-09-22
 - 환경: staging (빌드 없음)
-- 커밋:
+- 커밋: 0e52afb7 (1차분) · 2차분은 아래 push 커밋
 
 ### 실행 지표
 
@@ -64,6 +101,10 @@ parent: "20260922_1749"
 | 합계 | 0 | 측정 불가 | 0 / 0 | 측정 불가 | — |
 
 ### 주요 의사결정 / 핵심 메모
+- **완료 조건에서 벗어난 점**: `SKILL.md`의 「참고」절을 없애지 않고 규칙성 항목(전달 필수 항목·opt-in·채원② 15줄 기준·CI 도장 흐름·토큰 측정·워크트리 최신성·라우팅 평가 절차)만 남겼다. 이 항목들은 본문 어느 절에도 자연스럽게 들어가지 않고 절차를 실행할 때 필요하다. 경위만 `rationale.md`로 옮겼다.
+- 민지 정의의 모드 ②·③ 공통 규칙은 두 점검표 파일 머리로 옮기면 같은 다섯 줄이 두 곳에 생긴다(`CLAUDE.md` 규칙 5 위반). 대신 정의 안에서 한 문단으로 압축했다.
+- 규칙 문장 자체는 바꾸지 않았다 — 괄호 안 경위와 "seen on …" 류만 뗐다. 아현의 Hard rule 5 "stale worktree" 서술은 사고 경위 없이 스크립트 동작(종료 코드 2)만 남겼다.
+- 1749 §2-C의 목표 크기(아현 9KB·민지 10KB·SKILL 20KB)는 추정이었고 실제로는 각각 13.3·12.4·35.9KB에 그쳤다. 남은 분량은 경위가 아니라 규칙·절차 본문이라 더 줄이려면 절차를 참조 파일로 쪼개야 한다(1749 잔여 이슈).
 
 ### 잔여 이슈
--
+- `SKILL.md`의 `batch`·`gateOnly` 절차(약 4KB, 자주 쓰지 않음)를 참조 파일로 빼는 선택지 — 카리나 카드·3.1절 참조가 함께 바뀌어야 해 별도 판단.
