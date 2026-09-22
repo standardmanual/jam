@@ -25,7 +25,7 @@ const CONTRACT = path.join(REPO, 'docs/agents/contract.json')
 
 const violations = []
 const notes = []
-const warnings = []   // 통과는 시키되 사람이 보게 하는 경고 (mirror_docs의 warn 모드 등)
+const warnings = []   // 통과는 시키되 사람이 보게 하는 경고
 
 function violate(rule, message, fix) {
   violations.push({ rule, message, fix })
@@ -446,50 +446,28 @@ function checkRoutineCommitRestriction(c) {
   }
 }
 
-// ── ⑭ 에이전트 정의 ↔ 미러 문서(mirror_docs) ──────────────────────────────────
-// docs/agents/workflow/agents/*.md는 .claude/agents/*.md(또는 orchestrator.md) 정의를 사람이
-// 손으로 옮겨 적은 요약본이다. 원본만 고치고 미러를 놓치는 드리프트가 재발했다(티켓
-// 20260922_1030, 실사례: 20260921_2305에서 아현 정의의 plan_only 절을 stop-conditions.md
-// 참조로 바꿨는데 01_아현_개발.md는 옛 서술이 남았다).
-//
-// 이 검사는 다른 규칙과 달리 '지금 저장소 상태'가 아니라 '이번 커밋(staged)에 무엇이
-// 포함됐는가'를 본다 — verify.sh처럼 스테이지가 비어 있는 실행에서는 볼 것이 없으므로
-// 조용히 통과한다. mode는 "warn"(경고만, 커밋 통과)과 "block"(위반 처리, 커밋 차단)
-// 두 값을 받는다. 정착 전까지는 warn으로 시작한다(티켓 요구사항 2). 반대 방향(미러만
-// 수정)은 mode와 무관하게 항상 경고만 한다 — 미러를 먼저 다듬는 경우까지 막을 이유는 없다.
-function getStagedFiles() {
-  try {
-    return new Set(
-      execFileSync('git', ['diff', '--cached', '--name-only'], { cwd: REPO, encoding: 'utf8' })
-        .split('\n').filter(Boolean)
-    )
-  } catch {
-    notes.push('git diff --cached를 실행하지 못해 mirror_docs 검사를 건너뜁니다.')
-    return null
-  }
-}
-
-function checkMirrorDocs(c) {
-  const spec = c.mirror_docs
+// ── ⑭ 설계 원본 폴더 동결(workflow_freeze) ────────────────────────────────────
+// docs/agents/workflow/ 는 2026-09-22 동결된 기록이다(티켓 20260921_2311). 이 동결이
+// .githooks/pre-commit에 실제로 걸려 있는지만 본다 — routine_commit_restriction과 같은
+// 방식으로 선언된 문자열이 훅 안에 있는지 대조한다.
+function checkWorkflowFreeze(c) {
+  const spec = c.workflow_freeze
   if (!spec) return
-  const staged = getStagedFiles()
-  if (staged === null || staged.size === 0) return
 
-  const mode = spec.mode === 'block' ? 'block' : 'warn'
-  for (const { source, mirror } of spec.pairs ?? []) {
-    const sourceChanged = staged.has(source)
-    const mirrorChanged = staged.has(mirror)
-    if (sourceChanged && !mirrorChanged) {
-      const message = `원본 ${source}이 이번 커밋에 포함됐는데 미러 ${mirror}는 포함되지 않았습니다`
-      const fix = `원본 변경이 미러 요약에도 반영돼야 하는지 확인하고, 필요하면 ${mirror}도 함께 커밋하세요. 내용에 영향 없는 변경(오탈자·주석 등)이면 그대로 두어도 됩니다.`
-      if (mode === 'block') {
-        violate('mirror_docs', message, fix)
-      } else {
-        warnings.push(`[mirror_docs] ${message} — ${fix}`)
-      }
-    } else if (mirrorChanged && !sourceChanged) {
-      warnings.push(`[mirror_docs] 미러 ${mirror}만 수정되고 원본 ${source}는 이번 커밋에 없습니다 — 미러 내용이 원본과 달라지지 않았는지 확인하세요.`)
-    }
+  const hookPath = path.join(REPO, '.githooks/pre-commit')
+  if (!existsSync(hookPath)) {
+    violate('workflow_freeze', `workflow_freeze가 선언돼 있는데 .githooks/pre-commit이 없습니다`,
+      `훅 파일을 되살리거나 선언을 지우세요.`)
+    return
+  }
+  const hook = readFileSync(hookPath, 'utf8')
+  if (!spec.frozen_prefix || !hook.includes(spec.frozen_prefix)) {
+    violate('workflow_freeze', `.githooks/pre-commit에 선언된 동결 대상 경로가 없습니다: ${spec.frozen_prefix}`,
+      `훅에 이 경로 동결 검사를 추가하거나, 경로가 바뀌었다면 contract.json도 함께 고치세요.`)
+  }
+  if (!spec.exempt_file || !hook.includes(spec.exempt_file)) {
+    violate('workflow_freeze', `.githooks/pre-commit에 선언된 예외 파일이 없습니다: ${spec.exempt_file}`,
+      `훅에 이 예외 파일 처리를 추가하거나, 예외 파일이 바뀌었다면 contract.json도 함께 고치세요.`)
   }
 }
 
@@ -508,7 +486,7 @@ checkQualityBar(contract)
 checkGitConfig(contract)
 checkDeployGate(contract)
 checkRoutineCommitRestriction(contract)
-checkMirrorDocs(contract)
+checkWorkflowFreeze(contract)
 
 for (const n of notes) console.log(`참고: ${n}`)
 for (const w of warnings) console.log(`경고: ${w}`)

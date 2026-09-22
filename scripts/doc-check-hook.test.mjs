@@ -162,5 +162,44 @@ test('백틱 경로·frontmatter 문제는 경고만 하고 통과한다', () =>
   assert.match(r.stderr, /경고/)
 })
 
+// ── ⑨ 설계 원본 폴더 동결 (티켓 20260921_2311) ─────────────────────────────────
+// docs/agents/workflow/ 는 README.md를 뺀 나머지가 신규·수정·이름변경·삭제 모두 막힌
+// 기록이다. 이 파일이 이미 pre-commit·doc-check 통합 테스트 인프라(임시 저장소 + 실제
+// git commit)를 갖추고 있어 여기에 같이 둔다.
+
+test('docs/agents/workflow/ 안 파일을 새로 추가하면 차단된다', () => {
+  const dir = makeRepo()
+  write(dir, 'docs/agents/workflow/02_결정사항.md', '내용\n')
+  const r = commit(dir)
+  assert.notEqual(r.status, 0)
+  assert.match(r.stderr, /동결된 기록입니다 — README\.md 외 파일은/)
+  assert.equal(run('git', ['rev-list', '--count', 'HEAD'], dir).stdout.trim(), '1', '커밋이 만들어지지 않아야 한다')
+})
+
+test('docs/agents/workflow/README.md 수정은 통과한다', () => {
+  const dir = makeRepo()
+  write(dir, 'docs/agents/workflow/README.md', '배너\n')
+  const r = commit(dir)
+  assert.equal(r.status, 0, r.stderr)
+})
+
+test('docs/agents/workflow/ 안 파일 삭제는 차단된다', () => {
+  const dir = makeRepo()
+  write(dir, 'docs/agents/workflow/02_결정사항.md', '내용\n')
+  run('git', ['add', '-A'], dir)
+  run('git', ['commit', '-q', '--no-verify', '-m', 'seed'], dir)
+  run('git', ['rm', '-q', 'docs/agents/workflow/02_결정사항.md'], dir)
+  const r = run('git', ['commit', '-q', '-m', 'delete'], dir)
+  assert.notEqual(r.status, 0)
+  assert.match(r.stderr, /삭제할 수 없습니다/)
+})
+
+test('docs/agents/workflow/ 밖 파일 수정은 동결과 무관하게 통과한다', () => {
+  const dir = makeRepo()
+  write(dir, 'docs/a.md', '본문\n고친 줄\n')
+  const r = commit(dir)
+  assert.equal(r.status, 0, r.stderr)
+})
+
 for (const d of tmpDirs) rmSync(d, { recursive: true, force: true })
 console.log(`doc-check 훅 테스트 ${process.exitCode ? '실패 있음' : '통과'} (${passed}건 통과)`)
