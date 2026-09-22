@@ -50,9 +50,11 @@
 - `.claude/skills/jam-ship/SKILL.md` 5단계
 - `.claude/agents/jam-reviewer.md` Principles(판정 기준 두 층)
 - `.claude/agents/jam-developer.md` Verification before handing off(제출 전 자기 점검)
+- `.claude/skills/jam-work/references/forms/review-verdict-format.md` 「확인 사항」(판정 기준 두 층)
+- `.claude/skills/jam-work/references/forms/implementation-summary-format.md` `checks` 칸(자기 점검 결과)
 
-이 세 곳 중 하나를 고치면, 서술이 아니라 **이 문서로의 참조**만 남아 있는지 확인한다.
+이 다섯 곳 중 하나를 고치면, 서술이 아니라 **이 문서로의 참조**만 남아 있는지 확인한다.
 서술을 다시 옮겨 적으면 원본이 두 곳이 되어 드리프트가 재발한다(`CLAUDE.md` 규칙 5).
 
-<!-- 되돌림 기록: 이 파일은 신규 문서라 삭제만 하면 되돌려진다. 삭제 시 위 "참조하는 곳" 세
+<!-- 되돌림 기록: 이 파일은 신규 문서라 삭제만 하면 되돌려진다. 삭제 시 위 "참조하는 곳" 다섯
 곳의 참조를 이전 서술로 되돌리는 작업이 함께 필요하다(git revert 권장). -->
