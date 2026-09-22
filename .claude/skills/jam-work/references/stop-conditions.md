@@ -45,12 +45,15 @@
 ## 참조하는 곳
 
 - `.claude/agents/jam-developer.md` 「Stop conditions」
-- `docs/agents/workflow/agents/01_아현_개발.md` (위 정의의 미러 문서, 「큰 작업」 항목)
 - `.claude/skills/jam-work/SKILL.md` 3.0절
 - `.claude/workflows/jam-work.js` (플랜 온리 판정 주석, `batch` 정지 분기)
 - `docs/agents/team-operations.md` §3
 
-이 다섯 곳 중 하나를 고치면, 서술이 아니라 **이 문서로의 참조**만 남아 있는지 확인한다.
+> `docs/agents/workflow/agents/01_아현_개발.md`(위 정의의 미러 문서)는 2026-09-22 동결로
+> 더 이상 동기화 대상이 아니다(티켓 20260921_2311). `docs/agents/workflow/`는 기록 전용이며
+> 현재 정의는 `.claude/agents/`뿐이다.
+
+이 네 곳 중 하나를 고치면, 서술이 아니라 **이 문서로의 참조**만 남아 있는지 확인한다.
 서술을 다시 옮겨 적으면 원본이 두 곳이 되어 드리프트가 재발한다(`CLAUDE.md` 규칙 5).
 
 <!-- 되돌림 기록: 이 파일은 신규 문서라 삭제만 하면 되돌려진다. 삭제 시 위 "참조하는 곳" 네

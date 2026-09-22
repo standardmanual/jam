@@ -375,3 +375,4 @@ pre-push가 (a) 폴더 이름이 `wf_`로 시작하는 링크드 워크트리, (
 | `.claude/skills/jam-work/references/scheduled-jobs.md` | 예약 루틴 전체 스펙 |
 | `.claude/skills/jam-work/references/handling-rules.md` | 상황별 처리 규칙표 |
 | `docs/specs/DEV_PROCESS_GUARDRAILS.md` | 반복된 실패 패턴과 방지책 |
+| `docs/agents/workflow/README.md` | 도입 구상·결정 배경의 동결된 기록(2026-09-22 이후 수정 불가, 참고용) — 현재 규칙 아님 |

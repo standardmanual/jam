@@ -54,7 +54,8 @@
       ".claude/skills/jam-work/references/forms/review-verdict-format.md",
       "jam-doc/README.md",
       "jam-doc/planning/content/TRIBES.md",
-      "jam-doc/operations/reports"
+      "jam-doc/operations/reports",
+      "docs/agents/workflow/README.md"
     ]
   },
 
@@ -184,20 +185,10 @@
     "public_routes": ["dev-login", "strava/callback", "username/check"]
   },
 
-  "mirror_docs": {
-    "_why": "docs/agents/workflow/agents/*.md 9개는 .claude/agents/*.md 정의(오케스트레이터는 docs/agents/orchestrator.md)를 사람이 손으로 옮겨 적은 비개발자용 요약본이다. 원본만 고치고 미러를 놓치는 드리프트가 재발했다(티켓 20260922_1030). mode가 'warn'이면 정방향(원본만 변경) 어긋남을 경고만 하고 통과시키고, 'block'이면 위반으로 처리해 커밋을 막는다. 역방향(미러만 변경)은 mode와 무관하게 항상 경고만 한다.",
-    "mode": "warn",
-    "pairs": [
-      { "source": "docs/agents/orchestrator.md", "mirror": "docs/agents/workflow/agents/00_카리나_오케스트레이터.md" },
-      { "source": ".claude/agents/jam-developer.md", "mirror": "docs/agents/workflow/agents/01_아현_개발.md" },
-      { "source": ".claude/agents/jam-reviewer.md", "mirror": "docs/agents/workflow/agents/02_민지_판정리뷰.md" },
-      { "source": ".claude/agents/jam-designer.md", "mirror": "docs/agents/workflow/agents/03_채원_디자인.md" },
-      { "source": ".claude/agents/jam-pm.md", "mirror": "docs/agents/workflow/agents/04_혜린_PM.md" },
-      { "source": ".claude/agents/jam-tribe.md", "mirror": "docs/agents/workflow/agents/05_윈터_세계관.md" },
-      { "source": ".claude/agents/jam-marketer.md", "mirror": "docs/agents/workflow/agents/06_윤진_마케팅.md" },
-      { "source": ".claude/agents/jam-ops.md", "mirror": "docs/agents/workflow/agents/07_카즈하_운영리스크.md" },
-      { "source": ".claude/agents/jam-guide.md", "mirror": "docs/agents/workflow/agents/08_하니_문서체계.md" }
-    ]
+  "workflow_freeze": {
+    "_why": "docs/agents/workflow/ 는 2026-09-22 동결된 설계 원본 기록이다 (티켓 20260921_2311). 이 동결이 .githooks/pre-commit에 실제로 걸려 있는지 검사한다. 원본↔미러 대조 경고 장치(티켓 20260922_1030)는 이 동결과 양립할 수 없어 같은 티켓에서 걷어냈다 — 실행되는 쪽(.claude/agents/)만 남긴다(CLAUDE.md 규칙 5).",
+    "frozen_prefix": "docs/agents/workflow/",
+    "exempt_file": "docs/agents/workflow/README.md"
   },
 
   "routine_commit_restriction": {
