@@ -158,5 +158,11 @@
     "_why": "scripts/deploy-gate.mjs check가 읽는 선언이다 (티켓 20260922_0001). /jam-ship과 목요일 무인 배포가 같은 점검을 쓴다. rollback_sql_required_from: 번호가 이 값 이상인 신규 마이그레이션은 되돌림 SQL(파일 안의 되돌림 표식 줄 또는 짝이 되는 _down.sql)이 있어야 한다. 이보다 낮은 번호는 규칙 신설(2026-09-22) 이전 파일이라 요구하지 않는다. public_routes: 인증 확인 호출이 없어도 되는 의도한 공개 API 라우트이며 jam-web/src/app/api/ 아래 경로로 적는다. 새 공개 라우트를 만들면 근거가 되는 티켓을 확인한 뒤 여기에 등록한다.",
     "rollback_sql_required_from": 180,
     "public_routes": ["dev-login", "strava/callback", "username/check"]
+  },
+
+  "routine_commit_restriction": {
+    "_why": "카즈하 선별 루틴을 비롯한 무인 예약 커밋이 리포트 폴더 밖을 건드리지 못하게 .githooks/pre-commit이 막는 근거다 (티켓 20260921_2306). author_email은 예약 작업 커밋의 실제 작성자 이메일이고(`git log --format=%ae --grep=\"예약 작업\" --author=Claude`로 확인), allowed_prefix는 그 작성자가 유일하게 쓸 수 있는 경로다. 우회 변수는 없다.",
+    "author_email": "noreply@anthropic.com",
+    "allowed_prefix": "jam-doc/operations/reports/"
   }
 }
