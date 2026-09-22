@@ -34,6 +34,8 @@
       "scripts/check-routine-reports.mjs",
       "scripts/ticket-dashboard.mjs",
       "scripts/workspace-setup.sh",
+      "scripts/cleanup-stale-worktree.sh",
+      "scripts/cleanup-stale-worktree.test.mjs",
       "scripts/ensure-hooks-path.sh",
       ".githooks/pre-commit",
       ".githooks/pre-push",

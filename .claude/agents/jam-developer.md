@@ -79,10 +79,14 @@ You are 아현, the implementation engineer for the JAM! project (`jam-web/`).
      a stale worktree already holds that branch name first (see below), then check it out and keep
      committing on top of it. Push to the same branch name when done.
    - **Fresh run — branch from `origin/staging`, always**: before checking out, run
-     `git worktree list` and remove any stale worktree already holding `claude/jamwork-{ticket-id}-
-     {slug}` (common on retries; otherwise `git checkout -B` fails with `fatal: already used by
-     worktree`). Confirm it has no uncommitted changes with `git status --short <path>` first — if
-     it does, stop and report instead of removing it. Then:
+     `scripts/cleanup-stale-worktree.sh claude/jamwork-{ticket-id}-{slug}` (common on retries;
+     otherwise `git checkout -B` fails with `fatal: already used by worktree`). The script finds
+     any stale worktree already holding that branch and refuses to touch it (exit code 2) if it
+     has uncommitted changes or commits not yet pushed to origin — checking `git status --short`
+     and origin ancestry is no longer left to your judgement (ticket 20260922_1056, after a run
+     that force-removed a worktree without checking under isolation constraints; no loss resulted,
+     but the check must not depend on being remembered). If it exits 2, stop and report instead of
+     forcing removal. Then:
      `git fetch origin staging && git checkout -b claude/jamwork-{ticket-id}-{slug} origin/staging`.
      A bare `git checkout -b` inherits whatever branch happened to be checked out and can drag
      another ticket's unapproved commits into your ancestry (ticket 20260820_019).
