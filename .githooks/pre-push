@@ -14,6 +14,20 @@ zero_sha="0000000000000000000000000000000000000000"
 while read -r local_ref local_sha remote_ref remote_sha; do
   branch="${remote_ref#$remote_ref_prefix}"
 
+  # 링크드 워크트리 판정 — staging 차단 절과 리뷰 브랜치 verify 게이트가 공유한다
+  # (티켓 20260922_1755). is_wf_worktree=1이면 Workflow 에이전트 작업 공간(wf_*)이다.
+  git_dir_abs="$(cd "$(git rev-parse --git-dir 2>/dev/null)" 2>/dev/null && pwd -P)"
+  git_common_dir_abs="$(cd "$(git rev-parse --git-common-dir 2>/dev/null)" 2>/dev/null && pwd -P)"
+  is_linked_worktree=0
+  if [ -n "$git_dir_abs" ] && [ -n "$git_common_dir_abs" ] && [ "$git_dir_abs" != "$git_common_dir_abs" ]; then
+    is_linked_worktree=1
+  fi
+  worktree_name="$(basename "$(git rev-parse --show-toplevel 2>/dev/null)")"
+  is_wf_worktree=0
+  case "$worktree_name" in
+    wf_*) [ "$is_linked_worktree" = "1" ] && is_wf_worktree=1 ;;
+  esac
+
   # 끝 커밋 작성자 검사 (티켓 20260921_1231)
   #
   # 테스트가 훅 환경의 GIT_DIR를 물려받아 저장소 설정을 오염시키면 커밋이 tester <t@example.com>으로
@@ -172,25 +186,15 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   #   (b) push하는 로컬 브랜치가 claude/jamwork-*(아현의 리뷰 브랜치). git push origin
   #       HEAD:staging처럼 local_ref가 HEAD로 들어와도 현재 브랜치 이름으로 판정한다.
   # 카리나의 수동 격리 워크트리(handling-rules.md 17행)는 이 이름 규칙을 쓰지 않으므로 걸리지
-  # 않는다.
+  # 않는다. is_wf_worktree·worktree_name은 루프 상단에서 계산해 verify 게이트와 공유한다.
   if [ "$branch" = "staging" ] && [ "$local_sha" != "$zero_sha" ]; then
-    git_dir_abs="$(cd "$(git rev-parse --git-dir 2>/dev/null)" 2>/dev/null && pwd -P)"
-    git_common_dir_abs="$(cd "$(git rev-parse --git-common-dir 2>/dev/null)" 2>/dev/null && pwd -P)"
-    is_linked_worktree=0
-    if [ -n "$git_dir_abs" ] && [ -n "$git_common_dir_abs" ] && [ "$git_dir_abs" != "$git_common_dir_abs" ]; then
-      is_linked_worktree=1
-    fi
-    worktree_name="$(basename "$(git rev-parse --show-toplevel 2>/dev/null)")"
-
     case "$local_ref" in
       refs/heads/*) local_branch="${local_ref#refs/heads/}" ;;
       *) local_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" ;;
     esac
 
     block_reason=""
-    case "$worktree_name" in
-      wf_*) [ "$is_linked_worktree" = "1" ] && block_reason="에이전트 작업 워크트리($worktree_name)" ;;
-    esac
+    [ "$is_wf_worktree" = "1" ] && block_reason="에이전트 작업 워크트리($worktree_name)"
     if [ -z "$block_reason" ]; then
       case "$local_branch" in
         claude/jamwork-*) block_reason="리뷰 브랜치($local_branch)" ;;
@@ -258,6 +262,10 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   # 리뷰 브랜치(claude/jamwork-*) push 시 verify 게이트 (티켓 20260918_0421)
   #
   # lint·typecheck·test·ds:check·슬롭검사를 한 번에 묶어 실행한다(scripts/verify.sh).
+  # Workflow 에이전트 워크트리(wf_*)에서는 아현 로컬 → 여기(pre-push) → CI 세 번 도는 것을
+  # 줄이기 위해 여기서는 건너뛰고 CI(verify 워크플로)가 검증한다(티켓 20260922_1755). 기준
+  # 방어 검사(위 블록, eslint-disable 사유·skip/only·테스트 삭제 사유·max-warnings)는 모든
+  # 브랜치에 그대로 적용되므로 건드리지 않는다.
   # node_modules가 없는 워크트리(막 만든 직후 등)에서는 건너뛴다 —
   # scripts/workspace-setup.sh link로 연결한 뒤 다시 push하면 게이트가 걸린다.
   #
@@ -267,6 +275,8 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       repo_root="$(git rev-parse --show-toplevel)"
       if [ "${JAM_SKIP_VERIFY:-}" = "1" ]; then
         echo "pre-push: JAM_SKIP_VERIFY=1 — verify 게이트를 건너뜁니다." >&2
+      elif [ "$is_wf_worktree" = "1" ]; then
+        echo "pre-push: Workflow 에이전트 워크트리($worktree_name) — CI(verify 워크플로)가 검증합니다." >&2
       elif [ -d "$repo_root/jam-web/node_modules" ]; then
         echo "pre-push: verify 실행 중 (리뷰 브랜치 $branch)..." >&2
         if ! "$repo_root/scripts/verify.sh"; then

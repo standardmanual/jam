@@ -472,6 +472,17 @@ async function test22_gateOnlyRunsDesignReviewForLargeUiDiff() {
   console.log('PASS test22_gateOnlyRunsDesignReviewForLargeUiDiff')
 }
 
+// DEV_RESULT.summary에 maxLength가 걸려 있는지 원문 텍스트로 확인한다(티켓 20260922_1755).
+// 스키마 객체가 export되지 않으므로 정규식으로 `summary` 속성 선언 줄을 찾아 maxLength: 3000을
+// 대조한다.
+async function test23_devResultSummaryHasMaxLength() {
+  const full = readFileSync(path.join(__dirname, 'jam-work.js'), 'utf8')
+  const m = full.match(/summary:\s*\{[^}]*\}/)
+  assert.ok(m, 'DEV_RESULT.properties.summary 선언을 찾을 수 없다')
+  assert.match(m[0], /maxLength:\s*3000/, 'summary 속성에 maxLength: 3000이 있어야 한다')
+  console.log('PASS test23_devResultSummaryHasMaxLength')
+}
+
 async function main() {
   await test1_needsApprovalStops()
   await test2_needsApprovalNoneProceedsInParallel()
@@ -495,6 +506,7 @@ async function main() {
   await test20_gateOnlyMissingArgsThrows()
   await test21_gateOnlySkipsDesignerAndDeveloper()
   await test22_gateOnlyRunsDesignReviewForLargeUiDiff()
+  await test23_devResultSummaryHasMaxLength()
   console.log('전체 통과')
 }
 
