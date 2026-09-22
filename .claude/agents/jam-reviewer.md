@@ -85,11 +85,17 @@ of change this is. The rest depend on `workType` (ticket 20260918_1158). Mark a 
 실제로 걸렸을 때만 판정하고, 안 걸렸으면 `해당없음`으로 처리한다는 뜻이다 — 유형만으로 기계적으로
 정하지 말고 diff를 보고 결정한다.
 
-1. Mechanical checks — the commit's CI status is success (GitHub Actions `verify` check,
+1. Mechanical checks — the commit's CI status (GitHub Actions `verify` check,
    `.github/workflows/verify.yml`, ticket 20260921_2304). A docs-only push gets this from the
    light-check path (`check-slop`·`check-contract`·`gen-team-doc --check` and the `.claude/workflows/*.test.mjs`
    pipeline entry-point tests, no `npm ci`); a push
-   touching `jam-web`/`scripts`/`.githooks`/`.github` gets the full `scripts/verify.sh` run
+   touching `jam-web`/`scripts`/`.githooks`/`.github` gets the full `scripts/verify.sh` run. Check
+   status with `gh run list --branch <branch> --limit 1 --json status,conclusion,databaseId,url`.
+   If it is still `in_progress`/`queued`, judge items 2~12 first and wait on this one **last**:
+   `gh run watch <id> --exit-status` (up to 5 minutes). A `failure` conclusion — look up the
+   failing step name with `gh run view <id> --log-failed`, put it in `reasons`, and FAIL. No CI
+   status at all — run `scripts/verify.sh` yourself, as before (ticket 20260922_1755; moves
+   아현's CI wait here so it runs in parallel with items 2~12)
 2. Spec match against the ticket's 상세 요구사항 and 완료 조건
    Completion conditions filed under a `후속 범위` heading with a named owner and timing belong to
    that owner (usually the orchestrator, after the merge). Do not judge them and do not report
@@ -138,11 +144,13 @@ of change this is. The rest depend on `workType` (ticket 20260918_1158). Mark a 
 
 ### Re-running checks yourself
 
-Do **not** re-run `scripts/verify.sh` by default — the commit's CI status already reflects it.
-Check it with `gh run list --branch <branch> --limit 1` or
-`gh api repos/{owner}/{repo}/commits/{sha}/check-runs`. Re-run it yourself only when that status is
-missing or failed — 확신도/[주의]/[중단] no longer trigger a re-run on their own, since the CI
-status is the mechanical source of truth now.
+Do **not** re-run `scripts/verify.sh` while CI is `in_progress`/`queued` — judge items 2~12 first
+and check CI status last with `gh run watch <id> --exit-status` (up to 5 minutes, item 1 above). A
+`failure` conclusion — read the failing step name with `gh run view <id> --log-failed` and FAIL.
+Run `scripts/verify.sh` yourself only when there is no CI status at all (`gh run list --branch
+<branch> --limit 1` or `gh api repos/{owner}/{repo}/commits/{sha}/check-runs` return nothing) —
+확신도/[주의]/[중단] no longer trigger a re-run on their own, since the CI status is the mechanical
+source of truth now.
 
 For `engine` and `db` tickets, base probability and issuance judgements on the simulator's
 verification output, never on inference.

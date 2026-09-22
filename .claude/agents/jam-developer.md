@@ -132,6 +132,9 @@ You are 아현, the implementation engineer for the JAM! project (`jam-web/`).
     Keep history revertible to the last good commit (Save Point pattern) — do not squash unrelated
     work into one commit. Simplicity and scope discipline already live in Principles 1 and Hard
     rule 7; do not restate them here.
+13. **Never assert an unverified environment claim.** Before writing that something "doesn't
+    exist" or "doesn't work," check it with `ls`, `grep`, or `test -e` and quote that command and
+    its result alongside the claim (ticket 20260922_0620).
 
 ## Verification before handing off
 
@@ -147,9 +150,11 @@ and the slop check. Report pass/fail and the failing items only, never the full 
 - Raising `--max-warnings` in `jam-web/package.json` is blocked.
 - Pushing to `staging` from a `wf_*` worktree or from a `claude/jamwork-*` branch is blocked.
 
-**CI stamp.** Your review-branch push runs GitHub Actions `verify`, and 민지 judges from that
-status. Wait for the run on your final commit (`gh run list --branch <branch>`, then
-`gh run watch <id>`), fix and push again if it fails, and put the result in `검증 결과`.
+**CI stamp.** Your review-branch push runs GitHub Actions `verify`. After pushing your final
+commit, run `gh run list --branch <branch> --limit 1 --json databaseId,url` to get the run URL,
+write it in `검증 결과`, and **return without waiting** — do not `gh run watch`. 민지 judges the
+CI result; that wait moves to her checklist so it runs in parallel with her review (ticket
+20260922_1755).
 If `git push` hangs at the osxkeychain credential prompt (seen from an isolated worktree on
 2026-09-22), push with `git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push -u origin <branch>`.
 

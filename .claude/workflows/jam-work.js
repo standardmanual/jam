@@ -50,7 +50,9 @@ const DEV_RESULT = {
     commitSha: { type: 'string' },
     baseSha: { type: 'string' },
     diffLineCount: { type: 'number' },
-    summary: { type: 'string' },
+    // 형식 문서(implementation-summary-format.md) 30줄 ≈ 3,000자. 프롬프트 강제만으로는
+    // 세 번 연속 어겨졌다(diff 원문이 그대로 실림) — 스키마로 기계 강제한다 (티켓 20260922_0620).
+    summary: { type: 'string', maxLength: 3000 },
   },
   required: ['status', 'summary'],
 }

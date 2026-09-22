@@ -7,7 +7,7 @@
 
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -33,6 +33,14 @@ const runHook = (cwd, localRef, localSha) =>
     encoding: 'utf8',
     env: env({ JAM_SKIP_LINT: '1' }),
     input: `${localRef} ${localSha} refs/heads/staging ${ZERO}\n`,
+  })
+// 리뷰 브랜치(claude/jamwork-*) push — verify 게이트 검사용 (티켓 20260922_1755)
+const runReviewHook = (cwd, branchRef, localSha) =>
+  spawnSync('bash', [HOOK], {
+    cwd,
+    encoding: 'utf8',
+    env: env({ JAM_SKIP_LINT: '1' }),
+    input: `refs/heads/${branchRef} ${localSha} refs/heads/${branchRef} ${ZERO}\n`,
   })
 
 const root = mkdtempSync(join(tmpdir(), 'pre-push-worktree-block-'))
@@ -71,7 +79,45 @@ try {
   r = runHook(main, 'refs/heads/regular-branch', headSha)
   assert.equal(r.status, 0, `일반 브랜치의 메인 트리는 통과해야 한다:\n${r.stderr}`)
 
-  console.log('통과: pre-push 워크트리 차단 검사')
+  // (f)(g) 리뷰 브랜치(claude/jamwork-*) push 시 verify 게이트 — wf_* 링크드 워크트리에서는
+  // verify.sh를 실행하지 않고 CI에 맡긴다(티켓 20260922_1755). 가짜 verify.sh가 마커 파일을
+  // 만들도록 해서 실행 여부를 확인한다.
+  mkdirSync(join(main, 'scripts'), { recursive: true })
+  writeFileSync(
+    join(main, 'scripts', 'verify.sh'),
+    '#!/bin/bash\ntouch "$(cd "$(dirname "$0")/.." && pwd)/VERIFY_RAN"\nexit 0\n',
+  )
+  chmodSync(join(main, 'scripts', 'verify.sh'), 0o755)
+  mkdirSync(join(main, 'jam-web', 'node_modules'), { recursive: true })
+  writeFileSync(join(main, 'jam-web', 'node_modules', '.gitkeep'), '')
+  git(['add', '-A'], main)
+  git(['-c', 'user.name=x', '-c', 'user.email=dev@jam.internal', 'commit', '-q', '-m', 'verify 게이트 픽스처 추가'], main)
+  const verifyHeadSha = git(['rev-parse', 'HEAD'], main)
+
+  // (f) wf_* 링크드 워크트리에서 claude/jamwork-* push → verify.sh를 실행하지 않고 종료 0
+  const wfVerifyWorktree = join(root, 'wf_verify123')
+  git(['worktree', 'add', '-q', '-b', 'claude/jamwork-f-test', wfVerifyWorktree, 'HEAD'], main)
+  r = runReviewHook(wfVerifyWorktree, 'claude/jamwork-f-test', verifyHeadSha)
+  assert.equal(r.status, 0, `wf_ 워크트리의 리뷰 브랜치 push는 verify 없이 통과해야 한다:\n${r.stderr}`)
+  assert.match(r.stderr, /CI\(verify 워크플로\)가 검증합니다/)
+  assert.equal(
+    existsSync(join(wfVerifyWorktree, 'VERIFY_RAN')),
+    false,
+    'wf_ 워크트리는 verify.sh를 실행하지 않아야 한다',
+  )
+
+  // (g) wf_가 아닌 이름의 워크트리에서 claude/jamwork-* push → verify.sh(가짜)를 실행한다
+  const normalVerifyWorktree = join(root, 'normal-verify-worktree')
+  git(['worktree', 'add', '-q', '-b', 'claude/jamwork-g-test', normalVerifyWorktree, 'HEAD'], main)
+  r = runReviewHook(normalVerifyWorktree, 'claude/jamwork-g-test', verifyHeadSha)
+  assert.equal(r.status, 0, `wf_가 아닌 워크트리는 verify.sh(가짜, 종료 0) 실행 후 통과해야 한다:\n${r.stderr}`)
+  assert.equal(
+    existsSync(join(normalVerifyWorktree, 'VERIFY_RAN')),
+    true,
+    'wf_가 아닌 워크트리는 verify.sh를 실행해야 한다',
+  )
+
+  console.log('통과: pre-push 워크트리 차단·리뷰 브랜치 verify 게이트 검사')
 } finally {
   rmSync(root, { recursive: true, force: true })
 }
