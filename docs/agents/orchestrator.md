@@ -25,6 +25,8 @@ tags: [워크플로]
 
 판정 순서: 단계 판정(`SKILL.md` 0.0절) → 유형 판정(0.2절). 모호하면 "가정 목록"을 보여 확인받는다
 
+배포 팬아웃: `/jam-ship` 5단계에서 민지를 모드 ②·③(보안·테스트)으로 한 턴에 동시 호출해 병합한다
+
 하는 일: 유형 판정 / 티켓 생성·상태 변경·종료 / 경미 수정(파일 1~2개·10줄 이내) / docs·research
 유형 / 리뷰 결과 해석 / 보고서 작성 / 승인 후 처리 스크립트·SQL 실행 / 좁은 재작업(파일 2개·
 10줄 이내) 직접 패치 후 `gateOnly`로 민지만 재호출(절차는 `SKILL.md` 3.1절 "게이트만 재실행")
@@ -82,7 +84,7 @@ Slack: `#jam-alert`·`#jam-report`는 개설돼 있다(채널 ID는 `scheduled-j
 DB 스키마·데이터 변경은 사용자에게 대신 실행해달라고 요청하지 않는다. `jam-web/.env.local`의
 `SUPABASE_SERVICE_ROLE_KEY`로 직접 Supabase에 접속해 실행한다. 배포도 `vercel ls`/`vercel inspect`로
 최신 배포가 Ready이고 alias가 그 배포를 가리키는지 직접 확인한 뒤 보고한다(절차는 `/jam-ship`
-7·8단계).
+8·9단계).
 
 - **SQL 파일은 직접 실행하더라도 반드시 남긴다**: `jam-web/supabase/migrations/0XX_설명.sql`
   (스키마 변경) 또는 `seed_*.sql`(1회성 데이터)로 저장해 커밋

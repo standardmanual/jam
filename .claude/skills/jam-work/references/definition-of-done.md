@@ -34,7 +34,7 @@
 
 ## 배포 준비
 
-`/jam-ship` 6단계(main 승격) 직전, 아래 네 가지가 전부 충족돼야 진행한다. 하나라도 비어
+`/jam-ship` 7단계(main 승격) 직전, 아래 네 가지가 전부 충족돼야 진행한다. 하나라도 비어
 있으면 멈추고 보고한다.
 
 - [ ] 보안 검토 — 확인: `/jam-ship` 3단계 「보안」 항목
@@ -47,7 +47,7 @@
 
 ## 참조하는 곳
 
-- `.claude/skills/jam-ship/SKILL.md` 5단계
+- `.claude/skills/jam-ship/SKILL.md` 6단계
 - `.claude/agents/jam-reviewer.md` Principles(판정 기준 두 층)
 - `.claude/agents/jam-developer.md` Verification before handing off(제출 전 자기 점검)
 - `.claude/skills/jam-work/references/forms/review-verdict-format.md` 「확인 사항」(판정 기준 두 층)
