@@ -166,7 +166,10 @@ strava_connections UPSERT
    → 만료 1분 전부터 refreshStravaToken 호출
    → 새 토큰 암호화 후 DB 업데이트
 
-3. last_synced_at 이후 활동 조회
+3. 마지막으로 가져온 활동의 시작 시각 − 15분(overlap) 이후 활동 조회
+   → 커서는 strava_activities에서 그 유저의 최신 start_date를 조회해 구한다(행이 없으면
+     after 없이 최신 페이지 1회 조회). last_synced_at(동기화를 누른 벽시계 시각)은 더 이상
+     조회 커서가 아니다 — 동시 싱크 잠금 키로만 쓴다(4-1, 티켓 20260922_2207)
    → Strava Activities API (per_page=200)
    → NormalizedActivity로 변환 (STRAVA_TYPE_TO_JAM 매핑)
 
@@ -195,7 +198,9 @@ strava_connections UPSERT
 10. 미션 달성 체크
     → checkMissions 호출
 
-11. strava_connections.last_synced_at 업데이트
+11. strava_connections.last_synced_at 잠금 키 갱신
+    → 처리 시작 전(위 3번 이전)에 선점 갱신해 동시 싱크를 막는다 — 조회 커서 역할은
+      없다. 처리 중 예외가 나면 잠금 이전 값으로 롤백한다(20260810_002)
 ```
 
 ### 3-3. 수동 동기화
