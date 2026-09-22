@@ -184,6 +184,22 @@
     "public_routes": ["dev-login", "strava/callback", "username/check"]
   },
 
+  "mirror_docs": {
+    "_why": "docs/agents/workflow/agents/*.md 9개는 .claude/agents/*.md 정의(오케스트레이터는 docs/agents/orchestrator.md)를 사람이 손으로 옮겨 적은 비개발자용 요약본이다. 원본만 고치고 미러를 놓치는 드리프트가 재발했다(티켓 20260922_1030). mode가 'warn'이면 정방향(원본만 변경) 어긋남을 경고만 하고 통과시키고, 'block'이면 위반으로 처리해 커밋을 막는다. 역방향(미러만 변경)은 mode와 무관하게 항상 경고만 한다.",
+    "mode": "warn",
+    "pairs": [
+      { "source": "docs/agents/orchestrator.md", "mirror": "docs/agents/workflow/agents/00_카리나_오케스트레이터.md" },
+      { "source": ".claude/agents/jam-developer.md", "mirror": "docs/agents/workflow/agents/01_아현_개발.md" },
+      { "source": ".claude/agents/jam-reviewer.md", "mirror": "docs/agents/workflow/agents/02_민지_판정리뷰.md" },
+      { "source": ".claude/agents/jam-designer.md", "mirror": "docs/agents/workflow/agents/03_채원_디자인.md" },
+      { "source": ".claude/agents/jam-pm.md", "mirror": "docs/agents/workflow/agents/04_혜린_PM.md" },
+      { "source": ".claude/agents/jam-tribe.md", "mirror": "docs/agents/workflow/agents/05_윈터_세계관.md" },
+      { "source": ".claude/agents/jam-marketer.md", "mirror": "docs/agents/workflow/agents/06_윤진_마케팅.md" },
+      { "source": ".claude/agents/jam-ops.md", "mirror": "docs/agents/workflow/agents/07_카즈하_운영리스크.md" },
+      { "source": ".claude/agents/jam-guide.md", "mirror": "docs/agents/workflow/agents/08_하니_문서체계.md" }
+    ]
+  },
+
   "routine_commit_restriction": {
     "_why": "카즈하 선별 루틴을 비롯한 무인 예약 커밋이 리포트 폴더 밖을 건드리지 못하게 .githooks/pre-commit이 막는 근거다 (티켓 20260921_2306). author_email은 예약 작업 커밋의 실제 작성자 이메일이고(`git log --format=%ae --grep=\"예약 작업\" --author=Claude`로 확인), allowed_prefix는 그 작성자가 유일하게 쓸 수 있는 경로다. 우회 변수는 없다.",
     "author_email": "noreply@anthropic.com",
