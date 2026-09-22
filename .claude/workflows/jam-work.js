@@ -21,7 +21,7 @@ export const meta = {
 // 호출부의 입력 오타이지만, 실패 시 조용히 undefined로 넘어가는 대신 최소한 명확한
 // SyntaxError로 드러나도록 방어적으로 파싱한다.
 const parsedArgs = typeof args === 'string' ? JSON.parse(args) : args
-const { batch } = parsedArgs
+const { batch, gateOnly } = parsedArgs
 
 // 도구가 agent() 사용량을 직접 돌려주지 않는다. 전역 budget.spent()가 이번 턴 누계
 // 출력 토큰을 주므로, 호출 전후 차이로 에이전트별 출력 토큰만 추정한다(입력 토큰은 알 수
@@ -147,6 +147,148 @@ const WAIVER_PREFIX_RE = /^계획 반환 면제:/
 function neutralizeWaiverPrefix(text) {
   if (typeof text !== 'string' || !text.includes('계획 반환 면제:')) return text
   return text.split('\n').map((line) => (WAIVER_PREFIX_RE.test(line) ? `(인용) ${line}` : line)).join('\n')
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 게이트 리뷰 단계(민지 게이트 + 채원② 사후 리뷰) — 표준 파이프라인(runSingleTicket)과
+// gateOnly(runGateOnly, 티켓 20260921_2307) 둘 다 이 함수를 공유한다. devResult는 아현이
+// 반환한 값이거나(표준), 카리나가 gateOnly로 직접 채운 값이다 — 프롬프트·판정 로직을 두 곳에
+// 따로 유지하면 한쪽만 고쳐질 때 드리프트가 생긴다(CLAUDE.md 규칙 5).
+// ─────────────────────────────────────────────────────────────────────────────
+async function runGateReview({ ticketPath, workType, devResult, designDecisionText, isLightRoute, tokenUsage, planOnlyWaiverReason, extraNote }) {
+  phase('게이트 리뷰')
+  // 커밋 범위(baseSha..commitSha)를 devResult에서 받아 그대로 넘긴다 — 민지·채원②가 branch 이름과
+  // 그때그때의 origin/staging을 다시 fetch해 비교하지 않고, 고정된 두 커밋 사이의 diff만
+  // 보게 한다(1148 민지 발견물 ②, 티켓 20260918_1158). 워크트리 fetch 여부에 기대는 대신 SHA
+  // 대조로 구조적으로 보완한다.
+  const commitRange = devResult?.baseSha && devResult?.commitSha
+    ? `${devResult.baseSha}..${devResult.commitSha}` : null
+  const rangeInstruction = commitRange
+    ? `\n검토 범위는 \`${commitRange}\`다. \`git fetch origin ${devResult.branch}\`로 review ` +
+      `브랜치를 가져온 뒤 \`git diff --numstat ${commitRange} -- jam-web\`으로 비교하고, ` +
+      `\`reviewedRange\`에 \`${commitRange}\`를 그대로 적어라.\n`
+    : `\n커밋 범위를 채우지 못했다 — \`git fetch origin staging\`으로 origin/staging을 ` +
+      `갱신한 뒤 \`git diff --numstat <review 브랜치> origin/staging -- jam-web\`으로 비교하고, ` +
+      `\`reviewedRange\`에 실제로 비교한 범위를 적어라.\n`
+
+  // 2026-09-18부터는 채원② 사후 리뷰 생략 판단에만 쓴다 — 개선 리뷰 단계 자체가 사라졌기
+  // 때문이다(티켓 20260918_0422). 게이트·채원②를 병렬로 돌리므로(티켓 20260918_1158) 게이트가
+  // 끝나기를 기다리지 않고 devResult가 보고한 diffLineCount로 실행 여부를 정한다.
+  const preDiffLineCount = devResult?.diffLineCount ?? Infinity
+  const runDesignReview = DESIGN_TYPES.includes(workType) &&
+    preDiffLineCount >= SMALL_DIFF_LINE_THRESHOLD && !isLightRoute
+
+  // 민지(게이트)와 채원②(사후 리뷰)는 둘 다 devResult만 보고 서로를 참조하지 않으므로 전역
+  // parallel()(배리어, 실패한 작업은 null)로 동시에 돌린다(티켓 20260918_1158). 민지가 FAIL이어도
+  // 채원②는 멈추지 않고 끝까지 진행하되, 그 결과는 참고용으로만 쓴다 — needsRework는 여전히
+  // 게이트 FAIL 또는 채원② 중대 문제 중 하나로만 판단한다.
+  // 채원②의 모델: 핵심 화면은 Sonnet, 그 외는 Haiku로 낮춘다(채원 정의의 모드표). 여기서는
+  // 핵심 화면 여부를 워크플로가 판단할 수 없으므로 `ds` 유형(디자인 시스템 자체 변경 = 파급이
+  // 크다)만 Sonnet으로 두고 나머지는 Haiku로 부른다.
+  // 병렬 호출이라 전후 토큰 차이를 에이전트별로 쪼갤 수 없다 — 두 호출을 묶어 하나로 기록한다.
+  const parallelT0 = tokensSpent()
+  const [gate, designReview] = await parallel([
+    () => agent(
+      `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult?.summary ?? devResult}\n` +
+      `${designDecisionText ? `\n채원 사전 판정(점검표 6번 대조 기준):\n${designDecisionText}\n` : ''}` +
+      rangeInstruction +
+      `${extraNote ?? ''}` +
+      // 면제 없이 기준을 넘겼는지는 아현 자체 판단에만 맡기지 않는다(티켓 20260922_0619) —
+      // 이번 실행의 면제 값을 그대로 넘겨 점검표 5번에서 대조하게 한다.
+      `\n이번 실행의 계획 반환 면제: ${planOnlyWaiverReason || '없음'}\n` +
+      `\n스펙대로 동작하는지 판정하라.`,
+      { agentType: 'jam-reviewer', label: 'jam-reviewer', schema: VERDICT }
+    ),
+    () => runDesignReview ? agent(
+      `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult?.summary ?? devResult}\n` +
+      `${designDecisionText ? `\n이번 티켓의 채원 사전 판정:\n${designDecisionText}\n` : '\n이번 티켓에는 사전 판정이 없다. 점검표 0절은 건너뛴다.\n'}` +
+      rangeInstruction +
+      `\n모드 ② 사후 리뷰로 진행하라. ` +
+      `.claude/skills/jam-design/references/ui-review-checklist.md를 읽고 그 점검표대로 ` +
+      `위 검토 범위의 diff만 검토하라. 손대지 않은 기존 코드는 다루지 마라. 라이팅 품질은 민지가 ` +
+      `동시에 게이트 리뷰에서 판정하므로 여기서 다시 보지 않는다.`,
+      {
+        agentType: 'jam-designer',
+        label: 'jam-designer-post',
+        phase: '채원 사후 리뷰',
+        schema: DESIGN_REVIEW,
+        ...(workType === 'ds' ? {} : { model: 'claude-haiku-4-5-20251001' }),
+      }
+    ) : Promise.resolve(null),
+  ])
+  trackTokens(tokenUsage, 'gate+jam-designer-post', parallelT0)
+
+  // 채원②의 중대 문제는 게이트 FAIL과 동등하게 재작업으로 연결된다. 오케스트레이터가 이
+  // 플래그를 보고 사용자에게 재시도 여부를 묻고, `retryReason`에 `reworkReasons`를 넣어
+  // 다시 호출한다 (티켓 20260918_0422).
+  const needsRework = gate.verdict === 'FAIL' || designReview?.hasCritical === true
+  const reworkReasons = [
+    ...(gate.verdict === 'FAIL' ? gate.reasons : []),
+    ...(designReview?.hasCritical ? (designReview.critical ?? []) : []),
+  ]
+
+  return { gate, designReview, needsRework, reworkReasons }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 게이트만 재실행 경로(gateOnly, 티켓 20260921_2307) — 재작업 사유가 좁을 때(파일 2개·10줄
+// 이내) 아현을 다시 부르지 않고, 카리나가 리뷰 브랜치에 직접 패치한 뒤 민지(와 해당 시 채원②)만
+// 다시 부른다. 필수 인자: `ticketPath`·`branch`·`commitRange`(`baseSha..commitSha`)·`devResult`
+// (카리나가 적은 패치 요약 — 기존 아현 `summary` 형식과 같다). 채원①·아현 단계는 아예 건너뛴다.
+// ─────────────────────────────────────────────────────────────────────────────
+async function runGateOnly({ ticketPath, workType, branch, commitRange, devResult }) {
+  // 필수 인자가 빠지면 조용히 진행하지 않고 명확한 오류로 멈춘다(완료 조건 2번).
+  const summaryText = typeof devResult === 'string' ? devResult : devResult?.summary
+  const missing = []
+  if (!ticketPath) missing.push('ticketPath')
+  if (!branch) missing.push('branch')
+  if (!commitRange) missing.push('commitRange')
+  if (!summaryText || !summaryText.trim()) missing.push('devResult(패치 요약)')
+  if (missing.length > 0) {
+    throw new Error(
+      `gateOnly 호출에 필수 인자가 빠졌다: ${missing.join(', ')}. ` +
+      'ticketPath·branch·commitRange·devResult(패치 요약)를 모두 채워 다시 호출하라.'
+    )
+  }
+
+  const [baseSha, commitSha] = commitRange.split('..')
+  // 아현의 DEV_RESULT 자리를 카리나의 패치 요약으로 대체한다 — 민지·채원②는 이 값을 아현의
+  // 구현 요약과 똑같이 취급하므로 runGateReview()를 그대로 재사용할 수 있다.
+  const devResultForGate = {
+    status: 'done',
+    branch,
+    baseSha,
+    commitSha,
+    summary: summaryText,
+    diffLineCount: typeof devResult === 'object' && devResult ? devResult.diffLineCount : undefined,
+  }
+
+  // `jam-developer`는 호출하지 않으므로 토큰 사용량에 잡히지 않는다 — 0으로 명시해 누락과
+  // 구분한다(핵심 요약 3번).
+  const tokenUsage = { 'orchestrator-patch': 0 }
+  const { gate, designReview, needsRework, reworkReasons } = await runGateReview({
+    ticketPath,
+    workType: workType ?? '',
+    devResult: devResultForGate,
+    designDecisionText: '',
+    isLightRoute: false,
+    tokenUsage,
+    planOnlyWaiverReason: '해당 없음(gateOnly — 아현 구현 단계 없음)',
+    extraNote: '\n이번 호출은 gateOnly다 — 아현 구현 단계 없이 카리나가 리뷰 브랜치에 직접 패치했다. ' +
+      '점검표 중 구현 과정(계획 반환 면제 등)을 다루는 항목은 해당없음으로 처리하고, 패치 내용 자체를 판정하라.\n',
+  })
+
+  return {
+    stoppedAt: null,
+    devStatus: 'done',
+    designDecision: null,
+    devResult: devResultForGate,
+    gate,
+    designReview,
+    needsRework,
+    reworkReasons,
+    tokenUsage,
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -282,77 +424,18 @@ async function runSingleTicket({ ticketPath, userRequest, workType, reuseDecisio
   //    모호성·리듬 균일성·완곡 중첩 등, docs/specs/SLOP_DICTIONARY.md §4 참고)을 민지의
   //    체크리스트 12번으로 흡수해 판정에 실질적으로 반영되게 했다(티켓 20260918_1033).
   //    패턴 매칭 가능한 금칙어·금지 문장은 여전히 scripts/check-slop.mjs가 기계적으로
-  //    먼저 거른다(verify.sh 단계, 이 워크플로 밖).
+  //    먼저 거른다(verify.sh 단계, 이 워크플로 밖). 실제 프롬프트·병렬 실행 로직은
+  //    gateOnly(runGateOnly)와 공유하는 runGateReview()에 있다(티켓 20260921_2307).
   // ───────────────────────────────────────────────────────────────────────────
-  phase('게이트 리뷰')
-  // 커밋 범위(baseSha..commitSha)를 아현에게서 받아 그대로 넘긴다 — 민지·채원②가 branch 이름과
-  // 그때그때의 origin/staging을 다시 fetch해 비교하지 않고, 아현이 push한 두 커밋 사이의 diff만
-  // 보게 한다(1148 민지 발견물 ②, 티켓 20260918_1158). 워크트리 fetch 여부에 기대는 대신 SHA
-  // 대조로 구조적으로 보완한다.
-  const commitRange = devResult?.baseSha && devResult?.commitSha
-    ? `${devResult.baseSha}..${devResult.commitSha}` : null
-  const rangeInstruction = commitRange
-    ? `\n검토 범위는 \`${commitRange}\`다. \`git fetch origin ${devResult.branch}\`로 review ` +
-      `브랜치를 가져온 뒤 \`git diff --numstat ${commitRange} -- jam-web\`으로 비교하고, ` +
-      `\`reviewedRange\`에 \`${commitRange}\`를 그대로 적어라.\n`
-    : `\n아현이 커밋 범위를 채우지 않았다 — \`git fetch origin staging\`으로 origin/staging을 ` +
-      `갱신한 뒤 \`git diff --numstat <review 브랜치> origin/staging -- jam-web\`으로 비교하고, ` +
-      `\`reviewedRange\`에 실제로 비교한 범위를 적어라.\n`
-
-  // 2026-09-18부터는 채원② 사후 리뷰 생략 판단에만 쓴다 — 개선 리뷰 단계 자체가 사라졌기
-  // 때문이다(티켓 20260918_0422). 게이트·채원②를 병렬로 돌리므로(티켓 20260918_1158) 게이트가
-  // 끝나기를 기다리지 않고 아현이 직접 보고한 diffLineCount로 실행 여부를 정한다.
-  const preDiffLineCount = devResult?.diffLineCount ?? Infinity
-  const runDesignReview = DESIGN_TYPES.includes(workType) &&
-    preDiffLineCount >= SMALL_DIFF_LINE_THRESHOLD && !isLightRoute
-
-  // 민지(게이트)와 채원②(사후 리뷰)는 둘 다 아현의 결과만 보고 서로를 참조하지 않으므로 전역
-  // parallel()(배리어, 실패한 작업은 null)로 동시에 돌린다(티켓 20260918_1158). 민지가 FAIL이어도
-  // 채원②는 멈추지 않고 끝까지 진행하되, 그 결과는 참고용으로만 쓴다 — needsRework는 여전히
-  // 게이트 FAIL 또는 채원② 중대 문제 중 하나로만 판단한다.
-  // 채원②의 모델: 핵심 화면은 Sonnet, 그 외는 Haiku로 낮춘다(채원 정의의 모드표). 여기서는
-  // 핵심 화면 여부를 워크플로가 판단할 수 없으므로 `ds` 유형(디자인 시스템 자체 변경 = 파급이
-  // 크다)만 Sonnet으로 두고 나머지는 Haiku로 부른다.
-  // 병렬 호출이라 전후 토큰 차이를 에이전트별로 쪼갤 수 없다 — 두 호출을 묶어 하나로 기록한다.
-  const parallelT0 = tokensSpent()
-  const [gate, designReview] = await parallel([
-    () => agent(
-      `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult?.summary ?? devResult}\n` +
-      `${designDecisionText ? `\n채원 사전 판정(점검표 6번 대조 기준):\n${designDecisionText}\n` : ''}` +
-      rangeInstruction +
-      // 면제 없이 기준을 넘겼는지는 아현 자체 판단에만 맡기지 않는다(티켓 20260922_0619) —
-      // 이번 실행의 면제 값을 그대로 넘겨 점검표 5번에서 대조하게 한다.
-      `\n이번 실행의 계획 반환 면제: ${planOnlyWaiverReason || '없음'}\n` +
-      `\n스펙대로 동작하는지 판정하라.`,
-      { agentType: 'jam-reviewer', label: 'jam-reviewer', schema: VERDICT }
-    ),
-    () => runDesignReview ? agent(
-      `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult?.summary ?? devResult}\n` +
-      `${designDecisionText ? `\n이번 티켓의 채원 사전 판정:\n${designDecisionText}\n` : '\n이번 티켓에는 사전 판정이 없다. 점검표 0절은 건너뛴다.\n'}` +
-      rangeInstruction +
-      `\n모드 ② 사후 리뷰로 진행하라. ` +
-      `.claude/skills/jam-design/references/ui-review-checklist.md를 읽고 그 점검표대로 ` +
-      `위 검토 범위의 diff만 검토하라. 손대지 않은 기존 코드는 다루지 마라. 라이팅 품질은 민지가 ` +
-      `동시에 게이트 리뷰에서 판정하므로 여기서 다시 보지 않는다.`,
-      {
-        agentType: 'jam-designer',
-        label: 'jam-designer-post',
-        phase: '채원 사후 리뷰',
-        schema: DESIGN_REVIEW,
-        ...(workType === 'ds' ? {} : { model: 'claude-haiku-4-5-20251001' }),
-      }
-    ) : Promise.resolve(null),
-  ])
-  trackTokens(tokenUsage, 'gate+jam-designer-post', parallelT0)
-
-  // 채원②의 중대 문제는 게이트 FAIL과 동등하게 재작업으로 연결된다. 오케스트레이터가 이
-  // 플래그를 보고 사용자에게 재시도 여부를 묻고, `retryReason`에 `reworkReasons`를 넣어
-  // 다시 호출한다 (티켓 20260918_0422).
-  const needsRework = gate.verdict === 'FAIL' || designReview?.hasCritical === true
-  const reworkReasons = [
-    ...(gate.verdict === 'FAIL' ? gate.reasons : []),
-    ...(designReview?.hasCritical ? (designReview.critical ?? []) : []),
-  ]
+  const { gate, designReview, needsRework, reworkReasons } = await runGateReview({
+    ticketPath,
+    workType,
+    devResult,
+    designDecisionText,
+    isLightRoute,
+    tokenUsage,
+    planOnlyWaiverReason,
+  })
 
   return {
     stoppedAt: null,
@@ -425,8 +508,12 @@ async function runBatch(batchInput, planOnlyWaiver) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 진입점 — `batch`가 있으면 묶음 실행, 없으면 지금까지와 같은 단일 티켓 실행.
+// 진입점 — `gateOnly`가 있으면 게이트만 재실행(채원①·아현 생략), `batch`가 있으면 묶음 실행,
+// 둘 다 없으면 지금까지와 같은 단일 티켓 실행(채원①→아현→민지∥채원②).
 // ─────────────────────────────────────────────────────────────────────────────
+if (gateOnly) {
+  return await runGateOnly(parsedArgs)
+}
 if (batch) {
   return await runBatch(batch, parsedArgs.planOnlyWaiver)
 }
