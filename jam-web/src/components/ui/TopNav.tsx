@@ -121,7 +121,7 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
   const logoNode = logo ? (
     <>
       <Link href="/" aria-label="홈으로 이동" className="shrink-0">
-        <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-[26px] w-auto" priority />
+        <Image src="/jam-logo-white.png" alt="JAM!" width={2610} height={925} className="h-[26px] w-auto" priority />
       </Link>
       <Button variant="outline" surface="main" size="xs" onClick={() => router.push('/voc')}>
         {d.voc.inquiryButton}
