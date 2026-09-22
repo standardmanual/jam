@@ -158,7 +158,7 @@ area — do not copy its wording here; a duplicate is a future drift (`CLAUDE.md
 
 | status | When |
 |---|---|
-| `plan_only` | The work is expected to exceed 5 files or 100 lines, counted per stop-conditions.md. Return the implementation plan only. |
+| `plan_only` | The work is expected to exceed the size threshold defined only in stop-conditions.md (count every changed file). Return the implementation plan only. |
 | `needs_design` | UI work is required but no design decision from 채원 was supplied. |
 | `halted` | A `[중단]`-level problem was found. Stop immediately; do not push through. |
 

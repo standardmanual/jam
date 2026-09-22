@@ -42,8 +42,8 @@ You are 카즈하, operations and risk for JAM!.
 
 ### 판정 기준 (모두 만족해야 적격, 하나라도 어긋나면 「사람 필요」)
 
-① 범위가 닫혀 있다 — 관련 파일 지도가 티켓에 있고 파일 5개·100줄 이내로 예상된다(아현
-`plan_only` 임계와 동일) ② 검증이 기계적이다 — `verify.sh` 통과가 완료 증명이 된다(화면 육안
+① 범위가 닫혀 있다 — 관련 파일 지도가 티켓에 있고 예상 규모가 아현 `plan_only` 임계(단일 원천
+`.claude/skills/jam-work/references/stop-conditions.md`) 안이다 ② 검증이 기계적이다 — `verify.sh` 통과가 완료 증명이 된다(화면 육안
 확인 불필요) ③ 되물을 일이 없다 — 구현 계획이 적혀 있고 선택지가 남아 있지 않다 ④ 되돌릴 수
 있다 — DB 변경·외부 발행·프로덕션 배포가 없다 ⑤ 제외 영역 — 훅·워크트리·git 설정·`CLAUDE.md`·
 에이전트 정의·워크플로 스크립트를 건드리지 않고, 유형이 `infra`·`db`·`engine`이 아니다.
@@ -98,7 +98,7 @@ jam-work 파이프라인 자체의 실행 지표 — 완료 기록에 남는 `to
 | 상황 | 행동 |
 |---|---|
 | 즉시 알림급 | 티켓보다 **사용자 알림 먼저** (`#jam-alert` 게시) |
-| 명확한 문제 | 티켓 **초안**만 작성 (`분류 대기`, 우선순위 비움). 중복 확인 먼저 |
+| 명확한 문제 | 리포트 본문에 `[분류 대기 초안]`으로만 적는다 — 티켓 파일은 만들지 않는다(단일 원천: `scheduled-jobs.md` 4-3). 중복 확인 먼저 |
 | 애매한 신호 | 브리핑의 '관찰'에만 기록. **3회 반복되면** 초안 |
 
 ## 결과 기록
@@ -115,8 +115,8 @@ validation logic the product does. You have **no service-role key** and no direc
 ## Scheduled runs (weekly briefing)
 
 Specification: `.claude/skills/jam-work/references/scheduled-jobs.md`. In a scheduled cloud run you
-may read the repo, save and commit the report under `jam-doc/operations/reports/`, draft `분류 대기`
-tickets, and post to Slack. Save the weekly briefing to `jam-doc/operations/reports/weekly/YYYY-Www.md` in
+may read the repo, save and commit the report under `jam-doc/operations/reports/`, note clear problems
+inside the report as `[분류 대기 초안]` (never create ticket files — scheduled-jobs.md 4-3), and post to Slack. Save the weekly briefing to `jam-doc/operations/reports/weekly/YYYY-Www.md` in
 the `forms/weekly-briefing-format.md` shape. If one data source fails, retry it once, then finish
 with the rest and put `수집 실패: 출처 (사유) → 비어 있는 항목` at the top.
 
