@@ -4,10 +4,8 @@
 
 ### 1. 항상 한국어로 출력할 것
 대화 응답, 커밋 메시지, 진행 상황 설명, 빌드/배포 요약, 코드 주석 등 사용자에게 보여지는
-모든 출력물에 예외 없이 적용한다. (예외: 코드 식별자·라이브러리명·API명 등 고유명사는 원문 유지)
-
-사용자에게 보여지는 시간도 항상 한국 표준시(KST)로 표시한다. API·로그·트리거 메타데이터 등의
-원본이 UTC이면 KST로 변환해서 전달한다(예: "2026-09-19T08:01:22Z" → "09-19 17:01 KST").
+모든 출력물에 예외 없이 적용한다 (예외: 코드 식별자·라이브러리명·API명 등 고유명사는 원문 유지).
+사용자에게 보여지는 시간은 항상 한국 표준시(KST)다. 원본이 UTC이면 KST로 변환해서 전달한다.
 
 ### 2. 서비스 변경 시 문서 체계 갱신
 기능 추가·로직 변경·컨텐츠 변경이 발생하면 아래 문서 체계에 따라 해당 카테고리 문서를 갱신한다.
@@ -15,53 +13,39 @@
 
 ### 3. 작업 완료 후 staging에 commit + push
 작업이 끝나면 별도 요청이 없어도 `git add` → `git commit`(한국어 메시지) → `git push origin staging`.
-`jam-doc/`(기획·운영 문서)도 같은 저장소 안에 있으므로, 코드와 문서를 함께 바꿔도 커밋 한 번·push
-한 번으로 끝난다 (2026-09-20 재통합, 티켓 20260920_1412).
-
-**main 브랜치로의 머지는 사용자의 명시적 승인이 있을 때만 한다.**
-프로덕션 배포는 `/jam-ship`으로 처리한다 (staging 검증 → 배포 전 점검·롤백 계획 → main 승격 →
-배포 검증·배포 후 검증).
-`.githooks/pre-push`가 승인 경로 밖의 main push를 차단한다.
+`jam-doc/`도 같은 저장소 안에 있으므로 코드와 문서를 함께 바꿔도 커밋 한 번·push 한 번으로 끝난다.
+**main 머지는 사용자의 명시적 승인이 있을 때만 한다** (배포는 `/jam-ship`, `.githooks/pre-push`가
+승인 경로 밖의 main push를 차단).
 
 ### 4. 로컬과 git을 항상 동일하게 유지
 - 작업 후 `git status`로 untracked·modified 파일이 없도록 처리
 - `.gitignore`에 새 항목 추가 금지 (예외: 토큰/시크릿 파일)
-- 이 저장소는 `.githooks/`를 hooks 경로로 쓴다. `core.hooksPath`가 이 저장소의 `.githooks`로
-  해석되면 정상이다(상대·절대 모두). 비어 있거나 다른 곳을 가리키거나 사라진 경로이면 Claude Code
-  세션이 시작될 때 `scripts/ensure-hooks-path.sh`가 `.githooks`로 맞춘다. Claude Code를 거치지
-  않고 터미널에서 먼저 커밋하는 새 클론에서만 `git config core.hooksPath .githooks`를 손으로
-  실행해야 한다. 값이 정상이 아니면 `scripts/verify.sh`의 계약 검사가 잡아낸다
-- **작업 폴더의 절대경로는 PC마다 다르다.** 특정 절대경로를 전제하지 않고, 현재 저장소가 열려
-  있는 경로를 그대로 기준으로 삼는다 (PC별 경로·아이클라우드 주의사항은
-  `docs/agents/orchestrator.md`)
+- hooks 경로는 `.githooks/`다. `core.hooksPath`가 어긋나면 세션 시작 시 `scripts/ensure-hooks-path.sh`가
+  맞추고 `scripts/verify.sh`의 계약 검사가 잡아낸다 (새 클론 절차는 `docs/agents/orchestrator.md` §5)
+- **작업 폴더의 절대경로는 PC마다 다르다.** 현재 저장소가 열려 있는 경로를 기준으로 삼는다
+  (PC별 경로·아이클라우드 주의사항은 `docs/agents/orchestrator.md`)
 
 ### 5. 환경을 서술할 때는 확인한 결과만 적는다
-문서가 **사실**("무엇이 그런가")을 적을 때는 명령으로 확인한 결과만 쓴다. 확인하지 않은 환경
-주장은 쓰지 않는다. 사실과 **판단**("왜 그런가")을 한 문장에 섞지 않는다. 사실이 바뀌었을 때
-판단만 남으면 어느 쪽이 낡았는지 구분할 수 없기 때문이다.
+문서가 **사실**("무엇이 그런가")을 적을 때는 명령으로 확인한 결과만 쓴다. 사실과 **판단**("왜
+그런가")을 한 문장에 섞지 않는다 — 사실이 바뀌었을 때 어느 쪽이 낡았는지 구분할 수 없기 때문이다.
 
-- 같은 사실을 여러 문서에 중복해서 적지 않는다. **중복은 드리프트의 필요조건이다.** 한 곳이
-  바뀌면 다른 곳은 반드시 낡는다. 단일 원천을 정하고 나머지는 참조만 한다
-- 새로 적는 환경 주장은 `docs/agents/contract.json`에 검사 줄을 함께 추가한다.
-  `scripts/check-contract.mjs`가 커밋마다 실제와 대조한다 (티켓 20260920_1907)
+- 같은 사실을 여러 문서에 적지 않는다. **중복은 드리프트의 필요조건이다.** 단일 원천을 정하고
+  나머지는 참조만 한다
+- 새로 적는 환경 주장은 `docs/agents/contract.json`에 검사 줄을 함께 추가한다
+  (`scripts/check-contract.mjs`가 커밋마다 대조)
 - 자동 생성 구간(`<!-- BEGIN generated: ... -->`)은 손으로 고치지 않는다. 근거 설정을 고친 뒤
   `node scripts/gen-team-doc.mjs`를 실행한다
 
-> 이 규칙이 생긴 이유: `jam-developer.md` 규칙 9가 "`jam-doc`이 심볼릭 링크로 연결된다"고
-> 적었고 `jam-work/SKILL.md`는 "워크트리에 `jam-doc`이 없다"고 적었는데, 두 문장이 정면으로
-> 모순된 채 방치됐다. 확인 비용은 `ls` 한 줄이었다. 뒤이은 조사에서 같은 종류의 드리프트가
-> 세 건 더 나왔다.
+이 규칙이 생긴 사고는 `docs/agents/team-operations.md` §8에 있다.
 
 ### 6. DB 변경은 실행 권한이 있는 주체만 실행한다
 DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직접 실행한다. 서브에이전트는 SQL
 마이그레이션 파일 작성까지만 하고, 실행은 사용자 승인 후 메인 세션이 처리한다.
 
-- **SQL 파일은 직접 실행하더라도 반드시 남긴다**: `jam-web/supabase/migrations/0XX_설명.sql`
-  (스키마 변경) 또는 `seed_*.sql`(1회성 데이터)로 저장해 커밋
+- SQL 파일은 직접 실행하더라도 `jam-web/supabase/migrations/`에 반드시 남긴다
 - Supabase는 staging·프로덕션 **공용 단일 DB**다. DB 변경은 즉시 프로덕션에 반영된다
-- 컬럼·함수를 바꾸거나 없애는 변경은 확장→전환→축소로 나누고, 모든 마이그레이션에 되돌림 SQL을
-  동반한다 (`.claude/agents/jam-developer.md` Hard rules 3)
-- 실행 절차·권한·위험도 인식은 `docs/agents/orchestrator.md` 참고
+- 확장→전환→축소 분할과 되돌림 SQL은 `.claude/agents/jam-developer.md` Hard rules 3, 실행 절차는
+  `docs/agents/orchestrator.md` §4
 
 ---
 
@@ -82,22 +66,18 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 | 카즈하 | 운영·리스크 + Workflow 개선점 발견 | `jam-ops` |
 | 하니 | 문서 체계 | `jam-guide` |
 
-- 권한·워크트리·접근 범위·예약 루틴을 포함한 전체 지도는 `docs/agents/team-operations.md`에 있다
-- 모델은 각 정의의 `model` 키로 고정한다. 모드별로 다른 모델을 쓰는 에이전트는 호출부가
-  `model` 옵션으로 덮어쓴다
-- `CLAUDE.md`는 서브에이전트 호출마다 자동으로 포함된다 — 이를 선택적으로 빼는 공식 기능은
-  Claude Code에 없다(2026-09-18 확인). 아현·민지 외 나머지는 코드 규칙이 필요 없지만, 기술적
-  제약으로 실제로는 모두가 이 파일을 받는다
+- 권한·워크트리·접근 범위·예약 루틴·사고 이력은 `docs/agents/team-operations.md`가 단일 지도다.
+  그중 하나라도 바뀌면 같은 작업 안에서 함께 고친다
+- 모델은 각 정의의 `model` 키로 고정한다 (모드별 모델은 호출부가 덮어쓴다)
 - 이상 신호는 **참고 / 주의 / 중단**, 확신도는 **높음 / 보통 / 낮음**으로 통일한다
-- 개선 리뷰 단계는 두지 않는다. 위험을 줄이는 개선점은 민지의 범위 밖 발견물로 처리한다
+- 개선 리뷰 단계는 없다. 위험을 줄이는 개선점은 민지의 범위 밖 발견물로 처리한다
 
 ---
 
 ## 작업 진행 방식
 
-서비스 코드·컨텐츠·문서 변경 요청은 **`/jam-work`로 처리한다** (티켓 검토 → 채원 사전 판정 →
-구현 → 게이트 리뷰 → 채원 사후 리뷰 → 승인 후 머지·문서 갱신). 작업 유형은 요청 내용으로 자동
-판정해 먼저 보고한다. 유형별 파이프라인 차이는 `.claude/skills/jam-work/SKILL.md` 분기표 참조.
+서비스 코드·컨텐츠·문서 변경 요청은 **`/jam-work`로 처리한다.** 작업 유형은 요청 내용으로 자동
+판정해 먼저 보고한다. 유형별 파이프라인은 `.claude/skills/jam-work/SKILL.md` 분기표 참조.
 
 | 스킬 | 용도 |
 |---|---|
@@ -111,53 +91,18 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 | `/jam-ship` | staging 검증 → 프로덕션 배포 |
 | `/jam-sync` | 로컬 ↔ GitHub 동기화 (PC 간 이어서 작업할 때, 작업 마무리할 때) |
 
----
-
-## Agent skills
-
-### Team operations
-
-**누가 어디서 무엇을 볼 수 있고 무엇을 할 수 있는지**를 한 장에 모은 운영 지도는
-`docs/agents/team-operations.md`에 있다. 에이전트별 권한, 작업이 흐르는 경로, 격리 워크트리의
-동작, 접근 범위, 예약 자동화 루틴, 지금까지의 사고 이력과 남아 있는 빈틈을 담는다. 에이전트
-구성·파이프라인·워크트리·예약 루틴·접근 범위 중 하나라도 바뀌면 같은 작업 안에서 이 문서를
-함께 고친다.
-
-### Orchestrator
-
-메인 세션 전용 운영 규칙(PC별 작업 경로·아이클라우드 금지·동기화·DB 실행 권한·티켓 생성 권한)은
-`docs/agents/orchestrator.md`에 있다.
-
-### Issue tracker
-
-이슈는 GitHub Issues가 아니라 `docs/tickets/`의 마크다운 티켓으로 추적한다. 자세한
-내용은 `docs/agents/issue-tracker.md` 참고.
-
-### Domain docs
-
-단일 컨텍스트. `CONTEXT.md` 대신 아래 "문서 체계 개요"의 문서를 사용한다.
-자세한 내용은 `docs/agents/domain.md` 참고.
+함께 읽는 문서: `docs/agents/team-operations.md`(운영 지도), `docs/agents/orchestrator.md`(메인
+세션 전용 규칙), `docs/agents/issue-tracker.md`(티켓 체계 — 이슈는 GitHub Issues가 아니라
+`docs/tickets/`로 추적), `docs/agents/domain.md`(저장소 구조도. `CONTEXT.md` 대신 아래 문서 체계를 쓴다).
 
 ---
 
 ## 문서 체계 개요
 
-문서는 저장소 하나(`standardmanual/jam`) 안에서 성격에 따라 두 갈래로 나뉜다.
-
-| 위치 | 담는 것 |
-|---|---|
-| 작업 폴더 루트 | 배포되는 코드(`jam-web/`) + 코드가 따라야 할 스펙 + 작업 이력(`docs/`) |
-| `jam-doc/` | 기획·마케팅·운영 자료와 제작 자산 |
-
-2026-09-18에 `jam-doc/`을 별도 저장소로 분리했다가(티켓 20260918_2105) 2026-09-20에 다시
-합쳤다(티켓 20260920_1412). 분리의 근거였던 용량 문제는 이미지 제작물을 정리하면서 사라진 반면,
-저장소가 둘이라서 동기화·권한·격리 워크트리에서 마찰이 반복됐기 때문이다. 폴더 위치는 그대로라서
-경로 표기는 달라지지 않았다.
-
-**경로는 항상 작업 폴더(JAM!) 기준으로 적는다.** 코드 쪽은 `docs/specs/prd/01_PRD.md`,
-문서 쪽은 `jam-doc/planning/content/TRIBES.md`처럼 쓴다. 폴더명은 영문 소문자다.
-
-개선사항이 어느 카테고리에 해당하는지 먼저 판단하고, 여러 카테고리에 걸치면 각 문서를 모두 갱신한다.
+저장소 하나(`standardmanual/jam`) 안에 배포되는 코드(`jam-web/`)·스펙·작업 이력(`docs/`)이 있고,
+기획·마케팅·운영 자료와 제작 자산은 `jam-doc/`에 있다. **경로는 항상 작업 폴더(JAM!) 기준으로
+적는다** (`docs/specs/prd/01_PRD.md`, `jam-doc/planning/content/TRIBES.md`). 폴더명은 영문 소문자다.
+개선사항이 여러 카테고리에 걸치면 각 문서를 모두 갱신한다.
 
 | # | 카테고리 | 내용 | 위치 |
 |---|---|---|---|
@@ -167,43 +112,35 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 | ④ | 배지 드랍 로직 | 배지 발급·드랍 엔진 판정 로직 | `docs/specs/badge-engine/` |
 | ⑤ | 서비스 플랜 | 비전·장기 전략, 현재/향후 구분 | `jam-doc/planning/business-plan/` |
 
-> 카테고리에 속하지 않는 횡단 참조 문서는 두 곳에 있다. 코드와 함께 바뀌는
-> `UX_WRITING_GUIDELINE`·`SERVICE_OPERATIONS`·`DEV_PROCESS_GUARDRAILS`·`SLOP_DICTIONARY`·
-> `PRIVACY_POLICY`·`DOCUMENT_SCHEMA`는 `docs/specs/` 루트에, 마케팅 자료는 `jam-doc/marketing/`에 둔다.
+> 횡단 참조 문서(`UX_WRITING_GUIDELINE`·`SERVICE_OPERATIONS`·`DEV_PROCESS_GUARDRAILS`·
+> `SLOP_DICTIONARY`·`PRIVACY_POLICY`·`DOCUMENT_SCHEMA`)는 `docs/specs/` 루트, 마케팅 자료는
+> `jam-doc/marketing/`. 티켓을 뺀 모든 문서는 frontmatter에 `type`·`description`이 필요하다
+> (규칙 `docs/specs/DOCUMENT_SCHEMA.md`, 절차 `/jam-docs`).
 
-> 티켓을 뺀 모든 문서는 frontmatter에 `type`과 `description`이 필요하다(커밋 시 검사).
-> 규칙은 `docs/specs/DOCUMENT_SCHEMA.md`, 작성 절차는 `/jam-docs`에 있다.
-
-### 폴더 = 수명주기 (2026-08-27 재편, 2026-09-20 저장소 재통합)
+### 폴더 = 수명주기
 
 폴더가 곧 **"이 문서를 어떻게 쓰나"** 를 지시한다. 새 문서를 만들 때 어느 폴더인지부터 정한다.
 
 | 폴더 | 수명주기 | 쓰기 방식 |
 |---|---|---|
-| `docs/specs/`, `jam-doc/planning/`, `jam-doc/marketing/` | 현재 상태 | **덮어쓰기.** 항상 지금 사실만 담는다. 변경 이력을 본문에 누적하지 않는다 |
-| `docs/tickets/` | 작업 이력 | **신규 생성.** 완료 후에도 지식베이스로 남아 계속 검색된다 |
-| `jam-doc/operations/reports/` | 시점별 기록 | **신규 생성, 쌓기만 하고 덮어쓰지 않음.** 주간·월간·배포 리포트. 에이전트는 주간 최근 4주·월간 최근 3개월만 읽는다 |
-| `jam-doc/archive/` | 폐기된 기록 | **읽기 전용.** 신규 파일 추가 금지, 기존 파일 수정 금지 |
-| `jam-doc/assets/` | 생성 산출물 | 파이프라인이 만든 결과물. 문서가 아니므로 문서 검색 대상에서 제외 |
+| `docs/specs/`, `jam-doc/planning/`, `jam-doc/marketing/` | 현재 상태 | **덮어쓰기.** 변경 이력을 본문에 누적하지 않는다 |
+| `docs/tickets/` | 작업 이력 | **신규 생성.** 완료 후에도 지식베이스로 남는다 |
+| `jam-doc/operations/reports/` | 시점별 기록 | **신규 생성, 덮어쓰지 않음.** 에이전트는 주간 최근 4주·월간 최근 3개월만 읽는다 |
+| `jam-doc/archive/`, `docs/agents/workflow/` | 폐기·동결된 기록 | **읽기 전용.** 추가·수정 금지. 현재 상태의 근거로 쓰지 않는다 |
+| `jam-doc/assets/` | 생성 산출물 | 문서가 아니므로 문서 검색 대상에서 제외 |
 
-- **버전 사본(`v3.1`, `_20260827` 등)을 만들지 않는다.** 이력은 git이 보관한다.
-- **`jam-doc/archive/`의 문서를 근거로 현재 상태를 판단하지 않는다.** 낡은 정보다.
-
-이 규칙들은 `.githooks/pre-commit`이 기계적으로 막는다. 티켓 파일명 형식, frontmatter status
-누락, 옛 경로(`Service Plan/`) 재생성, `jam-doc/archive/` 신규 파일, 서비스플랜과 세계관 문서의
-버전 사본이 차단 대상이다. 정당한 예외는 `JAM_SKIP_DOCLINT=1`로 우회하되 사유를 커밋 메시지에
-남긴다.
+**버전 사본(`v3.1`, `_20260827` 등)을 만들지 않는다.** 이력은 git이 보관한다.
+`.githooks/pre-commit`이 이 규칙들을 기계적으로 막는다. 정당한 예외는 `JAM_SKIP_DOCLINT=1`로
+우회하되 사유를 커밋 메시지에 남긴다.
 
 ### 새 세션 시작 시 읽기 순서
 
-서비스 전체를 파악해야 할 때 **코드부터 탐색하지 않는다.** 전체 코드 탐색은 토큰 낭비가 크고,
-아래 문서에 서비스 로직·정책·데이터 모델이 이미 정리되어 있다:
+서비스 전체를 파악해야 할 때 **코드부터 탐색하지 않는다.** 아래 문서에 로직·정책·데이터 모델이
+이미 정리되어 있다:
 
 1. `docs/tickets/`의 관련 최신 티켓 (유사 작업·의사결정 확인)
-2. `docs/specs/INDEX.md` (스펙·기획·마케팅 문서의 전체 목록. 자동 생성이라 손으로 고치지 않는다)
-3. `docs/specs/prd/01_PRD.md` (필요 시 `02_DATA_MODEL.md`, 주제별 폴더 `docs/specs/prd/{주제}/`)
-4. `jam-doc/planning/content/` (배지·아이템·트라이브·POI 관련 시)
-5. `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` (배지·드랍 로직 관련 시)
+2. `docs/specs/INDEX.md` (전체 문서 목록. 자동 생성이라 손으로 고치지 않는다)
+3. `docs/specs/prd/01_PRD.md` (필요 시 `02_DATA_MODEL.md`, `docs/specs/prd/{주제}/`)
+4. `jam-doc/planning/content/` (배지·아이템·트라이브·POI)
+5. `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` (배지·드랍 로직)
 6. 위에서 찾지 못한 경우에만 코드(`jam-web/src/`) 탐색
-
----

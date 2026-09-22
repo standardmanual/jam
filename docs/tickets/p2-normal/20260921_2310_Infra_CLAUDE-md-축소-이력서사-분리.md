@@ -2,8 +2,9 @@
 id: "20260921_2310"
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-21
+closed: 2026-09-22
 parent: "20260921_2207"
 ---
 
@@ -41,20 +42,63 @@ parent: "20260921_2207"
 
 ### 구현 내용 요약
 
+카리나가 직접 처리(`docs` 유형). 「유지 / 이동 / 삭제」 표를 사용자에게 확인받고(2026-09-22, (가)안:
+팀 구성·스킬 표는 그대로) 이동·삭제했다.
+
+| 절 | 처리 |
+|---|---|
+| 규칙 1~3·6 | 유지, 재통합 서사·중복 설명 삭제. 규칙 6 세부는 `orchestrator.md` §4·`jam-developer.md` 참조로 |
+| 규칙 4 `hooksPath` 상세 | `docs/agents/orchestrator.md` §5로 이동 |
+| 규칙 5 "생긴 이유" 인용 블록 | `docs/agents/team-operations.md` §8 사고 이력 표에 행으로 이동 |
+| 팀 구성 불릿 "CLAUDE.md 자동 포함" | 삭제 (`team-operations.md` §9 ⑤에 이미 있음) |
+| Agent skills 4개 절 | 「작업 진행 방식」 끝의 한 문단으로 압축 |
+| 문서 체계 개요의 분리·재통합 서사 | 삭제 (티켓 20260920_1412에 기록) |
+| 폴더 = 수명주기 | 표 유지(셀 문구만 압축), `docs/agents/workflow/` 동결 폴더를 읽기 전용 행에 추가 |
+
 ### 변경된 파일
 ```
--
+- CLAUDE.md
+- docs/agents/orchestrator.md (§5 hooksPath 상세)
+- docs/agents/team-operations.md (§8 사고 이력 행)
+- docs/agents/contract.json (stale_phrases: "8.4KB" 등록, exclude에 docs/agents/workflow/)
+- .claude/skills/jam-work/SKILL.md (참고 절 크기 수치 제거)
+- .claude/skills/jam-work/references/automation-list.md (크기 수치 2곳 제거)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] 크기: **13,467 → 9,457바이트 (30% 절감)**. (가)안 목표 "8,800 전후"에는 약 650바이트 못 미쳤다 —
+  한글이 글자당 3바이트라 카리나의 절별 추정이 낮았다. 남은 분량은 표 셀에 있어, 더 줄이려면 (나)안
+  (팀 구성·스킬 표 압축)이 필요하다.
+- [x] `check-contract`·`gen-team-doc --check`·`scripts/verify.sh` 통과. `doc-check --all`에서 티켓 밖
+  문서의 깨진 링크 0건.
+- [x] "8.4KB" 문구: 편집 가능한 곳(SKILL.md·automation-list.md) 제거, `stale_phrases`에 등록. 동결 폴더
+  10개 파일에 남은 것은 `exclude`로 검사 밖.
+- [x] 대조표(아현·민지·스킬이 CLAUDE.md에서 참조하는 항목): `jam-developer.md` 111행 "폴더 = 수명주기"
+  → 유지 / 161행 "규칙 5" → 유지 / `jam-docs/SKILL.md` 8행 "카테고리 판단 기준" → 유지 / 105행
+  "폴더 = 수명주기" → 유지 / `common-rules.md` 3·18번 → 유지. 삭제한 절 이름(Agent skills·Team
+  operations·Domain docs·Issue tracker)을 참조하는 곳은 동결 폴더 밖에 없다.
 
 ### 배포 정보
-- 배포일: 
+- 배포일: 2026-09-22
 - 환경: staging (빌드 없음)
-- 커밋: 
+- 커밋: (이 티켓 CLOSED 커밋과 같음)
+
+### 실행 지표
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 카리나 직접 | 0 | 측정 불가 | 0 / 0 | 측정 불가 | — |
+| 합계 | 0 | 측정 불가 | 0 / 0 | 측정 불가 | — |
 
 ### 주요 의사결정 / 핵심 메모
+- 「함께 읽는 문서」는 표로 만들었다가 한 문단으로 다시 줄였다. 네 문서 모두 팀 구성·작업 진행 방식
+  절에서 이미 경로가 나오므로 표까지 둘 이유가 없었다.
+- `docs/agents/workflow/`를 「폴더 = 수명주기」 읽기 전용 행에 넣었다. 2311 동결과 같은 사실을 두 곳에
+  적는 셈이지만, 이 표는 "어느 폴더를 어떻게 쓰나"의 단일 원천이라 빠지면 표가 거짓이 된다.
+- 크기 수치는 이 티켓 완료 기록에만 남긴다(요구사항: 문서 어디에도 적지 않는다).
 
 ### 잔여 이슈
--
+- 목표 8,800까지 내리려면 (나)안(표 압축)이 필요하다. 표는 서브에이전트가 실제로 쓰는 라우팅 정보라
+  사용자가 원할 때만 한다.
+- 카리나 직접 작업은 Workflow `<usage>`가 없어 실행 지표 표를 "측정 불가"로 채웠다. `docs` 유형의
+  지표 표기 규칙은 아직 없다 — `ticket-metrics.mjs`가 이 행을 어떻게 세는지(숫자 파싱 실패 → 미기록?)
+  다음 주간 집계에서 확인한다.

@@ -99,7 +99,12 @@ DB 스키마·데이터 변경은 사용자에게 대신 실행해달라고 요�
 
 - 작업 후 `git status`로 untracked·modified 파일이 남지 않게 처리한다
 - `.gitignore`에 새 항목을 추가하지 않는다 (예외: 토큰·시크릿 파일)
-- 훅 경로(`core.hooksPath`) 설정은 `CLAUDE.md` 규칙 4를 따른다
+- 훅 경로: 이 저장소는 `.githooks/`를 hooks 경로로 쓴다. `core.hooksPath`가 이 저장소의 `.githooks`로
+  해석되면 정상이다(상대·절대 모두). 비어 있거나 다른 곳을 가리키거나 사라진 경로이면 Claude Code
+  세션이 시작될 때 `scripts/ensure-hooks-path.sh`가 `.githooks`로 맞춘다. Claude Code를 거치지 않고
+  터미널에서 먼저 커밋하는 새 클론에서만 `git config core.hooksPath .githooks`를 손으로 실행한다.
+  값이 정상이 아니면 `scripts/verify.sh`의 계약 검사가 잡아낸다 (`CLAUDE.md` 규칙 4에서 이관, 티켓
+  20260921_2310)
 - **기획·운영 문서 `jam-doc/`도 이 저장소 안에 있다** (2026-09-20 재통합, 티켓 20260920_1412).
   `git status` 한 번에 함께 나오고, 격리 워크트리에도 그대로 따라간다. 2026-09-18부터
   2026-09-20까지는 별도 저장소였으므로, 그 기간에 쓰인 문서에 남아 있는 `git -C jam-doc ...`
