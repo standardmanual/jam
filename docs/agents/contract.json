@@ -45,6 +45,8 @@
       "scripts/pre-push-worktree-block.test.mjs",
       "scripts/deploy-gate.mjs",
       "scripts/deploy-gate.test.mjs",
+      "scripts/check-skills.mjs",
+      "scripts/check-skills.test.mjs",
       "jam-web/scripts/vercel-ignore.sh",
       ".github/workflows/verify.yml",
       ".claude/workflows/jam-work.js",
