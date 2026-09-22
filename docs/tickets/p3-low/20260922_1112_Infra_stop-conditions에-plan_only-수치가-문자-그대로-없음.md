@@ -39,21 +39,33 @@ parent: "20260921_2305"
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+경미 수정(카리나 직접, 경로 ①). `stop-conditions.md` 「`plan_only` 판정 기준」 절 머리에 임계값(바뀌는 모든 파일 기준
+파일 5개 초과 또는 100줄 이상)을 명시하고, 수치를 문자 그대로 담고 있던 세 곳 — 아현 정의 표(`jam-developer.md`),
+민지 점검표 5번(`jam-reviewer.md`), 카즈하 선별 기준 ①(`jam-ops.md`) — 을 그 문서 참조로 바꿨다. 재발 방지로
+`contract.json` `stale_phrases`에 "5 files or 100 lines"·"파일 5개·100줄"을 등록했다(`stop-conditions.md`만 허용).
 
 ### 변경된 파일
 ```
--
+- .claude/skills/jam-work/references/stop-conditions.md
+- .claude/agents/jam-developer.md
+- .claude/agents/jam-reviewer.md
+- .claude/agents/jam-ops.md
+- docs/agents/contract.json (stale_phrases 2건)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `git grep "100줄\|100 lines\|파일 5개"`(티켓·리포트 제외) → `stop-conditions.md` 한 곳 + `contract.json` 선언뿐.
+- [x] `node scripts/check-contract.mjs` 통과, `gen-team-doc.mjs --check` 최신.
+- [x] 미러 문서 `01_아현_개발.md`는 이미 참조 형태라 변경 없음.
 
 ### 배포 정보
-- 배포일: 
+- 배포일: 2026-09-22
 - 환경: staging (빌드 없음)
-- 커밋: 
+- 커밋: 833e9691
 
 ### 주요 의사결정 / 핵심 메모
+- 경미 수정 기준(파일 1~2개·10줄)보다 파일 수가 많지만(5개), 각 파일 한 줄씩의 참조 치환이고 원인·수정이 1:1로 명백해
+  카리나가 직접 처리했다(사용자 실행 지시 2026-09-22).
 
 ### 잔여 이슈
--
+- 없음.
