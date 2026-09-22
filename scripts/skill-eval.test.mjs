@@ -45,3 +45,13 @@ const cases = [
 }
 
 console.log('skill-eval 테스트 통과')
+
+// 슬래시 표기 차이는 불일치로 세지 않는다 (2026-09-22 실측, 티켓 20260922_1523)
+{
+  const r = evaluate(
+    [{ id: 1, request: 'x', expectedSkill: 'jam-work', expectedWorkType: 'bug' }],
+    [{ id: 1, predictedSkill: '/jam-work', predictedWorkType: 'bug' }],
+  )
+  assert.equal(r.skillMismatches.length, 0, '슬래시 표기 차이는 일치로 본다')
+}
+console.log('skill-eval 슬래시 표기 테스트 통과')

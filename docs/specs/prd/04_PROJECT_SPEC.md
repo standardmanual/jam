@@ -190,8 +190,8 @@ npx supabase start
 push로 배포하지 않는다(`.githooks/pre-push`가 `JAM_SHIP=1` 없는 main push를 차단한다).
 
 1. `staging` 브랜치에 push하면 Vercel이 스테이징(`stage.j-a-m.app`)에 배포한다.
-2. 스테이징에서 확인을 마친 뒤 `/jam-ship`을 실행한다. 배포 전 점검표 → 롤백 계획 → main 승격 →
-   배포 검증 → 배포 후 검증 순서로 진행하며, 절차의 단일 원천은 `.claude/skills/jam-ship/SKILL.md`다.
+2. 스테이징에서 확인을 마친 뒤 `/jam-ship`을 실행한다. 배포 전 점검표 → 롤백 계획 → 병렬 점검(민지 모드 ②·③) →
+   main 승격 → 배포 검증 → 배포 후 검증 순서로 진행하며, 절차의 단일 원천은 `.claude/skills/jam-ship/SKILL.md`다.
 
 환경변수는 Vercel 대시보드(프로젝트 → Settings → Environment Variables)에서 설정한다.
 

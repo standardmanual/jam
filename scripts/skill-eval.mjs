@@ -15,6 +15,10 @@ import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+// 스킬 이름은 `/jam-work`·`jam-work` 두 표기를 같게 본다(2026-09-22 첫 실측에서 Haiku가 슬래시를 붙여
+// 35건 전부 표기 차이로 불일치가 났다 — 티켓 20260922_1523 후속 범위).
+const normSkill = (v) => (typeof v === 'string' ? v.trim().replace(/^\//, '') : v)
+
 export function evaluate(cases, results) {
   const byId = new Map(results.map((r) => [r.id, r]))
   const skillMismatches = []
@@ -29,7 +33,7 @@ export function evaluate(cases, results) {
     skillTotal++
     if (!r) {
       skillMismatches.push({ id: c.id, request: c.request, expected: c.expectedSkill, predicted: '(결과 없음)' })
-    } else if (r.predictedSkill === c.expectedSkill) {
+    } else if (normSkill(r.predictedSkill) === normSkill(c.expectedSkill)) {
       skillCorrect++
     } else {
       skillMismatches.push({ id: c.id, request: c.request, expected: c.expectedSkill, predicted: r.predictedSkill })
