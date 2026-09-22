@@ -420,6 +420,31 @@ function checkDeployGate(c) {
   }
 }
 
+// ── ⑬ 무인 루틴 커밋 경로 제한(routine_commit_restriction) ───────────────────────
+// .githooks/pre-commit이 예약 루틴 작성자의 커밋을 리포트 폴더 안으로 제한하는 근거
+// (티켓 20260921_2306). 선언된 이메일·허용 경로 문자열이 실제 훅 안에 있는지만 본다 —
+// quality_bar의 guard_patterns와 같은 방식으로 문자열 존재만 대조한다.
+function checkRoutineCommitRestriction(c) {
+  const spec = c.routine_commit_restriction
+  if (!spec) return
+
+  const hookPath = path.join(REPO, '.githooks/pre-commit')
+  if (!existsSync(hookPath)) {
+    violate('routine_commit_restriction', `routine_commit_restriction이 선언돼 있는데 .githooks/pre-commit이 없습니다`,
+      `훅 파일을 되살리거나 선언을 지우세요.`)
+    return
+  }
+  const hook = readFileSync(hookPath, 'utf8')
+  if (!spec.author_email || !hook.includes(spec.author_email)) {
+    violate('routine_commit_restriction', `.githooks/pre-commit에 선언된 작성자 이메일이 없습니다: ${spec.author_email}`,
+      `훅에 이 이메일 검사를 추가하거나, 실제 예약 작업 커밋 작성자가 바뀌었다면 contract.json도 함께 고치세요.`)
+  }
+  if (!spec.allowed_prefix || !hook.includes(spec.allowed_prefix)) {
+    violate('routine_commit_restriction', `.githooks/pre-commit에 선언된 허용 경로가 없습니다: ${spec.allowed_prefix}`,
+      `훅에 이 경로 제한을 추가하거나, 경로가 바뀌었다면 contract.json도 함께 고치세요.`)
+  }
+}
+
 // ── 실행 ──────────────────────────────────────────────────────────────────────
 const contract = readContract()
 checkPathsExist(contract)
@@ -434,6 +459,7 @@ checkStalePhrases(contract)
 checkQualityBar(contract)
 checkGitConfig(contract)
 checkDeployGate(contract)
+checkRoutineCommitRestriction(contract)
 
 for (const n of notes) console.log(`참고: ${n}`)
 

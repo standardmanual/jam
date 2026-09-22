@@ -195,6 +195,7 @@ tags: [워크플로]
 | 루틴 | 주기 (KST) | 담당 | 산출물 | 상태 |
 |---|---|---|---|---|
 | 주간 브리핑 | 월 09:00 | 카즈하 → 윤진 | `jam-doc/operations/reports/weekly/YYYY-Www.md` | 켜짐 |
+| 선별 (무인 적격 판정) | 매일 06:00 | 카즈하 | `jam-doc/operations/reports/triage/YYYY-MM-DD.md` | 미등록(수동 실행 전) |
 | 주간 배포 확인 | 목 15:00 | 무인 카리나 | Slack 리마인더 게시 | 켜짐 |
 | 주간 배포 실행 | 목 23:59 | 무인 카리나 | 프로덕션 배포 | 켜짐 |
 | 월간 트렌드·문서 점검 | 매월 1일 09:00 | 윈터·윤진 → 하니 | `jam-doc/operations/reports/monthly/YYYY-MM.md` | 켜짐 |
