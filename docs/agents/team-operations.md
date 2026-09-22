@@ -149,7 +149,8 @@ tags: [워크플로]
 2. **연결**: `scripts/workspace-setup.sh link "$(pwd)"`로 `node_modules`를 잇는다. `npm install`을
    다시 돌리지 않기 위함이다.
 3. **정리**: `scripts/workspace-setup.sh cleanup`이 staging에 머지됐고 미커밋 변경이 없는
-   워크트리만 제거한다. **자동으로 불리지 않으므로** 카리나가 챙겨야 한다(아래 「알려진 빈틈」 참고).
+   워크트리와, 연결 워크트리가 없는 `worktree-wf_*`·staging에 병합된 `claude/jamwork-*` 로컬
+   브랜치를 제거한다(아래 「알려진 빈틈」 참고).
 
 ---
 
@@ -225,7 +226,7 @@ tags: [워크플로]
 |---|---|
 | `scripts/ticket-dashboard.mjs` | 열려 있는 티켓 현황판과 오케스트레이터 카드를 출력한다 |
 | `scripts/check-routine-reports.mjs` | 예정 시각이 지났는데 예약 리포트가 없으면 경고한다 |
-| `scripts/workspace-setup.sh` | staging에 머지된 격리 워크트리를 정리한다 |
+| `scripts/workspace-setup.sh` | staging에 머지된 격리 워크트리와 연결 워크트리 없는 브랜치를 정리한다 |
 | `scripts/ensure-hooks-path.sh` | 이 클론의 core.hooksPath가 이 저장소의 .githooks로 해석되지 않으면 .githooks로 맞춘다 |
 <!-- END generated: session-hooks -->
 
@@ -298,11 +299,17 @@ frontmatter 형식만 검사받으면서, 에이전트에게는 코드와 똑같
 빈약해지는 것이다. 새로운 환경 주장을 문서에 적을 때는 `contract.json`에 검사 줄을 함께
 추가한다.
 
-**② 워크트리 정리 — 세션 시작에 자동화했다 (티켓 20260920_1907).**
+**② 워크트리 정리 — 세션 시작에 자동화했다 (티켓 20260920_1907, 브랜치 정리는 20260921_2309).**
 `workspace-setup.sh cleanup`은 누가 부르지 않으면 돌지 않았고, 티켓 0045 작업이 끝난 뒤에도
 워크트리 하나와 브랜치 두 개가 남아 있었다. 지금은 세션을 열 때마다 자동으로 돌며, staging에
-머지됐고 미커밋 변경이 없는 워크트리만 지운다. **남은 위험**은 브랜치다. 워크트리는 지워져도
-로컬 브랜치는 남으므로 가끔 `git branch --list 'claude/*'`로 확인한다.
+머지됐고 미커밋 변경이 없는 워크트리를 지운 뒤, 연결 워크트리가 없는 `worktree-wf_*` 로컬
+브랜치와 staging에 병합된 로컬 `claude/jamwork-*` 브랜치도 함께 지운다. 워크트리가 아직
+연결된 브랜치는 지우지 않는다. 원격 리뷰 브랜치는 `cleanup --remote`가 목록만 보여 주고
+`--remote --yes`일 때만 지운다(세션 훅은 부르지 않으며, 카리나가 사용자 승인 후 실행). **남은
+위험**은 (a) 대량으로 쌓인 기존 브랜치의 첫 실측·정리는 사람이 한 번 손으로 확인해야 한다는
+것(이 티켓의 후속 범위), (b) `git worktree remove`가 절대경로에서 실패하는 사례(한글 폴더명
+NFC/NFD 표기 차이로 추정, 원인 미확인)가 상대경로 재시도로도 막히지 않으면 "제거 실패"로만
+보고되고 해당 워크트리·브랜치는 계속 남는다는 것이다.
 
 **③ 예약 루틴 실패 감지 — 훅을 실제로 만들었다 (티켓 20260920_1907).**
 `scheduled-jobs.md`는 "세션 시작 hook이 예정 시각이 지났는데 리포트가 없으면 감지한다"고 적어
