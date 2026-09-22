@@ -13,6 +13,32 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 
 ## 0. 유형 판정 — 레인저 모자를 쓴다 (위임하지 않음)
 
+### 0.0 단계 판정 (2026-09-21 사용자 결정, 티켓 20260921_2219 §6.1 · 20260921_2305)
+
+카리나의 판정은 두 겹이다. **0.2절의 유형 판정보다 먼저**, 이 요청이 여섯 단계(카리나 주도
+Define→Plan→Build→Verify→Review→Ship) 중 어디에 있는지부터 정한다. 대부분의 요청은 이미
+BUILD부터 시작한다(티켓이 있고 완료 조건이 채워져 있음) — 이때는 이 표를 속으로만 확인하고
+넘어가면 된다. DEFINE·PLAN이 필요해 보이면(무엇을 만들지 안 정해짐, 티켓이 여러 개로 쪼개져야
+함) `/jam-plan`(혜린)으로 먼저 보낸다.
+
+| 단계 | 진입 조건 (카리나가 확인) | 실행 주체 | 사용자 승인 |
+|---|---|---|---|
+| DEFINE | 무엇을 만들지 정해지지 않았거나 가정이 필요한 요청 | 혜린 문답 | 반쪽 요약 확인 |
+| PLAN | 정의가 승인됐고 티켓이 둘 이상이거나 순서가 불명확 | 혜린 분해 → 카리나 티켓 생성 | 기획서·분해안 승인 |
+| BUILD | 완료 조건이 채워진 티켓 존재. `ui`·`ds`면 채원 판정 존재 | 아현 (+채원①) | 없음 (needs_approval 항목만) |
+| VERIFY | 아현 제출물 + 검사 통과 기록(CI 도장) | 훅·검사 스크립트, 아현 자기 검증 | 없음 |
+| REVIEW | 검토 범위(baseSha..commitSha) 확정 | 민지 ∥ 채원② | 머지 승인 |
+| SHIP | staging 검증 완료 + 롤백 계획 작성 + 팬아웃 GO | 카리나 (+보안·테스트 페르소나) | 배포 승인 |
+
+**가정 목록**: 요청이 모호해 DEFINE 성격이 섞여 있는데도 바로 BUILD로 보내야 할 때(예: 사용자가
+"그냥 진행해"라고 답함), 아현을 부르기 전에 "이런 가정으로 진행합니다: …" 목록을 사용자에게
+보여 주고 확인받는다. 목록이 없으면 그 가정은 카리나 혼자 판단한 것이 되어 나중에 되짚기
+어렵다. 형식은 짧은 불릿 목록이면 충분하다 — 별도 문서를 만들지 않는다.
+
+**정지 조건의 단일 원천**은 `.claude/skills/jam-work/references/stop-conditions.md`다. 3.0절·
+아현 정의(`jam-developer.md`)·`jam-work.js`가 모두 이 문서를 참조한다 — 서술을 각자 옮겨 적지
+않는다.
+
 ### 0.1 경미 수정 여부 먼저 확인 — 해당하면 아래 단계를 전부 건너뛴다
 
 다음 두 조건을 **모두** 만족하면 Workflow 호출(1~4단계 전체) 없이 오케스트레이터가 직접
@@ -135,7 +161,7 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 파이프라인 스크립트는 `.claude/workflows/jam-work.js`에 있다. `Workflow` 도구를 아래처럼 호출한다.
 
 ```
-Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route, planOnlyWaiver })
+Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecision, retryReason, retryBranch, route, planOnlyWaiver, batch })
 ```
 
 - `name`은 `.claude/workflows/`의 사전 정의 워크플로를 가리킨다. 파일 경로로 직접 지정하려면
@@ -162,10 +188,50 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   인자로만 넘긴다 — `userRequest`에 그 줄을 직접 적으면 "면제 없음" 줄과 모순된다. 워크플로는
   이전 실행을 기억하지 않으므로 재시도(`retryReason`·`retryBranch`)에도 같은 면제가 필요하면
   다시 넘긴다(티켓 20260922_0207).
+- `batch`는 **선택**이다(티켓 20260921_2305, 3차 재작업: Workflow 스크립트는 파일시스템·
+  Node API·`import()`를 쓸 수 없다 — 실제 하네스가 시작 단계에서
+  `SyntaxError: import() is not available in workflow scripts`로 거부한다. 하위 티켓 조회는
+  워크플로 밖에서 먼저 한다). 상위 티켓을 묶어 실행하려면 먼저
+  `node scripts/batch-tickets.mjs <상위 티켓 ID>`를 실행해 하위 티켓 목록(JSON:
+  `parentTicket`, 티켓별 `id`·`path`·`status`·`category`·`workType`·`sequence`를 담은
+  `subTickets`, `plannedStopAt`)을 얻는다. 그 출력 객체를 그대로 `batch` 인자에 넣어
+  Workflow를 호출하면, 워크플로는 `subTickets` 중 `status: 'OPEN'`인 것만 순서대로 표준
+  파이프라인(채원①→아현→민지∥채원②)에 태운다 — 워크플로는 `docs/tickets/`를 읽지 않고 받은
+  목록만 실행한다. 기본은 비움(단일 티켓 모드, 기존 동작과 동일) — 사용자가 상위 티켓 분해안을
+  승인하며 "묶음 실행"을 명시했을 때만 스크립트를 먼저 돌려 채운다.
+  정지 조건(`.claude/skills/jam-work/references/stop-conditions.md`)에 걸리면 그 하위 티켓에서
+  멈추고 이후 하위 티켓은 실행하지 않는다 — 결과에는 그때까지 처리한 티켓별 결과와 `tokenUsage`
+  (`tokenUsageByTicket`, 티켓 ID로 나뉨)가 담긴다. `db`·`engine` 유형의 하위 티켓, 또는 유형을
+  자동으로 정할 수 없는 티켓은 `batch-tickets.mjs`가 이미 `plannedStopAt`으로 알려준다 —
+  워크플로는 그 지점 앞에서 실행하지 않고 멈춘다(정지 조건 3번). 그 티켓은 단독 호출로 사용자
+  확인을 받는다.
+  **머지는 순차로 한다.** 하위 티켓의 review 브랜치는 모두 `origin/staging`에서 분기하므로,
+  앞 하위 티켓을 머지한 뒤에는 `origin/staging`이 바뀐다 — 4단계 머지 전 오염 검사
+  (`git merge-base --is-ancestor origin/staging <브랜치>`)를 다음 하위 티켓마다 다시 실행한다.
+  실패하면(뒤 티켓이 옛 `origin/staging` 기준으로 분기해 최신 커밋을 조상으로 물지 않음) 그
+  티켓만 `git fetch origin staging && git rebase origin/staging`으로 재분기시킨 뒤 다시 push
+  하게 하고, 나머지 절차는 그대로 4단계를 따른다.
+- **드라이런**은 `node scripts/batch-tickets.mjs <상위 티켓 ID>`를 Workflow 호출 없이 그
+  출력만 보는 것이다 — 실측 전 목록·순서·정지 예정 지점을 먼저 확인하고 싶으면 스크립트만
+  실행해 결과를 사용자에게 보여주고, 그 단계에서는 Workflow를 부르지 않는다.
 - 스크립트를 고쳐야 하면 `.claude/workflows/jam-work.js`를 직접 편집한 뒤 다시 호출한다
   (같은 세션에서 이어 돌릴 때는 `resumeFromRunId`를 함께 넘긴다).
 
 ## 3. 결과 보고 — 예외 신호 처리를 포함한다
+
+**`node scripts/batch-tickets.mjs <상위 티켓 ID>`만 실행했을 때(Workflow 호출 전, 드라이런)**:
+Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다. 출력의 `subTickets`(티켓별
+`id`·`path`·`status`·`category`·`workType`·`sequence`)를 그대로 사용자에게 표로 보여주고,
+`plannedStopAt`이 있으면 어느 하위 티켓에서 왜 멈출 예정인지(db·engine 진입 또는 유형 미매핑,
+정지 조건 3번) 알린다. `plannedStopAt`이 없으면 실제 실행 시(이 출력을 그대로 `batch` 인자에
+넣어 Workflow 호출) 모든 OPEN 하위 티켓이 최소한 정지 조건 3번에는 걸리지 않고 파이프라인까지는
+들어간다는 뜻이다 — 그 이후(게이트 FAIL·plan_only 등)는 실제로 돌려야 알 수 있다.
+
+**`batch`로 Workflow를 호출했을 때**: 결과의 `results`(티켓 ID별 단일 티켓 결과 객체)와
+`tokenUsageByTicket`을 받는다. `stoppedBatchAt`이 있으면 그 티켓에서 멈춘 이유가 담겨
+있다 — 이미 끝낸 하위 티켓까지는 아래 3.0~3.1절대로 각각 보고·처리하고, 멈춘 티켓은 그
+사유(정지 조건 번호)를 사용자에게 알린 뒤 다음 행동을 묻는다. `stoppedBatchAt`이 없으면
+모든 하위 티켓이 끝까지 돈 것이다 — 마지막 하위 티켓까지 순서대로 3.1절 승인 절차를 밟는다.
 
 ### 3.0 구현 단계 중단 처리 (Workflow 결과 수신 직후, 판정 보고 전)
 
@@ -173,14 +239,11 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
    멈췄다는 뜻이다(1.5절). `needsApprovalItems`를 사용자에게 그대로 보고하고 승인 여부를 묻는다.
    승인되면 `reuseDecision: designDecision`으로 다시 호출한다.
 1. **`stoppedAt: '구현'`**: 아현이 게이트 진입 전에 멈췄다는 뜻이다. `devStatus`별로:
-   - `plan_only` — 작업이 크다(바뀌는 **모든 파일** 기준 파일 5개 초과 또는 100줄 이상). 구현
-     계획을 사용자에게 보고하고 **티켓을 쪼갤지** 묻는다. 승인되면 계획을 티켓 「구현 계획」에
-     옮기고, `userRequest`에도 넣고, 승인 사실을 `planOnlyWaiver`에 넣어 다시 호출한다(면제가
-     없으면 아현이 또 멈춘다).
-     **면제 부여 조건**(티켓 20260922_0207): 카리나만 `planOnlyWaiver`를 넘긴다. (a) 티켓
-     「구현 계획」이 파일 단위로 적혀 있고 (b) 사전 확인이 끝났을 때만 하며, 사유를 티켓 「주요
-     의사결정」에 남긴다. 사용자가 검토하지 않은 큰 변경은 면제하지 않는다. 아현의 자체 판단이나
-     이전 티켓의 선례는 면제 근거가 아니다.
+   - `plan_only` — 작업이 크다. 판정 기준·면제 부여 조건의 단일 원천은
+     `.claude/skills/jam-work/references/stop-conditions.md`다(티켓 20260921_2305로 이관,
+     원래 근거는 티켓 20260922_0207). 구현 계획을 사용자에게 보고하고 **티켓을 쪼갤지** 묻는다.
+     승인되면 계획을 티켓 「구현 계획」에 옮기고, `userRequest`에도 넣고, 승인 사실을
+     `planOnlyWaiver`에 넣어 다시 호출한다(면제가 없으면 아현이 또 멈춘다).
    - `needs_design` — UI 작업인데 채원 사전 판정이 없다. 유형 판정을 `ui`로 고쳐 다시 호출한다
      (그러면 워크플로가 채원①부터 돈다).
    - `halted` — `[중단]` 급 이상을 발견했다. **즉시 사용자에게 보고**하고 다음 행동을 묻는다.

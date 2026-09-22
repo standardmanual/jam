@@ -229,6 +229,118 @@ async function test10_metaIsPureLiteralAndCoversPhaseCalls() {
   console.log('PASS test10_metaIsPureLiteralAndCoversPhaseCalls')
 }
 
+// ── 묶음 실행(batch, 티켓 20260921_2305 3차 재작업) ───────────────────────────────────────────
+// jam-work.js는 이제 docs/tickets/를 읽지 않는다 — 하위 티켓 조회·정렬·유형 판정·정지 예정
+// 지점 계산은 scripts/batch-tickets.mjs(그 테스트는 scripts/batch-tickets.test.mjs)로 옮겼다.
+// 여기서는 그 스크립트의 출력 모양(`{ parentTicket, subTickets, plannedStopAt }`)을 그대로
+// 흉내 낸 객체 리터럴을 `batch` 인자로 넘겨, 워크플로가 그 목록을 순서대로 실행하고 정지
+// 조건에서 멈추는지만 검증한다. 파일시스템·임시 디렉터리는 쓰지 않는다.
+function subTicket({ id, path: p, status, category, workType }) {
+  return { id, path: p, status, category, workType }
+}
+
+async function test11_batchExecutesOpenTicketsInOrderAndSkipsNonOpen() {
+  const batch = {
+    parentTicket: 'PARENT1',
+    subTickets: [
+      subTicket({ id: '20260921_0050', path: 'docs/tickets/p1-high/b.md', status: 'CLOSED', category: 'Infra', workType: 'infra' }),
+      subTicket({ id: '20260921_0100', path: 'docs/tickets/p1-high/a.md', status: 'OPEN', category: 'Infra', workType: 'infra' }),
+      subTicket({ id: '20260921_0200', path: 'docs/tickets/p2-medium/c.md', status: 'OPEN', category: 'UI', workType: 'ui' }),
+    ],
+    plannedStopAt: null,
+  }
+  const { run } = makeRunner({
+    agentImpl: (prompt, opts) => {
+      if (opts.label === 'jam-designer-pre') return { decision: '재사용', needsApproval: false }
+      if (opts.label === 'jam-developer') return { status: 'done', summary: 'ok', diffLineCount: 3 }
+      if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 3 }
+      throw new Error(`예상치 못한 호출: ${opts.label}`)
+    },
+  })
+  const result = await run({ batch })
+  assert.deepEqual(result.order, ['20260921_0050', '20260921_0100', '20260921_0200'])
+  assert.deepEqual(Object.keys(result.results), ['20260921_0100', '20260921_0200'], 'CLOSED 티켓은 목록에는 있지만 실행에서는 제외돼야 한다')
+  assert.equal(result.stoppedBatchAt, null)
+  console.log('PASS test11_batchExecutesOpenTicketsInOrderAndSkipsNonOpen')
+}
+
+async function test12_batchStopsAtPlanOnlyAndSkipsRest() {
+  const batch = {
+    parentTicket: 'PARENT2',
+    subTickets: [
+      subTicket({ id: '20260921_0100', path: 'docs/tickets/p1-high/a.md', status: 'OPEN', category: 'Infra', workType: 'infra' }),
+      subTicket({ id: '20260921_0200', path: 'docs/tickets/p1-high/b.md', status: 'OPEN', category: 'Infra', workType: 'infra' }),
+      subTicket({ id: '20260921_0300', path: 'docs/tickets/p1-high/c.md', status: 'OPEN', category: 'Infra', workType: 'infra' }),
+    ],
+    plannedStopAt: null,
+  }
+  const { run } = makeRunner({
+    agentImpl: (prompt, opts) => {
+      if (opts.label === 'jam-developer' && prompt.includes('docs/tickets/p1-high/a.md')) return { status: 'done', summary: 'ok', diffLineCount: 3 }
+      if (opts.label === 'jam-developer' && prompt.includes('docs/tickets/p1-high/b.md')) return { status: 'plan_only', summary: '계획', diffLineCount: 0 }
+      if (opts.label === 'jam-reviewer' && prompt.includes('docs/tickets/p1-high/a.md')) return { verdict: 'PASS', reasons: [], diffLineCount: 3 }
+      throw new Error(`정지 조건 이후 티켓 c는 호출되면 안 된다: ${opts.label} / ${prompt.slice(0, 40)}`)
+    },
+  })
+  const result = await run({ batch })
+  assert.deepEqual(result.order, ['20260921_0100', '20260921_0200', '20260921_0300'])
+  assert.deepEqual(Object.keys(result.results), ['20260921_0100', '20260921_0200'], '정지된 티켓 이후(c)는 실행되지 않아야 한다')
+  assert.equal(result.stoppedBatchAt?.ticketId, '20260921_0200')
+  assert.equal(result.stoppedBatchAt?.reason, 'plan_only')
+  console.log('PASS test12_batchStopsAtPlanOnlyAndSkipsRest')
+}
+
+async function test13_batchStopsAtPlannedStopAtWithoutCallingAgent() {
+  const batch = {
+    parentTicket: 'PARENT3',
+    subTickets: [
+      subTicket({ id: '20260921_0100', path: 'docs/tickets/p1-high/engine.md', status: 'OPEN', category: 'BadgeEngine', workType: 'engine' }),
+    ],
+    plannedStopAt: { ticketId: '20260921_0100', reason: "유형 'engine' 진입 — 정지 조건 3번, 단독 호출로 사용자 확인 필요" },
+  }
+  const { run, calls } = makeRunner({ agentImpl: () => { throw new Error('plannedStopAt 티켓은 호출되면 안 된다') } })
+  const result = await run({ batch })
+  assert.equal(calls.length, 0, 'scripts/batch-tickets.mjs가 이미 정지 지점을 알려줬으므로 agent를 부르지 않아야 한다')
+  assert.equal(result.stoppedBatchAt?.ticketId, '20260921_0100')
+  assert.ok(result.stoppedBatchAt.reason.includes('engine'))
+  assert.deepEqual(result.results, {})
+  console.log('PASS test13_batchStopsAtPlannedStopAtWithoutCallingAgent')
+}
+
+async function test14_batchSplitsTokenUsagePerTicket() {
+  const batch = {
+    parentTicket: 'PARENT5',
+    subTickets: [
+      subTicket({ id: '20260921_0100', path: 'docs/tickets/p1-high/a.md', status: 'OPEN', category: 'Infra', workType: 'infra' }),
+      subTicket({ id: '20260921_0200', path: 'docs/tickets/p1-high/b.md', status: 'OPEN', category: 'Infra', workType: 'infra' }),
+    ],
+    plannedStopAt: null,
+  }
+  const { run } = makeRunner({
+    agentImpl: (prompt, opts) => {
+      if (opts.label === 'jam-developer') return { status: 'done', summary: 'ok', diffLineCount: 3 }
+      if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 3 }
+      throw new Error(`예상치 못한 호출: ${opts.label}`)
+    },
+  })
+  const result = await run({ batch })
+  assert.ok(result.tokenUsageByTicket['20260921_0100']?.['jam-developer'] > 0)
+  assert.ok(result.tokenUsageByTicket['20260921_0200']?.['jam-developer'] > 0)
+  assert.equal(Object.keys(result.tokenUsageByTicket).length, 2, '티켓별로 tokenUsage가 나뉘어야 한다')
+  console.log('PASS test14_batchSplitsTokenUsagePerTicket')
+}
+
+async function test15_batchWithEmptySubTickets() {
+  const batch = { parentTicket: 'NO-SUCH-PARENT', subTickets: [], plannedStopAt: null }
+  const { run, calls } = makeRunner({ agentImpl: () => { throw new Error('하위 티켓이 없으면 호출되면 안 된다') } })
+  const result = await run({ batch })
+  assert.deepEqual(result.order, [])
+  assert.deepEqual(result.results, {})
+  assert.equal(result.stoppedBatchAt, null)
+  assert.equal(calls.length, 0)
+  console.log('PASS test15_batchWithEmptySubTickets')
+}
+
 async function main() {
   await test1_needsApprovalStops()
   await test2_needsApprovalNoneProceedsInParallel()
@@ -240,6 +352,11 @@ async function main() {
   await test8_planOnlyWaiverEdgeInputs()
   await test9_planOnlyStopsBeforeGate()
   await test10_metaIsPureLiteralAndCoversPhaseCalls()
+  await test11_batchExecutesOpenTicketsInOrderAndSkipsNonOpen()
+  await test12_batchStopsAtPlanOnlyAndSkipsRest()
+  await test13_batchStopsAtPlannedStopAtWithoutCallingAgent()
+  await test14_batchSplitsTokenUsagePerTicket()
+  await test15_batchWithEmptySubTickets()
   console.log('전체 통과')
 }
 
