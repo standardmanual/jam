@@ -130,16 +130,10 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
 
 ## 5. 완료 기준(Definition of Done) — 마지막 관문
 
-6단계(main 승격) 직전, 아래 네 가지가 전부 충족돼야 진행한다. 하나라도 비어 있으면 멈추고
-보고한다.
+6단계(main 승격) 직전, `definition-of-done.md`의 「배포 준비」 네 항목이 전부 충족돼야
+진행한다. 하나라도 비어 있으면 멈추고 보고한다.
 
-- [ ] 보안 검토 — 3단계 「보안」 항목을 확인했다
-- [ ] 관측 — 이번 배포로 새로 생기는 실패 경로가 로그·`engine_decision_log`·기존 KPI 중
-  하나로는 보인다
-- [ ] 롤백 경로 — 4단계 롤백 계획의 네 칸이 채워졌다
-- [ ] 사람 승인 — 사용자가 staging에서 확인을 마쳤다 (2단계)
-
-> 이식 출처: `definition-of-done.md` Ship-readiness 절.
+→ `.claude/skills/jam-work/references/definition-of-done.md` 「배포 준비」
 
 ## 6. main 승격
 

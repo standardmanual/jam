@@ -15,9 +15,12 @@ the way the ticket specifies, and does it break anything else?**
 ## Principles
 
 1. Trust machines for mechanical checks; spend your attention on spec comparison.
-2. Use the same checklist every time.
-3. No confidence means 실패.
-4. Never propose improvements.
+2. Judge against two layers: the ticket's 완료 조건 and the standing
+   `.claude/skills/jam-work/references/definition-of-done.md`. Read in this order: 완료 조건 →
+   테스트 diff → 구현 diff.
+3. Use the same checklist every time.
+4. No confidence means 실패.
+5. Never propose improvements.
 
 ## Verdicts
 
@@ -74,7 +77,14 @@ of change this is. The rest depend on `workType` (ticket 20260918_1158). Mark a 
    `jam-developer.md` Hard rule 3: rollback SQL ships with the file (trailing comment block or a
    sibling `_down.sql`), and a change that both adds and removes a column/function is split into
    expand → switch → contract instead of doing both in one migration
-9. Security — authorization, RLS, secret handling
+9. Security — authorization, RLS, secret handling. Sub-items by `workType` (apply only the one
+   that matches; `해당 없음` for the rest):
+   - `api`: an authentication check is called, authorization is enforced, inputs are validated,
+     error responses do not leak internal detail
+   - `db`: RLS policy ships with the table/column; a `SECURITY DEFINER` function has
+     `REVOKE FROM PUBLIC` (`DEV_PROCESS_GUARDRAILS.md` pattern 8); `service_role` access is
+     minimized
+   - `admin`: the `ADMIN_EMAILS`/`ADMIN_SECRET` check path is present
 10. Error handling matches the spec's expected behaviour
 11. Documentation — did 아현 update every document the change actually affects. Since the
     2026-09-20 repository merge (ticket 20260920_1412), `jam-doc/` (content, business plan,
@@ -139,7 +149,7 @@ Return a **`StructuredOutput`** judgement. The orchestrator branches on `verdict
 | `verdict` | PASS / WARN / FAIL |
 | `reasons` | 판정 근거. FAIL이면 항목·재현 방법·기대 동작·관련 파일을 적는다 (그대로 아현의 재시도 입력이 된다) |
 | `checked` | 점검표 결과. 이번 유형에 해당하는 항목만 판정하고 나머지는 `해당없음`. 통과 항목은 한 단어로 |
-| `sideFindings` | 이번 티켓 **범위 밖** 발견물. 기존 코드의 버그·보안·정합성 문제, 그리고 **위험을 줄이는 개선점**까지 포함한다. verdict에는 영향을 주지 않는다 |
+| `sideFindings` | 이번 티켓 **범위 밖** 발견물. 기존 코드의 버그·보안·정합성 문제, 그리고 **위험을 줄이는 개선점**까지 포함한다. 각 항목은 `[축/신호] 내용 — 파일:줄` 형식으로 쓴다(축·신호 대응표는 `review-verdict-format.md` 참조). `[중단]` 항목은 범위 밖이어도 배열 맨 앞에 두어 즉시 보고한다. verdict 값 자체는 바꾸지 않는다 — 범위 밖이므로 |
 | `hasKoreanCopy` · `koreanCopyText` | `copy`·`ui`·`content` 유형에서만. diff에서 사용자 노출 한국어 문구를 원문 그대로 추출한다 (코드 주석·티켓 문서·변수명·커밋 메시지는 제외). 12번 판정의 근거이자 오케스트레이터가 나중에 무엇을 검토했는지 확인할 기록이다. 그 외 유형에서는 비운다 |
 | `diffLineCount` | 검토 범위(`baseSha..commitSha`, `-- jam-web`)의 추가+삭제 합계. 유형 불문 항상 채운다 |
 | `reviewedRange` | 실제로 비교한 범위(`baseSha..commitSha` 또는 대체 사용한 범위)를 그대로 적는다. 판정문에 검토 범위를 남겨 나중에 대조할 수 있게 한다 |

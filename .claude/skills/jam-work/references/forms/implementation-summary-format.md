@@ -11,10 +11,11 @@
 | changes | 무엇을 어떻게 |
 | files | 변경 파일 |
 | branch | 리뷰 브랜치 |
-| checks | lint·타입·테스트·ds:check 결과 |
+| checks | lint·타입·테스트·ds:check 결과 + `definition-of-done.md` 정확성·품질 자기 점검 결과 |
 | tests_added | 추가한 테스트 (없으면 사유) |
 | doc_updates | 문서 경로 / 섹션 / 바꿀 내용 / 근거 |
 | db_migration | SQL 파일 경로 또는 없음 |
+| assumptions | 해석이 들어간 가정 (없으면 "없음") |
 | diff_lines | 변경 줄 수 |
 | confidence | 높음 / 보통 / 낮음 |
 | alerts | [참고/주의/중단] |
