@@ -96,6 +96,11 @@ tags: [워크플로]
 - 채원② 사후 리뷰는 diff가 15줄 미만이거나 UI·DS 유형이 아니면 생략한다.
 - 개선 리뷰 단계는 없다. 범위 밖 개선점은 민지의 `sideFindings`와 채원②의 `proposals`로
   받아 카리나가 **승인 없이 자동으로** `status: OPEN` 티켓을 만든다.
+- **정지 조건**(게이트 FAIL·`[중단]`·`db`/`engine` 진입·되돌릴 수 없는 작업·채원
+  `needsApproval`·아현 `plan_only`/`needs_design`/`halted`·같은 티켓 2회 연속 재작업)의 단일
+  원천은 `.claude/skills/jam-work/references/stop-conditions.md`다(티켓 20260921_2305). 상위
+  티켓의 하위 티켓을 순서대로 실행하는 **묶음 실행 모드**(`Workflow` 인자 `batch`)도 같은
+  목록을 쓴다 — 기본은 꺼져 있고, 사용자가 상위 티켓 분해안을 승인하며 명시했을 때만 켠다.
 
 ### 머지와 배포의 경계
 

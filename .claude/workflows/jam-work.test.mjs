@@ -9,6 +9,8 @@
 // 실행: node .claude/workflows/jam-work.test.mjs
 
 import { readFileSync } from 'node:fs'
+import fsp from 'node:fs/promises'
+import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import assert from 'node:assert/strict'
@@ -229,6 +231,133 @@ async function test10_metaIsPureLiteralAndCoversPhaseCalls() {
   console.log('PASS test10_metaIsPureLiteralAndCoversPhaseCalls')
 }
 
+// ── 묶음 실행(batch, 티켓 20260921_2305) ──────────────────────────────────────────────────────
+// jam-work.js의 batch 분기는 docs/tickets/를 실제 fs로 읽으므로(Workflow 도구가 fs 전용 전역을
+// 주입하지 않아 스크립트가 Node 동적 import로 직접 읽는다), 테스트는 임시 디렉터리에 가짜
+// docs/tickets/를 만들고 그 안으로 잠깐 cwd를 옮겨 실행한 뒤 되돌린다 — 실제 저장소 티켓은
+// 건드리지 않는다.
+function ticketFixture({ id, parent, status, category }) {
+  return `---\nid: "${id}"\nparent: "${parent}"\nstatus: ${status}\ncategory: ${category}\n---\n\n# 픽스처\n`
+}
+async function withTempTicketsDir(files, fn) {
+  const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'jam-work-batch-'))
+  const prevCwd = process.cwd()
+  try {
+    for (const [rel, content] of Object.entries(files)) {
+      const full = path.join(tmp, rel)
+      await fsp.mkdir(path.dirname(full), { recursive: true })
+      await fsp.writeFile(full, content, 'utf8')
+    }
+    process.chdir(tmp)
+    await fn()
+  } finally {
+    process.chdir(prevCwd)
+    await fsp.rm(tmp, { recursive: true, force: true })
+  }
+}
+
+async function test11_batchFindsOrdersAndSkipsNonOpen() {
+  await withTempTicketsDir({
+    'docs/tickets/p1-high/a.md': ticketFixture({ id: '20260921_0100', parent: 'PARENT1', status: 'OPEN', category: 'Infra' }),
+    'docs/tickets/p1-high/b.md': ticketFixture({ id: '20260921_0050', parent: 'PARENT1', status: 'CLOSED', category: 'Infra' }),
+    'docs/tickets/p2-medium/c.md': ticketFixture({ id: '20260921_0200', parent: 'PARENT1', status: 'OPEN', category: 'UI' }),
+    'docs/tickets/p1-high/other.md': ticketFixture({ id: '20260921_9999', parent: 'OTHER', status: 'OPEN', category: 'Infra' }),
+  }, async () => {
+    const { run } = makeRunner({
+      agentImpl: (prompt, opts) => {
+        if (opts.label === 'jam-designer-pre') return { decision: '재사용', needsApproval: false }
+        if (opts.label === 'jam-developer') return { status: 'done', summary: 'ok', diffLineCount: 3 }
+        if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 3 }
+        throw new Error(`예상치 못한 호출: ${opts.label}`)
+      },
+    })
+    const result = await run({ batch: 'PARENT1' })
+    assert.deepEqual(result.order, ['20260921_0050', '20260921_0100', '20260921_0200'], '부모 필드가 일치하는 티켓만, 생성 시각 순으로 조회돼야 한다')
+    assert.deepEqual(Object.keys(result.results), ['20260921_0100', '20260921_0200'], 'CLOSED 티켓은 조회는 되지만 실행에서 제외돼야 한다')
+    assert.equal(result.stoppedBatchAt, null)
+  })
+  console.log('PASS test11_batchFindsOrdersAndSkipsNonOpen')
+}
+
+async function test12_batchStopsAtPlanOnlyAndSkipsRest() {
+  await withTempTicketsDir({
+    'docs/tickets/p1-high/a.md': ticketFixture({ id: '20260921_0100', parent: 'PARENT2', status: 'OPEN', category: 'Infra' }),
+    'docs/tickets/p1-high/b.md': ticketFixture({ id: '20260921_0200', parent: 'PARENT2', status: 'OPEN', category: 'Infra' }),
+    'docs/tickets/p1-high/c.md': ticketFixture({ id: '20260921_0300', parent: 'PARENT2', status: 'OPEN', category: 'Infra' }),
+  }, async () => {
+    const { run } = makeRunner({
+      agentImpl: (prompt, opts) => {
+        if (opts.label === 'jam-developer' && prompt.includes('docs/tickets/p1-high/a.md')) return { status: 'done', summary: 'ok', diffLineCount: 3 }
+        if (opts.label === 'jam-developer' && prompt.includes('docs/tickets/p1-high/b.md')) return { status: 'plan_only', summary: '계획', diffLineCount: 0 }
+        if (opts.label === 'jam-reviewer' && prompt.includes('docs/tickets/p1-high/a.md')) return { verdict: 'PASS', reasons: [], diffLineCount: 3 }
+        throw new Error(`정지 조건 이후 티켓 c는 호출되면 안 된다: ${opts.label} / ${prompt.slice(0, 40)}`)
+      },
+    })
+    const result = await run({ batch: 'PARENT2' })
+    assert.deepEqual(result.order, ['20260921_0100', '20260921_0200', '20260921_0300'])
+    assert.deepEqual(Object.keys(result.results), ['20260921_0100', '20260921_0200'], '정지된 티켓 이후(c)는 실행되지 않아야 한다')
+    assert.equal(result.stoppedBatchAt?.ticketId, '20260921_0200')
+    assert.equal(result.stoppedBatchAt?.reason, 'plan_only')
+  })
+  console.log('PASS test12_batchStopsAtPlanOnlyAndSkipsRest')
+}
+
+async function test13_batchStopsBeforeEngineOrUnmappedCategory() {
+  await withTempTicketsDir({
+    'docs/tickets/p1-high/engine.md': ticketFixture({ id: '20260921_0100', parent: 'PARENT3', status: 'OPEN', category: 'BadgeEngine' }),
+  }, async () => {
+    const { run, calls } = makeRunner({ agentImpl: () => { throw new Error('db·engine 진입 티켓은 호출되면 안 된다') } })
+    const result = await run({ batch: 'PARENT3' })
+    assert.equal(calls.length, 0, '진입 전에 멈춰야 하므로 agent 호출이 없어야 한다')
+    assert.equal(result.stoppedBatchAt?.ticketId, '20260921_0100')
+    assert.ok(result.stoppedBatchAt.reason.includes('engine'))
+    assert.deepEqual(result.results, {})
+  })
+  await withTempTicketsDir({
+    'docs/tickets/p1-high/ambiguous.md': ticketFixture({ id: '20260921_0200', parent: 'PARENT4', status: 'OPEN', category: 'Feature' }),
+  }, async () => {
+    const { run, calls } = makeRunner({ agentImpl: () => { throw new Error('유형을 정할 수 없는 티켓은 호출되면 안 된다') } })
+    const result = await run({ batch: 'PARENT4' })
+    assert.equal(calls.length, 0)
+    assert.equal(result.stoppedBatchAt?.ticketId, '20260921_0200')
+  })
+  console.log('PASS test13_batchStopsBeforeEngineOrUnmappedCategory')
+}
+
+async function test14_batchSplitsTokenUsagePerTicket() {
+  await withTempTicketsDir({
+    'docs/tickets/p1-high/a.md': ticketFixture({ id: '20260921_0100', parent: 'PARENT5', status: 'OPEN', category: 'Infra' }),
+    'docs/tickets/p1-high/b.md': ticketFixture({ id: '20260921_0200', parent: 'PARENT5', status: 'OPEN', category: 'Infra' }),
+  }, async () => {
+    const { run } = makeRunner({
+      agentImpl: (prompt, opts) => {
+        if (opts.label === 'jam-developer') return { status: 'done', summary: 'ok', diffLineCount: 3 }
+        if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [], diffLineCount: 3 }
+        throw new Error(`예상치 못한 호출: ${opts.label}`)
+      },
+    })
+    const result = await run({ batch: 'PARENT5' })
+    assert.ok(result.tokenUsageByTicket['20260921_0100']?.['jam-developer'] > 0)
+    assert.ok(result.tokenUsageByTicket['20260921_0200']?.['jam-developer'] > 0)
+    assert.equal(Object.keys(result.tokenUsageByTicket).length, 2, '티켓별로 tokenUsage가 나뉘어야 한다')
+  })
+  console.log('PASS test14_batchSplitsTokenUsagePerTicket')
+}
+
+async function test15_batchWithNoMatchingSubTickets() {
+  await withTempTicketsDir({
+    'docs/tickets/p1-high/unrelated.md': ticketFixture({ id: '20260921_0100', parent: 'OTHER-PARENT', status: 'OPEN', category: 'Infra' }),
+  }, async () => {
+    const { run, calls } = makeRunner({ agentImpl: () => { throw new Error('일치하는 하위 티켓이 없으면 호출되면 안 된다') } })
+    const result = await run({ batch: 'NO-SUCH-PARENT' })
+    assert.deepEqual(result.order, [])
+    assert.deepEqual(result.results, {})
+    assert.equal(result.stoppedBatchAt, null)
+    assert.equal(calls.length, 0)
+  })
+  console.log('PASS test15_batchWithNoMatchingSubTickets')
+}
+
 async function main() {
   await test1_needsApprovalStops()
   await test2_needsApprovalNoneProceedsInParallel()
@@ -240,6 +369,11 @@ async function main() {
   await test8_planOnlyWaiverEdgeInputs()
   await test9_planOnlyStopsBeforeGate()
   await test10_metaIsPureLiteralAndCoversPhaseCalls()
+  await test11_batchFindsOrdersAndSkipsNonOpen()
+  await test12_batchStopsAtPlanOnlyAndSkipsRest()
+  await test13_batchStopsBeforeEngineOrUnmappedCategory()
+  await test14_batchSplitsTokenUsagePerTicket()
+  await test15_batchWithNoMatchingSubTickets()
   console.log('전체 통과')
 }
 
