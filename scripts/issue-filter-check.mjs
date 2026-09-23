@@ -181,7 +181,12 @@ export function parseMarkdownCards(text) {
 }
 
 export function parseJsonCards(text) {
-  const data = JSON.parse(text)
+  let data
+  try {
+    data = JSON.parse(text)
+  } catch (err) {
+    throw new Error(`JSON 소재 카드 파일을 읽을 수 없습니다(손상된 JSON): ${err instanceof Error ? err.message : String(err)}`)
+  }
   if (!Array.isArray(data)) return null
   return data.map((raw) => {
     const card = {}
@@ -226,9 +231,21 @@ function main() {
     process.exit(1)
   }
 
-  const text = readFileSync(filePath, 'utf8')
+  let text
+  try {
+    text = readFileSync(filePath, 'utf8')
+  } catch (err) {
+    console.error(`소재 카드 파일을 열 수 없습니다: ${filePath} (${err instanceof Error ? err.message : String(err)})`)
+    process.exit(1)
+  }
   const isJson = filePath.endsWith('.json')
-  const cards = isJson ? parseJsonCards(text) : parseMarkdownCards(text)
+  let cards
+  try {
+    cards = isJson ? parseJsonCards(text) : parseMarkdownCards(text)
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err))
+    process.exit(1)
+  }
   if (cards === null) {
     console.error(`표준 소재 카드 표 헤더를 찾지 못했습니다: ${filePath}`)
     process.exit(1)
