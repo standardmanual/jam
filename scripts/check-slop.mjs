@@ -88,8 +88,11 @@ function collectAddedLines() {
   execSync('git fetch origin staging --quiet', { stdio: 'ignore' })
   // pathspec으로 범위를 좁히면 이동 전 경로가 빠져 이름 변경을 감지하지 못하고, 옮긴 파일 전체가
   // '추가된 줄'로 잡힌다. 전체 diff로 이름 변경을 감지한 뒤 대상 경로는 여기서 거른다.
+  // 인자로 경로를 주면 그 파일만 판정한다(테스트가 워킹트리의 다른 미커밋 변경에 흔들리지 않게 — 티켓 20260924_0652).
+  const only = process.argv.slice(2)
   const inScope = (f) =>
     f &&
+    (only.length === 0 || only.includes(f)) &&
     (f.startsWith('jam-web/') || f.startsWith('docs/') || f.startsWith('jam-doc/')) &&
     !f.startsWith('docs/tickets/') &&
     !f.startsWith('jam-doc/archive/') &&
@@ -100,7 +103,10 @@ function collectAddedLines() {
   const added = parseAddedLines(execSync(`git diff --find-renames ${base}`, opts)).filter((a) => inScope(a.file))
   const untracked = execSync('git ls-files --others --exclude-standard', opts).split('\n').filter(inScope)
   for (const file of untracked) {
-    readFileSync(file, 'utf8')
+    const buf = readFileSync(file)
+    if (buf.includes(0)) continue // 널 바이트가 있으면 바이너리 — 깨진 문자열로 읽지 않고 건너뛴다
+    buf
+      .toString('utf8')
       .split('\n')
       .forEach((content, i) => added.push({ file, line: i + 1, content }))
   }
