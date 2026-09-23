@@ -9,6 +9,8 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
+import { getTodayWeather } from '@/lib/inputs/weather'
+import { getTodaySpecialDays } from '@/lib/inputs/holidays'
 
 export type TimeOfDayTag =
   | 'time_dawn'
@@ -155,16 +157,21 @@ export async function computeUserExposureTags(
 ): Promise<string[]> {
   const tags: string[] = ['all', timeOfDayTag(now)]
 
-  const [participating, endingSoon, incompleteBook] = await Promise.all([
+  const [participating, endingSoon, incompleteBook, weather, specialDays] = await Promise.all([
     hasParticipatingMission(userId),
     hasEndingSoonMission(userId, now),
     hasIncompleteItemBook(userId),
+    getTodayWeather(),
+    getTodaySpecialDays(),
   ])
 
   if (participating) tags.push('has_participating_mission')
   if (endingSoon) tags.push('has_ending_soon_mission')
   if (incompleteBook) tags.push('has_incomplete_itembook')
   if (isNewUser(userCreatedAt, now)) tags.push('new_user')
+  // 기상청·특일정보 API 실패 시 각각 null/빈 배열이 와서 태그만 조용히 빠진다(티켓 20260923_2254)
+  if (weather) tags.push(`weather_${weather}`)
+  if (specialDays.length > 0) tags.push('holiday_today')
 
   return tags
 }

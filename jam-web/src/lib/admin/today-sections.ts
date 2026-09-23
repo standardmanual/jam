@@ -128,6 +128,11 @@ export const TODAY_EXPOSURE_TAG_OPTIONS: readonly { value: string; label: string
   { value: 'has_ending_soon_mission', label: 'has_ending_soon_mission' },
   { value: 'has_incomplete_itembook', label: 'has_incomplete_itembook' },
   { value: 'new_user', label: 'new_user (가입 7일 이내)' },
+  { value: 'weather_clear', label: 'weather_clear (오늘 날씨: 맑음)' },
+  { value: 'weather_mild', label: 'weather_mild (오늘 날씨: 구름많음·흐림)' },
+  { value: 'weather_rain', label: 'weather_rain (오늘 날씨: 비/눈)' },
+  { value: 'weather_extreme', label: 'weather_extreme (오늘 날씨: 폭염·한파)' },
+  { value: 'holiday_today', label: 'holiday_today (오늘 공휴일·기념일·24절기)' },
 ]
 
 // ── 섹션 ─────────────────────────────────────────────────────────────────
