@@ -2,9 +2,11 @@
  * 특일정보 API(공공데이터포털)로 오늘의 공휴일·기념일·24절기를 가져온다 (티켓 20260923_2254)
  * 참조: https://www.data.go.kr (한국천문연구원_특일 정보, SpcdeInfoService)
  *
- * 인증키(DATA_GO_KR_API_KEY) 미설정이나 호출 실패 시 빈 배열을 반환한다(오류를 던지지 않는다) —
- * 호출부는 기념일 세그먼트 태그만 빠뜨리고 카드 생성은 그대로 진행한다(graceful degradation).
+ * 외부 호출은 cron(`refreshTodaySpecialDays`)만 하고 결과를 저장한다(티켓 20260923_2333).
+ * 카드 조회 경로의 `getTodaySpecialDays`는 저장값만 읽으며, 값이 없으면 빈 배열을 반환한다
+ * (오류를 던지지 않는다) — 호출부는 기념일 세그먼트 태그만 빠뜨리고 카드 생성은 그대로 진행한다.
  */
+import { readDailyInput, ymdToDateKst } from './daily-store'
 
 export type SpecialDayType = 'holiday' | 'anniversary' | 'seasonal'
 
@@ -77,16 +79,19 @@ async function fetchSpcdeOperation(
   return json?.response?.body?.items?.item as SpcdeInfoItem | SpcdeInfoItem[] | undefined
 }
 
-/**
- * 오늘의 공휴일·기념일·24절기를 정규화해 반환한다. 인증키 미설정이나 호출 실패 시 빈 배열
- * (오류를 던지지 않는다). 세 오퍼레이션 중 일부만 실패해도 나머지는 반영된다.
- * 하루 단위 모듈 캐시 — 같은 날 재호출은 외부 API를 다시 부르지 않는다.
- */
-export async function getTodaySpecialDays(): Promise<SpecialDay[]> {
-  const now = new Date()
-  const { year, month, ymd } = todayKstYmd(now)
+/** 오늘(KST) 저장 키 — cron 저장과 카드 조회 읽기가 같은 키를 쓴다 */
+export function todaySpecialDaysDateKst(now: Date = new Date()): string {
+  return ymdToDateKst(todayKstYmd(now).ymd)
+}
 
-  if (cache && cache.date === ymd) return cache.value
+/**
+ * 특일정보 API를 호출해 오늘의 공휴일·기념일·24절기를 정규화한다. 세 오퍼레이션 중 일부만
+ * 실패해도 나머지는 반영되고, 전부 실패(인증키 미설정 포함)하면 null이다(오류를 던지지 않는다).
+ * 빈 배열은 "오늘 특일 없음"이라는 정상 값이라 실패(null)와 구분한다. cron 전용 —
+ * 카드 조회 경로에서 부르지 않는다.
+ */
+export async function refreshTodaySpecialDays(now: Date = new Date()): Promise<SpecialDay[] | null> {
+  const { year, month, ymd } = todayKstYmd(now)
 
   const settled = await Promise.allSettled(
     ENDPOINTS.map(({ operation, type }) =>
@@ -94,7 +99,29 @@ export async function getTodaySpecialDays(): Promise<SpecialDay[]> {
     )
   )
 
-  const value = settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []))
+  if (settled.every((r) => r.status === 'rejected')) return null
+  return settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []))
+}
+
+function isSpecialDay(v: unknown): v is SpecialDay {
+  if (!v || typeof v !== 'object') return false
+  const { name, type } = v as Record<string, unknown>
+  return typeof name === 'string' && (type === 'holiday' || type === 'anniversary' || type === 'seasonal')
+}
+
+/**
+ * 저장된 오늘의 특일을 반환한다. 저장값이 없거나 읽기 실패 시 빈 배열(오류를 던지지 않는다).
+ * 외부 API를 부르지 않는다. 저장값을 찾은 날은 하루 단위 모듈 캐시로 재조회하지 않는다
+ * ("오늘 특일 없음"으로 저장된 빈 배열도 값이다). 값이 없을 때는 캐시하지 않는다.
+ */
+export async function getTodaySpecialDays(): Promise<SpecialDay[]> {
+  const { ymd } = todayKstYmd(new Date())
+  if (cache && cache.date === ymd) return cache.value
+
+  const stored = await readDailyInput('special_days', ymdToDateKst(ymd))
+  if (!Array.isArray(stored)) return []
+
+  const value = (stored as unknown[]).filter(isSpecialDay)
   cache = { date: ymd, value }
   return value
 }
