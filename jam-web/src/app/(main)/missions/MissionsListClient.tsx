@@ -201,13 +201,25 @@ function statusLabel(m: MissionListItem, started: boolean): string | null {
   return null
 }
 
-// 잠금 카드 안내 문구 — "무엇을 하면 열리는지"를 알려준다 (20260825_028)
-function lockedHintText(m: MissionListItem): string {
-  if (!m.requiredBadge) return d.missions.lockedBodyGeneric
-  return t(d.missions.lockedHint, {
-    badge: m.requiredBadge.name,
-    rarity: RARITY_LABEL[m.requiredBadge.rarity] ?? m.requiredBadge.rarity,
-  })
+// 카드 상단 상태 라벨 — 20260923_1353: 잠김·상시 등 여러 칩이 섞여 있던 meta-row를
+// 우선순위 하나로 합친다(잠김 > 완료 > 참가중 > 시작전 > 상시/종료/기간). 잠김의 안내는
+// 더 이상 이 라벨이 아니라 "조건" 행이 맡는다(lockedHintText 삭제).
+function topStatusLabel(m: MissionListItem, tab: Tab, started: boolean): React.ReactNode {
+  // 20260825_028: 잠김이 '참가중'보다 우선한다 — statusLabel의 우선순위와 같은 순서.
+  if (m.joined && !m.done && !m.locked) return <JoinedBadge />
+  const sLabel = statusLabel(m, started)
+  if (sLabel) return <StatusBadge locked={m.locked && !m.done}>{sLabel}</StatusBadge>
+  return <StatusBadge>{periodText(m, tab)}</StatusBadge>
+}
+
+// "조건" 행 전용 — requiredBadge에는 level이 없으므로 등급칩만 재사용한다(BadgeLevelChip 미사용)
+function conditionBadgeNode(badge: { name: string; rarity: BadgeRarity }): React.ReactNode {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+      <RarityBadge rarity={badge.rarity} />
+      {t(d.missions.rewardBadgeName, { name: badge.name })}
+    </span>
+  )
 }
 
 // 잠긴 카드를 눌렀을 때의 토스트 — 참가 API(join)가 403으로 돌려주는 문구를 그대로 쓴다.
@@ -321,8 +333,6 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
           {list.map((m) => {
             const started = new Date(m.starts_at) <= new Date()
             const newMission = isNewMission(m.created_at)
-            const sLabel = statusLabel(m, started)
-            const period = periodText(m, tab)
             const reward = rewardNodes(m, rewardBadgeNames)
             // 20260825_028: 잠긴 미션은 상세 진입을 막고, 눌리면 잠금 사유를 토스트로 알린다.
             // 카드 전체 딤(0.6)은 '시작전'과 픽셀 단위로 같아져 상태 구분이 사라지고
@@ -400,21 +410,10 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
 
                   {/* text-area */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
-                    {/* meta-row */}
+                    {/* meta-row — 20260923_1353: 상태 라벨은 하나만(topStatusLabel), NEW만 별도 축으로 병기 */}
                     <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '6px 8px', alignItems: 'center' }}>
                       {newMission && <NewBadge />}
-                      {/* 20260825_028: 잠김이 '참가중'보다 우선한다. statusLabel의 우선순위와 같은 순서 —
-                          게이팅 도입 전에 참가해 둔 미션이 잠기면 두 칩이 모순되어 보인다. */}
-                      {m.joined && !m.done && !m.locked ? (
-                        <JoinedBadge />
-                      ) : sLabel ? (
-                        <StatusBadge locked={m.locked && !m.done}>{sLabel}</StatusBadge>
-                      ) : null}
-                      {period === d.missions.tagPermanent || period === d.missions.tagEnded ? (
-                        <StatusBadge>{period}</StatusBadge>
-                      ) : (
-                        <span style={{ fontSize: '11px', color: C_META_TEXT, lineHeight: 1 }}>{period}</span>
-                      )}
+                      {topStatusLabel(m, tab, started)}
                     </div>
 
                     {/* title */}
@@ -422,20 +421,9 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                       {m.title}
                     </h3>
 
-                    {/* desc — 잠김이면 설명 대신 잠금 힌트를 제목 바로 아래에 둔다.
-                        참가할 수 없는 미션에서 2줄짜리 설명은 실행 불가능한 정보고,
-                        보상보다 뒤에 붙은 힌트는 "받을 수 있다"를 먼저 읽히게 만든다. */}
-                    {m.locked ? (
-                      <span
-                        style={{
-                          fontSize: 'var(--text-micro)',
-                          lineHeight: 1.3,
-                          color: 'var(--color-text-secondary)',
-                        }}
-                      >
-                        {lockedHintText(m)}
-                      </span>
-                    ) : m.description ? (
+                    {/* desc — 20260923_1353: 잠김 여부와 무관하게 항상 그대로 노출한다.
+                        잠김 안내는 더 이상 이 자리가 아니라 아래 "조건" 행이 맡는다. */}
+                    {m.description ? (
                       <p
                         style={{
                           fontSize: '12px',
@@ -453,8 +441,17 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                       </p>
                     ) : null}
 
+                    {/* condition — 잠김이고 선행 배지가 있을 때만. 중립색으로 획득 행과 구분한다 */}
+                    {m.locked && m.requiredBadge && (
+                      <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1 }}>
+                        <span style={{ marginRight: '4px' }}>{d.missions.cardConditionLabel}</span>
+                        {conditionBadgeNode(m.requiredBadge)}
+                      </span>
+                    )}
+
                     {/* reward — 칩(등급/레벨)과 텍스트(포인트)를 한 줄로 조합 (20260907_0014) */}
                     <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: '11px', color: C_REWARD, lineHeight: 1 }}>
+                      <span style={{ marginRight: '4px' }}>{d.missions.cardRewardLabel}</span>
                       {reward}
                     </span>
                   </div>
