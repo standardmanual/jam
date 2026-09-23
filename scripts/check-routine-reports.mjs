@@ -8,7 +8,7 @@
 // 이 스크립트가 그 서술을 실제로 만든다. 세션을 열 때마다 돌며, 문제가 있을 때만 말한다.
 //
 // 판정 기준 (scheduled-jobs.md):
-//   주간 — 월요일 09:00 KST · jam-doc/operations/reports/weekly/YYYY-Www.md
+//   주간 — 화요일 09:00 KST · jam-doc/operations/reports/weekly/YYYY-Www.md
 //   월간 — 매월 1일 09:00 KST · jam-doc/operations/reports/monthly/YYYY-MM.md
 //
 // 종료 코드는 항상 0이다. 세션 시작을 막지 않고 알리기만 한다.
@@ -36,7 +36,7 @@ const DOW = now.getUTCDay()   // 0=일 1=월
 const pad = (n) => String(n).padStart(2, '0')
 const warnings = []
 
-// ── 주간: 이번 주 월요일 09:00이 지났는가 ─────────────────────────────────────
+// ── 주간: 이번 주 화요일 09:00이 지났는가 ─────────────────────────────────────
 // ISO 주 번호 (scheduled-jobs.md의 YYYY-Www 표기)
 function isoWeek(d) {
   const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
@@ -47,8 +47,8 @@ function isoWeek(d) {
   return { year: t.getUTCFullYear(), week }
 }
 
-// 이번 주 월요일 09:00 KST가 이미 지났는지. 월요일이면 09시 이후여야 한다.
-const weeklyDue = DOW === 0 ? true : DOW > 1 || (DOW === 1 && H >= 9)
+// 이번 주 화요일 09:00 KST가 이미 지났는지. 화요일이면 09시 이후여야 한다(2026-09-24 월요일에서 변경, 티켓 20260924_0806).
+const weeklyDue = DOW === 0 ? true : DOW > 2 || (DOW === 2 && H >= 9)
 if (weeklyDue) {
   const { year, week } = isoWeek(now)
   const file = `jam-doc/operations/reports/weekly/${year}-W${pad(week)}.md`
