@@ -19,7 +19,7 @@
  *   렌더 직전에 읽는 이유도 같다 — 회차는 계속 오른다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
-import type { ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
+import type { ActivityFeedRow, ActivityFeedEventType, BadgeEarnHistoryEntry } from '@/types/database'
 
 const BADGE_METADATA_EVENTS = new Set<ActivityFeedEventType>(['badge_earned', 'item_dropped', 'item_picked_up'])
 
@@ -61,7 +61,14 @@ export async function hydrateFeedBadgeInfo(items: ActivityFeedRow[]): Promise<Ac
     supabase.from('badges').select('id, name, image_url, rarity, level, deleted_at').in('id', [...badgeIds]),
     // 회차는 활동 배지(user_activity_badges)에만 있다. 체크인 배지의 반복은 예전부터
     // metadata.visit_count로 실려 오므로 여기서 건드리지 않는다.
-    supabase.from('user_activity_badges').select('user_id, badge_id, earn_count').in('badge_id', [...badgeIds]).in('user_id', [...userIds]),
+    // earn_history: 반복 발급형 배지는 재발급돼도 피드 행이 새로 생기지 않는다(§ 파일 상단
+    // 주석). 표시 시각을 "최초 발급일"이 아니라 "가장 최근 회차"로 보이려면 이 배열의 마지막
+    // 원소가 필요하다(티켓 20260923_1237).
+    supabase
+      .from('user_activity_badges')
+      .select('user_id, badge_id, earn_count, earn_history')
+      .in('badge_id', [...badgeIds])
+      .in('user_id', [...userIds]),
   ])
 
   const badgeMap = new Map(
@@ -73,6 +80,21 @@ export async function hydrateFeedBadgeInfo(items: ActivityFeedRow[]): Promise<Ac
     ((earnRows ?? []) as { user_id: string; badge_id: string; earn_count: number | null }[])
       .map((r) => [earnKey(r.user_id, r.badge_id), r.earn_count ?? 1])
   )
+  // earn_history는 회차마다 뒤에 추가되므로(마이그레이션 132) 마지막 원소가 가장 최근 회차다.
+  // 반복형이 아닌 배지도 earn_history에 최초 발급 1건이 항상 들어 있어(마이그레이션 130 백필)
+  // 마지막 원소가 곧 최초 발급 시각과 같다 — 그래서 반복형 여부를 따로 가리지 않고 항상 이
+  // 값을 우선 쓴다. JSONB라 타입이 없으므로 배열·문자열 형태를 런타임에서 확인하고, 형태가
+  // 어긋나면(과거 데이터 등) 이 배지는 맵에 넣지 않아 아래에서 created_at 원값으로 폴백한다.
+  const latestEarnedAtMap = new Map<string, string>()
+  for (const r of (earnRows ?? []) as { user_id: string; badge_id: string; earn_history: unknown }[]) {
+    const history = r.earn_history
+    if (!Array.isArray(history) || history.length === 0) continue
+    const last = history[history.length - 1] as BadgeEarnHistoryEntry | undefined
+    const earnedAt = last?.earned_at
+    if (typeof earnedAt === 'string') {
+      latestEarnedAtMap.set(earnKey(r.user_id, r.badge_id), earnedAt)
+    }
+  }
 
   return items
     .filter((item) => {
@@ -90,8 +112,16 @@ export async function hydrateFeedBadgeInfo(items: ActivityFeedRow[]): Promise<Ac
       const live = typeof badgeId === 'string' ? badgeMap.get(badgeId) : undefined
       if (!live) return item
       const earnCount = typeof badgeId === 'string' ? earnCountMap.get(earnKey(item.user_id, badgeId)) : undefined
+      // 피드 카드·그룹 헤더·상세 시트(FeedSection.tsx)가 전부 이 created_at 하나만 읽어 "N일
+      // 전"·"획득 일시"를 그린다. 반복 발급형은 재발급돼도 이 피드 행 자체가 새로 생기지
+      // 않으므로(파일 상단 주석), DB 삽입 시각 대신 가장 최근 회차 시각으로 덮어써야 화면이
+      // 최신 발급을 반영한다(티켓 20260923_1237). `/api/badges/recent-earned` 라우트는 같은
+      // 컬럼명을 "DB 삽입 시각·방금 획득 판정 기준"이라는 다른 의미로 쓰는데, 그 라우트의
+      // 조회 경로와는 완전히 분리돼 있어 여기서 덮어써도 서로 영향을 주지 않는다.
+      const latestEarnedAt = typeof badgeId === 'string' ? latestEarnedAtMap.get(earnKey(item.user_id, badgeId)) : undefined
       return {
         ...item,
+        ...(latestEarnedAt != null ? { created_at: latestEarnedAt } : {}),
         metadata: {
           ...meta,
           badge_name: live.name,
