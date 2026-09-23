@@ -92,7 +92,7 @@ status: active
 - [ACTIVITY_BADGES.md](../../jam-doc/planning/content/ACTIVITY_BADGES.md) — v5 액티비티배지의 조건·설명과 설계 원칙, 시딩하지 않은 항목, 발급되지 않는 항목을 정리한 목록이다(정본은 DB).
 - [COMBINE_RECIPES.md](../../jam-doc/planning/content/COMBINE_RECIPES.md) — 믹스 결과의 두 갈래, 레시피 슬롯 구조, 실패 처리, 등록 레시피 현황과 카탈로그 공백을 정리한 정책 문서다.
 - [POI.md](../../jam-doc/planning/content/POI.md) — 지점(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
-- [TRIBES.md](../../jam-doc/planning/content/TRIBES.md) — 세계관 트라이브의 캐치프레이즈·컬렉션·아이템배지, 인접 그래프, 데이터 소스를 정리한 목록이다.
+- [TRIBES.md](../../jam-doc/planning/content/TRIBES.md) — 세계관 트라이브의 캐치프레이즈·컬렉션·아이템배지, 인접 그래프, 소재·시간대·POI 유형 매핑, 데이터 소스를 정리한 목록이다.
 - [v5_badge_name_split.md](../../jam-doc/planning/content/v5_badge_name_split.md) — v5 액티비티배지에서 종목마다 계열 이름을 다르게 짓는 이름 분화의 근거, 후보안, 승인 후 검증 결과를 기록한 문서다.
 
 ## jam-doc/planning/content/tribes-history/
