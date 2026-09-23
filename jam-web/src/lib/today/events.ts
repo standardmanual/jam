@@ -64,6 +64,49 @@ export function parseTodayCardEventInput(body: unknown): TodayCardEventValidatio
   }
 }
 
+export type CardExposureValidation = { ok: true } | { ok: false; error: string }
+
+/** 카드가 존재하고 `is_active`이며 `now`가 `[starts_at, ends_at]`(양끝 포함, 기존 노출 조회와 동일) 안일 때만 통과한다(티켓 20260924_0111). */
+export async function assertCardExposable(cardId: string, now: Date): Promise<CardExposureValidation> {
+  const supabase = createServiceClient()
+  const { data: card, error } = await supabase
+    .from('today_cards')
+    .select('is_active, starts_at, ends_at')
+    .eq('id', cardId)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[today/events] 카드 노출 검증 조회 오류:', error.message)
+    return { ok: false, error: '카드를 확인할 수 없습니다.' }
+  }
+  if (!card) return { ok: false, error: '카드를 찾을 수 없습니다.' }
+  if (!card.is_active) return { ok: false, error: '노출 중인 카드가 아닙니다.' }
+
+  const nowMs = now.getTime()
+  if (nowMs < new Date(card.starts_at).getTime() || nowMs > new Date(card.ends_at).getTime()) {
+    return { ok: false, error: '노출 기간이 아닌 카드입니다.' }
+  }
+  return { ok: true }
+}
+
+export type RateLimitResult = { ok: true } | { ok: false }
+
+// 인스턴스 메모리 Map — 서버리스라 인스턴스별 최선 노력(best-effort) 수준의 제한이다.
+const rateLimitTimestamps = new Map<string, number[]>()
+
+/** `key`별 `windowMs` 동안 최대 `limit`건만 허용한다. 키는 이 함수 밖으로 넘기거나 로그로 남기지 않는다. */
+export function checkRateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
+  const now = Date.now()
+  const recent = (rateLimitTimestamps.get(key) ?? []).filter((t) => now - t < windowMs)
+  if (recent.length >= limit) {
+    rateLimitTimestamps.set(key, recent)
+    return { ok: false }
+  }
+  recent.push(now)
+  rateLimitTimestamps.set(key, recent)
+  return { ok: true }
+}
+
 export type RecordTodayCardEventResult = { ok: true } | { ok: false; error: string }
 
 /**
