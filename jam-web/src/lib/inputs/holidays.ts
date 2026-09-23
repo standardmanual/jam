@@ -19,7 +19,7 @@ interface SpcdeInfoItem {
 }
 
 const SPCDE_BASE_URL = 'http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService'
-const FETCH_TIMEOUT_MS = 8_000
+const FETCH_TIMEOUT_MS = 2_000
 
 // 공휴일 / 기념일 / 24절기 — 세 오퍼레이션을 모두 호출해 합친다
 const ENDPOINTS: { operation: string; type: SpecialDayType }[] = [

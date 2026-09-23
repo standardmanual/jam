@@ -16,7 +16,7 @@ interface KmaForecastItem {
 }
 
 const KMA_BASE_URL = 'https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst'
-const FETCH_TIMEOUT_MS = 8_000
+const FETCH_TIMEOUT_MS = 2_000
 
 // 서울 시청 기준 기상청 격자좌표(1단계 — 지역 확장은 후속)
 const SEOUL_NX = 60
