@@ -70,7 +70,17 @@ code:
 
 ## 5. 세그먼트 태그
 
-현재 값(2026-09-23 확인, 티켓 20260923_2253·2254 구현 반영): `all`, 시간대 5종(`time_dawn`·`time_morning`·`time_afternoon`·`time_evening`·`time_night`), `has_participating_mission`, `has_ending_soon_mission`, `has_incomplete_itembook`, `itembook_remaining_le3`(미완성 컬렉션 잔여 슬롯 최소값이 3개 이하), `strava_stale_14d`(Strava 연결이 있고 마지막 동기화 경과가 14일 이상 — 연결 자체가 없는 유저에게는 붙지 않는다), `new_user`, 날씨 4종(`weather_clear`·`weather_mild`·`weather_rain`·`weather_extreme`, 기상청 API 허브 단기예보 기반, 서울 고정), `holiday_today`(특일정보 API 기반 공휴일·기념일·24절기).
+현재 값(2026-09-23 확인, 티켓 20260923_2253·2254 구현 반영): `all`, 시간대 5종(`time_dawn`·`time_morning`·`time_afternoon`·`time_evening`·`time_night`), `has_participating_mission`, `has_ending_soon_mission`, `has_incomplete_itembook`, `itembook_remaining_le3`(미완성 컬렉션 잔여 슬롯 최소값이 3개 이하), `strava_stale_14d`(Strava 연결이 있고 마지막 동기화 경과가 14일 이상 — 연결 자체가 없는 유저에게는 붙지 않는다), `new_user`, 날씨 4종(`weather_clear`·`weather_mild`·`weather_rain`·`weather_extreme`, 기상청 API 허브 단기예보 기반, 서울 고정), `holiday_today`·`seasonal_today`·`anniversary_today`(특일정보 API 기반, 아래 「특일 태그 정의」).
+
+**특일 태그 정의(2026-09-24 사용자 확정, 대상 목록 정본은 [SPECIAL_DAYS.md](../../../../jam-doc/planning/content/SPECIAL_DAYS.md), 구현은 티켓 [20260924_0805](../../../tickets/p1-high/20260924_0805_Service_holiday_today-태그-대상-목록-선정과-태그-분리.md))**: 대상은 날짜가 아니라 **이름**으로 고른다(음력·절기 날짜는 해마다 바뀐다).
+
+| 태그 | 켜지는 날 |
+|---|---|
+| `holiday_today` | 공휴일(대체공휴일 포함) 중 전국동시지방선거·제헌절을 뺀 날. 쉬는 날이라 "쉬는 날" 문안 카드에 쓴다. 카드 문안에 날 이름은 쓰지 않는다 |
+| `seasonal_today` | 24절기 중 입춘·경칩·대서·입추·처서·입동·대설·동지, 잡절 중 정월대보름·말복·칠석 |
+| `anniversary_today` | 기념일 중 식목일·근로자의 날·어린이 날·어버이 날·부부의 날·환경의 날·섬의 날·푸른 하늘의 날·청년의 날·스포츠의 날 |
+
+> 구현이 프로덕션에 반영되기 전에는 지금 코드대로 `holiday_today` 하나가 공휴일·기념일·24절기 전체에 켜지고, `seasonal_today`·`anniversary_today`는 없다. 반영되면 이 문단의 안내를 지운다.
 
 1단계에서 남은 후보(이름은 구현 티켓에서 확정):
 
@@ -251,7 +261,7 @@ code:
 
 | 영역 | 상태 | 비고 |
 |---|---|---|
-| 세그먼트 태그(§5) | 구현·프로덕션 배포 | 컬렉션 잔여 3개 이하, Strava 동기화 경과 14일, 날씨 4종, 공휴일. `holiday_today` 대상 목록은 [20260924_0805](../../../tickets/p1-high/20260924_0805_Service_holiday_today-태그-대상-목록-선정과-태그-분리.md)에서 정한다 |
+| 세그먼트 태그(§5) | 구현·프로덕션 배포 | 컬렉션 잔여 3개 이하, Strava 동기화 경과 14일, 날씨 4종, 특일 태그. 특일 태그 3종(`holiday_today`·`seasonal_today`·`anniversary_today`)의 확정 대상은 구현 중이다: [20260924_0805](../../../tickets/p1-high/20260924_0805_Service_holiday_today-태그-대상-목록-선정과-태그-분리.md)에서 정한다 |
 | 외부 입력(§7.1) | 일부 구현 | 기상청·특일정보 구현. TourAPI·유튜브·빅카인즈 수집기는 [20260924_0807](../../../tickets/p3-low/20260924_0807_API_입력층-확장-TourAPI-유튜브-빅카인즈-수집기.md) |
 | 이슈 필터(§7.3)·코퍼스(§4) | 구현·프로덕션 배포 | 코퍼스에 트라이브 설명 DB 0건, 컬렉션 서사 0건(설명 96건으로 대체) |
 | 유형 카탈로그(§6) | 17종 정의, 6종 편성 가능 | T01·T02·T03·T05·T08·T12. 미션이 없어 T04·T15는 [20260924_0808](../../../tickets/p2-normal/20260924_0808_Content_가을-시즌-미션-기획과-등록-금요일-T04-공백-해소.md) 이후 |
