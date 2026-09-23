@@ -202,8 +202,8 @@ function statusLabel(m: MissionListItem, started: boolean): string | null {
 }
 
 // 카드 상단 상태 라벨 — 20260923_1353: 잠김·상시 등 여러 칩이 섞여 있던 meta-row를
-// 우선순위 하나로 합친다(잠김 > 완료 > 참가중 > 시작전 > 상시/종료/기간). 잠김의 안내는
-// 더 이상 이 라벨이 아니라 "조건" 행이 맡는다(lockedHintText 삭제).
+// 우선순위 하나로 합친다(잠김 > 완료 > 참가중 > 시작전 > 상시/종료/기간). 잠긴 이유
+// 안내는 이 라벨이 아니라 아래 "조건" 행(lockedHintText 포함)이 맡는다.
 function topStatusLabel(m: MissionListItem, tab: Tab, started: boolean): React.ReactNode {
   // 20260825_028: 잠김이 '참가중'보다 우선한다 — statusLabel의 우선순위와 같은 순서.
   if (m.joined && !m.done && !m.locked) return <JoinedBadge />
@@ -220,6 +220,16 @@ function conditionBadgeNode(badge: { name: string; rarity: BadgeRarity }): React
       {t(d.missions.rewardBadgeName, { name: badge.name })}
     </span>
   )
+}
+
+// requiredBadge가 없는 잠김 미션(v5 게이트 미션 등)의 "조건" 행 대체 문구 — 이 경우 잠긴
+// 이유를 알려줄 정보가 이 문구뿐이므로 삭제하지 않는다(20260923_1353 재작업, 게이트 FAIL 사유).
+function lockedHintText(m: MissionListItem): string {
+  if (!m.requiredBadge) return d.missions.lockedBodyGeneric
+  return t(d.missions.lockedHint, {
+    badge: m.requiredBadge.name,
+    rarity: RARITY_LABEL[m.requiredBadge.rarity] ?? m.requiredBadge.rarity,
+  })
 }
 
 // 잠긴 카드를 눌렀을 때의 토스트 — 참가 API(join)가 403으로 돌려주는 문구를 그대로 쓴다.
@@ -441,11 +451,13 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                       </p>
                     ) : null}
 
-                    {/* condition — 잠김이고 선행 배지가 있을 때만. 중립색으로 획득 행과 구분한다 */}
-                    {m.locked && m.requiredBadge && (
+                    {/* condition — locked일 때만 렌더. requiredBadge가 있으면 등급칩+배지명(중립색),
+                        없으면(v5 게이트 미션 등) lockedHintText()의 범용 안내 문구를 칩 없이
+                        그대로 남긴다 — 잠긴 이유를 알려주는 유일한 정보라 생략하면 안 된다. */}
+                    {m.locked && (
                       <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1 }}>
                         <span style={{ marginRight: '4px' }}>{d.missions.cardConditionLabel}</span>
-                        {conditionBadgeNode(m.requiredBadge)}
+                        {m.requiredBadge ? conditionBadgeNode(m.requiredBadge) : lockedHintText(m)}
                       </span>
                     )}
 
