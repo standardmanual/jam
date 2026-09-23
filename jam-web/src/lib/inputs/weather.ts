@@ -3,9 +3,11 @@
  * 참조: https://apihub.kma.go.kr (단기예보 조회서비스 getVilageFcst)
  *
  * 1단계는 서울(시청) 기준 고정 격자좌표만 조회한다 — 지역 확장은 후속.
- * 인증키(KMA_API_KEY) 미설정이나 호출 실패 시 null을 반환한다(오류를 던지지 않는다) —
- * 호출부는 날씨 세그먼트 태그만 빠뜨리고 카드 생성은 그대로 진행한다(graceful degradation).
+ * 외부 호출은 cron(`refreshTodayWeather`)만 하고 결과를 저장한다(티켓 20260923_2333).
+ * 카드 조회 경로의 `getTodayWeather`는 저장값만 읽으며, 값이 없으면 null을 반환한다(오류를
+ * 던지지 않는다) — 호출부는 날씨 세그먼트 태그만 빠뜨리고 카드 생성은 그대로 진행한다.
  */
+import { readDailyInput, ymdToDateKst } from './daily-store'
 
 export type WeatherKind = 'clear' | 'mild' | 'rain' | 'extreme'
 
@@ -83,7 +85,9 @@ export function normalizeWeatherItems(items: KmaForecastItem[], todayYmd: string
   return 'mild'
 }
 
-let cache: { date: string; value: WeatherKind | null } | null = null
+const WEATHER_KINDS: readonly string[] = ['clear', 'mild', 'rain', 'extreme']
+
+let cache: { date: string; value: WeatherKind } | null = null
 
 async function fetchKmaForecast(): Promise<KmaForecastItem[]> {
   const authKey = process.env.KMA_API_KEY
@@ -103,24 +107,38 @@ async function fetchKmaForecast(): Promise<KmaForecastItem[]> {
   return items as KmaForecastItem[]
 }
 
+/** 오늘(KST) 저장 키 — cron 저장과 카드 조회 읽기가 같은 키를 쓴다 */
+export function todayWeatherDateKst(now: Date = new Date()): string {
+  return ymdToDateKst(todayKstParts(now).ymd)
+}
+
 /**
- * 오늘 날씨 구분을 반환한다. 인증키 미설정이나 호출 실패 시 null(오류를 던지지 않는다).
- * 하루 단위 모듈 캐시 — 같은 날 재호출은 외부 API를 다시 부르지 않는다.
+ * 기상청 API를 호출해 오늘 날씨 구분을 구한다. 인증키 미설정이나 호출 실패 시 null(오류를
+ * 던지지 않는다). cron 전용 — 카드 조회 경로에서 부르지 않는다.
  */
-export async function getTodayWeather(): Promise<WeatherKind | null> {
-  const now = new Date()
-  const { ymd } = todayKstParts(now)
-
-  if (cache && cache.date === ymd) return cache.value
-
-  let value: WeatherKind | null
+export async function refreshTodayWeather(now: Date = new Date()): Promise<WeatherKind | null> {
   try {
     const items = await fetchKmaForecast()
-    value = normalizeWeatherItems(items, ymd)
+    return normalizeWeatherItems(items, todayKstParts(now).ymd)
   } catch {
-    value = null
+    return null
   }
+}
 
+/**
+ * 저장된 오늘 날씨 구분을 반환한다. 저장값이 없거나 읽기 실패 시 null(오류를 던지지 않는다).
+ * 외부 API를 부르지 않는다. 저장값을 찾은 날은 하루 단위 모듈 캐시로 재조회하지 않고,
+ * 값이 없을 때는 캐시하지 않아 cron 저장 직후부터 반영된다.
+ */
+export async function getTodayWeather(): Promise<WeatherKind | null> {
+  const { ymd } = todayKstParts(new Date())
+  if (cache && cache.date === ymd) return cache.value
+
+  const stored = await readDailyInput('weather', ymdToDateKst(ymd))
+  const kind = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored.kind : null
+  if (typeof kind !== 'string' || !WEATHER_KINDS.includes(kind)) return null
+
+  const value = kind as WeatherKind
   cache = { date: ymd, value }
   return value
 }

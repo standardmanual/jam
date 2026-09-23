@@ -7,6 +7,13 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { normalizeWeatherItems, latestKmaBaseTime } from '../weather'
 import { normalizeSpecialDayItems } from '../holidays'
 
+// 카드 조회 경로는 저장소만 읽는다 — 저장소는 목으로 대체한다(티켓 20260923_2333)
+const { readDailyInputMock } = vi.hoisted(() => ({ readDailyInputMock: vi.fn() }))
+vi.mock('../daily-store', () => ({
+  readDailyInput: readDailyInputMock,
+  ymdToDateKst: (ymd: string) => `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`,
+}))
+
 function mockFetchOnce(status: number, body: unknown) {
   vi.stubGlobal(
     'fetch',
@@ -112,51 +119,157 @@ describe('normalizeSpecialDayItems — 오늘 날짜 특일 항목 정규화', (
   })
 })
 
-describe('getTodayWeather — 인증키 없음·호출 실패 시 폴백(vitest 모듈 격리로 캐시 리셋)', () => {
+describe('getTodayWeather — 저장값만 읽는다(vitest 모듈 격리로 캐시 리셋)', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    readDailyInputMock.mockReset()
+  })
+
+  it('저장값이 없으면 null이고 외부 API(fetch)를 부르지 않는다', async () => {
+    readDailyInputMock.mockResolvedValue(null)
+    mockFetchOnce(200, {})
+    const { getTodayWeather } = await import('../weather')
+    await expect(getTodayWeather()).resolves.toBeNull()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('저장된 날씨 구분을 반환한다', async () => {
+    readDailyInputMock.mockResolvedValue({ kind: 'rain' })
+    const { getTodayWeather } = await import('../weather')
+    await expect(getTodayWeather()).resolves.toBe('rain')
+  })
+
+  it('저장값 형식이 잘못되면 null', async () => {
+    readDailyInputMock.mockResolvedValue({ kind: 'snow' })
+    const { getTodayWeather } = await import('../weather')
+    await expect(getTodayWeather()).resolves.toBeNull()
+  })
+
+  it('같은 날 저장값을 찾은 뒤 두 번째 호출은 저장소를 다시 읽지 않는다', async () => {
+    readDailyInputMock.mockResolvedValue({ kind: 'clear' })
+    const { getTodayWeather } = await import('../weather')
+    await getTodayWeather()
+    await getTodayWeather()
+    expect(readDailyInputMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('값이 없을 때는 캐시하지 않아 cron 저장 직후부터 반영된다', async () => {
+    readDailyInputMock.mockResolvedValueOnce(null).mockResolvedValueOnce({ kind: 'mild' })
+    const { getTodayWeather } = await import('../weather')
+    await expect(getTodayWeather()).resolves.toBeNull()
+    await expect(getTodayWeather()).resolves.toBe('mild')
+  })
+})
+
+describe('refreshTodayWeather — cron 전용 외부 호출(실패 시 null)', () => {
   beforeEach(() => {
     vi.resetModules()
   })
 
   it('KMA_API_KEY 미설정이면 오류 없이 null', async () => {
     vi.stubEnv('KMA_API_KEY', '')
-    const { getTodayWeather } = await import('../weather')
-    await expect(getTodayWeather()).resolves.toBeNull()
+    const { refreshTodayWeather } = await import('../weather')
+    await expect(refreshTodayWeather()).resolves.toBeNull()
   })
 
   it('HTTP 오류 응답이어도 오류 없이 null', async () => {
     vi.stubEnv('KMA_API_KEY', 'dummy-key')
     mockFetchOnce(500, {})
-    const { getTodayWeather } = await import('../weather')
-    await expect(getTodayWeather()).resolves.toBeNull()
+    const { refreshTodayWeather } = await import('../weather')
+    await expect(refreshTodayWeather()).resolves.toBeNull()
   })
 
-  it('같은 날 두 번째 호출은 캐시를 써서 fetch를 다시 부르지 않는다', async () => {
+  it('정상 응답이면 날씨 구분을 반환한다', async () => {
     vi.stubEnv('KMA_API_KEY', 'dummy-key')
-    mockFetchOnce(500, {})
-    const { getTodayWeather } = await import('../weather')
-    await getTodayWeather()
-    const callsAfterFirst = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.length
-    await getTodayWeather()
-    const callsAfterSecond = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.length
-    expect(callsAfterSecond).toBe(callsAfterFirst)
+    const now = new Date('2026-09-23T21:00:00Z') // KST 2026-09-24 06:00
+    mockFetchOnce(200, {
+      response: { body: { items: { item: [{ category: 'PTY', fcstDate: '20260924', fcstValue: '1' }] } } },
+    })
+    const { refreshTodayWeather } = await import('../weather')
+    await expect(refreshTodayWeather(now)).resolves.toBe('rain')
   })
 })
 
-describe('getTodaySpecialDays — 인증키 없음·호출 실패 시 폴백(vitest 모듈 격리로 캐시 리셋)', () => {
+describe('getTodaySpecialDays — 저장값만 읽는다(vitest 모듈 격리로 캐시 리셋)', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    readDailyInputMock.mockReset()
+  })
+
+  it('저장값이 없으면 빈 배열이고 외부 API(fetch)를 부르지 않는다', async () => {
+    readDailyInputMock.mockResolvedValue(null)
+    mockFetchOnce(200, {})
+    const { getTodaySpecialDays } = await import('../holidays')
+    await expect(getTodaySpecialDays()).resolves.toEqual([])
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('저장된 특일을 반환한다', async () => {
+    readDailyInputMock.mockResolvedValue([{ name: '추석', type: 'holiday' }])
+    const { getTodaySpecialDays } = await import('../holidays')
+    await expect(getTodaySpecialDays()).resolves.toEqual([{ name: '추석', type: 'holiday' }])
+  })
+
+  it('캐시 히트 — 같은 날 두 번째 호출은 저장소를 다시 읽지 않는다', async () => {
+    readDailyInputMock.mockResolvedValue([{ name: '한글날', type: 'holiday' }])
+    const { getTodaySpecialDays } = await import('../holidays')
+    await getTodaySpecialDays()
+    const second = await getTodaySpecialDays()
+    expect(second).toEqual([{ name: '한글날', type: 'holiday' }])
+    expect(readDailyInputMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('"오늘 특일 없음"으로 저장된 빈 배열도 캐시된다', async () => {
+    readDailyInputMock.mockResolvedValue([])
+    const { getTodaySpecialDays } = await import('../holidays')
+    await getTodaySpecialDays()
+    await expect(getTodaySpecialDays()).resolves.toEqual([])
+    expect(readDailyInputMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('값이 없을 때는 캐시하지 않아 cron 저장 직후부터 반영된다', async () => {
+    readDailyInputMock.mockResolvedValueOnce(null).mockResolvedValueOnce([{ name: '추석', type: 'holiday' }])
+    const { getTodaySpecialDays } = await import('../holidays')
+    await expect(getTodaySpecialDays()).resolves.toEqual([])
+    await expect(getTodaySpecialDays()).resolves.toEqual([{ name: '추석', type: 'holiday' }])
+  })
+})
+
+describe('refreshTodaySpecialDays — cron 전용 외부 호출', () => {
   beforeEach(() => {
     vi.resetModules()
   })
 
-  it('DATA_GO_KR_API_KEY 미설정이면 오류 없이 빈 배열', async () => {
+  it('DATA_GO_KR_API_KEY 미설정이면 오류 없이 null', async () => {
     vi.stubEnv('DATA_GO_KR_API_KEY', '')
-    const { getTodaySpecialDays } = await import('../holidays')
-    await expect(getTodaySpecialDays()).resolves.toEqual([])
+    const { refreshTodaySpecialDays } = await import('../holidays')
+    await expect(refreshTodaySpecialDays()).resolves.toBeNull()
   })
 
-  it('세 오퍼레이션 모두 HTTP 오류여도 오류 없이 빈 배열', async () => {
+  it('세 오퍼레이션 모두 HTTP 오류여도 오류 없이 null', async () => {
     vi.stubEnv('DATA_GO_KR_API_KEY', 'dummy-key')
     mockFetchOnce(500, {})
-    const { getTodaySpecialDays } = await import('../holidays')
-    await expect(getTodaySpecialDays()).resolves.toEqual([])
+    const { refreshTodaySpecialDays } = await import('../holidays')
+    await expect(refreshTodaySpecialDays()).resolves.toBeNull()
+  })
+
+  it('성공했지만 오늘 특일이 없으면 빈 배열(실패 null과 구분)', async () => {
+    vi.stubEnv('DATA_GO_KR_API_KEY', 'dummy-key')
+    mockFetchOnce(200, { response: { body: { items: '' } } })
+    const { refreshTodaySpecialDays } = await import('../holidays')
+    await expect(refreshTodaySpecialDays()).resolves.toEqual([])
+  })
+
+  it('오늘 날짜 항목만 정규화해 반환한다', async () => {
+    vi.stubEnv('DATA_GO_KR_API_KEY', 'dummy-key')
+    const now = new Date('2026-09-24T21:00:00Z') // KST 2026-09-25 06:00
+    mockFetchOnce(200, { response: { body: { items: { item: { dateName: '추석', locdate: 20260925 } } } } })
+    const { refreshTodaySpecialDays } = await import('../holidays')
+    const result = await refreshTodaySpecialDays(now)
+    expect(result).toEqual([
+      { name: '추석', type: 'holiday' },
+      { name: '추석', type: 'anniversary' },
+      { name: '추석', type: 'seasonal' },
+    ])
   })
 })
