@@ -98,8 +98,11 @@ async function hasEndingSoonMission(userId: string, now: Date): Promise<boolean>
   return ((ending ?? []) as { id: string }[]).length > 0
 }
 
-/** 슬롯 일부만 채운 미완성 아이템북을 보유했는지 */
-async function hasIncompleteItemBook(userId: string): Promise<boolean> {
+/** 컬렉션 진행 상태 — 미완성 보유 여부와 잔여 슬롯 최소값 (티켓 20260923_2353: 한 번의 조회로 둘 다 구한다) */
+async function getItemBookProgress(
+  userId: string
+): Promise<{ hasIncomplete: boolean; minRemaining: number | null }> {
+  const none = { hasIncomplete: false, minRemaining: null }
   const supabase = createServiceClient()
 
   // 유저가 슬롯을 채우기 시작한 북들
@@ -114,7 +117,7 @@ async function hasIncompleteItemBook(userId: string): Promise<boolean> {
     startedSet.add(s.item_book_id)
   }
   const startedBookIds = [...startedSet]
-  if (startedBookIds.length === 0) return false
+  if (startedBookIds.length === 0) return none
 
   // 이미 완성한 북 제외
   const { data: compsRaw } = await supabase
@@ -125,17 +128,21 @@ async function hasIncompleteItemBook(userId: string): Promise<boolean> {
   const completedBooks = new Set(((compsRaw ?? []) as { item_book_id: string }[]).map((c) => c.item_book_id))
 
   const candidateBookIds = startedBookIds.filter((id) => !completedBooks.has(id))
-  if (candidateBookIds.length === 0) return false
+  if (candidateBookIds.length === 0) return none
 
-  // 분모(드랍 제외 배지를 뺀 아이템 배지)와 채운 배지의 교집합을 비교 → 미완성 여부
+  // 분모(드랍 제외 배지를 뺀 아이템 배지)와 채운 배지의 교집합을 비교 → 미완성 여부·잔여 슬롯
   const { data: badgesRaw } = await supabase
     .from('badges')
     .select('id, item_book_id, type, drop_excluded')
     .in('item_book_id', candidateBookIds)
     .eq('type', 'item')
     .is('deleted_at', null)
+  const badges = (badgesRaw ?? []) as CompletionBadgeInput[]
 
-  return hasIncompleteBook(candidateBookIds, (badgesRaw ?? []) as CompletionBadgeInput[], filledBadgeIds)
+  return {
+    hasIncomplete: hasIncompleteBook(candidateBookIds, badges, filledBadgeIds),
+    minRemaining: minRemainingSlots(candidateBookIds, badges, filledBadgeIds),
+  }
 }
 
 /** 후보 북 중 분모가 있고 아직 다 채우지 못한 북이 있는지 (순수 함수 — 테스트 대상, 티켓 20260921_1113) */
@@ -167,43 +174,6 @@ export function minRemainingSlots(
     if (min === null || remaining < min) min = remaining
   }
   return min
-}
-
-/** 슬롯을 채우기 시작했지만 아직 완성하지 못한 컬렉션 중 잔여 슬롯 수의 최소값 (hasIncompleteItemBook과 같은 조회 경로) */
-async function minRemainingItemBookSlots(userId: string): Promise<number | null> {
-  const supabase = createServiceClient()
-
-  const { data: slotsRaw } = await supabase
-    .from('user_item_book_slots')
-    .select('item_book_id, badge_id')
-    .eq('user_id', userId)
-  const filledBadgeIds = new Set<string>()
-  const startedSet = new Set<string>()
-  for (const s of (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]) {
-    filledBadgeIds.add(s.badge_id)
-    startedSet.add(s.item_book_id)
-  }
-  const startedBookIds = [...startedSet]
-  if (startedBookIds.length === 0) return null
-
-  const { data: compsRaw } = await supabase
-    .from('user_item_book_completions')
-    .select('item_book_id')
-    .eq('user_id', userId)
-    .in('item_book_id', startedBookIds)
-  const completedBooks = new Set(((compsRaw ?? []) as { item_book_id: string }[]).map((c) => c.item_book_id))
-
-  const candidateBookIds = startedBookIds.filter((id) => !completedBooks.has(id))
-  if (candidateBookIds.length === 0) return null
-
-  const { data: badgesRaw } = await supabase
-    .from('badges')
-    .select('id, item_book_id, type, drop_excluded')
-    .in('item_book_id', candidateBookIds)
-    .eq('type', 'item')
-    .is('deleted_at', null)
-
-  return minRemainingSlots(candidateBookIds, (badgesRaw ?? []) as CompletionBadgeInput[], filledBadgeIds)
 }
 
 /** last_synced_at 기준 경과일 (순수 함수 — 테스트 대상, 티켓 20260923_2253).
@@ -242,12 +212,11 @@ export async function computeUserExposureTags(
 ): Promise<string[]> {
   const tags: string[] = ['all', timeOfDayTag(now)]
 
-  const [participating, endingSoon, incompleteBook, minRemaining, staleDays, weather, specialDays] =
+  const [participating, endingSoon, itemBookProgress, staleDays, weather, specialDays] =
     await Promise.all([
       hasParticipatingMission(userId),
       hasEndingSoonMission(userId, now),
-      hasIncompleteItemBook(userId),
-      minRemainingItemBookSlots(userId),
+      getItemBookProgress(userId),
       stravaStaleDays(userId, now),
       getTodayWeather(),
       getTodaySpecialDays(),
@@ -255,6 +224,7 @@ export async function computeUserExposureTags(
 
   if (participating) tags.push('has_participating_mission')
   if (endingSoon) tags.push('has_ending_soon_mission')
+  const { hasIncomplete: incompleteBook, minRemaining } = itemBookProgress
   if (incompleteBook) tags.push('has_incomplete_itembook')
   if (minRemaining !== null && minRemaining <= ITEMBOOK_REMAINING_MAX) {
     tags.push(`itembook_remaining_le${ITEMBOOK_REMAINING_MAX}`)

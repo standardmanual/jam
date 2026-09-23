@@ -26,6 +26,8 @@ const fixtures = vi.hoisted(() => ({
     { id: string; item_book_id: string; type: string; drop_excluded: boolean }[]
   >,
   stravaByUser: {} as Record<string, { last_synced_at: string | null } | undefined>,
+  /** 테이블별 from() 호출 횟수 — 조회 중복 회귀 검증용 (티켓 20260923_2353) */
+  fromCalls: {} as Record<string, number>,
 }))
 
 /** supabase-js 쿼리 빌더 흉내 — usage-badges.test.ts의 mockSupabase()와 같은 최소 체인.
@@ -33,6 +35,7 @@ const fixtures = vi.hoisted(() => ({
  *  이 테스트의 검증 대상이 아니다). */
 function mockSupabase() {
   const from = (table: string) => {
+    fixtures.fromCalls[table] = (fixtures.fromCalls[table] ?? 0) + 1
     const state: FilterState = { eq: {}, in: {} }
     const builder: Record<string, unknown> = {}
     builder.select = () => builder
@@ -160,5 +163,25 @@ describe('computeUserExposureTags 통합 — 컬렉션 잔여·동기화 경과 
     expect(sorted(tagsSatisfy)).not.toEqual(sorted(tagsNotSatisfy))
     expect(sorted(tagsSatisfy)).not.toEqual(sorted(tagsNoStrava))
     expect(sorted(tagsNotSatisfy)).not.toEqual(sorted(tagsNoStrava))
+  })
+
+  it('컬렉션 관련 조회는 유저당 3회(슬롯·완료 북·배지)만 수행한다 — 두 태그가 완료 맵을 공유 (티켓 20260923_2353)', async () => {
+    const now = new Date('2026-09-23T03:00:00Z')
+    const USER = 'user-query-count'
+    fixtures.slotsByUser[USER] = [{ item_book_id: 'book-q', badge_id: 'badge-q1' }]
+    fixtures.badgesByBook['book-q'] = [
+      { id: 'badge-q1', item_book_id: 'book-q', type: 'item', drop_excluded: false },
+      { id: 'badge-q2', item_book_id: 'book-q', type: 'item', drop_excluded: false },
+    ]
+
+    fixtures.fromCalls = {}
+    const tags = await computeUserExposureTags(USER, now)
+
+    expect(fixtures.fromCalls['user_item_book_slots']).toBe(1)
+    expect(fixtures.fromCalls['user_item_book_completions']).toBe(1)
+    expect(fixtures.fromCalls['badges']).toBe(1)
+    // 결과는 그대로 — 미완성 + 잔여 1개
+    expect(tags).toContain('has_incomplete_itembook')
+    expect(tags).toContain(`itembook_remaining_le${ITEMBOOK_REMAINING_MAX}`)
   })
 })
