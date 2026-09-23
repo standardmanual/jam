@@ -4,6 +4,7 @@
 #
 # 사용법:
 #   scripts/workspace-setup.sh link <새-워크트리-경로>   # jam-web/node_modules 심볼릭 링크 연결
+#   scripts/workspace-setup.sh link-secrets <워크트리-경로> # 카리나 세션용: .mcp.json·.vercel·jam-web/.env.local 링크 연결
 #   scripts/workspace-setup.sh cleanup                    # staging에 병합됐고 미커밋 변경 없는 워크트리 +
 #                                                           # 연결 워크트리 없는 worktree-wf_* 브랜치 +
 #                                                           # staging에 병합된 로컬 claude/jamwork-* 브랜치 제거
@@ -43,6 +44,42 @@ link_node_modules() {
   mkdir -p "$(dirname "$target_nm")"
   ln -s "$source" "$target_nm"
   echo "연결: $target_nm → $source"
+}
+
+# 카리나 세션용 워크트리에 시크릿 링크 3종(.mcp.json·.vercel·jam-web/.env.local)을 연결한다.
+# 메인 체크아웃의 파일(아이클라우드 JAM-secrets로 이어지는 링크)을 가리킨다. 세 파일은 모두
+# gitignore 대상이라 워크트리에서 커밋 대상이 되지 않는다.
+# `link`와 일부러 나눴다: `link`는 아현의 격리 워크트리에서 불리므로, 여기에 시크릿을 섞으면
+# DB 실행 권한이 없는 아현이 service_role 키를 읽을 수 있게 된다(티켓 20260924_0625).
+# MCP 서버 정의는 세션 시작 때 읽으므로, 연결한 뒤에는 그 워크트리에서 세션을 새로 열어야 한다.
+link_secrets() {
+  local target="${1:?대상 워크트리 경로가 필요합니다}"
+  local main_root
+  main_root="$(cd "$target" && cd "$(git rev-parse --git-common-dir)/.." && pwd)" || return 1
+  local target_abs
+  target_abs="$(cd "$target" && pwd)" || return 1
+
+  if [ "$main_root" = "$target_abs" ]; then
+    echo "메인 체크아웃이라 연결할 것이 없습니다: $target_abs"
+    return 0
+  fi
+
+  local f src dst
+  for f in .mcp.json .vercel jam-web/.env.local; do
+    src="$main_root/$f"
+    dst="$target_abs/$f"
+    if [ ! -e "$src" ] && [ ! -L "$src" ]; then
+      echo "원본 없음(건너뜀): $src"
+      continue
+    fi
+    if [ -e "$dst" ] || [ -L "$dst" ]; then
+      echo "이미 존재함: $dst"
+      continue
+    fi
+    mkdir -p "$(dirname "$dst")"
+    ln -s "$src" "$dst"
+    echo "연결: $dst → $src"
+  done
 }
 
 # jam-doc/ 은 2026-09-20 재통합 이후 이 저장소가 추적하는 평범한 폴더다(티켓 20260920_1412).
@@ -196,6 +233,7 @@ cleanup_remote_branches() {
 
 case "$CMD" in
   link) link_node_modules "${2:-}"; exit $? ;;
+  link-secrets) link_secrets "${2:-}"; exit $? ;;
   cleanup)
     case "${2:-}" in
       --remote)
@@ -210,7 +248,7 @@ case "$CMD" in
     esac
     ;;
   *)
-    echo "사용법: $0 link <워크트리-경로> | $0 cleanup [--remote [--yes]]" >&2
+    echo "사용법: $0 link <워크트리-경로> | $0 link-secrets <워크트리-경로> | $0 cleanup [--remote [--yes]]" >&2
     exit 1
     ;;
 esac

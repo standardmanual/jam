@@ -69,7 +69,7 @@ Slack: `#jam-alert`·`#jam-report`는 개설돼 있다(채널 ID는 `scheduled-j
 
 동기화 충돌로 `.git` 내부가 손상된다 (2026-08-22 실제 사고 이력).
 `.mcp.json`·`.vercel`·`jam-web/.env.local`만 아이클라우드의 `JAM-secrets` 폴더에 두고 심볼릭
-링크로 연결한다.
+링크로 연결한다. 워크트리에는 이 링크가 따라가지 않으므로 4절의 `link-secrets`로 연결한다.
 
 여러 PC 간 이어서 작업하거나 작업을 마무리할 때는 `/jam-sync`를 쓴다.
 
@@ -81,8 +81,12 @@ Slack: `#jam-alert`·`#jam-report`는 개설돼 있다(채널 ID는 `scheduled-j
 
 ## 4. DB 변경은 카리나가 직접 실행한다
 
-DB 스키마·데이터 변경은 사용자에게 대신 실행해달라고 요청하지 않는다. `jam-web/.env.local`의
-`SUPABASE_SERVICE_ROLE_KEY`로 직접 Supabase에 접속해 실행한다. 배포도 `vercel ls`/`vercel inspect`로
+DB 스키마·데이터 변경은 사용자에게 대신 실행해달라고 요청하지 않는다. **SQL은 전부 카리나가 직접
+실행한다.** 사용자가 승인하면 먼저 Supabase MCP(`apply_migration`·`execute_sql`)로 실행하고,
+타입 갱신은 `generate_typescript_types`를 쓴다. MCP를 쓸 수 없을 때만 `jam-web/.env.local`의
+`SUPABASE_SERVICE_ROLE_KEY`로 접속하는 스크립트로 대신한다. 실행이 권한 확인에 막히면 사용자에게
+SQL 편집기 실행을 넘기기 전에 막힌 사유를 먼저 보고한다(티켓 20260924_0602에서 MCP를 시도하지
+않은 채 사용자 실행으로 넘어간 선례). 배포도 `vercel ls`/`vercel inspect`로
 최신 배포가 Ready이고 alias가 그 배포를 가리키는지 직접 확인한 뒤 보고한다(절차는 `/jam-ship`
 8·9단계).
 
@@ -94,6 +98,12 @@ DB 스키마·데이터 변경은 사용자에게 대신 실행해달라고 요�
 - **위험도 인식**: service_role 키는 RLS를 우회하는 전체 DB 권한이다. 진단·버그수정 범위를
   벗어난 대량 삭제·프로덕션 데이터 대량 변경 전에는 반드시 사용자 확인을 받는다
 - **Supabase는 staging·프로덕션 공용 단일 DB**다. DB 변경은 즉시 프로덕션에 반영된다
+- **워크트리 세션에서는 시크릿 링크를 먼저 연결한다.** `.mcp.json`·`.vercel`·`jam-web/.env.local`은
+  gitignore 대상이라 워크트리로 따라오지 않는다. 그 상태에서는 프로젝트 전용 `supabase` MCP 서버가
+  로드되지 않는다. `scripts/workspace-setup.sh link-secrets <워크트리 경로>`로 연결하고 그
+  워크트리에서 세션을 새로 연다(MCP 서버 정의는 세션 시작 때 읽는다). 메인 폴더에서 연 세션은
+  이미 연결돼 있다. 이 명령은 `link`와 나눠 놓았고 아현의 격리 워크트리에서는 부르지 않는다
+  (`scripts/workspace-setup.test.mjs`가 확인한다)
 - **위임하지 않는다**: 아현(`jam-developer`)은 SQL 파일 작성까지만 한다. 카즈하(`jam-ops`)는
   어드민 API 읽기 경로만 쓴다. 실행 권한은 카리나에게만 있다
 

@@ -8,7 +8,7 @@
 
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -104,6 +104,47 @@ try {
   assert.ok(remoteRefs.includes('claude/jamwork-remote-unmerged'), '미병합 원격 브랜치는 보존돼야 한다')
 
   console.log('통과: workspace-setup cleanup --remote 목록/삭제 분리')
+
+  // ── link-secrets: 시크릿 3종을 메인 체크아웃에서 워크트리로 연결 (티켓 20260924_0625) ──
+  mkdirSync(join(main, 'jam-web'), { recursive: true })
+  writeFileSync(join(main, '.mcp.json'), '{}')
+  writeFileSync(join(main, 'jam-web', '.env.local'), 'K=V')
+  // .vercel은 일부러 만들지 않는다 → "원본 없음"으로 건너뛰어야 한다.
+
+  const secretWt = join(root, 'wt-secrets')
+  git(['worktree', 'add', '-q', '--detach', secretWt, 'HEAD'], main)
+
+  const run = (cmd, arg) => spawnSync('bash', [SCRIPT, cmd, arg], { cwd: main, encoding: 'utf8', env: env() })
+
+  const ls = run('link-secrets', secretWt)
+  assert.equal(ls.status, 0, `link-secrets 실패:\n${ls.stdout}${ls.stderr}`)
+  assert.ok(lstatSync(join(secretWt, '.mcp.json')).isSymbolicLink(), '.mcp.json은 심볼릭 링크여야 한다')
+  assert.equal(readFileSync(join(secretWt, 'jam-web', '.env.local'), 'utf8'), 'K=V')
+  assert.ok(!existsSync(join(secretWt, '.vercel')), '원본이 없는 항목은 만들지 않는다')
+  assert.match(ls.stdout, /원본 없음.*\.vercel/)
+
+  const again = run('link-secrets', secretWt)
+  assert.equal(again.status, 0)
+  assert.match(again.stdout, /이미 존재함.*\.mcp\.json/)
+
+  const onMain = run('link-secrets', main)
+  assert.equal(onMain.status, 0)
+  assert.match(onMain.stdout, /메인 체크아웃/)
+
+  // `link`(아현 경로)는 시크릿을 연결하지 않는다 — 아현에게 DB 실행 권한이 없기 때문이다.
+  const plainWt = join(root, 'wt-plain')
+  git(['worktree', 'add', '-q', '--detach', plainWt, 'HEAD'], main)
+  mkdirSync(join(main, 'jam-web', 'node_modules'), { recursive: true })
+  const plain = run('link', plainWt)
+  assert.equal(plain.status, 0, `link 실패:\n${plain.stdout}${plain.stderr}`)
+  assert.ok(!existsSync(join(plainWt, '.mcp.json')), 'link는 .mcp.json을 연결하면 안 된다')
+  assert.ok(!existsSync(join(plainWt, 'jam-web', '.env.local')), 'link는 .env.local을 연결하면 안 된다')
+
+  // 아현 프롬프트를 만드는 워크플로가 link-secrets를 부르지 않는다.
+  const workflow = readFileSync(join(dirname(SCRIPT), '..', '.claude', 'workflows', 'jam-work.js'), 'utf8')
+  assert.ok(!workflow.includes('link-secrets'), 'jam-work.js(아현 경로)가 link-secrets를 부르면 안 된다')
+
+  console.log('통과: workspace-setup link-secrets 연결·아현 경로 분리')
 } finally {
   rmSync(root, { recursive: true, force: true })
 }
