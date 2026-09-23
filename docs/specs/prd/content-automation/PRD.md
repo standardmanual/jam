@@ -70,14 +70,12 @@ code:
 
 ## 5. 세그먼트 태그
 
-현재 값(2026-09-23 확인, 티켓 20260923_2254 구현 반영): `all`, 시간대 5종(`time_dawn`·`time_morning`·`time_afternoon`·`time_evening`·`time_night`), `has_participating_mission`, `has_ending_soon_mission`, `has_incomplete_itembook`, `new_user`, 날씨 4종(`weather_clear`·`weather_mild`·`weather_rain`·`weather_extreme`, 기상청 API 허브 단기예보 기반, 서울 고정), `holiday_today`(특일정보 API 기반 공휴일·기념일·24절기).
+현재 값(2026-09-23 확인, 티켓 20260923_2253·2254 구현 반영): `all`, 시간대 5종(`time_dawn`·`time_morning`·`time_afternoon`·`time_evening`·`time_night`), `has_participating_mission`, `has_ending_soon_mission`, `has_incomplete_itembook`, `itembook_remaining_le3`(미완성 컬렉션 잔여 슬롯 최소값이 3개 이하), `strava_stale_14d`(Strava 연결이 있고 마지막 동기화 경과가 14일 이상 — 연결 자체가 없는 유저에게는 붙지 않는다), `new_user`, 날씨 4종(`weather_clear`·`weather_mild`·`weather_rain`·`weather_extreme`, 기상청 API 허브 단기예보 기반, 서울 고정), `holiday_today`(특일정보 API 기반 공휴일·기념일·24절기).
 
 1단계에서 남은 후보(이름은 구현 티켓에서 확정):
 
 | 후보 태그 | 조건 | 근거 데이터 |
 |---|---|---|
-| 컬렉션 잔여 N개 이하 | 미완성 컬렉션의 남은 슬롯 수가 임계값 이하 | `user_item_book_slots`, `computeBookCompletion` |
-| 동기화 경과 N일 이상 | 마지막 동기화 후 경과일이 임계값 이상 | `strava_connections.last_synced_at` |
 | POI 근접 | 유저 최근 위치 기준 반경 안에 미픽업 POI 존재 | `users.last_location_*`, POI 위경도 |
 
 임계값은 시범 운영 데이터로 조정한다. 위치 태그는 카드에 좌표를 노출하지 않고, 매칭 외 목적으로 좌표를 보관하지 않는다.

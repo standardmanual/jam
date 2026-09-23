@@ -19,6 +19,11 @@ export type TimeOfDayTag =
   | 'time_evening'
   | 'time_night'
 
+/** 세그먼트 확장 1차 임계값 (티켓 20260923_2253) — 잔여 이 값 이하면 컬렉션 잔여 태그 */
+export const ITEMBOOK_REMAINING_MAX = 3
+/** 세그먼트 확장 1차 임계값 (티켓 20260923_2253) — 경과가 이 값 이상이면 동기화 경과 태그 */
+export const STRAVA_STALE_DAYS = 14
+
 /**
  * KST(UTC+9) 기준 시각으로 시간대 태그를 반환한다.
  * 서버가 UTC로 동작해도 여기서 +9h 보정 후 판정하므로 결과는 항상 KST 기준.
@@ -146,6 +151,86 @@ export function hasIncompleteBook(
   })
 }
 
+/** 미완성 컬렉션 중 잔여 슬롯 수(분모-분자)가 가장 적은 값을 찾는다 (순수 함수 — 테스트 대상, 티켓 20260923_2253).
+ *  완성한 북이나 분모가 없는 북은 후보에서 제외한다. 후보가 없으면 null. */
+export function minRemainingSlots(
+  candidateBookIds: string[],
+  badges: CompletionBadgeInput[],
+  filledBadgeIds: ReadonlySet<string>
+): number | null {
+  const completion = computeBookCompletion(badges, filledBadgeIds, { types: ['item'] })
+  let min: number | null = null
+  for (const bookId of candidateBookIds) {
+    const c = completion.get(bookId)
+    if (!c || c.total === 0 || c.complete) continue
+    const remaining = c.total - c.filled
+    if (min === null || remaining < min) min = remaining
+  }
+  return min
+}
+
+/** 슬롯을 채우기 시작했지만 아직 완성하지 못한 컬렉션 중 잔여 슬롯 수의 최소값 (hasIncompleteItemBook과 같은 조회 경로) */
+async function minRemainingItemBookSlots(userId: string): Promise<number | null> {
+  const supabase = createServiceClient()
+
+  const { data: slotsRaw } = await supabase
+    .from('user_item_book_slots')
+    .select('item_book_id, badge_id')
+    .eq('user_id', userId)
+  const filledBadgeIds = new Set<string>()
+  const startedSet = new Set<string>()
+  for (const s of (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]) {
+    filledBadgeIds.add(s.badge_id)
+    startedSet.add(s.item_book_id)
+  }
+  const startedBookIds = [...startedSet]
+  if (startedBookIds.length === 0) return null
+
+  const { data: compsRaw } = await supabase
+    .from('user_item_book_completions')
+    .select('item_book_id')
+    .eq('user_id', userId)
+    .in('item_book_id', startedBookIds)
+  const completedBooks = new Set(((compsRaw ?? []) as { item_book_id: string }[]).map((c) => c.item_book_id))
+
+  const candidateBookIds = startedBookIds.filter((id) => !completedBooks.has(id))
+  if (candidateBookIds.length === 0) return null
+
+  const { data: badgesRaw } = await supabase
+    .from('badges')
+    .select('id, item_book_id, type, drop_excluded')
+    .in('item_book_id', candidateBookIds)
+    .eq('type', 'item')
+    .is('deleted_at', null)
+
+  return minRemainingSlots(candidateBookIds, (badgesRaw ?? []) as CompletionBadgeInput[], filledBadgeIds)
+}
+
+/** last_synced_at 기준 경과일 (순수 함수 — 테스트 대상, 티켓 20260923_2253).
+ *  연결 자체가 없으면 null(태그 대상 아님). 연결은 있지만 한 번도 동기화하지 않았으면
+ *  Infinity로 취급한다 — "연결했지만 오래 안 한 유저"에 해당한다. */
+export function daysSinceLastSync(
+  connection: { last_synced_at: string | null } | null,
+  now: Date
+): number | null {
+  if (!connection) return null
+  if (!connection.last_synced_at) return Infinity
+  const last = new Date(connection.last_synced_at).getTime()
+  if (Number.isNaN(last)) return Infinity
+  return Math.floor((now.getTime() - last) / (24 * 3600_000))
+}
+
+/** 유저의 Strava 동기화 경과일. strava_connections 행이 없는 유저는 null(태그 대상 아님) */
+async function stravaStaleDays(userId: string, now: Date): Promise<number | null> {
+  const supabase = createServiceClient()
+  const { data } = await supabase
+    .from('strava_connections')
+    .select('last_synced_at')
+    .eq('user_id', userId)
+    .maybeSingle()
+  return daysSinceLastSync((data ?? null) as { last_synced_at: string | null } | null, now)
+}
+
 /**
  * 유저의 현재 노출조건 태그 집합을 계산한다.
  * 항상 'all' 과 시간대 태그를 포함하고, 자동계산 조건들을 만족하면 추가한다.
@@ -157,17 +242,26 @@ export async function computeUserExposureTags(
 ): Promise<string[]> {
   const tags: string[] = ['all', timeOfDayTag(now)]
 
-  const [participating, endingSoon, incompleteBook, weather, specialDays] = await Promise.all([
-    hasParticipatingMission(userId),
-    hasEndingSoonMission(userId, now),
-    hasIncompleteItemBook(userId),
-    getTodayWeather(),
-    getTodaySpecialDays(),
-  ])
+  const [participating, endingSoon, incompleteBook, minRemaining, staleDays, weather, specialDays] =
+    await Promise.all([
+      hasParticipatingMission(userId),
+      hasEndingSoonMission(userId, now),
+      hasIncompleteItemBook(userId),
+      minRemainingItemBookSlots(userId),
+      stravaStaleDays(userId, now),
+      getTodayWeather(),
+      getTodaySpecialDays(),
+    ])
 
   if (participating) tags.push('has_participating_mission')
   if (endingSoon) tags.push('has_ending_soon_mission')
   if (incompleteBook) tags.push('has_incomplete_itembook')
+  if (minRemaining !== null && minRemaining <= ITEMBOOK_REMAINING_MAX) {
+    tags.push(`itembook_remaining_le${ITEMBOOK_REMAINING_MAX}`)
+  }
+  if (staleDays !== null && staleDays >= STRAVA_STALE_DAYS) {
+    tags.push(`strava_stale_${STRAVA_STALE_DAYS}d`)
+  }
   if (isNewUser(userCreatedAt, now)) tags.push('new_user')
   // 기상청·특일정보 API 실패 시 각각 null/빈 배열이 와서 태그만 조용히 빠진다(티켓 20260923_2254)
   if (weather) tags.push(`weather_${weather}`)

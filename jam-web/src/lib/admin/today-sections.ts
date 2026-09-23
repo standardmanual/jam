@@ -130,6 +130,8 @@ export const TODAY_EXPOSURE_TAG_OPTIONS: readonly { value: string; label: string
   { value: 'has_participating_mission', label: 'has_participating_mission' },
   { value: 'has_ending_soon_mission', label: 'has_ending_soon_mission' },
   { value: 'has_incomplete_itembook', label: 'has_incomplete_itembook' },
+  { value: 'itembook_remaining_le3', label: 'itembook_remaining_le3 (컬렉션 잔여 3개 이하)' },
+  { value: 'strava_stale_14d', label: 'strava_stale_14d (Strava 동기화 경과 14일 이상)' },
   { value: 'new_user', label: 'new_user (가입 7일 이내)' },
   { value: 'weather_clear', label: 'weather_clear (오늘 날씨: 맑음)' },
   { value: 'weather_mild', label: 'weather_mild (오늘 날씨: 구름많음·흐림)' },

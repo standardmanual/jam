@@ -3,7 +3,15 @@
  * 실행: npx tsx src/lib/today/__tests__/today-logic.test.ts
  */
 import assert from 'node:assert'
-import { timeOfDayTag, isNewUser, hasIncompleteBook } from '../exposure'
+import {
+  timeOfDayTag,
+  isNewUser,
+  hasIncompleteBook,
+  minRemainingSlots,
+  daysSinceLastSync,
+  ITEMBOOK_REMAINING_MAX,
+  STRAVA_STALE_DAYS,
+} from '../exposure'
 import { resolveTargetHref } from '../cards'
 import { resolveFriendActivityHref, buildCollectionProgress } from '../status'
 import type { TodayCardRow } from '@/types/database'
@@ -153,6 +161,44 @@ check('hasIncompleteBook: 제외 배지 장착만으로 조기 완성 처리되�
 })
 check('hasIncompleteBook: 분모를 다 채우면 false', () => {
   assert.equal(hasIncompleteBook(['B'], [bk('a'), bk('b'), bk('x', true)], new Set(['a', 'b'])), false)
+})
+
+// ─── 세그먼트 확장 1차 — 컬렉션 잔여·동기화 경과 태그 (티켓 20260923_2253) ────────────────
+check('minRemainingSlots: 분모를 다 채운 북은 후보에서 제외(0개 경계) → null', () => {
+  assert.equal(minRemainingSlots(['B'], [bk('a'), bk('b'), bk('c')], new Set(['a', 'b', 'c'])), null)
+})
+check(`minRemainingSlots: 잔여 ${ITEMBOOK_REMAINING_MAX}개 경계 → 임계값 충족`, () => {
+  const remaining = minRemainingSlots(['B'], [bk('a'), bk('b'), bk('c'), bk('d')], new Set(['a']))
+  assert.equal(remaining, 3)
+  assert.equal(remaining !== null && remaining <= ITEMBOOK_REMAINING_MAX, true)
+})
+check(`minRemainingSlots: 잔여 ${ITEMBOOK_REMAINING_MAX + 1}개 경계 → 임계값 미충족`, () => {
+  const remaining = minRemainingSlots(['B'], [bk('a'), bk('b'), bk('c'), bk('d'), bk('e')], new Set(['a']))
+  assert.equal(remaining, 4)
+  assert.equal(remaining !== null && remaining <= ITEMBOOK_REMAINING_MAX, false)
+})
+check('minRemainingSlots: 여러 북 중 잔여가 가장 적은 북의 값을 반환한다', () => {
+  const bkC = (id: string) => ({ id, item_book_id: 'C', type: 'item', drop_excluded: false })
+  const badges = [bk('a'), bk('b'), bk('c'), bk('d'), bkC('x'), bkC('y')]
+  // B: 분모4 채움1(잔여3), C: 분모2 채움1(잔여1) → 최소값 1
+  assert.equal(minRemainingSlots(['B', 'C'], badges, new Set(['a', 'x'])), 1)
+})
+
+check('daysSinceLastSync: 연결 자체가 없으면 null(태그 대상 아님)', () => {
+  assert.equal(daysSinceLastSync(null, new Date('2026-09-23T00:00:00Z')), null)
+})
+check('daysSinceLastSync: 연결은 있지만 한 번도 동기화 안 함 → 항상 경과(Infinity)', () => {
+  assert.equal(daysSinceLastSync({ last_synced_at: null }, new Date('2026-09-23T00:00:00Z')), Infinity)
+})
+check(`daysSinceLastSync: ${STRAVA_STALE_DAYS - 1}일 경과 → 임계값(${STRAVA_STALE_DAYS}) 미충족`, () => {
+  const days = daysSinceLastSync({ last_synced_at: '2026-09-10T00:00:00Z' }, new Date('2026-09-23T00:00:00Z'))
+  assert.equal(days, 13)
+  assert.equal(days !== null && days >= STRAVA_STALE_DAYS, false)
+})
+check(`daysSinceLastSync: ${STRAVA_STALE_DAYS}일 경과 → 임계값 충족`, () => {
+  const days = daysSinceLastSync({ last_synced_at: '2026-09-09T00:00:00Z' }, new Date('2026-09-23T00:00:00Z'))
+  assert.equal(days, 14)
+  assert.equal(days !== null && days >= STRAVA_STALE_DAYS, true)
 })
 
 console.log(`\n${passed} passed`)
