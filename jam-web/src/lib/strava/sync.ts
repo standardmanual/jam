@@ -1203,13 +1203,19 @@ export async function syncStravaActivities(
   //    overlap보다 길 때" 성공(0건) 동기화가 커서를 활동 시작 시각보다 앞으로 밀어내
   //    그 활동을 영구 누락시킨다 (티켓 20260922_2207 실측). 행이 없는 유저(연동만 하고
   //    활동 없음·어드민 초기화 직후)는 지금처럼 after 없이 최신 페이지 1회 조회한다.
-  const { data: latestActivity } = await supabase
+  const { data: latestActivity, error: latestActivityError } = await supabase
     .from('strava_activities')
     .select('start_date')
     .eq('user_id', userId)
     .order('start_date', { ascending: false })
     .limit(1)
     .maybeSingle()
+  if (latestActivityError) {
+    console.error(
+      `[syncStravaActivities] 커서 조회 실패 — userId: ${userId}:`,
+      latestActivityError,
+    )
+  }
   const afterTimestamp = latestActivity?.start_date
     ? Math.max(0, Math.floor(new Date(latestActivity.start_date).getTime() / 1000) - SYNC_OVERLAP_SECONDS)
     : undefined
