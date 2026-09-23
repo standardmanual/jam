@@ -510,6 +510,7 @@ FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기
 |---|---|
 | today_cards | 홈 "투데이" 에디토리얼 카드. 템플릿 7종, 노출 기간·태그·레이아웃 관리. `content_type_id`(text, NULL 허용, CHECK T01~T17)는 컨텐츠 유형 카탈로그(`docs/specs/prd/content-automation/PRD.md` §6) ID로 2026-09-24 마이그레이션 183에서 추가(티켓 20260923_2259). 기존 카드는 NULL |
 | today_card_events | 투데이 카드 노출·열람·후속 행동 계측 로그(마이그레이션 183, 티켓 20260923_2259). `card_id`(→ today_cards, 삭제 시 NULL), `content_type_id`(기록 시점 값 복제), `event`(CHECK impression·click·followup), `followup_action`, `occurred_at`. **유저 식별자 컬럼 없음**(집계 전용, 결정 4-6). 인덱스 `(content_type_id, occurred_at)`. RLS 활성·정책 없음(서비스 롤만 쓰기). 기록 API·트래커는 티켓 20260924_0004 |
+| external_input_daily | 외부 입력(날씨 구분·특일 목록)의 하루 단위 저장값(마이그레이션 184, 티켓 20260924_0602). 기본키 (`kind`, `date_kst`), `kind` CHECK(weather·special_days), `date_kst`(DATE, 한국 표준시 기준), `value`(JSONB — 날씨는 `{"kind":"clear"\|"mild"\|"rain"\|"extreme"}`, 특일은 정규화된 특일 배열), `fetched_at`. **유저 식별자 컬럼 없음**. RLS 활성·정책 없음(서비스 롤 전용). 사전 갱신 cron이 쓰고 카드 조회가 읽는 코드는 티켓 20260923_2333 |
 | theme_presets | 어드민 컬러 테마 프리셋(활성 1개만 유지) |
 | engine_decision_log | 배지·드랍 엔진의 판정 사후 추적 로그 (RLS 적용) |
 
