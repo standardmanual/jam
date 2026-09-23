@@ -46,24 +46,24 @@ function buildSimpleTable(rows: FixtureRow[], selectColumns: string[]) {
   }
 }
 
+// badges 조회도 두 경로를 재현한다: 즉시 await(원문 그대로, `fetchBadgeParentStatus`용)와
+// `.is().or().or()`로 이어가는 활성 필터(`fetchActiveBadges`용).
 function buildBadgesTable(rows: FixtureRow[]) {
+  const selectColumns = ['id', 'name', 'description', 'item_book_id', 'tribe_id']
   return {
     select: () => ({
       in: (_col: string, ids: string[]) => {
         const matched = rows.filter((r) => ids.includes(r.id))
-        return {
+        const project = (list: FixtureRow[]) =>
+          list.map((r) => Object.fromEntries(selectColumns.map((c) => [c, r[c]])))
+        const rawPromise = Promise.resolve({ data: project(matched), error: null })
+        return Object.assign(rawPromise, {
           is: () => ({
             or: () => ({
-              or: () =>
-                Promise.resolve({
-                  data: matched
-                    .filter((r) => r.active)
-                    .map((r) => ({ id: r.id, name: r.name, description: r.description })),
-                  error: null,
-                }),
+              or: () => Promise.resolve({ data: project(matched.filter((r) => r.active)), error: null }),
             }),
           }),
-        }
+        })
       },
     }),
   }
@@ -74,7 +74,8 @@ vi.mock('@/lib/supabase/server', () => ({
     from: (table: string) => {
       calledTables.push(table)
       if (table === 'tribes') return buildSimpleTable(tribes, ['id', 'name', 'description', 'tagline'])
-      if (table === 'item_books') return buildSimpleTable(itemBooks, ['id', 'name', 'story_text', 'description'])
+      if (table === 'item_books')
+        return buildSimpleTable(itemBooks, ['id', 'name', 'story_text', 'description', 'tribe_id'])
       if (table === 'badges') return buildBadgesTable(badges)
       throw new Error(`예상치 못한 테이블 조회: ${table}`)
     },
@@ -91,13 +92,43 @@ beforeEach(() => {
     { id: 'tribe-inactive', active: false, name: '작심삼일 클럽', description: '비활성 트라이브 설명', tagline: null },
   ]
   itemBooks = [
-    { id: 'book-active', active: true, name: '활성 컬렉션', story_text: '활성 컬렉션 서사' },
-    { id: 'book-inactive', active: false, name: '비활성 컬렉션', story_text: '비활성 컬렉션 서사' },
-    { id: 'book-desc-only', active: true, name: '설명만 있는 컬렉션', story_text: null, description: '설명 필드 원문' },
+    { id: 'book-active', active: true, name: '활성 컬렉션', story_text: '활성 컬렉션 서사', tribe_id: null },
+    { id: 'book-inactive', active: false, name: '비활성 컬렉션', story_text: '비활성 컬렉션 서사', tribe_id: null },
+    {
+      id: 'book-desc-only',
+      active: true,
+      name: '설명만 있는 컬렉션',
+      story_text: null,
+      description: '설명 필드 원문',
+      tribe_id: null,
+    },
+    {
+      id: 'book-tribe-inactive',
+      active: true,
+      name: '트라이브 비활성 컬렉션',
+      story_text: '소속 트라이브가 비활성',
+      tribe_id: 'tribe-inactive',
+    },
   ]
   badges = [
-    { id: 'badge-active', active: true, name: '활성 배지', description: '활성 배지 설명 원문' },
-    { id: 'badge-inactive', active: false, name: '비활성 배지', description: '비활성 배지 설명' },
+    { id: 'badge-active', active: true, name: '활성 배지', description: '활성 배지 설명 원문', item_book_id: null, tribe_id: null },
+    { id: 'badge-inactive', active: false, name: '비활성 배지', description: '비활성 배지 설명', item_book_id: null, tribe_id: null },
+    {
+      id: 'badge-book-inactive',
+      active: true,
+      name: '소속 컬렉션 비활성 배지',
+      description: '소속 컬렉션이 비활성인 배지 설명',
+      item_book_id: 'book-inactive',
+      tribe_id: null,
+    },
+    {
+      id: 'badge-tribe-inactive',
+      active: true,
+      name: '소속 트라이브 비활성 배지',
+      description: '소속 트라이브가 비활성인 배지 설명',
+      item_book_id: null,
+      tribe_id: 'tribe-inactive',
+    },
   ]
 })
 
@@ -127,8 +158,27 @@ describe('selectCorpusForType — 추천·소개형(T02)', () => {
     expect(result.quotes[0].text).toBe('활성 배지 설명 원문')
   })
 
+  it('배지 자체는 활성이지만 소속 컬렉션이 비활성이면 targets·quotes에서 빠진다', async () => {
+    const result = await selectCorpusForType('T02', { badgeIds: ['badge-book-inactive'] })
+    expect(result.targets).toEqual([])
+    expect(result.quotes).toEqual([])
+  })
+
+  it('배지 자체는 활성이지만 소속 트라이브가 비활성이면 targets·quotes에서 빠진다', async () => {
+    const result = await selectCorpusForType('T02', { badgeIds: ['badge-tribe-inactive'] })
+    expect(result.targets).toEqual([])
+    expect(result.quotes).toEqual([])
+  })
+
   it('limit 인자로 발췌 건수 상한을 조절한다', async () => {
-    badges.push({ id: 'badge-active-2', active: true, name: '활성 배지2', description: '설명2' })
+    badges.push({
+      id: 'badge-active-2',
+      active: true,
+      name: '활성 배지2',
+      description: '설명2',
+      item_book_id: null,
+      tribe_id: null,
+    })
     const result = await selectCorpusForType(
       'T02',
       { badgeIds: ['badge-active', 'badge-active-2', 'badge-inactive'] },
@@ -157,6 +207,11 @@ describe('selectCorpusForType — 글·세계관 노출형(T01)', () => {
     await selectCorpusForType('T01', { tribeIds: ['tribe-active'], itemBookIds: ['book-active'] })
     expect(calledTables).toEqual(['tribes', 'item_books'])
   })
+
+  it('소속 트라이브가 비활성인 컬렉션도 서사 인용에는 영향이 없다(narrative는 소속 활성 조건 미적용)', async () => {
+    const result = await selectCorpusForType('T01', { itemBookIds: ['book-tribe-inactive'] })
+    expect(result.quotes).toEqual([{ kind: 'item_book', id: 'book-tribe-inactive', text: '소속 트라이브가 비활성' }])
+  })
 })
 
 describe('verifyActiveTargets', () => {
@@ -177,5 +232,32 @@ describe('verifyActiveTargets', () => {
     expect(result.ok).toBe(false)
     expect(result.reasons).toHaveLength(1)
     expect(result.reasons[0]).toContain('tribe-inactive')
+  })
+
+  it('배지 자체는 활성이지만 소속 컬렉션이 비활성이면 사유를 "소속 컬렉션"으로 구분해 반려한다', async () => {
+    const result = await verifyActiveTargets({
+      targets: [{ kind: 'badge', id: 'badge-book-inactive', name: '소속 컬렉션 비활성 배지' }],
+    })
+    expect(result.ok).toBe(false)
+    expect(result.reasons).toHaveLength(1)
+    expect(result.reasons[0]).toContain('소속 컬렉션')
+  })
+
+  it('배지 자체는 활성이지만 소속 트라이브가 비활성이면 사유를 "소속 트라이브"로 구분해 반려한다', async () => {
+    const result = await verifyActiveTargets({
+      targets: [{ kind: 'badge', id: 'badge-tribe-inactive', name: '소속 트라이브 비활성 배지' }],
+    })
+    expect(result.ok).toBe(false)
+    expect(result.reasons).toHaveLength(1)
+    expect(result.reasons[0]).toContain('소속 트라이브')
+  })
+
+  it('컬렉션 대상도 소속 트라이브가 비활성이면 반려된다', async () => {
+    const result = await verifyActiveTargets({
+      targets: [{ kind: 'item_book', id: 'book-tribe-inactive', name: '트라이브 비활성 컬렉션' }],
+    })
+    expect(result.ok).toBe(false)
+    expect(result.reasons).toHaveLength(1)
+    expect(result.reasons[0]).toContain('book-tribe-inactive')
   })
 })

@@ -53,6 +53,8 @@ export async function selectCorpusForType(
 
   if (mapping.role === 'recommend') {
     // 추천·소개형: 대상은 활성만 선택하고, 같은 대상의 설명을 그대로 인용한다.
+    // fetchActiveBadges의 활성 판정에는 배지 자체뿐 아니라 소속 컬렉션·트라이브의 활성 여부도
+    // 반영된다(티켓 20260924_0015) — 이 분기는 그 판정 결과를 그대로 쓴다.
     if (mapping.kinds.includes('badge')) {
       const ids = (ctx.badgeIds ?? []).slice(0, limit)
       const rows = await fetchActiveBadges(ids)
