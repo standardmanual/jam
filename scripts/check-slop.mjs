@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // 슬롭 검사 — docs/specs/SLOP_DICTIONARY.md의 금칙 단어·금지 문장을
-// origin/staging 대비 diff의 추가된 라인에서 찾는다 (티켓 20260918_0951).
+// origin/staging 대비 diff의 추가된 라인(커밋 전 워킹트리 포함)에서 찾는다 (티켓 20260918_0951, 20260924_0037).
 //
 // 검사 대상: jam-web/**, docs/** (단 docs/tickets/**는 제외 — 티켓 본문은 작업 이력이라
 // 검사 대상이 아니다), 그리고 중첩 저장소 jam-doc/의 미푸시 커밋(origin/main 대비 — 세계관·
@@ -94,9 +94,16 @@ function collectAddedLines() {
     !f.startsWith('docs/tickets/') &&
     !f.startsWith('jam-doc/archive/') &&
     !f.startsWith('jam-doc/assets/')
-  const added = parseAddedLines(execSync('git diff --find-renames origin/staging...HEAD', opts)).filter((a) =>
-    inScope(a.file),
-  )
+  // 워킹트리 기준으로 비교한다 — 커밋 전(verify.sh를 커밋 전에 돌리는 경우)의 수정·스테이징 줄과
+  // 추적되지 않는 새 파일도 잡는다. `origin/staging...HEAD`만 보면 커밋 전 줄이 빠져 CI와 결과가 갈렸다.
+  const base = execSync('git merge-base origin/staging HEAD', opts).trim()
+  const added = parseAddedLines(execSync(`git diff --find-renames ${base}`, opts)).filter((a) => inScope(a.file))
+  const untracked = execSync('git ls-files --others --exclude-standard', opts).split('\n').filter(inScope)
+  for (const file of untracked) {
+    readFileSync(file, 'utf8')
+      .split('\n')
+      .forEach((content, i) => added.push({ file, line: i + 1, content }))
+  }
   return added
 }
 
