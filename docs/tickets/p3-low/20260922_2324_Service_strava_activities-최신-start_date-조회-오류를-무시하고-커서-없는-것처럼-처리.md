@@ -47,17 +47,24 @@ parent: "20260922_2207"
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`syncStravaActivities()`의 `strava_activities` 최신 `start_date` 조회에서 버려지던 `error`를
+받아 `console.error`로 로그를 남기도록 수정했다. 완료 조건대로 기존 동작(오류가 있어도 커서 없이
+최신 페이지 1회 조회하는 fail-safe 경로)은 그대로 유지했다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/lib/strava/sync.ts
+jam-web/src/lib/strava/__tests__/sync-cursor-last-activity.test.ts
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npx vitest run src/lib/strava/__tests__/sync-cursor-last-activity.test.ts` — 4건 통과
+      (신규 오류 케이스 테스트 포함). 수정 전 코드로 되돌려 재실행 시 신규 테스트가 FAIL함을
+      확인(Prove-It 패턴)
+- [x] `scripts/verify.sh` 전항목 통과
 
-### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-- 해당 없음
+### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필요)*
+- 해당 없음 (서버 로그만 추가, 사용자 노출 텍스트 없음)
 
 ### 배포 정보
 - 배포일:

@@ -90,6 +90,7 @@ function makeFakeSupabase(opts: {
   connectionLastSyncedAt: string | null
   raceLastSyncedAt?: string
   latestActivityStartDate: string | null
+  latestActivityError?: { message: string }
   initialSyncDone?: boolean
 }): SupabaseClient {
   const row = { value: opts.connectionLastSyncedAt }
@@ -134,6 +135,9 @@ function makeFakeSupabase(opts: {
                 maybeSingle: async () => {
                   // 커넥션을 읽은 뒤·잠금을 걸기 전 사이에 다른 요청이 끼어든 상황 재현
                   if (opts.raceLastSyncedAt !== undefined) row.value = opts.raceLastSyncedAt
+                  if (opts.latestActivityError) {
+                    return { data: null, error: opts.latestActivityError }
+                  }
                   return {
                     data: opts.latestActivityStartDate ? { start_date: opts.latestActivityStartDate } : null,
                     error: null,
@@ -227,5 +231,28 @@ describe('syncStravaActivities — 조회 커서는 마지막으로 가져온 �
     })
     // 잠금에서 이미 조기 종료했으므로 Strava API 조회까지 가지 않는다
     expect(getActivitiesMock).not.toHaveBeenCalled()
+  })
+
+  it('커서 조회가 오류를 반환하면 로그를 남기고 after 없이 정상 진행한다 (티켓 20260922_2324)', async () => {
+    const queryError = { message: 'connection reset' }
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const supabase = makeFakeSupabase({
+      connectionLastSyncedAt: null,
+      latestActivityStartDate: null,
+      latestActivityError: queryError,
+    })
+    createServiceClientMock.mockReturnValue(supabase)
+
+    await syncStravaActivities(USER_ID)
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      `[syncStravaActivities] 커서 조회 실패 — userId: ${USER_ID}:`,
+      queryError,
+    )
+    expect(getActivitiesMock).toHaveBeenCalledTimes(1)
+    expect(getActivitiesMock).toHaveBeenCalledWith('enc-access-token', undefined)
+
+    consoleErrorSpy.mockRestore()
   })
 })
