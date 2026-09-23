@@ -27,5 +27,5 @@ COMMIT;
 -- SELECT rowsecurity FROM pg_tables WHERE schemaname = 'public' AND tablename = 'combination_recipe_slots';
 -- SELECT policyname FROM pg_policies WHERE tablename = 'combination_recipe_slots'; -- 0행이어야 정상
 
--- ↩️ 롤백 DDL
+-- 되돌림 SQL
 --    ALTER TABLE public.combination_recipe_slots DISABLE ROW LEVEL SECURITY;

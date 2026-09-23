@@ -50,5 +50,22 @@ COMMIT;
 --   );
 -- -- 18행 모두 proconfig에 {search_path=public}이 보여야 정상
 
--- ↩️ 롤백 DDL
---    (각 함수별) ALTER FUNCTION public.<name>(<args>) RESET search_path;
+-- 되돌림 SQL
+-- ALTER FUNCTION public.admin_destroy_orphaned_item(p_item_id uuid, p_admin_id uuid) RESET search_path;
+-- ALTER FUNCTION public.admin_reassign_orphaned_item(p_item_id uuid, p_admin_id uuid, p_target_user_id uuid) RESET search_path;
+-- ALTER FUNCTION public.assign_random_serial() RESET search_path;
+-- ALTER FUNCTION public.check_family_condition_consistency() RESET search_path;
+-- ALTER FUNCTION public.create_user_drop(p_dropper_id uuid, p_poi_id uuid, p_inventory_item_id uuid) RESET search_path;
+-- ALTER FUNCTION public.expire_stale_poi_drops() RESET search_path;
+-- ALTER FUNCTION public.generate_serial_prefix() RESET search_path;
+-- ALTER FUNCTION public.grant_inventory_item(p_inventory_id uuid, p_badge_id uuid, p_obtained_by text, p_expires_at timestamptz) RESET search_path;
+-- ALTER FUNCTION public.handle_new_user() RESET search_path;
+-- ALTER FUNCTION public.handle_updated_at() RESET search_path;
+-- ALTER FUNCTION public.log_orphan_custody_events() RESET search_path;
+-- ALTER FUNCTION public.mint_and_place_ambient_drop(p_poi_id uuid, p_badge_id uuid) RESET search_path;
+-- ALTER FUNCTION public.pickup_drop(p_drop_id uuid, p_picker_id uuid, p_inventory_id uuid) RESET search_path;
+-- ALTER FUNCTION public.release_inventory_slots(p_inventory_id uuid, p_count integer) RESET search_path;
+-- ALTER FUNCTION public.set_inventory_max_slots(p_max_slots integer) RESET search_path;
+-- ALTER FUNCTION public.slot_item_into_book(p_user_id uuid, p_item_book_id uuid, p_inventory_item_id uuid) RESET search_path;
+-- ALTER FUNCTION public.swap_item_in_book(p_user_id uuid, p_item_book_id uuid, p_slot_id uuid, p_new_inventory_item_id uuid) RESET search_path;
+-- ALTER FUNCTION public.unslot_item_from_book(p_user_id uuid, p_slot_id uuid) RESET search_path;

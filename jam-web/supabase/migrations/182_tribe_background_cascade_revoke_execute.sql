@@ -32,6 +32,6 @@ COMMIT;
 --   AND r.rolname IN ('anon', 'authenticated', 'service_role');
 -- -- anon/authenticated 행은 false, service_role 행은 true여야 정상
 
--- ↩️ 롤백 DDL
+-- 되돌림 SQL
 --    GRANT EXECUTE ON FUNCTION public.apply_tribe_background_cascade(uuid) TO anon, authenticated;
 --    GRANT EXECUTE ON FUNCTION public.count_tribe_background_cascade(uuid) TO anon, authenticated;
