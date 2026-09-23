@@ -255,7 +255,11 @@ function RankingListCard({ card, currentUserId }: { card: TodayCardWithHref; cur
           </Link>
         </TodayCardTracker>
       ) : (
-        <div>{header}</div>
+        // 미션 대상이 아닌 랭킹보드 카드도 노출은 집계한다(티켓 20260924_0112). 트래커는 자식을
+        // 감싸는 <div> 하나만 렌더하므로 기존 <div>{header}</div>와 DOM 구조가 같다.
+        <TodayCardTracker cardId={card.id} trackClick={false}>
+          {header}
+        </TodayCardTracker>
       )}
 
       {entries.length > 0 ? (
