@@ -38,7 +38,7 @@ export default defineConfig({
     // today-calendar.test.ts는 admin/__tests__ 폴더 안에 badge-validation.test.ts(진짜
     // vitest 스위트)와 공존하므로 폴더째 제외할 수 없다 — 파일 단위로 제외한다.
     // today-logic.test.ts도 같은 사정(티켓 20260923_2253) — today/__tests__ 폴더 안에
-    // exposure-tags-segment.test.ts(vi.mock 기반 진짜 vitest 스위트)가 추가돼 폴더째
+    // exposure-tags-segment.test.ts(vi.mock 기반 vitest 스위트)가 추가돼 폴더째
     // 제외할 수 없다.
     exclude: [
       '**/node_modules/**',
