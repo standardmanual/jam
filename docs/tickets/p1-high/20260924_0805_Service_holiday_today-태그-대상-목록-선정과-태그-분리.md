@@ -17,7 +17,7 @@ related:
 ## 핵심 요약
 
 - 요구사항: 지금 `holiday_today`는 공휴일뿐 아니라 기념일·24절기에도 켜진다. "쉬는 날엔…" 같은 문안을 이 태그에 걸면 쉬지 않는 날(국군의 날 10/1, 한로 10/8 등)에도 나간다. **어떤 날을 홀리데이로 표시할지 목록을 정하고**, 태그를 그 목록에 맞게 분리한다.
-- 구현 계획(추천안): `holiday_today`는 **쉬는 날(공휴일·대체공휴일)만** 켠다. 기념일·24절기는 각각 별도 태그(`anniversary_today`·`seasonal_today`)로 나누고, 카드는 필요할 때만 그 태그를 쓴다. 사용자가 기념일 중 홀리데이로 취급할 날을 고르면 그 목록을 코드 상수로 둔다.
+- 구현 계획(결정 반영): 사용자가 선택표 [SPECIAL_DAYS.md](../../../jam-doc/planning/content/SPECIAL_DAYS.md)로 대상을 확정했다(2026-09-24). **날짜가 아니라 이름으로** 대상을 고른다. ① `jam-web/src/lib/inputs/special-days-config.ts`(신규): 허용·제외 이름 상수와 순수 함수 `specialDayTags(days)`(`holiday_today`·`seasonal_today`·`anniversary_today`를 돌려준다). ② `holidays.ts`: 잡절 오퍼레이션(`getSundryDayInfo`, 종류 `sundry`)을 조회에 추가. ③ `jam-web/src/lib/today/exposure.ts`: `specialDays.length > 0`이면 `holiday_today`를 켜던 268행 근방을 `specialDayTags`로 교체. ④ `jam-web/src/lib/admin/today-sections.ts`: `TODAY_EXPOSURE_TAG_OPTIONS`(143행)에 새 태그 2종 추가. ⑤ 테스트: `inputs.test.ts` 확장 또는 `special-days-config.test.ts` 신규(이름 매칭, 대체공휴일, 제외 목록, 중복 켜짐, 빈 목록). 코드 5파일·약 180줄이라 크기 기준(5파일 초과 또는 100줄 이상)에 걸려 `planOnlyWaiver`가 필요하다. PRD §5와 선택표 문서는 카리나가 따로 갱신한다.
 - 관련 파일: `jam-web/src/lib/inputs/holidays.ts`(오퍼레이션 3종 ENDPOINTS 25~29행, `normalizeSpecialDayItems`), `jam-web/src/lib/today/exposure.ts`(`holiday_today` 태그 268행 근방), `jam-web/src/lib/admin/today-sections.ts`(`TODAY_EXPOSURE_TAG_OPTIONS` 143행), `docs/specs/prd/content-automation/PRD.md` §5, 테스트 `jam-web/src/lib/inputs/__tests__/inputs.test.ts`
 
 ## 배경 / 문제 정의
@@ -34,8 +34,10 @@ related:
 - 이미 등록된 10/3(개천절) 카드(`holiday_today`)가 그대로 노출된다.
 - 어드민 노출 태그 선택지와 PRD §5가 갱신된다.
 
-### 사용자 결정 필요
-- 기념일 중 홀리데이로 취급할 날이 있는지(없으면 공휴일·대체공휴일만).
+### 확정된 대상 (사용자 결정, 2026-09-24)
+- `holiday_today`: 공휴일 20일(전국동시지방선거·제헌절 제외, 대체공휴일 포함)
+- `seasonal_today`(신설): 24절기 8개(입춘·경칩·대서·입추·처서·입동·대설·동지) + 잡절 3개(정월대보름·말복·칠석)
+- `anniversary_today`(신설): 기념일 10개(식목일·근로자의 날·어린이 날·어버이 날·부부의 날·환경의 날·섬의 날·푸른 하늘의 날·청년의 날·스포츠의 날)
 
 크기 상한: 4파일/60줄.
 
