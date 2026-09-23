@@ -6,7 +6,7 @@
  * 박아둔 후보 풀에서 매 요청마다 랜덤 1개만 고른다(어드민 편집 대상 아님).
  *
  * 좌 슬롯 "진행 중" 판정은 `jam-web/src/lib/today/exposure.ts`의
- * `hasParticipatingMission`/`hasIncompleteItemBook`과 동일한 조회 패턴을 재사용한다.
+ * `hasParticipatingMission`/`getItemBookProgress`와 동일한 조회 패턴을 재사용한다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { MissionCondition, MissionType } from '@/types/database'
@@ -48,7 +48,7 @@ function missionTarget(type: MissionType, condition: MissionCondition): number {
   }
 }
 
-/** 진행 중(슬롯 일부만 채운) 아이템북 후보 — exposure.ts의 hasIncompleteItemBook과 동일 패턴 */
+/** 진행 중(슬롯 일부만 채운) 아이템북 후보 — exposure.ts의 getItemBookProgress와 동일 패턴 */
 async function collectionCandidates(userId: string): Promise<ProgressCandidate[]> {
   const supabase = createServiceClient()
 

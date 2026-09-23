@@ -2,9 +2,9 @@
 id: "20260923_2325"
 category: API
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-23
-closed:
+closed: 2026-09-24
 parent: "20260923_2252"
 related:
   - "20260923_2256"
@@ -32,31 +32,36 @@ related:
 크기 상한: 파일 1~2개, 30줄 이내(경로 ① 경미 가능).
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+content-corpus 어드민 읽기 라우트의 route-contract 테스트를 추가했다. 라우트 소스를 정적으로 읽어 (1) GET만 export하고 POST/PUT/PATCH/DELETE는 export하지 않음 (2) `@/lib/admin/auth`의 `requireAdminRead`를 import해 `await requireAdminRead(req)`로 호출함 (3) 세션 전용 `requireAdmin()`을 섞어 쓰지 않음을 확인한다. `kpi/weekly` 계약 테스트 패턴을 따랐다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/app/api/admin/content-corpus/__tests__/route-contract.test.ts (신규 38줄)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] CI `verify` 성공(run 35924003812, 커밋 79a05505)
+- [x] 민지 게이트 PASS. 신규 테스트 3건 통과
+- [x] 병합 뒤 통합 `verify.sh` 전항목 통과
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-09-24 (staging 반영. 프로덕션은 `/jam-ship` 때)
+- 환경: staging
+- 커밋: 79a05505(브랜치), 병합 커밋 221a0538
 
 ### 실행 지표
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1차 | 아현·민지(2명) | 60,376 | 35,572 / 14,512 | 약 7분 | 24 |
+| 합계 |  | 60,376 | 35,572 / 14,512 | 약 7분 | 24 |
 
 ### 주요 의사결정 / 핵심 메모
+- 크기 상한 30줄을 8줄 넘겼다(헤더 주석과 파일 읽기·주석 제거 보일러플레이트, 파일 1개). 게이트는 영향 없다고 판정했다.
+- 개인 식별 정보 검사는 kpi 전용 항목이라 복제하지 않았다.
 
 ### 잔여 이슈
--
+- 없음.
