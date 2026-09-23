@@ -74,7 +74,7 @@ vi.mock('@/lib/supabase/server', () => ({
     from: (table: string) => {
       calledTables.push(table)
       if (table === 'tribes') return buildSimpleTable(tribes, ['id', 'name', 'description', 'tagline'])
-      if (table === 'item_books') return buildSimpleTable(itemBooks, ['id', 'name', 'story_text'])
+      if (table === 'item_books') return buildSimpleTable(itemBooks, ['id', 'name', 'story_text', 'description'])
       if (table === 'badges') return buildBadgesTable(badges)
       throw new Error(`예상치 못한 테이블 조회: ${table}`)
     },
@@ -93,6 +93,7 @@ beforeEach(() => {
   itemBooks = [
     { id: 'book-active', active: true, name: '활성 컬렉션', story_text: '활성 컬렉션 서사' },
     { id: 'book-inactive', active: false, name: '비활성 컬렉션', story_text: '비활성 컬렉션 서사' },
+    { id: 'book-desc-only', active: true, name: '설명만 있는 컬렉션', story_text: null, description: '설명 필드 원문' },
   ]
   badges = [
     { id: 'badge-active', active: true, name: '활성 배지', description: '활성 배지 설명 원문' },

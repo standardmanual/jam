@@ -32,10 +32,10 @@ async function fetchTribesRaw(
   return data ?? []
 }
 
-async function fetchItemBooksRaw(ids: string[]): Promise<{ id: string; story_text: string | null }[]> {
+async function fetchItemBooksRaw(ids: string[]): Promise<{ id: string; story_text: string | null; description: string | null }[]> {
   if (ids.length === 0) return []
   const supabase = createServiceClient()
-  const { data, error } = await supabase.from('item_books').select('id, story_text').in('id', ids)
+  const { data, error } = await supabase.from('item_books').select('id, story_text, description').in('id', ids)
   if (error) throw error
   return data ?? []
 }
@@ -77,7 +77,9 @@ export async function selectCorpusForType(
     const ids = (ctx.itemBookIds ?? []).slice(0, limit)
     const rows = await fetchItemBooksRaw(ids)
     for (const row of rows) {
-      if (row.story_text) quotes.push({ kind: 'item_book', id: row.id, text: row.story_text })
+      // story_text가 비어 있으면 description으로 폴백한다(2026-09-24 실측: story_text 0건, description 96건)
+      const text = row.story_text || row.description
+      if (text) quotes.push({ kind: 'item_book', id: row.id, text })
     }
   }
   return { typeId, targets, quotes }
