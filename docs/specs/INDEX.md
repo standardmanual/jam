@@ -48,6 +48,10 @@ status: active
 
 - [PRD.md](prd/badge-share/PRD.md) — 배지 상세 페이지에서 배지를 이미지로 만들어 공유하거나 기기에 저장하는 기능의 플로우와 플랫폼별 동작을 정의한 PRD다.
 
+## docs/specs/prd/content-automation/
+
+- [PRD.md](prd/content-automation/PRD.md) — 정식 오픈 후 홈피드·배지·미션 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·제안승인·전략변경안·유형리뷰)의 스펙 정본이다.
+
 ## docs/specs/prd/inventory/
 
 - [PRD.md](prd/inventory/PRD.md) — 인벤토리가 가득 찼을 때 원인과 해결책을 안내하고 드랍 지도 화면(`/drops`)으로 이동시키는 상시 안내를 정의한 PRD다.
