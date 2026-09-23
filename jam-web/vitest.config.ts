@@ -37,9 +37,12 @@ export default defineConfig({
     // (제외만 하고 방치하면 회귀 방어가 CI에서 빠진다 — 티켓 20260825_028)
     // today-calendar.test.ts는 admin/__tests__ 폴더 안에 badge-validation.test.ts(진짜
     // vitest 스위트)와 공존하므로 폴더째 제외할 수 없다 — 파일 단위로 제외한다.
+    // today-logic.test.ts도 같은 사정(티켓 20260923_2253) — today/__tests__ 폴더 안에
+    // exposure-tags-segment.test.ts(vi.mock 기반 진짜 vitest 스위트)가 추가돼 폴더째
+    // 제외할 수 없다.
     exclude: [
       '**/node_modules/**',
-      '**/today/__tests__/**',
+      '**/today/__tests__/today-logic.test.ts',
       '**/missions/__tests__/**',
       '**/admin/__tests__/today-calendar.test.ts',
       // 스토리 파일은 테스트가 아니다 — storybook 프로젝트 제거 이후에도 vitest 기본
