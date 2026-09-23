@@ -52,7 +52,9 @@
       "Bash(curl -s -o /dev/null *)",
       "Bash(curl -sI *)",
       "Bash(curl -s http://localhost:*)",
-      "WebSearch"
+      "WebSearch",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration"
     ],
     "deny": [
       "Bash(git push --force*)",
