@@ -102,8 +102,8 @@ CVE 적용 범위: Vercel은 Linux 서버리스이므로 "Windows-hosted RCE"(GH
 해당 없음을 확인, 나머지(AVIF 이미지 최적화 RCE·Server Actions SSRF/DoS·캐시 혼동·Middleware
 bypass·미인증 Server Function 노출)는 환경 무관하게 적용되므로 이번 상향으로 해소.
 `sharp` API 변경 여부는 0.35.3→0.35.4가 patch 버전이라 낮음으로 판단했고, 실제로
-`scripts/recraft/compose-logo.js`(로컬 sharp 합성, Recraft 외부 API 미호출)를 샘플 배지
-이미지(`public/itembooks/sample/b107.png`)+로고(`public/jam-logo-white.png`)로 상향 전(구
+`jam-web/scripts/recraft/compose-logo.js`(로컬 sharp 합성, Recraft 외부 API 미호출)를 샘플
+배지 이미지(`jam-web/public/itembooks/sample/b107.png`)+로고(`jam-web/public/jam-logo-white.png`)로 상향 전(구
 node_modules)·상향 후 각각 실행해 출력 PNG를 바이트 단위(`cmp`)로 비교 — 완전 동일(회귀 없음).
 
 **작업 중 발견한 부작용(별도 조치, alerts 참고)**: 하네스가 연결한 `jam-web/node_modules`
