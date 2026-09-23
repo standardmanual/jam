@@ -471,6 +471,32 @@ function checkWorkflowFreeze(c) {
   }
 }
 
+// ── ⑮ 메인 세션 자동 허용 목록(settings_permissions) ──────────────────────────
+// 프로덕션 DB 쓰기 도구가 자동 허용이라는 사실을 문서(orchestrator.md 4절)가 전제한다
+// (티켓 20260924_0625). 선언한 도구가 permissions.allow에 실제로 있는지만 본다.
+function checkSettingsPermissions(c) {
+  const spec = c.settings_permissions
+  if (!spec) return
+  const file = path.join(REPO, '.claude/settings.json')
+  if (!existsSync(file)) {
+    notes.push('.claude/settings.json이 없어 자동 허용 검사를 건너뜁니다.')
+    return
+  }
+  let cfg
+  try {
+    cfg = JSON.parse(readFileSync(file, 'utf8'))
+  } catch {
+    return   // JSON 오류는 checkHooks가 이미 보고한다
+  }
+  const allow = cfg.permissions?.allow ?? []
+  for (const tool of spec.allow_contains ?? []) {
+    if (!allow.includes(tool)) {
+      violate('settings_permissions', `.claude/settings.json의 permissions.allow에 ${tool}가 없습니다`,
+        `자동 허용을 뺐다면 orchestrator.md 4절의 서술과 contract.json을 함께 고치세요. 빼려던 것이 아니라면 다시 추가하세요.`)
+    }
+  }
+}
+
 // ── 실행 ──────────────────────────────────────────────────────────────────────
 const contract = readContract()
 checkPathsExist(contract)
@@ -487,6 +513,7 @@ checkGitConfig(contract)
 checkDeployGate(contract)
 checkRoutineCommitRestriction(contract)
 checkWorkflowFreeze(contract)
+checkSettingsPermissions(contract)
 
 for (const n of notes) console.log(`참고: ${n}`)
 for (const w of warnings) console.log(`경고: ${w}`)

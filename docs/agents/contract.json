@@ -129,6 +129,14 @@
     ]
   },
 
+  "settings_permissions": {
+    "_why": "메인 세션(카리나)의 자동 허용 목록이다. Supabase MCP의 SQL 실행 도구를 사용자가 직접 자동 허용에 넣었다(2026-09-24, 티켓 20260924_0625). 이 등록 때문에 도구가 승인 프롬프트를 띄우지 않으므로, 프로덕션 DB 쓰기의 유일한 관문은 채팅에서 받는 사용자 승인이다. 문서가 이 사실을 전제하므로 목록에서 빠지거나 다른 곳이 늘어나면 문서와 어긋난다. 서브에이전트에는 적용되지 않는다 — 아현의 tools에 MCP가 없다는 것은 agents 선언이 따로 지킨다.",
+    "allow_contains": [
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration"
+    ]
+  },
+
   "git_config": {
     "_why": "core.hooksPath는 .git/config에만 저장되어 저장소로 동기화되지 않는다. 값이 비면 pre-commit·pre-push가 조용히 돌지 않고, 이 저장소의 .githooks가 아닌 곳을 가리키면 엉뚱한 훅이 돈다. 값이 비어 있지 않고, 존재하는 디렉터리이며, 현재 워크트리 루트 또는 메인 체크아웃 루트의 .githooks와 같은 곳이면 상대경로든 절대경로든 정상이다 (티켓 20260921_0841).",
     "values": {

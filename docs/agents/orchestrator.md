@@ -98,6 +98,12 @@ SQL 편집기 실행을 넘기기 전에 막힌 사유를 먼저 보고한다(�
 - **위험도 인식**: service_role 키는 RLS를 우회하는 전체 DB 권한이다. 진단·버그수정 범위를
   벗어난 대량 삭제·프로덕션 데이터 대량 변경 전에는 반드시 사용자 확인을 받는다
 - **Supabase는 staging·프로덕션 공용 단일 DB**다. DB 변경은 즉시 프로덕션에 반영된다
+- **자동 허용 상태를 전제로 일한다.** `.claude/settings.json`의 `permissions.allow`에
+  `mcp__supabase__execute_sql`·`mcp__supabase__apply_migration`이 등록돼 있다(2026-09-24, 사용자가
+  직접 추가, 티켓 20260924_0625). 도구가 승인 프롬프트를 띄우지 않으므로 **실행 전에 채팅에서
+  사용자 승인을 받는 것이 유일한 관문이다.** 승인을 요청할 때 실행할 파일명·영향 범위·되돌림 SQL
+  위치를 함께 말한다. 서브에이전트에는 이 허용이 적용되지 않는다(아현의 `tools`에 MCP가 없다).
+  `scripts/check-contract.mjs`가 이 등록이 남아 있는지 확인한다
 - **워크트리 세션에서는 시크릿 링크를 먼저 연결한다.** `.mcp.json`·`.vercel`·`jam-web/.env.local`은
   gitignore 대상이라 워크트리로 따라오지 않는다. 그 상태에서는 프로젝트 전용 `supabase` MCP 서버가
   로드되지 않는다. `scripts/workspace-setup.sh link-secrets <워크트리 경로>`로 연결하고 그
