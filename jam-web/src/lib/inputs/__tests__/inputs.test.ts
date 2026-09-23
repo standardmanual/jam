@@ -188,6 +188,24 @@ describe('refreshTodayWeather — cron 전용 외부 호출(실패 시 null)', (
     const { refreshTodayWeather } = await import('../weather')
     await expect(refreshTodayWeather(now)).resolves.toBe('rain')
   })
+
+  it('발표시각을 받은 now로 계산한다(현재 시각과 무관, 티켓 20260924_0648)', async () => {
+    vi.stubEnv('KMA_API_KEY', 'dummy-key')
+    vi.useFakeTimers()
+    try {
+      // 실제 현재 시각은 며칠 뒤로 고정 — now 인자를 무시하면 base_date가 어긋난다
+      vi.setSystemTime(new Date('2026-10-05T03:00:00Z'))
+      const now = new Date('2026-09-23T21:00:00Z') // KST 2026-09-24 06:00 → 05시 발표분
+      mockFetchOnce(200, { response: { body: { items: { item: [] } } } })
+      const { refreshTodayWeather } = await import('../weather')
+      await refreshTodayWeather(now)
+      const url = String((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0])
+      expect(url).toContain('base_date=20260924')
+      expect(url).toContain('base_time=0500')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 describe('getTodaySpecialDays — 저장값만 읽는다(vitest 모듈 격리로 캐시 리셋)', () => {
