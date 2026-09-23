@@ -264,7 +264,7 @@ describe('refreshTodaySpecialDays — cron 전용 외부 호출', () => {
     await expect(refreshTodaySpecialDays()).resolves.toBeNull()
   })
 
-  it('세 오퍼레이션 모두 HTTP 오류여도 오류 없이 null', async () => {
+  it('네 오퍼레이션 모두 HTTP 오류여도 오류 없이 null', async () => {
     vi.stubEnv('DATA_GO_KR_API_KEY', 'dummy-key')
     mockFetchOnce(500, {})
     const { refreshTodaySpecialDays } = await import('../holidays')
@@ -288,6 +288,7 @@ describe('refreshTodaySpecialDays — cron 전용 외부 호출', () => {
       { name: '추석', type: 'holiday' },
       { name: '추석', type: 'anniversary' },
       { name: '추석', type: 'seasonal' },
+      { name: '추석', type: 'sundry' },
     ])
   })
 })

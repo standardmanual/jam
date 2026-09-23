@@ -8,7 +8,7 @@
  */
 import { readDailyInput, ymdToDateKst } from './daily-store'
 
-export type SpecialDayType = 'holiday' | 'anniversary' | 'seasonal'
+export type SpecialDayType = 'holiday' | 'anniversary' | 'seasonal' | 'sundry'
 
 export interface SpecialDay {
   name: string
@@ -23,11 +23,12 @@ interface SpcdeInfoItem {
 const SPCDE_BASE_URL = 'http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService'
 const FETCH_TIMEOUT_MS = 2_000
 
-// 공휴일 / 기념일 / 24절기 — 세 오퍼레이션을 모두 호출해 합친다
+// 공휴일 / 기념일 / 24절기 / 잡절 — 네 오퍼레이션을 모두 호출해 합친다
 const ENDPOINTS: { operation: string; type: SpecialDayType }[] = [
   { operation: 'getRestDeInfo', type: 'holiday' },
   { operation: 'getAnniversaryInfo', type: 'anniversary' },
   { operation: 'get24DivisionsInfo', type: 'seasonal' },
+  { operation: 'getSundryDayInfo', type: 'sundry' },
 ]
 
 function todayKstYmd(now: Date): { year: string; month: string; ymd: string } {
@@ -85,7 +86,7 @@ export function todaySpecialDaysDateKst(now: Date = new Date()): string {
 }
 
 /**
- * 특일정보 API를 호출해 오늘의 공휴일·기념일·24절기를 정규화한다. 세 오퍼레이션 중 일부만
+ * 특일정보 API를 호출해 오늘의 공휴일·기념일·24절기를 정규화한다. 네 오퍼레이션 중 일부만
  * 실패해도 나머지는 반영되고, 전부 실패(인증키 미설정 포함)하면 null이다(오류를 던지지 않는다).
  * 빈 배열은 "오늘 특일 없음"이라는 정상 값이라 실패(null)와 구분한다. cron 전용 —
  * 카드 조회 경로에서 부르지 않는다.
@@ -106,7 +107,7 @@ export async function refreshTodaySpecialDays(now: Date = new Date()): Promise<S
 function isSpecialDay(v: unknown): v is SpecialDay {
   if (!v || typeof v !== 'object') return false
   const { name, type } = v as Record<string, unknown>
-  return typeof name === 'string' && (type === 'holiday' || type === 'anniversary' || type === 'seasonal')
+  return typeof name === 'string' && (type === 'holiday' || type === 'anniversary' || type === 'seasonal' || type === 'sundry')
 }
 
 /**

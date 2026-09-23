@@ -140,7 +140,9 @@ export const TODAY_EXPOSURE_TAG_OPTIONS: readonly { value: string; label: string
   { value: 'weather_mild', label: 'weather_mild (오늘 날씨: 구름많음·흐림)' },
   { value: 'weather_rain', label: 'weather_rain (오늘 날씨: 비/눈)' },
   { value: 'weather_extreme', label: 'weather_extreme (오늘 날씨: 폭염·한파)' },
-  { value: 'holiday_today', label: 'holiday_today (오늘 공휴일·기념일·24절기)' },
+  { value: 'holiday_today', label: 'holiday_today (오늘 쉬는 공휴일)' },
+  { value: 'seasonal_today', label: 'seasonal_today (오늘 절기·잡절: 입춘·동지·말복 등)' },
+  { value: 'anniversary_today', label: 'anniversary_today (오늘 기념일: 식목일·어버이날 등)' },
 ]
 
 /**
