@@ -13,7 +13,8 @@ import {
   type TodaySectionSnapshot,
   type TodayCardFormValues,
 } from '../today-sections'
-import type { TodayCardTemplateType } from '@/types/database'
+import { resolveArticleCtaTarget } from '../../today/targetHref'
+import type { TodayCardTemplateType, TodayCardRow } from '@/types/database'
 
 const ALL_TEMPLATES: TodayCardTemplateType[] = [
   'badge_spotlight',
@@ -78,8 +79,8 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
   it('drop_alert는 아무 참조 필드도 쓰지 않는다(경로 고정 /drops)', () => {
     expect(todayTemplateFields('drop_alert')).toEqual({})
   })
-  it('editorial_article은 본문만 쓴다(경로 고정 /today/{id})', () => {
-    expect(todayTemplateFields('editorial_article')).toEqual({ body: true })
+  it('editorial_article은 본문·미션·컬렉션·이동경로를 쓴다(카드 자체 경로는 /today/{id} 고정, 나머지는 기사 CTA 대상, 티켓 20260924_0107)', () => {
+    expect(todayTemplateFields('editorial_article')).toEqual({ body: true, mission: true, itemBook: true, targetHref: true })
   })
   it('ranking_board는 랭킹모드·이동경로를 쓴다(티켓 20260911_1440)', () => {
     expect(todayTemplateFields('ranking_board')).toEqual({ rankingMode: true, targetHref: true })
@@ -189,18 +190,18 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
     expect(p.item_book_id).toBeNull()
     expect(p.region_label).toBeNull()
     expect(p.body_markdown).toBeNull()
-    // editorial_article/drop_alert은 target_href를 무시한다(자동/고정 경로)
+    // drop_alert은 target_href를 무시한다(자동/고정 경로 /drops)
     expect(p.target_href).toBeNull()
   })
-  it('editorial_article — 본문만 쓰고 target_href는 무시한다', () => {
+  it('editorial_article — 본문과 함께 target_href를 저장한다(기사 CTA 대상, 티켓 20260924_0107). badges는 여전히 비운다', () => {
     const p = buildTodayCardSavePayload({
       ...baseValues,
       templateType: 'editorial_article',
       bodyMarkdown: '첫 문단\n\n둘째 문단',
-      targetHref: '/무시됨',
+      targetHref: '/promo',
     })
     expect(p.body_markdown).toBe('첫 문단\n\n둘째 문단')
-    expect(p.target_href).toBeNull()
+    expect(p.target_href).toBe('/promo')
     expect(p.badge_ids).toEqual([])
   })
   it('location_trend — badges·region·targetHref를 쓴다', () => {
@@ -258,5 +259,23 @@ describe('TODAY_CONTENT_TYPE_OPTIONS — 컨텐츠 유형 카탈로그(PRD conte
     for (let n = 1; n <= 17; n++) {
       expect(values).toContain(`T${String(n).padStart(2, '0')}`)
     }
+  })
+})
+
+describe('resolveArticleCtaTarget — 에디토리얼 기사 본문 CTA 버튼 대상(티켓 20260924_0107)', () => {
+  const base: TodayCardRow = {
+    id: 'card-1', template_type: 'editorial_article', layout_type: 'large_thumbnail', title: '기사',
+    subtitle: null, cover_image_url: null, badge_ids: [], mission_id: null, item_book_id: null,
+    region_label: null, body_markdown: null, target_href: null, exposure_tags: ['all'],
+    starts_at: '2026-09-24T00:00:00Z', ends_at: '2026-12-30T14:59:59Z', sort_order: 0, is_active: true,
+    created_at: '2026-09-24T00:00:00Z', created_by: null, ranking_mode_id: null, content_type_id: null,
+  }
+  it('우선순위 target_href → item_book_id(컬렉션) → mission_id(미션), 셋 다 없으면 null', () => {
+    expect(resolveArticleCtaTarget({ ...base, target_href: '/promo', item_book_id: 'i1', mission_id: 'm1' }))
+      .toEqual({ href: '/promo', kind: 'direct' })
+    expect(resolveArticleCtaTarget({ ...base, item_book_id: 'i1', mission_id: 'm1' }))
+      .toEqual({ href: '/collections/i1', kind: 'collection' })
+    expect(resolveArticleCtaTarget({ ...base, mission_id: 'm1' })).toEqual({ href: '/missions/m1', kind: 'mission' })
+    expect(resolveArticleCtaTarget(base)).toBeNull()
   })
 })

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getPublishedArticleCard } from '@/lib/today/cards'
+import { resolveArticleCtaTarget } from '@/lib/today/targetHref'
 import SafeImage from '@/components/SafeImage'
 import LocalDate from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
@@ -23,6 +24,12 @@ export default async function TodayArticlePage({ params }: Props) {
     .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter(Boolean)
+
+  // 대상 필드(target_href → item_book_id → mission_id)가 하나도 없으면 null — CTA 블록 자체를
+  // 렌더하지 않아 기존 화면과 픽셀 단위로 동일하다(티켓 20260924_0107).
+  const cta = resolveArticleCtaTarget(card)
+  const ctaLabel =
+    cta?.kind === 'collection' ? d.todayCard.ctaViewCollection : cta?.kind === 'mission' ? d.todayCard.ctaViewMission : d.todayCard.ctaViewDetails
 
   return (
     <div className="min-h-full text-text pb-[var(--spacing-40)]">
@@ -63,6 +70,20 @@ export default async function TodayArticlePage({ params }: Props) {
             <p className="text-text/40">{d.todayCard.noBody}</p>
           )}
         </div>
+
+        {cta && (
+          // Button.tsx variant="primary" surface="main" 레시피를 그대로 복사 — <a> 안에
+          // <button>을 중첩할 수 없어 Button 컴포넌트 대신 className을 재사용한다(티켓 20260924_0107).
+          <div className="mt-[var(--spacing-24)]">
+            <Link
+              href={cta.href}
+              className="inline-flex items-center justify-center gap-2 min-h-11 w-full font-normal transition-transform duration-100 active:scale-95 rounded-[var(--radius-pill-buttons)] px-[var(--spacing-32)] py-[14px] text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse"
+              style={{ backgroundColor: 'var(--color-surface-inverse)' }}
+            >
+              {ctaLabel}
+            </Link>
+          </div>
+        )}
       </article>
     </div>
   )

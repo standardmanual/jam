@@ -76,3 +76,26 @@ export function resolveTargetHref(card: TodayCardRow, ctx: ResolveTargetHrefCont
       return '/'
   }
 }
+
+/** 기사 본문 CTA 버튼이 어떤 대상으로 이어지는지 — 라벨 선택에 쓴다 */
+export type ArticleCtaKind = 'collection' | 'mission' | 'direct'
+
+export interface ArticleCtaTarget {
+  href: string
+  kind: ArticleCtaKind
+}
+
+/**
+ * editorial_article 기사 본문 끝 CTA 버튼의 이동 목적지(티켓 20260924_0107).
+ * `resolveTargetHref`가 계산하는 "카드 자신의 이동 경로"(피드에서 눌렀을 때, editorial_article은
+ * 항상 /today/{id})와는 다른 대상이다 — 기사 안에서 다음으로 안내할 컬렉션·미션·직접 링크.
+ * 우선순위 target_href → item_book_id(컬렉션) → mission_id(미션). 셋 다 비어 있으면 null
+ * (호출부는 CTA 블록 자체를 렌더하지 않는다).
+ */
+export function resolveArticleCtaTarget(card: TodayCardRow): ArticleCtaTarget | null {
+  const explicit = card.target_href?.trim()
+  if (explicit) return { href: explicit, kind: 'direct' }
+  if (card.item_book_id) return { href: `/collections/${card.item_book_id}`, kind: 'collection' }
+  if (card.mission_id) return { href: `/missions/${card.mission_id}`, kind: 'mission' }
+  return null
+}

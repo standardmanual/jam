@@ -112,7 +112,10 @@ export const TODAY_FIELDS_FOR: Record<TodayCardTemplateType, TodayTemplateFields
   itembook_milestone: { itemBook: true, targetHref: true },
   location_trend: { badges: true, region: true, targetHref: true },
   drop_alert: {}, // target 고정 /drops
-  editorial_article: { body: true }, // target 고정 /today/{id}
+  // 카드 자신의 이동 경로(피드에서 눌렀을 때)는 항상 /today/{id}로 고정(resolveTargetHref).
+  // 여기서 입력하는 mission/itemBook/targetHref는 기사 본문 끝 CTA 버튼의 목적지로 쓰인다
+  // (우선순위 target_href → 컬렉션 → 미션, 티켓 20260924_0107).
+  editorial_article: { body: true, mission: true, itemBook: true, targetHref: true },
   ranking_board: { rankingMode: true, targetHref: true },
 }
 
@@ -302,7 +305,8 @@ export function buildTodayCardSavePayload(v: TodayCardFormValues): TodayCardSave
     // 유형 ID는 템플릿과 무관하게 모든 카드에 붙일 수 있다(자동화 파이프라인이 만든 카드용,
     // 비움 허용) — rankingModeId처럼 템플릿별로 비우지 않는다.
     content_type_id: v.contentTypeId || null,
-    // editorial_article/drop_alert 은 target_href 무시(자동/고정)
+    // drop_alert 은 target_href 무시(자동/고정). editorial_article은 카드 자신의 이동 경로가
+    // 아니라 기사 본문 CTA 버튼의 목적지로 쓴다(티켓 20260924_0107).
     target_href: fields.targetHref ? v.targetHref.trim() || null : null,
     exposure_tags: v.exposureTags,
     starts_at: new Date(v.startsAt).toISOString(),
