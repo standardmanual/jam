@@ -1809,10 +1809,46 @@ export type Database = {
         }
         Relationships: []
       }
+      today_card_events: {
+        Row: {
+          card_id: string | null
+          content_type_id: string | null
+          event: string
+          followup_action: string | null
+          id: number
+          occurred_at: string
+        }
+        Insert: {
+          card_id?: string | null
+          content_type_id?: string | null
+          event: string
+          followup_action?: string | null
+          id?: number
+          occurred_at?: string
+        }
+        Update: {
+          card_id?: string | null
+          content_type_id?: string | null
+          event?: string
+          followup_action?: string | null
+          id?: number
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "today_card_events_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "today_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       today_cards: {
         Row: {
           badge_ids: string[]
           body_markdown: string | null
+          content_type_id: string | null
           cover_image_url: string | null
           created_at: string
           created_by: string | null
@@ -1835,6 +1871,7 @@ export type Database = {
         Insert: {
           badge_ids?: string[]
           body_markdown?: string | null
+          content_type_id?: string | null
           cover_image_url?: string | null
           created_at?: string
           created_by?: string | null
@@ -1857,6 +1894,7 @@ export type Database = {
         Update: {
           badge_ids?: string[]
           body_markdown?: string | null
+          content_type_id?: string | null
           cover_image_url?: string | null
           created_at?: string
           created_by?: string | null

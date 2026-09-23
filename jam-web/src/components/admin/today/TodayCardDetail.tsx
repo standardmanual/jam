@@ -34,6 +34,7 @@ import {
   TODAY_TEMPLATE_OPTIONS,
   TODAY_LAYOUT_OPTIONS,
   TODAY_EXPOSURE_TAG_OPTIONS,
+  TODAY_CONTENT_TYPE_OPTIONS,
   todayTemplateFields,
   visibleTodaySections,
   todaySectionTitle,
@@ -78,6 +79,9 @@ function layoutLabel(value: string): string {
 }
 function exposureTagLabel(value: string): string {
   return TODAY_EXPOSURE_TAG_OPTIONS.find((t) => t.value === value)?.label ?? value
+}
+function contentTypeLabel(value: string): string {
+  return TODAY_CONTENT_TYPE_OPTIONS.find((t) => t.value === value)?.label ?? value
 }
 
 export default function TodayCardDetail({ card, linkedBadges, missionTitle, itemBookName, rankingModeTitle, returnDate }: TodayCardDetailProps) {
@@ -153,6 +157,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
       <ReadOnlyGrid>
         <ReadOnlyItem label="템플릿 타입">{templateLabel(card.template_type)}</ReadOnlyItem>
         <ReadOnlyItem label="노출 형태">{layoutLabel(card.layout_type)}</ReadOnlyItem>
+        <ReadOnlyItem label="유형 ID">{card.content_type_id ? contentTypeLabel(card.content_type_id) : <Empty />}</ReadOnlyItem>
       </ReadOnlyGrid>
     </TodaySectionCard>
   )

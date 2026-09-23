@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   TODAY_FIELDS_FOR,
+  TODAY_CONTENT_TYPE_OPTIONS,
   computeTodaySectionStatuses,
   todayTemplateFields,
   visibleTodaySections,
@@ -142,6 +143,7 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
     regionLabel: '',
     bodyMarkdown: '',
     rankingModeId: '',
+    contentTypeId: '',
     targetHref: '',
     exposureTags: ['all'],
     startsAt: '2026-09-11T00:00',
@@ -235,5 +237,26 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
   it('ranking_board가 아닌 템플릿은 rankingModeId가 있어도 ranking_mode_id를 null로 비운다', () => {
     const p = buildTodayCardSavePayload({ ...baseValues, templateType: 'badge_spotlight', rankingModeId: 'rm1' })
     expect(p.ranking_mode_id).toBeNull()
+  })
+  it('contentTypeId — 비우면 null로 저장한다', () => {
+    const p = buildTodayCardSavePayload({ ...baseValues, contentTypeId: '' })
+    expect(p.content_type_id).toBeNull()
+  })
+  it('contentTypeId — 템플릿과 무관하게 값이 있으면 저장한다(참조 필드가 전부 비는 drop_alert여도 유지, 티켓 20260923_2259)', () => {
+    const p = buildTodayCardSavePayload({ ...baseValues, templateType: 'drop_alert', contentTypeId: 'T07' })
+    expect(p.content_type_id).toBe('T07')
+    // 유형 ID는 rankingModeId처럼 템플릿별 필드 매트릭스로 비워지지 않는다
+    expect(p.badge_ids).toEqual([])
+  })
+})
+
+describe('TODAY_CONTENT_TYPE_OPTIONS — 컨텐츠 유형 카탈로그(PRD content-automation/PRD.md §6) 17종', () => {
+  it('T01~T17 17개가 중복 없이 있다', () => {
+    const values = TODAY_CONTENT_TYPE_OPTIONS.map((t) => t.value)
+    expect(values).toHaveLength(17)
+    expect(new Set(values).size).toBe(17)
+    for (let n = 1; n <= 17; n++) {
+      expect(values).toContain(`T${String(n).padStart(2, '0')}`)
+    }
   })
 })
