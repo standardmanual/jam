@@ -36,6 +36,7 @@ export interface ActiveBadgeRow {
 /** 배지 소속의 활성 여부만 담은 결과 — `verifyActiveTargets`가 반려 사유를 구분할 때만 쓴다. */
 export interface BadgeParentStatus {
   id: string
+  deleted: boolean
   itemBookInactive: boolean
   tribeInactive: boolean
 }
@@ -51,6 +52,15 @@ async function fetchActiveIds(table: 'item_books' | 'tribes', ids: string[]): Pr
   const { data, error } = await supabase.from(table).select('id').in('id', ids).eq('is_active', true)
   if (error) throw error
   return new Set(((data as { id: string }[] | null) ?? []).map((row) => row.id))
+}
+
+// 배지 행들의 소속 컬렉션·트라이브 중 활성인 id 집합을 함께 돌려준다(쿼리 최대 2회, 병렬).
+async function fetchActiveParentIds(rows: { item_book_id: string | null; tribe_id: string | null }[]) {
+  const [itemBookIds, tribeIds] = await Promise.all([
+    fetchActiveIds('item_books', uniqueNonNull(rows.map((r) => r.item_book_id))),
+    fetchActiveIds('tribes', uniqueNonNull(rows.map((r) => r.tribe_id))),
+  ])
+  return { itemBookIds, tribeIds }
 }
 
 export async function fetchActiveTribes(ids: string[]): Promise<ActiveTribeRow[]> {
@@ -97,10 +107,7 @@ export async function fetchActiveBadges(ids: string[]): Promise<ActiveBadgeRow[]
   const rows =
     (data as (ActiveBadgeRow & { item_book_id: string | null; tribe_id: string | null })[] | null) ?? []
   if (rows.length === 0) return []
-  const [activeItemBookIds, activeTribeIds] = await Promise.all([
-    fetchActiveIds('item_books', uniqueNonNull(rows.map((r) => r.item_book_id))),
-    fetchActiveIds('tribes', uniqueNonNull(rows.map((r) => r.tribe_id))),
-  ])
+  const { itemBookIds: activeItemBookIds, tribeIds: activeTribeIds } = await fetchActiveParentIds(rows)
   return rows
     .filter(
       (r) =>
@@ -111,22 +118,26 @@ export async function fetchActiveBadges(ids: string[]): Promise<ActiveBadgeRow[]
 }
 
 /**
- * 배지별 소속 컬렉션·트라이브의 비활성 여부만 돌려준다(배지 자체 활성 여부와 무관).
- * `verifyActiveTargets`가 반려 사유를 "소속 트라이브 비활성"·"소속 컬렉션 비활성"으로
- * 구분할 때만 쓴다.
+ * 배지별 삭제 여부와 소속 컬렉션·트라이브의 비활성 여부를 돌려준다(유효 기간은 보지 않는다).
+ * `verifyActiveTargets`가 반려 사유를 "배지 삭제됨"·"소속 트라이브 비활성"·"소속 컬렉션
+ * 비활성"으로 구분할 때만 쓴다.
  */
 export async function fetchBadgeParentStatus(ids: string[]): Promise<BadgeParentStatus[]> {
   if (ids.length === 0) return []
   const supabase = createServiceClient()
-  const { data, error } = await supabase.from('badges').select('id, item_book_id, tribe_id').in('id', ids)
+  const { data, error } = await supabase
+    .from('badges')
+    .select('id, item_book_id, tribe_id, deleted_at')
+    .in('id', ids)
   if (error) throw error
-  const rows = (data as { id: string; item_book_id: string | null; tribe_id: string | null }[] | null) ?? []
-  const [activeItemBookIds, activeTribeIds] = await Promise.all([
-    fetchActiveIds('item_books', uniqueNonNull(rows.map((r) => r.item_book_id))),
-    fetchActiveIds('tribes', uniqueNonNull(rows.map((r) => r.tribe_id))),
-  ])
+  const rows =
+    (data as
+      | { id: string; item_book_id: string | null; tribe_id: string | null; deleted_at: string | null }[]
+      | null) ?? []
+  const { itemBookIds: activeItemBookIds, tribeIds: activeTribeIds } = await fetchActiveParentIds(rows)
   return rows.map((r) => ({
     id: r.id,
+    deleted: Boolean(r.deleted_at),
     itemBookInactive: r.item_book_id !== null && !activeItemBookIds.has(r.item_book_id),
     tribeInactive: r.tribe_id !== null && !activeTribeIds.has(r.tribe_id),
   }))
