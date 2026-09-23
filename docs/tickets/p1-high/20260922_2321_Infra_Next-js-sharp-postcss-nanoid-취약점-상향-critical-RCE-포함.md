@@ -2,9 +2,9 @@
 id: "20260922_2321"
 category: Infra
 priority: P1
-status: OPEN
+status: CLOSED
 created: 2026-09-22
-closed:
+closed: 2026-09-23
 ---
 
 # [Infra] Next.js·sharp·postcss·nanoid 의존성 취약점 상향 (critical RCE 포함, 이미 프로덕션 배포됨)
@@ -116,43 +116,50 @@ node_modules)·상향 후 각각 실행해 출력 PNG를 바이트 단위(`cmp`)
 
 ### 변경된 파일
 ```
-jam-web/package.json       (next ^16.3.6, @storybook/addon-mcp ^10.6.0, @vitest/coverage-v8 ^4.1.11 — npm audit fix --force 자동 조정)
-jam-web/package-lock.json  (자동 생성 산출물, npm audit fix --force 반영)
+jam-web/package.json       (next ^16.3.6, sharp ^0.35.3(내부 postcss·nanoid 함께 상향))
+jam-web/package-lock.json  (자동 생성 산출물)
 ```
 
 ### 테스트 결과
 - [x] `npm audit --omit=dev` → 0 vulnerabilities (완료 조건 충족)
 - [x] `scripts/verify.sh` 전항목 통과 (lint·typecheck·test·ds:check·slop·scripts-test·contract·team-doc·team-map·skills)
 - [x] sharp 이미지 파이프라인 회귀: `compose-logo.js` 상향 전/후 출력 PNG 바이트 단위 동일
-- [ ] staging 배포 후 핵심 화면(홈피드·배지 상세·이미지 배지 표시) 실렌더 확인 — 이 티켓
-      완료 기록 작성 시점에는 아직 staging에 배포되지 않아 미수행. 배포 후 민지가 `curl`로
-      렌더된 HTML까지 확인하고, 시각적 확인은 사용자에게 스테이징 링크로 안내(계획 5번 항목)
+- [x] CI `verify` 재현 성공(run 35804144944) — 1차 시도(run 35803127937) `npm ci` ERESOLVE 실패를
+      2차 시도에서 해소 확인. 병합 후 카리나가 lockfile 정적 대조로 `vitest`·
+      `@vitest/coverage-v8`·`@vitest/browser-playwright` 모두 `4.1.10` 일치 재확인(2026-09-23)
+- [ ] staging 배포 후 핵심 화면(홈피드·배지 상세·이미지 배지 표시) 실렌더 확인 — 계획 5번 항목,
+      배포 후 진행(카리나 담당)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 - 해당 없음 (사용자 노출 텍스트 변경 없음)
 
 ### 배포 정보
-- 배포일: (미배포 — 이 브랜치는 staging에 push만 됨, `/jam-ship`은 별도)
-- 환경: production
-- 커밋: (StructuredOutput의 commitSha 참고)
+- 배포일: staging 2026-09-23. 프로덕션 반영은 `/jam-ship`으로 별도 진행
+- 환경: staging
+- 커밋: d1a80bcd·d4ad3a10(재시도 구현) · f64e0cdb(병합)
 
 ### 실행 지표
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1차 (게이트 FAIL — audit fix --force 부수 변경으로 npm ci ERESOLVE) | 2 | 123,815 | 52,481 / 13,038 | 14분 19초 | 81 |
+| 2차 재시도 (부수 변경 되돌림, 독립 설치, 게이트 PASS) | 2 | 103,858 | 17,367 / 14,395 | 11분 36초 | 57 |
+| 합계 | 4 | 227,673 | 69,848 / 27,433 | 25분 55초 | 138 |
 
 ### 주요 의사결정 / 핵심 메모
-- `eslint-config-next`는 여전히 `16.2.10` 고정 — `npm audit`가 취약점으로 잡지 않았고 lint
-  설정 패키지라 런타임 보안과 무관해 손대지 않음(티켓 범위 밖 확장 자제).
-- `@vitest/mocker` 계열 moderate 3건은 `npm audit`(dev 포함) 기준 여전히 남아있음 —
-  `npm audit fix --force`가 요구하는 상향(`@vitest/browser-playwright@4.1.11`, stated range
-  밖)이 필요하고 완료 조건(`--omit=dev` 기준)·계획 어디에도 없어 손대지 않음.
-- `@storybook/addon-mcp`(latest→^10.6.0)·`@vitest/coverage-v8`(4.1.10→^4.1.11)는 내가 직접
-  고른 변경이 아니라 `npm audit fix --force` 1회 실행의 자동 결과다(계획에 명시된 그 명령을
-  그대로 실행한 산출물).
+- **재작업 사유**: 1차 시도의 `npm audit fix --force` 1회 실행이 티켓 범위(next·sharp·postcss·
+  nanoid) 밖에서 `@storybook/addon-mcp`(latest→^10.6.0)·`@vitest/coverage-v8`(4.1.10→^4.1.11)를
+  부수적으로 조정했고, 이 둘이 `@vitest/browser-playwright` 고정 peer·`@storybook/addon-vitest`
+  버전대와 충돌해 `npm ci` 자체가 실패했다(CI에서 발견, 민지가 로컬 재현 확인). 2차 시도에서
+  이 두 패키지만 이전 값(`latest`·`4.1.10`)으로 되돌려 해소했다 — next/sharp/postcss/nanoid
+  상향은 그대로 유지.
+- `eslint-config-next`는 여전히 `16.2.10` 고정 — 범위 밖 발견물로 P3 티켓 20260923_0101 분리.
+- `@vitest/mocker` 계열 moderate 3건은 `npm audit`(dev 포함) 기준 여전히 남아있음 — 완료
+  조건(`--omit=dev` 기준)·계획 밖이라 손대지 않음.
+- 워크트리 `node_modules` 심볼릭 링크가 메인 체크아웃을 일시 손상시킨 건(1차 시도) → P2 티켓
+  20260923_0100으로 분리, 재발 방지책은 그 티켓에서 다룬다. 2차 시도는 지시대로 독립 설치로
+  진행해 재발하지 않았다.
 
 ### 잔여 이슈
-- staging 배포 후 실렌더 확인(홈피드·배지 상세·이미지 배지 표시)이 아직 남아있음 — 계획 5번
-  항목, 배포는 이 에이전트의 권한 밖.
+- staging 배포 후 실렌더 확인(홈피드·배지 상세·이미지 배지 표시)이 남아있다 — 다음 `/jam-ship`
+  또는 별도 확인 시점에 카리나가 진행.
