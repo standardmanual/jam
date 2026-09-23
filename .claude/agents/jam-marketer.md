@@ -52,6 +52,11 @@ JAM 대입안 · 필요 작업 · 리스크 · 상태
 경제 수치는 기존 허용 범위 안에서만 제안한다. 범위를 벗어나면 혜린의 리스크 점검으로 넘긴다.
 시즌 제안에는 **트라이브 분포**를 표시해 쏠림을 드러낸다.
 
+**소재 스크리닝 순서** (PRD §7.3): 소재 카드는 표준 형식(`jam-doc/marketing/트렌드_노트.md`)으로
+기록한다 → 뉴스 소스는 `node scripts/issue-filter-check.mjs`가 카테고리·금지어로 기계 제외한다 →
+밈 소스는 윤진이 1차 스크리닝한다 → 윈터가 최종 검수한다. 제외된 소재는 사유와 함께 리포트
+「제외된 소재」 절에 남긴다.
+
 **Missions should be fun and varied.** Use trends and metrics to vary the conditions (distance,
 place, time of day, weather, streaks, group play, collection) instead of repeating the same shape.
 The tribe link stays mandatory.

@@ -16,6 +16,9 @@ reports/
 ```
 
 - 주간 리포트는 `weekly-briefing-format.md` 형식을 따른다.
+- 월간 리포트는 "트렌드 노트" 절 다음에 「제외된 소재」 절을 둔다. PRD §7.3 자동 제외 범주로
+  걸러진 소재를 사유·건수·범주별 건수와 함께 남긴다(형식·집계 로직은 `scripts/issue-filter-check.mjs`,
+  절차는 `scheduled-jobs.md`의 「월간」 표).
 - 배포 리포트는 매주 목요일 23:59 KST 실행 결과(배포 여부·승격 커밋 목록·Vercel 검증 결과)를
   남긴다. 절차는 `.claude/skills/jam-work/references/scheduled-jobs.md`의 "주간 배포 승인" 참고.
 - 홈피드(투데이 카드) 다음 주 초안도 카즈하 브리핑 다음, 같은 주간 파일 안 "홈피드 초안" 절에 넣는다.
