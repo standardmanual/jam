@@ -17,9 +17,18 @@
  *   (티켓 20260905_0030 §2). 즉 피드 행을 아무리 세도 회차를 알 수 없고,
  *   `user_activity_badges.earn_count`가 유일한 출처다. 스냅샷으로 굳히지 않고
  *   렌더 직전에 읽는 이유도 같다 — 회차는 계속 오른다.
+ *
+ * 티켓 20260923_1237: 반복 발급형 배지는 재발급돼도 `user_activity_feed` 행이 새로
+ * 생기지 않는다(위 `earn_count` 설명과 같은 근거). "최근 활동" 피드는 **활동 단위로 그
+ * 활동에서 얻은 것을 보여주는 화면**이므로, 재발급 회차도 그 회차가 실제로 일어난 활동의
+ * 그룹에 나타나야 한다. DB에 행을 추가하지 않고, `user_activity_badges.earn_history`
+ * (회차별 `{earned_at, strava_activity_id}`)를 렌더 시점에 펼쳐 회차마다 **가상 피드
+ * 항목**을 만든다. 각 가상 항목은 그 회차의 `strava_activity_id`를 가지므로
+ * `FeedSection.tsx`의 기존 그룹핑(`strava_activity_id` 기준)이 자동으로 올바른 활동
+ * 그룹에 배치한다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
-import type { ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
+import type { ActivityFeedRow, ActivityFeedEventType, BadgeEarnHistoryEntry } from '@/types/database'
 
 const BADGE_METADATA_EVENTS = new Set<ActivityFeedEventType>(['badge_earned', 'item_dropped', 'item_picked_up'])
 
@@ -61,7 +70,13 @@ export async function hydrateFeedBadgeInfo(items: ActivityFeedRow[]): Promise<Ac
     supabase.from('badges').select('id, name, image_url, rarity, level, deleted_at').in('id', [...badgeIds]),
     // 회차는 활동 배지(user_activity_badges)에만 있다. 체크인 배지의 반복은 예전부터
     // metadata.visit_count로 실려 오므로 여기서 건드리지 않는다.
-    supabase.from('user_activity_badges').select('user_id, badge_id, earn_count').in('badge_id', [...badgeIds]).in('user_id', [...userIds]),
+    // earn_history: 반복 발급형 배지는 재발급돼도 피드 행이 새로 생기지 않는다(§ 파일 상단
+    // 주석). 회차마다 가상 피드 항목을 만들려면 이 배열 전체가 필요하다(티켓 20260923_1237).
+    supabase
+      .from('user_activity_badges')
+      .select('user_id, badge_id, earn_count, earn_history')
+      .in('badge_id', [...badgeIds])
+      .in('user_id', [...userIds]),
   ])
 
   const badgeMap = new Map(
@@ -74,6 +89,36 @@ export async function hydrateFeedBadgeInfo(items: ActivityFeedRow[]): Promise<Ac
       .map((r) => [earnKey(r.user_id, r.badge_id), r.earn_count ?? 1])
   )
 
+  // earn_history는 회차마다 뒤에 추가되므로(마이그레이션 132) 배열 순서 그대로가 발급 순서다.
+  // 반복형이 아닌 배지도 최초 발급 1건이 항상 들어 있어(마이그레이션 130 백필) 원소가 1개뿐인
+  // 채로 이 맵에 들어온다 — 그래서 반복형 여부를 따로 가리지 않고 항상 이 배열을 펼친다.
+  // JSONB라 타입이 없으므로 배열·문자열 형태를 런타임에서 확인하고, `earned_at`이 문자열이
+  // 아닌 원소는 건너뛴다(형태가 어긋난 과거 데이터 방어). `strava_activity_id` 결번(체크인·POI
+  // 트리거로 발급된 회차, 주의 3)은 null로 정규화한다 — 그 자체는 유효한 회차라 건너뛰지 않고,
+  // 아래 flatMap에서 원본 item의 strava_activity_id로 대체한다.
+  interface NormalizedEarnEntry {
+    earned_at: string
+    strava_activity_id: number | null
+  }
+  const earnHistoryMap = new Map<string, NormalizedEarnEntry[]>()
+  for (const r of (earnRows ?? []) as { user_id: string; badge_id: string; earn_history: unknown }[]) {
+    const history = r.earn_history
+    if (!Array.isArray(history)) continue
+    const normalized: NormalizedEarnEntry[] = []
+    for (const raw of history as BadgeEarnHistoryEntry[]) {
+      const earnedAt = raw?.earned_at
+      if (typeof earnedAt !== 'string') continue
+      const activityId = raw?.strava_activity_id
+      normalized.push({
+        earned_at: earnedAt,
+        strava_activity_id: typeof activityId === 'number' ? activityId : null,
+      })
+    }
+    if (normalized.length > 0) {
+      earnHistoryMap.set(earnKey(r.user_id, r.badge_id), normalized)
+    }
+  }
+
   return items
     .filter((item) => {
       if (!BADGE_METADATA_EVENTS.has(item.event_type)) return true
@@ -83,25 +128,57 @@ export async function hydrateFeedBadgeInfo(items: ActivityFeedRow[]): Promise<Ac
       // 조회 안 되거나(삭제 등으로 아예 없어짐) 소프트 삭제된 배지는 피드에서 제외
       return !!badge && !badge.deleted_at
     })
-    .map((item) => {
-      if (!BADGE_METADATA_EVENTS.has(item.event_type)) return item
+    .flatMap((item): ActivityFeedRow[] => {
+      if (!BADGE_METADATA_EVENTS.has(item.event_type)) return [item]
       const meta = item.metadata as Record<string, unknown>
       const badgeId = meta.badge_id
       const live = typeof badgeId === 'string' ? badgeMap.get(badgeId) : undefined
-      if (!live) return item
-      const earnCount = typeof badgeId === 'string' ? earnCountMap.get(earnKey(item.user_id, badgeId)) : undefined
-      return {
-        ...item,
-        metadata: {
-          ...meta,
-          badge_name: live.name,
-          badge_image_url: live.image_url ?? '',
-          rarity: live.rarity,
-          level: live.level,
-          // 조회되지 않으면(아이템 배지 등 user_activity_badges에 행이 없는 종류) 키를 넣지
-          // 않는다 — 0이나 1을 넣으면 「회차를 모르는 것」과 「1회 획득」이 구분되지 않는다.
-          ...(earnCount != null ? { earn_count: earnCount } : {}),
-        },
+      if (!live) return [item]
+      const key = typeof badgeId === 'string' ? earnKey(item.user_id, badgeId) : undefined
+      const liveMeta = {
+        badge_name: live.name,
+        badge_image_url: live.image_url ?? '',
+        rarity: live.rarity,
+        level: live.level,
       }
+
+      const history = key ? earnHistoryMap.get(key) : undefined
+      if (!history) {
+        // earn_history를 모르는 종류(체크인 배지·아이템 드랍 등 user_activity_badges 행이
+        // 없는 경우) — "회차를 모르는 것"과 "표시 시각을 안다"를 섞지 않는다는 원칙대로,
+        // 회차를 쪼개지 않고 기존과 동일하게 단건으로 배지 메타데이터만 최신화한다.
+        const earnCount = key ? earnCountMap.get(key) : undefined
+        return [
+          {
+            ...item,
+            metadata: {
+              ...meta,
+              ...liveMeta,
+              ...(earnCount != null ? { earn_count: earnCount } : {}),
+            },
+          },
+        ]
+      }
+
+      // "최근 활동" 피드는 활동 단위로 그 활동에서 얻은 것을 보여주는 화면이다(티켓
+      // 20260923_1237). 회차마다 그 회차가 실제로 일어난 활동의 strava_activity_id를 실어
+      // 가상 피드 항목으로 만들면, FeedSection.tsx의 기존 그룹핑이 손대지 않아도 올바른
+      // 활동 그룹에 자동으로 배치한다. 포인트는 배지를 처음 발급할 때 1회만 지급되므로
+      // (badge-engine/index.ts awardPoints) point_reward는 첫 회차의 가상 항목에만 남기고,
+      // earn_count는 넣지 않는다 — 가상 항목은 이미 1회 단위로 쪼개져 있어 누적 칩이 필요 없다.
+      const restMeta: Record<string, unknown> = { ...meta }
+      delete restMeta.point_reward
+      delete restMeta.earn_count
+      return history.map((entry, index) => ({
+        ...item,
+        id: `${item.id}::${index}`,
+        created_at: entry.earned_at,
+        strava_activity_id: entry.strava_activity_id ?? item.strava_activity_id,
+        metadata: {
+          ...restMeta,
+          ...liveMeta,
+          ...(index === 0 && meta.point_reward !== undefined ? { point_reward: meta.point_reward } : {}),
+        },
+      }))
     })
 }
