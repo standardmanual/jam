@@ -9,13 +9,15 @@
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/events.test.ts
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 const fixtures = vi.hoisted(() => ({
   cardsById: {} as Record<string, { content_type_id?: string | null; is_active?: boolean; starts_at?: string; ends_at?: string } | undefined>,
   insertedPayloads: [] as Record<string, unknown>[],
   eventRows: [] as { content_type_id: string | null; event: string }[],
+  cardQueryCount: 0,
+  cardError: null as { message: string } | null,
 }))
 
 function mockSupabase() {
@@ -31,6 +33,8 @@ function mockSupabase() {
     builder.lt = () => builder
     builder.maybeSingle = () => {
       if (table !== 'today_cards') return Promise.resolve({ data: null, error: null })
+      fixtures.cardQueryCount++
+      if (fixtures.cardError) return Promise.resolve({ data: null, error: fixtures.cardError })
       const id = state.eq?.val as string
       return Promise.resolve({ data: fixtures.cardsById[id] ?? null, error: null })
     }
@@ -51,7 +55,7 @@ function mockSupabase() {
 
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabase() }))
 
-import { parseTodayCardEventInput, recordTodayCardEvent, aggregateTodayCardEvents, assertCardExposable, checkRateLimit } from '../events'
+import { parseTodayCardEventInput, recordTodayCardEvent, aggregateTodayCardEvents, assertCardExposable, checkRateLimit, getRateLimitKeyCount } from '../events'
 
 const VALID_UUID = '11111111-1111-4111-8111-111111111111'
 
@@ -104,7 +108,7 @@ describe('recordTodayCardEvent — 카드 유형 ID 동봉 insert, 유저 식별
     fixtures.insertedPayloads.length = 0
     fixtures.cardsById[VALID_UUID] = { content_type_id: 'T05' }
 
-    const result = await recordTodayCardEvent({ cardId: VALID_UUID, event: 'impression', followupAction: null })
+    const result = await recordTodayCardEvent({ cardId: VALID_UUID, event: 'impression', followupAction: null }, { content_type_id: 'T05' })
 
     expect(result.ok).toBe(true)
     expect(fixtures.insertedPayloads).toHaveLength(1)
@@ -120,21 +124,12 @@ describe('recordTodayCardEvent — 카드 유형 ID 동봉 insert, 유저 식별
     fixtures.insertedPayloads.length = 0
     fixtures.cardsById[VALID_UUID] = { content_type_id: 'T05' }
 
-    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click', followupAction: null })
+    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click', followupAction: null }, { content_type_id: 'T05' })
 
     const keys = Object.keys(fixtures.insertedPayloads[0])
     for (const forbidden of ['user_id', 'userId', 'user', 'email', 'nickname']) {
       expect(keys).not.toContain(forbidden)
     }
-  })
-
-  it('카드를 찾지 못하면 오류를 반환한다', async () => {
-    const result = await recordTodayCardEvent({
-      cardId: '22222222-2222-4222-8222-222222222222',
-      event: 'impression',
-      followupAction: null,
-    })
-    expect(result.ok).toBe(false)
   })
 })
 
@@ -175,6 +170,26 @@ describe('assertCardExposable — 카드 노출 상태 검증', () => {
     fixtures.cardsById[ACTIVE_UUID] = { is_active: true, starts_at: '2026-09-01T00:00:00Z', ends_at: '2026-09-10T00:00:00Z' }
     expect((await assertCardExposable(ACTIVE_UUID, now)).ok).toBe(false)
   })
+
+  it('노출 종료 시각(ends_at)과 같은 순간이면 통과한다(양끝 포함)', async () => {
+    fixtures.cardsById[ACTIVE_UUID] = { is_active: true, starts_at: '2026-09-01T00:00:00Z', ends_at: now.toISOString() }
+    expect((await assertCardExposable(ACTIVE_UUID, now)).ok).toBe(true)
+  })
+
+  it('DB 조회 오류면 클라이언트에는 일반 문구만 돌려준다', async () => {
+    fixtures.cardError = { message: 'connection refused: secret-host' }
+    const result = await assertCardExposable(ACTIVE_UUID, now)
+    fixtures.cardError = null
+    expect(result).toEqual({ ok: false, error: '카드를 확인할 수 없습니다.' })
+  })
+
+  it('이벤트 1건(검증+기록)에 today_cards를 1회만 조회한다', async () => {
+    fixtures.cardsById[ACTIVE_UUID] = { is_active: true, starts_at: '2026-09-01T00:00:00Z', ends_at: '2026-10-01T00:00:00Z', content_type_id: 'T05' }
+    fixtures.cardQueryCount = 0
+    const exposure = await assertCardExposable(ACTIVE_UUID, now)
+    if (exposure.ok) await recordTodayCardEvent({ cardId: ACTIVE_UUID, event: 'impression', followupAction: null }, exposure.card)
+    expect(fixtures.cardQueryCount).toBe(1)
+  })
 })
 
 describe('checkRateLimit — 유저별 분당 요청 상한', () => {
@@ -183,4 +198,16 @@ describe('checkRateLimit — 유저별 분당 요청 상한', () => {
     for (let i = 0; i < 3; i++) expect(checkRateLimit(key, 3, 60_000).ok).toBe(true)
     expect(checkRateLimit(key, 3, 60_000).ok).toBe(false)
   })
+
+  it('요청이 창 밖으로 밀린 유저 키는 다른 요청 시점에 Map에서 지운다', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2030-01-01T00:00:00Z'))
+    checkRateLimit('sweep-user-a', 3, 60_000)
+    expect(getRateLimitKeyCount()).toBe(1)
+    vi.setSystemTime(new Date('2030-01-01T00:01:01Z'))
+    checkRateLimit('sweep-user-b', 3, 60_000)
+    expect(getRateLimitKeyCount()).toBe(1)
+  })
+
+  afterEach(() => vi.useRealTimers())
 })
