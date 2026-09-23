@@ -13,7 +13,7 @@ import { describe, it, expect, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 const fixtures = vi.hoisted(() => ({
-  cardsById: {} as Record<string, { content_type_id: string | null } | undefined>,
+  cardsById: {} as Record<string, { content_type_id?: string | null; is_active?: boolean; starts_at?: string; ends_at?: string } | undefined>,
   insertedPayloads: [] as Record<string, unknown>[],
   eventRows: [] as { content_type_id: string | null; event: string }[],
 }))
@@ -51,7 +51,7 @@ function mockSupabase() {
 
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabase() }))
 
-import { parseTodayCardEventInput, recordTodayCardEvent, aggregateTodayCardEvents } from '../events'
+import { parseTodayCardEventInput, recordTodayCardEvent, aggregateTodayCardEvents, assertCardExposable, checkRateLimit } from '../events'
 
 const VALID_UUID = '11111111-1111-4111-8111-111111111111'
 
@@ -155,5 +155,32 @@ describe('aggregateTodayCardEvents — 유형 ID×이벤트별 건수 집계', (
     expect(byKey.get('T05::click')).toBe(1)
     expect(byKey.get('T01::impression')).toBe(1)
     expect(byKey.get('null::impression')).toBe(1)
+  })
+})
+
+describe('assertCardExposable — 카드 노출 상태 검증', () => {
+  const ACTIVE_UUID = '33333333-3333-4333-8333-333333333333'
+  const now = new Date('2026-09-24T00:00:00Z')
+
+  it('존재하지 않는 카드는 거부한다', async () => {
+    expect((await assertCardExposable('44444444-4444-4444-8444-444444444444', now)).ok).toBe(false)
+  })
+
+  it('is_active가 false인 카드는 거부한다', async () => {
+    fixtures.cardsById[ACTIVE_UUID] = { is_active: false, starts_at: '2026-09-01T00:00:00Z', ends_at: '2026-10-01T00:00:00Z' }
+    expect((await assertCardExposable(ACTIVE_UUID, now)).ok).toBe(false)
+  })
+
+  it('노출 기간 밖이면 거부한다', async () => {
+    fixtures.cardsById[ACTIVE_UUID] = { is_active: true, starts_at: '2026-09-01T00:00:00Z', ends_at: '2026-09-10T00:00:00Z' }
+    expect((await assertCardExposable(ACTIVE_UUID, now)).ok).toBe(false)
+  })
+})
+
+describe('checkRateLimit — 유저별 분당 요청 상한', () => {
+  it('상한 초과 요청을 거부한다', () => {
+    const key = 'rate-limit-test-user'
+    for (let i = 0; i < 3; i++) expect(checkRateLimit(key, 3, 60_000).ok).toBe(true)
+    expect(checkRateLimit(key, 3, 60_000).ok).toBe(false)
   })
 })
