@@ -52,12 +52,12 @@ code:
 | 코퍼스 | 출처 | 활성 판정 |
 |---|---|---|
 | 트라이브 세계관 | `tribes.description`·`tribes.tagline`(정본 서사는 `jam-doc/planning/content/TRIBES.md`) | `tribes.is_active` |
-| 컬렉션 서사 | `item_books.story_text` | `item_books.is_active` |
-| 배지 설명 | `badges.description` | `deleted_at IS NULL` 이고 `valid_from`·`valid_until` 기간 안. 배지 엔진의 발급 후보 필터(`jam-web/src/lib/badge-engine/index.ts`)와 같은 규칙이다 |
+| 컬렉션 서사 | `item_books.story_text` | `item_books.is_active` 이고, 소속 트라이브(`tribe_id`)가 있으면 그 `tribes.is_active`도 활성이어야 한다 |
+| 배지 설명 | `badges.description` | `deleted_at IS NULL` 이고 `valid_from`·`valid_until` 기간 안(배지 엔진의 발급 후보 필터 `jam-web/src/lib/badge-engine/index.ts`와 같은 규칙). 소속 컬렉션(`item_book_id`)·소속 트라이브(`tribe_id`)가 있으면 그 활성 여부도 함께 반영한다 |
 
 생성 규칙:
 
-1. **비활성 컨텐츠는 추천·소개 카드의 대상으로 선택하지 않는다.** 대상 선택은 활성 목록에서만 한다.
+1. **비활성 컨텐츠는 추천·소개 카드의 대상으로 선택하지 않는다.** 대상 선택은 활성 목록에서만 한다. 대상 선택의 활성 판정에는 소속 컬렉션·트라이브의 활성 여부도 포함된다(소속이 없으면 그 조건은 통과). 글·세계관 인용(규칙 2)에는 이 소속 조건을 적용하지 않는다.
 2. **비활성 컨텐츠의 글(설명·서사)과 트라이브 세계관 설정은 카드 본문에 배경으로 인용할 수 있다.** 획득·방문 대상 안내로는 쓰지 않는다.
 3. 대상 선택과 본문 인용은 같은 생성 호출 안에서 **분리 판정**한다.
 4. 코퍼스를 통째로 프롬프트에 넣지 않는다. 유형별로 필요한 발췌만(관련 배지·컬렉션·트라이브 각 1~3건) 넘긴다.
