@@ -94,22 +94,47 @@ Vercel은 Linux 기반 서버리스 함수라 "Windows 호스트 RCE" 항목은 
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+계획 그대로 `cd jam-web && npm audit fix --force` 1회 실행으로 `next 16.2.10 → 16.3.6`(caret
+`^16.3.6`)으로 상향, 내부 의존인 `sharp`(0.35.3→0.35.4)·`postcss`(→8.5.26)·`nanoid`(→3.3.19)가
+함께 해소됐다. moderate 1건(`baseline-browser-mapping`)도 같은 상향으로 함께 사라졌다
+(계획 2번 항목). `npm audit --omit=dev` 재실행 결과 0건.
+CVE 적용 범위: Vercel은 Linux 서버리스이므로 "Windows-hosted RCE"(GHSA-p293-qw3h-jr36)는
+해당 없음을 확인, 나머지(AVIF 이미지 최적화 RCE·Server Actions SSRF/DoS·캐시 혼동·Middleware
+bypass·미인증 Server Function 노출)는 환경 무관하게 적용되므로 이번 상향으로 해소.
+`sharp` API 변경 여부는 0.35.3→0.35.4가 patch 버전이라 낮음으로 판단했고, 실제로
+`scripts/recraft/compose-logo.js`(로컬 sharp 합성, Recraft 외부 API 미호출)를 샘플 배지
+이미지(`public/itembooks/sample/b107.png`)+로고(`public/jam-logo-white.png`)로 상향 전(구
+node_modules)·상향 후 각각 실행해 출력 PNG를 바이트 단위(`cmp`)로 비교 — 완전 동일(회귀 없음).
+
+**작업 중 발견한 부작용(별도 조치, alerts 참고)**: 하네스가 연결한 `jam-web/node_modules`
+심볼릭 링크(메인 체크아웃과 공유)로 `npm audit fix --force`를 실행하자 메인 체크아웃의
+물리 `node_modules`가 중간에 손상됐다(`next`·`sharp` 폴더 유실, `esbuild` 바이너리 검증 실패).
+메인 체크아웃의 `package.json`·`package-lock.json`은 git 추적 파일이라 영향 없음을 확인
+(`diff`로 대조, 두 파일 모두 동일). `node_modules/esbuild`만 좁게 지우고 `npm install`로
+메인 체크아웃을 원상 복구(`next 16.2.10`·`sharp 0.35.3` 재설치 확인). 이후 내 워크트리는
+심볼릭 링크를 걷어내고 독립 `npm install`로 별도 `node_modules`를 구성해 작업을 이어갔다.
 
 ### 변경된 파일
 ```
--
+jam-web/package.json       (next ^16.3.6, @storybook/addon-mcp ^10.6.0, @vitest/coverage-v8 ^4.1.11 — npm audit fix --force 자동 조정)
+jam-web/package-lock.json  (자동 생성 산출물, npm audit fix --force 반영)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npm audit --omit=dev` → 0 vulnerabilities (완료 조건 충족)
+- [x] `scripts/verify.sh` 전항목 통과 (lint·typecheck·test·ds:check·slop·scripts-test·contract·team-doc·team-map·skills)
+- [x] sharp 이미지 파이프라인 회귀: `compose-logo.js` 상향 전/후 출력 PNG 바이트 단위 동일
+- [ ] staging 배포 후 핵심 화면(홈피드·배지 상세·이미지 배지 표시) 실렌더 확인 — 이 티켓
+      완료 기록 작성 시점에는 아직 staging에 배포되지 않아 미수행. 배포 후 민지가 `curl`로
+      렌더된 HTML까지 확인하고, 시각적 확인은 사용자에게 스테이징 링크로 안내(계획 5번 항목)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 - 해당 없음 (사용자 노출 텍스트 변경 없음)
 
 ### 배포 정보
-- 배포일:
+- 배포일: (미배포 — 이 브랜치는 staging에 push만 됨, `/jam-ship`은 별도)
 - 환경: production
-- 커밋:
+- 커밋: (StructuredOutput의 commitSha 참고)
 
 ### 실행 지표
 
@@ -119,6 +144,15 @@ Vercel은 Linux 기반 서버리스 함수라 "Windows 호스트 RCE" 항목은 
 | 합계 |  |  |  |  |  |
 
 ### 주요 의사결정 / 핵심 메모
+- `eslint-config-next`는 여전히 `16.2.10` 고정 — `npm audit`가 취약점으로 잡지 않았고 lint
+  설정 패키지라 런타임 보안과 무관해 손대지 않음(티켓 범위 밖 확장 자제).
+- `@vitest/mocker` 계열 moderate 3건은 `npm audit`(dev 포함) 기준 여전히 남아있음 —
+  `npm audit fix --force`가 요구하는 상향(`@vitest/browser-playwright@4.1.11`, stated range
+  밖)이 필요하고 완료 조건(`--omit=dev` 기준)·계획 어디에도 없어 손대지 않음.
+- `@storybook/addon-mcp`(latest→^10.6.0)·`@vitest/coverage-v8`(4.1.10→^4.1.11)는 내가 직접
+  고른 변경이 아니라 `npm audit fix --force` 1회 실행의 자동 결과다(계획에 명시된 그 명령을
+  그대로 실행한 산출물).
 
 ### 잔여 이슈
--
+- staging 배포 후 실렌더 확인(홈피드·배지 상세·이미지 배지 표시)이 아직 남아있음 — 계획 5번
+  항목, 배포는 이 에이전트의 권한 밖.
