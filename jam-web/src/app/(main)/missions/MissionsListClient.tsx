@@ -455,15 +455,15 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                         없으면(v5 게이트 미션 등) lockedHintText()의 범용 안내 문구를 칩 없이
                         그대로 남긴다 — 잠긴 이유를 알려주는 유일한 정보라 생략하면 안 된다. */}
                     {m.locked && (
-                      <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1 }}>
-                        <span style={{ marginRight: '4px' }}>{d.missions.cardConditionLabel}</span>
+                      <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-micro)', color: 'var(--color-text-secondary)', lineHeight: 'var(--leading-micro)' }}>
+                        <span style={{ marginRight: 'var(--spacing-4)' }}>{d.missions.cardConditionLabel}</span>
                         {m.requiredBadge ? conditionBadgeNode(m.requiredBadge) : lockedHintText(m)}
                       </span>
                     )}
 
                     {/* reward — 칩(등급/레벨)과 텍스트(포인트)를 한 줄로 조합 (20260907_0014) */}
-                    <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: '11px', color: C_REWARD, lineHeight: 1 }}>
-                      <span style={{ marginRight: '4px' }}>{d.missions.cardRewardLabel}</span>
+                    <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-micro)', color: C_REWARD, lineHeight: 'var(--leading-micro)' }}>
+                      <span style={{ marginRight: 'var(--spacing-4)' }}>{d.missions.cardRewardLabel}</span>
                       {reward}
                     </span>
                   </div>
