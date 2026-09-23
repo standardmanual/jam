@@ -89,11 +89,11 @@ const WEATHER_KINDS: readonly string[] = ['clear', 'mild', 'rain', 'extreme']
 
 let cache: { date: string; value: WeatherKind } | null = null
 
-async function fetchKmaForecast(): Promise<KmaForecastItem[]> {
+async function fetchKmaForecast(now: Date): Promise<KmaForecastItem[]> {
   const authKey = process.env.KMA_API_KEY
   if (!authKey) throw new Error('KMA_API_KEY 미설정')
 
-  const { baseDate, baseTime } = latestKmaBaseTime(new Date())
+  const { baseDate, baseTime } = latestKmaBaseTime(now)
   const url =
     `${KMA_BASE_URL}?pageNo=1&numOfRows=1000&dataType=JSON` +
     `&base_date=${baseDate}&base_time=${baseTime}&nx=${SEOUL_NX}&ny=${SEOUL_NY}&authKey=${authKey}`
@@ -118,7 +118,7 @@ export function todayWeatherDateKst(now: Date = new Date()): string {
  */
 export async function refreshTodayWeather(now: Date = new Date()): Promise<WeatherKind | null> {
   try {
-    const items = await fetchKmaForecast()
+    const items = await fetchKmaForecast(now)
     return normalizeWeatherItems(items, todayKstParts(now).ymd)
   } catch {
     return null
