@@ -5,6 +5,7 @@ import type { TodayCardTemplateType } from '@/types/database'
 import { Card } from '@ds/components/cards/Card'
 import SafeImage from '@/components/SafeImage'
 import RankingListRow from '@/components/ranking/RankingListRow'
+import TodayCardTracker from './TodayCardTracker'
 import { formatRankingMetricValue } from '@/lib/ranking/format'
 import { d } from '@/lib/i18n'
 import {
@@ -246,9 +247,13 @@ function RankingListCard({ card, currentUserId }: { card: TodayCardWithHref; cur
   return (
     <Card tone="inverse">
       {isMissionTarget ? (
-        <Link href={card.resolved_href} className="block active:scale-[0.98] transition-transform duration-100">
-          {header}
-        </Link>
+        // ranking_list 카드는 클릭이 행별 링크(유저 프로필)에서 일어나므로 카드 단위
+        // 클릭은 세지 않는다(노출만 추적, 티켓 20260924_0004).
+        <TodayCardTracker cardId={card.id} trackClick={false}>
+          <Link href={card.resolved_href} className="block active:scale-[0.98] transition-transform duration-100">
+            {header}
+          </Link>
+        </TodayCardTracker>
       ) : (
         <div>{header}</div>
       )}
@@ -303,13 +308,15 @@ export default function TodayCardStack({
           card.layout_type === 'ranking_list' ? (
             <RankingListCard key={card.id} card={card} currentUserId={currentUserId} />
           ) : (
-            <Link key={card.id} href={card.resolved_href} className="block">
-              {card.layout_type === 'badge_gallery' ? <BadgeGalleryCard card={card} />
-                : card.layout_type === 'shortcut' ? <ShortcutCard card={card} />
-                : card.layout_type === 'banner' ? <BannerCard card={card} />
-                : card.layout_type === 'other' ? <OtherCard card={card} />
-                : <LargeThumbnailCard card={card} />}
-            </Link>
+            <TodayCardTracker key={card.id} cardId={card.id}>
+              <Link href={card.resolved_href} className="block">
+                {card.layout_type === 'badge_gallery' ? <BadgeGalleryCard card={card} />
+                  : card.layout_type === 'shortcut' ? <ShortcutCard card={card} />
+                  : card.layout_type === 'banner' ? <BannerCard card={card} />
+                  : card.layout_type === 'other' ? <OtherCard card={card} />
+                  : <LargeThumbnailCard card={card} />}
+              </Link>
+            </TodayCardTracker>
           )
         )}
       </div>
