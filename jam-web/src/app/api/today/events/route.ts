@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: exposure.error }, { status: 400 })
   }
 
-  const result = await recordTodayCardEvent(parsed.value)
+  const result = await recordTodayCardEvent(parsed.value, exposure.card)
   if (!result.ok) {
     console.error('[/api/today/events] 기록 오류:', result.error)
     return NextResponse.json({ error: '기록 중 오류가 발생했습니다.' }, { status: 500 })

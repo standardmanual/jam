@@ -64,14 +64,21 @@ export function parseTodayCardEventInput(body: unknown): TodayCardEventValidatio
   }
 }
 
-export type CardExposureValidation = { ok: true } | { ok: false; error: string }
+export interface ExposableCard {
+  content_type_id: string | null
+}
 
-/** 카드가 존재하고 `is_active`이며 `now`가 `[starts_at, ends_at]`(양끝 포함, 기존 노출 조회와 동일) 안일 때만 통과한다(티켓 20260924_0111). */
+export type CardExposureValidation = { ok: true; card: ExposableCard } | { ok: false; error: string }
+
+/**
+ * 카드가 존재하고 `is_active`이며 `now`가 `[starts_at, ends_at]`(양끝 포함, 기존 노출 조회와 동일) 안일 때만 통과한다(티켓 20260924_0111).
+ * 통과하면 조회한 카드 행을 돌려줘 `recordTodayCardEvent`가 `today_cards`를 다시 조회하지 않게 한다(티켓 20260924_0139).
+ */
 export async function assertCardExposable(cardId: string, now: Date): Promise<CardExposureValidation> {
   const supabase = createServiceClient()
   const { data: card, error } = await supabase
     .from('today_cards')
-    .select('is_active, starts_at, ends_at')
+    .select('is_active, starts_at, ends_at, content_type_id')
     .eq('id', cardId)
     .maybeSingle()
 
@@ -86,17 +93,33 @@ export async function assertCardExposable(cardId: string, now: Date): Promise<Ca
   if (nowMs < new Date(card.starts_at).getTime() || nowMs > new Date(card.ends_at).getTime()) {
     return { ok: false, error: '노출 기간이 아닌 카드입니다.' }
   }
-  return { ok: true }
+  return { ok: true, card: { content_type_id: card.content_type_id } }
 }
 
 export type RateLimitResult = { ok: true } | { ok: false }
 
 // 인스턴스 메모리 Map — 서버리스라 인스턴스별 최선 노력(best-effort) 수준의 제한이다.
 const rateLimitTimestamps = new Map<string, number[]>()
+let lastSweepAt = 0
+
+/** 다시 호출되지 않는 유저의 키가 쌓이지 않도록 창(window)마다 한 번, 마지막 요청이 창 밖인 키를 지운다(티켓 20260924_0139). */
+function sweepExpiredKeys(now: number, windowMs: number): void {
+  if (now >= lastSweepAt && now - lastSweepAt < windowMs) return
+  lastSweepAt = now
+  for (const [key, timestamps] of rateLimitTimestamps) {
+    if (timestamps.length === 0 || now - timestamps[timestamps.length - 1] >= windowMs) rateLimitTimestamps.delete(key)
+  }
+}
+
+/** 테스트 전용 — 현재 Map에 남은 키 수. */
+export function getRateLimitKeyCount(): number {
+  return rateLimitTimestamps.size
+}
 
 /** `key`별 `windowMs` 동안 최대 `limit`건만 허용한다. 키는 이 함수 밖으로 넘기거나 로그로 남기지 않는다. */
 export function checkRateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
   const now = Date.now()
+  sweepExpiredKeys(now, windowMs)
   const recent = (rateLimitTimestamps.get(key) ?? []).filter((t) => now - t < windowMs)
   if (recent.length >= limit) {
     rateLimitTimestamps.set(key, recent)
@@ -110,21 +133,15 @@ export function checkRateLimit(key: string, limit: number, windowMs: number): Ra
 export type RecordTodayCardEventResult = { ok: true } | { ok: false; error: string }
 
 /**
- * 카드의 `content_type_id`를 조회해 함께 insert한다. 인자로도, insert 페이로드로도 유저
- * 식별자를 받거나 담지 않는다 — 호출부(API 라우트)는 로그인 여부만 확인하고 유저 ID는 이
- * 함수에 넘기지 않는다.
+ * `assertCardExposable`이 이미 조회한 카드의 `content_type_id`를 함께 insert한다(카드 재조회 없음).
+ * 인자로도, insert 페이로드로도 유저 식별자를 받거나 담지 않는다 — 호출부(API 라우트)는 로그인
+ * 여부만 확인하고 유저 ID는 이 함수에 넘기지 않는다.
  */
-export async function recordTodayCardEvent(input: TodayCardEventInput): Promise<RecordTodayCardEventResult> {
+export async function recordTodayCardEvent(
+  input: TodayCardEventInput,
+  card: ExposableCard,
+): Promise<RecordTodayCardEventResult> {
   const supabase = createServiceClient()
-
-  const { data: card, error: cardError } = await supabase
-    .from('today_cards')
-    .select('content_type_id')
-    .eq('id', input.cardId)
-    .maybeSingle()
-
-  if (cardError) return { ok: false, error: cardError.message }
-  if (!card) return { ok: false, error: '카드를 찾을 수 없습니다.' }
 
   const { error: insertError } = await supabase.from('today_card_events').insert({
     card_id: input.cardId,
