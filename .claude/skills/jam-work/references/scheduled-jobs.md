@@ -11,7 +11,7 @@
 >   `maily.so`·`joomaltory.com`·`uppity.co.kr`·`www.openads.co.kr`·`buybrand.stibee.com`
 >   [2026-09-18 월간 트렌드 수집 1회차 EGRESS_BLOCKED 확인 후 사용자가 추가, 다음 자동 실행(2026-10-01)에서
 >   재검증 예정] + 기본 목록), 환경변수
->   `ADMIN_API_READ_TOKEN`·`GA4_PROPERTY_ID`·`GA4_SERVICE_ACCOUNT_KEY`. 커넥터는 Slack만 붙인다
+>   `ADMIN_API_READ_TOKEN`·`GA4_PROPERTY_ID`·`GA4_SERVICE_ACCOUNT_KEY`·`SLACK_BOT_TOKEN`
 > - 루틴 지시문의 원본은 루틴 자체다(claude.ai/code/routines). 이 문서를 바꾸면 루틴 지시문도 함께 고친다
 >
 > **"상태" 행 표기 규칙(티켓 20260918_1153):** 값이 정확히 `켜짐`이면 켜진 것으로 본다. 그 외
@@ -34,7 +34,7 @@
 - **클라우드 예약 작업**(claude.ai/code/routines)에서 실행한다. PC·외장 드라이브 상태와 무관하게 돈다.
 - 이 PC에만 있는 비밀 값은 쓸 수 없다. 필요한 값은 클라우드 환경에 따로 등록한다:
   `ADMIN_API_READ_TOKEN`(어드민 읽기 토큰, 티켓 1149), `GA4_PROPERTY_ID`·`GA4_SERVICE_ACCOUNT_KEY`
-  (GA4 읽기, 티켓 1151).
+  (GA4 읽기, 티켓 1151), `SLACK_BOT_TOKEN`(Slack 게시, 티켓 20260923_1106).
 
 ### 무인 카리나 권한 (4-3)
 
@@ -110,10 +110,11 @@ GA4는 광고 차단기 유저를 놓치고 일부 이벤트가 특정 경로에
 
 - 글 내용은 **요약 3~5줄 + 리포트 링크**다. 리포트 본문은 올리지 않는다(원본은 저장소).
 - 개인정보 규칙(4-6)은 Slack 글에도 똑같이 적용한다.
-- 루틴의 Slack 커넥터: `connector_uuid` `1d4ae418-13bc-440d-b8c4-ea5b18ef7a9e`, `url` `https://mcp.slack.com/mcp`
-  (티켓 20260918_1154 시범으로 게시 확인). 루틴에는 필요한 커넥터만 붙인다.
-- 루틴이 올린 글은 **사용자 계정 이름**으로 게시되고 "Claude를 사용하여 보냄" 표시만 붙는다. 카리나가 스레드의
-  사용자 메모를 읽을 때(5-4) 이 표시가 붙은 글은 사용자 메모로 보지 않는다.
+- 루틴은 `scripts/slack-post.mjs`로 `SLACK_BOT_TOKEN` 환경변수를 써서 직접 게시한다
+  (티켓 20260923_1106, 선행 20260918_1154 잔여 이슈 해결). 사용법:
+  `node scripts/slack-post.mjs --channel <채널 ID> --text <내용>`.
+- 게시자는 **JAM 봇 계정**이다. 카리나가 스레드의 사용자 메모를 읽을 때(5-4)는 이 표시 대신
+  작성자가 봇 계정인지로 사용자 메모 여부를 구분한다.
 
 ## 주간 — 월요일 09:00 KST
 
@@ -317,7 +318,7 @@ git checkout staging
 
 > 등록 정보: 확인 루틴 `trig_01XKT6nNQC1tgftdtzkYhw9R`(cron `0 6 * * 4` = 목요일 15:00 KST),
 > 실행 루틴 `trig_01JRRY1cXt6uWGin8xbtS1Sk`(2026-09-21 재생성, cron `59 14 * * 4` = 목요일 23:59 KST). 둘 다
-> 환경 `jam-ops`, 커넥터 Slack만 붙임. 등록 시점(2026-09-18)에는 둘 다 꺼 뒀으나
+> 환경 `jam-ops`, 환경변수 `SLACK_BOT_TOKEN` 등록. 등록 시점(2026-09-18)에는 둘 다 꺼 뒀으나
 > 2026-09-21 재생성 후 사용자가 켜 두기로 했다. 배포 여부는 목요일 확인 글 스레드의 사용자 승인 답장이 정한다.
 
 ## 월간 — 매월 1일 09:00 KST
