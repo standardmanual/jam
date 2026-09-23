@@ -706,6 +706,27 @@ export type Database = {
           },
         ]
       }
+      external_input_daily: {
+        Row: {
+          date_kst: string
+          fetched_at: string
+          kind: string
+          value: Json
+        }
+        Insert: {
+          date_kst: string
+          fetched_at?: string
+          kind: string
+          value: Json
+        }
+        Update: {
+          date_kst?: string
+          fetched_at?: string
+          kind?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       inventory: {
         Row: {
           created_at: string
