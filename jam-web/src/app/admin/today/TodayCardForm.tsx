@@ -44,6 +44,7 @@ import {
   TODAY_TEMPLATE_OPTIONS,
   TODAY_LAYOUT_OPTIONS,
   TODAY_EXPOSURE_TAG_OPTIONS,
+  TODAY_CONTENT_TYPE_OPTIONS,
   SUGGESTED_LAYOUT_FOR,
   todayTemplateFields,
   visibleTodaySections,
@@ -131,6 +132,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const [regionLabel, setRegionLabel] = useState(card?.region_label ?? '')
   const [bodyMarkdown, setBodyMarkdown] = useState(card?.body_markdown ?? '')
   const [rankingModeId, setRankingModeId] = useState(card?.ranking_mode_id ?? '')
+  const [contentTypeId, setContentTypeId] = useState(card?.content_type_id ?? '')
   // 레일 실시간 미리보기(User Story 6)용 — 랭킹모드가 실제로 계산하는 순위 목록을 그 랭킹모드가
   // 바뀔 때만 가져온다(다른 필드 입력마다 다시 불러오지 않는다). 랭킹모드는 이미 저장돼 있어야
   // 카드에 연결할 수 있으므로(User Story 4) id로 바로 조회할 수 있다 — targetHref.ts 주석 참고.
@@ -242,6 +244,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         regionLabel,
         bodyMarkdown,
         rankingModeId,
+        contentTypeId,
         targetHref,
         exposureTags,
         startsAt,
@@ -329,6 +332,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
     region_label: regionLabel.trim() || null,
     body_markdown: bodyMarkdown || null,
     ranking_mode_id: rankingModeId || null,
+    content_type_id: contentTypeId || null,
     target_href: targetHref.trim() || null,
     exposure_tags: exposureTags,
     starts_at: startsAt ? new Date(startsAt).toISOString() : new Date().toISOString(),
@@ -392,6 +396,29 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
               </SelectContent>
             </Select>
             <FieldMessage id="today-card-layout-help">화면에 보여줄 모양이에요.</FieldMessage>
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <FieldLabel htmlFor="today-card-content-type">유형 ID</FieldLabel>
+            <Select
+              value={contentTypeId || NONE_VALUE}
+              onValueChange={(v) => setContentTypeId(v === NONE_VALUE ? '' : v)}
+            >
+              <SelectTrigger id="today-card-content-type" aria-describedby="today-card-content-type-help">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent container={themeContainer ?? undefined}>
+                <SelectItem value={NONE_VALUE}>선택 안 함</SelectItem>
+                {TODAY_CONTENT_TYPE_OPTIONS.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldMessage id="today-card-content-type-help">
+              컨텐츠 자동화 파이프라인의 유형 카탈로그예요. 수동 제작 카드는 비워 둬도 돼요.
+            </FieldMessage>
           </div>
         </div>
       </div>

@@ -1007,6 +1007,8 @@ export interface TodayCardRow {
   created_by: string | null
   /** ranking_board 전용 참조 — 그 외 템플릿은 항상 null(티켓 20260911_1440) */
   ranking_mode_id: string | null
+  /** 컨텐츠 유형 카탈로그(PRD content-automation/PRD.md §6) ID. T01~T17, 비어 있을 수 있다(티켓 20260923_2259) */
+  content_type_id: string | null
 }
 
 // =========================================

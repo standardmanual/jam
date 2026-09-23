@@ -68,6 +68,7 @@ function makeCard(partial: Partial<TodayCardRow>): TodayCardRow {
     created_at: '2026-07-26T00:00:00Z',
     created_by: null,
     ranking_mode_id: null,
+    content_type_id: null,
     ...partial,
   }
 }

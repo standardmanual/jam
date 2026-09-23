@@ -27,6 +27,8 @@ export interface TodayCardFormValues {
   bodyMarkdown: string
   /** ranking_board 전용 — 연결할 랭킹모드 id (티켓 20260911_1440) */
   rankingModeId: string
+  /** 컨텐츠 유형 카탈로그(PRD content-automation/PRD.md §6) ID. T01~T17, 비움 허용(티켓 20260923_2259) */
+  contentTypeId: string
   targetHref: string
   exposureTags: string[]
   /** datetime-local input 문자열("YYYY-MM-DDTHH:mm") — 비어 있지 않다고 가정한다(저장 전 필수 검증 통과 후 호출) */
@@ -48,6 +50,7 @@ export interface TodayCardSavePayload {
   region_label: string | null
   body_markdown: string | null
   ranking_mode_id: string | null
+  content_type_id: string | null
   target_href: string | null
   exposure_tags: string[]
   starts_at: string
@@ -133,6 +136,31 @@ export const TODAY_EXPOSURE_TAG_OPTIONS: readonly { value: string; label: string
   { value: 'weather_rain', label: 'weather_rain (오늘 날씨: 비/눈)' },
   { value: 'weather_extreme', label: 'weather_extreme (오늘 날씨: 폭염·한파)' },
   { value: 'holiday_today', label: 'holiday_today (오늘 공휴일·기념일·24절기)' },
+]
+
+/**
+ * 컨텐츠 유형 카탈로그(17종) 선택지 — PRD `content-automation/PRD.md` §6 표를 그대로 옮겼다.
+ * 값은 DB CHECK 제약(마이그레이션 183_today_card_type_and_events.sql)과 같은 T01~T17.
+ * 카드에 유형 ID를 붙이지 않아도 되므로(비움 허용) 폼은 빈 값을 허용한다(티켓 20260923_2259).
+ */
+export const TODAY_CONTENT_TYPE_OPTIONS: readonly { value: string; label: string }[] = [
+  { value: 'T01', label: 'T01 · 트라이브×날씨/시간/장소/사회이슈 컬렉션 소개' },
+  { value: 'T02', label: 'T02 · 컬렉션 완성 독려(잔여 N개 이하)' },
+  { value: 'T03', label: 'T03 · 액티비티 동기화 오래됨 독려' },
+  { value: 'T04', label: 'T04 · 시즌 이슈×트라이브 연결' },
+  { value: 'T05', label: 'T05 · 사회 이슈×체크인 지점·지역 소개' },
+  { value: 'T06', label: 'T06 · 트라이브 교차 믹스 추천' },
+  { value: 'T07', label: 'T07 · 진행 넛지(다음 배지까지 한 걸음)' },
+  { value: 'T08', label: 'T08 · 날씨 기반 즉시 활동 추천' },
+  { value: 'T09', label: 'T09 · 시간대별 활동 추천' },
+  { value: 'T10', label: 'T10 · 픽업 후 미믹스 유도' },
+  { value: 'T11', label: 'T11 · 트라이브 미선택 유저 적성 매칭' },
+  { value: 'T12', label: 'T12 · 주간 활동 리캡' },
+  { value: 'T13', label: 'T13 · 신규 지역 진입 POI·체크인 소개' },
+  { value: 'T14', label: 'T14 · 연속 기록(스트릭) 독려' },
+  { value: 'T15', label: 'T15 · 함께하기(그룹 활동) 제안' },
+  { value: 'T16', label: 'T16 · 여행·지역 이동 감지' },
+  { value: 'T17', label: 'T17 · 계절 전환 예고' },
 ]
 
 // ── 섹션 ─────────────────────────────────────────────────────────────────
@@ -269,6 +297,9 @@ export function buildTodayCardSavePayload(v: TodayCardFormValues): TodayCardSave
     region_label: fields.region ? v.regionLabel.trim() || null : null,
     body_markdown: fields.body ? v.bodyMarkdown || null : null,
     ranking_mode_id: fields.rankingMode ? v.rankingModeId || null : null,
+    // 유형 ID는 템플릿과 무관하게 모든 카드에 붙일 수 있다(자동화 파이프라인이 만든 카드용,
+    // 비움 허용) — rankingModeId처럼 템플릿별로 비우지 않는다.
+    content_type_id: v.contentTypeId || null,
     // editorial_article/drop_alert 은 target_href 무시(자동/고정)
     target_href: fields.targetHref ? v.targetHref.trim() || null : null,
     exposure_tags: v.exposureTags,
