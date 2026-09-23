@@ -49,7 +49,7 @@ function buildSimpleTable(rows: FixtureRow[], selectColumns: string[]) {
 // badges 조회도 두 경로를 재현한다: 즉시 await(원문 그대로, `fetchBadgeParentStatus`용)와
 // `.is().or().or()`로 이어가는 활성 필터(`fetchActiveBadges`용).
 function buildBadgesTable(rows: FixtureRow[]) {
-  const selectColumns = ['id', 'name', 'description', 'item_book_id', 'tribe_id']
+  const selectColumns = ['id', 'name', 'description', 'item_book_id', 'tribe_id', 'deleted_at']
   return {
     select: () => ({
       in: (_col: string, ids: string[]) => {
@@ -128,6 +128,15 @@ beforeEach(() => {
       description: '소속 트라이브가 비활성인 배지 설명',
       item_book_id: null,
       tribe_id: 'tribe-inactive',
+    },
+    {
+      id: 'badge-deleted-tribe-inactive',
+      active: false,
+      name: '삭제됐고 소속 트라이브도 비활성인 배지',
+      description: '삭제된 배지 설명',
+      item_book_id: null,
+      tribe_id: 'tribe-inactive',
+      deleted_at: '2026-09-01T00:00:00Z',
     },
   ]
 })
@@ -259,5 +268,15 @@ describe('verifyActiveTargets', () => {
     expect(result.ok).toBe(false)
     expect(result.reasons).toHaveLength(1)
     expect(result.reasons[0]).toContain('book-tribe-inactive')
+  })
+
+  it('삭제된 배지가 소속 비활성과 겹치면 사유를 삭제로 먼저 말한다', async () => {
+    const result = await verifyActiveTargets({
+      targets: [{ kind: 'badge', id: 'badge-deleted-tribe-inactive', name: '삭제된 배지' }],
+    })
+    expect(result.ok).toBe(false)
+    expect(result.reasons).toHaveLength(1)
+    expect(result.reasons[0]).toContain('삭제')
+    expect(result.reasons[0]).not.toContain('소속')
   })
 })

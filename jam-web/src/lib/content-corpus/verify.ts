@@ -44,7 +44,7 @@ export async function verifyActiveTargets(
     const inactiveIds = ids.filter((id) => !activeIds.has(id))
     if (inactiveIds.length === 0) continue
 
-    // 배지는 자체 비활성과 상위 소속(컬렉션·트라이브) 비활성을 구분해 사유를 남긴다.
+    // 배지는 삭제·상위 소속(컬렉션·트라이브) 비활성을 구분해 사유를 남긴다.
     const parentStatusById =
       kind === 'badge'
         ? new Map((await fetchBadgeParentStatus(inactiveIds)).map((status) => [status.id, status]))
@@ -52,7 +52,9 @@ export async function verifyActiveTargets(
 
     for (const id of inactiveIds) {
       const parentStatus = parentStatusById?.get(id)
-      if (parentStatus?.tribeInactive) {
+      if (parentStatus?.deleted) {
+        reasons.push(`배지 ${id}는 삭제된 상태라 대상으로 쓸 수 없습니다.`)
+      } else if (parentStatus?.tribeInactive) {
         reasons.push(`배지 ${id}는 소속 트라이브가 비활성 상태라 대상으로 쓸 수 없습니다.`)
       } else if (parentStatus?.itemBookInactive) {
         reasons.push(`배지 ${id}는 소속 컬렉션이 비활성 상태라 대상으로 쓸 수 없습니다.`)
