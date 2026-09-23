@@ -60,9 +60,29 @@ Vercel은 Linux 기반 서버리스 함수라 "Windows 호스트 RCE" 항목은 
 - 해당 없음.
 
 ## 구현 계획
-> 착수 전 조사: 각 CVE가 Vercel 서버리스(Linux, Node 런타임) 환경에 실제로 적용되는지 확인하고,
-> `next` 상향 대상 버전을 정한다(패치 버전 우선, 불가하면 마이너 상향 범위와 breaking change를
-> 정리한다). 조사 결과에 따라 이 절을 채운 뒤 착수한다.
+
+카리나 사전 조사 완료(2026-09-23):
+
+1. `cd jam-web && npm audit fix --force` 실행 — `next@16.2.10 → 16.3.6`(마이너 상향, 패치 버전
+   없음. `npm audit`가 제시하는 유일한 해소 경로). `postcss`·`sharp`·`nanoid`는 next의 내부
+   의존이라 이 한 번의 상향으로 함께 해소될 가능성이 높다 — 상향 직후 `npm audit --omit=dev`
+   재실행해 실제로 5건 모두 사라졌는지 확인하고, `sharp`가 여전히 남으면 `sharp` 단독으로
+   추가 상향(현재 `^0.35.3` 고정 — 최신 안전 버전으로 caret range 조정)한다.
+2. moderate 1건(`baseline-browser-mapping`)도 `npm audit fix`(force 아님)로 같이 해소한다 —
+   완료 조건에는 없지만 같은 작업 안에서 정리하는 편이 다음 감사 노이즈를 줄인다.
+3. CVE 적용 범위 판단: Vercel은 Linux 기반 서버리스이므로 "Windows-hosted RCE"(GHSA-p293-qw3h-jr36)는
+   해당 없다. 나머지(AVIF 이미지 최적화 RCE, Server Actions SSRF/DoS, 캐시 혼동, Middleware
+   bypass, 미인증 Server Function 노출)는 환경 무관하게 적용되므로 상향이 필요하다.
+4. 배지 이미지 파이프라인(`/jam-img`) 회귀: `sharp` API 변경 여부를 체인지로그로 먼저 확인하고,
+   로컬에서 기존 배지 이미지 1건으로 배경 제거·합성 스크립트를 재실행해 결과 이미지가 상향
+   전과 동일한지 확인한다.
+5. staging 배포 후 실렌더 확인(홈피드·배지 상세·이미지 배지 표시)은 민지가 `curl`로 렌더된
+   HTML까지만 확인하고, 시각적 확인이 필요하면 사용자에게 스테이징 링크로 안내한다.
+
+**규모 사전 판정(계획 반환 면제, 티켓 20260922_1754 절차)**: 변경 파일은 `package.json`·
+`package-lock.json` 2개뿐이나 `package-lock.json`은 npm이 자동 생성하는 산출물이라 변경 줄
+수가 수백~수천 줄에 이를 수 있다. 실제로 판단이 들어가는 변경은 `package.json`의 버전 문자열
+1~2줄뿐이므로, 아현 호출 시 `planOnlyWaiver`로 이 사유를 넘겨 `plan_only` 왕복을 막는다.
 
 ## 완료 조건
 - `cd jam-web && npm audit --omit=dev`에서 critical·high 0건.
