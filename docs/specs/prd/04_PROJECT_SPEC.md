@@ -217,6 +217,8 @@ push로 배포하지 않는다(`.githooks/pre-push`가 `JAM_SHIP=1` 없는 main 
 | `NCP_MAP_CLIENT_SECRET` | 네이버 클라우드 플랫폼 지도 서버 인증 | |
 | `NEXT_PUBLIC_NAVER_MAP_STYLE_ID` | 네이버 지도 커스텀 스타일 ID | |
 | `NAVER_LOCAL_SEARCH_CLIENT_ID` / `NAVER_LOCAL_SEARCH_CLIENT_SECRET` | 네이버 지역검색 오픈API (T2 POI 소스) | |
+| `KMA_API_KEY` | 기상청 API 허브 단기예보 인증키 (오늘 날씨 세그먼트 태그) | `lib/inputs/weather.ts`. 미설정·호출 실패 시 날씨 태그만 빠짐(오류 없음) |
+| `DATA_GO_KR_API_KEY` | 공공데이터포털 특일정보 API 인증키 (공휴일·기념일·24절기 세그먼트 태그) | `lib/inputs/holidays.ts`. 미설정·호출 실패 시 기념일 태그만 빠짐(오류 없음) |
 | `NEXT_PUBLIC_BASE_URL` | 서비스 도메인 URL | **`https://j-a-m.app`** (2026-08-06부로 `jam-rose.app`에서 전환) |
 | `FOREST_SERVICE_KEY` | 산림청 API 키 | `src/` 미참조이나 **사용중** (Edge Function 또는 외부 파이프라인) — `.env.local`에 유지 |
 | `NEXT_PUBLIC_GA_MEASUREMENT_ID` | GA4 측정 ID (`G-7K884Q399P`) | 미설정 시(로컬 등) GA 스크립트 자체 미렌더 |
