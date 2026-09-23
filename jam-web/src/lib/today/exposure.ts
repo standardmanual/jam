@@ -11,6 +11,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
 import { getTodayWeather } from '@/lib/inputs/weather'
 import { getTodaySpecialDays } from '@/lib/inputs/holidays'
+import { specialDayTags } from '@/lib/inputs/special-days-config'
 
 export type TimeOfDayTag =
   | 'time_dawn'
@@ -235,7 +236,8 @@ export async function computeUserExposureTags(
   if (isNewUser(userCreatedAt, now)) tags.push('new_user')
   // 기상청·특일정보 API 실패 시 각각 null/빈 배열이 와서 태그만 조용히 빠진다(티켓 20260923_2254)
   if (weather) tags.push(`weather_${weather}`)
-  if (specialDays.length > 0) tags.push('holiday_today')
+  // 공휴일·절기·기념일은 이름 목록으로 태그를 나눈다(티켓 20260924_0805)
+  tags.push(...specialDayTags(specialDays))
 
   return tags
 }
