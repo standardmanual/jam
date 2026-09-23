@@ -66,7 +66,7 @@ export function parseTodayCardEventInput(body: unknown): TodayCardEventValidatio
 
 export type CardExposureValidation = { ok: true } | { ok: false; error: string }
 
-/** 카드가 존재하고 `is_active`이며 `now`가 `[starts_at, ends_at)` 안일 때만 통과한다(티켓 20260924_0111). */
+/** 카드가 존재하고 `is_active`이며 `now`가 `[starts_at, ends_at]`(양끝 포함, 기존 노출 조회와 동일) 안일 때만 통과한다(티켓 20260924_0111). */
 export async function assertCardExposable(cardId: string, now: Date): Promise<CardExposureValidation> {
   const supabase = createServiceClient()
   const { data: card, error } = await supabase
@@ -75,12 +75,15 @@ export async function assertCardExposable(cardId: string, now: Date): Promise<Ca
     .eq('id', cardId)
     .maybeSingle()
 
-  if (error) return { ok: false, error: error.message }
+  if (error) {
+    console.error('[today/events] 카드 노출 검증 조회 오류:', error.message)
+    return { ok: false, error: '카드를 확인할 수 없습니다.' }
+  }
   if (!card) return { ok: false, error: '카드를 찾을 수 없습니다.' }
   if (!card.is_active) return { ok: false, error: '노출 중인 카드가 아닙니다.' }
 
   const nowMs = now.getTime()
-  if (nowMs < new Date(card.starts_at).getTime() || nowMs >= new Date(card.ends_at).getTime()) {
+  if (nowMs < new Date(card.starts_at).getTime() || nowMs > new Date(card.ends_at).getTime()) {
     return { ok: false, error: '노출 기간이 아닌 카드입니다.' }
   }
   return { ok: true }
