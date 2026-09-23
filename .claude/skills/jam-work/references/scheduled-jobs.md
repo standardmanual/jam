@@ -10,9 +10,13 @@
 >   [2026-09-18 티켓 20260918_1650 시험 실행에서 스테이징 접속 차단 발견 후 추가], `the-edit.co.kr`·
 >   `maily.so`·`joomaltory.com`·`uppity.co.kr`·`www.openads.co.kr`·`buybrand.stibee.com`
 >   [2026-09-18 월간 트렌드 수집 1회차 EGRESS_BLOCKED 확인 후 사용자가 추가, 다음 자동 실행(2026-10-01)에서
->   재검증 예정] + 기본 목록), 환경변수
+>   재검증 예정], `slack.com`[2026-09-23 티켓 20260923_1106, `scripts/slack-post.mjs`가
+>   Slack Web API를 직접 호출하며 403으로 차단되는 것을 확인한 뒤 사용자가 추가] + 기본 목록), 환경변수
 >   `ADMIN_API_READ_TOKEN`·`GA4_PROPERTY_ID`·`GA4_SERVICE_ACCOUNT_KEY`·`SLACK_BOT_TOKEN`
 > - 루틴 지시문의 원본은 루틴 자체다(claude.ai/code/routines). 이 문서를 바꾸면 루틴 지시문도 함께 고친다
+> - **Slack 게시는 JAM 봇 계정으로 전환됐다** (2026-09-23, 티켓 20260923_1106). 선별·주간·월간·주간
+>   배포 확인/실행 5개 루틴 모두 `scripts/slack-post.mjs` 호출로 프롬프트를 교체했고, 시범 게시로
+>   봇 계정 게시를 확인했다. 상세는 "Slack 알림" 절 참고
 >
 > **"상태" 행 표기 규칙(티켓 20260918_1153):** 값이 정확히 `켜짐`이면 켜진 것으로 본다. 그 외
 > (`미등록`·`등록됨(꺼짐)` 등)는 모두 꺼짐이다. 세션 시작 hook(`ticket-dashboard.mjs`)이 이 값을
