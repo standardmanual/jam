@@ -2,24 +2,22 @@ import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import type { TribeRow } from '@/types/database'
 import { TribesTable } from './TribesTable'
+import { fetchTribeListCounts, tribeDeleteBlockReason } from '@/lib/admin/tribe-list'
 
 export default async function AdminTribesPage() {
   const supabase = createServiceClient()
-  const [{ data }, { data: badgesRaw }, { data: booksRaw }] = await Promise.all([
-    supabase.from('tribes').select('*').order('sort_order', { ascending: true }),
-    supabase.from('badges').select('tribe_id').not('tribe_id', 'is', null).is('deleted_at', null),
-    supabase.from('item_books').select('tribe_id').not('tribe_id', 'is', null),
-  ])
+  const { data } = await supabase.from('tribes').select('*').order('sort_order', { ascending: true })
   const tribes = (data ?? []) as TribeRow[]
 
-  const badgeCountMap = new Map<string, number>()
-  for (const b of (badgesRaw ?? []) as { tribe_id: string }[]) {
-    badgeCountMap.set(b.tribe_id, (badgeCountMap.get(b.tribe_id) ?? 0) + 1)
-  }
-  const bookCountMap = new Map<string, number>()
-  for (const b of (booksRaw ?? []) as { tribe_id: string }[]) {
-    bookCountMap.set(b.tribe_id, (bookCountMap.get(b.tribe_id) ?? 0) + 1)
-  }
+  // 배지·컬렉션 수와 삭제를 막는 참조 건수를 정확히 센다 — 행을 통째로 불러 세면 PostgREST
+  // 1,000행 상한에서 조용히 잘린다(티켓 20260924_0945).
+  const { badgeCounts, bookCounts, blockingCounts } = await fetchTribeListCounts(
+    supabase,
+    tribes.map((t) => t.id)
+  )
+  const deleteBlockReasons: Record<string, string | null> = Object.fromEntries(
+    tribes.map((t) => [t.id, tribeDeleteBlockReason(blockingCounts[t.id] ?? {})])
+  )
 
   return (
     <div className="p-8">
@@ -33,7 +31,12 @@ export default async function AdminTribesPage() {
         </Link>
       </div>
 
-      <TribesTable tribes={tribes} badgeCountMap={badgeCountMap} bookCountMap={bookCountMap} />
+      <TribesTable
+        tribes={tribes}
+        badgeCounts={badgeCounts}
+        bookCounts={bookCounts}
+        deleteBlockReasons={deleteBlockReasons}
+      />
     </div>
   )
 }

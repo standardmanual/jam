@@ -18,13 +18,15 @@
  *   `today_cards.item_book_id`는 SET NULL.
  * - **tribes(트라이브)**: `tribe_adjacency`의 `tribe_id`/`adjacent_tribe_id` 모두
  *   **CASCADE**. `user_drop_state.last_drop_tribe_id`는 **NO ACTION**(위와 같은 이유로
- *   실무 차단 확률이 높다). `badges.tribe_id`·`item_books.tribe_id`는 SET NULL.
+ *   실무 차단 확률이 높다). `users.tribe_id`(`users_tribe_id_fkey`)도 **NO ACTION**이다
+ *   (티켓 20260924_0945 — 운영 DB 확인). `badges.tribe_id`·`item_books.tribe_id`는 SET NULL.
  *
  * ## fail-closed
  * 조회가 하나라도 실패하면 `error`를 채운다 — 호출부는 이 경우 어떤 삭제도 실행하지 않는다.
  * 부분 카운트를 «참조 0건»으로 취급하면 CASCADE 참조가 조용히 함께 지워진다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
+import type { BulkSkip } from './bulk/shared'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -43,6 +45,8 @@ export interface ReferenceSource {
    * 않지만 안내 문구에는 포함해야 하는 참조다.
    */
   blocks: boolean
+  /** 안내 문구의 단위. 없으면 `건`(유저 수처럼 사람을 세는 참조는 `명`) */
+  unit?: string
 }
 
 export interface ReferenceSummary {
@@ -52,6 +56,8 @@ export interface ReferenceSummary {
   total: number
   /** 참조가 있는 자리를 사람이 읽을 문구로 나열 (`레이블 N건, 레이블 N건`) */
   hitLabels: string
+  /** `hitLabels` 중 삭제를 막는 참조(`blocks: true`)만 — 목록의 "삭제 불가 사유" 칸이 쓴다 */
+  blockingLabels: string
 }
 
 /** id 목록 기준으로 페이지를 끝까지 넘겨 행을 통째로 가져온다(badge-references.ts와 동일). */
@@ -80,15 +86,41 @@ export function summarizeReference(sources: ReferenceSource[], counts: Record<st
   let blockingTotal = 0
   let total = 0
   const hitLabels: string[] = []
+  const blockingLabels: string[] = []
   for (const s of sources) {
     const c = counts[s.key] ?? 0
     if (c > 0) {
-      hitLabels.push(`${s.label} ${c}건`)
+      const label = `${s.label} ${c}${s.unit ?? '건'}`
+      hitLabels.push(label)
       total += c
-      if (s.blocks) blockingTotal += c
+      if (s.blocks) {
+        blockingTotal += c
+        blockingLabels.push(label)
+      }
     }
   }
-  return { blockingTotal, total, hitLabels: hitLabels.join(', ') }
+  return { blockingTotal, total, hitLabels: hitLabels.join(', '), blockingLabels: blockingLabels.join(', ') }
+}
+
+/**
+ * 일괄 삭제 대상을 "삭제 가능"과 "건너뜀"으로 나눈다(티켓 20260924_0945) — 컬렉션·트라이브
+ * 일괄 삭제가 같은 판정을 쓴다. 막는 참조(`blocks: true`)가 하나라도 있으면 건너뛰고,
+ * 사유는 `describe`가 만든다(예: `연결된 참조 3건(...)`).
+ */
+export function classifyReferenceDeletion(
+  ids: string[],
+  counts: Map<string, Record<string, number>>,
+  sources: ReferenceSource[],
+  describe: (summary: ReferenceSummary) => string
+): { deletable: string[]; skipped: BulkSkip[] } {
+  const deletable: string[] = []
+  const skipped: BulkSkip[] = []
+  for (const id of ids) {
+    const summary = summarizeReference(sources, counts.get(id) ?? {})
+    if (summary.blockingTotal > 0) skipped.push({ id, reason: describe(summary) })
+    else deletable.push(id)
+  }
+  return { deletable, skipped }
 }
 
 export interface ReferenceCollectResult {
@@ -280,6 +312,16 @@ export const TRIBE_REFERENCE_SOURCES: ReferenceSource[] = [
     blocks: true, // NO ACTION — 사전 조사에 없던 참조. 거의 모든 활성 유저가 행을 갖는다.
   },
   {
+    // `users_tribe_id_fkey`는 삭제를 막는 FK(NO ACTION)다(운영 DB 확인, 티켓 20260924_0945).
+    // 이 참조가 보호 목록에 없어서, 유저가 고른 트라이브를 지우면 보호 검사를 통과한 뒤 DB에서
+    // 막혀 500이 났다.
+    key: 'users',
+    label: '이 트라이브를 고른 유저',
+    location: 'users.tribe_id',
+    blocks: true, // NO ACTION
+    unit: '명',
+  },
+  {
     key: 'badges',
     label: '소속 배지',
     location: 'badges.tribe_id',
@@ -335,6 +377,12 @@ export async function collectTribeReferences(
   )
   if (dropState.error) errors.push(`user_drop_state: ${dropState.error}`)
   tally('user_drop_state', dropState.rows.map((r) => r.last_drop_tribe_id))
+
+  const users = await fetchAllRows<{ tribe_id: string | null }>((from, to) =>
+    supabase.from('users').select('tribe_id').in('tribe_id', tribeIds).range(from, to)
+  )
+  if (users.error) errors.push(`users: ${users.error}`)
+  tally('users', users.rows.map((r) => r.tribe_id))
 
   const badges = await fetchAllRows<{ tribe_id: string | null }>((from, to) =>
     supabase.from('badges').select('tribe_id').in('tribe_id', tribeIds).range(from, to)

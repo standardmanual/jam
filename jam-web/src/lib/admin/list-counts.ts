@@ -22,6 +22,8 @@ export interface CountRowsResult {
 /** Supabase 쿼리 빌더가 구조적으로 그대로 들어맞는 최소 인터페이스 */
 export interface CountRowsQuery {
   eq(column: string, value: unknown): CountRowsQuery
+  /** `IS NULL` 조건(예: 삭제되지 않은 행만 — `deleted_at`이 null) — 티켓 20260924_0945에서 추가 */
+  is(column: string, value: null): CountRowsQuery
   in(column: string, values: string[]): CountRowsQuery
   order(column: string, options?: { ascending?: boolean }): CountRowsQuery
   range(from: number, to: number): PromiseLike<CountRowsResult>

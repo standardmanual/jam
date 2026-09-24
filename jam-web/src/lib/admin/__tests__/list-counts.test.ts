@@ -11,12 +11,17 @@ function createStubClient(tables: Record<string, Row[]>) {
       select: (): CountRowsQuery => {
         const orders: string[] = []
         const eqFilters: { column: string; value: unknown }[] = []
+        const isNullFilters: string[] = []
         let inColumn = ''
         let inValues: string[] = []
 
         const query: CountRowsQuery = {
           eq: (column, value) => {
             eqFilters.push({ column, value })
+            return query
+          },
+          is: (column) => {
+            isNullFilters.push(column)
             return query
           },
           in: (column, values) => {
@@ -34,6 +39,7 @@ function createStubClient(tables: Record<string, Row[]>) {
             let rows = tables[table] ?? []
             rows = rows.filter((r) => inValues.includes(String(r[inColumn])))
             for (const f of eqFilters) rows = rows.filter((r) => r[f.column] === f.value)
+            for (const column of isNullFilters) rows = rows.filter((r) => (r[column] ?? null) === null)
             rows = [...rows].sort((a, b) => {
               for (const col of orders) {
                 const cmp = String(a[col]).localeCompare(String(b[col]))
@@ -95,6 +101,17 @@ describe('countRowsByKey', () => {
     expect(counts.t1).toBe(1)
   })
 
+  it('extraFilter의 is(null)로 삭제되지 않은 행만 센다', async () => {
+    const rows: Row[] = [
+      { id: 'r1', tribe_id: 't1', deleted_at: null },
+      { id: 'r2', tribe_id: 't1', deleted_at: '2026-09-01T00:00:00Z' },
+      { id: 'r3', tribe_id: 't1' },
+    ]
+    const { client } = createStubClient({ badges: rows })
+    const counts = await countRowsByKey(client, 'badges', 'tribe_id', ['t1'], (q) => q.is('deleted_at', null))
+    expect(counts.t1).toBe(2)
+  })
+
   it('모든 조회에 정렬이 붙는다(키 컬럼 + id 보조 정렬)', async () => {
     const rows: Row[] = [{ id: 'r1', tribe_id: 't1' }]
     const { client, rangeCalls } = createStubClient({ badges: rows })
@@ -108,6 +125,7 @@ describe('countRowsByKey', () => {
         select: (): CountRowsQuery => {
           const query: CountRowsQuery = {
             eq: () => query,
+            is: () => query,
             in: () => query,
             order: () => query,
             range: async () => ({ data: null, error: { message: '타임아웃' } }),
