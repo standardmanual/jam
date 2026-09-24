@@ -61,10 +61,13 @@ export function latestKmaBaseTime(now: Date): { baseDate: string; baseTime: stri
 /**
  * 단기예보 항목들에서 오늘(todayYmd) 날씨 구분을 판정한다.
  * 강수형태(PTY)가 있으면 rain, 기온이 극값을 넘으면 extreme, 하늘상태(SKY)가 맑음이면 clear,
- * 그 외(구름많음·흐림 등)는 mild. (순수 함수 — 테스트 대상)
+ * 그 외(구름많음·흐림 등)는 mild. rain과 extreme 조건이 동시에 있으면 rain을 우선한다.
+ * 오늘 날짜 항목이 0건이면 날씨를 알 수 없으므로 null(mild로 떨어지지 않는다).
+ * (순수 함수 — 테스트 대상)
  */
-export function normalizeWeatherItems(items: KmaForecastItem[], todayYmd: string): WeatherKind {
+export function normalizeWeatherItems(items: KmaForecastItem[], todayYmd: string): WeatherKind | null {
   const todays = items.filter((item) => item.fcstDate === todayYmd)
+  if (todays.length === 0) return null
 
   const hasRain = todays.some((item) => item.category === 'PTY' && item.fcstValue !== '0')
   if (hasRain) return 'rain'

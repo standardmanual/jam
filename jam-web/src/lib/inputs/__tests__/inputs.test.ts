@@ -79,6 +79,19 @@ describe('normalizeWeatherItems — 오늘 날씨 구분 판정', () => {
     ]
     expect(normalizeWeatherItems(items, '20260923')).toBe('clear')
   })
+
+  it('오늘 날짜 항목이 0건이면 null(mild로 떨어지지 않는다, 티켓 20260924_0852)', () => {
+    const items = [{ category: 'SKY', fcstDate: '20260924', fcstValue: '1' }]
+    expect(normalizeWeatherItems(items, '20260923')).toBeNull()
+  })
+
+  it('rain과 extreme 조건이 겹치면 rain을 우선한다', () => {
+    const items = [
+      { category: 'PTY', fcstDate: '20260923', fcstValue: '1' },
+      { category: 'TMX', fcstDate: '20260923', fcstValue: '35' },
+    ]
+    expect(normalizeWeatherItems(items, '20260923')).toBe('rain')
+  })
 })
 
 describe('latestKmaBaseTime — 발표주기 기준 최근 base_date/base_time', () => {
@@ -158,6 +171,23 @@ describe('getTodayWeather — 저장값만 읽는다(vitest 모듈 격리로 캐
     const { getTodayWeather } = await import('../weather')
     await expect(getTodayWeather()).resolves.toBeNull()
     await expect(getTodayWeather()).resolves.toBe('mild')
+  })
+
+  it('날짜가 바뀌면(자정 경계) 캐시를 쓰지 않고 저장소를 다시 읽는다', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2026-09-23T14:00:00Z')) // KST 2026-09-23 23:00
+      readDailyInputMock.mockResolvedValue({ kind: 'clear' })
+      const { getTodayWeather } = await import('../weather')
+      await expect(getTodayWeather()).resolves.toBe('clear')
+
+      vi.setSystemTime(new Date('2026-09-23T15:30:00Z')) // KST 2026-09-24 00:30
+      readDailyInputMock.mockResolvedValue({ kind: 'rain' })
+      await expect(getTodayWeather()).resolves.toBe('rain')
+      expect(readDailyInputMock).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 
@@ -251,6 +281,23 @@ describe('getTodaySpecialDays — 저장값만 읽는다(vitest 모듈 격리로
     await expect(getTodaySpecialDays()).resolves.toEqual([])
     await expect(getTodaySpecialDays()).resolves.toEqual([{ name: '추석', type: 'holiday' }])
   })
+
+  it('날짜가 바뀌면(자정 경계) 캐시를 쓰지 않고 저장소를 다시 읽는다', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2026-09-23T14:00:00Z')) // KST 2026-09-23 23:00
+      readDailyInputMock.mockResolvedValue([{ name: '어제 특일', type: 'holiday' }])
+      const { getTodaySpecialDays } = await import('../holidays')
+      await expect(getTodaySpecialDays()).resolves.toEqual([{ name: '어제 특일', type: 'holiday' }])
+
+      vi.setSystemTime(new Date('2026-09-23T15:30:00Z')) // KST 2026-09-24 00:30
+      readDailyInputMock.mockResolvedValue([{ name: '오늘 특일', type: 'anniversary' }])
+      await expect(getTodaySpecialDays()).resolves.toEqual([{ name: '오늘 특일', type: 'anniversary' }])
+      expect(readDailyInputMock).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 describe('refreshTodaySpecialDays — cron 전용 외부 호출', () => {
@@ -289,6 +336,29 @@ describe('refreshTodaySpecialDays — cron 전용 외부 호출', () => {
       { name: '추석', type: 'anniversary' },
       { name: '추석', type: 'seasonal' },
       { name: '추석', type: 'sundry' },
+    ])
+  })
+
+  it('네 오퍼레이션 중 일부만 실패해도 나머지는 반영된다', async () => {
+    vi.stubEnv('DATA_GO_KR_API_KEY', 'dummy-key')
+    const now = new Date('2026-09-24T21:00:00Z') // KST 2026-09-25 06:00
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        // getRestDeInfo·get24DivisionsInfo만 성공, getAnniversaryInfo·getSundryDayInfo는 500
+        const ok = url.includes('getRestDeInfo') || url.includes('get24DivisionsInfo')
+        return {
+          status: ok ? 200 : 500,
+          ok,
+          json: async () => ({ response: { body: { items: { item: { dateName: '추분', locdate: 20260925 } } } } }),
+        }
+      })
+    )
+    const { refreshTodaySpecialDays } = await import('../holidays')
+    const result = await refreshTodaySpecialDays(now)
+    expect(result).toEqual([
+      { name: '추분', type: 'holiday' },
+      { name: '추분', type: 'seasonal' },
     ])
   })
 })
