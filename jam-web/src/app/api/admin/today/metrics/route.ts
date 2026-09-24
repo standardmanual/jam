@@ -32,6 +32,11 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const range = resolveRange(searchParams)
 
+  // 시작일이 종료일보다 늦으면 조용히 빈 결과를 내지 않고 알린다(티켓 20260924_1156)
+  if (range.from > range.to) {
+    return NextResponse.json({ error: '시작일이 종료일보다 늦어요. 기간을 다시 확인해 주세요.' }, { status: 400 })
+  }
+
   try {
     const rows = await aggregateTodayCardEvents(range.from, range.to)
 

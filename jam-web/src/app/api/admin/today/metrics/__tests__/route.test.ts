@@ -45,9 +45,15 @@ describe('기간 해석', () => {
     expect(range).toEqual({ from: '2026-09-03T00:00:00.000Z', to: '2026-09-10T00:00:00.000Z' })
   })
 
-  it('from이 to보다 늦어도 보정 없이 집계기에 넘긴다', async () => {
-    expect((await call({ from: '2026-09-20T00:00:00Z', to: '2026-09-10T00:00:00Z' })).status).toBe(200)
-    expect(aggregate).toHaveBeenCalledWith('2026-09-20T00:00:00.000Z', '2026-09-10T00:00:00.000Z')
+  it('from이 to보다 늦으면 400이고 집계하지 않는다', async () => {
+    const res = await call({ from: '2026-09-20T00:00:00Z', to: '2026-09-10T00:00:00Z' })
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('시작일이 종료일보다 늦어요. 기간을 다시 확인해 주세요.')
+    expect(aggregate).not.toHaveBeenCalled()
+  })
+
+  it('from과 to가 같으면 정상 집계한다', async () => {
+    expect((await call({ from: '2026-09-10T00:00:00Z', to: '2026-09-10T00:00:00Z' })).status).toBe(200)
   })
 })
 
