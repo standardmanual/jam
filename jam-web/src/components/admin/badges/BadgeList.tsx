@@ -17,9 +17,11 @@ export type BadgeListRow = Pick<
 interface BadgeListProps {
   badges: BadgeListRow[]
   tribeMap?: Map<string, string>
+  /** 현재 필터 조건에 맞는 전체 건수(페이지당 건수가 아니다) — 전체 선택 배너에 쓴다(20260924_0944) */
+  totalCount: number
 }
 
-export default function BadgeList({ badges, tribeMap = new Map() }: BadgeListProps) {
+export default function BadgeList({ badges, tribeMap = new Map(), totalCount }: BadgeListProps) {
   // `md:hidden`/`hidden md:block`으로 카드 리스트와 테이블을 둘 다 마운트하면 렌더 비용이
   // 이중으로 든다(실측: /admin/badges 50건 페이지에서 <img> 100개, 20260826_011 A4) —
   // 실제 뷰포트에 맞는 한쪽만 마운트한다.
@@ -45,5 +47,5 @@ export default function BadgeList({ badges, tribeMap = new Map() }: BadgeListPro
     )
   }
 
-  return <BadgesTable badges={badges} tribeMap={tribeMap} />
+  return <BadgesTable badges={badges} tribeMap={tribeMap} totalCount={totalCount} />
 }

@@ -1,18 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/admin/ui/button'
-import { Input } from '@/components/admin/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { DataTableToolbar } from '@/components/admin/data-table/data-table-toolbar'
 import { DataTableFacetedFilter } from '@/components/admin/data-table/data-table-faceted-filter'
+import { DataTableSearch } from '@/components/admin/data-table/data-table-search'
+import { DataTableSortSelect } from '@/components/admin/data-table/data-table-sort-select'
+import { useListParams } from '@/components/admin/data-table/use-list-params'
 import { BADGE_TYPES, BADGE_TYPE_LABEL, UNASSIGNED_POI_CATEGORY } from '@/lib/admin/badge-labels'
-import {
-  BADGE_LIST_SORT_OPTIONS,
-  CONDITION_FIELD_FILTER_OPTIONS,
-  DEFAULT_BADGE_LIST_SORT,
-} from '@/lib/admin/badge-list-view'
+import { BADGE_LIST_SORT_OPTIONS, CONDITION_FIELD_FILTER_OPTIONS, DEFAULT_BADGE_LIST_SORT } from '@/lib/admin/badge-list-view'
 
 const TYPE_OPTIONS = BADGE_TYPES.map((t) => ({ value: t as string, label: BADGE_TYPE_LABEL[t] }))
 
@@ -29,10 +24,6 @@ const STATUS_OPTIONS = [
   { value: 'all', label: '전체' },
 ]
 
-// 최신순/오래된순은 created_at 기준이라 데스크탑 테이블에 노출되는 컬럼이 없어 헤더 클릭으로
-// 대체할 수 없다(BadgesTable.tsx 주석 참고) — 이 드롭다운이 계속 담당한다. 이름 오름/내림차순은
-// 데스크탑에서는 "이름" 헤더 클릭으로도 가능하지만, 모바일 카드 뷰는 헤더가 없어 이 드롭다운이
-// 유일한 경로다(이번 티켓은 모바일 카드 뷰를 건드리지 않는다).
 // 목록(계열순·레벨순 포함)은 `badge-list-view.ts`가 서버 페이지와 공유하는 단일 출처다 —
 // 여기서 다시 나열하면 서버가 모르는 값을 고를 수 있다(티켓 20260905_0032 C-2).
 const SORT_OPTIONS = BADGE_LIST_SORT_OPTIONS
@@ -49,8 +40,9 @@ const ACTIVITY_TYPE_OPTIONS = [
   { value: 'jam', label: 'JAM!' },
 ]
 
-// 타입 변경 시 초기화할 서브 필터 파라미터
-const SUB_FILTER_KEYS = ['activity_type', 'admin_category', 'poi_category', 'tribe_id', 'item_book_id']
+// 연쇄 필터 체인(부모 → 자식). type이 바뀌면 이 뒤의 서브 필터가 전부 풀리고, tribe_id가
+// 바뀌면 item_book_id만 풀린다(`applyListParamPatch`의 cascade 규칙).
+const FILTER_CASCADE = ['type', 'activity_type', 'admin_category', 'poi_category', 'tribe_id', 'item_book_id']
 
 interface BadgesFilterBarProps {
   tribes: { id: string; name: string }[]
@@ -59,54 +51,32 @@ interface BadgesFilterBarProps {
 }
 
 /**
- * 배지 목록 필터 바(20260826_014) — shadcn 공식 Data Table Toolbar 패턴으로 재구현.
+ * 배지 목록 필터 바(티켓 20260924_0944) — 공용 부품(`useListParams`·`DataTableSearch`·
+ * `DataTableSortSelect`·`DataTableFacetedFilter`)으로 전면 교체했다.
  *
- * 데스크탑 테이블뿐 아니라 모바일 카드 뷰(BadgeList.tsx)에도 적용되는 페이지 레벨
- * 필터라 TanStack `table` 인스턴스와 무관하게 URL(searchParams)로 서버 필터링을 직접
- * 제어한다(`DataTableFacetedFilter`가 `column` 대신 값/콜백을 받는 이유).
+ * `status` 기본값을 `'active'`로 등록해 두면(예전 버그였던) "전체" 선택이 URL에서 지워지지
+ * 않는다 — 옛 코드는 값이 `'all'`이면 무조건 키를 지워서, "전체"를 골라도 `status`가
+ * 기본값(active)으로 되돌아갔다(`badges/page.tsx`의 `parseBadgeListParams`는 처음부터
+ * `status=all`을 올바르게 존중했다 — 문제는 이 필터 바가 URL에 그 값을 남기지 못한 것뿐).
  */
 export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: BadgesFilterBarProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [searchInput, setSearchInput] = useState(searchParams.get('q') ?? '')
+  const { q, filters, setFilters, reset } = useListParams({
+    defaults: { status: 'active' },
+    cascade: FILTER_CASCADE,
+  })
 
-  const currentType = searchParams.get('type') ?? 'all'
-  const currentTribeId = searchParams.get('tribe_id') ?? 'all'
-  const currentStatus = searchParams.get('status') ?? 'active'
-
-  const update = (updates: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams.toString())
-    for (const [key, value] of Object.entries(updates)) {
-      if (value === null || value === 'all' || value === DEFAULT_BADGE_LIST_SORT) {
-        params.delete(key)
-      } else {
-        params.set(key, value)
-      }
-    }
-    params.delete('page')
-    router.push(`/admin/badges?${params.toString()}`)
-  }
-
-  // 검색어는 타이핑마다 즉시 서버로 보내지 않고 디바운스 후 반영한다(공식 Toolbar의 Input은
-  // 별도 검색 버튼이 없다 — 그렇다고 매 키 입력마다 라우팅하면 요청이 과도해진다).
-  useEffect(() => {
-    const current = searchParams.get('q') ?? ''
-    if (searchInput === current) return
-    const timer = setTimeout(() => update({ q: searchInput.trim() || null }), 400)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchInput])
+  const currentType = filters.type ?? 'all'
+  const currentTribeId = filters.tribe_id ?? 'all'
+  const currentStatus = filters.status ?? 'active'
+  const hasFilter = q !== '' || Object.keys(filters).length > 0
 
   const handleTypeChange = (values: string[]) => {
-    const value = values[0] ?? 'all'
-    // 타입 변경 시 서브 필터 전체 초기화
-    const cleared = Object.fromEntries(SUB_FILTER_KEYS.map((k) => [k, null])) as Record<string, null>
-    update({ type: value, ...cleared })
+    setFilters({ type: values[0] ?? null })
   }
 
   const handleTribeChange = (values: string[]) => {
-    // 트라이브 변경 시 아이템북 초기화
-    update({ tribe_id: values[0] ?? 'all', item_book_id: null })
+    // 트라이브 변경 시 아이템북 초기화(cascade가 처리 — item_book_id는 명시하지 않는다)
+    setFilters({ tribe_id: values[0] ?? null })
   }
 
   // "액티비티" 드롭다운에서 JAM!을 고르면 activity_type이 아니라 admin_category=jam으로
@@ -115,19 +85,11 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
   const handleActivityTypeChange = (values: string[]) => {
     const value = values[0]
     if (value === 'jam') {
-      update({ activity_type: null, admin_category: 'jam' })
+      setFilters({ activity_type: null, admin_category: 'jam' })
     } else {
-      update({ activity_type: value ?? null, admin_category: null })
+      setFilters({ activity_type: value ?? null, admin_category: null })
     }
   }
-
-  const hasFilter =
-    searchParams.has('q') ||
-    searchParams.has('type') ||
-    searchParams.has('rarity') ||
-    searchParams.has('status') ||
-    searchParams.has('condition_field') ||
-    SUB_FILTER_KEYS.some((k) => searchParams.has(k))
 
   // 선택된 트라이브 기준으로 아이템북 필터링
   const filteredItemBooks =
@@ -135,28 +97,8 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
 
   return (
     <div className="flex flex-col gap-3">
-      <DataTableToolbar
-        actions={
-          <Select value={searchParams.get('sort') ?? DEFAULT_BADGE_LIST_SORT} onValueChange={(v) => update({ sort: v })}>
-            <SelectTrigger className="h-8 w-auto min-w-[8rem]" aria-label="정렬">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SORT_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        }
-      >
-        <Input
-          placeholder="배지 이름, 설명으로 검색..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="h-8 w-[180px] lg:w-[260px]"
-        />
+      <DataTableToolbar actions={<DataTableSortSelect options={SORT_OPTIONS} defaultValue={DEFAULT_BADGE_LIST_SORT} />}>
+        <DataTableSearch placeholder="배지 이름, 설명으로 검색..." />
 
         <DataTableFacetedFilter
           title="타입"
@@ -171,13 +113,7 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
           <DataTableFacetedFilter
             title="액티비티"
             options={ACTIVITY_TYPE_OPTIONS}
-            selected={
-              searchParams.get('admin_category') === 'jam'
-                ? ['jam']
-                : searchParams.get('activity_type')
-                  ? [searchParams.get('activity_type') as string]
-                  : []
-            }
+            selected={filters.admin_category === 'jam' ? ['jam'] : filters.activity_type ? [filters.activity_type] : []}
             onChange={handleActivityTypeChange}
           />
         )}
@@ -192,8 +128,8 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
               ...poiCategories.map((c) => ({ value: c.slug, label: c.label })),
               { value: UNASSIGNED_POI_CATEGORY, label: '미할당' },
             ]}
-            selected={searchParams.get('poi_category') ? [searchParams.get('poi_category') as string] : []}
-            onChange={(values) => update({ poi_category: values[0] ?? null })}
+            selected={filters.poi_category ? [filters.poi_category] : []}
+            onChange={(values) => setFilters({ poi_category: values[0] ?? null })}
           />
         )}
 
@@ -209,8 +145,8 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
             <DataTableFacetedFilter
               title="컬렉션"
               options={filteredItemBooks.map((b) => ({ value: b.id, label: b.name }))}
-              selected={searchParams.get('item_book_id') ? [searchParams.get('item_book_id') as string] : []}
-              onChange={(values) => update({ item_book_id: values[0] ?? null })}
+              selected={filters.item_book_id ? [filters.item_book_id] : []}
+              onChange={(values) => setFilters({ item_book_id: values[0] ?? null })}
             />
           </>
         )}
@@ -218,8 +154,8 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
         <DataTableFacetedFilter
           title="등급"
           options={RARITY_OPTIONS}
-          selected={searchParams.get('rarity') ? [searchParams.get('rarity') as string] : []}
-          onChange={(values) => update({ rarity: values[0] ?? null })}
+          selected={filters.rarity ? [filters.rarity] : []}
+          onChange={(values) => setFilters({ rarity: values[0] ?? null })}
         />
 
         {/* 조건 필드 필터 — 선택지는 조건 레지스트리에서 파생된다(예: 평균 파워를 쓰는 배지만).
@@ -227,28 +163,19 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
         <DataTableFacetedFilter
           title="조건 필드"
           options={CONDITION_FIELD_FILTER_OPTIONS}
-          selected={searchParams.get('condition_field') ? [searchParams.get('condition_field') as string] : []}
-          onChange={(values) => update({ condition_field: values[0] ?? null })}
+          selected={filters.condition_field ? [filters.condition_field] : []}
+          onChange={(values) => setFilters({ condition_field: values[0] ?? null })}
         />
 
         <DataTableFacetedFilter
           title="상태"
           options={STATUS_OPTIONS}
           selected={[currentStatus]}
-          onChange={(values) => update({ status: values[0] ?? null })}
+          onChange={(values) => setFilters({ status: values[0] ?? null })}
         />
 
         {hasFilter && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8"
-            onClick={() => {
-              setSearchInput('')
-              router.push('/admin/badges')
-            }}
-          >
+          <Button type="button" variant="ghost" size="sm" className="h-8" onClick={reset}>
             필터 초기화
           </Button>
         )}
