@@ -22,7 +22,7 @@ const fixtures = vi.hoisted(() => ({
 
 function mockSupabase() {
   const from = (table: string) => {
-    const state: { eq?: { col: string; val: unknown } } = {}
+    const state: { eq?: { col: string; val: unknown }; range?: [number, number] } = {}
     const builder: Record<string, unknown> = {}
     builder.select = () => builder
     builder.eq = (col: string, val: unknown) => {
@@ -31,6 +31,11 @@ function mockSupabase() {
     }
     builder.gte = () => builder
     builder.lt = () => builder
+    builder.order = () => builder
+    builder.range = (start: number, end: number) => {
+      state.range = [start, end]
+      return builder
+    }
     builder.maybeSingle = () => {
       if (table !== 'today_cards') return Promise.resolve({ data: null, error: null })
       fixtures.cardQueryCount++
@@ -44,7 +49,8 @@ function mockSupabase() {
     }
     builder.then = (resolve: (v: unknown) => void) => {
       if (table === 'today_card_events') {
-        return Promise.resolve({ data: fixtures.eventRows, error: null }).then(resolve)
+        const rows = state.range ? fixtures.eventRows.slice(state.range[0], state.range[1] + 1) : fixtures.eventRows
+        return Promise.resolve({ data: rows, error: null }).then(resolve)
       }
       return Promise.resolve({ data: null, error: null }).then(resolve)
     }
@@ -73,29 +79,29 @@ describe('parseTodayCardEventInput — 입력 검증', () => {
     expect(result.ok).toBe(false)
   })
 
-  it('event가 impression/click/followup이 아니면 거부한다', () => {
+  it('event가 impression/click이 아니면 거부한다', () => {
     const result = parseTodayCardEventInput({ cardId: VALID_UUID, event: 'unknown_event' })
+    expect(result.ok).toBe(false)
+  })
+
+  it('event가 followup이면 거부한다(후속 행동은 수집하지 않는다, 티켓 20260924_0810)', () => {
+    const result = parseTodayCardEventInput({ cardId: VALID_UUID, event: 'followup', followupAction: '트라이브 상세 진입' })
     expect(result.ok).toBe(false)
   })
 
   it('followupAction이 80자를 넘으면 거부한다', () => {
     const result = parseTodayCardEventInput({
       cardId: VALID_UUID,
-      event: 'followup',
+      event: 'click',
       followupAction: 'a'.repeat(81),
     })
     expect(result.ok).toBe(false)
   })
 
-  it('followup 이벤트인데 followupAction이 없으면 거부한다', () => {
-    const result = parseTodayCardEventInput({ cardId: VALID_UUID, event: 'followup' })
-    expect(result.ok).toBe(false)
-  })
-
-  it('followup 이벤트에 followupAction(80자 이내)을 채우면 통과한다', () => {
+  it('followupAction(80자 이내)을 채우면 통과한다', () => {
     const result = parseTodayCardEventInput({
       cardId: VALID_UUID,
-      event: 'followup',
+      event: 'click',
       followupAction: '트라이브 상세 진입',
     })
     expect(result.ok).toBe(true)
@@ -150,6 +156,14 @@ describe('aggregateTodayCardEvents — 유형 ID×이벤트별 건수 집계', (
     expect(byKey.get('T05::click')).toBe(1)
     expect(byKey.get('T01::impression')).toBe(1)
     expect(byKey.get('null::impression')).toBe(1)
+  })
+
+  it('1,000행을 넘는 이벤트도 페이지를 나눠 정확히 집계한다(PostgREST 기본 상한 대응)', async () => {
+    fixtures.eventRows = Array.from({ length: 1500 }, () => ({ content_type_id: 'T05', event: 'impression' }))
+
+    const rows = await aggregateTodayCardEvents('2026-09-01T00:00:00.000Z', '2026-09-08T00:00:00.000Z')
+
+    expect(rows).toEqual([{ contentTypeId: 'T05', event: 'impression', count: 1500 }])
   })
 })
 
