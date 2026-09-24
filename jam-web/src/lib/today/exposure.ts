@@ -53,18 +53,24 @@ export function isNewUser(createdAt: string | null | undefined, now: Date): bool
 /** 진행 중(참가했으나 미완료) 미션이 하나라도 있는지 */
 async function hasParticipatingMission(userId: string): Promise<boolean> {
   const supabase = createServiceClient()
-  const { data: parts } = await supabase
+  const { data: parts, error: partsError } = await supabase
     .from('user_mission_participations')
     .select('mission_id')
     .eq('user_id', userId)
+  if (partsError) console.error('[hasParticipatingMission] user_mission_participations 조회 오류:', partsError.message)
   const participatingIds = ((parts ?? []) as { mission_id: string }[]).map((p) => p.mission_id)
   if (participatingIds.length === 0) return false
 
-  const { data: comps } = await supabase
+  const { data: comps, error: compsError } = await supabase
     .from('user_mission_completions')
     .select('mission_id')
     .eq('user_id', userId)
     .in('mission_id', participatingIds)
+  if (compsError) {
+    // 완료 여부를 모르면 전부 미완료로 보지 않고 태그를 뺀다
+    console.error('[hasParticipatingMission] user_mission_completions 조회 오류:', compsError.message)
+    return false
+  }
   const completedIds = new Set(((comps ?? []) as { mission_id: string }[]).map((c) => c.mission_id))
   return participatingIds.some((id) => !completedIds.has(id))
 }
@@ -72,30 +78,36 @@ async function hasParticipatingMission(userId: string): Promise<boolean> {
 /** 참가 중이고 ends_at 이 3일 이내인 미완료 미션이 있는지 */
 async function hasEndingSoonMission(userId: string, now: Date): Promise<boolean> {
   const supabase = createServiceClient()
-  const { data: parts } = await supabase
+  const { data: parts, error: partsError } = await supabase
     .from('user_mission_participations')
     .select('mission_id')
     .eq('user_id', userId)
+  if (partsError) console.error('[hasEndingSoonMission] user_mission_participations 조회 오류:', partsError.message)
   const participatingIds = ((parts ?? []) as { mission_id: string }[]).map((p) => p.mission_id)
   if (participatingIds.length === 0) return false
 
-  const { data: comps } = await supabase
+  const { data: comps, error: compsError } = await supabase
     .from('user_mission_completions')
     .select('mission_id')
     .eq('user_id', userId)
     .in('mission_id', participatingIds)
+  if (compsError) {
+    console.error('[hasEndingSoonMission] user_mission_completions 조회 오류:', compsError.message)
+    return false
+  }
   const completedIds = new Set(((comps ?? []) as { mission_id: string }[]).map((c) => c.mission_id))
   const incompleteIds = participatingIds.filter((id) => !completedIds.has(id))
   if (incompleteIds.length === 0) return false
 
   const soon = new Date(now.getTime() + 3 * 24 * 3600_000).toISOString()
-  const { data: ending } = await supabase
+  const { data: ending, error: endingError } = await supabase
     .from('missions')
     .select('id')
     .in('id', incompleteIds)
     .gte('ends_at', now.toISOString())
     .lte('ends_at', soon)
     .limit(1)
+  if (endingError) console.error('[hasEndingSoonMission] missions 조회 오류:', endingError.message)
   return ((ending ?? []) as { id: string }[]).length > 0
 }
 
@@ -122,23 +134,29 @@ async function getItemBookProgress(
   if (startedBookIds.length === 0) return none
 
   // 이미 완성한 북 제외
-  const { data: compsRaw } = await supabase
+  const { data: compsRaw, error: compsError } = await supabase
     .from('user_item_book_completions')
     .select('item_book_id')
     .eq('user_id', userId)
     .in('item_book_id', startedBookIds)
+  if (compsError) {
+    // 완성 여부를 모르면 완성한 북까지 후보에 남기지 않고 태그를 뺀다
+    console.error('[getItemBookProgress] user_item_book_completions 조회 오류:', compsError.message)
+    return none
+  }
   const completedBooks = new Set(((compsRaw ?? []) as { item_book_id: string }[]).map((c) => c.item_book_id))
 
   const candidateBookIds = startedBookIds.filter((id) => !completedBooks.has(id))
   if (candidateBookIds.length === 0) return none
 
   // 분모(드랍 제외 배지를 뺀 아이템 배지)와 채운 배지의 교집합을 비교 → 미완성 여부·잔여 슬롯
-  const { data: badgesRaw } = await supabase
+  const { data: badgesRaw, error: badgesError } = await supabase
     .from('badges')
     .select('id, item_book_id, type, drop_excluded')
     .in('item_book_id', candidateBookIds)
     .eq('type', 'item')
     .is('deleted_at', null)
+  if (badgesError) console.error('[getItemBookProgress] badges 조회 오류:', badgesError.message)
   const badges = (badgesRaw ?? []) as CompletionBadgeInput[]
 
   return {
