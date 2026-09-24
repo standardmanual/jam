@@ -22,6 +22,7 @@ import {
 import { weeklyRoutineOccurrences, routineOccurrenceId } from '@/lib/admin/scheduledRoutines'
 import { shiftDateStr, kstDayBoundsIso } from '@/lib/admin/today-calendar'
 import { weeklyCards, type WeeklyCardDay, type WeeklyCardInput } from '@/lib/admin/weeklyCards'
+import { weeklyMissions, type WeeklyMissionInput, type WeeklyMissionsResult } from '@/lib/admin/weeklyMissions'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 import { computeKpiWeeklyMetrics, resolveKpiWeeklyRange, DEFAULT_KPI_WEEKLY_DAYS } from '@/lib/admin/kpiWeekly'
 
@@ -60,6 +61,24 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
     weeklyCardDays = null
   }
 
+  // 20260924_0907: 미션도 보고 있는 주 범위로 한 번만 조회한다(필요한 컬럼만). 실패하면 null로 두고
+  // 막대·"상시 미션 N개" 줄만 숨긴다 — 크론·루틴·카드 표시는 그대로다(출처별 격리).
+  let missionsWeek: WeeklyMissionsResult | null = null
+  try {
+    const supabase = createServiceClient()
+    const { startIso: weekStartIso } = kstDayBoundsIso(weekStart)
+    const { endIso: weekEndIso } = kstDayBoundsIso(shiftDateStr(weekStart, 6))
+    const { data, error } = await supabase
+      .from('missions')
+      .select('id, title, starts_at, ends_at, gate_axis')
+      .lte('starts_at', weekEndIso)
+      .or(`ends_at.is.null,ends_at.gte.${weekStartIso}`)
+    if (error) throw error
+    missionsWeek = weeklyMissions((data ?? []) as WeeklyMissionInput[], weekStart)
+  } catch {
+    missionsWeek = null
+  }
+
   const columns: CalendarColumn[] = Array.from({ length: 7 }, (_, i) => {
     const date = shiftDateStr(weekStart, i)
     const weekday = (i + 1) % 7 // i=0(월)→1 ... i=6(일)→0, cron 요일 인덱스(0=일..6=토)와 동일
@@ -75,6 +94,17 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
       dim: !c.is_active,
       href: `/admin/today/${c.id}?date=${date}`,
     }))
+
+    // 그 주에 새로 시작하는 상시 미션은 시작 요일 칸에 "시작" 항목으로 보여 준다(티켓 20260924_0907).
+    const missionItems: CalendarCellItem[] = (missionsWeek?.openEndedStarting ?? [])
+      .filter((m) => m.date === date)
+      .map((m) => ({
+        id: `mission-${m.id}`,
+        time: '상시',
+        label: m.title,
+        kind: 'mission',
+        href: `/admin/missions/${m.id}`,
+      }))
 
     // 항목 id에는 실행 시각을 포함해 같은 날짜 안에서 겹치지 않게 한다(티켓 20260924_0930).
     const cronItems = occurrences
@@ -107,7 +137,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
       date,
       weekdayLabel: WEEKDAY_LABELS[weekday],
       dateLabel: `${Number(date.slice(5, 7))}월 ${Number(date.slice(8, 10))}일`,
-      items: [...cardItems, ...automationItems],
+      items: [...cardItems, ...missionItems, ...automationItems],
       longCardsCount: cardDay?.longActiveCount,
       unprogrammed: cardDay?.unprogrammed,
     }
@@ -232,7 +262,13 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
         </div>
       )}
 
-      <WeeklyCalendar weekStart={weekStart} weekRangeLabel={formatWeekRangeLabel(weekStart)} columns={columns} />
+      <WeeklyCalendar
+        weekStart={weekStart}
+        weekRangeLabel={formatWeekRangeLabel(weekStart)}
+        columns={columns}
+        missionBars={missionsWeek?.bars}
+        openEndedMissionCount={missionsWeek?.openEndedCount}
+      />
 
       <div className="grid grid-cols-4 gap-4 mb-10">
         {stats.map((stat) => (
