@@ -47,7 +47,7 @@
 | --- | --- | --- |
 | 화면 변경인데 채원 판정이 없음 | 임의로 만들지 않고 `needs_design`으로 멈춘다 | 티켓 20260918_0422 |
 | 같은 오류가 3회 반복 | 재시도를 멈추고 주의 신호와 함께 반환 | 아현 정의(공통 규칙) |
-| 어드민 UI를 새로 만듦 | 네이티브 `<select>` 등 대신 `jam-web/src/components/ui/`의 shadcn 컴포넌트를 쓴다. 네이티브 폼 요소는 시스템 다크모드를 따라가 어드민 라이트 테마와 어긋난다 | 티켓 20260822_002 |
+| 어드민 UI를 새로 만듦 | 네이티브 `<select>` 등 대신 `jam-web/src/components/admin/ui/`의 shadcn 컴포넌트를 쓴다(`components/ui/`는 서비스 UI라 어드민에 쓰지 않는다). 네이티브 폼 요소는 시스템 다크모드를 따라가 어드민 라이트 테마와 어긋난다 | 티켓 20260822_002 |
 | DB 타입 갱신이 필요 | `npm run db:types` 실행 금지 — supabase CLI가 없어 리다이렉트가 `database.generated.ts`를 0바이트로 비운다. Supabase MCP `generate_typescript_types` 출력과 대조한다 | 운영 확인 |
 | 어드민 화면 로컬 실렌더 | `preview_start`는 환경변수를 못 받는다. 메인 폴더의 `.claude/launch.json`을 백업하고 임시 설정(`runtimeExecutable: env`, `ADMIN_EMAILS=<DEV_USER_EMAIL> npm run dev -- -p 3100`, `cwd`는 실렌더할 폴더의 `jam-web` — 메인 폴더면 `jam-web`, 별도 워크트리면 `.claude/worktrees/<이름>/jam-web`)으로 연 뒤 서버가 뜬 직후 원복. dev 계정은 `api/dev-login/route.ts`의 `DEV_USER_EMAIL`. **공용 DB라 저장하지 말고 읽기만** | 2026-09-10 믹스 v3 검증, `DEV_PROCESS_GUARDRAILS.md` 패턴 13 |
 | 캔버스 합성 이미지 확인 | 배포 없이 로컬에서 굽는다: 합성 함수를 부르는 entry를 `npx esbuild --bundle --format=iife --alias:@=./src`로 번들 → 최소 HTML → playwright로 `canvas.toDataURL()` → PNG 확인. playwright 스크립트는 `jam-web/` 안에서 실행 | 운영 확인 |
