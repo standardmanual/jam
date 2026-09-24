@@ -6,6 +6,7 @@
  * 따로 구현되어 어긋나는 일을 막는다(reference-guards.ts와 동일한 이유의 공유 패턴).
  */
 import type { createServiceClient } from '@/lib/supabase/server'
+import type { BulkResult } from './bulk/shared'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -31,7 +32,11 @@ interface PostgrestFailure {
 interface PoiUpdateWithGateColumns {
   update: (values: { pending_review?: boolean; category?: string; is_active?: boolean }) => {
     in: (column: string, values: string[]) => {
-      select: (columns: string) => PromiseLike<{ data: { id: string }[] | null; error: PostgrestFailure | null }>
+      // 티켓 20260924_0948: 검토 대기(pending_review = true)인 행만 처리한다 — 그 사이 다른
+      // 어드민이 이미 처리한 POI를 다시 승인·거부하면 되돌려지는 사고를 막는다.
+      eq: (column: string, value: boolean) => {
+        select: (columns: string) => PromiseLike<{ data: { id: string }[] | null; error: PostgrestFailure | null }>
+      }
     }
   }
 }
@@ -90,6 +95,7 @@ export async function approvePendingPois(
     const { data, error } = await table
       .update({ pending_review: false, category: targetCategory, is_active: isActive })
       .in('id', ids)
+      .eq('pending_review', true)
       .select('id')
     if (error) return { updatedIds: [], error: error.message }
     return { updatedIds: (data ?? []).map((row) => row.id), error: null }
@@ -109,6 +115,7 @@ export async function approvePendingPois(
     const { data, error } = await table
       .update({ pending_review: false, is_active: isActive })
       .in('id', groupIds)
+      .eq('pending_review', true)
       .select('id')
     if (error) return { updatedIds: [], error: error.message }
     updatedIds.push(...(data ?? []).map((row) => row.id))
@@ -129,7 +136,24 @@ export async function rejectPendingPois(service: ServiceClient, ids: string[]): 
   }
 
   const table = service.from('poi') as unknown as PoiUpdateWithGateColumns
-  const { data, error } = await table.update(updatePayload).in('id', ids).select('id')
+  const { data, error } = await table
+    .update(updatePayload)
+    .in('id', ids)
+    .eq('pending_review', true)
+    .select('id')
   if (error) return { updatedIds: [], error: error.message }
   return { updatedIds: (data ?? []).map((row) => row.id), error: null }
+}
+
+/**
+ * 일괄 처리 결과를 표준 응답 형태로 나눈다 — 실제로 갱신된 id는 처리, 나머지는 "이미 처리됨"으로
+ * 건너뜀. `pending_review = true` 조건 때문에 그 사이 다른 어드민이 처리한 POI는 갱신되지
+ * 않고, 요청에는 있었으므로 여기서 건너뜀으로 분류된다.
+ */
+export function splitReviewResult(ids: string[], updatedIds: string[]): BulkResult {
+  const updated = new Set(updatedIds)
+  return {
+    processed: ids.filter((id) => updated.has(id)),
+    skipped: ids.filter((id) => !updated.has(id)).map((id) => ({ id, reason: '이미 처리됨' })),
+  }
 }
