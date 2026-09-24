@@ -18,43 +18,54 @@
   .stage { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
   canvas { display: block; width: auto; height: auto; max-width: 100%; max-height: calc(100vh - 100px); border-radius: 6px; }
   .meta { font-size: 12px; color: var(--sub); }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; align-self: start; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; align-self: start; overflow-y: auto; overscroll-behavior: contain; }
+  [hidden] { display: none !important; }
   h1 { font-size: 15px; margin: 0; }
-  .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-  h2 { font-size: 12px; margin: 18px 0 8px; color: var(--sub); font-weight: 600; letter-spacing: .02em; }
-  .row { margin-bottom: 10px; }
-  .row > label { display: flex; justify-content: space-between; font-size: 13px; }
-  .row > label b { font-weight: 500; color: var(--sub); font-variant-numeric: tabular-nums; }
-  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   button { font: inherit; padding: 6px 10px; border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 8px; cursor: pointer; }
   button:hover { background: var(--bg); }
   button svg { width: 12px; height: 12px; fill: currentColor; flex: none; }
   button.primary { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; white-space: nowrap; }
   button.primary:hover { background: var(--accent); opacity: .85; }
-  button.block { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; margin-bottom: 10px; }
+  button.mini { padding: 3px 8px; font-size: 12px; white-space: nowrap; }
+  /* 상단 도구 줄: 전체 랜덤 · PNG 저장 · 영상 저장 · 길이(초) */
+  .tools { display: grid; grid-template-columns: 1.15fr 1fr 1fr auto; gap: 6px; align-items: center; }
+  .tools button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 4px; font-size: 13px; white-space: nowrap; }
+  .tools .strong { font-weight: 600; }
+  .dur { display: flex; align-items: center; gap: 3px; font-size: 12px; color: var(--sub); }
+  .dur input { width: 42px; font: inherit; font-size: 13px; color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 5px 4px; text-align: right; }
+  .status { font-size: 12px; color: var(--sub); min-height: 16px; line-height: 16px; margin: 6px 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status.err { color: #d33; white-space: normal; }
+  /* 접고 펼 수 있는 섹션 */
+  .sec { border-top: 1px solid var(--line); padding: 2px 0 4px; }
+  .sec > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--sub); letter-spacing: .02em; padding: 5px 0; user-select: none; }
+  .sec > summary::-webkit-details-marker { display: none; }
+  .sec > summary::before { content: ''; width: 0; height: 0; border-left: 5px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform .15s; }
+  .sec[open] > summary::before { transform: rotate(90deg); }
+  .sec > summary b { font-weight: 500; margin-left: auto; font-variant-numeric: tabular-nums; }
+  /* 한 줄 행: 레이블 · 조절 요소 · 값 */
+  .row { display: grid; grid-template-columns: 60px minmax(0, 1fr) 54px; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 13px; }
+  .row > label { white-space: nowrap; }
+  .row > b { font-weight: 500; font-size: 12px; color: var(--sub); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .row.wide { grid-template-columns: 60px minmax(0, 1fr); }
+  .row.bg { grid-template-columns: 60px minmax(0, 1fr) 40px; }
+  .row.colors { grid-template-columns: 60px 40px 40px minmax(0, 1fr); }
+  .row.reseed { grid-template-columns: 60px minmax(0, 1fr) 54px auto; }
+  input[type=range] { width: 100%; margin: 0; accent-color: var(--accent); }
   .seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-  .seg button { flex: 1; border: 0; border-radius: 0; padding: 6px 4px; font-size: 13px; }
+  .seg button { flex: 1; border: 0; border-radius: 0; padding: 5px 4px; font-size: 12px; }
   .seg button + button { border-left: 1px solid var(--line); }
   .seg button.on { background: var(--accent); color: var(--accent-text); }
-  .seg.glyph button { padding: 9px 4px; }
-  .seg.glyph button svg { width: auto; height: 20px; display: block; margin: 0 auto; }
-  .colors { display: flex; gap: 8px; }
-  .colors > div { flex: 1; }
-  .colors small { display: block; font-size: 12px; color: var(--sub); margin-bottom: 2px; }
-  input[type=color] { width: 100%; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; }
+  .seg.glyph button { padding: 6px 4px; }
+  .seg.glyph button svg { width: auto; height: 16px; display: block; margin: 0 auto; }
+  input[type=color] { width: 100%; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; }
   input[type=color]:disabled { cursor: not-allowed; }
-  .drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 10px; text-align: center; color: var(--sub); cursor: pointer; font-size: 13px; margin-top: 8px; }
+  .drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 4px 8px; text-align: center; color: var(--sub); cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .drop.over { border-color: var(--accent); color: var(--text); }
   .drop.on { border-style: solid; border-color: var(--accent); color: var(--text); }
-  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  .check { display: flex; gap: 8px; align-items: center; font-size: 13px; margin: 8px 0; }
+  .check { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--sub); margin: 0 0 4px; cursor: pointer; white-space: nowrap; }
+  .check input { margin: 0; }
   #err { color: #d33; font-size: 13px; display: none; }
-  .save { display: flex; gap: 8px; align-items: center; }
-  .save button { flex: 1; white-space: nowrap; }
-  .dur { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
-  .dur input { width: 52px; font: inherit; color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 5px 6px; text-align: right; }
-  .status { font-size: 12px; color: var(--sub); min-height: 18px; margin: 6px 0 4px; }
-  .status.err { color: #d33; }
   .panel[inert] { opacity: .6; }
 </style>
 </head>
@@ -71,48 +82,57 @@
       <h1>JAM! 에셋 제너레이터</h1>
       <button id="playBtn" class="primary" type="button" aria-pressed="true"></button>
     </div>
-    <button id="randomBtn" class="block" type="button"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 0h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2zm1.2 2.2a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm5.6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM6 5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM3.2 7.8a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm5.6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>전체 랜덤</button>
-    <div class="save">
+    <div class="tools">
+      <button id="randomBtn" class="strong" type="button"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 0h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2zm1.2 2.2a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm5.6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM6 5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM3.2 7.8a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm5.6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>전체 랜덤</button>
       <button id="pngBtn" type="button">PNG 저장</button>
       <button id="videoBtn" type="button">영상 저장</button>
       <label class="dur" title="영상 길이(초)"><input type="number" id="dur" min="1" max="60" step="1" value="5" inputmode="numeric" aria-label="영상 길이(초)">초</label>
     </div>
     <div class="status" id="saveStatus"></div>
-    <div class="row" id="progRow" style="display:none"><label>머리 위치 <b id="v_prog"></b></label><input type="range" id="prog" min="0" max="100" step="0.1" value="0"></div>
+    <div class="row" id="progRow" hidden><label for="prog">머리 위치</label><input type="range" id="prog" min="0" max="100" step="0.1" value="0"><b id="v_prog"></b></div>
 
-    <h2>원천 그래픽</h2>
-    <div class="seg glyph" id="letter"></div>
-    <div class="drop" id="drop">또는 투명 PNG / SVG를 끌어다 놓거나 클릭해서 선택</div>
-    <input type="file" id="file" accept="image/png,image/svg+xml,image/*" hidden>
+    <details class="sec" open>
+      <summary>원천 그래픽</summary>
+      <div class="row wide"><label>글자</label><div class="seg glyph" id="letter"></div></div>
+      <div class="row wide"><label>업로드</label><div class="drop" id="drop">PNG / SVG 파일 선택 (끌어다 놓기 가능)</div></div>
+      <input type="file" id="file" accept="image/png,image/svg+xml,image/*" hidden>
+    </details>
 
-    <h2>스테이지</h2>
-    <div class="row"><label>비율 <b id="v_res"></b></label>
-      <div class="seg" id="aspect"><button data-v="1:1" class="on">1:1</button><button data-v="4:5">4:5</button><button data-v="9:16">9:16</button></div>
-    </div>
-    <div class="row"><label>배경색</label><input type="color" id="bg" value="#ff1a00"></div>
+    <details class="sec" open>
+      <summary>스테이지 <b id="v_res"></b></summary>
+      <div class="row bg"><label>비율</label>
+        <div class="seg" id="aspect"><button data-v="1:1" class="on">1:1</button><button data-v="4:5">4:5</button><button data-v="9:16">9:16</button></div>
+        <input type="color" id="bg" value="#ff1a00" title="배경색" aria-label="배경색">
+      </div>
+    </details>
 
-    <h2>이미지</h2>
-    <div class="row"><label>크기 <b id="v_size"></b></label><input type="range" id="size" min="5" max="100" step="1" value="22"></div>
-    <div class="row"><label>블러 <b id="v_blur"></b></label><input type="range" id="blur" min="0" max="100" step="1" value="0"></div>
-    <div class="check"><input type="checkbox" id="follow"><label for="follow">곡선 진행 방향으로 회전</label></div>
-    <div class="row"><label><span id="rotName">회전</span> <b id="v_rot"></b></label><input type="range" id="rot" min="-180" max="180" step="1" value="0"></div>
+    <details class="sec" open>
+      <summary>이미지</summary>
+      <div class="row"><label for="size">크기</label><input type="range" id="size" min="5" max="100" step="1" value="22"><b id="v_size"></b></div>
+      <div class="row"><label for="blur">블러</label><input type="range" id="blur" min="0" max="100" step="1" value="0"><b id="v_blur"></b></div>
+      <div class="row"><label for="rot" id="rotName">회전</label><input type="range" id="rot" min="-180" max="180" step="1" value="0"><b id="v_rot"></b></div>
+      <label class="check"><input type="checkbox" id="follow">곡선 진행 방향으로 회전 (회전값을 더함)</label>
+    </details>
 
-    <h2>그라데이션 (이미지 표면)</h2>
-    <div class="row"><label>방향</label>
-      <div class="seg" id="dir"><button data-v="h" class="on">좌 → 우</button><button data-v="v">상 → 하</button><button data-v="r">중심 → 바깥</button></div>
-    </div>
-    <div class="colors">
-      <div><small id="cAName">시작 색</small><input type="color" id="cA" value="#ff1a00"></div>
-      <div><small>끝 색</small><input type="color" id="cB" value="#ff4dff"></div>
-    </div>
-    <div class="check"><input type="checkbox" id="link" checked><label for="link">시작 색을 배경색과 같게</label></div>
+    <details class="sec" open>
+      <summary>그라데이션 (이미지 표면)</summary>
+      <div class="row wide"><label>방향</label>
+        <div class="seg" id="dir"><button data-v="h" class="on">좌 → 우</button><button data-v="v">상 → 하</button><button data-v="r">중심 → 바깥</button></div>
+      </div>
+      <div class="row colors"><label>색</label>
+        <input type="color" id="cA" value="#ff1a00" title="시작 색" aria-label="시작 색">
+        <input type="color" id="cB" value="#ff4dff" title="끝 색" aria-label="끝 색">
+        <label class="check" style="margin:0"><input type="checkbox" id="link" checked>시작 색 = 배경색</label>
+      </div>
+    </details>
 
-    <h2>이동 곡선</h2>
-    <div class="row"><label>불규칙성 <b id="v_irreg"></b></label><input type="range" id="irreg" min="0" max="100" step="1" value="35"></div>
-    <div class="btns" style="margin:0 0 10px"><button id="reseed">곡선 다시 뽑기</button></div>
-    <div class="row"><label>속도 <b id="v_speed"></b></label><input type="range" id="speed" min="1000" max="2000" step="10" value="1500"></div>
-    <div class="row"><label>복사 간격 <b id="v_gap"></b></label><input type="range" id="gap" min="2" max="120" step="1" value="14"></div>
-    <div class="row"><label>복사 수 <b id="v_count"></b></label><input type="range" id="count" min="200" max="800" step="5" value="260"></div>
+    <details class="sec" open>
+      <summary>이동 곡선</summary>
+      <div class="row reseed"><label for="irreg">불규칙성</label><input type="range" id="irreg" min="0" max="100" step="1" value="35"><b id="v_irreg"></b><button id="reseed" class="mini" type="button" title="곡선을 새로 뽑습니다">다시 뽑기</button></div>
+      <div class="row"><label for="speed">속도</label><input type="range" id="speed" min="1000" max="2000" step="10" value="1500"><b id="v_speed"></b></div>
+      <div class="row"><label for="gap">복사 간격</label><input type="range" id="gap" min="2" max="120" step="1" value="14"><b id="v_gap"></b></div>
+      <div class="row"><label for="count">복사 수</label><input type="range" id="count" min="200" max="800" step="5" value="260"><b id="v_count"></b></div>
+    </details>
   </div>
 </div>
 
@@ -509,12 +529,12 @@
     $('cA').value = state.cA;
     $('cB').value = state.cB;
     $('cA').disabled = state.link;
-    $('cAName').textContent = state.link ? '시작 색 (배경색과 연결됨)' : '시작 색';
+    $('cA').title = state.link ? '시작 색 (배경색과 연결됨)' : '시작 색';
     $('link').checked = state.link;
   }
   function syncRotLabel() {
     // 진행 방향 회전을 켜면 슬라이더는 진행 방향에 더해지는 추가 각도가 된다
-    $('rotName').textContent = state.follow ? '회전 (진행 방향에 더해짐)' : '회전';
+    $('rotName').title = state.follow ? '진행 방향에 이 각도를 더합니다' : '';
   }
   function syncSource(fileName) {
     markSeg('letter', state.source);
@@ -522,7 +542,7 @@
     drop.classList.toggle('on', state.source === 'upload');
     drop.textContent = state.source === 'upload' && fileName
       ? '불러옴: ' + fileName
-      : '또는 투명 PNG / SVG를 끌어다 놓거나 클릭해서 선택';
+      : 'PNG / SVG 파일 선택 (끌어다 놓기 가능)';
   }
   function syncAll() {
     Object.keys(ranges).forEach(function (id) {
@@ -633,7 +653,7 @@
     // 재생 중에는 정지 버튼을, 정지 중에는 재생 버튼을 보여 준다
     playBtn.innerHTML = state.play ? ICON_PAUSE + '정지' : ICON_PLAY + '재생';
     playBtn.setAttribute('aria-pressed', state.play ? 'true' : 'false');
-    $('progRow').style.display = state.play ? 'none' : 'block';
+    $('progRow').hidden = state.play;
   }
   playBtn.addEventListener('click', function () { state.play = !state.play; renderPlayBtn(); });
   renderPlayBtn();
@@ -861,9 +881,17 @@
     }
   });
 
+  // 설정 패널이 스테이지(캔버스 영역)보다 세로로 커지지 않도록 높이를 묶는다. 넘치면 패널 안에서 스크롤한다.
+  // 한 열 배치(좁은 화면)에서는 제한을 풀어 자연스럽게 아래로 이어지게 한다
+  var stageEl = document.querySelector('.stage'), twoCol = window.matchMedia('(min-width: 861px)');
+  function fitPanel() { panel.style.maxHeight = twoCol.matches ? stageEl.offsetHeight + 'px' : ''; }
+  new ResizeObserver(fitPanel).observe(stageEl);
+  twoCol.addEventListener('change', fitPanel);
+
   syncAll();
   applyAspect();
   loadLetter('J');
+  fitPanel();
   requestAnimationFrame(frame);
 })();
 </script>
