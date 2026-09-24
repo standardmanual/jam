@@ -221,6 +221,39 @@ export type Database = {
           },
         ]
       }
+      asset_presets: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          layers: Json
+          name: string
+          stage_ratio: string
+          target_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          layers?: Json
+          name: string
+          stage_ratio: string
+          target_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          layers?: Json
+          name?: string
+          stage_ratio?: string
+          target_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       badge_metric_labels: {
         Row: {
           label_ko: string

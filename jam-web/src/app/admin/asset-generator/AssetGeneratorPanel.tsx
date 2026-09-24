@@ -36,6 +36,7 @@ import type {
 } from '@/lib/asset-generator'
 import ImageLayerFields from './ImageLayerFields'
 import LayerSidebar from './LayerSidebar'
+import PresetPanel from './PresetPanel'
 import SliderRow from './SliderRow'
 import TextLayerFields from './TextLayerFields'
 import {
@@ -78,6 +79,7 @@ interface AssetGeneratorPanelProps {
   onImageLayerChange: (id: string, patch: Partial<ImageLayerConfig>) => void
   onTextLayerChange: (id: string, patch: Partial<TextLayerConfig>) => void
   onReplaceImageLayerAsset: (id: string, file: File) => void
+  onLoadPreset: (stageRatio: StageRatio, layers: OverlayLayerConfig[]) => void
 }
 
 export default function AssetGeneratorPanel({
@@ -99,6 +101,7 @@ export default function AssetGeneratorPanel({
   onImageLayerChange,
   onTextLayerChange,
   onReplaceImageLayerAsset,
+  onLoadPreset,
 }: AssetGeneratorPanelProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { width: stageWidth, height: stageHeight } = resolveStageSize(stageRatio)
@@ -121,7 +124,18 @@ export default function AssetGeneratorPanel({
         전체 무작위
       </Button>
 
-      <Accordion type="multiple" defaultValue={['source', 'stage', 'image', 'gradient', 'curve', 'overlayLayers']} className="w-full">
+      <Accordion
+        type="multiple"
+        defaultValue={['preset', 'source', 'stage', 'image', 'gradient', 'curve', 'overlayLayers']}
+        className="w-full"
+      >
+        <AccordionItem value="preset">
+          <AccordionTrigger>프리셋</AccordionTrigger>
+          <AccordionContent>
+            <PresetPanel stageRatio={stageRatio} overlayLayers={overlayLayers} onLoadPreset={onLoadPreset} />
+          </AccordionContent>
+        </AccordionItem>
+
         <AccordionItem value="source">
           <AccordionTrigger>원천 그래픽</AccordionTrigger>
           <AccordionContent className="flex flex-col gap-3">

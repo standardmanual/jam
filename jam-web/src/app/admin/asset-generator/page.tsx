@@ -21,10 +21,15 @@
  * 떠날 때 정리한다 — 저장소 업로드는 하위 티켓 20260924_2159가 맡는다.
  *
  * 오버레이 레이어(재작업, 20260924_2158): 이미지 레이어 목록을 텍스트 레이어까지 담는
- * `overlayLayers`(이미지·텍스트 혼합, 순서 있는 목록)로 확장했다 — 하위 티켓 20260924_2159의
- * 프리셋이 `layers` 배열 하나에 리본·이미지·텍스트를 순서대로 저장하기 때문이다. `moveImageLayer`·
- * `removeImageLayer`는 id 기반 제네릭이라 이름은 그대로 두고 이 혼합 목록에도 쓴다
- * (assetGeneratorHelpers.ts 주석 참고).
+ * `overlayLayers`(이미지·텍스트 혼합, 순서 있는 목록)로 확장했다 — 티켓 20260924_2159의
+ * 프리셋이 `layers` 배열 하나에 이미지·텍스트를 순서대로 저장하기 때문이다(리본은 저장하지
+ * 않는다). `moveImageLayer`·`removeImageLayer`는 id 기반 제네릭이라 이름은 그대로 두고 이
+ * 혼합 목록에도 쓴다(assetGeneratorHelpers.ts 주석 참고).
+ *
+ * 프리셋 저장·불러오기(티켓 20260924_2159): `PresetPanel`(설정 패널 안 Accordion 섹션)이
+ * 저장·목록·삭제를 맡고, 이 페이지는 불러오기 결과를 반영하는 `handleLoadPreset` 하나만
+ * 가진다 — 스테이지 비율·오버레이 레이어를 통째로 교체하고, 교체로 사라지는 이미지 레이어의
+ * blob URL을 정리한다(`handleRemoveOverlayLayer`와 같은 정리 방식).
  */
 import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/card'
@@ -128,6 +133,23 @@ export default function AssetGeneratorPage() {
   // 같은 레이어를 가리킨다 — 별도로 갱신할 필요가 없다.
   function handleMoveOverlayLayer(id: string, direction: 'up' | 'down') {
     setOverlayLayers((prev) => moveImageLayer(prev, id, direction))
+  }
+
+  // 프리셋 불러오기(티켓 20260924_2159): 스테이지 비율·오버레이 레이어를 통째로 교체한다.
+  // 기존 이미지 레이어 중 이 화면에서 만든 blob URL은 교체로 사라지므로 함께 정리한다
+  // (handleRemoveOverlayLayer와 같은 정리 방식).
+  function handleLoadPreset(newStageRatio: StageRatio, newLayers: OverlayLayerConfig[]) {
+    setStageRatio(newStageRatio)
+    setOverlayLayers((prev) => {
+      prev.forEach((l) => {
+        if (l.type === 'image' && imageLayerUrlsRef.current.has(l.assetUrl)) {
+          URL.revokeObjectURL(l.assetUrl)
+          imageLayerUrlsRef.current.delete(l.assetUrl)
+        }
+      })
+      return newLayers
+    })
+    setSelectedOverlayLayerId(null)
   }
 
   function handleImageLayerChange(id: string, patch: Partial<ImageLayerConfig>) {
@@ -250,6 +272,7 @@ export default function AssetGeneratorPage() {
                 onImageLayerChange={handleImageLayerChange}
                 onTextLayerChange={handleTextLayerChange}
                 onReplaceImageLayerAsset={handleReplaceImageLayerAsset}
+                onLoadPreset={handleLoadPreset}
               />
             </fieldset>
           </CardContent>

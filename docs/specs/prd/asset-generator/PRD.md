@@ -86,8 +86,9 @@ code:
 ## 5. 프리셋
 
 - **저장하는 것**: 대상 컨텐츠 유형(1차는 `badge`), 이름, 스테이지 비율, 이미지 레이어 목록(원본은 저장소 경로로), 텍스트
-  레이어 목록(스타일만), 레이어 순서.
-- **저장하지 않는 것**: 텍스트 글자 내용, 배경색·끝색, 리본 레이어의 랜덤 속성값과 시드. 이 값들은 생성할 때마다 정한다.
+  레이어 목록(스타일만), 레이어 순서(오버레이 레이어 배열 안 위치로 표현).
+- **저장하지 않는 것**: 리본 레이어 자체(색·크기·블러·회전·곡선·랜덤 속성값과 시드 전부), 텍스트 글자 내용. 이 값들은
+  생성할 때마다(수동은 화면에서, 자동은 CLI 입력으로) 정한다.
 - 프리셋의 이미지 원본은 프리셋 저장 시 저장소(`asset-generator/presets/{presetId}/…`)에 올리고, 프리셋은 그 경로를 가리킨다.
   자동 경로는 어드민 화면 없이 이 경로만으로 렌더링할 수 있어야 한다.
 - 사람이 어드민에서 만든다. 에이전트는 프리셋을 만들지 않고 고르기만 한다.
@@ -155,11 +156,16 @@ code:
 리본 레이어의 랜덤 속성은 하나의 시드에서 결정적으로 뽑는다. 같은 프리셋·같은 색·같은 텍스트·같은 시드면 두 경로 모두 같은
 이미지가 나온다. 시드는 등록 묶음과 등록 기록에 남긴다.
 
-## 12. 데이터 (초안 — 확정은 티켓 20260924_2159·2200)
+## 12. 데이터 (`asset_presets`는 확정 — 티켓 20260924_2159, `badges.image_source`는 초안 — 확정은 티켓 20260924_2200)
 
-- `asset_presets`: `id`, `name`, `target_type`(`badge`), `stage_ratio`, `layers`(jsonb: 이미지·텍스트 레이어 목록과 순서),
-  `created_by`, `created_at`, `updated_at`. RLS 활성화, 어드민만 읽고 쓴다.
-- `badges.image_source`(text NULL): §10의 값. CHECK 제약으로 값 3종만 허용.
+- `asset_presets`(마이그레이션 `185_asset_presets.sql`): `id`(uuid), `name`(text), `target_type`(text, CHECK
+  `badge` 하나만), `stage_ratio`(text, CHECK `1:1`·`4:5`·`9:16`), `layers`(jsonb — 오버레이 레이어(이미지·텍스트)
+  목록과 순서만 담는다. 리본 레이어·텍스트 글자 내용은 담지 않는다, §5), `created_by`(uuid, FK 없음 — 운영 편의
+  데이터), `created_at`·`updated_at`. RLS 활성화·정책 없음(service_role 전용, 어드민 API가 `getAdminUser()`로
+  이미 어드민만 통과시킨다). 이미지 레이어의 원본 파일은 `images` 버킷의
+  `asset-generator/presets/{presetId}/{layerId}.{png|svg}` 경로에 함께 올라간다(직렬화·역직렬화 순수 함수는
+  `jam-web/src/lib/asset-generator/presetSerialize.ts`).
+- `badges.image_source`(text NULL): §10의 값. CHECK 제약으로 값 3종만 허용. 확정은 하위 티켓 20260924_2200.
 - 마이그레이션은 파일 작성까지 하위 티켓에서 하고, 실행은 사용자 승인 뒤 메인 세션이 한다.
 
 ## 13. 하지 않을 것 (1차)
@@ -207,4 +213,10 @@ code:
   `shader-lab`과는 별도로 캔버스 `ctx.font`에 맞춘 검색 콤보박스(`TextLayerFields.tsx`)를 새로
   만들었다(`shader-lab` 파일·`googleFonts.ts`는 수정하지 않았다). PNG·영상 저장은 이미지 원본
   로드에 더해 폰트 다운로드 완료까지 기다린 뒤 캡처한다. 프리셋(§5)·적용 탭(§7)은 아직 없다.
+- [20260924_2159](../../../tickets/p2-normal/20260924_2159_Admin_에셋-제너레이터-프리셋-저장-불러오기.md) 완료:
+  §5 프리셋 저장·불러오기·삭제를 구현했다. 마이그레이션은 파일만 작성했다(`185_asset_presets.sql`, 실행은
+  사용자 승인 뒤 메인 세션). 어드민 API(`/api/admin/asset-generator/presets`, `.../[id]`)가 목록·저장(신규/
+  덮어쓰기)·상세·삭제를 맡고, 이미지 레이어 원본은 `images` 버킷에 함께 올린다(삭제 시 폴더째 정리). 화면은
+  설정 패널 Accordion 맨 위 "프리셋" 섹션(`PresetPanel.tsx`)이고, 덮어쓰기·삭제는 `AlertDialog`로 확인한다.
+  직렬화·역직렬화는 `presetSerialize.ts`의 순수 함수로 뺐다. 적용 탭(§7)은 아직 없다.
 - 그 외는 미착수. 하위 티켓 순서는 상위 티켓의 하위 티켓 표를 따른다.
