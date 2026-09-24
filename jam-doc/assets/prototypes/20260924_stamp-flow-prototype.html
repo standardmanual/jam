@@ -75,7 +75,8 @@
     <h2>이미지</h2>
     <div class="row"><label>크기 <b id="v_size"></b></label><input type="range" id="size" min="5" max="100" step="1" value="22"></div>
     <div class="row"><label>블러 <b id="v_blur"></b></label><input type="range" id="blur" min="0" max="100" step="1" value="0"></div>
-    <div class="row"><label>회전 <b id="v_rot"></b></label><input type="range" id="rot" min="-180" max="180" step="1" value="0"></div>
+    <div class="check"><input type="checkbox" id="follow"><label for="follow">곡선 진행 방향으로 회전</label></div>
+    <div class="row"><label><span id="rotName">회전</span> <b id="v_rot"></b></label><input type="range" id="rot" min="-180" max="180" step="1" value="0"></div>
 
     <h2>그라데이션 (이미지 표면)</h2>
     <div class="row"><label>방향</label>
@@ -107,7 +108,7 @@
   function makeCanvas(w, h) { var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; }
 
   var state = {
-    aspect: '1:1', bg: '#ff1a00', size: 22, blur: 0, rot: 0,
+    aspect: '1:1', bg: '#ff1a00', size: 22, blur: 0, rot: 0, follow: false,
     dir: 'h', cA: '#ff4dff', cB: '#7b1cff',
     irreg: 35, seed: 7, speed: 1500, gap: 14, count: 260,
     play: true, head: 0
@@ -268,32 +269,81 @@
     };
   }
 
-  var path = null; // { xs, ys, cum, total }
-  function buildPath() {
-    var rnd = mulberry32(state.seed);
-    var prim = [[1, 2], [2, 3], [1, 3], [3, 2]][Math.floor(rnd() * 4)];
-    var irr = state.irreg / 100;
-    function comps(size, f0) {
-      var list = [{ f: f0, a: 0.5 * size, ph: rnd() * Math.PI * 2 }];
-      var weights = [0.26, 0.2, 0.15, 0.1];
-      for (var k = 0; k < 4; k++) {
+  var path = null; // { xs, ys, tx, ty, cum, total, N }
+  var pick = null, pickKey = ''; // 겹침이 가장 적은 후보 곡선과 그 캐시 키
+
+  // 후보 곡선: 화면 안을 도는 루프 하나(가로·세로 사인의 위상차를 90° 부근으로 둔 타원)에 저주파 굴곡을 더한다.
+  // 8자형은 중앙에서 반드시 자기 자신과 교차하므로 기본 궤도로 쓰지 않는다
+  function makeCandidate(rnd) {
+    var base = rnd() * Math.PI * 2;
+    var delta = (rnd() < 0.5 ? 1 : -1) * (Math.PI / 2) * (0.75 + 0.5 * rnd());
+    var weights = [0.5, 0.26, 0.1];
+    function extras() {
+      var list = [];
+      for (var k = 0; k < 3; k++) {
         // 빈도와 위상은 시드로 고정하고 진폭만 불규칙성에 비례시켜 슬라이더가 부드럽게 변하도록 한다
-        var f = 3 + k * 2 + Math.floor(rnd() * 2);
-        list.push({ f: f, a: irr * weights[k] * size * (0.6 + 0.4 * rnd()), ph: rnd() * Math.PI * 2 });
+        list.push({ f: 2 + k + (rnd() < 0.3 ? 1 : 0), w: weights[k] * (0.6 + 0.4 * rnd()), ph: rnd() * Math.PI * 2 });
       }
       return list;
     }
-    var cx = comps(W, prim[0]), cy = comps(H, prim[1]);
-    var N = 3000;
-    var xs = new Float32Array(N + 1), ys = new Float32Array(N + 1), cum = new Float32Array(N + 1);
-    for (var i = 0; i <= N; i++) {
-      var t = i / N, px = W / 2, py = H / 2;
-      for (var a = 0; a < cx.length; a++) px += cx[a].a * Math.sin(2 * Math.PI * cx[a].f * t + cx[a].ph);
-      for (var b = 0; b < cy.length; b++) py += cy[b].a * Math.sin(2 * Math.PI * cy[b].f * t + cy[b].ph);
-      xs[i] = px; ys[i] = py;
-      cum[i] = i === 0 ? 0 : cum[i - 1] + Math.hypot(px - xs[i - 1], py - ys[i - 1]);
+    return { phX: base, phY: base + delta, ex: extras(), ey: extras() };
+  }
+
+  function candidatePoint(c, t, irr, out) {
+    var tau = 2 * Math.PI * t;
+    var x = W / 2 + 0.3 * W * Math.sin(tau + c.phX);
+    var y = H / 2 + 0.3 * H * Math.sin(tau + c.phY);
+    for (var k = 0; k < c.ex.length; k++) x += irr * c.ex[k].w * W * Math.sin(c.ex[k].f * tau + c.ex[k].ph);
+    for (var m = 0; m < c.ey.length; m++) y += irr * c.ey[m].w * H * Math.sin(c.ey[m].f * tau + c.ey[m].ph);
+    out.x = x; out.y = y;
+  }
+
+  // 곡선의 서로 다른 구간이 가까이 지나가는 정도(겹침 점수). 낮을수록 덜 겹친다
+  function overlapScore(c, irr) {
+    var M = 180, px = new Float32Array(M), py = new Float32Array(M), q = { x: 0, y: 0 };
+    for (var i = 0; i < M; i++) { candidatePoint(c, i / M, irr, q); px[i] = q.x; py[i] = q.y; }
+    var d0 = 0.15 * Math.min(W, H), skip = M / 10, score = 0;
+    for (var a = 0; a < M; a++) {
+      for (var b = a + 1; b < M; b++) {
+        var gap = Math.min(b - a, M - (b - a));
+        if (gap <= skip) continue;
+        var dist = Math.hypot(px[a] - px[b], py[a] - py[b]);
+        if (dist < d0) score += 1 - dist / d0;
+      }
     }
-    path = { xs: xs, ys: ys, cum: cum, total: cum[N], N: N };
+    return score;
+  }
+
+  function buildPath() {
+    // 시드마다 후보를 여러 개 만들어 겹침이 가장 적은 곡선을 고른다.
+    // 후보 선택은 불규칙성 슬라이더와 무관하게 약한 굴곡·강한 굴곡 두 경우의 점수를 합산해 정한다.
+    // 그래서 슬라이더를 움직여도 곡선이 갑자기 바뀌지 않고, 탐색 결과는 시드·스테이지별로 캐시한다
+    var key = state.seed + '|' + W + '|' + H;
+    if (pickKey !== key) {
+      var rnd = mulberry32(state.seed), bestScore = Infinity;
+      for (var n = 0; n < 32; n++) {
+        var cand = makeCandidate(rnd), s = overlapScore(cand, 0.35) + overlapScore(cand, 1.0);
+        if (s < bestScore) { bestScore = s; pick = cand; }
+      }
+      pickKey = key;
+    }
+    var best = pick;
+    var irr = state.irreg / 100;
+    var N = 6000, q = { x: 0, y: 0 };
+    var xs = new Float32Array(N + 1), ys = new Float32Array(N + 1), cum = new Float32Array(N + 1);
+    var tx = new Float32Array(N + 1), ty = new Float32Array(N + 1);
+    for (var i = 0; i <= N; i++) {
+      candidatePoint(best, i / N, irr, q);
+      xs[i] = q.x; ys[i] = q.y;
+      cum[i] = i === 0 ? 0 : cum[i - 1] + Math.hypot(q.x - xs[i - 1], q.y - ys[i - 1]);
+    }
+    // 진행 방향(접선): 이웃 점의 차이로 구하고 닫힌 곡선이므로 양 끝은 순환시킨다
+    for (var j = 0; j <= N; j++) {
+      var prev = (j - 1 + N) % N, next = (j + 1) % N;
+      var dx = xs[next] - xs[prev], dy = ys[next] - ys[prev], len = Math.hypot(dx, dy) || 1;
+      tx[j] = dx / len; ty[j] = dy / len;
+    }
+    path = { xs: xs, ys: ys, tx: tx, ty: ty, cum: cum, total: cum[N], N: N };
   }
 
   function posAt(s, out) {
@@ -305,6 +355,7 @@
     var f = seg > 0 ? (s - path.cum[lo]) / seg : 0;
     out.x = path.xs[lo] + (path.xs[hi] - path.xs[lo]) * f;
     out.y = path.ys[lo] + (path.ys[hi] - path.ys[lo]) * f;
+    out.a = Math.atan2(path.ty[lo] + (path.ty[hi] - path.ty[lo]) * f, path.tx[lo] + (path.tx[hi] - path.tx[lo]) * f);
   }
 
   // ---------- 스테이지 ----------
@@ -341,6 +392,11 @@
   bindRange('size', 'size', function (v) { return v + '%'; });
   bindRange('blur', 'blur', function (v) { return v + '%'; }, buildStamp);
   bindRange('rot', 'rot', function (v) { return v + '°'; });
+  $('follow').addEventListener('change', function () {
+    state.follow = this.checked;
+    // 진행 방향 회전을 켜면 슬라이더는 진행 방향에 더해지는 추가 각도가 된다
+    $('rotName').textContent = state.follow ? '회전 (진행 방향에 더해짐)' : '회전';
+  });
   bindRange('irreg', 'irreg', function (v) { return v + '%'; }, function () { var f = state.head / path.total; buildPath(); state.head = f * path.total; });
   bindRange('speed', 'speed', function (v) { return v + 'px/s'; });
   bindRange('gap', 'gap', function (v) { return v + 'px'; });
@@ -398,10 +454,13 @@
       var dw = stamp.width * sc, dh = stamp.height * sc;
       ctx.imageSmoothingQuality = 'high';
       // 스탬프 중심을 기준으로 회전한다. 그라데이션은 이미지 표면에 입혀져 있으므로 함께 회전한다
-      var rad = state.rot * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+      var rad = state.rot * Math.PI / 180;
+      // 곡선이 트레일보다 짧아도 머리가 자기 꼬리를 덮지 않도록 곡선 길이의 90%까지만 그린다
+      var n = Math.min(state.count, Math.max(1, Math.floor(0.9 * path.total / state.gap)));
       // 꼬리부터 그려 머리가 가장 위에 오게 한다
-      for (var i = state.count - 1; i >= 0; i--) {
+      for (var i = n - 1; i >= 0; i--) {
         posAt(state.head - i * state.gap, tmp);
+        var ang = rad + (state.follow ? tmp.a : 0), cs = Math.cos(ang), sn = Math.sin(ang);
         ctx.setTransform(cs, sn, -sn, cs, tmp.x, tmp.y);
         ctx.drawImage(stamp, -dw / 2, -dh / 2, dw, dh);
       }
