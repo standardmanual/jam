@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import { Button } from '@/components/admin/ui/button'
@@ -8,13 +9,15 @@ import { shiftDateStr } from '@/lib/admin/today-calendar'
 
 export interface CalendarCellItem {
   id: string
-  /** "09:00" 또는 "매시간"처럼 화면에 그대로 찍을 시각 라벨 */
+  /** "09:00" 또는 "매시간"처럼 화면에 그대로 찍을 시각 라벨. 카드 항목은 유형 ID(또는 "유형 없음")를 담는다(티켓 20260924_0906) */
   time: string
   label: string
-  /** 항목 종류 표식. 'routine'이면 크론과 구분되는 표식을 붙인다(티켓 20260924_0905) */
-  kind?: 'routine'
-  /** true면 흐리게 표시한다(꺼진 루틴 등) */
+  /** 항목 종류 표식. 'routine'이면 크론과 구분되는 표식을, 'card'면 홈피드 카드임을 나타낸다(티켓 20260924_0905, 20260924_0906) */
+  kind?: 'routine' | 'card'
+  /** true면 흐리게 표시한다(꺼진 루틴, 비활성 카드 등) */
   dim?: boolean
+  /** 있으면 항목 전체가 이 경로로 이동하는 링크가 된다(티켓 20260924_0906) */
+  href?: string
 }
 
 export interface CalendarColumn {
@@ -23,6 +26,10 @@ export interface CalendarColumn {
   weekdayLabel: string
   dateLabel: string
   items: CalendarCellItem[]
+  /** 그 날짜에 걸치는 활성 장기 카드 수. 있으면 "장기 카드 N장" 한 줄로 표시하고 `/admin/today?date=`로 링크한다(티켓 20260924_0906) */
+  longCardsCount?: number
+  /** true면 "미편성"을 표시한다(활성 단기 카드가 없는 날, 티켓 20260924_0906) */
+  unprogrammed?: boolean
 }
 
 interface WeeklyCalendarProps {
@@ -79,22 +86,45 @@ export default function WeeklyCalendar({
             <p className="text-xs font-semibold text-muted-foreground mb-2">
               {col.weekdayLabel} <span className="font-normal">{col.dateLabel}</span>
             </p>
-            {col.items.length === 0 ? (
+            {col.items.length === 0 && !col.longCardsCount && !col.unprogrammed ? (
               <p className="text-xs text-muted-foreground/60">일정 없음</p>
             ) : (
-              <ul className="space-y-1">
-                {col.items.map((item) => (
-                  <li key={item.id} className={cn('text-xs leading-snug', item.dim && 'opacity-40')}>
-                    <span className="font-mono text-muted-foreground">{item.time}</span>{' '}
-                    {item.kind === 'routine' && (
-                      <span className="mr-1 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
-                        루틴
-                      </span>
-                    )}
-                    <span>{item.label}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="space-y-1">
+                {col.unprogrammed && <p className="text-xs text-muted-foreground/60">미편성</p>}
+                {!!col.longCardsCount && (
+                  <Link href={`/admin/today?date=${col.date}`} className="block text-xs hover:underline">
+                    장기 카드 {col.longCardsCount}장
+                  </Link>
+                )}
+                {col.items.length > 0 && (
+                  <ul className="space-y-1">
+                    {col.items.map((item) => {
+                      const content = (
+                        <>
+                          <span className="font-mono text-muted-foreground">{item.time}</span>{' '}
+                          {item.kind === 'routine' && (
+                            <span className="mr-1 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
+                              루틴
+                            </span>
+                          )}
+                          <span>{item.label}</span>
+                        </>
+                      )
+                      return (
+                        <li key={item.id} className={cn('text-xs leading-snug', item.dim && 'opacity-40')}>
+                          {item.href ? (
+                            <Link href={item.href} className="hover:underline">
+                              {content}
+                            </Link>
+                          ) : (
+                            content
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
             )}
           </div>
         ))}
