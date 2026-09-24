@@ -2,26 +2,13 @@
 
 import { useEffect, useRef, type ReactNode } from 'react'
 import { trackEvent } from '@/lib/analytics/gtag'
-
-const IMPRESSION_KEY_PREFIX = 'jam_today_impression_'
-
-function sendTodayCardEvent(cardId: string, event: 'impression' | 'click'): void {
-  const payload = JSON.stringify({ cardId, event })
-  if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-    const blob = new Blob([payload], { type: 'application/json' })
-    if (navigator.sendBeacon('/api/today/events', blob)) return
-  }
-  // sendBeacon이 없거나(구형 브라우저) 큐잉에 실패했을 때만 폴백한다. keepalive로 페이지
-  // 이동 중에도 요청이 취소되지 않게 한다.
-  fetch('/api/today/events', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: payload,
-    keepalive: true,
-  }).catch(() => {
-    // 계측 전송 실패는 사용자 경험에 영향을 주지 않는다 — 조용히 무시
-  })
-}
+import {
+  IMPRESSION_THRESHOLD,
+  createClickReporter,
+  hasSeenImpression,
+  markImpressionSeen,
+  sendTodayCardEvent,
+} from '@/lib/today/cardEventClient'
 
 /**
  * 투데이 카드 노출·클릭 트래커 (티켓 20260924_0004).
@@ -50,32 +37,22 @@ export default function TodayCardTracker({
   children: ReactNode
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const reportClick = createClickReporter(cardId, trackClick)
 
   useEffect(() => {
     const el = containerRef.current
     if (!el || typeof IntersectionObserver === 'undefined') return
 
-    const storageKey = IMPRESSION_KEY_PREFIX + cardId
-    let alreadySeen = false
-    try {
-      alreadySeen = sessionStorage.getItem(storageKey) === '1'
-    } catch {
-      // sessionStorage 접근 불가(프라이빗 모드 등) — 이번 세션에서 중복 전송될 수 있다, 무시
-    }
-    if (alreadySeen) return
+    if (hasSeenImpression(cardId)) return
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return
-        try {
-          sessionStorage.setItem(storageKey, '1')
-        } catch {
-          // 위와 동일 — 저장 실패해도 이번 전송 자체는 막지 않는다
-        }
+        markImpressionSeen(cardId)
         sendTodayCardEvent(cardId, 'impression')
         observer.disconnect()
       },
-      { threshold: 0.5 }
+      { threshold: IMPRESSION_THRESHOLD }
     )
     observer.observe(el)
     return () => observer.disconnect()
@@ -85,9 +62,9 @@ export default function TodayCardTracker({
     <div
       ref={containerRef}
       onClick={
-        trackClick
+        reportClick
           ? () => {
-              sendTodayCardEvent(cardId, 'click')
+              reportClick()
               trackEvent('today_card_click', { card_id: cardId, content_type_id: contentTypeId ?? null, template_type: templateType ?? null })
             }
           : undefined
