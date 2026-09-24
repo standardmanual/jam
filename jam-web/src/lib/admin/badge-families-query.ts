@@ -13,7 +13,15 @@
  * import할 수 없다. 순수 판정은 `badge-families.ts`에 있다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
-import type { FamilyBadge } from './badge-families'
+import {
+  filterFamilies,
+  groupBadgesIntoFamilies,
+  sortFamilies,
+  type BadgeFamily,
+  type FamilyBadge,
+  type FamilyListParams,
+} from './badge-families'
+import { ADMIN_LIST_PAGE_SIZE, pageRange } from './list-params'
 
 const PAGE_SIZE = 1000
 
@@ -53,4 +61,43 @@ export async function fetchActivityFamilyBadges(): Promise<FamilyBadgeFetchResul
   }
 
   return { badges, error: null }
+}
+
+export interface FamilyListResult {
+  /** 조건을 걸기 전 전체 계열 — 필터 선택지와 "전체 N개 중" 표시에 쓴다 */
+  all: BadgeFamily[]
+  /** 조건에 맞는 계열 전체(정렬 적용, 쪽 나누기 전) — 전체 선택 ID 조회·내보내기가 쓴다 */
+  matched: BadgeFamily[]
+  /** 현재 쪽에 보일 계열 */
+  items: BadgeFamily[]
+  /** 실제로 적용한 쪽 번호 — 요청한 쪽이 마지막 쪽을 넘으면 마지막 쪽으로 맞춘다 */
+  page: number
+  /** 계열로 묶기 전 활동 배지 수 */
+  badgeCount: number
+  /** 배지 조회 중 오류 메시지(부분 목록으로 그리지 않도록 화면이 알린다) */
+  error: string | null
+}
+
+/**
+ * 계열 목록 한 함수(티켓 20260924_0949) — 조회 → 계열로 묶기 → 필터 → 정렬 → 쪽 나누기를
+ * 한 번에 한다. 목록 페이지와 전체 선택 ID 조회(`api/admin/badge-families/ids`)·내보내기가
+ * 함께 써서 화면의 "총 N개"와 선택 건수가 갈라지지 않는다. 계열은 그룹핑이 끝난 뒤에야
+ * 필터 축(사용 조건 지표)을 알 수 있어 DB가 아닌 메모리에서 거르고, 쪽 나누기도 메모리에서
+ * 50건씩 한다(계열은 100여 건 규모).
+ */
+export async function listFamilies(params: FamilyListParams): Promise<FamilyListResult> {
+  const { badges, error } = await fetchActivityFamilyBadges()
+  const all = groupBadgesIntoFamilies(badges)
+  const filtered = filterFamilies(all, {
+    q: params.q,
+    activityType: params.activityType,
+    conditionKey: params.conditionKey,
+  })
+  const matched = sortFamilies(filtered, params.sort)
+
+  const totalPages = Math.max(1, Math.ceil(matched.length / ADMIN_LIST_PAGE_SIZE))
+  const page = Math.min(params.page, totalPages)
+  const [from, to] = pageRange(page, ADMIN_LIST_PAGE_SIZE)
+
+  return { all, matched, items: matched.slice(from, to + 1), page, badgeCount: badges.length, error }
 }
