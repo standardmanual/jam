@@ -131,11 +131,9 @@ the `forms/weekly-briefing-format.md` shape. If one data source fails, retry it 
 with the rest and put `수집 실패: 출처 (사유) → 비어 있는 항목` at the top.
 
 **Public mission check (weekly, ticket 20260924_1408)**: In the weekly briefing's `공개 미션 점검`
-section, count today's joinable public missions from the admin read API (`scripts/admin-api-read.mjs`
-missions and badges): a mission with no visibility rule and no gate axis, already started and not yet
-ended. Zero is `[주의]`. Also check that the reward badge of each open-ended public mission still exists
-(a deleted badge silently skips the reward). If the response has no field to judge it, write `확인 불가`.
-The rule is `docs/specs/SERVICE_OPERATIONS.md` §9-5.
+section, copy the two lines that `node scripts/admin-api-read.mjs` prints (`공개 미션 점검` and
+`상시 공개 미션 보상 배지`, ticket 20260924_1502) as they are, including `[주의]` and `확인 불가`. Do not
+judge or recount them yourself. The rule is `docs/specs/SERVICE_OPERATIONS.md` §9-5.
 
 **Slack is the only external publication allowed** (decision 5-1):
 - `#jam-report` (`C0C2U1T186M`): 3–5 line summary + report link. Never post the report body.
