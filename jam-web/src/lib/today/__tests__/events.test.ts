@@ -2,7 +2,8 @@
  * 투데이 카드 이벤트 기록·집계 (티켓 20260924_0004)
  *
  * 확인하는 것:
- * 1. 입력 검증(`parseTodayCardEventInput`) — cardId UUID, event 종류, followupAction 길이·필수 여부
+ * 1. 입력 검증(`parseTodayCardEventInput`) — cardId UUID, event 종류, `followupAction`은
+ *    값과 무관하게 무시(받지 않고 저장하지 않는다, 티켓 20260924_0810)
  * 2. `recordTodayCardEvent` — 카드의 content_type_id를 조회해 함께 insert하고,
  *    insert 페이로드에 유저 식별자 키(user_id 등)가 전혀 없다
  * 3. `aggregateTodayCardEvents` — 유형 ID×이벤트별 건수 집계 형태
@@ -70,7 +71,7 @@ describe('parseTodayCardEventInput — 입력 검증', () => {
     const result = parseTodayCardEventInput({ cardId: VALID_UUID, event: 'impression' })
     expect(result.ok).toBe(true)
     if (result.ok) {
-      expect(result.value).toEqual({ cardId: VALID_UUID, event: 'impression', followupAction: null })
+      expect(result.value).toEqual({ cardId: VALID_UUID, event: 'impression' })
     }
   })
 
@@ -89,23 +90,19 @@ describe('parseTodayCardEventInput — 입력 검증', () => {
     expect(result.ok).toBe(false)
   })
 
-  it('followupAction이 80자를 넘으면 거부한다', () => {
+  it('followupAction이 있어도 무시하고 통과한다(길이와 무관, 값을 저장하지 않는다)', () => {
     const result = parseTodayCardEventInput({
       cardId: VALID_UUID,
       event: 'click',
-      followupAction: 'a'.repeat(81),
-    })
-    expect(result.ok).toBe(false)
-  })
-
-  it('followupAction(80자 이내)을 채우면 통과한다', () => {
-    const result = parseTodayCardEventInput({
-      cardId: VALID_UUID,
-      event: 'click',
-      followupAction: '트라이브 상세 진입',
+      followupAction: 'a'.repeat(1000),
     })
     expect(result.ok).toBe(true)
-    if (result.ok) expect(result.value.followupAction).toBe('트라이브 상세 진입')
+    if (result.ok) expect(result.value).toEqual({ cardId: VALID_UUID, event: 'click' })
+  })
+
+  it('followupAction이 문자열이 아니어도 거부하지 않는다(값과 무관하게 무시한다)', () => {
+    const result = parseTodayCardEventInput({ cardId: VALID_UUID, event: 'click', followupAction: 12345 })
+    expect(result.ok).toBe(true)
   })
 })
 
@@ -114,7 +111,7 @@ describe('recordTodayCardEvent — 카드 유형 ID 동봉 insert, 유저 식별
     fixtures.insertedPayloads.length = 0
     fixtures.cardsById[VALID_UUID] = { content_type_id: 'T05' }
 
-    const result = await recordTodayCardEvent({ cardId: VALID_UUID, event: 'impression', followupAction: null }, { content_type_id: 'T05' })
+    const result = await recordTodayCardEvent({ cardId: VALID_UUID, event: 'impression' }, { content_type_id: 'T05' })
 
     expect(result.ok).toBe(true)
     expect(fixtures.insertedPayloads).toHaveLength(1)
@@ -130,7 +127,7 @@ describe('recordTodayCardEvent — 카드 유형 ID 동봉 insert, 유저 식별
     fixtures.insertedPayloads.length = 0
     fixtures.cardsById[VALID_UUID] = { content_type_id: 'T05' }
 
-    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click', followupAction: null }, { content_type_id: 'T05' })
+    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click' }, { content_type_id: 'T05' })
 
     const keys = Object.keys(fixtures.insertedPayloads[0])
     for (const forbidden of ['user_id', 'userId', 'user', 'email', 'nickname']) {
@@ -201,7 +198,7 @@ describe('assertCardExposable — 카드 노출 상태 검증', () => {
     fixtures.cardsById[ACTIVE_UUID] = { is_active: true, starts_at: '2026-09-01T00:00:00Z', ends_at: '2026-10-01T00:00:00Z', content_type_id: 'T05' }
     fixtures.cardQueryCount = 0
     const exposure = await assertCardExposable(ACTIVE_UUID, now)
-    if (exposure.ok) await recordTodayCardEvent({ cardId: ACTIVE_UUID, event: 'impression', followupAction: null }, exposure.card)
+    if (exposure.ok) await recordTodayCardEvent({ cardId: ACTIVE_UUID, event: 'impression' }, exposure.card)
     expect(fixtures.cardQueryCount).toBe(1)
   })
 })

@@ -3,8 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { parseTodayCardEventInput, recordTodayCardEvent, assertCardExposable, checkRateLimit } from '@/lib/today/events'
 import { d } from '@/lib/i18n'
 
-// 본문 크기 상한(문자 수). 정상 페이로드({"cardId":"...","event":"impression"})는 수십 바이트,
-// followupAction(최대 80자)을 더해도 200바이트를 넘지 않는다 — 여유를 두되 남용은 막는다.
+// 본문 크기 상한(문자 수). 정상 페이로드({"cardId":"...","event":"impression"})는 수십 바이트다
+// (`followupAction`은 받지 않는다, 티켓 20260924_0810) — 여유를 두되 남용은 막는다.
 const MAX_BODY_LENGTH = 2000
 
 // 유저별 분당 요청 상한 — 임의 카드 ID 반복 전송으로 유형별 집계를 조작하는 것을 막는다(티켓 20260924_0111).

@@ -18,12 +18,10 @@ export type TodayCardEventType = (typeof TODAY_CARD_EVENT_TYPES)[number]
 const ACCEPTED_EVENT_TYPES = ['impression', 'click'] as const satisfies readonly TodayCardEventType[]
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const MAX_FOLLOWUP_ACTION_LENGTH = 80
 
 export interface TodayCardEventInput {
   cardId: string
   event: TodayCardEventType
-  followupAction: string | null
 }
 
 export type TodayCardEventValidation =
@@ -39,7 +37,9 @@ export function parseTodayCardEventInput(body: unknown): TodayCardEventValidatio
   if (!body || typeof body !== 'object') {
     return { ok: false, error: '요청 본문이 올바르지 않습니다.' }
   }
-  const { cardId, event, followupAction } = body as Record<string, unknown>
+  // `followupAction`은 읽지 않는다 — 요청 본문에 있어도 무시하고 저장하지 않는다(어떤 값이든
+  // 400으로 거부하지 않는다). 2026-09-24 사용자 결정, 티켓 20260924_0810.
+  const { cardId, event } = body as Record<string, unknown>
 
   if (typeof cardId !== 'string' || !UUID_RE.test(cardId)) {
     return { ok: false, error: 'cardId가 올바른 UUID 형식이 아닙니다.' }
@@ -48,22 +48,7 @@ export function parseTodayCardEventInput(body: unknown): TodayCardEventValidatio
     return { ok: false, error: `event는 ${ACCEPTED_EVENT_TYPES.join('/')} 중 하나여야 합니다.` }
   }
 
-  let normalizedFollowupAction: string | null = null
-  if (followupAction !== undefined && followupAction !== null) {
-    if (
-      typeof followupAction !== 'string' ||
-      followupAction.length === 0 ||
-      followupAction.length > MAX_FOLLOWUP_ACTION_LENGTH
-    ) {
-      return { ok: false, error: `followupAction은 1~${MAX_FOLLOWUP_ACTION_LENGTH}자 문자열이어야 합니다.` }
-    }
-    normalizedFollowupAction = followupAction
-  }
-
-  return {
-    ok: true,
-    value: { cardId, event: event as TodayCardEventType, followupAction: normalizedFollowupAction },
-  }
+  return { ok: true, value: { cardId, event: event as TodayCardEventType } }
 }
 
 export interface ExposableCard {
@@ -149,7 +134,8 @@ export async function recordTodayCardEvent(
     card_id: input.cardId,
     content_type_id: card.content_type_id,
     event: input.event,
-    followup_action: input.followupAction,
+    // followupAction을 받지 않으므로 항상 null이다(2026-09-24 사용자 결정, 티켓 20260924_0810).
+    followup_action: null,
   })
 
   if (insertError) return { ok: false, error: insertError.message }
