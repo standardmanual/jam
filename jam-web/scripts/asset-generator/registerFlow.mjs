@@ -20,7 +20,14 @@ import path from 'node:path'
 import { findCheckinBadgeNamesNotFoundError } from '../../src/lib/admin/badge-validation'
 import { APPLY_GENERATED_IMAGE_BUCKET } from '../../src/lib/admin/applyGeneratedImageConstants'
 
-import { AGENT_IMAGE_SOURCE, buildBadgeInsertPayload, findPreviousRecordError, readBundleFile, validateBundle } from './registerBundle.mjs'
+import {
+  AGENT_IMAGE_SOURCE,
+  UUID_PATTERN,
+  buildBadgeInsertPayload,
+  findPreviousRecordError,
+  readBundleFile,
+  validateBundle,
+} from './registerBundle.mjs'
 import {
   RECORD_FILE_NAME,
   SQL_FILE_NAME,
@@ -34,8 +41,6 @@ export const STORAGE_BUCKET = APPLY_GENERATED_IMAGE_BUCKET
 
 /** 되돌림 전에 «이미 사용자 데이터가 붙었는지» 읽는 테이블(모두 `badge_id` 컬럼). 티켓 20260924_2202. */
 export const UNDO_REFERENCE_TABLES = ['user_activity_badges', 'inventory_items', 'poi_drops']
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const errorMessage = (e) => (e instanceof Error ? e.message : String(e))
 
