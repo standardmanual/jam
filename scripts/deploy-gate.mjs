@@ -8,7 +8,7 @@
 //   ① git만으로 되는 점검(비밀값·마이그레이션 되돌림 SQL·새 API 라우트 인증)을 사람 경로와 무인
 //      경로가 같은 코드로 돌리게 하고,
 //   ② 프로덕션 도메인이 지금 어느 배포를 서빙하는지를 Vercel 인증 없이 읽는다(공개 페이지 HTML의
-//      정적 자원 주소에 붙는 ?dpl=dpl_… 배포 식별자).
+//      정적 자원 주소에 붙는 ?dpl=dpl_… 또는 <html data-dpl-id="dpl_…"> 배포 식별자).
 //
 // 성격: 의존성 없음(Node 내장 모듈과 전역 fetch만 쓴다 — 클라우드 세션에서 npm install 없이 돈다).
 // 저장소·DB·Vercel에 아무것도 쓰지 않는다. 점검은 모두 배포를 막는 방향이거나 읽기 전용이라 무인
@@ -23,7 +23,7 @@
 //     git log·merge-base는 쓰지 않는다 — 클라우드 세션의 얕은 복제에서도 돈다.
 //     종료 코드: 0 통과 · 1 차단 · 2 게이트 실행 오류(배포하지 않는다)
 //   node scripts/deploy-gate.mjs served [--url <url>] [--wait-change <이전 id>] [--timeout <초>] [--interval <초>]
-//     기본 주소는 https://j-a-m.app. 응답 HTML에서 첫 dpl=dpl_… 값을 출력한다(없으면 none).
+//     기본 주소는 https://j-a-m.app. 응답 HTML에서 첫 dpl=dpl_… 또는 data-dpl-id 값을 출력한다(없으면 none).
 //     종료 코드: 0 찾음 · 3 응답은 왔으나 식별자 없음 · 2 네트워크 오류·시간 초과 ·
 //               4 --wait-change 시간 안에 id가 바뀌지 않음
 //   공통: 64 인자 오류
@@ -66,7 +66,8 @@ const ROLLBACK_MARKER = /^\s*--\s*(?:되돌림|ROLLBACK\b|DOWN\b)/i
 const ROUTE_FILE = /^jam-web\/src\/app\/api\/(?:(.+)\/)?route\.ts$/
 const ROUTE_AUTH = /auth\.getUser|@\/lib\/admin\/auth|CRON_SECRET|ADMIN_SECRET/
 
-const DPL_ID = /dpl=(dpl_[A-Za-z0-9]+)/
+// 프로덕션 /login은 정적 자원의 ?dpl= 대신 <html data-dpl-id="…">로만 식별자를 내보낸다(티켓 20260924_0812)
+const DPL_ID = /(?:dpl=|data-dpl-id=")(dpl_[A-Za-z0-9]+)/
 
 const USAGE = `사용법:
   node scripts/deploy-gate.mjs check [--base <ref>] [--head <ref>] [--json]
@@ -413,7 +414,7 @@ async function runServed(flags) {
     }
     if (r.kind === 'none') {
       console.log('none')
-      console.error(`응답은 왔으나(HTTP ${r.status}) 배포 식별자(dpl=dpl_…)를 찾지 못했습니다: ${url}`)
+      console.error(`응답은 왔으나(HTTP ${r.status}) 배포 식별자(dpl=dpl_… 또는 data-dpl-id)를 찾지 못했습니다: ${url}`)
       return 3
     }
     console.error(`서빙 배포를 확인하지 못했습니다 — ${r.message}: ${url}`)

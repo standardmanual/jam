@@ -368,6 +368,11 @@ try {
   let out = await runServed(['--url', s.url])
   assert.deepEqual([out.status, out.stdout], [0, 'dpl_AAA111'], `식별자를 읽지 못했다:\n${out.stderr}`)
 
+  // 정적 자원에 ?dpl= 가 없고 <html data-dpl-id>에만 식별자가 있는 페이지(프로덕션 /login, 티켓 20260924_0812)
+  s = await serve((req, res) => res.end('<!DOCTYPE html><html data-dpl-id="dpl_HTML01" lang="ko"><head></head></html>'))
+  out = await runServed(['--url', s.url])
+  assert.deepEqual([out.status, out.stdout], [0, 'dpl_HTML01'], `data-dpl-id를 읽지 못했다:\n${out.stderr}`)
+
   s = await serve((req, res) => res.end(page('dpl_FIRST1', 'dpl_SECOND2')))
   out = await runServed(['--url', s.url])
   assert.deepEqual([out.status, out.stdout], [0, 'dpl_FIRST1'], '첫 번째 식별자를 써야 한다')
