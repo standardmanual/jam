@@ -12,13 +12,16 @@ import { createServiceClient } from '@/lib/supabase/server'
 export const TODAY_CARD_EVENT_TYPES = ['impression', 'click', 'followup'] as const
 export type TodayCardEventType = (typeof TODAY_CARD_EVENT_TYPES)[number]
 
+// API가 실제로 받는 이벤트 유형. `followup`(후속 행동)은 UI가 보내지 않아 수집하지 않기로
+// 했다(2026-09-24 사용자 결정, 티켓 20260924_0810). DB CHECK 제약(TODAY_CARD_EVENT_TYPES 전체)은
+// 그대로 두고 API 입력 검증에서만 좁힌다.
+const ACCEPTED_EVENT_TYPES = ['impression', 'click'] as const satisfies readonly TodayCardEventType[]
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const MAX_FOLLOWUP_ACTION_LENGTH = 80
 
 export interface TodayCardEventInput {
   cardId: string
   event: TodayCardEventType
-  followupAction: string | null
 }
 
 export type TodayCardEventValidation =
@@ -34,34 +37,18 @@ export function parseTodayCardEventInput(body: unknown): TodayCardEventValidatio
   if (!body || typeof body !== 'object') {
     return { ok: false, error: '요청 본문이 올바르지 않습니다.' }
   }
-  const { cardId, event, followupAction } = body as Record<string, unknown>
+  // `followupAction`은 읽지 않는다 — 요청 본문에 있어도 무시하고 저장하지 않는다(어떤 값이든
+  // 400으로 거부하지 않는다). 2026-09-24 사용자 결정, 티켓 20260924_0810.
+  const { cardId, event } = body as Record<string, unknown>
 
   if (typeof cardId !== 'string' || !UUID_RE.test(cardId)) {
     return { ok: false, error: 'cardId가 올바른 UUID 형식이 아닙니다.' }
   }
-  if (typeof event !== 'string' || !TODAY_CARD_EVENT_TYPES.includes(event as TodayCardEventType)) {
-    return { ok: false, error: `event는 ${TODAY_CARD_EVENT_TYPES.join('/')} 중 하나여야 합니다.` }
+  if (typeof event !== 'string' || !ACCEPTED_EVENT_TYPES.includes(event as (typeof ACCEPTED_EVENT_TYPES)[number])) {
+    return { ok: false, error: `event는 ${ACCEPTED_EVENT_TYPES.join('/')} 중 하나여야 합니다.` }
   }
 
-  let normalizedFollowupAction: string | null = null
-  if (followupAction !== undefined && followupAction !== null) {
-    if (
-      typeof followupAction !== 'string' ||
-      followupAction.length === 0 ||
-      followupAction.length > MAX_FOLLOWUP_ACTION_LENGTH
-    ) {
-      return { ok: false, error: `followupAction은 1~${MAX_FOLLOWUP_ACTION_LENGTH}자 문자열이어야 합니다.` }
-    }
-    normalizedFollowupAction = followupAction
-  }
-  if (event === 'followup' && !normalizedFollowupAction) {
-    return { ok: false, error: 'followup 이벤트는 followupAction이 필요합니다.' }
-  }
-
-  return {
-    ok: true,
-    value: { cardId, event: event as TodayCardEventType, followupAction: normalizedFollowupAction },
-  }
+  return { ok: true, value: { cardId, event: event as TodayCardEventType } }
 }
 
 export interface ExposableCard {
@@ -147,7 +134,8 @@ export async function recordTodayCardEvent(
     card_id: input.cardId,
     content_type_id: card.content_type_id,
     event: input.event,
-    followup_action: input.followupAction,
+    // followupAction을 받지 않으므로 항상 null이다(2026-09-24 사용자 결정, 티켓 20260924_0810).
+    followup_action: null,
   })
 
   if (insertError) return { ok: false, error: insertError.message }
@@ -160,25 +148,34 @@ export interface TodayCardEventAggregateRow {
   count: number
 }
 
+// PostgREST 기본 행 상한(1,000)과 맞춘다. 이 값을 넘는 기간은 페이지를 나눠 반복 조회한다
+// (티켓 20260924_0810 — 상한에서 조용히 잘리는 문제 대응).
+const AGGREGATE_PAGE_SIZE = 1000
+
 /**
  * 기간(`from` 이상 `to` 미만, ISO 문자열) 안의 이벤트를 유형 ID×이벤트별 건수로 집계한다.
  * `computeKpiWeeklyMetrics`(kpiWeekly.ts)와 같은 방식 — 원본 행을 읽어 서버에서 그룹핑한다.
+ * `id` 오름차순으로 `.range()` 페이지를 반복해 1,000행 상한에서 잘리지 않게 한다.
  */
 export async function aggregateTodayCardEvents(from: string, to: string): Promise<TodayCardEventAggregateRow[]> {
   const supabase = createServiceClient()
-
-  const { data, error } = await supabase
-    .from('today_card_events')
-    .select('content_type_id, event')
-    .gte('occurred_at', from)
-    .lt('occurred_at', to)
-
-  if (error) throw error
-
   const counts = new Map<string, number>()
-  for (const row of data ?? []) {
-    const key = `${row.content_type_id ?? ''}\u0000${row.event}`
-    counts.set(key, (counts.get(key) ?? 0) + 1)
+
+  for (let offset = 0; ; offset += AGGREGATE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('today_card_events')
+      .select('content_type_id, event')
+      .gte('occurred_at', from)
+      .lt('occurred_at', to)
+      .order('id', { ascending: true })
+      .range(offset, offset + AGGREGATE_PAGE_SIZE - 1)
+
+    if (error) throw error
+    for (const row of data ?? []) {
+      const key = `${row.content_type_id ?? ''}\u0000${row.event}`
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+    if (!data || data.length < AGGREGATE_PAGE_SIZE) break
   }
 
   return Array.from(counts.entries()).map(([key, count]) => {
