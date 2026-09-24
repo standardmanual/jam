@@ -20,8 +20,15 @@ import {
   formatWeekRangeLabel,
 } from '@/lib/admin/cronSchedule'
 import { weeklyRoutineOccurrences, routineOccurrenceId } from '@/lib/admin/scheduledRoutines'
-import { shiftDateStr, kstDayBoundsIso } from '@/lib/admin/today-calendar'
+import { shiftDateStr, kstDayBoundsIso, todayKstDateString } from '@/lib/admin/today-calendar'
 import { weeklyCards, type WeeklyCardDay, type WeeklyCardInput } from '@/lib/admin/weeklyCards'
+import {
+  fetchWeeklyCardMetrics,
+  fetchFirstEventKstDate,
+  formatCardMetricsNote,
+  cardMetricKey,
+  type CardMetricCounts,
+} from '@/lib/admin/weeklyCardMetrics'
 import { weeklyMissions, type WeeklyMissionInput, type WeeklyMissionsResult } from '@/lib/admin/weeklyMissions'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 import { computeKpiWeeklyMetrics, resolveKpiWeeklyRange, DEFAULT_KPI_WEEKLY_DAYS } from '@/lib/admin/kpiWeekly'
@@ -61,6 +68,25 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
     weeklyCardDays = null
   }
 
+  // 20260924_0908: 단기 카드의 노출·열람 수. 오늘 이전(포함) 날짜가 있는 주에서만 1번 조회한다 —
+  // 미래 주는 조회하지 않는다. 실패하면 null로 두고 카드 항목 아래 수치 줄만 비운다(출처별 격리).
+  const todayKst = todayKstDateString()
+  let cardMetrics: { counts: Map<string, CardMetricCounts>; firstEventDate: string | null } | null = null
+  if (weeklyCardDays && weekStart <= todayKst) {
+    try {
+      const cardIds = [...new Set(weeklyCardDays.flatMap((d) => d.shortCards.map((c) => c.id)))]
+      const { startIso: weekStartIso } = kstDayBoundsIso(weekStart)
+      const { endIso: weekEndIso } = kstDayBoundsIso(shiftDateStr(weekStart, 6))
+      const [counts, firstEventDate] = await Promise.all([
+        fetchWeeklyCardMetrics(cardIds, weekStartIso, weekEndIso),
+        fetchFirstEventKstDate(),
+      ])
+      cardMetrics = { counts, firstEventDate }
+    } catch {
+      cardMetrics = null
+    }
+  }
+
   // 20260924_0907: 미션도 보고 있는 주 범위로 한 번만 조회한다(필요한 컬럼만). 실패하면 null로 두고
   // 막대·"상시 미션 N개" 줄만 숨긴다 — 크론·루틴·카드 표시는 그대로다(출처별 격리).
   let missionsWeek: WeeklyMissionsResult | null = null
@@ -93,6 +119,14 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
       kind: 'card',
       dim: !c.is_active,
       href: `/admin/today/${c.id}?date=${date}`,
+      note: cardMetrics
+        ? (formatCardMetricsNote({
+            date,
+            today: todayKst,
+            firstEventDate: cardMetrics.firstEventDate,
+            counts: cardMetrics.counts.get(cardMetricKey(c.id, date)),
+          }) ?? undefined)
+        : undefined,
     }))
 
     // 그 주에 새로 시작하는 상시 미션은 시작 요일 칸에 "시작" 항목으로 보여 준다(티켓 20260924_0907).

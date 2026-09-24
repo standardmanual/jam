@@ -23,6 +23,8 @@ export interface CalendarCellItem {
   dim?: boolean
   /** 있으면 항목 전체가 이 경로로 이동하는 링크가 된다(티켓 20260924_0906) */
   href?: string
+  /** 있으면 항목 아래 작은 글씨 한 줄로 표시한다. 카드 항목의 노출·열람 수 등(티켓 20260924_0908) */
+  note?: string
 }
 
 export interface CalendarColumn {
@@ -159,6 +161,7 @@ export default function WeeklyCalendar({
                           ) : (
                             content
                           )}
+                          {item.note && <p className="text-[11px] text-muted-foreground">{item.note}</p>}
                         </li>
                       )
                     })}
