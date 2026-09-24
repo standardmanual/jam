@@ -312,7 +312,7 @@ export default function TodayCardStack({
           card.layout_type === 'ranking_list' ? (
             <RankingListCard key={card.id} card={card} currentUserId={currentUserId} />
           ) : (
-            <TodayCardTracker key={card.id} cardId={card.id}>
+            <TodayCardTracker key={card.id} cardId={card.id} contentTypeId={card.content_type_id} templateType={card.template_type}>
               <Link href={card.resolved_href} className="block">
                 {card.layout_type === 'badge_gallery' ? <BadgeGalleryCard card={card} />
                   : card.layout_type === 'shortcut' ? <ShortcutCard card={card} />

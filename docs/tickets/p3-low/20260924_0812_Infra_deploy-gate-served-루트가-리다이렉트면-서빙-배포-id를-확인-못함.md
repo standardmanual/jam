@@ -2,9 +2,9 @@
 id: "20260924_0812"
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-24
-closed:
+closed: 2026-09-24
 parent: "20260923_2252"
 related:
 ---
@@ -49,7 +49,7 @@ scripts/deploy-gate.test.mjs (data-dpl-id 페이지 케이스 1건)
 ### 배포 정보
 - 배포일: 2026-09-24 staging 반영(배포 스크립트라 서비스 배포와 무관)
 - 환경: staging
-- 커밋: (이 커밋)
+- 커밋: c0fc161d
 
 ### 실행 지표
 
