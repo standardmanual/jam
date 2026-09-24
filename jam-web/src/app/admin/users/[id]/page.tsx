@@ -1,8 +1,15 @@
+import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createServiceClient } from '@/lib/supabase/server'
+import { getAdminUser, isAdminAccount } from '@/lib/admin/auth'
+import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
+import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
+import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 import type { UserRow } from '@/types/database'
 import UserGrantForm from '../../points/UserGrantForm'
+import { ResetUserButton } from '../ResetUserButton'
+import { DeleteUserButton } from '../DeleteUserButton'
 import { BadgeHistoryTable, type BadgeHistoryRow } from './BadgeHistoryTable'
 import { AdminRoleToggle } from './AdminRoleToggle'
 import { BadgeDiagnosisButton } from './BadgeDiagnosisButton'
@@ -10,6 +17,8 @@ import { CombineFailTable, type CombineFailRow } from './CombineFailTable'
 
 interface Props {
   params: Promise<{ id: string }>
+  /** 배지 획득 히스토리의 번호 페이지 이동(`page`) — 같은 키가 두 번 오면 배열이라 정규화한다(티켓 20260906_1312) */
+  searchParams: SearchParamsPromise
 }
 
 function formatDateTime(iso: string): string {
@@ -18,21 +27,33 @@ function formatDateTime(iso: string): string {
   })
 }
 
-export default async function AdminUserDetailPage({ params }: Props) {
+export default async function AdminUserDetailPage({ params, searchParams }: Props) {
   const { id } = await params
+  const rawParams = pickSingleQueryParams(await searchParams)
+  const page = Math.max(1, parseInt(rawParams.page ?? '1', 10) || 1)
   const service = createServiceClient()
 
   const { data: userRaw } = await service.from('users').select('*').eq('id', id).single()
   if (!userRaw) notFound()
   const user = userRaw as UserRow
 
-    const { data: badgeHistoryRaw } = await service
+  // 배지 획득 히스토리 — 50건씩 서버 페이지 이동(티켓 20260924_0951). 총 개수는 count 값이다
+  // (배열 길이로 세면 PostgREST 1,000행 상한에서 조용히 잘린다). 같은 시각에 획득한 행이 쪽 경계에서
+  // 새거나 겹치지 않도록 id를 보조 정렬 키로 둔다.
+  const [historyFrom, historyTo] = pageRange(page, ADMIN_LIST_PAGE_SIZE)
+  const { data: badgeHistoryRaw, count: badgeHistoryTotal } = await service
     .from('user_activity_badges')
-    .select('id, earned_at, triggered_by, triggered_by_activity_name, condition_snapshot, badges(id, name, rarity)')
+    .select(
+      'id, earned_at, triggered_by, triggered_by_activity_name, condition_snapshot, badges(id, name, rarity)',
+      { count: 'exact' }
+    )
     .eq('user_id', id)
     .order('earned_at', { ascending: false })
+    .order('id', { ascending: true })
+    .range(historyFrom, historyTo)
 
   const badgeHistory = (badgeHistoryRaw ?? []) as unknown as BadgeHistoryRow[]
+  const badgeHistoryCount = badgeHistoryTotal ?? badgeHistory.length
 
   // 믹스 실패 이력 (티켓 20260910_1408) — 최신순. 재료 배지 이름은 실제로 쓰인 id만
   // 골라 조회한다(배지 전체를 훑으면 PostgREST 응답 상한에 절단된다 — recipes/page.tsx 주석 참고).
@@ -55,6 +76,11 @@ export default async function AdminUserDetailPage({ params }: Props) {
   // ADMIN_EMAILS 화이트리스트 계정인지 (20260827_015) — 안내 문구에만 사용, 판정 로직은 lib/admin/auth.ts 공용
   const adminEmails = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean)
   const isWhitelisted = adminEmails.includes(user.email)
+
+  // 유저 조회 목록에서 옮겨 온 초기화·완전 삭제(티켓 20260924_0951). 어드민 계정·본인은 서버가 거부하므로 버튼을 숨긴다.
+  const currentAdmin = await getAdminUser()
+  const isSelf = currentAdmin?.id === user.id
+  const isAdmin = isAdminAccount(user)
 
   return (
     <div className="p-8">
@@ -83,16 +109,36 @@ export default async function AdminUserDetailPage({ params }: Props) {
         />
       </div>
 
+      {/* 계정 작업 — 목록에서 뺀 초기화·완전 삭제 */}
+      <div className="mb-8 max-w-xl bg-white border border-border rounded-2xl p-5 space-y-3">
+        <h3 className="font-bold">계정 작업</h3>
+        {isSelf ? (
+          <p className="text-muted-foreground text-sm">본인 계정은 이 화면에서 초기화하거나 삭제할 수 없어요.</p>
+        ) : (
+          <div className="flex items-center gap-4">
+            {isAdmin ? (
+              <p className="text-muted-foreground text-sm">어드민 계정은 초기화할 수 없어요.</p>
+            ) : (
+              <ResetUserButton userId={user.id} userName={user.username ?? user.email} />
+            )}
+            <DeleteUserButton userId={user.id} userName={user.username ?? user.email} userEmail={user.email} />
+          </div>
+        )}
+      </div>
+
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-bold">배지 획득 히스토리</h2>
         <div className="flex items-center gap-3">
-          <p className="text-muted-foreground text-sm">총 {badgeHistory.length}개</p>
+          <p className="text-muted-foreground text-sm">총 {badgeHistoryCount}개</p>
           {/* 조건 충족·미발급 진단 (티켓 20260906_1432) */}
           <BadgeDiagnosisButton userId={user.id} />
         </div>
       </div>
 
       <BadgeHistoryTable rows={badgeHistory} />
+      <Suspense>
+        <DataTablePagination page={page} totalPages={totalPagesOf(badgeHistoryCount, ADMIN_LIST_PAGE_SIZE)} />
+      </Suspense>
 
       <div className="mt-10 mb-4 flex items-center justify-between">
         <h2 className="text-lg font-bold">믹스 실패 이력</h2>

@@ -90,8 +90,10 @@ export async function POST(req: NextRequest) {
   }
 
   let partition
+  const labelById = new Map<string, string>()
   try {
     const targets = await fetchUserTargets(supabase, ids)
+    for (const t of targets) if (t.email) labelById.set(t.id, t.email)
     partition = partitionUserTargets(ids, targets, admin.id)
   } catch (error) {
     console.error('[users bulk] 대상 유저 조회 실패:', error)
@@ -144,7 +146,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const failed: BulkSkip[] = results.filter((r) => !r.ok).map((r) => ({ id: r.id, reason: r.error ?? '처리하지 못했습니다.' }))
+  const failed: BulkSkip[] = results.filter((r) => !r.ok).map((r) => ({ id: r.id, reason: r.error ?? '처리하지 못했습니다.', label: labelById.get(r.id) }))
   return bulkJson(
     {
       processed: results.filter((r) => r.ok).map((r) => r.id),

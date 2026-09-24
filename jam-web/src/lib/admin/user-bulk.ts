@@ -51,18 +51,20 @@ export function partitionUserTargets(
   let excludedSelfCount = 0
 
   for (const id of ids) {
+    const target = byId.get(id)
+    // 건너뜀 안내에 UUID 대신 이메일을 보여 주려고 알고 있는 경우에만 label을 붙인다
+    const label = target?.email || undefined
     if (id === adminId) {
-      skipped.push({ id, reason: SKIP_REASON_SELF })
+      skipped.push({ id, reason: SKIP_REASON_SELF, label })
       excludedSelfCount++
       continue
     }
-    const target = byId.get(id)
     if (!target) {
       skipped.push({ id, reason: SKIP_REASON_NOT_FOUND })
       continue
     }
     if (isAdminAccount(target)) {
-      skipped.push({ id, reason: SKIP_REASON_ADMIN })
+      skipped.push({ id, reason: SKIP_REASON_ADMIN, label })
       excludedAdminCount++
       continue
     }

@@ -1,15 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import {
-  createColumnHelper,
-  useTable,
-  type ColumnVisibilityState,
-  type SortingState,
-} from '@tanstack/react-table'
+import { createColumnHelper, useTable, type ColumnVisibilityState } from '@tanstack/react-table'
 import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/data-table/features'
 import { DataTable } from '@/components/admin/data-table/data-table'
-import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-column-header'
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
 import type { BadgeConditionSnapshot } from '@/types/database'
 
@@ -51,11 +45,12 @@ const columnHelper = createColumnHelper<DataTableFeatures, BadgeHistoryRow>()
 
 /**
  * 유저 상세의 배지 획득 히스토리 테이블(20260826_015) — 3단계a 공용 Data Table 컴포넌트로
- * 전환했다. 읽기 전용 목록이라 행 선택/일괄 액션 개념 자체가 없다(티켓 명시) — 정렬(획득일시)
- * 과 컬럼 표시 토글만 제공한다.
+ * 전환했다. 읽기 전용 목록이라 행 선택/일괄 액션 개념 자체가 없다(티켓 명시) — 컬럼 표시 토글만
+ * 제공한다. 정렬(획득일시 최신순)과 50건 단위 쪽 나누기는 서버(`[id]/page.tsx`)가 한다 —
+ * 쪽이 나뉜 목록을 이 표에서 다시 정렬하면 현재 쪽 안에서만 정렬돼 오해를 부른다
+ * (티켓 20260924_0951, 상위 티켓 §1-6).
  */
 export function BadgeHistoryTable({ rows }: BadgeHistoryTableProps) {
-  const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
 
   const columns = useMemo(
@@ -117,9 +112,9 @@ export function BadgeHistoryTable({ rows }: BadgeHistoryTableProps) {
       }),
       columnHelper.accessor('earned_at', {
         id: 'earnedAt',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="획득일시" />,
+        header: '획득일시',
+        enableSorting: false,
         meta: { label: '획득일시' },
-        // ISO 문자열은 사전식 정렬로도 시간순과 일치한다 — 기본 sortFn(원시값 비교)으로 충분.
         cell: ({ getValue }) => (
           <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(getValue())}</span>
         ),
@@ -133,8 +128,8 @@ export function BadgeHistoryTable({ rows }: BadgeHistoryTableProps) {
     data: rows,
     columns,
     getRowId: (row) => row.id,
-    state: { sorting, columnVisibility },
-    onSortingChange: setSorting,
+    manualSorting: true,
+    state: { columnVisibility },
     onColumnVisibilityChange: setColumnVisibility,
   })
 

@@ -81,8 +81,8 @@ describe('미리보기(dry_run)', () => {
     expect(data.processed).toEqual([USER_A, USER_B])
     expect(data.skipped).toEqual(
       expect.arrayContaining([
-        { id: OTHER_ADMIN, reason: '어드민 계정' },
-        { id: ADMIN_ID, reason: '본인 계정' },
+        { id: OTHER_ADMIN, reason: '어드민 계정', label: 'boss@x.com' },
+        { id: ADMIN_ID, reason: '본인 계정', label: 'me@jam.app' },
       ])
     )
     expect(mocks.hardDeleteUser).not.toHaveBeenCalled()
@@ -138,9 +138,9 @@ describe('실행', () => {
     expect(data.processed).toEqual([USER_A])
     expect(data.skipped).toEqual(
       expect.arrayContaining([
-        { id: USER_B, reason: '삭제 실패' },
-        { id: OTHER_ADMIN, reason: '어드민 계정' },
-        { id: ADMIN_ID, reason: '본인 계정' },
+        { id: USER_B, reason: '삭제 실패', label: 'b@x.com' },
+        { id: OTHER_ADMIN, reason: '어드민 계정', label: 'boss@x.com' },
+        { id: ADMIN_ID, reason: '본인 계정', label: 'me@jam.app' },
       ])
     )
   })

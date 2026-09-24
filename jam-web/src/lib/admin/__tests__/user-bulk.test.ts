@@ -39,7 +39,7 @@ describe('partitionUserTargets', () => {
       ADMIN_ID
     )
     expect(result.eligible).toEqual(['u2'])
-    expect(result.skipped).toEqual([{ id: 'u1', reason: SKIP_REASON_ADMIN }])
+    expect(result.skipped).toEqual([{ id: 'u1', reason: SKIP_REASON_ADMIN, label: 'a@x.com' }])
     expect(result.excludedAdminCount).toBe(1)
   })
 
@@ -51,7 +51,7 @@ describe('partitionUserTargets', () => {
       ADMIN_ID
     )
     expect(result.eligible).toEqual([])
-    expect(result.skipped).toEqual([{ id: 'u1', reason: SKIP_REASON_ADMIN }])
+    expect(result.skipped).toEqual([{ id: 'u1', reason: SKIP_REASON_ADMIN, label: 'boss@jam.app' }])
   })
 
   it('실행 어드민 본인은 어드민이기도 하지만 "본인 계정"으로 먼저 분류한다', () => {
@@ -64,7 +64,7 @@ describe('partitionUserTargets', () => {
       ADMIN_ID
     )
     expect(result.eligible).toEqual(['u1'])
-    expect(result.skipped).toEqual([{ id: ADMIN_ID, reason: SKIP_REASON_SELF }])
+    expect(result.skipped).toEqual([{ id: ADMIN_ID, reason: SKIP_REASON_SELF, label: 'me@x.com' }])
     expect(result.excludedSelfCount).toBe(1)
     expect(result.excludedAdminCount).toBe(0)
   })
