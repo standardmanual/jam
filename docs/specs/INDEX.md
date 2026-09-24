@@ -44,6 +44,10 @@ status: active
 
 - [GA4_EVENTS.md](prd/analytics/GA4_EVENTS.md) — GA4 커스텀 이벤트의 연동 구조, staging·production 트래픽 분리, 이벤트별 트리거와 파라미터, 계측 위치를 정리한 명세다.
 
+## docs/specs/prd/asset-generator/
+
+- [PRD.md](prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다.
+
 ## docs/specs/prd/badge-share/
 
 - [PRD.md](prd/badge-share/PRD.md) — 배지 상세 페이지에서 배지를 이미지로 만들어 공유하거나 기기에 저장하는 기능의 플로우와 플랫폼별 동작을 정의한 PRD다.

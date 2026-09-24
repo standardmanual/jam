@@ -38,6 +38,7 @@ description: "PRD 폴더의 문서 구성, 읽는 시점, 주제별 PRD 하위 �
 | [Analytics/](./analytics/) | GA4 커스텀 이벤트 계측 명세 |
 | [Inventory/](./inventory/) | 인벤토리 포화 인지·드랍 순환 유도 |
 | [content-automation/](./content-automation/) | 홈피드·배지·미션 운영 자동화 파이프라인 (6층 구조·유형 카탈로그 17종·전략 변경안·유형 리뷰). **draft**, 티켓 20260923_2252 |
+| [asset-generator/](./asset-generator/) | JAM! 에셋 제너레이터 — 배지 대표 이미지 제작 도구(리본 그래픽 + 이미지·텍스트 레이어 + 프리셋, 수동·자동 두 경로). **draft**, 티켓 20260924_2154 |
 
 새 주제별 PRD 세트 생성 시 `docs/specs/prd/{주제}/` 하위 폴더로 구분한다 (파일명 접두어 사용 안 함).
 
