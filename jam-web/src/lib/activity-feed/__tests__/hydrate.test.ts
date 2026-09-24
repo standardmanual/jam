@@ -13,7 +13,7 @@ type Row = { id: string; name: string; image_url: string | null; rarity: string 
 type EarnRow = { user_id: string; badge_id: string; earn_count: number | null; earn_history: unknown }
 
 let badgesResult: { data: Row[] }
-let earnRowsResult: { data: EarnRow[] }
+let earnRowsResult: { data: EarnRow[] | null; error?: { message: string } }
 
 function makeBuilder(result: { data: unknown }) {
   const builder = {
@@ -161,5 +161,32 @@ describe('hydrateFeedBadgeInfo — 반복 발급형 회차별 가상 피드 항�
 
     expect(result).toHaveLength(1)
     expect(result[0].strava_activity_id).toBe(999)
+  })
+
+  it('user_activity_badges 조회가 실패해 data가 null이면 회차를 쪼개지 않고 단건으로 배지 정보만 갱신한다', async () => {
+    earnRowsResult = { data: null, error: { message: 'boom' } }
+
+    const result = await hydrateFeedBadgeInfo([badgeEarnedItem({ metadata: { badge_id: 'badge-1', point_reward: 50 } })])
+
+    expect(result).toHaveLength(1)
+    expect(result[0].id).toBe('feed-1')
+    expect(result[0].metadata.badge_name).toBe('이번 주의 약속')
+    expect(result[0].metadata.point_reward).toBe(50)
+  })
+
+  it('가상 항목은 원래 항목 자리에서 펼쳐지고, 배지가 아닌 항목의 순서는 유지된다', async () => {
+    earnRowsResult = {
+      data: [
+        { user_id: 'u-1', badge_id: 'badge-1', earn_count: 2, earn_history: [
+          { earned_at: '2026-09-02T00:00:00.000Z', strava_activity_id: 1 },
+          { earned_at: '2026-09-03T00:00:00.000Z', strava_activity_id: 2 },
+        ] },
+      ],
+    }
+    const other = badgeEarnedItem({ id: 'feed-0', event_type: 'mission_joined', metadata: {} })
+
+    const result = await hydrateFeedBadgeInfo([other, badgeEarnedItem()])
+
+    expect(result.map((r) => r.id)).toEqual(['feed-0', 'feed-1::0', 'feed-1::1'])
   })
 })
