@@ -1,8 +1,23 @@
+import { Suspense } from 'react'
 import { IconAlertTriangle } from '@tabler/icons-react'
 import { getPointsSummary } from '@/lib/points/summary'
+import { createServiceClient } from '@/lib/supabase/server'
+import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
+import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
+import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
+import {
+  LEDGER_COLUMNS,
+  parseLedgerListParams,
+  applyLedgerListQuery,
+  ledgerReasonLabel,
+  type LedgerEntry,
+  type LedgerListQuery,
+  type LedgerRow,
+} from '@/lib/admin/points-ledger-query'
 import AdminUserSearch from './AdminUserSearch'
 import { RankingTable } from './RankingTable'
 import { HighValueTable } from './HighValueTable'
+import { LedgerFilters } from './LedgerFilters'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,8 +25,46 @@ function fmt(n: number): string {
   return n.toLocaleString('ko-KR')
 }
 
-export default async function AdminPointsPage() {
-  const s = await getPointsSummary()
+/**
+ * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — 같은 키가 두 번 오면(`?page=1&page=2`)
+ * Next가 배열을 넘긴다. `pickSingleQueryParams`가 배열을 「값 없음」으로 흡수해 이 아래
+ * 모든 읽기가 단일 문자열만 보게 한다 (티켓 20260906_1312).
+ */
+interface AdminPointsPageProps {
+  searchParams: SearchParamsPromise
+}
+
+export default async function AdminPointsPage({ searchParams }: AdminPointsPageProps) {
+  const rawParams = pickSingleQueryParams(await searchParams)
+  const ledgerParams = parseLedgerListParams(rawParams)
+  const page = Math.max(1, parseInt(rawParams.page ?? '1', 10) || 1)
+
+  const supabase = createServiceClient()
+  let ledgerQuery = supabase
+    .from('point_transactions')
+    .select(LEDGER_COLUMNS, { count: 'exact' }) as unknown as LedgerListQuery<LedgerRow>
+  ledgerQuery = applyLedgerListQuery(ledgerQuery, ledgerParams)
+  const [from, to] = pageRange(page, ADMIN_LIST_PAGE_SIZE)
+
+  const [s, ledgerRes] = await Promise.all([getPointsSummary(), ledgerQuery.range(from, to)])
+
+  const ledgerRows = ledgerRes.data ?? []
+  const ledgerTotal = ledgerRes.count ?? 0
+  const ledgerUserIds = [...new Set(ledgerRows.map((r) => r.user_id))]
+  const { data: usersRaw } =
+    ledgerUserIds.length > 0
+      ? await supabase.from('users').select('id, username').in('id', ledgerUserIds)
+      : { data: [] as { id: string; username: string | null }[] }
+  const usernameById = new Map((usersRaw ?? []).map((u) => [u.id, u.username]))
+
+  const ledgerEntries: LedgerEntry[] = ledgerRows.map((r) => ({
+    id: r.id,
+    user_id: r.user_id,
+    username: usernameById.get(r.user_id) ?? null,
+    amount: r.amount,
+    label: ledgerReasonLabel(r.reason, r.admin_reason_label),
+    created_at: r.created_at,
+  }))
 
   return (
     <div className="p-8 space-y-8">
@@ -48,11 +101,18 @@ export default async function AdminPointsPage() {
         <RankingTable title="미션별 발행량" rows={s.missionRanking} hrefBase="/admin/missions" linkPerItem={false} />
       </div>
 
-      {/* 최근 고액 지급/회수 */}
-      <div>
-        <h2 className="text-lg font-bold mb-1">최근 고액 지급/회수</h2>
-        <p className="text-muted-foreground text-xs mb-3">기준액({fmt(s.highValueThreshold)}P) 이상 원장 최근 20건 (사후 감사)</p>
-        <HighValueTable rows={s.recentHighValue} />
+      {/* 고액 지급/회수 원장 */}
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-lg font-bold mb-1">고액 지급/회수 원장</h2>
+          <p className="text-muted-foreground text-xs">기준액({fmt(s.highValueThreshold)}P) 이상 원장 (사후 감사)</p>
+        </div>
+        <Suspense>
+          <LedgerFilters />
+        </Suspense>
+        <div className="text-sm text-muted-foreground">총 {fmt(ledgerTotal)}건</div>
+        <HighValueTable rows={ledgerEntries} totalCount={ledgerTotal} />
+        <DataTablePagination page={page} totalPages={totalPagesOf(ledgerTotal, ADMIN_LIST_PAGE_SIZE)} />
       </div>
 
       {/* 유저 지급/회수 */}
