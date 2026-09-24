@@ -15,7 +15,7 @@ import {
  * 페이지네이션·필터링 feature는 일부러 등록하지 않는다:
  * - 이 프로젝트의 어드민 목록은 전부 서버사이드 페이지네이션(`page.tsx`의 searchParams
  *   기반 쿼리, 20260826_011)이라 TanStack 자체 페이지네이션이 필요 없다. 페이지 이동은
- *   기존 `Pagination` 컴포넌트(URL page 파라미터)가 그대로 담당한다.
+ *   공용 `DataTablePagination` 컴포넌트(URL page 파라미터, 20260924_0940)가 담당한다.
  * - 필터도 서버(URL searchParams)에 위임한다 — 목록/카드 뷰가 뷰포트에 따라 조건부로
  *   마운트되므로(`BadgeList.tsx`) 필터 UI(`BadgesFilterBar.tsx`)는 데스크탑 전용인 이
  *   테이블의 `table` 인스턴스 밖(page.tsx 레벨)에 산다. 그래서 `DataTableFacetedFilter`는

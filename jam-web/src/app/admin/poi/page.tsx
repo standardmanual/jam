@@ -5,7 +5,7 @@ import { Button } from '@/components/admin/ui/button'
 import type { BadgeRow, PoiCategoryRow } from '@/types/database'
 import { PoiList, type PoiListRow } from '@/components/admin/poi/PoiList'
 import PoiFilters from './PoiFilters'
-import Pagination from './Pagination'
+import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 const PAGE_SIZE = 30
@@ -107,7 +107,7 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
       <PoiList pois={pois} badgeMap={badgeMap} categoryLabelMap={categoryLabelMap} categories={categories} />
 
       {/* 페이지네이션 */}
-      <Pagination page={page} totalPages={totalPages} searchParams={params} />
+      <DataTablePagination page={page} totalPages={totalPages} />
     </div>
   )
 }
