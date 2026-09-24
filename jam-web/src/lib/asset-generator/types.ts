@@ -4,6 +4,13 @@
  * 정본: docs/specs/prd/asset-generator/PRD.md §4(레이어)·§5(프리셋).
  * 이미지 레이어는 20260924_2155에서 타입을 선언하고 20260924_2157에서 render.ts의
  * `drawImageLayer`로 그리기를 확정했다. 텍스트 레이어는 타입만 있고 그리기는 후속 티켓 과제다.
+ *
+ * 레이어 식별(재작업, 20260924_2157): `id`는 클라이언트에서 생성해 배열 인덱스 대신 선택
+ * 상태를 추적하는 키로 쓴다(참고: `src/app/admin/shader-lab/ShaderLabLayerSidebar.tsx`의
+ * `layer.id` 추적 방식) — 순서 변경으로 배열 인덱스가 바뀌어도 선택이 다른 레이어를 가리키지
+ * 않는다. 프리셋 저장 시에도 그대로 함께 저장되지만 읽는 쪽에서 쓰지 않아 무해하다. 순서
+ * 자체는 `layers` 배열 안 위치로 표현하므로(§5 "레이어 순서") 레이어별 `order` 필드는 따로
+ * 두지 않는다.
  */
 
 /** 스테이지 비율. 긴 변은 항상 1280px (PRD §3). */
@@ -54,6 +61,8 @@ export interface RibbonLayerConfig {
 /** 이미지 레이어 (PRD §4.2). 위치·크기는 스테이지 기준 비율(%)로 저장해 비율이 바뀌어도 유지된다. */
 export interface ImageLayerConfig {
   type: 'image';
+  /** 선택 상태 추적용 식별자(배열 인덱스 아님). 클라이언트에서 생성 */
+  id: string;
   /** 업로드한 PNG/SVG. 프리셋 저장 시 저장소 경로를 가리킨다 */
   assetUrl: string;
   /** 이미지 중심의 스테이지 가로 위치(%) */
@@ -67,13 +76,13 @@ export interface ImageLayerConfig {
   rotationDeg: number;
   /** 0~100 */
   opacityPct: number;
-  /** 리본 레이어 기준 위/아래 순서 */
-  order: number;
 }
 
 /** 텍스트 레이어 (PRD §4.3). 글자 내용은 프리셋에 저장하지 않는다. */
 export interface TextLayerConfig {
   type: 'text';
+  /** 선택 상태 추적용 식별자(배열 인덱스 아님). 클라이언트에서 생성 */
+  id: string;
   /** 프리셋에 저장하지 않는 값. 수동 경로는 화면 입력, 자동 경로는 컨텐츠에서 채운다 */
   content: string;
   /** 구글 폰트명 또는 기본 시스템 글꼴 */
@@ -90,8 +99,6 @@ export interface TextLayerConfig {
   rotationDeg: number;
   /** 0~100 */
   opacityPct: number;
-  /** 리본 레이어 기준 위/아래 순서 */
-  order: number;
 }
 
 export type Layer = RibbonLayerConfig | ImageLayerConfig | TextLayerConfig;

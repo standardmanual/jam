@@ -11,6 +11,12 @@
  * (`MP4_MUXER_SCRIPT_URL`·`MP4_MUXER_SCRIPT_INTEGRITY`, assetGeneratorHelpers.ts).
  * WebCodecs(H.264 정밀 인코딩)를 쓸 수 없는 브라우저에서는 MediaRecorder 실시간 녹화로
  * 대체한다 — 두 경로 모두 프로토타입과 동일하다.
+ *
+ * 이미지 레이어 로드 대기(재작업, 20260924_2157): 캡처 직전에
+ * `viewport.areImageAssetsReady()`로 확인하고, 아직 로드 중이면 안내 토스트를 띄운 뒤
+ * `waitForImageAssets()`로 기다렸다가 캡처한다(버튼은 `busy`로 이미 잠겨 있다). 기다린
+ * 뒤에도 로드에 실패한 레이어가 있으면(`getMissingImageAssetCount`) 조용히 건너뛰지 않고
+ * 오류 토스트로 알린다.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -84,6 +90,23 @@ function downloadBlob(blob: Blob, filename: string): void {
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** 캡처 전에 이미지 레이어 원본 로드를 기다린다(재작업, 20260924_2157). 이미 다 불러왔으면
+ * 즉시 반환한다 — 대부분의 경우 안내 토스트 없이 조용히 지나간다. */
+async function ensureImageAssetsReady(viewport: AssetGeneratorViewportHandle): Promise<void> {
+  if (viewport.areImageAssetsReady()) return
+  toast.info('이미지를 불러오는 중이에요. 완료되면 자동으로 진행할게요.')
+  await viewport.waitForImageAssets()
+}
+
+/** 기다린 뒤에도 로드에 실패해 저장 결과에서 빠지는 레이어가 있으면 오류로 알린다(조용히
+ * 건너뛰지 않는다). */
+function warnIfImageAssetsMissing(viewport: AssetGeneratorViewportHandle): void {
+  const missing = viewport.getMissingImageAssetCount()
+  if (missing > 0) {
+    toast.error(`이미지 레이어 ${missing}개를 불러오지 못해 저장 결과에서 빠졌어요.`)
+  }
 }
 
 function loadMp4MuxerScript(): Promise<void> {
@@ -247,6 +270,8 @@ export default function AssetGeneratorExport({
     setBusy(true)
     setPngLabel('다운로드하는 중')
     try {
+      await ensureImageAssetsReady(viewport)
+      warnIfImageAssetsMissing(viewport)
       viewport.drawAtHead(viewport.getHead())
       const canvas = viewport.getCanvas()
       if (!canvas) throw new Error('캔버스를 찾지 못했어요.')
@@ -273,6 +298,8 @@ export default function AssetGeneratorExport({
     const { width, height } = resolveStageSize(stageRatio)
     let fallbackNote = ''
     try {
+      await ensureImageAssetsReady(viewport)
+      warnIfImageAssetsMissing(viewport)
       let result: VideoExportResult | null = null
       if (typeof window !== 'undefined' && window.VideoEncoder && window.VideoFrame) {
         try {

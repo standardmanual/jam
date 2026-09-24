@@ -33,14 +33,22 @@ import {
 import AssetGeneratorViewport, { type AssetGeneratorViewportHandle } from './AssetGeneratorViewport'
 import AssetGeneratorPanel from './AssetGeneratorPanel'
 import AssetGeneratorExport from './AssetGeneratorExport'
-import { createImageLayer, INITIAL_RIBBON_LAYER, INITIAL_STAGE_RATIO, LETTER_KEYS, moveImageLayer } from './assetGeneratorHelpers'
+import {
+  createImageLayer,
+  deselectIfRemoved,
+  INITIAL_RIBBON_LAYER,
+  INITIAL_STAGE_RATIO,
+  LETTER_KEYS,
+  moveImageLayer,
+  removeImageLayer,
+} from './assetGeneratorHelpers'
 
 export default function AssetGeneratorPage() {
   const [stageRatio, setStageRatio] = useState<StageRatio>(INITIAL_STAGE_RATIO)
   const [layer, setLayer] = useState<RibbonLayerConfig>(INITIAL_RIBBON_LAYER)
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null)
   const [imageLayers, setImageLayers] = useState<ImageLayerConfig[]>([])
-  const [selectedImageLayerIndex, setSelectedImageLayerIndex] = useState<number | null>(null)
+  const [selectedImageLayerId, setSelectedImageLayerId] = useState<string | null>(null)
   const [play, setPlay] = useState(true)
   const [exportBusy, setExportBusy] = useState(false)
 
@@ -81,43 +89,40 @@ export default function AssetGeneratorPage() {
   function handleAddImageLayer(file: File) {
     const url = URL.createObjectURL(file)
     imageLayerUrlsRef.current.add(url)
-    setImageLayers((prev) => [createImageLayer(url), ...prev])
-    setSelectedImageLayerIndex(0)
+    const newLayer = createImageLayer(url)
+    setImageLayers((prev) => [newLayer, ...prev])
+    setSelectedImageLayerId(newLayer.id)
   }
 
-  function handleRemoveImageLayer(index: number) {
+  // 삭제 대상이 선택돼 있었으면 선택을 해제한다(인접 레이어로 옮기지 않는다 — 기존 동작 유지).
+  function handleRemoveImageLayer(id: string) {
     setImageLayers((prev) => {
-      const target = prev[index]
+      const target = prev.find((l) => l.id === id)
       if (target && imageLayerUrlsRef.current.has(target.assetUrl)) {
         URL.revokeObjectURL(target.assetUrl)
         imageLayerUrlsRef.current.delete(target.assetUrl)
       }
-      return prev.filter((_, i) => i !== index)
+      return removeImageLayer(prev, id)
     })
-    setSelectedImageLayerIndex((prev) => {
-      if (prev === null) return prev
-      if (prev === index) return null
-      return prev > index ? prev - 1 : prev
-    })
+    setSelectedImageLayerId((prev) => deselectIfRemoved(prev, id))
   }
 
-  // LayerSidebar가 경계(맨 위/맨 아래)에서 버튼을 비활성화하므로 여기서는 항상 유효한
-  // 이동만 들어온다.
-  function handleMoveImageLayer(index: number, direction: 'up' | 'down') {
-    setImageLayers((prev) => moveImageLayer(prev, index, direction))
-    setSelectedImageLayerIndex((prev) => (prev === index ? (direction === 'up' ? index - 1 : index + 1) : prev))
+  // id로 대상을 찾아 스왑하므로(moveImageLayer) 선택 상태는 배열 위치가 바뀌어도 그대로
+  // 같은 레이어를 가리킨다 — 별도로 갱신할 필요가 없다.
+  function handleMoveImageLayer(id: string, direction: 'up' | 'down') {
+    setImageLayers((prev) => moveImageLayer(prev, id, direction))
   }
 
-  function handleImageLayerChange(index: number, patch: Partial<ImageLayerConfig>) {
-    setImageLayers((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)))
+  function handleImageLayerChange(id: string, patch: Partial<ImageLayerConfig>) {
+    setImageLayers((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)))
   }
 
-  function handleReplaceImageLayerAsset(index: number, file: File) {
+  function handleReplaceImageLayerAsset(id: string, file: File) {
     const url = URL.createObjectURL(file)
     imageLayerUrlsRef.current.add(url)
     setImageLayers((prev) =>
-      prev.map((l, i) => {
-        if (i !== index) return l
+      prev.map((l) => {
+        if (l.id !== id) return l
         if (imageLayerUrlsRef.current.has(l.assetUrl)) {
           URL.revokeObjectURL(l.assetUrl)
           imageLayerUrlsRef.current.delete(l.assetUrl)
@@ -215,8 +220,8 @@ export default function AssetGeneratorPage() {
                 uploadedFileName={uploadedFileName}
                 onRandomizeAll={handleRandomizeAll}
                 imageLayers={imageLayers}
-                selectedImageLayerIndex={selectedImageLayerIndex}
-                onSelectImageLayer={setSelectedImageLayerIndex}
+                selectedImageLayerId={selectedImageLayerId}
+                onSelectImageLayer={setSelectedImageLayerId}
                 onAddImageLayer={handleAddImageLayer}
                 onRemoveImageLayer={handleRemoveImageLayer}
                 onMoveImageLayer={handleMoveImageLayer}

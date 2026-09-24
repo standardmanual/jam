@@ -19,14 +19,14 @@ import type { ImageLayerConfig } from '@/lib/asset-generator'
 
 interface LayerSidebarProps {
   imageLayers: ImageLayerConfig[]
-  selectedIndex: number | null
-  onSelect: (index: number) => void
+  selectedId: string | null
+  onSelect: (id: string) => void
   onAdd: (file: File) => void
-  onRemove: (index: number) => void
-  onMove: (index: number, direction: 'up' | 'down') => void
+  onRemove: (id: string) => void
+  onMove: (id: string, direction: 'up' | 'down') => void
 }
 
-export default function LayerSidebar({ imageLayers, selectedIndex, onSelect, onAdd, onRemove, onMove }: LayerSidebarProps) {
+export default function LayerSidebar({ imageLayers, selectedId, onSelect, onAdd, onRemove, onMove }: LayerSidebarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   return (
@@ -49,16 +49,20 @@ export default function LayerSidebar({ imageLayers, selectedIndex, onSelect, onA
 
       {imageLayers.length > 0 && (
         <ul className="flex flex-col gap-1.5">
-          {imageLayers.map((_, index) => {
-            const isSelected = index === selectedIndex
+          {imageLayers.map((imageLayer, index) => {
+            const isSelected = imageLayer.id === selectedId
             return (
               <li
-                key={index}
+                key={imageLayer.id}
                 className={`flex items-center gap-0.5 rounded-md border px-2 py-1.5 ${
                   isSelected ? 'border-primary bg-primary/5' : 'border-border'
                 }`}
               >
-                <button type="button" onClick={() => onSelect(index)} className="flex-1 truncate text-left text-sm">
+                <button
+                  type="button"
+                  onClick={() => onSelect(imageLayer.id)}
+                  className="flex-1 truncate text-left text-sm"
+                >
                   이미지 레이어 {index + 1}
                 </button>
                 <Button
@@ -66,7 +70,7 @@ export default function LayerSidebar({ imageLayers, selectedIndex, onSelect, onA
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
-                  onClick={() => onMove(index, 'up')}
+                  onClick={() => onMove(imageLayer.id, 'up')}
                   disabled={index === 0}
                   aria-label="위로 이동"
                 >
@@ -77,7 +81,7 @@ export default function LayerSidebar({ imageLayers, selectedIndex, onSelect, onA
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
-                  onClick={() => onMove(index, 'down')}
+                  onClick={() => onMove(imageLayer.id, 'down')}
                   disabled={index === imageLayers.length - 1}
                   aria-label="아래로 이동"
                 >
@@ -88,7 +92,7 @@ export default function LayerSidebar({ imageLayers, selectedIndex, onSelect, onA
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 text-destructive hover:text-destructive"
-                  onClick={() => onRemove(index)}
+                  onClick={() => onRemove(imageLayer.id)}
                   aria-label="삭제"
                 >
                   <IconTrash className="h-4 w-4" />

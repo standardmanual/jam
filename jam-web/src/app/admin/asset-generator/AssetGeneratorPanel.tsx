@@ -59,13 +59,13 @@ interface AssetGeneratorPanelProps {
   uploadedFileName: string | null
   onRandomizeAll: () => void
   imageLayers: ImageLayerConfig[]
-  selectedImageLayerIndex: number | null
-  onSelectImageLayer: (index: number) => void
+  selectedImageLayerId: string | null
+  onSelectImageLayer: (id: string) => void
   onAddImageLayer: (file: File) => void
-  onRemoveImageLayer: (index: number) => void
-  onMoveImageLayer: (index: number, direction: 'up' | 'down') => void
-  onImageLayerChange: (index: number, patch: Partial<ImageLayerConfig>) => void
-  onReplaceImageLayerAsset: (index: number, file: File) => void
+  onRemoveImageLayer: (id: string) => void
+  onMoveImageLayer: (id: string, direction: 'up' | 'down') => void
+  onImageLayerChange: (id: string, patch: Partial<ImageLayerConfig>) => void
+  onReplaceImageLayerAsset: (id: string, file: File) => void
 }
 
 export default function AssetGeneratorPanel({
@@ -78,7 +78,7 @@ export default function AssetGeneratorPanel({
   uploadedFileName,
   onRandomizeAll,
   imageLayers,
-  selectedImageLayerIndex,
+  selectedImageLayerId,
   onSelectImageLayer,
   onAddImageLayer,
   onRemoveImageLayer,
@@ -322,19 +322,23 @@ export default function AssetGeneratorPanel({
           <AccordionContent className="flex flex-col gap-3">
             <LayerSidebar
               imageLayers={imageLayers}
-              selectedIndex={selectedImageLayerIndex}
+              selectedId={selectedImageLayerId}
               onSelect={onSelectImageLayer}
               onAdd={onAddImageLayer}
               onRemove={onRemoveImageLayer}
               onMove={onMoveImageLayer}
             />
-            {selectedImageLayerIndex !== null && imageLayers[selectedImageLayerIndex] && (
-              <ImageLayerFields
-                layer={imageLayers[selectedImageLayerIndex]}
-                onChange={(patch) => onImageLayerChange(selectedImageLayerIndex, patch)}
-                onReplaceAsset={(file) => onReplaceImageLayerAsset(selectedImageLayerIndex, file)}
-              />
-            )}
+            {(() => {
+              const selectedImageLayer = imageLayers.find((l) => l.id === selectedImageLayerId)
+              if (!selectedImageLayer) return null
+              return (
+                <ImageLayerFields
+                  layer={selectedImageLayer}
+                  onChange={(patch) => onImageLayerChange(selectedImageLayer.id, patch)}
+                  onReplaceAsset={(file) => onReplaceImageLayerAsset(selectedImageLayer.id, file)}
+                />
+              )
+            })()}
           </AccordionContent>
         </AccordionItem>
       </Accordion>

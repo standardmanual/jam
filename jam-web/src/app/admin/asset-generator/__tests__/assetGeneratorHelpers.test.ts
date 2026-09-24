@@ -1,12 +1,31 @@
 import { describe, expect, it } from 'vitest'
+import type { ImageLayerConfig } from '@/lib/asset-generator'
 import {
   INITIAL_RIBBON_LAYER,
   buildExportFileName,
   clampDurationSeconds,
   computeEffectiveStartColor,
+  createImageLayer,
+  deselectIfRemoved,
   generateRandomSeed,
+  moveImageLayer,
+  removeImageLayer,
   resolveStageSize,
 } from '../assetGeneratorHelpers'
+
+function makeImageLayer(id: string, assetUrl = `blob:${id}`): ImageLayerConfig {
+  return {
+    type: 'image',
+    id,
+    assetUrl,
+    xPct: 50,
+    yPct: 50,
+    widthPct: 30,
+    heightPct: 30,
+    rotationDeg: 0,
+    opacityPct: 100,
+  }
+}
 
 describe('resolveStageSize (티켓 20260924_2156, 원본 applyAspect 302줄과 동일해야 한다)', () => {
   it('1:1은 1280 × 1280', () => {
@@ -88,5 +107,86 @@ describe('INITIAL_RIBBON_LAYER (원본 state 초깃값 161~167줄과 값이 같�
       gap: 14,
       count: 260,
     })
+  })
+})
+
+describe('createImageLayer (레이어 식별 재작업, 티켓 20260924_2157)', () => {
+  it('빈 문자열이 아닌 id를 발급하고 order 필드는 없다', () => {
+    const layer = createImageLayer('blob:a')
+    expect(typeof layer.id).toBe('string')
+    expect(layer.id.length).toBeGreaterThan(0)
+    expect(layer).not.toHaveProperty('order')
+  })
+
+  it('호출할 때마다 서로 다른 id를 발급한다', () => {
+    const a = createImageLayer('blob:a')
+    const b = createImageLayer('blob:a')
+    expect(a.id).not.toBe(b.id)
+  })
+})
+
+describe('moveImageLayer (id 기반 스왑, 티켓 20260924_2157 재작업)', () => {
+  it('경계: 맨 위 레이어를 위로 이동하면 원본을 그대로 돌려준다', () => {
+    const layers = [makeImageLayer('a'), makeImageLayer('b'), makeImageLayer('c')]
+    const result = moveImageLayer(layers, 'a', 'up')
+    expect(result).toBe(layers)
+  })
+
+  it('경계: 맨 아래 레이어를 아래로 이동하면 원본을 그대로 돌려준다', () => {
+    const layers = [makeImageLayer('a'), makeImageLayer('b'), makeImageLayer('c')]
+    const result = moveImageLayer(layers, 'c', 'down')
+    expect(result).toBe(layers)
+  })
+
+  it('존재하지 않는 id는 원본을 그대로 돌려준다', () => {
+    const layers = [makeImageLayer('a'), makeImageLayer('b')]
+    const result = moveImageLayer(layers, 'z', 'up')
+    expect(result).toBe(layers)
+  })
+
+  it('스왑: 맨 아래 레이어를 위로 이동하면 바로 위 레이어와 자리를 바꾼다', () => {
+    const layers = [makeImageLayer('a'), makeImageLayer('b'), makeImageLayer('c')]
+    const result = moveImageLayer(layers, 'c', 'up')
+    expect(result.map((l) => l.id)).toEqual(['a', 'c', 'b'])
+  })
+
+  it('스왑 뒤에도 선택된 레이어는 같은 레이어 객체를 그대로 가리킨다', () => {
+    // 재현(리뷰 재작업 사유): A·B·C 중 가운데 B(id='b')를 선택한 상태에서 맨 아래 C를 위로
+    // 이동하면, 이전(인덱스 기반) 구현은 선택 인덱스 1이 이제 C를 가리켜 버그가 났다.
+    // id 기반에서는 selectedId='b'가 배열 위치와 무관하므로 문제가 생기지 않는다.
+    const b = makeImageLayer('b')
+    const layers = [makeImageLayer('a'), b, makeImageLayer('c')]
+    const selectedId = 'b'
+    const result = moveImageLayer(layers, 'c', 'up')
+    const selectedAfterMove = result.find((l) => l.id === selectedId)
+    expect(selectedAfterMove).toBe(b)
+  })
+})
+
+describe('removeImageLayer (순수 배열 제거, 티켓 20260924_2157 재작업)', () => {
+  it('id가 일치하는 레이어만 제거한다', () => {
+    const layers = [makeImageLayer('a'), makeImageLayer('b'), makeImageLayer('c')]
+    const result = removeImageLayer(layers, 'b')
+    expect(result.map((l) => l.id)).toEqual(['a', 'c'])
+  })
+
+  it('존재하지 않는 id를 지우려 하면 배열 내용이 그대로다', () => {
+    const layers = [makeImageLayer('a')]
+    const result = removeImageLayer(layers, 'z')
+    expect(result.map((l) => l.id)).toEqual(['a'])
+  })
+})
+
+describe('deselectIfRemoved (삭제된 레이어가 선택돼 있었으면 해제, 티켓 20260924_2157 재작업)', () => {
+  it('삭제한 레이어가 선택돼 있었으면 선택을 해제한다', () => {
+    expect(deselectIfRemoved('b', 'b')).toBeNull()
+  })
+
+  it('삭제한 레이어가 선택된 레이어가 아니면 선택을 그대로 둔다', () => {
+    expect(deselectIfRemoved('b', 'c')).toBe('b')
+  })
+
+  it('아무것도 선택돼 있지 않았으면 그대로 null이다', () => {
+    expect(deselectIfRemoved(null, 'c')).toBeNull()
   })
 })
