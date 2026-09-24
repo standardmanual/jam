@@ -50,7 +50,9 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
     승격을 멈추고, 출력이 알려 주는 파일·줄에서 값을 폐기·교체한다.
   - 새 API 라우트: 인증 확인 호출이 없는 라우트는 의도한 공개 라우트인지 해당 티켓에서 근거를
     확인한다. 근거가 있으면 `docs/agents/contract.json`의 `deploy_gate.public_routes`에 등록해
-    staging에 반영한 뒤 다시 실행하고, 근거가 없으면 승격을 멈춘다.
+    staging에 반영한 뒤 다시 실행하고, 근거가 없으면 승격을 멈춘다. 인증을 공용 함수에 맡기는
+    라우트는 `public_routes`가 아니라 `deploy_gate.auth_wrappers`에 그 함수를 선언한다(규칙은
+    `contract.json`의 `deploy_gate._why`).
 - [ ] 의존성 취약점 — `cd jam-web && npm audit --omit=dev` (critical·high 0건)
 - [ ] (해당 시) 새 `SECURITY DEFINER` 함수가 있으면 `REVOKE ... FROM PUBLIC` 처리 여부 확인
   (가드레일 패턴 8)
