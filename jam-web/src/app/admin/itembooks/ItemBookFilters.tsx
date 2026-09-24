@@ -1,10 +1,17 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/admin/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { DataTableToolbar } from '@/components/admin/data-table/data-table-toolbar'
 import { DataTableFacetedFilter } from '@/components/admin/data-table/data-table-faceted-filter'
+import { DataTableSearch } from '@/components/admin/data-table/data-table-search'
+import { DataTableSortSelect } from '@/components/admin/data-table/data-table-sort-select'
+import { useListParams } from '@/components/admin/data-table/use-list-params'
+import {
+  DEFAULT_ITEM_BOOK_SORT,
+  DEFAULT_ITEM_BOOK_STATUS,
+  ITEM_BOOK_SORT_OPTIONS,
+  ITEM_BOOK_STATUS_OPTIONS,
+} from '@/lib/admin/itembook-list-query'
 import type { TribeRow } from '@/types/database'
 
 interface ItemBookFiltersProps {
@@ -12,58 +19,40 @@ interface ItemBookFiltersProps {
 }
 
 /**
- * 컬렉션 목록 필터(20260826_015) — shadcn 공식 Data Table Toolbar 패턴으로 재구현
- * (배지 목록의 `BadgesFilterBar.tsx`와 동일 구조).
+ * 컬렉션 목록 필터 바(티켓 20260924_0945) — 공용 부품(`useListParams`·`DataTableSearch`·
+ * `DataTableSortSelect`·`DataTableFacetedFilter`)으로 교체했다. 필터·정렬 값과 기본값은
+ * 서버 페이지와 같은 `itembook-list-query.ts`가 단일 출처다 — 여기서 다시 나열하면 서버가 모르는
+ * 값을 고를 수 있다.
  */
 export default function ItemBookFilters({ tribes }: ItemBookFiltersProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const { q, filters, setFilters, reset } = useListParams({ defaults: { status: DEFAULT_ITEM_BOOK_STATUS } })
 
-  const tribe = searchParams.get('tribe') ?? 'all'
-  const sort = searchParams.get('sort') ?? 'created_desc'
-
-  const updateParams = (updates: Record<string, string>) => {
-    const params = new URLSearchParams(searchParams.toString())
-    for (const [key, value] of Object.entries(updates)) {
-      if (value === 'all' || value === '') params.delete(key)
-      else params.set(key, value)
-    }
-    params.delete('page')
-    router.push(`/admin/itembooks?${params.toString()}`)
-  }
-
-  const hasFilter = searchParams.has('tribe')
+  const tribe = filters.tribe ?? 'all'
+  const status = filters.status ?? DEFAULT_ITEM_BOOK_STATUS
+  const hasFilter = q !== '' || Object.keys(filters).length > 0
 
   return (
     <DataTableToolbar
-      actions={
-        <Select value={sort} onValueChange={(v) => updateParams({ sort: v })}>
-          <SelectTrigger className="h-8 w-auto min-w-[10rem]" aria-label="정렬">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="created_desc">최근 등록순</SelectItem>
-            <SelectItem value="name_asc">이름 ↑ (오름차순)</SelectItem>
-            <SelectItem value="name_desc">이름 ↓ (내림차순)</SelectItem>
-          </SelectContent>
-        </Select>
-      }
+      actions={<DataTableSortSelect options={ITEM_BOOK_SORT_OPTIONS} defaultValue={DEFAULT_ITEM_BOOK_SORT} />}
     >
+      <DataTableSearch placeholder="컬렉션 이름으로 검색..." />
+
       <DataTableFacetedFilter
         title="트라이브"
         options={tribes.map((f) => ({ value: f.id, label: f.name }))}
         selected={tribe === 'all' ? [] : [tribe]}
-        onChange={(values) => updateParams({ tribe: values[0] ?? 'all' })}
+        onChange={(values) => setFilters({ tribe: values[0] ?? null })}
+      />
+
+      <DataTableFacetedFilter
+        title="상태"
+        options={ITEM_BOOK_STATUS_OPTIONS}
+        selected={[status]}
+        onChange={(values) => setFilters({ status: values[0] ?? null })}
       />
 
       {hasFilter && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8"
-          onClick={() => router.push('/admin/itembooks')}
-        >
+        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={reset}>
           필터 초기화
         </Button>
       )}

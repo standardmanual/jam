@@ -2,13 +2,18 @@ import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Button } from '@/components/admin/ui/button'
-import type { ItemBookRow, BadgeRow, TribeRow } from '@/types/database'
+import type { BadgeRow, TribeRow } from '@/types/database'
 import { ItemBookList } from '@/components/admin/itembooks/ItemBookList'
 import ItemBookFilters from './ItemBookFilters'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
+import { ADMIN_LIST_PAGE_SIZE, totalPagesOf } from '@/lib/admin/list-params'
+import { countRowsByKey, type CountRowsClient } from '@/lib/admin/list-counts'
+import {
+  DEFAULT_ITEM_BOOK_STATUS,
+  fetchItemBookListPage,
+  parseItemBookListParams,
+} from '@/lib/admin/itembook-list-query'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
-
-const PAGE_SIZE = 30
 
 /**
  * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — 같은 키가 두 번 오면(`?page=1&page=2`)
@@ -20,33 +25,20 @@ interface AdminItemBooksPageProps {
 }
 
 export default async function AdminItemBooksPage({ searchParams }: AdminItemBooksPageProps) {
-  const params = pickSingleQueryParams(await searchParams)
-  const tribe = params.tribe ?? 'all'
-  const sort = params.sort ?? 'created_desc'
-  const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
+  const rawParams = pickSingleQueryParams(await searchParams)
+  const page = Math.max(1, parseInt(rawParams.page ?? '1', 10) || 1)
+  const params = parseItemBookListParams(rawParams)
 
   const supabase = createServiceClient()
 
-  // 20260826_011 A6: 전체 로드 후 클라이언트 필터·정렬하던 것을 admin/poi/page.tsx와 동일한
-  // 구조(searchParams로 트라이브/정렬/페이지 구동 + range() 서버 필터링)로 전환.
-  let query = supabase.from('item_books').select('*', { count: 'exact' })
-  if (tribe !== 'all') query = query.eq('tribe_id', tribe)
-
-  if (sort === 'name_asc') query = query.order('name', { ascending: true })
-  else if (sort === 'name_desc') query = query.order('name', { ascending: false })
-  else query = query.order('created_at', { ascending: false })
-
-  const from = (page - 1) * PAGE_SIZE
-  const to = from + PAGE_SIZE - 1
-  query = query.range(from, to)
-
-  const [{ data: booksRaw, count }, { data: tribesRaw }] = await Promise.all([
-    query,
+  // 검색·트라이브·상태 필터와 정렬·페이지는 `itembook-list-query.ts`가 단일 출처다 — 전체 선택용 ID
+  // 조회(`api/admin/itembooks/ids`)가 같은 규칙을 쓴다(티켓 20260924_0945).
+  const [{ books, total }, { data: tribesRaw }] = await Promise.all([
+    fetchItemBookListPage(supabase, params, page),
     supabase.from('tribes').select('id, name'),
   ])
 
-  const books = (booksRaw ?? []) as ItemBookRow[]
-  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
+  const totalPages = totalPagesOf(total, ADMIN_LIST_PAGE_SIZE)
   const tribes = (tribesRaw ?? []) as Pick<TribeRow, 'id' | 'name'>[]
   const tribeMap = new Map(tribes.map((f) => [f.id, f.name]))
 
@@ -60,27 +52,24 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
     ),
   ]
   const bookIds = books.map((b) => b.id)
-  const [{ data: badgesRaw }, { data: itemBadgesRaw }] = await Promise.all([
+  const [{ data: badgesRaw }, itemBadgeCounts] = await Promise.all([
     labelIds.length > 0
       ? supabase.from('badges').select('id, name').in('id', labelIds)
       : Promise.resolve({ data: [] as Pick<BadgeRow, 'id' | 'name'>[] }),
-    // [20260902_1043] deleted_at 필터를 제거해 배정 관계(item_book_id)가 남아있는 배지는
+    // [20260902_1043] deleted_at 필터를 두지 않아 배정 관계(item_book_id)가 남아있는 배지는
     // 활성/비활성 무관하게 전부 센다 — 컬렉션을 비활성화해도 목록 페이지의 이 카운트가
-    // 0으로 사라지면 안 된다([id]/page.tsx의 배지 슬롯 관리 목록과 동일한 원칙).
-    bookIds.length > 0
-      ? supabase.from('badges').select('id, item_book_id').eq('type', 'item').in('item_book_id', bookIds)
-      : Promise.resolve({ data: [] as { id: string; item_book_id: string }[] }),
+    // 0으로 사라지면 안 된다([id]/page.tsx의 배지 슬롯 관리 목록과 동일한 원칙). 배지 행을
+    // 통째로 불러 세면 1,000행 상한에 걸려 잘리므로 `countRowsByKey`로 센다(티켓 20260924_0945).
+    countRowsByKey(supabase as unknown as CountRowsClient, 'badges', 'item_book_id', bookIds, (q) =>
+      q.eq('type', 'item')
+    ),
   ])
   const badges = (badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]
   const badgeMap = new Map(badges.map((b) => [b.id, b.name]))
+  const itemBadgeCountMap = new Map(Object.entries(itemBadgeCounts))
 
-  const itemBadgeCountMap = new Map<string, number>()
-  for (const b of (itemBadgesRaw ?? []) as { id: string; item_book_id: string }[]) {
-    if (!b.item_book_id) continue
-    itemBadgeCountMap.set(b.item_book_id, (itemBadgeCountMap.get(b.item_book_id) ?? 0) + 1)
-  }
-
-  const emptyMessage = tribe !== 'all' ? '조건에 맞는 컬렉션이 없습니다.' : '등록된 컬렉션이 없습니다.'
+  const hasFilter = !!(params.q || params.tribe || params.status !== DEFAULT_ITEM_BOOK_STATUS)
+  const emptyMessage = hasFilter ? '조건에 맞는 컬렉션이 없습니다.' : '등록된 컬렉션이 없습니다.'
 
   return (
     <div className="space-y-6 p-4 md:p-8">
@@ -101,17 +90,22 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
 
       {/* 카운트 */}
       <div className="text-sm text-muted-foreground">
-        총 {count ?? 0}개
+        총 {total}개
+        {hasFilter && ' (필터 적용 중)'}
       </div>
 
-      {/* 목록 */}
-      <ItemBookList
-        itemBooks={books}
-        badgeMap={badgeMap}
-        tribeMap={tribeMap}
-        itemBadgeCountMap={itemBadgeCountMap}
-        emptyMessage={emptyMessage}
-      />
+      {/* 목록 — 데스크탑 테이블(ItemBookTable.tsx)이 정렬·선택 상태를 URL과 동기화하려고
+          useSearchParams()를 쓴다. 필터 바와 같은 이유로 Suspense로 감싼다. */}
+      <Suspense>
+        <ItemBookList
+          itemBooks={books}
+          badgeMap={badgeMap}
+          tribeMap={tribeMap}
+          itemBadgeCountMap={itemBadgeCountMap}
+          emptyMessage={emptyMessage}
+          totalCount={total}
+        />
+      </Suspense>
 
       {/* 페이지네이션 */}
       <DataTablePagination page={page} totalPages={totalPages} />
