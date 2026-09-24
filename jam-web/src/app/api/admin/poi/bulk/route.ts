@@ -9,7 +9,7 @@ import { collectPoiReferencesById } from '@/lib/admin/poi-references'
 /**
  * POI 목록 일괄 처리(티켓 20260924_0941, 상위 티켓 §4.1 체크인 관리 행) — 활성화·비활성화·
  * 카테고리 변경·삭제 4개 동작을 한 라우트에서 다룬다. 참조 카운트 조회(삭제 미리보기)가
- * 여러 왕복을 필요로 할 수 있어 `badges/bulk-delete`와 동일하게 실행 시간을 늘려둔다.
+ * 여러 왕복을 필요로 할 수 있어 `badges/list-bulk`의 삭제와 동일하게 실행 시간을 늘려둔다.
  */
 export const maxDuration = 60
 

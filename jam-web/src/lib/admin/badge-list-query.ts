@@ -12,7 +12,7 @@ import type { BadgeType, BadgeRarity } from '@/types/database'
 import type { Json } from '@/types/database.generated'
 import type { BadgeListRow } from '@/components/admin/badges/BadgeList'
 import { sanitizeSearchTerm } from './search-term'
-import { UNASSIGNED_POI_CATEGORY } from './badge-labels'
+import { UNASSIGNED_POI_CATEGORY, type AdminCategory } from './badge-labels'
 import { ADMIN_LIST_PAGE_SIZE } from './list-params'
 import {
   badgeUsesConditionField,
@@ -21,7 +21,6 @@ import {
   parseBadgeListSort,
   parseConditionFieldFilter,
   requiresFullFetchSort,
-  type AdminCategory,
   type BadgeListSort,
   type BadgeListSortRow,
 } from './badge-list-view'
