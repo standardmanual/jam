@@ -40,11 +40,19 @@ export interface Canvas2DContextLike {
   createLinearGradient(x0: number, y0: number, x1: number, y1: number): CanvasGradientLike;
   createRadialGradient(x0: number, y0: number, r0: number, x1: number, y1: number, r1: number): CanvasGradientLike;
   setTransform(a: number, b: number, c: number, d: number, e: number, f: number): void;
+  /** 텍스트 레이어(PRD §4.3)가 쓴다. 글자 단위로 직접 배치하므로 `fillText`는 항상
+   *  `textAlign: 'left'` 상태로 호출한다(drawTextLayer 참고) — 정렬(좌/중/우)은 이 모듈이
+   *  줄 폭을 재서 시작 x를 계산해 구현한다. */
+  font: string;
+  textAlign: string;
+  textBaseline: string;
+  fillText(text: string, x: number, y: number): void;
+  measureText(text: string): { width: number };
   fillStyle: string | CanvasGradientLike;
   globalCompositeOperation: string;
   /** 블러 등 CSS 필터. 미지원 환경(구형 Safari 등)에서는 대입해도 반영되지 않는다 */
   filter: string;
-  /** 0~1. 이미지 레이어 불투명도(PRD §4.2)에 쓴다 */
+  /** 0~1. 이미지·텍스트 레이어 불투명도(PRD §4.2·§4.3)에 쓴다 */
   globalAlpha: number;
   imageSmoothingQuality?: string;
 }
@@ -64,6 +72,15 @@ export type CanvasFactory = (width: number, height: number) => CanvasLike;
  */
 export type ImageLoaderInput = { url: string } | { data: Uint8Array; mimeType: string };
 export type ImageLoader = (input: ImageLoaderInput) => Promise<ImageSourceLike>;
+
+/**
+ * 텍스트 레이어 글꼴 로드 함수의 인터페이스(PRD §4.3, 티켓 20260924_2158). 실행 뒤에는 해당
+ * 글꼴로 그릴 준비가 끝나 있어야 한다(브라우저: 다운로드·파싱 완료, 서버: 폰트 파일 등록).
+ * 브라우저 구현은 어드민 화면(`assetGeneratorHelpers.ts`)이
+ * `src/lib/admin/shaderLab/googleFonts.ts`의 `ensureGoogleFontLoaded`·`waitForGoogleFontLoaded`를
+ * 가지고 만든다. 서버 구현(하위 티켓 2201)은 이 티켓에 없다.
+ */
+export type FontLoader = (font: { family: string; weight: number }) => Promise<void>;
 
 function supportsCanvasFilter(factory: CanvasFactory): boolean {
   try {
@@ -183,8 +200,8 @@ export function drawRibbonLayer(ctx: Canvas2DContextLike, input: RibbonLayerRend
 
 /**
  * 레이어 합성 훅: 스테이지 배경을 채운다. `fillBackground` → `drawRibbonLayer` → 이후 레이어
- * 순서로 그린다(PRD §4 레이어 순서). 이미지 레이어는 `drawImageLayer`(20260924_2157)로 이
- * 자리 다음에 이어 그린다. 텍스트 레이어는 후속 티켓 과제.
+ * 순서로 그린다(PRD §4 레이어 순서). 이미지 레이어는 `drawImageLayer`(20260924_2157), 텍스트
+ * 레이어는 `drawTextLayer`(20260924_2158)로 이 자리 다음에 이어 그린다.
  */
 export function fillBackground(ctx: Canvas2DContextLike, width: number, height: number, color: string): void {
   ctx.fillStyle = color;
@@ -228,5 +245,96 @@ export function drawImageLayer(ctx: Canvas2DContextLike, input: ImageLayerRender
   ctx.setTransform(cs, sn, -sn, cs, cx, cy);
   ctx.drawImage(image, -dw / 2, -dh / 2, dw, dh);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = prevAlpha;
+}
+
+export interface TextLayerRenderInput {
+  /** 여러 줄은 개행 문자(\n)로 구분한다 */
+  content: string;
+  font: { family: string; weight: number };
+  /** 스테이지 짧은 변 대비 글자 크기(%) */
+  sizePct: number;
+  /** 글자 크기 대비 자간 배수(0=기본 간격) */
+  letterSpacing: number;
+  /** 글자 크기 대비 행간 배수(예: 1.2) */
+  lineHeight: number;
+  align: 'left' | 'center' | 'right';
+  color: string;
+  /** 텍스트 블록 중심의 스테이지 기준 위치(%) */
+  xPct: number;
+  yPct: number;
+  rotationDeg: number;
+  /** 0~100 */
+  opacityPct: number;
+  stageWidth: number;
+  stageHeight: number;
+}
+
+/**
+ * 텍스트 레이어 합성(PRD §4.3): 리본·이미지 레이어 위에 글자를 얹는다. 위치·크기는 이미지
+ * 레이어와 같은 방식(스테이지 기준 비율)으로 계산해 스테이지 비율이 바뀌어도 상대 위치·크기가
+ * 유지된다. `(xPct, yPct)`는 전체 텍스트 블록(여러 줄 포함)의 중심을 가리킨다.
+ *
+ * 자간은 `ctx.letterSpacing`(브라우저 일부·서버 캔버스 라이브러리 다수가 지원하지 않는다)에
+ * 기대지 않고, `measureText`로 각 글자 폭을 재서 글자 단위로 위치를 계산해 그린다 — 이 모듈이
+ * 브라우저·서버 어느 쪽에서도 같은 결과를 내야 하기 때문이다(파일 상단 주석).
+ */
+export function drawTextLayer(ctx: Canvas2DContextLike, input: TextLayerRenderInput): void {
+  const { content, font, sizePct, letterSpacing, lineHeight, align, color, xPct, yPct, rotationDeg, opacityPct, stageWidth, stageHeight } =
+    input;
+  const shortSide = Math.min(stageWidth, stageHeight);
+  const fontSizePx = (sizePct / 100) * shortSide;
+  if (fontSizePx <= 0) return;
+  const letterSpacingPx = letterSpacing * fontSizePx;
+  const lineHeightPx = lineHeight * fontSizePx;
+  const cx = (xPct / 100) * stageWidth;
+  const cy = (yPct / 100) * stageHeight;
+  const rad = (rotationDeg * Math.PI) / 180;
+  const cs = Math.cos(rad);
+  const sn = Math.sin(rad);
+
+  const lines = content.split('\n');
+  // 글자 단위로 쪼개 각 글자의 폭을 잰다(서로게이트 페어 등 유니코드 낱글자 단위 — Array.from).
+  const lineChars = lines.map((line) => Array.from(line));
+
+  const prevFont = ctx.font;
+  const prevAlign = ctx.textAlign;
+  const prevBaseline = ctx.textBaseline;
+  const prevFillStyle = ctx.fillStyle;
+  const prevAlpha = ctx.globalAlpha;
+
+  ctx.font = `${font.weight} ${fontSizePx}px "${font.family}"`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = color;
+  ctx.globalAlpha = Math.max(0, Math.min(1, opacityPct / 100));
+
+  const lineWidths = lineChars.map((chars) =>
+    chars.reduce((sum, ch, i) => sum + ctx.measureText(ch).width + (i < chars.length - 1 ? letterSpacingPx : 0), 0)
+  );
+  const maxLineWidth = Math.max(0, ...lineWidths);
+  const blockHeight = lineHeightPx * lines.length;
+
+  ctx.setTransform(cs, sn, -sn, cs, cx, cy);
+  lineChars.forEach((chars, lineIndex) => {
+    const lineWidth = lineWidths[lineIndex];
+    const lineY = (lineIndex + 0.5) * lineHeightPx - blockHeight / 2;
+    let startX: number;
+    if (align === 'left') startX = -maxLineWidth / 2;
+    else if (align === 'right') startX = maxLineWidth / 2 - lineWidth;
+    else startX = -lineWidth / 2;
+
+    let cursorX = startX;
+    chars.forEach((ch) => {
+      ctx.fillText(ch, cursorX, lineY);
+      cursorX += ctx.measureText(ch).width + letterSpacingPx;
+    });
+  });
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+  ctx.font = prevFont;
+  ctx.textAlign = prevAlign;
+  ctx.textBaseline = prevBaseline;
+  ctx.fillStyle = prevFillStyle;
   ctx.globalAlpha = prevAlpha;
 }

@@ -19,6 +19,12 @@
  *
  * 이미지 레이어(티켓 20260924_2157): 업로드 원본은 화면 메모리(blob URL)에만 두고 화면을
  * 떠날 때 정리한다 — 저장소 업로드는 하위 티켓 20260924_2159가 맡는다.
+ *
+ * 오버레이 레이어(재작업, 20260924_2158): 이미지 레이어 목록을 텍스트 레이어까지 담는
+ * `overlayLayers`(이미지·텍스트 혼합, 순서 있는 목록)로 확장했다 — 하위 티켓 20260924_2159의
+ * 프리셋이 `layers` 배열 하나에 리본·이미지·텍스트를 순서대로 저장하기 때문이다. `moveImageLayer`·
+ * `removeImageLayer`는 id 기반 제네릭이라 이름은 그대로 두고 이 혼합 목록에도 쓴다
+ * (assetGeneratorHelpers.ts 주석 참고).
  */
 import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/card'
@@ -27,14 +33,17 @@ import {
   randomizeRibbonConfig,
   type ImageLayerConfig,
   type LetterKey,
+  type OverlayLayerConfig,
   type RibbonLayerConfig,
   type StageRatio,
+  type TextLayerConfig,
 } from '@/lib/asset-generator'
 import AssetGeneratorViewport, { type AssetGeneratorViewportHandle } from './AssetGeneratorViewport'
 import AssetGeneratorPanel from './AssetGeneratorPanel'
 import AssetGeneratorExport from './AssetGeneratorExport'
 import {
   createImageLayer,
+  createTextLayer,
   deselectIfRemoved,
   INITIAL_RIBBON_LAYER,
   INITIAL_STAGE_RATIO,
@@ -47,8 +56,8 @@ export default function AssetGeneratorPage() {
   const [stageRatio, setStageRatio] = useState<StageRatio>(INITIAL_STAGE_RATIO)
   const [layer, setLayer] = useState<RibbonLayerConfig>(INITIAL_RIBBON_LAYER)
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null)
-  const [imageLayers, setImageLayers] = useState<ImageLayerConfig[]>([])
-  const [selectedImageLayerId, setSelectedImageLayerId] = useState<string | null>(null)
+  const [overlayLayers, setOverlayLayers] = useState<OverlayLayerConfig[]>([])
+  const [selectedOverlayLayerId, setSelectedOverlayLayerId] = useState<string | null>(null)
   const [play, setPlay] = useState(true)
   const [exportBusy, setExportBusy] = useState(false)
 
@@ -90,39 +99,51 @@ export default function AssetGeneratorPage() {
     const url = URL.createObjectURL(file)
     imageLayerUrlsRef.current.add(url)
     const newLayer = createImageLayer(url)
-    setImageLayers((prev) => [newLayer, ...prev])
-    setSelectedImageLayerId(newLayer.id)
+    setOverlayLayers((prev) => [newLayer, ...prev])
+    setSelectedOverlayLayerId(newLayer.id)
+  }
+
+  // 텍스트 레이어 추가(티켓 20260924_2158): 배열 맨 앞(가장 위)에 넣고 바로 선택한다.
+  function handleAddTextLayer() {
+    const newLayer = createTextLayer()
+    setOverlayLayers((prev) => [newLayer, ...prev])
+    setSelectedOverlayLayerId(newLayer.id)
   }
 
   // 삭제 대상이 선택돼 있었으면 선택을 해제한다(인접 레이어로 옮기지 않는다 — 기존 동작 유지).
-  function handleRemoveImageLayer(id: string) {
-    setImageLayers((prev) => {
+  // 이미지 레이어를 지울 때만 blob URL을 정리한다(텍스트 레이어는 원본 파일이 없다).
+  function handleRemoveOverlayLayer(id: string) {
+    setOverlayLayers((prev) => {
       const target = prev.find((l) => l.id === id)
-      if (target && imageLayerUrlsRef.current.has(target.assetUrl)) {
+      if (target && target.type === 'image' && imageLayerUrlsRef.current.has(target.assetUrl)) {
         URL.revokeObjectURL(target.assetUrl)
         imageLayerUrlsRef.current.delete(target.assetUrl)
       }
       return removeImageLayer(prev, id)
     })
-    setSelectedImageLayerId((prev) => deselectIfRemoved(prev, id))
+    setSelectedOverlayLayerId((prev) => deselectIfRemoved(prev, id))
   }
 
   // id로 대상을 찾아 스왑하므로(moveImageLayer) 선택 상태는 배열 위치가 바뀌어도 그대로
   // 같은 레이어를 가리킨다 — 별도로 갱신할 필요가 없다.
-  function handleMoveImageLayer(id: string, direction: 'up' | 'down') {
-    setImageLayers((prev) => moveImageLayer(prev, id, direction))
+  function handleMoveOverlayLayer(id: string, direction: 'up' | 'down') {
+    setOverlayLayers((prev) => moveImageLayer(prev, id, direction))
   }
 
   function handleImageLayerChange(id: string, patch: Partial<ImageLayerConfig>) {
-    setImageLayers((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)))
+    setOverlayLayers((prev) => prev.map((l) => (l.id === id && l.type === 'image' ? { ...l, ...patch } : l)))
+  }
+
+  function handleTextLayerChange(id: string, patch: Partial<TextLayerConfig>) {
+    setOverlayLayers((prev) => prev.map((l) => (l.id === id && l.type === 'text' ? { ...l, ...patch } : l)))
   }
 
   function handleReplaceImageLayerAsset(id: string, file: File) {
     const url = URL.createObjectURL(file)
     imageLayerUrlsRef.current.add(url)
-    setImageLayers((prev) =>
+    setOverlayLayers((prev) =>
       prev.map((l) => {
-        if (l.id !== id) return l
+        if (l.id !== id || l.type !== 'image') return l
         if (imageLayerUrlsRef.current.has(l.assetUrl)) {
           URL.revokeObjectURL(l.assetUrl)
           imageLayerUrlsRef.current.delete(l.assetUrl)
@@ -189,7 +210,7 @@ export default function AssetGeneratorPage() {
               ref={viewportRef}
               stageRatio={stageRatio}
               layer={layer}
-              imageLayers={imageLayers}
+              overlayLayers={overlayLayers}
               play={play}
               onPlayChange={setPlay}
             />
@@ -219,13 +240,15 @@ export default function AssetGeneratorPage() {
                 onFileSelected={handleFileSelected}
                 uploadedFileName={uploadedFileName}
                 onRandomizeAll={handleRandomizeAll}
-                imageLayers={imageLayers}
-                selectedImageLayerId={selectedImageLayerId}
-                onSelectImageLayer={setSelectedImageLayerId}
+                overlayLayers={overlayLayers}
+                selectedOverlayLayerId={selectedOverlayLayerId}
+                onSelectOverlayLayer={setSelectedOverlayLayerId}
                 onAddImageLayer={handleAddImageLayer}
-                onRemoveImageLayer={handleRemoveImageLayer}
-                onMoveImageLayer={handleMoveImageLayer}
+                onAddTextLayer={handleAddTextLayer}
+                onRemoveOverlayLayer={handleRemoveOverlayLayer}
+                onMoveOverlayLayer={handleMoveOverlayLayer}
                 onImageLayerChange={handleImageLayerChange}
+                onTextLayerChange={handleTextLayerChange}
                 onReplaceImageLayerAsset={handleReplaceImageLayerAsset}
               />
             </fieldset>

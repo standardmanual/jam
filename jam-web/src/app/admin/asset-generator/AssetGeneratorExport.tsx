@@ -17,6 +17,10 @@
  * `waitForImageAssets()`로 기다렸다가 캡처한다(버튼은 `busy`로 이미 잠겨 있다). 기다린
  * 뒤에도 로드에 실패한 레이어가 있으면(`getMissingImageAssetCount`) 조용히 건너뛰지 않고
  * 오류 토스트로 알린다.
+ *
+ * 텍스트 레이어 폰트 로드 대기(티켓 20260924_2158): 같은 패턴을 `areFontsReady`·
+ * `waitForFonts`·`getMissingFontCount`로 그대로 반복한다 — 구글 폰트 다운로드가 끝나기 전에
+ * PNG·영상을 캡처하면 폴백 글꼴로 저장될 수 있기 때문이다(완료 조건).
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -106,6 +110,22 @@ function warnIfImageAssetsMissing(viewport: AssetGeneratorViewportHandle): void 
   const missing = viewport.getMissingImageAssetCount()
   if (missing > 0) {
     toast.error(`이미지 레이어 ${missing}개를 불러오지 못해 저장 결과에서 빠졌어요.`)
+  }
+}
+
+/** 캡처 전에 텍스트 레이어의 구글 폰트 다운로드를 기다린다(티켓 20260924_2158). 이미 다
+ * 불러왔으면 즉시 반환한다. */
+async function ensureFontsReady(viewport: AssetGeneratorViewportHandle): Promise<void> {
+  if (viewport.areFontsReady()) return
+  toast.info('폰트를 불러오는 중이에요. 완료되면 자동으로 진행할게요.')
+  await viewport.waitForFonts()
+}
+
+/** 기다린 뒤에도 로드에 실패해 폴백 글꼴로 저장되는 텍스트 레이어가 있으면 오류로 알린다. */
+function warnIfFontsMissing(viewport: AssetGeneratorViewportHandle): void {
+  const missing = viewport.getMissingFontCount()
+  if (missing > 0) {
+    toast.error(`텍스트 레이어 ${missing}개의 폰트를 불러오지 못해 기본 글꼴로 저장했어요.`)
   }
 }
 
@@ -272,6 +292,8 @@ export default function AssetGeneratorExport({
     try {
       await ensureImageAssetsReady(viewport)
       warnIfImageAssetsMissing(viewport)
+      await ensureFontsReady(viewport)
+      warnIfFontsMissing(viewport)
       viewport.drawAtHead(viewport.getHead())
       const canvas = viewport.getCanvas()
       if (!canvas) throw new Error('캔버스를 찾지 못했어요.')
@@ -300,6 +322,8 @@ export default function AssetGeneratorExport({
     try {
       await ensureImageAssetsReady(viewport)
       warnIfImageAssetsMissing(viewport)
+      await ensureFontsReady(viewport)
+      warnIfFontsMissing(viewport)
       let result: VideoExportResult | null = null
       if (typeof window !== 'undefined' && window.VideoEncoder && window.VideoFrame) {
         try {

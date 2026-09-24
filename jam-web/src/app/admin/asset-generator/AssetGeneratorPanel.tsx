@@ -13,7 +13,8 @@
  * `docs/specs/UX_WRITING_GUIDELINE.md`(저작 도구 고정 용어, X: 랜덤·다시 뽑기)에 맞춰 바꿨다
  * (기존 사례: `src/app/admin/badges/BlobAnimationFields.tsx`의 시드 재추첨 버튼).
  *
- * "이미지 레이어" 섹션(티켓 20260924_2157)은 리본 레이어 위에 얹는 PNG/SVG 오버레이를
+ * "이미지 · 텍스트 레이어" 섹션(티켓 20260924_2157, 텍스트 통합 재작업 20260924_2158)은
+ * 리본 레이어 위에 얹는 오버레이(업로드한 PNG/SVG·텍스트)를 하나의 순서 있는 목록으로
  * 관리한다 — 위의 "이미지" 섹션(리본 원천 그래픽 자체의 크기·블러·회전)과는 다른 개념이다.
  */
 import { useRef } from 'react'
@@ -24,10 +25,19 @@ import { Checkbox } from '@/components/admin/ui/checkbox'
 import { Input } from '@/components/admin/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/admin/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/admin/ui/tooltip'
-import type { GradientDirection, ImageLayerConfig, LetterKey, RibbonLayerConfig, StageRatio } from '@/lib/asset-generator'
+import type {
+  GradientDirection,
+  ImageLayerConfig,
+  LetterKey,
+  OverlayLayerConfig,
+  RibbonLayerConfig,
+  StageRatio,
+  TextLayerConfig,
+} from '@/lib/asset-generator'
 import ImageLayerFields from './ImageLayerFields'
 import LayerSidebar from './LayerSidebar'
 import SliderRow from './SliderRow'
+import TextLayerFields from './TextLayerFields'
 import {
   BLUR_RANGE,
   computeEffectiveStartColor,
@@ -58,13 +68,15 @@ interface AssetGeneratorPanelProps {
   onFileSelected: (file: File) => void
   uploadedFileName: string | null
   onRandomizeAll: () => void
-  imageLayers: ImageLayerConfig[]
-  selectedImageLayerId: string | null
-  onSelectImageLayer: (id: string) => void
+  overlayLayers: OverlayLayerConfig[]
+  selectedOverlayLayerId: string | null
+  onSelectOverlayLayer: (id: string) => void
   onAddImageLayer: (file: File) => void
-  onRemoveImageLayer: (id: string) => void
-  onMoveImageLayer: (id: string, direction: 'up' | 'down') => void
+  onAddTextLayer: () => void
+  onRemoveOverlayLayer: (id: string) => void
+  onMoveOverlayLayer: (id: string, direction: 'up' | 'down') => void
   onImageLayerChange: (id: string, patch: Partial<ImageLayerConfig>) => void
+  onTextLayerChange: (id: string, patch: Partial<TextLayerConfig>) => void
   onReplaceImageLayerAsset: (id: string, file: File) => void
 }
 
@@ -77,13 +89,15 @@ export default function AssetGeneratorPanel({
   onFileSelected,
   uploadedFileName,
   onRandomizeAll,
-  imageLayers,
-  selectedImageLayerId,
-  onSelectImageLayer,
+  overlayLayers,
+  selectedOverlayLayerId,
+  onSelectOverlayLayer,
   onAddImageLayer,
-  onRemoveImageLayer,
-  onMoveImageLayer,
+  onAddTextLayer,
+  onRemoveOverlayLayer,
+  onMoveOverlayLayer,
   onImageLayerChange,
+  onTextLayerChange,
   onReplaceImageLayerAsset,
 }: AssetGeneratorPanelProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -107,7 +121,7 @@ export default function AssetGeneratorPanel({
         전체 무작위
       </Button>
 
-      <Accordion type="multiple" defaultValue={['source', 'stage', 'image', 'gradient', 'curve', 'imageLayers']} className="w-full">
+      <Accordion type="multiple" defaultValue={['source', 'stage', 'image', 'gradient', 'curve', 'overlayLayers']} className="w-full">
         <AccordionItem value="source">
           <AccordionTrigger>원천 그래픽</AccordionTrigger>
           <AccordionContent className="flex flex-col gap-3">
@@ -317,27 +331,31 @@ export default function AssetGeneratorPanel({
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="imageLayers">
-          <AccordionTrigger>이미지 레이어</AccordionTrigger>
+        <AccordionItem value="overlayLayers">
+          <AccordionTrigger>이미지 · 텍스트 레이어</AccordionTrigger>
           <AccordionContent className="flex flex-col gap-3">
             <LayerSidebar
-              imageLayers={imageLayers}
-              selectedId={selectedImageLayerId}
-              onSelect={onSelectImageLayer}
-              onAdd={onAddImageLayer}
-              onRemove={onRemoveImageLayer}
-              onMove={onMoveImageLayer}
+              layers={overlayLayers}
+              selectedId={selectedOverlayLayerId}
+              onSelect={onSelectOverlayLayer}
+              onAddImage={onAddImageLayer}
+              onAddText={onAddTextLayer}
+              onRemove={onRemoveOverlayLayer}
+              onMove={onMoveOverlayLayer}
             />
             {(() => {
-              const selectedImageLayer = imageLayers.find((l) => l.id === selectedImageLayerId)
-              if (!selectedImageLayer) return null
-              return (
-                <ImageLayerFields
-                  layer={selectedImageLayer}
-                  onChange={(patch) => onImageLayerChange(selectedImageLayer.id, patch)}
-                  onReplaceAsset={(file) => onReplaceImageLayerAsset(selectedImageLayer.id, file)}
-                />
-              )
+              const selectedLayer = overlayLayers.find((l) => l.id === selectedOverlayLayerId)
+              if (!selectedLayer) return null
+              if (selectedLayer.type === 'image') {
+                return (
+                  <ImageLayerFields
+                    layer={selectedLayer}
+                    onChange={(patch) => onImageLayerChange(selectedLayer.id, patch)}
+                    onReplaceAsset={(file) => onReplaceImageLayerAsset(selectedLayer.id, file)}
+                  />
+                )
+              }
+              return <TextLayerFields layer={selectedLayer} onChange={(patch) => onTextLayerChange(selectedLayer.id, patch)} />
             })()}
           </AccordionContent>
         </AccordionItem>

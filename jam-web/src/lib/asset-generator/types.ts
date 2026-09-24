@@ -3,7 +3,13 @@
  *
  * 정본: docs/specs/prd/asset-generator/PRD.md §4(레이어)·§5(프리셋).
  * 이미지 레이어는 20260924_2155에서 타입을 선언하고 20260924_2157에서 render.ts의
- * `drawImageLayer`로 그리기를 확정했다. 텍스트 레이어는 타입만 있고 그리기는 후속 티켓 과제다.
+ * `drawImageLayer`로 그리기를 확정했다. 텍스트 레이어는 20260924_2158에서 `drawTextLayer`로
+ * 그리기까지 확정했다.
+ *
+ * 오버레이 레이어(재작업, 20260924_2158): 이미지 레이어와 텍스트 레이어는 어드민 화면에서
+ * 하나의 순서 있는 목록(`OverlayLayerConfig[]`)으로 함께 관리한다 — 하위 티켓 20260924_2159의
+ * 프리셋이 `AssetPreset.layers` 배열 하나에 리본·이미지·텍스트를 순서대로 저장하기 때문이다.
+ * 리본 레이어는 이 목록에 들어가지 않고 항상 맨 아래 고정이다(어드민 화면 상태는 별도 필드).
  *
  * 레이어 식별(재작업, 20260924_2157): `id`는 클라이언트에서 생성해 배열 인덱스 대신 선택
  * 상태를 추적하는 키로 쓴다(참고: `src/app/admin/shader-lab/ShaderLabLayerSidebar.tsx`의
@@ -78,23 +84,40 @@ export interface ImageLayerConfig {
   opacityPct: number;
 }
 
-/** 텍스트 레이어 (PRD §4.3). 글자 내용은 프리셋에 저장하지 않는다. */
+/**
+ * 글꼴 식별자(PRD §4.3). 서버 렌더링(하위 티켓 20260924_2201)이 같은 `family`·`weight` 값으로
+ * 폰트 파일을 등록해야 하므로, 프리셋에 저장되는 값이자 두 렌더러(브라우저 캔버스·서버)가
+ * 합의하는 계약이다. `family`는 구글 폰트명 또는 시스템 기본 글꼴 식별자
+ * (`SYSTEM_DEFAULT_FONT`, assetGeneratorHelpers.ts)다.
+ */
+export interface TextLayerFont {
+  family: string;
+  weight: number;
+}
+
+/** 텍스트 레이어 (PRD §4.3). */
 export interface TextLayerConfig {
   type: 'text';
   /** 선택 상태 추적용 식별자(배열 인덱스 아님). 클라이언트에서 생성 */
   id: string;
-  /** 프리셋에 저장하지 않는 값. 수동 경로는 화면 입력, 자동 경로는 컨텐츠에서 채운다 */
+  /**
+   * 프리셋 직렬화 제외 — 프리셋(§5)에는 스타일만 저장하고 이 값은 저장하지 않는다. 수동
+   * 경로는 화면 입력, 자동 경로는 컨텐츠(배지 이름 등)에서 매번 채운다. 여러 줄은 개행 문자로
+   * 구분한다.
+   */
   content: string;
-  /** 구글 폰트명 또는 기본 시스템 글꼴 */
-  fontFamily: string;
-  /** 스테이지 짧은 변 대비 크기(%) */
+  font: TextLayerFont;
+  /** 스테이지 짧은 변 대비 글자 크기(%) */
   sizePct: number;
-  weight: number;
+  /** 글자 크기 대비 자간 배수(0=기본 간격, 양수면 더 벌어진다) */
   letterSpacing: number;
+  /** 글자 크기 대비 행간 배수(예: 1.2). 여러 줄일 때만 의미가 있다 */
   lineHeight: number;
   align: 'left' | 'center' | 'right';
   color: string;
+  /** 텍스트 블록 중심의 스테이지 가로 위치(%) */
   xPct: number;
+  /** 텍스트 블록 중심의 스테이지 세로 위치(%) */
   yPct: number;
   rotationDeg: number;
   /** 0~100 */
@@ -102,6 +125,13 @@ export interface TextLayerConfig {
 }
 
 export type Layer = RibbonLayerConfig | ImageLayerConfig | TextLayerConfig;
+
+/**
+ * 오버레이 레이어(이미지·텍스트, 재작업 20260924_2158): 리본 위에 얹는 순서 있는 레이어
+ * 목록이다. 어드민 화면(`overlayLayers` 상태)과 프리셋 저장(§5, 하위 티켓 20260924_2159)
+ * 양쪽이 이 타입을 쓴다.
+ */
+export type OverlayLayerConfig = ImageLayerConfig | TextLayerConfig;
 
 /**
  * 프리셋 (PRD §5). 텍스트 글자 내용·배경색/끝색·리본 레이어의 랜덤 속성값과 시드는
