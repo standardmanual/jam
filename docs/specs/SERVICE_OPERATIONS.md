@@ -562,52 +562,66 @@ checkItemBookCompletion(userId, activities):
 
 ## 8. 조합(Combine) 시스템
 
-**관련 파일:** `src/lib/combine/index.ts`, `src/app/api/combine/route.ts`
+**관련 파일:** `src/lib/combine/index.ts`, `src/lib/combine/recipe-payload.ts`, `src/lib/combine/policy.ts`, `src/app/api/combine/route.ts`
+
+레시피 구성 규칙(슬롯 기반 OR 매칭, 슬롯 종류, 실패 처리 정책)과 등재 레시피의 정본은
+`jam-doc/planning/content/COMBINE_RECIPES.md`다. 이 절은 서버가 실제로 처리하는 순서만 적는다.
 
 ### 8-1. 조합 흐름
 
 ```
-POST /api/combine { item_ids: string[] }  (2~3개 아이템)
+POST /api/combine { recipe_id: string, item_ids: string[] }  (item_ids 1~10개, 중복 불가)
 
-1. inventory_items WHERE id IN(itemIds) AND inventory_id=유저인벤 조회
-   → 개수 불일치 → items_not_found 에러
+1. 로그인 확인 → 없으면 401
+2. recipe_id가 문자열이 아니거나 item_ids 개수가 1~10이 아니면 400
+   (recipe_not_found / invalid_count)
 
-2. 재료 배지 ID 정렬(sort()) → combination_recipes 순차 비교
-   (ingredient_badge_ids 정렬 후 비교 → 순서 무관 매칭)
+3. combineRecipeAttempt — 지정한 레시피 하나만 검증한다(전체 레시피 스캔 없음)
+   - item_ids에 중복이 있거나 상한을 넘으면 → invalid_count
+   - 레시피가 없으면 → recipe_not_found
+   - 투입한 개체를 내 인벤토리에서 조회한다(아이템북에 꽂히지 않았고 드랍되지 않은 것만).
+     하나라도 못 찾으면 → items_not_found
+   이 세 경우는 소각도 포인트 지급도 없다.
 
-3. 매칭 레시피 없음 → no_recipe 에러
+4. 슬롯 매칭(matchesRecipeSlots)
+   - 아이템 슬롯: 투입한 배지가 그 슬롯의 후보 중 하나여야 한다
+   - 조건 슬롯(액티비티·체크인): 후보 중 하나를 보유하고 있으면 충족한다
 
-4. 원본 아이템 소각:
-   inventory_items DELETE WHERE id IN(itemIds)
-   inventory.used_slots -= itemIds.length
-   ※ 성공 실패 여부 무관하게 소각 먼저 실행
+5. 투입한 아이템 개체 소각 — 매칭 성공·미매칭과 무관하게 항상 실행
+   destroyed_at을 세우고 인벤토리 칸을 반환하며 Consume 이벤트를 기록한다.
+   조건 슬롯의 배지는 보유만 확인하므로 소각하지 않는다.
 
-5. 성공 확률 판정:
-   Math.random() > recipe.success_rate → chance_fail 반환
-   (아이템 이미 소각, 복구 없음)
-
-6. 성공 시:
-   inventory_items INSERT {
-     badge_id: result_badge_id,
-     obtained_by: 'system_event',
-     expires_at: now + 30일
-   }
-   inventory.used_slots += 1
-
-7. 결과 배지명 반환
+6-a. 매칭 성공
+   reward_badge_ids를 전부 지급한다(만료는 지급 시점 +30일, 인벤토리에 칸이 없으면 그 배지는 건너뛴다).
+   reward_points가 0보다 크면 지급한다(사유 combine_recipe_reward).
+6-b. 미매칭(no_recipe_match)
+   combine_policy.fail_reward_points가 0보다 크면 지급한다(사유 combine_fail_reward).
+   실패 이력을 기록한다.
 ```
 
-**주의:** 소각은 성공 판정 전에 실행된다. 확률 실패 시 원본 아이템은 복구되지 않는다.
+**주의**
+- 소각은 결과와 무관하다. 투입 개수가 레시피 슬롯 수와 다르면 미매칭이므로, 재료를 1개만 넣어도
+  소각되고 실패 포인트가 지급된다. 라우트에는 횟수·일일 상한이 없다(점검은 티켓 20260924_1207).
+- 보상 배지가 전부 지급되지 않고 포인트도 0이면 성공이지만 재료만 소각된 상태다. 라우트가
+  「레시피 실패」 문구를 내려 주고, 원인은 서버 로그에만 남는다.
 
 ### 8-2. 레시피 구조
 
 ```sql
 combination_recipes {
-  ingredient_badge_ids: UUID[] (정렬 불필요, 코드에서 sort)
-  result_badge_id: UUID
-  success_rate: 0.0 ~ 1.0
+  id, name,
+  reward_points: integer          -- 성공 시 지급 포인트(0이면 미지급)
+  reward_badge_ids: UUID[]        -- 성공 시 확정 지급하는 아이템배지
 }
+combination_recipe_slots {
+  recipe_id, slot_order,
+  badge_type: 'item' | 'activity' | 'checkin'   -- item은 소각, 나머지는 보유 확인만
+  allowed_badge_ids: UUID[]       -- 슬롯 후보(OR)
+}
+combine_policy { fail_reward_points: integer }  -- 미매칭 시 지급하는 고정 포인트
 ```
+
+레시피당 슬롯은 2~10개이고 아이템 슬롯이 1개 이상 있어야 한다(`recipe-payload.ts`).
 
 ---
 
