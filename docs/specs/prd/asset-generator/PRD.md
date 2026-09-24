@@ -173,4 +173,9 @@ code:
 
 ## 15. 구현 상태 (2026-09-24 기준)
 
-미착수. 하위 티켓 순서는 상위 티켓의 하위 티켓 표를 따른다.
+- [20260924_2155](../../../tickets/p2-normal/20260924_2155_Infra_에셋-제너레이터-공용-모듈-분리-곡선-스탬프-색-레이어합성.md) 완료: 그리기 로직을 `jam-web/src/lib/asset-generator/`
+  (types·random·curve·render)로 분리했다. 프로토타입은 이 모듈을 번들링한
+  `jam-doc/assets/prototypes/20260924_jam-asset-generator.core.js`를 그대로 불러와 쓴다(재생성:
+  `node jam-web/scripts/asset-generator/build-prototype.mjs`). 서버 렌더링(캔버스 라이브러리 실제
+  구현체)은 아직 없다 — render.ts는 캔버스 팩토리·이미지 로더 인터페이스만 둔다(하위 티켓 2201).
+- 그 외는 미착수. 하위 티켓 순서는 상위 티켓의 하위 티켓 표를 따른다.
