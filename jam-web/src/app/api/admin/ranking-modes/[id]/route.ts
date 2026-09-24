@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
 import type { RankingModeSavePayload } from '@/lib/admin/ranking-modes'
+import {
+  fetchLiveCardsByMode,
+  formatRankingModeBlockedMessage,
+  type RankingModeCardRef,
+  type RankingModeReferenceClient,
+} from '@/lib/admin/ranking-mode-references'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireAdmin()
@@ -36,8 +42,34 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params
   const supabase = createServiceClient()
-  // today_cards.ranking_mode_id는 ON DELETE SET NULL이라 삭제해도 참조하는 카드는 남는다
-  // (카드는 깨진 랭킹보드로 남아 어드민 목록에서 확인 가능 — User Story 8과 같은 취지).
+
+  const { data: existing, error: lookupError } = await supabase
+    .from('ranking_modes')
+    .select('id')
+    .eq('id', id)
+    .maybeSingle()
+  if (lookupError) return NextResponse.json({ error: lookupError.message }, { status: 500 })
+  if (!existing) return NextResponse.json({ error: '랭킹 규칙을 찾을 수 없습니다.' }, { status: 404 })
+
+  // today_cards.ranking_mode_id는 ON DELETE SET NULL이라 DB가 삭제를 막아 주지 않는다 — 그대로
+  // 지우면 이 규칙을 쓰던 랭킹보드 카드가 빈 채로 홈 피드에 남는다. 아직 보일 수 있는(활성이고
+  // 종료 전인) 카드가 있으면 막고 카드 제목을 알려 준다(티켓 20260924_0947). 조회에 실패하면
+  // "참조 없음"으로 보지 않고 삭제를 멈춘다(fail-closed).
+  let liveCards: RankingModeCardRef[]
+  try {
+    const byMode = await fetchLiveCardsByMode(supabase as unknown as RankingModeReferenceClient, [id])
+    liveCards = byMode.get(id) ?? []
+  } catch (error) {
+    console.error('[ranking-modes DELETE] 참조 카드 조회 실패 — 삭제를 차단합니다:', error)
+    return NextResponse.json(
+      { error: '삭제할 수 없어요. 연결된 카드를 확인하지 못했어요. 다시 시도해도 같으면 개발자에게 전달해 주세요.' },
+      { status: 500 }
+    )
+  }
+  if (liveCards.length > 0) {
+    return NextResponse.json({ error: formatRankingModeBlockedMessage(liveCards), cards: liveCards }, { status: 409 })
+  }
+
   const { error } = await supabase.from('ranking_modes').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
