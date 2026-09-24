@@ -88,6 +88,14 @@ else
   rm -f "$LOG_PREFIX.team-map"
 fi
 
+# scheduledJobs.generated.ts(어드민 캘린더의 Claude 예약 루틴 표시)가 scheduled-jobs.md에서
+# 생성된 최신본인지 확인한다 (티켓 20260924_0905).
+if ! ( cd "$REPO_ROOT" && node scripts/gen-scheduled-jobs.mjs --check ) >"$LOG_PREFIX.scheduled-jobs" 2>&1; then
+  FAILED+=("scheduled-jobs")
+else
+  rm -f "$LOG_PREFIX.scheduled-jobs"
+fi
+
 # .claude/skills/*/SKILL.md·.claude/agents/*.md의 frontmatter 구조 평가 (티켓 20260922_1523).
 if ! ( cd "$REPO_ROOT" && node scripts/check-skills.mjs ) >"$LOG_PREFIX.skills" 2>&1; then
   FAILED+=("skills")
@@ -96,7 +104,7 @@ else
 fi
 
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · ds:check · slop · scripts-test · contract · team-doc · team-map · skills"
+  echo "verify 통과: lint · typecheck · test · ds:check · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · skills"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"

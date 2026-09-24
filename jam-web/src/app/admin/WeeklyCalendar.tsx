@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import { Button } from '@/components/admin/ui/button'
+import { cn } from '@/lib/utils'
 import { shiftDateStr } from '@/lib/admin/today-calendar'
 
 export interface CalendarCellItem {
@@ -10,6 +11,10 @@ export interface CalendarCellItem {
   /** "09:00" 또는 "매시간"처럼 화면에 그대로 찍을 시각 라벨 */
   time: string
   label: string
+  /** 항목 종류 표식. 'routine'이면 크론과 구분되는 표식을 붙인다(티켓 20260924_0905) */
+  kind?: 'routine'
+  /** true면 흐리게 표시한다(꺼진 루틴 등) */
+  dim?: boolean
 }
 
 export interface CalendarColumn {
@@ -79,8 +84,13 @@ export default function WeeklyCalendar({
             ) : (
               <ul className="space-y-1">
                 {col.items.map((item) => (
-                  <li key={item.id} className="text-xs leading-snug">
+                  <li key={item.id} className={cn('text-xs leading-snug', item.dim && 'opacity-40')}>
                     <span className="font-mono text-muted-foreground">{item.time}</span>{' '}
+                    {item.kind === 'routine' && (
+                      <span className="mr-1 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
+                        루틴
+                      </span>
+                    )}
                     <span>{item.label}</span>
                   </li>
                 ))}

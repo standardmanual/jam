@@ -13,6 +13,7 @@ import {
   cronToWeeklyOccurrences,
   getWeeklyCronOccurrences,
   formatOccurrenceTime,
+  cronOccurrenceId,
   mondayOfWeek,
   normalizeWeekParam,
   formatWeekRangeLabel,
@@ -62,6 +63,30 @@ describe('cronToWeeklyOccurrences', () => {
   it('알 수 없는 경로는 경로 문자열 자체를 라벨로 쓴다', () => {
     const occ = cronToWeeklyOccurrences('/api/cron/unknown-path', '0 0 * * *')
     expect(occ[0].label).toBe('/api/cron/unknown-path')
+  })
+})
+
+describe('cronOccurrenceId', () => {
+  it('시 필드가 쉼표로 여러 값인 크론(0 6,18 * * *)은 같은 날짜에 서로 다른 id를 만든다(티켓 20260924_0930)', () => {
+    // weekday='*'이므로 매 요일마다 전날 18시(dayShift로 하루 밀림)와 당일 6시가 겹쳐
+    // 같은 weekday에 시각이 다른 occurrence 2개가 생긴다(cronToWeeklyOccurrences의 dayShift 계산).
+    const occ = cronToWeeklyOccurrences('/api/cron/example', '0 6,18 * * *')
+    const sameWeekday = occ.filter((o) => o.weekday === 1) // 월요일 칸
+    expect(sameWeekday).toHaveLength(2)
+    expect(new Set(sameWeekday.map((o) => o.hour)).size).toBe(2) // 시각이 서로 다르다
+
+    const date = '2026-09-21'
+    const ids = sameWeekday.map((o) => cronOccurrenceId(o, date))
+    expect(new Set(ids).size).toBe(2) // id가 겹치지 않는다
+  })
+
+  it('기존 크론 4개는 id에 경로·날짜·시각이 그대로 들어간다(표시되는 시각·라벨·순서는 바뀌지 않는다)', () => {
+    const date = '2026-09-22'
+    const poiCleanup = cronToWeeklyOccurrences('/api/cron/poi-cleanup', '0 0 * * *')[0]
+    expect(cronOccurrenceId(poiCleanup, date)).toBe('/api/cron/poi-cleanup-2026-09-22-09:00')
+
+    const ambientDrop = cronToWeeklyOccurrences('/api/cron/ambient-drop', '0 * * * *')[0]
+    expect(cronOccurrenceId(ambientDrop, date)).toBe('/api/cron/ambient-drop-2026-09-22-매시간')
   })
 })
 
