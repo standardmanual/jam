@@ -9,7 +9,7 @@
  * (state 초깃값 161~167줄, applyAspect 302줄, readSeconds 515줄, fileName 503줄,
  * MUXER_URL·MUXER_SRI 492~493줄).
  */
-import type { GradientDirection, LetterKey, RibbonLayerConfig, StageRatio } from '@/lib/asset-generator'
+import type { GradientDirection, ImageLayerConfig, LetterKey, RibbonLayerConfig, StageRatio } from '@/lib/asset-generator'
 
 /** 스테이지 긴 변 고정 길이(px). 원본 MAX_LONG. */
 export const STAGE_MAX_LONG_SIDE_PX = 1280
@@ -71,6 +71,11 @@ export const SPEED_RANGE: SliderRange = { min: 1000, max: 2000, step: 10 }
 export const GAP_RANGE: SliderRange = { min: 2, max: 120, step: 1 }
 export const COUNT_RANGE: SliderRange = { min: 200, max: 800, step: 5 }
 export const HEAD_POSITION_RANGE: SliderRange = { min: 0, max: 100, step: 0.1 }
+/** 이미지 레이어 위치(%, 티켓 20260924_2157) — 스테이지 가로/세로 기준. */
+export const IMAGE_POSITION_RANGE: SliderRange = { min: 0, max: 100, step: 1 }
+/** 이미지 레이어 크기(%) — 스테이지 짧은 변 기준. 오버레이가 스테이지보다 커질 수도 있어 100을 넘긴다. */
+export const IMAGE_SIZE_RANGE: SliderRange = { min: 1, max: 200, step: 1 }
+export const OPACITY_RANGE: SliderRange = { min: 0, max: 100, step: 1 }
 
 export const formatPercent = (value: number): string => `${value}%`
 export const formatDegree = (value: number): string => `${value}°`
@@ -105,6 +110,64 @@ export const H264_CODEC_CANDIDATES = ['avc1.64002A', 'avc1.4D002A', 'avc1.42002A
 /** MP4 묶음 라이브러리(mp4-muxer, MIT). 프로토타입(492~493줄)과 같은 버전·무결성 해시를 그대로 쓴다. */
 export const MP4_MUXER_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.js'
 export const MP4_MUXER_SCRIPT_INTEGRITY = 'sha384-wr0AQH9RBAKio/g7bHM5245MBCU5B/b0Y9u42cTxRYQQJXKEijZvWEJKL9JG26hs'
+
+/** 레이어 식별자 생성(재작업, 20260924_2157). shader-lab의 `layerFactory.ts`와 같은 방식이지만
+ * shader-lab 파일은 고치지 않으므로 여기 따로 둔다(수정 금지 대상 모방 아님, 중복 작성). */
+function generateLayerId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
+  return `image-layer-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+/** 새 이미지 레이어 기본값(티켓 20260924_2157): 중앙 배치, 짧은 변의 30%, 완전 불투명. */
+export function createImageLayer(assetUrl: string): ImageLayerConfig {
+  return {
+    type: 'image',
+    id: generateLayerId(),
+    assetUrl,
+    xPct: 50,
+    yPct: 50,
+    widthPct: 30,
+    heightPct: 30,
+    rotationDeg: 0,
+    opacityPct: 100,
+  }
+}
+
+/**
+ * 이미지 레이어 목록에서 id로 지정한 레이어를 한 칸 위/아래로 옮긴다(배열 안 위치를 스왑).
+ * id를 찾지 못했거나 배열 경계를 벗어나면(리본 레이어 방향이거나 목록 맨 위/아래) 원본을
+ * 그대로 돌려준다(원본 자체를 바꾸지 않는다).
+ *
+ * 재작업(20260924_2157): 인덱스 대신 id로 대상을 찾는다 — 이전에는 호출부(page.tsx)가
+ * 스왑 뒤 선택 인덱스를 별도로 갱신해야 했는데, 스왑 상대가 선택 인덱스와 같은 경우를
+ * 놓쳐 선택이 다른 레이어를 가리키는 버그가 있었다(리뷰 재현: A·B·C 중 B를 선택하고 C를
+ * 위로 이동하면 선택 인덱스 1에는 이제 C가 들어간다). id 기반으로는 선택 상태
+ * (`selectedImageLayerId`)가 배열 위치와 무관해 이 문제 자체가 생기지 않는다
+ * (참고: `src/app/admin/shader-lab/ShaderLabLayerSidebar.tsx`).
+ */
+export function moveImageLayer(layers: ImageLayerConfig[], id: string, direction: 'up' | 'down'): ImageLayerConfig[] {
+  const index = layers.findIndex((l) => l.id === id)
+  if (index === -1) return layers
+  const target = direction === 'up' ? index - 1 : index + 1
+  if (target < 0 || target >= layers.length) return layers
+  const next = [...layers]
+  ;[next[index], next[target]] = [next[target], next[index]]
+  return next
+}
+
+/** 이미지 레이어 목록에서 id로 지정한 레이어를 제거한다(순수 함수, blob URL 정리는 호출부 책임). */
+export function removeImageLayer(layers: ImageLayerConfig[], id: string): ImageLayerConfig[] {
+  return layers.filter((l) => l.id !== id)
+}
+
+/**
+ * 삭제한 레이어가 선택돼 있었으면 선택을 해제한다(그 외 삭제는 선택을 그대로 둔다).
+ * id 기반 선택이라 삭제되지 않은 레이어의 선택은 배열 위치가 바뀌어도 영향받지 않는다 —
+ * 이 함수는 "삭제된 레이어 자신이 선택돼 있던 경우"만 처리하면 된다.
+ */
+export function deselectIfRemoved(selectedId: string | null, removedId: string): string | null {
+  return selectedId === removedId ? null : selectedId
+}
 
 /** 저장 파일명(원본 fileName, 503줄): jam-asset_{비율}_{yyyyMMdd-HHmmss}.{ext} */
 export function buildExportFileName(ratio: StageRatio, ext: string, date: Date): string {

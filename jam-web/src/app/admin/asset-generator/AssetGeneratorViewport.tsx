@@ -11,6 +11,22 @@
  * (LETTERS 154~159줄, setBaseFromCanvas 177줄, normalizeSvg 205줄, loadBlob 226줄,
  * applyAspect 302줄, frame 476줄). `AssetGeneratorExport`가 정밀 인코딩 중 프레임을
  * 하나씩 그리기 위해 `drawAtHead`·`setExporting` 등을 ref로 끌어올려 쓴다.
+ *
+ * 이미지 레이어(티켓 20260924_2157): 업로드 원본은 assetUrl(blob URL)별로 한 번만 불러와
+ * `imageAssets`에 캔버스로 캐싱한다 — 원천 그래픽 로드와 같은 `loadImageFromBlob`·
+ * `normalizeSvgMarkup`을 재사용한다(알파 bbox로 자르지는 않는다 — 스탬프가 아니라 위치·크기를
+ * 그대로 쓰는 오버레이라서). 리본 레이어 다음, 배열 역순(마지막 인덱스부터)으로 그려
+ * 인덱스 0이 가장 위에 오게 한다(`LayerSidebar` 표시 순서와 동일).
+ *
+ * 캐시 정리(재작업, 20260924_2157): `imageLayers`가 바뀔 때마다 더 이상 어떤 레이어도
+ * 가리키지 않는 assetUrl은 `imageAssets`·`loadedImageAssetUrlsRef`에서 함께 지운다 — 원본
+ * 다시 올리기(assetUrl 교체)나 레이어 삭제로 예전 키가 캐시에 계속 쌓이는 걸 막는다.
+ *
+ * 로드 경합(재작업, 20260924_2157): 이미지 레이어를 추가한 직후 PNG/영상 저장을 누르면
+ * 원본이 아직 로드되지 않아 저장 결과에서 조용히 빠질 수 있었다. `areImageAssetsReady`·
+ * `waitForImageAssets`로 로드 완료 여부를 밖에 노출해 `AssetGeneratorExport`가 캡처 전에
+ * 기다리게 한다. `getMissingImageAssetCount`는 기다린 뒤에도 로드에 실패해 저장 결과에서
+ * 빠지는 레이어 수를 알려준다(조용히 건너뛰지 않고 내보내기 쪽에서 오류로 안내하기 위함).
  */
 import {
   forwardRef,
@@ -25,11 +41,13 @@ import { Button } from '@/components/admin/ui/button'
 import {
   buildPath,
   buildStamp,
+  drawImageLayer,
   drawRibbonLayer,
   fillBackground,
   type Canvas2DContextLike,
   type CanvasFactory,
   type CanvasLike,
+  type ImageLayerConfig,
   type PathTable,
   type RibbonLayerConfig,
   type StageRatio,
@@ -51,11 +69,18 @@ export interface AssetGeneratorViewportHandle {
   drawAtHead(head: number): void
   /** true인 동안 재생 루프가 화면을 다시 그리지 않는다(정밀 인코딩이 프레임을 직접 그리는 동안). */
   setExporting(exporting: boolean): void
+  /** 이미지 레이어 원본 로드가 지금 하나도 진행 중이 아니면 true(재작업, 20260924_2157). */
+  areImageAssetsReady(): boolean
+  /** 진행 중인 이미지 레이어 원본 로드가 모두 끝날 때까지 기다린다(성공·실패 모두 포함). */
+  waitForImageAssets(): Promise<void>
+  /** 로드에 실패해 저장 결과에서 빠지는 이미지 레이어 수(안내용, waitForImageAssets 이후에 확인). */
+  getMissingImageAssetCount(): number
 }
 
 interface AssetGeneratorViewportProps {
   stageRatio: StageRatio
   layer: RibbonLayerConfig
+  imageLayers: ImageLayerConfig[]
   play: boolean
   onPlayChange: (play: boolean) => void
 }
@@ -202,14 +227,64 @@ function loadImageFromBlob(blob: Blob, isSvg: boolean): Promise<HTMLCanvasElemen
   })
 }
 
+/** assetUrl(blob URL 등)을 불러와 그리기용 캔버스로 만든다. 원천 그래픽 로드(ribbon)와 같은
+ * 정규화 경로를 쓰되, 스탬프가 아니므로 알파 bbox로 자르지는 않는다. */
+async function loadImageLayerAsset(url: string): Promise<HTMLCanvasElement> {
+  const response = await fetch(url)
+  const blob = await response.blob()
+  const isSvg = blob.type === 'image/svg+xml' || blob.type === 'image/svg'
+  const normalized = isSvg
+    ? new Blob([normalizeSvgMarkup(await blob.text())], { type: 'image/svg+xml' })
+    : blob
+  return loadImageFromBlob(normalized, isSvg)
+}
+
+/** 리본 레이어 다음에 이미지 레이어를 그린다. 배열 역순(마지막 인덱스부터)으로 그려
+ * 인덱스 0이 가장 나중에(가장 위에) 그려지게 한다(LayerSidebar 표시 순서와 동일). */
+function drawImageLayersOnto(
+  ctx: Canvas2DContextLike,
+  imageLayers: ImageLayerConfig[],
+  imageAssets: Record<string, CanvasLike>,
+  stageWidth: number,
+  stageHeight: number
+): void {
+  for (let i = imageLayers.length - 1; i >= 0; i--) {
+    const imgLayer = imageLayers[i]
+    const asset = imageAssets[imgLayer.assetUrl]
+    if (!asset) continue
+    drawImageLayer(ctx, {
+      image: asset,
+      xPct: imgLayer.xPct,
+      yPct: imgLayer.yPct,
+      widthPct: imgLayer.widthPct,
+      heightPct: imgLayer.heightPct,
+      rotationDeg: imgLayer.rotationDeg,
+      opacityPct: imgLayer.opacityPct,
+      stageWidth,
+      stageHeight,
+    })
+  }
+}
+
 const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGeneratorViewportProps>(
-  function AssetGeneratorViewport({ stageRatio, layer, play, onPlayChange }, ref) {
+  function AssetGeneratorViewport({ stageRatio, layer, imageLayers, play, onPlayChange }, ref) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null)
     const pathRef = useRef<PathTable | null>(null)
     const headRef = useRef(0)
     const exportingRef = useRef(false)
     const lastFrameTimeRef = useRef(0)
     const loadTokenRef = useRef(0)
+    const loadedImageAssetUrlsRef = useRef<Set<string>>(new Set())
+    // 로드 경합 대응(재작업, 20260924_2157): 진행 중인 이미지 레이어 로드 수와, 그 로드가 모두
+    // 끝나길 기다리는 waitForImageAssets() 호출들의 resolve 함수를 들고 있는다.
+    const pendingImageLoadCountRef = useRef(0)
+    const pendingImageLoadWaitersRef = useRef<Array<() => void>>([])
+    // imageAssets는 JSX 렌더 결과에 쓰이지 않고(캔버스는 매 프레임 명령형으로 그린다) rAF
+    // 루프·drawAtHead·getMissingImageAssetCount가 즉시 읽기만 하므로 state가 아니라 ref로
+    // 둔다 — state였다면 setState → 리렌더 → useImperativeHandle 재생성 사이의 타이밍에 따라
+    // "방금 로드된 이미지"를 기다린 직후에도 드물게 옛 클로저를 읽을 수 있었다(재작업,
+    // 20260924_2157: PNG/영상 저장 경합 수정 과정에서 발견).
+    const imageAssetsRef = useRef<Record<string, CanvasLike>>({})
     const [base, setBase] = useState<HTMLCanvasElement | null>(null)
     const [headPct, setHeadPct] = useState(0)
 
@@ -262,6 +337,75 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
       void load()
     }, [layer.source])
 
+    // 로드 대기자에게 알린다(진행 중인 로드가 하나도 없을 때만). 배열 자체는 컴포넌트 생애
+    // 동안 재할당하지 않고 비우기만 한다(splice) — unmount 이펙트가 마운트 시점에 캡처해 둔
+    // 같은 배열 참조를 그대로 써도 항상 최신 상태를 보게 하기 위함.
+    function notifyImageAssetsReadyIfIdle() {
+      if (pendingImageLoadCountRef.current > 0) return
+      const waiters = pendingImageLoadWaitersRef.current.splice(0)
+      waiters.forEach((resolve) => resolve())
+    }
+
+    // 이미지 레이어 원본 로드(티켓 20260924_2157) — assetUrl별로 한 번만 불러와 캐싱한다.
+    // 위치·크기·회전 슬라이더를 움직여도 assetUrl은 그대로라 이 이펙트는 다시 불러오지 않는다.
+    //
+    // 캐시 정리(재작업, 20260924_2157): imageLayers가 바뀔 때마다(레이어 삭제·원본 다시 올리기로
+    // assetUrl 교체) 더 이상 어떤 레이어도 가리키지 않는 캐시 항목을 함께 지운다 — 새로 불러올
+    // 게 없어도(toLoad가 비어도) 이 정리는 매번 실행한다.
+    useEffect(() => {
+      const currentUrls = new Set(imageLayers.map((l) => l.assetUrl))
+
+      for (const url of Array.from(loadedImageAssetUrlsRef.current)) {
+        if (!currentUrls.has(url)) loadedImageAssetUrlsRef.current.delete(url)
+      }
+      {
+        let changed = false
+        const next: Record<string, CanvasLike> = {}
+        for (const [url, asset] of Object.entries(imageAssetsRef.current)) {
+          if (currentUrls.has(url)) next[url] = asset
+          else changed = true
+        }
+        if (changed) imageAssetsRef.current = next
+      }
+
+      const toLoad = Array.from(currentUrls).filter((url) => !loadedImageAssetUrlsRef.current.has(url))
+      if (toLoad.length === 0) return
+      let cancelled = false
+      toLoad.forEach((url) => loadedImageAssetUrlsRef.current.add(url))
+      pendingImageLoadCountRef.current += 1
+
+      async function loadAll() {
+        try {
+          const entries = await Promise.all(
+            toLoad.map(async (url) => {
+              try {
+                const canvas = await loadImageLayerAsset(url)
+                return [url, toCanvasLike(canvas)] as const
+              } catch (e) {
+                loadedImageAssetUrlsRef.current.delete(url)
+                toast.error(e instanceof Error ? e.message : '이미지 레이어를 불러오지 못했어요.')
+                return null
+              }
+            })
+          )
+          if (cancelled) return
+          const next = { ...imageAssetsRef.current }
+          for (const entry of entries) {
+            if (entry) next[entry[0]] = entry[1]
+          }
+          imageAssetsRef.current = next
+        } finally {
+          pendingImageLoadCountRef.current -= 1
+          notifyImageAssetsReadyIfIdle()
+        }
+      }
+
+      void loadAll()
+      return () => {
+        cancelled = true
+      }
+    }, [imageLayers])
+
     // 이동 곡선 재생성 — 시드·불규칙성·스테이지 크기가 바뀌면 다시 뽑되, 머리 위치는 진행률(비율)을
     // 유지한다(원본 rebuildPathKeepPhase, 295줄).
     useEffect(() => {
@@ -295,9 +439,11 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
 
     // 최신 값을 ref에 담아 두고, 재생 루프(rAF)는 마운트 시 한 번만 시작한다 — 슬라이더를 움직일
     // 때마다 루프를 새로 시작하지 않기 위함(원본은 하나의 전역 루프, frame 476줄과 동일한 동작).
-    const latestRef = useRef({ play, layer, stamp, base, W, H })
+    // imageAssets는 여기 담지 않고 rAF 루프 안에서 imageAssetsRef.current를 직접 읽는다
+    // (렌더·effect 타이밍과 무관하게 항상 최신값 — 위 imageAssetsRef 선언부 주석 참고).
+    const latestRef = useRef({ play, layer, stamp, base, W, H, imageLayers })
     useEffect(() => {
-      latestRef.current = { play, layer, stamp, base, W, H }
+      latestRef.current = { play, layer, stamp, base, W, H, imageLayers }
     })
 
     useEffect(() => {
@@ -333,6 +479,7 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
                 stageHeight: current.H,
               })
             }
+            drawImageLayersOnto(ctx, current.imageLayers, imageAssetsRef.current, current.W, current.H)
           }
         }
         raf = requestAnimationFrame(frame)
@@ -377,13 +524,34 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
               stageHeight: H,
             })
           }
+          drawImageLayersOnto(ctx, imageLayers, imageAssetsRef.current, W, H)
         },
         setExporting: (exporting: boolean) => {
           exportingRef.current = exporting
         },
+        areImageAssetsReady: () => pendingImageLoadCountRef.current <= 0,
+        waitForImageAssets: () => {
+          if (pendingImageLoadCountRef.current <= 0) return Promise.resolve()
+          return new Promise((resolve) => {
+            pendingImageLoadWaitersRef.current.push(resolve)
+          })
+        },
+        getMissingImageAssetCount: () => imageLayers.filter((l) => !imageAssetsRef.current[l.assetUrl]).length,
       }),
-      [W, H, layer, stamp, base]
+      [W, H, layer, stamp, base, imageLayers]
     )
+
+    // 컴포넌트가 사라질 때 이미지 레이어 캐시와 대기 중인 waitForImageAssets() 호출을 정리한다
+    // (재작업, 20260924_2157) — 대기자를 깨워 영원히 멈춰 있지 않게 한다.
+    useEffect(() => {
+      const loadedUrls = loadedImageAssetUrlsRef.current
+      const waiters = pendingImageLoadWaitersRef.current
+      return () => {
+        loadedUrls.clear()
+        pendingImageLoadCountRef.current = 0
+        waiters.splice(0).forEach((resolve) => resolve())
+      }
+    }, [])
 
     return (
       <div className="flex flex-col items-center gap-3">
