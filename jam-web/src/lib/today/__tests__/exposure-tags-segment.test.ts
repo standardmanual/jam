@@ -31,6 +31,9 @@ const fixtures = vi.hoisted(() => ({
   /** true인 유저는 해당 조회가 Supabase error를 반환한다 (티켓 20260924_0853) */
   slotsErrorUsers: {} as Record<string, boolean>,
   stravaErrorUsers: {} as Record<string, boolean>,
+  /** 조회 오류를 반환할 테이블 → 메시지, 유저별 참가 미션 id (티켓 20260924_0901) */
+  errorTables: {} as Record<string, string>,
+  participationsByUser: {} as Record<string, string[]>,
   /** 날씨·특일 조립 검증용 — 기본값은 기존 테스트와 같은 null/빈 배열 (티켓 20260924_0853) */
   weather: null as string | null,
   specialDays: [] as { name: string; type: string }[],
@@ -43,6 +46,7 @@ function mockSupabase() {
   const from = (table: string) => {
     fixtures.fromCalls[table] = (fixtures.fromCalls[table] ?? 0) + 1
     const state: FilterState = { eq: {}, in: {} }
+    const forced = fixtures.errorTables[table] ? { data: null, error: { message: fixtures.errorTables[table] } } : null
     const builder: Record<string, unknown> = {}
     builder.select = () => builder
     builder.eq = (col: string, val: unknown) => {
@@ -57,7 +61,12 @@ function mockSupabase() {
     builder.gte = () => builder
     builder.lte = () => builder
     builder.order = () => builder
-    builder.limit = () => Promise.resolve({ data: [], error: null })
+    builder.limit = () => {
+      if (forced) return Promise.resolve(forced)
+      // 종료 임박 미션 조회 — 참가 미션의 첫 건이 3일 이내 종료라고 본다
+      const ids = table === 'missions' ? ((state.in.id ?? []) as string[]).slice(0, 1) : []
+      return Promise.resolve({ data: ids.map((id) => ({ id })), error: null })
+    }
     builder.maybeSingle = () => {
       if (table !== 'strava_connections') return Promise.resolve({ data: null, error: null })
       const userId = state.eq.user_id as string
@@ -67,11 +76,12 @@ function mockSupabase() {
       return Promise.resolve({ data: fixtures.stravaByUser[userId] ?? null, error: null })
     }
     builder.then = (resolve: (v: unknown) => void) => {
-      if (
-        table === 'user_mission_participations' ||
-        table === 'user_mission_completions' ||
-        table === 'missions'
-      ) {
+      if (forced) return Promise.resolve(forced).then(resolve)
+      if (table === 'user_mission_participations') {
+        const ids = fixtures.participationsByUser[state.eq.user_id as string] ?? []
+        return Promise.resolve({ data: ids.map((mission_id) => ({ mission_id })), error: null }).then(resolve)
+      }
+      if (table === 'user_mission_completions' || table === 'missions') {
         return Promise.resolve({ data: [], error: null }).then(resolve)
       }
       if (table === 'user_item_book_slots') {
@@ -241,6 +251,42 @@ describe('computeUserExposureTags 통합 — 컬렉션 잔여·동기화 경과 
     expect(errorSpy).toHaveBeenCalledWith('[getItemBookProgress] user_item_book_slots 조회 오류:', '슬롯 조회 실패')
     expect(errorSpy).toHaveBeenCalledWith('[stravaStaleDays] strava_connections 조회 오류:', 'Strava 연결 조회 실패')
 
+    errorSpy.mockRestore()
+  })
+
+  // 티켓 20260924_0901 — 나머지 조회 7곳(참가 2·완료 미션 2·missions·완성 북·badges)
+  const part = 'hasParticipatingMission'
+  const soon = 'hasEndingSoonMission'
+  const book = 'getItemBookProgress'
+  const bookTags = ['has_incomplete_itembook', `itembook_remaining_le${ITEMBOOK_REMAINING_MAX}`]
+  it.each([
+    { table: 'user_mission_participations', fns: [part, soon], missing: ['has_participating_mission', 'has_ending_soon_mission'] },
+    { table: 'user_mission_completions', fns: [part, soon], missing: ['has_participating_mission', 'has_ending_soon_mission'] },
+    { table: 'missions', fns: [soon], missing: ['has_ending_soon_mission'] },
+    { table: 'user_item_book_completions', fns: [book], missing: bookTags },
+    { table: 'badges', fns: [book], missing: bookTags },
+  ])('$table 조회가 오류를 받으면 console.error를 남기고 해당 태그만 빠진다 (티켓 20260924_0901)', async ({ table, fns, missing }) => {
+    const now = new Date('2026-09-23T03:00:00Z')
+    const USER = `user-error-${table}`
+    fixtures.participationsByUser[USER] = ['mission-1']
+    fixtures.slotsByUser[USER] = [{ item_book_id: 'book-e', badge_id: 'badge-e1' }]
+    fixtures.badgesByBook['book-e'] = [
+      { id: 'badge-e1', item_book_id: 'book-e', type: 'item', drop_excluded: false },
+      { id: 'badge-e2', item_book_id: 'book-e', type: 'item', drop_excluded: false },
+    ]
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    // 오류가 없으면 태그가 붙는다 — 아래 부재 검증이 "원래 안 붙는 태그"가 아님을 보장한다
+    const healthy = await computeUserExposureTags(USER, now)
+    for (const tag of missing) expect(healthy).toContain(tag)
+
+    fixtures.errorTables[table] = `${table} 조회 실패`
+    const tags = await computeUserExposureTags(USER, now)
+
+    for (const tag of missing) expect(tags).not.toContain(tag)
+    for (const fn of fns) expect(errorSpy).toHaveBeenCalledWith(`[${fn}] ${table} 조회 오류:`, `${table} 조회 실패`)
+
+    delete fixtures.errorTables[table]
     errorSpy.mockRestore()
   })
 })
