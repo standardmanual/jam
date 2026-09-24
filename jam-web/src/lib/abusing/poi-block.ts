@@ -2,7 +2,10 @@
  * POI 영역 블록 (GPS 조작 감지 후 72시간 드랍/픽업 차단)
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import type { Database } from '@/types/database.generated'
 import type { AbusingPolicy } from './policy'
+import { chunkIds } from './chunk-ids'
+import { logAbusingEvents, type ExtendResult } from './shadow-ban'
 
 /**
  * 해당 유저가 이 POI에서 차단됐는지 확인.
@@ -69,4 +72,71 @@ export async function unblockPoi(userId: string, poiId: string): Promise<void> {
     console.error(`[poi-block] 블록 해제 실패 (userId: ${userId}, poiId: ${poiId}):`, error)
     throw new Error(`poi_blocks delete 실패 (${error.code}): ${error.message}`)
   }
+}
+
+export type PoiBlockRecord = Database['public']['Tables']['poi_blocks']['Row']
+
+export interface ReleasePoiBlocksResult {
+  released: PoiBlockRecord[]
+  logged: boolean
+  error: string | null
+}
+
+/**
+ * POI 차단 일괄 해제(티켓 20260924_0952) — 제재 해제(`releaseBans`)와 같은 방식이다. 200건
+ * 묶음마다 삭제 한 문장 뒤 지운 행을 실행 어드민과 함께 `abusing_logs`에 남긴다.
+ */
+export async function releasePoiBlocks(ids: string[], releasedBy: string): Promise<ReleasePoiBlocksResult> {
+  const supabase = createServiceClient()
+  const released: PoiBlockRecord[] = []
+  let logged = true
+
+  for (const idsChunk of chunkIds(ids)) {
+    const { data, error } = await supabase.from('poi_blocks').delete().in('id', idsChunk).select('*')
+    if (error) {
+      console.error('[poi-block] 일괄 해제 실패:', error)
+      return { released, logged, error: `poi_blocks delete 실패 (${error.code}): ${error.message}` }
+    }
+    const rows = data ?? []
+    released.push(...rows)
+    const ok = await logAbusingEvents(
+      rows.map((row) => ({
+        user_id: row.user_id,
+        event_type: 'poi_block_released',
+        detail: {
+          poi_id: row.poi_id,
+          blocked_until: row.blocked_until,
+          reason: row.reason,
+          created_at: row.created_at,
+          released_by: releasedBy,
+        },
+      }))
+    )
+    if (!ok) logged = false
+  }
+
+  return { released, logged, error: null }
+}
+
+/** POI 차단 만료 연장(티켓 20260924_0952) — 이미 더 오래 가는 차단은 `.lt` 조건으로 빠진다 */
+export async function extendPoiBlocks(ids: string[], until: Date): Promise<ExtendResult> {
+  const supabase = createServiceClient()
+  const untilIso = until.toISOString()
+  const updatedIds: string[] = []
+
+  for (const idsChunk of chunkIds(ids)) {
+    const { data, error } = await supabase
+      .from('poi_blocks')
+      .update({ blocked_until: untilIso })
+      .in('id', idsChunk)
+      .lt('blocked_until', untilIso)
+      .select('id')
+    if (error) {
+      console.error('[poi-block] 만료 연장 실패:', error)
+      return { updatedIds, error: `poi_blocks update 실패 (${error.code}): ${error.message}` }
+    }
+    updatedIds.push(...(data ?? []).map((row) => row.id))
+  }
+
+  return { updatedIds, error: null }
 }
