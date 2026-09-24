@@ -17,7 +17,7 @@
  * 리본 레이어 위에 얹는 오버레이(업로드한 PNG/SVG·텍스트)를 하나의 순서 있는 목록으로
  * 관리한다 — 위의 "이미지" 섹션(리본 원천 그래픽 자체의 크기·블러·회전)과는 다른 개념이다.
  */
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { IconArrowsShuffle, IconRefresh, IconUpload } from '@tabler/icons-react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/admin/ui/accordion'
 import { Button } from '@/components/admin/ui/button'
@@ -80,6 +80,10 @@ interface AssetGeneratorPanelProps {
   onTextLayerChange: (id: string, patch: Partial<TextLayerConfig>) => void
   onReplaceImageLayerAsset: (id: string, file: File) => void
   onLoadPreset: (stageRatio: StageRatio, layers: OverlayLayerConfig[]) => void
+  /** 현재 리본 속성을 뽑아낸 마스터 시드(PRD §11). 아직 뽑지 않았으면 null. */
+  masterSeed: number | null
+  /** 입력한 마스터 시드로 리본 속성을 다시 채운다(원천 그래픽은 그대로 둔다). */
+  onApplyMasterSeed: (seed: number) => void
 }
 
 export default function AssetGeneratorPanel({
@@ -102,8 +106,11 @@ export default function AssetGeneratorPanel({
   onTextLayerChange,
   onReplaceImageLayerAsset,
   onLoadPreset,
+  masterSeed,
+  onApplyMasterSeed,
 }: AssetGeneratorPanelProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [seedInput, setSeedInput] = useState('')
   const { width: stageWidth, height: stageHeight } = resolveStageSize(stageRatio)
   const effectiveStartColor = computeEffectiveStartColor(layer)
 
@@ -115,6 +122,14 @@ export default function AssetGeneratorPanel({
   function handleFile(file: File | null | undefined) {
     if (!file) return
     onFileSelected(file)
+  }
+
+  // 정수만 허용한다(마스터 시드는 정수, PRD §11). 빈 값·소수·문자는 적용하지 않는다.
+  const parsedSeedInput = /^-?\d+$/.test(seedInput.trim()) ? Number(seedInput.trim()) : null
+
+  function handleApplySeedInput() {
+    if (parsedSeedInput === null) return
+    onApplyMasterSeed(parsedSeedInput)
   }
 
   return (
@@ -298,6 +313,26 @@ export default function AssetGeneratorPanel({
         <AccordionItem value="curve">
           <AccordionTrigger>이동 곡선</AccordionTrigger>
           <AccordionContent className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5 rounded-md border border-dashed border-input p-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground">마스터 시드</span>
+                <span className="font-mono text-xs text-muted-foreground">{masterSeed ?? '아직 없음'}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">같은 시드를 CLI에 넣으면 같은 리본이 나와요.</p>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={seedInput}
+                  onChange={(e) => setSeedInput(e.target.value)}
+                  placeholder="시드 입력"
+                  className="h-9"
+                />
+                <Button type="button" variant="outline" disabled={parsedSeedInput === null} onClick={handleApplySeedInput}>
+                  시드 불러오기
+                </Button>
+              </div>
+            </div>
             <SliderRow
               label="불규칙성"
               value={layer.irregularityPct}
