@@ -280,6 +280,8 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
 
   const bagSlot = selectedRecipe?.slots.find((s) => s.id === bagSlotId) ?? null
   const bagRows = bagSlot ? bagRowsFor(bagSlot) : []
+  /** 아이템 슬롯이 있는 레시피에서만 재료 소각 안내를 보여준다(티켓 20260924_0813) */
+  const hasItemSlot = selectedRecipe?.slots.some((s) => s.badge_type === 'item') ?? false
 
   return (
     <div className="flex flex-col min-h-full text-text">
@@ -364,7 +366,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
           </div>
 
           {/* CTA — 화면 전체 폭을 채우지 않는다(티켓 20260917_1828, 요구사항 8) */}
-          <div className="px-[var(--spacing-16)] pb-[var(--spacing-24)] flex justify-center">
+          <div className="px-[var(--spacing-16)] pb-[var(--spacing-24)] flex flex-col items-center gap-[var(--spacing-8)]">
             <button
               onClick={handleCombine}
               disabled={loading || !canSubmit}
@@ -373,6 +375,10 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
               {loading && <span className="w-4 h-4 border-2 border-surface border-t-transparent rounded-full animate-spin" />}
               {loading ? d.combine.combineButtonLoading : d.combine.combineButton}
             </button>
+            {/* 재료 소각 안내 — 아이템 슬롯이 있는 레시피에서만, 버튼 아래 상시 노출(티켓 20260924_0813) */}
+            {hasItemSlot && (
+              <p className="text-[length:var(--text-caption)] text-text-secondary text-center">{d.combine.burnNotice}</p>
+            )}
           </div>
 
           {/*
