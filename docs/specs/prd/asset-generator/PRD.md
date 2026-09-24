@@ -128,6 +128,27 @@ code:
 - CLI 입력: 프리셋 ID, 배경색, 끝색, 텍스트 내용, (선택) 시드. 나머지 리본 속성은 프리셋 대상 유형의 랜덤 규칙(전체 랜덤 버튼과
   같은 범위)으로 채운다. 출력: PNG 파일 경로와 시드.
 - 등록 기록·되돌림 SQL 형식은 홈피드 카드 등록 선례(티켓 20260923_2252)를 따른다.
+- **CLI 실제 명령(티켓 20260924_2201, 서버 캔버스 라이브러리 `@napi-rs/canvas` 2026-09-25 사용자 승인)**:
+  ```
+  cd jam-web
+  npx tsx scripts/asset-generator/render.mjs \
+    --preset <프리셋 id> --bg "#ff1a00" --end "#ff4dff" --text "배지 이름" \
+    --out /absolute/path/out.png [--seed 123]
+  ```
+  성공하면 표준 출력에 `{ out, seed, preset, stage: { w, h } }` JSON 한 줄을 낸다. 인자 누락·프리셋 없음·
+  글꼴 다운로드 실패 등 어떤 오류든 한국어 메시지로 종료 코드 1로 끝난다(기본 글꼴로 조용히 대체하지 않는다).
+  필요 환경변수(`.env.local`)는 `NEXT_PUBLIC_SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`(기존
+  `jam-web/scripts/recraft/*.js`와 같은 이름).
+- **리본 원천 그래픽 기본값**: CLI 인자에는 원천 그래픽(브랜드 글자/업로드 이미지) 선택지가 없다 — 어드민 기본값과
+  같은 브랜드 글자 'J'로 고정한다(`jam-web/scripts/asset-generator/brandLetters.mjs`). 정지 프레임 위치(애니메이션
+  진행도)도 항상 0으로 고정한다(어드민 초기 상태와 동일) — 실렌더 비교 시 어드민에서 원천 그래픽·머리 위치를 바꾸지
+  않은 기본 상태로 PNG를 저장해야 CLI 결과와 같은 그림이 나온다.
+- **글꼴**: 프리셋 텍스트 레이어의 글꼴 식별자(`{family, weight}`)에 해당하는 구글 폰트 TTF 파일을 내려받아
+  `os.tmpdir()` 아래 캐시하고 `GlobalFonts.registerFromPath`로 등록한다(`jam-web/scripts/asset-generator/fonts.mjs`).
+  브라우저 로더는 항상 굵기 400 스타일시트만 요청하는 한계가 있지만(티켓 20260925_0148), 서버는 지정 굵기 파일을
+  그대로 받아 이 한계가 없다. 내려받기 실패 시 기본 글꼴로 대체하지 않고 오류로 중단한다.
+- **비교 스크립트**: `jam-web/scripts/asset-generator/compare.mjs <PNG 1> <PNG 2>` — 크기 일치·픽셀 차이 비율·
+  차이 최댓값을 JSON으로 낸다. 어드민 PNG와 CLI PNG의 실렌더 비교에 쓴다.
 
 ## 9. 출력 규격과 최적화
 
@@ -164,8 +185,20 @@ code:
 
 ## 11. 시드와 재현
 
-리본 레이어의 랜덤 속성은 하나의 시드에서 결정적으로 뽑는다. 같은 프리셋·같은 색·같은 텍스트·같은 시드면 두 경로 모두 같은
-이미지가 나온다. 시드는 등록 묶음과 등록 기록에 남긴다.
+리본 레이어의 랜덤 속성은 하나의 시드(마스터 시드)에서 결정적으로 뽑는다. 같은 프리셋·같은 색·같은 텍스트·같은
+시드면 두 경로 모두 같은 이미지가 나온다. 시드는 등록 묶음과 등록 기록에 남긴다.
+
+**마스터 시드 규칙(`deriveRibbonFromSeed`, `jam-web/src/lib/asset-generator/random.ts`, 티켓 20260924_2201)**:
+`mulberry32(마스터 시드)`로 만든 난수원을 그대로 `randomizeRibbonConfig`에 넘겨, 리본 랜덤 속성 전부(배경색·끝색
+포함)와 곡선 시드(반환값의 `seed` 필드, `buildPath`가 쓰는 값)를 한 시드에서 뽑는다 — 순수 함수라 같은 마스터
+시드는 항상 같은 값을 낸다. 배경색·끝색·텍스트 내용은 이 함수의 대상이 아니다(호출자가 별도 입력으로 받는다, §8).
+
+- **에이전트 CLI**: `--seed`가 없으면 마스터 시드를 새로 뽑아 이 함수로 리본 속성을 채우고, 있으면 그대로 쓴다.
+- **어드민 화면**: "전체 무작위" 버튼은 마스터 시드를 새로 뽑아 이 함수로 채운다(원천 그래픽의 브랜드 글자 선택은
+  이 함수의 대상이 아니라 별도 랜덤이다). 설정 패널의 "이동 곡선" 섹션에 현재 마스터 시드 표시 + 시드 입력·
+  "시드 불러오기" 버튼이 있어, CLI와 같은 시드를 넣으면 같은 리본이 나온다. 곡선 섹션의 기존 "무작위" 버튼(곡선 시드만
+  다시 뽑는다)은 이 마스터 시드와 별개로 남아 있다 — 이 버튼을 쓰면 화면에 표시된 마스터 시드와 실제 리본이
+  어긋날 수 있다(마스터 시드 표시는 마지막으로 "전체 무작위"·"시드 불러오기"를 실행한 시점 기준이다).
 
 ## 12. 데이터 (`asset_presets`는 확정 — 티켓 20260924_2159, `badges.image_source`는 확정 — 티켓 20260924_2200, 실행은 사용자 승인 뒤 메인 세션)
 
@@ -243,4 +276,14 @@ code:
   `admin-generator`로 갱신한다. 라벨·필터 옵션은 `lib/admin/badgeImageSource.ts`가 단일
   출처이고, 어드민 배지 목록(`BadgesTable.tsx`·`BadgeCard.tsx`)·필터(`BadgesFilterBar.tsx`)·
   상세 헤더(`BadgeDetail.tsx`)·수정 폼 헤더(`BadgeForm.tsx`)가 이를 공유한다.
+- [20260924_2201](../../../tickets/p2-normal/20260924_2201_Infra_에셋-제너레이터-에이전트-CLI-프리셋-컬러-텍스트-PNG-시드기록.md) 완료:
+  §8 자동 경로 CLI·§11 마스터 시드 규칙을 구현했다. 서버 캔버스 라이브러리 `@napi-rs/canvas`(2026-09-25 사용자
+  승인)를 `jam-web/scripts/asset-generator/serverCanvas.ts`가 `render.ts`의 CanvasFactory·ImageLoader 인터페이스로
+  구현하고(경계 캐스트 2개, 브라우저 쪽과 같은 방식), `fonts.mjs`가 구글 폰트 TTF를 내려받아 캐시·등록한다.
+  `random.ts`의 `deriveRibbonFromSeed`가 마스터 시드 규칙의 단일 출처이고, 어드민 "전체 무작위"·새 "시드 불러오기"
+  UI(`AssetGeneratorPanel.tsx` "이동 곡선" 섹션)도 이를 함께 쓴다. CLI(`render.mjs`)는 `tsx`로 실행한다(esbuild
+  사전 번들 대신 — 이유는 `render.mjs` 상단 주석). 비교 스크립트 `compare.mjs`(sharp 사용)는 카리나 실렌더에서
+  어드민 PNG와 CLI PNG를 비교하는 데 쓴다. `jam-web/package.json`에 `@napi-rs/canvas`를 추가했다(사전 빌드
+  바이너리, 네이티브 빌드 불필요). 격리 워크트리에는 DB가 없어 실제 프리셋 조회·어드민 PNG 비교(완료 조건의
+  실렌더 비교)는 카리나가 머지 뒤에 한다.
 - 그 외는 미착수. 하위 티켓 순서는 상위 티켓의 하위 티켓 표를 따른다.

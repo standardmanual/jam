@@ -1,0 +1,211 @@
+#!/usr/bin/env npx tsx
+/**
+ * JAM! 에셋 제너레이터 에이전트 CLI (티켓 20260924_2201, PRD §8·§11)
+ *
+ * 브라우저 없이 배지 대표 이미지를 만든다. 입력은 프리셋 ID·배경색·그라데이션 끝색·텍스트
+ * 내용·(선택) 시드다. 그라데이션 시작색은 배경색과 같고, 나머지 리본 속성은 전체 랜덤 규칙
+ * (`deriveRibbonFromSeed`, 어드민 "전체 무작위"와 같은 값 범위)으로 채운다. 출력은 원본 PNG
+ * 파일과 마스터 시드다. 같은 프리셋·색·텍스트·시드면 항상 같은 이미지가 나온다.
+ *
+ * ## 실행
+ * ```
+ * cd jam-web
+ * npx tsx scripts/asset-generator/render.mjs \
+ *   --preset <프리셋 id> --bg "#ff1a00" --end "#ff4dff" --text "배지 이름" \
+ *   --out /absolute/path/out.png [--seed 123]
+ * ```
+ * 성공하면 표준 출력에 `{ out, seed, preset, stage: { w, h } }` JSON 한 줄을 찍는다.
+ * 인자 누락·프리셋 없음·글꼴 다운로드 실패 등 어떤 오류든 한국어 메시지를 stderr에 찍고
+ * 종료 코드 1로 끝난다(기본 글꼴로 조용히 대체하지 않는다 — PRD §8 완료 조건).
+ *
+ * 필요 환경변수(`.env.local`, 기존 `jam-web/scripts/recraft/*.js`와 같은 이름):
+ * `NEXT_PUBLIC_SUPABASE_URL` · `SUPABASE_SERVICE_ROLE_KEY`
+ *
+ * ## 실행 방식(tsx vs 사전 번들) — 사용자 지시(2026-09-25)로 둘 중 하나를 정함
+ * `jam-web/scripts/asset-generator/build-prototype.mjs`는 esbuild로 브라우저용 번들 파일을
+ * 커밋해 두고 프로토타입이 그 결과물을 불러와 쓴다(브라우저는 TS를 직접 실행할 수 없어
+ * 번들이 필수). 이 CLI는 Node 환경이라 `tsx`(devDependency에 이미 있음)로 직접 실행하는
+ * 쪽을 택했다 — 이유:
+ * 1) 실행할 때마다 esbuild로 새로 번들하는 것도, 커밋된 번들 파일을 유지하는 것도 필요 없다
+ *    (커밋된 번들은 `.core.js`처럼 "고쳤으면 재생성" 규율이 하나 더 늘고, 재생성을 잊으면
+ *    구현과 번들이 어긋난다 — 이 티켓에서는 그 위험을 만들지 않는다).
+ * 2) `tsx`는 동적 임포트마다 그때그때 변환하지만 esbuild 기반이라 매우 빠르고(자체 캐시),
+ *    이미 `test:node`(package.json)가 같은 방식으로 여러 .ts 파일을 직접 실행하고 있어
+ *    레포 관례와도 맞는다.
+ *
+ * ## 배럴 임포트를 쓰지 않는 이유(2026-09-25 실측)
+ * `src/lib/asset-generator/index.ts`(배럴, `export * from './xxx'` 체인)를 tsx로 동적
+ * import하면 이름 있는 export가 전부 `모듈.default` 아래로 숨어버린다(Node의
+ * cjs-module-lexer가 `export *` 체인의 재수출을 정적으로 추론하지 못해 생기는 상호운용
+ * 문제로 보인다 — `mod.mulberry32`는 undefined, `mod.default.mulberry32`에는 값이 있었다).
+ * 개별 파일(`random.ts`·`curve.ts`·`render.ts`·`presetSerialize.ts`)을 직접 import하면
+ * 이름 있는 export가 정상적으로 보인다 — 그래서 이 스크립트는 배럴이 아니라 각 파일을 상대
+ * 경로로 직접 가져온다. `@/*` tsconfig 별칭도 이 스크립트 위치(레포 밖 `scripts/` 트리)
+ * 기준으로는 쓰지 않는다(레포의 다른 `scripts/*.ts`도 전부 상대 경로를 쓴다) — 상대 경로로
+ * 단일 파일을 가져오면 별칭 없이도 정상 동작을 실측했다.
+ *
+ * ## 리본 원천 그래픽 기본값
+ * CLI 인자에는 원천 그래픽(브랜드 글자/업로드 이미지) 선택지가 없다 — brandLetters.mjs 상단
+ * 주석 참고. 어드민 기본값과 같은 letter 'J'로 고정한다.
+ *
+ * ## 정지 프레임 위치
+ * 애니메이션 진행 위치(head)는 항상 0으로 고정한다 — 어드민 화면의 초기 상태(머리 위치
+ * 슬라이더 0%)와 같다. 실렌더 비교 시 어드민에서 머리 위치를 옮기지 않은 상태로 PNG를
+ * 저장해야 CLI 결과와 같은 그림이 나온다.
+ */
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { createClient } from '@supabase/supabase-js'
+
+import { deriveRibbonFromSeed } from '../../src/lib/asset-generator/random'
+import { buildPath } from '../../src/lib/asset-generator/curve'
+import { buildStamp, drawRibbonLayer, drawImageLayer, drawTextLayer, fillBackground } from '../../src/lib/asset-generator/render'
+import { deserializePresetLayers } from '../../src/lib/asset-generator/presetSerialize'
+import { resolveStageSize, generateRandomSeed, isSystemDefaultFont } from '../../src/app/admin/asset-generator/assetGeneratorHelpers'
+
+import { serverCanvasFactory, getServerContext, loadImageAsCanvas, cropToAlphaBounds, serverImageLoader } from './serverCanvas'
+import { brandLetterSvgMarkup } from './brandLetters.mjs'
+import { createServerFontLoader } from './fonts.mjs'
+import { parseRenderArgs } from './renderArgs.mjs'
+
+const scriptDir = path.dirname(fileURLToPath(import.meta.url))
+
+/** 기존 `jam-web/scripts/recraft/*.js`와 같은 `.env.local` 로드 방식(수동 파싱, 따옴표 제거). */
+function loadEnv() {
+  const envPath = path.join(scriptDir, '..', '..', '.env.local')
+  const env = {}
+  if (!fs.existsSync(envPath)) return env
+  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
+    const m = line.match(/^([A-Z_0-9]+)=\"?([^\"]*)\"?$/)
+    if (m) env[m[1]] = m[2]
+  }
+  return env
+}
+
+async function main() {
+  const args = parseRenderArgs(process.argv.slice(2))
+
+  const env = loadEnv()
+  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceKey) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL·SUPABASE_SERVICE_ROLE_KEY가 .env.local에 없어요.')
+  }
+  const supabase = createClient(supabaseUrl, serviceKey)
+
+  const { data, error } = await supabase
+    .from('asset_presets')
+    .select('id, name, target_type, stage_ratio, layers, created_by, created_at, updated_at')
+    .eq('id', args.preset)
+    .maybeSingle()
+  if (error) throw new Error(`프리셋 조회에 실패했어요: ${error.message}`)
+  if (!data) throw new Error(`프리셋을 찾을 수 없어요: ${args.preset}`)
+
+  const { width: stageWidth, height: stageHeight } = resolveStageSize(data.stage_ratio)
+
+  // 텍스트 레이어의 content는 --text로 채운다(PRD §8). 프리셋에 텍스트 레이어가 여럿이면
+  // 전부 같은 값으로 채운다 — CLI 인자가 하나뿐이라 구분할 방법이 없다.
+  const overlayLayers = deserializePresetLayers(data.layers ?? []).map((layer) =>
+    layer.type === 'text' ? { ...layer, content: args.text } : layer
+  )
+
+  const masterSeed = args.seed ?? generateRandomSeed()
+  const random = deriveRibbonFromSeed(masterSeed)
+
+  // 리본 원천 그래픽: 고정 letter 'J'(brandLetters.mjs 상단 주석). 알파 바운딩 박스로 잘라
+  // buildStamp에 넘긴다(브라우저의 setBaseFromCanvas와 같은 단계).
+  const rawBase = await loadImageAsCanvas(Buffer.from(brandLetterSvgMarkup('J')))
+  const base = cropToAlphaBounds(rawBase)
+  if (!base) throw new Error('원천 그래픽(브랜드 글자)에 불투명 픽셀이 없어요.')
+
+  const stamp = buildStamp(serverCanvasFactory, {
+    base,
+    blurPct: random.blurPct,
+    direction: random.direction,
+    startColor: args.bg, // 그라데이션 시작색 = 배경색(PRD §8, §6의 linkStartToBackground와 동일)
+    endColor: args.end,
+  })
+
+  const curvePath = buildPath(random.seed, random.irregularityPct, stageWidth, stageHeight)
+
+  const canvas = serverCanvasFactory(stageWidth, stageHeight)
+  const ctx = getServerContext(canvas)
+
+  fillBackground(ctx, stageWidth, stageHeight, args.bg)
+  drawRibbonLayer(ctx, {
+    stamp,
+    baseWidth: base.width,
+    baseHeight: base.height,
+    sizePct: random.sizePct,
+    rotationDeg: random.rotationDeg,
+    followPath: random.followPath,
+    path: curvePath,
+    head: 0, // 정지 프레임 — 헤더 주석 "정지 프레임 위치" 참고
+    gap: random.gap,
+    count: random.count,
+    stageWidth,
+    stageHeight,
+  })
+
+  // 텍스트 레이어에 쓰인 글꼴을 먼저 전부 등록한다(그려야 폴백 글꼴로 새지 않는다).
+  const loadFont = createServerFontLoader()
+  for (const layer of overlayLayers) {
+    if (layer.type === 'text' && !isSystemDefaultFont(layer.font)) {
+      await loadFont(layer.font)
+    }
+  }
+
+  // 이미지 레이어 원본을 assetUrl별로 한 번씩 불러온다(브라우저 imageAssets 캐시와 같은 정책).
+  const imageAssets = {}
+  for (const layer of overlayLayers) {
+    if (layer.type === 'image' && !imageAssets[layer.assetUrl]) {
+      imageAssets[layer.assetUrl] = await serverImageLoader({ url: layer.assetUrl })
+    }
+  }
+
+  // 리본 다음, 배열 역순으로 그려 인덱스 0이 가장 위에 오게 한다(drawOverlayLayersOnto와 동일 순서).
+  for (let i = overlayLayers.length - 1; i >= 0; i--) {
+    const layer = overlayLayers[i]
+    if (layer.type === 'image') {
+      drawImageLayer(ctx, {
+        image: imageAssets[layer.assetUrl],
+        xPct: layer.xPct,
+        yPct: layer.yPct,
+        widthPct: layer.widthPct,
+        heightPct: layer.heightPct,
+        rotationDeg: layer.rotationDeg,
+        opacityPct: layer.opacityPct,
+        stageWidth,
+        stageHeight,
+      })
+    } else {
+      drawTextLayer(ctx, {
+        content: layer.content,
+        font: layer.font,
+        sizePct: layer.sizePct,
+        letterSpacing: layer.letterSpacing,
+        lineHeight: layer.lineHeight,
+        align: layer.align,
+        color: layer.color,
+        xPct: layer.xPct,
+        yPct: layer.yPct,
+        rotationDeg: layer.rotationDeg,
+        opacityPct: layer.opacityPct,
+        stageWidth,
+        stageHeight,
+      })
+    }
+  }
+
+  const buffer = canvas.toBuffer('image/png')
+  fs.mkdirSync(path.dirname(args.out), { recursive: true })
+  fs.writeFileSync(args.out, buffer)
+
+  console.log(JSON.stringify({ out: args.out, seed: masterSeed, preset: args.preset, stage: { w: stageWidth, h: stageHeight } }))
+}
+
+main().catch((e) => {
+  console.error(e instanceof Error ? e.message : String(e))
+  process.exit(1)
+})

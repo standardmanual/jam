@@ -121,3 +121,18 @@ export function randomizeRibbonConfig(rnd: RandomSource = Math.random): RandomRi
     count: randInt(200, 800, 5, rnd)
   };
 }
+
+/**
+ * 마스터 시드 규칙 (PRD §11). 하나의 마스터 시드에서 `randomizeRibbonConfig`의 값 전부
+ * (배경색·끝색 포함 리본 속성)와 곡선 시드(반환값의 `seed` 필드, `buildPath`가 쓰는 값)를
+ * 결정적으로 뽑는다 — `mulberry32(seed)`로 만든 난수원을 그대로 `randomizeRibbonConfig`에
+ * 넘기므로 같은 마스터 시드는 항상 같은 값을 낸다.
+ *
+ * 에이전트 CLI(`scripts/asset-generator/render.mjs`, 티켓 20260924_2201)와 어드민 화면의
+ * "전체 무작위"·"시드 불러오기"가 함께 쓴다 — 같은 마스터 시드를 넣으면 두 경로가 같은 리본을
+ * 그린다. 배경색·끝색·텍스트 내용은 이 함수의 대상이 아니다(호출자가 별도 입력으로 받는다,
+ * PRD §8).
+ */
+export function deriveRibbonFromSeed(seed: number): RandomRibbonValues {
+  return randomizeRibbonConfig(mulberry32(seed));
+}

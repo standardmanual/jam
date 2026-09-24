@@ -40,10 +40,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/admin/ui/tabs'
 import {
   choice,
-  randomizeRibbonConfig,
+  deriveRibbonFromSeed,
   type ImageLayerConfig,
   type LetterKey,
   type OverlayLayerConfig,
+  type RandomRibbonValues,
   type RibbonLayerConfig,
   type StageRatio,
   type TextLayerConfig,
@@ -56,6 +57,7 @@ import {
   createImageLayer,
   createTextLayer,
   deselectIfRemoved,
+  generateRandomSeed,
   INITIAL_RIBBON_LAYER,
   INITIAL_STAGE_RATIO,
   LETTER_KEYS,
@@ -72,6 +74,9 @@ export default function AssetGeneratorPage() {
   const [play, setPlay] = useState(true)
   const [exportBusy, setExportBusy] = useState(false)
   const [screenTab, setScreenTab] = useState<'design' | 'apply'>('design')
+  // 마스터 시드(PRD §11): 화면 초깃값은 아직 어떤 시드에서도 뽑히지 않았으므로 null이다.
+  // "전체 무작위"·"시드 불러오기"가 값을 채운다 — 같은 시드를 CLI에 넣으면 같은 리본이 나온다.
+  const [masterSeed, setMasterSeed] = useState<number | null>(null)
 
   const viewportRef = useRef<AssetGeneratorViewportHandle | null>(null)
   const stageCardRef = useRef<HTMLDivElement | null>(null)
@@ -182,9 +187,11 @@ export default function AssetGeneratorPage() {
     )
   }
 
-  function handleRandomizeAll() {
-    const random = randomizeRibbonConfig()
-    setLayer((prev) => ({
+  // 마스터 시드 규칙(PRD §11)으로 리본 랜덤 속성을 채운 패치를 만든다. 두 핸들러
+  // (전체 무작위·시드 불러오기)가 공유한다 — 배경색·끝색·나머지 리본 속성·곡선 시드까지 전부
+  // random 쪽 값으로 교체하고, 시작 색만 연결 여부(linkStartToBackground)에 따라 정한다.
+  function applyRandomRibbon(random: RandomRibbonValues, prev: RibbonLayerConfig): RibbonLayerConfig {
+    return {
       ...prev,
       backgroundColor: random.backgroundColor,
       endColor: random.endColor,
@@ -200,9 +207,27 @@ export default function AssetGeneratorPage() {
       speed: random.speed,
       gap: random.gap,
       count: random.count,
+    }
+  }
+
+  function handleRandomizeAll() {
+    const newMasterSeed = generateRandomSeed()
+    const random = deriveRibbonFromSeed(newMasterSeed)
+    setMasterSeed(newMasterSeed)
+    setLayer((prev) => ({
+      ...applyRandomRibbon(random, prev),
       // 업로드한 이미지를 쓰는 중이면 유지하고, 브랜드 글자를 쓰는 중이면 글자도 새로 고른다
+      // (마스터 시드가 결정하는 값이 아니라 이 화면 전용 랜덤이라 그대로 Math.random을 쓴다)
       source: prev.source.kind === 'upload' ? prev.source : { kind: 'letter', letter: choice(LETTER_KEYS) },
     }))
+  }
+
+  // 시드 불러오기(PRD §11): 입력한 마스터 시드로 리본 속성을 다시 채운다. 원천 그래픽(글자/업로드)은
+  // 건드리지 않는다 — CLI가 재현하는 대상은 리본 속성뿐이라 여기서도 그 범위만 맞춘다.
+  function handleApplyMasterSeed(seed: number) {
+    const random = deriveRibbonFromSeed(seed)
+    setMasterSeed(seed)
+    setLayer((prev) => applyRandomRibbon(random, prev))
   }
 
   // 설정 패널이 스테이지(미리보기 Card)보다 세로로 커지지 않도록 높이를 묶는다(원본 fitPanel, 662줄)
@@ -285,6 +310,8 @@ export default function AssetGeneratorPage() {
                     onTextLayerChange={handleTextLayerChange}
                     onReplaceImageLayerAsset={handleReplaceImageLayerAsset}
                     onLoadPreset={handleLoadPreset}
+                    masterSeed={masterSeed}
+                    onApplyMasterSeed={handleApplyMasterSeed}
                   />
                 </TabsContent>
                 <TabsContent value="apply" className="mt-0">
