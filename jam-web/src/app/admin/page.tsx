@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react'
 import WeeklyCalendar, { type CalendarColumn, type CalendarCellItem } from './WeeklyCalendar'
 import DashboardSignals, { type DashboardSignalsProps } from './DashboardSignals'
+import { fetchContentGaps, type ContentGaps } from '@/lib/admin/contentGaps'
 import {
   getWeeklyCronOccurrences,
   formatOccurrenceTime,
@@ -220,7 +221,11 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
     new Date(now.getTime() - DEFAULT_KPI_WEEKLY_DAYS * 24 * 60 * 60 * 1000)
   )
 
-  const [thisWeekResult, lastWeekResult, shadowBanResult, blockedPoiResult] = await Promise.all([
+  // 20260924_0912: 컨텐츠 공백 경고. 캘린더가 보는 주와 무관하게 "지금" 기준으로 따로 조회한다.
+  // fetchContentGaps가 미션·카드를 독립적으로 잡아 돌려주고, 통째로 실패하면 undefined로 두어 두 카드만 비운다.
+  const contentGapsPromise: Promise<ContentGaps | undefined> = fetchContentGaps(now).catch(() => undefined)
+
+  const [thisWeekResult, lastWeekResult, shadowBanResult, blockedPoiResult, contentGaps] = await Promise.all([
     computeKpiWeeklyMetrics(thisWeekRange)
       .then((metrics) => ({ metrics, error: null }))
       .catch((e) => ({ metrics: null, error: e instanceof Error ? e.message : String(e) })),
@@ -254,6 +259,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
         return { count: null, error: e instanceof Error ? e.message : String(e) }
       }
     })(),
+    contentGapsPromise,
   ])
 
   const dashboardSignals: DashboardSignalsProps = {
@@ -274,6 +280,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
       previousValue: lastWeekResult.metrics?.badgeIssuance.issued.value ?? null,
       error: thisWeekResult.error,
     },
+    contentGaps,
   }
 
   let badgeCount: number | null = null

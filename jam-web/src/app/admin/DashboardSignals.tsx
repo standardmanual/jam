@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { IconRun, IconShieldOff, IconMapPinOff, IconFlag, IconAward } from '@tabler/icons-react'
+import ContentGapCards from './ContentGapCards'
+import type { ContentGaps } from '@/lib/admin/contentGaps'
 
 /**
  * 어드민 메인 상단 — 이상 신호(Strava 동기화 실패·제재·차단 POI)와 주간 핵심 지표
@@ -54,6 +56,8 @@ export interface DashboardSignalsProps {
   blockedPoi: DashboardSignalMetric
   missionAchievers: DashboardSignalMetric
   badgeIssuance: DashboardSignalMetric
+  /** 컨텐츠 공백 경고(티켓 20260924_0912). 없으면 두 카드를 그리지 않는다 */
+  contentGaps?: ContentGaps
 }
 
 type TablerIcon = typeof IconRun
@@ -133,6 +137,7 @@ export default function DashboardSignals({
   blockedPoi,
   missionAchievers,
   badgeIssuance,
+  contentGaps,
 }: DashboardSignalsProps) {
   return (
     <div className="mb-10 space-y-6">
@@ -148,6 +153,7 @@ export default function DashboardSignals({
           <AnomalyCard label="유효 제재 수" href="/admin/abusing" icon={IconShieldOff} metric={shadowBans} />
           <AnomalyCard label="차단 POI 수" href="/admin/abusing" icon={IconMapPinOff} metric={blockedPoi} />
         </div>
+        {contentGaps && <ContentGapCards gaps={contentGaps} />}
       </section>
 
       <section>
