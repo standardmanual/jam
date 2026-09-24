@@ -111,7 +111,7 @@ BUILD부터 시작한다(티켓이 있고 완료 조건이 채워져 있음) —
 |---|---|---|---|
 | `content` | 컨텐츠 데이터(배지·아이템북·POI) | ③ 컨텐츠 문서 동기화 | Content |
 | `copy` | UX Writing 문안 | 가이드라인 전수 점검 | Content |
-| `admin` | 어드민 화면 | **MODULAR 적용 제외** (탐색 생략). 실렌더 검증은 `DEV_PROCESS_GUARDRAILS.md` 패턴 13(로컬 `ADMIN_EMAILS` 셸 환경변수)으로 한다 — staging 배포까지 미루지 않는다 | Admin |
+| `admin` | 어드민 화면 | **MODULAR 적용 제외** (탐색 생략). 실렌더 검증은 카리나가 머지 뒤 push 전에 `DEV_PROCESS_GUARDRAILS.md` 패턴 13(담당·시점·장소, 로컬 `ADMIN_EMAILS` 셸 환경변수)대로 한다 — staging 배포까지 미루지 않는다. 아현·민지는 격리 워크트리에서 실렌더를 시도하지 않는다 | Admin |
 | `infra` | 환경·배포·설정 | 설정 파일 단일성 확인 | Infra |
 
 **단독** — 서브에이전트 없이 오케스트레이터가 직접 수행

@@ -133,10 +133,12 @@ Do not write off verification as "구글 로그인 때문에 확인 불가." `st
 the branch is merged into staging; at review-branch stage it simply is not deployed yet, which is a
 different statement). You have no browser, but `curl` against rendered HTML/JSON is available.
 
-For `admin` tickets still on a review branch, verify locally: run
-`ADMIN_EMAILS=<dev-login account> npm run dev`, take a session cookie from `/api/dev-login`, then
-request the `/admin/...` route with it (`DEV_PROCESS_GUARDRAILS.md` pattern 13). Never edit
-`.env.local` — shell environment variables only.
+For `admin` tickets, do not try to start `next dev` in your isolated worktree: it does not start
+there, because its `jam-web/node_modules` is a link to the main folder (`DEV_PROCESS_GUARDRAILS.md`
+pattern 13, ticket 20260924_1016). Judge from unit tests, CI, and reading the diff. Items that can
+only be seen on the rendered screen are marked `카리나 실렌더, 머지 뒤` in the ticket and belong to
+the orchestrator — do not count them as unmet. If the ticket leaves a screen-only item unmarked,
+name it in `reasons` as a WARN reason instead of trying to render it. Never edit `.env.local`.
 
 ## 입력 — 커밋 범위
 

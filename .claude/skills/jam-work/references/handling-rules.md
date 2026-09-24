@@ -23,7 +23,7 @@
 | 티켓 CLOSED 처리 | review 브랜치(`claude/jamwork-*`)에서는 pre-commit이 막는다. 메인 트리 staging에서 하거나, 워크트리라면 `docs/{티켓id}-close` 브랜치에서 커밋해 `git push origin HEAD:staging` | 티켓 009·010·011 |
 | DB 쓰기 SQL(마이그레이션·시드) 실행 | 사용자 승인 뒤 카리나가 Supabase MCP(`apply_migration`·`execute_sql`)로 직접 실행한다. 두 도구는 자동 허용이라 도구 프롬프트가 뜨지 않으므로, **채팅에서 승인을 먼저 받는 것이 유일한 관문**이다(파일명·영향 범위·되돌림 SQL 위치를 함께 말한다). 사용자에게 SQL 편집기 실행을 요청하지 않는다. 워크트리 세션이면 먼저 `scripts/workspace-setup.sh link-secrets <경로>`로 `.mcp.json`을 연결하고 세션을 새로 연다. 막히면 막힌 사유를 보고하고 `.env.local` 키 스크립트로 넘어간다 | 티켓 20260924_0625 |
 | DB와 정적 파일을 함께 바꿈 | DB는 staging·프로덕션 공용이라 쓰는 즉시 프로덕션에 반영된다. **파일 배포(main) → DB UPDATE** 순서로 한다 | 2026-08-24 배지 이미지 경로 사고 |
-| 어드민 화면 변경 확인 | staging에서는 어드민을 확인할 수 없다. 로컬 실렌더(아현 섹션) 또는 프로덕션 배포 후 확인 | 2026-08-22 사용자 확인 |
+| 어드민 화면 변경 확인 | staging에서는 어드민을 확인할 수 없다. 카리나가 머지 뒤 push 전에 로컬 실렌더로 확인한다(담당·시점·장소는 `DEV_PROCESS_GUARDRAILS.md` 패턴 13이 단일 원천). 아현·민지는 격리 워크트리에서 실렌더를 시도하지 않는다. 배포 후 확인은 프로덕션 전용 데이터일 때만 | 2026-08-22 사용자 확인, 티켓 20260924_1016 |
 | staging 배포 확인 | Vercel 프로젝트가 둘이다. staging은 `jam-stage`(`vercel ls jam-stage`, 도메인 `stage.j-a-m.app`). `jam` 프로젝트의 staging 배포는 의도적으로 Canceled라 정상이다 | 운영 확인 |
 | 범용 PM 스킬(`/pm-execution:create-prd` 등)로 티켓 작성 | 스킬 기본 형식이 아니라 `/jam-docs` 파일명·frontmatter·템플릿 규칙을 따른다 | 운영 확인 |
 | 서브에이전트가 "없다"·"불일치"라고 보고 | 보고 전에 직접 대조한다. 스킬 목록은 카리나 세션에서, 코드는 `git show origin/<브랜치>:<경로>`로 확인. 격리 워크트리는 main 기준으로 만들어져 staging 변경이 안 보일 수 있다 | 티켓 20260910_1246(내장 스킬 오탐), 20260917_1211·1303(낡은 워크트리 오탐), 20260918_1158(main 기준 워크트리로 중단) |
@@ -45,7 +45,7 @@
 | 같은 오류가 3회 반복 | 재시도를 멈추고 주의 신호와 함께 반환 | 아현 정의(공통 규칙) |
 | 어드민 UI를 새로 만듦 | 네이티브 `<select>` 등 대신 `jam-web/src/components/ui/`의 shadcn 컴포넌트를 쓴다. 네이티브 폼 요소는 시스템 다크모드를 따라가 어드민 라이트 테마와 어긋난다 | 티켓 20260822_002 |
 | DB 타입 갱신이 필요 | `npm run db:types` 실행 금지 — supabase CLI가 없어 리다이렉트가 `database.generated.ts`를 0바이트로 비운다. Supabase MCP `generate_typescript_types` 출력과 대조한다 | 운영 확인 |
-| 어드민 화면 로컬 실렌더 | `preview_start`는 환경변수를 못 받는다. `.claude/launch.json`을 백업하고 임시 설정(`runtimeExecutable: env`, `ADMIN_EMAILS=<DEV_USER_EMAIL> npm run dev -- -p 3100`, `cwd: jam-web`)으로 연 뒤 원복. dev 계정은 `api/dev-login/route.ts`의 `DEV_USER_EMAIL`. **공용 DB라 저장하지 말고 읽기만** | 2026-09-10 믹스 v3 검증, `DEV_PROCESS_GUARDRAILS.md` 패턴 13 |
+| 어드민 화면 로컬 실렌더 | `preview_start`는 환경변수를 못 받는다. 메인 폴더의 `.claude/launch.json`을 백업하고 임시 설정(`runtimeExecutable: env`, `ADMIN_EMAILS=<DEV_USER_EMAIL> npm run dev -- -p 3100`, `cwd`는 실렌더할 폴더의 `jam-web` — 메인 폴더면 `jam-web`, 별도 워크트리면 `.claude/worktrees/<이름>/jam-web`)으로 연 뒤 서버가 뜬 직후 원복. dev 계정은 `api/dev-login/route.ts`의 `DEV_USER_EMAIL`. **공용 DB라 저장하지 말고 읽기만** | 2026-09-10 믹스 v3 검증, `DEV_PROCESS_GUARDRAILS.md` 패턴 13 |
 | 캔버스 합성 이미지 확인 | 배포 없이 로컬에서 굽는다: 합성 함수를 부르는 entry를 `npx esbuild --bundle --format=iife --alias:@=./src`로 번들 → 최소 HTML → playwright로 `canvas.toDataURL()` → PNG 확인. playwright 스크립트는 `jam-web/` 안에서 실행 | 운영 확인 |
 
 ## 민지 (판정 리뷰)

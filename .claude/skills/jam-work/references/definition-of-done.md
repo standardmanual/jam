@@ -9,7 +9,7 @@
 
 - [ ] 티켓의 완료 조건(구현 범위)이 전부 충족됐다 — 확인: 민지 점검표 2번(스펙 대조)
 - [ ] 코드가 실행 시점에 의도대로 동작한다(컴파일·타입체크만으로 끝내지 않는다) — 확인:
-  `scripts/verify.sh`의 typecheck·test 단계, 필요하면 로컬 실행이나 `curl` 검증
+  `scripts/verify.sh`의 typecheck·test 단계, 필요하면 로컬 실행이나 `curl` 검증(격리 워크트리에서는 `next dev`가 뜨지 않으므로 어드민 화면은 실렌더를 시도하지 말고 단위 테스트로 확인한다 — 화면 확인은 카리나 몫, `DEV_PROCESS_GUARDRAILS.md` 패턴 13)
 - [ ] 새 동작은 변경 전엔 실패하고 변경 후엔 통과하는 테스트로 덮여 있다 — 확인:
   `scripts/verify.sh`의 test 단계(`bug` 유형은 `bug-procedure.md`의 재현 테스트 5단계)
 - [ ] 기존 테스트가 전부 통과하고 회귀가 없다 — 확인: `scripts/verify.sh`의 test 단계 +

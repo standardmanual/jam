@@ -84,6 +84,9 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
    If the write result must be checked, use a user-approved dummy record named with a `[TEST]`
    prefix, or call the API route directly and check only the response shape and status code
    (`docs/specs/DEV_PROCESS_GUARDRAILS.md` pattern 13).
+   In your isolated worktree `next dev` does not start (its `jam-web/node_modules` is a link to
+   the main folder), so do not try to render admin screens there: cover the logic with unit tests
+   and leave screen-only checks to the orchestrator (pattern 13, ticket 20260924_1016).
 12. **Commit in vertical slices, one atomic commit at a time.** Each commit is one complete,
     self-contained change; the commit message carries that change's summary (Korean, Hard rule 1).
     Keep history revertible to the last good commit — do not squash unrelated work into one commit.
