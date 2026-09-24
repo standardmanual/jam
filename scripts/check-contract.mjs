@@ -19,7 +19,11 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import path from 'node:path'
-import { checkWrapperSource, moduleSpecifierFor, WRAPPER_AUTH_CALLS } from './deploy-gate-wrapper.mjs'
+
+// deploy-gate.mjs의 순수 판정 함수만 가져온다(게이트와 같은 코드라 규칙이 갈라지지 않는다). 그 파일은 직접
+// 실행하면 main을 돌리므로, 불러오기 전에 라이브러리 플래그를 켜서 main을 건너뛰게 한다(티켓 20260924_1614).
+globalThis.__JAM_DEPLOY_GATE_AS_LIBRARY__ = true
+const { checkWrapperSource, moduleSpecifierFor, stripSource, WRAPPER_AUTH_CALLS } = await import('./deploy-gate.mjs')
 
 const REPO = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim()
 const CONTRACT = path.join(REPO, 'docs/agents/contract.json')
@@ -404,6 +408,7 @@ function checkDeployGate(c) {
     violate('deploy_gate', `deploy_gate가 선언돼 있는데 ${script}가 없습니다`,
       `스크립트를 되살리거나, 게이트를 없애는 것이 의도라면 선언과 이 게이트를 가리키는 문서(/jam-ship·scheduled-jobs.md)를 함께 고치세요.`)
   }
+  if (scriptExists) checkDeployGateSingleFile(script)
   if (!Number.isInteger(spec.rollback_sql_required_from) || spec.rollback_sql_required_from < 1) {
     violate('deploy_gate', `deploy_gate.rollback_sql_required_from이 1 이상의 정수가 아닙니다 (실제 ${JSON.stringify(spec.rollback_sql_required_from)})`,
       `되돌림 SQL을 요구하기 시작하는 마이그레이션 번호를 정수로 적으세요.`)
@@ -423,8 +428,19 @@ function checkDeployGate(c) {
   checkAuthWrappers(spec.auth_wrappers)
 }
 
+// 단일 파일 원칙(티켓 20260924_1614): 무인 배포 루틴은 deploy-gate.mjs 하나만 /tmp로 꺼내 실행하므로
+// 다른 스크립트를 상대 경로로 불러오면 그곳에서 ERR_MODULE_NOT_FOUND로 죽는다. 주석은 지우고 본다.
+const RELATIVE_IMPORT = /(?<![\w$.])(?:import|export)\b[^'"`;]*?\bfrom\s*(['"])(\.{1,2}\/[^'"\n]*)\1|(?<![\w$.])import\s*\(?\s*(['"])(\.{1,2}\/[^'"\n]*)\3/g
+function checkDeployGateSingleFile(script) {
+  const code = stripSource(readFileSync(path.join(REPO, script), 'utf8'), { keepStrings: true })
+  for (const m of code.matchAll(RELATIVE_IMPORT)) {
+    violate('deploy_gate', `${script}가 다른 스크립트를 상대 경로로 불러옵니다 (${m[2] ?? m[4]})`,
+      `루틴이 이 파일 하나만 /tmp로 꺼내 실행하므로 옆 파일을 찾지 못해 게이트가 ERR_MODULE_NOT_FOUND로 죽고 배포가 막힙니다. 코드를 이 파일 안에 두세요(node: 내장 모듈만 불러올 수 있습니다).`)
+  }
+}
+
 // auth_wrappers(티켓 20260924_1555): 라우트가 인증을 맡기는 공용 함수의 선언. 게이트가 배포 때 head에서 하는
-// 무결성 검증(파일 존재·함수 내보내기·인증 호출)을 커밋마다 미리 한다. 판정 코드는 deploy-gate-wrapper.mjs
+// 무결성 검증(파일 존재·함수 내보내기·인증 호출)을 커밋마다 미리 한다. 판정 코드는 deploy-gate.mjs
 // 한 곳이라 게이트와 이 검사가 갈라지지 않는다.
 function checkAuthWrappers(wrappers) {
   if (wrappers === undefined) return

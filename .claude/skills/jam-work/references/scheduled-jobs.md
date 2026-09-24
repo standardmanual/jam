@@ -212,6 +212,8 @@ git show origin/staging:scripts/deploy-gate.mjs > /tmp/deploy-gate.mjs && test -
 `test -s`가 필요하다). 이후 명령은 `node /tmp/deploy-gate.mjs …`로 쓴다. 이 방식은 배포하려는 staging
 팁의 스크립트를 쓴다. `contract.json`의 기준선과 공개 라우트 선언도 그 팁에서 읽는다.
 
+이 스크립트는 단일 파일이어야 하며(다른 스크립트를 불러오지 않는다) `check-contract.mjs`가 그것을 확인한다.
+
 `served`는 `j-a-m.app`이 클라우드 환경의 네트워크 허용 목록에 없으면 종료 코드 2로 끝난다. 이때 배포는
 막히지 않고 "확인 불가"로만 기록된다. 무인 루틴에서 이미 성공한 GA4 스크립트(`ga4-weekly-metrics.mjs`)도
 같은 Node 전역 `fetch`를 쓰므로 fetch 자체는 나가는 환경이다. 도메인 허용은 사용자가 환경 설정에서 한다.
