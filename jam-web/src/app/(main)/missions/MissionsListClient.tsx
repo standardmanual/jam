@@ -13,6 +13,7 @@ import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { useToast } from '@/components/ui/Toast'
 import { d, t } from '@/lib/i18n'
+import { missionStatusKind } from './missionStatusKind'
 
 export interface MissionListItem extends MissionRow {
   joined: boolean
@@ -192,24 +193,22 @@ function periodText(m: MissionListItem, tab: Tab): string {
   return `${h}시간 ${mins}분 ${d.missions.timeLeftSuffix}`
 }
 
-// 상태 뱃지 텍스트 — 없으면 null (노출 안 함)
-function statusLabel(m: MissionListItem, started: boolean): string | null {
-  if (m.done) return d.missions.tagDone
-  if (m.locked) return d.missions.tagLocked
-  if (m.joined) return d.missions.tagJoined
-  if (!started) return d.missions.tagUpcoming
-  return null
-}
-
 // 카드 상단 상태 라벨 — 20260923_1353: 잠김·상시 등 여러 칩이 섞여 있던 meta-row를
-// 우선순위 하나로 합친다(잠김 > 완료 > 참가중 > 시작전 > 상시/종료/기간). 잠긴 이유
+// 우선순위 하나로 합친다(우선순위 판정은 missionStatusKind.ts). 잠긴 이유
 // 안내는 이 라벨이 아니라 아래 "조건" 행(lockedHintText 포함)이 맡는다.
 function topStatusLabel(m: MissionListItem, tab: Tab, started: boolean): React.ReactNode {
-  // 20260825_028: 잠김이 '참가중'보다 우선한다 — statusLabel의 우선순위와 같은 순서.
-  if (m.joined && !m.done && !m.locked) return <JoinedBadge />
-  const sLabel = statusLabel(m, started)
-  if (sLabel) return <StatusBadge locked={m.locked && !m.done}>{sLabel}</StatusBadge>
-  return <StatusBadge>{periodText(m, tab)}</StatusBadge>
+  switch (missionStatusKind(m, started)) {
+    case 'joined':
+      return <JoinedBadge />
+    case 'done':
+      return <StatusBadge>{d.missions.tagDone}</StatusBadge>
+    case 'locked':
+      return <StatusBadge locked>{d.missions.tagLocked}</StatusBadge>
+    case 'upcoming':
+      return <StatusBadge>{d.missions.tagUpcoming}</StatusBadge>
+    default:
+      return <StatusBadge>{periodText(m, tab)}</StatusBadge>
+  }
 }
 
 // "조건" 행 전용 — requiredBadge에는 level이 없으므로 등급칩만 재사용한다(BadgeLevelChip 미사용)
