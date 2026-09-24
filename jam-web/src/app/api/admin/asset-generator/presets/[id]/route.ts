@@ -1,0 +1,76 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createServiceClient } from '@/lib/supabase/server'
+import { getAdminUser } from '@/lib/admin/auth'
+import { APPLY_GENERATED_IMAGE_BUCKET } from '@/lib/admin/applyGeneratedImageConstants'
+import { deserializePresetLayers, type OverlayLayerConfig } from '@/lib/asset-generator'
+
+/** 에셋 제너레이터 — 프리셋 단건 조회/삭제 API (티켓 20260924_2159) */
+
+interface PresetDetailRow {
+  id: string
+  name: string
+  target_type: string
+  stage_ratio: string
+  layers: unknown
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await getAdminUser()
+  if (!admin) return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 })
+
+  const { id } = await params
+  const supabase = createServiceClient()
+  const { data, error } = await supabase
+    .from('asset_presets')
+    .select('id, name, target_type, stage_ratio, layers, created_by, created_at, updated_at')
+    .eq('id', id)
+    .maybeSingle()
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!data) return NextResponse.json({ error: '프리셋을 찾을 수 없습니다.' }, { status: 404 })
+
+  const row = data as PresetDetailRow
+  return NextResponse.json({
+    preset: {
+      id: row.id,
+      name: row.name,
+      targetType: row.target_type,
+      stageRatio: row.stage_ratio,
+      layers: deserializePresetLayers((row.layers ?? []) as OverlayLayerConfig[]),
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    },
+  })
+}
+
+/**
+ * 프리셋 삭제(하드 삭제, 소프트 삭제 불필요 — `shader_lab_compositions` 전례와 동일). 저장소
+ * 폴더(`asset-generator/presets/{id}/`)의 파일을 먼저 지우고, 그 뒤 테이블 행을 지운다 —
+ * 순서를 반대로 하면 스토리지 삭제가 실패했을 때 재시도할 방법이 없어(행이 이미 없어 화면
+ * 목록에서 사라진다) orphan 파일이 영원히 남는다.
+ */
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await getAdminUser()
+  if (!admin) return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 })
+
+  const { id } = await params
+  const supabase = createServiceClient()
+  const folderPath = `asset-generator/presets/${id}`
+
+  const { data: files, error: listErr } = await supabase.storage.from(APPLY_GENERATED_IMAGE_BUCKET).list(folderPath)
+  if (listErr) return NextResponse.json({ error: `이미지 목록 조회 실패: ${listErr.message}` }, { status: 500 })
+
+  if (files && files.length > 0) {
+    const paths = files.map((file) => `${folderPath}/${file.name}`)
+    const { error: removeErr } = await supabase.storage.from(APPLY_GENERATED_IMAGE_BUCKET).remove(paths)
+    if (removeErr) return NextResponse.json({ error: `이미지 삭제 실패: ${removeErr.message}` }, { status: 500 })
+  }
+
+  const { error } = await supabase.from('asset_presets').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ ok: true })
+}

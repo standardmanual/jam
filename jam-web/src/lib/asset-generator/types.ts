@@ -8,8 +8,9 @@
  *
  * 오버레이 레이어(재작업, 20260924_2158): 이미지 레이어와 텍스트 레이어는 어드민 화면에서
  * 하나의 순서 있는 목록(`OverlayLayerConfig[]`)으로 함께 관리한다 — 하위 티켓 20260924_2159의
- * 프리셋이 `AssetPreset.layers` 배열 하나에 리본·이미지·텍스트를 순서대로 저장하기 때문이다.
- * 리본 레이어는 이 목록에 들어가지 않고 항상 맨 아래 고정이다(어드민 화면 상태는 별도 필드).
+ * 프리셋이 `AssetPreset.layers` 배열 하나에 이미지·텍스트를 순서대로 저장하기 때문이다(리본은
+ * 저장하지 않는다, §5 아래 문단 참고). 리본 레이어는 이 목록에 들어가지 않고 항상 맨 아래
+ * 고정이다(어드민 화면 상태는 별도 필드).
  *
  * 레이어 식별(재작업, 20260924_2157): `id`는 클라이언트에서 생성해 배열 인덱스 대신 선택
  * 상태를 추적하는 키로 쓴다(참고: `src/app/admin/shader-lab/ShaderLabLayerSidebar.tsx`의
@@ -134,15 +135,17 @@ export type Layer = RibbonLayerConfig | ImageLayerConfig | TextLayerConfig;
 export type OverlayLayerConfig = ImageLayerConfig | TextLayerConfig;
 
 /**
- * 프리셋 (PRD §5). 텍스트 글자 내용·배경색/끝색·리본 레이어의 랜덤 속성값과 시드는
- * 저장하지 않는다 — 생성할 때마다 정한다.
+ * 프리셋 (PRD §5, 저장·불러오기 구현 티켓 20260924_2159). 오버레이 레이어(이미지·텍스트)만
+ * 저장한다 — 리본 레이어 자체(색·랜덤 속성값·시드 포함)와 텍스트 글자 내용은 저장하지 않는다.
+ * 이 값들은 생성할 때마다(수동은 화면에서, 자동은 CLI 입력으로) 정한다.
  */
 export interface AssetPreset {
   id: string;
   name: string;
   targetType: 'badge';
   stageRatio: StageRatio;
-  layers: Layer[];
+  layers: OverlayLayerConfig[];
+  /** 프리셋을 만든 어드민의 users.id */
   createdBy: string;
   createdAt: string;
   updatedAt: string;
