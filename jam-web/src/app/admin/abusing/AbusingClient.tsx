@@ -1,21 +1,38 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { Suspense, useRef, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { IconAlertTriangle } from '@tabler/icons-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Alert, AlertTitle, AlertDescription } from '@/components/admin/ui/alert'
+import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import type { AbusingPolicy, AbusingPolicyMismatch } from '@/lib/abusing/policy'
-import { BanTable, type BanRow } from './BanTable'
-import { PoiBlockTable, type PoiBlockRow } from './PoiBlockTable'
+import type { BanRow, PoiBlockRow } from '@/lib/admin/abusing-list'
+import { BanTable } from './BanTable'
+import { PoiBlockTable } from './PoiBlockTable'
+import AbusingFilterBar from './AbusingFilterBar'
 
 interface Props {
   policy: AbusingPolicy
   policyMismatch: AbusingPolicyMismatch[]
+  /** URL `?tab=`에서 서버가 읽은 현재 탭 — 탭 이동은 링크(서버 이동)다 */
+  tab: Tab
+  /** 탭 라벨에 붙이는 활성 건수. 조회에 실패하면 null */
+  counts: { bans: number | null; poiBlocks: number | null }
+  /** 현재 탭이 제재일 때만 채워진다 */
   bans: BanRow[]
+  /** 현재 탭이 POI 블록일 때만 채워진다 */
   poiBlocks: PoiBlockRow[]
+  /** 현재 필터 조건에 맞는 전체 건수·현재 쪽·총 쪽수(목록 탭에서만 쓴다) */
+  listTotal: number
+  page: number
+  totalPages: number
 }
 
-type Tab = 'policy' | 'bans' | 'poi-blocks'
+export type Tab = 'policy' | 'bans' | 'poi-blocks'
+
+const ABUSING_PATH = '/admin/abusing'
 
 function RateInput({
   label, value, onChange,
@@ -42,9 +59,15 @@ function RateInput({
 export default function AbusingClient({
   policy: initPolicy,
   policyMismatch: initMismatch,
-  bans: initBans,
-  poiBlocks: initBlocks,
+  tab,
+  counts,
+  bans,
+  poiBlocks,
+  listTotal,
+  page,
+  totalPages,
 }: Props) {
+  const router = useRouter()
   // Select 드롭다운(Radix Portal)은 기본적으로 document.body에 렌더링되는데, shadcn 어드민
   // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
   // 지정한다 (4단계a `BadgeForm.tsx`와 동일 패턴, 20260826_018).
@@ -52,11 +75,10 @@ export default function AbusingClient({
     typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
   )
 
-  const [tab, setTab] = useState<Tab>('policy')
   const [policy, setPolicy] = useState(initPolicy)
+  // 등급 전환 확인창의 드랍 배율 문장은 슬라이더로 고치는 중인 값이 아니라 저장된 정책을 기준으로 한다
+  const [savedPolicy, setSavedPolicy] = useState(initPolicy)
   const [policyMismatch, setPolicyMismatch] = useState(initMismatch)
-  const [bans, setBans] = useState(initBans)
-  const [poiBlocks, setPoiBlocks] = useState(initBlocks)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
@@ -100,7 +122,10 @@ export default function AbusingClient({
         return
       }
       // 저장 직후 DB에서 다시 읽은 값으로 화면을 맞춘다
-      if (json?.policy) setPolicy(json.policy)
+      if (json?.policy) {
+        setPolicy(json.policy)
+        setSavedPolicy(json.policy)
+      }
       setPolicyMismatch(json?.mismatch ?? [])
       flash('ok', '정책이 저장됐어요')
     } catch {
@@ -110,24 +135,6 @@ export default function AbusingClient({
       )
     } finally {
       setSaving(false)
-    }
-  }
-
-  const removeBan = async (userId: string) => {
-    if (!confirm('섀도우밴을 해제할까요?')) return
-    const res = await fetch('/api/admin/abusing/bans', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId }),
-    })
-    if (res.ok) {
-      setBans((prev) => prev.filter((b) => b.user_id !== userId))
-      flash('ok', '밴 해제 완료')
-    } else {
-      // API가 실패 사유를 실어 보내므로 그대로 노출한다 (어드민 화면 — 원인 특정이 우선).
-      // 이전에는 이 분기가 없어 DB 삭제가 실패해도 화면·유저에게 아무 신호가 없었다 (티켓 20260901_1843).
-      const json = (await res.json().catch(() => null)) as { error?: string } | null
-      flash('err', json?.error ?? `밴 해제에 실패했어요. 서버가 ${res.status} 오류로 응답했어요.`)
     }
   }
 
@@ -144,10 +151,8 @@ export default function AbusingClient({
       flash('ok', '섀도우밴 적용 완료')
       setBanUserId('')
       setBanReason('')
-      // 목록 새로고침
-      const listRes = await fetch('/api/admin/abusing/bans')
-      const listData = await listRes.json()
-      setBans(listData.bans ?? [])
+      // 서버가 나눠 주는 목록·탭 건수를 다시 읽는다
+      router.refresh()
     } catch {
       flash('err', '밴 적용 실패')
     } finally {
@@ -155,64 +160,16 @@ export default function AbusingClient({
     }
   }
 
-  const removePoiBlock = async (userId: string, poiId: string) => {
-    const res = await fetch('/api/admin/abusing/poi-blocks', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, poi_id: poiId }),
-    })
-    if (res.ok) {
-      setPoiBlocks((prev) => prev.filter((b) => !(b.user_id === userId && b.poi_id === poiId)))
-      flash('ok', '블록 해제 완료')
-    } else {
-      // 이전에는 이 분기가 없어 DB 삭제가 실패해도 화면·유저에게 아무 신호가 없었다 (티켓 20260901_1843).
-      const json = (await res.json().catch(() => null)) as { error?: string } | null
-      flash('err', json?.error ?? `블록 해제에 실패했어요. 서버가 ${res.status} 오류로 응답했어요.`)
-    }
-  }
-
-  // 일괄 해제(20260826_015) — 단건 해제 API를 선택된 항목 전체에 순차 호출한다
-  // (배지 파일럿과 동일 방식). 네이티브 confirm은 `BanTable`의 AlertDialog가 대신한다.
-  const bulkRemoveBans = async (userIds: string[]) => {
-    let failCount = 0
-    for (const userId of userIds) {
-      const res = await fetch('/api/admin/abusing/bans', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId }),
-      })
-      if (res.ok) setBans((prev) => prev.filter((b) => b.user_id !== userId))
-      else failCount += 1
-    }
-    if (failCount > 0) flash('err', `${failCount}건 해제 실패`)
-    else flash('ok', '일괄 해제 완료')
-  }
-
-  const bulkRemovePoiBlocks = async (pairs: { userId: string; poiId: string }[]) => {
-    let failCount = 0
-    for (const { userId, poiId } of pairs) {
-      const res = await fetch('/api/admin/abusing/poi-blocks', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, poi_id: poiId }),
-      })
-      if (res.ok) setPoiBlocks((prev) => prev.filter((b) => !(b.user_id === userId && b.poi_id === poiId)))
-      else failCount += 1
-    }
-    if (failCount > 0) flash('err', `${failCount}건 해제 실패`)
-    else flash('ok', '일괄 해제 완료')
-  }
-
   const policySet = (key: keyof AbusingPolicy, value: number) => setPolicy((p) => ({ ...p, [key]: value }))
 
-  const tabs: { key: Tab; label: string; count?: number }[] = [
-    { key: 'policy', label: '정책 설정' },
-    { key: 'bans', label: '섀도우밴', count: bans.length },
-    { key: 'poi-blocks', label: 'POI 블록', count: poiBlocks.length },
+  const tabs: { key: Tab; label: string; href: string; count: number | null }[] = [
+    { key: 'policy', label: '정책 설정', href: ABUSING_PATH, count: null },
+    { key: 'bans', label: '섀도우밴', href: `${ABUSING_PATH}?tab=bans`, count: counts.bans },
+    { key: 'poi-blocks', label: 'POI 블록', href: `${ABUSING_PATH}?tab=poi-blocks`, count: counts.poiBlocks },
   ]
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className={tab === 'policy' ? 'p-8 max-w-3xl' : 'p-8'}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">어뷰징 정책 관리</h1>
@@ -238,9 +195,9 @@ export default function AbusingClient({
       {/* 탭 */}
       <div className="flex gap-1 border-b border-border mb-6">
         {tabs.map((t) => (
-          <button
+          <Link
             key={t.key}
-            onClick={() => setTab(t.key)}
+            href={t.href}
             className={[
               'pb-3 px-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5',
               tab === t.key ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -252,7 +209,7 @@ export default function AbusingClient({
                 {t.count}
               </span>
             )}
-          </button>
+          </Link>
         ))}
       </div>
 
@@ -425,7 +382,7 @@ export default function AbusingClient({
       {tab === 'bans' && (
         <div className="space-y-5">
           {/* 새 밴 추가 */}
-          <div className="bg-white border border-border rounded-2xl p-5 space-y-3">
+          <div className="bg-white border border-border rounded-2xl p-5 space-y-3 max-w-3xl">
             <h3 className="text-sm font-semibold text-foreground">수동 섀도우밴 적용</h3>
             <input
               value={banUserId}
@@ -459,14 +416,28 @@ export default function AbusingClient({
             </div>
           </div>
 
-          {/* 밴 목록 */}
-          <BanTable bans={bans} onRemove={removeBan} onBulkRemove={bulkRemoveBans} />
+          {/* 밴 목록 — 표·필터 바·페이지 이동이 URL(useSearchParams)을 읽어 Suspense로 감싼다 */}
+          <Suspense>
+            <div className="space-y-3">
+              <AbusingFilterBar placeholder="유저 이름, 이메일로 검색..." />
+              <p className="text-sm text-muted-foreground">총 {listTotal}건</p>
+              <BanTable bans={bans} totalCount={listTotal} policy={savedPolicy} />
+              <DataTablePagination page={page} totalPages={totalPages} />
+            </div>
+          </Suspense>
         </div>
       )}
 
       {/* POI 블록 탭 */}
       {tab === 'poi-blocks' && (
-        <PoiBlockTable poiBlocks={poiBlocks} onRemove={removePoiBlock} onBulkRemove={bulkRemovePoiBlocks} />
+        <Suspense>
+          <div className="space-y-3">
+            <AbusingFilterBar placeholder="유저 이름, 이메일, POI 이름으로 검색..." />
+            <p className="text-sm text-muted-foreground">총 {listTotal}건</p>
+            <PoiBlockTable poiBlocks={poiBlocks} totalCount={listTotal} />
+            <DataTablePagination page={page} totalPages={totalPages} />
+          </div>
+        </Suspense>
       )}
     </div>
   )
