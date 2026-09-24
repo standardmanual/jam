@@ -32,18 +32,30 @@ import {
 import { weeklyMissions, type WeeklyMissionInput, type WeeklyMissionsResult } from '@/lib/admin/weeklyMissions'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 import { computeKpiWeeklyMetrics, resolveKpiWeeklyRange, DEFAULT_KPI_WEEKLY_DAYS } from '@/lib/admin/kpiWeekly'
+import {
+  trendDates,
+  bucketDailyCounts,
+  fetchBadgeIssuanceDaily,
+  fetchAmbientDropDaily,
+  TREND_LONG_DAYS,
+  TREND_SHORT_DAYS,
+} from '@/lib/admin/economyTrend'
+import EconomyTrend, { type TrendSeries } from './EconomyTrend'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
 interface AdminDashboardPageProps {
-  searchParams: Promise<{ week?: SearchParamValue }>
+  searchParams: Promise<{ week?: SearchParamValue; trend?: SearchParamValue }>
 }
 
 export default async function AdminDashboardPage({ searchParams }: AdminDashboardPageProps) {
   // 20260924_0904: 어드민 메인 주간 캘린더 — 크론 4개의 실행 예정을 요일 칸에 표시한다.
   // 20260924_0905: Claude 예약 루틴 4개(주간·선별·주간 배포 승인·월간)도 같은 칸에 얹는다.
   // 20260924_0906: 홈피드 카드 편성(단기 카드 개별 표시·장기 카드 묶음·미편성 판정)도 같은 칸에 얹는다.
-  const weekParam = singleQueryParam((await searchParams).week)
+  const resolvedSearchParams = await searchParams
+  const weekParam = singleQueryParam(resolvedSearchParams.week)
+  // 20260924_0911: 배지 경제 흐름 그래프 기간 — `?trend=7`이면 7일, 그 외는 30일.
+  const trendDays = singleQueryParam(resolvedSearchParams.trend) === String(TREND_SHORT_DAYS) ? TREND_SHORT_DAYS : TREND_LONG_DAYS
   const weekStart = normalizeWeekParam(weekParam)
   const occurrences = getWeeklyCronOccurrences()
   const routineOccurrences = weeklyRoutineOccurrences(weekStart)
@@ -104,6 +116,25 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
   } catch {
     missionsWeek = null
   }
+
+  // 20260924_0911: 배지 발급량·앰비언트 드랍량은 30일 범위로 한 번씩만 읽고 7일 보기는 그 결과에서 잘라 쓴다.
+  // 두 조회는 서로 독립적으로 실패한다(한쪽 그래프만 오류 카드로 바뀐다).
+  const longDates = trendDates(TREND_LONG_DAYS, todayKst)
+  const trendDateList = longDates.slice(longDates.length - trendDays)
+  const { startIso: trendStartIso } = kstDayBoundsIso(longDates[0])
+  const { endIso: trendEndIso } = kstDayBoundsIso(todayKst)
+  const loadTrendSeries = async (fetcher: (startIso: string, endIso: string) => Promise<string[]>): Promise<TrendSeries> => {
+    try {
+      const stamps = await fetcher(trendStartIso, trendEndIso)
+      return { counts: bucketDailyCounts(stamps, longDates).slice(longDates.length - trendDays), error: null }
+    } catch (e) {
+      return { counts: null, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+  const [badgeTrend, dropTrend] = await Promise.all([
+    loadTrendSeries(fetchBadgeIssuanceDaily),
+    loadTrendSeries(fetchAmbientDropDaily),
+  ])
 
   const columns: CalendarColumn[] = Array.from({ length: 7 }, (_, i) => {
     const date = shiftDateStr(weekStart, i)
@@ -302,6 +333,15 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
         columns={columns}
         missionBars={missionsWeek?.bars}
         openEndedMissionCount={missionsWeek?.openEndedCount}
+      />
+
+      <EconomyTrend
+        dates={trendDateList}
+        days={trendDays}
+        todayKst={todayKst}
+        week={weekParam ? weekStart : null}
+        badges={badgeTrend}
+        drops={dropTrend}
       />
 
       <div className="grid grid-cols-4 gap-4 mb-10">
