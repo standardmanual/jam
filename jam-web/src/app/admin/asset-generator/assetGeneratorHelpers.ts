@@ -196,9 +196,23 @@ export function createTextLayer(): TextLayerConfig {
  * `document.fonts.check`가 아직 로드되지 않았다고 판단하면(네트워크 실패·존재하지 않는
  * 폰트명 등) 에러를 던져 호출부가 실패로 처리하게 한다.
  */
+/** `ensureGoogleFontLoaded`가 삽입한 `<link>`의 스타일시트가 파싱될 때까지 기다린다. 그 전에는
+ * 일치하는 폰트페이스가 없어 `document.fonts.load`·`check`가 즉시 통과해 버려 대기·실패 감지가
+ * 비어 있었다(카리나 실렌더 2026-09-25). 이미 파싱됐으면(`sheet` 존재) 바로 돌아온다. */
+async function waitForGoogleFontStylesheet(family: string): Promise<void> {
+  const link = document.head.querySelector<HTMLLinkElement>(`link[data-shader-lab-google-font="${family.replace(/"/g, '\\"')}"]`)
+  if (!link || link.sheet) return
+  await new Promise<void>((resolve, reject) => {
+    link.addEventListener('load', () => resolve(), { once: true })
+    link.addEventListener('error', () => reject(new Error(`"${family}" 폰트를 불러오지 못했어요.`)), { once: true })
+    setTimeout(resolve, 10_000)
+  })
+}
+
 export const loadFontInBrowser: FontLoader = async (font) => {
   if (isSystemDefaultFont(font)) return
   ensureGoogleFontLoaded(font.family)
+  if (typeof document !== 'undefined') await waitForGoogleFontStylesheet(font.family)
   await waitForGoogleFontLoaded(font.family, 400)
   if (typeof document !== 'undefined' && document.fonts && !document.fonts.check(`400 16px "${font.family}"`)) {
     throw new Error(`"${font.family}" 폰트를 불러오지 못했어요.`)
