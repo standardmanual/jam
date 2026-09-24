@@ -29,6 +29,8 @@ export function DeleteUserButton({
   const canDelete = confirmText === CONFIRM_TEXT
 
   const closeAndReset = () => {
+    // 삭제가 끝난 계정의 상세 화면은 더 볼 수 없으므로 결과 창을 닫을 때 목록으로 돌아간다(유저 상세로 옮긴 뒤 추가, 티켓 20260924_0951)
+    if (result) router.push('/admin/users')
     setShowConfirm(false)
     setConfirmText('')
     setError(null)
@@ -44,7 +46,6 @@ export function DeleteUserButton({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '삭제하지 못했습니다.')
       setResult(data)
-      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : '삭제하는 중 오류가 발생했습니다.')
     } finally {

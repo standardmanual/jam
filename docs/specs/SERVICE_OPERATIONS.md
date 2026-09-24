@@ -1073,8 +1073,11 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | POST | `/api/admin/poi/review/bulk` | 검토 큐 다중선택 일괄 처리 ([[20260907_1242]]) |
 | GET, POST | `/api/admin/recipes` | 조합 레시피 목록/생성 |
 | PATCH, DELETE | `/api/admin/recipes/[id]` | 레시피 수정/삭제 |
-| GET | `/api/admin/users` | 유저 목록 |
-| POST | `/api/admin/users/[id]/reset` | 유저 데이터 리셋 |
+| GET | `/api/admin/users` | 유저 검색(자동완성용) |
+| POST | `/api/admin/users/[id]/reset` | 유저 데이터 리셋 (본인·어드민 계정은 403) |
+| GET | `/api/admin/users/ids` | 유저 목록 필터 결과의 전체 ID(전체 선택용, 상한 1,000) |
+| POST | `/api/admin/users/export` | 선택한 유저 CSV 내보내기 |
+| POST | `/api/admin/users/bulk` | 유저 일괄 포인트 지급·회수·초기화·삭제 (미리보기·확인 문구, 어드민·본인 자동 제외) |
 | POST | `/api/admin/simulate` | 드랍/배지 시뮬레이션 |
 | GET, PUT | `/api/admin/abusing/policy` | 어뷰징 정책 조회/수정 |
 | GET, POST, DELETE | `/api/admin/abusing/bans` | 섀도우밴 목록/부여 |

@@ -1,65 +1,59 @@
+import { Suspense } from 'react'
 import { createServiceClient } from '@/lib/supabase/server'
-import type { UserRow, InventoryRow } from '@/types/database'
-import { UsersTable, type UserListRow } from './UsersTable'
+import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
+import { ADMIN_LIST_PAGE_SIZE, totalPagesOf } from '@/lib/admin/list-params'
+import { parseUserListParams, fetchUserListPage } from '@/lib/admin/user-list'
+import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
+import { UsersTable } from './UsersTable'
+import UsersFilterBar from './UsersFilterBar'
 
-export default async function AdminUsersPage() {
+/**
+ * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — 같은 키가 두 번 오면(`?page=1&page=2`)
+ * Next가 배열을 넘긴다. `pickSingleQueryParams`가 배열을 「값 없음」으로 흡수한다
+ * (티켓 20260906_1312).
+ */
+interface AdminUsersPageProps {
+  searchParams: SearchParamsPromise
+}
+
+/**
+ * 유저 조회(티켓 20260924_0951) — 검색·필터·서버 정렬·한 쪽 50건. 조회·집계는
+ * `lib/admin/user-list.ts`가 갖는다(전체 선택용 ID 조회·내보내기와 같은 필터 규칙).
+ */
+export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
+  const rawParams = pickSingleQueryParams(await searchParams)
+  const page = Math.max(1, parseInt(rawParams.page ?? '1', 10) || 1)
+  const params = parseUserListParams(rawParams)
+
   const supabase = createServiceClient()
-  const { data } = await supabase
-    .from('users')
-    .select('id, email, username, created_at')
-    .order('created_at', { ascending: false })
-    .limit(100)
+  const [{ rows, total }, { data: tribesRaw }] = await Promise.all([
+    fetchUserListPage(supabase, params, page),
+    supabase.from('tribes').select('id, name').order('name'),
+  ])
 
-  const users = (data ?? []) as Pick<UserRow, 'id' | 'email' | 'username' | 'created_at'>[]
-  const userIds = users.map((u) => u.id)
-
-  // 보유 배지 수 집계 쿼리와 인벤토리 조회는 서로 독립적이라 병렬화한다(20260826_011 A7).
-  // 인벤토리 아이템 수 집계는 인벤토리 조회 결과(inventoryIds)에 의존하므로 그 뒤에 이어간다.
-  const [{ data: badgeRows }, { data: inventoriesRaw }] = userIds.length > 0
-    ? await Promise.all([
-        supabase.from('user_activity_badges').select('user_id').in('user_id', userIds),
-        supabase.from('inventory').select('id, user_id').in('user_id', userIds),
-      ])
-    : [{ data: [] as { user_id: string }[] }, { data: [] as Pick<InventoryRow, 'id' | 'user_id'>[] }]
-
-  // 보유 배지 수 집계
-  const badgeCountByUser = new Map<string, number>()
-  for (const row of (badgeRows ?? []) as { user_id: string }[]) {
-    badgeCountByUser.set(row.user_id, (badgeCountByUser.get(row.user_id) ?? 0) + 1)
-  }
-
-  // 보유 아이템 수 집계 (inventory_id → user_id 매핑 경유)
-  const itemCountByUser = new Map<string, number>()
-  const inventories = (inventoriesRaw ?? []) as Pick<InventoryRow, 'id' | 'user_id'>[]
-  const inventoryIdToUserId = new Map(inventories.map((inv) => [inv.id, inv.user_id]))
-  const inventoryIds = inventories.map((inv) => inv.id)
-
-  if (inventoryIds.length > 0) {
-    const { data: itemRows } = await supabase
-      .from('inventory_items')
-      .select('inventory_id')
-      .in('inventory_id', inventoryIds)
-    for (const row of (itemRows ?? []) as { inventory_id: string }[]) {
-      const userId = inventoryIdToUserId.get(row.inventory_id)
-      if (!userId) continue
-      itemCountByUser.set(userId, (itemCountByUser.get(userId) ?? 0) + 1)
-    }
-  }
-
-  const rows: UserListRow[] = users.map((user) => ({
-    user,
-    badgeCount: badgeCountByUser.get(user.id) ?? 0,
-    itemCount: itemCountByUser.get(user.id) ?? 0,
-  }))
+  const hasFilter = !!(params.q || params.tribeId || params.onboarding || params.ban)
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">유저 조회</h1>
-        <p className="text-muted-foreground text-sm">최근 100명</p>
+    <div className="p-8 space-y-6">
+      <h1 className="text-2xl font-bold">유저 조회</h1>
+
+      {/* 필터·표는 URL(useSearchParams)과 동기화하므로 Suspense로 감싼다 */}
+      <Suspense>
+        <UsersFilterBar tribes={tribesRaw ?? []} />
+      </Suspense>
+
+      <div className="text-sm text-muted-foreground">
+        총 {total.toLocaleString('ko-KR')}명
+        {hasFilter && ' (필터 적용 중)'}
       </div>
 
-      <UsersTable rows={rows} />
+      <Suspense>
+        <UsersTable rows={rows} totalCount={total} />
+      </Suspense>
+
+      <Suspense>
+        <DataTablePagination page={page} totalPages={totalPagesOf(total, ADMIN_LIST_PAGE_SIZE)} />
+      </Suspense>
     </div>
   )
 }

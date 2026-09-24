@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdminRead } from '@/lib/admin/auth'
+import { sanitizeSearchTerm } from '@/lib/admin/search-term'
 
 export async function GET(req: NextRequest) {
   const authError = await requireAdminRead(req)
   if (authError) return authError
 
-  const q = req.nextUrl.searchParams.get('q') ?? ''
+  const q = sanitizeSearchTerm(req.nextUrl.searchParams.get('q') ?? '')
   const supabase = createServiceClient()
 
   const query = supabase
