@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { sanitizeSearchTerm } from '@/lib/admin/search-term'
 
 const MAX_RESULTS = 20
 
@@ -13,10 +14,10 @@ export async function GET(req: NextRequest) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const raw = (req.nextUrl.searchParams.get('query') ?? '').trim()
-  if (!raw) return NextResponse.json({ users: [] })
-  // PostgREST 필터 문법(쉼표/괄호)과 LIKE 와일드카드를 깨뜨리는 문자는 제거
-  const query = raw.replace(/[,()%_*\\]/g, ' ').trim()
+  const raw = req.nextUrl.searchParams.get('query') ?? ''
+  // PostgREST 필터 문법(쉼표/괄호)과 LIKE 와일드카드를 깨뜨리는 문자는 제거(20260924_0941,
+  // `itembooks/search`와 공유하는 공용 정제)
+  const query = sanitizeSearchTerm(raw)
   if (!query) return NextResponse.json({ users: [] })
 
   const supabase = createServiceClient()
