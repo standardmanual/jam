@@ -80,7 +80,7 @@
     <h2>이동 곡선</h2>
     <div class="row"><label>불규칙성 <b id="v_irreg"></b></label><input type="range" id="irreg" min="0" max="100" step="1" value="35"></div>
     <div class="btns" style="margin:0 0 10px"><button id="reseed">곡선 다시 뽑기</button></div>
-    <div class="row"><label>속도 <b id="v_speed"></b></label><input type="range" id="speed" min="0" max="1500" step="10" value="350"></div>
+    <div class="row"><label>속도 <b id="v_speed"></b></label><input type="range" id="speed" min="1000" max="2000" step="10" value="1500"></div>
     <div class="row"><label>복사 간격 <b id="v_gap"></b></label><input type="range" id="gap" min="2" max="120" step="1" value="14"></div>
     <div class="row"><label>복사 수 <b id="v_count"></b></label><input type="range" id="count" min="5" max="800" step="5" value="260"></div>
 
@@ -104,7 +104,7 @@
   var state = {
     aspect: '1:1', bg: '#ff1a00', size: 22, blur: 0,
     dir: 'h', cA: '#ff4dff', cB: '#7b1cff',
-    irreg: 35, seed: 7, speed: 350, gap: 14, count: 260,
+    irreg: 35, seed: 7, speed: 1500, gap: 14, count: 260,
     play: true, head: 0
   };
   var W = 1280, H = 1280;
