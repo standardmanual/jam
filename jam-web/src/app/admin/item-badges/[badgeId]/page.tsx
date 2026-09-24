@@ -12,7 +12,7 @@ import {
 } from '@/lib/admin/item-badge-status'
 import { SerialListFilterBar } from './SerialListFilterBar'
 import { SerialListTable, type SerialListRow } from './SerialListTable'
-import Pagination from '../../poi/Pagination'
+import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 const PAGE_SIZE = 50
@@ -251,7 +251,7 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
           <SerialListTable rows={pageRows} badgeId={badgeId} />
         )}
 
-        <Pagination page={clampedPage} totalPages={totalPages} searchParams={sp} basePath={`/admin/item-badges/${badgeId}`} />
+        <DataTablePagination page={clampedPage} totalPages={totalPages} />
       </div>
     </div>
   )

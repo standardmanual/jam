@@ -5,7 +5,7 @@ import { Button } from '@/components/admin/ui/button'
 import type { PoiCategoryRow } from '@/types/database'
 import PoiReviewFilters from './PoiReviewFilters'
 import { PoiReviewTable, type PoiReviewRow } from './PoiReviewTable'
-import Pagination from '../Pagination'
+import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 const PAGE_SIZE = 30
@@ -91,7 +91,7 @@ export default async function AdminPoiReviewPage({ searchParams }: AdminPoiRevie
 
       <PoiReviewTable pois={pois} categories={categories} />
 
-      <Pagination page={page} totalPages={totalPages} searchParams={params} basePath="/admin/poi/review" />
+      <DataTablePagination page={page} totalPages={totalPages} />
     </div>
   )
 }

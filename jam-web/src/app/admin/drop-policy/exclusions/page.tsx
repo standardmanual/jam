@@ -7,7 +7,7 @@ import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchPar
 import { ExclusionFilterBar } from './ExclusionFilterBar'
 import { DropExclusionCollectionsTable } from '@/components/admin/drop-policy/DropExclusionCollectionsTable'
 import { DropExclusionBadgesTable } from '@/components/admin/drop-policy/DropExclusionBadgesTable'
-import Pagination from '../../poi/Pagination'
+import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 
 interface Props {
   searchParams: SearchParamsPromise
@@ -123,12 +123,7 @@ export default async function DropExclusionsPage({ searchParams }: Props) {
         <h2 className="text-lg font-semibold">아이템배지 개별 드랍 제외</h2>
         <div className="text-sm text-muted-foreground">총 {totalBadges}개</div>
         <DropExclusionBadgesTable badges={badges} collectionNameById={collectionNameById} />
-        <Pagination
-          page={page}
-          totalPages={totalBadgePages}
-          searchParams={params}
-          basePath="/admin/drop-policy/exclusions"
-        />
+        <DataTablePagination page={page} totalPages={totalBadgePages} />
       </section>
     </div>
   )

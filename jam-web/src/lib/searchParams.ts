@@ -33,7 +33,7 @@ export function singleQueryParam(raw: string | string[] | undefined): string | u
  * {@link singleQueryParam}을 적용한다. 화면마다 필드별 방어를 반복하지 않기 위한 것이다.
  *
  * 반환 타입이 `Record<string, string | undefined>`라, 정규화한 레코드를 그대로 쓰는
- * 하위 컴포넌트(`Pagination`의 `searchParams` prop 등)는 손대지 않아도 된다.
+ * 하위 코드는 손대지 않아도 된다.
  */
 export function pickSingleQueryParams(
   params: Record<string, string | string[] | undefined>
@@ -41,6 +41,21 @@ export function pickSingleQueryParams(
   const result: Record<string, string | undefined> = {}
   for (const [key, value] of Object.entries(params)) {
     result[key] = singleQueryParam(value)
+  }
+  return result
+}
+
+/**
+ * API 라우트용 정규화 — {@link pickSingleQueryParams}와 같은 규칙(배열/중복은 undefined)을
+ * `URLSearchParams`(예: `request.nextUrl.searchParams`)에 적용한다(티켓 20260924_0940).
+ * `URLSearchParams.get()`은 중복 키가 와도 첫 값만 돌려줘 중복을 감춘다 — 여기서는 같은
+ * 키가 두 번 이상 오면 이 파일 상단 설명대로 「값 없음」으로 떨어뜨린다.
+ */
+export function pickSingleQueryParamsFromURL(params: URLSearchParams): Record<string, string | undefined> {
+  const result: Record<string, string | undefined> = {}
+  for (const key of new Set(params.keys())) {
+    const values = params.getAll(key)
+    result[key] = values.length === 1 ? values[0] : undefined
   }
   return result
 }

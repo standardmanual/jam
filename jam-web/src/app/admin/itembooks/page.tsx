@@ -5,7 +5,7 @@ import { Button } from '@/components/admin/ui/button'
 import type { ItemBookRow, BadgeRow, TribeRow } from '@/types/database'
 import { ItemBookList } from '@/components/admin/itembooks/ItemBookList'
 import ItemBookFilters from './ItemBookFilters'
-import Pagination from '../poi/Pagination'
+import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 const PAGE_SIZE = 30
@@ -114,7 +114,7 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
       />
 
       {/* 페이지네이션 */}
-      <Pagination page={page} totalPages={totalPages} searchParams={params} basePath="/admin/itembooks" />
+      <DataTablePagination page={page} totalPages={totalPages} />
     </div>
   )
 }

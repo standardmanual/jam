@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRow, InventoryItemRow } from '@/types/database'
 import { OrphanedItemsTable, type OrphanedItemRow } from './OrphanedItemsTable'
-import Pagination from '../../poi/Pagination'
+import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 const PAGE_SIZE = 50
@@ -184,7 +184,7 @@ export default async function OrphanedItemsPage({ searchParams }: Props) {
 
         <OrphanedItemsTable rows={pageRows} />
 
-        <Pagination page={clampedPage} totalPages={totalPages} searchParams={sp} basePath="/admin/item-badges/orphaned" />
+        <DataTablePagination page={clampedPage} totalPages={totalPages} />
       </div>
     </div>
   )

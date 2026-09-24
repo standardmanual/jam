@@ -6,7 +6,7 @@ import type { BadgeType, BadgeRarity, TribeRow, ItemBookRow, PoiCategoryRow } fr
 import BadgeList, { type BadgeListRow } from '@/components/admin/badges/BadgeList'
 import type { Json } from '@/types/database.generated'
 import BadgesFilterBar from './BadgesFilterBar'
-import Pagination from '../poi/Pagination'
+import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { UNASSIGNED_POI_CATEGORY } from '@/lib/admin/badge-labels'
 import {
   badgeUsesConditionField,
@@ -300,7 +300,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
       </Suspense>
 
       {/* 페이지네이션 */}
-      <Pagination page={page} totalPages={totalPages} searchParams={params} basePath="/admin/badges" />
+      <DataTablePagination page={page} totalPages={totalPages} />
     </div>
   )
 }
