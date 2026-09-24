@@ -19,7 +19,11 @@
   canvas { display: block; width: auto; height: auto; max-width: 100%; max-height: calc(100vh - 100px); border-radius: 6px; }
   .meta { font-size: 12px; color: var(--sub); }
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; align-self: start; }
-  h1 { font-size: 15px; margin: 0 0 12px; }
+  h1 { font-size: 15px; margin: 0; }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+  button.primary { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; white-space: nowrap; }
+  button.primary:hover { background: var(--accent); opacity: .85; }
+  button.primary svg { width: 12px; height: 12px; fill: currentColor; }
   h2 { font-size: 12px; margin: 18px 0 8px; color: var(--sub); font-weight: 600; letter-spacing: .02em; }
   .row { margin-bottom: 10px; }
   .row > label { display: flex; justify-content: space-between; font-size: 13px; }
@@ -52,7 +56,11 @@
   </div>
 
   <div class="panel">
-    <h1>Stamp Flow 프로토타입</h1>
+    <div class="head">
+      <h1>Stamp Flow 프로토타입</h1>
+      <button id="playBtn" class="primary" type="button" aria-pressed="true"></button>
+    </div>
+    <div class="row" id="progRow" style="display:none"><label>머리 위치 <b id="v_prog"></b></label><input type="range" id="prog" min="0" max="100" step="0.1" value="0"></div>
 
     <div class="drop" id="drop">투명 PNG / SVG를 끌어다 놓거나 클릭해서 선택</div>
     <input type="file" id="file" accept="image/png,image/svg+xml,image/*" hidden>
@@ -67,6 +75,7 @@
     <h2>이미지</h2>
     <div class="row"><label>크기 <b id="v_size"></b></label><input type="range" id="size" min="5" max="100" step="1" value="22"></div>
     <div class="row"><label>블러 <b id="v_blur"></b></label><input type="range" id="blur" min="0" max="100" step="1" value="0"></div>
+    <div class="row"><label>회전 <b id="v_rot"></b></label><input type="range" id="rot" min="-180" max="180" step="1" value="0"></div>
 
     <h2>그라데이션 (이미지 표면)</h2>
     <div class="row"><label>방향</label>
@@ -83,10 +92,6 @@
     <div class="row"><label>속도 <b id="v_speed"></b></label><input type="range" id="speed" min="1000" max="2000" step="10" value="1500"></div>
     <div class="row"><label>복사 간격 <b id="v_gap"></b></label><input type="range" id="gap" min="2" max="120" step="1" value="14"></div>
     <div class="row"><label>복사 수 <b id="v_count"></b></label><input type="range" id="count" min="5" max="800" step="5" value="260"></div>
-
-    <h2>재생</h2>
-    <div class="check"><input type="checkbox" id="play" checked><label for="play">재생</label></div>
-    <div class="row" id="progRow" style="display:none"><label>머리 위치 <b id="v_prog"></b></label><input type="range" id="prog" min="0" max="100" step="0.1" value="0"></div>
   </div>
 </div>
 
@@ -102,7 +107,7 @@
   function makeCanvas(w, h) { var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; }
 
   var state = {
-    aspect: '1:1', bg: '#ff1a00', size: 22, blur: 0,
+    aspect: '1:1', bg: '#ff1a00', size: 22, blur: 0, rot: 0,
     dir: 'h', cA: '#ff4dff', cB: '#7b1cff',
     irreg: 35, seed: 7, speed: 1500, gap: 14, count: 260,
     play: true, head: 0
@@ -335,6 +340,7 @@
 
   bindRange('size', 'size', function (v) { return v + '%'; });
   bindRange('blur', 'blur', function (v) { return v + '%'; }, buildStamp);
+  bindRange('rot', 'rot', function (v) { return v + '°'; });
   bindRange('irreg', 'irreg', function (v) { return v + '%'; }, function () { var f = state.head / path.total; buildPath(); state.head = f * path.total; });
   bindRange('speed', 'speed', function (v) { return v + 'px/s'; });
   bindRange('gap', 'gap', function (v) { return v + 'px'; });
@@ -349,11 +355,17 @@
     var f = state.head / path.total; buildPath(); state.head = f * path.total;
   });
 
-  var playEl = $('play'), progEl = $('prog'), vProg = $('v_prog');
-  playEl.addEventListener('change', function () {
-    state.play = playEl.checked;
+  var playBtn = $('playBtn'), progEl = $('prog'), vProg = $('v_prog');
+  var ICON_PAUSE = '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="1" width="3.2" height="10" rx="0.8"/><rect x="7.3" y="1" width="3.2" height="10" rx="0.8"/></svg>';
+  var ICON_PLAY = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.2v9.6a.6.6 0 0 0 .9.5l7.6-4.8a.6.6 0 0 0 0-1L3.4.7a.6.6 0 0 0-.9.5z"/></svg>';
+  function renderPlayBtn() {
+    // 재생 중에는 정지 버튼을, 정지 중에는 재생 버튼을 보여 준다
+    playBtn.innerHTML = state.play ? ICON_PAUSE + '정지' : ICON_PLAY + '재생';
+    playBtn.setAttribute('aria-pressed', state.play ? 'true' : 'false');
     $('progRow').style.display = state.play ? 'none' : 'block';
-  });
+  }
+  playBtn.addEventListener('click', function () { state.play = !state.play; renderPlayBtn(); });
+  renderPlayBtn();
   progEl.addEventListener('input', function () {
     state.head = parseFloat(progEl.value) / 100 * path.total;
     vProg.textContent = progEl.value + '%';
@@ -385,11 +397,15 @@
       var sc = (state.size / 100 * Math.min(W, H)) / Math.max(base.width, base.height);
       var dw = stamp.width * sc, dh = stamp.height * sc;
       ctx.imageSmoothingQuality = 'high';
+      // 스탬프 중심을 기준으로 회전한다. 그라데이션은 이미지 표면에 입혀져 있으므로 함께 회전한다
+      var rad = state.rot * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
       // 꼬리부터 그려 머리가 가장 위에 오게 한다
       for (var i = state.count - 1; i >= 0; i--) {
         posAt(state.head - i * state.gap, tmp);
-        ctx.drawImage(stamp, tmp.x - dw / 2, tmp.y - dh / 2, dw, dh);
+        ctx.setTransform(cs, sn, -sn, cs, tmp.x, tmp.y);
+        ctx.drawImage(stamp, -dw / 2, -dh / 2, dw, dh);
       }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
     if (state.play) {
