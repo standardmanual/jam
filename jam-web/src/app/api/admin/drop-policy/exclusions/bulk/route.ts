@@ -1,0 +1,64 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createServiceClient } from '@/lib/supabase/server'
+import { readBulkRequest, updateByIdsAllOrNothing, bulkJson, type BulkServiceClient } from '@/lib/admin/bulk/server'
+import { splitExclusionResult } from '@/lib/admin/drop-exclusion-list'
+
+/**
+ * 드랍 제외 관리 일괄 처리(티켓 20260924_0948, 상위 티켓 §4.4 드랍 제외 행) — 아이템배지·컬렉션의
+ * 드랍 제외(`exclude`)·제외 해제(`include`)를 요청 한 번으로 처리한다(단건 PATCH 반복 대체).
+ * body: `{ ids, action: 'exclude' | 'include', payload: { entity: 'badge' | 'collection' } }`
+ *
+ * 등급 1(되돌릴 수 있음, 영향 수치 없음)이라 `dry_run` 미리보기 없이 확인창만 거친다. 200건 이하는
+ * `update({ drop_excluded }).in('id', ids)` 한 문장이고, 그 위는 `updateByIdsAllOrNothing`이
+ * 200건씩 반영하며 실패하면 되돌린다. 아이템배지는 `type = 'item'`만 대상이다.
+ */
+const ID_CHUNK_SIZE = 200
+
+export async function POST(req: NextRequest) {
+  const result = await readBulkRequest(req, {
+    actions: { exclude: {}, include: {} },
+    idFormat: 'uuid',
+  })
+  if (!result.ok) return result.response
+  const { admin, body } = result.context
+  const { ids, action, payload, dryRun } = body
+
+  const entity = (payload as { entity?: unknown } | undefined)?.entity
+  if (entity !== 'badge' && entity !== 'collection') {
+    return NextResponse.json({ error: '대상 종류(entity)는 badge 또는 collection이어야 합니다.' }, { status: 400 })
+  }
+
+  // 미리보기 요청은 어떤 경우에도 쓰지 않는다 — 영향 수치가 없는 등급 1이라 요청 건수를 그대로 돌려준다.
+  if (dryRun) return bulkJson({ processed: ids, skipped: [], dryRun: true }, { admin, action })
+
+  const supabase = createServiceClient()
+
+  let eligibleIds = ids
+  let ineligibleReason = ''
+  if (entity === 'badge') {
+    // 아이템배지(type = 'item')만 대상 — 다른 유형의 배지 id가 섞여도 건드리지 않는다.
+    eligibleIds = []
+    for (let i = 0; i < ids.length; i += ID_CHUNK_SIZE) {
+      const { data, error } = await supabase
+        .from('badges')
+        .select('id')
+        .in('id', ids.slice(i, i + ID_CHUNK_SIZE))
+        .eq('type', 'item')
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      eligibleIds.push(...(data ?? []).map((row) => row.id))
+    }
+    ineligibleReason = '아이템배지가 아닙니다'
+  }
+
+  const update = await updateByIdsAllOrNothing(
+    supabase as unknown as BulkServiceClient,
+    entity === 'badge' ? 'badges' : 'item_books',
+    eligibleIds,
+    { drop_excluded: action === 'exclude' }
+  )
+  if (!update.ok) {
+    return NextResponse.json({ error: update.error ?? '반영에 실패했습니다.' }, { status: 500 })
+  }
+
+  return bulkJson(splitExclusionResult(ids, eligibleIds, update.updatedIds, ineligibleReason), { admin, action })
+}

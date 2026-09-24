@@ -34,7 +34,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (result.error) return NextResponse.json({ error: result.error }, { status: 500 })
   if (result.updatedIds.length === 0) {
-    return NextResponse.json({ error: '대상 POI를 찾을 수 없습니다.' }, { status: 404 })
+    // 검토 대기(pending_review = true)가 아니면 갱신되지 않는다 — 없는 POI이거나 그 사이 다른
+    // 어드민이 이미 처리한 경우다.
+    return NextResponse.json({ error: '이미 처리되었거나 찾을 수 없는 POI입니다.' }, { status: 404 })
   }
   return NextResponse.json({ ok: true })
 }

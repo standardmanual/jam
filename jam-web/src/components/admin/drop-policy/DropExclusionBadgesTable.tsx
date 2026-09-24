@@ -3,87 +3,55 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
-import {
-  createColumnHelper,
-  useTable,
-  type ColumnVisibilityState,
-  type RowSelectionState,
-} from '@tanstack/react-table'
-import { toast } from 'sonner'
-import { Button } from '@/components/admin/ui/button'
-import { Checkbox } from '@/components/admin/ui/checkbox'
-import { Badge as StatusBadge } from '@/components/admin/ui/badge'
+import { createColumnHelper, useTable, type ColumnVisibilityState } from '@tanstack/react-table'
 import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/data-table/features'
 import { DataTable } from '@/components/admin/data-table/data-table'
+import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-column-header'
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
-import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table-bulk-action-bar'
+import { InlineSwitchCell } from '@/components/admin/data-table/data-table-inline-switch'
+import { createSelectColumn } from '@/components/admin/data-table/data-table-select-column'
+import { useUrlSorting } from '@/components/admin/data-table/use-list-params'
+import { requestJson } from '@/components/admin/data-table/admin-fetch'
 import { RARITY_LABEL, RARITY_BADGE_COLOR } from '@/lib/admin/item-badge-status'
-import type { BadgeRow } from '@/types/database'
-
-type ExclusionBadgeRow = Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'item_book_id' | 'drop_excluded'>
+import type { ExclusionBadgeRow } from '@/lib/admin/drop-exclusion-list'
+import { DropExclusionBulkControls } from './DropExclusionBulkControls'
+import { useExclusionSelection } from './DropExclusionTabs'
 
 interface DropExclusionBadgesTableProps {
   badges: ExclusionBadgeRow[]
   collectionNameById: Map<string, string>
+  /** 현재 필터 조건에 맞는 전체 건수 — 전체 선택 배너에 쓴다 */
+  totalCount: number
   emptyMessage?: string
 }
 
 const columnHelper = createColumnHelper<DataTableFeatures, ExclusionBadgeRow>()
 
+const HEADER_SORTS = ['name', 'rarity'] as const
+
 /**
- * 아이템배지 다중 선택 → 일괄 드랍 제외/제외 해제(티켓 20260911_2220).
- *
- * `src/app/admin/badges/`·`components/admin/itembooks/ItemBookTable.tsx`의
- * `RowSelectionState` + `DataTableBulkActionBar` 패턴을 그대로 재사용한다(티켓 20260908_2129) —
- * 전용 벌크 API 없이 단건 PATCH(`/api/admin/badges/[id]/drop-exclude`)를 선택 항목마다
- * 순차 호출한다. 되돌릴 수 있는 낮은 위험도의 값이라 확인 다이얼로그는 두지 않는다.
+ * 아이템배지 드랍 제외 표(티켓 20260911_2220, 표준 표 전환 20260924_0948) — 제외 칸은 표 안에서
+ * 바로 반영되는 스위치(`InlineSwitchCell`, 기존 `PATCH /api/admin/badges/[id]/drop-exclude`)이고,
+ * 일괄 제외·해제는 서버 일괄 처리 한 번이다(`DropExclusionBulkControls`). 되돌릴 수 있는 낮은
+ * 위험도라 스위치는 확인창 없이 바로 반영한다.
  */
 export function DropExclusionBadgesTable({
   badges,
   collectionNameById,
+  totalCount,
   emptyMessage = '조건에 맞는 아이템배지가 없습니다.',
 }: DropExclusionBadgesTableProps) {
-  const router = useRouter()
-
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const { sorting, onSortingChange } = useUrlSorting(HEADER_SORTS, [])
+  const selection = useExclusionSelection('badges')
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
-  const [bulkLoading, setBulkLoading] = useState(false)
-
-  // 필터가 바뀌어 목록이 교체되면 이전 선택은 다른 행을 가리킬 수 있다 — 렌더 중 비교해
-  // 초기화한다(ItemBookTable.tsx와 동일 패턴).
-  const [prevBadges, setPrevBadges] = useState(badges)
-  if (badges !== prevBadges) {
-    setPrevBadges(badges)
-    setRowSelection({})
-  }
 
   const columns = useMemo(
     () =>
       columnHelper.columns([
-        columnHelper.display({
-          id: 'select',
-          header: ({ table }) => (
-            <Checkbox
-              checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
-              onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-              aria-label="전체 선택"
-            />
-          ),
-          cell: ({ row }) => (
-            <Checkbox
-              checked={row.getIsSelected()}
-              onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label="행 선택"
-            />
-          ),
-          enableSorting: false,
-          enableHiding: false,
-        }),
+        createSelectColumn(columnHelper),
         columnHelper.accessor('name', {
           id: 'name',
-          header: '이름',
-          enableSorting: false,
+          header: ({ column }) => <DataTableColumnHeader column={column} title="이름" />,
           enableHiding: false,
           cell: ({ row }) => (
             <div className="flex items-center gap-2">
@@ -118,8 +86,7 @@ export function DropExclusionBadgesTable({
         }),
         columnHelper.accessor('rarity', {
           id: 'rarity',
-          header: '등급',
-          enableSorting: false,
+          header: ({ column }) => <DataTableColumnHeader column={column} title="등급" />,
           meta: { label: '등급' },
           cell: ({ getValue }) => {
             const rarity = getValue()
@@ -136,16 +103,22 @@ export function DropExclusionBadgesTable({
         }),
         columnHelper.accessor('drop_excluded', {
           id: 'dropExcluded',
-          header: '드랍 상태',
+          header: '드랍 제외',
           enableSorting: false,
           enableHiding: false,
-          meta: { label: '드랍 상태' },
-          cell: ({ getValue }) =>
-            getValue() ? (
-              <StatusBadge variant="destructive">드랍 제외됨</StatusBadge>
-            ) : (
-              <span className="text-sm text-muted-foreground">드랍 대상</span>
-            ),
+          cell: ({ row }) => (
+            <InlineSwitchCell
+              checked={row.original.drop_excluded}
+              label={`${row.original.name} 드랍 제외`}
+              onCheckedChange={async (next) => {
+                await requestJson(`/api/admin/badges/${row.original.id}/drop-exclude`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ drop_excluded: next }),
+                })
+              }}
+            />
+          ),
         }),
       ]),
     [collectionNameById]
@@ -156,34 +129,12 @@ export function DropExclusionBadgesTable({
     data: badges,
     columns,
     getRowId: (row) => row.id,
-    state: { rowSelection, columnVisibility },
-    onRowSelectionChange: setRowSelection,
+    manualSorting: true,
+    state: { sorting, rowSelection: selection.rowSelection, columnVisibility },
+    onSortingChange,
+    onRowSelectionChange: selection.onRowSelectionChange,
     onColumnVisibilityChange: setColumnVisibility,
   })
-
-  const selectedIds = table.getSelectedRowModel().rows.map((row) => row.original.id)
-
-  const runBulkPatch = async (dropExcluded: boolean) => {
-    setBulkLoading(true)
-    try {
-      let failCount = 0
-      for (const id of selectedIds) {
-        const res = await fetch(`/api/admin/badges/${id}/drop-exclude`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ drop_excluded: dropExcluded }),
-        })
-        if (!res.ok) failCount += 1
-      }
-      if (failCount > 0) {
-        toast.error(`${failCount}개 배지의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
-      }
-      router.refresh()
-      setRowSelection({})
-    } finally {
-      setBulkLoading(false)
-    }
-  }
 
   return (
     <div className="space-y-3">
@@ -191,16 +142,19 @@ export function DropExclusionBadgesTable({
         <DataTableViewOptions table={table} />
       </div>
 
-      <DataTableBulkActionBar count={selectedIds.length} onClear={() => setRowSelection({})}>
-        <Button type="button" variant="outline" size="sm" disabled={bulkLoading} onClick={() => runBulkPatch(true)}>
-          선택 항목 드랍 제외
-        </Button>
-        <Button type="button" variant="outline" size="sm" disabled={bulkLoading} onClick={() => runBulkPatch(false)}>
-          선택 항목 제외 해제
-        </Button>
-      </DataTableBulkActionBar>
+      <DropExclusionBulkControls
+        tab="badges"
+        pageIds={badges.map((b) => b.id)}
+        totalCount={totalCount}
+        selection={selection}
+      />
 
-      <DataTable table={table} columnCount={columns.length} emptyMessage={emptyMessage} />
+      <DataTable
+        table={table}
+        columnCount={columns.length}
+        emptyMessage={emptyMessage}
+        getRowHref={(row) => `/admin/item-badges/${row.original.id}`}
+      />
     </div>
   )
 }
