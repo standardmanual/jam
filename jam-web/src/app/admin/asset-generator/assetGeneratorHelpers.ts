@@ -9,7 +9,17 @@
  * (state 초깃값 161~167줄, applyAspect 302줄, readSeconds 515줄, fileName 503줄,
  * MUXER_URL·MUXER_SRI 492~493줄).
  */
-import type { GradientDirection, ImageLayerConfig, LetterKey, RibbonLayerConfig, StageRatio } from '@/lib/asset-generator'
+import type {
+  FontLoader,
+  GradientDirection,
+  ImageLayerConfig,
+  LetterKey,
+  RibbonLayerConfig,
+  StageRatio,
+  TextLayerConfig,
+  TextLayerFont,
+} from '@/lib/asset-generator'
+import { ensureGoogleFontLoaded, waitForGoogleFontLoaded } from '@/lib/admin/shaderLab/googleFonts'
 
 /** 스테이지 긴 변 고정 길이(px). 원본 MAX_LONG. */
 export const STAGE_MAX_LONG_SIDE_PX = 1280
@@ -76,12 +86,28 @@ export const IMAGE_POSITION_RANGE: SliderRange = { min: 0, max: 100, step: 1 }
 /** 이미지 레이어 크기(%) — 스테이지 짧은 변 기준. 오버레이가 스테이지보다 커질 수도 있어 100을 넘긴다. */
 export const IMAGE_SIZE_RANGE: SliderRange = { min: 1, max: 200, step: 1 }
 export const OPACITY_RANGE: SliderRange = { min: 0, max: 100, step: 1 }
+/** 텍스트 레이어 글자 크기(%, 티켓 20260924_2158) — 스테이지 짧은 변 기준. */
+export const TEXT_SIZE_RANGE: SliderRange = { min: 1, max: 60, step: 1 }
+/** 글꼴 굵기(CSS font-weight 값 범위). */
+export const FONT_WEIGHT_RANGE: SliderRange = { min: 100, max: 900, step: 100 }
+/** 자간(글자 크기 대비 배수). 음수면 좁아지고 양수면 벌어진다. */
+export const LETTER_SPACING_RANGE: SliderRange = { min: -0.2, max: 1, step: 0.01 }
+/** 행간(글자 크기 대비 배수). */
+export const LINE_HEIGHT_RANGE: SliderRange = { min: 0.8, max: 3, step: 0.1 }
+
+export const TEXT_ALIGN_OPTIONS: { value: TextLayerConfig['align']; label: string }[] = [
+  { value: 'left', label: '왼쪽' },
+  { value: 'center', label: '가운데' },
+  { value: 'right', label: '오른쪽' },
+]
 
 export const formatPercent = (value: number): string => `${value}%`
 export const formatDegree = (value: number): string => `${value}°`
 export const formatPxPerSecond = (value: number): string => `${value}px/s`
 export const formatPx = (value: number): string => `${value}px`
 export const formatCount = (value: number): string => `${value}개`
+export const formatWeight = (value: number): string => `${value}`
+export const formatMultiplier = (value: number): string => `×${value.toFixed(2)}`
 
 /** 시작 색 실제 값(PRD §6): 연결이 켜져 있으면 배경색을 그대로 따른다. */
 export function computeEffectiveStartColor(
@@ -133,10 +159,56 @@ export function createImageLayer(assetUrl: string): ImageLayerConfig {
   }
 }
 
+/** 구글 폰트를 쓰지 않는 시스템 기본 글꼴 식별자(티켓 20260924_2158). `system-ui`는 캔버스
+ * `font` 속성이 실제로 해석하는 CSS 값이라 그대로 폰트명으로 쓴다 — 구글 폰트 로드 대상이
+ * 아니므로 `loadFontInBrowser`가 이 값이면 아무 것도 하지 않는다. */
+export const SYSTEM_DEFAULT_FONT: TextLayerFont = { family: 'system-ui', weight: 400 }
+
+export function isSystemDefaultFont(font: Pick<TextLayerFont, 'family'>): boolean {
+  return font.family === SYSTEM_DEFAULT_FONT.family
+}
+
+/** 새 텍스트 레이어 기본값(티켓 20260924_2158): 중앙 배치, 시스템 기본 글꼴, 빈 글자(직접 입력). */
+export function createTextLayer(): TextLayerConfig {
+  return {
+    type: 'text',
+    id: generateLayerId(),
+    content: '',
+    font: { ...SYSTEM_DEFAULT_FONT },
+    sizePct: 10,
+    letterSpacing: 0,
+    lineHeight: 1.2,
+    align: 'center',
+    color: '#111111',
+    xPct: 50,
+    yPct: 50,
+    rotationDeg: 0,
+    opacityPct: 100,
+  }
+}
+
 /**
- * 이미지 레이어 목록에서 id로 지정한 레이어를 한 칸 위/아래로 옮긴다(배열 안 위치를 스왑).
- * id를 찾지 못했거나 배열 경계를 벗어나면(리본 레이어 방향이거나 목록 맨 위/아래) 원본을
- * 그대로 돌려준다(원본 자체를 바꾸지 않는다).
+ * 브라우저용 `FontLoader`(render.ts) 구현(티켓 20260924_2158). 시스템 기본 글꼴은 로드가
+ * 필요 없어 즉시 끝낸다. 구글 폰트는 `googleFonts.ts`(20260916_2001)의 `<link>` 삽입·다운로드
+ * 대기 함수를 그대로 재사용한다(수정·복사 금지, 티켓 완료 조건). `ensureGoogleFontLoaded`는
+ * 굵기 400 스타일시트만 요청하므로, 로드 확인도 그 굵기 기준으로 한다(요청한 시각적 굵기가
+ * 400이 아니어도 브라우저가 같은 패밀리 안에서 가장 가까운 굵기로 대체해 그린다).
+ * `document.fonts.check`가 아직 로드되지 않았다고 판단하면(네트워크 실패·존재하지 않는
+ * 폰트명 등) 에러를 던져 호출부가 실패로 처리하게 한다.
+ */
+export const loadFontInBrowser: FontLoader = async (font) => {
+  if (isSystemDefaultFont(font)) return
+  ensureGoogleFontLoaded(font.family)
+  await waitForGoogleFontLoaded(font.family, 400)
+  if (typeof document !== 'undefined' && document.fonts && !document.fonts.check(`400 16px "${font.family}"`)) {
+    throw new Error(`"${font.family}" 폰트를 불러오지 못했어요.`)
+  }
+}
+
+/**
+ * 오버레이 레이어(이미지·텍스트) 목록에서 id로 지정한 레이어를 한 칸 위/아래로 옮긴다(배열 안
+ * 위치를 스왑). id를 찾지 못했거나 배열 경계를 벗어나면(리본 레이어 방향이거나 목록 맨 위/아래)
+ * 원본을 그대로 돌려준다(원본 자체를 바꾸지 않는다).
  *
  * 재작업(20260924_2157): 인덱스 대신 id로 대상을 찾는다 — 이전에는 호출부(page.tsx)가
  * 스왑 뒤 선택 인덱스를 별도로 갱신해야 했는데, 스왑 상대가 선택 인덱스와 같은 경우를
@@ -144,8 +216,12 @@ export function createImageLayer(assetUrl: string): ImageLayerConfig {
  * 위로 이동하면 선택 인덱스 1에는 이제 C가 들어간다). id 기반으로는 선택 상태
  * (`selectedImageLayerId`)가 배열 위치와 무관해 이 문제 자체가 생기지 않는다
  * (참고: `src/app/admin/shader-lab/ShaderLabLayerSidebar.tsx`).
+ *
+ * 제네릭화(재작업, 20260924_2158): 이미지 레이어 전용이던 시그니처를 `id`를 가진 어떤 레이어
+ * 배열에도 쓸 수 있게 넓혔다 — 오버레이 목록(이미지·텍스트 혼합)에 그대로 쓴다. 함수 이름은
+ * 유지한다(호출부·테스트가 이미 이 이름을 쓰고 있고, 동작은 "오버레이 레이어 이동"으로 같다).
  */
-export function moveImageLayer(layers: ImageLayerConfig[], id: string, direction: 'up' | 'down'): ImageLayerConfig[] {
+export function moveImageLayer<T extends { id: string }>(layers: T[], id: string, direction: 'up' | 'down'): T[] {
   const index = layers.findIndex((l) => l.id === id)
   if (index === -1) return layers
   const target = direction === 'up' ? index - 1 : index + 1
@@ -155,8 +231,9 @@ export function moveImageLayer(layers: ImageLayerConfig[], id: string, direction
   return next
 }
 
-/** 이미지 레이어 목록에서 id로 지정한 레이어를 제거한다(순수 함수, blob URL 정리는 호출부 책임). */
-export function removeImageLayer(layers: ImageLayerConfig[], id: string): ImageLayerConfig[] {
+/** 오버레이 레이어 목록에서 id로 지정한 레이어를 제거한다(순수 함수, blob URL 정리는 호출부
+ * 책임). 제네릭화 사유는 `moveImageLayer` 참고. */
+export function removeImageLayer<T extends { id: string }>(layers: T[], id: string): T[] {
   return layers.filter((l) => l.id !== id)
 }
 

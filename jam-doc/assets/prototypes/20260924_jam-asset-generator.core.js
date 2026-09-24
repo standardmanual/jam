@@ -36,6 +36,7 @@ var AssetGeneratorCore = (() => {
     choice: () => choice,
     drawImageLayer: () => drawImageLayer,
     drawRibbonLayer: () => drawRibbonLayer,
+    drawTextLayer: () => drawTextLayer,
     fillBackground: () => fillBackground,
     irrValue: () => irrValue,
     makeCandidate: () => makeCandidate,
@@ -439,6 +440,56 @@ var AssetGeneratorCore = (() => {
     ctx.setTransform(cs, sn, -sn, cs, cx, cy);
     ctx.drawImage(image, -dw / 2, -dh / 2, dw, dh);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = prevAlpha;
+  }
+  function drawTextLayer(ctx, input) {
+    const { content, font, sizePct, letterSpacing, lineHeight, align, color, xPct, yPct, rotationDeg, opacityPct, stageWidth, stageHeight } = input;
+    const shortSide = Math.min(stageWidth, stageHeight);
+    const fontSizePx = sizePct / 100 * shortSide;
+    if (fontSizePx <= 0) return;
+    const letterSpacingPx = letterSpacing * fontSizePx;
+    const lineHeightPx = lineHeight * fontSizePx;
+    const cx = xPct / 100 * stageWidth;
+    const cy = yPct / 100 * stageHeight;
+    const rad = rotationDeg * Math.PI / 180;
+    const cs = Math.cos(rad);
+    const sn = Math.sin(rad);
+    const lines = content.split("\n");
+    const lineChars = lines.map((line) => Array.from(line));
+    const prevFont = ctx.font;
+    const prevAlign = ctx.textAlign;
+    const prevBaseline = ctx.textBaseline;
+    const prevFillStyle = ctx.fillStyle;
+    const prevAlpha = ctx.globalAlpha;
+    ctx.font = `${font.weight} ${fontSizePx}px "${font.family}"`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = color;
+    ctx.globalAlpha = Math.max(0, Math.min(1, opacityPct / 100));
+    const lineWidths = lineChars.map(
+      (chars) => chars.reduce((sum, ch, i) => sum + ctx.measureText(ch).width + (i < chars.length - 1 ? letterSpacingPx : 0), 0)
+    );
+    const maxLineWidth = Math.max(0, ...lineWidths);
+    const blockHeight = lineHeightPx * lines.length;
+    ctx.setTransform(cs, sn, -sn, cs, cx, cy);
+    lineChars.forEach((chars, lineIndex) => {
+      const lineWidth = lineWidths[lineIndex];
+      const lineY = (lineIndex + 0.5) * lineHeightPx - blockHeight / 2;
+      let startX;
+      if (align === "left") startX = -maxLineWidth / 2;
+      else if (align === "right") startX = maxLineWidth / 2 - lineWidth;
+      else startX = -lineWidth / 2;
+      let cursorX = startX;
+      chars.forEach((ch) => {
+        ctx.fillText(ch, cursorX, lineY);
+        cursorX += ctx.measureText(ch).width + letterSpacingPx;
+      });
+    });
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.font = prevFont;
+    ctx.textAlign = prevAlign;
+    ctx.textBaseline = prevBaseline;
+    ctx.fillStyle = prevFillStyle;
     ctx.globalAlpha = prevAlpha;
   }
   return __toCommonJS(index_exports);

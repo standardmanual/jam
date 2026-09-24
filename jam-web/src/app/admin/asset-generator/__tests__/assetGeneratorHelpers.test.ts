@@ -1,16 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import type { ImageLayerConfig } from '@/lib/asset-generator'
+import type { ImageLayerConfig, OverlayLayerConfig, TextLayerConfig } from '@/lib/asset-generator'
 import {
   INITIAL_RIBBON_LAYER,
   buildExportFileName,
   clampDurationSeconds,
   computeEffectiveStartColor,
   createImageLayer,
+  createTextLayer,
   deselectIfRemoved,
   generateRandomSeed,
+  isSystemDefaultFont,
   moveImageLayer,
   removeImageLayer,
   resolveStageSize,
+  SYSTEM_DEFAULT_FONT,
 } from '../assetGeneratorHelpers'
 
 function makeImageLayer(id: string, assetUrl = `blob:${id}`): ImageLayerConfig {
@@ -22,6 +25,24 @@ function makeImageLayer(id: string, assetUrl = `blob:${id}`): ImageLayerConfig {
     yPct: 50,
     widthPct: 30,
     heightPct: 30,
+    rotationDeg: 0,
+    opacityPct: 100,
+  }
+}
+
+function makeTextLayer(id: string): TextLayerConfig {
+  return {
+    type: 'text',
+    id,
+    content: '',
+    font: { ...SYSTEM_DEFAULT_FONT },
+    sizePct: 10,
+    letterSpacing: 0,
+    lineHeight: 1.2,
+    align: 'center',
+    color: '#111111',
+    xPct: 50,
+    yPct: 50,
     rotationDeg: 0,
     opacityPct: 100,
   }
@@ -188,5 +209,50 @@ describe('deselectIfRemoved (삭제된 레이어가 선택돼 있었으면 해�
 
   it('아무것도 선택돼 있지 않았으면 그대로 null이다', () => {
     expect(deselectIfRemoved(null, 'c')).toBeNull()
+  })
+})
+
+describe('createTextLayer (티켓 20260924_2158)', () => {
+  it('빈 문자열이 아닌 id를 발급하고 글자 내용은 빈 문자열로 시작한다', () => {
+    const layer = createTextLayer()
+    expect(typeof layer.id).toBe('string')
+    expect(layer.id.length).toBeGreaterThan(0)
+    expect(layer.content).toBe('')
+  })
+
+  it('호출할 때마다 서로 다른 id를 발급한다', () => {
+    const a = createTextLayer()
+    const b = createTextLayer()
+    expect(a.id).not.toBe(b.id)
+  })
+
+  it('기본 글꼴은 시스템 기본이다', () => {
+    const layer = createTextLayer()
+    expect(isSystemDefaultFont(layer.font)).toBe(true)
+  })
+})
+
+describe('isSystemDefaultFont (티켓 20260924_2158)', () => {
+  it('SYSTEM_DEFAULT_FONT의 family와 같으면 true', () => {
+    expect(isSystemDefaultFont({ family: SYSTEM_DEFAULT_FONT.family })).toBe(true)
+  })
+
+  it('구글 폰트명이면 false', () => {
+    expect(isSystemDefaultFont({ family: 'Roboto' })).toBe(false)
+  })
+})
+
+describe('moveImageLayer·removeImageLayer (오버레이 혼합 목록 제네릭화, 티켓 20260924_2158 재작업)', () => {
+  it('이미지·텍스트가 섞인 목록에서도 id로 이동한다', () => {
+    const layers: OverlayLayerConfig[] = [makeImageLayer('img-a'), makeTextLayer('text-b'), makeImageLayer('img-c')]
+    const result = moveImageLayer(layers, 'text-b', 'up')
+    expect(result.map((l) => l.id)).toEqual(['text-b', 'img-a', 'img-c'])
+  })
+
+  it('이미지·텍스트가 섞인 목록에서도 id로 제거한다', () => {
+    const layers: OverlayLayerConfig[] = [makeImageLayer('img-a'), makeTextLayer('text-b')]
+    const result = removeImageLayer(layers, 'text-b')
+    expect(result.map((l) => l.id)).toEqual(['img-a'])
+    expect(result[0].type).toBe('image')
   })
 })
