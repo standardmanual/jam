@@ -49,9 +49,19 @@ export async function fetchListIds(url: string): Promise<string[]> {
   return data.ids
 }
 
-/** CSV 등 파일 응답을 내려받는다 — 실패하면 서버 메시지로 throw한다 */
-export async function downloadResponseAsFile(input: string, fallbackFilename: string): Promise<void> {
-  const res = await fetch(input)
+/**
+ * CSV 등 파일 응답을 내려받는다 — 실패하면 서버 메시지로 throw한다.
+ *
+ * `init`은 20260924_0941에서 추가했다 — ID 목록이 GET 쿼리스트링 16KB 상한에 걸릴 수 있는
+ * 내보내기(POI 등)는 POST + JSON 본문으로 요청해야 해서, 애초의 GET 전용 시그니처로는
+ * 호출할 수 없었다(①이 만든 계약의 결함, 상위 티켓 결정대로 시범 적용 중에 고친다).
+ */
+export async function downloadResponseAsFile(
+  input: string,
+  fallbackFilename: string,
+  init?: RequestInit
+): Promise<void> {
+  const res = await fetch(input, init)
   if (!res.ok) throw new Error(await readErrorMessage(res))
 
   const blob = await res.blob()

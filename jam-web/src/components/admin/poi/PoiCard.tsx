@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/admin/ui/card'
 import { Badge } from '@/components/admin/ui/badge'
-import type { PoiListRow } from './PoiList'
+import type { PoiListRow } from '@/lib/admin/poi-list-query'
 
 interface PoiCardProps {
   poi: PoiListRow

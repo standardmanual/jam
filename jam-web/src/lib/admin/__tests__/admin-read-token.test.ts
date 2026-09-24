@@ -21,7 +21,7 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }))
 
-import { isValidAdminReadToken, requireAdminRead } from '../auth'
+import { isValidAdminReadToken, requireAdminRead, isWhitelistedAdminEmail, isAdminAccount } from '../auth'
 
 const TOKEN = 'test-admin-read-token-abcdef'
 
@@ -109,4 +109,60 @@ describe('requireAdminRead', () => {
       expect(res?.status).toBe(403)
     }
   )
+})
+
+describe('isWhitelistedAdminEmail', () => {
+  const original = process.env.ADMIN_EMAILS
+
+  beforeEach(() => {
+    process.env.ADMIN_EMAILS = 'admin1@example.com, admin2@example.com'
+  })
+
+  afterEach(() => {
+    if (original === undefined) delete process.env.ADMIN_EMAILS
+    else process.env.ADMIN_EMAILS = original
+  })
+
+  it('화이트리스트에 있는 이메일이면 true', () => {
+    expect(isWhitelistedAdminEmail('admin1@example.com')).toBe(true)
+  })
+
+  it('앞뒤 공백이 있는 화이트리스트 항목도 매치한다', () => {
+    expect(isWhitelistedAdminEmail('admin2@example.com')).toBe(true)
+  })
+
+  it('화이트리스트에 없는 이메일이면 false', () => {
+    expect(isWhitelistedAdminEmail('other@example.com')).toBe(false)
+  })
+
+  it('이메일이 없으면 false', () => {
+    expect(isWhitelistedAdminEmail(null)).toBe(false)
+    expect(isWhitelistedAdminEmail(undefined)).toBe(false)
+  })
+})
+
+describe('isAdminAccount', () => {
+  const original = process.env.ADMIN_EMAILS
+
+  beforeEach(() => {
+    process.env.ADMIN_EMAILS = 'admin1@example.com'
+  })
+
+  afterEach(() => {
+    if (original === undefined) delete process.env.ADMIN_EMAILS
+    else process.env.ADMIN_EMAILS = original
+  })
+
+  it('화이트리스트 이메일이면 is_admin이 false여도 true', () => {
+    expect(isAdminAccount({ email: 'admin1@example.com', is_admin: false })).toBe(true)
+  })
+
+  it('is_admin이 true면 화이트리스트에 없어도 true', () => {
+    expect(isAdminAccount({ email: 'user@example.com', is_admin: true })).toBe(true)
+  })
+
+  it('둘 다 아니면 false', () => {
+    expect(isAdminAccount({ email: 'user@example.com', is_admin: false })).toBe(false)
+    expect(isAdminAccount({ email: null, is_admin: null })).toBe(false)
+  })
 })

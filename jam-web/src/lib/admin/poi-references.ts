@@ -3,9 +3,12 @@
  *
  * ## 왜 필요한가
  * `api/admin/poi/[id]/route.ts` DELETE는 참조 카운트 체크 없이 바로
- * `supabase.from('poi').delete()`를 실행했다. `/admin/poi`·`/admin/recipes` 둘 다 별도
- * 일괄삭제 API가 없고 선택된 행 각각에 대해 이 단건 DELETE를 순차 호출하는 구조라(`PoiTable.tsx`),
- * 이 라우트 하나만 가드하면 단건·일괄 양쪽 다 막힌다.
+ * `supabase.from('poi').delete()`를 실행했다.
+ *
+ * 20260924_0941부터 단건 DELETE(`collectPoiReferences`)와 일괄 삭제(`api/admin/poi/bulk/route.ts`
+ * 의 `delete` 동작, `collectPoiReferencesById`)가 이 파일의 참조 소스 목록(`POI_REFERENCE_SOURCES`)
+ * 을 함께 단일 출처로 삼는다 — 둘 다 이 파일이 정의한 "어떤 참조가 삭제를 막는가" 판정만
+ * 따르고, 판정 로직 자체를 복제하지 않는다.
  *
  * `badges` 테이블에서 `point_transactions.source_badge_id`(ON DELETE NO ACTION)가 겪었던
  * 사고(티켓 20260905_0034 — 사전 체크 통과 후 DELETE가 FK 위반으로 실패, raw Postgres 에러가
@@ -113,7 +116,8 @@ export const POI_REFERENCE_SOURCES: PoiReferenceSource[] = [
   },
 ]
 
-function emptyCounts(): Record<PoiReferenceKey, number> {
+/** 모든 참조 자리가 0건인 초기값 — 테스트 픽스처와 "참조 없음" 확정 케이스가 함께 쓴다 */
+export function emptyCounts(): Record<PoiReferenceKey, number> {
   const counts = {} as Record<PoiReferenceKey, number>
   for (const source of POI_REFERENCE_SOURCES) counts[source.key] = 0
   return counts
@@ -226,4 +230,86 @@ export async function collectPoiReferences(supabase: ServiceClient, poiIds: stri
     total: blockingTotal + cascadeTotal,
     error: errors.length > 0 ? errors.join(' / ') : null,
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 일괄 삭제 미리보기(티켓 20260924_0941) — POI마다 이름과 참조 건수가 필요하다.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** 삭제 대상 POI 한 건의 이름과 참조 건수 */
+export interface PoiDeletionCandidate {
+  id: string
+  name: string | null
+  counts: Record<PoiReferenceKey, number>
+  total: number
+}
+
+export interface PoiDeletionLookup {
+  /** 조회된(= 존재하는) POI만 담는다. 요청한 id가 여기 없으면 "존재하지 않음"이다 */
+  candidates: Map<string, PoiDeletionCandidate>
+  /** fail-closed: 값이 있으면 candidates가 불완전하므로 삭제를 전부 막아야 한다 */
+  error: string | null
+}
+
+/** 한 번에 나란히 확인할 참조 집계 묶음 수(=`collectPoiReferences` 동시 호출 수) 상한 */
+const NARROW_CONCURRENCY = 8
+
+/**
+ * 삭제 대상 POI마다 이름과 참조 건수를 구한다. poi마다 개별 쿼리를 돌리면 200건 기준 최대
+ * 200회 왕복이 든다 — 대신 묶음 전체의 참조 합계를 먼저 확인해(`collectPoiReferences` 재사용)
+ * 참조가 "전혀 없는" 묶음은 한 번의 조회로 묶음 전원을 0건으로 확정하고, 참조가 하나라도
+ * 있는 묶음만 절반씩 나눠 다시 확인한다. 대부분의 삭제 대상은 참조가 없는 POI라 흔한
+ * 경우에는 왕복이 크게 줄어든다.
+ *
+ * Supabase 임베디드 select(`poi_drops(count)` 등, PostgREST 관계 집계)는 이 저장소에서 아직
+ * 검증되지 않은 방식이라 쓰지 않는다 — 이미 검증된 `collectPoiReferences`(단건 DELETE와 동일
+ * 함수)만으로 구현한다(상세 요구사항 결정 근거).
+ */
+export async function collectPoiReferencesById(
+  supabase: ServiceClient,
+  poiIds: string[]
+): Promise<PoiDeletionLookup> {
+  const candidates = new Map<string, PoiDeletionCandidate>()
+  if (poiIds.length === 0) return { candidates, error: null }
+
+  const nameById = new Map<string, string | null>()
+  for (const idsChunk of chunkIds(poiIds)) {
+    const { data, error } = await supabase.from('poi').select('id, name').in('id', idsChunk)
+    if (error) return { candidates, error: error.message }
+    for (const row of (data ?? []) as { id: string; name: string | null }[]) {
+      nameById.set(row.id, row.name)
+    }
+  }
+
+  const foundIds = poiIds.filter((id) => nameById.has(id))
+  let queue: string[][] = foundIds.length > 0 ? [foundIds] : []
+
+  while (queue.length > 0) {
+    const level = queue.slice(0, NARROW_CONCURRENCY)
+    queue = queue.slice(NARROW_CONCURRENCY)
+
+    const results = await Promise.all(level.map((group) => collectPoiReferences(supabase, group)))
+
+    for (let i = 0; i < level.length; i++) {
+      const group = level[i]
+      const report = results[i]
+      if (report.error) return { candidates, error: report.error }
+
+      if (report.total === 0) {
+        for (const id of group) {
+          candidates.set(id, { id, name: nameById.get(id) ?? null, counts: emptyCounts(), total: 0 })
+        }
+        continue
+      }
+      if (group.length === 1) {
+        const id = group[0]
+        candidates.set(id, { id, name: nameById.get(id) ?? null, counts: report.counts, total: report.total })
+        continue
+      }
+      const mid = Math.ceil(group.length / 2)
+      queue.push(group.slice(0, mid), group.slice(mid))
+    }
+  }
+
+  return { candidates, error: null }
 }

@@ -1,13 +1,26 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 
-function isWhitelistedAdminEmail(email: string | null | undefined): boolean {
+export function isWhitelistedAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false
   const adminEmails = (process.env.ADMIN_EMAILS ?? '')
     .split(',')
     .map((e) => e.trim())
     .filter(Boolean)
   return adminEmails.includes(email)
+}
+
+/**
+ * 어드민 계정 판정(티켓 20260924_0941) — 화이트리스트 이메일이거나 `users.is_admin`이 참이면
+ * 어드민이다. {@link hasAdminAccess}와 판정 기준은 같지만, 이미 유저 행을 조회해 둔 화면
+ * (유저 일괄 처리 등)이 DB를 다시 조회하지 않고 그 자리에서 바로 쓸 수 있도록 순수 함수로
+ * 둔다(후속 티켓의 "어드민·본인 계정 자동 제외"에 쓴다).
+ */
+export function isAdminAccount(user: {
+  email: string | null | undefined
+  is_admin: boolean | null | undefined
+}): boolean {
+  return isWhitelistedAdminEmail(user.email) || Boolean(user.is_admin)
 }
 
 /**

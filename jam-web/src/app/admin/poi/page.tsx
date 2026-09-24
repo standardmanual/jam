@@ -3,16 +3,18 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { Button } from '@/components/admin/ui/button'
 import type { BadgeRow, PoiCategoryRow } from '@/types/database'
-import { PoiList, type PoiListRow } from '@/components/admin/poi/PoiList'
+import { PoiList } from '@/components/admin/poi/PoiList'
 import PoiFilters from './PoiFilters'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
-
-const PAGE_SIZE = 30
-
-// 목록(카드/테이블)에 실제로 쓰는 컬럼만 select — osm_id/naver_id/poi_tier/created_at 등은
-// 상세화면 전용이라 목록에는 불필요하다(20260826_011 A8).
-const POI_LIST_COLUMNS = 'id, name, latitude, longitude, radius_meters, category, linked_badge_id, is_active'
+import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
+import {
+  POI_LIST_COLUMNS,
+  parsePoiListParams,
+  applyPoiListQuery,
+  type PoiListRow,
+  type PoiListQuery,
+} from '@/lib/admin/poi-list-query'
 
 /**
  * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — 같은 키가 두 번 오면(`?page=1&page=2`)
@@ -24,28 +26,18 @@ interface AdminPoiPageProps {
 }
 
 export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) {
-  const params = pickSingleQueryParams(await searchParams)
-  const category = params.category ?? 'all'
-  const sort = params.sort ?? 'created_desc'
-  const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
-  const q = params.q?.trim() ?? ''
+  const rawParams = pickSingleQueryParams(await searchParams)
+  const params = parsePoiListParams(rawParams)
+  const page = Math.max(1, parseInt(rawParams.page ?? '1', 10) || 1)
 
   const supabase = createServiceClient()
 
-  let query = supabase.from('poi').select(POI_LIST_COLUMNS, { count: 'exact' })
-  if (category !== 'all') query = query.eq('category', category)
-  if (q) query = query.ilike('name', `%${q}%`)
-
-  if (sort === 'name_asc') query = query.order('name', { ascending: true })
-  else if (sort === 'name_desc') query = query.order('name', { ascending: false })
-  else query = query.order('created_at', { ascending: false })
-
-  const from = (page - 1) * PAGE_SIZE
-  const to = from + PAGE_SIZE - 1
-  query = query.range(from, to)
+  let query = supabase.from('poi').select(POI_LIST_COLUMNS, { count: 'exact' }) as unknown as PoiListQuery<PoiListRow>
+  query = applyPoiListQuery(query, params)
+  const [from, to] = pageRange(page, ADMIN_LIST_PAGE_SIZE)
 
   const [{ data: poisRaw, count }, { data: categoriesRaw }, { count: pendingReviewCount }] = await Promise.all([
-    query,
+    query.range(from, to),
     supabase.from('poi_categories').select('*').order('slug'),
     // 20260907_1242: 헤더의 "검토 큐" 버튼에 대기 건수를 보여준다 — 검토 큐 진입 없이도
     // 처리할 게 있는지 한눈에 알 수 있어야 실제로 쓰인다.
@@ -67,7 +59,7 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
   // 어긋난다 — 다른 컬럼은 그대로인 known-shape이므로 unknown 경유로 좁게 우회한다.
   const categories = (categoriesRaw ?? []) as unknown as PoiCategoryRow[]
   const categoryLabelMap = new Map(categories.map((c) => [c.slug, c.label]))
-  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
+  const totalPages = totalPagesOf(count ?? 0, ADMIN_LIST_PAGE_SIZE)
 
   return (
     <div className="space-y-6 p-4 md:p-8">
@@ -104,7 +96,13 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
       </div>
 
       {/* 목록 */}
-      <PoiList pois={pois} badgeMap={badgeMap} categoryLabelMap={categoryLabelMap} categories={categories} />
+      <PoiList
+        pois={pois}
+        badgeMap={badgeMap}
+        categoryLabelMap={categoryLabelMap}
+        categories={categories}
+        totalCount={count ?? 0}
+      />
 
       {/* 페이지네이션 */}
       <DataTablePagination page={page} totalPages={totalPages} />
