@@ -60,8 +60,17 @@ describe('상태 코드', () => {
     expect(insert).not.toHaveBeenCalled()
   })
 
+  it('빈도 제한에 걸린 유저는 잘못된 본문도 400이 아니라 429이고, 로그아웃하면 401이다', async () => {
+    for (let i = 0; i < 60; i++) await POST(post(VALID_BODY))
+    expect((await POST(post('{not json'))).status).toBe(429)
+    expect((await POST(post('x'.repeat(2001)))).status).toBe(429)
+    getUser.mockResolvedValue({ data: { user: null } })
+    expect((await POST(post(VALID_BODY))).status).toBe(401)
+  })
+
   it.each([
-    ['본문이 2000자를 넘으면', 'x'.repeat(2001)],
+    // 유효한 JSON·필드지만 2000자 초과 — 길이 검사를 지우면 204가 되어 실패한다(JSON 파싱 실패 분기와 구분).
+    ['본문이 2000자를 넘으면', JSON.stringify({ cardId: CARD_ID, event: 'impression', pad: 'x'.repeat(2001) })],
     ['JSON이 아니면', '{not json'],
     ['필드 검증에 실패하면(UUID 아님)', JSON.stringify({ cardId: 'abc', event: 'impression' })],
     ['허용하지 않는 event이면(followup)', JSON.stringify({ cardId: CARD_ID, event: 'followup' })],
@@ -73,6 +82,19 @@ describe('상태 코드', () => {
   it('카드 노출 검증에 실패하면(카드 없음) 400이고 기록하지 않는다', async () => {
     maybeSingle.mockResolvedValue({ data: null, error: null })
     expect((await POST(post(VALID_BODY))).status).toBe(400)
+    expect(insert).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['조회 오류가 나면', { data: null, error: { message: '조회 실패' } }, '카드를 확인할 수 없습니다.'],
+    ['비활성 카드이면', { data: { is_active: false, starts_at: '2000-01-01', ends_at: '2999-01-01', content_type_id: 't' }, error: null }, '노출 중인 카드가 아닙니다.'],
+    ['노출 시작 전이면', { data: { is_active: true, starts_at: '2999-01-01', ends_at: '2999-12-31', content_type_id: 't' }, error: null }, '노출 기간이 아닌 카드입니다.'],
+    ['노출 종료 후이면', { data: { is_active: true, starts_at: '2000-01-01', ends_at: '2000-12-31', content_type_id: 't' }, error: null }, '노출 기간이 아닌 카드입니다.'],
+  ])('카드 노출 검증에서 %s 400이고 기록하지 않는다', async (_name, row, message) => {
+    maybeSingle.mockResolvedValue(row)
+    const res = await POST(post(VALID_BODY))
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe(message)
     expect(insert).not.toHaveBeenCalled()
   })
 
