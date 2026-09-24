@@ -2,33 +2,22 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import {
-  createColumnHelper,
-  useTable,
-  type ColumnVisibilityState,
-  type RowSelectionState,
-  type SortingState,
-  type Updater,
-} from '@tanstack/react-table'
+import { useRouter } from 'next/navigation'
+import { createColumnHelper, useTable, type ColumnVisibilityState } from '@tanstack/react-table'
 import { toast } from 'sonner'
-import { Button } from '@/components/admin/ui/button'
-import { Checkbox } from '@/components/admin/ui/checkbox'
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-} from '@/components/admin/ui/alert-dialog'
 import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/data-table/features'
-import { toastBulkDeleteBlocked } from '@/components/admin/ui/toast-helpers'
 import { DataTable } from '@/components/admin/data-table/data-table'
 import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-column-header'
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
-import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table-bulk-action-bar'
-import { ItemBookActiveToggleButton } from './ItemBookActiveToggleButton'
+import { DataTableBulkActionBar, type DataTableBulkAction } from '@/components/admin/data-table/data-table-bulk-action-bar'
+import { DataTableSelectAllBanner } from '@/components/admin/data-table/data-table-select-all-banner'
+import { BulkConfirmDialog } from '@/components/admin/data-table/data-table-bulk-confirm-dialog'
+import { InlineSwitchCell } from '@/components/admin/data-table/data-table-inline-switch'
+import { createSelectColumn } from '@/components/admin/data-table/data-table-select-column'
+import { useCrossPageSelection } from '@/components/admin/data-table/use-cross-page-selection'
+import { useListParams, useUrlSorting } from '@/components/admin/data-table/use-list-params'
+import { runBulk, fetchListIds, downloadResponseAsFile, type BulkRunResponse } from '@/components/admin/data-table/admin-fetch'
+import { toastBulkResult } from '@/components/admin/ui/toast-helpers'
 import type { ItemBookRow } from '@/types/database'
 
 interface ItemBookTableProps {
@@ -37,22 +26,28 @@ interface ItemBookTableProps {
   tribeMap: Map<string, string>
   itemBadgeCountMap: Map<string, number>
   emptyMessage?: string
+  /** 현재 필터 조건에 맞는 전체 건수 — 전체 선택 배너에 쓴다 */
+  totalCount: number
 }
 
 const columnHelper = createColumnHelper<DataTableFeatures, ItemBookRow>()
 
-/** URL의 `sort` 파라미터 ↔ TanStack `SortingState` 변환 — "이름" 컬럼만 헤더 클릭으로 정렬한다
- *  (배지/POI 목록과 동일 패턴). */
-function paramToSorting(sort: string | null): SortingState {
-  if (sort === 'name_asc') return [{ id: 'name', desc: false }]
-  if (sort === 'name_desc') return [{ id: 'name', desc: true }]
-  return []
+const SELECT_ALL_CAP = 1000
+const BULK_ENDPOINT = '/api/admin/itembooks/bulk'
+
+const ACTION_VERB: Record<string, string> = {
+  activate: '활성화',
+  deactivate: '비활성화',
+  delete: '삭제',
 }
 
-function sortingToParam(sorting: SortingState): string | null {
-  const nameSort = sorting.find((s) => s.id === 'name')
-  if (!nameSort) return null
-  return nameSort.desc ? 'name_desc' : 'name_asc'
+type ConfirmAction = 'activate' | 'deactivate' | 'delete'
+
+/** 활성·비활성화는 등급 1(되돌릴 수 있음), 삭제는 등급 3(상위 티켓 §3) */
+const CONFIRM_META: Record<ConfirmAction, { level: 1 | 3; title: string; verb: string }> = {
+  activate: { level: 1, title: '컬렉션 활성화', verb: '활성화' },
+  deactivate: { level: 1, title: '컬렉션 비활성화', verb: '비활성화' },
+  delete: { level: 3, title: '컬렉션 삭제', verb: '삭제' },
 }
 
 export function ItemBookTable({
@@ -61,127 +56,98 @@ export function ItemBookTable({
   tribeMap,
   itemBadgeCountMap,
   emptyMessage = '등록된 컬렉션이 없습니다.',
+  totalCount,
 }: ItemBookTableProps) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const { filterKey, filterQuery } = useListParams()
+  const { sorting, onSortingChange } = useUrlSorting(['name'], [])
+  const { rowSelection, onRowSelectionChange, selectedIds, selectIds, clear } = useCrossPageSelection(filterKey)
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
-  const [bulkLoading, setBulkLoading] = useState(false)
-  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
-  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false)
 
-  // AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민 테마
-  // 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
-  // 지정한다(20260827_002 게이트 리뷰에서 alert-dialog.tsx 팔레트 전환 후 미연결 시 흰
-  // 배경 위 흰 글씨로 안 보이는 회귀를 발견해 추가).
-  const [themeContainer] = useState<HTMLElement | null>(() =>
-    typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
-  )
-
-  // 필터·정렬로 목록이 바뀌면 이전 선택은 다른 행을 가리킬 수 있다 — 렌더 중 비교해 초기화
-  // (배지 목록 `BadgesTable.tsx`와 동일 패턴, useEffect보다 리렌더가 한 번 적다).
-  const [prevItemBooks, setPrevItemBooks] = useState(itemBooks)
-  if (itemBooks !== prevItemBooks) {
-    setPrevItemBooks(itemBooks)
-    setRowSelection({})
-  }
-
-  const sorting = useMemo(() => paramToSorting(searchParams.get('sort')), [searchParams])
-
-  const handleSortingChange = (updater: Updater<SortingState>) => {
-    const next = typeof updater === 'function' ? updater(sorting) : updater
-    const params = new URLSearchParams(searchParams.toString())
-    const sortParam = sortingToParam(next)
-    if (sortParam) params.set('sort', sortParam)
-    else params.delete('sort')
-    params.delete('page')
-    router.push(`/admin/itembooks?${params.toString()}`)
-  }
+  const [bulkPending, setBulkPending] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null)
+  const [impactLoading, setImpactLoading] = useState(false)
+  const [deletePreview, setDeletePreview] = useState<{
+    processed: string[]
+    skipped: BulkRunResponse['skipped']
+    requiredPhrase: string
+  } | null>(null)
 
   const columns = useMemo(
-    () => columnHelper.columns([
-      columnHelper.display({
-        id: 'select',
-        header: ({ table }) => (
-          <Checkbox
-            checked={
-              table.getIsAllPageRowsSelected() ||
-              (table.getIsSomePageRowsSelected() && 'indeterminate')
-            }
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-            aria-label="전체 선택"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="행 선택"
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      }),
-      columnHelper.accessor('name', {
-        id: 'name',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="이름" />,
-        enableHiding: false,
-        cell: ({ row }) => (
-          <Link href={`/admin/itembooks/${row.original.id}`} className="font-medium hover:underline">
-            {row.original.name}
-          </Link>
-        ),
-      }),
-      columnHelper.accessor('tribe_id', {
-        id: 'tribe',
-        header: '트라이브',
-        enableSorting: false,
-        meta: { label: '트라이브' },
-        cell: ({ getValue }) => {
-          const id = getValue()
-          return <span className="text-sm text-muted-foreground">{id ? tribeMap.get(id) ?? '—' : '—'}</span>
-        },
-      }),
-      columnHelper.accessor('required_activity_badge_id', {
-        id: 'requiredBadge',
-        header: '필수 액티비티 배지',
-        enableSorting: false,
-        meta: { label: '필수 액티비티 배지' },
-        cell: ({ getValue }) => {
-          const id = getValue()
-          return <span className="text-sm">{id ? badgeMap.get(id) ?? '—' : '—'}</span>
-        },
-      }),
-      columnHelper.display({
-        id: 'itemBadgeCount',
-        header: '아이템 배지 수',
-        enableSorting: false,
-        enableHiding: false,
-        cell: ({ row }) => <span className="text-sm">{itemBadgeCountMap.get(row.original.id) ?? 0}개</span>,
-      }),
-      columnHelper.accessor('reward_badge_id', {
-        id: 'rewardBadge',
-        header: '보상 배지',
-        enableSorting: false,
-        meta: { label: '보상 배지' },
-        cell: ({ getValue }) => {
-          const id = getValue()
-          return <span className="text-sm">{id ? badgeMap.get(id) ?? '—' : '—'}</span>
-        },
-      }),
-      columnHelper.display({
-        id: 'actions',
-        header: '관리',
-        enableSorting: false,
-        enableHiding: false,
-        cell: ({ row }) => (
-          <div className="flex justify-end">
-            <ItemBookActiveToggleButton itemBookId={row.original.id} isActive={row.original.is_active} />
-          </div>
-        ),
-      }),
-    ]),
+    () =>
+      columnHelper.columns([
+        createSelectColumn(columnHelper),
+        columnHelper.accessor('name', {
+          id: 'name',
+          header: ({ column }) => <DataTableColumnHeader column={column} title="이름" />,
+          enableHiding: false,
+          cell: ({ row }) => (
+            <Link href={`/admin/itembooks/${row.original.id}`} className="font-medium hover:underline">
+              {row.original.name}
+            </Link>
+          ),
+        }),
+        columnHelper.accessor('is_active', {
+          id: 'status',
+          header: '상태',
+          enableSorting: false,
+          meta: { label: '상태' },
+          cell: ({ row }) => (
+            <InlineSwitchCell
+              checked={row.original.is_active}
+              label={`${row.original.name} 활성 상태`}
+              onCheckedChange={async (next) => {
+                const res = await fetch(`/api/admin/itembooks/${row.original.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ is_active: next }),
+                })
+                if (!res.ok) {
+                  const data = await res.json().catch(() => ({}))
+                  throw new Error(data.error ?? '상태 변경에 실패했습니다. 다시 시도해주세요.')
+                }
+              }}
+            />
+          ),
+        }),
+        columnHelper.accessor('tribe_id', {
+          id: 'tribe',
+          header: '트라이브',
+          enableSorting: false,
+          meta: { label: '트라이브' },
+          cell: ({ getValue }) => {
+            const id = getValue()
+            return <span className="text-sm text-muted-foreground">{id ? tribeMap.get(id) ?? '—' : '—'}</span>
+          },
+        }),
+        columnHelper.accessor('required_activity_badge_id', {
+          id: 'requiredBadge',
+          header: '필수 액티비티 배지',
+          enableSorting: false,
+          meta: { label: '필수 액티비티 배지' },
+          cell: ({ getValue }) => {
+            const id = getValue()
+            return <span className="text-sm">{id ? badgeMap.get(id) ?? '—' : '—'}</span>
+          },
+        }),
+        columnHelper.display({
+          id: 'itemBadgeCount',
+          header: '아이템 배지 수',
+          enableSorting: false,
+          enableHiding: false,
+          cell: ({ row }) => <span className="text-sm">{itemBadgeCountMap.get(row.original.id) ?? 0}개</span>,
+        }),
+        columnHelper.accessor('reward_badge_id', {
+          id: 'rewardBadge',
+          header: '보상 배지',
+          enableSorting: false,
+          meta: { label: '보상 배지' },
+          cell: ({ getValue }) => {
+            const id = getValue()
+            return <span className="text-sm">{id ? badgeMap.get(id) ?? '—' : '—'}</span>
+          },
+        }),
+      ]),
     [badgeMap, tribeMap, itemBadgeCountMap]
   )
 
@@ -192,95 +158,79 @@ export function ItemBookTable({
     getRowId: (row) => row.id,
     manualSorting: true,
     state: { sorting, rowSelection, columnVisibility },
-    onSortingChange: handleSortingChange,
-    onRowSelectionChange: setRowSelection,
+    onSortingChange,
+    onRowSelectionChange,
     onColumnVisibilityChange: setColumnVisibility,
   })
 
-  const selectedRows = table.getSelectedRowModel().rows.map((row) => row.original)
-  const selectedIds = selectedRows.map((r) => r.id)
+  const pageIds = itemBooks.map((b) => b.id)
+  const offPageCount = selectedIds.filter((id) => !pageIds.includes(id)).length
 
-  // 일괄 활성화 — 단건 활성화(ItemBookActiveToggleButton)가 확인 없이 즉시 반영하는 것과
-  // 동일하게 확인 다이얼로그 없이 즉시 실행한다(20260908_2129). 컬렉션의 활성/비활성은 소속
-  // 아이템배지의 활성 여부와 완전히 독립적이다(티켓 20260914_1729 — 연쇄 활성화/비활성화
-  // 폐지). 배지 활성 여부는 배지 목록에서 개별적으로 관리한다.
-  const handleBulkActivate = async () => {
-    setBulkLoading(true)
+  const fetchAllIds = async () => {
+    const params = new URLSearchParams(filterQuery)
+    return fetchListIds(`/api/admin/itembooks/ids?${params.toString()}`)
+  }
+
+  const runAction = async (action: ConfirmAction, ids: string[], confirmPhrase?: string) => {
+    setBulkPending(true)
     try {
-      let failCount = 0
-      for (const id of selectedIds) {
-        const res = await fetch(`/api/admin/itembooks/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ is_active: true }),
-        })
-        if (!res.ok) failCount += 1
-      }
-      if (failCount > 0) {
-        toast.error(`${failCount}개 컬렉션의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
-      }
+      const result = await runBulk(BULK_ENDPOINT, { ids, action, confirm_phrase: confirmPhrase })
+      toastBulkResult(result, { verb: ACTION_VERB[action] })
+      clear()
       router.refresh()
-      setRowSelection({})
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '요청을 처리하지 못했습니다. 잠시 뒤 다시 시도해주세요.')
     } finally {
-      setBulkLoading(false)
+      setBulkPending(false)
     }
   }
 
-  // 일괄 비활성화 전용 API는 없다 — 기존 단건 PATCH(is_active 토글)를 선택된 행 전체에 순차
-  // 호출한다(20260826_014 배지 파일럿과 동일 방식). 컬렉션 비활성화는 유저에게 컬렉션 자체를
-  // 더 이상 노출하지 않을 뿐, 소속 아이템배지는 건드리지 않는다(티켓 20260914_1729).
-  const handleBulkDeactivate = async () => {
-    setBulkLoading(true)
+  const closeConfirm = () => {
+    setConfirmAction(null)
+    setDeletePreview(null)
+  }
+
+  const openConfirm = async (action: ConfirmAction) => {
+    setConfirmAction(action)
+    if (action !== 'delete') return // 등급 1 — 영향 미리보기 없이 바로 확인창만 연다
+
+    setImpactLoading(true)
     try {
-      let failCount = 0
-      for (const id of selectedIds) {
-        const res = await fetch(`/api/admin/itembooks/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ is_active: false }),
-        })
-        if (!res.ok) failCount += 1
-      }
-      if (failCount > 0) {
-        toast.error(`${failCount}개 컬렉션의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
-      }
-      router.refresh()
-      setRowSelection({})
+      const result = await runBulk(BULK_ENDPOINT, { ids: selectedIds, action, dry_run: true })
+      setDeletePreview({
+        processed: result.processed,
+        skipped: result.skipped,
+        requiredPhrase: result.requiredPhrase ?? '',
+      })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '영향 범위를 확인하지 못했습니다.')
+      closeConfirm()
     } finally {
-      setBulkLoading(false)
-      setShowBulkConfirm(false)
+      setImpactLoading(false)
     }
   }
 
-  // 일괄 하드 삭제(20260907_1134) — 참조 가드(`lib/admin/reference-guards.ts`)를 통과한
-  // 항목만 서버가 한 번의 DELETE 쿼리로 지운다(순차 단건 호출이 아니다). 참조가 있는
-  // 컬렉션은 건너뛰고 항목별 사유를 돌려받는다.
-  const handleBulkDelete = async () => {
-    setBulkLoading(true)
+  const handleExport = async () => {
+    setBulkPending(true)
     try {
-      const res = await fetch('/api/admin/itembooks/bulk-delete', {
+      await downloadResponseAsFile('/api/admin/itembooks/export', 'itembooks.csv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: selectedIds }),
       })
-      const data = await res.json().catch(() => null)
-      if (!res.ok) {
-        toast.error(data?.error ?? '일괄 삭제 중 오류가 발생했습니다.')
-      } else {
-        const blocked = (data?.blocked ?? []) as { id: string; reason: string }[]
-        const deleted = (data?.deleted ?? []) as string[]
-        if (blocked.length > 0) {
-          const nameOf = (id: string) => selectedRows.find((r) => r.id === id)?.name ?? id
-          toastBulkDeleteBlocked(deleted.length, blocked, nameOf, '개')
-        }
-      }
-      router.refresh()
-      setRowSelection({})
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '내보내기에 실패했습니다. 다시 시도해주세요.')
     } finally {
-      setBulkLoading(false)
-      setShowBulkDeleteConfirm(false)
+      setBulkPending(false)
     }
   }
+
+  const actions: DataTableBulkAction[] = [
+    { key: 'activate', label: '활성화', onClick: () => openConfirm('activate'), disabled: bulkPending },
+    { key: 'deactivate', label: '비활성화', onClick: () => openConfirm('deactivate'), disabled: bulkPending },
+    { key: 'export', label: '내보내기', onClick: handleExport, disabled: bulkPending },
+    { key: 'delete', label: '삭제', onClick: () => openConfirm('delete'), disabled: bulkPending, variant: 'destructive' },
+  ]
 
   return (
     <div className="space-y-3">
@@ -288,69 +238,62 @@ export function ItemBookTable({
         <DataTableViewOptions table={table} />
       </div>
 
-      <DataTableBulkActionBar count={selectedIds.length} onClear={() => setRowSelection({})}>
-        <Button type="button" variant="outline" size="sm" disabled={bulkLoading} onClick={handleBulkActivate}>
-          선택 항목 활성화
-        </Button>
-        <Button type="button" variant="outline" size="sm" disabled={bulkLoading} onClick={() => setShowBulkConfirm(true)}>
-          선택 항목 비활성화
-        </Button>
-        <Button type="button" variant="destructive" size="sm" disabled={bulkLoading} onClick={() => setShowBulkDeleteConfirm(true)}>
-          선택 항목 삭제
-        </Button>
-      </DataTableBulkActionBar>
+      <DataTableSelectAllBanner
+        pageIds={pageIds}
+        selection={selectedIds}
+        totalCount={totalCount}
+        cap={SELECT_ALL_CAP}
+        fetchAllIds={fetchAllIds}
+        selectIds={selectIds}
+        clear={clear}
+      />
 
-      <DataTable table={table} columnCount={columns.length} emptyMessage={emptyMessage} />
+      <DataTableBulkActionBar count={selectedIds.length} onClear={clear} actions={actions} offPageCount={offPageCount} />
 
-      <AlertDialog
-        open={showBulkConfirm}
-        onOpenChange={(open) => {
-          if (!open && !bulkLoading) setShowBulkConfirm(false)
-        }}
-      >
-        <AlertDialogContent container={themeContainer ?? undefined}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>컬렉션 일괄 비활성화</AlertDialogTitle>
-            <AlertDialogDescription>
-              선택한 {selectedIds.length}개 컬렉션을 비활성화하면 유저에게 더 이상 노출되지 않습니다.
-              소속 아이템배지에는 영향을 주지 않습니다. 계속하시겠습니까?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <Button type="button" variant="outline" disabled={bulkLoading} onClick={() => setShowBulkConfirm(false)}>
-              취소
-            </Button>
-            <Button type="button" variant="destructive" disabled={bulkLoading} onClick={handleBulkDeactivate}>
-              계속
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DataTable
+        table={table}
+        columnCount={columns.length}
+        emptyMessage={emptyMessage}
+        getRowHref={(row) => `/admin/itembooks/${row.original.id}`}
+      />
 
-      <AlertDialog
-        open={showBulkDeleteConfirm}
-        onOpenChange={(open) => {
-          if (!open && !bulkLoading) setShowBulkDeleteConfirm(false)
-        }}
-      >
-        <AlertDialogContent container={themeContainer ?? undefined}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>컬렉션 일괄 삭제</AlertDialogTitle>
-            <AlertDialogDescription>
-              선택한 {selectedIds.length}개 컬렉션을 삭제합니다. 삭제하면 되돌릴 수 없습니다. 유저 진행
-              기록이 있는 컬렉션은 삭제되지 않고 결과에서 안내됩니다.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <Button type="button" variant="outline" disabled={bulkLoading} onClick={() => setShowBulkDeleteConfirm(false)}>
-              취소
-            </Button>
-            <Button type="button" variant="destructive" disabled={bulkLoading} onClick={handleBulkDelete}>
-              삭제
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {confirmAction && (
+        <BulkConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) closeConfirm()
+          }}
+          level={CONFIRM_META[confirmAction].level}
+          title={CONFIRM_META[confirmAction].title}
+          verb={CONFIRM_META[confirmAction].verb}
+          count={confirmAction === 'delete' ? (deletePreview?.processed.length ?? selectedIds.length) : selectedIds.length}
+          impact={
+            confirmAction === 'delete' && deletePreview ? (
+              deletePreview.skipped.length > 0 ? (
+                <>선택한 컬렉션 중 {deletePreview.skipped.length}건은 유저 진행 기록이 있어 삭제에서 제외됩니다.</>
+              ) : (
+                <>선택한 컬렉션을 모두 삭제할 수 있습니다.</>
+              )
+            ) : null
+          }
+          impactLoading={impactLoading}
+          requiredPhrase={confirmAction === 'delete' ? deletePreview?.requiredPhrase : undefined}
+          confirmDisabled={confirmAction === 'delete' ? (deletePreview?.processed.length ?? 0) === 0 : false}
+          pending={bulkPending}
+          onConfirm={async () => {
+            const phrase = confirmAction === 'delete' ? deletePreview?.requiredPhrase : undefined
+            await runAction(confirmAction, selectedIds, phrase)
+            closeConfirm()
+          }}
+        >
+          {/* 컬렉션의 활성/비활성은 소속 아이템배지와 독립적이다(티켓 20260914_1729) */}
+          {confirmAction === 'deactivate' && (
+            <p className="text-sm text-neutral-700">
+              비활성화하면 유저에게 더 이상 노출되지 않습니다. 소속 아이템배지에는 영향을 주지 않습니다.
+            </p>
+          )}
+        </BulkConfirmDialog>
+      )}
     </div>
   )
 }

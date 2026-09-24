@@ -11,6 +11,8 @@ interface ItemBookListProps {
   tribeMap: Map<string, string>
   itemBadgeCountMap: Map<string, number>
   emptyMessage: string
+  /** 현재 필터 조건에 맞는 전체 건수(페이지당 건수가 아니다) — 전체 선택 배너에 쓴다 */
+  totalCount: number
 }
 
 export function ItemBookList({
@@ -19,6 +21,7 @@ export function ItemBookList({
   tribeMap,
   itemBadgeCountMap,
   emptyMessage,
+  totalCount,
 }: ItemBookListProps) {
   // `hidden md:block`으로 카드 그리드와 테이블을 둘 다 마운트하면 렌더 비용이 이중으로 든다
   // (20260826_011 A4) — 실제 뷰포트에 맞는 한쪽만 마운트한다.
@@ -65,6 +68,7 @@ export function ItemBookList({
       tribeMap={tribeMap}
       itemBadgeCountMap={itemBadgeCountMap}
       emptyMessage={emptyMessage}
+      totalCount={totalCount}
     />
   )
 }
