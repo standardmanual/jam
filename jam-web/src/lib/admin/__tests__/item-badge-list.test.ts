@@ -99,6 +99,7 @@ function createCountClient(tables: Record<string, Row[]>): CountRowsClient {
         const orders: string[] = []
         const query: CountRowsQuery = {
           eq: () => query,
+          is: () => query,
           in: (column, values) => {
             inColumn = column
             inValues = values
@@ -145,6 +146,7 @@ describe('loadItemBadgeIssuedCounts', () => {
         select: () => {
           const query: CountRowsQuery = {
             eq: () => query,
+            is: () => query,
             in: (column) => {
               calls.push({ table, inColumn: column })
               return query

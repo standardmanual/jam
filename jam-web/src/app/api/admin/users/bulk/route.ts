@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { readBulkRequest, bulkJson } from '@/lib/admin/bulk/server'
 import { confirmPhraseFor, isPhraseMatch, type BulkSkip } from '@/lib/admin/bulk/shared'
 import {
+  USER_BULK_GRANT_MAX_IDS,
   USER_BULK_HEAVY_MAX_IDS,
   partitionUserTargets,
   readGrantPayload,
@@ -60,7 +61,7 @@ async function safely(id: string, run: () => Promise<{ ok: true } | { ok: false;
 export async function POST(req: NextRequest) {
   const result = await readBulkRequest(req, {
     actions: {
-      grant_points: {},
+      grant_points: { maxIds: USER_BULK_GRANT_MAX_IDS },
       reset: { maxIds: USER_BULK_HEAVY_MAX_IDS },
       delete: { maxIds: USER_BULK_HEAVY_MAX_IDS },
     },

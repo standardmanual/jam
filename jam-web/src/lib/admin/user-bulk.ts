@@ -13,6 +13,9 @@ export type UserBulkAction = 'grant_points' | 'reset' | 'delete'
 /** 유저 초기화·삭제의 한 번 처리 상한(상위 티켓 §2) */
 export const USER_BULK_HEAVY_MAX_IDS = 50
 
+/** 포인트 일괄 지급·회수의 한 번 처리 상한 — 유저마다 RPC·잔액 조회·알림이 나가고 동시 5건이라 60초 안에 끝나는 규모로 제한한다 */
+export const USER_BULK_GRANT_MAX_IDS = 200
+
 export const SKIP_REASON_ADMIN = '어드민 계정'
 export const SKIP_REASON_SELF = '본인 계정'
 export const SKIP_REASON_NOT_FOUND = '유저를 찾을 수 없습니다.'
