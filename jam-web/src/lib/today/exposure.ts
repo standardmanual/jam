@@ -107,10 +107,11 @@ async function getItemBookProgress(
   const supabase = createServiceClient()
 
   // 유저가 슬롯을 채우기 시작한 북들
-  const { data: slotsRaw } = await supabase
+  const { data: slotsRaw, error: slotsError } = await supabase
     .from('user_item_book_slots')
     .select('item_book_id, badge_id')
     .eq('user_id', userId)
+  if (slotsError) console.error('[getItemBookProgress] user_item_book_slots 조회 오류:', slotsError.message)
   const filledBadgeIds = new Set<string>()
   const startedSet = new Set<string>()
   for (const s of (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]) {
@@ -194,11 +195,12 @@ export function daysSinceLastSync(
 /** 유저의 Strava 동기화 경과일. strava_connections 행이 없는 유저는 null(태그 대상 아님) */
 async function stravaStaleDays(userId: string, now: Date): Promise<number | null> {
   const supabase = createServiceClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('strava_connections')
     .select('last_synced_at')
     .eq('user_id', userId)
     .maybeSingle()
+  if (error) console.error('[stravaStaleDays] strava_connections 조회 오류:', error.message)
   return daysSinceLastSync((data ?? null) as { last_synced_at: string | null } | null, now)
 }
 

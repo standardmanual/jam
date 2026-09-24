@@ -28,6 +28,12 @@ const fixtures = vi.hoisted(() => ({
   stravaByUser: {} as Record<string, { last_synced_at: string | null } | undefined>,
   /** 테이블별 from() 호출 횟수 — 조회 중복 회귀 검증용 (티켓 20260923_2353) */
   fromCalls: {} as Record<string, number>,
+  /** true인 유저는 해당 조회가 Supabase error를 반환한다 (티켓 20260924_0853) */
+  slotsErrorUsers: {} as Record<string, boolean>,
+  stravaErrorUsers: {} as Record<string, boolean>,
+  /** 날씨·특일 조립 검증용 — 기본값은 기존 테스트와 같은 null/빈 배열 (티켓 20260924_0853) */
+  weather: null as string | null,
+  specialDays: [] as { name: string; type: string }[],
 }))
 
 /** supabase-js 쿼리 빌더 흉내 — usage-badges.test.ts의 mockSupabase()와 같은 최소 체인.
@@ -55,6 +61,9 @@ function mockSupabase() {
     builder.maybeSingle = () => {
       if (table !== 'strava_connections') return Promise.resolve({ data: null, error: null })
       const userId = state.eq.user_id as string
+      if (fixtures.stravaErrorUsers[userId]) {
+        return Promise.resolve({ data: null, error: { message: 'Strava 연결 조회 실패' } })
+      }
       return Promise.resolve({ data: fixtures.stravaByUser[userId] ?? null, error: null })
     }
     builder.then = (resolve: (v: unknown) => void) => {
@@ -67,6 +76,9 @@ function mockSupabase() {
       }
       if (table === 'user_item_book_slots') {
         const userId = state.eq.user_id as string
+        if (fixtures.slotsErrorUsers[userId]) {
+          return Promise.resolve({ data: null, error: { message: '슬롯 조회 실패' } }).then(resolve)
+        }
         return Promise.resolve({ data: fixtures.slotsByUser[userId] ?? [], error: null }).then(resolve)
       }
       if (table === 'user_item_book_completions') {
@@ -86,9 +98,10 @@ function mockSupabase() {
 }
 
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabase() }))
-// 날씨·특일정보는 외부 API 호출이다 — 이 테스트의 검증 대상이 아니므로 항상 빈 값으로 고정한다
-vi.mock('@/lib/inputs/weather', () => ({ getTodayWeather: async () => null }))
-vi.mock('@/lib/inputs/holidays', () => ({ getTodaySpecialDays: async () => [] }))
+// 날씨·특일정보는 외부 API 호출이다 — fixtures.weather/specialDays로 값을 지정한다
+// (기본값 null/빈 배열은 기존 테스트와 동일, 티켓 20260924_0853)
+vi.mock('@/lib/inputs/weather', () => ({ getTodayWeather: async () => fixtures.weather }))
+vi.mock('@/lib/inputs/holidays', () => ({ getTodaySpecialDays: async () => fixtures.specialDays }))
 
 import { computeUserExposureTags, ITEMBOOK_REMAINING_MAX, STRAVA_STALE_DAYS } from '../exposure'
 
@@ -183,5 +196,51 @@ describe('computeUserExposureTags 통합 — 컬렉션 잔여·동기화 경과 
     // 결과는 그대로 — 미완성 + 잔여 1개
     expect(tags).toContain('has_incomplete_itembook')
     expect(tags).toContain(`itembook_remaining_le${ITEMBOOK_REMAINING_MAX}`)
+  })
+
+  it('날씨·특일 값이 있으면 weather_*, specialDayTags 결과가 다른 태그와 함께 조립된다 (티켓 20260924_0853)', async () => {
+    const now = new Date('2026-09-23T03:00:00Z')
+    const USER = 'user-weather-special'
+    fixtures.slotsByUser[USER] = [{ item_book_id: 'book-w', badge_id: 'badge-w1' }]
+    fixtures.badgesByBook['book-w'] = [
+      { id: 'badge-w1', item_book_id: 'book-w', type: 'item', drop_excluded: false },
+      { id: 'badge-w2', item_book_id: 'book-w', type: 'item', drop_excluded: false },
+    ]
+    fixtures.stravaByUser[USER] = {
+      last_synced_at: new Date(now.getTime() - 20 * 24 * 3600_000).toISOString(),
+    }
+    fixtures.weather = 'clear'
+    fixtures.specialDays = [{ name: '식목일', type: 'anniversary' }]
+
+    const tags = await computeUserExposureTags(USER, now)
+
+    // 날씨·특일 태그가 컬렉션·Strava 태그와 함께 조립됐는지 확인한다 — 지금까지는
+    // 두 값을 null/빈 배열로 고정해 이 조립 자체가 검증되지 않았다
+    expect(tags).toContain('weather_clear')
+    expect(tags).toContain('anniversary_today')
+    expect(tags).toContain('has_incomplete_itembook')
+    expect(tags).toContain(`itembook_remaining_le${ITEMBOOK_REMAINING_MAX}`)
+    expect(tags).toContain(`strava_stale_${STRAVA_STALE_DAYS}d`)
+
+    fixtures.weather = null
+    fixtures.specialDays = []
+  })
+
+  it('user_item_book_slots·strava_connections 조회가 오류를 받으면 console.error를 남기고 해당 태그만 빠진다 (티켓 20260924_0853)', async () => {
+    const now = new Date('2026-09-23T03:00:00Z')
+    const USER = 'user-db-error'
+    fixtures.slotsErrorUsers[USER] = true
+    fixtures.stravaErrorUsers[USER] = true
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const tags = await computeUserExposureTags(USER, now)
+
+    expect(tags).not.toContain('has_incomplete_itembook')
+    expect(tags).not.toContain(`itembook_remaining_le${ITEMBOOK_REMAINING_MAX}`)
+    expect(tags).not.toContain(`strava_stale_${STRAVA_STALE_DAYS}d`)
+    expect(errorSpy).toHaveBeenCalledWith('[getItemBookProgress] user_item_book_slots 조회 오류:', '슬롯 조회 실패')
+    expect(errorSpy).toHaveBeenCalledWith('[stravaStaleDays] strava_connections 조회 오류:', 'Strava 연결 조회 실패')
+
+    errorSpy.mockRestore()
   })
 })
