@@ -25,6 +25,7 @@ let tribes: FixtureRow[] = []
 let itemBooks: FixtureRow[] = []
 let badges: FixtureRow[] = []
 let calledTables: string[] = []
+let forceErrorTable: string | null = null
 
 // `.in()`이 반환하는 Promise에 `.eq()`를 얹어, 같은 체인 시작점에서 "즉시 await"(원문 그대로
 // 조회)과 "eq로 활성 필터까지 이어감"(활성 판정 조회) 두 경로를 모두 재현한다 — 실제
@@ -73,6 +74,9 @@ vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
     from: (table: string) => {
       calledTables.push(table)
+      if (table === forceErrorTable) {
+        return { select: () => ({ in: () => Promise.resolve({ data: null, error: new Error('DB 조회 실패') }) }) }
+      }
       if (table === 'tribes') return buildSimpleTable(tribes, ['id', 'name', 'description', 'tagline'])
       if (table === 'item_books')
         return buildSimpleTable(itemBooks, ['id', 'name', 'story_text', 'description', 'tribe_id'])
@@ -87,6 +91,7 @@ import { verifyActiveTargets } from '../verify'
 
 beforeEach(() => {
   calledTables = []
+  forceErrorTable = null
   tribes = [
     { id: 'tribe-active', active: true, name: '숲속의 갱단', description: '숲의 설명', tagline: '태그라인' },
     { id: 'tribe-inactive', active: false, name: '작심삼일 클럽', description: '비활성 트라이브 설명', tagline: null },
@@ -220,6 +225,24 @@ describe('selectCorpusForType — 글·세계관 노출형(T01)', () => {
   it('소속 트라이브가 비활성인 컬렉션도 서사 인용에는 영향이 없다(narrative는 소속 활성 조건 미적용)', async () => {
     const result = await selectCorpusForType('T01', { itemBookIds: ['book-tribe-inactive'] })
     expect(result.quotes).toEqual([{ kind: 'item_book', id: 'book-tribe-inactive', text: '소속 트라이브가 비활성' }])
+  })
+})
+
+describe('selectCorpusForType — 엣지 케이스', () => {
+  it('badgeIds가 빈 배열이면 DB를 조회하지 않고 빈 결과를 돌려준다', async () => {
+    const result = await selectCorpusForType('T02', { badgeIds: [] })
+    expect(result).toEqual({ typeId: 'T02', targets: [], quotes: [] })
+    expect(calledTables).toEqual([])
+  })
+
+  it('limit이 0이면 후보 ID가 있어도 빈 결과를 돌려준다', async () => {
+    const result = await selectCorpusForType('T02', { badgeIds: ['badge-active'] }, 0)
+    expect(result).toEqual({ typeId: 'T02', targets: [], quotes: [] })
+  })
+
+  it('tribes 조회가 오류를 던지면 selectCorpusForType도 그 오류를 그대로 던진다', async () => {
+    forceErrorTable = 'tribes'
+    await expect(selectCorpusForType('T01', { tribeIds: ['tribe-active'] })).rejects.toThrow('DB 조회 실패')
   })
 })
 
