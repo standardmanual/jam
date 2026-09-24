@@ -270,6 +270,171 @@ r = checkJson()
 assert.equal(r.status, 0, '추가된 route.ts만 대상이다')
 assert.deepEqual(r.json.routes, [])
 
+// 11-2) 공용 인증 래퍼(auth_wrappers, 티켓 20260924_1555): 선언된 래퍼를 가져와 부르고 래퍼가 실제로 인증할 때만 통과한다
+const WRAPPER_FILE = 'jam-web/src/lib/admin/bulk/server.ts'
+const WRAPPER_DECL = { auth_wrappers: [{ file: WRAPPER_FILE, call: 'readBulkRequest' }] }
+const GOOD_WRAPPER = [
+  "import { NextResponse } from 'next/server'",
+  "import { getAdminUser } from '../auth'",
+  'export async function readBulkRequest(req: Request) {',
+  '  const admin = await getAdminUser()',
+  "  if (!admin) return { ok: false, response: NextResponse.json({}, { status: 403 }) }",
+  '  return { ok: true, context: { admin } }',
+  '}',
+  '',
+].join('\n')
+const wrapperRoute = (body, imp = "import { readBulkRequest } from '@/lib/admin/bulk/server'") =>
+  `${imp}\nexport async function POST(req: Request) {\n${body}\n}\n`
+const CALLING_BODY = '  const result = await readBulkRequest(req, {})\n  if (!result.ok) return result.response'
+const BULK_ROUTE = 'jam-web/src/app/api/admin/thing/bulk/route.ts'
+/** 래퍼 선언(+래퍼 파일 소스, null이면 파일 없음)과 라우트 소스로 head를 만들어 점검한다. */
+const withWrapper = (message, { wrapper = GOOD_WRAPPER, route, decl = WRAPPER_DECL }) => {
+  onHead(message, (put) => {
+    put('docs/agents/contract.json', contractJson(decl))
+    if (wrapper !== null) put(WRAPPER_FILE, wrapper)
+    if (route !== undefined) put(BULK_ROUTE, route)
+  })
+  return checkJson()
+}
+const blockedWith = (res, pattern, why) => {
+  assert.equal(res.status, 1, `${why}: 차단해야 한다\n${res.stdout}${res.stderr}`)
+  if (pattern) assert.match(check().stdout, pattern, why)
+}
+
+// (a) 선언된 래퍼를 가져와 호출하고 래퍼가 인증하면 통과. 게이트가 래퍼 경유로 센다
+r = withWrapper('래퍼 통과', { route: wrapperRoute(CALLING_BODY) })
+assert.equal(r.status, 0, `래퍼를 쓰는 새 라우트가 막혔다:\n${r.stdout}${r.stderr}`)
+assert.deepEqual(r.json.routes, [{ file: BULK_ROUTE, route: 'admin/thing/bulk', status: 'auth', via: 'readBulkRequest' }])
+assert.deepEqual(r.json.authWrappers, [{ file: WRAPPER_FILE, call: 'readBulkRequest', ok: true, problems: [] }])
+assert.match(check().stdout, /API 라우트: 통과 — 새 라우트 1건\(인증 확인 1건, 이 중 인증 래퍼 경유 1건, 공개 라우트 등록 0건\)/)
+assert.match(check().stdout, /인증 래퍼: 통과 — 선언 1건/)
+
+// 별칭 가져오기, 여러 이름을 함께 가져오는 형태, 다른 인증 함수·@/ 경로로 가져오는 래퍼도 통과
+r = withWrapper('별칭 가져오기', {
+  route: wrapperRoute('  const result = await readIt(req, {})', "import { other, readBulkRequest as readIt, type Foo } from '@/lib/admin/bulk/server'"),
+})
+assert.equal(r.status, 0, `별칭 가져오기가 막혔다:\n${r.stdout}${r.stderr}`)
+r = withWrapper('@/ 경로 래퍼', {
+  wrapper: "import { requireAdmin } from '@/lib/admin/auth'\nexport const readBulkRequest = async (req: Request) => requireAdmin()\n",
+  route: wrapperRoute(CALLING_BODY),
+})
+assert.equal(r.status, 0, `@/lib/admin/auth를 쓰는 래퍼가 막혔다:\n${r.stdout}${r.stderr}`)
+r = withWrapper('여러 줄 가져오기', {
+  route: wrapperRoute(CALLING_BODY, "import {\n  updateByIds,\n  readBulkRequest,\n} from '@/lib/admin/bulk/server'"),
+})
+assert.equal(r.status, 0, `여러 줄 가져오기가 막혔다:\n${r.stdout}${r.stderr}`)
+
+// (b) 가져오기만 하고 호출하지 않으면 차단
+r = withWrapper('가져오기만', { route: wrapperRoute('  return new Response("open")') })
+blockedWith(r, /admin\/thing\/bulk\/route\.ts 인증 확인 호출이 없고 .*deploy_gate\.auth_wrappers에 선언/, '가져오기만 하는 라우트')
+assert.deepEqual(r.json.routes, [{ file: BULK_ROUTE, route: 'admin/thing/bulk', status: 'missing' }])
+
+// (c) 같은 이름의 지역 함수를 부르는 라우트, 다른 경로에서 가져온 같은 이름, 지역 선언으로 가린 경우는 차단
+r = withWrapper('지역 함수 사칭', {
+  route: 'async function readBulkRequest(req: Request) { return { ok: true } }\nexport async function POST(req: Request) {\n  await readBulkRequest(req)\n}\n',
+})
+blockedWith(r, /인증 확인 호출이 없고/, '가져오지 않고 지역 함수를 부르는 라우트')
+r = withWrapper('다른 경로 가져오기', { route: wrapperRoute(CALLING_BODY, "import { readBulkRequest } from '@/lib/fake/server'") })
+blockedWith(r, null, '다른 모듈에서 가져온 같은 이름')
+r = withWrapper('가져온 뒤 지역 선언으로 가림', {
+  route: wrapperRoute('  const readBulkRequest = async (_req: Request) => ({ ok: true })\n' + CALLING_BODY),
+})
+blockedWith(r, null, '가져온 이름을 지역에서 다시 선언')
+r = withWrapper('다른 객체의 메서드', { route: wrapperRoute('  await fake.readBulkRequest(req, {})') })
+blockedWith(r, null, '점 접근 호출은 래퍼 호출이 아니다')
+r = withWrapper('type 가져오기', {
+  route: wrapperRoute(CALLING_BODY, "import type { readBulkRequest } from '@/lib/admin/bulk/server'"),
+})
+blockedWith(r, null, '타입 가져오기는 값이 아니다')
+
+// 주석·문자열에 이름을 적어 넣어도 검사를 속일 수 없다
+r = withWrapper('주석과 문자열 사칭', {
+  route:
+    "import { readBulkRequest } from '@/lib/admin/bulk/server'\n// readBulkRequest(req)\n/* await readBulkRequest(req) */\nexport async function POST() {\n  const s = 'readBulkRequest(req)'\n  return new Response(s)\n}\n",
+})
+blockedWith(r, null, '주석·문자열의 호출은 호출이 아니다')
+
+// (d) 래퍼 파일에 인증 호출이 없으면 그것을 쓰는 라우트는 차단되고 원인이 출력된다
+const NO_AUTH_WRAPPER = 'export async function readBulkRequest(req: Request) {\n  const body = await req.json()\n  return { ok: true, body }\n}\n'
+r = withWrapper('래퍼에 인증 없음', { wrapper: NO_AUTH_WRAPPER, route: wrapperRoute(CALLING_BODY) })
+blockedWith(r, /인증 래퍼: 차단 — jam-web\/src\/lib\/admin\/bulk\/server\.ts의 readBulkRequest: .*인증 함수\(getAdminUser·requireAdmin·requireAdminRead\)/, '인증 없는 래퍼')
+assert.match(check().stdout, /admin\/thing\/bulk\/route\.ts 인증 래퍼 readBulkRequest의 무결성 검증에 실패/)
+assert.deepEqual(r.json.blockers, ['인증 확인 없는 새 API 라우트 1건', '무결성이 깨진 인증 래퍼 1건'])
+assert.deepEqual(r.json.authWrappers[0].problems, ['no_auth_call'])
+assert.equal(r.json.routes[0].status, 'missing')
+assert.deepEqual(r.json.routes[0].brokenWrappers, ['readBulkRequest'])
+// 래퍼가 깨졌으면 새 라우트가 없어도 막는다(이미 배포된 라우트가 그 래퍼에 기대므로)
+r = withWrapper('래퍼만 깨짐', { wrapper: NO_AUTH_WRAPPER })
+blockedWith(r, /인증 래퍼: 차단/, '라우트 없이 깨진 래퍼')
+assert.deepEqual(r.json.blockers, ['무결성이 깨진 인증 래퍼 1건'])
+// 인증 호출이 주석·문자열에만 있거나, 지역 함수를 부르거나, 가져오지 않은 이름이면 인증으로 치지 않는다
+for (const [label, wrapper] of [
+  ['주석', "// const admin = await getAdminUser()\n/* requireAdmin() */\nexport async function readBulkRequest() { return { ok: true } }\n"],
+  ['문자열', "export async function readBulkRequest() {\n  const s = 'getAdminUser()'\n  return { ok: true, s }\n}\n"],
+  ['지역 함수', "async function getAdminUser() { return { id: '1' } }\nexport async function readBulkRequest() {\n  await getAdminUser()\n  return { ok: true }\n}\n"],
+  ['가져오지 않은 이름', 'export async function readBulkRequest() {\n  await getAdminUser()\n  return { ok: true }\n}\n'],
+  ['다른 모듈에서 가져온 이름', "import { getAdminUser } from '@/lib/fake'\nexport async function readBulkRequest() {\n  await getAdminUser()\n  return { ok: true }\n}\n"],
+  ['가져오기만', "import { getAdminUser } from '../auth'\nexport async function readBulkRequest() { return { ok: true } }\n"],
+  ['지역 선언으로 가림', "import { getAdminUser } from '../auth'\nexport async function readBulkRequest() {\n  const getAdminUser = async () => true\n  await getAdminUser()\n}\n"],
+]) {
+  r = withWrapper(`래퍼 인증 사칭: ${label}`, { wrapper, route: wrapperRoute(CALLING_BODY) })
+  blockedWith(r, null, `래퍼 인증 사칭(${label})`)
+  assert.deepEqual(r.json.authWrappers[0].problems, ['no_auth_call'], `래퍼 인증 사칭(${label})`)
+}
+
+// (e) 선언된 래퍼 파일이 없으면 그것을 쓰는 라우트는 차단
+r = withWrapper('래퍼 파일 없음', { wrapper: null, route: wrapperRoute(CALLING_BODY) })
+blockedWith(r, /인증 래퍼: 차단 — .*readBulkRequest: 파일이 점검 대상에 없음/, '래퍼 파일 없음')
+assert.deepEqual(r.json.authWrappers[0].problems, ['no_file'])
+// 선언된 함수를 내보내지 않는 래퍼(이름 변경·재내보내기·타입만 내보내기)도 차단
+for (const [label, wrapper] of [
+  ['이름 변경', GOOD_WRAPPER.replace('export async function readBulkRequest', 'export async function readBulk')],
+  ['내보내지 않음', GOOD_WRAPPER.replace('export async function', 'async function')],
+  ['재내보내기', "import { getAdminUser } from '../auth'\nexport { readBulkRequest } from './other'\nexport async function unrelated() { await getAdminUser() }\n"],
+  ['접두어만 같은 이름', GOOD_WRAPPER.replace('export async function readBulkRequest', 'export async function readBulkRequestLegacy')],
+]) {
+  r = withWrapper(`래퍼 내보내기 없음: ${label}`, { wrapper, route: wrapperRoute(CALLING_BODY) })
+  blockedWith(r, /선언된 함수를 내보내지 않음/, `래퍼 내보내기(${label})`)
+  assert.ok(r.json.authWrappers[0].problems.includes('no_export'), `래퍼 내보내기(${label})`)
+}
+// 이름을 바꿔 내보내는 형태(export { x as readBulkRequest })는 인정한다
+r = withWrapper('별칭 내보내기', {
+  wrapper: GOOD_WRAPPER.replace('export async function readBulkRequest', 'async function inner') + 'export { inner as readBulkRequest }\n',
+  route: wrapperRoute(CALLING_BODY),
+})
+assert.equal(r.status, 0, `별칭 내보내기가 막혔다:\n${r.stdout}${r.stderr}`)
+
+// (f) 래퍼를 쓰지 않는 인증 없는 새 라우트는 래퍼가 선언돼 있어도 차단
+r = withWrapper('래퍼 안 쓰는 무인증 라우트', { route: 'export const POST = () => new Response("hi")\n' })
+blockedWith(r, /deploy_gate\.public_routes에 "admin\/thing\/bulk" 등록, 공용 인증 래퍼를 쓰는 라우트라면 deploy_gate\.auth_wrappers에 선언/, '래퍼 안 쓰는 무인증 라우트')
+assert.deepEqual(r.json.blockers, ['인증 확인 없는 새 API 라우트 1건'])
+
+// 래퍼가 무결해도 다른 래퍼로 통과시키지 않는다: 두 래퍼 중 깨진 쪽만 쓰는 라우트는 차단
+r = withWrapper('두 번째 래퍼는 깨짐', {
+  decl: { auth_wrappers: [...WRAPPER_DECL.auth_wrappers, { file: 'jam-web/src/lib/admin/other/server.ts', call: 'readOther' }] },
+  route: wrapperRoute('  await readOther(req)', "import { readOther } from '@/lib/admin/other/server'"),
+})
+blockedWith(r, /무결성 검증에 실패/, '깨진 두 번째 래퍼')
+
+// (g) 상대 경로(../auth)로 인증 함수를 가져오는 래퍼는 무결성 검증을 통과한다 — (a)의 GOOD_WRAPPER가 그 형태다
+r = withWrapper('상대 경로 래퍼', { wrapper: GOOD_WRAPPER.replace("'../auth'", "'./../auth'"), route: wrapperRoute(CALLING_BODY) })
+assert.equal(r.status, 0, `상대 경로 가져오기가 막혔다:\n${r.stdout}${r.stderr}`)
+
+// (h) auth_wrappers가 없는 기존 선언과도 동작한다: 통과 사례는 그대로 통과하고, 래퍼를 부르는 라우트는 인증으로 치지 않는다
+r = withWrapper('선언 없음', { decl: {}, route: wrapperRoute(CALLING_BODY) })
+blockedWith(r, /deploy_gate\.auth_wrappers에 선언/, '선언 없는 래퍼 사용')
+assert.deepEqual(r.json.authWrappers, [])
+r = withWrapper('선언 없음 + 인증 라우트', { decl: {}, route: 'export async function GET() { await supabase.auth.getUser() }\n' })
+assert.equal(r.status, 0, '선언이 없어도 기존 인증 판정은 그대로다')
+assert.deepEqual(r.json.authWrappers, [])
+// auth_wrappers 형식이 틀리면 실행 오류(2)로 끝난다 — 통과시키지 않는다
+for (const bad of ['x', {}, [{ file: WRAPPER_FILE }], [{ file: 'scripts/x.ts', call: 'a' }], [{ file: WRAPPER_FILE, call: 'not valid' }], [null]]) {
+  onHead('선언 형식 오류', (put) => put('docs/agents/contract.json', contractJson({ auth_wrappers: bad })))
+  r = check()
+  assert.equal(r.status, 2, `잘못된 auth_wrappers(${JSON.stringify(bad)})는 실행 오류여야 한다\n${r.stdout}${r.stderr}`)
+  assert.match(r.stderr, /auth_wrappers 형식이 잘못됐습니다/)
+}
+
 // 12) 기본 범위는 origin/main → origin/staging이고 두 팁의 트리 비교만 쓴다(공통 조상이 없어도 돈다)
 onHead('기본 범위', (put) => put('jam-web/supabase/migrations/181_default_range.sql', 'create table q(id int);\n'))
 git(['update-ref', 'refs/remotes/origin/main', 'base'], repo)
@@ -453,13 +618,14 @@ try {
 const contractRepo = newRepo('main')
 cleanups.push(() => rmSync(contractRepo, { recursive: true, force: true }))
 const contractCheck = () => spawnSync('node', [CONTRACT_CHECK], { cwd: contractRepo, encoding: 'utf8', env: cleanEnv() })
-const setUp = ({ declaration, script = true, routeFiles = ['dev-login'] }) => {
+const setUp = ({ declaration, script = true, routeFiles = ['dev-login'], files = {} }) => {
   rmSync(join(contractRepo, 'docs'), { recursive: true, force: true })
   rmSync(join(contractRepo, 'scripts'), { recursive: true, force: true })
   rmSync(join(contractRepo, 'jam-web'), { recursive: true, force: true })
   write(contractRepo, 'docs/agents/contract.json', JSON.stringify(declaration === undefined ? {} : { deploy_gate: declaration }))
   if (script) write(contractRepo, 'scripts/deploy-gate.mjs', '// 자리 표시\n')
   for (const route of routeFiles) write(contractRepo, `jam-web/src/app/api/${route}/route.ts`, 'export {}\n')
+  for (const [rel, content] of Object.entries(files)) write(contractRepo, rel, content)
 }
 const valid = { rollback_sql_required_from: 180, public_routes: ['dev-login'] }
 
@@ -487,6 +653,34 @@ setUp({ declaration: undefined })
 c = contractCheck()
 assert.equal(c.status, 1, '스크립트는 있는데 선언이 없으면 잡아야 한다')
 assert.match(c.stderr, /deploy_gate/)
+
+// auth_wrappers: 게이트가 배포 때 하는 무결성 검증을 커밋마다 미리 한다(판정 코드는 게이트와 같다)
+const wrapped = { ...valid, auth_wrappers: [{ file: WRAPPER_FILE, call: 'readBulkRequest' }] }
+setUp({ declaration: wrapped, files: { [WRAPPER_FILE]: GOOD_WRAPPER } })
+c = contractCheck()
+assert.equal(c.status, 0, `올바른 래퍼 선언이 막혔다:\n${c.stdout}${c.stderr}`)
+
+setUp({ declaration: wrapped })
+c = contractCheck()
+assert.equal(c.status, 1, '래퍼 파일이 없으면 잡아야 한다')
+assert.match(c.stderr, /래퍼 파일이 없습니다/)
+
+setUp({ declaration: wrapped, files: { [WRAPPER_FILE]: NO_AUTH_WRAPPER } })
+c = contractCheck()
+assert.equal(c.status, 1, '래퍼에 인증 호출이 없으면 잡아야 한다')
+assert.match(c.stderr, /인증 함수\(getAdminUser·requireAdmin·requireAdminRead\) 호출이 없습니다/)
+
+setUp({ declaration: wrapped, files: { [WRAPPER_FILE]: GOOD_WRAPPER.replace('export async function readBulkRequest', 'export async function renamed') } })
+c = contractCheck()
+assert.equal(c.status, 1, '선언된 함수를 내보내지 않으면 잡아야 한다')
+assert.match(c.stderr, /선언된 함수 readBulkRequest를 내보내지 않습니다/)
+
+for (const bad of ['x', [{ file: WRAPPER_FILE }], [{ file: 'scripts/x.ts', call: 'a' }], [null]]) {
+  setUp({ declaration: { ...valid, auth_wrappers: bad }, files: { [WRAPPER_FILE]: GOOD_WRAPPER } })
+  c = contractCheck()
+  assert.equal(c.status, 1, `auth_wrappers 모양이 틀리면 잡아야 한다: ${JSON.stringify(bad)}`)
+  assert.match(c.stderr, /auth_wrappers/)
+}
 
 console.log('통과: check-contract deploy_gate 대조')
 

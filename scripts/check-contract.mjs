@@ -19,6 +19,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import path from 'node:path'
+import { checkWrapperSource, moduleSpecifierFor, WRAPPER_AUTH_CALLS } from './deploy-gate-wrapper.mjs'
 
 const REPO = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim()
 const CONTRACT = path.join(REPO, 'docs/agents/contract.json')
@@ -417,6 +418,43 @@ function checkDeployGate(c) {
     if (!existsSync(path.join(REPO, rel))) {
       violate('deploy_gate', `public_routes의 "${route}"에 해당하는 라우트가 없습니다 (${rel})`,
         `라우트를 지웠거나 이름을 바꿨다면 이 항목도 지우거나 고치세요. 남겨 두면 같은 경로에 새로 생기는 라우트가 인증 확인 없이 통과합니다.`)
+    }
+  }
+  checkAuthWrappers(spec.auth_wrappers)
+}
+
+// auth_wrappers(티켓 20260924_1555): 라우트가 인증을 맡기는 공용 함수의 선언. 게이트가 배포 때 head에서 하는
+// 무결성 검증(파일 존재·함수 내보내기·인증 호출)을 커밋마다 미리 한다. 판정 코드는 deploy-gate-wrapper.mjs
+// 한 곳이라 게이트와 이 검사가 갈라지지 않는다.
+function checkAuthWrappers(wrappers) {
+  if (wrappers === undefined) return
+  const shapeFix = `{ "file": "jam-web/src/ 아래 .ts 경로", "call": "내보내는 함수 이름" } 객체의 배열로 적으세요.`
+  if (!Array.isArray(wrappers)) {
+    violate('deploy_gate', `deploy_gate.auth_wrappers가 배열이 아닙니다`, shapeFix)
+    return
+  }
+  for (const w of wrappers) {
+    const okShape =
+      w && typeof w === 'object' && typeof w.file === 'string' && moduleSpecifierFor(w.file) !== null &&
+      typeof w.call === 'string' && /^[A-Za-z_$][\w$]*$/.test(w.call)
+    if (!okShape) {
+      violate('deploy_gate', `auth_wrappers 항목의 모양이 잘못됐습니다 (${JSON.stringify(w)})`, shapeFix)
+      continue
+    }
+    const abs = path.join(REPO, w.file)
+    if (!existsSync(abs)) {
+      violate('deploy_gate', `auth_wrappers의 래퍼 파일이 없습니다 (${w.file})`,
+        `파일을 지웠거나 옮겼다면 이 선언도 고치세요. 게이트는 래퍼가 없으면 그 래퍼를 쓰는 라우트를 모두 차단합니다.`)
+      continue
+    }
+    for (const problem of checkWrapperSource(readFileSync(abs, 'utf8'), w.call)) {
+      if (problem === 'no_export') {
+        violate('deploy_gate', `${w.file}가 선언된 함수 ${w.call}를 내보내지 않습니다`,
+          `함수 이름을 바꿨다면 auth_wrappers의 call도 고치세요.`)
+      } else {
+        violate('deploy_gate', `${w.file}에 auth 모듈의 인증 함수(${WRAPPER_AUTH_CALLS.join('·')}) 호출이 없습니다`,
+          `래퍼가 인증을 하지 않으면 그것을 쓰는 라우트가 인증 없이 열립니다. 래퍼에 인증을 되살리세요.`)
+      }
     }
   }
 }

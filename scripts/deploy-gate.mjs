@@ -14,8 +14,9 @@
 // 저장소·DB·Vercel에 아무것도 쓰지 않는다. 점검은 모두 배포를 막는 방향이거나 읽기 전용이라 무인
 // 권한을 늘리지 않는다.
 //
-// 선언: 번호 기준선과 공개 라우트 목록은 점검 대상(head)의 docs/agents/contract.json → deploy_gate에 있다
-// (check-contract.mjs가 선언과 실제를 대조한다).
+// 선언: 번호 기준선·공개 라우트 목록·인증 래퍼 목록은 점검 대상(head)의 docs/agents/contract.json →
+// deploy_gate에 있다(check-contract.mjs가 선언과 실제를 대조한다). 인증 래퍼는 라우트가 인증을 공용 함수에
+// 맡기는 경우의 선언이며, 게이트가 래퍼 파일이 실제로 인증하는지까지 확인한다(판정은 deploy-gate-wrapper.mjs).
 //
 // 사용법:
 //   node scripts/deploy-gate.mjs check [--base <ref>] [--head <ref>] [--json]
@@ -31,6 +32,7 @@
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
+import { checkWrapperSource, moduleSpecifierFor, routeUsesWrapper, WRAPPER_AUTH_CALLS } from './deploy-gate-wrapper.mjs'
 
 const DEFAULT_BASE = 'origin/main'
 const DEFAULT_HEAD = 'origin/staging'
@@ -163,7 +165,29 @@ function loadGateConfig(repo, head) {
     throw new GateError(`${head}의 ${CONTRACT_REL}에 deploy_gate 선언(rollback_sql_required_from·public_routes)이 없습니다.`)
   }
   const trimSlashes = (r) => String(r).replace(/^\/+|\/+$/g, '')
-  return { rollbackFrom: g.rollback_sql_required_from, publicRoutes: new Set(g.public_routes.map(trimSlashes)) }
+  // auth_wrappers는 선택 항목이다(없으면 래퍼 없이 기존 판정만). 있는데 모양이 틀리면 실행 오류로 끝낸다.
+  const rawWrappers = g.auth_wrappers ?? []
+  const wrappersOk =
+    Array.isArray(rawWrappers) &&
+    rawWrappers.every(
+      (w) =>
+        w &&
+        typeof w === 'object' &&
+        typeof w.file === 'string' &&
+        moduleSpecifierFor(w.file) !== null &&
+        typeof w.call === 'string' &&
+        /^[A-Za-z_$][\w$]*$/.test(w.call),
+    )
+  if (!wrappersOk) {
+    throw new GateError(
+      `${head}의 ${CONTRACT_REL} deploy_gate.auth_wrappers 형식이 잘못됐습니다({ "file": "jam-web/src/ 아래 .ts 경로", "call": "함수 이름" } 배열이어야 합니다).`,
+    )
+  }
+  return {
+    rollbackFrom: g.rollback_sql_required_from,
+    publicRoutes: new Set(g.public_routes.map(trimSlashes)),
+    authWrappers: rawWrappers.map((w) => ({ file: w.file, call: w.call })),
+  }
 }
 
 // jam-web 아래 변경 파일 전체(--no-renames라 이름만 바뀐 파일도 삭제+추가로 잡힌다 — 새 파일로 보는 쪽이 막는 방향이다).
@@ -272,16 +296,43 @@ function gatherMigrations(repo, head, added, config) {
   return { rollbackRequiredFrom: config.rollbackFrom, numbered, seedCount: seeds.length, others }
 }
 
-function gatherRoutes(repo, head, added, config) {
+// 선언된 인증 래퍼가 head에서 실제로 인증하는지 본다(무결성). 파일이 없거나(git show 실패), 선언된 함수를 내보내지
+// 않거나, 인증 함수를 부르지 않으면 problems에 사유가 담기고 그 래퍼에 기대는 라우트는 통과하지 못한다.
+function verifyWrappers(repo, head, config) {
+  return config.authWrappers.map(({ file, call }) => {
+    let source = null
+    try {
+      source = readAtHead(repo, head, file)
+    } catch {
+      source = null
+    }
+    const problems = source === null ? ['no_file'] : checkWrapperSource(source, call)
+    return { file, call, ok: problems.length === 0, problems }
+  })
+}
+
+function gatherRoutes(repo, head, added, config, wrappers) {
   const routes = []
   for (const file of added) {
     const m = file.match(ROUTE_FILE)
     if (!m) continue
     const route = m[1] ?? ''
-    let status = 'missing'
-    if (ROUTE_AUTH.test(readAtHead(repo, head, file))) status = 'auth'
-    else if (config.publicRoutes.has(route)) status = 'public'
-    routes.push({ file, route, status })
+    const source = readAtHead(repo, head, file)
+    const entry = { file, route, status: 'missing' }
+    // 래퍼를 쓰는 라우트(가져오기 + 호출)를 찾는다. 무결성이 깨진 래퍼면 인증으로 치지 않는다.
+    const used = wrappers.filter((w) => routeUsesWrapper(source, w.file, w.call))
+    const intact = used.find((w) => w.ok)
+    if (ROUTE_AUTH.test(source)) {
+      entry.status = 'auth'
+    } else if (intact) {
+      entry.status = 'auth'
+      entry.via = intact.call
+    } else if (config.publicRoutes.has(route)) {
+      entry.status = 'public'
+    } else if (used.length > 0) {
+      entry.brokenWrappers = used.map((w) => w.call)
+    }
+    routes.push(entry)
   }
   return routes
 }
@@ -298,14 +349,18 @@ function runCheck(flags) {
   const added = changes.filter((c) => c.status === 'A').map((c) => c.file)
   const secrets = scanAddedLines(repo, base, head)
   const migrations = gatherMigrations(repo, head, added, config)
-  const routes = gatherRoutes(repo, head, added, config)
+  const authWrappers = verifyWrappers(repo, head, config)
+  const routes = gatherRoutes(repo, head, added, config, authWrappers)
 
   const missingRollback = migrations.numbered.filter((x) => x.required && !x.rollback)
   const missingAuth = routes.filter((r) => r.status === 'missing')
+  const brokenWrappers = authWrappers.filter((w) => !w.ok)
   const blockers = []
   if (secrets.findings.length > 0) blockers.push(`비밀값 ${secrets.findings.length}건`)
   if (missingRollback.length > 0) blockers.push(`되돌림 SQL 없는 마이그레이션 ${missingRollback.length}건`)
   if (missingAuth.length > 0) blockers.push(`인증 확인 없는 새 API 라우트 ${missingAuth.length}건`)
+  // 선언된 래퍼가 무결하지 않으면 그 래퍼를 쓰는 기존 라우트도 인증이 빠진 것일 수 있어, 새 라우트가 없어도 막는다.
+  if (brokenWrappers.length > 0) blockers.push(`무결성이 깨진 인증 래퍼 ${brokenWrappers.length}건`)
 
   return {
     ok: blockers.length === 0,
@@ -315,6 +370,7 @@ function runCheck(flags) {
     jamWebChangedFiles: changes.length,
     secrets: { scannedAddedLines: secrets.scanned, findings: secrets.findings },
     migrations,
+    authWrappers,
     routes,
   }
 }
@@ -357,17 +413,33 @@ function renderText(r) {
     lines.push(`- 참고: 번호·seed 이름 규칙 밖의 마이그레이션 파일 ${r.migrations.others.length}건은 점검하지 못했습니다: ${r.migrations.others.map((f) => path.basename(f)).join(', ')}`)
   }
 
+  const wrapperProblemText = {
+    no_file: '파일이 점검 대상에 없음',
+    no_export: '선언된 함수를 내보내지 않음',
+    no_auth_call: `auth 모듈의 인증 함수(${WRAPPER_AUTH_CALLS.join('·')})를 가져와 호출하는 코드가 없음`,
+  }
+  for (const w of r.authWrappers) {
+    if (w.ok) continue
+    lines.push(`- 인증 래퍼: 차단 — ${w.file}의 ${w.call}: ${w.problems.map((p) => wrapperProblemText[p] ?? p).join(', ')}`)
+  }
+
   const missingAuth = r.routes.filter((x) => x.status === 'missing')
   if (missingAuth.length === 0) {
     const auth = r.routes.filter((x) => x.status === 'auth').length
     const pub = r.routes.filter((x) => x.status === 'public').length
-    lines.push(`- API 라우트: 통과 — 새 라우트 ${r.routes.length}건(인증 확인 ${auth}건, 공개 라우트 등록 ${pub}건)`)
+    const via = r.routes.filter((x) => x.via).length
+    const viaText = via > 0 ? `, 이 중 인증 래퍼 경유 ${via}건` : ''
+    lines.push(`- API 라우트: 통과 — 새 라우트 ${r.routes.length}건(인증 확인 ${auth}건${viaText}, 공개 라우트 등록 ${pub}건)`)
   } else {
     for (const x of missingAuth) {
-      lines.push(
-        `- API 라우트: 차단 — ${x.file} 인증 확인 호출이 없고 공개 라우트로 등록돼 있지 않음 (의도한 공개 라우트면 ${CONTRACT_REL}의 deploy_gate.public_routes에 "${x.route}" 등록)`,
-      )
+      const hint = x.brokenWrappers
+        ? `인증 래퍼 ${x.brokenWrappers.join(', ')}의 무결성 검증에 실패해 인증 확인으로 인정하지 않음(위 인증 래퍼 항목 참고)`
+        : `인증 확인 호출이 없고 공개 라우트로 등록돼 있지 않음 (의도한 공개 라우트면 ${CONTRACT_REL}의 deploy_gate.public_routes에 "${x.route}" 등록, 공용 인증 래퍼를 쓰는 라우트라면 deploy_gate.auth_wrappers에 선언)`
+      lines.push(`- API 라우트: 차단 — ${x.file} ${hint}`)
     }
+  }
+  if (r.authWrappers.length > 0 && r.authWrappers.every((w) => w.ok)) {
+    lines.push(`- 인증 래퍼: 통과 — 선언 ${r.authWrappers.length}건 모두 인증 호출 확인`)
   }
 
   if (!r.ok) lines.push('조치: 차단 사유를 고쳐 staging에 커밋한 뒤 다시 실행합니다. 이 상태로는 main에 승격하지 않습니다.')
