@@ -21,6 +21,7 @@
  * 카운터 목록도 함께 늘려야 한다 — 이 파일이 그 시점의 단일 출처가 된다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
+import type { RecipeDeletionCandidate } from './recipe-bulk'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -61,6 +62,53 @@ export async function collectRecipeReferences(
   void supabase
   void recipeIds
   return { blockingTotal: 0, cascadeTotal: 0, total: 0, error: null }
+}
+
+export interface RecipeDeletionLookup {
+  candidates: Map<string, RecipeDeletionCandidate>
+  error: string | null
+}
+
+const LOOKUP_CHUNK = 200
+
+/**
+ * 일괄 삭제용 — 레시피 id마다 이름과 참조 수를 조회한다(티켓 20260924_0949). 존재하지 않는
+ * id는 결과에 없다. 참조 판정은 단건 DELETE와 같은 `collectRecipeReferences` 하나만 쓴다:
+ * 전체를 한 번에 세서 0건이면 그대로 통과, 0건이 아니면 어느 레시피가 막혔는지 가리도록
+ * 한 건씩 다시 센다. 조회가 실패하면 `error`를 돌려주고 호출부는 삭제를 막는다(fail-closed).
+ */
+export async function collectRecipeDeletionCandidates(
+  supabase: ServiceClient,
+  recipeIds: string[]
+): Promise<RecipeDeletionLookup> {
+  const candidates = new Map<string, RecipeDeletionCandidate>()
+  if (recipeIds.length === 0) return { candidates, error: null }
+
+  for (let i = 0; i < recipeIds.length; i += LOOKUP_CHUNK) {
+    const { data, error } = await supabase
+      .from('combination_recipes')
+      .select('id, name')
+      .in('id', recipeIds.slice(i, i + LOOKUP_CHUNK))
+    if (error) return { candidates, error: error.message }
+    for (const row of (data ?? []) as { id: string; name: string | null }[]) {
+      candidates.set(row.id, { id: row.id, name: row.name, total: 0 })
+    }
+  }
+
+  const foundIds = [...candidates.keys()]
+  if (foundIds.length === 0) return { candidates, error: null }
+
+  const all = await collectRecipeReferences(supabase, foundIds)
+  if (all.error) return { candidates, error: all.error }
+  if (all.total === 0) return { candidates, error: null }
+
+  for (const id of foundIds) {
+    const single = await collectRecipeReferences(supabase, [id])
+    if (single.error) return { candidates, error: single.error }
+    const candidate = candidates.get(id)
+    if (candidate) candidate.total = single.total
+  }
+  return { candidates, error: null }
 }
 
 export interface BadgeInRecipeReferenceReport {
