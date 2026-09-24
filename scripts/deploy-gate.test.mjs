@@ -10,11 +10,11 @@
 
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const SCRIPTS = dirname(fileURLToPath(import.meta.url))
 const GATE = join(SCRIPTS, 'deploy-gate.mjs')
@@ -682,6 +682,89 @@ for (const bad of ['x', [{ file: WRAPPER_FILE }], [{ file: 'scripts/x.ts', call:
   assert.match(c.stderr, /auth_wrappers/)
 }
 
+// 단일 파일 원칙(티켓 20260924_1614): deploy-gate.mjs가 다른 스크립트를 상대 경로로 불러오면 잡는다
+for (const [label, line] of [
+  ['정적 import', "import { x } from './deploy-gate-wrapper.mjs'"],
+  ['상위 경로 import', "import { x } from '../lib/other.mjs'"],
+  ['부수효과 import', "import './side.mjs'"],
+  ['여러 줄 import', "import {\n  a,\n  b,\n} from './other.mjs'"],
+  ['재내보내기', "export { x } from './other.mjs'"],
+  ['동적 import', "const m = await import('./other.mjs')"],
+]) {
+  setUp({ declaration: valid, files: { 'scripts/deploy-gate.mjs': `${line}\n` } })
+  c = contractCheck()
+  assert.equal(c.status, 1, `상대 경로 ${label}는 잡아야 한다\n${c.stdout}${c.stderr}`)
+  assert.match(c.stderr, /상대 경로로 불러옵니다/)
+  assert.match(c.stderr, /루틴이 이 파일 하나만 \/tmp로 꺼내 실행/)
+}
+// 내장 모듈·주석·문자열에 적힌 경로는 통과한다
+setUp({
+  declaration: valid,
+  files: { 'scripts/deploy-gate.mjs': "import path from 'node:path'\n// import { x } from './wrapper.mjs'\nconst s = \"from './x.mjs'\"\n" },
+})
+c = contractCheck()
+assert.equal(c.status, 0, `내장 모듈만 쓰면 통과해야 한다\n${c.stdout}${c.stderr}`)
+// 실제 게이트 파일도 이 규칙을 지킨다
+setUp({ declaration: valid, files: { 'scripts/deploy-gate.mjs': readFileSync(GATE, 'utf8') } })
+c = contractCheck()
+assert.equal(c.status, 0, `실제 deploy-gate.mjs가 단일 파일 규칙을 어겼다\n${c.stdout}${c.stderr}`)
+
 console.log('통과: check-contract deploy_gate 대조')
+
+// ── ④ 단일 파일 실행 회귀(티켓 20260924_1614) ─────────────────────────────────
+// 루틴은 deploy-gate.mjs 하나만 /tmp로 꺼내 실행한다. 저장소 안에서만 돌리면 옆 파일 import가 가려지므로
+// 임시 디렉터리에 파일 하나만 복사해서 실행한다.
+const loneDir = mkdtempSync(join(tmpdir(), 'deploy-gate-lone-'))
+cleanups.push(() => rmSync(loneDir, { recursive: true, force: true }))
+const lone = join(loneDir, 'deploy-gate.mjs')
+copyFileSync(GATE, lone)
+const runLone = (file, args) => spawnSync('node', [file, ...args], { cwd: repo, encoding: 'utf8', env: cleanEnv() })
+
+onHead('단일 파일 실행', () => {})
+// (a) 파일 하나만 있어도 모듈 오류 없이 판정한다(변경이 없으니 통과)
+r = runLone(lone, ['check', '--base', 'base', '--head', 'head'])
+assert.doesNotMatch(r.stdout + r.stderr, /ERR_MODULE_NOT_FOUND|Cannot find module/, `단일 파일 실행이 모듈 오류로 죽었다\n${r.stderr}`)
+assert.equal(r.status, 0, `단일 파일 실행이 통과해야 한다\n${r.stdout}${r.stderr}`)
+assert.match(r.stdout, /배포 게이트/)
+// 차단해야 할 변경은 단일 파일에서도 막는다(아무것도 검사하지 않고 0으로 끝나는 것이 아니다)
+onHead('단일 파일 차단', (put) => put('jam-web/src/lib/leak.ts', `export const k = "${FAKE_SB}"\n`))
+r = runLone(lone, ['check', '--base', 'base', '--head', 'head'])
+assert.equal(r.status, 1, `단일 파일 실행도 비밀값을 막아야 한다\n${r.stdout}${r.stderr}`)
+// 심볼릭 링크 경로로 실행해도 main이 돈다(실행 경로 비교로 main을 끄지 않는다)
+const linkDir = join(loneDir, 'link')
+symlinkSync(loneDir, linkDir)
+r = runLone(join(linkDir, 'deploy-gate.mjs'), ['check', '--base', 'base', '--head', 'head'])
+assert.equal(r.status, 1, `심볼릭 링크 경로에서도 검사해야 한다\n${r.stdout}${r.stderr}`)
+
+// (b) 라이브러리 플래그를 켜고 불러오면 main이 돌지 않고 함수만 쓸 수 있다
+const asLibrary = (flagLine) =>
+  spawnSync(
+    'node',
+    [
+      '--input-type=module',
+      '-e',
+      `${flagLine}\nconst m = await import(${JSON.stringify(pathToFileURL(lone).href)})\nconsole.log(typeof m.checkWrapperSource, typeof m.stripSource, m.moduleSpecifierFor('jam-web/src/a/b.ts'))`,
+    ],
+    { cwd: repo, encoding: 'utf8', env: cleanEnv() },
+  )
+r = asLibrary('globalThis.__JAM_DEPLOY_GATE_AS_LIBRARY__ = true')
+assert.equal(r.status, 0, `라이브러리로 불러오면 main이 돌면 안 된다\n${r.stdout}${r.stderr}`)
+assert.equal(r.stdout.trim(), 'function function @/a/b')
+assert.doesNotMatch(r.stderr, /사용법|명령이 필요합니다/)
+// 값이 정확히 true가 아니면 끄지 않는다(fail-closed)
+for (const flag of ["'true'", '1', 'false']) {
+  r = asLibrary(`globalThis.__JAM_DEPLOY_GATE_AS_LIBRARY__ = ${flag}`)
+  assert.equal(r.status, 64, `플래그가 ${flag}이면 main이 돌아야 한다\n${r.stdout}${r.stderr}`)
+}
+
+// (c) 플래그 없이 직접 실행하면 항상 main이 돈다: 인자가 없으면 사용법과 종료 코드 64
+r = runLone(lone, [])
+assert.equal(r.status, 64, `인자 없이 실행하면 64여야 한다\n${r.stdout}${r.stderr}`)
+assert.match(r.stderr, /명령이 필요합니다/)
+assert.match(r.stderr, /사용법/)
+r = runLone(join(linkDir, 'deploy-gate.mjs'), [])
+assert.equal(r.status, 64, '심볼릭 링크로 실행해도 인자 오류는 64')
+
+console.log('통과: deploy-gate 단일 파일 실행')
 
 for (const fn of cleanups) fn()
