@@ -149,19 +149,19 @@ function evergreenEnded(): ContentGapMissionInput {
 }
 
 describe('checkMissionGaps — 종료 임박(14일)', () => {
-  // 오늘 9/24 → 14일째는 10/7, 15일째는 10/8
+  // 오늘 9/24 → 오늘+14일은 10/8(검사), 오늘+15일은 10/9(제외)
   const ending = (endDate: string) =>
     mission({ starts_at: '2026-09-01T00:00:00+09:00', ends_at: `${endDate}T23:59:00+09:00` })
 
-  it('당일 포함 14일째(10/7)에 끝나는 미션은 검사한다', () => {
-    const m = ending('2026-10-07')
+  it('종료일이 오늘+14일(10/8)인 미션은 검사한다', () => {
+    const m = ending('2026-10-08')
     const r = checkMissionGaps([evergreen(), m], THU)
-    expect(r.endingWithoutSuccessor).toEqual([{ id: m.id, title: m.title, endDate: '2026-10-07' }])
+    expect(r.endingWithoutSuccessor).toEqual([{ id: m.id, title: m.title, endDate: '2026-10-08' }])
     expect(r.hasGap).toBe(true)
   })
 
-  it('15일째(10/8)에 끝나는 미션은 검사하지 않는다', () => {
-    const r = checkMissionGaps([evergreen(), ending('2026-10-08')], THU)
+  it('종료일이 오늘+15일(10/9)인 미션은 검사하지 않는다', () => {
+    const r = checkMissionGaps([evergreen(), ending('2026-10-09')], THU)
     expect(r.endingWithoutSuccessor).toEqual([])
   })
 

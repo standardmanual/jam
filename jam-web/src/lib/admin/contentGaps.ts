@@ -20,8 +20,8 @@ import type { MissionRow } from '@/types/database'
 export const MISSION_GAP_HORIZON_DAYS = 60
 
 /**
- * 종료 임박 기준(일). 종료일이 오늘부터 이 일수 이내(당일 포함 N일째까지)인 기간 공개 미션에
- * 이어지는 기간 공개 미션이 없으면 경고한다.
+ * 종료 임박 기준(일). 종료일이 오늘부터 이 일수 이내(오늘+N일까지)인 기간 공개 미션에
+ * 이어지는 기간 공개 미션이 없으면 경고한다. 종료일이 오늘+N일인 미션은 검사하고 오늘+N+1일은 제외한다.
  */
 export const MISSION_ENDING_NOTICE_DAYS = 14
 
@@ -75,7 +75,7 @@ function kstDateOf(iso: string): string {
  *
  * - (a) 이미 시작한(`starts_at`이 지금 이전) 상시 공개 미션이 0건이면 경고
  * - (b) 오늘부터 60일 중 걸치는 공개 미션이 없는 날짜가 있으면 경고
- * - (c) 종료일이 오늘 이후 14일 이내(당일 포함 14일째까지)인 기간 공개 미션에 이어지는 기간 공개
+ * - (c) 종료일이 오늘 이후 14일 이내(종료일이 오늘+14일까지)인 기간 공개 미션에 이어지는 기간 공개
  *   미션이 없으면 경고. 이어지는 미션은 종료가 더 늦고 시작이 그 미션 종료 다음 날 시작 시각
  *   이전(그 시각 정각 포함)인 다른 기간 공개 미션이다(이미 겹쳐 있어도 인정). 상시 미션은 후속으로 인정하지 않는다.
  *   시즌 캘린더가 데이터로 없어 §9-5의 시즌 규칙은 이렇게 근사한다.
@@ -106,7 +106,7 @@ export function checkMissionGaps(missions: ContentGapMissionInput[], now: Date):
   }
 
   // (c) 종료 임박 기간 미션의 후속 유무
-  const lastNoticeDate = shiftDateStr(today, MISSION_ENDING_NOTICE_DAYS - 1)
+  const lastNoticeDate = shiftDateStr(today, MISSION_ENDING_NOTICE_DAYS)
   const periodMissions = publics.filter((m) => m.ends_at != null)
   const endingWithoutSuccessor: EndingMissionWithoutSuccessor[] = []
   for (const m of periodMissions) {
