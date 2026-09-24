@@ -11,6 +11,7 @@ import {
   IconDeviceGamepad2,
 } from '@tabler/icons-react'
 import WeeklyCalendar, { type CalendarColumn } from './WeeklyCalendar'
+import DashboardSignals, { type DashboardSignalsProps } from './DashboardSignals'
 import {
   getWeeklyCronOccurrences,
   formatOccurrenceTime,
@@ -19,6 +20,7 @@ import {
 } from '@/lib/admin/cronSchedule'
 import { shiftDateStr } from '@/lib/admin/today-calendar'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
+import { computeKpiWeeklyMetrics, resolveKpiWeeklyRange, DEFAULT_KPI_WEEKLY_DAYS } from '@/lib/admin/kpiWeekly'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -46,6 +48,74 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
       items,
     }
   })
+
+  // 20260924_0909: 이상 신호(Strava 동기화 실패·제재·차단 POI)·주간 핵심 지표. 출처 4개
+  // (이번 주/지난주 집계, 밴, POI 차단)는 서로 다른 쿼리라 각자 try/catch로 감싼다 —
+  // 하나가 실패해도 나머지 수치는 표시된다(완료 조건).
+  const now = new Date()
+  const thisWeekRange = resolveKpiWeeklyRange(null, now)
+  // 직전 7일 구간 — resolveKpiWeeklyRange(days, now)의 now 자리에 "7일 전 시각"을 넣으면
+  // start=14일 전 · end=7일 전인, 이번 주 바로 앞 7일 구간이 그대로 나온다(같은 함수 재사용).
+  const lastWeekRange = resolveKpiWeeklyRange(
+    null,
+    new Date(now.getTime() - DEFAULT_KPI_WEEKLY_DAYS * 24 * 60 * 60 * 1000)
+  )
+
+  const [thisWeekResult, lastWeekResult, shadowBanResult, blockedPoiResult] = await Promise.all([
+    computeKpiWeeklyMetrics(thisWeekRange)
+      .then((metrics) => ({ metrics, error: null }))
+      .catch((e) => ({ metrics: null, error: e instanceof Error ? e.message : String(e) })),
+    computeKpiWeeklyMetrics(lastWeekRange)
+      .then((metrics) => ({ metrics, error: null }))
+      .catch((e) => ({ metrics: null, error: e instanceof Error ? e.message : String(e) })),
+    (async () => {
+      try {
+        const supabase = createServiceClient()
+        // 만료된 제재는 효력이 없으므로(lib/abusing/shadow-ban.ts의 판정과 같은 기준) 유효한 제재만 센다
+        const { count, error } = await supabase
+          .from('user_shadow_bans')
+          .select('id', { count: 'exact', head: true })
+          .or(`expires_at.is.null,expires_at.gt.${now.toISOString()}`)
+        if (error) throw error
+        return { count: count ?? 0, error: null }
+      } catch (e) {
+        return { count: null, error: e instanceof Error ? e.message : String(e) }
+      }
+    })(),
+    (async () => {
+      try {
+        const supabase = createServiceClient()
+        const { count, error } = await supabase
+          .from('poi_blocks')
+          .select('id', { count: 'exact', head: true })
+          .gt('blocked_until', new Date().toISOString())
+        if (error) throw error
+        return { count: count ?? 0, error: null }
+      } catch (e) {
+        return { count: null, error: e instanceof Error ? e.message : String(e) }
+      }
+    })(),
+  ])
+
+  const dashboardSignals: DashboardSignalsProps = {
+    stravaSyncFailures: {
+      value: thisWeekResult.metrics?.stravaSyncFailures.value ?? null,
+      previousValue: lastWeekResult.metrics?.stravaSyncFailures.value ?? null,
+      error: thisWeekResult.error,
+    },
+    shadowBans: { value: shadowBanResult.count, error: shadowBanResult.error },
+    blockedPoi: { value: blockedPoiResult.count, error: blockedPoiResult.error },
+    missionAchievers: {
+      value: thisWeekResult.metrics?.missionAchievers.value ?? null,
+      previousValue: lastWeekResult.metrics?.missionAchievers.value ?? null,
+      error: thisWeekResult.error,
+    },
+    badgeIssuance: {
+      value: thisWeekResult.metrics?.badgeIssuance.issued.value ?? null,
+      previousValue: lastWeekResult.metrics?.badgeIssuance.issued.value ?? null,
+      error: thisWeekResult.error,
+    },
+  }
 
   let badgeCount: number | null = null
   let poiCount: number | null = null
@@ -87,6 +157,8 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
   return (
     <div className="p-8 max-w-6xl">
       <h1 className="text-2xl font-bold mb-8">대시보드</h1>
+
+      <DashboardSignals {...dashboardSignals} />
 
       {serviceError && (
         <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600">
