@@ -8,22 +8,16 @@
  * 같은 규칙이라 화면과 발급이 어긋나지 않는다.
  */
 import { Suspense } from 'react'
-import Link from 'next/link'
-import { fetchActivityFamilyBadges } from '@/lib/admin/badge-families-query'
-import { filterFamilies, groupBadgesIntoFamilies } from '@/lib/admin/badge-families'
+import { listFamilies } from '@/lib/admin/badge-families-query'
+import { parseFamilyListParams, type BadgeFamily } from '@/lib/admin/badge-families'
 import { MEASURABLE_CONDITION_KEYS, getConditionField } from '@/lib/badge-engine/conditionRegistry'
 import { TREE_ACTIVITY_ORDER } from '@/lib/badgeTree'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { adminCategoryLabel } from '@/lib/admin/badge-labels'
 import BadgeFamiliesFilterBar from './BadgeFamiliesFilterBar'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/admin/ui/table'
+import { BadgeFamiliesTable, type FamilyTableRow } from './BadgeFamiliesTable'
+import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
+import { ADMIN_LIST_PAGE_SIZE, totalPagesOf } from '@/lib/admin/list-params'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 const FAMILY_KIND_LABEL = {
@@ -31,6 +25,27 @@ const FAMILY_KIND_LABEL = {
   leveled: '레벨형',
   mixed: '섞임',
 } as const
+
+/** 표에 그릴 값만 뽑는다 — 구성 배지 전체(조건 JSON 등)를 클라이언트로 넘기지 않는다 */
+function toTableRow(family: BadgeFamily): FamilyTableRow {
+  const labelOf = (key: string) => getConditionField(key as Parameters<typeof getConditionField>[0])?.label ?? key
+  const conditionKeys = family.measurableKeys.length > 0 ? family.measurableKeys : family.usageMetricKeys
+  return {
+    key: family.key,
+    familyKey: family.familyKey,
+    name: family.name,
+    categoryLabel: family.activityType
+      ? (ACTIVITY_TYPE_LABELS[family.activityType] ?? family.activityType)
+      : (adminCategoryLabel(family.adminCategory) ?? '—'),
+    kindLabel: FAMILY_KIND_LABEL[family.kind],
+    topLabel: family.topLabel,
+    variantCount: family.variants.length,
+    withImage: family.withImage,
+    conditionLabels: conditionKeys.map(labelOf),
+    missionReward: family.missionReward,
+    pendingLabels: family.pendingKeys.map(labelOf),
+  }
+}
 
 /**
  * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — 같은 키가 두 번 오면(`?page=1&page=2`)
@@ -42,9 +57,10 @@ interface AdminBadgeFamiliesPageProps {
 }
 
 export default async function AdminBadgeFamiliesPage({ searchParams }: AdminBadgeFamiliesPageProps) {
-  const params = pickSingleQueryParams(await searchParams)
-  const { badges, error } = await fetchActivityFamilyBadges()
-  const allFamilies = groupBadgesIntoFamilies(badges)
+  const rawParams = pickSingleQueryParams(await searchParams)
+  const params = parseFamilyListParams(rawParams)
+  // 조회 → 계열로 묶기 → 필터 → 정렬 → 쪽 나누기는 `listFamilies` 한 함수다(티켓 20260924_0949).
+  const { all: allFamilies, matched, items, page, badgeCount, error } = await listFamilies(params)
 
   // 필터 선택지는 **목록에 실제로 있는 값**만 노출한다 — 결과가 0건인 선택지를 고르게 하지
   // 않는다. 라벨·순서는 조건 레지스트리와 배지 트리 탭 순서를 그대로 쓴다(재선언 없음).
@@ -59,13 +75,10 @@ export default async function AdminBadgeFamiliesPage({ searchParams }: AdminBadg
     label: getConditionField(k)?.label ?? k,
   }))
 
-  const families = filterFamilies(allFamilies, {
-    q: params.q,
-    activityType: params.activity_type,
-    conditionKey: params.condition_key,
-  })
-  const hasFilter = !!(params.q?.trim() || params.activity_type || params.condition_key)
-  const keyless = families.filter((f) => !f.familyKey).length
+  const hasFilter = !!(params.q || params.activityType || params.conditionKey)
+  const keyless = matched.filter((f) => !f.familyKey).length
+  const rows = items.map(toTableRow)
+  const totalPages = totalPagesOf(matched.length, ADMIN_LIST_PAGE_SIZE)
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -92,11 +105,11 @@ export default async function AdminBadgeFamiliesPage({ searchParams }: AdminBadg
       <div className="text-sm text-muted-foreground">
         {hasFilter ? (
           <>
-            {families.length}개 계열 (전체 {allFamilies.length}개 중)
+            {matched.length}개 계열 (전체 {allFamilies.length}개 중)
           </>
         ) : (
           <>
-            총 {families.length}개 계열 · 활동 배지 {badges.length}종
+            총 {matched.length}개 계열 · 활동 배지 {badgeCount}종
           </>
         )}
         {keyless > 0 && (
@@ -106,80 +119,9 @@ export default async function AdminBadgeFamiliesPage({ searchParams }: AdminBadg
         )}
       </div>
 
-      <div className="bg-white border border-border rounded-2xl overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>종목</TableHead>
-              <TableHead>계열</TableHead>
-              <TableHead>종류</TableHead>
-              <TableHead>가장 높은 단계</TableHead>
-              <TableHead className="text-right">단계 수</TableHead>
-              <TableHead>조건값</TableHead>
-              <TableHead className="text-right">이미지</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {families.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
-                  조건에 맞는 계열이 없어요. 검색어나 필터를 바꿔 보세요.
-                </TableCell>
-              </TableRow>
-            )}
-            {families.map((family) => (
-              <TableRow key={family.key}>
-                <TableCell className="whitespace-nowrap">
-                  {family.activityType
-                    ? ACTIVITY_TYPE_LABELS[family.activityType] ?? family.activityType
-                    : adminCategoryLabel(family.adminCategory) ?? '—'}
-                </TableCell>
-                <TableCell>
-                  <Link
-                    href={`/admin/badge-families/${encodeURIComponent(family.key)}`}
-                    className="font-medium text-foreground underline underline-offset-4"
-                  >
-                    {family.name}
-                  </Link>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                    {family.familyKey ? (
-                      <span className="font-mono text-xs text-muted-foreground">{family.familyKey}</span>
-                    ) : (
-                      <span className="rounded bg-amber-100 px-1.5 py-px text-[11px] font-medium text-amber-800">
-                        계열 키 없음
-                      </span>
-                    )}
-                    {family.missionReward && (
-                      <span className="rounded bg-neutral-100 px-1.5 py-px text-[11px] text-neutral-600">
-                        미션 보상
-                      </span>
-                    )}
-                    {family.pendingKeys.length > 0 && (
-                      <span className="rounded bg-amber-100 px-1.5 py-px text-[11px] font-medium text-amber-800">
-                        평가 대기 {family.pendingKeys.length}종 —{' '}
-                        {family.pendingKeys.map((k) => getConditionField(k)?.label ?? k).join(', ')}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="whitespace-nowrap">{FAMILY_KIND_LABEL[family.kind]}</TableCell>
-                <TableCell className="whitespace-nowrap">{family.topLabel}</TableCell>
-                <TableCell className="text-right tabular-nums">{family.variants.length}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {family.measurableKeys.length > 0
-                    ? family.measurableKeys.map((k) => getConditionField(k)?.label ?? k).join(' · ')
-                    : family.usageMetricKeys.length > 0
-                      ? family.usageMetricKeys.map((k) => getConditionField(k)?.label ?? k).join(' · ')
-                      : '—'}
-                </TableCell>
-                <TableCell className="text-right tabular-nums whitespace-nowrap">
-                  {family.withImage}/{family.variants.length}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <BadgeFamiliesTable families={rows} totalCount={matched.length} />
+
+      <DataTablePagination page={page} totalPages={totalPages} />
     </div>
   )
 }

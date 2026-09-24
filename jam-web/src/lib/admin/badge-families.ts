@@ -248,6 +248,51 @@ export function filterFamilies(families: BadgeFamily[], criteria: FamilyFilterCr
   })
 }
 
+// ── 계열 목록 정렬·URL 조건 (티켓 20260924_0949) ────────────────────────────
+
+const FAMILY_LIST_SORTS = ['default', 'name_asc', 'name_desc', 'count_asc', 'count_desc'] as const
+/** `default`는 종목 탭 순서 → 표시 순서 → 이름(`compareFamilies`, 그룹핑 결과의 기본 순서) */
+export type FamilyListSort = (typeof FAMILY_LIST_SORTS)[number]
+
+/** 계열 목록 조건 — 목록 페이지·전체 선택 ID 조회·내보내기가 같은 값을 쓴다 */
+export interface FamilyListParams {
+  q: string
+  activityType: string | null
+  conditionKey: string | null
+  sort: FamilyListSort
+  /** 1부터 시작하는 쪽 번호 */
+  page: number
+}
+
+/** URL(또는 API 쿼리) 파라미터 → 목록 조건. 알 수 없는 정렬은 기본순으로 떨어진다 */
+export function parseFamilyListParams(raw: Record<string, string | undefined>): FamilyListParams {
+  const sort = FAMILY_LIST_SORTS.find((s) => s === raw.sort) ?? 'default'
+  return {
+    q: (raw.q ?? '').trim().slice(0, 100),
+    activityType: raw.activity_type?.trim() || null,
+    conditionKey: raw.condition_key?.trim() || null,
+    sort,
+    page: Math.max(1, parseInt(raw.page ?? '1', 10) || 1),
+  }
+}
+
+/**
+ * 계열 목록을 정렬한다(원본은 바꾸지 않는다). 계열명은 한국어 사전순, 배지 수는 `variants.length`.
+ * 같은 값끼리는 항상 `key`로 마무리해 쪽을 넘겨도 순서가 흔들리지 않는다.
+ */
+export function sortFamilies(families: BadgeFamily[], sort: FamilyListSort): BadgeFamily[] {
+  if (sort === 'default') return [...families]
+  const byKey = (a: BadgeFamily, b: BadgeFamily) => a.key.localeCompare(b.key)
+  const byName = (a: BadgeFamily, b: BadgeFamily) => a.name.localeCompare(b.name, 'ko')
+  const compare: Record<Exclude<FamilyListSort, 'default'>, (a: BadgeFamily, b: BadgeFamily) => number> = {
+    name_asc: (a, b) => byName(a, b) || byKey(a, b),
+    name_desc: (a, b) => byName(b, a) || byKey(a, b),
+    count_asc: (a, b) => a.variants.length - b.variants.length || byName(a, b) || byKey(a, b),
+    count_desc: (a, b) => b.variants.length - a.variants.length || byName(a, b) || byKey(a, b),
+  }
+  return [...families].sort(compare[sort])
+}
+
 // ── 계열 키 발급 ────────────────────────────────────────────────────────────
 
 /**
