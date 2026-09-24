@@ -133,12 +133,20 @@ code:
 
 | 용도 | 제작 규격 | 서비스 적용 |
 |---|---|---|
-| 배지 대표 이미지 | 1:1, 1280×1280 원본 PNG | 서비스 화면 실제 표시 크기의 2배(고해상도 화면 기준) 이하로 줄인 WebP. 수치는 티켓 20260924_2200에서 실측해 확정 |
+| 배지 대표 이미지 | 1:1 · 4:5 · 9:16, 긴 변 1280 원본 PNG | 긴 변 **400px**(표시 규격의 2배) 이하로 줄인 WebP |
 | 마케팅 소재 | 1:1 · 4:5 · 9:16, 긴 변 1280 | 서비스에 올리지 않음(PNG·MP4 다운로드) |
 
+- **400px 산출 근거(티켓 20260924_2200 실측, 코드 기준)**: `badges.image_url`을 그리는 서비스
+  컴포넌트를 전수 확인한 결과 최대 표시 크기는 `(main)/badges/[id]/BadgeHeroSection.tsx`의
+  200px이다. 그 외 `BadgeGridCard`·`BadgeTrophyGridCard` 90px, `(main)/drops/BadgeDetailSheet.tsx`
+  176px, `(main)/FeedSection.tsx` 112px·40px, `combine/CombineClient.tsx` 64px,
+  `PoiCarouselModal.tsx` 80px, `missions/[id]/MissionDetailClient.tsx` 52px,
+  `combine/RecipeRewardRow.tsx` 40px, 지도 마커(`MapView.tsx` `BADGE_MARKER_SIZE`) 24px 모두
+  200px보다 작다. 200 × 2 = **400px**. 변환 헬퍼는 `jam-web/src/lib/admin/badgeImageWebp.ts`
+  (`BADGE_IMAGE_WEBP_MAX_LONG_SIDE_PX`), sharp `resize({fit: 'inside'})`로 비율을 유지한다.
 - 원본 PNG와 WebP 축소본을 모두 저장소에 보관한다: `badges/asset-generator/{badgeId}.png`, `badges/asset-generator/{badgeId}.webp`.
   `image_url`은 WebP를 가리킨다.
-- 적용 파일 크기 상한은 기존 공용 함수와 같다(5MB).
+- 적용 파일 크기 상한은 기존 공용 함수와 같다(5MB, 원본 PNG 업로드 기준).
 
 ## 10. 제작 경로 표시
 
@@ -151,12 +159,15 @@ code:
 | `jam-img` | 아이콘 파이프라인 | `/jam-img`의 `register-badge-images.js`가 등록할 때(후속: 스크립트에 값 기록 추가) |
 | (비움) | 미상 | 기존 배지. 소급 채우기는 열린 질문 |
 
+어드민 배지 목록(`/admin/badges`)의 "제작 경로" 필터로 값별로 걸러 볼 수 있고, 목록 행·상세
+헤더에 라벨이 보인다(라벨 매핑 단일 출처: `jam-web/src/lib/admin/badgeImageSource.ts`).
+
 ## 11. 시드와 재현
 
 리본 레이어의 랜덤 속성은 하나의 시드에서 결정적으로 뽑는다. 같은 프리셋·같은 색·같은 텍스트·같은 시드면 두 경로 모두 같은
 이미지가 나온다. 시드는 등록 묶음과 등록 기록에 남긴다.
 
-## 12. 데이터 (`asset_presets`는 확정 — 티켓 20260924_2159, `badges.image_source`는 초안 — 확정은 티켓 20260924_2200)
+## 12. 데이터 (`asset_presets`는 확정 — 티켓 20260924_2159, `badges.image_source`는 확정 — 티켓 20260924_2200, 실행은 사용자 승인 뒤 메인 세션)
 
 - `asset_presets`(마이그레이션 `185_asset_presets.sql`): `id`(uuid), `name`(text), `target_type`(text, CHECK
   `badge` 하나만), `stage_ratio`(text, CHECK `1:1`·`4:5`·`9:16`), `layers`(jsonb — 오버레이 레이어(이미지·텍스트)
@@ -165,7 +176,9 @@ code:
   이미 어드민만 통과시킨다). 이미지 레이어의 원본 파일은 `images` 버킷의
   `asset-generator/presets/{presetId}/{layerId}.{png|svg}` 경로에 함께 올라간다(직렬화·역직렬화 순수 함수는
   `jam-web/src/lib/asset-generator/presetSerialize.ts`).
-- `badges.image_source`(text NULL): §10의 값. CHECK 제약으로 값 3종만 허용. 확정은 하위 티켓 20260924_2200.
+- `badges.image_source`(text NULL, 마이그레이션 `186_badges_image_source.sql`): §10의 값. CHECK 제약
+  `badges_image_source_check`로 `admin-generator`·`agent-generator`·`jam-img` 3종만 허용, 기존 행은
+  전부 NULL(미상) — CHECK가 NULL은 통과시키므로 별도 백필 없는 순수 확장(expand) 마이그레이션이다.
 - 마이그레이션은 파일 작성까지 하위 티켓에서 하고, 실행은 사용자 승인 뒤 메인 세션이 한다.
 
 ## 13. 하지 않을 것 (1차)
@@ -219,4 +232,15 @@ code:
   덮어쓰기)·상세·삭제를 맡고, 이미지 레이어 원본은 `images` 버킷에 함께 올린다(삭제 시 폴더째 정리). 화면은
   설정 패널 Accordion 맨 위 "프리셋" 섹션(`PresetPanel.tsx`)이고, 덮어쓰기·삭제는 `AlertDialog`로 확인한다.
   직렬화·역직렬화는 `presetSerialize.ts`의 순수 함수로 뺐다. 적용 탭(§7)은 아직 없다.
+- [20260924_2200](../../../tickets/p2-normal/20260924_2200_Admin_에셋-제너레이터-배지-적용-제작경로-표시-출력규격-최적화.md) 완료:
+  §7 적용 탭·§9 출력 규격·§10 제작 경로 표시를 구현했다. 마이그레이션은 파일만 작성했다
+  (`186_badges_image_source.sql`, 실행은 사용자 승인 뒤 메인 세션). 어드민 화면은 오른쪽 패널을
+  shadcn Tabs로 "제작"/"적용" 두 화면으로 나누고(`page.tsx`), 왼쪽 스테이지 캔버스는 탭과
+  무관하게 공유한다(`ApplyTab.tsx`). 배지 검색·선택은 기존 `BadgeSearchSelect`를 재사용했다.
+  적용 API(`/api/admin/asset-generator/apply`)는 원본 PNG를 `badges/asset-generator/{id}.png`에
+  보관하고 sharp(`lib/admin/badgeImageWebp.ts`)로 긴 변 400px WebP를 만들어
+  `badges/asset-generator/{id}.webp`에 저장한 뒤, `image_url`을 WebP로, `image_source`를
+  `admin-generator`로 갱신한다. 라벨·필터 옵션은 `lib/admin/badgeImageSource.ts`가 단일
+  출처이고, 어드민 배지 목록(`BadgesTable.tsx`·`BadgeCard.tsx`)·필터(`BadgesFilterBar.tsx`)·
+  상세 헤더(`BadgeDetail.tsx`)·수정 폼 헤더(`BadgeForm.tsx`)가 이를 공유한다.
 - 그 외는 미착수. 하위 티켓 순서는 상위 티켓의 하위 티켓 표를 따른다.

@@ -10,7 +10,7 @@ import type { BadgeRow } from '@/types/database'
  *  전체 조회한다. */
 export type BadgeListRow = Pick<
   BadgeRow,
-  | 'id' | 'name' | 'description' | 'type' | 'rarity' | 'image_url' | 'condition_json'
+  | 'id' | 'name' | 'description' | 'type' | 'rarity' | 'image_url' | 'image_source' | 'condition_json'
   | 'activity_types' | 'patch_available' | 'patch_price_krw' | 'tribe_id' | 'deleted_at'
 >
 

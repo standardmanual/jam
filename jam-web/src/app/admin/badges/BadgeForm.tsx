@@ -43,6 +43,7 @@ import {
   type ConditionFormFields,
 } from './conditionFormFields'
 import { BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
+import { badgeImageSourceLabel } from '@/lib/admin/badgeImageSource'
 import {
   ADMIN_ACTIVITY_TYPES,
   ADMIN_ACTIVITY_TYPE_LABEL,
@@ -1237,7 +1238,20 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
       className="mx-auto w-full max-w-6xl"
     >
       <BadgeEditorShell
-        header={header}
+        header={
+          /* 제작 경로 라벨(티켓 20260924_2200) — 수정 화면(badge 존재)에서만 보인다. 신규
+             작성 화면은 아직 image_source가 없다(적용 탭에서 반영해야 생긴다). */
+          badge ? (
+            <div className="flex flex-col gap-2">
+              {header}
+              <span className="inline-flex w-fit items-center whitespace-nowrap rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-semibold text-neutral-600">
+                제작 경로 · {badgeImageSourceLabel(badge.image_source)}
+              </span>
+            </div>
+          ) : (
+            header
+          )
+        }
         railLabel="미리보기와 저장"
         main={sections.map((id) => (
           <Fragment key={id}>{sectionNodes[id]}</Fragment>

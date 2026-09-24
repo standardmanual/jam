@@ -23,6 +23,7 @@ import { AssignTribeDialog } from './AssignTribeDialog'
 import type { BadgeCondition, BadgeRarity } from '@/types/database'
 import type { BadgeListRow } from './BadgeList'
 import { badgeTypeLabel } from '@/lib/admin/badge-labels'
+import { badgeImageSourceLabel } from '@/lib/admin/badgeImageSource'
 import { formatConditionChips } from '@/lib/badge-engine/conditionRegistry'
 
 const RARITY_COLOR: Record<string, string> = {
@@ -261,6 +262,17 @@ export default function BadgesTable({ badges, tribeMap = new Map(), totalCount }
             ) : (
               <span className="text-gray-500 text-sm">—</span>
             ),
+        }),
+        columnHelper.accessor('image_source', {
+          id: 'image_source',
+          header: '제작 경로',
+          enableSorting: false,
+          meta: { label: '제작 경로' },
+          cell: ({ getValue }) => (
+            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium whitespace-nowrap">
+              {badgeImageSourceLabel(getValue())}
+            </span>
+          ),
         }),
       ]),
     [tribeMap]

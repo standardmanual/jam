@@ -71,6 +71,7 @@ function makeBadge(overrides: Partial<BadgeRow>): BadgeRow {
     background_video_url: null,
     background_animation: null,
     image_gen_params: null,
+    image_source: null,
     ...overrides,
   }
 }

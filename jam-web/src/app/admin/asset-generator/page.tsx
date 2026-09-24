@@ -30,9 +30,14 @@
  * 저장·목록·삭제를 맡고, 이 페이지는 불러오기 결과를 반영하는 `handleLoadPreset` 하나만
  * 가진다 — 스테이지 비율·오버레이 레이어를 통째로 교체하고, 교체로 사라지는 이미지 레이어의
  * blob URL을 정리한다(`handleRemoveOverlayLayer`와 같은 정리 방식).
+ *
+ * 적용 탭(티켓 20260924_2200): 오른쪽 패널을 shadcn Tabs로 "제작"/"적용" 두 화면으로 나눈다.
+ * 왼쪽 "미리보기" Card(스테이지 캔버스)는 탭과 무관하게 항상 그대로 보인다 — 적용 탭은 이
+ * 캔버스를 그대로 공유해서 쓸 뿐 별도 캔버스를 새로 만들지 않는다(`ApplyTab.tsx` 주석 참고).
  */
 import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/admin/ui/tabs'
 import {
   choice,
   randomizeRibbonConfig,
@@ -46,6 +51,7 @@ import {
 import AssetGeneratorViewport, { type AssetGeneratorViewportHandle } from './AssetGeneratorViewport'
 import AssetGeneratorPanel from './AssetGeneratorPanel'
 import AssetGeneratorExport from './AssetGeneratorExport'
+import ApplyTab from './ApplyTab'
 import {
   createImageLayer,
   createTextLayer,
@@ -65,6 +71,7 @@ export default function AssetGeneratorPage() {
   const [selectedOverlayLayerId, setSelectedOverlayLayerId] = useState<string | null>(null)
   const [play, setPlay] = useState(true)
   const [exportBusy, setExportBusy] = useState(false)
+  const [screenTab, setScreenTab] = useState<'design' | 'apply'>('design')
 
   const viewportRef = useRef<AssetGeneratorViewportHandle | null>(null)
   const stageCardRef = useRef<HTMLDivElement | null>(null)
@@ -248,34 +255,44 @@ export default function AssetGeneratorPage() {
         </Card>
 
         <Card ref={panelCardRef} className="lg:overflow-y-auto">
-          <CardHeader>
-            <CardTitle>설정</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <fieldset disabled={exportBusy} className="contents">
-              <AssetGeneratorPanel
-                stageRatio={stageRatio}
-                onStageRatioChange={setStageRatio}
-                layer={layer}
-                onLayerChange={handleLayerChange}
-                onSelectLetter={handleSelectLetter}
-                onFileSelected={handleFileSelected}
-                uploadedFileName={uploadedFileName}
-                onRandomizeAll={handleRandomizeAll}
-                overlayLayers={overlayLayers}
-                selectedOverlayLayerId={selectedOverlayLayerId}
-                onSelectOverlayLayer={setSelectedOverlayLayerId}
-                onAddImageLayer={handleAddImageLayer}
-                onAddTextLayer={handleAddTextLayer}
-                onRemoveOverlayLayer={handleRemoveOverlayLayer}
-                onMoveOverlayLayer={handleMoveOverlayLayer}
-                onImageLayerChange={handleImageLayerChange}
-                onTextLayerChange={handleTextLayerChange}
-                onReplaceImageLayerAsset={handleReplaceImageLayerAsset}
-                onLoadPreset={handleLoadPreset}
-              />
-            </fieldset>
-          </CardContent>
+          <Tabs value={screenTab} onValueChange={(v) => setScreenTab(v as 'design' | 'apply')}>
+            <CardHeader>
+              <TabsList>
+                <TabsTrigger value="design">제작</TabsTrigger>
+                <TabsTrigger value="apply">적용</TabsTrigger>
+              </TabsList>
+            </CardHeader>
+            <CardContent>
+              <fieldset disabled={exportBusy} className="contents">
+                <TabsContent value="design" className="mt-0">
+                  <AssetGeneratorPanel
+                    stageRatio={stageRatio}
+                    onStageRatioChange={setStageRatio}
+                    layer={layer}
+                    onLayerChange={handleLayerChange}
+                    onSelectLetter={handleSelectLetter}
+                    onFileSelected={handleFileSelected}
+                    uploadedFileName={uploadedFileName}
+                    onRandomizeAll={handleRandomizeAll}
+                    overlayLayers={overlayLayers}
+                    selectedOverlayLayerId={selectedOverlayLayerId}
+                    onSelectOverlayLayer={setSelectedOverlayLayerId}
+                    onAddImageLayer={handleAddImageLayer}
+                    onAddTextLayer={handleAddTextLayer}
+                    onRemoveOverlayLayer={handleRemoveOverlayLayer}
+                    onMoveOverlayLayer={handleMoveOverlayLayer}
+                    onImageLayerChange={handleImageLayerChange}
+                    onTextLayerChange={handleTextLayerChange}
+                    onReplaceImageLayerAsset={handleReplaceImageLayerAsset}
+                    onLoadPreset={handleLoadPreset}
+                  />
+                </TabsContent>
+                <TabsContent value="apply" className="mt-0">
+                  <ApplyTab viewportRef={viewportRef} />
+                </TabsContent>
+              </fieldset>
+            </CardContent>
+          </Tabs>
         </Card>
       </div>
     </div>

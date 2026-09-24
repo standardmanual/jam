@@ -202,6 +202,11 @@ export interface BadgeRow {
    *  null이면 이 도구로 구운 이미지가 아니다 — `lib/admin/activityBadgeImage.ts` 참조
    *  (20260902_1613) */
   image_gen_params: Record<string, unknown> | null
+  /** 배지 대표 이미지(image_url) 제작 경로(마이그레이션 186, 티켓 20260924_2200).
+   *  'admin-generator'(에셋 제너레이터 적용 탭) · 'agent-generator'(윤진 CLI 등록) ·
+   *  'jam-img'(기존 아이콘 파이프라인) 중 하나, NULL이면 기존 배지(미상).
+   *  라벨 매핑은 `lib/admin/badgeImageSource.ts` 참조. */
+  image_source: string | null
 }
 
 export interface UserActivityBadgeRow {
