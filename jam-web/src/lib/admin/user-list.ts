@@ -27,15 +27,10 @@ const READ_CHUNK_SIZE = 200
 export const USER_LIST_COLUMNS =
   'id, email, username, display_name, created_at, is_admin, onboarding_completed_at, tribe:tribe_id(name), ban:user_shadow_bans(ban_level, expires_at)'
 
-export type UserListSort = 'createdAt_desc' | 'createdAt_asc' | 'username_asc' | 'username_desc'
+import { DEFAULT_USER_LIST_SORT, USER_LIST_SORT_OPTIONS, type UserListSort } from './user-list-options'
 
-export const DEFAULT_USER_LIST_SORT: UserListSort = 'createdAt_desc'
-
-export const USER_LIST_SORT_OPTIONS: { value: UserListSort; label: string }[] = [
-  { value: 'createdAt_desc', label: '가입 최신순' },
-  { value: 'createdAt_asc', label: '가입 오래된순' },
-  { value: 'username_asc', label: '이름순' },
-]
+export { DEFAULT_USER_LIST_SORT, USER_LIST_SORT_OPTIONS }
+export type { UserListSort }
 
 const SORT_VALUES = new Set<string>(['createdAt_desc', 'createdAt_asc', 'username_asc', 'username_desc'])
 

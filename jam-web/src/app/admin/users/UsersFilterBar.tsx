@@ -6,7 +6,7 @@ import { DataTableFacetedFilter } from '@/components/admin/data-table/data-table
 import { DataTableSearch } from '@/components/admin/data-table/data-table-search'
 import { DataTableSortSelect } from '@/components/admin/data-table/data-table-sort-select'
 import { useListParams } from '@/components/admin/data-table/use-list-params'
-import { DEFAULT_USER_LIST_SORT, USER_LIST_SORT_OPTIONS } from '@/lib/admin/user-list'
+import { DEFAULT_USER_LIST_SORT, USER_LIST_SORT_OPTIONS } from '@/lib/admin/user-list-options'
 
 const ONBOARDING_OPTIONS = [
   { value: 'done', label: '온보딩 완료' },
