@@ -16,7 +16,7 @@ function codeOf(path: string): string {
 const code = codeOf('src/components/admin/poi/PoiTable.tsx')
 
 describe('PoiTable에 단건 반복이 없다', () => {
-  it('선택 항목을 한 건씩 반복하는 for (const id of ...) 패턴이 없다', () => {
+  it('선택 항목을 한 건씩 반복하는 for-of 단건 호출 패턴이 없다', () => {
     expect(code).not.toMatch(/for\s*\(\s*const\s+id\s+of/)
   })
 
