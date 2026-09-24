@@ -1,14 +1,19 @@
 import { Suspense } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
 import { createServiceClient } from '@/lib/supabase/server'
-import { Card } from '@/components/admin/ui/card'
-import type { BadgeRow } from '@/types/database'
-import { RARITY_LABEL, RARITY_BADGE_COLOR } from '@/lib/admin/item-badge-status'
 import { ItemBadgeSearchBar } from './ItemBadgeSearchBar'
+import { ItemBadgesTable } from './ItemBadgesTable'
+import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
-
-type SearchBadgeRow = Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>
+import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
+import type { CountRowsClient } from '@/lib/admin/list-counts'
+import {
+  ITEM_BADGE_LIST_COLUMNS,
+  parseItemBadgeListParams,
+  applyItemBadgeListQuery,
+  loadItemBadgeIssuedCounts,
+  type ItemBadgeListRow,
+  type ItemBadgeListQuery,
+} from '@/lib/admin/item-badge-list'
 
 /**
  * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — 같은 키가 두 번 오면(`?page=1&page=2`)
@@ -28,47 +33,38 @@ interface Props {
  *
  * 활성/비활성(deleted_at) 구분 없이 전체 아이템배지를 대상으로 한다 — 회수된 배지라도
  * 과거에 발급된 개체의 이력은 감사 대상이다.
+ *
+ * 20260924_0950: 필터가 없어도 목록을 보여 주고(예전에는 필터를 걸어야 나왔다), 100건 제한을
+ * 번호 페이지 이동(50건)으로 바꿨다. 발급 수는 `countRowsByKey`로 정확히 센다.
  */
 export default async function ItemBadgesSearchPage({ searchParams }: Props) {
-  const params = pickSingleQueryParams(await searchParams)
-  const q = params.q?.trim() ?? ''
-  const filterTribeId = params.tribe_id
-  const filterItemBookId = params.item_book_id
-  const filterRarity = params.rarity
-  const hasFilter = !!(q || filterTribeId || filterItemBookId || filterRarity)
+  const rawParams = pickSingleQueryParams(await searchParams)
+  const params = parseItemBadgeListParams(rawParams)
+  const page = Math.max(1, parseInt(rawParams.page ?? '1', 10) || 1)
 
   const supabase = createServiceClient()
 
-  const [{ data: tribesRaw }, { data: itemBooksRaw }] = await Promise.all([
+  let query = supabase
+    .from('badges')
+    .select(ITEM_BADGE_LIST_COLUMNS, { count: 'exact' }) as unknown as ItemBadgeListQuery<ItemBadgeListRow>
+  query = applyItemBadgeListQuery(query, params)
+  const [from, to] = pageRange(page, ADMIN_LIST_PAGE_SIZE)
+
+  const [{ data: badgesRaw, count }, { data: tribesRaw }, { data: itemBooksRaw }] = await Promise.all([
+    query.range(from, to),
     supabase.from('tribes').select('id, name').order('name'),
     supabase.from('item_books').select('id, name, tribe_id').order('name'),
   ])
+  const badges = badgesRaw ?? []
   const tribes = (tribesRaw ?? []) as { id: string; name: string }[]
   const itemBooks = (itemBooksRaw ?? []) as { id: string; name: string; tribe_id: string | null }[]
 
-  let badges: SearchBadgeRow[] = []
-  const totalCountByBadge = new Map<string, number>()
+  const issuedCountByBadge = await loadItemBadgeIssuedCounts(
+    supabase as unknown as CountRowsClient,
+    badges.map((b) => b.id)
+  )
 
-  if (hasFilter) {
-    let query = supabase.from('badges').select('id, name, image_url, rarity').eq('type', 'item')
-    if (q) query = query.ilike('name', `%${q}%`)
-    if (filterTribeId) query = query.eq('tribe_id', filterTribeId)
-    if (filterItemBookId) query = query.eq('item_book_id', filterItemBookId)
-    // filterRarity는 쿼리스트링에서 온 string이라 badges.rarity 유니언으로 좁혀 넘긴다.
-    // 유효하지 않은 값이 들어와도 지금과 똑같이 "결과 0건"이 되도록 검증 없이 그대로 전달한다.
-    if (filterRarity) query = query.eq('rarity', filterRarity as NonNullable<SearchBadgeRow['rarity']>)
-
-    const { data: badgesRaw } = await query.order('name', { ascending: true }).limit(100)
-    badges = (badgesRaw ?? []) as SearchBadgeRow[]
-
-    const badgeIds = badges.map((b) => b.id)
-    if (badgeIds.length > 0) {
-      const { data: itemsRaw } = await supabase.from('inventory_items').select('badge_id').in('badge_id', badgeIds)
-      for (const row of (itemsRaw ?? []) as { badge_id: string }[]) {
-        totalCountByBadge.set(row.badge_id, (totalCountByBadge.get(row.badge_id) ?? 0) + 1)
-      }
-    }
-  }
+  const totalCount = count ?? 0
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -83,56 +79,11 @@ export default async function ItemBadgesSearchPage({ searchParams }: Props) {
         <ItemBadgeSearchBar tribes={tribes} itemBooks={itemBooks} />
       </Suspense>
 
-      {hasFilter && (
-        <>
-          <div className="text-sm text-muted-foreground">
-            {q ? `"${q}" 검색 결과 ${badges.length}종` : `필터 결과 ${badges.length}종`}
-          </div>
+      <div className="text-sm text-muted-foreground">총 {totalCount}종</div>
 
-          {badges.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground text-sm">
-              조건에 맞는 배지가 없습니다.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {badges.map((badge) => (
-                <Link key={badge.id} href={`/admin/item-badges/${badge.id}`}>
-                  <Card className="p-4 flex items-center gap-3 hover:border-neutral-400 transition-colors h-full">
-                    <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
-                      {badge.image_url ? (
-                        <Image
-                          src={badge.image_url}
-                          alt={badge.name}
-                          width={48}
-                          height={48}
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <span className="text-gray-400 text-xs">—</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{badge.name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span
-                          className={`inline-block px-2 py-0.5 text-xs font-semibold rounded ${
-                            (badge.rarity ? RARITY_BADGE_COLOR[badge.rarity] : null) ?? 'bg-gray-100 text-gray-700'
-                          }`}
-                        >
-                          {badge.rarity ? RARITY_LABEL[badge.rarity] : '—'}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          총 발급 {totalCountByBadge.get(badge.id) ?? 0}개
-                        </span>
-                      </div>
-                    </div>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+      <ItemBadgesTable badges={badges} issuedCountByBadge={issuedCountByBadge} totalCount={totalCount} />
+
+      <DataTablePagination page={page} totalPages={totalPagesOf(totalCount, ADMIN_LIST_PAGE_SIZE)} />
     </div>
   )
 }

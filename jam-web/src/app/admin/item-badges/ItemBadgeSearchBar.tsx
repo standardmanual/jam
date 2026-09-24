@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Input } from '@/components/admin/ui/input'
 import { Button } from '@/components/admin/ui/button'
+import { DataTableToolbar } from '@/components/admin/data-table/data-table-toolbar'
 import { DataTableFacetedFilter } from '@/components/admin/data-table/data-table-faceted-filter'
+import { DataTableSearch } from '@/components/admin/data-table/data-table-search'
+import { DataTableSortSelect } from '@/components/admin/data-table/data-table-sort-select'
+import { useListParams } from '@/components/admin/data-table/use-list-params'
 
 // `admin/badges/BadgesFilterBar.tsx`의 RARITY_OPTIONS와 동일 — badges.rarity가 같은 enum이라
 // 표기도 동일하게 맞춘다(티켓 20260830_1242).
@@ -15,102 +16,57 @@ const RARITY_OPTIONS = [
   { value: 'mystic', label: 'Mystic' },
 ]
 
+const SORT_OPTIONS = [
+  { value: 'name_asc', label: '이름 오름차순' },
+  { value: 'name_desc', label: '이름 내림차순' },
+]
+
 interface ItemBadgeSearchBarProps {
   tribes: { id: string; name: string }[]
   itemBooks: { id: string; name: string; tribe_id: string | null }[]
 }
 
 /**
- * 아이템배지 현황 검색바(티켓 20260829_2139, 20260830_1242) — `admin/badges/BadgesFilterBar.tsx`와
- * 동일한 디바운스+URL 동기화 패턴, 트라이브/컬렉션/등급 필터도 그 화면의 `DataTableFacetedFilter`
- * 패턴을 그대로 재사용한다. 이 화면은 "배지 검색 우선 UX"(열린 결정 2)의 진입점이라 검색창을
- * 위에 두고, 필터는 그 아래 별도 줄에 배치한다.
+ * 아이템배지 현황 필터 바(티켓 20260829_2139, 20260830_1242) — 20260924_0950에서 공용 부품
+ * (`useListParams`·`DataTableSearch`·`DataTableSortSelect`·`DataTableFacetedFilter`)으로
+ * 교체했다. 필터·검색·정렬이 바뀌면 쪽 번호가 1쪽으로 돌아간다. 트라이브 → 컬렉션 연쇄는
+ * 유지한다: 트라이브를 바꾸면 이미 고른 컬렉션이 풀린다(`cascade`).
  */
 export function ItemBadgeSearchBar({ tribes, itemBooks }: ItemBadgeSearchBarProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [searchInput, setSearchInput] = useState(searchParams.get('q') ?? '')
-
-  const currentTribeId = searchParams.get('tribe_id') ?? 'all'
-  const currentItemBookId = searchParams.get('item_book_id') ?? 'all'
-  const currentRarity = searchParams.get('rarity') ?? 'all'
-
-  const update = (updates: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams.toString())
-    for (const [key, value] of Object.entries(updates)) {
-      if (value === null || value === 'all') params.delete(key)
-      else params.set(key, value)
-    }
-    router.push(`/admin/item-badges?${params.toString()}`)
-  }
-
-  useEffect(() => {
-    const current = searchParams.get('q') ?? ''
-    if (searchInput === current) return
-    const timer = setTimeout(() => {
-      update({ q: searchInput.trim() || null })
-    }, 400)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchInput])
-
-  const handleTribeChange = (values: string[]) => {
-    // 트라이브 변경 시 선택된 컬렉션이 새 트라이브 소속이 아니면 초기화한다(BadgesFilterBar.tsx와 동일).
-    update({ tribe_id: values[0] ?? 'all', item_book_id: null })
-  }
-
-  const hasFilter = searchParams.has('q') || searchParams.has('tribe_id') || searchParams.has('item_book_id') || searchParams.has('rarity')
+  const { q, filters, setFilters, reset } = useListParams({ cascade: ['tribe_id', 'item_book_id'] })
+  const hasFilter = q !== '' || Object.keys(filters).length > 0
 
   // 선택된 트라이브 기준으로 컬렉션 옵션을 좁힌다
-  const filteredItemBooks =
-    currentTribeId === 'all' ? itemBooks : itemBooks.filter((b) => b.tribe_id === currentTribeId)
+  const filteredItemBooks = filters.tribe_id ? itemBooks.filter((b) => b.tribe_id === filters.tribe_id) : itemBooks
 
   return (
-    <div className="flex flex-col gap-3">
-      <Input
-        placeholder="배지 이름으로 검색..."
-        value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
-        className="h-9 w-full max-w-sm"
+    <DataTableToolbar actions={<DataTableSortSelect options={SORT_OPTIONS} defaultValue="name_asc" />}>
+      <DataTableSearch placeholder="배지 이름으로 검색..." />
+
+      <DataTableFacetedFilter
+        title="트라이브"
+        options={tribes.map((t) => ({ value: t.id, label: t.name }))}
+        selected={filters.tribe_id ? [filters.tribe_id] : []}
+        onChange={(values) => setFilters({ tribe_id: values[0] ?? null })}
+      />
+      <DataTableFacetedFilter
+        title="컬렉션"
+        options={filteredItemBooks.map((b) => ({ value: b.id, label: b.name }))}
+        selected={filters.item_book_id ? [filters.item_book_id] : []}
+        onChange={(values) => setFilters({ item_book_id: values[0] ?? null })}
+      />
+      <DataTableFacetedFilter
+        title="등급"
+        options={RARITY_OPTIONS}
+        selected={filters.rarity ? [filters.rarity] : []}
+        onChange={(values) => setFilters({ rarity: values[0] ?? null })}
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <DataTableFacetedFilter
-          title="트라이브"
-          options={tribes.map((f) => ({ value: f.id, label: f.name }))}
-          selected={currentTribeId === 'all' ? [] : [currentTribeId]}
-          onChange={handleTribeChange}
-        />
-
-        <DataTableFacetedFilter
-          title="컬렉션"
-          options={filteredItemBooks.map((b) => ({ value: b.id, label: b.name }))}
-          selected={currentItemBookId === 'all' ? [] : [currentItemBookId]}
-          onChange={(values) => update({ item_book_id: values[0] ?? null })}
-        />
-
-        <DataTableFacetedFilter
-          title="등급"
-          options={RARITY_OPTIONS}
-          selected={currentRarity === 'all' ? [] : [currentRarity]}
-          onChange={(values) => update({ rarity: values[0] ?? null })}
-        />
-
-        {hasFilter && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8"
-            onClick={() => {
-              setSearchInput('')
-              router.push('/admin/item-badges')
-            }}
-          >
-            필터 초기화
-          </Button>
-        )}
-      </div>
-    </div>
+      {hasFilter && (
+        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={reset}>
+          필터 초기화
+        </Button>
+      )}
+    </DataTableToolbar>
   )
 }

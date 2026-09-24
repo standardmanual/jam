@@ -7,23 +7,13 @@
  * 세 값을 각각 독립적으로 계산해서 비교한다 — 하나라도 어긋나면 원장 버그 신호.
  */
 import { createServiceClient } from '@/lib/supabase/server'
-import { adminReasonLabel, HIGH_VALUE_THRESHOLD } from '@/lib/points/reasons'
+import { HIGH_VALUE_THRESHOLD } from '@/lib/points/reasons'
 import type { PointTransactionRow, PointTreasuryRow } from '@/types/database'
 
 export interface RankingEntry {
   id: string
   name: string
   total: number
-}
-
-export interface HighValueEntry {
-  id: string
-  user_id: string
-  username: string | null
-  amount: number
-  reason: PointTransactionRow['reason']
-  label: string
-  created_at: string
 }
 
 export interface PointsSummary {
@@ -36,18 +26,7 @@ export interface PointsSummary {
   integrityOk: boolean
   badgeRanking: RankingEntry[]
   missionRanking: RankingEntry[]
-  recentHighValue: HighValueEntry[]
   highValueThreshold: number
-}
-
-const REASON_KIND: Record<PointTransactionRow['reason'], string> = {
-  badge_point_reward: '배지 보상',
-  mission_point_reward: '미션 보상',
-  admin_grant: '운영자 지급',
-  admin_deduct: '운영자 회수',
-  combine_fail_reward: '믹스 실패 보상',
-  combine_recipe_reward: '믹스 보상',
-  item_book_completion_point_reward: '컬렉션 완성 보상',
 }
 
 export async function getPointsSummary(): Promise<PointsSummary> {
@@ -86,46 +65,23 @@ export async function getPointsSummary(): Promise<PointsSummary> {
   const topBadgeIds = [...badgeTotals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)
   const topMissionIds = [...missionTotals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)
 
-  // 최근 고액 지급/회수 (사후 감사용)
-  const highValueTxns = txns
-    .filter((t) => Math.abs(t.amount) >= HIGH_VALUE_THRESHOLD)
-    .slice(0, 20)
-  const highValueUserIds = [...new Set(highValueTxns.map((t) => t.user_id))]
-
-  const [badgesRes, missionsRes, usersRes] = await Promise.all([
+  const [badgesRes, missionsRes] = await Promise.all([
     topBadgeIds.length > 0
       ? supabase.from('badges').select('id, name').in('id', topBadgeIds.map(([id]) => id))
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
     topMissionIds.length > 0
       ? supabase.from('missions').select('id, title').in('id', topMissionIds.map(([id]) => id))
       : Promise.resolve({ data: [] as { id: string; title: string }[] }),
-    highValueUserIds.length > 0
-      ? supabase.from('users').select('id, username').in('id', highValueUserIds)
-      : Promise.resolve({ data: [] as { id: string; username: string | null }[] }),
   ])
 
   const badgeName = new Map(((badgesRes.data ?? []) as { id: string; name: string }[]).map((b) => [b.id, b.name]))
   const missionTitle = new Map(((missionsRes.data ?? []) as { id: string; title: string }[]).map((m) => [m.id, m.title]))
-  const username = new Map(((usersRes.data ?? []) as { id: string; username: string | null }[]).map((u) => [u.id, u.username]))
 
   const badgeRanking: RankingEntry[] = topBadgeIds.map(([id, total]) => ({
     id, total, name: badgeName.get(id) ?? '(삭제된 배지)',
   }))
   const missionRanking: RankingEntry[] = topMissionIds.map(([id, total]) => ({
     id, total, name: missionTitle.get(id) ?? '(삭제된 미션)',
-  }))
-
-  const recentHighValue: HighValueEntry[] = highValueTxns.map((t) => ({
-    id: t.id,
-    user_id: t.user_id,
-    username: username.get(t.user_id) ?? null,
-    amount: t.amount,
-    reason: t.reason,
-    label:
-      t.reason === 'admin_grant' || t.reason === 'admin_deduct'
-        ? adminReasonLabel(t.admin_reason_label)
-        : REASON_KIND[t.reason],
-    created_at: t.created_at,
   }))
 
   return {
@@ -137,7 +93,6 @@ export async function getPointsSummary(): Promise<PointsSummary> {
     integrityOk,
     badgeRanking,
     missionRanking,
-    recentHighValue,
     highValueThreshold: HIGH_VALUE_THRESHOLD,
   }
 }
