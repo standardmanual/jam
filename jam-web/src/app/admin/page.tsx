@@ -10,8 +10,43 @@ import {
   IconNotes,
   IconDeviceGamepad2,
 } from '@tabler/icons-react'
+import WeeklyCalendar, { type CalendarColumn } from './WeeklyCalendar'
+import {
+  getWeeklyCronOccurrences,
+  formatOccurrenceTime,
+  normalizeWeekParam,
+  formatWeekRangeLabel,
+} from '@/lib/admin/cronSchedule'
+import { shiftDateStr } from '@/lib/admin/today-calendar'
+import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 
-export default async function AdminDashboardPage() {
+const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
+
+interface AdminDashboardPageProps {
+  searchParams: Promise<{ week?: SearchParamValue }>
+}
+
+export default async function AdminDashboardPage({ searchParams }: AdminDashboardPageProps) {
+  // 20260924_0904: 어드민 메인 주간 캘린더 — 크론 4개의 실행 예정을 요일 칸에 표시한다.
+  const weekParam = singleQueryParam((await searchParams).week)
+  const weekStart = normalizeWeekParam(weekParam)
+  const occurrences = getWeeklyCronOccurrences()
+
+  const columns: CalendarColumn[] = Array.from({ length: 7 }, (_, i) => {
+    const date = shiftDateStr(weekStart, i)
+    const weekday = (i + 1) % 7 // i=0(월)→1 ... i=6(일)→0, cron 요일 인덱스(0=일..6=토)와 동일
+    const items = occurrences
+      .filter((o) => o.weekday === weekday)
+      .sort((a, b) => (a.hourly ? -1 : a.hour * 60 + a.minute) - (b.hourly ? -1 : b.hour * 60 + b.minute))
+      .map((o) => ({ id: `${o.path}-${date}`, time: formatOccurrenceTime(o), label: o.label }))
+    return {
+      date,
+      weekdayLabel: WEEKDAY_LABELS[weekday],
+      dateLabel: `${Number(date.slice(5, 7))}월 ${Number(date.slice(8, 10))}일`,
+      items,
+    }
+  })
+
   let badgeCount: number | null = null
   let poiCount: number | null = null
   let itemBookCount: number | null = null
@@ -50,7 +85,7 @@ export default async function AdminDashboardPage() {
   ]
 
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-8 max-w-6xl">
       <h1 className="text-2xl font-bold mb-8">대시보드</h1>
 
       {serviceError && (
@@ -60,6 +95,8 @@ export default async function AdminDashboardPage() {
           <p className="text-red-600 text-xs mt-1">{serviceError}</p>
         </div>
       )}
+
+      <WeeklyCalendar weekStart={weekStart} weekRangeLabel={formatWeekRangeLabel(weekStart)} columns={columns} />
 
       <div className="grid grid-cols-4 gap-4 mb-10">
         {stats.map((stat) => (
