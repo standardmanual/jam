@@ -79,7 +79,11 @@ function AnomalyCard({
   metric: DashboardSignalMetric
 }) {
   if (metric.error || metric.value === null) {
-    return <ErrorCard label={label} error={metric.error} />
+    return (
+      <Link href={href}>
+        <ErrorCard label={label} error={metric.error} />
+      </Link>
+    )
   }
 
   const value = metric.value
@@ -141,7 +145,7 @@ export default function DashboardSignals({
             icon={IconRun}
             metric={stravaSyncFailures}
           />
-          <AnomalyCard label="제재 수" href="/admin/abusing" icon={IconShieldOff} metric={shadowBans} />
+          <AnomalyCard label="유효 제재 수" href="/admin/abusing" icon={IconShieldOff} metric={shadowBans} />
           <AnomalyCard label="차단 POI 수" href="/admin/abusing" icon={IconMapPinOff} metric={blockedPoi} />
         </div>
       </section>

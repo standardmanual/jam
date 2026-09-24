@@ -71,9 +71,11 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
     (async () => {
       try {
         const supabase = createServiceClient()
+        // 만료된 제재는 효력이 없으므로(lib/abusing/shadow-ban.ts의 판정과 같은 기준) 유효한 제재만 센다
         const { count, error } = await supabase
           .from('user_shadow_bans')
           .select('id', { count: 'exact', head: true })
+          .or(`expires_at.is.null,expires_at.gt.${now.toISOString()}`)
         if (error) throw error
         return { count: count ?? 0, error: null }
       } catch (e) {
