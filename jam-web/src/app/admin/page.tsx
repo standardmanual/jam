@@ -20,7 +20,8 @@ import {
   formatWeekRangeLabel,
 } from '@/lib/admin/cronSchedule'
 import { weeklyRoutineOccurrences, routineOccurrenceId } from '@/lib/admin/scheduledRoutines'
-import { shiftDateStr } from '@/lib/admin/today-calendar'
+import { shiftDateStr, kstDayBoundsIso } from '@/lib/admin/today-calendar'
+import { weeklyCards, type WeeklyCardDay, type WeeklyCardInput } from '@/lib/admin/weeklyCards'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 import { computeKpiWeeklyMetrics, resolveKpiWeeklyRange, DEFAULT_KPI_WEEKLY_DAYS } from '@/lib/admin/kpiWeekly'
 
@@ -33,14 +34,47 @@ interface AdminDashboardPageProps {
 export default async function AdminDashboardPage({ searchParams }: AdminDashboardPageProps) {
   // 20260924_0904: 어드민 메인 주간 캘린더 — 크론 4개의 실행 예정을 요일 칸에 표시한다.
   // 20260924_0905: Claude 예약 루틴 4개(주간·선별·주간 배포 승인·월간)도 같은 칸에 얹는다.
+  // 20260924_0906: 홈피드 카드 편성(단기 카드 개별 표시·장기 카드 묶음·미편성 판정)도 같은 칸에 얹는다.
   const weekParam = singleQueryParam((await searchParams).week)
   const weekStart = normalizeWeekParam(weekParam)
   const occurrences = getWeeklyCronOccurrences()
   const routineOccurrences = weeklyRoutineOccurrences(weekStart)
 
+  // 카드 조회는 보고 있는 주 범위로 한 번만 하고, 요일 배분은 순수 함수(weeklyCards)가 한다.
+  // 실패해도 크론·루틴 항목과 나머지 영역은 그대로 표시한다(이 페이지의 출처별 격리 원칙) —
+  // 실패 시 weeklyCardDays를 null로 둬 "미편성"을 함부로 단정하지 않는다.
+  let weeklyCardDays: WeeklyCardDay[] | null = null
+  try {
+    const supabase = createServiceClient()
+    const weekEndDate = shiftDateStr(weekStart, 6)
+    const { startIso: weekStartIso } = kstDayBoundsIso(weekStart)
+    const { endIso: weekEndIso } = kstDayBoundsIso(weekEndDate)
+    const { data, error } = await supabase
+      .from('today_cards')
+      .select('id, title, content_type_id, template_type, starts_at, ends_at, is_active, sort_order')
+      .lte('starts_at', weekEndIso)
+      .gte('ends_at', weekStartIso)
+    if (error) throw error
+    weeklyCardDays = weeklyCards((data ?? []) as WeeklyCardInput[], weekStart)
+  } catch {
+    weeklyCardDays = null
+  }
+
   const columns: CalendarColumn[] = Array.from({ length: 7 }, (_, i) => {
     const date = shiftDateStr(weekStart, i)
     const weekday = (i + 1) % 7 // i=0(월)→1 ... i=6(일)→0, cron 요일 인덱스(0=일..6=토)와 동일
+    const cardDay = weeklyCardDays?.[i]
+
+    // 카드 항목 id는 카드 id와 날짜를 함께 써서 같은 날짜 안에서 겹치지 않게 한다(티켓 20260924_0906).
+    // 시각 자리에는 유형 ID(없으면 "유형 없음")를, 누르면 TodayCardTable.tsx의 [상세보기]와 같은 경로로 간다.
+    const cardItems: CalendarCellItem[] = (cardDay?.shortCards ?? []).map((c) => ({
+      id: `card-${c.id}-${date}`,
+      time: c.content_type_id ?? '유형 없음',
+      label: c.title,
+      kind: 'card',
+      dim: !c.is_active,
+      href: `/admin/today/${c.id}?date=${date}`,
+    }))
 
     // 항목 id에는 실행 시각을 포함해 같은 날짜 안에서 겹치지 않게 한다(티켓 20260924_0930).
     const cronItems = occurrences
@@ -64,7 +98,8 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
           sortMinutes: hour * 60 + minute,
         }
       })
-    const items = [...cronItems, ...routineItems]
+    // 카드 항목은 칸 안에서 자동화 항목(크론·루틴)보다 위에 둔다(티켓 20260924_0906).
+    const automationItems = [...cronItems, ...routineItems]
       .sort((a, b) => a.sortMinutes - b.sortMinutes)
       .map(({ item }) => item)
 
@@ -72,7 +107,9 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
       date,
       weekdayLabel: WEEKDAY_LABELS[weekday],
       dateLabel: `${Number(date.slice(5, 7))}월 ${Number(date.slice(8, 10))}일`,
-      items,
+      items: [...cardItems, ...automationItems],
+      longCardsCount: cardDay?.longActiveCount,
+      unprogrammed: cardDay?.unprogrammed,
     }
   })
 
