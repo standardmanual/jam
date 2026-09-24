@@ -9,7 +9,7 @@
  * (state 초깃값 161~167줄, applyAspect 302줄, readSeconds 515줄, fileName 503줄,
  * MUXER_URL·MUXER_SRI 492~493줄).
  */
-import type { GradientDirection, LetterKey, RibbonLayerConfig, StageRatio } from '@/lib/asset-generator'
+import type { GradientDirection, ImageLayerConfig, LetterKey, RibbonLayerConfig, StageRatio } from '@/lib/asset-generator'
 
 /** 스테이지 긴 변 고정 길이(px). 원본 MAX_LONG. */
 export const STAGE_MAX_LONG_SIDE_PX = 1280
@@ -71,6 +71,11 @@ export const SPEED_RANGE: SliderRange = { min: 1000, max: 2000, step: 10 }
 export const GAP_RANGE: SliderRange = { min: 2, max: 120, step: 1 }
 export const COUNT_RANGE: SliderRange = { min: 200, max: 800, step: 5 }
 export const HEAD_POSITION_RANGE: SliderRange = { min: 0, max: 100, step: 0.1 }
+/** 이미지 레이어 위치(%, 티켓 20260924_2157) — 스테이지 가로/세로 기준. */
+export const IMAGE_POSITION_RANGE: SliderRange = { min: 0, max: 100, step: 1 }
+/** 이미지 레이어 크기(%) — 스테이지 짧은 변 기준. 오버레이가 스테이지보다 커질 수도 있어 100을 넘긴다. */
+export const IMAGE_SIZE_RANGE: SliderRange = { min: 1, max: 200, step: 1 }
+export const OPACITY_RANGE: SliderRange = { min: 0, max: 100, step: 1 }
 
 export const formatPercent = (value: number): string => `${value}%`
 export const formatDegree = (value: number): string => `${value}°`
@@ -105,6 +110,33 @@ export const H264_CODEC_CANDIDATES = ['avc1.64002A', 'avc1.4D002A', 'avc1.42002A
 /** MP4 묶음 라이브러리(mp4-muxer, MIT). 프로토타입(492~493줄)과 같은 버전·무결성 해시를 그대로 쓴다. */
 export const MP4_MUXER_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.js'
 export const MP4_MUXER_SCRIPT_INTEGRITY = 'sha384-wr0AQH9RBAKio/g7bHM5245MBCU5B/b0Y9u42cTxRYQQJXKEijZvWEJKL9JG26hs'
+
+/** 새 이미지 레이어 기본값(티켓 20260924_2157): 중앙 배치, 짧은 변의 30%, 완전 불투명. */
+export function createImageLayer(assetUrl: string): ImageLayerConfig {
+  return {
+    type: 'image',
+    assetUrl,
+    xPct: 50,
+    yPct: 50,
+    widthPct: 30,
+    heightPct: 30,
+    rotationDeg: 0,
+    opacityPct: 100,
+    order: 0,
+  }
+}
+
+/**
+ * 이미지 레이어 목록에서 인덱스를 한 칸 위/아래로 옮긴다. 배열 경계를 벗어나면(리본 레이어
+ * 방향이거나 목록 맨 위) 원본을 그대로 돌려준다(원본 자체를 바꾸지 않는다).
+ */
+export function moveImageLayer(layers: ImageLayerConfig[], index: number, direction: 'up' | 'down'): ImageLayerConfig[] {
+  const target = direction === 'up' ? index - 1 : index + 1
+  if (target < 0 || target >= layers.length) return layers
+  const next = [...layers]
+  ;[next[index], next[target]] = [next[target], next[index]]
+  return next
+}
 
 /** 저장 파일명(원본 fileName, 503줄): jam-asset_{비율}_{yyyyMMdd-HHmmss}.{ext} */
 export function buildExportFileName(ratio: StageRatio, ext: string, date: Date): string {

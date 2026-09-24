@@ -44,6 +44,8 @@ export interface Canvas2DContextLike {
   globalCompositeOperation: string;
   /** 블러 등 CSS 필터. 미지원 환경(구형 Safari 등)에서는 대입해도 반영되지 않는다 */
   filter: string;
+  /** 0~1. 이미지 레이어 불투명도(PRD §4.2)에 쓴다 */
+  globalAlpha: number;
   imageSmoothingQuality?: string;
 }
 
@@ -180,10 +182,51 @@ export function drawRibbonLayer(ctx: Canvas2DContextLike, input: RibbonLayerRend
 }
 
 /**
- * 레이어 합성 훅: 스테이지 배경을 채운다. 후속 티켓에서 이미지·텍스트 레이어를
- * `fillBackground` → `drawRibbonLayer` 다음 순서로 이 자리에 이어 그린다(PRD §4 레이어 순서).
+ * 레이어 합성 훅: 스테이지 배경을 채운다. `fillBackground` → `drawRibbonLayer` → 이후 레이어
+ * 순서로 그린다(PRD §4 레이어 순서). 이미지 레이어는 `drawImageLayer`(20260924_2157)로 이
+ * 자리 다음에 이어 그린다. 텍스트 레이어는 후속 티켓 과제.
  */
 export function fillBackground(ctx: Canvas2DContextLike, width: number, height: number, color: string): void {
   ctx.fillStyle = color;
   ctx.fillRect(0, 0, width, height);
+}
+
+export interface ImageLayerRenderInput {
+  /** 업로드한 PNG/SVG를 불러온 원본(호출자가 미리 로드해 넘긴다) */
+  image: ImageSourceLike;
+  /** 스테이지 기준 위치(%). 이미지 중심 좌표 */
+  xPct: number;
+  yPct: number;
+  /** 스테이지 짧은 변 대비 크기(%) */
+  widthPct: number;
+  heightPct: number;
+  rotationDeg: number;
+  /** 0~100 */
+  opacityPct: number;
+  stageWidth: number;
+  stageHeight: number;
+}
+
+/**
+ * 이미지 레이어 합성(PRD §4.2): 리본 레이어 위에 업로드한 PNG/SVG를 고정 위치로 얹는다.
+ * 위치·크기는 스테이지 기준 비율(%)로 계산해 스테이지 비율이 바뀌어도 상대 위치·크기가
+ * 유지된다. 재생 중에도(곡선 진행과 무관하게) 항상 같은 값으로 호출하면 고정된 것처럼 보인다
+ * — 곡선을 따라가지 않는 것은 호출자가 매 프레임 같은 인자를 넘기는 것으로 충분하다.
+ */
+export function drawImageLayer(ctx: Canvas2DContextLike, input: ImageLayerRenderInput): void {
+  const { image, xPct, yPct, widthPct, heightPct, rotationDeg, opacityPct, stageWidth, stageHeight } = input;
+  const shortSide = Math.min(stageWidth, stageHeight);
+  const dw = (widthPct / 100) * shortSide;
+  const dh = (heightPct / 100) * shortSide;
+  const cx = (xPct / 100) * stageWidth;
+  const cy = (yPct / 100) * stageHeight;
+  const rad = (rotationDeg * Math.PI) / 180;
+  const cs = Math.cos(rad);
+  const sn = Math.sin(rad);
+  const prevAlpha = ctx.globalAlpha;
+  ctx.globalAlpha = Math.max(0, Math.min(1, opacityPct / 100));
+  ctx.setTransform(cs, sn, -sn, cs, cx, cy);
+  ctx.drawImage(image, -dw / 2, -dh / 2, dw, dh);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = prevAlpha;
 }

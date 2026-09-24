@@ -34,6 +34,7 @@ var AssetGeneratorCore = (() => {
     buildStamp: () => buildStamp,
     candidateStats: () => candidateStats,
     choice: () => choice,
+    drawImageLayer: () => drawImageLayer,
     drawRibbonLayer: () => drawRibbonLayer,
     fillBackground: () => fillBackground,
     irrValue: () => irrValue,
@@ -422,6 +423,23 @@ var AssetGeneratorCore = (() => {
   function fillBackground(ctx, width, height, color) {
     ctx.fillStyle = color;
     ctx.fillRect(0, 0, width, height);
+  }
+  function drawImageLayer(ctx, input) {
+    const { image, xPct, yPct, widthPct, heightPct, rotationDeg, opacityPct, stageWidth, stageHeight } = input;
+    const shortSide = Math.min(stageWidth, stageHeight);
+    const dw = widthPct / 100 * shortSide;
+    const dh = heightPct / 100 * shortSide;
+    const cx = xPct / 100 * stageWidth;
+    const cy = yPct / 100 * stageHeight;
+    const rad = rotationDeg * Math.PI / 180;
+    const cs = Math.cos(rad);
+    const sn = Math.sin(rad);
+    const prevAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = Math.max(0, Math.min(1, opacityPct / 100));
+    ctx.setTransform(cs, sn, -sn, cs, cx, cy);
+    ctx.drawImage(image, -dw / 2, -dh / 2, dw, dh);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = prevAlpha;
   }
   return __toCommonJS(index_exports);
 })();

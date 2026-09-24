@@ -16,19 +16,31 @@
  * "설정" Card에 인라인 `maxHeight`로 주입하고 `overflow-y-auto`로 내부 스크롤한다. 두 칸
  * 레이아웃이 아닌 좁은 화면(`lg` 미만, 1024px)에서는 `matchMedia`로 제한을 풀어 자연스럽게
  * 아래로 이어지게 한다(prototype의 두 칸 임계값 861px 대신 Tailwind `lg` 기준을 그대로 썼다).
+ *
+ * 이미지 레이어(티켓 20260924_2157): 업로드 원본은 화면 메모리(blob URL)에만 두고 화면을
+ * 떠날 때 정리한다 — 저장소 업로드는 하위 티켓 20260924_2159가 맡는다.
  */
 import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/card'
-import { choice, randomizeRibbonConfig, type LetterKey, type RibbonLayerConfig, type StageRatio } from '@/lib/asset-generator'
+import {
+  choice,
+  randomizeRibbonConfig,
+  type ImageLayerConfig,
+  type LetterKey,
+  type RibbonLayerConfig,
+  type StageRatio,
+} from '@/lib/asset-generator'
 import AssetGeneratorViewport, { type AssetGeneratorViewportHandle } from './AssetGeneratorViewport'
 import AssetGeneratorPanel from './AssetGeneratorPanel'
 import AssetGeneratorExport from './AssetGeneratorExport'
-import { INITIAL_RIBBON_LAYER, INITIAL_STAGE_RATIO, LETTER_KEYS } from './assetGeneratorHelpers'
+import { createImageLayer, INITIAL_RIBBON_LAYER, INITIAL_STAGE_RATIO, LETTER_KEYS, moveImageLayer } from './assetGeneratorHelpers'
 
 export default function AssetGeneratorPage() {
   const [stageRatio, setStageRatio] = useState<StageRatio>(INITIAL_STAGE_RATIO)
   const [layer, setLayer] = useState<RibbonLayerConfig>(INITIAL_RIBBON_LAYER)
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null)
+  const [imageLayers, setImageLayers] = useState<ImageLayerConfig[]>([])
+  const [selectedImageLayerIndex, setSelectedImageLayerIndex] = useState<number | null>(null)
   const [play, setPlay] = useState(true)
   const [exportBusy, setExportBusy] = useState(false)
 
@@ -36,6 +48,7 @@ export default function AssetGeneratorPage() {
   const stageCardRef = useRef<HTMLDivElement | null>(null)
   const panelCardRef = useRef<HTMLDivElement | null>(null)
   const uploadedUrlRef = useRef<string | null>(null)
+  const imageLayerUrlsRef = useRef<Set<string>>(new Set())
 
   function handleLayerChange(patch: Partial<RibbonLayerConfig>) {
     setLayer((prev) => ({ ...prev, ...patch }))
@@ -56,10 +69,63 @@ export default function AssetGeneratorPage() {
 
   // 업로드한 파일의 blob URL은 화면을 떠날 때 정리한다(만든 쪽이 정리한다)
   useEffect(() => {
+    const imageLayerUrls = imageLayerUrlsRef.current
     return () => {
       if (uploadedUrlRef.current) URL.revokeObjectURL(uploadedUrlRef.current)
+      imageLayerUrls.forEach((url) => URL.revokeObjectURL(url))
+      imageLayerUrls.clear()
     }
   }, [])
+
+  // 이미지 레이어 추가: 배열 맨 앞(가장 위)에 넣고 바로 선택한다.
+  function handleAddImageLayer(file: File) {
+    const url = URL.createObjectURL(file)
+    imageLayerUrlsRef.current.add(url)
+    setImageLayers((prev) => [createImageLayer(url), ...prev])
+    setSelectedImageLayerIndex(0)
+  }
+
+  function handleRemoveImageLayer(index: number) {
+    setImageLayers((prev) => {
+      const target = prev[index]
+      if (target && imageLayerUrlsRef.current.has(target.assetUrl)) {
+        URL.revokeObjectURL(target.assetUrl)
+        imageLayerUrlsRef.current.delete(target.assetUrl)
+      }
+      return prev.filter((_, i) => i !== index)
+    })
+    setSelectedImageLayerIndex((prev) => {
+      if (prev === null) return prev
+      if (prev === index) return null
+      return prev > index ? prev - 1 : prev
+    })
+  }
+
+  // LayerSidebar가 경계(맨 위/맨 아래)에서 버튼을 비활성화하므로 여기서는 항상 유효한
+  // 이동만 들어온다.
+  function handleMoveImageLayer(index: number, direction: 'up' | 'down') {
+    setImageLayers((prev) => moveImageLayer(prev, index, direction))
+    setSelectedImageLayerIndex((prev) => (prev === index ? (direction === 'up' ? index - 1 : index + 1) : prev))
+  }
+
+  function handleImageLayerChange(index: number, patch: Partial<ImageLayerConfig>) {
+    setImageLayers((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)))
+  }
+
+  function handleReplaceImageLayerAsset(index: number, file: File) {
+    const url = URL.createObjectURL(file)
+    imageLayerUrlsRef.current.add(url)
+    setImageLayers((prev) =>
+      prev.map((l, i) => {
+        if (i !== index) return l
+        if (imageLayerUrlsRef.current.has(l.assetUrl)) {
+          URL.revokeObjectURL(l.assetUrl)
+          imageLayerUrlsRef.current.delete(l.assetUrl)
+        }
+        return { ...l, assetUrl: url }
+      })
+    )
+  }
 
   function handleRandomizeAll() {
     const random = randomizeRibbonConfig()
@@ -114,7 +180,14 @@ export default function AssetGeneratorPage() {
             <CardTitle>미리보기</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <AssetGeneratorViewport ref={viewportRef} stageRatio={stageRatio} layer={layer} play={play} onPlayChange={setPlay} />
+            <AssetGeneratorViewport
+              ref={viewportRef}
+              stageRatio={stageRatio}
+              layer={layer}
+              imageLayers={imageLayers}
+              play={play}
+              onPlayChange={setPlay}
+            />
             <AssetGeneratorExport
               viewportRef={viewportRef}
               stageRatio={stageRatio}
@@ -141,6 +214,14 @@ export default function AssetGeneratorPage() {
                 onFileSelected={handleFileSelected}
                 uploadedFileName={uploadedFileName}
                 onRandomizeAll={handleRandomizeAll}
+                imageLayers={imageLayers}
+                selectedImageLayerIndex={selectedImageLayerIndex}
+                onSelectImageLayer={setSelectedImageLayerIndex}
+                onAddImageLayer={handleAddImageLayer}
+                onRemoveImageLayer={handleRemoveImageLayer}
+                onMoveImageLayer={handleMoveImageLayer}
+                onImageLayerChange={handleImageLayerChange}
+                onReplaceImageLayerAsset={handleReplaceImageLayerAsset}
               />
             </fieldset>
           </CardContent>

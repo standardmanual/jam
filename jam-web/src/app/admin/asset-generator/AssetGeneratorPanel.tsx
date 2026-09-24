@@ -12,6 +12,9 @@
  * 용어 "무작위"는 프로토타입의 "전체 랜덤"·"다시 뽑기"를
  * `docs/specs/UX_WRITING_GUIDELINE.md`(저작 도구 고정 용어, X: 랜덤·다시 뽑기)에 맞춰 바꿨다
  * (기존 사례: `src/app/admin/badges/BlobAnimationFields.tsx`의 시드 재추첨 버튼).
+ *
+ * "이미지 레이어" 섹션(티켓 20260924_2157)은 리본 레이어 위에 얹는 PNG/SVG 오버레이를
+ * 관리한다 — 위의 "이미지" 섹션(리본 원천 그래픽 자체의 크기·블러·회전)과는 다른 개념이다.
  */
 import { useRef } from 'react'
 import { IconArrowsShuffle, IconRefresh, IconUpload } from '@tabler/icons-react'
@@ -21,8 +24,10 @@ import { Checkbox } from '@/components/admin/ui/checkbox'
 import { Input } from '@/components/admin/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/admin/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/admin/ui/tooltip'
-import { cn } from '@/lib/utils'
-import type { GradientDirection, LetterKey, RibbonLayerConfig, StageRatio } from '@/lib/asset-generator'
+import type { GradientDirection, ImageLayerConfig, LetterKey, RibbonLayerConfig, StageRatio } from '@/lib/asset-generator'
+import ImageLayerFields from './ImageLayerFields'
+import LayerSidebar from './LayerSidebar'
+import SliderRow from './SliderRow'
 import {
   BLUR_RANGE,
   computeEffectiveStartColor,
@@ -53,37 +58,14 @@ interface AssetGeneratorPanelProps {
   onFileSelected: (file: File) => void
   uploadedFileName: string | null
   onRandomizeAll: () => void
-}
-
-interface SliderRowProps {
-  label: string
-  value: number
-  min: number
-  max: number
-  step: number
-  format: (value: number) => string
-  onChange: (value: number) => void
-  action?: React.ReactNode
-}
-
-/** 한 줄 행: 레이블 · 슬라이더(shadcn 톤으로 감싼 input[type=range]) · 값 (원본 .row 그리드). */
-function SliderRow({ label, value, min, max, step, format, onChange, action }: SliderRowProps) {
-  return (
-    <div className={cn('grid items-center gap-2', action ? 'grid-cols-[64px_minmax(0,1fr)_52px_auto]' : 'grid-cols-[64px_minmax(0,1fr)_52px]')}>
-      <label className="text-sm text-foreground">{label}</label>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full cursor-pointer accent-primary"
-      />
-      <span className="text-right text-xs font-mono text-muted-foreground tabular-nums">{format(value)}</span>
-      {action}
-    </div>
-  )
+  imageLayers: ImageLayerConfig[]
+  selectedImageLayerIndex: number | null
+  onSelectImageLayer: (index: number) => void
+  onAddImageLayer: (file: File) => void
+  onRemoveImageLayer: (index: number) => void
+  onMoveImageLayer: (index: number, direction: 'up' | 'down') => void
+  onImageLayerChange: (index: number, patch: Partial<ImageLayerConfig>) => void
+  onReplaceImageLayerAsset: (index: number, file: File) => void
 }
 
 export default function AssetGeneratorPanel({
@@ -95,6 +77,14 @@ export default function AssetGeneratorPanel({
   onFileSelected,
   uploadedFileName,
   onRandomizeAll,
+  imageLayers,
+  selectedImageLayerIndex,
+  onSelectImageLayer,
+  onAddImageLayer,
+  onRemoveImageLayer,
+  onMoveImageLayer,
+  onImageLayerChange,
+  onReplaceImageLayerAsset,
 }: AssetGeneratorPanelProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { width: stageWidth, height: stageHeight } = resolveStageSize(stageRatio)
@@ -117,7 +107,7 @@ export default function AssetGeneratorPanel({
         전체 무작위
       </Button>
 
-      <Accordion type="multiple" defaultValue={['source', 'stage', 'image', 'gradient', 'curve']} className="w-full">
+      <Accordion type="multiple" defaultValue={['source', 'stage', 'image', 'gradient', 'curve', 'imageLayers']} className="w-full">
         <AccordionItem value="source">
           <AccordionTrigger>원천 그래픽</AccordionTrigger>
           <AccordionContent className="flex flex-col gap-3">
@@ -324,6 +314,27 @@ export default function AssetGeneratorPanel({
               format={formatCount}
               onChange={(v) => onLayerChange({ count: v })}
             />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="imageLayers">
+          <AccordionTrigger>이미지 레이어</AccordionTrigger>
+          <AccordionContent className="flex flex-col gap-3">
+            <LayerSidebar
+              imageLayers={imageLayers}
+              selectedIndex={selectedImageLayerIndex}
+              onSelect={onSelectImageLayer}
+              onAdd={onAddImageLayer}
+              onRemove={onRemoveImageLayer}
+              onMove={onMoveImageLayer}
+            />
+            {selectedImageLayerIndex !== null && imageLayers[selectedImageLayerIndex] && (
+              <ImageLayerFields
+                layer={imageLayers[selectedImageLayerIndex]}
+                onChange={(patch) => onImageLayerChange(selectedImageLayerIndex, patch)}
+                onReplaceAsset={(file) => onReplaceImageLayerAsset(selectedImageLayerIndex, file)}
+              />
+            )}
           </AccordionContent>
         </AccordionItem>
       </Accordion>

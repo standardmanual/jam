@@ -2,8 +2,8 @@
  * JAM! 에셋 제너레이터 — 설정값·레이어·프리셋 타입
  *
  * 정본: docs/specs/prd/asset-generator/PRD.md §4(레이어)·§5(프리셋).
- * 이미지·텍스트 레이어는 이 티켓(20260924_2155)에서 타입만 선언한다 — 실제 그리기 로직은
- * PRD §13에 따라 후속 티켓에서 render.ts의 레이어 합성 훅에 얹는다.
+ * 이미지 레이어는 20260924_2155에서 타입을 선언하고 20260924_2157에서 render.ts의
+ * `drawImageLayer`로 그리기를 확정했다. 텍스트 레이어는 타입만 있고 그리기는 후속 티켓 과제다.
  */
 
 /** 스테이지 비율. 긴 변은 항상 1280px (PRD §3). */
@@ -56,9 +56,13 @@ export interface ImageLayerConfig {
   type: 'image';
   /** 업로드한 PNG/SVG. 프리셋 저장 시 저장소 경로를 가리킨다 */
   assetUrl: string;
+  /** 이미지 중심의 스테이지 가로 위치(%) */
   xPct: number;
+  /** 이미지 중심의 스테이지 세로 위치(%) */
   yPct: number;
+  /** 스테이지 짧은 변 대비 가로 크기(%) */
   widthPct: number;
+  /** 스테이지 짧은 변 대비 세로 크기(%) */
   heightPct: number;
   rotationDeg: number;
   /** 0~100 */

@@ -11,6 +11,12 @@
  * (LETTERS 154~159줄, setBaseFromCanvas 177줄, normalizeSvg 205줄, loadBlob 226줄,
  * applyAspect 302줄, frame 476줄). `AssetGeneratorExport`가 정밀 인코딩 중 프레임을
  * 하나씩 그리기 위해 `drawAtHead`·`setExporting` 등을 ref로 끌어올려 쓴다.
+ *
+ * 이미지 레이어(티켓 20260924_2157): 업로드 원본은 assetUrl(blob URL)별로 한 번만 불러와
+ * `imageAssets`에 캔버스로 캐싱한다 — 원천 그래픽 로드와 같은 `loadImageFromBlob`·
+ * `normalizeSvgMarkup`을 재사용한다(알파 bbox로 자르지는 않는다 — 스탬프가 아니라 위치·크기를
+ * 그대로 쓰는 오버레이라서). 리본 레이어 다음, 배열 역순(마지막 인덱스부터)으로 그려
+ * 인덱스 0이 가장 위에 오게 한다(`LayerSidebar` 표시 순서와 동일).
  */
 import {
   forwardRef,
@@ -25,11 +31,13 @@ import { Button } from '@/components/admin/ui/button'
 import {
   buildPath,
   buildStamp,
+  drawImageLayer,
   drawRibbonLayer,
   fillBackground,
   type Canvas2DContextLike,
   type CanvasFactory,
   type CanvasLike,
+  type ImageLayerConfig,
   type PathTable,
   type RibbonLayerConfig,
   type StageRatio,
@@ -56,6 +64,7 @@ export interface AssetGeneratorViewportHandle {
 interface AssetGeneratorViewportProps {
   stageRatio: StageRatio
   layer: RibbonLayerConfig
+  imageLayers: ImageLayerConfig[]
   play: boolean
   onPlayChange: (play: boolean) => void
 }
@@ -202,16 +211,57 @@ function loadImageFromBlob(blob: Blob, isSvg: boolean): Promise<HTMLCanvasElemen
   })
 }
 
+/** assetUrl(blob URL 등)을 불러와 그리기용 캔버스로 만든다. 원천 그래픽 로드(ribbon)와 같은
+ * 정규화 경로를 쓰되, 스탬프가 아니므로 알파 bbox로 자르지는 않는다. */
+async function loadImageLayerAsset(url: string): Promise<HTMLCanvasElement> {
+  const response = await fetch(url)
+  const blob = await response.blob()
+  const isSvg = blob.type === 'image/svg+xml' || blob.type === 'image/svg'
+  const normalized = isSvg
+    ? new Blob([normalizeSvgMarkup(await blob.text())], { type: 'image/svg+xml' })
+    : blob
+  return loadImageFromBlob(normalized, isSvg)
+}
+
+/** 리본 레이어 다음에 이미지 레이어를 그린다. 배열 역순(마지막 인덱스부터)으로 그려
+ * 인덱스 0이 가장 나중에(가장 위에) 그려지게 한다(LayerSidebar 표시 순서와 동일). */
+function drawImageLayersOnto(
+  ctx: Canvas2DContextLike,
+  imageLayers: ImageLayerConfig[],
+  imageAssets: Record<string, CanvasLike>,
+  stageWidth: number,
+  stageHeight: number
+): void {
+  for (let i = imageLayers.length - 1; i >= 0; i--) {
+    const imgLayer = imageLayers[i]
+    const asset = imageAssets[imgLayer.assetUrl]
+    if (!asset) continue
+    drawImageLayer(ctx, {
+      image: asset,
+      xPct: imgLayer.xPct,
+      yPct: imgLayer.yPct,
+      widthPct: imgLayer.widthPct,
+      heightPct: imgLayer.heightPct,
+      rotationDeg: imgLayer.rotationDeg,
+      opacityPct: imgLayer.opacityPct,
+      stageWidth,
+      stageHeight,
+    })
+  }
+}
+
 const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGeneratorViewportProps>(
-  function AssetGeneratorViewport({ stageRatio, layer, play, onPlayChange }, ref) {
+  function AssetGeneratorViewport({ stageRatio, layer, imageLayers, play, onPlayChange }, ref) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null)
     const pathRef = useRef<PathTable | null>(null)
     const headRef = useRef(0)
     const exportingRef = useRef(false)
     const lastFrameTimeRef = useRef(0)
     const loadTokenRef = useRef(0)
+    const loadedImageAssetUrlsRef = useRef<Set<string>>(new Set())
     const [base, setBase] = useState<HTMLCanvasElement | null>(null)
     const [headPct, setHeadPct] = useState(0)
+    const [imageAssets, setImageAssets] = useState<Record<string, CanvasLike>>({})
 
     const { width: W, height: H } = useMemo(() => resolveStageSize(stageRatio), [stageRatio])
     const effectiveStartColor = computeEffectiveStartColor(layer)
@@ -262,6 +312,44 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
       void load()
     }, [layer.source])
 
+    // 이미지 레이어 원본 로드(티켓 20260924_2157) — assetUrl별로 한 번만 불러와 캐싱한다.
+    // 위치·크기·회전 슬라이더를 움직여도 assetUrl은 그대로라 이 이펙트는 다시 불러오지 않는다.
+    useEffect(() => {
+      const urls = Array.from(new Set(imageLayers.map((l) => l.assetUrl)))
+      const toLoad = urls.filter((url) => !loadedImageAssetUrlsRef.current.has(url))
+      if (toLoad.length === 0) return
+      let cancelled = false
+      toLoad.forEach((url) => loadedImageAssetUrlsRef.current.add(url))
+
+      async function loadAll() {
+        const entries = await Promise.all(
+          toLoad.map(async (url) => {
+            try {
+              const canvas = await loadImageLayerAsset(url)
+              return [url, toCanvasLike(canvas)] as const
+            } catch (e) {
+              loadedImageAssetUrlsRef.current.delete(url)
+              toast.error(e instanceof Error ? e.message : '이미지 레이어를 불러오지 못했어요.')
+              return null
+            }
+          })
+        )
+        if (cancelled) return
+        setImageAssets((prev) => {
+          const next = { ...prev }
+          for (const entry of entries) {
+            if (entry) next[entry[0]] = entry[1]
+          }
+          return next
+        })
+      }
+
+      void loadAll()
+      return () => {
+        cancelled = true
+      }
+    }, [imageLayers])
+
     // 이동 곡선 재생성 — 시드·불규칙성·스테이지 크기가 바뀌면 다시 뽑되, 머리 위치는 진행률(비율)을
     // 유지한다(원본 rebuildPathKeepPhase, 295줄).
     useEffect(() => {
@@ -295,9 +383,9 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
 
     // 최신 값을 ref에 담아 두고, 재생 루프(rAF)는 마운트 시 한 번만 시작한다 — 슬라이더를 움직일
     // 때마다 루프를 새로 시작하지 않기 위함(원본은 하나의 전역 루프, frame 476줄과 동일한 동작).
-    const latestRef = useRef({ play, layer, stamp, base, W, H })
+    const latestRef = useRef({ play, layer, stamp, base, W, H, imageLayers, imageAssets })
     useEffect(() => {
-      latestRef.current = { play, layer, stamp, base, W, H }
+      latestRef.current = { play, layer, stamp, base, W, H, imageLayers, imageAssets }
     })
 
     useEffect(() => {
@@ -333,6 +421,7 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
                 stageHeight: current.H,
               })
             }
+            drawImageLayersOnto(ctx, current.imageLayers, current.imageAssets, current.W, current.H)
           }
         }
         raf = requestAnimationFrame(frame)
@@ -377,12 +466,13 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
               stageHeight: H,
             })
           }
+          drawImageLayersOnto(ctx, imageLayers, imageAssets, W, H)
         },
         setExporting: (exporting: boolean) => {
           exportingRef.current = exporting
         },
       }),
-      [W, H, layer, stamp, base]
+      [W, H, layer, stamp, base, imageLayers, imageAssets]
     )
 
     return (
