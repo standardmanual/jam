@@ -154,6 +154,21 @@ code:
   가장자리 안티앨리어싱에 몰려 있다. 이미지 레이어 안쪽과 단색 배경의 차이는 0이다. `compare.mjs`의 `diffRatio`는 채널 하나라도
   다른 픽셀의 비율이라 이 조합에서 0.42로 나오므로, 판정은 임계값별 비율과 평균 차이로 한다. 같은 시드로 CLI를 두 번 실행하면 PNG가
   바이트까지 같다.
+- **등록 묶음과 등록 스크립트(티켓 20260924_2202)**: 형식·검증 규칙·절차의 정본은
+  [REGISTRATION_BUNDLE.md](REGISTRATION_BUNDLE.md)다. 묶음은 JSON 한 벌(`bundle.json`)과 PNG를 한 폴더에 둔다(권장
+  `jam-doc/assets/badge-bundles/<묶음 ID>/`). 담는 것은 배지 필드(이름·설명·유형·등급 또는 레벨·조건 등), 이미지 경로, 시드,
+  프리셋 ID, 배경색·끝색, 컬러 선택 근거 링크, 작성자, 작성 시각이다. 사람이 읽는 컨펌 자료는 별도 문서가 아니라 `--dry-run`
+  출력(배지·이미지·시드·색·등록 예정 내용·되돌림 SQL 미리보기)이 맡는다.
+  ```
+  cd jam-web
+  npx tsx scripts/asset-generator/register-badge.mjs --bundle <bundle.json 절대경로> [--dry-run] [--record-dir <폴더>]
+  npx tsx scripts/asset-generator/register-badge.mjs --undo <registration-record.json 절대경로> [--dry-run]
+  ```
+  지원 유형은 `activity`·`item`이고(`checkin`은 POI 연결이 필요해 1차 범위 밖) 신규 배지만 등록한다. 배지 행 규칙은 어드민 배지 생성 API와
+  같은 검증 함수를 재사용한다. 등록 순서는 이미지 업로드(원본 PNG + WebP) → 배지 행 insert(`image_source = 'agent-generator'`)이며
+  insert가 실패하면 올라간 파일을 지운다. 성공하면 `registration-record.json`과 되돌림 SQL이 든 `registration.sql`을 남긴다(형식은
+  홈피드 카드 등록 선례를 따른다). `--undo`는 사용자 데이터가 붙지 않았을 때만 파일 2개와 배지 행을 지운다. **스크립트는
+  사용자 컨펌 뒤 메인 세션만 `--dry-run` 없이 실행한다.**
 
 ## 9. 출력 규격과 최적화
 
@@ -232,6 +247,7 @@ code:
 - 상위 티켓: [20260924_2154](../../../tickets/p2-normal/20260924_2154_Feature_배지-대표이미지-제작도구-확장-JAM-에셋-제너레이터-1단계-상위.md)
 - 선행 참조: 홈피드 자동화 [20260923_2252](../../../tickets/p2-normal/20260923_2252_Feature_홈피드-배지-미션-운영-자동화-파이프라인-1단계-상위.md)
   (컨펌→등록 흐름, 등록 기록·되돌림 SQL), 어드민 목록 공통화 [20260924_0916](../../../tickets/p2-normal/20260924_0916_Admin_어드민-목록-테이블-공통화.md)
+- 등록 묶음 형식·등록 스크립트: [REGISTRATION_BUNDLE.md](REGISTRATION_BUNDLE.md)
 - 어드민 PRD: [admin-ui/ADMIN_PRD.md](../admin-ui/ADMIN_PRD.md)
 - 배지 아이콘 파이프라인: `.claude/skills/jam-img/SKILL.md`
 
@@ -291,4 +307,12 @@ code:
   어드민 PNG와 CLI PNG를 비교하는 데 쓴다. `jam-web/package.json`에 `@napi-rs/canvas`를 추가했다(사전 빌드
   바이너리, 네이티브 빌드 불필요). 격리 워크트리에는 DB가 없어 실제 프리셋 조회·어드민 PNG 비교(완료 조건의
   실렌더 비교)는 카리나가 머지 뒤에 한다.
+- [20260924_2202](../../../tickets/p2-normal/20260924_2202_Infra_배지-등록묶음-포맷과-등록-스크립트.md) 구현(스크립트 작성까지, 실제
+  등록은 사용자 컨펌 뒤 메인 세션): §8 등록 묶음 형식과 등록 스크립트를 만들었다. 형식 정본은 `REGISTRATION_BUNDLE.md`(JSON 한 벌,
+  필드 표·예시·실행 절차·되돌림). `register-badge.mjs`(`tsx`, cwd는 `jam-web`)가 묶음 검증 → 이미지 업로드(원본 PNG + WebP) →
+  배지 행 insert → 등록 기록·되돌림 SQL 생성을 맡고, `--dry-run`은 어떤 것도 쓰지 않으며, `--undo`는 파일 2개와 배지 행을 지운다.
+  어드민 배지 생성 API의 검증 함수(`findRarityLevelError`·`isValidFamilyKey`·`findBadgeConditionSaveError`)를 그대로 재사용해
+  규칙이 갈라지지 않게 했고, 어드민 API의 insertPayload 키 목록과 어긋나면 테스트가 실패한다. 예시 묶음은
+  `jam-web/scripts/asset-generator/__fixtures__/example-bundle/`에 있다. 실제 등록·되돌림은 서비스 키로 DB를 쓰는 경로라 이 티켓에서
+  실행하지 않았다(단위 테스트의 스텁 클라이언트로 순서·실패 처리를 확인).
 - 그 외는 미착수. 하위 티켓 순서는 상위 티켓의 하위 티켓 표를 따른다.
