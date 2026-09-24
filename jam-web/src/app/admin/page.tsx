@@ -10,14 +10,16 @@ import {
   IconNotes,
   IconDeviceGamepad2,
 } from '@tabler/icons-react'
-import WeeklyCalendar, { type CalendarColumn } from './WeeklyCalendar'
+import WeeklyCalendar, { type CalendarColumn, type CalendarCellItem } from './WeeklyCalendar'
 import DashboardSignals, { type DashboardSignalsProps } from './DashboardSignals'
 import {
   getWeeklyCronOccurrences,
   formatOccurrenceTime,
+  cronOccurrenceId,
   normalizeWeekParam,
   formatWeekRangeLabel,
 } from '@/lib/admin/cronSchedule'
+import { weeklyRoutineOccurrences, routineOccurrenceId } from '@/lib/admin/scheduledRoutines'
 import { shiftDateStr } from '@/lib/admin/today-calendar'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 import { computeKpiWeeklyMetrics, resolveKpiWeeklyRange, DEFAULT_KPI_WEEKLY_DAYS } from '@/lib/admin/kpiWeekly'
@@ -30,17 +32,42 @@ interface AdminDashboardPageProps {
 
 export default async function AdminDashboardPage({ searchParams }: AdminDashboardPageProps) {
   // 20260924_0904: 어드민 메인 주간 캘린더 — 크론 4개의 실행 예정을 요일 칸에 표시한다.
+  // 20260924_0905: Claude 예약 루틴 4개(주간·선별·주간 배포 승인·월간)도 같은 칸에 얹는다.
   const weekParam = singleQueryParam((await searchParams).week)
   const weekStart = normalizeWeekParam(weekParam)
   const occurrences = getWeeklyCronOccurrences()
+  const routineOccurrences = weeklyRoutineOccurrences(weekStart)
 
   const columns: CalendarColumn[] = Array.from({ length: 7 }, (_, i) => {
     const date = shiftDateStr(weekStart, i)
     const weekday = (i + 1) % 7 // i=0(월)→1 ... i=6(일)→0, cron 요일 인덱스(0=일..6=토)와 동일
-    const items = occurrences
+
+    // 항목 id에는 실행 시각을 포함해 같은 날짜 안에서 겹치지 않게 한다(티켓 20260924_0930).
+    const cronItems = occurrences
       .filter((o) => o.weekday === weekday)
-      .sort((a, b) => (a.hourly ? -1 : a.hour * 60 + a.minute) - (b.hourly ? -1 : b.hour * 60 + b.minute))
-      .map((o) => ({ id: `${o.path}-${date}`, time: formatOccurrenceTime(o), label: o.label }))
+      .map((o) => ({
+        item: { id: cronOccurrenceId(o, date), time: formatOccurrenceTime(o), label: o.label } satisfies CalendarCellItem,
+        sortMinutes: o.hourly ? -1 : o.hour * 60 + o.minute,
+      }))
+    const routineItems = routineOccurrences
+      .filter((r) => r.date === date)
+      .map((r) => {
+        const [hour, minute] = r.time.split(':').map(Number)
+        return {
+          item: {
+            id: routineOccurrenceId(r),
+            time: r.time,
+            label: r.label,
+            kind: 'routine',
+            dim: !r.enabled,
+          } satisfies CalendarCellItem,
+          sortMinutes: hour * 60 + minute,
+        }
+      })
+    const items = [...cronItems, ...routineItems]
+      .sort((a, b) => a.sortMinutes - b.sortMinutes)
+      .map(({ item }) => item)
+
     return {
       date,
       weekdayLabel: WEEKDAY_LABELS[weekday],

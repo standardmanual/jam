@@ -101,6 +101,15 @@ export function formatOccurrenceTime(occ: CronOccurrence): string {
   return `${String(occ.hour).padStart(2, '0')}:${String(occ.minute).padStart(2, '0')}`
 }
 
+/**
+ * 캘린더 항목 id. 시 필드가 쉼표로 여러 값을 가지면(예: `0 6,18 * * *`) 같은 날짜에 같은
+ * path로 시각이 다른 occurrence가 여러 개 생기므로, 시각을 포함해 겹치지 않게 한다
+ * (티켓 20260924_0930).
+ */
+export function cronOccurrenceId(occ: CronOccurrence, date: string): string {
+  return `${occ.path}-${date}-${formatOccurrenceTime(occ)}`
+}
+
 /** 'YYYY-MM-DD'가 속한 주의 월요일 날짜를 반환한다(KST 달력 기준) */
 export function mondayOfWeek(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number)
