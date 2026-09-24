@@ -136,7 +136,7 @@ export default function DashboardSignals({
         <h2 className="text-base font-semibold mb-4 text-foreground">이상 신호</h2>
         <div className="grid grid-cols-3 gap-4">
           <AnomalyCard
-            label="Strava 동기화 실패"
+            label="Strava 동기화 실패 건수"
             href="/admin/strava-backfill"
             icon={IconRun}
             metric={stravaSyncFailures}
