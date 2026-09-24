@@ -278,4 +278,9 @@ describe('resolveArticleCtaTarget — 에디토리얼 기사 본문 CTA 버튼 �
     expect(resolveArticleCtaTarget({ ...base, mission_id: 'm1' })).toEqual({ href: '/missions/m1', kind: 'mission' })
     expect(resolveArticleCtaTarget(base)).toBeNull()
   })
+  it('공백만 있는 target_href는 없는 값으로 보고 다음 우선순위로 넘어간다', () => {
+    expect(resolveArticleCtaTarget({ ...base, target_href: '   ', item_book_id: 'i1' }))
+      .toEqual({ href: '/collections/i1', kind: 'collection' })
+    expect(resolveArticleCtaTarget({ ...base, target_href: '  ' })).toBeNull()
+  })
 })
