@@ -57,10 +57,11 @@ function extractItems(body) {
 }
 async function fetchFestivalPage(apiKey, from, pageNo) {
   const qs = new URLSearchParams({
-    serviceKey: apiKey, _type: 'json', eventStartDate: from,
+    _type: 'json', MobileOS: 'ETC', MobileApp: 'JAM', eventStartDate: from,
     numOfRows: String(NUM_OF_ROWS), pageNo: String(pageNo),
   })
-  const res = await fetch(`${BASE_URL}?${qs}`)
+  // 저장된 키는 공공데이터포털 인코딩 키라 다시 인코딩하지 않는다(holidays.ts와 같은 방식)
+  const res = await fetch(`${BASE_URL}?serviceKey=${apiKey}&${qs}`)
   if (!res.ok) throw new Error(`TourAPI HTTP 오류: ${res.status}`)
   const { response } = await res.json()
   const h = response?.header
