@@ -26,6 +26,7 @@ describe('parseBadgeListParams', () => {
       poi_category: 'cafe',
       tribe_id: 't1',
       item_book_id: 'b1',
+      image_source: 'admin-generator',
     })
     expect(parsed).toMatchObject({
       type: 'checkin',
@@ -34,6 +35,15 @@ describe('parseBadgeListParams', () => {
       poiCategory: 'cafe',
       tribeId: 't1',
       itemBookId: 'b1',
+      imageSource: 'admin-generator',
     })
+  })
+
+  it('제작 경로 필터가 없으면 imageSource는 undefined다(전체 조회)', () => {
+    expect(parseBadgeListParams({}).imageSource).toBeUndefined()
+  })
+
+  it("제작 경로 필터 sentinel(__unknown__)도 그대로 넘어간다", () => {
+    expect(parseBadgeListParams({ image_source: '__unknown__' }).imageSource).toBe('__unknown__')
   })
 })

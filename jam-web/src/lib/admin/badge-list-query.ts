@@ -13,6 +13,7 @@ import type { Json } from '@/types/database.generated'
 import type { BadgeListRow } from '@/components/admin/badges/BadgeList'
 import { sanitizeSearchTerm } from './search-term'
 import { UNASSIGNED_POI_CATEGORY, type AdminCategory } from './badge-labels'
+import { UNKNOWN_IMAGE_SOURCE_FILTER } from './badgeImageSource'
 import { ADMIN_LIST_PAGE_SIZE } from './list-params'
 import {
   badgeUsesConditionField,
@@ -30,7 +31,7 @@ type ServiceClient = ReturnType<typeof createServiceClient>
 
 /** 목록(카드/테이블)에 실제로 쓰는 컬럼만 select(20260826_011 A8) */
 export const BADGE_LIST_COLUMNS =
-  'id, name, description, type, rarity, image_url, condition_json, activity_types, patch_available, patch_price_krw, tribe_id, deleted_at'
+  'id, name, description, type, rarity, image_url, image_source, condition_json, activity_types, patch_available, patch_price_krw, tribe_id, deleted_at'
 
 /** 계열순·레벨순 메모리 비교에만 필요한 추가 컬럼(티켓 20260905_0032 C-2) */
 export const BADGE_SORT_COLUMNS = 'level, family_key, sort_order, created_at'
@@ -50,6 +51,9 @@ export interface BadgeListParams {
   sort: BadgeListSort
   conditionField: ConditionKey | null
   adminCategory: AdminCategory | null
+  /** 제작 경로 필터(티켓 20260924_2200) — `admin-generator`·`agent-generator`·`jam-img` 중
+   *  하나, 값 없음(NULL)을 거르는 `UNKNOWN_IMAGE_SOURCE_FILTER`, 또는 필터 없음(undefined). */
+  imageSource: string | undefined
 }
 
 /**
@@ -73,6 +77,7 @@ export function parseBadgeListParams(raw: Record<string, string | undefined>): B
     sort: parseBadgeListSort(raw.sort),
     conditionField: parseConditionFieldFilter(raw.condition_field),
     adminCategory: parseAdminCategoryFilter(raw.admin_category),
+    imageSource: raw.image_source,
   }
 }
 
@@ -131,6 +136,8 @@ function applyBadgeListFilters<T>(query: BadgeListQuery<T>, params: BadgeListPar
   if (params.tribeId) next = next.eq('tribe_id', params.tribeId)
   if (params.itemBookId) next = next.eq('item_book_id', params.itemBookId)
   if (params.conditionField) next = next.not(`condition_json->>${params.conditionField}`, 'is', null)
+  if (params.imageSource === UNKNOWN_IMAGE_SOURCE_FILTER) next = next.is('image_source', null)
+  else if (params.imageSource) next = next.eq('image_source', params.imageSource)
 
   return next
 }
@@ -201,6 +208,8 @@ async function fetchCheckinCategoryCandidates(
     )
   }
   if (params.adminCategory) candidates = candidates.filter((b) => b.admin_category === params.adminCategory)
+  if (params.imageSource === UNKNOWN_IMAGE_SOURCE_FILTER) candidates = candidates.filter((b) => !b.image_source)
+  else if (params.imageSource) candidates = candidates.filter((b) => b.image_source === params.imageSource)
 
   return candidates
 }
@@ -213,6 +222,7 @@ function toBadgeListRow(c: CheckinCandidateRow): BadgeListRow {
     type: c.type,
     rarity: c.rarity,
     image_url: c.image_url,
+    image_source: c.image_source,
     condition_json: c.condition_json as BadgeListRow['condition_json'],
     activity_types: c.activity_types as BadgeListRow['activity_types'],
     patch_available: c.patch_available,

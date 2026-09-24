@@ -51,6 +51,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
     params.itemBookId ||
     params.conditionField ||
     params.adminCategory ||
+    params.imageSource ||
     params.status !== 'active'
   )
 

@@ -295,6 +295,7 @@ export type Database = {
           family_key: string | null
           id: string
           image_gen_params: Json | null
+          image_source: string | null
           image_url: string | null
           item_book_id: string | null
           level: number | null
@@ -329,6 +330,7 @@ export type Database = {
           family_key?: string | null
           id?: string
           image_gen_params?: Json | null
+          image_source?: string | null
           image_url?: string | null
           item_book_id?: string | null
           level?: number | null
@@ -363,6 +365,7 @@ export type Database = {
           family_key?: string | null
           id?: string
           image_gen_params?: Json | null
+          image_source?: string | null
           image_url?: string | null
           item_book_id?: string | null
           level?: number | null
