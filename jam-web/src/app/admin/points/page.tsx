@@ -5,6 +5,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
+import { logQueryError, throwOnQueryError } from '@/lib/admin/queryError'
 import {
   LEDGER_COLUMNS,
   parseLedgerListParams,
@@ -48,13 +49,15 @@ export default async function AdminPointsPage({ searchParams }: AdminPointsPageP
 
   const [s, ledgerRes] = await Promise.all([getPointsSummary(), ledgerQuery.range(from, to)])
 
+  throwOnQueryError(ledgerRes.error, 'points')
   const ledgerRows = ledgerRes.data ?? []
   const ledgerTotal = ledgerRes.count ?? 0
   const ledgerUserIds = [...new Set(ledgerRows.map((r) => r.user_id))]
-  const { data: usersRaw } =
+  const { data: usersRaw, error: usersError } =
     ledgerUserIds.length > 0
       ? await supabase.from('users').select('id, username').in('id', ledgerUserIds)
-      : { data: [] as { id: string; username: string | null }[] }
+      : { data: [] as { id: string; username: string | null }[], error: null }
+  logQueryError(usersError, 'points/usernames')
   const usernameById = new Map((usersRaw ?? []).map((u) => [u.id, u.username]))
 
   const ledgerEntries: LedgerEntry[] = ledgerRows.map((r) => ({

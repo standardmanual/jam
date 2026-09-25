@@ -6,6 +6,7 @@ import { DataTablePagination } from '@/components/admin/data-table/data-table-pa
 import { checkRankingModeIntegrity } from '@/lib/ranking/rankingDataSource'
 import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
 import { sanitizeSearchTerm } from '@/lib/admin/search-term'
+import { throwOnQueryError } from '@/lib/admin/queryError'
 import { fetchLiveCardsByMode, type RankingModeReferenceClient } from '@/lib/admin/ranking-mode-references'
 import { RANKING_MODE_SORT_COLUMN, parseRankingModeSort } from '@/lib/admin/ranking-mode-list'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
@@ -48,10 +49,11 @@ export default async function AdminRankingModesPage({ searchParams }: AdminRanki
   const supabase = createServiceClient()
   let query = supabase.from('ranking_modes').select('*', { count: 'exact' })
   if (q) query = query.ilike('title', `%${q}%`)
-  const { data, count } = await query
+  const { data, count, error } = await query
     .order(sortColumn, { ascending })
     .order('id', { ascending: true })
     .range(from, to)
+  throwOnQueryError(error, 'ranking-modes')
   const modes = (data ?? []) as RankingModeRow[]
 
   const [issues, liveCardsByMode] = await Promise.all([

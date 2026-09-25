@@ -8,6 +8,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { HIGH_VALUE_THRESHOLD } from '@/lib/points/reasons'
+import { logQueryError } from '@/lib/admin/queryError'
 import type { PointTransactionRow, PointTreasuryRow } from '@/types/database'
 
 export interface RankingEntry {
@@ -37,6 +38,11 @@ export async function getPointsSummary(): Promise<PointsSummary> {
     supabase.from('point_wallets').select('balance'),
     supabase.from('point_transactions').select('*').order('created_at', { ascending: false }).limit(50000),
   ])
+
+  // 조회 실패는 로그만 남기고 0 집계로 계속한다(티켓 20260925_2004) — 화면 전체를 막지 않는다.
+  logQueryError(treasuryRes.error, 'points/summary/treasury')
+  logQueryError(walletsRes.error, 'points/summary/wallets')
+  logQueryError(txnsRes.error, 'points/summary/transactions')
 
   const treasury = (treasuryRes.data as PointTreasuryRow | null) ?? {
     id: 1, total_minted: 0, total_reclaimed: 0, updated_at: '',
@@ -68,11 +74,14 @@ export async function getPointsSummary(): Promise<PointsSummary> {
   const [badgesRes, missionsRes] = await Promise.all([
     topBadgeIds.length > 0
       ? supabase.from('badges').select('id, name').in('id', topBadgeIds.map(([id]) => id))
-      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+      : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
     topMissionIds.length > 0
       ? supabase.from('missions').select('id, title').in('id', topMissionIds.map(([id]) => id))
-      : Promise.resolve({ data: [] as { id: string; title: string }[] }),
+      : Promise.resolve({ data: [] as { id: string; title: string }[], error: null }),
   ])
+
+  logQueryError(badgesRes.error, 'points/summary/badge-names')
+  logQueryError(missionsRes.error, 'points/summary/mission-titles')
 
   const badgeName = new Map(((badgesRes.data ?? []) as { id: string; name: string }[]).map((b) => [b.id, b.name]))
   const missionTitle = new Map(((missionsRes.data ?? []) as { id: string; title: string }[]).map((m) => [m.id, m.title]))
