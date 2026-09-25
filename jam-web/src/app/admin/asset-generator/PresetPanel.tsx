@@ -45,6 +45,7 @@ import { MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
 import {
   PRESET_TARGET_TYPES,
   PRESET_TARGET_TYPE_LABELS,
+  type AssetPresetSummary,
   type ImageLayerConfig,
   type OverlayLayerConfig,
   type PresetTargetType,
@@ -52,14 +53,6 @@ import {
 } from '@/lib/asset-generator'
 
 const MAX_NAME_LENGTH = 60
-
-interface PresetSummary {
-  id: string
-  name: string
-  stageRatio: StageRatio
-  createdAt: string
-  updatedAt: string
-}
 
 interface PresetPanelProps {
   stageRatio: StageRatio
@@ -104,7 +97,7 @@ export default function PresetPanel({ stageRatio, overlayLayers, onLoadPreset }:
   const [themeContainer] = useState<HTMLElement | null>(() =>
     typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
   )
-  const [presets, setPresets] = useState<PresetSummary[]>([])
+  const [presets, setPresets] = useState<AssetPresetSummary[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('')

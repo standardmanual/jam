@@ -2,20 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { APPLY_GENERATED_IMAGE_BUCKET } from '@/lib/admin/applyGeneratedImageConstants'
-import { deserializePresetLayers, type OverlayLayerConfig } from '@/lib/asset-generator'
+import { toAssetPreset, type AssetPresetRow } from '@/lib/asset-generator'
 
 /** 에셋 제너레이터 — 프리셋 단건 조회/삭제 API (티켓 20260924_2159) */
-
-interface PresetDetailRow {
-  id: string
-  name: string
-  target_type: string
-  stage_ratio: string
-  layers: unknown
-  created_by: string
-  created_at: string
-  updated_at: string
-}
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -31,19 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data) return NextResponse.json({ error: '프리셋을 찾을 수 없습니다.' }, { status: 404 })
 
-  const row = data as PresetDetailRow
-  return NextResponse.json({
-    preset: {
-      id: row.id,
-      name: row.name,
-      targetType: row.target_type,
-      stageRatio: row.stage_ratio,
-      layers: deserializePresetLayers((row.layers ?? []) as OverlayLayerConfig[]),
-      createdBy: row.created_by,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    },
-  })
+  return NextResponse.json({ preset: toAssetPreset(data as AssetPresetRow) })
 }
 
 /**

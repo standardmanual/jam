@@ -157,3 +157,9 @@ export interface AssetPreset {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * 프리셋 목록·저장 응답의 요약 형태(티켓 20260925_0239). `AssetPreset`에서 파생해 두 형태가 따로
+ * 진화하지 않게 한다 — 레이어·대상 유형·작성자는 상세 조회(`presets/[id]`)에서만 내려준다.
+ */
+export type AssetPresetSummary = Pick<AssetPreset, 'id' | 'name' | 'stageRatio' | 'createdAt' | 'updatedAt'>;

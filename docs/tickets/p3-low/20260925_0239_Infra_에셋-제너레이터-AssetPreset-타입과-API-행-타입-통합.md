@@ -32,14 +32,24 @@ specs:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- `PresetRow`(목록·저장 라우트)와 `PresetDetailRow`(상세 라우트) 정의를 없애고 `AssetPreset`에서 파생한 타입으로 통합했다.
+- `types.ts`에 `AssetPresetSummary = Pick<AssetPreset, 'id'|'name'|'stageRatio'|'createdAt'|'updatedAt'>`를 추가했다. 목록·저장 응답이 이 형태다.
+- `presetSerialize.ts`에 `AssetPresetRow`(생성 타입 `asset_presets` Row), `AssetPresetSummaryRow`, 변환 함수 `toAssetPreset`(행 → `AssetPreset`, 레이어 역직렬화 포함)·`toAssetPresetSummary`(행 → 요약)를 두었다.
+- 목록·저장 라우트는 `toAssetPresetSummary`, 상세 라우트는 `toAssetPreset`을 쓴다. `PresetPanel.tsx`의 로컬 `PresetSummary`는 `AssetPresetSummary`로 바꿨다. 라우트 응답 모양·상태 코드는 그대로다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/lib/asset-generator/types.ts
+jam-web/src/lib/asset-generator/presetSerialize.ts
+jam-web/src/lib/asset-generator/__tests__/presetSerialize.test.ts
+jam-web/src/app/api/admin/asset-generator/presets/route.ts
+jam-web/src/app/api/admin/asset-generator/presets/[id]/route.ts
+jam-web/src/app/admin/asset-generator/PresetPanel.tsx
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] 기존 라우트·직렬화 테스트 수정 없이 통과. 변환 함수 테스트 3건 추가(`presetSerialize.test.ts`). `tsc --noEmit` 통과. 전체 검증은 `scripts/verify.sh` 결과를 최종 보고에 기록.
+- [ ] PresetPanel 실제 화면 확인은 카리나가 병합 뒤 로컬에서 진행(이번 작업에서 하지 않음)
 
 ### 배포 정보
 - 배포일: 
@@ -54,6 +64,9 @@ specs:
 | 합계 |  |  |  |  |  |
 
 ### 주요 의사결정 / 핵심 메모
+- 목록·저장 응답은 레이어·대상 유형·작성자를 담지 않으므로 `AssetPreset` 전체가 아니라 `Pick` 부분 타입(`AssetPresetSummary`)으로 통합했다(티켓의 "또는 그 부분 타입").
+- DB 컬럼 `target_type`·`stage_ratio`는 생성 타입상 `string`이라 변환 함수에서 `PresetTargetType`·`StageRatio`로 캐스팅한다. 응답 값은 기존과 같고 별도 검증을 더하지 않았다(라우트 동작 불변 조건).
+- `lib/asset-generator`(브라우저·서버 공용)가 생성 타입을 `import type`으로만 참조한다. 타입 전용이라 번들에서 지워진다.
 
 ### 잔여 이슈
 -
