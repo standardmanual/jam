@@ -17,7 +17,8 @@ import {
 } from '../registerBundle.mjs';
 
 const FIXTURE_DIR = path.join(__dirname, '..', '__fixtures__', 'example-bundle');
-const ROUTE_FILE = path.join(__dirname, '..', '..', '..', 'src', 'app', 'api', 'admin', 'badges', 'route.ts');
+// insert 페이로드 매핑은 라우트와 공용인 순수 함수로 옮겼다(티켓 20260925_0541 (b)) — 키 목록은 그 파일에서 읽는다.
+const ROUTE_FILE = path.join(__dirname, '..', '..', '..', 'src', 'lib', 'admin', 'badge-insert-payload.ts');
 
 let workDir: string;
 let bundleFile: string;
@@ -439,7 +440,7 @@ describe('buildBadgeInsertPayload', () => {
 
   it('라우트 키 목록 대조: 어드민 배지 생성 API의 insertPayload 키를 모두 포함한다', () => {
     const source = fs.readFileSync(ROUTE_FILE, 'utf8');
-    const start = source.indexOf('const insertPayload = {');
+    const start = source.indexOf('return {\n    name,');
     expect(start).toBeGreaterThan(-1);
     const end = source.indexOf('\n  }\n', start);
     const routeKeys = [...source.slice(start, end).matchAll(/^ {4}([a-z_]+)[,:]/gm)].map((m) => m[1]);

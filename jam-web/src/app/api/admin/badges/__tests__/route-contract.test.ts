@@ -29,6 +29,9 @@ function codeOf(path: string): string {
 
 const postCode = codeOf('src/app/api/admin/badges/route.ts')
 const putCode = codeOf('src/app/api/admin/badges/[id]/route.ts')
+// insert 페이로드 매핑은 등록 스크립트와 공용인 순수 함수로 옮겼다(티켓 20260925_0541 (b)).
+// 매핑 키를 확인하는 검사는 이 파일을 읽고, 라우트가 그 함수를 부르는지는 아래에서 따로 확인한다.
+const payloadCode = codeOf('src/lib/admin/badge-insert-payload.ts')
 
 describe('④ 레벨형 배지를 생성할 수 있다', () => {
   it('POST의 필수 필드 검사가 rarity를 요구하지 않는다', () => {
@@ -43,7 +46,8 @@ describe('④ 레벨형 배지를 생성할 수 있다', () => {
 
   it('POST가 level을 body에서 읽어 insert 페이로드에 넣는다', () => {
     expect(postCode).toMatch(/const \{[^}]*\blevel\b[^}]*\} = body/)
-    expect(postCode).toMatch(/level:/)
+    expect(payloadCode).toMatch(/const \{[^}]*\blevel\b[^}]*\} = body/)
+    expect(payloadCode).toMatch(/level:/)
   })
 
   it('PUT이 level을 병합해 저장한다 — 등급형 ↔ 레벨형 전환이 가능해야 한다', () => {
@@ -89,12 +93,12 @@ describe('family_key 불변 (판단 ③)', () => {
 
 describe('⑥ admin_category — 어드민 전용 분류(JAM!), type과 무관하게 저장 (티켓 20260910_2055)', () => {
   it('POST가 admin_category를 body에서 읽어 insert 페이로드에 넣는다', () => {
-    expect(postCode).toMatch(/const \{[^}]*\badmin_category\b[^}]*\} = body/)
-    expect(postCode).toMatch(/admin_category:/)
+    expect(payloadCode).toMatch(/const \{[^}]*\badmin_category\b[^}]*\} = body/)
+    expect(payloadCode).toMatch(/admin_category:/)
   })
 
-  it("POST·PUT의 admin_category 저장 줄에는 category처럼 type==='checkin' 가드가 없다", () => {
-    for (const code of [postCode, putCode]) {
+  it("POST(공용 매핑)·PUT의 admin_category 저장 줄에는 category처럼 type==='checkin' 가드가 없다", () => {
+    for (const code of [payloadCode, putCode]) {
       const line = code.match(/admin_category:[^\n]*/)
       expect(line).not.toBeNull()
       expect(line![0]).not.toContain("type === 'checkin'")
@@ -107,9 +111,23 @@ describe('⑥ admin_category — 어드민 전용 분류(JAM!), type과 무관�
 })
 
 describe('기존 category(지점 카테고리) 가드는 admin_category 추가로 건드리지 않는다', () => {
-  it("POST·PUT 모두 category는 여전히 type === 'checkin'일 때만 저장한다", () => {
-    for (const code of [postCode, putCode]) {
+  it("POST(공용 매핑)·PUT 모두 category는 여전히 type === 'checkin'일 때만 저장한다", () => {
+    for (const code of [payloadCode, putCode]) {
       expect(code).toMatch(/category:\s*type === 'checkin'/)
     }
+  })
+})
+
+describe('POST의 insert 페이로드는 공용 순수 함수가 만든다 (티켓 20260925_0541 (b))', () => {
+  it('라우트가 badge-insert-payload의 buildBadgeInsertPayload를 불러 그 결과를 insert한다', () => {
+    expect(postCode).toMatch(
+      /import\s*\{[^}]*\bbuildBadgeInsertPayload\b[^}]*\}\s*from\s*'@\/lib\/admin\/badge-insert-payload'/
+    )
+    expect(postCode).toMatch(/const insertPayload = buildBadgeInsertPayload\(body\)/)
+    expect(postCode).toMatch(/\.insert\(insertPayload\)/)
+  })
+
+  it('매핑을 라우트 안에 다시 인라인하지 않는다 — 원본은 순수 함수 한 곳이다', () => {
+    expect(postCode).not.toMatch(/const insertPayload = \{/)
   })
 })
