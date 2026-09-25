@@ -30,7 +30,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 vi.mock('@/lib/admin/auth', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/admin/auth')>()),
-  getAdminUser: async () => ({ id: '00000000-0000-4000-8000-0000000000aa', email: 'admin@jam.app' }),
+  getAdminUser: vi.fn(async () => ({ id: '00000000-0000-4000-8000-0000000000aa', email: 'admin@jam.app' })),
 }))
 
 const { GET, DELETE } = await import('../route')
@@ -46,11 +46,20 @@ function params(id: string) {
 beforeEach(() => {
   presetsBuilder = makeQueryBuilder({ data: null, error: null })
   fromMock.mockReset().mockImplementation(() => presetsBuilder)
+  storageFromMock.mockClear()
   listMock.mockReset().mockResolvedValue({ data: [{ name: 'i1.png' }], error: null })
   removeMock.mockReset().mockResolvedValue({ error: null })
 })
 
 describe('GET', () => {
+  it('무권한이면 403이고 DB를 조회하지 않는다(티켓 20260925_0240)', async () => {
+    const { getAdminUser } = await import('@/lib/admin/auth')
+    vi.mocked(getAdminUser).mockResolvedValueOnce(null)
+    const res = await GET(req(), params('p1'))
+    expect(res.status).toBe(403)
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
   it('없으면 404', async () => {
     const res = await GET(req(), params('missing'))
     expect(res.status).toBe(404)
@@ -108,6 +117,17 @@ describe('GET', () => {
 })
 
 describe('DELETE', () => {
+  it('무권한이면 403이고 저장소·DB를 건드리지 않는다(티켓 20260925_0240)', async () => {
+    const { getAdminUser } = await import('@/lib/admin/auth')
+    vi.mocked(getAdminUser).mockResolvedValueOnce(null)
+    const res = await DELETE(req(), params('p1'))
+    expect(res.status).toBe(403)
+    expect(storageFromMock).not.toHaveBeenCalled()
+    expect(listMock).not.toHaveBeenCalled()
+    expect(removeMock).not.toHaveBeenCalled()
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
   it('저장소 폴더의 파일을 지운 뒤 테이블 행을 지운다', async () => {
     const res = await DELETE(req(), params('p1'))
     expect(res.status).toBe(200)

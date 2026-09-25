@@ -12,7 +12,42 @@
  * 대상 유형(`target_type`) 값 목록·라벨·검증(티켓 20260925_1405)도 이 파일에 둔다 — 레이어
  * 직렬화와 마찬가지로 화면(`PresetPanel.tsx`)과 API 라우트 양쪽이 같은 값 집합을 봐야 한다.
  */
-import type { OverlayLayerConfig, PresetTargetType } from './types';
+import type { Database } from '@/types/database.generated';
+import type { AssetPreset, AssetPresetSummary, OverlayLayerConfig, PresetTargetType, StageRatio } from './types';
+
+/** `asset_presets` 테이블 행(생성 타입 기준). API 라우트의 select 결과가 이 형태다. */
+export type AssetPresetRow = Database['public']['Tables']['asset_presets']['Row'];
+
+/** 목록·저장 응답용으로 select하는 컬럼(`toAssetPresetSummary`가 받는 행의 부분 형태). */
+export type AssetPresetSummaryRow = Pick<AssetPresetRow, 'id' | 'name' | 'stage_ratio' | 'created_at' | 'updated_at'>;
+
+/** 행을 목록·저장 응답용 요약(`AssetPresetSummary`)으로 바꾼다. */
+export function toAssetPresetSummary(row: AssetPresetSummaryRow): AssetPresetSummary {
+  return {
+    id: row.id,
+    name: row.name,
+    stageRatio: row.stage_ratio as StageRatio,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * `asset_presets` 행을 `AssetPreset`으로 바꾼다. DB 컬럼은 `string`·`Json`이라 좁은 타입으로
+ * 캐스팅한다(값은 저장 시 API가 검증하고 CHECK 제약이 받쳐 준다). 레이어는 역직렬화를 거친다.
+ */
+export function toAssetPreset(row: AssetPresetRow): AssetPreset {
+  return {
+    id: row.id,
+    name: row.name,
+    targetType: row.target_type as PresetTargetType,
+    stageRatio: row.stage_ratio as StageRatio,
+    layers: deserializePresetLayers((row.layers ?? []) as unknown as OverlayLayerConfig[]),
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 
 /**
  * 프리셋 대상 유형 값 목록·라벨(티켓 20260925_1405, CHECK 확장 마이그레이션 187과 값이 같다).

@@ -3,7 +3,14 @@
  * 실행: cd jam-web && npx vitest run src/lib/asset-generator/__tests__/presetSerialize.test.ts
  */
 import { describe, it, expect } from 'vitest';
-import { deserializePresetLayers, isPresetTargetType, serializePresetLayers } from '../presetSerialize';
+import {
+  deserializePresetLayers,
+  isPresetTargetType,
+  serializePresetLayers,
+  toAssetPreset,
+  toAssetPresetSummary,
+  type AssetPresetRow,
+} from '../presetSerialize';
 import type { ImageLayerConfig, OverlayLayerConfig, TextLayerConfig } from '../types';
 
 function makeImageLayer(id: string, assetUrl: string): ImageLayerConfig {
@@ -109,5 +116,47 @@ describe('직렬화 → 역직렬화 라운드트립', () => {
     expect(restored.map((l) => l.id)).toEqual(['t1', 'i1']);
     expect((restored[0] as TextLayerConfig).content).toBe('');
     expect((restored[1] as ImageLayerConfig).assetUrl).toBe('https://cdn.example.com/asset-generator/presets/p1/i1.png');
+  });
+});
+
+describe('DB 행 → AssetPreset 변환 (티켓 20260925_0239)', () => {
+  const row: AssetPresetRow = {
+    id: 'p1',
+    name: '프리셋 A',
+    target_type: 'mission',
+    stage_ratio: '4:5',
+    layers: [makeTextLayer('t1', 'x'), makeImageLayer('i1', 'https://cdn.example.com/i1.png')] as unknown as AssetPresetRow['layers'],
+    created_by: 'admin-1',
+    created_at: '2026-09-25T00:00:00Z',
+    updated_at: '2026-09-26T00:00:00Z',
+  };
+
+  it('snake_case 컬럼을 camelCase 필드로 옮기고 텍스트 content를 비운 채 순서를 유지한다', () => {
+    const preset = toAssetPreset(row);
+    expect(preset).toMatchObject({
+      id: 'p1',
+      name: '프리셋 A',
+      targetType: 'mission',
+      stageRatio: '4:5',
+      createdBy: 'admin-1',
+      createdAt: '2026-09-25T00:00:00Z',
+      updatedAt: '2026-09-26T00:00:00Z',
+    });
+    expect(preset.layers.map((l) => l.id)).toEqual(['t1', 'i1']);
+    expect((preset.layers[0] as TextLayerConfig).content).toBe('');
+  });
+
+  it('layers가 null이면 빈 배열이다', () => {
+    expect(toAssetPreset({ ...row, layers: null as unknown as AssetPresetRow['layers'] }).layers).toEqual([]);
+  });
+
+  it('요약은 id·name·stageRatio·createdAt·updatedAt만 담는다', () => {
+    expect(toAssetPresetSummary(row)).toEqual({
+      id: 'p1',
+      name: '프리셋 A',
+      stageRatio: '4:5',
+      createdAt: '2026-09-25T00:00:00Z',
+      updatedAt: '2026-09-26T00:00:00Z',
+    });
   });
 });

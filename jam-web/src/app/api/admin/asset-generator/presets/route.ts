@@ -5,6 +5,8 @@ import { APPLY_GENERATED_IMAGE_BUCKET, MAX_APPLY_IMAGE_BYTES } from '@/lib/admin
 import {
   isPresetTargetType,
   serializePresetLayers,
+  toAssetPresetSummary,
+  type AssetPresetSummaryRow,
   type OverlayLayerConfig,
   type PresetTargetType,
   type StageRatio,
@@ -31,18 +33,6 @@ import type { Json } from '@/types/database.generated'
 const MAX_NAME_LENGTH = 60
 const VALID_STAGE_RATIOS: StageRatio[] = ['1:1', '4:5', '9:16']
 
-interface PresetRow {
-  id: string
-  name: string
-  stage_ratio: string
-  created_at: string
-  updated_at: string
-}
-
-function toSummary(row: PresetRow) {
-  return { id: row.id, name: row.name, stageRatio: row.stage_ratio, createdAt: row.created_at, updatedAt: row.updated_at }
-}
-
 /**
  * `targetType` 쿼리 파라미터가 있으면 그 유형으로 목록을 필터링한다(프리셋 저장 화면이
  * "현재 작업 중인 콘텐츠 유형"으로 불러오기 목록을 좁히는 데 쓴다, 티켓 20260925_1405).
@@ -67,7 +57,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const presets = ((data ?? []) as PresetRow[]).map(toSummary)
+  const presets = ((data ?? []) as AssetPresetSummaryRow[]).map(toAssetPresetSummary)
   return NextResponse.json({ presets })
 }
 
@@ -166,7 +156,7 @@ export async function POST(req: NextRequest) {
       .select('id, name, stage_ratio, created_at, updated_at')
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ preset: toSummary(data as PresetRow) })
+    return NextResponse.json({ preset: toAssetPresetSummary(data as AssetPresetSummaryRow) })
   }
 
   const { data, error } = await supabase
@@ -183,5 +173,5 @@ export async function POST(req: NextRequest) {
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ preset: toSummary(data as PresetRow) })
+  return NextResponse.json({ preset: toAssetPresetSummary(data as AssetPresetSummaryRow) })
 }
