@@ -177,6 +177,20 @@ code:
   insert가 실패하면 올라간 파일을 지운다. 성공하면 `registration-record.json`과 되돌림 SQL이 든 `registration.sql`을 남긴다(형식은
   홈피드 카드 등록 선례를 따른다). `--undo`는 사용자 데이터가 붙지 않았을 때만 파일 2개와 배지 행을 지운다. **스크립트는
   사용자 컨펌 뒤 메인 세션만 `--dry-run` 없이 실행한다.**
+- **미션 등록 묶음과 등록 스크립트(티켓 20260925_1412)**: 형식·검증 규칙·절차의 정본은
+  [MISSION_REGISTRATION_BUNDLE.md](MISSION_REGISTRATION_BUNDLE.md)다. 배지와 같은 흐름이되 필드는 미션 스키마(`mission_type`·
+  `condition_json`·기간·보상·표시 방식·게이트·노출 모드)에 맞추고, 묶음에 «세계관 검수 기록»(`world_review`: 세계관과 닿는 내용
+  여부·윈터 검수 여부·사유)을 남긴다. 권장 폴더는 `jam-doc/assets/mission-bundles/<묶음 ID>/`이다.
+  ```
+  cd jam-web
+  npx tsx scripts/asset-generator/register-mission.mjs --bundle <bundle.json 절대경로> [--dry-run] [--record-dir <폴더>]
+  npx tsx scripts/asset-generator/register-mission.mjs --undo <registration-record.json 절대경로> [--dry-run]
+  ```
+  어드민 미션 생성 API의 검증 함수 3종(`checkMissionCondition`·`checkMissionConditionValue`·`findGateMissionSaveError`)을 같은 순서로
+  재사용한다. 저장 경로는 적용 탭과 같은 `missions/asset-generator/{id}.png|webp`이고 미션 행에는 `image_url`과
+  `image_source = 'agent-generator'`가 들어간다. `--undo`는 `missions`를 참조하는 외래 키 6곳(완료·참여 이력, 랭킹 스냅샷, 포인트 원장,
+  투데이 카드, 랭킹 모드)에 사용자 데이터가 없을 때만 미션 행과 파일 2개를 지운다. 배지 등록 스크립트 5개 파일은 고치지 않았다.
+  **스크립트는 사용자 컨펌 뒤 메인 세션만 `--dry-run` 없이 실행한다.**
 
 ## 9. 출력 규격과 최적화
 
@@ -269,7 +283,8 @@ code:
   (미션·컬렉션·홈피드 확장 + 윤진 신규 기획 자동 경로)
 - 선행 참조: 홈피드 자동화 [20260923_2252](../../../tickets/p2-normal/20260923_2252_Feature_홈피드-배지-미션-운영-자동화-파이프라인-1단계-상위.md)
   (컨펌→등록 흐름, 등록 기록·되돌림 SQL), 어드민 목록 공통화 [20260924_0916](../../../tickets/p2-normal/20260924_0916_Admin_어드민-목록-테이블-공통화.md)
-- 등록 묶음 형식·등록 스크립트: [REGISTRATION_BUNDLE.md](REGISTRATION_BUNDLE.md)
+- 등록 묶음 형식·등록 스크립트: [REGISTRATION_BUNDLE.md](REGISTRATION_BUNDLE.md)(배지),
+  [MISSION_REGISTRATION_BUNDLE.md](MISSION_REGISTRATION_BUNDLE.md)(미션)
 - 어드민 PRD: [admin-ui/ADMIN_PRD.md](../admin-ui/ADMIN_PRD.md)
 - 배지 아이콘 파이프라인: `.claude/skills/jam-img/SKILL.md`
 
@@ -343,6 +358,14 @@ code:
   실제 등록으로 `badges` 행(`image_source = 'agent-generator'`), 저장소 원본 PNG(입력 파일과 같은 바이트, 1280×1280)와 WebP(400×400)가 생기고
   공개 URL이 서빙됐으며, 어드민 배지 목록의 "윤진 자동" 칩·제작 경로 필터·상세 헤더 라벨이 보였다. `--undo`는 참조 검사(없음) 뒤 배지 행과
   파일 2개를 지웠고 배지 수·저장소가 시험 전과 같았다. 시험 배지는 유효 시작일을 2099년으로 두어 배지 엔진의 평가 대상에서 뺐다.
+- [20260925_1412](../../../tickets/p2-normal/20260925_1412_Infra_미션-등록묶음-포맷과-등록스크립트.md) 구현(스크립트 작성까지, 실제
+  등록은 사용자 컨펌 뒤 메인 세션): §8 미션 등록 묶음 형식과 등록 스크립트를 만들었다. 형식 정본은
+  `MISSION_REGISTRATION_BUNDLE.md`이고 `register-mission.mjs`(`tsx`, cwd는 `jam-web`)가 묶음 검증 → 이미지 업로드(원본 PNG + WebP) →
+  미션 행 insert → 등록 기록·되돌림 SQL 생성을 맡는다. 배지 등록 스크립트 5개 파일은 수정하지 않고 부품(인자 파싱·묶음 파일 읽기·UUID
+  형식·기록 파일 쓰기·시각 표기)만 import했으며, 미션 전용 부분은 `registerMission{Bundle,Flow,Record}.mjs`에 새로 썼다. 되돌림 전
+  사용자 데이터 검사 대상 6곳은 생성 타입의 외래 키에서 뽑았고 테스트가 타입과 대조한다. 예시 묶음은
+  `jam-web/scripts/asset-generator/__fixtures__/example-mission-bundle/`에 있다. 실제 등록·되돌림 확인은 머지 뒤 메인 세션이 숨김
+  시험 미션 1건으로 한다(미완).
 - 그 외는 미착수. 하위 티켓 순서는 상위 티켓의 하위 티켓 표를 따른다.
 - **상위 티켓 후속 범위 완료(2026-09-25, 카리나)**: 상위 티켓의 성공 기준 1~6을 staging(DB는 프로덕션
   공용)에서 실제 배지로 확인했다. 새 실렌더 대신 하위 티켓 완료 시점에 이미 수행한 실제 배지 검증을
