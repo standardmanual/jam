@@ -271,8 +271,9 @@ code:
 
 ## 12. 데이터 (`asset_presets`는 확정 — 티켓 20260924_2159, `badges.image_source`는 확정 — 티켓 20260924_2200, 실행은 사용자 승인 뒤 메인 세션)
 
-- `asset_presets`(마이그레이션 `185_asset_presets.sql`): `id`(uuid), `name`(text), `target_type`(text, CHECK
-  `badge` 하나만), `stage_ratio`(text, CHECK `1:1`·`4:5`·`9:16`), `layers`(jsonb — 오버레이 레이어(이미지·텍스트)
+- `asset_presets`(마이그레이션 `185_asset_presets.sql`, `target_type` CHECK는 `187_asset_presets_target_type_expand.sql`로
+  확장, 2026-09-25 jam-prod 적용 — 티켓 20260925_1405 완료 기록): `id`(uuid), `name`(text), `target_type`(text, CHECK
+  `badge`·`mission`·`collection`·`home_feed` 4종), `stage_ratio`(text, CHECK `1:1`·`4:5`·`9:16`), `layers`(jsonb — 오버레이 레이어(이미지·텍스트)
   목록과 순서만 담는다. 리본 레이어·텍스트 글자 내용은 담지 않는다, §5), `created_by`(uuid, FK 없음 — 운영 편의
   데이터), `created_at`·`updated_at`. RLS 활성화·정책 없음(service_role 전용, 어드민 API가 `getAdminUser()`로
   이미 어드민만 통과시킨다). 이미지 레이어의 원본 파일은 `images` 버킷의
