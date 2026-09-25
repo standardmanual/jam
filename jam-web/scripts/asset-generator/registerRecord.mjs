@@ -171,8 +171,19 @@ function undoCommand(recordPath) {
  */
 export function formatDryRunSummary({ bundle, payload, errors, dbChecks, webp, recordDir }) {
   const lines = []
+  // DB 읽기 검사를 건너뛴 요약(서비스 키 없음)은 중복·존재 검사가 빠진 결과라, 첫 줄에서 «통과»만 읽히지 않게 함께 적는다(티켓 20260925_0542).
+  const dbChecksSkipped = dbChecks.some((check) => check.status === '건너뜀')
   lines.push('== 배지 등록 묶음 검증 (--dry-run) ==')
-  lines.push(errors.length === 0 ? '결과: 통과' : `결과: 실패 (${errors.length}건)`)
+  lines.push(
+    errors.length > 0
+      ? `결과: 실패 (${errors.length}건)`
+      : dbChecksSkipped
+        ? '결과: 통과 (DB 읽기 검사는 건너뜀 — 서비스 키 없음)'
+        : '결과: 통과'
+  )
+  if (dbChecksSkipped) {
+    lines.push('※ DB 읽기 검사(이름 중복·트라이브·컬렉션 존재)가 빠진 요약이에요. 컨펌 근거로 쓰지 말고, 서비스 키가 있는 환경(메인 폴더)에서 다시 돌려요.')
+  }
 
   if (errors.length > 0) {
     lines.push('', '[고쳐야 할 점]')

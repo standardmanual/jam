@@ -296,6 +296,26 @@ describe('formatDryRunSummary', () => {
     expect(text).toContain('DB·저장소에는 아무것도 쓰지 않았어요.');
   });
 
+  it('DB 읽기 검사를 건너뛰었으면 첫 줄에 건너뜀을 적고 다시 돌리라는 안내를 넣는다', () => {
+    const text = formatDryRunSummary({ bundle, payload, errors: [], dbChecks, webp: { bytes: 900 }, recordDir: '/tmp/bundle' });
+    const lines = text.split('\n');
+    expect(lines[1]).toBe('결과: 통과 (DB 읽기 검사는 건너뜀 — 서비스 키 없음)');
+    expect(lines[2]).toContain('컨펌 근거로 쓰지 말고');
+    expect(lines[2]).toContain('서비스 키가 있는 환경(메인 폴더)에서 다시 돌려요');
+  });
+
+  it('건너뜀이 없으면(키가 있으면) 첫 줄이 기존과 같고 안내가 없다', () => {
+    const ran = [
+      { label: '이름 중복', status: '통과', detail: '' },
+      { label: '트라이브 존재', status: '해당 없음', detail: '' },
+    ];
+    const text = formatDryRunSummary({ bundle, payload, errors: [], dbChecks: ran, webp: { bytes: 900 }, recordDir: '/tmp/bundle' });
+    const lines = text.split('\n');
+    expect(lines[1]).toBe('결과: 통과');
+    expect(text).not.toContain('컨펌 근거로 쓰지 말고');
+    expect(text).not.toContain('건너뜀 — 서비스 키 없음');
+  });
+
   it('실패하면 사유를 먼저 보여 주고, 묶음이 없으면 사유만 보여 준다', () => {
     const failed = formatDryRunSummary({
       bundle,
