@@ -115,6 +115,18 @@ describe('validateBundle — 필수 항목·형식', () => {
     }
   });
 
+  it('작성자·배지 이름에 줄바꿈이나 제어 문자가 있으면 거절한다(SQL 주석 주입 방지)', () => {
+    for (const bad of ['윤진\nDROP TABLE x;', '윤진\r\nx', '윤진\u2028x', '윤진\u0000x', '윤진\tx']) {
+      const a = validRaw();
+      a.author = bad;
+      expect(validate(a).errors).toContain('author: 줄바꿈이나 제어 문자를 쓸 수 없어요(한 줄로 적어 주세요).');
+      const b = validRaw();
+      b.badge.name = bad;
+      expect(validate(b).errors).toContain('badge.name: 줄바꿈이나 제어 문자를 쓸 수 없어요(한 줄로 적어 주세요).');
+    }
+    expect(validate(validRaw()).errors).toEqual([]);
+  });
+
   it('최상위가 객체가 아니면 거절한다', () => {
     expect(validate([]).errors).toEqual(['묶음 파일의 최상위는 객체여야 해요.']);
   });

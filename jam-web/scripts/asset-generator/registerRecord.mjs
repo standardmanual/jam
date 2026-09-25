@@ -73,6 +73,12 @@ function sqlString(text) {
   return `'${text.replace(/'/g, "''")}'`
 }
 
+/** SQL `--` 주석에 넣는 값을 한 줄로 만든다. 묶음 검증이 개행을 거절하지만, 기록 파일은 커밋되어 다시 실행될 수 있어
+ * 주석 쪽에서도 한 번 더 막는다(개행이 있으면 뒷부분이 주석 밖의 문장이 된다). */
+function commentSafe(value) {
+  return String(value).replace(/[\u0000-\u001f\u007f\u0085\u2028\u2029]+/g, ' ')
+}
+
 /**
  * 등록 기록 객체(`registration-record.json`)를 만든다.
  * `registered_at`은 KST(+09:00) ISO 문자열이다.
@@ -120,8 +126,8 @@ export function buildRegistrationSql({ payload, record }) {
   const columns = Object.keys(payload)
   const lines = [
     '-- 에셋 제너레이터 에이전트 배지 등록 기록 (register-badge.mjs가 만든 파일, 티켓 20260924_2202)',
-    `-- 묶음: ${record.bundle_id} / 작성자: ${record.author} / 등록 시각(KST): ${record.registered_at}`,
-    `-- 배지: ${record.badge.name} (${record.badge.id})`,
+    `-- 묶음: ${commentSafe(record.bundle_id)} / 작성자: ${commentSafe(record.author)} / 등록 시각(KST): ${commentSafe(record.registered_at)}`,
+    `-- 배지: ${commentSafe(record.badge.name)} (${commentSafe(record.badge.id)})`,
     '-- 이미 등록이 끝난 기록이에요. 같은 id가 있으면 아무 일도 하지 않아요(ON CONFLICT DO NOTHING).',
     `-- 이미지 파일(${record.storage.bucket} 버킷): ${record.storage.png_path}, ${record.storage.webp_path}`,
     '--   저장소 파일은 SQL로 지울 수 없어요. 되돌릴 때는 아래 명령을 써요.',

@@ -166,6 +166,20 @@ describe('buildRegistrationRecord', () => {
   });
 });
 
+describe('buildRegistrationSql — 주석 주입 방어', () => {
+  it('작성자·이름에 개행이 섞여도 주석 밖에 실행 가능한 줄이 생기지 않는다', () => {
+    const bundle = sampleBundle();
+    const record = sampleRecord(bundle);
+    record.author = '윤진\nDROP TABLE x;';
+    record.badge.name = 'ok\r\nDROP TABLE public.badges;--';
+    const sql = buildRegistrationSql({ payload: buildBadgeInsertPayload(bundle.badge, { id: BADGE_ID, imageUrl: IMAGE_URL }), record });
+    const executable = sql.split(/\r\n|\n|\r|\u2028|\u2029/).filter((l) => l.trim() && !l.trim().startsWith('--'));
+    expect(executable.some((l) => /DROP\s+TABLE/i.test(l))).toBe(false);
+    // 값은 한 줄로 이어진 주석 안에 그대로 남는다(사람이 보고 이상함을 알아챌 수 있게)
+    expect(sql).toContain('-- 배지: ok DROP TABLE public.badges;--');
+  });
+});
+
 describe('buildRegistrationSql', () => {
   const bundle = sampleBundle();
   const payload = buildBadgeInsertPayload(bundle.badge, { id: BADGE_ID, imageUrl: IMAGE_URL });
