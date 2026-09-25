@@ -56,6 +56,34 @@ describe('GET', () => {
     expect(res.status).toBe(404)
   })
 
+  it('target_type이 mission인 프리셋을 불러오면 이미지·텍스트 레이어 구성이 그대로 복원된다(티켓 20260925_1406)', async () => {
+    presetsBuilder = makeQueryBuilder({
+      data: {
+        id: 'p2',
+        name: '미션 프리셋 A',
+        target_type: 'mission',
+        stage_ratio: '1:1',
+        layers: [
+          { type: 'image', id: 'i1', assetUrl: 'https://cdn.test.jam.app/images/i1.png', xPct: 50, yPct: 50, widthPct: 30, heightPct: 30, rotationDeg: 0, opacityPct: 100 },
+          { type: 'text', id: 't1', content: '', font: { family: 'system-ui', weight: 400 } },
+        ],
+        created_by: 'admin-id',
+        created_at: 't1',
+        updated_at: 't1',
+      },
+      error: null,
+    })
+    fromMock.mockImplementation(() => presetsBuilder)
+
+    const res = await GET(req(), params('p2'))
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.preset.targetType).toBe('mission')
+    expect(body.preset.layers).toHaveLength(2)
+    expect(body.preset.layers[0]).toMatchObject({ type: 'image', assetUrl: 'https://cdn.test.jam.app/images/i1.png' })
+    expect(body.preset.layers[1]).toMatchObject({ type: 'text', content: '' })
+  })
+
   it('텍스트 content가 빈 문자열로 복원된 레이어를 돌려준다', async () => {
     presetsBuilder = makeQueryBuilder({
       data: {
