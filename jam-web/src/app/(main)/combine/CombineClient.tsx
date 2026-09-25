@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import TopNav from '@/components/ui/TopNav'
 import { useToast } from '@/components/ui/Toast'
 import BottomSheet from '@/components/ui/BottomSheet'
@@ -419,11 +419,14 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
                             needed ? 'grayscale opacity-40' : '',
                           ].join(' ')}
                         >
-                          {row.imageUrl ? (
-                            <Image src={row.imageUrl} alt={row.name} width={64} height={64} className="object-contain w-full h-full" />
-                          ) : (
-                            <PackageIcon className="w-6 h-6 text-text/40" />
-                          )}
+                          <SafeImage
+                            src={row.imageUrl}
+                            alt={row.name}
+                            width={64}
+                            height={64}
+                            className="object-contain w-full h-full"
+                            fallback={<PackageIcon className="w-6 h-6 text-text/40" />}
+                          />
                         </div>
                         <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-text text-center line-clamp-2">
                           {row.name}

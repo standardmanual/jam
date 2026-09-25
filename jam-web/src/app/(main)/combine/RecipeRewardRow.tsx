@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import ListRowCard from '@/components/ui/ListRowCard'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { CoinIcon, PackageIcon } from '@/components/ui/icons'
@@ -47,17 +47,14 @@ export default function RecipeRewardRow({ title, slotCount, badges, points, onCl
   const icon =
     hasBadges && primary ? (
       <div className="relative w-10 h-10 rounded-[var(--radius-pill)] bg-surface flex items-center justify-center overflow-hidden">
-        {primary.image_url ? (
-          <Image
-            src={primary.image_url}
-            alt={primary.name}
-            width={40}
-            height={40}
-            className="object-contain w-full h-full"
-          />
-        ) : (
-          <PackageIcon className="w-5 h-5 text-text/40" />
-        )}
+        <SafeImage
+          src={primary.image_url}
+          alt={primary.name}
+          width={40}
+          height={40}
+          className="object-contain w-full h-full"
+          fallback={<PackageIcon className="w-5 h-5 text-text/40" />}
+        />
       </div>
     ) : (
       <div className="w-10 h-10 rounded-[var(--radius-pill)] bg-surface flex items-center justify-center">

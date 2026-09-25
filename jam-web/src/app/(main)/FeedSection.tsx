@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import type { ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
 import { formatRelativeTime } from '@/lib/utils'
 import { cssDurationMs } from '@/lib/motion'
@@ -347,13 +347,18 @@ export function DetailSheet({
         <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-[var(--spacing-24)]" />
         <div className="flex justify-center mb-[var(--spacing-16)]">
           <div className="relative">
-            {badgeImage ? (
-              <Image src={badgeImage} alt={title} width={112} height={112} className="w-28 h-28 rounded-[var(--radius-cards)] object-cover" />
-            ) : (
-              <div className="w-28 h-28 rounded-[var(--radius-cards)] bg-surface-elevated text-text flex items-center justify-center">
-                <EventIcon type={item.event_type} className="w-12 h-12" />
-              </div>
-            )}
+            <SafeImage
+              src={badgeImage}
+              alt={title}
+              width={112}
+              height={112}
+              className="w-28 h-28 rounded-[var(--radius-cards)] object-cover"
+              fallback={
+                <div className="w-28 h-28 rounded-[var(--radius-cards)] bg-surface-elevated text-text flex items-center justify-center">
+                  <EventIcon type={item.event_type} className="w-12 h-12" />
+                </div>
+              }
+            />
             {earnCount != null && <EarnCountBadge count={earnCount} />}
           </div>
         </div>
@@ -436,13 +441,18 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
       onClick={onClick}
       icon={
         <div className="relative">
-          {badgeImage ? (
-            <Image src={badgeImage} alt={title} width={40} height={40} className="w-10 h-10 rounded-[var(--radius-cards)] object-cover" />
-          ) : (
-            <div className="w-10 h-10 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center">
-              <EventIcon type={item.event_type} className="w-5 h-5 text-text" />
-            </div>
-          )}
+          <SafeImage
+            src={badgeImage}
+            alt={title}
+            width={40}
+            height={40}
+            className="w-10 h-10 rounded-[var(--radius-cards)] object-cover"
+            fallback={
+              <div className="w-10 h-10 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center">
+                <EventIcon type={item.event_type} className="w-5 h-5 text-text" />
+              </div>
+            }
+          />
           {earnCount != null && <EarnCountBadge count={earnCount} />}
         </div>
       }
@@ -670,13 +680,14 @@ function ActivityGroupCard({
         {shownThumbs.length > 0 && (
           <span className="inline-flex items-center gap-1 mt-1" aria-hidden="true">
             {shownThumbs.map((src, i) => (
-              <Image
+              <SafeImage
                 key={`${src}_${i}`}
                 src={src}
                 alt=""
                 width={24}
                 height={24}
                 className="w-6 h-6 rounded-[var(--radius-tags)] object-cover"
+                fallback={<span className="w-6 h-6 rounded-[var(--radius-tags)] bg-white/8" />}
               />
             ))}
             {restCount > 0 && (

@@ -1,6 +1,6 @@
 'use client'
 
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import Link from 'next/link'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
@@ -78,17 +78,14 @@ export default function BadgeTrophyGridCard({ name, imageUrl, rarity, level = nu
   return (
     <Link href={href} className={BASE} style={CARD_STYLE}>
       <div className={thumbnailCls}>
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={name}
-            width={90}
-            height={90}
-            className="w-full h-full object-contain p-1"
-          />
-        ) : (
-          <MedalIcon className="w-10 h-10 text-text/30" />
-        )}
+        <SafeImage
+          src={imageUrl}
+          alt={name}
+          width={90}
+          height={90}
+          className="w-full h-full object-contain p-1"
+          fallback={<MedalIcon className="w-10 h-10 text-text/30" />}
+        />
       </div>
       <p className="text-[13px] font-bold text-text text-center w-full leading-tight pt-[var(--spacing-8)] [overflow-wrap:anywhere]">
         {name}

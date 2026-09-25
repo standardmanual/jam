@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { MedalIcon, ChevronRightIcon, PackageIcon } from '@/components/ui/icons'
@@ -715,11 +715,14 @@ function PoiCard({
         pendingDropItem ? (
           <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
             <div className="w-20 h-20 rounded-[var(--radius-cards)] bg-white/[0.04] overflow-hidden flex items-center justify-center">
-              {pendingDropItem.badgeImageUrl ? (
-                <Image src={pendingDropItem.badgeImageUrl} alt={pendingDropItem.badgeName} width={80} height={80} className="w-full h-full object-contain p-1" />
-              ) : (
-                <MedalIcon className="w-8 h-8 text-text/40" />
-              )}
+              <SafeImage
+                src={pendingDropItem.badgeImageUrl}
+                alt={pendingDropItem.badgeName}
+                width={80}
+                height={80}
+                className="w-full h-full object-contain p-1"
+                fallback={<MedalIcon className="w-8 h-8 text-text/40" />}
+              />
             </div>
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center whitespace-pre-line">
               {t(d.drops.confirmDrop, { name: pendingDropItem.badgeName })}
@@ -856,11 +859,14 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
           overflow-hidden이 모서리에 걸치는 서클을 잘라낸다. */}
       <div className="relative flex-shrink-0">
         <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden bg-white/[0.06] flex items-center justify-center">
-          {imageUrl ? (
-            <Image src={imageUrl} alt={name} width={44} height={44} className="w-full h-full object-contain p-0.5" />
-          ) : (
-            <MedalIcon className="w-5 h-5 text-text/40" />
-          )}
+          <SafeImage
+            src={imageUrl}
+            alt={name}
+            width={44}
+            height={44}
+            className="w-full h-full object-contain p-0.5"
+            fallback={<MedalIcon className="w-5 h-5 text-text/40" />}
+          />
         </div>
         {showCount && (
           // BadgeGridCard의 ×N 카운터 필과 같은 색 토큰(bg-surface-elevated + border)이지만
