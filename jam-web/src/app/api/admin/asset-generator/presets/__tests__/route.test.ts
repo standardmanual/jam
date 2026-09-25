@@ -83,6 +83,10 @@ function postReq(form: FormData): NextRequest {
   return new NextRequest('https://j-a-m.app/api/admin/asset-generator/presets', { method: 'POST', body: form })
 }
 
+function getReq(query = ''): NextRequest {
+  return new NextRequest(`https://j-a-m.app/api/admin/asset-generator/presets${query}`)
+}
+
 beforeEach(() => {
   presetsBuilder = makeQueryBuilder({ data: null, error: null })
   fromMock.mockReset().mockImplementation(() => presetsBuilder)
@@ -94,7 +98,7 @@ describe('GET', () => {
   it('무권한이면 403', async () => {
     const { getAdminUser } = await import('@/lib/admin/auth')
     vi.mocked(getAdminUser).mockResolvedValueOnce(null)
-    const res = await GET()
+    const res = await GET(getReq())
     expect(res.status).toBe(403)
   })
 
@@ -104,10 +108,23 @@ describe('GET', () => {
       error: null,
     })
     fromMock.mockImplementation(() => presetsBuilder)
-    const res = await GET()
+    const res = await GET(getReq())
     const body = await res.json()
     expect(res.status).toBe(200)
     expect(body.presets).toEqual([{ id: 'p1', name: '프리셋 A', stageRatio: '1:1', createdAt: 't1', updatedAt: 't2' }])
+  })
+
+  it('targetType 쿼리가 있으면 그 유형으로 필터링한다(티켓 20260925_1405)', async () => {
+    presetsBuilder = makeQueryBuilder({ data: [], error: null })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const res = await GET(getReq('?targetType=mission'))
+    expect(res.status).toBe(200)
+    expect(presetsBuilder.eq).toHaveBeenCalledWith('target_type', 'mission')
+  })
+
+  it('targetType 쿼리가 올바르지 않으면 400', async () => {
+    const res = await GET(getReq('?targetType=not-a-type'))
+    expect(res.status).toBe(400)
   })
 })
 
@@ -116,6 +133,16 @@ describe('POST — 신규 저장', () => {
     const form = new FormData()
     form.append('name', '  ')
     form.append('stageRatio', '1:1')
+    form.append('layers', '[]')
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(400)
+  })
+
+  it('대상 유형이 없거나 올바르지 않으면 400', async () => {
+    const form = new FormData()
+    form.append('name', '프리셋 A')
+    form.append('stageRatio', '1:1')
+    form.append('targetType', 'not-a-type')
     form.append('layers', '[]')
     const res = await POST(postReq(form))
     expect(res.status).toBe(400)
@@ -132,6 +159,7 @@ describe('POST — 신규 저장', () => {
     const form = new FormData()
     form.append('name', '프리셋 A')
     form.append('stageRatio', '1:1')
+    form.append('targetType', 'badge')
     form.append('layers', JSON.stringify(layers))
     form.append('image_i1', new File(['fake-png-bytes'], 'i1.png', { type: 'image/png' }))
 
@@ -164,6 +192,7 @@ describe('POST — 신규 저장', () => {
     const form = new FormData()
     form.append('name', '프리셋 A')
     form.append('stageRatio', '1:1')
+    form.append('targetType', 'badge')
     form.append('layers', JSON.stringify(layers))
 
     const res = await POST(postReq(form))
@@ -178,6 +207,7 @@ describe('POST — 신규 저장', () => {
     const form = new FormData()
     form.append('name', '프리셋 A')
     form.append('stageRatio', '1:1')
+    form.append('targetType', 'badge')
     form.append('layers', JSON.stringify(layers))
 
     const res = await POST(postReq(form))
@@ -195,13 +225,14 @@ describe('POST — 덮어쓰기', () => {
     form.append('id', 'existing-id')
     form.append('name', '프리셋 A')
     form.append('stageRatio', '1:1')
+    form.append('targetType', 'badge')
     form.append('layers', '[]')
 
     const res = await POST(postReq(form))
     expect(res.status).toBe(404)
   })
 
-  it('존재하는 프리셋이면 update payload에 새 이름과 stage_ratio를 담는다', async () => {
+  it('존재하는 프리셋이면 update payload에 새 이름·target_type·stage_ratio를 담는다', async () => {
     let call = 0
     presetsBuilder = makeQueryBuilder({ data: { id: 'existing-id' }, error: null })
     fromMock.mockImplementation(() => {
@@ -219,12 +250,14 @@ describe('POST — 덮어쓰기', () => {
     form.append('id', 'existing-id')
     form.append('name', '프리셋 B')
     form.append('stageRatio', '4:5')
+    form.append('targetType', 'mission')
     form.append('layers', '[]')
 
     const res = await POST(postReq(form))
     expect(res.status).toBe(200)
-    const updatePayload = presetsBuilder.updatePayload as { name: string; stage_ratio: string }
+    const updatePayload = presetsBuilder.updatePayload as { name: string; target_type: string; stage_ratio: string }
     expect(updatePayload.name).toBe('프리셋 B')
+    expect(updatePayload.target_type).toBe('mission')
     expect(updatePayload.stage_ratio).toBe('4:5')
   })
 })

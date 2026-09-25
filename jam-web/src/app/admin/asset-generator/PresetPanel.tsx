@@ -18,6 +18,13 @@
  * `applyGeneratedImage.ts`가 이미 적용 라우트에서 쓰는 값)를 그대로 재사용했다 — 프리셋
  * 하나에 이미지 레이어가 여러 개면 전체 요청 크기는 그 배수가 될 수 있지만, 개별 파일 상한을
  * 넘지 않는 한 라우트가 그대로 받아들인다(전체 요청 크기 상한은 별도로 두지 않았다).
+ *
+ * 대상 유형 선택(티켓 20260925_1405): `targetType`은 저장할 프리셋의 유형이자 "현재 작업 중인
+ * 콘텐츠 유형"이다. 이 화면은 아직 배지 제작 화면에서만 쓰이지만(뒤 하위 티켓이 미션·컬렉션·
+ * 홈피드 제작 화면을 연다), 프리셋은 유형 하나에만 속하므로(상위 티켓 20260925_1404 결정 2)
+ * 저장·불러오기 단계에서 미리 유형을 고를 수 있게 뒀다. 유형을 바꾸면 불러오기 목록도 그
+ * 유형으로 다시 필터링되고, 불러온 프리셋을 덮어쓰다 다른 유형으로 잘못 바꾸지 않도록
+ * 활성 프리셋 선택이 풀린다.
  */
 import { useEffect, useState } from 'react'
 import { IconTrash } from '@tabler/icons-react'
@@ -33,8 +40,16 @@ import {
 } from '@/components/admin/ui/alert-dialog'
 import { Button } from '@/components/admin/ui/button'
 import { Input } from '@/components/admin/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
-import type { ImageLayerConfig, OverlayLayerConfig, StageRatio } from '@/lib/asset-generator'
+import {
+  PRESET_TARGET_TYPES,
+  PRESET_TARGET_TYPE_LABELS,
+  type ImageLayerConfig,
+  type OverlayLayerConfig,
+  type PresetTargetType,
+  type StageRatio,
+} from '@/lib/asset-generator'
 
 const MAX_NAME_LENGTH = 60
 
@@ -55,12 +70,14 @@ interface PresetPanelProps {
 async function buildSaveFormData(
   name: string,
   stageRatio: StageRatio,
+  targetType: PresetTargetType,
   overlayLayers: OverlayLayerConfig[],
   presetId: string | null
 ): Promise<FormData> {
   const form = new FormData()
   form.append('name', name)
   form.append('stageRatio', stageRatio)
+  form.append('targetType', targetType)
   if (presetId) form.append('id', presetId)
 
   const imageLayers = overlayLayers.filter((l): l is ImageLayerConfig => l.type === 'image')
@@ -91,6 +108,9 @@ export default function PresetPanel({ stageRatio, overlayLayers, onLoadPreset }:
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('')
+  // 저장할 대상 유형이자 "현재 작업 중인 콘텐츠 유형"이기도 하다 — 불러오기 목록을 이 값으로
+  // 필터링한다(티켓 20260925_1405). 기본값 'badge'는 지금 이 화면을 쓰는 유일한 제작 경로다.
+  const [targetType, setTargetType] = useState<PresetTargetType>('badge')
   const [activePresetId, setActivePresetId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [loadingId, setLoadingId] = useState<string | null>(null)
@@ -98,11 +118,11 @@ export default function PresetPanel({ stageRatio, overlayLayers, onLoadPreset }:
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  async function loadList() {
+  async function loadList(forTargetType: PresetTargetType) {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/admin/asset-generator/presets')
+      const res = await fetch(`/api/admin/asset-generator/presets?targetType=${forTargetType}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '목록을 불러오지 못했어요.')
       setPresets(data.presets ?? [])
@@ -115,20 +135,28 @@ export default function PresetPanel({ stageRatio, overlayLayers, onLoadPreset }:
 
   useEffect(() => {
     // 이펙트 본문에서 곧바로 setState를 동기 호출하면 react-hooks/set-state-in-effect에
-    // 걸려 마이크로태스크로 지연한다(ShaderLabSavePanel.tsx와 동일 패턴).
-    Promise.resolve().then(() => loadList())
-  }, [])
+    // 걸려 마이크로태스크로 지연한다(ShaderLabSavePanel.tsx와 동일 패턴). targetType이 바뀔
+    // 때마다 다시 불러와 "현재 작업 중인 콘텐츠 유형"으로 목록을 필터링한다(티켓 20260925_1405).
+    Promise.resolve().then(() => loadList(targetType))
+  }, [targetType])
+
+  // 대상 유형을 바꾸면 불러온 프리셋(다른 유형)을 덮어쓰지 않도록 활성 프리셋 선택을 푼다 —
+  // 이름·레이어 구성은 그대로 둬 다른 유형으로 새로 저장하는 것도 가능하게 한다.
+  function handleTargetTypeChange(value: PresetTargetType) {
+    setTargetType(value)
+    setActivePresetId(null)
+  }
 
   async function saveOrOverwrite(presetId: string | null) {
     setSaving(true)
     setError(null)
     try {
-      const form = await buildSaveFormData(name.trim(), stageRatio, overlayLayers, presetId)
+      const form = await buildSaveFormData(name.trim(), stageRatio, targetType, overlayLayers, presetId)
       const res = await fetch('/api/admin/asset-generator/presets', { method: 'POST', body: form })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '저장에 실패했어요.')
       setActivePresetId(data.preset?.id ?? null)
-      await loadList()
+      await loadList(targetType)
     } catch (e) {
       setError(e instanceof Error ? e.message : '저장에 실패했어요.')
     } finally {
@@ -165,6 +193,7 @@ export default function PresetPanel({ stageRatio, overlayLayers, onLoadPreset }:
       onLoadPreset(data.preset.stageRatio, data.preset.layers ?? [])
       setActivePresetId(data.preset.id)
       setName(data.preset.name)
+      setTargetType(data.preset.targetType)
     } catch (e) {
       setError(e instanceof Error ? e.message : '불러오기에 실패했어요.')
     } finally {
@@ -195,6 +224,19 @@ export default function PresetPanel({ stageRatio, overlayLayers, onLoadPreset }:
 
   return (
     <div className="flex flex-col gap-3">
+      <Select value={targetType} onValueChange={(v) => handleTargetTypeChange(v as PresetTargetType)}>
+        <SelectTrigger aria-label="대상 유형">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {PRESET_TARGET_TYPES.map((t) => (
+            <SelectItem key={t} value={t}>
+              {PRESET_TARGET_TYPE_LABELS[t]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
       <div className="flex gap-2">
         <Input
           placeholder="프리셋 이름"

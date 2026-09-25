@@ -3,7 +3,7 @@
  * 실행: cd jam-web && npx vitest run src/lib/asset-generator/__tests__/presetSerialize.test.ts
  */
 import { describe, it, expect } from 'vitest';
-import { deserializePresetLayers, serializePresetLayers } from '../presetSerialize';
+import { deserializePresetLayers, isPresetTargetType, serializePresetLayers } from '../presetSerialize';
 import type { ImageLayerConfig, OverlayLayerConfig, TextLayerConfig } from '../types';
 
 function makeImageLayer(id: string, assetUrl: string): ImageLayerConfig {
@@ -78,6 +78,22 @@ describe('deserializePresetLayers', () => {
     expect(result.map((l) => l.id)).toEqual(['i1', 't1']);
     expect((result[1] as TextLayerConfig).content).toBe('');
     expect((result[0] as ImageLayerConfig).assetUrl).toBe('https://cdn.example.com/i1.png');
+  });
+});
+
+describe('isPresetTargetType', () => {
+  it.each(['badge', 'mission', 'collection', 'home_feed'])('%s는 유효한 대상 유형이다', (value) => {
+    expect(isPresetTargetType(value)).toBe(true);
+  });
+
+  it('허용되지 않은 문자열은 유효하지 않다', () => {
+    expect(isPresetTargetType('item_book')).toBe(false);
+  });
+
+  it('문자열이 아니면 유효하지 않다', () => {
+    expect(isPresetTargetType(null)).toBe(false);
+    expect(isPresetTargetType(undefined)).toBe(false);
+    expect(isPresetTargetType(123)).toBe(false);
   });
 });
 
