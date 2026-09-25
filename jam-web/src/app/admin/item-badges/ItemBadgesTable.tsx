@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { createColumnHelper, useTable, type ColumnVisibilityState } from '@tanstack/react-table'
 import { toast } from 'sonner'
 import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/data-table/features'
@@ -56,7 +56,7 @@ export function ItemBadgesTable({ badges, issuedCountByBadge, totalCount }: Item
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 flex-shrink-0 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
                 {row.original.image_url ? (
-                  <Image
+                  <SafeImage
                     src={row.original.image_url}
                     alt={row.original.name}
                     width={40}

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { createColumnHelper, useTable, type ColumnVisibilityState } from '@tanstack/react-table'
 import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/data-table/features'
 import { DataTable } from '@/components/admin/data-table/data-table'
@@ -57,7 +57,7 @@ export function DropExclusionBadgesTable({
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 shrink-0 rounded bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
                 {row.original.image_url ? (
-                  <Image
+                  <SafeImage
                     src={row.original.image_url}
                     alt={row.original.name}
                     width={32}

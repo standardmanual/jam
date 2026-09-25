@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { createColumnHelper, useTable, type ColumnVisibilityState } from '@tanstack/react-table'
 import { toast } from 'sonner'
 import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/data-table/features'
@@ -70,7 +70,7 @@ export function OrphanedItemsTable({ rows, totalCount }: OrphanedItemsTableProps
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 flex-shrink-0 rounded bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
                   {r.badgeImageUrl ? (
-                    <Image src={r.badgeImageUrl} alt={r.badgeName} width={32} height={32} className="w-full h-full object-contain" />
+                    <SafeImage src={r.badgeImageUrl} alt={r.badgeName} width={32} height={32} className="w-full h-full object-contain" />
                   ) : (
                     <span className="text-gray-400 text-[10px]">—</span>
                   )}

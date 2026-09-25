@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { useRouter } from 'next/navigation'
 import { createColumnHelper, useTable, type ColumnVisibilityState } from '@tanstack/react-table'
 import { toast } from 'sonner'
@@ -117,7 +117,7 @@ export default function BadgesTable({ badges, tribeMap = new Map(), totalCount }
           cell: ({ row }) => (
             <div className="w-10 h-10 rounded-md bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
               {row.original.image_url ? (
-                <Image
+                <SafeImage
                   src={row.original.image_url}
                   alt={row.original.name}
                   width={40}

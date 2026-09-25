@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRow, InventoryItemRow, InventoryRow, PoiDropSource } from '@/types/database'
 import {
@@ -74,7 +74,7 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
       <div className="flex items-center gap-3">
         <div className="w-14 h-14 flex-shrink-0 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
           {badge.image_url ? (
-            <Image src={badge.image_url} alt={badge.name} width={56} height={56} className="w-full h-full object-contain" />
+            <SafeImage src={badge.image_url} alt={badge.name} width={56} height={56} className="w-full h-full object-contain" />
           ) : (
             <span className="text-gray-400 text-xs">—</span>
           )}

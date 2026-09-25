@@ -23,7 +23,7 @@
  * 이 티켓 범위에서 리팩터링하지 않는다).
  */
 import { useState } from 'react'
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -255,8 +255,8 @@ export default function ApplyTab({ viewportRef }: ApplyTabProps) {
           <div className="flex items-center gap-3 rounded-lg border border-border bg-muted p-3">
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-white">
               {targetImageUrl ? (
-                // 홈피드 기존 카드는 외부 호스트 이미지가 많아 next.config 허용 목록 밖일 수 있다
-                <Image src={targetImageUrl} alt={targetName} fill unoptimized className="object-contain" />
+                // 홈피드 기존 카드는 외부 호스트 이미지가 많아 허용 목록 밖일 수 있다 — SafeImage가 일반 <img>로 처리한다
+                <SafeImage src={targetImageUrl} alt={targetName} className="object-contain" />
               ) : (
                 <span className="flex h-full w-full items-center justify-center text-[11px] text-muted-foreground">
                   없음

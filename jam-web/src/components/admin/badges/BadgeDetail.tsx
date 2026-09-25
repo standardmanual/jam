@@ -2,7 +2,7 @@
 
 import { Fragment, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import {
@@ -292,7 +292,7 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
         <ReadOnlyItem label="배지 이미지">
           <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
             {badge.image_url ? (
-              <Image src={badge.image_url} alt={badge.name} fill className="object-contain" />
+              <SafeImage src={badge.image_url} alt={badge.name} className="object-contain" />
             ) : (
               <span className="text-xs text-muted-foreground">이미지 없음</span>
             )}
