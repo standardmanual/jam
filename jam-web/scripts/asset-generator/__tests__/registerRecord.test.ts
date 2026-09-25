@@ -17,6 +17,8 @@ import {
 } from '../registerRecord.mjs';
 
 const BADGE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+// 참조 확인 표의 원본은 registerFlow.mjs다. 여기서는 SQL 주석에 표 이름이 그대로 들어가는지만 본다.
+const UNDO_TABLES = ['user_activity_badges', 'item_books', 'item_books', 'missions'];
 const IMAGE_URL = 'https://cdn.test/storage/v1/object/public/images/badges/asset-generator/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.webp?v=1790300000000';
 
 interface SampleBundle {
@@ -174,7 +176,7 @@ describe('buildRegistrationSql — 주석 주입 방어', () => {
     const record = sampleRecord(bundle);
     record.author = '윤진\nDROP TABLE x;';
     record.badge.name = 'ok\r\nDROP TABLE public.badges;--';
-    const sql = buildRegistrationSql({ payload: buildBadgeInsertPayload(bundle.badge, { id: BADGE_ID, imageUrl: IMAGE_URL }), record });
+    const sql = buildRegistrationSql({ payload: buildBadgeInsertPayload(bundle.badge, { id: BADGE_ID, imageUrl: IMAGE_URL }), record, undoTables: UNDO_TABLES });
     const executable = sql.split(/\r\n|\n|\r|\u2028|\u2029/).filter((l) => l.trim() && !l.trim().startsWith('--'));
     expect(executable.some((l) => /DROP\s+TABLE/i.test(l))).toBe(false);
     // 값은 한 줄로 이어진 주석 안에 그대로 남는다(사람이 보고 이상함을 알아챌 수 있게)
@@ -188,10 +190,10 @@ describe('buildRegistrationSql — 모든 주석 줄이 한 줄 (티켓 20260925
   function build(overrides: (record: ReturnType<typeof sampleRecord>) => void) {
     const bundle = sampleBundle();
     const payload = buildBadgeInsertPayload(bundle.badge, { id: BADGE_ID, imageUrl: IMAGE_URL });
-    const clean = buildRegistrationSql({ payload, record: sampleRecord(bundle) });
+    const clean = buildRegistrationSql({ payload, record: sampleRecord(bundle), undoTables: UNDO_TABLES });
     const record = sampleRecord(bundle);
     overrides(record);
-    return { clean, poisoned: buildRegistrationSql({ payload, record }) };
+    return { clean, poisoned: buildRegistrationSql({ payload, record, undoTables: UNDO_TABLES }) };
   }
 
   // 줄 구분자는 '\n' 하나뿐이어야 한다(개행 계열·제어 문자가 남으면 그 뒤가 주석 밖 문장이 된다).
@@ -232,7 +234,7 @@ describe('buildRegistrationSql — 모든 주석 줄이 한 줄 (티켓 20260925
 describe('buildRegistrationSql', () => {
   const bundle = sampleBundle();
   const payload = buildBadgeInsertPayload(bundle.badge, { id: BADGE_ID, imageUrl: IMAGE_URL });
-  const sql = buildRegistrationSql({ payload, record: sampleRecord(bundle) });
+  const sql = buildRegistrationSql({ payload, record: sampleRecord(bundle), undoTables: UNDO_TABLES });
 
   it('등록과 동등한 INSERT 문을 만든다(컬럼 순서와 값 순서가 같다)', () => {
     expect(sql).toContain('INSERT INTO public.badges (');
@@ -257,6 +259,10 @@ describe('buildRegistrationSql', () => {
     expect(lines[markerIndex + 1]).toBe(`-- delete from public.badges where id = '${BADGE_ID}';`);
     // 마커 아래는 전부 SQL 주석이다(파일을 그대로 실행해도 지우지 않는다).
     for (const line of lines.slice(markerIndex)) expect(line.startsWith('--')).toBe(true);
+  });
+
+  it('되돌림 주석에 참조 확인 표 이름을 중복 없이 적는다(넘겨받은 목록이 원본)', () => {
+    expect(sql).toContain('-- (이 SQL만으로는 저장소 파일이 남아요. user_activity_badges · item_books · missions에 이 id가 이미 붙었다면');
   });
 
   it('머리 주석에 묶음·저장소 파일·되돌림 명령·옮길 마이그레이션 파일명을 적는다', () => {

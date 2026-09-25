@@ -14,7 +14,7 @@
  * npx tsx scripts/asset-generator/register-badge.mjs --bundle /절대경로/bundle.json --dry-run
  * # 2) 등록(컨펌 뒤): 이미지 업로드 → 배지 행 insert → registration-record.json·registration.sql 기록
  * npx tsx scripts/asset-generator/register-badge.mjs --bundle /절대경로/bundle.json [--record-dir <폴더>]
- * # 3) 되돌림: 배지 행과 저장소 파일 2개를 지운다(사용자 데이터가 붙었으면 중단)
+ * # 3) 되돌림: 배지 행과 저장소 파일 2개를 지운다(사용자 데이터나 다른 항목의 연결이 붙었으면 중단)
  * npx tsx scripts/asset-generator/register-badge.mjs --undo /절대경로/registration-record.json [--dry-run]
  * ```
  * 성공하면 종료 코드 0, 검증 실패·등록 실패·되돌림 중단은 한국어 사유를 찍고 종료 코드 1이다.

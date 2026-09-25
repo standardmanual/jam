@@ -9,7 +9,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { convertBadgeImageToWebp } from '../../../src/lib/admin/badgeImageWebp';
 import { parseRegisterArgs } from '../registerArgs.mjs';
-import { registerBadge, runDbChecks, runRegister, runUndo, storagePathsFor, undoRegistration } from '../registerFlow.mjs';
+import { registerBadge, runDbChecks, runRegister, runUndo, storagePathsFor, undoRegistration, UNDO_REFERENCE_TABLES } from '../registerFlow.mjs';
 import { validateBundle, readBundleFile } from '../registerBundle.mjs';
 
 const FIXTURE_DIR = path.join(__dirname, '..', '__fixtures__', 'example-bundle');
@@ -22,6 +22,7 @@ type Entry = {
   filters: unknown[][];
   payload?: Record<string, unknown>;
   opts?: { head?: boolean; count?: string };
+  cols?: string;
 };
 type Result = { data?: unknown; error?: { message: string } | null; count?: number };
 
@@ -57,7 +58,8 @@ function createStub(
   function builder(table: string) {
     const entry: Entry = { table, op: 'select', filters: [] };
     const b: StubBuilder = {
-      select(_cols, o) {
+      select(cols, o) {
+        entry.cols = cols;
         entry.opts = o;
         return b;
       },
@@ -469,6 +471,31 @@ describe('runRegister — 실제 등록', () => {
   });
 });
 
+describe('UNDO_REFERENCE_TABLES', () => {
+  it('badges를 참조하는 외래 키 10곳과 같다(생성 타입 대조 — 스키마가 바뀌면 여기서 알아챈다)', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'src', 'types', 'database.generated.ts'), 'utf8');
+    // 표별로 잘라서 referencedRelation: "badges"인 FK의 표·컬럼을 뽑는다.
+    const found: string[] = [];
+    const tablePattern = /^      (\w+): \{\n        Row: \{/gm;
+    const starts = [...source.matchAll(tablePattern)].map((m) => ({ name: m[1], index: m.index! }));
+    starts.forEach((start, i) => {
+      const block = source.slice(start.index, starts[i + 1]?.index ?? source.length);
+      for (const fk of block.matchAll(/columns: \["(\w+)"\]\n\s+isOneToOne: \w+\n\s+referencedRelation: "badges"/g)) {
+        found.push(`${start.name}.${fk[1]}`);
+      }
+    });
+    const declared = UNDO_REFERENCE_TABLES.map((r: { table: string; column: string }) => `${r.table}.${r.column}`);
+    expect(declared.sort()).toEqual(found.sort());
+    expect(found).toHaveLength(10);
+  });
+
+  it('효과 분류는 연쇄 삭제 2곳·연결 해제 3곳·삭제 차단 5곳이다', () => {
+    const tally: Record<string, number> = {};
+    for (const r of UNDO_REFERENCE_TABLES as { effect: string }[]) tally[r.effect] = (tally[r.effect] ?? 0) + 1;
+    expect(tally).toEqual({ '삭제 차단': 5, '연쇄 삭제': 2, '연결 해제': 3 });
+  });
+});
+
 describe('되돌림 — undoRegistration·runUndo', () => {
   function recordFor(id = BADGE_ID) {
     const paths = storagePathsFor(id);
@@ -482,7 +509,8 @@ describe('되돌림 — undoRegistration·runUndo', () => {
       resolve: (e) => {
         if (e.table === 'badges' && e.op === 'select') return { data: row, error: null };
         if (e.op === 'delete') return { error: null };
-        if (e.opts?.head) return { count: counts[e.table] ?? 0, error: null };
+        // `counts` 키는 `표.컬럼`(같은 표를 두 컬럼으로 읽는 item_books 구분) 또는 표 이름(그 표의 모든 컬럼)이다.
+        if (e.opts?.head) return { count: counts[`${e.table}.${e.cols}`] ?? counts[e.table] ?? 0, error: null };
         return { data: [] };
       },
     });
@@ -492,7 +520,7 @@ describe('되돌림 — undoRegistration·runUndo', () => {
     const stub = undoStub();
     const result = await undoRegistration({ supabase: stub.supabase, record: recordFor(), dryRun: false });
     expect(result).toMatchObject({ badgeId: BADGE_ID, rowFound: true, rowDeleted: true, filesRemoved: true, references: [], warnings: [] });
-    expect(stub.events).toEqual(['select:badges', 'select:user_activity_badges', 'select:inventory_items', 'select:poi_drops', 'delete:badges', 'remove']);
+    expect(stub.events).toEqual(['select:badges', ...UNDO_REFERENCE_TABLES.map((r: { table: string }) => `select:${r.table}`), 'delete:badges', 'remove']);
     const del = stub.entries.find((e) => e.op === 'delete')!;
     expect(del.filters).toEqual([
       ['eq', 'id', BADGE_ID],
@@ -501,16 +529,40 @@ describe('되돌림 — undoRegistration·runUndo', () => {
     expect(stub.removes).toEqual([[`badges/asset-generator/${BADGE_ID}.png`, `badges/asset-generator/${BADGE_ID}.webp`]]);
   });
 
-  for (const table of ['user_activity_badges', 'inventory_items', 'poi_drops']) {
-    it(`${table}에 참조가 하나라도 있으면 아무것도 지우지 않고 사유와 함께 중단한다`, async () => {
-      const stub = undoStub({ [table]: 3 });
+  it('각 관계는 그 표의 배지 id 컬럼으로 센다(표마다 id 컬럼 유무가 달라서)', async () => {
+    const stub = undoStub();
+    await undoRegistration({ supabase: stub.supabase, record: recordFor(), dryRun: true });
+    const reads = stub.entries.filter((e) => e.opts?.head);
+    expect(reads.map((e) => [e.table, e.cols, e.filters[0]])).toEqual(
+      UNDO_REFERENCE_TABLES.map((r: { table: string; column: string }) => [r.table, r.column, ['eq', r.column, BADGE_ID]])
+    );
+  });
+
+  // 연쇄 삭제 2곳·연결 해제 3곳(티켓 20260925_0540)을 포함한 10개 관계 전부가 하나라도 붙어 있으면 지우기 전에 중단한다.
+  for (const { table, column, effect } of UNDO_REFERENCE_TABLES as { table: string; column: string; effect: string }[]) {
+    it(`${table}.${column}(${effect})에 참조가 하나라도 있으면 아무것도 지우지 않고 관계와 건수를 알리며 중단한다`, async () => {
+      const stub = undoStub({ [`${table}.${column}`]: 3 });
       await expect(undoRegistration({ supabase: stub.supabase, record: recordFor(), dryRun: false })).rejects.toThrow(
-        `이미 사용자 데이터가 붙어서 되돌리지 않고 중단했어요 — ${table} 3건`
+        `${table}.${column} 3건(${effect})`
       );
       expect(stub.count('delete')).toBe(0);
       expect(stub.removes).toHaveLength(0);
     });
   }
+
+  it('여러 관계에 붙어 있으면 관계별 건수를 모두 알린다', async () => {
+    const stub = undoStub({ 'user_checkin_badge_earns.badge_id': 2, 'item_books.reward_badge_id': 1, 'item_books.required_activity_badge_id': 0 });
+    await expect(undoRegistration({ supabase: stub.supabase, record: recordFor(), dryRun: false })).rejects.toThrow(
+      '이미 사용자 데이터나 다른 항목의 연결이 붙어서 되돌리지 않고 중단했어요 — user_checkin_badge_earns.badge_id 2건(연쇄 삭제), item_books.reward_badge_id 1건(연결 해제).'
+    );
+    expect(stub.count('delete')).toBe(0);
+  });
+
+  it('dry-run도 같은 검사를 하고, 참조가 있으면 중단한다', async () => {
+    const stub = undoStub({ 'missions.gated_badge_id': 1 });
+    await expect(undoRegistration({ supabase: stub.supabase, record: recordFor(), dryRun: true })).rejects.toThrow('missions.gated_badge_id 1건(연결 해제)');
+    expect(stub.count('delete')).toBe(0);
+  });
 
   it('참조를 읽지 못하면 확인 없이 지우지 않고 중단한다', async () => {
     const stub = createStub({
@@ -520,7 +572,7 @@ describe('되돌림 — undoRegistration·runUndo', () => {
       },
     });
     await expect(undoRegistration({ supabase: stub.supabase, record: recordFor(), dryRun: false })).rejects.toThrow(
-      'user_activity_badges 참조를 확인하지 못해서 중단했어요(확인 없이 지우지 않아요): permission denied'
+      'user_activity_badges.badge_id 참조를 확인하지 못해서 중단했어요(확인 없이 지우지 않아요): permission denied'
     );
     expect(stub.count('delete')).toBe(0);
     expect(stub.removes).toHaveLength(0);
@@ -596,11 +648,11 @@ describe('되돌림 — undoRegistration·runUndo', () => {
   it('runUndo: 참조가 있으면 종료 코드 1과 이유를 낸다', async () => {
     const recordPath = path.join(workDir, 'registration-record.json');
     fs.writeFileSync(recordPath, JSON.stringify(recordFor()));
-    const stub = undoStub({ inventory_items: 2 });
+    const stub = undoStub({ 'inventory_items.badge_id': 2 });
     const { out, errors } = createOut();
     const code = await runUndo({ args: parseRegisterArgs(['--undo', recordPath]), supabase: stub.supabase, out });
     expect(code).toBe(1);
-    expect(errors.join('\n')).toContain('inventory_items 2건');
+    expect(errors.join('\n')).toContain('inventory_items.badge_id 2건(삭제 차단)');
     expect(stub.count('delete')).toBe(0);
   });
 

@@ -232,13 +232,23 @@ npx tsx scripts/asset-generator/register-badge.mjs --undo <registration-record.j
 
 저장소 파일은 SQL로 지울 수 없어서 스크립트가 파일 2개와 배지 행을 함께 지운다.
 
-- 지우기 전에 **사용자 데이터가 붙었는지** 읽는다: `user_activity_badges`·`inventory_items`·`poi_drops`의 `badge_id`.
-  하나라도 있으면 아무것도 지우지 않고 어느 테이블에 몇 건인지 알리며 중단한다. 참조를 읽지 못해도 중단한다. 이때는 삭제하지
-  말고 어드민에서 소프트 삭제한다.
+- 지우기 전에 **이 배지가 어디에 쓰였는지** 읽는다. 대상은 `badges`를 참조하는 외래 키 10곳이다(생성 타입 대조 테스트로 고정,
+  원본 목록은 `registerFlow.mjs`의 `UNDO_REFERENCE_TABLES` 한 곳):
+
+  | 효과(배지를 지우면) | 표.컬럼 |
+  |---|---|
+  | 삭제 차단(NO ACTION) | `user_activity_badges.badge_id` · `inventory_items.badge_id` · `poi_drops.badge_id` · `poi.linked_badge_id` · `point_transactions.source_badge_id` |
+  | 연쇄 삭제(CASCADE) | `user_checkin_badge_earns.badge_id` · `user_item_book_slots.badge_id` |
+  | 연결 해제(SET NULL) | `item_books.reward_badge_id` · `item_books.required_activity_badge_id` · `missions.gated_badge_id` |
+
+  하나라도 있으면 아무것도 지우지 않고 어느 관계에 몇 건인지(예: `user_checkin_badge_earns.badge_id 2건(연쇄 삭제)`) 알리며 중단한다.
+  참조를 읽지 못해도 중단한다. 이때는 삭제하지 말고 어드민에서 소프트 삭제한다. 삭제 차단 5곳은 DB가 이미 막아 주지만,
+  `--undo`가 중간에 실패해 저장소 파일과 행이 어긋나지 않도록 미리 읽는다. 마이그레이션으로 `badges`를 가리키는 외래 키가 늘거나 줄고 생성 타입을
+  재생성하면 대조 테스트가 실패하므로 목록을 함께 고친다.
 - 기록의 저장소 경로가 규칙(`badges/asset-generator/{id}.png`·`.webp`)과 다르면 시작하지 않는다(엉뚱한 파일을 지우지 않으려고).
 - `image_source`가 `agent-generator`가 아닌 배지는 지우지 않는다.
 - 배지 행을 먼저 지우고 파일을 지운다. 행 삭제가 외래 키 등으로 막히면 이미지는 그대로 남아 배지가 깨지지 않는다.
-- `--dry-run`을 붙이면 참조 확인까지만 하고 지우지 않는다.
+- `--dry-run`을 붙이면 같은 참조 확인까지만 하고 지우지 않는다(참조가 있으면 dry-run도 같은 사유로 중단한다).
 
 ## 8. 관련 문서
 
