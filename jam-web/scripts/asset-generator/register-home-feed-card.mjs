@@ -30,27 +30,11 @@
  * `tsconfig.json`**에서 별칭을 읽으므로 `jam-web`에서 실행해야 한다. 같은 이유로 `registerHomeFeedFlow.mjs`·
  * `badgeImageWebp`는 정적 import가 아니라 동적 import로 불러 실패 시 안내 문구를 찍는다.
  */
-import fs from 'node:fs'
-import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
 
 import { parseRegisterArgs } from './registerArgs.mjs'
-
-const scriptDir = path.dirname(fileURLToPath(import.meta.url))
-
-/** 기존 `jam-web/scripts/recraft/*.js`·`register-badge.mjs`와 같은 `.env.local` 로드 방식(수동 파싱, 따옴표 제거). */
-function loadEnv() {
-  const envPath = path.join(scriptDir, '..', '..', '.env.local')
-  const env = {}
-  if (!fs.existsSync(envPath)) return env
-  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
-    const m = line.match(/^([A-Z_0-9]+)=\"?([^\"]*)\"?$/)
-    if (m) env[m[1]] = m[2]
-  }
-  return env
-}
+import { loadEnv } from '../lib/loadEnv.mjs'
 
 /** `@/` 별칭이 안 풀리면(cwd가 jam-web이 아니면) 원인을 알려 주는 Error로 바꾼다. */
 async function importWithAliasHint(load) {
