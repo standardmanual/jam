@@ -11,6 +11,8 @@
  *   랭킹 기록이 조용히 함께 사라진다. `point_transactions.source_mission_id`는
  *   **ON DELETE 미지정 → NO ACTION**이라 참조가 있으면 DELETE 자체가 FK 위반으로 실패한다.
  *   `today_cards.mission_id`는 **SET NULL** — 차단 사유는 아니지만 안내 문구에는 포함한다.
+ *   `ranking_modes.target_mission_id`도 **SET NULL**(마이그레이션 158) — 삭제하면 랭킹 규칙의
+ *   대상이 조용히 비워지므로 투데이 카드 연결과 같이 안내만 한다(티켓 20260925_2105).
  * - **item_books(컬렉션)**: `user_item_book_slots`·`user_item_book_completions`는
  *   `item_book_id` **CASCADE**. `user_drop_state.last_drop_book_id`는 **NO ACTION**
  *   (사전 조사에 없던 참조 — 거의 모든 활성 유저가 `user_drop_state` 행을 가지므로 실무에서는
@@ -58,6 +60,8 @@ export interface ReferenceSummary {
   hitLabels: string
   /** `hitLabels` 중 삭제를 막는 참조(`blocks: true`)만 — 목록의 "삭제 불가 사유" 칸이 쓴다 */
   blockingLabels: string
+  /** `hitLabels` 중 삭제를 막지 않는 참조(`blocks: false`)만 — 삭제 뒤 운영자에게 알리는 안내가 쓴다 */
+  noticeLabels: string
 }
 
 /** id 목록 기준으로 페이지를 끝까지 넘겨 행을 통째로 가져온다(badge-references.ts와 동일). */
@@ -87,6 +91,7 @@ export function summarizeReference(sources: ReferenceSource[], counts: Record<st
   let total = 0
   const hitLabels: string[] = []
   const blockingLabels: string[] = []
+  const noticeLabels: string[] = []
   for (const s of sources) {
     const c = counts[s.key] ?? 0
     if (c > 0) {
@@ -96,10 +101,18 @@ export function summarizeReference(sources: ReferenceSource[], counts: Record<st
       if (s.blocks) {
         blockingTotal += c
         blockingLabels.push(label)
+      } else {
+        noticeLabels.push(label)
       }
     }
   }
-  return { blockingTotal, total, hitLabels: hitLabels.join(', '), blockingLabels: blockingLabels.join(', ') }
+  return {
+    blockingTotal,
+    total,
+    hitLabels: hitLabels.join(', '),
+    blockingLabels: blockingLabels.join(', '),
+    noticeLabels: noticeLabels.join(', '),
+  }
 }
 
 /**
@@ -163,6 +176,12 @@ export const MISSION_REFERENCE_SOURCES: ReferenceSource[] = [
     location: 'today_cards.mission_id',
     blocks: false, // SET NULL — 차단 사유는 아니나 안내에 포함
   },
+  {
+    key: 'ranking_modes',
+    label: '랭킹 규칙 연결', // 화면(어드민 랭킹 규칙 관리)이 쓰는 이름. 테이블은 ranking_modes
+    location: 'ranking_modes.target_mission_id',
+    blocks: false, // SET NULL — 차단 사유는 아니나 안내에 포함
+  },
 ]
 
 export async function collectMissionReferences(
@@ -209,6 +228,12 @@ export async function collectMissionReferences(
   )
   if (todayCards.error) errors.push(`today_cards: ${todayCards.error}`)
   tally('today_cards', todayCards.rows.map((r) => r.mission_id))
+
+  const rankingModes = await fetchAllRows<{ target_mission_id: string | null }>((from, to) =>
+    supabase.from('ranking_modes').select('target_mission_id').in('target_mission_id', missionIds).range(from, to)
+  )
+  if (rankingModes.error) errors.push(`ranking_modes: ${rankingModes.error}`)
+  tally('ranking_modes', rankingModes.rows.map((r) => r.target_mission_id))
 
   return { counts, error: errors.length > 0 ? errors.join(' / ') : null }
 }

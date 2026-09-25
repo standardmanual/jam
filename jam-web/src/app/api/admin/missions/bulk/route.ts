@@ -130,7 +130,12 @@ export async function POST(req: NextRequest) {
     const requiredPhrase = confirmPhraseFor('삭제', targets.length)
 
     if (dryRun) {
-      return bulkJson({ processed: targets, skipped, dryRun: true, requiredPhrase }, { admin, action })
+      // 삭제 대상 중 랭킹 규칙이 대상으로 삼은 건수 — 삭제하면 그 규칙의 대상이 비워진다(SET NULL, 티켓 20260925_2105)
+      const rankingModeLinks = targets.reduce((sum, id) => sum + (references.counts.get(id)?.ranking_modes ?? 0), 0)
+      return bulkJson(
+        { processed: targets, skipped, dryRun: true, requiredPhrase, impact: { rankingModeLinks } },
+        { admin, action }
+      )
     }
 
     if (!confirmPhrase || !isPhraseMatch(confirmPhrase, requiredPhrase)) {

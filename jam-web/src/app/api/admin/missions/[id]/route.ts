@@ -157,5 +157,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { error } = await supabase.from('missions').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // 삭제를 막지 않는 참조(투데이 카드·랭킹 규칙 연결, SET NULL)는 삭제 뒤에 알린다(티켓 20260925_2105).
+  // 없으면 기존 응답 `{ ok: true }` 그대로다.
+  if (summary.noticeLabels) {
+    return NextResponse.json({ ok: true, notice: `삭제했어요. 연결이 풀린 곳이 있어요 (${summary.noticeLabels}).` })
+  }
   return NextResponse.json({ ok: true })
 }

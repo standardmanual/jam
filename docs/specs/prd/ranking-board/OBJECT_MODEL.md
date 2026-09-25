@@ -29,7 +29,7 @@ code:
 | 필드 | 의미 |
 |---|---|
 | `target_type` | `mission_participants`(미션 참가자 전원) \| `manual_users`(운영자 수동 지정) |
-| `target_mission_id` | `target_type='mission_participants'`일 때만. 미션 삭제 시 `SET NULL`(랭킹은 남고 참조만 풀림 — 어드민 화면이 경고 표시) |
+| `target_mission_id` | `target_type='mission_participants'`일 때만. 미션 삭제 시 `SET NULL`(랭킹은 남고 참조만 풀림 — 어드민 미션 삭제 화면이 안내한다: 단건은 삭제 직후 토스트, 일괄은 확인창, 티켓 20260925_2105) |
 | `target_user_ids` | `target_type='manual_users'`일 때만. UUID 배열(Postgres 배열엔 FK를 걸 수 없어 계산 시점에 애플리케이션이 존재 여부를 거름) |
 | `metric_type` | `mission_progress`(대상이 미션 참가자일 때 고정) \| `condition_field`(배지 조건 필드 하나) \| `badge_count`(배지 보유 개수) |
 | `metric_field_key` | `metric_type='condition_field'`일 때만. 아래 §2 참고 |

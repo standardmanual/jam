@@ -60,6 +60,8 @@ export default function GateMissionManager({ missions }: Props) {
       toast.error(typeof payload?.error === 'string' ? payload.error : '미션을 삭제하지 못했어요.')
       return
     }
+    const payload = await res.json().catch(() => null)
+    if (typeof payload?.notice === 'string') toast.info(payload.notice)
     router.refresh()
   }
 
