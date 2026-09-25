@@ -2,9 +2,9 @@
 id: "20260925_2003"
 category: Admin
 priority: P3
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-09-25
-closed:
+closed: 2026-09-25
 related:
   - "20260925_1940"
 ---
@@ -95,21 +95,52 @@ PUT은 필드를 명시해 병합하므로 이미 무시한다(코드 변경 없
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 방침 A를 적용했다. 미션 PATCH와 홈피드 PATCH가 update 직전에 본문 사본에서 `image_source`를 지우고
+  `{ ...safeBody, ...imageSourcePatch }`로 저장한다. 이미지가 바뀌면 `imageSourcePatch`(NULL)가 뒤에
+  병합되어 1940 동작이 유지되고, 바뀌지 않으면 `imageSourcePatch`가 비어 본문의 `image_source`가 저장되지
+  않는다. 미사용 변수 lint를 피하려고 구조분해 대신 `delete`를 썼다.
+- 배지 PUT·컬렉션 PUT은 필드를 명시해 병합하므로 이미 본문의 `image_source`를 무시한다. 코드 변경 없이
+  테스트로 고정했다.
 
 ### 변경된 파일
 ```
--
+수정: jam-web/src/app/api/admin/missions/[id]/route.ts,
+     jam-web/src/app/api/admin/today/[id]/route.ts,
+     jam-web/src/app/api/admin/__tests__/image-source-reset.test.ts
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `scripts/verify.sh` 전항목 통과. CI(`verify`) 성공:
+  https://github.com/standardmanual/jam/actions/runs/36128709828
+- [x] `image-source-reset.test.ts`에 7건 추가(아현 보고, 파일 22건 통과): 배지·컬렉션은 이미지가 그대로일 때
+  본문 `image_source`가 update 페이로드에 없음을, 미션·홈피드는 이미지 그대로·본문에 이미지 없음·이미지
+  변경 시 본문 값 대신 NULL이 들어감을 고정한다. 병합 후 `src/lib/admin`·`src/app/api/admin`
+  66개 파일 816건 통과.
+- [x] 게이트(민지) PASS.
+- 실렌더는 생략했다(사용자 승인, 2026-09-25). 화면 변화가 없고, 이 동작은 본문에 `image_source`를
+  직접 실어 보내는 호출에서만 드러나며 어드민 폼은 그 값을 보내지 않아 화면으로 재현되지 않는다.
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: (main 배포 전, staging 반영은 2026-09-25)
+- 환경: staging
+- 커밋: 병합 커밋 dc6f0549 (구현 d9358c56)
+- DB 마이그레이션: 없음.
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1차 | 아현·민지 | 81,048 | 9,542 / 2,700 | 8분 54초 | 36 |
+| 합계 | 아현·민지 | 81,048 | 9,542 / 2,700 | 8분 54초 | 36 |
 
 ### 주요 의사결정 / 핵심 메모
+- 사용자가 방침 A를 결정했다(2026-09-25). 이유는 현재 어드민 화면에 값을 직접 고치는 입력이 없고, 1940에서
+  정한 「이미지가 바뀌면 NULL」과 같은 방향이기 때문이다.
+- 규모가 임계값(5개 파일·100줄) 미만이라 계획 반환 면제 없이 진행했다(실제 3개 파일, 63줄).
+- 범위는 수정 라우트 4종으로 한정했다. 생성(POST) 라우트는 아현이 확인만 했다.
 
 ### 잔여 이슈
--
+- [주의] 생성(POST) 라우트도 같은 불일치가 남아 있다. 배지·컬렉션 POST는 필드를 명시해 무시하지만,
+  미션 POST(`missions/route.ts:59`, `.insert(body)`)와 홈피드 POST(`today/route.ts:27`,
+  `{ ...body, created_by }`)는 본문을 그대로 저장한다(민지 사이드 발견).
+  → 티켓 [20260925_2023](20260925_2023_Admin_미션-홈피드-생성-라우트의-본문-image_source-처리.md)으로 분리했다.
