@@ -37,7 +37,7 @@ export default function TodayFilterBar() {
       />
 
       {/* 제작 경로 필터(티켓 20260925_1411) — 값 2종 + "미상"(값 없음). 옵션·sentinel은
-          contentImageSource.ts가 단일 출처다(배지·미션 필터와 공유). */}
+          contentImageSource.ts가 단일 출처다(`jam-img`를 뺀 2값 옵션, 티켓 20260925_1707). */}
       <DataTableFacetedFilter
         title="제작 경로"
         options={IMAGE_SOURCE_FILTER_OPTIONS_WITHOUT_ICON}

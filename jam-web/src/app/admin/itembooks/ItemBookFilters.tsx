@@ -53,8 +53,8 @@ export default function ItemBookFilters({ tribes }: ItemBookFiltersProps) {
       />
 
       {/* 제작 경로 필터(티켓 20260925_1409) — 옵션·sentinel은 contentImageSource.ts가
-          단일 출처다(배지·미션 필터와 공유). 컬렉션은 실제로 admin-generator/미상만 쓰이지만
-          값 어휘 목록은 콘텐츠 유형과 무관하게 공유한다(MissionFilterBar와 같은 패턴). */}
+          단일 출처다. 컬렉션은 `item_books.image_source` CHECK가 허용하는 admin-generator·
+          agent-generator + 미상만 보인다(`jam-img`를 뺀 2값 옵션, 티켓 20260925_1707). */}
       <DataTableFacetedFilter
         title="제작 경로"
         options={IMAGE_SOURCE_FILTER_OPTIONS_WITHOUT_ICON}
