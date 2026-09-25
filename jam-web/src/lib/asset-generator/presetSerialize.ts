@@ -8,8 +8,30 @@
  * 브라우저·서버(하위 티켓 20260924_2201의 윤진 CLI) 양쪽이 같은 규칙으로 프리셋을 읽고 써야
  * 하므로 캔버스·fetch 등 브라우저 전용 API에 의존하지 않는 순수 함수로 둔다 — 실제 저장소
  * 업로드(blob URL을 공개 URL로 바꾸는 일)는 호출부(API 라우트)의 책임이다.
+ *
+ * 대상 유형(`target_type`) 값 목록·라벨·검증(티켓 20260925_1405)도 이 파일에 둔다 — 레이어
+ * 직렬화와 마찬가지로 화면(`PresetPanel.tsx`)과 API 라우트 양쪽이 같은 값 집합을 봐야 한다.
  */
-import type { OverlayLayerConfig } from './types';
+import type { OverlayLayerConfig, PresetTargetType } from './types';
+
+/**
+ * 프리셋 대상 유형 값 목록·라벨(티켓 20260925_1405, CHECK 확장 마이그레이션 187과 값이 같다).
+ * 저장 화면(`PresetPanel.tsx`)의 대상 유형 선택 UI와 API 라우트(`presets/route.ts`)의 검증이
+ * 함께 쓴다 — 값 집합이 갈라지면 화면에서 고를 수 있는 값과 서버가 허용하는 값이 어긋난다.
+ */
+export const PRESET_TARGET_TYPES: PresetTargetType[] = ['badge', 'mission', 'collection', 'home_feed'];
+
+export const PRESET_TARGET_TYPE_LABELS: Record<PresetTargetType, string> = {
+  badge: '배지',
+  mission: '미션',
+  collection: '컬렉션',
+  home_feed: '홈피드',
+};
+
+/** `value`가 유효한 프리셋 대상 유형인지 검사한다(폼·쿼리 파라미터 등 외부 입력 검증용). */
+export function isPresetTargetType(value: unknown): value is PresetTargetType {
+  return typeof value === 'string' && (PRESET_TARGET_TYPES as string[]).includes(value);
+}
 
 /**
  * 화면 상태(overlayLayers)를 프리셋 저장용으로 직렬화한다.

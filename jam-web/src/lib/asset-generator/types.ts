@@ -23,6 +23,13 @@
 /** 스테이지 비율. 긴 변은 항상 1280px (PRD §3). */
 export type StageRatio = '1:1' | '4:5' | '9:16';
 
+/**
+ * 프리셋이 적용될 컨텐츠 유형(PRD §12, CHECK 확장 마이그레이션 187). 프리셋 하나는 유형
+ * 하나에만 속한다(상위 티켓 20260925_1404 결정 2) — 값 목록·라벨은 `presetSerialize.ts`의
+ * `PRESET_TARGET_TYPES`·`PRESET_TARGET_TYPE_LABELS` 참고.
+ */
+export type PresetTargetType = 'badge' | 'mission' | 'collection' | 'home_feed';
+
 /** 스탬프 그라데이션 방향. h=가로, v=세로, r=방사형. */
 export type GradientDirection = 'h' | 'v' | 'r';
 
@@ -142,7 +149,7 @@ export type OverlayLayerConfig = ImageLayerConfig | TextLayerConfig;
 export interface AssetPreset {
   id: string;
   name: string;
-  targetType: 'badge';
+  targetType: PresetTargetType;
   stageRatio: StageRatio;
   layers: OverlayLayerConfig[];
   /** 프리셋을 만든 어드민의 users.id */

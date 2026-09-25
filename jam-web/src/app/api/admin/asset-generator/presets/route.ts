@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { APPLY_GENERATED_IMAGE_BUCKET, MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
-import { serializePresetLayers, type OverlayLayerConfig, type StageRatio } from '@/lib/asset-generator'
+import {
+  isPresetTargetType,
+  serializePresetLayers,
+  type OverlayLayerConfig,
+  type PresetTargetType,
+  type StageRatio,
+} from '@/lib/asset-generator'
 import type { Json } from '@/types/database.generated'
 
 /**
@@ -37,15 +43,28 @@ function toSummary(row: PresetRow) {
   return { id: row.id, name: row.name, stageRatio: row.stage_ratio, createdAt: row.created_at, updatedAt: row.updated_at }
 }
 
-export async function GET() {
+/**
+ * `targetType` 쿼리 파라미터가 있으면 그 유형으로 목록을 필터링한다(프리셋 저장 화면이
+ * "현재 작업 중인 콘텐츠 유형"으로 불러오기 목록을 좁히는 데 쓴다, 티켓 20260925_1405).
+ * 생략하면 필터 없이 전체를 돌려준다.
+ */
+export async function GET(req: NextRequest) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 })
 
+  const targetTypeParam = req.nextUrl.searchParams.get('targetType')
+  if (targetTypeParam !== null && !isPresetTargetType(targetTypeParam)) {
+    return NextResponse.json({ error: '대상 유형이 올바르지 않습니다.' }, { status: 400 })
+  }
+
   const supabase = createServiceClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('asset_presets')
     .select('id, name, stage_ratio, created_at, updated_at')
     .order('updated_at', { ascending: false })
+  if (targetTypeParam !== null) query = query.eq('target_type', targetTypeParam)
+
+  const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const presets = ((data ?? []) as PresetRow[]).map(toSummary)
@@ -73,6 +92,12 @@ export async function POST(req: NextRequest) {
   if (!VALID_STAGE_RATIOS.includes(stageRatio as StageRatio)) {
     return NextResponse.json({ error: '스테이지 비율이 올바르지 않습니다.' }, { status: 400 })
   }
+
+  const targetTypeRaw = form.get('targetType')
+  if (!isPresetTargetType(targetTypeRaw)) {
+    return NextResponse.json({ error: '대상 유형이 올바르지 않습니다.' }, { status: 400 })
+  }
+  const targetType: PresetTargetType = targetTypeRaw
 
   const existingIdRaw = form.get('id')
   const existingId = typeof existingIdRaw === 'string' && existingIdRaw.trim() ? existingIdRaw.trim() : null
@@ -130,6 +155,7 @@ export async function POST(req: NextRequest) {
       .from('asset_presets')
       .update({
         name,
+        target_type: targetType,
         stage_ratio: stageRatio,
         // OverlayLayerConfig[]는 인덱스 시그니처가 없어 Json에 구조적으로 대입되지 않는다 — 이
         // 컬럼 하나만 좁혀서 캐스팅한다(shader-lab compositions route.ts와 같은 이유).
@@ -148,7 +174,7 @@ export async function POST(req: NextRequest) {
     .insert({
       id: presetId,
       name,
-      target_type: 'badge',
+      target_type: targetType,
       stage_ratio: stageRatio,
       layers: serializedLayers as unknown as Json,
       created_by: admin.id,
