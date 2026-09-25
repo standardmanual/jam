@@ -38,10 +38,11 @@ specs:
 
 **(a) 완료 — `loadEnv` 공용화.** `jam-web/scripts/lib/loadEnv.mjs`를 만들고 에셋 제너레이터 스크립트 4개(`render.mjs`·`register-badge.mjs`·`register-home-feed-card.mjs`·`register-mission.mjs`)의 복제 함수를 걷어 그 모듈을 쓰게 했다. 파싱 정규식·경로(`jam-web/.env.local`)는 복제본과 글자까지 같다. 옮기고 쓸모없어진 `fs`·`path`·`fileURLToPath`·`scriptDir` import는 정리했다(`render.mjs`는 다른 곳에서 `fs`·`path`를 써서 유지). `jam-web/scripts/recraft/`·`jam-web/scripts/badge-image-gen/` 등 다른 디렉터리의 복제는 티켓 범위 밖이라 건드리지 않았다.
 
-**(b) 미적용 — 배지 insert 페이로드 매핑 공용화.** 라우트 동작 불변·기존 테스트 수정 없음 조건을 둘 다 지키면서 하는 방법이 없어 적용하지 않았다. 매핑을 `jam-web/src/lib/admin/` 순수 함수로 빼는 시험 구현을 만들어 돌려 보았고(시험 코드는 되돌림), 아래 5개가 실패했다.
-- `src/app/api/admin/badges/__tests__/route-contract.test.ts` 4개: 이 테스트는 `route.ts` 소스를 읽어 POST 코드에 `level:`(44줄), `admin_category:`(91·96줄), `category: type === 'checkin'`(110줄) 문자열이 있는지 정규식으로 확인한다. 매핑이 라우트 밖으로 나가면 이 문자열이 라우트에 없다.
-- `jam-web/scripts/asset-generator/__tests__/registerBundle.test.ts` 1개("라우트 키 목록 대조", 436줄 근처): `route.ts`에서 `const insertPayload = {` 블록을 찾아 키를 뽑는다. 블록이 사라지면 `expected -1 to be greater than -1`로 실패한다.
-- 지시("라우트 테스트를 고쳐야만 통과하면 고치지 말고 보고")에 따라 테스트를 고치지 않았고 (b)는 적용하지 않았다. 라우트 코드는 원래대로다.
+**(b) 완료 — 배지 insert 페이로드 매핑 공용화(사용자 A안 승인, 2026-09-26).** 라우트의 `insertPayload` 매핑(26개 키)을 `jam-web/src/lib/admin/badge-insert-payload.ts`의 순수 함수 `buildBadgeInsertPayload(body)`로 옮겼다(값 매핑·주석 그대로, 계열 키 정규화는 `normalizeFamilyKey`로 함께 노출). 라우트는 검증(400 응답)을 그대로 두고 `buildBadgeInsertPayload(body)`의 결과를 insert한다. 라우트 POST의 body 구조분해는 라우트가 검증에 쓰는 필드(`name`·`description`·`type`·`rarity`·`level`·`family_key`·`image_url`·`condition_json`)만 남겼다. `registerBundle.mjs`의 `buildBadgeInsertPayload`는 같은 함수를 부르고 `id`·`image_source`만 얹는 래퍼가 됐다(1차 범위 밖 필드는 넘기지 않아 «없음» 기본값).
+
+소스 스캔 테스트의 스캔 대상 이동(승인 범위 안, 다른 검사는 약화·삭제 없음):
+- `route-contract.test.ts`: `level:`·`admin_category:`·`category: type === 'checkin'`·admin_category 가드 없음 검사의 대상을 `postCode`에서 새 파일(`payloadCode`)로 옮겼다(PUT 쪽 검사는 그대로). 라우트가 `buildBadgeInsertPayload(body)`를 import·호출하고 `.insert(insertPayload)`하는지 확인하는 검사, 라우트에 `const insertPayload = {`가 다시 생기지 않는지 확인하는 검사를 추가했다.
+- `registerBundle.test.ts`: 「라우트 키 목록 대조」의 파일 경로와 블록 시작 문자열만 새 파일 기준으로 바꿨다(키 목록 대조 판정은 그대로).
 
 ### 변경된 파일
 ```
@@ -51,12 +52,19 @@ jam-web/scripts/asset-generator/render.mjs
 jam-web/scripts/asset-generator/register-badge.mjs
 jam-web/scripts/asset-generator/register-home-feed-card.mjs
 jam-web/scripts/asset-generator/register-mission.mjs
+jam-web/src/lib/admin/badge-insert-payload.ts                    ((b) 신규)
+jam-web/src/lib/admin/__tests__/badge-insert-payload.test.ts     ((b) 신규, 단위 테스트)
+jam-web/src/app/api/admin/badges/route.ts                        ((b) 매핑을 공용 함수 호출로 교체)
+jam-web/src/app/api/admin/badges/__tests__/route-contract.test.ts ((b) 스캔 대상 이동 + 호출 확인 검사)
+jam-web/scripts/asset-generator/registerBundle.mjs               ((b) 공용 함수 사용)
+jam-web/scripts/asset-generator/__tests__/registerBundle.test.ts ((b) 키 목록 대조 스캔 대상 이동)
 ```
 
 ### 테스트 결과
 - [x] `npx vitest run scripts/lib scripts/asset-generator` 15개 파일 337건 통과(등록 스크립트 테스트는 스텁으로 돌고 DB·Storage에 쓰지 않음)
 - [x] 4개 스크립트와 `loadEnv.mjs` `node --check` 통과
-- [ ] (b): 위 5개 실패로 적용하지 않음. 완료 조건 첫 항목의 "페이로드 매핑 원본이 한 곳" 부분은 미충족
+- [x] (b): `npx vitest run src/lib/admin/__tests__/badge-insert-payload.test.ts src/app/api/admin/badges scripts/asset-generator` 17개 파일 360건 통과(등록 스크립트 테스트는 스텁, DB·Storage 쓰기 없음). 두 스캔 테스트 밖의 테스트는 수정 없이 통과
+- [x] `scripts/verify.sh` 전체 통과(lint·typecheck·test·ds:check·asset-bundle·slop 등)
 
 ### 배포 정보
 - 배포일: 
@@ -72,8 +80,8 @@ jam-web/scripts/asset-generator/register-mission.mjs
 
 ### 주요 의사결정 / 핵심 메모
 - 계획 반환 면제(카리나 부여, 2026-09-26): 파일이 5개를 넘을 수 있으나 티켓에 파일:줄 지도가 있고 사용자가 묶음 처리를 승인.
-- (b)를 진행하려면 사용자 결정이 필요하다. 선택지: ① 두 테스트 파일의 소스 스캔 검사를 새 순수 함수 파일을 읽도록 옮기는 것을 승인(라우트 응답·상태 코드·검증 동작은 그대로 유지 가능) ② (b)를 포기하고 현행 키 목록 대조 테스트에 의존. 이 티켓은 ①이 선행돼야 하는 별도 티켓으로 나누는 편이 안전하다.
+- (b)는 사용자가 A안(스캔 대상 이동 허용)을 승인해 진행했다(2026-09-26, 진행 기록 참조). 계획 반환 면제는 카리나가 다시 부여했다.
 
 ### 잔여 이슈
-- (b) 페이로드 매핑 공용화 미완료(위 사유).
+- 없음((b) 완료). 종료 처리는 카리나가 한다.
 - `scripts/` 아래 다른 디렉터리(`recraft/*.js`, `badge-image-gen/generate.js`, 지도·POI 스크립트, `*.ts` 백필 스크립트)의 `loadEnv` 복제는 그대로다(티켓 지시: 건드릴 때 하나씩).
