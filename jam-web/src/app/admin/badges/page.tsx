@@ -8,6 +8,7 @@ import BadgesFilterBar from './BadgesFilterBar'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { ADMIN_LIST_PAGE_SIZE, totalPagesOf } from '@/lib/admin/list-params'
 import { parseBadgeListParams, fetchBadgeListPage } from '@/lib/admin/badge-list-query'
+import { logQueryError } from '@/lib/admin/queryError'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 /**
@@ -26,12 +27,21 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
 
   const supabase = createServiceClient()
 
-  const [{ badges, total }, { data: tribesRaw }, { data: itemBooksRaw }, { data: poiCategoriesRaw }] = await Promise.all([
+  const [
+    { badges, total },
+    { data: tribesRaw, error: tribesError },
+    { data: itemBooksRaw, error: itemBooksError },
+    { data: poiCategoriesRaw, error: poiCategoriesError },
+  ] = await Promise.all([
     fetchBadgeListPage(supabase, params, page),
     supabase.from('tribes').select('id, name').order('name'),
     supabase.from('item_books').select('id, name, tribe_id').order('name'),
     supabase.from('poi_categories').select('slug, label').order('label'),
   ])
+  // 필터 선택지·이름 표시용 부가 조회라 오류는 로그만 남긴다(주 조회 오류는 위 함수가 던진다, 티켓 20260925_1941)
+  logQueryError(tribesError, 'badges/tribes')
+  logQueryError(itemBooksError, 'badges/item-books')
+  logQueryError(poiCategoriesError, 'badges/poi-categories')
 
   const totalPages = totalPagesOf(total, ADMIN_LIST_PAGE_SIZE)
   const tribeMap = new Map(

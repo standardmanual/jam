@@ -1,4 +1,5 @@
-import { parseBadgeListParams } from '../badge-list-query'
+import { vi } from 'vitest'
+import { fetchBadgeListPage, parseBadgeListParams } from '../badge-list-query'
 
 describe('parseBadgeListParams', () => {
   it('빈 파라미터의 상태는 active(기본값)다', () => {
@@ -45,5 +46,45 @@ describe('parseBadgeListParams', () => {
 
   it("제작 경로 필터 sentinel(__unknown__)도 그대로 넘어간다", () => {
     expect(parseBadgeListParams({ image_source: '__unknown__' }).imageSource).toBe('__unknown__')
+  })
+})
+
+describe('fetchBadgeListPage — 기본 경로 조회 오류 처리(티켓 20260925_1941)', () => {
+  /** 어떤 체이닝 메서드를 불러도 자기 자신을 돌려주고, `range`에서 주어진 결과로 끝나는 스텁 */
+  function fakeSupabase(result: { data: unknown[] | null; count: number | null; error: { message: string } | null }) {
+    const chain: Record<string, unknown> = new Proxy(
+      {},
+      {
+        get: (_target, prop) => (prop === 'range' ? async () => result : () => chain),
+      }
+    )
+    return { from: () => ({ select: () => chain }) } as unknown as Parameters<typeof fetchBadgeListPage>[0]
+  }
+
+  it('조회가 오류를 돌려주면 빈 목록이 아니라 예외를 던진다', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const supabase = fakeSupabase({ data: null, count: null, error: { message: 'column "x" does not exist' } })
+    await expect(fetchBadgeListPage(supabase, parseBadgeListParams({}), 1)).rejects.toThrow(
+      '[admin/badges] 조회 실패: column "x" does not exist'
+    )
+    expect(spy).toHaveBeenCalled()
+    spy.mockRestore()
+  })
+
+  it('조회가 성공하면 기존 결과를 그대로 돌려준다', async () => {
+    const rows = [{ id: 'g1' }, { id: 'g2' }]
+    const supabase = fakeSupabase({ data: rows, count: 2, error: null })
+    await expect(fetchBadgeListPage(supabase, parseBadgeListParams({}), 1)).resolves.toEqual({
+      badges: rows,
+      total: 2,
+    })
+  })
+
+  it('결과가 비어 있으면 여전히 빈 목록이다', async () => {
+    const supabase = fakeSupabase({ data: null, count: null, error: null })
+    await expect(fetchBadgeListPage(supabase, parseBadgeListParams({}), 1)).resolves.toEqual({
+      badges: [],
+      total: 0,
+    })
   })
 })

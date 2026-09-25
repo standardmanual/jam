@@ -7,6 +7,7 @@ import { TodayCardTable } from './TodayCardTable'
 import TodayDateNav from './TodayDateNav'
 import TodayFilterBar from './TodayFilterBar'
 import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
+import { throwOnQueryError } from '@/lib/admin/queryError'
 import {
   TODAY_LIST_COLUMNS,
   applyTodayListQuery,
@@ -44,7 +45,9 @@ export default async function AdminTodayPage({ searchParams }: AdminTodayPagePro
     .select(TODAY_LIST_COLUMNS, { count: 'exact' }) as unknown as TodayListQuery<TodayListRow>
   query = applyTodayListQuery(query, params)
   const [from, to] = pageRange(page, ADMIN_LIST_PAGE_SIZE)
-  const { data: cardsRaw, count } = await query.range(from, to)
+  const { data: cardsRaw, count, error } = await query.range(from, to)
+  // 조회 오류를 빈 목록(「카드가 없어요」)으로 보이지 않게 던져 어드민 오류 화면으로 보낸다(티켓 20260925_1941)
+  throwOnQueryError(error, 'today')
 
   const cards = (cardsRaw ?? []) as TodayListRow[]
   const total = count ?? 0

@@ -8,6 +8,7 @@ import ItemBookFilters from './ItemBookFilters'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { ADMIN_LIST_PAGE_SIZE, totalPagesOf } from '@/lib/admin/list-params'
 import { countRowsByKey, type CountRowsClient } from '@/lib/admin/list-counts'
+import { logQueryError } from '@/lib/admin/queryError'
 import {
   DEFAULT_ITEM_BOOK_STATUS,
   fetchItemBookListPage,
@@ -33,10 +34,12 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
 
   // 검색·트라이브·상태 필터와 정렬·페이지는 `itembook-list-query.ts`가 단일 출처다 — 전체 선택용 ID
   // 조회(`api/admin/itembooks/ids`)가 같은 규칙을 쓴다(티켓 20260924_0945).
-  const [{ books, total }, { data: tribesRaw }] = await Promise.all([
+  const [{ books, total }, { data: tribesRaw, error: tribesError }] = await Promise.all([
     fetchItemBookListPage(supabase, params, page),
     supabase.from('tribes').select('id, name'),
   ])
+  // 트라이브 이름은 표시용 부가 조회라 오류는 로그만 남긴다(주 조회 오류는 위 함수가 던진다, 티켓 20260925_1941)
+  logQueryError(tribesError, 'itembooks/tribes')
 
   const totalPages = totalPagesOf(total, ADMIN_LIST_PAGE_SIZE)
   const tribes = (tribesRaw ?? []) as Pick<TribeRow, 'id' | 'name'>[]

@@ -5,6 +5,7 @@ import { DataTablePagination } from '@/components/admin/data-table/data-table-pa
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
 import { countRowsByKey, type CountRowsClient } from '@/lib/admin/list-counts'
+import { logQueryError, throwOnQueryError } from '@/lib/admin/queryError'
 import {
   MISSION_LIST_COLUMNS,
   MISSION_TYPE_SUMMARY_COLUMNS,
@@ -44,11 +45,15 @@ export default async function AdminMissionsPage({ searchParams }: AdminMissionsP
   query = applyMissionListQuery(query, params, now)
   const [from, to] = pageRange(page, ADMIN_LIST_PAGE_SIZE)
 
-  const [{ data: missionsRaw, count }, { data: summaryRaw }] = await Promise.all([
-    query.range(from, to),
-    // 연쇄 필터 "미션 유형" 선택지용 — 구분마다 실제로 있는 유형만 보이게 한다(53건 규모라 한 번에 읽는다)
-    supabase.from('missions').select(MISSION_TYPE_SUMMARY_COLUMNS).range(0, 999),
-  ])
+  const [{ data: missionsRaw, count, error: missionsError }, { data: summaryRaw, error: summaryError }] =
+    await Promise.all([
+      query.range(from, to),
+      // 연쇄 필터 "미션 유형" 선택지용 — 구분마다 실제로 있는 유형만 보이게 한다(53건 규모라 한 번에 읽는다)
+      supabase.from('missions').select(MISSION_TYPE_SUMMARY_COLUMNS).range(0, 999),
+    ])
+  // 주 조회 오류는 던져 어드민 오류 화면으로, 선택지용 부가 조회 오류는 로그만 남긴다(티켓 20260925_1941)
+  throwOnQueryError(missionsError, 'missions')
+  logQueryError(summaryError, 'missions/type-summary')
 
   const missions = (missionsRaw ?? []) as MissionListRow[]
   const totalCount = count ?? 0

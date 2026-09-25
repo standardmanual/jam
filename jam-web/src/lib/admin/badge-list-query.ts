@@ -15,6 +15,7 @@ import { sanitizeSearchTerm } from './search-term'
 import { UNASSIGNED_POI_CATEGORY, type AdminCategory } from './badge-labels'
 import { UNKNOWN_IMAGE_SOURCE_FILTER } from './contentImageSource'
 import { ADMIN_LIST_PAGE_SIZE } from './list-params'
+import { throwOnQueryError } from './queryError'
 import {
   badgeUsesConditionField,
   compareBadgeListRows,
@@ -279,7 +280,10 @@ export async function fetchBadgeListPage(
     default: query = query.order('created_at', { ascending: false })
   }
 
-  const { data: badgesRaw, count } = await query.range(from, from + ADMIN_LIST_PAGE_SIZE - 1)
+  const { data: badgesRaw, count, error } = await query.range(from, from + ADMIN_LIST_PAGE_SIZE - 1)
+  // 기본 경로의 조회 오류는 빈 목록으로 삼키지 않고 던져 어드민 오류 화면으로 보낸다(티켓 20260925_1941).
+  // 전량 정렬 경로(`fetchAllRows`)는 부분 목록으로 이어가도록 의도된 설계라 그대로 둔다.
+  throwOnQueryError(error, 'badges')
   return { badges: (badgesRaw ?? []) as BadgeListRow[], total: count ?? 0 }
 }
 
