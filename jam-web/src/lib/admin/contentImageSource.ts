@@ -1,6 +1,6 @@
 /**
- * 콘텐츠 대표 이미지 제작 경로(`badges.image_source`·`missions.image_source`) 라벨·필터
- * 단일 출처. 원래 배지 전용(`badgeImageSource.ts`, 티켓 20260924_2200)이었다가 미션까지
+ * 콘텐츠 대표 이미지 제작 경로(`badges`·`missions`·`item_books`·`today_cards`의
+ * `image_source`) 라벨·필터 단일 출처. 원래 배지 전용(`badgeImageSource.ts`, 티켓 20260924_2200)이었다가 미션까지
  * 일반화했다(티켓 20260925_1407, 상위 티켓 20260925_1404 결정 4) — 콘텐츠 유형이 늘 때마다
  * 같은 라벨·필터 옵션을 다시 만들지 않는다.
  *
@@ -10,8 +10,9 @@
  * 원칙, 그 파일에 합치지 않은 이유는 이 컬럼이 특정 콘텐츠 전용이 아니라 "제작 도구 구분"이라는
  * 별개 주제이기 때문).
  *
- * 값 3종은 마이그레이션 `186_badges_image_source.sql`의 CHECK 제약과 같다(미션은 값 어휘를
- * 공유하되 `jam-img`가 없는 2종만 허용 — `188_missions_image_source.sql` 참고). 기존 콘텐츠
+ * 값 3종은 마이그레이션 `186_badges_image_source.sql`의 CHECK 제약과 같다(미션·컬렉션·홈피드는
+ * 값 어휘를 공유하되 `jam-img`가 없는 2종만 허용 — `188_missions_image_source.sql`·
+ * `189_item_books_image_source.sql`·`190_today_cards_image_source.sql` 참고). 기존 콘텐츠
  * (값 없음)는 "미상"으로 표시한다 — 소급 채우기는 PRD asset-generator/PRD.md §10에 열린
  * 질문으로 남아 있다.
  */
@@ -43,8 +44,16 @@ export function contentImageSourceLabel(source: string | null | undefined): stri
   return CONTENT_IMAGE_SOURCE_LABEL[source as ContentImageSource] ?? source
 }
 
-/** 필터 드롭다운 옵션 — 값 3종 + "미상" */
+/** 필터 드롭다운 옵션 — 값 3종 + "미상". 배지 전용(`badges.image_source` CHECK가 3값을 허용) */
 export const IMAGE_SOURCE_FILTER_OPTIONS: { value: string; label: string }[] = [
   ...CONTENT_IMAGE_SOURCES.map((source) => ({ value: source, label: CONTENT_IMAGE_SOURCE_LABEL[source] })),
   { value: UNKNOWN_IMAGE_SOURCE_FILTER, label: UNKNOWN_IMAGE_SOURCE_LABEL },
 ]
+
+/**
+ * 필터 드롭다운 옵션 — `jam-img`를 뺀 값 2종 + "미상". 미션·컬렉션·홈피드 전용
+ * (`missions`·`item_books`·`today_cards`의 `image_source` CHECK가 2값만 허용해, `jam-img`를
+ * 고르면 항상 0건이 된다). 값 순서·라벨은 배지용 옵션에서 파생한다.
+ */
+export const IMAGE_SOURCE_FILTER_OPTIONS_WITHOUT_ICON: { value: string; label: string }[] =
+  IMAGE_SOURCE_FILTER_OPTIONS.filter((option) => option.value !== 'jam-img')

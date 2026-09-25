@@ -246,7 +246,9 @@ code:
 
 어드민 배지 목록(`/admin/badges`)의 "제작 경로" 필터로 값별로 걸러 볼 수 있고, 목록 행·상세
 헤더에 라벨이 보인다(라벨 매핑 단일 출처: `jam-web/src/lib/admin/contentImageSource.ts`, 티켓
-20260925_1407에서 미션까지 공용으로 일반화됐다).
+20260925_1407에서 미션까지 공용으로 일반화됐다). 미션·컬렉션·홈피드 목록의 "제작 경로" 필터는
+해당 테이블의 CHECK가 허용하지 않는 `jam-img`를 뺀 옵션(`IMAGE_SOURCE_FILTER_OPTIONS_WITHOUT_ICON`)을
+쓰고, 배지 목록만 `jam-img`를 포함한 3값 옵션(`IMAGE_SOURCE_FILTER_OPTIONS`)을 쓴다(티켓 20260925_1707).
 
 ## 11. 시드와 재현
 
