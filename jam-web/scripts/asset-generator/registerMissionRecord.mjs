@@ -133,7 +133,7 @@ function undoCommand(recordPath) {
  * - `warnings`: 등록은 되지만 알아야 할 고지(예: 판정에 영향이 없는 조건 필드).
  * - `bundle`이 null이면(묶음 검증 실패) 사유만 보여 준다.
  */
-export function formatMissionDryRunSummary({ bundle, payload, errors, warnings = [], dbChecks, webp, recordDir }) {
+export function formatMissionDryRunSummary({ bundle, payload, errors, warnings = /** @type {any} */ (undefined), dbChecks, webp = /** @type {any} */ (undefined), recordDir }) {
   const lines = []
   lines.push('== 미션 등록 묶음 검증 (--dry-run) ==')
   lines.push(errors.length === 0 ? '결과: 통과' : `결과: 실패 (${errors.length}건)`)
@@ -142,7 +142,7 @@ export function formatMissionDryRunSummary({ bundle, payload, errors, warnings =
     lines.push('', '[고쳐야 할 점]')
     for (const reason of errors) lines.push(`- ${reason}`)
   }
-  if (warnings.length > 0) {
+  if (warnings && warnings.length > 0) {
     lines.push('', '[알아둘 점]')
     for (const notice of warnings) lines.push(`- ${notice}`)
   }

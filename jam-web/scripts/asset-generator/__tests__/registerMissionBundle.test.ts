@@ -82,7 +82,7 @@ describe('validateMissionBundle — 구조·필수·문자열', () => {
     delete raw.mission.title;
     delete raw.mission.starts_at;
     delete raw.image.seed;
-    delete raw.world_review;
+    delete (raw as Partial<RawBundle>).world_review;
     const { errors, bundle } = validate(raw);
     expect(bundle).toBeNull();
     expect(errors).toEqual(expect.arrayContaining(['mission.title: 필수 항목이 없어요.', 'mission.starts_at: 필수 항목이 없어요.', 'image.seed: 필수 항목이 없어요.', 'world_review: 필수 항목이 없어요.']));
