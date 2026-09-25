@@ -25,6 +25,7 @@ import {
 } from '@/components/admin/data-table/admin-fetch'
 import { toastBulkResult } from '@/components/admin/ui/toast-helpers'
 import { TODAY_SELECT_ALL_CAP, type TodayListRow } from '@/lib/admin/today-list-query'
+import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 
 interface TodayCardTableProps {
   cards: TodayListRow[]
@@ -179,6 +180,17 @@ export function TodayCardTable({ cards, selectedDate, totalCount }: TodayCardTab
                   : 'bg-neutral-100 text-neutral-500'
             return <span className={`text-xs px-2 py-0.5 rounded-full ${cls}`}>{status}</span>
           },
+        }),
+        columnHelper.accessor('image_source', {
+          id: 'image_source',
+          header: '제작 경로',
+          enableSorting: false,
+          meta: { label: '제작 경로' },
+          cell: ({ getValue }) => (
+            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium whitespace-nowrap">
+              {contentImageSourceLabel(getValue())}
+            </span>
+          ),
         }),
       ]),
     [selectedDate]

@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import { parseTodayListParams, applyTodayListQuery, type TodayListQuery } from '../today-list-query'
 import { classifyTodayEndPeriod } from '../today-bulk'
+import { UNKNOWN_IMAGE_SOURCE_FILTER } from '../contentImageSource'
 
 interface RecordedCall {
   method: string
@@ -23,6 +24,7 @@ function createStubQuery<T>() {
     gte: record('gte'),
     eq: record('eq'),
     ilike: record('ilike'),
+    is: record('is'),
     order: record('order'),
     range: async () => ({ data: [], count: 0, error: null }),
   } as TodayListQuery<T>
@@ -105,6 +107,29 @@ describe('applyTodayListQuery', () => {
     const created = createStubQuery()
     applyTodayListQuery(created.query, parseTodayListParams({ sort: 'created_desc' }, NOW))
     expect(created.calls).toContainEqual({ method: 'order', args: ['created_at', { ascending: false }] })
+  })
+
+  // 제작 경로 필터(티켓 20260925_1411) — mission-list-query.ts의 imageSource 필터와 같은 규칙
+  it('제작 경로 필터가 없으면 eq·is를 걸지 않는다', () => {
+    const { query, calls } = createStubQuery()
+    applyTodayListQuery(query, parseTodayListParams({}, NOW))
+
+    expect(calls.some((c) => c.method === 'is' && c.args[0] === 'image_source')).toBe(false)
+    expect(calls.some((c) => c.method === 'eq' && c.args[0] === 'image_source')).toBe(false)
+  })
+
+  it('제작 경로 필터값이 있으면 image_source에 eq를 건다', () => {
+    const { query, calls } = createStubQuery()
+    applyTodayListQuery(query, parseTodayListParams({ image_source: 'admin-generator' }, NOW))
+
+    expect(calls).toContainEqual({ method: 'eq', args: ['image_source', 'admin-generator'] })
+  })
+
+  it('제작 경로 필터가 sentinel(값 없음)이면 image_source에 is null을 건다', () => {
+    const { query, calls } = createStubQuery()
+    applyTodayListQuery(query, parseTodayListParams({ image_source: UNKNOWN_IMAGE_SOURCE_FILTER }, NOW))
+
+    expect(calls).toContainEqual({ method: 'is', args: ['image_source', null] })
   })
 })
 

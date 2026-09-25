@@ -12,10 +12,11 @@ import type { TodayCardRow, TodayCardTemplateType } from '@/types/database'
 import { normalizeDateParam, kstDayBoundsIso } from './today-calendar'
 import { TODAY_TEMPLATE_OPTIONS } from './today-sections'
 import { sanitizeSearchTerm } from './search-term'
+import { UNKNOWN_IMAGE_SOURCE_FILTER } from './contentImageSource'
 
 /** 목록 표에 실제로 쓰는 컬럼만 select — 상세·폼 전용 컬럼(본문·참조 등)은 넣지 않는다 */
 export const TODAY_LIST_COLUMNS =
-  'id, title, template_type, layout_type, exposure_tags, starts_at, ends_at, sort_order, is_active, created_at'
+  'id, title, template_type, layout_type, exposure_tags, starts_at, ends_at, sort_order, is_active, created_at, image_source'
 
 export type TodayListRow = Pick<
   TodayCardRow,
@@ -29,6 +30,7 @@ export type TodayListRow = Pick<
   | 'sort_order'
   | 'is_active'
   | 'created_at'
+  | 'image_source'
 >
 
 /** "필터 결과 전체 선택" 상한(상위 티켓 §6 결정 1) */
@@ -60,6 +62,9 @@ export interface TodayListParams {
   /** {@link sanitizeSearchTerm}을 거친 제목 검색어 — 빈 문자열이면 검색하지 않는다 */
   q: string
   sort: TodayListSort
+  /** 제작 경로 필터(티켓 20260925_1411) — `admin-generator`·`agent-generator` 중 하나, 값
+   *  없음(NULL)을 거르는 `UNKNOWN_IMAGE_SOURCE_FILTER`, 또는 필터 없음(undefined). */
+  imageSource: string | undefined
 }
 
 /** URL(또는 API 쿼리) 파라미터 → 타입이 있는 목록 조건. 세 곳이 전부 이 함수를 거친다. */
@@ -72,6 +77,7 @@ export function parseTodayListParams(
     template: isTemplateType(raw.template) ? raw.template : undefined,
     q: sanitizeSearchTerm(raw.q ?? ''),
     sort: isTodayListSort(raw.sort) ? raw.sort : DEFAULT_TODAY_LIST_SORT,
+    imageSource: raw.image_source,
   }
 }
 
@@ -88,6 +94,7 @@ export interface TodayListQuery<T> {
   gte(column: string, value: string): TodayListQuery<T>
   eq(column: string, value: string): TodayListQuery<T>
   ilike(column: string, pattern: string): TodayListQuery<T>
+  is(column: string, value: null): TodayListQuery<T>
   order(column: string, options?: { ascending?: boolean }): TodayListQuery<T>
   range(from: number, to: number): PromiseLike<TodayListQueryResult<T>>
 }
@@ -113,6 +120,9 @@ export function applyTodayListQuery<T>(query: TodayListQuery<T>, params: TodayLi
 
   if (params.template) next = next.eq('template_type', params.template)
   if (params.q) next = next.ilike('title', `%${params.q}%`)
+
+  if (params.imageSource === UNKNOWN_IMAGE_SOURCE_FILTER) next = next.is('image_source', null)
+  else if (params.imageSource) next = next.eq('image_source', params.imageSource)
 
   for (const [column, ascending] of SORT_COLUMNS[params.sort]) {
     next = next.order(column, { ascending })

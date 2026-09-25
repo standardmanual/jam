@@ -14,6 +14,7 @@ import sharp from 'sharp'
 const BADGE_ID = '00000000-0000-4000-8000-0000000000bb'
 const MISSION_ID = '00000000-0000-4000-8000-0000000000mm'
 const COLLECTION_ID = '00000000-0000-4000-8000-0000000000cc'
+const HOME_FEED_ID = '00000000-0000-4000-8000-0000000000hf'
 const MAX_APPLY_IMAGE_BYTES = 5 * 1024 * 1024
 
 let lookupResult: { data: Record<string, string> | null; error: { message: string } | null } = {
@@ -209,5 +210,30 @@ describe('POST /api/admin/asset-generator/apply', () => {
 
     const body = await res.json()
     expect(body.name).toBe('테스트 컬렉션')
+  })
+
+  it('홈피드: today_cards 테이블에 title로 조회하고 cover_image_url을 갱신한다(티켓 20260925_1411)', async () => {
+    lookupResult = { data: { id: HOME_FEED_ID, title: '테스트 카드' }, error: null }
+    const form = new FormData()
+    form.append('targetType', 'home_feed')
+    form.append('targetId', HOME_FEED_ID)
+    form.append('image', await makeSmallPngFile())
+
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(200)
+
+    expect(fromCalls).toEqual(['today_cards'])
+    const [pngPath] = uploadMock.mock.calls[0]
+    const [webpPath] = uploadMock.mock.calls[1]
+    expect(pngPath).toBe(`today_cards/asset-generator/${HOME_FEED_ID}.png`)
+    expect(webpPath).toBe(`today_cards/asset-generator/${HOME_FEED_ID}.webp`)
+
+    // 다른 콘텐츠 유형과 달리 image_url이 아니라 cover_image_url을 갱신한다
+    expect(updatePayloads[0].image_url).toBeUndefined()
+    expect(updatePayloads[0].cover_image_url).toContain(`today_cards/asset-generator/${HOME_FEED_ID}.webp`)
+    expect(updatePayloads[0].image_source).toBe('admin-generator')
+
+    const body = await res.json()
+    expect(body.name).toBe('테스트 카드')
   })
 })
