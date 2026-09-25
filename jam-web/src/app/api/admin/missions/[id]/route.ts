@@ -101,9 +101,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     imageSourcePatch = imageSourceReset(existingImage.image_url, body.image_url)
   }
 
+  // 제작 경로(image_source)는 본문으로 바꿀 수 없다 — 이미지 변경 시 초기화(위)와 적용 탭·등록
+  // 스크립트로만 바뀐다(티켓 20260925_2003 방침 A). 배지·컬렉션·홈피드 저장 라우트와 같은 규칙이다.
+  const safeBody = { ...body }
+  delete safeBody.image_source
+
   const { data, error } = await supabase
     .from('missions')
-    .update({ ...body, ...imageSourcePatch } as never)
+    .update({ ...safeBody, ...imageSourcePatch } as never)
     .eq('id', id)
     .select()
     .single()

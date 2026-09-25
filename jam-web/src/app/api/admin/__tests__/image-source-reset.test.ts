@@ -2,6 +2,7 @@
  * 폼 저장 라우트 4종(배지 PUT·미션 PATCH·컬렉션 PUT·홈피드 PATCH)의 제작 경로 초기화
  * (티켓 20260925_1940 방침 A) — 이미지 컬럼이 실제로 바뀌면 update 페이로드에
  * `image_source: null`이 실리고, 다른 필드만 바꾸면 실리지 않는다.
+ * 본문에 실린 `image_source`는 4개 라우트 모두 무시한다(티켓 20260925_2003 방침 A).
  * 실행: cd jam-web && npx vitest run src/app/api/admin/__tests__/image-source-reset.test.ts
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -92,6 +93,12 @@ describe('배지 PUT', () => {
     await (await load())(req({ name: '새 이름' }), params)
     expect(lastUpdate()).not.toHaveProperty('image_source')
   })
+
+  it('이미지가 그대로일 때 본문의 image_source는 update 페이로드에 들어가지 않는다', async () => {
+    existingRow = badge
+    await (await load())(req({ image_url: OLD, name: '새 이름', image_source: 'jam-img' }), params)
+    expect(lastUpdate()).not.toHaveProperty('image_source')
+  })
 })
 
 describe('컬렉션 PUT', () => {
@@ -115,6 +122,12 @@ describe('컬렉션 PUT', () => {
   it('본문에 이미지가 없으면 image_source를 건드리지 않는다', async () => {
     existingRow = book
     await (await load())(req({ name: '새 이름' }), params)
+    expect(lastUpdate()).not.toHaveProperty('image_source')
+  })
+
+  it('이미지가 그대로일 때 본문의 image_source는 update 페이로드에 들어가지 않는다', async () => {
+    existingRow = book
+    await (await load())(req({ image_url: OLD, name: '새 이름', image_source: 'agent-generator' }), params)
     expect(lastUpdate()).not.toHaveProperty('image_source')
   })
 })
@@ -141,6 +154,24 @@ describe('미션 PATCH', () => {
     await (await load())(req({ title: '새 제목' }), params)
     expect(selectColumnsMock).not.toHaveBeenCalled()
     expect(lastUpdate()).toEqual({ title: '새 제목' })
+  })
+
+  it('이미지가 그대로일 때 본문의 image_source는 update 페이로드에 들어가지 않는다', async () => {
+    existingRow = mission
+    await (await load())(req({ image_url: OLD, title: '새 제목', image_source: 'agent-generator' }), params)
+    expect(lastUpdate()).toEqual({ image_url: OLD, title: '새 제목' })
+  })
+
+  it('본문에 이미지가 없어도 본문의 image_source는 update 페이로드에 들어가지 않는다', async () => {
+    existingRow = mission
+    await (await load())(req({ title: '새 제목', image_source: 'agent-generator' }), params)
+    expect(lastUpdate()).toEqual({ title: '새 제목' })
+  })
+
+  it('이미지를 바꾸면 본문의 image_source 대신 NULL이 들어간다', async () => {
+    existingRow = mission
+    await (await load())(req({ image_url: NEW, image_source: 'agent-generator' }), params)
+    expect(lastUpdate()).toEqual({ image_url: NEW, image_source: null })
   })
 
   it('이미지를 바꾸려는데 미션이 없으면 404이고 update하지 않는다', async () => {
@@ -173,6 +204,24 @@ describe('홈피드 PATCH', () => {
     await (await load())(req({ title: '새 제목' }), params)
     expect(selectColumnsMock).not.toHaveBeenCalled()
     expect(lastUpdate()).toEqual({ title: '새 제목' })
+  })
+
+  it('커버가 그대로일 때 본문의 image_source는 update 페이로드에 들어가지 않는다', async () => {
+    existingRow = card
+    await (await load())(req({ cover_image_url: OLD, title: '새 제목', image_source: 'agent-generator' }), params)
+    expect(lastUpdate()).toEqual({ cover_image_url: OLD, title: '새 제목' })
+  })
+
+  it('본문에 커버가 없어도 본문의 image_source는 update 페이로드에 들어가지 않는다', async () => {
+    existingRow = card
+    await (await load())(req({ title: '새 제목', image_source: 'agent-generator' }), params)
+    expect(lastUpdate()).toEqual({ title: '새 제목' })
+  })
+
+  it('커버를 바꾸면 본문의 image_source 대신 NULL이 들어간다', async () => {
+    existingRow = card
+    await (await load())(req({ cover_image_url: NEW, image_source: 'agent-generator' }), params)
+    expect(lastUpdate()).toEqual({ cover_image_url: NEW, image_source: null })
   })
 
   it('커버를 바꾸려는데 카드가 없으면 404이고 update하지 않는다', async () => {
