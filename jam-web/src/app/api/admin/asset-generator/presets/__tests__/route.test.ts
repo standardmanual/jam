@@ -181,6 +181,35 @@ describe('POST — 신규 저장', () => {
     expect(insertPayload.layers[1].assetUrl).toBe(`https://cdn.test.jam.app/images/${uploadPath}`)
   })
 
+  it('대상 유형이 mission이면 이미지 레이어 + 텍스트 레이어를 함께 저장한다(티켓 20260925_1406)', async () => {
+    presetsBuilder = makeQueryBuilder({
+      data: { id: 'new-mission-preset-id', name: '미션 프리셋 A', stage_ratio: '1:1', created_at: 't1', updated_at: 't1' },
+      error: null,
+    })
+    fromMock.mockImplementation(() => presetsBuilder)
+
+    const layers = [makeTextLayer('t1', '미션 이름'), makeImageLayer('i1', 'blob:http://localhost/abc')]
+    const form = new FormData()
+    form.append('name', '미션 프리셋 A')
+    form.append('stageRatio', '1:1')
+    form.append('targetType', 'mission')
+    form.append('layers', JSON.stringify(layers))
+    form.append('image_i1', new File(['fake-png-bytes'], 'i1.png', { type: 'image/png' }))
+
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(200)
+
+    const insertPayload = presetsBuilder.insertPayload as {
+      target_type: string
+      layers: Array<{ type: string; content?: string; assetUrl?: string }>
+    }
+    expect(insertPayload.target_type).toBe('mission')
+    expect(insertPayload.layers).toHaveLength(2)
+    expect(insertPayload.layers[0]).toMatchObject({ type: 'text', content: '' })
+    expect(insertPayload.layers[1].type).toBe('image')
+    expect(insertPayload.layers[1].assetUrl).toMatch(/^https:\/\/cdn\.test\.jam\.app\//)
+  })
+
   it('이미 저장소 URL(http)인 이미지 레이어는 다시 업로드하지 않는다', async () => {
     presetsBuilder = makeQueryBuilder({
       data: { id: 'new-preset-id', name: '프리셋 A', stage_ratio: '1:1', created_at: 't1', updated_at: 't1' },
