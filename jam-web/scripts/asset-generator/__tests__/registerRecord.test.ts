@@ -1,8 +1,10 @@
 /**
  * 배지 등록 — 등록 기록·되돌림 SQL·dry-run 요약 생성 (티켓 20260924_2202)
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildBadgeInsertPayload } from '../registerBundle.mjs';
+import { buildBadgeInsertPayload, CONTROL_OR_LINE_BREAK } from '../registerBundle.mjs';
 import {
   buildRegistrationRecord,
   buildRegistrationSql,
@@ -177,6 +179,53 @@ describe('buildRegistrationSql — 주석 주입 방어', () => {
     expect(executable.some((l) => /DROP\s+TABLE/i.test(l))).toBe(false);
     // 값은 한 줄로 이어진 주석 안에 그대로 남는다(사람이 보고 이상함을 알아챌 수 있게)
     expect(sql).toContain('-- 배지: ok DROP TABLE public.badges;--');
+  });
+});
+
+describe('buildRegistrationSql — 모든 주석 줄이 한 줄 (티켓 20260925_0549)', () => {
+  const POISON = 'x\ny\r\nz\u2028w\u2029v\u0085u\u0000t\u001bs';
+
+  function build(overrides: (record: ReturnType<typeof sampleRecord>) => void) {
+    const bundle = sampleBundle();
+    const payload = buildBadgeInsertPayload(bundle.badge, { id: BADGE_ID, imageUrl: IMAGE_URL });
+    const clean = buildRegistrationSql({ payload, record: sampleRecord(bundle) });
+    const record = sampleRecord(bundle);
+    overrides(record);
+    return { clean, poisoned: buildRegistrationSql({ payload, record }) };
+  }
+
+  // 줄 구분자는 '\n' 하나뿐이어야 한다(개행 계열·제어 문자가 남으면 그 뒤가 주석 밖 문장이 된다).
+  const allLineBreaks = /\r\n|\n|\r|\u2028|\u2029|\u0085/;
+
+  it.each([
+    ['bundle_id', (r: ReturnType<typeof sampleRecord>) => (r.bundle_id = POISON)],
+    ['author', (r: ReturnType<typeof sampleRecord>) => (r.author = POISON)],
+    ['registered_at', (r: ReturnType<typeof sampleRecord>) => (r.registered_at = POISON)],
+    ['badge.name', (r: ReturnType<typeof sampleRecord>) => (r.badge.name = POISON)],
+    ['badge.id', (r: ReturnType<typeof sampleRecord>) => (r.badge.id = POISON)],
+    ['storage.bucket', (r: ReturnType<typeof sampleRecord>) => (r.storage.bucket = POISON)],
+    ['storage.png_path', (r: ReturnType<typeof sampleRecord>) => (r.storage.png_path = POISON)],
+    ['storage.webp_path', (r: ReturnType<typeof sampleRecord>) => (r.storage.webp_path = POISON)],
+  ])('%s에 개행·CRLF·U+2028 등이 섞여도 주석 줄 수와 실행 줄이 그대로다', (_field, mutate) => {
+    const { clean, poisoned } = build(mutate);
+    const cleanLines = clean.split('\n');
+    const poisonedLines = poisoned.split('\n');
+    // 줄 수가 같다 = 값 안의 개행이 새 줄을 만들지 않았다.
+    expect(poisonedLines).toHaveLength(cleanLines.length);
+    // 줄 구분자('\n')를 뺀 나머지에 개행·제어 문자가 남지 않는다.
+    expect(CONTROL_OR_LINE_BREAK.test(poisonedLines.join(''))).toBe(false);
+    expect(poisoned.split(allLineBreaks)).toHaveLength(cleanLines.length);
+    // '--'로 시작하지 않는 줄(실행되는 SQL)은 값이 달라져도 그대로다.
+    const executable = (lines: string[]) => lines.filter((l) => !l.startsWith('--'));
+    expect(executable(poisonedLines)).toEqual(executable(cleanLines));
+    // 주석 줄은 여전히 전부 '--'로 시작한다.
+    expect(poisonedLines.filter((l, i) => cleanLines[i].startsWith('--')).every((l) => l.startsWith('--'))).toBe(true);
+  });
+
+  it('제어·개행 문자 정규식의 원본은 registerBundle.mjs 한 곳이다(registerRecord.mjs에 범위를 다시 적지 않는다)', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'registerRecord.mjs'), 'utf-8');
+    expect(source).not.toMatch(/\\u2028|\\u0085|\\u007f/i);
+    expect(source).toContain('CONTROL_OR_LINE_BREAK');
   });
 });
 

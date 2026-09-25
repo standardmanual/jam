@@ -67,7 +67,8 @@ function isNonEmptyString(value) {
 // 한 줄 텍스트(작성자·배지 이름) 검사. 이 값들은 등록 기록 SQL(registration.sql)의 `--` 주석에도 들어가고
 // 그 파일은 마이그레이션 폴더에 커밋되어 다시 실행될 수 있다. 줄바꿈이 섞이면 뒷부분이 주석 밖의 실행 가능한
 // 문장이 되므로(20260924_2202 게이트 재현), 개행·제어 문자를 검증에서 거절한다.
-const CONTROL_OR_LINE_BREAK = /[\u0000-\u001f\u007f\u0085\u2028\u2029]/
+// 이 정규식의 원본은 여기 한 곳이다 — 등록 기록 SQL 주석 정리(`registerRecord.mjs`)도 이것을 가져다 쓴다(티켓 20260925_0549).
+export const CONTROL_OR_LINE_BREAK = /[\u0000-\u001f\u007f\u0085\u2028\u2029]/
 
 function hasControlOrLineBreak(value) {
   return typeof value === 'string' && CONTROL_OR_LINE_BREAK.test(value)
