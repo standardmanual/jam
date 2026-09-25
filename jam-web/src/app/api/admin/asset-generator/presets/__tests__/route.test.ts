@@ -126,6 +126,14 @@ describe('GET', () => {
     const res = await GET(getReq('?targetType=not-a-type'))
     expect(res.status).toBe(400)
   })
+
+  it('targetType=collection이면 target_type=collection으로만 필터링한다(티켓 20260925_1408)', async () => {
+    presetsBuilder = makeQueryBuilder({ data: [], error: null })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const res = await GET(getReq('?targetType=collection'))
+    expect(res.status).toBe(200)
+    expect(presetsBuilder.eq).toHaveBeenCalledWith('target_type', 'collection')
+  })
 })
 
 describe('POST — 신규 저장', () => {
@@ -242,6 +250,32 @@ describe('POST — 신규 저장', () => {
     const res = await POST(postReq(form))
     expect(res.status).toBe(400)
     expect(uploadMock).not.toHaveBeenCalled()
+  })
+
+  it('targetType=collection으로 저장하면 insert payload의 target_type이 collection이다(티켓 20260925_1408)', async () => {
+    presetsBuilder = makeQueryBuilder({
+      data: { id: 'new-preset-id', name: '컬렉션 프리셋', stage_ratio: '1:1', created_at: 't1', updated_at: 't1' },
+      error: null,
+    })
+    fromMock.mockImplementation(() => presetsBuilder)
+
+    const layers = [makeTextLayer('t1', '컬렉션 이름'), makeImageLayer('i1', 'https://cdn.test.jam.app/images/existing.png')]
+    const form = new FormData()
+    form.append('name', '컬렉션 프리셋')
+    form.append('stageRatio', '1:1')
+    form.append('targetType', 'collection')
+    form.append('layers', JSON.stringify(layers))
+
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(200)
+
+    const insertPayload = presetsBuilder.insertPayload as {
+      target_type: string
+      layers: Array<{ type: string; content?: string; assetUrl?: string }>
+    }
+    expect(insertPayload.target_type).toBe('collection')
+    expect(insertPayload.layers[0]).toMatchObject({ type: 'text', content: '' })
+    expect(insertPayload.layers[1].assetUrl).toBe('https://cdn.test.jam.app/images/existing.png')
   })
 })
 
