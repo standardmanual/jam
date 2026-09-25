@@ -102,6 +102,7 @@ export function MissionTable({ rows, totalCount }: MissionTableProps) {
     processed: string[]
     skipped: BulkRunResponse['skipped']
     inProgressUsers: number
+    rankingModeLinks: number
     requiredPhrase: string
   } | null>(null)
 
@@ -307,6 +308,7 @@ export function MissionTable({ rows, totalCount }: MissionTableProps) {
         processed: result.processed,
         skipped: result.skipped,
         inProgressUsers: result.impact?.inProgressUsers ?? 0,
+        rankingModeLinks: result.impact?.rankingModeLinks ?? 0,
         requiredPhrase: result.requiredPhrase ?? '',
       })
     } catch (error) {
@@ -361,10 +363,18 @@ export function MissionTable({ rows, totalCount }: MissionTableProps) {
       )
     }
     if (action === 'delete') {
+      const rankingNote =
+        preview.rankingModeLinks > 0 ? <> 랭킹 규칙 {preview.rankingModeLinks}건의 대상이 비워져요.</> : null
       return preview.skipped.length > 0 ? (
-        <>선택한 미션 중 {preview.skipped.length}건은 참여·완료 이력이 있어 삭제에서 제외돼요.</>
+        <>
+          선택한 미션 중 {preview.skipped.length}건은 참여·완료 이력이 있어 삭제에서 제외돼요.
+          {rankingNote}
+        </>
       ) : (
-        <>선택한 미션을 모두 삭제할 수 있어요.</>
+        <>
+          선택한 미션을 모두 삭제할 수 있어요.
+          {rankingNote}
+        </>
       )
     }
     return null
