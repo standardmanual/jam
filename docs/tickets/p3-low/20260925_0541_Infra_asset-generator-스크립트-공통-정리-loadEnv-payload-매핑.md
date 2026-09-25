@@ -29,11 +29,11 @@ specs:
 
 ### 구현 내용 요약
 
-**(a) 완료 — `loadEnv` 공용화.** `jam-web/scripts/lib/loadEnv.mjs`를 만들고 에셋 제너레이터 스크립트 4개(`render.mjs`·`register-badge.mjs`·`register-home-feed-card.mjs`·`register-mission.mjs`)의 복제 함수를 걷어 그 모듈을 쓰게 했다. 파싱 정규식·경로(`jam-web/.env.local`)는 복제본과 글자까지 같다. 옮기고 쓸모없어진 `fs`·`path`·`fileURLToPath`·`scriptDir` import는 정리했다(`render.mjs`는 다른 곳에서 `fs`·`path`를 써서 유지). `scripts/recraft/`·`badge-image-gen/` 등 다른 디렉터리의 복제는 티켓 범위 밖이라 건드리지 않았다.
+**(a) 완료 — `loadEnv` 공용화.** `jam-web/scripts/lib/loadEnv.mjs`를 만들고 에셋 제너레이터 스크립트 4개(`render.mjs`·`register-badge.mjs`·`register-home-feed-card.mjs`·`register-mission.mjs`)의 복제 함수를 걷어 그 모듈을 쓰게 했다. 파싱 정규식·경로(`jam-web/.env.local`)는 복제본과 글자까지 같다. 옮기고 쓸모없어진 `fs`·`path`·`fileURLToPath`·`scriptDir` import는 정리했다(`render.mjs`는 다른 곳에서 `fs`·`path`를 써서 유지). `jam-web/scripts/recraft/`·`jam-web/scripts/badge-image-gen/` 등 다른 디렉터리의 복제는 티켓 범위 밖이라 건드리지 않았다.
 
 **(b) 미적용 — 배지 insert 페이로드 매핑 공용화.** 라우트 동작 불변·기존 테스트 수정 없음 조건을 둘 다 지키면서 하는 방법이 없어 적용하지 않았다. 매핑을 `jam-web/src/lib/admin/` 순수 함수로 빼는 시험 구현을 만들어 돌려 보았고(시험 코드는 되돌림), 아래 5개가 실패했다.
 - `src/app/api/admin/badges/__tests__/route-contract.test.ts` 4개: 이 테스트는 `route.ts` 소스를 읽어 POST 코드에 `level:`(44줄), `admin_category:`(91·96줄), `category: type === 'checkin'`(110줄) 문자열이 있는지 정규식으로 확인한다. 매핑이 라우트 밖으로 나가면 이 문자열이 라우트에 없다.
-- `scripts/asset-generator/__tests__/registerBundle.test.ts` 1개("라우트 키 목록 대조", 436줄 근처): `route.ts`에서 `const insertPayload = {` 블록을 찾아 키를 뽑는다. 블록이 사라지면 `expected -1 to be greater than -1`로 실패한다.
+- `jam-web/scripts/asset-generator/__tests__/registerBundle.test.ts` 1개("라우트 키 목록 대조", 436줄 근처): `route.ts`에서 `const insertPayload = {` 블록을 찾아 키를 뽑는다. 블록이 사라지면 `expected -1 to be greater than -1`로 실패한다.
 - 지시("라우트 테스트를 고쳐야만 통과하면 고치지 말고 보고")에 따라 테스트를 고치지 않았고 (b)는 적용하지 않았다. 라우트 코드는 원래대로다.
 
 ### 변경된 파일
