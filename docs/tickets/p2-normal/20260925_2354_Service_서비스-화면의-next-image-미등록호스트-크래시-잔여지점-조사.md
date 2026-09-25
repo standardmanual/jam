@@ -2,7 +2,7 @@
 id: "20260925_2354"
 category: Service
 priority: P2
-status: OPEN
+status: WAITING
 created: 2026-09-25
 closed:
 related:
@@ -97,6 +97,58 @@ related:
    판단 근거가 없다).
 4. 수정이 필요하면 파일 목록을 담은 수정 티켓 분할안을 제안한다. 티켓 생성과 구현은 사용자 승인 뒤에 한다.
    서비스 화면은 일반 사용자가 보므로 수정 티켓은 실렌더 확인 항목을 완료 조건에 넣는다(2319의 교훈).
+
+## 조사 결과 (2026-09-25)
+
+### 파일별 분류표 (코드를 읽어 확인한 결과)
+
+| 파일:줄 | `src` 값의 출처 | 미등록 호스트 유입 경로 |
+|---|---|---|
+| `(auth)/login/page.tsx:26`, `(main)/voc/page.tsx:93`, `components/ui/TopNav.tsx:124` | `/jam-logo-white.png` 정적 파일 | 없음 |
+| `TopNav.tsx:93`, `[username]/FollowUserList.tsx:73`, `profile/ProfileClient.tsx:485·578`, `search/page.tsx:127`, `notifications/NotificationsClient.tsx:104`, `onboarding/page.tsx:337`, `profile/edit/page.tsx:244` | `users.avatar_url` | 저장 경로 두 곳뿐이다. (1) `api/profile/avatar/route.ts:52-67`이 Supabase Storage `avatars` 버킷에 올리고 공개 URL을 저장한다. (2) `auth/callback/route.ts:31-58`이 Google 로그인 `user_metadata.avatar_url`을 저장한다. 로그인 제공자는 Google뿐이다(`login/page.tsx:17`). 두 경로 모두 등록 호스트다 |
+| `FeedSection.tsx:351·440`, `ProfileClient.tsx:410`(→ `BadgeGridCard`) | 활동 피드 `metadata.badge_image_url` | 이벤트를 만들 때 `badges.image_url`을 복사해 저장하고(`badge-engine`·`drop-engine`·`strava/sync` 등), 조회할 때 `lib/activity-feed/hydrate.ts:140`이 현재 배지 값으로 다시 채운다. 원천은 `badges.image_url` |
+| `FeedSection.tsx:675` | 피드 묶음 항목의 `metadata.badge_image_url` (같은 원천) | 위와 같음 |
+| `combine/CombineClient.tsx:423`, `combine/RecipeRewardRow.tsx:52`, `missions/[id]/MissionDetailClient.tsx:327`, `components/badges/BadgeTrophyGridCard.tsx:83`, `components/ui/BadgeGridCard.tsx:124`, `drops/BadgeDetailSheet.tsx:155` | `badges.image_url`(`badge.image_url`·`candidate.image_url`·`drop.badge_image_url` — 드랍 API 4곳이 `badges.image_url`을 복사, `api/drops/*`·`api/inventory/items`) | 어드민 배지 생성·수정 API가 `image_url` 호스트를 검사하지 않는다(`api/admin/badges/route.ts`·`[id]/route.ts`). 어드민 화면 입력란은 업로드 전용(`allowManualUrl=false`)이라 API를 직접 호출하거나 DB를 직접 고칠 때만 들어온다 |
+| `BadgeGridCard.tsx:124`(컬렉션 표지로 쓰일 때, `badges/BadgesClient.tsx:328`·`ProfileClient.tsx:439`) | `item_books.image_url` | 어드민 컬렉션 API가 같은 방식이다 |
+| `onboarding/page.tsx:519` | `tribes.image_url` | 어드민 트라이브 API(`api/admin/tribes`)가 값을 받는다. 프로덕션에 값이 있는 행이 없다 |
+| `components/PoiCarouselModal.tsx:719·860` | `badgeImageUrl`(드랍의 `badges.image_url`), `imageUrl`(prop, `PoiCarouselModal.tsx:814`) | 719행은 위와 같다. 860행 `imageUrl`을 넘기는 호출부는 추적하지 않았다 |
+
+### DB 실측 (프로덕션, 읽기 전용, 쓰기 없음)
+
+`isOptimizableImageSrc()`와 같은 기준으로 분류했다: 등록 = Supabase Storage 공개 경로 또는 `*.googleusercontent.com`, 내부 = `/`로 시작하는 경로.
+
+| 컬럼 | 등록 | 내부 경로 | 미등록 |
+|---|---|---|---|
+| `users.avatar_url` | 5 (Supabase 3, `lh3.googleusercontent.com` 2) | 0 | 0 |
+| `tribes.image_url` | 0 | 0 | 0 (값이 있는 행 없음, 트라이브 10개) |
+| `badges.image_url` | 1,039 | 2,326 | 0 |
+| `item_books.image_url` | 45 | 55 | 0 |
+| `user_activity_feed.metadata.badge_image_url` | 197 | 49 | 0 (피드 250행 중 값이 있는 246행) |
+| `today_cards.cover_image_url` (참고) | 0 | 2 | 11 (서비스 화면은 이미 `SafeImage`) |
+
+### 결론(사실)
+
+- 서비스 화면 `next/image` 직접 사용 17개 파일 중 **현재 프로덕션 데이터로 화면이 깨질 곳은 없다.** 서비스 화면이 읽는 모든 컬럼에 미등록 호스트 값이 0건이다.
+- 미등록 값이 들어오려면 어드민이 배지·컬렉션·트라이브 API를 화면 밖에서 직접 호출하거나 DB를 직접 고쳐야 한다. 사용자 아바타는 Google·자체 업로드 두 경로로 제한된다.
+- 다만 그 API에는 호스트 검사가 없고, 한 번 들어오면 그 이미지를 그리는 서비스 화면(피드·배지 그리드·배지 상세 시트·컴바인 등)이 전부 오류 화면이 된다. 이 결과는 2319 실렌더에서 어드민 배지 상세로 확인했고, 서비스 화면에서는 재현하지 않았다.
+- 정적 로고 3곳은 안전하다.
+
+### 방침 후보
+
+| 후보 | 내용 | 변경 규모 | 장점 / 한계 |
+|---|---|---|---|
+| A. 렌더 지점을 `SafeImage`로 전환 | 어드민이 값을 넣는 컬럼(배지·컬렉션·트라이브 이미지)을 그리는 서비스 파일 9곳(`FeedSection`·`CombineClient`·`RecipeRewardRow`·`BadgeDetailSheet`·`MissionDetailClient`·`onboarding`(트라이브 부분)·`PoiCarouselModal`·`BadgeTrophyGridCard`·`BadgeGridCard`)을 바꾼다. 아바타 7곳과 정적 로고 3곳은 제외한다 | 파일 9개, 기계적 치환 | 프로젝트가 이미 쓰는 방식(004·005·2319)이다. 등록 호스트는 `SafeImage`가 `next/image`를 그대로 쓰므로 표시가 같다. 서비스 화면이라 실렌더 확인이 필요하다 |
+| B. 저장 입구에서 호스트 검증 | 배지·컬렉션·트라이브 생성·수정 API가 `IMAGE_REMOTE_PATTERNS`에 맞지 않는 `image_url`을 거절한다(`isOptimizableImageSrc` 재사용) | API 파일 약 6개(배지·컬렉션·트라이브 생성·수정 등) | 원천에서 막아 렌더 지점 수와 무관하게 안전하다. 그러나 등록 스크립트·적용 탭 등 기존 저장 경로가 모두 Supabase Storage URL을 쓰는지 먼저 확인해야 하고(이 조사에서는 확인하지 않았다), 이미 들어간 값과 DB 직접 수정은 못 막는다 |
+| C. 현 상태 유지 | 코드 변경 없음, 주간 점검에서 미등록 건수가 0인지만 본다 | 없음 | 비용이 없다. 유입 경로가 막혀 있지 않아 발생하면 서비스 화면이 오류가 되고 장애 대응이 사후가 된다 |
+
+### 카리나 추천 (판단)
+
+**A**를 추천한다. 근거: (1) 지금 데이터에는 문제가 없지만 유입을 막는 장치가 없고, 발생 시 영향이 서비스 사용자 전원이다. (2) 프로젝트가 004·005·2319에서 같은 결함을 `SafeImage`로 고쳐 온 방식이라 검증된 접근이다. (3) B는 기존 저장 경로를 아직 조사하지 않아 이번에 결정하기에는 정보가 부족하다. A와 B는 배타적이지 않으므로 A를 먼저 하고 B는 필요할 때 별도 티켓으로 검토할 수 있다.
+아바타 7곳은 유입이 Google·자체 업로드로 제한되어 A 범위에서 뺐다. 다만 원하시면 함께 넣을 수 있다(7개 파일 추가).
+
+### ESLint 규칙 확장(2321) 여부에 대한 판단
+
+서비스 화면까지 금지 규칙을 넓히려면 정적 로고 3곳(login·voc·TopNav)과 아바타에 예외가 필요하다. A 전환을 마친 뒤에 남는 파일을 보고 판단하는 편이 낫다(추천). 지금 확장하면 A 전환 전 코드가 오류로 잡힌다.
 
 ## 완료 조건
 
