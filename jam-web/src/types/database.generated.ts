@@ -1918,6 +1918,7 @@ export type Database = {
           ends_at: string
           exposure_tags: string[]
           id: string
+          image_source: string | null
           is_active: boolean
           item_book_id: string | null
           layout_type: string
@@ -1941,6 +1942,7 @@ export type Database = {
           ends_at: string
           exposure_tags?: string[]
           id?: string
+          image_source?: string | null
           is_active?: boolean
           item_book_id?: string | null
           layout_type?: string
@@ -1964,6 +1966,7 @@ export type Database = {
           ends_at?: string
           exposure_tags?: string[]
           id?: string
+          image_source?: string | null
           is_active?: boolean
           item_book_id?: string | null
           layout_type?: string

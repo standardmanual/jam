@@ -16,23 +16,28 @@ import { convertBadgeImageToWebp } from '@/lib/admin/badgeImageWebp'
  *
  * 원래 배지 전용이었다가(1차, `badgeId` 고정 필드) 미션까지 일반화했다(2차, `targetType`·
  * `targetId`), 컬렉션까지 확장했다(3차, 티켓 20260925_1409 — 상위 티켓 20260925_1404 결정 4·6:
- * 컬렉션은 자동 기획 경로가 없어 이 적용 탭이 유일한 제작 경로다). 테이블명·이름 컬럼·저장 경로
- * 접두사는 {@link TARGET_TYPE_CONFIG}로 분기한다. 저장 경로는 도구별 폴더 관례(shader-lab이
- * `{대상}/shader-lab/{id}.png`를 쓰는 것과 같은 이유)를 따라
+ * 컬렉션은 자동 기획 경로가 없어 이 적용 탭이 유일한 제작 경로다), 홈피드까지 확장했다(4차, 티켓
+ * 20260925_1411 — `today_cards`의 대표 이미지 컬럼은 다른 콘텐츠와 달리 `image_url`이 아니라
+ * `cover_image_url`이라 {@link TargetTypeConfig.imageUrlColumn}으로 갱신 대상 컬럼도 분기한다).
+ * 테이블명·이름 컬럼·이미지 컬럼·저장 경로 접두사는 {@link TARGET_TYPE_CONFIG}로 분기한다. 저장
+ * 경로는 도구별 폴더 관례(shader-lab이 `{대상}/shader-lab/{id}.png`를 쓰는 것과 같은 이유)를 따라
  * `{접두사}/asset-generator/{targetId}.{png|webp}`로 고정한다.
  */
 
-type TargetType = 'badge' | 'mission' | 'collection'
+type TargetType = 'badge' | 'mission' | 'collection' | 'home_feed'
 
 interface TargetTypeConfig {
-  table: 'badges' | 'missions' | 'item_books'
-  /** 검색 결과 이름으로 쓸 컬럼 — 배지·컬렉션은 name, 미션은 title */
+  table: 'badges' | 'missions' | 'item_books' | 'today_cards'
+  /** 검색 결과 이름으로 쓸 컬럼 — 배지·컬렉션은 name, 미션·홈피드는 title */
   nameColumn: 'name' | 'title'
+  /** 대표 이미지 갱신 대상 컬럼 — 배지·미션·컬렉션은 image_url, 홈피드는 cover_image_url
+   *  (티켓 20260925_1411) */
+  imageUrlColumn: 'image_url' | 'cover_image_url'
   /** 스토리지 폴더 접두사 */
   storagePrefix: string
-  /** 배지만 소프트 삭제 컬럼(deleted_at)이 있다 — 미션·컬렉션에는 없다(컬렉션은 is_active로
-   *  비활성화한다 — `itembook-list-query.ts` 참고, 비활성 컬렉션도 이 적용 탭 대상에서 빼지
-   *  않는다) */
+  /** 배지만 소프트 삭제 컬럼(deleted_at)이 있다 — 미션·컬렉션·홈피드에는 없다(컬렉션은
+   *  is_active로 비활성화한다 — `itembook-list-query.ts` 참고, 비활성 컬렉션도 이 적용 탭
+   *  대상에서 빼지 않는다) */
   hasDeletedAt: boolean
   missingTargetIdMessage: string
   notFoundMessage: string
@@ -42,6 +47,7 @@ const TARGET_TYPE_CONFIG: Record<TargetType, TargetTypeConfig> = {
   badge: {
     table: 'badges',
     nameColumn: 'name',
+    imageUrlColumn: 'image_url',
     storagePrefix: 'badges',
     hasDeletedAt: true,
     missingTargetIdMessage: '배지를 선택하세요.',
@@ -50,6 +56,7 @@ const TARGET_TYPE_CONFIG: Record<TargetType, TargetTypeConfig> = {
   mission: {
     table: 'missions',
     nameColumn: 'title',
+    imageUrlColumn: 'image_url',
     storagePrefix: 'missions',
     hasDeletedAt: false,
     missingTargetIdMessage: '미션을 선택하세요.',
@@ -58,15 +65,25 @@ const TARGET_TYPE_CONFIG: Record<TargetType, TargetTypeConfig> = {
   collection: {
     table: 'item_books',
     nameColumn: 'name',
+    imageUrlColumn: 'image_url',
     storagePrefix: 'item_books',
     hasDeletedAt: false,
     missingTargetIdMessage: '컬렉션을 선택하세요.',
     notFoundMessage: '컬렉션을 찾을 수 없습니다.',
   },
+  home_feed: {
+    table: 'today_cards',
+    nameColumn: 'title',
+    imageUrlColumn: 'cover_image_url',
+    storagePrefix: 'today_cards',
+    hasDeletedAt: false,
+    missingTargetIdMessage: '홈피드 카드를 선택하세요.',
+    notFoundMessage: '홈피드 카드를 찾을 수 없습니다.',
+  },
 }
 
 function isTargetType(value: string): value is TargetType {
-  return value === 'badge' || value === 'mission' || value === 'collection'
+  return value === 'badge' || value === 'mission' || value === 'collection' || value === 'home_feed'
 }
 
 /**
@@ -86,7 +103,9 @@ interface TargetUpdateQuery {
 }
 interface TargetTable {
   select(columns: string): TargetFindQuery
-  update(payload: { image_url: string; image_source: string }): TargetUpdateQuery
+  // 이미지 컬럼명이 콘텐츠 유형마다 달라(image_url · cover_image_url) 동적 키로 받는다
+  // (`config.imageUrlColumn`, 티켓 20260925_1411).
+  update(payload: Record<string, string>): TargetUpdateQuery
 }
 
 export async function POST(req: NextRequest) {
@@ -166,7 +185,9 @@ export async function POST(req: NextRequest) {
   const originalUrl = pngPublicUrl
   const webpUrl = `${webpPublicUrl}?v=${Date.now()}`
 
-  const { error: updateErr } = await table.update({ image_url: webpUrl, image_source: 'admin-generator' }).eq('id', targetId)
+  const { error: updateErr } = await table
+    .update({ [config.imageUrlColumn]: webpUrl, image_source: 'admin-generator' })
+    .eq('id', targetId)
   if (updateErr) {
     return NextResponse.json(
       { error: `이미지는 업로드됐지만 반영에 실패했습니다: ${updateErr.message}` },

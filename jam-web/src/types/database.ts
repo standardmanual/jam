@@ -1023,6 +1023,11 @@ export interface TodayCardRow {
   ranking_mode_id: string | null
   /** 컨텐츠 유형 카탈로그(PRD content-automation/PRD.md §6) ID. T01~T17, 비어 있을 수 있다(티켓 20260923_2259) */
   content_type_id: string | null
+  /** 홈피드 카드 대표 이미지(cover_image_url) 제작 경로(마이그레이션 190, 티켓 20260925_1411).
+   *  'admin-generator'(에셋 제너레이터 적용 탭) · 'agent-generator'(등록 스크립트, 하위 티켓
+   *  20260925_1413 완성 후) 중 하나, NULL이면 기존 seed SQL 등록 카드(미상).
+   *  라벨 매핑은 `lib/admin/contentImageSource.ts` 참조. */
+  image_source: string | null
 }
 
 // =========================================

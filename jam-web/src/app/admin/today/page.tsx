@@ -49,7 +49,7 @@ export default async function AdminTodayPage({ searchParams }: AdminTodayPagePro
   const cards = (cardsRaw ?? []) as TodayListRow[]
   const total = count ?? 0
   const totalPages = totalPagesOf(total, ADMIN_LIST_PAGE_SIZE)
-  const hasFilter = !!(params.q || params.template)
+  const hasFilter = !!(params.q || params.template || params.imageSource)
 
   return (
     <div className="p-8">

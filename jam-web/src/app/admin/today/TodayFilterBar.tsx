@@ -8,6 +8,7 @@ import { DataTableSortSelect } from '@/components/admin/data-table/data-table-so
 import { useListParams } from '@/components/admin/data-table/use-list-params'
 import { DEFAULT_TODAY_LIST_SORT, TODAY_LIST_SORT_OPTIONS } from '@/lib/admin/today-list-query'
 import { TODAY_TEMPLATE_OPTIONS } from '@/lib/admin/today-sections'
+import { IMAGE_SOURCE_FILTER_OPTIONS } from '@/lib/admin/contentImageSource'
 
 const TEMPLATE_OPTIONS = TODAY_TEMPLATE_OPTIONS.map((o) => ({ value: o.value as string, label: o.label }))
 const SORT_OPTIONS = TODAY_LIST_SORT_OPTIONS.map((o) => ({ value: o.value as string, label: o.label }))
@@ -21,7 +22,8 @@ export default function TodayFilterBar() {
   const { q, sort, filters, setFilters } = useListParams()
 
   const currentTemplate = filters.template
-  const hasFilter = q !== '' || !!currentTemplate || (!!sort && sort !== DEFAULT_TODAY_LIST_SORT)
+  const hasFilter =
+    q !== '' || !!currentTemplate || !!filters.image_source || (!!sort && sort !== DEFAULT_TODAY_LIST_SORT)
 
   return (
     <DataTableToolbar actions={<DataTableSortSelect options={SORT_OPTIONS} defaultValue={DEFAULT_TODAY_LIST_SORT} />}>
@@ -34,13 +36,22 @@ export default function TodayFilterBar() {
         onChange={(values) => setFilters({ template: values[0] ?? null })}
       />
 
+      {/* 제작 경로 필터(티켓 20260925_1411) — 값 2종 + "미상"(값 없음). 옵션·sentinel은
+          contentImageSource.ts가 단일 출처다(배지·미션 필터와 공유). */}
+      <DataTableFacetedFilter
+        title="제작 경로"
+        options={IMAGE_SOURCE_FILTER_OPTIONS}
+        selected={filters.image_source ? [filters.image_source] : []}
+        onChange={(values) => setFilters({ image_source: values[0] ?? null })}
+      />
+
       {hasFilter && (
         <Button
           type="button"
           variant="ghost"
           size="sm"
           className="h-8"
-          onClick={() => setFilters({ q: null, template: null, sort: null })}
+          onClick={() => setFilters({ q: null, template: null, image_source: null, sort: null })}
         >
           필터 초기화
         </Button>

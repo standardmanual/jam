@@ -269,6 +269,7 @@ describe('resolveArticleCtaTarget — 에디토리얼 기사 본문 CTA 버튼 �
     region_label: null, body_markdown: null, target_href: null, exposure_tags: ['all'],
     starts_at: '2026-09-24T00:00:00Z', ends_at: '2026-12-30T14:59:59Z', sort_order: 0, is_active: true,
     created_at: '2026-09-24T00:00:00Z', created_by: null, ranking_mode_id: null, content_type_id: null,
+    image_source: null,
   }
   it('우선순위 target_href → item_book_id(컬렉션) → mission_id(미션), 셋 다 없으면 null', () => {
     expect(resolveArticleCtaTarget({ ...base, target_href: '/promo', item_book_id: 'i1', mission_id: 'm1' }))
