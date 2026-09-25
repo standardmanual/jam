@@ -93,13 +93,38 @@ related:
 
 ### 구현 내용 요약
 
+서비스 화면 9개 파일의 `next/image` `<Image>` 12곳을 `SafeImage`로 교체했다(아바타 `onboarding/page.tsx:337`과 정적 로고는 그대로).
+기존 `{url ? <Image/> : <아이콘/>}` 삼항은 `SafeImage`의 `src`·`fallback`으로 합쳤다 — `src`가 비면 `SafeImage`가 폴백을 그리므로
+화면 동작은 같고, 로드 실패·미등록 호스트도 같은 아이콘 자리로 흡수된다. 등록 호스트·내부 경로는 `SafeImage`가 `next/image`를 그대로 써서 표시가 같다.
+
+지점별 폴백(모두 기존 else 분기의 요소를 그대로 옮겼다):
+- `FeedSection` 112px·40px: 기존 `EventIcon` 박스 — 이미 있던 폴백이라 로드 실패에도 같은 것을 준다.
+- `FeedSection` 묶음 썸네일 24px: 기존에 폴백이 없던 곳이라 같은 크기(`w-6 h-6`)의 옅은 칩(`bg-white/8`)을 줘 줄 간격이 밀리지 않게 했다.
+- `CombineClient`·`RecipeRewardRow`: `PackageIcon`. `BadgeDetailSheet`·`PoiCarouselModal` 2곳·`BadgeTrophyGridCard`·`BadgeGridCard`: `MedalIcon`.
+- `MissionDetailClient` 보상 행: 기존 `🏅`. `onboarding` 트라이브: 기존 `UserIcon` 박스.
+- `MissionDetailClient`·`onboarding`은 `next/image` import를 정리했고(`onboarding`은 아바타용으로 `next/image` import가 남는다), `RecipeRewardRow`(서버 컴포넌트)는 클라이언트 컴포넌트인 `SafeImage`를 그대로 import한다.
+
 ### 변경된 파일
 ```
--
+jam-web/src/app/(main)/FeedSection.tsx
+jam-web/src/app/(main)/combine/CombineClient.tsx
+jam-web/src/app/(main)/combine/RecipeRewardRow.tsx
+jam-web/src/app/(main)/drops/BadgeDetailSheet.tsx
+jam-web/src/app/(main)/missions/[id]/MissionDetailClient.tsx
+jam-web/src/app/(main)/onboarding/page.tsx
+jam-web/src/components/PoiCarouselModal.tsx
+jam-web/src/components/badges/BadgeTrophyGridCard.tsx
+jam-web/src/components/ui/BadgeGridCard.tsx
+jam-web/src/components/__tests__/safeImageCallSites.test.tsx (신규)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] (나) `react-dom/server` `renderToStaticMarkup` 렌더 테스트 11건 — 새 의존성 없음. 미등록 호스트(`storage.heypop.kr`)를 준 `BadgeGridCard`·`BadgeTrophyGridCard`·`RecipeRewardRow`·`FeedSection`(단건 40px·묶음 24px)·`FeedSection` `DetailSheet`(112px)·`MissionDetailClient`(52px)가 예외 없이 `<img>`를 그린다. 교체 전 코드(`origin/staging`)로 되돌려 돌리면 이 중 5건이 실패하는 것을 확인했다(Prove-It). 나머지는 등록 호스트·폴백·`SafeImage` 계약 케이스다.
+- [x] `scripts/verify.sh` 통과.
+- [ ] 서버 렌더로 확인하지 못한 컴포넌트와 이유:
+  - `BadgeDetailSheet`(176px)·`CombineClient`(64px, 가방 시트 안)·`PoiCarouselModal`(80px·44px): `BottomSheet`(`components/ui/BottomSheet.tsx:275`의 `if (!mounted) return null`, `:331` `createPortal`)이나 마운트 이후에만 그려져 서버 렌더 결과에 이미지가 나오지 않는다. 테스트해도 무의미한 통과가 된다. `PoiCard`·`ItemRow`는 내보내지 않은 내부 컴포넌트이기도 하다. 이 3개는 `SafeImage` 계약 테스트(미등록 호스트 → `<img>`, 예외 없음)로 대신한다.
+  - `onboarding/page.tsx`(트라이브 48px): 페이지 컴포넌트가 훅·데이터 페치로 단계별 화면을 그려 초기 서버 렌더에는 트라이브 선택 단계가 나오지 않는다. 같은 계약 테스트로 대신한다.
+  - 위 4개 파일과 등록 호스트 실표시는 (가) 임시 샘플 페이지 실렌더(카리나, 병합 뒤 push 전)에서 확인한다.
 
 ### 배포 정보
 - 배포일:
@@ -107,6 +132,8 @@ related:
 - 커밋:
 
 ### 주요 의사결정 / 핵심 메모
+- 삼항을 유지한 채 `<Image>`만 바꾸는 대신 `src`·`fallback`으로 합쳤다. 이유: 삼항을 남기면 로드 실패 폴백을 지점마다 따로 이중으로 써야 한다.
+- ESLint 규칙의 서비스 화면 확장은 이 티켓 범위가 아니다(티켓 20260925_2354 결정).
 
 ### 잔여 이슈
--
+- (가) 임시 샘플 페이지 실렌더(미등록 호스트 URL 렌더, 피드·배지 목록·배지 상세 시트·컴바인의 등록 호스트 표시)는 카리나의 병합 후 후속 확인이다.

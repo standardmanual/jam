@@ -1,6 +1,6 @@
 'use client'
 
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import Link from 'next/link'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
@@ -119,17 +119,14 @@ export default function BadgeGridCard({
       */}
       <div className="relative w-full max-w-[90px]">
         <div className={thumbnailCls}>
-          {imageUrl ? (
-            <Image
-              src={imageUrl}
-              alt={undiscovered ? '???' : name}
-              width={90}
-              height={90}
-              className="w-full h-full object-contain p-1"
-            />
-          ) : (
-            <MedalIcon className="w-10 h-10 text-text/30" />
-          )}
+          <SafeImage
+            src={imageUrl}
+            alt={undiscovered ? '???' : name}
+            width={90}
+            height={90}
+            className="w-full h-full object-contain p-1"
+            fallback={<MedalIcon className="w-10 h-10 text-text/30" />}
+          />
         </div>
         {showCount && (
           // 피드 카드의 카운터 필과 같은 시각 문법(20260905_0038 B). 횟수는 아래 이름 줄이

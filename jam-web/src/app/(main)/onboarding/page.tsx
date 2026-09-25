@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { createClient } from '@/lib/supabase/client'
 import { UserIcon, PencilIcon } from '@/components/ui/icons'
 import { Card } from '@ds/components/cards/Card'
@@ -515,13 +516,18 @@ function OnboardingContent() {
                   className="flex flex-col items-center text-center gap-[var(--spacing-8)]"
                   style={{ minHeight: 140 }}
                 >
-                  {tribe.image_url ? (
-                    <Image src={tribe.image_url} alt="" width={48} height={48} className="w-12 h-12 rounded-[var(--radius-cards)] object-cover" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-[var(--radius-cards)] bg-black/10 flex items-center justify-center">
-                      <UserIcon className="w-6 h-6 opacity-40" />
-                    </div>
-                  )}
+                  <SafeImage
+                    src={tribe.image_url}
+                    alt=""
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 rounded-[var(--radius-cards)] object-cover"
+                    fallback={
+                      <div className="w-12 h-12 rounded-[var(--radius-cards)] bg-black/10 flex items-center justify-center">
+                        <UserIcon className="w-6 h-6 opacity-40" />
+                      </div>
+                    }
+                  />
                   <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
                     {tribe.name}
                   </span>

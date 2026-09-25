@@ -1,6 +1,6 @@
 'use client'
 
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { useEffect, useState } from 'react'
 import Button from '@/components/ui/Button'
 import { Card } from '@ds/components/cards/Card'
@@ -151,11 +151,14 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
         {/* 배지 이미지 (대형) */}
         <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
           <div className="w-44 h-44 rounded-[var(--radius-cards)] bg-black/[0.04] flex items-center justify-center overflow-hidden">
-            {drop.badge_image_url ? (
-              <Image src={drop.badge_image_url} alt={drop.badge_name} width={176} height={176} className="w-full h-full object-contain p-[var(--spacing-16)]" />
-            ) : (
-              <MedalIcon className="w-16 h-16 text-text/40" />
-            )}
+            <SafeImage
+              src={drop.badge_image_url}
+              alt={drop.badge_name}
+              width={176}
+              height={176}
+              className="w-full h-full object-contain p-[var(--spacing-16)]"
+              fallback={<MedalIcon className="w-16 h-16 text-text/40" />}
+            />
           </div>
           <div className="text-center">
             <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-2 text-text">{drop.badge_name}</h1>

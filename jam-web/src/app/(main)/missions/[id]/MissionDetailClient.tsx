@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import SafeImage from '@/components/SafeImage'
 import { useToast } from '@/components/ui/Toast'
 import Button from '@/components/ui/Button'
@@ -323,11 +322,14 @@ export default function MissionDetailClient({
                   {/* 배지 보상 행: 카드형 이미지 + MODULAR RarityBadge + 텍스트 */}
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-border flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      {badge.image_url ? (
-                        <Image src={badge.image_url} alt={badge.name} width={52} height={52} className="w-[52px] h-[52px] object-contain" />
-                      ) : (
-                        <span className="text-2xl">🏅</span>
-                      )}
+                      <SafeImage
+                        src={badge.image_url}
+                        alt={badge.name}
+                        width={52}
+                        height={52}
+                        className="w-[52px] h-[52px] object-contain"
+                        fallback={<span className="text-2xl">🏅</span>}
+                      />
                     </div>
                     <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
                       <RarityBadge rarity={badge.rarity} />
