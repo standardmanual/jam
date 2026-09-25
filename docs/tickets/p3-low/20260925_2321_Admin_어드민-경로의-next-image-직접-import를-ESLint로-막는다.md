@@ -2,9 +2,9 @@
 id: "20260925_2321"
 category: Admin
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-25
-closed:
+closed: 2026-09-25
 related:
   - "20260925_1932"
   - "20260925_2319"
@@ -48,24 +48,40 @@ related:
 - `scripts/verify.sh` 통과.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+- 사용자가 진행을 승인했다(2026-09-25). 경로는 경미 수정(설정 파일 1개, 코드 부분 약 20줄)으로 카리나가 직접 처리했고 워크플로는 쓰지 않았다.
+- `jam-web/eslint.config.mjs`에 `src/app/admin/**`·`src/components/admin/**`(`.ts`·`.tsx`)를 대상으로 `no-restricted-imports` 규칙을 `error`로 추가했다. `next/image`와 `next/legacy/image`를 막고, 메시지가 `@/components/SafeImage` 사용을 안내한다.
+- 결정 필요 두 가지는 티켓의 추천대로 정했다. 강도는 `error`(경고는 무시되기 쉽다), 범위는 어드민만(서비스 화면 19개 파일의 위험은 확인하지 않았으므로 이 티켓에서 다루지 않는다).
+- 예외 파일은 필요하지 않았다. 착수 때 확인한 결과 어드민 경로에 `next/image` import가 0건이고 `SafeImage.tsx`는 어드민 경로 밖(`src/components/`)에 있다.
+- 설정 주석에 한계를 적었다: 어드민이 서비스 화면 컴포넌트(`src/app/(main)` 등)를 가져다 쓰면 그 안의 `next/image`는 이 규칙이 잡지 못한다(티켓 2319의 `BadgeHeroSection` 사례).
 
 ### 변경된 파일
 ```
--
+수정: jam-web/eslint.config.mjs
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] 규칙을 켠 상태로 `npx eslint src/app/admin src/components/admin`이 출력 없이 통과했다(기존 어드민 코드 전부 통과).
+- [x] 임시 파일로 규칙 동작 확인(확인 뒤 삭제, 작업 트리에는 설정 파일 변경만 남음): `src/components/admin/`의 `import Image from 'next/image'`는 `no-restricted-imports` 오류와 `SafeImage` 안내 메시지가 나왔고, `src/app/admin/`의 `next/legacy/image`도 같은 오류가 나왔다. 어드민 밖(`src/components/`)의 `next/image` import는 오류가 나지 않았다.
+- [x] `npm run lint` 전체: 오류 0건, 경고 19건. 규칙이 `error`라 이 규칙에 걸리는 코드가 있었다면 오류로 나왔을 것이므로 경고는 이번 변경과 무관하다.
+- 전체 `verify.sh`(typecheck·test 등)는 이 설정 변경이 lint 규칙만 바꾸므로 따로 돌리지 않았고, push 시 pre-push 훅과 CI가 돌린다.
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: (main 배포 전, staging 반영은 2026-09-25)
+- 환경: staging
+- 커밋: (이 티켓 커밋)
+- DB 마이그레이션: 없음.
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1차 | 카리나 직접 수정(워크플로 없음) | - | - | - | - |
 
 ### 주요 의사결정 / 핵심 메모
+- 규칙은 `no-restricted-imports`의 `paths`로 모듈 이름을 막는 방식이다. 서비스 화면 컴포넌트를 통해 우회하는 경로는 잡지 못하므로, 그런 컴포넌트가 새로 어드민에 들어올 때는 실렌더 확인이 여전히 필요하다.
 
 ### 잔여 이슈
--
+- 서비스 화면(`src/app/(main)` 등)의 `next/image` 직접 사용 19개 파일의 미등록 호스트 위험은 조사하지 않았다. 필요하면 조사 티켓으로 만든다.

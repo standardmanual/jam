@@ -39,6 +39,33 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-require-imports": "off",
     },
   },
+  {
+    // 어드민 화면은 next/image를 직접 import하지 못한다(티켓 20260925_2321). next/image는
+    // images.remotePatterns에 없는 호스트 URL을 만나면 렌더 시점에 예외를 던지고, 어드민에는
+    // 운영자가 호스트를 정하는 이미지 값이 있어 화면 전체가 오류 화면이 된다(티켓 20260925_1932·2319).
+    // SafeImage는 등록된 호스트·내부 경로만 next/image로 보내고 나머지는 일반 img로 그리며
+    // 로드 실패도 흡수한다. SafeImage 자체는 이 경로 밖(src/components)에 있어 예외가 필요 없다.
+    // 한계: 어드민이 서비스 화면 컴포넌트(src/app/(main) 등)를 가져다 쓰면 그 안의
+    // next/image는 이 규칙이 잡지 못한다(BadgeHeroSection 사례, 티켓 2319).
+    files: ["src/app/admin/**/*.{ts,tsx}", "src/components/admin/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "next/image",
+              message: "어드민에서는 next/image 대신 @/components/SafeImage를 쓰세요. 호스트를 알 수 없는 이미지 URL이 화면 전체를 오류 화면으로 만듭니다.",
+            },
+            {
+              name: "next/legacy/image",
+              message: "어드민에서는 next/legacy/image 대신 @/components/SafeImage를 쓰세요.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   ...storybook.configs["flat/recommended"]
 ]);
 
