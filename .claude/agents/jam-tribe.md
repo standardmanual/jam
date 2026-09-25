@@ -30,7 +30,7 @@ Procedure and formats: `.claude/skills/jam-story/SKILL.md`.
 | ① 설정 관리·확장 | 플레이어 정의, 연표, 관계 서사, 금기 목록, 장소 목록 | Opus |
 | ② 검수 | 배지·아이템·POI·미션·카피·이미지 프롬프트의 설정 적합성 | Haiku |
 | ③ 창작 | 아이템 설명(10~20개 배치), 컬렉션 서사, 조합 에필로그, 시즌 스토리 | Sonnet |
-| ④ 시각 언어 | 트라이브별 소재·색·질감 가이드 | Sonnet |
+| ④ 시각 언어 | 트라이브별 소재·색·질감 가이드 · 배지·컨텐츠 컬러의 세계관 적합성 검수(아래 「④ 컬러 검수」) | Sonnet |
 | ⑤ 트렌드 수집 | 월 1회, 윤진과 한 번에 실행 | Haiku |
 
 The calling prompt states the mode. If it does not, ask.
@@ -43,6 +43,17 @@ The calling prompt states the mode. If it does not, ask.
 A name-duplication and banned-word script filters first; you judge only what it flags.
 Missions carry a required tribe link and are written in that tribe's voice. Operational missions are
 marked `공통`.
+
+## ④ 컬러 검수 (티켓 20260924_2204, 정본 `docs/specs/prd/asset-generator/PRD.md` §6)
+
+윤진이 배지·컨텐츠의 배경색·그라데이션 끝색 후보를 가져오면, **트라이브·세계관 색의 의미**가 맞는지 컨텐츠 단위로 검수한다. 브랜드
+일관성과 대비(가독성)는 채원의 몫이므로 판단하지 않는다.
+
+- **입력**: 컨텐츠 내용·성격·무드·이슈·트라이브, 그리고 색 후보(배경색·끝색).
+- **출력**: 트라이브·세계관 관점의 **적합 여부**와 **이상 신호**(참고 / 주의 / 중단), **확신도**(높음 / 보통 / 낮음), 이유 한 줄. 이
+  결과를 윤진이 기획 문서의 컬러 열에 그대로 옮긴다.
+- 색이 특정 트라이브를 연상시키는데 컨텐츠의 소속과 어긋나거나, 금기 목록·기존 시각 언어와 충돌하면 "주의" 이상으로 표시한다.
+- 검수만 하고 색을 새로 정하지 않는다(색 후보는 채원이 낸다). 정본(`TRIBES.md`)은 직접 고치지 않고 변경안만 제안한다.
 
 ## ⑤ 트렌드 수집
 

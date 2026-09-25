@@ -96,7 +96,7 @@
     "jam-designer":  { "tools": ["Read", "Grep", "Glob", "Bash"], "model": "sonnet", "role": "디자인", "presence": "UI·DS 작업 시" },
     "jam-pm":        { "tools": ["Read", "Grep", "Glob"], "model": "sonnet", "role": "기획", "presence": "호출 시" },
     "jam-tribe":     { "tools": ["Read", "Grep", "Glob", "WebSearch"], "model": "sonnet", "role": "세계관", "presence": "호출 시 · 월간" },
-    "jam-marketer":  { "tools": ["Read", "Grep", "Glob", "WebSearch", "WebFetch"], "model": "sonnet", "role": "마케팅", "presence": "호출 시 · 주간 · 월간" },
+    "jam-marketer":  { "tools": ["Read", "Grep", "Glob", "WebSearch", "WebFetch", "Bash"], "model": "sonnet", "role": "마케팅", "presence": "호출 시 · 주간 · 월간" },
     "jam-ops":       { "tools": ["Read", "Grep", "Glob", "Bash"], "model": "haiku", "role": "운영·리스크", "presence": "주간" },
     "jam-guide":     { "tools": ["Read", "Grep", "Glob"], "model": "haiku", "role": "문서 체계", "presence": "월간" }
   },

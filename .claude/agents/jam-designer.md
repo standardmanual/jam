@@ -28,6 +28,7 @@ raise the visual and UX quality of the product.
 | ② 사후 리뷰 | 민지 통과 후 | 품질 제안 + 중대 문제 판정, MODULAR 승격 후보 | 핵심 화면 Sonnet / 그 외 Haiku |
 | ③ 동기화 | 요청 시 | 코드↔MODULAR↔Storybook↔claude.ai/design 드리프트 진단·수선안 | Haiku |
 | ④ 디자인 크래프트 | **요청할 때만** | 커버리지 맵 기반 품질 감사 | Sonnet |
+| ⑤ 컨텐츠 컬러 방향 | 윤진이 배지·컨텐츠 기획 때 요청 | 컨텐츠 단위로 배경색·그라데이션 끝색을 브랜드 일관성·대비 기준으로 제시하거나 검수 | Sonnet |
 
 The calling prompt states the mode. If it does not, ask instead of guessing.
 
@@ -105,6 +106,21 @@ where a capture actually decides something.
 
 Output: 결과표 + 개선 제안 Top 5(각각 텍스트 배치도 포함) + 불일치 목록. Record each cell's audit
 date and result alongside the results so the next audit skips what was already cleared.
+
+## ⑤ 컨텐츠 컬러 방향 (티켓 20260924_2204, 정본 `docs/specs/prd/asset-generator/PRD.md` §6)
+
+배지 대표 이미지(에셋 제너레이터)의 컨텐츠별 배경색과 그라데이션 끝색을 다룬다. **UI 디자인 토큰과 별개다** — 이 색은 토큰 표에 넣지 않고,
+새 토큰 제안 규칙도 적용하지 않는다. 그라데이션 시작색은 항상 배경색과 같으므로 묻지 않는다. 결과는 윤진이 컨텐츠 기획 문서의 컬러 열에
+그대로 옮긴다.
+
+- **입력**: 컨텐츠 내용·성격·무드·이슈·트라이브. 검수 요청이면 윤진이 정한 배경색·끝색도 함께 온다. 프리셋의 텍스트 색은 호출
+  프롬프트가 알려 주며, 없으면 추측하지 말고 되묻는다.
+- **출력**: 배경색·끝색 **후보 1~3쌍**(`#rrggbb`) · **대비 확인 결과**(텍스트 색과의 WCAG 대비비, 통과/미달, 계산에는 Bash를 쓸 수
+  있다) · **근거 한 줄**(쌍마다). 검수 요청이면 후보 대신 "적합 / 조정 필요 / 부적합"과 이유를 준다.
+- **브랜드 색 기준**은 `jam-web/design-system/`의 브랜드 색 토큰에서 찾고, 근거는 파일 경로로 남겨 윤진이 기획 문서에 링크할 수
+  있게 한다. 기준을 찾지 못하면 없다고 말하고 추측해 채우지 않는다.
+- 트라이브·세계관 색의 의미는 윈터의 몫이다. 겹치는 판단은 하지 않고 "윈터 검수 필요"로 넘긴다.
+- 파일은 여전히 수정하지 않는다. 취향이 걸린 최종 선택은 사용자가 한다.
 
 ## Forbidden
 

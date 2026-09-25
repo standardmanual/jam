@@ -44,7 +44,7 @@ tags: [워크플로]
 | 채원 | 디자인 | `.claude/agents/jam-designer.md` | Sonnet | Read·Grep·Glob·Bash | 없음 | UI·DS 작업 시 |
 | 혜린 | 기획 | `.claude/agents/jam-pm.md` | Sonnet | Read·Grep·Glob | 없음 | 호출 시 |
 | 윈터 | 세계관 | `.claude/agents/jam-tribe.md` | Sonnet | Read·Grep·Glob·WebSearch | 없음 | 호출 시 · 월간 |
-| 윤진 | 마케팅 | `.claude/agents/jam-marketer.md` | Sonnet | Read·Grep·Glob·WebSearch·WebFetch | 없음 | 호출 시 · 주간 · 월간 |
+| 윤진 | 마케팅 | `.claude/agents/jam-marketer.md` | Sonnet | Read·Grep·Glob·WebSearch·WebFetch·Bash | 없음 | 호출 시 · 주간 · 월간 |
 | 카즈하 | 운영·리스크 | `.claude/agents/jam-ops.md` | Haiku | Read·Grep·Glob·Bash | 없음 | 주간 |
 | 하니 | 문서 체계 | `.claude/agents/jam-guide.md` | Haiku | Read·Grep·Glob | 없음 | 월간 |
 <!-- END generated: agent-table -->
@@ -174,7 +174,7 @@ tags: [워크플로]
 | 채원 | `jam-web/design-system/`, Storybook, 지정된 diff | 없음 | 〃 |
 | 혜린 | 티켓·PRD·컨텐츠 문서 | 없음 | 〃 (Bash도 없음) |
 | 윈터 | `jam-doc/planning/content/TRIBES.md` 중심 + 웹 | 없음 | 〃 |
-| 윤진 | `jam-doc/marketing/`, 리포트 + 웹 | 없음 | 〃 |
+| 윤진 | `jam-doc/marketing/`, 리포트 + 웹 | `jam-doc/assets/badge-bundles/<묶음 ID>/`(모드 ⑧ 한정, Bash) | Bash 도구는 물리적으로 좁혀지지 않는다. `render.mjs` 실행·묶음 폴더 쓰기·`register-badge.mjs --dry-run`만 허용한다는 것은 정의 문서의 지시(프롬프트 규칙)다. 등록(`--dry-run` 없음·`--undo`)·DB·git은 금지 |
 | 카즈하 | 리포트·티켓·지표 API | 없음 | 〃 |
 | 하니 | 문서 체계 전반 | 없음 | 〃 (Bash도 없음) |
 
