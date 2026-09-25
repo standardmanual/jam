@@ -15,20 +15,24 @@ import { convertBadgeImageToWebp } from '@/lib/admin/badgeImageWebp'
  * (시그니처 불변) 이 라우트에 인라인으로 둔다.
  *
  * 원래 배지 전용이었다가(1차, `badgeId` 고정 필드) 미션까지 일반화했다(2차, `targetType`·
- * `targetId`). 테이블명·이름 컬럼·저장 경로 접두사는 {@link TARGET_TYPE_CONFIG}로 분기한다.
- * 저장 경로는 도구별 폴더 관례(shader-lab이 `{대상}/shader-lab/{id}.png`를 쓰는 것과 같은
- * 이유)를 따라 `{접두사}/asset-generator/{targetId}.{png|webp}`로 고정한다.
+ * `targetId`), 컬렉션까지 확장했다(3차, 티켓 20260925_1409 — 상위 티켓 20260925_1404 결정 4·6:
+ * 컬렉션은 자동 기획 경로가 없어 이 적용 탭이 유일한 제작 경로다). 테이블명·이름 컬럼·저장 경로
+ * 접두사는 {@link TARGET_TYPE_CONFIG}로 분기한다. 저장 경로는 도구별 폴더 관례(shader-lab이
+ * `{대상}/shader-lab/{id}.png`를 쓰는 것과 같은 이유)를 따라
+ * `{접두사}/asset-generator/{targetId}.{png|webp}`로 고정한다.
  */
 
-type TargetType = 'badge' | 'mission'
+type TargetType = 'badge' | 'mission' | 'collection'
 
 interface TargetTypeConfig {
-  table: 'badges' | 'missions'
-  /** 검색 결과 이름으로 쓸 컬럼 — 배지는 name, 미션은 title */
+  table: 'badges' | 'missions' | 'item_books'
+  /** 검색 결과 이름으로 쓸 컬럼 — 배지·컬렉션은 name, 미션은 title */
   nameColumn: 'name' | 'title'
   /** 스토리지 폴더 접두사 */
   storagePrefix: string
-  /** 배지만 소프트 삭제 컬럼(deleted_at)이 있다 — 미션에는 없다 */
+  /** 배지만 소프트 삭제 컬럼(deleted_at)이 있다 — 미션·컬렉션에는 없다(컬렉션은 is_active로
+   *  비활성화한다 — `itembook-list-query.ts` 참고, 비활성 컬렉션도 이 적용 탭 대상에서 빼지
+   *  않는다) */
   hasDeletedAt: boolean
   missingTargetIdMessage: string
   notFoundMessage: string
@@ -51,10 +55,18 @@ const TARGET_TYPE_CONFIG: Record<TargetType, TargetTypeConfig> = {
     missingTargetIdMessage: '미션을 선택하세요.',
     notFoundMessage: '미션을 찾을 수 없습니다.',
   },
+  collection: {
+    table: 'item_books',
+    nameColumn: 'name',
+    storagePrefix: 'item_books',
+    hasDeletedAt: false,
+    missingTargetIdMessage: '컬렉션을 선택하세요.',
+    notFoundMessage: '컬렉션을 찾을 수 없습니다.',
+  },
 }
 
 function isTargetType(value: string): value is TargetType {
-  return value === 'badge' || value === 'mission'
+  return value === 'badge' || value === 'mission' || value === 'collection'
 }
 
 /**

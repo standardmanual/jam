@@ -12,6 +12,7 @@ import {
   ITEM_BOOK_SORT_OPTIONS,
   ITEM_BOOK_STATUS_OPTIONS,
 } from '@/lib/admin/itembook-list-query'
+import { IMAGE_SOURCE_FILTER_OPTIONS } from '@/lib/admin/contentImageSource'
 import type { TribeRow } from '@/types/database'
 
 interface ItemBookFiltersProps {
@@ -49,6 +50,16 @@ export default function ItemBookFilters({ tribes }: ItemBookFiltersProps) {
         options={ITEM_BOOK_STATUS_OPTIONS}
         selected={[status]}
         onChange={(values) => setFilters({ status: values[0] ?? null })}
+      />
+
+      {/* 제작 경로 필터(티켓 20260925_1409) — 옵션·sentinel은 contentImageSource.ts가
+          단일 출처다(배지·미션 필터와 공유). 컬렉션은 실제로 admin-generator/미상만 쓰이지만
+          값 어휘 목록은 콘텐츠 유형과 무관하게 공유한다(MissionFilterBar와 같은 패턴). */}
+      <DataTableFacetedFilter
+        title="제작 경로"
+        options={IMAGE_SOURCE_FILTER_OPTIONS}
+        selected={filters.image_source ? [filters.image_source] : []}
+        onChange={(values) => setFilters({ image_source: values[0] ?? null })}
       />
 
       {hasFilter && (

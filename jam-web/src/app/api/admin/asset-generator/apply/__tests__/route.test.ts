@@ -13,6 +13,7 @@ import sharp from 'sharp'
 
 const BADGE_ID = '00000000-0000-4000-8000-0000000000bb'
 const MISSION_ID = '00000000-0000-4000-8000-0000000000mm'
+const COLLECTION_ID = '00000000-0000-4000-8000-0000000000cc'
 const MAX_APPLY_IMAGE_BYTES = 5 * 1024 * 1024
 
 let lookupResult: { data: Record<string, string> | null; error: { message: string } | null } = {
@@ -99,9 +100,9 @@ describe('POST /api/admin/asset-generator/apply', () => {
     expect(res.status).toBe(403)
   })
 
-  it('콘텐츠 유형이 badge/mission이 아니면 400', async () => {
+  it('콘텐츠 유형이 badge/mission/collection이 아니면 400', async () => {
     const form = new FormData()
-    form.append('targetType', 'collection')
+    form.append('targetType', 'unknown')
     form.append('targetId', BADGE_ID)
     form.append('image', await makeSmallPngFile())
     const res = await POST(postReq(form))
@@ -186,5 +187,27 @@ describe('POST /api/admin/asset-generator/apply', () => {
 
     const body = await res.json()
     expect(body.name).toBe('테스트 미션')
+  })
+
+  it('컬렉션: item_books 테이블에 name으로 조회하고 저장 경로가 item_books/ 접두사다(티켓 20260925_1409)', async () => {
+    lookupResult = { data: { id: COLLECTION_ID, name: '테스트 컬렉션' }, error: null }
+    const form = new FormData()
+    form.append('targetType', 'collection')
+    form.append('targetId', COLLECTION_ID)
+    form.append('image', await makeSmallPngFile())
+
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(200)
+
+    expect(fromCalls).toEqual(['item_books'])
+    const [pngPath] = uploadMock.mock.calls[0]
+    const [webpPath] = uploadMock.mock.calls[1]
+    expect(pngPath).toBe(`item_books/asset-generator/${COLLECTION_ID}.png`)
+    expect(webpPath).toBe(`item_books/asset-generator/${COLLECTION_ID}.webp`)
+
+    expect(updatePayloads[0].image_source).toBe('admin-generator')
+
+    const body = await res.json()
+    expect(body.name).toBe('테스트 컬렉션')
   })
 })

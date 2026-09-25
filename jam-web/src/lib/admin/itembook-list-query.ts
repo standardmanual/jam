@@ -11,6 +11,7 @@ import type { createServiceClient } from '@/lib/supabase/server'
 import type { ItemBookRow } from '@/types/database'
 import { sanitizeSearchTerm } from './search-term'
 import { ADMIN_LIST_PAGE_SIZE, pageRange } from './list-params'
+import { UNKNOWN_IMAGE_SOURCE_FILTER } from './contentImageSource'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -42,6 +43,9 @@ export interface ItemBookListParams {
   tribe: string | undefined
   status: ItemBookStatusFilter
   sort: ItemBookListSort
+  /** 제작 경로 필터(티켓 20260925_1409) — `admin-generator`, 값 없음(NULL)을 거르는
+   *  `UNKNOWN_IMAGE_SOURCE_FILTER`, 또는 필터 없음(undefined). */
+  imageSource: string | undefined
 }
 
 /** URL(또는 API 쿼리) 파라미터 → 타입이 있는 목록 조건. 목록·ID 조회가 전부 이 함수를 거친다. */
@@ -53,6 +57,7 @@ export function parseItemBookListParams(raw: Record<string, string | undefined>)
     tribe: raw.tribe && raw.tribe !== 'all' ? raw.tribe : undefined,
     status,
     sort,
+    imageSource: raw.image_source,
   }
 }
 
@@ -60,6 +65,7 @@ export function parseItemBookListParams(raw: Record<string, string | undefined>)
 export interface ItemBookListQuery<T> {
   eq(column: string, value: string | boolean): ItemBookListQuery<T>
   ilike(column: string, pattern: string): ItemBookListQuery<T>
+  is(column: string, value: null): ItemBookListQuery<T>
   or(filters: string): ItemBookListQuery<T>
   order(column: string, options?: { ascending?: boolean }): ItemBookListQuery<T>
   range(
@@ -104,6 +110,9 @@ export function applyItemBookListFilters<T>(
     case 'all':
       break
   }
+
+  if (params.imageSource === UNKNOWN_IMAGE_SOURCE_FILTER) next = next.is('image_source', null)
+  else if (params.imageSource) next = next.eq('image_source', params.imageSource)
 
   return next
 }
