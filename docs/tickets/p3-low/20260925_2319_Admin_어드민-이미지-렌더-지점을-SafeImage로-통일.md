@@ -2,9 +2,9 @@
 id: "20260925_2319"
 category: Admin
 priority: P3
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-09-25
-closed:
+closed: 2026-09-25
 related:
   - "20260925_1932"
 ---
@@ -78,15 +78,13 @@ related:
 - `scripts/verify.sh` 통과.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
 - 어드민 10곳의 `next/image` 직접 사용을 `SafeImage`로 교체했다(크기·`className`·`alt` 그대로). ApplyTab의 `unoptimized` 임시 패치를 제거했고, `fill`을 쓰던 ApplyTab·BadgeDetail은 `width`·`height` 없이 `SafeImage`의 fill 모드로 옮겼다.
-- 표 셀 3곳의 이미지 출처를 조회 쿼리에서 확인했다(모두 `badges.image_url`).
-  - `ItemBadgesTable`: `app/admin/item-badges/page.tsx:48-49`, 컬럼 `lib/admin/item-badge-list.ts:16` (`'id, name, image_url, rarity'`).
-  - `OrphanedItemsTable`: `lib/admin/orphaned-items-query.ts:145` (`badges.select('id, name, image_url, rarity')`) → `badgeImageUrl`(179행).
-  - `DropExclusionBadgesTable`: `app/admin/drop-policy/exclusions/page.tsx:68-69`, 컬럼 `lib/admin/drop-exclusion-list.ts:20` (`BADGE_EXCLUSION_COLUMNS`에 `image_url` 포함).
-- 표 셀은 바깥 컨테이너가 고정 크기(`w-8 h-8`·`w-10 h-10`)라 로드 실패 시에도 자리가 유지되어 폴백은 기본값(빈 렌더)을 썼다.
+- **실렌더에서 발견해 추가로 고친 지점 1곳**: 어드민 배지 상세의 실시간 미리보기(`BadgeDetailPreviewFrame`)가 서비스 화면 컴포넌트 `app/(main)/badges/[id]/BadgeHeroSection.tsx`를 그대로 쓰고, 그 컴포넌트가 `next/image`를 직접 써서 미등록 호스트 배지 이미지가 오류 화면을 만들었다(콘솔 `next-image-unconfigured-host`). 사용자가 이 티켓에서 함께 고치기로 결정했고(2026-09-25) `SafeImage`로 교체했다. 이 컴포넌트는 서비스 배지 상세 화면(`badges/[id]/page.tsx:358`)도 쓰므로 서비스 화면 코드가 바뀐 변경이다. 등록 호스트·내부 경로 이미지는 `SafeImage`가 `next/image`를 그대로 쓰므로 표시가 같다.
+- 표 셀 3곳의 이미지 출처를 조회 쿼리에서 확인했다(모두 `badges.image_url`): `ItemBadgesTable`(`item-badges/page.tsx:48-49`, `lib/admin/item-badge-list.ts:16`), `OrphanedItemsTable`(`lib/admin/orphaned-items-query.ts:145`), `DropExclusionBadgesTable`(`drop-policy/exclusions/page.tsx:68-69`, `lib/admin/drop-exclusion-list.ts:20`).
+- 표 셀은 바깥 컨테이너가 고정 크기라 폴백은 기본값(빈 렌더)이고, 컬렉션 폼(`ItemBookForm.tsx:537`)은 게이트 WARN을 반영해 같은 크기(`w-8 h-8`)의 빈 칸을 폴백으로 준다.
 - `docs/specs/`에는 어드민 이미지 렌더 방침을 적은 문서가 없다(`grep -rnE "SafeImage|next/image|unoptimized" docs/specs` 결과 0건). 문서 수정 없음.
 - 재발 방지 ESLint 규칙은 티켓 20260925_2321에서 처리한다.
 
@@ -102,19 +100,42 @@ jam-web/src/components/admin/drop-policy/DropExclusionBadgesTable.tsx
 jam-web/src/components/admin/badges/BadgeCard.tsx
 jam-web/src/components/admin/badges/BadgesTable.tsx
 jam-web/src/components/admin/badges/BadgeDetail.tsx
+jam-web/src/app/(main)/badges/[id]/BadgeHeroSection.tsx   (실렌더에서 추가, 서비스 컴포넌트)
 ```
 
 ### 테스트 결과
-- [x] `scripts/verify.sh` 통과(lint·typecheck·test·ds:check·slop 외 전 항목)
-- [ ] 실렌더 확인(미등록 호스트 배지·홈피드 카드)은 워크트리에서 `next dev`가 뜨지 않아 오케스트레이터 확인 대기
+- [x] `scripts/verify.sh`·GitHub `verify` 통과(브랜치 HEAD 2cfef152, run 36149405454).
+- [x] 게이트(민지): 1차 **WARN**(실렌더 미확인, 컬렉션 폼 폴백), 카리나 패치(a32d2353) 뒤 **WARN**(실렌더만 남음), `BadgeHeroSection` 추가 패치(2cfef152) 뒤 **WARN**(실렌더는 카리나 담당이라 남음, 완료 기록 파일 목록 누락 — 이 기록에서 반영). 코드·CI 항목은 모두 통과다.
+- [x] **실렌더 확인(2026-09-25, 사용자 승인)**: 로컬 `next dev`(`ADMIN_EMAILS` 셸 환경변수)로 확인했다. 임시 배지 2건(액티비티·아이템 유형, 미등록 호스트 이미지 `storage.heypop.kr`, 소프트 삭제 상태)을 공용 DB에 만들었다가 삭제했고, 기준 건수(배지 3,365건)로 복구된 것을 조회로 확인했다.
+  - 적용 탭(홈피드 카드, 같은 미등록 호스트): 오류 화면 없이 이미지 표시. 1411 실렌더에서 크래시가 났던 경로다.
+  - 배지 목록(`BadgesTable`): 오류 없이 썸네일 표시.
+  - 배지 상세(`BadgeDetail` + 미리보기): **첫 확인은 오류 화면**이었고(`BadgeHeroSection` 미교체 상태), 교체 뒤 오류 없이 상세 이미지와 미리보기 이미지가 표시된다.
+  - 아이템 배지 상세(`item-badges/[badgeId]`): 오류 없이 이미지 표시.
+  - 등록 호스트 이미지(배지 목록 50장): 이전처럼 `/_next/image`로 최적화되어 표시되고, 깨진 이미지 0건.
+- **직접 확인하지 못한 화면(코드 교체만 검토)**: `ItemBadgesTable`(목록), `OrphanedItemsTable`, 아이템 배지 개별 발급 상세(`[badgeId]/[itemId]`), `DropExclusionBadgesTable`, `BadgeCard`, 컬렉션 폼의 아이템 배지 행. 임시 배지가 소프트 삭제·컬렉션 미연결 상태라 이 화면들에 나타나지 않았다. 서비스 배지 상세 화면(`badges/[id]`)도 실렌더로 확인하지 않았다.
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: (main 배포 전, staging 반영은 2026-09-25)
+- 환경: staging
+- 커밋: 병합 커밋 d34fd3fb(구현 6d3471c2·컬렉션 폼 폴백 a32d2353), 병합 커밋 37b939ef(`BadgeHeroSection` 2cfef152)
+- DB 마이그레이션: 없음.
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1차 | 아현·민지 | 84,380 | 17,267 / 3,890 | 12분 42초 | 30 |
+| 재판정 1(카리나 폴백 패치 뒤) | 민지 | 32,765 | 0 / 3,716 | 2분 52초 | 6 |
+| 재판정 2(`BadgeHeroSection` 추가 패치 뒤) | 민지 | 36,139 | 0 / 4,597 | 3분 54초 | 7 |
+| 합계 | 아현·민지 | 153,284 | 17,267 / 12,203 | 19분 28초 | 43 |
 
 ### 주요 의사결정 / 핵심 메모
-- 기계적 치환이라 새 테스트는 추가하지 않았다(`SafeImage` 동작은 기존 컴포넌트 책임).
+- **조사와 게이트 모두 서비스 컴포넌트를 통해 어드민에 들어오는 경로를 놓쳤다.** 1932는 어드민 경로 파일만 세었고, 아현·민지도 티켓 지도(어드민 10곳)만 봤다. 미등록 호스트 이미지로 실제 화면을 열어 보는 실렌더에서만 발견됐다. 이미지 컴포넌트 교체처럼 렌더 결과가 화면에서만 확인되는 변경은 임시 데이터 실렌더가 필요하다는 사례다.
+- 임시 배지는 소프트 삭제 상태로 만들어 사용자 화면에 노출되지 않게 했다. 그 대가로 아이템 배지 목록·컬렉션 폼 등 활성 배지만 보이는 화면은 확인하지 못했다.
+- 병합 순서: 게이트가 WARN으로 남는 사유가 실렌더뿐이라, 로컬 `staging`에 병합한 뒤 push 전에 실렌더로 확인하는 순서를 썼다(병합은 로컬이라 되돌릴 수 있다).
 
 ### 잔여 이슈
-- 실렌더 확인 항목(완료 조건 3·4번)이 남아 있다.
+- 위 「직접 확인하지 못한 화면」 6곳과 서비스 배지 상세 화면은 실렌더 미확인이다.
+- 어드민 미리보기가 끌어오는 서비스 컴포넌트 중 `TopNav`는 아바타·로고에 `next/image`를 쓴다(배지 이미지와 무관, 아바타는 `*.googleusercontent.com`만 등록). 이번에 조사하지 않았다.
+- 서비스 화면(`app/(main)` 등)에서 `next/image`를 직접 쓰는 다른 파일의 미등록 호스트 위험도 확인하지 않았다.
+- 배지 생성·수정 API가 `image_url` 호스트를 검사하지 않는 점은 그대로다.
