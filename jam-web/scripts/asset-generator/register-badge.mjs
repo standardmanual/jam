@@ -32,27 +32,11 @@
  * 안내 문구를 찍는다. `render.mjs`가 `src/lib/asset-generator/index.ts` 배럴 대신 개별 파일을 직접
  * import하는 것과 같은 이유로(tsx가 `export *` 체인의 이름을 숨긴다) 여기서도 배럴을 쓰지 않는다.
  */
-import fs from 'node:fs'
-import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
 
 import { parseRegisterArgs } from './registerArgs.mjs'
-
-const scriptDir = path.dirname(fileURLToPath(import.meta.url))
-
-/** 기존 `jam-web/scripts/recraft/*.js`·`render.mjs`와 같은 `.env.local` 로드 방식(수동 파싱, 따옴표 제거). */
-function loadEnv() {
-  const envPath = path.join(scriptDir, '..', '..', '.env.local')
-  const env = {}
-  if (!fs.existsSync(envPath)) return env
-  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
-    const m = line.match(/^([A-Z_0-9]+)=\"?([^\"]*)\"?$/)
-    if (m) env[m[1]] = m[2]
-  }
-  return env
-}
+import { loadEnv } from '../lib/loadEnv.mjs'
 
 /** `@/` 별칭이 안 풀리면(cwd가 jam-web이 아니면) 원인을 알려 주는 Error로 바꾼다. */
 async function importWithAliasHint(load) {

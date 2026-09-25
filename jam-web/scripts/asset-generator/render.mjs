@@ -55,7 +55,6 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
 
 import { deriveRibbonFromSeed } from '../../src/lib/asset-generator/random'
@@ -68,20 +67,7 @@ import { serverCanvasFactory, getServerContext, loadImageAsCanvas, cropToAlphaBo
 import { brandLetterSvgMarkup } from './brandLetters.mjs'
 import { createServerFontLoader } from './fonts.mjs'
 import { parseRenderArgs } from './renderArgs.mjs'
-
-const scriptDir = path.dirname(fileURLToPath(import.meta.url))
-
-/** 기존 `jam-web/scripts/recraft/*.js`와 같은 `.env.local` 로드 방식(수동 파싱, 따옴표 제거). */
-function loadEnv() {
-  const envPath = path.join(scriptDir, '..', '..', '.env.local')
-  const env = {}
-  if (!fs.existsSync(envPath)) return env
-  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
-    const m = line.match(/^([A-Z_0-9]+)=\"?([^\"]*)\"?$/)
-    if (m) env[m[1]] = m[2]
-  }
-  return env
-}
+import { loadEnv } from '../lib/loadEnv.mjs'
 
 async function main() {
   const args = parseRenderArgs(process.argv.slice(2))
