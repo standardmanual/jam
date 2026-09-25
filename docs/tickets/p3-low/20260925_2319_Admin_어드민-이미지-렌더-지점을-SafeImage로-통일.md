@@ -2,7 +2,7 @@
 id: "20260925_2319"
 category: Admin
 priority: P3
-status: OPEN
+status: IN_PROGRESS
 created: 2026-09-25
 closed:
 related:
@@ -62,12 +62,10 @@ related:
 
 - 화면 모양은 바뀌지 않는다. 바뀌는 것은 미등록 호스트·로드 실패일 때의 동작(오류 화면 대신 이미지만 빠짐)뿐이다.
 
-## 결정 필요
+## 결정 기록
 
-- **재발 방지 규칙(선택)**: `src/app/admin`·`src/components/admin`에서 `next/image` 직접 import를 ESLint
-  `no-restricted-imports`로 막을지. 막으면 새 어드민 화면이 같은 결함을 만들지 못하지만 규칙 파일 수정이 늘고
-  (`SafeImage` 내부·`ImageUploadField`는 예외 필요) 이 티켓 범위가 커진다. 카리나 추천: **별도 티켓으로 분리**한다
-  (판단). 이 티켓은 교체만 한다.
+- **2026-09-25 사용자가 이 티켓의 진행을 승인했고, 재발 방지 ESLint 규칙은 별도 티켓으로 분리하기로 결정했다**
+  (티켓 [20260925_2321](20260925_2321_Admin_어드민-경로의-next-image-직접-import를-ESLint로-막는다.md)). 이 티켓은 교체만 한다.
 
 ## 완료 조건
 
