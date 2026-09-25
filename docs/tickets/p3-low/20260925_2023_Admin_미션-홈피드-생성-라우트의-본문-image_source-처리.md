@@ -2,7 +2,7 @@
 id: "20260925_2023"
 category: Admin
 priority: P3
-status: OPEN
+status: IN_PROGRESS
 created: 2026-09-25
 closed:
 related:
@@ -48,6 +48,24 @@ related:
   등록 스크립트가 이후에 값을 채운다.
 - **B. 생성 때만 허용값 검증을 거쳐 본문 값을 받는다.** 어드민에서 만든 새 카드에 처음부터 경로를
   적어야 할 때만 맞다. 현재 그런 화면은 없다.
+
+## 결정 기록
+
+- **2026-09-25 사용자가 방침 A(두 라우트에서 본문의 `image_source`를 무시한다)를 결정했다.** 2003과 같은 방침이다.
+
+## 구현 계획 (방침 A 확정)
+
+접근: 미션 POST와 홈피드 POST가 본문을 그대로 insert하는 자리에서 `image_source`만 걸러낸다. 생성 시점의 제작 경로는 NULL(미상)로
+시작하고, 적용 탭·등록 스크립트가 이후에 값을 채운다. 이미지 컬럼(`image_url`·`cover_image_url`)은 본문 값을 그대로 받는다(기존 동작).
+
+파일 단위 지도(예상 3개 파일, 40줄 안팎 — 임계값 5개/100줄 미만이라 계획 반환 면제 불필요):
+1. `jam-web/src/app/api/admin/missions/route.ts`(POST, 59행 근방 `.insert(body)`): 검증(`checkMissionCondition` 등)은 기존 `body`로 그대로 하고,
+   insert에는 `image_source`를 지운 사본을 쓴다(2003이 `missions/[id]/route.ts`에서 쓴 방식과 같게, 미사용 변수 lint를 피하려고 구조분해 대신 `delete`).
+2. `jam-web/src/app/api/admin/today/route.ts`(POST, 27행 `{ ...body, created_by }`): 본문 사본에서 `image_source`를 지운 뒤 `created_by`를 붙인다.
+3. `jam-web/src/app/api/admin/__tests__/image-source-reset.test.ts`(기존 파일): 생성 라우트 테스트를 추가한다 — 미션·홈피드 POST에 `image_source`를
+   실어 보내도 insert 페이로드에 들어가지 않고, 다른 필드와 `created_by`는 그대로임을 고정한다. 배지·컬렉션 POST(필드를 명시해 만드는 라우트)가
+   본문의 `image_source`를 무시하는 것도 고정한다. 라우트 테스트 구성이 너무 무거워 어렵다면 그 사유와 함께 가능한 범위(예: 컬렉션)만 하고 보고한다.
+
 
 ## 완료 조건
 
