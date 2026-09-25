@@ -209,7 +209,8 @@ code:
 | (비움) | 미상 | 기존 배지. 소급 채우기는 열린 질문 |
 
 어드민 배지 목록(`/admin/badges`)의 "제작 경로" 필터로 값별로 걸러 볼 수 있고, 목록 행·상세
-헤더에 라벨이 보인다(라벨 매핑 단일 출처: `jam-web/src/lib/admin/badgeImageSource.ts`).
+헤더에 라벨이 보인다(라벨 매핑 단일 출처: `jam-web/src/lib/admin/contentImageSource.ts`, 티켓
+20260925_1407에서 미션까지 공용으로 일반화됐다).
 
 ## 11. 시드와 재현
 
@@ -308,9 +309,10 @@ code:
   적용 API(`/api/admin/asset-generator/apply`)는 원본 PNG를 `badges/asset-generator/{id}.png`에
   보관하고 sharp(`lib/admin/badgeImageWebp.ts`)로 긴 변 400px WebP를 만들어
   `badges/asset-generator/{id}.webp`에 저장한 뒤, `image_url`을 WebP로, `image_source`를
-  `admin-generator`로 갱신한다. 라벨·필터 옵션은 `lib/admin/badgeImageSource.ts`가 단일
-  출처이고, 어드민 배지 목록(`BadgesTable.tsx`·`BadgeCard.tsx`)·필터(`BadgesFilterBar.tsx`)·
-  상세 헤더(`BadgeDetail.tsx`)·수정 폼 헤더(`BadgeForm.tsx`)가 이를 공유한다.
+  `admin-generator`로 갱신한다. 라벨·필터 옵션은 `lib/admin/contentImageSource.ts`(티켓
+  20260925_1407에서 `badgeImageSource.ts`를 미션까지 공용으로 일반화)가 단일 출처이고, 어드민
+  배지 목록(`BadgesTable.tsx`·`BadgeCard.tsx`)·필터(`BadgesFilterBar.tsx`)·상세 헤더
+  (`BadgeDetail.tsx`)·수정 폼 헤더(`BadgeForm.tsx`)가 이를 공유한다.
 - [20260924_2201](../../../tickets/p2-normal/20260924_2201_Infra_에셋-제너레이터-에이전트-CLI-프리셋-컬러-텍스트-PNG-시드기록.md) 완료:
   §8 자동 경로 CLI·§11 마스터 시드 규칙을 구현했다. 서버 캔버스 라이브러리 `@napi-rs/canvas`(2026-09-25 사용자
   승인)를 `jam-web/scripts/asset-generator/serverCanvas.ts`가 `render.ts`의 CanvasFactory·ImageLoader 인터페이스로

@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils'
 import BadgeRailPreview from '@/app/admin/badges/BadgeRailPreview'
 import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
 import { badgeTypeLabel, isJamCategoryBadge } from '@/lib/admin/badge-labels'
-import { badgeImageSourceLabel } from '@/lib/admin/badgeImageSource'
+import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import {
   adminActivityTypeLabel,
   badgeSectionDescription,
@@ -387,7 +387,7 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
               <h1 className="text-2xl font-bold">{badge.name}</h1>
               {/* 제작 경로 라벨(티켓 20260924_2200) — 어느 경로로 만든 이미지인지 상세에서 바로 보인다 */}
               <span className="inline-flex items-center whitespace-nowrap rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-semibold text-neutral-600">
-                제작 경로 · {badgeImageSourceLabel(badge.image_source)}
+                제작 경로 · {contentImageSourceLabel(badge.image_source)}
               </span>
               {badge.deleted_at && (
                 <span className="inline-flex items-center whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600">

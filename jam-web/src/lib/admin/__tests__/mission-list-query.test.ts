@@ -50,6 +50,7 @@ describe('parseMissionListParams', () => {
       reward: 'all',
       state: 'all',
       sort: 'created_desc',
+      imageSource: undefined,
     })
   })
 
@@ -62,8 +63,17 @@ describe('parseMissionListParams', () => {
         reward: 'points',
         state: 'ended',
         sort: 'ends_asc',
+        image_source: 'admin-generator',
       })
-    ).toEqual({ q: '한강', kind: 'gate', missionType: 'distance', reward: 'points', state: 'ended', sort: 'ends_asc' })
+    ).toEqual({
+      q: '한강',
+      kind: 'gate',
+      missionType: 'distance',
+      reward: 'points',
+      state: 'ended',
+      sort: 'ends_asc',
+      imageSource: 'admin-generator',
+    })
 
     const bad = parseMissionListParams({ kind: 'x', reward: 'y', state: 'z', sort: 'w' })
     expect(bad).toMatchObject({ kind: 'all', reward: 'all', state: 'all', sort: 'created_desc' })
@@ -71,6 +81,14 @@ describe('parseMissionListParams', () => {
 
   it('검색어의 PostgREST 필터 문법 문자를 정제한다', () => {
     expect(parseMissionListParams({ q: 'a,b(c)%' }).q).not.toMatch(/[,()%]/)
+  })
+
+  it('제작 경로 필터가 없으면 imageSource는 undefined다(전체 조회)', () => {
+    expect(parseMissionListParams({}).imageSource).toBeUndefined()
+  })
+
+  it('제작 경로 필터 sentinel(__unknown__)도 그대로 넘어간다', () => {
+    expect(parseMissionListParams({ image_source: '__unknown__' }).imageSource).toBe('__unknown__')
   })
 })
 
@@ -156,6 +174,16 @@ describe('applyMissionListQuery — 미션 유형·보상·검색·정렬', () =
     const { query, calls } = createStubQuery()
     applyMissionListQuery(query, parseMissionListParams({ sort: 'ends_desc' }), NOW)
     expect(calls[0]).toEqual({ method: 'order', args: ['ends_at', { ascending: false, nullsFirst: false }] })
+  })
+
+  it('제작 경로: 실제 값은 eq, sentinel(__unknown__)은 is null(티켓 20260925_1407)', () => {
+    const { query: q1, calls: c1 } = createStubQuery()
+    applyMissionListQuery(q1, parseMissionListParams({ image_source: 'admin-generator' }), NOW)
+    expect(filterCalls(c1)).toEqual([{ method: 'eq', args: ['image_source', 'admin-generator'] }])
+
+    const { query: q2, calls: c2 } = createStubQuery()
+    applyMissionListQuery(q2, parseMissionListParams({ image_source: '__unknown__' }), NOW)
+    expect(filterCalls(c2)).toEqual([{ method: 'is', args: ['image_source', null] }])
   })
 })
 

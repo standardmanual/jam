@@ -9,7 +9,7 @@ import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeCondition, BadgeRarity } from '@/types/database'
 import type { BadgeListRow } from './BadgeList'
 import { badgeTypeLabel } from '@/lib/admin/badge-labels'
-import { badgeImageSourceLabel } from '@/lib/admin/badgeImageSource'
+import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import { formatKstYmd } from '@/lib/admin/kst-format'
 
 const RARITY_BADGE_COLOR: Record<string, string> = {
@@ -68,7 +68,7 @@ export default function BadgeCard({ badge }: BadgeCardProps) {
                 {badge.rarity ? RARITY_LABEL[badge.rarity as BadgeRarity] : '—'}
               </span>
               <span className="inline-block px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded">
-                {badgeImageSourceLabel(badge.image_source)}
+                {contentImageSourceLabel(badge.image_source)}
               </span>
               {badge.deleted_at && (
                 <span className="inline-block px-2 py-1 text-xs font-semibold bg-red-50 border border-red-200 text-red-600 rounded-full whitespace-nowrap">

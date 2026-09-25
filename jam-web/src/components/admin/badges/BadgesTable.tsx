@@ -23,7 +23,7 @@ import { AssignTribeDialog } from './AssignTribeDialog'
 import type { BadgeCondition, BadgeRarity } from '@/types/database'
 import type { BadgeListRow } from './BadgeList'
 import { badgeTypeLabel } from '@/lib/admin/badge-labels'
-import { badgeImageSourceLabel } from '@/lib/admin/badgeImageSource'
+import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import { formatConditionChips } from '@/lib/badge-engine/conditionRegistry'
 
 const RARITY_COLOR: Record<string, string> = {
@@ -270,7 +270,7 @@ export default function BadgesTable({ badges, tribeMap = new Map(), totalCount }
           meta: { label: '제작 경로' },
           cell: ({ getValue }) => (
             <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium whitespace-nowrap">
-              {badgeImageSourceLabel(getValue())}
+              {contentImageSourceLabel(getValue())}
             </span>
           ),
         }),

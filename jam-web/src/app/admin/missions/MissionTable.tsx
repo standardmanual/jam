@@ -25,6 +25,7 @@ import {
 } from '@/components/admin/data-table/admin-fetch'
 import { toastBulkResult } from '@/components/admin/ui/toast-helpers'
 import { missionTypeLabel } from '@/lib/admin/badge-labels'
+import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import { formatKstYmd } from '@/lib/admin/kst-format'
 import { checkMissionConditionValue } from '@/lib/missions/condition-keys'
 import type { MissionListRow, MissionStatus } from '@/lib/admin/mission-list-query'
@@ -242,6 +243,17 @@ export function MissionTable({ rows, totalCount }: MissionTableProps) {
               </div>
             )
           },
+        }),
+        columnHelper.accessor((r) => r.mission.image_source, {
+          id: 'image_source',
+          header: '제작 경로',
+          enableSorting: false,
+          meta: { label: '제작 경로' },
+          cell: ({ getValue }) => (
+            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium whitespace-nowrap">
+              {contentImageSourceLabel(getValue())}
+            </span>
+          ),
         }),
       ]),
     [confirmHideOne]

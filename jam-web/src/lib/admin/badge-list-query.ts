@@ -13,7 +13,7 @@ import type { Json } from '@/types/database.generated'
 import type { BadgeListRow } from '@/components/admin/badges/BadgeList'
 import { sanitizeSearchTerm } from './search-term'
 import { UNASSIGNED_POI_CATEGORY, type AdminCategory } from './badge-labels'
-import { UNKNOWN_IMAGE_SOURCE_FILTER } from './badgeImageSource'
+import { UNKNOWN_IMAGE_SOURCE_FILTER } from './contentImageSource'
 import { ADMIN_LIST_PAGE_SIZE } from './list-params'
 import {
   badgeUsesConditionField,

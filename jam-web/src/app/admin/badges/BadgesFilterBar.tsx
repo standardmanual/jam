@@ -8,7 +8,7 @@ import { DataTableSortSelect } from '@/components/admin/data-table/data-table-so
 import { useListParams } from '@/components/admin/data-table/use-list-params'
 import { BADGE_TYPES, BADGE_TYPE_LABEL, UNASSIGNED_POI_CATEGORY } from '@/lib/admin/badge-labels'
 import { BADGE_LIST_SORT_OPTIONS, CONDITION_FIELD_FILTER_OPTIONS, DEFAULT_BADGE_LIST_SORT } from '@/lib/admin/badge-list-view'
-import { IMAGE_SOURCE_FILTER_OPTIONS } from '@/lib/admin/badgeImageSource'
+import { IMAGE_SOURCE_FILTER_OPTIONS } from '@/lib/admin/contentImageSource'
 
 const TYPE_OPTIONS = BADGE_TYPES.map((t) => ({ value: t as string, label: BADGE_TYPE_LABEL[t] }))
 
@@ -176,7 +176,7 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
         />
 
         {/* 제작 경로 필터(티켓 20260924_2200) — 값 3종 + "미상"(값 없음). 옵션·sentinel은
-            badgeImageSource.ts가 단일 출처다. */}
+            contentImageSource.ts가 단일 출처다. */}
         <DataTableFacetedFilter
           title="제작 경로"
           options={IMAGE_SOURCE_FILTER_OPTIONS}

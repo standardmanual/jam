@@ -7,6 +7,7 @@ import { DataTableSearch } from '@/components/admin/data-table/data-table-search
 import { DataTableSortSelect } from '@/components/admin/data-table/data-table-sort-select'
 import { useListParams } from '@/components/admin/data-table/use-list-params'
 import { missionTypeLabel } from '@/lib/admin/badge-labels'
+import { IMAGE_SOURCE_FILTER_OPTIONS } from '@/lib/admin/contentImageSource'
 
 interface MissionFilterBarProps {
   /** 고른 구분에 실제로 존재하는 미션 유형 — 서버가 구분에 맞춰 좁혀 보낸다 */
@@ -81,6 +82,15 @@ export default function MissionFilterBar({ typeOptions }: MissionFilterBarProps)
         options={STATE_OPTIONS}
         selected={filters.state ? [filters.state] : []}
         onChange={(values) => setFilters({ state: values[0] ?? null })}
+      />
+
+      {/* 제작 경로 필터(티켓 20260925_1407) — 값 2종 + "미상"(값 없음). 옵션·sentinel은
+          contentImageSource.ts가 단일 출처다(배지 필터와 공유). */}
+      <DataTableFacetedFilter
+        title="제작 경로"
+        options={IMAGE_SOURCE_FILTER_OPTIONS}
+        selected={filters.image_source ? [filters.image_source] : []}
+        onChange={(values) => setFilters({ image_source: values[0] ?? null })}
       />
 
       {hasFilter && (

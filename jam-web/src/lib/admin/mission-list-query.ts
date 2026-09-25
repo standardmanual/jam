@@ -11,10 +11,11 @@ import type { MissionRow, MissionType } from '@/types/database'
 import { activeMissionsQueryFilter } from '@/lib/missions/checker'
 import { MISSION_TYPES } from './badge-labels'
 import { sanitizeSearchTerm } from './search-term'
+import { UNKNOWN_IMAGE_SOURCE_FILTER } from './contentImageSource'
 
 /** 목록 표에 실제로 쓰는 컬럼만 select — 상세 폼 전용 컬럼은 넣지 않는다 */
 export const MISSION_LIST_COLUMNS =
-  'id, title, mission_type, condition_json, starts_at, ends_at, max_completions, exposure_mode, exposure_at, gate_axis, gated_badge_id, reward_badge_ids, reward_points'
+  'id, title, mission_type, condition_json, starts_at, ends_at, max_completions, exposure_mode, exposure_at, gate_axis, gated_badge_id, reward_badge_ids, reward_points, image_source'
 
 export type MissionListRow = Pick<
   MissionRow,
@@ -31,6 +32,7 @@ export type MissionListRow = Pick<
   | 'gated_badge_id'
   | 'reward_badge_ids'
   | 'reward_points'
+  | 'image_source'
 >
 
 /** 연쇄 필터의 선택지를 만들 때 필요한 최소 컬럼 */
@@ -85,6 +87,9 @@ export interface MissionListParams {
   reward: MissionRewardFilter
   state: MissionStateFilter
   sort: MissionListSort
+  /** 제작 경로 필터(티켓 20260925_1407) — `admin-generator`·`agent-generator` 중 하나, 값
+   *  없음(NULL)을 거르는 `UNKNOWN_IMAGE_SOURCE_FILTER`, 또는 필터 없음(undefined). */
+  imageSource: string | undefined
 }
 
 /** URL(또는 API 쿼리) 파라미터 → 타입이 있는 목록 조건. 목록·ID 조회가 모두 이 함수를 거친다. */
@@ -96,6 +101,7 @@ export function parseMissionListParams(raw: Record<string, string | undefined>):
     reward: raw.reward === 'badge' || raw.reward === 'points' || raw.reward === 'none' ? raw.reward : 'all',
     state: raw.state === 'upcoming' || raw.state === 'active' || raw.state === 'ended' ? raw.state : 'all',
     sort: isMissionListSort(raw.sort) ? raw.sort : DEFAULT_SORT,
+    imageSource: raw.image_source,
   }
 }
 
@@ -170,6 +176,9 @@ export function applyMissionListQuery<T>(
   } else if (params.state === 'ended') {
     next = next.lt('ends_at', nowIso)
   }
+
+  if (params.imageSource === UNKNOWN_IMAGE_SOURCE_FILTER) next = next.is('image_source', null)
+  else if (params.imageSource) next = next.eq('image_source', params.imageSource)
 
   const { column, ascending, nullsFirst } = SORT_COLUMN[params.sort]
   next = next.order(column, nullsFirst === undefined ? { ascending } : { ascending, nullsFirst })

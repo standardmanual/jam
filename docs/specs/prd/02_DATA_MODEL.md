@@ -128,7 +128,7 @@ Strava 동기화 실패 기록(마이그레이션 176). `failure_type`(`token_re
 | background_image_url | 배경 제너레이터(패턴/애니메이션 + Paper 셰이더 필터 합성)로 만든 배경을 어드민에서 static PNG로 구워(bake) Storage에 올린 뒤 저장하는 URL(nullable, 20260819_008). **`background_color`보다 우선 렌더링**됨(`getBadgeBackgroundStyle`) — 값이 있으면 이 이미지를, 없으면 `background_color`로 폴백. `background_color`와 상호 배타적으로 쓰임(어드민에서 저장 시 반대쪽을 null로 정리, DB 제약 아님). 원시 설정값(이미지·패턴/애니메이션 파라미터·필터 종류)은 저장하지 않음 — 재편집 가능한 설정이 아니라 완성된 이미지 1장 |
 | background_animation | 배지 상세화면 **이미지 카드 안**에서 라이브 실행하는 블롭 애니메이션 파라미터(jsonb, nullable, 20260901_1944). 위 세 배경 컬럼과 **렌더링 지점이 다르다** — 전체 배경 레이어가 아니라 430×430 Hero 카드 내부의 `<canvas>`다. 영상 배경(`background_video_url`)과 달리 파일을 굽지 않고 파라미터만 저장해 재편집이 가능하다. 값 형태는 `{ type: 'blob', colors: [4색], bgColor, speed, seed, blur, scale }`이며, jsonb라 스키마 검증이 없어 `parseBlobAnimation`이 관용적으로 정규화한다(형식이 어긋나면 `null` = 애니메이션 없음). **렌더링 우선순위 최상위** — 아래 «배경 렌더링 우선순위» 참고 |
 | category | 체크인 배지(`type==='checkin'`) 전용 지점 카테고리 오버라이드(nullable text, `poi_categories.slug` FK, `ON DELETE SET NULL`, 20260830_1344). 값이 있으면 연결된 지점의 `poi.category`보다 우선해 어드민 목록·공개 배지함의 분류 기준이 되고, `null`이면 `poi.category`로 폴백한다(20260830_1522). 체크인 외 타입은 서버에서 항상 `null`로 강제 |
-| image_source | 배지 대표 이미지(`image_url`)의 제작 경로(nullable text, CHECK `admin-generator`·`agent-generator`·`jam-img`, 마이그레이션 186, 티켓 20260924_2200, 2026-09-25 적용). `admin-generator`=에셋 제너레이터 적용 탭(수동 제작), `agent-generator`=윤진 CLI 등록 스크립트(윤진 자동, 티켓 20260924_2202), `jam-img`=기존 아이콘 파이프라인(후속 티켓 20260925_0352에서 기록 추가). NULL이면 기존 배지(미상). 어드민 배지 목록·상세 라벨과 목록 필터의 단일 출처는 `jam-web/src/lib/admin/badgeImageSource.ts`. 적용 탭은 원본 PNG를 `images` 버킷 `badges/asset-generator/{id}.png`에 보관하고 긴 변 400px WebP(`{id}.webp`)를 `image_url`에 넣는다 (규격 근거는 PRD asset-generator §9) |
+| image_source | 배지 대표 이미지(`image_url`)의 제작 경로(nullable text, CHECK `admin-generator`·`agent-generator`·`jam-img`, 마이그레이션 186, 티켓 20260924_2200, 2026-09-25 적용). `admin-generator`=에셋 제너레이터 적용 탭(수동 제작), `agent-generator`=윤진 CLI 등록 스크립트(윤진 자동, 티켓 20260924_2202), `jam-img`=기존 아이콘 파이프라인(후속 티켓 20260925_0352에서 기록 추가). NULL이면 기존 배지(미상). 어드민 배지 목록·상세 라벨과 목록 필터의 단일 출처는 `jam-web/src/lib/admin/contentImageSource.ts`(티켓 20260925_1407에서 미션까지 공용으로 일반화). 적용 탭은 원본 PNG를 `images` 버킷 `badges/asset-generator/{id}.png`에 보관하고 긴 변 400px WebP(`{id}.webp`)를 `image_url`에 넣는다 (규격 근거는 PRD asset-generator §9) |
 
 #### 배경 렌더링 우선순위
 
@@ -441,6 +441,13 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 하나로 통일하고, 게이트 미션 노출 판정(`gate_axis`/`visibility_rule_json`)보다 **먼저** 적용되는
 별도 레이어다 — `hidden`이면 게이트 판정에 도달하기 전에 걸러진다. `exposure_at`이 비어 있는
 `scheduled` 미션은 fail-closed로 항상 숨김 처리된다.
+
+`image_source`(nullable text, CHECK `admin-generator`·`agent-generator`, 마이그레이션 188,
+티켓 20260925_1407) — 미션 카드 썸네일(`image_url`)의 제작 경로. `admin-generator`=에셋
+제너레이터 적용 탭(수동 제작), `agent-generator`=윤진 등록 스크립트(윤진 자동, 티켓
+20260925_1412). NULL이면 기존 미션(미상). 배지의 `image_source`(`badges` 테이블, 위 §8)와
+값 어휘를 공유하되 배지 전용 `jam-img`는 없다. 라벨·필터 단일 출처는
+`jam-web/src/lib/admin/contentImageSource.ts`(배지·미션 공용).
 
 ### user_mission_participations / user_mission_completions
 참가(진행도 추적)와 완료를 별도 테이블로 관리. "참가 필수·취소 불가" 정책 — 참가자만 완료 보상 대상.

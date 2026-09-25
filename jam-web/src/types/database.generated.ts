@@ -1026,6 +1026,7 @@ export type Database = {
           gate_stage: string | null
           gated_badge_id: string | null
           id: string
+          image_source: string | null
           image_url: string | null
           max_completions: number | null
           mission_type: string
@@ -1050,6 +1051,7 @@ export type Database = {
           gate_stage?: string | null
           gated_badge_id?: string | null
           id?: string
+          image_source?: string | null
           image_url?: string | null
           max_completions?: number | null
           mission_type: string
@@ -1074,6 +1076,7 @@ export type Database = {
           gate_stage?: string | null
           gated_badge_id?: string | null
           id?: string
+          image_source?: string | null
           image_url?: string | null
           max_completions?: number | null
           mission_type?: string

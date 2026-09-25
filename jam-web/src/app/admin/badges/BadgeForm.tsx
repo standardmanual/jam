@@ -43,7 +43,7 @@ import {
   type ConditionFormFields,
 } from './conditionFormFields'
 import { BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
-import { badgeImageSourceLabel } from '@/lib/admin/badgeImageSource'
+import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import {
   ADMIN_ACTIVITY_TYPES,
   ADMIN_ACTIVITY_TYPE_LABEL,
@@ -1245,7 +1245,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
             <div className="flex flex-col gap-2">
               {header}
               <span className="inline-flex w-fit items-center whitespace-nowrap rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-semibold text-neutral-600">
-                제작 경로 · {badgeImageSourceLabel(badge.image_source)}
+                제작 경로 · {contentImageSourceLabel(badge.image_source)}
               </span>
             </div>
           ) : (

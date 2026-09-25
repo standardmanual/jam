@@ -1,5 +1,6 @@
 /**
- * /api/admin/asset-generator/apply — 스테이지 이미지 → 배지 반영 (티켓 20260924_2200)
+ * /api/admin/asset-generator/apply — 스테이지 이미지 → 배지·미션 반영 (티켓 20260924_2200,
+ * 미션 확장 20260925_1407)
  * supabase 클라이언트는 최소 체이닝만 흉내 낸 스텁으로 바꿔, 원본·WebP 두 경로에 업로드하고
  * update payload에 image_url(WebP)·image_source가 담기는지만 본다.
  * sharp 변환은 실제로 돌린다(sharp로 만든 유효한 PNG 바이트를 넘긴다) — 별도 단위 테스트는
@@ -11,21 +12,23 @@ import { NextRequest } from 'next/server'
 import sharp from 'sharp'
 
 const BADGE_ID = '00000000-0000-4000-8000-0000000000bb'
+const MISSION_ID = '00000000-0000-4000-8000-0000000000mm'
 const MAX_APPLY_IMAGE_BYTES = 5 * 1024 * 1024
 
-let badgeLookupResult: { data: { id: string; name: string } | null; error: { message: string } | null } = {
+let lookupResult: { data: Record<string, string> | null; error: { message: string } | null } = {
   data: { id: BADGE_ID, name: '테스트 배지' },
   error: null,
 }
 let updateError: { message: string } | null = null
 const updatePayloads: Record<string, unknown>[] = []
+const fromCalls: string[] = []
 
-function makeBadgesBuilder() {
+function makeTableBuilder() {
   const builder: Record<string, unknown> = {}
   builder.select = vi.fn(() => builder)
   builder.eq = vi.fn(() => builder)
   builder.is = vi.fn(() => builder)
-  builder.maybeSingle = vi.fn(async () => badgeLookupResult)
+  builder.maybeSingle = vi.fn(async () => lookupResult)
   builder.update = vi.fn((payload: Record<string, unknown>) => {
     updatePayloads.push(payload)
     return builder
@@ -36,8 +39,11 @@ function makeBadgesBuilder() {
   return builder
 }
 
-let badgesBuilder = makeBadgesBuilder()
-const fromMock = vi.fn(() => badgesBuilder)
+let tableBuilder = makeTableBuilder()
+const fromMock = vi.fn((table: string) => {
+  fromCalls.push(table)
+  return tableBuilder
+})
 
 const uploadMock = vi.fn(
   async (_path: string, _body: Buffer, _options: { contentType: string; upsert?: boolean }) =>
@@ -68,11 +74,15 @@ function postReq(form: FormData): NextRequest {
 }
 
 beforeEach(() => {
-  badgeLookupResult = { data: { id: BADGE_ID, name: '테스트 배지' }, error: null }
+  lookupResult = { data: { id: BADGE_ID, name: '테스트 배지' }, error: null }
   updateError = null
   updatePayloads.length = 0
-  badgesBuilder = makeBadgesBuilder()
-  fromMock.mockReset().mockImplementation(() => badgesBuilder)
+  fromCalls.length = 0
+  tableBuilder = makeTableBuilder()
+  fromMock.mockReset().mockImplementation((table: string) => {
+    fromCalls.push(table)
+    return tableBuilder
+  })
   uploadMock.mockReset().mockResolvedValue({ error: null })
   getPublicUrlMock.mockReset().mockImplementation((path: string) => ({ data: { publicUrl: `https://cdn.test.jam.app/images/${path}` } }))
 })
@@ -82,14 +92,25 @@ describe('POST /api/admin/asset-generator/apply', () => {
     const { getAdminUser } = await import('@/lib/admin/auth')
     vi.mocked(getAdminUser).mockResolvedValueOnce(null)
     const form = new FormData()
-    form.append('badgeId', BADGE_ID)
+    form.append('targetType', 'badge')
+    form.append('targetId', BADGE_ID)
     form.append('image', await makeSmallPngFile())
     const res = await POST(postReq(form))
     expect(res.status).toBe(403)
   })
 
-  it('배지를 선택하지 않으면 400', async () => {
+  it('콘텐츠 유형이 badge/mission이 아니면 400', async () => {
     const form = new FormData()
+    form.append('targetType', 'collection')
+    form.append('targetId', BADGE_ID)
+    form.append('image', await makeSmallPngFile())
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(400)
+  })
+
+  it('대상을 선택하지 않으면 400', async () => {
+    const form = new FormData()
+    form.append('targetType', 'badge')
     form.append('image', await makeSmallPngFile())
     const res = await POST(postReq(form))
     expect(res.status).toBe(400)
@@ -98,30 +119,34 @@ describe('POST /api/admin/asset-generator/apply', () => {
   it('이미지가 5MB를 넘으면 400 — sharp 변환·업로드를 시도하지 않는다', async () => {
     const oversized = new File([new Uint8Array(MAX_APPLY_IMAGE_BYTES + 1)], 'stage.png', { type: 'image/png' })
     const form = new FormData()
-    form.append('badgeId', BADGE_ID)
+    form.append('targetType', 'badge')
+    form.append('targetId', BADGE_ID)
     form.append('image', oversized)
     const res = await POST(postReq(form))
     expect(res.status).toBe(400)
     expect(uploadMock).not.toHaveBeenCalled()
   })
 
-  it('배지를 찾을 수 없으면 404', async () => {
-    badgeLookupResult = { data: null, error: null }
+  it('대상을 찾을 수 없으면 404', async () => {
+    lookupResult = { data: null, error: null }
     const form = new FormData()
-    form.append('badgeId', BADGE_ID)
+    form.append('targetType', 'badge')
+    form.append('targetId', BADGE_ID)
     form.append('image', await makeSmallPngFile())
     const res = await POST(postReq(form))
     expect(res.status).toBe(404)
   })
 
-  it('원본 PNG·WebP를 각각 업로드하고 image_url(WebP)·image_source를 함께 갱신한다', async () => {
+  it('배지: 원본 PNG·WebP를 각각 업로드하고 image_url(WebP)·image_source를 함께 갱신한다', async () => {
     const form = new FormData()
-    form.append('badgeId', BADGE_ID)
+    form.append('targetType', 'badge')
+    form.append('targetId', BADGE_ID)
     form.append('image', await makeSmallPngFile())
 
     const res = await POST(postReq(form))
     expect(res.status).toBe(200)
 
+    expect(fromCalls).toEqual(['badges'])
     expect(uploadMock).toHaveBeenCalledTimes(2)
     const [pngPath, pngBody, pngOptions] = uploadMock.mock.calls[0]
     const [webpPath, , webpOptions] = uploadMock.mock.calls[1]
@@ -139,5 +164,27 @@ describe('POST /api/admin/asset-generator/apply', () => {
     expect(body.name).toBe('테스트 배지')
     expect(body.webpUrl).toBe(updatePayloads[0].image_url)
     expect(body.webpBytes).toBeGreaterThan(0)
+  })
+
+  it('미션: missions 테이블에 title로 조회하고 저장 경로가 missions/ 접두사다(티켓 20260925_1407)', async () => {
+    lookupResult = { data: { id: MISSION_ID, title: '테스트 미션' }, error: null }
+    const form = new FormData()
+    form.append('targetType', 'mission')
+    form.append('targetId', MISSION_ID)
+    form.append('image', await makeSmallPngFile())
+
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(200)
+
+    expect(fromCalls).toEqual(['missions'])
+    const [pngPath] = uploadMock.mock.calls[0]
+    const [webpPath] = uploadMock.mock.calls[1]
+    expect(pngPath).toBe(`missions/asset-generator/${MISSION_ID}.png`)
+    expect(webpPath).toBe(`missions/asset-generator/${MISSION_ID}.webp`)
+
+    expect(updatePayloads[0].image_source).toBe('admin-generator')
+
+    const body = await res.json()
+    expect(body.name).toBe('테스트 미션')
   })
 })
