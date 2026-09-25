@@ -47,6 +47,7 @@ status: active
 ## docs/specs/prd/asset-generator/
 
 - [PRD.md](prd/asset-generator/PRD.md) — JAM! 에셋 제너레이터를 어드민 디자인 도구로 확장해 배지 대표 이미지를 수동·자동(윤진) 두 경로로 만들고 적용하는 스펙 정본이다.
+- [REGISTRATION_BUNDLE.md](prd/asset-generator/REGISTRATION_BUNDLE.md) — 에셋 제너레이터 자동 경로(윤진)가 만드는 배지 등록 묶음(bundle.json)의 필드·검증 규칙·실행 절차와 등록 기록·되돌림 방식의 정본이다.
 
 ## docs/specs/prd/badge-share/
 

@@ -1,0 +1,24 @@
+{
+  "bundle_id": "example-badge",
+  "author": "윤진",
+  "created_at": "2026-09-25T10:30:00+09:00",
+  "color_rationale_link": "jam-doc/planning/content/TRIBES.md",
+  "badge": {
+    "name": "[TEST] 예시 산책 배지",
+    "description": "묶음 형식을 확인하려고 만든 예시 배지입니다. 실제로 등록하지 않습니다.",
+    "type": "activity",
+    "rarity": "common",
+    "sort_order": 101,
+    "activity_types": ["walking"],
+    "point_reward": 10,
+    "condition_json": { "activity_type": "walking", "distance_km": 5 }
+  },
+  "image": {
+    "path": "image.png",
+    "seed": 20260925,
+    "preset_id": "11111111-1111-4111-8111-111111111111",
+    "bg_color": "#ff1a00",
+    "end_color": "#ff4dff",
+    "text": "예시 산책"
+  }
+}
