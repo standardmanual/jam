@@ -2,9 +2,9 @@
 id: "20260925_2358"
 category: Service
 priority: P2
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-09-25
-closed:
+closed: 2026-09-26
 related:
   - "20260925_2354"
   - "20260925_2319"
@@ -89,7 +89,7 @@ related:
 - `scripts/verify.sh` 통과.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
 
@@ -121,19 +121,31 @@ jam-web/src/components/__tests__/safeImageCallSites.test.tsx (신규)
 ### 테스트 결과
 - [x] (나) `react-dom/server` `renderToStaticMarkup` 렌더 테스트 11건 — 새 의존성 없음. 미등록 호스트(`storage.heypop.kr`)를 준 `BadgeGridCard`·`BadgeTrophyGridCard`·`RecipeRewardRow`·`FeedSection`(단건 40px·묶음 24px)·`FeedSection` `DetailSheet`(112px)·`MissionDetailClient`(52px)가 예외 없이 `<img>`를 그린다. 교체 전 코드(`origin/staging`)로 되돌려 돌리면 이 중 5건이 실패하는 것을 확인했다(Prove-It). 나머지는 등록 호스트·폴백·`SafeImage` 계약 케이스다.
 - [x] `scripts/verify.sh` 통과.
-- [ ] 서버 렌더로 확인하지 못한 컴포넌트와 이유:
-  - `BadgeDetailSheet`(176px)·`CombineClient`(64px, 가방 시트 안)·`PoiCarouselModal`(80px·44px): `BottomSheet`(`components/ui/BottomSheet.tsx:275`의 `if (!mounted) return null`, `:331` `createPortal`)이나 마운트 이후에만 그려져 서버 렌더 결과에 이미지가 나오지 않는다. 테스트해도 무의미한 통과가 된다. `PoiCard`·`ItemRow`는 내보내지 않은 내부 컴포넌트이기도 하다. 이 3개는 `SafeImage` 계약 테스트(미등록 호스트 → `<img>`, 예외 없음)로 대신한다.
-  - `onboarding/page.tsx`(트라이브 48px): 페이지 컴포넌트가 훅·데이터 페치로 단계별 화면을 그려 초기 서버 렌더에는 트라이브 선택 단계가 나오지 않는다. 같은 계약 테스트로 대신한다.
-  - 위 4개 파일과 등록 호스트 실표시는 (가) 임시 샘플 페이지 실렌더(카리나, 병합 뒤 push 전)에서 확인한다.
+- [x] 게이트(민지): **PASS**(1차, 재작업 없음). 브랜치 HEAD 4d322bd2의 GitHub `verify` success(run 36151946541).
+- 서버 렌더로 확인하지 못한 컴포넌트와 이유(아현): `BadgeDetailSheet`(176px)·`CombineClient`(64px, 가방 시트 안)·`PoiCarouselModal`(80px·44px)은 `BottomSheet`(`components/ui/BottomSheet.tsx:275`의 `if (!mounted) return null`, `:331` `createPortal`)나 마운트 이후에만 그려져 서버 렌더 결과에 이미지가 나오지 않는다. `onboarding/page.tsx`(트라이브 48px)는 훅·데이터 페치로 단계별 화면을 그려 초기 서버 렌더에 트라이브 선택 단계가 없다. 이 4개는 `SafeImage` 계약 테스트로 대신했고 아래 (가)에서 실렌더로 확인했다(온보딩 제외).
+- [x] **(가) 실렌더 확인(2026-09-26, 사용자 승인)**: 로컬 `next dev`(`ADMIN_EMAILS` 셸 환경변수, dev-login 계정)에서 개발 전용 임시 페이지 두 개(`app/dev-sample/tmp-2358`·`tmp-2358-poi`)를 만들어 확인하고 삭제했다. **DB는 건드리지 않았다**(가짜 props와 `window.fetch` 가로채기만 사용). 임시 페이지는 커밋하지 않았고 작업 트리는 깨끗하다.
+  - 미등록 호스트 URL(`storage.heypop.kr`, 홈피드 카드에 실제로 있는 값)을 준 결과, 모두 오류 화면 없이 일반 `<img>`로 표시되고 이미지가 로드됐다(`naturalWidth` 800): `BadgeDetailSheet` 176px, `CombineClient` 목록의 보상 이미지 40px(`RecipeRewardRow`)와 가방 시트의 후보 이미지 64px, `PoiCarouselModal` 픽업 목록 44px·보유 배지 목록 44px·드랍 확인 단계 80px.
+  - 등록 호스트 실표시(실제 프로덕션 데이터): 서비스 배지 상세(`/badges/[id]`, 2319에서 바꾼 `BadgeHeroSection`의 200px 히어로)와 미션 상세(`/missions/[id]`, 52px 이미지)가 오류 없이 열리고 이미지가 `/_next/image`로 최적화되어 로드됐다(배지 상세는 이미지 요청 200 응답, 미획득 배지라 원래 스타일대로 반투명). `/badges`·`/`(홈)도 오류 없이 열렸고 홈의 미등록 호스트 카드 4장은 기존대로 `SafeImage`로 표시된다.
+- **직접 확인하지 못한 곳(브라우저)**: `FeedSection` 3곳(활동 피드), `BadgeTrophyGridCard`·`BadgeGridCard`(배지 그리드·컬렉션 표지), `onboarding/page.tsx` 트라이브 이미지. dev-login 계정에 팔로잉·획득 배지가 없어 그 화면들에 항목이 나타나지 않았고, 온보딩은 진행하면 사용자 데이터를 바꾸며 트라이브 이미지 값이 프로덕션에 없다. 이 곳들은 (나) 서버 렌더 테스트(온보딩 제외)로만 확인했다.
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: (main 배포 전, staging 반영은 2026-09-26)
+- 환경: staging
+- 커밋: 병합 커밋 971f21e3 (구현 4d322bd2)
+- DB 마이그레이션: 없음.
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1차 | 아현·민지 | 134,172 | 25,661 / 3,896 | 9분 52초 | 47 |
+| 합계 | 아현·민지 | 134,172 | 25,661 / 3,896 | 9분 52초 | 47 |
 
 ### 주요 의사결정 / 핵심 메모
 - 삼항을 유지한 채 `<Image>`만 바꾸는 대신 `src`·`fallback`으로 합쳤다. 이유: 삼항을 남기면 로드 실패 폴백을 지점마다 따로 이중으로 써야 한다.
 - ESLint 규칙의 서비스 화면 확장은 이 티켓 범위가 아니다(티켓 20260925_2354 결정).
 
 ### 잔여 이슈
-- (가) 임시 샘플 페이지 실렌더(미등록 호스트 URL 렌더, 피드·배지 목록·배지 상세 시트·컴바인의 등록 호스트 표시)는 카리나의 병합 후 후속 확인이다.
+- 위 「직접 확인하지 못한 곳」(활동 피드 3곳·배지 그리드 카드·온보딩 트라이브)은 브라우저 실렌더 미확인이다.
+- 아바타 7곳과 정적 로고 3곳은 이 티켓 범위 밖이다(티켓 2354 결정). ESLint 규칙의 서비스 화면 확장은 서비스 전환을 마친 뒤 판단한다(티켓 2354 잔여 이슈).
+- [참고] 민지: `FeedSection` `DetailSheet`의 이미지 없음 케이스 테스트가 `expect(html).not.toContain('width="112"')`만 확인하고 폴백 아이콘이 그려졌는지는 직접 검증하지 않는다.
