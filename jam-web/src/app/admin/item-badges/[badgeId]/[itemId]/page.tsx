@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRow, CustodyEventRow, InventoryItemRow, InventoryRow, PoiDropSource } from '@/types/database'
 import {
@@ -127,7 +127,7 @@ export default async function ItemBadgeDetailPage({ params }: Props) {
       <div className="flex items-start gap-4">
         <div className="w-16 h-16 flex-shrink-0 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
           {badge?.image_url ? (
-            <Image src={badge.image_url} alt={badge.name} width={64} height={64} className="w-full h-full object-contain" />
+            <SafeImage src={badge.image_url} alt={badge.name} width={64} height={64} className="w-full h-full object-contain" />
           ) : (
             <span className="text-gray-400 text-xs">—</span>
           )}

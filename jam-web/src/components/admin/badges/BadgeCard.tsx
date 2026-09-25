@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { IconCheck, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/admin/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/admin/ui/card'
@@ -41,7 +41,7 @@ export default function BadgeCard({ badge }: BadgeCardProps) {
           {/* 배지 이미지 */}
           <div className="w-12 h-12 md:w-14 md:h-14 flex-shrink-0 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
             {badge.image_url ? (
-              <Image
+              <SafeImage
                 src={badge.image_url}
                 alt={badge.name}
                 width={48}

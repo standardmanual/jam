@@ -81,14 +81,32 @@ related:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 어드민 10곳의 `next/image` 직접 사용을 `SafeImage`로 교체했다(크기·`className`·`alt` 그대로). ApplyTab의 `unoptimized` 임시 패치를 제거했고, `fill`을 쓰던 ApplyTab·BadgeDetail은 `width`·`height` 없이 `SafeImage`의 fill 모드로 옮겼다.
+- 표 셀 3곳의 이미지 출처를 조회 쿼리에서 확인했다(모두 `badges.image_url`).
+  - `ItemBadgesTable`: `app/admin/item-badges/page.tsx:48-49`, 컬럼 `lib/admin/item-badge-list.ts:16` (`'id, name, image_url, rarity'`).
+  - `OrphanedItemsTable`: `lib/admin/orphaned-items-query.ts:145` (`badges.select('id, name, image_url, rarity')`) → `badgeImageUrl`(179행).
+  - `DropExclusionBadgesTable`: `app/admin/drop-policy/exclusions/page.tsx:68-69`, 컬럼 `lib/admin/drop-exclusion-list.ts:20` (`BADGE_EXCLUSION_COLUMNS`에 `image_url` 포함).
+- 표 셀은 바깥 컨테이너가 고정 크기(`w-8 h-8`·`w-10 h-10`)라 로드 실패 시에도 자리가 유지되어 폴백은 기본값(빈 렌더)을 썼다.
+- `docs/specs/`에는 어드민 이미지 렌더 방침을 적은 문서가 없다(`grep -rnE "SafeImage|next/image|unoptimized" docs/specs` 결과 0건). 문서 수정 없음.
+- 재발 방지 ESLint 규칙은 티켓 20260925_2321에서 처리한다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/app/admin/asset-generator/ApplyTab.tsx
+jam-web/src/app/admin/itembooks/ItemBookForm.tsx
+jam-web/src/app/admin/item-badges/ItemBadgesTable.tsx
+jam-web/src/app/admin/item-badges/orphaned/OrphanedItemsTable.tsx
+jam-web/src/app/admin/item-badges/[badgeId]/[itemId]/page.tsx
+jam-web/src/app/admin/item-badges/[badgeId]/page.tsx
+jam-web/src/components/admin/drop-policy/DropExclusionBadgesTable.tsx
+jam-web/src/components/admin/badges/BadgeCard.tsx
+jam-web/src/components/admin/badges/BadgesTable.tsx
+jam-web/src/components/admin/badges/BadgeDetail.tsx
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `scripts/verify.sh` 통과(lint·typecheck·test·ds:check·slop 외 전 항목)
+- [ ] 실렌더 확인(미등록 호스트 배지·홈피드 카드)은 워크트리에서 `next dev`가 뜨지 않아 오케스트레이터 확인 대기
 
 ### 배포 정보
 - 배포일:
@@ -96,6 +114,7 @@ related:
 - 커밋:
 
 ### 주요 의사결정 / 핵심 메모
+- 기계적 치환이라 새 테스트는 추가하지 않았다(`SafeImage` 동작은 기존 컴포넌트 책임).
 
 ### 잔여 이슈
--
+- 실렌더 확인 항목(완료 조건 3·4번)이 남아 있다.
