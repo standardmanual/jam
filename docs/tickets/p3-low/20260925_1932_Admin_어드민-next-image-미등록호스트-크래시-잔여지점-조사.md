@@ -35,6 +35,10 @@ closed:
 - **`today_cards.cover_image_url` 실측(프로덕션, 읽기 전용)**: 이미지가 있는 13건 중 외부 호스트
   11건(`storage.heypop.kr` 10건, `cdn.news.bbsi.co.kr` 1건), 내부 경로(`/badges/sample/…`) 2건,
   Supabase Storage 0건이다.
+- **자유 입력 경로 하나 확인**: 홈피드 수정 화면(`TodayCardForm.tsx`)의 커버 이미지 URL은 업로드
+  필드가 아니라 텍스트 입력이라, 운영자가 임의 호스트 URL을 넣을 수 있다. 이 화면 자체는
+  `next/image`를 직접 쓰지 않는다. 위 `today_cards` 외부 호스트 11건이 이 폼으로 들어왔는지, seed
+  SQL 등 다른 경로로 들어왔는지는 확인하지 않았다.
 - **어드민에서 `next/image`를 직접 쓰는 파일 10개**(`SafeImage` 미사용):
   - `jam-web/src/app/admin/asset-generator/ApplyTab.tsx` (패치 142bf1da로 `unoptimized` 적용)
   - `jam-web/src/app/admin/itembooks/ItemBookForm.tsx`
