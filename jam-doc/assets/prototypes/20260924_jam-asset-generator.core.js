@@ -29,16 +29,21 @@ var AssetGeneratorCore = (() => {
     IRR_HI: () => IRR_HI,
     IRR_LO: () => IRR_LO,
     OUT_FRACTION: () => OUT_FRACTION,
+    PRESET_TARGET_TYPES: () => PRESET_TARGET_TYPES,
+    PRESET_TARGET_TYPE_LABELS: () => PRESET_TARGET_TYPE_LABELS,
     RADIUS_MIN: () => RADIUS_MIN,
     buildPath: () => buildPath,
     buildStamp: () => buildStamp,
     candidateStats: () => candidateStats,
     choice: () => choice,
+    deriveRibbonFromSeed: () => deriveRibbonFromSeed,
+    deserializePresetLayers: () => deserializePresetLayers,
     drawImageLayer: () => drawImageLayer,
     drawRibbonLayer: () => drawRibbonLayer,
     drawTextLayer: () => drawTextLayer,
     fillBackground: () => fillBackground,
     irrValue: () => irrValue,
+    isPresetTargetType: () => isPresetTargetType,
     makeCandidate: () => makeCandidate,
     mulberry32: () => mulberry32,
     pickCandidate: () => pickCandidate,
@@ -48,6 +53,7 @@ var AssetGeneratorCore = (() => {
     randomPalette: () => randomPalette,
     randomizeRibbonConfig: () => randomizeRibbonConfig,
     sampleFitted: () => sampleFitted,
+    serializePresetLayers: () => serializePresetLayers,
     unitCurve: () => unitCurve
   });
 
@@ -123,6 +129,9 @@ var AssetGeneratorCore = (() => {
       gap: randInt(4, 30, 1, rnd),
       count: randInt(200, 800, 5, rnd)
     };
+  }
+  function deriveRibbonFromSeed(seed) {
+    return randomizeRibbonConfig(mulberry32(seed));
   }
 
   // jam-web/src/lib/asset-generator/curve.ts
@@ -491,6 +500,28 @@ var AssetGeneratorCore = (() => {
     ctx.textBaseline = prevBaseline;
     ctx.fillStyle = prevFillStyle;
     ctx.globalAlpha = prevAlpha;
+  }
+
+  // jam-web/src/lib/asset-generator/presetSerialize.ts
+  var PRESET_TARGET_TYPES = ["badge", "mission", "collection", "home_feed"];
+  var PRESET_TARGET_TYPE_LABELS = {
+    badge: "\uBC30\uC9C0",
+    mission: "\uBBF8\uC158",
+    collection: "\uCEEC\uB809\uC158",
+    home_feed: "\uD648\uD53C\uB4DC"
+  };
+  function isPresetTargetType(value) {
+    return typeof value === "string" && PRESET_TARGET_TYPES.includes(value);
+  }
+  function serializePresetLayers(layers, assetUrlByLayerId = {}) {
+    return layers.map((layer) => {
+      if (layer.type === "text") return { ...layer, content: "" };
+      const replacement = assetUrlByLayerId[layer.id];
+      return replacement ? { ...layer, assetUrl: replacement } : layer;
+    });
+  }
+  function deserializePresetLayers(layers) {
+    return layers.map((layer) => layer.type === "text" ? { ...layer, content: "" } : layer);
   }
   return __toCommonJS(index_exports);
 })();
