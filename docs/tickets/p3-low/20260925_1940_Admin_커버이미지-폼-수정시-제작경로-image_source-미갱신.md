@@ -2,7 +2,7 @@
 id: "20260925_1940"
 category: Admin
 priority: P3
-status: OPEN
+status: IN_PROGRESS
 created: 2026-09-25
 closed:
 parent: "20260925_1404"
@@ -64,9 +64,53 @@ related:
 - 카리나 추천: **A**. 근거는 가장 작은 변경이고 마이그레이션이 필요 없으며 라벨이 거짓이 되지
   않는다는 것이다. 다만 「수동 교체」 구분이 운영에 필요하다면 C가 맞다.
 
+## 결정 기록
+
+- **2026-09-25 사용자가 방침 A(NULL로 되돌린다)를 결정했다.**
+- 4개 유형의 이미지 저장 경로 확인 결과(카리나, 코드 읽기):
+
+| 유형 | 저장 라우트 | 이미지 컬럼 처리 방식 | 현재 `image_source` 처리 |
+|---|---|---|---|
+| 배지 | `api/admin/badges/[id]/route.ts` PUT | 기존 행을 먼저 조회해 `body.image_url ?? existing.image_url`로 병합(76행) | 건드리지 않음 |
+| 미션 | `api/admin/missions/[id]/route.ts` PATCH | `.update(body as never)` 본문 통과(86행). 기존 행은 검증 필요할 때만 조회 | 건드리지 않음 |
+| 컬렉션 | `api/admin/itembooks/[id]/route.ts` PUT | 기존 행 조회 후 `body.image_url ?? existing.image_url` 병합(34행) | 건드리지 않음 |
+| 홈피드 | `api/admin/today/[id]/route.ts` PATCH | `.update(body as never)` 본문 통과(15행) | 건드리지 않음 |
+
+## 구현 계획 (방침 A 확정)
+
+접근: 이미지 컬럼 값이 **실제로 바뀔 때만** `image_source`를 NULL로 갱신한다. 값이 같거나 본문에
+이미지 컬럼이 없으면 `image_source`를 건드리지 않는다(폼이 매번 전체 필드를 보내므로 동일 값
+비교가 필요하다).
+
+가정(범위 결정, 사용자가 이의를 제기하면 조정):
+- 대상은 위 표의 **4개 폼 저장 라우트**다. 이미지 컬럼을 직접 갱신하는 제작 파이프라인
+  (`api/admin/activity-badge-image/generate/route.ts` 등 `jam-img` 경로)은 제외한다. 그 경로의
+  제작 경로 기록은 티켓 20260925_0352가 다룬다.
+- 에셋 제너레이터 적용 탭(`apply/route.ts`)과 등록 스크립트는 이 라우트들을 거치지 않으므로 영향이
+  없다.
+- 본문에 클라이언트가 `image_source`를 직접 실어 보내는 경우는 이번 범위 밖이다(기존 동작 유지).
+
+파일 단위 지도(예상 10~11개 파일, 임계값 5개/100줄 초과 확실 → `planOnlyWaiver` 부여):
+1. 신규 `jam-web/src/lib/admin/imageSourceReset.ts`: 순수 함수 하나. 기존 값과 다음 값을
+   받아 이미지가 바뀌었으면 `{ image_source: null }`, 아니면 `{}`를 돌려준다. 다음 값이
+   `undefined`면 미변경, `null`·빈 문자열은 같은 값(NULL)으로 정규화해 비교한다.
+2. 신규 `jam-web/src/lib/admin/__tests__/imageSourceReset.test.ts`: 미변경·변경·undefined·
+   null↔빈 문자열 정규화·공백 케이스.
+3. `api/admin/itembooks/[id]/route.ts` PUT(31행 `.update({` 객체): `...imageSourceReset(existing.image_url, body.image_url)` 추가.
+4. `api/admin/badges/[id]/route.ts` PUT(67행 `.update({` 객체): 같은 방식으로 추가(76행 근방).
+5. `api/admin/missions/[id]/route.ts` PATCH(86행): `body.image_url !== undefined`일 때만 기존
+   `image_url`을 조회해 `.update({ ...body, ...imageSourceReset(...) } as never)`로 바꾼다.
+6. `api/admin/today/[id]/route.ts` PATCH(15행): `body.cover_image_url !== undefined`일 때만 기존
+   `cover_image_url`을 조회해 같은 방식으로 병합한다.
+7. 위 4개 라우트의 테스트(기존 테스트 파일이 있으면 거기에 추가, 없으면 신규): 이미지 변경 시
+   update 페이로드에 `image_source: null`이 포함되고, 다른 필드만 바꿀 때는 포함되지 않음을
+   고정한다. 저장 라우트가 `bulk`류 라우트에서 이미지 컬럼을 바꾸는지도 확인해 결과를 보고한다.
+8. `docs/specs/prd/asset-generator/PRD.md` §10(제작 경로) 정의에 「적용 탭·등록 스크립트 밖에서
+   이미지가 바뀌면 제작 경로는 NULL(미상)로 돌아간다」를 반영한다.
+
 ## 완료 조건
 
-### 결정 단계 (담당: 카리나, 시점: 이 티켓 착수 직후)
+### 결정 단계 (담당: 카리나, 시점: 이 티켓 착수 직후) — 완료(위 「결정 기록」)
 - 배지·미션·컬렉션·홈피드 4개 유형의 이미지 저장 경로(폼·API)가 이미지 교체 때 `image_source`를
   어떻게 다루는지 확인한 결과와 방침 A/B/C 중 사용자 결정이 완료 기록에 남아 있다.
 
