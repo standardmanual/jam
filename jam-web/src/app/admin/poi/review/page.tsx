@@ -8,6 +8,7 @@ import { PoiReviewTable } from './PoiReviewTable'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
+import { logQueryError } from '@/lib/admin/queryError'
 import {
   POI_REVIEW_LIST_COLUMNS,
   parsePoiReviewListParams,
@@ -43,7 +44,7 @@ export default async function AdminPoiReviewPage({ searchParams }: AdminPoiRevie
   query = applyPoiReviewListQuery(query, params)
   const [from, to] = pageRange(page, ADMIN_LIST_PAGE_SIZE)
 
-  const [{ data: poisRaw, count, error }, { data: categoriesRaw }, naverCategories] = await Promise.all([
+  const [{ data: poisRaw, count, error }, { data: categoriesRaw, error: categoriesError }, naverCategories] = await Promise.all([
     query.range(from, to),
     supabase.from('poi_categories').select('*').order('slug'),
     collectPendingNaverCategories(supabase as unknown as NaverCategoryQueryClient).catch((e: unknown) => {
@@ -52,6 +53,7 @@ export default async function AdminPoiReviewPage({ searchParams }: AdminPoiRevie
     }),
   ])
   if (error) console.error('[admin/poi/review] 검토 큐 조회 실패', error)
+  logQueryError(categoriesError, 'poi/review/categories')
 
   const pois = poisRaw ?? []
   // 20260907_1243: keywords가 text[]→jsonb로 바뀌어 생성 타입(여전히 string[]로 인식)과

@@ -8,6 +8,7 @@ import PoiFilters from './PoiFilters'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
+import { logQueryError, throwOnQueryError } from '@/lib/admin/queryError'
 import {
   POI_LIST_COLUMNS,
   parsePoiListParams,
@@ -36,7 +37,11 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
   query = applyPoiListQuery(query, params)
   const [from, to] = pageRange(page, ADMIN_LIST_PAGE_SIZE)
 
-  const [{ data: poisRaw, count }, { data: categoriesRaw }, { count: pendingReviewCount }] = await Promise.all([
+  const [
+    { data: poisRaw, count, error: poisError },
+    { data: categoriesRaw, error: categoriesError },
+    { count: pendingReviewCount, error: pendingReviewError },
+  ] = await Promise.all([
     query.range(from, to),
     supabase.from('poi_categories').select('*').order('slug'),
     // 20260907_1242: 헤더의 "검토 큐" 버튼에 대기 건수를 보여준다 — 검토 큐 진입 없이도
@@ -47,12 +52,16 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
     supabase.from('poi').select('*', { count: 'exact', head: true }).eq('pending_review' as string, true),
   ])
 
+  throwOnQueryError(poisError, 'poi')
+  logQueryError(categoriesError, 'poi/categories')
+  logQueryError(pendingReviewError, 'poi/pending-review-count')
   const pois = (poisRaw ?? []) as PoiListRow[]
 
   const linkedBadgeIds = [...new Set(pois.map((p) => p.linked_badge_id).filter((id): id is string => !!id))]
-  const { data: badgesRaw } = linkedBadgeIds.length > 0
+  const { data: badgesRaw, error: badgesError } = linkedBadgeIds.length > 0
     ? await supabase.from('badges').select('id, name').in('id', linkedBadgeIds)
-    : { data: [] as Pick<BadgeRow, 'id' | 'name'>[] }
+    : { data: [] as Pick<BadgeRow, 'id' | 'name'>[], error: null }
+  logQueryError(badgesError, 'poi/linked-badges')
   const badges = (badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]
   const badgeMap = new Map(badges.map((b) => [b.id, b.name]))
   // 20260907_1243: keywords가 text[]→jsonb로 바뀌어 생성 타입(여전히 string[]로 인식)과

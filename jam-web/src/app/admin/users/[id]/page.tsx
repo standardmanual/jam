@@ -6,6 +6,7 @@ import { getAdminUser, isAdminAccount } from '@/lib/admin/auth'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
+import { logQueryError, throwOnQueryError } from '@/lib/admin/queryError'
 import type { UserRow } from '@/types/database'
 import UserGrantForm from '../../points/UserGrantForm'
 import { ResetUserButton } from '../ResetUserButton'
@@ -33,7 +34,9 @@ export default async function AdminUserDetailPage({ params, searchParams }: Prop
   const page = Math.max(1, parseInt(rawParams.page ?? '1', 10) || 1)
   const service = createServiceClient()
 
-  const { data: userRaw } = await service.from('users').select('*').eq('id', id).single()
+  const { data: userRaw, error: userError } = await service.from('users').select('*').eq('id', id).single()
+  // 행이 없을 때의 PGRST116은 정상적인 「없음」(404)이므로 로그에서 뺀다.
+  if (userError && userError.code !== 'PGRST116') logQueryError(userError, 'users/detail/user')
   if (!userRaw) notFound()
   const user = userRaw as UserRow
 
@@ -41,7 +44,7 @@ export default async function AdminUserDetailPage({ params, searchParams }: Prop
   // (배열 길이로 세면 PostgREST 1,000행 상한에서 조용히 잘린다). 같은 시각에 획득한 행이 쪽 경계에서
   // 새거나 겹치지 않도록 id를 보조 정렬 키로 둔다.
   const [historyFrom, historyTo] = pageRange(page, ADMIN_LIST_PAGE_SIZE)
-  const { data: badgeHistoryRaw, count: badgeHistoryTotal } = await service
+  const { data: badgeHistoryRaw, count: badgeHistoryTotal, error: badgeHistoryError } = await service
     .from('user_activity_badges')
     .select(
       'id, earned_at, triggered_by, triggered_by_activity_name, condition_snapshot, badges(id, name, rarity)',
@@ -52,23 +55,26 @@ export default async function AdminUserDetailPage({ params, searchParams }: Prop
     .order('id', { ascending: true })
     .range(historyFrom, historyTo)
 
+  throwOnQueryError(badgeHistoryError, 'users/detail/badge-history')
   const badgeHistory = (badgeHistoryRaw ?? []) as unknown as BadgeHistoryRow[]
   const badgeHistoryCount = badgeHistoryTotal ?? badgeHistory.length
 
   // 믹스 실패 이력 (티켓 20260910_1408) — 최신순. 재료 배지 이름은 실제로 쓰인 id만
   // 골라 조회한다(배지 전체를 훑으면 PostgREST 응답 상한에 절단된다 — recipes/page.tsx 주석 참고).
-  const { data: combineFailsRaw } = await service
+  const { data: combineFailsRaw, error: combineFailsError } = await service
     .from('user_combine_fail_logs')
     .select('id, attempted_at, ingredient_badge_ids, fail_reason, points_awarded')
     .eq('user_id', id)
     .order('attempted_at', { ascending: false })
     .limit(200)
+  logQueryError(combineFailsError, 'users/detail/combine-fails')
   const combineFails = (combineFailsRaw ?? []) as CombineFailRow[]
 
   const failBadgeIds = [...new Set(combineFails.flatMap((r) => r.ingredient_badge_ids ?? []))]
-  const { data: failBadgesRaw } = failBadgeIds.length > 0
+  const { data: failBadgesRaw, error: failBadgesError } = failBadgeIds.length > 0
     ? await service.from('badges').select('id, name').in('id', failBadgeIds)
-    : { data: [] as { id: string; name: string }[] }
+    : { data: [] as { id: string; name: string }[], error: null }
+  logQueryError(failBadgesError, 'users/detail/badge-names')
   const failBadgeNames = Object.fromEntries(
     ((failBadgesRaw ?? []) as { id: string; name: string }[]).map((b) => [b.id, b.name])
   )

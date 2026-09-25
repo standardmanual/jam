@@ -2,10 +2,12 @@ import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import CategoryManager from '../CategoryManager'
 import type { PoiCategoryRow } from '@/types/database'
+import { logQueryError, throwOnQueryError } from '@/lib/admin/queryError'
 
 export default async function AdminPoiCategoriesPage() {
   const supabase = createServiceClient()
-  const { data: categoriesRaw } = await supabase.from('poi_categories').select('*').order('slug')
+  const { data: categoriesRaw, error: categoriesError } = await supabase.from('poi_categories').select('*').order('slug')
+  throwOnQueryError(categoriesError, 'poi/categories')
   // 20260907_1243: keywords가 text[]→jsonb로 바뀌어 생성 타입(여전히 string[]로 인식)과
   // 어긋난다 — unknown 경유로 좁게 우회한다.
   const categories = (categoriesRaw ?? []) as unknown as PoiCategoryRow[]
@@ -14,10 +16,11 @@ export default async function AdminPoiCategoriesPage() {
   // 걸려 앞 1000행만 집계되고, POI가 그보다 많아진 지금은 실제와 다른 숫자가 표시된다.
   const usageEntries = await Promise.all(
     categories.map(async (c) => {
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from('poi')
         .select('*', { count: 'exact', head: true })
         .eq('category', c.slug)
+      logQueryError(error, 'poi/categories/usage-count')
       return [c.slug, count ?? 0] as const
     })
   )

@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { createServiceClient } from '@/lib/supabase/server'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
+import { logQueryError, throwOnQueryError, type QueryErrorLike } from '@/lib/admin/queryError'
 import {
   BADGE_EXCLUSION_COLUMNS,
   COLLECTION_EXCLUSION_COLUMNS,
@@ -48,17 +49,19 @@ export default async function DropExclusionsPage({ searchParams }: Props) {
 
   const supabase = createServiceClient()
 
-  const [{ data: tribesRaw }, { data: itemBooksRaw }] = await Promise.all([
+  const [{ data: tribesRaw, error: tribesError }, { data: itemBooksRaw, error: itemBooksError }] = await Promise.all([
     supabase.from('tribes').select('id, name').order('name'),
     supabase.from('item_books').select('id, name, tribe_id').order('name'),
   ])
+  logQueryError(tribesError, 'drop-exclusions/tribes')
+  logQueryError(itemBooksError, 'drop-exclusions/item-books')
   const tribes = (tribesRaw ?? []) as { id: string; name: string }[]
   const allCollections = (itemBooksRaw ?? []) as { id: string; name: string; tribe_id: string | null }[]
 
   let badges: ExclusionBadgeRow[] = []
   let collections: ExclusionCollectionRow[] = []
   let totalCount = 0
-  let rangeError = false
+  let listError: QueryErrorLike | null = null
 
   if (params.tab === 'badges') {
     const scope = await resolveBadgeCollectionScope(supabase as unknown as TribeCollectionsClient, params)
@@ -73,7 +76,7 @@ export default async function DropExclusionsPage({ searchParams }: Props) {
       const { data, count, error } = await query.range(from, to)
       badges = data ?? []
       totalCount = count ?? 0
-      rangeError = !!error
+      listError = error
     }
   } else {
     const query = applyCollectionExclusionQuery(
@@ -85,18 +88,21 @@ export default async function DropExclusionsPage({ searchParams }: Props) {
     const { data, count, error } = await query.range(from, to)
     collections = data ?? []
     totalCount = count ?? 0
-    rangeError = !!error
+    listError = error
   }
 
   // .range()의 offset이 실제 행 수를 초과하면 PostgREST가 416 오류를 돌려주고 count도 null이 된다 —
   // 필터를 좁혀 쪽 수가 줄어든 뒤 이전 쪽 번호가 남아 있는 경우다. 1쪽으로 돌려보낸다.
-  if (rangeError && page > 1) {
+  if (listError && page > 1) {
     const redirectParams = new URLSearchParams(
       Object.entries(rawParams).filter((entry): entry is [string, string] => entry[0] !== 'page' && entry[1] !== undefined)
     )
     const query = redirectParams.toString()
     redirect(`/admin/drop-policy/exclusions${query ? `?${query}` : ''}`)
   }
+
+  // 1쪽(또는 쪽 번호가 없는 경우)의 오류는 범위 초과가 아니라 실제 조회 실패다 — 빈 목록으로 두지 않고 던진다.
+  throwOnQueryError(listError, 'drop-exclusions/list')
 
   const collectionNameById = new Map(allCollections.map((c) => [c.id, c.name]))
   const tribeNameById = new Map(tribes.map((t) => [t.id, t.name]))
