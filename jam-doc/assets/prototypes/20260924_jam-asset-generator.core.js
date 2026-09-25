@@ -54,6 +54,8 @@ var AssetGeneratorCore = (() => {
     randomizeRibbonConfig: () => randomizeRibbonConfig,
     sampleFitted: () => sampleFitted,
     serializePresetLayers: () => serializePresetLayers,
+    toAssetPreset: () => toAssetPreset,
+    toAssetPresetSummary: () => toAssetPresetSummary,
     unitCurve: () => unitCurve
   });
 
@@ -503,6 +505,28 @@ var AssetGeneratorCore = (() => {
   }
 
   // jam-web/src/lib/asset-generator/presetSerialize.ts
+  function toAssetPresetSummary(row) {
+    return {
+      id: row.id,
+      name: row.name,
+      stageRatio: row.stage_ratio,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+  function toAssetPreset(row) {
+    var _a;
+    return {
+      id: row.id,
+      name: row.name,
+      targetType: row.target_type,
+      stageRatio: row.stage_ratio,
+      layers: deserializePresetLayers((_a = row.layers) != null ? _a : []),
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
   var PRESET_TARGET_TYPES = ["badge", "mission", "collection", "home_feed"];
   var PRESET_TARGET_TYPE_LABELS = {
     badge: "\uBC30\uC9C0",
