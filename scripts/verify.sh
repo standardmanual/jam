@@ -1,5 +1,5 @@
 #!/bin/bash
-# verify — lint 전체 + typecheck + test 전체 + ds:check + 슬롭/금칙어 검사 + 루트 scripts·.claude/workflows 테스트를 한 번에 실행한다.
+# verify — lint 전체 + typecheck + test 전체 + ds:check + 프로토타입 번들 최신성 +슬롭/금칙어 검사 + 루트 scripts·.claude/workflows 테스트를 한 번에 실행한다.
 # (티켓 20260918_0421, 근거: JAM-WORK/05_자동화목록.md A1)
 #
 # 출력은 통과/실패와 실패 항목만 남긴다(20줄 이내). 단계별 전체 로그는 임시 파일에 남기고
@@ -35,6 +35,8 @@ run_step lint npm run lint:ci
 run_step typecheck npm run typecheck
 run_step test npm test
 run_step ds npm run ds:check
+# 프로토타입 번들(jam-doc/assets/prototypes/*.core.js)이 TS 원본과 어긋나면 실패한다 (티켓 20260924_2237).
+run_step asset-bundle node scripts/asset-generator/build-prototype.mjs --check
 
 # 슬롭/금칙어 검사: docs/specs/SLOP_DICTIONARY.md의 금칙 단어·금지 문장을
 # origin/staging 대비 diff의 추가 라인에서 찾는다 (티켓 20260918_0951).
@@ -104,7 +106,7 @@ else
 fi
 
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · ds:check · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · skills"
+  echo "verify 통과: lint · typecheck · test · ds:check · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · skills"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"
