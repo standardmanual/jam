@@ -2,9 +2,9 @@
 id: "20260925_1940"
 category: Admin
 priority: P3
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-09-25
-closed:
+closed: 2026-09-25
 parent: "20260925_1404"
 related:
   - "20260925_1411"
@@ -129,21 +129,67 @@ related:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 방침 A(NULL로 되돌린다)를 적용했다. 이미지 컬럼 값이 기존 값과 **실제로 달라질 때만** `image_source`를
+  NULL(미상)로 갱신한다. 판정은 순수 함수 `imageSourceReset(기존값, 다음값)`이다. 다음 값이
+  `undefined`면 미변경이고, `null`·빈 문자열·공백뿐인 문자열은 같은 값(NULL)으로 정규화하며, 앞뒤
+  공백은 무시한다.
+- 배지 PUT·컬렉션 PUT은 이미 기존 행을 조회하므로 update 객체에 `...imageSourceReset(...)`만
+  추가했다. 미션 PATCH·홈피드 PATCH는 본문에 이미지 필드가 있을 때만 기존 행을 조회해
+  `.update({ ...body, ...patch })`로 저장한다(이미지 필드가 없는 요청은 추가 조회 없이 기존 동작).
+- `docs/specs/prd/asset-generator/PRD.md` §10에 「적용 탭·등록 스크립트 밖에서 이미지가 바뀌면 제작
+  경로는 NULL(미상)로 돌아간다」를 반영했다.
+- 4개 유형의 bulk 라우트(badges·missions·itembooks·today)는 이미지 컬럼을 바꾸지 않음을 확인했다.
+  `apply-background`는 `background_*` 컬럼만, `activity-badge-image/generate`는 `jam-img` 경로라 범위
+  밖이다(티켓 20260925_0352가 다룬다).
 
 ### 변경된 파일
 ```
--
+신규: jam-web/src/lib/admin/imageSourceReset.ts,
+     jam-web/src/lib/admin/__tests__/imageSourceReset.test.ts,
+     jam-web/src/app/api/admin/__tests__/image-source-reset.test.ts
+수정: jam-web/src/app/api/admin/{badges,itembooks,missions,today}/[id]/route.ts,
+     docs/specs/prd/asset-generator/PRD.md
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `scripts/verify.sh` 전항목 통과. CI(`verify`) 성공:
+  https://github.com/standardmanual/jam/actions/runs/36126414054
+- [x] 신규 테스트: 판정 함수 단위 6건, 4개 라우트 14건(이미지 변경 시 update 페이로드에
+  `image_source: null` 포함, 다른 필드만 바꾸면 미포함, 미션·홈피드는 이미지 없는 요청에서 기존 행
+  미조회와 행 없음 404). 병합 후 `src/lib/admin`·`src/app/api/admin` 66개 파일 808건 통과.
+- [x] 게이트(민지) PASS.
+- [x] **로컬 실렌더(방침 A 승인, 임시 카드 1장)**: 비활성·2099년 날짜의 임시 홈피드 카드를 어드민 API로
+  만들고 그 카드만 `image_source='admin-generator'`로 설정한 뒤 실제 수정 화면에서 확인했다.
+  1) 저장 전 수정 화면 라벨 「제작 경로 · 수동 제작」
+  2) 제목·노출 태그만 바꿔 저장 → 이미지 그대로, `image_source='admin-generator'` 유지
+  3) 커버 이미지 URL을 바꿔 저장 → DB의 `image_source`가 NULL
+  4) 수정 화면 재진입 → 「제작 경로 · 미상」
+  확인 후 임시 카드를 삭제했고, 임시 카드 0건·`image_source` 값이 있는 카드 0건을 조회로 확인했다.
+  적용 탭 자체는 스토리지 파일을 올리므로 쓰지 않고, 같은 상태를 임시 카드 한 장에 SQL로 만들었다.
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: (main 배포 전, staging 반영은 2026-09-25)
+- 환경: staging
+- 커밋: 병합 커밋 2c04f816 (구현 316a50f1)
+- DB 마이그레이션: 없음.
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1차 | 아현·민지 | 116,681 | 52,878 / 3,408 | 10분 13초 | 50 |
+| 합계 | 아현·민지 | 116,681 | 52,878 / 3,408 | 10분 13초 | 50 |
 
 ### 주요 의사결정 / 핵심 메모
+- 사용자가 방침 A를 결정했다(2026-09-25). 이유는 마이그레이션이 필요 없고 라벨이 거짓이 되지
+  않는다는 것이다. 「수동 교체」와 「원래 모름」이 「미상」으로 합쳐지는 것을 감수했다. 구분이
+  필요해지면 방침 C(`manual` 값 신설)로 확장한다.
+- 계획 반환 면제를 처음부터 부여했다(카리나가 4개 저장 라우트를 직접 읽고 파일 단위 지도 작성).
+  예상 10~11개 파일이었으나 실제 변경은 8개다(라우트 테스트를 한 파일로 합침).
+- 아현의 브랜치명은 한글 슬러그가 셸 검사에 막혀 ASCII 슬러그(`image-source-reset`)로 만들었다.
 
 ### 잔여 이슈
--
+- [참고] 미션·홈피드 PATCH는 클라이언트가 본문에 실어 보낸 `image_source`를 이미지가 안 바뀐 요청에서는
+  그대로 저장하고, 배지·컬렉션 PUT은 무시한다. 4개 라우트의 동작이 갈리고 CHECK 제약에 어긋나는 값을
+  보낼 수도 있다(민지 사이드 발견).
+  → 티켓 [20260925_2003](20260925_2003_Admin_이미지-저장-라우트-4종의-본문-image_source-처리-불일치.md)으로 분리했다.
