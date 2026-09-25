@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ImageLayerConfig, OverlayLayerConfig, TextLayerConfig } from '@/lib/asset-generator'
 import {
   INITIAL_RIBBON_LAYER,
   buildExportFileName,
+  buildFontLoadKey,
+  buildGoogleFontWeightCssUrl,
   clampDurationSeconds,
   computeEffectiveStartColor,
   createImageLayer,
@@ -10,6 +12,7 @@ import {
   deselectIfRemoved,
   generateRandomSeed,
   isSystemDefaultFont,
+  loadFontInBrowser,
   moveImageLayer,
   removeImageLayer,
   resolveStageSize,
@@ -254,5 +257,149 @@ describe('moveImageLayer·removeImageLayer (오버레이 혼합 목록 제네릭
     const result = removeImageLayer(layers, 'text-b')
     expect(result.map((l) => l.id)).toEqual(['img-a'])
     expect(result[0].type).toBe('image')
+  })
+})
+
+describe('굵기 포함 구글 폰트 URL·키 (티켓 20260925_0148)', () => {
+  it('요청한 굵기를 wght에 넣는다', () => {
+    expect(buildGoogleFontWeightCssUrl({ family: 'Roboto', weight: 700 })).toBe(
+      'https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap'
+    )
+  })
+
+  it('공백이 든 패밀리명은 +로, 특수문자는 인코딩한다', () => {
+    expect(buildGoogleFontWeightCssUrl({ family: ' Noto Sans KR ', weight: 100 })).toBe(
+      'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100&display=swap'
+    )
+    expect(buildGoogleFontWeightCssUrl({ family: 'M PLUS 1p', weight: 900 })).toContain('family=M+PLUS+1p:wght@900')
+  })
+
+  it('폰트 로드 키는 같은 패밀리라도 굵기가 다르면 달라진다', () => {
+    expect(buildFontLoadKey({ family: 'Roboto', weight: 400 })).not.toBe(buildFontLoadKey({ family: 'Roboto', weight: 700 }))
+    expect(buildFontLoadKey({ family: 'Roboto', weight: 700 })).toBe(buildFontLoadKey({ family: 'Roboto', weight: 700 }))
+  })
+})
+
+describe('loadFontInBrowser 굵기 반영 (티켓 20260925_0148, 가짜 document)', () => {
+  type Listener = () => void
+  interface FakeLink {
+    rel: string
+    href: string
+    sheet: object | null
+    attrs: Record<string, string>
+    listeners: Record<string, Listener[]>
+    removed: boolean
+    setAttribute(name: string, value: string): void
+    getAttribute(name: string): string | undefined
+    addEventListener(type: string, fn: Listener): void
+    fire(type: string): void
+    remove(): void
+  }
+  let links: FakeLink[]
+  let fontsLoad: ReturnType<typeof vi.fn>
+  let fontsCheck: ReturnType<typeof vi.fn>
+
+  function makeLink(): FakeLink {
+    const link: FakeLink = {
+      rel: '',
+      href: '',
+      sheet: null,
+      attrs: {},
+      listeners: {},
+      removed: false,
+      setAttribute(name, value) {
+        link.attrs[name] = value
+      },
+      getAttribute: (name) => link.attrs[name],
+      addEventListener(type, fn) {
+        ;(link.listeners[type] ??= []).push(fn)
+      },
+      fire(type) {
+        if (type === 'load') link.sheet = {}
+        ;(link.listeners[type] ?? []).forEach((fn) => fn())
+      },
+      remove() {
+        link.removed = true
+        links = links.filter((l) => l !== link)
+      },
+    }
+    return link
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    links = []
+    fontsLoad = vi.fn(async () => [])
+    fontsCheck = vi.fn(() => true)
+    vi.stubGlobal('document', {
+      head: {
+        querySelector: (selector: string) => {
+          const match = /\[([\w-]+)="(.*)"\]$/.exec(selector)
+          if (!match) return null
+          return links.find((l) => l.attrs[match[1]] === match[2].replace(/\\"/g, '"')) ?? null
+        },
+        appendChild: (link: FakeLink) => {
+          links.push(link)
+        },
+      },
+      createElement: () => makeLink(),
+      fonts: { load: fontsLoad, check: fontsCheck },
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('굵기 700이면 wght@700 스타일시트를 삽입하고, 그 굵기로 로드·확인한다', async () => {
+    const done = loadFontInBrowser({ family: 'Roboto', weight: 700 })
+    expect(links).toHaveLength(1)
+    expect(links[0].href).toBe('https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap')
+    links[0].fire('load')
+    await done
+    expect(fontsLoad).toHaveBeenCalledWith('700 16px "Roboto"')
+    expect(fontsCheck).toHaveBeenCalledWith('700 16px "Roboto"')
+  })
+
+  it('같은 굵기는 <link>를 다시 만들지 않고, 다른 굵기는 별도로 삽입한다', async () => {
+    const first = loadFontInBrowser({ family: 'Roboto', weight: 700 })
+    links[0].fire('load')
+    await first
+    await loadFontInBrowser({ family: 'Roboto', weight: 700 }) // 이미 파싱된 시트라 바로 끝난다
+    expect(links).toHaveLength(1)
+
+    const other = loadFontInBrowser({ family: 'Roboto', weight: 400 })
+    expect(links).toHaveLength(2)
+    expect(links[1].href).toContain('wght@400')
+    links[1].fire('load')
+    await other
+  })
+
+  it('시스템 기본 글꼴은 아무것도 요청하지 않는다', async () => {
+    await loadFontInBrowser({ family: SYSTEM_DEFAULT_FONT.family, weight: 700 })
+    expect(links).toHaveLength(0)
+    expect(fontsLoad).not.toHaveBeenCalled()
+  })
+
+  it('스타일시트 요청이 실패하면(그 굵기 파일이 없는 경우 포함) 굵기를 담은 오류로 끝나고 <link>를 지워 재시도할 수 있다', async () => {
+    const failed = loadFontInBrowser({ family: 'Bungee', weight: 700 })
+    const assertion = expect(failed).rejects.toThrow('굵기 700')
+    links[0].fire('error')
+    await assertion
+    expect(links).toHaveLength(0)
+
+    const retry = loadFontInBrowser({ family: 'Bungee', weight: 700 })
+    expect(links).toHaveLength(1) // 새로 삽입된다
+    links[0].fire('load')
+    await retry
+  })
+
+  it('로드 뒤에도 그 굵기가 확인되지 않으면 오류로 끝난다', async () => {
+    fontsCheck.mockReturnValue(false)
+    const done = loadFontInBrowser({ family: 'Roboto', weight: 700 })
+    const assertion = expect(done).rejects.toThrow('굵기 700')
+    links[0].fire('load')
+    await assertion
   })
 })

@@ -34,7 +34,8 @@
  * 프레임 값 그대로 `drawTextLayer`를 호출하면 되지만, 구글 폰트 다운로드가 끝나기 전에 캡처하면
  * 폴백 글꼴로 저장될 수 있다 — 이미지와 같은 방식(`areFontsReady`·`waitForFonts`·
  * `getMissingFontCount`)으로 로드 완료를 기다리게 한다. 브라우저 폰트 로더 구현
- * (`loadFontInBrowser`)은 `assetGeneratorHelpers.ts`에 있다(`googleFonts.ts`는 수정하지 않는다).
+ * (`loadFontInBrowser`)은 `assetGeneratorHelpers.ts`에 있고, 텍스트 레이어가 고른 굵기의 실제 폰트
+ * 파일을 (family, 굵기)별로 불러온다(티켓 20260925_0148, `googleFonts.ts`는 수정하지 않는다).
  */
 import {
   forwardRef,
@@ -62,9 +63,11 @@ import {
   type RibbonLayerConfig,
   type StageRatio,
   type TextLayerConfig,
+  type TextLayerFont,
 } from '@/lib/asset-generator'
 import { IconPlayerPauseFilled, IconPlayerPlayFilled } from '@tabler/icons-react'
 import {
+  buildFontLoadKey,
   computeEffectiveStartColor,
   HEAD_POSITION_RANGE,
   isSystemDefaultFont,
@@ -404,26 +407,26 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
       }
     }, [overlayLayers])
 
-    // 텍스트 레이어 구글 폰트 로드(티켓 20260924_2158) — family별로 한 번만 불러온다. 이미지와
-    // 달리 캐시 항목을 지우지 않는다(폰트는 blob URL처럼 새지 않고, `<link>`도
-    // `ensureGoogleFontLoaded`가 중복 삽입을 막는다 — 다시 쓸 수도 있어 가벼운 재사용이 낫다).
+    // 텍스트 레이어 구글 폰트 로드(티켓 20260924_2158) — (family, 굵기)별로 한 번만 불러온다
+    // (티켓 20260925_0148: 굵기마다 실제 폰트 파일이 달라 굵기까지 키에 넣는다). 이미지와 달리
+    // 캐시 항목을 지우지 않는다(폰트는 blob URL처럼 새지 않고, `<link>`도 `loadFontInBrowser`가
+    // 중복 삽입을 막는다 — 다시 쓸 수도 있어 가벼운 재사용이 낫다).
     useEffect(() => {
-      const families = new Set(
-        overlayLayers
-          .filter((l): l is TextLayerConfig => l.type === 'text')
-          .map((l) => l.font.family)
-          .filter((family) => !isSystemDefaultFont({ family }))
-      )
+      const fontsByKey = new Map<string, TextLayerFont>()
+      for (const l of overlayLayers) {
+        if (l.type !== 'text' || isSystemDefaultFont(l.font)) continue
+        fontsByKey.set(buildFontLoadKey(l.font), l.font)
+      }
       let cancelled = false
       void fontTrackerRef.current.loadMissing(
-        Array.from(families),
-        async (family) => {
-          await loadFontInBrowser({ family, weight: 400 })
+        Array.from(fontsByKey.keys()),
+        async (key) => {
+          await loadFontInBrowser(fontsByKey.get(key)!)
           return true as const
         },
         {
           isCancelled: () => cancelled,
-          onError: (_family, e) => toast.error(e instanceof Error ? e.message : '폰트를 불러오지 못했어요.'),
+          onError: (_key, e) => toast.error(e instanceof Error ? e.message : '폰트를 불러오지 못했어요.'),
         }
       )
       return () => {
@@ -563,7 +566,7 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
         getMissingFontCount: () =>
           overlayLayers.filter(
             (l): l is TextLayerConfig =>
-              l.type === 'text' && !isSystemDefaultFont(l.font) && !fontTrackerRef.current.has(l.font.family)
+              l.type === 'text' && !isSystemDefaultFont(l.font) && !fontTrackerRef.current.has(buildFontLoadKey(l.font))
           ).length,
       }),
       [W, H, layer, stamp, base, overlayLayers]

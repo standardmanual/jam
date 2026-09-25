@@ -19,7 +19,7 @@ import type {
   TextLayerConfig,
   TextLayerFont,
 } from '@/lib/asset-generator'
-import { ensureGoogleFontLoaded, waitForGoogleFontLoaded } from '@/lib/admin/shaderLab/googleFonts'
+import { waitForGoogleFontLoaded } from '@/lib/admin/shaderLab/googleFonts'
 
 /** 스테이지 긴 변 고정 길이(px). 원본 MAX_LONG. */
 export const STAGE_MAX_LONG_SIDE_PX = 1280
@@ -187,35 +187,78 @@ export function createTextLayer(): TextLayerConfig {
   }
 }
 
+/** 폰트 로드 추적 키: 같은 패밀리라도 굵기가 다르면 다른 파일이라 굵기까지 키에 넣는다(티켓 20260925_0148). */
+export function buildFontLoadKey(font: TextLayerFont): string {
+  return `${font.weight} ${font.family}`
+}
+
 /**
- * 브라우저용 `FontLoader`(render.ts) 구현(티켓 20260924_2158). 시스템 기본 글꼴은 로드가
- * 필요 없어 즉시 끝낸다. 구글 폰트는 `googleFonts.ts`(20260916_2001)의 `<link>` 삽입·다운로드
- * 대기 함수를 그대로 재사용한다(수정·복사 금지, 티켓 완료 조건). `ensureGoogleFontLoaded`는
- * 굵기 400 스타일시트만 요청하므로, 로드 확인도 그 굵기 기준으로 한다(요청한 시각적 굵기가
- * 400이 아니어도 브라우저가 같은 패밀리 안에서 가장 가까운 굵기로 대체해 그린다).
- * `document.fonts.check`가 아직 로드되지 않았다고 판단하면(네트워크 실패·존재하지 않는
- * 폰트명 등) 에러를 던져 호출부가 실패로 처리하게 한다.
+ * 굵기를 포함한 구글 폰트 `css2` 스타일시트 URL(티켓 20260925_0148). `googleFonts.ts`의
+ * `buildGoogleFontCssUrl`은 굵기 400을 고정해 shader-lab 전용으로 남겨 두고, 에셋 제너레이터는
+ * 텍스트 레이어가 고른 굵기의 실제 폰트 파일을 요청하도록 이 함수를 따로 쓴다. 패밀리명 인코딩은
+ * 그 함수와 같은 방식이다.
  */
-/** `ensureGoogleFontLoaded`가 삽입한 `<link>`의 스타일시트가 파싱될 때까지 기다린다. 그 전에는
- * 일치하는 폰트페이스가 없어 `document.fonts.load`·`check`가 즉시 통과해 버려 대기·실패 감지가
- * 비어 있었다(카리나 실렌더 2026-09-25). 이미 파싱됐으면(`sheet` 존재) 바로 돌아온다. */
-async function waitForGoogleFontStylesheet(family: string): Promise<void> {
-  const link = document.head.querySelector<HTMLLinkElement>(`link[data-shader-lab-google-font="${family.replace(/"/g, '\\"')}"]`)
-  if (!link || link.sheet) return
+export function buildGoogleFontWeightCssUrl(font: TextLayerFont): string {
+  const familyParam = font.family.trim().replace(/\s+/g, '+')
+  return `https://fonts.googleapis.com/css2?family=${encodeURIComponent(familyParam).replace(/%2B/g, '+')}:wght@${font.weight}&display=swap`
+}
+
+/** 이 화면이 삽입한 굵기별 `<link>`를 구분하는 속성. shader-lab의 `data-shader-lab-google-font`와
+ * 겹치지 않게 따로 둔다(그쪽 `<link>`는 패밀리당 굵기 400 하나라 중복 판정 기준이 다르다). */
+const FONT_LINK_ATTR = 'data-asset-generator-google-font'
+
+function findFontLink(font: TextLayerFont): HTMLLinkElement | null {
+  const attrValue = buildFontLoadKey(font).replace(/"/g, '\\"')
+  return document.head.querySelector<HTMLLinkElement>(`link[${FONT_LINK_ATTR}="${attrValue}"]`)
+}
+
+/** 굵기 포함 스타일시트 `<link>`가 없으면 삽입한다(이미 있으면 그대로 — 중복 로드 방지). */
+function ensureFontWeightStylesheet(font: TextLayerFont): HTMLLinkElement {
+  const existing = findFontLink(font)
+  if (existing) return existing
+  const link = document.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = buildGoogleFontWeightCssUrl(font)
+  link.setAttribute(FONT_LINK_ATTR, buildFontLoadKey(font))
+  document.head.appendChild(link)
+  return link
+}
+
+/** 삽입한 `<link>`의 스타일시트가 파싱될 때까지 기다린다. 그 전에는 일치하는 폰트페이스가 없어
+ * `document.fonts.load`·`check`가 즉시 통과해 버려 대기·실패 감지가 비어 있었다(카리나 실렌더
+ * 2026-09-25). 이미 파싱됐으면(`sheet` 존재) 바로 돌아온다. 스타일시트 요청이 실패하면(그 패밀리에
+ * 요청한 굵기 파일이 없는 경우 포함) `<link>`를 제거해 다음 시도에서 다시 요청하게 하고 실패로 끝낸다. */
+async function waitForFontStylesheet(font: TextLayerFont, link: HTMLLinkElement): Promise<void> {
+  if (link.sheet) return
   await new Promise<void>((resolve, reject) => {
     link.addEventListener('load', () => resolve(), { once: true })
-    link.addEventListener('error', () => reject(new Error(`"${family}" 폰트를 불러오지 못했어요.`)), { once: true })
+    link.addEventListener(
+      'error',
+      () => {
+        link.remove()
+        reject(new Error(`"${font.family}" 폰트의 굵기 ${font.weight}을 불러오지 못했어요.`))
+      },
+      { once: true }
+    )
     setTimeout(resolve, 10_000)
   })
 }
 
+/**
+ * 브라우저용 `FontLoader`(render.ts) 구현(티켓 20260924_2158, 굵기 반영 20260925_0148). 시스템
+ * 기본 글꼴은 로드가 필요 없어 즉시 끝낸다. 구글 폰트는 요청한 굵기의 스타일시트를 직접
+ * 삽입해(`googleFonts.ts`의 `ensureGoogleFontLoaded`는 굵기 400 고정이라 쓰지 않는다) 그 굵기의
+ * 실제 폰트 파일을 받는다 — 합성 볼드로 그려져 서버 렌더링(실제 굵기 파일)과 달라지는 것을 막는다.
+ * 다운로드 대기는 `googleFonts.ts`의 `waitForGoogleFontLoaded`(굵기 인자 지원)를 그대로 재사용한다.
+ * `document.fonts.check`가 아직 로드되지 않았다고 판단하면(네트워크 실패·존재하지 않는
+ * 폰트명 등) 에러를 던져 호출부가 실패로 처리하게 한다.
+ */
 export const loadFontInBrowser: FontLoader = async (font) => {
   if (isSystemDefaultFont(font)) return
-  ensureGoogleFontLoaded(font.family)
-  if (typeof document !== 'undefined') await waitForGoogleFontStylesheet(font.family)
-  await waitForGoogleFontLoaded(font.family, 400)
-  if (typeof document !== 'undefined' && document.fonts && !document.fonts.check(`400 16px "${font.family}"`)) {
-    throw new Error(`"${font.family}" 폰트를 불러오지 못했어요.`)
+  if (typeof document !== 'undefined') await waitForFontStylesheet(font, ensureFontWeightStylesheet(font))
+  await waitForGoogleFontLoaded(font.family, font.weight)
+  if (typeof document !== 'undefined' && document.fonts && !document.fonts.check(`${font.weight} 16px "${font.family}"`)) {
+    throw new Error(`"${font.family}" 폰트의 굵기 ${font.weight}을 불러오지 못했어요.`)
   }
 }
 
