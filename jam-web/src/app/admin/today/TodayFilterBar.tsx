@@ -8,7 +8,7 @@ import { DataTableSortSelect } from '@/components/admin/data-table/data-table-so
 import { useListParams } from '@/components/admin/data-table/use-list-params'
 import { DEFAULT_TODAY_LIST_SORT, TODAY_LIST_SORT_OPTIONS } from '@/lib/admin/today-list-query'
 import { TODAY_TEMPLATE_OPTIONS } from '@/lib/admin/today-sections'
-import { IMAGE_SOURCE_FILTER_OPTIONS } from '@/lib/admin/contentImageSource'
+import { IMAGE_SOURCE_FILTER_OPTIONS_WITHOUT_ICON } from '@/lib/admin/contentImageSource'
 
 const TEMPLATE_OPTIONS = TODAY_TEMPLATE_OPTIONS.map((o) => ({ value: o.value as string, label: o.label }))
 const SORT_OPTIONS = TODAY_LIST_SORT_OPTIONS.map((o) => ({ value: o.value as string, label: o.label }))
@@ -40,7 +40,7 @@ export default function TodayFilterBar() {
           contentImageSource.ts가 단일 출처다(배지·미션 필터와 공유). */}
       <DataTableFacetedFilter
         title="제작 경로"
-        options={IMAGE_SOURCE_FILTER_OPTIONS}
+        options={IMAGE_SOURCE_FILTER_OPTIONS_WITHOUT_ICON}
         selected={filters.image_source ? [filters.image_source] : []}
         onChange={(values) => setFilters({ image_source: values[0] ?? null })}
       />

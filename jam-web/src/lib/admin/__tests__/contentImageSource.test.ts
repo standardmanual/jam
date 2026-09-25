@@ -7,6 +7,7 @@ import {
   CONTENT_IMAGE_SOURCES,
   CONTENT_IMAGE_SOURCE_LABEL,
   IMAGE_SOURCE_FILTER_OPTIONS,
+  IMAGE_SOURCE_FILTER_OPTIONS_WITHOUT_ICON,
   UNKNOWN_IMAGE_SOURCE_FILTER,
   UNKNOWN_IMAGE_SOURCE_LABEL,
   contentImageSourceLabel,
@@ -38,5 +39,27 @@ describe('IMAGE_SOURCE_FILTER_OPTIONS', () => {
       label: UNKNOWN_IMAGE_SOURCE_LABEL,
     })
     expect(IMAGE_SOURCE_FILTER_OPTIONS[0]).toEqual({ value: 'admin-generator', label: '수동 제작' })
+  })
+})
+
+describe('IMAGE_SOURCE_FILTER_OPTIONS_WITHOUT_ICON', () => {
+  it('배지용은 jam-img를 포함하고 순서는 수동 제작·윤진 자동·아이콘 파이프라인·미상이다', () => {
+    expect(IMAGE_SOURCE_FILTER_OPTIONS.map((o) => o.value)).toEqual([
+      'admin-generator',
+      'agent-generator',
+      'jam-img',
+      UNKNOWN_IMAGE_SOURCE_FILTER,
+    ])
+  })
+
+  it('미션·컬렉션·홈피드용은 jam-img 없이 값 2종 + 미상이고, 순서·라벨은 배지용과 같다', () => {
+    expect(IMAGE_SOURCE_FILTER_OPTIONS_WITHOUT_ICON.map((o) => o.value)).toEqual([
+      'admin-generator',
+      'agent-generator',
+      UNKNOWN_IMAGE_SOURCE_FILTER,
+    ])
+    for (const option of IMAGE_SOURCE_FILTER_OPTIONS_WITHOUT_ICON) {
+      expect(IMAGE_SOURCE_FILTER_OPTIONS).toContainEqual(option)
+    }
   })
 })

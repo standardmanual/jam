@@ -12,7 +12,7 @@ import {
   ITEM_BOOK_SORT_OPTIONS,
   ITEM_BOOK_STATUS_OPTIONS,
 } from '@/lib/admin/itembook-list-query'
-import { IMAGE_SOURCE_FILTER_OPTIONS } from '@/lib/admin/contentImageSource'
+import { IMAGE_SOURCE_FILTER_OPTIONS_WITHOUT_ICON } from '@/lib/admin/contentImageSource'
 import type { TribeRow } from '@/types/database'
 
 interface ItemBookFiltersProps {
@@ -57,7 +57,7 @@ export default function ItemBookFilters({ tribes }: ItemBookFiltersProps) {
           값 어휘 목록은 콘텐츠 유형과 무관하게 공유한다(MissionFilterBar와 같은 패턴). */}
       <DataTableFacetedFilter
         title="제작 경로"
-        options={IMAGE_SOURCE_FILTER_OPTIONS}
+        options={IMAGE_SOURCE_FILTER_OPTIONS_WITHOUT_ICON}
         selected={filters.image_source ? [filters.image_source] : []}
         onChange={(values) => setFilters({ image_source: values[0] ?? null })}
       />
