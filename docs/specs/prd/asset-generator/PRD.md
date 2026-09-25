@@ -153,8 +153,9 @@ code:
   않은 기본 상태로 PNG를 저장해야 CLI 결과와 같은 그림이 나온다.
 - **글꼴**: 프리셋 텍스트 레이어의 글꼴 식별자(`{family, weight}`)에 해당하는 구글 폰트 TTF 파일을 내려받아
   `os.tmpdir()` 아래 캐시하고 `GlobalFonts.registerFromPath`로 등록한다(`jam-web/scripts/asset-generator/fonts.mjs`).
-  브라우저 로더는 항상 굵기 400 스타일시트만 요청하는 한계가 있지만(티켓 20260925_0148), 서버는 지정 굵기 파일을
-  그대로 받아 이 한계가 없다. 내려받기 실패 시 기본 글꼴로 대체하지 않고 오류로 중단한다.
+  브라우저 로더도 텍스트 레이어가 고른 굵기의 스타일시트(`wght@<굵기>`)를 직접 요청해 같은 굵기의 실제 파일을 쓴다
+  (`assetGeneratorHelpers.ts`의 `loadFontInBrowser`, 티켓 20260925_0148). 그 패밀리에 없는 굵기는 브라우저에서 불러오기
+  오류로 안내되고, 서버는 내려받기 실패 시 기본 글꼴로 대체하지 않고 오류로 중단한다.
 - **비교 스크립트**: `jam-web/scripts/asset-generator/compare.mjs <PNG 1> <PNG 2>` — 크기 일치·픽셀 차이 비율·
   차이 최댓값을 JSON으로 낸다. 어드민 PNG와 CLI PNG의 실렌더 비교에 쓴다.
   **실측 기준(2026-09-25, 시드 12345·1:1·이미지 1+텍스트 1)**: 어드민 PNG와 CLI PNG는 픽셀 단위로 정렬된다(CLI를 1px 옮기면 평균 차이가

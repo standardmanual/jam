@@ -19,7 +19,7 @@
  * 인덱스 0이 가장 위에 오게 한다(`LayerSidebar` 표시 순서와 동일).
  *
  * 캐시 정리(재작업, 20260924_2157): `overlayLayers`가 바뀔 때마다 더 이상 어떤 레이어도
- * 가리키지 않는 assetUrl은 `imageAssets`·`loadedImageAssetUrlsRef`에서 함께 지운다 — 원본
+ * 가리키지 않는 assetUrl은 추적기(`assetLoadTracker.ts`)의 캐시에서 함께 지운다 — 원본
  * 다시 올리기(assetUrl 교체)나 레이어 삭제로 예전 키가 캐시에 계속 쌓이는 걸 막는다.
  *
  * 로드 경합(재작업, 20260924_2157): 이미지 레이어를 추가한 직후 PNG/영상 저장을 누르면
@@ -34,7 +34,8 @@
  * 프레임 값 그대로 `drawTextLayer`를 호출하면 되지만, 구글 폰트 다운로드가 끝나기 전에 캡처하면
  * 폴백 글꼴로 저장될 수 있다 — 이미지와 같은 방식(`areFontsReady`·`waitForFonts`·
  * `getMissingFontCount`)으로 로드 완료를 기다리게 한다. 브라우저 폰트 로더 구현
- * (`loadFontInBrowser`)은 `assetGeneratorHelpers.ts`에 있다(`googleFonts.ts`는 수정하지 않는다).
+ * (`loadFontInBrowser`)은 `assetGeneratorHelpers.ts`에 있고, 텍스트 레이어가 고른 굵기의 실제 폰트
+ * 파일을 (family, 굵기)별로 불러온다(티켓 20260925_0148, `googleFonts.ts`는 수정하지 않는다).
  */
 import {
   forwardRef,
@@ -62,9 +63,11 @@ import {
   type RibbonLayerConfig,
   type StageRatio,
   type TextLayerConfig,
+  type TextLayerFont,
 } from '@/lib/asset-generator'
 import { IconPlayerPauseFilled, IconPlayerPlayFilled } from '@tabler/icons-react'
 import {
+  buildFontLoadKey,
   computeEffectiveStartColor,
   HEAD_POSITION_RANGE,
   isSystemDefaultFont,
@@ -72,6 +75,7 @@ import {
   resolveStageSize,
   STAGE_MAX_LONG_SIDE_PX,
 } from './assetGeneratorHelpers'
+import { createAssetLoadTracker } from './assetLoadTracker'
 
 export interface AssetGeneratorViewportHandle {
   getCanvas(): HTMLCanvasElement | null
@@ -314,23 +318,17 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
     const exportingRef = useRef(false)
     const lastFrameTimeRef = useRef(0)
     const loadTokenRef = useRef(0)
-    const loadedImageAssetUrlsRef = useRef<Set<string>>(new Set())
-    // 로드 경합 대응(재작업, 20260924_2157): 진행 중인 이미지 레이어 원본 로드 수와, 그 로드가
-    // 모두 끝나길 기다리는 waitForImageAssets() 호출들의 resolve 함수를 들고 있는다.
-    const pendingImageLoadCountRef = useRef(0)
-    const pendingImageLoadWaitersRef = useRef<Array<() => void>>([])
-    // 텍스트 레이어 구글 폰트 로드(티켓 20260924_2158) — family별로 한 번만 불러온다. 성공한
-    // family는 fontReadyRef에 true로 남긴다(실패하면 남기지 않아 다음 렌더에서 재시도된다).
-    const loadedFontFamiliesRef = useRef<Set<string>>(new Set())
-    const fontReadyRef = useRef<Record<string, boolean>>({})
-    const pendingFontLoadCountRef = useRef(0)
-    const pendingFontLoadWaitersRef = useRef<Array<() => void>>([])
-    // imageAssets는 JSX 렌더 결과에 쓰이지 않고(캔버스는 매 프레임 명령형으로 그린다) rAF
-    // 루프·drawAtHead·getMissingImageAssetCount가 즉시 읽기만 하므로 state가 아니라 ref로
-    // 둔다 — state였다면 setState → 리렌더 → useImperativeHandle 재생성 사이의 타이밍에 따라
-    // "방금 로드된 이미지"를 기다린 직후에도 드물게 옛 클로저를 읽을 수 있었다(재작업,
-    // 20260924_2157: PNG/영상 저장 경합 수정 과정에서 발견).
-    const imageAssetsRef = useRef<Record<string, CanvasLike>>({})
+    // 로드 경합 대응(재작업, 20260924_2157): 진행 중인 이미지 레이어 원본 로드 수·대기자·캐시를
+    // 순수 모듈 추적기가 들고 있다(티켓 20260925_0149). 텍스트 레이어 구글 폰트 로드(티켓
+    // 20260924_2158)도 같은 추적기를 쓴다 — 성공한 키만 값(true)이 남고, 실패하면 남기지 않아
+    // 다음 렌더에서 재시도된다.
+    // 추적기의 값은 JSX 렌더 결과에 쓰이지 않고(캔버스는 매 프레임 명령형으로 그린다) rAF
+    // 루프·drawAtHead·getMissingImageAssetCount가 즉시 읽기만 하므로 state가 아니라 ref에 담긴
+    // 추적기로 둔다 — state였다면 setState → 리렌더 → useImperativeHandle 재생성 사이의
+    // 타이밍에 따라 "방금 로드된 이미지"를 기다린 직후에도 드물게 옛 클로저를 읽을 수 있었다
+    // (재작업, 20260924_2157: PNG/영상 저장 경합 수정 과정에서 발견).
+    const imageTrackerRef = useRef(createAssetLoadTracker<CanvasLike>())
+    const fontTrackerRef = useRef(createAssetLoadTracker<true>())
     const [base, setBase] = useState<HTMLCanvasElement | null>(null)
     const [headPct, setHeadPct] = useState(0)
 
@@ -383,22 +381,6 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
       void load()
     }, [layer.source])
 
-    // 로드 대기자에게 알린다(진행 중인 로드가 하나도 없을 때만). 배열 자체는 컴포넌트 생애
-    // 동안 재할당하지 않고 비우기만 한다(splice) — unmount 이펙트가 마운트 시점에 캡처해 둔
-    // 같은 배열 참조를 그대로 써도 항상 최신 상태를 보게 하기 위함.
-    function notifyImageAssetsReadyIfIdle() {
-      if (pendingImageLoadCountRef.current > 0) return
-      const waiters = pendingImageLoadWaitersRef.current.splice(0)
-      waiters.forEach((resolve) => resolve())
-    }
-
-    // 폰트 로드 대기자에게 알린다(위 notifyImageAssetsReadyIfIdle과 같은 방식).
-    function notifyFontsReadyIfIdle() {
-      if (pendingFontLoadCountRef.current > 0) return
-      const waiters = pendingFontLoadWaitersRef.current.splice(0)
-      waiters.forEach((resolve) => resolve())
-    }
-
     // 이미지 레이어 원본 로드(티켓 20260924_2157) — assetUrl별로 한 번만 불러와 캐싱한다.
     // 위치·크기·회전 슬라이더를 움직여도 assetUrl은 그대로라 이 이펙트는 다시 불러오지 않는다.
     //
@@ -406,103 +388,47 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
     // 올리기로 assetUrl 교체) 더 이상 어떤 레이어도 가리키지 않는 캐시 항목을 함께 지운다 —
     // 새로 불러올 게 없어도(toLoad가 비어도) 이 정리는 매번 실행한다.
     useEffect(() => {
+      const tracker = imageTrackerRef.current
       const imageLayers = overlayLayers.filter((l): l is ImageLayerConfig => l.type === 'image')
       const currentUrls = new Set(imageLayers.map((l) => l.assetUrl))
+      tracker.prune(currentUrls)
 
-      for (const url of Array.from(loadedImageAssetUrlsRef.current)) {
-        if (!currentUrls.has(url)) loadedImageAssetUrlsRef.current.delete(url)
-      }
-      {
-        let changed = false
-        const next: Record<string, CanvasLike> = {}
-        for (const [url, asset] of Object.entries(imageAssetsRef.current)) {
-          if (currentUrls.has(url)) next[url] = asset
-          else changed = true
-        }
-        if (changed) imageAssetsRef.current = next
-      }
-
-      const toLoad = Array.from(currentUrls).filter((url) => !loadedImageAssetUrlsRef.current.has(url))
-      if (toLoad.length === 0) return
       let cancelled = false
-      toLoad.forEach((url) => loadedImageAssetUrlsRef.current.add(url))
-      pendingImageLoadCountRef.current += 1
-
-      async function loadAll() {
-        try {
-          const entries = await Promise.all(
-            toLoad.map(async (url) => {
-              try {
-                const canvas = await loadImageLayerAsset(url)
-                return [url, toCanvasLike(canvas)] as const
-              } catch (e) {
-                loadedImageAssetUrlsRef.current.delete(url)
-                toast.error(e instanceof Error ? e.message : '이미지 레이어를 불러오지 못했어요.')
-                return null
-              }
-            })
-          )
-          if (cancelled) return
-          const next = { ...imageAssetsRef.current }
-          for (const entry of entries) {
-            if (entry) next[entry[0]] = entry[1]
-          }
-          imageAssetsRef.current = next
-        } finally {
-          pendingImageLoadCountRef.current -= 1
-          notifyImageAssetsReadyIfIdle()
+      void tracker.loadMissing(
+        Array.from(currentUrls),
+        async (url) => toCanvasLike(await loadImageLayerAsset(url)),
+        {
+          isCancelled: () => cancelled,
+          onError: (_url, e) => toast.error(e instanceof Error ? e.message : '이미지 레이어를 불러오지 못했어요.'),
         }
-      }
-
-      void loadAll()
+      )
       return () => {
         cancelled = true
       }
     }, [overlayLayers])
 
-    // 텍스트 레이어 구글 폰트 로드(티켓 20260924_2158) — family별로 한 번만 불러온다. 이미지와
-    // 달리 캐시 항목을 지우지 않는다(폰트는 blob URL처럼 새지 않고, `<link>`도
-    // `ensureGoogleFontLoaded`가 중복 삽입을 막는다 — 다시 쓸 수도 있어 가벼운 재사용이 낫다).
+    // 텍스트 레이어 구글 폰트 로드(티켓 20260924_2158) — (family, 굵기)별로 한 번만 불러온다
+    // (티켓 20260925_0148: 굵기마다 실제 폰트 파일이 달라 굵기까지 키에 넣는다). 이미지와 달리
+    // 캐시 항목을 지우지 않는다(폰트는 blob URL처럼 새지 않고, `<link>`도 `loadFontInBrowser`가
+    // 중복 삽입을 막는다 — 다시 쓸 수도 있어 가벼운 재사용이 낫다).
     useEffect(() => {
-      const families = new Set(
-        overlayLayers
-          .filter((l): l is TextLayerConfig => l.type === 'text')
-          .map((l) => l.font.family)
-          .filter((family) => !isSystemDefaultFont({ family }))
-      )
-      const toLoad = Array.from(families).filter((family) => !loadedFontFamiliesRef.current.has(family))
-      if (toLoad.length === 0) return
-      let cancelled = false
-      toLoad.forEach((family) => loadedFontFamiliesRef.current.add(family))
-      pendingFontLoadCountRef.current += 1
-
-      async function loadAll() {
-        try {
-          const entries = await Promise.all(
-            toLoad.map(async (family) => {
-              try {
-                await loadFontInBrowser({ family, weight: 400 })
-                return family
-              } catch (e) {
-                loadedFontFamiliesRef.current.delete(family)
-                toast.error(e instanceof Error ? e.message : '폰트를 불러오지 못했어요.')
-                return null
-              }
-            })
-          )
-          if (cancelled) return
-          const next = { ...fontReadyRef.current }
-          for (const family of entries) {
-            if (family) next[family] = true
-          }
-          fontReadyRef.current = next
-        } finally {
-          pendingFontLoadCountRef.current -= 1
-          notifyFontsReadyIfIdle()
-        }
+      const fontsByKey = new Map<string, TextLayerFont>()
+      for (const l of overlayLayers) {
+        if (l.type !== 'text' || isSystemDefaultFont(l.font)) continue
+        fontsByKey.set(buildFontLoadKey(l.font), l.font)
       }
-
-      void loadAll()
+      let cancelled = false
+      void fontTrackerRef.current.loadMissing(
+        Array.from(fontsByKey.keys()),
+        async (key) => {
+          await loadFontInBrowser(fontsByKey.get(key)!)
+          return true as const
+        },
+        {
+          isCancelled: () => cancelled,
+          onError: (_key, e) => toast.error(e instanceof Error ? e.message : '폰트를 불러오지 못했어요.'),
+        }
+      )
       return () => {
         cancelled = true
       }
@@ -541,8 +467,8 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
 
     // 최신 값을 ref에 담아 두고, 재생 루프(rAF)는 마운트 시 한 번만 시작한다 — 슬라이더를 움직일
     // 때마다 루프를 새로 시작하지 않기 위함(원본은 하나의 전역 루프, frame 476줄과 동일한 동작).
-    // imageAssets는 여기 담지 않고 rAF 루프 안에서 imageAssetsRef.current를 직접 읽는다
-    // (렌더·effect 타이밍과 무관하게 항상 최신값 — 위 imageAssetsRef 선언부 주석 참고).
+    // imageAssets는 여기 담지 않고 rAF 루프 안에서 imageTrackerRef.current.getValues()를 직접 읽는다
+    // (렌더·effect 타이밍과 무관하게 항상 최신값 — 위 imageTrackerRef 선언부 주석 참고).
     const latestRef = useRef({ play, layer, stamp, base, W, H, overlayLayers })
     useEffect(() => {
       latestRef.current = { play, layer, stamp, base, W, H, overlayLayers }
@@ -581,7 +507,7 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
                 stageHeight: current.H,
               })
             }
-            drawOverlayLayersOnto(ctx, current.overlayLayers, imageAssetsRef.current, current.W, current.H)
+            drawOverlayLayersOnto(ctx, current.overlayLayers, imageTrackerRef.current.getValues(), current.W, current.H)
           }
         }
         raf = requestAnimationFrame(frame)
@@ -626,31 +552,21 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
               stageHeight: H,
             })
           }
-          drawOverlayLayersOnto(ctx, overlayLayers, imageAssetsRef.current, W, H)
+          drawOverlayLayersOnto(ctx, overlayLayers, imageTrackerRef.current.getValues(), W, H)
         },
         setExporting: (exporting: boolean) => {
           exportingRef.current = exporting
         },
-        areImageAssetsReady: () => pendingImageLoadCountRef.current <= 0,
-        waitForImageAssets: () => {
-          if (pendingImageLoadCountRef.current <= 0) return Promise.resolve()
-          return new Promise((resolve) => {
-            pendingImageLoadWaitersRef.current.push(resolve)
-          })
-        },
+        areImageAssetsReady: () => imageTrackerRef.current.isIdle(),
+        waitForImageAssets: () => imageTrackerRef.current.waitUntilIdle(),
         getMissingImageAssetCount: () =>
-          overlayLayers.filter((l): l is ImageLayerConfig => l.type === 'image' && !imageAssetsRef.current[l.assetUrl]).length,
-        areFontsReady: () => pendingFontLoadCountRef.current <= 0,
-        waitForFonts: () => {
-          if (pendingFontLoadCountRef.current <= 0) return Promise.resolve()
-          return new Promise((resolve) => {
-            pendingFontLoadWaitersRef.current.push(resolve)
-          })
-        },
+          overlayLayers.filter((l): l is ImageLayerConfig => l.type === 'image' && !imageTrackerRef.current.has(l.assetUrl)).length,
+        areFontsReady: () => fontTrackerRef.current.isIdle(),
+        waitForFonts: () => fontTrackerRef.current.waitUntilIdle(),
         getMissingFontCount: () =>
           overlayLayers.filter(
             (l): l is TextLayerConfig =>
-              l.type === 'text' && !isSystemDefaultFont(l.font) && !fontReadyRef.current[l.font.family]
+              l.type === 'text' && !isSystemDefaultFont(l.font) && !fontTrackerRef.current.has(buildFontLoadKey(l.font))
           ).length,
       }),
       [W, H, layer, stamp, base, overlayLayers]
@@ -660,15 +576,11 @@ const AssetGeneratorViewport = forwardRef<AssetGeneratorViewportHandle, AssetGen
     // waitForFonts() 호출을 정리한다(재작업, 20260924_2157·2158) — 대기자를 깨워 영원히 멈춰
     // 있지 않게 한다.
     useEffect(() => {
-      const loadedUrls = loadedImageAssetUrlsRef.current
-      const imageWaiters = pendingImageLoadWaitersRef.current
-      const fontWaiters = pendingFontLoadWaitersRef.current
+      const imageTracker = imageTrackerRef.current
+      const fontTracker = fontTrackerRef.current
       return () => {
-        loadedUrls.clear()
-        pendingImageLoadCountRef.current = 0
-        imageWaiters.splice(0).forEach((resolve) => resolve())
-        pendingFontLoadCountRef.current = 0
-        fontWaiters.splice(0).forEach((resolve) => resolve())
+        imageTracker.dispose()
+        fontTracker.dispose()
       }
     }, [])
 
