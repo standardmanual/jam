@@ -134,6 +134,14 @@ describe('GET', () => {
     expect(res.status).toBe(200)
     expect(presetsBuilder.eq).toHaveBeenCalledWith('target_type', 'collection')
   })
+
+  it('targetType=home_feed면 다른 유형과 섞이지 않게 필터링한다(티켓 20260925_1410)', async () => {
+    presetsBuilder = makeQueryBuilder({ data: [], error: null })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const res = await GET(getReq('?targetType=home_feed'))
+    expect(res.status).toBe(200)
+    expect(presetsBuilder.eq).toHaveBeenCalledWith('target_type', 'home_feed')
+  })
 })
 
 describe('POST — 신규 저장', () => {
@@ -237,6 +245,28 @@ describe('POST — 신규 저장', () => {
     expect(uploadMock).not.toHaveBeenCalled()
     const insertPayload = presetsBuilder.insertPayload as { layers: Array<{ assetUrl?: string }> }
     expect(insertPayload.layers[0].assetUrl).toBe('https://cdn.test.jam.app/images/existing.png')
+  })
+
+  it('target_type=home_feed로 이미지+텍스트 레이어를 저장한다(티켓 20260925_1410)', async () => {
+    presetsBuilder = makeQueryBuilder({
+      data: { id: 'new-preset-id', name: '홈피드 프리셋 A', stage_ratio: '4:5', created_at: 't1', updated_at: 't1' },
+      error: null,
+    })
+    fromMock.mockImplementation(() => presetsBuilder)
+
+    const layers = [makeTextLayer('t1', '홈피드 카드 제목'), makeImageLayer('i1', 'blob:http://localhost/abc')]
+    const form = new FormData()
+    form.append('name', '홈피드 프리셋 A')
+    form.append('stageRatio', '4:5')
+    form.append('targetType', 'home_feed')
+    form.append('layers', JSON.stringify(layers))
+    form.append('image_i1', new File(['fake-png-bytes'], 'i1.png', { type: 'image/png' }))
+
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(200)
+
+    const insertPayload = presetsBuilder.insertPayload as { target_type: string }
+    expect(insertPayload.target_type).toBe('home_feed')
   })
 
   it('blob URL 이미지 레이어인데 파일이 없으면 400', async () => {
