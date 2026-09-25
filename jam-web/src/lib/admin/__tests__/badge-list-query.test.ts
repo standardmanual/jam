@@ -1,5 +1,6 @@
 import { vi } from 'vitest'
 import { fetchBadgeListPage, parseBadgeListParams } from '../badge-list-query'
+import { UNKNOWN_IMAGE_SOURCE_FILTER } from '../contentImageSource'
 
 describe('parseBadgeListParams', () => {
   it('빈 파라미터의 상태는 active(기본값)다', () => {
@@ -85,6 +86,135 @@ describe('fetchBadgeListPage — 기본 경로 조회 오류 처리(티켓 20260
     await expect(fetchBadgeListPage(supabase, parseBadgeListParams({}), 1)).resolves.toEqual({
       badges: [],
       total: 0,
+    })
+  })
+})
+
+describe('제작 경로(imageSource) 필터가 실제로 걸러낸다(티켓 20260925_0347)', () => {
+  type Call = [method: string, ...args: unknown[]]
+
+  /**
+   * 호출된 체이닝 메서드를 기록하고, `range`에서 테이블별 결과로 끝나는 스텁.
+   * 기본 DB 경로(badges 1회)와 체크인 카테고리 메모리 경로(badges·poi 각 1회) 모두에 쓴다.
+   */
+  function recordingSupabase(rowsByTable: Record<string, unknown[]> = {}) {
+    const calls: Call[] = []
+    const supabase = {
+      from: (table: string) => {
+        const chain: Record<string, unknown> = new Proxy(
+          {},
+          {
+            get: (_target, prop: string) => {
+              if (prop === 'range') {
+                const rows = rowsByTable[table] ?? []
+                return async () => ({ data: rows, count: rows.length, error: null })
+              }
+              return (...args: unknown[]) => {
+                calls.push([prop, ...args])
+                return chain
+              }
+            },
+          }
+        )
+        return {
+          select: (...args: unknown[]) => {
+            calls.push(['select', ...args])
+            return chain
+          },
+        }
+      },
+    } as unknown as Parameters<typeof fetchBadgeListPage>[0]
+    return { supabase, calls }
+  }
+
+  const imageSourceCalls = (calls: Call[]) => calls.filter(([, column]) => column === 'image_source')
+
+  describe('DB 필터(applyBadgeListFilters)', () => {
+    it.each([
+      ['수동 제작', 'admin-generator'],
+      ['윤진 자동', 'agent-generator'],
+      ['아이콘 파이프라인', 'jam-img'],
+    ])("%s(%s)는 .eq('image_source', 값)으로 건다", async (_label, value) => {
+      const { supabase, calls } = recordingSupabase()
+      await fetchBadgeListPage(supabase, parseBadgeListParams({ image_source: value }), 1)
+      expect(imageSourceCalls(calls)).toEqual([['eq', 'image_source', value]])
+    })
+
+    it("미상(__unknown__)은 값 없음(NULL)만 고르는 .is('image_source', null)로 건다", async () => {
+      const { supabase, calls } = recordingSupabase()
+      await fetchBadgeListPage(supabase, parseBadgeListParams({ image_source: UNKNOWN_IMAGE_SOURCE_FILTER }), 1)
+      expect(imageSourceCalls(calls)).toEqual([['is', 'image_source', null]])
+    })
+
+    it('필터가 없으면 image_source 조건을 걸지 않는다', async () => {
+      const { supabase, calls } = recordingSupabase()
+      await fetchBadgeListPage(supabase, parseBadgeListParams({}), 1)
+      expect(imageSourceCalls(calls)).toEqual([])
+    })
+
+    it('계열순(전량 정렬 경로)에서도 같은 필터를 건다', async () => {
+      const { supabase, calls } = recordingSupabase()
+      await fetchBadgeListPage(supabase, parseBadgeListParams({ image_source: 'jam-img', sort: 'family_asc' }), 1)
+      expect(imageSourceCalls(calls)).toEqual([['eq', 'image_source', 'jam-img']])
+    })
+  })
+
+  describe('메모리 필터(fetchCheckinCategoryCandidates) — 체크인 지점 카테고리 경로', () => {
+    const base = {
+      description: null,
+      type: 'checkin',
+      rarity: 'common',
+      image_url: null,
+      condition_json: null,
+      activity_types: [],
+      patch_available: false,
+      patch_price_krw: null,
+      tribe_id: null,
+      deleted_at: null,
+      created_at: '2026-09-01T00:00:00Z',
+      category: 'cafe',
+      admin_category: null,
+    }
+    const badges = [
+      { ...base, id: 'b-admin', name: '수동', image_source: 'admin-generator' },
+      { ...base, id: 'b-agent', name: '윤진', image_source: 'agent-generator' },
+      { ...base, id: 'b-icon', name: '아이콘', image_source: 'jam-img' },
+      { ...base, id: 'b-null', name: '미상 null', image_source: null },
+      { ...base, id: 'b-empty', name: '미상 빈값', image_source: '' },
+    ]
+
+    async function run(imageSource: string | undefined) {
+      const { supabase, calls } = recordingSupabase({ badges })
+      const raw: Record<string, string> = { type: 'checkin', poi_category: 'cafe' }
+      if (imageSource) raw.image_source = imageSource
+      const result = await fetchBadgeListPage(supabase, parseBadgeListParams(raw), 1)
+      return { ids: result.badges.map((b) => b.id).sort(), total: result.total, calls }
+    }
+
+    it.each([
+      ['수동 제작', 'admin-generator', ['b-admin']],
+      ['윤진 자동', 'agent-generator', ['b-agent']],
+      ['아이콘 파이프라인', 'jam-img', ['b-icon']],
+    ])('%s(%s)는 그 값을 가진 배지만 남긴다', async (_label, value, expected) => {
+      const { ids, total } = await run(value)
+      expect(ids).toEqual(expected)
+      expect(total).toBe(expected.length)
+    })
+
+    it('미상(__unknown__)은 값이 없거나 빈 배지만 남긴다', async () => {
+      const { ids, total } = await run(UNKNOWN_IMAGE_SOURCE_FILTER)
+      expect(ids).toEqual(['b-empty', 'b-null'])
+      expect(total).toBe(2)
+    })
+
+    it('필터가 없으면 제작 경로와 무관하게 전부 남긴다', async () => {
+      const { ids } = await run(undefined)
+      expect(ids).toHaveLength(badges.length)
+    })
+
+    it('이 경로는 DB 쿼리에 image_source 조건을 걸지 않는다(메모리에서만 거른다)', async () => {
+      const { calls } = await run('jam-img')
+      expect(imageSourceCalls(calls)).toEqual([])
     })
   })
 })

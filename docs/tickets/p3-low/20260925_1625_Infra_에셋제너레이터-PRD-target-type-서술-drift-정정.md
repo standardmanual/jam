@@ -36,14 +36,19 @@ related:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- `docs/specs/prd/asset-generator/PRD.md` §12(약 273~275줄)의 `asset_presets` 서술을 정정했다. `target_type` CHECK를
+  `badge`·`mission`·`collection`·`home_feed` 4종으로 적고, 확장 마이그레이션 `187_asset_presets_target_type_expand.sql`과
+  2026-09-25 jam-prod 적용 사실(출처: 티켓 20260925_1405 완료 기록)을 덧붙였다.
 
 ### 변경된 파일
 ```
--
+docs/specs/prd/asset-generator/PRD.md
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `grep`으로 PRD 안에 "badge 하나만" 류의 낡은 서술이 더 남아 있지 않음을 확인
+- [x] `ls jam-web/supabase/migrations | grep ^187`: `187_asset_presets_target_type_expand.sql` 존재, CHECK가 4종(파일 24~25줄)
+- [ ] 187의 프로덕션 적용 사실은 이 세션에서 DB로 직접 확인하지 않았다(티켓 20260925_1405 완료 기록 인용)
 
 ### 배포 정보
 - 배포일:
@@ -51,6 +56,7 @@ related:
 - 커밋:
 
 ### 주요 의사결정 / 핵심 메모
+- 문서는 현재 상태 덮어쓰기 규칙이라 변경 이력 서술 없이 현재 CHECK와 출처만 적었다. 적용 사실은 DB 확인이 아니라 1405 기록 인용이다.
 
 ### 잔여 이슈
--
+- 없음
