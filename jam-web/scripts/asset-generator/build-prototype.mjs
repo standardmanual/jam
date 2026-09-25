@@ -35,6 +35,9 @@ const checkDir = checkMode ? fs.mkdtempSync(path.join(os.tmpdir(), 'asset-bundle
 const buildOutfile = checkMode ? path.join(checkDir, path.basename(outfile)) : outfile;
 
 await build({
+  // 번들 안의 모듈 경로 주석이 실행 위치(작업 폴더)에 따라 달라지지 않게 저장소 루트로 고정한다.
+  // 없으면 저장소 루트에서 만든 번들이 verify.sh(jam-web 폴더에서 실행)의 --check에서 어긋난다.
+  absWorkingDir: repoRoot,
   entryPoints: [entryPoint],
   outfile: buildOutfile,
   bundle: true,
