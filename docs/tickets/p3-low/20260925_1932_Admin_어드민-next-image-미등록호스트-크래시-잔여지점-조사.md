@@ -2,9 +2,9 @@
 id: "20260925_1932"
 category: Admin
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-25
-closed:
+closed: 2026-09-25
 ---
 
 # [Admin] 어드민 next/image 미등록 호스트 크래시 잔여 지점 조사와 방침 결정
@@ -82,6 +82,11 @@ closed:
 4. **ApplyTab 임시 패치 처리**: 방침이 A로 정해지면 142bf1da의 `unoptimized`를 `SafeImage`로
    교체할지 함께 결정한다.
 
+## 결정 기록
+
+- **2026-09-25 사용자가 방침 A(어드민 렌더 지점을 `SafeImage`로 통일)를 결정했다.** ApplyTab 임시 패치(142bf1da)는
+  방침 A의 일부로 `SafeImage`로 교체한다(수정 티켓 20260925_2319에 포함).
+
 ## 구현 계획
 
 1. 10개 파일을 열어 URL 출처를 분류한다(위 「상세 요구사항」 1).
@@ -101,24 +106,67 @@ closed:
 - 이 티켓의 변경은 문서뿐이다(코드 변경 없음).
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+- 조사 티켓이라 코드는 바꾸지 않았다. 10개 파일의 URL 출처를 분류하고 프로덕션 DB를 읽기 전용으로 조회한 뒤, 사용자가 방침 A를 결정했다(2026-09-25).
+- 결론: 어드민 10곳 모두 미등록 호스트가 들어오면 화면 전체가 오류 화면이 될 수 있는 구조다. **지금 실제로 미등록 호스트 값이 있는 곳은 ApplyTab이 읽는 홈피드 카드 한 곳뿐**이고(이미 `unoptimized`로 임시 패치), 나머지 9곳이 읽는 배지·컬렉션 이미지에는 현재 미등록 값이 없다. 다만 배지 생성·수정 API가 `image_url` 호스트를 검사하지 않아 앞으로 들어올 수 있다.
+- 수정은 티켓 [20260925_2319](20260925_2319_Admin_어드민-이미지-렌더-지점을-SafeImage로-통일.md)(OPEN)로 분리했다.
 
-### 변경된 파일
-```
--
-```
+### 파일별 분류표 (2026-09-25 코드를 읽어 확인한 결과)
+
+| 파일:줄 | 렌더하는 URL | 미등록 호스트 유입 경로 | 근거 |
+|---|---|---|---|
+| `asset-generator/ApplyTab.tsx:259` | 선택한 대상의 이미지: 배지 `badges.image_url`, 미션 `missions.image_url`, 컬렉션 `item_books.image_url`, 홈피드 `today_cards.cover_image_url` | **있음(현재 11건)**. 홈피드 커버 URL은 수정 화면의 텍스트 입력이라 임의 호스트가 들어간다 | `ApplyTab.tsx:123-131`, 홈피드 폼 |
+| `itembooks/ItemBookForm.tsx:537` | 컬렉션에 속한 아이템 배지의 `badges.image_url` | 배지 API가 호스트를 검사하지 않음(UI 입력란은 없음) | `itembooks/[id]/page.tsx:23` select |
+| `item-badges/ItemBadgesTable.tsx:59` | `row.original.image_url` | 같음. 조회 쿼리는 열지 않았고 배지 이미지로 추정 | 표 셀 |
+| `item-badges/orphaned/OrphanedItemsTable.tsx:73` | `badgeImageUrl` | 같음. 조회 쿼리는 열지 않았고 배지 이미지로 추정 | 표 셀 |
+| `item-badges/[badgeId]/[itemId]/page.tsx:130` | `badges.image_url` | 같음 | 같은 파일 41-45행 select |
+| `item-badges/[badgeId]/page.tsx:77` | `badges.image_url` | 같음 | 같은 파일 |
+| `drop-policy/DropExclusionBadgesTable.tsx:60` | `row.original.image_url` | 같음. 조회 쿼리는 열지 않았고 배지 이미지로 추정 | 표 셀 |
+| `badges/BadgeCard.tsx:44` | `badge.image_url` | 같음 | `badge-list-query.ts:35` select |
+| `badges/BadgesTable.tsx:120` | `row.original.image_url` | 같음 | `badge-list-query.ts:225` |
+| `badges/BadgeDetail.tsx:295` | `badge.image_url`(`fill`) | 같음 | `admin/badges/[id]/page.tsx` |
+
+- 배지 이미지 입력란은 업로드 방식이다(`BadgeForm.tsx:1146` `allowManualUrl={false}`, 티켓 005). 다만 `api/admin/badges/route.ts`(POST, 50행은 존재 여부만 확인)와 `[id]/route.ts`(PATCH, 77행)는 `image_url` 값의 호스트를 검사하지 않는다. 이 API를 직접 호출하거나 등록 스크립트가 쓰는 경로로는 임의 URL이 들어갈 수 있다(호출 경로 전수는 확인하지 않았다).
+- 조사 중 추가로 발견한 지점은 없다. `SafeImage`를 쓰는 어드민 파일은 `ImageUploadField.tsx`·`TodayCardDetail.tsx` 두 곳이다. 어드민이 `next/image`가 아닌 다른 경로로 그리는 화면은 찾지 않았다(전수 확인 아님).
+
+### DB 실측 (프로덕션, 읽기 전용, 쓰기 없음)
+
+`isOptimizableImageSrc()`와 같은 기준으로 분류했다: 등록 = Supabase Storage 공개 경로 또는 `*.googleusercontent.com`, 내부 = `/`로 시작하는 경로.
+
+| 컬럼 | 등록 호스트 | 내부 경로 | 미등록 |
+|---|---|---|---|
+| `badges.image_url` | 1,039 | 2,326 | 0 |
+| `item_books.image_url` | 45 | 55 | 0 |
+| `missions.image_url` | 0 | 0 | 0 (값이 있는 행 없음) |
+| `today_cards.cover_image_url` | 0 | 2 | **11** (`storage.heypop.kr` 10, `cdn.news.bbsi.co.kr` 1) |
+
+### 방침 결정
+- **방침 A**: 어드민 렌더 지점을 `SafeImage`로 통일한다. 로드 실패까지 폴백으로 흡수하고 004에서 이미 프로젝트 표준으로 정한 방식이다. B(지점별 `unoptimized`)는 지점마다 우회를 반복하고 로드 실패를 못 막으며, C(호스트 추가)는 운영자가 임의 호스트를 넣을 수 있어 근본 해결이 아니다.
+- **ApplyTab 임시 패치**: `SafeImage`로 교체한다(수정 티켓 2319에 포함).
+
+### 후속 티켓 분할안
+- [20260925_2319](20260925_2319_Admin_어드민-이미지-렌더-지점을-SafeImage로-통일.md): 10개 파일 교체(기계적 치환, `planOnlyWaiver` 예정). 구현은 사용자 승인 뒤에 한다.
+- 재발 방지 ESLint 규칙(어드민 경로의 `next/image` 직접 import 금지)은 별도 티켓으로 분리할지 2319의 「결정 필요」에 적었다. 아직 티켓으로 만들지 않았다.
 
 ### 테스트 결과
-- [ ]
+- [x] 문서 변경만이다(코드 변경 없음). 문서 검사(pre-commit) 통과 예정.
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: (main 배포 전, staging 반영은 2026-09-25)
+- 환경: staging
+- 커밋: (이 티켓 커밋)
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1차 | 카리나 직접 조사(워크플로 없음) | - | - | - | - |
 
 ### 주요 의사결정 / 핵심 메모
+- 서비스 화면(`(main)` 등)에서 `next/image`를 직접 쓰는 19개 파일(전체 29개 − 어드민 10개)은 이 조사 범위 밖이다. 서비스 화면도 같은 구조적 위험이 있는지는 확인하지 않았다.
+- 어드민 표 셀 3곳(ItemBadgesTable·OrphanedItemsTable·DropExclusionBadgesTable)이 읽는 조회 쿼리는 열지 않았다. 수정 티켓에서 교체하며 확인한다.
 
 ### 잔여 이슈
--
+- 수정 티켓 2319(OPEN)의 승인·구현 대기.
