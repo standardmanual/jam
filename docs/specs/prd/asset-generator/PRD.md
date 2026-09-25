@@ -191,6 +191,21 @@ code:
   `image_source = 'agent-generator'`가 들어간다. `--undo`는 `missions`를 참조하는 외래 키 6곳(완료·참여 이력, 랭킹 스냅샷, 포인트 원장,
   투데이 카드, 랭킹 모드)에 사용자 데이터가 없을 때만 미션 행과 파일 2개를 지운다. 배지 등록 스크립트 5개 파일은 고치지 않았다.
   **스크립트는 사용자 컨펌 뒤 메인 세션만 `--dry-run` 없이 실행한다.**
+- **홈피드 카드 등록 묶음과 등록 스크립트(티켓 20260925_1413)**: 형식·검증 규칙·절차의 정본은
+  [HOME_FEED_REGISTRATION_BUNDLE.md](HOME_FEED_REGISTRATION_BUNDLE.md)다. 배지·미션과 같은 흐름이되 필드는 `today_cards` 스키마(템플릿·노출
+  형태·노출 조건 태그·기간·참조 필드·컨텐츠 유형)에 맞추고, 세계관 검수 기록(`world_review`)을 남긴다. 권장 폴더는
+  `jam-doc/assets/home-feed-bundles/<묶음 ID>/`이다.
+  ```
+  cd jam-web
+  npx tsx scripts/asset-generator/register-home-feed-card.mjs --bundle <bundle.json 절대경로> [--dry-run] [--record-dir <폴더>]
+  npx tsx scripts/asset-generator/register-home-feed-card.mjs --undo <registration-record.json 절대경로> [--dry-run]
+  ```
+  어드민 `today_cards` 생성 API는 본문을 검증 없이 insert하므로 재사용할 검증 함수가 없다. 규칙은 어드민 폼·`today-sections.ts` 상수·DB CHECK에서
+  가져오고 허용값 목록은 그 상수를 import한다. 저장 경로는 적용 탭과 같은 `today_cards/asset-generator/{id}.png|webp`이고 카드 행에는
+  `cover_image_url`(`image_url`이 아니다)과 `image_source = 'agent-generator'`가 들어간다. 기존 주간 편성의 시드 SQL 등록 카드는 `image_source`가
+  NULL이라 두 경로가 구분된다. 중복 검사는 «제목 + 시작 일시»다. `--undo`는 `today_card_events`(`today_cards`를 참조하는 유일한 외래 키, 삭제 규칙은
+  `ON DELETE SET NULL`)에 노출·열람 기록이 없을 때만 카드 행과 파일 2개를 지운다. 배지·미션 등록 스크립트는 고치지 않았다.
+  **스크립트는 사용자 컨펌 뒤 메인 세션만 `--dry-run` 없이 실행한다.**
 
 ## 9. 출력 규격과 최적화
 
@@ -284,7 +299,8 @@ code:
 - 선행 참조: 홈피드 자동화 [20260923_2252](../../../tickets/p2-normal/20260923_2252_Feature_홈피드-배지-미션-운영-자동화-파이프라인-1단계-상위.md)
   (컨펌→등록 흐름, 등록 기록·되돌림 SQL), 어드민 목록 공통화 [20260924_0916](../../../tickets/p2-normal/20260924_0916_Admin_어드민-목록-테이블-공통화.md)
 - 등록 묶음 형식·등록 스크립트: [REGISTRATION_BUNDLE.md](REGISTRATION_BUNDLE.md)(배지),
-  [MISSION_REGISTRATION_BUNDLE.md](MISSION_REGISTRATION_BUNDLE.md)(미션)
+  [MISSION_REGISTRATION_BUNDLE.md](MISSION_REGISTRATION_BUNDLE.md)(미션),
+  [HOME_FEED_REGISTRATION_BUNDLE.md](HOME_FEED_REGISTRATION_BUNDLE.md)(홈피드 카드)
 - 어드민 PRD: [admin-ui/ADMIN_PRD.md](../admin-ui/ADMIN_PRD.md)
 - 배지 아이콘 파이프라인: `.claude/skills/jam-img/SKILL.md`
 
@@ -366,6 +382,14 @@ code:
   사용자 데이터 검사 대상 6곳은 생성 타입의 외래 키에서 뽑았고 테스트가 타입과 대조한다. 예시 묶음은
   `jam-web/scripts/asset-generator/__fixtures__/example-mission-bundle/`에 있다. 실제 등록·되돌림 확인은 머지 뒤 메인 세션이 숨김
   시험 미션 1건으로 한다(미완).
+- [20260925_1413](../../../tickets/p2-normal/20260925_1413_Infra_홈피드-등록묶음-포맷과-등록스크립트.md) 구현(스크립트 작성까지, 실제
+  등록은 사용자 컨펌 뒤 메인 세션): §8 홈피드 카드 등록 묶음 형식과 등록 스크립트를 만들었다. 형식 정본은
+  `HOME_FEED_REGISTRATION_BUNDLE.md`이고 `register-home-feed-card.mjs`(`tsx`, cwd는 `jam-web`)가 묶음 검증 → 이미지 업로드(원본 PNG + WebP) →
+  `today_cards` 행 insert → 등록 기록·되돌림 SQL 생성을 맡는다. 배지·미션 등록 스크립트 9개 파일은 수정하지 않고 부품만 import했으며 홈피드 전용
+  부분은 `registerHomeFeed{Bundle,Flow,Record}.mjs`에 새로 썼다. 검증 규칙의 원천은 어드민 폼·`today-sections.ts` 상수·DB CHECK이고(생성 API에는
+  검증이 없다), 허용값 목록이 DB CHECK 마이그레이션과 갈라지지 않는지 테스트가 대조한다. 되돌림 전 검사 대상은 생성 타입의 외래 키(`today_card_events.card_id`
+  하나)에서 뽑았고 테스트가 타입과 대조한다. 예시 묶음은 `jam-web/scripts/asset-generator/__fixtures__/example-home-feed-bundle/`에 있다. 실제 등록·되돌림
+  확인은 머지 뒤 메인 세션이 비활성·2099년 시험 카드 1건으로 한다(미완).
 - 그 외는 미착수. 하위 티켓 순서는 상위 티켓의 하위 티켓 표를 따른다.
 - **상위 티켓 후속 범위 완료(2026-09-25, 카리나)**: 상위 티켓의 성공 기준 1~6을 staging(DB는 프로덕션
   공용)에서 실제 배지로 확인했다. 새 실렌더 대신 하위 티켓 완료 시점에 이미 수행한 실제 배지 검증을
