@@ -222,7 +222,7 @@ describe('validateHomeFeedBundle — 세계관 검수', () => {
   it('world_review 객체·불리언·필수 항목을 확인한다', () => {
     expect(errorsFor((raw) => (raw.world_review = 'x' as unknown as Record<string, unknown>))).toContain('world_review: 객체여야 해요.');
     expect(errorsFor((raw) => (raw.world_review.world_related = 'yes'))).toContain('world_review.world_related: true 또는 false여야 해요(받은 값: "yes").');
-    expect(errorsFor((raw) => delete raw.world_review)).toContain('world_review: 필수 항목이 없어요.');
+    expect(errorsFor((raw) => (raw.world_review = undefined as unknown as Record<string, unknown>))).toContain('world_review: 필수 항목이 없어요.');
   });
 
   it('세계관 내용이 있는데 윈터 검수를 안 했으면 거절한다', () => {
