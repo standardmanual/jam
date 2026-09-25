@@ -19,6 +19,10 @@ function recordingQuery() {
       calls.push(`ilike ${column} ${pattern}`)
       return query
     },
+    is: (column, value) => {
+      calls.push(`is ${column}=${String(value)}`)
+      return query
+    },
     or: (filters) => {
       calls.push(`or ${filters}`)
       return query
@@ -40,7 +44,19 @@ function conditionsOf(rawStatus: string | undefined) {
 
 describe('parseItemBookListParams', () => {
   it('빈 파라미터는 상태 전체·최근 등록순이다(기존 화면과 같은 기본 동작)', () => {
-    expect(parseItemBookListParams({})).toEqual({ q: '', tribe: undefined, status: 'all', sort: 'created_desc' })
+    expect(parseItemBookListParams({})).toEqual({
+      q: '',
+      tribe: undefined,
+      status: 'all',
+      sort: 'created_desc',
+      imageSource: undefined,
+    })
+  })
+
+  it('제작 경로 필터 값이 그대로 넘어간다(티켓 20260925_1409, sentinel 포함)', () => {
+    expect(parseItemBookListParams({ image_source: 'admin-generator' }).imageSource).toBe('admin-generator')
+    expect(parseItemBookListParams({ image_source: '__unknown__' }).imageSource).toBe('__unknown__')
+    expect(parseItemBookListParams({}).imageSource).toBeUndefined()
   })
 
   it('알 수 없는 상태·정렬 값은 기본값으로 떨어진다', () => {
@@ -90,6 +106,26 @@ describe('applyItemBookListFilters — 검색·트라이브', () => {
     const { query, calls } = recordingQuery()
     applyItemBookListFilters(query, parseItemBookListParams({ q: '서울', tribe: 't1', status: 'inactive' }), NOW)
     expect(calls).toEqual(['ilike name %서울%', 'eq tribe_id=t1', 'eq is_active=false'])
+  })
+})
+
+describe('applyItemBookListFilters — 제작 경로(티켓 20260925_1409)', () => {
+  it('실제 값이면 eq로 거른다', () => {
+    const { query, calls } = recordingQuery()
+    applyItemBookListFilters(query, parseItemBookListParams({ image_source: 'admin-generator' }), NOW)
+    expect(calls).toEqual(['eq image_source=admin-generator'])
+  })
+
+  it('sentinel(__unknown__)이면 값 없음(NULL)을 거른다', () => {
+    const { query, calls } = recordingQuery()
+    applyItemBookListFilters(query, parseItemBookListParams({ image_source: '__unknown__' }), NOW)
+    expect(calls).toEqual(['is image_source=null'])
+  })
+
+  it('필터 없으면 조건을 걸지 않는다', () => {
+    const { query, calls } = recordingQuery()
+    applyItemBookListFilters(query, parseItemBookListParams({}), NOW)
+    expect(calls).toEqual([])
   })
 })
 

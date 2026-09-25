@@ -23,6 +23,7 @@ import BackgroundGeneratorPreview, {
   type BackgroundGeneratorLivePreviewState,
 } from '../badges/BackgroundGeneratorPreview'
 import { FieldLabel, FieldMessage, SuffixInput } from '../badges/BadgeFormControls'
+import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import { parseBlobAnimation, type BlobAnimationParams } from '@/lib/blobAnimation'
 import ItemBookDetailPreviewFrame from './ItemBookDetailPreviewFrame'
 import { BadgeActiveToggleButton } from '@/components/admin/badges/BadgeActiveToggleButton'
@@ -300,6 +301,14 @@ export default function ItemBookForm({
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm">
           {error}
         </div>
+      )}
+
+      {/* 제작 경로 라벨(티켓 20260925_1409) — 수정 화면(book 존재)에서만 보인다. 신규 등록
+          화면은 아직 image_source가 없다(적용 탭에서 반영해야 생긴다). */}
+      {book && (
+        <span className="inline-flex w-fit items-center whitespace-nowrap rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-semibold text-neutral-600">
+          제작 경로 · {contentImageSourceLabel(book.image_source)}
+        </span>
       )}
 
       <label className="flex flex-col gap-1.5">

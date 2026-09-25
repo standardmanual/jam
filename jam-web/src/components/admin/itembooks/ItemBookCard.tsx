@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/admin/ui/card'
 import { Badge } from '@/components/admin/ui/badge'
+import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import type { ItemBookRow } from '@/types/database'
 
 interface ItemBookCardProps {
@@ -62,6 +63,12 @@ export function ItemBookCard({
                 </Badge>
               </div>
             )}
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">제작 경로</span>
+              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium whitespace-nowrap">
+                {contentImageSourceLabel(itemBook.image_source)}
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>

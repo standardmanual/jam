@@ -899,6 +899,7 @@ export type Database = {
           drop_condition_json: Json | null
           drop_excluded: boolean
           id: string
+          image_source: string | null
           image_url: string | null
           is_active: boolean
           name: string
@@ -921,6 +922,7 @@ export type Database = {
           drop_condition_json?: Json | null
           drop_excluded?: boolean
           id?: string
+          image_source?: string | null
           image_url?: string | null
           is_active?: boolean
           name: string
@@ -943,6 +945,7 @@ export type Database = {
           drop_condition_json?: Json | null
           drop_excluded?: boolean
           id?: string
+          image_source?: string | null
           image_url?: string | null
           is_active?: boolean
           name?: string

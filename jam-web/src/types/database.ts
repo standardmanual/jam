@@ -444,6 +444,11 @@ export interface ItemBookRow {
    *  평가되며, 소속 아이템배지의 활성 여부와는 완전히 독립적이다(컬렉션 캐스케이드 폐지). */
   valid_from: string | null
   valid_until: string | null
+  /** 컬렉션 대표 이미지(image_url) 제작 경로(마이그레이션 189, 티켓 20260925_1409).
+   *  'admin-generator'(에셋 제너레이터 적용 탭)만 값이 채워진다 — 컬렉션은 자동 기획 경로가
+   *  없다(상위 티켓 20260925_1404 결정 6). NULL이면 기존 컬렉션(미상).
+   *  라벨 매핑은 `lib/admin/contentImageSource.ts` 참조. */
+  image_source: string | null
 }
 
 export interface PoiRow {

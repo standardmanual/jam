@@ -18,6 +18,7 @@ import { useCrossPageSelection } from '@/components/admin/data-table/use-cross-p
 import { useListParams, useUrlSorting } from '@/components/admin/data-table/use-list-params'
 import { runBulk, fetchListIds, downloadResponseAsFile, type BulkRunResponse } from '@/components/admin/data-table/admin-fetch'
 import { toastBulkResult } from '@/components/admin/ui/toast-helpers'
+import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import type { ItemBookRow } from '@/types/database'
 
 interface ItemBookTableProps {
@@ -146,6 +147,17 @@ export function ItemBookTable({
             const id = getValue()
             return <span className="text-sm">{id ? badgeMap.get(id) ?? '—' : '—'}</span>
           },
+        }),
+        columnHelper.accessor('image_source', {
+          id: 'image_source',
+          header: '제작 경로',
+          enableSorting: false,
+          meta: { label: '제작 경로' },
+          cell: ({ getValue }) => (
+            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium whitespace-nowrap">
+              {contentImageSourceLabel(getValue())}
+            </span>
+          ),
         }),
       ]),
     [badgeMap, tribeMap, itemBadgeCountMap]
