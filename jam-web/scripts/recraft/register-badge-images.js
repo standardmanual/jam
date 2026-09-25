@@ -5,6 +5,7 @@
  * <컬렉션 폴더>/recraft_badge_mapping.json을 읽어 아이템별로:
  * 1) 파일을 Storage 'images' 버킷의 badges/factions/{collectionId}/ 경로에 업로드
  * 2) public URL을 등급(common/rare/legend/mythic) 상관없이 4개 UUID 전부에 동일하게 UPDATE
+ *    (제작 경로 image_source = 'jam-img'를 image_url과 함께 기록한다)
  *
  * 실제 실행한 UPDATE문은 이후 seed SQL 파일로도 저장해 커밋한다 (레포 관례).
  *
@@ -26,6 +27,9 @@ function loadEnv() {
 }
 
 const BUCKET = 'images'
+// badges.image_source의 값 — 이 스크립트가 반영하는 이미지는 /jam-img(아이콘 파이프라인) 산출물이다.
+// 값 어휘는 jam-web/src/lib/admin/contentImageSource.ts·마이그레이션 186의 CHECK와 같다.
+const IMAGE_SOURCE = 'jam-img'
 
 async function main() {
   const [collectionDir] = process.argv.slice(2)
@@ -63,7 +67,7 @@ async function main() {
 
     const { error: updateError } = await supabase
       .from('badges')
-      .update({ image_url: publicUrl })
+      .update({ image_url: publicUrl, image_source: IMAGE_SOURCE })
       .in('id', item.ids)
 
     if (updateError) {
@@ -73,7 +77,7 @@ async function main() {
 
     console.log(`완료: ${item.name} → ${publicUrl} (${item.ids.length}개 등급 전부 반영)`)
     sqlLines.push(
-      `UPDATE badges SET image_url = '${publicUrl}' WHERE id IN ('${item.ids.join("','")}'); -- ${item.name}`
+      `UPDATE badges SET image_url = '${publicUrl}', image_source = '${IMAGE_SOURCE}' WHERE id IN ('${item.ids.join("','")}'); -- ${item.name}`
     )
   }
 

@@ -197,7 +197,8 @@ node jam-web/scripts/recraft/register-badge-images.js "<컬렉션 폴더 절대�
 ```
 
 - `recraft_badge_mapping.json`(아이템별 파일명 → badge id 목록)을 읽어 Storage 업로드 +
-  `badges.image_url` UPDATE.
+  `badges.image_url` UPDATE. 이때 제작 경로 `badges.image_source = 'jam-img'`도 함께 기록한다
+  (어드민 배지 목록의 "아이콘 파이프라인" 라벨·필터, 티켓 20260925_0352).
 - 다건 작업이 여러 실제 컬렉션에 걸쳤다면, 컬렉션별로 이 스크립트를 각각 실행한다.
 - 재업로드 시에도 이 스크립트가 자동으로 `?v=<timestamp>` 캐시버스팅 쿼리스트링을 붙인다
   (Vercel Image Optimization 엣지 캐시가 예전 이미지를 서빙하는 문제 방지).

@@ -44,14 +44,22 @@ NULL(미상)로 남아 라벨이 원인 추적 수단으로 완성되지 않는�
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- `register-badge-images.js`: `IMAGE_SOURCE = 'jam-img'` 상수를 두고 `badges` UPDATE 페이로드를 `{ image_url, image_source }`로 바꿨다.
+  컬렉션 폴더에 저장되는 SQL 기록(`seed_{collection_id}_badge_images.sql`)의 UPDATE문에도 `image_source = 'jam-img'`를 넣었다.
+  스크립트에 별도 드라이런 모드는 없고, 이 SQL 기록이 티켓의 "미리보기용 SQL 출력"에 해당한다. 파일 머리 주석도 갱신했다.
+- `.claude/skills/jam-img/SKILL.md` ⑩ 단계에 `image_source = 'jam-img'` 함께 기록한다는 한 줄을 덧붙였다.
 
 ### 변경된 파일
 ```
--
+jam-web/scripts/recraft/register-badge-images.js
+.claude/skills/jam-img/SKILL.md
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] Supabase 클라이언트·`.env.local`을 스텁으로 바꾼 임시 실행(임시 폴더, 실제 DB·Storage 접근 없음): UPDATE 페이로드에 `image_source: 'jam-img'`가
+  들어가고, 생성된 SQL에 `UPDATE badges SET image_url = '...', image_source = 'jam-img' WHERE id IN (...)`가 출력됨
+- [ ] 실제 등록 1건 뒤 해당 배지의 `image_source = 'jam-img'` 확인: 미확인(카리나 실렌더 또는 다음 `/jam-img` 실행 때 확인, 실제 DB 쓰기라 하지 않음)
+- [x] lint는 `scripts/verify.sh`로 마지막에 실행(최종 보고 참조)
 
 ### 배포 정보
 - 배포일: 
@@ -66,6 +74,8 @@ NULL(미상)로 남아 라벨이 원인 추적 수단으로 완성되지 않는�
 | 합계 |  |  |  |  |  |
 
 ### 주요 의사결정 / 핵심 메모
+- 값 문자열은 `contentImageSource.ts`(TS)를 CommonJS 스크립트에서 가져올 수 없어 상수로 다시 적었다. 같은 값이 마이그레이션 186의 CHECK·`contentImageSource.ts`에도 있다.
+- 다른 배지 갱신 경로(`register-badge-images.js` 외)는 이 티켓 범위 밖이라 손대지 않았다.
 
 ### 잔여 이슈
--
+- 기존 배지의 소급 채우기는 상위 티켓 「열린 질문」 소관(이 티켓 범위 밖).
