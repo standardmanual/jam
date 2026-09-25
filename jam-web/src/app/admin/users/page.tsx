@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { createServiceClient } from '@/lib/supabase/server'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { ADMIN_LIST_PAGE_SIZE, totalPagesOf } from '@/lib/admin/list-params'
+import { logQueryError } from '@/lib/admin/queryError'
 import { parseUserListParams, fetchUserListPage } from '@/lib/admin/user-list'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 import { UsersTable } from './UsersTable'
@@ -26,10 +27,12 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
   const params = parseUserListParams(rawParams)
 
   const supabase = createServiceClient()
-  const [{ rows, total }, { data: tribesRaw }] = await Promise.all([
+  const [{ rows, total }, { data: tribesRaw, error: tribesError }] = await Promise.all([
     fetchUserListPage(supabase, params, page),
     supabase.from('tribes').select('id, name').order('name'),
   ])
+
+  logQueryError(tribesError, 'users/tribes')
 
   const hasFilter = !!(params.q || params.tribeId || params.onboarding || params.ban)
 

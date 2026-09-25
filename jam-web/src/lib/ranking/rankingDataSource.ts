@@ -18,6 +18,7 @@ import { computeActivityMetricValue, isRankingActivityMetric, isRankingUsageMetr
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
 import { getDisplayName } from '@/lib/utils'
 import { kstDateString } from '@/lib/notifications/kst'
+import { logQueryError } from '@/lib/admin/queryError'
 import type {
   BadgeType,
   MissionStatusDisplayType,
@@ -314,11 +315,13 @@ export async function checkRankingModeIntegrity(
 
   if (mode.target_type === 'mission_participants') {
     if (!mode.target_mission_id) return { code: 'mission_deleted' }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('missions')
       .select('status_display_type')
       .eq('id', mode.target_mission_id)
       .maybeSingle()
+    // 조회 실패는 로그만 남긴다(티켓 20260925_2004) — 실패와 「미션 없음」이 화면에서는 같은 경고로 보이므로 로그로 구분한다.
+    logQueryError(error, 'ranking-modes/integrity')
     const mission = data as { status_display_type: MissionStatusDisplayType } | null
     if (!mission) return { code: 'mission_deleted' }
     if (mission.status_display_type !== 'ranking') {

@@ -6,6 +6,7 @@ import { DataTablePagination } from '@/components/admin/data-table/data-table-pa
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
 import type { CountRowsClient } from '@/lib/admin/list-counts'
+import { logQueryError, throwOnQueryError } from '@/lib/admin/queryError'
 import {
   ITEM_BADGE_LIST_COLUMNS,
   parseItemBadgeListParams,
@@ -50,11 +51,18 @@ export default async function ItemBadgesSearchPage({ searchParams }: Props) {
   query = applyItemBadgeListQuery(query, params)
   const [from, to] = pageRange(page, ADMIN_LIST_PAGE_SIZE)
 
-  const [{ data: badgesRaw, count }, { data: tribesRaw }, { data: itemBooksRaw }] = await Promise.all([
+  const [
+    { data: badgesRaw, count, error: badgesError },
+    { data: tribesRaw, error: tribesError },
+    { data: itemBooksRaw, error: itemBooksError },
+  ] = await Promise.all([
     query.range(from, to),
     supabase.from('tribes').select('id, name').order('name'),
     supabase.from('item_books').select('id, name, tribe_id').order('name'),
   ])
+  throwOnQueryError(badgesError, 'item-badges')
+  logQueryError(tribesError, 'item-badges/tribes')
+  logQueryError(itemBooksError, 'item-badges/item-books')
   const badges = badgesRaw ?? []
   const tribes = (tribesRaw ?? []) as { id: string; name: string }[]
   const itemBooks = (itemBooksRaw ?? []) as { id: string; name: string; tribe_id: string | null }[]

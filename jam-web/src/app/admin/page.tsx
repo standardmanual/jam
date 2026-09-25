@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react'
 import WeeklyCalendar, { type CalendarColumn, type CalendarCellItem } from './WeeklyCalendar'
 import DashboardSignals, { type DashboardSignalsProps } from './DashboardSignals'
+import { logQueryError } from '@/lib/admin/queryError'
 import { fetchContentGaps, type ContentGaps } from '@/lib/admin/contentGaps'
 import {
   getWeeklyCronOccurrences,
@@ -297,19 +298,25 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
       supabase.from('item_books').select('*', { count: 'exact', head: true }),
       supabase.from('users').select('*', { count: 'exact', head: true }),
     ])
-    badgeCount = b.count
-    poiCount = p.count
-    itemBookCount = ib.count
-    userCount = u.count
+    // 통계 한 칸의 조회 실패가 화면 전체를 막지 않도록 던지지 않는다 — 실패한 칸은 null로 두어
+    // 「—」로 표시하고(0건과 구분), 원인은 서버 로그에 남긴다(티켓 20260925_2004).
+    logQueryError(b.error, 'dashboard/badge-count')
+    logQueryError(p.error, 'dashboard/poi-count')
+    logQueryError(ib.error, 'dashboard/item-book-count')
+    logQueryError(u.error, 'dashboard/user-count')
+    badgeCount = b.error ? null : (b.count ?? 0)
+    poiCount = p.error ? null : (p.count ?? 0)
+    itemBookCount = ib.error ? null : (ib.count ?? 0)
+    userCount = u.error ? null : (u.count ?? 0)
   } catch (e) {
     serviceError = e instanceof Error ? e.message : 'Service client initialization failed'
   }
 
   const stats = [
-    { label: '배지', value: badgeCount ?? 0, href: '/admin/badges', icon: IconAward },
-    { label: 'POI', value: poiCount ?? 0, href: '/admin/poi', icon: IconMapPin },
-    { label: '컬렉션', value: itemBookCount ?? 0, href: '/admin/itembooks', icon: IconBook },
-    { label: '유저', value: userCount ?? 0, href: '/admin/users', icon: IconUsers },
+    { label: '배지', value: badgeCount, href: '/admin/badges', icon: IconAward },
+    { label: 'POI', value: poiCount, href: '/admin/poi', icon: IconMapPin },
+    { label: '컬렉션', value: itemBookCount, href: '/admin/itembooks', icon: IconBook },
+    { label: '유저', value: userCount, href: '/admin/users', icon: IconUsers },
   ]
 
 
@@ -359,8 +366,14 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
             className="bg-white border border-border rounded-2xl p-5 hover:border-foreground/30 transition-colors"
           >
             <stat.icon className="mb-2 h-8 w-8 text-muted-foreground" />
-            <p className="text-3xl font-bold tabular-nums">{stat.value.toLocaleString()}</p>
+            <p
+              className="text-3xl font-bold tabular-nums"
+              title={stat.value === null ? '불러오지 못했어요' : undefined}
+            >
+              {stat.value === null ? '—' : stat.value.toLocaleString()}
+            </p>
             <p className="text-muted-foreground text-sm mt-1">{stat.label}</p>
+            {stat.value === null && <p className="text-red-500 text-xs mt-1">불러오지 못했어요</p>}
           </Link>
         ))}
       </div>

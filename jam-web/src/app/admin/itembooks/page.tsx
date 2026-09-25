@@ -55,10 +55,10 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
     ),
   ]
   const bookIds = books.map((b) => b.id)
-  const [{ data: badgesRaw }, itemBadgeCounts] = await Promise.all([
+  const [{ data: badgesRaw, error: badgesError }, itemBadgeCounts] = await Promise.all([
     labelIds.length > 0
       ? supabase.from('badges').select('id, name').in('id', labelIds)
-      : Promise.resolve({ data: [] as Pick<BadgeRow, 'id' | 'name'>[] }),
+      : Promise.resolve({ data: [] as Pick<BadgeRow, 'id' | 'name'>[], error: null }),
     // [20260902_1043] deleted_at 필터를 두지 않아 배정 관계(item_book_id)가 남아있는 배지는
     // 활성/비활성 무관하게 전부 센다 — 컬렉션을 비활성화해도 목록 페이지의 이 카운트가
     // 0으로 사라지면 안 된다([id]/page.tsx의 배지 슬롯 관리 목록과 동일한 원칙). 배지 행을
@@ -67,6 +67,7 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
       q.eq('type', 'item')
     ),
   ])
+  logQueryError(badgesError, 'itembooks/badge-names')
   const badges = (badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]
   const badgeMap = new Map(badges.map((b) => [b.id, b.name]))
   const itemBadgeCountMap = new Map(Object.entries(itemBadgeCounts))

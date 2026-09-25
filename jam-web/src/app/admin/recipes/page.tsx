@@ -5,6 +5,7 @@ import type { CombinationRecipeSlotRow } from '@/types/database'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 import { ADMIN_LIST_PAGE_SIZE, pageRange, totalPagesOf } from '@/lib/admin/list-params'
+import { logQueryError, throwOnQueryError } from '@/lib/admin/queryError'
 import {
   RECIPE_LIST_COLUMNS,
   parseRecipeListParams,
@@ -38,16 +39,18 @@ export default async function AdminRecipesPage({ searchParams }: AdminRecipesPag
     .select(RECIPE_LIST_COLUMNS, { count: 'exact' }) as unknown as RecipeListQuery<RecipeListRow>
   query = applyRecipeListQuery(query, params)
   const [from, to] = pageRange(page, ADMIN_LIST_PAGE_SIZE)
-  const { data: recipesRaw, count } = await query.range(from, to)
+  const { data: recipesRaw, count, error: recipesError } = await query.range(from, to)
+  throwOnQueryError(recipesError, 'recipes')
   const recipesBase = recipesRaw ?? []
 
   // 티켓 20260917_1427: 재료·보유 조건이 `combination_recipe_slots`로 이관됐다 — 이 쪽의
   // 레시피 id들만 골라 슬롯을 조회하고 recipe_id로 묶는다.
   const recipeIds = recipesBase.map((r) => r.id)
-  const { data: slotsRaw } =
+  const { data: slotsRaw, error: slotsError } =
     recipeIds.length > 0
       ? await supabase.from('combination_recipe_slots').select('*').in('recipe_id', recipeIds)
-      : { data: [] as CombinationRecipeSlotRow[] }
+      : { data: [] as CombinationRecipeSlotRow[], error: null }
+  logQueryError(slotsError, 'recipes/slots')
   const slotsByRecipe = new Map<string, CombinationRecipeSlotRow[]>()
   for (const slot of (slotsRaw ?? []) as CombinationRecipeSlotRow[]) {
     const list = slotsByRecipe.get(slot.recipe_id) ?? []
@@ -65,10 +68,11 @@ export default async function AdminRecipesPage({ searchParams }: AdminRecipesPag
         .filter((id): id is string => !!id)
     ),
   ]
-  const { data: usedBadgesRaw } =
+  const { data: usedBadgesRaw, error: usedBadgesError } =
     usedBadgeIds.length > 0
       ? await supabase.from('badges').select('id, name').in('id', usedBadgeIds)
-      : { data: [] as { id: string; name: string }[] }
+      : { data: [] as { id: string; name: string }[], error: null }
+  logQueryError(usedBadgesError, 'recipes/badge-names')
   const badgeMap = new Map(((usedBadgesRaw ?? []) as { id: string; name: string }[]).map((b) => [b.id, b.name]))
 
   const totalCount = count ?? 0
