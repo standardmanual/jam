@@ -12,6 +12,7 @@ import type { ItemBookRow } from '@/types/database'
 import { sanitizeSearchTerm } from './search-term'
 import { ADMIN_LIST_PAGE_SIZE, pageRange } from './list-params'
 import { UNKNOWN_IMAGE_SOURCE_FILTER } from './contentImageSource'
+import { throwOnQueryError } from './queryError'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -141,7 +142,9 @@ export async function fetchItemBookListPage(
   query = applyItemBookListFilters(query, params, new Date().toISOString())
   query = applyItemBookListSort(query, params.sort)
 
-  const { data, count } = await query.range(from, to)
+  const { data, count, error } = await query.range(from, to)
+  // 조회 오류를 빈 목록으로 삼키지 않고 던져 어드민 오류 화면으로 보낸다(티켓 20260925_1941)
+  throwOnQueryError(error, 'itembooks')
   return { books: data ?? [], total: count ?? 0 }
 }
 
