@@ -2,7 +2,7 @@
 id: "20260925_2003"
 category: Admin
 priority: P3
-status: OPEN
+status: IN_PROGRESS
 created: 2026-09-25
 closed:
 related:
@@ -55,6 +55,34 @@ related:
   용도가 필요할 때 맞다. 검증 로직이 4곳에 생긴다.
 - 카리나 추천: **A**. 현재 어드민 화면에는 값을 직접 고치는 입력이 없고, 1940에서 정한 「이미지가
   바뀌면 NULL」과 같은 방향이다.
+
+## 결정 기록
+
+- **2026-09-25 사용자가 방침 A(본문의 `image_source`를 4개 라우트 모두에서 무시한다)를 결정했다.**
+
+## 구현 계획 (방침 A 확정)
+
+접근: 미션·홈피드 PATCH가 본문을 그대로 통과시키는 자리에서 `image_source`만 걸러낸다. 배지·컬렉션
+PUT은 필드를 명시해 병합하므로 이미 무시한다(코드 변경 없이 테스트로 고정). 이미지가 바뀌는 요청의
+`image_source: null`(1940)과 바뀌지 않는 요청의 기존 동작은 그대로다.
+
+가정(범위 결정, 사용자가 이의를 제기하면 조정):
+- 대상은 이 티켓이 이름을 든 **수정 라우트 4종**(배지 PUT·컬렉션 PUT·미션 PATCH·홈피드 PATCH)이다.
+  생성(POST) 라우트는 범위 밖이다. 다만 아현은 4개 유형의 POST가 본문의 `image_source`를 어떻게
+  다루는지 **확인만 하고 결과를 보고**한다(고치지 않는다). 홈피드 POST(`api/admin/today/route.ts`)는
+  본문을 그대로 insert하는 것으로 알고 있으나 코드로 확인하지 않았다.
+- 적용 탭(`apply/route.ts`)과 등록 스크립트는 이 라우트들을 거치지 않으므로 영향이 없다.
+
+파일 단위 지도(예상 3개 파일, 30줄 안팎 — 임계값 5개/100줄 미만이라 계획 반환 면제 불필요):
+1. `jam-web/src/app/api/admin/missions/[id]/route.ts`(PATCH, 106행 근방): 본문에서 `image_source`를
+   제거한 사본을 update에 쓴다. 예: `const { image_source: _ignored, ...safeBody } = body`를 검증
+   이후·update 이전에 두고 `.update({ ...safeBody, ...imageSourcePatch } as never)`로 바꾼다.
+   미사용 변수 lint 규칙에 걸리지 않는 프로젝트 관례가 있으면 그 방식을 따른다.
+2. `jam-web/src/app/api/admin/today/[id]/route.ts`(PATCH, 31행 근방): 같은 방식으로 적용한다.
+3. `jam-web/src/app/api/admin/__tests__/image-source-reset.test.ts`(기존 파일, 184줄): 4개 라우트
+   각각에 「본문에 `image_source`를 실어도 update 페이로드에 본문 값이 들어가지 않는다」를 추가한다.
+   이미지가 안 바뀌는 요청(미포함)과 바뀌는 요청(`image_source: null`이 본문 값을 대체) 두 경우를
+   미션·홈피드에서, 배지·컬렉션에서는 이미지가 안 바뀌는 요청에서 고정한다.
 
 ## 완료 조건
 
