@@ -534,7 +534,14 @@ export default function ItemBookForm({
                   className={`flex items-center gap-3 bg-white rounded-xl px-4 py-2.5 ${isBadgeInactive ? 'opacity-50' : ''}`}
                 >
                   {b.image_url && (
-                    <SafeImage src={b.image_url} alt={b.name} width={32} height={32} className="w-8 h-8 rounded-lg object-contain" />
+                    <SafeImage
+                      src={b.image_url}
+                      alt={b.name}
+                      width={32}
+                      height={32}
+                      className="w-8 h-8 rounded-lg object-contain"
+                      fallback={<span aria-hidden className="w-8 h-8 shrink-0" />}
+                    />
                   )}
                   <span className="text-sm flex-1">{b.name}</span>
                   {isBadgeInactive && (
