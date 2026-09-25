@@ -255,7 +255,8 @@ export default function ApplyTab({ viewportRef }: ApplyTabProps) {
           <div className="flex items-center gap-3 rounded-lg border border-border bg-muted p-3">
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-white">
               {targetImageUrl ? (
-                <Image src={targetImageUrl} alt={targetName} fill className="object-contain" />
+                // 홈피드 기존 카드는 외부 호스트 이미지가 많아 next.config 허용 목록 밖일 수 있다
+                <Image src={targetImageUrl} alt={targetName} fill unoptimized className="object-contain" />
               ) : (
                 <span className="flex h-full w-full items-center justify-center text-[11px] text-muted-foreground">
                   없음
