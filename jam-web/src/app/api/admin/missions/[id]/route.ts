@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/admin/auth'
 import { checkMissionCondition, checkMissionConditionValue } from '@/lib/missions/condition-keys'
 import { findGateMissionSaveError } from '@/lib/missions/gateMissions'
 import { collectMissionReferences, MISSION_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
+import { imageSourceReset } from '@/lib/admin/imageSourceReset'
 import type { MissionRow } from '@/types/database'
 import type { MissionType } from '@/types/database'
 
@@ -81,9 +82,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  // 이미지(썸네일)가 실제로 바뀔 때만 제작 경로를 NULL(미상)로 되돌린다(티켓 20260925_1940
+  // 방침 A). 폼은 매번 전체 필드를 보내므로 기존 값과 비교하고, 본문에 image_url이 없으면
+  // 기존 행을 조회하지 않는다.
+  let imageSourcePatch: { image_source?: null } = {}
+  if (body.image_url !== undefined) {
+    const { data: existingImage, error: existingImageError } = await supabase
+      .from('missions')
+      .select('image_url')
+      .eq('id', id)
+      .maybeSingle<{ image_url: string | null }>()
+    if (existingImageError) {
+      return NextResponse.json({ error: existingImageError.message }, { status: 500 })
+    }
+    if (!existingImage) {
+      return NextResponse.json({ error: '미션을 찾지 못했어요. 목록을 새로고침한 뒤 다시 시도해주세요.' }, { status: 404 })
+    }
+    imageSourcePatch = imageSourceReset(existingImage.image_url, body.image_url)
+  }
+
   const { data, error } = await supabase
     .from('missions')
-    .update(body as never)
+    .update({ ...body, ...imageSourcePatch } as never)
     .eq('id', id)
     .select()
     .single()

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { collectItemBookReferences, ITEM_BOOK_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
+import { imageSourceReset } from '@/lib/admin/imageSourceReset'
 import type { ItemBookRow } from '@/types/database'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -32,6 +33,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       name: body.name !== undefined ? body.name : existing.name,
       description: body.description !== undefined ? body.description : existing.description,
       image_url: body.image_url !== undefined ? body.image_url : existing.image_url,
+      // 이미지가 실제로 바뀔 때만 제작 경로를 NULL(미상)로 되돌린다(티켓 20260925_1940 방침 A).
+      ...imageSourceReset(existing.image_url, body.image_url),
       required_activity_badge_id: body.required_activity_badge_id !== undefined ? body.required_activity_badge_id : existing.required_activity_badge_id,
       reward_badge_id: body.reward_badge_id !== undefined ? body.reward_badge_id : existing.reward_badge_id,
       reward_points: body.reward_points !== undefined ? Math.max(0, body.reward_points) : existing.reward_points,

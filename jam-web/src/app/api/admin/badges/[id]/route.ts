@@ -5,6 +5,7 @@ import { findBadgeConditionSaveError, findCheckinBadgeNamesNotFoundError, findRa
 import { invalidateUnclaimedDrops } from '@/lib/admin/poi-drops'
 import { BADGE_REFERENCE_SOURCES, collectBadgeReferences } from '@/lib/admin/badge-references'
 import { runBadgeDeactivationSideEffects } from '@/lib/admin/badge-deactivate'
+import { imageSourceReset } from '@/lib/admin/imageSourceReset'
 import type { BadgeRow } from '@/types/database'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -74,6 +75,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       // family_key로 지정하므로 이름을 고쳐도 키가 바뀌면 게이트 참조가 조용히 끊긴다
       // (티켓 20260905_0032 판단 ③: 생성 시 발급하고 이후 불변).
       image_url: body.image_url !== undefined ? body.image_url : existing.image_url,
+      // 이미지가 실제로 바뀔 때만 제작 경로를 NULL(미상)로 되돌린다(티켓 20260925_1940 방침 A).
+      ...imageSourceReset(existing.image_url, body.image_url),
       activity_types: body.activity_types !== undefined ? body.activity_types : existing.activity_types,
       patch_available: body.patch_available !== undefined ? body.patch_available : existing.patch_available,
       // point_reward와 동일하게 음수를 막되, patch_available=false일 때 null이 들어올 수 있는
