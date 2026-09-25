@@ -13,15 +13,16 @@
  * 스크립트는 **cwd가 `jam-web`인 tsx**로 실행해야 한다(tsx가 cwd의 tsconfig paths를 읽는다 —
  * 저장소 루트에서 실행하면 `Cannot find module '@/lib/...'`로 실패하는 것을 실측했다).
  *
- * insertPayload 매핑(`buildBadgeInsertPayload`)은 라우트 안에 인라인이라 함수로 불러올 수 없다.
- * 라우트를 고치지 않는 범위에서 같은 매핑을 옮겼고, 라우트의 키 목록과 어긋나면 테스트
- * (`registerBundle.test.ts`의 "라우트 키 목록 대조")가 실패한다.
+ * insertPayload 값 매핑은 라우트와 같은 순수 함수(`src/lib/admin/badge-insert-payload.ts`의
+ * `buildBadgeInsertPayload`)를 쓴다. 이 파일의 `buildBadgeInsertPayload`는 그 결과에 등록 스크립트
+ * 고유 필드(`id`·`image_source`)를 얹는 얇은 래퍼다.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 
 import { findBadgeConditionSaveError, findRarityLevelError } from '../../src/lib/admin/badge-validation'
 import { isValidFamilyKey } from '../../src/lib/admin/badge-families'
+import { buildBadgeInsertPayload as buildRouteBadgeInsertPayload } from '../../src/lib/admin/badge-insert-payload'
 import { ADMIN_ACTIVITY_TYPES } from '../../src/lib/admin/badge-sections'
 import { MAX_APPLY_IMAGE_BYTES } from '../../src/lib/admin/applyGeneratedImageConstants'
 
@@ -350,7 +351,7 @@ export function validateBundle(raw, { bundleFile }) {
 
 /**
  * 배지 행 insert 페이로드를 만든다 — 어드민 배지 생성 API(POST `/api/admin/badges`)의
- * `insertPayload`와 같은 매핑·기본값이다. 다른 점은 셋뿐이다.
+ * `insertPayload`와 같은 매핑·기본값이다(같은 순수 함수를 쓴다). 다른 점은 셋뿐이다.
  * - `id`: 이미지 저장 경로에 쓰려고 등록 전에 정한 UUID를 넣는다(라우트는 DB 기본값에 맡긴다).
  * - `image_url`: 업로드한 WebP 공개 주소(`?v=` 캐시 무효화 쿼리 포함).
  * - `image_source`: 항상 `agent-generator`.
@@ -375,37 +376,29 @@ export function buildBadgeInsertPayload(badge, { id, imageUrl }) {
     valid_until,
     point_reward,
   } = badge
-  const familyKey = typeof family_key === 'string' && family_key.trim() ? family_key.trim() : null
 
+  // 라우트와 같은 함수로 값 매핑을 한다. 1차 범위 밖 필드는 넘기지 않아 «없음» 기본값이 된다.
   return {
     id,
-    name,
-    description,
-    type,
-    rarity: rarity || null,
-    level: level === undefined || level === null || level === '' ? null : Math.trunc(Number(level)),
-    family_key: familyKey,
-    sort_order: Number.isFinite(Number(sort_order)) ? Math.max(0, Math.trunc(Number(sort_order))) : 0,
-    image_url: imageUrl,
+    ...buildRouteBadgeInsertPayload({
+      name,
+      description,
+      type,
+      rarity,
+      level,
+      family_key,
+      sort_order,
+      image_url: imageUrl,
+      activity_types,
+      condition_json,
+      tribe_id,
+      item_book_id,
+      drop_weight,
+      valid_from,
+      valid_until,
+      point_reward,
+    }),
     image_source: AGENT_IMAGE_SOURCE,
-    activity_types: activity_types ?? [],
-    patch_available: false,
-    patch_price_krw: null,
-    condition_json: condition_json ?? null,
-    tribe_id: tribe_id ?? null,
-    item_book_id: item_book_id ?? null,
-    category: null,
-    admin_category: null,
-    show_on_map: true,
-    drop_weight: drop_weight ?? 1.0,
-    valid_from: valid_from ?? null,
-    valid_until: valid_until ?? null,
-    point_reward: Math.max(0, Math.trunc(Number(point_reward) || 0)),
-    background_color: null,
-    background_shader_id: null,
-    background_image_url: null,
-    background_video_url: null,
-    background_animation: null,
   }
 }
 
