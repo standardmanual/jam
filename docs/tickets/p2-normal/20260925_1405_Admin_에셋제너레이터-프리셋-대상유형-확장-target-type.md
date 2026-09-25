@@ -2,9 +2,9 @@
 id: "20260925_1405"
 category: Admin
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-25
-closed:
+closed: 2026-09-25
 parent: "20260925_1404"
 specs:
   - "docs/specs/prd/asset-generator/PRD.md"
@@ -48,21 +48,53 @@ specs:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- `asset_presets.target_type` CHECK 제약을 `'badge'` 단일값에서 `'badge'|'mission'|'collection'|'home_feed'`
+  4종으로 확장하는 마이그레이션(187) 작성(실행은 승인 후 메인 세션).
+- `PresetPanel.tsx`에 대상 유형 선택 `Select` UI 추가 — 선택값이 저장 시 `targetType`으로 전송되고,
+  유형 변경 시 불러오기 목록이 `GET ?targetType=` 쿼리로 서버 필터링된다.
+- 프리셋 API(GET·POST `/api/admin/asset-generator/presets`)가 `target_type`을 검증(`isPresetTargetType`)·
+  저장하도록 확장. 덮어쓰기 시에도 `target_type`을 함께 갱신한다.
+- `presetSerialize.ts`에 `PRESET_TARGET_TYPES`·라벨·`isPresetTargetType` 검증 함수 추가,
+  `types.ts`의 `AssetPreset.targetType`을 `PresetTargetType`로 확장.
+- 미션·컬렉션·홈피드의 제작·적용 화면은 만들지 않음(티켓 범위 명시, 하위 티켓 1406~1411 몫).
 
 ### 변경된 파일
 ```
--
+jam-web/supabase/migrations/187_asset_presets_target_type_expand.sql(신규),
+jam-web/src/lib/asset-generator/{types.ts,presetSerialize.ts,__tests__/presetSerialize.test.ts},
+jam-web/src/app/api/admin/asset-generator/presets/{route.ts,__tests__/route.test.ts},
+jam-web/src/app/admin/asset-generator/PresetPanel.tsx
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `scripts/verify.sh` 전항목 통과(lint·typecheck·test·ds:check·slop 등). CI(`verify`) 성공:
+  https://github.com/standardmanual/jam/actions/runs/36102635347 (커밋 a30577bb)
+- [x] 추가한 테스트: `presetSerialize.test.ts`에 `isPresetTargetType` 유효/무효 케이스,
+  `route.test.ts`에 GET 필터링·잘못된 값 400, POST 대상 유형 검증 400, 덮어쓰기 시 target_type
+  반영 테스트 29개
+- [x] 게이트(민지) PASS: 완료 조건 4개 모두 충족, 회귀 위험 없음(확장 전용 마이그레이션, API
+  호출자가 PresetPanel 하나뿐), 인가 체크 유지 확인
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: (main 배포 전. DB 마이그레이션 187은 실행 승인 대기)
+- 환경: staging
+- 커밋: (이 머지 커밋, 구현 커밋 a30577bb)
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1차 | 아현·민지 | 258,066 | 63,472 / 13,176 | 18분 53초 | 151 |
+| 합계 | 아현·민지 | 258,066 | 63,472 / 13,176 | 18분 53초 | 151 |
 
 ### 주요 의사결정 / 핵심 메모
+- 유형 `admin`(라이트 파이프라인, 아현 → 민지), 경로 ③ 표준(admin은 채원 판정 대상 제외).
+- 계획 반환 면제 없이 호출했는데 실제 diff(7개 파일·230줄)가 `plan_only` 임계값을 넘겨(민지
+  [주의]), 규모 사전 판정 재발 관찰용 티켓 [20260925_1529](20260925_1529_Infra_jam-work-규모-사전판정-plan-only-임계값-과소추정-재발.md)(P2)를
+  범위 밖 발견물로 자동 생성했다. 실제 변경은 티켓 범위 안이라 게이트 판정은 불변.
+- 아현 가정: "선택 UI"를 PresetPanel 로컬 드롭다운으로 구현(AssetGeneratorPanel·ApplyTab.tsx엔
+  prop 미추가). GET `targetType` 쿼리는 옵션(생략 시 전체 반환, 하위 호환). 대상 유형 변경 시
+  `activePresetId` 초기화(다른 유형 덮어쓰기 사고 방지).
 
 ### 잔여 이슈
--
+- 마이그레이션 187 실행 대기 — 사용자 승인 후 메인 세션이 처리한다.
