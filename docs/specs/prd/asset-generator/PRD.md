@@ -208,6 +208,13 @@ code:
 | `jam-img` | 아이콘 파이프라인 | `/jam-img`의 `register-badge-images.js`가 등록할 때(후속: 스크립트에 값 기록 추가) |
 | (비움) | 미상 | 기존 배지. 소급 채우기는 열린 질문 |
 
+**적용 탭·등록 스크립트 밖에서 이미지가 바뀌면 제작 경로는 NULL(미상)로 돌아간다.** 배지·미션·
+컬렉션·홈피드의 폼 저장 라우트(`PUT /api/admin/badges/[id]`, `PATCH /api/admin/missions/[id]`,
+`PUT /api/admin/itembooks/[id]`, `PATCH /api/admin/today/[id]`)는 이미지 컬럼(`image_url`·
+`cover_image_url`) 값이 기존 값과 실제로 달라질 때만 `image_source`를 NULL로 갱신한다(판정:
+`jam-web/src/lib/admin/imageSourceReset.ts`, null·빈 문자열·앞뒤 공백은 같은 값으로 본다). 이미지를
+바꾸지 않고 다른 필드만 저장하면 값이 유지된다. `jam-img` 파이프라인 경로는 이 규칙의 대상이 아니다.
+
 어드민 배지 목록(`/admin/badges`)의 "제작 경로" 필터로 값별로 걸러 볼 수 있고, 목록 행·상세
 헤더에 라벨이 보인다(라벨 매핑 단일 출처: `jam-web/src/lib/admin/contentImageSource.ts`, 티켓
 20260925_1407에서 미션까지 공용으로 일반화됐다).
