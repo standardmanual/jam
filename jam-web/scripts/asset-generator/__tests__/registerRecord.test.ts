@@ -1,8 +1,10 @@
 /**
  * 배지 등록 — 등록 기록·되돌림 SQL·dry-run 요약 생성 (티켓 20260924_2202)
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildBadgeInsertPayload } from '../registerBundle.mjs';
+import { buildBadgeInsertPayload, CONTROL_OR_LINE_BREAK } from '../registerBundle.mjs';
 import {
   buildRegistrationRecord,
   buildRegistrationSql,
@@ -15,6 +17,8 @@ import {
 } from '../registerRecord.mjs';
 
 const BADGE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+// 참조 확인 표의 원본은 registerFlow.mjs다. 여기서는 SQL 주석에 표 이름이 그대로 들어가는지만 본다.
+const UNDO_TABLES = ['user_activity_badges', 'item_books', 'item_books', 'missions'];
 const IMAGE_URL = 'https://cdn.test/storage/v1/object/public/images/badges/asset-generator/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.webp?v=1790300000000';
 
 interface SampleBundle {
@@ -172,7 +176,7 @@ describe('buildRegistrationSql — 주석 주입 방어', () => {
     const record = sampleRecord(bundle);
     record.author = '윤진\nDROP TABLE x;';
     record.badge.name = 'ok\r\nDROP TABLE public.badges;--';
-    const sql = buildRegistrationSql({ payload: buildBadgeInsertPayload(bundle.badge, { id: BADGE_ID, imageUrl: IMAGE_URL }), record });
+    const sql = buildRegistrationSql({ payload: buildBadgeInsertPayload(bundle.badge, { id: BADGE_ID, imageUrl: IMAGE_URL }), record, undoTables: UNDO_TABLES });
     const executable = sql.split(/\r\n|\n|\r|\u2028|\u2029/).filter((l) => l.trim() && !l.trim().startsWith('--'));
     expect(executable.some((l) => /DROP\s+TABLE/i.test(l))).toBe(false);
     // 값은 한 줄로 이어진 주석 안에 그대로 남는다(사람이 보고 이상함을 알아챌 수 있게)
@@ -180,10 +184,57 @@ describe('buildRegistrationSql — 주석 주입 방어', () => {
   });
 });
 
+describe('buildRegistrationSql — 모든 주석 줄이 한 줄 (티켓 20260925_0549)', () => {
+  const POISON = 'x\ny\r\nz\u2028w\u2029v\u0085u\u0000t\u001bs';
+
+  function build(overrides: (record: ReturnType<typeof sampleRecord>) => void) {
+    const bundle = sampleBundle();
+    const payload = buildBadgeInsertPayload(bundle.badge, { id: BADGE_ID, imageUrl: IMAGE_URL });
+    const clean = buildRegistrationSql({ payload, record: sampleRecord(bundle), undoTables: UNDO_TABLES });
+    const record = sampleRecord(bundle);
+    overrides(record);
+    return { clean, poisoned: buildRegistrationSql({ payload, record, undoTables: UNDO_TABLES }) };
+  }
+
+  // 줄 구분자는 '\n' 하나뿐이어야 한다(개행 계열·제어 문자가 남으면 그 뒤가 주석 밖 문장이 된다).
+  const allLineBreaks = /\r\n|\n|\r|\u2028|\u2029|\u0085/;
+
+  it.each([
+    ['bundle_id', (r: ReturnType<typeof sampleRecord>) => (r.bundle_id = POISON)],
+    ['author', (r: ReturnType<typeof sampleRecord>) => (r.author = POISON)],
+    ['registered_at', (r: ReturnType<typeof sampleRecord>) => (r.registered_at = POISON)],
+    ['badge.name', (r: ReturnType<typeof sampleRecord>) => (r.badge.name = POISON)],
+    ['badge.id', (r: ReturnType<typeof sampleRecord>) => (r.badge.id = POISON)],
+    ['storage.bucket', (r: ReturnType<typeof sampleRecord>) => (r.storage.bucket = POISON)],
+    ['storage.png_path', (r: ReturnType<typeof sampleRecord>) => (r.storage.png_path = POISON)],
+    ['storage.webp_path', (r: ReturnType<typeof sampleRecord>) => (r.storage.webp_path = POISON)],
+  ])('%s에 개행·CRLF·U+2028 등이 섞여도 주석 줄 수와 실행 줄이 그대로다', (_field, mutate) => {
+    const { clean, poisoned } = build(mutate);
+    const cleanLines = clean.split('\n');
+    const poisonedLines = poisoned.split('\n');
+    // 줄 수가 같다 = 값 안의 개행이 새 줄을 만들지 않았다.
+    expect(poisonedLines).toHaveLength(cleanLines.length);
+    // 줄 구분자('\n')를 뺀 나머지에 개행·제어 문자가 남지 않는다.
+    expect(CONTROL_OR_LINE_BREAK.test(poisonedLines.join(''))).toBe(false);
+    expect(poisoned.split(allLineBreaks)).toHaveLength(cleanLines.length);
+    // '--'로 시작하지 않는 줄(실행되는 SQL)은 값이 달라져도 그대로다.
+    const executable = (lines: string[]) => lines.filter((l) => !l.startsWith('--'));
+    expect(executable(poisonedLines)).toEqual(executable(cleanLines));
+    // 주석 줄은 여전히 전부 '--'로 시작한다.
+    expect(poisonedLines.filter((l, i) => cleanLines[i].startsWith('--')).every((l) => l.startsWith('--'))).toBe(true);
+  });
+
+  it('제어·개행 문자 정규식의 원본은 registerBundle.mjs 한 곳이다(registerRecord.mjs에 범위를 다시 적지 않는다)', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'registerRecord.mjs'), 'utf-8');
+    expect(source).not.toMatch(/\\u2028|\\u0085|\\u007f/i);
+    expect(source).toContain('CONTROL_OR_LINE_BREAK');
+  });
+});
+
 describe('buildRegistrationSql', () => {
   const bundle = sampleBundle();
   const payload = buildBadgeInsertPayload(bundle.badge, { id: BADGE_ID, imageUrl: IMAGE_URL });
-  const sql = buildRegistrationSql({ payload, record: sampleRecord(bundle) });
+  const sql = buildRegistrationSql({ payload, record: sampleRecord(bundle), undoTables: UNDO_TABLES });
 
   it('등록과 동등한 INSERT 문을 만든다(컬럼 순서와 값 순서가 같다)', () => {
     expect(sql).toContain('INSERT INTO public.badges (');
@@ -208,6 +259,10 @@ describe('buildRegistrationSql', () => {
     expect(lines[markerIndex + 1]).toBe(`-- delete from public.badges where id = '${BADGE_ID}';`);
     // 마커 아래는 전부 SQL 주석이다(파일을 그대로 실행해도 지우지 않는다).
     for (const line of lines.slice(markerIndex)) expect(line.startsWith('--')).toBe(true);
+  });
+
+  it('되돌림 주석에 참조 확인 표 이름을 중복 없이 적는다(넘겨받은 목록이 원본)', () => {
+    expect(sql).toContain('-- (이 SQL만으로는 저장소 파일이 남아요. user_activity_badges · item_books · missions에 이 id가 이미 붙었다면');
   });
 
   it('머리 주석에 묶음·저장소 파일·되돌림 명령·옮길 마이그레이션 파일명을 적는다', () => {
@@ -245,6 +300,26 @@ describe('formatDryRunSummary', () => {
     expect(text).toContain("delete from public.badges where id = '<등록할 때 정해지는 배지 id>';");
     expect(text).toContain('--undo /tmp/bundle/registration-record.json');
     expect(text).toContain('DB·저장소에는 아무것도 쓰지 않았어요.');
+  });
+
+  it('DB 읽기 검사를 건너뛰었으면 첫 줄에 건너뜀을 적고 다시 돌리라는 안내를 넣는다', () => {
+    const text = formatDryRunSummary({ bundle, payload, errors: [], dbChecks, webp: { bytes: 900 }, recordDir: '/tmp/bundle' });
+    const lines = text.split('\n');
+    expect(lines[1]).toBe('결과: 통과 (DB 읽기 검사는 건너뜀 — 서비스 키 없음)');
+    expect(lines[2]).toContain('컨펌 근거로 쓰지 말고');
+    expect(lines[2]).toContain('서비스 키가 있는 환경(메인 폴더)에서 다시 돌려요');
+  });
+
+  it('건너뜀이 없으면(키가 있으면) 첫 줄이 기존과 같고 안내가 없다', () => {
+    const ran = [
+      { label: '이름 중복', status: '통과', detail: '' },
+      { label: '트라이브 존재', status: '해당 없음', detail: '' },
+    ];
+    const text = formatDryRunSummary({ bundle, payload, errors: [], dbChecks: ran, webp: { bytes: 900 }, recordDir: '/tmp/bundle' });
+    const lines = text.split('\n');
+    expect(lines[1]).toBe('결과: 통과');
+    expect(text).not.toContain('컨펌 근거로 쓰지 말고');
+    expect(text).not.toContain('건너뜀 — 서비스 키 없음');
   });
 
   it('실패하면 사유를 먼저 보여 주고, 묶음이 없으면 사유만 보여 준다', () => {

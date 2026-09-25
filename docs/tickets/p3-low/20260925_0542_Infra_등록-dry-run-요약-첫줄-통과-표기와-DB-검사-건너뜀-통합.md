@@ -28,14 +28,19 @@ specs:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- `formatDryRunSummary`가 `dbChecks`에 `건너뜀`이 있으면 첫 줄을 `결과: 통과 (DB 읽기 검사는 건너뜀 — 서비스 키 없음)`으로 적고, 바로 아래에 `※ DB 읽기 검사(...)가 빠진 요약이에요. 컨펌 근거로 쓰지 말고, 서비스 키가 있는 환경(메인 폴더)에서 다시 돌려요.` 안내 줄을 넣는다. 건너뜀이 없으면 출력은 기존과 같다.
+- `docs/specs/prd/asset-generator/REGISTRATION_BUNDLE.md` §6 `--dry-run` 절에 같은 동작을 적었다.
 
 ### 변경된 파일
 ```
--
+jam-web/scripts/asset-generator/registerRecord.mjs
+jam-web/scripts/asset-generator/__tests__/registerRecord.test.ts
+docs/specs/prd/asset-generator/REGISTRATION_BUNDLE.md
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `registerRecord.test.ts`: 건너뜀이 있을 때 첫 줄·안내 줄, 없을 때 첫 줄 `결과: 통과`와 안내 없음 확인
+- [x] 최종 `scripts/verify.sh`는 티켓 20260925_0540 완료 기록 참고(묶음 전체 1회 실행)
 
 ### 배포 정보
 - 배포일: 
@@ -50,6 +55,8 @@ specs:
 | 합계 |  |  |  |  |  |
 
 ### 주요 의사결정 / 핵심 메모
+- 검사 실패(`결과: 실패 (N건)`)일 때는 첫 줄을 바꾸지 않았다. 실패는 어느 쪽이든 고쳐야 하고, 티켓이 요구한 것은 «통과»가 오해를 부르는 경우다. 다만 건너뜀이 있으면 실패 요약에도 안내 줄은 붙는다.
+- 건너뜀 판정은 `dbChecks`의 `status === '건너뜀'` 하나로 한다(`runDbChecks`가 서비스 키 없음일 때만 이 값을 낸다). 첫 줄의 사유 문구는 그 유일한 원인인 «서비스 키 없음»을 적었다.
 
 ### 잔여 이슈
--
+- 미션·홈피드 dry-run 요약(`formatMissionDryRunSummary`·`formatHomeFeedDryRunSummary`)은 이 티켓 범위 밖이라 그대로다. 같은 문제가 있는지는 확인하지 않았다.

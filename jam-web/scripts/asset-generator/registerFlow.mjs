@@ -39,8 +39,28 @@ import {
 
 export const STORAGE_BUCKET = APPLY_GENERATED_IMAGE_BUCKET
 
-/** 되돌림 전에 «이미 사용자 데이터가 붙었는지» 읽는 테이블(모두 `badge_id` 컬럼). 티켓 20260924_2202. */
-export const UNDO_REFERENCE_TABLES = ['user_activity_badges', 'inventory_items', 'poi_drops']
+/**
+ * 되돌림 전에 «이 배지가 아직 아무 데도 쓰이지 않았는지» 읽는 관계 표(티켓 20260925_0540). `badges`를 가리키는 외래 키
+ * 10곳 전부다(운영 DB `pg_constraint` 조회 2026-09-25, 생성 타입 `database.generated.ts`와 테스트로 대조한다).
+ * - 삭제 차단(NO ACTION, DB가 막아 주지만 --undo가 중간에 실패하면 저장소 파일과 행이 어긋날 수 있어 미리 읽는다):
+ *   user_activity_badges · inventory_items · poi_drops · poi.linked_badge_id · point_transactions.source_badge_id
+ * - 연쇄 삭제(CASCADE, 지우면 유저 기록이 경고 없이 함께 사라짐): user_checkin_badge_earns · user_item_book_slots
+ * - 연결 해제(SET NULL, 조용히 연결이 끊김): item_books.reward_badge_id · item_books.required_activity_badge_id · missions.gated_badge_id
+ * 조회는 각 표의 배지 id 컬럼으로 센다(표마다 `id` 컬럼 유무가 달라 컬럼을 그대로 쓴다).
+ * 참조 표를 바꿀 때는 이 목록만 고친다 — 코드·SQL 기록 주석은 이 상수에서 나온다.
+ */
+export const UNDO_REFERENCE_TABLES = [
+  { table: 'user_activity_badges', column: 'badge_id', effect: '삭제 차단' },
+  { table: 'inventory_items', column: 'badge_id', effect: '삭제 차단' },
+  { table: 'poi_drops', column: 'badge_id', effect: '삭제 차단' },
+  { table: 'poi', column: 'linked_badge_id', effect: '삭제 차단' },
+  { table: 'point_transactions', column: 'source_badge_id', effect: '삭제 차단' },
+  { table: 'user_checkin_badge_earns', column: 'badge_id', effect: '연쇄 삭제' },
+  { table: 'user_item_book_slots', column: 'badge_id', effect: '연쇄 삭제' },
+  { table: 'item_books', column: 'reward_badge_id', effect: '연결 해제' },
+  { table: 'item_books', column: 'required_activity_badge_id', effect: '연결 해제' },
+  { table: 'missions', column: 'gated_badge_id', effect: '연결 해제' },
+]
 
 const errorMessage = (e) => (e instanceof Error ? e.message : String(e))
 
@@ -224,11 +244,11 @@ export function findRecordUndoError(record) {
 
 /**
  * 등록한 배지를 되돌린다: 배지 행과 저장소 파일 2개를 지운다.
- * 삭제 전에 사용자 데이터가 붙었는지(`UNDO_REFERENCE_TABLES`) 읽어서 하나라도 있으면 아무것도 지우지
+ * 삭제 전에 참조 관계(`UNDO_REFERENCE_TABLES`)를 읽어서 하나라도 붙어 있으면 아무것도 지우지
  * 않고 Error로 중단한다. 참조를 읽지 못해도 중단한다(확인 못 한 채 지우지 않는다).
  * 배지 행을 먼저 지운다 — 행 삭제가 막히면(외래 키 등) 이미지는 그대로 남아 배지가 깨지지 않는다.
  *
- * 반환: `{ badgeId, rowFound, references: [{ table, count }], rowDeleted, filesRemoved, warnings }`.
+ * 반환: `{ badgeId, rowFound, references: [{ table, column, effect, count }], rowDeleted, filesRemoved, warnings }`.
  * `dryRun`이면 참조 확인까지만 하고 아무것도 지우지 않는다.
  */
 export async function undoRegistration({ supabase, record, dryRun }) {
@@ -246,15 +266,15 @@ export async function undoRegistration({ supabase, record, dryRun }) {
 
   const references = []
   if (row) {
-    for (const table of UNDO_REFERENCE_TABLES) {
-      const { count, error } = await supabase.from(table).select('id', { count: 'exact', head: true }).eq('badge_id', badgeId)
-      if (error) throw new Error(`${table} 참조를 확인하지 못해서 중단했어요(확인 없이 지우지 않아요): ${error.message}`)
-      if (count && count > 0) references.push({ table, count })
+    for (const { table, column, effect } of UNDO_REFERENCE_TABLES) {
+      const { count, error } = await supabase.from(table).select(column, { count: 'exact', head: true }).eq(column, badgeId)
+      if (error) throw new Error(`${table}.${column} 참조를 확인하지 못해서 중단했어요(확인 없이 지우지 않아요): ${error.message}`)
+      if (count && count > 0) references.push({ table, column, effect, count })
     }
     if (references.length > 0) {
-      const detail = references.map((r) => `${r.table} ${r.count}건`).join(', ')
+      const detail = references.map((r) => `${r.table}.${r.column} ${r.count}건(${r.effect})`).join(', ')
       throw new Error(
-        `이미 사용자 데이터가 붙어서 되돌리지 않고 중단했어요 — ${detail}. 삭제 대신 어드민에서 배지를 소프트 삭제해 주세요.`
+        `이미 사용자 데이터나 다른 항목의 연결이 붙어서 되돌리지 않고 중단했어요 — ${detail}. 삭제 대신 어드민에서 배지를 소프트 삭제해 주세요.`
       )
     }
   }
@@ -359,7 +379,7 @@ export async function runRegister({ args, supabase, convertToWebp, randomUUID, n
   }
 
   const record = buildRegistrationRecord({ bundle, ...registered })
-  const sql = buildRegistrationSql({ payload: registered.payload, record })
+  const sql = buildRegistrationSql({ payload: registered.payload, record, undoTables: UNDO_REFERENCE_TABLES.map((r) => r.table) })
   try {
     const { recordPath, sqlPath } = writeRegistrationFiles({ recordDir, record, sql })
     out.log(
@@ -415,7 +435,7 @@ export async function runUndo({ args, supabase, out }) {
       [
         '== 되돌림 검증 (--dry-run) ==',
         `배지 id: ${result.badgeId}`,
-        result.rowFound ? '사용자 데이터 참조: 없음 — 지워도 안전해요.' : '배지 행이 이미 없어요. 저장소 파일만 정리할 대상이에요.',
+        result.rowFound ? `참조 확인: ${UNDO_REFERENCE_TABLES.length}곳 모두 없음 — 지워도 안전해요.` : '배지 행이 이미 없어요. 저장소 파일만 정리할 대상이에요.',
         `지울 대상: badges 행 1건(있을 때), 저장소 파일 2개(${record.storage.png_path}, ${record.storage.webp_path})`,
         'DB·저장소에는 아무것도 쓰지 않았어요.',
       ].join('\n')

@@ -7,7 +7,7 @@
  * 되돌림 표식(`-- 되돌림 SQL`, `.claude/skills/jam-work/references/db-migration-rules.md` §4)을
  * SQL 파일 끝에 그대로 쓴다.
  */
-import { AGENT_IMAGE_SOURCE } from './registerBundle.mjs'
+import { AGENT_IMAGE_SOURCE, CONTROL_OR_LINE_BREAK } from './registerBundle.mjs'
 
 export const RECORD_FILE_NAME = 'registration-record.json'
 export const SQL_FILE_NAME = 'registration.sql'
@@ -73,10 +73,21 @@ function sqlString(text) {
   return `'${text.replace(/'/g, "''")}'`
 }
 
+// 개행·제어 문자가 이어진 구간 전체를 공백 하나로 바꾸는 정규식. 문자 범위는 묶음 검증과 같은 원본(`CONTROL_OR_LINE_BREAK`)에서 만든다.
+const CONTROL_OR_LINE_BREAK_RUN = new RegExp(`${CONTROL_OR_LINE_BREAK.source}+`, 'g')
+
 /** SQL `--` 주석에 넣는 값을 한 줄로 만든다. 묶음 검증이 개행을 거절하지만, 기록 파일은 커밋되어 다시 실행될 수 있어
  * 주석 쪽에서도 한 번 더 막는다(개행이 있으면 뒷부분이 주석 밖의 문장이 된다). */
 function commentSafe(value) {
-  return String(value).replace(/[\u0000-\u001f\u007f\u0085\u2028\u2029]+/g, ' ')
+  return String(value).replace(CONTROL_OR_LINE_BREAK_RUN, ' ')
+}
+
+/**
+ * SQL `--` 주석 한 줄을 만드는 태그드 템플릿. 보간된 값은 전부 `commentSafe`를 거치므로,
+ * 주석 줄은 이 태그로만 쓰면 값 하나를 빠뜨려 개행이 새는 일이 없다(티켓 20260925_0549).
+ */
+function sqlComment(strings, ...values) {
+  return strings.reduce((line, text, i) => line + text + (i < values.length ? commentSafe(values[i]) : ''), '')
 }
 
 /**
@@ -121,18 +132,19 @@ export function buildRegistrationRecord({ bundle, badgeId, bucket, pngPath, webp
 /**
  * 등록과 동등한 INSERT 문 + 되돌림 SQL 주석 블록이 든 `registration.sql` 본문을 만든다.
  * 이미 등록이 끝난 기록이라 같은 id가 있으면 아무 일도 하지 않게(`ON CONFLICT DO NOTHING`) 둔다.
+ * `undoTables`: 되돌림 전에 참조를 확인하는 표 이름(`registerFlow.mjs`의 `UNDO_REFERENCE_TABLES`가 원본이라 호출부가 넘긴다).
  */
-export function buildRegistrationSql({ payload, record }) {
+export function buildRegistrationSql({ payload, record, undoTables }) {
   const columns = Object.keys(payload)
   const lines = [
-    '-- 에셋 제너레이터 에이전트 배지 등록 기록 (register-badge.mjs가 만든 파일, 티켓 20260924_2202)',
-    `-- 묶음: ${commentSafe(record.bundle_id)} / 작성자: ${commentSafe(record.author)} / 등록 시각(KST): ${commentSafe(record.registered_at)}`,
-    `-- 배지: ${commentSafe(record.badge.name)} (${commentSafe(record.badge.id)})`,
-    '-- 이미 등록이 끝난 기록이에요. 같은 id가 있으면 아무 일도 하지 않아요(ON CONFLICT DO NOTHING).',
-    `-- 이미지 파일(${record.storage.bucket} 버킷): ${record.storage.png_path}, ${record.storage.webp_path}`,
-    '--   저장소 파일은 SQL로 지울 수 없어요. 되돌릴 때는 아래 명령을 써요.',
-    `--   cd jam-web && npx tsx scripts/asset-generator/register-badge.mjs --undo <${RECORD_FILE_NAME} 절대경로>`,
-    `-- 메인 세션: 이 파일을 jam-web/supabase/migrations/${migrationFileName(record.bundle_id)} 로 옮겨 커밋해요.`,
+    sqlComment`-- 에셋 제너레이터 에이전트 배지 등록 기록 (register-badge.mjs가 만든 파일, 티켓 20260924_2202)`,
+    sqlComment`-- 묶음: ${record.bundle_id} / 작성자: ${record.author} / 등록 시각(KST): ${record.registered_at}`,
+    sqlComment`-- 배지: ${record.badge.name} (${record.badge.id})`,
+    sqlComment`-- 이미 등록이 끝난 기록이에요. 같은 id가 있으면 아무 일도 하지 않아요(ON CONFLICT DO NOTHING).`,
+    sqlComment`-- 이미지 파일(${record.storage.bucket} 버킷): ${record.storage.png_path}, ${record.storage.webp_path}`,
+    sqlComment`--   저장소 파일은 SQL로 지울 수 없어요. 되돌릴 때는 아래 명령을 써요.`,
+    sqlComment`--   cd jam-web && npx tsx scripts/asset-generator/register-badge.mjs --undo <${RECORD_FILE_NAME} 절대경로>`,
+    sqlComment`-- 메인 세션: 이 파일을 jam-web/supabase/migrations/${migrationFileName(record.bundle_id)} 로 옮겨 커밋해요.`,
     '',
     'INSERT INTO public.badges (',
     columns.map((c) => `  ${c}`).join(',\n'),
@@ -142,8 +154,8 @@ export function buildRegistrationSql({ payload, record }) {
     'ON CONFLICT (id) DO NOTHING;',
     '',
     '-- 되돌림 SQL',
-    `-- delete from public.badges where id = '${record.badge.id}';`,
-    '-- (이 SQL만으로는 저장소 파일이 남아요. user_activity_badges · inventory_items · poi_drops에 이 id가 이미 붙었다면 지우지 말고 어드민에서 소프트 삭제해요.)',
+    sqlComment`-- delete from public.badges where id = '${record.badge.id}';`,
+    sqlComment`-- (이 SQL만으로는 저장소 파일이 남아요. ${[...new Set(undoTables)].join(' · ')}에 이 id가 이미 붙었다면 지우지 말고 어드민에서 소프트 삭제해요. 일부는 삭제 시 함께 사라지거나 연결이 끊기고, 일부는 삭제가 막혀요.)`,
     '',
   ]
   return lines.join('\n')
@@ -160,8 +172,19 @@ function undoCommand(recordPath) {
  */
 export function formatDryRunSummary({ bundle, payload, errors, dbChecks, webp, recordDir }) {
   const lines = []
+  // DB 읽기 검사를 건너뛴 요약(서비스 키 없음)은 중복·존재 검사가 빠진 결과라, 첫 줄에서 «통과»만 읽히지 않게 함께 적는다(티켓 20260925_0542).
+  const dbChecksSkipped = dbChecks.some((check) => check.status === '건너뜀')
   lines.push('== 배지 등록 묶음 검증 (--dry-run) ==')
-  lines.push(errors.length === 0 ? '결과: 통과' : `결과: 실패 (${errors.length}건)`)
+  lines.push(
+    errors.length > 0
+      ? `결과: 실패 (${errors.length}건)`
+      : dbChecksSkipped
+        ? '결과: 통과 (DB 읽기 검사는 건너뜀 — 서비스 키 없음)'
+        : '결과: 통과'
+  )
+  if (dbChecksSkipped) {
+    lines.push('※ DB 읽기 검사(이름 중복·트라이브·컬렉션 존재)가 빠진 요약이에요. 컨펌 근거로 쓰지 말고, 서비스 키가 있는 환경(메인 폴더)에서 다시 돌려요.')
+  }
 
   if (errors.length > 0) {
     lines.push('', '[고쳐야 할 점]')
