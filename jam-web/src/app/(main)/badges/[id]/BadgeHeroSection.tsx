@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { MedalIcon } from '@/components/ui/icons'
@@ -97,7 +97,9 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
         <div className="relative z-10 flex-shrink-0 flex items-center justify-center">
           {badge.image_url ? (
             <div className="w-[200px] h-[200px] flex items-center justify-center">
-              <Image
+              {/* 어드민 배지 상세 미리보기도 이 컴포넌트를 쓴다. 미등록 호스트 URL 하나로 화면 전체가
+                  오류 화면이 되지 않도록 SafeImage로 렌더한다(티켓 20260925_2319). */}
+              <SafeImage
                 src={badge.image_url}
                 alt={badge.name}
                 width={200}
