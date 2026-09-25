@@ -76,9 +76,9 @@ jam-web/src/app/admin/asset-generator/PresetPanel.tsx
   호출자가 PresetPanel 하나뿐), 인가 체크 유지 확인
 
 ### 배포 정보
-- 배포일: (main 배포 전. DB 마이그레이션 187은 실행 승인 대기)
-- 환경: staging
-- 커밋: (이 머지 커밋, 구현 커밋 a30577bb)
+- 배포일: (main 배포 전. DB 마이그레이션 187은 2026-09-25 jam-prod에 적용됨)
+- 환경: staging (DB는 프로덕션 공용)
+- 커밋: d4223f0(staging 병합), a30577bb(구현 커밋)
 
 ### 실행 지표
 
@@ -97,4 +97,6 @@ jam-web/src/app/admin/asset-generator/PresetPanel.tsx
   `activePresetId` 초기화(다른 유형 덮어쓰기 사고 방지).
 
 ### 잔여 이슈
-- 마이그레이션 187 실행 대기 — 사용자 승인 후 메인 세션이 처리한다.
+- 없음. 마이그레이션 187은 2026-09-25 사용자 승인 후 카리나가 Supabase MCP `apply_migration`으로
+  jam-prod(`ceehnkzdbecxwzxrhhns`)에 적용했다. 검증: CHECK 제약이 4개 값(`badge`·`mission`·
+  `collection`·`home_feed`)을 허용, `asset_presets` 기존 행 0건(회귀 대상 없음).
