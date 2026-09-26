@@ -143,7 +143,28 @@ cleanup_worktrees() {
   cleanup_local_branches
 }
 
-# 연결 워크트리 없는 worktree-wf_*(하네스가 main 기준으로 만드는 빈 브랜치)와
+# worktree-wf_* 브랜치에 origin 어디에도 없는 작업 커밋이 있으면 tip 제목을 출력하고 0을 낸다
+# (= 삭제하면 유실되므로 보존해야 함). 작업 커밋이 없으면 1. 티켓 20260922_1432.
+# 기준: (1) tip이 origin/* 어느 ref에서든 닿으면 작업 없음. (2) 닿지 않아도 tip 제목이
+# origin/staging 이력에 그대로 있으면 재작성 이력(2026-09-20 재통합) 때문에 조상 관계만 끊긴
+# 것으로 보고 작업 없음. 그 밖에는 유실 위험이 있으므로 보존한다(제목이 비어 있어도 보존).
+wf_branch_unique_work() {
+  local b="$1"
+  local ahead
+  ahead="$(git rev-list --count "refs/heads/$b" --not --remotes=origin 2>/dev/null)" || ahead=1
+  [ "${ahead:-1}" = "0" ] && return 1
+
+  local subject
+  subject="$(git log -1 --format=%s "refs/heads/$b" 2>/dev/null)"
+  if [ -n "$subject" ] \
+    && git log origin/staging --fixed-strings --grep="$subject" --format=%s 2>/dev/null | grep -qxF -- "$subject"; then
+    return 1
+  fi
+  printf '%s\n' "$subject"
+  return 0
+}
+
+# 연결 워크트리 없는 worktree-wf_*(하네스가 main 기준으로 만드는 빈 브랜치, 작업 커밋이 있으면 보존)와
 # origin/staging에 병합된 로컬 claude/jamwork-*를 지운다. 워크트리가 아직 연결된 브랜치는
 # 워크트리 종류와 무관하게 보존한다.
 cleanup_local_branches() {
@@ -156,6 +177,12 @@ cleanup_local_branches() {
     [ -z "$b" ] && continue
     if printf '%s\n' "$connected" | grep -qxF "$b"; then
       echo "보존(워크트리 연결됨): $b"
+      kept=$((kept + 1))
+      continue
+    fi
+    local tip_subject
+    if tip_subject="$(wf_branch_unique_work "$b")"; then
+      echo "보존(작업 커밋 있음): $b $tip_subject"
       kept=$((kept + 1))
       continue
     fi

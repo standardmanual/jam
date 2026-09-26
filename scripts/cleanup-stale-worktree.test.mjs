@@ -7,7 +7,7 @@
 
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -71,6 +71,21 @@ try {
   r = runScript('claude/jamwork-no-such-branch', main)
   assert.equal(r.status, 0, `점유한 워크트리가 없으면 통과해야 한다:\n${r.stdout}${r.stderr}`)
   assert.match(r.stdout, /점유한 워크트리 없음/)
+
+  // (e) git 명령이 실패하는 상황(저장소 밖 실행): 조용히 흘러가지 않고 종료 코드 1로 멈춘다 (티켓 20260922_1214)
+  const outside = join(root, 'not-a-repo')
+  mkdirSync(outside)
+  r = spawnSync('bash', [SCRIPT, 'claude/jamwork-clean'], {
+    cwd: outside,
+    encoding: 'utf8',
+    env: env({ GIT_CEILING_DIRECTORIES: root }),
+  })
+  assert.equal(r.status, 1, `저장소 밖 실행은 종료 코드 1이어야 한다:\n${r.stdout}${r.stderr}`)
+  assert.match(r.stderr, /git 저장소/)
+  assert.doesNotMatch(r.stdout, /점유한 워크트리 없음|제거/)
+
+  // 스크립트 자체가 set -euo pipefail 이다
+  assert.match(readFileSync(SCRIPT, 'utf8'), /^set -euo pipefail$/m)
 
   console.log('통과: cleanup-stale-worktree 상태 확인')
 } finally {
