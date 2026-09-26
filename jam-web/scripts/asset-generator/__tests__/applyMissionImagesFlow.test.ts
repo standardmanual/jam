@@ -12,6 +12,7 @@ import {
   CONTACT_SHEET_FILE_NAME,
   RESOLVED_FILE_NAME,
   checkPlanContrast,
+  checkPlanValues,
   matchMissionsToPlan,
   parseApplyMissionImagesArgs,
   runApply,
@@ -36,8 +37,8 @@ const MISSIONS: Row[] = [
 const PLAN = {
   preset: PRESET_ID,
   items: [
-    { title: '가 미션', condition: '2주 330km', bg: '#E8C39E', end: '#B98A5B', expectCount: 2 },
-    { title: '나 미션', condition: '3일 연속', bg: '#B8C9F0', end: '#8FA8D9', expectCount: 1 },
+    { match: { title: '가 미션' }, values: { text01: '2주 330km', text02: '가 미션' }, bg: '#E8C39E', end: '#B98A5B', expectCount: 2 },
+    { match: { title: '나 미션' }, values: { text01: '3일 연속', text02: '나 미션' }, bg: '#B8C9F0', end: '#8FA8D9', expectCount: 1 },
   ],
 };
 const DARK_TEXT_LAYERS = [
@@ -201,24 +202,51 @@ describe('validatePlan', () => {
     const { errors, plan } = validatePlan(PLAN);
     expect(errors).toEqual([]);
     expect(plan?.items).toHaveLength(2);
+    expect(plan?.items[0]).toEqual({ title: '가 미션', values: { text01: '2주 330km', text02: '가 미션' }, bg: '#E8C39E', end: '#B98A5B', expectCount: 2 });
   });
 
   it('프리셋 id 형식·색 형식·빈 문구·expectCount·제목 중복을 모두 잡는다', () => {
     const { errors, plan } = validatePlan({
       preset: 'not-a-uuid',
       items: [
-        { title: '가', condition: '  ', bg: 'red', end: '#12345', expectCount: 0 },
-        { title: '가', condition: '문구', bg: '#FFFFFF', end: '#000000', expectCount: 1 },
+        { match: { title: '가' }, values: { text01: '  ' }, bg: 'red', end: '#12345', expectCount: 0 },
+        { match: { title: '가' }, values: { text01: '문구' }, bg: '#FFFFFF', end: '#000000', expectCount: 1 },
       ],
     });
     expect(plan).toBeNull();
     const text = errors.join('\n');
     expect(text).toContain('preset은 프리셋 id');
-    expect(text).toContain('condition(조건 문구)이 비어 있어요');
+    expect(text).toContain('values.text01가 비어 있어요');
     expect(text).toContain('bg는 #RRGGBB 형식');
     expect(text).toContain('end는 #RRGGBB 형식');
     expect(text).toContain('expectCount는 1 이상의 정수');
     expect(text).toContain('같은 제목이 계획에 두 번');
+  });
+
+  it('match.title 누락·values 누락·형식이 틀린 번호·이미지 값 형식을 잡는다', () => {
+    const base = { bg: '#FFFFFF', end: '#000000', expectCount: 1 };
+    const { errors, plan } = validatePlan({
+      preset: PRESET_ID,
+      items: [
+        { ...base, values: { text01: '가' } },
+        { ...base, match: { title: '나' }, values: {} },
+        { ...base, match: { title: '다' }, values: { text1: '값', Text02: '값', img00: '/a.png' } },
+        { ...base, match: { title: '라' }, values: { img01: 'relative/a.png' } },
+      ],
+    });
+    expect(plan).toBeNull();
+    const text = errors.join('\n');
+    expect(text).toContain('items[0]: match.title이 비어 있어요');
+    expect(text).toContain('items[1](나): values가 비어 있어요');
+    expect(text).toContain('번호 형식이 올바르지 않아요(예: text01): text1');
+    expect(text).toContain('번호 형식이 올바르지 않아요(예: text01): Text02');
+    expect(text).toContain('번호 형식이 올바르지 않아요(예: text01): img00');
+    expect(text).toContain('values.img01는 이미지 파일의 절대 경로 또는 http(s) URL');
+  });
+
+  it('옛 형식(title·condition)은 match.title 누락으로 잡힌다', () => {
+    const { errors } = validatePlan({ preset: PRESET_ID, items: [{ title: '가', condition: '문구', bg: '#FFFFFF', end: '#000000', expectCount: 1 }] });
+    expect(errors.join('\n')).toContain('match.title이 비어 있어요');
   });
 
   it('items가 없거나 객체가 아니면 오류다', () => {
@@ -236,7 +264,7 @@ describe('validatePlan', () => {
 });
 
 describe('checkPlanContrast', () => {
-  const items = [{ title: '가', condition: '문구', bg: '#E8C39E', end: '#B98A5B', expectCount: 1 }];
+  const items = [{ title: '가', values: { text01: '문구' }, bg: '#E8C39E', end: '#B98A5B', expectCount: 1 }];
 
   it('어두운 글자가 밝은 배경 위에서 4.5:1 이상이면 통과한다', () => {
     expect(checkPlanContrast(DARK_TEXT_LAYERS, items)).toEqual([]);
@@ -249,8 +277,8 @@ describe('checkPlanContrast', () => {
     expect(errors[0]).toContain('4.5:1 미만');
   });
 
-  it('텍스트 레이어가 2개 미만이면 오류다', () => {
-    expect(checkPlanContrast([{ type: 'text', color: '#111111' }], items)[0]).toContain('2개 이상');
+  it('텍스트 레이어가 하나도 없으면 오류다', () => {
+    expect(checkPlanContrast([{ type: 'image' }], items)[0]).toContain('텍스트 레이어가 없어요');
   });
 
   it('텍스트 색이 #rrggbb가 아니면 읽지 못한다는 오류다', () => {
@@ -258,9 +286,40 @@ describe('checkPlanContrast', () => {
   });
 });
 
+describe('checkPlanValues', () => {
+  const layers = [
+    { id: 'a', type: 'text', color: '#111111' },
+    { id: 'b', type: 'image', assetUrl: 'https://x.test/saved.png' },
+    { id: 'c', type: 'text', color: '#111111' },
+    { id: 'd', type: 'text', color: '#111111' },
+  ];
+  const item = (values: Record<string, string>) => ({ title: '가 미션', values, bg: '#E8C39E', end: '#B98A5B', expectCount: 1 });
+
+  it('프리셋에 있는 번호만 쓰면 오류가 없다(안 준 번호는 저장된 값)', () => {
+    expect(checkPlanValues(layers, [item({ text01: '조건', text02: '가 미션' })])).toEqual([]);
+  });
+
+  it('프리셋에 없는 번호는 제목과 프리셋의 번호 목록을 담은 오류다', () => {
+    const errors = checkPlanValues(layers, [item({ text01: '조건', text05: '없음' })]);
+    expect(errors).toEqual(['가 미션: 이 프리셋에 없는 번호예요: text05. 있는 번호: img01, text01, text02, text03']);
+  });
+
+  it('이미지 번호의 원본 파일이 없으면 오류이고, URL은 존재 확인을 건너뛴다', () => {
+    const missing = path.join(workDir, 'none.png');
+    expect(checkPlanValues(layers, [item({ img01: missing })])[0]).toContain(`img01의 이미지 파일을 찾을 수 없어요: ${missing}`);
+    expect(checkPlanValues(layers, [item({ img01: 'https://cdn.test/a.png' })])).toEqual([]);
+    const present = path.join(workDir, 'a.png');
+    fs.writeFileSync(present, 'x');
+    expect(checkPlanValues(layers, [item({ img01: present })])).toEqual([]);
+  });
+});
+
 describe('matchMissionsToPlan', () => {
+  // 검증을 통과한 계획 항목(`{ title, values, … }`)으로 맞춘다.
+  const planItems = validatePlan(PLAN).plan!.items;
+
   it('제목별 미션 수가 expectCount와 같으면 계획 순서대로 대상을 돌려준다', () => {
-    const { errors, warnings, targets } = matchMissionsToPlan(PLAN.items, MISSIONS);
+    const { errors, warnings, targets } = matchMissionsToPlan(planItems, MISSIONS);
     expect(errors).toEqual([]);
     expect(warnings).toEqual([]);
     expect(targets.map((t: { mission: Row }) => t.mission.id)).toEqual([ID_A1, ID_A2, ID_B]);
@@ -268,7 +327,7 @@ describe('matchMissionsToPlan', () => {
 
   it('수가 다르면 오류, 계획에 없는 미션은 알림만 낸다', () => {
     const extra: Row = { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', title: '계획 밖', image_url: null, image_source: null };
-    const { errors, warnings } = matchMissionsToPlan(PLAN.items, [MISSIONS[0], MISSIONS[2], extra]);
+    const { errors, warnings } = matchMissionsToPlan(planItems, [MISSIONS[0], MISSIONS[2], extra]);
     expect(errors.join('')).toContain('가 미션: DB의 미션이 1건이에요(계획의 expectCount: 2)');
     expect(warnings.join('')).toContain('계획 밖');
   });
@@ -289,11 +348,11 @@ describe('runPreview', () => {
     for (const id of [ID_A1, ID_A2, ID_B]) expect(fs.existsSync(path.join(outDir, `${id}.png`))).toBe(true);
     expect(fs.readFileSync(path.join(outDir, CONTACT_SHEET_FILE_NAME), 'utf8')).toBe('contact-sheet');
 
-    // 조건 문구 → text, 미션 이름 → subtext. 시드는 미션마다 따로 뽑는다(같은 제목이어도 다르다).
-    expect(renderCalls.map((c) => [c.text, c.subtext, c.seed])).toEqual([
-      ['2주 330km', '가 미션', 100],
-      ['2주 330km', '가 미션', 101],
-      ['3일 연속', '나 미션', 102],
+    // 계획의 레이어 번호 값이 그대로 렌더러로 간다. 시드는 미션마다 따로 뽑는다(같은 제목이어도 다르다).
+    expect(renderCalls.map((c) => [c.values, c.seed])).toEqual([
+      [{ text01: '2주 330km', text02: '가 미션' }, 100],
+      [{ text01: '2주 330km', text02: '가 미션' }, 101],
+      [{ text01: '3일 연속', text02: '나 미션' }, 102],
     ]);
 
     const resolved = JSON.parse(fs.readFileSync(path.join(outDir, RESOLVED_FILE_NAME), 'utf8'));
@@ -303,18 +362,18 @@ describe('runPreview', () => {
       [ID_A2, 101, `${ID_A2}.png`, false],
       [ID_B, 102, `${ID_B}.png`, false],
     ]);
-    expect(resolved.items[0]).toMatchObject({ title: '가 미션', condition: '2주 330km', bg: '#E8C39E', end: '#B98A5B', bytes: 7, stage: { w: 1280, h: 1280 } });
+    expect(resolved.items[0]).toMatchObject({ title: '가 미션', values: { text01: '2주 330km', text02: '가 미션' }, bg: '#E8C39E', end: '#B98A5B', bytes: 7, stage: { w: 1280, h: 1280 } });
     expect(logs.join('\n')).toContain('이미지 3장');
   });
 
   it('문구가 오른쪽 여백을 넘는 이미지는 경고 목록에 올린다', async () => {
     const stub = createStub();
-    const { deps } = previewDeps({ detectTextOverflow: async ({ subtext }: { subtext: string }) => subtext === '나 미션' });
+    const { deps } = previewDeps({ detectTextOverflow: async ({ values }: { values: Record<string, string> }) => values.text02 === '나 미션' });
     const { out, logs } = createOut();
 
     expect(await runPreview({ args: previewArgs(), supabase: stub.supabase, out, deps })).toBe(0);
     const text = logs.join('\n');
-    expect(text).toContain('문구가 오른쪽 여백(가로 3%)을 넘어요: 나 미션 / 3일 연속');
+    expect(text).toContain('문구가 오른쪽 여백(가로 3%)을 넘어요: 나 미션 / 3일 연속 / 나 미션');
     expect(text).not.toContain('넘어요: 가 미션');
     const resolved = JSON.parse(fs.readFileSync(path.join(outDir, RESOLVED_FILE_NAME), 'utf8'));
     expect(resolved.items.map((i: { textOverflow: boolean }) => i.textOverflow)).toEqual([false, false, true]);
@@ -331,6 +390,18 @@ describe('runPreview', () => {
     expect(fs.existsSync(outDir)).toBe(false);
   });
 
+  it('프리셋에 없는 번호를 계획이 쓰면 렌더 전에 프리셋의 번호 목록과 함께 실패한다', async () => {
+    fs.writeFileSync(planFile, JSON.stringify({ ...PLAN, items: [{ ...PLAN.items[0], values: { text01: '조건', text07: '없음' } }, PLAN.items[1]] }));
+    const stub = createStub();
+    const { deps, renderCalls } = previewDeps();
+    const { out, errors } = createOut();
+
+    expect(await runPreview({ args: previewArgs(), supabase: stub.supabase, out, deps })).toBe(1);
+    expect(errors.join('\n')).toContain('가 미션: 이 프리셋에 없는 번호예요: text07. 있는 번호: text01, text02, text03');
+    expect(renderCalls).toHaveLength(0);
+    expect(fs.existsSync(outDir)).toBe(false);
+  });
+
   it('대비가 모자라면 렌더 전에 실패한다', async () => {
     const stub = createStub();
     const { deps, renderCalls } = previewDeps({ loadPreset: async () => ({ layers: [{ type: 'text', color: '#ffffff' }, { type: 'text', color: '#ffffff' }] }) });
@@ -341,14 +412,14 @@ describe('runPreview', () => {
     expect(renderCalls).toHaveLength(0);
   });
 
-  it('계획 형식 오류(빈 문구)는 DB를 읽기 전에 실패한다', async () => {
-    fs.writeFileSync(planFile, JSON.stringify({ ...PLAN, items: [{ ...PLAN.items[0], condition: '' }] }));
+  it('계획 형식 오류(빈 값)는 DB를 읽기 전에 실패한다', async () => {
+    fs.writeFileSync(planFile, JSON.stringify({ ...PLAN, items: [{ ...PLAN.items[0], values: { text01: '' } }] }));
     const stub = createStub();
     const { deps } = previewDeps();
     const { out, errors } = createOut();
 
     expect(await runPreview({ args: previewArgs(), supabase: stub.supabase, out, deps })).toBe(1);
-    expect(errors.join('\n')).toContain('condition(조건 문구)이 비어 있어요');
+    expect(errors.join('\n')).toContain('values.text01가 비어 있어요');
     expect(stub.events).toEqual([]);
   });
 
