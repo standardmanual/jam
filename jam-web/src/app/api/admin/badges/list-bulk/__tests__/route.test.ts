@@ -1,7 +1,8 @@
 /**
  * POST /api/admin/badges/list-bulk deactivate — 이미 비활성인 배지는 건너뛰고 `deleted_at`을 다시 쓰지
  * 않는다(티켓 20260924_1404). DB는 기록형 스텁이라 어떤 id에 어떤 갱신이 나갔는지 그대로 확인한다.
- * 오류 경로·묶음 경계·빈 ids와 DB 오류 원문 미노출은 티켓 20260926_1345(1340·0238 일부)에서 채웠다.
+ * 오류 경로·묶음 경계·빈 ids와 DB 오류 원문 미노출은 티켓 20260926_1345(1340·0238 일부)에서 채웠고,
+ * 트라이브 지정(assign_tribe) 경로의 오류 3곳은 티켓 20260926_1409에서 채웠다.
  * 실행: cd jam-web && npx vitest run src/app/api/admin/badges/list-bulk/__tests__/route.test.ts
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -22,6 +23,10 @@ const state = vi.hoisted(() => ({
   dropError: null as { message: string } | null,
   /** badges 삭제에 주입할 DB 오류 */
   deleteError: null as { message: string } | null,
+  /** tribes 조회(`select().eq().maybeSingle()`)에 주입할 DB 오류 */
+  tribeError: null as { message: string } | null,
+  /** item_books 전량 조회에 주입할 DB 오류 */
+  booksError: null as { message: string } | null,
   /** badges 조회가 받은 id 묶음 — READ_CHUNK_SIZE 경계 확인용 */
   readCalls: [] as string[][],
   /** true면 ROWS에 없는 id도 활성 배지로 돌려준다(묶음 경계 테스트용) */
@@ -36,21 +41,36 @@ const ROWS = [
 const fakeClient = {
   from(table: string) {
     return {
-      select: (_columns?: string, _options?: unknown) => ({
-        in: (_column: string, ids: string[]) => {
-          if (table === 'poi_drops') {
-            state.dropCountIds.push(ids)
-            const result = Promise.resolve({ count: state.dropError ? null : 3, error: state.dropError })
-            return { eq: () => ({ is: () => result }) }
-          }
-          state.readCalls.push(ids)
-          if (state.readError) return Promise.resolve({ data: null, error: state.readError })
-          const data = state.unknownAsActive
-            ? ids.map((id) => ROWS.find((r) => r.id === id) ?? { id, name: `배지 ${id}`, deleted_at: null })
-            : ROWS.filter((r) => ids.includes(r.id))
-          return Promise.resolve({ data, error: null })
-        },
-      }),
+      select: (_columns?: string, _options?: unknown) => {
+        const query = {
+          // 트라이브 존재 확인 — 조회 결과는 「있음」 고정, 오류만 주입한다.
+          eq: () => ({
+            maybeSingle: () =>
+              Promise.resolve({ data: state.tribeError ? null : { id: 'tribe-1' }, error: state.tribeError }),
+          }),
+          in: (_column: string, ids: string[]) => {
+            if (table === 'poi_drops') {
+              state.dropCountIds.push(ids)
+              const result = Promise.resolve({ count: state.dropError ? null : 3, error: state.dropError })
+              return { eq: () => ({ is: () => result }) }
+            }
+            state.readCalls.push(ids)
+            if (state.readError) return Promise.resolve({ data: null, error: state.readError })
+            const data = state.unknownAsActive
+              ? ids.map((id) => ROWS.find((r) => r.id === id) ?? { id, name: `배지 ${id}`, deleted_at: null })
+              : ROWS.filter((r) => ids.includes(r.id))
+            return Promise.resolve({ data, error: null })
+          },
+        }
+        // item_books는 필터 없이 `select()`를 바로 await한다(전량 조회).
+        if (table === 'item_books') {
+          return Object.assign(
+            Promise.resolve({ data: state.booksError ? null : [], error: state.booksError }),
+            query
+          )
+        }
+        return query
+      },
       delete: () => ({
         in: () => ({
           select: () => Promise.resolve({ data: state.deleteError ? null : [], error: state.deleteError }),
@@ -106,6 +126,8 @@ beforeEach(() => {
   state.readError = null
   state.dropError = null
   state.deleteError = null
+  state.tribeError = null
+  state.booksError = null
   state.readCalls = []
   state.unknownAsActive = false
   vi.spyOn(console, 'info').mockImplementation(() => {})
@@ -161,7 +183,7 @@ describe('오류 경로 — DB 오류 원문은 응답에 싣지 않고 로그�
     expect(data.error).toMatch(/^배지 정보를 불러오지 못했어요\./)
     expect(JSON.stringify(data)).not.toContain(RAW)
     expect(state.updates).toEqual([])
-    expect(console.error).toHaveBeenCalledWith(expect.any(String), RAW)
+    expect(console.error).toHaveBeenCalledWith('[badges list-bulk] 비활성화 대상 조회 오류:', RAW)
   })
 
   it('deactivate 미리보기의 드랍 수 집계 오류: 500과 고정 한국어 문장', async () => {
@@ -171,7 +193,7 @@ describe('오류 경로 — DB 오류 원문은 응답에 싣지 않고 로그�
     const data = await res.json()
     expect(data.error).toMatch(/^영향받는 드랍 수를 세지 못했어요\./)
     expect(JSON.stringify(data)).not.toContain(RAW)
-    expect(console.error).toHaveBeenCalledWith(expect.any(String), RAW)
+    expect(console.error).toHaveBeenCalledWith('[badges list-bulk] 무효화될 드랍 수 집계 오류:', RAW)
   })
 
   it('delete 삭제 오류: 500과 고정 한국어 문장', async () => {
@@ -185,7 +207,53 @@ describe('오류 경로 — DB 오류 원문은 응답에 싣지 않고 로그�
     const data = await res.json()
     expect(data.error).toMatch(/^배지를 삭제하지 못했어요\./)
     expect(JSON.stringify(data)).not.toContain(RAW)
-    expect(console.error).toHaveBeenCalledWith(expect.any(String), RAW)
+    expect(console.error).toHaveBeenCalledWith('[badges list-bulk delete] 삭제 실패:', RAW)
+  })
+
+  describe('assign_tribe — 트라이브 지정 경로(티켓 20260926_1409)', () => {
+    const assign = (dry_run = false) =>
+      post({ ids: [ACTIVE], action: 'assign_tribe', payload: { tribe_id: 'tribe-1' }, dry_run })
+
+    it('트라이브 조회 오류: 500과 고정 한국어 문장, 갱신 없음, 원문은 로그', async () => {
+      state.tribeError = { message: RAW }
+      const res = await assign()
+      expect(res.status).toBe(500)
+      const data = await res.json()
+      expect(data.error).toMatch(/^배지 정보를 불러오지 못했어요\./)
+      expect(JSON.stringify(data)).not.toContain(RAW)
+      expect(state.readCalls).toEqual([])
+      expect(state.updates).toEqual([])
+      expect(console.error).toHaveBeenCalledWith('[badges list-bulk] 트라이브 조회 오류:', RAW)
+    })
+
+    it('대상 배지 조회(.in) 오류: 500과 고정 한국어 문장, 갱신 없음, 원문은 로그', async () => {
+      state.readError = { message: RAW }
+      const res = await assign()
+      expect(res.status).toBe(500)
+      const data = await res.json()
+      expect(data.error).toMatch(/^배지 정보를 불러오지 못했어요\./)
+      expect(JSON.stringify(data)).not.toContain(RAW)
+      expect(state.updates).toEqual([])
+      expect(console.error).toHaveBeenCalledWith('[badges list-bulk] 트라이브 지정 대상 조회 오류:', RAW)
+    })
+
+    it('item_books 전량 조회 오류: 500과 고정 한국어 문장, 갱신 없음, 원문은 로그', async () => {
+      state.booksError = { message: RAW }
+      const res = await assign()
+      expect(res.status).toBe(500)
+      const data = await res.json()
+      expect(data.error).toMatch(/^배지 정보를 불러오지 못했어요\./)
+      expect(JSON.stringify(data)).not.toContain(RAW)
+      expect(state.updates).toEqual([])
+      expect(console.error).toHaveBeenCalledWith('[badges list-bulk] 컬렉션 조회 오류:', RAW)
+    })
+
+    it('오류가 없으면 같은 스텁으로 200(미리보기)까지 간다 — 스텁이 오류 3곳 밖에서는 정상임을 확인', async () => {
+      const res = await assign(true)
+      expect(res.status).toBe(200)
+      expect((await res.json()).dryRun).toBe(true)
+      expect(console.error).not.toHaveBeenCalled()
+    })
   })
 })
 
