@@ -2,7 +2,7 @@
 id: "20260922_0605"
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-22
 parent: "20260922_0206"
 ---
@@ -44,21 +44,20 @@ parent: "20260922_0206"
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 묶음 티켓 20260926_1439로 처리했다. 상세와 실행 지표는 그 티켓의 완료 기록에 있다.
+- 원인: `.githooks/pre-push` 기준 방어의 `git diff`가 사용자 설정을 그대로 따랐다. `color.diff=always`이면 ANSI 색상 코드 때문에 awk 패턴이 하나도 맞지 않아 검사 없이 통과했고, 기본값 `core.quotePath=true`에서는 비ASCII 경로가 따옴표와 8진수로 출력돼 `^jam-web/` 필터를 빠져나갔다.
+- 수정: 훅의 `git diff` 2곳(추가 줄 수집, 삭제된 테스트 파일 판정)을 `git -c core.quotePath=false -c color.ui=never diff --no-color ...`로 바꿨다. `git show`·`git log`·`diff --quiet`는 색상·경로 인용 영향이 없어 그대로 뒀다.
 
 ### 변경된 파일
 ```
--
+- .githooks/pre-push
+- scripts/pre-push-guard-bar.test.mjs
 ```
 
 ### 테스트 결과
-- [ ] 
-
-### 배포 정보
-- 배포일: 
-- 환경: staging (빌드 없음)
-- 커밋: 
-
-### 주요 의사결정 / 핵심 메모
+- [x] 임시 저장소 시나리오 14~17 추가(색상 강제 차단, 색상 강제에서 정상 push 통과, 비ASCII 경로 차단, 비ASCII 경로 정상 통과). 옛 훅에서 시나리오 14가 실패하는 것을 먼저 확인했다. CI 성공
+- [x] 병합 뒤 카리나의 실제 push가 새 훅을 통과했다
 
 ### 잔여 이슈
--
+- 시나리오 16·17(비ASCII 경로)이 옛 훅에서 실패한다는 것은 게이트가 직접 재현하지 못했다(옛 훅으로 돌리면 시나리오 14에서 먼저 멈춘다). 새 훅에서 통과함은 확인했다.
+- `.githooks/pre-commit` 354행 부근의 `.from('badges')` 경고 검사도 `git diff --cached`를 색상·설정 고정 없이 호출해 `color.diff=always`에 약하다. 경고 전용이라 이번 범위에서 제외했다(후속 티켓 생성).
