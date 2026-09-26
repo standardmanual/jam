@@ -1,0 +1,34 @@
+{
+  "bundle_id": "2026-09-28-forest-gang-editorial",
+  "author": "윤진",
+  "created_at": "2026-09-26T15:21:46+09:00",
+  "color_rationale_link": "jam-doc/operations/reports/weekly/2026-W39.md",
+  "world_review": {
+    "world_related": true,
+    "winter_reviewed": true,
+    "reason": "TRIBES.md 66~68행 원문과 정확히 일치, 가을 배정과 부합, 금기 소재 없음"
+  },
+  "card": {
+    "title": "도토리 정산철의 시작",
+    "subtitle": "가을이 되면, 갱단이 바빠진다",
+    "template_type": "editorial_article",
+    "layout_type": "large_thumbnail",
+    "body_markdown": "요즘 산책로에 부쩍 사람이 늘었다. 도로만 달리던 러너들도 산길·숲길로 방향을 트는 계절이다. 그런데 이 계절, 숲의 주인들도 바빠진다는 소문이 있다.\n\n\"도심 공원과 외곽 산자락을 지배하는 실세들. 방심한 등산객의 가방을 털고, 길가에 흘린 간식에서 가장 맛있는 부분만 빼먹는 범인들. 훔친 물건은 깊은 숲속 동물들의 비밀 환전소 '그루터기 살롱'에서 도토리와 거래된다. 구역을 존중하며 걷는 자들에게는 보물을 슬쩍 흘려두기도 한다.\" — 숲속의 갱단\n\n가을은 숲속의 갱단이 도토리를 정산하는 계절이다. 산이나 공원을 걷다 흘린 아이템이 있다면, 그건 어쩌면 이미 이들의 손을 거쳐 온 것일지도 모른다.",
+    "content_type_id": "T01",
+    "exposure_tags": ["all"],
+    "starts_at": "2026-09-28T00:00:00+09:00",
+    "ends_at": "2026-09-28T23:59:00+09:00",
+    "target_href": "/collections",
+    "sort_order": 0,
+    "is_active": true
+  },
+  "image": {
+    "path": "image.png",
+    "seed": 2026092801,
+    "preset_id": "51aa4673-f723-4929-ac20-a302202b7aa7",
+    "bg_color": "#8a5a2e",
+    "end_color": "#3d2812",
+    "text": "도토리 정산철의 시작",
+    "subtext": "가을이 되면, 갱단이 바빠진다"
+  }
+}
