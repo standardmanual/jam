@@ -107,9 +107,25 @@ describe('DELETE /api/admin/users/[id]', () => {
   })
 
   it('없는 유저는 404, 조회 오류는 500이고 삭제하지 않는다', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     expect((await call(USER_A)).status).toBe(404)
     mocks.targetError = { message: 'db down' }
     expect((await call(USER_A)).status).toBe(500)
     expect(mocks.hardDeleteUser).not.toHaveBeenCalled()
+  })
+
+  it('조회 오류의 DB 원문은 응답에 싣지 않고 console.error로만 남긴다(티켓 20260926_1602)', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mocks.targetError = { message: 'connection refused to db-host' }
+    const res = await call(USER_A)
+    expect(res.status).toBe(500)
+    expect(JSON.stringify(await res.json())).not.toContain('connection refused')
+    expect(errorSpy.mock.calls.some((c) => String(c[0]).startsWith('[users DELETE'))).toBe(true)
+  })
+
+  it('앱이 만든 「유저를 찾을 수 없습니다.」 문구는 그대로다(티켓 20260926_1602)', async () => {
+    const res = await call(USER_A)
+    expect(res.status).toBe(404)
+    expect((await res.json()).error).toBe('유저를 찾을 수 없습니다.')
   })
 })
