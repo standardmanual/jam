@@ -255,6 +255,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const supabase = createServiceClient()
+
+  // 이미 비활성인 배지를 다시 비활성화하면 `deleted_at`을 덮어써 원래 비활성화 시각이 사라진다.
+  // 갱신·부수효과 없이 현재 상태를 그대로 돌려준다(티켓 20260924_1404).
+  if (!active) {
+    const { data: current, error: readError } = await supabase.from('badges').select().eq('id', id).maybeSingle()
+    if (readError) {
+      console.error('[admin badges PATCH] 배지 조회 오류:', readError)
+      return NextResponse.json(
+        { error: '배지 상태를 확인하지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.' },
+        { status: 500 }
+      )
+    }
+    if (!current) return NextResponse.json({ error: '배지를 찾을 수 없습니다.' }, { status: 404 })
+    if (current.deleted_at) return NextResponse.json({ badge: current, alreadyInactive: true })
+  }
+
   const { data, error } = await supabase
     .from('badges')
     .update({ deleted_at: active ? null : new Date().toISOString() })
