@@ -1,7 +1,7 @@
 /**
  * /api/admin/asset-generator/presets — 목록·저장(신규/덮어쓰기) (티켓 20260924_2159)
  * supabase 클라이언트는 최소 체이닝만 흉내 낸 스텁으로 바꿔, 저장 시 upload 경로·insert/update
- * 페이로드가 규칙(텍스트 content 비움, 이미지 assetUrl을 저장소 공개 URL로 치환)대로
+ * 페이로드가 규칙(텍스트 content 유지, 이미지 assetUrl을 저장소 공개 URL로 치환)대로
  * 만들어지는지만 본다.
  * 실행: cd jam-web && npx vitest run src/app/api/admin/asset-generator/presets/__tests__/route.test.ts
  */
@@ -253,7 +253,7 @@ describe('POST — 신규 저장', () => {
     }
     expect(insertPayload.target_type).toBe('badge')
     expect(insertPayload.created_by).toBe(ADMIN_ID)
-    expect(insertPayload.layers[0]).toMatchObject({ type: 'text', content: '' })
+    expect(insertPayload.layers[0]).toMatchObject({ type: 'text', content: '배지 이름' })
     expect(insertPayload.layers[1].assetUrl).toBe(`https://cdn.test.jam.app/images/${uploadPath}`)
   })
 
@@ -281,7 +281,7 @@ describe('POST — 신규 저장', () => {
     }
     expect(insertPayload.target_type).toBe('mission')
     expect(insertPayload.layers).toHaveLength(2)
-    expect(insertPayload.layers[0]).toMatchObject({ type: 'text', content: '' })
+    expect(insertPayload.layers[0]).toMatchObject({ type: 'text', content: '미션 이름' })
     expect(insertPayload.layers[1].type).toBe('image')
     expect(insertPayload.layers[1].assetUrl).toMatch(/^https:\/\/cdn\.test\.jam\.app\//)
   })
@@ -364,7 +364,7 @@ describe('POST — 신규 저장', () => {
       layers: Array<{ type: string; content?: string; assetUrl?: string }>
     }
     expect(insertPayload.target_type).toBe('collection')
-    expect(insertPayload.layers[0]).toMatchObject({ type: 'text', content: '' })
+    expect(insertPayload.layers[0]).toMatchObject({ type: 'text', content: '컬렉션 이름' })
     expect(insertPayload.layers[1].assetUrl).toBe('https://cdn.test.jam.app/images/existing.png')
   })
 })

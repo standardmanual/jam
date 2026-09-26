@@ -71,7 +71,7 @@ export function isPresetTargetType(value: unknown): value is PresetTargetType {
 /**
  * 화면 상태(overlayLayers)를 프리셋 저장용으로 직렬화한다.
  *
- * - 텍스트 레이어의 `content`는 빈 문자열로 비운다(PRD §5, 글자 내용은 저장하지 않는다).
+ * - 텍스트 레이어는 `content`(글자 내용)를 포함해 그대로 저장한다(PRD §5).
  * - 이미지 레이어는 `assetUrlByLayerId`에 그 레이어 id의 항목이 있으면 `assetUrl`을 그 값
  *   (저장소 업로드 후 얻은 공개 URL)으로 바꾼다. 없으면 원래 값을 그대로 둔다 — 이미 저장소
  *   URL을 가리키는 레이어(프리셋을 불러온 뒤 이미지를 바꾸지 않고 다시 저장하는 경우)를 다시
@@ -83,7 +83,7 @@ export function serializePresetLayers(
   assetUrlByLayerId: Record<string, string> = {}
 ): OverlayLayerConfig[] {
   return layers.map((layer) => {
-    if (layer.type === 'text') return { ...layer, content: '' };
+    if (layer.type === 'text') return layer;
     const replacement = assetUrlByLayerId[layer.id];
     return replacement ? { ...layer, assetUrl: replacement } : layer;
   });
@@ -91,13 +91,14 @@ export function serializePresetLayers(
 
 /**
  * 저장된 프리셋 레이어를 화면 상태로 역직렬화한다. 순서를 유지한 채 형태를 확정해 돌려준다.
- * - 텍스트 레이어: `content`를 빈 문자열로 둔다.
+ * - 텍스트 레이어: 저장된 `content`를 복원한다. 값이 문자열이 아니면(글자 내용을 저장하지 않던
+ *   옛 프리셋) 빈 문자열로 채운다.
  * - 이미지 레이어: 예전 프리셋에 남은 `heightPct`(세로 크기)는 버리고, `overlayEnabled`가 없으면
  *   꺼짐(false)으로 채운다. 세로 크기는 이제 원본 비율로 계산한다(티켓 20260926_1741).
  */
 export function deserializePresetLayers(layers: OverlayLayerConfig[]): OverlayLayerConfig[] {
   return layers.map((layer) => {
-    if (layer.type === 'text') return { ...layer, content: '' };
+    if (layer.type === 'text') return { ...layer, content: typeof layer.content === 'string' ? layer.content : '' };
     const { heightPct: _legacyHeightPct, ...rest } = layer as ImageLayerConfig & { heightPct?: number };
     return { ...rest, overlayEnabled: rest.overlayEnabled ?? false };
   });

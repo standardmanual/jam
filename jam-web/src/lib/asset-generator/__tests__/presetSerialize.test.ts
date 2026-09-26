@@ -45,11 +45,11 @@ function makeTextLayer(id: string, content: string): TextLayerConfig {
 }
 
 describe('serializePresetLayers', () => {
-  it('텍스트 레이어의 content를 빈 문자열로 비운다', () => {
+  it('텍스트 레이어의 content를 그대로 유지한다', () => {
     const layers: OverlayLayerConfig[] = [makeTextLayer('t1', '안녕하세요')];
     const [serialized] = serializePresetLayers(layers);
     expect(serialized.type).toBe('text');
-    expect((serialized as TextLayerConfig).content).toBe('');
+    expect((serialized as TextLayerConfig).content).toBe('안녕하세요');
   });
 
   it('assetUrlByLayerId에 있는 이미지 레이어의 assetUrl을 저장소 경로로 바꾼다', () => {
@@ -78,12 +78,18 @@ describe('serializePresetLayers', () => {
 });
 
 describe('deserializePresetLayers', () => {
-  it('저장된 레이어를 순서를 유지한 채 그대로 복원한다(텍스트 content는 빈 문자열)', () => {
-    const stored: OverlayLayerConfig[] = [makeImageLayer('i1', 'https://cdn.example.com/i1.png'), makeTextLayer('t1', '')];
+  it('저장된 레이어를 순서를 유지한 채 그대로 복원한다(텍스트 content 유지)', () => {
+    const stored: OverlayLayerConfig[] = [makeImageLayer('i1', 'https://cdn.example.com/i1.png'), makeTextLayer('t1', '시리즈 이름')];
     const result = deserializePresetLayers(stored);
     expect(result.map((l) => l.id)).toEqual(['i1', 't1']);
-    expect((result[1] as TextLayerConfig).content).toBe('');
+    expect((result[1] as TextLayerConfig).content).toBe('시리즈 이름');
     expect((result[0] as ImageLayerConfig).assetUrl).toBe('https://cdn.example.com/i1.png');
+  });
+
+  it('content가 없는 옛 텍스트 레이어는 빈 문자열로 채운다', () => {
+    const { content: _content, ...withoutContent } = makeTextLayer('t1', 'x');
+    const [result] = deserializePresetLayers([withoutContent as unknown as OverlayLayerConfig]);
+    expect((result as TextLayerConfig).content).toBe('');
   });
 });
 
@@ -127,7 +133,7 @@ describe('isPresetTargetType', () => {
 });
 
 describe('직렬화 → 역직렬화 라운드트립', () => {
-  it('텍스트 content가 비워지고 이미지 assetUrl이 저장소 경로가 된 상태로 순서가 유지된다', () => {
+  it('텍스트 content가 유지되고 이미지 assetUrl이 저장소 경로가 된 상태로 순서가 유지된다', () => {
     const layers: OverlayLayerConfig[] = [
       makeTextLayer('t1', '배지 이름'),
       makeImageLayer('i1', 'blob:http://localhost/abc'),
@@ -136,7 +142,7 @@ describe('직렬화 → 역직렬화 라운드트립', () => {
     const restored = deserializePresetLayers(serialized);
 
     expect(restored.map((l) => l.id)).toEqual(['t1', 'i1']);
-    expect((restored[0] as TextLayerConfig).content).toBe('');
+    expect((restored[0] as TextLayerConfig).content).toBe('배지 이름');
     expect((restored[1] as ImageLayerConfig).assetUrl).toBe('https://cdn.example.com/asset-generator/presets/p1/i1.png');
   });
 });
@@ -153,7 +159,7 @@ describe('DB 행 → AssetPreset 변환 (티켓 20260925_0239)', () => {
     updated_at: '2026-09-26T00:00:00Z',
   };
 
-  it('snake_case 컬럼을 camelCase 필드로 옮기고 텍스트 content를 비운 채 순서를 유지한다', () => {
+  it('snake_case 컬럼을 camelCase 필드로 옮기고 텍스트 content를 유지한 채 순서를 유지한다', () => {
     const preset = toAssetPreset(row);
     expect(preset).toMatchObject({
       id: 'p1',
@@ -165,7 +171,7 @@ describe('DB 행 → AssetPreset 변환 (티켓 20260925_0239)', () => {
       updatedAt: '2026-09-26T00:00:00Z',
     });
     expect(preset.layers.map((l) => l.id)).toEqual(['t1', 'i1']);
-    expect((preset.layers[0] as TextLayerConfig).content).toBe('');
+    expect((preset.layers[0] as TextLayerConfig).content).toBe('x');
   });
 
   it('layers가 null이면 빈 배열이다', () => {
