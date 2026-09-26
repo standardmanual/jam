@@ -40,9 +40,17 @@ describe('fillTextLayers', () => {
     expect(() => fillTextLayers([textLayer(50)], { text: '제목', subtext: '설명' })).toThrow('--subtext');
   });
 
-  it('텍스트 레이어 3개 이상은 지원 범위 밖이라 오류를 던진다', () => {
-    expect(() => fillTextLayers([textLayer(10), textLayer(20), textLayer(30)], { text: 'a', subtext: 'b' })).toThrow(
-      '텍스트 레이어가 3개예요'
+  it('텍스트 레이어 3개는 1번째 ← text, 2번째 ← subtext로 채우고 3번째는 저장된 글자를 그대로 둔다', () => {
+    const stored = (yPct: number, content: string) => ({ ...textLayer(yPct), content });
+    const layers = [stored(10, '저장1'), image, stored(20, '저장2'), stored(30, 'MISSION')];
+    const filled = fillTextLayers(layers, { text: '조건', subtext: '미션 이름' });
+    expect(filled.map((l: { content?: string }) => l.content)).toEqual(['조건', undefined, '미션 이름', 'MISSION']);
+    expect(filled[3]).toBe(layers[3]);
+  });
+
+  it('텍스트 레이어 3개 이상인데 subtext가 없으면 오류를 던진다', () => {
+    expect(() => fillTextLayers([textLayer(10), textLayer(20), textLayer(30)], { text: 'a', subtext: undefined })).toThrow(
+      '텍스트 레이어가 3개예요. --subtext로 두 번째 문구도 넣어 주세요'
     );
   });
 
