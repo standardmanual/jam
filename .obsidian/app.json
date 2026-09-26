@@ -1,0 +1,8 @@
+{
+  "useMarkdownLinks": true,
+  "newLinkFormat": "relative",
+  "userIgnoreFilters": [
+    "jam-web/",
+    "scripts/"
+  ]
+}

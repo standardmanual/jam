@@ -65,6 +65,8 @@
       ".claude/skills/jam-work/references/ship-test-check.md",
       ".claude/skills/jam-work/references/forms/weekly-briefing-format.md",
       ".claude/skills/jam-work/references/forms/review-verdict-format.md",
+      ".obsidian/app.json",
+      ".obsidian/.gitignore",
       "jam-doc/README.md",
       "jam-doc/planning/content/TRIBES.md",
       "jam-doc/operations/reports",
