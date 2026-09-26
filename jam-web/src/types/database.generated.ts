@@ -1020,6 +1020,7 @@ export type Database = {
       missions: {
         Row: {
           condition_json: Json
+          condition_text: string | null
           created_at: string
           description: string | null
           ends_at: string | null
@@ -1045,6 +1046,7 @@ export type Database = {
         }
         Insert: {
           condition_json: Json
+          condition_text?: string | null
           created_at?: string
           description?: string | null
           ends_at?: string | null
@@ -1070,6 +1072,7 @@ export type Database = {
         }
         Update: {
           condition_json?: Json
+          condition_text?: string | null
           created_at?: string
           description?: string | null
           ends_at?: string | null

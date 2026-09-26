@@ -79,13 +79,13 @@ snapshot: "2026-09-05"
 
 | 계열 키 | 이름 | 조건문 | 종류 | 사다리 (변하는 값) |
 |---|---|---|---|---|
-| `walking:M1` | **누적의 증명** | 미션 '2주 안에 20km' 완료 | undefined | Epic |
-| `walking:M2` | **리듬의 증명** | 미션 '3주(월~일) 연속 한 주에 3회' 완료 | undefined | Epic |
-| `walking:M3` | **시간의 증명** | 미션 '2주 안에 새벽·낮·밤 각 2회' 완료 | undefined | Epic |
+| `walking:M1` | **누적의 증명** | 미션 '2주 안에 20km 걷기' 완료 | undefined | Epic |
+| `walking:M2` | **리듬의 증명** | 미션 '3주 연속, 한 주에 3번 걷기' 완료 | undefined | Epic |
+| `walking:M3` | **시간의 증명** | 미션 '2주 안에 새벽(5~8시)·낮(오전 8시~오후 10시)·밤(오후 10시~새벽 5시)에 각각 2번 걷기' 완료 | undefined | Epic |
 | `walking:M4` | **요일의 증명** | 미션 '2주 안에 서로 다른 5개 요일에 걷기' 완료 | undefined | Epic |
 | `walking:M5` | **연속의 증명** | 미션 '7일 연속 걷기' 완료 | undefined | Epic |
 | `walking:M6` | **이정표의 증명** | 미션 '한 번에 8km 이상 걷기' 완료 | undefined | Epic |
-| `walking:M7` | **회복의 증명** | 미션 '4주(월~일) 연속 한 주에 3회, 매주 1일 휴식' 완료 | undefined | Epic |
+| `walking:M7` | **회복의 증명** | 미션 '4주 연속, 한 주에 3번 걷기' 완료 | undefined | Epic |
 | `walking:M8` | **계절의 증명** | 미션 '서로 다른 두 달에 각각 30km 걷기' 완료 | undefined | Epic |
 
 <details><summary>설명문</summary>
@@ -718,14 +718,14 @@ snapshot: "2026-09-05"
 
 | 계열 키 | 이름 | 조건문 | 종류 | 사다리 (변하는 값) |
 |---|---|---|---|---|
-| `running:Q1` | **쌓인 거리의 증명** | 미션 '2주 안에 80km' 완료 | undefined | Epic |
-| `running:Q2` | **페이스의 증명** | 미션 '4주 안에 한 번에 10km 이상, 5:30/km보다 빠르게 / 3회' 완료 | undefined | Epic |
-| `running:Q3` | **먼 하루의 증명** | 미션 '4주 안에 한 번에 25km 이상 / 2회' 완료 | undefined | Epic |
-| `running:Q4` | **반복의 증명** | 미션 '3주(월~일) 연속 한 주에 4회' 완료 | undefined | Epic |
-| `running:Q5` | **시간표의 증명** | 미션 '2주 안에 새벽·밤 각 2회, 서로 다른 5개 요일' 완료 | undefined | Epic |
-| `running:Q6` | **연이은 날의 증명** | 미션 '7일 연속' 완료 | undefined | Epic |
-| `running:Q7` | **쉼표의 증명** | 미션 '4주(월~일) 연속 한 주에 4회, 매주 2일 이상 휴식' 완료 | undefined | Epic |
-| `running:Q8` | **사계의 증명** | 미션 '서로 다른 두 달에 각각 120km' 완료 | undefined | Epic |
+| `running:Q1` | **쌓인 거리의 증명** | 미션 '2주 안에 80km 달리기' 완료 | undefined | Epic |
+| `running:Q2` | **페이스의 증명** | 미션 '4주 안에 10km 이상을 5:30/km보다 빠르게, 3번 달리기' 완료 | undefined | Epic |
+| `running:Q3` | **먼 하루의 증명** | 미션 '4주 안에 한 번에 25km 이상, 2번 달리기' 완료 | undefined | Epic |
+| `running:Q4` | **반복의 증명** | 미션 '3주 연속, 한 주에 4번 달리기' 완료 | undefined | Epic |
+| `running:Q5` | **시간표의 증명** | 미션 '2주 안에 새벽(5~8시)과 밤(오후 8시~새벽 5시)에 각각 2번, 서로 다른 5개 요일에 달리기' 완료 | undefined | Epic |
+| `running:Q6` | **연이은 날의 증명** | 미션 '7일 연속 달리기' 완료 | undefined | Epic |
+| `running:Q7` | **쉼표의 증명** | 미션 '4주 연속, 한 주에 4번 달리기' 완료 | undefined | Epic |
+| `running:Q8` | **사계의 증명** | 미션 '서로 다른 두 달에 각각 120km 달리기' 완료 | undefined | Epic |
 
 <details><summary>설명문</summary>
 
@@ -1062,14 +1062,14 @@ snapshot: "2026-09-05"
 
 | 계열 키 | 이름 | 조건문 | 종류 | 사다리 (변하는 값) |
 |---|---|---|---|---|
-| `cycling:Q1` | **바퀴 자국의 증명** | 미션 '2주 안에 330km' 완료 | undefined | Epic |
-| `cycling:Q2` | **속도의 증명** | 미션 '4주 안에 한 번에 30km 이상, 평균 속도 25km/h 이상 / 3회' 완료 | undefined | Epic |
-| `cycling:Q3` | **지평선의 증명** | 미션 '4주 안에 한 번에 130km 이상 / 2회' 완료 | undefined | Epic |
-| `cycling:Q4` | **언덕의 증명** | 미션 '4주 안에 한 번에 상승고도 1,200m 이상 / 2회' 완료 | undefined | Epic |
-| `cycling:Q5` | **주말의 증명** | 미션 '3주(월~일) 연속 한 주에 3회, 매주 주말 1회 이상' 완료 | undefined | Epic |
-| `cycling:Q6` | **이어진 바퀴의 증명** | 미션 '4주(월~일) 안에 3일 연속 1회, 매주 1회 이상' 완료 | undefined | Epic |
-| `cycling:Q7` | **빈 안장의 증명** | 미션 '8주 안에 한 번에 100km 이상, 다음 날 휴식 / 3회' 완료 | undefined | Epic |
-| `cycling:Q8` | **추위와 더위의 증명** | 미션 '서로 다른 두 달에 각각 500km' 완료 | undefined | Epic |
+| `cycling:Q1` | **바퀴 자국의 증명** | 미션 '2주 안에 330km 타기' 완료 | undefined | Epic |
+| `cycling:Q2` | **속도의 증명** | 미션 '4주 안에 한 번에 30km 이상을 평균 25km/h 이상으로, 3번 타기' 완료 | undefined | Epic |
+| `cycling:Q3` | **지평선의 증명** | 미션 '4주 안에 한 번에 130km 이상, 2번 타기' 완료 | undefined | Epic |
+| `cycling:Q4` | **언덕의 증명** | 미션 '4주 안에 한 번에 상승고도 1,200m 이상, 2번 타기' 완료 | undefined | Epic |
+| `cycling:Q5` | **주말의 증명** | 미션 '3주 연속, 한 주에 3번 타고 매주 주말에 1번 이상 타기' 완료 | undefined | Epic |
+| `cycling:Q6` | **이어진 바퀴의 증명** | 미션 '4주 동안 매주 1번 이상 타고, 3일 연속 타는 날을 한 번 만들기' 완료 | undefined | Epic |
+| `cycling:Q7` | **빈 안장의 증명** | 미션 '8주 안에 한 번에 100km 이상 타고 다음 날 휴식이 있었던 경우 3번' 완료 | undefined | Epic |
+| `cycling:Q8` | **추위와 더위의 증명** | 미션 '서로 다른 두 달에 각각 500km 타기' 완료 | undefined | Epic |
 
 <details><summary>설명문</summary>
 
@@ -1344,14 +1344,14 @@ snapshot: "2026-09-05"
 
 | 계열 키 | 이름 | 조건문 | 종류 | 사다리 (변하는 값) |
 |---|---|---|---|---|
-| `hiking:Q1` | **쌓인 고도의 증명** | 미션 '2개월 안에 상승고도 5,000m' 완료 | undefined | Epic |
-| `hiking:Q2` | **높이의 증명** | 미션 '한 번에 상승고도 1,000m 이상, 최고 도달 고도 1,200m 이상 / 1회' 완료 | undefined | Epic |
-| `hiking:Q3` | **긴 산행의 증명** | 미션 '3개월 안에 한 번에 6시간 이상 / 2회' 완료 | undefined | Epic |
-| `hiking:Q4` | **발길의 증명** | 미션 '3개월 연속 한 달에 4회, 매달 주말 2회 이상' 완료 | undefined | Epic |
-| `hiking:Q5` | **이어진 능선의 증명** | 미션 '3일 연속' 완료 | undefined | Epic |
-| `hiking:Q6` | **돌아오는 산의 증명** | 미션 '6개월 연속 한 달에 2회 이상' 완료 | undefined | Epic |
-| `hiking:Q7` | **하산 뒤의 증명** | 미션 '3개월 안에 한 번에 5시간 이상, 다음 날 휴식 / 2회' 완료 | undefined | Epic |
-| `hiking:Q8` | **눈과 볕의 증명** | 미션 '서로 다른 두 달에 각각 상승고도 1,800m' 완료 | undefined | Epic |
+| `hiking:Q1` | **쌓인 고도의 증명** | 미션 '2개월 안에 상승고도 5,000m 산행하기' 완료 | undefined | Epic |
+| `hiking:Q2` | **높이의 증명** | 미션 '한 번에 상승고도 1,000m 이상, 최고 도달 고도 1,200m 이상 산행하기' 완료 | undefined | Epic |
+| `hiking:Q3` | **긴 산행의 증명** | 미션 '3개월 안에 한 번에 6시간 이상, 2번 산행하기' 완료 | undefined | Epic |
+| `hiking:Q4` | **발길의 증명** | 미션 '3개월 연속, 한 달에 4번 산행하고 그중 주말에 2번 이상 산행하기' 완료 | undefined | Epic |
+| `hiking:Q5` | **이어진 능선의 증명** | 미션 '3일 연속 산행하기' 완료 | undefined | Epic |
+| `hiking:Q6` | **돌아오는 산의 증명** | 미션 '6개월 연속, 한 달에 2번 이상 산행하기' 완료 | undefined | Epic |
+| `hiking:Q7` | **하산 뒤의 증명** | 미션 '3개월 안에 한 번에 5시간 이상 산행하고 다음 날 휴식이 있었던 경우 2번' 완료 | undefined | Epic |
+| `hiking:Q8` | **눈과 볕의 증명** | 미션 '서로 다른 두 달에 각각 상승고도 1,800m 산행하기' 완료 | undefined | Epic |
 
 <details><summary>설명문</summary>
 
@@ -1679,14 +1679,14 @@ snapshot: "2026-09-05"
 
 | 계열 키 | 이름 | 조건문 | 종류 | 사다리 (변하는 값) |
 |---|---|---|---|---|
-| `trail_running:Q1` | **오르내린 거리의 증명** | 미션 '2주 안에 80km, 상승고도 1,600m' 완료 | undefined | Epic |
-| `trail_running:Q2` | **오르막의 증명** | 미션 '8주 안에 한 번에 25km 이상, 상승고도 800m 이상 / 2회' 완료 | undefined | Epic |
-| `trail_running:Q3` | **울트라의 증명** | 미션 '한 번에 42km 이상 / 1회' 완료 | undefined | Epic |
-| `trail_running:Q4` | **수직의 증명** | 미션 '한 번에 상승고도 1,500m 이상, 최고 도달 고도 1,200m 이상 / 1회' 완료 | undefined | Epic |
-| `trail_running:Q5` | **해뜨기 전의 증명** | 미션 '3주(월~일) 연속 한 주에 3회, 매주 새벽 5시~아침 8시 1회 이상' 완료 | undefined | Epic |
-| `trail_running:Q6` | **이어 달린 산길의 증명** | 미션 '4주(월~일) 안에 3일 연속 1회, 매주 1회 이상' 완료 | undefined | Epic |
-| `trail_running:Q7` | **내리막 뒤의 증명** | 미션 '8주 안에 한 번에 25km 이상, 다음 날 휴식 / 2회' 완료 | undefined | Epic |
-| `trail_running:Q8` | **사철 산길의 증명** | 미션 '서로 다른 두 달에 각각 120km' 완료 | undefined | Epic |
+| `trail_running:Q1` | **오르내린 거리의 증명** | 미션 '2주 안에 80km, 상승고도 1,600m 달리기' 완료 | undefined | Epic |
+| `trail_running:Q2` | **오르막의 증명** | 미션 '8주 안에 한 번에 25km 이상, 상승고도 800m 이상을 2번 달리기' 완료 | undefined | Epic |
+| `trail_running:Q3` | **울트라의 증명** | 미션 '한 번에 42km 이상 달리기' 완료 | undefined | Epic |
+| `trail_running:Q4` | **수직의 증명** | 미션 '한 번에 상승고도 1,500m 이상, 최고 도달 고도 1,200m 이상 달리기' 완료 | undefined | Epic |
+| `trail_running:Q5` | **해뜨기 전의 증명** | 미션 '3주 연속, 한 주에 3번 달리고 매주 새벽 5시~아침 8시에 1번 이상 달리기' 완료 | undefined | Epic |
+| `trail_running:Q6` | **이어 달린 산길의 증명** | 미션 '4주 동안 매주 1번 이상 달리고, 3일 연속 달리는 날을 한 번 만들기' 완료 | undefined | Epic |
+| `trail_running:Q7` | **내리막 뒤의 증명** | 미션 '8주 안에 한 번에 25km 이상 달리고 다음 날 휴식이 있었던 경우 2번' 완료 | undefined | Epic |
+| `trail_running:Q8` | **사철 산길의 증명** | 미션 '서로 다른 두 달에 각각 120km 달리기' 완료 | undefined | Epic |
 
 <details><summary>설명문</summary>
 

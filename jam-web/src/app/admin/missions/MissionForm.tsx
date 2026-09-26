@@ -58,6 +58,7 @@ export const exposureModes = [
 const emptyForm = {
   title: '',
   description: '',
+  conditionText: '',
   mission_type: 'distance' as string,
   reward_badge_ids: [] as string[],
   reward_points: 100,
@@ -84,6 +85,7 @@ function formFromMission(m: MissionRow): typeof emptyForm {
   return {
     title: m.title,
     description: m.description ?? '',
+    conditionText: m.condition_text ?? '',
     mission_type: m.mission_type,
     reward_badge_ids: m.reward_badge_ids ?? [],
     reward_points: m.reward_points ?? 0,
@@ -174,6 +176,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
     const body = {
       title: form.title,
       description: form.description || null,
+      condition_text: form.conditionText.trim() || null,
       mission_type: form.mission_type,
       condition_json: missionConditionPreview,
       reward_badge_ids: form.reward_badge_ids,
@@ -234,6 +237,13 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
           <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             rows={3}
             className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm resize-none" />
+        </div>
+        <div className="col-span-2">
+          <label className="text-xs text-muted-foreground mb-1 block">달성 조건 문장 (선택)</label>
+          <textarea value={form.conditionText} onChange={(e) => setForm((f) => ({ ...f, conditionText: e.target.value }))}
+            rows={2}
+            className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm resize-none" />
+          <p className="text-xs text-muted-foreground mt-1">미션 상세의 달성 조건 카드 첫 줄에 보여요. 비우면 목표 유형에 맞는 기본 문구가 나와요.</p>
         </div>
 
         <div>

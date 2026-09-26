@@ -286,6 +286,7 @@ describe('buildMissionInsertPayload', () => {
       reward_type: null,
       reward_id: null,
       gated_badge_id: null,
+      condition_text: null,
       reward_badge_ids: [],
       visible_rank_count: null,
       max_completions: null,

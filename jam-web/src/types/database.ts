@@ -745,6 +745,8 @@ export interface MissionRow {
   description: string | null
   mission_type: MissionType
   condition_json: MissionCondition
+  /** 티켓 20260927_0026: 달성 조건 카드 첫 줄에 쓰는 직접 쓴 조건 문장. null이면 목표 유형별 기본 문구를 쓴다. */
+  condition_text: string | null
   /** @deprecated Phase13 이후 미사용(legacy 보존) — 보상은 reward_badge_ids + reward_points 사용 */
   reward_type: MissionRewardType | null
   /** @deprecated Phase13 이후 미사용(legacy 보존) */

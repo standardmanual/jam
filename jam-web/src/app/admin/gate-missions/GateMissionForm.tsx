@@ -81,6 +81,7 @@ const emptyRequirement: RequirementForm = { familyKeys: [], minRarity: '', minCo
 const emptyForm = {
   title: '',
   description: '',
+  conditionText: '',
   axisExisting: '__new__',
   axisActivityType: 'walking',
   axisName: '',
@@ -160,6 +161,7 @@ function formFromMission(m: MissionRow): FormState {
   return {
     title: m.title,
     description: m.description ?? '',
+    conditionText: m.condition_text ?? '',
     axisExisting: m.gate_axis ?? '__new__',
     axisActivityType: 'walking',
     axisName: '',
@@ -389,6 +391,7 @@ export default function GateMissionForm({ mission, existingAxes, families, rewar
     const body = {
       title: form.title.trim(),
       description: form.description.trim() || null,
+      condition_text: form.conditionText.trim() || null,
       mission_type: form.mission_type,
       condition_json: { [valueKey]: target, activity_type: form.conditionActivityType },
       reward_badge_ids: form.reward_badge_ids,
@@ -444,6 +447,16 @@ export default function GateMissionForm({ mission, existingAxes, families, rewar
             value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           />
+        </div>
+        <div className="col-span-2">
+          <label className="text-xs text-muted-foreground mb-1 block">달성 조건 문장 (선택)</label>
+          <Textarea
+            rows={2}
+            className="resize-none"
+            value={form.conditionText}
+            onChange={(e) => setForm((f) => ({ ...f, conditionText: e.target.value }))}
+          />
+          <p className="text-xs text-muted-foreground mt-1">미션 상세의 달성 조건 카드 첫 줄에 보여요. 비우면 목표 유형에 맞는 기본 문구가 나와요.</p>
         </div>
 
         {/* 여는 축 */}

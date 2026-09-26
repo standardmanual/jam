@@ -84,6 +84,31 @@ function InfoCard({ children, className = '' }: { children: React.ReactNode; cla
   )
 }
 
+/* ── 달성 조건 카드의 불릿 행 (티켓 20260927_0026) — primary: 조건·활동 종류, muted: 보조 문구 ── */
+function ConditionRow({
+  tone,
+  breakKeep = false,
+  children,
+}: {
+  tone: 'primary' | 'muted'
+  /** 긴 조건 문장이 어절 단위로 접히게 한다 */
+  breakKeep?: boolean
+  children: React.ReactNode
+}) {
+  const muted = tone === 'muted'
+  return (
+    <div className={`flex items-start gap-2 text-[14px] leading-[1.43] ${muted ? 'text-text-secondary' : 'text-text'}`}>
+      <span
+        aria-hidden="true"
+        className={`text-base leading-[1.2] flex-shrink-0 mt-px ${muted ? 'opacity-50' : 'text-[var(--color-primary)]'}`}
+      >
+        •
+      </span>
+      <span className={breakKeep ? 'break-keep' : undefined}>{children}</span>
+    </div>
+  )
+}
+
 /* ── 미션 상태 칩 ── */
 function StatusChip({ isCompleted, participating, locked }: { isCompleted: boolean; participating: boolean; locked: boolean }) {
   // 20260825_028: 잠긴 미션은 오늘카드·딥링크로만 도달하는데, 칩이 없으면 스크롤 최하단에
@@ -135,6 +160,8 @@ export default function MissionDetailClient({
 
   const condition = mission.condition_json as MissionCondition
   const goal = missionGoalText(mission.mission_type, condition)
+  // 20260927_0026: 직접 쓴 조건 문장이 있으면 카드 첫 줄이 그 문장이다(빈 문자열·공백은 없는 것으로 본다)
+  const conditionText = mission.condition_text?.trim() || null
   const progressPct = goal.target > 0 ? Math.min(100, (progressValue / goal.target) * 100) : 0
   const isActive = new Date(mission.starts_at) <= new Date() && (mission.ends_at === null || new Date(mission.ends_at) > new Date())
   const isAchievementType = mission.mission_type === 'checkin' || mission.mission_type === 'item_collect' || mission.mission_type === 'engine_condition'
@@ -229,20 +256,17 @@ export default function MissionDetailClient({
         <InfoCard>
           <SectionLabel>{d.missions.conditionTitle}</SectionLabel>
           <div className="flex flex-col gap-2">
-            <div className="flex items-start gap-2 text-[14px] leading-[1.43] text-text">
-              <span className="text-[var(--color-primary)] text-base leading-[1.2] flex-shrink-0 mt-px">•</span>
-              <span>{goal.label} {goal.target}{goal.unit} 달성</span>
-            </div>
-            {condition.activity_type && (
-              <div className="flex items-start gap-2 text-[14px] leading-[1.43] text-text">
-                <span className="text-[var(--color-primary)] text-base leading-[1.2] flex-shrink-0 mt-px">•</span>
-                <span>{t(d.missions.conditionActivityType, { type: ACTIVITY_TYPE_LABELS[condition.activity_type] ?? condition.activity_type })}</span>
-              </div>
+            {conditionText ? (
+              <ConditionRow tone="primary" breakKeep>{conditionText}</ConditionRow>
+            ) : (
+              <ConditionRow tone="primary">{goal.label} {goal.target}{goal.unit} 달성</ConditionRow>
             )}
-            <div className="flex items-start gap-2 text-[14px] leading-[1.43] text-text-secondary">
-              <span className="text-base leading-[1.2] flex-shrink-0 mt-px opacity-50">•</span>
-              <span>{d.missions.conditionAutoCompleteHint}</span>
-            </div>
+            {condition.activity_type && (
+              <ConditionRow tone="primary">
+                {t(d.missions.conditionActivityType, { type: ACTIVITY_TYPE_LABELS[condition.activity_type] ?? condition.activity_type })}
+              </ConditionRow>
+            )}
+            <ConditionRow tone="muted">{d.missions.conditionAutoCompleteHint}</ConditionRow>
           </div>
         </InfoCard>
 
