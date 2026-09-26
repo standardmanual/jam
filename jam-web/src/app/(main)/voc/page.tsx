@@ -90,7 +90,7 @@ function VocCard({ item }: { item: VocItem }) {
       {item.answer && (
         <div className="mt-[var(--spacing-16)] rounded-[var(--radius-cards)] bg-white/[0.04] p-[var(--spacing-16)] flex flex-col gap-[var(--spacing-8)]">
           <div className="flex items-center gap-[var(--spacing-8)]">
-            <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-4 w-auto" />
+            <Image src="/jam-logo-white.png" alt="JAM!" width={2610} height={925} className="h-4 w-auto" />
             <span className="text-[length:var(--text-caption)] leading-none text-text/60">{d.voc.answerLabel}</span>
             {item.answeredAt && (
               <span className="text-[length:var(--text-caption)] leading-none text-text/40">· {formatDateTime(item.answeredAt)}</span>
