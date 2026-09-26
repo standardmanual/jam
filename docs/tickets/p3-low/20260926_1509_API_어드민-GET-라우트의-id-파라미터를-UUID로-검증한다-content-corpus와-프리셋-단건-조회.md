@@ -50,5 +50,8 @@ related:
 
 ### 주요 의사결정 / 핵심 메모
 
+- 프리셋 POST의 이미지 레이어 `assetUrl` 외부 URL 저장(`presets/route.ts` 재업로드 생략 분기)은 이번에 바꾸지 않기로 결정했다. 어드민 전용이라 악용 가능성이 낮고 호스트 allowlist 기준이 정해지지 않았다.
+- UUID 판정은 `jam-web/src/lib/admin/uuid.ts`의 `isUuid` 한 곳이고 `export-ids.ts`도 이를 쓴다.
+
 ### 잔여 이슈
 -
