@@ -60,7 +60,7 @@ describe('formatPresetLine', () => {
 
 describe('가짜 fetch로 home_feed 목록 출력', () => {
   it('targetType 쿼리를 붙여 호출하고 홈피드 프리셋 id가 든 줄을 만든다', async () => {
-    const fetchImpl = vi.fn(async () => ({
+    const mock = vi.fn(async (_url: string, _init: unknown) => ({
       ok: true,
       status: 200,
       json: async () => ({
@@ -69,13 +69,14 @@ describe('가짜 fetch로 home_feed 목록 출력', () => {
         ],
       }),
     }));
+    const fetchImpl = mock as unknown as typeof fetch;
     const presets = await fetchPresetListFromAdminApi({
       baseUrl: 'https://stage.example.app',
       token: 'tok',
       targetType: 'home_feed',
       fetchImpl,
     });
-    expect(fetchImpl).toHaveBeenCalledWith(
+    expect(mock).toHaveBeenCalledWith(
       'https://stage.example.app/api/admin/asset-generator/presets?targetType=home_feed',
       { headers: { 'x-admin-read-token': 'tok' } }
     );

@@ -146,8 +146,20 @@ code:
   ```
   성공하면 표준 출력에 `{ out, seed, preset, stage: { w, h } }` JSON 한 줄을 낸다. 인자 누락·프리셋 없음·
   글꼴 다운로드 실패 등 어떤 오류든 한국어 메시지로 종료 코드 1로 끝난다(기본 글꼴로 조용히 대체하지 않는다).
-  필요 환경변수(`.env.local`)는 `NEXT_PUBLIC_SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`(기존
-  `jam-web/scripts/recraft/*.js`와 같은 이름).
+  프리셋 조회 경로는 환경변수로 고른다(`.env.local`과 `process.env`를 합쳐 읽고 `process.env`가 우선한다,
+  `jam-web/scripts/asset-generator/presetSource.mjs`의 `pickPresetSource`). ① **어드민 읽기 API**:
+  `ADMIN_API_BASE_URL`·`ADMIN_API_READ_TOKEN`이 둘 다 있으면 이 경로를 쓴다(예약 실행 환경). ② **서비스 롤 키**(로컬 세션):
+  API 변수가 없고 `NEXT_PUBLIC_SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`(기존 `jam-web/scripts/recraft/*.js`와 같은 이름)가
+  둘 다 있으면 DB에서 직접 읽는다. 두 경로 모두 불가하면 없는 변수명을 알리고 종료 코드 1로 끝난다.
+- **프리셋 목록 CLI(티켓 20260926_1209)**: 프리셋 id를 모를 때 대상 유형과 이름으로 찾는다. 읽기 API 경로만 쓰므로
+  `ADMIN_API_BASE_URL`·`ADMIN_API_READ_TOKEN`이 필요하다(서비스 롤 키 경로 없음).
+  ```
+  cd jam-web
+  npx tsx scripts/asset-generator/list-presets.mjs [--target-type badge|mission|collection|home_feed]
+  ```
+  한 줄에 하나씩 `<id> · <이름> · <비율>`을 출력한다(이름의 개행은 공백). `--target-type`을 생략하면 전체 목록이고 허용값 밖이면
+  한국어 메시지로 종료 코드 1이다. 예를 들어 홈피드 카드용 프리셋은 `--target-type home_feed`로 뽑은 줄 중 이름이 `홈피드`인 줄의
+  id를 `render.mjs --preset`에 넘긴다.
 - **리본 원천 그래픽 기본값**: CLI 인자에는 원천 그래픽(브랜드 글자/업로드 이미지) 선택지가 없다 — 어드민 기본값과
   같은 브랜드 글자 'J'로 고정한다(`jam-web/scripts/asset-generator/brandLetters.mjs`). 정지 프레임 위치(애니메이션
   진행도)도 항상 0으로 고정한다(어드민 초기 상태와 동일) — 실렌더 비교 시 어드민에서 원천 그래픽·머리 위치를 바꾸지
