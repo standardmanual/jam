@@ -86,3 +86,7 @@ specs:
 - `presets/[id]/route.ts` DELETE(45-68행)는 이번 UUID 검증 대상이 아니다. `isSafePresetPathSegment`(`^[A-Za-z0-9_-]{1,100}$`)만 통과하면 `.eq('id', id)`가 실행돼, UUID가 아닌 값(`abc`)이 오면 DB의 uuid 파싱 오류 원문이 `error.message`로 500 응답에 실린다(59·64·67행). GET에서 막은 것과 같은 계열이다. 고칠 때 DELETE에도 `isUuid` 검사를 넣고 이 경로의 테스트를 함께 추가한다.
 - 아직 고정 문장으로 바뀌지 않은 곳: `presets/route.ts` 59·176·192행, `itembooks/[id]/route.ts` 62·98·141행, `today/[id]/route.ts` 46·57행.
 
+### 진행 상황 (2026-09-26, 티켓 20260926_1603)
+- export·ids 라우트 15개(오류 17곳)는 고정 문장 + `console.error`로 바꿨다(병합 완료).
+- **남은 곳(게이트 발견물)**: `jam-web/src/lib/admin/drop-exclusion-list.ts:113`이 `throw new Error(error.message)`로 DB 원문을 던진다. 지금은 `drop-policy/exclusions/ids`의 `catch`가 막지만 다른 호출부가 생기면 노출된다(`[주의]`). `item-badges/export/route.ts:50-64`의 기존 고정 문장은 어미가 「~하지 못했습니다」라 이번 형식(「~하지 못했어요」)과 다르다(`[참고]`).
+
