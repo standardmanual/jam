@@ -2,9 +2,9 @@
 id: "20260926_1208"
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-26
-closed:
+closed: 2026-09-26
 parent: "20260926_1202"
 specs:
   - docs/specs/prd/asset-generator/PRD.md
@@ -56,27 +56,51 @@ specs:
 - `scripts/verify.sh`가 통과한다.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+- `render.mjs`에 `--subtext`를 추가했다. 프리셋의 텍스트 레이어를 배열 순서로 채운다: 1번째 ← `--text`(제목, 홈피드 프리셋의 「피드 제목」), 2번째 ← `--subtext`(설명, 「간단한 설명」). 채우기는 순수 함수 `fillTextLayers.mjs`로 분리했다.
+- 레이어 수와 인자가 어긋나면 종료 코드 1이다(2개인데 `--subtext` 없음, 0~1개인데 있음, 3개 이상). 레이어 0개 프리셋에 `--text`만 오면 지금처럼 값을 무시한다. 출력 JSON 형식은 그대로다.
+- 홈피드 등록 묶음에 선택 필드 `image.subtext`를 추가해 검증하고 등록 기록 JSON·요약에도 남긴다. 배지·미션 묶음은 그대로다.
+- PRD §8에 명령 예시·순서 규칙·오류 처리·「홈피드 프리셋 텍스트 레이어 순서를 제목 → 설명으로 유지」·글자 수 실측 표를 추가했다.
+
+### 글자 수 가이드 (1:1, 1280×1280, Noto Sans KR 600 실렌더 실측)
+- 제목: 공백 포함 **11자 이하, 항상 1줄**(15자는 잘림, 줄바꿈으로 2줄이면 설명과 겹쳐 금지).
+- 설명: 공백 포함 **22자 이하 1줄**(32자는 잘림). 부득이하면 2줄(줄당 15자 이하).
 
 ### 변경된 파일
 ```
--
+신규: jam-web/scripts/asset-generator/fillTextLayers.mjs
+수정: jam-web/scripts/asset-generator/renderArgs.mjs, render.mjs, registerHomeFeedBundle.mjs, registerHomeFeedRecord.mjs
+테스트: __tests__/fillTextLayers.test.ts(신규), renderArgs·registerHomeFeedBundle·registerHomeFeedRecord 테스트 갱신
+문서: docs/specs/prd/asset-generator/PRD.md §8, HOME_FEED_REGISTRATION_BUNDLE.md §3.4, .claude/agents/jam-marketer.md ⑧ 명령 예시
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `scripts/verify.sh` 통과, CI verify 성공(run 36215345345). 게이트(민지) PASS.
+- [x] 자동 테스트: `fillTextLayers` 7건(2개 순서, 1개 회귀, 2개인데 subtext 없음, 1개인데 있음, 3개 이상, 0개 무시, 0개인데 있음), `renderArgs`의 subtext 파싱, 묶음 `image.subtext`(없음·문자열 통과, 비문자열 거절), 기록 JSON·요약.
+- [x] 머지 뒤 실렌더 실측(2026-09-26, 읽기 API 경로, 로컬 개발 서버 + 임시 테스트 토큰): `--text "가을, 그루터기 살롱" --subtext "숲속 갱단의 장물 이야기"`로 `홈피드` 프리셋을 렌더하면 큰 글씨 자리에 제목, 작은 글씨 자리에 설명이 들어간다(잘림·겹침 없음, 사용자에게 이미지 전달). `--subtext` 없이 호출하면 종료 코드 1과 안내 문구.
 
-### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
+### UX Writing 검증
 - 사용자 노출 텍스트 없음 (내부 스크립트)
 
 ### 배포 정보
-- 배포일: 
-- 환경: 
-- 커밋: 
+- 배포일: 2026-09-26
+- 환경: staging(머지 `a6bf6226`, 충돌 정리 `d6447b9a`)
+- 커밋: `76588d25`, `7d34c8b6`
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1 | 2 | 149,645 | 46,795 / 5,606 | 14분 49초 | 85 |
+| 합계 | 2 | 149,645 | 46,795 / 5,606 | 14분 49초 | 85 |
 
 ### 주요 의사결정 / 핵심 메모
+- **계획 반환 면제 부여**: 구현 계획이 파일 단위로 확정돼 있고 사용자가 홈피드 프리셋 텍스트 레이어 2개 요구를 직접 지시했다(2026-09-26). 신규·테스트 줄 수로 100줄을 넘을 것이 예상돼 첫 호출부터 면제했다(1204의 왕복 낭비 재발 방지).
+- 프리셋 JSON에는 레이어 이름 필드가 없어(`TextLayerConfig`에 `name` 없음) 배열 순서로 구분한다. 어드민에서 이 프리셋을 다시 저장할 때 순서를 바꾸면 두 문구가 뒤바뀌므로 순서 유지를 PRD에 명시했다.
+- `registerHomeFeedRecord.mjs`를 티켓 관련 파일 목록 밖에서 고쳤다(재현 정보인 `subtext`를 기록에 남기려는 것, 민지가 범위 이탈이 아니라고 판단).
+- 1209와 PRD §8이 충돌해 머지 때 1209의 환경변수 서술과 1208의 텍스트 레이어 항목을 모두 살려 정리했다.
 
 ### 잔여 이슈
--
+- 설명 글자 수 한도는 홈피드 프리셋(Noto Sans KR 600, 크기 5%) 기준이다. 프리셋을 어드민에서 바꾸면 다시 실측한다.
