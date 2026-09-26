@@ -61,8 +61,25 @@ try {
   git(['branch', 'claude/jamwork-unmerged', unmergedHead], main)
   git(['worktree', 'remove', '--force', unmergedWt], main)
 
+  // (e) 작업 커밋이 쌓인 채 워크트리만 제거된 worktree-wf_*: origin 어디에도 없고 제목도
+  //     staging 이력에 없다 → 보존되고 이유가 출력돼야 한다 (티켓 20260922_1432).
+  // (f) 조상 관계만 끊긴 worktree-wf_*: 제목이 staging 이력('init')에 그대로 있다 → 지워져야 한다.
+  const commitOnBranch = (branch, message) => {
+    const wt = join(root, `wt-src-${branch}`)
+    git(['worktree', 'add', '-q', '-b', branch, wt, 'HEAD'], main)
+    git(['-c', 'user.name=x', '-c', 'user.email=dev@jam.internal', 'commit', '-q', '--allow-empty', '-m', message], wt)
+    git(['worktree', 'remove', '--force', wt], main)
+  }
+  commitOnBranch('worktree-wf_work', 'wip: 임시 커밋')
+  commitOnBranch('worktree-wf_rewritten', 'init')
+
   const r = runCleanup(main)
   assert.equal(r.status, 0, `cleanup 실패:\n${r.stdout}${r.stderr}`)
+
+  assert.ok(branchExists(main, 'worktree-wf_work'), '작업 커밋이 있는 worktree-wf_*는 보존돼야 한다')
+  assert.match(r.stdout, /^보존\(작업 커밋 있음\): worktree-wf_work wip: 임시 커밋$/m)
+  assert.ok(!branchExists(main, 'worktree-wf_rewritten'), '제목이 staging 이력에 있는 worktree-wf_*는 지워져야 한다')
+  assert.ok(!/^제거.*worktree-wf_work/m.test(r.stdout), '보존한 브랜치가 제거 줄로 출력되면 안 된다')
 
   assert.ok(branchExists(main, 'worktree-wf_connected'), '연결된 worktree-wf_*는 보존돼야 한다')
   assert.ok(!branchExists(main, 'worktree-wf_disconnected'), '연결 안 된 worktree-wf_*는 지워져야 한다')
