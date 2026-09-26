@@ -95,3 +95,8 @@ specs:
 - **남은 곳(게이트 발견물)**: `jam-web/src/lib/admin/user-actions.ts`의 `hardDeleteUser`가 `userError.message` 등 DB 원문을 `error`로 반환하고 `users/[id]`가 그대로 응답에 싣는다(37·47·57·58·75·87·94행, `[주의]`). `bulk/server.ts`의 `deleteByIds`는 `reasonFor` 기본값으로 `singleError.message`를 건너뛴 항목의 사유에 실어 응답한다(`[참고]`, 어드민에게 「참조 중」 같은 이유를 보여 주는 용도라 별도 판단이 필요하다).
 - 그 밖의 어드민 라우트(아래 「배경」에 적지 않은 곳: `poi/[id]`, `tribes`, `recipes`, `badges/bulk` 등)의 `error.message` 응답 노출도 남아 있다.
 
+### 배포 전 점검에서 재확인 (2026-09-26, 민지 모드 ②·③, 프로덕션 5ab1e2db 배포)
+- 아직 원문을 응답에 싣는 라우트(모두 어드민 인증 뒤): `itembooks/route.ts:11,51`, `itembooks/search/route.ts:28`, `today/route.ts:15,39`, `today/search/route.ts:29`, `today/bulk/route.ts:33`, `users/[id]/badge-diagnosis/route.ts:52`, `users/[id]/reset/route.ts:26`, `users/[id]/admin-role/route.ts:31,36`, `poi/[id]/route.ts:65,121,135,188`, `poi/review/bulk/route.ts:47`(`${update.error}`), `abusing/bans/bulk/route.ts:47`, `abusing/bans/ids/route.ts:17`, `abusing/poi-blocks/bulk/route.ts:43`, `abusing/poi-blocks/ids/route.ts:14`, `activity-badge-image/generate/route.ts:105`, `asset-generator/apply/route.ts:193`, `badge-image/generate/route.ts:134`, `lib/admin/applyGeneratedImage.ts:79`.
+- `drop-policy/route.ts:65-70`은 주석에 「운영자가 원인을 특정하게 노출한다」는 의도가 적혀 있어 의도된 예외로 보인다. 정리할 때 유지할지 정한다.
+- 이번 정리에서 새로 넣은 `console.error(…, error)`가 오류 객체 전체를 남겨 Postgrest `details`에 행 값(예: 유니크 위반의 `Key (col)=(값)`)이 실릴 수 있다(`[참고]`, 확신도 낮음). 로그 열람 권한 범위만 인지해 둔다.
+
