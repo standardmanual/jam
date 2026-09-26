@@ -77,7 +77,7 @@ export type ImageLoader = (input: ImageLoaderInput) => Promise<ImageSourceLike>;
  * 텍스트 레이어 글꼴 로드 함수의 인터페이스(PRD §4.3, 티켓 20260924_2158). 실행 뒤에는 해당
  * 글꼴로 그릴 준비가 끝나 있어야 한다(브라우저: 다운로드·파싱 완료, 서버: 폰트 파일 등록).
  * 브라우저 구현은 어드민 화면(`assetGeneratorHelpers.ts`)이
- * `src/lib/admin/shaderLab/googleFonts.ts`의 `ensureGoogleFontLoaded`·`waitForGoogleFontLoaded`를
+ * `src/lib/admin/googleFonts.ts`의 `ensureGoogleFontLoaded`·`waitForGoogleFontLoaded`를
  * 가지고 만든다. 서버 구현(하위 티켓 2201)은 이 티켓에 없다.
  */
 export type FontLoader = (font: { family: string; weight: number }) => Promise<void>;

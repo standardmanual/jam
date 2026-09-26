@@ -26,7 +26,7 @@ import { Input } from '@/components/admin/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/admin/ui/popover'
 import { Tabs, TabsList, TabsTrigger } from '@/components/admin/ui/tabs'
 import { Textarea } from '@/components/admin/ui/textarea'
-import { searchGoogleFonts } from '@/lib/admin/shaderLab/googleFonts'
+import { searchGoogleFonts } from '@/lib/admin/googleFonts'
 import type { TextLayerConfig } from '@/lib/asset-generator'
 import SliderRow from './SliderRow'
 import {
