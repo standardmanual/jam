@@ -2,9 +2,9 @@
 id: "20260926_1442"
 category: API
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-26
-closed:
+closed: 2026-09-26
 related:
   - "20260926_0201"
   - "20260926_0202"
@@ -44,23 +44,33 @@ related:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 하위 티켓 세 건(20260926_0201, 20260926_0202, 20260926_0203)을 한 번의 구현·게이트·병합으로 처리했고 세 건도 함께 CLOSED로 바꿨다. 세부는 각 하위 티켓의 완료 기록에 있다.
 
 ### 변경된 파일
 ```
--
+- jam-web/src/lib/admin/presetStoragePath.ts (신규), imageSourceReset.ts
+- jam-web/src/app/api/admin/asset-generator/presets/route.ts, presets/[id]/route.ts
+- jam-web/src/app/api/admin/badges/[id]/route.ts, missions/[id]/route.ts
+- 테스트 4개: presets/__tests__/route.test.ts, presets/[id]/__tests__/route.test.ts, apply/__tests__/route.test.ts, lib/admin/__tests__/imageSourceReset.test.ts
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `scripts/verify.sh` 전 항목 통과, CI `verify` 성공(실행 36221920303, 커밋 a366b213)
+- [x] 민지 게이트 **PASS**. 점검 12항목 중 1·2·3·4·5·9·10·11 통과, 나머지 해당 없음. 검토 범위 0e21bc0a..a366b213
+
+### 배포 정보
+- 배포일: 2026-09-26 (staging 병합·push). 프로덕션은 `/jam-ship`으로 별도 진행
+- 커밋: 구현 3개(0203, 0202, 0201 순), 병합 d64f10dd (리뷰 브랜치 `claude/jamwork-20260926_1442-asset-generator-api`)
 
 ### 실행 지표
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1차 | 아현·민지 (묶음 3건, 게이트 PASS) | 141,216 | 112,167 / 29,644 | 13.8분 | 57 |
+| 합계 | 2 | 141,216 | 112,167 / 29,644 | 13.8분 | 57 |
 
 ### 주요 의사결정 / 핵심 메모
-
-### 잔여 이슈
--
+- **허용 id 형식을 `[A-Za-z0-9_-]{1,100}`로 정했다**(하위 티켓 0201의 카리나 추천안). 병합 전에 이 규칙이 기존 데이터를 막지 않는지 DB를 읽기 전용으로 확인했다(프리셋 1건, UUID id, 이미지 레이어 0개).
+- **0203은 "무시"가 아니라 400 거절을 택했다.** 아현이 근거를 코드 주석에 남겼고 게이트가 인정했다.
+- **계획 반환 면제.** 파일 약 8개·예상 240줄이라 티켓에 파일 단위 계획을 적고 첫 호출부터 면제했다. 실제 diff는 375줄(테스트 비중이 큼, 예상의 1.6배)이었다.
+- **범위 밖 발견물(민지 [참고])** → P3 티켓 생성: `itembooks`·`today` 라우트의 `image_url` 검사 부재, 프리셋 `layers`의 비객체 원소 500, `apply`의 컬럼 갱신 실패 시 orphan 정리.
