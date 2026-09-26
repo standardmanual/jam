@@ -14,6 +14,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeType } from '@/types/database'
 import { computeBookCompletion } from './completion-basis'
+import { buildFilledByBook } from './filled-by-book'
 
 export interface CompletableItemBook {
   id: string
@@ -119,14 +120,24 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
     return []
   }
 
-  /** 이미 채워진 칸 = 슬롯에 들어간 배지 ∪ 획득 이력이 있는 POI 배지 */
-  const filledBadgeIds = new Set<string>()
-  for (const s of (slotsRes.data ?? []) as { item_book_id: string; badge_id: string }[]) {
-    filledBadgeIds.add(s.badge_id)
+  /**
+   * 이미 채워진 칸 = 그 컬렉션 슬롯에 들어간 배지 ∪ 그 컬렉션 소속 체크인 배지 중 획득 이력이 있는 것.
+   * checker.ts와 같은 순수 함수로 북별로 구성한다(티켓 20260926_1344).
+   */
+  const checkinBadgesByBook = new Map<string, string[]>()
+  for (const b of bookBadges) {
+    if (b.type !== 'checkin' || !b.item_book_id) continue
+    const list = checkinBadgesByBook.get(b.item_book_id) ?? []
+    list.push(b.id)
+    checkinBadgesByBook.set(b.item_book_id, list)
   }
-  for (const e of (poiEarnsRes.data ?? []) as { badge_id: string }[]) {
-    filledBadgeIds.add(e.badge_id)
-  }
+  const filledByBook = buildFilledByBook({
+    slots: (slotsRes.data ?? []) as { item_book_id: string; badge_id: string }[],
+    checkinBadgesByBook,
+    earnedCheckinBadgeIds: new Set(
+      ((poiEarnsRes.data ?? []) as { badge_id: string }[]).map((e) => e.badge_id)
+    ),
+  })
 
   // 미장착 보유 아이템 배지 — 드랍해서 넘긴 것(dropped_at)은 더 이상 내 소유가 아니다
   const inventoryId = (inventoryRes.data as { id: string } | null)?.id ?? null
@@ -149,8 +160,9 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
     }
   }
 
-  const completionByBook = computeBookCompletion(bookBadges, filledBadgeIds, {
+  const completionByBook = computeBookCompletion(bookBadges, new Set<string>(), {
     types: ['item', 'checkin'],
+    filledByBook,
   })
 
   const result: CompletableItemBook[] = []
@@ -159,7 +171,8 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
     const badgeIds = completionByBook.get(book.id)?.denomIds ?? []
     if (badgeIds.length === 0) continue // 배지 없는 북은 완성 불가
 
-    const remaining = badgeIds.filter((id) => !filledBadgeIds.has(id))
+    const filledInBook = filledByBook.get(book.id)
+    const remaining = badgeIds.filter((id) => !filledInBook?.has(id))
     // 잔여 칸이 없으면 이미 완성 상태 — #11의 대상이 아니다
     if (remaining.length === 0) continue
 
