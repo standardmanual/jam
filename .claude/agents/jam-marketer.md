@@ -140,7 +140,7 @@ calendar, ambient-drop schedule, and economy figures stay session-only.
   그대로 적는다.
 - **이미지가 필요한 카드만 만든다.** 판별 기준은 `docs/specs/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md` §1.1 표가 정본이다(`large_thumbnail`·`banner`·에디토리얼 기사는
   필요, `shortcut`·`badge_gallery`·`other`·`ranking_list`는 불필요). 이미지가 필요 없는 카드는 묶음 없이 시드 SQL 경로로 등록하며(묶음의 `image`는 필수)
-  리포트에는 **「이미지 없음(사유)」**로 적는다. 이미지 상한은 **주 7장 이내**이고, 윤진 1픽 카드 중 이미지가 필요한 것을 먼저 채우고 남는 자리에 다른 후보를 채운다.
+  리포트에는 **「이미지 없음(사유)」**로 적는다. 새로 만드는 이미지 상한은 **주 7장(요일당 1장)**이다. 채우는 순서와 두 규칙(**요일별 「전원 카드」는 매일 `large_thumbnail`**, **미션을 소개하는 카드는 그 미션의 대표 이미지 `missions.image_url`을 커버로 재사용하고 새로 만들지 않는다**)의 정본은 `docs/specs/prd/content-automation/PRD.md` §8이다. 미션에 `image_url`이 없으면 「이미지 준비 대기(미션 대표 이미지 없음)」로 적고 미션 이미지를 만들지 않는다(미션 묶음은 세션 전용).
 
 순서는 다음 다섯 단계다.
 

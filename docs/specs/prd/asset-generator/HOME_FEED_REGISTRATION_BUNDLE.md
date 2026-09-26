@@ -57,6 +57,7 @@ code:
 | `badge_gallery`·`other`·`ranking_list` | 쓰지 않는다 | `TodayCardStack.tsx`에서 이 셋의 카드 컴포넌트는 `resolveCover`·`cover_image_url`을 부르지 않는다 |
 
 - 이미지가 필요 없는 카드는 묶음 없이 `content-automation/PRD.md` §8-2의 시드 SQL 경로로 등록한다. 주간 리포트 표에는 「이미지 없음(사유)」로 적는다.
+- **요일별 큰 카드·미션 카드 규칙(2026-09-26, PRD §8이 정본)**: 「전원 카드」는 매일 `large_thumbnail`이라 이미지가 필요하다. 미션을 소개하는 카드는 `missions.image_url`을 커버로 재사용하므로 묶음을 만들지 않는다(묶음의 `image`는 새로 만든 이미지 전용).
 - 이미지가 필요한데 만들 수 없었던 카드는 「이미지 준비 대기(사유)」다(임의 색·자리표시 이미지로 채우지 않는다).
 
 ## 2. 묶음 폴더
