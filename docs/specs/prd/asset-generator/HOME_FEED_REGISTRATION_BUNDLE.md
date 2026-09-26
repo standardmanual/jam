@@ -274,6 +274,24 @@ npx tsx scripts/asset-generator/register-home-feed-card.mjs --bundle <bundle.jso
 npx tsx scripts/asset-generator/register-home-feed-card.mjs --undo <registration-record.json 절대경로> [--dry-run]
 ```
 
+### 카드 한 장 원샷(`make-home-feed-card.mjs`)과 대비 계산(`contrast.mjs`)
+
+묶음 폴더를 만드는 「렌더 → `bundle.json` 작성 → `--dry-run` 검증」을 명령 하나로 한다(티켓 20260926_1544). 인자 규칙·묶음 기본값
+(`bundle_id`=폴더 이름, `author`=`윤진`, `created_at`=지금, 시드=묶음 ID에서 정함)은 `makeHomeFeedCardArgs.mjs` 상단 주석이 정본이다.
+`color_rationale_link`·`world_review`는 기본값이 없어 `--meta`로 직접 준다.
+
+```
+cd jam-web
+npx tsx scripts/asset-generator/make-home-feed-card.mjs --preset <프리셋 id> --bg "#8a5a2e" --end "#3d2812" --text "제목" [--subtext "설명"] \
+  --card '<card JSON>' --meta '<메타 JSON>' --out-dir <묶음 폴더 절대경로> [--seed <정수>]
+node scripts/asset-generator/contrast.mjs --bg "#8a5a2e" --end "#3d2812"   # 흰 글자 대비: 큰 글자 3:1·일반 글자 4.5:1
+```
+
+- 표준 출력은 한 줄 JSON이다(`ok`·이미지 경로와 크기·시드·`dryRun.{result, errors, skipped, webp, note}`). 검증 실패면 `ok: false`, 종료 코드 1이다.
+- 이 스크립트의 `--dry-run`은 **서비스 롤 키 없이 형식만 검증한다** — DB 읽기 검사는 항상 «건너뜀»이고 `dryRun.skipped`에 나온다. 컨펌 근거로 쓰지 않고,
+  등록 직전에 아래 `register-home-feed-card.mjs --dry-run`을 서비스 키가 있는 환경에서 다시 돌린다.
+- 이미지 렌더는 `render.mjs`와 같은 함수(`renderCard.mjs`)라 같은 인자·시드면 같은 이미지가 나온다.
+
 ### `--dry-run`
 
 묶음을 검증하고 컨펌 자료를 한국어로 출력한다: 묶음(작성자·작성 시각 KST·컬러 근거), 세계관 검수(있음/없음·윈터 검수 여부·사유),
