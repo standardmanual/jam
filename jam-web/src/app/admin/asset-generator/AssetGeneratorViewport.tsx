@@ -13,9 +13,9 @@
  * 하나씩 그리기 위해 `drawAtHead`·`setExporting` 등을 ref로 끌어올려 쓴다.
  *
  * 이미지 레이어(티켓 20260924_2157): 업로드 원본은 assetUrl(blob URL)별로 한 번만 불러와
- * `imageAssets`에 캔버스로 캐싱한다 — 원천 그래픽 로드와 같은 `loadImageFromBlob`·
- * `normalizeSvgMarkup`을 재사용한다(알파 bbox로 자르지는 않는다 — 스탬프가 아니라 위치·크기를
- * 그대로 쓰는 오버레이라서). 리본 레이어 다음, 배열 역순(마지막 인덱스부터)으로 그려
+ * `imageAssets`에 캔버스로 캐싱한다 — 원본 해상도를 줄이지 않는 전용 로더
+ * (`loadImageLayerFromBlob`)를 쓰고 `normalizeSvgMarkup`을 재사용한다(알파 bbox로 자르지도
+ * 않는다 — 스탬프가 아니라 위치·크기를 그대로 쓰는 오버레이라서). 리본 레이어 다음, 배열 역순(마지막 인덱스부터)으로 그려
  * 인덱스 0이 가장 위에 오게 한다(`LayerSidebar` 표시 순서와 동일).
  *
  * 캐시 정리(재작업, 20260924_2157): `overlayLayers`가 바뀔 때마다 더 이상 어떤 레이어도
@@ -156,10 +156,13 @@ function createRawCanvas(width: number, height: number): HTMLCanvasElement {
   return canvas
 }
 
+/** 크기 속성이 없는 SVG를 이미지 레이어로 읽을 때 긴 변 픽셀 수 */
+const IMAGE_LAYER_SVG_FALLBACK_LONG_SIDE = 2048
+
 const makeCanvas: CanvasFactory = (width, height) => toCanvasLike(createRawCanvas(width, height))
 
 // xmlns가 없는 SVG는 <img>로 읽히지 않고, 크기 속성이 없으면 비율이 틀어지므로 보정한다(원본 normalizeSvg, 205줄)
-function normalizeSvgMarkup(text: string): string {
+function normalizeSvgMarkup(text: string, fallbackLongSide = 512): string {
   let normalized = text
   if (!/<svg[^>]*\sxmlns\s*=/i.test(normalized)) {
     normalized = normalized.replace(/<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"')
@@ -182,7 +185,7 @@ function normalizeSvgMarkup(text: string): string {
         viewBox[2] > 0 &&
         viewBox[3] > 0
       ) {
-        const scale = 512 / Math.max(viewBox[2], viewBox[3])
+        const scale = fallbackLongSide / Math.max(viewBox[2], viewBox[3])
         root.setAttribute('width', String(viewBox[2] * scale))
         root.setAttribute('height', String(viewBox[3] * scale))
       }
@@ -250,16 +253,40 @@ function loadImageFromBlob(blob: Blob, isSvg: boolean): Promise<HTMLCanvasElemen
   })
 }
 
-/** assetUrl(blob URL 등)을 불러와 그리기용 캔버스로 만든다. 원천 그래픽 로드(ribbon)와 같은
- * 정규화 경로를 쓰되, 스탬프가 아니므로 알파 bbox로 자르지는 않는다. */
+/** 이미지 레이어 원본을 원본 해상도 그대로 캔버스로 읽는다(티켓 20260926_1741). PNG는 원본
+ * 크기 그대로, SVG는 브라우저가 읽은 원본 크기(크기 속성이 없으면 `normalizeSvgMarkup`이 긴 변
+ * 2048px로 맞춘 크기)로 래스터화한다. 리본 스탬프용 `loadImageFromBlob`은 긴 변을 512px로 줄여
+ * 원본보다 크게 그리면 흐려지므로 이미지 레이어에는 쓰지 않는다. */
+function loadImageLayerFromBlob(blob: Blob): Promise<HTMLCanvasElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const iw = img.naturalWidth || IMAGE_LAYER_SVG_FALLBACK_LONG_SIDE
+      const ih = img.naturalHeight || IMAGE_LAYER_SVG_FALLBACK_LONG_SIDE
+      const canvas = createRawCanvas(iw, ih)
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+      resolve(canvas)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('이미지로 읽지 못했어요. PNG 또는 SVG 파일인지 확인해 주세요.'))
+    }
+    img.src = url
+  })
+}
+
+/** assetUrl(blob URL 등)을 불러와 그리기용 캔버스로 만든다. 스탬프가 아니므로 알파 bbox로
+ * 자르지 않고 해상도도 줄이지 않는다. */
 async function loadImageLayerAsset(url: string): Promise<HTMLCanvasElement> {
   const response = await fetch(url)
   const blob = await response.blob()
   const isSvg = blob.type === 'image/svg+xml' || blob.type === 'image/svg'
   const normalized = isSvg
-    ? new Blob([normalizeSvgMarkup(await blob.text())], { type: 'image/svg+xml' })
+    ? new Blob([normalizeSvgMarkup(await blob.text(), IMAGE_LAYER_SVG_FALLBACK_LONG_SIDE)], { type: 'image/svg+xml' })
     : blob
-  return loadImageFromBlob(normalized, isSvg)
+  return loadImageLayerFromBlob(normalized)
 }
 
 /** 리본 레이어 다음에 오버레이 레이어(이미지·텍스트)를 그린다. 배열 역순(마지막 인덱스부터)
@@ -284,12 +311,12 @@ function drawOverlayLayersOnto(
         xPct: overlayLayer.xPct,
         yPct: overlayLayer.yPct,
         widthPct: overlayLayer.widthPct,
-        heightPct: overlayLayer.heightPct,
         rotationDeg: overlayLayer.rotationDeg,
         opacityPct: overlayLayer.opacityPct,
         stageWidth,
         stageHeight,
-      })
+        overlayColor: overlayLayer.overlayEnabled ? overlayLayer.overlayColor : undefined,
+      }, makeCanvas)
     } else {
       drawTextLayer(ctx, {
         content: overlayLayer.content,

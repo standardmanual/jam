@@ -8,7 +8,13 @@
  * 확인은 병합 후 실렌더로 넘긴다.
  */
 import { describe, expect, it } from 'vitest';
-import { drawImageLayer, drawTextLayer, type Canvas2DContextLike, type ImageSourceLike } from '../render';
+import {
+  drawImageLayer,
+  drawTextLayer,
+  type Canvas2DContextLike,
+  type CanvasFactory,
+  type ImageSourceLike,
+} from '../render';
 
 interface RecordedCall {
   setTransform: [number, number, number, number, number, number][];
@@ -53,7 +59,6 @@ describe('drawImageLayer (PRD §4.2)', () => {
       xPct: 50,
       yPct: 25,
       widthPct: 40,
-      heightPct: 20,
       rotationDeg: 0,
       opacityPct: 100,
       stageWidth: 1000,
@@ -78,7 +83,6 @@ describe('drawImageLayer (PRD §4.2)', () => {
       xPct: 0,
       yPct: 0,
       widthPct: 10,
-      heightPct: 10,
       rotationDeg: 90,
       opacityPct: 100,
       stageWidth: 1000,
@@ -99,7 +103,6 @@ describe('drawImageLayer (PRD §4.2)', () => {
       xPct: 50,
       yPct: 50,
       widthPct: 10,
-      heightPct: 10,
       rotationDeg: 0,
       opacityPct: 40,
       stageWidth: 500,
@@ -115,7 +118,6 @@ describe('drawImageLayer (PRD §4.2)', () => {
       xPct: 50,
       yPct: 50,
       widthPct: 10,
-      heightPct: 10,
       rotationDeg: 0,
       opacityPct: 150,
       stageWidth: 500,
@@ -125,7 +127,7 @@ describe('drawImageLayer (PRD §4.2)', () => {
   });
 
   it('스테이지 비율이 바뀌어도 같은 %값이면 상대 위치·크기 비율이 유지된다', () => {
-    const input = { xPct: 30, yPct: 70, widthPct: 25, heightPct: 25, rotationDeg: 0, opacityPct: 100 };
+    const input = { xPct: 30, yPct: 70, widthPct: 25, rotationDeg: 0, opacityPct: 100 };
 
     const first = createMockContext();
     drawImageLayer(first.ctx, { image, ...input, stageWidth: 1000, stageHeight: 1000 });
@@ -145,6 +147,102 @@ describe('drawImageLayer (PRD §4.2)', () => {
     expect(dh2).toBe(dh1 * 2);
     expect(dx2).toBe(dx1 * 2);
     expect(dy2).toBe(dy1 * 2);
+  });
+  it('세로가 긴 원본도 원본 비율을 유지해 dh를 계산한다(찌그러지지 않는다)', () => {
+    const { ctx, calls } = createMockContext();
+    const tall: ImageSourceLike = { width: 100, height: 300 };
+    drawImageLayer(ctx, {
+      image: tall,
+      xPct: 50,
+      yPct: 50,
+      widthPct: 10,
+      rotationDeg: 0,
+      opacityPct: 100,
+      stageWidth: 1000,
+      stageHeight: 1000,
+    });
+    // dw=10%*1000=100, dh=100*300/100=300
+    expect(calls.drawImage[0]).toEqual([tall, -50, -150, 100, 300]);
+  });
+
+  it('원본 크기가 0이면 그리지 않는다', () => {
+    const { ctx, calls } = createMockContext();
+    drawImageLayer(ctx, {
+      image: { width: 0, height: 0 },
+      xPct: 50,
+      yPct: 50,
+      widthPct: 10,
+      rotationDeg: 0,
+      opacityPct: 100,
+      stageWidth: 500,
+      stageHeight: 500,
+    });
+    expect(calls.drawImage).toHaveLength(0);
+  });
+
+  describe('컬러 오버레이', () => {
+    function createTintFactory() {
+      const log: string[] = [];
+      const created: { width: number; height: number }[] = [];
+      const factory: CanvasFactory = (width, height) => {
+        created.push({ width, height });
+        const tctx = {
+          drawImage: (img: ImageSourceLike, x: number, y: number) => {
+            log.push(`drawImage:${img.width}x${img.height}@${x},${y}`);
+          },
+          fillRect: (x: number, y: number, w: number, h: number) => {
+            log.push(`fillRect:${x},${y},${w},${h}`);
+          },
+          set fillStyle(v: string) {
+            log.push(`fillStyle:${v}`);
+          },
+          set globalCompositeOperation(v: string) {
+            log.push(`composite:${v}`);
+          },
+        } as unknown as Canvas2DContextLike;
+        return { width, height, getContext: () => tctx };
+      };
+      return { factory, log, created };
+    }
+
+    const base = {
+      image,
+      xPct: 50,
+      yPct: 50,
+      widthPct: 40,
+      rotationDeg: 0,
+      opacityPct: 60,
+      stageWidth: 1000,
+      stageHeight: 800,
+    };
+
+    it('overlayColor가 있으면 원본 크기 임시 캔버스에 이미지를 그리고 source-in으로 색을 채운 뒤 그 캔버스를 그린다', () => {
+      const { ctx, calls } = createMockContext();
+      const { factory, log, created } = createTintFactory();
+      drawImageLayer(ctx, { ...base, overlayColor: '#ff0000' }, factory);
+
+      expect(created).toEqual([{ width: 200, height: 100 }]);
+      expect(log).toEqual(['drawImage:200x100@0,0', 'composite:source-in', 'fillStyle:#ff0000', 'fillRect:0,0,200,100']);
+      const [drawn, dx, dy, dw, dh] = calls.drawImage[0] as [ImageSourceLike, number, number, number, number];
+      expect(drawn).not.toBe(image);
+      expect([dx, dy, dw, dh]).toEqual([-160, -80, 320, 160]);
+      // 불투명도는 색을 입힌 결과를 그릴 때 적용된다
+      expect(calls.globalAlphaHistory).toContain(0.6);
+    });
+
+    it('overlayColor가 없으면 임시 캔버스를 만들지 않고 원본 이미지를 그린다', () => {
+      const { ctx, calls } = createMockContext();
+      const { factory, created } = createTintFactory();
+      drawImageLayer(ctx, base, factory);
+      expect(created).toHaveLength(0);
+      expect(calls.drawImage[0][0]).toBe(image);
+    });
+
+    it('캔버스 생성 함수가 없으면 색을 입히지 않고 원본 이미지를 그린다', () => {
+      const { ctx, calls } = createMockContext();
+      drawImageLayer(ctx, { ...base, overlayColor: '#ff0000' });
+      expect(calls.drawImage[0][0]).toBe(image);
+    });
   });
 });
 

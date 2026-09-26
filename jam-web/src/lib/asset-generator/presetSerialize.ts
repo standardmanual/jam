@@ -13,7 +13,7 @@
  * 직렬화와 마찬가지로 화면(`PresetPanel.tsx`)과 API 라우트 양쪽이 같은 값 집합을 봐야 한다.
  */
 import type { Database } from '@/types/database.generated';
-import type { AssetPreset, AssetPresetSummary, OverlayLayerConfig, PresetTargetType, StageRatio } from './types';
+import type { AssetPreset, AssetPresetSummary, ImageLayerConfig, OverlayLayerConfig, PresetTargetType, StageRatio } from './types';
 
 /** `asset_presets` 테이블 행(생성 타입 기준). API 라우트의 select 결과가 이 형태다. */
 export type AssetPresetRow = Database['public']['Tables']['asset_presets']['Row'];
@@ -90,10 +90,15 @@ export function serializePresetLayers(
 }
 
 /**
- * 저장된 프리셋 레이어를 화면 상태로 역직렬화한다. 저장 시점에 이미 텍스트 `content`가 빈
- * 문자열이고 이미지 `assetUrl`이 공개 URL이므로 지금은 순서를 유지한 채 형태만 확정해 돌려주는
- * 항등에 가까운 변환이다 — 저장 형태가 늘어났을 때 이 경계에서 변환하기 위해 별도 함수로 둔다.
+ * 저장된 프리셋 레이어를 화면 상태로 역직렬화한다. 순서를 유지한 채 형태를 확정해 돌려준다.
+ * - 텍스트 레이어: `content`를 빈 문자열로 둔다.
+ * - 이미지 레이어: 예전 프리셋에 남은 `heightPct`(세로 크기)는 버리고, `overlayEnabled`가 없으면
+ *   꺼짐(false)으로 채운다. 세로 크기는 이제 원본 비율로 계산한다(티켓 20260926_1741).
  */
 export function deserializePresetLayers(layers: OverlayLayerConfig[]): OverlayLayerConfig[] {
-  return layers.map((layer) => (layer.type === 'text' ? { ...layer, content: '' } : layer));
+  return layers.map((layer) => {
+    if (layer.type === 'text') return { ...layer, content: '' };
+    const { heightPct: _legacyHeightPct, ...rest } = layer as ImageLayerConfig & { heightPct?: number };
+    return { ...rest, overlayEnabled: rest.overlayEnabled ?? false };
+  });
 }

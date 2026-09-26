@@ -76,7 +76,6 @@ function makeImageLayer(id: string, assetUrl: string) {
     xPct: 50,
     yPct: 50,
     widthPct: 30,
-    heightPct: 30,
     rotationDeg: 0,
     opacityPct: 100,
   }

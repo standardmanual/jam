@@ -132,7 +132,7 @@ describe('GET', () => {
         target_type: 'mission',
         stage_ratio: '1:1',
         layers: [
-          { type: 'image', id: 'i1', assetUrl: 'https://cdn.test.jam.app/images/i1.png', xPct: 50, yPct: 50, widthPct: 30, heightPct: 30, rotationDeg: 0, opacityPct: 100 },
+          { type: 'image', id: 'i1', assetUrl: 'https://cdn.test.jam.app/images/i1.png', xPct: 50, yPct: 50, widthPct: 30, rotationDeg: 0, opacityPct: 100 },
           { type: 'text', id: 't1', content: '', font: { family: 'system-ui', weight: 400 } },
         ],
         created_by: 'admin-id',

@@ -144,19 +144,52 @@ function generateLayerId(): string {
   return `image-layer-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-/** 새 이미지 레이어 기본값(티켓 20260924_2157): 중앙 배치, 짧은 변의 30%, 완전 불투명. */
-export function createImageLayer(assetUrl: string): ImageLayerConfig {
+/** 이미지 레이어 원본 크기(px)와 현재 스테이지의 짧은 변(px). 새 이미지를 원본 크기로 시작하게 한다. */
+export interface ImageLayerNaturalSize {
+  naturalWidth: number
+  stageShortSide: number
+}
+
+/** 원본 가로 px를 스테이지 짧은 변 대비 %로 바꾸고 크기 슬라이더 범위로 제한한다. 값이 올바르지 않으면 null. */
+export function computeInitialImageWidthPct(size: ImageLayerNaturalSize): number | null {
+  const { naturalWidth, stageShortSide } = size
+  if (!(naturalWidth > 0) || !(stageShortSide > 0)) return null
+  // 슬라이더에 소수점이 길게 보이지 않도록 소수 첫째 자리까지만 남긴다
+  const pct = Math.round((naturalWidth / stageShortSide) * 1000) / 10
+  return Math.min(IMAGE_SIZE_RANGE.max, Math.max(IMAGE_SIZE_RANGE.min, pct))
+}
+
+/** 컬러 오버레이를 처음 켤 때의 기본 색 */
+export const DEFAULT_OVERLAY_COLOR = '#ffffff'
+
+/** 원본을 못 읽었을 때 쓰는 기본 가로 크기(스테이지 짧은 변의 %) */
+const DEFAULT_IMAGE_WIDTH_PCT = 30
+
+/** 새 이미지 레이어 기본값(티켓 20260924_2157·20260926_1741): 중앙 배치, 원본 픽셀 크기로 시작
+ * (`size`를 못 받으면 짧은 변의 30%), 완전 불투명, 컬러 오버레이 꺼짐. 세로는 원본 비율로 계산한다. */
+export function createImageLayer(assetUrl: string, size?: ImageLayerNaturalSize): ImageLayerConfig {
   return {
     type: 'image',
     id: generateLayerId(),
     assetUrl,
     xPct: 50,
     yPct: 50,
-    widthPct: 30,
-    heightPct: 30,
+    widthPct: (size && computeInitialImageWidthPct(size)) ?? DEFAULT_IMAGE_WIDTH_PCT,
     rotationDeg: 0,
     opacityPct: 100,
+    overlayEnabled: false,
+    overlayColor: DEFAULT_OVERLAY_COLOR,
   }
+}
+
+/** 파일(blob URL)의 원본 가로 크기(px)를 읽는다. 읽지 못하면 null. */
+export function readImageNaturalWidth(url: string): Promise<number | null> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => resolve(img.naturalWidth > 0 ? img.naturalWidth : null)
+    img.onerror = () => resolve(null)
+    img.src = url
+  })
 }
 
 /** 구글 폰트를 쓰지 않는 시스템 기본 글꼴 식별자(티켓 20260924_2158). `system-ui`는 캔버스

@@ -17,12 +17,15 @@ const BASE = 'https://stage.example.app';
 const textLayer = { id: 'l1', type: 'text', content: '', font: 'Pretendard', sizePct: 10 };
 const imageLayer = { id: 'l2', type: 'image', assetUrl: 'https://cdn.example/a.png' };
 
+// API 응답의 이미지 레이어는 이미 역직렬화돼 있어 overlayEnabled가 채워져 있다(티켓 20260926_1741)
+const deserializedImageLayer = { ...imageLayer, overlayEnabled: false };
+
 const apiPreset = {
   id: 'p1',
   name: '홈피드',
   targetType: 'home_feed',
   stageRatio: '4:5',
-  layers: [textLayer, imageLayer],
+  layers: [textLayer, deserializedImageLayer],
   createdBy: 'u1',
   createdAt: '2026-09-26T00:00:00Z',
   updatedAt: '2026-09-26T00:00:00Z',
@@ -114,7 +117,7 @@ describe('normalizePreset', () => {
   it('DB 행은 역직렬화를 한 번만 거친다(텍스트 content가 비워진다)', () => {
     const fromRow = normalizePreset(dbRow);
     expect(fromRow.layers[0].content).toBe('');
-    expect(fromRow.layers[1]).toEqual(imageLayer);
+    expect(fromRow.layers[1]).toEqual(deserializedImageLayer);
   });
 
   it('API 응답은 layers를 다시 역직렬화하지 않고 그대로 둔다', () => {
