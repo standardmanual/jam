@@ -25,6 +25,7 @@ function makeMission(overrides: Partial<MissionRow> & { gate_axis: string; rewar
     description: null,
     mission_type: 'engine_condition',
     condition_json: {} as MissionRow['condition_json'],
+    condition_text: null,
     reward_type: null,
     reward_id: null,
     reward_points: null,

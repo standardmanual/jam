@@ -132,6 +132,20 @@ describe('PATCH /api/admin/missions/[id] — image_url 형식 검사(라우트 �
   })
 })
 
+describe('PATCH /api/admin/missions/[id] — condition_text 통과(티켓 20260927_0026)', () => {
+  it('condition_text를 갱신 값에 그대로 실어 저장한다', async () => {
+    const res = await patch({ condition_text: '7일 연속 달리기' })
+    expect(res.status).toBe(200)
+    expect(state.updates).toEqual([{ condition_text: '7일 연속 달리기' }])
+  })
+
+  it('condition_text를 null로 보내면 값을 비운다', async () => {
+    const res = await patch({ condition_text: null })
+    expect(res.status).toBe(200)
+    expect(state.updates).toEqual([{ condition_text: null }])
+  })
+})
+
 describe('/api/admin/missions/[id] — DB 오류 원문 미노출(티켓 20260926_1602)', () => {
   const del = () =>
     DELETE(new NextRequest('https://j-a-m.app/api/admin/missions/m1', { method: 'DELETE' }), {
