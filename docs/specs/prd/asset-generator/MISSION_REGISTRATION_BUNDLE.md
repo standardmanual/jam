@@ -226,7 +226,7 @@ DB 읽기 검사, 등록 예정 내용, 되돌림 SQL 미리보기, 알아둘 �
 1. 묶음 검증 → DB 읽기 검사. 하나라도 실패하면 아무것도 쓰지 않고 끝낸다.
 2. 새 미션 id를 `crypto.randomUUID()`로 미리 정한다(이미지 저장 경로에 쓰려고).
 3. 이미지 업로드: 원본 PNG `missions/asset-generator/{id}.png`, 표시 규격 WebP `missions/asset-generator/{id}.webp`
-   (`images` 버킷, 긴 변 400px 이하 — PRD §9. 저장 경로·WebP 변환은 어드민 적용 API의 미션 경로와 같다). 하나라도 실패하면 이미
+   (`images` 버킷, 긴 변 1280px 이하 — PRD §9. 저장 경로·WebP 변환은 어드민 적용 API의 미션 경로와 같다). 하나라도 실패하면 이미
    올라간 파일을 지우고 끝낸다.
 4. 미션 행 insert(`image_url` = WebP 공개 주소 + `?v=`, `image_source = 'agent-generator'`). 실패하면 올라간 파일 2개를 지우고
    끝낸다. 이미지를 먼저 올리는 이유는 insert가 성공한 뒤 업로드가 실패해 이미지가 깨진 미션이 서비스에 보이는 것을 막으려는 것이다.

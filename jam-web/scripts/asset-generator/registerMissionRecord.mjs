@@ -202,7 +202,7 @@ export function formatMissionDryRunSummary({ bundle, payload, errors, warnings =
       webp?.error
         ? `- WebP 변환 미리 확인: 실패 — ${webp.error}`
         : webp?.bytes !== undefined
-          ? `- WebP 변환 미리 확인: 통과 (${(webp.bytes / 1024).toFixed(1)}KB, 긴 변 400px 이하)`
+          ? `- WebP 변환 미리 확인: 통과 (${(webp.bytes / 1024).toFixed(1)}KB, 긴 변 1280px 이하)`
           : '- WebP 변환 미리 확인: 하지 않았어요',
       '',
       '[DB 읽기 검사]'

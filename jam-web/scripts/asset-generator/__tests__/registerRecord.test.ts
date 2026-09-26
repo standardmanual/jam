@@ -295,7 +295,7 @@ describe('formatDryRunSummary', () => {
     expect(text).toContain('- 작성 시각: 2026-09-25 10:30:00 KST');
     expect(text).toContain('- 이름 중복: 건너뜀 — 서비스 키(.env.local)가 없어 DB를 읽지 않았어요');
     expect(text).toContain('- 트라이브 존재: 해당 없음');
-    expect(text).toContain('- WebP 변환 미리 확인: 통과 (0.9KB, 긴 변 400px 이하)');
+    expect(text).toContain('- WebP 변환 미리 확인: 통과 (0.9KB, 긴 변 1280px 이하)');
     expect(text).toContain('[등록 예정 내용]');
     expect(text).toContain("delete from public.badges where id = '<등록할 때 정해지는 배지 id>';");
     expect(text).toContain('--undo /tmp/bundle/registration-record.json');

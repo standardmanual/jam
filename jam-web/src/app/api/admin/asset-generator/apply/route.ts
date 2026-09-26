@@ -8,7 +8,7 @@ import { convertBadgeImageToWebp } from '@/lib/admin/badgeImageWebp'
  * 에셋 제너레이터 적용 탭 → 콘텐츠 반영 API (티켓 20260924_2200, 미션 확장 20260925_1407)
  *
  * `shader-lab/apply`(공용 `applyGeneratedImage` 함수)와 달리 이 라우트는 원본 PNG를 그대로
- * `image_url`에 걸지 않는다: 원본은 보관용으로만 올리고, sharp로 표시 규격(긴 변 400px,
+ * `image_url`에 걸지 않는다: 원본은 보관용으로만 올리고, sharp로 표시 규격(긴 변 1280px,
  * PRD asset-generator/PRD.md §9)까지 축소한 WebP를 만들어 `image_url`에 반영하며
  * `image_source`도 함께 기록한다. 2단계 업로드 + 컬럼 2개 갱신이라 `applyGeneratedImage`
  * (단일 PNG 업로드 + image_url 1개 갱신) 시그니처로는 표현할 수 없어 그 함수는 그대로 두고
