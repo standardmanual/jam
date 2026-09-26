@@ -198,3 +198,20 @@ describe('DELETE', () => {
     expect(presetsBuilder.delete).not.toHaveBeenCalled()
   })
 })
+
+describe('DELETE — 경로 값 검증(티켓 20260926_0201)', () => {
+  it.each(['..', 'a b', 'a.b', 'a%2Fb', 'x'.repeat(101)])('형식이 틀린 id(%s)는 400이고 저장소·DB를 건드리지 않는다', async (badId) => {
+    const res = await DELETE(req({}, 'DELETE'), params(badId))
+    expect(res.status).toBe(400)
+    expect(storageFromMock).not.toHaveBeenCalled()
+    expect(listMock).not.toHaveBeenCalled()
+    expect(removeMock).not.toHaveBeenCalled()
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
+  it('UUID와 영숫자·밑줄·하이픈 id는 통과한다', async () => {
+    const res = await DELETE(req({}, 'DELETE'), params('3f2a9c1e-0000-4000-8000-0000000000aa'))
+    expect(res.status).toBe(200)
+    expect(listMock).toHaveBeenCalledWith('asset-generator/presets/3f2a9c1e-0000-4000-8000-0000000000aa')
+  })
+})

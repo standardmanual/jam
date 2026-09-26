@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser, requireAdminRead } from '@/lib/admin/auth'
 import { APPLY_GENERATED_IMAGE_BUCKET, MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
+import { isSafePresetPathSegment } from '@/lib/admin/presetStoragePath'
 import {
   isPresetTargetType,
   serializePresetLayers,
@@ -91,6 +92,10 @@ export async function POST(req: NextRequest) {
 
   const existingIdRaw = form.get('id')
   const existingId = typeof existingIdRaw === 'string' && existingIdRaw.trim() ? existingIdRaw.trim() : null
+  // 스토리지 경로에 들어가는 값이라 형식을 제한한다(티켓 20260926_0201). 파일을 쓰기 전에 거절한다.
+  if (existingId !== null && !isSafePresetPathSegment(existingId)) {
+    return NextResponse.json({ error: '프리셋 ID 형식이 올바르지 않습니다.' }, { status: 400 })
+  }
 
   let layers: OverlayLayerConfig[]
   try {
@@ -101,8 +106,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '레이어 데이터가 올바르지 않습니다.' }, { status: 400 })
   }
 
+  // 이미지 레이어의 id도 경로에 들어간다. 업로드 전에 전부 검사해 일부만 올라가는 일을 막는다.
+  if (layers.some((layer) => layer.type === 'image' && !isSafePresetPathSegment(layer.id))) {
+    return NextResponse.json({ error: '레이어 ID 형식이 올바르지 않습니다.' }, { status: 400 })
+  }
+
   const presetId = existingId ?? crypto.randomUUID()
   const supabase = createServiceClient()
+
+  // 덮어쓰기는 대상이 있는지 먼저 확인한다 — 없는 id면 404이고, 업로드(upsert)보다 앞서야
+  // 스토리지에 파일이 남지 않는다(티켓 20260926_0201).
+  if (existingId) {
+    const { data: existing, error: findErr } = await supabase.from('asset_presets').select('id').eq('id', existingId).maybeSingle()
+    if (findErr) return NextResponse.json({ error: findErr.message }, { status: 500 })
+    if (!existing) return NextResponse.json({ error: '프리셋을 찾을 수 없습니다.' }, { status: 404 })
+  }
 
   const assetUrlByLayerId: Record<string, string> = {}
   for (const overlayLayer of layers) {
@@ -137,10 +155,6 @@ export async function POST(req: NextRequest) {
   const serializedLayers = serializePresetLayers(layers, assetUrlByLayerId)
 
   if (existingId) {
-    const { data: existing, error: findErr } = await supabase.from('asset_presets').select('id').eq('id', existingId).maybeSingle()
-    if (findErr) return NextResponse.json({ error: findErr.message }, { status: 500 })
-    if (!existing) return NextResponse.json({ error: '프리셋을 찾을 수 없습니다.' }, { status: 404 })
-
     const { data, error } = await supabase
       .from('asset_presets')
       .update({
