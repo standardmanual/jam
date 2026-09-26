@@ -136,8 +136,11 @@ calendar, ambient-drop schedule, and economy figures stay session-only.
 3. **이미지 생성**: 아래 명령으로 PNG와 시드를 만든다. 출력 JSON(`out`·`seed`·`preset`·`stage`)을 그대로 기록한다.
    ```
    cd jam-web && npx tsx scripts/asset-generator/render.mjs --preset <프리셋 id> --bg "#rrggbb" --end "#rrggbb" \
-     --text "<배지 이름·미션 제목·카드 제목>" --out <묶음 폴더 절대경로>/image.png [--seed <정수>]
+     --text "<배지 이름·미션 제목·카드 제목>" [--subtext "<짧은 설명>"] --out <묶음 폴더 절대경로>/image.png [--seed <정수>]
    ```
+   텍스트 레이어가 2개인 프리셋(홈피드)은 `--text`가 1번째(제목), `--subtext`가 2번째(설명) 레이어이고 `--subtext`를 빠뜨리면 실패한다.
+   배지·미션 프리셋(레이어 1개)에는 `--subtext`를 쓰지 않는다. 순서 규칙과 글자 수 가이드는 `docs/specs/prd/asset-generator/PRD.md` §8이 정본이다.
+   홈피드 묶음에는 쓴 값을 `image.subtext`로 함께 남긴다.
 4. **등록 묶음 작성**: 유형별 정본의 형식대로 `bundle.json`을 쓴다(`author`는 `윤진`, 컬러 선택 근거 링크 포함). 묶음 ID는 폴더 이름과 같다.
    작성한 뒤 해당 등록 스크립트를 **`--dry-run`으로만** 실행해 검증하고 그 출력을 컨펌 자료로 쓴다
    (`cd jam-web && npx tsx scripts/asset-generator/<스크립트> --bundle <bundle.json 절대경로> --dry-run`).
