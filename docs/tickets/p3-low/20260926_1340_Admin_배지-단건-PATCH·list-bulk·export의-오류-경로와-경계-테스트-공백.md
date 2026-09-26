@@ -2,9 +2,9 @@
 id: "20260926_1340"
 category: Admin
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-26
-closed:
+closed: 2026-09-26
 related:
   - "20260926_1241"
   - "20260924_1404"
@@ -32,23 +32,15 @@ related:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 묶음 티켓 20260926_1345로 처리했다. 상세와 실행 지표는 그 티켓의 완료 기록에 있다. 코드 변경 없이 테스트만 추가했다.
+- 단건 PATCH 조회 오류(`readError`) 500, `list-bulk` 사전 조회 오류·드랍 수 집계 오류·삭제 오류의 500과 원문 미노출, `READ_CHUNK_SIZE` 경계(200건은 한 묶음, 201건은 두 묶음), 빈 `ids` 400, `export` 정상 CSV·중복 제거·`CHUNK_SIZE` 경계·빈/잘못된 입력을 테스트로 고정했다.
 
 ### 변경된 파일
 ```
--
+- jam-web/src/app/api/admin/badges/list-bulk/__tests__/route.test.ts
+- jam-web/src/app/api/admin/badges/[id]/__tests__/route.test.ts
+- jam-web/src/app/api/admin/badges/export/__tests__/route.test.ts
 ```
 
 ### 테스트 결과
-- [ ]
-
-### 실행 지표
-
-| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
-|---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
-
-### 주요 의사결정 / 핵심 메모
-
-### 잔여 이슈
--
+- [x] 추가 테스트 통과, CI 성공. 트라이브 지정 경로(트라이브·컬렉션 조회)는 같은 상수를 쓰는 동일 패턴이라 전용 테스트를 만들지 않았다
