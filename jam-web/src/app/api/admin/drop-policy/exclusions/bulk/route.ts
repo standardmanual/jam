@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
   let ineligibleReason = ''
   if (entity === 'badge') {
     // 아이템배지(type = 'item')만 대상 — 다른 유형의 배지 id가 섞여도 건드리지 않는다.
+    // 삭제된 배지(deleted_at 있음)도 목록 쿼리와 같은 기준으로 대상에서 뺀다(티켓 20260926_1413).
     eligibleIds = []
     for (let i = 0; i < ids.length; i += ID_CHUNK_SIZE) {
       const { data, error } = await supabase
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
         .select('id')
         .in('id', ids.slice(i, i + ID_CHUNK_SIZE))
         .eq('type', 'item')
+        .is('deleted_at', null)
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       eligibleIds.push(...(data ?? []).map((row) => row.id))
     }
