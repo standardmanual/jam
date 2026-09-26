@@ -82,6 +82,12 @@ export interface BulkServiceClient {
 }
 
 const UPDATE_CHUNK_SIZE = 200
+
+// DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
+const UPDATE_ERROR_MESSAGE = '변경 내용을 저장하지 못했어요. 서버에서 저장 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const READ_ERROR_MESSAGE = '현재 값을 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const PARTIAL_ERROR_MESSAGE =
+  '일부만 반영됐습니다. 되돌리는 중에도 오류가 났어요. 서버에서 저장 중 오류가 났어요. 반영된 항목을 확인한 뒤 다시 시도해 주세요.'
 const DELETE_CHUNK_SIZE = 200
 
 export interface UpdateAllOrNothingResult {
@@ -118,6 +124,7 @@ async function rollback(
     const { error } = await client.from(table).update(omitId(saved)).eq('id', id)
     if (error) errors.push(`${id}: ${error.message}`)
   }
+  if (errors.length > 0) console.error(`[bulk ${table} 되돌리기 오류]`, errors.join(' / '))
   return errors.length > 0 ? errors.join(' / ') : null
 }
 
@@ -139,7 +146,10 @@ export async function updateByIdsAllOrNothing(
 
   if (ids.length <= UPDATE_CHUNK_SIZE) {
     const { data, error } = await client.from(table).update(patch).in('id', ids).select('id')
-    if (error) return { ok: false, updatedIds: [], partiallyApplied: false, error: error.message }
+    if (error) {
+      console.error(`[bulk ${table} 갱신 오류]`, error.message)
+      return { ok: false, updatedIds: [], partiallyApplied: false, error: UPDATE_ERROR_MESSAGE }
+    }
     return {
       ok: true,
       updatedIds: (data ?? []).map((row) => row.id as string),
@@ -153,7 +163,10 @@ export async function updateByIdsAllOrNothing(
     .from(table)
     .select(['id', ...patchColumns].join(', '))
     .in('id', ids)
-  if (readError) return { ok: false, updatedIds: [], partiallyApplied: false, error: readError.message }
+  if (readError) {
+    console.error(`[bulk ${table} 기존 값 조회 오류]`, readError.message)
+    return { ok: false, updatedIds: [], partiallyApplied: false, error: READ_ERROR_MESSAGE }
+  }
 
   const savedById = new Map<string, Record<string, unknown>>()
   for (const row of beforeRows ?? []) savedById.set(row.id as string, row)
@@ -168,9 +181,10 @@ export async function updateByIdsAllOrNothing(
       continue
     }
 
+    console.error(`[bulk ${table} 묶음 갱신 오류]`, error.message)
     const appliedIds = appliedChunks.flat()
     if (appliedIds.length === 0) {
-      return { ok: false, updatedIds: [], partiallyApplied: false, error: error.message }
+      return { ok: false, updatedIds: [], partiallyApplied: false, error: UPDATE_ERROR_MESSAGE }
     }
 
     const rollbackError = await rollback(client, table, appliedIds, savedById)
@@ -179,10 +193,10 @@ export async function updateByIdsAllOrNothing(
         ok: false,
         updatedIds: appliedIds,
         partiallyApplied: true,
-        error: `일부만 반영됐습니다. 반영 실패: ${error.message} / 되돌리기 실패: ${rollbackError}`,
+        error: PARTIAL_ERROR_MESSAGE,
       }
     }
-    return { ok: false, updatedIds: [], partiallyApplied: false, error: error.message }
+    return { ok: false, updatedIds: [], partiallyApplied: false, error: UPDATE_ERROR_MESSAGE }
   }
 
   return { ok: true, updatedIds: ids, partiallyApplied: false, error: null }

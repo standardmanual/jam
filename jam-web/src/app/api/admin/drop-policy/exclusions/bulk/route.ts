@@ -14,6 +14,9 @@ import { splitExclusionResult } from '@/lib/admin/drop-exclusion-list'
  */
 const ID_CHUNK_SIZE = 200
 
+// DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
+const ELIGIBLE_READ_ERROR_MESSAGE = '배지 정보를 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+
 export async function POST(req: NextRequest) {
   const result = await readBulkRequest(req, {
     actions: { exclude: {}, include: {} },
@@ -46,7 +49,10 @@ export async function POST(req: NextRequest) {
         .in('id', ids.slice(i, i + ID_CHUNK_SIZE))
         .eq('type', 'item')
         .is('deleted_at', null)
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      if (error) {
+        console.error('[exclusions bulk 대상 조회 오류]', error)
+        return NextResponse.json({ error: ELIGIBLE_READ_ERROR_MESSAGE }, { status: 500 })
+      }
       eligibleIds.push(...(data ?? []).map((row) => row.id))
     }
     ineligibleReason = '아이템배지가 아닙니다'

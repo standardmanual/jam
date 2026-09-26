@@ -10,6 +10,10 @@ const state = vi.hoisted(() => ({
   existing: { cover_image_url: 'https://cdn.test.jam.app/old.png' } as Record<string, unknown>,
   reads: 0,
   updates: [] as Record<string, unknown>[],
+  /** 오류 주입 — 값이 있으면 해당 호출이 이 오류를 돌려준다 */
+  readError: null as { message: string } | null,
+  updateError: null as { message: string } | null,
+  deleteError: null as { message: string } | null,
 }))
 
 const fakeClient = {
@@ -18,14 +22,24 @@ const fakeClient = {
       eq: () => ({
         maybeSingle: () => {
           state.reads += 1
-          return Promise.resolve({ data: state.existing, error: null })
+          return Promise.resolve({ data: state.readError ? null : state.existing, error: state.readError })
         },
       }),
     }),
     update: (patch: Record<string, unknown>) => {
       state.updates.push(patch)
-      return { eq: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'c1', ...patch }, error: null }) }) }) }
+      return {
+        eq: () => ({
+          select: () => ({
+            single: () =>
+              Promise.resolve(
+                state.updateError ? { data: null, error: state.updateError } : { data: { id: 'c1', ...patch }, error: null }
+              ),
+          }),
+        }),
+      }
     },
+    delete: () => ({ eq: () => Promise.resolve({ error: state.deleteError }) }),
   }),
 }
 
@@ -35,9 +49,9 @@ vi.mock('@/lib/admin/auth', async (importActual) => ({
   requireAdmin: async () => null,
 }))
 
-const { PATCH } = await import('../route')
+const { PATCH, DELETE } = await import('../route')
 
-const patch = (body: Record<string, unknown>) =>
+const patch = (body: unknown) =>
   PATCH(
     new NextRequest('https://j-a-m.app/api/admin/today/c1', {
       method: 'PATCH',
@@ -50,6 +64,9 @@ const patch = (body: Record<string, unknown>) =>
 beforeEach(() => {
   state.reads = 0
   state.updates = []
+  state.readError = null
+  state.updateError = null
+  state.deleteError = null
 })
 afterEach(() => {
   vi.restoreAllMocks()
@@ -74,5 +91,65 @@ describe('PATCH /api/admin/today/[id] — cover_image_url 형식', () => {
     expect(res.status).toBe(200)
     expect(state.reads).toBe(0)
     expect(state.updates[0]).toMatchObject({ title: '새 제목' })
+  })
+})
+
+describe('PATCH /api/admin/today/[id] — 이미지 필드 null·빈 문자열, null 본문(티켓 20260926_1601)', () => {
+  it.each([
+    ['null', null],
+    ['빈 문자열', ''],
+  ])('cover_image_url이 %s이어도 400이 아니고 값 없음으로 수정되며 제작 경로가 초기화된다', async (_label, value) => {
+    const res = await patch({ cover_image_url: value })
+    expect(res.status).toBe(200)
+    expect(state.updates[0]).toMatchObject({ cover_image_url: value, image_source: null })
+  })
+
+  it('기존 커버가 이미 비어 있으면 빈 문자열로 보내도 제작 경로를 건드리지 않는다', async () => {
+    state.existing = { cover_image_url: null }
+    const res = await patch({ cover_image_url: '' })
+    expect(res.status).toBe(200)
+    expect(state.updates[0]).not.toHaveProperty('image_source')
+    state.existing = { cover_image_url: 'https://cdn.test.jam.app/old.png' }
+  })
+
+  it('본문이 JSON null이면 500이 아니라 400이고 DB를 건드리지 않는다', async () => {
+    const res = await patch(null)
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('요청 형식이 올바르지 않습니다.')
+    expect(state.reads).toBe(0)
+    expect(state.updates).toEqual([])
+  })
+})
+
+describe('/api/admin/today/[id] — DB 오류 원문 미노출(티켓 20260926_1602)', () => {
+  const del = () =>
+    DELETE(new NextRequest('https://j-a-m.app/api/admin/today/c1', { method: 'DELETE' }), {
+      params: Promise.resolve({ id: 'c1' }),
+    })
+
+  async function expectFixed500(res: Response, raw: string, prefix: string) {
+    expect(res.status).toBe(500)
+    expect(JSON.stringify(await res.json())).not.toContain(raw)
+    expect(vi.mocked(console.error).mock.calls.some((c) => String(c[0]).startsWith(prefix))).toBe(true)
+  }
+
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  it('PATCH 기존 카드 조회 오류', async () => {
+    state.readError = { message: 'read boom' }
+    await expectFixed500(await patch({ cover_image_url: 'https://cdn.test.jam.app/new.png' }), 'read boom', '[today PATCH')
+    expect(state.updates).toEqual([])
+  })
+
+  it('PATCH 저장 오류', async () => {
+    state.updateError = { message: 'update boom' }
+    await expectFixed500(await patch({ title: '새 제목' }), 'update boom', '[today PATCH')
+  })
+
+  it('DELETE 삭제 오류', async () => {
+    state.deleteError = { message: 'delete boom' }
+    await expectFixed500(await del(), 'delete boom', '[today DELETE')
   })
 })

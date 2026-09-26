@@ -8,6 +8,11 @@ import { imageSourceReset, imageUrlTypeError } from '@/lib/admin/imageSourceRese
 import type { MissionRow } from '@/types/database'
 import type { MissionType } from '@/types/database'
 
+// DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
+const READ_ERROR_MESSAGE = '미션 정보를 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const SAVE_ERROR_MESSAGE = '미션을 저장하지 못했어요. 서버에서 저장 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const DELETE_ERROR_MESSAGE = '미션을 삭제하지 못했어요. 서버에서 삭제 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+
 // PATCH /api/admin/missions/[id] — 기존 미션 수정.
 // 티켓 20260813_001: status_display_type을 'individual'로 전환하는 등 이미 활성화된
 // 미션도 운영자가 수정할 수 있어야 해서 신설.
@@ -72,7 +77,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .single<Pick<MissionRow, (typeof gateKeys)[number]>>()
     if (existingError) {
       // 조회 자체가 실패한 것을 「없는 미션」으로 뭉뚱그리면 원인을 못 찾는다.
-      return NextResponse.json({ error: existingError.message }, { status: 500 })
+      console.error('[missions PATCH 게이트 조회 오류]', existingError)
+      return NextResponse.json({ error: READ_ERROR_MESSAGE }, { status: 500 })
     }
     if (!existing) {
       return NextResponse.json({ error: '미션을 찾지 못했어요. 목록을 새로고침한 뒤 다시 시도해주세요.' }, { status: 404 })
@@ -97,7 +103,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .eq('id', id)
       .maybeSingle<{ image_url: string | null }>()
     if (existingImageError) {
-      return NextResponse.json({ error: existingImageError.message }, { status: 500 })
+      console.error('[missions PATCH 이미지 조회 오류]', existingImageError)
+      return NextResponse.json({ error: READ_ERROR_MESSAGE }, { status: 500 })
     }
     if (!existingImage) {
       return NextResponse.json({ error: '미션을 찾지 못했어요. 목록을 새로고침한 뒤 다시 시도해주세요.' }, { status: 404 })
@@ -117,7 +124,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[missions PATCH 저장 오류]', error)
+    return NextResponse.json({ error: SAVE_ERROR_MESSAGE }, { status: 500 })
+  }
   return NextResponse.json(data)
 }
 
@@ -160,7 +170,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   }
 
   const { error } = await supabase.from('missions').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[missions DELETE 삭제 오류]', error)
+    return NextResponse.json({ error: DELETE_ERROR_MESSAGE }, { status: 500 })
+  }
 
   // 삭제를 막지 않는 참조(투데이 카드·랭킹 규칙 연결, SET NULL)는 삭제 뒤에 알린다(티켓 20260925_2105).
   // 없으면 기존 응답 `{ ok: true }` 그대로다.

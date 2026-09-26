@@ -169,6 +169,71 @@ describe('updateByIdsAllOrNothing', () => {
     expect(result.error).toContain('일부만 반영')
   })
 
+  it('되돌리기까지 실패해도 응답 error에 DB 원문을 싣지 않고 console.error로만 남긴다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ids = Array.from({ length: 450 }, (_, i) => `id-${i}`)
+    const { client } = createStubClient({
+      rows: ids.map((id) => ({ id, is_active: false })),
+      failOnUpdateChunk: (chunkIds) => chunkIds[0] === 'id-200',
+      failOnRollbackId: (id) => id === 'id-50',
+    })
+    const result = await updateByIdsAllOrNothing(client, 'poi', ids, { is_active: true })
+
+    expect(result.partiallyApplied).toBe(true)
+    expect(result.error).toContain('일부만 반영')
+    expect(result.error).not.toContain('갱신 실패')
+    expect(result.error).not.toContain('롤백 실패')
+    expect(errorSpy.mock.calls.some((c) => String(c[0]).startsWith('[bulk poi') && String(c[1]).includes('갱신 실패'))).toBe(true)
+    expect(errorSpy.mock.calls.some((c) => String(c[1]).includes('id-50 롤백 실패'))).toBe(true)
+    errorSpy.mockRestore()
+  })
+
+  it('200건 이하 갱신이 실패하면 고정 문장만 돌려주고 원문은 console.error로만 남긴다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { client } = createStubClient({
+      rows: [{ id: 'a' }],
+      failOnUpdateChunk: () => true,
+    })
+    const result = await updateByIdsAllOrNothing(client, 'poi', ['a'], { is_active: true })
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toBeTruthy()
+    expect(result.error).not.toContain('갱신 실패')
+    expect(errorSpy).toHaveBeenCalledWith('[bulk poi 갱신 오류]', '갱신 실패')
+    errorSpy.mockRestore()
+  })
+
+  it('200건 초과에서 되돌릴 것이 없는 첫 묶음 실패도 원문을 싣지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`)
+    const { client } = createStubClient({
+      rows: ids.map((id) => ({ id })),
+      failOnUpdateChunk: () => true,
+    })
+    const result = await updateByIdsAllOrNothing(client, 'poi', ids, { is_active: true })
+
+    expect(result.ok).toBe(false)
+    expect(result.partiallyApplied).toBe(false)
+    expect(result.error).not.toContain('갱신 실패')
+    expect(errorSpy).toHaveBeenCalledWith('[bulk poi 묶음 갱신 오류]', '갱신 실패')
+    errorSpy.mockRestore()
+  })
+
+  it('전체 롤백에 성공한 뒤의 실패도 원문을 싣지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ids = Array.from({ length: 450 }, (_, i) => `id-${i}`)
+    const { client } = createStubClient({
+      rows: ids.map((id) => ({ id, is_active: false })),
+      failOnUpdateChunk: (chunkIds) => chunkIds[0] === 'id-200',
+    })
+    const result = await updateByIdsAllOrNothing(client, 'poi', ids, { is_active: true })
+
+    expect(result.ok).toBe(false)
+    expect(result.partiallyApplied).toBe(false)
+    expect(result.error).not.toContain('갱신 실패')
+    errorSpy.mockRestore()
+  })
+
   it('id가 없으면 아무 것도 하지 않고 성공을 돌려준다', async () => {
     const { client, calls } = createStubClient({ rows: [] })
     const result = await updateByIdsAllOrNothing(client, 'poi', [], { is_active: true })

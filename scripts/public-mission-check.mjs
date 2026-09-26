@@ -67,5 +67,8 @@ export function buildPublicMissionCheckLines(missionsResult, badgesResult, now =
       .join(', ')
     return [`- 공개 미션 점검: 확인 불가 (${reason})`]
   }
-  return formatPublicMissionCheck(computePublicMissionCheck(missionsResult, badgesResult.badges, now))
+  // 배지 응답 자체가 null·undefined면 `.badges`를 읽을 수 없다(티켓 20260926_1535). `{}`·`{ badges: null }`처럼
+  // 응답은 왔지만 목록이 비어 있는 경우와 달리 응답이 없었던 것이라 「확인 불가」 한 줄로 낸다.
+  if (badgesResult == null) return ['- 공개 미션 점검: 확인 불가 (배지 응답 없음)']
+  return formatPublicMissionCheck(computePublicMissionCheck(missionsResult, badgesResult?.badges, now))
 }

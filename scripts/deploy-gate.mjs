@@ -639,7 +639,11 @@ async function fetchFollowingRedirects(url, signal) {
       const value = pair.slice(eq + 1).trim()
       const maxAge = attrs.map((a) => a.trim().match(/^max-age=(-?\d+)$/i)).find(Boolean)
       const store = jar.get(origin) ?? jar.set(origin, new Map()).get(origin)
-      if (value === '' || (maxAge && Number(maxAge[1]) <= 0)) store.delete(name)
+      // Max-Age가 있으면 Expires보다 우선한다(RFC 6265 5.3). Max-Age가 없을 때만 Expires가 현재 이전인지 본다.
+      // 날짜로 읽을 수 없는 Expires는 삭제로 보지 않는다(티켓 20260926_1535).
+      const expires = attrs.map((a) => a.trim().match(/^expires=(.+)$/i)).find(Boolean)
+      const expiredByDate = !maxAge && expires && Date.parse(expires[1]) <= Date.now()
+      if (value === '' || (maxAge && Number(maxAge[1]) <= 0) || expiredByDate) store.delete(name)
       else store.set(name, value)
     }
     const location = res.headers.get('location')

@@ -5,12 +5,19 @@ import { collectItemBookReferences, ITEM_BOOK_REFERENCE_SOURCES, summarizeRefere
 import { imageSourceReset, imageUrlTypeError } from '@/lib/admin/imageSourceReset'
 import type { ItemBookRow } from '@/types/database'
 
+// DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
+const SAVE_ERROR_MESSAGE = '컬렉션을 저장하지 못했어요. 서버에서 저장 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const DELETE_ERROR_MESSAGE = '컬렉션을 삭제하지 못했어요. 서버에서 삭제 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+// 본문이 JSON `null`이면 아래 `body.` 접근이 던져 500이 된다(티켓 20260926_1601). 다른 어드민 라우트의 본문 오류 문구와 같다.
+const INVALID_BODY_MESSAGE = '요청 형식이 올바르지 않습니다.'
+
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id } = await params
   const body = await req.json()
+  if (body === null) return NextResponse.json({ error: INVALID_BODY_MESSAGE }, { status: 400 })
 
   const imageUrlError = imageUrlTypeError(body.image_url)
   if (imageUrlError) return NextResponse.json({ error: imageUrlError }, { status: 400 })
@@ -59,7 +66,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[itembooks PUT 저장 오류]', error)
+    return NextResponse.json({ error: SAVE_ERROR_MESSAGE }, { status: 500 })
+  }
 
   return NextResponse.json({ itemBook: data })
 }
@@ -95,7 +105,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[itembooks PATCH 활성 전환 오류]', error)
+    return NextResponse.json({ error: SAVE_ERROR_MESSAGE }, { status: 500 })
+  }
 
   return NextResponse.json({ itemBook: data })
 }
@@ -138,6 +151,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   }
 
   const { error } = await supabase.from('item_books').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[itembooks DELETE 삭제 오류]', error)
+    return NextResponse.json({ error: DELETE_ERROR_MESSAGE }, { status: 500 })
+  }
   return NextResponse.json({ ok: true })
 }
