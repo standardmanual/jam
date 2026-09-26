@@ -236,4 +236,105 @@ describe('POST /api/admin/asset-generator/apply', () => {
     const body = await res.json()
     expect(body.name).toBe('테스트 카드')
   })
+
+  // 실패 경로(티켓 20260926_0202) — DB·Storage는 위 스텁이고 실제 조회·업로드는 하지 않는다.
+  describe('실패 경로', () => {
+    async function postBadge(image: File): Promise<Response> {
+      const form = new FormData()
+      form.append('targetType', 'badge')
+      form.append('targetId', BADGE_ID)
+      form.append('image', image)
+      return POST(postReq(form))
+    }
+
+    it('이미지 파일이 없으면 400이고 대상 조회·업로드를 하지 않는다', async () => {
+      const form = new FormData()
+      form.append('targetType', 'badge')
+      form.append('targetId', BADGE_ID)
+      const res = await POST(postReq(form))
+      expect(res.status).toBe(400)
+      expect(fromCalls).toEqual([])
+      expect(uploadMock).not.toHaveBeenCalled()
+    })
+
+    it('빈 파일(0바이트)이면 400', async () => {
+      const res = await postBadge(new File([], 'stage.png', { type: 'image/png' }))
+      expect(res.status).toBe(400)
+      expect(uploadMock).not.toHaveBeenCalled()
+    })
+
+    it('PNG가 아닌 파일이면 400이고 업로드하지 않는다', async () => {
+      const res = await postBadge(new File([new Uint8Array([1, 2, 3])], 'stage.jpg', { type: 'image/jpeg' }))
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toContain('PNG')
+      expect(uploadMock).not.toHaveBeenCalled()
+    })
+
+    it('배지 조회는 소프트 삭제된 행을 제외하고, 삭제된 배지면 404다', async () => {
+      lookupResult = { data: null, error: null }
+      const res = await postBadge(await makeSmallPngFile())
+      expect(res.status).toBe(404)
+      expect(tableBuilder.is).toHaveBeenCalledWith('deleted_at', null)
+      expect(uploadMock).not.toHaveBeenCalled()
+    })
+
+    it('미션 조회에는 deleted_at 조건을 붙이지 않는다', async () => {
+      lookupResult = { data: { id: MISSION_ID, title: '테스트 미션' }, error: null }
+      const form = new FormData()
+      form.append('targetType', 'mission')
+      form.append('targetId', MISSION_ID)
+      form.append('image', await makeSmallPngFile())
+      await POST(postReq(form))
+      expect(tableBuilder.is).not.toHaveBeenCalled()
+    })
+
+    it('대상 조회가 DB 오류면 500이고 업로드하지 않는다', async () => {
+      lookupResult = { data: null, error: { message: 'db down' } }
+      const res = await postBadge(await makeSmallPngFile())
+      expect(res.status).toBe(500)
+      expect(uploadMock).not.toHaveBeenCalled()
+    })
+
+    it('WebP 변환에 실패하면 500이고 아무것도 업로드하지 않는다', async () => {
+      // PNG 헤더만 흉내 낸 깨진 바이트 — sharp가 실제로 던진다
+      const broken = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0])], 'stage.png', { type: 'image/png' })
+      const res = await postBadge(broken)
+      expect(res.status).toBe(500)
+      expect((await res.json()).error).toBe('이미지를 WebP로 변환하지 못했습니다.')
+      expect(uploadMock).not.toHaveBeenCalled()
+      expect(updatePayloads).toHaveLength(0)
+    })
+
+    it('PNG 업로드에 실패하면 500이고 WebP 업로드·컬럼 갱신을 하지 않는다', async () => {
+      uploadMock.mockResolvedValueOnce({ error: { message: 'storage png down' } })
+      const res = await postBadge(await makeSmallPngFile())
+      expect(res.status).toBe(500)
+      expect((await res.json()).error).toContain('원본 이미지 업로드 실패')
+      expect(uploadMock).toHaveBeenCalledTimes(1)
+      expect(updatePayloads).toHaveLength(0)
+    })
+
+    it('WebP 업로드에 실패하면 500이고 컬럼을 갱신하지 않는다', async () => {
+      uploadMock.mockResolvedValueOnce({ error: null }).mockResolvedValueOnce({ error: { message: 'storage webp down' } })
+      const res = await postBadge(await makeSmallPngFile())
+      expect(res.status).toBe(500)
+      expect((await res.json()).error).toContain('WebP 이미지 업로드 실패')
+      expect(uploadMock).toHaveBeenCalledTimes(2)
+      expect(updatePayloads).toHaveLength(0)
+    })
+
+    it('업로드 뒤 컬럼 갱신이 실패하면 500이고, 올린 파일 두 개는 정리하지 않고 남긴다(orphan)', async () => {
+      updateError = { message: 'update failed' }
+      const res = await postBadge(await makeSmallPngFile())
+      expect(res.status).toBe(500)
+      const body = await res.json()
+      expect(body.error).toContain('이미지는 업로드됐지만 반영에 실패했습니다')
+      expect(body.webpUrl).toBeUndefined()
+      // 현재 동작의 고정: 두 파일이 올라간 채 남고, 스텁 storage에는 remove가 없어 정리 시도가 있었다면 여기서 던졌을 것이다
+      expect(uploadMock).toHaveBeenCalledTimes(2)
+      expect(updatePayloads).toHaveLength(1)
+      // 같은 경로에 upsert하므로 같은 대상을 다시 반영하면 그 파일을 덮어쓴다
+      expect(uploadMock.mock.calls.every((call) => call[2].upsert === true)).toBe(true)
+    })
+  })
 })
