@@ -3,7 +3,12 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { readBulkRequest, updateByIdsAllOrNothing, bulkJson, type BulkServiceClient } from '@/lib/admin/bulk/server'
 import { confirmPhraseFor, isPhraseMatch, type BulkSkip } from '@/lib/admin/bulk/shared'
 import { BADGE_REFERENCE_SOURCES, collectBadgeReferences, chunkBadgeIds } from '@/lib/admin/badge-references'
-import { classifyBadgeTribeAssignment, type BadgeTribeAssignmentCandidate } from '@/lib/admin/badge-list-bulk'
+import {
+  classifyBadgeDeactivation,
+  classifyBadgeTribeAssignment,
+  type BadgeDeactivationCandidate,
+  type BadgeTribeAssignmentCandidate,
+} from '@/lib/admin/badge-list-bulk'
 import { runBadgeDeactivationSideEffects } from '@/lib/admin/badge-deactivate'
 import { invalidateUnclaimedDrops } from '@/lib/admin/poi-drops'
 import type { BadgeType } from '@/types/database'
@@ -51,6 +56,22 @@ async function fetchBadgeTribeCandidates(
   return { candidates, error: null }
 }
 
+/** 비활성화 대상의 현재 `deleted_at`을 읽는다 — 이미 비활성인 배지를 갱신에서 빼기 위함(티켓 20260924_1404) */
+async function fetchBadgeDeactivationCandidates(
+  supabase: ReturnType<typeof createServiceClient>,
+  ids: string[]
+): Promise<{ candidates: Map<string, BadgeDeactivationCandidate>; error: string | null }> {
+  const candidates = new Map<string, BadgeDeactivationCandidate>()
+  for (const idsChunk of chunkBadgeIds(ids, READ_CHUNK_SIZE)) {
+    const { data, error } = await supabase.from('badges').select('id, name, deleted_at').in('id', idsChunk)
+    if (error) return { candidates, error: error.message }
+    for (const row of (data ?? []) as { id: string; name: string; deleted_at: string | null }[]) {
+      candidates.set(row.id, { name: row.name, deleted_at: row.deleted_at })
+    }
+  }
+  return { candidates, error: null }
+}
+
 export async function POST(req: NextRequest) {
   const result = await readBulkRequest(req, {
     actions: {
@@ -79,29 +100,40 @@ export async function POST(req: NextRequest) {
   }
 
   if (action === 'deactivate') {
+    // 이미 비활성인 배지는 건너뛴다 — `deleted_at`을 다시 쓰면 원래 비활성화 시각이 사라진다.
+    const lookup = await fetchBadgeDeactivationCandidates(supabase, ids)
+    if (lookup.error) return NextResponse.json({ error: lookup.error }, { status: 500 })
+    const { deactivatable, skipped } = classifyBadgeDeactivation(ids, lookup.candidates)
+
     if (dryRun) {
       // 무효화될 월드 드랍 수 — `poi-drops.ts`의 무효화 조건(is_available=true,
-      // picked_up_at is null)과 같은 조건으로 센다.
-      const { count, error } = await supabase
-        .from('poi_drops')
-        .select('id', { count: 'exact', head: true })
-        .in('badge_id', ids)
-        .eq('is_available', true)
-        .is('picked_up_at', null)
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      // picked_up_at is null)과 같은 조건으로 센다. 실제로 비활성화될 배지만 센다.
+      let droppableCount = 0
+      if (deactivatable.length > 0) {
+        const { count, error } = await supabase
+          .from('poi_drops')
+          .select('id', { count: 'exact', head: true })
+          .in('badge_id', deactivatable)
+          .eq('is_available', true)
+          .is('picked_up_at', null)
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+        droppableCount = count ?? 0
+      }
       return bulkJson(
-        { processed: ids, skipped: [], dryRun: true, impact: { droppableCount: count ?? 0 } },
+        { processed: deactivatable, skipped, dryRun: true, impact: { droppableCount } },
         { admin, action }
       )
     }
 
-    const update = await updateByIdsAllOrNothing(bulkClient, 'badges', ids, { deleted_at: new Date().toISOString() })
+    const update = await updateByIdsAllOrNothing(bulkClient, 'badges', deactivatable, {
+      deleted_at: new Date().toISOString(),
+    })
     if (!update.ok) {
       return NextResponse.json({ error: update.error ?? '반영에 실패했습니다.' }, { status: 500 })
     }
     // 모든 묶음 반영이 성공한 뒤에만 부수효과를 실행한다(상위 티켓 §2).
     await runBadgeDeactivationSideEffects(supabase, update.updatedIds, 'admin badges list-bulk deactivate')
-    return bulkJson({ processed: update.updatedIds, skipped: [] }, { admin, action })
+    return bulkJson({ processed: update.updatedIds, skipped }, { admin, action })
   }
 
   if (action === 'assign_tribe') {

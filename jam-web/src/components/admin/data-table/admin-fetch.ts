@@ -11,9 +11,27 @@ async function readErrorMessage(res: Response): Promise<string> {
   return '요청을 처리하지 못했습니다. 잠시 뒤 다시 시도해주세요.'
 }
 
+/**
+ * 서버 응답을 받지 못한 실패(네트워크 끊김·서버 무응답)일 때 토스트에 보여 줄 고정 문장
+ * (UX_WRITING_GUIDELINE §4.1 현상 → 원인 → 해결책). 브라우저가 던진 영어 문구("Failed to fetch")를
+ * 그대로 노출하지 않는다(티켓 20260924_1152). 서버가 돌려준 오류 메시지는 이 문장이 아니라 그대로 쓴다.
+ */
+export const NETWORK_ERROR_MESSAGE =
+  '서버에 연결하지 못했어요. 인터넷 연결이 끊겼거나 서버가 응답하지 않았을 수 있어요. 연결을 확인하고 다시 시도해 주세요.'
+
+/** `fetch`가 reject되면(응답 자체를 받지 못함) 고정 한국어 문장으로 바꿔 던진다. 호출자가 취소한 요청은 그대로 던진다 */
+async function fetchOrThrow(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init)
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
+    throw new Error(NETWORK_ERROR_MESSAGE)
+  }
+}
+
 /** JSON 응답을 받는 fetch — 실패(!res.ok)하면 서버 메시지로 throw한다 */
 export async function requestJson<T = unknown>(input: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(input, init)
+  const res = await fetchOrThrow(input, init)
   if (!res.ok) throw new Error(await readErrorMessage(res))
   return (await res.json()) as T
 }
@@ -61,7 +79,7 @@ export async function downloadResponseAsFile(
   fallbackFilename: string,
   init?: RequestInit
 ): Promise<void> {
-  const res = await fetch(input, init)
+  const res = await fetchOrThrow(input, init)
   if (!res.ok) throw new Error(await readErrorMessage(res))
 
   const blob = await res.blob()

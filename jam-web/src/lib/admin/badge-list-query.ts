@@ -291,6 +291,8 @@ export async function fetchBadgeListPage(
  * "이 조건의 N건 모두 선택" 배너·내보내기가 부르는 전체 ID 조회(상한 이내, 상위 티켓 §6
  * 결정 1). 목록 페이지와 같은 필터(`parseBadgeListParams`)를 써서, 화면에 보이는 "총 N개"와
  * 여기서 돌려주는 건수가 항상 같다. 정렬은 필요 없다(선택 대상 집합만 필요).
+ * 기본 경로의 DB 오류는 던진다. 체크인 지점 카테고리 경로(`fetchAllRows`)의 부분 목록 이어가기는
+ * 목록 화면과 같은 의도된 설계라 그대로 둔다.
  */
 export async function fetchBadgeListIds(
   supabase: ServiceClient,
@@ -308,9 +310,8 @@ export async function fetchBadgeListIds(
   let query = supabase.from('badges').select('id', { count: 'exact' }) as unknown as BadgeListQuery<{ id: string }>
   query = applyBadgeListFilters(query, params)
   const { data, count, error } = await query.range(0, cap - 1)
-  if (error) {
-    console.error('[admin/badges] id 목록 조회 오류:', error)
-    return { ids: [], total: 0 }
-  }
+  // 오류를 빈 결과({ ids: [], total: 0 })로 삼키면 전체 선택 배너·내보내기가 "0건"으로 보인다.
+  // 던져서 호출부(라우트)가 500과 안내 문구로 응답하게 한다(티켓 20260924_1405).
+  throwOnQueryError(error, 'badges/ids')
   return { ids: (data ?? []).map((r) => r.id), total: count ?? 0 }
 }

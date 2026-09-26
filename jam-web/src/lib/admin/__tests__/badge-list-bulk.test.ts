@@ -1,4 +1,9 @@
-import { classifyBadgeTribeAssignment, type BadgeTribeAssignmentCandidate } from '../badge-list-bulk'
+import {
+  classifyBadgeDeactivation,
+  classifyBadgeTribeAssignment,
+  SKIP_ALREADY_INACTIVE,
+  type BadgeTribeAssignmentCandidate,
+} from '../badge-list-bulk'
 
 const TARGET = 'tribe-a'
 
@@ -73,5 +78,25 @@ describe('classifyBadgeTribeAssignment', () => {
     )
     expect(result.assignable).toEqual(['b1', 'b2'])
     expect(result.skipped).toEqual([{ id: 'missing', reason: '배지를 찾을 수 없습니다.' }])
+  })
+})
+
+describe('classifyBadgeDeactivation', () => {
+  it('이미 비활성인 배지는 이름과 함께 건너뜀으로 나눈다', () => {
+    const result = classifyBadgeDeactivation(
+      ['active', 'off'],
+      new Map([
+        ['active', { name: '활성 배지', deleted_at: null }],
+        ['off', { name: '꺼진 배지', deleted_at: '2026-09-01T00:00:00Z' }],
+      ])
+    )
+    expect(result.deactivatable).toEqual(['active'])
+    expect(result.skipped).toEqual([{ id: 'off', label: '꺼진 배지', reason: SKIP_ALREADY_INACTIVE }])
+  })
+
+  it('조회 결과에 없는 id는 갱신 대상에 남긴다', () => {
+    const result = classifyBadgeDeactivation(['ghost'], new Map())
+    expect(result.deactivatable).toEqual(['ghost'])
+    expect(result.skipped).toEqual([])
   })
 })

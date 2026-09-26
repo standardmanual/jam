@@ -34,7 +34,13 @@ export async function POST(req: NextRequest) {
   for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
     const chunk = uniqueIds.slice(i, i + CHUNK_SIZE)
     const { data, error } = await supabase.from('badges').select(BADGE_LIST_COLUMNS).in('id', chunk)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('[admin/badges/export] 배지 조회 오류:', error)
+      return NextResponse.json(
+        { error: '배지를 내보내지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.' },
+        { status: 500 }
+      )
+    }
     rows.push(...((data ?? []) as BadgeListRow[]))
   }
 

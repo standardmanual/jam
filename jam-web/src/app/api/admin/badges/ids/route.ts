@@ -15,7 +15,17 @@ export async function GET(req: NextRequest) {
 
   const params = parseBadgeListParams(pickSingleQueryParamsFromURL(req.nextUrl.searchParams))
   const supabase = createServiceClient()
-  const { ids, total } = await fetchBadgeListIds(supabase, params, SELECT_ALL_CAP)
+  let result: Awaited<ReturnType<typeof fetchBadgeListIds>>
+  try {
+    result = await fetchBadgeListIds(supabase, params, SELECT_ALL_CAP)
+  } catch {
+    // 조회 오류를 "0건"으로 오인하지 않도록 500으로 알린다(티켓 20260924_1405). 원인은 던진 쪽이 로그로 남겼다.
+    return NextResponse.json(
+      { error: '배지 목록을 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.' },
+      { status: 500 }
+    )
+  }
+  const { ids, total } = result
 
   if (total > SELECT_ALL_CAP) {
     return NextResponse.json(

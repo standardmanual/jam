@@ -60,3 +60,32 @@ export function classifyBadgeTribeAssignment(
 
   return { assignable, skipped }
 }
+
+export interface BadgeDeactivationCandidate {
+  name: string
+  deleted_at: string | null
+}
+
+export const SKIP_ALREADY_INACTIVE = '이미 비활성 상태입니다.'
+
+/**
+ * 비활성화 대상을 "비활성화할 id"와 "건너뜀(이미 비활성)"으로 나눈다(티켓 20260924_1404). 이미
+ * 비활성인 배지에 `deleted_at`을 다시 쓰면 원래 비활성화 시각이 사라지므로 갱신 대상에서 뺀다.
+ * 조회 결과에 없는 id는 지금까지처럼 갱신 대상에 남긴다(무매칭이면 갱신에서 자연히 빠진다).
+ */
+export function classifyBadgeDeactivation(
+  ids: string[],
+  candidates: Map<string, BadgeDeactivationCandidate>
+): { deactivatable: string[]; skipped: BulkSkip[] } {
+  const deactivatable: string[] = []
+  const skipped: BulkSkip[] = []
+  for (const id of ids) {
+    const candidate = candidates.get(id)
+    if (candidate?.deleted_at) {
+      skipped.push({ id, label: candidate.name, reason: SKIP_ALREADY_INACTIVE })
+    } else {
+      deactivatable.push(id)
+    }
+  }
+  return { deactivatable, skipped }
+}
