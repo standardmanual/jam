@@ -2,7 +2,7 @@
 id: "20260922_1214"
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-22
 parent: "20260922_1056"
 ---
@@ -39,21 +39,17 @@ parent: "20260922_1056"
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 묶음 티켓 20260926_1240으로 처리했다. 상세와 실행 지표는 그 티켓의 완료 기록에 있다.
+- `scripts/cleanup-stale-worktree.sh`를 `set -euo pipefail`로 바꿨다. `git rev-parse --show-toplevel` 실패 시 안내를 출력하고 종료 코드 1로 끝낸다. `git worktree list --porcelain`은 프로세스 치환이라 `-e`가 실패를 못 잡으므로 변수에 먼저 담게 했다. 의도적 실패 지점은 이미 가드돼 있어 그대로 두었고 종료 코드 0/2 계약은 유지된다.
 
 ### 변경된 파일
 ```
--
+- scripts/cleanup-stale-worktree.sh
+- scripts/cleanup-stale-worktree.test.mjs
 ```
 
 ### 테스트 결과
-- [ ] 
-
-### 배포 정보
-- 배포일: 
-- 환경: staging (빌드 없음)
-- 커밋: 
-
-### 주요 의사결정 / 핵심 메모
+- [x] 기존 테스트 4종과 저장소 밖 실행 1종 통과, 스크립트가 `set -euo pipefail`인지 확인. `scripts/verify.sh` 통과, CI 성공
 
 ### 잔여 이슈
--
+- `set -e` 중단 때 종료 코드가 1이 아니라 실패한 git 명령의 코드(보통 128)로 끝난다. 호출부(`jam-developer.md`)는 종료 코드 2만 특별 취급하고 나머지는 중단·보고로 처리하므로 영향이 없다.
