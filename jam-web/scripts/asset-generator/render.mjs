@@ -14,7 +14,7 @@
  *   --preset <프리셋 id> --bg "#ff1a00" --end "#ff4dff" --text "배지 이름" [--subtext "짧은 설명"] \
  *   --out /absolute/path/out.png [--seed 123]
  * ```
- * 텍스트 레이어가 2개인 프리셋(홈피드)은 `--text`가 1번째(제목), `--subtext`가 2번째(설명) 레이어다.
+ * 텍스트 레이어가 2개 이상인 프리셋(홈피드·미션)은 `--text`가 1번째, `--subtext`가 2번째 레이어다(3번째 이후는 저장된 글자 유지).
  * 순서 규칙과 오류 처리는 fillTextLayers.mjs 상단 주석, 글자 수 가이드는 PRD §8에 있다.
  * 성공하면 표준 출력에 `{ out, seed, preset, stage: { w, h }, presetSource }` JSON 한 줄을 찍는다
  * (`presetSource`는 프리셋을 받은 경로: `admin-api` | `service-role`).
