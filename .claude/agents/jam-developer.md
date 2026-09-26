@@ -87,6 +87,11 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
    In your isolated worktree `next dev` does not start (its `jam-web/node_modules` is a link to
    the main folder), so do not try to render admin screens there: cover the logic with unit tests
    and leave screen-only checks to the orchestrator (pattern 13, ticket 20260924_1016).
+   The same link makes `npm install`, `npm ci`, `npm audit fix` and `npm update` unsafe in your
+   worktree: they write through the link into the main folder's `node_modules` (ticket
+   20260923_0100). If the ticket needs one of them, first replace the link with a real install,
+   `rm jam-web/node_modules && (cd jam-web && npm ci)`, and only then run the command. `rm` without
+   `-r` removes the link itself and never the folder it points to.
 12. **Commit in vertical slices, one atomic commit at a time.** Each commit is one complete,
     self-contained change; the commit message carries that change's summary (Korean, Hard rule 1).
     Keep history revertible to the last good commit — do not squash unrelated work into one commit.

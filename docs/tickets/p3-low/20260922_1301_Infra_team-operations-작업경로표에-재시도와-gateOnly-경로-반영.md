@@ -2,7 +2,7 @@
 id: "20260922_1301"
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-22
 parent: "20260921_2307"
 ---
@@ -40,21 +40,12 @@ parent: "20260921_2307"
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- `docs/agents/team-operations.md` §3(손으로 쓰는 구간, 생성 구간 아님)의 경로 표 아래에 재작업 두 갈래를 적었다: 아현을 다시 부르는 **재시도**(`retryReason`·`retryBranch`)와 좁은 재작업을 카리나가 직접 패치한 뒤 민지만 다시 부르는 **`gateOnly`**. 서술은 옮겨 적지 않고 `.claude/skills/jam-work/SKILL.md` 3.1절을 단일 원천으로 가리킨다(`CLAUDE.md` 규칙 5).
 
 ### 변경된 파일
 ```
--
+- docs/agents/team-operations.md
 ```
 
 ### 테스트 결과
-- [ ] 
-
-### 배포 정보
-- 배포일: 
-- 환경: staging (빌드 없음)
-- 커밋: 
-
-### 주요 의사결정 / 핵심 메모
-
-### 잔여 이슈
--
+- [x] `check-contract` 통과, `gen-team-doc --check`(team-operations.md 생성 구간 최신) 통과

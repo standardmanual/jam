@@ -2,9 +2,9 @@
 id: "20260923_1309"
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-23
-closed:
+closed: 2026-09-26
 ---
 
 # [Infra] retryReason으로 재작업 요구사항이 커질 때 plan_only 임계값 사전 판단 누락
@@ -54,16 +54,13 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- **결정: 보완했다(2026-09-26, 카리나).** `.claude/skills/jam-work/SKILL.md` 1단계 3번에 "`retryReason`으로 재작업 요구사항이 처음보다 커졌으면 재시도 호출 전에 규모 사전 판정을 다시 하고 필요하면 `planOnlyWaiver`를 넣는다"를 추가했다(티켓 20260925_1529와 같은 자리에 함께 넣었다).
+- 근거: 재시도는 `planOnlyWaiver`가 자동으로 이어지지 않아(`SKILL.md` 2단계, 재시도에도 같은 면제가 필요하면 다시 넘긴다) 요구사항이 커졌을 때 첫 호출의 판정이 낡은 채로 남는 틈이 있었다.
 
 ### 변경된 파일
 ```
--
+- .claude/skills/jam-work/SKILL.md
 ```
 
 ### 테스트 결과
-- [ ]
-
-### 주요 의사결정 / 핵심 메모
-
-### 잔여 이슈
--
+- [x] `check-contract` 통과

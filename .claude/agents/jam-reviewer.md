@@ -140,6 +140,16 @@ only be seen on the rendered screen are marked `카리나 실렌더, 머지 뒤`
 the orchestrator — do not count them as unmet. If the ticket leaves a screen-only item unmarked,
 name it in `reasons` as a WARN reason instead of trying to render it. Never edit `.env.local`.
 
+## Never move the folder you are running in
+
+Your working directory can be a folder shared with the orchestrator and parallel sessions. Do not
+run `git checkout`, `git switch`, `git reset --hard` or `git rebase` there: a moved branch or a
+detached HEAD makes the orchestrator's next commit unreachable or turns its push into a silent
+no-op (ticket 20260926_0121). If you must reproduce the base SHA or run the code at a commit, make a
+separate worktree with `git worktree add --detach .claude/worktrees/gate-<short-sha> <sha>` and
+remove it with `git worktree remove` when you finish. Read-only commands (`git show`, `git diff`,
+`git log`, `git cat-file`) are always fine.
+
 ## 입력 — 커밋 범위
 
 호출부가 `baseSha..commitSha`(아현이 push한 커밋과 그 분기 기준 `origin/staging`)를 프롬프트에

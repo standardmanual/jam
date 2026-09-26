@@ -189,11 +189,18 @@ async function runGateReview({ ticketPath, workType, devResult, designDecisionTe
   // 크다)만 Sonnet으로 두고 나머지는 Haiku로 부른다.
   // 병렬 호출이라 전후 토큰 차이를 에이전트별로 쪼갤 수 없다 — 두 호출을 묶어 하나로 기록한다.
   const parallelT0 = tokensSpent()
+  // 게이트 에이전트가 공유 작업 폴더의 브랜치·HEAD를 옮기지 못하게 한다(티켓 20260926_0121).
+  // 재현이 필요하면 별도 워크트리를 쓰게 한다.
+  const WORKDIR_RULE =
+    `\n작업 폴더 규칙: 지금 폴더는 카리나·병렬 세션과 공유된다. git checkout·switch·reset --hard·rebase로 ` +
+    `브랜치나 HEAD를 옮기지 마라. 특정 커밋을 재현해야 하면 git worktree add --detach 로 별도 폴더를 만들고 ` +
+    `끝나면 git worktree remove 로 지워라. git show·diff·log 같은 읽기 명령은 자유다.\n`
   const [gate, designReview] = await parallel([
     () => agent(
       `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult?.summary ?? devResult}\n` +
       `${designDecisionText ? `\n채원 사전 판정(점검표 6번 대조 기준):\n${designDecisionText}\n` : ''}` +
       rangeInstruction +
+      WORKDIR_RULE +
       `${extraNote ?? ''}` +
       // 면제 없이 기준을 넘겼는지는 아현 자체 판단에만 맡기지 않는다(티켓 20260922_0619) —
       // 이번 실행의 면제 값을 그대로 넘겨 점검표 5번에서 대조하게 한다.
@@ -205,6 +212,7 @@ async function runGateReview({ ticketPath, workType, devResult, designDecisionTe
       `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult?.summary ?? devResult}\n` +
       `${designDecisionText ? `\n이번 티켓의 채원 사전 판정:\n${designDecisionText}\n` : '\n이번 티켓에는 사전 판정이 없다. 점검표 0절은 건너뛴다.\n'}` +
       rangeInstruction +
+      WORKDIR_RULE +
       `\n모드 ② 사후 리뷰로 진행하라. ` +
       `.claude/skills/jam-design/references/ui-review-checklist.md를 읽고 그 점검표대로 ` +
       `위 검토 범위의 diff만 검토하라. 손대지 않은 기존 코드는 다루지 마라. 라이팅 품질은 민지가 ` +
