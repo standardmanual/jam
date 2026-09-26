@@ -111,7 +111,7 @@ jam-doc/assets/mission-bundles/<묶음 ID>/
 
 스크립트가 정하는 값(묶음에서 받지 않는다): `id`(등록 전에 정한 UUID), `image_url`(업로드한 WebP 공개 주소, `?v=` 캐시 무효화 쿼리
 포함), `image_source`(항상 `agent-generator`, 마이그레이션 188의 CHECK 허용값, PRD §10), `reward_type`·`reward_id`·`gated_badge_id`
-(항상 null).
+(항상 null). `condition_text`(달성 조건 문장, 마이그레이션 193)는 묶음이 받지 않는 칸이라 비워 둔다(NULL) — 필요하면 어드민 폼에서 채운다.
 
 ### 3.4 image
 
