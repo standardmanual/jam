@@ -29,7 +29,7 @@ import { drawTextLayer } from '../../src/lib/asset-generator/render'
 import { generateRandomSeed, isSystemDefaultFont, resolveStageSize } from '../../src/app/admin/asset-generator/assetGeneratorHelpers'
 
 import { createServerFontLoader } from './fonts.mjs'
-import { fillTextLayers } from './fillTextLayers.mjs'
+import { applyLayerValues } from './applyLayerValues.mjs'
 import { loadEnv } from '../lib/loadEnv.mjs'
 import { normalizePreset } from './presetSource.mjs'
 import { serverCanvasFactory, getServerContext, loadImageAsCanvas } from './serverCanvas'
@@ -72,12 +72,12 @@ function createPresetLoader(supabase) {
  */
 function createTextOverflowDetector(loadPreset) {
   const loadFont = createServerFontLoader()
-  return async ({ presetId, text, subtext }) => {
+  return async ({ presetId, values }) => {
     const preset = await loadPreset(presetId)
     const { width, height } = resolveStageSize(preset.stageRatio)
     const canvas = serverCanvasFactory(width, height)
     const ctx = getServerContext(canvas)
-    const layers = fillTextLayers(preset.layers, { text, subtext }).filter((layer) => layer.type === 'text')
+    const layers = applyLayerValues(preset.layers, values).layers.filter((layer) => layer.type === 'text')
     for (const layer of layers) {
       if (!isSystemDefaultFont(layer.font)) await loadFont(layer.font)
     }

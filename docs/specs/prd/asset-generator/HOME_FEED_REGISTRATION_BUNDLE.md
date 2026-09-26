@@ -182,8 +182,8 @@ code:
 | `preset_id` | 필수 | UUID | 에셋 제너레이터 프리셋 ID. 재현 기록용이라 존재 여부는 확인하지 않는다 |
 | `bg_color` | 필수 | `#rrggbb` | 이미지 배경색(그라데이션 시작색과 같다, PRD §8). 알파 없는 6자리만 허용 |
 | `end_color` | 필수 | `#rrggbb` | 그라데이션 끝색 |
-| `text` | 선택 | 문자열 | CLI `--text`에 넣은 값. 같은 프리셋·색·텍스트·시드면 같은 이미지가 나오므로(PRD §11) 재현하려면 필요해서 기록한다. 홈피드 프리셋의 첫 번째 텍스트 레이어(제목)에 들어간 값 |
-| `subtext` | 선택 | 문자열 | CLI `--subtext`에 넣은 값. 홈피드 프리셋의 두 번째 텍스트 레이어(설명)에 들어간 값이며 `text`처럼 재현용으로 기록한다. 순서 규칙·글자 수는 PRD §8 |
+| `text` | 선택 | 문자열 | CLI `--text01`에 넣은 값(필드 이름은 예전 그대로다). 같은 프리셋·색·텍스트·시드면 같은 이미지가 나오므로(PRD §11) 재현하려면 필요해서 기록한다. 홈피드 프리셋의 `text01` 레이어(제목)에 들어간 값 |
+| `subtext` | 선택 | 문자열 | CLI `--text02`에 넣은 값(필드 이름은 예전 그대로다). 홈피드 프리셋의 `text02` 레이어(설명)에 들어간 값이며 `text`처럼 재현용으로 기록한다. 레이어 번호 규칙·글자 수는 PRD §8 |
 
 ## 4. 검증이 내는 사유 예
 
@@ -282,7 +282,7 @@ npx tsx scripts/asset-generator/register-home-feed-card.mjs --undo <registration
 
 ```
 cd jam-web
-npx tsx scripts/asset-generator/make-home-feed-card.mjs --preset <프리셋 id> --bg "#8a5a2e" --end "#3d2812" --text "제목" [--subtext "설명"] \
+npx tsx scripts/asset-generator/make-home-feed-card.mjs --preset <프리셋 id> --bg "#8a5a2e" --end "#3d2812" --text01 "제목" [--text02 "설명"] \
   --card '<card JSON>' --meta '<메타 JSON>' --out-dir <묶음 폴더 절대경로> [--seed <정수>]
 node scripts/asset-generator/contrast.mjs --bg "#8a5a2e" --end "#3d2812"   # 흰 글자 대비: 큰 글자 3:1·일반 글자 4.5:1
 ```

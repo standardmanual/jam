@@ -1,7 +1,7 @@
 /**
  * JAM! 에셋 제너레이터 — 기존 미션 대표 이미지 일괄 생성·적용 흐름 (티켓 20260926_2346, PRD asset-generator §8)
  *
- * 계획 파일(제목별 조건 문구·배경색·끝색)을 읽어 등록된 미션마다 「미션」 프리셋 이미지를 만들고(미리보기),
+ * 계획 파일(제목별 레이어 번호 값·배경색·끝색)을 읽어 등록된 미션마다 「미션」 프리셋 이미지를 만들고(미리보기),
  * 검토한 이미지를 그대로 저장소·`missions`에 적용하고(적용), 적용 전 상태로 되돌린다(롤백).
  * Supabase 클라이언트·렌더러·변환기·시각·시드를 인자로 받아 스텁으로 순서와 실패 처리를 시험한다
  * (`__tests__/applyMissionImagesFlow.test.ts`). 실제 연결은 `apply-mission-images.mjs` 하나뿐이다.
@@ -15,14 +15,18 @@
  *   한 건이라도 실패하면 즉시 멈춘다. 진행 상황은 `applied.json`에 남는다.
  * - 롤백(`--rollback <applied.json>`): 미션마다 이전 `image_url`·`image_source`(null 포함)를 되돌리고 백업 파일을 다시 올린다.
  *
- * ## 시드·텍스트
- * 미션마다 시드를 따로 뽑는다(같은 제목이어도 이미지는 다르다). 조건 문구는 프리셋 텍스트 1번째(`text`), 미션 이름은
- * 2번째(`subtext`)에 들어가고 3번째(MISSION)는 프리셋에 저장된 글자 그대로다(`fillTextLayers.mjs`).
+ * ## 시드·레이어 값
+ * 미션마다 시드를 따로 뽑는다(같은 제목이어도 이미지는 다르다). 계획 항목 형식은
+ * `{ "match": { "title": "…" }, "values": { "text01": "…", "text02": "…" }, "bg": "#RRGGBB", "end": "#RRGGBB", "expectCount": N }`이고,
+ * `values`의 번호는 어드민 화면과 같은 레이어 번호다(`applyLayerValues.mjs`). 번호가 프리셋에 없거나 값이 비어 있으면 검증 오류다.
+ * 값을 지정하지 않은 번호(예: 미션 프리셋의 고정 라벨 MISSION)는 프리셋에 저장된 값 그대로다. `resolved.json`에는 미션별로
+ * 적용한 `values`를 기록한다.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 
 import { MAX_APPLY_IMAGE_BYTES } from '../../src/lib/admin/applyGeneratedImageConstants'
+import { applyLayerValues, assertCanonicalLayerKey, isImageSourceFormat } from './applyLayerValues.mjs'
 import { contrastRatio, NORMAL_TEXT_MIN_RATIO, parseHexColor } from './contrastMath.mjs'
 import { toKstIsoString } from './makeHomeFeedCardArgs.mjs'
 import { AGENT_IMAGE_SOURCE, UUID_PATTERN } from './registerMissionBundle.mjs'
@@ -92,7 +96,8 @@ export function parseApplyMissionImagesArgs(argv) {
 
 /**
  * 계획 파일 내용을 검증한다(DB·프리셋 없이 볼 수 있는 부분). 반환: `{ errors: string[], plan }` — 오류가 있으면 plan은 null.
- * 검사: 프리셋 id 형식, 항목별 제목·조건 문구 비어 있지 않음, 색 `#RRGGBB`, `expectCount` 양의 정수, 제목 중복 없음.
+ * 검사: 프리셋 id 형식, 항목별 `match.title`·`values`(번호 형식, 값 비어 있지 않음), 색 `#RRGGBB`, `expectCount` 양의 정수, 제목 중복 없음.
+ * 번호가 프리셋에 실제로 있는지는 프리셋을 읽은 뒤 `checkPlanValues`가 본다. 반환하는 `plan.items`는 `{ title, values, bg, end, expectCount }`다.
  */
 export function validatePlan(raw) {
   const errors = []
@@ -108,15 +113,30 @@ export function validatePlan(raw) {
 
   const seenTitles = new Set()
   raw.items.forEach((item, index) => {
-    const label = `items[${index}]${isPlainObject(item) && typeof item.title === 'string' ? `(${item.title})` : ''}`
+    const title = isPlainObject(item) && isPlainObject(item.match) ? item.match.title : undefined
+    const label = `items[${index}]${typeof title === 'string' ? `(${title})` : ''}`
     if (!isPlainObject(item)) {
       errors.push(`${label}는 객체여야 해요.`)
       return
     }
-    if (!isNonEmptyString(item.title)) errors.push(`${label}: title이 비어 있어요.`)
-    else if (seenTitles.has(item.title)) errors.push(`${label}: 같은 제목이 계획에 두 번 있어요. 제목당 항목 하나만 두어요.`)
-    else seenTitles.add(item.title)
-    if (!isNonEmptyString(item.condition)) errors.push(`${label}: condition(조건 문구)이 비어 있어요.`)
+    if (!isNonEmptyString(title)) errors.push(`${label}: match.title이 비어 있어요.`)
+    else if (seenTitles.has(title)) errors.push(`${label}: 같은 제목이 계획에 두 번 있어요. 제목당 항목 하나만 두어요.`)
+    else seenTitles.add(title)
+    if (!isPlainObject(item.values) || Object.keys(item.values).length === 0) {
+      errors.push(`${label}: values가 비어 있어요(예: { "text01": "…" }).`)
+    } else {
+      for (const [key, value] of Object.entries(item.values)) {
+        let type
+        try {
+          type = assertCanonicalLayerKey(key).type
+        } catch (e) {
+          errors.push(`${label}: ${errorMessage(e)}`)
+          continue
+        }
+        if (!isNonEmptyString(value)) errors.push(`${label}: values.${key}가 비어 있어요.`)
+        else if (type === 'image' && !isImageSourceFormat(value)) errors.push(`${label}: values.${key}는 이미지 파일의 절대 경로 또는 http(s) URL이어야 해요.`)
+      }
+    }
     for (const key of ['bg', 'end']) {
       if (typeof item[key] !== 'string' || !HEX_COLOR_PATTERN.test(item[key])) {
         errors.push(`${label}: ${key}는 #RRGGBB 형식이어야 해요(받은 값: ${JSON.stringify(item[key])}).`)
@@ -133,8 +153,8 @@ export function validatePlan(raw) {
     plan: {
       preset: raw.preset,
       items: raw.items.map((item) => ({
-        title: item.title,
-        condition: item.condition,
+        title: item.match.title,
+        values: { ...item.values },
         bg: item.bg,
         end: item.end,
         expectCount: item.expectCount,
@@ -145,13 +165,13 @@ export function validatePlan(raw) {
 
 /**
  * 프리셋 텍스트 레이어 색과 배경색·끝색의 대비가 4.5:1 이상인지 본다. 반환: 오류 문자열 배열.
- * 텍스트 레이어가 2개 미만이면 조건 문구·미션 이름을 넣을 곳이 없어 오류다.
+ * 텍스트 레이어가 하나도 없으면 대비를 볼 대상이 없어 오류다.
  */
 export function checkPlanContrast(presetLayers, items) {
   const errors = []
   const textLayers = presetLayers.filter((layer) => layer.type === 'text')
-  if (textLayers.length < 2) {
-    return [`프리셋의 텍스트 레이어가 ${textLayers.length}개예요. 조건 문구·미션 이름을 넣으려면 2개 이상이어야 해요.`]
+  if (textLayers.length === 0) {
+    return ['프리셋에 텍스트 레이어가 없어요. 글자 대비를 확인할 수 없어요.']
   }
   const textColors = [...new Set(textLayers.map((layer) => layer.color))]
   for (const color of textColors) {
@@ -170,6 +190,28 @@ export function checkPlanContrast(presetLayers, items) {
         if (ratio < NORMAL_TEXT_MIN_RATIO) {
           errors.push(`${item.title}: ${name} ${background}와 프리셋 텍스트 색 ${color}의 대비가 ${ratio.toFixed(2)}:1이라 ${NORMAL_TEXT_MIN_RATIO}:1 미만이에요.`)
         }
+      }
+    }
+  }
+  return errors
+}
+
+/**
+ * 계획 항목의 `values` 번호가 프리셋에 실제로 있는지, 이미지 번호의 원본 파일이 있는지 본다. 반환: 오류 문자열 배열.
+ * 번호 검사는 `applyLayerValues`와 같다(없는 번호면 프리셋의 번호 목록을 담는다). 이미지 원본이 URL이면 존재 확인은 건너뛴다.
+ */
+export function checkPlanValues(presetLayers, items) {
+  const errors = []
+  for (const item of items) {
+    try {
+      applyLayerValues(presetLayers, item.values)
+    } catch (e) {
+      errors.push(`${item.title}: ${errorMessage(e)}`)
+      continue
+    }
+    for (const [key, value] of Object.entries(item.values)) {
+      if (key.startsWith('img') && path.isAbsolute(value) && !(fs.existsSync(value) && fs.statSync(value).isFile())) {
+        errors.push(`${item.title}: ${key}의 이미지 파일을 찾을 수 없어요: ${value}`)
       }
     }
   }
@@ -225,9 +267,9 @@ function writeJsonFile(filePath, value) {
  *
  * 인자: `args`(`parseApplyMissionImagesArgs` 결과), `supabase`(읽기만 함), `out`(`{ log, error }`), `deps`:
  * - `loadPreset(presetId)`: `{ layers }`를 돌려주는 프리셋 조회(텍스트 색 대비 검사용)
- * - `renderPng({ preset, bg, end, text, subtext, seed })`: `renderCardPng`과 같은 계약(`{ buffer, seed, stage }`)
+ * - `renderPng({ preset, bg, end, values, seed })`: `renderCardPng`과 같은 계약(`{ buffer, seed, stage }`)
  * - `randomSeed()`: 미션마다 시드를 뽑는다(`generateRandomSeed`)
- * - `detectTextOverflow({ presetId, text, subtext })`(선택): 텍스트가 오른쪽 여백을 넘으면 true
+ * - `detectTextOverflow({ presetId, values })`(선택): 텍스트가 오른쪽 여백을 넘으면 true
  * - `makeContactSheet(images: [{ index, buffer }])`(선택): 모아보기 PNG 버퍼
  * - `now()`: 밀리초 시각
  */
@@ -248,7 +290,7 @@ export async function runPreview({ args, supabase, out, deps }) {
     const missions = await fetchAllMissions(supabase)
     const matched = matchMissionsToPlan(plan.items, missions)
 
-    const allErrors = [...contrastErrors, ...matched.errors]
+    const allErrors = [...contrastErrors, ...checkPlanValues(preset.layers, plan.items), ...matched.errors]
     if (allErrors.length > 0) return reportPlanErrors(out, allErrors)
 
     out.log(`검증 통과: 제목 ${plan.items.length}종, 미션 ${matched.targets.length}건. 이미지를 만들어요.`)
@@ -259,20 +301,20 @@ export async function runPreview({ args, supabase, out, deps }) {
     const overflowWarnings = []
     for (const [position, { mission, item }] of matched.targets.entries()) {
       const seed = deps.randomSeed()
-      const rendered = await deps.renderPng({ preset: plan.preset, bg: item.bg, end: item.end, text: item.condition, subtext: item.title, seed })
+      const rendered = await deps.renderPng({ preset: plan.preset, bg: item.bg, end: item.end, values: item.values, seed })
       const file = `${mission.id}.png`
       fs.writeFileSync(path.join(outDir, file), rendered.buffer)
 
       const textOverflow = deps.detectTextOverflow
-        ? await deps.detectTextOverflow({ presetId: plan.preset, text: item.condition, subtext: item.title })
+        ? await deps.detectTextOverflow({ presetId: plan.preset, values: item.values })
         : false
-      if (textOverflow) overflowWarnings.push(`문구가 오른쪽 여백(가로 3%)을 넘어요: ${item.title} / ${item.condition} (${mission.id})`)
+      if (textOverflow) overflowWarnings.push(`문구가 오른쪽 여백(가로 3%)을 넘어요: ${item.title} / ${textValuesOf(item.values).join(' / ')} (${mission.id})`)
 
       items.push({
         index: position + 1,
         id: mission.id,
         title: item.title,
-        condition: item.condition,
+        values: item.values,
         bg: item.bg,
         end: item.end,
         seed: rendered.seed,
@@ -309,6 +351,14 @@ export async function runPreview({ args, supabase, out, deps }) {
     out.error(errorMessage(e))
     return 1
   }
+}
+
+/** 값 맵에서 텍스트 번호(`text01` …)의 값만 번호 순으로 꺼낸다(경고 문구용). */
+function textValuesOf(values) {
+  return Object.keys(values)
+    .filter((key) => key.startsWith('text'))
+    .sort()
+    .map((key) => values[key])
 }
 
 function reportPlanErrors(out, errors) {

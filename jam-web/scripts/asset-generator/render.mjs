@@ -2,22 +2,24 @@
 /**
  * JAM! 에셋 제너레이터 에이전트 CLI (티켓 20260924_2201, PRD §8·§11)
  *
- * 브라우저 없이 배지 대표 이미지를 만든다. 입력은 프리셋 ID·배경색·그라데이션 끝색·텍스트
- * 내용·(선택) 시드다. 그라데이션 시작색은 배경색과 같고, 나머지 리본 속성은 전체 랜덤 규칙
+ * 브라우저 없이 배지 대표 이미지를 만든다. 입력은 프리셋 ID·배경색·그라데이션 끝색·레이어 번호별 값·(선택) 시드다.
+ * 그라데이션 시작색은 배경색과 같고, 나머지 리본 속성은 전체 랜덤 규칙
  * (`deriveRibbonFromSeed`, 어드민 "전체 무작위"와 같은 값 범위)으로 채운다. 출력은 원본 PNG
- * 파일과 마스터 시드다. 같은 프리셋·색·텍스트·시드면 항상 같은 이미지가 나온다.
+ * 파일과 마스터 시드다. 같은 프리셋·색·값·시드면 항상 같은 이미지가 나온다.
  *
  * ## 실행
  * ```
  * cd jam-web
  * npx tsx scripts/asset-generator/render.mjs \
- *   --preset <프리셋 id> --bg "#ff1a00" --end "#ff4dff" --text "배지 이름" [--subtext "짧은 설명"] \
+ *   --preset <프리셋 id> --bg "#ff1a00" --end "#ff4dff" --text01 "배지 이름" [--text02 "짧은 설명"] [--img01 /절대/경로.png] \
  *   --out /absolute/path/out.png [--seed 123]
  * ```
- * 텍스트 레이어가 2개 이상인 프리셋(홈피드·미션)은 `--text`가 1번째, `--subtext`가 2번째 레이어다(3번째 이후는 저장된 글자 유지).
- * 순서 규칙과 오류 처리는 fillTextLayers.mjs 상단 주석, 글자 수 가이드는 PRD §8에 있다.
- * 성공하면 표준 출력에 `{ out, seed, preset, stage: { w, h }, presetSource }` JSON 한 줄을 찍는다
- * (`presetSource`는 프리셋을 받은 경로: `admin-api` | `service-role`).
+ * 프리셋의 텍스트·이미지 레이어는 어드민 화면과 같은 번호(`text01`, `img01`, …, 목록 위에서 아래로 종류별 01부터)로 지정한다.
+ * 지정하지 않은 번호는 프리셋에 저장된 값을 그대로 쓴다. 번호 규칙과 오류 처리는 applyLayerValues.mjs 상단 주석,
+ * 글자 수 가이드는 PRD §8에 있다. 옛 인자 `--text`·`--subtext`는 없어졌다.
+ * 성공하면 표준 출력에 `{ out, seed, preset, stage: { w, h }, presetSource, layers: { applied, saved } }` JSON 한 줄을 찍는다
+ * (`presetSource`는 프리셋을 받은 경로: `admin-api` | `service-role`, `layers.applied`는 값을 지정한 번호,
+ * `layers.saved`는 프리셋에 저장된 값을 쓴 번호 — 빠뜨린 값이 없는지 이 목록으로 확인한다).
  * 인자 누락·프리셋 없음·글꼴 다운로드 실패 등 어떤 오류든 한국어 메시지를 stderr에 찍고
  * 종료 코드 1로 끝난다(기본 글꼴로 조용히 대체하지 않는다 — PRD §8 완료 조건).
  *
@@ -77,7 +79,7 @@ async function main() {
   fs.mkdirSync(path.dirname(args.out), { recursive: true })
   fs.writeFileSync(args.out, rendered.buffer)
 
-  console.log(JSON.stringify({ out: args.out, seed: rendered.seed, preset: args.preset, stage: rendered.stage, presetSource: rendered.presetSource }))
+  console.log(JSON.stringify({ out: args.out, seed: rendered.seed, preset: args.preset, stage: rendered.stage, presetSource: rendered.presetSource, layers: rendered.layers }))
 }
 
 main().catch((e) => {
