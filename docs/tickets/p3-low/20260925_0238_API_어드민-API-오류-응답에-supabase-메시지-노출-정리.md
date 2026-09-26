@@ -31,6 +31,9 @@ specs:
 ### 추가 위치 (2026-09-26, 티켓 20260926_1241 게이트 발견물)
 - `jam-web/src/app/api/admin/badges/list-bulk/route.ts` 47행(`assign_tribe` 조회 오류), 103행(이번에 추가된 deactivate 후보 조회 오류), 116행(`poi_drops` 집계 오류)이 DB 원문 `error.message`를 500 응답에 그대로 싣는다. 같은 파일의 기존 방식이라 이번 묶음에서는 따라갔다. 이 티켓의 관례 정리에 함께 포함한다.
 
+### 배포 전 점검에서 재확인 (2026-09-26, 민지 모드 ②, 확신도 높음)
+- `jam-web/src/app/api/admin/badges/list-bulk/route.ts` 51·67·119·224행이 DB 오류 원문을 응답에 그대로 낸다. 같은 diff에서 export·ids·PATCH는 고정 한국어 문장으로 바꿨는데 list-bulk만 남았다. 어드민 인증 뒤에서만 노출된다.
+
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
 
