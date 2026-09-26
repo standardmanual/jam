@@ -14,6 +14,9 @@ import type { CombinationRecipeSlotRow } from '@/types/database'
  */
 const CHUNK_SIZE = 200
 
+// DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1603). 현상 → 원인 → 해결책 순서.
+const READ_ERROR_MESSAGE = '내보낼 레시피 정보를 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+
 export async function POST(req: NextRequest) {
   const authError = await requireAdmin()
   if (authError) return authError
@@ -33,8 +36,14 @@ export async function POST(req: NextRequest) {
       supabase.from('combination_recipes').select(RECIPE_LIST_COLUMNS).in('id', chunk),
       supabase.from('combination_recipe_slots').select('*').in('recipe_id', chunk),
     ])
-    if (recipeResult.error) return NextResponse.json({ error: recipeResult.error.message }, { status: 500 })
-    if (slotResult.error) return NextResponse.json({ error: slotResult.error.message }, { status: 500 })
+    if (recipeResult.error) {
+      console.error('[recipes export] 레시피 조회 오류:', recipeResult.error.message)
+      return NextResponse.json({ error: READ_ERROR_MESSAGE }, { status: 500 })
+    }
+    if (slotResult.error) {
+      console.error('[recipes export] 슬롯 조회 오류:', slotResult.error.message)
+      return NextResponse.json({ error: READ_ERROR_MESSAGE }, { status: 500 })
+    }
     rows.push(...((recipeResult.data ?? []) as RecipeListRow[]))
     slots.push(...((slotResult.data ?? []) as CombinationRecipeSlotRow[]))
   }

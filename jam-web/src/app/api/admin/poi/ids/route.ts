@@ -11,6 +11,9 @@ import { parsePoiListParams, applyPoiListQuery, type PoiListQuery } from '@/lib/
  */
 const SELECT_ALL_CAP = 1000
 
+// DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1603). 현상 → 원인 → 해결책 순서.
+const READ_ERROR_MESSAGE = 'POI 목록을 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+
 export async function GET(req: NextRequest) {
   const authError = await requireAdmin()
   if (authError) return authError
@@ -22,7 +25,10 @@ export async function GET(req: NextRequest) {
   query = applyPoiListQuery(query, params)
   const { data, count, error } = await query.range(0, SELECT_ALL_CAP - 1)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[poi ids] 조회 오류:', error.message)
+    return NextResponse.json({ error: READ_ERROR_MESSAGE }, { status: 500 })
+  }
 
   if ((count ?? 0) > SELECT_ALL_CAP) {
     return NextResponse.json(

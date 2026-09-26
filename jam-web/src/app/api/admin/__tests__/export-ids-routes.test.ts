@@ -202,3 +202,88 @@ describe.each(ROUTES)('POST /api/admin/$path/export 정상 경로', ({ path, loa
     })
   }
 })
+
+/**
+ * DB 오류 처리(티켓 20260926_1603) — 조회가 실패하면 500과 고정 한국어 안내만 돌려주고 DB 오류 원문은
+ * 응답에 싣지 않는다. 원문은 서버 `console.error`로만 남는다. 오류를 내는 표만 골라 갈아 끼운다.
+ */
+const SECRET = 'SECRET_DB_DETAIL relation "internal_table" does not exist'
+const DB_ERROR = { data: null, count: null, error: { message: SECRET } }
+const EMPTY = { data: [], count: 0, error: null }
+const FIXED_TAIL = '서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+
+/** 표별 결과를 정해 두는 DB 대역 — 정해 두지 않은 표는 빈 결과로 풀린다 */
+function dbWith(byTable: Record<string, unknown>) {
+  const query = (table: string): unknown =>
+    new Proxy(function () {}, {
+      get: (_target, prop) => {
+        if (prop === 'then') {
+          return (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
+            Promise.resolve(byTable[table] ?? EMPTY).then(resolve, reject)
+        }
+        return () => query(table)
+      },
+    })
+  return { from: (table: string) => query(table), rpc: () => query('rpc') }
+}
+
+function expectFixedError500(res: Response, body: { error: string }, message: string, logPrefix: string) {
+  expect(res.status).toBe(500)
+  expect(body.error).toBe(message)
+  expect(JSON.stringify(body)).not.toContain(SECRET)
+  const logged = vi.mocked(console.error).mock.calls.map((args) => args.map(String).join(' '))
+  expect(logged.some((line) => line.includes(logPrefix) && line.includes(SECRET))).toBe(true)
+}
+
+const ledgerRow = { id: uuid(1), user_id: uuid(2), created_at: '2026-09-01T00:00:00Z' }
+
+const EXPORT_DB_ERRORS = [
+  { name: 'today', path: 'today', load: () => import('../today/export/route'), byTable: { today_cards: DB_ERROR }, noun: '카드', log: '[today export]' },
+  { name: 'missions', path: 'missions', load: () => import('../missions/export/route'), byTable: { missions: DB_ERROR }, noun: '미션', log: '[missions export]' },
+  { name: 'itembooks', path: 'itembooks', load: () => import('../itembooks/export/route'), byTable: { item_books: DB_ERROR }, noun: '컬렉션', log: '[itembooks export]' },
+  { name: 'poi', path: 'poi', load: () => import('../poi/export/route'), byTable: { poi: DB_ERROR }, noun: 'POI', log: '[poi export]' },
+  { name: 'recipes 레시피 조회', path: 'recipes', load: () => import('../recipes/export/route'), byTable: { combination_recipes: DB_ERROR }, noun: '레시피', log: '[recipes export] 레시피' },
+  { name: 'recipes 슬롯 조회', path: 'recipes', load: () => import('../recipes/export/route'), byTable: { combination_recipe_slots: DB_ERROR }, noun: '레시피', log: '[recipes export] 슬롯' },
+  { name: 'points/ledger 원장 조회', path: 'points/ledger', load: () => import('../points/ledger/export/route'), byTable: { point_transactions: DB_ERROR }, noun: '원장', log: '[points ledger export] 원장' },
+  {
+    name: 'points/ledger 유저 이름 조회',
+    path: 'points/ledger',
+    load: () => import('../points/ledger/export/route'),
+    byTable: { point_transactions: { data: [ledgerRow], count: 1, error: null }, users: DB_ERROR },
+    noun: '원장',
+    log: '[points ledger export] 유저 이름',
+  },
+  { name: 'item-badges', path: 'item-badges', load: () => import('../item-badges/export/route'), byTable: { badges: DB_ERROR }, noun: '아이템배지', log: '[item-badges export]' },
+]
+
+describe.each(EXPORT_DB_ERRORS)('POST /api/admin/$name export DB 오류', ({ path, load, byTable, noun, log }) => {
+  it('500과 고정 안내만 돌려주고 DB 오류 원문은 응답에 싣지 않는다(원문은 서버 로그로)', async () => {
+    createServiceClient.mockImplementation(() => dbWith(byTable))
+    const res = await call(load, path, { ids: [uuid(1), uuid(2)] })
+    expectFixedError500(res, await res.json(), `내보낼 ${noun} 정보를 불러오지 못했어요. ${FIXED_TAIL}`, log)
+  })
+})
+
+const idsUrl = (path: string, query = '') => `https://j-a-m.app/api/admin/${path}/ids${query}`
+
+const IDS_DB_ERRORS = [
+  { name: 'drop-policy/exclusions 아이템배지 탭', path: 'drop-policy/exclusions', query: '', load: () => import('../drop-policy/exclusions/ids/route'), table: 'badges', noun: '드랍 제외 대상', log: '[drop-exclusions ids] 조회 오류' },
+  { name: 'drop-policy/exclusions 컬렉션 탭', path: 'drop-policy/exclusions', query: '?tab=collections', load: () => import('../drop-policy/exclusions/ids/route'), table: 'item_books', noun: '드랍 제외 대상', log: '[drop-exclusions ids] 조회 오류' },
+  { name: 'drop-policy/exclusions 트라이브 컬렉션 범위 조회', path: 'drop-policy/exclusions', query: `?tab=badges&tribe_id=${uuid(9)}`, load: () => import('../drop-policy/exclusions/ids/route'), table: 'item_books', noun: '드랍 제외 대상', log: '[drop-exclusions ids] 조회 조건 처리 오류' },
+  { name: 'today', path: 'today', query: '', load: () => import('../today/ids/route'), table: 'today_cards', noun: '투데이 카드', log: '[today ids]' },
+  { name: 'missions', path: 'missions', query: '', load: () => import('../missions/ids/route'), table: 'missions', noun: '미션', log: '[missions ids]' },
+  { name: 'poi', path: 'poi', query: '', load: () => import('../poi/ids/route'), table: 'poi', noun: 'POI', log: '[poi ids]' },
+  { name: 'poi/review', path: 'poi/review', query: '', load: () => import('../poi/review/ids/route'), table: 'poi', noun: '검토 대기 POI', log: '[poi review ids]' },
+  { name: 'recipes', path: 'recipes', query: '', load: () => import('../recipes/ids/route'), table: 'combination_recipes', noun: '레시피', log: '[recipes ids]' },
+  { name: 'points/ledger', path: 'points/ledger', query: '', load: () => import('../points/ledger/ids/route'), table: 'point_transactions', noun: '포인트 원장', log: '[points ledger ids]' },
+  { name: 'item-badges', path: 'item-badges', query: '', load: () => import('../item-badges/ids/route'), table: 'badges', noun: '아이템배지', log: '[item-badges ids]' },
+]
+
+describe.each(IDS_DB_ERRORS)('GET /api/admin/$name ids DB 오류', ({ path, query, load, table, noun, log }) => {
+  it('500과 고정 안내만 돌려주고 DB 오류 원문은 응답에 싣지 않는다(원문은 서버 로그로)', async () => {
+    createServiceClient.mockImplementation(() => dbWith({ [table]: DB_ERROR }))
+    const { GET } = await load()
+    const res = await GET(new NextRequest(idsUrl(path, query)))
+    expectFixedError500(res, await res.json(), `${noun} 목록을 불러오지 못했어요. ${FIXED_TAIL}`, log)
+  })
+})
