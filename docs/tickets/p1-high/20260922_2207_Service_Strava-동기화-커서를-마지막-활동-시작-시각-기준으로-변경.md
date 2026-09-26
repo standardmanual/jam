@@ -2,9 +2,9 @@
 id: "20260922_2207"
 category: Service
 priority: P1
-status: WAITING
+status: CLOSED
 created: 2026-09-22
-closed:
+closed: 2026-09-26
 specs:
   - docs/specs/SERVICE_OPERATIONS.md
   - docs/specs/prd/04_PROJECT_SPEC.md
@@ -132,9 +132,18 @@ Strava `GET /athlete/activities?after=`는 활동 **시작 시각** 기준으로
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
 
-> 상태 WAITING인 이유: 「구현 범위」는 게이트 PASS·staging 병합까지 끝났다. 「후속 범위」(사용자
-> 계정 동기화 1회 뒤 Vercel 로그·`strava_activities` 대조)는 배포 뒤 사용자가 동기화를 눌러야
-> 확인할 수 있어 대기 중이다. 확인되면 CLOSED로 바꾼다.
+> 2026-09-26 후속 범위 확인을 마치고 CLOSED로 바꿨다. 근거는 아래 「후속 범위 확인 결과」에 있다.
+
+### 후속 범위 확인 결과 (2026-09-26, 카리나)
+사용자가 "9-22 이후 동기화 이력이 있다"고 알려 주어 DB로 대조했다(읽기 전용 조회).
+- 수정은 09-22 23:06(KST)에 staging에 병합됐다(`959bcc3e`). 옛 커서 로직에서 영구 누락되던 활동
+  `strava_id 20280787552`(활동 시작 09-22 18:46)가 병합 22분 뒤인 23:28에 `strava_activities`에 저장됐다.
+  옛 로직으로는 다시 가져오지 못하는 활동이므로, 수정이 동작했다는 증거로 본다.
+- 프로덕션에는 09-24 00:09 배포로 처음 들어갔다. 그 뒤 같은 유저의 활동이 09-24 01:19(시작 09-23 20:25,
+  늦게 업로드)와 09-24 13:36에 정상 저장됐다.
+- `strava_sync_failures`에 09-22 23:06 이후 실패 기록이 0건이다.
+- 확인하지 못한 것: 조건에 적은 Vercel 로그 문구(`신규(미처리): 1건`)는 보존 기간이 지나 대조하지 못했다.
+  결과 행으로 같은 사실을 확인했다.
 
 ### 구현 내용 요약
 - `syncStravaActivities()` 4단계의 조회 커서(`afterTimestamp`)를 `strava_connections.last_synced_at`
@@ -173,7 +182,7 @@ Strava `GET /athlete/activities?after=`는 활동 **시작 시각** 기준으로
 
 ### 배포 정보
 - 배포일: 2026-09-22 (staging 병합·push). 프로덕션은 `/jam-ship`으로 별도 진행
-- 환경: staging → production 예정
+- 환경: staging(09-22) → production(09-24 00:09 배포 포함)
 - 커밋: 구현 a33a51d8, 병합 959bcc3e (리뷰 브랜치 `claude/jamwork-20260922_2207-strava-sync-cursor`)
 
 ### 실행 지표
@@ -204,8 +213,6 @@ Strava `GET /athlete/activities?after=`는 활동 **시작 시각** 기준으로
 - 채택하지 않은 대안(컬럼 신설·겹침 확대)은 「구현 계획」 절에 있다.
 
 ### 잔여 이슈
-- **후속 범위 대기.** 배포 뒤 sihyunrr@gmail.com 계정에서 동기화 1회 → Vercel 로그에
-  `Strava 반환: 1건 이상, 신규(미처리): 1건`이 찍히고 `strava_activities`에 strava_id 20280787552
-  행이 생기는지 확인한다. 확인되면 CLOSED.
+- 후속 범위 확인은 끝났다(위 「후속 범위 확인 결과」).
 - 같은 날 **앞선** 활동(시계, 늦게 업로드)이 **뒤** 활동(폰, 즉시 업로드) 처리 후에 올라오면 여전히
   놓친다. 필요해지면 첫 싱크에서 건너뛴 활동 id를 기록해 두고 겹침을 넓히는 후속 티켓으로 다룬다.
