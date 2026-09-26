@@ -125,9 +125,9 @@ export interface TextLayerConfig {
   lineHeight: number;
   align: 'left' | 'center' | 'right';
   color: string;
-  /** 텍스트 블록 중심의 스테이지 가로 위치(%) */
+  /** 텍스트 정렬 앵커의 스테이지 가로 위치(%) — 왼쪽 정렬은 왼쪽 끝, 가운데는 가운데, 오른쪽은 오른쪽 끝 */
   xPct: number;
-  /** 텍스트 블록 중심의 스테이지 세로 위치(%) */
+  /** 전체 줄 높이 중심의 스테이지 세로 위치(%) */
   yPct: number;
   rotationDeg: number;
   /** 0~100 */

@@ -523,15 +523,14 @@ var AssetGeneratorCore = (() => {
     const lineWidths = lineChars.map(
       (chars) => chars.reduce((sum, ch, i) => sum + ctx.measureText(ch).width + (i < chars.length - 1 ? letterSpacingPx : 0), 0)
     );
-    const maxLineWidth = Math.max(0, ...lineWidths);
     const blockHeight = lineHeightPx * lines.length;
     ctx.setTransform(cs, sn, -sn, cs, cx, cy);
     lineChars.forEach((chars, lineIndex) => {
       const lineWidth = lineWidths[lineIndex];
       const lineY = (lineIndex + 0.5) * lineHeightPx - blockHeight / 2;
       let startX;
-      if (align === "left") startX = -maxLineWidth / 2;
-      else if (align === "right") startX = maxLineWidth / 2 - lineWidth;
+      if (align === "left") startX = 0;
+      else if (align === "right") startX = -lineWidth;
       else startX = -lineWidth / 2;
       let cursorX = startX;
       chars.forEach((ch) => {

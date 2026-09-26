@@ -381,9 +381,39 @@ describe('drawTextLayer (PRD §4.3)', () => {
     expect(calls.fillText[0].baseline).toBe('middle');
   });
 
-  it('정렬(왼쪽/가운데/오른쪽)이 여러 줄일 때 짧은 줄의 시작 x를 다르게 계산한다', () => {
-    // 첫 줄 "AB"(폭 20) · 둘째 줄 "A"(폭 10). 블록 폭은 가장 긴 줄(20) 기준이라 첫 줄의 시작
-    // x는 정렬과 무관하게 -10으로 같고, 짧은 둘째 줄의 시작 x만 정렬에 따라 달라진다.
+  it('한 줄 텍스트에서 정렬이 가로 앵커 기준 위치를 바꾼다(왼쪽=0, 가운데=-폭/2, 오른쪽=-폭)', () => {
+    // "ABC"(글자폭 10, 자간 0) → 줄 폭 30. 앵커(x)는 xPct 위치이고 회전 좌표계 원점이다.
+    const input = {
+      content: 'ABC',
+      font: { family: 'system-ui', weight: 400 },
+      sizePct: 100,
+      letterSpacing: 0,
+      lineHeight: 1.2,
+      color: '#111111',
+      xPct: 50,
+      yPct: 50,
+      rotationDeg: 0,
+      opacityPct: 100,
+      stageWidth: 100,
+      stageHeight: 100,
+    };
+
+    const left = createTextMockContext();
+    drawTextLayer(left.ctx, { ...input, align: 'left' });
+    expect(left.calls.fillText[0].x).toBeCloseTo(0, 10);
+
+    const center = createTextMockContext();
+    drawTextLayer(center.ctx, { ...input, align: 'center' });
+    expect(center.calls.fillText[0].x).toBeCloseTo(-15, 10);
+
+    const right = createTextMockContext();
+    drawTextLayer(right.ctx, { ...input, align: 'right' });
+    expect(right.calls.fillText[0].x).toBeCloseTo(-30, 10);
+  });
+
+  it('정렬(왼쪽/가운데/오른쪽)이 여러 줄일 때 각 줄을 같은 앵커에 맞춘다', () => {
+    // 첫 줄 "AB"(폭 20) · 둘째 줄 "A"(폭 10). 두 줄 모두 같은 앵커(x=0)를 기준으로 줄별 폭에 따라
+    // 시작 x가 정해진다. fillText 호출 순서: A(0), B(1), A(2).
     const input = {
       content: 'AB\nA',
       font: { family: 'system-ui', weight: 400 },
@@ -401,8 +431,8 @@ describe('drawTextLayer (PRD §4.3)', () => {
 
     const left = createTextMockContext();
     drawTextLayer(left.ctx, { ...input, align: 'left' });
-    expect(left.calls.fillText[0].x).toBeCloseTo(-10, 10);
-    expect(left.calls.fillText[2].x).toBeCloseTo(-10, 10);
+    expect(left.calls.fillText[0].x).toBeCloseTo(0, 10);
+    expect(left.calls.fillText[2].x).toBeCloseTo(0, 10);
 
     const center = createTextMockContext();
     drawTextLayer(center.ctx, { ...input, align: 'center' });
@@ -411,8 +441,8 @@ describe('drawTextLayer (PRD §4.3)', () => {
 
     const right = createTextMockContext();
     drawTextLayer(right.ctx, { ...input, align: 'right' });
-    expect(right.calls.fillText[0].x).toBeCloseTo(-10, 10);
-    expect(right.calls.fillText[2].x).toBeCloseTo(0, 10);
+    expect(right.calls.fillText[0].x).toBeCloseTo(-20, 10);
+    expect(right.calls.fillText[2].x).toBeCloseTo(-10, 10);
   });
 
   it('여러 줄을 행간(글자 크기 대비 배수)만큼 세로로 띄워 배치한다', () => {
