@@ -2,9 +2,9 @@
 id: "20260926_1510"
 category: Admin
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-26
-closed:
+closed: 2026-09-26
 related:
   - "20260926_1413"
   - "20260926_1442"
@@ -26,26 +26,27 @@ related:
 
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+- 묶음 티켓 20260926_1513으로 처리했다. 상세와 실행 지표는 그 티켓의 완료 기록에 있다.
+- `badges/[id]` PUT·`missions/[id]` PATCH의 `image_url` 비문자열 400을 라우트 단위로 고정했다. 호출부를 지우는 변조로 각각 4건 실패를 확인하고 원복했다. 미션 라우트 테스트는 신규다.
+- 유저 단건 삭제의 「본인」 케이스를 일반 유저 계정으로 바꿔 본인 분기만 타게 하고 문구를 단언했다(본인 분기를 지우는 변조로 실패 확인). `ADMIN_EMAILS`에만 있는 어드민 403, 비어드민 통과, `hardDeleteUser`의 `ok:false` 전달을 추가했다.
 
 ### 변경된 파일
 ```
--
+- jam-web/src/app/api/admin/badges/[id]/__tests__/route.test.ts
+- jam-web/src/app/api/admin/missions/[id]/__tests__/route.test.ts (신규)
+- jam-web/src/app/api/admin/users/[id]/__tests__/route.test.ts
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `scripts/verify.sh` 전 항목 통과, CI `verify` 성공(실행 36223626726, 커밋 5e9beb72). 병합 뒤 통합본에서 vitest 82개 파일 1088건, `deploy-gate.test.mjs`·`public-mission-check.test.mjs` 통과
+- [x] 민지 게이트 **PASS**. 점검 12항목 중 1·2·4·5·10·11 통과, 나머지 해당 없음. 검토 범위 7eeba09a..5e9beb72
 
-### 실행 지표
-
-| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
-|---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
-
-### 주요 의사결정 / 핵심 메모
+### 배포 정보
+- 배포일: 2026-09-26 (staging 병합·push). 프로덕션은 `/jam-ship`으로 별도 진행
+- 커밋: 구현 434c69ae·aa689d08·81638415·e5695c4f·03f399da·4cf023ac·9cc1bceb·ff246dec·5e9beb72, 병합 31c3608c (리뷰 브랜치 `claude/jamwork-20260926_1513-test-reinforce-bundle`)
 
 ### 잔여 이슈
--
+- `users/[id]/route.ts:27`이 대상 조회 오류 시 DB 원문을 500 응답에 싣는다. 테스트는 500만 확인한다. 정리는 티켓 20260925_0238에 위치를 덧붙였다.

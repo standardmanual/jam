@@ -76,3 +76,8 @@ specs:
 
 ### 잔여 이슈
 -
+
+### 추가 위치 (2026-09-26, 티켓 20260926_1513 게이트 발견물, 확신도 높음)
+- `jam-web/src/app/api/admin/users/[id]/route.ts:27` — 대상 조회 오류 시 `targetError.message`(DB 원문)를 500 응답에 싣는다.
+- `jam-web/src/app/api/admin/drop-policy/exclusions/bulk/route.ts:47` — 배지 조회 오류 시 `error.message`를 응답에 싣는다.
+- `missions/[id]`(PATCH)와 export 라우트 다수(missions·poi·today·itembooks·points/ledger 등)도 같은 패턴이다. 1513의 테스트는 이 라우트들의 오류 경로에서 500만 확인하고 원문 문구는 단언하지 않는다. 고칠 때 「원문이 응답에 없음」 단언을 함께 추가한다.

@@ -2,9 +2,9 @@
 id: "20260926_1513"
 category: Admin
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-26
-closed:
+closed: 2026-09-26
 related:
   - "20260926_1510"
   - "20260926_1409"
@@ -42,26 +42,43 @@ related:
 - 위 (1)~(3)의 공백이 테스트로 채워지고, 코드 변경 없이 기존 테스트도 그대로 통과한다. 특히 (1)은 호출부를 제거하면 테스트가 실패함을 확인한다. `scripts/verify.sh` 통과.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+- 하위 티켓 세 건(20260926_1510, 20260926_1409, 20260926_1410)을 한 번의 구현·게이트·병합으로 처리했고 세 건도 함께 CLOSED로 바꿨다. 코드 변경 없이 테스트 파일만 바꿨다(신규 1개, 수정 10개). 세부는 각 하위 티켓의 완료 기록에 있다.
+- 테스트를 만드는 중 실제 결함 3건이 드러났으나 범위 밖이라 고치지 않고 티켓으로 남겼다(아래 「범위 밖 발견물」).
 
 ### 변경된 파일
 ```
--
+- jam-web/src/app/api/admin/{badges/[id], missions/[id](신규), users/[id], badges/list-bulk, drop-policy/exclusions/bulk}/__tests__/route.test.ts
+- jam-web/src/app/api/admin/__tests__/export-ids-routes.test.ts
+- jam-web/src/lib/admin/__tests__/user-list.test.ts, jam-web/src/lib/itembook/__tests__/filled-by-book.test.ts
+- scripts/{doc-check-hook,deploy-gate,public-mission-check}.test.mjs
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `scripts/verify.sh` 전 항목 통과, CI `verify` 성공(실행 36223626726, 커밋 5e9beb72). 병합 뒤 통합본에서 vitest 82개 파일 1088건, `deploy-gate.test.mjs`·`public-mission-check.test.mjs` 통과
+- [x] 민지 게이트 **PASS**. 점검 12항목 중 1·2·4·5·10·11 통과, 나머지 해당 없음. 검토 범위 7eeba09a..5e9beb72
+
+### 배포 정보
+- 배포일: 2026-09-26 (staging 병합·push). 프로덕션은 `/jam-ship`으로 별도 진행
+- 커밋: 구현 434c69ae·aa689d08·81638415·e5695c4f·03f399da·4cf023ac·9cc1bceb·ff246dec·5e9beb72, 병합 31c3608c (리뷰 브랜치 `claude/jamwork-20260926_1513-test-reinforce-bundle`)
 
 ### 실행 지표
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1차 | 아현·민지 (묶음 3건, 게이트 PASS) | 219,985 | 81,133 / 16,199 | 16.9분 | 92 |
+| 합계 | 2 | 219,985 | 81,133 / 16,199 | 16.9분 | 92 |
 
 ### 주요 의사결정 / 핵심 메모
-
-### 잔여 이슈
--
+- **「호출부를 지우면 실패한다」를 실제로 확인했다.** 아현은 `badges/[id]`·`missions/[id]`의 `imageUrlTypeError` 호출부를 지우는 변조로 각각 4건 실패를 확인하고 원복했다. 민지도 별도 워크트리에서 같은 변조를 다시 해 각 4건 실패를 재현했다. 본인 삭제 분기와 list-bulk 원문 노출은 아현이 같은 방식으로 확인했고, 민지는 테스트 코드를 읽어 단언을 대조했다.
+- **결함을 고치지 않고 「현재 동작」으로 기록했다.** 쿠키 저장소가 `Expires`만으로는 쿠키를 지우지 않는 점은 테스트에 현재 동작으로 남겼다. 고칠 때 그 케이스의 기대값을 바꿔야 한다.
+- **export의 「CSV 본문」은 빈 결과의 헤더 행까지만** 라우트별로 확인했다. 행 단위 본문은 `badges/export` 기존 테스트가 맡는다(티켓이 「가능한 범위」라고 했다).
+- **계획 반환 면제.** 파일 약 13개·예상 425줄이라 티켓에 파일 단위 계획을 적고 첫 호출부터 면제했다. 실제 변경은 파일 11개(테스트만)였고 변경 줄 수는 아현이 568줄, 민지가 682줄로 쟀다(세는 범위 차이).
+- **병합 방식.** J1 병합과 주간 리포트 커밋으로 staging이 앞서 조상 검사는 실패했으나, 브랜치에만 있는 커밋 9개가 모두 이 티켓 것이고 겹치는 파일이 없어 최신 `origin/staging` 위에서 `--no-ff`로 병합했다.
+- **범위 밖 발견물**
+  - `[주의]` `users/[id]/route.ts:27`, `drop-policy/exclusions/bulk/route.ts:47`, `missions/[id]` PATCH와 export 라우트 여럿이 DB 오류 원문을 500 응답에 싣는다 → 기존 티켓 20260925_0238에 위치를 덧붙였다.
+  - `[주의]` `scripts/public-mission-check.mjs:69`가 배지 응답 인자가 null·undefined일 때 `TypeError`를 낸다.
+  - `[참고]` `scripts/deploy-gate.mjs:653`의 `Expires` 미처리, `scripts/check-contract.mjs:537`의 `mkdtempSync`가 try 밖에 있음.
+  - 뒤 두 묶음은 새 티켓 20260926_1535로 만들었다.
