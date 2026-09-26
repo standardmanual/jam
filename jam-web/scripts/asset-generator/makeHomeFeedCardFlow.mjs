@@ -67,7 +67,7 @@ export async function makeHomeFeedCard({ args, deps }) {
   const bundleId = args.meta.bundle_id ?? path.basename(outDir)
   const seed = args.seed ?? seedFromBundleId(bundleId)
 
-  const rendered = await deps.renderPng({ preset: args.preset, bg: args.bg, end: args.end, text: args.text, subtext: args.subtext, seed })
+  const rendered = await deps.renderPng({ preset: args.preset, bg: args.bg, end: args.end, values: args.values, seed })
 
   const image = {
     path: IMAGE_FILE_NAME,
@@ -75,8 +75,9 @@ export async function makeHomeFeedCard({ args, deps }) {
     preset_id: args.preset,
     bg_color: args.bg,
     end_color: args.end,
-    text: args.text,
-    ...(args.subtext === undefined ? {} : { subtext: args.subtext }),
+    // 기록 필드 이름은 예전 그대로다: `text` = --text01 값, `subtext` = --text02 값(등록 묶음 형식은 바꾸지 않는다).
+    ...(args.values.text01 === undefined ? {} : { text: args.values.text01 }),
+    ...(args.values.text02 === undefined ? {} : { subtext: args.values.text02 }),
   }
   const bundle = {
     bundle_id: bundleId,
@@ -109,6 +110,7 @@ export async function makeHomeFeedCard({ args, deps }) {
       preset: args.preset,
       presetSource: rendered.presetSource,
       stage: rendered.stage,
+      layers: rendered.layers,
       dryRun: {
         exitCode: dryRun.exitCode,
         result: facts.result,

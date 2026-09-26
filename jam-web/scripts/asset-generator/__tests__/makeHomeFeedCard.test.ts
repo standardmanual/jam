@@ -28,7 +28,7 @@ const META = {
 
 function baseArgv(outDir: string, extra: string[] = []) {
   return [
-    '--preset', PRESET_ID, '--bg', '#8a5a2e', '--end', '#3d2812', '--text', '예시 카드', '--subtext', '짧은 설명',
+    '--preset', PRESET_ID, '--bg', '#8a5a2e', '--end', '#3d2812', '--text01', '예시 카드', '--text02', '짧은 설명',
     '--card', CARD_JSON, '--meta', JSON.stringify(META), '--out-dir', outDir, ...extra,
   ];
 }
@@ -75,38 +75,46 @@ afterEach(() => {
 describe('parseMakeCardArgs', () => {
   const OUT = '/tmp/2026-10-05-weekly-card';
 
-  it('필수 인자를 주면 파싱하고 시드·설명은 비워 둔다', () => {
+  it('필수 인자를 주면 파싱하고 값 맵·시드는 비워 둔다(텍스트 값은 필수가 아니다)', () => {
     const result = parseMakeCardArgs([
-      '--preset', 'p1', '--bg', '#8a5a2e', '--end', '#3d2812', '--text', '제목', '--card', '{"title":"t"}', '--out-dir', OUT,
+      '--preset', 'p1', '--bg', '#8a5a2e', '--end', '#3d2812', '--card', '{"title":"t"}', '--out-dir', OUT,
     ]);
     expect(result).toEqual({
-      preset: 'p1', bg: '#8a5a2e', end: '#3d2812', text: '제목', subtext: undefined,
+      preset: 'p1', bg: '#8a5a2e', end: '#3d2812', values: {},
       card: { title: 't' }, meta: {}, outDir: OUT, seed: undefined,
     });
   });
 
+  it('--text01·--text02·--img01을 값 맵으로 파싱한다', () => {
+    const result = parseMakeCardArgs([
+      '--preset', 'p1', '--bg', '#8a5a2e', '--end', '#3d2812', '--text01', '제목', '--img01', '/abs/a.png', '--text02', '설명',
+      '--card', '{}', '--out-dir', OUT,
+    ]);
+    expect(result.values).toEqual({ text01: '제목', text02: '설명', img01: '/abs/a.png' });
+  });
+
   it('--seed 정수, --meta 인라인 JSON, 리터럴 \\n을 개행으로 바꾼다', () => {
     const result = parseMakeCardArgs([
-      '--preset', 'p1', '--bg', '#8a5a2e', '--end', '#3d2812', '--text', '1줄\\n2줄', '--subtext', '설\\n명',
+      '--preset', 'p1', '--bg', '#8a5a2e', '--end', '#3d2812', '--text01', '1줄\\n2줄', '--text02', '설\\n명',
       '--card', '{}', '--meta', '{"author":"채원"}', '--out-dir', OUT, '--seed', '-7',
     ]);
-    expect(result).toMatchObject({ text: '1줄\n2줄', subtext: '설\n명', meta: { author: '채원' }, seed: -7 });
+    expect(result).toMatchObject({ values: { text01: '1줄\n2줄', text02: '설\n명' }, meta: { author: '채원' }, seed: -7 });
   });
 
   it('--card를 JSON 파일 경로로도 받는다', () => {
     const file = path.join(tmpRoot, 'card.json');
     fs.writeFileSync(file, '{"title":"파일 카드"}');
     const result = parseMakeCardArgs([
-      '--preset', 'p1', '--bg', '#8a5a2e', '--end', '#3d2812', '--text', '제목', '--card', file, '--out-dir', OUT,
+      '--preset', 'p1', '--bg', '#8a5a2e', '--end', '#3d2812', '--text01', '제목', '--card', file, '--out-dir', OUT,
     ]);
     expect(result.card).toEqual({ title: '파일 카드' });
   });
 
   it('필수 인자가 빠지면 어떤 인자인지 알려 준다', () => {
-    expect(() => parseMakeCardArgs(['--preset', 'p1', '--bg', '#8a5a2e'])).toThrow('다음 인자가 필요해요: --end, --text, --card, --out-dir');
+    expect(() => parseMakeCardArgs(['--preset', 'p1', '--bg', '#8a5a2e'])).toThrow('다음 인자가 필요해요: --end, --card, --out-dir');
   });
 
-  const REQUIRED = ['--preset', 'p1', '--bg', '#8a5a2e', '--end', '#3d2812', '--text', '제목', '--card', '{}', '--out-dir', OUT];
+  const REQUIRED = ['--preset', 'p1', '--bg', '#8a5a2e', '--end', '#3d2812', '--text01', '제목', '--card', '{}', '--out-dir', OUT];
   const swap = (flag: string, value: string) => {
     const copy = [...REQUIRED];
     copy[copy.indexOf(flag) + 1] = value;
@@ -122,6 +130,17 @@ describe('parseMakeCardArgs', () => {
     expect(() => parseMakeCardArgs(swap('--card', 'card.json'))).toThrow('절대 경로');
     expect(() => parseMakeCardArgs([...REQUIRED, '--foo', '1'])).toThrow('알 수 없는 인자예요: --foo');
     expect(() => parseMakeCardArgs([...REQUIRED, '--meta', '{"autor":"x"}'])).toThrow('알 수 없는 필드');
+  });
+
+  it('옛 인자 --text·--subtext는 새 인자 이름을 안내하는 오류다', () => {
+    expect(() => parseMakeCardArgs([...REQUIRED, '--text', '제목'])).toThrow('--text·--subtext는 없어졌어요. 레이어 번호로 지정해 주세요: --text01, --text02');
+    expect(() => parseMakeCardArgs([...REQUIRED, '--subtext', '설명'])).toThrow('없어졌어요');
+  });
+
+  it('형식이 틀린 번호와 같은 번호 중복 지정은 오류다', () => {
+    expect(() => parseMakeCardArgs([...REQUIRED, '--text1', 'x'])).toThrow('번호 형식이 올바르지 않아요(예: text01)');
+    expect(() => parseMakeCardArgs([...REQUIRED, '--text01', '또']))
+      .toThrow('같은 번호를 두 번 지정했어요: text01');
   });
 });
 
@@ -182,7 +201,22 @@ describe('makeHomeFeedCard', () => {
     });
     // 시드는 묶음 ID에서 정해지고 렌더러와 bundle.json에 같은 값이 들어간다.
     expect(bundle.image.seed).toBe(seedFromBundleId('2026-10-05-weekly-card'));
-    expect(calls[0]).toMatchObject({ preset: PRESET_ID, bg: '#8a5a2e', end: '#3d2812', text: '예시 카드', subtext: '짧은 설명', seed: bundle.image.seed });
+    expect(calls[0]).toMatchObject({ preset: PRESET_ID, bg: '#8a5a2e', end: '#3d2812', values: { text01: '예시 카드', text02: '짧은 설명' }, seed: bundle.image.seed });
+  });
+
+  it('text02를 안 주면 image.subtext를 기록하지 않고, 렌더 결과의 layers를 출력에 싣는다', async () => {
+    const dir = path.join(tmpRoot, 'only-text01');
+    const layers = { applied: ['text01'], saved: ['text02'] };
+    const { deps } = stubDeps({
+      renderPng: async (renderArgs: Record<string, unknown>) => ({ buffer: FIXTURE_PNG, seed: renderArgs.seed, stage: { w: 1280, h: 1280 }, presetSource: 'admin-api', layers }),
+    });
+    const argv = baseArgv(dir);
+    argv.splice(argv.indexOf('--text02'), 2);
+    const { output } = await makeHomeFeedCard({ args: parseMakeCardArgs(argv), deps });
+    expect(output.layers).toEqual(layers);
+    const bundle = JSON.parse(fs.readFileSync(path.join(dir, 'bundle.json'), 'utf8'));
+    expect(bundle.image.text).toBe('예시 카드');
+    expect(bundle.image).not.toHaveProperty('subtext');
   });
 
   it('--seed와 --meta의 bundle_id·author를 우선한다', async () => {

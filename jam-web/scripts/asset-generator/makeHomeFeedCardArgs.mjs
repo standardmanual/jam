@@ -2,8 +2,11 @@
  * 홈피드 카드 원샷(`make-home-feed-card.mjs`) — 인자 파싱과 묶음 기본값 (티켓 20260926_1544)
  *
  * 인자(모두 `--키 값` 쌍):
- * - 필수: `--preset <프리셋 id>` `--bg <#rrggbb>` `--end <#rrggbb>` `--text <제목>` `--card <카드 JSON>` `--out-dir <묶음 폴더 절대경로>`
- * - 선택: `--subtext <설명>` `--meta <묶음 메타 JSON>` `--seed <정수>`
+ * - 필수: `--preset <프리셋 id>` `--bg <#rrggbb>` `--end <#rrggbb>` `--card <카드 JSON>` `--out-dir <묶음 폴더 절대경로>`
+ * - 선택: `--text01 <제목>` `--text02 <설명>`(그 밖의 레이어 번호 `--text03`·`--img01` …도 받는다) `--meta <묶음 메타 JSON>` `--seed <정수>`
+ * - 프리셋 레이어는 어드민 화면과 같은 번호로 지정한다(`applyLayerValues.mjs`). 지정하지 않은 번호는 프리셋에 저장된 값을 쓴다.
+ *   옛 인자 `--text`·`--subtext`는 없어졌다. bundle.json의 기록 필드 `image.text`·`image.subtext`(이름은 그대로)에는
+ *   각각 `--text01`·`--text02`에 넣은 값이 들어간다.
  * - `--card`·`--meta`는 값이 `{`로 시작하면 인라인 JSON, 아니면 JSON 파일의 절대 경로다.
  * - `--card`는 bundle.json의 `card` 객체(필드는 `HOME_FEED_REGISTRATION_BUNDLE.md` §3.3)다.
  * - `--meta`는 최상위 필드 중 카드·이미지가 아닌 것: `bundle_id`·`author`·`created_at`·`color_rationale_link`·`world_review`.
@@ -15,13 +18,14 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { LEGACY_TEXT_FLAGS_MESSAGE, buildLayerValues, isLayerFlagKey } from './applyLayerValues.mjs'
 import { parseHexColor } from './contrastMath.mjs'
 
 export const MAKE_CARD_USAGE =
-  '사용법: --preset <id> --bg <#rrggbb> --end <#rrggbb> --text <제목> [--subtext <설명>] --card <카드 JSON 또는 파일> --out-dir <묶음 폴더 절대경로> [--meta <메타 JSON 또는 파일>] [--seed <정수>]'
+  '사용법: --preset <id> --bg <#rrggbb> --end <#rrggbb> [--text01 <제목>] [--text02 <설명>] [--img01 <이미지 절대 경로 또는 URL>] --card <카드 JSON 또는 파일> --out-dir <묶음 폴더 절대경로> [--meta <메타 JSON 또는 파일>] [--seed <정수>]'
 
-const VALUE_FLAGS = new Set(['preset', 'bg', 'end', 'text', 'subtext', 'card', 'meta', 'out-dir', 'seed'])
-const REQUIRED_FLAGS = ['preset', 'bg', 'end', 'text', 'card', 'out-dir']
+const VALUE_FLAGS = new Set(['preset', 'bg', 'end', 'card', 'meta', 'out-dir', 'seed'])
+const REQUIRED_FLAGS = ['preset', 'bg', 'end', 'card', 'out-dir']
 export const META_FIELDS = ['bundle_id', 'author', 'created_at', 'color_rationale_link', 'world_review']
 
 export const DEFAULT_AUTHOR = '윤진'
@@ -65,20 +69,25 @@ function readJsonObject(flag, value) {
 }
 
 /**
- * CLI 인자를 검증해 `{ preset, bg, end, text, subtext, card, meta, outDir, seed }`를 돌려준다.
- * `seed`는 지정하지 않으면 undefined(묶음 ID에서 정한다). `text`·`subtext`의 리터럴 `\n`은 개행으로 바꾼다.
+ * CLI 인자를 검증해 `{ preset, bg, end, values, card, meta, outDir, seed }`를 돌려준다.
+ * `values`는 레이어 번호 값 맵(`{ text01, text02, img01, … }`, 값을 안 주면 빈 객체)이고 텍스트 값의 리터럴 `\n`은 개행으로 바꾼다.
+ * `seed`는 지정하지 않으면 undefined(묶음 ID에서 정한다).
  * 잘못된 인자는 한국어 메시지의 Error를 던진다.
  */
 export function parseMakeCardArgs(argv) {
   const flags = {}
+  const layerEntries = []
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i]
     if (!token.startsWith('--')) throw new Error(`인자 형식이 올바르지 않아요: ${token}\n${MAKE_CARD_USAGE}`)
     const key = token.slice(2)
-    if (!VALUE_FLAGS.has(key)) throw new Error(`알 수 없는 인자예요: --${key}\n${MAKE_CARD_USAGE}`)
+    if (key === 'text' || key === 'subtext') throw new Error(`${LEGACY_TEXT_FLAGS_MESSAGE}\n${MAKE_CARD_USAGE}`)
+    const layerFlag = isLayerFlagKey(key)
+    if (!layerFlag && !VALUE_FLAGS.has(key)) throw new Error(`알 수 없는 인자예요: --${key}\n${MAKE_CARD_USAGE}`)
     const next = argv[i + 1]
     if (next === undefined) throw new Error(`--${key} 값이 필요해요.`)
-    flags[key] = next
+    if (layerFlag) layerEntries.push([key, next])
+    else flags[key] = next
     i++
   }
 
@@ -109,8 +118,7 @@ export function parseMakeCardArgs(argv) {
     preset: flags.preset,
     bg: flags.bg,
     end: flags.end,
-    text: flags.text.replace(/\\n/g, '\n'),
-    subtext: flags.subtext === undefined ? undefined : flags.subtext.replace(/\\n/g, '\n'),
+    values: buildLayerValues(layerEntries),
     card,
     meta,
     outDir: flags['out-dir'],

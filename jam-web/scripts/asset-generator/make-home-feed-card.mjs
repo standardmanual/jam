@@ -10,17 +10,18 @@
  * ```
  * cd jam-web
  * npx tsx scripts/asset-generator/make-home-feed-card.mjs \
- *   --preset <프리셋 id> --bg "#8a5a2e" --end "#3d2812" --text "제목" [--subtext "짧은 설명"] \
+ *   --preset <프리셋 id> --bg "#8a5a2e" --end "#3d2812" --text01 "제목" [--text02 "짧은 설명"] \
  *   --card '{"title":"…","template_type":"…","exposure_tags":["all"],"starts_at":"…","ends_at":"…"}' \
  *   --meta '{"color_rationale_link":"jam-doc/…","world_review":{"world_related":false,"winter_reviewed":false,"reason":"…"}}' \
  *   --out-dir /절대경로/<묶음 ID> [--seed 123]
  * ```
+ * 프리셋 레이어는 `--text01`·`--text02`처럼 어드민 화면과 같은 번호로 지정한다(안 준 번호는 프리셋에 저장된 값). 옛 `--text`·`--subtext`는 없어졌다.
  * 인자 규칙(`--card`·`--meta`는 인라인 JSON 또는 JSON 파일 경로, 묶음 기본값)은 `makeHomeFeedCardArgs.mjs` 상단 주석이 정본이다.
  * 흰 글자 대비는 `contrast.mjs`로 미리 확인한다.
  *
  * ## 출력과 종료 코드
  * 표준 출력에 한 줄 JSON을 찍는다: `{ ok, imagePath, imageBytes, bundlePath, seed, preset, presetSource, stage,
- * dryRun: { exitCode, result, errors, skipped, webp, note } }`. 검증에 실패하면 `ok: false`이고 종료 코드가 1이다
+ * layers: { applied, saved }(값을 지정한 번호·프리셋에 저장된 값을 쓴 번호), dryRun: { exitCode, result, errors, skipped, webp, note } }`. 검증에 실패하면 `ok: false`이고 종료 코드가 1이다
  * (이미지·bundle.json은 고쳐 다시 돌릴 수 있게 남긴다). 인자 오류·렌더 실패는 한국어 메시지를 stderr에 찍고 종료 코드 1이다.
  *
  * ## dry-run은 형식 검증까지다
