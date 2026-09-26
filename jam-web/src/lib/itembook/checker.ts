@@ -2,7 +2,7 @@
  * JAM! 아이템북 완성 체크 로직 (서버 사이드 전용)
  *
  * Phase 8 슬롯 기반 완성 모델:
- * - 완성 분모 = 소속 배지 − drop_excluded 배지, 분자 = 장착·획득 배지 id ∩ 분모 (completion-basis.ts)
+ * - 완성 분모 = 소속 배지 − drop_excluded 배지, 분자 = 그 북에 장착·획득한 배지 id ∩ 분모 (completion-basis.ts)
  * - 완성 기록: user_item_book_completions (upsert, 최초 1회)
  * - reward_badge_id가 있는 경우 user_activity_badges에 보상 배지 발급
  *
@@ -105,9 +105,16 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     return { completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] }
   }
 
-  const filledBadgeIds = new Set<string>()
+  // 북별 채운 배지 집합 — 장착 RPC(mig/179)처럼 "그 컬렉션에 장착된 슬롯만" 그 컬렉션의 분자로 센다
+  // (티켓 20260924_0937). 배지의 컬렉션이 장착 이후 바뀌어도 다른 북의 분자에 들지 않는다.
+  const filledByBook = new Map<string, Set<string>>()
+  const addFilled = (bookId: string, badgeId: string) => {
+    const set = filledByBook.get(bookId)
+    if (set) set.add(badgeId)
+    else filledByBook.set(bookId, new Set([badgeId]))
+  }
   for (const s of (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]) {
-    filledBadgeIds.add(s.badge_id)
+    addFilled(s.item_book_id, s.badge_id)
   }
 
   // 3-1. Phase 16: checkin 타입 배지는 슬롯팅이 아니라 "1회 이상 획득 이력 존재"로 채움 판정
@@ -129,7 +136,12 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
       ((poiEarnsRaw ?? []) as { badge_id: string }[]).map((e) => e.badge_id)
     )
 
-    for (const id of earnedPoiBadgeIds) filledBadgeIds.add(id)
+    // 획득 이력은 그 배지가 속한 북의 집합에만 넣는다
+    for (const [bookId, ids] of poiBadgesByBook) {
+      for (const id of ids) {
+        if (earnedPoiBadgeIds.has(id)) addFilled(bookId, id)
+      }
+    }
   }
 
   // 4. 기존 완성 기록 조회 (중복 처리 방지)
@@ -147,8 +159,9 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   const completedIds: string[] = []
   const completedBooks: ItemBookRow[] = []
 
-  const completionByBook = computeBookCompletion(bookBadges, filledBadgeIds, {
+  const completionByBook = computeBookCompletion(bookBadges, new Set<string>(), {
     types: ['item', 'checkin'],
+    filledByBook,
   })
 
   for (const book of itemBooks) {

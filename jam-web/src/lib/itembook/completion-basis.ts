@@ -25,12 +25,23 @@ export interface BookCompletion {
   complete: boolean
 }
 
+const EMPTY_SET: ReadonlySet<string> = new Set()
+
 export function computeBookCompletion(
   badges: CompletionBadgeInput[],
   filledBadgeIds: ReadonlySet<string>,
-  options?: { types?: readonly string[] }
+  options?: {
+    types?: readonly string[]
+    /**
+     * 북별 채운 배지 집합(티켓 20260924_0937). 있으면 각 북의 분자를 그 북의 집합으로만 센다
+     * (집합에 없는 북은 빈 집합). 없으면 `filledBadgeIds` 하나를 모든 북에 공통으로 쓴다.
+     * 장착 RPC(mig/179)처럼 "그 컬렉션에 장착된 슬롯만" 세야 하는 호출부(checker)가 쓴다.
+     */
+    filledByBook?: ReadonlyMap<string, ReadonlySet<string>>
+  }
 ): Map<string, BookCompletion> {
   const types = options?.types
+  const filledByBook = options?.filledByBook
   const target = types ? badges.filter((b) => types.includes(b.type)) : badges
   const denomByBook = buildBadgeIdsOfBook(
     target.map((b) => ({
@@ -54,7 +65,8 @@ export function computeBookCompletion(
     const excludedApplied = denomByBook.get(bookId) ?? []
     const denomIds =
       excludedApplied.length === 0 && registered.length > 0 ? registered : excludedApplied
-    const filledIds = denomIds.filter((id) => filledBadgeIds.has(id))
+    const filledSet = filledByBook ? (filledByBook.get(bookId) ?? EMPTY_SET) : filledBadgeIds
+    const filledIds = denomIds.filter((id) => filledSet.has(id))
     result.set(bookId, {
       denomIds,
       filledIds,

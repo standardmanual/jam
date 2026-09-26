@@ -68,4 +68,41 @@ describe('computeBookCompletion', () => {
   it('(i) 등록 배지가 0개면 완성이 아니다', () => {
     expect(computeBookCompletion([], new Set(['x'])).get('book-a')?.complete ?? false).toBe(false)
   })
+
+  describe('filledByBook 옵션 (티켓 20260924_0937)', () => {
+    it('배지 X가 A에 장착됐고 X의 컬렉션이 B로 바뀌어도 B의 분자에 X가 들지 않는다', () => {
+      // X는 현재 B 소속(분모에 포함)이지만 장착은 A 슬롯에 있다
+      const badges = [badge('x', false, 'item', 'book-b'), badge('y', false, 'item', 'book-b')]
+      const filledByBook = new Map([
+        ['book-a', new Set(['x'])],
+        ['book-b', new Set(['y'])],
+      ])
+      const r = computeBookCompletion(badges, new Set(), { filledByBook }).get('book-b')!
+      expect(r.filledIds).toEqual(['y'])
+      expect(r.filled).toBe(1)
+      expect(r.complete).toBe(false)
+    })
+
+    it('X가 A에 장착됐고 X가 A 소속이면 그대로 센다', () => {
+      const badges = [badge('x', false, 'item', 'book-a')]
+      const filledByBook = new Map([['book-a', new Set(['x'])]])
+      const r = computeBookCompletion(badges, new Set(), { filledByBook }).get('book-a')!
+      expect(r.filledIds).toEqual(['x'])
+      expect(r.complete).toBe(true)
+    })
+
+    it('filledByBook에 없는 북은 빈 집합으로 센다', () => {
+      const badges = [badge('x', false, 'item', 'book-b')]
+      const r = computeBookCompletion(badges, new Set(['x']), { filledByBook: new Map() }).get('book-b')!
+      expect(r.filled).toBe(0)
+      expect(r.complete).toBe(false)
+    })
+
+    it('filledByBook 없이 호출하면 filledBadgeIds 하나로 종전과 같이 센다', () => {
+      const badges = [badge('x', false, 'item', 'book-b')]
+      const r = computeBookCompletion(badges, new Set(['x'])).get('book-b')!
+      expect(r.filled).toBe(1)
+      expect(r.complete).toBe(true)
+    })
+  })
 })
