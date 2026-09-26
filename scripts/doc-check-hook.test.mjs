@@ -308,6 +308,15 @@ test('check-contract: 임시 저장소를 만들지 못하면 위반이 아니�
   assert.doesNotMatch(r.stderr, /\[workflow_freeze\]/)
 })
 
+test('check-contract: 임시 폴더를 만들지 못하면 종료하지 않고 참고로 건너뛴다(티켓 20260926_1535)', () => {
+  const dir = makeContractRepo()
+  // TMPDIR를 없는 경로로 가리켜 mkdtempSync가 던지게 한다. 임시 저장소(dir) 안에서만 돈다.
+  const r = run(process.execPath, ['scripts/check-contract.mjs'], dir, { TMPDIR: join(dir, '없는-임시-경로') })
+  assert.equal(r.status, 0, r.stdout + r.stderr)
+  assert.match(r.stdout, /참고: 임시 폴더를 만들지 못해 동결 실동작 검사를 건너뜁니다\./)
+  assert.doesNotMatch(r.stderr, /\[workflow_freeze\]/)
+})
+
 // ── 현황판 스크립트만 바뀐 커밋 경고 (티켓 20260918_1251) — 경고만 하고 차단하지 않는다 ────────────
 const DASH_SCRIPT = 'scripts/ticket-dashboard.mjs'
 const DASH_DOC = '.claude/skills/jam-work/references/dashboard-format.md'

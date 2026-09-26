@@ -534,7 +534,14 @@ function checkWorkflowFreeze(c) {
 // scripts/가 없어 훅 안의 검사기들이 건너뛰어지므로 이 검사가 자기 자신을 다시 부르지 않는다.
 // 검사 환경 자체가 만들어지지 않으면(git init 실패 등) 위반으로 세지 않고 참고로만 남긴다.
 function probeWorkflowFreeze(spec, hookPath) {
-  const tmp = mkdtempSync(path.join(tmpdir(), 'contract-freeze-'))
+  let tmp
+  try {
+    tmp = mkdtempSync(path.join(tmpdir(), 'contract-freeze-'))
+  } catch {
+    // 임시 폴더 자체를 못 만드는 환경(권한·디스크 등)도 `git init` 실패와 같이 참고로만 남긴다(티켓 20260926_1535).
+    notes.push('임시 폴더를 만들지 못해 동결 실동작 검사를 건너뜁니다.')
+    return
+  }
   try {
     const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')))
     const git = (...args) => spawnSync('git', args, { cwd: tmp, encoding: 'utf8', env })

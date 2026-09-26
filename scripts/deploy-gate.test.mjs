@@ -657,14 +657,19 @@ try {
 
   // 쿠키 삭제 응답: Max-Age<=0이거나 값이 비면 저장소에서 그 쿠키만 지운다(티켓 20260926_1410).
   // 1단계에서 sid·theme를 받고, 2단계에서 sid를 삭제 형태로 다시 내려 주면 3단계 요청에는 theme만 실려야 한다.
-  // Expires는 처리하지 않는다 — 현재 동작을 그대로 기록한다(Expires만으로는 지워지지 않는다).
+  // Max-Age가 없으면 Expires가 현재 이전일 때 지운다. Max-Age가 있으면 Expires보다 우선한다(티켓 20260926_1535).
   for (const [label, deleteLine, expectCookie] of [
     ['Max-Age=0', 'sid=abc123; Path=/; Max-Age=0', 'theme=dark'],
     ['Max-Age=-1', 'sid=abc123; Path=/; Max-Age=-1', 'theme=dark'],
     ['대문자 MAX-AGE=0', 'sid=abc123; Path=/; MAX-AGE=0', 'theme=dark'],
     ['빈 값', 'sid=; Path=/', 'theme=dark'],
     ['Max-Age가 양수면 삭제가 아니다', 'sid=abc123; Path=/; Max-Age=60', 'sid=abc123; theme=dark'],
-    ['Expires만으로는 지우지 않는다(현재 동작)', 'sid=abc123; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT', 'sid=abc123; theme=dark'],
+    ['Expires가 과거면 지운다', 'sid=abc123; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT', 'theme=dark'],
+    ['대문자 EXPIRES가 과거여도 지운다', 'sid=abc123; Path=/; EXPIRES=Thu, 01 Jan 1970 00:00:00 GMT', 'theme=dark'],
+    ['Expires가 미래면 지우지 않는다', 'sid=abc123; Path=/; Expires=Fri, 01 Jan 2100 00:00:00 GMT', 'sid=abc123; theme=dark'],
+    ['날짜로 읽을 수 없는 Expires는 지우지 않는다', 'sid=abc123; Path=/; Expires=not-a-date', 'sid=abc123; theme=dark'],
+    ['Max-Age가 양수면 과거 Expires보다 우선한다', 'sid=abc123; Path=/; Max-Age=60; Expires=Thu, 01 Jan 1970 00:00:00 GMT', 'sid=abc123; theme=dark'],
+    ['Max-Age=0이면 미래 Expires여도 지운다', 'sid=abc123; Path=/; Max-Age=0; Expires=Fri, 01 Jan 2100 00:00:00 GMT', 'theme=dark'],
   ]) {
     let cookieAtStep3
     s = await serve((req, res) => {
