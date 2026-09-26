@@ -8,6 +8,7 @@
  */
 
 export * from './types';
+export * from './layerKeys';
 export * from './random';
 export * from './curve';
 export * from './render';

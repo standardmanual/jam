@@ -46,10 +46,13 @@ var AssetGeneratorCore = (() => {
     drawRibbonLayer: () => drawRibbonLayer,
     drawTextLayer: () => drawTextLayer,
     fillBackground: () => fillBackground,
+    formatLayerKey: () => formatLayerKey,
+    getLayerKeys: () => getLayerKeys,
     irrValue: () => irrValue,
     isPresetTargetType: () => isPresetTargetType,
     makeCandidate: () => makeCandidate,
     mulberry32: () => mulberry32,
+    parseLayerKey: () => parseLayerKey,
     pickCandidate: () => pickCandidate,
     posAt: () => posAt,
     randInt: () => randInt,
@@ -62,6 +65,26 @@ var AssetGeneratorCore = (() => {
     toAssetPresetSummary: () => toAssetPresetSummary,
     unitCurve: () => unitCurve
   });
+
+  // jam-web/src/lib/asset-generator/layerKeys.ts
+  var KEY_PREFIX = { text: "text", image: "img" };
+  function formatLayerKey(type, n) {
+    return `${KEY_PREFIX[type]}${String(n).padStart(2, "0")}`;
+  }
+  function parseLayerKey(str) {
+    const match = /^(text|img)(\d{2,})$/.exec(str);
+    if (!match) return null;
+    const n = Number(match[2]);
+    if (n < 1) return null;
+    return { type: match[1] === "text" ? "text" : "image", n };
+  }
+  function getLayerKeys(layers) {
+    const counts = { text: 0, image: 0 };
+    return layers.map((layer) => {
+      counts[layer.type] += 1;
+      return { id: layer.id, type: layer.type, key: formatLayerKey(layer.type, counts[layer.type]) };
+    });
+  }
 
   // jam-web/src/lib/asset-generator/random.ts
   function mulberry32(seed) {
