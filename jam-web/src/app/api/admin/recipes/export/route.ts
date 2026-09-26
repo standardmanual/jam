@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
+import { parseExportIds } from '@/lib/admin/export-ids'
 import { toCsv } from '@/lib/admin/csv'
 import { kstDateString } from '@/lib/notifications/kst'
 import { RECIPE_LIST_COLUMNS, type RecipeListRow } from '@/lib/admin/recipe-list'
@@ -12,24 +13,16 @@ import type { CombinationRecipeSlotRow } from '@/types/database'
  * 있어 POST로 받는다(`api/admin/poi/export`와 같은 이유).
  */
 const CHUNK_SIZE = 200
-const MAX_EXPORT_IDS = 1000
 
 export async function POST(req: NextRequest) {
   const authError = await requireAdmin()
   if (authError) return authError
 
   const body = await req.json().catch(() => null)
-  const ids = Array.isArray((body as { ids?: unknown })?.ids)
-    ? (body as { ids: unknown[] }).ids.filter((id): id is string => typeof id === 'string')
-    : []
-  if (ids.length === 0) {
-    return NextResponse.json({ error: '내보낼 레시피를 선택해주세요.' }, { status: 400 })
-  }
+  const parsed = parseExportIds(body, '내보낼 레시피를 선택해주세요.')
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status })
 
-  const uniqueIds = [...new Set(ids)]
-  if (uniqueIds.length > MAX_EXPORT_IDS) {
-    return NextResponse.json({ error: `한 번에 최대 ${MAX_EXPORT_IDS}건까지 내보낼 수 있습니다.` }, { status: 400 })
-  }
+  const uniqueIds = parsed.ids
 
   const supabase = createServiceClient()
   const rows: RecipeListRow[] = []

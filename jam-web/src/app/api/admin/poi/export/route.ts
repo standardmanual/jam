@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
+import { parseExportIds } from '@/lib/admin/export-ids'
 import { toCsv } from '@/lib/admin/csv'
 import { kstDateString } from '@/lib/notifications/kst'
 import { POI_EXPORT_COLUMNS, type PoiExportRow } from '@/lib/admin/poi-list-query'
@@ -17,15 +18,11 @@ export async function POST(req: NextRequest) {
   if (authError) return authError
 
   const body = await req.json().catch(() => null)
-  const ids = Array.isArray((body as { ids?: unknown })?.ids)
-    ? ((body as { ids: unknown[] }).ids.filter((id): id is string => typeof id === 'string'))
-    : []
-  if (ids.length === 0) {
-    return NextResponse.json({ error: '내보낼 POI를 선택해주세요.' }, { status: 400 })
-  }
+  const parsed = parseExportIds(body, '내보낼 POI를 선택해주세요.')
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status })
 
   const supabase = createServiceClient()
-  const uniqueIds = [...new Set(ids)]
+  const uniqueIds = parsed.ids
 
   const rows: PoiExportRow[] = []
   for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
