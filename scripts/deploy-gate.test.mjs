@@ -160,6 +160,45 @@ for (const [kind, line] of [
   }
 }
 
+// 4-2) 따옴표 없는 .env 대입과 백틱 대입 (티켓 20260922_0653). .env 계열 파일은 따옴표 없는 NAME=<16자 이상>도 비밀로 본다
+const HEX32 = 'a1b2c3d4'.repeat(4)
+for (const [label, file, body] of [
+  ['따옴표 없는 .env', 'jam-web/.env.production', `NEXT_PUBLIC_X=1\nSTRAVA_CLIENT_SECRET=${HEX32}\n`],
+  ['export가 붙은 .env.local', 'jam-web/.env.local', `export ${ENV_NAME}=${HEX32}\n`],
+  ['공백이 낀 .env', 'jam-web/.env', `${ENV_NAME} = ${HEX32}\n`],
+  ['백틱 대입(코드 파일)', 'jam-web/src/lib/leak.ts', `export const a = 1\nconst ${ENV_NAME} = \`${'x'.repeat(24)}\`\n`],
+]) {
+  onHead(`비밀값 사각: ${label}`, (put) => put(file, body))
+  r = checkJson()
+  assert.equal(r.status, 1, `${label}는 차단해야 한다:\n${r.stdout}${r.stderr}`)
+  assert.equal(r.json.secrets.findings.length, 1, label)
+  assert.equal(r.json.secrets.findings[0].file, file)
+  assert.equal(r.json.secrets.findings[0].kind, 'env_assign')
+  for (const secret of [HEX32, 'x'.repeat(24)]) assert.ok(!r.stdout.includes(secret), `${label}: 출력에 비밀값이 나오면 안 된다`)
+}
+
+// 4-3) 위 사각을 넓혀도 오탐하지 않는다: 예시 파일의 자리 표시 값, 값을 읽기만 하는 코드, 코드 파일의 따옴표 없는 대입, 짧은 값, 참조 값
+onHead('비밀값 오탐 없음', (put) => {
+  put('jam-web/.env.example', `${ENV_NAME}=your_cron_secret_value_here_xxxxxxxx\nSTRAVA_CLIENT_SECRET=your_strava_client_secret_here\n`)
+  put('jam-web/.env.local.sample', `${ENV_NAME}=${HEX32}\n`)
+  put('jam-web/.env.template', `${ENV_NAME}=${HEX32}\n`)
+  put('jam-web/.env.development', `${ENV_NAME}=short\nENCRYPTION_KEY=\${OTHER_VALUE_FROM_ELSEWHERE}\nNEXT_PUBLIC_URL=https://example.com/aaaaaaaaaaaaaaaaaaaa\n# ${ENV_NAME}=${HEX32}\n`)
+  put(
+    'jam-web/src/lib/read.ts',
+    [
+      `export const a = process.env.${ENV_NAME}`,
+      `const ${ENV_NAME}: string = process.env.${ENV_NAME}_LONG_NAME_FOR_TEST ?? ''`,
+      `const ENCRYPTION_KEY = \`\${process.env.SOMETHING_LONG_ENOUGH_TO_MATCH}\``,
+      `const ADMIN_SECRET = ${HEX32}`,
+      '',
+    ].join('\n'),
+  )
+  put('jam-web/notes.txt', `${ENV_NAME}=${HEX32}\n`)
+})
+r = checkJson()
+assert.equal(r.status, 0, `오탐이다:\n${r.stdout}${r.stderr}`)
+assert.equal(r.json.secrets.findings.length, 0)
+
 // 5) 기존 파일 중간에 끼워 넣은 줄도 새 파일 기준 줄 번호로 알려 준다
 onHead('중간 삽입', (put) => put('jam-web/src/lib/insert.ts', `export const a = 1\nexport const k = "${FAKE_SB}"\nexport const b = 2\n`))
 r = checkJson()
@@ -235,7 +274,7 @@ assert.equal(r.status, 0, '기준선을 200으로 올리면 180번은 요구 대
 git(['checkout', '-q', 'base'], repo) // 작업 트리는 기준선 180인 base — 그래도 head의 선언(200)을 써야 한다
 assert.equal(check().status, 0, '선언은 작업 트리가 아니라 점검 대상(head)에서 읽는다')
 
-// 10) 이미 있던 마이그레이션을 고친 것(추가가 아님)은 신규로 세지 않고, 규칙 밖 이름은 참고로만 알린다
+// 10) 이미 있던 마이그레이션을 고친 것(추가가 아님)은 신규로 세지 않는다. 규칙 밖 이름은 통과시키되 요약 줄에 세어 드러내고 경고한다(티켓 20260922_0653)
 onHead('수정과 기타', (put) => {
   put('jam-web/supabase/migrations/179_legacy.sql', 'select 1;\nselect 2;\n')
   put('jam-web/supabase/migrations/add_column.sql', 'alter table t add column c int;\n')
@@ -244,7 +283,18 @@ r = checkJson()
 assert.equal(r.status, 0)
 assert.deepEqual(r.json.migrations.numbered, [])
 assert.equal(r.json.migrations.others.length, 1)
-assert.match(check().stdout, /참고: 번호·seed 이름 규칙 밖의 마이그레이션 파일 1건/)
+r = check()
+assert.equal(firstLines(r, 1)[0], '배포 게이트: 통과', '첫 줄은 무인 루틴이 읽는 형식이라 그대로 둔다')
+assert.equal(firstLines(r, 2)[1], '신규 마이그레이션: 번호 0건, seed 0건, 규칙 밖 이름 1건(되돌림 SQL 점검 못 함)')
+assert.match(r.stdout, /경고: 번호·seed 이름 규칙 밖의 마이그레이션 파일 1건은 되돌림 SQL 점검을 받지 못했습니다: add_column\.sql/)
+onHead('규칙 밖 이름의 SQL', (put) => {
+  put('jam-web/supabase/migrations/180a_odd.sql', 'create table q(id int);\n')
+  put('jam-web/supabase/migrations/181_ok.sql', 'create table s(id int);\n-- 되돌림 SQL\n')
+})
+r = check()
+assert.equal(r.status, 0)
+assert.equal(firstLines(r, 2)[1], '신규 마이그레이션: 번호 1건(되돌림 SQL 있음), seed 0건, 규칙 밖 이름 1건(되돌림 SQL 점검 못 함)')
+assert.match(r.stdout, /180a_odd\.sql/)
 
 // 11) 새 API 라우트: 인증 확인이 없으면 차단, 있거나 공개 등록돼 있으면 통과, 기존 라우트 수정·route.ts 아닌 파일은 대상이 아니다
 onHead('인증 없는 새 라우트', (put) => put('jam-web/src/app/api/open/thing/route.ts', 'export const GET = () => new Response("hi")\n'))
@@ -564,6 +614,46 @@ try {
   })
   out = await runServed(['--url', s.url])
   assert.deepEqual([out.status, out.stdout], [0, 'dpl_REDIR9'], '리다이렉트를 따라가야 한다')
+
+  // 자동 로그인 리다이렉트가 걸린 스테이징: 쿠키를 받아 들고 원래 주소로 돌아와야 한다(티켓 20260922_0653)
+  s = await serve((req, res) => {
+    const authed = /(?:^|;\s*)sid=abc123(?:;|$)/.test(req.headers.cookie ?? '')
+    if (req.url === '/api/dev-login') {
+      res.statusCode = 302
+      res.setHeader('set-cookie', ['sid=abc123; Path=/; HttpOnly', 'theme=dark; Path=/'])
+      res.setHeader('location', '/')
+      res.end()
+    } else if (!authed) {
+      res.statusCode = 307
+      res.setHeader('location', '/api/dev-login')
+      res.end()
+    } else {
+      res.end(page('dpl_STAGE1'))
+    }
+  })
+  out = await runServed(['--url', s.url])
+  assert.deepEqual([out.status, out.stdout], [0, 'dpl_STAGE1'], `쿠키를 저장하지 않아 로그인 리다이렉트를 벗어나지 못했다:\n${out.stderr}`)
+
+  // 쿠키를 주지 않는 리다이렉트 순환은 횟수 제한에서 오류(2)로 끝난다
+  s = await serve((req, res) => {
+    res.statusCode = 302
+    res.setHeader('location', '/again')
+    res.end()
+  })
+  out = await runServed(['--url', s.url])
+  assert.deepEqual([out.status, out.stdout], [2, ''], '리다이렉트 순환은 2')
+  assert.match(out.stderr, /리다이렉트/)
+
+  // 다른 출처로 넘어가면 쿠키를 보내지 않는다
+  const other = await serve((req, res) => res.end(req.headers.cookie ? '<html>쿠키가 넘어왔다</html>' : page('dpl_OTHER1')))
+  s = await serve((req, res) => {
+    res.statusCode = 302
+    res.setHeader('set-cookie', 'sid=secret; Path=/')
+    res.setHeader('location', other.url)
+    res.end()
+  })
+  out = await runServed(['--url', s.url])
+  assert.deepEqual([out.status, out.stdout], [0, 'dpl_OTHER1'], `다른 출처에 쿠키가 넘어갔다:\n${out.stderr}`)
 
   const dead = await deadPort()
   out = await runServed(['--url', dead])

@@ -184,6 +184,55 @@ try {
   assert.match(r.stderr, /rule-in-new-file/, '삭제 헤더 뒤의 신규 파일 위반 줄이 목록에 있어야 한다')
   assert.doesNotMatch(r.stderr, /rule-in-docs/, '문서의 언급 줄이 jam-web 위반으로 올라오면 안 된다')
 
+  // 14~16) 사용자·환경 git 설정에 검사가 흔들리지 않는다 (티켓 20260922_0605)
+  //
+  // 설정은 임시 저장소의 로컬 config에만 쓴다(전역 설정은 env()가 격리). 시나리오가 끝나면 되돌린다.
+
+  // 14) color.diff=always여도 사유 없는 억제 주석은 막힌다
+  //     (옛 훅은 ANSI 색상 코드 때문에 awk 패턴이 하나도 맞지 않아 아무것도 수집하지 못하고 통과했다)
+  reset(base, root)
+  git(['config', 'color.diff', 'always'], base)
+  try {
+    writeAndAdd(
+      base,
+      'jam-web/src/example.ts',
+      'export const x = 1\n// eslint-disable-next-line rule-under-color\nexport const y: any = 2\n'
+    )
+    sha = commit(base, 'suppression without reason under color.diff=always')
+    r = runHook(base, root, sha)
+    assert.equal(r.status, 1, 'color.diff=always여도 사유 없는 억제 주석은 막혀야 한다')
+    assert.match(r.stderr, /rule-under-color/)
+
+    // 15) color.diff=always에서도 정상 push(사유 있는 억제 주석)는 새로 막히지 않는다
+    reset(base, root)
+    writeAndAdd(
+      base,
+      'jam-web/src/example.ts',
+      'export const x = 1\n// eslint-disable-next-line no-explicit-any -- 레거시 타입, 정리 예정\nexport const y: any = 2\n'
+    )
+    sha = commit(base, 'suppression with reason under color.diff=always')
+    r = runHook(base, root, sha)
+    assert.equal(r.status, 0, `color.diff=always에서도 사유가 있으면 통과해야 한다:\n${r.stderr}`)
+  } finally {
+    git(['config', '--unset', 'color.diff'], base)
+  }
+
+  // 16) 비ASCII 경로(jam-web/src/한글.ts)의 위반도 막힌다
+  //     (기본 core.quotePath=true에서 경로가 따옴표+8진수 이스케이프로 출력돼 ^jam-web/ 필터를 빠져나갔다)
+  reset(base, root)
+  writeAndAdd(base, 'jam-web/src/한글.ts', '// eslint-disable-next-line rule-in-korean-path\nexport const 값 = 1\n')
+  sha = commit(base, 'suppression without reason in non-ascii path')
+  r = runHook(base, root, sha)
+  assert.equal(r.status, 1, '비ASCII 경로의 사유 없는 억제 주석도 막혀야 한다')
+  assert.match(r.stderr, /rule-in-korean-path/)
+
+  // 17) 비ASCII 경로의 정상 변경은 새로 막히지 않는다
+  reset(base, root)
+  writeAndAdd(base, 'jam-web/src/한글.ts', 'export const 값 = 1\n')
+  sha = commit(base, 'clean change in non-ascii path')
+  r = runHook(base, root, sha)
+  assert.equal(r.status, 0, `비ASCII 경로의 정상 변경은 통과해야 한다:\n${r.stderr}`)
+
   console.log('통과: pre-push 기준 방어(guard the bar) 검사')
 } finally {
   rmSync(base, { recursive: true, force: true })

@@ -201,14 +201,20 @@ const CONTRACT_REL = 'docs/agents/contract.json'
 const MIGRATIONS_DIR = 'jam-web/supabase/migrations/'
 
 // 비밀값: 추가된 줄에서 실제 비밀의 형태만 잡는다. process.env.X처럼 값을 읽기만 하는 코드는 걸리지 않는다.
+const SECRET_NAMES = '(?:SUPABASE_SERVICE_ROLE_KEY|STRAVA_CLIENT_SECRET|ENCRYPTION_KEY|ADMIN_SECRET|CRON_SECRET)'
 const SECRET_RULES = [
   { kind: 'sb_secret', re: /sb_secret_[A-Za-z0-9_-]{20,}/ },
   { kind: 'jwt', re: /eyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}/ },
-  {
-    kind: 'env_assign',
-    re: /(SUPABASE_SERVICE_ROLE_KEY|STRAVA_CLIENT_SECRET|ENCRYPTION_KEY|ADMIN_SECRET|CRON_SECRET)\s*[:=]\s*["'][^"'\s]{16,}["']/,
-  },
+  // 모든 파일: 따옴표 또는 백틱 문자열 대입. 백틱 값은 ${…} 보간을 제외한다(값을 읽기만 하는 코드를 잡지 않으려는 이유가 같다).
+  { kind: 'env_assign', re: new RegExp(`${SECRET_NAMES}\\s*[:=]\\s*(?:["'][^"'\\s]{16,}["']|\`[^\`\\s$]{16,}\`)`) },
+  // .env 계열 파일만: 따옴표 없는 NAME=값. 줄 첫머리(선택적 export)에서 시작해야 하므로 주석 처리된 줄과 ${…} 참조 값은 걸리지 않는다.
+  { kind: 'env_assign', envFilesOnly: true, re: new RegExp(`^\\s*(?:export\\s+)?${SECRET_NAMES}\\s*=\\s*[^\\s"'\`$#][^\\s"'\`#]{15,}\\s*(?:#.*)?$`) },
 ]
+// .env 계열 파일. 자리 표시 값을 적는 예시 파일(.example·.sample·.template)은 제외한다.
+export function isEnvFile(file) {
+  const base = String(file ?? '').split('/').pop()
+  return /^\.env(?:\..+)?$/.test(base) && !/\.(?:example|sample|template)$/.test(base)
+}
 // 출력에는 값이 아니라 종류만 적는다(비밀값을 로그·Slack에 다시 흘리지 않는다).
 const SECRET_LABELS = {
   sb_secret: 'sb_secret_ 형태의 키',
@@ -375,6 +381,7 @@ function scanAddedLines(repo, base, head) {
         scanned++
         const text = line.slice(1)
         for (const rule of SECRET_RULES) {
+          if (rule.envFilesOnly && !isEnvFile(file)) continue
           if (rule.re.test(text)) findings.push({ file, line: lineNo, kind: rule.kind })
         }
         lineNo++
@@ -539,7 +546,9 @@ function migrationSummary(m) {
     else if (m.numbered.some((x) => x.required)) middle = '(되돌림 SQL 있음)'
     else middle = `(${m.rollbackRequiredFrom}번 미만이라 되돌림 SQL 확인 대상 아님)`
   }
-  return `번호 ${n}건${middle}, seed ${m.seedCount}건`
+  // 규칙 밖 이름의 .sql은 번호 기준·되돌림 SQL 점검을 받지 못한다. 건수를 요약 줄에 드러낸다(티켓 20260922_0653).
+  const odd = m.others.length > 0 ? `, 규칙 밖 이름 ${m.others.length}건(되돌림 SQL 점검 못 함)` : ''
+  return `번호 ${n}건${middle}, seed ${m.seedCount}건${odd}`
 }
 
 function renderText(r) {
@@ -565,7 +574,7 @@ function renderText(r) {
     }
   }
   if (r.migrations.others.length > 0) {
-    lines.push(`- 참고: 번호·seed 이름 규칙 밖의 마이그레이션 파일 ${r.migrations.others.length}건은 점검하지 못했습니다: ${r.migrations.others.map((f) => path.basename(f)).join(', ')}`)
+    lines.push(`- 경고: 번호·seed 이름 규칙 밖의 마이그레이션 파일 ${r.migrations.others.length}건은 되돌림 SQL 점검을 받지 못했습니다: ${r.migrations.others.map((f) => path.basename(f)).join(', ')} (번호 규칙에 맞게 이름을 고치거나 직접 확인)`)
   }
 
   const wrapperProblemText = {
@@ -604,16 +613,49 @@ function renderText(r) {
 // ── served ───────────────────────────────────────────────────────────────────
 function describeFetchError(e) {
   if (e?.name === 'TimeoutError' || e?.name === 'AbortError') return '시간 초과'
+  if (e?.message?.startsWith('리다이렉트 ')) return e.message
   return `네트워크 오류(${e?.cause?.code ?? e?.cause?.message ?? e?.code ?? e?.message ?? '원인 불명'})`
+}
+
+const MAX_REDIRECTS = 10
+
+// 리다이렉트를 직접 따라가며 쿠키를 저장한다. 자동 로그인 리다이렉트가 걸린 스테이징(stage.j-a-m.app)은
+// 쿠키를 받아 들고 원래 주소로 돌아와야 끝나는데, fetch의 자동 추적은 쿠키를 저장하지 않아 순환한다(티켓 20260922_0653).
+// 쿠키는 받은 출처(origin)로만 다시 보낸다 — 다른 출처로 넘어가는 리다이렉트에 실어 보내지 않는다.
+async function fetchFollowingRedirects(url, signal) {
+  const jar = new Map() // origin → Map(name → value)
+  let current = url
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const origin = new URL(current).origin
+    const headers = { 'user-agent': 'jam-deploy-gate', accept: 'text/html,*/*' }
+    const cookies = jar.get(origin)
+    if (cookies && cookies.size > 0) headers.cookie = [...cookies].map(([k, v]) => `${k}=${v}`).join('; ')
+    const res = await fetch(current, { redirect: 'manual', signal, headers })
+    for (const line of res.headers.getSetCookie?.() ?? []) {
+      const [pair, ...attrs] = line.split(';')
+      const eq = pair.indexOf('=')
+      if (eq <= 0) continue
+      const name = pair.slice(0, eq).trim()
+      const value = pair.slice(eq + 1).trim()
+      const maxAge = attrs.map((a) => a.trim().match(/^max-age=(-?\d+)$/i)).find(Boolean)
+      const store = jar.get(origin) ?? jar.set(origin, new Map()).get(origin)
+      if (value === '' || (maxAge && Number(maxAge[1]) <= 0)) store.delete(name)
+      else store.set(name, value)
+    }
+    const location = res.headers.get('location')
+    if (res.status >= 300 && res.status < 400 && location) {
+      await res.body?.cancel()
+      current = new URL(location, current).href
+      continue
+    }
+    return res
+  }
+  throw new Error(`리다이렉트 ${MAX_REDIRECTS}회를 넘었습니다`)
 }
 
 async function probe(url, timeoutMs) {
   try {
-    const res = await fetch(url, {
-      redirect: 'follow',
-      signal: AbortSignal.timeout(timeoutMs),
-      headers: { 'user-agent': 'jam-deploy-gate', accept: 'text/html,*/*' },
-    })
+    const res = await fetchFollowingRedirects(url, AbortSignal.timeout(timeoutMs))
     const html = await res.text()
     const m = html.match(DPL_ID)
     return m ? { kind: 'found', id: m[1], status: res.status } : { kind: 'none', status: res.status }
