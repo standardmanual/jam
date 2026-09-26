@@ -2,9 +2,9 @@
 id: "20260926_1412"
 category: Admin
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-26
-closed:
+closed: 2026-09-26
 related:
   - "20260924_1630"
   - "20260924_1631"
@@ -52,23 +52,40 @@ related:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 신규 공용 함수 `parseExportIds(body, emptyMessage)`와 상수 `MAX_EXPORT_IDS = 1000`을 `jam-web/src/lib/admin/export-ids.ts`에 만들었다. 문자열이 아닌 값은 무시하고 중복은 제거하며, 0건이면 각 라우트의 기존 빈 선택 문구, UUID가 아닌 값이 하나라도 있거나 중복 제거 뒤 1,000건을 넘으면 400과 안내 문구로 거절한다. 거절은 DB 조회보다 먼저 일어난다.
+- UUID `ids`를 받는 export 라우트 **10개**(badges, item-badges, item-badges/orphaned, itembooks, missions, poi, points/ledger, recipes, today, users)의 복사된 파싱 코드를 이 함수 호출로 교체했다. 정상 경로(응답 형식·파일 이름·200건 청크 조회)는 그대로다. `users`와 `recipes`가 따로 갖고 있던 1,000건 상한 검사는 공용 함수로 옮겼다.
+- **제외한 라우트: `badge-families/export`.** `ids`가 UUID가 아니라 계열 키라(`badge-families/export/route.ts` 25~31행) UUID 검증을 걸면 정상 요청이 막힌다. `ids`를 받지 않는 export 라우트는 없었다(11개 중 10개 적용, 1개 제외).
 
 ### 변경된 파일
 ```
--
+- jam-web/src/lib/admin/export-ids.ts (신규), __tests__/export-ids.test.ts (신규)
+- jam-web/src/app/api/admin/__tests__/export-ids-routes.test.ts (신규, 10개 라우트를 describe.each로)
+- jam-web/src/app/api/admin/{badges,item-badges,item-badges/orphaned,itembooks,missions,poi,points/ledger,recipes,today,users}/export/route.ts
+- jam-web/src/app/api/admin/badges/export/__tests__/route.test.ts (비UUID id를 UUID로 교체)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] 공용 함수 단위 테스트 10건, 라우트 10개 × 4건(UUID 아님 400, 1,001건 400, 기존 빈 선택 문구, 유효 요청은 DB 단계로 진행). 거절 케이스는 `createServiceClient` 미호출과 응답에 DB 원문 없음을 확인한다
+- [x] `scripts/verify.sh` 전 항목 통과, CI `verify` 성공(실행 36220373101, 커밋 e049144e)
+- [x] 민지 게이트 **PASS**. 점검 12항목 중 1·2·3·4·5·9·10·11 통과, 나머지 해당 없음. 검토 범위 dd616370..e049144e
+
+### 배포 정보
+- 배포일: 2026-09-26 (staging 병합·push). 프로덕션은 `/jam-ship`으로 별도 진행
+- 커밋: 구현 e049144e(외 이전 커밋), 병합 56325a2f (리뷰 브랜치 `claude/jamwork-20260926_1412-export-ids`)
 
 ### 실행 지표
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1차 | 아현·민지 (게이트 PASS) | 116,335 | 45,587 / 14,380 | 10.1분 | 44 |
+| 합계 | 2 | 116,335 | 45,587 / 14,380 | 10.1분 | 44 |
 
 ### 주요 의사결정 / 핵심 메모
+- **라우트별 테스트를 표 하나로 묶었다.** 티켓 계획은 라우트마다 `route.test.ts`를 두라고 했지만 10개 라우트가 같은 검증을 쓰므로 `describe.each`로 도는 통합 테스트 1개로 묶었고 게이트가 완료 조건 충족으로 인정했다.
+- **사용자에게 보이는 문구 변경**: `users/export`와 `recipes/export`의 상한 초과 문구가 "최대 1000명/건까지 내보낼 수 있습니다."에서 공용 문구("한 번에 최대 1,000건까지 내보낼 수 있습니다. 선택을 줄여 다시 시도해 주세요.")로 바뀐다(티켓 지시).
+- **UUID 가정의 근거**: 대상 테이블(badges, missions, today_cards, point_transactions, poi, combination_recipes, users, item_books, inventory_items)의 id가 UUID이고 각 일괄 라우트가 `idFormat: 'uuid'`를 쓴다. `item_badges`라는 이름의 테이블 정의는 찾지 못했으나 라우트가 실제로 조회하는 `inventory_items`가 UUID임을 확인했다.
+- **계획 반환 면제.** 파일 약 15개·예상 300줄 안팎이라 티켓에 파일 단위 계획을 적고 첫 호출부터 면제했다. 실제 diff는 333줄(예상 범위 안)이었다.
 
 ### 잔여 이슈
--
+- 프론트에서 export에 UUID가 아닌 id를 보내는 경로가 있는지는 확인하지 않았다. `badge-families` 외에는 목록의 id 컬럼을 그대로 보낸다.
+- 사용자가 1,000건을 넘게 직접 고르는 경로가 생기면 export가 400이 된다(현재 UI의 전체 선택 상한도 1,000이라 즉시 문제는 없다).

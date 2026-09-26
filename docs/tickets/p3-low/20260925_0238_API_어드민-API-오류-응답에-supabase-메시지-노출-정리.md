@@ -38,6 +38,9 @@ specs:
 - `list-bulk/route.ts`의 DB 오류 응답 6곳(트라이브 지정 조회, 비활성화 사전 조회, 드랍 수 집계, 트라이브 조회, 컬렉션 조회, 삭제)은 고정 한국어 문장으로 바꿨다.
 - **남은 곳**: 공용 헬퍼 `updateByIdsAllOrNothing`의 `update.error`를 그대로 응답에 내는 세 곳(`route.ts` 108·146·191행 부근)이 남아 DB 원문이 섞일 수 있다(공용 헬퍼 변경이 필요해 이번에 손대지 않았다). 다른 어드민 라우트의 같은 관례도 이 티켓에서 이어서 정리한다.
 
+### 추가 위치 (2026-09-26, 티켓 20260926_1413 게이트)
+- 단건 삭제·초기화 라우트가 조회 오류 시 `targetError.message`를 그대로 응답한다: `jam-web/src/app/api/admin/users/[id]/route.ts:27`, `jam-web/src/app/api/admin/users/[id]/reset/route.ts:28`. 이 관례 정리에 함께 포함한다(같은 계열의 `list-bulk` activate 분기는 티켓 20260926_1406).
+
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
 
