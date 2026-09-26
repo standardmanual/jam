@@ -9,6 +9,7 @@
 ```
 reports/
   weekly/YYYY-Www.md    예: 2026-W38.md (ISO 주차)
+  weekly/YYYY-Www-images/<묶음 ID>/  그 주 홈피드 후보 이미지(image.png)와 등록 묶음(bundle.json). 리포트 표가 상대 경로로 참조한다(티켓 20260926_1207)
   monthly/YYYY-MM.md     예: 2026-09.md
   deploy/YYYY-MM-DD.md  예: 2026-09-24.md (주간 배포 승인 루틴, 티켓 20260918_1650)
   triage/YYYY-MM-DD.md  예: 2026-09-22.md (선별 루틴, 티켓 20260921_2306)
