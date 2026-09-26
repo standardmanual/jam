@@ -25,14 +25,15 @@ import { Checkbox } from '@/components/admin/ui/checkbox'
 import { Input } from '@/components/admin/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/admin/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/admin/ui/tooltip'
-import type {
-  GradientDirection,
-  ImageLayerConfig,
-  LetterKey,
-  OverlayLayerConfig,
-  RibbonLayerConfig,
-  StageRatio,
-  TextLayerConfig,
+import {
+  getLayerKeys,
+  type GradientDirection,
+  type ImageLayerConfig,
+  type LetterKey,
+  type OverlayLayerConfig,
+  type RibbonLayerConfig,
+  type StageRatio,
+  type TextLayerConfig,
 } from '@/lib/asset-generator'
 import ImageLayerFields from './ImageLayerFields'
 import LayerSidebar from './LayerSidebar'
@@ -395,16 +396,23 @@ export default function AssetGeneratorPanel({
             {(() => {
               const selectedLayer = overlayLayers.find((l) => l.id === selectedOverlayLayerId)
               if (!selectedLayer) return null
-              if (selectedLayer.type === 'image') {
-                return (
-                  <ImageLayerFields
-                    layer={selectedLayer}
-                    onChange={(patch) => onImageLayerChange(selectedLayer.id, patch)}
-                    onReplaceAsset={(file) => onReplaceImageLayerAsset(selectedLayer.id, file)}
-                  />
-                )
-              }
-              return <TextLayerFields layer={selectedLayer} onChange={(patch) => onTextLayerChange(selectedLayer.id, patch)} />
+              const selectedKey = getLayerKeys(overlayLayers).find((k) => k.id === selectedLayer.id)?.key
+              return (
+                <>
+                  <p className="text-sm font-medium">
+                    선택한 레이어: <span className="font-mono">{selectedKey}</span>
+                  </p>
+                  {selectedLayer.type === 'image' ? (
+                    <ImageLayerFields
+                      layer={selectedLayer}
+                      onChange={(patch) => onImageLayerChange(selectedLayer.id, patch)}
+                      onReplaceAsset={(file) => onReplaceImageLayerAsset(selectedLayer.id, file)}
+                    />
+                  ) : (
+                    <TextLayerFields layer={selectedLayer} onChange={(patch) => onTextLayerChange(selectedLayer.id, patch)} />
+                  )}
+                </>
+              )
             })()}
           </AccordionContent>
         </AccordionItem>

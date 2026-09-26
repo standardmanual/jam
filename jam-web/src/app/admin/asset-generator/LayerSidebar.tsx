@@ -16,7 +16,7 @@
 import { useRef } from 'react'
 import { IconArrowDown, IconArrowUp, IconTextPlus, IconTrash, IconUpload } from '@tabler/icons-react'
 import { Button } from '@/components/admin/ui/button'
-import type { OverlayLayerConfig } from '@/lib/asset-generator'
+import { getLayerKeys, type OverlayLayerConfig } from '@/lib/asset-generator'
 
 interface LayerSidebarProps {
   layers: OverlayLayerConfig[]
@@ -28,16 +28,15 @@ interface LayerSidebarProps {
   onMove: (id: string, direction: 'up' | 'down') => void
 }
 
-/** 목록 항목 라벨: 이미지는 같은 종류끼리 매긴 번호, 텍스트는 입력한 첫 줄(없으면 번호)로
- * 구분한다 — 텍스트 레이어가 여러 개일 때 내용으로 알아보기 쉽도록. */
-function describeLayer(layer: OverlayLayerConfig, typeIndex: number): string {
-  if (layer.type === 'image') return `이미지 레이어 ${typeIndex}`
-  const firstLine = layer.content.split('\n')[0]?.trim()
-  return firstLine || `텍스트 레이어 ${typeIndex}`
+/** 텍스트 레이어의 첫 줄 미리보기. 내용이 비어 있으면 빈 문자열이다(번호 칩만 보인다). */
+function previewText(layer: OverlayLayerConfig): string {
+  if (layer.type !== 'text') return ''
+  return layer.content.split('\n')[0]?.trim() ?? ''
 }
 
 export default function LayerSidebar({ layers, selectedId, onSelect, onAddImage, onAddText, onRemove, onMove }: LayerSidebarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const layerKeys = getLayerKeys(layers)
 
   return (
     <div className="flex flex-col gap-2">
@@ -67,7 +66,8 @@ export default function LayerSidebar({ layers, selectedId, onSelect, onAddImage,
         <ul className="flex flex-col gap-1.5">
           {layers.map((overlayLayer, index) => {
             const isSelected = overlayLayer.id === selectedId
-            const typeIndex = layers.slice(0, index + 1).filter((l) => l.type === overlayLayer.type).length
+            const layerKey = layerKeys[index].key
+            const preview = previewText(overlayLayer)
             return (
               <li
                 key={overlayLayer.id}
@@ -78,9 +78,10 @@ export default function LayerSidebar({ layers, selectedId, onSelect, onAddImage,
                 <button
                   type="button"
                   onClick={() => onSelect(overlayLayer.id)}
-                  className="flex-1 truncate text-left text-sm"
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm"
                 >
-                  {describeLayer(overlayLayer, typeIndex)}
+                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{layerKey}</span>
+                  {preview && <span className="truncate">{preview}</span>}
                 </button>
                 <Button
                   type="button"
