@@ -92,17 +92,17 @@ export async function applyMissionShow(
   update: (ids: string[], patch: Record<string, unknown>) => Promise<UpdateAllOrNothingResult>
 ): Promise<{ ok: true; processed: string[] } | { ok: false; error: string }> {
   const first = await update(plan.toScheduled, { exposure_mode: 'scheduled' })
-  if (!first.ok) return { ok: false, error: first.error ?? '반영에 실패했습니다.' }
+  if (!first.ok) return { ok: false, error: first.error ?? '반영에 실패했어요.' }
 
   const second = await update(plan.toStartDate, { exposure_mode: 'start_date' })
   if (second.ok) return { ok: true, processed: [...first.updatedIds, ...second.updatedIds] }
 
-  const secondError = second.error ?? '반영에 실패했습니다.'
+  const secondError = second.error ?? '반영에 실패했어요.'
   if (first.updatedIds.length === 0) return { ok: false, error: secondError }
 
   const revert = await update(first.updatedIds, { exposure_mode: 'hidden' })
   if (!revert.ok) {
-    return { ok: false, error: `일부만 반영됐습니다. 반영 실패: ${secondError} / 되돌리기 실패: ${revert.error ?? ''}` }
+    return { ok: false, error: `일부만 반영됐어요. 반영 실패: ${secondError} / 되돌리기 실패: ${revert.error ?? ''}` }
   }
   return { ok: false, error: secondError }
 }
@@ -122,7 +122,7 @@ export function classifyMissionEndPeriod(ids: string[], rows: MissionBulkRow[], 
       skipped.push({ id, reason: NOT_FOUND_REASON })
     } else if (new Date(row.starts_at) > now) {
       skipped.push({ id, label: row.title, reason: '아직 시작 전인 미션이에요.' })
-    } else if (row.ends_at !== null && new Date(row.ends_at) <= now) {
+    } else if (row.ends_at !== null && new Date(row.ends_at) < now) {
       skipped.push({ id, label: row.title, reason: '이미 끝난 미션이에요.' })
     } else {
       targets.push(id)

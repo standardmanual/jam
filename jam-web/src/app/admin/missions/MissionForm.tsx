@@ -101,9 +101,9 @@ function formFromMission(m: MissionRow): typeof emptyForm {
 }
 
 /**
- * 미션 생성/수정 폼(티켓 20260911_2035) — 목록(`MissionList.tsx`) 내부 토글이 아니라
+ * 미션 생성/수정 폼(티켓 20260911_2035) — 목록 내부 토글이 아니라
  * `/admin/missions/new`, `/admin/missions/[id]` 별도 페이지로 이동해 연다. 폼 자체(입력
- * 필드·검증 로직)는 기존 `MissionList.tsx`에서 그대로 옮겨왔다.
+ * 필드·검증 로직)는 예전 목록 컴포넌트(현재는 삭제됨)에서 그대로 옮겨왔다.
  */
 export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
   const editingId = mission?.id ?? null

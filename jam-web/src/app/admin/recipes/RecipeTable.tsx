@@ -258,14 +258,16 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
                   없습니다.
                 </p>
                 {deletePreview.skipped.length > 0 && (
-                  <p className="mt-1">
-                    선택한 레시피 중 {deletePreview.skipped.length}개는 삭제할 수 없어 제외됩니다(
-                    {deletePreview.skipped
-                      .slice(0, 3)
-                      .map((s) => `${s.label ?? s.id.slice(0, 8)}: ${s.reason}`)
-                      .join(' / ')}
-                    {deletePreview.skipped.length > 3 ? ` 외 ${deletePreview.skipped.length - 3}개` : ''}).
-                  </p>
+                  <>
+                    <p className="mt-1">선택한 레시피 중 {deletePreview.skipped.length}개는 삭제 대상에서 제외됩니다.</p>
+                    <p className="mt-1">
+                      {deletePreview.skipped
+                        .slice(0, 3)
+                        .map((s) => `${s.label ?? s.id.slice(0, 8)}: ${s.reason}`)
+                        .join(' / ')}
+                      {deletePreview.skipped.length > 3 ? ` 외 ${deletePreview.skipped.length - 3}개` : ''}
+                    </p>
+                  </>
                 )}
               </>
             ) : null
