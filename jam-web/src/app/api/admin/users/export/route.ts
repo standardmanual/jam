@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
+import { parseExportIds } from '@/lib/admin/export-ids'
 import { toCsv } from '@/lib/admin/csv'
 import { kstDateString } from '@/lib/notifications/kst'
 import { formatKstYmd } from '@/lib/admin/kst-format'
-import { BULK_MAX_IDS } from '@/lib/admin/bulk/shared'
 import { fetchUserRowsByIds } from '@/lib/admin/user-list'
 
 /**
@@ -17,16 +17,9 @@ export async function POST(req: NextRequest) {
   if (authError) return authError
 
   const body = await req.json().catch(() => null)
-  const ids = Array.isArray((body as { ids?: unknown })?.ids)
-    ? (body as { ids: unknown[] }).ids.filter((id): id is string => typeof id === 'string')
-    : []
-  if (ids.length === 0) {
-    return NextResponse.json({ error: '내보낼 유저를 선택해주세요.' }, { status: 400 })
-  }
-  const uniqueIds = [...new Set(ids)]
-  if (uniqueIds.length > BULK_MAX_IDS) {
-    return NextResponse.json({ error: `한 번에 최대 ${BULK_MAX_IDS}명까지 내보낼 수 있습니다.` }, { status: 400 })
-  }
+  const parsed = parseExportIds(body, '내보낼 유저를 선택해주세요.')
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status })
+  const uniqueIds = parsed.ids
 
   let rows
   try {
