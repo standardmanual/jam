@@ -11,9 +11,11 @@
  * ```
  * cd jam-web
  * npx tsx scripts/asset-generator/render.mjs \
- *   --preset <프리셋 id> --bg "#ff1a00" --end "#ff4dff" --text "배지 이름" \
+ *   --preset <프리셋 id> --bg "#ff1a00" --end "#ff4dff" --text "배지 이름" [--subtext "짧은 설명"] \
  *   --out /absolute/path/out.png [--seed 123]
  * ```
+ * 텍스트 레이어가 2개인 프리셋(홈피드)은 `--text`가 1번째(제목), `--subtext`가 2번째(설명) 레이어다.
+ * 순서 규칙과 오류 처리는 fillTextLayers.mjs 상단 주석, 글자 수 가이드는 PRD §8에 있다.
  * 성공하면 표준 출력에 `{ out, seed, preset, stage: { w, h }, presetSource }` JSON 한 줄을 찍는다
  * (`presetSource`는 프리셋을 받은 경로: `admin-api` | `service-role`).
  * 인자 누락·프리셋 없음·글꼴 다운로드 실패 등 어떤 오류든 한국어 메시지를 stderr에 찍고
@@ -70,6 +72,7 @@ import { serverCanvasFactory, getServerContext, loadImageAsCanvas, cropToAlphaBo
 import { brandLetterSvgMarkup } from './brandLetters.mjs'
 import { createServerFontLoader } from './fonts.mjs'
 import { parseRenderArgs } from './renderArgs.mjs'
+import { fillTextLayers } from './fillTextLayers.mjs'
 import { loadEnv } from '../lib/loadEnv.mjs'
 import { fetchPresetFromAdminApi, normalizePreset, pickPresetSource, resolveEnv } from './presetSource.mjs'
 
@@ -101,11 +104,9 @@ async function main() {
 
   const { width: stageWidth, height: stageHeight } = resolveStageSize(preset.stageRatio)
 
-  // 텍스트 레이어의 content는 --text로 채운다(PRD §8). 프리셋에 텍스트 레이어가 여럿이면
-  // 전부 같은 값으로 채운다 — CLI 인자가 하나뿐이라 구분할 방법이 없다.
-  const overlayLayers = preset.layers.map((layer) =>
-    layer.type === 'text' ? { ...layer, content: args.text } : layer
-  )
+  // 텍스트 레이어 채우기: 배열 순서로 1번째 ← --text(제목), 2번째 ← --subtext(설명). 규칙·오류 처리는
+  // fillTextLayers.mjs 상단 주석 참고.
+  const overlayLayers = fillTextLayers(preset.layers, { text: args.text, subtext: args.subtext })
 
   const masterSeed = args.seed ?? generateRandomSeed()
   const random = deriveRibbonFromSeed(masterSeed)

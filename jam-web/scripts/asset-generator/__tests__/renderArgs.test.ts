@@ -24,6 +24,12 @@ describe('parseRenderArgs', () => {
     expect(result.text).toBe('1번째줄\n2번째줄');
   });
 
+  it('--subtext는 선택이며, 주면 리터럴 \\n을 개행으로 바꿔 돌려주고 안 주면 undefined다', () => {
+    const base = ['--preset', 'p1', '--bg', '#ff0000', '--end', '#00ff00', '--text', '제목', '--out', OUT];
+    expect(parseRenderArgs(base).subtext).toBeUndefined();
+    expect(parseRenderArgs([...base, '--subtext', '설명1\\n설명2']).subtext).toBe('설명1\n설명2');
+  });
+
   it('필수 인자가 없으면 누락된 것만 이름으로 안내하는 오류를 던진다', () => {
     expect(() => parseRenderArgs(['--preset', 'p1'])).toThrow('--bg, --end, --text, --out');
   });

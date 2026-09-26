@@ -84,6 +84,7 @@ export function buildHomeFeedRegistrationRecord({ bundle, cardId, payload, bucke
       bg_color: image.bg_color,
       end_color: image.end_color,
       text: image.text ?? null,
+      subtext: image.subtext ?? null,
       // 묶음에 적은 그대로(상대 경로면 상대 경로로) 남긴다 — PC마다 다른 절대 경로가 기록에 박히지 않게 한다.
       source_path: image.path,
       original_bytes: image.bytes,
@@ -185,6 +186,7 @@ export function formatHomeFeedDryRunSummary({ bundle, payload, errors, dbChecks,
       `- 시드: ${image.seed}`,
       `- 배경색 → 끝색: ${image.bg_color} → ${image.end_color}`,
       `- 텍스트: ${image.text ?? '기록 없음'}`,
+      `- 설명 텍스트: ${image.subtext ?? '기록 없음'}`,
       webp?.error
         ? `- WebP 변환 미리 확인: 실패 — ${webp.error}`
         : webp?.bytes !== undefined

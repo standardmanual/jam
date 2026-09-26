@@ -58,6 +58,7 @@ function sampleBundle(): SampleBundle {
       bg_color: '#ff1a00',
       end_color: '#ff4dff',
       text: '롱런',
+      subtext: '30km 도전',
     },
   };
 }
@@ -113,7 +114,7 @@ describe('buildHomeFeedRegistrationRecord', () => {
       world_review: { world_related: true, winter_reviewed: true },
       storage: { bucket: 'images', png_path: registered.pngPath, webp_path: registered.webpPath },
       urls: { original_png: registered.originalUrl, cover_image_url: IMAGE_URL },
-      image: { seed: 20260925, source_path: 'image.png', original_bytes: 2048, webp_bytes: 1024, text: '롱런' },
+      image: { seed: 20260925, source_path: 'image.png', original_bytes: 2048, webp_bytes: 1024, text: '롱런', subtext: '30km 도전' },
     });
     expect(record.card.starts_at).toBe('2026-10-04T15:00:00.000Z');
     expect(record.urls).not.toHaveProperty('image_url');
@@ -209,6 +210,7 @@ describe('formatHomeFeedDryRunSummary', () => {
     expect(text).toContain('- 이동 경로: /missions/weekly');
     expect(text).toContain('- 상태: 활성(기간이 되면 바로 노출)');
     expect(text).toContain('- 시드: 20260925');
+    expect(text).toContain('- 설명 텍스트: 30km 도전');
     expect(text).toContain('- WebP 변환 미리 확인: 통과 (4.0KB, 긴 변 400px 이하)');
     expect(text).toContain('- 제목·시작 일시 중복: 통과');
     expect(text).toContain('- 미션 존재: 건너뜀 — 서비스 키(.env.local)가 없어 DB를 읽지 않았어요');

@@ -346,6 +346,12 @@ describe('validateHomeFeedBundle — 이미지', () => {
     expect(errorsFor((raw) => (raw.image.path = 'big.png'))[0]).toContain('이미지가 너무 커요');
   });
 
+  it('image.subtext는 없어도 통과하고, 문자열이면 통과하며, 문자열이 아니면 거절한다', () => {
+    expect(errorsFor(() => undefined)).toEqual([]);
+    expect(errorsFor((raw) => (raw.image.subtext = '짧은 설명\n둘째 줄'))).toEqual([]);
+    expect(errorsFor((raw) => (raw.image.subtext = 123)).join('\n')).toContain('image.subtext: 문자열이어야 해요');
+  });
+
   it('시드·프리셋·색 형식을 확인한다', () => {
     const errors = errorsFor((raw) => {
       raw.image.seed = 1.5;

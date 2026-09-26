@@ -2,7 +2,7 @@
  * JAM! 에셋 제너레이터 CLI — 인자 파싱 (티켓 20260924_2201)
  *
  * render.mjs의 CLI 인자(`--preset <id> --bg <hex> --end <hex> --text <문자열>
- * --out <절대경로.png> [--seed <정수>]`)를 순수 함수로 파싱한다. 필수 인자 누락·형식 오류는
+ * [--subtext <문자열>] --out <절대경로.png> [--seed <정수>]`)를 순수 함수로 파싱한다. 필수 인자 누락·형식 오류는
  * 한국어 메시지의 Error를 던진다 — 호출부(render.mjs)가 이를 잡아 안내 문구를 찍고 종료 코드
  * 1로 끝낸다(PRD §8, 완료 조건).
  */
@@ -24,9 +24,11 @@ function parseFlags(argv) {
 }
 
 /**
- * CLI 인자를 검증해 `{ preset, bg, end, text, out, seed }`를 돌려준다.
- * - `text`는 리터럴 `\n`(백슬래시+n, 쉘에서 그대로 들어오는 두 글자)을 실제 개행 문자로
+ * CLI 인자를 검증해 `{ preset, bg, end, text, subtext, out, seed }`를 돌려준다.
+ * - `text`·`subtext`는 리터럴 `\n`(백슬래시+n, 쉘에서 그대로 들어오는 두 글자)을 실제 개행 문자로
  *   바꾼다 — 여러 줄 텍스트 레이어(§4.3, content.split('\n'))에 그대로 넘기기 위함이다.
+ * - `subtext`(텍스트 레이어 2개 프리셋의 두 번째 문구)는 선택이다 — 지정하지 않으면 undefined다.
+ *   레이어 수와 맞는지는 프리셋을 받은 뒤 fillTextLayers가 검사한다(§8).
  * - `seed`를 지정하지 않으면 undefined를 돌려준다(호출부가 마스터 시드를 새로 뽑는다).
  */
 export function parseRenderArgs(argv) {
@@ -54,6 +56,7 @@ export function parseRenderArgs(argv) {
     bg: flags.bg,
     end: flags.end,
     text: flags.text.replace(/\\n/g, '\n'),
+    subtext: flags.subtext === undefined ? undefined : flags.subtext.replace(/\\n/g, '\n'),
     out: flags.out,
     seed,
   }
