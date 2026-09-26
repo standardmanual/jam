@@ -376,7 +376,7 @@ export function validateMissionBundle(raw, { bundleFile }) {
  * - `id`: 이미지 저장 경로에 쓰려고 등록 전에 정한 UUID를 넣는다(라우트는 DB 기본값에 맡긴다).
  * - `image_url`: 업로드한 WebP 공개 주소(`?v=` 캐시 무효화 쿼리 포함).
  * - `image_source`: 항상 `agent-generator`(묶음 값은 받지 않는다).
- * 폐기 예정 필드(`reward_type`·`reward_id`·`gated_badge_id`)는 항상 null이다. `created_at`은 DB 기본값에 맡긴다.
+ * 폐기 예정 필드(`reward_type`·`reward_id`·`gated_badge_id`)와 `condition_text`는 항상 null이다. `created_at`은 DB 기본값에 맡긴다.
  */
 export function buildMissionInsertPayload(mission, { id, imageUrl }) {
   return {
@@ -385,6 +385,8 @@ export function buildMissionInsertPayload(mission, { id, imageUrl }) {
     description: mission.description,
     mission_type: mission.mission_type,
     condition_json: mission.condition_json,
+    // 달성 조건 문장(티켓 20260927_0026)은 묶음이 받지 않는다 — 비워 두면 화면이 기본 문구를 쓴다.
+    condition_text: null,
     reward_type: null,
     reward_id: null,
     reward_points: mission.reward_points ?? null,
