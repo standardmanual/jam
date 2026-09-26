@@ -2,9 +2,9 @@
 id: 20260918_1251
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-18
-closed:
+closed: 2026-09-26
 ---
 
 # [Infra] dashboard-format.md와 ticket-dashboard.mjs 동기화 장치 검토
@@ -29,3 +29,20 @@ closed:
 - **`scripts/ticket-dashboard.test.mjs`도 이 형식을 검사하지 않는다.** 지금 테스트는 예약 리포트 누락 감지 함수만 다룬다.
 - **채택할 방식**: 스크립트를 실제로 실행해 출력의 줄 형식과 카드 출력을 확인하는 테스트 케이스를 `ticket-dashboard.test.mjs`에 추가한다. 이 테스트는 `scripts/verify.sh`의 `scripts-test` 단계(20260919_1306)가 자동으로 돌리므로, 형식을 바꾸고 문서를 고치지 않으면 걸린다. 테스트 위에 `dashboard-format.md`를 함께 갱신하라는 주석을 남긴다. `pre-commit`에 별도 경고를 붙이는 방안은 도입하지 않는다(같은 커밋에서 문서만 손대도 통과해 실효가 낮다).
 - **아직 구현하지 않았다.** 스크립트 실행 명령이 이번 세션에서 권한 분류기에 거부돼, 실제 출력을 확인하지 못한 채 테스트를 쓰면 게이트를 깨뜨릴 위험이 있다. 실행이 가능한 세션에서 이어서 처리한다.
+## 완료 기록 *(작업 완료 후 작성)*
+
+### 구현 내용 요약
+- 묶음 티켓 20260926_1440으로 처리했다. 상세와 실행 지표는 그 티켓의 완료 기록에 있다.
+- `.githooks/pre-commit`에 경고 블록을 더했다. `scripts/ticket-dashboard.mjs`가 스테이지에 있고 `dashboard-format.md`가 없으면 경고만 출력하고 커밋은 통과한다(차단하지 않음).
+
+### 변경된 파일
+```
+- .githooks/pre-commit
+- scripts/doc-check-hook.test.mjs
+```
+
+### 테스트 결과
+- [x] 임시 저장소 테스트 4건: 스크립트만 바뀜(경고 + 통과), 문서도 바뀜(경고 없음), 무관한 커밋, 문서만 바뀜. CI 성공
+
+### 주요 의사결정 / 핵심 메모
+- **2026-09-21 검토 결과를 이번 결정으로 갱신한다.** 그 검토는 "pre-commit 경고는 도입하지 않고 `ticket-dashboard` 출력 형식 테스트로 대체"였다. 이번 묶음 티켓의 계획과 완료 조건이 pre-commit 경고를 명시했고 차단하지 않는 경고라 부담이 작아 경고를 도입했다. 출력 형식 테스트(`ticket-dashboard.test.mjs`)는 도입하지 않았고, 현황판 형식이 문서와 어긋나는 문제가 다시 나오면 그때 추가한다.

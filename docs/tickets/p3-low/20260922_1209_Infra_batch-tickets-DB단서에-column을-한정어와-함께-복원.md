@@ -2,7 +2,7 @@
 id: "20260922_1209"
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-22
 parent: "20260922_1055"
 ---
@@ -39,21 +39,14 @@ parent: "20260922_1055"
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 묶음 티켓 20260926_1440으로 처리했다. 상세와 실행 지표는 그 티켓의 완료 기록에 있다.
+- `scripts/batch-tickets.mjs`의 `DB_CLUE_RE`에 결합 패턴 `(테이블|DB)\s*(column|컬럼)`과 `(column|컬럼)\s*(추가|삭제|정리|변경)`을 더했다. 단독 `column`은 여전히 단서가 아니다(UI 그리드 열로 쓰이는 경우의 오탐을 피함).
 
 ### 변경된 파일
 ```
--
+- scripts/batch-tickets.mjs
+- scripts/batch-tickets.test.mjs
 ```
 
 ### 테스트 결과
-- [ ] 
-
-### 배포 정보
-- 배포일: 
-- 환경: staging (빌드 없음)
-- 커밋: 
-
-### 주요 의사결정 / 핵심 메모
-
-### 잔여 이슈
--
+- [x] test10(「컬럼 정리」만 있는 티켓 → `db`), test11(UI 그리드 `column` 티켓 → `infra`), 기존 test9(실제 티켓 3건) 통과. CI 성공
