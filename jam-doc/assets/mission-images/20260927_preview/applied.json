@@ -1,0 +1,722 @@
+{
+  "version": 1,
+  "startedAt": "2026-09-27T00:07:08+09:00",
+  "outDir": "/Users/sihyunhwang/Desktop/JAM!/jam-doc/assets/mission-images/20260927_preview",
+  "entries": [
+    {
+      "id": "58e80c66-62ed-4f0c-be32-432f2ae6d367",
+      "title": "바퀴 자국의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "7e660aef-a733-4aca-9006-69a3972cf7e3",
+      "title": "바퀴 자국의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "258dce42-110f-49d2-a458-ea285caa43a3",
+      "title": "지평선의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "22e9313f-43de-443e-b21f-d2da4b8613af",
+      "title": "추위와 더위의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "5b17608e-620b-408c-8274-45c36b489ac0",
+      "title": "이어진 바퀴의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "5b779cda-16a6-41bc-a773-3bea5c6922ec",
+      "title": "이어진 바퀴의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "66aa7ecb-5d14-4705-bd57-95922f205a24",
+      "title": "속도의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "ddbf942c-3064-41ce-bc47-dec91a77b08e",
+      "title": "속도의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "5715ab85-386f-443c-b139-396f244f4587",
+      "title": "주말의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "9b053a4d-cd72-4100-8510-1e9e02ca6662",
+      "title": "주말의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "55429475-c31b-4212-a148-71663b866242",
+      "title": "빈 안장의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "1ea10dc8-7c9a-492c-af75-c09726849876",
+      "title": "언덕의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "49381fa0-ca33-48a8-b0ee-767b9375d345",
+      "title": "긴 산행의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "bef44fe6-83e3-4476-a7e1-6567e7ec065b",
+      "title": "이어진 능선의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "e33c72a3-741c-4b3e-be99-9e6c915457ae",
+      "title": "높이의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "e3466370-2aa0-4c4c-82e6-41e9ef17262d",
+      "title": "높이의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "082ede39-9f80-4481-811c-16a8859ea7f2",
+      "title": "돌아오는 산의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "00288cfa-7a67-4b59-a8bd-4fdbc6207f05",
+      "title": "쌓인 고도의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "7b82344c-5fc8-4074-bf6f-b3047b576054",
+      "title": "쌓인 고도의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "4e198d55-aceb-4450-9778-1630c2651193",
+      "title": "발길의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "7c72a7dc-2a7e-4f42-a2f2-94789b1b65c3",
+      "title": "발길의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "3983127c-1886-4839-9c87-401a8f0f8ad2",
+      "title": "하산 뒤의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "a4c035d9-d026-4ae1-ba1d-5694279b780e",
+      "title": "눈과 볕의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "d0fc7de7-06b2-4f6d-8a63-1af8990f679b",
+      "title": "연이은 날의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "ff8a6607-bd5f-4dbb-b60c-6f4695d34eda",
+      "title": "먼 하루의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "4410cfbb-ba27-4d88-a3e4-668d34a9f9b0",
+      "title": "쉼표의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "08dc939c-ec52-43b2-88e9-7e5b33f629ce",
+      "title": "사계의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "9549b07f-6173-4362-9145-8938b3f355ec",
+      "title": "쌓인 거리의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "a73906c2-a7d1-4040-824c-0ffd2a756987",
+      "title": "쌓인 거리의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "0a332a8c-3874-42dd-b180-ce7604176c1a",
+      "title": "페이스의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "70d7108c-47af-4920-8c6b-b61caf29db5e",
+      "title": "시간표의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "aa94f53b-09d4-4676-b7ac-0df6fd9c5db8",
+      "title": "시간표의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "4705d987-e87d-4cb3-83f8-5ffce6289923",
+      "title": "반복의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "918cd3e2-6f87-4ef1-893b-a218e61aa3ba",
+      "title": "울트라의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "15e8ed2b-ac73-4b6a-ba4f-e783ca3ed06e",
+      "title": "이어 달린 산길의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "2d4379e4-f579-4650-bb06-876207bf6808",
+      "title": "이어 달린 산길의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "791cb69b-0e40-4905-ad42-fc4450c819a6",
+      "title": "오르막의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "4c5244d2-2861-4d01-8643-91d99443c59c",
+      "title": "수직의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "da207f9f-35bb-4f49-9f46-9d3a732f985f",
+      "title": "수직의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "3fad5f5f-3e36-41fe-9ead-963d49db7dc6",
+      "title": "해뜨기 전의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "9bbfef7f-4a9a-48cc-a266-73ae78cfe994",
+      "title": "해뜨기 전의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "453148a3-cf46-472e-85d0-1b09cfa9bdd3",
+      "title": "사철 산길의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "ad798038-b8a8-484c-bb48-fc848d70f937",
+      "title": "오르내린 거리의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "e33a4bca-9f0a-4392-ad58-a80e3ebe5d19",
+      "title": "오르내린 거리의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "6bdcc4d0-b129-4563-8ef1-b7ac7863b3d9",
+      "title": "내리막 뒤의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "172494a6-9165-4f5c-a675-6058eee46e17",
+      "title": "요일의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "82e9e499-a182-4b83-bae1-29e8dea67e0a",
+      "title": "리듬의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "d1849f2c-5c98-46b7-a620-dea0b52e80ca",
+      "title": "이정표의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "46006409-cd80-44f2-805b-c1512679e99b",
+      "title": "회복의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "342cc484-a13f-4aa0-894f-dfbe1665e735",
+      "title": "누적의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "8f44925c-1c6a-456c-a25b-ffd50a51c32e",
+      "title": "연속의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "c3da02b8-2d27-45e3-9482-c1009c11679f",
+      "title": "계절의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "c5f62ed5-1462-4017-bcdb-f8ec381bdb8e",
+      "title": "시간의 증명",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "b1009708-3258-477d-9278-107ad2c67d12",
+      "title": "그루터기 살롱의 겨울 채비",
+      "previous": {
+        "image_url": null,
+        "image_source": null
+      },
+      "backup": {
+        "png": null,
+        "webp": null
+      },
+      "status": "applied"
+    },
+    {
+      "id": "5fc147fd-307e-4dc0-a7dd-a736ceee906f",
+      "title": "겹쳐진 도시의 새 얼굴",
+      "previous": {
+        "image_url": "https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/missions/asset-generator/5fc147fd-307e-4dc0-a7dd-a736ceee906f.webp?v=1790432810301",
+        "image_source": "admin-generator"
+      },
+      "backup": {
+        "png": "backup/5fc147fd-307e-4dc0-a7dd-a736ceee906f.png",
+        "webp": "backup/5fc147fd-307e-4dc0-a7dd-a736ceee906f.webp"
+      },
+      "status": "applied"
+    }
+  ]
+}
