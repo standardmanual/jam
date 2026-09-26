@@ -16,7 +16,10 @@
 #   4. 위 조건을 모두 통과하면 `git worktree remove`로 제거하고 종료 코드 0.
 #
 # 종료 코드: 0 = 할 일 없음/제거 완료, 1 = 사용법 오류, 2 = 거부(미커밋 변경 또는 미푸시 커밋)
-set -uo pipefail
+# 예기치 않은 명령 실패(git 조회 실패 등)는 set -e로 즉시 종료 코드 1을 낸다. 의도적으로
+# 실패를 허용하는 지점(git fetch, rev-parse --verify, merge-base --is-ancestor)은 if/|| 로 가드한다.
+# (티켓 20260922_1214)
+set -euo pipefail
 
 BRANCH="${1:-}"
 if [ -z "$BRANCH" ]; then
@@ -24,9 +27,14 @@ if [ -z "$BRANCH" ]; then
   exit 1
 fi
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+if ! REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+  echo "오류: git 저장소 안에서 실행해야 한다" >&2
+  exit 1
+fi
 
 # git worktree list --porcelain에서 이 브랜치를 점유한 워크트리 경로를 찾는다.
+# 프로세스 치환은 실패해도 set -e가 못 잡으므로 먼저 변수에 담아 실패 시 종료시킨다.
+WT_LIST="$(git -C "$REPO_ROOT" worktree list --porcelain)"
 WT_PATH=""
 CURRENT_WT=""
 while IFS= read -r line; do
@@ -37,7 +45,7 @@ while IFS= read -r line; do
       break
       ;;
   esac
-done < <(git -C "$REPO_ROOT" worktree list --porcelain)
+done <<< "$WT_LIST"
 
 if [ -z "$WT_PATH" ]; then
   echo "점유한 워크트리 없음: $BRANCH"
