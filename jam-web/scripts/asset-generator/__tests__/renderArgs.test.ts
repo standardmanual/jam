@@ -31,8 +31,7 @@ describe('parseRenderArgs', () => {
 
   it('텍스트 번호의 리터럴 \\n을 개행으로 바꾸고 이미지 값은 그대로 둔다', () => {
     const result = parseRenderArgs([...BASE, '--text01', '1번째줄\\n2번째줄', '--img01', '/abs/a\\nb.png']);
-    expect(result.values.text01).toBe('1번째줄\n2번째줄');
-    expect(result.values.img01).toBe('/abs/a\\nb.png');
+    expect(result.values).toEqual({ text01: '1번째줄\n2번째줄', img01: '/abs/a\\nb.png' });
   });
 
   it('필수 인자가 없으면 누락된 것만 이름으로 안내한다(--text는 필수 목록에 없다)', () => {
