@@ -206,7 +206,7 @@ npx tsx scripts/asset-generator/register-badge.mjs --undo <registration-record.j
 ## 7. 등록 기록과 되돌림
 
 등록하면 묶음 폴더(또는 `--record-dir`)에 두 파일이 생긴다. 기존 기록은 덮어쓰지 않는다.
-형식은 홈피드 카드 등록 선례(티켓 20260923_2252, `jam-doc/operations/reports/weekly/2026-W39.md`의 「등록 기록」)를 따른다.
+형식은 홈피드 카드 등록 선례(티켓 20260923_2252, 2026-09-24 주간 리포트 W39의 「등록 기록」 — 파일은 삭제돼 git 이력에서만 확인한다)를 따른다.
 
 **`registration-record.json`** — 배지 id·이름·유형, 저장소 경로 2개(`storage.png_path`·`storage.webp_path`), 이미지 URL,
 시드·프리셋·색·텍스트, 작성자, 등록 시각(KST, `+09:00`), 컬러 근거 링크, 묶음 요약 한 줄(`summary`).
