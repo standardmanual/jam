@@ -2,9 +2,9 @@
 id: "20260926_1246"
 category: BadgeEngine
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-26
-closed:
+closed: 2026-09-26
 related:
   - "20260924_0937"
 ---
@@ -31,23 +31,15 @@ related:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 묶음 티켓 20260926_1344로 처리했다. 상세와 실행 지표는 그 티켓의 완료 기록에 있다.
+- 순수 함수 `buildFilledByBook({ slots, checkinBadgesByBook, earnedCheckinBadgeIds })`(`lib/itembook/filled-by-book.ts`)를 새로 만들고 `checker.ts`의 `addFilled` 클로저와 두 반복문을 이 함수 호출로 바꿨다. 완성 기록 upsert·보상 발급 흐름은 그대로다.
 
 ### 변경된 파일
 ```
--
+- jam-web/src/lib/itembook/filled-by-book.ts (신규)
+- jam-web/src/lib/itembook/__tests__/filled-by-book.test.ts (신규)
+- jam-web/src/lib/itembook/checker.ts
 ```
 
 ### 테스트 결과
-- [ ]
-
-### 실행 지표
-
-| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
-|---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
-
-### 주요 의사결정 / 핵심 메모
-
-### 잔여 이슈
--
+- [x] 단위 테스트 5건(A 장착 X가 B 소속으로 바뀐 조합에서 B 집합에 X가 들지 않음, 체크인 획득 이력이 소속 북에만 들어감, 슬롯과 획득 이력 합산, 슬롯·이력 없는 북은 빈 결과, 중복 슬롯은 집합이라 중복 없음). CI 성공. 오늘 0937 게이트 WARN과 배포 전 점검(모드 ③)이 지적한 checker 구성부의 테스트 공백이 해소되었다
