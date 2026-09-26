@@ -44,6 +44,9 @@ specs:
 ### 배포 전 점검에서 재확인 (2026-09-26, 프로덕션 배포 `828eceba`, 민지 모드 ②)
 - 이번 범위에서 손대지 않은 어드민 라우트 다수가 `error.message`를 응답에 그대로 싣는다. 예: 프리셋 POST의 `findErr.message`·`uploadErr.message`(`asset-generator/presets/route.ts:120-122` 부근). 프리셋 단건 조회 GET의 `id` 검증 부재는 별도 티켓(어드민 GET 라우트 id 검증)으로 다룬다.
 
+### 추가 위치 (2026-09-26, 티켓 20260926_1512 게이트)
+- `jam-web/src/app/api/admin/today/[id]/route.ts:29,45`: PATCH의 기존 행 조회 오류(`existingError.message`)와 update 오류(`error.message`)가 DB 오류 원문을 응답에 그대로 싣는다.
+
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
 

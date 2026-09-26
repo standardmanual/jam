@@ -2,9 +2,9 @@
 id: "20260926_1455"
 category: API
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-26
-closed:
+closed: 2026-09-26
 related:
   - "20260926_1442"
   - "20260926_0203"
@@ -28,23 +28,18 @@ related:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 묶음 티켓 20260926_1512로 처리했다. 상세와 실행 지표는 그 티켓의 완료 기록에 있다.
+- `itembooks/[id]` PUT에 `imageUrlTypeError` 400을 진입부에 추가했다(`badges/[id]`와 같은 방식). `today/[id]` PATCH도 같은 검사를 추가했다.
+- **`today/[id]`는 `image_url`이 아니라 `cover_image_url`을 검사한다.** 티켓은 `image_url`이라 적었지만 이 라우트의 이미지 컬럼은 `cover_image_url`이고 `body.cover_image_url`로 `imageSourceReset`을 부른다(아현이 코드로 확인, 게이트가 인정).
 
 ### 변경된 파일
 ```
--
+- jam-web/src/app/api/admin/itembooks/[id]/route.ts, __tests__/route.test.ts (신규)
+- jam-web/src/app/api/admin/today/[id]/route.ts, __tests__/route.test.ts (신규)
 ```
 
 ### 테스트 결과
-- [ ]
-
-### 실행 지표
-
-| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
-|---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
-
-### 주요 의사결정 / 핵심 메모
+- [x] 두 라우트 신규 테스트가 비문자열 400·DB 미접근·정상 수정·이미지 미변경을 고정한다. CI 성공
 
 ### 잔여 이슈
--
+- `itembooks/[id]` PUT의 `background_image_url` 등 다른 이미지 컬럼에는 타입 검사가 없다(`itembooks/[id]/route.ts:53`). 티켓 범위 밖이라 두었다.
