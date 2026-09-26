@@ -73,7 +73,7 @@
 | 출처 | 지표 | 도구 |
 | --- | --- | --- |
 | GA4 Data API | 활성 유저 · 가입 완료 · 온보딩 완료 · 드랍 · 픽업 · 믹스 성공 · 미션 참가 | `scripts/ga4-weekly-metrics.mjs` |
-| 어드민 집계 API | 미션 달성자 수 · 배지 발급량 · Strava 동기화 실패 | `/api/admin/kpi/weekly` (읽기 토큰) |
+| 어드민 집계 API | 미션 달성자 수 · 배지 발급량 · Strava 동기화 실패 · 믹스 실패·성공 포인트 지급(건수·합계) · 결과물 배지가 삭제된 레시피 수 | `/api/admin/kpi/weekly` (읽기 토큰) |
 | 어드민 읽기 API | 미션·배지·드랍 정책 등 운영 데이터 | `scripts/admin-api-read.mjs` (읽기 토큰) |
 | 저장소·배포 | 티켓 상태 · 배포 상태 | git, Vercel |
 

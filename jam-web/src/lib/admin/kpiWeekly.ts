@@ -29,6 +29,14 @@
  *    `expires_at IS NOT NULL`인 행만 골라 만료시키므로 system 소스 행은 절대 걸리지
  *    않는다 — 즉 이 지표를 0으로 반환하면 "이번 주 앰비언트 만료가 없었다"로 오독되지만
  *    실제로는 "이 기능 자체가 만료를 만들지 않는다"는 뜻이라 null로 구분한다.
+ * 5. 믹스 포인트 지급(티켓 20260924_1455) — `point_transactions.created_at`이 기간 안인 행 중
+ *    `reason='combine_fail_reward'`(미매칭 실패 포인트)와 `'combine_recipe_reward'`(레시피
+ *    성공 포인트)를 사유별로 건수·`amount` 합계로 센다. 재료 1개만 넣어도 미매칭 소각 +
+ *    실패 포인트가 지급되는 파밍 규모를 보기 위한 지표다(`SERVICE_OPERATIONS.md` §8-1).
+ *    유저 id는 읽지도 담지도 않는다.
+ * 6. 믹스 레시피 결과물 배지 유효성 — `combination_recipes.reward_badge_ids`가 가리키는 배지
+ *    중 `badges` 행이 없거나 `deleted_at`이 있는 것이 하나라도 있는 레시피 수. 기간과
+ *    무관한 현재 상태 스냅샷이다. 레시피 id 목록은 응답에 담지 않고 개수만 담는다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
 
@@ -74,7 +82,18 @@ export interface KpiWeeklyMetrics {
   }
   stravaSyncFailures: { value: number; definition: string }
   ambientDropExpired: { value: null; reason: string }
+  combinePoints: {
+    fail: { count: number; totalPoints: number; definition: string }
+    recipe: { count: number; totalPoints: number; definition: string }
+  }
+  combineRecipeRewardBadges: {
+    totalRecipes: number
+    invalidRecipes: number
+    definition: string
+  }
 }
+
+const LEDGER_PAGE_SIZE = 1000
 
 const DEFINITIONS = {
   missionAchievers:
@@ -86,13 +105,71 @@ const DEFINITIONS = {
     'strava_sync_failures.occurred_at이 기간 안인 행 개수(토큰 갱신 실패·Strava API 오류·레이트리밋 합산)',
   ambientDropExpiredReason:
     "원천 데이터 없음 — source='system' 드랍은 설계상 expires_at이 항상 NULL이라(만료 없음) 만료 집계 대상 행 자체가 없다.",
+  combinePointsFail:
+    "point_transactions.reason='combine_fail_reward'이고 created_at이 기간 안인 행의 건수와 amount 합계(레시피 미매칭 실패 포인트)",
+  combinePointsRecipe:
+    "point_transactions.reason='combine_recipe_reward'이고 created_at이 기간 안인 행의 건수와 amount 합계(레시피 매칭 성공 포인트)",
+  combineRecipeRewardBadges:
+    'combination_recipes.reward_badge_ids 중 badges 행이 없거나 deleted_at이 있는 배지를 하나라도 가진 레시피 수(현재 시점 스냅샷, 기간 무관)',
 } as const
 
-/** 4개 지표를 집계한다. 공용 프로덕션 DB이므로 읽기 쿼리만 쓴다. */
+type LedgerRow = { reason: string; amount: number }
+
+/** 믹스 포인트 원장 행을 기간 안에서 전부 읽는다 — PostgREST 행 상한(1000)을 넘겨도 잘리지 않게 페이지로 읽는다. */
+async function fetchCombineLedgerRows(
+  supabase: ReturnType<typeof createServiceClient>,
+  range: KpiWeeklyRange
+): Promise<LedgerRow[]> {
+  const rows: LedgerRow[] = []
+  for (let from = 0; ; from += LEDGER_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('point_transactions')
+      .select('reason, amount')
+      .in('reason', ['combine_fail_reward', 'combine_recipe_reward'])
+      .gte('created_at', range.startIso)
+      .lt('created_at', range.endIso)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, from + LEDGER_PAGE_SIZE - 1)
+    if (error) throw error
+    const page = (data ?? []) as LedgerRow[]
+    rows.push(...page)
+    if (page.length < LEDGER_PAGE_SIZE) return rows
+  }
+}
+
+/** 결과물 배지가 삭제됐거나 없는 레시피 수를 센다. */
+async function countRecipesWithInvalidRewardBadges(
+  supabase: ReturnType<typeof createServiceClient>
+): Promise<{ totalRecipes: number; invalidRecipes: number }> {
+  const { data: recipes, error } = await supabase
+    .from('combination_recipes')
+    .select('reward_badge_ids')
+  if (error) throw error
+  const recipeList = recipes ?? []
+
+  const badgeIds = [...new Set(recipeList.flatMap((r) => r.reward_badge_ids ?? []))]
+  if (badgeIds.length === 0) return { totalRecipes: recipeList.length, invalidRecipes: 0 }
+
+  const { data: badges, error: badgeError } = await supabase
+    .from('badges')
+    .select('id')
+    .in('id', badgeIds)
+    .is('deleted_at', null)
+  if (badgeError) throw badgeError
+
+  const validIds = new Set((badges ?? []).map((b) => b.id))
+  const invalidRecipes = recipeList.filter((r) =>
+    (r.reward_badge_ids ?? []).some((id) => !validIds.has(id))
+  ).length
+  return { totalRecipes: recipeList.length, invalidRecipes }
+}
+
+/** 지표를 집계한다. 공용 프로덕션 DB이므로 읽기 쿼리만 쓴다. */
 export async function computeKpiWeeklyMetrics(range: KpiWeeklyRange): Promise<KpiWeeklyMetrics> {
   const supabase = createServiceClient()
 
-  const [missionRows, badgeCount, stravaSyncFailureCount] = await Promise.all([
+  const [missionRows, badgeCount, stravaSyncFailureCount, ledgerRows, recipeRewardBadges] = await Promise.all([
     supabase
       .from('user_mission_completions')
       .select('user_id')
@@ -108,11 +185,18 @@ export async function computeKpiWeeklyMetrics(range: KpiWeeklyRange): Promise<Kp
       .select('id', { count: 'exact', head: true })
       .gte('occurred_at', range.startIso)
       .lt('occurred_at', range.endIso),
+    fetchCombineLedgerRows(supabase, range),
+    countRecipesWithInvalidRewardBadges(supabase),
   ])
 
   if (missionRows.error) throw missionRows.error
   if (badgeCount.error) throw badgeCount.error
   if (stravaSyncFailureCount.error) throw stravaSyncFailureCount.error
+
+  const sumByReason = (reason: string) => {
+    const matched = ledgerRows.filter((r) => r.reason === reason)
+    return { count: matched.length, totalPoints: matched.reduce((sum, r) => sum + r.amount, 0) }
+  }
 
   const distinctAchievers = new Set((missionRows.data ?? []).map((r) => r.user_id)).size
 
@@ -128,5 +212,13 @@ export async function computeKpiWeeklyMetrics(range: KpiWeeklyRange): Promise<Kp
       definition: DEFINITIONS.stravaSyncFailures,
     },
     ambientDropExpired: { value: null, reason: DEFINITIONS.ambientDropExpiredReason },
+    combinePoints: {
+      fail: { ...sumByReason('combine_fail_reward'), definition: DEFINITIONS.combinePointsFail },
+      recipe: { ...sumByReason('combine_recipe_reward'), definition: DEFINITIONS.combinePointsRecipe },
+    },
+    combineRecipeRewardBadges: {
+      ...recipeRewardBadges,
+      definition: DEFINITIONS.combineRecipeRewardBadges,
+    },
   }
 }
