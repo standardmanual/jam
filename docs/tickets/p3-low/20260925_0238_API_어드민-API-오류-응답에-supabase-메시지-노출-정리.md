@@ -81,3 +81,8 @@ specs:
 - `jam-web/src/app/api/admin/users/[id]/route.ts:27` — 대상 조회 오류 시 `targetError.message`(DB 원문)를 500 응답에 싣는다.
 - `jam-web/src/app/api/admin/drop-policy/exclusions/bulk/route.ts:47` — 배지 조회 오류 시 `error.message`를 응답에 싣는다.
 - `missions/[id]`(PATCH)와 export 라우트 다수(missions·poi·today·itembooks·points/ledger 등)도 같은 패턴이다. 1513의 테스트는 이 라우트들의 오류 경로에서 500만 확인하고 원문 문구는 단언하지 않는다. 고칠 때 「원문이 응답에 없음」 단언을 함께 추가한다.
+
+### 배포 전 점검에서 재확인 (2026-09-26, 민지 모드 ②·③, 확신도 높음)
+- `presets/[id]/route.ts` DELETE(45-68행)는 이번 UUID 검증 대상이 아니다. `isSafePresetPathSegment`(`^[A-Za-z0-9_-]{1,100}$`)만 통과하면 `.eq('id', id)`가 실행돼, UUID가 아닌 값(`abc`)이 오면 DB의 uuid 파싱 오류 원문이 `error.message`로 500 응답에 실린다(59·64·67행). GET에서 막은 것과 같은 계열이다. 고칠 때 DELETE에도 `isUuid` 검사를 넣고 이 경로의 테스트를 함께 추가한다.
+- 아직 고정 문장으로 바뀌지 않은 곳: `presets/route.ts` 59·176·192행, `itembooks/[id]/route.ts` 62·98·141행, `today/[id]/route.ts` 46·57행.
+
