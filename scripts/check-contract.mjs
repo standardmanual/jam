@@ -15,9 +15,9 @@
 // 사용법: node scripts/check-contract.mjs
 //   종료 코드 0 = 통과, 1 = 어긋남 발견, 2 = 검사기 자체 오류
 
-import { existsSync, readFileSync, statSync } from 'node:fs'
-import { execFileSync } from 'node:child_process'
-import { homedir } from 'node:os'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { execFileSync, spawnSync } from 'node:child_process'
+import { homedir, tmpdir } from 'node:os'
 import path from 'node:path'
 
 // deploy-gate.mjs의 순수 판정 함수만 가져온다(게이트와 같은 코드라 규칙이 갈라지지 않는다). 그 파일은 직접
@@ -522,6 +522,53 @@ function checkWorkflowFreeze(c) {
   if (!spec.exempt_file || !hook.includes(spec.exempt_file)) {
     violate('workflow_freeze', `.githooks/pre-commit에 선언된 예외 파일이 없습니다: ${spec.exempt_file}`,
       `훅에 이 예외 파일 처리를 추가하거나, 예외 파일이 바뀌었다면 contract.json도 함께 고치세요.`)
+  }
+  // 문자열만 보면 ⑨ 블록을 주석 처리하거나 case 분기만 무력화하고 문자열을 남긴 훅을 못 잡는다
+  // (티켓 20260922_1401). 위 두 키가 온전할 때만 실제 커밋 시도로 동작을 확인한다.
+  if (spec.frozen_prefix && spec.exempt_file) probeWorkflowFreeze(spec, hookPath)
+}
+
+// 임시 저장소에 훅을 복사해 동결 폴더 파일을 커밋해 보고, 막히는지·예외 파일이 통과하는지 본다.
+// 실제 저장소는 건드리지 않는다. 훅 안에서 돌 때 git이 물려주는 GIT_*는 버린다 — 남기면 임시
+// 저장소가 아니라 이 저장소 설정에 쓴다(티켓 20260921_1116 사고와 같은 원인). 임시 저장소에는
+// scripts/가 없어 훅 안의 검사기들이 건너뛰어지므로 이 검사가 자기 자신을 다시 부르지 않는다.
+// 검사 환경 자체가 만들어지지 않으면(git init 실패 등) 위반으로 세지 않고 참고로만 남긴다.
+function probeWorkflowFreeze(spec, hookPath) {
+  const tmp = mkdtempSync(path.join(tmpdir(), 'contract-freeze-'))
+  try {
+    const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')))
+    const git = (...args) => spawnSync('git', args, { cwd: tmp, encoding: 'utf8', env })
+    if (git('init', '-q').status !== 0) {
+      notes.push('임시 저장소를 만들지 못해 동결 실동작 검사를 건너뜁니다.')
+      return
+    }
+    const hooksDir = path.join(tmp, '.githooks')
+    mkdirSync(hooksDir)
+    copyFileSync(hookPath, path.join(hooksDir, 'pre-commit'))
+    chmodSync(path.join(hooksDir, 'pre-commit'), 0o755)
+    for (const [k, v] of [['user.email', 'probe@example.com'], ['user.name', 'probe'], ['commit.gpgsign', 'false'], ['core.hooksPath', hooksDir]]) {
+      git('config', k, v)
+    }
+    const tryCommit = (rel) => {
+      mkdirSync(path.dirname(path.join(tmp, rel)), { recursive: true })
+      writeFileSync(path.join(tmp, rel), 'probe\n')
+      git('add', '--', rel)
+      return git('commit', '-q', '-m', 'probe')
+    }
+    const frozenFile = `${spec.frozen_prefix.replace(/\/?$/, '/')}freeze-probe.md`
+    if (tryCommit(frozenFile).status === 0) {
+      violate('workflow_freeze', `${spec.frozen_prefix} 안에 새 파일을 커밋해 봤더니 막히지 않았습니다 — 훅의 동결 블록이 무력화돼 있습니다`,
+        `.githooks/pre-commit의 ⑨ 블록이 주석 처리됐거나 분기 조건이 바뀌지 않았는지 확인하세요.`)
+      return
+    }
+    git('reset', '-q', '--hard')
+    const exempt = tryCommit(spec.exempt_file)
+    if (exempt.status !== 0) {
+      violate('workflow_freeze', `동결 예외 파일(${spec.exempt_file}) 커밋이 막혔습니다: ${(exempt.stderr || '').trim().split('\n')[0]}`,
+        `훅이 예외 파일까지 막고 있지 않은지 확인하세요.`)
+    }
+  } finally {
+    rmSync(tmp, { recursive: true, force: true })
   }
 }
 
