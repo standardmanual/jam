@@ -1,11 +1,12 @@
 /**
  * asset-generator/curve — 이동 곡선 결정성·품질 테스트
  *
- * 완료 조건(티켓 20260924_2155): 같은 시드 → 같은 좌표, 화면 밖 길이 비율 15%±1%p,
+ * 완료 조건(티켓 20260924_2155): 같은 시드 → 같은 좌표, 화면 밖 길이 비율 30%±1%p,
  * 슬라이더 0·100에서 최소 회전 반경이 짧은 변의 5% 이상, 곡선이 화면 중앙을 지난다.
  */
 import { describe, expect, it } from 'vitest';
-import { buildPath, type PathTable } from '../curve';
+import { buildPath, pickCandidate, type PathTable } from '../curve';
+import { mulberry32 } from '../random';
 
 const W = 1280;
 const H = 1280;
@@ -74,10 +75,10 @@ describe.each([0, 100])('불규칙성 슬라이더 %i%%', (irreg) => {
   const path = buildPath(SEED, irreg, W, H);
   const stats = pathQualityStats(path);
 
-  it('화면 밖 길이 비율이 15%±1%p 안에 있다', () => {
+  it('화면 밖 길이 비율이 30%±1%p 안에 있다', () => {
     const frac = outsideFraction(path);
-    expect(frac).toBeGreaterThanOrEqual(0.14);
-    expect(frac).toBeLessThanOrEqual(0.16);
+    expect(frac).toBeGreaterThanOrEqual(0.29);
+    expect(frac).toBeLessThanOrEqual(0.31);
   });
 
   it('최소 회전 반경이 짧은 변의 5% 이상이다', () => {
@@ -86,5 +87,26 @@ describe.each([0, 100])('불규칙성 슬라이더 %i%%', (irreg) => {
 
   it('곡선 길이의 10% 이상이 화면 중앙(가운데 40%)을 지난다', () => {
     expect(stats.center).toBeGreaterThanOrEqual(0.1);
+  });
+});
+
+describe('asset-generator/curve — 큰 고리 구간', () => {
+  const seeds = Array.from({ length: 50 }, (_, i) => i);
+
+  it('시드 0~49 중 30~70%에서 곡선에 큰 고리가 있다', () => {
+    const withLoop = seeds.filter((seed) => pickCandidate(mulberry32(seed), W, H).loop !== null).length;
+    const ratio = withLoop / seeds.length;
+    expect(ratio).toBeGreaterThanOrEqual(0.3);
+    expect(ratio).toBeLessThanOrEqual(0.7);
+  });
+
+  it('고리가 있든 없든 모든 시드의 완성 경로가 회전 반경 5%·중앙 통과 10% 이상이다', () => {
+    for (const seed of seeds) {
+      for (const irreg of [0, 100]) {
+        const stats = pathQualityStats(buildPath(seed, irreg, W, H));
+        expect(stats.radius, `시드 ${seed} 불규칙성 ${irreg} 회전 반경`).toBeGreaterThanOrEqual(0.05);
+        expect(stats.center, `시드 ${seed} 불규칙성 ${irreg} 중앙 통과`).toBeGreaterThanOrEqual(0.1);
+      }
+    }
   });
 });

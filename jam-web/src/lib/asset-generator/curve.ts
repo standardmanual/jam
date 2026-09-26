@@ -5,6 +5,7 @@
  * (makeCandidate 345줄, unitCurve 367줄, sampleFitted 384줄, candidateStats 411줄,
  * buildPath 437줄, posAt 474줄). 캔버스에 의존하지 않는 순수 계산만 담는다 —
  * 같은 시드·같은 스테이지 크기·같은 불규칙성이면 완전히 같은 좌표를 낸다(PRD §11).
+ * 시드에 따라 곡선이 아주 큰 고리(한 바퀴 원)를 한 번 그리는 구간(loop)이 들어간다.
  */
 
 import { mulberry32, type RandomSource } from './random';
@@ -13,6 +14,8 @@ export interface CurveCandidate {
   turns: number;
   amp: number[];
   ph: number[];
+  /** 큰 고리 구간: u0에서 시작해 width만큼의 길이(곡선 한 바퀴 대비 비율) 동안 sign 방향으로 한 바퀴 돈다. 없으면 null */
+  loop: { u0: number; width: number; sign: number } | null;
 }
 
 export interface FittedPoints {
@@ -44,23 +47,30 @@ export interface CandidateStats {
 
 /**
  * 곡선 길이 중 스테이지 밖에 있는 비율의 목표값. 곡선 크기를 이 비율에 맞춰 자동으로 조절하므로
- * 불규칙성·비율과 상관없이 곡선이 늘 스테이지 밖으로 조금 나갔다 들어온다.
+ * 불규칙성·비율과 상관없이 곡선이 늘 스테이지 밖으로 크게 나갔다 들어온다.
  */
-export const OUT_FRACTION = 0.15;
+export const OUT_FRACTION = 0.3;
 /** 진행 방향을 흔드는 파형의 개수(곡선 한 바퀴 동안 1~HARMONICS번 흔들림) */
 export const HARMONICS = 6;
 /** 가장 급하게 도는 곳의 회전 반경 최솟값(짧은 변 대비). 이보다 급하게 꺾이는 곡선은 버린다 */
-export const RADIUS_MIN = 0.1;
+export const RADIUS_MIN = 0.15;
 /** 곡선 길이 중 화면 중앙(가로·세로 가운데 40%)에 머무는 비율의 최솟값 */
 export const CENTER_MIN = 0.1;
+/** 후보 선택 때 중앙 기준에 곱하는 여유. 후보 평가가 완성 경로의 중앙 체류 비율보다 조금 높게 나오기 때문이다 */
+export const CENTER_MARGIN = 1.3;
 /** 불규칙성 슬라이더(0~100%)가 매핑되는 내부 굴곡 세기 범위. 슬라이더 0%가 내부 0.6, 100%가 내부 1.5다 */
 export const IRR_LO = 0.6;
 export const IRR_HI = 1.5;
+/** 시드마다 곡선에 큰 고리 구간이 들어갈 확률 */
+export const LOOP_CHANCE = 0.5;
+/** 고리 구간의 길이 범위(곡선 한 바퀴 대비 비율). 길수록 고리가 크다 */
+export const LOOP_WIDTH_MIN = 0.32;
+export const LOOP_WIDTH_MAX = 0.45;
 
 const CANDIDATE_TRIES = 40;
 const CANDIDATE_EVAL_POINTS = 240;
 const PATH_SAMPLE_POINTS = 6000;
-const CANDIDATE_HARMONIC_BASE = [0, 1.1, 1.3, 1.1, 0.9, 0.7, 0.55];
+const CANDIDATE_HARMONIC_BASE = [0, 1.1, 1.3, 0.6, 0.35, 0.2, 0.1];
 
 /** 불규칙성 슬라이더(0~100%)를 내부 굴곡 세기로 바꾼다. */
 export function irrValue(sliderPct: number): number {
@@ -82,8 +92,9 @@ function harmWeight(k: number, irr: number): number {
  * 롤러코스터 트랙처럼 방향이 바뀌는 속도(곡률)에 상한이 생겨 한 지점에서 급하게 꺾이지 않는다.
  * - turns: 곡선 한 바퀴 동안 방향이 도는 횟수(±1이면 크게 한 바퀴, ±2면 두 바퀴 감으며 고리가 생긴다)
  * - amp·ph: 진행 방향을 흔드는 파형의 진폭(라디안)과 위상
+ * - loop: withLoop이면 곡선 한 곳에서 방향이 한 바퀴 더 도는 큰 고리 구간. 이때 turns는 항상 ±1이다
  */
-export function makeCandidate(rnd: RandomSource): CurveCandidate {
+export function makeCandidate(rnd: RandomSource, withLoop = false): CurveCandidate {
   const r = rnd();
   const sign = rnd() < 0.5 ? -1 : 1;
   const amp: number[] = [];
@@ -92,7 +103,23 @@ export function makeCandidate(rnd: RandomSource): CurveCandidate {
     amp.push(CANDIDATE_HARMONIC_BASE[k] * (0.3 + 0.7 * rnd()));
     ph.push(rnd() * Math.PI * 2);
   }
-  return { turns: sign * (r < 0.75 ? 1 : 2), amp, ph };
+  let loop: CurveCandidate['loop'] = null;
+  if (withLoop) {
+    const u0 = rnd();
+    const width = LOOP_WIDTH_MIN + (LOOP_WIDTH_MAX - LOOP_WIDTH_MIN) * rnd();
+    loop = { u0, width, sign: rnd() < 0.5 ? -1 : 1 };
+  }
+  return { turns: sign * (!withLoop && r >= 0.75 ? 2 : 1), amp, ph, loop };
+}
+
+function smoothstep(t: number): number {
+  return t * t * (3 - 2 * t);
+}
+
+/** 고리 구간이 진행 방향에 더하는 각도(라디안). 구간 안에서는 0에서 ±2π까지 매끄럽게 늘고, 이후는 ±2π로 유지된다 */
+function loopAngle(loop: NonNullable<CurveCandidate['loop']>, u: number): number {
+  const d = (((u - loop.u0) % 1) + 1) % 1;
+  return loop.sign * 2 * Math.PI * (d < loop.width ? smoothstep(d / loop.width) : 1);
 }
 
 /**
@@ -107,6 +134,7 @@ export function unitCurve(c: CurveCandidate, irr: number, M: number): { ux: Floa
   for (let i = 0; i < M; i++) {
     const u = (i + 0.5) / M;
     let th = 2 * Math.PI * c.turns * u;
+    if (c.loop) th += loopAngle(c.loop, u);
     for (let k = 1; k <= c.amp.length; k++) {
       th += harmWeight(k, irr) * c.amp[k - 1] * Math.sin(2 * Math.PI * k * u + c.ph[k - 1]);
     }
@@ -243,35 +271,49 @@ export function candidateStats(
 
 /**
  * 시드마다 후보를 여러 개 만들고, 급하게 꺾이지 않으면서 중앙을 충분히 지나는 후보 중 겹침이 가장 적은 곡선을 고른다.
- * 조건을 만족하는 후보가 없으면 기준에 가장 가까운 후보를 쓴다.
+ * 1순위는 회전 반경·중앙 기준을 모두 채운 후보, 없으면 2순위로 회전 반경 기준을 절반으로 낮춘 후보,
+ * 그래도 없으면 기준에 가장 가까운 후보를 쓴다. 회전 반경 기준이 높아 1순위가 드물어 2순위가 흔하다.
+ * 중앙 기준은 후보 평가(성긴 점)가 완성 경로보다 조금 후하게 나오는 만큼 여유(CENTER_MARGIN)를 둔다.
  * 후보 평가는 불규칙성 슬라이더와 무관하게 슬라이더 양 끝(가장 약한 굴곡·가장 강한 굴곡) 두 경우로 하므로
  * 슬라이더를 움직여도 곡선이 갑자기 바뀌지 않는다.
  */
 export function pickCandidate(rnd: RandomSource, stageWidth: number, stageHeight: number): CurveCandidate {
   let best = Infinity;
   let pick: CurveCandidate | null = null;
+  let softBest = Infinity;
+  let softPick: CurveCandidate | null = null;
   let fallback: CurveCandidate | null = null;
   let fallbackScore = -Infinity;
+  // 고리 포함 여부는 시드마다 먼저 정한다. 겹침 점수로 고르면 고리 후보가 거의 뽑히지 않는다
+  const wantLoop = rnd() < LOOP_CHANCE;
+  // 고리 곡선은 고리 안쪽이 원래 촘촘해 회전 반경 기준을 절반으로 낮춘다
+  const radiusMin = wantLoop ? RADIUS_MIN * 0.5 : RADIUS_MIN;
+  const radiusSoft = RADIUS_MIN * 0.5;
+  const centerMin = CENTER_MIN * CENTER_MARGIN;
   for (let n = 0; n < CANDIDATE_TRIES; n++) {
-    const cand = makeCandidate(rnd);
+    const cand = makeCandidate(rnd, wantLoop);
     const sa = candidateStats(cand, IRR_LO, stageWidth, stageHeight);
     const sb = candidateStats(cand, IRR_HI, stageWidth, stageHeight);
     const radius = Math.min(sa.radius, sb.radius);
     const center = Math.min(sa.center, sb.center);
-    const closeness = Math.min(radius / RADIUS_MIN, center / CENTER_MIN);
+    const closeness = Math.min(radius / radiusSoft, center / centerMin);
     if (closeness > fallbackScore) {
       fallbackScore = closeness;
       fallback = cand;
     }
-    if (radius < RADIUS_MIN || center < CENTER_MIN) continue;
+    if (radius < radiusSoft || center < centerMin) continue;
     const score = sa.overlap + sb.overlap;
-    if (score < best) {
+    if (score < softBest) {
+      softBest = score;
+      softPick = cand;
+    }
+    if (radius >= radiusMin && score < best) {
       best = score;
       pick = cand;
     }
   }
   // fallback은 매 반복마다 갱신되므로 CANDIDATE_TRIES(40) > 0인 한 null일 수 없다
-  return (pick ?? fallback) as CurveCandidate;
+  return (pick ?? softPick ?? fallback) as CurveCandidate;
 }
 
 // 후보 탐색(pickCandidate)은 시드·스테이지 크기에만 좌우되고 그 자체로 비용이 드는 편이라,

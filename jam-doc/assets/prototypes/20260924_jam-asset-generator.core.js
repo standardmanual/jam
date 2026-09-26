@@ -24,10 +24,14 @@ var AssetGeneratorCore = (() => {
   // jam-web/src/lib/asset-generator/index.ts
   var index_exports = {};
   __export(index_exports, {
+    CENTER_MARGIN: () => CENTER_MARGIN,
     CENTER_MIN: () => CENTER_MIN,
     HARMONICS: () => HARMONICS,
     IRR_HI: () => IRR_HI,
     IRR_LO: () => IRR_LO,
+    LOOP_CHANCE: () => LOOP_CHANCE,
+    LOOP_WIDTH_MAX: () => LOOP_WIDTH_MAX,
+    LOOP_WIDTH_MIN: () => LOOP_WIDTH_MIN,
     OUT_FRACTION: () => OUT_FRACTION,
     PRESET_TARGET_TYPES: () => PRESET_TARGET_TYPES,
     PRESET_TARGET_TYPE_LABELS: () => PRESET_TARGET_TYPE_LABELS,
@@ -137,16 +141,20 @@ var AssetGeneratorCore = (() => {
   }
 
   // jam-web/src/lib/asset-generator/curve.ts
-  var OUT_FRACTION = 0.15;
+  var OUT_FRACTION = 0.3;
   var HARMONICS = 6;
-  var RADIUS_MIN = 0.1;
+  var RADIUS_MIN = 0.15;
   var CENTER_MIN = 0.1;
+  var CENTER_MARGIN = 1.3;
   var IRR_LO = 0.6;
   var IRR_HI = 1.5;
+  var LOOP_CHANCE = 0.5;
+  var LOOP_WIDTH_MIN = 0.32;
+  var LOOP_WIDTH_MAX = 0.45;
   var CANDIDATE_TRIES = 40;
   var CANDIDATE_EVAL_POINTS = 240;
   var PATH_SAMPLE_POINTS = 6e3;
-  var CANDIDATE_HARMONIC_BASE = [0, 1.1, 1.3, 1.1, 0.9, 0.7, 0.55];
+  var CANDIDATE_HARMONIC_BASE = [0, 1.1, 1.3, 0.6, 0.35, 0.2, 0.1];
   function irrValue(sliderPct) {
     return IRR_LO + (IRR_HI - IRR_LO) * sliderPct / 100;
   }
@@ -155,7 +163,7 @@ var AssetGeneratorCore = (() => {
     if (k === 2) return 0.4 + 0.6 * irr;
     return Math.pow(irr, k - 2);
   }
-  function makeCandidate(rnd) {
+  function makeCandidate(rnd, withLoop = false) {
     const r = rnd();
     const sign = rnd() < 0.5 ? -1 : 1;
     const amp = [];
@@ -164,7 +172,20 @@ var AssetGeneratorCore = (() => {
       amp.push(CANDIDATE_HARMONIC_BASE[k] * (0.3 + 0.7 * rnd()));
       ph.push(rnd() * Math.PI * 2);
     }
-    return { turns: sign * (r < 0.75 ? 1 : 2), amp, ph };
+    let loop = null;
+    if (withLoop) {
+      const u0 = rnd();
+      const width = LOOP_WIDTH_MIN + (LOOP_WIDTH_MAX - LOOP_WIDTH_MIN) * rnd();
+      loop = { u0, width, sign: rnd() < 0.5 ? -1 : 1 };
+    }
+    return { turns: sign * (!withLoop && r >= 0.75 ? 2 : 1), amp, ph, loop };
+  }
+  function smoothstep(t) {
+    return t * t * (3 - 2 * t);
+  }
+  function loopAngle(loop, u) {
+    const d = ((u - loop.u0) % 1 + 1) % 1;
+    return loop.sign * 2 * Math.PI * (d < loop.width ? smoothstep(d / loop.width) : 1);
   }
   function unitCurve(c, irr, M) {
     const vx = new Float32Array(M);
@@ -174,6 +195,7 @@ var AssetGeneratorCore = (() => {
     for (let i = 0; i < M; i++) {
       const u = (i + 0.5) / M;
       let th = 2 * Math.PI * c.turns * u;
+      if (c.loop) th += loopAngle(c.loop, u);
       for (let k = 1; k <= c.amp.length; k++) {
         th += harmWeight(k, irr) * c.amp[k - 1] * Math.sin(2 * Math.PI * k * u + c.ph[k - 1]);
       }
@@ -286,29 +308,40 @@ var AssetGeneratorCore = (() => {
     return { overlap, center: all > 0 ? inside / all : 0, radius: kMax > 0 ? 1 / kMax / S : Infinity };
   }
   function pickCandidate(rnd, stageWidth, stageHeight) {
+    var _a;
     let best = Infinity;
     let pick = null;
+    let softBest = Infinity;
+    let softPick = null;
     let fallback = null;
     let fallbackScore = -Infinity;
+    const wantLoop = rnd() < LOOP_CHANCE;
+    const radiusMin = wantLoop ? RADIUS_MIN * 0.5 : RADIUS_MIN;
+    const radiusSoft = RADIUS_MIN * 0.5;
+    const centerMin = CENTER_MIN * CENTER_MARGIN;
     for (let n = 0; n < CANDIDATE_TRIES; n++) {
-      const cand = makeCandidate(rnd);
+      const cand = makeCandidate(rnd, wantLoop);
       const sa = candidateStats(cand, IRR_LO, stageWidth, stageHeight);
       const sb = candidateStats(cand, IRR_HI, stageWidth, stageHeight);
       const radius = Math.min(sa.radius, sb.radius);
       const center = Math.min(sa.center, sb.center);
-      const closeness = Math.min(radius / RADIUS_MIN, center / CENTER_MIN);
+      const closeness = Math.min(radius / radiusSoft, center / centerMin);
       if (closeness > fallbackScore) {
         fallbackScore = closeness;
         fallback = cand;
       }
-      if (radius < RADIUS_MIN || center < CENTER_MIN) continue;
+      if (radius < radiusSoft || center < centerMin) continue;
       const score = sa.overlap + sb.overlap;
-      if (score < best) {
+      if (score < softBest) {
+        softBest = score;
+        softPick = cand;
+      }
+      if (radius >= radiusMin && score < best) {
         best = score;
         pick = cand;
       }
     }
-    return pick != null ? pick : fallback;
+    return (_a = pick != null ? pick : softPick) != null ? _a : fallback;
   }
   var cachedPick = null;
   var cachedPickKey = "";
