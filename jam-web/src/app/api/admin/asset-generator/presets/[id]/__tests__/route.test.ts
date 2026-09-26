@@ -178,7 +178,7 @@ describe('GET', () => {
 describe('DELETE', () => {
   it('세션 없이 읽기 토큰만 있으면 403이고 삭제하지 않는다(티켓 20260926_1203)', async () => {
     sessionUser = null
-    const res = await DELETE(req({ 'x-admin-read-token': READ_TOKEN }, 'DELETE'), params('p1'))
+    const res = await DELETE(req({ 'x-admin-read-token': READ_TOKEN }, 'DELETE'), params(P1))
     expect(res.status).toBe(403)
     expect(storageFromMock).not.toHaveBeenCalled()
     expect(fromMock).not.toHaveBeenCalled()
@@ -186,7 +186,7 @@ describe('DELETE', () => {
 
   it('무권한이면 403이고 저장소·DB를 건드리지 않는다(티켓 20260925_0240)', async () => {
     sessionUser = null
-    const res = await DELETE(req(), params('p1'))
+    const res = await DELETE(req(), params(P1))
     expect(res.status).toBe(403)
     expect(storageFromMock).not.toHaveBeenCalled()
     expect(listMock).not.toHaveBeenCalled()
@@ -195,28 +195,54 @@ describe('DELETE', () => {
   })
 
   it('저장소 폴더의 파일을 지운 뒤 테이블 행을 지운다', async () => {
-    const res = await DELETE(req(), params('p1'))
+    const res = await DELETE(req(), params(P1))
     expect(res.status).toBe(200)
 
-    expect(listMock).toHaveBeenCalledWith('asset-generator/presets/p1')
-    expect(removeMock).toHaveBeenCalledWith(['asset-generator/presets/p1/i1.png'])
+    expect(listMock).toHaveBeenCalledWith(`asset-generator/presets/${P1}`)
+    expect(removeMock).toHaveBeenCalledWith([`asset-generator/presets/${P1}/i1.png`])
     expect(presetsBuilder.delete).toHaveBeenCalled()
-    expect(presetsBuilder.eq).toHaveBeenCalledWith('id', 'p1')
+    expect(presetsBuilder.eq).toHaveBeenCalledWith('id', P1)
   })
 
   it('폴더에 파일이 없으면 remove를 호출하지 않고 행만 지운다', async () => {
     listMock.mockResolvedValue({ data: [], error: null })
-    const res = await DELETE(req(), params('p1'))
+    const res = await DELETE(req(), params(P1))
     expect(res.status).toBe(200)
     expect(removeMock).not.toHaveBeenCalled()
     expect(presetsBuilder.delete).toHaveBeenCalled()
   })
 
-  it('목록 조회에 실패하면 500이고 행을 지우지 않는다', async () => {
-    listMock.mockResolvedValue({ data: null, error: { message: '목록 조회 실패' } })
-    const res = await DELETE(req(), params('p1'))
+  it('목록 조회에 실패하면 500이고 행을 지우지 않으며 원문을 응답에 싣지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    listMock.mockResolvedValue({ data: null, error: { message: 'storage list boom' } })
+    const res = await DELETE(req(), params(P1))
     expect(res.status).toBe(500)
+    expect(JSON.stringify(await res.json())).not.toContain('boom')
+    expect(errorSpy.mock.calls.some((c) => String(c[0]).startsWith('[presets'))).toBe(true)
     expect(presetsBuilder.delete).not.toHaveBeenCalled()
+    errorSpy.mockRestore()
+  })
+
+  it('이미지 삭제에 실패하면 500이고 행을 지우지 않으며 원문을 응답에 싣지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    removeMock.mockResolvedValue({ error: { message: 'storage remove boom' } })
+    const res = await DELETE(req(), params(P1))
+    expect(res.status).toBe(500)
+    expect(JSON.stringify(await res.json())).not.toContain('boom')
+    expect(errorSpy.mock.calls.some((c) => String(c[0]).startsWith('[presets'))).toBe(true)
+    expect(presetsBuilder.delete).not.toHaveBeenCalled()
+    errorSpy.mockRestore()
+  })
+
+  it('행 삭제에 실패하면 500이고 원문을 응답에 싣지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    presetsBuilder = makeQueryBuilder({ data: null, error: { message: 'db delete boom' } })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const res = await DELETE(req(), params(P1))
+    expect(res.status).toBe(500)
+    expect(JSON.stringify(await res.json())).not.toContain('boom')
+    expect(errorSpy.mock.calls.some((c) => String(c[0]).startsWith('[presets'))).toBe(true)
+    errorSpy.mockRestore()
   })
 })
 
@@ -230,7 +256,19 @@ describe('DELETE — 경로 값 검증(티켓 20260926_0201)', () => {
     expect(fromMock).not.toHaveBeenCalled()
   })
 
-  it('UUID와 영숫자·밑줄·하이픈 id는 통과한다', async () => {
+  it.each(['p1', '3', 'not-a-uuid', '3f2a9c1e-0000-4000-8000-0000000000a'])(
+    'UUID가 아닌 id(%s)는 경로 문자로는 안전해도 400이고 저장소·DB를 건드리지 않는다(티켓 20260926_1602)',
+    async (badId) => {
+      const res = await DELETE(req({}, 'DELETE'), params(badId))
+      expect(res.status).toBe(400)
+      expect(storageFromMock).not.toHaveBeenCalled()
+      expect(listMock).not.toHaveBeenCalled()
+      expect(removeMock).not.toHaveBeenCalled()
+      expect(fromMock).not.toHaveBeenCalled()
+    }
+  )
+
+  it('UUID id는 통과한다', async () => {
     const res = await DELETE(req({}, 'DELETE'), params('3f2a9c1e-0000-4000-8000-0000000000aa'))
     expect(res.status).toBe(200)
     expect(listMock).toHaveBeenCalledWith('asset-generator/presets/3f2a9c1e-0000-4000-8000-0000000000aa')

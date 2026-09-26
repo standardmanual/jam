@@ -513,6 +513,7 @@ describe('POST — 스토리지 경로 값 검증과 업로드 순서(티켓 202
   })
 
   it('존재 확인이 DB 오류면 500이고 업로드하지 않는다', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     presetsBuilder = makeQueryBuilder({ data: null, error: { message: 'db down' } })
     fromMock.mockImplementation(() => presetsBuilder)
     const layers = [makeImageLayer('i1', 'blob:http://localhost/abc')]
@@ -521,6 +522,7 @@ describe('POST — 스토리지 경로 값 검증과 업로드 순서(티켓 202
     form.append('image_i1', new File(['fake-png-bytes'], 'i1.png', { type: 'image/png' }))
     const res = await POST(postReq(form))
     expect(res.status).toBe(500)
+    expect(JSON.stringify(await res.json())).not.toContain('db down')
     expect(uploadMock).not.toHaveBeenCalled()
   })
 
@@ -580,5 +582,73 @@ describe('POST — 입력 경계(티켓 20260926_0201)', () => {
     const res = await POST(postReq(formWith({ layers: '{"a":1}' })))
     expect(res.status).toBe(400)
     expect(fromMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('DB·스토리지 오류 원문 미노출(티켓 20260926_1602)', () => {
+  let errorSpy: { mock: { calls: unknown[][] }; mockRestore: () => void }
+
+  beforeEach(() => {
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    errorSpy.mockRestore()
+  })
+
+  function saveForm(layers: unknown[] = []) {
+    const form = new FormData()
+    form.append('name', '프리셋 A')
+    form.append('stageRatio', '1:1')
+    form.append('targetType', 'badge')
+    form.append('layers', JSON.stringify(layers))
+    return form
+  }
+
+  async function expectFixedError(res: Response, raw: string) {
+    expect(res.status).toBe(500)
+    const text = JSON.stringify(await res.json())
+    expect(text).not.toContain(raw)
+    expect(errorSpy.mock.calls.some((c) => String(c[0]).startsWith('[presets'))).toBe(true)
+  }
+
+  it('목록 조회 오류(GET)', async () => {
+    presetsBuilder = makeQueryBuilder({ data: null, error: { message: 'list boom' } })
+    fromMock.mockImplementation(() => presetsBuilder)
+    await expectFixedError(await GET(getReq()), 'list boom')
+  })
+
+  it('덮어쓰기 대상 조회 오류(POST)', async () => {
+    presetsBuilder = makeQueryBuilder({ data: null, error: { message: 'find boom' } })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const form = saveForm()
+    form.append('id', 'existing-id')
+    await expectFixedError(await POST(postReq(form)), 'find boom')
+  })
+
+  it('이미지 업로드 오류(POST)', async () => {
+    uploadMock.mockResolvedValue({ error: { message: 'upload boom' } })
+    const form = saveForm([makeImageLayer('i1', 'blob:http://localhost/abc')])
+    form.append('image_i1', new File(['fake-png-bytes'], 'i1.png', { type: 'image/png' }))
+    await expectFixedError(await POST(postReq(form)), 'upload boom')
+  })
+
+  it('신규 저장 insert 오류(POST)', async () => {
+    presetsBuilder = makeQueryBuilder({ data: null, error: { message: 'insert boom' } })
+    fromMock.mockImplementation(() => presetsBuilder)
+    await expectFixedError(await POST(postReq(saveForm())), 'insert boom')
+  })
+
+  it('덮어쓰기 update 오류(POST)', async () => {
+    let call = 0
+    fromMock.mockImplementation(() => {
+      call += 1
+      return call === 1
+        ? makeQueryBuilder({ data: { id: 'existing-id' }, error: null })
+        : makeQueryBuilder({ data: null, error: { message: 'update boom' } })
+    })
+    const form = saveForm()
+    form.append('id', 'existing-id')
+    await expectFixedError(await POST(postReq(form)), 'update boom')
   })
 })

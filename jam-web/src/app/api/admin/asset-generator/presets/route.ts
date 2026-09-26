@@ -34,6 +34,12 @@ import type { Json } from '@/types/database.generated'
 const MAX_NAME_LENGTH = 60
 const VALID_STAGE_RATIOS: StageRatio[] = ['1:1', '4:5', '9:16']
 
+// DB·스토리지 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
+const LIST_ERROR_MESSAGE = '프리셋 목록을 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const FIND_ERROR_MESSAGE = '프리셋을 확인하지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const UPLOAD_ERROR_MESSAGE = '이미지를 올리지 못했어요. 서버에서 업로드 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const SAVE_ERROR_MESSAGE = '프리셋을 저장하지 못했어요. 서버에서 저장 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+
 /**
  * `targetType` 쿼리 파라미터가 있으면 그 유형으로 목록을 필터링한다(프리셋 저장 화면이
  * "현재 작업 중인 콘텐츠 유형"으로 불러오기 목록을 좁히는 데 쓴다, 티켓 20260925_1405).
@@ -56,7 +62,10 @@ export async function GET(req: NextRequest) {
   if (targetTypeParam !== null) query = query.eq('target_type', targetTypeParam)
 
   const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[presets 목록 조회 오류]', error)
+    return NextResponse.json({ error: LIST_ERROR_MESSAGE }, { status: 500 })
+  }
 
   const presets = ((data ?? []) as AssetPresetSummaryRow[]).map(toAssetPresetSummary)
   return NextResponse.json({ presets })
@@ -122,7 +131,10 @@ export async function POST(req: NextRequest) {
   // 스토리지에 파일이 남지 않는다(티켓 20260926_0201).
   if (existingId) {
     const { data: existing, error: findErr } = await supabase.from('asset_presets').select('id').eq('id', existingId).maybeSingle()
-    if (findErr) return NextResponse.json({ error: findErr.message }, { status: 500 })
+    if (findErr) {
+      console.error('[presets 저장 대상 조회 오류]', findErr)
+      return NextResponse.json({ error: FIND_ERROR_MESSAGE }, { status: 500 })
+    }
     if (!existing) return NextResponse.json({ error: '프리셋을 찾을 수 없습니다.' }, { status: 404 })
   }
 
@@ -148,7 +160,10 @@ export async function POST(req: NextRequest) {
     const { error: uploadErr } = await supabase.storage
       .from(APPLY_GENERATED_IMAGE_BUCKET)
       .upload(path, buffer, { contentType: file.type || 'application/octet-stream', upsert: true })
-    if (uploadErr) return NextResponse.json({ error: `이미지 업로드 실패: ${uploadErr.message}` }, { status: 500 })
+    if (uploadErr) {
+      console.error('[presets 이미지 업로드 오류]', uploadErr)
+      return NextResponse.json({ error: UPLOAD_ERROR_MESSAGE }, { status: 500 })
+    }
 
     const {
       data: { publicUrl },
@@ -173,7 +188,10 @@ export async function POST(req: NextRequest) {
       .eq('id', existingId)
       .select('id, name, stage_ratio, created_at, updated_at')
       .single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('[presets 덮어쓰기 오류]', error)
+      return NextResponse.json({ error: SAVE_ERROR_MESSAGE }, { status: 500 })
+    }
     return NextResponse.json({ preset: toAssetPresetSummary(data as AssetPresetSummaryRow) })
   }
 
@@ -189,7 +207,10 @@ export async function POST(req: NextRequest) {
     })
     .select('id, name, stage_ratio, created_at, updated_at')
     .single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[presets 생성 오류]', error)
+    return NextResponse.json({ error: SAVE_ERROR_MESSAGE }, { status: 500 })
+  }
 
   return NextResponse.json({ preset: toAssetPresetSummary(data as AssetPresetSummaryRow) })
 }

@@ -11,6 +11,11 @@ import { toAssetPreset, type AssetPresetRow } from '@/lib/asset-generator'
  * 조회(GET)는 `x-admin-read-token`으로도 호출할 수 있다(티켓 20260926_1203). 삭제(DELETE)는 세션 인증만 받는다.
  */
 
+// DB·스토리지 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
+const LIST_FILES_ERROR_MESSAGE = '프리셋 이미지를 확인하지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const REMOVE_FILES_ERROR_MESSAGE = '프리셋 이미지를 삭제하지 못했어요. 서버에서 삭제 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const DELETE_ERROR_MESSAGE = '프리셋을 삭제하지 못했어요. 서버에서 삭제 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdminRead(req)
   if (denied) return denied
@@ -48,23 +53,33 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params
   // URL의 id가 스토리지 폴더 경로에 그대로 들어가므로 형식이 틀리면 list·remove 전에 거절한다(티켓 20260926_0201).
-  if (!isSafePresetPathSegment(id)) {
+  // 프리셋 id는 uuid 컬럼이라 uuid가 아닌 값이 `.eq`까지 가면 DB 오류가 나므로 GET처럼 uuid 검증을 먼저 한다(티켓 20260926_1602).
+  if (!isUuid(id) || !isSafePresetPathSegment(id)) {
     return NextResponse.json({ error: '프리셋 ID 형식이 올바르지 않습니다.' }, { status: 400 })
   }
   const supabase = createServiceClient()
   const folderPath = `asset-generator/presets/${id}`
 
   const { data: files, error: listErr } = await supabase.storage.from(APPLY_GENERATED_IMAGE_BUCKET).list(folderPath)
-  if (listErr) return NextResponse.json({ error: `이미지 목록 조회 실패: ${listErr.message}` }, { status: 500 })
+  if (listErr) {
+    console.error('[presets 삭제 이미지 목록 조회 오류]', listErr)
+    return NextResponse.json({ error: LIST_FILES_ERROR_MESSAGE }, { status: 500 })
+  }
 
   if (files && files.length > 0) {
     const paths = files.map((file) => `${folderPath}/${file.name}`)
     const { error: removeErr } = await supabase.storage.from(APPLY_GENERATED_IMAGE_BUCKET).remove(paths)
-    if (removeErr) return NextResponse.json({ error: `이미지 삭제 실패: ${removeErr.message}` }, { status: 500 })
+    if (removeErr) {
+      console.error('[presets 삭제 이미지 삭제 오류]', removeErr)
+      return NextResponse.json({ error: REMOVE_FILES_ERROR_MESSAGE }, { status: 500 })
+    }
   }
 
   const { error } = await supabase.from('asset_presets').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[presets 삭제 오류]', error)
+    return NextResponse.json({ error: DELETE_ERROR_MESSAGE }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true })
 }
