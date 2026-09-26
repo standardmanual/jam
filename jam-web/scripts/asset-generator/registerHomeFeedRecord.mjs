@@ -11,6 +11,7 @@
  * 구분된다(seed SQL 등록 카드는 NULL).
  */
 import { TODAY_LAYOUT_OPTIONS, TODAY_TEMPLATE_OPTIONS } from '../../src/lib/admin/today-sections'
+import { CONTROL_OR_LINE_BREAK } from './registerBundle.mjs'
 import { AGENT_IMAGE_SOURCE } from './registerHomeFeedBundle.mjs'
 import { RECORD_FILE_NAME, SQL_FILE_NAME, formatKst, sqlLiteral, toKstIso } from './registerRecord.mjs'
 
@@ -33,10 +34,13 @@ export function summarizeHomeFeedBundle(bundle) {
   return parts.join(' · ')
 }
 
+// 개행·제어 문자가 이어진 구간 전체를 공백 하나로 바꾸는 정규식. 문자 범위는 묶음 검증과 같은 원본(`CONTROL_OR_LINE_BREAK`)에서 만든다.
+const CONTROL_OR_LINE_BREAK_RUN = new RegExp(`${CONTROL_OR_LINE_BREAK.source}+`, 'g')
+
 /** SQL `--` 주석에 넣는 값을 한 줄로 만든다. 묶음 검증이 개행을 거절하지만, 기록 파일은 커밋되어 다시 실행될 수 있어
  * 주석 쪽에서도 한 번 더 막는다(개행이 있으면 뒷부분이 주석 밖의 문장이 된다). 사용자 입력은 이 함수를 거친 값만 주석에 쓴다. */
 function commentSafe(value) {
-  return String(value).replace(/[\u0000-\u001f\u007f\u0085\u2028\u2029]+/g, ' ')
+  return String(value).replace(CONTROL_OR_LINE_BREAK_RUN, ' ')
 }
 
 /** 카드 insert용 SQL 리터럴. `badge_ids`는 UUID[] 컬럼이라 배열을 text[]가 아니라 uuid[]로 쓴다(text[]는 대입되지 않는다). */
@@ -137,8 +141,19 @@ function undoCommand(recordPath) {
  */
 export function formatHomeFeedDryRunSummary({ bundle, payload, errors, dbChecks, webp = /** @type {any} */ (undefined), recordDir }) {
   const lines = []
+  // DB 읽기 검사를 건너뛴 요약(서비스 키 없음)은 중복·존재 검사가 빠진 결과라, 첫 줄에서 «통과»만 읽히지 않게 함께 적는다(배지판과 같은 표기).
+  const dbChecksSkipped = dbChecks.some((check) => check.status === '건너뜀')
   lines.push('== 홈피드 카드 등록 묶음 검증 (--dry-run) ==')
-  lines.push(errors.length === 0 ? '결과: 통과' : `결과: 실패 (${errors.length}건)`)
+  lines.push(
+    errors.length > 0
+      ? `결과: 실패 (${errors.length}건)`
+      : dbChecksSkipped
+        ? '결과: 통과 (DB 읽기 검사는 건너뜀 — 서비스 키 없음)'
+        : '결과: 통과'
+  )
+  if (dbChecksSkipped) {
+    lines.push('※ DB 읽기 검사(제목·시작 일시 중복·미션·컬렉션·배지·랭킹 모드 존재)가 빠진 요약이에요. 컨펌 근거로 쓰지 말고, 서비스 키가 있는 환경(메인 폴더)에서 다시 돌려요.')
+  }
 
   if (errors.length > 0) {
     lines.push('', '[고쳐야 할 점]')
