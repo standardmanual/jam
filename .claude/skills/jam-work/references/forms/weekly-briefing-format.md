@@ -69,7 +69,7 @@ VOC 절은 VOC 경로를 구축하기 전까지 두지 않는다(카즈하 모�
 | 출처 | 지표 |
 | --- | --- |
 | GA4 Data API (`scripts/ga4-weekly-metrics.mjs`) | 활성 유저 · 가입 완료 · 온보딩 완료 · 드랍 · 픽업 · 믹스 성공 · 미션 참가 |
-| 어드민 집계 API (`/api/admin/kpi/weekly`) | 미션 달성자 수 · 배지 발급량 · Strava 동기화 실패 |
+| 어드민 집계 API (`/api/admin/kpi/weekly`) | 미션 달성자 수 · 배지 발급량 · Strava 동기화 실패 · 믹스 실패·성공 포인트 지급(`combinePoints` 건수·합계) · 결과물 배지가 삭제된 레시피 수(`combineRecipeRewardBadges`) |
 | 어드민 읽기 API (`scripts/admin-api-read.mjs`, 티켓 20260924_1408) | 미션·배지 조회 → 「공개 미션 점검」 (미션의 노출 조건·게이트 축·시작·종료일·보상 배지 id, 배지의 삭제 표시) |
 | 어드민 집계 API (`/api/admin/today/metrics`, 티켓 20260924_0004) | 투데이 카드 유형 ID별 노출 · 열람 · 후속 행동 (전략 변경안·유형 리뷰 입력) |
 
