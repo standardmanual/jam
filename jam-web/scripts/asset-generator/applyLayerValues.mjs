@@ -25,6 +25,14 @@ export function assertCanonicalLayerKey(key) {
   return parsed
 }
 
+/** 옛 인자(`--text`·`--subtext`)를 받았을 때 안내하는 문구. 별칭으로 남기지 않는다. */
+export const LEGACY_TEXT_FLAGS_MESSAGE = '--text·--subtext는 없어졌어요. 레이어 번호로 지정해 주세요: --text01, --text02 …'
+
+/** CLI 인자 이름이 레이어 번호 값 인자(`--text…숫자`, `--img…숫자`)로 보이는지 본다. 대소문자·자릿수가 틀려도 잡아 형식 오류로 알린다. */
+export function isLayerFlagKey(key) {
+  return /^(text|img)\d+$/i.test(key)
+}
+
 /** 텍스트 값의 리터럴 `\n`(백슬래시+n, 쉘에서 그대로 들어오는 두 글자)을 실제 개행 문자로 바꾼다. */
 export function unescapeTextValue(value) {
   return value.replace(/\\n/g, '\n')
