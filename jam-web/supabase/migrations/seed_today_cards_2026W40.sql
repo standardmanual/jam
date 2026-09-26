@@ -56,26 +56,28 @@ COMMIT;
 -- 되돌림 SQL(실행 뒤 문제가 있을 때만): 새 카드 삭제 + 기존 카드 다시 활성화
 -- DELETE FROM public.today_cards WHERE id IN (
 --     'dec90a48-d3a4-450f-af52-ea7611cf1a0a',
-    'cebac3ad-278b-432d-a1b5-56af66a740a8',
-    '9b8a16c7-64be-437a-95b8-26c16df3b264',
-    'f1dec605-cc03-4637-8809-692528f6c362',
-    '7aa48627-42e5-475d-969c-0f4ce07b5e4a',
-    '02bb220c-a48c-47d6-bf7a-744e86be6156',
-    'b3ff9bf0-f81c-4184-ac8b-5ca314ccd7fd',
-    'c8885e3d-e572-4f55-9d4b-45e65d866808',
-    '67daff84-795e-4669-b14b-de31c9fc5e6d',
-    '29f8a42a-c651-42fc-ac6d-bf9079bd6335'
+--    'cebac3ad-278b-432d-a1b5-56af66a740a8',
+--    '9b8a16c7-64be-437a-95b8-26c16df3b264',
+--    'f1dec605-cc03-4637-8809-692528f6c362',
+--    '7aa48627-42e5-475d-969c-0f4ce07b5e4a',
+--    '02bb220c-a48c-47d6-bf7a-744e86be6156',
+--    'b3ff9bf0-f81c-4184-ac8b-5ca314ccd7fd',
+--    'c8885e3d-e572-4f55-9d4b-45e65d866808',
+--    '67daff84-795e-4669-b14b-de31c9fc5e6d',
+--    '29f8a42a-c651-42fc-ac6d-bf9079bd6335'
 -- );
 -- UPDATE public.today_cards SET is_active = true WHERE id IN (
 --     '5d1053cd-79a9-4e3d-b918-9dbe5dacebd2',
-    'f409a12e-0f71-4a14-a2b0-abc7a1f5dac5',
-    '33c30177-a8bc-4666-b34d-fe014380dd3b',
-    '78e01a91-21c9-4e1e-b093-9fe1587f546f',
-    'fd5ca5ad-6dae-40b7-a85a-ec2fe8a23364',
-    'b16677b7-9ae8-48dd-b28d-ea14116430c2',
-    '84adca04-5d60-4467-803b-a4d38dfd77ab',
-    '1a3df805-bab2-4e32-bc18-5015601e9444',
-    'f7d50af3-8958-48fd-8ed5-9bcfdd1b900a',
-    'e92ba6e8-3aa3-41c0-be32-c2d6271b6b9a',
-    'b419ed70-8ca4-4875-9526-9b050b114b9d'
+--    'f409a12e-0f71-4a14-a2b0-abc7a1f5dac5',
+--    '33c30177-a8bc-4666-b34d-fe014380dd3b',
+--    '78e01a91-21c9-4e1e-b093-9fe1587f546f',
+--    'fd5ca5ad-6dae-40b7-a85a-ec2fe8a23364',
+--    'b16677b7-9ae8-48dd-b28d-ea14116430c2',
+--    '84adca04-5d60-4467-803b-a4d38dfd77ab',
+--    '1a3df805-bab2-4e32-bc18-5015601e9444',
+--    'f7d50af3-8958-48fd-8ed5-9bcfdd1b900a',
+--    'e92ba6e8-3aa3-41c0-be32-c2d6271b6b9a',
+--    'b419ed70-8ca4-4875-9526-9b050b114b9d',
+--    '06d6b6a2-3b04-4fad-a689-ed3531a260e1',
+--    '45340202-1c70-4d97-81a3-2537817aee25'
 -- );
