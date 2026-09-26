@@ -68,10 +68,15 @@ function AssignTribeDialogBody({ ids, tribes, pending, container, onCancel, onCo
   // 미리보기 결과에 어느 트라이브에 대한 것인지 함께 담아, 트라이브를 바꾸면 이전 결과가 자동으로 무효가 된다
   const [previewState, setPreviewState] = useState<{ tribeId: string; result: BulkRunResponse | null } | null>(null)
 
+  // 부모가 `ids` 배열 참조를 렌더마다 새로 만들어도 미리보기가 다시 나가지 않도록, 효과는 내용이 같으면
+  // 같은 값인 문자열 키에만 의존한다(티켓 20260924_1405). id는 UUID라 쉼표가 들어가지 않는다.
+  const idsKey = ids.join(',')
+
   useEffect(() => {
     if (!tribeId) return
     let cancelled = false
-    runBulk('/api/admin/badges/list-bulk', { ids, action: 'assign_tribe', payload: { tribe_id: tribeId }, dry_run: true })
+    const previewIds = idsKey ? idsKey.split(',') : []
+    runBulk('/api/admin/badges/list-bulk', { ids: previewIds, action: 'assign_tribe', payload: { tribe_id: tribeId }, dry_run: true })
       .then((result) => {
         if (!cancelled) setPreviewState({ tribeId, result })
       })
@@ -81,7 +86,7 @@ function AssignTribeDialogBody({ ids, tribes, pending, container, onCancel, onCo
     return () => {
       cancelled = true
     }
-  }, [tribeId, ids])
+  }, [tribeId, idsKey])
 
   const previewReady = !!tribeId && previewState?.tribeId === tribeId
   const preview = previewReady ? previewState.result : null
