@@ -2,9 +2,9 @@
 id: "20260924_1639"
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-24
-closed:
+closed: 2026-09-26
 related:
   - "20260924_0951"
   - "20260924_0916"
@@ -33,23 +33,20 @@ related:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 묶음 티켓 20260926_1239로 처리했다. 상세와 실행 지표는 그 티켓의 완료 기록에 있다.
+- 신규 `scripts/check-client-server-imports.mjs`: `jam-web/src`(와 design-system)에서 첫 문장이 `'use client'`인 파일을 시작으로 값 import(`import type`·`{ type X }`만 있는 것과 `export type` 제외)만 따라가, 서버 전용 모듈에 닿으면 최단 경로를 `→`로 출력하고 종료 코드 1로 끝낸다. 서버 전용은 파일 위쪽 `SERVER_ONLY_MODULES` 상수(`lib/supabase/server.ts`, `lib/admin/auth.ts`)와 `next/headers`·`server-only`를 import하는 파일이다. `@/`·`@ds/` 별칭과 상대경로를 해석한다.
+- `scripts/verify.sh`에 `client-server-imports` 단계를 추가했다.
 
 ### 변경된 파일
 ```
--
+- scripts/check-client-server-imports.mjs (신규)
+- scripts/check-client-server-imports.test.mjs (신규)
+- scripts/verify.sh
 ```
 
 ### 테스트 결과
-- [ ] 
-
-### 실행 지표
-
-| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
-|---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
-
-### 주요 의사결정 / 핵심 메모
+- [x] 단위 테스트: `UsersFilterBar → user-list → auth` 재현 픽스처가 3단계 경로로 실패 판정, `import type`·`{ type X }`만이면 통과, 혼합·여러 줄 import 파싱, 서버 컴포넌트는 대상 아님, `next/headers`·`server-only` 자동 판정, 순환 import 종료
+- [x] 현재 저장소(945개 파일, 클라이언트 243개, 값 import 1,608건)에서 위반 0건 통과. 가짜 클라이언트 파일이 `auth`를 값 import하는 프로브를 넣으면 경로를 출력하고 종료 코드 1이 되는 것을 게이트가 확인했다. 병합 뒤 통합본에서도 통과
 
 ### 잔여 이슈
--
+- 정규식 기반이라 문자열·템플릿 안의 줄 첫머리 `import` 문은 오탐할 수 있고 동적 `import()`는 따라가지 않는다(정적 도달만). 현재 저장소에서는 발생하지 않는다(후속 티켓).
