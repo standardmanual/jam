@@ -45,8 +45,8 @@
  * cjs-module-lexer가 `export *` 체인의 재수출을 정적으로 추론하지 못해 생기는 상호운용
  * 문제로 보인다 — `mod.mulberry32`는 undefined, `mod.default.mulberry32`에는 값이 있었다).
  * 개별 파일(`random.ts`·`curve.ts`·`render.ts`·`presetSerialize.ts`)을 직접 import하면
- * 이름 있는 export가 정상적으로 보인다 — 그래서 이 스크립트는 배럴이 아니라 각 파일을 상대
- * 경로로 직접 가져온다. `@/*` tsconfig 별칭도 이 스크립트 위치(레포 밖 `scripts/` 트리)
+ * 이름 있는 export가 정상적으로 보인다 — 그래서 렌더 본문(`renderCard.mjs`)은 배럴이 아니라 각 파일을
+ * 상대 경로로 직접 가져온다. `@/*` tsconfig 별칭도 이 스크립트 위치(레포 밖 `scripts/` 트리)
  * 기준으로는 쓰지 않는다(레포의 다른 `scripts/*.ts`도 전부 상대 경로를 쓴다) — 상대 경로로
  * 단일 파일을 가져오면 별칭 없이도 정상 동작을 실측했다.
  *
@@ -58,149 +58,26 @@
  * 애니메이션 진행 위치(head)는 항상 0으로 고정한다 — 어드민 화면의 초기 상태(머리 위치
  * 슬라이더 0%)와 같다. 실렌더 비교 시 어드민에서 머리 위치를 옮기지 않은 상태로 PNG를
  * 저장해야 CLI 결과와 같은 그림이 나온다.
+ *
+ * ## 렌더 본문의 위치
+ * 실제 그리기는 `renderCard.mjs`의 `renderCardPng`에 있다(홈피드 카드 원샷 `make-home-feed-card.mjs`와
+ * 공유, 티켓 20260926_1544). 이 파일은 인자 파싱·파일 쓰기·결과 출력만 맡는다.
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { createClient } from '@supabase/supabase-js'
 
-import { deriveRibbonFromSeed } from '../../src/lib/asset-generator/random'
-import { buildPath } from '../../src/lib/asset-generator/curve'
-import { buildStamp, drawRibbonLayer, drawImageLayer, drawTextLayer, fillBackground } from '../../src/lib/asset-generator/render'
-import { resolveStageSize, generateRandomSeed, isSystemDefaultFont } from '../../src/app/admin/asset-generator/assetGeneratorHelpers'
-
-import { serverCanvasFactory, getServerContext, loadImageAsCanvas, cropToAlphaBounds, serverImageLoader } from './serverCanvas'
-import { brandLetterSvgMarkup } from './brandLetters.mjs'
-import { createServerFontLoader } from './fonts.mjs'
 import { parseRenderArgs } from './renderArgs.mjs'
-import { fillTextLayers } from './fillTextLayers.mjs'
-import { loadEnv } from '../lib/loadEnv.mjs'
-import { fetchPresetFromAdminApi, normalizePreset, pickPresetSource, resolveEnv } from './presetSource.mjs'
+import { renderCardPng } from './renderCard.mjs'
 
 async function main() {
   const args = parseRenderArgs(process.argv.slice(2))
 
-  // `.env.local`과 `process.env`를 합친다(process.env 우선) — 예약 환경은 process.env로만 값을 준다.
-  const env = resolveEnv(loadEnv(), process.env)
-  const picked = pickPresetSource(env)
+  const rendered = await renderCardPng(args)
 
-  let preset
-  if (picked.source === 'admin-api') {
-    preset = await fetchPresetFromAdminApi({
-      baseUrl: picked.baseUrl,
-      token: picked.token,
-      presetId: args.preset,
-    })
-  } else {
-    const supabase = createClient(picked.supabaseUrl, picked.serviceKey)
-    const { data, error } = await supabase
-      .from('asset_presets')
-      .select('id, name, target_type, stage_ratio, layers, created_by, created_at, updated_at')
-      .eq('id', args.preset)
-      .maybeSingle()
-    if (error) throw new Error(`프리셋 조회에 실패했어요: ${error.message}`)
-    if (!data) throw new Error(`프리셋을 찾을 수 없어요: ${args.preset}`)
-    preset = normalizePreset(data)
-  }
-
-  const { width: stageWidth, height: stageHeight } = resolveStageSize(preset.stageRatio)
-
-  // 텍스트 레이어 채우기: 배열 순서로 1번째 ← --text(제목), 2번째 ← --subtext(설명). 규칙·오류 처리는
-  // fillTextLayers.mjs 상단 주석 참고.
-  const overlayLayers = fillTextLayers(preset.layers, { text: args.text, subtext: args.subtext })
-
-  const masterSeed = args.seed ?? generateRandomSeed()
-  const random = deriveRibbonFromSeed(masterSeed)
-
-  // 리본 원천 그래픽: 고정 letter 'J'(brandLetters.mjs 상단 주석). 알파 바운딩 박스로 잘라
-  // buildStamp에 넘긴다(브라우저의 setBaseFromCanvas와 같은 단계).
-  const rawBase = await loadImageAsCanvas(Buffer.from(brandLetterSvgMarkup('J')))
-  const base = cropToAlphaBounds(rawBase)
-  if (!base) throw new Error('원천 그래픽(브랜드 글자)에 불투명 픽셀이 없어요.')
-
-  const stamp = buildStamp(serverCanvasFactory, {
-    base,
-    blurPct: random.blurPct,
-    direction: random.direction,
-    startColor: args.bg, // 그라데이션 시작색 = 배경색(PRD §8, §6의 linkStartToBackground와 동일)
-    endColor: args.end,
-  })
-
-  const curvePath = buildPath(random.seed, random.irregularityPct, stageWidth, stageHeight)
-
-  const canvas = serverCanvasFactory(stageWidth, stageHeight)
-  const ctx = getServerContext(canvas)
-
-  fillBackground(ctx, stageWidth, stageHeight, args.bg)
-  drawRibbonLayer(ctx, {
-    stamp,
-    baseWidth: base.width,
-    baseHeight: base.height,
-    sizePct: random.sizePct,
-    rotationDeg: random.rotationDeg,
-    followPath: random.followPath,
-    path: curvePath,
-    head: 0, // 정지 프레임 — 헤더 주석 "정지 프레임 위치" 참고
-    gap: random.gap,
-    count: random.count,
-    stageWidth,
-    stageHeight,
-  })
-
-  // 텍스트 레이어에 쓰인 글꼴을 먼저 전부 등록한다(그려야 폴백 글꼴로 새지 않는다).
-  const loadFont = createServerFontLoader()
-  for (const layer of overlayLayers) {
-    if (layer.type === 'text' && !isSystemDefaultFont(layer.font)) {
-      await loadFont(layer.font)
-    }
-  }
-
-  // 이미지 레이어 원본을 assetUrl별로 한 번씩 불러온다(브라우저 imageAssets 캐시와 같은 정책).
-  const imageAssets = {}
-  for (const layer of overlayLayers) {
-    if (layer.type === 'image' && !imageAssets[layer.assetUrl]) {
-      imageAssets[layer.assetUrl] = await serverImageLoader({ url: layer.assetUrl })
-    }
-  }
-
-  // 리본 다음, 배열 역순으로 그려 인덱스 0이 가장 위에 오게 한다(drawOverlayLayersOnto와 동일 순서).
-  for (let i = overlayLayers.length - 1; i >= 0; i--) {
-    const layer = overlayLayers[i]
-    if (layer.type === 'image') {
-      drawImageLayer(ctx, {
-        image: imageAssets[layer.assetUrl],
-        xPct: layer.xPct,
-        yPct: layer.yPct,
-        widthPct: layer.widthPct,
-        heightPct: layer.heightPct,
-        rotationDeg: layer.rotationDeg,
-        opacityPct: layer.opacityPct,
-        stageWidth,
-        stageHeight,
-      })
-    } else {
-      drawTextLayer(ctx, {
-        content: layer.content,
-        font: layer.font,
-        sizePct: layer.sizePct,
-        letterSpacing: layer.letterSpacing,
-        lineHeight: layer.lineHeight,
-        align: layer.align,
-        color: layer.color,
-        xPct: layer.xPct,
-        yPct: layer.yPct,
-        rotationDeg: layer.rotationDeg,
-        opacityPct: layer.opacityPct,
-        stageWidth,
-        stageHeight,
-      })
-    }
-  }
-
-  const buffer = canvas.toBuffer('image/png')
   fs.mkdirSync(path.dirname(args.out), { recursive: true })
-  fs.writeFileSync(args.out, buffer)
+  fs.writeFileSync(args.out, rendered.buffer)
 
-  console.log(JSON.stringify({ out: args.out, seed: masterSeed, preset: args.preset, stage: { w: stageWidth, h: stageHeight }, presetSource: picked.source }))
+  console.log(JSON.stringify({ out: args.out, seed: rendered.seed, preset: args.preset, stage: rendered.stage, presetSource: rendered.presetSource }))
 }
 
 main().catch((e) => {
