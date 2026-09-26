@@ -415,3 +415,163 @@ describe('POST — 덮어쓰기', () => {
     expect(updatePayload.stage_ratio).toBe('4:5')
   })
 })
+
+describe('POST — 스토리지 경로 값 검증과 업로드 순서(티켓 20260926_0201)', () => {
+  function baseForm(layers: unknown[] = []) {
+    const form = new FormData()
+    form.append('name', '프리셋 A')
+    form.append('stageRatio', '1:1')
+    form.append('targetType', 'badge')
+    form.append('layers', JSON.stringify(layers))
+    return form
+  }
+
+  it('세션이 없으면 403이고 DB·저장소를 건드리지 않는다', async () => {
+    sessionUser = null
+    const res = await POST(postReq(baseForm()))
+    expect(res.status).toBe(403)
+    expect(fromMock).not.toHaveBeenCalled()
+    expect(uploadMock).not.toHaveBeenCalled()
+  })
+
+  it.each(['../other', 'a/b', 'a b', 'a.b', 'x'.repeat(101)])('형식이 틀린 프리셋 id(%s)는 400이고 아무것도 쓰지 않는다', async (badId) => {
+    const layers = [makeImageLayer('i1', 'blob:http://localhost/abc')]
+    const form = baseForm(layers)
+    form.append('id', badId)
+    form.append('image_i1', new File(['fake-png-bytes'], 'i1.png', { type: 'image/png' }))
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(400)
+    expect(uploadMock).not.toHaveBeenCalled()
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
+  it.each(['../x', 'a/b', 'a b', 'a.b', ''])('형식이 틀린 이미지 레이어 id(%j)는 400이고 아무것도 쓰지 않는다', async (badLayerId) => {
+    const layers = [makeImageLayer(badLayerId, 'blob:http://localhost/abc')]
+    const form = baseForm(layers)
+    form.append(`image_${badLayerId}`, new File(['fake-png-bytes'], 'i1.png', { type: 'image/png' }))
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(400)
+    expect(uploadMock).not.toHaveBeenCalled()
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
+  it('두 번째 이미지 레이어 id만 틀려도 첫 번째 레이어를 올리기 전에 400이다', async () => {
+    const layers = [makeImageLayer('i1', 'blob:http://localhost/a'), makeImageLayer('../evil', 'blob:http://localhost/b')]
+    const form = baseForm(layers)
+    form.append('image_i1', new File(['a'], 'i1.png', { type: 'image/png' }))
+    form.append('image_../evil', new File(['b'], 'evil.png', { type: 'image/png' }))
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(400)
+    expect(uploadMock).not.toHaveBeenCalled()
+  })
+
+  it('텍스트 레이어 id는 경로에 쓰이지 않으므로 검사하지 않는다', async () => {
+    presetsBuilder = makeQueryBuilder({
+      data: { id: 'new-preset-id', name: '프리셋 A', stage_ratio: '1:1', created_at: 't1', updated_at: 't1' },
+      error: null,
+    })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const res = await POST(postReq(baseForm([makeTextLayer('텍스트 1', '이름')])))
+    expect(res.status).toBe(200)
+  })
+
+  it('UUID 형식 레이어 id와 image-layer 폴백 id는 통과한다', async () => {
+    presetsBuilder = makeQueryBuilder({
+      data: { id: 'new-preset-id', name: '프리셋 A', stage_ratio: '1:1', created_at: 't1', updated_at: 't1' },
+      error: null,
+    })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const uuid = '3f2a9c1e-0000-4000-8000-0000000000aa'
+    const fallback = 'image-layer-1727340000000-k3j9x2ab'
+    const layers = [makeImageLayer(uuid, 'blob:http://localhost/a'), makeImageLayer(fallback, 'blob:http://localhost/b')]
+    const form = baseForm(layers)
+    form.append(`image_${uuid}`, new File(['a'], 'a.png', { type: 'image/png' }))
+    form.append(`image_${fallback}`, new File(['b'], 'b.png', { type: 'image/png' }))
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(200)
+    expect(uploadMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('없는 id로 덮어쓰면 404이고 이미지를 업로드하지 않는다(존재 확인이 업로드보다 먼저)', async () => {
+    presetsBuilder = makeQueryBuilder({ data: null, error: null })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const layers = [makeImageLayer('i1', 'blob:http://localhost/abc')]
+    const form = baseForm(layers)
+    form.append('id', 'missing-id')
+    form.append('image_i1', new File(['fake-png-bytes'], 'i1.png', { type: 'image/png' }))
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(404)
+    expect(uploadMock).not.toHaveBeenCalled()
+    expect(presetsBuilder.updatePayload).toBeUndefined()
+  })
+
+  it('존재 확인이 DB 오류면 500이고 업로드하지 않는다', async () => {
+    presetsBuilder = makeQueryBuilder({ data: null, error: { message: 'db down' } })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const layers = [makeImageLayer('i1', 'blob:http://localhost/abc')]
+    const form = baseForm(layers)
+    form.append('id', 'existing-id')
+    form.append('image_i1', new File(['fake-png-bytes'], 'i1.png', { type: 'image/png' }))
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(500)
+    expect(uploadMock).not.toHaveBeenCalled()
+  })
+
+  it('존재하는 id로 덮어쓰면 그 id 폴더에 업로드한다', async () => {
+    let call = 0
+    presetsBuilder = makeQueryBuilder({ data: { id: 'existing-id' }, error: null })
+    fromMock.mockImplementation(() => {
+      call += 1
+      if (call === 1) return presetsBuilder
+      return makeQueryBuilder({
+        data: { id: 'existing-id', name: '프리셋 A', stage_ratio: '1:1', created_at: 't1', updated_at: 't2' },
+        error: null,
+      })
+    })
+    const layers = [makeImageLayer('i1', 'blob:http://localhost/abc')]
+    const form = baseForm(layers)
+    form.append('id', 'existing-id')
+    form.append('image_i1', new File(['fake-png-bytes'], 'i1.png', { type: 'image/png' }))
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(200)
+    const [uploadPath] = uploadMock.mock.calls[0] as unknown as [string]
+    expect(uploadPath).toBe('asset-generator/presets/existing-id/i1.png')
+  })
+})
+
+describe('POST — 입력 경계(티켓 20260926_0201)', () => {
+  function formWith(overrides: Record<string, string>) {
+    const form = new FormData()
+    const fields: Record<string, string> = { name: '프리셋 A', stageRatio: '1:1', targetType: 'badge', layers: '[]', ...overrides }
+    for (const [key, value] of Object.entries(fields)) form.append(key, value)
+    return form
+  }
+
+  it('이름이 60자면 통과하고 61자면 400이다', async () => {
+    presetsBuilder = makeQueryBuilder({
+      data: { id: 'new-preset-id', name: '가', stage_ratio: '1:1', created_at: 't1', updated_at: 't1' },
+      error: null,
+    })
+    fromMock.mockImplementation(() => presetsBuilder)
+    expect((await POST(postReq(formWith({ name: '가'.repeat(60) })))).status).toBe(200)
+    expect((await POST(postReq(formWith({ name: '가'.repeat(61) })))).status).toBe(400)
+  })
+
+  it('허용 목록에 없는 stageRatio는 400', async () => {
+    const res = await POST(postReq(formWith({ stageRatio: '16:9' })))
+    expect(res.status).toBe(400)
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
+  it('layers가 JSON이 아니면 400', async () => {
+    const res = await POST(postReq(formWith({ layers: '{not json' })))
+    expect(res.status).toBe(400)
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
+  it('layers가 배열이 아니면 400', async () => {
+    const res = await POST(postReq(formWith({ layers: '{"a":1}' })))
+    expect(res.status).toBe(400)
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+})

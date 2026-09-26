@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/admin/auth'
 import { checkMissionCondition, checkMissionConditionValue } from '@/lib/missions/condition-keys'
 import { findGateMissionSaveError } from '@/lib/missions/gateMissions'
 import { collectMissionReferences, MISSION_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
-import { imageSourceReset } from '@/lib/admin/imageSourceReset'
+import { imageSourceReset, imageUrlTypeError } from '@/lib/admin/imageSourceReset'
 import type { MissionRow } from '@/types/database'
 import type { MissionType } from '@/types/database'
 
@@ -17,6 +17,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params
   const body = await req.json()
+
+  const imageUrlError = imageUrlTypeError(body.image_url)
+  if (imageUrlError) return NextResponse.json({ error: imageUrlError }, { status: 400 })
+
   const supabase = createServiceClient()
 
   // condition_json 키 검증 (티켓 20260905_1141). 부분 갱신이라 body에 condition_json이

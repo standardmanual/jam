@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser, requireAdminRead } from '@/lib/admin/auth'
 import { APPLY_GENERATED_IMAGE_BUCKET } from '@/lib/admin/applyGeneratedImageConstants'
+import { isSafePresetPathSegment } from '@/lib/admin/presetStoragePath'
 import { toAssetPreset, type AssetPresetRow } from '@/lib/asset-generator'
 
 /**
@@ -37,6 +38,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!admin) return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 })
 
   const { id } = await params
+  // URL의 id가 스토리지 폴더 경로에 그대로 들어가므로 형식이 틀리면 list·remove 전에 거절한다(티켓 20260926_0201).
+  if (!isSafePresetPathSegment(id)) {
+    return NextResponse.json({ error: '프리셋 ID 형식이 올바르지 않습니다.' }, { status: 400 })
+  }
   const supabase = createServiceClient()
   const folderPath = `asset-generator/presets/${id}`
 

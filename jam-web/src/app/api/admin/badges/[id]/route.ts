@@ -5,7 +5,7 @@ import { findBadgeConditionSaveError, findCheckinBadgeNamesNotFoundError, findRa
 import { invalidateUnclaimedDrops } from '@/lib/admin/poi-drops'
 import { BADGE_REFERENCE_SOURCES, collectBadgeReferences } from '@/lib/admin/badge-references'
 import { runBadgeDeactivationSideEffects } from '@/lib/admin/badge-deactivate'
-import { imageSourceReset } from '@/lib/admin/imageSourceReset'
+import { imageSourceReset, imageUrlTypeError } from '@/lib/admin/imageSourceReset'
 import type { BadgeRow } from '@/types/database'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -14,6 +14,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const body = await req.json()
+
+  const imageUrlError = imageUrlTypeError(body.image_url)
+  if (imageUrlError) return NextResponse.json({ error: imageUrlError }, { status: 400 })
 
   const supabase = createServiceClient()
 
