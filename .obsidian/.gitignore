@@ -1,3 +1,4 @@
-# 옵시디언이 PC마다 다르게 쓰는 상태 파일(열어 둔 탭·창 배치)은 공유하지 않는다
+# 옵시디언이 PC마다 다르게 쓰는 상태 파일(열어 둔 탭·창 배치, 그래프 확대 배율)은 공유하지 않는다
 workspace.json
 workspace-mobile.json
+graph.json
