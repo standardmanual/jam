@@ -67,7 +67,7 @@ export default function TextLayerFields({ layer, onChange }: TextLayerFieldsProp
           placeholder="텍스트를 입력해 주세요"
           rows={3}
         />
-        <span className="text-xs text-muted-foreground">이 값은 프리셋에 저장되지 않아요. 적용할 때마다 다시 입력해요.</span>
+        <span className="text-xs text-muted-foreground">이 값은 프리셋에 함께 저장돼요. 프리셋을 불러오면 그대로 채워져요.</span>
       </label>
 
       <label className="flex flex-col gap-1.5">
