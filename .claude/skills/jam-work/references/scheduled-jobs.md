@@ -286,7 +286,7 @@ git show origin/staging:scripts/deploy-gate.mjs > /tmp/deploy-gate.mjs && test -
   && node /tmp/deploy-gate.mjs check            # 종료 코드가 0이 아니면(스크립트를 못 꺼낸 경우 포함) 여기서 중단, #jam-alert
 git diff --quiet origin/main origin/staging -- jam-web    # 종료 코드 1이면 jam-web 변경이 있다(새 프로덕션 빌드가 생긴다)
 node /tmp/deploy-gate.mjs served                # 배포 전 서빙 배포 id (아래 「배포 뒤 확인」에서 쓴다)
-git checkout main
+git checkout main                               # 로컬 main이 원격과 다른 이력이면 jam-ship 7절의 복구 안내를 따른다
 git merge --ff-only origin/staging              # 실패 시 즉시 중단, #jam-alert
 JAM_SHIP=1 git push origin main
 git checkout staging

@@ -172,6 +172,11 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
 
 6단계 완료 기준을 통과한 뒤에만 진행한다.
 
+먼저 로컬 `main`이 원격 `main`과 같은 이력인지 확인한다: `git -C "<repo>" fetch origin main staging &&
+git -C "<repo>" merge-base --is-ancestor main origin/main`이 실패하면(공통 조상이 없거나 어긋남, 2026-09-21
+티켓 20260921_1208에서 겪은 상태) 승격 명령을 실행하지 말고, 옛 `main`을 이름만 바꿔 보존한 뒤 원격에 맞춘다:
+`git branch -m main main-backup-<날짜> && git branch main origin/main`. 그 뒤 아래를 진행한다.
+
 ```bash
 git -C "<repo>" checkout main
 git -C "<repo>" merge --ff-only origin/staging   # ff 불가 시 상태를 보고하고 판단을 구한다
