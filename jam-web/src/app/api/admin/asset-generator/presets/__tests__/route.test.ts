@@ -5,7 +5,7 @@
  * 만들어지는지만 본다.
  * 실행: cd jam-web && npx vitest run src/app/api/admin/asset-generator/presets/__tests__/route.test.ts
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 const ADMIN_ID = '00000000-0000-4000-8000-0000000000aa'
@@ -37,13 +37,16 @@ const uploadMock = vi.fn(async () => ({ error: null as { message: string } | nul
 const getPublicUrlMock = vi.fn((path: string) => ({ data: { publicUrl: `https://cdn.test.jam.app/images/${path}` } }))
 const storageFromMock = vi.fn(() => ({ upload: uploadMock, getPublicUrl: getPublicUrlMock }))
 
+// 세션은 createClient의 getUser로 흉내 낸다 — 읽기 토큰 경로(requireAdminRead)가 auth.ts 내부의
+// getAdminUser를 부르므로 auth 모듈을 통째로 목킹하면 토큰 분기를 검증할 수 없다(티켓 20260926_1203).
+// ADMIN_EMAILS 화이트리스트에 든 이메일은 DB 조회 없이 어드민으로 통과한다.
+let sessionUser: { id: string; email: string } | null = { id: ADMIN_ID, email: 'admin@jam.app' }
 vi.mock('@/lib/supabase/server', () => ({
+  createClient: async () => ({ auth: { getUser: async () => ({ data: { user: sessionUser } }) } }),
   createServiceClient: () => ({ from: fromMock, storage: { from: storageFromMock } }),
 }))
-vi.mock('@/lib/admin/auth', async (importActual) => ({
-  ...(await importActual<typeof import('@/lib/admin/auth')>()),
-  getAdminUser: vi.fn(async () => ({ id: ADMIN_ID, email: 'admin@jam.app' })),
-}))
+
+const READ_TOKEN = 'test-admin-read-token'
 
 const { GET, POST } = await import('../route')
 
@@ -83,23 +86,63 @@ function postReq(form: FormData): NextRequest {
   return new NextRequest('https://j-a-m.app/api/admin/asset-generator/presets', { method: 'POST', body: form })
 }
 
-function getReq(query = ''): NextRequest {
-  return new NextRequest(`https://j-a-m.app/api/admin/asset-generator/presets${query}`)
+function getReq(query = '', headers: Record<string, string> = {}): NextRequest {
+  return new NextRequest(`https://j-a-m.app/api/admin/asset-generator/presets${query}`, { headers })
 }
 
 beforeEach(() => {
+  vi.stubEnv('ADMIN_EMAILS', 'admin@jam.app')
+  vi.stubEnv('ADMIN_API_READ_TOKEN', READ_TOKEN)
+  sessionUser = { id: ADMIN_ID, email: 'admin@jam.app' }
   presetsBuilder = makeQueryBuilder({ data: null, error: null })
   fromMock.mockReset().mockImplementation(() => presetsBuilder)
   uploadMock.mockReset().mockResolvedValue({ error: null })
   getPublicUrlMock.mockReset().mockImplementation((path: string) => ({ data: { publicUrl: `https://cdn.test.jam.app/images/${path}` } }))
 })
 
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
+
 describe('GET', () => {
   it('무권한이면 403', async () => {
-    const { getAdminUser } = await import('@/lib/admin/auth')
-    vi.mocked(getAdminUser).mockResolvedValueOnce(null)
+    sessionUser = null
     const res = await GET(getReq())
     expect(res.status).toBe(403)
+  })
+
+  it('세션 없이 유효한 읽기 토큰이면 200과 { presets }를 돌려준다(티켓 20260926_1203)', async () => {
+    sessionUser = null
+    presetsBuilder = makeQueryBuilder({
+      data: [{ id: 'p1', name: '프리셋 A', stage_ratio: '1:1', created_at: 't1', updated_at: 't2' }],
+      error: null,
+    })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const res = await GET(getReq('', { 'x-admin-read-token': READ_TOKEN }))
+    expect(res.status).toBe(200)
+    expect((await res.json()).presets).toHaveLength(1)
+  })
+
+  it('세션 없이 targetType=home_feed 필터도 토큰 경로에서 동작한다(티켓 20260926_1203)', async () => {
+    sessionUser = null
+    presetsBuilder = makeQueryBuilder({ data: [], error: null })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const res = await GET(getReq('?targetType=home_feed', { 'x-admin-read-token': READ_TOKEN }))
+    expect(res.status).toBe(200)
+    expect(presetsBuilder.eq).toHaveBeenCalledWith('target_type', 'home_feed')
+  })
+
+  it('세션 없이 잘못된 토큰이면 403이고 DB를 조회하지 않는다(티켓 20260926_1203)', async () => {
+    sessionUser = null
+    const res = await GET(getReq('', { 'x-admin-read-token': 'wrong-token' }))
+    expect(res.status).toBe(403)
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
+  it('유효한 토큰이어도 targetType이 올바르지 않으면 400이다(티켓 20260926_1203)', async () => {
+    sessionUser = null
+    const res = await GET(getReq('?targetType=not-a-type', { 'x-admin-read-token': READ_TOKEN }))
+    expect(res.status).toBe(400)
   })
 
   it('목록을 요약 형태로 돌려준다', async () => {
@@ -145,6 +188,24 @@ describe('GET', () => {
 })
 
 describe('POST — 신규 저장', () => {
+  it('세션 없이 읽기 토큰만 있으면 403이고 저장하지 않는다(티켓 20260926_1203)', async () => {
+    sessionUser = null
+    const form = new FormData()
+    form.append('name', '프리셋 A')
+    form.append('stageRatio', '1:1')
+    form.append('targetType', 'badge')
+    form.append('layers', '[]')
+    const res = await POST(
+      new NextRequest('https://j-a-m.app/api/admin/asset-generator/presets', {
+        method: 'POST',
+        body: form,
+        headers: { 'x-admin-read-token': READ_TOKEN },
+      })
+    )
+    expect(res.status).toBe(403)
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
   it('이름이 비어 있으면 400', async () => {
     const form = new FormData()
     form.append('name', '  ')

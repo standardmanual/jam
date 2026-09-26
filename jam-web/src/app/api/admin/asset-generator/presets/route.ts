@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { getAdminUser } from '@/lib/admin/auth'
+import { getAdminUser, requireAdminRead } from '@/lib/admin/auth'
 import { APPLY_GENERATED_IMAGE_BUCKET, MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
 import {
   isPresetTargetType,
@@ -39,8 +39,8 @@ const VALID_STAGE_RATIOS: StageRatio[] = ['1:1', '4:5', '9:16']
  * 생략하면 필터 없이 전체를 돌려준다.
  */
 export async function GET(req: NextRequest) {
-  const admin = await getAdminUser()
-  if (!admin) return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 })
+  const denied = await requireAdminRead(req)
+  if (denied) return denied
 
   const targetTypeParam = req.nextUrl.searchParams.get('targetType')
   if (targetTypeParam !== null && !isPresetTargetType(targetTypeParam)) {

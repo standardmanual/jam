@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { getAdminUser } from '@/lib/admin/auth'
+import { getAdminUser, requireAdminRead } from '@/lib/admin/auth'
 import { APPLY_GENERATED_IMAGE_BUCKET } from '@/lib/admin/applyGeneratedImageConstants'
 import { toAssetPreset, type AssetPresetRow } from '@/lib/asset-generator'
 
-/** 에셋 제너레이터 — 프리셋 단건 조회/삭제 API (티켓 20260924_2159) */
+/**
+ * 에셋 제너레이터 — 프리셋 단건 조회/삭제 API (티켓 20260924_2159)
+ * 조회(GET)는 `x-admin-read-token`으로도 호출할 수 있다(티켓 20260926_1203). 삭제(DELETE)는 세션 인증만 받는다.
+ */
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const admin = await getAdminUser()
-  if (!admin) return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 })
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdminRead(req)
+  if (denied) return denied
 
   const { id } = await params
   const supabase = createServiceClient()

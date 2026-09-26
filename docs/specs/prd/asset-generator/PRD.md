@@ -100,6 +100,7 @@ code:
 - 프리셋의 이미지 원본은 프리셋 저장 시 저장소(`asset-generator/presets/{presetId}/…`)에 올리고, 프리셋은 그 경로를 가리킨다.
   자동 경로는 어드민 화면 없이 이 경로만으로 렌더링할 수 있어야 한다.
 - 사람이 어드민에서 만든다. 에이전트는 프리셋을 만들지 않고 고르기만 한다.
+- 프리셋 목록(`GET /api/admin/asset-generator/presets`)과 단건(`GET /api/admin/asset-generator/presets/{id}`) 조회는 어드민 세션 외에 `x-admin-read-token` 헤더로도 호출할 수 있다. 저장·삭제는 세션 인증만 받는다.
 
 ## 6. 컬러 규칙
 
