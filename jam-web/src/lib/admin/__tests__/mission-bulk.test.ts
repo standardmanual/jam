@@ -7,6 +7,7 @@ import {
   sumInProgressUsers,
   type MissionBulkRow,
 } from '../mission-bulk'
+import { missionStatusOf } from '../mission-list-query'
 import type { UpdateAllOrNothingResult } from '../bulk/server'
 
 const NOW = new Date('2026-09-24T03:00:00.000Z')
@@ -76,7 +77,7 @@ describe('applyMissionShow — 두 문장 중 뒤가 실패하면 앞을 되돌�
       return ok(ids)
     })
     expect(result.ok).toBe(false)
-    expect(result.ok === false && result.error).toContain('일부만 반영됐습니다')
+    expect(result.ok === false && result.error).toContain('일부만 반영됐어요')
   })
 
   it('앞 문장이 실패하면 뒤 문장은 실행하지 않는다', async () => {
@@ -115,6 +116,14 @@ describe('classifyMissionEndPeriod', () => {
       { id: 'upcoming', label: '미션 upcoming', reason: '아직 시작 전인 미션이에요.' },
       { id: 'ended', label: '미션 ended', reason: '이미 끝난 미션이에요.' },
     ])
+  })
+})
+
+describe('classifyMissionEndPeriod 종료 경계', () => {
+  it('종료 시각이 정확히 now인 미션은 목록 상태(missionStatusOf)처럼 아직 진행 중으로 보고 처리 대상에 둔다', () => {
+    const rows = [row({ id: 'edge', ends_at: NOW.toISOString() })]
+    expect(missionStatusOf(rows[0], NOW)).toBe('active')
+    expect(classifyMissionEndPeriod(['edge'], rows, NOW).targets).toEqual(['edge'])
   })
 })
 
