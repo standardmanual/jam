@@ -3,7 +3,7 @@
  * 삭제는 저장소 list → remove 경로 목록, 그 다음 테이블 delete 호출 순서를 확인한다.
  * 실행: cd jam-web && npx vitest run "src/app/api/admin/asset-generator/presets/[id]/__tests__/route.test.ts"
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 function makeQueryBuilder(result: { data: unknown; error: { message: string } | null }) {
@@ -25,18 +25,21 @@ const listMock = vi.fn(async () => ({ data: [{ name: 'i1.png' }] as { name: stri
 const removeMock = vi.fn(async () => ({ error: null as { message: string } | null }))
 const storageFromMock = vi.fn(() => ({ list: listMock, remove: removeMock }))
 
+// 세션은 createClient의 getUser로 흉내 낸다 — 읽기 토큰 경로(requireAdminRead)가 auth.ts 내부의
+// getAdminUser를 부르므로 auth 모듈을 통째로 목킹하면 토큰 분기를 검증할 수 없다(티켓 20260926_1203).
+// ADMIN_EMAILS 화이트리스트에 든 이메일은 DB 조회 없이 어드민으로 통과한다.
+let sessionUser: { id: string; email: string } | null = { id: '00000000-0000-4000-8000-0000000000aa', email: 'admin@jam.app' }
 vi.mock('@/lib/supabase/server', () => ({
+  createClient: async () => ({ auth: { getUser: async () => ({ data: { user: sessionUser } }) } }),
   createServiceClient: () => ({ from: fromMock, storage: { from: storageFromMock } }),
 }))
-vi.mock('@/lib/admin/auth', async (importActual) => ({
-  ...(await importActual<typeof import('@/lib/admin/auth')>()),
-  getAdminUser: vi.fn(async () => ({ id: '00000000-0000-4000-8000-0000000000aa', email: 'admin@jam.app' })),
-}))
+
+const READ_TOKEN = 'test-admin-read-token'
 
 const { GET, DELETE } = await import('../route')
 
-function req(): NextRequest {
-  return new NextRequest('https://j-a-m.app/api/admin/asset-generator/presets/p1')
+function req(headers: Record<string, string> = {}, method = 'GET'): NextRequest {
+  return new NextRequest('https://j-a-m.app/api/admin/asset-generator/presets/p1', { method, headers })
 }
 
 function params(id: string) {
@@ -44,6 +47,9 @@ function params(id: string) {
 }
 
 beforeEach(() => {
+  vi.stubEnv('ADMIN_EMAILS', 'admin@jam.app')
+  vi.stubEnv('ADMIN_API_READ_TOKEN', READ_TOKEN)
+  sessionUser = { id: '00000000-0000-4000-8000-0000000000aa', email: 'admin@jam.app' }
   presetsBuilder = makeQueryBuilder({ data: null, error: null })
   fromMock.mockReset().mockImplementation(() => presetsBuilder)
   storageFromMock.mockClear()
@@ -51,11 +57,43 @@ beforeEach(() => {
   removeMock.mockReset().mockResolvedValue({ error: null })
 })
 
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
+
 describe('GET', () => {
   it('무권한이면 403이고 DB를 조회하지 않는다(티켓 20260925_0240)', async () => {
-    const { getAdminUser } = await import('@/lib/admin/auth')
-    vi.mocked(getAdminUser).mockResolvedValueOnce(null)
+    sessionUser = null
     const res = await GET(req(), params('p1'))
+    expect(res.status).toBe(403)
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
+  it('세션 없이 유효한 읽기 토큰이면 200과 { preset }을 돌려준다(티켓 20260926_1203)', async () => {
+    sessionUser = null
+    presetsBuilder = makeQueryBuilder({
+      data: {
+        id: 'p1',
+        name: '홈피드',
+        target_type: 'home_feed',
+        stage_ratio: '4:5',
+        layers: [{ type: 'text', id: 't1', content: '', font: { family: 'system-ui', weight: 400 } }],
+        created_by: 'admin-id',
+        created_at: 't1',
+        updated_at: 't1',
+      },
+      error: null,
+    })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const res = await GET(req({ 'x-admin-read-token': READ_TOKEN }), params('p1'))
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.preset).toMatchObject({ id: 'p1', targetType: 'home_feed' })
+  })
+
+  it('세션 없이 잘못된 토큰이면 403이고 DB를 조회하지 않는다(티켓 20260926_1203)', async () => {
+    sessionUser = null
+    const res = await GET(req({ 'x-admin-read-token': 'wrong-token' }), params('p1'))
     expect(res.status).toBe(403)
     expect(fromMock).not.toHaveBeenCalled()
   })
@@ -117,9 +155,16 @@ describe('GET', () => {
 })
 
 describe('DELETE', () => {
+  it('세션 없이 읽기 토큰만 있으면 403이고 삭제하지 않는다(티켓 20260926_1203)', async () => {
+    sessionUser = null
+    const res = await DELETE(req({ 'x-admin-read-token': READ_TOKEN }, 'DELETE'), params('p1'))
+    expect(res.status).toBe(403)
+    expect(storageFromMock).not.toHaveBeenCalled()
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
   it('무권한이면 403이고 저장소·DB를 건드리지 않는다(티켓 20260925_0240)', async () => {
-    const { getAdminUser } = await import('@/lib/admin/auth')
-    vi.mocked(getAdminUser).mockResolvedValueOnce(null)
+    sessionUser = null
     const res = await DELETE(req(), params('p1'))
     expect(res.status).toBe(403)
     expect(storageFromMock).not.toHaveBeenCalled()
