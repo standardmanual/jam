@@ -272,6 +272,42 @@ test('check-contract: workflow_freeze 절에서 exempt_file 키를 빼면 위반
   assert.match(r.stderr, /예외 파일이 없습니다/)
 })
 
+// ── probeWorkflowFreeze의 나머지 두 분기 (티켓 20260926_1410) ────────────────────────────────
+// 훅이 예외 파일(README.md)까지 막으면 위반으로, 임시 저장소를 못 만들면 위반이 아니라 참고로 남긴다.
+// 둘 다 임시 저장소 안에서만 돈다 — 이 저장소의 훅·설정은 읽기만 한다.
+
+// README.md 예외 조건을 «항상 참»으로 바꿔 예외 파일까지 막는 훅을 만든다. 예외 파일 경로 문자열은
+// 훅에 그대로 남아 있어 문자열 대조 검사(exempt_file 존재)는 통과하고 실동작 검사만 이를 잡는다.
+function blockExemptFileToo(hook) {
+  const condition = '[ "$f" != "docs/agents/workflow/README.md" ]'
+  assert.ok(hook.includes(condition), '훅에서 README.md 예외 조건을 찾지 못했다')
+  return hook.replace(condition, `${condition} || true`)
+}
+
+test('check-contract: 예외 파일(README.md)까지 막는 훅은 위반으로 잡는다', () => {
+  const dir = makeContractRepo({ hook: blockExemptFileToo(readHook()) })
+  const r = checkContract(dir)
+  assert.equal(r.status, 1, r.stdout + r.stderr)
+  assert.match(r.stderr, /\[workflow_freeze\]/)
+  assert.match(r.stderr, /동결 예외 파일\(docs\/agents\/workflow\/README\.md\) 커밋이 막혔습니다/)
+  // 동결 파일 커밋을 막지 못한 경우의 «무력화» 문구와는 구분되어야 한다
+  assert.doesNotMatch(r.stderr, /무력화/)
+})
+
+test('check-contract: 임시 저장소를 만들지 못하면 위반이 아니라 참고로 건너뛴다', () => {
+  const dir = makeContractRepo()
+  // 저장소 루트 조회(`rev-parse`)만 통과시키고 나머지(`init` 포함)는 실패하는 가짜 git만 PATH에 둔다.
+  // node는 절대경로로 부른다.
+  const fakeBin = mkdtempSync(join(tmpdir(), 'contract-nogit-'))
+  tmpDirs.push(fakeBin)
+  write(fakeBin, 'git', '#!/bin/sh\nif [ "$1" = "rev-parse" ]; then pwd; exit 0; fi\nexit 1\n')
+  chmodSync(join(fakeBin, 'git'), 0o755)
+  const r = run(process.execPath, ['scripts/check-contract.mjs'], dir, { PATH: fakeBin })
+  assert.equal(r.status, 0, r.stdout + r.stderr)
+  assert.match(r.stdout, /참고: 임시 저장소를 만들지 못해 동결 실동작 검사를 건너뜁니다\./)
+  assert.doesNotMatch(r.stderr, /\[workflow_freeze\]/)
+})
+
 // ── 현황판 스크립트만 바뀐 커밋 경고 (티켓 20260918_1251) — 경고만 하고 차단하지 않는다 ────────────
 const DASH_SCRIPT = 'scripts/ticket-dashboard.mjs'
 const DASH_DOC = '.claude/skills/jam-work/references/dashboard-format.md'

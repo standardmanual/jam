@@ -52,13 +52,17 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllEnvs()
 })
 
 describe('DELETE /api/admin/users/[id]', () => {
-  it('본인 계정은 403으로 막고 삭제하지 않는다', async () => {
-    mocks.target = { id: ADMIN_ID, email: 'me@jam.app', is_admin: true }
+  it('본인 계정은 403으로 막고 삭제하지 않는다 — 어드민 분기가 아니라 본인 분기가 막는다', async () => {
+    // 대상을 일반 유저 계정(is_admin false, 화이트리스트 밖)으로 둬서 `admin.id === userId`
+    // 분기만 403을 낼 수 있게 한다. 대상이 어드민이면 어드민 분기도 403을 내 본인 분기를 지워도 통과한다.
+    mocks.target = { id: ADMIN_ID, email: 'me@jam.app', is_admin: false }
     const res = await call(ADMIN_ID)
     expect(res.status).toBe(403)
+    expect((await res.json()).error).toBe('자기 자신의 계정은 삭제할 수 없습니다.')
     expect(mocks.hardDeleteUser).not.toHaveBeenCalled()
   })
 
@@ -68,6 +72,30 @@ describe('DELETE /api/admin/users/[id]', () => {
     expect(res.status).toBe(403)
     expect((await res.json()).error).toBe('어드민 계정은 삭제할 수 없습니다.')
     expect(mocks.hardDeleteUser).not.toHaveBeenCalled()
+  })
+
+  it('ADMIN_EMAILS 화이트리스트에만 있고 is_admin이 false인 다른 어드민도 403으로 막는다', async () => {
+    vi.stubEnv('ADMIN_EMAILS', 'boss@x.com, other@x.com')
+    mocks.target = { id: OTHER_ADMIN, email: 'boss@x.com', is_admin: false }
+    const res = await call(OTHER_ADMIN)
+    expect(res.status).toBe(403)
+    expect((await res.json()).error).toBe('어드민 계정은 삭제할 수 없습니다.')
+    expect(mocks.hardDeleteUser).not.toHaveBeenCalled()
+  })
+
+  it('화이트리스트에 없고 is_admin도 false인 유저는 어드민으로 보지 않는다', async () => {
+    vi.stubEnv('ADMIN_EMAILS', 'boss@x.com')
+    mocks.target = { id: USER_A, email: 'a@x.com', is_admin: false }
+    expect((await call(USER_A)).status).toBe(200)
+    expect(mocks.hardDeleteUser).toHaveBeenCalledTimes(1)
+  })
+
+  it('삭제 함수가 ok:false를 돌려주면 그 상태 코드와 문구를 그대로 응답한다', async () => {
+    mocks.target = { id: USER_A, email: 'a@x.com', is_admin: false }
+    mocks.hardDeleteUser.mockResolvedValue({ ok: false, status: 409, error: '삭제할 수 없어요.' })
+    const res = await call(USER_A)
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ error: '삭제할 수 없어요.' })
   })
 
   it('일반 유저는 삭제하고 결과를 돌려준다', async () => {

@@ -109,4 +109,25 @@ assert.deepEqual(buildPublicMissionCheckLines({ __error: 'HTTP 500' }, { __error
   '- 공개 미션 점검: 확인 불가 (미션 조회 실패: HTTP 500, 배지 조회 실패: timeout)',
 ])
 
+// 응답 모양 경계 (티켓 20260926_1410) — 배지 응답에 `badges` 키가 없거나 null이면 «배지가 하나도 조회되지
+// 않은 것»으로 본다: 상시 미션의 보상 배지는 모두 「삭제·미조회」로 세고 [주의]를 붙이며, 오류로 던지지 않는다.
+// (배지 응답 자체가 null·undefined인 경우는 이 테스트가 다루지 않는다.)
+const rewardMissions = [mission({ reward_badge_ids: ['b1', 'b2'] })]
+const noBadgesLines = [
+  '- 공개 미션 점검: 참가 가능 1건',
+  '- 상시 공개 미션 보상 배지: 유효 0건, 삭제·미조회 2건 [주의]',
+]
+assert.deepEqual(buildPublicMissionCheckLines(rewardMissions, {}, NOW), noBadgesLines, 'badges 키가 없는 응답')
+assert.deepEqual(buildPublicMissionCheckLines(rewardMissions, { badges: null }, NOW), noBadgesLines, 'badges가 null인 응답')
+assert.deepEqual(
+  buildPublicMissionCheckLines(rewardMissions, { badges: [] }, NOW),
+  noBadgesLines,
+  'badges가 빈 배열이면 키가 없는 경우와 같은 결과'
+)
+// 미션 응답이 null이면 참가 가능 0건으로 경고한다(조회 실패 표식이 없는 빈 응답)
+assert.deepEqual(buildPublicMissionCheckLines(null, okBadges, NOW), [
+  '- 공개 미션 점검: 참가 가능 0건 [주의]',
+  '- 상시 공개 미션 보상 배지: 유효 0건, 삭제·미조회 0건',
+])
+
 console.log('public-mission-check.test.mjs 통과')
