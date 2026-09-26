@@ -28,6 +28,9 @@ specs:
 - 프리셋 API 4개 핸들러의 오류 응답에 Supabase 원문 메시지가 들어가지 않는다(라우트 테스트로 확인).
 - `npm run lint`·`npm test` 통과.
 
+### 추가 위치 (2026-09-26, 티켓 20260926_1241 게이트 발견물)
+- `jam-web/src/app/api/admin/badges/list-bulk/route.ts` 47행(`assign_tribe` 조회 오류), 103행(이번에 추가된 deactivate 후보 조회 오류), 116행(`poi_drops` 집계 오류)이 DB 원문 `error.message`를 500 응답에 그대로 싣는다. 같은 파일의 기존 방식이라 이번 묶음에서는 따라갔다. 이 티켓의 관례 정리에 함께 포함한다.
+
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
 
