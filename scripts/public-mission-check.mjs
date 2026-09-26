@@ -49,3 +49,23 @@ export function formatPublicMissionCheck(check) {
     `- 상시 공개 미션 보상 배지: 유효 ${check.validRewardBadges}건, 삭제·미조회 ${check.invalidRewardBadges}건${warnBadge}`,
   ]
 }
+
+/**
+ * `admin-api-read.mjs`의 「공개 미션 점검」 출력 줄을 조립한다 (티켓 20260924_1512).
+ * 인자는 API 조회 결과 그대로다: 미션은 배열, 배지는 `{ badges: [...] }`이고, 조회 실패한 쪽은 `{ __error: 사유 }`다.
+ * 미션·배지 중 하나라도 조회에 실패하면 점검을 하지 않고 「확인 불가」 한 줄만 낸다(실패한 쪽 사유를 모두 적는다).
+ */
+export function buildPublicMissionCheckLines(missionsResult, badgesResult, now = new Date()) {
+  const missionsError = missionsResult?.__error
+  const badgesError = badgesResult?.__error
+  if (missionsError || badgesError) {
+    const reason = [
+      missionsError && `미션 조회 실패: ${missionsError}`,
+      badgesError && `배지 조회 실패: ${badgesError}`,
+    ]
+      .filter(Boolean)
+      .join(', ')
+    return [`- 공개 미션 점검: 확인 불가 (${reason})`]
+  }
+  return formatPublicMissionCheck(computePublicMissionCheck(missionsResult, badgesResult.badges, now))
+}

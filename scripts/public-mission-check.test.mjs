@@ -1,7 +1,11 @@
 // public-mission-check.mjs 테스트 (티켓 20260924_1502)
 // 실행: node scripts/public-mission-check.test.mjs
 import assert from 'node:assert/strict'
-import { computePublicMissionCheck, formatPublicMissionCheck } from './public-mission-check.mjs'
+import {
+  buildPublicMissionCheckLines,
+  computePublicMissionCheck,
+  formatPublicMissionCheck,
+} from './public-mission-check.mjs'
 
 const NOW = new Date('2026-09-24T00:00:00Z')
 
@@ -87,5 +91,22 @@ const warn = formatPublicMissionCheck({
   invalidRewardBadges: 1,
 })
 assert.ok(warn[0].endsWith(' [주의]') && warn[1].endsWith(' [주의]'))
+
+// 출력 조립 (티켓 20260924_1512) — 조회 실패 「확인 불가」 분기
+const okMissions = [mission({ reward_badge_ids: ['b1'] })]
+const okBadges = { badges: BADGES }
+assert.deepEqual(buildPublicMissionCheckLines(okMissions, okBadges, NOW), [
+  '- 공개 미션 점검: 참가 가능 1건',
+  '- 상시 공개 미션 보상 배지: 유효 1건, 삭제·미조회 0건',
+])
+assert.deepEqual(buildPublicMissionCheckLines({ __error: 'HTTP 500' }, okBadges, NOW), [
+  '- 공개 미션 점검: 확인 불가 (미션 조회 실패: HTTP 500)',
+])
+assert.deepEqual(buildPublicMissionCheckLines(okMissions, { __error: 'timeout' }, NOW), [
+  '- 공개 미션 점검: 확인 불가 (배지 조회 실패: timeout)',
+])
+assert.deepEqual(buildPublicMissionCheckLines({ __error: 'HTTP 500' }, { __error: 'timeout' }, NOW), [
+  '- 공개 미션 점검: 확인 불가 (미션 조회 실패: HTTP 500, 배지 조회 실패: timeout)',
+])
 
 console.log('public-mission-check.test.mjs 통과')
