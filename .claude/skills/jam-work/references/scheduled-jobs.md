@@ -11,8 +11,17 @@
 >   `maily.so`·`joomaltory.com`·`uppity.co.kr`·`www.openads.co.kr`·`buybrand.stibee.com`
 >   [2026-09-18 월간 트렌드 수집 1회차 EGRESS_BLOCKED 확인 후 사용자가 추가, 다음 자동 실행(2026-10-01)에서
 >   재검증 예정], `slack.com`[2026-09-23 티켓 20260923_1106, `scripts/slack-post.mjs`가
->   Slack Web API를 직접 호출하며 403으로 차단되는 것을 확인한 뒤 사용자가 추가] + 기본 목록), 환경변수
->   `ADMIN_API_READ_TOKEN`·`GA4_PROPERTY_ID`·`GA4_SERVICE_ACCOUNT_KEY`·`SLACK_BOT_TOKEN`
+>   Slack Web API를 직접 호출하며 403으로 차단되는 것을 확인한 뒤 사용자가 추가], `fonts.googleapis.com`·
+>   `fonts.gstatic.com`[2026-09-26 티켓 20260926_1205, 에셋 제너레이터 렌더가 구글 폰트를 내려받으려고 사용자가
+>   추가] + 기본 목록), 환경변수 `ADMIN_API_READ_TOKEN`·`GA4_PROPERTY_ID`·`GA4_SERVICE_ACCOUNT_KEY`·
+>   `SLACK_BOT_TOKEN`·`ADMIN_API_BASE_URL`(2026-09-26 추가, 값 `https://stage.j-a-m.app` — 프리셋 읽기 토큰
+>   허용 코드가 staging에만 있는 동안의 값이며 프로덕션 반영 뒤 `https://j-a-m.app`으로 바꾼다).
+>   **서비스 롤 키(`SUPABASE_SERVICE_ROLE_KEY`)는 이 환경에 없고 등록하지 않는다**
+> - **이미지 렌더 실측(2026-09-26, 티켓 20260926_1205, 시험 루틴 `trig_011W3svxzJ9ihwWjoCPuohCL`의 실행 3회)**:
+>   `npm ci`(jam-web) 28~30초, `list-presets.mjs` 3초, `render.mjs` 2~5초로 서비스 롤 키 없이 `홈피드` 프리셋 렌더가
+>   성공했다(`presetSource: admin-api`, 글꼴 `Noto_Sans_KR-600.ttf` 내려받기 성공). 클라우드 결과는 로컬 결과와 24×24
+>   회색조 비교에서 평균 오차 0.002·최대 오차 1(0~255)로 사실상 같은 그림이다(PNG 파일 크기·해시는 플랫폼이 달라
+>   다르다: 클라우드 517KB, 로컬 905KB)
 > - 루틴 지시문의 원본은 루틴 자체다(claude.ai/code/routines). 이 문서를 바꾸면 루틴 지시문도 함께 고친다
 > - **Slack 게시는 JAM 봇 계정으로 전환됐다** (2026-09-23, 티켓 20260923_1106). 선별·주간·월간·주간
 >   배포 확인/실행 5개 루틴 모두 `scripts/slack-post.mjs` 호출로 프롬프트를 교체했고, 시범 게시로
@@ -46,7 +55,11 @@
 - **클라우드 예약 작업**(claude.ai/code/routines)에서 실행한다. PC·외장 드라이브 상태와 무관하게 돈다.
 - 이 PC에만 있는 비밀 값은 쓸 수 없다. 필요한 값은 클라우드 환경에 따로 등록한다:
   `ADMIN_API_READ_TOKEN`(어드민 읽기 토큰, 티켓 1149), `GA4_PROPERTY_ID`·`GA4_SERVICE_ACCOUNT_KEY`
-  (GA4 읽기, 티켓 1151), `SLACK_BOT_TOKEN`(Slack 게시, 티켓 20260923_1106).
+  (GA4 읽기, 티켓 1151), `SLACK_BOT_TOKEN`(Slack 게시, 티켓 20260923_1106), `ADMIN_API_BASE_URL`(에셋
+  제너레이터 프리셋 조회의 기준 주소, 티켓 20260926_1205 — `ADMIN_API_READ_TOKEN`과 함께 있으면 `render.mjs`가
+  읽기 API 경로를 쓴다).
+- **서비스 롤 키는 예약 환경에 두지 않는다.** 이 키는 RLS를 우회하는 전체 DB 권한이라 무인 실행에 주지 않는다
+  (2026-09-26 시험 실행에서 이 키 없이 이미지 렌더가 성공했다).
 
 ### 무인 카리나 권한 (4-3)
 
