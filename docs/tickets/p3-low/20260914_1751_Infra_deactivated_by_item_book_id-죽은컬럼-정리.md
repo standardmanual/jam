@@ -10,7 +10,7 @@ closed: 2026-09-21
 # [Infra] `deactivated_by_item_book_id` 죽은 컬럼 정리
 
 ## 배경 / 문제 정의
-티켓 [20260914_1729](../P2-일반/20260914_1729_Admin_컬렉션-활성화기간-설정-배지연동해제.md)
+티켓 [20260914_1729](../p2-normal/20260914_1729_Admin_컬렉션-활성화기간-설정-배지연동해제.md)
 (컬렉션 활성화기간 설정 및 배지 연동 해제)에서 컬렉션-배지 캐스케이드 비활성화 로직
 (`cascadeDeactivateItemBookBadges`/`cascadeActivateItemBookBadges`)을 완전히 제거하면서,
 `badges.deactivated_by_item_book_id`(마이그레이션 146) 컬럼을 채우던 유일한 코드 경로가

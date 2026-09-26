@@ -11,7 +11,7 @@ closed: 2026-09-14
 
 ## 배경 / 문제 정의
 
-티켓 [20260914_1045](../P1-중요/20260914_1045_Admin_쉐이더랩-PNG투명배경-미반영.md)(CLOSED,
+티켓 [20260914_1045](20260914_1045_Admin_쉐이더랩-PNG투명배경-미반영.md)(CLOSED,
 staging 병합됨)가 `@basementstudio/shader-lab` 패키지 렌더러의 opaque 하드코딩 3곳(WebGPU
 컨텍스트 `alpha:false`, `baseMesh` 알파 고정, `blend-modes.js`의 `filter` 알파 고정)을 고쳤지만,
 게이트 리뷰가 WARN으로 남긴 대로 **실제 시각적 검증을 하지 못한 채 머지됐다.** 사용자가 실제로

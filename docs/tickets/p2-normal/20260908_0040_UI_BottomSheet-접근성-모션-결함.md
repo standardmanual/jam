@@ -184,7 +184,7 @@ jam-web/src/components/transitions.css
 - `FeedSection.tsx`·`MissionDetailClient.tsx`·`SlotGrid.tsx`·`PoiCarouselModal.tsx`가 쓰는
   `.t-panel-backdrop`/`.t-panel-slide` 기반의 다른 패널도 이번 pointer-events 수정의 수혜를
   받았을 가능성이 높으나, role/aria/포커스트랩까지는 이번 범위 밖 — 후속 티켓
-  [20260908_1754](../P3-낮음/20260908_1754_UI_FeedSection-PoiCarouselModal-접근성점검-BottomSheet통합검토.md)로
+  [20260908_1754](../p3-low/20260908_1754_UI_FeedSection-PoiCarouselModal-접근성점검-BottomSheet통합검토.md)로
   분리
 - `Specs/PRD/2026-08-15 DESIGN_RENEWAL_SPEC.md`의 "새 오버레이 체크리스트"에 이번에 확립한
   접근성·모션 패턴(role/aria-modal/포커스트랩/Escape, `pointer-events` data-open 토글,
