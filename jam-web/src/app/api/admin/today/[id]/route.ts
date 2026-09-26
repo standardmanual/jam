@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
-import { imageSourceReset } from '@/lib/admin/imageSourceReset'
+import { imageSourceReset, imageUrlTypeError } from '@/lib/admin/imageSourceReset'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireAdmin()
@@ -9,6 +9,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params
   const body = await req.json()
+
+  // 이 라우트의 이미지 컬럼은 `cover_image_url`이다(티켓 20260926_1455).
+  const imageUrlError = imageUrlTypeError(body.cover_image_url)
+  if (imageUrlError) return NextResponse.json({ error: imageUrlError }, { status: 400 })
+
   const supabase = createServiceClient()
 
   // 커버 이미지가 실제로 바뀔 때만 제작 경로를 NULL(미상)로 되돌린다(티켓 20260925_1940

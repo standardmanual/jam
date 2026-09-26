@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { collectItemBookReferences, ITEM_BOOK_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
-import { imageSourceReset } from '@/lib/admin/imageSourceReset'
+import { imageSourceReset, imageUrlTypeError } from '@/lib/admin/imageSourceReset'
 import type { ItemBookRow } from '@/types/database'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -11,6 +11,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const body = await req.json()
+
+  const imageUrlError = imageUrlTypeError(body.image_url)
+  if (imageUrlError) return NextResponse.json({ error: imageUrlError }, { status: 400 })
 
   const supabase = createServiceClient()
 

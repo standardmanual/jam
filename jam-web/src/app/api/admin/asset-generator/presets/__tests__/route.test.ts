@@ -465,6 +465,13 @@ describe('POST — 스토리지 경로 값 검증과 업로드 순서(티켓 202
     expect(uploadMock).not.toHaveBeenCalled()
   })
 
+  it.each([[null], [1], ['text'], [[]]])('layers에 객체가 아닌 원소(%j)가 있으면 400이고 아무것도 쓰지 않는다(티켓 20260926_1456)', async (bad) => {
+    const res = await POST(postReq(baseForm([makeTextLayer('t1', '이름'), bad])))
+    expect(res.status).toBe(400)
+    expect(uploadMock).not.toHaveBeenCalled()
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
   it('텍스트 레이어 id는 경로에 쓰이지 않으므로 검사하지 않는다', async () => {
     presetsBuilder = makeQueryBuilder({
       data: { id: 'new-preset-id', name: '프리셋 A', stage_ratio: '1:1', created_at: 't1', updated_at: 't1' },

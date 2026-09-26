@@ -101,6 +101,10 @@ export async function POST(req: NextRequest) {
   try {
     const parsed = JSON.parse(String(form.get('layers') ?? '[]'))
     if (!Array.isArray(parsed)) throw new Error('layers는 배열이어야 합니다.')
+    // 원소가 null·숫자·문자열·배열이면 아래 `layer.type` 접근이 던져 500이 된다(티켓 20260926_1456).
+    if (!parsed.every((layer) => typeof layer === 'object' && layer !== null && !Array.isArray(layer))) {
+      throw new Error('layers의 원소는 객체여야 합니다.')
+    }
     layers = parsed as OverlayLayerConfig[]
   } catch {
     return NextResponse.json({ error: '레이어 데이터가 올바르지 않습니다.' }, { status: 400 })

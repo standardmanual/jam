@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminRead } from '@/lib/admin/auth'
+import { isUuid } from '@/lib/admin/uuid'
 import { selectCorpusForType } from '@/lib/content-corpus/select'
 import { DEFAULT_CORPUS_EXCERPT_LIMIT, isContentCorpusTypeId } from '@/lib/content-corpus/types'
 
@@ -44,14 +45,23 @@ export async function GET(req: NextRequest) {
       .map((id) => id.trim())
       .filter(Boolean)
 
+  const tribeIds = parseIds('tribeIds')
+  const itemBookIds = parseIds('itemBookIds')
+  const badgeIds = parseIds('badgeIds')
+
+  // 후보 ID는 그대로 `.in('id', …)` 조회에 들어간다. UUID가 아닌 값이 하나라도 있으면 DB 오류
+  // 원문(`invalid input syntax for type uuid`)이 새므로 조회 전에 거절한다(티켓 20260926_1509).
+  if (![...tribeIds, ...itemBookIds, ...badgeIds].every(isUuid)) {
+    return NextResponse.json(
+      { error: 'tribeIds·itemBookIds·badgeIds는 UUID를 쉼표로 구분해 넘겨 주세요.' },
+      { status: 400 }
+    )
+  }
+
   try {
     const selection = await selectCorpusForType(
       typeId,
-      {
-        tribeIds: parseIds('tribeIds'),
-        itemBookIds: parseIds('itemBookIds'),
-        badgeIds: parseIds('badgeIds'),
-      },
+      { tribeIds, itemBookIds, badgeIds },
       limit
     )
     return NextResponse.json(selection)
