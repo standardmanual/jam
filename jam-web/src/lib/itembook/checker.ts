@@ -14,6 +14,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import type { ItemBookRow, InventoryRow, BadgeType } from '@/types/database'
 import { computeBookCompletion } from './completion-basis'
+import { buildFilledByBook } from './filled-by-book'
 
 export interface ItemBookCompletionResult {
   completedIds: string[]
@@ -105,21 +106,10 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     return { completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] }
   }
 
-  // 북별 채운 배지 집합 — 장착 RPC(mig/179)처럼 "그 컬렉션에 장착된 슬롯만" 그 컬렉션의 분자로 센다
-  // (티켓 20260924_0937). 배지의 컬렉션이 장착 이후 바뀌어도 다른 북의 분자에 들지 않는다.
-  const filledByBook = new Map<string, Set<string>>()
-  const addFilled = (bookId: string, badgeId: string) => {
-    const set = filledByBook.get(bookId)
-    if (set) set.add(badgeId)
-    else filledByBook.set(bookId, new Set([badgeId]))
-  }
-  for (const s of (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]) {
-    addFilled(s.item_book_id, s.badge_id)
-  }
-
   // 3-1. Phase 16: checkin 타입 배지는 슬롯팅이 아니라 "1회 이상 획득 이력 존재"로 채움 판정
   //      (반복 획득되지만 완성 기여는 배지당 1로만 카운트)
   const allPoiBadgeIds = Array.from(poiBadgesByBook.values()).flat()
+  let earnedPoiBadgeIds = new Set<string>()
   if (allPoiBadgeIds.length > 0) {
     const { data: poiEarnsRaw, error: poiEarnsError } = await supabase
       .from('user_checkin_badge_earns')
@@ -132,17 +122,18 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
       return { completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] }
     }
 
-    const earnedPoiBadgeIds = new Set(
+    earnedPoiBadgeIds = new Set(
       ((poiEarnsRaw ?? []) as { badge_id: string }[]).map((e) => e.badge_id)
     )
-
-    // 획득 이력은 그 배지가 속한 북의 집합에만 넣는다
-    for (const [bookId, ids] of poiBadgesByBook) {
-      for (const id of ids) {
-        if (earnedPoiBadgeIds.has(id)) addFilled(bookId, id)
-      }
-    }
   }
+
+  // 북별 채운 배지 집합 — 표시 쪽(completable.ts)과 같은 순수 함수로 구성한다
+  // (티켓 20260924_0937·20260926_1344). 장착 RPC(mig/179)처럼 그 컬렉션의 슬롯만 분자로 센다.
+  const filledByBook = buildFilledByBook({
+    slots: (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[],
+    checkinBadgesByBook: poiBadgesByBook,
+    earnedCheckinBadgeIds: earnedPoiBadgeIds,
+  })
 
   // 4. 기존 완성 기록 조회 (중복 처리 방지)
   const { data: existingCompRaw } = await supabase

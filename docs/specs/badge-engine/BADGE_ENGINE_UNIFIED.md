@@ -1757,7 +1757,8 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 #### 3.16-1 완성 판정 두 경로의 분모·분자 기준 비교 (2026-09-26, 티켓 20260924_0937)
 
 완성 판정은 장착 순간의 RPC(`slot_item_into_book`, mig/179)와 동기화 때 도는 보정 함수(`checkItemBookCompletion`,
-`lib/itembook/checker.ts`) 두 경로가 있다. 분자는 두 경로 모두 **그 컬렉션에 장착된 슬롯의 배지**만 센다.
+`lib/itembook/checker.ts`) 두 경로가 있다. 분자는 두 경로 모두 **그 컬렉션에 장착된 슬롯의 배지**만 센다. 표시 쪽 `findCompletableItemBooks`(`lib/itembook/completable.ts`)도
+같은 기준으로 센다.
 
 | 항목 | 장착 RPC (mig/179) | 보정 함수 (`checker.ts`) |
 |---|---|---|
@@ -1768,8 +1769,13 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 | 완성 기록 | 최초 삽입 때만 잼 포인트 지급 | 기록만 upsert하고 보상 배지 발급, 잼 포인트는 주지 않는다 |
 | 소프트 삭제 배지 | 분모·분자에서 제외 (통일은 티켓 20260921_1114) | 분모·분자에 포함 (§3.16) |
 
-`computeBookCompletion`의 `filledByBook` 옵션이 북별 분자 계산을 맡는다. 옵션이 없으면 `filledBadgeIds` 하나를 모든 북에
-공통으로 쓴다(`completable.ts` 표시 쪽이 이 방식이며, 기준 정리는 티켓 20260921_1114·1129 소관이다).
+`computeBookCompletion`의 `filledByBook` 옵션이 북별 분자 계산을 맡는다. 북별 집합은 순수 함수 `buildFilledByBook`
+(`lib/itembook/filled-by-book.ts`)이 만들고, 보정 함수(`checker.ts`)와 `completable.ts`가 같은 함수를 쓴다(티켓
+20260926_1344). `completable.ts`의 잔여 칸 계산(`remaining`)도 그 북의 집합을 기준으로 한다. 옵션이 없으면
+`filledBadgeIds` 하나를 모든 북에 공통으로 쓰는데, 2026-09-26 기준 `filledByBook`을 넘기는 곳은 이 두 파일뿐이고 나머지 호출부
+(`badges/page.tsx`, `collections/[id]/page.tsx`, `[username]/collections/page.tsx`, `api/itembooks/route.ts`,
+`api/users/[username]/itembooks/route.ts`, `today/exposure.ts`·`status.ts`, `notifications/batch/collections.ts`)는 이 방식이다.
+그 호출부의 기준 정리는 티켓 20260921_1114·1129와 20260926_1356 소관이다.
 
 ### 3.17 POI 활성화 상태(`poi.is_active`)와 판정 로직 연동 (2026-08-30, 티켓 20260830_1620)
 
