@@ -35,6 +35,9 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 const READ_TOKEN = 'test-admin-read-token'
+const P1 = '3f2a9c1e-0000-4000-8000-0000000000a1'
+const P2 = '3f2a9c1e-0000-4000-8000-0000000000a2'
+const MISSING = '3f2a9c1e-0000-4000-8000-0000000000ff'
 
 const { GET, DELETE } = await import('../route')
 
@@ -64,7 +67,7 @@ afterEach(() => {
 describe('GET', () => {
   it('무권한이면 403이고 DB를 조회하지 않는다(티켓 20260925_0240)', async () => {
     sessionUser = null
-    const res = await GET(req(), params('p1'))
+    const res = await GET(req(), params(P1))
     expect(res.status).toBe(403)
     expect(fromMock).not.toHaveBeenCalled()
   })
@@ -85,7 +88,7 @@ describe('GET', () => {
       error: null,
     })
     fromMock.mockImplementation(() => presetsBuilder)
-    const res = await GET(req({ 'x-admin-read-token': READ_TOKEN }), params('p1'))
+    const res = await GET(req({ 'x-admin-read-token': READ_TOKEN }), params(P1))
     const body = await res.json()
     expect(res.status).toBe(200)
     expect(body.preset).toMatchObject({ id: 'p1', targetType: 'home_feed' })
@@ -93,13 +96,31 @@ describe('GET', () => {
 
   it('세션 없이 잘못된 토큰이면 403이고 DB를 조회하지 않는다(티켓 20260926_1203)', async () => {
     sessionUser = null
-    const res = await GET(req({ 'x-admin-read-token': 'wrong-token' }), params('p1'))
+    const res = await GET(req({ 'x-admin-read-token': 'wrong-token' }), params(P1))
     expect(res.status).toBe(403)
     expect(fromMock).not.toHaveBeenCalled()
   })
 
+  it.each(['3', 'p1', 'not-a-uuid', '3f2a9c1e-0000-4000-8000-0000000000a'])(
+    '형식이 틀린 id(%s)는 400이고 DB를 조회하지 않는다(티켓 20260926_1509)',
+    async (badId) => {
+      const res = await GET(req(), params(badId))
+      expect(res.status).toBe(400)
+      expect(fromMock).not.toHaveBeenCalled()
+    }
+  )
+
+  it('DB 오류가 나면 500이고 오류 원문을 응답에 싣지 않는다(티켓 20260926_1509)', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    presetsBuilder = makeQueryBuilder({ data: null, error: { message: 'invalid input syntax for type uuid: "3"' } })
+    fromMock.mockImplementation(() => presetsBuilder)
+    const res = await GET(req(), params(P1))
+    expect(res.status).toBe(500)
+    expect(JSON.stringify(await res.json())).not.toContain('invalid input syntax')
+  })
+
   it('없으면 404', async () => {
-    const res = await GET(req(), params('missing'))
+    const res = await GET(req(), params(MISSING))
     expect(res.status).toBe(404)
   })
 
@@ -122,7 +143,7 @@ describe('GET', () => {
     })
     fromMock.mockImplementation(() => presetsBuilder)
 
-    const res = await GET(req(), params('p2'))
+    const res = await GET(req(), params(P2))
     const body = await res.json()
     expect(res.status).toBe(200)
     expect(body.preset.targetType).toBe('mission')
@@ -147,7 +168,7 @@ describe('GET', () => {
     })
     fromMock.mockImplementation(() => presetsBuilder)
 
-    const res = await GET(req(), params('p1'))
+    const res = await GET(req(), params(P1))
     const body = await res.json()
     expect(res.status).toBe(200)
     expect(body.preset.layers[0].content).toBe('')

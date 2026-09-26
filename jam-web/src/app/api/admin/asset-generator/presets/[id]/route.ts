@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser, requireAdminRead } from '@/lib/admin/auth'
 import { APPLY_GENERATED_IMAGE_BUCKET } from '@/lib/admin/applyGeneratedImageConstants'
 import { isSafePresetPathSegment } from '@/lib/admin/presetStoragePath'
+import { isUuid } from '@/lib/admin/uuid'
 import { toAssetPreset, type AssetPresetRow } from '@/lib/asset-generator'
 
 /**
@@ -15,13 +16,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (denied) return denied
 
   const { id } = await params
+  // 프리셋 id는 uuid 컬럼이라 형식이 틀린 값이 `.eq`까지 가면 DB 오류 원문이 응답에 실린다.
+  // 조회 전에 거절한다(티켓 20260926_1509).
+  if (!isUuid(id)) {
+    return NextResponse.json({ error: '프리셋 ID 형식이 올바르지 않습니다.' }, { status: 400 })
+  }
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('asset_presets')
     .select('id, name, target_type, stage_ratio, layers, created_by, created_at, updated_at')
     .eq('id', id)
     .maybeSingle()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[/api/admin/asset-generator/presets/[id]] 조회 오류:', error)
+    return NextResponse.json({ error: '프리셋 조회 중 오류가 발생했습니다.' }, { status: 500 })
+  }
   if (!data) return NextResponse.json({ error: '프리셋을 찾을 수 없습니다.' }, { status: 404 })
 
   return NextResponse.json({ preset: toAssetPreset(data as AssetPresetRow) })
