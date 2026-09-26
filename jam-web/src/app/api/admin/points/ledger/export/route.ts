@@ -13,6 +13,9 @@ import { LEDGER_COLUMNS, ledgerReasonLabel, type LedgerRow } from '@/lib/admin/p
  */
 const CHUNK_SIZE = 200
 
+// DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1603). 현상 → 원인 → 해결책 순서.
+const READ_ERROR_MESSAGE = '내보낼 원장 정보를 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+
 function formatKstDateTime(iso: string): string {
   return new Date(iso).toLocaleString('ko-KR', {
     timeZone: 'Asia/Seoul',
@@ -40,7 +43,10 @@ export async function POST(req: NextRequest) {
   for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
     const chunk = uniqueIds.slice(i, i + CHUNK_SIZE)
     const { data, error } = await supabase.from('point_transactions').select(LEDGER_COLUMNS).in('id', chunk)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('[points ledger export] 원장 조회 오류:', error.message)
+      return NextResponse.json({ error: READ_ERROR_MESSAGE }, { status: 500 })
+    }
     rows.push(...((data ?? []) as LedgerRow[]))
   }
   rows.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0))
@@ -50,7 +56,10 @@ export async function POST(req: NextRequest) {
   for (let i = 0; i < userIds.length; i += CHUNK_SIZE) {
     const chunk = userIds.slice(i, i + CHUNK_SIZE)
     const { data, error } = await supabase.from('users').select('id, username').in('id', chunk)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('[points ledger export] 유저 이름 조회 오류:', error.message)
+      return NextResponse.json({ error: READ_ERROR_MESSAGE }, { status: 500 })
+    }
     for (const u of data ?? []) usernameById.set(u.id, u.username)
   }
 
