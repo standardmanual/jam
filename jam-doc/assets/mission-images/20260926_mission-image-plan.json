@@ -1,0 +1,299 @@
+{
+ "preset": "98562783-36c9-44aa-8fba-3c4793608f28",
+ "items": [
+  {
+   "title": "바퀴 자국의 증명",
+   "condition": "2주 330km",
+   "bg": "#E8C39E",
+   "end": "#B98A5B",
+   "expectCount": 2
+  },
+  {
+   "title": "지평선의 증명",
+   "condition": "130km 2회",
+   "bg": "#FFC48C",
+   "end": "#E88FA0",
+   "expectCount": 1
+  },
+  {
+   "title": "추위와 더위의 증명",
+   "condition": "두 달 각 500km",
+   "bg": "#9FD3F5",
+   "end": "#FFB37A",
+   "expectCount": 1
+  },
+  {
+   "title": "이어진 바퀴의 증명",
+   "condition": "3일 연속, 매주 1회",
+   "bg": "#8FE0D0",
+   "end": "#6FB1E8",
+   "expectCount": 2
+  },
+  {
+   "title": "속도의 증명",
+   "condition": "30km 25km/h 3회",
+   "bg": "#FFE066",
+   "end": "#FF9F45",
+   "expectCount": 2
+  },
+  {
+   "title": "주말의 증명",
+   "condition": "3주 연속 주 3회",
+   "bg": "#D9C2F0",
+   "end": "#F4A6C8",
+   "expectCount": 2
+  },
+  {
+   "title": "빈 안장의 증명",
+   "condition": "100km 3회, 다음 날 휴식",
+   "bg": "#E6E1D3",
+   "end": "#B7C4B0",
+   "expectCount": 1
+  },
+  {
+   "title": "언덕의 증명",
+   "condition": "상승 1,200m 2회",
+   "bg": "#B5E08A",
+   "end": "#6FBF73",
+   "expectCount": 1
+  },
+  {
+   "title": "긴 산행의 증명",
+   "condition": "6시간 2회",
+   "bg": "#9BD19B",
+   "end": "#4FA37A",
+   "expectCount": 1
+  },
+  {
+   "title": "이어진 능선의 증명",
+   "condition": "3일 연속",
+   "bg": "#B8C9F0",
+   "end": "#8FA8D9",
+   "expectCount": 1
+  },
+  {
+   "title": "높이의 증명",
+   "condition": "상승 1,000m, 고도 1,200m",
+   "bg": "#A9DDF5",
+   "end": "#E6F3FA",
+   "expectCount": 2
+  },
+  {
+   "title": "돌아오는 산의 증명",
+   "condition": "6개월 연속 월 2회",
+   "bg": "#F2B68A",
+   "end": "#D97C5B",
+   "expectCount": 1
+  },
+  {
+   "title": "쌓인 고도의 증명",
+   "condition": "2개월 상승 5,000m",
+   "bg": "#C9CED6",
+   "end": "#8E9BAA",
+   "expectCount": 2
+  },
+  {
+   "title": "발길의 증명",
+   "condition": "3개월 연속 월 4회",
+   "bg": "#DDBB8E",
+   "end": "#A98058",
+   "expectCount": 2
+  },
+  {
+   "title": "하산 뒤의 증명",
+   "condition": "5시간 2회, 다음 날 휴식",
+   "bg": "#F5C6A5",
+   "end": "#C9A3D9",
+   "expectCount": 1
+  },
+  {
+   "title": "눈과 볕의 증명",
+   "condition": "두 달 각 상승 1,800m",
+   "bg": "#D6EAFB",
+   "end": "#FFD76A",
+   "expectCount": 1
+  },
+  {
+   "title": "연이은 날의 증명",
+   "condition": "7일 연속",
+   "bg": "#F59A8B",
+   "end": "#E5644F",
+   "expectCount": 1
+  },
+  {
+   "title": "먼 하루의 증명",
+   "condition": "25km 2회",
+   "bg": "#F9D580",
+   "end": "#F29B6B",
+   "expectCount": 1
+  },
+  {
+   "title": "쉼표의 증명",
+   "condition": "4주 연속 주 4회",
+   "bg": "#BFEAD9",
+   "end": "#9DC7E8",
+   "expectCount": 1
+  },
+  {
+   "title": "사계의 증명",
+   "condition": "두 달 각 120km",
+   "bg": "#F7C6D9",
+   "end": "#B5E3A0",
+   "expectCount": 1
+  },
+  {
+   "title": "쌓인 거리의 증명",
+   "condition": "2주 80km",
+   "bg": "#C3CCD9",
+   "end": "#7F94AD",
+   "expectCount": 2
+  },
+  {
+   "title": "페이스의 증명",
+   "condition": "10km 5:30/km 3회",
+   "bg": "#7FDBE8",
+   "end": "#4FA8E8",
+   "expectCount": 1
+  },
+  {
+   "title": "시간표의 증명",
+   "condition": "새벽·밤 각 2회",
+   "bg": "#F6C58F",
+   "end": "#7F8FD9",
+   "expectCount": 2
+  },
+  {
+   "title": "반복의 증명",
+   "condition": "3주 연속 주 4회",
+   "bg": "#C7B8F0",
+   "end": "#8FB5F0",
+   "expectCount": 1
+  },
+  {
+   "title": "울트라의 증명",
+   "condition": "42km",
+   "bg": "#F59E7A",
+   "end": "#D0687F",
+   "expectCount": 1
+  },
+  {
+   "title": "이어 달린 산길의 증명",
+   "condition": "3일 연속, 매주 1회",
+   "bg": "#B9D88C",
+   "end": "#8DB577",
+   "expectCount": 2
+  },
+  {
+   "title": "오르막의 증명",
+   "condition": "25km·800m 2회",
+   "bg": "#F2B85F",
+   "end": "#D9805A",
+   "expectCount": 1
+  },
+  {
+   "title": "수직의 증명",
+   "condition": "상승 1,500m, 고도 1,200m",
+   "bg": "#8FD9D0",
+   "end": "#5FA8D9",
+   "expectCount": 2
+  },
+  {
+   "title": "해뜨기 전의 증명",
+   "condition": "3주 연속 새벽 활동",
+   "bg": "#F9C5D5",
+   "end": "#F7E08A",
+   "expectCount": 2
+  },
+  {
+   "title": "사철 산길의 증명",
+   "condition": "두 달 각 120km",
+   "bg": "#C6E28F",
+   "end": "#F0B27A",
+   "expectCount": 1
+  },
+  {
+   "title": "오르내린 거리의 증명",
+   "condition": "2주 80km, 1,600m",
+   "bg": "#A5D8B5",
+   "end": "#E3C58F",
+   "expectCount": 2
+  },
+  {
+   "title": "내리막 뒤의 증명",
+   "condition": "25km 2회, 다음 날 휴식",
+   "bg": "#C9B6E8",
+   "end": "#8FC9C0",
+   "expectCount": 1
+  },
+  {
+   "title": "요일의 증명",
+   "condition": "5개 요일 활동",
+   "bg": "#FFD1DC",
+   "end": "#FFE9A8",
+   "expectCount": 1
+  },
+  {
+   "title": "리듬의 증명",
+   "condition": "3주 연속 주 3회",
+   "bg": "#C9E4F5",
+   "end": "#F5C9E4",
+   "expectCount": 1
+  },
+  {
+   "title": "이정표의 증명",
+   "condition": "8km",
+   "bg": "#F0D9A8",
+   "end": "#C4A46A",
+   "expectCount": 1
+  },
+  {
+   "title": "회복의 증명",
+   "condition": "4주 연속 주 3회",
+   "bg": "#BDE8C9",
+   "end": "#A7CFE8",
+   "expectCount": 1
+  },
+  {
+   "title": "누적의 증명",
+   "condition": "2주 20km",
+   "bg": "#D5D9E0",
+   "end": "#A8B8CC",
+   "expectCount": 1
+  },
+  {
+   "title": "연속의 증명",
+   "condition": "7일 연속",
+   "bg": "#F7B5A0",
+   "end": "#F7D9A0",
+   "expectCount": 1
+  },
+  {
+   "title": "계절의 증명",
+   "condition": "두 달 각 30km",
+   "bg": "#A9DEAA",
+   "end": "#F5D08F",
+   "expectCount": 1
+  },
+  {
+   "title": "시간의 증명",
+   "condition": "새벽·낮·밤 각 2회",
+   "bg": "#FFE0A3",
+   "end": "#9FB2E8",
+   "expectCount": 1
+  },
+  {
+   "title": "그루터기 살롱의 겨울 채비",
+   "condition": "활동 4회",
+   "bg": "#E8D2B0",
+   "end": "#A9BCD0",
+   "expectCount": 1
+  },
+  {
+   "title": "겹쳐진 도시의 새 얼굴",
+   "condition": "활동 2회",
+   "bg": "#CBD5D9",
+   "end": "#9CC7A5",
+   "expectCount": 1
+  }
+ ]
+}
