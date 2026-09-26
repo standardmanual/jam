@@ -655,6 +655,63 @@ try {
   out = await runServed(['--url', s.url])
   assert.deepEqual([out.status, out.stdout], [0, 'dpl_OTHER1'], `다른 출처에 쿠키가 넘어갔다:\n${out.stderr}`)
 
+  // 쿠키 삭제 응답: Max-Age<=0이거나 값이 비면 저장소에서 그 쿠키만 지운다(티켓 20260926_1410).
+  // 1단계에서 sid·theme를 받고, 2단계에서 sid를 삭제 형태로 다시 내려 주면 3단계 요청에는 theme만 실려야 한다.
+  // Expires는 처리하지 않는다 — 현재 동작을 그대로 기록한다(Expires만으로는 지워지지 않는다).
+  for (const [label, deleteLine, expectCookie] of [
+    ['Max-Age=0', 'sid=abc123; Path=/; Max-Age=0', 'theme=dark'],
+    ['Max-Age=-1', 'sid=abc123; Path=/; Max-Age=-1', 'theme=dark'],
+    ['대문자 MAX-AGE=0', 'sid=abc123; Path=/; MAX-AGE=0', 'theme=dark'],
+    ['빈 값', 'sid=; Path=/', 'theme=dark'],
+    ['Max-Age가 양수면 삭제가 아니다', 'sid=abc123; Path=/; Max-Age=60', 'sid=abc123; theme=dark'],
+    ['Expires만으로는 지우지 않는다(현재 동작)', 'sid=abc123; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT', 'sid=abc123; theme=dark'],
+  ]) {
+    let cookieAtStep3
+    s = await serve((req, res) => {
+      if (req.url === '/') {
+        res.statusCode = 302
+        res.setHeader('set-cookie', ['sid=abc123; Path=/', 'theme=dark; Path=/'])
+        res.setHeader('location', '/step2')
+        res.end()
+      } else if (req.url === '/step2') {
+        res.statusCode = 302
+        res.setHeader('set-cookie', deleteLine)
+        res.setHeader('location', '/step3')
+        res.end()
+      } else {
+        cookieAtStep3 = req.headers.cookie
+        res.end(page('dpl_COOKIE1'))
+      }
+    })
+    out = await runServed(['--url', s.url])
+    assert.deepEqual([out.status, out.stdout], [0, 'dpl_COOKIE1'], `${label}: 끝까지 따라가지 못했다:\n${out.stderr}`)
+    assert.equal(cookieAtStep3, expectCookie, `${label}: 3단계 요청에 실린 쿠키가 다르다`)
+  }
+
+  // 남은 쿠키가 하나도 없으면 cookie 헤더 자체를 보내지 않는다
+  {
+    let cookieAtStep3 = 'unset'
+    s = await serve((req, res) => {
+      if (req.url === '/') {
+        res.statusCode = 302
+        res.setHeader('set-cookie', 'sid=abc123; Path=/')
+        res.setHeader('location', '/step2')
+        res.end()
+      } else if (req.url === '/step2') {
+        res.statusCode = 302
+        res.setHeader('set-cookie', 'sid=abc123; Path=/; Max-Age=0')
+        res.setHeader('location', '/step3')
+        res.end()
+      } else {
+        cookieAtStep3 = req.headers.cookie
+        res.end(page('dpl_COOKIE2'))
+      }
+    })
+    out = await runServed(['--url', s.url])
+    assert.deepEqual([out.status, out.stdout], [0, 'dpl_COOKIE2'], `마지막 쿠키를 지운 뒤 끝까지 따라가지 못했다:\n${out.stderr}`)
+    assert.equal(cookieAtStep3, undefined, '지워서 비었으면 cookie 헤더가 없어야 한다')
+  }
+
   const dead = await deadPort()
   out = await runServed(['--url', dead])
   assert.deepEqual([out.status, out.stdout], [2, ''], '연결이 거부되면 2')
