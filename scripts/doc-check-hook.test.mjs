@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -199,6 +199,125 @@ test('docs/agents/workflow/ 밖 파일 수정은 동결과 무관하게 통과�
   write(dir, 'docs/a.md', '본문\n고친 줄\n')
   const r = commit(dir)
   assert.equal(r.status, 0, r.stderr)
+})
+
+// ── ⑨ 블록이 무력화된 훅을 check-contract가 잡는가 (티켓 20260922_1401) ─────────────────────
+// 임시 저장소에 훅·check-contract·최소 contract.json만 복사해 그 저장소 안에서 검사기를 돌린다.
+// 실제 저장소의 계약·훅은 읽지도 고치지도 않는다.
+const readHook = () => readFileSync(join(ROOT, '.githooks/pre-commit'), 'utf8')
+
+// ⑨ 동결 블록(`"docs/agents/workflow/"*)` 분기부터 그 case를 닫는 `;;`까지)을 줄마다 주석 처리한다.
+// 문자열은 주석 안에 그대로 남으므로 옛 방식(문자열 존재 대조)은 이 훅을 통과시킨다.
+function commentOutFreezeBlock(hook) {
+  const lines = hook.split('\n')
+  const start = lines.findIndex((l) => l.includes('"docs/agents/workflow/"*)'))
+  assert.ok(start >= 0, '훅에서 ⑨ 블록을 찾지 못했다')
+  let end = -1
+  let sawEsac = false
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^\s*esac\s*$/.test(lines[i])) sawEsac = true
+    if (sawEsac && /^\s*;;\s*$/.test(lines[i])) {
+      end = i
+      break
+    }
+  }
+  assert.ok(end > start, '⑨ 블록의 끝을 찾지 못했다')
+  return lines.map((l, i) => (i >= start && i <= end ? `# ${l}` : l)).join('\n')
+}
+
+function makeContractRepo({ hook = readHook(), spec = { frozen_prefix: 'docs/agents/workflow/', exempt_file: 'docs/agents/workflow/README.md' } } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'contract-freeze-test-'))
+  tmpDirs.push(dir)
+  run('git', ['init', '-q'], dir)
+  write(dir, '.githooks/pre-commit', hook)
+  write(dir, 'docs/agents/contract.json', JSON.stringify({ workflow_freeze: spec, deploy_gate: { rollback_sql_required_from: 1, public_routes: [] } }))
+  mkdirSync(join(dir, 'scripts'))
+  copyFileSync(join(ROOT, 'scripts/check-contract.mjs'), join(dir, 'scripts/check-contract.mjs'))
+  copyFileSync(join(ROOT, 'scripts/deploy-gate.mjs'), join(dir, 'scripts/deploy-gate.mjs'))
+  return dir
+}
+const checkContract = (dir) => run('node', ['scripts/check-contract.mjs'], dir)
+
+test('⑨ 블록을 주석 처리한 훅은 동결 폴더 파일 커밋을 막지 못한다(재현)', () => {
+  const dir = makeRepo()
+  write(dir, '.githooks/pre-commit', commentOutFreezeBlock(readHook()))
+  write(dir, 'docs/agents/workflow/02_결정사항.md', '내용\n')
+  const r = commit(dir)
+  assert.equal(r.status, 0, '무력화된 훅이면 동결 폴더 파일이 통과해야 재현이다')
+})
+
+test('check-contract: 온전한 훅은 동결 실동작 검사를 통과한다', () => {
+  const r = checkContract(makeContractRepo())
+  assert.equal(r.status, 0, r.stderr)
+})
+
+test('check-contract: ⑨ 블록을 주석 처리한 훅은 위반으로 잡는다', () => {
+  const dir = makeContractRepo({ hook: commentOutFreezeBlock(readHook()) })
+  const r = checkContract(dir)
+  assert.equal(r.status, 1, r.stdout + r.stderr)
+  assert.match(r.stderr, /\[workflow_freeze\]/)
+  assert.match(r.stderr, /무력화/)
+})
+
+test('check-contract: workflow_freeze 절에서 frozen_prefix 키를 빼면 위반으로 잡는다', () => {
+  const r = checkContract(makeContractRepo({ spec: { exempt_file: 'docs/agents/workflow/README.md' } }))
+  assert.equal(r.status, 1, r.stdout + r.stderr)
+  assert.match(r.stderr, /\[workflow_freeze\]/)
+  assert.match(r.stderr, /동결 대상 경로가 없습니다/)
+})
+
+test('check-contract: workflow_freeze 절에서 exempt_file 키를 빼면 위반으로 잡는다', () => {
+  const r = checkContract(makeContractRepo({ spec: { frozen_prefix: 'docs/agents/workflow/' } }))
+  assert.equal(r.status, 1, r.stdout + r.stderr)
+  assert.match(r.stderr, /예외 파일이 없습니다/)
+})
+
+// ── 현황판 스크립트만 바뀐 커밋 경고 (티켓 20260918_1251) — 경고만 하고 차단하지 않는다 ────────────
+const DASH_SCRIPT = 'scripts/ticket-dashboard.mjs'
+const DASH_DOC = '.claude/skills/jam-work/references/dashboard-format.md'
+
+test('ticket-dashboard.mjs만 바뀐 커밋은 경고를 내되 통과한다', () => {
+  const dir = makeRepo()
+  write(dir, DASH_SCRIPT, '// 수정\n')
+  const r = commit(dir)
+  assert.equal(r.status, 0, r.stderr)
+  assert.match(r.stderr, /경고\(pre-commit\): scripts\/ticket-dashboard\.mjs를 고쳤는데 dashboard-format\.md가/)
+})
+
+test('ticket-dashboard.mjs와 dashboard-format.md를 함께 고친 커밋은 경고가 없다', () => {
+  const dir = makeRepo()
+  write(dir, DASH_SCRIPT, '// 수정\n')
+  write(dir, DASH_DOC, '형식\n')
+  const r = commit(dir)
+  assert.equal(r.status, 0, r.stderr)
+  assert.doesNotMatch(r.stderr, /dashboard-format/)
+})
+
+test('현황판과 무관한 커밋에는 현황판 경고가 없다', () => {
+  const dir = makeRepo()
+  write(dir, 'docs/a.md', '본문\n고친 줄\n')
+  const r = commit(dir)
+  assert.equal(r.status, 0, r.stderr)
+  assert.doesNotMatch(r.stderr, /ticket-dashboard/)
+})
+
+test('dashboard-format.md만 바뀐 커밋에도 경고가 없다', () => {
+  const dir = makeRepo()
+  write(dir, DASH_DOC, '형식\n')
+  const r = commit(dir)
+  assert.equal(r.status, 0, r.stderr)
+  assert.doesNotMatch(r.stderr, /ticket-dashboard/)
+})
+
+// ── INDEX.md 병합 충돌 재생성 안내 (티켓 20260921_1412) ────────────────────────────────────
+test('INDEX.md가 낡아 차단될 때 병합 충돌 재생성 안내가 나온다', () => {
+  const dir = makeRepo()
+  copyFileSync(join(ROOT, 'scripts/gen-doc-index.mjs'), join(dir, 'scripts/gen-doc-index.mjs'))
+  write(dir, 'docs/specs/INDEX.md', '<<<<<<< HEAD\n충돌 표시\n=======\n>>>>>>> other\n')
+  const r = commit(dir)
+  assert.notEqual(r.status, 0, r.stderr)
+  assert.match(r.stderr, /병합 충돌로 docs\/specs\/INDEX\.md에 충돌 표시가 남았다면/)
+  assert.match(r.stderr, /node scripts\/gen-doc-index\.mjs/)
 })
 
 for (const d of tmpDirs) rmSync(d, { recursive: true, force: true })
