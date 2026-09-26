@@ -14,12 +14,16 @@
  *   --preset <프리셋 id> --bg "#ff1a00" --end "#ff4dff" --text "배지 이름" \
  *   --out /absolute/path/out.png [--seed 123]
  * ```
- * 성공하면 표준 출력에 `{ out, seed, preset, stage: { w, h } }` JSON 한 줄을 찍는다.
+ * 성공하면 표준 출력에 `{ out, seed, preset, stage: { w, h }, presetSource }` JSON 한 줄을 찍는다
+ * (`presetSource`는 프리셋을 받은 경로: `admin-api` | `service-role`).
  * 인자 누락·프리셋 없음·글꼴 다운로드 실패 등 어떤 오류든 한국어 메시지를 stderr에 찍고
  * 종료 코드 1로 끝난다(기본 글꼴로 조용히 대체하지 않는다 — PRD §8 완료 조건).
  *
- * 필요 환경변수(`.env.local`, 기존 `jam-web/scripts/recraft/*.js`와 같은 이름):
- * `NEXT_PUBLIC_SUPABASE_URL` · `SUPABASE_SERVICE_ROLE_KEY`
+ * 필요 환경변수 — `.env.local`과 `process.env`를 합쳐 읽고 `process.env`가 우선한다.
+ * 프리셋 조회 경로는 아래 둘 중 하나가 갖춰지면 된다(둘 다 있으면 어드민 읽기 API 우선):
+ * - 어드민 읽기 API(예약 실행 환경): `ADMIN_API_BASE_URL` · `ADMIN_API_READ_TOKEN`
+ * - 서비스 롤 키(로컬 세션, 기존 `jam-web/scripts/recraft/*.js`와 같은 이름):
+ *   `NEXT_PUBLIC_SUPABASE_URL` · `SUPABASE_SERVICE_ROLE_KEY`
  *
  * ## 실행 방식(tsx vs 사전 번들) — 사용자 지시(2026-09-25)로 둘 중 하나를 정함
  * `jam-web/scripts/asset-generator/build-prototype.mjs`는 esbuild로 브라우저용 번들 파일을
@@ -60,7 +64,6 @@ import { createClient } from '@supabase/supabase-js'
 import { deriveRibbonFromSeed } from '../../src/lib/asset-generator/random'
 import { buildPath } from '../../src/lib/asset-generator/curve'
 import { buildStamp, drawRibbonLayer, drawImageLayer, drawTextLayer, fillBackground } from '../../src/lib/asset-generator/render'
-import { deserializePresetLayers } from '../../src/lib/asset-generator/presetSerialize'
 import { resolveStageSize, generateRandomSeed, isSystemDefaultFont } from '../../src/app/admin/asset-generator/assetGeneratorHelpers'
 
 import { serverCanvasFactory, getServerContext, loadImageAsCanvas, cropToAlphaBounds, serverImageLoader } from './serverCanvas'
@@ -68,31 +71,39 @@ import { brandLetterSvgMarkup } from './brandLetters.mjs'
 import { createServerFontLoader } from './fonts.mjs'
 import { parseRenderArgs } from './renderArgs.mjs'
 import { loadEnv } from '../lib/loadEnv.mjs'
+import { fetchPresetFromAdminApi, normalizePreset, pickPresetSource, resolveEnv } from './presetSource.mjs'
 
 async function main() {
   const args = parseRenderArgs(process.argv.slice(2))
 
-  const env = loadEnv()
-  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !serviceKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL·SUPABASE_SERVICE_ROLE_KEY가 .env.local에 없어요.')
+  // `.env.local`과 `process.env`를 합친다(process.env 우선) — 예약 환경은 process.env로만 값을 준다.
+  const env = resolveEnv(loadEnv(), process.env)
+  const picked = pickPresetSource(env)
+
+  let preset
+  if (picked.source === 'admin-api') {
+    preset = await fetchPresetFromAdminApi({
+      baseUrl: picked.baseUrl,
+      token: picked.token,
+      presetId: args.preset,
+    })
+  } else {
+    const supabase = createClient(picked.supabaseUrl, picked.serviceKey)
+    const { data, error } = await supabase
+      .from('asset_presets')
+      .select('id, name, target_type, stage_ratio, layers, created_by, created_at, updated_at')
+      .eq('id', args.preset)
+      .maybeSingle()
+    if (error) throw new Error(`프리셋 조회에 실패했어요: ${error.message}`)
+    if (!data) throw new Error(`프리셋을 찾을 수 없어요: ${args.preset}`)
+    preset = normalizePreset(data)
   }
-  const supabase = createClient(supabaseUrl, serviceKey)
 
-  const { data, error } = await supabase
-    .from('asset_presets')
-    .select('id, name, target_type, stage_ratio, layers, created_by, created_at, updated_at')
-    .eq('id', args.preset)
-    .maybeSingle()
-  if (error) throw new Error(`프리셋 조회에 실패했어요: ${error.message}`)
-  if (!data) throw new Error(`프리셋을 찾을 수 없어요: ${args.preset}`)
-
-  const { width: stageWidth, height: stageHeight } = resolveStageSize(data.stage_ratio)
+  const { width: stageWidth, height: stageHeight } = resolveStageSize(preset.stageRatio)
 
   // 텍스트 레이어의 content는 --text로 채운다(PRD §8). 프리셋에 텍스트 레이어가 여럿이면
   // 전부 같은 값으로 채운다 — CLI 인자가 하나뿐이라 구분할 방법이 없다.
-  const overlayLayers = deserializePresetLayers(data.layers ?? []).map((layer) =>
+  const overlayLayers = preset.layers.map((layer) =>
     layer.type === 'text' ? { ...layer, content: args.text } : layer
   )
 
@@ -188,7 +199,7 @@ async function main() {
   fs.mkdirSync(path.dirname(args.out), { recursive: true })
   fs.writeFileSync(args.out, buffer)
 
-  console.log(JSON.stringify({ out: args.out, seed: masterSeed, preset: args.preset, stage: { w: stageWidth, h: stageHeight } }))
+  console.log(JSON.stringify({ out: args.out, seed: masterSeed, preset: args.preset, stage: { w: stageWidth, h: stageHeight }, presetSource: picked.source }))
 }
 
 main().catch((e) => {
