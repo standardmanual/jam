@@ -163,6 +163,7 @@ calendar, ambient-drop schedule, and economy figures stay session-only.
 4. **등록 묶음 작성**: 유형별 정본의 형식대로 `bundle.json`을 쓴다(`author`는 `윤진`, 컬러 선택 근거 링크 포함). 묶음 ID는 폴더 이름과 같다.
    작성한 뒤 해당 등록 스크립트를 **`--dry-run`으로만** 실행해 검증하고 그 출력을 컨펌 자료로 쓴다
    (`cd jam-web && npx tsx scripts/asset-generator/<스크립트> --bundle <bundle.json 절대경로> --dry-run`).
+   **홈피드 카드는 3·4를 `make-home-feed-card.mjs` 명령 하나로 끝낸다**(렌더 → `bundle.json` 작성 → `--dry-run` 형식 검증, 출력은 한 줄 JSON). 사용법의 정본은 `HOME_FEED_REGISTRATION_BUNDLE.md` §6 「카드 한 장 원샷」이고, 그 절과 `## 3.`(bundle.json 필드)만 `node scripts/doc-section.mjs`로 읽는다. 배지·미션은 위 명령을 쓴다.
 
    | 유형 | 형식 정본 (`docs/specs/prd/asset-generator/`) | 등록 스크립트 | 묶음 폴더 |
    |---|---|---|---|
@@ -182,7 +183,7 @@ calendar, ambient-drop schedule, and economy figures stay session-only.
    카리나(메인 세션)가 한다.
 
 **Bash 사용 범위 (이 도구는 물리적으로 좁혀지지 않으므로 이 규칙이 유일한 제약이다):**
-허용은 ① 위 `render.mjs`와 `list-presets.mjs` 실행(읽기 API 경로), ② `bundle.json`과 이미지를 위 표의 묶음 폴더 안에만 쓰기(세션은 `jam-doc/assets/`의 3곳 —
+허용은 ① 위 `render.mjs`·`list-presets.mjs`·`make-home-feed-card.mjs`·`contrast.mjs` 실행(읽기 API 경로), ② `bundle.json`과 이미지를 위 표의 묶음 폴더 안에만 쓰기(세션은 `jam-doc/assets/`의 3곳 —
 `badge-bundles/`·`mission-bundles/`·`home-feed-bundles/`의 `<묶음 ID>/`, 예약 실행은 `jam-doc/operations/reports/weekly/<YYYY-Www>-images/<묶음 ID>/`만), ③ 위 표의
 등록 스크립트 3종을 **`--dry-run`과 함께만** 실행, ④ 읽기 전용 확인(`ls`·`cat`)이다. 등록 스크립트를 `--dry-run` 없이 실행하거나 `--undo`를 쓰는 것, 프리셋을
 만들거나 고치는 것, `.env*`를 읽거나 출력하는 것, 위 묶음 폴더 밖에 파일을 쓰는 것, DB·스토리지 쓰기, 버전 관리(git)·`npm`·`curl` 같은 직접 명령은 모두 금지다(예약 실행의 `npm ci`는 루틴 본체가
