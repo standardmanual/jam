@@ -2,9 +2,9 @@
 id: "20260926_1204"
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-26
-closed:
+closed: 2026-09-26
 parent: "20260926_1202"
 specs:
   - docs/specs/prd/asset-generator/PRD.md
@@ -48,27 +48,47 @@ specs:
 - `scripts/verify.sh`가 통과한다.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+- 프리셋 조회를 `presetSource.mjs`로 분리했다: `normalizePreset`(DB 행/API 응답 정규화, 이중 역직렬화 방지), `fetchPresetFromAdminApi`, `fetchPresetListFromAdminApi`(1209 CLI가 사용), `resolveEnv`(`.env.local`과 `process.env`를 합침, `process.env` 우선), `pickPresetSource`(API 변수가 둘 다 있으면 `admin-api`, 아니면 서비스 롤 변수가 있을 때 `service-role`, 둘 다 불가면 없는 변수명을 한국어로 알리고 종료 코드 1).
+- `render.mjs`는 위 경로로 프리셋을 받고 출력 JSON에 `presetSource`를 추가했다(기존 필드 유지). `createClient`는 서비스 롤 경로에서만 만든다. 공용 `loadEnv()`는 수정하지 않았다.
+- 404·401/403·네트워크 오류·기타 상태는 각각 한국어 메시지이고 토큰 값은 메시지에 넣지 않는다.
 
 ### 변경된 파일
 ```
--
+신규: jam-web/scripts/asset-generator/presetSource.mjs
+신규: jam-web/scripts/asset-generator/__tests__/presetSource.test.ts
+수정: jam-web/scripts/asset-generator/render.mjs
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `scripts/verify.sh` 통과, CI verify 성공(run 36214405697). 게이트(민지) WARN: 사유는 「staging 실측 미확인」 하나였고 실측은 카리나 담당으로 티켓에 명시돼 있었다. 아래 실측으로 해소.
+- [x] 자동 테스트 17건(상세 200·404·403·네트워크 오류·토큰 미노출·URL·헤더, 정규화 두 경로 동일, 목록 `home_feed`·200·403, 환경 선택 4경우와 둘 다 없음).
+- [x] 실측(2026-09-26, 로컬 개발 서버 + 임시 테스트 토큰): 같은 프리셋(`홈피드`)·색·텍스트·시드(12345)로 읽기 API 경로(`presetSource: admin-api`)와 서비스 롤 경로(`service-role`)를 각각 렌더한 결과 PNG의 SHA-1이 같다(`e458765…`, 905KB, 1280×1280). 
+- [ ] 예약(클라우드) 환경에서 서비스 롤 키 없이 도는지는 1205 시험 실행에서 확인한다(로컬에는 서비스 키가 있어 「키 없음」 상황을 재현하지 못했고, 그 분기는 자동 테스트가 검증한다).
 
-### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
+### UX Writing 검증
 - 사용자 노출 텍스트 없음 (내부 스크립트)
 
 ### 배포 정보
-- 배포일: 
-- 환경: 
-- 커밋: 
+- 배포일: 2026-09-26
+- 환경: staging(머지 `fd0ad0b1`, push `cfcf6438`)
+- 커밋: `bd596d36`
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1 (plan_only, 파일 6개) | 1 | 32,660 | 6,424 / 0 | 43초 | 9 |
+| 2 (plan_only, 100줄) | 1 | 42,944 | 7,197 / 0 | 1분 24초 | 15 |
+| 3 (면제 후 구현·게이트) | 2 | 96,721 | 20,159 / 3,979 | 11분 59초 | 34 |
+| 합계 | 4 | 172,325 | 33,780 / 3,979 | 14분 6초 | 58 |
 
 ### 주요 의사결정 / 핵심 메모
+- 원래 1204는 `list-presets.mjs`와 PRD §8까지 담아 파일 6개로 `plan_only`(1차)가 났고, 사용자 승인(2026-09-26)으로 1209로 분리했다.
+- 분리 뒤에도 파일 3개인데 신규 파일 줄 수만으로 「100줄 이상」에 걸려 2차 `plan_only`가 났다. **면제 부여 사유**: 구현 계획이 파일·함수 단위로 확정됐고(아현 계획을 카리나가 승인), 사용자가 분리안을 승인했다. 1단계 규모 사전 판정에서 신규 파일 줄 수를 미리 세지 못한 것이 원인이며, 두 번의 왕복으로 약 75k 토큰이 들었다(측정 방식 명시는 티켓 20260926_1223).
+- 1203이 머지되기 전 review 브랜치 단독으로는 `admin-api` 경로가 403으로 끝나는 것이 정상이었다(민지 참고). 머지 뒤 로컬 실측에서 200을 확인했다.
 
 ### 잔여 이슈
--
+- 예약 환경 실측은 1205.
