@@ -213,7 +213,7 @@ describe('formatHomeFeedDryRunSummary', () => {
     expect(text).toContain('- 상태: 활성(기간이 되면 바로 노출)');
     expect(text).toContain('- 시드: 20260925');
     expect(text).toContain('- 설명 텍스트: 30km 도전');
-    expect(text).toContain('- WebP 변환 미리 확인: 통과 (4.0KB, 긴 변 400px 이하)');
+    expect(text).toContain('- WebP 변환 미리 확인: 통과 (4.0KB, 긴 변 1280px 이하)');
     expect(text).toContain('- 제목·시작 일시 중복: 통과');
     expect(text).toContain('- 미션 존재: 건너뜀 — 서비스 키(.env.local)가 없어 DB를 읽지 않았어요');
     expect(text).toContain('today_cards/asset-generator/<새 카드 id>.png');

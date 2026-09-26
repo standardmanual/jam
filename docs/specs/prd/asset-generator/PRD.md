@@ -252,17 +252,16 @@ code:
 
 | 용도 | 제작 규격 | 서비스 적용 |
 |---|---|---|
-| 배지 대표 이미지 | 1:1 · 4:5 · 9:16, 긴 변 1280 원본 PNG | 긴 변 **400px**(표시 규격의 2배) 이하로 줄인 WebP |
+| 배지 대표 이미지 | 1:1 · 4:5 · 9:16, 긴 변 1280 원본 PNG | 긴 변 **1280px** 이하로 줄인 WebP(유형 구분 없이 통일, 원본이 더 작으면 확대하지 않음) |
 | 마케팅 소재 | 1:1 · 4:5 · 9:16, 긴 변 1280 | 서비스에 올리지 않음(PNG·MP4 다운로드) |
 
-- **400px 산출 근거(티켓 20260924_2200 실측, 코드 기준)**: `badges.image_url`을 그리는 서비스
-  컴포넌트를 전수 확인한 결과 최대 표시 크기는 `(main)/badges/[id]/BadgeHeroSection.tsx`의
-  200px이다. 그 외 `BadgeGridCard`·`BadgeTrophyGridCard` 90px, `(main)/drops/BadgeDetailSheet.tsx`
-  176px, `(main)/FeedSection.tsx` 112px·40px, `combine/CombineClient.tsx` 64px,
-  `PoiCarouselModal.tsx` 80px, `missions/[id]/MissionDetailClient.tsx` 52px,
-  `combine/RecipeRewardRow.tsx` 40px, 지도 마커(`MapView.tsx` `BADGE_MARKER_SIZE`) 24px 모두
-  200px보다 작다. 200 × 2 = **400px**. 변환 헬퍼는 `jam-web/src/lib/admin/badgeImageWebp.ts`
-  (`BADGE_IMAGE_WEBP_MAX_LONG_SIDE_PX`), sharp `resize({fit: 'inside'})`로 비율을 유지한다.
+- **1280px 산출 근거(티켓 20260926_2312, 코드 기준)**: 서비스에서 이 WebP를 가장 크게 그리는 곳은
+  `missions/[id]/MissionDetailClient.tsx`의 가로 전체 정사각형 이미지로, 최대 표시 크기가 640px
+  (`sizes="(max-width: 640px) 100vw, 640px"`)다. 고해상도(2배) 화면에서 선명하려면 640 × 2 =
+  **1280px**가 필요하다. 그보다 작은 칸(배지 그리드·홈피드 카드·지도 마커 등)은
+  `SafeImage`를 거친 Next 이미지 최적화가 화면 크기에 맞게 줄여 내려준다. 변환 헬퍼는
+  `jam-web/src/lib/admin/badgeImageWebp.ts`(`BADGE_IMAGE_WEBP_MAX_LONG_SIDE_PX`), sharp
+  `resize({fit: 'inside', withoutEnlargement: true})`로 비율을 유지하고 확대하지 않는다.
 - 원본 PNG와 WebP 축소본을 모두 저장소에 보관한다: `badges/asset-generator/{badgeId}.png`, `badges/asset-generator/{badgeId}.webp`.
   `image_url`은 WebP를 가리킨다.
 - 적용 파일 크기 상한은 기존 공용 함수와 같다(5MB, 원본 PNG 업로드 기준).
@@ -392,7 +391,7 @@ code:
   shadcn Tabs로 "제작"/"적용" 두 화면으로 나누고(`page.tsx`), 왼쪽 스테이지 캔버스는 탭과
   무관하게 공유한다(`ApplyTab.tsx`). 배지 검색·선택은 기존 `BadgeSearchSelect`를 재사용했다.
   적용 API(`/api/admin/asset-generator/apply`)는 원본 PNG를 `badges/asset-generator/{id}.png`에
-  보관하고 sharp(`lib/admin/badgeImageWebp.ts`)로 긴 변 400px WebP를 만들어
+  보관하고 sharp(`lib/admin/badgeImageWebp.ts`)로 긴 변 1280px WebP를 만들어
   `badges/asset-generator/{id}.webp`에 저장한 뒤, `image_url`을 WebP로, `image_source`를
   `admin-generator`로 갱신한다. 라벨·필터 옵션은 `lib/admin/contentImageSource.ts`(티켓
   20260925_1407에서 `badgeImageSource.ts`를 미션까지 공용으로 일반화)가 단일 출처이고, 어드민
