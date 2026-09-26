@@ -1,10 +1,12 @@
 /**
  * POST /api/admin/badges/list-bulk deactivate — 이미 비활성인 배지는 건너뛰고 `deleted_at`을 다시 쓰지
  * 않는다(티켓 20260924_1404). DB는 기록형 스텁이라 어떤 id에 어떤 갱신이 나갔는지 그대로 확인한다.
+ * 오류 경로·묶음 경계·빈 ids와 DB 오류 원문 미노출은 티켓 20260926_1345(1340·0238 일부)에서 채웠다.
  * 실행: cd jam-web && npx vitest run src/app/api/admin/badges/list-bulk/__tests__/route.test.ts
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
+import { confirmPhraseFor } from '@/lib/admin/bulk/shared'
 
 const ACTIVE = '00000000-0000-4000-8000-000000000001'
 const INACTIVE = '00000000-0000-4000-8000-000000000002'
@@ -14,6 +16,16 @@ const state = vi.hoisted(() => ({
   updates: [] as { patch: Record<string, unknown>; ids: string[] }[],
   dropCountIds: [] as string[][],
   sideEffectIds: [] as string[][],
+  /** badges 조회(`select().in()`)에 주입할 DB 오류 */
+  readError: null as { message: string } | null,
+  /** poi_drops 집계에 주입할 DB 오류 */
+  dropError: null as { message: string } | null,
+  /** badges 삭제에 주입할 DB 오류 */
+  deleteError: null as { message: string } | null,
+  /** badges 조회가 받은 id 묶음 — READ_CHUNK_SIZE 경계 확인용 */
+  readCalls: [] as string[][],
+  /** true면 ROWS에 없는 id도 활성 배지로 돌려준다(묶음 경계 테스트용) */
+  unknownAsActive: false,
 }))
 
 const ROWS = [
@@ -28,11 +40,21 @@ const fakeClient = {
         in: (_column: string, ids: string[]) => {
           if (table === 'poi_drops') {
             state.dropCountIds.push(ids)
-            const result = Promise.resolve({ count: 3, error: null })
+            const result = Promise.resolve({ count: state.dropError ? null : 3, error: state.dropError })
             return { eq: () => ({ is: () => result }) }
           }
-          return Promise.resolve({ data: ROWS.filter((r) => ids.includes(r.id)), error: null })
+          state.readCalls.push(ids)
+          if (state.readError) return Promise.resolve({ data: null, error: state.readError })
+          const data = state.unknownAsActive
+            ? ids.map((id) => ROWS.find((r) => r.id === id) ?? { id, name: `배지 ${id}`, deleted_at: null })
+            : ROWS.filter((r) => ids.includes(r.id))
+          return Promise.resolve({ data, error: null })
         },
+      }),
+      delete: () => ({
+        in: () => ({
+          select: () => Promise.resolve({ data: state.deleteError ? null : [], error: state.deleteError }),
+        }),
       }),
       update: (patch: Record<string, unknown>) => ({
         in: (_column: string, ids: string[]) => {
@@ -48,6 +70,17 @@ vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => fakeClient 
 vi.mock('@/lib/admin/auth', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/admin/auth')>()),
   getAdminUser: async () => ({ id: 'admin-1', email: 'me@jam.app' }),
+}))
+// 삭제 경로 오류 응답만 보려는 테스트라 참조 카운트는 「참조 없음」으로 고정한다.
+vi.mock('@/lib/admin/badge-references', async (importActual) => ({
+  ...(await importActual<typeof import('@/lib/admin/badge-references')>()),
+  collectBadgeReferences: async () => ({
+    counts: {},
+    total: 0,
+    blockingTotal: 0,
+    cascadeTotal: 0,
+    error: null,
+  }),
 }))
 vi.mock('@/lib/admin/badge-deactivate', () => ({
   runBadgeDeactivationSideEffects: async (_supabase: unknown, ids: string[]) => {
@@ -70,7 +103,13 @@ beforeEach(() => {
   state.updates = []
   state.dropCountIds = []
   state.sideEffectIds = []
+  state.readError = null
+  state.dropError = null
+  state.deleteError = null
+  state.readCalls = []
+  state.unknownAsActive = false
   vi.spyOn(console, 'info').mockImplementation(() => {})
+  vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 afterEach(() => {
   vi.restoreAllMocks()
@@ -107,6 +146,73 @@ describe('deactivate — 이미 비활성인 배지', () => {
     expect(data.skipped).toEqual([{ id: INACTIVE, label: '꺼진 배지', reason: '이미 비활성 상태입니다.' }])
     expect(data.impact).toEqual({ droppableCount: 3 })
     expect(state.dropCountIds).toEqual([[ACTIVE]])
+    expect(state.updates).toEqual([])
+  })
+})
+
+describe('오류 경로 — DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다', () => {
+  const RAW = 'connection reset by peer'
+
+  it('deactivate 사전 조회 오류: 500과 고정 한국어 문장, 갱신 없음, 원문은 로그', async () => {
+    state.readError = { message: RAW }
+    const res = await post({ ids: [ACTIVE], action: 'deactivate' })
+    expect(res.status).toBe(500)
+    const data = await res.json()
+    expect(data.error).toMatch(/^배지 정보를 불러오지 못했어요\./)
+    expect(JSON.stringify(data)).not.toContain(RAW)
+    expect(state.updates).toEqual([])
+    expect(console.error).toHaveBeenCalledWith(expect.any(String), RAW)
+  })
+
+  it('deactivate 미리보기의 드랍 수 집계 오류: 500과 고정 한국어 문장', async () => {
+    state.dropError = { message: RAW }
+    const res = await post({ ids: [ACTIVE], action: 'deactivate', dry_run: true })
+    expect(res.status).toBe(500)
+    const data = await res.json()
+    expect(data.error).toMatch(/^영향받는 드랍 수를 세지 못했어요\./)
+    expect(JSON.stringify(data)).not.toContain(RAW)
+    expect(console.error).toHaveBeenCalledWith(expect.any(String), RAW)
+  })
+
+  it('delete 삭제 오류: 500과 고정 한국어 문장', async () => {
+    state.deleteError = { message: RAW }
+    const res = await post({
+      ids: [ACTIVE],
+      action: 'delete',
+      confirm_phrase: confirmPhraseFor('삭제', 1),
+    })
+    expect(res.status).toBe(500)
+    const data = await res.json()
+    expect(data.error).toMatch(/^배지를 삭제하지 못했어요\./)
+    expect(JSON.stringify(data)).not.toContain(RAW)
+    expect(console.error).toHaveBeenCalledWith(expect.any(String), RAW)
+  })
+})
+
+describe('경계 입력', () => {
+  it('사전 조회는 200건씩 묶어 읽는다(201건이면 두 묶음)', async () => {
+    state.unknownAsActive = true
+    const ids = Array.from({ length: 201 }, (_, i) => `00000000-0000-4000-8000-${String(i + 100).padStart(12, '0')}`)
+    const res = await post({ ids, action: 'deactivate', dry_run: true })
+    expect(res.status).toBe(200)
+    expect(state.readCalls.map((c) => c.length)).toEqual([200, 1])
+    const data = await res.json()
+    expect(data.processed).toHaveLength(201)
+  })
+
+  it('정확히 200건이면 한 묶음이다', async () => {
+    state.unknownAsActive = true
+    const ids = Array.from({ length: 200 }, (_, i) => `00000000-0000-4000-8000-${String(i + 100).padStart(12, '0')}`)
+    const res = await post({ ids, action: 'deactivate', dry_run: true })
+    expect(res.status).toBe(200)
+    expect(state.readCalls.map((c) => c.length)).toEqual([200])
+  })
+
+  it('빈 ids는 DB를 읽기 전에 400으로 막는다', async () => {
+    const res = await post({ ids: [], action: 'deactivate' })
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('대상 ID가 없습니다.')
+    expect(state.readCalls).toEqual([])
     expect(state.updates).toEqual([])
   })
 })

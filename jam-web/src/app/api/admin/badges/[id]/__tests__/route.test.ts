@@ -3,20 +3,22 @@
  * (티켓 20260924_1404). DB는 기록형 스텁이다.
  * 실행: cd jam-web && npx vitest run "src/app/api/admin/badges/[id]/__tests__/route.test.ts"
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 const ORIGINAL_DELETED_AT = '2026-09-01T00:00:00.000Z'
 
 const state = vi.hoisted(() => ({
   row: null as { id: string; deleted_at: string | null } | null,
+  /** 배지 단건 조회(`select().eq().maybeSingle()`)에 주입할 DB 오류 */
+  readError: null as { message: string } | null,
   updates: [] as Record<string, unknown>[],
   sideEffectIds: [] as string[][],
 }))
 
 const fakeClient = {
   from: () => ({
-    select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: state.row, error: null }) }) }),
+    select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: state.readError ? null : state.row, error: state.readError }) }) }),
     update: (patch: Record<string, unknown>) => {
       state.updates.push(patch)
       return {
@@ -56,8 +58,13 @@ const patch = (active: boolean) =>
 
 beforeEach(() => {
   state.row = null
+  state.readError = null
   state.updates = []
   state.sideEffectIds = []
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+})
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 describe('PATCH /api/admin/badges/[id] — 비활성화', () => {
@@ -85,6 +92,19 @@ describe('PATCH /api/admin/badges/[id] — 비활성화', () => {
     const res = await patch(false)
     expect(res.status).toBe(404)
     expect(state.updates).toEqual([])
+  })
+
+  it('조회 오류면 500과 한국어 안내를 돌려주고 갱신·부수효과·DB 원문 노출이 없다', async () => {
+    state.readError = { message: 'connection reset' }
+    state.row = { id: 'b1', deleted_at: null }
+    const res = await patch(false)
+    expect(res.status).toBe(500)
+    const data = await res.json()
+    expect(data.error).toMatch(/^배지 상태를 확인하지 못했어요\./)
+    expect(JSON.stringify(data)).not.toContain('connection reset')
+    expect(state.updates).toEqual([])
+    expect(state.sideEffectIds).toEqual([])
+    expect(console.error).toHaveBeenCalled()
   })
 
   it('되살리기(active: true)는 조회 없이 deleted_at을 null로 되돌린다', async () => {

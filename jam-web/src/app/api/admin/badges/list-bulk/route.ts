@@ -28,6 +28,11 @@ const REFERENCE_CHECK_CONCURRENCY = 5
 /** `.in()` 한 번에 넣는 id 개수 — badges 테이블 200건 청크(상위 티켓 §2)와 동일 기준 */
 const READ_CHUNK_SIZE = 200
 
+// DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1345). 현상 → 원인 → 해결책 순서.
+const READ_ERROR_MESSAGE = '배지 정보를 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const DROP_COUNT_ERROR_MESSAGE = '영향받는 드랍 수를 세지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const DELETE_ERROR_MESSAGE = '배지를 삭제하지 못했어요. 서버에서 삭제 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+
 async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length)
   let cursor = 0
@@ -48,7 +53,10 @@ async function fetchBadgeTribeCandidates(
   const candidates = new Map<string, BadgeTribeAssignmentCandidate>()
   for (const idsChunk of chunkBadgeIds(ids, READ_CHUNK_SIZE)) {
     const { data, error } = await supabase.from('badges').select('id, type, item_book_id').in('id', idsChunk)
-    if (error) return { candidates, error: error.message }
+    if (error) {
+      console.error('[badges list-bulk] 트라이브 지정 대상 조회 오류:', error.message)
+      return { candidates, error: READ_ERROR_MESSAGE }
+    }
     for (const row of (data ?? []) as { id: string; type: BadgeType; item_book_id: string | null }[]) {
       candidates.set(row.id, { type: row.type, item_book_id: row.item_book_id })
     }
@@ -64,7 +72,10 @@ async function fetchBadgeDeactivationCandidates(
   const candidates = new Map<string, BadgeDeactivationCandidate>()
   for (const idsChunk of chunkBadgeIds(ids, READ_CHUNK_SIZE)) {
     const { data, error } = await supabase.from('badges').select('id, name, deleted_at').in('id', idsChunk)
-    if (error) return { candidates, error: error.message }
+    if (error) {
+      console.error('[badges list-bulk] 비활성화 대상 조회 오류:', error.message)
+      return { candidates, error: READ_ERROR_MESSAGE }
+    }
     for (const row of (data ?? []) as { id: string; name: string; deleted_at: string | null }[]) {
       candidates.set(row.id, { name: row.name, deleted_at: row.deleted_at })
     }
@@ -116,7 +127,10 @@ export async function POST(req: NextRequest) {
           .in('badge_id', deactivatable)
           .eq('is_available', true)
           .is('picked_up_at', null)
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+        if (error) {
+          console.error('[badges list-bulk] 무효화될 드랍 수 집계 오류:', error.message)
+          return NextResponse.json({ error: DROP_COUNT_ERROR_MESSAGE }, { status: 500 })
+        }
         droppableCount = count ?? 0
       }
       return bulkJson(
@@ -148,7 +162,10 @@ export async function POST(req: NextRequest) {
       .select('id')
       .eq('id', tribeId)
       .maybeSingle()
-    if (tribeError) return NextResponse.json({ error: tribeError.message }, { status: 500 })
+    if (tribeError) {
+      console.error('[badges list-bulk] 트라이브 조회 오류:', tribeError.message)
+      return NextResponse.json({ error: READ_ERROR_MESSAGE }, { status: 500 })
+    }
     if (!tribeRow) return NextResponse.json({ error: '존재하지 않는 트라이브입니다.' }, { status: 400 })
 
     const lookup = await fetchBadgeTribeCandidates(supabase, ids)
@@ -157,7 +174,10 @@ export async function POST(req: NextRequest) {
     // 컬렉션 수(운영 DB 기준 100건대)가 적어 전량 조회가 더 간단하고 안전하다 — 대상
     // item_book_id만 추려 `.in()`으로 좁히면 최대 1,000개 id를 다시 청크해야 한다.
     const { data: booksRaw, error: booksError } = await supabase.from('item_books').select('id, tribe_id')
-    if (booksError) return NextResponse.json({ error: booksError.message }, { status: 500 })
+    if (booksError) {
+      console.error('[badges list-bulk] 컬렉션 조회 오류:', booksError.message)
+      return NextResponse.json({ error: READ_ERROR_MESSAGE }, { status: 500 })
+    }
     const tribeIdByItemBookId = new Map<string, string | null>(
       ((booksRaw ?? []) as { id: string; tribe_id: string | null }[]).map((b) => [b.id, b.tribe_id])
     )
@@ -221,7 +241,7 @@ export async function POST(req: NextRequest) {
       const { data, error } = await supabase.from('badges').delete().in('id', deletable).select('id')
       if (error) {
         console.error('[badges list-bulk delete] 삭제 실패:', error.message)
-        return NextResponse.json({ error: `삭제 중 오류가 발생했습니다: ${error.message}` }, { status: 500 })
+        return NextResponse.json({ error: DELETE_ERROR_MESSAGE }, { status: 500 })
       }
       deleted = (data ?? []).map((row) => row.id)
       await invalidateUnclaimedDrops(supabase, deleted, 'admin badges list-bulk delete')

@@ -125,10 +125,22 @@ export function isBanActive(ban: UserBanState | null | undefined, now: Date = ne
   return !ban.expires_at || new Date(ban.expires_at) >= now
 }
 
-/** 제재 중인 user_id 전체 */
+/** 제재 기록을 한 번에 읽는 상한 — 이 값에 닿으면 잘렸을 수 있어 결과를 신뢰하지 않는다 */
+export const BAN_FETCH_LIMIT = 1000
+
+/**
+ * 제재 중인 user_id 전체.
+ *
+ * 읽은 행이 `BAN_FETCH_LIMIT`에 닿으면 뒤쪽이 잘렸을 수 있으므로 조용히 틀린 결과 대신 오류를 던진다.
+ * 제재 id를 `.in()`·`.not()`에 통째로 넣는 필터 구조는 수백 건에서 요청 주소 길이 한계가 먼저 오므로,
+ * 제재 행이 실제로 수백 건에 가까워지면 필터를 서버 쪽 조인·RPC로 다시 설계한다(티켓 20260924_1636).
+ */
 export async function fetchActiveBanUserIds(supabase: ServiceClient): Promise<string[]> {
-  const { data, error } = await supabase.from('user_shadow_bans').select('user_id, expires_at').limit(1000)
+  const { data, error } = await supabase.from('user_shadow_bans').select('user_id, expires_at').limit(BAN_FETCH_LIMIT)
   if (error) throw new Error(`[user-list] 제재 목록 조회 실패: ${error.message}`)
+  if ((data?.length ?? 0) >= BAN_FETCH_LIMIT) {
+    throw new Error(`[user-list] 제재 기록이 한도(${BAN_FETCH_LIMIT.toLocaleString('en-US')}건)를 넘어 제재 필터를 신뢰할 수 없습니다`)
+  }
   const now = new Date()
   return (data ?? []).filter((row) => isBanActive({ ban_level: '', expires_at: row.expires_at }, now)).map((row) => row.user_id)
 }
