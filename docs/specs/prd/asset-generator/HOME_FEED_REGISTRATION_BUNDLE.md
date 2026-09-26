@@ -44,12 +44,37 @@ code:
 - **시험 등록은 비활성·기간 2099년의 임시 카드 1건으로 한다.** `is_active: false`이면 기간과 무관하게 어디에도 노출되지 않고,
   2099년 기간은 활성으로 바꿔도 실수로 노출되지 않게 하는 이중 안전장치다. 시험 뒤에는 `--undo`로 되돌린다.
 
+### 1.1 이미지가 필요한 카드 (티켓 20260926_1207)
+
+묶음의 `image`는 필수(§3.1)라 **이미지가 필요한 신규 카드만** 묶음으로 만든다. 판별 기준은 코드로 확인한 아래 사실이다(2026-09-26).
+
+| 노출 형태(`layout`) | 커버 이미지(`cover_image_url`) | 근거 |
+|---|---|---|
+| `large_thumbnail` | 쓴다 | `TodayCardStack.tsx`의 `resolveCover`를 `LargeThumbnailCard`가 쓴다(68·69행) |
+| `banner` | 쓴다 | 같은 `resolveCover`를 `BannerCard`가 쓴다(171·172행) |
+| 에디토리얼 기사 상세 | 쓴다(상단 커버) | `today/[cardId]/page.tsx`가 `card.cover_image_url`을 상단에 그린다(37~39행) |
+| `shortcut` | 없다 | `today-sections.ts`가 「이미지 없는 짧은 CTA」로 정의한다(78행) |
+| `badge_gallery`·`other`·`ranking_list` | 쓰지 않는다 | `TodayCardStack.tsx`에서 이 셋의 카드 컴포넌트는 `resolveCover`·`cover_image_url`을 부르지 않는다 |
+
+- 이미지가 필요 없는 카드는 묶음 없이 `content-automation/PRD.md` §8-2의 시드 SQL 경로로 등록한다. 주간 리포트 표에는 「이미지 없음(사유)」로 적는다.
+- 이미지가 필요한데 만들 수 없었던 카드는 「이미지 준비 대기(사유)」다(임의 색·자리표시 이미지로 채우지 않는다).
+
 ## 2. 묶음 폴더
 
-묶음은 폴더 하나다. **권장 위치는 `jam-doc/assets/home-feed-bundles/<묶음 ID>/`** 이고 폴더 이름은 `bundle_id`와 같게 쓴다.
+묶음은 폴더 하나다. 폴더 이름은 `bundle_id`와 같게 쓴다. **위치는 만드는 곳에 따라 다르다.**
+
+- **세션(`/jam-story`)에서 만드는 묶음의 권장 위치**: `jam-doc/assets/home-feed-bundles/<묶음 ID>/`
+- **예약(클라우드) 주간 실행이 만드는 묶음의 위치**: `jam-doc/operations/reports/weekly/<YYYY-Www>-images/<묶음 ID>/`. 무인 루틴의 커밋은
+  `.githooks/pre-commit`이 `jam-doc/operations/reports/` 밖 파일을 차단하고 우회 변수가 없어서(`scheduled-jobs.md` 4-3), 예약 실행은 이 밖에 쓰지 못한다.
+  리포트 표는 같은 폴더의 `image.png`를 상대 경로로 참조한다(`content-automation/PRD.md` §8).
+
+`register-home-feed-card.mjs --bundle`은 `bundle.json`의 **절대경로**를 받으므로 어느 위치의 묶음이든 등록 절차(§6)는 같다.
+
+이미지 용량: 1280×1280 PNG는 실측으로 클라우드 렌더 약 0.5MB, 로컬 렌더 약 0.9MB이고(`scheduled-jobs.md` 상단 환경 블록) 묶음 상한은 5MB다(§3.4). 그래서
+**장당 2MB 이하를 권장**한다. 넘으면 리포트에 「이미지 없음(용량 초과)」로 표시하고 사용자에게 확인을 받는다. 주 7장이면 약 4~6MB가 쌓인다.
 
 ```
-jam-doc/assets/home-feed-bundles/<묶음 ID>/
+<묶음 폴더>/                    위 두 위치 중 하나
 ├─ bundle.json                 윤진이 만든다 (이 문서의 형식)
 ├─ image.png                   CLI(render.mjs)가 만든 원본 PNG. 파일 이름은 자유
 ├─ registration-record.json    등록 뒤 스크립트가 만든다 (§7)
@@ -258,6 +283,8 @@ npx tsx scripts/asset-generator/register-home-feed-card.mjs --undo <registration
 - **DB 읽기 검사**(제목·시작 일시 중복, 그리고 묶음이 채운 참조에 한해 미션·컬렉션·배지·랭킹 모드 존재)는 서비스 키가 있을 때만
   읽기 전용으로 돌리고, 키가 없으면 «건너뜀»으로 표시한다. 그래서 키가 없는 환경(격리 워크트리 등)에서도 로컬 검증만으로 통과·실패가
   나온다. 참조가 없는 항목은 «해당 없음»이다.
+  **예약(클라우드) 실행의 `--dry-run`은 이 경우다**(서비스 롤 키가 예약 환경에 없다). 형식 검증까지만 하고 참조 ID 존재·중복 검사는 «건너뜀»이므로, 사용자
+  승인 뒤 메인 세션이 등록 전 `--dry-run`에서 그 검사를 다시 한다.
 - 이미 `registration-record.json`이 있는 폴더는 «이미 등록한 묶음»으로 실패 처리한다.
 
 ### 등록 순서와 실패 처리
