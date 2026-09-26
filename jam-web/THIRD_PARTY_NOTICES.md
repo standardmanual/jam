@@ -3,51 +3,23 @@
 JAM! 어드민의 일부 기능은 오픈소스 프로젝트의 코드를 이식하거나 참고해 만들었다. 이 문서는
 Apache License 2.0 §4가 요구하는 원본 저작권 고지·라이선스 사본을 담는다.
 
-## 쉐이더 랩 (`/admin/shader-lab`)
+## 쉐이더 랩 (제거됨, 티켓 20260925_1416)
 
 - **원본 저장소**: [basementstudio/shader-lab](https://github.com/basementstudio/shader-lab)
 - **라이선스**: Apache License 2.0 (전문은 이 문서 하단 참고)
 - **원저작권자**: Copyright © 2026 basement.studio LLC
-- **이식 시점**: 2026-09-12 (npm `@basementstudio/shader-lab@3.0.2`)
-- **이식 범위**:
-  - `packages/shader-lab-react`(WebGPU + Three.js + TSL 렌더링 런타임)는 **npm 의존성으로
-    설치**해 그대로 사용한다. 코드를 복사하지 않았다.
-  - 에디터 애플리케이션 UI(`src/components/editor/*`, `src/components/pages/shader-lab-page.tsx`,
-    `src/components/ui/*`)는 npm으로 배포되지 않는 앱 전용 소스라, 레이아웃·상호작용 구조를
-    참고해 JAM! 어드민 스타일(shadcn/ui, TypeScript strict)로 새로 작성했다. 원본 코드를
-    그대로 복붙하지 않았다.
-  - 원본의 커뮤니티(씬 공유·좋아요·리믹스·신고) 기능, 자체 인증(Neon), MCP 에이전트 브릿지
-    (`packages/shader-lab-mcp`)는 이식 대상에서 완전히 제외했다.
-  - 레이어 종류별 파라미터 스키마(`jam-web/src/lib/admin/shaderLab/effectRegistry.ts`)는
-    원본 에디터 앱의 `src/lib/editor/config/layer-registry.ts`(비공개 앱 소스)가 정의한 필드
-    구성을 참고해 대표 6종만 추려 다시 작성했다.
-- 이식한 각 파일 상단에는 출처 주석(원본 저장소 URL·라이선스·이식 시점)을 남겼다.
-- **패치(Apache License 2.0 §4(b) 고지, 티켓 20260913_1901)**: 설치된 npm 패키지
-  `@basementstudio/shader-lab@3.0.2`의
-  `dist/src/renderer/text-pass.js`(`TextPass.rebuildTextTexture()`)를 `patch-package`로
-  직접 수정했다. 원본은 텍스트 레이어 입력값을 항상 한 줄로만 렌더링하는데(원본 저장소 자체도
-  `lineHeight` 등 다중 줄 관련 파라미터가 없어 단일 줄만 지원), JAM! 요구사항(줄바꿈 포함
-  다중 줄 입력)을 만족시키기 위해 `\n` 기준으로 줄을 나눠 각 줄을 독립적으로 배치하고 전체
-  블록 기준으로 세로 정렬을 계산하도록 바꿨다.
-- **패치(Apache License 2.0 §4(b) 고지, 티켓 20260913_1948)**: 같은 npm 패키지
-  `@basementstudio/shader-lab@3.0.2`에 리퀴드 메탈 레이어를 추가하려고 `patch-package`로
-  신규 파일 `dist/src/renderer/liquid-metal-pass.js`를 추가하고, `dist/src/renderer/
-  pipeline-manager.js`(레이어 타입→pass 클래스 매핑에 케이스 추가)와 `dist/src/types.d.ts`
-  (공개 타입 `ShaderLabSourceLayerType`에 `"liquid-metal"` 추가)를 함께 수정했다.
-- 위 두 패치는 `patches/@basementstudio+shader-lab+3.0.2.patch` 하나의 파일에 통합돼
-  있고(같은 npm 패키지에 대한 패치라 patch-package 관례상 파일이 하나다), `package.json`의
-  `postinstall` 스크립트가 `npm install` 시 자동 재적용한다.
-- **버전 고정(티켓 20260913_1938)**: `package.json`의 `@basementstudio/shader-lab` 버전은
-  caret range(`^3.0.2`)가 아니라 `3.0.2`로 정확히 고정돼 있다. caret range로 두면
-  `npm install`이 이후 마이너/패치 버전을 새로 끌어올 수 있는데, 그 새 버전에서
-  `text-pass.js`·`pipeline-manager.js`·`types.d.ts`의 원본 내용이 바뀌어 있으면
-  `patch-package`가 diff 컨텍스트 불일치로 적용에 실패하고 `postinstall`(따라서
-  `npm install`) 자체가 에러로 멈춘다. **향후 이 패키지 버전을 의도적으로 올릴 때는**
-  ① `npm install @basementstudio/shader-lab@<새버전>`으로 새 버전을 받고, ② 위 세 파일에
-  대해 패치 내용을 수동으로 재검증·재작성한 뒤, ③ `npx patch-package @basementstudio/shader-lab`으로
-  패치 파일을 재생성하고, ④ 정확한 새 버전 문자열로 다시 고정한다.
+- **현재 상태**: 티켓 20260925_1416에서 어드민 쉐이더 랩 화면(`/admin/shader-lab`)과 레이어
+  파라미터 스키마(`effectRegistry.ts`)를 삭제했고, npm 패키지 `@basementstudio/shader-lab`을
+  `package.json`에서 제거했으며, 이 패키지에 적용하던 `patch-package` 패치
+  (`patches/@basementstudio+shader-lab+3.0.2.patch`, 텍스트 레이어 다중 줄 수정과
+  리퀴드 메탈 pass 추가)도 삭제했다. 이 저장소에는 이 프로젝트의 코드·수정본이 더 이상
+  남아 있지 않다.
+- **이력**: 2026-09-12부터 이 제거 시점까지 `@basementstudio/shader-lab@3.0.2`를 npm
+  의존성으로 사용했고, 에디터 UI는 원본 구조를 참고해 새로 작성했으며(코드 복붙 없음),
+  패키지 일부 파일을 `patch-package`로 수정했다(Apache License 2.0 §4(b) 수정 고지).
+  과거 배포본에 대한 고지 근거로 이 절과 하단 라이선스 전문을 남긴다.
 
-## 리퀴드 메탈 (`/admin/shader-lab`의 "리퀴드 메탈" 레이어)
+## 리퀴드 메탈 (제거된 쉐이더 랩의 "리퀴드 메탈" 레이어)
 
 - **원본 저장소**: [paper-design/shaders](https://github.com/paper-design/shaders)
   (npm `@paper-design/shaders`)
@@ -55,15 +27,10 @@ Apache License 2.0 §4가 요구하는 원본 저작권 고지·라이선스 사
 - **원저작권자**: Copyright 2026 Paper
 - **NOTICE 고지**("Powered by Paper Shaders: https://shaders.paper.design")
 - **이식 시점**: 2026-09-13 (npm `@paper-design/shaders@0.0.80`)
-- **통합 범위**: 순수 WebGL2 GLSL 셰이더(`liquidMetalFragmentShader`, `ShaderMount` 코어
-  클래스)와 이미지 처리 유틸(`toProcessedLiquidMetal()`)을 npm 의존성으로 그대로 설치해
-  쓴다. 코드를 복사하지 않았다 — `@basementstudio/shader-lab`(WebGPU + TSL) 파이프라인과
-  다른 렌더링 백엔드를 쓰는 라이브러리라, 위 패치(`liquid-metal-pass.js`)로 두 파이프라인을
-  텍스처 브릿지(숨겨진 DOM에 WebGL 셰이더를 마운트하고 그 canvas를 `THREE.CanvasTexture`로
-  공급)로 연결했다. 이미지(PNG·SVG 포함)를 올리면 `toProcessedLiquidMetal()`이 포아송
-  방정식으로 그 형태의 엣지 마스크를 계산해 이미지 위에만 리퀴드 메탈을 입히고, 올리지
-  않으면 캔버스 전체에 적용된다(티켓 20260913_2110) — 원·데이지·다이아몬드·메타볼 등
-  `shape` 프리셋은 이미지 유무로만 분기하도록 완전히 제거했다.
+- **현재 상태**: 이 패키지를 쓰던 리퀴드 메탈 레이어는 쉐이더 랩 제거(티켓 20260925_1416)와
+  함께 사라졌다. 다만 `@paper-design/shaders@0.0.80`은 `package.json` 의존성으로 아직
+  남아 있으므로(`src`에서의 임포트는 0건) 이 절의 고지는 유지한다. 코드를 복사하지 않고
+  npm 의존성으로만 설치해 썼다.
 
 ---
 

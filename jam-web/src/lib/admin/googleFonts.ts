@@ -1,13 +1,13 @@
 /**
- * 쉐이더 랩 — 구글 폰트 검색·동적 로드 (티켓 20260916_2001)
+ * 구글 폰트 검색·동적 로드 (티켓 20260916_2001, 쉐이더 랩 제거 시 이 위치로 이동 — 티켓 20260925_1416)
  *
  * `googleFontsCatalog.json`은 구글 폰트 공개 메타데이터 엔드포인트
  * (`https://fonts.google.com/metadata/fonts`, API 키 불필요)에서 2026-09-16에 받은 전체
  * 목록(1,946종)을 `{ family, category }`만 남겨 정적으로 번들한 것이다 — 런타임에 이 엔드포인트를
  * 다시 호출하지 않는다(비용·안정성 관점에서 정적 스냅샷을 택함, 완료 기록 참고). 폰트 실제
  * 로드는 API 키가 필요 없는 공개 스타일시트 엔드포인트(`fonts.googleapis.com/css2`)를 그대로
- * 쓴다 — 이 라우트(`/admin/shader-lab`)에서만 동적으로 `<link>`를 주입하고, 전역 타이포그래피
- * 에는 영향을 주지 않는다.
+ * 쓴다 — 에셋 제너레이터(`/admin/asset-generator`)에서만 동적으로 `<link>`를 주입하고, 전역
+ * 타이포그래피에는 영향을 주지 않는다.
  */
 import googleFontsCatalogData from './googleFontsCatalog.json'
 
@@ -39,8 +39,7 @@ export function searchGoogleFonts(query: string, limit = 50): GoogleFontCatalogE
   return [...startsWith, ...includes].slice(0, limit)
 }
 
-/** 구글 폰트 `css2` 공개 스타일시트 URL을 만든다(고정 굵기 400 — `GOOGLE_FONT_SLOT_WEIGHT`,
- *  `textFontOptions.ts` 참고). API 키가 필요 없는 공개 엔드포인트다. */
+/** 구글 폰트 `css2` 공개 스타일시트 URL을 만든다(고정 굵기 400). API 키가 필요 없는 공개 엔드포인트다. */
 export function buildGoogleFontCssUrl(family: string): string {
   const familyParam = family.trim().replace(/\s+/g, '+')
   return `https://fonts.googleapis.com/css2?family=${encodeURIComponent(familyParam).replace(/%2B/g, '+')}:wght@400&display=swap`
@@ -50,7 +49,7 @@ const LOADED_FONT_LINK_ATTR = 'data-shader-lab-google-font'
 
 /**
  * 이 구글 폰트의 `<link rel="stylesheet">`가 이미 `document.head`에 있으면 그대로 두고,
- * 없으면 새로 추가한다(중복 로드 방지). `/admin/shader-lab` 클라이언트 컴포넌트에서만
+ * 없으면 새로 추가한다(중복 로드 방지). 클라이언트 컴포넌트에서만
  * 호출된다 — 서버에서 호출돼도 `document`가 없으면 조용히 넘어간다.
  */
 export function ensureGoogleFontLoaded(family: string): void {
@@ -67,8 +66,7 @@ export function ensureGoogleFontLoaded(family: string): void {
 
 /**
  * 슬롯의 CSS 커스텀 프로퍼티를 이 구글 폰트로 런타임에 덮어쓴다 — `layout.tsx`가 Pretendard
- * Variable에 쓰는 정적 하이재킹과 같은 원리의 동적 버전(`textFontOptions.ts` 상단 주석의
- * "왜 이렇게 우회하는가" 참고).
+ * Variable에 쓰는 정적 하이재킹과 같은 원리의 동적 버전.
  */
 export function applyGoogleFontToSlot(cssVariable: string, family: string): void {
   if (typeof document === 'undefined') return

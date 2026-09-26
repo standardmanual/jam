@@ -19,7 +19,7 @@ import type {
   TextLayerConfig,
   TextLayerFont,
 } from '@/lib/asset-generator'
-import { waitForGoogleFontLoaded } from '@/lib/admin/shaderLab/googleFonts'
+import { waitForGoogleFontLoaded } from '@/lib/admin/googleFonts'
 
 /** 스테이지 긴 변 고정 길이(px). 원본 MAX_LONG. */
 export const STAGE_MAX_LONG_SIDE_PX = 1280

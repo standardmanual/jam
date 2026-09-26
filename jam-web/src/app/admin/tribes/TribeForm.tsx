@@ -15,13 +15,6 @@ interface TribeFormProps {
   tribe?: TribeRow
 }
 
-/** 3단 캐스케이드(직속 배지 / 소속 컬렉션 / 그 컬렉션의 아이템배지) 건수 — 20260819_015 */
-interface CascadeCount {
-  directBadges: number
-  itemBooks: number
-  itemBookBadges: number
-}
-
 export default function TribeForm({ tribe }: TribeFormProps) {
   const router = useRouter()
   const isEdit = !!tribe
@@ -37,12 +30,11 @@ export default function TribeForm({ tribe }: TribeFormProps) {
   const [sortOrder, setSortOrder] = useState<string>(
     tribe?.sort_order?.toString() ?? '0'
   )
-  // 배경 테마 (20260818_004) — 트라이브 자체에는 렌더링되지 않고, "하위에 일괄 적용" 버튼으로
-  // 3단(직속 배지 → 소속 컬렉션 → 그 컬렉션의 아이템배지)에 1회성으로 복사하는 원본 값.
+  // 배경 테마 (20260818_004) — 트라이브 자체에는 렌더링되지 않는 저작 값이다.
+  // "하위에 일괄 적용" 버튼과 3단 캐스케이드는 티켓 20260925_1416에서 제거.
   // 제너레이터(패턴/애니메이션/Paper 필터)와 배경 쉐이더 드롭다운은 티켓 20260901_1929에서 제거.
   const [backgroundColor, setBackgroundColor] = useState<string>(tribe?.background_color ?? '')
-  // [20260901_1944] 배경색과 배타인 애니메이션 모드. null이면 배경색 모드다. 3단 캐스케이드의
-  // 원본 값이기도 하다.
+  // [20260901_1944] 배경색과 배타인 애니메이션 모드. null이면 배경색 모드다.
   const [backgroundAnimation, setBackgroundAnimation] = useState<BlobAnimationParams | null>(
     () => parseBlobAnimation(tribe?.background_animation)
   )
@@ -50,13 +42,6 @@ export default function TribeForm({ tribe }: TribeFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-
-  // ── 3단 캐스케이드 일괄 적용 (20260819_015) ────────────────────────
-  // 직속 배지 / 소속 컬렉션 / 그 컬렉션의 아이템배지 3단 건수를 함께 다룬다.
-  const [bulkApplyLoading, setBulkApplyLoading] = useState(false)
-  const [bulkApplyCount, setBulkApplyCount] = useState<CascadeCount | null>(null)
-  const [showBulkApplyConfirm, setShowBulkApplyConfirm] = useState(false)
-  const [bulkApplyResult, setBulkApplyResult] = useState<CascadeCount | null>(null)
 
   const validate = (): string | null => {
     // 애니메이션 모드에서는 배경색 입력란이 화면에 없다 — 보이지 않는 값 때문에 저장이 막히지
@@ -139,80 +124,11 @@ export default function TribeForm({ tribe }: TribeFormProps) {
     }
   }
 
-  // 배경값이 전혀 없으면 일괄 적용 시 하위(직속 배지·소속 컬렉션·그 컬렉션의 아이템배지)의 기존
-  // 커스터마이징을 전부 빈 값으로 덮어쓰게 되므로 버튼을 비활성화한다
-  // (티켓 20260901_1929 — 제너레이터·쉐이더 제거로 단순화).
-  const hasBackgroundValue = Boolean(backgroundColor.trim()) || backgroundAnimation !== null
-
-  // 저장된 트라이브에서만 가능 — 신규 등록 화면에는 아직 하위가 존재할 수 없다.
-  // 클릭 시 폼의 현재 값을 먼저 저장해(항상 최신 값 기준으로 적용) 실제 3단 캐스케이드 건수를
-  // 조회한 뒤 확인 다이얼로그를 띄운다.
-  const handleBulkApplyClick = async () => {
-    if (!isEdit || !hasBackgroundValue) return
-    setError(null)
-
-    const validationError = validate()
-    if (validationError) {
-      setError(validationError)
-      return
-    }
-
-    setBulkApplyLoading(true)
-    try {
-      await persist()
-
-      // 서버에서 3단 조건과 동일한 WHERE로 COUNT만 계산하는 미리보기 경로 — 전체 배지/컬렉션
-      // 목록을 fetch하지 않는다 (20260819_016)
-      const res = await fetch(`/api/admin/tribes/${tribe!.id}/apply-background`)
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? '하위 건수 조회 실패')
-
-      setBulkApplyCount({
-        directBadges: data.directBadges,
-        itemBooks: data.itemBooks,
-        itemBookBadges: data.itemBookBadges,
-      })
-      setShowBulkApplyConfirm(true)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '하위 건수 조회 중 오류가 발생했습니다.')
-    } finally {
-      setBulkApplyLoading(false)
-    }
-  }
-
-  const handleBulkApplyConfirm = async () => {
-    setBulkApplyLoading(true)
-    try {
-      const res = await fetch(`/api/admin/tribes/${tribe!.id}/apply-background`, {
-        method: 'POST',
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? '일괄 적용 실패')
-      setShowBulkApplyConfirm(false)
-      setBulkApplyResult({
-        directBadges: data.directBadges,
-        itemBooks: data.itemBooks,
-        itemBookBadges: data.itemBookBadges,
-      })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '일괄 적용 중 오류가 발생했습니다.')
-    } finally {
-      setBulkApplyLoading(false)
-    }
-  }
-
   return (
     <form onSubmit={handleSubmit} className="space-y-5 max-w-xl">
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm">
           {error}
-        </div>
-      )}
-
-      {bulkApplyResult !== null && (
-        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-green-700 text-sm">
-          직속 배지 {bulkApplyResult.directBadges}개, 소속 컬렉션 {bulkApplyResult.itemBooks}개,
-          컬렉션 아이템배지 {bulkApplyResult.itemBookBadges}개에 적용했어요.
         </div>
       )}
 
@@ -295,13 +211,13 @@ export default function TribeForm({ tribe }: TribeFormProps) {
         <span className="text-sm">활성화</span>
       </label>
 
-      {/* 배경 테마 — 3단 캐스케이드 일괄 적용 (20260818_004) */}
+      {/* 배경 테마 (20260818_004) */}
       <div className="border border-border rounded-2xl p-5 space-y-4">
         <div>
           <p className="text-sm font-semibold text-foreground">배경 테마</p>
           <p className="text-xs text-muted-foreground mt-1">
-            이 트라이브 자체에는 배경이 적용되지 않아요. 이 설정은 이 트라이브에 속한 배지, 소속
-            컬렉션, 그 컬렉션의 아이템배지 전체에 일괄 적용돼요.
+            이 트라이브 자체에는 배경이 적용되지 않아요. 배경색이나 애니메이션을 지정하고 저장하면
+            이 값이 그대로 기록돼요.
           </p>
         </div>
 
@@ -315,7 +231,7 @@ export default function TribeForm({ tribe }: TribeFormProps) {
               <ItemBookDetailPreviewFrame
                 book={{
                   name: name || '(트라이브 이름 미입력)',
-                  description: '이 트라이브 소속 컬렉션에 그대로 복사되는 배경을 미리 보여줘요.',
+                  description: '지정한 배경을 미리 보여줘요.',
                   image_url: imageUrl || null,
                 }}
                 themed={previewThemed}
@@ -325,30 +241,12 @@ export default function TribeForm({ tribe }: TribeFormProps) {
                 backgroundAnimation={previewAnimation}
               />
               <p className="text-xs text-muted-foreground mt-2 max-w-[430px]">
-                트라이브 자체 화면은 없어요. 이 배경이 그대로 복사될 소속 컬렉션 상세화면과 같은
-                구조로 보여줘요.
+                트라이브 자체 화면은 없어요. 컬렉션 상세화면과 같은 구조로 배경을 보여줘요.
               </p>
             </>
           )}
         />
 
-        <div className="pt-1">
-          <button
-            type="button"
-            onClick={handleBulkApplyClick}
-            disabled={!isEdit || !hasBackgroundValue || bulkApplyLoading || loading}
-            className="bg-white border border-border text-foreground text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-muted disabled:opacity-50 transition-colors"
-          >
-            {bulkApplyLoading ? '처리 중...' : '일괄 적용'}
-          </button>
-          <p className="text-xs text-muted-foreground mt-2">
-            {!isEdit
-              ? '트라이브를 먼저 등록해야 일괄 적용할 수 있어요.'
-              : !hasBackgroundValue
-                ? '배경색이나 애니메이션을 먼저 지정해야 일괄 적용할 수 있어요.'
-                : '버튼을 누르면 지금 이 값이 먼저 저장되고, 이 트라이브에 속한 배지·소속 컬렉션·그 컬렉션의 아이템배지에 즉시 복사돼요. 이후 트라이브 배경을 바꿔도 이미 적용된 항목에는 자동 반영되지 않아요. 다시 이 버튼을 눌러야 해요.'}
-          </p>
-        </div>
       </div>
 
       <div className="flex items-center gap-3 pt-2">
@@ -403,35 +301,6 @@ export default function TribeForm({ tribe }: TribeFormProps) {
         </div>
       )}
 
-      {showBulkApplyConfirm && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-bold mb-2">일괄 적용</h3>
-            <p className="text-muted-foreground text-sm mb-5">
-              직속 배지 {bulkApplyCount?.directBadges ?? 0}개, 소속 컬렉션 {bulkApplyCount?.itemBooks ?? 0}개,
-              컬렉션 아이템배지 {bulkApplyCount?.itemBookBadges ?? 0}개의 배경이 지금 이 값으로
-              즉시 덮어써집니다. 개별 배지·컬렉션에서 따로 지정한 배경도 모두 이 값으로
-              바뀝니다. 계속할까요?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={handleBulkApplyConfirm}
-                disabled={bulkApplyLoading}
-                className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
-                {bulkApplyLoading ? '적용 중...' : '적용 확인'}
-              </button>
-              <button
-                onClick={() => setShowBulkApplyConfirm(false)}
-                disabled={bulkApplyLoading}
-                className="flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors disabled:opacity-50"
-              >
-                취소
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </form>
   )
 }

@@ -81,12 +81,10 @@ export default function ItemBookForm({
   const toDateInput = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : '')
   const [validFrom, setValidFrom] = useState<string>(toDateInput(book?.valid_from))
   const [validUntil, setValidUntil] = useState<string>(toDateInput(book?.valid_until))
-  // 배경 테마 (20260818_004) — 컬렉션 자체에는 렌더링되지 않고, "하위 배지에 일괄 적용" 버튼으로
-  // 소속 배지들의 background_color에 1회성으로 복사하는 원본 값. 제너레이터(패턴/애니메이션/Paper
-  // 필터)와 배경 쉐이더 드롭다운은 티켓 20260901_1929에서 제거.
+  // 배경 테마 (20260818_004). "하위 배지에 일괄 적용" 버튼은 티켓 20260925_1416에서 제거.
+  // 제너레이터(패턴/애니메이션/Paper 필터)와 배경 쉐이더 드롭다운은 티켓 20260901_1929에서 제거.
   const [backgroundColor, setBackgroundColor] = useState<string>(book?.background_color ?? '')
-  // [20260901_1944] 배경색과 배타인 애니메이션 모드. null이면 배경색 모드다. 하위 배지 일괄
-  // 적용의 원본 값이기도 하다.
+  // [20260901_1944] 배경색과 배타인 애니메이션 모드. null이면 배경색 모드다.
   const [backgroundAnimation, setBackgroundAnimation] = useState<BlobAnimationParams | null>(
     () => parseBlobAnimation(book?.background_animation)
   )
@@ -102,12 +100,6 @@ export default function ItemBookForm({
   // 티켓 20260914_1729: 컬렉션 비활성화는 소속 배지에 더 이상 영향을 주지 않아 영향 범위
   // 조회(badgeCount/holderUserCount)를 제거하고 정적 확인 문구로 바꿨다.
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false)
-
-  // ── 하위 배지 일괄 적용 ──────────────────────────────────────────
-  const [bulkApplyLoading, setBulkApplyLoading] = useState(false)
-  const [bulkApplyCount, setBulkApplyCount] = useState<number | null>(null)
-  const [showBulkApplyConfirm, setShowBulkApplyConfirm] = useState(false)
-  const [bulkApplyResult, setBulkApplyResult] = useState<number | null>(null)
 
   const validate = (): string | null => {
     // 애니메이션 모드에서는 배경색 입력란이 화면에 없다 — 보이지 않는 값 때문에 저장이 막히지
@@ -177,60 +169,6 @@ export default function ItemBookForm({
       setError(err instanceof Error ? err.message : '저장 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
-    }
-  }
-
-  // 배경값이 전혀 없으면 일괄 적용 시 하위 배지의 기존 커스터마이징을 전부 빈 값으로
-  // 덮어쓰게 되므로 버튼을 비활성화한다 (티켓 20260901_1929 — 제너레이터·쉐이더 제거로 단순화).
-  const hasBackgroundValue = Boolean(backgroundColor.trim()) || backgroundAnimation !== null
-
-  // 저장된 컬렉션에서만 가능 — 클릭 시 폼의 현재 값을 먼저 저장해(항상 최신 값 기준으로 적용)
-  // 실제 하위 배지 수를 조회한 뒤 확인 다이얼로그를 띄운다.
-  const handleBulkApplyClick = async () => {
-    if (!isEdit || !hasBackgroundValue) return
-    setError(null)
-
-    const validationError = validate()
-    if (validationError) {
-      setError(validationError)
-      return
-    }
-
-    setBulkApplyLoading(true)
-    try {
-      await persist()
-
-      const res = await fetch('/api/admin/badges')
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? '배지 목록 조회 실패')
-      type BadgeListRow = { item_book_id: string | null; deleted_at: string | null }
-      const count = ((data.badges ?? []) as BadgeListRow[]).filter(
-        (b) => b.item_book_id === book!.id && !b.deleted_at
-      ).length
-
-      setBulkApplyCount(count)
-      setShowBulkApplyConfirm(true)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '하위 배지 수 조회 중 오류가 발생했습니다.')
-    } finally {
-      setBulkApplyLoading(false)
-    }
-  }
-
-  const handleBulkApplyConfirm = async () => {
-    setBulkApplyLoading(true)
-    try {
-      const res = await fetch(`/api/admin/itembooks/${book!.id}/apply-background`, {
-        method: 'POST',
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? '일괄 적용 실패')
-      setShowBulkApplyConfirm(false)
-      setBulkApplyResult(data.appliedCount)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '일괄 적용 중 오류가 발생했습니다.')
-    } finally {
-      setBulkApplyLoading(false)
     }
   }
 
@@ -454,12 +392,12 @@ export default function ItemBookForm({
         <span className="text-sm">활성화</span>
       </label>
 
-      {/* 배경 테마 — 컬렉션 상세화면 렌더링 + 하위 배지 일괄 적용 (20260818_004) */}
+      {/* 배경 테마 — 컬렉션 상세화면 렌더링 (20260818_004) */}
       <div className="border border-border rounded-2xl p-5 space-y-4">
         <div>
           <p className="text-sm font-semibold text-foreground">배경 테마</p>
           <p className="text-xs text-muted-foreground mt-1">
-            이 설정은 이 컬렉션 상세화면과 소속된 모든 아이템배지 상세화면에 일괄 적용돼요.
+            이 설정은 이 컬렉션 상세화면에 적용돼요.
           </p>
         </div>
 
@@ -489,30 +427,7 @@ export default function ItemBookForm({
           )}
         />
 
-        <div className="pt-1">
-          <button
-            type="button"
-            onClick={handleBulkApplyClick}
-            disabled={!isEdit || !hasBackgroundValue || bulkApplyLoading || loading}
-            className="bg-white border border-border text-foreground text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-muted disabled:opacity-50 transition-colors"
-          >
-            {bulkApplyLoading ? '처리 중...' : '하위 배지에 일괄 적용'}
-          </button>
-          <p className="text-xs text-muted-foreground mt-2">
-            {!isEdit
-              ? '컬렉션을 먼저 등록해야 하위 배지에 일괄 적용할 수 있어요.'
-              : !hasBackgroundValue
-                ? '배경색이나 애니메이션을 먼저 지정해야 일괄 적용할 수 있어요.'
-                : '버튼을 누르면 지금 이 값이 먼저 저장되고, 이 컬렉션에 속한 배지들에 즉시 복사돼요. 이후 컬렉션 배경을 바꿔도 이미 적용된 배지에는 자동 반영되지 않아요. 다시 이 버튼을 눌러야 해요.'}
-          </p>
-        </div>
       </div>
-
-      {bulkApplyResult !== null && (
-        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-green-700 text-sm">
-          {bulkApplyResult}개 배지에 적용했어요.
-        </div>
-      )}
 
       {/* 배지 슬롯 관리 (편집 모드만) */}
       {isEdit && (
@@ -615,34 +530,6 @@ export default function ItemBookForm({
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors"
-              >
-                취소
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showBulkApplyConfirm && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-bold mb-2">하위 배지에 일괄 적용</h3>
-            <p className="text-muted-foreground text-sm mb-5">
-              이 컬렉션에 속한 배지 {bulkApplyCount ?? 0}개의 배경이 지금 이 값으로 즉시
-              덮어써집니다. 개별 배지에서 따로 지정한 배경도 모두 이 값으로 바뀝니다. 계속할까요?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={handleBulkApplyConfirm}
-                disabled={bulkApplyLoading}
-                className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
-                {bulkApplyLoading ? '적용 중...' : '적용 확인'}
-              </button>
-              <button
-                onClick={() => setShowBulkApplyConfirm(false)}
-                disabled={bulkApplyLoading}
-                className="flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors disabled:opacity-50"
               >
                 취소
               </button>

@@ -1671,30 +1671,6 @@ export type Database = {
           },
         ]
       }
-      shader_lab_compositions: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: string
-          name: string
-          scene_json: Json
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          name: string
-          scene_json: Json
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          name?: string
-          scene_json?: Json
-        }
-        Relationships: []
-      }
       shader_text_presets: {
         Row: {
           created_at: string
@@ -2832,14 +2808,6 @@ export type Database = {
         }
         Returns: Json
       }
-      apply_tribe_background_cascade: {
-        Args: { p_tribe_id: string }
-        Returns: {
-          direct_badges: number
-          item_book_badges: number
-          item_books: number
-        }[]
-      }
       award_points: {
         Args: {
           p_admin_reason_label?: string
@@ -2869,14 +2837,6 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
-      }
-      count_tribe_background_cascade: {
-        Args: { p_tribe_id: string }
-        Returns: {
-          direct_badges: number
-          item_book_badges: number
-          item_books: number
-        }[]
       }
       create_notification: {
         Args: {
