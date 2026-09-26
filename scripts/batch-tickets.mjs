@@ -39,7 +39,9 @@ export const CATEGORY_TO_WORKTYPE = {
 // 「스키마」 단독은 단서에서 뺐다 — "반환 스키마"·"결과 스키마"처럼 API 응답 구조를 말하는
 // 문장에도 걸려 20260921_2307(게이트 재실행 경로, infra)을 db로 오판정했다(티켓 20260922_1055).
 // DB 한정어(DB·테이블·데이터베이스)와 결합됐을 때만 세도록 좁힌다.
-export const DB_CLUE_RE = /마이그레이션|migration|supabase\/migrations|SQL|ALTER\s+TABLE|CREATE\s+TABLE|FK|RLS|(?:DB|테이블|데이터베이스)\s*스키마/i
+// `column`·「컬럼」도 같은 원칙으로 한정어(테이블·DB 앞, 추가·삭제·정리·변경 뒤)와 결합될 때만 센다
+// — 단독 매칭은 UI 그리드 열 같은 무관한 문장에 걸린다(티켓 20260922_1209).
+export const DB_CLUE_RE = /마이그레이션|migration|supabase\/migrations|SQL|ALTER\s+TABLE|CREATE\s+TABLE|FK|RLS|(?:DB|테이블|데이터베이스)\s*스키마|(?:테이블|DB)\s*(?:column|컬럼)|(?:column|컬럼)\s*(?:추가|삭제|정리|변경)/i
 
 export function parseFrontmatterField(block, key) {
   const m = block.match(new RegExp(`^${key}:\\s*"?([^"\\n]*?)"?\\s*$`, 'm'))

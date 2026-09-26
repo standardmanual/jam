@@ -247,6 +247,9 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
       doclint=1
     fi
     if [ -f scripts/gen-doc-index.mjs ] && ! node scripts/gen-doc-index.mjs --check >&2; then
+      # INDEX.md는 여러 브랜치의 문서 변경을 한 파일에 모으는 생성물이라 병합 충돌이 날 수 있다
+      # (티켓 20260921_1412). 충돌 표시를 손으로 풀지 않고 재생성한다.
+      echo "  병합 충돌로 docs/specs/INDEX.md에 충돌 표시가 남았다면 손으로 풀지 말고 'node scripts/gen-doc-index.mjs'로 재생성한 뒤 스테이지하세요." >&2
       doclint=1
     fi
     if [ -f scripts/gen-scheduled-jobs.mjs ] && ! node scripts/gen-scheduled-jobs.mjs --check >&2; then
@@ -259,6 +262,22 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
     echo "  문서 체계 규칙: CLAUDE.md '폴더 = 수명주기' 절 참조" >&2
     echo "  정당한 예외라면 JAM_SKIP_DOCLINT=1 git commit ... 로 우회하고 사유를 남기세요." >&2
     exit 1
+  fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 현황판 스크립트만 바뀌고 출력 형식 계약 문서가 안 바뀐 커밋을 경고한다 (티켓 20260918_1251).
+#
+# 배경: dashboard-format.md는 ticket-dashboard.mjs 출력 형식의 계약인데, "스크립트를 고치면 문서도
+# 함께 고친다"는 문구만 있고 강제하는 장치가 없다. 실제로 저장 계약이 구현과 어긋난 적이 있다.
+# 경고만 하고 커밋은 항상 통과시킨다 — 형식과 무관한 수정(버그·리팩터링)도 흔하기 때문이다.
+if git diff --cached --name-only | grep -qx 'scripts/ticket-dashboard.mjs'; then
+  if ! git diff --cached --name-only | grep -qx '.claude/skills/jam-work/references/dashboard-format.md'; then
+    echo "" >&2
+    echo "⚠️  경고(pre-commit): scripts/ticket-dashboard.mjs를 고쳤는데 dashboard-format.md가 함께 바뀌지 않았습니다." >&2
+    echo "  출력 형식을 바꿨다면 .claude/skills/jam-work/references/dashboard-format.md도 갱신하세요." >&2
+    echo "  (형식과 무관한 수정이면 그대로 진행해도 됩니다. 경고만 하고 커밋은 진행합니다)" >&2
+    echo "" >&2
   fi
 fi
 

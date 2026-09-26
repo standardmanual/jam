@@ -159,6 +159,21 @@ async function test9_realInfraTicketsClassifyAsDb() {
   console.log('PASS test9_realInfraTicketsClassifyAsDb')
 }
 
+// ── column·「컬럼」 결합 단서(티켓 20260922_1209) ────────────────────────────────────────────
+function test10_columnCleanupAloneBecomesDb() {
+  const workType = determineWorkType({ category: 'Infra', explicitWorkType: '', fullText: '사용하지 않는 컬럼 정리를 진행한다.' })
+  assert.equal(workType, 'db', '마이그레이션·SQL 단어가 없어도 「컬럼 정리」는 db로 판정돼야 한다')
+  assert.ok(staticStopReason({ workType, category: 'Infra' }))
+  console.log('PASS test10_columnCleanupAloneBecomesDb')
+}
+
+function test11_columnAsUiGridStaysInfra() {
+  const workType = determineWorkType({ category: 'Infra', explicitWorkType: '', fullText: '현황판 출력의 그리드 column 너비를 맞추는 스크립트를 고친다.' })
+  assert.equal(workType, 'infra', 'UI 그리드 열을 뜻하는 column은 db 단서가 아니다')
+  assert.equal(staticStopReason({ workType, category: 'Infra' }), null)
+  console.log('PASS test11_columnAsUiGridStaysInfra')
+}
+
 async function main() {
   await test1_findsOrdersAndKeepsAllStatuses()
   await test2_buildBatchOutputShape()
@@ -169,6 +184,8 @@ async function main() {
   test7_infraWithoutDbClueStaysInfra()
   test8_explicitWorkTypeFieldOverridesCategory()
   await test9_realInfraTicketsClassifyAsDb()
+  test10_columnCleanupAloneBecomesDb()
+  test11_columnAsUiGridStaysInfra()
   console.log('batch-tickets.test.mjs 통과')
 }
 
