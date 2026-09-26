@@ -24,7 +24,7 @@ export function fillTextLayers(layers, { text, subtext }) {
     throw new Error(`이 프리셋은 텍스트 레이어가 ${textLayerCount}개예요. --subtext로 두 번째 문구도 넣어 주세요.`)
   }
   if (textLayerCount < 2 && hasSubtext) {
-    throw new Error(`이 프리셋은 텍스트 레이어가 ${textLayerCount}개예요. --subtext는 텍스트 레이어가 2개인 프리셋에서만 쓸 수 있어요.`)
+    throw new Error(`이 프리셋은 텍스트 레이어가 ${textLayerCount}개예요. --subtext는 텍스트 레이어가 2개 이상인 프리셋에서만 쓸 수 있어요.`)
   }
 
   const contents = [text, subtext]

@@ -444,8 +444,8 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 
 `image_source`(nullable text, CHECK `admin-generator`·`agent-generator`, 마이그레이션 188,
 티켓 20260925_1407) — 미션 카드 썸네일(`image_url`)의 제작 경로. `admin-generator`=에셋
-제너레이터 적용 탭(수동 제작), `agent-generator`=윤진 등록 스크립트(윤진 자동, 티켓
-20260925_1412). NULL이면 기존 미션(미상). 배지의 `image_source`(`badges` 테이블, 위 §8)와
+제너레이터 적용 탭(수동 제작), `agent-generator`=CLI가 만든 이미지(윤진 등록 스크립트, 티켓
+20260925_1412 / 기존 미션 일괄 적용 도구 `apply-mission-images.mjs`, 티켓 20260926_2346). NULL이면 기존 미션(미상). 배지의 `image_source`(`badges` 테이블, 위 §8)와
 값 어휘를 공유하되 배지 전용 `jam-img`는 없다. 라벨·필터 단일 출처는
 `jam-web/src/lib/admin/contentImageSource.ts`(배지·미션 공용).
 
