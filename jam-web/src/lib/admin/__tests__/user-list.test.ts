@@ -172,6 +172,15 @@ describe('fetchActiveBanUserIds', () => {
     expect(ids).toHaveLength(BAN_FETCH_LIMIT - 3 + 1)
   })
 
+  it('한도 바로 아래(999건)까지는 오류 없이 전부 돌려준다', async () => {
+    const ids = await fetchActiveBanUserIds(fakeSupabase(banRows(BAN_FETCH_LIMIT - 1)))
+    expect(ids).toHaveLength(BAN_FETCH_LIMIT - 1)
+  })
+
+  it('제재 기록이 0건이면 빈 배열이다', async () => {
+    expect(await fetchActiveBanUserIds(fakeSupabase([]))).toEqual([])
+  })
+
   it('행 수가 한도와 같으면 조용히 잘린 결과 대신 오류를 던진다', async () => {
     await expect(fetchActiveBanUserIds(fakeSupabase(banRows(BAN_FETCH_LIMIT)))).rejects.toThrow(
       /한도\(1,000건\)를 넘어 제재 필터를 신뢰할 수 없습니다/

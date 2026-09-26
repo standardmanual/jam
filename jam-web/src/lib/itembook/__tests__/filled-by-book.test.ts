@@ -13,7 +13,9 @@ describe('buildFilledByBook', () => {
     })
 
     expect(result.get('A')).toEqual(new Set(['X']))
-    expect(result.get('B')?.has('X') ?? false).toBe(false)
+    // 키 없음과 빈 집합을 구분한다 — B는 채운 배지가 없으므로 키 자체가 없어야 한다.
+    expect(result.has('B')).toBe(false)
+    expect(result.get('B')).toBeUndefined()
   })
 
   it('체크인 획득 이력은 그 배지가 속한 북의 집합에만 들어간다', () => {
@@ -47,8 +49,27 @@ describe('buildFilledByBook', () => {
       earnedCheckinBadgeIds: none,
     })
 
-    expect(result.get('B')?.size ?? 0).toBe(0)
-    expect(result.get('C')?.size ?? 0).toBe(0)
+    // 결과에 키가 없다 — 빈 집합이 들어 있는 것과 다르다(조회하는 쪽이 빈 집합으로 다룬다).
+    expect(result.has('B')).toBe(false)
+    expect(result.has('C')).toBe(false)
+    expect([...result.keys()]).toEqual(['A'])
+  })
+
+  it('슬롯과 체크인 배지가 모두 비어 있으면 빈 Map이다', () => {
+    const result = buildFilledByBook({ slots: [], checkinBadgesByBook: new Map(), earnedCheckinBadgeIds: none })
+
+    expect(result).toBeInstanceOf(Map)
+    expect(result.size).toBe(0)
+  })
+
+  it('체크인 배지가 있어도 획득 이력이 전혀 없으면 빈 Map이다', () => {
+    const result = buildFilledByBook({
+      slots: [],
+      checkinBadgesByBook: new Map([['A', ['c1']]]),
+      earnedCheckinBadgeIds: none,
+    })
+
+    expect(result.size).toBe(0)
   })
 
   it('같은 배지가 여러 슬롯에 있어도 집합이라 중복이 없다', () => {
