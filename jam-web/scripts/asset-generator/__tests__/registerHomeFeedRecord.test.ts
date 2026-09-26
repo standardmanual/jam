@@ -4,6 +4,8 @@
  * 시각 표기·SQL 리터럴 자체(배지판에서 가져다 쓰는 부품)는 다시 시험하지 않고, 홈피드 필드가 그 부품을 거쳐
  * 올바른 SQL·기록·요약이 되는지만 본다.
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildTodayCardInsertPayload } from '../registerHomeFeedBundle.mjs';
 import {
@@ -221,6 +223,19 @@ describe('formatHomeFeedDryRunSummary', () => {
     expect(text.trimEnd().endsWith('DB·저장소에는 아무것도 쓰지 않았어요.')).toBe(true);
   });
 
+  it('DB 읽기 검사를 건너뛰었으면 첫 줄에 건너뜀을 적고 다시 돌리라는 안내를 넣는다(배지판과 같은 표기)', () => {
+    const lines = summaryOf().split('\n');
+    expect(lines[1]).toBe('결과: 통과 (DB 읽기 검사는 건너뜀 — 서비스 키 없음)');
+    expect(lines[2]).toContain('컨펌 근거로 쓰지 말고');
+    expect(lines[2]).toContain('서비스 키가 있는 환경(메인 폴더)에서 다시 돌려요');
+  });
+
+  it('건너뜀이 없으면 첫 줄이 기존과 같고 안내가 없다', () => {
+    const text = summaryOf({ dbChecks: [{ label: '제목·시작 일시 중복', status: '통과', detail: '' }] });
+    expect(text.split('\n')[1]).toBe('결과: 통과');
+    expect(text).not.toContain('컨펌 근거로 쓰지 말고');
+  });
+
   it('비활성 카드·참조 없는 카드를 알아볼 수 있게 적는다', () => {
     const bundle = sampleBundle();
     Object.assign(bundle.card, { is_active: false, badge_ids: [], mission_id: undefined, target_href: undefined, template_type: 'drop_alert' });
@@ -247,5 +262,12 @@ describe('formatHomeFeedDryRunSummary', () => {
   it('WebP 변환 실패와 미확인 상태를 구분해 적는다', () => {
     expect(summaryOf({ webp: { error: 'bad image' } })).toContain('- WebP 변환 미리 확인: 실패 — bad image');
     expect(summaryOf({ webp: undefined })).toContain('- WebP 변환 미리 확인: 하지 않았어요');
+  });
+});
+
+describe('제어·개행 문자 정규식 원본 (티켓 20260926_0120)', () => {
+  it.each(['registerHomeFeedRecord.mjs', 'registerHomeFeedBundle.mjs'])('%s에 범위 문자를 다시 적지 않는다(원본은 registerBundle.mjs 한 곳)', (file) => {
+    const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf-8');
+    expect(source).not.toMatch(/\\u2028|\\u0085/);
   });
 });

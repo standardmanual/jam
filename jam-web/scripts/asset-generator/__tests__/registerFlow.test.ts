@@ -9,7 +9,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { convertBadgeImageToWebp } from '../../../src/lib/admin/badgeImageWebp';
 import { parseRegisterArgs } from '../registerArgs.mjs';
-import { registerBadge, runDbChecks, runRegister, runUndo, storagePathsFor, undoRegistration, UNDO_REFERENCE_TABLES } from '../registerFlow.mjs';
+import { registerBadge, runDbChecks, runRegister, runUndo, storagePathsFor, undoRegistration, UNDO_ARRAY_REFERENCE_COLUMNS, UNDO_REFERENCE_TABLES } from '../registerFlow.mjs';
 import { validateBundle, readBundleFile } from '../registerBundle.mjs';
 
 const FIXTURE_DIR = path.join(__dirname, '..', '__fixtures__', 'example-bundle');
@@ -34,6 +34,7 @@ interface StubBuilder {
   eq(k: string, v: unknown): StubBuilder;
   is(k: string, v: unknown): StubBuilder;
   in(k: string, v: unknown): StubBuilder;
+  contains(k: string, v: unknown): StubBuilder;
   limit(n?: number): StubBuilder;
   maybeSingle(): Promise<Result>;
   single(): Promise<Result>;
@@ -82,6 +83,10 @@ function createStub(
       },
       in(k, v) {
         entry.filters.push(['in', k, v]);
+        return b;
+      },
+      contains(k, v) {
+        entry.filters.push(['contains', k, v]);
         return b;
       },
       limit() {
@@ -471,6 +476,25 @@ describe('runRegister — 실제 등록', () => {
   });
 });
 
+const ALL_REFERENCES = [...UNDO_REFERENCE_TABLES, ...UNDO_ARRAY_REFERENCE_COLUMNS];
+
+describe('UNDO_ARRAY_REFERENCE_COLUMNS', () => {
+  it('어드민 배지 삭제 참조 목록의 배열 컬럼과 같고, 생성 타입에서 배열(string[]) 컬럼이다', () => {
+    const declared = UNDO_ARRAY_REFERENCE_COLUMNS.map((r: { table: string; column: string }) => `${r.table}.${r.column}`).sort();
+    expect(declared).toEqual(['combination_recipe_slots.allowed_badge_ids', 'combination_recipes.reward_badge_ids', 'missions.reward_badge_ids', 'today_cards.badge_ids']);
+    // 어드민 참조 목록에도 같은 위치가 있어야 한다(위치 문자열에 컬럼이 들어 있다).
+    const adminSource = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'src', 'lib', 'admin', 'badge-references.ts'), 'utf8');
+    for (const name of declared) expect(adminSource).toContain(name);
+    const types = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'src', 'types', 'database.generated.ts'), 'utf8');
+    for (const { table, column } of UNDO_ARRAY_REFERENCE_COLUMNS as { table: string; column: string }[]) {
+      const start = types.indexOf(`      ${table}: {\n        Row: {`);
+      expect(start).toBeGreaterThan(-1);
+      const row = types.slice(start, types.indexOf('        Insert: {', start));
+      expect(row).toMatch(new RegExp(`\\b${column}: string\\[\\]`));
+    }
+  });
+});
+
 describe('UNDO_REFERENCE_TABLES', () => {
   it('badges를 참조하는 외래 키 10곳과 같다(생성 타입 대조 — 스키마가 바뀌면 여기서 알아챈다)', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'src', 'types', 'database.generated.ts'), 'utf8');
@@ -520,7 +544,7 @@ describe('되돌림 — undoRegistration·runUndo', () => {
     const stub = undoStub();
     const result = await undoRegistration({ supabase: stub.supabase, record: recordFor(), dryRun: false });
     expect(result).toMatchObject({ badgeId: BADGE_ID, rowFound: true, rowDeleted: true, filesRemoved: true, references: [], warnings: [] });
-    expect(stub.events).toEqual(['select:badges', ...UNDO_REFERENCE_TABLES.map((r: { table: string }) => `select:${r.table}`), 'delete:badges', 'remove']);
+    expect(stub.events).toEqual(['select:badges', ...ALL_REFERENCES.map((r: { table: string }) => `select:${r.table}`), 'delete:badges', 'remove']);
     const del = stub.entries.find((e) => e.op === 'delete')!;
     expect(del.filters).toEqual([
       ['eq', 'id', BADGE_ID],
@@ -533,9 +557,11 @@ describe('되돌림 — undoRegistration·runUndo', () => {
     const stub = undoStub();
     await undoRegistration({ supabase: stub.supabase, record: recordFor(), dryRun: true });
     const reads = stub.entries.filter((e) => e.opts?.head);
-    expect(reads.map((e) => [e.table, e.cols, e.filters[0]])).toEqual(
-      UNDO_REFERENCE_TABLES.map((r: { table: string; column: string }) => [r.table, r.column, ['eq', r.column, BADGE_ID]])
-    );
+    expect(reads.map((e) => [e.table, e.cols, e.filters[0]])).toEqual([
+      ...UNDO_REFERENCE_TABLES.map((r: { table: string; column: string }) => [r.table, r.column, ['eq', r.column, BADGE_ID]]),
+      // 배열 컬럼은 «배열에 배지 id가 들어 있는 행»으로 센다(티켓 20260926_0200).
+      ...UNDO_ARRAY_REFERENCE_COLUMNS.map((r: { table: string; column: string }) => [r.table, r.column, ['contains', r.column, [BADGE_ID]]]),
+    ]);
   });
 
   // 연쇄 삭제 2곳·연결 해제 3곳(티켓 20260925_0540)을 포함한 10개 관계 전부가 하나라도 붙어 있으면 지우기 전에 중단한다.
@@ -549,6 +575,34 @@ describe('되돌림 — undoRegistration·runUndo', () => {
       expect(stub.removes).toHaveLength(0);
     });
   }
+
+  // 배열 컬럼 4곳(티켓 20260926_0200): 외래 키가 아니라 DB가 막지 않으므로 --undo가 삭제 전에 직접 읽어 중단해야 한다.
+  for (const { table, column, effect } of UNDO_ARRAY_REFERENCE_COLUMNS as { table: string; column: string; effect: string }[]) {
+    it(`${table}.${column}(배열 컬럼)에 배지 id가 들어 있으면 아무것도 지우지 않고 위치와 건수를 알리며 중단한다`, async () => {
+      const stub = undoStub({ [`${table}.${column}`]: 2 });
+      await expect(undoRegistration({ supabase: stub.supabase, record: recordFor(), dryRun: false })).rejects.toThrow(
+        `${table}.${column} 2건(${effect})`
+      );
+      expect(stub.count('delete')).toBe(0);
+      expect(stub.removes).toHaveLength(0);
+    });
+  }
+
+  it('배열 컬럼 참조도 dry-run에서 같은 검사를 하고, 읽지 못하면 확인 없이 지우지 않고 중단한다', async () => {
+    const dry = undoStub({ 'missions.reward_badge_ids': 1 });
+    await expect(undoRegistration({ supabase: dry.supabase, record: recordFor(), dryRun: true })).rejects.toThrow('missions.reward_badge_ids 1건');
+    const failing = createStub({
+      resolve: (e) => {
+        if (e.table === 'badges') return { data: { id: BADGE_ID, image_source: 'agent-generator' }, error: null };
+        if (e.filters[0]?.[0] === 'contains') return { error: { message: 'operator does not exist' } };
+        return { count: 0, error: null };
+      },
+    });
+    await expect(undoRegistration({ supabase: failing.supabase, record: recordFor(), dryRun: false })).rejects.toThrow(
+      'missions.reward_badge_ids 참조를 확인하지 못해서 중단했어요(확인 없이 지우지 않아요): operator does not exist'
+    );
+    expect(failing.count('delete')).toBe(0);
+  });
 
   it('여러 관계에 붙어 있으면 관계별 건수를 모두 알린다', async () => {
     const stub = undoStub({ 'user_checkin_badge_earns.badge_id': 2, 'item_books.reward_badge_id': 1, 'item_books.required_activity_badge_id': 0 });

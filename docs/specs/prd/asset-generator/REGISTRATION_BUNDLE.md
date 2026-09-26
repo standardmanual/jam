@@ -241,6 +241,15 @@ npx tsx scripts/asset-generator/register-badge.mjs --undo <registration-record.j
   | 연쇄 삭제(CASCADE) | `user_checkin_badge_earns.badge_id` · `user_item_book_slots.badge_id` |
   | 연결 해제(SET NULL) | `item_books.reward_badge_id` · `item_books.required_activity_badge_id` · `missions.gated_badge_id` |
 
+  외래 키가 아닌 **배열 컬럼 4곳**도 같이 읽는다(`UNDO_ARRAY_REFERENCE_COLUMNS`, 어드민 배지 삭제의 참조 목록과 같은 위치). DB가 막지 않고
+  배지 행을 지우면 삭제된 id가 배열에 그대로 남기 때문이다. 배열에 배지 id가 들어 있는 행 수를 센다.
+
+  | 효과 | 표.컬럼 |
+  |---|---|
+  | 배열에 id가 남음 | `missions.reward_badge_ids` · `today_cards.badge_ids` · `combination_recipes.reward_badge_ids` · `combination_recipe_slots.allowed_badge_ids` |
+
+  (미션·홈피드 `--undo`의 비외래 키 참조는 이 확인 범위 밖이다.)
+
   하나라도 있으면 아무것도 지우지 않고 어느 관계에 몇 건인지(예: `user_checkin_badge_earns.badge_id 2건(연쇄 삭제)`) 알리며 중단한다.
   참조를 읽지 못해도 중단한다. 이때는 삭제하지 말고 어드민에서 소프트 삭제한다. 삭제 차단 5곳은 DB가 이미 막아 주지만,
   `--undo`가 중간에 실패해 저장소 파일과 행이 어긋나지 않도록 미리 읽는다. 마이그레이션으로 `badges`를 가리키는 외래 키가 늘거나 줄고 생성 타입을

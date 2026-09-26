@@ -62,6 +62,25 @@ export const UNDO_REFERENCE_TABLES = [
   { table: 'missions', column: 'gated_badge_id', effect: '연결 해제' },
 ]
 
+/**
+ * 배열 컬럼에 들어 있는 배지 참조(티켓 20260926_0200). 외래 키가 아니라 DB가 막지 않고, 배지 행을 지우면 삭제된 id가 배열에 그대로 남는다.
+ * 어드민 배지 삭제가 보는 참조 목록(`src/lib/admin/badge-references.ts`의 `BADGE_REFERENCE_SOURCES`) 중 배열 컬럼 4곳과 맞춘다:
+ * missions_reward · today_cards · recipes_result · recipes_ingredient/recipes_required(같은 컬럼 `allowed_badge_ids`).
+ * 조회는 배열에 배지 id가 들어 있는 행 수를 센다(`contains`). 미션·홈피드 `--undo`의 비외래 키 참조는 이 목록의 범위 밖이다.
+ */
+export const UNDO_ARRAY_REFERENCE_COLUMNS = [
+  { table: 'missions', column: 'reward_badge_ids', effect: '배열에 id가 남음' },
+  { table: 'today_cards', column: 'badge_ids', effect: '배열에 id가 남음' },
+  { table: 'combination_recipes', column: 'reward_badge_ids', effect: '배열에 id가 남음' },
+  { table: 'combination_recipe_slots', column: 'allowed_badge_ids', effect: '배열에 id가 남음' },
+]
+
+/** `--undo`가 지우기 전에 읽는 참조 전체(외래 키 + 배열 컬럼). 표 이름 목록·요약 건수는 여기서 나온다. */
+const ALL_UNDO_REFERENCES = [
+  ...UNDO_REFERENCE_TABLES.map((r) => ({ ...r, isArray: false })),
+  ...UNDO_ARRAY_REFERENCE_COLUMNS.map((r) => ({ ...r, isArray: true })),
+]
+
 const errorMessage = (e) => (e instanceof Error ? e.message : String(e))
 
 /** 2200 적용 API(`api/admin/asset-generator/apply/route.ts`)와 같은 저장 경로 규칙. */
@@ -244,7 +263,7 @@ export function findRecordUndoError(record) {
 
 /**
  * 등록한 배지를 되돌린다: 배지 행과 저장소 파일 2개를 지운다.
- * 삭제 전에 참조 관계(`UNDO_REFERENCE_TABLES`)를 읽어서 하나라도 붙어 있으면 아무것도 지우지
+ * 삭제 전에 참조 관계(`UNDO_REFERENCE_TABLES`의 외래 키와 `UNDO_ARRAY_REFERENCE_COLUMNS`의 배열 컬럼)를 읽어서 하나라도 붙어 있으면 아무것도 지우지
  * 않고 Error로 중단한다. 참조를 읽지 못해도 중단한다(확인 못 한 채 지우지 않는다).
  * 배지 행을 먼저 지운다 — 행 삭제가 막히면(외래 키 등) 이미지는 그대로 남아 배지가 깨지지 않는다.
  *
@@ -266,8 +285,9 @@ export async function undoRegistration({ supabase, record, dryRun }) {
 
   const references = []
   if (row) {
-    for (const { table, column, effect } of UNDO_REFERENCE_TABLES) {
-      const { count, error } = await supabase.from(table).select(column, { count: 'exact', head: true }).eq(column, badgeId)
+    for (const { table, column, effect, isArray } of ALL_UNDO_REFERENCES) {
+      const query = supabase.from(table).select(column, { count: 'exact', head: true })
+      const { count, error } = await (isArray ? query.contains(column, [badgeId]) : query.eq(column, badgeId))
       if (error) throw new Error(`${table}.${column} 참조를 확인하지 못해서 중단했어요(확인 없이 지우지 않아요): ${error.message}`)
       if (count && count > 0) references.push({ table, column, effect, count })
     }
@@ -379,7 +399,7 @@ export async function runRegister({ args, supabase, convertToWebp, randomUUID, n
   }
 
   const record = buildRegistrationRecord({ bundle, ...registered })
-  const sql = buildRegistrationSql({ payload: registered.payload, record, undoTables: UNDO_REFERENCE_TABLES.map((r) => r.table) })
+  const sql = buildRegistrationSql({ payload: registered.payload, record, undoTables: ALL_UNDO_REFERENCES.map((r) => r.table) })
   try {
     const { recordPath, sqlPath } = writeRegistrationFiles({ recordDir, record, sql })
     out.log(
@@ -435,7 +455,7 @@ export async function runUndo({ args, supabase, out }) {
       [
         '== 되돌림 검증 (--dry-run) ==',
         `배지 id: ${result.badgeId}`,
-        result.rowFound ? `참조 확인: ${UNDO_REFERENCE_TABLES.length}곳 모두 없음 — 지워도 안전해요.` : '배지 행이 이미 없어요. 저장소 파일만 정리할 대상이에요.',
+        result.rowFound ? `참조 확인: ${ALL_UNDO_REFERENCES.length}곳 모두 없음 — 지워도 안전해요.` : '배지 행이 이미 없어요. 저장소 파일만 정리할 대상이에요.',
         `지울 대상: badges 행 1건(있을 때), 저장소 파일 2개(${record.storage.png_path}, ${record.storage.webp_path})`,
         'DB·저장소에는 아무것도 쓰지 않았어요.',
       ].join('\n')

@@ -27,7 +27,7 @@
 //   ADMIN_API_COOKIE="sb-xxx-auth-token=...; sb-xxx-auth-token.1=..." \
 //     node scripts/admin-api-read.mjs
 
-import { computePublicMissionCheck, formatPublicMissionCheck } from './public-mission-check.mjs'
+import { buildPublicMissionCheckLines } from './public-mission-check.mjs'
 
 const BASE_URL = process.env.ADMIN_API_BASE_URL || 'http://localhost:3000'
 const READ_TOKEN = process.env.ADMIN_API_READ_TOKEN
@@ -89,20 +89,7 @@ async function main() {
   else console.log(`- 배지 지표 라벨: ${results.badgeMetricLabels.labels?.length ?? 0}건`)
 
   // 공개 미션 점검 (티켓 20260924_1502) — 미션·배지 응답으로 집계 건수만 출력한다
-  const missionsError = results.missions.__error
-  const badgesError = results.badges.__error
-  if (missionsError || badgesError) {
-    const reason = [
-      missionsError && `미션 조회 실패: ${missionsError}`,
-      badgesError && `배지 조회 실패: ${badgesError}`,
-    ]
-      .filter(Boolean)
-      .join(', ')
-    console.log(`- 공개 미션 점검: 확인 불가 (${reason})`)
-  } else {
-    const check = computePublicMissionCheck(results.missions, results.badges.badges)
-    for (const line of formatPublicMissionCheck(check)) console.log(line)
-  }
+  for (const line of buildPublicMissionCheckLines(results.missions, results.badges)) console.log(line)
 }
 
 main()
