@@ -151,14 +151,15 @@ calendar, ambient-drop schedule, and economy figures stay session-only.
 2. **프리셋 선택**: 어드민에서 사람이 만든 프리셋 중에서, **그 콘텐츠 유형(배지·미션·홈피드)의 프리셋**을 고르기만 한다. 프리셋을 만들거나 고치지 않는다.
    **홈피드 카드는 `홈피드` 프리셋**(id `51aa4673-f723-4929-ac20-a302202b7aa7`)을 쓴다. 찾는 명령은 읽기 API 경로의
    `cd jam-web && npx tsx scripts/asset-generator/list-presets.mjs --target-type home_feed`이고, 출력 줄 중 이름이 `홈피드`인 줄의 id가 위 값과 같은지 확인한다.
-3. **이미지 생성**: 아래 명령으로 PNG와 시드를 만든다. 출력 JSON(`out`·`seed`·`preset`·`stage`)을 그대로 기록한다.
+3. **이미지 생성**: 아래 명령으로 PNG와 시드를 만든다. 출력 JSON(`out`·`seed`·`preset`·`stage`·`layers`)을 그대로 기록한다.
    ```
    cd jam-web && npx tsx scripts/asset-generator/render.mjs --preset <프리셋 id> --bg "#rrggbb" --end "#rrggbb" \
-     --text "<배지 이름·미션 제목·카드 제목>" [--subtext "<짧은 설명>"] --out <묶음 폴더 절대경로>/image.png [--seed <정수>]
+     --text01 "<배지 이름·미션 제목·카드 제목>" [--text02 "<짧은 설명>"] --out <묶음 폴더 절대경로>/image.png [--seed <정수>]
    ```
-   텍스트 레이어가 2개인 프리셋(홈피드)은 `--text`가 1번째(레이어 「피드 제목」), `--subtext`가 2번째(레이어 「간단한 설명」)이고 `--subtext`를 빠뜨리면 실패한다.
-   텍스트 레이어가 1개인 프리셋에는 `--subtext`를 쓰지 않는다. 3개 이상인 프리셋은 1번째 ← `--text`, 2번째 ← `--subtext`만 채우고 나머지는 프리셋에 저장된 글자 그대로다(프리셋마다 레이어 수와 순서가 다르니 사용 전에 어드민에서 확인한다). **홈피드 제목은 공백 포함 11자 이하 1줄, 짧은 요약은 공백 포함 22자 이하**다. 순서 규칙과 글자 수 근거는
-   `docs/specs/prd/asset-generator/PRD.md` §8이 정본이다(복사하지 않는다). 홈피드 묶음에는 쓴 값을 `image.subtext`로 함께 남긴다.
+   프리셋의 텍스트·이미지 레이어는 어드민 화면과 같은 번호(`text01`, `text02`, …, `img01`, …)로 지정한다. 홈피드 프리셋(`홈피드`)은 `text01`이 「피드 제목」, `text02`가 「간단한 설명」이다.
+   지정하지 않은 번호는 프리셋에 저장된 글자·이미지가 그대로 쓰이므로, 실행 결과의 `layers.saved`에 값을 넣어야 하는 번호가 남아 있지 않은지 확인한다(옛 인자 `--text`·`--subtext`는 없어졌다).
+   프리셋마다 레이어 수와 번호가 다르니 사용 전에 어드민 레이어 목록의 번호를 확인한다. **홈피드 제목은 공백 포함 11자 이하 1줄, 짧은 요약은 공백 포함 22자 이하**다. 번호 규칙과 글자 수 근거는
+   `docs/specs/prd/asset-generator/PRD.md` §8이 정본이다(복사하지 않는다). 홈피드 묶음에는 쓴 값을 `image.text`(`text01` 값)·`image.subtext`(`text02` 값)로 함께 남긴다.
    예약 실행에서 `render.mjs`가 실패하면(읽기 API 변수 없음·프리셋 조회 실패·글꼴 내려받기 실패 등) 「이미지 준비 대기(사유)」로 멈춘다.
 4. **등록 묶음 작성**: 유형별 정본의 형식대로 `bundle.json`을 쓴다(`author`는 `윤진`, 컬러 선택 근거 링크 포함). 묶음 ID는 폴더 이름과 같다.
    작성한 뒤 해당 등록 스크립트를 **`--dry-run`으로만** 실행해 검증하고 그 출력을 컨펌 자료로 쓴다
