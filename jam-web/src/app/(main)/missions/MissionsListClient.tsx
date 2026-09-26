@@ -462,7 +462,6 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
 
                     {/* reward — 칩(등급/레벨)과 텍스트(포인트)를 한 줄로 조합 (20260907_0014) */}
                     <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-micro)', color: C_REWARD, lineHeight: 'var(--leading-micro)' }}>
-                      <span style={{ marginRight: 'var(--spacing-4)' }}>{d.missions.cardRewardLabel}</span>
                       {reward}
                     </span>
                   </div>
