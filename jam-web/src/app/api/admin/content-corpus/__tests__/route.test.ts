@@ -52,13 +52,29 @@ it.each([['0', 3], ['-1', 3], ['abc', 3], ['5', 5]])('limit=%s이면 %i을 전�
   expect(selectCorpusForType).toHaveBeenCalledWith('T02', expect.anything(), expected)
 })
 
-it('콤마로 구분한 ID를 트림해 배열로 전달한다', async () => {
-  await GET(req({ type: 'T02', badgeIds: 'a, b ,,c' }))
-  expect(selectCorpusForType).toHaveBeenCalledWith('T02', { tribeIds: [], itemBookIds: [], badgeIds: ['a', 'b', 'c'] }, 3)
+const ID_A = '3f2a9c1e-0000-4000-8000-0000000000a1'
+const ID_B = '3f2a9c1e-0000-4000-8000-0000000000b2'
+const ID_C = '3F2A9C1E-0000-4000-8000-0000000000C3'
+
+it('콤마로 구분한 UUID를 트림해 배열로 전달한다', async () => {
+  await GET(req({ type: 'T02', badgeIds: `${ID_A}, ${ID_B} ,,${ID_C}` }))
+  expect(selectCorpusForType).toHaveBeenCalledWith('T02', { tribeIds: [], itemBookIds: [], badgeIds: [ID_A, ID_B, ID_C] }, 3)
 })
 
-it('조회 중 오류가 나면 500', async () => {
-  selectCorpusForType.mockRejectedValue(new Error('DB 오류'))
+it.each(['tribeIds', 'itemBookIds', 'badgeIds'])(
+  'UUID가 아닌 값이 %s에 있으면 400이고 조회하지 않는다(티켓 20260926_1509)',
+  async (key) => {
+    const res = await GET(req({ type: 'T02', [key]: `${ID_A},3` }))
+    const body = await res.json()
+    expect(res.status).toBe(400)
+    expect(body.error).toContain('UUID')
+    expect(selectCorpusForType).not.toHaveBeenCalled()
+  }
+)
+
+it('조회 중 오류가 나면 500이고 오류 원문을 응답에 싣지 않는다', async () => {
+  selectCorpusForType.mockRejectedValue(new Error('invalid input syntax for type uuid: "3"'))
   const res = await GET(req({ type: 'T02' }))
   expect(res.status).toBe(500)
+  expect(JSON.stringify(await res.json())).not.toContain('invalid input syntax')
 })
