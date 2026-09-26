@@ -120,7 +120,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       # 구간이 시작되고 첫 `@@` 줄에서 끝난다. hunk 안의 줄은 ' '·'+'·'-'·'\' 접두어로 시작하므로
       # `diff --git`·`@@`로 시작할 수 없다. 내용이 "++ "로 시작하는 추가 줄이 diff에서 "+++ "로
       # 보여도 hunk 안이라 파일 헤더로 오인되지 않는다.
-      added_with_path="$(git diff --unified=0 "$guard_base" "$local_sha" 2>/dev/null | awk '
+      added_with_path="$(git -c core.quotePath=false -c color.ui=never diff --no-color --unified=0 "$guard_base" "$local_sha" 2>/dev/null | awk '
         /^diff --git / { in_hunk = 0; f = ""; next }
         /^@@ /         { in_hunk = 1; next }
         !in_hunk && /^\+\+\+ / { f = substr($0, 5); sub(/^b\//, "", f); next }
@@ -150,7 +150,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         exit 1
       fi
 
-      deleted_test_files="$(git diff --name-status --find-renames "$guard_base" "$local_sha" 2>/dev/null | awk '$1 == "D" && $2 ~ /\.test\./ { print $2 }')"
+      deleted_test_files="$(git -c core.quotePath=false -c color.ui=never diff --no-color --name-status --find-renames "$guard_base" "$local_sha" 2>/dev/null | awk '$1 == "D" && $2 ~ /\.test\./ { print $2 }')"
       if [ -n "$deleted_test_files" ]; then
         commit_msgs="$(git log --format=%B "$guard_base".."$local_sha" 2>/dev/null)"
         if ! printf '%s\n' "$commit_msgs" | grep -qE '^테스트 삭제: .+'; then
