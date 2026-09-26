@@ -55,7 +55,7 @@ export const CARD_OPTIONAL_FIELDS = [
 ]
 export const WORLD_REVIEW_FIELDS = ['world_related', 'winter_reviewed', 'reason']
 export const IMAGE_REQUIRED_FIELDS = ['path', 'seed', 'preset_id', 'bg_color', 'end_color']
-export const IMAGE_OPTIONAL_FIELDS = ['text']
+export const IMAGE_OPTIONAL_FIELDS = ['text', 'subtext']
 
 /** 허용값 목록 — 전부 `today-sections.ts` 상수에서 뽑는다(직접 적지 않는다). */
 export const TEMPLATE_TYPES = TODAY_TEMPLATE_OPTIONS.map((o) => o.value)
@@ -356,6 +356,9 @@ function validateImage(errors, image, bundleFile) {
   }
   if (isPresent(image.text) && typeof image.text !== 'string') {
     errors.push('image.text: 문자열이어야 해요.')
+  }
+  if (isPresent(image.subtext) && typeof image.subtext !== 'string') {
+    errors.push('image.subtext: 문자열이어야 해요.')
   }
 
   return { absPath, bytes }
