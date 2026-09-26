@@ -105,8 +105,16 @@ else
   rm -f "$LOG_PREFIX.skills"
 fi
 
+# 'use client' 파일이 값 import를 따라가다 서버 전용 모듈(next/headers 등)에 닿는지 확인한다 (티켓 20260924_1639).
+# lint·typecheck·단위 테스트는 이 오류를 못 잡고 실렌더에서만 드러났다.
+if ! ( cd "$REPO_ROOT" && node scripts/check-client-server-imports.mjs ) >"$LOG_PREFIX.client-server-imports" 2>&1; then
+  FAILED+=("client-server-imports")
+else
+  rm -f "$LOG_PREFIX.client-server-imports"
+fi
+
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · ds:check · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · skills"
+  echo "verify 통과: lint · typecheck · test · ds:check · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · skills · client-server-imports"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"
