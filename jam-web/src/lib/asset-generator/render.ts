@@ -280,7 +280,7 @@ export interface TextLayerRenderInput {
   lineHeight: number;
   align: 'left' | 'center' | 'right';
   color: string;
-  /** 텍스트 블록 중심의 스테이지 기준 위치(%) */
+  /** 텍스트 앵커의 스테이지 기준 위치(%) — 가로는 정렬 앵커(왼쪽 끝·가운데·오른쪽 끝), 세로는 전체 줄 높이의 중심 */
   xPct: number;
   yPct: number;
   rotationDeg: number;
@@ -293,7 +293,8 @@ export interface TextLayerRenderInput {
 /**
  * 텍스트 레이어 합성(PRD §4.3): 리본·이미지 레이어 위에 글자를 얹는다. 위치·크기는 이미지
  * 레이어와 같은 방식(스테이지 기준 비율)으로 계산해 스테이지 비율이 바뀌어도 상대 위치·크기가
- * 유지된다. `(xPct, yPct)`는 전체 텍스트 블록(여러 줄 포함)의 중심을 가리킨다.
+ * 유지된다. `(xPct, yPct)`의 가로(x)는 정렬 앵커(왼쪽=텍스트 왼쪽 끝, 가운데=가운데, 오른쪽=오른쪽 끝),
+ * 세로(y)는 전체 텍스트(여러 줄 포함) 높이의 중심을 가리킨다.
  *
  * 자간은 `ctx.letterSpacing`(브라우저 일부·서버 캔버스 라이브러리 다수가 지원하지 않는다)에
  * 기대지 않고, `measureText`로 각 글자 폭을 재서 글자 단위로 위치를 계산해 그린다 — 이 모듈이
@@ -332,7 +333,6 @@ export function drawTextLayer(ctx: Canvas2DContextLike, input: TextLayerRenderIn
   const lineWidths = lineChars.map((chars) =>
     chars.reduce((sum, ch, i) => sum + ctx.measureText(ch).width + (i < chars.length - 1 ? letterSpacingPx : 0), 0)
   );
-  const maxLineWidth = Math.max(0, ...lineWidths);
   const blockHeight = lineHeightPx * lines.length;
 
   ctx.setTransform(cs, sn, -sn, cs, cx, cy);
@@ -340,8 +340,9 @@ export function drawTextLayer(ctx: Canvas2DContextLike, input: TextLayerRenderIn
     const lineWidth = lineWidths[lineIndex];
     const lineY = (lineIndex + 0.5) * lineHeightPx - blockHeight / 2;
     let startX: number;
-    if (align === 'left') startX = -maxLineWidth / 2;
-    else if (align === 'right') startX = maxLineWidth / 2 - lineWidth;
+    // 회전 좌표계 원점이 앵커다. 줄마다 같은 앵커에 왼쪽·가운데·오른쪽으로 맞춘다.
+    if (align === 'left') startX = 0;
+    else if (align === 'right') startX = -lineWidth;
     else startX = -lineWidth / 2;
 
     let cursorX = startX;
