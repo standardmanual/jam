@@ -5,6 +5,8 @@ import {
   applyUserListSort,
   isEmptyBanFilter,
   isBanActive,
+  fetchActiveBanUserIds,
+  BAN_FETCH_LIMIT,
   toUserListRow,
   DEFAULT_USER_LIST_SORT,
   type UserListQuery,
@@ -146,5 +148,37 @@ describe('제재 상태 판정', () => {
     expect(row.tribeName).toBe('로드')
     expect(row.banLevel).toBeNull()
     expect(row.onboarded).toBe(false)
+  })
+})
+
+describe('fetchActiveBanUserIds', () => {
+  const fakeSupabase = (rows: { user_id: string; expires_at: string | null }[], error: { message: string } | null = null) =>
+    ({
+      from: () => ({ select: () => ({ limit: () => Promise.resolve({ data: error ? null : rows, error }) }) }),
+    }) as unknown as Parameters<typeof fetchActiveBanUserIds>[0]
+
+  const banRows = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({ user_id: `u${i}`, expires_at: null as string | null }))
+
+  it('한도 미만이면 만료되지 않은 제재의 user_id만 돌려준다', async () => {
+    const rows = [
+      { user_id: 'a', expires_at: null },
+      { user_id: 'b', expires_at: '2000-01-01T00:00:00Z' },
+      ...banRows(BAN_FETCH_LIMIT - 3),
+    ]
+    const ids = await fetchActiveBanUserIds(fakeSupabase(rows))
+    expect(ids).toContain('a')
+    expect(ids).not.toContain('b')
+    expect(ids).toHaveLength(BAN_FETCH_LIMIT - 3 + 1)
+  })
+
+  it('행 수가 한도와 같으면 조용히 잘린 결과 대신 오류를 던진다', async () => {
+    await expect(fetchActiveBanUserIds(fakeSupabase(banRows(BAN_FETCH_LIMIT)))).rejects.toThrow(
+      /한도\(1,000건\)를 넘어 제재 필터를 신뢰할 수 없습니다/
+    )
+  })
+
+  it('조회 오류는 기존처럼 오류로 던진다', async () => {
+    await expect(fetchActiveBanUserIds(fakeSupabase([], { message: 'boom' }))).rejects.toThrow(/제재 목록 조회 실패/)
   })
 })
