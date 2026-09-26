@@ -1,0 +1,137 @@
+-- 191: 트라이브 배경 하위 일괄 적용(캐스케이드) DB 함수 2개 제거 (축소, 티켓 20260925_1416)
+--
+-- ⚠️ 이 파일은 작성만 하고 실행하지 않았다. 실행은 사용자 승인 후 메인 세션(카리나)이 한다.
+--    Supabase는 staging·프로덕션 공용 단일 DB라 적용 즉시 프로덕션에 반영된다.
+--
+-- 대상(현재 DB에 실제로 있는 이름):
+--   - public.apply_tribe_background_cascade(uuid)
+--   - public.count_tribe_background_cascade(uuid)
+--   티켓 본문은 `*_faction_background_cascade`로 적었지만, 마이그레이션 152
+--   (factions → tribes 리네임)가 옛 이름 함수를 이미 DROP하고 `*_tribe_*`로 다시 만들었다.
+--   그래서 옛 이름은 DB에 없고, 아래 두 함수가 실제 제거 대상이다.
+--
+-- 코드 참조 0건 확인(이 브랜치, 2026-09-26):
+--   - 호출하던 곳은 `src/app/api/admin/tribes/[id]/apply-background/route.ts`(rpc 2곳)뿐이었고
+--     같은 브랜치에서 삭제했다. `grep -rn "background_cascade" jam-web/src` 결과는
+--     `src/types/database.generated.ts`의 함수 타입 정의뿐이었고, 같은 브랜치에서 그 두
+--     정의를 손으로 제거했다(적용 후 상태와 같게 맞춤 — "적용 후 할 일" 참고).
+--   - 컬렉션 쪽 `itembooks/[id]/apply-background` 라우트는 RPC가 아니라 supabase-js
+--     직접 UPDATE였다. DB 함수는 없다.
+--
+-- 배포 순서: 코드(라우트 삭제)가 먼저 배포된 뒤 이 마이그레이션을 적용한다. 옛 코드가 아직
+-- 돌고 있는 구간에 적용하면 트라이브 폼의 "일괄 적용" 버튼이 500을 낸다.
+--
+-- 재실행 가능(idempotent): DROP FUNCTION IF EXISTS.
+--
+-- 적용 후 할 일: Supabase MCP `generate_typescript_types` 결과를 `database.generated.ts`와
+--   대조한다(메인 세션). 이 브랜치는 이 환경에 CLI·MCP가 없어 두 함수 정의를 손으로 지웠다.
+
+BEGIN;
+
+DROP FUNCTION IF EXISTS public.count_tribe_background_cascade(uuid);
+DROP FUNCTION IF EXISTS public.apply_tribe_background_cascade(uuid);
+
+COMMIT;
+
+-- ── 검증 쿼리 (실행 후 눈으로 확인할 것) ────────────────────────────────────
+--
+-- SELECT proname FROM pg_proc
+--  WHERE pronamespace = 'public'::regnamespace
+--    AND proname IN ('apply_tribe_background_cascade', 'count_tribe_background_cascade');
+--  → 0행이어야 한다.
+
+-- 되돌림 SQL
+-- 함수 정의 원본은 마이그레이션 152(§3), 권한 이력은 109(PUBLIC 차단 + service_role 허용)·
+-- 182(anon·authenticated 회수)다. 152에서 만든 본문(배경색·애니메이션 복사)과 권한을 그대로
+-- 복원한다. 함수를 지운 뒤 새로 만들면 기본 grant가 다시 붙으므로 권한 4줄을 반드시 함께 실행한다.
+--
+-- BEGIN;
+--
+-- CREATE FUNCTION public.count_tribe_background_cascade(p_tribe_id UUID)
+-- RETURNS TABLE(direct_badges INT, item_books INT, item_book_badges INT)
+-- LANGUAGE plpgsql
+-- SECURITY DEFINER
+-- SET search_path = public
+-- AS $$
+-- BEGIN
+--   IF NOT EXISTS (SELECT 1 FROM public.tribes WHERE id = p_tribe_id) THEN
+--     RAISE EXCEPTION '존재하지 않는 트라이브입니다: %', p_tribe_id;
+--   END IF;
+--
+--   RETURN QUERY
+--   SELECT
+--     (SELECT count(*)::INT FROM public.badges WHERE tribe_id = p_tribe_id AND deleted_at IS NULL),
+--     (SELECT count(*)::INT FROM public.item_books WHERE tribe_id = p_tribe_id),
+--     (SELECT count(*)::INT FROM public.badges
+--       WHERE deleted_at IS NULL
+--         AND item_book_id IN (SELECT id FROM public.item_books WHERE tribe_id = p_tribe_id));
+-- END;
+-- $$;
+--
+-- CREATE FUNCTION public.apply_tribe_background_cascade(p_tribe_id UUID)
+-- RETURNS TABLE(direct_badges INT, item_books INT, item_book_badges INT)
+-- LANGUAGE plpgsql
+-- SECURITY DEFINER
+-- SET search_path = public
+-- AS $$
+-- DECLARE
+--   v_background_color TEXT;
+--   v_background_animation JSONB;
+--   v_direct_badges INT;
+--   v_item_books INT;
+--   v_item_book_badges INT;
+-- BEGIN
+--   IF NOT EXISTS (SELECT 1 FROM public.tribes WHERE id = p_tribe_id) THEN
+--     RAISE EXCEPTION '존재하지 않는 트라이브입니다: %', p_tribe_id;
+--   END IF;
+--
+--   SELECT background_color, background_animation
+--   INTO v_background_color, v_background_animation
+--   FROM public.tribes
+--   WHERE id = p_tribe_id;
+--
+--   -- (a) 트라이브 직속 배지
+--   WITH updated AS (
+--     UPDATE public.badges
+--     SET background_color = v_background_color,
+--         background_animation = v_background_animation
+--     WHERE tribe_id = p_tribe_id
+--       AND deleted_at IS NULL
+--     RETURNING id
+--   )
+--   SELECT count(*) INTO v_direct_badges FROM updated;
+--
+--   -- (b) 트라이브 소속 컬렉션
+--   WITH updated AS (
+--     UPDATE public.item_books
+--     SET background_color = v_background_color,
+--         background_animation = v_background_animation
+--     WHERE tribe_id = p_tribe_id
+--     RETURNING id
+--   )
+--   SELECT count(*) INTO v_item_books FROM updated;
+--
+--   -- (c) 그 컬렉션들에 속한 아이템배지
+--   WITH updated AS (
+--     UPDATE public.badges
+--     SET background_color = v_background_color,
+--         background_animation = v_background_animation
+--     WHERE deleted_at IS NULL
+--       AND item_book_id IN (SELECT id FROM public.item_books WHERE tribe_id = p_tribe_id)
+--     RETURNING id
+--   )
+--   SELECT count(*) INTO v_item_book_badges FROM updated;
+--
+--   RETURN QUERY SELECT v_direct_badges, v_item_books, v_item_book_badges;
+-- END;
+-- $$;
+--
+-- REVOKE ALL ON FUNCTION public.count_tribe_background_cascade(uuid) FROM PUBLIC;
+-- GRANT EXECUTE ON FUNCTION public.count_tribe_background_cascade(uuid) TO service_role;
+-- REVOKE ALL ON FUNCTION public.apply_tribe_background_cascade(uuid) FROM PUBLIC;
+-- GRANT EXECUTE ON FUNCTION public.apply_tribe_background_cascade(uuid) TO service_role;
+-- -- 마이그레이션 182: anon·authenticated 직접 호출 차단
+-- REVOKE EXECUTE ON FUNCTION public.apply_tribe_background_cascade(uuid) FROM anon, authenticated;
+-- REVOKE EXECUTE ON FUNCTION public.count_tribe_background_cascade(uuid) FROM anon, authenticated;
+--
+-- COMMIT;
