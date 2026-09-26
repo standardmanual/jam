@@ -28,13 +28,16 @@ import { d } from '@/lib/i18n'
 const CONDITION_TEXT = '4주 안에 10km 이상을 5:30/km보다 빠르게, 3번 달리기'
 const HINT = '참가한 뒤 조건을 달성하면 미션이 자동으로 끝나요'
 
-function render(conditionText: string | null | undefined, state: { participating?: boolean; completed?: boolean; locked?: boolean } = {}) {
+function render(
+  conditionText: string | null | undefined,
+  state: { participating?: boolean; completed?: boolean; locked?: boolean; missionType?: string; progressValue?: number } = {},
+) {
   // 화면이 읽는 필드만 채운 최소 픽스처
   const mission = {
     id: 'm1',
     title: '페이스의 증명',
     description: '4주 동안 달린 당신의 속도를 증명하세요',
-    mission_type: 'engine_condition',
+    mission_type: state.missionType ?? 'engine_condition',
     condition_json: { activity_type: 'running', single_distance_km: 10 },
     condition_text: conditionText,
     reward_points: null,
@@ -48,7 +51,7 @@ function render(conditionText: string | null | undefined, state: { participating
       mission={mission}
       isParticipating={state.participating ?? false}
       isCompleted={state.completed ?? false}
-      progressValue={0}
+      progressValue={state.progressValue ?? 0}
       rewardBadges={[]}
       locked={state.locked ?? false}
     />
@@ -99,5 +102,54 @@ describe('MissionDetailClient 달성 조건 카드', () => {
   it('불릿은 장식이라 aria-hidden이다', () => {
     const html = render(CONDITION_TEXT)
     expect(html).toContain('aria-hidden="true"')
+  })
+})
+
+/**
+ * 「나의 진행 상황」 카드 (티켓 20260927_0119).
+ * 복합 조건 미션은 상태를 한 문장으로만 알리고, 체크인·아이템 픽업 미션은 기존 라벨 + 칩을 유지한다.
+ * 카드 구간만 잘라 본다(다른 자리의 「미션 완료」 문구와 섞이지 않게).
+ */
+function progressCard(html: string): string {
+  const i = html.indexOf(d.missions.myProgressTitle)
+  return i === -1 ? '' : html.slice(i)
+}
+
+describe('MissionDetailClient 나의 진행 상황 카드', () => {
+  it('복합 조건 + 참가 중 + 미완료: 한 문장만 나오고 「미션 완료」 라벨·「미달성」 칩은 없다', () => {
+    const card = progressCard(render(CONDITION_TEXT, { participating: true }))
+    expect(card).toContain('아직 미션을 달성하지 못했어요')
+    expect(card).not.toContain('미션 완료')
+    expect(card).not.toContain('미달성')
+  })
+
+  it('복합 조건 + 완료: 「미션을 달성했어요」가 나오고 미완료 문장은 없다', () => {
+    const card = progressCard(render(CONDITION_TEXT, { completed: true }))
+    expect(card).toContain('미션을 달성했어요')
+    expect(card).not.toContain('아직 미션을 달성하지 못했어요')
+    expect(card).not.toContain('미션 완료')
+  })
+
+  it('복합 조건 + 진행값이 1 이상이면 완료 문장이 나온다', () => {
+    const card = progressCard(render(CONDITION_TEXT, { participating: true, progressValue: 1 }))
+    expect(card).toContain('미션을 달성했어요')
+  })
+
+  it('체크인 미션은 기존 라벨과 「미달성」 칩을 그대로 그린다', () => {
+    const card = progressCard(render(CONDITION_TEXT, { participating: true, missionType: 'checkin' }))
+    expect(card).toContain(d.missions.goalCheckin)
+    expect(card).toContain('미달성')
+    expect(card).not.toContain('아직 미션을 달성하지 못했어요')
+  })
+
+  it('아이템 픽업 미션도 기존 라벨과 칩을 유지하고, 달성하면 「달성」 칩이 나온다', () => {
+    const card = progressCard(render(CONDITION_TEXT, { participating: true, missionType: 'item_collect', progressValue: 1 }))
+    expect(card).toContain(d.missions.goalItemCollect)
+    expect(card).toContain('>달성<')
+    expect(card).not.toContain('미션을 달성했어요')
+  })
+
+  it('참가 전에는 진행 상황 카드를 그리지 않는다', () => {
+    expect(render(CONDITION_TEXT)).not.toContain(d.missions.myProgressTitle)
   })
 })

@@ -275,7 +275,12 @@ export default function MissionDetailClient({
           <InfoCard>
             <SectionLabel>{d.missions.myProgressTitle}</SectionLabel>
 
-            {isAchievementType ? (
+            {mission.mission_type === 'engine_condition' ? (
+              /* 복합 조건 — 조건은 위 카드가 보여 주므로 상태만 한 문장으로 알린다 (20260927_0119) */
+              <p className={`text-[14px] leading-[1.43] ${achieved ? 'text-text' : 'text-text-secondary'}`}>
+                {achieved ? d.missions.engineConditionAchieved : d.missions.engineConditionNotAchieved}
+              </p>
+            ) : isAchievementType ? (
               /* 달성형 */
               <div className="flex items-center justify-between">
                 <p className="text-[14px] leading-[1.43] text-text-secondary">{goal.label}</p>
