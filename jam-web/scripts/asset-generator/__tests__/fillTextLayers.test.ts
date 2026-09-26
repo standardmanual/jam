@@ -17,6 +17,14 @@ describe('fillTextLayers', () => {
     expect(layers[0]).toHaveProperty('content', '');
   });
 
+  it('프리셋에 저장된 content가 있어도 text·subtext로 덮어쓴다', () => {
+    const stored = (yPct: number, content: string) => ({ ...textLayer(yPct), content });
+    const layers = [stored(31, '저장된 제목'), stored(41, '저장된 설명')];
+    const filled = fillTextLayers(layers, { text: '제목', subtext: '설명' });
+    expect(filled.map((l: { content?: string }) => l.content)).toEqual(['제목', '설명']);
+    expect(layers[0].content).toBe('저장된 제목');
+  });
+
   it('텍스트 레이어 1개(배지·미션)는 지금처럼 text만 쓴다', () => {
     const filled = fillTextLayers([image, textLayer(50)], { text: '배지 이름', subtext: undefined });
     expect(filled.map((l: { content?: string }) => l.content)).toEqual([undefined, '배지 이름']);

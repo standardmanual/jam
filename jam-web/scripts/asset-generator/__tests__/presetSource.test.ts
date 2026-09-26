@@ -14,7 +14,7 @@ import {
 const TOKEN = 'secret-token-value';
 const BASE = 'https://stage.example.app';
 
-const textLayer = { id: 'l1', type: 'text', content: '', font: 'Pretendard', sizePct: 10 };
+const textLayer = { id: 'l1', type: 'text', content: '저장된 문구', font: 'Pretendard', sizePct: 10 };
 const imageLayer = { id: 'l2', type: 'image', assetUrl: 'https://cdn.example/a.png' };
 
 // API 응답의 이미지 레이어는 이미 역직렬화돼 있어 overlayEnabled가 채워져 있다(티켓 20260926_1741)
@@ -36,7 +36,7 @@ const dbRow = {
   name: '홈피드',
   target_type: 'home_feed',
   stage_ratio: '4:5',
-  layers: [{ ...textLayer, content: '저장 시 남은 값' }, imageLayer],
+  layers: [textLayer, imageLayer],
   created_by: 'u1',
   created_at: '2026-09-26T00:00:00Z',
   updated_at: '2026-09-26T00:00:00Z',
@@ -114,9 +114,9 @@ describe('normalizePreset', () => {
     );
   });
 
-  it('DB 행은 역직렬화를 한 번만 거친다(텍스트 content가 비워진다)', () => {
+  it('DB 행은 역직렬화를 한 번만 거친다(텍스트 content는 유지된다)', () => {
     const fromRow = normalizePreset(dbRow);
-    expect(fromRow.layers[0].content).toBe('');
+    expect(fromRow.layers[0].content).toBe('저장된 문구');
     expect(fromRow.layers[1]).toEqual(deserializedImageLayer);
   });
 

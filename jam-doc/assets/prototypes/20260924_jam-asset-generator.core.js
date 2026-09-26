@@ -581,7 +581,7 @@ var AssetGeneratorCore = (() => {
   }
   function serializePresetLayers(layers, assetUrlByLayerId = {}) {
     return layers.map((layer) => {
-      if (layer.type === "text") return { ...layer, content: "" };
+      if (layer.type === "text") return layer;
       const replacement = assetUrlByLayerId[layer.id];
       return replacement ? { ...layer, assetUrl: replacement } : layer;
     });
@@ -589,7 +589,7 @@ var AssetGeneratorCore = (() => {
   function deserializePresetLayers(layers) {
     return layers.map((layer) => {
       var _a;
-      if (layer.type === "text") return { ...layer, content: "" };
+      if (layer.type === "text") return { ...layer, content: typeof layer.content === "string" ? layer.content : "" };
       const { heightPct: _legacyHeightPct, ...rest } = layer;
       return { ...rest, overlayEnabled: (_a = rest.overlayEnabled) != null ? _a : false };
     });
