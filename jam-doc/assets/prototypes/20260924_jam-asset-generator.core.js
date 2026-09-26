@@ -436,11 +436,12 @@ var AssetGeneratorCore = (() => {
     ctx.fillStyle = color;
     ctx.fillRect(0, 0, width, height);
   }
-  function drawImageLayer(ctx, input) {
-    const { image, xPct, yPct, widthPct, heightPct, rotationDeg, opacityPct, stageWidth, stageHeight } = input;
+  function drawImageLayer(ctx, input, createCanvas) {
+    const { image, xPct, yPct, widthPct, rotationDeg, opacityPct, stageWidth, stageHeight, overlayColor } = input;
+    if (!(image.width > 0) || !(image.height > 0)) return;
     const shortSide = Math.min(stageWidth, stageHeight);
     const dw = widthPct / 100 * shortSide;
-    const dh = heightPct / 100 * shortSide;
+    const dh = dw * image.height / image.width;
     const cx = xPct / 100 * stageWidth;
     const cy = yPct / 100 * stageHeight;
     const rad = rotationDeg * Math.PI / 180;
@@ -449,9 +450,18 @@ var AssetGeneratorCore = (() => {
     const prevAlpha = ctx.globalAlpha;
     ctx.globalAlpha = Math.max(0, Math.min(1, opacityPct / 100));
     ctx.setTransform(cs, sn, -sn, cs, cx, cy);
-    ctx.drawImage(image, -dw / 2, -dh / 2, dw, dh);
+    ctx.drawImage(overlayColor && createCanvas ? tintImage(createCanvas, image, overlayColor) : image, -dw / 2, -dh / 2, dw, dh);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = prevAlpha;
+  }
+  function tintImage(createCanvas, image, color) {
+    const tmp = createCanvas(image.width, image.height);
+    const tctx = tmp.getContext("2d");
+    tctx.drawImage(image, 0, 0);
+    tctx.globalCompositeOperation = "source-in";
+    tctx.fillStyle = color;
+    tctx.fillRect(0, 0, image.width, image.height);
+    return tmp;
   }
   function drawTextLayer(ctx, input) {
     const { content, font, sizePct, letterSpacing, lineHeight, align, color, xPct, yPct, rotationDeg, opacityPct, stageWidth, stageHeight } = input;
@@ -545,7 +555,12 @@ var AssetGeneratorCore = (() => {
     });
   }
   function deserializePresetLayers(layers) {
-    return layers.map((layer) => layer.type === "text" ? { ...layer, content: "" } : layer);
+    return layers.map((layer) => {
+      var _a;
+      if (layer.type === "text") return { ...layer, content: "" };
+      const { heightPct: _legacyHeightPct, ...rest } = layer;
+      return { ...rest, overlayEnabled: (_a = rest.overlayEnabled) != null ? _a : false };
+    });
   }
   return __toCommonJS(index_exports);
 })();

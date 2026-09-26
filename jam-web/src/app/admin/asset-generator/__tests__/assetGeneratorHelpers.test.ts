@@ -7,6 +7,7 @@ import {
   buildGoogleFontWeightCssUrl,
   clampDurationSeconds,
   computeEffectiveStartColor,
+  computeInitialImageWidthPct,
   createImageLayer,
   createTextLayer,
   deselectIfRemoved,
@@ -27,7 +28,6 @@ function makeImageLayer(id: string, assetUrl = `blob:${id}`): ImageLayerConfig {
     xPct: 50,
     yPct: 50,
     widthPct: 30,
-    heightPct: 30,
     rotationDeg: 0,
     opacityPct: 100,
   }
@@ -140,6 +140,19 @@ describe('createImageLayer (레이어 식별 재작업, 티켓 20260924_2157)', 
     expect(typeof layer.id).toBe('string')
     expect(layer.id.length).toBeGreaterThan(0)
     expect(layer).not.toHaveProperty('order')
+  })
+
+  it('원본 크기를 받으면 스테이지 짧은 변 대비 %로 환산해 widthPct에 넣고 heightPct는 없다', () => {
+    const layer = createImageLayer('blob:a', { naturalWidth: 540, stageShortSide: 1080 })
+    expect(layer.widthPct).toBe(50)
+    expect(layer).not.toHaveProperty('heightPct')
+    expect(layer.overlayEnabled).toBe(false)
+    expect(layer.overlayColor).toBe('#ffffff')
+  })
+
+  it('원본 크기를 못 받으면 기본 30%로 시작한다', () => {
+    expect(createImageLayer('blob:a').widthPct).toBe(30)
+    expect(createImageLayer('blob:a', { naturalWidth: 0, stageShortSide: 1080 }).widthPct).toBe(30)
   })
 
   it('호출할 때마다 서로 다른 id를 발급한다', () => {
@@ -401,5 +414,17 @@ describe('loadFontInBrowser 굵기 반영 (티켓 20260925_0148, 가짜 document
     const assertion = expect(done).rejects.toThrow('굵기 700')
     links[0].fire('load')
     await assertion
+  })
+})
+
+describe('computeInitialImageWidthPct (티켓 20260926_1741)', () => {
+  it('슬라이더 범위(1~200)로 제한한다', () => {
+    expect(computeInitialImageWidthPct({ naturalWidth: 5000, stageShortSide: 1000 })).toBe(200)
+    expect(computeInitialImageWidthPct({ naturalWidth: 1, stageShortSide: 1000 })).toBe(1)
+  })
+
+  it('값이 올바르지 않으면 null을 돌려준다', () => {
+    expect(computeInitialImageWidthPct({ naturalWidth: -1, stageShortSide: 1000 })).toBeNull()
+    expect(computeInitialImageWidthPct({ naturalWidth: 100, stageShortSide: 0 })).toBeNull()
   })
 })

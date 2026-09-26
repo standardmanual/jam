@@ -83,13 +83,15 @@ export interface ImageLayerConfig {
   xPct: number;
   /** 이미지 중심의 스테이지 세로 위치(%) */
   yPct: number;
-  /** 스테이지 짧은 변 대비 가로 크기(%) */
+  /** 스테이지 짧은 변 대비 가로 크기(%). 세로는 원본 비율로 계산한다 */
   widthPct: number;
-  /** 스테이지 짧은 변 대비 세로 크기(%) */
-  heightPct: number;
   rotationDeg: number;
   /** 0~100 */
   opacityPct: number;
+  /** 컬러 오버레이 사용 여부. 없으면 꺼짐 */
+  overlayEnabled?: boolean;
+  /** 오버레이 색(`#rrggbb`). 이미지의 불투명한 부분에 입힌다 */
+  overlayColor?: string;
 }
 
 /**

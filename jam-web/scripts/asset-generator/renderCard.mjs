@@ -123,12 +123,13 @@ export async function renderCardPng(args) {
         xPct: layer.xPct,
         yPct: layer.yPct,
         widthPct: layer.widthPct,
-        heightPct: layer.heightPct,
         rotationDeg: layer.rotationDeg,
         opacityPct: layer.opacityPct,
         stageWidth,
         stageHeight,
-      })
+        // 컬러 오버레이(티켓 20260926_1741): 브라우저와 같은 drawImageLayer가 임시 캔버스로 색을 입힌다
+        overlayColor: layer.overlayEnabled ? layer.overlayColor : undefined,
+      }, serverCanvasFactory)
     } else {
       drawTextLayer(ctx, {
         content: layer.content,

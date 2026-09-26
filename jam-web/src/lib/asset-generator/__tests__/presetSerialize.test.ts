@@ -21,7 +21,6 @@ function makeImageLayer(id: string, assetUrl: string): ImageLayerConfig {
     xPct: 50,
     yPct: 50,
     widthPct: 30,
-    heightPct: 30,
     rotationDeg: 0,
     opacityPct: 100,
   };
@@ -85,6 +84,29 @@ describe('deserializePresetLayers', () => {
     expect(result.map((l) => l.id)).toEqual(['i1', 't1']);
     expect((result[1] as TextLayerConfig).content).toBe('');
     expect((result[0] as ImageLayerConfig).assetUrl).toBe('https://cdn.example.com/i1.png');
+  });
+});
+
+describe('deserializePresetLayers 하위 호환 (티켓 20260926_1741)', () => {
+  it('예전 프리셋의 heightPct는 버리고 overlayEnabled를 꺼짐으로 채운다', () => {
+    const legacy = { ...makeImageLayer('i1', 'https://cdn.example.com/i1.png'), heightPct: 30 } as unknown as OverlayLayerConfig;
+    const [result] = deserializePresetLayers([legacy]) as ImageLayerConfig[];
+    expect('heightPct' in result).toBe(false);
+    expect(result.widthPct).toBe(30);
+    expect(result.overlayEnabled).toBe(false);
+  });
+
+  it('저장된 오버레이 설정은 그대로 유지한다', () => {
+    const layer: ImageLayerConfig = { ...makeImageLayer('i1', 'https://cdn.example.com/i1.png'), overlayEnabled: true, overlayColor: '#ff0000' };
+    const [result] = deserializePresetLayers([layer]) as ImageLayerConfig[];
+    expect(result.overlayEnabled).toBe(true);
+    expect(result.overlayColor).toBe('#ff0000');
+  });
+
+  it('직렬화 뒤 다시 읽어도 오버레이 설정이 유지된다', () => {
+    const layer: ImageLayerConfig = { ...makeImageLayer('i1', 'blob:x'), overlayEnabled: true, overlayColor: '#00ff00' };
+    const restored = deserializePresetLayers(serializePresetLayers([layer], { i1: 'https://cdn.example.com/i1.png' }));
+    expect(restored[0]).toMatchObject({ overlayEnabled: true, overlayColor: '#00ff00' });
   });
 });
 

@@ -214,14 +214,15 @@ export interface ImageLayerRenderInput {
   /** 스테이지 기준 위치(%). 이미지 중심 좌표 */
   xPct: number;
   yPct: number;
-  /** 스테이지 짧은 변 대비 크기(%) */
+  /** 스테이지 짧은 변 대비 가로 크기(%). 세로는 원본 비율로 계산한다 */
   widthPct: number;
-  heightPct: number;
   rotationDeg: number;
   /** 0~100 */
   opacityPct: number;
   stageWidth: number;
   stageHeight: number;
+  /** 컬러 오버레이 색. 있으면 이미지의 불투명한 부분에 이 색을 입힌다(알파 모양 유지) */
+  overlayColor?: string;
 }
 
 /**
@@ -230,11 +231,16 @@ export interface ImageLayerRenderInput {
  * 유지된다. 재생 중에도(곡선 진행과 무관하게) 항상 같은 값으로 호출하면 고정된 것처럼 보인다
  * — 곡선을 따라가지 않는 것은 호출자가 매 프레임 같은 인자를 넘기는 것으로 충분하다.
  */
-export function drawImageLayer(ctx: Canvas2DContextLike, input: ImageLayerRenderInput): void {
-  const { image, xPct, yPct, widthPct, heightPct, rotationDeg, opacityPct, stageWidth, stageHeight } = input;
+export function drawImageLayer(
+  ctx: Canvas2DContextLike,
+  input: ImageLayerRenderInput,
+  createCanvas?: CanvasFactory
+): void {
+  const { image, xPct, yPct, widthPct, rotationDeg, opacityPct, stageWidth, stageHeight, overlayColor } = input;
+  if (!(image.width > 0) || !(image.height > 0)) return;
   const shortSide = Math.min(stageWidth, stageHeight);
   const dw = (widthPct / 100) * shortSide;
-  const dh = (heightPct / 100) * shortSide;
+  const dh = (dw * image.height) / image.width;
   const cx = (xPct / 100) * stageWidth;
   const cy = (yPct / 100) * stageHeight;
   const rad = (rotationDeg * Math.PI) / 180;
@@ -243,9 +249,23 @@ export function drawImageLayer(ctx: Canvas2DContextLike, input: ImageLayerRender
   const prevAlpha = ctx.globalAlpha;
   ctx.globalAlpha = Math.max(0, Math.min(1, opacityPct / 100));
   ctx.setTransform(cs, sn, -sn, cs, cx, cy);
-  ctx.drawImage(image, -dw / 2, -dh / 2, dw, dh);
+  ctx.drawImage(overlayColor && createCanvas ? tintImage(createCanvas, image, overlayColor) : image, -dw / 2, -dh / 2, dw, dh);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = prevAlpha;
+}
+
+/**
+ * 원본 크기 임시 캔버스에 이미지를 그린 뒤 `source-in`으로 색을 채운다. 알파 모양은 유지하고
+ * 색만 바뀐다. 불투명도는 호출자(drawImageLayer)가 이 결과를 그릴 때 적용한다.
+ */
+function tintImage(createCanvas: CanvasFactory, image: ImageSourceLike, color: string): CanvasLike {
+  const tmp = createCanvas(image.width, image.height);
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(image, 0, 0);
+  tctx.globalCompositeOperation = 'source-in';
+  tctx.fillStyle = color;
+  tctx.fillRect(0, 0, image.width, image.height);
+  return tmp;
 }
 
 export interface TextLayerRenderInput {

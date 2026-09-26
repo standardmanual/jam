@@ -54,6 +54,7 @@ import AssetGeneratorPanel from './AssetGeneratorPanel'
 import AssetGeneratorExport from './AssetGeneratorExport'
 import ApplyTab from './ApplyTab'
 import {
+  computeInitialImageWidthPct,
   createImageLayer,
   createTextLayer,
   deselectIfRemoved,
@@ -62,7 +63,9 @@ import {
   INITIAL_STAGE_RATIO,
   LETTER_KEYS,
   moveImageLayer,
+  readImageNaturalWidth,
   removeImageLayer,
+  resolveStageSize,
 } from './assetGeneratorHelpers'
 
 export default function AssetGeneratorPage() {
@@ -112,10 +115,16 @@ export default function AssetGeneratorPage() {
   }, [])
 
   // 이미지 레이어 추가: 배열 맨 앞(가장 위)에 넣고 바로 선택한다.
-  function handleAddImageLayer(file: File) {
+  // 원본 가로 px를 현재 스테이지 짧은 변 px로 나눠 처음 크기를 정한다(티켓 20260926_1741).
+  async function handleAddImageLayer(file: File) {
     const url = URL.createObjectURL(file)
     imageLayerUrlsRef.current.add(url)
-    const newLayer = createImageLayer(url)
+    const naturalWidth = await readImageNaturalWidth(url)
+    const { width, height } = resolveStageSize(stageRatio)
+    const newLayer = createImageLayer(
+      url,
+      naturalWidth ? { naturalWidth, stageShortSide: Math.min(width, height) } : undefined
+    )
     setOverlayLayers((prev) => [newLayer, ...prev])
     setSelectedOverlayLayerId(newLayer.id)
   }
@@ -172,9 +181,15 @@ export default function AssetGeneratorPage() {
     setOverlayLayers((prev) => prev.map((l) => (l.id === id && l.type === 'text' ? { ...l, ...patch } : l)))
   }
 
-  function handleReplaceImageLayerAsset(id: string, file: File) {
+  // 원본을 바꾸면 새 파일의 원본 픽셀 크기로 가로 크기를 다시 맞춘다(비율은 새 이미지 기준으로 자동 계산).
+  async function handleReplaceImageLayerAsset(id: string, file: File) {
     const url = URL.createObjectURL(file)
     imageLayerUrlsRef.current.add(url)
+    const naturalWidth = await readImageNaturalWidth(url)
+    const { width, height } = resolveStageSize(stageRatio)
+    const widthPct = naturalWidth
+      ? computeInitialImageWidthPct({ naturalWidth, stageShortSide: Math.min(width, height) })
+      : null
     setOverlayLayers((prev) =>
       prev.map((l) => {
         if (l.id !== id || l.type !== 'image') return l
@@ -182,7 +197,7 @@ export default function AssetGeneratorPage() {
           URL.revokeObjectURL(l.assetUrl)
           imageLayerUrlsRef.current.delete(l.assetUrl)
         }
-        return { ...l, assetUrl: url }
+        return { ...l, assetUrl: url, ...(widthPct !== null ? { widthPct } : {}) }
       })
     )
   }
