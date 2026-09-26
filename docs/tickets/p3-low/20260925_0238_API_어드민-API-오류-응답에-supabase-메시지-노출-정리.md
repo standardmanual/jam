@@ -90,3 +90,8 @@ specs:
 - export·ids 라우트 15개(오류 17곳)는 고정 문장 + `console.error`로 바꿨다(병합 완료).
 - **남은 곳(게이트 발견물)**: `jam-web/src/lib/admin/drop-exclusion-list.ts:113`이 `throw new Error(error.message)`로 DB 원문을 던진다. 지금은 `drop-policy/exclusions/ids`의 `catch`가 막지만 다른 호출부가 생기면 노출된다(`[주의]`). `item-badges/export/route.ts:50-64`의 기존 고정 문장은 어미가 「~하지 못했습니다」라 이번 형식(「~하지 못했어요」)과 다르다(`[참고]`).
 
+### 진행 상황 (2026-09-26, 티켓 20260926_1602)
+- 공용 헬퍼 `updateByIdsAllOrNothing`(8개 라우트가 공유), 프리셋 목록·저장·상세·삭제(4개 핸들러), `users/[id]`(조회 오류), `drop-policy/exclusions/bulk`(배지 조회), `missions/[id]`·`itembooks/[id]`·`today/[id]`는 고정 문장 + `console.error`로 바꿨다(병합 완료). 프리셋 DELETE에는 `isUuid` 검사도 추가했다.
+- **남은 곳(게이트 발견물)**: `jam-web/src/lib/admin/user-actions.ts`의 `hardDeleteUser`가 `userError.message` 등 DB 원문을 `error`로 반환하고 `users/[id]`가 그대로 응답에 싣는다(37·47·57·58·75·87·94행, `[주의]`). `bulk/server.ts`의 `deleteByIds`는 `reasonFor` 기본값으로 `singleError.message`를 건너뛴 항목의 사유에 실어 응답한다(`[참고]`, 어드민에게 「참조 중」 같은 이유를 보여 주는 용도라 별도 판단이 필요하다).
+- 그 밖의 어드민 라우트(아래 「배경」에 적지 않은 곳: `poi/[id]`, `tribes`, `recipes`, `badges/bulk` 등)의 `error.message` 응답 노출도 남아 있다.
+

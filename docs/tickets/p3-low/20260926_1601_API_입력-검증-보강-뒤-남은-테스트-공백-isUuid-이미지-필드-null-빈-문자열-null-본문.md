@@ -2,9 +2,9 @@
 id: "20260926_1601"
 category: API
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-26
-closed:
+closed: 2026-09-26
 related:
   - "20260926_1512"
   - "20260926_1509"
@@ -28,26 +28,24 @@ related:
 - (1)(2)가 테스트로 고정되고 `scripts/verify.sh`가 통과한다. (3)은 동작을 정한 뒤 테스트로 고정한다.
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
+- 묶음 티켓 20260926_1602로 처리했다. 상세와 실행 지표는 그 티켓의 완료 기록에 있다.
+- `isUuid` 직접 단위 테스트(`uuid.test.ts`, 신규)로 대문자·앞뒤 공백·중괄호 표기·하이픈 위치·빈 문자열 경계를 고정했다.
+- `itembooks/[id]` PUT·`today/[id]` PATCH의 이미지 필드에 `null`·`''`을 보내도 400이 아니라 통과함을 테스트로 고정했다.
+- 두 라우트는 본문이 JSON `null`이면 500 대신 400 「요청 형식이 올바르지 않습니다.」를 낸다(기존 라우트의 관례 문구, DB 미접근 확인).
 
 ### 변경된 파일
 ```
--
+- jam-web/src/lib/admin/__tests__/uuid.test.ts (신규)
+- jam-web/src/app/api/admin/itembooks/[id]/route.ts, today/[id]/route.ts (+ 각 __tests__/route.test.ts)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `scripts/verify.sh` 전 항목 통과, CI `verify` 성공(실행 36225367378, 커밋 43c55d58). 병합 뒤 통합본에서 전체 vitest 213개 파일 3144건, `deploy-gate.test.mjs`·`public-mission-check.test.mjs` 통과
+- [x] 민지 게이트 **PASS**. 점검 12항목 중 1·2·3·4·5·9·10·11 통과, 나머지 해당 없음. 검토 범위 319374dd..43c55d58
 
-### 실행 지표
-
-| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
-|---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
-
-### 주요 의사결정 / 핵심 메모
-
-### 잔여 이슈
--
+### 배포 정보
+- 배포일: 2026-09-26 (staging 병합·push). 프로덕션은 `/jam-ship`으로 별도 진행
+- 커밋: 구현 c7820292·0ff3e113·61884cd6·43c55d58, 병합은 이 묶음 종료 기록과 함께 push (리뷰 브랜치 `claude/jamwork-20260926_1602-admin-cleanup-a`)
