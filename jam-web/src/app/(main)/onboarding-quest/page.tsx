@@ -1,17 +1,30 @@
 import { redirect } from 'next/navigation'
+import type { ComponentType } from 'react'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import TopNav from '@/components/ui/TopNav'
 import { d } from '@/lib/i18n'
 import { ONBOARDING_QUEST_ENABLED, ONBOARDING_QUEST_STEPS } from '@/lib/onboarding-quest/config'
 import { nextStepOf } from '@/lib/onboarding-quest/progress'
+import SyncStep from './steps/SyncStep'
+import InventoryStep from './steps/InventoryStep'
 import type { OnboardingQuestStepKey } from '@/types/database'
+
+/**
+ * 단계 키 → 단계 부품 매핑 (티켓 20260927_2125, 상위 20260927_2123 T2b).
+ * 아직 부품이 없는 단계(3~7단계)는 키가 없어 아래 컨테이너가 빈 채로 남는다.
+ */
+const STEP_COMPONENTS: Partial<Record<OnboardingQuestStepKey, ComponentType>> = {
+  sync: SyncStep,
+  bag: InventoryStep,
+}
 
 /**
  * 온보딩 퀘스트 전용 화면 뼈대 (티켓 20260927_2330, 상위 20260927_2123 T2a).
  *
  * 채원 사전 판정 — 재사용. 상단 바는 홈과 같은 TopNav `logo` 모드를 표시 전용(`decorative`)
  * 으로 쓴다. 헤더 텍스트는 신규 컴포넌트 없이 플레인 마크업 + 토큰 클래스, 좌측 정렬.
- * 단계 부품 자리는 이 티켓에서는 빈 컨테이너로 남긴다(부품 선택은 T2b 각 티켓의 몫).
+ * 단계 부품 자리는 `STEP_COMPONENTS`가 있는 단계(1~2단계, T2b)만 채우고 나머지는 빈
+ * 컨테이너로 남긴다(부품 선택은 각 T2b 티켓의 몫).
  *
  * 대상 판정 — 아래 중 하나라도 해당하면 렌더링 없이 홈으로 보낸다:
  * 스위치 꺼짐 · 행 없음 · 건너뜀(skipped_at) · 7단계 완료(다음 단계 없음).
@@ -49,6 +62,7 @@ export default async function OnboardingQuestPage() {
   const stepNumber = ONBOARDING_QUEST_STEPS.indexOf(step) + 1
   const total = ONBOARDING_QUEST_STEPS.length
   const copy = d.onboardingQuest.steps[step]
+  const StepComponent = STEP_COMPONENTS[step]
 
   return (
     <div className="min-h-full text-text">
@@ -67,8 +81,10 @@ export default async function OnboardingQuestPage() {
         </p>
       </div>
 
-      {/* 단계 부품 자리 — 이 티켓에서는 빈 컨테이너(T2b가 단계 키별 컴포넌트를 꽂는다) */}
-      <div className="px-[var(--spacing-24)] mt-[var(--spacing-32)]" data-step={step} />
+      {/* 단계 부품 자리 — 매핑에 없는 단계(3~7단계)는 빈 컨테이너로 남는다 */}
+      <div className="px-[var(--spacing-24)] mt-[var(--spacing-32)]" data-step={step}>
+        {StepComponent ? <StepComponent /> : null}
+      </div>
     </div>
   )
 }
