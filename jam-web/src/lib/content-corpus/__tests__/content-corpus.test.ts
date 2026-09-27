@@ -117,6 +117,7 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }))
 
+import { listActiveBadgeIds } from '../active'
 import { isoWeekOrdinal, pickRotating, selectCorpusForType } from '../select'
 import { verifyActiveTargets } from '../verify'
 
@@ -296,6 +297,41 @@ describe('selectCorpusForType — 자동 선택 후보 조회의 DB 오류 경�
   it('listActiveBadgeIds(`.select().is().or().or().order().range()`)가 오류를 던지면 selectCorpusForType까지 올라간다', async () => {
     forceErrorTable = 'badges'
     await expect(selectCorpusForType('T02', {})).rejects.toThrow('DB 조회 실패')
+  })
+})
+
+describe('listActiveBadgeIds — 1,000행 페이지 경계 (티켓 20260927_2151)', () => {
+  function fillBadges(count: number): FixtureRow[] {
+    return Array.from({ length: count }, (_, i) => ({
+      id: `badge-page-${i}`,
+      active: true,
+      name: `배지${i}`,
+      description: `설명${i}`,
+      item_book_id: null,
+      tribe_id: null,
+    }))
+  }
+
+  it('정확히 1,000건이면 추가 빈 페이지 조회 후에도 1,000건 모두 한 번씩 돌아온다', async () => {
+    badges = fillBadges(1000)
+    const result = await listActiveBadgeIds()
+    expect(result).toHaveLength(1000)
+    expect(new Set(result).size).toBe(1000)
+    expect(new Set(result)).toEqual(new Set(badges.map((b) => b.id)))
+  })
+
+  it('1,001건이면 두 번째 페이지의 1건까지 포함해 전부 돌아온다', async () => {
+    badges = fillBadges(1001)
+    const result = await listActiveBadgeIds()
+    expect(result).toHaveLength(1001)
+    expect(new Set(result)).toEqual(new Set(badges.map((b) => b.id)))
+  })
+
+  it('2,000건이면 정확히 두 페이지 분량이 빠짐없이 돌아온다', async () => {
+    badges = fillBadges(2000)
+    const result = await listActiveBadgeIds()
+    expect(result).toHaveLength(2000)
+    expect(new Set(result)).toEqual(new Set(badges.map((b) => b.id)))
   })
 })
 
