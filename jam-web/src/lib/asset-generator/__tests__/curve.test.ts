@@ -5,7 +5,7 @@
  * 슬라이더 0·100에서 최소 회전 반경이 짧은 변의 5% 이상, 곡선이 화면 중앙을 지난다.
  */
 import { describe, expect, it } from 'vitest';
-import { buildPath, pickCandidate, type PathTable } from '../curve';
+import { PATH_SAMPLE_POINTS, buildPath, irrValue, pickCandidate, sampleFitted, type PathTable } from '../curve';
 import { mulberry32 } from '../random';
 
 const W = 1280;
@@ -15,7 +15,7 @@ const SEED = 42;
 // candidateStats(curve.ts)와 같은 방식(성긴 점으로 회전 반경·중앙 체류 비율 계산)을
 // 완성된 경로(buildPath 출력, N=6000)에 그대로 적용한다. 점이 너무 촘촘하면 인접 각도가
 // 작아져 곡률 잡음이 커지므로 약 240등분으로 줄여서 본다.
-function pathQualityStats(path: PathTable) {
+function pathQualityStats(path: Pick<PathTable, 'xs' | 'ys' | 'N'>) {
   const { xs, ys, N } = path;
   const S = Math.min(W, H);
   const stride = Math.max(1, Math.floor(N / 240));
@@ -92,18 +92,33 @@ describe.each([0, 100])('불규칙성 슬라이더 %i%%', (irreg) => {
 
 describe('asset-generator/curve — 큰 고리 구간', () => {
   const seeds = Array.from({ length: 50 }, (_, i) => i);
+  // pickCandidate(시드마다 후보 40개를 두 불규칙성으로 평가)가 이 파일에서 가장 비싼 연산이다.
+  // 아래 두 테스트가 같은 시드 50개를 각자 다시 계산하면(이전 코드: 첫 테스트가 pickCandidate를
+  // 직접 50회, 둘째 테스트가 buildPath를 통해 다시 50회 — buildPath의 내부 캐시는 seed|W|H 키가
+  // 시드마다 바뀌어 이 루프에서는 재사용되지 않는다) 총 100회 호출돼 클라우드 세션에서 기본
+  // 타임아웃(5초)을 넘긴다(티켓 20260927_2056, 실측 5,060ms/6,236ms). describe 본문은 수집 단계에서
+  // 한 번만 실행되고 it()의 실행 시간(타임아웃 대상)에 잡히지 않으므로, 여기서 시드당 한 번만
+  // pickCandidate를 불러 두 테스트가 결과를 공유한다.
+  const candidates = seeds.map((seed) => pickCandidate(mulberry32(seed), W, H));
 
   it('시드 0~49 중 30~70%에서 곡선에 큰 고리가 있다', () => {
-    const withLoop = seeds.filter((seed) => pickCandidate(mulberry32(seed), W, H).loop !== null).length;
+    const withLoop = candidates.filter((c) => c.loop !== null).length;
     const ratio = withLoop / seeds.length;
     expect(ratio).toBeGreaterThanOrEqual(0.3);
     expect(ratio).toBeLessThanOrEqual(0.7);
   });
 
   it('고리가 있든 없든 모든 시드의 완성 경로가 회전 반경 5%·중앙 통과 10% 이상이다', () => {
-    for (const seed of seeds) {
+    // buildPath(seed, irreg, W, H)를 다시 부르지 않고, 위에서 구한 candidate로 sampleFitted를
+    // 직접 호출한다. buildPath는 내부적으로 `xs[i] = fit.xs[i % N]`처럼 sampleFitted의 출력을
+    // 그대로 복사할 뿐이라(curve.ts buildPath 참고) 이 테스트가 보는 인덱스 0~N-1 구간에서는
+    // 값이 완전히 같다 — 판정 대상 수치는 이전과 동일하고 pickCandidate 재계산만 없앤다.
+    for (let i = 0; i < seeds.length; i++) {
+      const seed = seeds[i];
+      const cand = candidates[i];
       for (const irreg of [0, 100]) {
-        const stats = pathQualityStats(buildPath(seed, irreg, W, H));
+        const fit = sampleFitted(cand, irrValue(irreg), PATH_SAMPLE_POINTS, W, H);
+        const stats = pathQualityStats({ xs: fit.xs, ys: fit.ys, N: PATH_SAMPLE_POINTS });
         expect(stats.radius, `시드 ${seed} 불규칙성 ${irreg} 회전 반경`).toBeGreaterThanOrEqual(0.05);
         expect(stats.center, `시드 ${seed} 불규칙성 ${irreg} 중앙 통과`).toBeGreaterThanOrEqual(0.1);
       }
