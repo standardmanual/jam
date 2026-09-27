@@ -15,7 +15,8 @@
 >   `fonts.gstatic.com`[2026-09-26 티켓 20260926_1205, 에셋 제너레이터 렌더가 구글 폰트를 내려받으려고 사용자가
 >   추가] + 기본 목록), 환경변수 `ADMIN_API_READ_TOKEN`·`GA4_PROPERTY_ID`·`GA4_SERVICE_ACCOUNT_KEY`·
 >   `SLACK_BOT_TOKEN`·`ADMIN_API_BASE_URL`(2026-09-26 추가, 값 `https://stage.j-a-m.app` — 프리셋 읽기 토큰
->   허용 코드가 staging에만 있는 동안의 값이며 프로덕션 반영 뒤 `https://j-a-m.app`으로 바꾼다).
+>   허용 코드가 staging에만 있던 때의 값이다. 그 코드는 2026-09-27 `origin/main`에 들어간 것을 확인했다(티켓 20260927_2033).
+>   `https://j-a-m.app`으로 바꾸는 일은 환경 설정 화면에서 사용자가 한다 — 바꾸기 전까지 이 값이 유효하다).
 >   **서비스 롤 키(`SUPABASE_SERVICE_ROLE_KEY`)는 이 환경에 없고 등록하지 않는다**
 > - **이미지 렌더 실측(2026-09-26, 티켓 20260926_1205, 시험 루틴 `trig_011W3svxzJ9ihwWjoCPuohCL`의 실행 3회)**:
 >   `npm ci`(jam-web) 28~30초, `list-presets.mjs` 3초, `render.mjs` 2~5초로 서비스 롤 키 없이 `홈피드` 프리셋 렌더가
