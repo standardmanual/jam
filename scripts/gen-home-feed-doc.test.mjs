@@ -6,7 +6,14 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { parseCodePaths, isTestFile, underCodePaths, DOC_PATH, TODAY_SECTIONS_PATH } from './gen-home-feed-doc.mjs'
+import {
+  parseCodePaths,
+  isTestFile,
+  underCodePaths,
+  DOC_PATH,
+  TODAY_SECTIONS_PATH,
+  TARGET_HREF_PATH,
+} from './gen-home-feed-doc.mjs'
 
 // 훅(pre-push -> verify.sh) 안에서 도는 경우 git이 GIT_DIR 등을 물려준다. 임시 저장소 명령이
 // 실제 저장소 설정을 건드리지 않도록 물려받은 GIT_*를 버린다(티켓 20260921_1116 사고).
@@ -107,6 +114,81 @@ try {
   assert.equal(run(['--staged']).status, 0)
 } finally {
   rmSync(dir, { recursive: true, force: true })
+}
+
+// ── ③ --staged: 문서 파일이 아직 없을 때(이 티켓 병합 전 상태) → 검사할 게 없어 통과 ───────────
+// (티켓 20260927_2153: gen-home-feed-doc.mjs 240행 `if (!existsSync(docFile)) process.exit(0)` 경로)
+{
+  const dir2 = mkdtempSync(join(tmpdir(), 'gen-home-feed-doc-nodoc-'))
+  const run2 = (args) => spawnSync('node', [GEN, ...args], { cwd: dir2, encoding: 'utf8' })
+  const sh2 = (cmd, args) => spawnSync(cmd, args, { cwd: dir2, encoding: 'utf8' })
+  const write2 = (rel, body) => {
+    mkdirSync(dirname(join(dir2, rel)), { recursive: true })
+    writeFileSync(join(dir2, rel), body)
+  }
+  try {
+    sh2('git', ['init', '-q'])
+    sh2('git', ['config', 'user.email', 'test@example.com'])
+    sh2('git', ['config', 'user.name', 'test'])
+
+    write2('jam-web/src/lib/today/cards.ts', '// 원본\n')
+    sh2('git', ['add', '-A'])
+    sh2('git', ['commit', '-q', '-m', 'init'])
+
+    // DOC_PATH는 커밋에도 없고 디스크에도 없다 — 홈피드 코드만 스테이지한다
+    write2('jam-web/src/lib/today/cards.ts', '// 변경\n')
+    sh2('git', ['add', '--', 'jam-web/src/lib/today/cards.ts'])
+
+    const r = run2(['--staged'])
+    assert.equal(r.status, 0)
+  } finally {
+    rmSync(dir2, { recursive: true, force: true })
+  }
+}
+
+// ── ④ 기본 모드: 문서에 생성 구간 표식이 없을 때 → process.exit(2) ──────────────────────────
+// (티켓 20260927_2153: gen-home-feed-doc.mjs 313~317행 `missing.length > 0` 경로.
+//  runGenerate는 표식 검사 전에 블록 생성 함수를 먼저 호출하므로(287~293행) today-sections.ts·
+//  targetHref.ts 자리에 형태만 맞춘 최소 모듈을 둔다 — 실제 코드가 아니라 자리표시다)
+{
+  const dir3 = mkdtempSync(join(tmpdir(), 'gen-home-feed-doc-nomarker-'))
+  const write3 = (rel, body) => {
+    mkdirSync(dirname(join(dir3, rel)), { recursive: true })
+    writeFileSync(join(dir3, rel), body)
+  }
+  try {
+    spawnSync('git', ['init', '-q'], { cwd: dir3 })
+
+    write3(
+      TODAY_SECTIONS_PATH,
+      [
+        'export const TODAY_EXPOSURE_TAG_OPTIONS = [{ value: "v", label: "L" }]',
+        'export const TODAY_TEMPLATE_OPTIONS = [{ value: "badge_spotlight", label: "L" }]',
+        'export const SUGGESTED_LAYOUT_FOR = { badge_spotlight: "other" }',
+        'export const TODAY_LAYOUT_OPTIONS = [{ value: "other", label: "L" }]',
+        'export const TODAY_FIELDS_FOR = { badge_spotlight: {} }',
+        'export const TODAY_CONTENT_TYPE_OPTIONS = [{ value: "v", label: "L" }]',
+        '',
+      ].join('\n')
+    )
+    write3(
+      TARGET_HREF_PATH,
+      ['export function resolveTargetHref() { return "/x" }', 'export function resolveArticleCtaTarget() { return null }', ''].join(
+        '\n'
+      )
+    )
+    // 생성 구간 표식(<!-- BEGIN/END generated: ... -->)이 전혀 없는 문서
+    write3(DOC_PATH, ['---', 'type: prd', 'status: draft', 'description: 테스트', '---', '', '# 홈피드', ''].join('\n'))
+
+    const r = spawnSync('node', [GEN], { cwd: dir3, encoding: 'utf8' })
+    assert.equal(r.status, 2)
+    assert.ok(r.stderr.includes('생성 구간 표시가 없습니다'))
+    for (const name of ['exposure-tags', 'templates', 'content-types', 'layouts', 'destinations']) {
+      assert.ok(r.stderr.includes(name), `${name}이 오류 메시지에 있어야 한다`)
+    }
+  } finally {
+    rmSync(dir3, { recursive: true, force: true })
+  }
 }
 
 console.log('gen-home-feed-doc 테스트 통과')
