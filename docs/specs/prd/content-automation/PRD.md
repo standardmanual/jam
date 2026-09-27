@@ -62,6 +62,7 @@ code:
 3. 대상 선택과 본문 인용은 같은 생성 호출 안에서 **분리 판정**한다.
 4. 코퍼스를 통째로 프롬프트에 넣지 않는다. 유형별로 필요한 발췌만(관련 배지·컬렉션·트라이브 각 1~3건) 넘긴다.
 5. 승인 전 **기계 검사**: 후보안의 대상 ID를 재조회해 활성 판정에 어긋나면 자동 반려하고 사유를 남긴다.
+6. **후보 ID 없이 부르면 API가 고른다(티켓 [20260927_2034](../../../tickets/p2-normal/20260927_2034_API_코퍼스-API-후보-ID-없이-호출하면-활성-후보-자동-선택.md))**: `GET /api/admin/content-corpus?type=<유형 ID>&limit=<n>`에 종류별 후보 ID(`tribeIds`·`itemBookIds`·`badgeIds`)를 주지 않으면, 그 종류는 **활성 후보만** 대상으로 KST ISO 주차 순환으로 `limit`건을 고른다(같은 주에는 같은 결과). ID를 준 종류는 그 ID만 조회하며 규칙 1·2가 그대로 적용된다. 응답의 `selection`에 종류별 선택 방식(`auto`·`explicit`)이 실린다. 유형과 코퍼스 종류의 매핑은 `jam-web/src/lib/content-corpus/types.ts`의 `CONTENT_CORPUS_MAPPING`이 정본이며, 매핑이 없는 유형(T03·T05·T08·T12~T16)은 빈 결과다.
 
 | 구분 | 유형 |
 |---|---|
@@ -70,7 +71,7 @@ code:
 
 ## 5. 세그먼트 태그
 
-현재 값(2026-09-23 확인, 티켓 20260923_2253·2254 구현 반영): `all`, 시간대 5종(`time_dawn`·`time_morning`·`time_afternoon`·`time_evening`·`time_night`), `has_participating_mission`, `has_ending_soon_mission`, `has_incomplete_itembook`, `itembook_remaining_le3`(미완성 컬렉션 잔여 슬롯 최소값이 3개 이하), `strava_stale_14d`(Strava 연결이 있고 마지막 동기화 경과가 14일 이상 — 연결 자체가 없는 유저에게는 붙지 않는다), `new_user`, 날씨 4종(`weather_clear`·`weather_mild`·`weather_rain`·`weather_extreme`, 기상청 API 허브 단기예보 기반, 서울 고정), `holiday_today`·`seasonal_today`·`anniversary_today`(특일정보 API 기반, 아래 「특일 태그 정의」).
+태그 값 목록과 판정 방식(시간대 경계·임계값·날씨 저장 시각)의 정본은 [home-feed/PRD.md](../home-feed/PRD.md) §4다. 이 절은 운영에 필요한 요약만 둔다. 현재 값(티켓 20260923_2253·2254·20260924_0805 구현 반영): `all`, 시간대 5종(`time_dawn`·`time_morning`·`time_afternoon`·`time_evening`·`time_night`), `has_participating_mission`, `has_ending_soon_mission`, `has_incomplete_itembook`, `itembook_remaining_le3`(미완성 컬렉션 잔여 슬롯 최소값이 3개 이하), `strava_stale_14d`(Strava 연결이 있고 마지막 동기화 경과가 14일 이상 — 연결 자체가 없는 유저에게는 붙지 않는다), `new_user`, 날씨 4종(`weather_clear`·`weather_mild`·`weather_rain`·`weather_extreme`, 기상청 API 허브 단기예보 기반, 서울 고정), `holiday_today`·`seasonal_today`·`anniversary_today`(특일정보 API 기반, 아래 「특일 태그 정의」).
 
 **특일 태그 정의(2026-09-24 사용자 확정, 대상 목록 정본은 [SPECIAL_DAYS.md](../../../../jam-doc/planning/content/SPECIAL_DAYS.md), 구현은 티켓 [20260924_0805](../../../tickets/p1-high/20260924_0805_Service_holiday_today-태그-대상-목록-선정과-태그-분리.md))**: 대상은 날짜가 아니라 **이름**으로 고른다(음력·절기 날짜는 해마다 바뀐다).
 
@@ -79,8 +80,6 @@ code:
 | `holiday_today` | 공휴일(대체공휴일 포함) 중 전국동시지방선거·제헌절을 뺀 날. 쉬는 날이라 "쉬는 날" 문안 카드에 쓴다. 카드 문안에 날 이름은 쓰지 않는다 |
 | `seasonal_today` | 24절기 중 입춘·경칩·대서·입추·처서·입동·대설·동지, 잡절 중 정월대보름·말복·칠석 |
 | `anniversary_today` | 기념일 중 식목일·근로자의 날·어린이 날·어버이 날·부부의 날·환경의 날·섬의 날·푸른 하늘의 날·청년의 날·스포츠의 날 |
-
-> 구현은 staging에 반영됐다(2026-09-24). 프로덕션은 2026-10-01 정기 배포에 포함할 예정이며, 그 전에는 옛 코드대로 `holiday_today` 하나가 공휴일·기념일·24절기 전체에 켜지고 `seasonal_today`·`anniversary_today`는 없다. 프로덕션에 반영되면 이 안내를 지운다.
 
 1단계에서 남은 후보(이름은 구현 티켓에서 확정):
 
@@ -180,13 +179,16 @@ code:
 - **T06·T10(믹스 유도)은 등록된 믹스 레시피가 있을 때만** 편성한다. 레시피 현황은 §15 「구현 상태」 표의 「믹스 레시피」 칸을 따르고, 0건이면 두 유형을 후보에 넣지 않는다(2026-09-24 레시피 0건 확인, 티켓 [20260924_0902](../../../tickets/p2-normal/20260924_0902_Content_믹스-레시피가-0건이라-믹스-기능을-쓸-수-없음.md)).
 - **요일마다 전원(`all`) 카드가 1장 이상** 있어야 한다. 1픽이 조건 태그 카드면 「전원 카드」 칸에 전원 대상 후보를 함께 쓴다. 조건 태그 카드만 있는 날은 조건에 맞는 유저가 없거나 날씨·특일 값이 저장되지 않으면 홈이 빈다(티켓 [20260924_0809](../../../tickets/p2-normal/20260924_0809_Feature_매일-전원에게-카드-1장-이상-보장하는-편성-규칙.md)).
 - 후보안을 처음 낼 때 **등록에 필요한 내용을 후보마다 모두 쓴다**(2026-09-24 사용자 결정): 카드 제목·부제, 템플릿·레이아웃, 노출 태그, 노출일, 이동 목적지. 에디토리얼 기사 템플릿(T01·T11·T17 등)은 `body_markdown` 전문과 본문 끝 CTA 목적지(컬렉션·미션·직접 링크)까지 쓴다. 표 칸에 담기지 않는 본문은 표 아래 「후보 본문」 절에 후보별로 쓴다. 승인 뒤에 본문을 새로 쓰지 않는다.
+  **기사 본문은 마크다운으로 렌더되지 않는다**: 기사 화면은 빈 줄로 문단만 나누고 문단 안 줄바꿈을 그대로 보인다(`jam-web/src/app/(main)/today/[cardId]/page.tsx`). `**`·`#`·`-` 같은 문법은 글자 그대로 보이므로 쓰지 않는다. 화면 동작의 정본은 [home-feed/PRD.md](../home-feed/PRD.md) §8이다.
 - **요일별 큰 카드 규칙(2026-09-26 사용자 결정, 티켓 20260926_1542)**: 「전원 카드」 칸의 카드는 매일 `large_thumbnail`이어야 한다(커버 이미지 필수). 전원 카드는
   그날 모든 유저에게 보이므로, 최종 선택과 관계없이 요일마다 큰 카드가 최소 1개 노출된다. 조건 태그(세그먼트) 카드의 레이아웃은 정하지 않는다.
+  이 규칙은 카드 한 장이 아니라 하루 단위라서 코드가 등록 시점에 막지 않는다. 등록 뒤 §8-2의 점검 조회(`all_large` 열)로 확인한다.
 - **미션 카드 규칙(2026-09-26 사용자 결정·확인, 티켓 20260926_1542)**: 카드 본체가 미션을 대표 이미지와 함께 소개하는 카드(`mission_spotlight` 템플릿, T04·T15)는 항상
   `large_thumbnail`이고, 커버는 그 미션의 대표 이미지(`missions.image_url`)를 URL 그대로 `cover_image_url`로 쓴다(새로 만들지 않는다, 등록은 세션·묶음 없음). CTA(이동 목적지)는 그 미션 상세
   (`/missions/[id]`)다. 에디토리얼 기사의 본문 끝 CTA 미션에는 적용하지 않는다. 미션에 `image_url`이 없으면 **빈 이미지로 노출한다**(카드는 그대로 `large_thumbnail`이고 다른 카드로 대체하지
-  않는다). 이때 후보 칸에 **「미션 대표 이미지 없음(빈 이미지로 노출)」**을 적고, 리포트 「결정 필요」에 `[분류 대기 초안]`으로 「이 미션의 대표 이미지 제작 필요」를 올린다. 미션 이미지 제작은
+  않는다. 화면에는 커버 영역 없이 칩·제목·부제만 보인다 — [home-feed/PRD.md](../home-feed/PRD.md) §6). 이때 후보 칸에 **「미션 대표 이미지 없음(빈 이미지로 노출)」**을 적고, 리포트 「결정 필요」에 `[분류 대기 초안]`으로 「이 미션의 대표 이미지 제작 필요」를 올린다. 미션 이미지 제작은
   미션 묶음 경로(`MISSION_REGISTRATION_BUNDLE.md`, 세션 전용)다.
+  **코드 강제(티켓 [20260927_2035](../../../tickets/p2-normal/20260927_2035_Admin_미션-소개-카드-레이아웃-추천값과-홈피드-묶음-레이아웃-글자수-검사.md))**: 어드민 폼은 `mission_spotlight`를 고르면 `large_thumbnail`을 추천값으로 미리 선택한다(바꿀 수는 있다). 홈피드 등록 묶음(`register-home-feed-card.mjs`·`make-home-feed-card.mjs`)은 `mission_spotlight`인데 최종 레이아웃이 `large_thumbnail`이 아니면 거절한다. 시드 SQL 경로는 검사하지 않으므로 카리나가 SQL을 만들 때 확인한다.
 - **후보 이미지 표시(티켓 20260926_1206·1207)**: 이미지가 필요한 신규 카드(판별 기준은 `docs/specs/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md` §1.1 표)는 주간 예약 실행이
   이미지를 만들어 후보 칸에 보인다. 후보 칸에는 리포트 파일 기준 상대 경로 `![](./<YYYY-Www>-images/<묶음 ID>/image.png)`와 **컬러(배경색·끝색·선택 근거)**를 함께 적는다. 묶음 폴더는
   `jam-doc/operations/reports/weekly/<YYYY-Www>-images/<묶음 ID>/`(`image.png`·`bundle.json`)이고, 이미지 파일은 복사하지 않고 경로만 참조한다. 이미지가 필요 없는 후보는 칸에
@@ -214,11 +216,13 @@ code:
 등록 스크립트(티켓 20260925_1413, `docs/specs/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md`)는 별개의
 경로이고 그 스크립트가 만든 카드는 `'agent-generator'`로 기록된다. 목록·수정 화면에 "제작 경로" 라벨로 노출한다.
 
-**노출 원칙과 등록 전 점검**: 요일마다 조건 없는(`all`) 카드를 최소 1장 둔다(티켓 [20260924_0809](../../../tickets/p2-normal/20260924_0809_Feature_매일-전원에게-카드-1장-이상-보장하는-편성-규칙.md)). 시드 SQL을 실행한 뒤 아래 조회로 요일별 `all` 카드 수를 확인하고(각 날 12:00 KST 기준), 0인 날이 있으면 사용자에게 알린다.
+**노출 원칙과 등록 전 점검**: 요일마다 조건 없는(`all`) 카드를 최소 1장 두고, 그중 1장 이상이 `large_thumbnail`이어야 한다(티켓 [20260924_0809](../../../tickets/p2-normal/20260924_0809_Feature_매일-전원에게-카드-1장-이상-보장하는-편성-규칙.md), §8 요일별 큰 카드 규칙). 시드 SQL을 실행한 뒤 아래 조회로 요일별 `all` 카드 수와 그중 큰 카드 수를 확인하고(각 날 12:00 KST 기준), 어느 한쪽이 0인 날이 있으면 사용자에게 알린다.
 
 ```sql
 select d::date as day,
   count(c.id) filter (where 'all' = any(c.exposure_tags)) as all_cards,
+  count(c.id) filter (where 'all' = any(c.exposure_tags)
+                        and c.layout_type = 'large_thumbnail') as all_large,
   count(c.id) as active_cards
 from generate_series(date '<월>', date '<일>', interval '1 day') d
 left join public.today_cards c
@@ -255,7 +259,7 @@ group by 1 order by 1;
 - 이벤트는 **집계 목적으로만** 저장한다. 개인 식별자는 저장하지 않는다(결정 4-6).
 - 저장: `today_card_events`(마이그레이션 183) — 카드 ID·기록 시점 유형 ID·이벤트 종류·후속 행동 내용만 담는다. 유저 식별자 컬럼이 없다.
 - 기록 API: `POST /api/today/events`(`jam-web/src/app/api/today/events/route.ts`). 로그인 세션이 있어야 받되 유저 ID는 저장·로그하지 않는다(`jam-web/src/lib/today/events.ts`). 유저 ID는 빈도 제한(분당 60건, 초과 시 429) 판정에만 인스턴스 메모리에서 쓰고 그 밖에는 참조하지 않는다. 카드가 존재하고 `is_active`이며 노출 기간(`starts_at`~`ends_at`) 안일 때만 기록을 받고, 아니면 400으로 거부한다(`assertCardExposable`, 티켓 20260924_0111).
-- 클라이언트: `TodayCardTracker`(`jam-web/src/app/(main)/TodayCardTracker.tsx`)가 홈 카드 `<Link>`를 감싸 `IntersectionObserver`로 노출을, 클릭으로 열람을 보고한다. 노출은 **세션당 카드당 1회**로 억제한다(`sessionStorage`). `ranking_list` 레이아웃은 클릭이 행별 링크(유저 프로필)에서 일어나므로 카드 단위 클릭은 세지 않고 노출만 추적한다.
+- 클라이언트: `TodayCardTracker`(`jam-web/src/app/(main)/TodayCardTracker.tsx`)가 홈 카드 `<Link>`를 감싸 `IntersectionObserver`로 노출을, 클릭으로 열람을 보고한다. 노출은 **세션당 카드당 1회**로 억제한다(`sessionStorage`). `ranking_list` 레이아웃은 클릭이 행별 링크(유저 프로필)에서 일어나므로 카드 단위 클릭은 세지 않고 노출만 추적한다. 기사 상세 화면(`/today/[id]`)과 본문 끝 CTA 버튼에는 계측이 없다. 기사 열람은 홈 카드의 `click`으로만 센다. 전송 방식·노출 기준 비율 같은 화면 쪽 세부는 [home-feed/PRD.md](../home-feed/PRD.md) §9가 정본이다.
 - 조회 API: `GET /api/admin/today/metrics?from=&to=`(어드민 자동화 읽기 토큰, `requireAdminRead`) — 유형 ID×이벤트 건수와 유형별 열람률(click/impression)을 반환한다.
 
 ## 10. 전략 변경안 양식 (주간 리포트 「전략 변경안」 절)
@@ -301,15 +305,16 @@ group by 1 order by 1;
 - 세계관 정본: [jam-doc/planning/content/TRIBES.md](../../../../jam-doc/planning/content/TRIBES.md)
 - 예약 작업·슬랙 알림 규칙: [.claude/skills/jam-work/references/scheduled-jobs.md](../../../../.claude/skills/jam-work/references/scheduled-jobs.md)
 
-## 15. 구현 상태 (2026-09-24 기준)
+## 15. 구현 상태 (2026-09-27 기준)
 
 | 영역 | 상태 | 비고 |
 |---|---|---|
-| 세그먼트 태그(§5) | 구현·프로덕션 배포 | 컬렉션 잔여 3개 이하, Strava 동기화 경과 14일, 날씨 4종, 특일 태그. 특일 태그 3종(`holiday_today`·`seasonal_today`·`anniversary_today`)은 staging 반영, 프로덕션은 10/1 정기 배포 예정: [20260924_0805](../../../tickets/p1-high/20260924_0805_Service_holiday_today-태그-대상-목록-선정과-태그-분리.md)에서 정한다 |
-| 외부 입력(§7.1) | 일부 구현 | 기상청·특일정보 구현. TourAPI 수집 스크립트 구현(티켓 20260924_0856, 루틴 연결 대기). 유튜브·빅카인즈는 티켓 [20260924_0807](../../../tickets/p3-low/20260924_0807_API_입력층-확장-TourAPI-유튜브-빅카인즈-수집기.md) 하위 티켓 |
-| 이슈 필터(§7.3)·코퍼스(§4) | 구현·프로덕션 배포 | 코퍼스에 트라이브 설명 DB 0건, 컬렉션 서사 0건(설명 96건으로 대체) |
-| 유형 카탈로그(§6) | 17종 정의, 6종 편성 가능 | T01·T02·T03·T05·T08·T12. 미션이 없어 T04·T15는 [20260924_0808](../../../tickets/p2-normal/20260924_0808_Content_가을-시즌-미션-기획과-등록-금요일-T04-공백-해소.md) 이후 |
-| 편성표·승인(§8) | 문서 절차 운영 중 | 화·수·목 주기 적용([20260924_0806](../../../tickets/p2-normal/20260924_0806_Infra_컨텐츠-주간-주기-변경과-카드-등록-절차-정정.md)). 어드민 승인 화면은 [20260923_2302](../../../tickets/p3-low/20260923_2302_Admin_후보안-승인화면-어드민-이관.md) |
+| 세그먼트 태그(§5) | 구현·프로덕션 배포 | 컬렉션 잔여 3개 이하, Strava 동기화 경과 14일, 날씨 4종, 특일 태그. 특일 태그 3종(`holiday_today`·`seasonal_today`·`anniversary_today`)도 main에 반영됐다(2026-09-27 `origin/main`에서 확인, [20260924_0805](../../../tickets/p1-high/20260924_0805_Service_holiday_today-태그-대상-목록-선정과-태그-분리.md)). POI 근접 태그는 미구현 |
+| 외부 입력(§7.1) | 일부 구현 | 기상청·특일정보 구현. TourAPI 수집 스크립트 구현(티켓 20260924_0856, 주간 루틴 연결은 아직 없다 — 루틴 환경 설정 필요). 유튜브·빅카인즈는 티켓 [20260924_0807](../../../tickets/p3-low/20260924_0807_API_입력층-확장-TourAPI-유튜브-빅카인즈-수집기.md) 하위 티켓 |
+| 이슈 필터(§7.3)·코퍼스(§4) | 구현·프로덕션 배포. 후보 ID 없는 호출의 자동 선택(§4 규칙 6)은 [20260927_2034](../../../tickets/p2-normal/20260927_2034_API_코퍼스-API-후보-ID-없이-호출하면-활성-후보-자동-선택.md)로 staging 반영 대기 | 2026-09-24 실측: 트라이브 설명 DB 0건, 컬렉션 서사 0건(설명 96건으로 대체). 자동 선택이 프로덕션에 반영되기 전까지 루틴은 ID 없이 부르면 빈 값을 받고 `TRIBES.md` 절을 인용한다 |
+| 유형 카탈로그(§6) | 17종 정의, 7종 편성 가능 | T01·T02·T03·T05·T08·T10·T12. T04는 공개 미션 「그루터기 살롱의 겨울 채비」(10/1~10/31, [20260924_0808](../../../tickets/p2-normal/20260924_0808_Content_가을-시즌-미션-기획과-등록-금요일-T04-공백-해소.md))가 열리는 10/1부터 편성할 수 있다. T15는 전용 집계가 없어 편성하지 못한다 |
+| 편성표·승인(§8) | 문서 절차 운영 중 | 화·수·목 주기 적용([20260924_0806](../../../tickets/p2-normal/20260924_0806_Infra_컨텐츠-주간-주기-변경과-카드-등록-절차-정정.md)). 주간 예약 실행의 이미지 단계(9/26)와 요일별 큰 카드·미션 카드 규칙 적용. 미션 카드 레이아웃은 어드민 추천값·등록 묶음 검사로 강제([20260927_2035](../../../tickets/p2-normal/20260927_2035_Admin_미션-소개-카드-레이아웃-추천값과-홈피드-묶음-레이아웃-글자수-검사.md)). 어드민 승인 화면은 [20260923_2302](../../../tickets/p3-low/20260923_2302_Admin_후보안-승인화면-어드민-이관.md)(OPEN) |
 | 계측(§9) | 노출·클릭 구현·프로덕션 배포 | 후속 행동은 수집하지 않음(GA로 확인). 신뢰성 보강은 [20260924_0810](../../../tickets/p3-low/20260924_0810_API_계측-신뢰성-보강-이벤트API-서버측-중복-제거와-집계-행-상한.md) |
 | 믹스 레시피(T06·T10 전제) | **3건**(2026-09-24 등록, 트라이브 단독, 슬롯 8행) | T10은 편성할 수 있다. 교차 레시피가 없어 T06은 계속 편성하지 않는다. 등록 내용은 `jam-doc/planning/content/COMBINE_RECIPES.md` §4: [20260924_0902](../../../tickets/p2-normal/20260924_0902_Content_믹스-레시피가-0건이라-믹스-기능을-쓸-수-없음.md) |
 | 전략 변경안(§10)·유형 리뷰(§11) | 절차 구현, 실측 전 | 첫 실제 주간 실행 2026-09-29(화) 09:00 KST에 확인 |
+| 믹스 레시피 수 | 위 「믹스 레시피」 행은 2026-09-24 기준값이다 | 편성 전에 어드민에서 다시 확인한다 |

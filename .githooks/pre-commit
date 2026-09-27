@@ -255,6 +255,15 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
     if [ -f scripts/gen-scheduled-jobs.mjs ] && ! node scripts/gen-scheduled-jobs.mjs --check >&2; then
       doclint=1
     fi
+    # 홈피드 기능 정의 문서(docs/specs/prd/home-feed/PRD.md)가 today-sections.ts·targetHref.ts와
+    # 같은 최신본인지, 스테이지된 홈피드 코드에 이 문서가 함께 스테이지됐는지 검사한다
+    # (티켓 20260927_2036).
+    if [ -f scripts/gen-home-feed-doc.mjs ] && ! node scripts/gen-home-feed-doc.mjs --check >&2; then
+      doclint=1
+    fi
+    if [ -f scripts/gen-home-feed-doc.mjs ] && ! node scripts/gen-home-feed-doc.mjs --staged >&2; then
+      doclint=1
+    fi
   fi
 
   if [ "$doclint" -eq 1 ]; then

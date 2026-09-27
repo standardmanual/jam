@@ -99,6 +99,11 @@ const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/
 const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
+// 홈피드 프리셋 글자 수 가이드(asset-generator/PRD.md §8 실측) — 공백 포함 «보이는 글자(코드 포인트) 수» 기준.
+const TITLE_MAX_CHARS = 11
+const SUBTEXT_ONE_LINE_MAX_CHARS = 22
+const SUBTEXT_TWO_LINE_MAX_CHARS_PER_LINE = 15
+
 // 한 줄 텍스트(작성자·카드 제목 등) 검사(개행·제어 문자 정규식 원본은 `registerBundle.mjs`의 `CONTROL_OR_LINE_BREAK` 한 곳). 이 값들은 등록 기록 SQL(registration.sql)의 `--` 주석에도 들어가고 그 파일은
 // 마이그레이션 폴더에 커밋되어 다시 실행될 수 있다. 줄바꿈이 섞이면 뒷부분이 주석 밖의 실행 가능한 문장이 되므로
 // (티켓 20260924_2202 게이트 재현) 개행·제어 문자를 검증에서 거절한다.
@@ -123,6 +128,19 @@ function isIsoDateTime(value) {
 
 function isPresent(value) {
   return value !== undefined && value !== null
+}
+
+/** 사용자에게 보이는 글자(코드 포인트) 수. 문자열 length가 아니라 `[...s].length`로 센다(이모지·서로게이트 쌍 보정). */
+function visibleLength(value) {
+  return [...value].length
+}
+
+/**
+ * 줄 구분 기준으로 나눈다. 리터럴 `\n`(백슬래시+n 두 글자, 렌더 인자에서 실제 개행으로 바뀐다 — `renderArgs.mjs` 43행)과
+ * 실제 개행 문자를 둘 다 줄 구분자로 본다(묶음 값이 둘 중 어느 쪽으로 들어와도 같게 취급).
+ */
+function splitDisplayLines(value) {
+  return value.replace(/\\n/g, '\n').split('\n')
 }
 
 function describeValue(value) {
@@ -206,8 +224,19 @@ function validateCard(errors, card) {
       templateOk = true
     }
   }
-  if (isPresent(card.layout_type) && !(typeof card.layout_type === 'string' && LAYOUT_TYPES.includes(card.layout_type))) {
+  const layoutTypeOk = !isPresent(card.layout_type) || (typeof card.layout_type === 'string' && LAYOUT_TYPES.includes(card.layout_type))
+  if (!layoutTypeOk) {
     errors.push(`card.layout_type: ${LAYOUT_TYPES.join(' · ')} 중 하나여야 해요(받은 값: ${describeValue(card.layout_type)}).`)
+  }
+
+  // 미션 카드 규칙(2026-09-26 사용자 결정, content-automation/PRD.md §8) — mission_spotlight는 항상 large_thumbnail이다.
+  if (templateOk && layoutTypeOk && card.template_type === 'mission_spotlight') {
+    const finalLayout = card.layout_type ?? SUGGESTED_LAYOUT_FOR.mission_spotlight
+    if (finalLayout !== 'large_thumbnail') {
+      errors.push(
+        `card.layout_type: mission_spotlight 템플릿은 항상 large_thumbnail이어야 해요(대표 이미지로 미션을 소개하는 카드 규칙, content-automation/PRD.md §8. 받은 값: ${describeValue(finalLayout)}).`
+      )
+    }
   }
 
   // 기본 정보
@@ -355,9 +384,38 @@ function validateImage(errors, image, bundleFile) {
   }
   if (isPresent(image.text) && typeof image.text !== 'string') {
     errors.push('image.text: 문자열이어야 해요.')
+  } else if (isPresent(image.text)) {
+    // 홈피드 프리셋 글자 수 가이드(asset-generator/PRD.md §8) — 제목은 줄바꿈 없이 한 줄, 공백 포함 11자 이하.
+    const lines = splitDisplayLines(image.text)
+    if (lines.length > 1) {
+      errors.push('image.text: 제목은 줄바꿈 없이 한 줄이어야 해요(홈피드 프리셋 글자 수 가이드, asset-generator/PRD.md §8).')
+    } else if (visibleLength(image.text) > TITLE_MAX_CHARS) {
+      errors.push(
+        `image.text: 홈피드 프리셋 글자 수 가이드를 넘어요 — 제목은 공백 포함 ${TITLE_MAX_CHARS}자 이하여야 해요(받은 글자 수: ${visibleLength(image.text)}, asset-generator/PRD.md §8).`
+      )
+    }
   }
   if (isPresent(image.subtext) && typeof image.subtext !== 'string') {
     errors.push('image.subtext: 문자열이어야 해요.')
+  } else if (isPresent(image.subtext)) {
+    // 홈피드 프리셋 글자 수 가이드(asset-generator/PRD.md §8) — 1줄이면 22자, 2줄이면 줄마다 15자, 3줄 이상은 거절.
+    const lines = splitDisplayLines(image.subtext)
+    if (lines.length === 1) {
+      if (visibleLength(lines[0]) > SUBTEXT_ONE_LINE_MAX_CHARS) {
+        errors.push(
+          `image.subtext: 홈피드 프리셋 글자 수 가이드를 넘어요 — 1줄이면 공백 포함 ${SUBTEXT_ONE_LINE_MAX_CHARS}자 이하여야 해요(받은 글자 수: ${visibleLength(lines[0])}, asset-generator/PRD.md §8).`
+        )
+      }
+    } else if (lines.length === 2) {
+      const lengths = lines.map(visibleLength)
+      if (lengths.some((len) => len > SUBTEXT_TWO_LINE_MAX_CHARS_PER_LINE)) {
+        errors.push(
+          `image.subtext: 홈피드 프리셋 글자 수 가이드를 넘어요 — 2줄이면 줄마다 공백 포함 ${SUBTEXT_TWO_LINE_MAX_CHARS_PER_LINE}자 이하여야 해요(받은 줄 글자 수: ${lengths.join(' · ')}, asset-generator/PRD.md §8).`
+        )
+      }
+    } else {
+      errors.push('image.subtext: 3줄 이상은 쓸 수 없어요(가능하면 1줄, 부득이할 때만 2줄로 나눠 주세요, asset-generator/PRD.md §8).')
+    }
   }
 
   return { absPath, bytes }

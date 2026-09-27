@@ -11,6 +11,10 @@
  * 여기서 돌려주는 행만 "활성"이다 — id가 조회 결과에 없으면 비활성(또는 존재하지 않음)으로 본다.
  * 소속(`item_book_id`·`tribe_id`)이 NULL이면 그 조건은 통과로 본다. 유형당 쿼리 횟수는
  * 입력 id 개수와 무관하게 상수(배지 최대 3회, 컬렉션 최대 2회)다.
+ *
+ * `listActive*Ids`(티켓 20260927_2034)는 위 활성 판정과 같은 기준으로 **ID만** 전체 돌려준다 —
+ * 코퍼스 API가 후보 ID 없이 호출됐을 때 자동 선택(`select.ts`의 `pickRotating`)이 고를 후보
+ * 집합을 만드는 용도다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
 
@@ -115,6 +119,63 @@ export async function fetchActiveBadges(ids: string[]): Promise<ActiveBadgeRow[]
         (r.tribe_id === null || activeTribeIds.has(r.tribe_id))
     )
     .map(({ id, name, description }) => ({ id, name, description }))
+}
+
+// PostgREST 기본 행 상한(1,000)과 맞춘다. 배지 900건 안팎이라도 여유를 두고 페이지를 나눈다
+// (`lib/today/events.ts`의 `aggregateTodayCardEvents`와 같은 방식, 티켓 20260927_2034).
+const LIST_ACTIVE_PAGE_SIZE = 1000
+
+/** 활성 트라이브 ID 전체 — 후보 ID가 없을 때 자동 선택(티켓 20260927_2034)에 쓴다. */
+export async function listActiveTribeIds(): Promise<string[]> {
+  const supabase = createServiceClient()
+  const { data, error } = await supabase.from('tribes').select('id').eq('is_active', true)
+  if (error) throw error
+  return ((data as { id: string }[] | null) ?? []).map((row) => row.id)
+}
+
+/** 활성 컬렉션 ID 전체(소속 트라이브도 활성) — 후보 ID가 없을 때 자동 선택에 쓴다. */
+export async function listActiveItemBookIds(): Promise<string[]> {
+  const supabase = createServiceClient()
+  const { data, error } = await supabase.from('item_books').select('id, tribe_id').eq('is_active', true)
+  if (error) throw error
+  const rows = (data as { id: string; tribe_id: string | null }[] | null) ?? []
+  if (rows.length === 0) return []
+  const activeTribeIds = await fetchActiveIds('tribes', uniqueNonNull(rows.map((r) => r.tribe_id)))
+  return rows.filter((r) => r.tribe_id === null || activeTribeIds.has(r.tribe_id)).map((r) => r.id)
+}
+
+/**
+ * 활성 배지 ID 전체(소속 컬렉션·트라이브도 활성, 유효 기간 안) — 후보 ID가 없을 때 자동
+ * 선택에 쓴다. `id` 오름차순으로 `.range()` 페이지를 반복해 1,000행 상한에서 잘리지 않게 한다.
+ */
+export async function listActiveBadgeIds(now: Date = new Date()): Promise<string[]> {
+  const supabase = createServiceClient()
+  const nowIso = now.toISOString()
+  const rows: { id: string; item_book_id: string | null; tribe_id: string | null }[] = []
+
+  for (let offset = 0; ; offset += LIST_ACTIVE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('badges')
+      .select('id, item_book_id, tribe_id')
+      .is('deleted_at', null)
+      .or(`valid_from.is.null,valid_from.lte.${nowIso}`)
+      .or(`valid_until.is.null,valid_until.gte.${nowIso}`)
+      .order('id', { ascending: true })
+      .range(offset, offset + LIST_ACTIVE_PAGE_SIZE - 1)
+    if (error) throw error
+    const page = (data as typeof rows | null) ?? []
+    rows.push(...page)
+    if (page.length < LIST_ACTIVE_PAGE_SIZE) break
+  }
+  if (rows.length === 0) return []
+  const { itemBookIds: activeItemBookIds, tribeIds: activeTribeIds } = await fetchActiveParentIds(rows)
+  return rows
+    .filter(
+      (r) =>
+        (r.item_book_id === null || activeItemBookIds.has(r.item_book_id)) &&
+        (r.tribe_id === null || activeTribeIds.has(r.tribe_id))
+    )
+    .map((r) => r.id)
 }
 
 /**

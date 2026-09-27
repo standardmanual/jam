@@ -85,7 +85,7 @@ export const TODAY_LAYOUT_OPTIONS: readonly { value: TodayCardLayoutType; label:
 export const SUGGESTED_LAYOUT_FOR: Record<TodayCardTemplateType, TodayCardLayoutType> = {
   badge_spotlight: 'large_thumbnail',
   progress_nudge: 'shortcut',
-  mission_spotlight: 'shortcut',
+  mission_spotlight: 'large_thumbnail',
   itembook_milestone: 'banner',
   location_trend: 'badge_gallery',
   drop_alert: 'shortcut',

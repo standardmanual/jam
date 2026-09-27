@@ -292,6 +292,25 @@ describe('validateHomeFeedBundle — 카드 규칙(허용값·템플릿·기간)
     expect(errorsFor((raw) => delete raw.card.body_markdown)).toContain('card.body_markdown: editorial_article 템플릿은 이 참조가 있어야 카드가 의미가 있어요.');
   });
 
+  it('mission_spotlight는 항상 large_thumbnail이어야 한다(2026-09-26 미션 카드 규칙)', () => {
+    const errors = errorsFor((raw) => {
+      raw.card.template_type = 'mission_spotlight';
+      raw.card.layout_type = 'shortcut';
+      raw.card.mission_id = MISSION_ID;
+    });
+    expect(errors.join('\n')).toContain('card.layout_type: mission_spotlight 템플릿은 항상 large_thumbnail이어야 해요');
+
+    // 레이아웃을 생략하면 추천값(large_thumbnail)으로 정해져서 통과한다.
+    expect(
+      errorsFor((raw) => {
+        raw.card.template_type = 'mission_spotlight';
+        delete raw.card.layout_type;
+        raw.card.mission_id = MISSION_ID;
+        raw.card.body_markdown = undefined;
+      })
+    ).toEqual([]);
+  });
+
   it('참조 필드의 UUID·배열 형식을 확인한다', () => {
     const errors = errorsFor((raw) => {
       raw.card.template_type = 'progress_nudge';
@@ -350,6 +369,37 @@ describe('validateHomeFeedBundle — 이미지', () => {
     expect(errorsFor(() => undefined)).toEqual([]);
     expect(errorsFor((raw) => (raw.image.subtext = '짧은 설명\n둘째 줄'))).toEqual([]);
     expect(errorsFor((raw) => (raw.image.subtext = 123)).join('\n')).toContain('image.subtext: 문자열이어야 해요');
+  });
+
+  // 홈피드 프리셋 글자 수 가이드(asset-generator/PRD.md §8) — 공백 포함 글자(코드 포인트) 수 기준.
+  it('image.text(제목)는 줄바꿈 없이 공백 포함 11자 이하여야 한다', () => {
+    const chars11 = '가나다라마바사아자차카';
+    const chars12 = '가나다라마바사아자차카타';
+    expect(errorsFor((raw) => (raw.image.text = chars11))).toEqual([]);
+    expect(errorsFor((raw) => (raw.image.text = chars12)).join('\n')).toContain(
+      'image.text: 홈피드 프리셋 글자 수 가이드를 넘어요 — 제목은 공백 포함 11자 이하여야 해요'
+    );
+    expect(errorsFor((raw) => (raw.image.text = '한 줄\n둘째 줄')).join('\n')).toContain('image.text: 제목은 줄바꿈 없이 한 줄이어야 해요');
+    // 렌더 인자와 같은 규칙으로 리터럴 `\n`도 개행으로 본다.
+    expect(errorsFor((raw) => (raw.image.text = '한 줄\\n둘째 줄')).join('\n')).toContain('image.text: 제목은 줄바꿈 없이 한 줄이어야 해요');
+  });
+
+  it('image.subtext(요약)는 1줄이면 22자, 2줄이면 줄마다 15자 이하이고 3줄 이상은 거절한다', () => {
+    const chars22 = '가나다라마바사아자차카타파하가나다라마바사아';
+    const chars23 = '가나다라마바사아자차카타파하가나다라마바사아자';
+    const chars15 = '가나다라마바사아자차카타파하가';
+    const chars16 = '가나다라마바사아자차카타파하가나';
+    expect(errorsFor((raw) => (raw.image.subtext = chars22))).toEqual([]);
+    expect(errorsFor((raw) => (raw.image.subtext = chars23)).join('\n')).toContain(
+      'image.subtext: 홈피드 프리셋 글자 수 가이드를 넘어요 — 1줄이면 공백 포함 22자 이하여야 해요'
+    );
+    expect(errorsFor((raw) => (raw.image.subtext = `${chars15}\n${chars15}`))).toEqual([]);
+    expect(errorsFor((raw) => (raw.image.subtext = `${chars16}\n${chars15}`)).join('\n')).toContain(
+      'image.subtext: 홈피드 프리셋 글자 수 가이드를 넘어요 — 2줄이면 줄마다 공백 포함 15자 이하여야 해요'
+    );
+    expect(errorsFor((raw) => (raw.image.subtext = `${chars15}\n${chars15}\n${chars15}`)).join('\n')).toContain(
+      'image.subtext: 3줄 이상은 쓸 수 없어요'
+    );
   });
 
   it('시드·프리셋·색 형식을 확인한다', () => {
