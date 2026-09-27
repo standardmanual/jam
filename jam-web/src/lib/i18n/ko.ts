@@ -232,12 +232,12 @@ export const ko = {
       drop: { title: '드랍', description: '내가 만든 아이템을 지점에 드랍하면, 지나가던 누군가가 픽업해 가요.' },
       browse: { title: '둘러보기', description: '다음에 도전할 미션과 내 트라이브의 이야기를 미리 살펴봐요.' },
     },
-    /** 7단계 완료 또는 건너뜀 + Strava 미동기화. 티켓 확정 문구에서 반복 강조어 한 단어만
-     * 뺐다 — SLOP_DICTIONARY.md 「반복 강조」 금칙어라 verify.sh의 check-slop 게이트를
-     * 통과하지 못한다(사유는 티켓 20260927_2133 완료 기록에 남긴다). */
+    /** 7단계 완료 또는 건너뜀 + Strava 미동기화. 2026-09-27 재확정 문구(티켓
+     * 20260927_2133) — 처음 확정한 문구에 SLOP_DICTIONARY.md 금칙어(반복 강조어)가
+     * 있어 check-slop 게이트에서 막혔고, "이제 연습은 끝났다"는 톤으로 다시 확정했다. */
     lastStep: {
-      title: '마지막 단계',
-      description: 'Strava를 동기화하면 이번엔 내 기록으로 첫 배지를 획득해요.',
+      title: '연습 끝',
+      description: '이제 실제 Strava를 동기화하고 첫 배지를 획득하세요.',
       cta: 'Strava 동기화하기',
     },
     /** Strava 동기화됨 · 첫 활동 0건 (건너뛰지 않은 유저) */

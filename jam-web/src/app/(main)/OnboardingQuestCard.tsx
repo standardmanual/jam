@@ -90,7 +90,7 @@ export default function OnboardingQuestCard({ state }: Props) {
     <Card tone="inverse" className={CARD_CLASS}>
       <Chip />
       <div className="flex items-start gap-[var(--spacing-8)]">
-        <span className="text-text-inverse/60 opacity-50 shrink-0">
+        <span className="text-text-inverse/60 shrink-0">
           <HourglassIcon className="w-6 h-6" />
         </span>
         <div className="flex flex-col gap-[var(--spacing-8)]">
