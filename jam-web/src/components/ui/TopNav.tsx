@@ -74,16 +74,9 @@ export interface TopNavProps {
    * 홈/배지/미션/인벤토리). title/showBack/onBack/backHref는 이때 무시된다.
    */
   logo?: boolean
-  /**
-   * true면 로고·중앙 동기화 버튼·알림 종·우측 아바타를 표시 전용으로 렌더한다 — 모양은 `logo`
-   * 모드와 완전히 같지만 네 영역 모두 클릭·포커스를 받지 않는다(전역 `inert` 속성).
-   * 기본값 false — 기존 호출부 동작은 바뀌지 않는다. 온보딩 퀘스트 화면 전용
-   * (티켓 20260927_2330).
-   */
-  decorative?: boolean
 }
 
-export default function TopNav({ title = '', onBack, backHref, rightSlot, showBack = true, headerStyle, logo = false, decorative = false }: TopNavProps) {
+export default function TopNav({ title = '', onBack, backHref, rightSlot, showBack = true, headerStyle, logo = false }: TopNavProps) {
   const router = useRouter()
   const { username, avatarUrl, stravaConnected } = useTopNavData()
 
@@ -91,23 +84,19 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
   const profileHref = username ? `/${username}` : '/profile'
 
   const avatarSlot = (
-    // decorative(표시 전용): display:contents로 레이아웃 영향 없이 inert만 적용 —
-    // 클릭·포커스가 발생하지 않고 모양은 동일하다(20260927_2330).
-    <div style={{ display: 'contents' }} inert={decorative}>
-      <Link
-        href={profileHref}
-        aria-label={d.profile.title}
-        className="w-11 h-11 rounded-[var(--radius-pill)] flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
-      >
-        {avatarUrl ? (
-          <Image src={avatarUrl} alt={d.profile.avatarAlt} width={36} height={36} className="w-9 h-9 rounded-[var(--radius-pill)] object-cover" />
-        ) : (
-          <span className="w-9 h-9 rounded-[var(--radius-pill)] bg-surface-elevated text-text flex items-center justify-center">
-            <UserIcon className="w-4 h-4" />
-          </span>
-        )}
-      </Link>
-    </div>
+    <Link
+      href={profileHref}
+      aria-label={d.profile.title}
+      className="w-11 h-11 rounded-[var(--radius-pill)] flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
+    >
+      {avatarUrl ? (
+        <Image src={avatarUrl} alt={d.profile.avatarAlt} width={36} height={36} className="w-9 h-9 rounded-[var(--radius-pill)] object-cover" />
+      ) : (
+        <span className="w-9 h-9 rounded-[var(--radius-pill)] bg-surface-elevated text-text flex items-center justify-center">
+          <UserIcon className="w-4 h-4" />
+        </span>
+      )}
+    </Link>
   )
 
   // 알림 종은 **TopNav가 렌더되는 모든 화면**에 붙는다 (20260825 확정).
@@ -122,10 +111,7 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
   const composedRightSlot = (
     <>
       {rightSlot}
-      {/* decorative면 알림 종도 표시 전용 — 상단 바 전체에 링크·동작이 없다(20260927_2330 사용자 결정) */}
-      <div style={{ display: 'contents' }} inert={decorative}>
-        <NotificationBell />
-      </div>
+      <NotificationBell />
       {avatarSlot}
     </>
   )
@@ -133,36 +119,32 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
   // 20260828_1548: 베타테스트 VOC 임시 채널 — 로고 옆에 작은 '문의' 버튼을 붙여 /voc로 이동.
   // 로고가 노출되는 탭 최상위 화면(logo=true)에만 자연히 노출된다.
   const logoNode = logo ? (
-    <div style={{ display: 'contents' }} inert={decorative}>
+    <>
       <Link href="/" aria-label="홈으로 이동" className="shrink-0">
         <Image src="/jam-logo-white.png" alt="JAM!" width={2610} height={925} className="h-[26px] w-auto" priority />
       </Link>
       <Button variant="outline" surface="main" size="xs" onClick={() => router.push('/voc')}>
         {d.voc.inquiryButton}
       </Button>
-    </div>
+    </>
   ) : null
 
   // 미연동 유저도 동기화 버튼을 항상 본다 — 누르면 스트라바 연결 플로우(OAuth 시작 라우트)로
   // 이동한다. 연동 유저는 기존 SyncButton과 동일하게 수동 동기화를 트리거한다(20260824_010).
-  const centerSlot = (
-    <div style={{ display: 'contents' }} inert={decorative}>
-      {stravaConnected ? (
-        <SyncButton username={username} />
-      ) : (
-        <Button
-          variant="outline"
-          surface="sub"
-          size="xs"
-          style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-base-white)' }}
-          onClick={() => {
-            window.location.href = '/api/strava/auth'
-          }}
-        >
-          {d.today.syncButton}
-        </Button>
-      )}
-    </div>
+  const centerSlot = stravaConnected ? (
+    <SyncButton username={username} />
+  ) : (
+    <Button
+      variant="outline"
+      surface="sub"
+      size="xs"
+      style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-base-white)' }}
+      onClick={() => {
+        window.location.href = '/api/strava/auth'
+      }}
+    >
+      {d.today.syncButton}
+    </Button>
   )
 
   return (
