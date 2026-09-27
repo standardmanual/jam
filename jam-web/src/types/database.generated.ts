@@ -2654,6 +2654,41 @@ export type Database = {
           },
         ]
       }
+      user_onboarding_quests: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          reward_granted_at: string | null
+          skipped_at: string | null
+          step_progress: Json
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          reward_granted_at?: string | null
+          skipped_at?: string | null
+          step_progress?: Json
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          reward_granted_at?: string | null
+          skipped_at?: string | null
+          step_progress?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_onboarding_quests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_shadow_bans: {
         Row: {
           ban_level: string

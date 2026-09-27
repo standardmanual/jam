@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { ONBOARDING_QUEST_ENABLED } from '@/lib/onboarding-quest/config'
 
 function validateUsernameFormat(username: string): string | null {
   if (username.length === 0) return 'EMPTY'
@@ -121,6 +122,17 @@ export async function POST(request: NextRequest) {
   if (error) {
     console.error('[onboarding/complete] 2단계 update 오류:', error.message)
     return NextResponse.json({ error: 'SERVER_ERROR' }, { status: 500 })
+  }
+
+  // 온보딩 퀘스트 진행 테이블 행 생성 — 기능 스위치가 꺼져 있으면 만들지 않는다
+  // (티켓 20260927_2124). 실패해도 온보딩 완료 응답은 막지 않고 오류만 기록한다.
+  if (ONBOARDING_QUEST_ENABLED) {
+    const { error: questRowError } = await serviceClient
+      .from('user_onboarding_quests')
+      .upsert({ user_id: user.id }, { onConflict: 'user_id', ignoreDuplicates: true })
+    if (questRowError) {
+      console.error('[onboarding/complete] user_onboarding_quests 행 생성 오류:', questRowError.message)
+    }
   }
 
   return NextResponse.json({ success: true })

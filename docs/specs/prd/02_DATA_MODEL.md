@@ -89,6 +89,15 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 2단계 온보
 > 입력 UI가 한 번도 만들어진 적 없는 죽은 컬럼이었다 — 티켓 20260909_2119에서 PRD 삭제 +
 > DB 컬럼 삭제 + 참조 코드 정리로 완전히 제거했다.
 
+### user_onboarding_quests (신규)
+온보딩 퀘스트(1~7단계, 연출용) 유저별 진행 상태(마이그레이션 195, 티켓 20260927_2124/상위 20260927_2123). `user_id`(PK, `users(id)` FK, 유저 삭제 시 CASCADE), `step_progress`(단계 키 `sync`·`bag`·`pickup`·`mix_fail`·`mix_success`·`drop`·`browse` → 완료 시각 ISO 문자열 JSONB, 기본값 `{}`), `skipped_at`(건너뛰기 T8 시각, 있으면 완료 배지 불가), `completed_at`(실제 첫 활동 유입 시각 T6), `reward_granted_at`(완료 배지·100P 지급 시각 T7, 멱등 기준), `created_at`.
+
+행 생성 시점은 `POST /api/onboarding/complete`가 `onboarding_completed_at`을 처음 기록하는 순간(service_role, 이미 있으면 무시)이며, **기능 배포 이후 온보딩 2단계를 마친 신규 유저에게만** 만든다 — 기존 유저에게 소급 생성하지 않는다(백필 없음). 행의 존재 자체가 "퀘스트 대상"의 기준이다. 퀘스트 1~7단계는 연출용 데이터이고, 이 테이블 외의 실제 테이블(`inventory_items`·`poi_drops`·`user_activity_badges`·`point_transactions`)에는 퀘스트 때문에 행을 만들지 않는다.
+
+RLS는 켜고 본인 행 SELECT만 허용, INSERT·UPDATE·DELETE 정책은 없다(서버 service_role 경로 전용).
+
+**기능 스위치**: `src/lib/onboarding-quest/config.ts`의 `ONBOARDING_QUEST_ENABLED`가 `false`면 온보딩을 완료해도 행을 만들지 않는다. 하위 티켓들이 순차로 프로덕션에 나가도 스위치를 켜기 전에는 신규 유저에게 반쯤 만든 퀘스트가 보이지 않게 하기 위함이며, 스위치는 상위 티켓의 마지막 단계에서 켠다.
+
 ### strava_connections
 원안과 거의 동일. `access_token`/`refresh_token` 암호화 저장, `backfill_completed` 유지.
 

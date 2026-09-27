@@ -92,6 +92,38 @@ export interface UserRow {
   updated_at: string
 }
 
+/**
+ * 온보딩 퀘스트 1~7단계(연출용) 키. 순서대로 sync→bag→pickup→mix_fail→mix_success→drop→browse.
+ * 티켓 20260927_2124 — 실제 순서 배열은 `src/lib/onboarding-quest/config.ts`의
+ * `ONBOARDING_QUEST_STEPS`.
+ */
+export type OnboardingQuestStepKey =
+  | 'sync'
+  | 'bag'
+  | 'pickup'
+  | 'mix_fail'
+  | 'mix_success'
+  | 'drop'
+  | 'browse'
+
+/**
+ * 온보딩 퀘스트 진행 상태(유저당 1행, 마이그레이션 195). 티켓 20260927_2124(상위 20260927_2123).
+ * 기능 배포 이후 온보딩 2단계를 마친 신규 유저에게만 행이 생긴다(기존 유저 백필 없음) —
+ * 행의 존재 자체가 퀘스트 대상 기준. RLS는 본인 SELECT만 허용, 쓰기는 service_role 전용.
+ */
+export interface UserOnboardingQuestRow {
+  user_id: string
+  /** 단계 키 → 완료 시각(ISO 문자열) 매핑. 기본값 `{}`. */
+  step_progress: Partial<Record<OnboardingQuestStepKey, string>>
+  /** 건너뛰기(T8) 시각. 값이 있으면 완료 배지를 받을 수 없다. */
+  skipped_at: string | null
+  /** 실제 첫 활동 유입 시각(T6). */
+  completed_at: string | null
+  /** 완료 배지·100P 지급 시각(T7, 멱등 기준). */
+  reward_granted_at: string | null
+  created_at: string
+}
+
 export interface StravaConnectionRow {
   id: string
   user_id: string
