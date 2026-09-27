@@ -129,7 +129,7 @@ code:
 | `starts_at` | 필수 | ISO 8601 | 시간대가 붙어야 한다. 저장할 때 UTC ISO로 바꾼다(폼과 같다) |
 | `ends_at` | 필수 | ISO 8601 | 시간대가 붙어야 하고 `starts_at`보다 뒤여야 한다 |
 | `exposure_tags` | 필수 | 문자열 배열 | 1개 이상(항상 노출하려면 `["all"]`). `TODAY_EXPOSURE_TAG_OPTIONS`의 값만, 중복 없이 |
-| `layout_type` | 선택 | 문자열 | `large_thumbnail`·`badge_gallery`·`shortcut`·`banner`·`other`·`ranking_list` 중 하나(`TODAY_LAYOUT_OPTIONS`, DB CHECK). 없으면 폼이 템플릿을 고를 때 기본으로 고르는 추천값(`SUGGESTED_LAYOUT_FOR`) |
+| `layout_type` | 선택 | 문자열 | `large_thumbnail`·`badge_gallery`·`shortcut`·`banner`·`other`·`ranking_list` 중 하나(`TODAY_LAYOUT_OPTIONS`, DB CHECK). 없으면 폼이 템플릿을 고를 때 기본으로 고르는 추천값(`SUGGESTED_LAYOUT_FOR`). **`mission_spotlight`는 최종 레이아웃(입력값 또는 생략 시 추천값)이 항상 `large_thumbnail`이어야 한다**(2026-09-26 사용자 결정, `content-automation/PRD.md` §8 미션 카드 규칙 — 대표 이미지가 있는 미션 소개 카드는 커버 이미지가 필수다). `SUGGESTED_LAYOUT_FOR.mission_spotlight`도 `large_thumbnail`이다 |
 | `subtitle` | 선택 | 문자열 | 한 줄. 줄바꿈·제어 문자 거절. 없으면 null |
 | `badge_ids` | 선택 | UUID 배열 | 같은 id를 두 번 넣을 수 없다. 삭제되지 않은 배지가 실제로 있는지 DB를 읽어 확인한다. 없으면 `[]` |
 | `mission_id` | 선택 | UUID | `missions`에 있는지 DB를 읽어 확인한다 |
@@ -182,8 +182,10 @@ code:
 | `preset_id` | 필수 | UUID | 에셋 제너레이터 프리셋 ID. 재현 기록용이라 존재 여부는 확인하지 않는다 |
 | `bg_color` | 필수 | `#rrggbb` | 이미지 배경색(그라데이션 시작색과 같다, PRD §8). 알파 없는 6자리만 허용 |
 | `end_color` | 필수 | `#rrggbb` | 그라데이션 끝색 |
-| `text` | 선택 | 문자열 | CLI `--text01`에 넣은 값(필드 이름은 예전 그대로다). 같은 프리셋·색·텍스트·시드면 같은 이미지가 나오므로(PRD §11) 재현하려면 필요해서 기록한다. 홈피드 프리셋의 `text01` 레이어(제목)에 들어간 값 |
-| `subtext` | 선택 | 문자열 | CLI `--text02`에 넣은 값(필드 이름은 예전 그대로다). 홈피드 프리셋의 `text02` 레이어(설명)에 들어간 값이며 `text`처럼 재현용으로 기록한다. 레이어 번호 규칙·글자 수는 PRD §8 |
+| `text` | 선택 | 문자열 | CLI `--text01`에 넣은 값(필드 이름은 예전 그대로다). 같은 프리셋·색·텍스트·시드면 같은 이미지가 나오므로(PRD §11) 재현하려면 필요해서 기록한다. 홈피드 프리셋의 `text01` 레이어(제목)에 들어간 값. **글자 수 검사(PRD §8 글자 수 가이드 실측)**: 줄바꿈이 있으면 거절(제목은 항상 1줄), 공백 포함 11자를 넘으면 거절 |
+| `subtext` | 선택 | 문자열 | CLI `--text02`에 넣은 값(필드 이름은 예전 그대로다). 홈피드 프리셋의 `text02` 레이어(설명)에 들어간 값이며 `text`처럼 재현용으로 기록한다. 레이어 번호 규칙·글자 수는 PRD §8. **글자 수 검사**: 1줄이면 공백 포함 22자 이하, 줄바꿈으로 2줄이면 줄마다 공백 포함 15자 이하, 3줄 이상은 거절 |
+
+두 필드 모두 값이 없으면(선택 필드) 글자 수 검사를 하지 않는다. 글자 수는 문자열 `length`가 아니라 **사용자에게 보이는 글자(코드 포인트) 수**로 센다(`[...s].length`). 렌더 인자가 리터럴 `\n`(백슬래시+n 두 글자)을 실제 개행으로 바꾸는 규칙(`renderArgs.mjs`)과 같게, 묶음 값의 리터럴 `\n`과 실제 개행을 둘 다 줄 구분자로 본다.
 
 ## 4. 검증이 내는 사유 예
 
@@ -196,9 +198,12 @@ code:
 | 노출 태그 없음·허용 밖 태그 | `card.exposure_tags: 노출 조건 태그를 1개 이상 넣은 배열이어야 해요(항상 노출하려면 ["all"]).` · `card.exposure_tags: 허용하지 않는 태그예요 — "sunny". 허용 태그: …` |
 | 템플릿이 쓰지 않는 참조 | `card.mission_id: drop_alert 템플릿은 이 필드를 쓰지 않아요(어드민 폼도 저장할 때 비워요). 묶음에서 빼 주세요.` |
 | 필요한 참조 없음 | `card.mission_id: mission_spotlight 템플릿은 이 참조가 있어야 카드가 의미가 있어요.` |
+| mission_spotlight인데 최종 레이아웃이 large_thumbnail이 아님 | `card.layout_type: mission_spotlight 템플릿은 항상 large_thumbnail이어야 해요(대표 이미지로 미션을 소개하는 카드 규칙, content-automation/PRD.md §8. 받은 값: "shortcut").` |
 | 기간 순서 | `card.starts_at: ends_at보다 앞이어야 해요.` |
 | 이동 경로 형식 | `card.target_href: 앱 안 경로(/로 시작, 예: /missions/…)이거나 https 주소여야 해요(받은 값: "missions").` |
 | 이미지 없음·PNG 아님 | `image.path: 이미지 파일을 찾을 수 없어요: <절대경로>` · `image.path: PNG 파일이 아니에요: <절대경로>` |
+| 제목(image.text) 줄바꿈·글자 수 초과 | `image.text: 제목은 줄바꿈 없이 한 줄이어야 해요(홈피드 프리셋 글자 수 가이드, asset-generator/PRD.md §8).` · `image.text: 홈피드 프리셋 글자 수 가이드를 넘어요 — 제목은 공백 포함 11자 이하여야 해요(받은 글자 수: 12, asset-generator/PRD.md §8).` |
+| 요약(image.subtext) 글자 수 초과·3줄 이상 | `image.subtext: 홈피드 프리셋 글자 수 가이드를 넘어요 — 1줄이면 공백 포함 22자 이하여야 해요(받은 글자 수: 23, asset-generator/PRD.md §8).` · `image.subtext: 홈피드 프리셋 글자 수 가이드를 넘어요 — 2줄이면 줄마다 공백 포함 15자 이하여야 해요(받은 줄 글자 수: 16 · 15, asset-generator/PRD.md §8).` · `image.subtext: 3줄 이상은 쓸 수 없어요(가능하면 1줄, 부득이할 때만 2줄로 나눠 주세요, asset-generator/PRD.md §8).` |
 | 제목·시작 일시 중복(DB 읽기) | `제목·시작 일시 중복: 같은 제목·같은 시작 일시의 카드가 이미 있어요(id: …). 기존 카드 갱신은 이 스크립트 범위 밖이라 중복으로 거절해요.` |
 | 참조 행 없음(DB 읽기) | `미션 존재: mission_id에 해당하는 미션이 없어요: <id>` (`컬렉션 존재`·`배지 존재`·`랭킹 모드 존재`도 같은 모양) |
 
