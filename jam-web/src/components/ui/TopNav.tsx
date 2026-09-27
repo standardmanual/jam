@@ -74,9 +74,15 @@ export interface TopNavProps {
    * 홈/배지/미션/인벤토리). title/showBack/onBack/backHref는 이때 무시된다.
    */
   logo?: boolean
+  /**
+   * 값이 있으면 중앙 슬롯을 stravaConnected 분기(SyncButton·연동 유도 버튼) 대신 이
+   * 노드로 교체한다. 온보딩 퀘스트 `sync` 차례 전용(티켓 20260927_2331) — 호출부는
+   * 홈(`page.tsx`)만 넘긴다.
+   */
+  centerSlotOverride?: ReactNode
 }
 
-export default function TopNav({ title = '', onBack, backHref, rightSlot, showBack = true, headerStyle, logo = false }: TopNavProps) {
+export default function TopNav({ title = '', onBack, backHref, rightSlot, showBack = true, headerStyle, logo = false, centerSlotOverride }: TopNavProps) {
   const router = useRouter()
   const { username, avatarUrl, stravaConnected } = useTopNavData()
 
@@ -131,20 +137,23 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
 
   // 미연동 유저도 동기화 버튼을 항상 본다 — 누르면 스트라바 연결 플로우(OAuth 시작 라우트)로
   // 이동한다. 연동 유저는 기존 SyncButton과 동일하게 수동 동기화를 트리거한다(20260824_010).
-  const centerSlot = stravaConnected ? (
-    <SyncButton username={username} />
-  ) : (
-    <Button
-      variant="outline"
-      surface="sub"
-      size="xs"
-      style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-base-white)' }}
-      onClick={() => {
-        window.location.href = '/api/strava/auth'
-      }}
-    >
-      {d.today.syncButton}
-    </Button>
+  // centerSlotOverride가 있으면(온보딩 퀘스트 sync 차례) 연동 여부와 무관하게 그 값을 쓴다.
+  const centerSlot = centerSlotOverride ?? (
+    stravaConnected ? (
+      <SyncButton username={username} />
+    ) : (
+      <Button
+        variant="outline"
+        surface="sub"
+        size="xs"
+        style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-base-white)' }}
+        onClick={() => {
+          window.location.href = '/api/strava/auth'
+        }}
+      >
+        {d.today.syncButton}
+      </Button>
+    )
   )
 
   return (
