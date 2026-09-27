@@ -10,6 +10,8 @@ code:
   - "jam-web/src/app/(main)/TodayCardStack.tsx"
   - "jam-web/src/app/(main)/TodayCardTracker.tsx"
   - "jam-web/src/app/(main)/TodayStatusStrip.tsx"
+  - "jam-web/src/app/(main)/OnboardingQuestCard.tsx"
+  - "jam-web/src/lib/onboarding-quest/status.ts"
   - "jam-web/src/app/(main)/today"
   - "jam-web/src/lib/today"
   - "jam-web/src/lib/admin/today-sections.ts"
@@ -37,8 +39,21 @@ code:
 |---|---|---|
 | 1 | 상단 바 | 공통 `TopNav`(로고) |
 | 2 | 인사말 + 검색 | 「{이름}」 인사 한 줄과 검색 아이콘(→ `/search`) |
-| 3 | 오늘의 현황 스트립 | 2칸. 왼쪽 「내 진행도」, 오른쪽 「친구 활동」(아래 표) |
-| 4 | 투데이 카드 스택 | 제목 「투데이」·부제 「오늘의 소식」. 노출할 카드가 0장이면 영역 전체를 그리지 않는다 |
+| 3 | 온보딩 퀘스트 카드 | `user_onboarding_quests` 행이 있고 `completed_at`이 비어 있는 유저에게만. 아래 표 |
+| 4 | 오늘의 현황 스트립 | 2칸. 왼쪽 「내 진행도」, 오른쪽 「친구 활동」(아래 표) |
+| 5 | 투데이 카드 스택 | 제목 「투데이」·부제 「오늘의 소식」. 노출할 카드가 0장이면 영역 전체를 그리지 않는다 |
+
+**온보딩 퀘스트 카드**(티켓 20260927_2133, 상위 20260927_2123)는 신규 유저가 온보딩 2단계를
+마친 뒤 서비스 기능을 순서대로 직접 해 보는 7단계 「퀘스트」의 진행도를 보여 준다. 조건이
+안 맞으면(스위치 꺼짐·행 없음·조회 실패·`completed_at` 있음) 자리 자체가 없다.
+
+| 상태 | 조건 | 표시·이동 |
+|---|---|---|
+| 진행 중 | `skipped_at` 없음, 7단계 미완 | 진행도(n/7)·다음 단계 타이틀/설명·보상 안내·시작하기\|이어 하기 → 퀘스트 화면(`/onboarding-quest`, T2에서 구현) |
+| Strava 미동기화 | 7단계 완료 또는 건너뜀, Strava 미연동 | 7/7·마지막 단계 안내 → `/api/strava/auth` |
+| 첫 활동 대기 | 7단계 완료 또는 건너뜀, Strava 연동됐지만 활동 0건 | 비클릭 안내(건너뛴 유저에게는 완료 배지를 언급하지 않는 문구) |
+
+근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/OnboardingQuestCard.tsx`, `jam-web/src/lib/onboarding-quest/status.ts`, `jam-web/src/lib/onboarding-quest/config.ts`, 문구 `jam-web/src/lib/i18n/ko.ts`(`onboardingQuest`)
 
 **오늘의 현황 스트립**은 큐레이션을 하지 않는다(카드 CMS와 역할이 겹치지 않게). 
 

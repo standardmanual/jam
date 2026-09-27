@@ -5,9 +5,11 @@ import { StravaConnectionRow, UserRow } from '@/types/database'
 import TopNav from '@/components/ui/TopNav'
 import TodayCardStack from './TodayCardStack'
 import TodayStatusStrip from './TodayStatusStrip'
+import OnboardingQuestCard from './OnboardingQuestCard'
 import HomeViewTracker from './HomeViewTracker'
 import { getTodayCards } from '@/lib/today/cards'
 import { getTodayLeftStatus, getTodayRightStatus, type TodayLeftStatus } from '@/lib/today/status'
+import { getOnboardingQuestCard } from '@/lib/onboarding-quest/status'
 import { getDisplayName } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import { SearchIcon } from '@/components/ui/icons'
@@ -36,12 +38,14 @@ export default async function HomePage() {
   const leftStatusPromise: Promise<TodayLeftStatus> = stravaConnection
     ? getTodayLeftStatus(userId)
     : Promise.resolve({ kind: 'strava_disconnected', href: '/api/strava/auth' })
+  const onboardingQuestPromise = getOnboardingQuestCard(userId, { stravaConnected: Boolean(stravaConnection) })
 
   const [
     { data: profile, error: profileError },
     rightStatus,
     leftStatus,
-  ] = await Promise.all([profilePromise, rightStatusPromise, leftStatusPromise])
+    onboardingQuestCard,
+  ] = await Promise.all([profilePromise, rightStatusPromise, leftStatusPromise, onboardingQuestPromise])
   if (profileError) console.error('[home/page] users 프로필 조회 실패', profileError)
 
   const userProfile = profile as UserRow | null
@@ -76,6 +80,9 @@ export default async function HomePage() {
           </span>
         </Link>
       </div>
+
+      {/* 온보딩 퀘스트 홈 카드 (티켓 20260927_2133) — 대상 유저에게만 렌더, 그 외엔 null */}
+      <OnboardingQuestCard state={onboardingQuestCard} />
 
       {/* "오늘의 현황" 스트립 (신규) — 좌: 내 진행도 / 우: 친구 활동. 큐레이션 없음(today_cards
           CMS와 역할 분리, 완료 기록 참고). */}

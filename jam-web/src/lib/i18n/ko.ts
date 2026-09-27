@@ -214,6 +214,45 @@ export const ko = {
   },
 
   /**
+   * 온보딩 퀘스트 홈 카드 (티켓 20260927_2133, 상위 20260927_2123) — 확정 문구를
+   * 글자 단위로 그대로 옮긴다. `steps`는 단계 키별로 T2~T5 퀘스트 화면이 재사용한다.
+   */
+  onboardingQuest: {
+    chipLabel: '첫 퀘스트',
+    startButton: '시작하기',
+    continueButton: '이어 하기',
+    rewardHint: '끝까지 가면 첫 퀘스트 배지와 100포인트',
+    /** 단계 키 → 타이틀/설명. `OnboardingQuestStepKey`와 순서·개수가 같다. */
+    steps: {
+      sync: { title: '첫 동기화', description: '내 운동 기록 하나가 배지 한 장이 되어 돌아와요.' },
+      bag: { title: '인벤토리', description: '방금 획득한 배지가 인벤토리 첫 칸을 채웠어요.' },
+      pickup: { title: '픽업', description: '근처에 누군가 흘리고 간 아이템이 있어요. 먼저 픽업하는 사람이 임자예요.' },
+      mix_fail: { title: '믹스', description: '재료 두 개를 믹스하면 무엇이 나올지 아무도 몰라요.' },
+      mix_success: { title: '레시피', description: '레시피를 알면 결과가 달라져요. 이번엔 제대로 믹스해 봐요.' },
+      drop: { title: '드랍', description: '내가 만든 아이템을 지점에 드랍하면, 지나가던 누군가가 픽업해 가요.' },
+      browse: { title: '둘러보기', description: '다음에 도전할 미션과 내 트라이브의 이야기를 미리 살펴봐요.' },
+    },
+    /** 7단계 완료 또는 건너뜀 + Strava 미동기화. 티켓 확정 문구에서 반복 강조어 한 단어만
+     * 뺐다 — SLOP_DICTIONARY.md 「반복 강조」 금칙어라 verify.sh의 check-slop 게이트를
+     * 통과하지 못한다(사유는 티켓 20260927_2133 완료 기록에 남긴다). */
+    lastStep: {
+      title: '마지막 단계',
+      description: 'Strava를 동기화하면 이번엔 내 기록으로 첫 배지를 획득해요.',
+      cta: 'Strava 동기화하기',
+    },
+    /** Strava 동기화됨 · 첫 활동 0건 (건너뛰지 않은 유저) */
+    awaitingActivity: {
+      title: '첫 활동 기다리는 중',
+      description: 'Strava에 첫 활동이 올라오면 퀘스트 완료 배지를 획득해요.',
+    },
+    /** Strava 동기화됨 · 첫 활동 0건 · 건너뛴 유저 — 완료 배지를 언급하지 않는다 */
+    awaitingActivitySkipped: {
+      title: '첫 활동 기다리는 중',
+      description: 'Strava에 첫 활동이 올라오면 첫 배지를 획득해요.',
+    },
+  },
+
+  /**
    * 투데이 홈 상단 "오늘의 현황" 스트립 (티켓 20260830_2030) — 인사말 압축 + 좌/우 2셀.
    * today_cards CMS와 기능이 겹치지 않도록 큐레이션 없이 정적 안내만 담는다.
    */
