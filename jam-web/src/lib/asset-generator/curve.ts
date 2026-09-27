@@ -69,7 +69,10 @@ export const LOOP_WIDTH_MAX = 0.45;
 
 const CANDIDATE_TRIES = 40;
 const CANDIDATE_EVAL_POINTS = 240;
-const PATH_SAMPLE_POINTS = 6000;
+// buildPath가 완성 경로를 뽑는 점 개수. 테스트(curve.test.ts)가 buildPath를 다시 부르지 않고
+// pickCandidate 결과로 sampleFitted를 직접 불러 같은 해상도의 경로를 재현할 때 이 값을 그대로
+// 쓰도록 export한다(티켓 20260927_2056) — 값 자체나 계산 로직은 바뀌지 않았다.
+export const PATH_SAMPLE_POINTS = 6000;
 const CANDIDATE_HARMONIC_BASE = [0, 1.1, 1.3, 0.6, 0.35, 0.2, 0.1];
 
 /** 불규칙성 슬라이더(0~100%)를 내부 굴곡 세기로 바꾼다. */
