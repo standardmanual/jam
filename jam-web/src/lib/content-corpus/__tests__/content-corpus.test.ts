@@ -91,7 +91,22 @@ vi.mock('@/lib/supabase/server', () => ({
     from: (table: string) => {
       calledTables.push(table)
       if (table === forceErrorTable) {
-        return { select: () => ({ in: () => Promise.resolve({ data: null, error: new Error('DB 조회 실패') }) }) }
+        // `.select()` 뒤에 어떤 체인이 이어져도(`.in()`·`.eq()`·`.is().or().or()`·
+        // `.order().range()`) 같은 오류로 끝나야 한다 — 오류 경로는 체인 모양과 무관하게
+        // 재현돼야 하므로, 체인 스스로를 Promise로 두고 모든 메서드가 자기 자신을 돌려준다
+        // (티켓 20260927_2150: `listActiveTribeIds`의 `.select().eq()`, `listActiveBadgeIds`의
+        // `.select().is().or().or().order().range()`까지 이 한 오류 경로로 커버한다).
+        // 체인이 자기 자신을 되돌리는 재귀 타입이라 구조적 타입으로 표현이 안 된다. 목(mock) 전용이라 any로 좁힌다.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 재귀 체인 목이라 구조적 타입 표현 불가
+        const errorChain: any = Object.assign(Promise.resolve({ data: null, error: new Error('DB 조회 실패') }), {
+          in: () => errorChain,
+          eq: () => errorChain,
+          is: () => errorChain,
+          or: () => errorChain,
+          order: () => errorChain,
+          range: () => errorChain,
+        })
+        return { select: () => errorChain }
       }
       if (table === 'tribes') return buildSimpleTable(tribes, ['id', 'name', 'description', 'tagline'])
       if (table === 'item_books')
@@ -264,6 +279,23 @@ describe('selectCorpusForType — 엣지 케이스', () => {
   it('tribes 조회가 오류를 던지면 selectCorpusForType도 그 오류를 그대로 던진다', async () => {
     forceErrorTable = 'tribes'
     await expect(selectCorpusForType('T01', { tribeIds: ['tribe-active'] })).rejects.toThrow('DB 조회 실패')
+  })
+})
+
+describe('selectCorpusForType — 자동 선택 후보 조회의 DB 오류 경로 (티켓 20260927_2150)', () => {
+  it('listActiveTribeIds(`.select().eq()`)가 오류를 던지면 selectCorpusForType까지 올라간다', async () => {
+    forceErrorTable = 'tribes'
+    await expect(selectCorpusForType('T01', {})).rejects.toThrow('DB 조회 실패')
+  })
+
+  it('listActiveItemBookIds(`.select().eq()`)가 오류를 던지면 selectCorpusForType까지 올라간다', async () => {
+    forceErrorTable = 'item_books'
+    await expect(selectCorpusForType('T01', {})).rejects.toThrow('DB 조회 실패')
+  })
+
+  it('listActiveBadgeIds(`.select().is().or().or().order().range()`)가 오류를 던지면 selectCorpusForType까지 올라간다', async () => {
+    forceErrorTable = 'badges'
+    await expect(selectCorpusForType('T02', {})).rejects.toThrow('DB 조회 실패')
   })
 })
 

@@ -384,6 +384,20 @@ describe('validateHomeFeedBundle — 이미지', () => {
     expect(errorsFor((raw) => (raw.image.text = '한 줄\\n둘째 줄')).join('\n')).toContain('image.text: 제목은 줄바꿈 없이 한 줄이어야 해요');
   });
 
+  // visibleLength가 `.length`가 아니라 `[...s].length`를 쓰는 이유(서로게이트 쌍 보정)를 검증한다.
+  // 이모지(😀, U+1F600)는 `.length`로는 2, `[...s].length`로는 1로 센다 — `.length`를 썼다면
+  // hangul10 + 😀(11자)이 12자로 잘못 계산되어 거절됐을 입력이다.
+  it('이모지가 섞인 제목은 서로게이트 쌍이 아니라 보이는 글자 수로 센다', () => {
+    const hangul10 = '가나다라마바사아자차';
+    const chars11WithEmoji = `${hangul10}😀`;
+    const chars12WithEmoji = `${hangul10}카😀`;
+    expect(chars11WithEmoji.length).not.toBe([...chars11WithEmoji].length);
+    expect(errorsFor((raw) => (raw.image.text = chars11WithEmoji))).toEqual([]);
+    expect(errorsFor((raw) => (raw.image.text = chars12WithEmoji)).join('\n')).toContain(
+      'image.text: 홈피드 프리셋 글자 수 가이드를 넘어요 — 제목은 공백 포함 11자 이하여야 해요'
+    );
+  });
+
   it('image.subtext(요약)는 1줄이면 22자, 2줄이면 줄마다 15자 이하이고 3줄 이상은 거절한다', () => {
     const chars22 = '가나다라마바사아자차카타파하가나다라마바사아';
     const chars23 = '가나다라마바사아자차카타파하가나다라마바사아자';
