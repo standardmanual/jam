@@ -61,7 +61,7 @@ status: active
 
 ## docs/specs/prd/home-feed/
 
-- [PRD.md](prd/home-feed/PRD.md) — 홈피드 카드 노출·템플릿·레이아웃·이동 목적지 등 기능 정의를 담는 문서다(뼈대, 본문은 20260927_2037에서 작성한다).
+- [PRD.md](prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·레이아웃·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
 
 ## docs/specs/prd/inventory/
 

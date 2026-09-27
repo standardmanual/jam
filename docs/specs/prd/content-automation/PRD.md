@@ -186,7 +186,7 @@ code:
 - **미션 카드 규칙(2026-09-26 사용자 결정·확인, 티켓 20260926_1542)**: 카드 본체가 미션을 대표 이미지와 함께 소개하는 카드(`mission_spotlight` 템플릿, T04·T15)는 항상
   `large_thumbnail`이고, 커버는 그 미션의 대표 이미지(`missions.image_url`)를 URL 그대로 `cover_image_url`로 쓴다(새로 만들지 않는다, 등록은 세션·묶음 없음). CTA(이동 목적지)는 그 미션 상세
   (`/missions/[id]`)다. 에디토리얼 기사의 본문 끝 CTA 미션에는 적용하지 않는다. 미션에 `image_url`이 없으면 **빈 이미지로 노출한다**(카드는 그대로 `large_thumbnail`이고 다른 카드로 대체하지
-  않는다). 이때 후보 칸에 **「미션 대표 이미지 없음(빈 이미지로 노출)」**을 적고, 리포트 「결정 필요」에 `[분류 대기 초안]`으로 「이 미션의 대표 이미지 제작 필요」를 올린다. 미션 이미지 제작은
+  않는다. 화면에는 커버 영역 없이 칩·제목·부제만 보인다 — [home-feed/PRD.md](../home-feed/PRD.md) §6). 이때 후보 칸에 **「미션 대표 이미지 없음(빈 이미지로 노출)」**을 적고, 리포트 「결정 필요」에 `[분류 대기 초안]`으로 「이 미션의 대표 이미지 제작 필요」를 올린다. 미션 이미지 제작은
   미션 묶음 경로(`MISSION_REGISTRATION_BUNDLE.md`, 세션 전용)다.
   **코드 강제(티켓 [20260927_2035](../../../tickets/p2-normal/20260927_2035_Admin_미션-소개-카드-레이아웃-추천값과-홈피드-묶음-레이아웃-글자수-검사.md))**: 어드민 폼은 `mission_spotlight`를 고르면 `large_thumbnail`을 추천값으로 미리 선택한다(바꿀 수는 있다). 홈피드 등록 묶음(`register-home-feed-card.mjs`·`make-home-feed-card.mjs`)은 `mission_spotlight`인데 최종 레이아웃이 `large_thumbnail`이 아니면 거절한다. 시드 SQL 경로는 검사하지 않으므로 카리나가 SQL을 만들 때 확인한다.
 - **후보 이미지 표시(티켓 20260926_1206·1207)**: 이미지가 필요한 신규 카드(판별 기준은 `docs/specs/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md` §1.1 표)는 주간 예약 실행이
