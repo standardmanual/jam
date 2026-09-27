@@ -6,10 +6,12 @@ import TopNav from '@/components/ui/TopNav'
 import TodayCardStack from './TodayCardStack'
 import TodayStatusStrip from './TodayStatusStrip'
 import OnboardingQuestCard from './OnboardingQuestCard'
+import OnboardingSyncButton from './OnboardingSyncButton'
 import HomeViewTracker from './HomeViewTracker'
 import { getTodayCards } from '@/lib/today/cards'
 import { getTodayLeftStatus, getTodayRightStatus, type TodayLeftStatus } from '@/lib/today/status'
 import { getOnboardingQuestCard } from '@/lib/onboarding-quest/status'
+import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 import { getDisplayName } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import { SearchIcon } from '@/components/ui/icons'
@@ -39,13 +41,21 @@ export default async function HomePage() {
     ? getTodayLeftStatus(userId)
     : Promise.resolve({ kind: 'strava_disconnected', href: '/api/strava/auth' })
   const onboardingQuestPromise = getOnboardingQuestCard(userId, { stravaConnected: Boolean(stravaConnection) })
+  const onboardingQuestGatePromise = getOnboardingQuestGate(userId, 'home')
 
   const [
     { data: profile, error: profileError },
     rightStatus,
     leftStatus,
     onboardingQuestCard,
-  ] = await Promise.all([profilePromise, rightStatusPromise, leftStatusPromise, onboardingQuestPromise])
+    onboardingQuestGate,
+  ] = await Promise.all([
+    profilePromise,
+    rightStatusPromise,
+    leftStatusPromise,
+    onboardingQuestPromise,
+    onboardingQuestGatePromise,
+  ])
   if (profileError) console.error('[home/page] users 프로필 조회 실패', profileError)
 
   const userProfile = profile as UserRow | null
@@ -59,8 +69,13 @@ export default async function HomePage() {
     <div className="min-h-full text-text">
       <HomeViewTracker />
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) — 기존 자체
-          로고 헤더 블록을 대체한다 */}
-      <TopNav logo />
+          로고 헤더 블록을 대체한다. sync 차례(온보딩 퀘스트 T2c)면 중앙 슬롯을 연출
+          동기화 버튼으로 교체한다(티켓 20260927_2331). */}
+      {onboardingQuestGate === 'sync' ? (
+        <TopNav logo centerSlotOverride={<OnboardingSyncButton />} />
+      ) : (
+        <TopNav logo />
+      )}
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
       {/* 압축 인사말 + 검색 아이콘화 (티켓 20260830_2030) — 기존 큰 인사말(h1)·상시 노출
