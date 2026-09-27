@@ -22,14 +22,17 @@ import SyncStep from '../SyncStep'
 import { d } from '@/lib/i18n'
 import { DEMO_SYNC_REVEAL_BADGE } from '@/lib/onboarding-quest/demo-data'
 
+/** 실제 화면(`StepRunner`)·미리보기 어느 쪽이든 이 초기 렌더 검사에는 영향 없는 더미 콜백 */
+const noopComplete = () => Promise.resolve()
+
 describe('SyncStep 초기 렌더', () => {
   it('「동기화」 버튼 라벨이 보인다', () => {
-    const html = renderToStaticMarkup(<SyncStep />)
+    const html = renderToStaticMarkup(<SyncStep onComplete={noopComplete} />)
     expect(html).toContain(d.today.syncButton)
   })
 
   it('오버레이가 닫혀 있어 연출 배지 이름이 아직 보이지 않는다', () => {
-    const html = renderToStaticMarkup(<SyncStep />)
+    const html = renderToStaticMarkup(<SyncStep onComplete={noopComplete} />)
     expect(html).not.toContain(DEMO_SYNC_REVEAL_BADGE.name)
   })
 })
