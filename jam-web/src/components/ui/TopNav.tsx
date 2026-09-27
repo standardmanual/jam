@@ -75,8 +75,8 @@ export interface TopNavProps {
    */
   logo?: boolean
   /**
-   * true면 로고·중앙 동기화 버튼·우측 아바타를 표시 전용으로 렌더한다 — 모양은 `logo`
-   * 모드와 완전히 같지만 세 영역 모두 클릭·포커스를 받지 않는다(전역 `inert` 속성).
+   * true면 로고·중앙 동기화 버튼·알림 종·우측 아바타를 표시 전용으로 렌더한다 — 모양은 `logo`
+   * 모드와 완전히 같지만 네 영역 모두 클릭·포커스를 받지 않는다(전역 `inert` 속성).
    * 기본값 false — 기존 호출부 동작은 바뀌지 않는다. 온보딩 퀘스트 화면 전용
    * (티켓 20260927_2330).
    */
@@ -122,7 +122,10 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
   const composedRightSlot = (
     <>
       {rightSlot}
-      <NotificationBell />
+      {/* decorative면 알림 종도 표시 전용 — 상단 바 전체에 링크·동작이 없다(20260927_2330 사용자 결정) */}
+      <div style={{ display: 'contents' }} inert={decorative}>
+        <NotificationBell />
+      </div>
       {avatarSlot}
     </>
   )
