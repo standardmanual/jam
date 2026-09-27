@@ -22,19 +22,21 @@ import {
 } from './types'
 
 /**
- * KST 기준 ISO 8601 주차를 「연도×53+주차」 정수로 뭉친 값 — 연도가 바뀌어도 순환 시작
- * 위치가 튀지 않게 하나의 오름차순 값으로 쓴다(53은 ISO 주차가 가질 수 있는 최댓값).
- * `kstDateString`으로 KST 벽시계 날짜를 얻은 뒤 표준 ISO 주차 계산(목요일 기준)을 적용한다.
+ * KST 기준 ISO 8601 주차를 목요일(ISO 주의 기준 요일) 단위 경과 주수로 환산한 값 —
+ * 같은 ISO 주에 속한 날짜는 항상 같은 값이고, 인접한 주는 연도 경계를 넘어도 항상
+ * 정확히 1씩 늘어난다. `kstDateString`으로 KST 벽시계 날짜를 얻어 그 주의 목요일로
+ * 옮긴 뒤, 1970-01-01(목요일)로부터 며칠째인지를 7로 나눈 몫을 쓴다.
+ *
+ * 이전에는 「연도×53+주차」로 뭉쳤는데, ISO 주차가 52주로 끝나는 해(대부분의 해)에서
+ * 다음 해 1주차로 넘어갈 때 값이 2씩 뛰어(53+1-52) 순환 한 칸을 건너뛰는 결함이 있었다
+ * (티켓 20260927_2149에서 회귀 테스트로 발견).
  */
 export function isoWeekOrdinal(now: Date = new Date()): number {
   const [y, m, d] = kstDateString(now).split('-').map(Number)
   const date = new Date(Date.UTC(y, m - 1, d))
   const isoWeekday = date.getUTCDay() || 7 // 월=1 ... 일=7
   date.setUTCDate(date.getUTCDate() + 4 - isoWeekday) // 이번 주 목요일로 이동
-  const isoYear = date.getUTCFullYear()
-  const yearStart = Date.UTC(isoYear, 0, 1)
-  const weekNo = Math.ceil(((date.getTime() - yearStart) / 86_400_000 + 1) / 7)
-  return isoYear * 53 + weekNo
+  return Math.floor(date.getTime() / (7 * 86_400_000))
 }
 
 /**
