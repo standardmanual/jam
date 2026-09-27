@@ -6,7 +6,7 @@ import { DEFAULT_CORPUS_EXCERPT_LIMIT, isContentCorpusTypeId } from '@/lib/conte
 
 /**
  * GET /api/admin/content-corpus?type=T02&limit=3&badgeIds=... — 유형별 선별 발췌
- * (티켓 20260923_2256)
+ * (티켓 20260923_2256; 후보 ID 자동 선택 티켓 20260927_2034)
  *
  * 예약 생성 세션이 컨텐츠 유형 ID를 주면, 그 유형에 필요한 발췌만(트라이브·컬렉션·배지
  * 코퍼스 전체가 아니라) 돌려준다. 어드민 세션 쿠키 없이 자동화 토큰(`x-admin-read-token`,
@@ -17,10 +17,13 @@ import { DEFAULT_CORPUS_EXCERPT_LIMIT, isContentCorpusTypeId } from '@/lib/conte
  * - `limit`: 종류별 발췌 상한(기본 3, PRD §4 규칙4)
  * - `tribeIds`·`itemBookIds`·`badgeIds`: 콤마로 구분한 후보 ID 목록. 어떤 유형이 어떤
  *   종류를 쓰는지는 `CONTENT_CORPUS_MAPPING`이 정한다 — 여기서 넘긴 ID라도 매핑에 없는
- *   종류는 조회하지 않는다.
+ *   종류는 조회하지 않는다. **종류별로 ID를 주지 않거나 빈 목록이면 그 종류만 활성 후보
+ *   중에서 KST ISO 주차 순환으로 `limit`건을 자동 선택한다**(`selectCorpusForType`).
+ *   같은 주에는 몇 번 불러도 같은 결과, 주가 바뀌면 달라진다.
  *
- * 응답은 대상 선택(targets, 활성만)과 본문 인용(quotes, 유형에 따라 비활성 포함 가능)을
- * 분리해서 담는다. 원문은 요약·재작성 없이 그대로 실린다.
+ * 응답은 대상 선택(targets, 활성만)과 본문 인용(quotes, 유형에 따라 비활성 포함 가능),
+ * 그리고 이번 호출에서 조회한 종류별 선택 방식(`selection: { badge: 'auto' | 'explicit', ... }`)을
+ * 담는다. 원문은 요약·재작성 없이 그대로 실린다.
  */
 export async function GET(req: NextRequest) {
   const authError = await requireAdminRead(req)

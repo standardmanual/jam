@@ -44,10 +44,15 @@ export interface CorpusQuote {
   text: string
 }
 
+/** 종류별 후보 ID 선택 방식 — `explicit`은 호출부가 ID를 준 경우, `auto`는 API가 활성 후보 중에서 순환 선택한 경우다. */
+export type CorpusSelectionMode = 'auto' | 'explicit'
+
 export interface CorpusSelection {
   typeId: ContentCorpusTypeId
   targets: CorpusTarget[]
   quotes: CorpusQuote[]
+  /** 이번 호출에서 조회한 종류(tribe·item_book·badge)마다 선택 방식을 담는다. 매핑에 없는 유형은 비어 있다. */
+  selection: Partial<Record<CorpusKind, CorpusSelectionMode>>
 }
 
 /**
