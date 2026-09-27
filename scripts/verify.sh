@@ -98,6 +98,15 @@ else
   rm -f "$LOG_PREFIX.scheduled-jobs"
 fi
 
+# docs/specs/prd/home-feed/PRD.md의 생성 구간(노출 태그·템플릿·레이아웃·이동 목적지 표)이
+# today-sections.ts·targetHref.ts에서 생성된 최신본인지 확인한다 (티켓 20260927_2036). 스테이지
+# 상태 기준인 동기화 검사(--staged)는 커밋 시점에만 의미가 있어 여기에는 넣지 않는다.
+if ! ( cd "$REPO_ROOT" && node scripts/gen-home-feed-doc.mjs --check ) >"$LOG_PREFIX.home-feed-doc" 2>&1; then
+  FAILED+=("home-feed-doc")
+else
+  rm -f "$LOG_PREFIX.home-feed-doc"
+fi
+
 # .claude/skills/*/SKILL.md·.claude/agents/*.md의 frontmatter 구조 평가 (티켓 20260922_1523).
 if ! ( cd "$REPO_ROOT" && node scripts/check-skills.mjs ) >"$LOG_PREFIX.skills" 2>&1; then
   FAILED+=("skills")

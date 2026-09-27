@@ -59,6 +59,10 @@ status: active
 
 - [PRD.md](prd/content-automation/PRD.md) — 정식 오픈 후 홈피드·배지·미션 운영을 자동화하는 6층 파이프라인(입력·세그먼트·생성·제안승인·전략변경안·유형리뷰)의 스펙 정본이다.
 
+## docs/specs/prd/home-feed/
+
+- [PRD.md](prd/home-feed/PRD.md) — 홈피드 카드 노출·템플릿·레이아웃·이동 목적지 등 기능 정의를 담는 문서다(뼈대, 본문은 20260927_2037에서 작성한다).
+
 ## docs/specs/prd/inventory/
 
 - [PRD.md](prd/inventory/PRD.md) — 인벤토리가 가득 찼을 때 원인과 해결책을 안내하고 드랍 지도 화면(`/drops`)으로 이동시키는 상시 안내를 정의한 PRD다.
