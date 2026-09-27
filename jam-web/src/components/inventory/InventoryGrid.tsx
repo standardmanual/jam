@@ -35,6 +35,16 @@ interface InventoryGridProps {
   onSelect?: (item: InventoryGridItem) => void
   /** 빈 슬롯 placeholder 개수(인벤토리 페이지에서만 사용) */
   emptySlots?: number
+  /**
+   * 그리드 첫 칸에 `mode`와 무관하게 select 동작(버튼)으로 끼워 넣는 항목 — 온보딩 퀘스트
+   * `bag` 차례의 연출 도토리 전용(티켓 20260928_0137, `QuestBagGrid.tsx`). 나머지 `items`는
+   * 기존 `mode` 그대로 렌더된다. 넘기지 않는 기존 호출부(드랍 바텀시트 등)는 변경이 없다.
+   */
+  leadingItem?: {
+    item: InventoryGridItem
+    onSelect: () => void
+    disabled?: boolean
+  }
 }
 
 /**
@@ -53,9 +63,19 @@ export default function InventoryGrid({
   mode,
   onSelect,
   emptySlots = 0,
+  leadingItem,
 }: InventoryGridProps) {
   return (
     <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+      {leadingItem && (
+        <BadgeGridCard
+          key={leadingItem.item.id}
+          onClick={leadingItem.disabled ? undefined : leadingItem.onSelect}
+          name={leadingItem.item.badgeName}
+          imageUrl={leadingItem.item.badgeImageUrl}
+          rarity={leadingItem.item.badgeRarity as import('@/types/database').BadgeRarity | null}
+        />
+      )}
       {items.map((item) => {
         const expiring = isExpiringSoon(item.expiresAt)
         const expiryNode = expiring && item.expiresAt ? (
