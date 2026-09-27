@@ -12,6 +12,7 @@ code:
   - "jam-web/src/app/(main)/TodayStatusStrip.tsx"
   - "jam-web/src/app/(main)/OnboardingQuestCard.tsx"
   - "jam-web/src/lib/onboarding-quest/status.ts"
+  - "jam-web/src/lib/onboarding-quest/screen-gate.ts"
   - "jam-web/src/app/(main)/today"
   - "jam-web/src/lib/today"
   - "jam-web/src/lib/admin/today-sections.ts"
@@ -49,11 +50,12 @@ code:
 
 | 상태 | 조건 | 표시·이동 |
 |---|---|---|
-| 진행 중 | `skipped_at` 없음, 7단계 미완 | 진행도(n/7)·다음 단계 타이틀/설명·보상 안내·시작하기\|이어 하기 → 퀘스트 화면(`/onboarding-quest`, T2에서 구현) |
+| 진행 중 · sync 차례 | `skipped_at` 없음, 다음 단계가 `sync` | 진행도(n/7)·단계 타이틀/설명·보상 안내·위치 안내 문구(비클릭, 동기화 버튼은 같은 화면 위에 있음) |
+| 진행 중 · 그 외 차례 | `skipped_at` 없음, 다음 단계가 `bag`\|`pickup`\|`drop`\|`mix_fail`\|`mix_success`\|`browse` | 진행도(n/7)·다음 단계 타이틀/설명·보상 안내·시작하기\|이어 하기 → 그 단계가 속한 실제 화면(`/inventory`·`/drops`·`/combine`·`/missions`, `STEP_SCREEN_MAP` 기준) |
 | Strava 미동기화 | 7단계 완료 또는 건너뜀, Strava 미연동 | 7/7·마지막 단계 안내 → `/api/strava/auth` |
 | 첫 활동 대기 | 7단계 완료 또는 건너뜀, Strava 연동됐지만 활동 0건 | 비클릭 안내(건너뛴 유저에게는 완료 배지를 언급하지 않는 문구) |
 
-근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/OnboardingQuestCard.tsx`, `jam-web/src/lib/onboarding-quest/status.ts`, `jam-web/src/lib/onboarding-quest/config.ts`, 문구 `jam-web/src/lib/i18n/ko.ts`(`onboardingQuest`)
+근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/OnboardingQuestCard.tsx`, `jam-web/src/lib/onboarding-quest/status.ts`, `jam-web/src/lib/onboarding-quest/config.ts`, `jam-web/src/lib/onboarding-quest/screen-gate.ts`(`STEP_SCREEN_MAP`), 문구 `jam-web/src/lib/i18n/ko.ts`(`onboardingQuest`)
 
 **오늘의 현황 스트립**은 큐레이션을 하지 않는다(카드 CMS와 역할이 겹치지 않게). 
 
