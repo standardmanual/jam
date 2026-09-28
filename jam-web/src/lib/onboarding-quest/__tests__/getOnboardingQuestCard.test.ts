@@ -9,6 +9,12 @@ vi.mock('@/lib/onboarding-quest/config', () => ({
   ONBOARDING_QUEST_STEPS: [],
 }))
 
+// 관리자 미리보기가 없는 상태를 흉내낸다(N5a, 티켓 20260928_1335) — 실제 `cookies()`는
+// 요청 스코프 밖(테스트)에서 호출하면 예외를 던진다.
+vi.mock('@/lib/onboarding-quest/preview', () => ({
+  getAdminQuestPreview: async () => null,
+}))
+
 import { getOnboardingQuestCard } from '../status'
 
 describe('getOnboardingQuestCard — 기능 스위치', () => {

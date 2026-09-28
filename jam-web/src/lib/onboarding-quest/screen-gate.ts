@@ -11,22 +11,15 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { OnboardingQuestStepKey } from '@/types/database'
-import { ONBOARDING_QUEST_ENABLED } from './config'
+import { ONBOARDING_QUEST_ENABLED, STEP_SCREEN_MAP, type OnboardingQuestScreen } from './config'
 import { nextStepOf, type OnboardingQuestProgress } from './progress'
+import { getAdminQuestPreview, resolvePreviewGate } from './preview'
 
-/** 결정 18: 단계가 진행되는 실제 메뉴 화면. */
-export type OnboardingQuestScreen = 'home' | 'inventory' | 'drops' | 'combine' | 'missions'
-
-/** 결정 18: 단계 키 → 소속 화면 지도. */
-export const STEP_SCREEN_MAP: Record<OnboardingQuestStepKey, OnboardingQuestScreen> = {
-  sync: 'home',
-  bag: 'inventory',
-  pickup: 'drops',
-  drop: 'drops',
-  mix_fail: 'combine',
-  mix_success: 'combine',
-  browse: 'missions',
-}
+// 화면 지도는 config.ts가 정의를 갖고 있다(티켓 20260928_1335) — preview.ts와 이 파일이
+// 서로를 임포트하지 않도록 공통 리프 모듈에 둔다. 기존 임포트 경로(`OnboardingQuestCard.tsx`
+// 등)가 깨지지 않게 여기서 그대로 재노출한다.
+export { STEP_SCREEN_MAP }
+export type { OnboardingQuestScreen }
 
 type QuestGateRow = { step_progress: OnboardingQuestProgress; skipped_at: string | null }
 
@@ -54,11 +47,17 @@ export function resolveOnboardingQuestGate(
 /**
  * 화면(page.tsx) 진입점. 스위치가 꺼져 있으면 조회 자체를 생략한다. 조회 실패는 카드
  * 판정과 동일하게 null을 돌려주고 화면 렌더를 막지 않는다(콘솔에만 남긴다).
+ *
+ * 관리자 미리보기 쿠키가 있으면(N5a, 티켓 20260928_1335) 스위치·DB 행을 보지 않고
+ * 쿠키 기준으로만 판정한다.
  */
 export async function getOnboardingQuestGate(
   userId: string,
   screen: OnboardingQuestScreen
 ): Promise<OnboardingQuestStepKey | null> {
+  const preview = await getAdminQuestPreview()
+  if (preview) return resolvePreviewGate(preview, screen)
+
   if (!ONBOARDING_QUEST_ENABLED) return null
 
   const supabase = createServiceClient()

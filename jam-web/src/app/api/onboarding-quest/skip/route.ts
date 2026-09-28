@@ -9,19 +9,19 @@
 // 갱신 직후 `recordOnboardingQuestCompletion`을 호출한다 — 건너뛴 시점에 이미 처리된 실제
 // 활동이 있으면 완료 시각도 함께 기록한다(사용자 결정 2, 20260927_2129). 건너뛴 유저는
 // `shouldGrantQuestReward`가 막아 완료 배지·포인트는 받지 않는다.
+//
+// 관리자 미리보기 쿠키가 있으면(N5a, 티켓 20260928_1335) 인증 직후·스위치 검사 전에
+// 가로챈다 — DB를 건드리지 않고 쿠키를 지워 미리보기를 끝낸다.
 
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ONBOARDING_QUEST_ENABLED } from '@/lib/onboarding-quest/config'
 import { validateSkip } from '@/lib/onboarding-quest/progress'
 import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
+import { getAdminQuestPreview, clearQuestPreviewCookie } from '@/lib/onboarding-quest/preview'
 import type { OnboardingQuestStepKey } from '@/types/database'
 
 export async function POST() {
-  if (!ONBOARDING_QUEST_ENABLED) {
-    return NextResponse.json({ error: 'DISABLED' }, { status: 403 })
-  }
-
   const supabase = await createClient()
   const {
     data: { user },
@@ -29,6 +29,16 @@ export async function POST() {
 
   if (!user) {
     return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
+  }
+
+  const preview = await getAdminQuestPreview()
+  if (preview) {
+    await clearQuestPreviewCookie()
+    return NextResponse.json({ success: true, alreadySkipped: false, preview: true })
+  }
+
+  if (!ONBOARDING_QUEST_ENABLED) {
+    return NextResponse.json({ error: 'DISABLED' }, { status: 403 })
   }
 
   const serviceClient = createServiceClient()
