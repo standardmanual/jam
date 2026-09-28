@@ -111,6 +111,17 @@ export function buildDemoCombineResult(recipe: RecipeWithSlots): {
   }
 }
 
+/**
+ * 순수 판정 — 펄스 판정에 쓸 단계. 가방을 처음 열어 `mix_fail`을 기록하면(`mixFailRecorded`)
+ * 같은 화면에서 5단계로 이어지므로 `mix_success` 규칙으로 바꾼다(티켓 20260928_2155).
+ */
+export function resolveQuestPulseStep(
+  questStep: 'mix_fail' | 'mix_success' | null,
+  mixFailRecorded: boolean,
+): 'mix_fail' | 'mix_success' | null {
+  return questStep === 'mix_fail' && mixFailRecorded ? 'mix_success' : questStep
+}
+
 /** `computeQuestPulseTarget()`가 돌려주는 「지금 눌러야 할 요소」 판정 결과 — 항상 최대 1개(결정 7). */
 export type QuestPulseTarget =
   | { type: 'recipe' }
@@ -454,9 +465,11 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
   const bagRows = bagSlot ? bagRowsFor(bagSlot) : []
   /** 아이템 슬롯이 있는 레시피에서만 재료 소각 안내를 보여준다(티켓 20260924_0813) */
   const hasItemSlot = selectedRecipe?.slots.some((s) => s.badge_type === 'item') ?? false
-  /** 퀘스트 4~5단계 「지금 눌러야 할 요소」 펄스 — 판정은 computeQuestPulseTarget() 하나로 모은다. */
+  /** 퀘스트 4~5단계 「지금 눌러야 할 요소」 펄스 — 판정은 computeQuestPulseTarget() 하나로 모은다.
+   * 가방을 처음 열어 mix_fail을 기록하면 화면 새로고침 없이 같은 화면에서 5단계로 이어지므로
+   * (상위 결정 23) 그때부터는 mix_success 규칙으로 판정한다(티켓 20260928_2155). */
   const pulseTarget = computeQuestPulseTarget({
-    questStep,
+    questStep: resolveQuestPulseStep(questStep, mixFailRecorded),
     loading,
     selectedRecipe,
     fills,

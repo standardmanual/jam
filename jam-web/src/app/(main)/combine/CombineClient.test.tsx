@@ -29,6 +29,7 @@ import CombineClient, {
   shouldRecordMixFail,
   buildDemoCombineResult,
   computeQuestPulseTarget,
+  resolveQuestPulseStep,
 } from './CombineClient'
 import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
 
@@ -208,5 +209,14 @@ describe('computeQuestPulseTarget', () => {
         canSubmit: true,
       })
     ).toEqual({ type: 'submit' })
+  })
+})
+
+describe('resolveQuestPulseStep (티켓 20260928_2155)', () => {
+  it('가방을 처음 열어 mix_fail을 기록하면 같은 화면에서 mix_success 규칙으로 판정한다', () => {
+    expect(resolveQuestPulseStep('mix_fail', false)).toBe('mix_fail')
+    expect(resolveQuestPulseStep('mix_fail', true)).toBe('mix_success')
+    expect(resolveQuestPulseStep('mix_success', false)).toBe('mix_success')
+    expect(resolveQuestPulseStep(null, true)).toBe(null)
   })
 })
