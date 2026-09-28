@@ -18,6 +18,21 @@ export const ONBOARDING_QUEST_STEPS: readonly OnboardingQuestStepKey[] = [
   'browse',
 ]
 
+// 결정 18: 단계가 진행되는 실제 메뉴 화면. `screen-gate.ts`·`preview.ts`가 함께 쓴다
+// (티켓 20260928_1335) — 이 파일에 두어 두 모듈이 서로를 임포트하지 않게 한다.
+export type OnboardingQuestScreen = 'home' | 'inventory' | 'drops' | 'combine' | 'missions'
+
+// 결정 18: 단계 키 → 소속 화면 지도.
+export const STEP_SCREEN_MAP: Record<OnboardingQuestStepKey, OnboardingQuestScreen> = {
+  sync: 'home',
+  bag: 'inventory',
+  pickup: 'drops',
+  drop: 'drops',
+  mix_fail: 'combine',
+  mix_success: 'combine',
+  browse: 'missions',
+}
+
 // 온보딩 퀘스트 완료 보상 배지 '퀘스트 클리어'의 고정 id — 티켓 20260928_1212(T7a)
 // 마이그레이션 196_onboarding_completion_badge.sql이 넣는 행과 같은 값이다. 지급 로직(T7b,
 // 티켓 20260927_2130)이 이 상수로 user_activity_badges에 행을 넣는다.

@@ -8,6 +8,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import type { OnboardingQuestStepKey, UserOnboardingQuestRow } from '@/types/database'
 import { ONBOARDING_QUEST_ENABLED, ONBOARDING_QUEST_STEPS } from './config'
+import { getAdminQuestPreview, resolvePreviewCard } from './preview'
 
 export type OnboardingQuestCardState =
   | { kind: 'in_progress'; done: number; total: number; nextStep: OnboardingQuestStepKey }
@@ -45,11 +46,17 @@ export function resolveOnboardingQuestCard(
  * 홈 페이지 진입점. 스위치가 꺼져 있으면 조회 자체를 생략하고, 조회 실패는 카드를
  * 숨기고 오류만 남긴다(홈 렌더를 막지 않는다). `stravaConnected`는 page.tsx가 이미
  * 조회해 둔 strava_connections 결과를 그대로 받는다 — 같은 테이블을 두 번 조회하지 않는다.
+ *
+ * 관리자 미리보기 쿠키가 있으면(N5a, 티켓 20260928_1335) 스위치·DB 행을 보지 않고
+ * 쿠키 기준으로만 판정한다.
  */
 export async function getOnboardingQuestCard(
   userId: string,
   options: { stravaConnected: boolean }
 ): Promise<OnboardingQuestCardState> {
+  const preview = await getAdminQuestPreview()
+  if (preview) return resolvePreviewCard(preview, options)
+
   if (!ONBOARDING_QUEST_ENABLED) return null
 
   const supabase = createServiceClient()

@@ -67,10 +67,16 @@ describe('getOnboardingQuestGate — 기능 스위치', () => {
       ONBOARDING_QUEST_ENABLED: false,
       ONBOARDING_QUEST_STEPS: [],
     }))
+    // 관리자 미리보기가 없는 상태를 흉내낸다(N5a, 티켓 20260928_1335) — 실제 `cookies()`는
+    // 요청 스코프 밖(테스트)에서 호출하면 예외를 던진다.
+    vi.doMock('@/lib/onboarding-quest/preview', () => ({
+      getAdminQuestPreview: async () => null,
+    }))
     const { getOnboardingQuestGate } = await import('../screen-gate')
     const state = await getOnboardingQuestGate('user-1', 'home')
     expect(state).toBeNull()
     vi.doUnmock('@/lib/onboarding-quest/config')
+    vi.doUnmock('@/lib/onboarding-quest/preview')
     vi.resetModules()
   })
 })

@@ -6,19 +6,23 @@
 // 판정한다 — 아직 안 끝난 첫 단계면 기록, 이미 끝낸 단계면 멱등 성공, 그 외는 거부.
 // 여기서는 `user_onboarding_quests.step_progress`만 갱신한다 — 실제 배지·포인트·아이템
 // 지급은 이 화면에서 일어나지 않는다(연출용 데이터).
+//
+// 관리자 미리보기 쿠키가 있으면(N5a, 티켓 20260928_1335) 인증 직후·스위치 검사 전에
+// 가로챈다 — DB를 읽거나 쓰지 않고 쿠키만 갱신한다.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ONBOARDING_QUEST_ENABLED, ONBOARDING_QUEST_STEPS } from '@/lib/onboarding-quest/config'
 import { validateStepAdvance } from '@/lib/onboarding-quest/progress'
 import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
+import {
+  getAdminQuestPreview,
+  advancePreviewStep,
+  setQuestPreviewCookie,
+} from '@/lib/onboarding-quest/preview'
 import type { OnboardingQuestStepKey } from '@/types/database'
 
 export async function POST(request: NextRequest) {
-  if (!ONBOARDING_QUEST_ENABLED) {
-    return NextResponse.json({ error: 'DISABLED' }, { status: 403 })
-  }
-
   const supabase = await createClient()
   const {
     data: { user },
@@ -33,6 +37,20 @@ export async function POST(request: NextRequest) {
 
   if (!step || !ONBOARDING_QUEST_STEPS.includes(step)) {
     return NextResponse.json({ error: 'INVALID_STEP' }, { status: 400 })
+  }
+
+  const preview = await getAdminQuestPreview()
+  if (preview) {
+    const advance = advancePreviewStep(preview, step)
+    if (!advance.ok) {
+      return NextResponse.json({ error: 'OUT_OF_ORDER' }, { status: advance.status })
+    }
+    await setQuestPreviewCookie(advance.value)
+    return NextResponse.json({ success: true, alreadyDone: advance.alreadyDone, preview: true })
+  }
+
+  if (!ONBOARDING_QUEST_ENABLED) {
+    return NextResponse.json({ error: 'DISABLED' }, { status: 403 })
   }
 
   const serviceClient = createServiceClient()
