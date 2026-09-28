@@ -48,12 +48,14 @@ describe('resolvePreviewCard', () => {
       done: 0,
       total: 7,
       nextStep: 'sync',
+      preview: true,
     })
     expect(resolvePreviewCard('mix_success', { stravaConnected: false })).toEqual({
       kind: 'in_progress',
       done: 4,
       total: 7,
       nextStep: 'mix_success',
+      preview: true,
     })
   })
 
@@ -62,6 +64,7 @@ describe('resolvePreviewCard', () => {
       kind: 'awaiting_sync',
       stravaConnected: true,
       skipped: false,
+      preview: true,
     })
   })
 })

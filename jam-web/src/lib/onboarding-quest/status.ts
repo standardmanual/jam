@@ -11,8 +11,15 @@ import { ONBOARDING_QUEST_ENABLED, ONBOARDING_QUEST_STEPS } from './config'
 import { getAdminQuestPreview, resolvePreviewCard } from './preview'
 
 export type OnboardingQuestCardState =
-  | { kind: 'in_progress'; done: number; total: number; nextStep: OnboardingQuestStepKey }
-  | { kind: 'awaiting_sync'; stravaConnected: boolean; skipped: boolean }
+  | {
+      kind: 'in_progress'
+      done: number
+      total: number
+      nextStep: OnboardingQuestStepKey
+      /** 관리자 미리보기(N5a)로 만든 상태면 true. `resolvePreviewCard`(preview.ts)만 채운다. */
+      preview?: true
+    }
+  | { kind: 'awaiting_sync'; stravaConnected: boolean; skipped: boolean; preview?: true }
   | null
 
 type QuestProgressRow = Pick<UserOnboardingQuestRow, 'step_progress' | 'skipped_at' | 'completed_at'>

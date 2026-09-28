@@ -7,6 +7,7 @@ import { ONBOARDING_QUEST_STEPS } from '@/lib/onboarding-quest/config'
 import { STEP_SCREEN_MAP, type OnboardingQuestScreen } from '@/lib/onboarding-quest/screen-gate'
 import type { OnboardingQuestCardState } from '@/lib/onboarding-quest/status'
 import OnboardingQuestSkipSheet from './OnboardingQuestSkipSheet'
+import QuestStartTracker from './QuestStartTracker'
 
 /**
  * 온보딩 퀘스트 홈 카드 (티켓 20260927_2133, 상위 20260927_2123 T1b · 경로 변경 20260928_0136).
@@ -64,13 +65,19 @@ export default function OnboardingQuestCard({ state }: Props) {
 
     // 건너뛰기 진입점(티켓 20260927_2131 T8, 채원 사전 판정) — Link/Card 바깥의 형제
     // 요소로 뺀다. in_progress 모든 단계(sync 포함)에서 보이고, awaiting_sync에는 없다.
-    const skipTrigger = <OnboardingQuestSkipSheet />
+    // GA4 onboarding_quest_skip 이벤트에 실릴 단계 키(nextStep)를 함께 넘긴다(티켓 20260927_2132).
+    const skipTrigger = <OnboardingQuestSkipSheet step={state.nextStep} />
+
+    // GA4 onboarding_quest_start 계측 — 0/7(첫 렌더)이고 관리자 미리보기가 아닐 때만 마운트
+    // (사용자 결정 2, 티켓 20260927_2132). nextStep==='sync'일 때만 done===0이 될 수 있다.
+    const startTracker = state.done === 0 && !state.preview ? <QuestStartTracker /> : null
 
     // sync 차례: 동기화 버튼은 이미 같은 화면(TopNav) 위에 있어 카드를 눌러도 이동할 곳이
     // 없다. 링크 없는 안내 카드로 위치만 알린다(결정 20, 채원 사전 판정 B).
     if (state.nextStep === 'sync') {
       return (
         <div className="flex flex-col gap-[var(--spacing-8)]">
+          {startTracker}
           <Card tone="inverse" className={CARD_CLASS}>
             {body}
             <p className={DESC_CLASS}>{d.onboardingQuest.steps.sync.locationHint}</p>

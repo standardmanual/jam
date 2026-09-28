@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect } from 'react'
+import { trackQuestStepComplete } from '@/lib/onboarding-quest/analytics'
 
 /**
  * 온보딩 퀘스트 `browse` 단계(7단계) 계측 전용 (티켓 20260928_0139, 상위 20260927_2123
- * 결정 14·18).
+ * 결정 14·18. GA4 계측은 티켓 20260927_2132).
  *
  * 연출 데이터가 없다 — 실제 `/missions` 화면을 연 것 자체가 완료 조건이라, 클릭 없이
  * 마운트 시 1회만 `POST /api/onboarding-quest/step`을 호출한다(`HomeViewTracker` 패턴).
@@ -18,9 +19,14 @@ export default function MissionsBrowseTracker() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ step: 'browse' }),
-    }).catch(() => {
-      // 조용히 무시 — 재방문 시 멱등 재시도
     })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) trackQuestStepComplete('browse', data)
+      })
+      .catch(() => {
+        // 조용히 무시 — 재방문 시 멱등 재시도
+      })
   }, [])
 
   return null

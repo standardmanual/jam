@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/Toast'
 import { d } from '@/lib/i18n'
 import { DEMO_SYNC_REVEAL_BADGE } from '@/lib/onboarding-quest/demo-data'
 import { StepSaveFailedError } from '@/lib/onboarding-quest/step-error'
+import { trackQuestStepComplete } from '@/lib/onboarding-quest/analytics'
 
 /** 연출용 동기화 진행 장면 길이(ms) — 옛 SyncStep.tsx와 동일한 고정값 */
 const SYNC_ANIMATION_MS = 1000
@@ -48,6 +49,7 @@ export default function OnboardingSyncButton() {
         body: JSON.stringify({ step: 'sync' }),
       })
       if (!res.ok) throw new StepSaveFailedError()
+      trackQuestStepComplete('sync', await res.json())
       router.refresh()
     } catch (err) {
       if (err instanceof StepSaveFailedError) {

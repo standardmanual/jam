@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/Toast'
 import { d } from '@/lib/i18n'
 import { DEMO_INVENTORY_ITEM } from '@/lib/onboarding-quest/demo-data'
 import { StepSaveFailedError } from '@/lib/onboarding-quest/step-error'
+import { trackQuestStepComplete } from '@/lib/onboarding-quest/analytics'
 
 interface QuestBagGridProps {
   gridItems: InventoryGridItem[]
@@ -39,6 +40,7 @@ export default function QuestBagGrid({ gridItems, emptySlots }: QuestBagGridProp
         body: JSON.stringify({ step: 'bag' }),
       })
       if (!res.ok) throw new StepSaveFailedError()
+      trackQuestStepComplete('bag', await res.json())
       router.push('/')
     } catch (err) {
       if (err instanceof StepSaveFailedError) {

@@ -14,6 +14,7 @@ import {
   VIRTUAL_MAP_IMAGE_SRC,
 } from '@/lib/onboarding-quest/demo-data'
 import { StepSaveFailedError } from '@/lib/onboarding-quest/step-error'
+import { trackQuestStepComplete } from '@/lib/onboarding-quest/analytics'
 
 /**
  * 온보딩 퀘스트 `pickup`·`drop` 차례 공용 연출 씬(티켓 20260927_2126 T3, 20260927_2128 T5).
@@ -60,6 +61,7 @@ export default function QuestPickupScene({ mode }: QuestPickupSceneProps) {
         body: JSON.stringify({ step: 'pickup' }),
       })
       if (!res.ok) throw new StepSaveFailedError()
+      trackQuestStepComplete('pickup', await res.json())
       router.push('/')
     } catch (err) {
       if (err instanceof StepSaveFailedError) {
@@ -85,6 +87,7 @@ export default function QuestPickupScene({ mode }: QuestPickupSceneProps) {
         body: JSON.stringify({ step: 'drop' }),
       })
       if (!res.ok) throw new StepSaveFailedError()
+      trackQuestStepComplete('drop', await res.json())
       setDropRecorded(true)
       return true
     } catch (err) {
