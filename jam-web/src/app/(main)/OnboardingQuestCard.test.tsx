@@ -90,9 +90,10 @@ describe('OnboardingQuestCard — 상태별 CTA 버튼(티켓 20260928_1537, 확
     expect(html).not.toContain('<a ')
   })
 
-  it('② 2~7단계: 「시작하기/이어 하기」 버튼만 있고 카드를 감싸는 <a> 링크가 없다', () => {
+  it('② 2~7단계: 「시작하기/다음 단계」 버튼과 화살표 아이콘이 있고 카드를 감싸는 <a> 링크가 없다', () => {
     const html = render({ kind: 'in_progress', done: 1, total: 7, nextStep: 'bag' })
     expect(html).toContain(d.onboardingQuest.continueButton)
+    expect(html).toContain('M9 5l7 7-7 7')
     expect(html).not.toContain('<a ')
   })
 
@@ -110,7 +111,7 @@ describe('OnboardingQuestCard — 상태별 CTA 버튼(티켓 20260928_1537, 확
 
 describe('OnboardingQuestCard — in_progress 다음 단계 표시(티켓 20260928_0136)', () => {
   it.each(['bag', 'pickup', 'drop', 'mix_fail', 'mix_success', 'browse'] as const)(
-    'nextStep=%s면 「이어 하기」 CTA가 보인다',
+    'nextStep=%s면 「다음 단계」 CTA가 보인다',
     (nextStep) => {
       const html = render({ kind: 'in_progress', done: 1, total: 7, nextStep })
       expect(html).toContain(d.onboardingQuest.continueButton)
