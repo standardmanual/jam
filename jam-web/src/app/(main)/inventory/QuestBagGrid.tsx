@@ -58,7 +58,7 @@ export default function QuestBagGrid({ gridItems, emptySlots }: QuestBagGridProp
         items={gridItems}
         mode="navigate"
         emptySlots={emptySlots}
-        leadingItem={{ item: DEMO_INVENTORY_ITEM, onSelect: handleSelect, disabled: pending }}
+        leadingItem={{ item: DEMO_INVENTORY_ITEM, onSelect: handleSelect, disabled: pending, pulse: true }}
       />
       <p className="text-[length:var(--text-caption)] text-text-secondary text-left">
         {d.onboardingQuest.demoBadgeNotice}
