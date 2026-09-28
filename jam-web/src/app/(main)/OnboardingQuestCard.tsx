@@ -46,8 +46,9 @@ const CTA_ROW_CLASS = 'flex'
 // 「지금 눌러야 할 곳」 펄스 전용 변형(티켓 20260928_1752) — ①·② CTA 줄에만 쓴다.
 // CTA_ROW_CLASS 자체를 고치면 ③·④(Strava 동기화하기·첫 활동 대기)에도 펄스가 번지므로
 // 별도 상수로 분리한다. rounded-pill은 버튼의 --radius-buttons(=--radius-pill)와 래퍼 반경을
-// 맞춰 펄스 링이 버튼 실루엣과 어긋나지 않게 한다(채원 사전 판정).
-const CTA_ROW_PULSE_CLASS = `${CTA_ROW_CLASS} rounded-[var(--radius-pill)] jam-quest-pulse`
+// 맞춰 펄스 링이 버튼 실루엣과 어긋나지 않게 한다(채원 사전 판정). self-start가 없으면 이 줄 자체가
+// 카드 폭으로 늘어나 펄스 링이 카드 폭 전체에 그려진다(티켓 20260928_2137).
+const CTA_ROW_PULSE_CLASS = `${CTA_ROW_CLASS} self-start rounded-[var(--radius-pill)] jam-quest-pulse`
 const CHIP_CLASS =
   'self-start inline-flex items-center text-[length:var(--text-caption)] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text'
 const CHIP_ROW_CLASS = 'flex items-center justify-between'

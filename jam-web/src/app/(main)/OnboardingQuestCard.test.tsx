@@ -148,6 +148,8 @@ describe('OnboardingQuestCard — 「지금 눌러야 할 곳」 펄스(티켓 2
   it('② 2~7단계 CTA에는 펄스 클래스가 있다', () => {
     const html = render({ kind: 'in_progress', done: 1, total: 7, nextStep: 'bag' })
     expect(html).toContain('jam-quest-pulse')
+    // 펄스 줄이 카드 폭으로 늘어나지 않게 self-start를 함께 둔다(티켓 20260928_2137)
+    expect(html).toContain('self-start rounded-[var(--radius-pill)] jam-quest-pulse')
   })
 
   it('③ Strava 미동기화 카드에는 펄스 클래스가 없다', () => {
