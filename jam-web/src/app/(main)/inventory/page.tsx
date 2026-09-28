@@ -3,11 +3,13 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { InventoryRow, InventoryItemRow, BadgeRow } from '@/types/database'
 import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
+import QuestBagGrid from './QuestBagGrid'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import TopNav from '@/components/ui/TopNav'
 import { PackageIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
+import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 
 type InventoryItemWithBadge = InventoryItemRow & {
   badge: BadgeRow
@@ -25,14 +27,19 @@ export default async function InventoryPage() {
 
   if (!user) redirect('/login')
 
-  const { data: inventoryData, error: inventoryError } = await supabase
-    .from('inventory')
-    .select('*, inventory_items(*, badge:badges(*))')
-    .eq('user_id', user.id)
-    .single()
+  const [{ data: inventoryData, error: inventoryError }, questStep] = await Promise.all([
+    supabase
+      .from('inventory')
+      .select('*, inventory_items(*, badge:badges(*))')
+      .eq('user_id', user.id)
+      .single(),
+    getOnboardingQuestGate(user.id, 'inventory'),
+  ])
   // 20260901_1848: 조회 실패가 "빈 인벤토리"로 위장되던 지점(.single()이라 무인벤토리도
   // error로 잡히므로 실제 오류와 완전히 구분되진 않지만, 최소 가시성 확보는 된다)
   if (inventoryError) console.error('[inventory/page] inventory 조회 실패', inventoryError)
+  // 결정 22: bag 차례일 때만 연출 도토리를 그리드 첫 칸에 섞는다(티켓 20260928_0137).
+  const isQuestBagTurn = questStep === 'bag'
 
   const inventory = inventoryData as InventoryWithItems | null
 
@@ -101,7 +108,12 @@ export default async function InventoryPage() {
       </div>
 
       {/* 아이템 그리드 */}
-      {items.length === 0 ? (
+      {isQuestBagTurn ? (
+        <QuestBagGrid
+          gridItems={gridItems}
+          emptySlots={Math.min(remainingSlots, Math.max(0, 6 - items.length - 1))}
+        />
+      ) : items.length === 0 ? (
         <EmptyState
           icon={<PackageIcon className="w-8 h-8" />}
           title={d.inventory.emptyTitle}
