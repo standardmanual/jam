@@ -9,6 +9,13 @@
       "cwd": "jam-web"
     },
     {
+      "name": "jam-web-admin",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["ADMIN_EMAILS=dev-tester@jam.local", "npm", "run", "dev"],
+      "port": 3000,
+      "cwd": "jam-web"
+    },
+    {
       "name": "storybook",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "storybook"],
