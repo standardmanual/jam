@@ -43,6 +43,11 @@ const SCREEN_PATH_MAP: Record<OnboardingQuestScreen, string> = {
 const CARD_CLASS = 'flex flex-col gap-[var(--spacing-16)]'
 // CTA 줄 — flex-col 카드의 기본 stretch가 버튼을 카드 폭으로 늘리지 않도록 가로 줄로 감싼다
 const CTA_ROW_CLASS = 'flex'
+// 「지금 눌러야 할 곳」 펄스 전용 변형(티켓 20260928_1752) — ①·② CTA 줄에만 쓴다.
+// CTA_ROW_CLASS 자체를 고치면 ③·④(Strava 동기화하기·첫 활동 대기)에도 펄스가 번지므로
+// 별도 상수로 분리한다. rounded-pill은 버튼의 --radius-buttons(=--radius-pill)와 래퍼 반경을
+// 맞춰 펄스 링이 버튼 실루엣과 어긋나지 않게 한다(채원 사전 판정).
+const CTA_ROW_PULSE_CLASS = `${CTA_ROW_CLASS} rounded-[var(--radius-pill)] jam-quest-pulse`
 const CHIP_CLASS =
   'self-start inline-flex items-center text-[length:var(--text-caption)] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text'
 const CHIP_ROW_CLASS = 'flex items-center justify-between'
@@ -104,7 +109,7 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
           {startTracker}
           <Card tone="inverse" className={CARD_CLASS}>
             {body}
-            <div className={CTA_ROW_CLASS}>
+            <div className={CTA_ROW_PULSE_CLASS}>
               <OnboardingSyncButton appearance="card" />
             </div>
           </Card>
@@ -118,7 +123,7 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
       <div className="flex flex-col gap-[var(--spacing-8)]">
         <Card tone="inverse" className={CARD_CLASS}>
           {body}
-          <div className={CTA_ROW_CLASS}>
+          <div className={CTA_ROW_PULSE_CLASS}>
             <Button
               variant="primary"
               surface="sub"

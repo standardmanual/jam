@@ -139,6 +139,28 @@ describe('OnboardingQuestCard — 건너뛰기 진입점 노출(티켓 20260927_
   })
 })
 
+describe('OnboardingQuestCard — 「지금 눌러야 할 곳」 펄스(티켓 20260928_1752, 상위 20260927_2123 Q1)', () => {
+  it('① sync 차례 CTA에는 펄스 클래스가 있다', () => {
+    const html = render({ kind: 'in_progress', done: 0, total: 7, nextStep: 'sync' })
+    expect(html).toContain('jam-quest-pulse')
+  })
+
+  it('② 2~7단계 CTA에는 펄스 클래스가 있다', () => {
+    const html = render({ kind: 'in_progress', done: 1, total: 7, nextStep: 'bag' })
+    expect(html).toContain('jam-quest-pulse')
+  })
+
+  it('③ Strava 미동기화 카드에는 펄스 클래스가 없다', () => {
+    const html = render({ kind: 'awaiting_sync', stravaConnected: false, skipped: false })
+    expect(html).not.toContain('jam-quest-pulse')
+  })
+
+  it('④ 첫 활동 대기 카드에는 펄스 클래스가 없다', () => {
+    const html = render({ kind: 'awaiting_sync', stravaConnected: true, skipped: false })
+    expect(html).not.toContain('jam-quest-pulse')
+  })
+})
+
 describe('OnboardingQuestCard — GA4 onboarding_quest_start 트래커 마운트(티켓 20260927_2132 T9)', () => {
   it('0/7(첫 렌더)이고 미리보기가 아니면 마운트한다', () => {
     const html = render({ kind: 'in_progress', done: 0, total: 7, nextStep: 'sync' })

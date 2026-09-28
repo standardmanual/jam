@@ -21,6 +21,11 @@
   --scale-press: 0.96;
   --scale-modal: 0.96;
 
+  /* 온보딩 퀘스트 「지금 눌러야 할 곳」 펄스 전용(티켓 20260928_1752, 상위 20260927_2123 Q1).
+   * 서비스 전용 애니메이션이라 이름에 quest를 명시 — 범용 트랜지션으로 재사용하지 않는다. */
+  --duration-quest-pulse: 1.6s;
+  --ease-quest-pulse: cubic-bezier(0.2, 0, 0, 1);
+
   /* --scale-press/--scale-modal은 press 시 transform: scale() 피드백용(전환 배율)이다.
    * --scale-compact은 성격이 다르다 — transform이 아니라 minHeight/padding 같은 절대
    * 치수를 calc(44px * var(--scale-compact))처럼 곱해 "조밀한 컨텍스트 전용" 사이즈를

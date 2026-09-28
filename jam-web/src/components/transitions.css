@@ -577,3 +577,24 @@
 .t-reel {
   user-select: none;
 }
+
+/* 온보딩 퀘스트 「지금 눌러야 할 곳」 펄스(티켓 20260928_1752, 상위 20260927_2123 Q1) — 진행
+   중인 퀘스트 카드에서 지금 눌러야 할 CTA pill 둘레에 브랜드 프라이머리 box-shadow가 0 → 10px로
+   번지며 사라지는 반복 애니메이션. 색은 리터럴 rgba 대신 color-mix로 --color-primary를 직접
+   참조한다(L438 부근 .t-panel-backdrop 재질화가 이미 쓰는 패턴과 동일) — --color-primary가
+   바뀌면 자동 반영된다. 대상은 사용자 결정(2026-09-28)에 따라 ①·② 홈 카드 CTA뿐이고,
+   ③·④ 카드·TopNav 동기화 버튼·하단 탭 아이콘에는 붙이지 않는다. */
+@keyframes jam-quest-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-primary) 0%, transparent);
+  }
+}
+.jam-quest-pulse {
+  animation: jam-quest-pulse var(--duration-quest-pulse) var(--ease-quest-pulse) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jam-quest-pulse { animation: none; }
+}
