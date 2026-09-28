@@ -111,6 +111,68 @@ export function buildDemoCombineResult(recipe: RecipeWithSlots): {
   }
 }
 
+/** `computeQuestPulseTarget()`가 돌려주는 「지금 눌러야 할 요소」 판정 결과 — 항상 최대 1개(결정 7). */
+export type QuestPulseTarget =
+  | { type: 'recipe' }
+  | { type: 'slot'; slotId: string }
+  | { type: 'bagRow'; key: string }
+  | { type: 'submit' }
+  | null
+
+/** `fills`에 없는 첫 슬롯 — `slot_order` 오름차순. 없으면 null(전 슬롯이 채워짐). */
+function firstEmptySlot(
+  recipe: RecipeWithSlots,
+  fills: Record<string, SlotFill>
+): RecipeSlotWithCandidates | null {
+  return (
+    recipe.slots
+      .slice()
+      .sort((a, b) => a.slot_order - b.slot_order)
+      .find((s) => !fills[s.id]) ?? null
+  )
+}
+
+/**
+ * 순수 판정 — 온보딩 퀘스트 4~5단계(`mix_fail`·`mix_success`)에서 지금 반짝여야 할 요소
+ * 하나를 고른다(티켓 20260928_1755, 채원 판정). 슬롯 펄스·제출 버튼 펄스·후보 행 펄스를
+ * 각각 독립 조건으로 산개하지 않고 이 함수 하나로 모아 상호 배타를 강제한다(craft_notes).
+ *
+ * - 퀘스트 차례가 아니거나(`questStep` null) 제출 중(`loading`)이면 항상 null.
+ * - 레시피 미선택: 레시피 행(`mix_fail`·`mix_success` 공통, 사용자 승인 결정 1).
+ * - `mix_fail` 선택 후: 첫 빈 슬롯(시트 열림 여부 무관, 완료 조건 원문). 빈 슬롯이 없으면 null —
+ *   가방을 여는 순간 단계가 이미 기록되므로 제출 버튼까지 도달하는 경로를 정의하지 않는다.
+ * - `mix_success` 선택 후: 시트 열림 → 그 슬롯의 활성 후보 행 중 첫 번째(craft_notes 방어적 고정).
+ *   시트 닫힘 + 빈 슬롯 있음 → 다음 빈 슬롯. 시트 닫힘 + `canSubmit` → 조합하기 버튼.
+ */
+export function computeQuestPulseTarget(params: {
+  questStep: 'mix_fail' | 'mix_success' | null
+  loading: boolean
+  selectedRecipe: RecipeWithSlots | null
+  fills: Record<string, SlotFill>
+  bagSlotId: string | null
+  bagRows: BagRow[]
+  canSubmit: boolean
+}): QuestPulseTarget {
+  const { questStep, loading, selectedRecipe, fills, bagSlotId, bagRows, canSubmit } = params
+  if (questStep !== 'mix_fail' && questStep !== 'mix_success') return null
+  if (loading) return null
+  if (!selectedRecipe) return { type: 'recipe' }
+
+  if (questStep === 'mix_fail') {
+    const empty = firstEmptySlot(selectedRecipe, fills)
+    return empty ? { type: 'slot', slotId: empty.id } : null
+  }
+
+  // mix_success
+  if (bagSlotId) {
+    const activeRow = bagRows.find((r) => r.state === 'active')
+    return activeRow ? { type: 'bagRow', key: activeRow.key } : null
+  }
+  if (canSubmit) return { type: 'submit' }
+  const empty = firstEmptySlot(selectedRecipe, fills)
+  return empty ? { type: 'slot', slotId: empty.id } : null
+}
+
 export default function CombineClient({ items, publicRecipes, ownedConditionBadgeIds, questStep = null }: Props) {
   const [search, setSearch] = useState('')
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
@@ -383,6 +445,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
         badges={recipe.rewardBadges}
         points={recipe.reward_points}
         onClick={() => onPick(recipe.id)}
+        className={pulseTarget?.type === 'recipe' ? 'jam-quest-pulse' : ''}
       />
     )
   }
@@ -391,6 +454,16 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
   const bagRows = bagSlot ? bagRowsFor(bagSlot) : []
   /** 아이템 슬롯이 있는 레시피에서만 재료 소각 안내를 보여준다(티켓 20260924_0813) */
   const hasItemSlot = selectedRecipe?.slots.some((s) => s.badge_type === 'item') ?? false
+  /** 퀘스트 4~5단계 「지금 눌러야 할 요소」 펄스 — 판정은 computeQuestPulseTarget() 하나로 모은다. */
+  const pulseTarget = computeQuestPulseTarget({
+    questStep,
+    loading,
+    selectedRecipe,
+    fills,
+    bagSlotId,
+    bagRows,
+    canSubmit,
+  })
 
   return (
     <div className="flex flex-col min-h-full text-text">
@@ -460,6 +533,8 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
                     : slot.candidates.some((c) => ownedConditionSet.has(c.id))
                 const status: 'empty' | 'locked' | 'filled' = fill ? 'filled' : hasOwnedCandidate ? 'empty' : 'locked'
 
+                const pulseSlot = pulseTarget?.type === 'slot' && pulseTarget.slotId === slot.id
+
                 return (
                   <MixerSlot
                     key={slot.id}
@@ -468,6 +543,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
                     imageUrl={fill?.imageUrl}
                     onClick={() => (fill ? undefined : openBagFor(slot))}
                     onRemove={fill ? () => removeSlot(slot.id) : undefined}
+                    className={pulseSlot ? 'jam-quest-pulse' : ''}
                   />
                 )
               })}
@@ -479,7 +555,12 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
             <button
               onClick={handleCombine}
               disabled={loading || !canSubmit}
-              className="w-full max-w-[220px] py-4 rounded-[var(--radius-pill-buttons)] bg-text text-surface text-[length:var(--text-body)] active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+              className={[
+                'w-full max-w-[220px] py-4 rounded-[var(--radius-pill-buttons)] bg-text text-surface text-[length:var(--text-body)] active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2',
+                pulseTarget?.type === 'submit' ? 'jam-quest-pulse' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
             >
               {loading && <span className="w-4 h-4 border-2 border-surface border-t-transparent rounded-full animate-spin" />}
               {loading ? d.combine.combineButtonLoading : d.combine.combineButton}
@@ -511,6 +592,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
                     // 미획득 처리와 동일한 grayscale+opacity 조합, 티켓 20260917_1828 — "필요"
                     // 텍스트는 제거).
                     const needed = row.state === 'needed'
+                    const pulseRow = pulseTarget?.type === 'bagRow' && pulseTarget.key === row.key
                     return (
                       <button
                         key={row.key}
@@ -520,7 +602,10 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
                         className={[
                           'flex flex-col items-center gap-[var(--spacing-4)] p-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-surface',
                           active ? 'active:scale-95' : 'opacity-40',
-                        ].join(' ')}
+                          pulseRow ? 'jam-quest-pulse' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
                       >
                         <div
                           className={[
