@@ -17,8 +17,22 @@ vi.mock('@/components/ui/Toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }))
 
-import QuestPreviewBanner from './QuestPreviewBanner'
+import QuestPreviewBanner, { shouldRefreshOnPathChange } from './QuestPreviewBanner'
 import { d } from '@/lib/i18n'
+
+describe('shouldRefreshOnPathChange (재작업 ③ — 경로 변경 시에만 새로고침)', () => {
+  it('첫 마운트(prevPathname === null)는 경로가 같아도 새로고침하지 않는다', () => {
+    expect(shouldRefreshOnPathChange(null, '/')).toBe(false)
+  })
+
+  it('경로가 바뀌지 않았으면 새로고침하지 않는다', () => {
+    expect(shouldRefreshOnPathChange('/', '/')).toBe(false)
+  })
+
+  it('첫 마운트 이후 경로가 바뀌면 새로고침한다', () => {
+    expect(shouldRefreshOnPathChange('/', '/inventory')).toBe(true)
+  })
+})
 
 describe('QuestPreviewBanner 초기 렌더', () => {
   it('단계 키(pickup, 3번째 단계)는 「퀘스트 미리보기 중 · 3/7단계」를 보여준다', () => {

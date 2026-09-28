@@ -51,7 +51,10 @@ export function TopNav({
     <header style={{
       position: 'sticky', top: 0,
       background: 'var(--color-bg)',
-      paddingTop: 'env(safe-area-inset-top)',
+      // 서비스 래퍼가 `--topnav-safe-top`을 0px로 덮어쓰면 이 안전영역 패딩을 지지 않는다
+      // (퀘스트 미리보기 띠가 있을 때 — 그 띠가 이미 안전영역을 지고 있어 이중 여백을
+      // 막는다, 티켓 20260928_0138 재작업). 기본 동작(변수 미지정)은 기존과 동일하다.
+      paddingTop: 'var(--topnav-safe-top, env(safe-area-inset-top))',
       zIndex: 30,
       ...headerStyle,
     }}>
