@@ -43,6 +43,11 @@ describe('QuestPickupScene 초기 렌더 (mode=pickup)', () => {
     // 마커 라벨 자체에도 "드랍"이 들어가므로, 버튼 텍스트 노드의 정확한 경계(`>드랍<`)로 좁혀 확인한다.
     expect(html).not.toContain(`>${d.drops.dropHereButton}<`)
   })
+
+  it('모달이 닫혀 있는 초기 상태에는 마커 원에 펄스 클래스가 있다(티켓 20260928_1754)', () => {
+    const html = renderToStaticMarkup(<QuestPickupScene mode="pickup" />)
+    expect(html).toContain('jam-quest-pulse')
+  })
 })
 
 describe('QuestPickupScene 초기 렌더 (mode=drop)', () => {
@@ -55,5 +60,10 @@ describe('QuestPickupScene 초기 렌더 (mode=drop)', () => {
     const html = renderToStaticMarkup(<QuestPickupScene mode="drop" />)
     expect(html).not.toContain(`>${d.drops.dropHereButton}<`)
     expect(html).not.toContain(d.drops.dropEmptyTitle)
+  })
+
+  it('mode=drop도 모달이 닫혀 있는 초기 상태에는 마커 원에 펄스 클래스가 있다(티켓 20260928_1754)', () => {
+    const html = renderToStaticMarkup(<QuestPickupScene mode="drop" />)
+    expect(html).toContain('jam-quest-pulse')
   })
 })
