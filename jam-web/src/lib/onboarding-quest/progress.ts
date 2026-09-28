@@ -35,3 +35,27 @@ export function validateStepAdvance(
   if (progress[step]) return { ok: true, alreadyDone: true }
   return { ok: false, reason: 'OUT_OF_ORDER' }
 }
+
+export interface OnboardingQuestSkipRow {
+  step_progress: OnboardingQuestProgress
+  skipped_at: string | null
+}
+
+export type SkipValidationResult =
+  | { ok: true; alreadySkipped: boolean }
+  | { ok: false; reason: 'NOT_FOUND' | 'ALL_STEPS_DONE' }
+
+/**
+ * 건너뛰기 요청을 기록해도 되는지 판정한다(`POST /api/onboarding-quest/skip`, 티켓
+ * 20260927_2131 T8).
+ * - 행 없음 → 거부(`NOT_FOUND`)
+ * - 이미 건너뜀 → 멱등 성공(`alreadySkipped: true`), 호출부는 아무것도 바꾸지 않는다
+ * - 7단계를 이미 다 마침 → 거부(`ALL_STEPS_DONE`) — 실수로 보상을 잃지 않게 막는다
+ * - 그 외 → 기록 대상(`alreadySkipped: false`)
+ */
+export function validateSkip(row: OnboardingQuestSkipRow | null): SkipValidationResult {
+  if (!row) return { ok: false, reason: 'NOT_FOUND' }
+  if (row.skipped_at) return { ok: true, alreadySkipped: true }
+  if (nextStepOf(row.step_progress) === null) return { ok: false, reason: 'ALL_STEPS_DONE' }
+  return { ok: true, alreadySkipped: false }
+}

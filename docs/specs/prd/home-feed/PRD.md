@@ -55,7 +55,14 @@ code:
 | Strava 미동기화 | 7단계 완료 또는 건너뜀, Strava 미연동 | 7/7·마지막 단계 안내 → `/api/strava/auth` |
 | 첫 활동 대기 | 7단계 완료 또는 건너뜀, Strava 연동됐지만 활동 0건 | 비클릭 안내(건너뛴 유저에게는 완료 배지를 언급하지 않는 문구) |
 
-근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/OnboardingQuestCard.tsx`, `jam-web/src/app/(main)/OnboardingSyncButton.tsx`, `jam-web/src/components/ui/TopNav.tsx`(`centerSlotOverride`), `jam-web/src/lib/onboarding-quest/status.ts`, `jam-web/src/lib/onboarding-quest/config.ts`, `jam-web/src/lib/onboarding-quest/screen-gate.ts`(`STEP_SCREEN_MAP`), 문구 `jam-web/src/lib/i18n/ko.ts`(`onboardingQuest`)
+**건너뛰기**(티켓 20260927_2131, 상위 20260927_2123 T8): "진행 중" 두 행(sync 포함) 모두
+카드 아래에 좌측 정렬 텍스트 진입점 「건너뛰기」가 있다. 누르면 시트(`detent="compact"`)로
+[계속하기]/[건너뛰기]를 확인받는다. [건너뛰기] → `POST /api/onboarding-quest/skip`이
+`skipped_at`을 기록하고(이미 7단계를 마쳤으면 서버가 거부) 완료 판정을 다시 확인한다 → 카드가
+"Strava 미동기화"/"첫 활동 대기" 행으로 전환된다. "Strava 미동기화"·"첫 활동 대기" 행에는
+진입점이 없다.
+
+근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/OnboardingQuestCard.tsx`, `jam-web/src/app/(main)/OnboardingQuestSkipSheet.tsx`, `jam-web/src/app/(main)/OnboardingSyncButton.tsx`, `jam-web/src/components/ui/TopNav.tsx`(`centerSlotOverride`), `jam-web/src/lib/onboarding-quest/status.ts`, `jam-web/src/lib/onboarding-quest/config.ts`, `jam-web/src/lib/onboarding-quest/screen-gate.ts`(`STEP_SCREEN_MAP`), `jam-web/src/lib/onboarding-quest/progress.ts`(`validateSkip`), `jam-web/src/app/api/onboarding-quest/skip/route.ts`, 문구 `jam-web/src/lib/i18n/ko.ts`(`onboardingQuest`)
 
 **오늘의 현황 스트립**은 큐레이션을 하지 않는다(카드 CMS와 역할이 겹치지 않게). 
 

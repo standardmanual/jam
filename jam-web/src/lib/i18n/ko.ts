@@ -221,7 +221,7 @@ export const ko = {
     chipLabel: '첫 퀘스트',
     startButton: '시작하기',
     continueButton: '이어 하기',
-    rewardHint: '끝까지 가면 첫 퀘스트 배지와 100포인트',
+    rewardHint: '끝까지 가면 퀘스트 클리어 배지와 100포인트',
     /** 단계 키 → 타이틀/설명. `OnboardingQuestStepKey`와 순서·개수가 같다. */
     steps: {
       /** locationHint: 홈 카드가 sync 차례일 때 비클릭 안내 행에 쓰는 한 줄(2026-09-28 확정,
@@ -273,12 +273,21 @@ export const ko = {
     /** Strava 동기화됨 · 첫 활동 0건 (건너뛰지 않은 유저) */
     awaitingActivity: {
       title: '첫 활동 기다리는 중',
-      description: 'Strava에 첫 활동이 올라오면 퀘스트 완료 배지를 획득해요.',
+      description: 'Strava에 첫 활동이 올라오면 퀘스트 클리어 배지를 획득해요.',
     },
     /** Strava 동기화됨 · 첫 활동 0건 · 건너뛴 유저 — 완료 배지를 언급하지 않는다 */
     awaitingActivitySkipped: {
       title: '첫 활동 기다리는 중',
       description: 'Strava에 첫 활동이 올라오면 첫 배지를 획득해요.',
+    },
+    /** 홈 카드 「건너뛰기」 확인 시트 문구 (2026-09-28 확정, 티켓 20260927_2131 T8) —
+     * 지금 넘기면 다시 받을 수 없는 것이 있다는 뉘앙스를 담는다. */
+    skip: {
+      entryLabel: '건너뛰기',
+      confirmBody: '지금 건너뛰면 퀘스트 클리어 배지와 100포인트를 다시 받을 수 없어요. 이대로 건너뛸까요?',
+      keepGoingButton: '계속하기',
+      skipButton: '건너뛰기',
+      saveFailed: '저장에 실패했어요. 건너뛰기를 다시 눌러 주세요.',
     },
   },
 

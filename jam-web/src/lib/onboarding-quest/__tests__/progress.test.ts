@@ -1,9 +1,9 @@
 /**
- * `validateStepAdvance` / `nextStepOf` 단위 테스트 (티켓 20260927_2330).
- * DB에 닿지 않는 순수 함수만 검증한다.
+ * `validateStepAdvance` / `nextStepOf` / `validateSkip` 단위 테스트 (티켓 20260927_2330,
+ * 20260927_2131 T8). DB에 닿지 않는 순수 함수만 검증한다.
  */
 import { describe, it, expect } from 'vitest'
-import { nextStepOf, validateStepAdvance } from '../progress'
+import { nextStepOf, validateSkip, validateStepAdvance } from '../progress'
 
 describe('nextStepOf', () => {
   it('빈 진행 상태면 첫 단계(sync)', () => {
@@ -51,5 +51,37 @@ describe('validateStepAdvance', () => {
       browse: '1',
     }
     expect(validateStepAdvance(progress, 'sync')).toEqual({ ok: false, reason: 'ALL_DONE' })
+  })
+})
+
+describe('validateSkip', () => {
+  it('행이 없으면 거부(NOT_FOUND)', () => {
+    expect(validateSkip(null)).toEqual({ ok: false, reason: 'NOT_FOUND' })
+  })
+
+  it('이미 건너뛴 행은 멱등 성공(alreadySkipped: true)', () => {
+    const row = { step_progress: { sync: '1' }, skipped_at: '2026-09-28T00:00:00Z' }
+    expect(validateSkip(row)).toEqual({ ok: true, alreadySkipped: true })
+  })
+
+  it('7단계를 모두 마쳤으면 거부(ALL_STEPS_DONE)', () => {
+    const row = {
+      step_progress: {
+        sync: '1',
+        bag: '1',
+        pickup: '1',
+        mix_fail: '1',
+        mix_success: '1',
+        drop: '1',
+        browse: '1',
+      },
+      skipped_at: null,
+    }
+    expect(validateSkip(row)).toEqual({ ok: false, reason: 'ALL_STEPS_DONE' })
+  })
+
+  it('진행 중이고 건너뛰지 않았으면 기록 대상(alreadySkipped: false)', () => {
+    const row = { step_progress: { sync: '1' }, skipped_at: null }
+    expect(validateSkip(row)).toEqual({ ok: true, alreadySkipped: false })
   })
 })
