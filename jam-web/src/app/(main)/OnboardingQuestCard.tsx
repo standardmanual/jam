@@ -6,6 +6,7 @@ import { d } from '@/lib/i18n'
 import { ONBOARDING_QUEST_STEPS } from '@/lib/onboarding-quest/config'
 import { STEP_SCREEN_MAP, type OnboardingQuestScreen } from '@/lib/onboarding-quest/screen-gate'
 import type { OnboardingQuestCardState } from '@/lib/onboarding-quest/status'
+import OnboardingQuestSkipSheet from './OnboardingQuestSkipSheet'
 
 /**
  * 온보딩 퀘스트 홈 카드 (티켓 20260927_2133, 상위 20260927_2123 T1b · 경로 변경 20260928_0136).
@@ -61,28 +62,38 @@ export default function OnboardingQuestCard({ state }: Props) {
       </>
     )
 
+    // 건너뛰기 진입점(티켓 20260927_2131 T8, 채원 사전 판정) — Link/Card 바깥의 형제
+    // 요소로 뺀다. in_progress 모든 단계(sync 포함)에서 보이고, awaiting_sync에는 없다.
+    const skipTrigger = <OnboardingQuestSkipSheet />
+
     // sync 차례: 동기화 버튼은 이미 같은 화면(TopNav) 위에 있어 카드를 눌러도 이동할 곳이
     // 없다. 링크 없는 안내 카드로 위치만 알린다(결정 20, 채원 사전 판정 B).
     if (state.nextStep === 'sync') {
       return (
-        <Card tone="inverse" className={CARD_CLASS}>
-          {body}
-          <p className={DESC_CLASS}>{d.onboardingQuest.steps.sync.locationHint}</p>
-        </Card>
+        <div className="flex flex-col gap-[var(--spacing-8)]">
+          <Card tone="inverse" className={CARD_CLASS}>
+            {body}
+            <p className={DESC_CLASS}>{d.onboardingQuest.steps.sync.locationHint}</p>
+          </Card>
+          {skipTrigger}
+        </div>
       )
     }
 
     const screen = STEP_SCREEN_MAP[state.nextStep]
     return (
-      <Link href={SCREEN_PATH_MAP[screen]} className={LINK_CLASS}>
-        <Card tone="inverse" className={CARD_CLASS}>
-          {body}
-          <div className={CTA_CLASS}>
-            <span>{ctaLabel}</span>
-            <ChevronRightIcon className="w-4 h-4" />
-          </div>
-        </Card>
-      </Link>
+      <div className="flex flex-col gap-[var(--spacing-8)]">
+        <Link href={SCREEN_PATH_MAP[screen]} className={LINK_CLASS}>
+          <Card tone="inverse" className={CARD_CLASS}>
+            {body}
+            <div className={CTA_CLASS}>
+              <span>{ctaLabel}</span>
+              <ChevronRightIcon className="w-4 h-4" />
+            </div>
+          </Card>
+        </Link>
+        {skipTrigger}
+      </div>
     )
   }
 
