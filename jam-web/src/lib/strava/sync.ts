@@ -1285,9 +1285,13 @@ export async function syncStravaActivities(
 
     // 온보딩 퀘스트 완료 판정(T6) — 처리된 실제 활동이 1건 이상일 때만 시도한다.
     // 0건이면 호출하지 않는다(불필요한 조회 생략). 절대 throw하지 않으므로 동기화 흐름에
-    // 영향을 주지 않는다.
+    // 영향을 주지 않는다. 지급된 완료 배지(T7b)가 있으면 기존 배지 획득 카드에 함께 실리도록
+    // earnedBadgeIds에 합류시킨다(사용자 결정 2) — 중복 제거는 already-includes 체크로 충분하다.
     if (rawActivities.length >= 1) {
-      await recordOnboardingQuestCompletion(supabase, userId)
+      const grantedBadgeId = await recordOnboardingQuestCompletion(supabase, userId)
+      if (grantedBadgeId && !earnedBadgeIds.includes(grantedBadgeId)) {
+        earnedBadgeIds.push(grantedBadgeId)
+      }
     }
 
     // 획득 배지 상세는 엔진 4경로를 각각 개조하는 대신, 수집된 id로 여기서 1회만 조회한다.

@@ -1,18 +1,25 @@
 /**
- * 온보딩 퀘스트 완료 판정 (티켓 20260927_2129, 상위 20260927_2123 T6)
+ * 온보딩 퀘스트 완료 판정 + 완료 보상 지급 (티켓 20260927_2129 T6, 20260927_2130 T7b,
+ * 상위 20260927_2123)
  *
  * 완료(`completed_at`)는 "실제 첫 활동이 들어온 시점"에만 기록한다. 1~7단계는 연출용
  * 데이터라 실제 배지·아이템·포인트를 만들지 않으므로, 완료 판정은 `strava_activities`에
  * 실제로 처리된 행이 있는지로만 결정한다(`users.initial_sync_done`은 활동이 0건이어도
  * true가 되므로 쓰지 않는다 — 배경은 티켓 본문 참고).
  *
- * DB 조회(`recordOnboardingQuestCompletion`)와 순수 판정(`shouldRecordQuestCompletion`)을
- * 분리해 후자만 단위 테스트로 고정한다 — `status.ts`/`screen-gate.ts`와 같은 패턴.
+ * 완료가 이번 호출에서 실제로 확정됐고(건너뛰지 않았으면) T7a가 등록한 완료 배지 1개와
+ * 그 `point_reward`를 `grantOnboardingQuestReward`가 이어서 지급한다(T7b).
+ *
+ * DB 조회(`recordOnboardingQuestCompletion`)와 순수 판정(`shouldRecordQuestCompletion`,
+ * `shouldGrantQuestReward`)을 분리해 후자만 단위 테스트로 고정한다 —
+ * `status.ts`/`screen-gate.ts`와 같은 패턴.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { UserOnboardingQuestRow } from '@/types/database'
-import { ONBOARDING_QUEST_ENABLED } from './config'
+import { ONBOARDING_QUEST_ENABLED, ONBOARDING_COMPLETION_BADGE_ID } from './config'
 import { nextStepOf } from './progress'
+import { awardPoints } from '@/lib/points'
+import { recordFeedEvent } from '@/lib/activity-feed'
 
 type QuestCompletionRow = Pick<UserOnboardingQuestRow, 'step_progress' | 'skipped_at' | 'completed_at'>
 
@@ -36,17 +43,110 @@ export function shouldRecordQuestCompletion(
 }
 
 /**
- * 완료 조건을 확인하고 맞으면 `completed_at`을 기록한다. 절대 throw하지 않는다 — 동기화·
+ * 완료 시 보상(완료 배지 1개 + 배지의 point_reward)을 지급할지 판정하는 순수 함수.
+ * `completionUpdated`는 `completed_at` 갱신이 이번 호출에서 실제로 행을 바꿨는지(=
+ * `.is('completed_at', null)` 조건부 갱신에 걸린 행 수 > 0)를 뜻한다. 건너뛴 유저
+ * (`skippedAt` 있음)는 완료 시각만 기록되고 보상은 받지 않는다(상위 결정 24).
+ */
+export function shouldGrantQuestReward(completionUpdated: boolean, skippedAt: string | null): boolean {
+  return completionUpdated && !skippedAt
+}
+
+/**
+ * 완료 배지(T7a, `ONBOARDING_COMPLETION_BADGE_ID`)와 그 `point_reward`를 1회만 지급한다.
+ * `usageBadges.ts`(L211~243)와 같은 부수효과 순서 — 배지 발급 → 포인트 지급 → 피드 기록.
+ *
+ * 멱등: 지급 전에 `reward_granted_at`을 조건부 갱신으로 선점한다. 이미 선점돼 있으면(바뀐
+ * 행 없음) 조용히 중단한다. 배지 insert가 23505(이미 보유)면 포인트·피드는 건너뛴다.
+ * 23505가 아닌 오류(배지 행이 아직 없어 FK 위반이 나는 경우 포함)면 `reward_granted_at`을
+ * 다시 NULL로 되돌려 다음 호출에서 재시도할 수 있게 한다. 절대 throw하지 않는다.
+ *
+ * @returns 지급(또는 이미 보유 확인)한 배지 id, 지급하지 않았으면 null.
+ */
+async function grantOnboardingQuestReward(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<string | null> {
+  try {
+    const { data: preempted, error: preemptError } = await supabase
+      .from('user_onboarding_quests')
+      .update({ reward_granted_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .is('reward_granted_at', null)
+      .select('user_id')
+
+    if (preemptError) {
+      console.error('[grantOnboardingQuestReward] reward_granted_at 선점 실패:', preemptError.message)
+      return null
+    }
+    if (!preempted || preempted.length === 0) return null // 이미 지급됨(멱등)
+
+    const { error: insertError } = await supabase
+      .from('user_activity_badges')
+      .insert({ user_id: userId, badge_id: ONBOARDING_COMPLETION_BADGE_ID, triggered_by: 'onboarding_quest' })
+
+    if (insertError) {
+      if (insertError.code !== '23505') {
+        console.error('[grantOnboardingQuestReward] 배지 발급 오류:', insertError.message)
+        const { error: releaseError } = await supabase
+          .from('user_onboarding_quests')
+          .update({ reward_granted_at: null })
+          .eq('user_id', userId)
+        if (releaseError) {
+          console.error('[grantOnboardingQuestReward] reward_granted_at 롤백 실패:', releaseError.message)
+        }
+      }
+      return null
+    }
+
+    const { data: badge, error: badgeError } = await supabase
+      .from('badges')
+      .select('name, image_url, rarity, point_reward')
+      .eq('id', ONBOARDING_COMPLETION_BADGE_ID)
+      .is('deleted_at', null)
+      .maybeSingle()
+
+    if (badgeError || !badge) {
+      // 배지는 이미 발급됐다 — 포인트·피드만 생략하고 지급 자체는 성공으로 본다.
+      console.error('[grantOnboardingQuestReward] 배지 정보 조회 실패:', badgeError?.message ?? '행 없음')
+      return ONBOARDING_COMPLETION_BADGE_ID
+    }
+
+    const pointReward = badge.point_reward ?? 0
+    if (pointReward > 0) {
+      await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: ONBOARDING_COMPLETION_BADGE_ID })
+    }
+
+    await recordFeedEvent(userId, 'badge_earned', {
+      badge_id: ONBOARDING_COMPLETION_BADGE_ID,
+      badge_name: badge.name,
+      badge_image_url: badge.image_url ?? '',
+      rarity: badge.rarity,
+      ...(pointReward > 0 ? { point_reward: pointReward } : {}),
+    })
+
+    return ONBOARDING_COMPLETION_BADGE_ID
+  } catch (err) {
+    console.error('[grantOnboardingQuestReward] 예외:', err)
+    return null
+  }
+}
+
+/**
+ * 완료 조건을 확인하고 맞으면 `completed_at`을 기록한 뒤, 이번 호출에서 실제로 완료가 확정된
+ * (건너뛰지 않은) 유저에게만 완료 배지·포인트를 지급한다. 절대 throw하지 않는다 — 동기화·
  * 단계 기록 흐름을 막지 않기 위해 오류는 `console.error`만 남긴다.
  *
  * 호출 지점: ① `syncStravaActivities`에서 처리된 활동이 1건 이상일 때(연동 직후·수동 공통)
  * ② `POST /api/onboarding-quest/step`이 7단계(`browse`)를 기록한 직후.
+ *
+ * @returns 이번 호출에서 지급한 완료 배지 id, 지급하지 않았으면 null.
  */
 export async function recordOnboardingQuestCompletion(
   supabase: SupabaseClient,
   userId: string
-): Promise<void> {
-  if (!ONBOARDING_QUEST_ENABLED) return
+): Promise<string | null> {
+  if (!ONBOARDING_QUEST_ENABLED) return null
 
   try {
     const { data: row, error: rowError } = await supabase
@@ -57,9 +157,9 @@ export async function recordOnboardingQuestCompletion(
 
     if (rowError) {
       console.error('[recordOnboardingQuestCompletion] 행 조회 실패:', rowError.message)
-      return
+      return null
     }
-    if (!row) return
+    if (!row) return null
 
     const progressRow: QuestCompletionRow = {
       step_progress: row.step_progress ?? {},
@@ -68,8 +168,8 @@ export async function recordOnboardingQuestCompletion(
     }
 
     // 활동 조회 전에 다른 조건부터 걸러 — 불필요한 조회를 줄인다.
-    if (nextStepOf(progressRow.step_progress) !== null && !progressRow.skipped_at) return
-    if (progressRow.completed_at) return
+    if (nextStepOf(progressRow.step_progress) !== null && !progressRow.skipped_at) return null
+    if (progressRow.completed_at) return null
 
     const { data: activityRow, error: activityError } = await supabase
       .from('strava_activities')
@@ -80,21 +180,29 @@ export async function recordOnboardingQuestCompletion(
 
     if (activityError) {
       console.error('[recordOnboardingQuestCompletion] 활동 조회 실패:', activityError.message)
-      return
+      return null
     }
 
-    if (!shouldRecordQuestCompletion(progressRow, Boolean(activityRow))) return
+    if (!shouldRecordQuestCompletion(progressRow, Boolean(activityRow))) return null
 
-    const { error: updateError } = await supabase
+    const { data: updatedRows, error: updateError } = await supabase
       .from('user_onboarding_quests')
       .update({ completed_at: new Date().toISOString() })
       .eq('user_id', userId)
       .is('completed_at', null)
+      .select('user_id')
 
     if (updateError) {
       console.error('[recordOnboardingQuestCompletion] completed_at 갱신 실패:', updateError.message)
+      return null
     }
+
+    const completionUpdated = (updatedRows?.length ?? 0) > 0
+    if (!shouldGrantQuestReward(completionUpdated, progressRow.skipped_at)) return null
+
+    return await grantOnboardingQuestReward(supabase, userId)
   } catch (err) {
     console.error('[recordOnboardingQuestCompletion] 예외:', err)
+    return null
   }
 }
