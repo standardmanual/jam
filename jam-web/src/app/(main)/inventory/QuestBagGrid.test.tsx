@@ -38,4 +38,9 @@ describe('QuestBagGrid 초기 렌더', () => {
     const html = renderToStaticMarkup(<QuestBagGrid gridItems={[]} emptySlots={5} />)
     expect(html).toContain('<button')
   })
+
+  it('연출 도토리 칸에 jam-quest-pulse 펄스 클래스가 붙는다 (20260928_1753)', () => {
+    const html = renderToStaticMarkup(<QuestBagGrid gridItems={[]} emptySlots={5} />)
+    expect(html).toContain('jam-quest-pulse')
+  })
 })

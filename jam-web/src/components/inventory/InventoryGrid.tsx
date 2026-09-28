@@ -44,6 +44,12 @@ interface InventoryGridProps {
     item: InventoryGridItem
     onSelect: () => void
     disabled?: boolean
+    /**
+     * 「지금 눌러야 할 곳」 공용 펄스(`.jam-quest-pulse`, 티켓 20260928_1752)를 선두 셀에
+     * 씌운다 — 20260928_1753. `BadgeGridCard`의 기존 `className` prop에 그대로 병합되므로
+     * 셀 모서리(`--radius-card`)를 벗어나지 않는다.
+     */
+    pulse?: boolean
   }
 }
 
@@ -74,6 +80,7 @@ export default function InventoryGrid({
           name={leadingItem.item.badgeName}
           imageUrl={leadingItem.item.badgeImageUrl}
           rarity={leadingItem.item.badgeRarity as import('@/types/database').BadgeRarity | null}
+          className={leadingItem.pulse ? 'jam-quest-pulse' : ''}
         />
       )}
       {items.map((item) => {

@@ -53,4 +53,26 @@ describe('InventoryGrid leadingItem', () => {
     expect(html).toContain(`href="/inventory/${REAL_ITEM.id}"`)
     expect(html).not.toContain(LEADING_ITEM.badgeName)
   })
+
+  it('leadingItem.pulse가 true면 선두 셀에 jam-quest-pulse 클래스가 붙는다 (20260928_1753)', () => {
+    const html = renderToStaticMarkup(
+      <InventoryGrid
+        items={[REAL_ITEM]}
+        mode="navigate"
+        leadingItem={{ item: LEADING_ITEM, onSelect: () => {}, pulse: true }}
+      />
+    )
+    expect(html).toContain('jam-quest-pulse')
+  })
+
+  it('leadingItem.pulse를 넘기지 않으면 jam-quest-pulse 클래스가 붙지 않는다', () => {
+    const html = renderToStaticMarkup(
+      <InventoryGrid
+        items={[REAL_ITEM]}
+        mode="navigate"
+        leadingItem={{ item: LEADING_ITEM, onSelect: () => {} }}
+      />
+    )
+    expect(html).not.toContain('jam-quest-pulse')
+  })
 })
