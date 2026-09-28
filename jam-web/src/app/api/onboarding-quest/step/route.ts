@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ONBOARDING_QUEST_ENABLED, ONBOARDING_QUEST_STEPS } from '@/lib/onboarding-quest/config'
 import { validateStepAdvance } from '@/lib/onboarding-quest/progress'
+import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
 import type { OnboardingQuestStepKey } from '@/types/database'
 
 export async function POST(request: NextRequest) {
@@ -74,6 +75,12 @@ export async function POST(request: NextRequest) {
   if (updateError) {
     console.error('[onboarding-quest/step] step_progress 갱신 오류:', updateError.message)
     return NextResponse.json({ error: 'SERVER_ERROR' }, { status: 500 })
+  }
+
+  // 마지막 단계(현재 browse) 기록 직후 — 연출 도중 이미 연동돼 처리된 활동이 있으면
+  // 그 자리에서 완료를 기록한다(사용자 결정 2). 실패해도 throw하지 않아 응답에 영향 없다.
+  if (step === ONBOARDING_QUEST_STEPS[ONBOARDING_QUEST_STEPS.length - 1]) {
+    await recordOnboardingQuestCompletion(serviceClient, user.id)
   }
 
   return NextResponse.json({ success: true, alreadyDone: false })
