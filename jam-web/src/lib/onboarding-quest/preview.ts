@@ -67,13 +67,14 @@ export function resolvePreviewCard(
   { stravaConnected }: { stravaConnected: boolean }
 ): OnboardingQuestCardState {
   if (preview === DONE) {
-    return { kind: 'awaiting_sync', stravaConnected, skipped: false }
+    return { kind: 'awaiting_sync', stravaConnected, skipped: false, preview: true }
   }
   return {
     kind: 'in_progress',
     done: ONBOARDING_QUEST_STEPS.indexOf(preview),
     total: ONBOARDING_QUEST_STEPS.length,
     nextStep: preview,
+    preview: true,
   }
 }
 

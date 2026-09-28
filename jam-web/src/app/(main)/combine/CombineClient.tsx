@@ -15,6 +15,7 @@ import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
 import { StepSaveFailedError } from '@/lib/onboarding-quest/step-error'
+import { trackQuestStepComplete } from '@/lib/onboarding-quest/analytics'
 import type { BadgeRow, CombinationRecipeRow, CombineSlotBadgeType, InventoryItemRow } from '@/types/database'
 
 /** 온보딩 퀘스트 4~5단계(T4)의 demo-data.ts가 연출 재료 타입으로도 쓴다(export). */
@@ -255,6 +256,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
         body: JSON.stringify({ step: 'mix_fail' }),
       })
       if (!res.ok) throw new StepSaveFailedError()
+      trackQuestStepComplete('mix_fail', await res.json())
     } catch (err) {
       setMixFailRecorded(false)
       if (err instanceof StepSaveFailedError) {
@@ -281,6 +283,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
           body: JSON.stringify({ step: 'mix_fail' }),
         })
         if (!failRes.ok) throw new StepSaveFailedError()
+        trackQuestStepComplete('mix_fail', await failRes.json())
 
         const successRes = await fetch('/api/onboarding-quest/step', {
           method: 'POST',
@@ -288,6 +291,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
           body: JSON.stringify({ step: 'mix_success' }),
         })
         if (!successRes.ok) throw new StepSaveFailedError()
+        trackQuestStepComplete('mix_success', await successRes.json())
 
         setResult(buildDemoCombineResult(selectedRecipe))
       } catch (err) {

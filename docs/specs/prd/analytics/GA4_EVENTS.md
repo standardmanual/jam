@@ -44,9 +44,21 @@ GA4 측정 ID가 1개(`G-7K884Q399P`)뿐이라 스트림을 나누지 않는다.
 | `combine_success` | 믹스 성공 | `item_count`, `result_badge_ids`(쉼표 구분) | `app/(main)/combine/CombineClient.tsx` |
 | `mission_join` | 미션 참가 성공 | `mission_id` | `app/(main)/missions/[id]/MissionDetailClient.tsx` |
 | `mission_complete` | 미션 완료(서버 INSERT 성공, 평생 1회) | `mission_id` | `components/SyncButton.tsx` |
+| `onboarding_quest_start` | 홈 퀘스트 카드가 `in_progress`·0/7 상태로 처음 렌더(관리자 미리보기 제외, `localStorage` 중복 방지) | — | `app/(main)/QuestStartTracker.tsx` |
+| `onboarding_quest_step_complete` | 단계 기록 API(`POST /api/onboarding-quest/step`) 성공 응답이 `alreadyDone: false`이고 `preview`가 아님 | `step`, `step_index`(1~7) | `OnboardingSyncButton.tsx`·`inventory/QuestBagGrid.tsx`·`drops/QuestPickupScene.tsx`·`combine/CombineClient.tsx`·`missions/MissionsBrowseTracker.tsx` |
+| `onboarding_quest_skip` | 건너뛰기 API(`POST /api/onboarding-quest/skip`) 성공 응답이 `preview`가 아님 | `step`(건너뛴 시점의 다음 단계 키), `step_index` | `app/(main)/OnboardingQuestSkipSheet.tsx` |
 
 모든 이벤트는 `trackEvent()`가 자동으로 붙이는 `environment`(`production`\|`staging`\|`development`)
 파라미터를 공통으로 갖는다.
+
+## 온보딩 퀘스트 완료·보상은 GA4로 재지 않는다
+
+온보딩 퀘스트의 시작·1~7단계 완료·건너뛰기만 위 세 이벤트로 GA4에 보낸다. **퀘스트 완료와
+보상 지급은 서버 사건**(연동 직후 첫 동기화·수동 동기화·7단계 기록·건너뛰기 네 경로에서
+일어난다)이라 GA4로 전송하지 않고, 이미 기록되는 `user_onboarding_quests.completed_at`·
+`reward_granted_at`과 `user_activity_badges.triggered_by = 'onboarding_quest'`로 집계한다
+(사용자 결정, 티켓 20260927_2132). 관리자 미리보기(`preview: true`) 응답에서는 위 세 이벤트도
+전송하지 않는다.
 
 ## first_badge_earned — "최초 1회" 판정 로직
 
