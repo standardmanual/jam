@@ -6,6 +6,8 @@ import Footer from '@/components/ui/Footer'
 import StravaConnectReveal from '@/components/StravaConnectReveal'
 import { TopNavDataProvider } from '@/lib/topNavData'
 import { hasUnread, latestBumpingNotificationAt } from '@/lib/notifications/feed'
+import { getAdminQuestPreview } from '@/lib/onboarding-quest/preview'
+import QuestPreviewBanner from '@/components/QuestPreviewBanner'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -22,7 +24,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   // 레이아웃에서 한 번만 조회해 컨텍스트로 내려준다(호출부 각각 조회하지 않음).
   // 20260824_021: 알림 종의 빨간 버블 판정도 여기서 함께 내려준다. seen_at은 위 users
   // 조회에 컬럼 하나만 더 붙이고, 최신 소식 시각은 병렬로 읽어 왕복 지연을 더하지 않는다.
-  const [{ data: profileRaw }, { data: stravaConnRaw }, latestBumpingAt] = await Promise.all([
+  const [{ data: profileRaw }, { data: stravaConnRaw }, latestBumpingAt, questPreview] = await Promise.all([
     service
       .from('users')
       .select('username, avatar_url, notifications_seen_at')
@@ -30,6 +32,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       .maybeSingle(),
     service.from('strava_connections').select('user_id').eq('user_id', user.id).maybeSingle(),
     latestBumpingNotificationAt(user.id),
+    // 관리자 전용 퀘스트 미리보기 띠(티켓 20260928_0138, N5b). 쿠키가 없으면 관리자 조회
+    // 자체를 하지 않아(getAdminQuestPreview 내부) 일반 유저 진입 비용이 늘지 않는다.
+    getAdminQuestPreview(),
   ])
   const profile = profileRaw as {
     username: string | null
@@ -45,6 +50,11 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     <ToastProvider>
       <TopNavDataProvider value={{ username, avatarUrl, stravaConnected, hasUnreadNotifications }}>
         <div className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative">
+          {/* 관리자 전용 퀘스트 미리보기 띠 — null이면 DOM에 아예 없다(관리자가 아니거나
+              미리보기 중이 아닐 때). 문서 흐름 안에 두어 TopNav를 아래로 민다(fixed 오버레이
+              아님, 채원 판정 승인 항목 ①). */}
+          {questPreview && <QuestPreviewBanner value={questPreview} />}
+
           {/* 메인 컨텐츠 — 각 페이지가 자체 원색 풀블리드 배경과 상단 브랜딩을 지정.
               배경은 피그마 디자인(티켓 20260917_2105)의 세로 그라데이션 —
               위쪽 74.038%는 순정 검정(--color-bg), 그 아래부터 #3d3d3d로 밝아진다.

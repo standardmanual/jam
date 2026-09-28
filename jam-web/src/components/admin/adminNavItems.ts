@@ -28,6 +28,7 @@ import {
   IconTrophy,
   IconBan,
   IconSparkles,
+  IconEyeglass,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -77,6 +78,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/simulator', label: '시뮬레이터', icon: IconDeviceGamepad2 },
       { href: '/admin/users', label: '유저 조회', icon: IconUsers },
       { href: '/admin/strava-backfill', label: 'Strava 확장 필드 백필', icon: IconDatabaseImport },
+      { href: '/admin/onboarding-quest-preview', label: '퀘스트 미리보기', icon: IconEyeglass },
     ],
   },
   {

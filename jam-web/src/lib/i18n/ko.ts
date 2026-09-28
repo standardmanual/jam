@@ -289,6 +289,16 @@ export const ko = {
       skipButton: '건너뛰기',
       saveFailed: '저장에 실패했어요. 건너뛰기를 다시 눌러 주세요.',
     },
+    /** 관리자 미리보기 띠(`QuestPreviewBanner.tsx`) 문구(2026-09-28 확정, 티켓 20260928_0138
+     * N5b) — 서비스 화면에 노출되는 유일한 문구라 유저 노출 규칙(「퀘스트」)을 따른다.
+     * 내부 용어 「온보딩」은 쓰지 않는다. */
+    preview: {
+      /** 단계 키일 때. n은 1~7(`ONBOARDING_QUEST_STEPS.indexOf(value) + 1`), `t()`로 치환. */
+      stepLabel: '퀘스트 미리보기 중 · {n}/7단계',
+      doneLabel: '퀘스트 미리보기 중 · 연동 단계',
+      finishButton: '끝내기',
+      finishFailed: '미리보기를 끝내지 못했어요. 다시 눌러 주세요.',
+    },
   },
 
   /**
