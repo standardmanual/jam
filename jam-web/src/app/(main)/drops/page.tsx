@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DropsClient, { type DropsFocusPoi } from './DropsClient'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
+import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 
 /**
  * 20260824_021: `?poi=<id>` — 알림 소식 #18·#32의 착지점.
@@ -36,5 +37,8 @@ export default async function DropsPage({ searchParams }: Props) {
     if (data) focusPoi = data as DropsFocusPoi
   }
 
-  return <DropsClient focusPoi={focusPoi} />
+  // 결정 22: pickup 차례일 때만 실제 지도 대신 정적 연출 씬을 보여준다(티켓 20260927_2126).
+  const questStep = await getOnboardingQuestGate(user.id, 'drops')
+
+  return <DropsClient focusPoi={focusPoi} questStep={questStep === 'pickup' ? 'pickup' : null} />
 }
