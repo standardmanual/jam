@@ -1,6 +1,6 @@
 /**
- * 온보딩 퀘스트 1~5단계 연출용 데이터 고정 값 (티켓 20260927_2125·20260927_2126·20260927_2127,
- * 상위 20260927_2123 T2b·T3·T4).
+ * 온보딩 퀘스트 1~6단계 연출용 데이터 고정 값 (티켓 20260927_2125·20260927_2126·20260927_2127·
+ * 20260927_2128, 상위 20260927_2123 T2b·T3·T4·T5).
  *
  * 「황금빛 도토리」·「잃어버린 결혼반지」의 이름·이미지·등급이 사용자 확정값과 글자 단위로
  * 같은지, 1단계(RevealBadge)와 2단계(InventoryGridItem)가 같은 배지를 가리키는지를 고정한다.
@@ -14,6 +14,7 @@ import {
   VIRTUAL_MAP_IMAGE_SRC,
   DEMO_MIX_RECIPE,
   DEMO_MIX_ITEMS,
+  DEMO_DROP_ITEM,
 } from '../demo-data'
 import { d } from '@/lib/i18n'
 
@@ -85,5 +86,19 @@ describe('온보딩 퀘스트 연출용 데이터', () => {
     expect(DEMO_MIX_ITEMS[0].badge.name).toBe('황금빛 도토리')
     expect(DEMO_MIX_ITEMS[1].badge_id).toBe(LOST_WEDDING_RING_ID)
     expect(DEMO_MIX_ITEMS[1].badge.name).toBe('잃어버린 결혼반지')
+  })
+
+  it('6단계 DEMO_DROP_ITEM이 5단계 믹스 보상 배지(최고급 캣닢 뭉치)와 같은 배지를 가리킨다', () => {
+    const rewardBadge = DEMO_MIX_RECIPE.rewardBadges[0]
+    expect(DEMO_DROP_ITEM.badge_id).toBe(rewardBadge.id)
+    expect(DEMO_DROP_ITEM.badge_name).toBe(rewardBadge.name)
+    expect(DEMO_DROP_ITEM.badge_image_url).toBe(rewardBadge.image_url)
+    expect(DEMO_DROP_ITEM.badge_rarity).toBe(rewardBadge.rarity)
+  })
+
+  it('6단계 DEMO_DROP_ITEM은 실제 인벤토리 개체가 아니므로 일련번호·만료일이 비어 있다', () => {
+    expect(DEMO_DROP_ITEM.serial_prefix).toBeNull()
+    expect(DEMO_DROP_ITEM.serial_number).toBe(0)
+    expect(DEMO_DROP_ITEM.expires_at).toBeNull()
   })
 })
