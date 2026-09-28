@@ -52,6 +52,16 @@ describe('PoiCarouselModal demoMode 초기 렌더', () => {
     )
     expect(html).toContain(`>${d.drops.dropHereButton}<`)
   })
+
+  it('questPulseStep 미지정이면 평소처럼 펄스 클래스가 없다(회귀 방지, 티켓 20260928_1754)', () => {
+    const html = renderToStaticMarkup(<PoiCarouselModal {...baseProps} />)
+    expect(html).not.toContain('jam-quest-pulse')
+  })
+
+  it('questPulseStep="pickup"이면 픽업 그룹 행에만 펄스 클래스가 붙는다(티켓 20260928_1754)', () => {
+    const html = renderToStaticMarkup(<PoiCarouselModal {...baseProps} questPulseStep="pickup" />)
+    expect(html).toContain('jam-quest-pulse')
+  })
 })
 
 describe('PoiCarouselModal demoMode(drop) 초기 렌더', () => {
@@ -77,6 +87,16 @@ describe('PoiCarouselModal demoMode(drop) 초기 렌더', () => {
   it('채원 판정 2 — 초기 드랍 목록이 비어 있으면 EmptyState(드랍된 배지 없음) 문구가 보인다', () => {
     const html = renderToStaticMarkup(<PoiCarouselModal {...dropProps} />)
     expect(html).toContain(d.drops.dropEmptyTitle)
+  })
+
+  it('questPulseStep="drop"이면 초기 화면(인벤토리 열기 전)의 "여기에 드랍" 버튼에 펄스 클래스가 붙는다(티켓 20260928_1754)', () => {
+    const html = renderToStaticMarkup(<PoiCarouselModal {...dropProps} questPulseStep="drop" />)
+    expect(html).toContain('jam-quest-pulse')
+  })
+
+  it('questPulseStep 미지정이면 "여기에 드랍" 버튼에 펄스 클래스가 없다(회귀 방지, 티켓 20260928_1754)', () => {
+    const html = renderToStaticMarkup(<PoiCarouselModal {...dropProps} />)
+    expect(html).not.toContain('jam-quest-pulse')
   })
 })
 

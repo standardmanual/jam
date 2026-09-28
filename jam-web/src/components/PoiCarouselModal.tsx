@@ -193,6 +193,13 @@ interface PoiCarouselModalProps {
    * 단계를 그대로 유지한다(실패 토스트는 콜백이 직접 띄운다).
    */
   onDropOverride?: () => Promise<boolean>
+  /**
+   * 온보딩 퀘스트 `pickup`·`drop` 차례 전용(티켓 20260928_1754, 상위 20260927_2123 Q3).
+   * 값이 있으면 "지금 눌러야 할 요소" 하나(픽업 그룹 행 / 「여기에 드랍」 버튼 / 드랍 선택
+   * 칸 / 확인 버튼)에만 공용 펄스(`.jam-quest-pulse`)를 건다. 기본값 미지정이므로 평소
+   * 호출부(실제 `/drops` 지도)는 전혀 영향받지 않는다.
+   */
+  questPulseStep?: 'pickup' | 'drop'
 }
 
 export default function PoiCarouselModal({
@@ -208,6 +215,7 @@ export default function PoiCarouselModal({
   onPickupOverride,
   demoDropItems,
   onDropOverride,
+  questPulseStep,
 }: PoiCarouselModalProps) {
   const { toast } = useToast()
   const modalRef = useRef<HTMLDivElement>(null)
@@ -657,6 +665,7 @@ export default function PoiCarouselModal({
                 onConfirmDrop={isActive ? executeDrop : undefined}
                 onSelectPickupGroup={isActive ? handleSelectPickupGroup : undefined}
                 hideDropAction={demoMode && !onDropOverride}
+                questPulseStep={questPulseStep}
                 onClose={onClose}
               />
             )}
@@ -759,6 +768,8 @@ interface PoiCardProps {
    * 존재하지 않는 데모 POI id로 실제 `/api/drops` POST가 나가는 사고를 막는다.
    */
   hideDropAction?: boolean
+  /** 온보딩 퀘스트 3·6단계 펄스 대상 판단용(티켓 20260928_1754) — `PoiCarouselModal`의 동명 prop 그대로. */
+  questPulseStep?: 'pickup' | 'drop'
   onClose: () => void
 }
 
@@ -778,6 +789,7 @@ function PoiCard({
   onConfirmDrop,
   onSelectPickupGroup,
   hideDropAction = false,
+  questPulseStep,
   onClose,
 }: PoiCardProps) {
   return (
@@ -838,9 +850,20 @@ function PoiCard({
               <Button fullWidth variant="outline" surface="main" onClick={onCancelPending} disabled={dropping}>
                 {d.drops.cancel}
               </Button>
-              <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
-                {d.drops.dropButton}
-              </Button>
+              {/* 확인 버튼만 pill 래퍼로 펄스(티켓 20260928_1754) — 취소 버튼에는 붙이지
+                  않는다. Button 자체는 --radius-pill-buttons(=--radius-pill)라 래퍼 반경이
+                  실제 버튼 반경과 일치한다. */}
+              {questPulseStep === 'drop' ? (
+                <div className="w-full rounded-[var(--radius-pill)] jam-quest-pulse">
+                  <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
+                    {d.drops.dropButton}
+                  </Button>
+                </div>
+              ) : (
+                <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
+                  {d.drops.dropButton}
+                </Button>
+              )}
             </div>
           </div>
         ) : inventoryLoading ? (
@@ -869,6 +892,7 @@ function PoiCard({
                 countAriaText={item.countAriaText}
                 expiresAt={item.expiresAt}
                 onClick={() => onSelectDropItem?.(item)}
+                pulse={questPulseStep === 'drop'}
               />
             ))}
           </div>
@@ -895,6 +919,7 @@ function PoiCard({
                   expiresAt={earliestExpiry(group.items)}
                   onClick={() => onSelectPickupGroup?.(group)}
                   disabled={!isActive}
+                  pulse={questPulseStep === 'pickup'}
                 />
               ))}
             </div>
@@ -907,9 +932,17 @@ function PoiCard({
             />
           )}
           {isActive && !hideDropAction && (
-            <Button fullWidth surface="main" onClick={onOpenInventory}>
-              {d.drops.dropHereButton}
-            </Button>
+            questPulseStep === 'drop' ? (
+              <div className="w-full rounded-[var(--radius-pill)] jam-quest-pulse">
+                <Button fullWidth surface="main" onClick={onOpenInventory}>
+                  {d.drops.dropHereButton}
+                </Button>
+              </div>
+            ) : (
+              <Button fullWidth surface="main" onClick={onOpenInventory}>
+                {d.drops.dropHereButton}
+              </Button>
+            )
           )}
         </div>
       )}
@@ -940,6 +973,12 @@ interface ItemRowProps {
    * 만료 개념이 있다 — 픽업 대기 중이라고 만료가 멈추지 않는다).
    */
   expiresAt?: string | null
+  /**
+   * 온보딩 퀘스트 3·6단계 「지금 눌러야 할 곳」 펄스(티켓 20260928_1754) — true면 기존
+   * `rounded-[var(--radius-cards)]` 버튼 className에 `.jam-quest-pulse`를 병합한다(별도
+   * 래퍼 없음, 반경 불일치 없음). 평소 픽업·드랍 목록에서는 전달되지 않는다.
+   */
+  pulse?: boolean
 }
 
 /**
@@ -950,7 +989,7 @@ interface ItemRowProps {
  * badge_id 그룹핑돼 count·expiresAt을 함께 받는다 — 두 목록의 행 시각·규칙(개체 1개=서클
  * 없음, 2개 이상=서클)이 완전히 동일하다.
  */
-function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaText, expiresAt }: ItemRowProps) {
+function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaText, expiresAt, pulse = false }: ItemRowProps) {
   const rarityValue = KNOWN_RARITIES.includes(rarity as BadgeRarity) ? (rarity as BadgeRarity) : 'common'
   const showCount = typeof count === 'number' && count > 1
   const expiring = isRowExpiringSoon(expiresAt)
@@ -959,7 +998,7 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
     <button
       onClick={onClick}
       disabled={disabled}
-      className="w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-white/[0.04] active:scale-[0.98] transition-transform duration-100 text-left disabled:cursor-default"
+      className={`w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-white/[0.04] active:scale-[0.98] transition-transform duration-100 text-left disabled:cursor-default${pulse ? ' jam-quest-pulse' : ''}`}
     >
       {/* 카운터 서클의 기준점 — BadgeGridCard의 카운터 필과 같은 이유로 relative를
           overflow-hidden 밖(아이콘 wrapper)에 둔다: 아이콘 자체에 relative를 걸면

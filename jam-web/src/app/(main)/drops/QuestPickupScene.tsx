@@ -124,7 +124,9 @@ export default function QuestPickupScene({ mode }: QuestPickupSceneProps) {
         <div className="absolute inset-0 bg-surface-elevated" aria-hidden="true" />
       )}
 
-      {/* 정지 마커 — 좌 33%/상 67%(이미지 좌하단 1/3, 사용자 결정 4). 펄스 모션 없음. */}
+      {/* 정지 마커 — 좌 33%/상 67%(이미지 좌하단 1/3, 사용자 결정 4). 모달이 닫혀 있는 동안만
+          "지금 눌러야 할 곳" 펄스를 원(span)에만 건다 — 티켓 20260928_1754. 라벨 pill(사각
+          반투명 배경)까지 감싸면 원형 그림자와 어긋나 보이므로 감싸지 않는다(채원 craft_notes). */}
       <button
         type="button"
         onClick={() => setCarouselOpen(true)}
@@ -133,7 +135,7 @@ export default function QuestPickupScene({ mode }: QuestPickupSceneProps) {
         style={{ left: '33%', top: '67%', transform: 'translate(-50%, -50%)', minWidth: 44, minHeight: 44 }}
       >
         <span
-          className="flex items-center justify-center rounded-full border-2 border-white shrink-0"
+          className={`flex items-center justify-center rounded-full border-2 border-white shrink-0${carouselOpen ? '' : ' jam-quest-pulse'}`}
           style={{ width: MARKER_SIZE, height: MARKER_SIZE, background: 'var(--color-primary)' }}
         >
           <svg
@@ -166,6 +168,7 @@ export default function QuestPickupScene({ mode }: QuestPickupSceneProps) {
           onPickupOverride={mode === 'pickup' ? handlePickup : undefined}
           demoDropItems={mode === 'drop' ? [DEMO_DROP_ITEM] : undefined}
           onDropOverride={mode === 'drop' ? handleDrop : undefined}
+          questPulseStep={mode}
         />
       )}
     </div>
