@@ -41,6 +41,8 @@ const SCREEN_PATH_MAP: Record<OnboardingQuestScreen, string> = {
 }
 
 const CARD_CLASS = 'flex flex-col gap-[var(--spacing-16)]'
+// CTA 줄 — flex-col 카드의 기본 stretch가 버튼을 카드 폭으로 늘리지 않도록 가로 줄로 감싼다
+const CTA_ROW_CLASS = 'flex'
 const CHIP_CLASS =
   'self-start inline-flex items-center text-[length:var(--text-caption)] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text'
 const CHIP_ROW_CLASS = 'flex items-center justify-between'
@@ -102,7 +104,9 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
           {startTracker}
           <Card tone="inverse" className={CARD_CLASS}>
             {body}
-            <OnboardingSyncButton appearance="card" />
+            <div className={CTA_ROW_CLASS}>
+              <OnboardingSyncButton appearance="card" />
+            </div>
           </Card>
           {skipTrigger}
         </div>
@@ -114,14 +118,16 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
       <div className="flex flex-col gap-[var(--spacing-8)]">
         <Card tone="inverse" className={CARD_CLASS}>
           {body}
-          <Button
-            variant="primary"
-            surface="sub"
-            size="sm"
-            onClick={() => router.push(SCREEN_PATH_MAP[screen])}
-          >
-            {ctaLabel}
-          </Button>
+          <div className={CTA_ROW_CLASS}>
+            <Button
+              variant="primary"
+              surface="sub"
+              size="sm"
+              onClick={() => router.push(SCREEN_PATH_MAP[screen])}
+            >
+              {ctaLabel}
+            </Button>
+          </div>
         </Card>
         {skipTrigger}
       </div>
@@ -147,16 +153,18 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
           <p className={TITLE_CLASS}>{d.onboardingQuest.lastStep.title}</p>
           <p className={DESC_CLASS}>{d.onboardingQuest.lastStep.description}</p>
         </div>
-        <Button
-          variant="primary"
-          surface="sub"
-          size="sm"
-          onClick={() => {
-            window.location.href = '/api/strava/auth'
-          }}
-        >
-          {d.onboardingQuest.lastStep.cta}
-        </Button>
+        <div className={CTA_ROW_CLASS}>
+          <Button
+            variant="primary"
+            surface="sub"
+            size="sm"
+            onClick={() => {
+              window.location.href = '/api/strava/auth'
+            }}
+          >
+            {d.onboardingQuest.lastStep.cta}
+          </Button>
+        </div>
       </Card>
     )
   }
@@ -175,7 +183,9 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
           <p className={DESC_CLASS}>{copy.description}</p>
         </div>
       </div>
-      <SyncButton username={username} appearance="card" />
+      <div className={CTA_ROW_CLASS}>
+        <SyncButton username={username} appearance="card" />
+      </div>
     </Card>
   )
 }
