@@ -14,9 +14,11 @@ import RecipeRewardRow from './RecipeRewardRow'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
+import { StepSaveFailedError } from '@/lib/onboarding-quest/step-error'
 import type { BadgeRow, CombinationRecipeRow, CombineSlotBadgeType, InventoryItemRow } from '@/types/database'
 
-interface InventoryItemWithBadge extends Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'> {
+/** 온보딩 퀘스트 4~5단계(T4)의 demo-data.ts가 연출 재료 타입으로도 쓴다(export). */
+export interface InventoryItemWithBadge extends Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'> {
   badge: Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>
 }
 
@@ -42,6 +44,12 @@ interface Props {
   publicRecipes: RecipeWithSlots[]
   /** 유저가 실제로 보유한 조건 슬롯(액티비티·체크인) 후보 배지 id — 서버가 미리 조회해 내려준다 */
   ownedConditionBadgeIds: string[]
+  /**
+   * 온보딩 퀘스트 4~5단계(mix_fail=레시피 확인, mix_success=믹스 성공) 차례일 때만 채워진다
+   * (티켓 20260927_2127, 상위 20260927_2123 T4). 차례가 아니면 null — 화면은 평소 `/combine`
+   * 그대로다(결정 22).
+   */
+  questStep?: 'mix_fail' | 'mix_success' | null
 }
 
 /** 슬롯을 채운 값 — item 타입은 인벤토리 개체 id, activity/checkin은 배지 id가 refId다 */
@@ -72,7 +80,37 @@ function recipeDisplayName(recipe: RecipeWithSlots): string {
   return recipe.name ?? d.combine.unnamedRecipe
 }
 
-export default function CombineClient({ items, publicRecipes, ownedConditionBadgeIds }: Props) {
+/**
+ * 순수 판정 — 가방 시트를 열 때 `mix_fail`을 기록할 차례인지. `demoMode`가 아니거나 이미
+ * 기록했으면 기록하지 않는다(티켓 20260927_2127, `screen-gate.ts`의 순수/DB 분리 패턴).
+ */
+export function shouldRecordMixFail(demoMode: boolean, alreadyRecorded: boolean): boolean {
+  return demoMode && !alreadyRecorded
+}
+
+/**
+ * 순수 빌더 — 연출 믹스 성공 시 실제 `/api/combine` 응답 대신 로컬에서 구성하는 결과값.
+ * `selectedRecipe.rewardBadges`·`reward_points`를 그대로 옮긴다(티켓 20260927_2127).
+ */
+export function buildDemoCombineResult(recipe: RecipeWithSlots): {
+  success: true
+  badges: RevealBadge[]
+  points: number
+} {
+  return {
+    success: true,
+    badges: recipe.rewardBadges.map((b) => ({
+      id: b.id,
+      name: b.name,
+      description: b.description,
+      imageUrl: b.image_url,
+      rarity: b.rarity,
+    })),
+    points: recipe.reward_points,
+  }
+}
+
+export default function CombineClient({ items, publicRecipes, ownedConditionBadgeIds, questStep = null }: Props) {
   const [search, setSearch] = useState('')
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
   const [fills, setFills] = useState<Record<string, SlotFill>>({})
@@ -86,6 +124,10 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
   } | null>(null)
   const { toast } = useToast()
   const router = useRouter()
+
+  /** 온보딩 퀘스트 4~5단계 연출 모드 — 실제 `/api/combine`·`trackEvent`·`router.refresh()`를 부르지 않는다. */
+  const demoMode = questStep === 'mix_fail' || questStep === 'mix_success'
+  const [mixFailRecorded, setMixFailRecorded] = useState(false)
 
   const ownedConditionSet = useMemo(() => new Set(ownedConditionBadgeIds), [ownedConditionBadgeIds])
   const itemsByBadgeId = useMemo(() => {
@@ -196,12 +238,70 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
     })
   }
 
-  function openBagFor(slot: RecipeSlotWithCandidates) {
+  /**
+   * 가방 시트는 기록 결과와 무관하게 연다(시트 오픈이 먼저) — `mix_fail` 기록은 연출
+   * 모드에서 처음 열 때 한 번만 시도한다(티켓 20260927_2127 사용자 결정 2). 실패하면
+   * 로컬 플래그를 되돌려 다음 슬롯 탭에서 재시도할 수 있게 한다.
+   */
+  async function openBagFor(slot: RecipeSlotWithCandidates) {
     setBagSlotId(slot.id)
+    if (!shouldRecordMixFail(demoMode, mixFailRecorded)) return
+
+    setMixFailRecorded(true)
+    try {
+      const res = await fetch('/api/onboarding-quest/step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ step: 'mix_fail' }),
+      })
+      if (!res.ok) throw new StepSaveFailedError()
+    } catch (err) {
+      setMixFailRecorded(false)
+      if (err instanceof StepSaveFailedError) {
+        toast(d.onboardingQuest.mixStepSaveFailed, 'error')
+      } else {
+        toast(d.common.networkError, 'error')
+      }
+    }
   }
 
   async function handleCombine() {
     if (!selectedRecipe || !canSubmit) return
+
+    // 온보딩 퀘스트 4~5단계 연출 분기 — 실제 /api/combine·trackEvent·router.refresh()를
+    // 전혀 부르지 않는다(티켓 20260927_2127). mix_fail을 멱등 호출하는 것은 가방 시트를
+    // 안 열고 바로 슬롯이 채워진 경우를 대비한 순서 안전망이다.
+    if (demoMode) {
+      setLoading(true)
+      setResult(null)
+      try {
+        const failRes = await fetch('/api/onboarding-quest/step', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ step: 'mix_fail' }),
+        })
+        if (!failRes.ok) throw new StepSaveFailedError()
+
+        const successRes = await fetch('/api/onboarding-quest/step', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ step: 'mix_success' }),
+        })
+        if (!successRes.ok) throw new StepSaveFailedError()
+
+        setResult(buildDemoCombineResult(selectedRecipe))
+      } catch (err) {
+        if (err instanceof StepSaveFailedError) {
+          toast(d.onboardingQuest.mixStepSaveFailed, 'error')
+        } else {
+          toast(d.common.networkError, 'error')
+        }
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
     const itemIds = selectedRecipe.slots
       .filter((s) => s.badge_type === 'item')
       .map((s) => fills[s.id]?.refId)
@@ -261,6 +361,11 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
 
   function closeResult() {
     setResult(null)
+    if (demoMode) {
+      // 온보딩 퀘스트 4~5단계 완료 — 같은 화면에 남지 않고 홈으로 이동한다(사용자 결정 3).
+      router.push('/')
+      return
+    }
     // 티켓 요구사항: 오버레이를 닫으면 같은 레시피 화면에 슬롯만 비운 채로 남는다.
     setFills({})
   }
