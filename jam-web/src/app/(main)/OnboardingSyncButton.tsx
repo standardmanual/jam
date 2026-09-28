@@ -24,8 +24,16 @@ const SYNC_ANIMATION_MS = 1000
  * onComplete 로직을 이 컴포넌트 안으로 직접 이식했다(전용 화면 폐기로 StepRunner도
  * 함께 삭제됐기 때문). 기록 실패(res.ok === false) 시 저장 실패 토스트를, 그 외 예외
  * (네트워크 오류)면 공통 네트워크 오류 토스트를 보여준다.
+ *
+ * `appearance`(티켓 20260928_1537, 채원 사전 판정): 'nav'(기본)는 TopNav 중앙 슬롯 모양
+ * 그대로. 'card'는 온보딩 퀘스트 홈 카드(①) CTA 모양 — variant/surface/size만 바뀌고
+ * 동작(연출·단계 기록·토스트·GA4)은 완전히 같다.
  */
-export default function OnboardingSyncButton() {
+interface OnboardingSyncButtonProps {
+  appearance?: 'nav' | 'card'
+}
+
+export default function OnboardingSyncButton({ appearance = 'nav' }: OnboardingSyncButtonProps) {
   const [loading, setLoading] = useState(false)
   const [revealOpen, setRevealOpen] = useState(false)
   const { toast } = useToast()
@@ -63,10 +71,10 @@ export default function OnboardingSyncButton() {
   return (
     <>
       <Button
-        variant="outline"
+        variant={appearance === 'card' ? 'primary' : 'outline'}
         surface="sub"
-        size="xs"
-        style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-base-white)' }}
+        size={appearance === 'card' ? 'sm' : 'xs'}
+        style={appearance === 'card' ? undefined : { backgroundColor: 'var(--color-primary)', color: 'var(--color-base-white)' }}
         onClick={handleSync}
         disabled={loading}
         loading={loading}
