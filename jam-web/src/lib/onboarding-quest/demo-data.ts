@@ -11,6 +11,7 @@ import type { InventoryGridItem } from '@/components/inventory/InventoryGrid'
 import type { NearbyPoi } from '@/types/drops'
 import type { PickupDrop } from '@/app/(main)/drops/BadgeDetailSheet'
 import type { RecipeWithSlots, InventoryItemWithBadge } from '@/app/(main)/combine/CombineClient'
+import type { InventoryItem } from '@/components/PoiCarouselModal'
 import { d } from '@/lib/i18n'
 
 const GOLDEN_ACORN_ID = 'dde83b16-b888-4bae-878c-fee01813679b'
@@ -161,6 +162,24 @@ export const DEMO_MIX_RECIPE: RecipeWithSlots = {
       description: CATNIP_BUNDLE_DESCRIPTION,
     },
   ],
+}
+
+/**
+ * 6단계(드랍) 연출용 가방 아이템 — 티켓 20260927_2128, 상위 20260927_2123 T5.
+ * 5단계 믹스 성공 보상 「최고급 캣닢 뭉치」(`DEMO_MIX_RECIPE.rewardBadges[0]`)를 그대로
+ * 가리킨다 — 믹스 결과물을 그대로 드랍하는 연출이라 새 아이템을 만들지 않는다. 인벤토리
+ * 개체 id는 실제 테이블에 없는 값이라 `quest-demo-` 접두사를 붙인다(`DEMO_MIX_ITEMS`와 동일
+ * 관례). `serial_number`는 `InventoryItem`이 NOT NULL이라 0으로 채운다.
+ */
+export const DEMO_DROP_ITEM: InventoryItem = {
+  id: 'quest-demo-drop-item',
+  badge_id: DEMO_MIX_RECIPE.rewardBadges[0].id,
+  badge_name: DEMO_MIX_RECIPE.rewardBadges[0].name,
+  badge_rarity: DEMO_MIX_RECIPE.rewardBadges[0].rarity ?? 'common',
+  badge_image_url: DEMO_MIX_RECIPE.rewardBadges[0].image_url,
+  serial_prefix: null,
+  serial_number: 0,
+  expires_at: null,
 }
 
 /**

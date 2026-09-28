@@ -25,7 +25,9 @@ import { trackEvent } from '@/lib/analytics/gtag'
 // 기존 하단 고정 바텀시트를 대체하는 화면 중앙 모달 — 캐러셀 아이템 자체가
 // 모달 카드다(모달과 캐러셀이 분리된 두 컴포넌트가 아님). 중앙 카드 = 선택된 POI.
 
-interface InventoryItem {
+// 20260927_2128: 온보딩 퀘스트 `drop` 연출(`QuestPickupScene.tsx`)이 이 셰이프로 데모
+// 아이템(`demo-data.ts`의 `DEMO_DROP_ITEM`)을 만들어 `demoDropItems` prop으로 넘기므로 export.
+export interface InventoryItem {
   id: string
   badge_id: string
   badge_name: string
@@ -53,6 +55,29 @@ function toGridItem(item: InventoryItem): InventoryGridItem {
     badgeName: item.badge_name,
     badgeImageUrl: item.badge_image_url,
     badgeRarity: item.badge_rarity,
+  }
+}
+
+/**
+ * 온보딩 퀘스트 `drop` 연출 전용(티켓 20260927_2128) — 드랍한 연출 아이템을 실제
+ * `/api/drops` 재조회 없이 곧바로 POI 드랍 목록(`dropsCache`)에 추가하기 위해 `PickupDrop`
+ * 셰이프로 변환하는 순수 함수. `dropped_at`은 이 목록 행(`ItemRow`)에 노출되지 않으므로
+ * 실제 시각 대신 고정값을 쓴다 — jsdom이 없어 탭 상호작용을 자동 검증할 수 없는 대신
+ * 이 함수만 단위 테스트로 고정한다(`PoiCarouselModal.test.tsx`).
+ */
+export function toDemoDroppedPickup(item: InventoryItem): PickupDrop {
+  return {
+    id: item.id,
+    badge_id: item.badge_id,
+    badge_name: item.badge_name,
+    badge_rarity: item.badge_rarity,
+    badge_image_url: item.badge_image_url,
+    dropper_name: null,
+    dropped_at: '2026-01-01T00:00:00.000Z',
+    serial: null,
+    serial_prefix: item.serial_prefix,
+    serial_number: item.serial_number,
+    expires_at: item.expires_at,
   }
 }
 
@@ -156,6 +181,18 @@ interface PoiCarouselModalProps {
   initialDropsCache?: Record<string, PickupDrop[]>
   /** `demoMode`에서 실제 픽업 API 대신 호출되는 콜백. */
   onPickupOverride?: () => Promise<void>
+  /**
+   * 온보딩 퀘스트 `drop` 연출 전용(티켓 20260927_2128). `demoMode`이고 이 값이 있으면
+   * "여기에 드랍" 버튼을 살리고(`hideDropAction`이 꺼진다), 인벤토리 그리드를 실제
+   * `/api/inventory/items` 조회 대신 이 값으로 즉시 채운다(로딩 스피너 없음).
+   */
+  demoDropItems?: InventoryItem[]
+  /**
+   * `demoMode`에서 실제 `/api/drops` POST 대신 호출되는 콜백. true를 돌려주면 성공 토스트·
+   * 로컬 `dropsCache`에 방금 놓은 배지 추가(`toDemoDroppedPickup`)로 이어지고, false면 확인
+   * 단계를 그대로 유지한다(실패 토스트는 콜백이 직접 띄운다).
+   */
+  onDropOverride?: () => Promise<boolean>
 }
 
 export default function PoiCarouselModal({
@@ -169,6 +206,8 @@ export default function PoiCarouselModal({
   demoMode = false,
   initialDropsCache,
   onPickupOverride,
+  demoDropItems,
+  onDropOverride,
 }: PoiCarouselModalProps) {
   const { toast } = useToast()
   const modalRef = useRef<HTMLDivElement>(null)
@@ -345,6 +384,12 @@ export default function PoiCarouselModal({
 
   async function openInventory() {
     setShowInventory(true)
+    // 20260927_2128: drop 연출은 실제 인벤토리가 아니라 demoDropItems로 즉시 채운다 —
+    // fetch를 생략하므로 로딩 스피너도 뜨지 않는다(완료 조건: 로딩 UI 없음).
+    if (demoMode) {
+      setInventoryItems(demoDropItems ?? [])
+      return
+    }
     setInventoryLoading(true)
     try {
       const res = await fetch('/api/inventory/items')
@@ -380,6 +425,31 @@ export default function PoiCarouselModal({
   async function executeDrop() {
     if (!activePoi || !pendingDropItem) return
     setDropping(true)
+    // 20260927_2128: drop 연출은 실제 /api/drops POST·GA·재조회·onDropOrPickupSuccess를
+    // 건너뛰고 onDropOverride만 호출한다. 실패(false)면 확인 단계를 그대로 유지한다(콜백이
+    // 내부에서 실패 토스트를 직접 띄운다).
+    if (demoMode) {
+      try {
+        const success = (await onDropOverride?.()) ?? false
+        if (!success) return
+        toast(d.drops.dropSuccess, 'success')
+        setShowInventory(false)
+        setPendingDropItem(null)
+        setInventoryItems([])
+        // 채원 판정 1(20260927_2128): 실제 드랍처럼 dropsCache에 방금 놓은 배지를 추가해
+        // "지도에 놓인 장면"을 보여준다. 원본 개체는 demoDropItems에서 찾는다.
+        const droppedItem = (demoDropItems ?? []).find((it) => it.id === pendingDropItem.id)
+        if (droppedItem) {
+          setDropsCache((prev) => ({
+            ...prev,
+            [activePoi.id]: [...(prev[activePoi.id] ?? []), toDemoDroppedPickup(droppedItem)],
+          }))
+        }
+      } finally {
+        setDropping(false)
+      }
+      return
+    }
     try {
       const res = await fetch('/api/drops', {
         method: 'POST',
@@ -586,7 +656,7 @@ export default function PoiCarouselModal({
                 onCancelPending={isActive ? () => setPendingDropItem(null) : undefined}
                 onConfirmDrop={isActive ? executeDrop : undefined}
                 onSelectPickupGroup={isActive ? handleSelectPickupGroup : undefined}
-                hideDropAction={demoMode}
+                hideDropAction={demoMode && !onDropOverride}
                 onClose={onClose}
               />
             )}
