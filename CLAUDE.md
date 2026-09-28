@@ -80,10 +80,7 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 | ④ | 배지 드랍 로직 | 배지 발급·드랍 엔진 판정 로직 | `docs/specs/badge-engine/` |
 | ⑤ | 서비스 플랜 | 비전·장기 전략, 현재/향후 구분 | `jam-doc/planning/business-plan/` |
 
-> 횡단 참조 문서(`UX_WRITING_GUIDELINE`·`SERVICE_OPERATIONS`·`DEV_PROCESS_GUARDRAILS`·
-> `SLOP_DICTIONARY`·`PRIVACY_POLICY`·`DOCUMENT_SCHEMA`)는 `docs/specs/` 루트, 마케팅 자료는
-> `jam-doc/marketing/`. 티켓을 뺀 모든 문서는 frontmatter에 `type`·`description`이 필요하다
-> (규칙 `docs/specs/DOCUMENT_SCHEMA.md`, 절차 `/jam-docs`).
+> 문서 규칙은 `docs/specs/DOCUMENT_SCHEMA.md`, 작성 절차는 `/jam-docs`.
 
 ### 폴더 = 수명주기
 
