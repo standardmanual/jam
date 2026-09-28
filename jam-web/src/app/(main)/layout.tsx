@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ToastProvider } from '@/components/ui/Toast'
@@ -49,7 +50,13 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   return (
     <ToastProvider>
       <TopNavDataProvider value={{ username, avatarUrl, stravaConnected, hasUnreadNotifications }}>
-        <div className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative">
+        <div
+          className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative"
+          // 띠가 있을 때 TopNav의 안전영역 padding-top을 0으로 눌러 이중 여백을 없앤다 —
+          // 안전영역은 물리적 최상단인 띠가 진다(design-system/components/navigation/TopNav.jsx
+          // `--topnav-safe-top` 폴백 참고, 티켓 20260928_0138 재작업 ①).
+          style={questPreview ? ({ '--topnav-safe-top': '0px' } as CSSProperties) : undefined}
+        >
           {/* 관리자 전용 퀘스트 미리보기 띠 — null이면 DOM에 아예 없다(관리자가 아니거나
               미리보기 중이 아닐 때). 문서 흐름 안에 두어 TopNav를 아래로 민다(fixed 오버레이
               아님, 채원 판정 승인 항목 ①). */}
