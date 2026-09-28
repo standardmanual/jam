@@ -27,6 +27,7 @@ import { getAbusingPolicy, DEFAULT_POLICY } from '@/lib/abusing/policy'
 import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 import { classifyStravaSyncFailure, recordStravaSyncFailure } from '@/lib/strava/syncFailures'
+import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
 // JAM! 카테고리 — 서비스 사용량 배지(티켓 20260910_1557). 카운터 증가·판정 로직은
 // recordDailySyncAndEvaluate() 한 곳(usageBadges.ts)에 있다 — 이 파일은 synced>0 게이트만 쥔다.
 import { recordDailySyncAndEvaluate, evaluateCheckinUsageBadges, type UsageBadgeEarned } from '@/lib/badge-engine/usageBadges'
@@ -1281,6 +1282,13 @@ export async function syncStravaActivities(
       isFirstSync,
       'sync'
     )
+
+    // 온보딩 퀘스트 완료 판정(T6) — 처리된 실제 활동이 1건 이상일 때만 시도한다.
+    // 0건이면 호출하지 않는다(불필요한 조회 생략). 절대 throw하지 않으므로 동기화 흐름에
+    // 영향을 주지 않는다.
+    if (rawActivities.length >= 1) {
+      await recordOnboardingQuestCompletion(supabase, userId)
+    }
 
     // 획득 배지 상세는 엔진 4경로를 각각 개조하는 대신, 수집된 id로 여기서 1회만 조회한다.
     // 카드 상한(10장)도 여기서 적용한다 — 클라이언트는 받은 배열을 그대로 그린다.
