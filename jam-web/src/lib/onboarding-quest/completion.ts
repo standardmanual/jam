@@ -103,6 +103,7 @@ async function grantOnboardingQuestReward(
       .from('badges')
       .select('name, image_url, rarity, point_reward')
       .eq('id', ONBOARDING_COMPLETION_BADGE_ID)
+      .is('deleted_at', null)
       .maybeSingle()
 
     if (badgeError || !badge) {

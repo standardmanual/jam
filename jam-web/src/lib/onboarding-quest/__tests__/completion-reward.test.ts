@@ -126,10 +126,12 @@ function makeFakeSupabase(opts: {
       return {
         select: () => ({
           eq: () => ({
-            maybeSingle: async () =>
-              opts.badgeRowMissing
-                ? { data: null, error: null }
-                : { data: BADGE_ROW, error: null },
+            is: () => ({
+              maybeSingle: async () =>
+                opts.badgeRowMissing
+                  ? { data: null, error: null }
+                  : { data: BADGE_ROW, error: null },
+            }),
           }),
         }),
       }
