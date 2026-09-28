@@ -31,6 +31,15 @@ describe('resolveOnboardingQuestGate', () => {
     expect(resolveOnboardingQuestGate(row, 'missions')).toBeNull()
   })
 
+  it('browse 차례일 때 missions 화면이면 browse를, 다른 화면이면 null을 돌려준다', () => {
+    const row = {
+      step_progress: { sync: '1', bag: '1', pickup: '1', mix_fail: '1', mix_success: '1', drop: '1' },
+      skipped_at: null,
+    }
+    expect(resolveOnboardingQuestGate(row, 'missions')).toBe('browse')
+    expect(resolveOnboardingQuestGate(row, 'home')).toBeNull()
+  })
+
   it('pickup·drop이 같은 화면(drops) 소속이어도 순서상 다음 단계 키만 정확히 돌려준다', () => {
     const pickupTurn = { step_progress: { sync: '1', bag: '1' }, skipped_at: null }
     expect(resolveOnboardingQuestGate(pickupTurn, 'drops')).toBe('pickup')
