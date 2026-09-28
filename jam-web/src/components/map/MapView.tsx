@@ -93,7 +93,18 @@ const VIEWPORT_MARGIN_RATIO = 0.02
 const VIEWPORT_STALE_TTL_MS = 90_000
 
 type MapsReadyCallback = () => void
-const globalCallbacks = window as unknown as Record<string, MapsReadyCallback | undefined>
+/**
+ * 티켓 20260927_2126: `BADGE_FILL_PATH`를 export해 `QuestPickupScene.tsx`가 가져다 쓰면서
+ * 이 모듈이 (기존 `next/dynamic(ssr:false)` 지연 로드 경로 밖에서) 서버 렌더 중에도 import될
+ * 수 있게 됐다. 모듈 최상위에서 곧바로 `window`를 참조하면 서버(Node)에는 `window`가 없어
+ * import 시점에 그대로 crash한다 — `typeof window !== 'undefined'`로 감싸 서버에서는 빈
+ * 객체로 안전하게 초기화한다. `loadMapsScript()`(브라우저에서만 호출)는 이 값을 그대로
+ * 쓰므로 실제 동작은 바뀌지 않는다.
+ */
+const globalCallbacks = (typeof window !== 'undefined' ? window : {}) as unknown as Record<
+  string,
+  MapsReadyCallback | undefined
+>
 
 function loadMapsScript(): Promise<void> {
   // 이미 로드됐으면 즉시 resolve
@@ -132,7 +143,9 @@ function dotIconHtml(color: string, size: number, opacity: number): string {
 const DROP_MARKER_SCALE = 1.2
 
 // 배지 아이콘(흰색) — badge-fill.svg / badge-line.svg 그대로 사용
-const BADGE_FILL_PATH =
+// 티켓 20260927_2126: 온보딩 퀘스트 3단계 연출(QuestPickupScene.tsx)의 정지 마커가
+// 실제 드랍 마커와 같은 실루엣을 쓰도록 export한다 — 새 아이콘을 그리지 않는다.
+export const BADGE_FILL_PATH =
   '<path fill-rule="evenodd" clip-rule="evenodd" d="M20.0006 6.22251C20.619 6.57985 21 7.23993 21 7.95424V16.0457C21 16.76 20.619 17.4201 20.0006 17.7774L13.0006 21.8219C12.3815 22.1796 11.6185 22.1796 10.9994 21.8219L3.99944 17.7774C3.38095 17.4201 3 16.76 3 16.0457V7.95424C3 7.23993 3.38096 6.57985 3.99945 6.2225L10.9994 2.17806C11.6185 1.82037 12.3815 1.82037 13.0006 2.17806L20.0006 6.22251ZM15.5 12C15.5 13.933 13.933 15.5 12 15.5C10.067 15.5 8.5 13.933 8.5 12C8.5 10.067 10.067 8.49996 12 8.49996C13.933 8.49996 15.5 10.067 15.5 12Z"/>'
 const BADGE_LINE_PATH =
   '<path fill-rule="evenodd" clip-rule="evenodd" d="M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79082 9.79086 7.99996 12 7.99996C14.2091 7.99996 16 9.79082 16 12ZM14.5 12C14.5 13.3807 13.3807 14.5 12 14.5C10.6193 14.5 9.5 13.3807 9.5 12C9.5 10.6193 10.6193 9.49996 12 9.49996C13.3807 9.49996 14.5 10.6193 14.5 12Z"/>' +

@@ -141,6 +141,21 @@ interface PoiCarouselModalProps {
   onCenterChange: (poi: NearbyPoi) => void
   /** 드랍/픽업 성공 시 호출 — 부모의 반경 내 POI 목록(카운트)을 재조회 */
   onDropOrPickupSuccess: () => void
+  /**
+   * 온보딩 퀘스트 `pickup` 연출 전용(티켓 20260927_2126). true면 `executePickup`이 실제
+   * `/api/drops/:id/pickup` 호출·GA `item_pickup` 이벤트·`onDropOrPickupSuccess`를
+   * 생략하고 `onPickupOverride`만 호출한다. 존재하지 않는 데모 POI id로 실제 드랍 API가
+   * 불리는 사고를 막기 위해 "여기에 드랍" 버튼도 렌더하지 않는다.
+   */
+  demoMode?: boolean
+  /**
+   * 데모 POI의 드랍 목록을 `dropsCache` 초기값으로 미리 채운다 — 데모 POI id가 이미
+   * 캐시에 있으므로 `fetchPoiDrops` effect가 자연스럽게 스킵된다(로딩 스피너·실제
+   * `/api/drops/poi/:id` 호출 없음).
+   */
+  initialDropsCache?: Record<string, PickupDrop[]>
+  /** `demoMode`에서 실제 픽업 API 대신 호출되는 콜백. */
+  onPickupOverride?: () => Promise<void>
 }
 
 export default function PoiCarouselModal({
@@ -151,6 +166,9 @@ export default function PoiCarouselModal({
   onClose,
   onCenterChange,
   onDropOrPickupSuccess,
+  demoMode = false,
+  initialDropsCache,
+  onPickupOverride,
 }: PoiCarouselModalProps) {
   const { toast } = useToast()
   const modalRef = useRef<HTMLDivElement>(null)
@@ -259,7 +277,7 @@ export default function PoiCarouselModal({
   }, [])
 
   // ── POI별 드랍(픽업 가능 배지) 목록 캐시 — 이미 열람한 POI는 재호출하지 않는다 ──
-  const [dropsCache, setDropsCache] = useState<Record<string, PickupDrop[]>>({})
+  const [dropsCache, setDropsCache] = useState<Record<string, PickupDrop[]>>(initialDropsCache ?? {})
   const [loadingIds, setLoadingIds] = useState<Record<string, boolean>>({})
   const fetchingRef = useRef<Set<string>>(new Set())
 
@@ -430,6 +448,18 @@ export default function PoiCarouselModal({
   async function executePickup() {
     if (!selectedDrop || !activePoi) return
     setPickingUp(true)
+    // demoMode(온보딩 퀘스트 pickup 연출)는 실제 픽업이 아니므로 실제 API 호출·GA
+    // 이벤트·onDropOrPickupSuccess를 건너뛰고 onPickupOverride만 호출한다. 실패해도
+    // onPickupOverride가 내부에서 토스트를 띄우고 삼키므로(never throw) 여기서는
+    // pickingUp만 되돌려 시트 재시도를 가능하게 한다.
+    if (demoMode) {
+      try {
+        await onPickupOverride?.()
+      } finally {
+        setPickingUp(false)
+      }
+      return
+    }
     try {
       const res = await fetch(`/api/drops/${selectedDrop.id}/pickup`, {
         method: 'POST',
@@ -556,6 +586,7 @@ export default function PoiCarouselModal({
                 onCancelPending={isActive ? () => setPendingDropItem(null) : undefined}
                 onConfirmDrop={isActive ? executeDrop : undefined}
                 onSelectPickupGroup={isActive ? handleSelectPickupGroup : undefined}
+                hideDropAction={demoMode}
                 onClose={onClose}
               />
             )}
@@ -653,6 +684,11 @@ interface PoiCardProps {
   onConfirmDrop?: () => void
   /** 픽업 목록의 배지 종류(그룹) 행을 골랐을 때 — 20260908_0223. */
   onSelectPickupGroup?: (group: PickupGroup) => void
+  /**
+   * true면 "여기에 드랍" 버튼을 렌더하지 않는다(티켓 20260927_2126, `demoMode` 전용).
+   * 존재하지 않는 데모 POI id로 실제 `/api/drops` POST가 나가는 사고를 막는다.
+   */
+  hideDropAction?: boolean
   onClose: () => void
 }
 
@@ -671,6 +707,7 @@ function PoiCard({
   onCancelPending,
   onConfirmDrop,
   onSelectPickupGroup,
+  hideDropAction = false,
   onClose,
 }: PoiCardProps) {
   return (
@@ -799,7 +836,7 @@ function PoiCard({
               style={{ padding: 0 }}
             />
           )}
-          {isActive && (
+          {isActive && !hideDropAction && (
             <Button fullWidth surface="main" onClick={onOpenInventory}>
               {d.drops.dropHereButton}
             </Button>

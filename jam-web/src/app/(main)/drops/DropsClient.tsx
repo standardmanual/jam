@@ -10,6 +10,7 @@ import type { PoiBadgeMarker, PoiBadgeClusterMarker, MapViewport, MapViewHandle 
 import type { NearbyPoi } from '@/types/drops'
 import { d, t } from '@/lib/i18n'
 import { DROP_RADIUS_METERS } from '@/lib/poi/proximity'
+import QuestPickupScene from './QuestPickupScene'
 
 const MapView = dynamic(() => import('@/components/map/MapView'), { ssr: false })
 
@@ -41,7 +42,17 @@ export interface DropsFocusPoi {
   longitude: number
 }
 
-export default function DropsClient({ focusPoi = null }: { focusPoi?: DropsFocusPoi | null }) {
+interface DropsClientProps {
+  focusPoi?: DropsFocusPoi | null
+  /**
+   * 온보딩 퀘스트 `pickup` 차례 표시(티켓 20260927_2126, 상위 20260927_2123 T3). `'pickup'`이면
+   * 실제 지도 대신 정적 연출 씬(`QuestPickupScene`)을 보여주고 geolocation 조회도 하지
+   * 않는다. 그 외(퀘스트 미대상·다른 단계 등)는 기존 실제 지도 화면 그대로다(결정 22).
+   */
+  questStep?: 'pickup' | null
+}
+
+export default function DropsClient({ focusPoi = null, questStep = null }: DropsClientProps) {
   const { toast } = useToast()
 
   const [locError, setLocError] = useState<string | null>(null)
@@ -76,6 +87,10 @@ export default function DropsClient({ focusPoi = null }: { focusPoi?: DropsFocus
 
   // 위치 획득 (실시간 갱신)
   useEffect(() => {
+    // 티켓 20260927_2126: pickup 차례는 가상 지도라 실제 위치가 필요 없다. 위치 권한
+    // 프롬프트 자체를 띄우지 않도록 조회를 아예 하지 않는다(거부해도 문제없음이 아니라
+    // 애초에 요청 자체가 없어야 한다는 결정 4 근거를 조회 생략으로 만족).
+    if (questStep === 'pickup') return
     if (!navigator.geolocation) {
       // effect 본문에서 setState를 동기 호출하지 않도록 마이크로태스크로 지연.
       // 타이밍상 체감 차이는 없음(같은 틱 내, 페인트 이전에 실행) —
@@ -115,7 +130,7 @@ export default function DropsClient({ focusPoi = null }: { focusPoi?: DropsFocus
     return () => {
       navigator.geolocation.clearWatch(watchId)
     }
-  }, [])
+  }, [questStep])
 
   // 근처 POI 로드
   // ADR 0001(서버-클라이언트 단일 진실 소스, 티켓 20260915_2241): 서버가 완성한 에러 문구를
@@ -197,6 +212,19 @@ export default function DropsClient({ focusPoi = null }: { focusPoi?: DropsFocus
   }, [])
 
   // ===== 렌더 =====
+
+  // 티켓 20260927_2126: pickup 차례는 실제 지도 대신 정적 연출 씬을 보여준다. 아래
+  // locError/userLat===null 분기보다 먼저 걸려야 한다 — geolocation을 애초에 조회하지
+  // 않으므로(위 effect 가드) userLat이 영원히 null로 남아 그 분기에 걸리면 로딩이
+  // 끝나지 않는다.
+  if (questStep === 'pickup') {
+    return (
+      <div className="fixed inset-0 bg-surface overflow-hidden" style={{ maxWidth: 430, margin: '0 auto' }}>
+        <TopNav logo />
+        <QuestPickupScene />
+      </div>
+    )
+  }
 
   if (locError) {
     return (
