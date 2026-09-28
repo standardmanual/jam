@@ -161,7 +161,10 @@ tags: [워크플로]
    다시 돌리지 않기 위함이다.
 3. **정리**: `scripts/workspace-setup.sh cleanup`이 staging에 머지됐고 미커밋 변경이 없는
    워크트리와, 연결 워크트리가 없는 `worktree-wf_*`·staging에 병합된 `claude/jamwork-*` 로컬
-   브랜치를 제거한다(아래 「알려진 빈틈」 참고).
+   브랜치를 제거한다(아래 「알려진 빈틈」 참고). 세션 시작 훅에서 **백그라운드(`async`)로** 돌고
+   출력을 세션에 싣지 않는다 — `git fetch`가 최악 19초 걸려 세션 시작을 막았고, 제거 로그가 매
+   세션 컨텍스트를 차지했다(티켓 20260928_2339). 결과는 `scripts/workspace-setup.sh cleanup`을
+   직접 실행해 확인한다.
 
 ---
 

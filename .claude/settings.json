@@ -79,7 +79,8 @@
           },
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/workspace-setup.sh\" cleanup 2>/dev/null | grep -E \"^제거\" || true"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/workspace-setup.sh\" cleanup >/dev/null 2>&1 || true",
+            "async": true
           },
           {
             "type": "command",
