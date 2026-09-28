@@ -220,7 +220,7 @@ export const ko = {
   onboardingQuest: {
     chipLabel: '첫 퀘스트',
     startButton: '시작하기',
-    continueButton: '이어 하기',
+    continueButton: '다음 단계',
     /** 단계 키 → 타이틀/설명. `OnboardingQuestStepKey`와 순서·개수가 같다. */
     steps: {
       sync: {

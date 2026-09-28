@@ -73,7 +73,7 @@ export default function OnboardingSyncButton({ appearance = 'nav' }: OnboardingS
       <Button
         variant={appearance === 'card' ? 'primary' : 'outline'}
         surface="sub"
-        size={appearance === 'card' ? 'sm' : 'xs'}
+        size="xs"
         style={appearance === 'card' ? undefined : { backgroundColor: 'var(--color-primary)', color: 'var(--color-base-white)' }}
         onClick={handleSync}
         disabled={loading}

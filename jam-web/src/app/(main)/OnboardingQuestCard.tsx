@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { Card } from '@ds/components/cards/Card'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
-import { HourglassIcon } from '@/components/ui/icons'
+import { ChevronRightIcon, HourglassIcon } from '@/components/ui/icons'
 import Button from '@/components/ui/Button'
 import SyncButton from '@/components/SyncButton'
 import { d } from '@/lib/i18n'
@@ -28,7 +28,7 @@ import QuestStartTracker from './QuestStartTracker'
  * 그대로 재사용한다: 화면 이동은 `router.push`(TopNav.tsx의 `/voc` 이동과 동일), Strava
  * 연동 이동은 `window.location.href = '/api/strava/auth'`(TopNav.tsx와 동일 코드).
  *
- * 별도 퀘스트 화면(N2)이 삭제되면서 [이어 하기]는 N1(`screen-gate.ts`)의 단계→화면
+ * 별도 퀘스트 화면(N2)이 삭제되면서 [다음 단계]는 N1(`screen-gate.ts`)의 단계→화면
  * 지도(`STEP_SCREEN_MAP`)를 따라 실제 화면으로 이동한다. 화면→경로 1단계 매핑만 여기서
  * 새로 둔다 — 단계→화면 지도를 두 번째로 정의하지 않는다.
  */
@@ -122,10 +122,11 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
             <Button
               variant="primary"
               surface="sub"
-              size="sm"
+              size="xs"
               onClick={() => router.push(SCREEN_PATH_MAP[screen])}
             >
-              {ctaLabel}
+              <span>{ctaLabel}</span>
+              <ChevronRightIcon className="w-4 h-4" />
             </Button>
           </div>
         </Card>
@@ -157,7 +158,7 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
           <Button
             variant="primary"
             surface="sub"
-            size="sm"
+            size="xs"
             onClick={() => {
               window.location.href = '/api/strava/auth'
             }}
