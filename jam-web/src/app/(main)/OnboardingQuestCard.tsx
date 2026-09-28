@@ -1,20 +1,32 @@
-import Link from 'next/link'
+'use client'
+
+import { useRouter } from 'next/navigation'
 import { Card } from '@ds/components/cards/Card'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
-import { ChevronRightIcon, HourglassIcon } from '@/components/ui/icons'
+import { HourglassIcon } from '@/components/ui/icons'
+import Button from '@/components/ui/Button'
+import SyncButton from '@/components/SyncButton'
 import { d } from '@/lib/i18n'
-import { ONBOARDING_QUEST_STEPS } from '@/lib/onboarding-quest/config'
-import { STEP_SCREEN_MAP, type OnboardingQuestScreen } from '@/lib/onboarding-quest/screen-gate'
+import { ONBOARDING_QUEST_STEPS, STEP_SCREEN_MAP, type OnboardingQuestScreen } from '@/lib/onboarding-quest/config'
 import type { OnboardingQuestCardState } from '@/lib/onboarding-quest/status'
 import OnboardingQuestSkipSheet from './OnboardingQuestSkipSheet'
+import OnboardingSyncButton from './OnboardingSyncButton'
 import QuestStartTracker from './QuestStartTracker'
 
 /**
- * 온보딩 퀘스트 홈 카드 (티켓 20260927_2133, 상위 20260927_2123 T1b · 경로 변경 20260928_0136).
+ * 온보딩 퀘스트 홈 카드 (티켓 20260927_2133, 상위 20260927_2123 T1b · 경로 변경 20260928_0136 ·
+ * 보상 문구 제거·CTA 버튼화 20260928_1537).
  *
  * 채원 사전 판정 — 재사용. 신규 컴포넌트·신규 토큰 없이 Card(tone="inverse")·ProgressBar·
- * icons.tsx만으로 조립한다. 칩 마크업은 TodayStatusStrip의 CellLabel·TodayCardStack의
- * TemplateChip과 같은 인라인 클래스를 세 번째로 복제한다 — 공용화는 별도 티켓(승격 후보).
+ * icons.tsx·서비스 Button만으로 조립한다. 칩 마크업은 TodayStatusStrip의 CellLabel·
+ * TodayCardStack의 TemplateChip과 같은 인라인 클래스를 세 번째로 복제한다 — 공용화는 별도
+ * 티켓(승격 후보).
+ *
+ * ②·③ 상태는 카드 전체가 더 이상 `<Link>`가 아니다 — CTA 버튼만 인터랙티브다. `<a>` 안에
+ * `<button>`을 두는 중첩 인터랙티브 요소를 피하기 위한 결정(채원 사전 판정, MissionCard와
+ * 같은 "Card는 비클릭, Button만 액션" 패턴). onClick은 TopNav.tsx가 이미 쓰는 두 패턴을
+ * 그대로 재사용한다: 화면 이동은 `router.push`(TopNav.tsx의 `/voc` 이동과 동일), Strava
+ * 연동 이동은 `window.location.href = '/api/strava/auth'`(TopNav.tsx와 동일 코드).
  *
  * 별도 퀘스트 화면(N2)이 삭제되면서 [이어 하기]는 N1(`screen-gate.ts`)의 단계→화면
  * 지도(`STEP_SCREEN_MAP`)를 따라 실제 화면으로 이동한다. 화면→경로 1단계 매핑만 여기서
@@ -29,12 +41,16 @@ const SCREEN_PATH_MAP: Record<OnboardingQuestScreen, string> = {
 }
 
 const CARD_CLASS = 'flex flex-col gap-[var(--spacing-16)]'
+// CTA 줄 — flex-col 카드의 기본 stretch가 버튼을 카드 폭으로 늘리지 않도록 가로 줄로 감싼다
+const CTA_ROW_CLASS = 'flex'
 const CHIP_CLASS =
   'self-start inline-flex items-center text-[length:var(--text-caption)] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text'
+const CHIP_ROW_CLASS = 'flex items-center justify-between'
+// ProgressBar.jsx의 fraction 라벨 인라인 스타일(fontSize: var(--text-small); fontWeight:700;
+// color: var(--color-primary))을 그대로 복제한 클래스 — 새 토큰이 아니라 배치만 칩 줄로 옮긴다.
+const PROGRESS_LABEL_CLASS = 'text-[length:var(--text-small)] font-bold text-primary [font-variant-numeric:tabular-nums]'
 const TITLE_CLASS = 'text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold break-words [overflow-wrap:anywhere]'
 const DESC_CLASS = 'text-[length:var(--text-small)] text-text-secondary break-words [overflow-wrap:anywhere]'
-const CTA_CLASS = 'flex items-center gap-[var(--spacing-4)] text-[length:var(--text-body-sm)] font-bold text-primary'
-const LINK_CLASS = 'block active:scale-[0.98] transition-transform duration-100'
 
 function Chip() {
   return <span className={CHIP_CLASS}>{d.onboardingQuest.chipLabel}</span>
@@ -42,9 +58,13 @@ function Chip() {
 
 interface Props {
   state: OnboardingQuestCardState
+  /** 첫 활동 대기 카드(④)의 실제 Strava 동기화 버튼(`SyncButton`)에 넘길 프로필 링크 값 */
+  username?: string | null
 }
 
-export default function OnboardingQuestCard({ state }: Props) {
+export default function OnboardingQuestCard({ state, username = null }: Props) {
+  const router = useRouter()
+
   if (!state) return null
 
   if (state.kind === 'in_progress') {
@@ -53,18 +73,22 @@ export default function OnboardingQuestCard({ state }: Props) {
 
     const body = (
       <>
-        <Chip />
+        <div className={CHIP_ROW_CLASS}>
+          <Chip />
+          <span className={PROGRESS_LABEL_CLASS}>
+            {state.done}/{state.total}
+          </span>
+        </div>
+        <ProgressBar current={state.done} total={state.total} labelType="none" />
         <div className="flex flex-col gap-[var(--spacing-8)]">
           <p className={TITLE_CLASS}>{step.title}</p>
           <p className={DESC_CLASS}>{step.description}</p>
         </div>
-        <ProgressBar current={state.done} total={state.total} labelType="fraction" labelPosition="top" />
-        <p className={DESC_CLASS}>{d.onboardingQuest.rewardHint}</p>
       </>
     )
 
-    // 건너뛰기 진입점(티켓 20260927_2131 T8, 채원 사전 판정) — Link/Card 바깥의 형제
-    // 요소로 뺀다. in_progress 모든 단계(sync 포함)에서 보이고, awaiting_sync에는 없다.
+    // 건너뛰기 진입점(티켓 20260927_2131 T8, 채원 사전 판정) — Card 바깥의 형제 요소로
+    // 뺀다. in_progress 모든 단계(sync 포함)에서 보이고, awaiting_sync에는 없다.
     // GA4 onboarding_quest_skip 이벤트에 실릴 단계 키(nextStep)를 함께 넘긴다(티켓 20260927_2132).
     const skipTrigger = <OnboardingQuestSkipSheet step={state.nextStep} />
 
@@ -72,15 +96,17 @@ export default function OnboardingQuestCard({ state }: Props) {
     // (사용자 결정 2, 티켓 20260927_2132). nextStep==='sync'일 때만 done===0이 될 수 있다.
     const startTracker = state.done === 0 && !state.preview ? <QuestStartTracker /> : null
 
-    // sync 차례: 동기화 버튼은 이미 같은 화면(TopNav) 위에 있어 카드를 눌러도 이동할 곳이
-    // 없다. 링크 없는 안내 카드로 위치만 알린다(결정 20, 채원 사전 판정 B).
+    // sync 차례: 카드 CTA가 상단 바 연출 동기화 버튼과 똑같이 동작한다(결정 3-①,
+    // 2026-09-28). 표시 방식만 다른 같은 컴포넌트를 재사용한다.
     if (state.nextStep === 'sync') {
       return (
         <div className="flex flex-col gap-[var(--spacing-8)]">
           {startTracker}
           <Card tone="inverse" className={CARD_CLASS}>
             {body}
-            <p className={DESC_CLASS}>{d.onboardingQuest.steps.sync.locationHint}</p>
+            <div className={CTA_ROW_CLASS}>
+              <OnboardingSyncButton appearance="card" />
+            </div>
           </Card>
           {skipTrigger}
         </div>
@@ -90,15 +116,19 @@ export default function OnboardingQuestCard({ state }: Props) {
     const screen = STEP_SCREEN_MAP[state.nextStep]
     return (
       <div className="flex flex-col gap-[var(--spacing-8)]">
-        <Link href={SCREEN_PATH_MAP[screen]} className={LINK_CLASS}>
-          <Card tone="inverse" className={CARD_CLASS}>
-            {body}
-            <div className={CTA_CLASS}>
-              <span>{ctaLabel}</span>
-              <ChevronRightIcon className="w-4 h-4" />
-            </div>
-          </Card>
-        </Link>
+        <Card tone="inverse" className={CARD_CLASS}>
+          {body}
+          <div className={CTA_ROW_CLASS}>
+            <Button
+              variant="primary"
+              surface="sub"
+              size="sm"
+              onClick={() => router.push(SCREEN_PATH_MAP[screen])}
+            >
+              {ctaLabel}
+            </Button>
+          </div>
+        </Card>
         {skipTrigger}
       </div>
     )
@@ -107,29 +137,39 @@ export default function OnboardingQuestCard({ state }: Props) {
   // kind === 'awaiting_sync'
   if (!state.stravaConnected) {
     return (
-      <Link href="/api/strava/auth" className={LINK_CLASS}>
-        <Card tone="inverse" className={CARD_CLASS}>
+      <Card tone="inverse" className={CARD_CLASS}>
+        <div className={CHIP_ROW_CLASS}>
           <Chip />
-          <ProgressBar
-            current={ONBOARDING_QUEST_STEPS.length}
-            total={ONBOARDING_QUEST_STEPS.length}
-            labelType="fraction"
-            labelPosition="top"
-          />
-          <div className="flex flex-col gap-[var(--spacing-8)]">
-            <p className={TITLE_CLASS}>{d.onboardingQuest.lastStep.title}</p>
-            <p className={DESC_CLASS}>{d.onboardingQuest.lastStep.description}</p>
-          </div>
-          <div className={CTA_CLASS}>
-            <span>{d.onboardingQuest.lastStep.cta}</span>
-            <ChevronRightIcon className="w-4 h-4" />
-          </div>
-        </Card>
-      </Link>
+          <span className={PROGRESS_LABEL_CLASS}>
+            {ONBOARDING_QUEST_STEPS.length}/{ONBOARDING_QUEST_STEPS.length}
+          </span>
+        </div>
+        <ProgressBar
+          current={ONBOARDING_QUEST_STEPS.length}
+          total={ONBOARDING_QUEST_STEPS.length}
+          labelType="none"
+        />
+        <div className="flex flex-col gap-[var(--spacing-8)]">
+          <p className={TITLE_CLASS}>{d.onboardingQuest.lastStep.title}</p>
+          <p className={DESC_CLASS}>{d.onboardingQuest.lastStep.description}</p>
+        </div>
+        <div className={CTA_ROW_CLASS}>
+          <Button
+            variant="primary"
+            surface="sub"
+            size="sm"
+            onClick={() => {
+              window.location.href = '/api/strava/auth'
+            }}
+          >
+            {d.onboardingQuest.lastStep.cta}
+          </Button>
+        </div>
+      </Card>
     )
   }
 
-  // Strava 동기화됨 · 첫 활동 대기 — 비클릭 카드
+  // Strava 동기화됨 · 첫 활동 대기 — 카드 자체는 비클릭, 실 동기화 버튼만 액션이다
   const copy = state.skipped ? d.onboardingQuest.awaitingActivitySkipped : d.onboardingQuest.awaitingActivity
   return (
     <Card tone="inverse" className={CARD_CLASS}>
@@ -142,6 +182,9 @@ export default function OnboardingQuestCard({ state }: Props) {
           <p className={TITLE_CLASS}>{copy.title}</p>
           <p className={DESC_CLASS}>{copy.description}</p>
         </div>
+      </div>
+      <div className={CTA_ROW_CLASS}>
+        <SyncButton username={username} appearance="card" />
       </div>
     </Card>
   )

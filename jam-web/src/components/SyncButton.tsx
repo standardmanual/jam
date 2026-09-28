@@ -30,8 +30,18 @@ interface SyncResponse {
  * 20260824_010: 홈 화면 카드 전용이었던 컴포넌트를 공용 위치(`src/components`)로 옮겨
  * TopNav 중앙 슬롯(모든 페이지 공통)에서도 재사용한다. 동작(POST /api/strava/sync →
  * 배지 캐러셀 또는 완료 토스트)은 변경 없음 — 호출 위치만 늘었다.
+ *
+ * `appearance`(티켓 20260928_1537, 채원 사전 판정): 'nav'(기본)는 TopNav 중앙 슬롯 모양
+ * 그대로. 'card'는 온보딩 퀘스트 홈 카드(④ 첫 활동 대기) CTA 모양 — variant/surface/size만
+ * 바뀌고 동작(POST /api/strava/sync → 배지 연출/완료 토스트)은 완전히 같다.
  */
-export default function SyncButton({ username }: { username: string | null }) {
+export default function SyncButton({
+  username,
+  appearance = 'nav',
+}: {
+  username: string | null
+  appearance?: 'nav' | 'card'
+}) {
   const [loading, setLoading] = useState(false)
   const [revealOpen, setRevealOpen] = useState(false)
   const [earnedBadges, setEarnedBadges] = useState<RevealBadge[]>([])
@@ -97,10 +107,10 @@ export default function SyncButton({ username }: { username: string | null }) {
   return (
     <>
       <Button
-        variant="outline"
+        variant={appearance === 'card' ? 'primary' : 'outline'}
         surface="sub"
-        size="xs"
-        style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-base-white)' }}
+        size={appearance === 'card' ? 'sm' : 'xs'}
+        style={appearance === 'card' ? undefined : { backgroundColor: 'var(--color-primary)', color: 'var(--color-base-white)' }}
         onClick={handleSync}
         disabled={loading}
         loading={showLoading}

@@ -97,7 +97,7 @@ export default async function HomePage() {
       </div>
 
       {/* 온보딩 퀘스트 홈 카드 (티켓 20260927_2133) — 대상 유저에게만 렌더, 그 외엔 null */}
-      <OnboardingQuestCard state={onboardingQuestCard} />
+      <OnboardingQuestCard state={onboardingQuestCard} username={userProfile?.username ?? null} />
 
       {/* "오늘의 현황" 스트립 (신규) — 좌: 내 진행도 / 우: 친구 활동. 큐레이션 없음(today_cards
           CMS와 역할 분리, 완료 기록 참고). */}
