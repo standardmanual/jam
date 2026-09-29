@@ -17,3 +17,24 @@
 ALTER TABLE public.users
   DROP COLUMN IF EXISTS region,
   DROP COLUMN IF EXISTS activity_types;
+
+-- 실행 기록: 2026-09-29 KST, 티켓 20260929_1326에서 사용자 승인 후 카리나가 Supabase MCP로 실행.
+-- 실행 전 확인: 두 컬럼에 의존하는 뷰·함수·RLS 정책 없음, 저장소 참조 코드 없음(users 기준).
+-- 실행 직전 스냅샷(전체 8명 중 기본값이 아닌 4명, 나머지 4명은 region='' · activity_types='{}'):
+--   00000000-0000-0000-0000-000000000002 | 서울       | {cycling,running}
+--   00000000-0000-0000-0000-000000000003 | 부산       | {hiking,running,walking}
+--   00000000-0000-0000-0000-000000000004 | 제주       | {cycling,hiking}
+--   3649ed39-2be2-402e-82ae-41e0cd328105 | 서울특별시 | {running,cycling,walking,hiking}
+--
+-- 되돌림 SQL(001 정의 복원 + 스냅샷 값 복원):
+--   ALTER TABLE public.users
+--     ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT '',
+--     ADD COLUMN IF NOT EXISTS activity_types TEXT[] NOT NULL DEFAULT '{}';
+--   UPDATE public.users SET region = v.region, activity_types = v.activity_types
+--   FROM (VALUES
+--     ('00000000-0000-0000-0000-000000000002'::uuid, '서울', ARRAY['cycling','running']),
+--     ('00000000-0000-0000-0000-000000000003'::uuid, '부산', ARRAY['hiking','running','walking']),
+--     ('00000000-0000-0000-0000-000000000004'::uuid, '제주', ARRAY['cycling','hiking']),
+--     ('3649ed39-2be2-402e-82ae-41e0cd328105'::uuid, '서울특별시', ARRAY['running','cycling','walking','hiking'])
+--   ) AS v(id, region, activity_types)
+--   WHERE public.users.id = v.id;

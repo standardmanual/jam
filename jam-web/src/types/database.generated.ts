@@ -2729,7 +2729,6 @@ export type Database = {
       }
       users: {
         Row: {
-          activity_types: string[]
           avatar_url: string | null
           created_at: string
           display_name: string | null
@@ -2744,13 +2743,11 @@ export type Database = {
           last_location_lng: number | null
           notifications_seen_at: string | null
           onboarding_completed_at: string | null
-          region: string
           tribe_id: string | null
           updated_at: string
           username: string | null
         }
         Insert: {
-          activity_types?: string[]
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -2765,13 +2762,11 @@ export type Database = {
           last_location_lng?: number | null
           notifications_seen_at?: string | null
           onboarding_completed_at?: string | null
-          region?: string
           tribe_id?: string | null
           updated_at?: string
           username?: string | null
         }
         Update: {
-          activity_types?: string[]
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -2786,7 +2781,6 @@ export type Database = {
           last_location_lng?: number | null
           notifications_seen_at?: string | null
           onboarding_completed_at?: string | null
-          region?: string
           tribe_id?: string | null
           updated_at?: string
           username?: string | null
