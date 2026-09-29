@@ -117,7 +117,9 @@ export async function renderCardPng(args) {
     if (layer.type === 'image' && !imageAssets[layer.assetUrl]) {
       imageAssets[layer.assetUrl] = applied.includes(layerKeys[index])
         ? await serverImageLoader(await loadLayerImage(layer.assetUrl))
-        : await serverImageLoader({ url: layer.assetUrl })
+        : await serverImageLoader({ url: layer.assetUrl }).catch((e) => {
+            throw new Error(`프리셋 이미지 레이어 원본을 불러오지 못했어요(${e instanceof Error ? e.message : String(e)}): ${layer.assetUrl} — 예약 실행 환경이면 이 호스트가 네트워크 허용 목록에 있는지 확인해 주세요`)
+          })
     }
   }
 
