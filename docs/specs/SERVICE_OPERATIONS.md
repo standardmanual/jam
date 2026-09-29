@@ -1040,7 +1040,7 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | GET | `/api/strava/callback` | Strava OAuth 콜백 (토큰 저장 + 첫 동기화) |
 | POST | `/api/strava/sync` | 수동 Strava 동기화 |
 | GET, PATCH | `/api/profile` | 프로필 조회/수정 |
-| POST | `/api/profile/avatar` | 아바타 업로드 |
+| POST | `/api/profile/avatar` | 아바타 업로드(서버에서 EXIF 제거·방향 적용 후 저장) |
 | GET | `/api/username/check` | 유저네임 중복 확인 |
 | POST | `/api/onboarding/complete` | 온보딩 완료 처리 |
 | POST | `/api/follows` | 팔로우 |

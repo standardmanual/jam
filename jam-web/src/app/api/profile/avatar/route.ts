@@ -4,14 +4,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
+import { sanitizeAvatarImage, type AvatarFormat } from '@/lib/avatarImage'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
-function extFromMime(mime: string): string {
-  if (mime === 'image/jpeg') return 'jpg'
-  if (mime === 'image/png') return 'png'
-  return 'webp'
+const FORMAT_META: Record<AvatarFormat, { ext: string; contentType: string }> = {
+  jpeg: { ext: 'jpg', contentType: 'image/jpeg' },
+  png: { ext: 'png', contentType: 'image/png' },
+  webp: { ext: 'webp', contentType: 'image/webp' },
 }
 
 export async function POST(request: NextRequest) {
@@ -44,14 +45,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: d.profileEdit.fileSizeError }, { status: 400 })
   }
 
-  const ext = extFromMime(file.type)
+  // EXIF(GPS 등) 제거·방향 적용 — 클라이언트 MIME이 아니라 실제 디코드 형식으로 저장한다 (티켓 20260929_1317)
+  let sanitized: Awaited<ReturnType<typeof sanitizeAvatarImage>>
+  try {
+    sanitized = await sanitizeAvatarImage(Buffer.from(await file.arrayBuffer()))
+  } catch {
+    return NextResponse.json({ error: d.profileEdit.fileTypeError }, { status: 400 })
+  }
+
+  const { ext, contentType } = FORMAT_META[sanitized.format]
   const path = `${user.id}/${Date.now()}.${ext}`
 
   const serviceClient = createServiceClient()
 
   const { error: uploadError } = await serviceClient.storage
     .from('avatars')
-    .upload(path, file, { contentType: file.type, upsert: true })
+    .upload(path, sanitized.buffer, { contentType, upsert: true })
 
   if (uploadError) {
     console.error('[profile/avatar] 업로드 오류:', uploadError.message)
