@@ -1062,6 +1062,9 @@ export interface TodayCardRow {
    *  20260925_1413 완성 후) 중 하나, NULL이면 기존 seed SQL 등록 카드(미상).
    *  라벨 매핑은 `lib/admin/contentImageSource.ts` 참조. */
   image_source: string | null
+  /** 게재용 설명문(마이그레이션 197, 티켓 20260929_1335). 40자 이하·줄바꿈 없음, 부제 아래에 표시한다.
+   *  editorial_article은 쓰지 않고 shortcut 레이아웃은 화면에 그리지 않는다. NULL·공백이면 표시 없음. */
+  description: string | null
 }
 
 // =========================================

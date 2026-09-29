@@ -62,28 +62,33 @@ describe('visibleTodaySections — 참조 컨텐츠가 없는 템플릿(drop_ale
 
 describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 TodayCardList.tsx의 fieldsFor와 동일)', () => {
   it('badge_spotlight는 배지·이동경로만 쓴다', () => {
-    expect(todayTemplateFields('badge_spotlight')).toEqual({ badges: true, targetHref: true })
+    expect(todayTemplateFields('badge_spotlight')).toEqual({ description: true, badges: true, targetHref: true })
   })
   it('progress_nudge는 배지·미션·이동경로를 쓴다', () => {
-    expect(todayTemplateFields('progress_nudge')).toEqual({ badges: true, mission: true, targetHref: true })
+    expect(todayTemplateFields('progress_nudge')).toEqual({ description: true, badges: true, mission: true, targetHref: true })
   })
   it('mission_spotlight는 미션·이동경로만 쓴다', () => {
-    expect(todayTemplateFields('mission_spotlight')).toEqual({ mission: true, targetHref: true })
+    expect(todayTemplateFields('mission_spotlight')).toEqual({ description: true, mission: true, targetHref: true })
   })
   it('itembook_milestone은 컬렉션·이동경로만 쓴다', () => {
-    expect(todayTemplateFields('itembook_milestone')).toEqual({ itemBook: true, targetHref: true })
+    expect(todayTemplateFields('itembook_milestone')).toEqual({ description: true, itemBook: true, targetHref: true })
   })
   it('location_trend은 배지·지역·이동경로를 쓴다', () => {
-    expect(todayTemplateFields('location_trend')).toEqual({ badges: true, region: true, targetHref: true })
+    expect(todayTemplateFields('location_trend')).toEqual({ description: true, badges: true, region: true, targetHref: true })
   })
-  it('drop_alert는 아무 참조 필드도 쓰지 않는다(경로 고정 /drops)', () => {
-    expect(todayTemplateFields('drop_alert')).toEqual({})
+  it('drop_alert는 참조 필드를 쓰지 않고 설명문만 쓴다(경로 고정 /drops)', () => {
+    expect(todayTemplateFields('drop_alert')).toEqual({ description: true })
   })
   it('editorial_article은 본문·미션·컬렉션·이동경로를 쓴다(카드 자체 경로는 /today/{id} 고정, 나머지는 기사 CTA 대상, 티켓 20260924_0107)', () => {
     expect(todayTemplateFields('editorial_article')).toEqual({ body: true, mission: true, itemBook: true, targetHref: true })
   })
   it('ranking_board는 랭킹모드·이동경로를 쓴다(티켓 20260911_1440)', () => {
-    expect(todayTemplateFields('ranking_board')).toEqual({ rankingMode: true, targetHref: true })
+    expect(todayTemplateFields('ranking_board')).toEqual({ description: true, rankingMode: true, targetHref: true })
+  })
+  it('설명문 칸(티켓 20260929_1335)은 editorial_article만 쓰지 않는다', () => {
+    for (const t of ALL_TEMPLATES) {
+      expect(Boolean(todayTemplateFields(t).description)).toBe(t !== 'editorial_article')
+    }
   })
   it('8개 템플릿 모두 매핑이 존재한다', () => {
     expect(Object.keys(TODAY_FIELDS_FOR).sort()).toEqual([...ALL_TEMPLATES].sort())
@@ -137,6 +142,7 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
     layoutType: 'large_thumbnail',
     title: '  핫한 성수동  ',
     subtitle: '',
+    description: '',
     coverImageUrl: '',
     badgeIds: ['b1', 'b2'],
     missionId: '',
@@ -158,6 +164,20 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
     expect(p.title).toBe('핫한 성수동')
     expect(p.subtitle).toBeNull()
     expect(p.cover_image_url).toBeNull()
+  })
+  it('설명문은 trim하고 빈 값·공백뿐이면 null로 저장한다(티켓 20260929_1335)', () => {
+    expect(buildTodayCardSavePayload({ ...baseValues, description: '  성수동 신규 배지  ' }).description).toBe('성수동 신규 배지')
+    expect(buildTodayCardSavePayload({ ...baseValues, description: '' }).description).toBeNull()
+    expect(buildTodayCardSavePayload({ ...baseValues, description: '   ' }).description).toBeNull()
+  })
+  it('설명문 — editorial_article은 값이 남아 있어도 null로 저장한다', () => {
+    const p = buildTodayCardSavePayload({ ...baseValues, templateType: 'editorial_article', description: '남은 값' })
+    expect(p.description).toBeNull()
+  })
+  it('설명문 — 기사 외 템플릿은 모두 저장한다', () => {
+    for (const t of ALL_TEMPLATES.filter((x) => x !== 'editorial_article')) {
+      expect(buildTodayCardSavePayload({ ...baseValues, templateType: t, description: '설명' }).description).toBe('설명')
+    }
   })
   it('시작·종료 일시는 ISO 문자열로, 정렬 순서는 숫자로 변환한다', () => {
     const p = buildTodayCardSavePayload(baseValues)
@@ -269,7 +289,7 @@ describe('resolveArticleCtaTarget — 에디토리얼 기사 본문 CTA 버튼 �
     region_label: null, body_markdown: null, target_href: null, exposure_tags: ['all'],
     starts_at: '2026-09-24T00:00:00Z', ends_at: '2026-12-30T14:59:59Z', sort_order: 0, is_active: true,
     created_at: '2026-09-24T00:00:00Z', created_by: null, ranking_mode_id: null, content_type_id: null,
-    image_source: null,
+    image_source: null, description: null,
   }
   it('우선순위 target_href → item_book_id(컬렉션) → mission_id(미션), 셋 다 없으면 null', () => {
     expect(resolveArticleCtaTarget({ ...base, target_href: '/promo', item_book_id: 'i1', mission_id: 'm1' }))

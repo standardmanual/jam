@@ -19,6 +19,8 @@ export interface TodayCardFormValues {
   layoutType: TodayCardLayoutType
   title: string
   subtitle: string
+  /** 게재용 설명문(티켓 20260929_1335) — editorial_article은 쓰지 않는다 */
+  description: string
   coverImageUrl: string
   badgeIds: string[]
   missionId: string
@@ -43,6 +45,7 @@ export interface TodayCardSavePayload {
   layout_type: TodayCardLayoutType
   title: string
   subtitle: string | null
+  description: string | null
   cover_image_url: string | null
   badge_ids: string[]
   mission_id: string | null
@@ -93,12 +96,21 @@ export const SUGGESTED_LAYOUT_FOR: Record<TodayCardTemplateType, TodayCardLayout
   ranking_board: 'ranking_list',
 }
 
+/**
+ * 게재용 설명문(`today_cards.description`) 길이 상한 — 공백 포함 40자, 줄바꿈 불가(티켓 20260929_1335).
+ * 어드민 폼(`maxLength`·글자 수 표시)과 등록 묶음(`registerHomeFeedBundle.mjs` 검증)이 이 상수 한 곳을 쓴다.
+ * 화면은 14px로 2줄까지 보여 준다(`TodayCardStack.tsx`).
+ */
+export const TODAY_DESCRIPTION_MAX_LENGTH = 40
+
 export interface TodayTemplateFields {
   badges?: boolean
   mission?: boolean
   itemBook?: boolean
   region?: boolean
   body?: boolean
+  /** 게재용 설명문 입력 — editorial_article만 쓰지 않는다(본문은 body_markdown, 티켓 20260929_1335) */
+  description?: boolean
   /** ranking_board 전용 — 연결할 랭킹모드 선택 입력(티켓 20260911_1440) */
   rankingMode?: boolean
   targetHref?: boolean
@@ -106,17 +118,17 @@ export interface TodayTemplateFields {
 
 /** 템플릿별 노출 필드 매트릭스 (Phase15_02_DATA_MODEL §2) */
 export const TODAY_FIELDS_FOR: Record<TodayCardTemplateType, TodayTemplateFields> = {
-  badge_spotlight: { badges: true, targetHref: true },
-  progress_nudge: { badges: true, mission: true, targetHref: true },
-  mission_spotlight: { mission: true, targetHref: true },
-  itembook_milestone: { itemBook: true, targetHref: true },
-  location_trend: { badges: true, region: true, targetHref: true },
-  drop_alert: {}, // target 고정 /drops
+  badge_spotlight: { description: true, badges: true, targetHref: true },
+  progress_nudge: { description: true, badges: true, mission: true, targetHref: true },
+  mission_spotlight: { description: true, mission: true, targetHref: true },
+  itembook_milestone: { description: true, itemBook: true, targetHref: true },
+  location_trend: { description: true, badges: true, region: true, targetHref: true },
+  drop_alert: { description: true }, // target 고정 /drops
   // 카드 자신의 이동 경로(피드에서 눌렀을 때)는 항상 /today/{id}로 고정(resolveTargetHref).
   // 여기서 입력하는 mission/itemBook/targetHref는 기사 본문 끝 CTA 버튼의 목적지로 쓰인다
   // (우선순위 target_href → 컬렉션 → 미션, 티켓 20260924_0107).
   editorial_article: { body: true, mission: true, itemBook: true, targetHref: true },
-  ranking_board: { rankingMode: true, targetHref: true },
+  ranking_board: { description: true, rankingMode: true, targetHref: true },
 }
 
 export function todayTemplateFields(templateType: TodayCardTemplateType): TodayTemplateFields {
@@ -297,6 +309,7 @@ export function buildTodayCardSavePayload(v: TodayCardFormValues): TodayCardSave
     layout_type: v.layoutType,
     title: v.title.trim(),
     subtitle: v.subtitle.trim() || null,
+    description: fields.description ? v.description.trim() || null : null,
     cover_image_url: v.coverImageUrl.trim() || null,
     badge_ids: fields.badges ? v.badgeIds : [],
     mission_id: fields.mission ? v.missionId || null : null,

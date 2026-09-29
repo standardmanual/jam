@@ -81,6 +81,7 @@ const FIELD_LABELS = {
   itemBook: '컬렉션',
   region: '지역',
   body: '본문',
+  description: '설명문',
   rankingMode: '랭킹모드',
   targetHref: '이동경로(target_href)',
 }
@@ -88,7 +89,7 @@ const FIELD_LABELS = {
 export function genTemplates(sections) {
   const { TODAY_TEMPLATE_OPTIONS, SUGGESTED_LAYOUT_FOR, TODAY_LAYOUT_OPTIONS, TODAY_FIELDS_FOR } = sections
   const layoutLabel = (value) => TODAY_LAYOUT_OPTIONS.find((o) => o.value === value)?.label ?? value
-  const rows = ['| 값 | 라벨 | 추천 레이아웃 | 참조 필드 |', '|---|---|---|---|']
+  const rows = ['| 값 | 라벨 | 추천 레이아웃 | 입력 필드 |', '|---|---|---|---|']
   for (const { value, label } of TODAY_TEMPLATE_OPTIONS) {
     const suggested = layoutLabel(SUGGESTED_LAYOUT_FOR[value])
     const used = Object.entries(TODAY_FIELDS_FOR[value] ?? {})

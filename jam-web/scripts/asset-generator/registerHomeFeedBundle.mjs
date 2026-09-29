@@ -28,6 +28,7 @@ import {
   SUGGESTED_LAYOUT_FOR,
   TODAY_CONTENT_TYPE_OPTIONS,
   TODAY_EXPOSURE_TAG_OPTIONS,
+  TODAY_DESCRIPTION_MAX_LENGTH,
   TODAY_FIELDS_FOR,
   TODAY_LAYOUT_OPTIONS,
   TODAY_TEMPLATE_OPTIONS,
@@ -42,6 +43,7 @@ export const CARD_REQUIRED_FIELDS = ['title', 'template_type', 'starts_at', 'end
 export const CARD_OPTIONAL_FIELDS = [
   'layout_type',
   'subtitle',
+  'description',
   'badge_ids',
   'mission_id',
   'item_book_id',
@@ -74,6 +76,7 @@ export const TEMPLATE_FIELD_KEY = {
   item_book_id: 'itemBook',
   region_label: 'region',
   body_markdown: 'body',
+  description: 'description',
   ranking_mode_id: 'rankingMode',
   target_href: 'targetHref',
 }
@@ -242,6 +245,12 @@ function validateCard(errors, card) {
   // 기본 정보
   checkOneLine(errors, 'card.title', card.title)
   checkOneLine(errors, 'card.subtitle', card.subtitle)
+  // 게재용 설명문(티켓 20260929_1335) — 한 줄, 공백 포함 TODAY_DESCRIPTION_MAX_LENGTH자 이하(폼 maxLength와 같은 상수).
+  // editorial_article이 쓰면 아래 템플릿 규칙(TEMPLATE_FIELD_KEY)이 거절한다.
+  checkOneLine(errors, 'card.description', card.description)
+  if (isNonEmptyString(card.description) && !hasControlOrLineBreak(card.description) && visibleLength(card.description.trim()) > TODAY_DESCRIPTION_MAX_LENGTH) {
+    errors.push(`card.description: 공백 포함 ${TODAY_DESCRIPTION_MAX_LENGTH}자 이하여야 해요(받은 값: ${visibleLength(card.description.trim())}자).`)
+  }
   checkOneLine(errors, 'card.region_label', card.region_label)
 
   // 노출 조건 태그 — 폼 collectMissing과 같이 1개 이상, 허용 목록 안의 값.
@@ -493,6 +502,7 @@ export function buildTodayCardInsertPayload(card, { id, coverImageUrl }) {
     layout_type: card.layout_type ?? SUGGESTED_LAYOUT_FOR[card.template_type],
     title: card.title.trim(),
     subtitle: card.subtitle?.trim() || null,
+    description: card.description?.trim() || null,
     cover_image_url: coverImageUrl,
     badge_ids: card.badge_ids ?? [],
     mission_id: card.mission_id ?? null,
