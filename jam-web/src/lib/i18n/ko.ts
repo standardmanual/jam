@@ -35,6 +35,7 @@ export const ko = {
     footerSlogan: 'JAM!은 삐끗할 때도 있습니다.\n하지만 곧 바로 잡습니다.',
     footerPhilosophy: 'Philosophy',
     footerPrivacy: '개인정보처리방침',
+    footerLocationTerms: '위치기반서비스 이용약관',
     footerCopyright: '© 2026 Standard Manual',
     /** 여러 화면이 공유하는 범용 로딩 스피너(`LoadingSpinner`)의 보조기술 라벨 (티켓 20260915_2237) */
     loading: '불러오는 중',

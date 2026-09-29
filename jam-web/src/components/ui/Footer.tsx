@@ -18,10 +18,12 @@ import { d } from '@/lib/i18n'
  *
  * `/privacy`도 같은 이유로 제외한다: '개인정보처리방침' 링크의 목적지 자신이다 (20260901_2217).
  *
+ * `/location-terms`도 같은 이유로 제외한다: '위치기반서비스 이용약관' 링크의 목적지 자신이다 (20260929_1359).
+ *
  * 홈(`/`)은 기존에 "상단 로고 중복" 우려로 제외돼 있었으나, 바로가기·최근배지 섹션 제거로
  * 화면이 짧아져 우려가 완화됐다고 판단해 제외 목록에서 뺐다(티켓 20260917_1203).
  */
-const FOOTER_EXCLUDED_PATHS = ['/drops', '/philosophy', '/privacy']
+const FOOTER_EXCLUDED_PATHS = ['/drops', '/philosophy', '/privacy', '/location-terms']
 
 export default function Footer() {
   const pathname = usePathname()
@@ -49,7 +51,8 @@ export default function Footer() {
           기준(24×24)을 넘는다. 실기기 확인 후 "슬로건처럼 줄바꿈 수준으로 붙여 달라"는
           피드백을 받아 min-h-11을 제거했다 — 44px 히트박스(AAA 권장치)를 버리고 텍스트 크기
           그대로(28px, AA 기준 충족)를 히트박스로 쓴다. gap-0과 결합해 두 링크가 슬로건의
-          줄바꿈과 같은 간격으로 붙는다. */}
+          줄바꿈과 같은 간격으로 붙는다.
+          20260929_1359: 위치기반서비스 이용약관 링크를 개인정보처리방침 아래에 같은 스타일로 추가. */}
       <div className="flex flex-col items-start gap-0">
         <Link
           href="/philosophy"
@@ -62,6 +65,12 @@ export default function Footer() {
           className="text-[15px] leading-[28px] font-normal text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerPrivacy}
+        </Link>
+        <Link
+          href="/location-terms"
+          className="text-[15px] leading-[28px] font-normal text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+        >
+          {d.common.footerLocationTerms}
         </Link>
       </div>
       {/* 20260909_2319: 로고 이미지 제거, 저작권 텍스트만 남긴다(Figma 사양). */}
