@@ -8,9 +8,13 @@
  * 파괴(소프트 삭제)하고 Expire 이벤트를 남겨야 한다 — 두 갈래(①expires_at 만료
  * ②연결 배지 소프트 삭제) 정리 로직과 원자적 개체 파괴를 expire_stale_poi_drops() RPC
  * 하나의 트랜잭션으로 처리한다(표준 불변식 참고 — 상태 변경과 같은 트랜잭션 내 이벤트 기록).
+ *
+ * 20260929_1327: 드랍 소각 뒤 보유기간(3개월)이 지난 abusing_logs 행도 함께 파기한다.
+ * 파기 실패는 드랍 소각 결과를 무효로 만들지 않는다(로그 + 응답 필드로만 알린다).
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
+import { purgeExpiredAbusingLogs } from '@/lib/abusing/purge-logs'
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -36,5 +40,15 @@ export async function GET(req: NextRequest) {
     console.info(`[poi-cleanup] 삭제된 배지 드랍 소각 — ${result.orphaned_by_deleted_badge}건`)
   }
 
-  return NextResponse.json({ expired: result.expired, orphanedByDeletedBadge: result.orphaned_by_deleted_badge })
+  const purge = await purgeExpiredAbusingLogs()
+  if (purge.deleted > 0) {
+    console.info(`[poi-cleanup] 보유기간 만료 부정 이용 탐지 기록 파기 — ${purge.deleted}건`)
+  }
+
+  return NextResponse.json({
+    expired: result.expired,
+    orphanedByDeletedBadge: result.orphaned_by_deleted_badge,
+    purgedAbusingLogs: purge.deleted,
+    ...(purge.error ? { abusingLogPurgeError: purge.error } : {}),
+  })
 }
