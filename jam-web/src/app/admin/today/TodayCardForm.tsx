@@ -46,6 +46,7 @@ import {
   TODAY_EXPOSURE_TAG_OPTIONS,
   TODAY_CONTENT_TYPE_OPTIONS,
   SUGGESTED_LAYOUT_FOR,
+  TODAY_DESCRIPTION_MAX_LENGTH,
   todayTemplateFields,
   visibleTodaySections,
   todaySectionTitle,
@@ -123,6 +124,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const [layoutType, setLayoutType] = useState<TodayCardLayoutType>(card?.layout_type ?? SUGGESTED_LAYOUT_FOR.badge_spotlight)
   const [title, setTitle] = useState(card?.title ?? '')
   const [subtitle, setSubtitle] = useState(card?.subtitle ?? '')
+  const [description, setDescription] = useState(card?.description ?? '')
   const [coverImageUrl, setCoverImageUrl] = useState(card?.cover_image_url ?? '')
   const [badgeIds, setBadgeIds] = useState<string[]>(card?.badge_ids ?? [])
   // 배지 id → 검색 결과 객체 캐시. badgeLabels(초기 참조 배지)로 시작해 새로 검색·선택한
@@ -238,6 +240,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         layoutType,
         title,
         subtitle,
+        description,
         coverImageUrl,
         badgeIds,
         missionId,
@@ -326,6 +329,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
     layout_type: layoutType,
     title: title.trim() || '(제목 미입력)',
     subtitle: subtitle.trim() || null,
+    description: fields.description ? description.trim() || null : null,
     cover_image_url: coverImageUrl.trim() || null,
     badge_ids: badgeIds,
     mission_id: missionId || null,
@@ -454,6 +458,26 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         <FieldLabel htmlFor="today-card-subtitle">부제</FieldLabel>
         <Input id="today-card-subtitle" value={subtitle} onChange={(e) => setSubtitle(e.target.value)} autoComplete="off" />
       </div>
+
+      {/* 게재용 설명문(티켓 20260929_1335) — 기사 템플릿은 본문(body_markdown)이 있어 이 칸을 숨기고 저장 시 비운다. */}
+      {fields.description && (
+        <div className="flex flex-col gap-1.5">
+          <FieldLabel htmlFor="today-card-description">설명문</FieldLabel>
+          <Input
+            id="today-card-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={TODAY_DESCRIPTION_MAX_LENGTH}
+            autoComplete="off"
+            aria-describedby="today-card-description-help"
+          />
+          <FieldMessage id="today-card-description-help">
+            {description.length}/{TODAY_DESCRIPTION_MAX_LENGTH}
+          </FieldMessage>
+          {layoutType === 'shortcut' && <FieldMessage>바로가기형은 화면에 보이지 않아요.</FieldMessage>}
+          <FieldMessage>기사로 바꾸면 설명문은 저장할 때 지워져요.</FieldMessage>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <FieldLabel htmlFor="today-card-cover">커버 이미지 URL</FieldLabel>

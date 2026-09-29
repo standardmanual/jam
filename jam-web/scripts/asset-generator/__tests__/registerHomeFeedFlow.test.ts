@@ -388,6 +388,32 @@ describe('runHomeFeedRegister — --dry-run', () => {
     expect(stub.events).toEqual([]);
   });
 
+  it('description이 있으면 요약의 카드 행에 그대로 보인다(insert 페이로드에 들어간다, 티켓 20260929_1335)', async () => {
+    editBundle((raw) => {
+      raw.card = { ...raw.card, template_type: 'drop_alert', body_markdown: undefined as unknown as string, description: '이번 주 드랍 소식' };
+    });
+    const { out, logs } = createOut();
+    const code = await runHomeFeedRegister({ args: registerArgs(['--dry-run']), supabase: null, convertToWebp: fakeWebp, randomUUID: fixedUuid, now: fixedNow, out });
+    expect(code).toBe(0);
+    expect(logs.join('\n')).toContain('- 설명문: 이번 주 드랍 소식');
+  });
+
+  it('description이 40자를 넘거나 줄바꿈이 있거나 기사 템플릿이면 종료 코드 1이다', async () => {
+    const cases: [string, (raw: Record<string, Record<string, unknown>>) => void, string][] = [
+      ['41자', (raw) => { raw.card = { ...raw.card, template_type: 'drop_alert', body_markdown: undefined as unknown as string, description: '가'.repeat(41) }; }, 'card.description: 공백 포함 40자 이하여야 해요'],
+      ['줄바꿈', (raw) => { raw.card = { ...raw.card, template_type: 'drop_alert', body_markdown: undefined as unknown as string, description: '첫 줄\n둘째 줄' }; }, 'card.description: 줄바꿈이나 제어 문자를 쓸 수 없어요'],
+      ['기사', (raw) => { raw.card.description = '기사에는 못 넣어요'; }, 'card.description: editorial_article 템플릿은 이 필드를 쓰지 않아요'],
+    ];
+    for (const [, mutate, expected] of cases) {
+      fs.copyFileSync(path.join(FIXTURE_DIR, 'bundle.json'), path.join(workDir, 'bundle.json'));
+      editBundle(mutate);
+      const { out, logs } = createOut();
+      const code = await runHomeFeedRegister({ args: registerArgs(['--dry-run']), supabase: null, convertToWebp: fakeWebp, randomUUID: fixedUuid, now: fixedNow, out });
+      expect(code).toBe(1);
+      expect(logs.join('\n')).toContain(expected);
+    }
+  });
+
   it('묶음 파일이 없으면 종료 코드 1이다', async () => {
     const { out, errors } = createOut();
     const code = await runHomeFeedRegister({

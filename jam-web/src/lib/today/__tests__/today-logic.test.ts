@@ -78,6 +78,7 @@ function makeCard(partial: Partial<TodayCardRow>): TodayCardRow {
     ranking_mode_id: null,
     content_type_id: null,
     image_source: null,
+    description: null,
     ...partial,
   }
 }

@@ -131,6 +131,7 @@ code:
 | `exposure_tags` | 필수 | 문자열 배열 | 1개 이상(항상 노출하려면 `["all"]`). `TODAY_EXPOSURE_TAG_OPTIONS`의 값만, 중복 없이 |
 | `layout_type` | 선택 | 문자열 | `large_thumbnail`·`badge_gallery`·`shortcut`·`banner`·`other`·`ranking_list` 중 하나(`TODAY_LAYOUT_OPTIONS`, DB CHECK). 없으면 폼이 템플릿을 고를 때 기본으로 고르는 추천값(`SUGGESTED_LAYOUT_FOR`). **`mission_spotlight`는 최종 레이아웃(입력값 또는 생략 시 추천값)이 항상 `large_thumbnail`이어야 한다**(2026-09-26 사용자 결정, `content-automation/PRD.md` §8 미션 카드 규칙 — 대표 이미지가 있는 미션 소개 카드는 커버 이미지가 필수다). `SUGGESTED_LAYOUT_FOR.mission_spotlight`도 `large_thumbnail`이다 |
 | `subtitle` | 선택 | 문자열 | 한 줄. 줄바꿈·제어 문자 거절. 없으면 null |
+| `description` | 선택 | 문자열 | 게재용 설명문. 한 줄(줄바꿈·제어 문자 거절), 앞뒤 공백을 자른 뒤 공백 포함 40자 이하(`TODAY_DESCRIPTION_MAX_LENGTH`, 어드민 폼 `maxLength`와 같은 상수). 공백뿐이면 거절. `editorial_article`은 쓸 수 없다(본문이 있다). 없으면 null. `--dry-run` 요약의 「설명문」 줄로 확인한다(티켓 20260929_1335) |
 | `badge_ids` | 선택 | UUID 배열 | 같은 id를 두 번 넣을 수 없다. 삭제되지 않은 배지가 실제로 있는지 DB를 읽어 확인한다. 없으면 `[]` |
 | `mission_id` | 선택 | UUID | `missions`에 있는지 DB를 읽어 확인한다 |
 | `item_book_id` | 선택 | UUID | `item_books`에 있는지 DB를 읽어 확인한다 |
@@ -196,6 +197,7 @@ code:
 | 세계관 내용이 있는데 검수 안 함 | `world_review.winter_reviewed: 세계관과 닿는 카드(world_related=true)는 윈터 검수를 거쳐야 해서 true여야 해요.` |
 | 허용값 밖 템플릿·노출 형태·컨텐츠 유형 | `card.template_type: badge_spotlight · … 중 하나여야 해요(받은 값: "weekly_recap").` |
 | 노출 태그 없음·허용 밖 태그 | `card.exposure_tags: 노출 조건 태그를 1개 이상 넣은 배열이어야 해요(항상 노출하려면 ["all"]).` · `card.exposure_tags: 허용하지 않는 태그예요 — "sunny". 허용 태그: …` |
+| 설명문이 40자를 넘음 | `card.description: 공백 포함 40자 이하여야 해요(받은 값: 41자).` (줄바꿈이면 `card.description: 줄바꿈이나 제어 문자를 쓸 수 없어요(한 줄로 적어 주세요).`, 기사면 `card.description: editorial_article 템플릿은 이 필드를 쓰지 않아요…`) |
 | 템플릿이 쓰지 않는 참조 | `card.mission_id: drop_alert 템플릿은 이 필드를 쓰지 않아요(어드민 폼도 저장할 때 비워요). 묶음에서 빼 주세요.` |
 | 필요한 참조 없음 | `card.mission_id: mission_spotlight 템플릿은 이 참조가 있어야 카드가 의미가 있어요.` |
 | mission_spotlight인데 최종 레이아웃이 large_thumbnail이 아님 | `card.layout_type: mission_spotlight 템플릿은 항상 large_thumbnail이어야 해요(대표 이미지로 미션을 소개하는 카드 규칙, content-automation/PRD.md §8. 받은 값: "shortcut").` |
@@ -300,7 +302,7 @@ node scripts/asset-generator/contrast.mjs --bg "#8a5a2e" --end "#3d2812"   # 흰
 ### `--dry-run`
 
 묶음을 검증하고 컨펌 자료를 한국어로 출력한다: 묶음(작성자·작성 시각 KST·컬러 근거), 세계관 검수(있음/없음·윈터 검수 여부·사유),
-카드(제목·부제·템플릿·노출 형태·컨텐츠 유형·기간·노출 태그·참조·본문 글자 수·이동 경로·정렬·활성 여부), 이미지(경로·크기·프리셋·시드·색·
+카드(제목·부제·템플릿·노출 형태·컨텐츠 유형·기간·노출 태그·참조·설명문·본문 글자 수·이동 경로·정렬·활성 여부), 이미지(경로·크기·프리셋·시드·색·
 텍스트·WebP 변환 결과), DB 읽기 검사, 등록 예정 내용, 되돌림 SQL 미리보기. 종료 코드는 통과 0, 실패 1이다.
 
 - **쓰기를 하지 않는다.** 업로드·insert·삭제·기록 파일 생성 없이 메모리에서 WebP 변환만 해 본다.

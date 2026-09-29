@@ -1870,6 +1870,7 @@ export type Database = {
           cover_image_url: string | null
           created_at: string
           created_by: string | null
+          description: string | null
           ends_at: string
           exposure_tags: string[]
           id: string
@@ -1894,6 +1895,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           created_by?: string | null
+          description?: string | null
           ends_at: string
           exposure_tags?: string[]
           id?: string
@@ -1918,6 +1920,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           created_by?: string | null
+          description?: string | null
           ends_at?: string
           exposure_tags?: string[]
           id?: string

@@ -160,16 +160,16 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 템플릿 값·라벨·추천 레이아웃·참조 필드(`TODAY_TEMPLATE_OPTIONS`·`SUGGESTED_LAYOUT_FOR`·`TODAY_FIELDS_FOR`):
 
 <!-- BEGIN generated: templates -->
-| 값 | 라벨 | 추천 레이아웃 | 참조 필드 |
+| 값 | 라벨 | 추천 레이아웃 | 입력 필드 |
 |---|---|---|---|
-| `badge_spotlight` | 배지 소개 (badge_spotlight) | 큰 썸네일형 — 커버 이미지 크게 | 배지·이동경로(target_href) |
-| `progress_nudge` | 진행 알림 (progress_nudge) | 바로가기형 — 이미지 없는 짧은 CTA | 배지·미션·이동경로(target_href) |
-| `mission_spotlight` | 미션 소개 (mission_spotlight) | 큰 썸네일형 — 커버 이미지 크게 | 미션·이동경로(target_href) |
-| `itembook_milestone` | 컬렉션 소식 (itembook_milestone) | 배너형 — 가로 띠 배너 | 컬렉션·이동경로(target_href) |
-| `location_trend` | 지역 트렌드 (location_trend) | 배지목록형 — 배지 갤러리/리스트 | 배지·지역·이동경로(target_href) |
-| `drop_alert` | 드랍 유도 (drop_alert) | 바로가기형 — 이미지 없는 짧은 CTA | 없음 |
+| `badge_spotlight` | 배지 소개 (badge_spotlight) | 큰 썸네일형 — 커버 이미지 크게 | 설명문·배지·이동경로(target_href) |
+| `progress_nudge` | 진행 알림 (progress_nudge) | 바로가기형 — 이미지 없는 짧은 CTA | 설명문·배지·미션·이동경로(target_href) |
+| `mission_spotlight` | 미션 소개 (mission_spotlight) | 큰 썸네일형 — 커버 이미지 크게 | 설명문·미션·이동경로(target_href) |
+| `itembook_milestone` | 컬렉션 소식 (itembook_milestone) | 배너형 — 가로 띠 배너 | 설명문·컬렉션·이동경로(target_href) |
+| `location_trend` | 지역 트렌드 (location_trend) | 배지목록형 — 배지 갤러리/리스트 | 설명문·배지·지역·이동경로(target_href) |
+| `drop_alert` | 드랍 유도 (drop_alert) | 바로가기형 — 이미지 없는 짧은 CTA | 설명문 |
 | `editorial_article` | 에디토리얼 기사 (editorial_article) | 큰 썸네일형 — 커버 이미지 크게 | 본문·미션·컬렉션·이동경로(target_href) |
-| `ranking_board` | 랭킹보드 (ranking_board) | 순위 리스트형 — 랭킹보드 목록(포디엄 없음) | 랭킹모드·이동경로(target_href) |
+| `ranking_board` | 랭킹보드 (ranking_board) | 순위 리스트형 — 랭킹보드 목록(포디엄 없음) | 설명문·랭킹모드·이동경로(target_href) |
 <!-- END generated: templates -->
 
 컨텐츠 유형 카탈로그(`TODAY_CONTENT_TYPE_OPTIONS`, PRD `content-automation/PRD.md` §6과 같은 값):
@@ -202,12 +202,14 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 
 | 레이아웃 | 커버 이미지 | 화면 |
 |---|---|---|
-| `large_thumbnail` | 쓴다 | 16:9 커버 + 템플릿 칩 + 제목·부제 + 「자세히 보기 →」(기사는 「기사 읽기 →」) |
+| `large_thumbnail` | 쓴다 | 16:9 커버 + 템플릿 칩 + 제목·부제·설명문 + 「자세히 보기 →」(기사는 「기사 읽기 →」) |
 | `banner` | 쓴다 | 가로 띠 배너 |
 | `badge_gallery` | 쓰지 않는다 | 연결된 배지를 가로로 나열 |
 | `shortcut` | 쓰지 않는다 | 이미지 없는 짧은 CTA |
 | `other` | 쓰지 않는다 | 기본형 |
 | `ranking_list` | 쓰지 않는다 | 순위 목록. 행마다 유저 프로필 링크라 카드 전체 링크가 없다 |
+
+**게재용 설명문(`description`)**: 부제 아래에 한 덩어리 문단으로 보이는 짧은 글이다(공백 포함 40자 이하, 줄바꿈 없음, 14px, 넘치면 2줄에서 말줄임). `large_thumbnail`·`badge_gallery`·`other`·`ranking_list`·`banner`에서 보이고(밝은 카드는 `text-inverse/60`, 배너는 `white/80`), `shortcut`은 한 줄 CTA 구조라 그리지 않는다. 배너에 커버가 없어 기타형으로 대체되면 그쪽 규칙을 따른다. 값이 없거나 공백뿐이면 아무것도 그리지 않아 이전과 화면이 같다. 부제가 없으면 제목 바로 아래에 붙는다. `editorial_article`은 본문(`body_markdown`)이 있어 쓰지 않는다: 어드민 폼은 이 템플릿에서 칸을 숨기고 저장할 때 비운다. 길이 상한은 어드민 폼과 등록 묶음이 같은 상수(`TODAY_DESCRIPTION_MAX_LENGTH`)를 쓴다(티켓 [20260929_1335](../../../tickets/p2-normal/20260929_1335_Feature_홈피드-카드에-게재용-설명문-칸-추가.md)).
 
 **커버 결정**: `cover_image_url`이 있으면 그 이미지를 그대로 쓴다. 없으면 첫 번째 배지 이미지를 커버로 올리고, 유저가 그 배지를 아직 갖지 않았으면 흑백으로 그린다. 둘 다 없거나 이미지를 불러오지 못하면 **커버 영역 자체를 그리지 않고** 템플릿 칩·제목·부제만 보인다(대체 이미지 없음, `SafeImage`가 빈 요소를 돌려준다). `mission_spotlight`는 배지를 쓰지 않으므로 커버를 넣지 않으면 글자만 있는 카드가 된다 — 그래서 운영 규칙은 미션 대표 이미지(`missions.image_url`)를 커버로 넣는다(content-automation PRD §8). 커버 주소는 어드민 자유 입력이라 호스트를 알 수 없으므로 `SafeImage`로 그려 잘못된 주소가 홈 전체를 깨뜨리지 않게 한다.
 
@@ -301,7 +303,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 
 | 테이블 | 쓰임 |
 |---|---|
-| `today_cards` | 카드 한 장 = 한 행. 제목·부제·템플릿·레이아웃·노출 태그·노출 기간·활성 여부·정렬·대상 필드(`badge_ids`·`mission_id`·`item_book_id`·`ranking_mode_id`·`region_label`·`target_href`)·기사 본문·커버·유형 ID·이미지 제작 경로(`image_source`) |
+| `today_cards` | 카드 한 장 = 한 행. 제목·부제·게재용 설명문(`description`)·템플릿·레이아웃·노출 태그·노출 기간·활성 여부·정렬·대상 필드(`badge_ids`·`mission_id`·`item_book_id`·`ranking_mode_id`·`region_label`·`target_href`)·기사 본문·커버·유형 ID·이미지 제작 경로(`image_source`) |
 | `today_card_events` | 노출·열람 기록(§9). 유저 식별자 없음 |
 | `external_input_daily` | 날씨·특일 하루 값(§4) |
 

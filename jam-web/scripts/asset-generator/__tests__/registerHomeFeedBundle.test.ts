@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { SUGGESTED_LAYOUT_FOR, TODAY_FIELDS_FOR } from '../../../src/lib/admin/today-sections';
+import { SUGGESTED_LAYOUT_FOR, TODAY_DESCRIPTION_MAX_LENGTH, TODAY_FIELDS_FOR } from '../../../src/lib/admin/today-sections';
 import {
   CONTENT_TYPE_IDS,
   EXPOSURE_TAGS,
@@ -430,6 +430,49 @@ describe('validateHomeFeedBundle — 이미지', () => {
   });
 });
 
+describe('validateHomeFeedBundle — 게재용 설명문(card.description, 티켓 20260929_1335)', () => {
+  const dropAlert = (raw: RawBundle, description: unknown) => {
+    raw.card = {
+      title: '드랍 알림',
+      template_type: 'drop_alert',
+      exposure_tags: ['all'],
+      starts_at: '2026-10-05T00:00:00+09:00',
+      ends_at: '2026-10-12T00:00:00+09:00',
+      description,
+    };
+  };
+
+  it('기사가 아닌 템플릿은 40자 이하 한 줄 설명문을 받는다', () => {
+    expect(errorsFor((raw) => dropAlert(raw, '가'.repeat(TODAY_DESCRIPTION_MAX_LENGTH)))).toEqual([]);
+  });
+
+  it('상한은 어드민 폼과 같은 상수(40)다', () => {
+    expect(TODAY_DESCRIPTION_MAX_LENGTH).toBe(40);
+  });
+
+  it('41자부터는 거절한다', () => {
+    const errors = errorsFor((raw) => dropAlert(raw, '가'.repeat(TODAY_DESCRIPTION_MAX_LENGTH + 1)));
+    expect(errors).toContain('card.description: 공백 포함 40자 이하여야 해요(받은 값: 41자).');
+  });
+
+  it('줄바꿈·제어 문자가 있으면 거절한다', () => {
+    expect(errorsFor((raw) => dropAlert(raw, '첫 줄\n둘째 줄'))).toContain(
+      'card.description: 줄바꿈이나 제어 문자를 쓸 수 없어요(한 줄로 적어 주세요).'
+    );
+  });
+
+  it('공백뿐인 설명문은 거절한다', () => {
+    expect(errorsFor((raw) => dropAlert(raw, '   '))).toContain('card.description: 비어 있지 않은 문자열이어야 해요.');
+  });
+
+  it('editorial_article은 설명문을 쓸 수 없다(본문이 있다)', () => {
+    const errors = errorsFor((raw) => {
+      raw.card.description = '기사에는 넣을 수 없어요';
+    });
+    expect(errors).toContain('card.description: editorial_article 템플릿은 이 필드를 쓰지 않아요(어드민 폼도 저장할 때 비워요). 묶음에서 빼 주세요.');
+  });
+});
+
 describe('buildTodayCardInsertPayload', () => {
   const ARGS = { id: 'card-id', coverImageUrl: 'https://cdn.test/images/today_cards/asset-generator/card-id.webp?v=1' };
 
@@ -471,6 +514,14 @@ describe('buildTodayCardInsertPayload', () => {
     expect(payload.body_markdown).toContain('\n\n');
   });
 
+  it('description을 trim해 insert 페이로드에 넣고, 없으면 null이다(티켓 20260929_1335)', () => {
+    const withText = payloadOf((raw) => {
+      raw.card = { ...raw.card, template_type: 'drop_alert', body_markdown: undefined, description: '  이번 주 드랍 소식  ' };
+    });
+    expect(withText.description).toBe('이번 주 드랍 소식');
+    expect(payloadOf().description).toBeNull();
+  });
+
   it('생략한 값은 기본값이다: 노출 형태는 템플릿 추천값, 정렬 0, 활성 true, 나머지 null·[]', () => {
     const payload = payloadOf((raw) => {
       raw.card = {
@@ -485,6 +536,7 @@ describe('buildTodayCardInsertPayload', () => {
       title: '드랍 알림',
       layout_type: SUGGESTED_LAYOUT_FOR.drop_alert,
       subtitle: null,
+      description: null,
       body_markdown: null,
       content_type_id: null,
       sort_order: 0,

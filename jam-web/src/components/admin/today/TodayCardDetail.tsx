@@ -171,6 +171,12 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
         <ReadOnlyItem label="부제" span={3}>
           {card.subtitle || <Empty />}
         </ReadOnlyItem>
+        {/* 게재용 설명문(티켓 20260929_1335) — 기사 템플릿은 쓰지 않아 행 자체를 숨긴다 */}
+        {fields.description && (
+          <ReadOnlyItem label="설명문" span={3}>
+            {card.description || <Empty />}
+          </ReadOnlyItem>
+        )}
         <ReadOnlyItem label="커버 이미지" span={3}>
           {/* 20260824_004: cover_image_url은 어드민 자유 입력이라 호스트를 알 수 없다.
               next/image에 그대로 넘기면 미등록 호스트에서 이 화면 전체가 500으로 죽는다

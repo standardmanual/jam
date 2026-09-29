@@ -64,6 +64,22 @@ function resolveCover(card: TodayCardWithHref): { src: string | null; dimmed: bo
   return { src: first.image_url, dimmed: !first.earned }
 }
 
+/**
+ * 게재용 설명문(티켓 20260929_1335) — 부제 아래 14px 한 덩어리 문단, 2줄까지 보이고 넘치면 말줄임.
+ * 값이 없거나 공백뿐이면 null이라 아무것도 그리지 않는다(이전과 DOM 동일). shortcut 레이아웃은
+ * truncate 한 줄 구조라 이 값을 쓰지 않는다. 간격은 부제가 있으면 mt-2, 없으면 제목 바로 아래 mt-1.
+ */
+function getDescription(card: TodayCardWithHref): string | null {
+  const text = card.description?.trim()
+  return text ? text : null
+}
+
+function descriptionMargin(card: TodayCardWithHref): string {
+  return card.subtitle ? 'mt-2' : 'mt-1'
+}
+
+const DESCRIPTION_TEXT = 'text-[length:var(--text-small)] leading-[var(--leading-small)] line-clamp-2 break-words'
+
 /** 큰 썸네일형 — 커버 이미지(없으면 첫 배지 이미지) 크게 + 제목/부제 */
 function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
   const { src: cover, dimmed } = resolveCover(card)
@@ -92,6 +108,9 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
         </div>
         <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{card.title}</h3>
         {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
+        {getDescription(card) && (
+          <p className={`${DESCRIPTION_TEXT} text-text-inverse/60 ${descriptionMargin(card)}`}>{getDescription(card)}</p>
+        )}
         <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-3">
           {card.template_type === 'editorial_article' ? d.today.cardReadArticle : d.today.cardReadMore} &rarr;
         </p>
@@ -114,6 +133,9 @@ function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
       </div>
       <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{card.title}</h3>
       {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
+      {getDescription(card) && (
+        <p className={`${DESCRIPTION_TEXT} text-text-inverse/60 ${descriptionMargin(card)}`}>{getDescription(card)}</p>
+      )}
 
       {card.resolved_badges.length > 0 && (
         <div className="flex gap-[var(--spacing-16)] mt-[var(--spacing-16)] overflow-x-auto pb-1">
@@ -191,6 +213,9 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
         </div>
         <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-white">{card.title}</h3>
         {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-white/80 mt-1">{card.subtitle}</p>}
+        {getDescription(card) && (
+          <p className={`${DESCRIPTION_TEXT} text-white/80 ${descriptionMargin(card)}`}>{getDescription(card)}</p>
+        )}
       </div>
     </article>
   )
@@ -203,6 +228,9 @@ function OtherCard({ card }: { card: TodayCardWithHref }) {
       <div className="mb-2"><TemplateChip card={card} /></div>
       <h3 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{card.title}</h3>
       {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
+      {getDescription(card) && (
+        <p className={`${DESCRIPTION_TEXT} text-text-inverse/60 ${descriptionMargin(card)}`}>{getDescription(card)}</p>
+      )}
       <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-3">{d.today.cardReadMore} &rarr;</p>
     </Card>
   )
@@ -241,6 +269,9 @@ function RankingListCard({ card, currentUserId }: { card: TodayCardWithHref; cur
       <div className="mb-2"><TemplateChip card={card} /></div>
       <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{card.title}</h3>
       {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
+      {getDescription(card) && (
+        <p className={`${DESCRIPTION_TEXT} text-text-inverse/60 ${descriptionMargin(card)}`}>{getDescription(card)}</p>
+      )}
     </>
   )
 
