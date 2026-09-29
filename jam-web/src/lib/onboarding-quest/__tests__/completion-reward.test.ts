@@ -48,6 +48,8 @@ function makeFakeSupabase(opts: {
   questRow: { step_progress: Record<string, string>; skipped_at: string | null; completed_at: string | null; reward_granted_at: string | null }
   hasActivity: boolean
   badgeInsertError?: { code: string; message: string }
+  /** 지정하면 그 횟수만큼만 배지 insert가 실패하고 이후엔 성공한다(재시도 검증용). */
+  badgeInsertFailTimes?: number
   badgeRowMissing?: boolean
 }): SupabaseClient {
   const state = { ...opts.questRow }
@@ -63,6 +65,7 @@ function makeFakeSupabase(opts: {
                 step_progress: state.step_progress,
                 skipped_at: state.skipped_at,
                 completed_at: state.completed_at,
+                reward_granted_at: state.reward_granted_at,
               },
               error: null,
             }),
@@ -117,7 +120,7 @@ function makeFakeSupabase(opts: {
       return {
         insert: (payload: unknown) => {
           insertCalls.push(payload)
-          if (opts.badgeInsertError) return Promise.resolve({ error: opts.badgeInsertError })
+          if (opts.badgeInsertError && insertCalls.length <= (opts.badgeInsertFailTimes ?? Infinity)) return Promise.resolve({ error: opts.badgeInsertError })
           return Promise.resolve({ error: null })
         },
       }
@@ -211,5 +214,66 @@ describe('recordOnboardingQuestCompletion — 완료 보상 지급(T7b)', () => 
     expect(result).toBeNull()
     expect(awardPointsMock).not.toHaveBeenCalled()
     consoleErrorSpy.mockRestore()
+  })
+  it('배지 insert 실패로 롤백된 뒤 다음 호출에서 지급을 다시 시도해 배지·포인트를 준다', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const supabase = makeFakeSupabase({
+      questRow: { step_progress: ALL_STEPS_DONE, skipped_at: null, completed_at: null, reward_granted_at: null },
+      hasActivity: true,
+      badgeInsertError: { code: '23503', message: 'foreign key violation' },
+      badgeInsertFailTimes: 1,
+    })
+
+    expect(await recordOnboardingQuestCompletion(supabase, USER_ID)).toBeNull()
+    expect(awardPointsMock).not.toHaveBeenCalled()
+
+    expect(await recordOnboardingQuestCompletion(supabase, USER_ID)).toBe(ONBOARDING_COMPLETION_BADGE_ID)
+    expect(awardPointsMock).toHaveBeenCalledTimes(1)
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('completed_at만 있고 reward_granted_at이 NULL이면(기존 유실 유저) 지급한다', async () => {
+    const supabase = makeFakeSupabase({
+      questRow: {
+        step_progress: ALL_STEPS_DONE,
+        skipped_at: null,
+        completed_at: '2026-09-28T00:00:00Z',
+        reward_granted_at: null,
+      },
+      hasActivity: true,
+    })
+
+    expect(await recordOnboardingQuestCompletion(supabase, USER_ID)).toBe(ONBOARDING_COMPLETION_BADGE_ID)
+    expect(awardPointsMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('연속 2회 호출해도 배지·포인트·피드는 1회만 나간다(awardPoints가 null을 반환해도 재지급 없음)', async () => {
+    const supabase = makeFakeSupabase({
+      questRow: { step_progress: ALL_STEPS_DONE, skipped_at: null, completed_at: null, reward_granted_at: null },
+      hasActivity: true,
+    })
+
+    expect(await recordOnboardingQuestCompletion(supabase, USER_ID)).toBe(ONBOARDING_COMPLETION_BADGE_ID)
+    expect(await recordOnboardingQuestCompletion(supabase, USER_ID)).toBeNull()
+
+    expect((supabase as unknown as { __insertCalls: unknown[] }).__insertCalls).toHaveLength(1)
+    expect(awardPointsMock).toHaveBeenCalledTimes(1)
+    expect(recordFeedEventMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('건너뛴 유저는 completed_at이 있고 reward_granted_at이 NULL이어도 재시도하지 않는다', async () => {
+    const supabase = makeFakeSupabase({
+      questRow: {
+        step_progress: { sync: '1' },
+        skipped_at: '2026-09-28T00:00:00Z',
+        completed_at: '2026-09-28T00:00:00Z',
+        reward_granted_at: null,
+      },
+      hasActivity: true,
+    })
+
+    expect(await recordOnboardingQuestCompletion(supabase, USER_ID)).toBeNull()
+    expect((supabase as unknown as { __insertCalls: unknown[] }).__insertCalls).toHaveLength(0)
+    expect(awardPointsMock).not.toHaveBeenCalled()
   })
 })

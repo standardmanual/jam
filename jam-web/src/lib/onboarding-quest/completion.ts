@@ -43,6 +43,20 @@ export function shouldRecordQuestCompletion(
 }
 
 /**
+ * 이미 완료가 기록됐는데 보상이 아직 나가지 않은 유저인지 판정하는 순수 함수(티켓 20260929_1634).
+ * `completed_at`을 먼저 기록한 뒤 지급하므로, 지급이 일시 오류로 실패해 `reward_granted_at`이
+ * 롤백되면 이 상태가 남는다. 건너뛴 유저는 애초에 보상 대상이 아니라 제외한다. 이 판정이 true여도
+ * 실제 1회 지급은 `grantOnboardingQuestReward`의 `reward_granted_at` 조건부 선점이 보장한다.
+ */
+export function shouldRetryQuestReward(
+  completedAt: string | null,
+  skippedAt: string | null,
+  rewardGrantedAt: string | null
+): boolean {
+  return Boolean(completedAt) && !skippedAt && !rewardGrantedAt
+}
+
+/**
  * 완료 시 보상(완료 배지 1개 + 배지의 point_reward)을 지급할지 판정하는 순수 함수.
  * `completionUpdated`는 `completed_at` 갱신이 이번 호출에서 실제로 행을 바꿨는지(=
  * `.is('completed_at', null)` 조건부 갱신에 걸린 행 수 > 0)를 뜻한다. 건너뛴 유저
@@ -59,7 +73,15 @@ export function shouldGrantQuestReward(completionUpdated: boolean, skippedAt: st
  * 멱등: 지급 전에 `reward_granted_at`을 조건부 갱신으로 선점한다. 이미 선점돼 있으면(바뀐
  * 행 없음) 조용히 중단한다. 배지 insert가 23505(이미 보유)면 포인트·피드는 건너뛴다.
  * 23505가 아닌 오류(배지 행이 아직 없어 FK 위반이 나는 경우 포함)면 `reward_granted_at`을
- * 다시 NULL로 되돌려 다음 호출에서 재시도할 수 있게 한다. 절대 throw하지 않는다.
+ * 다시 NULL로 되돌려 다음 호출에서 재시도할 수 있게 한다(`recordOnboardingQuestCompletion`이
+ * `completed_at`이 있어도 `reward_granted_at`이 NULL이면 이 함수를 다시 부른다). 절대 throw하지 않는다.
+ *
+ * 배지는 발급됐는데 포인트만 실패한 경우(배지 insert와 `awardPoints`는 한 트랜잭션이 아니다)는
+ * 재시도하지 않는다 — `reward_granted_at`을 유지해 다음 호출이 지급을 되풀이하지 않게 한다.
+ * `awardPoints`는 실패 시 `engine_decision_log`에 `point_award_failed`(sourceBadgeId 포함)를
+ * 남기므로 그 기록을 근거로 운영진이 수동 재지급한다. 자동 재시도는 "배지 있음 + 원장 없음"을
+ * 원장 조회로 판별해야 하고, RPC가 커밋된 뒤 응답만 유실된 경우 이중 지급될 수 있어 멱등성을
+ * 우선해 넣지 않았다.
  *
  * @returns 지급(또는 이미 보유 확인)한 배지 id, 지급하지 않았으면 null.
  */
@@ -151,7 +173,7 @@ export async function recordOnboardingQuestCompletion(
   try {
     const { data: row, error: rowError } = await supabase
       .from('user_onboarding_quests')
-      .select('step_progress, skipped_at, completed_at')
+      .select('step_progress, skipped_at, completed_at, reward_granted_at')
       .eq('user_id', userId)
       .maybeSingle()
 
@@ -169,6 +191,10 @@ export async function recordOnboardingQuestCompletion(
 
     // 활동 조회 전에 다른 조건부터 걸러 — 불필요한 조회를 줄인다.
     if (nextStepOf(progressRow.step_progress) !== null && !progressRow.skipped_at) return null
+    // 완료는 기록됐는데 보상이 안 나간 상태(이전 호출의 지급 실패·롤백) — 활동 조회 없이 지급만 다시 시도한다.
+    if (shouldRetryQuestReward(progressRow.completed_at, progressRow.skipped_at, row.reward_granted_at)) {
+      return await grantOnboardingQuestReward(supabase, userId)
+    }
     if (progressRow.completed_at) return null
 
     const { data: activityRow, error: activityError } = await supabase
