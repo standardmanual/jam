@@ -12,6 +12,8 @@
  * 기본은 드라이런이다. `--apply`가 있을 때만 쓰고 지운다. `--backup <폴더>`를 주면 적용 전 원본을 저장한다.
  * 좌표 값은 어디에도 출력하지 않는다(유무만 표시).
  *
+ * 덮어쓴 파일은 CDN 캐시가 만료될 때까지(최대 1시간) 공개 URL에서 이전 바이트가 보일 수 있다.
+ *
  *   node scripts/sanitize-existing-avatars.js
  *   node scripts/sanitize-existing-avatars.js --apply --backup /tmp/avatars-backup
  *
@@ -120,10 +122,14 @@ async function main() {
         failures++
         continue
       }
-      const { data: again } = await storage.download(name)
-      const after = await describe(Buffer.from(await again.arrayBuffer()))
-      console.log(`  확인: EXIF=${after.hasExif ? '있음' : '없음'} XMP=${after.hasXmp ? '있음' : '없음'} 방향태그=${after.orientation ?? '없음'}`)
-      if (after.hasExif || after.hasXmp) failures++
+      // 다시 내려받아 확인하지 않는다 — download()도 CDN 캐시(max-age=3600)를 거쳐 덮어쓰기 전 바이트가
+      // 돌아온다(2026-09-29 실측, cf-cache-status: HIT). 올린 바이트를 검사하고 저장소 크기와 대조한다.
+      const after = await describe(buffer)
+      const dir = name.split('/').slice(0, -1).join('/')
+      const { data: listed } = await storage.list(dir, { search: name.split('/').pop() })
+      const storedSize = listed?.[0]?.metadata?.size
+      console.log(`  확인: EXIF=${after.hasExif ? '있음' : '없음'} XMP=${after.hasXmp ? '있음' : '없음'} 방향태그=${after.orientation ?? '없음'} 저장크기일치=${storedSize === buffer.length ? '예' : '아니오'}`)
+      if (after.hasExif || after.hasXmp || storedSize !== buffer.length) failures++
     } else {
       const { error: rmErr } = await storage.remove([name])
       if (rmErr) {
