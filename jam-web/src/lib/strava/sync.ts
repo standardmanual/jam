@@ -31,6 +31,7 @@ import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completi
 // JAM! 카테고리 — 서비스 사용량 배지(티켓 20260910_1557). 카운터 증가·판정 로직은
 // recordDailySyncAndEvaluate() 한 곳(usageBadges.ts)에 있다 — 이 파일은 synced>0 게이트만 쥔다.
 import { recordDailySyncAndEvaluate, evaluateCheckinUsageBadges, type UsageBadgeEarned } from '@/lib/badge-engine/usageBadges'
+import { isWithinValidPeriod } from '@/lib/badge-engine/validPeriod'
 import { computeUserPeriodMetrics, computeBadgeProgress } from '@/lib/badge-engine/badgeProgress'
 // 배지 «종류» 판정의 단일 출처 — 계열 프런티어 산출이 발급 엔진과 같은 기준을 본다
 // (티켓 20260905_0031, 0030이 넘긴 「레벨형 계열 통째 누락」 항목).
@@ -739,18 +740,37 @@ export async function processFetchedActivities(
   )
   // `category`(어드민 직접 지정 카테고리) — 체크인 배지 발급 직후 JAM! 카테고리 체크인 지표
   // (`checkin_category_count`, 티켓 20260914_1725)를 평가할 때 effective category 판정에 쓴다.
-  type LinkedBadge = { id: string; type: BadgeType; name: string; image_url: string | null; rarity: BadgeRarity; category: string | null }
+  type LinkedBadge = {
+    id: string
+    type: BadgeType
+    name: string
+    image_url: string | null
+    rarity: BadgeRarity
+    category: string | null
+    valid_from: string | null
+    valid_until: string | null
+  }
   const badgeById = new Map<string, LinkedBadge>()
   if (linkedBadgeIds.length > 0) {
     const { data: linkedBadgesRaw, error: linkedBadgeError } = await supabase
       .from('badges')
-      .select('id, type, name, image_url, rarity, category')
+      .select('id, type, name, image_url, rarity, category, valid_from, valid_until')
       .in('id', linkedBadgeIds)
       .is('deleted_at', null)
     if (linkedBadgeError) {
       console.error('[processFetchedActivities] POI 연결 배지 조회 오류:', linkedBadgeError)
     }
+    // 유효기간(valid_from/valid_until) 밖의 배지는 badgeById에 넣지 않는다 — 아래 발급 루프가
+    // badgeById.get()이 없으면 continue하므로 체크인(최초·반복)·레거시 경로가 한 지점에서 함께
+    // 막힌다. 기준 시각은 활동 시각이 아니라 지금이다(배지 엔진·지도 마커와 동일, 스펙 §3.18).
+    const linkedBadgeNow = new Date()
     for (const badge of (linkedBadgesRaw ?? []) as LinkedBadge[]) {
+      if (!isWithinValidPeriod(badge, linkedBadgeNow)) {
+        console.info(
+          `[processFetchedActivities] 유효기간 밖 POI 연결 배지 발급 제외 — userId: ${userId}, badge_id: ${badge.id}, valid_from: ${badge.valid_from}, valid_until: ${badge.valid_until}`
+        )
+        continue
+      }
       badgeById.set(badge.id, badge)
     }
   }
