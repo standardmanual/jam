@@ -99,6 +99,7 @@ status: active
 - [03 JAM! 배지 철학 및 시스템 구조.md](../../jam-doc/planning/business-plan/03%20JAM!%20배지%20철학%20및%20시스템%20구조.md) — JAM! 배지의 철학, 액티비티배지·아이템배지 분류, 일련번호·드랍·픽업 메커니즘, 유저 수준별 리텐션 접근을 정의한다.
 - [04 JAM! 트라이브.md](../../jam-doc/planning/business-plan/04%20JAM!%20트라이브.md) — JAM! 유니버스의 프롤로그, 트라이브별 캐치프레이즈와 서사, 크로스오버 에필로그 한 단락을 담은 설정 원문이다.
 - [05 JAM! 활동 배지 체계 재설계 분석.md](../../jam-doc/planning/business-plan/05%20JAM!%20활동%20배지%20체계%20재설계%20분석.md) — 현행 걷기 배지 구조의 소진 문제를 진단하고 재설계 원칙을 정리한 분석 메모다.
+- [06 JAM! 라이브 운영 플랜.md](../../jam-doc/planning/business-plan/06%20JAM!%20라이브%20운영%20플랜.md) — 유저 락인 → 컬렉션 런칭 → 브랜드 협업·수익화로 이어지는 라이브 운영 방향을 사용자와 대화로 정리하는 작성 중 플랜
 
 ## jam-doc/planning/content/
 
