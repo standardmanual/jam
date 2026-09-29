@@ -22,7 +22,8 @@
     "region_label": "내 주변",
     "target_href": "/drops",
     "sort_order": 0,
-    "is_active": true
+    "is_active": true,
+    "description": "정해 둔 곳 없이 나서도 괜찮아요. 걷다 보면 보여요."
   },
   "image": {
     "path": "image.png",

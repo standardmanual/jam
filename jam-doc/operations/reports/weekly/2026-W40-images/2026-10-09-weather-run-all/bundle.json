@@ -20,7 +20,8 @@
     "starts_at": "2026-10-09T00:00:00+09:00",
     "ends_at": "2026-10-09T23:59:00+09:00",
     "sort_order": 0,
-    "is_active": true
+    "is_active": true,
+    "description": "느긋한 하루라면 가까운 길부터 천천히 달려 봐요. 서두를 일은 없어요."
   },
   "image": {
     "path": "image.png",

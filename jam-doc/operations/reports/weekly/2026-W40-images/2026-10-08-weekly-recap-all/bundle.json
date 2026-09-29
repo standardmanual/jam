@@ -22,7 +22,8 @@
     "mission_id": "b1009708-3258-477d-9278-107ad2c67d12",
     "target_href": "/feed",
     "sort_order": 0,
-    "is_active": true
+    "is_active": true,
+    "description": "지난 며칠 걸은 길을 한 번 돌아봐요. 내 발자국만 조용히 모여 있어요."
   },
   "image": {
     "path": "image.png",
