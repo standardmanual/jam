@@ -16,14 +16,13 @@ import { d } from '@/lib/i18n'
  * `/philosophy`도 제외한다: Footer의 'Philosophy' 링크가 가리키는 목적지 자신이라,
  * 그 화면 하단에 같은 링크가 다시 노출되는 순환을 막는다 (20260901_2125).
  *
- * `/privacy`도 같은 이유로 제외한다: '개인정보처리방침' 링크의 목적지 자신이다 (20260901_2217).
- *
- * `/location-terms`도 같은 이유로 제외한다: '위치기반서비스 이용약관' 링크의 목적지 자신이다 (20260929_1359).
+ * `/privacy`·`/location-terms`는 `(legal)` 라우트 그룹으로 옮겨 `(main)` 레이아웃(Footer)을
+ * 타지 않으므로 제외 목록에 두지 않는다(티켓 20260929_1400).
  *
  * 홈(`/`)은 기존에 "상단 로고 중복" 우려로 제외돼 있었으나, 바로가기·최근배지 섹션 제거로
  * 화면이 짧아져 우려가 완화됐다고 판단해 제외 목록에서 뺐다(티켓 20260917_1203).
  */
-const FOOTER_EXCLUDED_PATHS = ['/drops', '/philosophy', '/privacy', '/location-terms']
+const FOOTER_EXCLUDED_PATHS = ['/drops', '/philosophy']
 
 export default function Footer() {
   const pathname = usePathname()
