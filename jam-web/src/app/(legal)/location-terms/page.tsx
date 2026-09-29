@@ -3,7 +3,7 @@ import LegalTopNav from '../LegalTopNav'
 /**
  * 위치기반서비스 이용약관 페이지 (티켓 20260929_1359).
  *
- * `(main)/privacy/page.tsx`(20260901_2217)의 레이아웃·타이포 패턴을 그대로 따른다 —
+ * `(legal)/privacy/page.tsx`(20260901_2217, 티켓 20260929_1400에서 `(legal)`로 이동)의 레이아웃·타이포 패턴을 그대로 따른다 —
  * TopNav + 단일 컬럼 서버 컴포넌트, 본문은 --text-body + --leading-reading, 조 간격
  * --spacing-48, 항 간격 --spacing-32, 상단 여백 --spacing-64.
  *
