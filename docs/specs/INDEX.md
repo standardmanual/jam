@@ -12,6 +12,7 @@ status: active
 
 - [DEV_PROCESS_GUARDRAILS.md](DEV_PROCESS_GUARDRAILS.md) — 핵심 루프에 손대기 전에 확인할 반복된 개발 프로세스 실수 패턴과 지켜야 할 규칙을 정리한 문서다.
 - [DOCUMENT_SCHEMA.md](DOCUMENT_SCHEMA.md) — JAM! 문서의 type, frontmatter 필드, 연결 규칙, 태그 어휘를 정의하는 문서 체계 스키마다.
+- [LOCATION_TERMS.md](LOCATION_TERMS.md) — 위치기반서비스 이용약관 원고(게시 전 초안). 실제 위치정보 처리 흐름을 근거로 작성했다
 - [PRIVACY_POLICY.md](PRIVACY_POLICY.md) — 개인정보 처리방침 원고(서비스 /privacy 페이지의 출처 문서)
 - [SERVER_ERROR_MESSAGE_RULE.md](SERVER_ERROR_MESSAGE_RULE.md) — 서버 API 에러 메시지는 i18n 딕셔너리를 단일 소스로 삼고, 클라이언트는 서버가 보낸 메시지를 그대로 노출한다
 - [SERVICE_OPERATIONS.md](SERVICE_OPERATIONS.md) — Strava 동기화부터 배지 획득, 드랍, 미션, 피드, 어뷰징 방어, Cron, API, DB 테이블까지 서비스 운영 로직을 정리한 문서다.
