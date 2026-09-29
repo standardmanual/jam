@@ -1,4 +1,4 @@
-import TopNav from '@/components/ui/TopNav'
+import LegalTopNav from '../LegalTopNav'
 
 /**
  * 개인정보 처리방침 페이지 (티켓 20260901_2217).
@@ -98,7 +98,7 @@ function DefCard({ fields }: { fields: Array<{ label: string; value: React.React
 export default function PrivacyPage() {
   return (
     <div className="min-h-full text-text">
-      <TopNav title={PAGE_TITLE} />
+      <LegalTopNav title={PAGE_TITLE} />
 
       <article className="px-[var(--spacing-16)] pt-[var(--spacing-64)] pb-[var(--spacing-64)] flex flex-col gap-[var(--spacing-48)]">
         <div className="flex flex-col gap-[var(--spacing-16)]">

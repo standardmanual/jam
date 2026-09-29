@@ -53,7 +53,19 @@ export async function proxy(request: NextRequest) {
   // Vercel cron 호출에는 Supabase 세션 쿠키가 없으므로, 여기서 걸러내면 요청이 라우트 핸들러에
   // 닿지 못하고 307로 리다이렉트된다 — cron이 조용히 실행되지 않는다(20260825_003).
   // 보안이 약해지는 게 아니라, 인증 주체가 미들웨어가 아니라 라우트라는 뜻이다.
-  const publicPaths = ['/login', '/auth/callback', '/forbidden', '/api/dev-login', '/spike', '/api/cron']
+  //
+  // '/privacy'·'/location-terms'는 법정 공개 문서라 로그인 전에도 읽을 수 있어야 한다
+  // (개인정보 보호법 제30조제2항, 티켓 20260929_1400). 두 페이지는 인증 호출이 없는 `(legal)` 그룹이다.
+  const publicPaths = [
+    '/login',
+    '/auth/callback',
+    '/forbidden',
+    '/api/dev-login',
+    '/spike',
+    '/api/cron',
+    '/privacy',
+    '/location-terms',
+  ]
   const isPublicPath = publicPaths.some((p) => pathname === p || pathname.startsWith(p + '/'))
 
   // 어드민 자동화 읽기 토큰 (티켓 20260918_1149): GET /api/admin/* + 유효 토큰이면 로그인
