@@ -1824,6 +1824,15 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
     `.or('valid_until.is.null,valid_until.gte.${now}')`로 필터링해 유효기간 밖의 배지는
     발급 후보에서 제외한다. (기존부터 구현되어 있던 로직 — 이번 티켓에서 "활성/비활성 조건"
     이라는 의미로 재정의만 함.)
+  - **POI 매칭 발급 경로 (티켓 20260930_0015)**: 체크인 배지는 배지 엔진이 아니라
+    `src/lib/strava/sync.ts`(`processFetchedActivities`의 POI 매칭 블록)가 발급한다. 이 경로는
+    연결 배지를 `deleted_at IS NULL`로 조회한 뒤 `src/lib/badge-engine/validPeriod.ts`의
+    `isWithinValidPeriod`(경계 시각 포함, 시각 값 비교)로 걸러, 유효기간 밖의 배지는 체크인
+    최초 획득·반복 획득·레거시 activity+`poi_id` 경로 모두 발급하지 않는다. 기준 시각은
+    활동 시각이 아니라 지금이다. 어드민 시뮬레이터(`src/app/api/admin/simulate/route.ts`)도
+    같은 함수로 걸러 기간 밖 POI 배지를 획득 예정으로 보이거나 기록하지 않는다. 이미 발급된
+    이력은 건드리지 않는다. 티켓 20260912_1121 시점에는 이 경로에 필터가 없었다(지도 마커만
+    필터가 있어, 마커는 사라져도 그 지점을 지나면 발급됐다).
   - **체크인 배지 지도 마커 노출**: `src/app/api/checkin-badges/route.ts` — 마커로 보여줄
     배지 조회 쿼리에 동일한 유효기간 필터를 추가해, 유효기간이 지난 체크인 배지는 마커에서
     사라진다.
