@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { evaluateBadgesDetailed } from '@/lib/badge-engine'
+import { isWithinValidPeriod } from '@/lib/badge-engine/validPeriod'
 import { buildVirtualActivities, readExtendedFields } from '@/lib/admin/virtualActivity'
 import type { InventoryRow } from '@/types/database'
 import type { Database } from '@/types/database.generated'
@@ -95,9 +96,13 @@ export async function POST(req: NextRequest) {
 
   const poiBadgeIds = matchedPois.map((p) => p.linked_badge_id).filter(Boolean) as string[]
   const { data: poiBadgesRaw } = poiBadgeIds.length > 0
-    ? await supabase.from('badges').select('id, name, rarity, type').in('id', poiBadgeIds).is('deleted_at', null)
-    : { data: [] as { id: string; name: string; rarity: string; type: string }[] }
-  const poiBadgesById = new Map((poiBadgesRaw ?? []).map((b) => [b.id, b]))
+    ? await supabase.from('badges').select('id, name, rarity, type, valid_from, valid_until').in('id', poiBadgeIds).is('deleted_at', null)
+    : { data: [] as { id: string; name: string; rarity: string; type: string; valid_from: string | null; valid_until: string | null }[] }
+  // 유효기간 밖의 POI 배지는 실제 동기화 경로(sync.ts)와 같이 획득 예정에 넣지 않고 기록하지도 않는다(스펙 §3.18).
+  const poiBadgeNow = new Date()
+  const poiBadgesById = new Map(
+    (poiBadgesRaw ?? []).filter((b) => isWithinValidPeriod(b, poiBadgeNow)).map((b) => [b.id, b])
+  )
 
   for (const poi of matchedPois) {
     if (!poi.linked_badge_id) continue
