@@ -4,5 +4,6 @@
   "userIgnoreFilters": [
     "jam-web/",
     "scripts/"
-  ]
+  ],
+  "readableLineLength": false
 }
