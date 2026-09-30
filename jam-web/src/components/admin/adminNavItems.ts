@@ -29,6 +29,7 @@ import {
   IconBan,
   IconSparkles,
   IconEyeglass,
+  IconInbox,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -38,6 +39,11 @@ export type NavGroup = { id: string; label: string; items: NavItem[] }
 export const DASHBOARD_ITEM: NavItem = { href: '/admin', label: '대시보드', icon: IconLayoutDashboard, exact: true }
 
 export const NAV_GROUPS: NavGroup[] = [
+  {
+    id: 'live-ops',
+    label: '라이브 운영',
+    items: [{ href: '/admin/ops-inbox', label: '받은 기획함', icon: IconInbox }],
+  },
   {
     id: 'content',
     label: '컨텐츠 관리',

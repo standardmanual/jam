@@ -47,8 +47,18 @@ describe('mostSpecificActiveItem', () => {
 
 describe('NAV_GROUPS (티켓 20260908_1806: 그룹·항목 전면 재배열)', () => {
   it('그룹 레이블·순서가 목표 구조와 일치한다', () => {
-    expect(NAV_GROUPS.map((g) => g.id)).toEqual(['content', 'policy', 'ops', 'design'])
-    expect(NAV_GROUPS.map((g) => g.label)).toEqual(['컨텐츠 관리', '정책 및 밸런스', '운영 도구', '디자인'])
+    expect(NAV_GROUPS.map((g) => g.id)).toEqual(['live-ops', 'content', 'policy', 'ops', 'design'])
+    expect(NAV_GROUPS.map((g) => g.label)).toEqual(['라이브 운영', '컨텐츠 관리', '정책 및 밸런스', '운영 도구', '디자인'])
+  })
+
+  it('라이브 운영 그룹(티켓 20260930_1817)은 맨 위에 있고 받은 기획함 하나를 담는다', () => {
+    expect(NAV_GROUPS[0].id).toBe('live-ops')
+    expect(NAV_GROUPS[0].items.map((i) => [i.href, i.label])).toEqual([['/admin/ops-inbox', '받은 기획함']])
+  })
+
+  it('기획 상세 경로에서도 받은 기획함이 활성이다', () => {
+    expect(mostSpecificActiveItem('/admin/ops-inbox')?.href).toBe('/admin/ops-inbox')
+    expect(mostSpecificActiveItem('/admin/ops-inbox/4ca7d1ad-43b2-41a3-9ed4-f03bc73604ee')?.href).toBe('/admin/ops-inbox')
   })
 
   it('디자인 그룹은 배지 이미지 생성 2종 + 에셋 제너레이터를 포함하고 테마 컬러·쉐이더 랩 항목은 ' +
