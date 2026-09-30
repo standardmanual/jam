@@ -75,6 +75,10 @@ status: active
 - [RECAP_CASEBOOK.md](prd/notification/RECAP_CASEBOOK.md) — 한 번의 활동에서 나올 수 있는 보상 유형별 문구 사례와 문구 규칙을 모은 활동 결산 케이스북이다.
 - [REST_CASEBOOK.md](prd/notification/REST_CASEBOOK.md) — 활동 결산을 제외한 소식의 문구 사례와 묶음 문구, 문구 규칙을 모은 확정판 케이스북이다.
 
+## docs/specs/prd/ops-tool/
+
+- [PRD.md](prd/ops-tool/PRD.md) — 에이전트가 제출한 운영 묶음을 사용자가 어드민에서 보고 고치고 승인하면 예약 공개하고 모든 결정을 기록하는 어드민 운영툴의 스펙이다. 07 라이브 운영 블루프린트 4절을 개발 단위로 옮겼다.
+
 ## docs/specs/prd/point-system/
 
 - [INTERACTION_FLOW.md](prd/point-system/INTERACTION_FLOW.md) — 포인트 시스템 1a단계에서 유저와 어드민이 어느 화면에서 무엇을 하고 어디로 이동하는지 정리한 화면 흐름 문서다.
