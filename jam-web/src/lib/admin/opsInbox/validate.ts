@@ -2,8 +2,8 @@
  * 운영 묶음 제출 본문 검증 (티켓 20260930_1816, 순수 함수).
  *
  * 검증은 두 층이다.
- * - `fatal`: 받을 수 없는 본문이다(400). 객체가 아님, `bundle_id`·`author` 없음, `items`가 배열이 아님,
- *   항목 수 상한 초과.
+ * - `fatal`: 받을 수 없는 본문이다(400). 객체가 아님, `bundle_id`·`author` 없음이나 길이 초과, `is_sample`이 불리언이 아님,
+ *   `items`가 배열이 아님, 항목 수 상한 초과.
  * - `errors`: 받아서 저장하고 응답으로 돌려주는 「형식 오류」다. 「경로: 사유」 문자열(해요체)이고,
  *   항목별 오류는 그 항목의 `format_errors`에도 같은 문장으로 담는다. 공통 필드(종류 허용값, 시각,
  *   연결 키 실재, `item_key` 중복, `user_experience` 유무, `week` 표기, `world_review` 규칙)만 본다.
@@ -15,6 +15,10 @@
  */
 import type { Json } from '@/types/database.generated'
 import { MAX_ITEMS, OPS_ITEM_KINDS } from '@/lib/admin/opsInbox/constants'
+
+// 신원 값의 길이 상한(티켓 20260930_2100). 넘으면 유일 인덱스 행 크기 제한에 걸려 500이 나므로 400으로 먼저 거절한다.
+const MAX_BUNDLE_ID_LENGTH = 200
+const MAX_AUTHOR_LENGTH = 100
 
 export interface ValidatedOpsBundle {
   bundle_id: string
@@ -263,9 +267,20 @@ export function validateOpsBundle(raw: unknown): OpsBundleValidation {
 
   if (!isPresent(raw.bundle_id)) fatal.push('bundle_id: 필수 항목이 없어요.')
   else if (!isNonEmptyString(raw.bundle_id)) fatal.push('bundle_id: 비어 있지 않은 문자열이어야 해요.')
+  else if (raw.bundle_id.length > MAX_BUNDLE_ID_LENGTH) {
+    fatal.push(`bundle_id: ${MAX_BUNDLE_ID_LENGTH}자까지 받아요(받은 길이: ${raw.bundle_id.length}자).`)
+  }
 
   if (!isPresent(raw.author)) fatal.push('author: 필수 항목이 없어요.')
   else if (!isNonEmptyString(raw.author)) fatal.push('author: 비어 있지 않은 문자열이어야 해요.')
+  else if (raw.author.length > MAX_AUTHOR_LENGTH) {
+    fatal.push(`author: ${MAX_AUTHOR_LENGTH}자까지 받아요(받은 길이: ${raw.author.length}자).`)
+  }
+
+  // 시험 여부는 저장 뒤 바로잡을 수 없으므로(시험 묶음이 학습 재료에 섞인다) 형식이 틀리면 저장하지 않는다.
+  if (isPresent(raw.is_sample) && typeof raw.is_sample !== 'boolean') {
+    fatal.push(`is_sample: true 또는 false여야 해요(받은 값: ${describeShort(raw.is_sample)}).`)
+  }
 
   const rawItems = raw.items
   if (!Array.isArray(rawItems)) {
@@ -311,13 +326,8 @@ export function validateOpsBundle(raw: unknown): OpsBundleValidation {
     else bundleErrors.push(`routine_run: 객체여야 해요(받은 값: ${describeShort(raw.routine_run)}).`)
   }
 
-  let isSample = false
-  if (isPresent(raw.is_sample)) {
-    if (typeof raw.is_sample === 'boolean') isSample = raw.is_sample
-    else {
-      bundleErrors.push(`is_sample: true 또는 false여야 해요(받은 값: ${describeShort(raw.is_sample)}).`)
-    }
-  }
+  // 불리언이 아닌 값은 위 fatal에서 이미 거절했다.
+  const isSample = raw.is_sample === true
 
   // item_key 색인: 중복 판정(먼저 나온 위치)과 links 실재 확인에 쓴다.
   const firstIndexByKey = new Map<string, number>()

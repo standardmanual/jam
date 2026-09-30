@@ -1,7 +1,7 @@
 /**
  * 운영 묶음 제출 검증 (티켓 20260930_1816)
  *
- * - fatal(400) 4종: 객체가 아님, bundle_id·author 없음, items가 배열이 아님, 항목 60개 초과
+ * - fatal(400): 객체가 아님, bundle_id·author 없음이나 길이 초과, is_sample이 불리언이 아님, items가 배열이 아님, 항목 60개 초과
  * - 저장되는 형식 오류: 종류 허용값, 시각(형식·순서), 연결 키 실재, item_key 중복, user_experience 유무, week 표기, world_review
  * - world_review 규칙은 registerHomeFeedBundle.mjs와 같은 입력에 같은 문장을 낸다(대조)
  */
@@ -115,6 +115,20 @@ describe('validateOpsBundle — fatal(400)', () => {
   it('author가 없거나 비어 있으면 fatal이다', () => {
     expect(validateOpsBundle(makeBundle({ author: undefined })).fatal).toContain('author: 필수 항목이 없어요.')
     expect(validateOpsBundle(makeBundle({ author: '' })).fatal).toContain('author: 비어 있지 않은 문자열이어야 해요.')
+  })
+
+  it('bundle_id가 200자, author가 100자를 넘으면 fatal이다(티켓 20260930_2100)', () => {
+    expect(validateOpsBundle(makeBundle({ bundle_id: 'b'.repeat(200) })).fatal).toEqual([])
+    expect(validateOpsBundle(makeBundle({ bundle_id: 'b'.repeat(201) })).fatal).toEqual(['bundle_id: 200자까지 받아요(받은 길이: 201자).'])
+    expect(validateOpsBundle(makeBundle({ author: 'a'.repeat(100) })).fatal).toEqual([])
+    expect(validateOpsBundle(makeBundle({ author: 'a'.repeat(101) })).fatal).toEqual(['author: 100자까지 받아요(받은 길이: 101자).'])
+  })
+
+  it('is_sample이 불리언이 아니면 fatal이고, 없으면 시험 묶음이 아니다(티켓 20260930_2100)', () => {
+    const result = validateOpsBundle(makeBundle({ is_sample: 'true' }))
+    expect(result.fatal).toEqual(['is_sample: true 또는 false여야 해요(받은 값: "true").'])
+    expect(result.bundle).toBeNull()
+    expect(validateOpsBundle(makeBundle({ is_sample: undefined })).bundle?.is_sample).toBe(false)
   })
 
   it('bundle_id와 author가 둘 다 없으면 사유를 한 번에 모두 돌려준다', () => {
@@ -255,12 +269,6 @@ describe('validateOpsBundle — 저장되는 형식 오류(공통 필드)', () =
     const result = validateOpsBundle(makeBundle({ week: undefined }))
     expect(result.errors).toEqual([])
     expect(result.bundle?.week).toBeNull()
-  })
-
-  it('is_sample이 불리언이 아니면 오류이고 시험 표시는 켜지 않는다', () => {
-    const result = validateOpsBundle(makeBundle({ is_sample: 'true' }))
-    expect(result.errors).toEqual(['is_sample: true 또는 false여야 해요(받은 값: "true").'])
-    expect(result.bundle?.is_sample).toBe(false)
   })
 
   it('묶음 오류와 항목 오류를 errors에 모두 모은다(묶음 → 항목 순서)', () => {
