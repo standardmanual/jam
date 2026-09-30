@@ -18,7 +18,7 @@ import {
   findCheckinBadgeNamesNotFoundError,
   findRecipeFirstSuccessNotFoundError,
 } from '../badge-validation'
-import { CONDITION_META_KEYS } from '@/lib/badge-engine/conditionRegistry'
+import { CONDITION_META_KEYS, USAGE_METRIC_CONDITION_KEYS } from '@/lib/badge-engine/conditionRegistry'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ALL_CONDITION_KEYS } from '@/lib/badge-engine/condition-schema'
 import type { BadgeCondition } from '@/types/database'
@@ -225,6 +225,47 @@ describe('findBadgeConditionSaveError — 믹스 행동 지표 4종', () => {
 
   it('회귀: mission_reward는 사용량 지표 가드의 대상이 아니다', () => {
     expect(findBadgeConditionSaveError(badge, 'activity', { mission_reward: true, repeat_count: 3 })).toBeNull()
+  })
+})
+
+// 드랍·픽업 행동 지표 4종 — 저장 시점 가드 (티켓 20261001_0632)
+describe('findBadgeConditionSaveError — 드랍·픽업 행동 지표 4종', () => {
+  const badge = { name: '드랍 배지', family_key: 'jam:drop' }
+  const DROP_PICKUP_KEYS = [
+    'drop_item_count',
+    'pickup_item_count',
+    'pickup_from_user_count',
+    'picked_up_by_user_count',
+  ] as const
+
+  it.each(DROP_PICKUP_KEYS)('%s 단독 조건은 저장된다', (key) => {
+    const cond = { [key]: 5 } as unknown as BadgeCondition
+    expect(findBadgeConditionSaveError(badge, 'activity', cond)).toBeNull()
+  })
+
+  it.each(DROP_PICKUP_KEYS)('%s + repeat_count는 저장을 막는다', (key) => {
+    const cond = { [key]: 5, repeat_count: 3 } as unknown as BadgeCondition
+    const error = findBadgeConditionSaveError(badge, 'activity', cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('등급형·레벨형')
+  })
+
+  it.each(DROP_PICKUP_KEYS)('%s + 다른 measurable 조건(distance_km)은 저장을 막는다', (key) => {
+    const cond = { [key]: 5, distance_km: 5 } as unknown as BadgeCondition
+    const error = findBadgeConditionSaveError(badge, 'activity', cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('서비스 사용량 지표')
+  })
+
+  it('4키는 사용량 지표 목록(USAGE_METRIC_CONDITION_KEYS)에 들어 있다 — 레지스트리 파생이라 가드가 자동으로 붙는다', () => {
+    for (const key of DROP_PICKUP_KEYS) {
+      expect(USAGE_METRIC_CONDITION_KEYS, `${key}가 사용량 지표 목록에 없다`).toContain(key)
+    }
+  })
+
+  it('드랍·픽업 지표 둘 이상을 한 배지에 함께 저장하는 것도 막는다(0712 가드)', () => {
+    const cond = { drop_item_count: 5, pickup_item_count: 20 } as unknown as BadgeCondition
+    expect(findBadgeConditionSaveError(badge, 'activity', cond)).not.toBeNull()
   })
 })
 

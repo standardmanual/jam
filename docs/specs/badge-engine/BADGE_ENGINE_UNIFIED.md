@@ -20,6 +20,15 @@ code:
 > 실패는 실패 로그가 생긴 2026-09-10부터 센다(소급 없음) — 티켓 20261001_0631, 상위
 > 20260930_1456)
 >
+> 같은 날 (JAM! 종목 조건에 **드랍·픽업 행동 지표 4종** 추가 — `drop_item_count`(드랍한 아이템
+> 수)·`pickup_item_count`(픽업한 아이템 수)·`pickup_from_user_count`(픽업한 드랍의 드랍 유저
+> 수)·`picked_up_by_user_count`(내 드랍을 픽업한 유저 수). 원천은 `poi_drops`이고 행 수가 아니라
+> **서로 다른 아이템 개체·유저 수**로 센다 — 두 유저가 같은 아이템을 번갈아 놓고 주워도 지표가
+> 부풀지 않는다. 믹스 행동 지표의 공용 틀(`jamActionBadges.ts`)에 키와 계산 함수
+> (`jamActionDropMetrics.ts`)만 더했고, `POST /api/drops`·`POST /api/drops/[dropId]/pickup`이
+> 성공한 뒤 `after()`로 판정한다. CHECK 제약 확장(마이그레이션 201)·`poi_drops` 조회 인덱스
+> (202), 둘 다 실행 전 — 티켓 20261001_0632, 상위 20260930_1456 ②)
+>
 > 이전: 2026-09-14 (**인벤토리 슬롯 카운터 원자적 RPC 전환** — 드랍엔진·미션
 > 보상(`missions/rewards.ts`)·아이템 조합 보상(`combine/index.ts`) 세 지급 경로가 각자
 > `inventory.used_slots`를 read-then-write하던 구조를 `grant_inventory_item()`·
@@ -147,10 +156,11 @@ Strava 싱크
 
 **③ JAM! 카테고리 — 서비스 사용량 배지 (2026-09-10, 티켓 20260910_1557; 연속 동기화 일수
 1종 추가 — 2026-09-11, 티켓 20260911_2304; 체크인 배지 보유 조건 2종 추가 — 2026-09-14,
-티켓 20260914_1725; 믹스 행동 지표 4종 추가 — 2026-10-01, 티켓 20261001_0631)** —
+티켓 20260914_1725; 믹스 행동 지표 4종 추가 — 2026-10-01, 티켓 20261001_0631; 드랍·픽업 행동
+지표 4종 추가 — 2026-10-01, 티켓 20261001_0632)** —
 badge-engine 밖의 세 번째 평가 경로.
 `type='activity'`(위 ①과 같은 테이블)이지만 Strava 활동 이력이 아니라 팔로워 수·팔로잉 수·
-하루 동기화 횟수·연속 동기화 일수·체크인 배지 보유 개수 같은 "서비스를 어떻게 쓰는가"를 잰다.
+하루 동기화 횟수·연속 동기화 일수·체크인 배지 보유 개수·믹스·드랍·픽업 같은 "서비스를 어떻게 쓰는가"를 잰다.
 `badge_type` enum을 늘리는 대신 기존 `activity` 타입 안에서 `activity_types=[]`로 저장해
 배지 트리에는 노출하지 않는다(`/badges` 일반 목록·프로필엔 정상 노출).
 
@@ -196,6 +206,45 @@ badge-engine 밖의 세 번째 평가 경로.
   실패 로그는 2026-09-10(마이그레이션 153)부터 있다. 그래서 시도·성공 횟수는 성공 기록을
   시작한 날부터, 실패 횟수는 2026-09-10부터 센다.
 
+**드랍·픽업 행동 지표 4종도 같은 틀 위에서 판정한다** — 티켓 20261001_0632(상위 20260930_1456 ②).
+`jamActionBadges.ts`의 `JAM_ACTION_CONDITION_KEYS`·`METRIC_COMPUTERS`에 키와 계산 함수만 더했고
+`evaluateJamActionBadges` 본문은 그대로다. 값은 전부 정수 ≥1이고, 계산은 `jamActionDropMetrics.ts`다.
+
+| 키 | 세는 것 |
+|---|---|
+| `drop_item_count` | 내가 놓은 **서로 다른 아이템 개체** 수. 같은 개체를 몇 번 놓아도 1 |
+| `pickup_item_count` | 내가 주운 서로 다른 개체 수. **자기 드랍은 뺀다.** 시스템 드랍·놓은 사람이 탈퇴한 드랍은 포함한다 |
+| `pickup_from_user_count` | 내가 주운 드랍을 놓은 서로 다른 유저 수(함께 줍기). 자기·시스템·탈퇴 유저는 뺀다 |
+| `picked_up_by_user_count` | 내가 놓은 드랍을 주운 서로 다른 유저 수(나눔가). 자기·탈퇴 유저(`picked_up_by` NULL)는 뺀다 |
+
+- **원천은 `poi_drops`이고 드랍 1건 = 1행이다**(`create_user_drop`이 매번 INSERT, 픽업은
+  `picked_up_by`를 채운다). 시스템 드랍(`source='system'`)과 놓은 사람이 탈퇴한 드랍
+  (`dropper_user_id` NULL)을 구분해야 해서 `custody_events`가 아니라 `poi_drops`를 쓴다.
+- **`inventory_item_id`가 있는 행만 센다**(2026-08-29 이전 행은 개체 연결이 없어 자동으로 빠진다).
+  원시 행 수를 세는 지표는 없다 — A·B가 개체 X를 10번 왕복해 행이 20개여도 두 유저 모두 네 지표가
+  1이다. 자기 드랍을 자기가 주운 것은 드랍 수에는 세고 픽업·함께 픽업·주워짐에는 세지 않는다.
+- **호출**: `POST /api/drops`가 성공한 뒤 놓은 사람의 `drop_item_count`를, `POST
+  /api/drops/[dropId]/pickup`이 RPC 성공 뒤 줍는 사람과 놓은 사람을 각각 `after()`로 판정한다
+  (`runJamActionEvaluation`). 실패 분기에서는 예약하지 않고 응답·상태·문구·소식 #13은 그대로다.
+  어떤 드랍을 주웠느냐에 따라 다시 볼 지표가 갈리며 규칙은 `jamActionDropTriggers.ts`(순수)에 있다.
+
+  | 픽업한 드랍 | 줍는 사람 | 놓은 사람 |
+  |---|---|---|
+  | 다른 유저의 드랍 | `pickup_item_count`·`pickup_from_user_count` | `picked_up_by_user_count` |
+  | 시스템·탈퇴한 놓은 사람의 드랍 | `pickup_item_count` | 없음 |
+  | 자기 드랍 | 없음(`after()` 예약 안 함) | 없음 |
+
+  **주워짐은 놓은 사람에게 발급·알림한다**(기존 `activity_recap` 결산, `notifyActivityBadgesEarned`).
+  믹스는 응답 전에 `await`하지만 픽업은 이미 왕복이 많고 두 유저 판정이 붙으며 획득 알림이
+  알림함 결산뿐이라 응답 뒤(`after()`)로 미룬다. 한쪽 판정이 거부돼도 다른 쪽은 끝까지 돈다.
+- **계산은 RPC가 아니라 순수 함수다**: `computeDropPickupMetrics(userId, myDrops, myPickups)`가
+  규칙을 들고 있어 vitest로 직접 검증한다. 조회는 놓은 사람 기준·주운 사람 기준 두 가지이며
+  `.order('id').range()` 1,000행 페이지로 끝까지 읽고 **30페이지(30,000행)를 넘으면 오류**를 던져
+  그 지표만 건너뛴다(fail-closed). 한 유저의 대상 행이 약 2,000을 넘으면 `COUNT(DISTINCT)` RPC로
+  옮긴다(SQL 등가식은 `jamActionDropMetrics.ts` 머리 주석과 마이그레이션 202 검증 주석).
+  조회는 마이그레이션 202의 부분 인덱스(`idx_poi_drops_dropper_lookup`·`idx_poi_drops_picker_lookup`)가
+  받친다.
+
 **어드민 분류는 `admin_category='jam'`(마이그레이션 156, 티켓 20260910_2055)** — 위
 평가 로직과는 별개로, 어드민이 이 배지들을 목록 필터·계열관리·게이트미션·아이템북·
 시뮬레이터·activity-badge-image 6개 화면에서 구분·관리하기 위한 순수 분류 컬럼이다.
@@ -233,10 +282,10 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
 
 | | ① 액티비티배지 엔진 | ③ 서비스 사용량 배지 |
 |---|---|---|
-| 트리거 | Strava 동기화 1회(배치) | `POST /api/follows`(팔로우 성공 직후) · `syncStravaActivities()`(`synced>0`일 때만) · `user_checkin_badge_earns` insert 성공 직후(체크인 배지 발급 직후) · `POST /api/combine`(믹스 결과가 나온 직후) |
-| 조건 필드 | `evaluation: 'engine'` — badge-engine이 직접 수치 검사 | `follower_count`/`following_count`/`daily_sync_count`/`daily_sync_streak_days`/`checkin_category_count`/`checkin_badge_count`/`combine_attempt_count`/`combine_success_count`/`combine_fail_count`/`recipe_first_success`, `role: 'meta'` + `evaluation: 'external'`(`mission_reward`와 같은 자리) — badge-engine의 `evaluateConditionDetailed`는 이 필드들을 **항상 fail** 처리(measurable 필드 없음) |
-| 실제 평가·발급 | `src/lib/badge-engine/index.ts`의 `evaluateBadgesDetailed()` | `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()`(4종)·`evaluateCheckinUsageBadges()`(체크인 2종) · `src/lib/badge-engine/jamActionBadges.ts`의 `evaluateJamActionBadges()`(믹스 행동 4종) — 모두 §2.2 Step 3-A(등급형 성장 티어)·Step 3-B(레벨형 연속 발급)와 같은 정책을 `issueQualifyingBadges()`로 공유 재구현(선행 배지·교차 게이트·**반복형(`repeat_count`) 미지원** — `isLeveledBadge()` 이진 판정만 써서 등급형/레벨형만 가른다. 저장 시점 가드는 아래 참고, 티켓 20260910_1719·20260914_1725) |
-| 카운터 원천 | `strava_activities` | `user_follows`(COUNT) · `user_daily_sync_counts`(`increment_daily_sync_count()` RPC로 원자 증가 — `daily_sync_count`·`daily_sync_streak_days` 파생) · `user_checkin_badge_earns` × effective category(카테고리 지표) · `user_checkin_badge_earns` × 이름→id 해석(목록 지표) · `user_combine_success_logs`(성공 기록 행 수·최초 표시 행) · `user_combine_fail_logs`(`fail_reason='no_recipe_match'` 수) |
+| 트리거 | Strava 동기화 1회(배치) | `POST /api/follows`(팔로우 성공 직후) · `syncStravaActivities()`(`synced>0`일 때만) · `user_checkin_badge_earns` insert 성공 직후(체크인 배지 발급 직후) · `POST /api/combine`(믹스 결과가 나온 직후) · `POST /api/drops`(드랍 성공 직후, `after()`) · `POST /api/drops/[dropId]/pickup`(픽업 성공 직후, `after()`) |
+| 조건 필드 | `evaluation: 'engine'` — badge-engine이 직접 수치 검사 | `follower_count`/`following_count`/`daily_sync_count`/`daily_sync_streak_days`/`checkin_category_count`/`checkin_badge_count`/`combine_attempt_count`/`combine_success_count`/`combine_fail_count`/`recipe_first_success`/`drop_item_count`/`pickup_item_count`/`pickup_from_user_count`/`picked_up_by_user_count`, `role: 'meta'` + `evaluation: 'external'`(`mission_reward`와 같은 자리) — badge-engine의 `evaluateConditionDetailed`는 이 필드들을 **항상 fail** 처리(measurable 필드 없음) |
+| 실제 평가·발급 | `src/lib/badge-engine/index.ts`의 `evaluateBadgesDetailed()` | `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()`(4종)·`evaluateCheckinUsageBadges()`(체크인 2종) · `src/lib/badge-engine/jamActionBadges.ts`의 `evaluateJamActionBadges()`(믹스·드랍·픽업 행동 8종) — 모두 §2.2 Step 3-A(등급형 성장 티어)·Step 3-B(레벨형 연속 발급)와 같은 정책을 `issueQualifyingBadges()`로 공유 재구현(선행 배지·교차 게이트·**반복형(`repeat_count`) 미지원** — `isLeveledBadge()` 이진 판정만 써서 등급형/레벨형만 가른다. 저장 시점 가드는 아래 참고, 티켓 20260910_1719·20260914_1725) |
+| 카운터 원천 | `strava_activities` | `user_follows`(COUNT) · `user_daily_sync_counts`(`increment_daily_sync_count()` RPC로 원자 증가 — `daily_sync_count`·`daily_sync_streak_days` 파생) · `user_checkin_badge_earns` × effective category(카테고리 지표) · `user_checkin_badge_earns` × 이름→id 해석(목록 지표) · `user_combine_success_logs`(성공 기록 행 수·최초 표시 행) · `user_combine_fail_logs`(`fail_reason='no_recipe_match'` 수) · `poi_drops`(`inventory_item_id`가 있는 행의 서로 다른 개체·유저 수) |
 
 필드 스펙은 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §3(메타데이터 필드) 참고.
 언팔로우(`DELETE /api/follows/[userId]`)는 평가를 트리거하지 않는다 — 감소만 일어나고

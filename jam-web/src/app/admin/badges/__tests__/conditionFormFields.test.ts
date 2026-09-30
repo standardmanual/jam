@@ -149,6 +149,11 @@ describe('condition_json ↔ 폼 라운드트립 (티켓 20260905_0032)', () => 
     combine_success_count: 5,
     combine_fail_count: 3,
     recipe_first_success: { recipe_id: '3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70' },
+    // JAM! 카테고리 — 드랍·픽업 행동 지표 4종 (티켓 20261001_0632)
+    drop_item_count: 5,
+    pickup_item_count: 20,
+    pickup_from_user_count: 3,
+    picked_up_by_user_count: 3,
   }
 
   it('표본이 폼 지원 필드를 전부 덮는다 — 새 필드를 추가하면 여기도 채워야 한다', () => {
@@ -429,6 +434,7 @@ describe('조건 폼 그룹 재편 (티켓 20260911_0901)', () => {
         'follower_count', 'following_count', 'daily_sync_count', 'daily_sync_streak_days', 'mission_reward',
         'checkin_category_count', 'checkin_badge_count',
         'combine_attempt_count', 'combine_success_count', 'combine_fail_count', 'recipe_first_success',
+        'drop_item_count', 'pickup_item_count', 'pickup_from_user_count', 'picked_up_by_user_count',
       ])
     )
   })
@@ -483,5 +489,34 @@ describe('믹스 행동 지표 4종 — 폼 입력·저장·복원 (티켓 20261
     expect(fields.combineSuccessCount).toBe('7')
     expect(fields.combineAttemptCount).toBe('')
     expect(fields.recipeFirstSuccessRecipeId).toBe('3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70')
+  })
+})
+
+describe('드랍·픽업 행동 지표 4종 — 폼 입력·저장·복원 (티켓 20261001_0632)', () => {
+  it('폼 입력이 condition_json으로 조립된다', () => {
+    const fields = emptyFields({
+      dropItemCount: '5',
+      pickupItemCount: '20',
+      pickupFromUserCount: '3',
+      pickedUpByUserCount: '4',
+    })
+    expect(buildConditionJsonFromFields(fields)).toEqual({
+      drop_item_count: 5,
+      pickup_item_count: 20,
+      pickup_from_user_count: 3,
+      picked_up_by_user_count: 4,
+    })
+  })
+
+  it('빈 입력이면 4키 모두 결과에 없다', () => {
+    expect(buildConditionJsonFromFields(emptyFields())).toBeNull()
+  })
+
+  it('저장된 값을 폼 입력으로 되돌린다 — 저장하지 않은 키는 빈 문자열이다', () => {
+    const fields = conditionFormFieldsFrom({ pickup_item_count: 20, picked_up_by_user_count: 4 })
+    expect(fields.pickupItemCount).toBe('20')
+    expect(fields.pickedUpByUserCount).toBe('4')
+    expect(fields.dropItemCount).toBe('')
+    expect(fields.pickupFromUserCount).toBe('')
   })
 })

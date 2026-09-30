@@ -123,6 +123,38 @@ describe('믹스 행동 지표 4종은 고정 용어 「믹스」로 말한다 (
   })
 })
 
+describe('드랍·픽업 행동 지표 4종은 고정 용어 「드랍」·「픽업」으로 말한다 (티켓 20261001_0632)', () => {
+  it('4키가 각각 한 문장으로 나온다', () => {
+    expect(formatBadgeConditionText({ drop_item_count: 5 }, '나눔 입문')).toBe(
+      '아이템 5개 이상 드랍 조건을 채우면 획득할 수 있어요.'
+    )
+    expect(formatBadgeConditionText({ pickup_item_count: 20 }, '줍기 장인')).toBe(
+      '아이템 20개 이상 픽업 조건을 채우면 획득할 수 있어요.'
+    )
+    expect(formatBadgeConditionText({ pickup_from_user_count: 3 }, '함께 줍기')).toBe(
+      '서로 다른 유저 3명의 드랍 픽업 조건을 채우면 획득할 수 있어요.'
+    )
+    expect(formatBadgeConditionText({ picked_up_by_user_count: 3 }, '나눔가')).toBe(
+      '내 드랍을 픽업한 유저 3명 이상 조건을 채우면 획득할 수 있어요.'
+    )
+  })
+
+  it('금지 용어(놓기·놓은·수집·회수·배치)를 쓰지 않는다', () => {
+    const conditions: BadgeCondition[] = [
+      { drop_item_count: 5 },
+      { pickup_item_count: 20 },
+      { pickup_from_user_count: 3 },
+      { picked_up_by_user_count: 3 },
+    ]
+    for (const c of conditions) {
+      const text = formatBadgeConditionText(c, '드랍 배지')
+      for (const banned of ['놓기', '놓은', '놓아', '수집', '회수', '배치', '채집']) {
+        expect(text).not.toContain(banned)
+      }
+    }
+  })
+})
+
 describe('「관리자가 직접 발급」·미션 보상은 여전히 맞는 문구다', () => {
   it('조건이 비어 있으면 관리자 수동 발급', () => {
     expect(formatBadgeConditionText(null, '수동 배지')).toBe(MANUAL_TEXT)

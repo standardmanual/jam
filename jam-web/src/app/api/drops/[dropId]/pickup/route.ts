@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isUserNearPoi, DROP_RADIUS_METERS } from '@/lib/poi/proximity'
 import { recordFeedEvent } from '@/lib/activity-feed'
@@ -9,6 +9,8 @@ import { isPoiBlocked, blockPoiForUser } from '@/lib/abusing/poi-block'
 import { checkAndUpdateLocation } from '@/lib/abusing/gps-detector'
 import { applyBan, logAbusingEvent } from '@/lib/abusing/shadow-ban'
 import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
+import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
+import { jamTriggersForPickup } from '@/lib/badge-engine/jamActionDropTriggers'
 import { d, t } from '@/lib/i18n'
 
 // 20260915_2241 — ADR 0001에 따라 이 라우트의 `error` 필드는 `src/lib/i18n/ko.ts`의 drops
@@ -159,6 +161,21 @@ export async function POST(
       { error: messageMap[code] ?? d.drops.pickupFailed },
       { status: statusMap[code] ?? 400 }
     )
+  }
+
+  // JAM! 행동 지표(드랍·픽업) — 응답을 보낸 뒤에 줍는 사람과 놓은 사람을 각각 판정한다(티켓 20261001_0632).
+  // 주워짐(`picked_up_by_user_count`)은 놓은 사람에게 발급·알림한다. 자기 드랍이면 예약하지 않는다.
+  // `after()`로 미루는 이유: 이 라우트는 이미 왕복이 많고 두 유저 판정이 붙으며, 획득 알림이 알림함 결산뿐이라
+  // 응답 뒤로 미뤄도 유저가 잃는 것이 없다. `allSettled`라 한쪽 판정이 거부돼도 다른 쪽은 끝까지 돈다.
+  const jamTriggers = jamTriggersForPickup(user.id, drop.dropper_user_id)
+  if (jamTriggers.picker.length > 0 || jamTriggers.dropper.length > 0) {
+    const dropperId = drop.dropper_user_id
+    after(async () => {
+      await Promise.allSettled([
+        runJamActionEvaluation(user.id, jamTriggers.picker),
+        dropperId ? runJamActionEvaluation(dropperId, jamTriggers.dropper) : Promise.resolve(),
+      ])
+    })
   }
 
   // 피드 기록 (배지 + POI 정보 조회)

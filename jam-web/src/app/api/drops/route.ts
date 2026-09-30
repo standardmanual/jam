@@ -9,6 +9,8 @@ import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
 import { classifyNaverCategory } from '@/lib/poi/category-gate'
 import type { PoiRow } from '@/types/database'
 import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
+import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
+import { jamTriggersForDrop } from '@/lib/badge-engine/jamActionDropTriggers'
 import { d, t } from '@/lib/i18n'
 
 // GET /api/drops?lat=&lng=  — T1(DB) + T2(네이버 지역검색, 카테고리 레벨 기반) 통합
@@ -380,6 +382,10 @@ export async function POST(req: NextRequest) {
       { status: statusMap[code] ?? 400 }
     )
   }
+
+  // JAM! 행동 지표(드랍한 아이템 수) — 응답을 보낸 뒤에 놓은 사람의 배지를 판정한다(티켓 20261001_0632).
+  // 성공 분기에서만 예약한다. `runJamActionEvaluation`은 예외를 던지지 않아 드랍 응답은 그대로다.
+  after(() => runJamActionEvaluation(user.id, jamTriggersForDrop()))
 
   return NextResponse.json({ drop_id: result.drop_id })
 }

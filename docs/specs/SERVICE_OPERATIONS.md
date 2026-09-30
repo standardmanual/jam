@@ -471,12 +471,14 @@ tryItemDrop(userId, activityId):
 ### 6-1. POI 드랍 이벤트 (drop_events)
 
 ```
-사용자가 직접 POI에 드랍:
+사용자가 직접 POI에 드랍 (POST /api/drops):
 1. 인벤토리에서 아이템 선택
-2. API 호출 → inventory_items.dropped_at = now, drop_id = poi_drop.id
-3. poi_drops INSERT { dropper_user_id, badge_id, poi_id, is_available: true }
-4. inventory.used_slots -= 1
-5. recordFeedEvent: 'item_dropped'
+2. API 호출 → POI 활성 여부·반경 500m 이내 확인 (isUserNearPoi, DROP_RADIUS_METERS)
+3. create_user_drop RPC (DB 원자 트랜잭션): 개체 소유·슬롯 장착 여부 확인 후
+   poi_drops INSERT { dropper_user_id, badge_id, poi_id, inventory_item_id, source: 'user' }
+   — 드랍 1건 = 1행이고, 개체(inventory_items)는 지워지지 않고 소유자(inventory_id)만 비워진다
+   inventory.used_slots -= 1, custody_events INSERT 'UserDrop'
+4. 응답 뒤(after()): 놓은 사람의 JAM! 행동 지표 drop_item_count 배지 판정
 ```
 
 ### 6-2. POI 픽업 흐름
@@ -485,7 +487,7 @@ tryItemDrop(userId, activityId):
 POST /api/drops/[dropId]/pickup → pickup_drop RPC (DB 원자 트랜잭션):
 
 사전 검증:
-  ① 유저 현재 위치 → POI 반경 50m 이내 확인 (isUserNearPoi)
+  ① 유저 현재 위치 → POI 반경 500m 이내 확인 (isUserNearPoi, DROP_RADIUS_METERS)
   ② poi_blocks 체크: 해당 POI에 해당 유저 블록 없음
   ③ GPS 조작 감지 (checkAndUpdateLocation):
      이전 위치 대비 이동속도 > gps_max_speed_kmh (기본 300km/h) → 거부
@@ -495,9 +497,13 @@ POST /api/drops/[dropId]/pickup → pickup_drop RPC (DB 원자 트랜잭션):
 
 처리:
   poi_drops.picked_up_by = 유저, picked_up_at = now, is_available = false
-  inventory_items INSERT { obtained_by: 'poi_pickup', expires_at: now + 30일 }
+  개체(inventory_items) 소유자만 줍는 사람의 인벤토리로 이동 (일련번호 불변, 신규 INSERT 없음)
   inventory.used_slots += 1
+  custody_events INSERT 'Pickup'
   recordFeedEvent: 'item_picked_up'
+  응답 뒤(after()): JAM! 행동 지표 판정 — 줍는 사람(pickup_item_count·pickup_from_user_count)과
+    놓은 사람(picked_up_by_user_count)을 각각. 시스템 드랍은 줍는 사람의 pickup_item_count만,
+    자기 드랍이면 판정하지 않는다
 ```
 
 ### 6-3. 드랍 이벤트 픽업 (drop_events 기반)
