@@ -76,7 +76,7 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 |---|---|---|---|
 | ① | PRD | 기능·스펙·로직 정의 | `docs/specs/prd/` |
 | ② | 티켓 | 실행 계획·작업 이력 | `docs/tickets/` |
-| ③ | 컨텐츠 | 액티비티배지·아이템북·아이템배지·트라이브·POI | `jam-doc/planning/content/` |
+| ③ | 컨텐츠 | 액티비티배지·아이템북·아이템배지·트라이브·POI·운영 패턴 | `jam-doc/planning/content/` |
 | ④ | 배지 드랍 로직 | 배지 발급·드랍 엔진 판정 로직 | `docs/specs/badge-engine/` |
 | ⑤ | 서비스 플랜 | 비전·장기 전략, 현재/향후 구분 | `jam-doc/planning/business-plan/` |
 
