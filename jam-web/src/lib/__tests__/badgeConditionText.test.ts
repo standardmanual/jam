@@ -132,14 +132,14 @@ describe('드랍·픽업 행동 지표 4종은 고정 용어 「드랍」·「�
       '아이템 20개 이상 픽업 조건을 채우면 획득할 수 있어요.'
     )
     expect(formatBadgeConditionText({ pickup_from_user_count: 3 }, '함께 줍기')).toBe(
-      '서로 다른 3명이 놓은 드랍 픽업 조건을 채우면 획득할 수 있어요.'
+      '서로 다른 유저 3명의 드랍 픽업 조건을 채우면 획득할 수 있어요.'
     )
     expect(formatBadgeConditionText({ picked_up_by_user_count: 3 }, '나눔가')).toBe(
-      '내 드랍을 서로 다른 3명이 픽업 조건을 채우면 획득할 수 있어요.'
+      '내 드랍을 픽업한 유저 3명 이상 조건을 채우면 획득할 수 있어요.'
     )
   })
 
-  it('금지 용어(놓기·수집·회수·배치)를 쓰지 않는다', () => {
+  it('금지 용어(놓기·놓은·수집·회수·배치)를 쓰지 않는다', () => {
     const conditions: BadgeCondition[] = [
       { drop_item_count: 5 },
       { pickup_item_count: 20 },
@@ -148,7 +148,7 @@ describe('드랍·픽업 행동 지표 4종은 고정 용어 「드랍」·「�
     ]
     for (const c of conditions) {
       const text = formatBadgeConditionText(c, '드랍 배지')
-      for (const banned of ['놓기', '수집', '회수', '배치', '채집']) {
+      for (const banned of ['놓기', '놓은', '놓아', '수집', '회수', '배치', '채집']) {
         expect(text).not.toContain(banned)
       }
     }
