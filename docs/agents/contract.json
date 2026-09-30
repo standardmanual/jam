@@ -213,7 +213,8 @@
     "rollback_sql_required_from": 180,
     "public_routes": ["dev-login", "strava/callback", "username/check"],
     "auth_wrappers": [
-      { "file": "jam-web/src/lib/admin/bulk/server.ts", "call": "readBulkRequest" }
+      { "file": "jam-web/src/lib/admin/bulk/server.ts", "call": "readBulkRequest" },
+      { "file": "jam-web/src/lib/admin/opsInbox/auth.ts", "call": "requireOpsInboxSubmit" }
     ]
   },
 
