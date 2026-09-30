@@ -450,6 +450,10 @@ interface BadgeGateRequirement {
   무시된다 — 저장 시점에 `findUsageMetricRepeatConflictError`(`badge-condition-guards.ts`)가
   막는다. 같은 함수(`findUsageMetricOtherMeasurableConflictError`)가 이 10종과 다른
   measurable 필드(예: `distance_km`)의 조합도 막는다
+- **사용량 지표 10종은 한 배지에 하나만 쓸 수 있다**(2026-10-01, 티켓 20261001_0712; 저장 가드
+  `findMultipleUsageMetricsError`, `badge-condition-guards.ts`). 지표마다 따로 판정돼 둘 이상을
+  넣으면 AND(모두 충족)가 아니라 먼저 채운 지표 하나로 발급되기 때문이다 — AND 판정은
+  구현하지 않고 저장 때 막는다
 - 교차 게이트 3종(§2.12)도 fail-closed 대상이 **아니다** — 다만 값의 형태가 깨지면
   **그 게이트 때문에 발급이 막힌다**(통과가 아니다). 게이트는 조건 평가가 아니라 후보
   선별 단계에서 판정되므로, 수치 조건이 하나도 없는 배지는 여전히 「평가 가능한 조건 없음」이다
