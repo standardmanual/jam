@@ -19,7 +19,7 @@ export type ResetUserResult =
 /**
  * 유저 전체 초기화 (시뮬레이터 반복 테스트용)
  * 유지: users 계정, strava_connections 행(토큰·연동 상태), 팔로잉/팔로워 관계
- * 삭제: 활동·배지·아이템·미션·피드·POI드랍·드랍상태·아이템북완성·믹스실패이력 전체
+ * 삭제: 활동·배지·아이템·미션·피드·POI드랍·드랍상태·아이템북완성·믹스성공·실패이력 전체
  * 초기화: initial_sync_done=false + strava last_synced_at=NULL
  *         → 다음 싱크가 "최초 연동"처럼 과거 이력 전체를 다시 불러온다 (연동은 유지)
  */
@@ -131,12 +131,15 @@ export async function resetUserData(
   // ── 3단계: 드랍엔진 v2 상태 + 아이템북 완성 기록 삭제 ─────────
   // (user_item_book_slots는 inventory_items ON DELETE CASCADE로 이미 정리됨)
   // 20260910_1441: 믹스 실패 이력도 "초기 상태로 되돌린다"는 리셋 의미에 맞춰 함께 삭제한다.
-  const [{ error: e9 }, { error: e10 }, { error: e11 }] = await Promise.all([
+  // 20261001_0631: 믹스 성공 이력(`user_combine_success_logs`)도 같은 이유로 함께 삭제한다 — 시도·성공
+  // 횟수 지표가 이 기록에서 나오므로 남겨 두면 초기화한 유저의 횟수가 그대로 이어진다.
+  const [{ error: e9 }, { error: e10 }, { error: e11 }, { error: e12 }] = await Promise.all([
     supabase.from('user_drop_state').delete().eq('user_id', userId),
     supabase.from('user_item_book_completions').delete().eq('user_id', userId),
     supabase.from('user_combine_fail_logs').delete().eq('user_id', userId),
+    supabase.from('user_combine_success_logs').delete().eq('user_id', userId),
   ])
-  const stateError = e9 ?? e10 ?? e11
+  const stateError = e9 ?? e10 ?? e11 ?? e12
   if (stateError) return { ok: false, status: 500, error: stateError.message }
 
   // ── 4단계: 싱크 이력 초기화 (연동 자체는 유지) ─────────
