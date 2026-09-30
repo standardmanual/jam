@@ -1160,6 +1160,167 @@ export type Database = {
           },
         ]
       }
+      ops_bundle_items: {
+        Row: {
+          bundle_id: string
+          created_at: string
+          created_resource: Json | null
+          edited: Json | null
+          ends_at: string | null
+          format_errors: Json
+          id: string
+          item_key: string | null
+          kind: string | null
+          original: Json
+          pattern_no: string | null
+          position: number
+          starts_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bundle_id: string
+          created_at?: string
+          created_resource?: Json | null
+          edited?: Json | null
+          ends_at?: string | null
+          format_errors?: Json
+          id?: string
+          item_key?: string | null
+          kind?: string | null
+          original: Json
+          pattern_no?: string | null
+          position: number
+          starts_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bundle_id?: string
+          created_at?: string
+          created_resource?: Json | null
+          edited?: Json | null
+          ends_at?: string | null
+          format_errors?: Json
+          id?: string
+          item_key?: string | null
+          kind?: string | null
+          original?: Json
+          pattern_no?: string | null
+          position?: number
+          starts_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ops_bundle_items_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "ops_bundles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ops_bundles: {
+        Row: {
+          author: string
+          bundle_id: string
+          color_rationale_link: string | null
+          format_errors: Json
+          hypothesis: string | null
+          id: string
+          is_sample: boolean
+          raw: Json
+          raw_hash: string
+          received_at: string
+          routine_run: Json | null
+          week: string | null
+        }
+        Insert: {
+          author: string
+          bundle_id: string
+          color_rationale_link?: string | null
+          format_errors?: Json
+          hypothesis?: string | null
+          id?: string
+          is_sample?: boolean
+          raw: Json
+          raw_hash: string
+          received_at?: string
+          routine_run?: Json | null
+          week?: string | null
+        }
+        Update: {
+          author?: string
+          bundle_id?: string
+          color_rationale_link?: string | null
+          format_errors?: Json
+          hypothesis?: string | null
+          id?: string
+          is_sample?: boolean
+          raw?: Json
+          raw_hash?: string
+          received_at?: string
+          routine_run?: Json | null
+          week?: string | null
+        }
+        Relationships: []
+      }
+      ops_decisions: {
+        Row: {
+          action: string
+          actor: string
+          batch_id: string | null
+          bundle_id: string
+          created_at: string
+          diff: Json | null
+          id: string
+          item_id: string | null
+          reason: string | null
+          slack_result: Json | null
+        }
+        Insert: {
+          action: string
+          actor: string
+          batch_id?: string | null
+          bundle_id: string
+          created_at?: string
+          diff?: Json | null
+          id?: string
+          item_id?: string | null
+          reason?: string | null
+          slack_result?: Json | null
+        }
+        Update: {
+          action?: string
+          actor?: string
+          batch_id?: string | null
+          bundle_id?: string
+          created_at?: string
+          diff?: Json | null
+          id?: string
+          item_id?: string | null
+          reason?: string | null
+          slack_result?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ops_decisions_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "ops_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ops_decisions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "ops_bundle_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       poi: {
         Row: {
           category: string

@@ -58,6 +58,9 @@ code:
 
 [CMS/기타]      today_cards (홈 에디토리얼) / theme_presets (어드민 컬러 테마)
                 engine_decision_log (배지·드랍 엔진 판정 로그)
+
+[운영툴]        ops_bundles ─1:N─ ops_bundle_items   (에이전트가 제출한 한 주치 운영 묶음과 그 항목)
+                     └─1:N─ ops_decisions ──item_id──> ops_bundle_items (결정 기록, 추가만)
 ```
 
 ---
@@ -531,6 +534,9 @@ FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기
 | asset_presets | JAM! 에셋 제너레이터 프리셋(마이그레이션 185, 티켓 20260924_2159, 2026-09-25 적용). `id`(uuid), `name`, `target_type`(CHECK `badge` — 후속 차수에서 값 추가), `stage_ratio`(CHECK `1:1`·`4:5`·`9:16`), `layers`(JSONB — 이미지·텍스트 오버레이 레이어 목록과 순서. 텍스트 레이어는 글자 내용 `content`도 저장, 리본 레이어·배경색·리본 랜덤값·시드는 저장하지 않음, 직렬화 규칙은 `jam-web/src/lib/asset-generator/presetSerialize.ts`), `created_by`(어드민 users.id, FK 없음), `created_at`, `updated_at`(앱이 직접 갱신). 이미지 원본은 `images` 버킷 `asset-generator/presets/{presetId}/{layerId}.{png\|svg}`에 올라가고 `layers`의 `assetUrl`이 그 공개 URL을 가리킨다. RLS 활성·정책 없음(서비스 롤 전용, 어드민 API `/api/admin/asset-generator/presets`). 수동 경로(어드민)가 만들고 자동 경로(윤진 CLI, 티켓 20260924_2201)가 읽는다 |
 | theme_presets | 어드민 컬러 테마 프리셋(활성 1개만 유지) |
 | engine_decision_log | 배지·드랍 엔진의 판정 사후 추적 로그 (RLS 적용) |
+| ops_bundles | 운영툴의 운영 묶음(마이그레이션 198, 티켓 20260930_1816). 에이전트가 `POST /api/admin/ops-inbox`로 제출한 한 주치 묶음 한 건. `id`(uuid), `bundle_id`(text, **유일** — 제출자가 정한 식별자, 재제출·동시 제출 판정), `week`(text, NULL 허용, `2026-W41` 표기), `hypothesis`(text NULL), `author`(text, 제출 에이전트 이름·자기 신고), `routine_run`(JSONB NULL), `color_rationale_link`(text NULL), `is_sample`(boolean, 기본 false — 시험 묶음), `raw`(JSONB — 제출 본문 전체, 바꾸지 않는다), `raw_hash`(text — 키 순서를 정렬한 JSON의 SHA-256, 같은 본문 재제출 판정), `format_errors`(JSONB, 기본 `[]` — 「경로: 사유」 문자열 배열), `received_at`(기본 now()). **묶음 상태 컬럼 없음**(항목 상태에서 계산, [ops-tool/PRD.md](ops-tool/PRD.md) §7). 인덱스 `(received_at DESC)`(시간당 제출 수 확인). RLS 활성·정책 없음(서비스 롤 전용) |
+| ops_bundle_items | 묶음 안의 항목 한 건(마이그레이션 198). `id`(uuid), `bundle_id`(→ ops_bundles.id, 삭제 시 함께 삭제), `position`(int, 제출 배열 순서 0부터), `item_key`(text NULL — 묶음 안 고유 키, **(묶음, item_key) 유일 제약 없음**: 중복도 형식 오류로 저장한다), `kind`(text NULL — 7개 값, **CHECK 없음**: 허용값 밖도 형식 오류로 저장한다), `pattern_no`(text NULL), `starts_at`·`ends_at`(timestamptz NULL), `status`(text, 기본 `arrived`, CHECK `arrived`·`reviewing`·`approved`·`preparing`·`scheduled`·`live`·`ended`·`rejected`·`cancelled`·`failed`), `original`(JSONB — 제출 항목 원본, 바꾸지 않는다), `edited`(JSONB NULL — 직접 수정본, 티켓 1818이 채운다), `created_resource`(JSONB NULL — 승인 뒤 만들어진 자원의 ID, 티켓 1500이 채운다), `format_errors`(JSONB, 기본 `[]`), `created_at`, `updated_at`(앱이 직접 갱신). 조회·정렬에 쓰는 공통 필드만 열로 두고 나머지는 `original`에 둔다. 인덱스 `(bundle_id)`. RLS 활성·정책 없음(서비스 롤 전용) |
+| ops_decisions | 운영툴 결정 기록(마이그레이션 198). **추가만 한다**(수정·삭제 API 없음, 지울 수 있는 것은 시험 묶음의 기록뿐). `id`(uuid), `bundle_id`(→ ops_bundles.id, 삭제 시 함께 삭제), `item_id`(→ ops_bundle_items.id NULL, 삭제 시 함께 삭제 — 묶음 전체에 대한 행은 NULL), `action`(text — 지금은 `submit`만 쓴다, **CHECK 없음**: 뒤 티켓이 값을 더한다), `actor`(text — 관리자 ID 또는 `token:<에이전트 이름>`), `batch_id`(uuid NULL — 일괄 승인의 처리 번호), `diff`(JSONB NULL — 수정 전후 차이), `reason`(text NULL), `slack_result`(JSONB NULL — 슬랙 알림 결과 `{ channel, ok, error? }`), `created_at`. 제출 한 번에 `submit` 1행이 남는다. 인덱스 `(bundle_id)`. RLS 활성·정책 없음(서비스 롤 전용) |
 
 ---
 
