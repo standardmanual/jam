@@ -236,7 +236,8 @@ export function OpsItemDetail({ item, items, decisions, onSelectItem, detailEdit
   const itemDecisions = decisions.filter((decision) => decision.itemId === item.id || decision.itemId === null)
 
   return (
-    <Card className="overflow-hidden">
+    // `overflow-hidden`을 두지 않는다: 아래 고정 줄(`sticky bottom-0`)이 스크롤 하는 바깥 열을 기준으로 붙어야 한다.
+    <Card>
       <div className="space-y-5 p-4">
         {/* ① 종류·상태·패턴 번호·손잡이 값 */}
         <section aria-label="항목 요약" className="space-y-2">
