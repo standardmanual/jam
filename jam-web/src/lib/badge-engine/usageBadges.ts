@@ -106,7 +106,8 @@ export async function evaluateUsageBadges(
 /**
  * 등급형(이름 그룹 최상위 tier 1개)·레벨형(family_key 보유 레벨+1부터 연속) 순차 발급 —
  * `evaluateUsageBadges`(팔로워·팔로잉·동기화 4종)와 `evaluateCheckinUsageBadges`(체크인
- * 카테고리·목록 2종, 티켓 20260914_1725)가 공유하는 발급 로직.
+ * 카테고리·목록 2종, 티켓 20260914_1725)가 공유하는 발급 로직. JAM! 행동 지표
+ * (`jamActionBadges.ts`, 티켓 20261001_0631)도 이 함수를 불러 같은 발급 정책을 쓴다(export).
  *
  * 4종은 "유저 단위로 한 번 계산한 숫자 하나"를 모든 후보에 그대로 비교했지만, 체크인 2종은
  * 후보 배지마다 자기 `condition_json`(어떤 카테고리인지·어떤 배지 목록인지)이 달라 **후보별로**
@@ -115,7 +116,7 @@ export async function evaluateUsageBadges(
  * `triggered_by` 문자열을 만들 수 있게 함수로 받는다(체크인 카테고리 지표는 카테고리 값을
  * 함께 남긴다).
  */
-async function issueQualifyingBadges(
+export async function issueQualifyingBadges(
   supabase: SupabaseClient,
   userId: string,
   candidates: BadgeRow[],
