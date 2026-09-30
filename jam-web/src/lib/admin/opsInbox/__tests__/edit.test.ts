@@ -17,6 +17,7 @@ import {
   mergeItemForValidation,
   readDiff,
   readEditableValues,
+  replaceItemFormatErrors,
   splitEditPath,
   type OpsEditDiffEntry,
 } from '../edit'
@@ -227,6 +228,32 @@ describe('되돌림 스택', () => {
     const r2 = computeRevertDiff(item(e3), d1)
     const e4 = applyDiff(ORIGINAL, e3, r2, 'forward')
     expect(e4).toBeNull()
+  })
+})
+
+describe('replaceItemFormatErrors', () => {
+  const all = ['week: 주차 오류', 'items[0].kind: a', 'items[1].kind: b', 'items[1].links[0]: c', 'items[2]: 객체여야 해요']
+
+  it('그 항목의 줄만 새 결과로 바꾸고 묶음 오류가 앞, 항목은 자리 순인 배치를 지킨다', () => {
+    expect(replaceItemFormatErrors(all, 1, ['items[1].kind: 새'])).toEqual([
+      'week: 주차 오류',
+      'items[0].kind: a',
+      'items[1].kind: 새',
+      'items[2]: 객체여야 해요',
+    ])
+  })
+
+  it('새 결과가 비면 그 항목의 줄이 모두 빠지고, 없던 항목의 오류는 제자리에 끼운다', () => {
+    expect(replaceItemFormatErrors(all, 1, [])).toEqual(['week: 주차 오류', 'items[0].kind: a', 'items[2]: 객체여야 해요'])
+    expect(replaceItemFormatErrors(['items[0].kind: a', 'items[2].kind: c'], 1, ['items[1].kind: b'])).toEqual([
+      'items[0].kind: a',
+      'items[1].kind: b',
+      'items[2].kind: c',
+    ])
+  })
+
+  it('items[1]과 items[10]을 헷갈리지 않는다', () => {
+    expect(replaceItemFormatErrors(['items[10].kind: x', 'items[1].kind: y'], 1, [])).toEqual(['items[10].kind: x'])
   })
 })
 

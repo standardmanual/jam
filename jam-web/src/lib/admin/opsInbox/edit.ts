@@ -25,8 +25,11 @@ const EDIT_OBJECT_ROOTS = ['copy', 'colors'] as const
 
 type EditObjectRoot = (typeof EDIT_OBJECT_ROOTS)[number]
 
-/** 수정 전후 차이의 한 칸. 시각이 아닌 칸은 항상 문자열이고, 시각은 UTC ISO 문자열 또는 null(비어 있음)이다. */
-export interface OpsEditDiffEntry {
+/**
+ * 수정 전후 차이의 한 칸. 시각이 아닌 칸은 항상 문자열이고, 시각은 UTC ISO 문자열 또는 null(비어 있음)이다.
+ * `type` 별칭으로 둔다(interface는 jsonb 열에 넣을 `Json`으로 바로 대입되지 않는다).
+ */
+export type OpsEditDiffEntry = {
   path: string
   before: string | null
   after: string | null
@@ -183,6 +186,22 @@ export function mergeItemForValidation(original: Json, edited: Json | null): Rec
     if (value !== undefined && value !== null) merged[key] = value
   }
   return merged
+}
+
+/**
+ * 묶음 형식 오류 목록(「경로: 사유」)에서 한 항목의 줄만 새 결과로 바꾼다. 항목의 줄은 `items[n]`으로 시작한다.
+ * 묶음 오류가 앞, 항목 오류가 자리 순인 제출 때의 배치를 그대로 지킨다(줄 사이 순서는 안정 정렬).
+ */
+export function replaceItemFormatErrors(all: readonly string[], position: number, next: readonly string[]): string[] {
+  const ownerOf = (line: string): number => {
+    const match = /^items\[(\d+)\]/.exec(line)
+    return match ? Number(match[1]) : -1
+  }
+  const combined = [...all.filter((line) => ownerOf(line) !== position), ...next]
+  return combined
+    .map((line, index) => ({ line, index, owner: ownerOf(line) }))
+    .sort((a, b) => a.owner - b.owner || a.index - b.index)
+    .map(({ line }) => line)
 }
 
 // ── 되돌리기 ─────────────────────────────────────────────────────────────────────────────────────

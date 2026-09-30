@@ -1,7 +1,8 @@
 /**
  * 운영툴 슬랙 이력 알림 (티켓 20260930_1816) — 서버(Vercel)에서 `chat.postMessage`를 부른다.
  *
- * - 이 티켓이 쓰는 이벤트는 「기획안 도착」 하나(`#jam-report`)다. `alert` 채널은 뒤 티켓(실패·되돌림)이 쓴다.
+ * - 쓰는 이벤트는 「기획안 도착」(티켓 20260930_1816)과 결정 글(승인·반려·일괄 승인·수정·되돌림, 티켓 20260930_1818)이고 모두
+ *   `#jam-report`다. `alert` 채널은 뒤 티켓(실패·되돌림 실패)이 쓴다.
  * - **던지지 않는다.** 환경변수가 없거나, 네트워크가 실패하거나, 슬랙이 `ok: false`로 답해도 `{ ok: false, error }`를
  *   돌려준다. 슬랙 게시 실패가 제출 요청을 실패시키면 안 된다(상위 티켓 가정 16). 오류에는 종류(이름)만 담고
  *   토큰 값·응답 본문은 담지 않는다.
@@ -28,9 +29,9 @@ export function escapeSlackText(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-function safeField(value: string): string {
+function safeField(value: string, maxChars: number = SLACK_FIELD_MAX_CHARS): string {
   const chars = [...value.replace(/\s+/g, ' ').trim()]
-  const cut = chars.length > SLACK_FIELD_MAX_CHARS ? `${chars.slice(0, SLACK_FIELD_MAX_CHARS).join('')}…` : chars.join('')
+  const cut = chars.length > maxChars ? `${chars.slice(0, maxChars).join('')}…` : chars.join('')
   return escapeSlackText(cut)
 }
 
@@ -55,6 +56,52 @@ export function formatArrivalMessage(input: ArrivalMessageInput): string {
     `형식 오류 ${input.formatErrorCount}건`,
   ]
   const text = parts.join(' · ')
+  return input.isSample ? `[시험] ${text}` : text
+}
+
+/** 반려 글에 붙이는 사유의 최대 길이(글자). 사유는 500자까지 받으므로 글이 길어지지 않게 자른다. */
+const SLACK_REASON_MAX_CHARS = 100
+/** 수정 글에 이름을 나열하는 칸 수. 넘으면 「외 N칸」으로 줄인다. */
+const SLACK_CHANGED_LABELS_MAX = 8
+
+/**
+ * 결정 글의 재료(티켓 20260930_1818). `itemLabel`은 「종류 · 공개 시각(KST)」이다 — 제출자가 적은 `author`·`item_key`는
+ * 자기 신고라 쓰지 않는다. 수정·되돌림 글에는 항목 이름과 바뀐 칸의 이름만 싣고 값은 싣지 않는다.
+ */
+export type DecisionMessageInput =
+  | { action: 'approve'; isSample: boolean; itemLabel: string }
+  | { action: 'reject'; isSample: boolean; itemLabel: string; reason: string }
+  | { action: 'bulk_approve'; isSample: boolean; approved: number; excluded: number; skipped: number }
+  | { action: 'edit' | 'revert'; isSample: boolean; itemLabel: string; changedLabels: readonly string[] }
+
+/**
+ * 결정 글. 시험 묶음이면 맨 앞에 「[시험]」을 붙인다. 모든 제출 문자열은 `escapeSlackText`를 거친다.
+ * 예: `[시험] 승인했어요 · 홈피드 카드 · 10/5(월) 09:00`, `[시험] 일괄 승인했어요 · 11개 승인, 1개 제외`
+ */
+export function formatDecisionMessage(input: DecisionMessageInput): string {
+  let text: string
+  switch (input.action) {
+    case 'approve':
+      text = `승인했어요 · ${safeField(input.itemLabel)}`
+      break
+    case 'reject':
+      text = `반려했어요 · ${safeField(input.itemLabel)} · 사유: ${safeField(input.reason, SLACK_REASON_MAX_CHARS)}`
+      break
+    case 'bulk_approve': {
+      const skipped = input.skipped > 0 ? `, ${input.skipped}개는 이미 처리돼 건너뜀` : ''
+      text = `일괄 승인했어요 · ${input.approved}개 승인, ${input.excluded}개 제외${skipped}`
+      break
+    }
+    case 'edit':
+    case 'revert': {
+      const shown = input.changedLabels.slice(0, SLACK_CHANGED_LABELS_MAX).map((label) => safeField(label))
+      const rest = input.changedLabels.length - shown.length
+      const changed = shown.length > 0 ? ` · 바뀐 칸: ${shown.join(', ')}${rest > 0 ? ` 외 ${rest}칸` : ''}` : ''
+      const head = input.action === 'revert' ? '수정했어요(되돌림)' : '수정했어요'
+      text = `${head} · ${safeField(input.itemLabel)}${changed}`
+      break
+    }
+  }
   return input.isSample ? `[시험] ${text}` : text
 }
 
