@@ -2,5 +2,6 @@
 workspace.json
 workspace-mobile.json
 graph.json
-# 플러그인이 PC마다 새로 만드는 색인 캐시(수십 MB)도 공유하지 않는다
+# 플러그인이 PC마다 새로 만드는 색인 캐시(수십 MB)와, PC별 절대경로가 들어가는 멀티 볼트 설정도 공유하지 않는다
 plugins/*/index-cache.json
+plugins/multi-vault-navigator/data.json
