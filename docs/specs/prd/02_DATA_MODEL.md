@@ -44,6 +44,7 @@ code:
 
 [조합]          combination_recipes (보상만) + combination_recipe_slots (슬롯 2~10개, OR 후보)
                 combine_policy (싱글톤 — 실패 시 고정 포인트)
+                user_combine_fail_logs · user_combine_success_logs (유저별 믹스 실패·성공 이력)
 
 [미션]          missions ─1:N─ user_mission_participations (참가+진행도)
                           └─1:N─ user_mission_completions   (완료 기록)
@@ -428,6 +429,38 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 ### combine_policy (싱글톤)
 `fail_reward_points`(미매칭 시 지급할 고정 포인트) 하나만 남아 있다. 트라이브 다양성 티어
 확률 정책·피티 카운터(`user_combine_state`)는 2026-09-10 폐기됐다.
+
+### user_combine_fail_logs (마이그레이션 153)
+믹스 실패 1건 = 1행. 어드민 유저 상세에서만 조회한다(유저 화면 비노출). `user_id`(→ `users`,
+`ON DELETE CASCADE`), `attempted_at`, `ingredient_badge_ids[]`, `fail_reason`, `points_awarded`.
+`fail_reason`은 CHECK로 4값만 허용한다 — `no_recipe_match`·`items_not_found`·`invalid_count`·
+`recipe_not_found`. JAM! 행동 지표의 믹스 실패·시도 횟수는 이 중 `no_recipe_match`만 센다.
+코드가 기록하던 `recipe_not_found`가 CHECK에 없어 저장이 조용히 실패하던 것을 마이그레이션
+200(티켓 20261001_0636)에서 고쳤다. RLS를 켜고 정책을 만들지 않는다 —
+service_role만 접근한다.
+
+### user_combine_success_logs (신규, 티켓 20261001_0631, 마이그레이션 200)
+믹스 성공 1건 = 1행. 보상이 전부 비어 재료만 소각된 **빈손 성공도 1행**이다. 믹스 시도·성공
+횟수와 「레시피 최초 성공」 배지 조건(JAM! 행동 지표)의 원천이다.
+- 컬럼: `id`, `user_id`(→ `users`, `ON DELETE CASCADE`), `recipe_id`(UUID, NOT NULL),
+  `attempted_at`, `ingredient_badge_ids[]`, `result_badge_ids[]`, `points_awarded`(≥0),
+  `is_recipe_first`(BOOLEAN — 그 레시피를 전체 유저 중 처음 성공한 행이면 true).
+- **`recipe_id`에는 FK를 걸지 않았다.** 레시피를 지워도 그 유저의 성공 횟수와 최초 성공 기록이
+  남아야 하고, 레시피 삭제 가드가 전제하는 「이 레시피를 참조하는 행이 없다」
+  (`recipe-references.ts`)를 유지하기 위해서다.
+- 인덱스: `(user_id, attempted_at DESC)`, 부분 유니크 `(recipe_id) WHERE is_recipe_first` —
+  레시피마다 최초 표시 행을 DB가 1개로 강제한다.
+- RLS를 켜고 정책을 만들지 않는다 — service_role만 접근한다(유저 화면 비노출).
+- 과거 성공은 되살릴 수 없어 백필하지 않는다. 그래서 시도·성공 횟수는 이 기록을 시작한 날부터
+  센다(실패 로그는 2026-09-10부터).
+- RPC `record_combine_success(p_user_id, p_recipe_id, p_ingredient_badge_ids, p_result_badge_ids,
+  p_points_awarded) → boolean` — `SECURITY DEFINER`, `EXECUTE`는 service_role만. 먼저
+  `is_recipe_first = true`로 넣어 보고(`ON CONFLICT (recipe_id) WHERE is_recipe_first DO
+  NOTHING`) 이미 최초 행이 있으면 `is_recipe_first = false`로 한 번 더 넣는다. 반환값은 「이
+  호출이 그 레시피의 최초 성공인가」이며, 두 유저가 동시에 같은 레시피를 성공해도 최초 표시는
+  정확히 1행이다. 호출은 `combineRecipeAttempt()`가 보상·포인트 지급이 끝난 뒤 한다
+  (`src/lib/combine/index.ts`).
+- 유저 초기화(`resetUserData`)는 이 기록도 함께 지운다.
 
 > 조합 시스템은 v1(2026-07 초 계획) → v2(2026-07-27 재설계, "정석 레시피/재료 정확 매칭")로 갈아엎어짐. 현재 상세는 [jam-doc/planning/content/COMBINE_RECIPES.md](../../../jam-doc/planning/content/COMBINE_RECIPES.md) 참고.
 

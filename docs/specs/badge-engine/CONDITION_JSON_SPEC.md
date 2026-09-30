@@ -356,6 +356,10 @@ interface BadgeGateRequirement {
 | `daily_sync_streak_days` | `number` | [JAM! 카테고리] 오늘 기준 «현재» 연속 동기화 일수 ≥ 조건값. **역대 최장이 아니다** — 하루라도 거르면 0으로 리셋된다 | 위와 동일 — `evaluateUsageBadges()`가 `daily_sync_count`와 같은 시점(`increment_daily_sync_count()` RPC 직후)에 `dailySyncStreak.ts`의 `fetchCurrentSyncStreakDays()`로 계산해 판정 |
 | `checkin_category_count` | `{ category: string; count: number }` | [JAM! 카테고리] 지정된 체크인 카테고리(effective category — `badges.category` 우선, 없으면 연결된 `poi.category` 폴백) 내에서 유저가 보유한(distinct) 체크인 배지 개수 ≥ `count` | badge-engine 내 **항상 fail** — `usageBadges.ts`의 `evaluateCheckinUsageBadges()`가 체크인 배지(`user_checkin_badge_earns`) insert 성공 직후 별도 판정·발급. 후보 배지마다 카테고리가 달라 팔로워 수 등 4종처럼 "호출부가 미리 계산한 값 하나"로 판정할 수 없다 |
 | `checkin_badge_count` | `{ checkin_badge_names: string[]; count: number }` | [JAM! 카테고리] 지정한 체크인 배지 이름(CSV로 입력, `type='checkin'`으로 한정 해석) 목록 중 유저가 보유한 이름 개수 ≥ `count` | 위와 동일 — 저장 시점에 `findCheckinBadgeNamesNotFoundError`가 목록의 모든 이름이 실제 `type='checkin'` 배지 이름인지 검증한다(존재하지 않는 이름은 저장 자체를 거부). 평가 시점에도 카탈로그에 없는 이름은 무시하고 나머지로 판정하는 안전망이 있다 |
+| `combine_attempt_count` | `number`(정수 ≥1) | [JAM! 카테고리] 믹스 시도 횟수 ≥ 조건값. **성공 기록 수 + `no_recipe_match` 실패 수**(재료가 소각된 시도만 센다 — `invalid_count`·`items_not_found`·`recipe_not_found`처럼 소각 전에 끝난 실패는 제외) | badge-engine 내 **항상 fail** — `src/lib/badge-engine/jamActionBadges.ts`의 `evaluateJamActionBadges()`가 `POST /api/combine` 결과 직후 별도 판정·발급. 성공 기록은 마이그레이션 200 이후부터 쌓인다 |
+| `combine_success_count` | `number`(정수 ≥1) | [JAM! 카테고리] 믹스 성공 횟수 ≥ 조건값. `user_combine_success_logs` 행 수(보상이 전부 비어 재료만 소각된 빈손 성공도 1건) | 위와 동일 |
+| `combine_fail_count` | `number`(정수 ≥1) | [JAM! 카테고리] 믹스 실패 횟수 ≥ 조건값. `user_combine_fail_logs` 중 `fail_reason='no_recipe_match'` 수 | 위와 동일. 실패 로그는 2026-09-10(마이그레이션 153)부터 있어 그 이전 실패는 세지 않는다 |
+| `recipe_first_success` | `{ recipe_id: string }` | [JAM! 카테고리] 지정한 믹스 레시피를 **전체 유저 중 가장 먼저 성공한 1명**에게만 발급. `user_combine_success_logs`에서 그 레시피의 `is_recipe_first = true` 행이 내 것인지로 판정한다(상태 기반) | 위와 동일 — 저장 시점에 `findRecipeFirstSuccessNotFoundError`가 `recipe_id`의 UUID 형식과 `combination_recipes` 존재를 검증한다(없는 레시피는 저장 자체를 거부). 배지를 붙이기 전에 이미 성공한 사람이 있는 레시피에는 쓰지 않는 것을 운영 규칙으로만 다룬다 |
 
 > ⚠️ 배경(티켓 20260825_028): 마이그레이션 `084_badge_condition_cleanup.sql`이 배지 상세화면
 > 표시용으로 미션보상배지 15종에 `{"mission_reward": true}`를 넣었는데, 당시 badge-engine은
@@ -392,6 +396,15 @@ interface BadgeGateRequirement {
 > `evaluateCheckinUsageBadges()`가 후보 배지마다 자기 `condition_json`을 참조해 현재값을
 > 계산한다(카테고리 지표 = `user_checkin_badge_earns` × effective category distinct count,
 > 목록 지표 = 지정 이름 중 보유한 이름 개수). `sync.ts`의 체크인 배지 insert 성공 직후 호출된다.
+>
+> **믹스 행동 지표 4종** (2026-10-01, 티켓 20261001_0631): 같은 자리(`role: 'meta'` +
+> `evaluation: 'external'`)다. 앞의 셋은 「유저 단위로 한 번 계산한 숫자」를 후보마다 비교하는
+> 수치형이고, `recipe_first_success`는 값이 object라 후보마다 자기 레시피를 가리킨다.
+> `jamActionBadges.ts`의 `evaluateJamActionBadges()`가 요청한 지표를 가진 후보만 골라 계산하고
+> (후보가 없으면 계산하지 않는다), 계산 함수(`jamActionMetrics.ts`)가 DB 오류를 던지면 그
+> 지표만 건너뛴다(fail-closed). 발급 정책은 `usageBadges.ts`의 `issueQualifyingBadges()`를
+> 공유한다. 이후 행동 지표는 레지스트리 `field()` 1개·`JAM_ACTION_CONDITION_KEYS`와
+> `METRIC_COMPUTERS`의 키·계산 함수·CHECK 키 확장 마이그레이션 1개를 더해 이어 붙인다.
 
 ---
 
@@ -423,15 +436,19 @@ interface BadgeGateRequirement {
 - 휴식 4종(§2.13)은 **`repeat_count`와 휴식 키 1개까지 조합 가능하다**(2026-09-06, 티켓
   20260906_2056) — 전용 술어가 "휴식 조건을 만족한 복귀 사건"만 센다. 휴식 키 2개 이상은
   사건 경계가 정의되지 않아 여전히 「회차와 함께 쓸 수 없는 조건」으로 막힌다
-- **사용량 지표 6종(§3 — `follower_count`·`following_count`·`daily_sync_count`·
-  `daily_sync_streak_days`·`checkin_category_count`·`checkin_badge_count`)은 `repeat_count`와
+- **사용량 지표 10종(§3 — `follower_count`·`following_count`·`daily_sync_count`·
+  `daily_sync_streak_days`·`checkin_category_count`·`checkin_badge_count`·
+  `combine_attempt_count`·`combine_success_count`·`combine_fail_count`·`recipe_first_success`.
+  단일 출처는 `conditionRegistry.ts`의 `USAGE_METRIC_CONDITION_KEYS` — 메타 키에서
+  `mission_reward`를 뺀 목록이라 지표를 더하면 이 규칙이 자동으로 붙는다)은 `repeat_count`와
   함께 쓸 수 없다**(2026-09-10, 티켓 20260910_1719; 20260911_2304에서 4번째 키로 확장;
-  20260914_1725에서 체크인 배지 보유 2종 추가) — `usageBadges.ts`의
+  20260914_1725에서 체크인 배지 보유 2종 추가; 20261001_0631에서 믹스 행동 지표 4종 추가) —
+  `usageBadges.ts`·`jamActionBadges.ts`의
   발급 경로는 등급형(이름 그룹 내 최상위 tier 1개만)·레벨형(family_key 연속 발급)만
   구현돼 있다. `badgeKindOf()`가 아니라 `isLeveledBadge()`(rarity==null 이진 판정)로만
   갈라 반복형(세 번째 종류)을 구분하지 못하므로, 등급형 경로로 흘러가 회차가 조용히
   무시된다 — 저장 시점에 `findUsageMetricRepeatConflictError`(`badge-condition-guards.ts`)가
-  막는다. 같은 함수(`findUsageMetricOtherMeasurableConflictError`)가 이 6종과 다른
+  막는다. 같은 함수(`findUsageMetricOtherMeasurableConflictError`)가 이 10종과 다른
   measurable 필드(예: `distance_km`)의 조합도 막는다
 - 교차 게이트 3종(§2.12)도 fail-closed 대상이 **아니다** — 다만 값의 형태가 깨지면
   **그 게이트 때문에 발급이 막힌다**(통과가 아니다). 게이트는 조건 평가가 아니라 후보
