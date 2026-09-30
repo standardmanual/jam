@@ -605,6 +605,35 @@ function checkSettingsPermissions(c) {
   }
 }
 
+// ── 환경변수 표와 코드가 같은 이름을 쓰는가 (티켓 20260930_1816) ─────────────────
+// 표(doc)에만 있고 코드에서 사라진 이름, 코드(code)가 읽는데 표에서 빠진 이름은 문서가 거짓이 된다.
+// entries의 names 각각이 doc·code 두 파일에 글자 그대로 있어야 한다.
+function checkEnvVars(c) {
+  for (const entry of c.env_vars?.entries ?? []) {
+    const { doc, code, names } = entry
+    if (typeof doc !== 'string' || typeof code !== 'string' || !Array.isArray(names) || names.some((n) => typeof n !== 'string')) {
+      violate('env_vars', `env_vars.entries 항목의 형식이 잘못됐습니다 (${JSON.stringify(entry)})`,
+        `{ "doc": "문서 경로", "code": "코드 경로", "names": ["ENV_NAME", ...] } 형식으로 적으세요.`)
+      continue
+    }
+    for (const [label, rel] of [['문서', doc], ['코드', code]]) {
+      const file = path.join(REPO, rel)
+      if (!existsSync(file)) {
+        violate('env_vars', `환경변수 대조용 ${label} 파일이 없습니다: ${rel}`,
+          `파일을 옮겼다면 contract.json의 env_vars 경로를 고치세요.`)
+        continue
+      }
+      const text = readFileSync(file, 'utf8')
+      for (const name of names) {
+        if (!text.includes(name)) {
+          violate('env_vars', `${label} ${rel}에 환경변수 ${name}가 없습니다`,
+            `표와 코드가 같은 이름을 써야 합니다. 이름을 바꿨다면 문서·코드·contract.json을 함께 고치세요.`)
+        }
+      }
+    }
+  }
+}
+
 // ── 실행 ──────────────────────────────────────────────────────────────────────
 const contract = readContract()
 checkPathsExist(contract)
@@ -622,6 +651,7 @@ checkDeployGate(contract)
 checkRoutineCommitRestriction(contract)
 checkWorkflowFreeze(contract)
 checkSettingsPermissions(contract)
+checkEnvVars(contract)
 
 for (const n of notes) console.log(`참고: ${n}`)
 for (const w of warnings) console.log(`경고: ${w}`)

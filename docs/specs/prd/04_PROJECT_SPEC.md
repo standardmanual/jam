@@ -88,7 +88,7 @@ jam-web/
 
 1. **`proxy.ts` 레벨**: `/admin/*` 요청 시 Supabase Auth 세션 확인 → `ADMIN_EMAILS`(쉼표 구분) 화이트리스트 대조 → 불일치 시 `/forbidden`
 2. **보조 인증**: `ADMIN_SECRET` 비밀번호 기반 쿠키(`admin_token`) — `api/admin/auth`, `api/admin/test/simulate` 등 일부 API가 사용. 시뮬레이터처럼 세션 없이도 호출해야 하는 경로용.
-3. **자동화 읽기 토큰**: `x-admin-read-token` 헤더가 `ADMIN_API_READ_TOKEN`과 일치하면 **GET 요청만** 통과한다. `requireAdminRead(req)`(`src/lib/admin/auth.ts`)를 쓰는 읽기 라우트(missions·badges·users·drop-policy·badge-metric-labels·kpi/weekly)에만 적용되고, `proxy.ts`는 이 조건일 때만 로그인 리다이렉트를 건너뛴다. 쓰기 메서드·다른 라우트는 기존 세션 검사(`requireAdmin()`)만 받는다. 클라우드 예약 작업(`scripts/admin-api-read.mjs`)용이다.
+3. **자동화 읽기 토큰**: `x-admin-read-token` 헤더가 `ADMIN_API_READ_TOKEN`과 일치하면 **GET 요청만** 통과한다. `requireAdminRead(req)`(`src/lib/admin/auth.ts`)를 쓰는 읽기 라우트(missions·badges·users·drop-policy·badge-metric-labels·kpi/weekly)에만 적용되고, `proxy.ts`는 이 조건일 때만 로그인 리다이렉트를 건너뛴다. 쓰기 메서드·다른 라우트는 기존 세션 검사(`requireAdmin()`)만 받는다. 클라우드 예약 작업(`scripts/admin-api-read.mjs`)용이다. **쓰기 예외는 운영 묶음 제출 경로 하나뿐이다**: `POST /api/admin/ops-inbox`(경로가 정확히 같을 때만, 접두사 아님)는 같은 토큰으로 낼 수 있다. `proxy.ts`와 라우트가 같은 판정 함수 `isOpsInboxTokenRequest`(`src/lib/admin/auth.ts`, 상수는 `src/lib/admin/opsInbox/constants.ts`)를 쓰고, 계약 테스트(`src/app/api/admin/__tests__/token-write-contract.test.ts`)가 토큰 쓰기 검사를 부르는 라우트가 그 하나뿐인지 확인한다. 스펙은 [ops-tool/PRD.md](ops-tool/PRD.md) §11.1.
 
 코드 작성 시 어느 인증 경로를 쓰는지 명확히 구분할 것 — 새 어드민 API가 필요하면 기존 라우트가 둘 중 어느 방식을 쓰는지 먼저 확인.
 
@@ -211,9 +211,12 @@ push로 배포하지 않는다(`.githooks/pre-push`가 `JAM_SHIP=1` 없는 main 
 | `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` | Strava 앱 OAuth 키 | |
 | `ENCRYPTION_KEY` | Strava 토큰 암호화 키 (hex) | `openssl rand -hex 32` |
 | `ADMIN_EMAILS` | `/admin/*` 접근 허용 이메일 화이트리스트 (쉼표 구분) | `proxy.ts` |
-| `ADMIN_API_READ_TOKEN` | 어드민 자동화 읽기 토큰 (GET 전용, 값을 바꾸면 이전 토큰 즉시 차단) | `requireAdminRead`, `proxy.ts` |
+| `ADMIN_API_READ_TOKEN` | 어드민 자동화 읽기 토큰 (GET 전용. 쓰기는 `POST /api/admin/ops-inbox` 하나만 예외, 값을 바꾸면 이전 토큰 즉시 차단) | `requireAdminRead`, `isOpsInboxTokenRequest`, `proxy.ts` |
 | `ADMIN_SECRET` | 어드민 보조 인증 비밀번호 (쿠키 토큰 발급용) | 시뮬레이터 등 |
 | `CRON_SECRET` | Vercel Cron 요청 인증 | 4개 Cron 라우트 공통 |
+| `SLACK_BOT_TOKEN` | 슬랙 봇(JAM 봇) 토큰. 운영 묶음 도착 글을 서버가 `chat.postMessage`로 게시한다 | `lib/admin/opsInbox/slack.ts`. 미설정이면 게시를 건너뛰고 결정 기록에 `not_configured`만 남긴다(제출은 성공). Vercel 두 프로젝트에 등록 필요 |
+| `SLACK_CHANNEL_JAM_REPORT` | 슬랙 `#jam-report` 채널 ID (도착·승인·예약·공개 알림) | `lib/admin/opsInbox/slack.ts`. 값의 원천은 `.claude/skills/jam-work/references/scheduled-jobs.md` 「Slack 알림」 |
+| `SLACK_CHANNEL_JAM_ALERT` | 슬랙 `#jam-alert` 채널 ID (실패·되돌림 알림) | `lib/admin/opsInbox/slack.ts`. 1816은 게시 함수만 갖고 이 채널에는 아직 게시하지 않는다 |
 | `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | 네이버 지도 SDK 클라이언트 ID | |
 | `NCP_MAP_CLIENT_SECRET` | 네이버 클라우드 플랫폼 지도 서버 인증 | |
 | `NEXT_PUBLIC_NAVER_MAP_STYLE_ID` | 네이버 지도 커스텀 스타일 ID | |
