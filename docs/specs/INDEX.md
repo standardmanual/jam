@@ -103,13 +103,13 @@ status: active
 - [03 JAM! 배지 철학 및 시스템 구조.md](../../jam-doc/planning/business-plan/03%20JAM!%20배지%20철학%20및%20시스템%20구조.md) — JAM! 배지의 철학, 액티비티배지·아이템배지 분류, 일련번호·드랍·픽업 메커니즘, 유저 수준별 리텐션 접근을 정의한다.
 - [04 JAM! 트라이브.md](../../jam-doc/planning/business-plan/04%20JAM!%20트라이브.md) — JAM! 유니버스의 프롤로그, 트라이브별 캐치프레이즈와 서사, 크로스오버 에필로그 한 단락을 담은 설정 원문이다.
 - [05 JAM! 활동 배지 체계 재설계 분석.md](../../jam-doc/planning/business-plan/05%20JAM!%20활동%20배지%20체계%20재설계%20분석.md) — 현행 걷기 배지 구조의 소진 문제를 진단하고 재설계 원칙을 정리한 분석 메모다.
-- [06 JAM! 라이브 운영 플랜.md](../../jam-doc/planning/business-plan/06%20JAM!%20라이브%20운영%20플랜.md) — 유저 락인 → 컬렉션 런칭 → 브랜드 협업·수익화로 이어지는 라이브 운영 방향을 사용자와 대화로 정리하는 작성 중 플랜
+- [06 JAM! 라이브 운영 플랜.md](../../jam-doc/planning/business-plan/06%20JAM!%20라이브%20운영%20플랜.md) — 유저 락인 → 컬렉션 런칭 → 브랜드 협업·수익화로 이어지는 라이브 운영 방향을 사용자와 대화로 정리한 과정 기록. 1단계는 종료됐고 설계 정본은 07 블루프린트이며, 이 문서는 런칭 세션과 패턴 원고의 재료다
 - [07 JAM! 라이브 운영 블루프린트.md](../../jam-doc/planning/business-plan/07%20JAM!%20라이브%20운영%20블루프린트.md) — 에이전트가 정기 루틴으로 운영을 기획하고 사용자가 어드민 운영툴에서 결정·실행하는 라이브 운영 체계의 설계도. 승인 뒤 우선순위를 정해 개발한다
 
 ## jam-doc/planning/content/
 
 - [ACTIVITY_BADGES.md](../../jam-doc/planning/content/ACTIVITY_BADGES.md) — v5 액티비티배지의 조건·설명과 설계 원칙, 시딩하지 않은 항목, 발급되지 않는 항목을 정리한 목록이다(정본은 DB).
-- [COMBINE_RECIPES.md](../../jam-doc/planning/content/COMBINE_RECIPES.md) — 믹스 결과의 두 갈래, 레시피 슬롯 구조, 실패 처리, 등록 레시피 현황과 카탈로그 공백을 정리한 정책 문서다.
+- [COMBINE_RECIPES.md](../../jam-doc/planning/content/COMBINE_RECIPES.md) — 믹스 결과의 두 갈래, 레시피 슬롯 구조, 실패 처리, 등록 레시피 현황과 레시피 결과물의 범위를 정리한 정책 문서다.
 - [POI.md](../../jam-doc/planning/content/POI.md) — 지점(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
 - [SPECIAL_DAYS.md](../../jam-doc/planning/content/SPECIAL_DAYS.md) — 특일정보 API가 조회하는 2026년 공휴일·24절기·기념일·잡절 전체 목록과, 어떤 날에 어떤 노출 태그를 켤지 사용자가 고르는 선택표다.
 - [TRIBES.md](../../jam-doc/planning/content/TRIBES.md) — 세계관 트라이브의 캐치프레이즈·컬렉션·아이템배지, 인접 그래프, 소재·시간대·POI 유형 매핑, 데이터 소스를 정리한 목록이다.
