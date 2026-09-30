@@ -10,6 +10,8 @@ import {
   OPS_ITEM_KIND_LABELS,
   OPS_ITEM_STATUS_LABELS,
   OPS_STAGE_BAR_LABELS,
+  editPathLabel,
+  formatDiffValue,
   formatErrorPathLabel,
   formatKstClock,
   formatKstDay,
@@ -222,5 +224,24 @@ describe('KST 시각 표기', () => {
     expect(kstDateKey('not-a-date')).toBeNull()
     expect(formatKstDayTime('nope')).toBeNull()
     expect(formatKstClock(undefined)).toBeNull()
+  })
+})
+
+describe('직접 수정 이름표 (티켓 20260930_1818)', () => {
+  it('editPathLabel: 문안·색은 「종류 · 키」, 나머지는 쉬운 이름', () => {
+    expect(editPathLabel('copy.body')).toBe('문안 · body')
+    expect(editPathLabel('colors.background')).toBe('색 · background')
+    expect(editPathLabel('starts_at')).toBe('공개 시각')
+    expect(editPathLabel('ends_at')).toBe('종료 시각')
+    expect(editPathLabel('segment')).toBe('대상')
+    expect(editPathLabel('user_experience')).toBe('유저가 겪는 것')
+    expect(editPathLabel('unknown.path')).toBe('unknown.path')
+  })
+
+  it('formatDiffValue: 비면 「(없음)」, 시각은 KST, 나머지는 그대로', () => {
+    expect(formatDiffValue('copy.body', '')).toBe('(없음)')
+    expect(formatDiffValue('starts_at', null)).toBe('(없음)')
+    expect(formatDiffValue('starts_at', '2026-10-05T00:00:00.000Z')).toBe('10/5(월) 09:00')
+    expect(formatDiffValue('copy.body', '오늘은 비가 와요')).toBe('오늘은 비가 와요')
   })
 })

@@ -53,5 +53,12 @@ export type OpsItemStatus = (typeof OPS_ITEM_STATUSES)[number]
 /** 새로 저장하는 항목의 상태. */
 export const OPS_ITEM_INITIAL_STATUS: OpsItemStatus = 'arrived'
 
-/** 결정 기록의 `action` 값. 이 티켓은 `submit`만 쓴다(뒤 티켓이 값을 더한다). */
+/** 결정 기록의 `action` 값. 제출은 1816, 나머지 넷은 1818이 쓴다(뒤 티켓이 값을 더한다). */
 export const OPS_DECISION_ACTION_SUBMIT = 'submit'
+export const OPS_DECISION_ACTION_APPROVE = 'approve'
+export const OPS_DECISION_ACTION_REJECT = 'reject'
+export const OPS_DECISION_ACTION_EDIT = 'edit'
+export const OPS_DECISION_ACTION_REVERT = 'revert'
+
+/** 반려·수정 사유 길이 상한(글자). */
+export const MAX_DECISION_REASON_CHARS = 500

@@ -73,7 +73,7 @@ function isPresent(value: unknown): boolean {
   return value !== undefined && value !== null
 }
 
-function isIsoDateTime(value: unknown): value is string {
+export function isIsoDateTime(value: unknown): value is string {
   return typeof value === 'string' && ISO_DATE_TIME_PATTERN.test(value) && !Number.isNaN(Date.parse(value))
 }
 
@@ -251,6 +251,43 @@ function validateItem(
     original: raw as Json,
     format_errors: errors,
   }
+}
+
+// ── 수정 뒤 다시 검사 (티켓 20260930_1818) ────────────────────────────────────────────────────────
+
+/** 같은 묶음 항목 하나의 자리와 `item_key`. 다시 검사할 때 `item_key` 중복·연결 실재를 판정하는 재료다. */
+export interface BundleItemKeyRef {
+  position: number
+  itemKey: string | null
+}
+
+/**
+ * 직접 수정으로 바뀐 항목 하나를 다시 검사한다(수정본을 제출 원본 위에 덮은 항목 한 벌 `raw`). 제출 때 검사와 같은 규칙·같은
+ * 문장을 내려고 안쪽 `validateItem`을 그대로 쓴다. `bundleItems`는 묶음 전체 항목의 자리와 `item_key`다.
+ */
+export function revalidateOpsItem(
+  raw: unknown,
+  position: number,
+  bundleItems: readonly BundleItemKeyRef[]
+): ValidatedOpsItem {
+  const firstIndexByKey = new Map<string, number>()
+  const allKeys = new Set<string>()
+  for (const { position: at, itemKey } of [...bundleItems].sort((a, b) => a.position - b.position)) {
+    if (!isNonEmptyString(itemKey)) continue
+    if (!firstIndexByKey.has(itemKey)) firstIndexByKey.set(itemKey, at)
+    allKeys.add(itemKey)
+  }
+  const ownKey = isPlainObject(raw) && isNonEmptyString(raw.item_key) ? raw.item_key : null
+  return validateItem(raw, position, ownKey, firstIndexByKey, allKeys)
+}
+
+// 배경색 필드(`components/admin/BackgroundColorField.tsx`의 `HEX_COLOR_PATTERN`)와 같은 규칙이다. 그 파일은 클라이언트 모듈이라
+// 서버 코드가 값을 가져올 수 없어 다시 적었고, `validate.test.ts`가 두 식이 같은지 대조한다.
+export const EDIT_HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/
+
+/** 수정 때만 하는 색 검사(제출 검증은 색을 보지 않는다). 통과하면 null, 아니면 화면에 보일 문장이다. */
+export function validateEditedColor(value: string): string | null {
+  return EDIT_HEX_COLOR_PATTERN.test(value) ? null : '색은 #rrggbb 형식으로 적어 주세요. 예: #1a2b3c'
 }
 
 // ── 묶음 ─────────────────────────────────────────────────────────────────────────────────────────

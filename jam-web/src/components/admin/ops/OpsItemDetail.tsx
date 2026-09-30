@@ -16,8 +16,10 @@ import {
   userExperienceOf,
   worldReviewOf,
 } from '@/lib/admin/opsInbox/itemView'
+import { readDiff } from '@/lib/admin/opsInbox/edit'
 import type { OpsDecisionRecord, OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { OpsKindIcon } from './opsIcons'
+import { OpsDiffLines } from './OpsDiffLines'
 import { OpsStatusBadge } from './OpsStatusBadge'
 import { OpsItemFormatErrors } from './OpsFormatErrors'
 
@@ -33,6 +35,9 @@ import { OpsItemFormatErrors } from './OpsFormatErrors'
  * 슬롯(1818이 client 래퍼에서 채운다. 함수라 서버 컴포넌트에서 넘길 수 없다):
  * - `detailEdit`: 결과가 있으면 ③ 유저가 겪는 것과 ④ 내용 자리를 **대신한다**(편집 모드는 그 자리에서 바뀐다).
  * - `detailFooter`: 카드 아래 고정 줄(반려·수정·승인 버튼). 비어 있으면 줄을 그리지 않는다.
+ * - `detailHistoryAction`: ⑦ 결정 기록 머리의 오른쪽(「마지막 수정 되돌리기」). 비어 있으면 자리를 잡지 않는다.
+ *
+ * ⑦ 결정 기록은 승인·반려·수정·수정 되돌림(「되돌림」 태그, 버튼 없음)·일괄 승인 표시와 사유, 수정 전후 차이 줄(`OpsDiffLines`)을 그린다.
  */
 
 interface OpsItemDetailProps {
@@ -44,6 +49,7 @@ interface OpsItemDetailProps {
   onSelectItem: (id: string) => void
   detailEdit?: (item: OpsItemRecord) => ReactNode
   detailFooter?: (item: OpsItemRecord) => ReactNode
+  detailHistoryAction?: (item: OpsItemRecord) => ReactNode
 }
 
 function SectionTitle({ children }: { children: ReactNode }) {
@@ -176,6 +182,16 @@ function ReviewLines({ item }: { item: OpsItemRecord }) {
 
 const DECISION_ACTION_LABELS: Record<string, string> = {
   submit: '제출했어요',
+  approve: '승인했어요',
+  reject: '반려했어요',
+  edit: '수정했어요',
+  revert: '수정을 되돌렸어요',
+}
+
+/** 사유 줄 앞에 붙는 이름. 반려의 사유는 「반려 이유」, 수정의 사유는 「수정한 이유」다. */
+const DECISION_REASON_LABELS: Record<string, string> = {
+  reject: '반려 이유',
+  edit: '수정한 이유',
 }
 
 function decisionLine(decision: OpsDecisionRecord): string {
@@ -198,13 +214,35 @@ function DecisionLog({ decisions }: { decisions: readonly OpsDecisionRecord[] })
         const slackFailed =
           slack !== null && typeof slack === 'object' && !Array.isArray(slack) && slack.ok === false
         const when = formatKstDayTime(decision.createdAt)
+        const isBulk = decision.action === 'approve' && decision.batchId !== null
+        const diff = decision.action === 'edit' || decision.action === 'revert' ? readDiff(decision.diff) : []
+        const reasonLabel = Object.prototype.hasOwnProperty.call(DECISION_REASON_LABELS, decision.action)
+          ? DECISION_REASON_LABELS[decision.action]
+          : null
         return (
           <li key={decision.id} className="text-sm">
             <p className="break-words">
               {decisionLine(decision)}
+              {decision.action === 'revert' && (
+                // 되돌림 줄에는 버튼이 없다. 되돌림은 그 자체로 새 수정 줄이다(한 번에 한 단계, 다시 하기 없음).
+                <span className="ml-1.5 inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-foreground">
+                  되돌림
+                </span>
+              )}
+              {isBulk && (
+                <span className="ml-1.5 inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-foreground">
+                  일괄 승인
+                </span>
+              )}
               {when && <span className="ml-1.5 text-xs tabular-nums text-muted-foreground">{when}</span>}
             </p>
-            {decision.reason && <p className="break-words text-xs text-muted-foreground">{decision.reason}</p>}
+            {decision.reason && (
+              <p className="break-words text-xs text-muted-foreground">
+                {reasonLabel ? `${reasonLabel}: ` : ''}
+                {decision.reason}
+              </p>
+            )}
+            {diff.length > 0 && <OpsDiffLines diff={diff} className="mt-1 text-xs" />}
             {slackFailed && (
               <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">
                 <IconAlertTriangle className="size-3.5 shrink-0" aria-hidden="true" />
@@ -226,13 +264,22 @@ function rawJson(value: unknown): string {
   }
 }
 
-export function OpsItemDetail({ item, items, decisions, onSelectItem, detailEdit, detailFooter }: OpsItemDetailProps) {
+export function OpsItemDetail({
+  item,
+  items,
+  decisions,
+  onSelectItem,
+  detailEdit,
+  detailFooter,
+  detailHistoryAction,
+}: OpsItemDetailProps) {
   const experience = userExperienceOf(item)
   const knobs = entriesOf(itemField(item, 'knobs'))
   const startsAt = formatKstDayTime(item.startsAt)
   const endsAt = formatKstDayTime(item.endsAt)
   const editNode = detailEdit?.(item) ?? null
   const footerNode = detailFooter?.(item) ?? null
+  const historyActionNode = detailHistoryAction?.(item) ?? null
   const itemDecisions = decisions.filter((decision) => decision.itemId === item.id || decision.itemId === null)
 
   return (
@@ -328,7 +375,14 @@ export function OpsItemDetail({ item, items, decisions, onSelectItem, detailEdit
 
         {/* ⑦ 결정 기록 */}
         <section>
-          <SectionTitle>결정 기록</SectionTitle>
+          {historyActionNode ? (
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-xs font-semibold text-muted-foreground">결정 기록</h4>
+              {historyActionNode}
+            </div>
+          ) : (
+            <SectionTitle>결정 기록</SectionTitle>
+          )}
           <DecisionLog decisions={itemDecisions} />
         </section>
       </div>

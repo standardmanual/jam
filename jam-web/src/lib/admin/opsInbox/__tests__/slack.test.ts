@@ -6,7 +6,7 @@
  * - fetch 실패·HTTP 오류·`ok: false` 응답에서도 던지지 않는다(제출 요청을 실패시키면 안 된다)
  */
 import { vi, beforeEach, afterEach, describe, it, expect } from 'vitest'
-import { escapeSlackText, formatArrivalMessage, postOpsSlack } from '../slack'
+import { escapeSlackText, formatArrivalMessage, formatDecisionMessage, postOpsSlack } from '../slack'
 
 describe('escapeSlackText', () => {
   it('&, <, >를 슬랙 규칙대로 바꾼다', () => {
@@ -57,6 +57,69 @@ describe('formatArrivalMessage', () => {
     expect(text).not.toContain('\n')
     expect(text.length).toBeLessThan(200)
     expect(text).toContain('…')
+  })
+})
+
+describe('formatDecisionMessage (티켓 20260930_1818)', () => {
+  const label = '홈피드 카드 · 10/5(월) 09:00'
+
+  it('승인: 항목 이름(종류 · 공개 시각)만 담는다', () => {
+    expect(formatDecisionMessage({ action: 'approve', isSample: false, itemLabel: label })).toBe(
+      '승인했어요 · 홈피드 카드 · 10/5(월) 09:00'
+    )
+  })
+
+  it('시험 묶음이면 어느 글이든 앞에 「[시험]」이 붙는다', () => {
+    const inputs = [
+      { action: 'approve', isSample: true, itemLabel: label },
+      { action: 'reject', isSample: true, itemLabel: label, reason: '이유' },
+      { action: 'bulk_approve', isSample: true, approved: 1, excluded: 0, skipped: 0 },
+      { action: 'edit', isSample: true, itemLabel: label, changedLabels: ['공개 시각'] },
+      { action: 'revert', isSample: true, itemLabel: label, changedLabels: ['공개 시각'] },
+    ] as const
+    for (const input of inputs) expect(formatDecisionMessage(input).startsWith('[시험] '), input.action).toBe(true)
+    expect(formatDecisionMessage({ action: 'approve', isSample: false, itemLabel: label }).startsWith('[시험]')).toBe(false)
+  })
+
+  it('반려: 사유를 100자까지 붙이고 줄바꿈은 공백으로 접는다', () => {
+    const short = formatDecisionMessage({ action: 'reject', isSample: false, itemLabel: label, reason: '첫 줄\n둘째 줄' })
+    expect(short).toBe('반려했어요 · 홈피드 카드 · 10/5(월) 09:00 · 사유: 첫 줄 둘째 줄')
+    const long = formatDecisionMessage({ action: 'reject', isSample: false, itemLabel: label, reason: '가'.repeat(150) })
+    expect(long.endsWith(`${'가'.repeat(100)}…`)).toBe(true)
+    expect(long).not.toContain('가'.repeat(101))
+  })
+
+  it('일괄 승인: 글 1건 「N개 승인, M개 제외」, 이미 처리된 항목이 있으면 덧붙인다', () => {
+    expect(formatDecisionMessage({ action: 'bulk_approve', isSample: false, approved: 11, excluded: 1, skipped: 0 })).toBe(
+      '일괄 승인했어요 · 11개 승인, 1개 제외'
+    )
+    expect(formatDecisionMessage({ action: 'bulk_approve', isSample: false, approved: 10, excluded: 1, skipped: 1 })).toBe(
+      '일괄 승인했어요 · 10개 승인, 1개 제외, 1개는 이미 처리돼 건너뜀'
+    )
+  })
+
+  it('수정·되돌림: 바뀐 칸의 이름만 싣고 값은 싣지 않는다', () => {
+    const edit = formatDecisionMessage({ action: 'edit', isSample: false, itemLabel: label, changedLabels: ['문안 · body', '공개 시각'] })
+    expect(edit).toBe('수정했어요 · 홈피드 카드 · 10/5(월) 09:00 · 바뀐 칸: 문안 · body, 공개 시각')
+    const revert = formatDecisionMessage({ action: 'revert', isSample: false, itemLabel: label, changedLabels: ['공개 시각'] })
+    expect(revert).toBe('수정했어요(되돌림) · 홈피드 카드 · 10/5(월) 09:00 · 바뀐 칸: 공개 시각')
+  })
+
+  it('바뀐 칸이 많으면 「외 N칸」으로 줄인다', () => {
+    const many = Array.from({ length: 12 }, (_, i) => `문안 · k${i}`)
+    const text = formatDecisionMessage({ action: 'edit', isSample: false, itemLabel: label, changedLabels: many })
+    expect(text).toContain('문안 · k7')
+    expect(text).not.toContain('문안 · k8')
+    expect(text.endsWith('외 4칸')).toBe(true)
+  })
+
+  it('제출 문자열(사유·칸 이름)의 슬랙 특수문자를 이스케이프한다', () => {
+    const reject = formatDecisionMessage({ action: 'reject', isSample: false, itemLabel: label, reason: '<!channel> & <@U1>' })
+    expect(reject).toContain('&lt;!channel&gt; &amp; &lt;@U1&gt;')
+    expect(reject).not.toContain('<!channel>')
+    const edit = formatDecisionMessage({ action: 'edit', isSample: false, itemLabel: label, changedLabels: ['문안 · <!here>'] })
+    expect(edit).toContain('문안 · &lt;!here&gt;')
+    expect(edit).not.toContain('<!here>')
   })
 })
 

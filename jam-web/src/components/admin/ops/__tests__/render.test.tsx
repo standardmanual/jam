@@ -1,5 +1,5 @@
 /**
- * 받은 기획함 화면 부품의 초기 렌더 (티켓 20260930_1817)
+ * 받은 기획함 화면 부품의 초기 렌더 (티켓 20260930_1817, 결정 화면 부품은 티켓 20260930_1818)
  *
  * 저장소에 jsdom·testing-library가 없어(`OnboardingSyncButton.test.tsx`와 같은 방식) 서버 렌더(`renderToStaticMarkup`)로
  * 처음 그린 모양만 고정한다: 상태가 아이콘과 글자로 나오는지, 지금 단계 표시가 붙는지, 제출 문자열이 HTML로 해석되지 않는지,
@@ -25,9 +25,31 @@ import { OpsItemList } from '../OpsItemList'
 import { OpsItemDetail } from '../OpsItemDetail'
 import { OpsFormatErrorSummary, OpsItemFormatErrors } from '../OpsFormatErrors'
 import { OpsBundleWorkspace } from '../OpsBundleWorkspace'
+import { AlertDialog } from '@/components/admin/ui/alert-dialog'
+import { OpsConfirmPanel } from '../OpsConfirmDialog'
+import { OpsDiffLines } from '../OpsDiffLines'
+import { OpsBulkApprove, OpsBulkApprovePanel, buildBulkSummary, bulkResultMessage } from '../OpsBulkApprove'
+import { FormatErrorWarning, OpsItemActions, OpsRejectPanel, canSubmitRejectReason, decisionGuidance } from '../OpsItemActions'
+import { OPS_EDIT_STALE_MESSAGE, OpsItemEditForm } from '../OpsItemEditForm'
+import { OPS_PUBLISH_NOT_CONNECTED_NOTICE, OpsDecisionWorkspace } from '../OpsDecisionWorkspace'
+import { OpsSampleDeleteMenu } from '../OpsSampleDeleteMenu'
+import { readEditableValues } from '@/lib/admin/opsInbox/edit'
+import type { OpsWorkspaceContext } from '../OpsBundleWorkspace'
 import type { OpsDecisionRecord, OpsItemRecord } from '@/lib/admin/opsInbox/query'
 
 const html = (node: ReactElement) => renderToStaticMarkup(<TooltipProvider>{node}</TooltipProvider>)
+/** 글자 사이의 React 주석(`<!-- -->`)을 벗겨 문장으로 읽는다. */
+const flat = (node: ReactElement) => html(node).replace(/<!-- -->/g, '')
+/** 확인창 껍데기 안쪽 부품은 Radix 창 문맥이 필요해 열린 창으로 감싸서 그린다(포털은 쓰지 않는다). */
+const inDialog = (node: ReactElement) => flat(<AlertDialog open>{node}</AlertDialog>)
+/** 글자로 그 버튼을 찾아 여는 태그부터 닫는 태그까지 돌려준다. */
+const buttonOf = (out: string, label: string): string => new RegExp(`<button[^>]*>${label}</button>`).exec(out)?.[0] ?? ''
+/** 여는 태그에 `disabled` 속성이 있는지(클래스 이름의 `disabled:`는 세지 않는다). */
+const isDisabled = (tag: string): boolean => /\sdisabled(=|\s|>)/.test(tag)
+
+function makeCtx(overrides: Partial<OpsWorkspaceContext> = {}): OpsWorkspaceContext {
+  return { bundleId: 'bundle-1', items: [], selectedItem: null, draft: null, setDraft: vi.fn(), selectItem: vi.fn(), ...overrides }
+}
 
 function makeItem(overrides: Partial<OpsItemRecord> = {}): OpsItemRecord {
   return {
@@ -441,10 +463,12 @@ describe('OpsBundleWorkspace — 셸', () => {
         barAction={() => <span>바 슬롯</span>}
         rowLead={() => <span>행 슬롯</span>}
         notices={() => <p>알림 슬롯</p>}
+        listHeader={() => <span>목록 머리 슬롯</span>}
         detailFooter={() => <span>푸터 슬롯</span>}
+        detailHistoryAction={() => <span>기록 머리 슬롯</span>}
       />
     )
-    for (const text of ['바 슬롯', '행 슬롯', '알림 슬롯', '푸터 슬롯']) expect(filled).toContain(text)
+    for (const text of ['바 슬롯', '행 슬롯', '알림 슬롯', '목록 머리 슬롯', '푸터 슬롯', '기록 머리 슬롯']) expect(filled).toContain(text)
   })
 
   it('슬롯이 받는 상태에 선택 항목과 초안 자리가 있다', () => {
@@ -460,5 +484,427 @@ describe('OpsBundleWorkspace — 셸', () => {
       />
     )
     expect(seen[0]).toEqual({ selected: 'a', draft: null })
+  })
+})
+
+// ── 결정 화면 부품 (티켓 20260930_1818) ─────────────────────────────────────────────────────────
+
+describe('OpsDiffLines — 수정 전후 차이', () => {
+  it('「문안 · body: 전 → 후」 한 줄씩, 전은 취소선·후는 굵게, 「→」 글자를 함께 그린다', () => {
+    const out = flat(<OpsDiffLines diff={[{ path: 'copy.body', before: '오늘은 가볍게', after: '오늘은 천천히' }]} />)
+    expect(out).toContain('문안 · body')
+    expect(out).toMatch(/line-through[^>]*>오늘은 가볍게</)
+    expect(out).toMatch(/font-bold[^>]*>오늘은 천천히</)
+    expect(out).toContain('→')
+    expect(out).toContain('전 ')
+    expect(out).toContain('후 ')
+  })
+
+  it('비어 있는 값은 「(없음)」, 시각은 KST로 그린다', () => {
+    const out = flat(<OpsDiffLines diff={[{ path: 'ends_at', before: null, after: '2026-10-05T00:00:00.000Z' }]} />)
+    expect(out).toContain('종료 시각')
+    expect(out).toContain('(없음)')
+    expect(out).toContain('10/5(월) 09:00')
+  })
+
+  it('바뀐 칸이 없으면 아무것도 그리지 않고, 값은 HTML로 해석되지 않는다', () => {
+    expect(html(<OpsDiffLines diff={[]} />)).toBe('')
+    const out = html(<OpsDiffLines diff={[{ path: 'copy.title', before: 'a', after: '<img src=x onerror=alert(1)>' }]} />)
+    expect(out).not.toContain('<img')
+    expect(out).toContain('&lt;img')
+  })
+})
+
+describe('반려 창 — 이유가 필수', () => {
+  it('공백만 있는 이유는 보낼 수 없다', () => {
+    expect(canSubmitRejectReason('')).toBe(false)
+    expect(canSubmitRejectReason('   ')).toBe(false)
+    expect(canSubmitRejectReason('\n \t')).toBe(false)
+    expect(canSubmitRejectReason('  문안이 길어요 ')).toBe(true)
+  })
+
+  it('처음에는 이유가 비어 있어 [반려하기]가 비활성이고, 붉은 면은 이 버튼 하나뿐이다', () => {
+    const out = inDialog(<OpsRejectPanel summary={<p>홈피드 카드</p>} onConfirm={vi.fn()} onCancel={vi.fn()} />)
+    expect(out).toContain('이 항목을 반려할까요?')
+    expect(out).toContain('반려 이유')
+    expect(out).toContain('에이전트가 다음 기획에 참고해요. 구체적으로 적어 주세요')
+    expect(out).toContain('반려는 되돌릴 수 없어요')
+    expect(out).toContain('0/500')
+    expect(out).toMatch(/<textarea[^>]*maxlength="500"/i)
+    const confirm = buttonOf(out, '반려하기')
+    expect(isDisabled(confirm)).toBe(true)
+    expect(confirm).toContain('bg-red-600')
+    expect(out.match(/bg-red-600/g)).toHaveLength(1)
+    expect(isDisabled(buttonOf(out, '취소'))).toBe(false)
+  })
+
+  it('실패 문장은 창 안에 붉은 글로 남고, 처리 중에는 버튼이 진행형 「반려하는 중」이다', () => {
+    const out = inDialog(
+      <OpsRejectPanel summary={null} error="이미 다른 곳에서 처리한 항목이에요. 화면을 새로 불러왔어요." pending onConfirm={vi.fn()} onCancel={vi.fn()} />
+    )
+    expect(out).toContain('role="alert"')
+    expect(out).toContain('이미 다른 곳에서 처리한 항목이에요. 화면을 새로 불러왔어요.')
+    expect(out).toContain('반려하는 중')
+    expect(out).not.toContain('처리 중...')
+  })
+})
+
+describe('승인 창 — 형식 오류 경고', () => {
+  it('형식 오류가 있어도 「그래도 승인할 수 있어요」로 경고만 하고 5건까지 보인다', () => {
+    const errors = Array.from({ length: 7 }, (_, i) => `items[0].copy.k${i}: 틀려요${i}.`)
+    const out = flat(<FormatErrorWarning errors={errors} />)
+    expect(out).toContain('형식 오류가 7건 있어요')
+    expect(out).toContain('그래도 승인할 수 있어요')
+    expect(out).toContain('틀려요4.')
+    expect(out).not.toContain('틀려요5.')
+    expect(out).toContain('외 2건')
+    expect(out).toContain('border-amber-300')
+  })
+
+  it('확인창 껍데기는 제목·설명·취소·확인 버튼을 그리고 tone이 destructive일 때만 확인 버튼이 붉다', () => {
+    const normal = inDialog(<OpsConfirmPanel title="이 항목을 승인할까요?" confirmLabel="승인하기" onConfirm={vi.fn()} onCancel={vi.fn()} />)
+    expect(normal).toContain('이 항목을 승인할까요?')
+    expect(buttonOf(normal, '승인하기')).not.toContain('bg-red-600')
+    const danger = inDialog(<OpsConfirmPanel title="t" tone="destructive" confirmLabel="반려하기" onConfirm={vi.fn()} onCancel={vi.fn()} />)
+    expect(buttonOf(danger, '반려하기')).toContain('bg-red-600')
+  })
+})
+
+describe('일괄 승인', () => {
+  const kinds = [
+    'home_feed_card',
+    'home_feed_card',
+    'home_feed_card',
+    'home_feed_card',
+    'home_feed_card',
+    'home_feed_card',
+    'home_feed_card',
+    'mission',
+    'mission',
+    'drop_schedule',
+    'drop_schedule',
+  ]
+  const checked = kinds.map((kind, i) => makeItem({ id: `c${i}`, position: i, kind }))
+  const excluded = [
+    makeItem({
+      id: 'x',
+      position: 11,
+      formatErrors: ['items[11].kind: 틀려요.'],
+      original: { user_experience: '비 오는 월요일 아침, 홈에서 우산 챙겨 달리기 카드를 만나요' },
+    }),
+  ]
+
+  it('요약은 「11개 승인, 1개 제외」와 종류별 개수, 제외 이유를 보여 준다', () => {
+    const summary = buildBulkSummary(checked, excluded)
+    expect(summary.approveCount).toBe(11)
+    expect(summary.excludeCount).toBe(1)
+    expect(summary.kinds).toEqual([
+      { label: '홈피드 카드', count: 7 },
+      { label: '미션', count: 2 },
+      { label: '드랍 일정', count: 2 },
+    ])
+    expect(summary.excludedLines[0].reason).toBe('형식 오류가 있어요')
+    expect(summary.errorCount).toBe(0)
+
+    const out = inDialog(<OpsBulkApprovePanel summary={summary} onConfirm={vi.fn()} onCancel={vi.fn()} />)
+    expect(out).toContain('11개 승인, 1개 제외')
+    expect(out).toContain('홈피드 카드 7 · 미션 2 · 드랍 일정 2')
+    expect(out).toContain('제외할 것')
+    expect(out).toContain('형식 오류가 있어요')
+    expect(out).toContain('승인은 되돌릴 수 없어요. 공개는 아직 연결 전이에요.')
+    expect(isDisabled(buttonOf(out, '11개 승인하기'))).toBe(false)
+    // 승인할 것에 형식 오류가 없으면 경고 상자는 없다
+    expect(out).not.toContain('형식 오류가 있는 항목')
+  })
+
+  it('체크를 푼 항목은 「체크를 풀었어요」, 형식 오류가 든 항목을 승인하면 경고 상자가 붙는다', () => {
+    const withError = makeItem({ id: 'e', position: 12, formatErrors: ['items[12].kind: 틀려요.'] })
+    const unchecked = makeItem({ id: 'u', position: 13 })
+    const summary = buildBulkSummary([...checked, withError], [unchecked])
+    expect(summary.excludedLines[0].reason).toBe('체크를 풀었어요')
+    expect(summary.errorCount).toBe(1)
+    const out = inDialog(<OpsBulkApprovePanel summary={summary} onConfirm={vi.fn()} onCancel={vi.fn()} />)
+    expect(out).toContain('12개 승인, 1개 제외')
+    expect(out).toContain('형식 오류가 있는 항목 1개가 들어 있어요')
+  })
+
+  it('제외한 것이 없으면 「제외할 것」 줄을 그리지 않고, 제외한 줄은 5개까지만 보인다', () => {
+    const none = inDialog(<OpsBulkApprovePanel summary={buildBulkSummary(checked, [])} onConfirm={vi.fn()} onCancel={vi.fn()} />)
+    expect(none).toContain('11개 승인, 0개 제외')
+    expect(none).not.toContain('제외할 것')
+    const many = Array.from({ length: 7 }, (_, i) => makeItem({ id: `m${i}`, position: 20 + i }))
+    const out = inDialog(<OpsBulkApprovePanel summary={buildBulkSummary(checked, many)} onConfirm={vi.fn()} onCancel={vi.fn()} />)
+    expect(out).toContain('외 2개')
+  })
+
+  it('[N개 승인하기]는 0개면 비활성이고 「승인할 항목을 골라 주세요」를 알린다', () => {
+    const empty = flat(<OpsBulkApprove bundleId="b" checked={[]} excluded={excluded} onApproved={vi.fn()} onConflict={vi.fn()} />)
+    expect(isDisabled(buttonOf(empty, '0개 승인하기'))).toBe(true)
+    expect(empty).toContain('승인할 항목을 골라 주세요')
+    const some = flat(<OpsBulkApprove bundleId="b" checked={checked} excluded={excluded} onApproved={vi.fn()} onConflict={vi.fn()} />)
+    expect(isDisabled(buttonOf(some, '11개 승인하기'))).toBe(false)
+    expect(some).not.toContain('승인할 항목을 골라 주세요')
+    // 눌러야 요약 창이 뜬다(처음에는 창이 없다)
+    expect(some).not.toContain('11개 승인, 1개 제외')
+  })
+
+  it('결과 토스트 문장: 그 사이 처리된 항목이 있으면 건너뛴 수를 함께 알린다', () => {
+    expect(bulkResultMessage(11, 0)).toBe('11개를 승인했어요')
+    expect(bulkResultMessage(10, 1)).toBe('10개 승인, 1개는 이미 처리돼 건너뛰었어요')
+  })
+})
+
+describe('OpsItemActions — 항목 결정 줄', () => {
+  it('검토중 항목에만 [반려하기](붉은 글 테두리형)·[수정하기]·[승인하기]가 있고 창은 처음에 닫혀 있다', () => {
+    const item = makeItem({ status: 'reviewing' })
+    const out = flat(<OpsItemActions bundleId="b" item={item} ctx={makeCtx()} onDecided={vi.fn()} onConflict={vi.fn()} />)
+    for (const label of ['반려하기', '수정하기', '승인하기']) expect(out).toContain(label)
+    expect(buttonOf(out, '반려하기')).toContain('border-destructive')
+    expect(buttonOf(out, '반려하기')).toContain('text-destructive')
+    expect(out).not.toContain('bg-red-600')
+    expect(out).not.toContain('이 항목을 승인할까요?')
+  })
+
+  it('검토중이 아니면 버튼 대신 안내 글만 둔다', () => {
+    for (const [status, text] of [
+      ['approved', '승인한 항목은 여기서 고칠 수 없어요'],
+      ['rejected', '반려한 항목은 여기서 고칠 수 없어요'],
+      ['cancelled', '취소한 항목은 여기서 고칠 수 없어요'],
+      ['failed', '실패한 항목은 여기서 고칠 수 없어요'],
+    ] as const) {
+      const out = flat(<OpsItemActions bundleId="b" item={makeItem({ status })} ctx={makeCtx()} onDecided={vi.fn()} onConflict={vi.fn()} />)
+      expect(out).toContain(text)
+      expect(out).not.toContain('<button')
+    }
+    expect(decisionGuidance('scheduled')).toContain('다음 단계')
+    expect(decisionGuidance('arrived')).toContain('검토중으로 바뀌고')
+  })
+
+  it('수정 중인 항목은 결정 버튼이 비활성이고 안내가 붙는다', () => {
+    const item = makeItem({ status: 'reviewing' })
+    const ctx = makeCtx({ draft: { itemId: item.id, values: {} } })
+    const out = flat(<OpsItemActions bundleId="b" item={item} ctx={ctx} onDecided={vi.fn()} onConflict={vi.fn()} />)
+    for (const label of ['반려하기', '수정하기', '승인하기']) expect(isDisabled(buttonOf(out, label))).toBe(true)
+    expect(out).toContain('수정 중이에요')
+  })
+})
+
+describe('OpsItemEditForm — 직접 수정 양식', () => {
+  const item = makeItem({
+    original: {
+      user_experience: '비 오는 월요일 아침',
+      copy: { title: '우산 챙겨 달리기', body: '오늘은 가볍게' },
+      colors: { background: '#1a2b3c' },
+      starts_at: '2026-10-05T00:00:00.000Z',
+      ends_at: '2026-10-06T00:00:00.000Z',
+      segment: 'all',
+      links: ['other-card'],
+    },
+  })
+  const values = readEditableValues(item)
+  const form = (draftValues: Record<string, unknown>, baseUpdatedAt = item.updatedAt) =>
+    flat(
+      <OpsItemEditForm
+        bundleId="b"
+        item={item}
+        ctx={makeCtx({ draft: { itemId: item.id, values: draftValues, baseUpdatedAt } })}
+        onSaved={vi.fn()}
+        onConflict={vi.fn()}
+      />
+    )
+
+  it('칸 다섯 갈래를 그린다: 유저가 겪는 것·문안 칸들·색·공개/종료 시각(KST)·대상', () => {
+    const out = form(values)
+    expect(out).toContain('유저가 겪는 것')
+    expect(out).toContain('문안 · title')
+    expect(out).toContain('문안 · body')
+    expect(out).toContain('색 · background')
+    expect(out).toContain('type="datetime-local"')
+    expect(out).toContain('value="2026-10-05T09:00"')
+    expect(out).toContain('value="2026-10-06T09:00"')
+    expect(out).toContain('대상')
+    expect(out).toContain('수정한 이유(선택)')
+  })
+
+  it('못 고치는 칸(종류·연결·검수)은 읽기 전용 목록에 따로 둔다', () => {
+    const out = form(values)
+    expect(out).toContain('고칠 수 없는 것')
+    for (const label of ['종류', '연결', '검수·판정']) expect(out).toContain(`${label}:`)
+    expect(out).toContain('홈피드 카드')
+  })
+
+  it('손대지 않았으면 「수정됨」 칩이 없고 [저장하기]가 비활성이다', () => {
+    const out = form(values)
+    expect(out).not.toContain('수정됨')
+    expect(out).toContain('아직 바뀐 내용이 없어요')
+    expect(isDisabled(buttonOf(out, '저장하기'))).toBe(true)
+  })
+
+  it('고친 칸에 「수정됨」 칩과 「바뀌는 내용」 차이 줄이 나오고 [저장하기]가 켜진다', () => {
+    const out = form({ ...values, 'copy.body': '오늘은 천천히' })
+    expect(out).toContain('수정됨')
+    expect(out).toContain('바뀌는 내용')
+    expect(out).toMatch(/line-through[^>]*>오늘은 가볍게</)
+    expect(out).toMatch(/font-bold[^>]*>오늘은 천천히</)
+    expect(isDisabled(buttonOf(out, '저장하기'))).toBe(false)
+    expect(out.match(/수정됨/g)).toHaveLength(1)
+  })
+
+  it('틀린 칸은 칸 아래 인라인 문장이 나오고 저장할 수 없다(색 형식·시각 비우기)', () => {
+    const badColor = form({ ...values, 'colors.background': 'red' })
+    expect(badColor).toContain('색은 #rrggbb 형식으로 적어 주세요')
+    expect(isDisabled(buttonOf(badColor, '저장하기'))).toBe(true)
+    const clearedTime = form({ ...values, ends_at: '' })
+    expect(clearedTime).toContain('시각은 비울 수 없어요')
+    expect(isDisabled(buttonOf(clearedTime, '저장하기'))).toBe(true)
+  })
+
+  it('초안을 연 뒤 항목이 바뀌었으면(수정 시각이 달라졌으면) 안내하고 저장을 막는다', () => {
+    const out = form({ ...values, 'copy.body': '오늘은 천천히' }, '2026-09-30T00:00:00Z')
+    expect(out).toContain(OPS_EDIT_STALE_MESSAGE)
+    expect(isDisabled(buttonOf(out, '저장하기'))).toBe(true)
+  })
+
+  it('이 항목의 초안이 아니면 아무것도 그리지 않는다', () => {
+    const other = flat(
+      <OpsItemEditForm bundleId="b" item={item} ctx={makeCtx({ draft: { itemId: 'other', values } })} onSaved={vi.fn()} onConflict={vi.fn()} />
+    )
+    expect(other).toBe('')
+    const none = flat(<OpsItemEditForm bundleId="b" item={item} ctx={makeCtx()} onSaved={vi.fn()} onConflict={vi.fn()} />)
+    expect(none).toBe('')
+  })
+
+  it('문안 값은 HTML로 해석되지 않는다', () => {
+    const out = form({ ...values, 'copy.body': '<script>alert(1)</script>' })
+    expect(out).not.toContain('<script>')
+    expect(out).toContain('&lt;script&gt;')
+  })
+})
+
+describe('OpsItemDetail — 결정 기록(1818)', () => {
+  const base = { items: [] as OpsItemRecord[], decisions: [] as OpsDecisionRecord[], onSelectItem: vi.fn() }
+  const decision = (overrides: Partial<OpsDecisionRecord>): OpsDecisionRecord => ({
+    id: 'd',
+    itemId: 'item-1',
+    action: 'approve',
+    actor: 'admin-1',
+    batchId: null,
+    diff: null,
+    reason: null,
+    slackResult: null,
+    createdAt: '2026-10-01T01:00:00Z',
+    ...overrides,
+  })
+
+  it('승인·반려·수정·되돌림 줄과 사유, 차이 줄을 그린다', () => {
+    const decisions = [
+      decision({ id: 'd1', action: 'approve' }),
+      decision({ id: 'd2', action: 'reject', reason: '문안이 너무 길어요' }),
+      decision({
+        id: 'd3',
+        action: 'edit',
+        reason: '문장을 다듬었어요',
+        diff: [{ path: 'copy.body', before: '가볍게', after: '천천히' }],
+      }),
+      decision({
+        id: 'd4',
+        action: 'revert',
+        diff: [{ path: 'copy.body', before: '천천히', after: '가볍게' }],
+      }),
+    ]
+    const out = flat(<OpsItemDetail item={makeItem()} {...base} decisions={decisions} />)
+    for (const text of ['승인했어요', '반려했어요', '수정했어요', '수정을 되돌렸어요']) expect(out).toContain(text)
+    expect(out).toContain('반려 이유: 문안이 너무 길어요')
+    expect(out).toContain('수정한 이유: 문장을 다듬었어요')
+    expect(out).toContain('문안 · body')
+    expect(out).toContain('되돌림')
+  })
+
+  it('되돌림 줄에는 버튼이 없다', () => {
+    const decisions = [decision({ action: 'revert', diff: [{ path: 'copy.body', before: 'a', after: 'b' }] })]
+    const out = flat(<OpsItemDetail item={makeItem()} {...base} decisions={decisions} />)
+    const log = out.slice(out.indexOf('결정 기록'))
+    expect(log).not.toContain('<button')
+  })
+
+  it('일괄 승인은 표시가 붙고, 일반 승인에는 붙지 않는다', () => {
+    const bulk = flat(<OpsItemDetail item={makeItem()} {...base} decisions={[decision({ batchId: 'batch-1' })]} />)
+    expect(bulk).toContain('일괄 승인')
+    const single = flat(<OpsItemDetail item={makeItem()} {...base} decisions={[decision({})]} />)
+    expect(single).not.toContain('일괄 승인')
+  })
+
+  it('detailHistoryAction은 결정 기록 머리 오른쪽에 있고, 비면 자리를 잡지 않는다', () => {
+    const withAction = flat(<OpsItemDetail item={makeItem()} {...base} detailHistoryAction={() => <button>마지막 수정 되돌리기</button>} />)
+    expect(withAction).toContain('마지막 수정 되돌리기')
+    const plain = flat(<OpsItemDetail item={makeItem()} {...base} />)
+    expect(plain).not.toContain('마지막 수정 되돌리기')
+    expect(plain).toContain('결정 기록')
+  })
+})
+
+describe('OpsDecisionWorkspace — 결정 슬롯', () => {
+  const props = { bundleId: 'bundle-1', bundleFormatErrors: [] as string[] }
+  const items = [
+    makeItem({ id: 'a', position: 0, status: 'reviewing' }),
+    makeItem({ id: 'b', position: 1, status: 'reviewing', kind: 'mission', formatErrors: ['items[1].kind: 틀려요.'] }),
+    makeItem({ id: 'c', position: 2, status: 'approved', kind: 'drop_schedule' }),
+  ]
+
+  it('기본 체크는 형식 오류 없는 검토중 항목이고, 머리줄이 「결정할 것 2개 중 1개 선택」을 알린다', () => {
+    const out = flat(<OpsDecisionWorkspace {...props} items={items} decisions={[SUBMIT]} />)
+    expect(out).toContain('전체 선택')
+    expect(out).toContain('결정할 것 2개 중 1개 선택')
+    // 체크박스는 머리줄 1개 + 검토중 행 2개. 승인된 행에는 없다.
+    expect(out.match(/role="checkbox"/g)).toHaveLength(3)
+    expect(out.match(/role="checkbox"[^>]*aria-checked="true"/g)).toHaveLength(1)
+    expect(out).toContain('1개 승인하기')
+  })
+
+  it('알림에 「공개는 아직 연결 전이에요」가 늘 있다', () => {
+    const out = flat(<OpsDecisionWorkspace {...props} items={items} decisions={[SUBMIT]} />)
+    expect(out).toContain(OPS_PUBLISH_NOT_CONNECTED_NOTICE)
+    const empty = flat(<OpsDecisionWorkspace {...props} items={[]} decisions={[SUBMIT]} />)
+    expect(empty).toContain(OPS_PUBLISH_NOT_CONNECTED_NOTICE)
+  })
+
+  it('선택한 검토중 항목 아래에 [반려하기]·[수정하기]·[승인하기]가 있다', () => {
+    const out = flat(<OpsDecisionWorkspace {...props} items={items} decisions={[SUBMIT]} />)
+    for (const label of ['반려하기', '수정하기', '승인하기']) expect(out).toContain(`>${label}<`)
+  })
+
+  it('검토중 항목이 없으면 승인 버튼·전체 선택·체크박스가 없고 안내 글만 나온다', () => {
+    const out = flat(<OpsDecisionWorkspace {...props} items={[items[2]]} decisions={[SUBMIT]} />)
+    expect(out).not.toContain('전체 선택')
+    expect(out).not.toContain('role="checkbox"')
+    expect(out).not.toContain('개 승인하기')
+    expect(out).toContain('승인한 항목은 여기서 고칠 수 없어요')
+  })
+
+  it('「마지막 수정 되돌리기」는 되돌릴 수정이 남은 검토중 항목에만 있다', () => {
+    const edit: OpsDecisionRecord = {
+      ...SUBMIT,
+      id: 'e1',
+      itemId: 'a',
+      action: 'edit',
+      diff: [{ path: 'copy.title', before: 'a', after: 'b' }],
+      createdAt: '2026-10-01T01:00:00Z',
+    }
+    const revert: OpsDecisionRecord = { ...edit, id: 'r1', action: 'revert', createdAt: '2026-10-01T02:00:00Z' }
+    const withEdit = flat(<OpsDecisionWorkspace {...props} items={items} decisions={[SUBMIT, edit]} />)
+    expect(withEdit).toContain('마지막 수정 되돌리기')
+    const reverted = flat(<OpsDecisionWorkspace {...props} items={items} decisions={[SUBMIT, edit, revert]} />)
+    expect(reverted).not.toContain('마지막 수정 되돌리기')
+    const noEdit = flat(<OpsDecisionWorkspace {...props} items={items} decisions={[SUBMIT]} />)
+    expect(noEdit).not.toContain('마지막 수정 되돌리기')
+  })
+})
+
+describe('OpsSampleDeleteMenu', () => {
+  it('「...」 메뉴 버튼만 그리고 확인창은 처음에 닫혀 있다', () => {
+    const out = flat(<OpsSampleDeleteMenu bundleId="b" itemCount={3} />)
+    expect(out).toContain('aria-label="기획 메뉴"')
+    expect(out).not.toContain('시험 묶음 지우기')
+    expect(out).not.toContain('확인 문구')
   })
 })

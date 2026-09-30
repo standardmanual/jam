@@ -218,3 +218,27 @@ export function formatKstDayTime(iso: string | null | undefined): string | null 
   const p = kstParts(iso)
   return p ? `${p.month}/${p.day}(${p.weekday}) ${pad2(p.hour)}:${pad2(p.minute)}` : null
 }
+
+// ── 직접 수정 이름표 (티켓 20260930_1818) ─────────────────────────────────────────────────────────
+
+const EDIT_PATH_LABELS: Record<string, string> = {
+  starts_at: '공개 시각',
+  ends_at: '종료 시각',
+  segment: '대상',
+  user_experience: '유저가 겪는 것',
+}
+
+/** 고친 칸의 이름표. `copy.body` → 「문안 · body」, `colors.background` → 「색 · background」. 모르는 경로는 그대로 둔다. */
+export function editPathLabel(path: string): string {
+  if (Object.prototype.hasOwnProperty.call(EDIT_PATH_LABELS, path)) return EDIT_PATH_LABELS[path]
+  if (path.startsWith('copy.')) return `문안 · ${path.slice('copy.'.length)}`
+  if (path.startsWith('colors.')) return `색 · ${path.slice('colors.'.length)}`
+  return path
+}
+
+/** 수정 전후 차이에 보일 값. 비어 있으면 「(없음)」, 시각은 KST 「10/5(월) 09:00」다. */
+export function formatDiffValue(path: string, value: string | null): string {
+  if (value === null || value === '') return '(없음)'
+  if (path === 'starts_at' || path === 'ends_at') return formatKstDayTime(value) ?? value
+  return value
+}

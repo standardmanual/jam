@@ -9,7 +9,14 @@ import { describe, it, expect } from 'vitest'
 // 지금의 등록 스크립트(.mjs)를 대조용으로 불러온다. 스크립트는 고치지 않는다.
 import { validateHomeFeedBundle } from '../../../../../scripts/asset-generator/registerHomeFeedBundle.mjs'
 import { MAX_ITEMS, OPS_ITEM_KINDS } from '../constants'
-import { validateOpsBundle, validateWorldReview } from '../validate'
+import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
+import {
+  EDIT_HEX_COLOR_PATTERN,
+  revalidateOpsItem,
+  validateEditedColor,
+  validateOpsBundle,
+  validateWorldReview,
+} from '../validate'
 
 const REVIEW = { world_related: false, winter_reviewed: false, reason: '운영성 카드라 세계관과 무관해요' }
 
@@ -325,5 +332,63 @@ describe('world_review 규칙 — registerHomeFeedBundle.mjs와 같은 입력에
       e.startsWith('world_review')
     )
     expect(validateWorldReview(review, 'world_review')).toEqual(scriptErrors)
+  })
+})
+
+describe('revalidateOpsItem — 수정 뒤 다시 검사 (티켓 20260930_1818)', () => {
+  const keys = [
+    { position: 0, itemKey: 'card-1' },
+    { position: 1, itemKey: 'mission-1' },
+  ]
+
+  it('제출 때와 같은 규칙·같은 문장으로 한 항목을 다시 검사한다', () => {
+    const again = revalidateOpsItem(makeItem({ links: ['mission-1'] }), 0, keys)
+    expect(again.format_errors).toEqual([])
+    expect(again.item_key).toBe('card-1')
+    expect(again.starts_at).toBe('2026-10-05T00:00:00.000Z')
+
+    // 제출 검증(validateOpsBundle)이 같은 항목에 내는 문장과 같다
+    const submitted = validateOpsBundle(
+      makeBundle({ items: [makeItem({ ends_at: '2026-10-04T09:00:00+09:00' }), makeItem({ item_key: 'mission-1' })] })
+    )
+    const revalidated = revalidateOpsItem(makeItem({ ends_at: '2026-10-04T09:00:00+09:00' }), 0, keys)
+    expect(revalidated.format_errors).toEqual(submitted.items[0].format_errors)
+    expect(revalidated.format_errors).toEqual(['items[0].ends_at: 공개 시각(starts_at)보다 늦어야 해요.'])
+  })
+
+  it('묶음 전체 항목 키로 연결 실재와 item_key 중복을 판정한다', () => {
+    expect(revalidateOpsItem(makeItem({ links: ['nope'] }), 0, keys).format_errors).toEqual([
+      'items[0].links[0]: 이 묶음에 그런 item_key가 없어요(받은 값: "nope").',
+    ])
+    const dup = revalidateOpsItem(makeItem({ item_key: 'card-1' }), 1, [
+      { position: 0, itemKey: 'card-1' },
+      { position: 1, itemKey: 'card-1' },
+    ])
+    expect(dup.format_errors[0]).toContain('items[0]와 같은 값이에요')
+  })
+
+  it('고친 값이 비어 있으면 「유저가 겪는 것」 오류가 다시 난다', () => {
+    const again = revalidateOpsItem(makeItem({ user_experience: '   ' }), 0, keys)
+    expect(again.format_errors).toEqual(['items[0].user_experience: 비어 있지 않은 문자열이어야 해요.'])
+  })
+})
+
+describe('수정 때만 하는 색 검사', () => {
+  it('배경색 필드의 HEX_COLOR_PATTERN과 같은 식이다', () => {
+    expect(EDIT_HEX_COLOR_PATTERN.source).toBe(HEX_COLOR_PATTERN.source)
+    expect(EDIT_HEX_COLOR_PATTERN.flags).toBe(HEX_COLOR_PATTERN.flags)
+  })
+
+  it('#rrggbb만 통과한다', () => {
+    expect(validateEditedColor('#1a2b3c')).toBeNull()
+    expect(validateEditedColor('#ABCDEF')).toBeNull()
+    for (const bad of ['', 'red', '#123', '#12345g', '1a2b3c', '#1a2b3cff']) {
+      expect(validateEditedColor(bad), bad).toContain('#rrggbb')
+    }
+  })
+
+  it('제출 검증은 색을 보지 않는다(바뀌지 않았다)', () => {
+    const result = validateOpsBundle(makeBundle({ items: [makeItem({ colors: { background: 'not-a-color' } })] }))
+    expect(result.errors).toEqual([])
   })
 })

@@ -81,6 +81,10 @@
       "jam-web/src/lib/admin/opsInbox/bundleStatus.ts",
       "jam-web/src/lib/admin/opsInbox/query.ts",
       "jam-web/src/app/api/admin/ops-inbox/[bundleId]/open/route.ts",
+      "jam-web/src/lib/admin/opsInbox/edit.ts",
+      "jam-web/src/lib/admin/opsInbox/decide.ts",
+      "jam-web/src/app/api/admin/ops-inbox/[bundleId]/decisions/route.ts",
+      "jam-web/src/app/api/admin/ops-inbox/[bundleId]/route.ts",
       "jam-web/src/app/admin/ops-inbox/page.tsx",
       "jam-web/src/app/admin/ops-inbox/[bundleId]/page.tsx",
       "jam-web/src/app/api/admin/__tests__/token-write-contract.test.ts"
