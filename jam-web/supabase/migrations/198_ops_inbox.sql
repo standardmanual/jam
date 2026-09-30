@@ -113,7 +113,7 @@ COMMENT ON TABLE public.ops_decisions IS
   '운영툴 결정 기록(티켓 20260930_1816). 추가만 한다(수정·삭제 API 없음). 에이전트의 학습 재료라 시험 묶음이 아니면 지우지 않는다. 어드민 API 전용(service_role만 접근).';
 COMMENT ON COLUMN public.ops_decisions.action IS '결정 종류. 이 티켓은 submit만 쓴다(뒤 티켓이 값을 더하므로 CHECK 없음).';
 COMMENT ON COLUMN public.ops_decisions.actor IS '관리자 ID 또는 token:<에이전트 이름>(토큰 제출의 author는 자기 신고라 신뢰하지 않는다).';
-COMMENT ON COLUMN public.ops_decisions.slack_result IS '슬랙 알림 결과({ ok, error? }). 알림 실패는 요청을 실패시키지 않고 여기에 남긴다.';
+COMMENT ON COLUMN public.ops_decisions.slack_result IS '슬랙 알림 결과({ channel, ok, error? }). 알림 실패는 요청을 실패시키지 않고 여기에 남긴다.';
 
 COMMIT;
 
