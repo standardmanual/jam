@@ -116,6 +116,11 @@ export type ConditionFormFields = {
   combineSuccessCount: string
   combineFailCount: string
   recipeFirstSuccessRecipeId: string
+  // JAM! 카테고리 — 드랍·픽업 행동 지표 4종 (티켓 20261001_0632)
+  dropItemCount: string
+  pickupItemCount: string
+  pickupFromUserCount: string
+  pickedUpByUserCount: string
 }
 
 /** 빈 폼(신규 등록)의 초기값. 조건 폼 state의 단일 출처다 */
@@ -190,6 +195,10 @@ export function emptyConditionFormFields(): ConditionFormFields {
     combineSuccessCount: '',
     combineFailCount: '',
     recipeFirstSuccessRecipeId: '',
+    dropItemCount: '',
+    pickupItemCount: '',
+    pickupFromUserCount: '',
+    pickedUpByUserCount: '',
   }
 }
 

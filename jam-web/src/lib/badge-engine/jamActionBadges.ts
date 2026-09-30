@@ -29,6 +29,12 @@ import {
   countCombineSuccess,
   fetchFirstSuccessRecipeIds,
 } from './jamActionMetrics'
+import {
+  countDroppedItems,
+  countPickedUpByUsers,
+  countPickedUpItems,
+  countPickupFromUsers,
+} from './jamActionDropMetrics'
 
 /** 이 파일이 판정하는 JAM! 행동 지표 키 — `conditionRegistry.ts` 선언과 1:1 대응 */
 export const JAM_ACTION_CONDITION_KEYS = [
@@ -36,6 +42,11 @@ export const JAM_ACTION_CONDITION_KEYS = [
   'combine_success_count',
   'combine_fail_count',
   'recipe_first_success',
+  // 드랍·픽업 4종 (티켓 20261001_0632)
+  'drop_item_count',
+  'pickup_item_count',
+  'pickup_from_user_count',
+  'picked_up_by_user_count',
 ] as const
 
 export type JamActionConditionKey = (typeof JAM_ACTION_CONDITION_KEYS)[number]
@@ -56,6 +67,10 @@ const METRIC_COMPUTERS: Record<JamActionMetric, MetricComputer> = {
   combine_attempt_count: countCombineAttempts,
   combine_success_count: countCombineSuccess,
   combine_fail_count: countCombineFail,
+  drop_item_count: countDroppedItems,
+  pickup_item_count: countPickedUpItems,
+  pickup_from_user_count: countPickupFromUsers,
+  picked_up_by_user_count: countPickedUpByUsers,
 }
 
 function isRecipeFirstSuccessValue(v: unknown): v is { recipe_id: string } {

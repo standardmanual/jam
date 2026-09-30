@@ -192,6 +192,14 @@ const USER_PHRASE: Partial<Record<ConditionKey, (c: BadgeCondition) => string | 
   // 시도·성공·실패 횟수는 레지스트리 라벨·단위로 조립된다(「믹스 시도 횟수 10회 이상」).
   // 객체형은 내부 구조(recipe_id)를 그리지 않는다 — 고정 용어 「믹스」만 쓰고 「조합」을 쓰지 않는다.
   recipe_first_success: () => '이 레시피를 가장 먼저 성공',
+
+  // ── 드랍·픽업 행동 지표 (티켓 20261001_0632) ────────────────────────────
+  // 고정 용어 「드랍」·「픽업」만 쓴다(UX Writing). 레지스트리 라벨(「픽업한 드랍의 드랍 유저 수」)을
+  // 그대로 조립하면 유저가 읽기 어려워 문장으로 덮어쓴다.
+  drop_item_count: (c) => `아이템 ${c.drop_item_count}개 이상 드랍`,
+  pickup_item_count: (c) => `아이템 ${c.pickup_item_count}개 이상 픽업`,
+  pickup_from_user_count: (c) => `서로 다른 ${c.pickup_from_user_count}명이 놓은 드랍 픽업`,
+  picked_up_by_user_count: (c) => `내 드랍을 서로 다른 ${c.picked_up_by_user_count}명이 픽업`,
 }
 
 /**

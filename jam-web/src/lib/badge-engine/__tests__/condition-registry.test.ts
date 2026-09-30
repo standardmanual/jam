@@ -199,17 +199,18 @@ const V5_SAMPLE_VALUES: Record<(typeof V5_NEW_20_KEYS)[number], unknown> = {
 }
 
 describe('레지스트리 — 필드 구성', () => {
-  it('62종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1 + 체크인 배지 보유 2 + 믹스 행동 지표 4)을 선언한다', () => {
+  it('66종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1 + 체크인 배지 보유 2 + 믹스 행동 지표 4 + 드랍·픽업 지표 4)을 선언한다', () => {
     // v5 확장 3종(티켓 20260906_0110) — cumulative_duration_hours · monthly_count ·
     // personal_record_break_metric. 서비스 사용량 3종(티켓 20260910_1557, JAM! 카테고리) —
     // follower_count · following_count · daily_sync_count. 연속 동기화 일수 1종
     // (티켓 20260911_2304) — daily_sync_streak_days. 체크인 배지 보유 조건 2종
     // (티켓 20260914_1725) — checkin_category_count · checkin_badge_count. 믹스 행동 지표 4종
     // (티켓 20261001_0631) — combine_attempt_count · combine_success_count · combine_fail_count ·
-    // recipe_first_success.
-    expect(CONDITION_FIELDS.length).toBe(62)
-    expect(ALL_CONDITION_KEYS.length).toBe(62)
-    expect(new Set(ALL_CONDITION_KEYS).size).toBe(62) // 중복 키 없음
+    // recipe_first_success. 드랍·픽업 지표 4종(티켓 20261001_0632) — drop_item_count ·
+    // pickup_item_count · pickup_from_user_count · picked_up_by_user_count.
+    expect(CONDITION_FIELDS.length).toBe(66)
+    expect(ALL_CONDITION_KEYS.length).toBe(66)
+    expect(new Set(ALL_CONDITION_KEYS).size).toBe(66) // 중복 키 없음
   })
 
   it('기존 25종이 전부 들어 있고, route를 뺀 24종은 평가 주체가 있다', () => {
@@ -246,10 +247,14 @@ describe('레지스트리 — 필드 구성', () => {
       'cross_in_axis',
       'daily_sync_count',
       'daily_sync_streak_days',
+      'drop_item_count',
       'follower_count',
       'following_count',
       'gate_mission_badge',
       'mission_reward',
+      'picked_up_by_user_count',
+      'pickup_from_user_count',
+      'pickup_item_count',
       'poi_id',
       'prerequisite_badge_names',
       'recipe_first_success',
@@ -554,7 +559,7 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
     // 트리거가 이 필드를 «측정 조건»으로 오인해 형제 배지 간 키 집합 비교에 끌어들인다.
     const checkKeys = keysInArrayAfter(sqlCheckLatest, 'ADD CONSTRAINT badges_condition_json_known_keys')
     const measurableKeys = keysInArrayAfter(sql, 'measurable_keys TEXT[] :=')
-    // 체크인 배지 보유 2종(172)·믹스 행동 지표 4종(199, 티켓 20261001_0631)도 같은 자리(role: 'meta')다.
+    // 체크인 배지 보유 2종(172)·믹스 행동 지표 4종(199, 티켓 20261001_0631)·드랍·픽업 지표 4종(201, 티켓 20261001_0632)도 같은 자리(role: 'meta')다.
     for (const key of [
       'follower_count',
       'following_count',
@@ -566,6 +571,10 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
       'combine_success_count',
       'combine_fail_count',
       'recipe_first_success',
+      'drop_item_count',
+      'pickup_item_count',
+      'pickup_from_user_count',
+      'picked_up_by_user_count',
     ]) {
       expect(checkKeys, `${key}가 CHECK 제약에 없다`).toContain(key)
       expect(measurableKeys, `${key}가 measurable_keys에 들어갔다`).not.toContain(key)

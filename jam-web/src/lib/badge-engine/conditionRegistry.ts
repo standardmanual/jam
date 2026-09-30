@@ -1941,6 +1941,93 @@ export const CONDITION_FIELDS = [
       section: 'meta',
     },
   }),
+
+  // ── JAM! 카테고리 — 드랍·픽업 행동 지표 4종 (티켓 20261001_0632, 상위 20260930_1456 ②) ──
+  //
+  // 서로 다른 아이템을 몇 개 드랍·픽업했는가, 몇 명의 유저와 드랍·픽업을 주고받았는가를 재는 지표.
+  // `role: 'meta'` + `evaluation: 'external'`은 위 지표들과 같은 이유다. 실제 판정·발급은
+  // `jamActionBadges.ts`가 전담하고 값 계산은 `jamActionDropMetrics.ts`(원천: `poi_drops`)가 맡는다.
+  // 4개 모두 «서로 다른 개체·유저 수»라 같은 개체를 여러 번 주고받아도 부풀지 않는다. 모양은 `combine_success_count`와 같다.
+  field({
+    key: 'drop_item_count',
+    label: '드랍한 아이템 수',
+    unit: '개',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `드랍 ${c.drop_item_count}개↑`,
+    detail: (c) => `서로 다른 아이템 ${c.drop_item_count}개 이상 드랍`,
+    form: integerForm('dropItemCount', {
+      section: 'meta',
+      label: '드랍한 아이템 수',
+      placeholder: '5',
+      help: '서로 다른 아이템만 세요. 같은 아이템을 다시 놓아도 1개예요.',
+    }),
+  }),
+  field({
+    key: 'pickup_item_count',
+    label: '픽업한 아이템 수',
+    unit: '개',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `픽업 ${c.pickup_item_count}개↑`,
+    detail: (c) => `서로 다른 아이템 ${c.pickup_item_count}개 이상 픽업(내가 드랍한 것은 제외)`,
+    form: integerForm('pickupItemCount', {
+      section: 'meta',
+      label: '픽업한 아이템 수',
+      placeholder: '20',
+      help: '같은 아이템을 다시 주워도 1개예요. 내가 드랍한 아이템은 세지 않아요.',
+    }),
+  }),
+  field({
+    key: 'pickup_from_user_count',
+    label: '픽업한 드랍의 드랍 유저 수',
+    unit: '명',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `함께 픽업 ${c.pickup_from_user_count}명↑`,
+    detail: (c) => `내가 픽업한 드랍을 놓은 서로 다른 유저 ${c.pickup_from_user_count}명 이상`,
+    form: integerForm('pickupFromUserCount', {
+      section: 'meta',
+      label: '픽업한 드랍의 드랍 유저 수',
+      placeholder: '3',
+      help: '서로 다른 유저만 세요. 내가 드랍한 것과 시스템 드랍은 세지 않아요.',
+    }),
+  }),
+  field({
+    key: 'picked_up_by_user_count',
+    label: '내 드랍을 픽업한 유저 수',
+    unit: '명',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `내 드랍 픽업 ${c.picked_up_by_user_count}명↑`,
+    detail: (c) => `내가 드랍한 아이템을 픽업한 서로 다른 유저 ${c.picked_up_by_user_count}명 이상`,
+    form: integerForm('pickedUpByUserCount', {
+      section: 'meta',
+      label: '내 드랍을 픽업한 유저 수',
+      placeholder: '3',
+      help: '서로 다른 유저만 세요. 내가 다시 주운 것은 세지 않아요.',
+    }),
+  }),
 ] as const
 
 // ── 파생 목록 ────────────────────────────────────────────────────────────

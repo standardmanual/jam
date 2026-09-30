@@ -1447,6 +1447,20 @@ export interface BadgeCondition {
    * `recipe_id`는 저장 시점에 존재하는 레시피인지 검증된다(`findRecipeFirstSuccessNotFoundError`).
    */
   recipe_first_success?: { recipe_id: string }
+
+  // ── JAM! 카테고리 — 드랍·픽업 행동 지표 4종 (티켓 20261001_0632) ──
+  //
+  // 위 조건들과 같은 `evaluation: 'external'`이다. 판정·발급은 `jamActionBadges.ts`, 값 계산은
+  // `jamActionDropMetrics.ts`가 전담한다. 원천은 `poi_drops`이고 `inventory_item_id`가 있는 행만 센다.
+
+  /** [JAM!] 내가 놓은 서로 다른 아이템 개체 수 ≥ 값. 같은 개체를 몇 번 놓아도 1. */
+  drop_item_count?: number
+  /** [JAM!] 내가 주운 서로 다른 아이템 개체 수 ≥ 값. 내가 놓은 것은 제외, 시스템·탈퇴 유저의 드랍은 포함. */
+  pickup_item_count?: number
+  /** [JAM!] 내가 주운 드랍을 놓은 서로 다른 유저 수 ≥ 값. 나·시스템·탈퇴 유저는 제외(함께 줍기). */
+  pickup_from_user_count?: number
+  /** [JAM!] 내가 놓은 드랍을 주운 서로 다른 유저 수 ≥ 값. 나·탈퇴 유저는 제외(나눔가). */
+  picked_up_by_user_count?: number
 }
 
 // =========================================
