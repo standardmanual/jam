@@ -332,6 +332,17 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 필드만 비움). 미픽업 만료·소프트 삭제된 배지 정리는 `expire_stale_poi_drops()` RPC(cron이
 호출)가 개체 소각(`destroyed_at`)까지 함께 처리한다.
 
+**인덱스와 JAM! 행동 지표의 원천**: JAM! 카테고리 드랍·픽업 행동 지표 4종(`drop_item_count`·
+`pickup_item_count`·`pickup_from_user_count`·`picked_up_by_user_count`, 티켓 20261001_0632)이
+이 테이블을 읽는다 — 드랍 1건 = 1행이고, `inventory_item_id`가 있는 행의 **서로 다른 개체·유저 수**로
+센다(`dropper_user_id` NULL은 시스템·탈퇴한 놓은 사람, `picked_up_by` NULL은 미픽업·탈퇴한 줍는 사람).
+조회는 놓은 사람 기준(`dropper_user_id`)과 주운 사람 기준(`picked_up_by`) 두 가지이며, 마이그레이션 202가
+부분 인덱스 2개를 더한다(실행 전): `idx_poi_drops_dropper_lookup (dropper_user_id, id)`·
+`idx_poi_drops_picker_lookup (picked_up_by, id)`, 둘 다 `WHERE inventory_item_id IS NOT NULL`.
+기존 인덱스는 `idx_poi_drops_available`·`idx_poi_drops_inventory_item`·`idx_poi_drops_system_available`다.
+세는 규칙은 [BADGE_ENGINE_UNIFIED.md](../badge-engine/BADGE_ENGINE_UNIFIED.md) ③ JAM! 카테고리의
+드랍·픽업 절에 있다.
+
 > **`source` 컬럼·`assign_random_serial()` 분기·`poi_drops_source_consistency` CHECK** — 전부
 > 마이그레이션 044(2026-07-22) 도입, 100(2026-08-25 제거 시)에도 살아남아 104(2026-08-26 재도입)에서
 > 그대로 재사용됐다. `assign_random_serial()`은 `obtained_by='ambient_drop'`이면(2026-08-29
