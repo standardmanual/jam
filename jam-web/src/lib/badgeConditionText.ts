@@ -198,7 +198,7 @@ const USER_PHRASE: Partial<Record<ConditionKey, (c: BadgeCondition) => string | 
   // 그대로 조립하면 유저가 읽기 어려워 문장으로 덮어쓴다.
   drop_item_count: (c) => `아이템 ${c.drop_item_count}개 이상 드랍`,
   pickup_item_count: (c) => `아이템 ${c.pickup_item_count}개 이상 픽업`,
-  pickup_from_user_count: (c) => `서로 다른 유저 ${c.pickup_from_user_count}명의 드랍 픽업`,
+  pickup_from_user_count: (c) => `서로 다른 유저 ${c.pickup_from_user_count}명 이상의 드랍 픽업`,
   picked_up_by_user_count: (c) => `내 드랍을 픽업한 유저 ${c.picked_up_by_user_count}명 이상`,
 }
 

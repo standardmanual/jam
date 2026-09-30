@@ -132,7 +132,7 @@ describe('드랍·픽업 행동 지표 4종은 고정 용어 「드랍」·「�
       '아이템 20개 이상 픽업 조건을 채우면 획득할 수 있어요.'
     )
     expect(formatBadgeConditionText({ pickup_from_user_count: 3 }, '함께 줍기')).toBe(
-      '서로 다른 유저 3명의 드랍 픽업 조건을 채우면 획득할 수 있어요.'
+      '서로 다른 유저 3명 이상의 드랍 픽업 조건을 채우면 획득할 수 있어요.'
     )
     expect(formatBadgeConditionText({ picked_up_by_user_count: 3 }, '나눔가')).toBe(
       '내 드랍을 픽업한 유저 3명 이상 조건을 채우면 획득할 수 있어요.'
