@@ -490,7 +490,7 @@ POST /api/drops/[dropId]/pickup → pickup_drop RPC (DB 원자 트랜잭션):
   ③ GPS 조작 감지 (checkAndUpdateLocation):
      이전 위치 대비 이동속도 > gps_max_speed_kmh (기본 300km/h) → 거부
   ④ poi_drops.is_available = true
-  ⑤ poi_drops.dropper_user_id ≠ 현재 유저 (본인 드랍 픽업 불가)
+  ⑤ 본인 드랍도 주울 수 있다 (047_reallow_pickup_own_drop.sql, 108의 pickup_drop에 본인 차단 없음)
   ⑥ inventory.used_slots < max_slots (슬롯 여유 확인)
 
 처리:
