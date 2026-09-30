@@ -59,6 +59,7 @@ vi.mock('@/lib/admin/auth', () => ({
 vi.mock('@/lib/admin/badge-validation', () => ({
   findBadgeConditionSaveError: () => null,
   findCheckinBadgeNamesNotFoundError: async () => null,
+  findRecipeFirstSuccessNotFoundError: async () => null,
   findRarityLevelError: () => null,
 }))
 

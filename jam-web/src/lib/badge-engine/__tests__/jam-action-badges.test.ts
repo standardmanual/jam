@@ -10,7 +10,7 @@
  *  ⑤ 계약: `USAGE_METRIC_CONDITION_KEYS`의 모든 키는 기존 6지표이거나 `JAM_ACTION_CONDITION_KEYS`에 있다
  *
  * 테이블 모킹은 메모리 테이블에 `eq`·`in` 필터를 실제로 적용한다 — 횟수 계산이 «무엇을 세는가»를
- * 고정하려는 테스트라 행을 세는 쪽이 진짜 조회와 같은 모양이어야 한다.
+ * 고정하려는 테스트라 행을 세는 쪽이 실제 조회와 같은 모양이어야 한다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/badge-engine/__tests__/jam-action-badges.test.ts
  */
