@@ -6,12 +6,14 @@
  * 단계 표시줄 → 알림 → [미리보기 | 가운데(탭 + 목록 | 상세) | 서랍]을 한 화면에 놓고, 선택한 항목(`?item=`)과 편집
  * 초안(`draft`)을 들고 있다. `draft`를 여기에 두는 이유는 티켓 20260930_1501이 미리보기에 물릴 수 있게 하려는 것이다.
  *
- * **슬롯(`barAction`·`rowLead`·`notices`·`detailFooter`·`detailEdit`)은 함수라 서버 컴포넌트에서 넘길 수 없다.**
- * 1817의 `page.tsx`는 슬롯 없이 이 셸을 렌더한다. 티켓 20260930_1818은 슬롯을 채운 client 래퍼(`'use client'` 파일)를
- * 만들어 `page.tsx`가 그 래퍼를 렌더하게 한다. 슬롯이 비면 접혀 자리를 잡지 않는다.
+ * **슬롯(`barAction`·`rowLead`·`listHeader`·`notices`·`detailFooter`·`detailEdit`·`detailHistoryAction`)은 함수라 서버 컴포넌트에서
+ * 넘길 수 없다.** 티켓 20260930_1818이 슬롯을 채운 client 래퍼(`OpsDecisionWorkspace.tsx`)를 만들었고 `page.tsx`가 그 래퍼를
+ * 렌더한다. 슬롯이 비면 접혀 자리를 잡지 않는다.
  * - `barAction`: 단계 표시줄 오른쪽(「N개 승인하기」)  - `rowLead`: 목록 행 왼쪽(체크박스)
+ * - `listHeader`: 목록 머리줄(「전체 선택」과 「결정할 것 12개 중 11개 선택」)
  * - `notices`: 알림 줄(「공개는 아직 연결 전이에요」)  - `detailFooter`: 상세 카드 아래 고정 줄(반려·수정·승인)
  * - `detailEdit`: 상세의 「유저가 겪는 것」·「내용」 자리를 대신하는 편집 모드
+ * - `detailHistoryAction`: 결정 기록 머리 오른쪽(「마지막 수정 되돌리기」)
  *
  * 처음 열 때 도착 항목이 있으면 「도착 → 검토중」 전환을 화면이 따로 한 번 요청한다(읽기 요청으로 상태를 바꾸지 않는다).
  * 서버는 그 묶음의 `status = 'arrived'` 항목만 바꾼다. 성공하면 서버 화면을 다시 읽고(`router.refresh()`), 실패하면 알림만
@@ -48,10 +50,14 @@ import { OpsItemDetail } from './OpsItemDetail'
 import { OpsItemList, opsItemRowId } from './OpsItemList'
 import { OpsStageBar } from './OpsStageBar'
 
-/** 편집 초안. 어느 항목의 초안인지(`itemId`)와 고친 칸의 값을 담는다. 초안이 없으면 null이다. */
+/**
+ * 편집 초안. 어느 항목의 초안인지(`itemId`)와 고친 칸의 값을 담는다. 초안이 없으면 null이다.
+ * `baseUpdatedAt`은 초안을 열 때 본 항목의 수정 시각이다(저장할 때 서버가 이 값과 맞는지 본다).
+ */
 export interface OpsItemDraft {
   itemId: string
   values: Record<string, unknown>
+  baseUpdatedAt?: string
 }
 
 /** 슬롯이 받는 셸의 상태. */
@@ -73,9 +79,11 @@ export interface OpsBundleWorkspaceProps {
   decisions: readonly OpsDecisionRecord[]
   barAction?: (ctx: OpsWorkspaceContext) => ReactNode
   rowLead?: (item: OpsItemRecord, ctx: OpsWorkspaceContext) => ReactNode
+  listHeader?: (ctx: OpsWorkspaceContext) => ReactNode
   notices?: (ctx: OpsWorkspaceContext) => ReactNode
   detailFooter?: (item: OpsItemRecord, ctx: OpsWorkspaceContext) => ReactNode
   detailEdit?: (item: OpsItemRecord, ctx: OpsWorkspaceContext) => ReactNode
+  detailHistoryAction?: (item: OpsItemRecord, ctx: OpsWorkspaceContext) => ReactNode
 }
 
 export const OPS_TRANSITION_FAILED_MESSAGE =
@@ -98,9 +106,11 @@ export function OpsBundleWorkspace({
   decisions,
   barAction,
   rowLead,
+  listHeader,
   notices,
   detailFooter,
   detailEdit,
+  detailHistoryAction,
 }: OpsBundleWorkspaceProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -182,6 +192,7 @@ export function OpsBundleWorkspace({
 
   // ── 슬롯 ──────────────────────────────────────────────────────────────────────────────────────
   const barActionNode = barAction?.(ctx) ?? null
+  const listHeaderNode = listHeader?.(ctx) ?? null
   const customNotices = notices?.(ctx) ?? null
   const hasNotices = bundleFormatErrors.length > 0 || Boolean(customNotices) || transitionFailed
 
@@ -235,14 +246,17 @@ export function OpsBundleWorkspace({
                 </Card>
               ) : (
                 <div className="grid grid-cols-1 items-start gap-4 @[40rem]/center:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-                  <div className="max-h-[50vh] overflow-y-auto @[40rem]/center:max-h-[calc(100vh-10rem)]">
-                    <OpsItemList
-                      items={filteredItems}
-                      selectedId={selectedItem?.id ?? null}
-                      onSelect={selectItem}
-                      rowLead={rowLead ? (item) => rowLead(item, ctx) : undefined}
-                      flashingIds={flashingIds}
-                    />
+                  <div className="min-w-0 space-y-2">
+                    {listHeaderNode}
+                    <div className="max-h-[50vh] overflow-y-auto @[40rem]/center:max-h-[calc(100vh-10rem)]">
+                      <OpsItemList
+                        items={filteredItems}
+                        selectedId={selectedItem?.id ?? null}
+                        onSelect={selectItem}
+                        rowLead={rowLead ? (item) => rowLead(item, ctx) : undefined}
+                        flashingIds={flashingIds}
+                      />
+                    </div>
                   </div>
                   <div className="min-w-0 @[40rem]/center:sticky @[40rem]/center:top-[4.5rem] @[40rem]/center:max-h-[calc(100vh-6rem)] @[40rem]/center:overflow-y-auto">
                     {selectedItem && (
@@ -253,6 +267,7 @@ export function OpsBundleWorkspace({
                         onSelectItem={selectItem}
                         detailEdit={detailEdit ? (item) => detailEdit(item, ctx) : undefined}
                         detailFooter={detailFooter ? (item) => detailFooter(item, ctx) : undefined}
+                        detailHistoryAction={detailHistoryAction ? (item) => detailHistoryAction(item, ctx) : undefined}
                       />
                     )}
                   </div>
