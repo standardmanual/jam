@@ -33,6 +33,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
 import { getCombinePolicy } from '@/lib/combine/policy'
+import type { JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
 import {
   isInventoryFull,
   type GrantInventoryItemResult,
@@ -243,6 +244,18 @@ export async function combineRecipeAttempt(
       if (ok) pointsAwarded = matched.reward_points
     }
 
+    // 성공 기록 — 보상·포인트 지급이 끝난 뒤에 남긴다(재료 소각·보상 지급 순서는 그대로).
+    // 빈손 성공(보상 배지가 하나도 지급되지 않은 경우)도 성공 1건이다. 기록이 실패해도
+    // 응답과 보상은 그대로다(티켓 20261001_0631, 믹스 행동 지표).
+    await recordCombineSuccess(
+      supabase,
+      userId,
+      matched.id,
+      badgeIds,
+      resultBadges.map((b) => b.id),
+      pointsAwarded
+    )
+
     return { success: true, path: 'recipe', resultBadges, pointsAwarded }
   }
 
@@ -411,4 +424,44 @@ async function logFailure(
     points_awarded: pointsAwarded,
   })
   if (error) console.error('[combineRecipeAttempt] 실패 이력 기록 오류:', error)
+}
+
+/**
+ * 성공 이력 적재 — `record_combine_success` RPC(마이그레이션 200)가 성공 1행과 «레시피 최초 성공»
+ * 표시를 원자적으로 만든다. 믹스 시도·성공 횟수와 `recipe_first_success` 배지 조건의 원천이다.
+ * 오류·예외는 `console.error`로만 남기고 삼킨다 — 이미 재료가 소각되고 보상이 지급된 뒤라 기록
+ * 실패가 믹스 응답을 바꾸면 안 된다.
+ */
+async function recordCombineSuccess(
+  supabase: ServiceClient,
+  userId: string,
+  recipeId: string,
+  ingredientBadgeIds: string[],
+  resultBadgeIds: string[],
+  pointsAwarded: number
+): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('record_combine_success', {
+      p_user_id: userId,
+      p_recipe_id: recipeId,
+      p_ingredient_badge_ids: ingredientBadgeIds,
+      p_result_badge_ids: resultBadgeIds,
+      p_points_awarded: pointsAwarded,
+    })
+    if (error) console.error('[combineRecipeAttempt] 성공 이력 기록 오류:', error)
+  } catch (error) {
+    console.error('[combineRecipeAttempt] 성공 이력 기록 예외:', error)
+  }
+}
+
+/**
+ * 믹스 결과에 따라 JAM! 행동 지표 중 다시 판정할 것을 고른다 — `/api/combine` 라우트가 결과에 이어 부른다.
+ *  - 성공: 시도·성공·레시피 최초 성공
+ *  - `no_recipe_match`(재료가 소각된 실패): 시도·실패
+ *  - 그 밖의 실패(`invalid_count`·`items_not_found`·`recipe_not_found`)는 재료가 소각되기 전에 끝났으므로 판정하지 않는다
+ */
+export function jamTriggersForCombineResult(result: CombineResult): JamActionTrigger[] {
+  if (result.success) return ['combine_attempt_count', 'combine_success_count', 'recipe_first_success']
+  if (result.reason === 'no_recipe_match') return ['combine_attempt_count', 'combine_fail_count']
+  return []
 }

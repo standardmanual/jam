@@ -14,7 +14,8 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { combineRecipeAttempt } from '@/lib/combine/index'
+import { combineRecipeAttempt, jamTriggersForCombineResult } from '@/lib/combine/index'
+import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { d, t } from '@/lib/i18n'
 import type { CombineFailReason } from '@/types/database'
 
@@ -52,6 +53,15 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await combineRecipeAttempt(user.id, recipeId, itemIds as string[])
+
+  // JAM! 행동 지표(믹스 시도·성공·실패·레시피 최초 성공) 배지 판정 — 응답을 만들기 전에 한 번 돌린다
+  // (티켓 20261001_0631). 래퍼가 예외를 던지지 않지만 트리거 계산까지 한 번 더 감싼다: 판정·알림이
+  // 실패해도 아래 응답(상태 코드·JSON 키·message)은 바뀌지 않는다.
+  try {
+    await runJamActionEvaluation(user.id, jamTriggersForCombineResult(result))
+  } catch (jamActionError) {
+    console.error('[combine] JAM! 행동 지표 배지 평가 실패:', jamActionError)
+  }
 
   if (!result.success) {
     let message = FAIL_REASON_MESSAGE[result.reason] ?? d.combine.genericFail

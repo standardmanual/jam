@@ -143,6 +143,31 @@ describe('⑤ JAM! 카테고리(admin_category) — 종목 없는 계열도 실�
     expect(family.usageMetricKeys).toEqual(['follower_count'])
   })
 
+  it('믹스 행동 지표 4종도 사용량 지표 키로 드러난다 — 공용 목록이 단일 출처다 (티켓 20261001_0631)', () => {
+    const [family] = groupBadgesIntoFamilies([
+      badge({
+        name: '믹스 입문',
+        family_key: null,
+        activity_types: [],
+        condition_json: { combine_attempt_count: 10 } as BadgeCondition,
+        admin_category: 'jam',
+      }),
+    ])
+    expect(family.measurableKeys).toEqual([])
+    expect(family.usageMetricKeys).toEqual(['combine_attempt_count'])
+
+    const [recipeFamily] = groupBadgesIntoFamilies([
+      badge({
+        name: '첫 발견자',
+        family_key: null,
+        activity_types: [],
+        condition_json: { recipe_first_success: { recipe_id: '3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70' } } as BadgeCondition,
+        admin_category: 'jam',
+      }),
+    ])
+    expect(recipeFamily.usageMetricKeys).toEqual(['recipe_first_success'])
+  })
+
   it('admin_category가 없는 일반 배지는 usageMetricKeys가 비어 있고 adminCategory는 null이다', () => {
     const [family] = groupBadgesIntoFamilies([badge()])
     expect(family.adminCategory).toBeNull()

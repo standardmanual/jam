@@ -29,6 +29,7 @@ import {
   findBlockingConditionKeys,
   getConditionField,
   MEASURABLE_CONDITION_KEYS,
+  USAGE_METRIC_CONDITION_KEYS,
 } from '@/lib/badge-engine/conditionRegistry'
 import { restConditionKeysIn } from '@/lib/badge-engine/activityFilters'
 // 휴식 키가 정확히 1개면 회차와 함께 저장할 수 있다(티켓 20260906_2056, §B-10 재설계) —
@@ -83,26 +84,13 @@ export function findRepeatRestConflictError(condition: BadgeCondition | null): s
 }
 
 /**
- * 서비스 사용량 지표 6종(팔로워·팔로잉·일일동기화·연속동기화일수, 티켓 20260910_1557·
- * 20260911_2304 + 체크인 카테고리 보유·체크인 배지 보유, 티켓 20260914_1725) —
- * `usageBadges.ts`의 발급 경로는 등급형(이름 그룹 내 최상위 tier 1개만
- * 순차 발급)·레벨형(family_key 내 보유 레벨+1부터 연속 발급)만 구현돼 있다.
+ * 서비스 사용량 지표(팔로워·팔로잉·일일동기화·연속동기화일수, 체크인 카테고리·배지 보유, 믹스 시도·성공·
+ * 실패·레시피 최초 성공 등) — `usageBadges.ts`·`jamActionBadges.ts`의 발급 경로는 등급형(이름 그룹 내
+ * 최상위 tier 1개만 순차 발급)·레벨형(family_key 내 보유 레벨+1부터 연속 발급)만 구현돼 있다.
  *
- * ⚠️ 이 배열은 `conditionRegistry.ts`(단일 소스)가 아니라 여기 직접 선언한다 — 이 가드는
- * 그 키들이 `ALL_CONDITION_KEYS`에 아직 등록되지 않은 시점(리뷰 브랜치 병합 순서에 따라
- * 일시적으로 그럴 수 있다)에도 먼저 활성화돼 있어야 한다. `ALL_CONDITION_KEYS`에 없는 동안은
- * `findUnknownConditionKeyError`가 이미 저장을 막으므로 이중 방어라도 충돌하지 않는다.
+ * 키 목록은 `conditionRegistry.ts`의 `USAGE_METRIC_CONDITION_KEYS`(메타 키에서 `mission_reward`를 뺀
+ * 것)가 단일 정의다. 지표를 레지스트리에 더하면 이 가드가 자동으로 붙는다.
  */
-const USAGE_METRIC_CONDITION_KEYS = [
-  'follower_count',
-  'following_count',
-  'daily_sync_count',
-  'daily_sync_streak_days',
-  // 체크인 배지 보유 조건 2종 (티켓 20260914_1725) — 등급형·레벨형 순차 발급만 구현돼 있어
-  // 위 4종과 동일한 제약(repeat_count·다른 measurable 필드와 조합 불가)이 적용된다.
-  'checkin_category_count',
-  'checkin_badge_count',
-] as const
 
 /**
  * 사용량 지표(팔로워·팔로잉·일일동기화)와 충족 횟수(`repeat_count`, 반복 획득) 조합을 막는다.

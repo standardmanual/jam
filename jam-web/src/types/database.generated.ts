@@ -2480,6 +2480,47 @@ export type Database = {
           },
         ]
       }
+      user_combine_success_logs: {
+        Row: {
+          attempted_at: string
+          id: string
+          ingredient_badge_ids: string[]
+          is_recipe_first: boolean
+          points_awarded: number
+          recipe_id: string
+          result_badge_ids: string[]
+          user_id: string
+        }
+        Insert: {
+          attempted_at?: string
+          id?: string
+          ingredient_badge_ids?: string[]
+          is_recipe_first?: boolean
+          points_awarded?: number
+          recipe_id: string
+          result_badge_ids?: string[]
+          user_id: string
+        }
+        Update: {
+          attempted_at?: string
+          id?: string
+          ingredient_badge_ids?: string[]
+          is_recipe_first?: boolean
+          points_awarded?: number
+          recipe_id?: string
+          result_badge_ids?: string[]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_combine_success_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_daily_sync_counts: {
         Row: {
           count: number
@@ -3089,6 +3130,16 @@ export type Database = {
       pickup_drop: {
         Args: { p_drop_id: string; p_inventory_id: string; p_picker_id: string }
         Returns: Json
+      }
+      record_combine_success: {
+        Args: {
+          p_ingredient_badge_ids: string[]
+          p_points_awarded: number
+          p_recipe_id: string
+          p_result_badge_ids: string[]
+          p_user_id: string
+        }
+        Returns: boolean
       }
       release_inventory_slots: {
         Args: { p_count: number; p_inventory_id: string }

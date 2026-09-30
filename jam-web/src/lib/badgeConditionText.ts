@@ -187,6 +187,11 @@ const USER_PHRASE: Partial<Record<ConditionKey, (c: BadgeCondition) => string | 
    * 기본 동작을 자기 참조로 되풀이하는 문장이다(v5 카탈로그 139종 중 39종이 1이다).
    */
   repeat_count: (c) => ((c.repeat_count ?? 0) >= 2 ? `위 조건을 ${c.repeat_count}회 달성` : null),
+
+  // ── 믹스 행동 지표 (티켓 20261001_0631) ─────────────────────────────────
+  // 시도·성공·실패 횟수는 레지스트리 라벨·단위로 조립된다(「믹스 시도 횟수 10회 이상」).
+  // 객체형은 내부 구조(recipe_id)를 그리지 않는다 — 고정 용어 「믹스」만 쓰고 「조합」을 쓰지 않는다.
+  recipe_first_success: () => '이 레시피를 가장 먼저 성공',
 }
 
 /**

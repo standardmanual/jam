@@ -81,6 +81,46 @@ export async function findCheckinBadgeNamesNotFoundError(
   return `저장할 수 없습니다. 체크인 배지 이름 목록에 존재하지 않는 이름이 있습니다 — ${missing.join(', ')}. 실제 체크인 배지(type='checkin') 이름과 정확히 일치해야 저장할 수 있어요.`
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * `recipe_first_success`의 레시피 ID가 UUID 모양이고 실제 믹스 레시피(`combination_recipes`)인지 확인한다
+ * (티켓 20261001_0631). 없는 레시피에 붙인 배지는 저장은 되지만 영원히 발급되지 않으므로 저장 시점에 막는다.
+ *  - 키 없음 → `null`(통과)
+ *  - 값이 객체가 아니거나 `recipe_id`가 UUID 형식이 아님 → 형식 오류
+ *  - `combination_recipes`에 없음 → 존재하지 않는 ID
+ *  - 조회 자체가 실패하면(DB 장애) 저장을 막지 않는다 — `findCheckinBadgeNamesNotFoundError`와 같은 원칙이고,
+ *    평가 시점에는 최초 성공 기록과 맞는 레시피가 없어 발급되지 않는 쪽으로만 안전하게 실패한다.
+ *
+ * DB 조회가 필요해 **비동기**다 — 동기 체인(`findBadgeConditionSaveError`)에 합류시키지 않고 API 라우트가
+ * 별도로 await한다.
+ */
+export async function findRecipeFirstSuccessNotFoundError(
+  condition: BadgeCondition | null,
+  supabase: SupabaseClient
+): Promise<string | null> {
+  if (!condition || !Object.prototype.hasOwnProperty.call(condition, 'recipe_first_success')) return null
+
+  const value: unknown = condition.recipe_first_success
+  const recipeId =
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as { recipe_id?: unknown }).recipe_id
+      : undefined
+  if (typeof recipeId !== 'string' || !UUID_PATTERN.test(recipeId)) {
+    return '저장할 수 없습니다. 레시피 ID 형식이 올바르지 않아요. 믹스 레시피 목록의 ID를 그대로 붙여 넣어주세요.'
+  }
+
+  const { data, error } = await supabase.from('combination_recipes').select('id').eq('id', recipeId).maybeSingle()
+  if (error) {
+    console.error('[findRecipeFirstSuccessNotFoundError] 믹스 레시피 조회 오류:', error)
+    return null
+  }
+  if (!data) {
+    return '저장할 수 없습니다. 존재하지 않는 레시피 ID예요. 믹스 레시피 목록에서 ID를 다시 확인해주세요.'
+  }
+  return null
+}
+
 /**
  * 조건 저장 전 검사 전체를 한 번에 돌린다 — 어드민 POST·PUT이 같은 순서로 같은 규칙을
  * 적용하도록 진입점을 하나로 둔다. 첫 번째 오류만 돌려준다(한 번에 한 가지씩 고치게 한다).

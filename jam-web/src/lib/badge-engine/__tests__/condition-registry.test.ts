@@ -29,7 +29,7 @@ import {
 import { LOWER_IS_BETTER_KEYS, classifyBadgeProgressKind } from '../badgeProgress'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition } from '@/types/database'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 function makeActivity(overrides: Partial<NormalizedActivity> = {}): NormalizedActivity {
@@ -199,15 +199,17 @@ const V5_SAMPLE_VALUES: Record<(typeof V5_NEW_20_KEYS)[number], unknown> = {
 }
 
 describe('레지스트리 — 필드 구성', () => {
-  it('58종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1 + 체크인 배지 보유 2)을 선언한다', () => {
+  it('62종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1 + 체크인 배지 보유 2 + 믹스 행동 지표 4)을 선언한다', () => {
     // v5 확장 3종(티켓 20260906_0110) — cumulative_duration_hours · monthly_count ·
     // personal_record_break_metric. 서비스 사용량 3종(티켓 20260910_1557, JAM! 카테고리) —
     // follower_count · following_count · daily_sync_count. 연속 동기화 일수 1종
     // (티켓 20260911_2304) — daily_sync_streak_days. 체크인 배지 보유 조건 2종
-    // (티켓 20260914_1725) — checkin_category_count · checkin_badge_count.
-    expect(CONDITION_FIELDS.length).toBe(58)
-    expect(ALL_CONDITION_KEYS.length).toBe(58)
-    expect(new Set(ALL_CONDITION_KEYS).size).toBe(58) // 중복 키 없음
+    // (티켓 20260914_1725) — checkin_category_count · checkin_badge_count. 믹스 행동 지표 4종
+    // (티켓 20261001_0631) — combine_attempt_count · combine_success_count · combine_fail_count ·
+    // recipe_first_success.
+    expect(CONDITION_FIELDS.length).toBe(62)
+    expect(ALL_CONDITION_KEYS.length).toBe(62)
+    expect(new Set(ALL_CONDITION_KEYS).size).toBe(62) // 중복 키 없음
   })
 
   it('기존 25종이 전부 들어 있고, route를 뺀 24종은 평가 주체가 있다', () => {
@@ -237,6 +239,9 @@ describe('레지스트리 — 필드 구성', () => {
     expect(byEval('external').sort()).toEqual([
       'checkin_badge_count',
       'checkin_category_count',
+      'combine_attempt_count',
+      'combine_fail_count',
+      'combine_success_count',
       'cross_between_axis',
       'cross_in_axis',
       'daily_sync_count',
@@ -247,6 +252,7 @@ describe('레지스트리 — 필드 구성', () => {
       'mission_reward',
       'poi_id',
       'prerequisite_badge_names',
+      'recipe_first_success',
     ])
     expect(byEval('pending')).toContain('route')
     // route + v5 신규 20 − 휴식 4(B3) − v5 스칼라7·weekly_streak 8(티켓 20260906_0110 ②)
@@ -501,12 +507,22 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
   // role: 'meta'라 measurable_keys 대상이 아니므로, 131·140이 필터 전용 필드를 뺀 것과 같은
   // 이유). 161(티켓 20260911_2304, 연속 동기화 일수 1종)·172(티켓 20260914_1725, 체크인
   // 배지 보유 조건 2종)도 같은 이유로 CHECK 제약만 다시 쓴다. 그래서 CHECK 제약은 최신
-  // 마커(172)를, 트리거 관련 검사는 여전히 140을 읽는다.
+  // 마커(최신 CHECK 마이그레이션)를, 트리거 관련 검사는 여전히 140을 읽는다.
+  //
+  // 199(티켓 20261001_0631, 믹스 행동 지표 4종)부터는 **최신 CHECK 파일을 자동으로 찾는다** — 키를
+  // 더하는 마이그레이션마다 이 경로를 손으로 올리던 일을 없앤다(②·③ 하위 티켓이 키를 이어 붙인다).
+  // `ADD CONSTRAINT badges_condition_json_known_keys`가 든 파일 중 번호가 가장 큰 것이 최신이다.
   const sql = readFileSync(join(process.cwd(), 'supabase/migrations/140_condition_keys_v5_extension.sql'), 'utf-8')
-  const sqlCheckLatest = readFileSync(
-    join(process.cwd(), 'supabase/migrations/172_condition_json_checkin_usage_keys.sql'),
-    'utf-8'
-  )
+  const migrationsDir = join(process.cwd(), 'supabase/migrations')
+  const latestCheckMigration = readdirSync(migrationsDir)
+    .filter((name) => /^\d+_.*\.sql$/.test(name))
+    .filter((name) =>
+      readFileSync(join(migrationsDir, name), 'utf-8').includes('ADD CONSTRAINT badges_condition_json_known_keys')
+    )
+    .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+    .at(-1)
+  if (!latestCheckMigration) throw new Error('CHECK 제약(badges_condition_json_known_keys)을 만드는 마이그레이션을 찾지 못했다')
+  const sqlCheckLatest = readFileSync(join(migrationsDir, latestCheckMigration), 'utf-8')
 
   /** SQL 텍스트에서 `ARRAY[ ... ]` 블록 안의 작은따옴표 리터럴을 뽑는다 */
   function keysInArrayAfter(source: string, marker: string): string[] {
@@ -533,12 +549,24 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
     expect([...sqlKeys].sort()).toEqual([...MEASURABLE_CONDITION_KEYS].sort())
   })
 
-  it('JAM! 카테고리 서비스 사용량 3종 + 연속 동기화 일수 1종은 CHECK 제약엔 있지만 measurable_keys엔 없다 (티켓 20260910_1557·20260911_2304)', () => {
+  it('JAM! 카테고리 사용량·행동 지표(role: meta)는 CHECK 제약엔 있지만 measurable_keys엔 없다 (티켓 20260910_1557·20260911_2304·20261001_0631)', () => {
     // role: 'meta'라 mission_reward와 같은 자리 — measurable_keys에 들어가면 계열 정합성
     // 트리거가 이 필드를 «측정 조건»으로 오인해 형제 배지 간 키 집합 비교에 끌어들인다.
     const checkKeys = keysInArrayAfter(sqlCheckLatest, 'ADD CONSTRAINT badges_condition_json_known_keys')
     const measurableKeys = keysInArrayAfter(sql, 'measurable_keys TEXT[] :=')
-    for (const key of ['follower_count', 'following_count', 'daily_sync_count', 'daily_sync_streak_days']) {
+    // 체크인 배지 보유 2종(172)·믹스 행동 지표 4종(199, 티켓 20261001_0631)도 같은 자리(role: 'meta')다.
+    for (const key of [
+      'follower_count',
+      'following_count',
+      'daily_sync_count',
+      'daily_sync_streak_days',
+      'checkin_category_count',
+      'checkin_badge_count',
+      'combine_attempt_count',
+      'combine_success_count',
+      'combine_fail_count',
+      'recipe_first_success',
+    ]) {
       expect(checkKeys, `${key}가 CHECK 제약에 없다`).toContain(key)
       expect(measurableKeys, `${key}가 measurable_keys에 들어갔다`).not.toContain(key)
     }
