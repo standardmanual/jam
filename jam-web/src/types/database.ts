@@ -603,6 +603,22 @@ export interface UserCombineFailLogRow {
   points_awarded: number
 }
 
+/**
+ * 믹스 성공 이력 (마이그레이션 200, 티켓 20261001_0631)
+ * `recipe_id`에는 FK가 없다(레시피를 지워도 성공 기록이 남는다). `is_recipe_first`는 그 레시피를
+ * 전체 유저 중 처음 성공한 행이며 레시피당 최대 1행이다.
+ */
+export interface UserCombineSuccessLogRow {
+  id: string
+  user_id: string
+  recipe_id: string
+  attempted_at: string
+  ingredient_badge_ids: string[]
+  result_badge_ids: string[]
+  points_awarded: number
+  is_recipe_first: boolean
+}
+
 // =========================================
 // Phase 16: 다이나믹 미션
 // =========================================
@@ -1414,6 +1430,23 @@ export interface BadgeCondition {
    * (`findCheckinBadgeNamesNotFoundError`).
    */
   checkin_badge_count?: { checkin_badge_names: string[]; count: number }
+
+  // ── JAM! 카테고리 — 믹스 행동 지표 4종 (티켓 20261001_0631, 상위 20260930_1456 ①) ──
+  //
+  // 위 조건들과 같은 `evaluation: 'external'`이다. 판정·발급은 `jamActionBadges.ts`가 전담한다.
+
+  /** [JAM!] 믹스 시도 횟수 ≥ 값. 성공 기록 수 + `no_recipe_match` 실패 로그 수(재료가 소각된 시도만). */
+  combine_attempt_count?: number
+  /** [JAM!] 믹스 성공 횟수 ≥ 값. `user_combine_success_logs` 행 수(빈손 성공 포함). */
+  combine_success_count?: number
+  /** [JAM!] 믹스 실패 횟수 ≥ 값. `user_combine_fail_logs` 중 `fail_reason = 'no_recipe_match'` 수. */
+  combine_fail_count?: number
+  /**
+   * [JAM!] 지정한 믹스 레시피를 전체 유저 중 처음 성공한 1명에게만 발급한다.
+   * `user_combine_success_logs.is_recipe_first = true`인 행이 내 것인지로 판정한다(상태 기반).
+   * `recipe_id`는 저장 시점에 존재하는 레시피인지 검증된다(`findRecipeFirstSuccessNotFoundError`).
+   */
+  recipe_first_success?: { recipe_id: string }
 }
 
 // =========================================
@@ -1899,6 +1932,12 @@ export interface Database {
         Row: UserCombineFailLogRow
         Insert: Omit<UserCombineFailLogRow, 'id' | 'attempted_at'> & { id?: string; attempted_at?: string }
         Update: Partial<Omit<UserCombineFailLogRow, 'id'>>
+        Relationships: []
+      }
+      user_combine_success_logs: {
+        Row: UserCombineSuccessLogRow
+        Insert: Omit<UserCombineSuccessLogRow, 'id' | 'attempted_at'> & { id?: string; attempted_at?: string }
+        Update: Partial<Omit<UserCombineSuccessLogRow, 'id'>>
         Relationships: []
       }
       missions: {
