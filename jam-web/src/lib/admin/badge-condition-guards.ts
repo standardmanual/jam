@@ -24,6 +24,7 @@
  * |---|---|
  * | 사용량 지표 + 회차 조합 | `findUsageMetricRepeatConflictError` (이 파일) |
  * | 사용량 지표 + 다른 measurable 조합 | `findUsageMetricOtherMeasurableConflictError` (이 파일, 신규, 티켓 20260910_1804) |
+ * | 사용량 지표 둘 이상 조합 | `findMultipleUsageMetricsError` (이 파일, 신규, 티켓 20261001_0712) |
  */
 import {
   findBlockingConditionKeys,
@@ -143,6 +144,28 @@ export function findUsageMetricOtherMeasurableConflictError(condition: BadgeCond
 }
 
 /**
+ * 사용량 지표 «2개 이상»을 한 배지 조건에 함께 쓰는 조합을 막는다(티켓 20261001_0712).
+ *
+ * 사용량 지표는 지표마다 따로 판정한다 — `usageBadges.ts`의 `evaluateUsageBadges()`와
+ * `jamActionBadges.ts`의 발급 경로가 지표 하나씩 자기 값만 보고 후보에 올린다. 그래서 조건에
+ * 둘 이상을 넣으면 `CONDITION_JSON_SPEC.md` §4의 「모든 필드는 AND」가 아니라 **먼저 채운
+ * 지표 하나로** 발급된다(예: 믹스 시도 10회 + 믹스 성공 5회를 넣어도 시도 10회만 채우면 발급).
+ * AND 판정을 새로 구현하지 않고 저장 시점에 막는다.
+ *
+ * 키 목록은 `USAGE_METRIC_CONDITION_KEYS`(레지스트리 파생)라 지표를 더하면 이 가드가 자동으로
+ * 적용된다. `repeat_count`·다른 measurable 필드와의 조합은 앞의 두 가드가 전담한다.
+ */
+export function findMultipleUsageMetricsError(condition: BadgeCondition | null): string | null {
+  if (!condition) return null
+  const present = Object.keys(condition).filter((key) =>
+    (USAGE_METRIC_CONDITION_KEYS as readonly string[]).includes(key)
+  )
+  if (present.length < 2) return null
+  const labels = present.map((key) => `${getConditionField(key)?.label ?? key}(${key})`)
+  return `저장할 수 없습니다. 서비스 사용량 지표는 한 배지에 하나만 쓸 수 있습니다 — ${labels.join(', ')}. 지표마다 따로 판정돼 「모두 채워야」가 아니라 먼저 채운 지표로 발급되기 때문입니다. 지표를 하나만 남겨주세요.`
+}
+
+/**
  * 등급형/레벨형 배타 규칙 (티켓 20260905_0032 A-3).
  *
  * DB가 `CHECK ((rarity IS NULL) = (level IS NOT NULL))`로 강제하지만(마이그레이션 130),
@@ -174,7 +197,7 @@ export function findRarityLevelError(rarity: unknown, level: unknown): string | 
 }
 
 /**
- * 조건 «형태» 검사 4종을 순서대로 돌린다. 첫 번째 오류만 돌려준다 —
+ * 조건 «형태» 검사를 순서대로 돌린다. 첫 번째 오류만 돌려준다 —
  * 한 번에 한 가지씩 고치게 하는 편이 550종 카탈로그에서 덜 헷갈린다.
  *
  * 어드민 저장 API(`badge-validation.ts`)와 조건 폼(클라이언트) 양쪽이 이 함수를 부른다.
@@ -187,6 +210,7 @@ export function findConditionShapeSaveError(
     findUnpairedConditionError(condition) ??
     findRepeatRestConflictError(condition) ??
     findUsageMetricRepeatConflictError(condition) ??
+    findMultipleUsageMetricsError(condition) ??
     findUsageMetricOtherMeasurableConflictError(condition) ??
     findCrossGateShapeError(badge, condition)
   )

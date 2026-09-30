@@ -13,6 +13,7 @@ import {
   findRepeatRestConflictError,
   findUsageMetricRepeatConflictError,
   findUsageMetricOtherMeasurableConflictError,
+  findMultipleUsageMetricsError,
   findCrossGateShapeError,
   findRarityLevelError,
   findConditionShapeSaveError,
@@ -320,6 +321,67 @@ describe('⑦ 사용량 지표 + 다른 measurable 조합은 저장에서 거부
     const error = findConditionShapeSaveError(badge, cond)
     expect(error).not.toBeNull()
     expect(error).toContain('distance_km')
+  })
+})
+
+describe('⑧ 사용량 지표 «둘 이상»은 한 배지에 함께 저장할 수 없다 (티켓 20261001_0712)', () => {
+  // 배경: 사용량 지표는 지표마다 따로 판정한다(usageBadges.ts·jamActionBadges.ts). 둘 이상을 넣으면
+  // 「모두 채워야」(AND)가 아니라 먼저 채운 지표 하나로 발급되므로 저장 시점에 막는다.
+  it('믹스 시도 + 믹스 성공 두 개는 막고, 이유와 두 지표를 보여준다', () => {
+    const cond = { combine_attempt_count: 10, combine_success_count: 5 } as unknown as BadgeCondition
+    const error = findMultipleUsageMetricsError(cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('한 배지에 하나만')
+    expect(error).toContain('믹스 시도 횟수(combine_attempt_count)')
+    expect(error).toContain('믹스 성공 횟수(combine_success_count)')
+    expect(error).toContain('먼저 채운 지표')
+  })
+
+  it('세 개도 막는다', () => {
+    const cond = {
+      combine_attempt_count: 10,
+      combine_success_count: 5,
+      combine_fail_count: 3,
+    } as unknown as BadgeCondition
+    const error = findMultipleUsageMetricsError(cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('combine_fail_count')
+  })
+
+  it('기존 지표 둘(follower_count + daily_sync_count)도 막는다', () => {
+    const cond = { follower_count: 100, daily_sync_count: 7 } as unknown as BadgeCondition
+    const error = findMultipleUsageMetricsError(cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('follower_count')
+    expect(error).toContain('daily_sync_count')
+  })
+
+  it('하나만 있으면 통과한다 (정상 케이스)', () => {
+    expect(findMultipleUsageMetricsError({ combine_attempt_count: 10 } as unknown as BadgeCondition)).toBeNull()
+    expect(findMultipleUsageMetricsError({ follower_count: 100 } as unknown as BadgeCondition)).toBeNull()
+  })
+
+  it('사용량 지표가 없으면 통과한다 (회귀: 기존 활동 기반 조합)', () => {
+    expect(findMultipleUsageMetricsError({ distance_km: 100, total_count: 10 })).toBeNull()
+  })
+
+  it('조건이 없으면 통과한다', () => {
+    expect(findMultipleUsageMetricsError(null)).toBeNull()
+  })
+
+  it('findConditionShapeSaveError 진입점에서도 동일하게 거부된다', () => {
+    const cond = { combine_attempt_count: 10, combine_success_count: 5 } as unknown as BadgeCondition
+    const error = findConditionShapeSaveError(badge, cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('한 배지에 하나만')
+  })
+
+  it('repeat_count가 함께 있으면 기존 repeat 오류가 먼저 나온다', () => {
+    const cond = { follower_count: 100, daily_sync_count: 7, repeat_count: 3 } as unknown as BadgeCondition
+    const error = findConditionShapeSaveError(badge, cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('repeat_count')
+    expect(error).not.toContain('한 배지에 하나만')
   })
 })
 
