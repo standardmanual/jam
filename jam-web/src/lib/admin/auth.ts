@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { OPS_INBOX_METHOD, OPS_INBOX_PATH } from '@/lib/admin/opsInbox/constants'
 
 export function isWhitelistedAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false
@@ -98,4 +99,26 @@ export async function requireAdminRead(req: Request): Promise<NextResponse | nul
     return null
   }
   return requireAdmin()
+}
+
+/**
+ * 운영 묶음 제출 경로의 토큰 쓰기 예외 판정 (티켓 20260930_1816). 읽기 토큰으로 쓰기가 허용되는
+ * **유일한** 경우다 — 메서드가 `OPS_INBOX_METHOD`이고, 경로가 `OPS_INBOX_PATH`와 **정확히 같고**
+ * (뒤에 `/`나 다른 글자가 붙으면 false, 접두사 비교를 쓰지 않는다), 토큰이 맞을 때만 true.
+ *
+ * - `proxy.ts`(로그인 리다이렉트 건너뛰기)와 `requireOpsInboxSubmit`(라우트)이 같은 함수를 쓴다.
+ *   경로·메서드는 상수 하나(`opsInbox/constants.ts`)라 한쪽만 넓어질 수 없다.
+ * - 순수 함수다(요청 객체를 받지 않는다). 그래서 proxy가 파싱한 `pathname`을 그대로 넘긴다.
+ * - `requireAdminRead`·`isValidAdminReadToken`은 바꾸지 않았다. GET 전용 판정과 섞이지 않게 따로 둔다.
+ */
+export function isOpsInboxTokenRequest(
+  method: string,
+  pathname: string,
+  token: string | null | undefined
+): boolean {
+  return (
+    method === OPS_INBOX_METHOD &&
+    pathname === OPS_INBOX_PATH &&
+    isValidAdminReadToken(token)
+  )
 }

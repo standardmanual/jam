@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { hasAdminAccess, isValidAdminReadToken } from '@/lib/admin/auth'
+import { hasAdminAccess, isOpsInboxTokenRequest, isValidAdminReadToken } from '@/lib/admin/auth'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -76,7 +76,16 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/api/admin/') &&
     isValidAdminReadToken(request.headers.get('x-admin-read-token'))
 
-  if (!user && !isPublicPath && !isAdminReadTokenRequest) {
+  // 운영 묶음 제출 경로의 토큰 쓰기 예외 (티켓 20260930_1816): 메서드·경로가 상수와 **정확히 일치**하고
+  // 토큰이 맞을 때만 로그인 리다이렉트를 건너뛴다. 접두사(`/api/admin/`)로 열지 않는다 — 그러면 어드민
+  // 쓰기 전체가 토큰으로 열린다. 최종 인증은 라우트의 requireOpsInboxSubmit(req)가 같은 함수로 다시 검사한다.
+  const isOpsInboxSubmitTokenRequest = isOpsInboxTokenRequest(
+    request.method,
+    pathname,
+    request.headers.get('x-admin-read-token')
+  )
+
+  if (!user && !isPublicPath && !isAdminReadTokenRequest && !isOpsInboxSubmitTokenRequest) {
     // STAGING_MODE: 미인증 유저를 /login 대신 /api/dev-login으로 자동 진입
     // (staging 환경에서는 로그인 화면 없이 테스트 계정으로 바로 진입)
     const isStagingMode = process.env.STAGING_MODE === 'true'
