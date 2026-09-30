@@ -11,7 +11,14 @@
  * 실행: `npx vitest run src/lib/admin/__tests__/badge-validation.test.ts`
  */
 
-import { findUnknownConditionKeyError, findCumulativeConditionError, findBadgeConditionSaveError, findCheckinBadgeNamesNotFoundError } from '../badge-validation'
+import {
+  findUnknownConditionKeyError,
+  findCumulativeConditionError,
+  findBadgeConditionSaveError,
+  findCheckinBadgeNamesNotFoundError,
+  findRecipeFirstSuccessNotFoundError,
+} from '../badge-validation'
+import { CONDITION_META_KEYS } from '@/lib/badge-engine/conditionRegistry'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ALL_CONDITION_KEYS } from '@/lib/badge-engine/condition-schema'
 import type { BadgeCondition } from '@/types/database'
@@ -177,5 +184,118 @@ describe('findCheckinBadgeNamesNotFoundError', () => {
     } as unknown as SupabaseClient
     const cond: BadgeCondition = { checkin_badge_count: { checkin_badge_names: ['성수역'], count: 1 } }
     expect(await findCheckinBadgeNamesNotFoundError(cond, failingSupabase)).toBeNull()
+  })
+})
+
+// 믹스 행동 지표 4종 — 저장 시점 가드 (티켓 20261001_0631)
+describe('findBadgeConditionSaveError — 믹스 행동 지표 4종', () => {
+  const badge = { name: '믹스 배지', family_key: 'jam:combine' }
+  const COMBINE_KEYS = ['combine_attempt_count', 'combine_success_count', 'combine_fail_count', 'recipe_first_success'] as const
+  const valueOf = (key: string) => (key === 'recipe_first_success' ? { recipe_id: '3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70' } : 10)
+
+  it.each(COMBINE_KEYS)('%s 단독 조건은 저장된다', (key) => {
+    const cond = { [key]: valueOf(key) } as unknown as BadgeCondition
+    expect(findBadgeConditionSaveError(badge, 'activity', cond)).toBeNull()
+  })
+
+  it.each(COMBINE_KEYS)('%s + repeat_count는 저장을 막는다', (key) => {
+    const cond = { [key]: valueOf(key), repeat_count: 3 } as unknown as BadgeCondition
+    const error = findBadgeConditionSaveError(badge, 'activity', cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('등급형·레벨형')
+  })
+
+  it.each(COMBINE_KEYS)('%s + 다른 measurable 조건(distance_km)은 저장을 막는다', (key) => {
+    const cond = { [key]: valueOf(key), distance_km: 5 } as unknown as BadgeCondition
+    const error = findBadgeConditionSaveError(badge, 'activity', cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('서비스 사용량 지표')
+  })
+
+  it('CONDITION_META_KEYS에서 mission_reward를 뺀 모든 키가 repeat_count 가드에 걸린다 — 지표를 더하면 가드가 자동으로 붙는다', () => {
+    const usageKeys = CONDITION_META_KEYS.filter((k) => k !== 'mission_reward')
+    expect(usageKeys.length).toBeGreaterThanOrEqual(10)
+    for (const key of usageKeys) {
+      const cond = { [key]: 1, repeat_count: 3 } as unknown as BadgeCondition
+      const error = findBadgeConditionSaveError(badge, 'activity', cond)
+      expect(error, `${key}가 가드에 걸리지 않았다`).not.toBeNull()
+      expect(error).toContain('등급형·레벨형')
+    }
+  })
+
+  it('회귀: mission_reward는 사용량 지표 가드의 대상이 아니다', () => {
+    expect(findBadgeConditionSaveError(badge, 'activity', { mission_reward: true, repeat_count: 3 })).toBeNull()
+  })
+})
+
+describe('findRecipeFirstSuccessNotFoundError', () => {
+  const EXISTING_ID = '3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70'
+  const MISSING_ID = '11111111-2222-4333-8444-555555555555'
+
+  function makeSupabase(existingRecipeIds: string[]): { client: SupabaseClient; queried: string[] } {
+    const queried: string[] = []
+    const from = (table: string) => {
+      const builder: Record<string, unknown> = {
+        select: () => builder,
+        eq: (_col: string, id: string) => {
+          if (table === 'combination_recipes') queried.push(id)
+          return builder
+        },
+        maybeSingle: () => {
+          const id = queried[queried.length - 1]
+          return Promise.resolve({ data: existingRecipeIds.includes(id) ? { id } : null, error: null })
+        },
+      }
+      return builder
+    }
+    return { client: { from } as unknown as SupabaseClient, queried }
+  }
+
+  it('condition이 null이거나 recipe_first_success 키가 없으면 통과하고 DB를 조회하지 않는다', async () => {
+    const { client, queried } = makeSupabase([])
+    expect(await findRecipeFirstSuccessNotFoundError(null, client)).toBeNull()
+    expect(await findRecipeFirstSuccessNotFoundError({ distance_km: 10 }, client)).toBeNull()
+    expect(queried).toEqual([])
+  })
+
+  it('존재하는 레시피 ID는 통과한다', async () => {
+    const { client } = makeSupabase([EXISTING_ID])
+    expect(await findRecipeFirstSuccessNotFoundError({ recipe_first_success: { recipe_id: EXISTING_ID } }, client)).toBeNull()
+  })
+
+  it('존재하지 않는 레시피 ID는 저장을 막는다', async () => {
+    const { client } = makeSupabase([EXISTING_ID])
+    const error = await findRecipeFirstSuccessNotFoundError({ recipe_first_success: { recipe_id: MISSING_ID } }, client)
+    expect(error).toContain('저장할 수 없습니다')
+    expect(error).toContain('존재하지 않는 레시피 ID')
+  })
+
+  it.each([
+    ['UUID가 아닌 문자열', { recipe_id: 'not-a-uuid' }],
+    ['빈 문자열', { recipe_id: '' }],
+    ['앞뒤 공백이 붙은 ID', { recipe_id: ` ${EXISTING_ID} ` }],
+    ['recipe_id 없음', {}],
+    ['숫자', { recipe_id: 123 }],
+    ['객체가 아닌 값', 'abc'],
+    ['null', null],
+    ['배열', [EXISTING_ID]],
+  ])('형식이 올바르지 않으면(%s) 저장을 막고 DB를 조회하지 않는다', async (_label, value) => {
+    const { client, queried } = makeSupabase([EXISTING_ID])
+    const cond = { recipe_first_success: value } as unknown as BadgeCondition
+    const error = await findRecipeFirstSuccessNotFoundError(cond, client)
+    expect(error).toContain('저장할 수 없습니다')
+    expect(error).toContain('레시피 ID 형식이 올바르지 않아요')
+    expect(queried).toEqual([])
+  })
+
+  it('DB 조회가 실패하면 저장을 막지 않는다', async () => {
+    const failing = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: { message: 'DB 장애' } }) }),
+        }),
+      }),
+    } as unknown as SupabaseClient
+    expect(await findRecipeFirstSuccessNotFoundError({ recipe_first_success: { recipe_id: EXISTING_ID } }, failing)).toBeNull()
   })
 })

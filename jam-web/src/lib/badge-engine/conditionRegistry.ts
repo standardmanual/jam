@@ -1844,6 +1844,103 @@ export const CONDITION_FIELDS = [
       section: 'meta',
     },
   }),
+
+  // ── JAM! 카테고리 — 믹스 행동 지표 4종 (티켓 20261001_0631, 상위 20260930_1456 ①) ──
+  //
+  // 믹스를 몇 번 시도·성공·실패했는가, 이 레시피를 가장 먼저 성공했는가를 재는 지표.
+  // `role: 'meta'` + `evaluation: 'external'`은 위 지표들과 같은 이유다. 실제 판정·발급은
+  // `jamActionBadges.ts`가 전담한다. 수치 3개는 `daily_sync_count`와 같은 모양이다.
+  field({
+    key: 'combine_attempt_count',
+    label: '믹스 시도 횟수',
+    unit: '회',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `믹스 시도 ${c.combine_attempt_count}회↑`,
+    detail: (c) => `믹스 누적 시도 ${c.combine_attempt_count}회 이상`,
+    form: integerForm('combineAttemptCount', {
+      section: 'meta',
+      label: '믹스 시도 횟수',
+      placeholder: '10',
+      help: '재료가 소각된 믹스만 세요. 재료가 없거나 개수가 틀려 시작하지 못한 시도는 세지 않아요.',
+    }),
+  }),
+  field({
+    key: 'combine_success_count',
+    label: '믹스 성공 횟수',
+    unit: '회',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `믹스 성공 ${c.combine_success_count}회↑`,
+    detail: (c) => `믹스 누적 성공 ${c.combine_success_count}회 이상`,
+    form: integerForm('combineSuccessCount', {
+      section: 'meta',
+      label: '믹스 성공 횟수',
+      placeholder: '5',
+    }),
+  }),
+  field({
+    key: 'combine_fail_count',
+    label: '믹스 실패 횟수',
+    unit: '회',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `믹스 실패 ${c.combine_fail_count}회↑`,
+    detail: (c) => `믹스 누적 실패 ${c.combine_fail_count}회 이상`,
+    form: integerForm('combineFailCount', {
+      section: 'meta',
+      label: '믹스 실패 횟수',
+      placeholder: '3',
+      help: '재료가 소각됐지만 레시피가 맞지 않은 믹스만 세요.',
+    }),
+  }),
+  field({
+    key: 'recipe_first_success',
+    label: '레시피 최초 성공',
+    unit: null,
+    role: 'meta',
+    input: 'object',
+    direction: 'higher',
+    evaluation: 'external',
+    chip: () => '레시피 최초 성공',
+    detail: () => '지정한 믹스 레시피를 전체 유저 중 가장 먼저 성공',
+    form: {
+      fields: ['recipeFirstSuccessRecipeId'],
+      read: (f) => {
+        const recipeId = typeof f.recipeFirstSuccessRecipeId === 'string' ? f.recipeFirstSuccessRecipeId.trim() : ''
+        return recipeId ? { recipe_id: recipeId } : undefined
+      },
+      write: (v) => ({
+        recipeFirstSuccessRecipeId: typeof v?.recipe_id === 'string' ? v.recipe_id : '',
+      }),
+      controls: [
+        {
+          field: 'recipeFirstSuccessRecipeId',
+          kind: 'text',
+          label: '레시피 ID',
+          placeholder: '믹스 레시피 목록에서 복사한 ID',
+          span: 3,
+          help: '믹스 레시피 목록의 ID예요. 이 레시피를 전체 유저 중 처음 성공한 1명에게만 발급돼요. 이미 성공한 사람이 있는 레시피에는 쓰지 마세요.',
+        },
+      ],
+      section: 'meta',
+    },
+  }),
 ] as const
 
 // ── 파생 목록 ────────────────────────────────────────────────────────────
@@ -1870,6 +1967,16 @@ export const FILTER_ONLY_CONDITION_KEYS: readonly ConditionKey[] = CONDITION_FIE
 /** 발급 판정에 관여하지 않는 메타데이터 필드 */
 export const CONDITION_META_KEYS: readonly ConditionKey[] = CONDITION_FIELDS.filter((f) => f.role === 'meta').map(
   (f) => f.key
+)
+
+/**
+ * JAM! 서비스 사용량 지표 키 — 메타 키에서 `mission_reward`(보상 표시용, 발급 판정이 아님)를 뺀
+ * 나머지 전부. 사용량 지표를 조건으로 쓰는 배지는 `repeat_count`·다른 measurable 조건과 함께
+ * 저장할 수 없고(`badge-condition-guards.ts`), 어드민 목록은 이 키로 JAM! 계열을 표시한다
+ * (`badge-families.ts`). **사용량 지표의 단일 정의**다 — 메타 키가 늘면 가드·표시가 자동으로 따라온다.
+ */
+export const USAGE_METRIC_CONDITION_KEYS: readonly ConditionKey[] = CONDITION_META_KEYS.filter(
+  (k) => k !== 'mission_reward'
 )
 
 /** 발급 판정에 실제로 관여하는 «조건 필드» 전체 — 수치 검사 필드 + 필터 전용 필드 */

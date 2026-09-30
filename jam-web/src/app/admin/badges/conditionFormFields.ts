@@ -111,6 +111,11 @@ export type ConditionFormFields = {
   checkinCategoryCountCount: string
   checkinBadgeCountNames: string
   checkinBadgeCountCount: string
+  // JAM! 카테고리 — 믹스 행동 지표 4종 (티켓 20261001_0631)
+  combineAttemptCount: string
+  combineSuccessCount: string
+  combineFailCount: string
+  recipeFirstSuccessRecipeId: string
 }
 
 /** 빈 폼(신규 등록)의 초기값. 조건 폼 state의 단일 출처다 */
@@ -181,6 +186,10 @@ export function emptyConditionFormFields(): ConditionFormFields {
     checkinCategoryCountCount: '',
     checkinBadgeCountNames: '',
     checkinBadgeCountCount: '',
+    combineAttemptCount: '',
+    combineSuccessCount: '',
+    combineFailCount: '',
+    recipeFirstSuccessRecipeId: '',
   }
 }
 

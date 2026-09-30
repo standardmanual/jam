@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser, requireAdminRead } from '@/lib/admin/auth'
-import { findBadgeConditionSaveError, findCheckinBadgeNamesNotFoundError, findRarityLevelError } from '@/lib/admin/badge-validation'
+import {
+  findBadgeConditionSaveError,
+  findCheckinBadgeNamesNotFoundError,
+  findRecipeFirstSuccessNotFoundError,
+  findRarityLevelError,
+} from '@/lib/admin/badge-validation'
 import { isValidFamilyKey } from '@/lib/admin/badge-families'
 import { buildBadgeInsertPayload, normalizeFamilyKey } from '@/lib/admin/badge-insert-payload'
 import type { BadgeRow } from '@/types/database'
@@ -88,6 +93,13 @@ export async function POST(req: NextRequest) {
   const checkinBadgeNamesError = await findCheckinBadgeNamesNotFoundError(condition_json ?? null, supabase)
   if (checkinBadgeNamesError) {
     return NextResponse.json({ error: checkinBadgeNamesError }, { status: 400 })
+  }
+
+  // 레시피 최초 성공(recipe_first_success)의 레시피 ID 형식·존재 검증 — 역시 DB 조회가 필요해 별도로
+  // await한다(티켓 20261001_0631).
+  const recipeFirstSuccessError = await findRecipeFirstSuccessNotFoundError(condition_json ?? null, supabase)
+  if (recipeFirstSuccessError) {
+    return NextResponse.json({ error: recipeFirstSuccessError }, { status: 400 })
   }
 
   // 페이로드 매핑은 등록 스크립트와 공용이다(lib/admin/badge-insert-payload.ts).

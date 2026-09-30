@@ -20,8 +20,8 @@
 import type { ActivityType, BadgeCondition, BadgeRarity, BadgeRow } from '@/types/database'
 import { familyKeyOf, isLeveledBadge } from '@/lib/badge-engine/badgeKind'
 import {
-  CONDITION_META_KEYS,
   MEASURABLE_CONDITION_KEYS,
+  USAGE_METRIC_CONDITION_KEYS,
   findBlockingConditionKeys,
   getConditionField,
   type AnyConditionFieldMeta,
@@ -49,12 +49,12 @@ export type FamilyBadge = Pick<
 >
 
 /**
- * 사용량 지표(follower_count 등) 키 — `role: 'meta'`이지만 `mission_reward`(불리언 플래그,
- * 지표가 아니다)는 제외한다. JAM! 카테고리 배지가 쓰는 조건 지표를 "조건지표" 칸에 사람이
- * 읽을 이름으로 보여주는 용도(`measurableKeys`는 role이 'measurable'인 필드만 모으므로
- * 이 배지들에는 항상 비어 있다) — 티켓 20260910_2055.
+ * 사용량 지표(follower_count 등) 키 — 레지스트리의 공용 목록(`USAGE_METRIC_CONDITION_KEYS`)이다.
+ * `role: 'meta'`이지만 `mission_reward`(불리언 플래그, 지표가 아니다)는 제외된다. JAM! 카테고리
+ * 배지가 쓰는 조건 지표를 "조건지표" 칸에 사람이 읽을 이름으로 보여주는 용도(`measurableKeys`는
+ * role이 'measurable'인 필드만 모으므로 이 배지들에는 항상 비어 있다) — 티켓 20260910_2055.
  */
-const USAGE_METRIC_DISPLAY_KEYS: readonly ConditionKey[] = CONDITION_META_KEYS.filter((k) => k !== 'mission_reward')
+const USAGE_METRIC_DISPLAY_KEYS: readonly ConditionKey[] = USAGE_METRIC_CONDITION_KEYS
 
 /** 계열 안 배지들의 종류 구성. `mixed`는 카탈로그 오류 신호다(같은 키에 등급형·레벨형 혼재) */
 export type FamilyKind = 'graded' | 'leveled' | 'mixed'

@@ -90,6 +90,39 @@ describe('레지스트리 전 필드 커버리지 — 「관리자가 직접 발
   })
 })
 
+describe('믹스 행동 지표 4종은 고정 용어 「믹스」로 말한다 (티켓 20261001_0631)', () => {
+  it('시도·성공·실패 횟수는 레지스트리 라벨·단위로 조립된다', () => {
+    expect(formatBadgeConditionText({ combine_attempt_count: 10 }, '믹스 입문')).toBe(
+      '믹스 시도 횟수 10회 이상 조건을 채우면 획득할 수 있어요.'
+    )
+    expect(formatBadgeConditionText({ combine_success_count: 5 }, '믹스 장인')).toBe(
+      '믹스 성공 횟수 5회 이상 조건을 채우면 획득할 수 있어요.'
+    )
+    expect(formatBadgeConditionText({ combine_fail_count: 3 }, '믹스 꿈나무')).toBe(
+      '믹스 실패 횟수 3회 이상 조건을 채우면 획득할 수 있어요.'
+    )
+  })
+
+  it('recipe_first_success는 레시피 ID를 그리지 않고 한 문장으로 말한다', () => {
+    const recipeId = '3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70'
+    const text = formatBadgeConditionText({ recipe_first_success: { recipe_id: recipeId } }, '첫 발견자')
+    expect(text).toBe('이 레시피를 가장 먼저 성공 조건을 채우면 획득할 수 있어요.')
+    expect(text).not.toContain(recipeId)
+  })
+
+  it('폐지된 용어 「조합」을 쓰지 않는다', () => {
+    const conditions: BadgeCondition[] = [
+      { combine_attempt_count: 10 },
+      { combine_success_count: 5 },
+      { combine_fail_count: 3 },
+      { recipe_first_success: { recipe_id: '3f2a1c7e-8b4d-4e6f-9a10-2b3c4d5e6f70' } },
+    ]
+    for (const c of conditions) {
+      expect(formatBadgeConditionText(c, '믹스 배지')).not.toContain('조합')
+    }
+  })
+})
+
 describe('「관리자가 직접 발급」·미션 보상은 여전히 맞는 문구다', () => {
   it('조건이 비어 있으면 관리자 수동 발급', () => {
     expect(formatBadgeConditionText(null, '수동 배지')).toBe(MANUAL_TEXT)
