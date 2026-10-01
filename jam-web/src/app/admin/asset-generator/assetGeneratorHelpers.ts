@@ -24,17 +24,30 @@ import { waitForGoogleFontLoaded } from '@/lib/admin/googleFonts'
 /** 스테이지 긴 변 고정 길이(px). 원본 MAX_LONG. */
 export const STAGE_MAX_LONG_SIDE_PX = 1280
 
-/** 비율별 스테이지 크기 (원본 applyAspect). */
+/**
+ * 비율별 스테이지 크기 (원본 applyAspect). 네 비율 모두 명시 분기다 — 목록에 없는 값을
+ * 기본값(9:16)으로 처리하지 않고 오류로 거절한다(티켓 20261001_1202).
+ */
 export function resolveStageSize(ratio: StageRatio): { width: number; height: number } {
-  if (ratio === '1:1') return { width: STAGE_MAX_LONG_SIDE_PX, height: STAGE_MAX_LONG_SIDE_PX }
-  if (ratio === '4:5') return { width: (STAGE_MAX_LONG_SIDE_PX * 4) / 5, height: STAGE_MAX_LONG_SIDE_PX }
-  return { width: Math.round((STAGE_MAX_LONG_SIDE_PX * 9) / 16), height: STAGE_MAX_LONG_SIDE_PX }
+  switch (ratio) {
+    case '1:1':
+      return { width: STAGE_MAX_LONG_SIDE_PX, height: STAGE_MAX_LONG_SIDE_PX }
+    case '4:5':
+      return { width: (STAGE_MAX_LONG_SIDE_PX * 4) / 5, height: STAGE_MAX_LONG_SIDE_PX }
+    case '9:16':
+      return { width: Math.round((STAGE_MAX_LONG_SIDE_PX * 9) / 16), height: STAGE_MAX_LONG_SIDE_PX }
+    case '16:9':
+      return { width: STAGE_MAX_LONG_SIDE_PX, height: Math.round((STAGE_MAX_LONG_SIDE_PX * 9) / 16) }
+    default:
+      throw new Error(`지원하지 않는 스테이지 비율: ${String(ratio)}`)
+  }
 }
 
 export const STAGE_RATIO_OPTIONS: { value: StageRatio; label: string }[] = [
   { value: '1:1', label: '1:1' },
   { value: '4:5', label: '4:5' },
   { value: '9:16', label: '9:16' },
+  { value: '16:9', label: '16:9' },
 ]
 
 export const GRADIENT_DIRECTION_OPTIONS: { value: GradientDirection; label: string }[] = [
