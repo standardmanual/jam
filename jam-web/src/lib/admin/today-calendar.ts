@@ -49,6 +49,16 @@ export function kstDayBoundsIso(dateStr: string): { startIso: string; endIso: st
   return { startIso: new Date(startUtcMs).toISOString(), endIso: new Date(endUtcMs).toISOString() }
 }
 
+/**
+ * 날짜 미리보기의 기준 시각(티켓 20261001_2208). 선택한 날짜가 오늘(KST)이면 지금, 아니면 그 날짜의 00:00(KST)이다.
+ * 「N일 남음」 계산(`toCardView`)과 컬렉션 공개 판정(`fetchCollectionsById`)에 같은 값을 쓴다.
+ * 서버(`getAdminTodayPreviewCards`)와 클라이언트(`TodayPreviewModal`)가 모두 부르므로 서버 전용 모듈을 읽지 않는 이 파일에 둔다.
+ */
+export function previewBaseTime(dateStr: string, now: Date = new Date()): Date {
+  if (dateStr === todayKstDateString(now)) return now
+  return new Date(kstDayBoundsIso(dateStr).startIso)
+}
+
 /** 'YYYY-MM-DD'에 days만큼 더한 날짜 문자열(음수 가능) */
 export function shiftDateStr(dateStr: string, days: number): string {
   const [y, m, d] = dateStr.split('-').map(Number)

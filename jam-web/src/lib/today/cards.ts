@@ -42,8 +42,11 @@ export interface ResolvedBadge {
    * 오늘 카드는 미획득 배지의 아트를 커버로 승격하면서 보유 여부를 한 번도 묻지 않아,
    * 아직 못 받은 배지가 「내 것」처럼 보였다. 미보유는 `grayscale(1)`로 표시한다
    * (2026-09-06 확정 규칙 — 실루엣으로 감추지 않는다).
+   *
+   * 값이 없으면(유저 정보가 없는 어드민 미리보기, 티켓 20261001_2208) 보유 여부를 모르는 것이라
+   * 표시 데이터(`toCardView`)가 컬러로 그린다. 홈 조회(`getTodayCards`)는 늘 `true`/`false`를 싣는다.
    */
-  earned: boolean
+  earned?: boolean
 }
 
 /**
@@ -207,20 +210,23 @@ type ServiceClient = ReturnType<typeof createServiceClient>
 /**
  * 표시 데이터가 미션 값을 쓰는 카드인지 — 미션 소개 카드, 그리고 미션을 가리키는 자동 카드.
  * 자원 대응(`resourceOfTemplate`)을 따른다(그 밖의 템플릿은 `mission_id`가 있어도 기간·보상 줄이 없다).
+ *
+ * 이 아래 네 함수(`resourceNeedsMission`·`missionIdsToResolve`·`collectionIdsToResolve`·`toResolvedMission`)는
+ * 어드민 날짜 미리보기(`lib/admin/todayPreview.ts`)가 같은 규칙으로 자원 값을 싣도록 export한다(티켓 20261001_2208).
  */
-function resourceNeedsMission(card: TodayCardRow): boolean {
+export function resourceNeedsMission(card: TodayCardRow): boolean {
   if (!card.mission_id) return false
   const resource = resourceOfTemplate(card.template_type)
   return resource === 'mission' || resource === 'auto'
 }
 
 /** 미션 값을 읽어야 하는 카드들의 미션 id (중복 제거) */
-function missionIdsToResolve(cards: TodayCardRow[]): string[] {
+export function missionIdsToResolve(cards: TodayCardRow[]): string[] {
   return [...new Set(cards.filter(resourceNeedsMission).map((c) => c.mission_id as string))]
 }
 
 /** 컬렉션 값을 읽어야 하는 카드들의 컬렉션 id (중복 제거) — 컬렉션 소식 카드만 */
-function collectionIdsToResolve(cards: TodayCardRow[]): string[] {
+export function collectionIdsToResolve(cards: TodayCardRow[]): string[] {
   return [
     ...new Set(
       cards
@@ -230,7 +236,7 @@ function collectionIdsToResolve(cards: TodayCardRow[]): string[] {
   ]
 }
 
-function toResolvedMission(m: FetchedMission): ResolvedMission {
+export function toResolvedMission(m: FetchedMission): ResolvedMission {
   return {
     starts_at: m.starts_at,
     ends_at: m.ends_at ?? null,
