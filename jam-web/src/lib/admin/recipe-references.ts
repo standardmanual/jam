@@ -60,7 +60,10 @@ export interface RecipeReferenceReport {
   error: string | null
 }
 
-/** `badges` 조건 JSON에서 레시피 id를 꺼내는 PostgREST 경로(`badge-list-query.ts`와 같은 표기) */
+/**
+ * `badges` 조건 JSON에서 레시피 id를 꺼내는 PostgREST 두 단계 경로(`->` 다음 `->>`). 같은 모양의
+ * `.in()` 조회가 라이브에서 SQL 집계와 같은 건수를 돌려주는 것을 확인했다(2026-10-01, 티켓 20261001_1200).
+ */
 const BADGE_RECIPE_ID_PATH = 'condition_json->recipe_first_success->>recipe_id'
 
 /** `.in()` 한 번에 넣는 id 개수. 80 × uuid 37자 ≈ 3KB — URL 상한에 여유가 있다 */
