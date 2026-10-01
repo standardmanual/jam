@@ -49,7 +49,12 @@
  * 섀도우밴 차단은 dry-run에도 반영된다(`issueQualifyingBadges`가 게이트 뒤에서 dryRun을 가른다).
  * 발급 기록의 `triggered_by`에는 `catalog_reevaluation:` 접두가 붙어 자연 발급과 구분된다.
  * JAM! 알림은 호출부(`jamActionRoute.ts`·`sync.ts`)가 만들므로 이 배치는 알림을 만들지 않는다.
- * 사용량 지표 6종(팔로워·팔로잉·동기화 횟수·연속 동기화·체크인 카테고리·체크인 목록)은 이 배치에 들어가지 않는다.
+ *
+ * ## 사용량 지표 6종도 같은 배치에서 돌린다 (티켓 20261001_1022, 상위 20260930_1456)
+ * 사용량 지표 6종(팔로워·팔로잉·동기화 횟수·연속 동기화·체크인 카테고리·체크인 목록)도 메인 엔진이 항상 fail
+ * 처리하는 `external` 조건이다. 유저마다 메인 엔진 → JAM! → 사용량 순서로 `reevaluateUsageMetricBadges`를 한 번 더
+ * 부른다(별도 try/catch, 부수효과는 JAM!과 같다). 동기화 2종은 자연 발급(오늘 기준)과 달리 **과거 기록 기준**이다 —
+ * 하루 동기화 횟수는 기록 중 최대 하루, 연속 동기화는 기록 중 가장 긴 연속으로 판정한다(`usageBadges.ts`).
  *
  * ## 무엇을 재사용하고 무엇을 새로 만들지 않았는가
  * 평가 로직은 전부 `evaluateBadgesDetailed` 한 곳에 있다 — 유저별로 `activities: []`를
@@ -60,6 +65,7 @@
 import type { createServiceClient } from '@/lib/supabase/server'
 import { evaluateBadgesDetailed } from './index'
 import { evaluateJamActionBadges, JAM_ACTION_CONDITION_KEYS } from './jamActionBadges'
+import { reevaluateUsageMetricBadges, UsageReevaluationError } from './usageBadges'
 import type { BadgeRow } from '@/types/database'
 
 /** `strava_sync`·`admin_simulate`와 구분되는 재평가 전용 트리거 식별자 */
@@ -85,9 +91,14 @@ export interface ReevaluateUserResult {
   jamActionEarnedCount: number
   /** 위 `pointsAwarded` 가운데 JAM! 행동 지표 배지의 point_reward 합계 */
   jamActionPointsAwarded: number
+  /** 위 `earnedCount` 가운데 사용량 지표 6종 배지 수 — JAM! 몫과 겹치지 않는다(같은 배지는 JAM! 쪽에서만 센다) */
+  usageMetricEarnedCount: number
+  /** 위 `pointsAwarded` 가운데 사용량 지표 배지의 point_reward 합계 */
+  usageMetricPointsAwarded: number
   /**
    * 이 유저 평가 중 예외가 발생했을 때만 채워진다. 다른 유저 처리는 계속된다.
-   * JAM! 지표 판정만 실패하면 `JAM! 지표: <메시지>` 형태이고 메인 엔진 결과는 그대로 남는다
+   * JAM! 지표 판정만 실패하면 `JAM! 지표: <메시지>`, 사용량 지표만 실패하면 `사용량 지표: <메시지>` 형태이고
+   * 메인 엔진 결과는 그대로 남는다. 둘 다 실패하면 ` / `로 잇는다
    */
   error?: string
 }
@@ -106,6 +117,12 @@ export interface ReevaluateCatalogResult {
   totalJamActionBadgesIssued: number
   /** 위 `totalPointsAwarded` 가운데 JAM! 행동 지표 배지의 point_reward 합계 */
   totalJamActionPointsAwarded: number
+  /** 사용량 지표 6종 배지를 1개 이상 (예정대로) 받은 유저 수 — JAM! 몫과 별도 집계다 */
+  usageMetricAffectedUserCount: number
+  /** 위 `totalBadgesIssued` 가운데 사용량 지표 배지 수 */
+  totalUsageMetricBadgesIssued: number
+  /** 위 `totalPointsAwarded` 가운데 사용량 지표 배지의 point_reward 합계 */
+  totalUsageMetricPointsAwarded: number
   users: ReevaluateUserResult[]
 }
 
@@ -185,8 +202,32 @@ export async function reevaluateUsersForCatalog(
         jamError = `JAM! 지표: ${jamMessage}`
       }
 
+      // 사용량 지표 6종 — JAM! 다음에 별도 try/catch로 돌린다. 값 계산 오류는 안에서 삼키지 않고 던지므로
+      // 여기서 `error`에 남긴다(JAM!의 알려진 한계 2번을 되풀이하지 않는다). 메인 엔진·JAM! 결과는 유지한다.
+      let usageRaw: { id: string; name: string }[] = []
+      let usageError: string | undefined
+      try {
+        usageRaw = await reevaluateUsageMetricBadges(userId, supabase, {
+          dryRun,
+          silent: true,
+          triggeredByPrefix: CATALOG_REEVALUATION_TRIGGER,
+        })
+      } catch (usageErr) {
+        const usageMessage = usageErr instanceof Error ? usageErr.message : String(usageErr)
+        console.error(`[reevaluateUsersForCatalog] 사용량 지표 평가 실패 — userId: ${userId}:`, usageErr)
+        usageError = `사용량 지표: ${usageMessage}`
+        // 오류가 나기 전에 이미 발급한 배지는 결과에 남긴다 — 포인트까지 지급됐는데 응답에서 빠지면 합계가 어긋난다
+        if (usageErr instanceof UsageReevaluationError) usageRaw = usageErr.earned
+      }
+      // dry-run은 insert가 없어 보유 목록이 바뀌지 않는다 — 같은 배지는 한 번만 센다. JAM!과 사용량 지표 키를
+      // 함께 가진 배지도 실제 실행에서는 JAM!이 먼저 발급하고 사용량은 «이미 보유»로 건너뛰므로 JAM! 몫으로만 센다
+      const jamIds = new Set(jamEarned.map((b) => b.id))
+      const usageEarned = [...new Map(usageRaw.map((b) => [b.id, b])).values()].filter((b) => !jamIds.has(b.id))
+
       const jamActionPointsAwarded = jamEarned.reduce((sum, b) => sum + (pointRewardById.get(b.id) ?? 0), 0)
-      const allEarned = [...earned, ...jamEarned]
+      const usageMetricPointsAwarded = usageEarned.reduce((sum, b) => sum + (pointRewardById.get(b.id) ?? 0), 0)
+      const allEarned = [...earned, ...jamEarned, ...usageEarned]
+      const userError = [jamError, usageError].filter((e): e is string => Boolean(e)).join(' / ')
       users.push({
         userId,
         earnedBadgeIds: allEarned.map((b) => b.id),
@@ -195,7 +236,9 @@ export async function reevaluateUsersForCatalog(
         counterIncrements,
         jamActionEarnedCount: jamEarned.length,
         jamActionPointsAwarded,
-        ...(jamError ? { error: jamError } : {}),
+        usageMetricEarnedCount: usageEarned.length,
+        usageMetricPointsAwarded,
+        ...(userError ? { error: userError } : {}),
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -208,6 +251,8 @@ export async function reevaluateUsersForCatalog(
         counterIncrements: 0,
         jamActionEarnedCount: 0,
         jamActionPointsAwarded: 0,
+        usageMetricEarnedCount: 0,
+        usageMetricPointsAwarded: 0,
         error: message,
       })
     }
@@ -223,6 +268,9 @@ export async function reevaluateUsersForCatalog(
     jamActionAffectedUserCount: users.filter((u) => u.jamActionEarnedCount > 0).length,
     totalJamActionBadgesIssued: users.reduce((sum, u) => sum + u.jamActionEarnedCount, 0),
     totalJamActionPointsAwarded: users.reduce((sum, u) => sum + u.jamActionPointsAwarded, 0),
+    usageMetricAffectedUserCount: users.filter((u) => u.usageMetricEarnedCount > 0).length,
+    totalUsageMetricBadgesIssued: users.reduce((sum, u) => sum + u.usageMetricEarnedCount, 0),
+    totalUsageMetricPointsAwarded: users.reduce((sum, u) => sum + u.usageMetricPointsAwarded, 0),
     users,
   }
 }

@@ -15,6 +15,11 @@
  * 응답의 `jamActionAffectedUserCount`·`totalJamActionBadgesIssued`·`totalJamActionPointsAwarded`가
  * 그 몫만 따로 보여 준다(위 합계에는 이미 포함돼 있다).
  *
+ * ## 사용량 지표 6종도 포함한다 (티켓 20261001_1022)
+ * 팔로워·팔로잉·동기화 횟수·연속 동기화·체크인 카테고리·체크인 목록 지표도 JAM! 다음에 돌린다. 동기화 2종은
+ * 오늘이 아니라 과거 기록 기준이다. 응답의 `usageMetricAffectedUserCount`·`totalUsageMetricBadgesIssued`·
+ * `totalUsageMetricPointsAwarded`가 그 몫을 따로 보여 준다(위 합계에는 이미 포함돼 있다).
+ *
  * ## 로직은 여기 없다
  * 평가·집계는 전부 `reevaluateUsersForCatalog`(`@/lib/badge-engine/reevaluateCatalog`)에
  * 있다. 이 라우트는 인증·입력 검증·대상 유저 조회·상한 체크만 한다.
@@ -66,6 +71,9 @@ export async function POST(req: NextRequest) {
       jamActionAffectedUserCount: 0,
       totalJamActionBadgesIssued: 0,
       totalJamActionPointsAwarded: 0,
+      usageMetricAffectedUserCount: 0,
+      totalUsageMetricBadgesIssued: 0,
+      totalUsageMetricPointsAwarded: 0,
       users: [],
     })
   }

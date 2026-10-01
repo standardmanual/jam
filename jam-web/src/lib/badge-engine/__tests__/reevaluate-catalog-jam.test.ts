@@ -139,6 +139,12 @@ vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabas
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: recordFeedEventMock }))
 vi.mock('@/lib/points', () => ({ awardPoints: awardPointsMock }))
 vi.mock('../index', () => ({ evaluateBadgesDetailed: evaluateBadgesDetailedMock }))
+// 사용량 지표 6종은 이 테스트의 대상이 아니다(`reevaluate-catalog-usage.test.ts`) — 유저별 `badges` 조회 횟수에
+// 기대는 «JAM! 판정 실패» 시나리오가 사용량 조회와 섞이지 않게 비워 둔다. 발급 로직(`issueQualifyingBadges`)은 실제 코드다
+vi.mock('../usageBadges', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../usageBadges')>()
+  return { ...actual, reevaluateUsageMetricBadges: vi.fn(async () => []) }
+})
 vi.mock('@/lib/abusing/shadow-ban', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/abusing/shadow-ban')>()
   return { ...actual, getUserBanLevel: (userId: string) => getUserBanLevelMock(userId) }

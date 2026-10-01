@@ -35,7 +35,7 @@ import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { kstDateString } from '@/lib/notifications/kst'
 import { isLeveledBadge, familyKeyOf } from './badgeKind'
 import { rarityTier } from '@/lib/rarity'
-import { fetchCurrentSyncStreakDays } from './dailySyncStreak'
+import { calcLongestSyncStreakDays, fetchCurrentSyncStreakDays } from './dailySyncStreak'
 import type { BadgeRow } from '@/types/database'
 
 /** 이 파일이 판정하는 서비스 사용량 지표 4종 — `conditionRegistry.ts` 선언과 1:1 대응.
@@ -315,8 +315,16 @@ function isCheckinBadgeCountValue(v: unknown): v is { checkin_badge_names: strin
  *
  * DB 조회 실패는 예외를 던지지 않고 빈 배열로 폴백한다(로그만 남긴다) — 체크인 배지 자체의
  * 발급·동기화 API 응답은 이 판정과 무관하게 계속 성공해야 한다.
+ *
+ * 마지막 인자 `options`(`dryRun`·`silent`·`triggeredByPrefix`)는 `issueQualifyingBadges`에 그대로
+ * 넘긴다 — 기존 유저 재평가 배치(`reevaluateUsageMetricBadges`)가 쓴다(티켓 20261001_1022).
+ * 생략하면 기존과 같다.
  */
-export async function evaluateCheckinUsageBadges(userId: string, client?: SupabaseClient): Promise<UsageBadgeEarned[]> {
+export async function evaluateCheckinUsageBadges(
+  userId: string,
+  client?: SupabaseClient,
+  options?: IssueBadgeOptions
+): Promise<UsageBadgeEarned[]> {
   const supabase = client ?? createServiceClient()
   const now = new Date().toISOString()
 
@@ -427,7 +435,7 @@ export async function evaluateCheckinUsageBadges(userId: string, client?: Supaba
     return 'checkin_badge_count'
   }
 
-  return issueQualifyingBadges(supabase, userId, candidates, thresholdOf, currentValueOf, triggeredByOf, 'evaluateCheckinUsageBadges')
+  return issueQualifyingBadges(supabase, userId, candidates, thresholdOf, currentValueOf, triggeredByOf, 'evaluateCheckinUsageBadges', options)
 }
 
 /**
@@ -471,4 +479,143 @@ export async function recordDailySyncAndEvaluate(userId: string, client?: Supaba
   const streakEarned = await evaluateUsageBadges(userId, 'daily_sync_streak_days', streakDays, supabase)
 
   return [...countEarned, ...streakEarned]
+}
+
+/** `user_daily_sync_counts` 한 유저의 전체 기록 조회 상한 — `fetchCurrentSyncStreakDays`와 같은 값(약 10년) */
+const SYNC_HISTORY_LIMIT = 3650
+
+/**
+ * 재평가 배치가 «기록 기준»으로 쓰는 4개 지표의 현재값 계산(티켓 20261001_1022). 자연 발급 경로의
+ * 값과 다른 점은 `reevaluateUsageMetricBadges` 주석에 있다. 조회 오류는 삼키지 않고 던진다 —
+ * 자연 발급 경로는 원본 액션을 지키려고 0으로 폴백하지만, 배치가 0으로 폴백하면 «조건을 못 채운 유저»와
+ * «조회에 실패한 유저»를 구분할 수 없어 소급 누락이 조용히 남는다.
+ *
+ * 동기화 2종은 같은 테이블을 보므로 호출마다 한 번만 읽어 둘이 나눠 쓴다(`syncRows` 캐시).
+ */
+function computeReevaluationMetricValues(
+  supabase: SupabaseClient,
+  userId: string
+): Record<UsageMetric, () => Promise<number>> {
+  let syncRows: Promise<{ sync_date: string; count: number }[]> | null = null
+  const loadSyncRows = () => {
+    syncRows ??= (async () => {
+      const { data, error } = await supabase
+        .from('user_daily_sync_counts')
+        .select('sync_date, count')
+        .eq('user_id', userId)
+        .order('sync_date', { ascending: false })
+        .limit(SYNC_HISTORY_LIMIT)
+      if (error) throw new Error(`동기화 기록 조회 오류: ${error.message}`)
+      return (data as { sync_date: string; count: number }[] | null) ?? []
+    })()
+    return syncRows
+  }
+
+  const countFollows = async (column: 'follower_id' | 'following_id'): Promise<number> => {
+    const { count, error } = await supabase
+      .from('user_follows')
+      .select('id', { count: 'exact', head: true })
+      .eq(column, userId)
+    if (error) throw new Error(`팔로우 수 조회 오류: ${error.message}`)
+    return count ?? 0
+  }
+
+  return {
+    // `follows/route.ts`와 같은 조회 — 과거 값 기록이 없어 지금 값만 쓴다
+    follower_count: () => countFollows('following_id'),
+    following_count: () => countFollows('follower_id'),
+    // 기록 중 가장 많이 동기화한 하루(자연 발급은 «오늘» 횟수)
+    daily_sync_count: async () => Math.max(0, ...(await loadSyncRows()).map((r) => r.count)),
+    // 기록 중 가장 긴 연속(자연 발급은 «오늘까지 이어진 현재 연속»)
+    daily_sync_streak_days: async () => calcLongestSyncStreakDays((await loadSyncRows()).map((r) => r.sync_date)),
+  }
+}
+
+/**
+ * `reevaluateUsageMetricBadges`가 중간에 던질 때 쓰는 오류 — 던지기 전까지 **이미 발급한** 배지(`earned`)를
+ * 함께 싣는다. 앞 지표에서 insert·포인트 지급이 끝났는데 뒤 지표가 실패해 그 결과까지 사라지면, 배치 응답의
+ * 발급 수·포인트 합계가 실제보다 적게 보이기 때문이다.
+ */
+export class UsageReevaluationError extends Error {
+  constructor(
+    message: string,
+    readonly earned: UsageBadgeEarned[]
+  ) {
+    super(message)
+    this.name = 'UsageReevaluationError'
+  }
+}
+
+/** `reevaluateUsageMetricBadges`가 판정하는 지표와 순서 — `UsageMetric` 4종 전부 */
+const REEVALUATION_METRICS: readonly UsageMetric[] = [
+  'follower_count',
+  'following_count',
+  'daily_sync_count',
+  'daily_sync_streak_days',
+]
+
+/**
+ * 기존 유저 재평가 배치용 — 사용량 지표 6종(팔로워·팔로잉·동기화 횟수·연속 동기화·체크인 카테고리·
+ * 체크인 목록)을 한 유저에 대해 모두 판정·발급한다(티켓 20261001_1022, 상위 20260930_1456).
+ *
+ * 자연 발급 경로(`evaluateUsageBadges`·`recordDailySyncAndEvaluate`)와 다른 점:
+ *  - 동기화 2종은 «기록 기준»이다 — 하루 동기화 횟수는 기록 중 최대 하루, 연속 동기화는 기록 중 가장 긴
+ *    연속으로 판정한다(오늘 동기화하지 않은 유저도 지난 기록으로 받는다). 팔로워·팔로잉 수는 과거 값 기록이
+ *    없어 지금 값이다. 체크인 2종은 `evaluateCheckinUsageBadges`의 계산을 그대로 쓴다.
+ *  - `recordDailySyncAndEvaluate`는 카운터를 올리므로 부르지 않는다 — 이 함수는 읽기만 한다.
+ *  - 지표 값 계산 오류는 삼키지 않고 던진다(배치가 유저별 `error`에 남긴다). 배지 목록 조회 오류도 같다.
+ *    첫 오류에서 멈추며, 그때까지 이미 발급한 배지는 `UsageReevaluationError.earned`에 실어 보낸다.
+ *
+ * 카탈로그는 한 번만 조회하고, **후보 배지가 있는 지표만** 값을 계산한다(후보가 없으면 값 조회를 하지 않는다 —
+ * 유저 수백 명 배치의 시간 절약). `options`는 `issueQualifyingBadges`에 그대로 넘긴다(`triggered_by`는
+ * `<접두>:usage_metric:<지표>`). dry-run에서 같은 배지가 지표 키를 둘 이상 가졌다면 중복해 담길 수 있어
+ * 호출부가 id 기준으로 한 번만 센다.
+ */
+export async function reevaluateUsageMetricBadges(
+  userId: string,
+  supabase: SupabaseClient,
+  options?: IssueBadgeOptions
+): Promise<UsageBadgeEarned[]> {
+  const now = new Date().toISOString()
+
+  const { data: allBadgesRaw, error: badgesError } = await supabase
+    .from('badges')
+    .select('*')
+    .eq('type', 'activity')
+    .is('deleted_at', null)
+    .or(`valid_from.is.null,valid_from.lte.${now}`)
+    .or(`valid_until.is.null,valid_until.gte.${now}`)
+
+  if (badgesError) throw new Error(`배지 목록 조회 오류: ${badgesError.message}`)
+  const allBadges = (allBadgesRaw as BadgeRow[] | null) ?? []
+
+  const earned: UsageBadgeEarned[] = []
+  const valueComputers = computeReevaluationMetricValues(supabase, userId)
+
+  try {
+    for (const metric of REEVALUATION_METRICS) {
+      const candidates = allBadges.filter((b) => typeof b.condition_json?.[metric] === 'number')
+      if (candidates.length === 0) continue
+
+      const currentValue = await valueComputers[metric]()
+      const issued = await issueQualifyingBadges(
+        supabase,
+        userId,
+        candidates,
+        (b) => b.condition_json?.[metric] as number,
+        () => currentValue,
+        () => `usage_metric:${metric}`,
+        `reevaluateUsageMetricBadges(metric: ${metric})`,
+        options
+      )
+      earned.push(...issued)
+    }
+
+    // 체크인 2종 — 값을 스스로 계산하는 기존 진입점을 그대로 부른다(후보가 없으면 안에서 바로 끝난다)
+    earned.push(...(await evaluateCheckinUsageBadges(userId, supabase, options)))
+  } catch (err) {
+    throw new UsageReevaluationError(err instanceof Error ? err.message : String(err), earned)
+  }
+
+  return earned
 }
