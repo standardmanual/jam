@@ -2,12 +2,13 @@ import type { CardView } from '@/lib/today/cardView'
 import type { CardShape } from '@/lib/today/shape'
 import BriefCard from './BriefCard'
 import CardFrame from './CardFrame'
+import HeroCard from './HeroCard'
 
 /**
- * 새 틀이 그리는 모양 목록 (티켓 20261001_1458, 상위 20260930_1453 조각 b2). 조각 b3~b5가 이 목록에 모양을 하나씩 더한다.
+ * 새 틀이 그리는 모양 목록 (티켓 20261001_1458, 상위 20260930_1453 조각 b2). 조각 b3(`hero`, 티켓 20261001_1737)가 더했고 b4·b5가 이 목록에 모양을 하나씩 더한다.
  * 목록에 없는 모양은 `TodayCard`가 아무것도 그리지 않는다. `TodayCardStack`은 이 목록으로 새 틀과 옛 렌더러를 가른다.
  */
-export const RENDERED_SHAPES = ['brief'] as const satisfies readonly CardShape[]
+export const RENDERED_SHAPES = ['brief', 'hero'] as const satisfies readonly CardShape[]
 
 export type RenderedShape = (typeof RENDERED_SHAPES)[number]
 
@@ -28,6 +29,12 @@ export default function TodayCard({ view }: { view: CardView }) {
       return (
         <CardFrame view={view}>
           <BriefCard view={view} />
+        </CardFrame>
+      )
+    case 'hero':
+      return (
+        <CardFrame view={view}>
+          <HeroCard view={view} />
         </CardFrame>
       )
     default:
