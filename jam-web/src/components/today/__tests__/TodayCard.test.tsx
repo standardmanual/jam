@@ -158,7 +158,7 @@ describe('TodayCard — 모양으로 모양 컴포넌트를 고른다', () => {
 
   it('list는 목록 모양으로 그린다(타일형: 타일 줄 + 전체 보기 끝 줄)', () => {
     const html = renderToStaticMarkup(<TodayCard view={listView({ href: '/badges' })} />)
-    expect(html).toContain('<ul class="flex gap-[var(--spacing-8)]">')
+    expect(html).toContain('<ul class="flex w-max gap-[var(--spacing-8)]">')
     expect(html).toContain('<h3')
     expect(html).toContain('성수동 배지 모음')
     expect(html).toContain('전체 보기')

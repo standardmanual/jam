@@ -21,6 +21,8 @@ import CardThumb from './CardThumb'
  *   희귀도는 타일에 그리지 않는다(`CardViewTile.rarity`는 표시 데이터에 두되 쓰지 않는다). 되돌리기는 이 파일 한 곳이다. 이름은 64px 칸 폭 그대로 가운데 2줄이다.
  *   그림이 없거나 실패하면 `CardThumb`이 같은 칸에 카드의 자원 아이콘을 그린다. 미보유(`earned === false`)만 그림이 흑백이고 `earned`가 없으면(미리보기) 컬러다.
  *   스크롤 칸에는 `tabIndex`를 주지 않는다(카드 전체가 링크라 안에 `tabindex`를 두면 마크업 규칙 위반이다).
+ *   안쪽 `ul`이 `w-max`인 이유: 없으면 `ul`이 칸 안쪽 폭에 갇히고 타일이 그 밖으로 넘쳐서, 끝까지 밀었을 때 칸의 오른쪽 `padding`이 스크롤 영역에 들어가지 않아 마지막 타일이
+ *   카드 가장자리에 붙는다(Chromium 실측: 끝 여백 0px). 마지막 `li`의 오른쪽 `margin`으로는 고쳐지지 않았고(0px) `w-max`로 24px이 남는 것을 실측했다(`ListCard.stories.tsx`).
  * - 행형: 제목 영역은 `live`(= `tracking` 있음)이고 미션 대상 랭킹(`mission_progress`)이며 `href`가 있을 때만 `CardLink`로 감싼다. 순위 행은 각자 프로필 링크다. 끝 줄은 없다
  *   (「이 카드 전체가 눌린다」는 신호인데 행형은 행마다 다른 곳으로 가서 거짓이 된다). 순위가 비면(`ranking`이 null이거나 0행) 행 자리에 빈 문구를 그린다.
  *   `live` 한 변수가 제목 링크·행 링크·내 순위 강조를 모두 정한다: 미리보기는 `username`을 비워 행 링크를 없애고 강조도 없다(어드민이 `currentUserId`를 실수로 넘겨도 마찬가지).
@@ -48,7 +50,7 @@ function ListTiles({ view }: { view: ListCardView }) {
       {/* 타일 0개는 `toCardView`가 `brief`로 바꿔 여기까지 오지 않는다. 직접 만든 표시 데이터가 0개로 오면 타일 줄만 그리지 않는다 */}
       {view.tiles.length > 0 && (
         <div className="-mx-[var(--spacing-24)] overflow-x-auto px-[var(--spacing-24)]">
-          <ul className="flex gap-[var(--spacing-8)]">
+          <ul className="flex w-max gap-[var(--spacing-8)]">
             {view.tiles.map((tile, index) => (
               <li key={index} className="w-16 shrink-0">
                 <CardThumb view={view} src={tile.imageUrl} dimmed={tile.earned === false} />

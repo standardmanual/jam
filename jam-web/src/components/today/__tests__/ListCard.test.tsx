@@ -175,9 +175,9 @@ describe('ListCard 타일형 — 면(표면)과 본문', () => {
 })
 
 describe('ListCard 타일형 — 타일 줄', () => {
-  it('스크롤 칸은 카드 좌우 끝까지 번지고(-mx·px 24px) 안쪽 목록은 타일 간격 8px의 가로 flex다', () => {
+  it('스크롤 칸은 카드 좌우 끝까지 번지고(-mx·px 24px) 안쪽 목록은 타일 간격 8px의 가로 flex이며 w-max로 끝 여백이 스크롤 영역에 들어간다', () => {
     const html = render(tilesView())
-    expect(html).toContain('<div class="-mx-[var(--spacing-24)] overflow-x-auto px-[var(--spacing-24)]"><ul class="flex gap-[var(--spacing-8)]">')
+    expect(html).toContain('<div class="-mx-[var(--spacing-24)] overflow-x-auto px-[var(--spacing-24)]"><ul class="flex w-max gap-[var(--spacing-8)]">')
   })
 
   it('타일은 목록(ul) 안의 li이고 64px(w-16)로 줄지 않는다', () => {
