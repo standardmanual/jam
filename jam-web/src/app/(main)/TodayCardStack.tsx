@@ -7,7 +7,10 @@ import { LabelChip } from '@ds/components/cards/LabelChip'
 import SafeImage from '@/components/SafeImage'
 import RankingListRow from '@/components/ranking/RankingListRow'
 import TodayCardTracker from './TodayCardTracker'
+import TodayCard, { isRenderedShape } from '@/components/today/TodayCard'
 import { formatRankingMetricValue } from '@/lib/ranking/format'
+import { toCardView } from '@/lib/today/cardView'
+import { drawnShape } from '@/lib/today/shape'
 import { d } from '@/lib/i18n'
 import {
   MedalIcon,
@@ -333,6 +336,9 @@ function CardBody({ card }: { card: TodayCardWithHref }) {
  * 투데이 카드 스택 (홈 화면 최상단). 카드 0개면 아무것도 렌더링하지 않는다.
  * layout_type에 따라 서로 다른 UI로 렌더링(콘텐츠 종류인 template_type과는 별개 축).
  * 카드 클릭 시 resolved_href 로 이동 (editorial_article은 /today/[id]).
+ *
+ * 모양(`shape`)이 저장된 카드 중 새 틀(`components/today`)이 그리는 모양(지금은 `brief`)은 새 틀로 그린다(티켓 20261001_1458).
+ * 그 밖의 카드는 위 옛 렌더러가 그린다 — 조각 b7이 옛 카드까지 새 모양으로 전환하고 옛 렌더러를 지운다.
  */
 export default function TodayCardStack({
   cards,
@@ -359,23 +365,38 @@ export default function TodayCardStack({
       </div>
 
       <div className="flex flex-col gap-[var(--spacing-16)]">
-        {cards.map((card) =>
+        {cards.map((card) => {
+          // 새 틀로 그릴지 한 곳에서 정한다(티켓 20261001_1458). 그려질 모양(`drawnShape`)이 없으면(`shape`가 없는 옛 카드 + 전환 상수가
+          // 꺼진 동안) 옛 렌더러다. 있으면 표시 데이터의 모양이 새 틀이 그리는 모양(`RENDERED_SHAPES`)일 때만 새 틀로 간다 — 표시 데이터의
+          // 모양을 보는 이유는 기록 모양(`events.ts`)과 같은 규칙(타일 0개 `list` → `brief`)을 적용하려는 것이다('화면 모양 = 기록 모양').
+          // 새 틀은 표시 데이터에 계측 정보가 있어야 트래커·링크를 그리므로 미리보기(`preview`)면 싣지 않는다.
+          const shape = drawnShape(card)
+          const view = shape ? toCardView(card, { tracking: !preview }) : null
+          if (view && isRenderedShape(view.shape)) return <TodayCard key={card.id} view={view} />
+
+          // 아래는 옛 렌더러다(조각 b7에서 지운다).
           // ranking_list는 행마다 자체 <Link>(유저 프로필)를 가지므로 공통 카드 래핑
           // <Link>를 건너뛴다 — 중첩 앵커 방지(RankingListCard 주석 참고).
-          card.layout_type === 'ranking_list' ? (
+          return card.layout_type === 'ranking_list' ? (
             <RankingListCard key={card.id} card={card} currentUserId={currentUserId} preview={preview} />
           ) : preview ? (
             <div key={card.id} className="block">
               <CardBody card={card} />
             </div>
           ) : (
-            <TodayCardTracker key={card.id} cardId={card.id} contentTypeId={card.content_type_id} templateType={card.template_type}>
+            <TodayCardTracker
+              key={card.id}
+              cardId={card.id}
+              contentTypeId={card.content_type_id}
+              templateType={card.template_type}
+              shape={shape}
+            >
               <Link href={card.resolved_href} className="block">
                 <CardBody card={card} />
               </Link>
             </TodayCardTracker>
           )
-        )}
+        })}
       </div>
     </section>
   )

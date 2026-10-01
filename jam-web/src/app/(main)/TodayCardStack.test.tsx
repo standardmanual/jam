@@ -105,6 +105,70 @@ describe('TodayCardStack — 게재용 설명문', () => {
   })
 })
 
+describe('TodayCardStack — 새 틀과 옛 렌더러 분기 (티켓 20261001_1458)', () => {
+  // 새 틀(`brief`)은 최소 높이 클래스로, 눌림 링크는 `rounded-[var(--radius-cards)] jam-press`로 알아본다
+  const NEW_FRAME = 'min-h-[88px]'
+  const NEW_LINK = 'block rounded-[var(--radius-cards)] jam-press'
+  const badge = (id: string) => ({ id, name: `배지 ${id}`, image_url: null, rarity: 'rare', earned: true })
+
+  it('shape가 brief로 저장된 카드는 새 틀로 그린다(링크·눌림·끝 ›)', () => {
+    const html = render(makeCard({ shape: 'brief', template_type: 'drop_alert', title: '한강 번개 드랍', region_label: '한강공원' }))
+    expect(html).toContain(NEW_FRAME)
+    expect(html).toContain(NEW_LINK)
+    expect(html).toContain('href="/badges"')
+    expect(html).toContain('한강 번개 드랍')
+    expect(html).toContain('›')
+    // 옛 렌더러의 부제 줄은 새 틀에 없다
+    expect(html).not.toContain('이번 주 새로 열렸어요')
+  })
+
+  it('shape가 없는(NULL) 옛 카드는 옛 렌더러가 그린다', () => {
+    for (const layout of ['large_thumbnail', 'badge_gallery', 'shortcut', 'banner', 'other'] as const) {
+      const html = render(makeCard({ shape: null, layout_type: layout }))
+      expect(html).not.toContain(NEW_FRAME)
+      expect(html).not.toContain(NEW_LINK)
+      expect(html).toContain('href="/badges"')
+    }
+  })
+
+  it('shape가 brief가 아닌 모양으로 저장된 카드도 옛 렌더러가 그린다(b3~b5 전까지)', () => {
+    for (const shape of ['hero', 'poster', 'square'] as const) {
+      const html = render(makeCard({ shape }))
+      expect(html).not.toContain(NEW_FRAME)
+      expect(html).toContain('이번 주 새로 열렸어요')
+    }
+    const list = render(makeCard({ shape: 'list', layout_type: 'badge_gallery', resolved_badges: [badge('a')] }))
+    expect(list).not.toContain(NEW_FRAME)
+  })
+
+  it('타일이 0개인 list로 저장된 카드는 화면도 brief다(기록 모양과 같다)', () => {
+    const html = render(makeCard({ shape: 'list', template_type: 'badge_spotlight', resolved_badges: [] }))
+    expect(html).toContain(NEW_FRAME)
+    expect(html).toContain(NEW_LINK)
+  })
+
+  it('여러 장이 섞여 있어도 장마다 따로 가르고 순서를 지킨다', () => {
+    const html = renderToStaticMarkup(
+      <TodayCardStack
+        cards={[
+          makeCard({ id: 'a', shape: null, title: '옛 카드 가' }),
+          makeCard({ id: 'b', shape: 'brief', title: '새 카드 나' }),
+          makeCard({ id: 'c', shape: 'hero', title: '옛 카드 다' }),
+        ]}
+      />
+    )
+    expect(html.indexOf('옛 카드 가')).toBeLessThan(html.indexOf('새 카드 나'))
+    expect(html.indexOf('새 카드 나')).toBeLessThan(html.indexOf('옛 카드 다'))
+    expect(html.match(/min-h-\[88px\]/g)).toHaveLength(1)
+  })
+
+  it('새 틀 카드에는 눌림이 링크 하나에만 있고 옛 눌림 문자열이 없다', () => {
+    const html = render(makeCard({ shape: 'brief' }))
+    expect(html.match(/jam-press/g)).toHaveLength(1)
+    expect(html).not.toContain('active:scale-[0.98]')
+  })
+})
+
 describe('TodayCardStack — 옛 렌더러의 눌림과 칩 (티켓 20261001_1458)', () => {
   const layouts: TodayCardLayoutType[] = ['large_thumbnail', 'badge_gallery', 'shortcut', 'banner', 'other']
 
