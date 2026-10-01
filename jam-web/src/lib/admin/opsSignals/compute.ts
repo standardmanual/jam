@@ -56,7 +56,7 @@ export interface ComputeOpsSignalsOptions {
   now: Date
   /** 시험 묶음을 포함해서 계산할지. 기본은 `false`다(상위 티켓 Q2). */
   includeSample?: boolean
-  /** 시험이 기준값을 바꿔 볼 때만 쓴다. 보통은 `thresholds.ts`의 값을 그대로 쓴다. */
+  /** 기본값 위에 얹을 값. S7에서 바꾼 값(`load.ts`가 `overrides.ts`로 읽어 넘긴다)이나 시험이 기준값을 바꿔 볼 때 쓴다. 없으면 `thresholds.ts`의 값 그대로다. */
   thresholds?: Partial<OpsSignalThresholdValues>
 }
 
