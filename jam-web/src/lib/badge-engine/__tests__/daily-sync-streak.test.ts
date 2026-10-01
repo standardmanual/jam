@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { calcCurrentSyncStreakDays, fetchCurrentSyncStreakDays } from '../dailySyncStreak'
+import { calcCurrentSyncStreakDays, calcLongestSyncStreakDays, fetchCurrentSyncStreakDays } from '../dailySyncStreak'
 
 describe('calcCurrentSyncStreakDays — 오늘 기준 현재 연속 동기화 일수', () => {
   it('오늘 동기화 안 함 — 어제까지 아무리 길게 연속이었어도 0이다', () => {
@@ -52,6 +52,49 @@ describe('calcCurrentSyncStreakDays — 오늘 기준 현재 연속 동기화 �
 
   it('오늘 기준 파라미터를 생략하면 현재 KST 날짜를 쓴다 — 예외 없이 동작한다', () => {
     expect(() => calcCurrentSyncStreakDays([])).not.toThrow()
+  })
+})
+
+describe('calcLongestSyncStreakDays — 기록 중 가장 긴 연속 동기화 일수 (티켓 20261001_1022)', () => {
+  it('빈 목록이면 0이다', () => {
+    expect(calcLongestSyncStreakDays([])).toBe(0)
+  })
+
+  it('하루만 있으면 1이다', () => {
+    expect(calcLongestSyncStreakDays(['2026-09-11'])).toBe(1)
+  })
+
+  it('중간에 끊긴 두 구간이면 더 긴 쪽을 돌려준다(오늘 기준이 아니다)', () => {
+    // 09-01~09-03(3일) 다음 09-05~09-09(5일) — 가장 긴 구간은 뒤쪽이고, 오늘이 언제든 상관없다
+    const dates = ['2026-09-01', '2026-09-02', '2026-09-03', '2026-09-05', '2026-09-06', '2026-09-07', '2026-09-08', '2026-09-09']
+    expect(calcLongestSyncStreakDays(dates)).toBe(5)
+  })
+
+  it('앞 구간이 더 길어도 그 길이를 돌려준다', () => {
+    const dates = ['2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-10', '2026-09-11']
+    expect(calcLongestSyncStreakDays(dates)).toBe(4)
+  })
+
+  it('중복 날짜는 하루로 센다', () => {
+    const dates = ['2026-09-01', '2026-09-01', '2026-09-02', '2026-09-02', '2026-09-02']
+    expect(calcLongestSyncStreakDays(dates)).toBe(2)
+  })
+
+  it('날짜 순서가 섞여 있어도 결과는 같다', () => {
+    const dates = ['2026-09-09', '2026-09-03', '2026-09-07', '2026-09-08', '2026-09-01', '2026-09-02']
+    // 09-01~09-03(3일), 09-07~09-09(3일) — 같은 길이면 그 값
+    expect(calcLongestSyncStreakDays(dates)).toBe(3)
+    expect(calcLongestSyncStreakDays([...dates].reverse())).toBe(3)
+  })
+
+  it('월 경계를 넘는 연속도 정확히 센다', () => {
+    const dates = ['2026-08-30', '2026-08-31', '2026-09-01', '2026-09-02']
+    expect(calcLongestSyncStreakDays(dates)).toBe(4)
+  })
+
+  it('연 경계를 넘는 연속도 정확히 센다', () => {
+    const dates = ['2025-12-30', '2025-12-31', '2026-01-01']
+    expect(calcLongestSyncStreakDays(dates)).toBe(3)
   })
 })
 
