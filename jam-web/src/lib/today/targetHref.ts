@@ -91,8 +91,11 @@ export interface ArticleCtaTarget {
  * 항상 /today/{id})와는 다른 대상이다 — 기사 안에서 다음으로 안내할 컬렉션·미션·직접 링크.
  * 우선순위 target_href → item_book_id(컬렉션) → mission_id(미션). 셋 다 비어 있으면 null
  * (호출부는 CTA 블록 자체를 렌더하지 않는다).
+ * 매개변수는 세 대상 필드만 받는다(티켓 20261001_1737) — 전체 행이 없는 운영툴 미리보기 초안(1501)도 같은 함수를 쓰게 하려는 타입 확장이고 동작은 그대로다.
  */
-export function resolveArticleCtaTarget(card: TodayCardRow): ArticleCtaTarget | null {
+export function resolveArticleCtaTarget(
+  card: Pick<TodayCardRow, 'target_href' | 'item_book_id' | 'mission_id'>,
+): ArticleCtaTarget | null {
   const explicit = card.target_href?.trim()
   if (explicit) return { href: explicit, kind: 'direct' }
   if (card.item_book_id) return { href: `/collections/${card.item_book_id}`, kind: 'collection' }

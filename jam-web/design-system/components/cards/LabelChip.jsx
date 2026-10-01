@@ -1,5 +1,11 @@
 import React from 'react';
 
+/** 색조별 배경·글자색. 나머지 모양(12px bold 대문자·padding·radius·lineHeight)은 두 색조가 같다. */
+const TONES = {
+  default: { background: 'var(--color-surface)', color: 'var(--color-text)' },
+  inverse: { background: 'var(--color-surface-inverse)', color: 'var(--color-text-inverse)' },
+};
+
 /**
  * LabelChip — 카드 좌상단에 놓는 짙은 회색 «라벨 필». 티켓 20261001_1204(상위 20260930_1453 b0).
  *
@@ -13,14 +19,17 @@ import React from 'react';
  * 팔레트가 붙어 있어 픽셀이 달라지고, `RarityBadge`는 등급 전용, `BadgeLevelChip`은 Lv.N 필
  * 전용이다.
  *
- * 변형 prop(tone·size)은 없다 — 지금 쓰이는 모양이 하나뿐이다. 반전 색조는 이후 필요할 때 더한다.
+ * 변형은 `tone` 하나뿐이다(티켓 20261001_1737, 1248). `default`(기본)는 `--color-surface` 채움 + `--color-text` 글자로
+ * 흰 `Card tone="inverse"` 위에서 쓰고, `inverse`는 `--color-surface-inverse` 채움 + `--color-text-inverse` 글자로
+ * 검정 바탕 위(기사 화면)에서 쓴다. 두 색조는 배경·글자색만 다르고 나머지(12px bold 대문자·padding 6px 10px·
+ * `--radius-tags`·lineHeight 1)는 같다. `size` 변형은 없다.
  * `self-start` 같은 배치는 부모가 flex-col이냐 row 안이냐에 따라 달라지는 호출부 몫이라
  * 컴포넌트에 굳히지 않는다(`className`으로 넘긴다).
  *
  * 비인터랙티브 `<span>` — 터치 대상이 아니다(44px 규칙 비해당). `children`이 비어 있으면
  * 빈 필이 남지 않게 아무것도 그리지 않는다.
  */
-export function LabelChip({ children, className = '', style = {}, ...rest }) {
+export function LabelChip({ tone = 'default', children, className = '', style = {}, ...rest }) {
   if (children == null || children === '') return null;
   return (
     <span
@@ -34,8 +43,7 @@ export function LabelChip({ children, className = '', style = {}, ...rest }) {
         textTransform: 'uppercase',
         padding: '6px 10px',
         borderRadius: 'var(--radius-tags)',
-        background: 'var(--color-surface)',
-        color: 'var(--color-text)',
+        ...(TONES[tone] ?? TONES.default),
         ...style,
       }}
       {...rest}

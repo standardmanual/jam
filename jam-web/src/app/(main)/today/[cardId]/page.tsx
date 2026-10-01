@@ -1,9 +1,8 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { getPublishedArticleCard } from '@/lib/today/cards'
-import { resolveArticleCtaTarget } from '@/lib/today/targetHref'
-import SafeImage from '@/components/SafeImage'
-import LocalDate from '@/components/LocalDate'
+import { toArticleView } from '@/lib/today/articleView'
+import ArticleView from '@/components/today/ArticleView'
+import TopNav from '@/components/ui/TopNav'
 import { d } from '@/lib/i18n'
 
 type Props = { params: Promise<{ cardId: string }> }
@@ -13,78 +12,19 @@ type Props = { params: Promise<{ cardId: string }> }
  * 마크다운 파서 없이 "빈 줄 기준 문단 분리"로만 본문을 렌더링(신규 의존성 없음).
  * is_active 이고 조회 시점이 starts_at~ends_at 구간 안일 때만 노출 — 그 외(예약발행 전/
  * 종료 후/비활성/다른 템플릿) 직링크 접근은 getPublishedArticleCard 가 null 을 반환 → 404.
+ *
+ * 티켓 20261001_1737: 상단에 TopNav(「투데이」, 뒤로 `/`)를 두고 본문은 표시 데이터만 받는 `ArticleView`가 그린다.
+ * 카드 행 → 표시 데이터 변환(문단 나누기·CTA 우선순위와 라벨)은 순수 함수 `toArticleView`가 맡아 운영툴 미리보기와 공유한다.
  */
 export default async function TodayArticlePage({ params }: Props) {
   const { cardId } = await params
   const card = await getPublishedArticleCard(cardId)
   if (!card) notFound()
 
-  // 빈 줄 기준으로 문단 분리. 문단 내부의 단일 줄바꿈은 whitespace-pre-line 으로 보존.
-  const paragraphs = (card.body_markdown ?? '')
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-
-  // 대상 필드(target_href → item_book_id → mission_id)가 하나도 없으면 null — CTA 블록 자체를
-  // 렌더하지 않아 기존 화면과 픽셀 단위로 동일하다(티켓 20260924_0107).
-  const cta = resolveArticleCtaTarget(card)
-  const ctaLabel =
-    cta?.kind === 'collection' ? d.todayCard.ctaViewCollection : cta?.kind === 'mission' ? d.todayCard.ctaViewMission : d.todayCard.ctaViewDetails
-
   return (
-    <div className="min-h-full text-text pb-[var(--spacing-40)]">
-      {/* 20260816_012: hr 대체용 하단 구분선 제거 — 이미지 경계 자체로 구분됨 */}
-      {/* 20260824_004: 홈 카드와 같은 cover_image_url(어드민 자유 입력)이라 SafeImage 경유 */}
-      <SafeImage
-        src={card.cover_image_url}
-        alt={card.title}
-        containerClassName="relative w-full aspect-[16/10] overflow-hidden"
-        className="object-cover"
-      />
-
-      <article className="px-[var(--spacing-16)] pt-[var(--spacing-24)]">
-        <Link href="/" className="block text-[length:var(--text-caption)] text-text/50 underline underline-offset-2">
-          &larr; {d.todayCard.backToToday}
-        </Link>
-
-        <span className="inline-flex items-center mt-[var(--spacing-16)] text-[length:var(--text-caption)] font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface-inverse text-text-inverse">
-          {d.todayCard.editorialArticle}
-        </span>
-
-        <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mt-[var(--spacing-16)]">{card.title}</h1>
-        {card.subtitle && (
-          <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text/60 mt-2">{card.subtitle}</p>
-        )}
-        <p className="text-[length:var(--text-caption)] text-text/40 mt-[var(--spacing-16)]">
-          <LocalDate iso={card.starts_at} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
-        </p>
-
-        <div className="mt-[var(--spacing-24)] flex flex-col gap-[var(--spacing-16)]">
-          {paragraphs.length > 0 ? (
-            paragraphs.map((p, i) => (
-              <p key={i} className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text/90 whitespace-pre-line">
-                {p}
-              </p>
-            ))
-          ) : (
-            <p className="text-text/40">{d.todayCard.noBody}</p>
-          )}
-        </div>
-
-        {cta && (
-          // Button.tsx variant="primary" surface="main" 레시피를 그대로 복사 — <a> 안에
-          // <button>을 중첩할 수 없어 Button 컴포넌트 대신 className을 재사용한다(티켓 20260924_0107).
-          <div className="mt-[var(--spacing-24)]">
-            <Link
-              href={cta.href}
-              className="inline-flex items-center justify-center gap-2 min-h-11 w-full font-normal transition-transform duration-100 active:scale-95 rounded-[var(--radius-pill-buttons)] px-[var(--spacing-32)] py-[14px] text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse"
-              style={{ backgroundColor: 'var(--color-surface-inverse)' }}
-            >
-              {ctaLabel}
-            </Link>
-          </div>
-        )}
-      </article>
+    <div className="min-h-full">
+      <TopNav title={d.today.cardStackTitle} backHref="/" />
+      <ArticleView view={toArticleView(card)} />
     </div>
   )
 }

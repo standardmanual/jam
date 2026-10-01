@@ -20,7 +20,7 @@ vi.mock('@/app/(main)/TodayCardTracker', () => ({
 
 import TodayCard, { RENDERED_SHAPES, isRenderedShape } from '../TodayCard'
 import { CARD_SHAPES } from '@/lib/today/shape'
-import type { CardView } from '@/lib/today/cardView'
+import type { CardView, ImageCardView } from '@/lib/today/cardView'
 
 const TRACKING = { cardId: 'card-1', contentTypeId: 'T05', templateType: 'drop_alert', shape: 'brief' } as const
 
@@ -32,9 +32,18 @@ const briefView = (overrides: Partial<Extract<CardView, { shape: 'brief' }>> = {
   ...overrides,
 })
 
+const heroView = (overrides: Partial<ImageCardView> = {}): CardView => ({
+  shape: 'hero',
+  resource: 'mission',
+  title: '한강 러닝 챌린지',
+  label: '미션',
+  imageUrl: null,
+  ...overrides,
+})
+
 describe('RENDERED_SHAPES — 새 틀이 그리는 모양 목록', () => {
-  it('지금은 brief 하나다(b3~b5가 모양을 더한다)', () => {
-    expect([...RENDERED_SHAPES]).toEqual(['brief'])
+  it('지금은 brief와 hero다(b4·b5가 모양을 더한다)', () => {
+    expect([...RENDERED_SHAPES]).toEqual(['brief', 'hero'])
   })
 
   it('모든 항목이 카드 모양 5개 안의 값이다', () => {
@@ -43,7 +52,8 @@ describe('RENDERED_SHAPES — 새 틀이 그리는 모양 목록', () => {
 
   it('isRenderedShape: 목록의 모양만 true다', () => {
     expect(isRenderedShape('brief')).toBe(true)
-    for (const shape of CARD_SHAPES.filter((s) => s !== 'brief')) expect(isRenderedShape(shape)).toBe(false)
+    expect(isRenderedShape('hero')).toBe(true)
+    for (const shape of CARD_SHAPES.filter((s) => s !== 'brief' && s !== 'hero')) expect(isRenderedShape(shape)).toBe(false)
     for (const value of ['large_thumbnail', 'Brief', ' brief', '', null, undefined, 1]) expect(isRenderedShape(value)).toBe(false)
   })
 })
@@ -55,9 +65,16 @@ describe('TodayCard — 모양으로 모양 컴포넌트를 고른다', () => {
     expect(html).toContain('한강 번개 드랍')
   })
 
-  it('목록에 없는 모양(hero·poster·square·list)은 아무것도 그리지 않는다', () => {
+  it('hero는 큰 이미지 모양으로 그린다(16:9 이미지 칸 + 흰 본문)', () => {
+    const html = renderToStaticMarkup(<TodayCard view={heroView()} />)
+    expect(html).toContain('relative aspect-video overflow-hidden bg-surface')
+    expect(html).toContain('<h3')
+    expect(html).toContain('한강 러닝 챌린지')
+    expect(html).not.toContain('min-h-[88px]')
+  })
+
+  it('목록에 없는 모양(poster·square·list)은 아무것도 그리지 않는다', () => {
     const views: CardView[] = [
-      { shape: 'hero', resource: 'article', title: '기사', imageUrl: null },
       { shape: 'poster', resource: 'mission', title: '포스터', imageUrl: null },
       { shape: 'square', resource: 'mission', title: '정사각', imageUrl: null },
       { shape: 'list', resource: 'badge', title: '목록', tiles: [{ name: '배지', imageUrl: null }] },
@@ -83,5 +100,35 @@ describe('TodayCard — 모양으로 모양 컴포넌트를 고른다', () => {
 
   it('href가 없으면 ›도 없다', () => {
     expect(renderToStaticMarkup(<TodayCard view={briefView()} />)).not.toContain('›')
+  })
+})
+
+describe('TodayCard — hero의 접근·계측 틀', () => {
+  const HERO_TRACKING = { cardId: 'card-2', contentTypeId: 'T01', templateType: 'mission_spotlight', shape: 'hero' } as const
+
+  it('계측 정보와 href가 있으면 틀이 트래커·링크를 걸고 눌림은 한 곳에만 있으며 끝 줄이 보인다', () => {
+    const html = renderToStaticMarkup(<TodayCard view={heroView({ href: '/missions/m1', tracking: HERO_TRACKING })} />)
+    expect(html).toContain('data-tracker="card-2"')
+    expect(html).toContain('<a ')
+    expect(html).toContain('href="/missions/m1"')
+    expect(html.match(/jam-press/g)).toHaveLength(1)
+    expect(html).toContain('자세히 보기')
+  })
+
+  it('계측 정보가 없으면(미리보기) 링크·트래커·눌림이 없고, href가 있으면 끝 줄만 보인다', () => {
+    const html = renderToStaticMarkup(<TodayCard view={heroView({ href: '/missions/m1' })} />)
+    expect(html).not.toContain('<a')
+    expect(html).not.toContain('data-tracker')
+    expect(html).not.toContain('jam-press')
+    expect(html).toContain('자세히 보기')
+  })
+
+  it('href가 없으면 끝 줄도 없다', () => {
+    expect(renderToStaticMarkup(<TodayCard view={heroView()} />)).not.toContain('자세히 보기')
+  })
+
+  it('포커스 윤곽선이 잘리지 않게 overflow-hidden은 링크 안쪽 면(Card)에만 있다', () => {
+    const html = renderToStaticMarkup(<TodayCard view={heroView({ href: '/missions/m1', tracking: HERO_TRACKING })} />)
+    expect(html.slice(0, html.indexOf('overflow-hidden'))).toContain('jam-press')
   })
 })

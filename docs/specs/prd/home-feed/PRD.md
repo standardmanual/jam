@@ -235,21 +235,25 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | `ranking_list` | 순위 리스트형 — 랭킹보드 목록(포디엄 없음) |
 <!-- END generated: layouts -->
 
-### 카드 모양 판정 (모양이 `brief`로 저장된 카드는 새 틀로 그린다)
+### 카드 모양 판정 (모양이 `brief`·`hero`로 저장된 카드는 새 틀로 그린다)
 
-카드 표현 형식 리뉴얼(티켓 20260930_1453)이 정한 새 카드 모양 5개(`hero`·`poster`·`square`·`brief`·`list`)를 고르는 규칙이고, 그 모양을 그리는 새 틀(`components/today`)이다. 새 틀이 그리는 모양은 지금 `brief`(짧은 소식) 하나이고 나머지 모양은 조각 b3~b5가 하나씩 더한다. 위 레이아웃 표의 옛 값을 새 모양으로 바꾸는 대응표는 같은 사실을 두 곳에 두지 않으려고 이 문서에 옮기지 않는다 — 전환 조각(1453-b7) 전까지는 티켓 20260930_1453 「확정 설계」 6절이 정본이고, b7에서 이 문서의 생성 구간으로 옮긴다.
+카드 표현 형식 리뉴얼(티켓 20260930_1453)이 정한 새 카드 모양 5개(`hero`·`poster`·`square`·`brief`·`list`)를 고르는 규칙이고, 그 모양을 그리는 새 틀(`components/today`)이다. 새 틀이 그리는 모양은 지금 `brief`(짧은 소식)와 `hero`(큰 이미지)이고 나머지 모양은 조각 b4·b5가 하나씩 더한다. 위 레이아웃 표의 옛 값을 새 모양으로 바꾸는 대응표는 같은 사실을 두 곳에 두지 않으려고 이 문서에 옮기지 않는다 — 전환 조각(1453-b7) 전까지는 티켓 20260930_1453 「확정 설계」 6절이 정본이고, b7에서 이 문서의 생성 구간으로 옮긴다.
 
 - **모양 상수**: `CARD_SHAPES`(5개)·`IMAGE_CARD_SHAPES`(이미지가 있는 모양 `hero`·`poster`·`square`)와 술어 `isCardShape`·`isImageShape`다. `CARD_SHAPES`는 마이그레이션 206의 `today_cards_shape_check`와 같은 목록이다.
 - **판정 순서(`resolveShape`)**: ① 저장된 `today_cards.shape`가 모양 값이면 그대로 → ② `editorial_article`은 레이아웃과 상관없이 `hero` → ③ 옛 `layout_type` 대응표(알 수 없는 값은 큰 썸네일형으로 본다). `list`의 타일형·행형 구분(랭킹 카드는 행형)과 「타일이 0개인 타일형은 `brief`」는 표시 데이터가 정한다.
 - **전환 상수(`LEGACY_SHAPE_CUTOVER`)**: 지금 `false`다. 꺼져 있는 동안 새 모양으로 그려지는 카드는 `shape`가 저장된 카드뿐이고(`drawnShape`), `shape`가 없는 옛 카드는 그려질 모양이 `null`이라 옛 렌더러가 그린다. 어드민 미리보기용 표시 데이터는 늘 `resolveShape`로 모양을 정한다. 상수를 켜는 것은 b7이다.
-- **새 틀로 그리는 조건**: `TodayCardStack`이 카드마다 한 곳에서 가른다. 그려질 모양(`drawnShape`)이 `null`이면 옛 렌더러다. 아니면 표시 데이터(`toCardView`)를 만들어 그 모양이 새 틀이 그리는 모양 목록(`RENDERED_SHAPES`)에 있을 때만 새 틀(`TodayCard`)로 그리고, 없으면(`hero`·`poster`·`square`·`list`로 저장된 카드) 옛 렌더러가 그린다. 표시 데이터의 모양을 보는 이유는 기록 모양(§9)과 같은 규칙(타일이 0개인 `list`는 `brief`)을 적용해 「화면 모양 = 기록 모양」을 지키려는 것이다. 지금은 `shape`가 저장된 카드가 0장이고 모양을 저장하는 경로도 아직 없어 홈 화면은 그대로다. `brief` 외 모양이 저장된 카드가 b3~b5 전에 생기면 기록 모양은 저장된 모양이고 화면은 옛 렌더러가 되는 차이는 허용한다.
+- **새 틀로 그리는 조건**: `TodayCardStack`이 카드마다 한 곳에서 가른다. 그려질 모양(`drawnShape`)이 `null`이면 옛 렌더러다. 아니면 표시 데이터(`toCardView`)를 만들어 그 모양이 새 틀이 그리는 모양 목록(`RENDERED_SHAPES`)에 있을 때만 새 틀(`TodayCard`)로 그리고, 없으면(`poster`·`square`·`list`로 저장된 카드) 옛 렌더러가 그린다. 표시 데이터의 모양을 보는 이유는 기록 모양(§9)과 같은 규칙(타일이 0개인 `list`는 `brief`)을 적용해 「화면 모양 = 기록 모양」을 지키려는 것이다. 지금은 `shape`가 저장된 카드가 0장이고 모양을 저장하는 경로도 아직 없어 홈 화면은 그대로다. `brief`·`hero` 외 모양(`poster`·`square`·`list`)이 저장된 카드가 b4·b5 전에 생기면 기록 모양은 저장된 모양이고 화면은 옛 렌더러가 되는 차이는 허용한다.
 - **새 틀의 계측 규칙**: 카드 틀(`CardFrame`)은 모양을 모르고 표시 데이터만 읽는다. 계측 정보(`tracking`)가 있으면 `TodayCardTracker`로 감싸고, `tracking`과 `href`가 모두 있으면 그 안에 블록 링크를 둔다(눌림 `.jam-press`와 키보드 포커스 윤곽선 2px·오프셋 2px·`--color-primary`는 이 링크에만 붙는다). `tracking`이 없으면(`TodayCardStack`에 `preview`를 넘기면 만들지 않는다) 트래커·링크·눌림이 없고, `href`가 있으면 끝 `›`만 보인다.
-- **`brief` 모양**: 흰 카드(최소 높이 88px)에 왼쪽 64px 칸(배지 썸네일, 없거나 로드에 실패하면 자원 아이콘)·칩 줄(라벨 칩 → 지역 핀 → 희귀도 칩)·제목 16px(2줄 말줄임)·필수 정보 14px(최대 2줄, 말줄임 없이 줄바꿈)·끝 `›`(`href`가 있을 때만)가 있다. 자원은 아이콘 모양으로만 구분한다(미션 과녁·드랍 상자·레시피 플라스크·JAM! 배지 메달·기사 신문·랭킹 막대·컬렉션 책, 자동 카드는 모래시계이고 지역 값이 있으면 핀). 지역 핀은 드랍 카드에서 칩 줄에 그리지 않는다(필수 정보 「지역」 줄이 같은 값을 낸다). 희귀도는 JAM! 배지 1개 카드에서 Rare·Epic·Mystic만 칩으로 보이고 Common·등급 없음은 칩이 없다. 미보유 배지 썸네일은 흑백, 유저 정보가 없는 미리보기는 컬러다.
+- **`brief` 모양**: 흰 카드(최소 높이 88px)에 왼쪽 64px 칸(배지 썸네일, 없거나 로드에 실패하면 자원 아이콘)·칩 줄(라벨 칩 → 지역 핀 → 희귀도 칩)·제목 16px(2줄 말줄임)·필수 정보 14px(최대 2줄, 말줄임 없이 줄바꿈)·끝 `›`(`href`가 있을 때만)가 있다. 자원은 아이콘 모양으로만 구분한다(미션 과녁·드랍 상자·레시피 플라스크·JAM! 배지 메달·기사 신문·랭킹 막대·컬렉션 책, 자동 카드는 모래시계이고 지역 값이 있으면 핀). 칩 줄(`CardChipRow`)과 자원 아이콘 선택(`resourceIconOf`)은 `hero`와 공용이다. 지역 핀은 드랍 카드에서 칩 줄에 그리지 않는다(필수 정보 「지역」 줄이 같은 값을 낸다). 희귀도는 JAM! 배지 1개 카드에서 Rare·Epic·Mystic만 칩으로 보이고 Common·등급 없음은 칩이 없다. 미보유 배지 썸네일은 흑백, 유저 정보가 없는 미리보기는 컬러다. 칩 줄은 흰 면 위 전용이고 줄바꿈하지 않으며, 좁아지면 줄어드는 것은 지역 핀 글자뿐이다.
+- **`hero` 모양**: 흰 카드의 위쪽에 16:9 이미지 칸, 아래쪽에 왼쪽 정렬 본문(안쪽 여백 24px)이다. 본문은 칩 줄(라벨 칩 → 지역 핀 → 희귀도 칩, 기사는 줄 끝에 게재일 「10월 5일」 — KST, 연도 없음) → 제목 24px(2줄 말줄임) → 요약(`subtitle`) 16px(2줄 말줄임) → 필수 정보 14px 굵게(최대 2줄, 한 줄에 하나, 말줄임 없이 줄바꿈) → 설명문(`description`) 14px(2줄 말줄임) → 끝 줄 12px 순서다. 끝 줄은 `href`가 있을 때만 「자세히 보기 →」(기사는 「기사 읽기 →」)로 보인다. 옅은 글자(요약·설명문·게재일·끝 줄)는 모두 `text-inverse/60`이고 `/40`은 쓰지 않는다. 값이 없는 그룹(요약·필수 정보·설명문·지역 핀·희귀도·게재일)은 그 그룹만 사라진다. 이미지 위에는 아무것도 얹지 않는다. `imageDimmed`면 이미지만 흑백이고 `object-cover`로 자른다(1:1 배지 그림을 승격하면 위아래가 잘린다 — 승격 카드는 `resolveShape`가 `square`로 보내므로 운영자가 `hero`를 직접 지정했을 때만 생긴다).
+  - **이미지 칸 상태**: 칸(`aspect-video`)은 이미지와 무관하게 늘 그려서 높이가 변하지 않는다. 로딩 중에는 `--color-surface` 단색 판(스켈레톤·모션 없음)이고, 주소가 없거나 로드에 실패하면 같은 칸·같은 색 판 위에 자원 아이콘(`resourceIconOf`)만 둔다. 이미지에 제목이 들어 있는 카드(`titleInImage`)에서만 판 위에 제목(16px 굵게, 3줄 말줄임)을 함께 그린다 — 일반 카드는 바로 아래 본문이 같은 제목을 보여 주므로 한 카드에 제목이 두 번 보이지 않게 아이콘만 둔다.
+  - **`titleInImage`**: 화면 글자에서 제목·요약을 빼고 필수 정보가 칩 줄 바로 다음에 온다. 제목은 이미지 alt가 맡는다(`alt` = 제목, 그 밖의 카드는 빈 값). 이미지 로드에 실패하면 판 위 제목 글자가 링크 이름이 된다.
+  - **계측·링크**: `brief`와 같다 — 링크·트래커·눌림·포커스 윤곽선은 카드 틀(`CardFrame`)이 맡고, 표시 데이터에 `tracking`이 없으면(미리보기) 출력에 링크·트래커·눌림이 없다.
 - **이미지에 제목 있음(`resolveTitleInImage`)**: 저장된 `title_in_image`가 `true`/`false`면 그 값이다. NULL(옛 카드)이면 미션 소개 카드이고 커버 주소가 연결 미션의 `image_url`과 같을 때만 `true`, 그 밖은 `false`다.
 - **표시 데이터(`toCardView`)**: 카드 행(서버 조회 결과)을 화면용 값 묶음으로 바꾼다. 카드 ID·활성 여부·노출 기간·정렬 순서·유저별 보유 여부 없이도 만들 수 있어서 홈 그리기와 어드민 미리보기가 같은 값으로 같은 카드를 그린다. 필수 값은 `shape`·`resource`(미션·드랍·레시피·배지·기사·랭킹·컬렉션·자동)·`title`이다. 계측 정보(카드 ID·유형 ID·템플릿·그려진 모양)는 `tracking` 하나에 묶고, 이 값이 없으면 그리는 쪽이 트래커와 링크를 그리지 않는다. 필수 정보 줄(`buildFacts`)은 자원별로 최대 2줄이고 값이 없는 줄은 생략한다. 자원의 종료가 7일 이내면 「N일 남음」(내림), 24시간 이내면 「N시간 남음」(올림)이 기간 줄을 대신한다. 날짜는 KST 기준이다. `brief`에는 64px 칸에 그릴 배지 그림이 선택 값(`thumbnailUrl`)으로 있다 — JAM! 배지 카드에서 배지가 정확히 1개이고 그림이 있을 때만 싣고, 유저가 그 배지를 갖지 않았으면 `thumbnailDimmed`(흑백)가 함께 있다. 커버와 미션 이미지는 싣지 않는다(`imageUrl`은 「이미지가 있는 모양」 전용이다).
 - **조회**: `getTodayCards`가 표시 데이터에 필요한 값을 카드에 함께 싣는다 — `resolved_mission`(미션 소개 카드와 미션을 가리키는 자동 카드의 기간·보상·이미지), `resolved_collection`(컬렉션 소식 카드의 이름·아이템 수). 미션 행은 노출 판정과 같은 읽기를 쓰고 컬렉션은 카드 수와 상관없이 한 번에 읽는다. 컬렉션은 공개된 것(활성이고 공개 시각이 비었거나 지금 이전)만 싣는다 — 컬렉션 화면·목록 API와 같은 판정(`applyLaunchedItemBookFilter`)이라, 비활성이거나 공개 전인 컬렉션은 카드는 남고 `resolved_collection`이 NULL이라 이름·아이템 수가 보이지 않는다(종료 시각은 보지 않는다). 기존 반환 필드는 그대로다.
 
-근거: `jam-web/src/lib/today/shape.ts`, `jam-web/src/lib/today/cardView.ts`, `jam-web/src/lib/today/cards.ts`, `jam-web/src/components/today/`(`TodayCard.tsx`·`CardFrame.tsx`·`BriefCard.tsx`), `jam-web/src/app/(main)/TodayCardStack.tsx`, `jam-web/src/lib/itembook/visibility.ts`, `jam-web/supabase/migrations/206_today_cards_shape_and_events_card_shape.sql`, 티켓 20261001_1357·20261001_1458
+근거: `jam-web/src/lib/today/shape.ts`, `jam-web/src/lib/today/cardView.ts`, `jam-web/src/lib/today/cards.ts`, `jam-web/src/components/today/`(`TodayCard.tsx`·`CardFrame.tsx`·`BriefCard.tsx`·`HeroCard.tsx`·`CardChipRow.tsx`·`resourceIcon.ts`), `jam-web/src/app/(main)/TodayCardStack.tsx`, `jam-web/src/lib/itembook/visibility.ts`, `jam-web/supabase/migrations/206_today_cards_shape_and_events_card_shape.sql`, 티켓 20261001_1357·20261001_1458·20261001_1737
 
 ## 7. 이동 목적지
 
@@ -300,12 +304,14 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 
 `/today/[cardId]`는 `editorial_article` 카드만 연다. 카드가 활성이고 지금이 노출 기간 안일 때만 보이며, 그 밖(예약 발행 전·종료 뒤·비활성·다른 템플릿)은 404다.
 
-- 상단에 `cover_image_url` 커버를 그린다. 비어 있으면 커버 영역 없이 본문부터 보인다.
+- 상단에 서비스 TopNav(제목 「투데이」, 뒤로 `/`, 동기화·알림·아바타)가 있고, 그 바로 아래에 `cover_image_url` 커버를 16:9로 그린다(우선 로드, `alt`는 빈 값 — 바로 아래 제목이 글자로 보인다). 비어 있으면 16:9 칸 없이 본문부터 보인다. 커버 주소가 있는데 로드에 실패하면 칸이 사라진다. 「← 투데이로」 링크는 없다(TopNav의 뒤로가기가 대신한다).
+- 칩은 MODULAR `LabelChip`의 반전 색조(`tone="inverse"`, 검정 바탕 위 흰 칩)이고 칩·제목·부제·게재일·본문·CTA 순서로 보인다. 게재일은 「2026년 10월 5일」(연도 유지)이고, 게재일·부제·「본문이 없어요」의 옅은 글자는 `text/60` 이상이다.
 - **본문(`body_markdown`)은 마크다운으로 렌더되지 않는다.** 빈 줄로 문단을 나누고 문단 안 줄바꿈은 그대로 보인다. `**`·`#`·`-` 같은 문법은 글자 그대로 나온다.
 - 본문 끝 CTA 버튼은 1개이며 우선순위는 §7의 두 번째 표다. 라벨은 직접 링크 「자세히 보기」, 컬렉션 「컬렉션 보기」, 미션 「미션 보기」다. 대상이 모두 없으면 버튼을 그리지 않는다.
 - 기사 화면과 CTA 버튼에는 계측이 없다(§9).
+- **표시 데이터**: 본문(커버~CTA, TopNav 제외)은 표시 데이터(`ArticleView`: 제목·라벨·부제·커버 주소·게재일·문단 배열·CTA)만 받는 컴포넌트가 그리고, 카드 행을 그 값으로 바꾸는 일은 순수 함수 `toArticleView`가 한다(문단 나누기와 CTA 우선순위·라벨이 이 함수 안에 있다). 운영툴 미리보기(티켓 20261001_1501)가 같은 함수로 같은 화면을 그린다. 미리보기용 옵션(`linkless`)을 주면 CTA의 링크만 빠지고, 이때 CTA는 링크가 아닌 같은 모양의 정적 필로 그려진다(대상이 없어 CTA 자체가 없는 것과는 다른 상태다).
 
-근거: `jam-web/src/app/(main)/today/[cardId]/page.tsx`, `jam-web/src/lib/today/cards.ts`(`getPublishedArticleCard`), 문구 `jam-web/src/lib/i18n/ko.ts`(`todayCard.ctaView*`)
+근거: `jam-web/src/app/(main)/today/[cardId]/page.tsx`, `jam-web/src/components/today/ArticleView.tsx`, `jam-web/src/lib/today/articleView.ts`(`toArticleView`), `jam-web/src/lib/today/cards.ts`(`getPublishedArticleCard`), `jam-web/src/components/ui/TopNav.tsx`, 문구 `jam-web/src/lib/i18n/ko.ts`(`todayCard.ctaView*`), 티켓 20261001_1737
 
 ## 9. 계측
 

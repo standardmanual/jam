@@ -72,6 +72,52 @@ describe('LabelChip — 교체 전 Tailwind 클래스와 같은 계산 스타일
   })
 })
 
+describe('LabelChip — tone (티켓 20261001_1737, 1248)', () => {
+  const DEFAULT_STYLE = {
+    display: 'inline-flex',
+    'align-items': 'center',
+    'font-size': 'var(--text-caption)',
+    'line-height': '1',
+    'font-weight': '700',
+    'text-transform': 'uppercase',
+    padding: '6px 10px',
+    'border-radius': 'var(--radius-tags)',
+    background: 'var(--color-surface)',
+    color: 'var(--color-text)',
+  }
+
+  it('tone을 주지 않거나 default를 주면 기본 열 개 값과 출력이 같다(기존 호출부 4곳은 그대로)', () => {
+    const plain = renderToStaticMarkup(<LabelChip>내 진행도</LabelChip>)
+    expect(renderToStaticMarkup(<LabelChip tone="default">내 진행도</LabelChip>)).toBe(plain)
+    expect(readStyle(plain)).toEqual(DEFAULT_STYLE)
+  })
+
+  it('inverse는 배경·글자색만 반대이고 나머지 여덟 값은 default와 같다', () => {
+    const style = readStyle(renderToStaticMarkup(<LabelChip tone="inverse">기사</LabelChip>))
+    expect(style).toEqual({
+      ...DEFAULT_STYLE,
+      background: 'var(--color-surface-inverse)',
+      color: 'var(--color-text-inverse)',
+    })
+  })
+
+  it('알 수 없는 tone 값은 default로 그린다', () => {
+    // 타입이 막는 값이라 캐스팅으로 넘겨 폴백만 확인한다
+    const html = renderToStaticMarkup(<LabelChip tone={'unknown' as 'default'}>기사</LabelChip>)
+    expect(readStyle(html)).toEqual(DEFAULT_STYLE)
+  })
+
+  it('tone은 DOM 속성으로 새지 않는다', () => {
+    expect(renderToStaticMarkup(<LabelChip tone="inverse">기사</LabelChip>)).not.toContain('tone=')
+  })
+
+  it('inverse에서 style prop은 색조 위에 덮어쓴다', () => {
+    const style = readStyle(renderToStaticMarkup(<LabelChip tone="inverse" style={{ color: 'red' }}>기사</LabelChip>))
+    expect(style.color).toBe('red')
+    expect(style.background).toBe('var(--color-surface-inverse)')
+  })
+})
+
 describe('LabelChip — props', () => {
   it('className은 그대로 전달한다(self-start 같은 배치는 호출부 몫)', () => {
     const html = renderToStaticMarkup(<LabelChip className="self-start">내 진행도</LabelChip>)
