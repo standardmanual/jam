@@ -557,10 +557,17 @@ export interface CombinationRecipeRow {
   reward_badge_ids: string[]
   /**
    * 공개 시각(마이그레이션 204, 티켓 20261001_1157) — null이면 처음부터 공개, 값이 있으면 그 시각부터
-   * 공개한다(경계 포함). 공개 전 레시피는 일반 유저에게 없는 레시피와 같다. 종료 시각은 없다.
+   * 공개한다(경계 포함). 공개 전 레시피는 일반 유저에게 없는 레시피와 같다.
    * 판정은 `lib/combine/visibility.ts`의 `isRecipeReleased` 하나로 한다.
    */
   valid_from: string | null
+  /**
+   * 종료 시각(마이그레이션 213, 티켓 20261002_0710) — null이면 종료 없음(상시), 값이 있으면 그 시각부터
+   * 종료한다(`valid_until <= now`이면 종료, 경계 포함). 종료된 레시피는 공개 전처럼 일반 유저에게 없는
+   * 레시피와 같고 이미 받은 보상은 그대로다. 둘 다 있으면 `valid_from < valid_until`(DB CHECK).
+   * 판정은 `lib/combine/visibility.ts`의 `isRecipeReleased`·`recipeReleaseState` 하나로 한다.
+   */
+  valid_until: string | null
   created_at: string
 }
 
