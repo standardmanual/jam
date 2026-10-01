@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/admin/auth'
 import { parseExportIds } from '@/lib/admin/export-ids'
 import { toCsv } from '@/lib/admin/csv'
 import { kstDateString } from '@/lib/notifications/kst'
+import { formatKstYmdHm } from '@/lib/admin/kst-format'
 import { RECIPE_LIST_COLUMNS, type RecipeListRow } from '@/lib/admin/recipe-list'
 import type { CombinationRecipeSlotRow } from '@/types/database'
 
@@ -83,6 +84,8 @@ export async function POST(req: NextRequest) {
     },
     { header: '보상 포인트', value: (r) => r.reward_points },
     { header: '보상 배지', value: (r) => (r.reward_badge_ids ?? []).map(nameOf).join(', ') },
+    // 비어 있으면 처음부터 공개된 레시피다(티켓 20261001_1158). 시각은 KST로 적는다.
+    { header: '공개 시각', value: (r) => (r.valid_from ? formatKstYmdHm(r.valid_from) : '') },
     { header: '등록일', value: (r) => kstDateString(r.created_at) },
   ])
 
