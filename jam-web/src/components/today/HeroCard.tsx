@@ -1,9 +1,8 @@
 import { Card } from '@ds/components/cards/Card'
-import SafeImage from '@/components/SafeImage'
 import { d } from '@/lib/i18n'
 import type { ImageCardView } from '@/lib/today/cardView'
 import CardChipRow from './CardChipRow'
-import { resourceIconOf } from './resourceIcon'
+import CardImageSlot from './CardImageSlot'
 
 /**
  * 큰 이미지(`hero`) 모양 — 면(표면) 겹 (티켓 20261001_1737, 상위 20260930_1453 확정 설계 1·3·4절 조각 b3).
@@ -19,46 +18,14 @@ import { resourceIconOf } from './resourceIcon'
  * - 이미지 위에는 아무것도 얹지 않는다(칩·그림자·어두운 막 없음). 칩 줄은 이미지 아래 흰 본문의 첫 줄이다.
  */
 
-/**
- * 이미지 없음·로드 실패 자리 표시. `--color-surface` 단색 판(이미지 칸의 로딩 판과 같은 색이라 로딩 → 실패 전환이 깜빡이지 않는다) + 자원 아이콘이다.
- * 같은 카드가 모양만 바꿔도 같은 아이콘이 나오도록 `BriefCard`의 64px 칸과 같은 선택 함수를 쓴다.
- *
- * 주소가 없을 때와 로드에 실패했을 때 같은 코드를 탄다(`SafeImage`의 `fallback`). 제목은 이미지에 제목이 들어 있는 카드(`titleInImage`)에서만 판 위에 그린다 —
- * 일반 카드는 바로 아래 본문이 같은 제목을 24px로 보여 주므로 판에는 아이콘만 둬 같은 제목이 한 카드에 두 번 보이지 않게 한다.
- * 가운데 정렬은 이 판에만 쓴다. 아이콘은 장식이라 숨기고(`aria-hidden`, 아이콘 세트 기본값) 판은 흑백 처리하지 않는다.
- */
-function HeroImagePlaceholder({ view }: { view: ImageCardView }) {
-  return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-[var(--spacing-8)] px-[var(--spacing-24)] bg-surface text-center">
-      {resourceIconOf(view, { className: 'w-8 h-8 text-text/60' })}
-      {view.titleInImage && (
-        <p className="text-[length:var(--text-body)] font-bold text-text line-clamp-3 break-keep break-words">{view.title}</p>
-      )}
-    </div>
-  )
-}
-
 export default function HeroCard({ view }: { view: ImageCardView }) {
   const facts = view.facts ?? []
   const hasTitleGroup = !view.titleInImage
 
   return (
     <Card tone="inverse" className="overflow-hidden" style={{ padding: 0 }}>
-      {/*
-        16:9 칸은 `SafeImage`의 `containerClassName`이 아니라 여기서 직접 그린다 — `SafeImage`는 주소가 없거나 실패하면 컨테이너까지 없애고 fallback만 그려서,
-        칸을 거기에 맡기면 카드 높이가 흔들린다. 칸은 이미지와 무관하게 늘 있고, 로딩 중에는 단색 판(스켈레톤·모션 없음)이다.
-        `alt`: 제목이 화면 글자로 보이면 비우고(본문 h3가 말한다), 이미지에만 있으면(`titleInImage`) 제목이다. 실패하면 판 위 제목 글자가 링크 이름을 맡는다.
-        앱 열이 최대 430px이고 카드 좌우 여백이 16px씩이라 카드는 최대 398px이다 — `sizes`를 주지 않으면 100vw로 가정해 과대 다운로드한다.
-      */}
-      <div className="relative aspect-video overflow-hidden bg-surface">
-        <SafeImage
-          src={view.imageUrl}
-          alt={view.titleInImage ? view.title : ''}
-          sizes="(min-width: 430px) 398px, calc(100vw - 32px)"
-          className={view.imageDimmed ? 'object-cover grayscale' : 'object-cover'}
-          fallback={<HeroImagePlaceholder view={view} />}
-        />
-      </div>
+      {/* 16:9 이미지 칸·자리 표시·alt·sizes는 `poster`·`square`와 공용이다(`CardImageSlot`) */}
+      <CardImageSlot view={view} ratio="video" />
 
       <div className="flex flex-col gap-[var(--spacing-12)] p-[var(--spacing-24)]">
         <CardChipRow view={view} />
