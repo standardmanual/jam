@@ -23,7 +23,7 @@ import { recordActivityRecap } from '@/lib/notifications/recap'
 import { selectCompletableDrafts } from '@/lib/notifications/batch/collections'
 import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
 import { logEngineDecision } from '@/lib/engine-log'
-import { getAbusingPolicy, DEFAULT_POLICY } from '@/lib/abusing/policy'
+import { getAbusingPolicy, DEFAULT_POLICY, effectiveVehicleSpeedFilterKmh } from '@/lib/abusing/policy'
 import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 import { classifyStravaSyncFailure, recordStravaSyncFailure } from '@/lib/strava/syncFailures'
@@ -934,8 +934,11 @@ export async function processFetchedActivities(
   // 때문에 임계값 0이 조용히 60으로 둔갑했다.
   // (abusingPolicy는 위쪽 교통수단 구간 감지에서 이미 조회해 뒀다 — 20260909_1012, 같은 배치
   // 안에서 두 번 조회하지 않도록 재사용한다)
-  let vehicleSpeedFilterKmh = abusingPolicy.vehicle_speed_filter_kmh
-  if (!Number.isFinite(vehicleSpeedFilterKmh) || vehicleSpeedFilterKmh <= 0) {
+  // 비정상 값 해석(유한·양수가 아니면 기본값)은 effectiveVehicleSpeedFilterKmh 한 곳에 있다 —
+  // JAM! 행동 지표의 「활동한 날」 판정(jamActionDayMetrics.ts)이 같은 규칙을 쓴다(티켓 20261001_0633).
+  const configuredVehicleSpeedFilterKmh = abusingPolicy.vehicle_speed_filter_kmh
+  const vehicleSpeedFilterKmh = effectiveVehicleSpeedFilterKmh(abusingPolicy)
+  if (vehicleSpeedFilterKmh !== configuredVehicleSpeedFilterKmh) {
     // 페일세이프 — 필터식이 `평균속도 <= 임계값`이라 임계값이 0 이하면 사실상 모든 활동이
     // 탈락하고, activitiesFiltered는 배지뿐 아니라 아이템 드랍·미션까지 흘러가므로 핵심
     // 보상 루프 전체가 멈춘다. 그래서 폴백 방향을 **핵심 루프를 살리는 쪽**(기본 임계값)으로
@@ -944,10 +947,9 @@ export async function processFetchedActivities(
     // 경로(어드민 정책 라우트)가 소유한다. 운영자가 의도적으로 넣은 값을 소비 지점이 조용히
     // 덮어쓰면 "저장한 값과 실제 동작이 다른" 같은 종류의 불일치가 재발한다.
     console.error(
-      `[processFetchedActivities] vehicle_speed_filter_kmh 값이 비정상(${vehicleSpeedFilterKmh}) — ` +
+      `[processFetchedActivities] vehicle_speed_filter_kmh 값이 비정상(${configuredVehicleSpeedFilterKmh}) — ` +
         `기본값 ${DEFAULT_POLICY.vehicle_speed_filter_kmh}km/h로 폴백, userId: ${userId}`
     )
-    vehicleSpeedFilterKmh = DEFAULT_POLICY.vehicle_speed_filter_kmh
   }
   const activitiesFiltered = activities.filter((a) => a.averageSpeedKmh <= vehicleSpeedFilterKmh)
 
