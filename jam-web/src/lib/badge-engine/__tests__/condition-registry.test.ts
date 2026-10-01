@@ -25,6 +25,7 @@ import {
   findBlockingConditionKeys,
   formatConditionChips,
   formatConditionDetail,
+  USAGE_METRIC_CONDITION_KEYS,
 } from '../conditionRegistry'
 import { LOWER_IS_BETTER_KEYS, classifyBadgeProgressKind } from '../badgeProgress'
 import type { NormalizedActivity } from '@/types/strava'
@@ -199,7 +200,7 @@ const V5_SAMPLE_VALUES: Record<(typeof V5_NEW_20_KEYS)[number], unknown> = {
 }
 
 describe('레지스트리 — 필드 구성', () => {
-  it('66종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1 + 체크인 배지 보유 2 + 믹스 행동 지표 4 + 드랍·픽업 지표 4)을 선언한다', () => {
+  it('72종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1 + 체크인 배지 보유 2 + 믹스 행동 지표 4 + 드랍·픽업 지표 4 + 미션·컬렉션·가입·활동일·체크인 일수 지표 6)을 선언한다', () => {
     // v5 확장 3종(티켓 20260906_0110) — cumulative_duration_hours · monthly_count ·
     // personal_record_break_metric. 서비스 사용량 3종(티켓 20260910_1557, JAM! 카테고리) —
     // follower_count · following_count · daily_sync_count. 연속 동기화 일수 1종
@@ -207,10 +208,13 @@ describe('레지스트리 — 필드 구성', () => {
     // (티켓 20260914_1725) — checkin_category_count · checkin_badge_count. 믹스 행동 지표 4종
     // (티켓 20261001_0631) — combine_attempt_count · combine_success_count · combine_fail_count ·
     // recipe_first_success. 드랍·픽업 지표 4종(티켓 20261001_0632) — drop_item_count ·
-    // pickup_item_count · pickup_from_user_count · picked_up_by_user_count.
-    expect(CONDITION_FIELDS.length).toBe(66)
-    expect(ALL_CONDITION_KEYS.length).toBe(66)
-    expect(new Set(ALL_CONDITION_KEYS).size).toBe(66) // 중복 키 없음
+    // pickup_item_count · pickup_from_user_count · picked_up_by_user_count. 미션·컬렉션·가입 경과일·
+    // 활동일·체크인 일수 지표 6종(티켓 20261001_0633) — mission_complete_count ·
+    // collection_complete_count · days_since_signup · signup_recent_active_days(보조 키) ·
+    // weekly_active_days · same_spot_checkin_days.
+    expect(CONDITION_FIELDS.length).toBe(72)
+    expect(ALL_CONDITION_KEYS.length).toBe(72)
+    expect(new Set(ALL_CONDITION_KEYS).size).toBe(72) // 중복 키 없음
   })
 
   it('기존 25종이 전부 들어 있고, route를 뺀 24종은 평가 주체가 있다', () => {
@@ -240,6 +244,7 @@ describe('레지스트리 — 필드 구성', () => {
     expect(byEval('external').sort()).toEqual([
       'checkin_badge_count',
       'checkin_category_count',
+      'collection_complete_count',
       'combine_attempt_count',
       'combine_fail_count',
       'combine_success_count',
@@ -247,10 +252,12 @@ describe('레지스트리 — 필드 구성', () => {
       'cross_in_axis',
       'daily_sync_count',
       'daily_sync_streak_days',
+      'days_since_signup',
       'drop_item_count',
       'follower_count',
       'following_count',
       'gate_mission_badge',
+      'mission_complete_count',
       'mission_reward',
       'picked_up_by_user_count',
       'pickup_from_user_count',
@@ -258,6 +265,9 @@ describe('레지스트리 — 필드 구성', () => {
       'poi_id',
       'prerequisite_badge_names',
       'recipe_first_success',
+      'same_spot_checkin_days',
+      'signup_recent_active_days',
+      'weekly_active_days',
     ])
     expect(byEval('pending')).toContain('route')
     // route + v5 신규 20 − 휴식 4(B3) − v5 스칼라7·weekly_streak 8(티켓 20260906_0110 ②)
@@ -559,7 +569,8 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
     // 트리거가 이 필드를 «측정 조건»으로 오인해 형제 배지 간 키 집합 비교에 끌어들인다.
     const checkKeys = keysInArrayAfter(sqlCheckLatest, 'ADD CONSTRAINT badges_condition_json_known_keys')
     const measurableKeys = keysInArrayAfter(sql, 'measurable_keys TEXT[] :=')
-    // 체크인 배지 보유 2종(172)·믹스 행동 지표 4종(199, 티켓 20261001_0631)·드랍·픽업 지표 4종(201, 티켓 20261001_0632)도 같은 자리(role: 'meta')다.
+    // 체크인 배지 보유 2종(172)·믹스 행동 지표 4종(199, 티켓 20261001_0631)·드랍·픽업 지표 4종(201, 티켓 20261001_0632)·
+    // 미션·컬렉션·가입·활동일·체크인 일수 지표 6종(203, 티켓 20261001_0633)도 같은 자리(role: 'meta')다.
     for (const key of [
       'follower_count',
       'following_count',
@@ -575,6 +586,12 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
       'pickup_item_count',
       'pickup_from_user_count',
       'picked_up_by_user_count',
+      'mission_complete_count',
+      'collection_complete_count',
+      'days_since_signup',
+      'signup_recent_active_days',
+      'weekly_active_days',
+      'same_spot_checkin_days',
     ]) {
       expect(checkKeys, `${key}가 CHECK 제약에 없다`).toContain(key)
       expect(measurableKeys, `${key}가 measurable_keys에 들어갔다`).not.toContain(key)
@@ -930,5 +947,103 @@ describe('진행률 — fail-closed로 막히는 조건은 진행률도 그리�
 
   it('오탈자 키가 섞여도 unsupported다', () => {
     expect(classifyBadgeProgressKind({ distance_km: 100, distnace_km: 5 } as never)).toBe('unsupported')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// 미션·컬렉션·가입 경과일·활동일·체크인 일수 지표 6종 (티켓 20261001_0633)
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('미션·컬렉션·가입 경과일·활동일·체크인 일수 지표 6종 (티켓 20261001_0633)', () => {
+  const MAIN_KEYS = [
+    'mission_complete_count',
+    'collection_complete_count',
+    'days_since_signup',
+    'weekly_active_days',
+    'same_spot_checkin_days',
+  ] as const
+  const SIX_KEYS = [...MAIN_KEYS, 'signup_recent_active_days'] as const
+
+  it('6키 모두 role: meta + evaluation: external + 정수 입력이다', () => {
+    for (const key of SIX_KEYS) {
+      const field = getConditionField(key)
+      expect(field, key).toBeDefined()
+      expect(field?.role, key).toBe('meta')
+      expect(field?.evaluation, key).toBe('external')
+      expect(field?.input, key).toBe('integer')
+      expect(field?.min, key).toBe(1)
+      expect(field?.direction, key).toBe('higher')
+      // 어드민 폼에서 입력할 수 있다
+      expect(field?.form?.section, key).toBe('meta')
+    }
+  })
+
+  it('값 범위: 주간 활동일 1~7, 최근 30일 활동일 1~30, 가입 경과일·같은 지점 체크인 일수 1~3650', () => {
+    expect(getConditionField('weekly_active_days')?.max).toBe(7)
+    expect(getConditionField('signup_recent_active_days')?.max).toBe(30)
+    expect(getConditionField('days_since_signup')?.max).toBe(3650)
+    expect(getConditionField('same_spot_checkin_days')?.max).toBe(3650)
+  })
+
+  it('칩·상세 문구가 값을 넣어 나온다', () => {
+    expect(formatConditionChips({ mission_complete_count: 3 })).toEqual(['미션 완료 3개↑'])
+    expect(formatConditionChips({ collection_complete_count: 2 })).toEqual(['컬렉션 완성 2개↑'])
+    expect(formatConditionChips({ days_since_signup: 100 })).toEqual(['가입 100일↑'])
+    expect(formatConditionChips({ weekly_active_days: 3 })).toEqual(['주 활동 3일↑'])
+    expect(formatConditionChips({ same_spot_checkin_days: 10 })).toEqual(['같은 지점 10일↑'])
+    expect(formatConditionChips({ days_since_signup: 100, signup_recent_active_days: 4 })).toEqual([
+      '가입 100일↑',
+      '최근 30일 4일↑',
+    ])
+    expect(formatConditionDetail({ mission_complete_count: 3 })).toEqual(['완료한 서로 다른 미션 3개 이상'])
+    expect(formatConditionDetail({ collection_complete_count: 2 })).toEqual(['완성한 컬렉션 2개 이상'])
+    expect(formatConditionDetail({ days_since_signup: 100 })).toEqual(['가입 후 100일 이상 경과(한국 날짜 기준)'])
+    expect(formatConditionDetail({ signup_recent_active_days: 4 })).toEqual(['최근 30일 동안 활동한 날 4일 이상'])
+    expect(formatConditionDetail({ weekly_active_days: 3 })).toEqual(['한 주(월~일, 한국 시간)에 활동한 날 3일 이상'])
+    expect(formatConditionDetail({ same_spot_checkin_days: 10 })).toEqual(['같은 지점에 서로 다른 10일 이상 체크인'])
+  })
+
+  it('라벨·칩·상세·도움말에 금지어(방문·POI·장소·위치·충족·달성·아이템북·슬롯·수집·회수·배치)가 없다', () => {
+    const banned = ['방문', 'POI', '장소', '위치', '충족', '달성', '아이템북', '슬롯', '수집', '회수', '배치', '놓']
+    const sample: Record<(typeof SIX_KEYS)[number], BadgeCondition> = {
+      mission_complete_count: { mission_complete_count: 3 },
+      collection_complete_count: { collection_complete_count: 2 },
+      days_since_signup: { days_since_signup: 100 },
+      signup_recent_active_days: { signup_recent_active_days: 4 },
+      weekly_active_days: { weekly_active_days: 3 },
+      same_spot_checkin_days: { same_spot_checkin_days: 10 },
+    }
+    for (const key of SIX_KEYS) {
+      const field = getConditionField(key)
+      const texts = [
+        field?.label ?? '',
+        ...formatConditionChips(sample[key]),
+        ...formatConditionDetail(sample[key]),
+        ...(field?.form?.controls ?? []).map((c) => c.help ?? ''),
+      ]
+      for (const text of texts) {
+        for (const word of banned) {
+          expect(text, `${key}: 「${word}」`).not.toContain(word)
+        }
+      }
+    }
+  })
+
+  it('주 키 5개는 사용량 지표 목록에 있고, 보조 키(signup_recent_active_days)는 없다 — 0712 단일 지표 가드를 막지 않는다', () => {
+    for (const key of MAIN_KEYS) expect(USAGE_METRIC_CONDITION_KEYS, key).toContain(key)
+    expect(USAGE_METRIC_CONDITION_KEYS).not.toContain('signup_recent_active_days')
+  })
+
+  it('보조 키는 days_since_signup과 짝이다 — 혼자 있으면 unpaired, 함께면 통과', () => {
+    expect(getConditionField('signup_recent_active_days')?.pairedWith).toEqual(['days_since_signup'])
+    expect(findBlockingConditionKeys({ signup_recent_active_days: 4 }).unpaired).toEqual(['signup_recent_active_days'])
+    expect(findBlockingConditionKeys({ days_since_signup: 100, signup_recent_active_days: 4 }).unpaired).toEqual([])
+  })
+
+  it('메인 엔진은 이 지표만 든 조건을 항상 fail 처리한다 — 실제 판정은 jamActionBadges.ts 몫', () => {
+    for (const key of MAIN_KEYS) {
+      const r = evaluateConditionDetailed({ [key]: 1 } as BadgeCondition, activities)
+      expect(r.pass, key).toBe(false)
+    }
   })
 })

@@ -155,6 +155,52 @@ describe('드랍·픽업 행동 지표 4종은 고정 용어 「드랍」·「�
   })
 })
 
+describe('미션·컬렉션·가입 경과일·활동일·체크인 일수 지표 6종은 고정 용어로 말한다 (티켓 20261001_0633)', () => {
+  it('6키가 각각 한 문장으로 나온다', () => {
+    expect(formatBadgeConditionText({ mission_complete_count: 3 }, '미션 러너')).toBe(
+      '완료한 미션 3개 이상 조건을 채우면 획득할 수 있어요.'
+    )
+    expect(formatBadgeConditionText({ collection_complete_count: 2 }, '컬렉터')).toBe(
+      '완성한 컬렉션 2개 이상 조건을 채우면 획득할 수 있어요.'
+    )
+    expect(formatBadgeConditionText({ days_since_signup: 100 }, '백일')).toBe(
+      '가입 후 100일 이상 조건을 채우면 획득할 수 있어요.'
+    )
+    expect(formatBadgeConditionText({ weekly_active_days: 3 }, '주 3일')).toBe(
+      '한 주(월~일)에 3일 이상 활동 조건을 채우면 획득할 수 있어요.'
+    )
+    expect(formatBadgeConditionText({ same_spot_checkin_days: 10 }, '단골')).toBe(
+      '같은 지점에 10일 이상 체크인 조건을 채우면 획득할 수 있어요.'
+    )
+  })
+
+  it('가입 경과일과 보조 키는 한 문장으로 이어진다', () => {
+    expect(formatBadgeConditionText({ days_since_signup: 100, signup_recent_active_days: 4 }, '꾸준한 100일')).toBe(
+      '가입 후 100일 이상 · 최근 30일 동안 4일 이상 활동 조건을 채우면 획득할 수 있어요.'
+    )
+  })
+
+  it('금지 용어(방문·POI·장소·위치·충족·달성·아이템북·슬롯·놓기·수집·회수·배치)를 쓰지 않는다', () => {
+    const conditions: BadgeCondition[] = [
+      { mission_complete_count: 3 },
+      { collection_complete_count: 2 },
+      { days_since_signup: 100, signup_recent_active_days: 4 },
+      { weekly_active_days: 3 },
+      { same_spot_checkin_days: 10 },
+    ]
+    for (const c of conditions) {
+      const text = formatBadgeConditionText(c, '지표 배지')
+      for (const banned of ['방문', 'POI', '장소', '위치', '충족', '달성', '아이템북', '슬롯', '놓', '수집', '회수', '배치']) {
+        expect(text).not.toContain(banned)
+      }
+    }
+  })
+
+  it('「주」가 들어간 문구는 (월~일)을 붙인다', () => {
+    expect(formatBadgeConditionText({ weekly_active_days: 3 }, '주 3일')).toContain('(월~일)')
+  })
+})
+
 describe('「관리자가 직접 발급」·미션 보상은 여전히 맞는 문구다', () => {
   it('조건이 비어 있으면 관리자 수동 발급', () => {
     expect(formatBadgeConditionText(null, '수동 배지')).toBe(MANUAL_TEXT)

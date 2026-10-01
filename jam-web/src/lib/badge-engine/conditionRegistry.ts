@@ -2028,6 +2028,138 @@ export const CONDITION_FIELDS = [
       help: '서로 다른 유저만 세요. 내가 다시 주운 것은 세지 않아요.',
     }),
   }),
+
+  // ── JAM! 카테고리 — 미션·컬렉션·가입 경과일·활동일·체크인 일수 지표 6종 (티켓 20261001_0633, 상위 20260930_1456 ③) ──
+  //
+  // `role: 'meta'` + `evaluation: 'external'`은 위 지표들과 같은 이유다. 실제 판정·발급은 `jamActionBadges.ts`가
+  // 전담하고 값 계산은 `jamActionCompletionMetrics.ts`(미션·컬렉션)·`jamActionDayMetrics.ts`(나머지 넷)가 맡는다.
+  // 모양은 `drop_item_count`와 같다.
+  //
+  // `signup_recent_active_days`는 `days_since_signup`의 **보조 키**(선택)다: 값이 있으면 가입 일수와 이 조건을
+  // 둘 다 채워야 발급한다. 보조 키는 사용량 지표가 아니다 — `USAGE_METRIC_CONDITION_KEYS`에서 뺀다(아래).
+  // 「활동한 날」의 정의(가입한 날 이후, JAM! 종목·걷기 게이트·차량 속도 필터 통과 활동 ∪ 체크인한 날)는
+  // `jamActionDayMetrics.ts` 머리 주석이 단일 원천이다.
+  field({
+    key: 'mission_complete_count',
+    label: '완료한 미션 수',
+    unit: '개',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `미션 완료 ${c.mission_complete_count}개↑`,
+    detail: (c) => `완료한 서로 다른 미션 ${c.mission_complete_count}개 이상`,
+    form: integerForm('missionCompleteCount', {
+      section: 'meta',
+      label: '완료한 미션 수',
+      placeholder: '3',
+      help: '서로 다른 미션만 세요. 같은 미션은 다시 참가해도 1개예요.',
+    }),
+  }),
+  field({
+    key: 'collection_complete_count',
+    label: '완성한 컬렉션 수',
+    unit: '개',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `컬렉션 완성 ${c.collection_complete_count}개↑`,
+    detail: (c) => `완성한 컬렉션 ${c.collection_complete_count}개 이상`,
+    form: integerForm('collectionCompleteCount', {
+      section: 'meta',
+      label: '완성한 컬렉션 수',
+      placeholder: '2',
+      help: '컬렉션의 모든 배지를 장착해 완성한 컬렉션만 세요. 장착을 해제해도 완성 기록은 남아요.',
+    }),
+  }),
+  field({
+    key: 'days_since_signup',
+    label: '가입 경과일',
+    unit: '일',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 3650,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `가입 ${c.days_since_signup}일↑`,
+    detail: (c) => `가입 후 ${c.days_since_signup}일 이상 경과(한국 날짜 기준)`,
+    form: integerForm('daysSinceSignup', {
+      section: 'meta',
+      label: '가입 경과일',
+      placeholder: '100',
+      help: '가입한 날을 0일로 세는 한국 날짜 차이예요. 동기화할 때 확인해요. 최근 활동 조건을 함께 걸 수 있어요.',
+    }),
+  }),
+  field({
+    key: 'signup_recent_active_days',
+    label: '최근 30일 활동일',
+    unit: '일',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 30,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    pairedWith: ['days_since_signup'],
+    chip: (c) => `최근 30일 ${c.signup_recent_active_days}일↑`,
+    detail: (c) => `최근 30일 동안 활동한 날 ${c.signup_recent_active_days}일 이상`,
+    form: integerForm('signupRecentActiveDays', {
+      section: 'meta',
+      label: '최근 30일 활동일',
+      placeholder: '4',
+      help: '가입 경과일과 함께 써요. 판정하는 날을 포함한 최근 30일 동안 활동한 날이 이 일수 이상이어야 받아요. 비워 두면 가입 일수만 봐요.',
+    }),
+  }),
+  field({
+    key: 'weekly_active_days',
+    label: '주간 활동일',
+    unit: '일',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 7,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `주 활동 ${c.weekly_active_days}일↑`,
+    detail: (c) => `한 주(월~일, 한국 시간)에 활동한 날 ${c.weekly_active_days}일 이상`,
+    form: integerForm('weeklyActiveDays', {
+      section: 'meta',
+      label: '주간 활동일',
+      placeholder: '3',
+      help: '걷기·러닝·트레일 러닝·자전거 활동이 있는 날과 체크인한 날을 세요. 걷기는 0.5km·10분 이상만, 차량 속도로 이동한 기록은 빼요. 가입한 날부터 세고, 가장 많이 활동한 한 주(월~일)로 판정해요.',
+    }),
+  }),
+  field({
+    key: 'same_spot_checkin_days',
+    label: '같은 지점 체크인 일수',
+    unit: '일',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 3650,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `같은 지점 ${c.same_spot_checkin_days}일↑`,
+    detail: (c) => `같은 지점에 서로 다른 ${c.same_spot_checkin_days}일 이상 체크인`,
+    form: integerForm('sameSpotCheckinDays', {
+      section: 'meta',
+      label: '같은 지점 체크인 일수',
+      placeholder: '10',
+      help: '지점마다 체크인한 날짜를 세고, 가장 많은 지점의 일수로 판정해요. 같은 날 여러 번 체크인해도 1일이에요. 가입한 날부터 세요.',
+    }),
+  }),
 ] as const
 
 // ── 파생 목록 ────────────────────────────────────────────────────────────
@@ -2061,9 +2193,14 @@ export const CONDITION_META_KEYS: readonly ConditionKey[] = CONDITION_FIELDS.fil
  * 나머지 전부. 사용량 지표를 조건으로 쓰는 배지는 `repeat_count`·다른 measurable 조건과 함께
  * 저장할 수 없고(`badge-condition-guards.ts`), 어드민 목록은 이 키로 JAM! 계열을 표시한다
  * (`badge-families.ts`). **사용량 지표의 단일 정의**다 — 메타 키가 늘면 가드·표시가 자동으로 따라온다.
+ *
+ * `signup_recent_active_days`도 뺀다(티켓 20261001_0633): 이 키는 `days_since_signup`의 **보조 키**라
+ * 혼자서는 지표가 아니고 `pairedWith`로 짝(`days_since_signup`)과 함께 저장된다. 빼지 않으면 「한 배지에
+ * 사용량 지표 하나」 가드(티켓 20261001_0712)가 `days_since_signup` + 보조 키 조합을 두 지표로 보고 막는다.
+ * `mission_reward`와 같은 이유로 지표 목록에서 빠지는 메타 키다.
  */
 export const USAGE_METRIC_CONDITION_KEYS: readonly ConditionKey[] = CONDITION_META_KEYS.filter(
-  (k) => k !== 'mission_reward'
+  (k) => k !== 'mission_reward' && k !== 'signup_recent_active_days'
 )
 
 /** 발급 판정에 실제로 관여하는 «조건 필드» 전체 — 수치 검사 필드 + 필터 전용 필드 */
@@ -2201,6 +2338,10 @@ export const PAIR_ENFORCED_CONDITION_KEYS: readonly ConditionKey[] = [
   // 같은 안전 조건을 만족한다. 짝 필드(personal_record_break_metric) 없이는 「어느 지표의
   // 기록인가」가 정의되지 않는다.
   'personal_record_break',
+  // 티켓 20261001_0633 — 가입 경과일의 보조 키. 신규 키라 실적이 0건이다. `days_since_signup` 없이
+  // 혼자 저장되면 「무엇의 최근 활동 조건인가」가 정의되지 않고 발급 경로(`jamActionBadges.ts`)도
+  // 후보로 보지 않아 영원히 발급되지 않으므로 저장 시점에 막는다(`findUnpairedConditionError`).
+  'signup_recent_active_days',
 ]
 
 /**
