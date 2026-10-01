@@ -232,6 +232,17 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | `ranking_list` | 순위 리스트형 — 랭킹보드 목록(포디엄 없음) |
 <!-- END generated: layouts -->
 
+### 카드 모양 판정 (코드만 있고 홈 화면에는 아직 쓰이지 않는다)
+
+카드 표현 형식 리뉴얼(티켓 20260930_1453)이 정한 새 카드 모양 5개(`hero`·`poster`·`square`·`brief`·`list`)를 고르는 규칙이다. 위 레이아웃 표의 옛 값을 새 모양으로 바꾸는 대응표는 같은 사실을 두 곳에 두지 않으려고 이 문서에 옮기지 않는다 — 전환 조각(1453-b7) 전까지는 티켓 20260930_1453 「확정 설계」 6절이 정본이고, b7에서 이 문서의 생성 구간으로 옮긴다.
+
+- **모양 상수**: `CARD_SHAPES`(5개)·`IMAGE_CARD_SHAPES`(이미지가 있는 모양 `hero`·`poster`·`square`)와 술어 `isCardShape`·`isImageShape`다. `CARD_SHAPES`는 마이그레이션 206의 `today_cards_shape_check`와 같은 목록이다.
+- **판정 순서(`resolveShape`)**: ① 저장된 `today_cards.shape`가 모양 값이면 그대로 → ② `editorial_article`은 레이아웃과 상관없이 `hero` → ③ 옛 `layout_type` 대응표(알 수 없는 값은 큰 썸네일형으로 본다). `list`의 타일형·행형 구분(랭킹 카드는 행형)과 「타일이 0개인 타일형은 `brief`」는 표시 데이터가 정한다.
+- **전환 상수(`LEGACY_SHAPE_CUTOVER`)**: 지금 `false`다. 꺼져 있는 동안 새 모양으로 그려지는 카드는 `shape`가 저장된 카드뿐이고(`drawnShape`), `shape`가 없는 옛 카드는 그려질 모양이 `null`이라 옛 렌더러가 그린다. 어드민 미리보기용 표시 데이터는 늘 `resolveShape`로 모양을 정한다. 상수를 켜는 것은 b7이다.
+- **이미지에 제목 있음(`resolveTitleInImage`)**: 저장된 `title_in_image`가 `true`/`false`면 그 값이다. NULL(옛 카드)이면 미션 소개 카드이고 커버 주소가 연결 미션의 `image_url`과 같을 때만 `true`, 그 밖은 `false`다.
+
+근거: `jam-web/src/lib/today/shape.ts`, `jam-web/supabase/migrations/206_today_cards_shape_and_events_card_shape.sql`, 티켓 20261001_1357
+
 ## 7. 이동 목적지
 
 카드를 누르면 가는 곳은 **유형 ID가 아니라 템플릿과 대상 필드**로 정해진다. 기사(`editorial_article`)는 항상 기사 상세로 가고, 그 밖의 템플릿은 `target_href`가 있으면 그 값, 없으면 템플릿 규칙을 따른다. 트라이브를 보여 주는 화면은 없다.
@@ -308,7 +319,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 
 | 테이블 | 쓰임 |
 |---|---|
-| `today_cards` | 카드 한 장 = 한 행. 제목·부제·게재용 설명문(`description`)·템플릿·레이아웃·노출 태그·노출 기간·활성 여부·정렬·대상 필드(`badge_ids`·`mission_id`·`item_book_id`·`ranking_mode_id`·`region_label`·`target_href`)·기사 본문·커버·유형 ID·이미지 제작 경로(`image_source`)·카드 모양(`shape`)·이미지 안 제목 여부(`title_in_image`). 두 칸은 NULL 허용이고 NULL이면 옛 카드라 규칙으로 판정한다(그리는 규칙은 모양 판정을 만드는 조각에서 이 문서에 적는다) |
+| `today_cards` | 카드 한 장 = 한 행. 제목·부제·게재용 설명문(`description`)·템플릿·레이아웃·노출 태그·노출 기간·활성 여부·정렬·대상 필드(`badge_ids`·`mission_id`·`item_book_id`·`ranking_mode_id`·`region_label`·`target_href`)·기사 본문·커버·유형 ID·이미지 제작 경로(`image_source`)·카드 모양(`shape`)·이미지 안 제목 여부(`title_in_image`). 두 칸은 NULL 허용이고 NULL이면 옛 카드라 규칙으로 판정한다(판정 규칙은 §6의 「카드 모양 판정」) |
 | `today_card_events` | 노출·열람 기록(§9). 기록 시점에 그려진 모양을 `card_shape`로 복사한다(NULL 허용, 모양 도입 전 기록은 NULL). 유저 식별자 없음 |
 | `external_input_daily` | 날씨·특일 하루 값(§4) |
 
