@@ -1847,13 +1847,27 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 |---|---|---|
 | 카테고리 | `poi_categories`(14종, 2026-09-07 재정리 이후) 중 하나, 또는 `category_slug=NULL`로 "전체" | 실행 시점에 카테고리 하나를 무작위로 선택 |
 | 등급(rarity) 비율 | `rarity_common/rare/epic/mystic`(합=1)로 가중 추첨 | 실행 시점에 4개 등급 비율 자체를 무작위로 생성해 그 실행 전체에 적용 |
-| 대상 컬렉션(`item_books`) | 단독 또는 멀티 선택(`collection_ids`), 빈 배열은 "전체 컬렉션" | 실행 시점에 활성 컬렉션 1개를 무작위로 선택 |
+| 대상 컬렉션(`item_books`) | 단독 또는 멀티 선택(`collection_ids`), 빈 배열은 "전체 컬렉션" | 실행 시점에 노출 중 컬렉션 1개를 무작위로 선택 |
 
 `all_random=true`면 저장된 축별 모드와 무관하게 실행 시점에 3축을 전부 무작위로 취급한다
 (비파괴적 오버라이드 — 저장값은 그대로 남는다).
 
+**대상 컬렉션 축은 노출 중 컬렉션에만 드랍한다** (티켓 [20260930_1516](../../tickets/p1-high/20260930_1516_Service_컬렉션-노출-판정을-모든-화면과-드랍-경로에서-같게.md)):
+공개 전(비활성·시작 전)이거나 기간이 끝난 컬렉션에는 드랍하지 않는다. 「노출 중」의 정의는
+[02_DATA_MODEL.md](../prd/02_DATA_MODEL.md) `item_books` 절의 «컬렉션 노출 판정»이 단일 원천이고, 코드는
+`src/lib/itembook/visibility.ts`의 `applyDroppableItemBookFilter`다. 축 3은 노출 중 컬렉션 id를 한 번 읽어
+정하며, 결정 로직은 순수 함수 `resolveAmbientTargetCollections`(`src/lib/ambient-drop/collectionTarget.ts`)다.
+
+| 모드 | 대상 | 노출 중 컬렉션이 없을 때 |
+|---|---|---|
+| 무작위 | 노출 중 컬렉션 중 하나 | 건너뜀(`no_eligible_collection`) |
+| 명시 — 컬렉션 지정 | 설정한 `collection_ids` 가운데 노출 중인 것만. 빠진 것은 `excludedCollectionIds`로 결과와 로그에 남는다 | 지정한 것이 하나도 남지 않으면 건너뜀 |
+| 명시 — 「전체」(빈 배열) | `effectiveCollectionIds`는 빈 배열로 두되 후보 배지를 노출 중 컬렉션의 배지로 좁힌다 | 모든 컬렉션으로 넓어지지 않고 건너뜀 |
+
+노출 중 컬렉션 조회가 실패해도 같은 방식으로 건너뛴다(오류는 `console.error`와 로그의 `error`에 남는다).
+
 **배치 실행 로직** (`runAmbientDropBatch`, `src/lib/ambient-drop/index.ts`):
-1. 3축을 확정한다(카테고리 슬러그, 등급 분포, 대상 컬렉션 id 목록).
+1. 3축을 확정한다(카테고리 슬러그, 등급 분포, 대상 컬렉션 id 목록). 대상 컬렉션이 정해지지 않으면(`no_eligible_collection`) POI를 조회하기 전에 결과를 기록하고 끝낸다.
 2. 대상 카테고리의 POI 전체를 조회하고, `max_active_per_poi` 미만인 POI만 후보로 남긴다.
 3. `type='item' AND deleted_at IS NULL AND item_book_id IS NOT NULL`(+ 컬렉션 필터, + 유효기간
    `valid_from/valid_until`)로 후보 배지를 rarity별로 분류한다. **컬렉션 소속이 없는 아이템배지는
@@ -1866,6 +1880,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
    자동/수동 모두 동일하게 기록되어 어드민 화면에서 최근 실행 이력으로 조회 가능하다.
 
 **스킵 사유(`AmbientDropSkipReason`)**: `auto_disabled`(자동 실행 OFF로 no-op) ·
+`no_eligible_collection`(노출 중인 대상 컬렉션이 없음) ·
 `no_eligible_poi`(대상 카테고리에 배치 가능한 POI 없음) · `no_candidate_badges`(조건에 맞는
 후보 배지 없음) · `insert_failed`(배지는 뽑았으나 `poi_drops` INSERT 자체가 실패) —
 `engine_decision_log`에 그대로 기록되어 실행 이력에서 원인을 구분할 수 있다.

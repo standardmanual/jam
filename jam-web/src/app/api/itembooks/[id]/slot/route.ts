@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { jamTriggersForSlot } from '@/lib/badge-engine/jamActionProgressTriggers'
+import { isItemBookLaunched, type ItemBookVisibilityFields } from '@/lib/itembook/visibility'
 import { d } from '@/lib/i18n'
 
 // 티켓 20260830_0057: 장착/해제는 각각 원자적 RPC(slot_item_into_book/
@@ -22,6 +23,8 @@ const SLOT_ERROR_STATUS_MAP: Record<string, { status: number; message: string }>
   not_owner: { status: 403, message: d.itembooks.notOwner },
   already_slotted: { status: 409, message: d.itembooks.alreadySlotted },
   badge_not_found: { status: 404, message: d.itembooks.badgeNotFound },
+  // 컬렉션이 없거나 공개되지 않았다 — RPC 코드가 아니라 아래 POST의 사전 확인이 쓴다(티켓 20260930_1516)
+  item_book_not_found: { status: 404, message: d.itembooks.itemBookNotFound },
   wrong_item_book: { status: 400, message: d.itembooks.wrongItemBook },
   slot_insert_failed: { status: 500, message: d.itembooks.slotFailed },
 }
@@ -66,6 +69,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!inventory_item_id) {
     return NextResponse.json({ error: d.itembooks.slotMissingInventoryItemId }, { status: 400 })
+  }
+
+  // 공개되지 않은 컬렉션(없음·비활성·시작 전)에는 장착할 수 없다 — 장착 RPC는 컬렉션 노출을 보지
+  // 않아, 이 확인이 없으면 주소를 직접 호출해 공개 전 컬렉션을 완성할 수 있다(티켓 20260930_1516).
+  // 기간이 끝난 컬렉션은 보유자가 계속 쓸 수 있어 막지 않는다(결정 E1, 판정은 visibility.ts).
+  const { data: bookRaw, error: bookError } = await supabase
+    .from('item_books')
+    .select('is_active, valid_from, valid_until')
+    .eq('id', itemBookId)
+    .maybeSingle()
+  if (bookError) {
+    console.error('[itembooks/slot] item_books 조회 오류:', bookError)
+    return NextResponse.json({ error: d.itembooks.slotFailed }, { status: 500 })
+  }
+  const book = bookRaw as ItemBookVisibilityFields | null
+  if (!book || !isItemBookLaunched(book, new Date().toISOString())) {
+    const notFound = SLOT_ERROR_STATUS_MAP.item_book_not_found
+    return NextResponse.json({ error: notFound.message }, { status: notFound.status })
   }
 
   const rpcArgs = {

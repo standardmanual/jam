@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
 import { computeBookCompletion } from '@/lib/itembook/completion-basis'
+import { applyLaunchedItemBookFilter } from '@/lib/itembook/visibility'
 import type {
   InventoryRow,
   InventoryItemRow,
@@ -53,13 +54,22 @@ export async function GET() {
     if (!discoveredMap.has(b.item_book_id)) discoveredMap.set(b.item_book_id, new Set())
     discoveredMap.get(b.item_book_id)!.add(b.id)
   }
-  const bookIds = Array.from(discoveredMap.keys())
+  const discoveredBookIds = Array.from(discoveredMap.keys())
+  if (discoveredBookIds.length === 0) return NextResponse.json({ itemBooks: [] })
+
+  // 4) 공개된 아이템북만 — 공개 전(비활성·시작 전) 컬렉션은 목록에서 뺀다. 기간이 끝난 컬렉션은
+  //    보유자에게 계속 보인다(판정은 visibility.ts, 티켓 20260930_1516 결정 E1·E2).
+  const { data: booksRaw } = await applyLaunchedItemBookFilter(
+    supabase.from('item_books').select('*').in('id', discoveredBookIds),
+    new Date().toISOString()
+  )
+  const books = (booksRaw ?? []) as ItemBookRow[]
+  const bookIds = books.map((b) => b.id)
   if (bookIds.length === 0) return NextResponse.json({ itemBooks: [] })
 
-  // 4) 활성 아이템북 + 전체 아이템 배지 수 + 슬롯 카운트 + 완성 여부 병렬 조회
-  const [{ data: booksRaw }, { data: allBadgesRaw }, { data: slotsRaw }, { data: compRaw }] =
+  // 5) 전체 아이템 배지 수 + 슬롯 카운트 + 완성 여부 병렬 조회 — 걸러진 컬렉션 id로만 조회한다
+  const [{ data: allBadgesRaw }, { data: slotsRaw }, { data: compRaw }] =
     await Promise.all([
-      supabase.from('item_books').select('*').in('id', bookIds),
       supabase.from('badges').select('id, item_book_id, type, drop_excluded').in('item_book_id', bookIds).eq('type', 'item').is('deleted_at', null),
       supabase
         .from('user_item_book_slots')
@@ -72,8 +82,6 @@ export async function GET() {
         .eq('user_id', user.id)
         .in('item_book_id', bookIds),
     ])
-
-  const books = (booksRaw ?? []) as ItemBookRow[]
 
   // 북별 분모(드랍 제외 배지를 뺀 수)·분자 — 공용 함수 (티켓 20260921_1112)
   const filledBadgeIds = new Set(
@@ -90,7 +98,7 @@ export async function GET() {
     ((compRaw ?? []) as Pick<UserItemBookCompletionRow, 'item_book_id'>[]).map((c) => c.item_book_id)
   )
 
-  // 5) 트라이브 조회
+  // 6) 트라이브 조회
   const tribeIds = Array.from(
     new Set(books.map((b) => b.tribe_id).filter((f): f is string => !!f))
   )

@@ -13,8 +13,10 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { logEngineDecision } from '@/lib/engine-log'
 import { fetchAllRows } from '@/lib/notifications/batch/shared'
+import { applyDroppableItemBookFilter } from '@/lib/itembook/visibility'
 import type { AmbientDropConfig } from './config'
 import { getAmbientDropConfig } from './config'
+import { resolveAmbientTargetCollections } from './collectionTarget'
 import {
   fallbackPickBadge,
   pickRandom,
@@ -28,6 +30,7 @@ export type AmbientDropTrigger = 'cron' | 'manual'
 
 export type AmbientDropSkipReason =
   | 'auto_disabled'
+  | 'no_eligible_collection'
   | 'no_eligible_poi'
   | 'no_candidate_badges'
   | 'insert_failed'
@@ -37,8 +40,13 @@ export interface AmbientDropBatchResult {
   ranAt: string
   /** null = 전체 카테고리 대상 */
   effectiveCategorySlug: string | null
-  /** 빈 배열 = 전체 컬렉션 대상 */
+  /**
+   * 빈 배열 = 전체 컬렉션 대상. 이때도 후보 배지는 노출 중 컬렉션으로 좁혀진다.
+   * 단 `reason`이 `no_eligible_collection`이면 대상이 없어 드랍하지 않은 실행이다
+   */
   effectiveCollectionIds: string[]
+  /** 설정에는 있었지만 노출 중이 아니라 뺀 컬렉션 id(없으면 필드 없음) */
+  excludedCollectionIds?: string[]
   effectiveRarityDistribution: RarityDistribution
   eligiblePoiCount: number
   spawned: number
@@ -87,31 +95,42 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
       }
 
   // ── 축 3: 대상 컬렉션 ───────────────────────────────────────
-  let effectiveCollectionIds: string[]
-  if (useRandomCollection) {
-    const { data: books, error: booksError } = await fetchAllRows<{ id: string }>(
-      'item_books',
-      'id',
-      () => supabase.from('item_books').select('id').eq('is_active', true)
-    )
-      .then((data) => ({ data, error: null as { message: string } | null }))
-      .catch((err: unknown) => ({
-        data: [] as { id: string }[],
-        error: { message: err instanceof Error ? err.message : String(err) },
-      }))
-    if (booksError) console.error('[ambient-drop] item_books 조회 오류:', booksError)
-    const picked = pickRandom(books.map((b) => b.id))
-    effectiveCollectionIds = picked ? [picked] : []
-  } else {
-    effectiveCollectionIds = config.collection_ids
-  }
+  // 드랍 대상은 노출 중 컬렉션(is_active + 노출 기간 안)뿐이다 — 공개 전·기간이 끝난 컬렉션에는 드랍하지
+  // 않는다(티켓 20260930_1516, 판정은 lib/itembook/visibility.ts). 조회가 실패하면 대상이 없는 것으로
+  // 보고 건너뛴다 — 빈 배열이 「전체 컬렉션」으로 읽혀 넓어지는 것을 막는다.
+  const { data: droppableBooks, error: booksError } = await fetchAllRows<{ id: string }>(
+    'item_books',
+    'id',
+    () => applyDroppableItemBookFilter(supabase.from('item_books').select('id'), ranAt)
+  )
+    .then((data) => ({ data, error: null as { message: string } | null }))
+    .catch((err: unknown) => ({
+      data: [] as { id: string }[],
+      error: { message: err instanceof Error ? err.message : String(err) },
+    }))
+  if (booksError) console.error('[ambient-drop] item_books 조회 오류:', booksError)
+
+  const target = resolveAmbientTargetCollections({
+    useRandom: useRandomCollection,
+    configIds: config.collection_ids,
+    droppableIds: droppableBooks.map((b) => b.id),
+    pick: pickRandom,
+  })
+  const { effectiveCollectionIds, restrictToCollectionIds } = target
 
   const baseResult = {
     trigger,
     ranAt,
     effectiveCategorySlug,
     effectiveCollectionIds,
+    ...(target.excludedCollectionIds.length > 0 ? { excludedCollectionIds: target.excludedCollectionIds } : {}),
     effectiveRarityDistribution,
+  }
+
+  if (target.reason) {
+    const result: AmbientDropBatchResult = { ...baseResult, eligiblePoiCount: 0, spawned: 0, reason: target.reason }
+    await logResult(result, booksError ? '노출 중 컬렉션 조회 실패' : undefined)
+    return result
   }
 
   // ── 대상 POI 조회 (카테고리 필터, "전체"면 무필터) ─────────────
@@ -184,6 +203,8 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
         .is('deleted_at', null)
         .not('item_book_id', 'is', null)
       if (effectiveCollectionIds.length > 0) q = q.in('item_book_id', effectiveCollectionIds)
+      // 「전체」 설정은 effectiveCollectionIds가 비어 있어도 노출 중 컬렉션의 배지로만 좁힌다
+      if (restrictToCollectionIds) q = q.in('item_book_id', restrictToCollectionIds)
       return q
     }
   )

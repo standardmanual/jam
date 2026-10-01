@@ -1,4 +1,5 @@
 import { computeBookCompletion } from '@/lib/itembook/completion-basis'
+import { isItemBookLaunched } from '@/lib/itembook/visibility'
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type {
@@ -92,6 +93,9 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   if (bookError) console.error('[collections/[id]/page] item_books 조회 실패', bookError)
   if (!bookRaw) notFound()
   const book = bookRaw as unknown as ItemBookWithTribe
+  // 공개 전 컬렉션(비활성·시작 전)은 없는 컬렉션과 같이 404다. 기간이 끝난 컬렉션은 보유자에게 계속
+  // 보인다. 어드민 예외는 두지 않는다(티켓 20260930_1516 결정 E1·E3, 판정은 visibility.ts).
+  if (!isItemBookLaunched(book, new Date().toISOString())) notFound()
 
   // 2) 배지 (아이템 + 체크인)
   // 소프트 삭제된 배지(badges.deleted_at)는 컬렉션 슬롯 목록에서 제외한다(20260824_007) —

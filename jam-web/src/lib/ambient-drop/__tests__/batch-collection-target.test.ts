@@ -1,0 +1,251 @@
+/**
+ * runAmbientDropBatch — 대상 컬렉션 축이 노출 중 컬렉션만 쓰는지 (티켓 20260930_1516)
+ *
+ * `collection-target.test.ts`가 판정 함수를 검증하고, 이 테스트는 배치가 그 결과를 실제로 따르는지 본다.
+ *  - random: 기간이 끝난 컬렉션을 고르지 않는다
+ *  - explicit: 비활성·기간 밖 컬렉션에는 드랍하지 않는다
+ *  - explicit 「전체」: 후보 배지가 노출 중 컬렉션의 배지로만 좁혀진다
+ *  - 노출 중 컬렉션이 없으면 모든 컬렉션으로 넓어지지 않고 `no_eligible_collection`으로 건너뛴다(POI 조회 전)
+ *
+ * Supabase 모킹은 `eq`·`in`·`or` 조건을 행에 실제로 적용한다.
+ *
+ * 실행: cd jam-web && npx vitest run src/lib/ambient-drop/__tests__/batch-collection-target.test.ts
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { AmbientDropConfig } from '../config'
+
+const NOW = '2026-10-01T03:00:00.000Z'
+
+type Row = Record<string, unknown>
+
+const state = vi.hoisted(() => ({
+  config: {} as Record<string, unknown>,
+  tables: {} as Record<string, Row[]>,
+  /** 조회한 테이블 순서 — POI 조회 전에 건너뛰는지 확인한다 */
+  fromCalls: [] as string[],
+  rpcCalls: [] as { name: string; args: { p_poi_id: string; p_badge_id: string } }[],
+}))
+
+const logMock = vi.hoisted(() => vi.fn())
+
+function matchesOr(row: Row, expr: string): boolean {
+  return expr.split(',').some((part) => {
+    const [column, op, ...rest] = part.split('.')
+    const value = rest.join('.')
+    const cell = row[column] as string | null | undefined
+    if (op === 'is') return value === 'null' && (cell === null || cell === undefined)
+    if (cell === null || cell === undefined) return false
+    const left = new Date(cell).getTime()
+    const right = new Date(value).getTime()
+    if (op === 'lte') return left <= right
+    if (op === 'gte') return left >= right
+    throw new Error(`테스트 모킹이 모르는 or 연산자: ${op}`)
+  })
+}
+
+function makeBuilder(table: string) {
+  state.fromCalls.push(table)
+  let rows = [...(state.tables[table] ?? [])]
+  const builder = {
+    select: () => builder,
+    in(column: string, ids: unknown[]) {
+      rows = rows.filter((r) => ids.includes(r[column]))
+      return builder
+    },
+    eq(column: string, value: unknown) {
+      rows = rows.filter((r) => r[column] === value)
+      return builder
+    },
+    is(column: string, value: null) {
+      rows = rows.filter((r) => (r[column] ?? null) === value)
+      return builder
+    },
+    not(column: string, op: string, value: null) {
+      if (op !== 'is') throw new Error(`테스트 모킹이 모르는 not 연산자: ${op}`)
+      rows = rows.filter((r) => (r[column] ?? null) !== value)
+      return builder
+    },
+    or(expr: string) {
+      rows = rows.filter((r) => matchesOr(r, expr))
+      return builder
+    },
+    then: (resolve: (value: { data: Row[]; error: null }) => unknown) => resolve({ data: rows, error: null }),
+  }
+  return builder
+}
+
+vi.mock('@/lib/supabase/server', () => ({
+  createServiceClient: () => ({
+    from: (table: string) => makeBuilder(table),
+    rpc: async (name: string, args: { p_poi_id: string; p_badge_id: string }) => {
+      state.rpcCalls.push({ name, args })
+      const n = state.rpcCalls.length
+      return { data: { ok: true, drop_id: `drop-${n}`, inventory_item_id: `inv-item-${n}` }, error: null }
+    },
+  }),
+}))
+vi.mock('../config', () => ({ getAmbientDropConfig: async () => state.config }))
+vi.mock('@/lib/engine-log', () => ({ logEngineDecision: logMock }))
+// 실제 fetchAllRows는 페이지 조회(.order().range())를 붙인다 — 이 테스트의 관심사가 아니라 한 번에 읽는다
+vi.mock('@/lib/notifications/batch/shared', () => ({
+  fetchAllRows: async <T>(_label: string, _orderBy: unknown, query: () => PromiseLike<{ data: T[] }>) => (await query()).data,
+}))
+
+import { runAmbientDropBatch } from '../index'
+
+function book(id: string, overrides: Row = {}): Row {
+  return { id, is_active: true, valid_from: null, valid_until: null, ...overrides }
+}
+
+function itemBadge(id: string, itemBookId: string): Row {
+  return {
+    id,
+    type: 'item',
+    rarity: 'common',
+    deleted_at: null,
+    item_book_id: itemBookId,
+    valid_from: null,
+    valid_until: null,
+  }
+}
+
+const LIVE = 'book-live'
+const ENDED = 'book-ended'
+const FUTURE = 'book-future'
+const INACTIVE = 'book-inactive'
+
+function baseConfig(overrides: Partial<AmbientDropConfig> = {}): Record<string, unknown> {
+  return {
+    auto_enabled: true,
+    all_random: false,
+    category_mode: 'explicit',
+    category_slug: null,
+    rarity_mode: 'explicit',
+    rarity_common: 1,
+    rarity_rare: 0,
+    rarity_epic: 0,
+    rarity_mystic: 0,
+    collection_mode: 'explicit',
+    collection_ids: [],
+    batch_size: 6,
+    max_active_per_poi: 1,
+    ...overrides,
+  }
+}
+
+function pickedBadgeIds(): string[] {
+  return state.rpcCalls.map((c) => c.args.p_badge_id)
+}
+
+/** 마지막으로 남긴 `ambient_batch_result` 로그의 페이로드 */
+function lastLogged(): Record<string, unknown> {
+  const calls = logMock.mock.calls
+  return calls[calls.length - 1][3] as Record<string, unknown>
+}
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(NOW))
+  vi.clearAllMocks()
+  state.fromCalls = []
+  state.rpcCalls = []
+  state.config = baseConfig()
+  state.tables = {
+    poi_categories: [{ slug: 'cafe' }],
+    poi: ['poi-1', 'poi-2', 'poi-3', 'poi-4', 'poi-5', 'poi-6'].map((id) => ({ id, is_active: true, category: 'cafe' })),
+    poi_drops: [],
+    item_books: [
+      // 기간이 끝났지만 활성 — 예전 random 모드는 이것도 골랐다
+      book(ENDED, { valid_from: '2026-08-01T00:00:00+00:00', valid_until: '2026-09-30T00:00:00+00:00' }),
+      book(FUTURE, { valid_from: '2026-10-05T00:00:00+00:00' }),
+      book(INACTIVE, { is_active: false }),
+      book(LIVE, { valid_from: '2026-09-01T00:00:00+00:00', valid_until: '2026-12-31T00:00:00+00:00' }),
+    ],
+    badges: [
+      itemBadge('badge-ended', ENDED),
+      itemBadge('badge-future', FUTURE),
+      itemBadge('badge-inactive', INACTIVE),
+      itemBadge('badge-live', LIVE),
+    ],
+  }
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
+
+describe('random 모드', () => {
+  beforeEach(() => {
+    state.config = baseConfig({ collection_mode: 'random' })
+    // 첫 번째 후보를 고르게 한다 — 필터가 없으면 목록 맨 앞의 기간 끝난 컬렉션이 뽑힌다
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+  })
+
+  it('기간이 끝난 컬렉션·공개 전 컬렉션이 아니라 노출 중 컬렉션을 고른다', async () => {
+    const result = await runAmbientDropBatch('manual')
+
+    expect(result.effectiveCollectionIds).toEqual([LIVE])
+    expect(result.reason).toBeUndefined()
+    expect(result.spawned).toBeGreaterThan(0)
+    expect(new Set(pickedBadgeIds())).toEqual(new Set(['badge-live']))
+  })
+
+  it('노출 중 컬렉션이 없으면 모든 컬렉션으로 넓어지지 않고 POI를 조회하기 전에 건너뛴다', async () => {
+    state.tables.item_books = [
+      book(ENDED, { valid_until: '2026-09-30T00:00:00+00:00' }),
+      book(FUTURE, { valid_from: '2026-10-05T00:00:00+00:00' }),
+      book(INACTIVE, { is_active: false }),
+    ]
+    const result = await runAmbientDropBatch('manual')
+
+    expect(result.reason).toBe('no_eligible_collection')
+    expect(result.spawned).toBe(0)
+    expect(state.rpcCalls).toHaveLength(0)
+    expect(state.fromCalls).not.toContain('poi')
+    expect(state.fromCalls).not.toContain('badges')
+    expect(lastLogged()).toMatchObject({ reason: 'no_eligible_collection', spawned: 0 })
+  })
+})
+
+describe('explicit 모드 — 컬렉션을 지정함', () => {
+  it('비활성·기간 밖 컬렉션은 빼고 노출 중인 컬렉션에만 드랍하고, 뺀 것을 결과와 로그에 남긴다', async () => {
+    state.config = baseConfig({ collection_ids: [LIVE, INACTIVE, ENDED, FUTURE] })
+    const result = await runAmbientDropBatch('manual')
+
+    expect(result.effectiveCollectionIds).toEqual([LIVE])
+    expect(result.excludedCollectionIds).toEqual([INACTIVE, ENDED, FUTURE])
+    expect(new Set(pickedBadgeIds())).toEqual(new Set(['badge-live']))
+    expect(lastLogged()).toMatchObject({ excludedCollectionIds: [INACTIVE, ENDED, FUTURE] })
+  })
+
+  it('지정한 컬렉션이 하나도 노출 중이 아니면 드랍하지 않고 사유와 뺀 목록을 남긴다', async () => {
+    state.config = baseConfig({ collection_ids: [INACTIVE, ENDED] })
+    const result = await runAmbientDropBatch('manual')
+
+    expect(result.reason).toBe('no_eligible_collection')
+    expect(result.excludedCollectionIds).toEqual([INACTIVE, ENDED])
+    expect(result.spawned).toBe(0)
+    expect(state.rpcCalls).toHaveLength(0)
+    expect(state.fromCalls).not.toContain('poi')
+  })
+})
+
+describe('explicit 「전체」 (collection_ids가 빈 배열)', () => {
+  it('후보 배지가 노출 중 컬렉션의 배지로만 좁혀진다', async () => {
+    const result = await runAmbientDropBatch('manual')
+
+    expect(result.effectiveCollectionIds).toEqual([])
+    expect(result.reason).toBeUndefined()
+    expect(result.spawned).toBeGreaterThan(0)
+    expect(new Set(pickedBadgeIds())).toEqual(new Set(['badge-live']))
+  })
+
+  it('노출 중 컬렉션이 없으면 모든 컬렉션으로 넓어지지 않고 건너뛴다', async () => {
+    state.tables.item_books = [book(ENDED, { valid_until: '2026-09-30T00:00:00+00:00' }), book(INACTIVE, { is_active: false })]
+    const result = await runAmbientDropBatch('manual')
+
+    expect(result.reason).toBe('no_eligible_collection')
+    expect(state.rpcCalls).toHaveLength(0)
+  })
+})

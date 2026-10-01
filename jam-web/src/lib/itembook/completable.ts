@@ -15,6 +15,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeType } from '@/types/database'
 import { computeBookCompletion } from './completion-basis'
 import { buildFilledByBook } from './filled-by-book'
+import { applyDroppableItemBookFilter } from './visibility'
 
 export interface CompletableItemBook {
   id: string
@@ -31,13 +32,12 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
   const supabase = createServiceClient()
 
   // 컬렉션 노출 판정 = is_active && 노출 기간 내(마이그레이션 171, 티켓 20260914_1729).
+  // 판정 원천은 visibility.ts(티켓 20260930_1516).
   const now = new Date().toISOString()
-  const { data: booksRaw, error: booksError } = await supabase
-    .from('item_books')
-    .select('id, name')
-    .eq('is_active', true)
-    .or(`valid_from.is.null,valid_from.lte.${now}`)
-    .or(`valid_until.is.null,valid_until.gte.${now}`)
+  const { data: booksRaw, error: booksError } = await applyDroppableItemBookFilter(
+    supabase.from('item_books').select('id, name'),
+    now
+  )
 
   if (booksError) {
     console.error('[findCompletableItemBooks] item_books 조회 오류:', booksError)
