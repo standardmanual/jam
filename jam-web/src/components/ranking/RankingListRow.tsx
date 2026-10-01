@@ -1,5 +1,3 @@
-'use client'
-
 import ListRowCard from '@/components/ui/ListRowCard'
 import { UserIcon } from '@/components/ui/icons'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
@@ -17,6 +15,11 @@ import { ProgressBar } from '@ds/components/feedback/ProgressBar'
  * `ListRowCard`는 MODULAR 원본이 아니라 서비스 로컬 포팅 사본(`@/components/ui/ListRowCard`)이다
  * — 그대로 재사용한다(새로 만들지 않는다). `ProgressBar`는 MODULAR 원본
  * (`@ds/components/feedback/ProgressBar`)을 그대로 쓴다.
+ *
+ * **`'use client'`가 없다**(티켓 20261001_2104). 이 파일은 훅이 없고 안쪽 `ListRowCard`(클라이언트)에는 문자열·JSX만 넘긴다. 홈 `ListCard`는 서버 컴포넌트라
+ * 이 컴포넌트가 클라이언트 경계면 `formatValue` 함수 prop을 서버에서 클라이언트로 넘기게 되어 렌더 때 「Functions cannot be passed directly to Client Components」로
+ * 실패한다(`tsc`·lint·`renderToStaticMarkup` 테스트에는 안 잡힌다). 지시어가 없으면 서버에서는 `formatValue`가 서버 안에서 호출되고, `MissionStatusClient`(클라이언트)에서는
+ * 그대로 클라이언트 번들로 동작한다. 훅·이벤트 핸들러를 넣게 되면 지시어를 되살리고 `formatValue`를 함수 prop이 아닌 값으로 바꿔야 한다.
  */
 export interface RankingListEntryLike {
   userId: string
