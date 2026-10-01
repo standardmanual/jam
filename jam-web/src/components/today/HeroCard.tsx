@@ -1,6 +1,7 @@
 import { Card } from '@ds/components/cards/Card'
 import { d } from '@/lib/i18n'
 import type { ImageCardView } from '@/lib/today/cardView'
+import { CardBody, CardDescription, CardEndLine, CardFacts, CardTitleGroup } from './CardBody'
 import CardChipRow from './CardChipRow'
 import CardImageSlot from './CardImageSlot'
 
@@ -16,12 +17,11 @@ import CardImageSlot from './CardImageSlot'
  * - `--text-body-sm`은 서비스에서 14px이 아니라 16px이다. 필수 정보·설명문 14px은 `--text-small`이다.
  * - 옅은 글자는 `text-text-inverse/60` 한 단계로 통일한다(흰 면 위 AA 이상). `/30`·`/40`은 쓰지 않는다.
  * - 이미지 위에는 아무것도 얹지 않는다(칩·그림자·어두운 막 없음). 칩 줄은 이미지 아래 흰 본문의 첫 줄이다.
- * - 본문 제목 그룹·필수 정보 마크업은 `SquareCard` 본문과 같은 클래스다(티켓 20261001_2013). 일부러 공용으로 빼지 않았다 — b5 `ListCard`가 셋째 소비자가 되면 공용으로 뺀다.
- *   그때까지 한쪽만 고쳐지는 드리프트가 없도록 두 파일을 함께 고친다.
+ * - 본문 칸·제목 그룹·필수 정보·설명문·끝 줄은 `SquareCard`·`ListCard`와 공용 조각이다(`CardBody.tsx`, 티켓 20261001_2104 — 셋째 소비자가 생겨 공용으로 뺐다).
+ *   `titleInImage`로 제목 그룹을 빼는 판단은 이 파일에 둔다(이미지 모양만의 규칙이다).
  */
 
 export default function HeroCard({ view }: { view: ImageCardView }) {
-  const facts = view.facts ?? []
   const hasTitleGroup = !view.titleInImage
 
   return (
@@ -29,50 +29,18 @@ export default function HeroCard({ view }: { view: ImageCardView }) {
       {/* 16:9 이미지 칸·자리 표시·alt·sizes는 `poster`·`square`와 공용이다(`CardImageSlot`) */}
       <CardImageSlot view={view} ratio="video" />
 
-      <div className="flex flex-col gap-[var(--spacing-12)] p-[var(--spacing-24)]">
+      <CardBody>
         <CardChipRow view={view} />
 
-        {hasTitleGroup && (
-          <div>
-            <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text-inverse line-clamp-2 break-keep break-words">
-              {view.title}
-            </h3>
-            {view.subtitle && (
-              <p className="mt-[var(--spacing-4)] text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse/60 line-clamp-2 break-keep break-words">
-                {view.subtitle}
-              </p>
-            )}
-          </div>
-        )}
+        {hasTitleGroup && <CardTitleGroup title={view.title} subtitle={view.subtitle} />}
 
-        {/* 필수 정보 — 아이콘·불릿 없이 글자로, 한 줄에 하나씩. 자르지 않고 줄바꿈한다(말줄임 없음). 기간·보상은 사용자가 가장 먼저 찾는 값이라 옅게 하지 않는다 */}
-        {facts.length > 0 && (
-          <div>
-            {facts.map((line, index) => (
-              <p
-                key={index}
-                className="text-[length:var(--text-small)] leading-[var(--leading-small)] font-bold text-text-inverse break-keep break-words"
-              >
-                {line}
-              </p>
-            ))}
-          </div>
-        )}
+        <CardFacts facts={view.facts} />
 
-        {/* 설명문은 필수 정보를 이기지 않게 /60 + 보통 굵기다 */}
-        {view.description && (
-          <p className="text-[length:var(--text-small)] leading-[var(--leading-small)] text-text-inverse/60 line-clamp-2 break-keep break-words">
-            {view.description}
-          </p>
-        )}
+        <CardDescription description={view.description} />
 
         {/* 끝 줄 — 링크가 없는 카드(`href` 없음)는 「자세히 보기」라고 말하지 않는다. 미리보기도 링크만 없을 뿐 `href`가 있으면 보인다 */}
-        {view.href && (
-          <p className="text-[length:var(--text-caption)] text-text-inverse/60">
-            {view.resource === 'article' ? d.today.cardReadArticle : d.today.cardReadMore} <span aria-hidden="true">&rarr;</span>
-          </p>
-        )}
-      </div>
+        {view.href && <CardEndLine label={view.resource === 'article' ? d.today.cardReadArticle : d.today.cardReadMore} />}
+      </CardBody>
     </Card>
   )
 }

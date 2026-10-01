@@ -7,7 +7,6 @@
  */
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import HeroCard from '../HeroCard'
 import SquareCard from '../SquareCard'
 import { CARD_RESOURCES, type ImageCardView } from '@/lib/today/cardView'
 
@@ -259,30 +258,5 @@ describe('SquareCard — 본문 글자 배치', () => {
     const html = render({ resource: 'drop', label: '드랍', regionLabel: '한강공원', facts: ['지역 한강공원'] })
     expect(html).not.toContain('truncate')
     expect(html.match(/한강공원/g)).toHaveLength(1)
-  })
-})
-
-describe('SquareCard — HeroCard 본문과 같은 클래스(드리프트 감시)', () => {
-  // 두 모양의 본문 제목 그룹·필수 정보는 일부러 공용으로 빼지 않았다(b5 `ListCard`가 셋째 소비자가 되면 뺀다).
-  // 한쪽만 고쳐지면 여기서 잡는다.
-  const heroView = makeView({ shape: 'hero' })
-  const heroHtml = renderToStaticMarkup(<HeroCard view={heroView} />)
-  const squareHtml = render()
-
-  const classOf = (html: string, pattern: RegExp) => html.match(pattern)?.[1]
-
-  it('본문 칸·제목·요약·필수 정보의 클래스가 hero와 같다', () => {
-    expect(squareHtml).toContain(BODY_OPEN)
-    expect(heroHtml).toContain(BODY_OPEN)
-    for (const pattern of [/<h3 class="([^"]*)"/, /<p class="(mt-\[var\(--spacing-4\)\][^"]*)"/, /<p class="([^"]*font-bold[^"]*)"/]) {
-      const hero = classOf(heroHtml, pattern)
-      expect(hero).toBeDefined()
-      expect(classOf(squareHtml, pattern)).toBe(hero)
-    }
-  })
-
-  it('칩 줄 마크업이 같다(hero는 게재일이 없으면 같은 칩 줄)', () => {
-    const chipRow = (html: string) => html.slice(html.indexOf('<div class="flex items-center'), html.indexOf('</div>', html.indexOf('<div class="flex items-center')))
-    expect(chipRow(squareHtml)).toBe(chipRow(heroHtml.replace(/<time[^>]*>[^<]*<\/time>/, '')))
   })
 })

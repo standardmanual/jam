@@ -1,5 +1,6 @@
 import { Card } from '@ds/components/cards/Card'
 import type { ImageCardView } from '@/lib/today/cardView'
+import { CardBody, CardFacts, CardTitleGroup } from './CardBody'
 import CardChipRow from './CardChipRow'
 import CardImageSlot from './CardImageSlot'
 
@@ -11,8 +12,8 @@ import CardImageSlot from './CardImageSlot'
  *
  * - 이미지는 자르지 않는다(`object-contain`). 1:1이 아니면 어두운 판(`bg-surface`) 위에 레터박스가 되고, 투명 PNG 배지 그림도 어두운 판 위에서 잘 보인다.
  *   판을 흰색으로 바꾸거나 이미지 모서리를 따로 둥글리지 않는다(카드 모서리는 `Card`의 `overflow-hidden`이 자른다). 이미지 위에는 아무것도 얹지 않는다.
- * - 본문 칩 줄·제목 그룹·필수 정보는 `HeroCard` 본문과 같은 클래스다. 일부러 이번에 공용으로 빼지 않는다 — b5 `ListCard`가 셋째 소비자가 되면 공용으로 뺀다.
- *   그때까지 한쪽만 고쳐지는 드리프트가 없도록 두 파일을 함께 고친다.
+ * - 본문 칸·제목 그룹·필수 정보는 `HeroCard`·`ListCard`와 공용 조각이다(`CardBody.tsx`, 티켓 20261001_2104 — 셋째 소비자가 생겨 공용으로 뺐다).
+ *   `titleInImage`로 제목 그룹을 빼는 판단은 이 파일에 둔다(이미지 모양만의 규칙이다).
  * - 안쪽 여백은 `Card`가 인라인 `style`로 주기 때문에 클래스로는 덮이지 않아 `HeroCard`와 같은 인라인 `style`로 0을 주고, 본문 24px은 본문 칸이 가진다.
  * - 눌림·hover를 안쪽에 더하지 않는다(`CardFrame`의 링크가 가진 `.jam-press` 하나뿐이다). `overflow-hidden`은 `Card`에만 걸어 포커스 윤곽선이 잘리지 않게 한다.
  * - `--text-body-sm`은 서비스에서 14px이 아니라 16px이다. 필수 정보 14px은 `--text-small`이다.
@@ -23,43 +24,19 @@ import CardImageSlot from './CardImageSlot'
  */
 
 export default function SquareCard({ view }: { view: ImageCardView }) {
-  const facts = view.facts ?? []
   const hasTitleGroup = !view.titleInImage
 
   return (
     <Card tone="inverse" className="overflow-hidden" style={{ padding: 0 }}>
       <CardImageSlot view={view} ratio="square" />
 
-      <div className="flex flex-col gap-[var(--spacing-12)] p-[var(--spacing-24)]">
+      <CardBody>
         <CardChipRow view={{ resource: view.resource, label: view.label, regionLabel: view.regionLabel, rarity: view.rarity }} />
 
-        {hasTitleGroup && (
-          <div>
-            <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text-inverse line-clamp-2 break-keep break-words">
-              {view.title}
-            </h3>
-            {view.subtitle && (
-              <p className="mt-[var(--spacing-4)] text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse/60 line-clamp-2 break-keep break-words">
-                {view.subtitle}
-              </p>
-            )}
-          </div>
-        )}
+        {hasTitleGroup && <CardTitleGroup title={view.title} subtitle={view.subtitle} />}
 
-        {/* 필수 정보 — 아이콘·불릿 없이 글자로, 한 줄에 하나씩. 자르지 않고 줄바꿈한다(말줄임 없음). 기간·보상은 사용자가 가장 먼저 찾는 값이라 옅게 하지 않는다 */}
-        {facts.length > 0 && (
-          <div>
-            {facts.map((line, index) => (
-              <p
-                key={index}
-                className="text-[length:var(--text-small)] leading-[var(--leading-small)] font-bold text-text-inverse break-keep break-words"
-              >
-                {line}
-              </p>
-            ))}
-          </div>
-        )}
-      </div>
+        <CardFacts facts={view.facts} />
+      </CardBody>
     </Card>
   )
 }
