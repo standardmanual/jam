@@ -281,7 +281,7 @@ group by 1 order by 1;
 - 이벤트는 **집계 목적으로만** 저장한다. 개인 식별자는 저장하지 않는다(결정 4-6).
 - 저장: `today_card_events`(마이그레이션 183) — 카드 ID·기록 시점 유형 ID·기록 시점에 그려진 모양(`card_shape`, 마이그레이션 206)·이벤트 종류·후속 행동 내용만 담는다. 유저 식별자 컬럼이 없다. 그려진 모양의 판정은 [home-feed/PRD.md](../home-feed/PRD.md) §9가 정본이다.
 - 기록 API: `POST /api/today/events`(`jam-web/src/app/api/today/events/route.ts`). 로그인 세션이 있어야 받되 유저 ID는 저장·로그하지 않는다(`jam-web/src/lib/today/events.ts`). 유저 ID는 빈도 제한(분당 60건, 초과 시 429) 판정에만 인스턴스 메모리에서 쓰고 그 밖에는 참조하지 않는다. 카드가 존재하고 `is_active`이며 노출 기간(`starts_at`~`ends_at`) 안일 때만 기록을 받고, 아니면 400으로 거부한다(`assertCardExposable`, 티켓 20260924_0111).
-- 클라이언트: `TodayCardTracker`(`jam-web/src/app/(main)/TodayCardTracker.tsx`)가 홈 카드 `<Link>`를 감싸 `IntersectionObserver`로 노출을, 클릭으로 열람을 보고한다. 노출은 **세션당 카드당 1회**로 억제한다(`sessionStorage`). `ranking_list` 레이아웃은 클릭이 행별 링크(유저 프로필)에서 일어나므로 카드 단위 클릭은 세지 않고 노출만 추적한다. 기사 상세 화면(`/today/[id]`)과 본문 끝 CTA 버튼에는 계측이 없다. 기사 열람은 홈 카드의 `click`으로만 센다. 전송 방식·노출 기준 비율 같은 화면 쪽 세부는 [home-feed/PRD.md](../home-feed/PRD.md) §9가 정본이다.
+- 클라이언트: `TodayCardTracker`(`jam-web/src/components/today/TodayCardTracker.tsx`)가 홈 카드 `<Link>`를 감싸 `IntersectionObserver`로 노출을, 클릭으로 열람을 보고한다. 노출은 **세션당 카드당 1회**로 억제한다(`sessionStorage`). `ranking_list` 레이아웃은 클릭이 행별 링크(유저 프로필)에서 일어나므로 카드 단위 클릭은 세지 않고 노출만 추적한다. 기사 상세 화면(`/today/[id]`)과 본문 끝 CTA 버튼에는 계측이 없다. 기사 열람은 홈 카드의 `click`으로만 센다. 전송 방식·노출 기준 비율 같은 화면 쪽 세부는 [home-feed/PRD.md](../home-feed/PRD.md) §9가 정본이다.
 - 조회 API: `GET /api/admin/today/metrics?from=&to=`(어드민 자동화 읽기 토큰, `requireAdminRead`) — 유형 ID×이벤트 건수와 유형별 열람률(click/impression)(`types`), 그려진 모양별 건수와 열람률(`byShape`, `card_shape`가 NULL이면 `unknown`)을 반환한다.
 
 ## 10. 전략 변경안 양식 (주간 리포트 「전략 변경안」 절)

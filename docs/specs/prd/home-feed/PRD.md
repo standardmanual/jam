@@ -8,7 +8,6 @@ related:
 code:
   - "jam-web/src/app/(main)/page.tsx"
   - "jam-web/src/app/(main)/TodayCardStack.tsx"
-  - "jam-web/src/app/(main)/TodayCardTracker.tsx"
   - "jam-web/src/app/(main)/TodayStatusStrip.tsx"
   - "jam-web/src/components/today"
   - "jam-web/src/app/(main)/OnboardingQuestCard.tsx"
@@ -351,7 +350,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 - 기사 상세 화면·CTA 버튼·오늘의 현황 스트립은 이 계측 대상이 아니다.
 - 어드민 투데이의 미리보기(날짜 미리보기 모달, 카드 폼의 「홈 화면 미리보기」)는 계측 대상이 아니다. 미리보기는 표시 데이터에 계측 정보(`tracking`)를 싣지 않고 새 틀(`TodayCard`)로 그려서 `TodayCardTracker`와 카드 링크(랭킹 카드는 순위 행 링크 포함)가 없고, 노출·클릭 요청과 GA 이벤트가 나가지 않으며 눌러도 이동하지 않는다. 홈은 `tracking`을 싣고 그려 계측이 그대로 동작한다. `TodayCardStack`의 `preview` prop은 어드민이 더는 쓰지 않는다(조각 b7에서 지운다).
 
-근거: `jam-web/src/app/(main)/TodayCardTracker.tsx`, `jam-web/src/lib/today/cardEventClient.ts`(`todayCardClickParams`)·`events.ts`, `jam-web/src/app/api/today/events/route.ts`, `jam-web/src/app/api/admin/today/metrics/route.ts`
+근거: `jam-web/src/components/today/TodayCardTracker.tsx`, `jam-web/src/lib/today/cardEventClient.ts`(`todayCardClickParams`)·`events.ts`, `jam-web/src/app/api/today/events/route.ts`, `jam-web/src/app/api/admin/today/metrics/route.ts`
 
 ## 10. 데이터
 

@@ -16,7 +16,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/app/(main)/TodayCardTracker', () => ({
+vi.mock('@/components/today/TodayCardTracker', () => ({
   default: (props: {
     cardId: string
     contentTypeId?: string | null

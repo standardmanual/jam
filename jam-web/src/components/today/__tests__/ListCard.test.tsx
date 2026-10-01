@@ -18,7 +18,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/app/(main)/TodayCardTracker', () => ({
+vi.mock('@/components/today/TodayCardTracker', () => ({
   default: ({ cardId, trackClick, children }: { cardId: string; trackClick?: boolean; children: ReactNode }) => (
     <div data-tracker={cardId} data-track-click={String(trackClick ?? true)}>
       {children}
