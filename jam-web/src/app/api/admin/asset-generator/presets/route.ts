@@ -32,7 +32,7 @@ import type { Json } from '@/types/database.generated'
  */
 
 const MAX_NAME_LENGTH = 60
-const VALID_STAGE_RATIOS: StageRatio[] = ['1:1', '4:5', '9:16']
+const VALID_STAGE_RATIOS: StageRatio[] = ['1:1', '4:5', '9:16', '16:9']
 
 // DB·스토리지 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
 const LIST_ERROR_MESSAGE = '프리셋 목록을 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'

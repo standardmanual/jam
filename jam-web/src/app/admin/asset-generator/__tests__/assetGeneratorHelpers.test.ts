@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ImageLayerConfig, OverlayLayerConfig, TextLayerConfig } from '@/lib/asset-generator'
+import type { ImageLayerConfig, OverlayLayerConfig, StageRatio, TextLayerConfig } from '@/lib/asset-generator'
 import {
   INITIAL_RIBBON_LAYER,
   buildExportFileName,
@@ -17,6 +17,7 @@ import {
   moveImageLayer,
   removeImageLayer,
   resolveStageSize,
+  STAGE_RATIO_OPTIONS,
   SYSTEM_DEFAULT_FONT,
 } from '../assetGeneratorHelpers'
 
@@ -63,6 +64,24 @@ describe('resolveStageSize (티켓 20260924_2156, 원본 applyAspect 302줄과 �
   it('9:16은 720 × 1280 (반올림)', () => {
     expect(resolveStageSize('9:16')).toEqual({ width: 720, height: 1280 })
   })
+
+  it('16:9는 1280 × 720 (티켓 20261001_1202)', () => {
+    expect(resolveStageSize('16:9')).toEqual({ width: 1280, height: 720 })
+  })
+
+  it('목록에 없는 비율은 9:16으로 보정하지 않고 오류를 낸다', () => {
+    expect(() => resolveStageSize('3:2' as StageRatio)).toThrow('지원하지 않는 스테이지 비율')
+  })
+})
+
+describe('STAGE_RATIO_OPTIONS (티켓 20261001_1202)', () => {
+  it('네 비율을 이 순서로 보여주고, 값이 모두 스테이지 크기로 해석된다', () => {
+    expect(STAGE_RATIO_OPTIONS.map((opt) => opt.value)).toEqual(['1:1', '4:5', '9:16', '16:9'])
+    for (const opt of STAGE_RATIO_OPTIONS) {
+      const { width, height } = resolveStageSize(opt.value)
+      expect(Math.max(width, height)).toBe(1280)
+    }
+  })
 })
 
 describe('computeEffectiveStartColor (PRD §6 컬러 규칙)', () => {
@@ -108,6 +127,11 @@ describe('buildExportFileName (원본 fileName 503줄과 동일해야 한다)', 
   it('비율의 콜론을 x로 바꾸고 타임스탬프·확장자를 붙인다', () => {
     const date = new Date(2026, 8, 24, 9, 5, 3) // 2026-09-24 09:05:03 (로컬 시각)
     expect(buildExportFileName('4:5', 'png', date)).toBe('jam-asset_4x5_20260924-090503.png')
+  })
+
+  it('16:9도 같은 규칙으로 16x9가 된다', () => {
+    const date = new Date(2026, 9, 1, 9, 5, 3)
+    expect(buildExportFileName('16:9', 'png', date)).toBe('jam-asset_16x9_20261001-090503.png')
   })
 })
 

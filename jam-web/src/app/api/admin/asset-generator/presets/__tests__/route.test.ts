@@ -566,9 +566,33 @@ describe('POST — 입력 경계(티켓 20260926_0201)', () => {
   })
 
   it('허용 목록에 없는 stageRatio는 400', async () => {
-    const res = await POST(postReq(formWith({ stageRatio: '16:9' })))
+    const res = await POST(postReq(formWith({ stageRatio: '3:2' })))
     expect(res.status).toBe(400)
     expect(fromMock).not.toHaveBeenCalled()
+  })
+
+  it('stageRatio 16:9는 받아들여 stage_ratio로 저장한다(티켓 20261001_1202)', async () => {
+    presetsBuilder = makeQueryBuilder({
+      data: { id: 'new-preset-id', name: '프리셋 A', stage_ratio: '16:9', created_at: 't1', updated_at: 't1' },
+      error: null,
+    })
+    fromMock.mockImplementation(() => presetsBuilder)
+
+    const res = await POST(postReq(formWith({ stageRatio: '16:9' })))
+    expect(res.status).toBe(200)
+    expect((presetsBuilder.insertPayload as { stage_ratio: string }).stage_ratio).toBe('16:9')
+  })
+
+  it('기존 세 비율(1:1·4:5·9:16)도 계속 받아들인다', async () => {
+    for (const stageRatio of ['1:1', '4:5', '9:16']) {
+      presetsBuilder = makeQueryBuilder({
+        data: { id: 'new-preset-id', name: '프리셋 A', stage_ratio: stageRatio, created_at: 't1', updated_at: 't1' },
+        error: null,
+      })
+      fromMock.mockImplementation(() => presetsBuilder)
+      const res = await POST(postReq(formWith({ stageRatio })))
+      expect(res.status).toBe(200)
+    }
   })
 
   it('layers가 JSON이 아니면 400', async () => {
