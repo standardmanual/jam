@@ -605,7 +605,8 @@ POST /api/combine { recipe_id: string, item_ids: string[] }  (item_ids 1~10개, 
 
 3. combineRecipeAttempt — 지정한 레시피 하나만 검증한다(전체 레시피 스캔 없음)
    - item_ids에 중복이 있거나 상한을 넘으면 → invalid_count
-   - 레시피가 없으면 → recipe_not_found
+   - 레시피가 없거나 공개 시각이 아직 지나지 않았으면 → recipe_not_found
+     (공개 전 레시피는 없는 레시피와 같다. 판정은 lib/combine/visibility.ts의 isRecipeReleased)
    - 투입한 개체를 내 인벤토리에서 조회한다(아이템북에 꽂히지 않았고 드랍되지 않은 것만).
      하나라도 못 찾으면 → items_not_found
    이 세 경우는 소각도 포인트 지급도 없다.
@@ -639,6 +640,7 @@ combination_recipes {
   id, name,
   reward_points: integer          -- 성공 시 지급 포인트(0이면 미지급)
   reward_badge_ids: UUID[]        -- 성공 시 확정 지급하는 아이템배지
+  valid_from: timestamptz | null  -- 공개 시각(null이면 처음부터 공개). 종료 시각은 없다
 }
 combination_recipe_slots {
   recipe_id, slot_order,
@@ -649,6 +651,10 @@ combine_policy { fail_reward_points: integer }  -- 미매칭 시 지급하는 �
 ```
 
 레시피당 슬롯은 2~10개이고 아이템 슬롯이 1개 이상 있어야 한다(`recipe-payload.ts`).
+
+공개 시각(`valid_from`)이 지나지 않은 레시피는 일반 유저에게 없는 레시피와 같다. `/combine` 화면은
+공개된 레시피만 내려 주고(`filterReleasedRecipes`), 믹스 시도는 재료를 소각하기 전에
+`recipe_not_found`로 거절한다. 레시피를 내릴 때는 삭제한다(종료 시각 없음).
 
 ---
 
@@ -1128,7 +1134,7 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | `item_books` | 아이템북 정의 (tribe_id, reward_badge_id, is_active) | 001 |
 | `poi` | 관심 지점 (위치, 반경, linked_badge_id, osm_id) | 001 |
 | `tribes` | 트라이브 정의 | 014, 152(리네임) |
-| `combination_recipes` | 조합 레시피 (ingredient_badge_ids, result_badge_id, success_rate) | 011 |
+| `combination_recipes` | 조합 레시피 (name, reward_points, reward_badge_ids, valid_from) | 011, 174, 175, 204 |
 | `missions` | 미션 정의 (type, condition_json, starts/ends_at, max_completions) | 011 |
 | `user_mission_participations` | 미션 참가 기록 | 012 |
 | `user_mission_completions` | 미션 완료 기록 | 011 |

@@ -131,6 +131,7 @@ export const DEMO_MIX_RECIPE: RecipeWithSlots = {
   name: '살롱의 장물 시세',
   reward_points: 20,
   reward_badge_ids: [CATNIP_BUNDLE_ID],
+  valid_from: null,
   created_at: '2026-01-01T00:00:00.000Z',
   slots: [
     {

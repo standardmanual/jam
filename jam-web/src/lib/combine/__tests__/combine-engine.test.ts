@@ -4,7 +4,8 @@
  * 검증 대상:
  *  1) 아이템 슬롯 대응 + 조건 슬롯(액티비티·체크인) 보유 → reward_points·reward_badge_ids 전부 지급
  *  2) 슬롯 하나라도 미충족 → 실패로 처리되고 **아이템만 소각**되며 실패 로그가 1건 쌓인다
- *  3) 존재하지 않는 recipe_id → recipe_not_found로 거부(소각 없음)
+ *  3) 존재하지 않는 recipe_id → recipe_not_found로 거부(소각 없음). 공개 시각(valid_from)이 아직
+ *     지나지 않은 레시피도 같다(티켓 20261001_1157) — 소각·포인트 지급 없이 실패 이력 1건
  *  4) 전체 레시피 스캔이 사라졌으므로 선택되지 않은 레시피가 매칭되지 않는다
  *  5) 성공 기록(티켓 20261001_0631) — 성공 갈래에서만 `record_combine_success` RPC를 1회 부른다(빈손 성공 포함).
  *     소각 전 실패·`no_recipe_match`는 성공 기록을 남기지 않고, RPC 오류·예외가 나도 응답과 보상은 그대로다
@@ -28,6 +29,8 @@ interface RecipeStub {
   id: string
   reward_points: number
   reward_badge_ids: string[]
+  /** 공개 시각 — null이면 처음부터 공개(마이그레이션 204) */
+  valid_from: string | null
   created_at: string
 }
 
@@ -220,6 +223,7 @@ function recipe(overrides: Partial<RecipeStub> = {}): RecipeStub {
     id: 'recipe-1',
     reward_points: 0,
     reward_badge_ids: [REWARD],
+    valid_from: null,
     created_at: '2026-09-10T00:00:00.000Z',
     ...overrides,
   }
@@ -405,6 +409,49 @@ describe('선택된 레시피가 존재하지 않음 (티켓 20260917_1427)', ()
     expect(stub.destroyedItemIds).toEqual([])
     expect(stub.failLogs).toHaveLength(1)
     expect(stub.failLogs[0].fail_reason).toBe('recipe_not_found')
+  })
+
+  it('공개 시각이 미래인 레시피는 recipe_not_found — 재료 소각·포인트 지급 없이 실패 이력 1건만 남긴다 (티켓 20261001_1157)', async () => {
+    // 슬롯이 완전히 충족되고 보상도 있는 레시피라도 공개 전이면 없는 레시피와 같다.
+    const futureAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    stub.recipes = [recipe({ reward_points: 500, valid_from: futureAt })]
+    stub.slots = itemSlots()
+    stub.failRewardPoints = 50
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result).toEqual({ success: false, reason: 'recipe_not_found', pointsAwarded: 0 })
+    expect(stub.destroyedItemIds).toEqual([])
+    expect(stub.callOrder).toEqual([]) // 소각(release_inventory_slots)·지급·성공 기록 RPC 모두 호출되지 않는다
+    expect(awardPointsMock).not.toHaveBeenCalled()
+    expect(stub.grantedBadgeIds).toEqual([])
+    expect(stub.failLogs).toHaveLength(1)
+    expect(stub.failLogs[0].fail_reason).toBe('recipe_not_found')
+    expect(stub.failLogs[0].points_awarded).toBe(0)
+  })
+
+  it('공개 시각이 해석되지 않는 레시피도 recipe_not_found로 거절한다(fail-closed)', async () => {
+    stub.recipes = [recipe({ valid_from: 'not-a-date' })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result).toEqual({ success: false, reason: 'recipe_not_found', pointsAwarded: 0 })
+    expect(stub.destroyedItemIds).toEqual([])
+    expect(stub.callOrder).toEqual([])
+  })
+
+  it('공개 시각이 과거인 레시피는 정상으로 믹스된다 (티켓 20261001_1157)', async () => {
+    const pastAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    stub.recipes = [recipe({ reward_points: 120, valid_from: pastAt })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.pointsAwarded).toBe(120)
+    expect(stub.destroyedItemIds).toEqual([ITEM_1, ITEM_2])
+    expect(stub.failLogs).toHaveLength(0)
   })
 
   it('다른 레시피(recipe-2)의 슬롯 구성은 선택되지 않은 레시피라 검증 대상이 아니다', async () => {

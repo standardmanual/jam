@@ -457,9 +457,11 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 `name`(TEXT, nullable — 레시피 표시용 이름, 마이그레이션 175. 믹서 화면 상단 요약·레시피
 탐색 목록에 노출. 기존 레시피는 NULL일 수 있어 화면은 "이름 없는 레시피" 폴백을 쓴다.
 어드민 폼은 신규/수정 시 입력을 필수로 요구), `reward_points`, `reward_badge_ids[]`(아이템
-배지만). 재료 배열 컬럼(`ingredient_badge_ids`·`required_badge_ids`)과 비공개 레시피 컬럼
-(`is_public`·`hint_text`)은 제거됐다 — 모든 레시피는 공개고, 재료는 아래
-`combination_recipe_slots`로 옮겨졌다.
+배지만), `valid_from`(TIMESTAMPTZ, nullable — 공개 시각, 마이그레이션 204·티켓 20261001_1157. NULL이면
+처음부터 공개, 값이 있으면 그 시각부터 공개하며 공개 전 레시피는 일반 유저에게 없는 레시피와 같다.
+종료 시각 칸은 없다 — 내릴 때는 삭제한다). 재료 배열 컬럼(`ingredient_badge_ids`·`required_badge_ids`)과
+비공개 레시피 컬럼(`is_public`·`hint_text`)은 제거됐다 — 재료는 아래 `combination_recipe_slots`로
+옮겨졌다.
 
 ### combination_recipe_slots (신규, 티켓 20260917_1427)
 레시피당 슬롯 2~10개(최소 1개는 아이템 타입). `slot_order`, `badge_type`(item/activity/checkin,

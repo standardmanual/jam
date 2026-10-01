@@ -10,6 +10,7 @@ import type {
 import CombineClient, { type RecipeWithSlots } from './CombineClient'
 import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
+import { filterReleasedRecipes } from '@/lib/combine/visibility'
 
 export default async function CombinePage() {
   const supabase = await createClient()
@@ -29,9 +30,11 @@ export default async function CombinePage() {
   if (invError) console.error('[combine/page] inventory 조회 실패', invError)
   if (recipesError) console.error('[combine/page] combination_recipes 조회 실패', recipesError)
 
-  // 티켓 20260917_1427(비공개 레시피 스펙 아웃): 모든 레시피를 공개로 취급한다.
+  // 티켓 20260917_1427(비공개 레시피 스펙 아웃): 공개 시각이 지난 레시피만 공개로 취급한다.
+  // 공개 전 레시피는 목록·슬롯·보상 미리보기에서 모두 빠진다(티켓 20261001_1157). 슬롯·배지
+  // 조회는 아래 publicRecipeIds를 쓰므로 이 필터를 그대로 따라온다.
   const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
-  const publicRecipeRows = recipes
+  const publicRecipeRows = filterReleasedRecipes(recipes)
   const publicRecipeIds = publicRecipeRows.map((r) => r.id)
 
   // 유저 화면이 레시피 선택형 플로우로 바뀌면서, 레시피는 슬롯 목록과 슬롯별 후보 배지
