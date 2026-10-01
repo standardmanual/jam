@@ -12,6 +12,8 @@ import { computeUserExposureTags } from './exposure'
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
 import { isMissionExposed, resolveMissionVisibility, type MissionVisibilityInput } from '@/lib/missions/visibility'
 import { computeRankingModeResult, type RankingBoardResult } from '@/lib/ranking/rankingDataSource'
+import { computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
+import { resourceOfTemplate } from './cardView'
 /**
  * 순수 함수라 서버 전용 의존이 없는 `targetHref.ts`로 옮겼다(티켓 20260911_1454) — 이 파일
  * 안(`getTodayCards` 등)에서 쓰기 위해 값으로 import하고, 기존 호출부가 그대로
@@ -43,6 +45,28 @@ export interface ResolvedBadge {
   earned: boolean
 }
 
+/**
+ * 미션 소개·자동 카드의 표시 데이터(`toCardView`)에 필요한 미션 값 (티켓 20261001_1357).
+ * 화면 변환에 쓰는 값만 담는다 — 미션 행 전체를 카드에 싣지 않는다.
+ */
+export interface ResolvedMission {
+  starts_at: string
+  /** NULL = 상시 미션(종료일 없음) */
+  ends_at: string | null
+  reward_points: number | null
+  /** `reward_badge_ids`의 개수(보상 줄 「배지 N개」) */
+  reward_badge_count: number
+  /** 옛 미션 소개 카드의 「이미지에 제목 있음」 판정에 쓴다(커버 주소와 같으면 제목이 이미지 안에 있다) */
+  image_url: string | null
+}
+
+/** 컬렉션 소식 카드의 표시 데이터에 필요한 컬렉션 값 (티켓 20261001_1357) */
+export interface ResolvedCollection {
+  name: string
+  /** 컬렉션 목록과 같은 기준(`computeBookCompletion`의 분모)으로 센 아이템 수. 개수를 읽지 못했으면 NULL */
+  item_count: number | null
+}
+
 /** resolveTargetHref 를 적용한 카드 (UI에서 바로 링크로 사용) */
 export type TodayCardWithHref = TodayCardRow & {
   resolved_href: string
@@ -54,6 +78,14 @@ export type TodayCardWithHref = TodayCardRow & {
    * 랭킹모드를 찾지 못하면 null.
    */
   resolved_ranking: RankingBoardResult | null
+  /**
+   * 미션 소개 카드와 미션을 가리키는 자동 카드(`mission_id`가 있는 `progress_nudge`·`location_trend`)의 미션 값.
+   * 표시 데이터(`toCardView`)가 기간·보상 줄을 만드는 데 쓴다. 그 밖의 카드이거나 미션을 찾지 못하면 null,
+   * 손으로 만든 카드(어드민 미리보기 등)에는 없을 수 있다(티켓 20261001_1357).
+   */
+  resolved_mission?: ResolvedMission | null
+  /** 컬렉션 소식 카드(`itembook_milestone`)의 컬렉션 값. 그 밖의 카드이거나 컬렉션을 찾지 못하면 null (티켓 20261001_1357) */
+  resolved_collection?: ResolvedCollection | null
 }
 
 /**
@@ -87,14 +119,21 @@ export async function getTodayCards(
   }
 
   const allCards = (data ?? []) as TodayCardRow[]
+  // 표시 데이터에 필요한 미션·컬렉션 값은 카드 수와 상관없이 한 번에 모아 읽는다(티켓 20261001_1357).
+  // 미션 행은 아래 노출 판정(`filterMissionSpotlightCards`)도 함께 쓰므로 두 번 읽지 않는다.
+  const missionsById = await fetchMissionsById(supabase, missionIdsToResolve(allCards))
   // 20260825_028: 미션 소개 카드도 미션 목록과 같은 노출 규칙을 따른다 —
   // 이미 완료했거나 아직 열리지 않은 미션은 오늘 카드로도 권하지 않는다.
-  const cards = await filterMissionSpotlightCards(userId, allCards)
-  const badgesById = await fetchBadgesById(supabase, cards.flatMap((c) => c.badge_ids ?? []), userId)
-  const rankingByModeId = await fetchRankingBoardData(supabase, cards)
+  const cards = await filterMissionSpotlightCards(userId, allCards, missionsById)
+  const [badgesById, rankingByModeId, collectionsById] = await Promise.all([
+    fetchBadgesById(supabase, cards.flatMap((c) => c.badge_ids ?? []), userId),
+    fetchRankingBoardData(supabase, cards),
+    fetchCollectionsById(supabase, collectionIdsToResolve(cards)),
+  ])
 
   return cards.map((card) => {
     const ranking = card.ranking_mode_id ? rankingByModeId.get(card.ranking_mode_id) : undefined
+    const mission = card.mission_id ? missionsById.get(card.mission_id) : undefined
     return {
       ...card,
       resolved_href: resolveTargetHref(
@@ -105,6 +144,9 @@ export async function getTodayCards(
       ),
       resolved_badges: (card.badge_ids ?? []).map((id) => badgesById.get(id)).filter((b): b is ResolvedBadge => Boolean(b)),
       resolved_ranking: ranking?.result ?? null,
+      resolved_mission:
+        mission && resourceNeedsMission(card) ? toResolvedMission(mission) : null,
+      resolved_collection: card.item_book_id ? (collectionsById.get(card.item_book_id) ?? null) : null,
     }
   })
 }
@@ -148,12 +190,128 @@ export async function fetchRankingBoardData(
   return map
 }
 
+/** 미션 행 중 이 파일이 읽는 칸 — 노출 판정(`MissionVisibilityInput`)과 표시 값을 함께 쓴다 */
+type FetchedMission = MissionVisibilityInput & {
+  starts_at: string
+  ends_at: string | null
+  reward_points: number | null
+  reward_badge_ids: string[] | null
+  image_url: string | null
+  exposure_mode: import('@/types/database').MissionExposureMode | null | undefined
+  exposure_at: string | null | undefined
+}
+
+type ServiceClient = ReturnType<typeof createServiceClient>
+
+/**
+ * 표시 데이터가 미션 값을 쓰는 카드인지 — 미션 소개 카드, 그리고 미션을 가리키는 자동 카드.
+ * 자원 대응(`resourceOfTemplate`)을 따른다(그 밖의 템플릿은 `mission_id`가 있어도 기간·보상 줄이 없다).
+ */
+function resourceNeedsMission(card: TodayCardRow): boolean {
+  if (!card.mission_id) return false
+  const resource = resourceOfTemplate(card.template_type)
+  return resource === 'mission' || resource === 'auto'
+}
+
+/** 미션 값을 읽어야 하는 카드들의 미션 id (중복 제거) */
+function missionIdsToResolve(cards: TodayCardRow[]): string[] {
+  return [...new Set(cards.filter(resourceNeedsMission).map((c) => c.mission_id as string))]
+}
+
+/** 컬렉션 값을 읽어야 하는 카드들의 컬렉션 id (중복 제거) — 컬렉션 소식 카드만 */
+function collectionIdsToResolve(cards: TodayCardRow[]): string[] {
+  return [
+    ...new Set(
+      cards
+        .filter((c) => c.item_book_id && resourceOfTemplate(c.template_type) === 'collection')
+        .map((c) => c.item_book_id as string)
+    ),
+  ]
+}
+
+function toResolvedMission(m: FetchedMission): ResolvedMission {
+  return {
+    starts_at: m.starts_at,
+    ends_at: m.ends_at ?? null,
+    reward_points: m.reward_points ?? null,
+    reward_badge_count: m.reward_badge_ids?.length ?? 0,
+    image_url: m.image_url ?? null,
+  }
+}
+
+/**
+ * 미션 행을 id 목록으로 한 번에 읽는다(카드마다 읽으면 홈 한 번 로드에 N번 왕복한다).
+ * export하는 이유: 한 번에 읽는지(조회 횟수)를 시험이 확인한다.
+ */
+export async function fetchMissionsById(supabase: ServiceClient, missionIds: string[]): Promise<Map<string, FetchedMission>> {
+  const map = new Map<string, FetchedMission>()
+  if (missionIds.length === 0) return map
+
+  // 판정에 필요한 컬럼을 이름으로 명시하지 않고 select('*')를 쓴다 — 게이트 미션 컬럼을
+  // 더하는 마이그레이션 135가 아직 실행되지 않은 환경에서 없는 컬럼을 명시하면 쿼리 자체가
+  // 실패해 오늘 카드가 통째로 사라진다(참가 API가 같은 이유로 select('*')를 쓴다).
+  const { data, error } = await supabase.from('missions').select('*').in('id', missionIds)
+  if (error) {
+    console.error('[fetchMissionsById] 미션 조회 오류:', error.message)
+    return map
+  }
+  for (const m of (data ?? []) as unknown as FetchedMission[]) map.set(m.id, m)
+  return map
+}
+
+/**
+ * 컬렉션 이름과 아이템 수를 id 목록으로 한 번에 읽는다(컬렉션 한 개당 2번이 아니라 전체 2번).
+ * 아이템 수는 컬렉션 목록 화면과 같은 기준(`computeBookCompletion`의 분모 — 드랍 제외 배지를 뺀 수)이다.
+ * 조회가 실패해도 카드 노출은 막지 않는다 — 이름을 못 읽으면 그 컬렉션은 빠지고, 수만 못 읽으면 `item_count`가 null이다.
+ */
+export async function fetchCollectionsById(supabase: ServiceClient, bookIds: string[]): Promise<Map<string, ResolvedCollection>> {
+  const map = new Map<string, ResolvedCollection>()
+  if (bookIds.length === 0) return map
+
+  const [booksResult, badgesResult] = await Promise.all([
+    supabase.from('item_books').select('id, name').in('id', bookIds),
+    supabase
+      .from('badges')
+      .select('id, item_book_id, type, drop_excluded')
+      .in('item_book_id', bookIds)
+      .eq('type', 'item')
+      .is('deleted_at', null),
+  ])
+  if (booksResult.error) {
+    console.error('[fetchCollectionsById] 컬렉션 조회 오류:', booksResult.error.message)
+    return map
+  }
+
+  let completionByBook: ReturnType<typeof computeBookCompletion> | null = null
+  if (badgesResult.error) {
+    console.error('[fetchCollectionsById] 컬렉션 아이템 조회 오류:', badgesResult.error.message)
+  } else {
+    completionByBook = computeBookCompletion((badgesResult.data ?? []) as CompletionBadgeInput[], new Set(), {
+      types: ['item'],
+    })
+  }
+
+  for (const book of (booksResult.data ?? []) as { id: string; name: string }[]) {
+    map.set(book.id, {
+      name: book.name,
+      item_count: completionByBook ? (completionByBook.get(book.id)?.total ?? 0) : null,
+    })
+  }
+  return map
+}
+
 /**
  * mission_spotlight 카드 중 유저에게 노출하면 안 되는 미션(완료/잠금/숨김)을 제외한다.
  * 판정은 미션 목록·상세·참가 API와 동일한 `resolveMissionVisibility`를 쓴다 (티켓 20260825_028).
  * mission_id가 없는 카드(/missions 목록으로 이동)는 그대로 둔다.
+ *
+ * 미션 행은 호출부가 미리 읽어 넘긴다(`fetchMissionsById`) — 표시 데이터용 조회와 같은 읽기를 쓰기 위해서다.
  */
-async function filterMissionSpotlightCards(userId: string, cards: TodayCardRow[]): Promise<TodayCardRow[]> {
+async function filterMissionSpotlightCards(
+  userId: string,
+  cards: TodayCardRow[],
+  missionsById: ReadonlyMap<string, FetchedMission>,
+): Promise<TodayCardRow[]> {
   const missionIds = [...new Set(
     cards
       .filter((c) => c.template_type === 'mission_spotlight' && c.mission_id)
@@ -161,17 +319,7 @@ async function filterMissionSpotlightCards(userId: string, cards: TodayCardRow[]
   )]
   if (missionIds.length === 0) return cards
 
-  const supabase = createServiceClient()
-  // 판정에 필요한 컬럼을 이름으로 명시하지 않고 select('*')를 쓴다 — 게이트 미션 컬럼을
-  // 더하는 마이그레이션 135가 아직 실행되지 않은 환경에서 없는 컬럼을 명시하면 쿼리 자체가
-  // 실패해 오늘 카드가 통째로 사라진다(참가 API가 같은 이유로 select('*')를 쓴다).
-  const { data } = await supabase.from('missions').select('*').in('id', missionIds)
-  type SpotlightMission = MissionVisibilityInput & {
-    starts_at: string
-    exposure_mode: import('@/types/database').MissionExposureMode | null | undefined
-    exposure_at: string | null | undefined
-  }
-  const missions = (data ?? []) as unknown as SpotlightMission[]
+  const missions = missionIds.map((id) => missionsById.get(id)).filter((m): m is FetchedMission => Boolean(m))
   if (missions.length === 0) return cards
 
   // 관리자 수동 노출 제어(티켓 20260912_0139) — 게이트 판정보다 먼저 걸러진다.
