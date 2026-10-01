@@ -237,7 +237,7 @@ D2C 실물 패치, B2B 브랜드 스폰서십, 지자체 이벤트, SNS 연동, 
   무인 예약 루틴이 쓰는 `report`(주간·월간·배포 리포트)는
   `operations/reports/`가 설정의 `scope.exclude`에 있어 검사 대상 자체에서 빠지므로, 필드
   검사 등급과 무관하게 항상 통과한다.
-- 사용자 제출 트렌드 자료(`jam-doc/inbox/trends/`)는 검사 범위에서 빼지 않는다. 사용자는 본문만 쓰고, frontmatter
+- 사용자 제출 트렌드 자료(`jam-doc/inbox/trends/`, 사용법은 [그 폴더의 README](../../jam-doc/inbox/trends/README.md))는 검사 범위에서 빼지 않는다. 사용자는 본문만 쓰고, frontmatter
   (`type: research-note`·`description`·`tags`)와 파일 이름(`YYYY-MM-DD_제목.md`)은 카리나가 커밋할 때 맞춘다. 빠뜨리면
   필드 검사와 `.githooks/pre-commit` ⑩이 막는다. 승격 카드 폴더 `jam-doc/inbox/insights/`(`insight`, 비활성)와는 별개다.
   사용자 원문은 고치지 않으므로 `scripts/check-slop.mjs`의 검사 대상에서도 이 폴더를 뺀다(티켓 20260930_1518).

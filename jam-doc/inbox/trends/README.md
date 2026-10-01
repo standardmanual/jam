@@ -2,6 +2,9 @@
 type: index
 description: 사용자가 넣는 트렌드 자료 폴더의 사용법과 루틴이 읽는 규칙을 안내한다.
 status: active
+related:
+  - jam-doc/README.md
+  - .claude/skills/jam-work/references/scheduled-jobs.md
 ---
 
 # 사용자 트렌드 자료
