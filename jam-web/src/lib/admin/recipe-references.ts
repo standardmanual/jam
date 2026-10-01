@@ -1,31 +1,39 @@
 /**
- * 믹스 레시피(`combination_recipes` 테이블)를 가리키는 참조를 센다 (티켓 20260907_1138)
+ * 믹스 레시피(`combination_recipes` 테이블)를 가리키는 참조를 센다 (티켓 20260907_1138,
+ * 배지 조건 참조는 티켓 20261001_1200)
  *
- * ## 실제 스키마 재검증 결과 (2026-09-07)
+ * ## 실제 스키마 재검증 결과 (2026-09-07, 2026-10-01 갱신)
  * `poi-references.ts`와 같은 근거(마이그레이션 전체 grep — `recipe_id` 컬럼, `REFERENCES
- * combination_recipes` 패턴 + `database.generated.ts`의 Relationships 블록 대조)로 재확인한
- * 결과, **`combination_recipes.id`를 참조하는 테이블은 하나도 없다.**
+ * combination_recipes` 패턴 + `database.generated.ts`의 Relationships 블록 대조)로 확인한
+ * 결과, **`combination_recipes.id`를 FK로 참조하는 테이블은 하나도 없다.**
  *
  * `combination_recipes`는 `reward_badge_ids`로, `combination_recipe_slots`는
- * `allowed_badge_ids`로 **배지를 참조하는 방향**만 있고(마이그레이션 174, 티켓 20260917_1427
- * 에서 재료·보유 조건 배열이 슬롯 테이블로 이관됐다), 반대로 레시피 행을 가리키는 인바운드
- * FK나 uuid[] 참조는 존재하지 않는다.
+ * `allowed_badge_ids`로 **배지를 참조하는 방향**만 있다(마이그레이션 174, 티켓 20260917_1427
+ * 에서 재료·보유 조건 배열이 슬롯 테이블로 이관됐다).
  *
- * 그래서 이 파일은 `badge-references.ts`/`poi-references.ts`와 **같은 계약**
- * (`collect*References` → `blockingTotal`/`cascadeTotal`/`total`/`error`)을 유지하되,
- * 소스 목록이 **비어 있다** — 항상 "참조 없음" 경로를 탄다(티켓 20260907_1138 구현 계획
- * "가드 유틸은 만들되 참조 없음 경로만 타는 것도 정상"에 따른 결정).
+ * 다만 **FK가 아닌 느슨한 참조가 하나 있다** — 배지 조건 `badges.condition_json.
+ * recipe_first_success.recipe_id`(마이그레이션 199, 티켓 20261001_0631)다. 이 레시피를
+ * 지우면 아무도 얻을 수 없는 JAM! 배지가 남으므로, 삭제되지 않은(`deleted_at IS NULL`) 배지
+ * 중 이 값으로 레시피를 가리키는 것을 센다. 소스가 이것 하나뿐이라 `total`은 곧 «가리키는
+ * 배지 수»이고, 삭제 거부 문구(`recipeDeleteBlockedMessage`)도 그 전제다 — 소스를 늘리면 문구도
+ * 함께 고친다.
  *
- * ⚠️ 향후 `combination_recipes.id`를 가리키는 인바운드 FK/참조 컬럼이 새로 추가되면
- * `RECIPE_REFERENCE_SOURCES`에 그 소스를 추가하고 `collectRecipeReferences` 안의
- * 카운터 목록도 함께 늘려야 한다 — 이 파일이 그 시점의 단일 출처가 된다.
+ * `user_combine_success_logs.recipe_id`는 FK를 일부러 걸지 않았다(마이그레이션 200) —
+ * 레시피를 지워도 유저의 성공 횟수·최초 성공 기록은 남아야 하므로 가드 대상이 아니다.
+ *
+ * 이 파일은 `badge-references.ts`/`poi-references.ts`와 **같은 계약**(`collect*References`
+ * → `blockingTotal`/`cascadeTotal`/`total`/`error`)을 유지한다.
+ *
+ * ⚠️ 향후 `combination_recipes.id`를 가리키는 참조가 새로 추가되면 `RECIPE_REFERENCE_SOURCES`에
+ * 그 소스를 추가하고 `collectRecipeReferences`의 카운터도 함께 늘려야 한다 — 이 파일이 그
+ * 시점의 단일 출처가 된다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
 import type { RecipeDeletionCandidate } from './recipe-bulk'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
-export type RecipeReferenceKey = never
+export type RecipeReferenceKey = 'badges_recipe_first_success'
 
 export interface RecipeReferenceSource {
   key: RecipeReferenceKey
@@ -35,8 +43,15 @@ export interface RecipeReferenceSource {
   cascades: boolean
 }
 
-/** 실제 스키마 재검증 결과 — 인바운드 참조 없음(파일 상단 주석 참고). */
-export const RECIPE_REFERENCE_SOURCES: RecipeReferenceSource[] = []
+export const RECIPE_REFERENCE_SOURCES: RecipeReferenceSource[] = [
+  {
+    key: 'badges_recipe_first_success',
+    label: '레시피 최초 성공 배지',
+    location: "badges.condition_json->'recipe_first_success'->>'recipe_id'",
+    blocksDelete: true,
+    cascades: false,
+  },
+]
 
 export interface RecipeReferenceReport {
   blockingTotal: number
@@ -45,23 +60,38 @@ export interface RecipeReferenceReport {
   error: string | null
 }
 
+/** `badges` 조건 JSON에서 레시피 id를 꺼내는 PostgREST 경로(`badge-list-query.ts`와 같은 표기) */
+const BADGE_RECIPE_ID_PATH = 'condition_json->recipe_first_success->>recipe_id'
+
+/** `.in()` 한 번에 넣는 id 개수. 80 × uuid 37자 ≈ 3KB — URL 상한에 여유가 있다 */
+const REFERENCE_CHUNK = 80
+
 /**
  * 대상 레시피 집합을 가리키는 참조를 전부 센다. **아무것도 쓰지 않는다.**
  *
- * 현재는 `RECIPE_REFERENCE_SOURCES`가 비어 있어 즉시 0건을 반환한다 — 재검증 결과
- * `combination_recipes.id`를 가리키는 인바운드 참조가 없기 때문이다. `supabase` 인자는
- * 향후 소스가 추가될 때 즉시 querying이 가능하도록 시그니처를 `badge-references.ts`·
- * `poi-references.ts`와 맞춰 둔 것이다.
+ * 삭제되지 않은 배지 중 `recipe_first_success.recipe_id`가 대상 집합에 드는 것을 센다.
+ * 조회가 하나라도 실패하면 부분 카운트로 «참조 0건»이라 판정하지 않도록 `error`를 채워
+ * 돌려준다 — 호출부는 삭제를 막는다(fail-closed).
  */
 export async function collectRecipeReferences(
   supabase: ServiceClient,
   recipeIds: string[]
 ): Promise<RecipeReferenceReport> {
-  // 현재는 소스가 없어 인자를 쓰지 않는다 — 시그니처는 `badge-references.ts`·
-  // `poi-references.ts`와 맞춰 향후 소스가 추가될 때 그대로 querying에 쓸 수 있게 둔다.
-  void supabase
-  void recipeIds
-  return { blockingTotal: 0, cascadeTotal: 0, total: 0, error: null }
+  // 배지 조건의 recipe_id는 text로 비교되므로, 주소로 들어온 대문자 uuid도 소문자로 맞춰 센다.
+  const ids = recipeIds.map((id) => id.toLowerCase())
+  let badgeCount = 0
+  for (let i = 0; i < ids.length; i += REFERENCE_CHUNK) {
+    const { count, error } = await supabase
+      .from('badges')
+      .select('id', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .in(BADGE_RECIPE_ID_PATH, ids.slice(i, i + REFERENCE_CHUNK))
+    if (error) {
+      return { blockingTotal: 0, cascadeTotal: 0, total: 0, error: error.message }
+    }
+    badgeCount += count ?? 0
+  }
+  return { blockingTotal: badgeCount, cascadeTotal: 0, total: badgeCount, error: null }
 }
 
 export interface RecipeDeletionLookup {
@@ -125,7 +155,7 @@ export interface BadgeInRecipeReferenceReport {
  * reward_badge_ids`(둘 다 uuid[])에 남아 있는 레시피 수를 센다 (티켓 20260910_1515,
  * 슬롯 이관은 티켓 20260917_1427).
  *
- * `combination_recipes`가 레시피 행을 참조하는 인바운드 참조는 없지만(파일 상단 주석),
+ * 레시피 행을 가리키는 참조는 배지 조건 하나뿐이고(파일 상단 주석, `collectRecipeReferences`),
  * **반대 방향**(레시피/슬롯이 배지를 참조하는 방향)은 배열 컬럼이라 FK가 걸리지 않는다.
  * 그래서 소프트 삭제(`badges` PATCH)가 이 참조를 막지는 않되, 운영이 탐지할 수 있도록
  * 경고만 남긴다 — `badge-references.ts`가 하드 삭제 차단용으로 이미 세는 것과 같은 컬럼을
