@@ -41,6 +41,16 @@
  *   의도한 동작이다. 실제 첫 동기화가 나중에 일어나면 그때(이 옵션들 없이) 정상적으로
  *   한 번 전환·결산된다.
  *
+ * ## JAM! 행동 지표도 같은 배치에서 돌린다 (티켓 20261001_0634, 상위 20260930_1456)
+ * JAM! 행동 지표(`jamActionBadges.ts`의 `JAM_ACTION_CONDITION_KEYS` 전부)는 메인 엔진이 항상 fail 처리하는
+ * `external` 조건이라 `evaluateBadgesDetailed`로는 발급되지 않는다. 그래서 유저마다 메인 엔진 다음에
+ * `evaluateJamActionBadges`를 한 번 더 부른다 — 순서는 동기화(`sync.ts`)와 같다(메인 엔진 → JAM!).
+ * 부수효과는 위 정책과 같다: 피드는 억제(`silent`)하고 포인트는 정상 지급하며 dry-run은 아무것도 쓰지 않는다.
+ * 섀도우밴 차단은 dry-run에도 반영된다(`issueQualifyingBadges`가 게이트 뒤에서 dryRun을 가른다).
+ * 발급 기록의 `triggered_by`에는 `catalog_reevaluation:` 접두가 붙어 자연 발급과 구분된다.
+ * JAM! 알림은 호출부(`jamActionRoute.ts`·`sync.ts`)가 만들므로 이 배치는 알림을 만들지 않는다.
+ * 사용량 지표 6종(팔로워·팔로잉·동기화 횟수·연속 동기화·체크인 카테고리·체크인 목록)은 이 배치에 들어가지 않는다.
+ *
  * ## 무엇을 재사용하고 무엇을 새로 만들지 않았는가
  * 평가 로직은 전부 `evaluateBadgesDetailed` 한 곳에 있다 — 유저별로 `activities: []`를
  * 넘기면 내부에서 `getActivityHistory(anchor~)` 전체를 다시 읽어 평가하므로(=이미 있는
@@ -49,6 +59,7 @@
  */
 import type { createServiceClient } from '@/lib/supabase/server'
 import { evaluateBadgesDetailed } from './index'
+import { evaluateJamActionBadges, JAM_ACTION_CONDITION_KEYS } from './jamActionBadges'
 import type { BadgeRow } from '@/types/database'
 
 /** `strava_sync`·`admin_simulate`와 구분되는 재평가 전용 트리거 식별자 */
@@ -70,7 +81,14 @@ export interface ReevaluateUserResult {
   pointsAwarded: number
   /** 반복형 배지의 회차 카운터만 오른 건수 합계 — 발급이 아니므로 별도 집계 */
   counterIncrements: number
-  /** 이 유저 평가 중 예외가 발생했을 때만 채워진다. 다른 유저 처리는 계속된다 */
+  /** 위 `earnedCount` 가운데 JAM! 행동 지표 배지 수 — 운영자가 새 JAM! 배지의 몫만 따로 볼 수 있게 한다 */
+  jamActionEarnedCount: number
+  /** 위 `pointsAwarded` 가운데 JAM! 행동 지표 배지의 point_reward 합계 */
+  jamActionPointsAwarded: number
+  /**
+   * 이 유저 평가 중 예외가 발생했을 때만 채워진다. 다른 유저 처리는 계속된다.
+   * JAM! 지표 판정만 실패하면 `JAM! 지표: <메시지>` 형태이고 메인 엔진 결과는 그대로 남는다
+   */
   error?: string
 }
 
@@ -82,6 +100,12 @@ export interface ReevaluateCatalogResult {
   totalBadgesIssued: number
   totalPointsAwarded: number
   totalCounterIncrements: number
+  /** JAM! 행동 지표 배지를 1개 이상 (예정대로) 받은 유저 수 — `affectedUserCount`의 부분집합이 아니라 별도 집계다 */
+  jamActionAffectedUserCount: number
+  /** 위 `totalBadgesIssued` 가운데 JAM! 행동 지표 배지 수 */
+  totalJamActionBadgesIssued: number
+  /** 위 `totalPointsAwarded` 가운데 JAM! 행동 지표 배지의 point_reward 합계 */
+  totalJamActionPointsAwarded: number
   users: ReevaluateUserResult[]
 }
 
@@ -138,19 +162,54 @@ export async function reevaluateUsersForCatalog(
         forceFirstSyncGate: false,
         skipInitialSyncFlagUpdate: true,
       })
-      const pointsAwarded = earned.reduce((sum, b) => sum + (pointRewardById.get(b.id) ?? 0), 0)
       const counterIncrements = counted.reduce((sum, c) => sum + c.addedEarnCount, 0)
+
+      // JAM! 행동 지표 — 메인 엔진 다음에(동기화와 같은 순서) 별도 try/catch로 돌린다.
+      // 던져도 위 메인 엔진 결과는 유지하고 `error`에만 남긴다(다른 유저 처리도 계속된다).
+      // `evaluateJamActionBadges`는 지표 단위 계산 오류를 안에서 삼키므로 여기까지 올라오는 건
+      // 예기치 못한 예외(배지 조회 후 발급 경로 등)뿐이다.
+      let jamEarned: { id: string; name: string }[] = []
+      let jamError: string | undefined
+      try {
+        const jamRaw = await evaluateJamActionBadges(userId, JAM_ACTION_CONDITION_KEYS, supabase, {
+          dryRun,
+          silent: true,
+          triggeredByPrefix: CATALOG_REEVALUATION_TRIGGER,
+        })
+        // dry-run은 insert가 없어 보유 목록이 바뀌지 않는다 — 배지 하나가 JAM! 지표 키를 둘 이상 가졌다면
+        // 실제 실행에서는 첫 지표가 발급하고 둘째는 «이미 보유»로 건너뛰므로, 같은 배지는 한 번만 센다
+        jamEarned = [...new Map(jamRaw.map((b) => [b.id, b])).values()]
+      } catch (jamErr) {
+        const jamMessage = jamErr instanceof Error ? jamErr.message : String(jamErr)
+        console.error(`[reevaluateUsersForCatalog] JAM! 지표 평가 실패 — userId: ${userId}:`, jamErr)
+        jamError = `JAM! 지표: ${jamMessage}`
+      }
+
+      const jamActionPointsAwarded = jamEarned.reduce((sum, b) => sum + (pointRewardById.get(b.id) ?? 0), 0)
+      const allEarned = [...earned, ...jamEarned]
       users.push({
         userId,
-        earnedBadgeIds: earned.map((b) => b.id),
-        earnedCount: earned.length,
-        pointsAwarded,
+        earnedBadgeIds: allEarned.map((b) => b.id),
+        earnedCount: allEarned.length,
+        pointsAwarded: allEarned.reduce((sum, b) => sum + (pointRewardById.get(b.id) ?? 0), 0),
         counterIncrements,
+        jamActionEarnedCount: jamEarned.length,
+        jamActionPointsAwarded,
+        ...(jamError ? { error: jamError } : {}),
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error(`[reevaluateUsersForCatalog] 유저 평가 실패 — userId: ${userId}:`, err)
-      users.push({ userId, earnedBadgeIds: [], earnedCount: 0, pointsAwarded: 0, counterIncrements: 0, error: message })
+      users.push({
+        userId,
+        earnedBadgeIds: [],
+        earnedCount: 0,
+        pointsAwarded: 0,
+        counterIncrements: 0,
+        jamActionEarnedCount: 0,
+        jamActionPointsAwarded: 0,
+        error: message,
+      })
     }
   }
 
@@ -161,6 +220,9 @@ export async function reevaluateUsersForCatalog(
     totalBadgesIssued: users.reduce((sum, u) => sum + u.earnedCount, 0),
     totalPointsAwarded: users.reduce((sum, u) => sum + u.pointsAwarded, 0),
     totalCounterIncrements: users.reduce((sum, u) => sum + u.counterIncrements, 0),
+    jamActionAffectedUserCount: users.filter((u) => u.jamActionEarnedCount > 0).length,
+    totalJamActionBadgesIssued: users.reduce((sum, u) => sum + u.jamActionEarnedCount, 0),
+    totalJamActionPointsAwarded: users.reduce((sum, u) => sum + u.jamActionPointsAwarded, 0),
     users,
   }
 }
