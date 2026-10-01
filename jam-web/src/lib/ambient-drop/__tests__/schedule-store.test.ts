@@ -20,6 +20,24 @@ import {
   rescheduleAmbientDrop,
 } from '../scheduleStore'
 import { createFakeDb, uuid, type FakeDb, type Row } from './schedule-test-db'
+import {
+  BOOK_ENDING,
+  BOOK_LATE,
+  BOOK_LIVE,
+  BOOK_PRELAUNCH,
+  B_DELETED,
+  B_ENDING,
+  B_LATE,
+  B_LIVE,
+  B_NO_BOOK,
+  B_PRELAUNCH,
+  P1,
+  P2,
+  P_INACTIVE,
+  P_MISSING,
+  badge,
+  world,
+} from './schedule-fixtures'
 
 vi.mock('@/lib/notifications/batch/shared', async () => (await import('./schedule-test-db')).sharedMock)
 
@@ -29,71 +47,10 @@ const NOW = new Date('2026-10-01T03:00:00.000Z')
 const AT = '2026-10-05T09:00:00+09:00'
 const AT_ISO = '2026-10-05T00:00:00.000Z'
 
-const P1 = uuid(1)
-const P2 = uuid(2)
-const P_INACTIVE = uuid(3)
-const P_MISSING = uuid(4)
-
-const BOOK_LIVE = uuid(21)
-/** 지금은 공개 전이지만 예정 시각(10-05 09:00 KST)에는 공개돼 있다 */
-const BOOK_PRELAUNCH = uuid(22)
-/** 예정 시각보다 늦게 공개된다 */
-const BOOK_LATE = uuid(23)
-/** 예정 시각 전에 기간이 끝난다 */
-const BOOK_ENDING = uuid(24)
-
-const B_LIVE = uuid(11)
-const B_PRELAUNCH = uuid(12)
-const B_LATE = uuid(13)
-const B_ENDING = uuid(14)
-const B_DELETED = uuid(15)
-const B_NO_BOOK = uuid(16)
-
 const SCHEDULE_ID = uuid(900)
 
 let db: FakeDb
 const sb = () => db.client as Parameters<typeof createAmbientDropSchedule>[0]
-
-function badge(id: string, itemBookId: string | null, overrides: Row = {}): Row {
-  return {
-    id,
-    type: 'item',
-    rarity: 'common',
-    deleted_at: null,
-    item_book_id: itemBookId,
-    valid_from: null,
-    valid_until: null,
-    ...overrides,
-  }
-}
-
-function world(): Record<string, Row[]> {
-  return {
-    ambient_drop_config: [{ id: 1, auto_enabled: true, batch_size: 30, max_active_per_poi: 1 }],
-    poi_categories: [{ slug: 'cafe' }],
-    poi: [
-      { id: P1, is_active: true, category: 'cafe' },
-      { id: P2, is_active: true, category: 'cafe' },
-      { id: P_INACTIVE, is_active: false, category: 'cafe' },
-    ],
-    poi_drops: [{ id: 'drop-existing', poi_id: P1, source: 'system', is_available: true }],
-    item_books: [
-      { id: BOOK_LIVE, is_active: true, valid_from: null, valid_until: null },
-      { id: BOOK_PRELAUNCH, is_active: true, valid_from: '2026-10-03T00:00:00+00:00', valid_until: null },
-      { id: BOOK_LATE, is_active: true, valid_from: '2026-10-10T00:00:00+00:00', valid_until: null },
-      { id: BOOK_ENDING, is_active: true, valid_from: null, valid_until: '2026-10-04T00:00:00+00:00' },
-    ],
-    badges: [
-      badge(B_LIVE, BOOK_LIVE),
-      badge(B_PRELAUNCH, BOOK_PRELAUNCH),
-      badge(B_LATE, BOOK_LATE),
-      badge(B_ENDING, BOOK_ENDING),
-      badge(B_DELETED, BOOK_LIVE, { deleted_at: '2026-09-01T00:00:00+00:00' }),
-      badge(B_NO_BOOK, null),
-    ],
-    ambient_drop_schedules: [],
-  }
-}
 
 beforeEach(() => {
   db = createFakeDb(world())
