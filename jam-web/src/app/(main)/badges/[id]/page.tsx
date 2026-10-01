@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import SafeImage from '@/components/SafeImage'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { pickLaunchedItemBook } from '@/lib/itembook/visibility'
 import { BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserCheckinBadgeEarnRow } from '@/types/database'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import TopNav from '@/components/ui/TopNav'
@@ -236,7 +237,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         .eq('id', badgeRow.item_book_id)
         .maybeSingle()
       if (itemBookError) console.error('[badges/[id]/page] item_books 조회 실패', itemBookError)
-      itemBook = itemBookRaw as ItemBookRow | null
+      // 공개 전 컬렉션은 카드를 그리지 않는다 — 링크 대상 `/collections/[id]`가 404이기 때문이다
+      // (판정은 visibility.ts, 티켓 20261001_1205). 기간이 끝난 컬렉션은 계속 보인다.
+      itemBook = pickLaunchedItemBook(itemBookRaw as ItemBookRow | null, new Date().toISOString())
     }
   }
 

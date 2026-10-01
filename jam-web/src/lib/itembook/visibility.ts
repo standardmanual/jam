@@ -7,7 +7,7 @@
  *
  * | 판정 | 조건 | 쓰는 곳 |
  * |---|---|---|
- * | 공개됨(화면용) | `is_active` 그리고 (`valid_from`이 비었거나 지금 이전) | `/api/itembooks`, `/collections/[id]`, 장착 `/api/itembooks/[id]/slot` |
+ * | 공개됨(화면용) | `is_active` 그리고 (`valid_from`이 비었거나 지금 이전) | `/api/itembooks`, `/collections/[id]`, 장착 `/api/itembooks/[id]/slot`, `/badges` 컬렉션 탭, 배지 상세의 컬렉션 카드 |
  * | 노출 중(드랍·완성용) | 공개됨 그리고 (`valid_until`이 비었거나 지금 이후) | 앰비언트 드랍, 완성 판정(`checker.ts`), 완성 가능 소식(`completable.ts`) |
  *
  * 순수 판정(`isItemBook*`)은 이미 읽어 온 행을 거를 때, 쿼리 헬퍼(`apply*ItemBookFilter`)는 DB에서
@@ -31,6 +31,11 @@ export function isItemBookLaunched(book: ItemBookVisibilityFields, nowIso: strin
   if (!book.is_active) return false
   if (book.valid_from && new Date(book.valid_from).getTime() > new Date(nowIso).getTime()) return false
   return true
+}
+
+/** 이미 읽어 온 컬렉션 1건이 공개됐을 때만 돌려준다 — 공개 전이거나 없으면 null. 배지 상세의 컬렉션 카드용 */
+export function pickLaunchedItemBook<T extends ItemBookVisibilityFields>(book: T | null, nowIso: string): T | null {
+  return book && isItemBookLaunched(book, nowIso) ? book : null
 }
 
 /** 노출 중 — 공개됨이고 종료 시각도 지나지 않았다. 드랍·완성 판정용 */

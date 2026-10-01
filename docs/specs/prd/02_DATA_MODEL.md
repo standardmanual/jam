@@ -254,7 +254,7 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 
 | 판정 | 조건 | 쓰는 곳 |
 |---|---|---|
-| 공개됨(화면용) | `is_active` 그리고 (`valid_from`이 비었거나 지금 이전) | `/api/itembooks`, `/collections/[id]`(공개되지 않았으면 404), 장착 `POST /api/itembooks/[id]/slot`(공개되지 않았으면 404) |
+| 공개됨(화면용) | `is_active` 그리고 (`valid_from`이 비었거나 지금 이전) | `/api/itembooks`, `/collections/[id]`(공개되지 않았으면 404), 장착 `POST /api/itembooks/[id]/slot`(공개되지 않았으면 404), `/badges` 컬렉션 탭(공개 전 컬렉션은 목록·진행도에서 빠짐), 배지 상세의 컬렉션 카드(공개 전이면 카드를 그리지 않음) |
 | 노출 중(드랍·완성용) | 공개됨 그리고 (`valid_until`이 비었거나 지금 이후) | 앰비언트 드랍(`BADGE_ENGINE_UNIFIED.md` §3.12), 완성 판정(`checkItemBookCompletion`), 완성 가능 소식(`findCompletableItemBooks`) |
 
 어드민 컬렉션 목록의 상태 필터(노출 중·기간 밖·비활성)는 어드민 전용 분류라 이 판정을 쓰지 않는다. 어드민에게만 보이는
