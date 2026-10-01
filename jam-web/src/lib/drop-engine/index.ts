@@ -123,7 +123,7 @@ async function validateTribeConstants(tribeIds: Set<string>): Promise<void> {
 // 드랍 구조 데이터 (활성 북·배지·보유·인접 일괄 조회)
 // ────────────────────────────────────────────────────────────
 
-type DropBadge = Pick<
+export type DropBadge = Pick<
   BadgeRow,
   'id' | 'name' | 'image_url' | 'rarity' | 'drop_weight' | 'valid_from' | 'valid_until' | 'condition_json' | 'item_book_id' | 'point_reward' | 'drop_excluded'
 >
@@ -136,7 +136,7 @@ type DropBadge = Pick<
  */
 type DropBadgeFromDb = Omit<DropBadge, 'condition_json'> & { condition_json: Json }
 
-interface DropStructure {
+export interface DropStructure {
   /** 활성 북 id → tribe id */
   tribeOfBook: Map<string, string>
   /** tribe id → 이름 (피드 이벤트 payload용) */
@@ -173,7 +173,7 @@ export function buildBadgeIdsOfBook(
   return badgeIdsOfBook
 }
 
-async function fetchDropStructure(
+export async function fetchDropStructure(
   userId: string,
   lastTribeId: string | null,
   activities: NormalizedActivity[]
@@ -289,7 +289,7 @@ async function fetchDropStructure(
 // 배지 선정 (Layer 2·3)
 // ────────────────────────────────────────────────────────────
 
-interface PickResult {
+export interface PickResult {
   badge: DropBadge
   tribeId: string
   bookId: string
@@ -308,7 +308,7 @@ function missingOfBook(structure: DropStructure, bookId: string): string[] {
   return (structure.badgeIdsOfBook.get(bookId) ?? []).filter((id) => !structure.owned.has(id))
 }
 
-function selectBadge(
+export function selectBadge(
   policy: DropPolicy,
   structure: DropStructure,
   state: UserDropStateRow,
@@ -401,7 +401,7 @@ function weightedPick<T extends { drop_weight: number }>(items: T[], rand: () =>
 }
 
 /** 마지막 조각 pity 카운터 갱신 — 이번 드랍이 발생한 트라이브의 1개 남은 북들 */
-function updateLastPiecePity(
+export function updateLastPiecePity(
   structure: DropStructure,
   state: UserDropStateRow,
   tribeId: string,
@@ -424,7 +424,7 @@ function updateLastPiecePity(
 // 상태 관리
 // ────────────────────────────────────────────────────────────
 
-async function getDropState(userId: string): Promise<UserDropStateRow> {
+export async function getDropState(userId: string): Promise<UserDropStateRow> {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('user_drop_state')
@@ -469,7 +469,7 @@ async function saveDropState(state: UserDropStateRow): Promise<void> {
 }
 
 /** 섀도우밴을 rarity 상한으로 적용: 차단된 rarity는 common으로 강등, common도 차단이면 null */
-async function applyShadowBanCap(userId: string, rarity: BadgeRarity): Promise<BadgeRarity | null> {
+export async function applyShadowBanCap(userId: string, rarity: BadgeRarity): Promise<BadgeRarity | null> {
   const [banLevel, policy] = await Promise.all([getUserBanLevel(userId), getAbusingPolicy()])
   if (shouldAllowDrop(rarity, banLevel, policy)) return rarity
   if (rarity !== 'common' && shouldAllowDrop('common', banLevel, policy)) {

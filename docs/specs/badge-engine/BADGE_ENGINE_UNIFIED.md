@@ -1778,6 +1778,24 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 > 반대로 중복 id 제거와 소프트 삭제 제외로 `earnedBadges`가 더 짧아질 수도 있다.
 > 두 값을 같은 의미로 쓰면 안 된다.
 
+### 3.7.2 어드민 시뮬레이터의 아이템 드랍 (2026-10-01, 티켓 20261001_1219)
+
+`/api/admin/simulate`의 아이템 드랍은 **엔진 판정을 그대로 따른다.** 예전에는 등급별 누적 문턱
+0.40/0.65/0.75/0.80(v1 상수)으로 따로 굴려 `drop_policy` 값(기본 0.6/0.28/0.09/0.03)과 어긋났다.
+지금은 `previewItemDrop`(`src/lib/drop-engine/preview.ts`)이 현재 `drop_policy`·유저 드랍 상태·
+드랍 구조·섀도우밴 수준을 읽고, 순수 함수 `planItemDrops`가 `tryItemDrop`과 같은 순서로 판정한다
+(일일 카운터 리셋 → 복귀·주간 첫 활동·고강도 → 드랍 개수 → 슬롯 확인 → 등급 추첨 → 섀도우밴 상한 →
+맥락 오버라이드 → 트라이브·컬렉션·배지 선택 → 메모리 안 상태 갱신).
+
+- **DB에 아무것도 쓰지 않는다.** 응답은 드랍 목록(`itemDrops`: 0~2개, 배지·등급·트라이브·컬렉션·보너스 여부)과
+  빠진 이유(`itemDropSkips`: `slot_full`·`shadow_ban_blocked`·`no_candidate`)를 돌려준다.
+- **적용 모드(`dryRun: false`)**는 고른 배지를 인벤토리에만 넣는다. 유저 드랍 상태(연속 common·pity·일일
+  카운터)·결산 소식·엔진 판정 로그는 남기지 않아 시험 계정의 실제 드랍 흐름을 흔들지 않는다.
+- **섀도우밴 등급 상한은 엔진대로 적용**하고, 등급이 바뀌거나 막히면 그 이유를 결과에 보인다. (POI 발급이
+  시뮬레이터를 밴 밖에 두는 것과는 별개다 — §2의 `poi_id` 행 참조.)
+- **유지 규칙**: `tryItemDrop`의 판정 순서를 고치면 `planItemDrops`도 함께 고친다. 두 곳이 같은 난수열에서
+  같은 결과를 내는지 `src/lib/drop-engine/__tests__/preview.test.ts`가 대조한다.
+
 ### 3.8 유지되는 v1 로직
 
 활성 컬렉션 필터(`item_books.is_active`), 유효기간(valid_from/until), `isDroppableForActivity`(monthly_km 등 누적조건 배지 드랍 제외 가드), 인벤토리 슬롯, 섀도우밴, 피드 이벤트.

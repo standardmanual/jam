@@ -185,9 +185,10 @@ GPX 파일:  hangang_ride.gpx
 ■ POI 매칭 (경로 내 통과 POI)
   📍 뚝섬 한강공원 (bike_route) — 반경 50m 통과 확인
 
-■ 아이템 드랍
-  🎲 롤 결과: rare (확률 25%)
-  🏷️ 서울 야경 패치 (rare) — 드랍됨
+■ 아이템 드랍 (2개)
+  🏷️ 서울 야경 패치 (rare) — 야간 라이더 · 서울 야경 컬렉션
+  🏷️ 한강 물결 스티커 (common) 보너스 드랍 — 강변 클럽 · 한강 컬렉션
+  (드랍이 빠지면 「보너스 드랍 없음: 인벤토리 슬롯이 가득 차 드랍되지 않음」처럼 이유를 보인다)
 
 ■ 아이템북 완성
   📖 서울 라이더 컬렉션 — 완성! (reward: 골드 라이더 배지 발급)
@@ -382,7 +383,19 @@ Response: {
   badgesEarned: { id: string; name: string; rarity: string; reason: string }[]
   badgesMissed: { id: string; name: string; reason: string; actual: string; required: string }[]
   poisMatched: { id: string; name: string }[]
-  itemDrop: { badgeName: string; rarity: string } | null
+  // 아이템 드랍은 드랍 엔진 판정(previewItemDrop)을 그대로 따른다 — BADGE_ENGINE_UNIFIED §3.7.2
+  itemDrops: {                 // 0~2개 (확정 1 + 보너스 1)
+    badgeName: string
+    rarity: string | null      // 뽑힌 배지의 등급
+    rolledRarity: string       // 추첨 등급
+    cappedRarity: string       // 섀도우밴 상한 적용 등급
+    tribeName: string
+    bookName: string
+    isBonus: boolean
+    isLastPiece: boolean
+  }[]
+  itemDropSkips: { attempt: number; reason: 'slot_full' | 'shadow_ban_blocked' | 'no_candidate'; rolledRarity: string | null }[]
+  itemDropUnavailable: 'no_drop_structure' | 'no_inventory' | null
   itemBooksCompleted: { bookName: string; rewardBadgeName: string | null }[]
   applied: boolean
 }
