@@ -91,7 +91,7 @@ interface OpsBalanceItemWarningsProps {
   lines: readonly BalanceLine[]
   /** 편집 중이면(`editNode !== null`) 「고치는 중이에요」 안내를 더한다. */
   editing?: boolean
-  /** 「밸런스 규칙 보기」 링크를 보인다. 설정 화면(S7, 조각 B)이 생기기 전에는 숨긴다. */
+  /** 「밸런스 규칙 보기」 링크를 보인다(새 탭으로 설정 화면 S7의 그 규칙 카드 `#rule-<규칙 키>`로 간다. 기획 상세가 켠다). */
   showRuleLink?: boolean
 }
 

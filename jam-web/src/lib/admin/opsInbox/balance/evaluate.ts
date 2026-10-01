@@ -248,7 +248,10 @@ function liveItemsOf(items: readonly BalanceItemInput[]): BalanceItemInput[] {
   return items.filter((item) => !BALANCE_SKIPPED_STATUSES.includes(item.status)).sort((a, b) => a.position - b.position)
 }
 
-/** 평가가 서비스 상태에서 읽어야 하는 보상 배지 ID와 계열 이름을 모은다(`loadBalanceState`의 입력). */
+/**
+ * 평가가 서비스 상태에서 읽어야 하는 보상 배지 ID와 계열 이름을 모으고, 평가할 신규 개방 항목이 있는지 알린다(`loadBalanceState`의 입력).
+ * 신규 개방 항목이 없는 묶음은 컬렉션·다른 묶음 조회가 필요 없다.
+ */
 export function collectBalanceReferences(items: readonly BalanceItemInput[]): BalanceReferences {
   const live = liveItemsOf(items)
   const rewardBadgeIds = new Set<string>()
@@ -262,7 +265,11 @@ export function collectBalanceReferences(items: readonly BalanceItemInput[]): Ba
       if (family) familyKeys.add(family)
     }
   }
-  return { rewardBadgeIds: [...rewardBadgeIds], familyKeys: [...familyKeys] }
+  return {
+    rewardBadgeIds: [...rewardBadgeIds],
+    familyKeys: [...familyKeys],
+    hasLaunches: live.some((item) => item.kind === 'collection_launch'),
+  }
 }
 
 /** `resource.family_key`. 없거나 문자열이 아니거나 비어 있으면 계열이 없는 배지다(R7이 보지 않는다). */
@@ -307,11 +314,15 @@ function isLadderCandidate(item: BalanceItemInput): boolean {
   return !badgeKind.ok || badgeKind.value === 'count_badge'
 }
 
-/** 시간 축 위의 신규 개방 하나. 종료 시각을 못 읽으면 끝이 없는 개방으로 본다. */
+/**
+ * 시간 축 위의 신규 개방 하나. 종료 시각을 못 읽으면 끝이 없는 개방으로 본다. `inDb`는 컬렉션이 이미 만들어져 DB 컬렉션 수(R1의 `books`)에
+ * 들어 있다는 뜻이다 — R1은 이런 개방을 항목에서 다시 더하지 않고, R2·R3은 만들어졌든 아니든 모두 센다.
+ */
 interface Launch {
   startMs: number
   endMs: number | null
   own: boolean
+  inDb: boolean
 }
 
 function parseOrNull(iso: string | null): number | null {
@@ -407,16 +418,17 @@ export function evaluateBundleBalance(
   const launches = live.filter((item) => item.kind === 'collection_launch')
   const times = new Map(launches.map((item) => [item.id, { start: readItemTime(item, 'starts_at'), end: readItemTime(item, 'ends_at') }]))
 
-  // 시간 축: 이 묶음의 신규 개방(시작을 읽을 수 있는 것)과 다른 묶음의 신규 개방.
+  // 시간 축: 이 묶음의 신규 개방(시작을 읽을 수 있는 것)과 다른 묶음의 신규 개방. R2·R3은 모두 세고(만들어진 것도 이미 한 개방이다),
+  // R1은 `inDb`가 아닌 것만 더한다(만들어진 컬렉션은 DB에서 이미 센다).
   const timeline: Launch[] = []
   for (const item of launches) {
     const { start, end } = times.get(item.id)!
-    if (start.ok) timeline.push({ startMs: start.value, endMs: end.ok ? end.value : null, own: true })
+    if (start.ok) timeline.push({ startMs: start.value, endMs: end.ok ? end.value : null, own: true, inDb: false })
   }
   if (state.otherLaunches.ok) {
     for (const other of state.otherLaunches.data) {
       const startMs = parseOrNull(other.startsAt)
-      if (startMs !== null) timeline.push({ startMs, endMs: parseOrNull(other.endsAt), own: false })
+      if (startMs !== null) timeline.push({ startMs, endMs: parseOrNull(other.endsAt), own: false, inDb: other.resourceCreated })
     }
   }
 
@@ -431,7 +443,7 @@ export function evaluateBundleBalance(
       else {
         const at = start.value
         const dbOpen = countOpenCollectionsAt(state.books.data, new Date(at).toISOString())
-        const pending = timeline.filter((l) => l.startMs <= at && (l.endMs === null || l.endMs >= at)).length
+        const pending = timeline.filter((l) => !l.inDb && l.startMs <= at && (l.endMs === null || l.endMs >= at)).length
         const total = dbOpen + pending
         if (total > r1.value.max) {
           warn(

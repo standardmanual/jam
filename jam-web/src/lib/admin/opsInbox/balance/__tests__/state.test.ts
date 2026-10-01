@@ -2,13 +2,16 @@
  * 밸런스 평가가 읽는 서비스 상태 (티켓 20260930_1459 조각 A)
  *
  * 서비스 클라이언트는 메모리 안의 가짜 DB로 바꾼다(실 DB에 접속하지 않는다). 지키는 것:
- * - 다른 묶음의 신규 개방 선별: 시험 묶음·지금 평가하는 묶음·반려/취소/실패·자원이 이미 만들어진 항목은 센 것에서 뺀다
+ * - 다른 묶음의 신규 개방 선별: 시험 묶음·지금 평가하는 묶음·반려/취소/실패는 센 것에서 뺀다. 자원이 이미 만들어진 항목은 빼지 않고
+ *   `resourceCreated`로 표시한다(R2·R3은 센다, R1은 DB 컬렉션에서 이미 세므로 더하지 않는다. 티켓 20260930_1459 조각 B)
+ * - 평가할 `collection_launch` 항목이 없는 묶음은 컬렉션·다른 묶음 조회를 건너뛴다
+ * - `loadOpenCollectionsNow`: S7이 쓰는 열린 컬렉션 총수(실패는 ok:false)
  * - 수정본이 있으면 수정본의 시각을 읽는다
  * - 조회는 select 계열만 부르고, 한 조회가 실패하면 그 상태만 ok:false이고 나머지는 이어진다
  * - 1000행을 넘어도 끝까지 받는다
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { loadBalanceState, selectOtherLaunches } from '../state'
+import { loadBalanceState, loadOpenCollectionsNow, selectOtherLaunches } from '../state'
 
 type Row = Record<string, unknown>
 
@@ -81,7 +84,8 @@ beforeEach(() => {
 })
 
 const CURRENT = 'bundle-current'
-const NONE = { rewardBadgeIds: [], familyKeys: [] }
+const NONE = { rewardBadgeIds: [], familyKeys: [], hasLaunches: true }
+const NO_LAUNCH = { rewardBadgeIds: [], familyKeys: [], hasLaunches: false }
 
 function launchRow(id: string, bundleId: string, overrides: Row = {}) {
   return {
@@ -114,16 +118,26 @@ describe('selectOtherLaunches', () => {
     expect(selectOtherLaunches(rows, bundles, 'b-sample').map((l) => l.itemId)).toEqual(['real'])
   })
 
-  it('반려·취소·실패 항목과 자원이 이미 만들어진 항목은 뺀다', () => {
+  it('반려·취소·실패 항목은 뺀다', () => {
     const rows = [
       launchRow('rejected', 'b-real', { status: 'rejected' }),
       launchRow('cancelled', 'b-real', { status: 'cancelled' }),
       launchRow('failed', 'b-real', { status: 'failed' }),
-      launchRow('created', 'b-real', { created_resource: { item_book_id: 'x' } }),
       launchRow('approved', 'b-real', { status: 'approved' }),
       launchRow('live', 'b-real', { status: 'live' }),
     ]
     expect(selectOtherLaunches(rows, bundles, CURRENT).map((l) => l.itemId)).toEqual(['approved', 'live'])
+  })
+
+  it('자원이 이미 만들어진 항목도 목록에 넣고 resourceCreated로 표시한다(R2·R3이 센다, R1은 DB에서 센다)', () => {
+    const rows = [
+      launchRow('created', 'b-real', { status: 'live', created_resource: { item_book_id: 'x' } }),
+      launchRow('pending', 'b-real', { status: 'approved', created_resource: null }),
+    ]
+    expect(selectOtherLaunches(rows, bundles, CURRENT).map((l) => [l.itemId, l.resourceCreated])).toEqual([
+      ['created', true],
+      ['pending', false],
+    ])
   })
 
   it('수정본의 시각이 우선이고, 읽을 수 없으면 열을 보고, 그것도 없으면 null이다', () => {
@@ -170,6 +184,38 @@ describe('loadBalanceState', () => {
     expect(state.otherLaunches.ok && state.otherLaunches.data.map((l) => l.itemId)).toEqual(['real'])
   })
 
+  it('자원이 만들어진 다른 묶음 항목도 읽는다(resourceCreated로 표시)', async () => {
+    db.tables.ops_bundles = [{ id: 'b-real', is_sample: false }]
+    db.tables.ops_bundle_items = [
+      { ...launchRow('done', 'b-real', { status: 'live', created_resource: { item_book_id: 'x' } }), kind: 'collection_launch' },
+      { ...launchRow('todo', 'b-real', { status: 'approved' }), kind: 'collection_launch' },
+    ]
+    const state = await loadBalanceState(client, { currentBundleId: CURRENT, references: NONE })
+    expect(state.otherLaunches.ok && state.otherLaunches.data.map((l) => [l.itemId, l.resourceCreated])).toEqual([
+      ['done', true],
+      ['todo', false],
+    ])
+  })
+
+  it('평가할 collection_launch 항목이 없으면 컬렉션·다른 묶음 조회를 건너뛴다(배지 조회는 따로 한다)', async () => {
+    db.tables.item_books = [{ is_active: true, valid_from: null, valid_until: null }]
+    db.tables.badges = []
+    const state = await loadBalanceState(client, {
+      currentBundleId: CURRENT,
+      references: { rewardBadgeIds: [], familyKeys: ['run_count'], hasLaunches: false },
+    })
+    expect(db.calls.filter((c) => c.startsWith('item_books') || c.startsWith('ops_bundles') || c.startsWith('ops_bundle_items'))).toEqual([])
+    expect(db.calls).toContain('badges.select')
+    expect(state.books).toEqual({ ok: false })
+    expect(state.otherLaunches).toEqual({ ok: false })
+    expect(state.familyBadges.ok).toBe(true)
+  })
+
+  it('신규 개방 항목이 없고 배지 참조도 없으면 어떤 조회도 하지 않는다', async () => {
+    await loadBalanceState(client, { currentBundleId: CURRENT, references: NO_LAUNCH })
+    expect(db.calls).toEqual([])
+  })
+
   it('보상 배지 포인트와 같은 계열 기존 배지를 읽는다(삭제된 배지는 뺀다, UUID가 아닌 ID는 묻지 않는다)', async () => {
     const id = '11111111-1111-4111-8111-111111111111'
     db.tables.badges = [
@@ -181,7 +227,7 @@ describe('loadBalanceState', () => {
     ]
     const state = await loadBalanceState(client, {
       currentBundleId: CURRENT,
-      references: { rewardBadgeIds: [id, 'not-a-uuid'], familyKeys: ['run_count'] },
+      references: { rewardBadgeIds: [id, 'not-a-uuid'], familyKeys: ['run_count'], hasLaunches: true },
     })
     expect(state.badgePoints).toEqual({ ok: true, data: { [id]: 30 } })
     expect(state.familyBadges).toEqual({
@@ -225,8 +271,33 @@ describe('loadBalanceState', () => {
 
   it('select 계열만 부른다', async () => {
     db.tables.badges = []
-    await loadBalanceState(client, { currentBundleId: CURRENT, references: { rewardBadgeIds: ['11111111-1111-4111-8111-111111111111'], familyKeys: ['x'] } })
+    await loadBalanceState(client, { currentBundleId: CURRENT, references: { rewardBadgeIds: ['11111111-1111-4111-8111-111111111111'], familyKeys: ['x'], hasLaunches: true } })
     expect(db.calls.length).toBeGreaterThan(0)
+    expect(db.calls.filter((c) => /\.(insert|update|upsert|delete)$/.test(c))).toEqual([])
+  })
+})
+
+describe('loadOpenCollectionsNow', () => {
+  const NOW = '2026-10-01T03:00:00.000Z'
+
+  it('지금 노출 중인 컬렉션 수를 센다(활성이어도 공개 전·종료 후는 뺀다)', async () => {
+    db.tables.item_books = [
+      { is_active: true, valid_from: null, valid_until: null },
+      { is_active: true, valid_from: '2026-09-01T00:00:00Z', valid_until: '2026-12-01T00:00:00Z' },
+      { is_active: true, valid_from: '2026-10-20T00:00:00Z', valid_until: null }, // 아직 안 열림
+      { is_active: true, valid_from: '2026-08-01T00:00:00Z', valid_until: '2026-09-15T00:00:00Z' }, // 이미 닫힘
+      { is_active: false, valid_from: null, valid_until: null },
+    ]
+    expect(await loadOpenCollectionsNow(client, NOW)).toEqual({ ok: true, data: 2 })
+  })
+
+  it('조회가 실패하면 던지지 않고 ok:false다', async () => {
+    db.errors.item_books = 'books down'
+    expect(await loadOpenCollectionsNow(client, NOW)).toEqual({ ok: false })
+  })
+
+  it('select만 부른다', async () => {
+    await loadOpenCollectionsNow(client, NOW)
     expect(db.calls.filter((c) => /\.(insert|update|upsert|delete)$/.test(c))).toEqual([])
   })
 })
