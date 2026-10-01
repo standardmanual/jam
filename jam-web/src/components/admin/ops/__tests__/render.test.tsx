@@ -407,7 +407,7 @@ describe('OpsFormatErrors', () => {
 describe('OpsBundleWorkspace — 셸', () => {
   const props = { bundleId: 'bundle-1', bundleFormatErrors: [] as string[], decisions: [SUBMIT] }
 
-  it('표시줄·탭 4개(개수)·목록·상세·미리보기 빈 틀을 그린다', () => {
+  it('표시줄·탭 5개(개수)·목록·상세·미리보기 빈 틀을 그린다', () => {
     const items = [
       makeItem({ id: 'a', status: 'reviewing' }),
       makeItem({ id: 'b', position: 1, status: 'rejected', formatErrors: ['x: 틀려요.'] }),
@@ -416,6 +416,7 @@ describe('OpsBundleWorkspace — 셸', () => {
     expect(out).toContain('전체')
     expect(out).toContain('결정할 것')
     expect(out).toContain('멈춘 것')
+    expect(out).toContain('밸런스 경고') // 5번째 탭(밸런스 결과를 넘기지 않으면 0)
     expect(out).toContain('미리보기는 곧 열려요')
     expect(out).toContain('aria-current="step"')
     // 처음 선택: 결정 전 첫 항목(a)

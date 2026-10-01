@@ -18,16 +18,28 @@ import {
 } from '@/lib/admin/opsInbox/itemView'
 import { readDiff } from '@/lib/admin/opsInbox/edit'
 import type { OpsDecisionRecord, OpsItemRecord } from '@/lib/admin/opsInbox/query'
+import {
+  AGENT_BALANCE_TITLE,
+  TOOL_CHECK_TITLE,
+  openCollectionsNowText,
+  toolCheckText,
+} from '@/lib/admin/opsInbox/balance/messages'
+import { isBalanceSkippedStatus } from '@/lib/admin/opsInbox/balance/rules'
+import type { ItemBalanceInfo } from '@/lib/admin/opsInbox/balance/view'
 import { OpsKindIcon } from './opsIcons'
 import { OpsDiffLines } from './OpsDiffLines'
 import { OpsStatusBadge } from './OpsStatusBadge'
 import { OpsItemFormatErrors } from './OpsFormatErrors'
+import { OpsBalanceItemWarnings } from './OpsBalanceWarnings'
 
 /**
  * 항목 상세 카드(티켓 20260930_1817, 채원 화면 설계 「항목 목록의 한 행」의 상세 카드 ①~⑦).
  *
- * ① 종류·상태 칩·패턴 번호·손잡이 값 ② 형식 오류 ③ 유저가 겪는 것 ④ 내용(문안·색·공개/종료 시각·대상·연결)
- * ⑤ 검수·판정 ⑥ 제출 원본(접힘) ⑦ 결정 기록.
+ * ① 종류·상태 칩·패턴 번호·손잡이 값 ② 형식 오류 ②′ 밸런스 경고 ③ 유저가 겪는 것 ④ 내용(문안·색·공개/종료 시각·대상·연결)
+ * ⑤ 검수·판정(에이전트가 적은 밸런스 판정과 툴 점검) ⑥ 제출 원본(접힘) ⑦ 결정 기록.
+ *
+ * 밸런스(`balance`, 티켓 20260930_1459): 이 항목의 경고 줄·확인한 규칙 수. 없으면 밸런스를 표시하지 않는다. 경고 블록은 줄이 있을 때만
+ * 그리고, ⑤의 「툴 점검」 줄은 평가 결과가 있으면 늘 그린다(경고 없음·적용 규칙 없음·반려한 항목·평가 실패까지 말로 알린다).
  *
  * 제출 문자열은 **React 텍스트 노드로만** 그린다(`dangerouslySetInnerHTML`을 쓰지 않는다). 색 견본은 값이
  * `HEX_COLOR_PATTERN`(`#rrggbb`)을 통과할 때만 `style`에 넣는다. `author`·`item_key`는 자기 신고라 제목으로 쓰지 않는다.
@@ -47,6 +59,8 @@ interface OpsItemDetailProps {
   /** 묶음의 결정 기록(최신순). 이 항목의 것과 묶음 전체의 것(제출)만 보인다. */
   decisions: readonly OpsDecisionRecord[]
   onSelectItem: (id: string) => void
+  /** 이 항목의 밸런스 평가 정보. 없으면 밸런스를 표시하지 않는다. */
+  balance?: ItemBalanceInfo
   detailEdit?: (item: OpsItemRecord) => ReactNode
   detailFooter?: (item: OpsItemRecord) => ReactNode
   detailHistoryAction?: (item: OpsItemRecord) => ReactNode
@@ -142,11 +156,35 @@ function LinkedItems({
   )
 }
 
-function ReviewLines({ item }: { item: OpsItemRecord }) {
+function ToolCheckLines({ item, balance }: { item: OpsItemRecord; balance: ItemBalanceInfo }) {
+  const warnCount = balance.lines.filter((line) => line.kind === 'warn').length
+  const text = toolCheckText({
+    status: item.status,
+    evaluationFailed: balance.failed,
+    checkedRuleCount: balance.checkedRuleCount,
+    warnCount,
+    infoCount: balance.lines.length - warnCount,
+  })
+  // 지금 열린 컬렉션 수는 R1이 보는 컬렉션 런칭 항목에만, 평가에 들어간 항목에만 참고로 보인다.
+  const showOpenNow =
+    item.kind === 'collection_launch' &&
+    !balance.failed &&
+    !isBalanceSkippedStatus(item.status) &&
+    balance.openCollectionsNow !== null
+  return (
+    <div>
+      <p className="mb-0.5 text-xs font-semibold text-muted-foreground">{TOOL_CHECK_TITLE}</p>
+      <p className="break-words">{text}</p>
+      {showOpenNow && <p className="break-words text-muted-foreground">{openCollectionsNowText(balance.openCollectionsNow ?? 0)}</p>}
+    </div>
+  )
+}
+
+function ReviewLines({ item, balance }: { item: OpsItemRecord; balance?: ItemBalanceInfo }) {
   const review = worldReviewOf(item)
-  const balance = itemField(item, 'balance_check')
-  const balanceEntries = entriesOf(balance)
-  const balanceText = balanceEntries === null ? describeValue(balance) : ''
+  const agentBalance = itemField(item, 'balance_check')
+  const balanceEntries = entriesOf(agentBalance)
+  const balanceText = balanceEntries === null ? describeValue(agentBalance) : ''
 
   return (
     <div className="space-y-2 text-sm">
@@ -163,19 +201,20 @@ function ReviewLines({ item }: { item: OpsItemRecord }) {
       ) : (
         <p className="text-muted-foreground">검수 결과가 없어요</p>
       )}
-      {/* 밸런스 판정은 밸런스 규칙(티켓 20260930_1459)이 생기기 전까지 「이름: 값」 글로만 보여 준다. */}
+      {/* 에이전트가 적은 밸런스 판정은 「이름: 값」 글 그대로 보여 준다. 툴이 규칙으로 잰 결과는 아래 「툴 점검」이다. */}
       {balanceEntries && balanceEntries.length > 0 && (
         <div>
-          <p className="mb-0.5 text-xs font-semibold text-muted-foreground">밸런스 판정</p>
-          <KeyValueLines value={balance} />
+          <p className="mb-0.5 text-xs font-semibold text-muted-foreground">{AGENT_BALANCE_TITLE}</p>
+          <KeyValueLines value={agentBalance} />
         </div>
       )}
       {balanceText && (
         <div>
-          <p className="mb-0.5 text-xs font-semibold text-muted-foreground">밸런스 판정</p>
+          <p className="mb-0.5 text-xs font-semibold text-muted-foreground">{AGENT_BALANCE_TITLE}</p>
           <p className="break-words">{balanceText}</p>
         </div>
       )}
+      {balance && <ToolCheckLines item={item} balance={balance} />}
     </div>
   )
 }
@@ -269,6 +308,7 @@ export function OpsItemDetail({
   items,
   decisions,
   onSelectItem,
+  balance,
   detailEdit,
   detailFooter,
   detailHistoryAction,
@@ -309,6 +349,9 @@ export function OpsItemDetail({
 
         {/* ② 형식 오류 */}
         <OpsItemFormatErrors errors={item.formatErrors} />
+
+        {/* ②′ 밸런스 경고: 형식 오류 바로 아래. 줄이 있을 때만 그린다. 편집 중이면 저장하면 다시 확인한다고 알린다. */}
+        {balance && <OpsBalanceItemWarnings lines={balance.lines} editing={editNode !== null} />}
 
         {editNode ?? (
           <>
@@ -358,7 +401,7 @@ export function OpsItemDetail({
         {/* ⑤ 검수·판정 */}
         <section>
           <SectionTitle>검수와 판정</SectionTitle>
-          <ReviewLines item={item} />
+          <ReviewLines item={item} balance={balance} />
         </section>
 
         {/* ⑥ 제출 원본 */}

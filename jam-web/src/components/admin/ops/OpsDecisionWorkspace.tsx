@@ -44,7 +44,10 @@ export const OPS_PUBLISH_NOT_CONNECTED_NOTICE = '공개는 아직 연결 전이�
 
 const UNDO_TOAST_MS = 10_000
 
-type OpsDecisionWorkspaceProps = Pick<OpsBundleWorkspaceProps, 'bundleId' | 'bundleFormatErrors' | 'items' | 'decisions'>
+type OpsDecisionWorkspaceProps = Pick<
+  OpsBundleWorkspaceProps,
+  'bundleId' | 'bundleFormatErrors' | 'items' | 'decisions' | 'balance' | 'isSample'
+>
 
 /** 「마지막 수정 되돌리기」 버튼. 확인창 없이 바로 요청하고, 요청 중에는 다시 눌리지 않는다. */
 function RevertLastEditButton({ onRevert }: { onRevert: () => Promise<void> }) {
@@ -66,7 +69,14 @@ function RevertLastEditButton({ onRevert }: { onRevert: () => Promise<void> }) {
   )
 }
 
-export function OpsDecisionWorkspace({ bundleId, bundleFormatErrors, items, decisions }: OpsDecisionWorkspaceProps) {
+export function OpsDecisionWorkspace({
+  bundleId,
+  bundleFormatErrors,
+  items,
+  decisions,
+  balance,
+  isSample,
+}: OpsDecisionWorkspaceProps) {
   const router = useRouter()
   const [overrides, setOverrides] = useState<CheckOverrides>({})
   const { decidable, checked, excluded } = useMemo(() => splitByChecked(items, overrides), [items, overrides])
@@ -128,6 +138,8 @@ export function OpsDecisionWorkspace({ bundleId, bundleFormatErrors, items, deci
       bundleFormatErrors={bundleFormatErrors}
       items={items}
       decisions={decisions}
+      balance={balance}
+      isSample={isSample}
       barAction={(ctx) =>
         decidable.length > 0 ? (
           <OpsBulkApprove

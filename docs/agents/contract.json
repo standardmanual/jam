@@ -76,6 +76,8 @@
       "jam-doc/operations/reports",
       "docs/agents/workflow/README.md",
       "jam-web/supabase/migrations/198_ops_inbox.sql",
+      "jam-web/supabase/migrations/207_ops_rules.sql",
+      "jam-web/src/lib/admin/opsInbox/balance/evaluate.ts",
       "jam-web/src/app/api/admin/ops-inbox/route.ts",
       "jam-web/src/lib/admin/opsInbox/constants.ts",
       "jam-web/src/lib/admin/opsInbox/validate.ts",

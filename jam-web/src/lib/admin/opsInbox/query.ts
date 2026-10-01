@@ -8,6 +8,9 @@
  * 묶음 상태는 저장하지 않고 항목 상태에서 계산하므로(`bundleStatus.ts`) 목록은 서버에서 계산한 뒤 거르고 정렬하고
  * 50건씩 자른다. 묶음 목록에는 제출 원본(`raw`, 최대 1MB)을 가져오지 않는다.
  *
+ * 기획 상세에는 밸런스 평가 결과(`balance`)가 함께 온다(티켓 20260930_1459). 규칙(`ops_rules`)과 서비스 상태를 읽어 계산하고
+ * 어느 쪽이 실패해도 던지지 않는다 — 실패는 `balance.status = 'failed'`로 화면에 넘어가고 기획 상세는 그대로 열린다.
+ *
  * ⚠️ **PostgREST 기본 페이지 상한(1000행)** — 에러 없이 잘린 목록이 돌아오므로 `range`로 끝까지 넘겨 전량을 받는다
  * (`badge-families-query.ts`의 `fetchActivityFamilyBadges`와 같은 방식이다).
  */
@@ -23,6 +26,15 @@ import {
   type OpsBundleStage,
   type OpsInboxTab,
 } from '@/lib/admin/opsInbox/bundleStatus'
+import { OPS_RULE_COLUMNS, parseBalanceRules, type BalanceRules } from '@/lib/admin/opsInbox/balance/rules'
+import {
+  collectBalanceReferences,
+  countOpenCollectionsAt,
+  evaluateBundleBalance,
+  type BalanceItemInput,
+} from '@/lib/admin/opsInbox/balance/evaluate'
+import { loadBalanceState } from '@/lib/admin/opsInbox/balance/state'
+import type { OpsBundleBalance } from '@/lib/admin/opsInbox/balance/view'
 
 const FETCH_PAGE_SIZE = 1000
 const ERROR_LABEL = 'ops-inbox'
@@ -273,6 +285,11 @@ export interface OpsBundleDetail {
   items: OpsItemRecord[]
   /** 최신순. */
   decisions: OpsDecisionRecord[]
+  /**
+   * 밸런스 평가 결과(티켓 20260930_1459, 운영툴 PRD §5.2). 기획 상세를 읽을 때마다 그 순간의 규칙 값과 서비스 상태로 계산하고
+   * 저장하지 않는다. 평가가 실패하면 `status: 'failed'`이고 상세는 그대로 열린다.
+   */
+  balance: OpsBundleBalance
 }
 
 const BUNDLE_DETAIL_COLUMNS = 'id, bundle_id, week, hypothesis, author, is_sample, format_errors, received_at'
@@ -280,7 +297,74 @@ const ITEM_DETAIL_COLUMNS =
   'id, position, item_key, kind, pattern_no, starts_at, ends_at, status, original, edited, format_errors, updated_at'
 const DECISION_COLUMNS = 'id, item_id, action, actor, batch_id, diff, reason, slack_result, created_at'
 
-/** 기획 상세. UUID가 아니거나 없는 묶음이면 null이다(조회 오류는 던진다). */
+// ── 밸런스 평가 (티켓 20260930_1459) ─────────────────────────────────────────────────────────────
+
+/** 밸런스 규칙을 읽는다. 조회 오류나 빈 규칙 테이블은 평가 실패다(던진다). */
+async function readBalanceRules(supabase: ReturnType<typeof createServiceClient>): Promise<BalanceRules> {
+  const { data, error } = await supabase
+    .from('ops_rules')
+    .select(OPS_RULE_COLUMNS)
+    .eq('rule_group', 'balance')
+  if (error) throw new Error(`규칙 조회 실패: ${error.message}`)
+  const rules = parseBalanceRules(data ?? [])
+  if (rules === null) throw new Error('밸런스 규칙 행이 없어요')
+  return rules
+}
+
+/** 항목마다 가장 최근 승인 결정의 시각. 결정 기록은 최신순이라 처음 만난 승인이 가장 최근이다. */
+function latestApprovalTimes(decisions: readonly OpsDecisionRecord[]): Map<string, string> {
+  const times = new Map<string, string>()
+  for (const decision of decisions) {
+    if (decision.action === 'approve' && decision.itemId !== null && !times.has(decision.itemId)) {
+      times.set(decision.itemId, decision.createdAt)
+    }
+  }
+  return times
+}
+
+/**
+ * 묶음의 밸런스를 평가한다. **던지지 않는다** — 규칙이나 서비스 상태를 읽지 못하는 등 어떤 실패도 `status: 'failed'`로 돌려주어
+ * 기획 상세가 그대로 열리고 승인·반려가 막히지 않는다. 읽기만 한다(`select`).
+ */
+export async function evaluateOpsBundleBalance(
+  supabase: ReturnType<typeof createServiceClient>,
+  bundleDbId: string,
+  items: readonly OpsItemRecord[],
+  decisions: readonly OpsDecisionRecord[],
+  nowIso: string = new Date().toISOString()
+): Promise<OpsBundleBalance> {
+  try {
+    const rules = await readBalanceRules(supabase)
+    const approvedAt = latestApprovalTimes(decisions)
+    const inputs: BalanceItemInput[] = items.map((item) => ({
+      id: item.id,
+      position: item.position,
+      itemKey: item.itemKey,
+      kind: item.kind,
+      status: item.status,
+      startsAt: item.startsAt,
+      endsAt: item.endsAt,
+      original: item.original,
+      edited: item.edited,
+      approvedAt: approvedAt.get(item.id) ?? null,
+    }))
+    const state = await loadBalanceState(supabase, {
+      currentBundleId: bundleDbId,
+      references: collectBalanceReferences(inputs),
+    })
+    const evaluation = evaluateBundleBalance(inputs, rules, state, nowIso)
+    return {
+      status: 'ok',
+      ...evaluation,
+      openCollectionsNow: state.books.ok ? countOpenCollectionsAt(state.books.data, nowIso) : null,
+    }
+  } catch (error) {
+    console.error(`[admin/${ERROR_LABEL}] 밸런스 평가 실패:`, error)
+    return { status: 'failed' }
+  }
+}
+
+/** 기획 상세. UUID가 아니거나 없는 묶음이면 null이다(조회 오류는 던진다). 밸런스 평가 실패는 던지지 않고 `balance`에 담는다. */
 export async function getOpsBundleDetail(id: string): Promise<OpsBundleDetail | null> {
   if (!isUuid(id)) return null
   const supabase = createServiceClient()
@@ -297,6 +381,32 @@ export async function getOpsBundleDetail(id: string): Promise<OpsBundleDetail | 
   throwOnQueryError(itemsResult.error, ERROR_LABEL)
   throwOnQueryError(decisionsResult.error, ERROR_LABEL)
 
+  const items: OpsItemRecord[] = (itemsResult.data ?? []).map((item) => ({
+    id: item.id,
+    position: item.position,
+    itemKey: item.item_key,
+    kind: item.kind,
+    patternNo: item.pattern_no,
+    startsAt: item.starts_at,
+    endsAt: item.ends_at,
+    status: item.status,
+    original: item.original,
+    edited: item.edited,
+    formatErrors: stringList(item.format_errors),
+    updatedAt: item.updated_at,
+  }))
+  const decisions: OpsDecisionRecord[] = (decisionsResult.data ?? []).map((decision) => ({
+    id: decision.id,
+    itemId: decision.item_id,
+    action: decision.action,
+    actor: decision.actor,
+    batchId: decision.batch_id,
+    diff: decision.diff,
+    reason: decision.reason,
+    slackResult: decision.slack_result,
+    createdAt: decision.created_at,
+  }))
+
   return {
     bundle: {
       id: bundle.id,
@@ -308,30 +418,8 @@ export async function getOpsBundleDetail(id: string): Promise<OpsBundleDetail | 
       formatErrors: stringList(bundle.format_errors),
       receivedAt: bundle.received_at,
     },
-    items: (itemsResult.data ?? []).map((item) => ({
-      id: item.id,
-      position: item.position,
-      itemKey: item.item_key,
-      kind: item.kind,
-      patternNo: item.pattern_no,
-      startsAt: item.starts_at,
-      endsAt: item.ends_at,
-      status: item.status,
-      original: item.original,
-      edited: item.edited,
-      formatErrors: stringList(item.format_errors),
-      updatedAt: item.updated_at,
-    })),
-    decisions: (decisionsResult.data ?? []).map((decision) => ({
-      id: decision.id,
-      itemId: decision.item_id,
-      action: decision.action,
-      actor: decision.actor,
-      batchId: decision.batch_id,
-      diff: decision.diff,
-      reason: decision.reason,
-      slackResult: decision.slack_result,
-      createdAt: decision.created_at,
-    })),
+    items,
+    decisions,
+    balance: await evaluateOpsBundleBalance(supabase, bundle.id, items, decisions),
   }
 }

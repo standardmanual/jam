@@ -1324,6 +1324,39 @@ export type Database = {
           },
         ]
       }
+      ops_rules: {
+        Row: {
+          enabled: boolean
+          level: string
+          previous_value: Json | null
+          rule_group: string
+          rule_key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          enabled?: boolean
+          level: string
+          previous_value?: Json | null
+          rule_group: string
+          rule_key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          enabled?: boolean
+          level?: string
+          previous_value?: Json | null
+          rule_group?: string
+          rule_key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       poi: {
         Row: {
           category: string

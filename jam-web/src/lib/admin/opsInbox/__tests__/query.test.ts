@@ -15,7 +15,7 @@ const h = vi.hoisted(() => {
   type Result = { data: unknown; error: { message: string } | null }
 
   const state = {
-    tables: { ops_bundles: [], ops_bundle_items: [], ops_decisions: [] } as Record<string, Row[]>,
+    tables: { ops_bundles: [], ops_bundle_items: [], ops_decisions: [], ops_rules: [], item_books: [], badges: [] } as Record<string, Row[]>,
     errors: {} as Record<string, string>,
     /** 부른 메서드 기록: `테이블.메서드` */
     calls: [] as string[],
@@ -52,6 +52,11 @@ const h = vi.hoisted(() => {
     eq(col: string, val: unknown) {
       this.note('eq')
       this.filters.push((row) => row[col] === val)
+      return this
+    }
+    in(col: string, vals: unknown[]) {
+      this.note('in')
+      this.filters.push((row) => vals.includes(row[col]))
       return this
     }
     async maybeSingle() {
@@ -107,6 +112,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({ from: (table: string) => new h.Query(table) }),
 }))
 
+import { SEED_ROWS } from '../balance/__tests__/fixtures'
 import {
   buildOpsBundleList,
   getOpsBundleDetail,
@@ -136,7 +142,7 @@ function item(bundleId: string, status: string, n = 0) {
 }
 
 beforeEach(() => {
-  h.state.tables = { ops_bundles: [], ops_bundle_items: [], ops_decisions: [] }
+  h.state.tables = { ops_bundles: [], ops_bundle_items: [], ops_decisions: [], ops_rules: [], item_books: [], badges: [] }
   h.state.errors = {}
   h.state.calls = []
   h.state.selects = []
@@ -440,5 +446,112 @@ describe('getOpsBundleDetail', () => {
     seedDetail()
     h.state.errors.ops_decisions = 'decisions down'
     await expect(getOpsBundleDetail(ID)).rejects.toThrow(/조회 실패: decisions down/)
+  })
+})
+
+describe('getOpsBundleDetail — 밸런스 평가 (티켓 20260930_1459)', () => {
+  const ID = '4ca7d1ad-43b2-41a3-9ed4-f03bc73604ee'
+
+  function launchItem(id: string, overrides: Record<string, unknown> = {}) {
+    return {
+      id,
+      bundle_id: ID,
+      position: 0,
+      item_key: id,
+      kind: 'collection_launch',
+      pattern_no: null,
+      starts_at: '2026-12-12T00:00:00Z',
+      ends_at: '2027-03-01T00:00:00Z',
+      status: 'reviewing',
+      original: { starts_at: '2026-12-12T09:00:00+09:00', ends_at: '2027-03-01T09:00:00+09:00', resource: { reward_points: 5 } },
+      edited: null,
+      created_resource: null,
+      format_errors: [],
+      updated_at: '2026-10-01T00:00:00Z',
+      ...overrides,
+    }
+  }
+
+  function seed(items: Array<Record<string, unknown>>, options: { sample?: boolean; books?: number } = {}) {
+    h.state.tables.ops_bundles = [{ ...bundle(ID), is_sample: options.sample ?? false, bundle_id: 'b' }]
+    h.state.tables.ops_bundle_items = items
+    h.state.tables.ops_rules = SEED_ROWS.map((row) => ({ ...row }))
+    h.state.tables.item_books = Array.from({ length: options.books ?? 0 }, () => ({ is_active: true, valid_from: null, valid_until: null }))
+  }
+
+  it('규칙·서비스 상태로 계산한 평가 결과가 기획 상세와 함께 온다', async () => {
+    seed([launchItem('i1')], { books: 30 })
+    const detail = await getOpsBundleDetail(ID)
+    expect(detail!.items).toHaveLength(1)
+    expect(detail!.balance.status).toBe('ok')
+    if (detail!.balance.status !== 'ok') return
+    const r1 = detail!.balance.warnings.find((w) => w.ruleKey === 'open_collections_max')
+    expect(r1).toMatchObject({ itemId: 'i1', measured: 31, limit: 6, level: 'warn', provisional: true })
+    expect(detail!.balance.checkedRuleCountByItem.i1).toBe(7)
+    expect(detail!.balance.openCollectionsNow).toBe(30)
+  })
+
+  it('다른 묶음의 신규 개방도 센다(시험 묶음을 평가하면 시험 묶음끼리는 세지 않는다)', async () => {
+    seed([launchItem('i1')], { sample: true })
+    h.state.tables.ops_bundles.push({ ...bundle('other-real'), bundle_id: 'real' }, { ...bundle('other-sample'), is_sample: true, bundle_id: 'sample' })
+    h.state.tables.ops_bundle_items.push(
+      launchItem('x1', { bundle_id: 'other-real', starts_at: '2026-12-13T00:00:00Z', original: {} }),
+      launchItem('x2', { bundle_id: 'other-sample', starts_at: '2026-12-13T00:00:00Z', original: {} })
+    )
+    const detail = await getOpsBundleDetail(ID)
+    if (detail!.balance.status !== 'ok') throw new Error('평가가 성공해야 해요')
+    const weekly = detail!.balance.warnings.find((w) => w.ruleKey === 'weekly_new_collections_max')
+    expect(weekly?.measured).toBe(2) // i1 + 다른 실제 묶음의 x1. 시험 묶음의 x2는 세지 않는다
+  })
+
+  it('승인한 항목은 승인 시각이 리드타임 기준이다', async () => {
+    seed([launchItem('i1', { status: 'scheduled' })])
+    h.state.tables.ops_decisions = [
+      { id: 'd1', bundle_id: ID, item_id: 'i1', action: 'approve', actor: 'a', batch_id: null, diff: null, reason: null, slack_result: null, created_at: '2026-10-20T00:00:00Z' },
+      { id: 'd0', bundle_id: ID, item_id: 'i1', action: 'approve', actor: 'a', batch_id: null, diff: null, reason: null, slack_result: null, created_at: '2026-01-01T00:00:00Z' },
+    ]
+    const detail = await getOpsBundleDetail(ID)
+    if (detail!.balance.status !== 'ok') throw new Error('평가가 성공해야 해요')
+    // 공개 12/12, 가장 최근 승인 10/20 → 53일이라 R4는 통과다
+    expect(detail!.balance.warnings.some((w) => w.ruleKey === 'launch_lead_days_min')).toBe(false)
+  })
+
+  it('규칙 조회가 실패해도 던지지 않고 failed를 담는다(기획 상세는 그대로 열린다)', async () => {
+    seed([launchItem('i1')])
+    h.state.errors.ops_rules = 'rules down'
+    const detail = await getOpsBundleDetail(ID)
+    expect(detail).not.toBeNull()
+    expect(detail!.items.map((i) => i.id)).toEqual(['i1'])
+    expect(detail!.balance).toEqual({ status: 'failed' })
+  })
+
+  it('규칙 테이블이 비어 있어도 failed다', async () => {
+    seed([launchItem('i1')])
+    h.state.tables.ops_rules = []
+    expect((await getOpsBundleDetail(ID))!.balance).toEqual({ status: 'failed' })
+  })
+
+  it('규칙 테이블이 아직 없어도(마이그레이션 207 전) 던지지 않고 failed다', async () => {
+    seed([launchItem('i1')])
+    delete h.state.tables.ops_rules
+    expect((await getOpsBundleDetail(ID))!.balance).toEqual({ status: 'failed' })
+  })
+
+  it('서비스 상태 하나를 못 읽으면 그 상태를 쓰는 규칙만 점검 못 함이다', async () => {
+    seed([launchItem('i1')], { books: 30 })
+    h.state.errors.item_books = 'books down'
+    const detail = await getOpsBundleDetail(ID)
+    if (detail!.balance.status !== 'ok') throw new Error('평가는 이어져야 해요')
+    expect(detail!.balance.unreadable.map((u) => u.ruleKey)).toEqual(['open_collections_max'])
+    expect(detail!.balance.openCollectionsNow).toBeNull()
+    expect(detail!.balance.warnings.some((w) => w.ruleKey === 'weekly_new_collections_max')).toBe(false) // 주 한도는 1개뿐이라 통과
+  })
+
+  it('평가도 select 계열만 부르고 상태를 바꾸지 않는다', async () => {
+    seed([launchItem('i1')], { books: 3 })
+    const before = JSON.stringify(h.state.tables)
+    await getOpsBundleDetail(ID)
+    expect(h.state.calls.filter((c) => WRITE_CALL.test(c))).toEqual([])
+    expect(JSON.stringify(h.state.tables)).toBe(before)
   })
 })
