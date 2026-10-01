@@ -578,7 +578,7 @@ stateDiagram-v2
 | `mission` | `missions` 1행 | insert. 미션 등록 스크립트의 변환(`buildMissionInsertPayload`)과 같다 | `starts_at`(`exposure_mode = 'start_date'` 고정) | `ends_at`. 없으면 상시(NULL) | 행 삭제 | 지금 종료(`ends_at` = 지금) | ⑥ |
 | `jam_badge` | `badges` 1행(`type = 'activity'`, `admin_category = 'jam'`) | insert. 어드민 배지 생성 API의 변환(`jam-web/src/lib/admin/badge-insert-payload.ts`)과 같다 | `valid_from` | `valid_until`. 없으면 상시 | 행 삭제 | 지금 종료(`valid_until` = 지금) | ⑨ |
 | `collection_launch` | `item_books` 1행. 틀만 만든다(Q4) | insert | `valid_from` | `valid_until`. 없으면 상시 | 행 삭제 | 지금 종료(`valid_until` = 지금) | ⑩ |
-| `recipe` | `combination_recipes` 1행과 슬롯 | 서버 함수 `createRecipeWithSlots`(§8.5) | `valid_from` | 없다. 있으면 형식 오류 | `cancelScheduledRecipe`(삭제, 삭제 가드를 거친다) | 버튼 없음, 안내만 | ⑧ |
+| `recipe` | `combination_recipes` 1행과 슬롯 | 서버 함수 `createRecipeWithSlots`(§8.5) | `valid_from` | `valid_until`. 없으면 상시(영향 티켓 20261002_0710이 칸을 만든다) | `cancelScheduledRecipe`(삭제, 삭제 가드를 거친다) | 지금 종료(`valid_until` = 지금) | ⑧ |
 | `drop_schedule` | `ambient_drop_schedules` 1행 | 서버 함수 `createAmbientDropSchedule`(§8.5) | `scheduled_at` | 없다. 있으면 형식 오류 | `cancelScheduledAmbientDrop` | 놓은 직후 항목을 종료로 닫는다(§8.6). 버튼 없음 | ⑧ |
 | `pattern_proposal` | 예약 등록 대상이 아니다. 승인할 때 패턴 사전에 들어간다(§10.1, 1503 ⑪) | — | — | — | — | — | — |
 
@@ -668,7 +668,7 @@ stateDiagram-v2
 | `mission` | `starts_at`(필수), `ends_at` | `title`(필수), `description`, `condition_text` | `mission_type`(필수), `condition_json`(필수), `reward_points`, `reward_badge_ids`, `status_display_type`, `visible_rank_count`, `max_completions`, `gate_axis`, `gate_stage`, `visibility_rule_json`, `image_url` | `exposure_mode = 'start_date'`, `exposure_at`·`reward_type`·`reward_id`·`gated_badge_id`는 NULL(미션 등록 스크립트와 같다) |
 | `jam_badge` | `starts_at`(필수, `valid_from`으로), `ends_at`(`valid_until`로) | `name`(필수), `description` | `condition_json`(필수), `point_reward`, `rarity`, `level`, `family_key`, `sort_order`, `activity_types`, `image_url` | `type = 'activity'`, `admin_category = 'jam'` |
 | `collection_launch` | `starts_at`(필수, `valid_from`으로), `ends_at`(`valid_until`로), `tribe_id` | `name`(필수), `description`, `story_text` | `image_url`(대표 이미지 주소), `reward_points`, `reward_badge_id` | `is_active = true` |
-| `recipe` | `starts_at`(필수, `valid_from`으로). `ends_at`이 있으면 형식 오류 | `name`(필수) | `slots`(필수, `[{ badge_type, allowed_badge_ids }]`), `reward_points`, `reward_badge_ids`(아이템 배지만) | — |
+| `recipe` | `starts_at`(필수, `valid_from`으로), `ends_at`(`valid_until`로) | `name`(필수) | `slots`(필수, `[{ badge_type, allowed_badge_ids }]`), `reward_points`, `reward_badge_ids`(아이템 배지만) | — |
 | `drop_schedule` | `starts_at`(필수, `scheduled_at`으로). `ends_at`이 있으면 형식 오류 | `title`(100자) | §3.1의 6개 키 | — |
 
 - **종류별 검사.** 카드는 홈피드 등록 묶음의 카드 검사(`registerHomeFeedBundle.mjs`: 템플릿별로 쓰지 않는 칸과 필수 참조, 노출 태그, 설명문 40자)이고 이미지는 보지 않는다(§8.8).
@@ -706,7 +706,8 @@ stateDiagram-v2
   `cancelScheduledAmbientDrop`(공개 전 취소, 실행 중·뒤는 409), `rescheduleAmbientDrop`(공개 전 시각 수정, 놓침으로 읽히면 409), `getAmbientDropSchedule`(상태 읽기, 파생 상태
   `missed`·`stalled` 포함). 1500은 시각 수정을 부르지 않는다(G14). 같은 묶음이면 컬렉션 생성이 드랍 예약보다 먼저다(등록 판정이 예정 시각 기준이라 그 시각에 노출 중인 컬렉션이어야 한다).
 - 레시피(O16, 티켓 20261001_1158): `jam-web/src/lib/admin/recipe-write.ts`의 `createRecipeWithSlots`(공개 시각을 넣어 생성), `cancelScheduledRecipe`(공개 전 취소 = 삭제, 삭제 가드를
-  거치고 공개된 뒤에는 409), `recipeReleaseState`(공개됨 / 공개 예정 판정). 레시피에는 종료 시각이 없어 공개된 뒤에 내릴 때는 기존 어드민에서 삭제한다.
+  거치고 공개된 뒤에는 409), `recipeReleaseState`(공개됨 / 공개 예정 판정). 종료 시각(`valid_until`)과 「종료됨」 판정은 영향 티켓 20261002_0710이 더하고(사용자 결정 2026-10-02), ⑧은 그 뒤에
+  레시피 항목의 `ends_at`을 넘긴다.
 
 ### 8.6 상태 맞추기 (10분)
 
@@ -730,8 +731,8 @@ stateDiagram-v2
 
 - 결정 기록을 남기지 않는 전이(게재 시작, 종료 시각 도달, 드랍 놓음)는 사람의 결정이 아니라 자원의 시각이 정한 일이다. 상태 맞추기가 남기는 행의 행위자는 `system:reconcile`이다.
 - 자동으로 되돌리지 않는다. 밖에서 바뀐 자원을 운영 항목에 맞춰 고치지도, 운영 항목을 자원에 맞춰 고치지도 않는다(G8).
-- 종료 시각이 없는 미션·JAM! 배지·컬렉션은 「지금 종료」(§8.7)를 누를 때까지 게재중이다. 레시피도 종료 시각이 없어 게재중에 머문다. 레시피 항목을 공개 뒤 언제 닫을지는 ⑧ 착수 때
-  정한다(티켓 20261001_2205 잔여 이슈).
+- 종료 시각이 없는 미션·JAM! 배지·컬렉션·레시피는 상시라 「지금 종료」(§8.7)를 누를 때까지 게재중이다. 레시피의 종료 시각은 영향 티켓 20261002_0710이 만든다(사용자 결정
+  2026-10-02, 그 전까지 레시피 항목은 종료되지 않는다).
 - **슬랙.** 한 번 돌 때 공개·종료가 있으면 `#jam-report`에 요약 한 건(예: 「3개 공개, 2개 종료」), 실패와 밖에서 지워짐이 있으면 `#jam-alert`에 한 건이다. 바뀐 것이 없으면 보내지
   않는다. 결과는 서버 로그와, 결정 기록이 있는 전이에서는 그 행의 `slack_result`에 남는다.
 
@@ -747,8 +748,9 @@ stateDiagram-v2
 - 확인창은 되돌릴 수 없다는 것을 알린다. 사유는 선택이고 500자까지다. 결정 기록은 `cancel`(함께 취소한 항목마다 1행, 같은 `batch_id`), 슬랙은 `#jam-report`다.
 
 **지금 종료**(Q5, ⑪. 항목이 「게재중」).
-- 홈피드 카드·미션·JAM! 배지·컬렉션에 있다. 자원의 종료 시각 칸을 지금으로 바꾼다(§8.1의 「공개 뒤」 열). 받은 배지와 진행 기록은 그대로다.
-- 레시피와 드랍에는 버튼이 없고 안내만 보인다(레시피는 기존 어드민에서 삭제한다, 놓인 드랍은 내리지 않는다).
+- 홈피드 카드·미션·JAM! 배지·컬렉션·레시피에 있다. 자원의 종료 시각 칸을 지금으로 바꾼다(§8.1의 「공개 뒤」 열). 받은 배지와 진행 기록은 그대로다. 레시피는 영향 티켓
+  20261002_0710 뒤부터다.
+- 드랍에는 버튼이 없고 안내만 보인다(놓인 드랍은 내리지 않는다).
 - 그 항목만 종료한다. 그 항목을 가리키는 게재 중 항목이 있으면 확인창이 알리고(예: 「이 미션을 여는 카드 1장은 계속 보여요」) 함께 종료하지는 않는다.
 - 결정 기록은 `end`, 슬랙은 `#jam-report`다. 확인창을 거친다.
 - 미션을 일찍 끝낼 때 마감·순위 알림 배치(`jam-web/src/lib/notifications/batch/missions.ts`)에 주는 영향은 ⑪ 착수 때 확인한다.
@@ -998,7 +1000,7 @@ stateDiagram-v2
 | `POST /api/admin/ops-inbox/[bundleId]/execute` | 사전 점검 `{ dryRun: true }` | 200. 예약할 항목·기다리는 항목·못 하는 항목(이유)·실패로 닫을 항목·연결 묶음·경고. 쓰기 없음 | 400 · 403 · 404 |
 | 같은 경로 | 실행 `{ itemIds }`(요약창이 보인 예약할 항목, 1~60개) | 200. 예약한 항목, 실패한 항목(이유), 건너뛴 항목 | 409 하나도 선점하지 못함(이미 실행됨) · 400 · 403 · 404 · 500 |
 | `POST /api/admin/ops-inbox/[bundleId]/items/[itemId]/cancel` | `{ reason? }`(500자까지) | 200. 함께 취소한 항목 ID 목록 | 409 예약됨이 아님·이미 공개됨·가리키는 항목이 게재 중·밖의 참조가 있음 · 403 · 404 · 500 |
-| `POST /api/admin/ops-inbox/[bundleId]/items/[itemId]/end` | `{ reason? }`(500자까지) | 200 | 409 게재중이 아님·지금 종료가 없는 종류(레시피·드랍) · 403 · 404 · 500 |
+| `POST /api/admin/ops-inbox/[bundleId]/items/[itemId]/end` | `{ reason? }`(500자까지) | 200 | 409 게재중이 아님·지금 종료가 없는 종류(드랍) · 403 · 404 · 500 |
 
 - 실행 요청은 `maxDuration` 60초다. 시험 묶음도 같은 경로이고 자원 작업만 건너뛴다(§8.8).
 
@@ -1014,8 +1016,8 @@ stateDiagram-v2
 - 같은 항목을 두 번 실행하지 않는다. 예약 등록은 항목마다 「승인됨 → 준비중」을 조건부로 차지하고 시작하므로, 같은 묶음을 두 번 눌러도 두 번째는 409다(§8.2).
 - 공개 시각 전에는 취소할 수 있다(자원을 지운다, §8.7). 공개된 뒤에는 「지금 종료」로 내린다(종료 시각을 지금으로 바꾼다). 홈피드 카드·미션·JAM! 배지·컬렉션에 있고, 이미 받은
   배지와 진행 기록은 그대로다. 유저가 이미 주운 배지는 회수할 수 없다(티켓 20260929_2226 확인 사항).
-- 드랍 일정은 놓은 뒤 내리지 않는다. 안 주워진 드랍은 만료 없이 남는다(시스템 드랍은 만료가 없다, BADGE_ENGINE §3.12). 운영 항목은 놓은 직후 종료로 닫는다(§8.6). 레시피는 종료
-  시각이 없고 내릴 때는 기존 어드민에서 삭제한다. 둘 다 툴에 「지금 종료」가 없다.
+- 드랍 일정은 놓은 뒤 내리지 않는다. 안 주워진 드랍은 만료 없이 남는다(시스템 드랍은 만료가 없다, BADGE_ENGINE §3.12). 운영 항목은 놓은 직후 종료로 닫는다(§8.6). 드랍에는
+  「지금 종료」가 없다. 레시피는 종료 시각을 두어 다른 자원처럼 내린다(영향 티켓 20261002_0710).
 - 실패한 예약 등록은 이번에 만든 자원을 역순으로 지우고, 지우기 전에 참조를 확인한다(§8.1·§8.2). 자원을 지울 때 참조를 확인하지 못하면 지우지 않는다.
 
 ## 13. 구현 현황
