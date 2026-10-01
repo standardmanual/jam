@@ -1,4 +1,5 @@
 import { computeBookCompletion } from '@/lib/itembook/completion-basis'
+import { applyLaunchedItemBookFilter } from '@/lib/itembook/visibility'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
@@ -117,23 +118,30 @@ export default async function BadgesPage({ searchParams }: Props) {
     const bookIds = [...new Set(((ownedBadgesWithBook ?? []) as { id: string; item_book_id: string }[]).map((b) => b.item_book_id))]
 
     if (bookIds.length > 0) {
+      // 공개된 컬렉션만 — 공개 전(비활성·시작 전) 컬렉션은 탭에서 뺀다. 기간이 끝난 컬렉션은 계속 보인다
+      // (판정은 visibility.ts, 티켓 20261001_1205). 걸러진 id로만 아래 조회를 한다(`/api/itembooks`와 같은 방식).
+      const { data: booksRaw, error: booksError } = await applyLaunchedItemBookFilter(
+        supabase.from('item_books').select('*').in('id', bookIds),
+        new Date().toISOString()
+      )
+      if (booksError) console.error('[badges/page] item_books 조회 실패', booksError)
+      books = (booksRaw ?? []) as ItemBookRow[]
+    }
+
+    if (books.length > 0) {
+      const launchedBookIds = books.map((b) => b.id)
       const [
-        { data: booksRaw, error: booksError },
         { data: bookBadgesRaw, error: bookBadgesError },
         { data: slotsRaw, error: slotsError },
         { data: completionsRaw, error: completionsError },
       ] = await Promise.all([
-        supabase.from('item_books').select('*').in('id', bookIds),
-        supabase.from('badges').select('id, item_book_id, type, drop_excluded, rarity, created_at').in('item_book_id', bookIds).eq('type', 'item').is('deleted_at', null).order('created_at', { ascending: true }),
-        supabase.from('user_item_book_slots').select('item_book_id, badge_id').eq('user_id', user.id).in('item_book_id', bookIds),
-        supabase.from('user_item_book_completions').select('item_book_id').eq('user_id', user.id).in('item_book_id', bookIds),
+        supabase.from('badges').select('id, item_book_id, type, drop_excluded, rarity, created_at').in('item_book_id', launchedBookIds).eq('type', 'item').is('deleted_at', null).order('created_at', { ascending: true }),
+        supabase.from('user_item_book_slots').select('item_book_id, badge_id').eq('user_id', user.id).in('item_book_id', launchedBookIds),
+        supabase.from('user_item_book_completions').select('item_book_id').eq('user_id', user.id).in('item_book_id', launchedBookIds),
       ])
-      if (booksError) console.error('[badges/page] item_books 조회 실패', booksError)
       if (bookBadgesError) console.error('[badges/page] 아이템북 소속 배지 조회 실패', bookBadgesError)
       if (slotsError) console.error('[badges/page] user_item_book_slots 조회 실패', slotsError)
       if (completionsError) console.error('[badges/page] user_item_book_completions 조회 실패', completionsError)
-
-      books = (booksRaw ?? []) as ItemBookRow[]
 
       const rarityByBook = new Map<string, BadgeRarity>()
       const bookBadges = (bookBadgesRaw ?? []) as { id: string; item_book_id: string; type: string; drop_excluded: boolean | null; rarity: BadgeRarity; created_at: string }[]

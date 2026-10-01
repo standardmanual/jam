@@ -11,6 +11,7 @@ import {
   applyLaunchedItemBookFilter,
   isItemBookDroppable,
   isItemBookLaunched,
+  pickLaunchedItemBook,
   type ItemBookVisibilityFields,
 } from '../visibility'
 
@@ -78,6 +79,29 @@ describe('isItemBookDroppable — 노출 중(드랍·완성용)', () => {
 
   it('종료 시각이 지금과 같으면 노출 중이다(경계 포함)', () => {
     expect(isItemBookDroppable(book({ valid_until: NOW }), NOW)).toBe(true)
+  })
+})
+
+describe('pickLaunchedItemBook — 배지 상세의 컬렉션 카드(티켓 20261001_1205)', () => {
+  const withId = (overrides: Partial<ItemBookVisibilityFields> = {}) => ({ id: 'book-1', ...book(overrides) })
+
+  it('컬렉션이 없으면(null) 카드를 그리지 않는다', () => {
+    expect(pickLaunchedItemBook(null, NOW)).toBeNull()
+  })
+
+  it('비활성이거나 시작 전인 컬렉션은 카드를 그리지 않는다 — 막다른 링크 방지', () => {
+    expect(pickLaunchedItemBook(withId({ is_active: false }), NOW)).toBeNull()
+    expect(pickLaunchedItemBook(withId({ valid_from: AFTER }), NOW)).toBeNull()
+  })
+
+  it('공개된 컬렉션은 그대로 돌려준다', () => {
+    const open = withId({ valid_from: BEFORE, valid_until: AFTER })
+    expect(pickLaunchedItemBook(open, NOW)).toBe(open)
+  })
+
+  it('기간이 끝난 컬렉션도 계속 보인다(E1)', () => {
+    const ended = withId({ valid_from: BEFORE, valid_until: '2026-09-30T12:00:00.000Z' })
+    expect(pickLaunchedItemBook(ended, NOW)).toBe(ended)
   })
 })
 
