@@ -578,7 +578,7 @@ stateDiagram-v2
 | `mission` | `missions` 1행 | insert. 미션 등록 스크립트의 변환(`buildMissionInsertPayload`)과 같다 | `starts_at`(`exposure_mode = 'start_date'` 고정) | `ends_at`. 없으면 상시(NULL) | 행 삭제 | 지금 종료(`ends_at` = 지금) | ⑥ |
 | `jam_badge` | `badges` 1행(`type = 'activity'`, `admin_category = 'jam'`) | insert. 어드민 배지 생성 API의 변환(`jam-web/src/lib/admin/badge-insert-payload.ts`)과 같다 | `valid_from` | `valid_until`. 없으면 상시 | 행 삭제 | 지금 종료(`valid_until` = 지금) | ⑨ |
 | `collection_launch` | `item_books` 1행. 틀만 만든다(Q4) | insert | `valid_from` | `valid_until`. 없으면 상시 | 행 삭제 | 지금 종료(`valid_until` = 지금) | ⑩ |
-| `recipe` | `combination_recipes` 1행과 슬롯 | 서버 함수 `createRecipeWithSlots`(§8.5) | `valid_from` | `valid_until`. 없으면 상시(영향 티켓 20261002_0710이 칸을 만든다) | `cancelScheduledRecipe`(삭제, 삭제 가드를 거친다) | 지금 종료(`valid_until` = 지금) | ⑧ |
+| `recipe` | `combination_recipes` 1행과 슬롯 | 서버 함수 `createRecipeWithSlots`(§8.5) | `valid_from` | `valid_until`. 없으면 상시(마이그레이션 213, 영향 티켓 20261002_0710) | `cancelScheduledRecipe`(삭제, 삭제 가드를 거친다) | 지금 종료(`valid_until` = 지금) | ⑧ |
 | `drop_schedule` | `ambient_drop_schedules` 1행 | 서버 함수 `createAmbientDropSchedule`(§8.5) | `scheduled_at` | 없다. 있으면 형식 오류 | `cancelScheduledAmbientDrop` | 놓은 직후 항목을 종료로 닫는다(§8.6). 버튼 없음 | ⑧ |
 | `pattern_proposal` | 예약 등록 대상이 아니다. 승인할 때 패턴 사전에 들어간다(§10.1, 1503 ⑪) | — | — | — | — | — | — |
 
@@ -731,8 +731,8 @@ stateDiagram-v2
 
 - 결정 기록을 남기지 않는 전이(게재 시작, 종료 시각 도달, 드랍 놓음)는 사람의 결정이 아니라 자원의 시각이 정한 일이다. 상태 맞추기가 남기는 행의 행위자는 `system:reconcile`이다.
 - 자동으로 되돌리지 않는다. 밖에서 바뀐 자원을 운영 항목에 맞춰 고치지도, 운영 항목을 자원에 맞춰 고치지도 않는다(G8).
-- 종료 시각이 없는 미션·JAM! 배지·컬렉션·레시피는 상시라 「지금 종료」(§8.7)를 누를 때까지 게재중이다. 레시피의 종료 시각은 영향 티켓 20261002_0710이 만든다(사용자 결정
-  2026-10-02, 그 전까지 레시피 항목은 종료되지 않는다).
+- 종료 시각이 없는 미션·JAM! 배지·컬렉션·레시피는 상시라 「지금 종료」(§8.7)를 누를 때까지 게재중이다. 레시피의 종료 시각(`valid_until`)은 영향 티켓 20261002_0710이
+  더했다(사용자 결정 2026-10-02). 레시피 항목이 그 칸을 채우는 일은 ⑧이 한다.
 - **슬랙.** 한 번 돌 때 공개·종료가 있으면 `#jam-report`에 요약 한 건(예: 「3개 공개, 2개 종료」), 실패와 밖에서 지워짐이 있으면 `#jam-alert`에 한 건이다. 바뀐 것이 없으면 보내지
   않는다. 결과는 서버 로그와, 결정 기록이 있는 전이에서는 그 행의 `slack_result`에 남는다.
 
@@ -748,8 +748,7 @@ stateDiagram-v2
 - 확인창은 되돌릴 수 없다는 것을 알린다. 사유는 선택이고 500자까지다. 결정 기록은 `cancel`(함께 취소한 항목마다 1행, 같은 `batch_id`), 슬랙은 `#jam-report`다.
 
 **지금 종료**(Q5, ⑪. 항목이 「게재중」).
-- 홈피드 카드·미션·JAM! 배지·컬렉션·레시피에 있다. 자원의 종료 시각 칸을 지금으로 바꾼다(§8.1의 「공개 뒤」 열). 받은 배지와 진행 기록은 그대로다. 레시피는 영향 티켓
-  20261002_0710 뒤부터다.
+- 홈피드 카드·미션·JAM! 배지·컬렉션·레시피에 있다. 자원의 종료 시각 칸을 지금으로 바꾼다(§8.1의 「공개 뒤」 열). 받은 배지와 진행 기록은 그대로다.
 - 드랍에는 버튼이 없고 안내만 보인다(놓인 드랍은 내리지 않는다).
 - 그 항목만 종료한다. 그 항목을 가리키는 게재 중 항목이 있으면 확인창이 알리고(예: 「이 미션을 여는 카드 1장은 계속 보여요」) 함께 종료하지는 않는다.
 - 결정 기록은 `end`, 슬랙은 `#jam-report`다. 확인창을 거친다.
