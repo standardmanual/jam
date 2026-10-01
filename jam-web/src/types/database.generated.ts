@@ -481,6 +481,7 @@ export type Database = {
           name: string | null
           reward_badge_ids: string[]
           reward_points: number
+          valid_from: string | null
         }
         Insert: {
           created_at?: string
@@ -488,6 +489,7 @@ export type Database = {
           name?: string | null
           reward_badge_ids?: string[]
           reward_points?: number
+          valid_from?: string | null
         }
         Update: {
           created_at?: string
@@ -495,6 +497,7 @@ export type Database = {
           name?: string | null
           reward_badge_ids?: string[]
           reward_points?: number
+          valid_from?: string | null
         }
         Relationships: []
       }

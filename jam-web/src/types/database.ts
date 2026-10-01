@@ -555,6 +555,12 @@ export interface CombinationRecipeRow {
   reward_points: number
   /** 매칭 성공 시 확정 지급하는 배지 — 무작위 없이 전부 지급 */
   reward_badge_ids: string[]
+  /**
+   * 공개 시각(마이그레이션 204, 티켓 20261001_1157) — null이면 처음부터 공개, 값이 있으면 그 시각부터
+   * 공개한다(경계 포함). 공개 전 레시피는 일반 유저에게 없는 레시피와 같다. 종료 시각은 없다.
+   * 판정은 `lib/combine/visibility.ts`의 `isRecipeReleased` 하나로 한다.
+   */
+  valid_from: string | null
   created_at: string
 }
 
@@ -590,7 +596,7 @@ export interface CombinePolicyRow {
 /**
  * 믹스 실패 이력 (어드민 조회 전용 — 마이그레이션 153)
  * `recipe_not_found`는 티켓 20260917_1427(유저 화면 레시피 선택형 전환)에서 추가됐다 —
- * 유저가 선택한 recipe_id가 존재하지 않거나 비활성화된 경우다.
+ * 유저가 선택한 recipe_id가 존재하지 않거나 공개 전인 경우다.
  */
 export type CombineFailReason = 'no_recipe_match' | 'items_not_found' | 'invalid_count' | 'recipe_not_found'
 
