@@ -2,9 +2,9 @@
 id: "20261001_0634"
 category: BadgeEngine
 priority: P1
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-10-01
-closed:
+closed: 2026-10-01
 parent: "20260930_1456"
 ---
 
@@ -75,27 +75,40 @@ DB 마이그레이션(없음 — `triggered_by`는 CHECK 없는 자유 텍스트
 
 ### 구현 내용 요약
 
+- 기존 재평가 배치(`POST /api/admin/badges/reevaluate-all`)를 JAM! 행동 지표 13종까지 넓혔다. 전용 경로는 만들지 않았다(착수 가정 1).
+- `issueQualifyingBadges`(`usageBadges.ts`)에 마지막 인자 `options?: { dryRun, silent, triggeredByPrefix }`(`IssueBadgeOptions`)를 더했다. 생략하면 기존과 같다.
+  `dryRun`은 섀도우밴 판정 뒤에서 갈라 insert·`awardPoints`·`recordFeedEvent`를 부르지 않고, `silent`는 피드만 건너뛴다.
+- `evaluateJamActionBadges`의 네 번째 인자 `options`를 세 발급 경로(수치형·`days_since_signup`·`recipe_first_success`)에 넘긴다.
+- `reevaluateUsersForCatalog`는 유저마다 메인 엔진 다음에 `JAM_ACTION_CONDITION_KEYS` 전체를 `{ dryRun, silent: true, triggeredByPrefix: 'catalog_reevaluation' }`로
+  별도 `try/catch` 안에서 판정한다. JAM! 몫은 기존 합계에 합치고 유저별 `jamActionEarnedCount`·`jamActionPointsAwarded`와 합계 3종을 따로 둔다. 알림은 만들지 않는다.
+- 계획에 없던 보완(아현 신고, 민지 확인): dry-run에서 JAM! 키를 둘 이상 가진 배지가 두 번 집계되지 않도록 배지 id 기준으로 한 번만 센다. 실제 실행과 숫자를 맞추기 위해서다.
+- 엔진 문서 §2.17에 JAM! 재평가 절과 알려진 한계 3가지(사용량 지표 6종 제외, 지표 계산 오류가 dry-run에서 조용히 빠짐, 미래 `valid_from` 배지 제외)를 아현이 적었다.
+  호출 지점 표에 재평가 배치 행, 312행 문장, 파일 목록 설명도 고쳤다.
+- 게이트: 민지 1차 PASS(CI 36801468389). 머지 `763377e4`(리뷰 브랜치 `claude/jamwork-20261001_0634-jam-reevaluate-batch`, 범위 `dfa3d4d1..c65339c8`).
+
 ### 변경된 파일
 ```
--
+jam-web/src/lib/badge-engine/{usageBadges,jamActionBadges,reevaluateCatalog}.ts
+jam-web/src/app/api/admin/badges/reevaluate-all/route.ts
+jam-web/src/lib/badge-engine/__tests__/reevaluate-catalog-jam.test.ts (신규, 11건)
+docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] CI verify 36801468389 성공(검토 커밋 `c65339c8`와 같은 SHA). `scripts/verify.sh` 전 항목 통과(아현).
+- [x] 완료 조건 1: dry-run이 대상 유저 3명·JAM! 영향 유저 1명·JAM! 포인트 50·전체 포인트 60을 돌려주고 insert·`awardPoints`·`recordFeedEvent`를 부르지 않는다. 섀도우밴 차단도 반영된다.
+- [x] 완료 조건 2: 실제 실행은 조건을 채운 유저에게만 1건 발급(`catalog_reevaluation:jam_action:combine_success_count`)하고 포인트를 지급하며 피드는 남기지 않는다.
+  다시 실행하면 발급 0건·포인트 0이다.
+- [x] 민지 재현: 새 테스트와 인접 테스트(`usage-badges`·`jam-action-badges`) 79건 통과. id 한 번만 세기를 빼거나 `silent`를 무시하도록 바꾸면 해당 테스트가 실패하는 것을 확인했다.
+- [ ] 라이브 데이터 대조: 이 티켓 범위 밖(착수 가정 6). 0633이 넘긴 「실데이터에서 코드 계산을 돌린 대조」는 첫 JAM! 배지를 열 때 이 배치의 dry-run으로 한다(잔여 이슈).
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
-
-- [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
-- [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)
-- [ ] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
-- [ ] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
-- [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
+- 해당 없음: 사용자 노출 문구가 없다(어드민 API 응답 필드와 서버 로그만 바뀌었다).
 
 ### 배포 정보
-- 배포일: 
-- 환경: production
-- 커밋: 
+- 배포일: (프로덕션 미배포, staging 반영 2026-10-01)
+- 환경: staging
+- 커밋: 763377e4
 
 ### 실행 지표
 > Workflow 완료 알림 `<usage>`(전체 토큰·소요·에이전트 수·도구 호출)와 결과의 `tokenUsage`
@@ -105,8 +118,8 @@ DB 마이그레이션(없음 — `triggered_by`는 CHECK 없는 자유 텍스트
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1차 | 2 | 207,789 | 37,935 / 18,132 | 13분 25초 | 76 |
+| 합계 | 2 | 207,789 | 37,935 / 18,132 | 13분 25초 | 76 |
 
 ### 주요 의사결정 / 핵심 메모
 > 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
@@ -127,5 +140,9 @@ DB 마이그레이션(없음 — `triggered_by`는 CHECK 없는 자유 텍스트
 
 **라이브 조회 생략.** JAM! 지표 배지가 라이브에 이미 있는지 보려 했으나 프로젝트 ID 탐색이 자동 권한 판정에서 막혔다. 계획 수립에는 필요하지 않아 생략했다.
 
+**결과 (2026-10-01).** 게이트 1차 PASS, 재작업 없음. 규모 사전 판정이 맞아 아현이 `plan_only` 없이 한 번에 구현했다(코드 약 190줄, 테스트 약 380줄).
+범위 밖 발견물: 민지 [성능/주의] → P2 20261001_1036(재평가 소요 시간 실측과 500명 상한 조정). 착수 가정 5번 → P3 20261001_1022(사용량 배지 6종 재평가).
+
 ### 잔여 이슈
--
+- 라이브 실행과 실데이터 대조: 첫 JAM! 배지를 열 때 「카탈로그에 넣기 → dry-run → 숫자 확인(사용자 승인) → 실제 실행」으로 한다. 0633이 넘긴 코드 계산의 실데이터 대조도 이 dry-run이 맡는다.
+  처음에는 `userIds` 1~2명으로 소요 시간부터 잰다(20261001_1036).
