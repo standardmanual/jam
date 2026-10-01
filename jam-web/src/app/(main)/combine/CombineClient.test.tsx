@@ -15,7 +15,7 @@
  * 티켓 20261001_1159(운영자 시험 믹스) 추가분: 클릭·상태 전환은 jsdom이 없어도 검증할 수 있게
  * `react`의 `useState`·`useMemo`만 «손으로 돌리는 상태 저장소»로 바꿔 끼우고(`hooks.active`일 때만),
  * 컴포넌트 함수를 직접 호출해 나온 엘리먼트 트리에서 핸들러(`onClick`·`onClose`)를 꺼내 부른다.
- * 하위 컴포넌트는 렌더하지 않고 props만 본다. 그 밖의 테스트는 진짜 React 훅으로 돈다.
+ * 하위 컴포넌트는 렌더하지 않고 props만 본다. 그 밖의 테스트는 실제 React 훅으로 돈다.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { isValidElement, type ReactElement, type ReactNode } from 'react'
