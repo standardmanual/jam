@@ -605,9 +605,10 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
             {hasItemSlot && (
               <p className="text-[length:var(--text-caption)] text-text-secondary text-center">{d.combine.burnNotice}</p>
             )}
-            {/* 시험 믹스 사전 안내 — 공개 전 레시피(운영자)에만. 조건형 문구라 화면이 낡아 공개 시각이 지나도 거짓이 되지 않는다(티켓 20261001_1159) */}
+            {/* 시험 믹스 사전 안내 — 공개 전 레시피(운영자)에만. 조건형 문구라 화면이 낡아 공개 시각이 지나도 거짓이 되지 않는다(티켓 20261001_1159).
+                360px에서 두 줄로 넘어가 마지막 글자 하나만 떨어지므로 단어 단위로 끊고 두 줄 길이를 맞춘다(break-keep·text-balance) */}
             {selectedRecipe.releaseAt && (
-              <p className="text-[length:var(--text-caption)] text-text-secondary text-center">{d.combine.testMixPreNotice}</p>
+              <p className="text-[length:var(--text-caption)] text-text-secondary text-center break-keep text-balance">{d.combine.testMixPreNotice}</p>
             )}
           </div>
 

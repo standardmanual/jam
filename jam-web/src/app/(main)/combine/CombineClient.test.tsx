@@ -383,8 +383,10 @@ describe('CombineClient — 믹서 화면과 시험 믹스 결과 안내 (티켓
 
     const captions = findAll(mixer, (el) => el.type === 'p' && textOf(el) === d.combine.testMixPreNotice)
     expect(captions).toHaveLength(1)
-    // burnNotice와 같은 모양(크기·색·정렬)이다
-    expect(captions[0].props.className).toBe('text-[length:var(--text-caption)] text-text-secondary text-center')
+    // burnNotice와 같은 모양(크기·색·정렬)에 두 줄 줄바꿈 보정(break-keep·text-balance)만 더한다
+    expect(captions[0].props.className).toBe(
+      'text-[length:var(--text-caption)] text-text-secondary text-center break-keep text-balance',
+    )
   })
 
   it('공개된 레시피(releaseAt 없음)는 요약 바에도 CTA 아래에도 공개 예정 표시가 없다', () => {
