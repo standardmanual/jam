@@ -10,7 +10,7 @@
  * 계측(`events.ts`)이 화면 모듈(`cardView.ts`, 한국어 사전을 가져온다)을 값으로 가져오지 않도록, 두 쪽이 함께 쓰는 순수 판정
  * (자원 대응 `resourceOfTemplate`·`CARD_RESOURCES`, 타일 0개 `list`의 `brief` 대체 `fallbackEmptyTileShape`, 랭킹 행형 판정
  * `isRankingRows`)은 이 파일에 둔다(티켓 20261001_2244). `cardView.ts`가 같은 이름으로 다시 내보낸다. 이 파일은 사전·서버 모듈을
- * 값으로 가져오지 않는다 — 그래야 이벤트 API 번들에 사전이 실리지 않는다(`shape.imports.test.ts`가 import 그래프로 고정한다).
+ * 값으로 가져오지 않는다 — 그래야 이벤트 API 번들에 사전이 실리지 않는다(`__tests__/eventsImports.test.ts`가 import 그래프로 고정한다).
  */
 import type { TodayCardRow, TodayCardTemplateType } from '@/types/database'
 

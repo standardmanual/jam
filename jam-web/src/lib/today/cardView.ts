@@ -170,7 +170,7 @@ export interface CardViewTile {
 /**
  * 계측 정보 — 카드 ID·유형 ID·템플릿·그려진 모양. 표시 데이터에 이 값이 없으면 그리는 쪽이 트래커와 링크를 그리지 않는다
  * (운영툴 미리보기가 노출·클릭 기록을 남기지 않게 하는 장치, 티켓 20260930_1645와 이어진다).
- * 템플릿은 GA `today_card_click`의 `template_type`으로 보낸다(새 틀도 옛 렌더러와 같은 값을 보내야 해서 싣는다, 티켓 20261001_1458).
+ * 템플릿은 GA `today_card_click`의 `template_type`으로 보낸다(전환 전 옛 렌더러와 같은 값을 보내려고 실었다, 티켓 20261001_1458).
  */
 export interface CardViewTracking {
   cardId: string
