@@ -4,7 +4,7 @@ import { getAdminUser } from '@/lib/admin/auth'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { evaluateBadgesDetailed } from '@/lib/badge-engine'
 import { buildVirtualActivities, readExtendedFields } from '@/lib/admin/virtualActivity'
-import type { InventoryRow } from '@/types/database'
+import { previewItemDrop, type SkippedDropReason } from '@/lib/drop-engine/preview'
 import type { Database } from '@/types/database.generated'
 
 /**
@@ -16,32 +16,6 @@ import type { Database } from '@/types/database.generated'
  */
 type InventoryItemInsert = Database['public']['Tables']['inventory_items']['Insert']
 type InventoryItemInsertByTrigger = Omit<InventoryItemInsert, 'serial_number'>
-
-// rarity 드랍 확률 (drop-engine과 동일)
-const RARITY_THRESHOLDS = [
-  { rarity: 'common' as const, threshold: 0.40 },
-  { rarity: 'rare' as const, threshold: 0.65 },
-  { rarity: 'epic' as const, threshold: 0.75 },
-  { rarity: 'mystic' as const, threshold: 0.80 },
-]
-
-function rollRarity(): 'common' | 'rare' | 'epic' | 'mystic' | null {
-  const roll = Math.random()
-  for (const { rarity, threshold } of RARITY_THRESHOLDS) {
-    if (roll < threshold) return rarity
-  }
-  return null
-}
-
-function weightedPick<T extends { drop_weight: number }>(items: T[]): T {
-  const total = items.reduce((sum, item) => sum + item.drop_weight, 0)
-  let rand = Math.random() * total
-  for (const item of items) {
-    rand -= item.drop_weight
-    if (rand <= 0) return item
-  }
-  return items[items.length - 1]
-}
 
 export async function POST(req: NextRequest) {
   const admin = await getAdminUser()
@@ -126,48 +100,70 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 4. 아이템 드랍 시뮬레이션 (첫 번째 활동 기준으로 한 번 롤)
-  let itemDrop: { badgeName: string; rarity: string } | null = null
-  let droppedInventoryItemId: string | null = null
+  // 4. 아이템 드랍 시뮬레이션 — 엔진(`tryItemDrop`)의 판정 단계를 그대로 따라간다(`previewItemDrop`).
+  //    첫 번째 활동 기준으로 한 번 굴리며, 현재 drop_policy·유저 드랍 상태·섀도우밴 수준을 읽는다.
+  //    DB에는 아무것도 쓰지 않는다. 적용 모드(dryRun=false)만 고른 배지를 인벤토리에 넣고,
+  //    유저 드랍 상태(연속 common·pity·일일 카운터)·결산 소식·엔진 판정 로그는 남기지 않는다.
+  const itemDrops: {
+    badgeName: string
+    /** 실제로 뽑힌 배지의 등급 — 등급 폴백(후보 없음)이 일어나면 cappedRarity와 다를 수 있다 */
+    rarity: string | null
+    rolledRarity: string
+    cappedRarity: string
+    tribeName: string
+    bookName: string
+    isBonus: boolean
+    isLastPiece: boolean
+  }[] = []
+  let itemDropSkips: { attempt: number; reason: SkippedDropReason; rolledRarity: string | null }[] = []
+  let itemDropUnavailable: 'no_drop_structure' | 'no_inventory' | null = null
 
-  const { data: inventoryRaw } = await supabase
-    .from('inventory')
-    .select('id, used_slots, max_slots')
-    .eq('user_id', userId)
-    .single()
+  const preview = await previewItemDrop(userId, activities[0] ?? null, activities)
+  if (preview.kind === 'unavailable') {
+    itemDropUnavailable = preview.reason
+  } else {
+    const { plan, inventory } = preview
+    itemDropSkips = plan.skipped.map((skip) => ({
+      attempt: skip.attempt,
+      reason: skip.reason,
+      rolledRarity: skip.rolledRarity ?? null,
+    }))
 
-  const inventory = inventoryRaw as Pick<InventoryRow, 'id' | 'used_slots' | 'max_slots'> | null
+    const bookIds = [...new Set(plan.drops.map((d) => d.bookId))]
+    const { data: booksRaw } = bookIds.length > 0
+      ? await supabase.from('item_books').select('id, name').in('id', bookIds)
+      : { data: [] as { id: string; name: string }[] }
+    const bookNameById = new Map((booksRaw ?? []).map((b) => [b.id, b.name]))
 
-  const rarity = rollRarity()
-  if (rarity && inventory && inventory.used_slots < inventory.max_slots) {
-    const { data: candidatesRaw } = await supabase
-      .from('badges')
-      .select('id, name, drop_weight')
-      .eq('type', 'item')
-      .eq('rarity', rarity)
-      .is('deleted_at', null)
+    let insertedCount = 0
+    for (const drop of plan.drops) {
+      itemDrops.push({
+        badgeName: drop.badge.name,
+        rarity: drop.badge.rarity,
+        rolledRarity: drop.rolledRarity,
+        cappedRarity: drop.cappedRarity,
+        tribeName: drop.tribeName,
+        bookName: bookNameById.get(drop.bookId) ?? '',
+        isBonus: drop.isBonus,
+        isLastPiece: drop.isLastPiece,
+      })
 
-    const candidates = (candidatesRaw ?? []) as { id: string; name: string; drop_weight: number }[]
-    if (candidates.length > 0) {
-      const picked = weightedPick(candidates)
-      itemDrop = { badgeName: picked.name, rarity }
-
-      if (!dryRun && inventory) {
+      if (!dryRun) {
         const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         const inventoryItemsQuery = supabase.from('inventory_items')
         const insertQuery = inventoryItemsQuery.insert({
           inventory_id: inventory.id,
-          badge_id: picked.id,
+          badge_id: drop.badge.id,
           obtained_by: 'drop',
           expires_at: expiresAt,
         } satisfies InventoryItemInsertByTrigger as InventoryItemInsert)
         const { data: insertedItem } = await insertQuery.select('id').single()
 
         if (insertedItem) {
-          droppedInventoryItemId = (insertedItem as { id: string }).id
+          insertedCount += 1
           await supabase
             .from('inventory')
-            .update({ used_slots: inventory.used_slots + 1 })
+            .update({ used_slots: inventory.used_slots + insertedCount })
             .eq('id', inventory.id)
         }
       }
@@ -177,8 +173,6 @@ export async function POST(req: NextRequest) {
   // Phase 8: 아이템북 완성은 유저가 직접 슬롯을 채우는 방식으로 변경됨.
   // 시뮬레이션으로는 슬롯 액션을 재현할 수 없으므로 완성 체크는 생략.
   const itemBooksCompleted: { bookName: string; rewardBadgeName: string | null }[] = []
-
-  void droppedInventoryItemId
 
   return NextResponse.json({
     parsed: {
@@ -193,7 +187,9 @@ export async function POST(req: NextRequest) {
     badgesEarned,
     badgesMissed,
     poisMatched,
-    itemDrop,
+    itemDrops,
+    itemDropSkips,
+    itemDropUnavailable,
     itemBooksCompleted,
     applied: !dryRun,
   })

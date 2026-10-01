@@ -18,6 +18,18 @@ import VirtualActivityForm, { type VirtualActivityValue } from '@/components/adm
  * 실행 + 결과 표시만 담당한다.
  */
 
+interface ItemDropResult {
+  badgeName: string
+  /** 실제로 뽑힌 배지의 등급 (후보가 없어 등급 폴백이 일어나면 상한 적용 등급과 다를 수 있다) */
+  rarity: string | null
+  rolledRarity: string
+  cappedRarity: string
+  tribeName: string
+  bookName: string
+  isBonus: boolean
+  isLastPiece: boolean
+}
+
 interface SimulateResult {
   parsed: {
     distanceKm: number
@@ -30,7 +42,9 @@ interface SimulateResult {
   badgesEarned: { id: string; name: string; rarity: string; reason: string }[]
   badgesMissed: { id: string; name: string; reason: string; actual: string; required: string }[]
   poisMatched: { id: string; name: string }[]
-  itemDrop: { badgeName: string; rarity: string } | null
+  itemDrops: ItemDropResult[]
+  itemDropSkips: { attempt: number; reason: string; rolledRarity: string | null }[]
+  itemDropUnavailable: 'no_drop_structure' | 'no_inventory' | null
   itemBooksCompleted: { bookName: string; rewardBadgeName: string | null }[]
   applied: boolean
 }
@@ -53,6 +67,18 @@ const rarityColors: Record<string, string> = {
 
 const RARITY_LABEL: Record<string, string> = {
   common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic',
+}
+
+// 엔진 판정(`previewItemDrop`)이 드랍을 내지 못한 이유 — 키는 `tryItemDrop`의 outcome과 같다
+const ITEM_DROP_SKIP_LABEL: Record<string, string> = {
+  slot_full: '인벤토리 슬롯이 가득 차 드랍되지 않음',
+  shadow_ban_blocked: '섀도우밴으로 드랍이 차단됨',
+  no_candidate: '조건에 맞는 후보 배지가 없음',
+}
+
+const ITEM_DROP_UNAVAILABLE_LABEL: Record<string, string> = {
+  no_drop_structure: '드랍할 수 있는 활성 컬렉션이 없음',
+  no_inventory: '대상 유저의 인벤토리가 없음',
 }
 
 export default function SimulatorPage() {
@@ -318,21 +344,44 @@ export default function SimulatorPage() {
                 )}
               </div>
 
-              {/* 아이템 드랍 */}
+              {/* 아이템 드랍 — 현재 drop_policy·유저 드랍 상태·섀도우밴 수준으로 엔진 판정을 그대로 따라간다 */}
               <div>
                 <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-2">
-                  아이템 드랍
+                  아이템 드랍 ({result.itemDrops.length}개)
                 </p>
-                {result.itemDrop ? (
-                  <div className="flex items-center gap-2">
-                    <IconTag className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{result.itemDrop.badgeName}</span>
-                    <span className={`text-xs ${rarityColors[result.itemDrop.rarity] ?? 'text-muted-foreground'}`}>
-                      ({RARITY_LABEL[result.itemDrop.rarity] ?? result.itemDrop.rarity})
-                    </span>
-                  </div>
+                {result.itemDropUnavailable ? (
+                  <p className="text-muted-foreground text-xs">
+                    드랍 없음: {ITEM_DROP_UNAVAILABLE_LABEL[result.itemDropUnavailable] ?? result.itemDropUnavailable}
+                  </p>
                 ) : (
-                  <p className="text-muted-foreground text-xs">드랍 없음</p>
+                  <div className="space-y-2">
+                    {result.itemDrops.map((d, i) => (
+                      <div key={i} className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <IconTag className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{d.badgeName}</span>
+                          <span className={`text-xs ${rarityColors[d.rarity ?? ''] ?? 'text-muted-foreground'}`}>
+                            ({RARITY_LABEL[d.rarity ?? ''] ?? d.rarity ?? '등급 없음'})
+                          </span>
+                          {d.isBonus && <span className="text-xs text-muted-foreground">보너스 드랍</span>}
+                          {d.isLastPiece && <span className="text-xs text-muted-foreground">마지막 조각</span>}
+                        </div>
+                        <p className="text-muted-foreground text-xs pl-6">
+                          {[d.tribeName, d.bookName].filter(Boolean).join(' · ')}
+                          {d.rolledRarity !== d.cappedRarity &&
+                            ` — 섀도우밴으로 ${RARITY_LABEL[d.rolledRarity] ?? d.rolledRarity} → ${RARITY_LABEL[d.cappedRarity] ?? d.cappedRarity} 강등`}
+                        </p>
+                      </div>
+                    ))}
+                    {result.itemDropSkips.map((skip, i) => (
+                      <p key={`skip-${i}`} className="text-muted-foreground text-xs">
+                        {skip.attempt === 0 ? '확정 드랍' : '보너스 드랍'} 없음:{' '}
+                        {ITEM_DROP_SKIP_LABEL[skip.reason] ?? skip.reason}
+                        {skip.rolledRarity &&
+                          ` (추첨 등급 ${RARITY_LABEL[skip.rolledRarity] ?? skip.rolledRarity})`}
+                      </p>
+                    ))}
+                  </div>
                 )}
               </div>
 

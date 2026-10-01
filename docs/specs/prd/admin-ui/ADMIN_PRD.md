@@ -382,7 +382,19 @@ Response: {
   badgesEarned: { id: string; name: string; rarity: string; reason: string }[]
   badgesMissed: { id: string; name: string; reason: string; actual: string; required: string }[]
   poisMatched: { id: string; name: string }[]
-  itemDrop: { badgeName: string; rarity: string } | null
+  // 아이템 드랍은 드랍 엔진 판정(previewItemDrop)을 그대로 따른다 — BADGE_ENGINE_UNIFIED §3.7.2
+  itemDrops: {                 // 0~2개 (확정 1 + 보너스 1)
+    badgeName: string
+    rarity: string | null      // 뽑힌 배지의 등급
+    rolledRarity: string       // 추첨 등급
+    cappedRarity: string       // 섀도우밴 상한 적용 등급
+    tribeName: string
+    bookName: string
+    isBonus: boolean
+    isLastPiece: boolean
+  }[]
+  itemDropSkips: { attempt: number; reason: 'slot_full' | 'shadow_ban_blocked' | 'no_candidate'; rolledRarity: string | null }[]
+  itemDropUnavailable: 'no_drop_structure' | 'no_inventory' | null
   itemBooksCompleted: { bookName: string; rewardBadgeName: string | null }[]
   applied: boolean
 }
