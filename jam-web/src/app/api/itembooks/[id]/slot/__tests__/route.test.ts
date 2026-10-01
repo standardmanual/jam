@@ -1,9 +1,10 @@
 /**
- * POST·DELETE·PATCH /api/itembooks/[id]/slot — JAM! 행동 지표(완성한 컬렉션 수) 판정 연동 테스트
- * (티켓 20261001_0633, 상위 20260930_1456 ③)
+ * POST·DELETE·PATCH /api/itembooks/[id]/slot — JAM! 행동 지표(완성한 컬렉션 수) 판정·컬렉션 보상 배지 발급 연동 테스트
+ * (티켓 20261001_0633, 상위 20260930_1456 ③ / 티켓 20261001_0635)
  *
  * 검증 대상:
- *  - 장착(POST) 성공 뒤 `after()`로 `collection_complete_count` 판정을 1회 예약한다(콜백이 `runJamActionEvaluation`을 부른다)
+ *  - 장착(POST) 성공 뒤 `after()` 1회로 «보상 배지 발급(`runSlotRewardIssue`) → `collection_complete_count` 판정
+ *    (`runJamActionEvaluation`)» 순서의 실행을 예약한다
  *  - 401·400·RPC 오류·`ok: false` 실패 분기에서는 예약하지 않는다
  *  - 해제(DELETE)·교체(PATCH)에서는 예약하지 않는다
  *  - 응답 본문·상태 코드·에러 문구는 변경 전과 같다. 판정이 거부돼도 응답은 그대로다
@@ -35,6 +36,9 @@ const state = vi.hoisted(() => ({
 }))
 
 const runJamActionMock = vi.hoisted(() => vi.fn<(userId: string, triggers: readonly string[]) => Promise<void>>())
+const runSlotRewardMock = vi.hoisted(() => vi.fn<(userId: string, itemBookId: string) => Promise<void>>())
+/** `after` 콜백 안에서 두 함수가 불린 순서 */
+const callOrder = vi.hoisted(() => [] as string[])
 
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
@@ -61,6 +65,9 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 vi.mock('@/lib/badge-engine/jamActionRoute', () => ({
   runJamActionEvaluation: (userId: string, triggers: readonly string[]) => runJamActionMock(userId, triggers),
+}))
+vi.mock('@/lib/itembook/slotReward', () => ({
+  runSlotRewardIssue: (userId: string, itemBookId: string) => runSlotRewardMock(userId, itemBookId),
 }))
 vi.mock('next/server', async (importOriginal) => {
   const actual = await importOriginal<typeof import('next/server')>()
@@ -99,10 +106,16 @@ beforeEach(() => {
   state.afterCallbacks = []
   state.book = { is_active: true, valid_from: null, valid_until: null }
   state.bookError = null
-  runJamActionMock.mockResolvedValue(undefined)
+  callOrder.length = 0
+  runJamActionMock.mockImplementation(async () => {
+    callOrder.push('runJamActionEvaluation')
+  })
+  runSlotRewardMock.mockImplementation(async () => {
+    callOrder.push('runSlotRewardIssue')
+  })
 })
 
-describe('POST 성공 — after()로 완성한 컬렉션 수를 판정한다', () => {
+describe('POST 성공 — after()로 보상 배지를 발급하고 완성한 컬렉션 수를 판정한다', () => {
   it('판정을 1회 예약하고, 콜백이 장착한 사람의 collection_complete_count로 runJamActionEvaluation을 부른다', async () => {
     const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
 
@@ -115,6 +128,21 @@ describe('POST 성공 — after()로 완성한 컬렉션 수를 판정한다', (
     await flushAfter()
     expect(runJamActionMock).toHaveBeenCalledTimes(1)
     expect(runJamActionMock).toHaveBeenCalledWith(USER_ID, ['collection_complete_count'])
+  })
+
+  it('같은 after 예약 안에서 장착한 컬렉션의 보상 배지 발급을 먼저 부르고 이어서 JAM! 판정을 부른다(티켓 20261001_0635)', async () => {
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(201)
+    // 예약은 한 번이다 — 보상 배지 발급용 예약을 따로 만들지 않는다
+    expect(state.afterCallbacks).toHaveLength(1)
+    // 응답을 보내기 전에는 발급도 하지 않는다
+    expect(runSlotRewardMock).not.toHaveBeenCalled()
+
+    await flushAfter()
+    expect(runSlotRewardMock).toHaveBeenCalledTimes(1)
+    expect(runSlotRewardMock).toHaveBeenCalledWith(USER_ID, ITEM_BOOK_ID)
+    expect(callOrder).toEqual(['runSlotRewardIssue', 'runJamActionEvaluation'])
   })
 
   it('장착 RPC에는 기존과 같은 인자를 넘긴다', async () => {
@@ -137,6 +165,17 @@ describe('POST 성공 — after()로 완성한 컬렉션 수를 판정한다', (
     // 콜백이 거부돼도 이미 보낸 응답에는 영향이 없다(테스트 헬퍼가 거부를 삼킨다)
     await flushAfter()
     expect(runJamActionMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('보상 배지 발급이 거부돼도 응답은 그대로다', async () => {
+    runSlotRewardMock.mockRejectedValue(new Error('발급 장애'))
+
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    expect(res.status).toBe(201)
+    expect(await res.json()).toEqual({ slot: SLOT })
+
+    await flushAfter()
+    expect(runSlotRewardMock).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -246,7 +285,7 @@ describe('POST — 공개되지 않은 컬렉션에는 장착할 수 없다(티�
   })
 })
 
-describe('DELETE(해제)·PATCH(교체)에서는 판정을 예약하지 않는다 — 응답은 그대로다', () => {
+describe('DELETE(해제)·PATCH(교체)에서는 판정·보상 배지 발급을 예약하지 않는다 — 응답은 그대로다', () => {
   it('DELETE 성공', async () => {
     const res = await DELETE(request('DELETE', { slot_id: 'slot-1' }), PARAMS)
     expect(res.status).toBe(200)
@@ -254,6 +293,7 @@ describe('DELETE(해제)·PATCH(교체)에서는 판정을 예약하지 않는�
     expect(state.afterCallbacks).toHaveLength(0)
     await flushAfter()
     expect(runJamActionMock).not.toHaveBeenCalled()
+    expect(runSlotRewardMock).not.toHaveBeenCalled()
   })
 
   it('PATCH 성공', async () => {
@@ -263,6 +303,7 @@ describe('DELETE(해제)·PATCH(교체)에서는 판정을 예약하지 않는�
     expect(state.afterCallbacks).toHaveLength(0)
     await flushAfter()
     expect(runJamActionMock).not.toHaveBeenCalled()
+    expect(runSlotRewardMock).not.toHaveBeenCalled()
   })
 
   it('DELETE ok:false', async () => {
