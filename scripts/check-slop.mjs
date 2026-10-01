@@ -96,7 +96,9 @@ function collectAddedLines() {
     (f.startsWith('jam-web/') || f.startsWith('docs/') || f.startsWith('jam-doc/')) &&
     !f.startsWith('docs/tickets/') &&
     !f.startsWith('jam-doc/archive/') &&
-    !f.startsWith('jam-doc/assets/')
+    !f.startsWith('jam-doc/assets/') &&
+    // 사용자가 넣은 트렌드 자료 원문은 고치지 않으므로 금칙어 검사에서 뺀다 (티켓 20260930_1518)
+    !f.startsWith('jam-doc/inbox/trends/')
   // 워킹트리 기준으로 비교한다 — 커밋 전(verify.sh를 커밋 전에 돌리는 경우)의 수정·스테이징 줄과
   // 추적되지 않는 새 파일도 잡는다. `origin/staging...HEAD`만 보면 커밋 전 줄이 빠져 CI와 결과가 갈렸다.
   const base = execSync('git merge-base origin/staging HEAD', opts).trim()

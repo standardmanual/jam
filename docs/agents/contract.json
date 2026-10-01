@@ -74,6 +74,7 @@
       "jam-doc/planning/content/TRIBES.md",
       "jam-doc/assets/content-seed/v5_seed_build.py",
       "jam-doc/operations/reports",
+      "jam-doc/inbox/trends/README.md",
       "docs/agents/workflow/README.md",
       "jam-web/supabase/migrations/198_ops_inbox.sql",
       "jam-web/supabase/migrations/207_ops_rules.sql",

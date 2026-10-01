@@ -197,8 +197,8 @@ tags: [워크플로]
 
 | 검사기 | 범위 | 제외 |
 |---|---|---|
-| `doc-check` (링크·frontmatter) | `docs/specs/`, `docs/agents/`, `docs/tickets/`, `jam-doc/planning/`, `jam-doc/marketing/`, `jam-doc/operations/` | `jam-doc/archive/`, `jam-doc/assets/`, `operations/reports/` |
-| `check-slop` (한국어 슬롭) | `jam-web/`, `docs/`, `jam-doc/` | `docs/tickets/`, `jam-doc/archive/`, `jam-doc/assets/` |
+| `doc-check` (링크·frontmatter) | `docs/specs/`, `docs/agents/`, `docs/tickets/`, `jam-doc/planning/`, `jam-doc/marketing/`, `jam-doc/operations/`, `jam-doc/inbox/` | `jam-doc/archive/`, `jam-doc/assets/`, `operations/reports/` |
+| `check-slop` (한국어 슬롭) | `jam-web/`, `docs/`, `jam-doc/` | `docs/tickets/`, `jam-doc/archive/`, `jam-doc/assets/`, `jam-doc/inbox/trends/` |
 
 ---
 

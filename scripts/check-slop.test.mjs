@@ -5,15 +5,18 @@
 
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PROBE_REL = `jam-web/slop-probe-${process.pid}.txt`
 const BIN_REL = `jam-web/slop-probe-${process.pid}.bin`
+// 사용자 트렌드 자료 폴더는 원문을 고치지 않으므로 검사에서 빠져야 한다 (티켓 20260930_1518)
+const TREND_REL = `jam-doc/inbox/trends/2099-01-01_slop-probe-${process.pid}.md`
 const PROBE = join(ROOT, PROBE_REL)
 const BIN = join(ROOT, BIN_REL)
+const TREND = join(ROOT, TREND_REL)
 
 // 인자로 준 파일만 판정한다 — 워킹트리의 다른 미커밋 변경이 결과를 흔들지 않게 한다 (티켓 20260924_0652).
 const run = (rel) => spawnSync('node', ['scripts/check-slop.mjs', rel], { cwd: ROOT, encoding: 'utf8' })
@@ -33,8 +36,14 @@ try {
   writeFileSync(BIN, Buffer.concat([Buffer.from('진짜 금칙어'), Buffer.from([0, 1, 2, 255])]))
   const bin = run(BIN_REL)
   assert.equal(bin.status, 0, `미추적 바이너리는 건너뛰어야 한다: ${bin.stderr}`)
+
+  mkdirSync(dirname(TREND), { recursive: true })
+  writeFileSync(TREND, '진짜 금칙어\n')
+  const trend = run(TREND_REL)
+  assert.equal(trend.status, 0, `사용자 트렌드 자료는 금칙어 검사에서 빠져야 한다: ${trend.stderr}`)
   console.log('check-slop 테스트 통과')
 } finally {
   rmSync(PROBE, { force: true })
   rmSync(BIN, { force: true })
+  rmSync(TREND, { force: true })
 }
