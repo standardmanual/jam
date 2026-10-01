@@ -58,7 +58,7 @@ const DROP = brief({
   resource: 'drop',
   label: d.todayCard.dropAlert,
   title: '한강공원 번개 드랍',
-  // 지역 값이 있어도 드랍은 칩 줄에 핀을 그리지 않는다(필수 정보 「장소」 줄이 같은 값을 낸다)
+  // 지역 값이 있어도 드랍은 칩 줄에 핀을 그리지 않는다(필수 정보 「지역」 줄이 같은 값을 낸다)
   regionLabel: '여의도 한강공원',
   facts: buildFacts('drop', { place: '여의도 한강공원' }, NOW),
   href: '/drops',
@@ -166,7 +166,7 @@ export const ByResource: Story = {
   render: () => (
     <Column width={W360}>
       <Case caption="미션 — 필수 정보 2줄" view={MISSION} />
-      <Case caption="드랍 — 장소 (칩 줄에 지역 핀 없음)" view={DROP} />
+      <Case caption="드랍 — 지역 (칩 줄에 지역 핀 없음)" view={DROP} />
       <Case caption="컬렉션 — 이름 · 아이템 수" view={COLLECTION} />
       <Case caption="JAM! 배지 — 배지 그림 썸네일 · 희귀도 칩" view={BADGE} />
       <Case caption="자동 카드 — 진행 알림 (모래시계)" view={AUTO_NUDGE} />
@@ -405,11 +405,11 @@ export const TextLimits: Story = {
           />
           <Case
             caption={`${width}px — 필수 정보 15자`}
-            view={{ ...DROP, facts: ['장소 여의도 한강시민공원 앞'] }}
+            view={{ ...DROP, facts: ['지역 여의도 한강시민공원 앞'] }}
           />
           <Case
             caption={`${width}px — 필수 정보 20자(줄바꿈, 말줄임 없음)`}
-            view={{ ...DROP, facts: ['장소 여의도 한강시민공원 물빛광장 앞'] }}
+            view={{ ...DROP, facts: ['지역 여의도 한강시민공원 물빛광장 앞'] }}
           />
         </Column>
       ))}

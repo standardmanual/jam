@@ -371,7 +371,7 @@ export const ko = {
     factReward: '보상 {items}',
     factRewardPoints: '{points} 포인트',
     factRewardBadges: '배지 {count}개',
-    factPlace: '장소 {place}',
+    factPlace: '지역 {place}',
     factItemCount: '아이템 {count}개',
     /** 남은 시간 — 종료 7일 이내에만 기간 줄 대신 쓴다. 초·분 단위와 카운트다운은 쓰지 않는다 */
     remainingDays: '{count}일 남음',

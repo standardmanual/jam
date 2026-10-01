@@ -67,7 +67,7 @@ export interface CardFactValues {
   period?: { startsAt: string; endsAt: string | null } | null
   rewardPoints?: number | null
   rewardBadgeCount?: number | null
-  /** 드랍 장소(`region_label`) */
+  /** 드랍 지역(`region_label`) */
   place?: string | null
   collectionName?: string | null
   itemCount?: number | null
@@ -127,7 +127,7 @@ function nonBlank(value: string | null | undefined): string | null {
  * 자원별 필수 정보(확정 설계 2절)를 글자 줄 최대 2개로 만든다. 값이 없는 줄은 생략한다.
  *
  * - 미션: 기간(또는 남은 시간) · 보상 / 자동 카드: 미션을 가리키면 그 미션의 기간
- * - 드랍: 장소(시각은 값이 없어 생략, 티켓 O6 1457) / 컬렉션: 이름 · 아이템 N개 / JAM! 배지: 이름
+ * - 드랍: 지역(시각은 값이 없어 생략, 티켓 O6 1457) / 컬렉션: 이름 · 아이템 N개 / JAM! 배지: 이름
  * - 기사(게재일은 `publishedAt`으로 따로 둔다)·랭킹·레시피(템플릿이 아직 없다): 없음
  */
 export function buildFacts(resource: CardResource, values: CardFactValues, now: Date): string[] {
