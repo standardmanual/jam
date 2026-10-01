@@ -11,9 +11,12 @@
  *    (레시피는 매칭됐지만 보상이 전부 비어 재료만 소각된 경우에만 message를 붙인다)
  *  - 실패: { success: false, reason: 'no_recipe_match'|'items_not_found'|'invalid_count'|
  *    'recipe_not_found', pointsAwarded, message }
+ *  - 시험 믹스(티켓 20261001_1159): 운영자가 공개 전 레시피를 믹스하면 위 응답에 `testMix: true`가
+ *    더해진다. 일반 믹스에는 이 키가 없다. 일반 유저가 공개 전 레시피를 보내면 `recipe_not_found`다.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { hasAdminAccess } from '@/lib/admin/auth'
 import { combineRecipeAttempt, jamTriggersForCombineResult } from '@/lib/combine/index'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { d, t } from '@/lib/i18n'
@@ -52,7 +55,15 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const result = await combineRecipeAttempt(user.id, recipeId, itemIds as string[])
+  // 운영자는 공개 전 레시피를 믹스할 수 있다(시험 믹스). 판정이 실패하면 일반 유저와 같게 닫는다(fail-closed).
+  let isAdmin = false
+  try {
+    isAdmin = await hasAdminAccess(user.id, user.email)
+  } catch (adminError) {
+    console.error('[combine] 운영자 판정 실패 — 일반 유저로 처리합니다:', adminError)
+  }
+
+  const result = await combineRecipeAttempt(user.id, recipeId, itemIds as string[], { allowUnreleased: isAdmin })
 
   // JAM! 행동 지표(믹스 시도·성공·실패·레시피 최초 성공) 배지 판정 — 응답을 만들기 전에 한 번 돌린다
   // (티켓 20261001_0631). 래퍼가 예외를 던지지 않지만 트리거 계산까지 한 번 더 감싼다: 판정·알림이
