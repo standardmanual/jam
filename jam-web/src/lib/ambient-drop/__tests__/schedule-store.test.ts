@@ -354,6 +354,34 @@ describe('rescheduleAmbientDrop — 공개 전 시각 수정', () => {
     }
   })
 
+  describe('놓침으로 읽히는 예약은 cron 표시 여부와 관계없이 같은 409이다', () => {
+    const MISSED_MESSAGE =
+      '예정 시각에서 3시간이 지나 놓친 예약이라 수정할 수 없어요. 다시 놓으려면 새 예약을 등록해 주세요.'
+
+    it('DB는 scheduled인데 예정 시각 + 3시간이 지났으면(파생 상태 missed) 409이고 UPDATE를 보내지 않는다', async () => {
+      const lateIso = new Date(NOW.getTime() - AMBIENT_SCHEDULE_LATE_WINDOW_MS - 60_000).toISOString() // 3시간 1분 전
+      insertSchedule({ scheduled_at: lateIso })
+      const result = await rescheduleAmbientDrop(sb(), SCHEDULE_ID, NEW_AT, NOW)
+      expect(result).toEqual({ ok: false, status: 409, error: MISSED_MESSAGE })
+      expect(scheduleRow()).toMatchObject({ scheduled_at: lateIso, status: 'scheduled' })
+      expect(db.writesTo('ambient_drop_schedules')).toEqual([])
+    })
+
+    it('cron이 이미 missed로 표시한 예약도 같은 문구의 409이다', async () => {
+      insertSchedule({ status: 'missed', scheduled_at: '2026-10-01T00:00:00.000Z' })
+      const result = await rescheduleAmbientDrop(sb(), SCHEDULE_ID, NEW_AT, NOW)
+      expect(result).toEqual({ ok: false, status: 409, error: MISSED_MESSAGE })
+      expect(db.writesTo('ambient_drop_schedules')).toEqual([])
+    })
+
+    it('예정 시각에서 정확히 3시간이 지난 때는 아직 놓침이 아니라 고쳐진다(경계는 지난 뒤부터)', async () => {
+      insertSchedule({ scheduled_at: new Date(NOW.getTime() - AMBIENT_SCHEDULE_LATE_WINDOW_MS).toISOString() })
+      const result = await rescheduleAmbientDrop(sb(), SCHEDULE_ID, NEW_AT, NOW)
+      expect(result.ok).toBe(true)
+      expect(scheduleRow()).toMatchObject({ scheduled_at: NEW_AT_ISO, status: 'scheduled' })
+    })
+  })
+
   it('없는 id는 404이다', async () => {
     expect(await rescheduleAmbientDrop(sb(), uuid(999), NEW_AT, NOW)).toMatchObject({ ok: false, status: 404 })
     expect(await rescheduleAmbientDrop(sb(), 'x', NEW_AT, NOW)).toMatchObject({ ok: false, status: 404 })

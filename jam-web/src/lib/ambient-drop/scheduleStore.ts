@@ -8,7 +8,7 @@
  * |---|---|
  * | 만들기 | `createAmbientDropSchedule` — 입력 검증 → 종류 확인 → 예정 시각 기준 대상 판정 → INSERT |
  * | 공개 전 취소 | `cancelScheduledAmbientDrop` — `scheduled`일 때만, 실행 중·실행 뒤는 409 |
- * | 공개 전 시각 수정 | `rescheduleAmbientDrop` — 정시·미래·새 시각 기준 대상 판정, `scheduled`일 때만 |
+ * | 공개 전 시각 수정 | `rescheduleAmbientDrop` — 정시·미래·새 시각 기준 대상 판정, `scheduled`일 때만(놓침으로 읽히면 409) |
  * | 상태 읽기 | `getAmbientDropSchedule` — 행과 파생 상태(`missed`·`stalled`) |
  * | 실행 후 취소 | 위 취소가 409로 거절한다. 놓은 드랍은 내리지 않는다 |
  *
@@ -60,6 +60,8 @@ function notScheduledMessage(status: AmbientDropScheduleStatus, action: '취소'
       return `지금 드랍을 놓는 중인 예약이라 ${action}할 수 없어요. 놓는 중인 드랍은 멈출 수 없어요. 끝난 뒤 예약 목록에서 결과를 확인해 주세요.`
     case 'canceled':
       return `이미 취소된 예약이에요. 취소된 예약은 ${action}할 수 없어요. 새로 등록해 주세요.`
+    case 'missed':
+      return `예정 시각에서 3시간이 지나 놓친 예약이라 ${action}할 수 없어요. 다시 놓으려면 새 예약을 등록해 주세요.`
     default:
       return `이미 처리된 예약이라 ${action}할 수 없어요. 놓은 드랍은 내리지 않아요. 새 예약을 등록해 주세요.`
   }
@@ -162,6 +164,7 @@ export async function cancelScheduledAmbientDrop(
 
 /**
  * 공개(실행) 전 예약 시각 수정. 정시·미래 검증 → 새 시각 기준 대상 판정 → `status='scheduled'` 조건부 UPDATE.
+ * 파생 상태가 `missed`(예정 시각 + 3시간 경과)면 cron이 표시하기 전이어도 409다. 다시 놓으려면 새로 등록한다.
  * 내용(지점·아이템)은 바꾸지 않는다 — 내용을 바꾸려면 취소 후 새로 등록한다.
  */
 export async function rescheduleAmbientDrop(
@@ -186,6 +189,10 @@ export async function rescheduleAmbientDrop(
   if (!existing) return notFound
   if (existing.status !== 'scheduled') {
     return { ok: false, status: 409, error: notScheduledMessage(existing.status, '수정') }
+  }
+  // 화면에 «놓침»으로 보이는 예약(예정 시각 + 3시간 경과)은 cron이 표시하기 전이어도 같은 409다 — cron 시각에 따라 결과가 갈리지 않게 한다
+  if (ambientDropScheduleState(existing, now) === 'missed') {
+    return { ok: false, status: 409, error: notScheduledMessage('missed', '수정') }
   }
 
   let problem: string | null

@@ -558,7 +558,7 @@ stateDiagram-v2
 
 자원별 생성·예약 공개·취소·되돌림은 1500이 맡는다. JAM! 배지는 O5(1456)가 먼저 있어야 한다. 드랍 일정의 예약 공개(O6, 1457)는 저장소와 실행(하위 ①)이 구현됐다 —
 1500은 HTTP가 아니라 `jam-web/src/lib/ambient-drop/scheduleStore.ts`의 서버 함수를 부른다: `createAmbientDropSchedule`(만들기: 검증 → 예정 시각 기준 대상 판정 → 저장),
-`cancelScheduledAmbientDrop`(공개 전 취소, 실행 중·뒤는 409), `rescheduleAmbientDrop`(공개 전 시각 수정), `getAmbientDropSchedule`(상태 읽기, 파생 상태 `missed`·`stalled` 포함)
+`cancelScheduledAmbientDrop`(공개 전 취소, 실행 중·뒤는 409), `rescheduleAmbientDrop`(공개 전 시각 수정, 놓침으로 읽히면 409), `getAmbientDropSchedule`(상태 읽기, 파생 상태 `missed`·`stalled` 포함)
 (티켓 20261001_2051). 드랍 일정은 놓은 뒤 내리지 않아 종료 상태가 없고, 같은 묶음이면 컬렉션 생성이 드랍 예약보다 먼저다(등록 판정이 예정 시각 기준이라 그 시각에 노출 중인 컬렉션이어야 한다).
 레시피의 예약 공개(O16, 1458)는 구현됐다 —
 1500은 `jam-web/src/lib/admin/recipe-write.ts`의 `createRecipeWithSlots`(공개 시각을 넣어 생성), `cancelScheduledRecipe`(공개 전 취소 = 삭제, 삭제 가드를 거치고 공개된 뒤에는 409),
