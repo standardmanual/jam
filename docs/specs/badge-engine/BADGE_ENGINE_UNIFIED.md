@@ -304,12 +304,14 @@ badge-engine 밖의 세 번째 평가 경로.
   | 새 활동이 있는 동기화의 끝(`processFetchedActivities`) | 주 키 5개(`JAM_SYNC_TRIGGERS`) | 활동 기록 저장·`recordDailySyncAndEvaluate` 뒤, 결산 앞에서 1회. 획득 id는 결산(`notifyActivityBadgesEarned`)과 `earnedBadgeIds`에 합치고 반환의 `badges` 수에는 넣지 않는다 |
   | 새 활동이 없는 동기화(빈 배치 이른 반환) | 가입 경과일(`JAM_EMPTY_SYNC_TRIGGERS`) | `evaluateBadges` 뒤 1회. 날짜가 지나면 값이 바뀌는 지표는 이것뿐이다. 오래 쉰 계정은 보조 키가 막는다(R4) |
   | 컬렉션 장착 `POST /api/itembooks/[id]/slot` 성공 | `collection_complete_count`(`jamTriggersForSlot`) | `after()` 예약(`runJamActionEvaluation`). 해제(DELETE)·교체(PATCH)·실패 분기에서는 예약하지 않는다. 장착 RPC가 완성 여부를 돌려주지 않아 장착이 성공할 때마다 판정하며, 완성이 아닌 장착이면 값이 그대로라 발급되지 않는다(R6) |
+  | 기존 유저 재평가 배치 `POST /api/admin/badges/reevaluate-all`(`reevaluateUsersForCatalog`) | `JAM_ACTION_CONDITION_KEYS` 전체 | 유저마다 메인 엔진(`evaluateBadgesDetailed`) 뒤 1회, 별도 `try/catch`. `dryRun`·`silent: true`·`triggeredByPrefix: 'catalog_reevaluation'`을 넘겨 dry-run은 아무것도 쓰지 않고 피드는 만들지 않으며 포인트는 정상 지급한다. 알림은 부르지 않는다. 절차·응답 필드는 §2.17 |
 
   동기화 끝에서 한 번에 판정하는 이유: 활동 기록 저장(`recordProcessedActivities`)이 판정보다 앞서야 주간 활동일이
   이번 배치를 본다. 체크인 루프나 미션 판정 직후에 따로 부르면 호출마다 배지 전체를 읽는다. `user_checkin_badge_earns`
   insert는 `sync.ts`에서만, 미션 완료(`checkMissions`)와 아이템북 완성 보정(`checkItemBookCompletion`)도 `sync.ts`에서만
   호출되어(2026-10-01 grep) 동기화가 끝나는 시점이면 충분하다. 컬렉션 완성은 장착 RPC(`slot_item_into_book`)에서도
-  일어나서 장착 라우트가 따로 판정한다. `0634`(재평가 배치)는 `JAM_ACTION_CONDITION_KEYS` 전체를 넘기면 된다.
+  일어나서 장착 라우트가 따로 판정한다. 기존 유저 재평가 배치(`reevaluateCatalog.ts`)는 위 표의 마지막 행처럼 유저마다
+  `JAM_ACTION_CONDITION_KEYS` 전체를 한 번에 넘긴다(티켓 20261001_0634).
 - **순환 방지**: `sync.ts`가 `jamActionBadges.ts`를 import하므로 `jamActionBadges.ts`는 `@/lib/strava/sync`도,
   `sync.ts`를 import하는 `jamActionRoute.ts`도 import하지 않는다(테스트가 소스 텍스트로 확인한다).
   `jamActionProgressTriggers.ts`는 `jamActionBadges`를 type으로만 가져온다.
@@ -1359,9 +1361,47 @@ POST /api/admin/badges/reevaluate-all
 `dryRun`은 **기본값 true**다 — `false`를 명시해야만 실제로 발급·포인트 지급이 일어난다.
 응답은 대상 유저 수(`targetUserCount`)·영향받는 유저 수(`affectedUserCount`)·예상(또는
 실제) 발급 건수 합계(`totalBadgesIssued`)·포인트 합계(`totalPointsAwarded`)·반복형 카운터
-증가 합계(`totalCounterIncrements`)·유저별 상세(`users[]`)를 담는다. 대상이
+증가 합계(`totalCounterIncrements`)·JAM! 몫 합계 3종(아래 «JAM! 행동 지표도 같은 배치에서 돌린다»)·유저별 상세(`users[]`)를 담는다. 대상이
 `MAX_TARGET_USERS_PER_CALL`(500명)을 넘으면 400으로 거절한다 — `userIds`로 나눠 여러 번
 호출한다(멱등이라 안전, 이미 보유한 배지는 재발급되지 않는다).
+
+#### JAM! 행동 지표도 같은 배치에서 돌린다 (티켓 20261001_0634, 상위 20260930_1456 ④)
+
+JAM! 행동 지표(`JAM_ACTION_CONDITION_KEYS` 전부 — 믹스·드랍·픽업·미션·컬렉션·가입 경과일·활동일·체크인 일수)는
+`external` 조건이라 메인 엔진이 항상 fail 처리한다. 그래서 유저 루프에서 `evaluateBadgesDetailed` 다음에
+`evaluateJamActionBadges(userId, JAM_ACTION_CONDITION_KEYS, supabase, { dryRun, silent: true,
+triggeredByPrefix: CATALOG_REEVALUATION_TRIGGER })`를 한 번 더 부른다. 순서는 동기화(`sync.ts`)와 같다(메인 엔진 → JAM!).
+새 JAM! 배지를 열 때의 순서는 「카탈로그에 넣기 → 바로 dry-run → 숫자 확인 → 실제 실행」이다. 그 사이 자연 발급된
+배지는 정상 발급으로 본다.
+
+- **발급 정책**: 등급형·레벨형·섀도우밴·포인트는 `usageBadges.ts`의 `issueQualifyingBadges`가 그대로 한다.
+  이 함수의 마지막 인자 `options?: { dryRun, silent, triggeredByPrefix }`가 재평가용 분기다 — 생략하면 자연 발급과 같다.
+  `dryRun`은 섀도우밴 판정 **뒤**에서 갈라(메인 엔진 2.9단계와 같은 순서) 통과한 배지를 `earned`에 담기만 하고
+  `user_activity_badges` insert·`awardPoints`·`recordFeedEvent`를 하나도 부르지 않는다. 그래서 섀도우밴 차단은
+  dry-run 숫자에도 반영된다. `silent`는 피드만 건너뛴다.
+- **`triggered_by` 접두**: 재평가로 발급한 JAM! 배지는 `catalog_reevaluation:jam_action:<지표 키>`(레시피 최초 성공은
+  `catalog_reevaluation:recipe_first_success:<recipe_id>`)로 기록된다. 자연 발급(`jam_action:…`)과 구분되어, 되돌릴 때
+  골라내는 근거가 된다. 메인 엔진 몫은 기존대로 `catalog_reevaluation`이다.
+- **알림은 만들지 않는다**: JAM! 알림은 호출부(`jamActionRoute.ts`·`sync.ts`)가 만들고 이 배치는 그 호출부를 거치지 않는다.
+- **실패 격리**: JAM! 호출은 별도 `try/catch`다. 던지면 그 유저의 메인 엔진 결과는 그대로 남고 `error`에 `JAM! 지표: <메시지>`가
+  담긴다. 다른 유저 처리는 계속된다.
+- **응답의 JAM! 몫**: 기존 필드(`earnedBadgeIds`·`earnedCount`·`pointsAwarded`와 합계 `affectedUserCount`·
+  `totalBadgesIssued`·`totalPointsAwarded`)에는 JAM! 몫이 합쳐져 있고, 운영자가 새 JAM! 배지의 몫만 따로 볼 수 있도록
+  유저별 `jamActionEarnedCount`·`jamActionPointsAwarded`와 합계 `jamActionAffectedUserCount`·`totalJamActionBadgesIssued`·
+  `totalJamActionPointsAwarded`를 따로 둔다(대상이 0명일 때도 0으로 내려간다).
+- **dry-run의 중복 계산**: dry-run은 insert가 없어 보유 목록이 바뀌지 않는다. 한 배지가 JAM! 지표 키를 둘 이상 가졌다면
+  실제 실행에서는 첫 지표가 발급하고 둘째는 «이미 보유»로 넘어가므로, 재평가 배치는 같은 배지를 한 번만 센다.
+
+**알려진 한계 (JAM! 재평가)**
+
+1. **사용량 지표 6종은 이 배치에 들어가지 않는다.** 팔로워 수·팔로잉 수·하루 동기화 횟수·연속 동기화 일수(`UsageMetric`)와
+   체크인 카테고리·체크인 목록(`evaluateCheckinUsageBadges`)은 호출하지 않는다. 기록이 있는 만큼 센다는 결정(상위
+   20260930_1456 Q1)의 범위 밖이라서다. 이 6종을 쓰는 배지는 여전히 해당 액션·동기화에서만 발급된다.
+2. **지표 계산 오류는 dry-run 숫자에서 조용히 빠질 수 있다.** `evaluateJamActionBadges`는 지표 계산 오류를 지표 단위로
+   삼키므로(그 지표만 건너뛴다) 배치 응답의 `error`에 올라오지 않고 서버 로그로만 보인다. dry-run 숫자가 기대보다
+   작으면 로그의 `[evaluateJamActionBadges] … 판정 실패`를 먼저 확인한다.
+3. **아직 열리지 않은 배지는 dry-run에 들어가지 않는다.** `valid_from`이 미래인 배지는 후보 조회에서 빠진다. 열기 전에
+   미리 세어 보는 옵션은 두지 않았다.
 
 #### 부수효과 정책 — 피드·알림은 억제, 포인트는 정상 지급
 
@@ -2058,7 +2098,7 @@ src/lib/badge-engine/repeatOccurrences.ts 회차 계산(CONSUMED_REPEAT_KEYS) + 
 src/lib/badge-engine/conditionAxes.ts     조건 축 분류(PER_ACTIVITY_KEYS 등) 단일 출처 — §2.13-1
 src/lib/badge-engine/badgeProgress.ts     진행 계산 계층(표시 전용, 발급 판정과 분리) — §2.13
 src/lib/badge-engine/metricLabels.ts      배지 지표 라벨·단위 배치 조회 — §2.13
-src/lib/badge-engine/reevaluateCatalog.ts 카탈로그 시딩 후 일괄 재평가 조립 — §2.17
+src/lib/badge-engine/reevaluateCatalog.ts 카탈로그 시딩 후 일괄 재평가 조립(메인 엔진 + JAM! 행동 지표) — §2.17
 src/app/api/admin/badges/reevaluate-all/route.ts  위 재평가 어드민 라우트 — §2.17
 src/lib/drop-engine/index.ts              드랍 엔진 (v1 구현 — v2는 §3 설계)
 src/lib/ambient-drop/                     앰비언트(시스템) POI 드랍 엔진 — §3.12
