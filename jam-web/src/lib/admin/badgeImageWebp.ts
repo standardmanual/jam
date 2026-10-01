@@ -11,7 +11,7 @@ import sharp from 'sharp'
  *
  * 원본(에셋 제너레이터 스테이지, 긴 변 1280px 고정 — `assetGeneratorHelpers.ts`의
  * `STAGE_MAX_LONG_SIDE_PX`)을 긴 변 기준으로 축소한다. `fit: 'inside'`가 비율을 유지한 채
- * 가로·세로 모두 이 값 이하로 맞춘다 — 정사각(1:1)·4:5·9:16 스테이지 비율 모두 같은 함수로
+ * 가로·세로 모두 이 값 이하로 맞춘다 — 정사각(1:1)·4:5·9:16·16:9 스테이지 비율 모두 같은 함수로
  * 처리된다. `withoutEnlargement`로 원본이 이미 기준보다 작아도 확대하지 않는다.
  */
 export const BADGE_IMAGE_WEBP_MAX_LONG_SIDE_PX = 1280
