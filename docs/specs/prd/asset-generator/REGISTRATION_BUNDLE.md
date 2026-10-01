@@ -12,6 +12,9 @@ code:
   - "jam-web/scripts/asset-generator/registerBundle.mjs"
   - "jam-web/scripts/asset-generator/registerFlow.mjs"
   - "jam-web/scripts/asset-generator/registerRecord.mjs"
+  - "jam-web/src/lib/admin/registerChecks/shared.ts"
+  - "jam-web/src/lib/admin/registerChecks/badge.ts"
+  - "jam-web/src/lib/admin/registerChecks/references.ts"
 ---
 
 # 배지 등록 묶음(bundle.json)과 등록 스크립트
@@ -233,7 +236,7 @@ npx tsx scripts/asset-generator/register-badge.mjs --undo <registration-record.j
 저장소 파일은 SQL로 지울 수 없어서 스크립트가 파일 2개와 배지 행을 함께 지운다.
 
 - 지우기 전에 **이 배지가 어디에 쓰였는지** 읽는다. 대상은 `badges`를 참조하는 외래 키 10곳이다(생성 타입 대조 테스트로 고정,
-  원본 목록은 `registerFlow.mjs`의 `UNDO_REFERENCE_TABLES` 한 곳):
+  원본 목록은 `jam-web/src/lib/admin/registerChecks/references.ts`의 `BADGE_UNDO_REFERENCE_TABLES` 한 곳이고, `registerFlow.mjs`가 `UNDO_REFERENCE_TABLES` 이름으로 다시 내보낸다):
 
   | 효과(배지를 지우면) | 표.컬럼 |
   |---|---|
@@ -241,7 +244,7 @@ npx tsx scripts/asset-generator/register-badge.mjs --undo <registration-record.j
   | 연쇄 삭제(CASCADE) | `user_checkin_badge_earns.badge_id` · `user_item_book_slots.badge_id` |
   | 연결 해제(SET NULL) | `item_books.reward_badge_id` · `item_books.required_activity_badge_id` · `missions.gated_badge_id` |
 
-  외래 키가 아닌 **배열 컬럼 4곳**도 같이 읽는다(`UNDO_ARRAY_REFERENCE_COLUMNS`, 어드민 배지 삭제의 참조 목록과 같은 위치). DB가 막지 않고
+  외래 키가 아닌 **배열 컬럼 4곳**도 같이 읽는다(같은 파일의 `BADGE_UNDO_ARRAY_REFERENCE_COLUMNS`, `registerFlow.mjs`가 `UNDO_ARRAY_REFERENCE_COLUMNS`로 다시 내보낸다. 어드민 배지 삭제의 참조 목록과 같은 위치). DB가 막지 않고
   배지 행을 지우면 삭제된 id가 배열에 그대로 남기 때문이다. 배열에 배지 id가 들어 있는 행 수를 센다.
 
   | 효과 | 표.컬럼 |

@@ -14,6 +14,9 @@ code:
   - "jam-web/scripts/asset-generator/registerMissionBundle.mjs"
   - "jam-web/scripts/asset-generator/registerMissionFlow.mjs"
   - "jam-web/scripts/asset-generator/registerMissionRecord.mjs"
+  - "jam-web/src/lib/admin/registerChecks/shared.ts"
+  - "jam-web/src/lib/admin/registerChecks/mission.ts"
+  - "jam-web/src/lib/admin/registerChecks/references.ts"
 ---
 
 # 미션 등록 묶음(bundle.json)과 등록 스크립트
@@ -30,8 +33,11 @@ code:
   [20260925_2106](../../../tickets/p3-low/20260925_2106_Infra_등록-스크립트-제목-중복-검사의-동시-등록-경합.md) 결정 A, 2026-09-25). DB에 제목
   UNIQUE 제약을 더하지 않기로 했고, 병렬 실행이 실제로 필요해지면 그때 제약을 다시 검토한다.
 - **배지 스크립트와 별개다.** 배지 등록 스크립트 5개 파일(`register-badge.mjs`·`registerArgs.mjs`·`registerBundle.mjs`·
-  `registerFlow.mjs`·`registerRecord.mjs`)은 고치지 않고, 내용과 무관한 부품(인자 파싱·묶음 파일 읽기·UUID 형식·기록 파일
-  쓰기·시각 표기)만 가져다 쓴다. 미션 전용 부분은 `registerMission*.mjs`에 있다. 공통화는 세 유형(배지·미션·홈피드)이
+  `registerFlow.mjs`·`registerRecord.mjs`)은 미션 등록 때문에 고치지 않고, 내용과 무관한 부품(인자 파싱·묶음 파일 읽기·UUID 형식·기록 파일
+  쓰기·시각 표기)만 가져다 쓴다. 미션 전용 부분은 `registerMission*.mjs`에 있다. 다만 DB 읽기 검사와 `--undo` 전 참조 확인은
+  서버(운영툴 예약 등록)도 같은 함수를 쓰도록 세 유형 모두 `jam-web/src/lib/admin/registerChecks/`의 TS 모듈로 옮겼다
+  (미션은 `mission.ts`의 `runMissionDbChecks`, `references.ts`의 `MISSION_UNDO_REFERENCE_TABLES`·`findMissionUndoReferences`.
+  티켓 20261002_0827). 스크립트의 같은 이름 함수는 그 모듈을 부르는 얇은 래퍼다. 공통화는 세 유형(배지·미션·홈피드)이
   모두 생긴 뒤 필요하면 별도로 다룬다.
 - 묶음이 다루지 않는 필드는 기본값으로 들어간다: `reward_type`·`reward_id`·`gated_badge_id`(폐기 예정 필드)는 항상 null이고,
   `created_at`은 DB 기본값이다. 필요하면 등록 뒤 어드민에서 고친다.

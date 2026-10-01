@@ -14,6 +14,9 @@ code:
   - "jam-web/scripts/asset-generator/registerHomeFeedBundle.mjs"
   - "jam-web/scripts/asset-generator/registerHomeFeedFlow.mjs"
   - "jam-web/scripts/asset-generator/registerHomeFeedRecord.mjs"
+  - "jam-web/src/lib/admin/registerChecks/shared.ts"
+  - "jam-web/src/lib/admin/registerChecks/homeFeed.ts"
+  - "jam-web/src/lib/admin/registerChecks/references.ts"
 ---
 
 # 홈피드 카드 등록 묶음(bundle.json)과 등록 스크립트
