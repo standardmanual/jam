@@ -494,6 +494,8 @@ export function validateHomeFeedBundle(raw, { bundleFile }) {
  * - `image_source`: 항상 `agent-generator`(묶음 값은 받지 않는다). 기존 seed SQL 등록 카드는 NULL이라 이 값으로 구분된다.
  * `layout_type`을 생략하면 폼이 템플릿을 고를 때 기본으로 고르는 추천값(`SUGGESTED_LAYOUT_FOR`)이다.
  * `created_by`·`created_at`은 넣지 않는다(스크립트에는 어드민 계정이 없어 NULL, 시각은 DB 기본값).
+ * `shape`·`title_in_image`(마이그레이션 206)는 등록 묶음에 아직 칸이 없어 NULL로 넣는다 — NULL은 옛 렌더러로
+ * 그리는 기존 카드와 같은 값이다(티켓 20260930_1453 c1).
  */
 export function buildTodayCardInsertPayload(card, { id, coverImageUrl }) {
   return {
@@ -518,5 +520,7 @@ export function buildTodayCardInsertPayload(card, { id, coverImageUrl }) {
     sort_order: card.sort_order ?? 0,
     is_active: card.is_active ?? true,
     image_source: AGENT_IMAGE_SOURCE,
+    shape: null,
+    title_in_image: null,
   }
 }
