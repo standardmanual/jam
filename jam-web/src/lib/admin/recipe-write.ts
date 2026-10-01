@@ -9,6 +9,10 @@
  * 전체 교체) 방식이다 — 실제 delete-then-insert 실행은 이 파일을 호출하는 API 라우트가
  * 레시피 upsert 성공 이후 수행한다(레시피 id가 먼저 확정돼야 슬롯의 recipe_id를 채울 수
  * 있어 신규 생성 시 순서상 분리가 불가피하다).
+ *
+ * 공개 시각(티켓 20261001_1158): 생성(`createRecipeWithSlots`)·예약 취소(`cancelScheduledRecipe`)·
+ * 시각 변경 가드(`assertValidFromChange`)·공개 상태 판정(`recipeReleaseState`)을 이 파일에서 낸다 —
+ * 어드민 라우트와 운영툴 자원 연결(티켓 20260930_1500)이 같은 함수를 부른다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
 import {
@@ -17,6 +21,13 @@ import {
   type NormalizedSlot,
   type RecipePayloadInput,
 } from '@/lib/combine/recipe-payload'
+import { isRecipeReleased, type RecipeReleaseInput } from '@/lib/combine/visibility'
+import { collectRecipeReferences } from '@/lib/admin/recipe-references'
+import { recipeDeleteBlockedMessage } from '@/lib/admin/recipe-bulk'
+import { isUuid } from '@/lib/admin/uuid'
+import type { CombinationRecipeRow } from '@/types/database'
+
+export { recipeReleaseState, type RecipeReleaseState } from '@/lib/combine/visibility'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -24,6 +35,8 @@ export interface RecipeRow {
   name: string
   reward_points: number
   reward_badge_ids: string[]
+  /** 제출하지 않으면 행에 넣지 않는다(수정 때 기존 공개 시각을 그대로 둔다). `null`은 바로 공개 */
+  valid_from?: string | null
 }
 
 export interface RecipeSlotRow {
@@ -34,12 +47,13 @@ export interface RecipeSlotRow {
 
 export async function buildRecipeRow(
   supabase: ServiceClient,
-  body: RecipePayloadInput
+  body: RecipePayloadInput,
+  now: Date = new Date()
 ): Promise<{ ok: true; row: RecipeRow; slots: RecipeSlotRow[] } | { ok: false; error: string }> {
-  const normalized = normalizeRecipePayload(body)
+  const normalized = normalizeRecipePayload(body, now)
   if (!normalized.ok) return normalized
 
-  const { name, slots, rewardPoints, rewardBadgeIds } = normalized.value
+  const { name, slots, rewardPoints, rewardBadgeIds, validFrom } = normalized.value
 
   // 슬롯 후보 배지 전체의 실제 타입 조회 — 삭제된 배지는 후보로 쓸 수 없다.
   const allowedBadgeIds = [...new Set(slots.flatMap((s) => s.allowedBadgeIds))]
@@ -93,6 +107,7 @@ export async function buildRecipeRow(
       name,
       reward_points: rewardPoints,
       reward_badge_ids: rewardBadgeIds,
+      ...(validFrom !== undefined ? { valid_from: validFrom } : {}),
     },
     slots: slots.map((s, idx) => ({
       slot_order: idx,
@@ -131,4 +146,124 @@ export async function replaceRecipeSlots(
   }
 
   return { ok: true }
+}
+
+export type CreateRecipeResult =
+  | { ok: true; recipe: CombinationRecipeRow; slots: RecipeSlotRow[] }
+  | { ok: false; status: 400 | 500; error: string }
+
+/**
+ * 레시피 행 + 슬롯 생성 — 검증(`buildRecipeRow`) → 행 insert → 슬롯 저장. 슬롯 저장이 실패하면 행만
+ * 남는 반쪽 상태를 막으려고 방금 만든 행을 지운다. POST 라우트와 운영툴 자원 연결(티켓 20260930_1500)이
+ * 같이 쓴다(티켓 20261001_1158).
+ */
+export async function createRecipeWithSlots(
+  supabase: ServiceClient,
+  body: RecipePayloadInput,
+  now: Date = new Date()
+): Promise<CreateRecipeResult> {
+  const built = await buildRecipeRow(supabase, body, now)
+  if (!built.ok) return { ok: false, status: 400, error: built.error }
+
+  const { data, error } = await supabase.from('combination_recipes').insert(built.row).select().single()
+  if (error) return { ok: false, status: 500, error: error.message }
+
+  const recipe = data as CombinationRecipeRow
+  const slotResult = await replaceRecipeSlots(supabase, recipe.id, built.slots)
+  if (!slotResult.ok) {
+    await supabase.from('combination_recipes').delete().eq('id', recipe.id)
+    return { ok: false, status: 500, error: slotResult.error }
+  }
+
+  return { ok: true, recipe, slots: built.slots }
+}
+
+export type CancelScheduledRecipeResult =
+  | { ok: true }
+  | { ok: false; status: 404 | 409 | 500; error: string }
+
+/**
+ * 공개 전(예약 중) 레시피 취소 = 삭제(티켓 20261001_1158). 레시피에는 종료 시각이 없어 «취소»는 곧 삭제다.
+ *
+ * 1. 삭제 가드(`collectRecipeReferences`)를 먼저 거친다 — 배지 조건이 가리키는 레시피는 예약 중이어도 지울 수 없다.
+ *    조회가 실패하면 fail-closed로 막는다.
+ * 2. 삭제는 `valid_from > now` 조건을 단 한 번의 DELETE로 건다 — 읽고 나서 지우는 사이에 공개 시각이 지나도
+ *    공개된 레시피를 지우지 않는다. `valid_from`이 null인 행(바로 공개)은 조건에 걸리지 않는다.
+ * 3. 지운 행이 없으면 행이 남아 있는지 다시 읽어 «이미 공개됨»(409)과 «없음»(404)을 가른다.
+ *
+ * 슬롯은 `combination_recipe_slots.recipe_id`의 CASCADE로 함께 지워진다.
+ */
+export async function cancelScheduledRecipe(
+  supabase: ServiceClient,
+  id: string,
+  now: Date = new Date()
+): Promise<CancelScheduledRecipeResult> {
+  const notFound = { ok: false, status: 404, error: '레시피를 찾을 수 없어요.' } as const
+  if (!isUuid(id)) return notFound
+
+  const references = await collectRecipeReferences(supabase, [id])
+  if (references.error) {
+    console.error('[recipe-write] 참조 카운트 조회 실패 — 예약 취소를 차단합니다:', references.error)
+    return {
+      ok: false,
+      status: 500,
+      error: '취소할 수 없어요. 이력 조회 중 오류가 발생했어요. 다시 시도해도 같으면 개발자에게 전달해 주세요.',
+    }
+  }
+  if (references.total > 0) {
+    return { ok: false, status: 409, error: recipeDeleteBlockedMessage(references.total) }
+  }
+
+  const { data: deleted, error: deleteError } = await supabase
+    .from('combination_recipes')
+    .delete()
+    .eq('id', id)
+    .gt('valid_from', now.toISOString())
+    .select('id')
+  if (deleteError) {
+    console.error('[recipe-write] 예약 취소(삭제) 실패:', deleteError)
+    return { ok: false, status: 500, error: '예약을 취소하지 못했어요. 잠시 후 다시 시도해 주세요.' }
+  }
+  if ((deleted ?? []).length > 0) return { ok: true }
+
+  const { data: remaining, error: readError } = await supabase
+    .from('combination_recipes')
+    .select('id')
+    .eq('id', id)
+    .maybeSingle()
+  if (readError) {
+    console.error('[recipe-write] 예약 취소 후 행 확인 실패:', readError)
+    return { ok: false, status: 500, error: '예약을 취소하지 못했어요. 잠시 후 다시 시도해 주세요.' }
+  }
+  if (!remaining) return notFound
+  return {
+    ok: false,
+    status: 409,
+    error: '이미 공개된 레시피는 예약을 취소할 수 없어요. 내리려면 레시피 삭제를 이용해 주세요.',
+  }
+}
+
+/**
+ * 공개 시각 변경 가드(티켓 20261001_1158) — 이미 공개된 레시피는 공개 시각을 바꿀 수 없다. 예약 중이면 다른
+ * 미래 시각이나 `null`(바로 공개)로 바꿀 수 있다(미래 여부는 `normalizeValidFrom`이 이미 걸렀다).
+ * `nextValidFrom`이 `undefined`(제출하지 않음)이거나 기존 값과 같은 시각이면 바뀌는 게 없으니 통과한다.
+ * 거절이면 호출부가 409로 돌려준다.
+ */
+export function assertValidFromChange(
+  existing: RecipeReleaseInput,
+  nextValidFrom: string | null | undefined,
+  now: Date = new Date()
+): { ok: true } | { ok: false; error: string } {
+  if (nextValidFrom === undefined) return { ok: true }
+  if (!isRecipeReleased(existing, now)) return { ok: true }
+  if (sameReleaseInstant(existing.valid_from ?? null, nextValidFrom)) return { ok: true }
+  return {
+    ok: false,
+    error: '이미 공개된 레시피는 공개 시각을 바꿀 수 없어요. 공개 시각을 빼고 다시 저장해 주세요.',
+  }
+}
+
+function sameReleaseInstant(a: string | null, b: string | null): boolean {
+  if (a === null || b === null) return a === b
+  return new Date(a).getTime() === new Date(b).getTime()
 }

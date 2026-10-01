@@ -8,7 +8,7 @@
  * 실행: cd jam-web && npx vitest run src/lib/combine/__tests__/recipe-payload.test.ts
  */
 import { describe, it, expect } from 'vitest'
-import { normalizeRecipePayload, validateSlotTypes } from '../recipe-payload'
+import { normalizeRecipePayload, normalizeValidFrom, validateSlotTypes } from '../recipe-payload'
 
 const ITEM_A = '00000000-0000-0000-0000-00000000i0a1'
 const ITEM_B = '00000000-0000-0000-0000-00000000i0b2'
@@ -161,5 +161,99 @@ describe('validateSlotTypes — 슬롯 내 타입 일치 + 아이템 슬롯 하�
     const result = validateSlotTypes(slots, actualTypeById)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.error).toContain('아이템 타입 슬롯')
+  })
+})
+
+describe('normalizeValidFrom — 공개 시각 입력 (티켓 20261001_1158)', () => {
+  const NOW = new Date('2026-10-01T00:00:00Z')
+
+  it('칸이 없으면 건드리지 않는다(undefined)', () => {
+    expect(normalizeValidFrom(undefined, NOW)).toEqual({ ok: true, value: undefined })
+  })
+
+  it('null·빈 문자열·공백은 바로 공개(null)다', () => {
+    expect(normalizeValidFrom(null, NOW)).toEqual({ ok: true, value: null })
+    expect(normalizeValidFrom('', NOW)).toEqual({ ok: true, value: null })
+    expect(normalizeValidFrom('   ', NOW)).toEqual({ ok: true, value: null })
+  })
+
+  it('시간대가 포함된 미래 시각은 UTC ISO로 정규화한다', () => {
+    expect(normalizeValidFrom('2026-10-05T09:00:00+09:00', NOW)).toEqual({
+      ok: true,
+      value: '2026-10-05T00:00:00.000Z',
+    })
+    expect(normalizeValidFrom('2026-10-05T09:00+09:00', NOW)).toEqual({
+      ok: true,
+      value: '2026-10-05T00:00:00.000Z',
+    })
+    expect(normalizeValidFrom('2026-10-05T00:00:00Z', NOW)).toEqual({
+      ok: true,
+      value: '2026-10-05T00:00:00.000Z',
+    })
+  })
+
+  it('과거 시각은 거부하고 해결책(바로 공개)을 알려 준다', () => {
+    const result = normalizeValidFrom('2026-09-30T23:59:59Z', NOW)
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error).toContain('이미 지났어요')
+      expect(result.error).toContain('바로 공개')
+    }
+  })
+
+  it('지금과 같은 시각도 거부한다(미래여야 한다)', () => {
+    expect(normalizeValidFrom('2026-10-01T00:00:00Z', NOW).ok).toBe(false)
+  })
+
+  it('시간대가 없는 값은 거부한다', () => {
+    const result = normalizeValidFrom('2026-10-05T09:00:00', NOW)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toContain('시간대')
+  })
+
+  it('해석할 수 없는 값은 거부한다', () => {
+    expect(normalizeValidFrom('내일 아침', NOW).ok).toBe(false)
+    expect(normalizeValidFrom('2026-13-01T09:00:00+09:00', NOW).ok).toBe(false)
+    expect(normalizeValidFrom('2026-10-05T25:00:00+09:00', NOW).ok).toBe(false)
+  })
+
+  it('달력에 없는 날짜는 다음 달로 넘겨 읽지 않고 거부한다', () => {
+    const result = normalizeValidFrom('2026-11-31T09:00:00+09:00', NOW)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toContain('읽을 수 없어요')
+  })
+
+  it('문자열이 아닌 값은 거부한다', () => {
+    expect(normalizeValidFrom(1790000000000, NOW).ok).toBe(false)
+    expect(normalizeValidFrom({}, NOW).ok).toBe(false)
+  })
+})
+
+describe('normalizeRecipePayload — valid_from 전달', () => {
+  const NOW = new Date('2026-10-01T00:00:00Z')
+  const base = { name: '테스트 레시피', slots: [itemSlot([ITEM_A]), activitySlot([ACT])], reward_points: 10 }
+
+  it('valid_from을 보내지 않으면 validFrom은 undefined다', () => {
+    const result = normalizeRecipePayload(base, NOW)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.value.validFrom).toBeUndefined()
+  })
+
+  it('미래 시각이면 정규화된 값이 validFrom으로 나온다', () => {
+    const result = normalizeRecipePayload({ ...base, valid_from: '2026-10-05T09:00:00+09:00' }, NOW)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.value.validFrom).toBe('2026-10-05T00:00:00.000Z')
+  })
+
+  it('valid_from이 null이면 바로 공개(null)다', () => {
+    const result = normalizeRecipePayload({ ...base, valid_from: null }, NOW)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.value.validFrom).toBeNull()
+  })
+
+  it('과거 시각이면 저장 전에 거부한다', () => {
+    const result = normalizeRecipePayload({ ...base, valid_from: '2026-09-01T09:00:00+09:00' }, NOW)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toContain('이미 지났어요')
   })
 })
