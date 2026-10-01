@@ -99,7 +99,7 @@ export const SUGGESTED_LAYOUT_FOR: Record<TodayCardTemplateType, TodayCardLayout
 /**
  * 게재용 설명문(`today_cards.description`) 길이 상한 — 공백 포함 40자, 줄바꿈 불가(티켓 20260929_1335).
  * 어드민 폼(`maxLength`·글자 수 표시)과 등록 묶음(`registerHomeFeedBundle.mjs` 검증)이 이 상수 한 곳을 쓴다.
- * 화면은 14px로 2줄까지 보여 준다(`TodayCardStack.tsx`).
+ * 화면은 14px로 2줄까지 보여 준다(`components/today/`의 `hero`·`list` 모양).
  */
 export const TODAY_DESCRIPTION_MAX_LENGTH = 40
 

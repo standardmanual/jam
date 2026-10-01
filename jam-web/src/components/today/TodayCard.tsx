@@ -9,7 +9,7 @@ import SquareCard from './SquareCard'
 
 /**
  * 새 틀이 그리는 모양 목록 (티켓 20261001_1458, 상위 20260930_1453 조각 b2). 조각 b3(`hero`, 티켓 20261001_1737)·b4(`poster`·`square`, 티켓 20261001_2013)·
- * b5(`list`, 티켓 20261001_2104)가 더해 다섯 모양이 모두 있다. 모르는 모양 값은 `TodayCard`가 아무것도 그리지 않는다. `TodayCardStack`은 이 목록으로 새 틀과 옛 렌더러를 가른다.
+ * b5(`list`, 티켓 20261001_2104)가 더해 다섯 모양이 모두 있다. 모르는 모양 값은 `TodayCard`가 아무것도 그리지 않는다. 옛 렌더러는 티켓 20261001_2244(조각 b7)가 지웠으므로 홈의 모든 카드가 이 틀로 온다.
  */
 export const RENDERED_SHAPES = ['brief', 'hero', 'poster', 'square', 'list'] as const satisfies readonly CardShape[]
 

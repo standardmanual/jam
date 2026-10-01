@@ -37,10 +37,12 @@ export function isImageShape(value: unknown): value is ImageCardShape {
 // ─── 옛 값 → 새 모양 판정 (티켓 20261001_1357, 1453 확정 설계 6절) ───────────────────────────
 
 /**
- * 옛 카드를 새 모양으로 그리는 전환 스위치(1453 결정 17). 조각 b7에서 `true`로 바꾼다.
- * 꺼져 있으면 `shape`가 저장된 카드와 운영툴 미리보기만 새 모양으로 그리고, 옛 카드는 옛 렌더러로 그린다.
+ * 옛 카드를 새 모양으로 그리는 전환 스위치(1453 결정 17). 조각 b7(티켓 20261001_2244)에서 `true`로 바꿨다.
+ * `shape`가 없는 옛 카드도 `resolveShape` 대응표대로 새 모양으로 그린다고 보고 `drawnShape`가 그 모양을 돌려준다(계측이 기록하는 모양).
+ * 옛 렌더러는 지웠으므로 홈 화면(`TodayCardStack`)은 이 상수와 무관하게 늘 `resolveShape`(`toCardView`)로 그린다 — `false`로 끄면 옛 카드의 기록 모양만
+ * NULL이 되어 화면과 어긋난다. 화면을 되돌리는 수단이 아니라 기록 쪽 분기이고, 화면 되돌림은 이 조각의 머지를 되돌린다.
  */
-export const LEGACY_SHAPE_CUTOVER = false
+export const LEGACY_SHAPE_CUTOVER = true
 
 /** 모양 판정이 읽는 카드 값. 카드 행(`TodayCardRow`)과 서버 조회 결과(`TodayCardWithHref`)가 모두 맞는다. */
 export interface ShapeCardInput {
@@ -96,7 +98,7 @@ export function resolveShape(card: ShapeCardInput): CardShape {
 
 /**
  * 지금 화면에 그려질 모양. `shape`가 저장돼 있으면 그 값, 없으면 전환 상수가 켜졌을 때만 `resolveShape`,
- * 꺼져 있으면 `null`(옛 렌더러로 그린다는 뜻). `legacyCutover`는 시험에서 켜진 상태를 확인할 때 넘긴다.
+ * 꺼져 있으면 `null`(계측은 `card_shape`를 NULL로 기록한다). `legacyCutover`는 시험에서 값을 바꿔 확인할 때 넘긴다.
  */
 export function drawnShape(card: ShapeCardInput, legacyCutover: boolean = LEGACY_SHAPE_CUTOVER): CardShape | null {
   if (isCardShape(card.shape)) return card.shape

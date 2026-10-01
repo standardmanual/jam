@@ -57,8 +57,8 @@ export function parseTodayCardEventInput(body: unknown): TodayCardEventValidatio
 export interface ExposableCard {
   content_type_id: string | null
   /**
-   * 그 카드가 지금 화면에 그려지는 모양. `shape`가 저장되지 않은 옛 카드는 전환 상수(`LEGACY_SHAPE_CUTOVER`)가 꺼져 있는 동안
-   * `null`이다(옛 렌더러로 그려지므로 새 모양이 없다).
+   * 그 카드가 지금 화면에 그려지는 모양. `shape`가 저장되지 않은 옛 카드도 전환 상수(`LEGACY_SHAPE_CUTOVER`)가 켜져 있어 옛 값 대응표(`resolveShape`)의
+   * 모양이다. 상수를 끄면 그런 카드는 `null`이다.
    */
   card_shape: CardShape | null
 }

@@ -162,8 +162,8 @@ describe('resolveShape — 옛 값 → 새 모양 대응표 (1453 확정 설계 
 })
 
 describe('drawnShape — 지금 그려질 모양 (전환 상수)', () => {
-  it('전환 상수는 꺼져 있다(조각 b7에서 켠다)', () => {
-    expect(LEGACY_SHAPE_CUTOVER).toBe(false)
+  it('전환 상수는 켜져 있다(조각 b7, 티켓 20261001_2244)', () => {
+    expect(LEGACY_SHAPE_CUTOVER).toBe(true)
   })
 
   it('shape가 저장된 카드는 전환 상수와 상관없이 그 값이다', () => {
@@ -172,18 +172,24 @@ describe('drawnShape — 지금 그려질 모양 (전환 상수)', () => {
     expect(drawnShape(card({ shape: 'square' }), false)).toBe('square')
   })
 
-  it('전환 상수가 꺼져 있으면 shape가 없는 옛 카드는 null이다(옛 렌더러로 그린다)', () => {
-    expect(drawnShape(card())).toBeNull()
-    expect(drawnShape(card({ shape: null, layout_type: 'badge_gallery' }))).toBeNull()
-    expect(drawnShape(card({ shape: undefined }))).toBeNull()
+  it('전환 상수가 켜져 있으면 shape가 없는 옛 카드도 옛 값 대응표의 모양이다', () => {
+    expect(drawnShape(card())).toBe('hero')
+    expect(drawnShape(card({ shape: null, layout_type: 'badge_gallery' }))).toBe('list')
+    expect(drawnShape(card({ shape: undefined, layout_type: 'shortcut' }))).toBe('brief')
+  })
+
+  it('전환 상수를 끄면(분기는 남아 있다) shape가 없는 옛 카드는 null이다', () => {
     expect(drawnShape(card(), false)).toBeNull()
+    expect(drawnShape(card({ shape: null, layout_type: 'badge_gallery' }), false)).toBeNull()
+    expect(drawnShape(card({ shape: undefined }), false)).toBeNull()
   })
 
   it('모양 값이 아닌 shape는 없는 것으로 본다', () => {
-    expect(drawnShape(card({ shape: 'Hero' }))).toBeNull()
+    expect(drawnShape(card({ shape: 'Hero' }), false)).toBeNull()
+    expect(drawnShape(card({ shape: 'Hero' }), true)).toBe('hero')
   })
 
-  it('전환 상수가 켜지면 옛 카드도 resolveShape의 모양으로 그린다', () => {
+  it('전환 상수를 명시해 켜도 같은 모양이다', () => {
     expect(drawnShape(card({ layout_type: 'badge_gallery' }), true)).toBe('list')
     expect(drawnShape(card({ layout_type: 'banner', cover_image_url: null }), true)).toBe('brief')
   })

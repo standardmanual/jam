@@ -307,15 +307,15 @@ describe('assertCardExposable — 그려진 모양(card_shape) 판정', () => {
     }
   })
 
-  it('shape가 없는 옛 카드는 전환 전(LEGACY_SHAPE_CUTOVER=false)에 null이다 — 전환 조각(b7)에서 이 기대값을 바꾼다', async () => {
-    expect(LEGACY_SHAPE_CUTOVER).toBe(false)
+  it('shape가 없는 옛 카드는 전환 뒤(LEGACY_SHAPE_CUTOVER=true) 옛 값 대응표의 모양으로 기록한다(티켓 20261001_2244)', async () => {
+    expect(LEGACY_SHAPE_CUTOVER).toBe(true)
     const result = await exposeWith({ shape: null, layout_type: 'large_thumbnail' })
-    expect(result.ok && result.card.card_shape).toBeNull()
+    expect(result.ok && result.card.card_shape).toBe('hero')
   })
 
-  it('저장된 shape가 모양 값이 아니면 옛 카드로 본다', async () => {
+  it('저장된 shape가 모양 값이 아니면 옛 카드로 보고 옛 값 대응표로 정한다', async () => {
     const result = await exposeWith({ shape: 'large_thumbnail' })
-    expect(result.ok && result.card.card_shape).toBeNull()
+    expect(result.ok && result.card.card_shape).toBe('hero')
   })
 
   it('타일형 list는 배지가 있으면 list, 0개면 화면처럼 brief다', async () => {
