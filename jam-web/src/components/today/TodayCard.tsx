@@ -1,5 +1,5 @@
 import type { CardView } from '@/lib/today/cardView'
-import type { CardShape } from '@/lib/today/shape'
+import { isRankingRows, type CardShape } from '@/lib/today/shape'
 import BriefCard from './BriefCard'
 import CardFrame from './CardFrame'
 import HeroCard from './HeroCard'
@@ -9,7 +9,7 @@ import SquareCard from './SquareCard'
 
 /**
  * 새 틀이 그리는 모양 목록 (티켓 20261001_1458, 상위 20260930_1453 조각 b2). 조각 b3(`hero`, 티켓 20261001_1737)·b4(`poster`·`square`, 티켓 20261001_2013)·
- * b5(`list`, 티켓 20261001_2104)가 더해 다섯 모양이 모두 있다. 모르는 모양 값은 `TodayCard`가 아무것도 그리지 않는다. `TodayCardStack`은 이 목록으로 새 틀과 옛 렌더러를 가른다.
+ * b5(`list`, 티켓 20261001_2104)가 더해 다섯 모양이 모두 있다. 모르는 모양 값은 `TodayCard`가 아무것도 그리지 않는다. 옛 렌더러는 티켓 20261001_2244(조각 b7)가 지웠으므로 홈의 모든 카드가 이 틀로 온다.
  */
 export const RENDERED_SHAPES = ['brief', 'hero', 'poster', 'square', 'list'] as const satisfies readonly CardShape[]
 
@@ -26,7 +26,8 @@ export function isRenderedShape(shape: unknown): shape is RenderedShape {
  *
  * `currentUserId`는 랭킹 행형 `list`에서 내 순위 행을 강조하는 값이라 `list`에만 넘긴다. 표시 데이터(`CardView`)에는 넣지 않는다 — 표시 데이터는 유저 정보 없이
  * 그려져야 한다(확정 설계 8절). 값이 없거나 계측 정보(`tracking`)가 없으면(미리보기) 강조가 없다.
- * 랭킹 행형은 순위 행마다 자기 프로필 링크가 있어 카드 전체 링크를 걸지 않는다(`link={false}`, 노출만 기록한다).
+ * 랭킹 행형은 순위 행마다 자기 프로필 링크가 있어 카드 전체 링크를 걸지 않는다(`link={false}`, 노출만 기록한다). 「랭킹이면 행형」 판정은 `isRankingRows` 하나이고
+ * `ListCard`가 어느 갈래를 그릴지도 같은 함수로 정한다 — 한쪽만 바뀌어 앵커가 겹치거나 카드 전체 링크가 빠지는 일이 없게 한다(티켓 20261001_2244).
  */
 export default function TodayCard({ view, currentUserId }: { view: CardView; currentUserId?: string }) {
   if (!isRenderedShape(view.shape)) return null
@@ -58,7 +59,7 @@ export default function TodayCard({ view, currentUserId }: { view: CardView; cur
       )
     case 'list':
       return (
-        <CardFrame view={view} link={view.resource !== 'ranking'}>
+        <CardFrame view={view} link={!isRankingRows(view.resource)}>
           <ListCard view={view} currentUserId={currentUserId} />
         </CardFrame>
       )

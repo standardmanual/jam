@@ -50,11 +50,11 @@ code:
 
 | 노출 형태(`layout`) | 커버 이미지(`cover_image_url`) | 근거 |
 |---|---|---|
-| `large_thumbnail` | 쓴다 | `TodayCardStack.tsx`의 `resolveCover`를 `LargeThumbnailCard`가 쓴다(68·69행) |
-| `banner` | 쓴다 | 같은 `resolveCover`를 `BannerCard`가 쓴다(171·172행) |
+| `large_thumbnail` | 쓴다 | 새 틀이 `hero`로 그리고(미션 소개 카드·커버 없는 배지 카드는 `square`) `toCardView`(`cardView.ts`)가 `cover_image_url`을 이미지 칸에 싣는다(옛 렌더러는 티켓 20261001_2244가 지웠다) |
+| `banner` | 쓴다 | `poster`로 그리고 같은 `toCardView`가 `cover_image_url`을 싣는다(커버가 없으면 `brief`라 이미지 칸이 없다) |
 | 에디토리얼 기사 상세 | 쓴다(상단 커버) | `today/[cardId]/page.tsx`가 `card.cover_image_url`을 상단에 그린다(37~39행) |
 | `shortcut` | 없다 | `today-sections.ts`가 「이미지 없는 짧은 CTA」로 정의한다(78행) |
-| `badge_gallery`·`other`·`ranking_list` | 쓰지 않는다 | `TodayCardStack.tsx`에서 이 셋의 카드 컴포넌트는 `resolveCover`·`cover_image_url`을 부르지 않는다 |
+| `badge_gallery`·`other`·`ranking_list` | 쓰지 않는다 | `list`(타일형·행형)와 `brief`는 이미지 칸이 없다 — `toCardView`가 `imageUrl`을 `hero`·`poster`·`square`에만 싣는다 |
 
 - 이미지가 필요 없는 카드는 묶음 없이 `content-automation/PRD.md` §8-2의 시드 SQL 경로로 등록한다. 주간 리포트 표에는 「이미지 없음(사유)」로 적는다.
 - **요일별 큰 카드·미션 카드 규칙(2026-09-26, PRD §8이 정본)**: 「전원 카드」는 매일 `large_thumbnail`이라 이미지가 필요하다. 미션을 소개하는 카드는 `missions.image_url`을 커버로 재사용하므로 묶음을 만들지 않는다(묶음의 `image`는 새로 만든 이미지 전용).

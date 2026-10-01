@@ -294,11 +294,16 @@ describe('BriefCard — 자원 → 아이콘 (아이콘 모양으로만 구분, 
     expect(shapes.size).toBe(CARD_RESOURCES.length)
   })
 
-  it('자동 카드는 지역 값이 있으면 핀(지역 트렌드), 없으면 모래시계(진행 알림)다', () => {
+  it('자동 카드는 템플릿이 지역 트렌드면 핀, 진행 알림이면 모래시계다(지역 값과 무관, 티켓 20261001_2244)', () => {
+    const trend = render({ resource: 'auto', template: 'location_trend', regionLabel: '성수동', facts: undefined })
+    expect(trend).toContain(slotIcon(PinIcon))
+    expect(trend).not.toContain(slotIcon(HourglassIcon))
+    // 진행 알림은 지역 값이 있어도 모래시계다
+    const nudge = render({ resource: 'auto', template: 'progress_nudge', regionLabel: '성수동', facts: undefined })
+    expect(nudge).toContain(slotIcon(HourglassIcon))
+    expect(nudge).not.toContain(slotIcon(PinIcon))
+    // 구분 값이 없는 직접 만든 표시 데이터는 자원의 기본 아이콘(모래시계)이다
     expect(render({ resource: 'auto', facts: undefined })).toContain(slotIcon(HourglassIcon))
-    const withRegion = render({ resource: 'auto', regionLabel: '성수동', facts: undefined })
-    expect(withRegion).toContain(slotIcon(PinIcon))
-    expect(withRegion).not.toContain(slotIcon(HourglassIcon))
   })
 
   it('지역 값이 있어도 자동 카드가 아니면 자원 아이콘이 그대로다', () => {

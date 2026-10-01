@@ -177,7 +177,7 @@ export default async function UserItemBooksPage({ params }: Props) {
               const pct = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
               return (
                 <Link key={book.id} href={`/collections/${book.id}`}>
-                  <Card tone="inverse" className="flex flex-col gap-[var(--spacing-8)] active:scale-[0.98] transition-transform duration-100">
+                  <Card tone="inverse" className="flex flex-col gap-[var(--spacing-8)] jam-press">
                     <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center bg-black/[0.04]">
                       {/* 컬렉션 이미지는 어드민 자유 입력이 가능했던 필드라 SafeImage로 렌더한다.
                           next/image에 직접 넘기면 카드 한 장이 이 목록 화면 전체를 500으로 만든다

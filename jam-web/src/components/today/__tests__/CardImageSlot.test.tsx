@@ -29,7 +29,7 @@ function makeView(overrides: Partial<ImageCardView> = {}): ImageCardView {
 const render = (ratio: CardImageRatio, overrides: Partial<ImageCardView> = {}) =>
   renderToStaticMarkup(<CardImageSlot view={makeView(overrides)} ratio={ratio} />)
 
-const iconMarkup = (view: Pick<ImageCardView, 'resource' | 'regionLabel'>) =>
+const iconMarkup = (view: Pick<ImageCardView, 'resource' | 'template'>) =>
   renderToStaticMarkup(resourceIconOf(view, { className: 'w-8 h-8 text-text/60' }))
 
 describe('CardImageSlot — video(hero)는 옛 HeroCard 출력과 같다', () => {

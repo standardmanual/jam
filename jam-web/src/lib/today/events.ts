@@ -9,8 +9,8 @@
  * 기록 시점 값을 복제한다(티켓 20261001_1431).
  */
 import { createServiceClient } from '@/lib/supabase/server'
-import { fallbackEmptyTileShape, resourceOfTemplate } from './cardView'
-import { drawnShape, type CardShape, type ShapeCardInput } from './shape'
+// 화면 모듈(`cardView.ts`)은 한국어 사전을 가져와 이벤트 API 번들이 무거워진다 — 순수 판정만 `shape.ts`에서 가져온다(티켓 20261001_2244).
+import { drawnShape, fallbackEmptyTileShape, resourceOfTemplate, type CardShape, type ShapeCardInput } from './shape'
 
 export const TODAY_CARD_EVENT_TYPES = ['impression', 'click', 'followup'] as const
 export type TodayCardEventType = (typeof TODAY_CARD_EVENT_TYPES)[number]
@@ -57,8 +57,8 @@ export function parseTodayCardEventInput(body: unknown): TodayCardEventValidatio
 export interface ExposableCard {
   content_type_id: string | null
   /**
-   * 그 카드가 지금 화면에 그려지는 모양. `shape`가 저장되지 않은 옛 카드는 전환 상수(`LEGACY_SHAPE_CUTOVER`)가 꺼져 있는 동안
-   * `null`이다(옛 렌더러로 그려지므로 새 모양이 없다).
+   * 그 카드가 지금 화면에 그려지는 모양. `shape`가 저장되지 않은 옛 카드도 전환 상수(`LEGACY_SHAPE_CUTOVER`)가 켜져 있어 옛 값 대응표(`resolveShape`)의
+   * 모양이다. 상수를 끄면 그런 카드는 `null`이다.
    */
   card_shape: CardShape | null
 }
@@ -96,8 +96,10 @@ export async function assertCardExposable(cardId: string, now: Date): Promise<Ca
 /**
  * 화면(`toCardView`)이 그리는 모양과 같은 값을 정한다. 저장된 `shape` → (전환 상수가 켜졌을 때만) 옛 값 판정은 `drawnShape`,
  * 「타일이 0개인 타일형 list는 brief」는 `toCardView`와 같은 함수(`fallbackEmptyTileShape`)를 쓴다.
+ * 같은 카드 행이면 두 경로가 같은 입력(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)으로 판정한다 —
+ * 커버 없는 옛 큰 카드의 `square` 승격은 배지 그림 유무가 아니라 `badge_ids` 유무로 정한다(`shape.ts`).
  * 타일 수는 화면이 읽은 배지 수(삭제된 배지 제외) 대신 카드 행의 `badge_ids` 개수로 갈음한다 — 배지를 다시 조회하지 않기 위해서다.
- * 그래서 `badge_ids`가 전부 삭제된 배지인 타일형 `list`만 화면은 `brief`, 기록은 `list`로 갈린다.
+ * 그래서 `badge_ids`가 전부 삭제된 배지인 타일형 `list`만 화면은 `brief`, 기록은 `list`로 갈린다(허용 차이, 홈피드 PRD §9).
  */
 function resolveDrawnShape(card: ShapeCardInput): CardShape | null {
   const shape = drawnShape(card)

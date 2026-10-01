@@ -69,8 +69,8 @@ export function resolveTargetHref(card: TodayCardRow, ctx: ResolveTargetHrefCont
       // Scope) 때문에 자연히 이동할 "더 자세한" 화면이 없다 — 이 값(`/missions`)은 그 경우
       // 실제 이동 경로로 쓰이지 않는다. `resolved_href`가 `string`(non-null) 계약이라 자리를
       // 채우는 타입 안전 폴백일 뿐이다. 실제 탭 동작(유저 직접 지정 카드는 제목 영역에 링크
-      // 자체를 걸지 않음, 2026-09-11 게이트 리뷰 WARN 대응)은 UI 쪽(`TodayCardStack.tsx`의
-      // `RankingListCard`)이 `ranking.metricType`으로 판단한다.
+      // 자체를 걸지 않음, 2026-09-11 게이트 리뷰 WARN 대응)은 UI 쪽(`components/today/ListCard.tsx`의
+      // 행형 `ListRanking`)이 `ranking.metricType`으로 판단한다.
       return ctx.rankingModeTargetMissionId ? `/missions/${ctx.rankingModeTargetMissionId}/status` : '/missions'
     default:
       return '/'

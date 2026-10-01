@@ -34,7 +34,7 @@ export interface ResolvedBadge {
   /**
    * 무한레벨형 배지는 등급이 없다(마이그레이션 130 — `badges.rarity` nullable).
    * 티켓 20260905_0027이 지목한 «컴파일이 잡지 못하는 경계» 3곳 중 하나라 여기서 명시적으로
-   * nullable로 좁혔다 — 현재 `TodayCardStack`은 이 값을 그리지 않는다(등급 칩 없음).
+   * nullable로 좁혔다 — 새 틀은 JAM! 배지 1개 카드의 칩 줄에만 이 값을 그린다(타일에는 그리지 않는다).
    */
   rarity: string | null
   /**

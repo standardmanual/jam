@@ -32,14 +32,13 @@ export default function TodayCardTracker({
   contentTypeId?: string | null
   templateType?: string
   /**
-   * GA `today_card_click`의 `shape` 파라미터(티켓 20261001_1458) — 그 카드가 화면에 그려진 모양. 새 틀(`CardFrame`)은 표시 데이터의
-   * `tracking.shape`를, 옛 렌더러는 `drawnShape`(전환 전 옛 카드는 null)를 넘긴다. 이 값은 GA에만 간다(`/api/today/events`는 서버가
-   * 카드를 다시 조회해 모양을 정한다).
+   * GA `today_card_click`의 `shape` 파라미터(티켓 20261001_1458) — 그 카드가 화면에 그려진 모양. 카드 틀(`CardFrame`)이 표시 데이터의
+   * `tracking.shape`를 넘긴다. 이 값은 GA에만 간다(`/api/today/events`는 서버가 카드 행으로 모양을 정한다 — 같은 카드면 같은 값이다, 티켓 20261001_2244).
    */
   shape?: string | null
   /**
-   * ranking_list 레이아웃은 클릭이 행별 링크(유저 프로필)에서 일어나므로 카드 단위 클릭을
-   * 세지 않는다(노출만 추적) — `TodayCardStack.tsx`의 `RankingListCard` 참고.
+   * 랭킹 행형(`list`)은 클릭이 행별 링크(유저 프로필)에서 일어나므로 카드 단위 클릭을
+   * 세지 않는다(노출만 추적) — `CardFrame`의 `link={false}`가 이 값을 false로 넘긴다.
    */
   trackClick?: boolean
   children: ReactNode

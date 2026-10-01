@@ -49,7 +49,7 @@ export function markImpressionSeen(cardId: string): void {
 }
 
 /**
- * 카드 클릭 전송 함수. `trackClick=false`(ranking_list처럼 클릭이 행별 링크에서 일어나는
+ * 카드 클릭 전송 함수. `trackClick=false`(랭킹 행형처럼 클릭이 행별 링크에서 일어나는
  * 레이아웃)면 `undefined`를 돌려줘 클릭을 세지 않는다.
  */
 export function createClickReporter(cardId: string, trackClick: boolean): (() => void) | undefined {
@@ -59,7 +59,7 @@ export function createClickReporter(cardId: string, trackClick: boolean): (() =>
 
 /**
  * GA `today_card_click` 파라미터. `shape`는 그 카드가 화면에 그려진 모양이다(티켓 20261001_1458) — 새 틀은 표시 데이터의
- * `tracking.shape`, 옛 렌더러는 `drawnShape`라서 옛 카드는 null이다. 값이 없는 칸은 빈 값이 아니라 null로 보낸다.
+ * `tracking.shape`다. 값이 없는 칸은 빈 값이 아니라 null로 보낸다.
  * 기존 파라미터(`card_id`·`content_type_id`·`template_type`)의 이름과 값은 그대로다.
  */
 export function todayCardClickParams(card: {

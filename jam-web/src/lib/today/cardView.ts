@@ -14,30 +14,24 @@ import type { RankingBoardResult } from '@/lib/ranking/rankingDataSource'
 import type { TodayCardTemplateType } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
-import { resolveShape, resolveTitleInImage, type CardShape, type ImageCardShape } from './shape'
+import {
+  CARD_RESOURCES,
+  fallbackEmptyTileShape,
+  isRankingRows,
+  resolveShape,
+  resolveTitleInImage,
+  resourceOfTemplate,
+  type CardResource,
+  type CardShape,
+  type ImageCardShape,
+} from './shape'
 
 // ─── 자원 ─────────────────────────────────────────────────────────────────
 
-/** 카드가 소개하는 자원. `recipe`는 대응하는 템플릿이 아직 없다(`recipe_reveal`은 티켓 1500·1458 소관). */
-export const CARD_RESOURCES = ['mission', 'drop', 'recipe', 'badge', 'article', 'ranking', 'collection', 'auto'] as const
-
-export type CardResource = (typeof CARD_RESOURCES)[number]
-
-/** 템플릿 → 자원 대응(확정 설계 2절). `location_trend`는 표에 없어 자동 카드와 같은 짧은 소식으로 본다. */
-const RESOURCE_BY_TEMPLATE: Record<TodayCardTemplateType, CardResource> = {
-  mission_spotlight: 'mission',
-  drop_alert: 'drop',
-  badge_spotlight: 'badge',
-  editorial_article: 'article',
-  ranking_board: 'ranking',
-  itembook_milestone: 'collection',
-  progress_nudge: 'auto',
-  location_trend: 'auto',
-}
-
-export function resourceOfTemplate(templateType: TodayCardTemplateType): CardResource {
-  return RESOURCE_BY_TEMPLATE[templateType]
-}
+// 자원 목록·템플릿 → 자원 대응·타일 0개 대체 규칙은 계측(`events.ts`)도 쓰는 순수 판정이라 `shape.ts`에 있다(티켓 20261001_2244).
+// 기존 호출부가 이 파일에서 가져오던 이름은 그대로 쓸 수 있게 다시 내보낸다.
+export { CARD_RESOURCES, fallbackEmptyTileShape, resourceOfTemplate }
+export type { CardResource }
 
 /** 칩 줄 라벨 — 템플릿 이름(`ko.ts`의 `todayCard`)을 그대로 쓴다. */
 const LABEL_BY_TEMPLATE: Record<TodayCardTemplateType, string> = {
@@ -187,6 +181,12 @@ export interface CardViewTracking {
 
 interface CardViewBase {
   resource: CardResource
+  /**
+   * 카드의 템플릿(진행 알림·지역 트렌드 등). 자원(`resource`)은 둘을 한 값(`auto`)으로 묶으므로 아이콘처럼 템플릿을 구분해야 하는 화면 값은 이것을 읽는다
+   * (`components/today/resourceIcon.ts`). 계측 정보(`tracking`)와 별개로 `toCardView`가 늘 싣는다 — 미리보기와 홈이 같은 아이콘을 그리게 하려는 값이다.
+   * 직접 만든 표시 데이터(Story)는 생략할 수 있고, 생략하면 자원의 기본 아이콘이다.
+   */
+  template?: TodayCardTemplateType
   title: string
   /** 칩 줄 라벨(템플릿 이름). */
   label?: string
@@ -249,16 +249,8 @@ export interface ToCardViewOptions {
 }
 
 /**
- * 타일이 0개인 타일형 `list`는 `brief`로 그린다(확정 설계 1절). 랭킹 행형(`ranking`)은 타일이 아니라 순위 행이라 해당하지 않는다.
- * `toCardView`와 계측(`events.ts`의 기록 시점 모양)이 같은 규칙을 쓰려고 한 함수로 둔다(티켓 20261001_1431).
- */
-export function fallbackEmptyTileShape(shape: CardShape, resource: CardResource, tileCount: number): CardShape {
-  return shape === 'list' && resource !== 'ranking' && tileCount === 0 ? 'brief' : shape
-}
-
-/**
- * 서버 조회 결과를 표시 데이터로 바꾼다. 모양은 `resolveShape`로 정한다 — 미리보기는 늘 새 모양으로 그리므로
- * 전환 상수(`LEGACY_SHAPE_CUTOVER`)와 무관하다. 홈이 지금 그릴 모양(`drawnShape`)은 호출하는 쪽이 가른다.
+ * 서버 조회 결과를 표시 데이터로 바꾼다. 모양은 `resolveShape`로 정한다 — 홈과 어드민 미리보기가 같은 값으로 같은 모양을 그리고,
+ * 전환 상수(`LEGACY_SHAPE_CUTOVER`)와 무관하다. 계측이 기록하는 모양(`events.ts`)은 같은 카드 행에서 같은 입력으로 정한다(티켓 20261001_2244).
  */
 export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions = {}): CardView {
   const now = options.now ?? new Date()
@@ -292,7 +284,7 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
     now,
   )
 
-  const base: CardViewBase = { resource, title: card.title }
+  const base: CardViewBase = { resource, template: card.template_type, title: card.title }
   const label = LABEL_BY_TEMPLATE[card.template_type]
   if (label) base.label = label
   const regionLabel = nonBlank(card.region_label)
@@ -317,8 +309,9 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
   }
 
   if (shape === 'list') {
-    const view: ListCardView = { ...base, shape, tiles: resource === 'ranking' ? [] : tiles }
-    if (resource === 'ranking') view.ranking = card.resolved_ranking ?? null
+    const rows = isRankingRows(resource)
+    const view: ListCardView = { ...base, shape, tiles: rows ? [] : tiles }
+    if (rows) view.ranking = card.resolved_ranking ?? null
     return view
   }
   if (shape === 'brief') {

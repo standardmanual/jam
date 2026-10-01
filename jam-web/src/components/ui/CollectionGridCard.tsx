@@ -26,8 +26,7 @@ export interface CollectionGridCardProps {
   children?: ReactNode
 }
 
-const BASE =
-  'flex flex-col gap-[var(--spacing-8)] active:scale-[0.98] transition-transform duration-100'
+const BASE = 'flex flex-col gap-[var(--spacing-8)]'
 
 export default function CollectionGridCard({
   name,
@@ -42,7 +41,8 @@ export default function CollectionGridCard({
   children,
 }: CollectionGridCardProps) {
   const pct = total > 0 ? Math.round((collected / total) * 100) : 0
-  const cls = [BASE, className].filter(Boolean).join(' ')
+  // 눌림은 공용 `.jam-press`(0.98배·80ms, 동작 줄이기 설정에서는 없음)다. 링크도 버튼도 아닌 카드에는 붙이지 않는다.
+  const cls = [BASE, (href || onClick) && 'jam-press', className].filter(Boolean).join(' ')
 
   const content = (
     <>

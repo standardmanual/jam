@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import TodayCardTracker from '@/app/(main)/TodayCardTracker'
+import TodayCardTracker from './TodayCardTracker'
 import type { CardView } from '@/lib/today/cardView'
 
 /**

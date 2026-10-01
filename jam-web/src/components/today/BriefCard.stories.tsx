@@ -84,6 +84,7 @@ const BADGE = brief({
 
 const AUTO_NUDGE = brief({
   resource: 'auto',
+  template: 'progress_nudge',
   label: d.todayCard.progressNudge,
   title: '한강 러닝 챌린지가 곧 끝나요',
   facts: buildFacts('auto', { period: endsIn(3 * DAY) }, NOW),
@@ -92,6 +93,7 @@ const AUTO_NUDGE = brief({
 
 const AUTO_TREND = brief({
   resource: 'auto',
+  template: 'location_trend',
   label: d.todayCard.locationTrend,
   title: '성수동에서 러닝이 인기예요',
   regionLabel: '성수동',

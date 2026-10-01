@@ -391,17 +391,31 @@ describe('toCardView — 표시 데이터', () => {
     })
 
     it('커버가 없으면 첫 배지 그림을 쓰고, 유저가 그 배지를 갖지 않았으면 흑백(imageDimmed)이다', () => {
-      const unowned = toCardView(makeCard({ cover_image_url: null, resolved_badges: [badge('a', { earned: false })] }))
+      const unowned = toCardView(makeCard({ cover_image_url: null, badge_ids: ['a'], resolved_badges: [badge('a', { earned: false })] }))
       expect(unowned).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/a.png', imageDimmed: true })
-      const owned = toCardView(makeCard({ cover_image_url: null, resolved_badges: [badge('a', { earned: true })] }))
+      const owned = toCardView(makeCard({ cover_image_url: null, badge_ids: ['a'], resolved_badges: [badge('a', { earned: true })] }))
       expect(owned).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/a.png' })
       expect(owned).not.toHaveProperty('imageDimmed')
     })
 
     it('보유 여부를 모르면(earned 없음, 유저 정보가 없는 미리보기) 승격한 배지 그림은 컬러다 (티켓 20261001_2208)', () => {
-      const view = toCardView(makeCard({ cover_image_url: null, resolved_badges: [badge('a', { earned: undefined })] }))
+      const view = toCardView(makeCard({ cover_image_url: null, badge_ids: ['a'], resolved_badges: [badge('a', { earned: undefined })] }))
       expect(view).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/a.png' })
       expect(view).not.toHaveProperty('imageDimmed')
+    })
+
+    it('커버가 없고 그림 없는 배지가 걸려 있으면 square이고 imageUrl은 null이다(이미지 칸에 자리 표시, 티켓 20261001_2244)', () => {
+      // 기록 모양(`events.ts`)이 badge_ids 유무로 정하는 것과 같다 — 배지 그림이 없다는 이유로 화면만 hero가 되지 않는다.
+      const view = toCardView(
+        makeCard({ cover_image_url: null, badge_ids: ['a'], resolved_badges: [badge('a', { image_url: null })] }),
+      )
+      expect(view).toMatchObject({ shape: 'square', imageUrl: null })
+      expect(view).not.toHaveProperty('imageDimmed')
+    })
+
+    it('배지가 전부 삭제돼도 badge_ids가 남아 있으면 square이고 imageUrl은 null이다', () => {
+      const view = toCardView(makeCard({ cover_image_url: null, badge_ids: ['gone'], resolved_badges: [] }))
+      expect(view).toMatchObject({ shape: 'square', imageUrl: null })
     })
 
     it('커버도 배지 그림도 없으면 imageUrl은 null이다(이미지 칸은 그리는 쪽이 유지한다)', () => {
@@ -597,9 +611,42 @@ describe('toCardView — 표시 데이터', () => {
     })
 
     it('이미지 모양에는 thumbnailUrl이 없다(imageUrl과 섞이지 않는다)', () => {
-      const view = toCardView(makeCard({ cover_image_url: null, resolved_badges: [badge('a')] }))
+      const view = toCardView(makeCard({ cover_image_url: null, badge_ids: ['a'], resolved_badges: [badge('a')] }))
       expect(view.shape).toBe('square')
       expect(view).not.toHaveProperty('thumbnailUrl')
     })
+  })
+})
+
+describe('toCardView — 템플릿 구분 값(template, 티켓 20261001_2244)', () => {
+  const TEMPLATES = [
+    'mission_spotlight',
+    'drop_alert',
+    'badge_spotlight',
+    'editorial_article',
+    'ranking_board',
+    'itembook_milestone',
+    'progress_nudge',
+    'location_trend',
+  ] as const
+
+  it.each(TEMPLATES)('%s: 계측 정보(tracking)가 없어도 카드의 템플릿을 늘 싣는다', (templateType) => {
+    const view = toCardView(makeCard({ template_type: templateType }))
+    expect(view.template).toBe(templateType)
+    expect(view.tracking).toBeUndefined()
+  })
+
+  it('계측 정보를 싣는 홈 표시 데이터도 같은 값이다(tracking.templateType과 별개로 실린다)', () => {
+    const view = toCardView(makeCard({ template_type: 'location_trend' }), { tracking: true })
+    expect(view.template).toBe('location_trend')
+    expect(view.tracking?.templateType).toBe('location_trend')
+  })
+
+  it('진행 알림과 지역 트렌드는 같은 자원(auto)이지만 템플릿으로 구분된다', () => {
+    const nudge = toCardView(makeCard({ template_type: 'progress_nudge', region_label: '성수동' }))
+    const trend = toCardView(makeCard({ template_type: 'location_trend', region_label: '성수동' }))
+    expect(nudge.resource).toBe('auto')
+    expect(trend.resource).toBe('auto')
+    expect(nudge.template).not.toBe(trend.template)
   })
 })

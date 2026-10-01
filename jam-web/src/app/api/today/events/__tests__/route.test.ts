@@ -33,8 +33,19 @@ function post(body: string): Request {
 beforeEach(() => {
   // 빈도 제한 Map은 모듈 전역이라 테스트마다 다른 유저로 로그인해 서로 영향을 주지 않게 한다.
   getUser.mockReset().mockResolvedValue({ data: { user: { id: `user-${userSeq++}` } } })
+  // shape가 없는 옛 큰 썸네일형 카드(커버 있음) — 전환 뒤(티켓 20261001_2244)에는 옛 값 대응표의 모양(hero)으로 기록한다.
   maybeSingle.mockReset().mockResolvedValue({
-    data: { is_active: true, starts_at: '2000-01-01', ends_at: '2999-01-01', content_type_id: 'type-1' },
+    data: {
+      is_active: true,
+      starts_at: '2000-01-01',
+      ends_at: '2999-01-01',
+      content_type_id: 'type-1',
+      shape: null,
+      template_type: 'badge_spotlight',
+      layout_type: 'large_thumbnail',
+      cover_image_url: 'https://cdn.example/cover.png',
+      badge_ids: [],
+    },
     error: null,
   })
   insert.mockReset().mockResolvedValue({ error: null })
@@ -104,12 +115,12 @@ describe('상태 코드', () => {
     expect(console.error).toHaveBeenCalled()
   })
 
-  it('성공하면 204에 본문이 없고 유저 ID 없이 유형 ID·그려진 모양만 저장한다(모양이 없는 옛 카드는 null)', async () => {
+  it('성공하면 204에 본문이 없고 유저 ID 없이 유형 ID·그려진 모양만 저장한다(shape가 없는 옛 카드는 옛 값 대응표의 모양)', async () => {
     const res = await POST(post(VALID_BODY))
     expect(res.status).toBe(204)
     expect(await res.text()).toBe('')
     expect(insert).toHaveBeenCalledWith({
-      card_id: CARD_ID, content_type_id: 'type-1', card_shape: null, event: 'impression', followup_action: null,
+      card_id: CARD_ID, content_type_id: 'type-1', card_shape: 'hero', event: 'impression', followup_action: null,
     })
   })
 

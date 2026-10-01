@@ -62,7 +62,7 @@ status: active
 
 ## docs/specs/prd/home-feed/
 
-- [PRD.md](prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·레이아웃·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
+- [PRD.md](prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 모양·레이아웃·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
 
 ## docs/specs/prd/inventory/
 

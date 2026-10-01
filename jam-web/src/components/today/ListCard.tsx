@@ -4,6 +4,7 @@ import { d } from '@/lib/i18n'
 import { formatRankingMetricValue } from '@/lib/ranking/format'
 import type { RankingBoardResult } from '@/lib/ranking/rankingDataSource'
 import type { ListCardView } from '@/lib/today/cardView'
+import { isRankingRows } from '@/lib/today/shape'
 import { CardBody, CardDescription, CardEndLine, CardFacts, CardTitleGroup } from './CardBody'
 import CardChipRow from './CardChipRow'
 import { CardLink } from './CardFrame'
@@ -12,8 +13,9 @@ import CardThumb from './CardThumb'
 /**
  * 목록(`list`) 모양 — 면(표면) 겹 (티켓 20261001_2104, 상위 20260930_1453 확정 설계 1·3·4절 조각 b5).
  *
- * 흰 카드에 왼쪽 정렬 본문(칩 줄 → 제목 → 요약 → 필수 정보 → 설명문)이 있고 그 아래가 두 갈래다. `resource`가 `ranking`이면 행형(`ranking`만 읽는다), 아니면
- * 타일형(`tiles`만 읽는다). 모양마다 다른 링크 범위는 `TodayCard`가 틀(`CardFrame`)에 알린다: 타일형은 카드 전체가 링크, 행형은 카드 전체 링크가 없다.
+ * 흰 카드에 왼쪽 정렬 본문(칩 줄 → 제목 → 요약 → 필수 정보 → 설명문)이 있고 그 아래가 두 갈래다. `resource`가 `ranking`이면(판정 함수 `isRankingRows` 하나 —
+ * `TodayCard`가 카드 전체 링크를 걸지 말지 정할 때도 같은 함수를 쓴다) 행형(`ranking`만 읽는다), 아니면 타일형(`tiles`만 읽는다). 모양마다 다른 링크 범위는 `TodayCard`가
+ * 틀(`CardFrame`)에 알린다: 타일형은 카드 전체가 링크, 행형은 카드 전체 링크가 없다.
  * `titleInImage`는 읽지 않는다(이미지 칸이 없어 제목은 늘 보인다). 안쪽 여백은 `hero`·`square`와 같은 인라인 `style` 0이고 본문 24px은 `CardBody`가 가진다.
  *
  * - 타일형: 한 줄 가로 스크롤(줄바꿈 없음 — 줄바꿈은 타일 8개에서 카드 높이가 100px 안팎씩 늘어 「큰 카드 사이에 작은 카드」 편성을 깬다). 스크롤 칸이 카드 좌우 끝까지
@@ -120,7 +122,7 @@ function ListRanking({ view, currentUserId }: { view: ListCardView; currentUserI
 export default function ListCard({ view, currentUserId }: { view: ListCardView; currentUserId?: string }) {
   return (
     <Card tone="inverse" style={{ padding: 0 }}>
-      {view.resource === 'ranking' ? <ListRanking view={view} currentUserId={currentUserId} /> : <ListTiles view={view} />}
+      {isRankingRows(view.resource) ? <ListRanking view={view} currentUserId={currentUserId} /> : <ListTiles view={view} />}
     </Card>
   )
 }

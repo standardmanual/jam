@@ -5,14 +5,17 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   parseCodePaths,
   isTestFile,
   underCodePaths,
+  genCardShapes,
+  genLegacyShapeMap,
   DOC_PATH,
   TODAY_SECTIONS_PATH,
   TARGET_HREF_PATH,
+  SHAPE_PATH,
 } from './gen-home-feed-doc.mjs'
 
 // 훅(pre-push -> verify.sh) 안에서 도는 경우 git이 GIT_DIR 등을 물려준다. 임시 저장소 명령이
@@ -46,6 +49,57 @@ assert.equal(underCodePaths('jam-web/src/lib/today/cards.ts', ['jam-web/src/lib/
 assert.equal(underCodePaths('jam-web/src/lib/today', ['jam-web/src/lib/today']), true)
 assert.equal(underCodePaths('jam-web/src/lib/todayX/cards.ts', ['jam-web/src/lib/today']), false)
 assert.equal(underCodePaths('jam-web/src/app/api/other/route.ts', ['jam-web/src/lib/today']), false)
+
+// ── 모양 생성 구간(티켓 20261001_2244): 모양 목록과 옛 값 → 새 모양 대응표 ─────────────────
+// 실제 shape.ts·today-sections.ts를 읽어 만든 결과로 확인한다(대응표 결과 칸은 코드가 채운다)
+{
+  const REPO = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim()
+  const shape = await import(pathToFileURL(join(REPO, SHAPE_PATH)).href)
+  const sections = await import(pathToFileURL(join(REPO, TODAY_SECTIONS_PATH)).href)
+
+  const shapes = genCardShapes(shape)
+  for (const value of ['hero', 'poster', 'square']) {
+    assert.ok(shapes.includes(`| \`${value}\` | 있음 (이미지 제작 필요) |`), `${value}는 이미지가 있는 모양이다`)
+  }
+  for (const value of ['brief', 'list']) {
+    assert.ok(shapes.includes(`| \`${value}\` | 없음 |`), `${value}는 이미지가 없는 모양이다`)
+  }
+  assert.equal(shapes.split('\n').length, 2 + shape.CARD_SHAPES.length) // 헤더 2줄 + 모양마다 한 줄
+
+  const map = genLegacyShapeMap(shape, sections)
+  const row = (layout, condition, result) =>
+    assert.ok(
+      map
+        .split('\n')
+        .some(
+          (line) =>
+            (line.includes(`\`${layout}\``) || line.startsWith(`| ${layout} |`)) &&
+            line.includes(condition) &&
+            line.endsWith(`| ${result} |`)
+        ),
+      `${layout} · ${condition} → ${result} 행이 있어야 한다`
+    )
+  // 옛 레이아웃 6종과 예외 행
+  row('large_thumbnail', '커버 있음', '`hero`')
+  row('large_thumbnail', '미션 소개 카드', '`square`')
+  row('large_thumbnail', '커버 없음 · 배지가 걸려 있음', '`square`')
+  row('large_thumbnail', '커버 없음 · 배지 없음', '`hero`')
+  row('badge_gallery', '배지가 1개 이상', '`list` 타일형')
+  row('badge_gallery', '배지가 0개', '`brief`')
+  row('shortcut', '입력과 무관', '`brief`')
+  row('banner', '커버 있음', '`poster`')
+  row('banner', '커버 없음', '`brief`')
+  row('other', '입력과 무관', '`brief`')
+  row('ranking_list', '랭킹보드', '`list` 행형')
+  row('모든 레이아웃', '기사', '`hero`')
+  row('모든 레이아웃', '저장된 `shape`', '`poster`')
+  row('모든 레이아웃', '목록에 없는 레이아웃 값', '`hero`')
+  // 모든 결과 칸의 모양은 모양 목록 안에 있다
+  for (const line of map.split('\n').slice(2)) {
+    const result = line.match(/\| `(\w+)`(?: [^|]*)? \|$/)?.[1]
+    assert.ok(shape.CARD_SHAPES.includes(result), `결과 칸이 모양이어야 한다: ${line}`)
+  }
+}
 
 // ── ① --check: 저장소의 실제 문서가 today-sections.ts·targetHref.ts와 같은 최신본인지 ────
 // (완료 조건: "today-sections.ts의 라벨 하나를 임시로 바꾸면 1이 된다", 실제 파일을 잠깐
@@ -177,13 +231,25 @@ try {
         '\n'
       )
     )
+    write3(
+      SHAPE_PATH,
+      [
+        'export const CARD_SHAPES = ["hero", "brief"]',
+        'export const isImageShape = (v) => v === "hero"',
+        'export const resolveShape = () => "hero"',
+        'export const resourceOfTemplate = () => "badge"',
+        'export const fallbackEmptyTileShape = (shape) => shape',
+        'export const isRankingRows = () => false',
+        '',
+      ].join('\n')
+    )
     // 생성 구간 표식(<!-- BEGIN/END generated: ... -->)이 전혀 없는 문서
     write3(DOC_PATH, ['---', 'type: prd', 'status: draft', 'description: 테스트', '---', '', '# 홈피드', ''].join('\n'))
 
     const r = spawnSync('node', [GEN], { cwd: dir3, encoding: 'utf8' })
     assert.equal(r.status, 2)
     assert.ok(r.stderr.includes('생성 구간 표시가 없습니다'))
-    for (const name of ['exposure-tags', 'templates', 'content-types', 'layouts', 'destinations']) {
+    for (const name of ['exposure-tags', 'templates', 'content-types', 'layouts', 'card-shapes', 'legacy-shape-map', 'destinations']) {
       assert.ok(r.stderr.includes(name), `${name}이 오류 메시지에 있어야 한다`)
     }
   } finally {
