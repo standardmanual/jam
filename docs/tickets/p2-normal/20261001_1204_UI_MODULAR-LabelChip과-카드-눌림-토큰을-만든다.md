@@ -2,9 +2,9 @@
 id: "20261001_1204"
 category: UI
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-10-01
-closed:
+closed: 2026-10-01
 parent: "20260930_1453"
 specs:
   - "docs/specs/prd/home-feed/PRD.md"
@@ -56,19 +56,37 @@ specs:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+MODULAR 신규 컴포넌트 `LabelChip`(카드 좌상단 라벨 필)을 만들고 현황 줄(`TodayStatusStrip`)과 온보딩 퀘스트 카드(`OnboardingQuestCard`)의 칩 복제 두 곳을 이 컴포넌트로 바꿨다. 인라인 스타일 열 개 값은 기존 Tailwind 클래스의 계산값과 같다(픽셀 동일). 카드 눌림 배율 토큰 `--scale-press-card: 0.98`과 공용 클래스 `.jam-press`(시간 `--duration-micro` 80ms, 이징 `--ease-out`, 동작 줄이기에서 배율·전환 없음)를 만들었고, 적용은 b2에서 한다. 티켓 20260927_2235·20260927_2236의 공용화 부분을 흡수했다(두 티켓의 CLOSED는 카드 쪽 적용이 끝나는 1453-b7에서 한다).
 
 ### 변경된 파일
 ```
--
+jam-web/design-system/_ds_manifest.json
+jam-web/design-system/components/cards/LabelChip.d.ts
+jam-web/design-system/components/cards/LabelChip.jsx
+jam-web/design-system/components/cards/LabelChip.prompt.md
+jam-web/design-system/components/cards/LabelChip.stories.tsx
+jam-web/design-system/foundations/Motion.stories.tsx
+jam-web/design-system/readme.md
+jam-web/design-system/tokens/motion.css
+jam-web/src/app/(main)/OnboardingQuestCard.test.tsx
+jam-web/src/app/(main)/OnboardingQuestCard.tsx
+jam-web/src/app/(main)/TodayStatusStrip.test.tsx
+jam-web/src/app/(main)/TodayStatusStrip.tsx
+jam-web/src/components/LabelChip.test.tsx
+jam-web/src/components/transitions.css
+jam-web/src/components/transitions.test.ts
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] LabelChip.test.tsx(계산 스타일 열 개 값, 빈 children null, props 통과), transitions.test.ts(.jam-press 단일 정의·토큰 사용·reduce 해제), OnboardingQuestCard.test.tsx(상태 4종 칩), 신규 TodayStatusStrip.test.tsx — 채원 독립 재실행 58개 통과
+- [x] `npm run ds:check` 오류 0
+- [x] CI verify 성공(run 36809923388), 게이트 PASS, 채원② 중대 문제 없음
+- [ ] Storybook·홈 화면 눈 확인: 하지 않았다(계산값 대조·단위 테스트로만 확인). staging 홈에서 현황 줄·퀘스트 카드 칩이 전과 같은지 사용자 확인 대상
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-10-01 staging 반영. 프로덕션은 `/jam-ship` 대기
+- 환경: staging
+- 커밋: c8095499c(토큰·클래스), d2576701b(LabelChip), 09018a198(호출부 교체)
 
 ### 실행 지표
 > Workflow 완료 알림 `<usage>`(전체 토큰·소요·에이전트 수·도구 호출)와 결과의 `tokenUsage`
@@ -78,9 +96,16 @@ specs:
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
+| 채원①·구현·게이트∥채원② | jam-designer, jam-developer, jam-reviewer, jam-designer | 363,479 | 96,129 / 47,106 (채원① 65,711) | 19분 23초 | 144 |
+| 합계 | 4 | 363,479 | 96,129 / 47,106 | 19분 23초 | 144 |
 
 ### 주요 의사결정 / 핵심 메모
-- 새 컴포넌트와 새 토큰은 1453 결정 15로 사용자가 승인했다. 크기 기준 면제는 1453 결정 20에 따른다.
+- 채원① 판정: MODULAR 확장(신규 컴포넌트). 기존 ShapeTag·RarityBadge·BadgeLevelChip은 크기·용도가 달라 재사용할 수 없다. 변형 prop(tone·size)은 만들지 않았다(지금 쓰이는 모양이 하나뿐이고 변형은 새 디자인 결정). `self-start`는 부모 배치에 달린 것이라 호출부 className으로 남겼다. 새 컴포넌트·토큰은 1453 결정 15로 승인돼 있어 `needsApproval: false`였다.
+- ds 연결 범위: 토큰(`motion.css`는 globals.css가 직접 import해 즉시 반영, 이번 조각은 사용처 0) + 연결된 컴포넌트 신규 편입(서비스가 `@ds/components/cards/LabelChip`을 import, 병존 구현 없음). `.jam-press`는 서비스 CSS라 DS 네 부류 밖이다. 연결된 컴포넌트는 21종에서 22종이 됐다.
+- b2 메모(1453 가정 A10): 카드 눌림이 100ms·Tailwind 기본 이징에서 80ms·`--ease-out`으로 바뀐다. 카드 래퍼가 `display:block`이어야 하고 비활성 카드에는 붙이지 않는다. 남은 눌림 문자열은 `TodayCardStack.tsx` 6곳과 `TodayStatusStrip.tsx` 22줄 `CELL_CLASS`다.
+- 아현이 홈피드 PRD 동기화 검사를 `JAM_SKIP_DOCLINT=1`로 건너뛰었고 사유(렌더 결과가 같아 PRD 서술 변화 없음)를 커밋에 남겼다. 민지가 타당하다고 판정했다.
+- `_ds_manifest.json`에 기존 드리프트(`--duration-quest-pulse`·`--ease-quest-pulse`) 2건이 재생성 결과로 함께 들어갔다.
+- 범위 밖 발견물: 기사 화면 반전 칩 → 20261001_1248(P3), DS 문서·Story 정리 3건 → 20261001_1249(P3).
 
 ### 잔여 이슈
--
+- staging 홈에서 현황 줄·온보딩 퀘스트 카드 칩의 모습이 전과 같은지 눈으로 확인한다.
