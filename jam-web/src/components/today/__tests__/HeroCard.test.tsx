@@ -30,7 +30,7 @@ function makeView(overrides: Partial<ImageCardView> = {}): ImageCardView {
 
 const render = (overrides: Partial<ImageCardView> = {}) => renderToStaticMarkup(<HeroCard view={makeView(overrides)} />)
 
-const iconMarkup = (view: Pick<ImageCardView, 'resource' | 'regionLabel'>, className: string) =>
+const iconMarkup = (view: Pick<ImageCardView, 'resource' | 'template'>, className: string) =>
   renderToStaticMarkup(resourceIconOf(view, { className }))
 
 const IMAGE_BOX = 'relative aspect-video overflow-hidden bg-surface'
@@ -125,9 +125,18 @@ describe('HeroCard — 이미지 없음 자리 표시', () => {
     expect(iconMarkup({ resource }, 'w-8 h-8 text-text/60')).toContain('aria-hidden="true"')
   })
 
-  it('자동 카드는 BriefCard와 같은 규칙으로 지역 값이 있으면 핀이다', () => {
-    const html = render({ resource: 'auto', regionLabel: '성수동', imageUrl: null })
-    expect(html).toContain(iconMarkup({ resource: 'auto', regionLabel: '성수동' }, 'w-8 h-8 text-text/60'))
+  it('자동 카드는 BriefCard와 같은 규칙으로 템플릿이 지역 트렌드면 핀, 진행 알림이면 모래시계다(지역 값과 무관)', () => {
+    const pin = iconMarkup({ resource: 'auto', template: 'location_trend' }, 'w-8 h-8 text-text/60')
+    const hourglass = iconMarkup({ resource: 'auto', template: 'progress_nudge' }, 'w-8 h-8 text-text/60')
+    expect(pin).not.toBe(hourglass)
+
+    const trend = render({ resource: 'auto', template: 'location_trend', regionLabel: '성수동', imageUrl: null })
+    expect(trend).toContain(pin)
+    expect(trend).not.toContain(hourglass)
+    // 진행 알림은 지역 값이 있어도 모래시계다
+    const nudge = render({ resource: 'auto', template: 'progress_nudge', regionLabel: '성수동', imageUrl: null })
+    expect(nudge).toContain(hourglass)
+    expect(nudge).not.toContain(pin)
   })
 
   it('일반 카드는 판 위에 아이콘만 둔다 — 같은 제목이 한 카드에 두 번 보이지 않는다', () => {

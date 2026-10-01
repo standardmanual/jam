@@ -617,3 +617,36 @@ describe('toCardView — 표시 데이터', () => {
     })
   })
 })
+
+describe('toCardView — 템플릿 구분 값(template, 티켓 20261001_2244)', () => {
+  const TEMPLATES = [
+    'mission_spotlight',
+    'drop_alert',
+    'badge_spotlight',
+    'editorial_article',
+    'ranking_board',
+    'itembook_milestone',
+    'progress_nudge',
+    'location_trend',
+  ] as const
+
+  it.each(TEMPLATES)('%s: 계측 정보(tracking)가 없어도 카드의 템플릿을 늘 싣는다', (templateType) => {
+    const view = toCardView(makeCard({ template_type: templateType }))
+    expect(view.template).toBe(templateType)
+    expect(view.tracking).toBeUndefined()
+  })
+
+  it('계측 정보를 싣는 홈 표시 데이터도 같은 값이다(tracking.templateType과 별개로 실린다)', () => {
+    const view = toCardView(makeCard({ template_type: 'location_trend' }), { tracking: true })
+    expect(view.template).toBe('location_trend')
+    expect(view.tracking?.templateType).toBe('location_trend')
+  })
+
+  it('진행 알림과 지역 트렌드는 같은 자원(auto)이지만 템플릿으로 구분된다', () => {
+    const nudge = toCardView(makeCard({ template_type: 'progress_nudge', region_label: '성수동' }))
+    const trend = toCardView(makeCard({ template_type: 'location_trend', region_label: '성수동' }))
+    expect(nudge.resource).toBe('auto')
+    expect(trend.resource).toBe('auto')
+    expect(nudge.template).not.toBe(trend.template)
+  })
+})

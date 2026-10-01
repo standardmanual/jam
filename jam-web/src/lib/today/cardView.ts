@@ -181,6 +181,12 @@ export interface CardViewTracking {
 
 interface CardViewBase {
   resource: CardResource
+  /**
+   * 카드의 템플릿(진행 알림·지역 트렌드 등). 자원(`resource`)은 둘을 한 값(`auto`)으로 묶으므로 아이콘처럼 템플릿을 구분해야 하는 화면 값은 이것을 읽는다
+   * (`components/today/resourceIcon.ts`). 계측 정보(`tracking`)와 별개로 `toCardView`가 늘 싣는다 — 미리보기와 홈이 같은 아이콘을 그리게 하려는 값이다.
+   * 직접 만든 표시 데이터(Story)는 생략할 수 있고, 생략하면 자원의 기본 아이콘이다.
+   */
+  template?: TodayCardTemplateType
   title: string
   /** 칩 줄 라벨(템플릿 이름). */
   label?: string
@@ -278,7 +284,7 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
     now,
   )
 
-  const base: CardViewBase = { resource, title: card.title }
+  const base: CardViewBase = { resource, template: card.template_type, title: card.title }
   const label = LABEL_BY_TEMPLATE[card.template_type]
   if (label) base.label = label
   const regionLabel = nonBlank(card.region_label)

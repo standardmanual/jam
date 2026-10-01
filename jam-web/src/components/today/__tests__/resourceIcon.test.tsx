@@ -53,13 +53,22 @@ describe('resourceIconOf', () => {
     expect(html).toContain('aria-hidden="true"')
   })
 
-  it('자동 카드는 지역 값이 있으면 핀(지역 트렌드), 없으면 모래시계(진행 알림)다', () => {
-    expect(drawn({ resource: 'auto' })).toBe(expected(HourglassIcon))
-    expect(drawn({ resource: 'auto', regionLabel: '성수동' })).toBe(expected(PinIcon))
+  it('자동 카드는 템플릿이 지역 트렌드면 핀, 진행 알림이면 모래시계다', () => {
+    expect(drawn({ resource: 'auto', template: 'location_trend' })).toBe(expected(PinIcon))
+    expect(drawn({ resource: 'auto', template: 'progress_nudge' })).toBe(expected(HourglassIcon))
   })
 
-  it('지역 값이 있어도 자동 카드가 아니면 자원 아이콘이 그대로다', () => {
-    expect(drawn({ resource: 'mission', regionLabel: '성수동' })).toBe(expected(TargetIcon))
-    expect(drawn({ resource: 'drop', regionLabel: '한강공원' })).toBe(expected(PackageIcon))
+  it('구분 값(template)이 없는 직접 만든 표시 데이터의 자동 카드는 자원의 기본 아이콘(모래시계)이다', () => {
+    expect(drawn({ resource: 'auto' })).toBe(expected(HourglassIcon))
+  })
+
+  it('지역 값은 아이콘을 정하지 않는다 — 진행 알림은 지역 값이 있어도 모래시계다', () => {
+    const view = { resource: 'auto', template: 'progress_nudge', regionLabel: '성수동' } as const
+    expect(drawn(view as Parameters<typeof resourceIconOf>[0])).toBe(expected(HourglassIcon))
+  })
+
+  it('템플릿이 지역 트렌드여도 자동 카드가 아닌 자원이면 자원 아이콘이 그대로다', () => {
+    expect(drawn({ resource: 'mission', template: 'location_trend' })).toBe(expected(TargetIcon))
+    expect(drawn({ resource: 'drop', template: 'location_trend' })).toBe(expected(PackageIcon))
   })
 })
