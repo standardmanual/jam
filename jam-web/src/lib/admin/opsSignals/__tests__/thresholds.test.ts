@@ -7,6 +7,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { NEXT_WEEK_CHECK_FROM_WEEKDAY } from '@/lib/admin/contentGaps'
 import {
   OPS_SIGNAL_CATALOG,
   OPS_SIGNAL_KEYS,
@@ -110,6 +111,7 @@ describe('기준값 (코드)', () => {
     expect([values.weeklyRoutineWeekday, values.weeklyRoutineDeadlineHour]).toEqual([2, 12])
     expect([values.monthlyRoutineDay, values.monthlyRoutineDeadlineHour]).toEqual([1, 12])
     expect(values.routineCheckStartsAt).toBeNull()
+    expect(values.nextWeekCheckFromWeekday).toBe(5)
     expect([values.minLiveCards, values.maxLiveCards]).toEqual([3, 5])
     expect(values.minNewContentCards).toBe(1)
     expect([values.overlapImageShapeCards, values.minNonImageShapeCards, values.maxNewUserCards]).toEqual([3, 1, 3])
@@ -141,6 +143,10 @@ describe('기준값 (코드)', () => {
     for (const key of OPS_SIGNAL_THRESHOLD_KEYS) {
       expect(OPS_SIGNAL_KEYS).toContain(OPS_SIGNAL_THRESHOLDS[key].signal)
     }
+  })
+
+  it('다음 주 검사 시작 요일은 기존 카드 편성 공백 검사(contentGaps)와 같은 값이다', () => {
+    expect(DEFAULT_OPS_SIGNAL_THRESHOLD_VALUES.nextWeekCheckFromWeekday).toBe(NEXT_WEEK_CHECK_FROM_WEEKDAY)
   })
 
   it('덮어쓴 값만 바뀌고 나머지는 그대로다', () => {

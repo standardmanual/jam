@@ -98,7 +98,15 @@ export const OPS_SIGNAL_THRESHOLDS = {
     '공개 시각 몇 시간 전까지 승인되지 않으면 띄우는지',
     HYERIN_ESTIMATE
   ),
-  // 비어 있는 컨텐츠
+  // 비어 있는 컨텐츠(날짜 구성 신호 4종이 함께 쓰는 검사 범위 값도 여기 둔다)
+  nextWeekCheckFromWeekday: entry<number>(
+    5,
+    '요일 번호',
+    false,
+    'empty_content',
+    '다음 주 편성을 검사하기 시작하는 요일(5=금요일, 그 전에도 다음 주 기획이 도착했으면 검사한다)',
+    '0912, 1502 가정 15'
+  ),
   minLiveCards: entry<number>(3, '장', false, 'empty_content', '하루에 게재할 카드의 최소 장수(이보다 적으면 뜬다)', '07 4.2, 1502 가정 5'),
   maxLiveCards: entry<number>(5, '장', false, 'empty_content', '하루에 게재할 카드의 최대 장수(이보다 많으면 뜬다)', '07 4.2, 1502 가정 5'),
   // 새 컨텐츠가 없는 날
