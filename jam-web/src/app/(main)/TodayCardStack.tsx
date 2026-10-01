@@ -337,8 +337,8 @@ function CardBody({ card }: { card: TodayCardWithHref }) {
  * layout_type에 따라 서로 다른 UI로 렌더링(콘텐츠 종류인 template_type과는 별개 축).
  * 카드 클릭 시 resolved_href 로 이동 (editorial_article은 /today/[id]).
  *
- * 모양(`shape`)이 저장된 카드 중 새 틀(`components/today`)이 그리는 모양(지금은 `brief`)은 새 틀로 그린다(티켓 20261001_1458).
- * 그 밖의 카드는 위 옛 렌더러가 그린다 — 조각 b7이 옛 카드까지 새 모양으로 전환하고 옛 렌더러를 지운다.
+ * 모양(`shape`)이 저장된 카드 중 새 틀(`components/today`)이 그리는 모양(`RENDERED_SHAPES`, 지금은 다섯 모양 전부)은 새 틀로 그린다(티켓 20261001_1458).
+ * 그 밖의 카드(`shape`가 NULL인 옛 카드)는 위 옛 렌더러가 그린다 — 조각 b7이 옛 카드까지 새 모양으로 전환하고 옛 렌더러를 지운다.
  */
 export default function TodayCardStack({
   cards,
@@ -346,7 +346,7 @@ export default function TodayCardStack({
   preview = false,
 }: {
   cards: TodayCardWithHref[]
-  /** 랭킹보드 카드(ranking_list 레이아웃)에서 내 순위 행을 강조하는 데 쓴다(선택 — 없으면 강조 없음) */
+  /** 랭킹보드 카드(옛 ranking_list 레이아웃·새 틀의 랭킹 행형 `list`)에서 내 순위 행을 강조하는 데 쓴다(선택 — 없으면 강조 없음) */
   currentUserId?: string
   /**
    * 어드민 미리보기(티켓 20260930_1645). true면 모양만 그리고 노출·클릭 계측(`TodayCardTracker`)과
@@ -372,7 +372,7 @@ export default function TodayCardStack({
           // 새 틀은 표시 데이터에 계측 정보가 있어야 트래커·링크를 그리므로 미리보기(`preview`)면 싣지 않는다.
           const shape = drawnShape(card)
           const view = shape ? toCardView(card, { tracking: !preview }) : null
-          if (view && isRenderedShape(view.shape)) return <TodayCard key={card.id} view={view} />
+          if (view && isRenderedShape(view.shape)) return <TodayCard key={card.id} view={view} currentUserId={currentUserId} />
 
           // 아래는 옛 렌더러다(조각 b7에서 지운다).
           // ranking_list는 행마다 자체 <Link>(유저 프로필)를 가지므로 공통 카드 래핑

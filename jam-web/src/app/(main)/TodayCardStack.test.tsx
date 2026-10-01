@@ -189,9 +189,75 @@ describe('TodayCardStack — 새 틀과 옛 렌더러 분기 (티켓 20261001_14
     expect(html).not.toContain(POSTER_FRAME)
   })
 
-  it('shape가 list로 저장된 카드는 옛 렌더러가 그린다(b5 전까지)', () => {
-    const list = render(makeCard({ shape: 'list', layout_type: 'badge_gallery', resolved_badges: [badge('a')] }))
-    for (const frame of [NEW_FRAME, HERO_FRAME, POSTER_FRAME, SQUARE_FRAME]) expect(list).not.toContain(frame)
+  const TILE_LIST = 'w-16 shrink-0'
+  // 옛 `BadgeGalleryCard`의 타일 줄 클래스 — 새 틀 타일 줄에는 없다
+  const OLD_GALLERY = 'flex gap-[var(--spacing-16)] mt-[var(--spacing-16)] overflow-x-auto pb-1'
+  const entry = (rank: number, userId: string, username: string | null) => ({
+    userId,
+    displayName: `이름 ${userId}`,
+    username,
+    avatarUrl: null,
+    value: 100 - rank,
+    rank,
+  })
+  const rankingCard = (overrides: Partial<TodayCardWithHref> = {}) =>
+    makeCard({
+      shape: 'list',
+      layout_type: 'ranking_list',
+      template_type: 'ranking_board',
+      title: '이번 주 러너 순위',
+      resolved_href: '/missions/m-1/status',
+      resolved_ranking: {
+        metricType: 'mission_progress',
+        missionType: null,
+        conditionFieldKey: null,
+        totalParticipants: 2,
+        entries: [entry(1, 'u1', 'runner1'), entry(2, 'u2', 'runner2')],
+      },
+      ...overrides,
+    })
+
+  it('shape가 list로 저장된 타일형 카드는 새 틀로 그린다(링크 하나·눌림 하나·타일 줄·전체 보기, 옛 갤러리 아님)', () => {
+    const html = render(makeCard({ shape: 'list', layout_type: 'badge_gallery', resolved_badges: [badge('a'), badge('b')] }))
+    expect(html).toContain(NEW_LINK)
+    expect(html).toContain('href="/badges"')
+    expect(html.match(/<a /g)).toHaveLength(1)
+    expect(html.match(/jam-press/g)).toHaveLength(1)
+    expect(html).toContain(TILE_LIST)
+    expect(html).toContain('배지 a')
+    expect(html).toContain('전체 보기')
+    expect(html).not.toContain(OLD_GALLERY)
+    for (const frame of [NEW_FRAME, HERO_FRAME, POSTER_FRAME, SQUARE_FRAME]) expect(html).not.toContain(frame)
+  })
+
+  it('shape가 list로 저장된 랭킹 카드는 새 틀로 그린다(카드 전체 링크 없음·제목 링크 하나·행 링크는 행마다·끝 줄 없음)', () => {
+    const html = render(rankingCard())
+    expect(html).toContain('href="/missions/m-1/status"')
+    expect(html).toContain('href="/runner1"')
+    expect(html).toContain('href="/runner2"')
+    // 제목 링크 하나 + 행 링크 둘, 눌림은 제목 링크 하나
+    expect(html.match(/<a /g)).toHaveLength(3)
+    expect(html.match(/jam-press/g)).toHaveLength(1)
+    expect(html).not.toContain('전체 보기')
+    expect(html).not.toContain('active:scale-[0.98] transition-transform duration-100 cursor-pointer jam-press')
+  })
+
+  it('랭킹 행형 새 틀은 currentUserId를 받아 내 순위 행만 강조한다(홈)', () => {
+    const html = renderToStaticMarkup(<TodayCardStack cards={[rankingCard()]} currentUserId="u2" />)
+    // 내 순위 행의 순위 번호·값만 24px(--text-h4) 레드(--color-primary)다
+    expect(html.match(/font-size:var\(--text-h4\)/g)).toHaveLength(2)
+    expect(html.match(/font-size:var\(--text-h4\);font-weight:bold;color:var\(--color-primary\)/g)).toHaveLength(2)
+    const without = renderToStaticMarkup(<TodayCardStack cards={[rankingCard()]} />)
+    expect(without).not.toContain('--text-h4')
+  })
+
+  it('미리보기(preview)는 새 틀 list도 링크·트래커·눌림·강조가 없다', () => {
+    for (const card of [rankingCard(), makeCard({ shape: 'list', layout_type: 'badge_gallery', resolved_badges: [badge('a')] })]) {
+      const html = renderToStaticMarkup(<TodayCardStack cards={[card]} currentUserId="u2" preview />)
+      expect(html).not.toContain('<a')
+      expect(html).not.toContain('jam-press')
+      expect(html).not.toContain('--text-h4')
+    }
   })
 
   it('타일이 0개인 list로 저장된 카드는 화면도 brief다(기록 모양과 같다)', () => {
@@ -210,15 +276,16 @@ describe('TodayCardStack — 새 틀과 옛 렌더러 분기 (티켓 20261001_14
             id: 'c',
             shape: 'list',
             layout_type: 'badge_gallery',
-            title: '옛 카드 다',
+            title: '새 카드 다',
             resolved_badges: [{ id: 'a', name: '배지 a', image_url: null, rarity: 'rare', earned: true }],
           }),
         ]}
       />
     )
     expect(html.indexOf('옛 카드 가')).toBeLessThan(html.indexOf('새 카드 나'))
-    expect(html.indexOf('새 카드 나')).toBeLessThan(html.indexOf('옛 카드 다'))
+    expect(html.indexOf('새 카드 나')).toBeLessThan(html.indexOf('새 카드 다'))
     expect(html.match(/min-h-\[88px\]/g)).toHaveLength(1)
+    expect(html.match(/w-16 shrink-0/g)).toHaveLength(1)
     expect(html).not.toContain(HERO_FRAME)
   })
 
@@ -241,6 +308,10 @@ describe('TodayCardStack — 새 틀과 옛 렌더러 분기 (티켓 20261001_14
       expect(html.match(/jam-press/g)).toHaveLength(1)
       expect(html).not.toContain('active:scale-[0.98]')
     }
+    // list(타일형)는 타일이 있어야 list로 그려진다 — 타일 0개는 brief다
+    const list = render(makeCard({ shape: 'list', layout_type: 'badge_gallery', resolved_badges: [badge('a')] }))
+    expect(list.match(/jam-press/g)).toHaveLength(1)
+    expect(list).not.toContain('active:scale-[0.98]')
   })
 })
 

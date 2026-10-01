@@ -15,12 +15,16 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('@/app/(main)/TodayCardTracker', () => ({
-  default: ({ cardId, children }: { cardId: string; children: ReactNode }) => <div data-tracker={cardId}>{children}</div>,
+  default: ({ cardId, trackClick, children }: { cardId: string; trackClick?: boolean; children: ReactNode }) => (
+    <div data-tracker={cardId} data-track-click={String(trackClick ?? true)}>
+      {children}
+    </div>
+  ),
 }))
 
 import TodayCard, { RENDERED_SHAPES, isRenderedShape } from '../TodayCard'
 import { CARD_SHAPES } from '@/lib/today/shape'
-import type { CardView, ImageCardView } from '@/lib/today/cardView'
+import type { CardView, ImageCardView, ListCardView } from '@/lib/today/cardView'
 
 const TRACKING = { cardId: 'card-1', contentTypeId: 'T05', templateType: 'drop_alert', shape: 'brief' } as const
 
@@ -50,6 +54,37 @@ const squareView = (overrides: Partial<ImageCardView> = {}): CardView => ({
   ...overrides,
 })
 
+const listView = (overrides: Partial<ListCardView> = {}): CardView => ({
+  shape: 'list',
+  resource: 'badge',
+  title: '성수동 배지 모음',
+  label: '배지 소개',
+  tiles: [
+    { name: '성수동 탐험가', imageUrl: null, earned: true },
+    { name: '한강 러너', imageUrl: null, earned: false },
+  ],
+  ...overrides,
+})
+
+const rankingView = (overrides: Partial<ListCardView> = {}): CardView =>
+  listView({
+    resource: 'ranking',
+    title: '이번 주 러너 순위',
+    label: '랭킹보드',
+    tiles: [],
+    ranking: {
+      metricType: 'mission_progress',
+      missionType: null,
+      conditionFieldKey: null,
+      totalParticipants: 2,
+      entries: [
+        { userId: 'u1', displayName: '가', username: 'runner1', avatarUrl: null, value: 10, rank: 1 },
+        { userId: 'u2', displayName: '나', username: 'runner2', avatarUrl: null, value: 5, rank: 2 },
+      ],
+    },
+    ...overrides,
+  })
+
 const posterView = (overrides: Partial<ImageCardView> = {}): CardView => ({
   shape: 'poster',
   resource: 'collection',
@@ -60,8 +95,12 @@ const posterView = (overrides: Partial<ImageCardView> = {}): CardView => ({
 })
 
 describe('RENDERED_SHAPES — 새 틀이 그리는 모양 목록', () => {
-  it('지금은 brief·hero·poster·square다(b5의 list가 모양을 더한다)', () => {
-    expect([...RENDERED_SHAPES]).toEqual(['brief', 'hero', 'poster', 'square'])
+  it('다섯 모양 전부다: brief·hero·poster·square·list', () => {
+    expect([...RENDERED_SHAPES]).toEqual(['brief', 'hero', 'poster', 'square', 'list'])
+  })
+
+  it('카드 모양 5개와 같은 집합이다(저장될 수 있는 모든 모양을 새 틀이 그린다)', () => {
+    expect([...RENDERED_SHAPES].sort()).toEqual([...CARD_SHAPES].sort())
   })
 
   it('모든 항목이 카드 모양 5개 안의 값이다', () => {
@@ -73,6 +112,7 @@ describe('RENDERED_SHAPES — 새 틀이 그리는 모양 목록', () => {
     expect(isRenderedShape('hero')).toBe(true)
     expect(isRenderedShape('poster')).toBe(true)
     expect(isRenderedShape('square')).toBe(true)
+    expect(isRenderedShape('list')).toBe(true)
     for (const shape of CARD_SHAPES.filter((s) => !(RENDERED_SHAPES as readonly string[]).includes(s))) {
       expect(isRenderedShape(shape)).toBe(false)
     }
@@ -116,11 +156,19 @@ describe('TodayCard — 모양으로 모양 컴포넌트를 고른다', () => {
     expect(html).not.toContain('aspect-video')
   })
 
-  it('목록에 없는 모양(list)은 아무것도 그리지 않는다', () => {
-    const views: CardView[] = [
-      { shape: 'list', resource: 'badge', title: '목록', tiles: [{ name: '배지', imageUrl: null }] },
-    ]
-    for (const view of views) expect(renderToStaticMarkup(<TodayCard view={view} />)).toBe('')
+  it('list는 목록 모양으로 그린다(타일형: 타일 줄 + 전체 보기 끝 줄)', () => {
+    const html = renderToStaticMarkup(<TodayCard view={listView({ href: '/badges' })} />)
+    expect(html).toContain('<ul class="flex gap-[var(--spacing-8)]">')
+    expect(html).toContain('<h3')
+    expect(html).toContain('성수동 배지 모음')
+    expect(html).toContain('전체 보기')
+    expect(html).not.toContain('min-h-[88px]')
+    expect(html).not.toContain('aspect-video')
+  })
+
+  it('모르는 모양은 그리지 않는다', () => {
+    const unknown = { ...briefView(), shape: 'carousel' } as unknown as CardView
+    expect(renderToStaticMarkup(<TodayCard view={unknown} />)).toBe('')
   })
 
   it('계측 정보와 href가 있으면 틀이 트래커·링크를 걸고 눌림은 한 곳에만 있으며 끝에 ›가 보인다', () => {
@@ -227,5 +275,59 @@ describe('TodayCard — square의 접근·계측 틀', () => {
   it('포커스 윤곽선이 잘리지 않게 overflow-hidden은 링크 안쪽 면(Card)에만 있다', () => {
     const html = renderToStaticMarkup(<TodayCard view={squareView({ href: '/missions/m1', tracking: SQUARE_TRACKING })} />)
     expect(html.slice(0, html.indexOf('overflow-hidden'))).toContain('jam-press')
+  })
+})
+
+describe('TodayCard — list의 접근·계측 틀', () => {
+  const LIST_TRACKING = { cardId: 'card-5', contentTypeId: 'T03', templateType: 'badge_spotlight', shape: 'list' } as const
+  const RANKING_TRACKING = { cardId: 'card-6', contentTypeId: 'T08', templateType: 'ranking_board', shape: 'list' } as const
+
+  it('타일형: 카드 전체가 하나의 링크이고 눌림은 한 곳에만 있으며 클릭도 기록한다', () => {
+    const html = renderToStaticMarkup(<TodayCard view={listView({ href: '/badges', tracking: LIST_TRACKING })} />)
+    expect(html).toContain('data-tracker="card-5"')
+    expect(html).toContain('data-track-click="true"')
+    expect(html.match(/<a /g)).toHaveLength(1)
+    expect(html).toContain('href="/badges"')
+    expect(html.match(/jam-press/g)).toHaveLength(1)
+    expect(html).toContain('전체 보기')
+  })
+
+  it('타일형 미리보기(tracking 없음): 링크·트래커·눌림이 없고 href가 있으면 끝 줄만 보인다', () => {
+    const html = renderToStaticMarkup(<TodayCard view={listView({ href: '/badges' })} />)
+    expect(html).not.toContain('<a')
+    expect(html).not.toContain('data-tracker')
+    expect(html).not.toContain('jam-press')
+    expect(html).toContain('전체 보기')
+  })
+
+  it('타일형은 href가 없으면 링크도 끝 줄도 없다(트래커는 노출을 위해 남는다)', () => {
+    const html = renderToStaticMarkup(<TodayCard view={listView({ tracking: LIST_TRACKING })} />)
+    expect(html).toContain('data-tracker="card-5"')
+    expect(html).not.toContain('<a')
+    expect(html).not.toContain('jam-press')
+    expect(html).not.toContain('전체 보기')
+  })
+
+  it('행형: 카드 전체 링크가 없다 — 트래커는 노출만 기록한다(trackClick=false)', () => {
+    const html = renderToStaticMarkup(
+      <TodayCard view={rankingView({ href: '/missions/m1/status', tracking: RANKING_TRACKING })} currentUserId="u2" />,
+    )
+    expect(html).toContain('data-tracker="card-6"')
+    expect(html).toContain('data-track-click="false"')
+    // 카드 전체를 감싸는 링크가 없다: 트래커 바로 안쪽은 흰 카드 면이다
+    expect(html).toMatch(/<div data-tracker="card-6" data-track-click="false"><div class="[^"]*" style="[^"]*">/)
+  })
+
+  it('행형 미리보기(tracking 없음): 링크·트래커·눌림이 모두 없다(행 링크도 없다)', () => {
+    const html = renderToStaticMarkup(<TodayCard view={rankingView({ href: '/missions/m1/status' })} currentUserId="u2" />)
+    expect(html).not.toContain('<a')
+    expect(html).not.toContain('data-tracker')
+    expect(html).not.toContain('jam-press')
+  })
+
+  it('currentUserId는 list에서만 쓰인다 — 다른 모양에 넘겨도 출력이 같다', () => {
+    for (const view of [briefView(), heroView(), posterView(), squareView()]) {
+      expect(renderToStaticMarkup(<TodayCard view={view} currentUserId="u2" />)).toBe(renderToStaticMarkup(<TodayCard view={view} />))
+    }
   })
 })

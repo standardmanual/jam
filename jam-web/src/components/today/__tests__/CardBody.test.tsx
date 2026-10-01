@@ -10,8 +10,9 @@ import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { CardBody, CardDescription, CardEndLine, CardFacts, CardTitleGroup } from '../CardBody'
 import HeroCard from '../HeroCard'
+import ListCard from '../ListCard'
 import SquareCard from '../SquareCard'
-import type { ImageCardView } from '@/lib/today/cardView'
+import type { CardResource, ImageCardView, ListCardView } from '@/lib/today/cardView'
 
 const BODY_OPEN = '<div class="flex flex-col gap-[var(--spacing-12)] p-[var(--spacing-24)]">'
 const H3_CLASS =
@@ -83,9 +84,20 @@ describe('CardEndLine — 끝 줄', () => {
   })
 })
 
-describe('hero·square가 같은 조각을 쓴다 — 같은 입력이면 같은 제목 그룹·필수 정보 HTML', () => {
-  const view = (shape: 'hero' | 'square', overrides: Partial<ImageCardView> = {}): ImageCardView => ({
-    shape,
+describe('hero·square·list가 같은 조각을 쓴다 — 같은 입력이면 같은 제목 그룹·필수 정보 HTML', () => {
+  type Shape = 'hero' | 'square' | 'list'
+  /** 세 모양이 함께 읽는 표시 데이터 값 */
+  interface Common {
+    resource: CardResource
+    title: string
+    label: string
+    subtitle: string
+    facts: string[]
+    description: string
+    href: string
+    titleInImage?: boolean
+  }
+  const VALUES: Common = {
     resource: 'mission',
     title: '한강 러닝 챌린지',
     label: '미션',
@@ -93,39 +105,61 @@ describe('hero·square가 같은 조각을 쓴다 — 같은 입력이면 같은
     facts: ['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'],
     description: '설명문입니다',
     href: '/missions/m1',
+  }
+  const imageView = (shape: 'hero' | 'square', overrides: Partial<Common> = {}): ImageCardView => ({
+    shape,
+    ...VALUES,
     imageUrl: 'https://cdn.example/c.png',
     ...overrides,
   })
-  const render = (shape: 'hero' | 'square', overrides: Partial<ImageCardView> = {}) =>
-    renderToStaticMarkup(shape === 'hero' ? <HeroCard view={view(shape, overrides)} /> : <SquareCard view={view(shape, overrides)} />)
+  const listView = (overrides: Partial<Common> = {}): ListCardView => ({
+    shape: 'list',
+    ...VALUES,
+    tiles: [{ name: '배지', imageUrl: null }],
+    ...overrides,
+  })
+  const render = (shape: Shape, overrides: Partial<Common> = {}) => {
+    if (shape === 'hero') return renderToStaticMarkup(<HeroCard view={imageView('hero', overrides)} />)
+    if (shape === 'square') return renderToStaticMarkup(<SquareCard view={imageView('square', overrides)} />)
+    return renderToStaticMarkup(<ListCard view={listView(overrides)} />)
+  }
+  const SHAPES: Shape[] = ['hero', 'square', 'list']
 
-  /** 제목 그룹 = 본문 칸 안의 칩 줄 다음 `<div>…</div>`, 필수 정보 = `font-bold` 줄 묶음 */
+  /** 제목 그룹 = 본문 칸 안의 칩 줄 다음 `<div>…</div>`, 필수 정보 = `font-bold` 줄 묶음, 설명문 = 설명 글자가 든 `<p>` */
   const titleGroupOf = (html: string) => html.match(/<div><h3 .*?<\/h3>(?:<p [^>]*>[^<]*<\/p>)?<\/div>/)?.[0]
   const factsOf = (html: string) => html.match(/<div>(?:<p class="[^"]*font-bold[^"]*">[^<]*<\/p>)+<\/div>/)?.[0]
+  const descriptionOf = (html: string) => html.match(/<p class="[^"]*">설명문입니다<\/p>/)?.[0]
 
   it('본문 칸이 같다', () => {
-    expect(render('hero')).toContain(BODY_OPEN)
-    expect(render('square')).toContain(BODY_OPEN)
+    for (const shape of SHAPES) expect(render(shape)).toContain(BODY_OPEN)
   })
 
   it('제목 그룹이 같다', () => {
     const hero = titleGroupOf(render('hero'))
     expect(hero).toBeDefined()
-    expect(hero).toBe(titleGroupOf(render('square')))
+    for (const shape of SHAPES) expect(titleGroupOf(render(shape))).toBe(hero)
   })
 
   it('필수 정보가 같다', () => {
     const hero = factsOf(render('hero'))
     expect(hero).toBeDefined()
-    expect(hero).toBe(factsOf(render('square')))
+    for (const shape of SHAPES) expect(factsOf(render(shape))).toBe(hero)
   })
 
-  it('titleInImage면 두 모양 모두 제목 그룹을 빼고(이 판단은 모양 쪽에 있다) 필수 정보는 남는다', () => {
+  it('설명문은 hero와 list가 같고 square에는 없다(결정 15)', () => {
+    const hero = descriptionOf(render('hero'))
+    expect(hero).toBeDefined()
+    expect(descriptionOf(render('list'))).toBe(hero)
+    expect(descriptionOf(render('square'))).toBeUndefined()
+  })
+
+  it('titleInImage면 이미지 모양 둘은 제목 그룹을 빼고(이 판단은 모양 쪽에 있다) 필수 정보는 남기며, list는 이미지 칸이 없어 제목을 늘 보인다', () => {
     for (const shape of ['hero', 'square'] as const) {
       const html = render(shape, { titleInImage: true })
       expect(html).not.toContain('<h3')
       expect(html).not.toContain('이번 주말 같이 달려요')
       expect(factsOf(html)).toBeDefined()
     }
+    expect(titleGroupOf(render('list', { titleInImage: true }))).toBeDefined()
   })
 })
