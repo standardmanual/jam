@@ -21,8 +21,9 @@ interface Props {
 /**
  * 어드민 투데이 캘린더뷰(20260902_1028) [미리보기] — 실제 라이브 페이지가 아니라 선택 날짜
  * 기준 노출조건(is_active + 날짜 구간, 개인화 exposure_tags는 무시)으로 재현한 시뮬레이션이다.
- * 유저向 홈 화면과 동일한 `TodayCardStack`을 그대로 재사용해 실제로 보일 모양을 그대로 반영한다
- * (해당 컴포넌트는 이 티켓에서 수정하지 않음 — 읽기 전용 재사용).
+ * 유저向 홈 화면과 동일한 `TodayCardStack`을 그대로 재사용해 실제로 보일 모양을 그대로 반영한다.
+ * `preview`를 켜서 노출·클릭 계측과 카드 이동을 끈다(티켓 20260930_1645) — 어드민이 미리 보는
+ * 것이 실제 노출 수치에 섞이면 안 된다.
  */
 export default function TodayPreviewModal({ open, onOpenChange, selectedDate }: Props) {
   const [cards, setCards] = useState<TodayCardWithHref[] | null>(null)
@@ -78,7 +79,7 @@ export default function TodayPreviewModal({ open, onOpenChange, selectedDate }: 
           {!loading && !error && cards && cards.length === 0 && (
             <p className="text-sm text-text-secondary">이 날짜에 노출될 카드가 없습니다.</p>
           )}
-          {!loading && !error && cards && cards.length > 0 && <TodayCardStack cards={cards} />}
+          {!loading && !error && cards && cards.length > 0 && <TodayCardStack cards={cards} preview />}
         </div>
       </DialogContent>
     </Dialog>

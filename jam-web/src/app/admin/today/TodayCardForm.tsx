@@ -739,7 +739,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
             TodayCardStack의 tone="inverse"(흰 카드) 대비가 실제 화면과 같게 보인다
             (TodayPreviewModal.tsx와 동일 이유). */}
         <div className="rounded-lg bg-surface p-4 text-text">
-          <TodayCardStack cards={[previewCard]} />
+          <TodayCardStack cards={[previewCard]} preview />
         </div>
       </RailCard>
 
