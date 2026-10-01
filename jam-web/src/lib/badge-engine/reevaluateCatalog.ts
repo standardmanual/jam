@@ -203,7 +203,7 @@ export async function reevaluateUsersForCatalog(
       }
 
       // 사용량 지표 6종 — JAM! 다음에 별도 try/catch로 돌린다. 값 계산 오류는 안에서 삼키지 않고 던지므로
-      // 여기서 `error`에 남긴다(JAM!의 알려진 한계 2번을 되풀이하지 않는다). 메인 엔진·JAM! 결과는 유지한다.
+      // 여기서 `error`에 남긴다(§2.17 「알려진 한계 (JAM! 재평가)」 1번을 되풀이하지 않는다). 메인 엔진·JAM! 결과는 유지한다.
       let usageRaw: { id: string; name: string }[] = []
       let usageError: string | undefined
       try {

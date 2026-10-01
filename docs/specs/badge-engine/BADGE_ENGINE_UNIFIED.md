@@ -1396,8 +1396,8 @@ triggeredByPrefix: CATALOG_REEVALUATION_TRIGGER })`를 한 번 더 부른다. �
 
 1. **지표 계산 오류는 dry-run 숫자에서 조용히 빠질 수 있다.** `evaluateJamActionBadges`는 지표 계산 오류를 지표 단위로
    삼키므로(그 지표만 건너뛴다) 배치 응답의 `error`에 올라오지 않고 서버 로그로만 보인다. dry-run 숫자가 기대보다
-   작으면 로그의 `[evaluateJamActionBadges] … 판정 실패`를 먼저 확인한다. 사용량 지표 6종은 이 한계에 해당하지 않는다 —
-   값 계산 오류가 `error`에 올라온다(아래 절).
+   작으면 로그의 `[evaluateJamActionBadges] … 판정 실패`를 먼저 확인한다. 사용량 지표 가운데 팔로워·팔로잉·동기화 4종은
+   값 계산·조회 오류가 `error`에 올라온다. 체크인 2종은 이 한계와 같이 오류가 삼켜진다(아래 「실패 격리와 오류 노출」).
 2. **아직 열리지 않은 배지는 dry-run에 들어가지 않는다.** `valid_from`이 미래인 배지는 후보 조회에서 빠진다. 열기 전에
    미리 세어 보는 옵션은 두지 않았다.
 
@@ -1428,7 +1428,8 @@ triggeredByPrefix: CATALOG_REEVALUATION_TRIGGER })`를 한 번 더 부른다. �
   (JAM! 오류와 겹치면 ` / `로 잇는다). 지표 값 계산·조회 오류는 삼키지 않고 던진다 — 자연 발급 경로가 쓰는 «0으로 폴백»은
   배치에서는 «조건을 못 채운 유저»와 «조회에 실패한 유저»를 구분할 수 없게 만든다. 첫 오류에서 멈추며, 그때까지 이미 발급한
   배지는 응답에 그대로 남는다(`UsageReevaluationError.earned`). 다만 체크인 2종의 후보 조회·체크인 이력 조회는
-  `evaluateCheckinUsageBadges`가 기존대로 오류를 삼키고 빈 결과를 돌려준다.
+  `evaluateCheckinUsageBadges`가 기존대로 오류를 삼키고 빈 결과를 돌려준다. 던지는 것은 값 계산·조회 오류에 한한다.
+  발급 단계(`issueQualifyingBadges`)의 보유 배지 조회 오류와 중복(23505)이 아닌 insert 오류는 4종에서도 기존대로 로그만 남기고 건너뛴다.
 - **응답의 사용량 몫**: 기존 필드에는 사용량 몫이 합쳐져 있고, 따로 볼 수 있도록 유저별 `usageMetricEarnedCount`·
   `usageMetricPointsAwarded`와 합계 `usageMetricAffectedUserCount`·`totalUsageMetricBadgesIssued`·`totalUsageMetricPointsAwarded`를
   둔다(대상이 0명일 때도 0으로 내려간다). JAM! 몫과 겹치지 않는다.
