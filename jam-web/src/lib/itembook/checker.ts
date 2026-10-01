@@ -15,6 +15,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { ItemBookRow, InventoryRow, BadgeType } from '@/types/database'
 import { computeBookCompletion } from './completion-basis'
 import { buildFilledByBook } from './filled-by-book'
+import { applyDroppableItemBookFilter } from './visibility'
 
 export interface ItemBookCompletionResult {
   completedIds: string[]
@@ -34,14 +35,13 @@ export interface ItemBookCompletionResult {
 export async function checkItemBookCompletion(userId: string): Promise<ItemBookCompletionResult> {
   const supabase = createServiceClient()
 
-  // 1. 활성 item_books 전체 조회 — is_active && 노출 기간 내(마이그레이션 171, 티켓 20260914_1729).
+  // 1. 노출 중 item_books 전체 조회 — is_active && 노출 기간 내(마이그레이션 171, 티켓 20260914_1729).
+  //    판정 원천은 visibility.ts(티켓 20260930_1516).
   const now = new Date().toISOString()
-  const { data: itemBooksRaw, error: itemBooksError } = await supabase
-    .from('item_books')
-    .select('*')
-    .eq('is_active', true)
-    .or(`valid_from.is.null,valid_from.lte.${now}`)
-    .or(`valid_until.is.null,valid_until.gte.${now}`)
+  const { data: itemBooksRaw, error: itemBooksError } = await applyDroppableItemBookFilter(
+    supabase.from('item_books').select('*'),
+    now
+  )
 
   const itemBooks = itemBooksRaw as ItemBookRow[] | null
 
