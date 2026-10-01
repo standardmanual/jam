@@ -8,14 +8,18 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
+  CARD_RESOURCES,
   CARD_SHAPES,
   IMAGE_CARD_SHAPES,
   LEGACY_SHAPE_CUTOVER,
   drawnShape,
+  fallbackEmptyTileShape,
   isCardShape,
   isImageShape,
+  isRankingRows,
   resolveShape,
   resolveTitleInImage,
+  resourceOfTemplate,
   type ShapeCardInput,
 } from '../shape'
 
@@ -93,29 +97,27 @@ describe('resolveShape — 옛 값 → 새 모양 대응표 (1453 확정 설계 
       expect(resolveShape(card({ template_type: 'mission_spotlight', cover_image_url: null }))).toBe('square')
     })
 
-    it('커버 없이 첫 배지 그림이 올라가던 카드는 square다', () => {
-      expect(resolveShape(card({ cover_image_url: null, resolved_badges: [{ image_url: 'https://cdn.example/b.png' }] }))).toBe('square')
+    it('커버 없이 배지가 걸려 있던 카드는 square다(배지 그림이 올라가던 카드)', () => {
+      expect(resolveShape(card({ cover_image_url: null, badge_ids: ['b1'] }))).toBe('square')
     })
 
     it('커버가 있으면 배지가 있어도 hero다(커버가 우선)', () => {
-      expect(resolveShape(card({ resolved_badges: [{ image_url: 'https://cdn.example/b.png' }] }))).toBe('hero')
+      expect(resolveShape(card({ badge_ids: ['b1'] }))).toBe('hero')
     })
 
-    it('커버가 없어도 올라갈 배지 그림이 없으면 hero다(배지가 없거나 첫 배지에 그림이 없음)', () => {
-      expect(resolveShape(card({ cover_image_url: null, resolved_badges: [] }))).toBe('hero')
-      expect(resolveShape(card({ cover_image_url: null, resolved_badges: [{ image_url: null }] }))).toBe('hero')
-    })
-
-    it('올라가는 것은 첫 번째 배지 그림뿐이다(둘째 배지에만 그림이 있으면 hero)', () => {
-      expect(
-        resolveShape(card({ cover_image_url: null, resolved_badges: [{ image_url: null }, { image_url: 'https://cdn.example/b.png' }] })),
-      ).toBe('hero')
-    })
-
-    it('조회 결과(resolved_badges)가 없는 카드 행은 badge_ids로 판정한다', () => {
-      expect(resolveShape(card({ cover_image_url: null, badge_ids: ['b1'] }))).toBe('square')
+    it('커버가 없고 배지도 없으면 hero다', () => {
       expect(resolveShape(card({ cover_image_url: null, badge_ids: [] }))).toBe('hero')
       expect(resolveShape(card({ cover_image_url: null }))).toBe('hero')
+      expect(resolveShape(card({ cover_image_url: null, badge_ids: null }))).toBe('hero')
+    })
+
+    it('배지 그림이 있는지는 보지 않는다 — 배지가 걸려 있기만 하면 square다(그림 없는 배지도, 티켓 20261001_2244)', () => {
+      // 화면(`toCardView`)과 계측(`events.ts`)·신호 엔진이 같은 카드 행을 같은 입력(badge_ids)으로 판정해야 기록 모양과 화면 모양이 같다.
+      // 서버가 조회한 배지 정보(`resolved_badges`)를 넘겨도 읽지 않는다.
+      const input = { ...card({ cover_image_url: null, badge_ids: ['b1'] }), resolved_badges: [{ image_url: null }] }
+      expect(resolveShape(input)).toBe('square')
+      const deleted = { ...card({ cover_image_url: null, badge_ids: ['b1'] }), resolved_badges: [] }
+      expect(resolveShape(deleted)).toBe('square')
     })
 
     it('알 수 없는 layout 값은 지금 렌더러처럼 큰 썸네일형으로 본다', () => {
@@ -184,6 +186,42 @@ describe('drawnShape — 지금 그려질 모양 (전환 상수)', () => {
   it('전환 상수가 켜지면 옛 카드도 resolveShape의 모양으로 그린다', () => {
     expect(drawnShape(card({ layout_type: 'badge_gallery' }), true)).toBe('list')
     expect(drawnShape(card({ layout_type: 'banner', cover_image_url: null }), true)).toBe('brief')
+  })
+})
+
+describe('resourceOfTemplate·CARD_RESOURCES — 화면과 계측이 함께 쓰는 자원 판정 (티켓 20261001_2244)', () => {
+  it('템플릿 8종이 자원 8개 중 하나로 대응되고 레시피만 대응하는 템플릿이 없다', () => {
+    const templates = [
+      'mission_spotlight',
+      'drop_alert',
+      'badge_spotlight',
+      'editorial_article',
+      'ranking_board',
+      'itembook_milestone',
+      'progress_nudge',
+      'location_trend',
+    ] as const
+    const mapped = templates.map(resourceOfTemplate)
+    for (const resource of mapped) expect(CARD_RESOURCES).toContain(resource)
+    expect(CARD_RESOURCES.filter((r) => !mapped.includes(r))).toEqual(['recipe'])
+  })
+
+  it('진행 알림과 지역 트렌드는 같은 자원(auto)이다', () => {
+    expect(resourceOfTemplate('progress_nudge')).toBe('auto')
+    expect(resourceOfTemplate('location_trend')).toBe('auto')
+  })
+})
+
+describe('isRankingRows — 랭킹이면 행형 (티켓 20261001_2244)', () => {
+  it('랭킹 자원만 행형이다', () => {
+    for (const resource of CARD_RESOURCES) expect(isRankingRows(resource)).toBe(resource === 'ranking')
+  })
+
+  it('타일 0개 대체(fallbackEmptyTileShape)도 같은 판정을 쓴다 — 행형은 타일이 없어도 list다', () => {
+    for (const resource of CARD_RESOURCES) {
+      expect(fallbackEmptyTileShape('list', resource, 0)).toBe(isRankingRows(resource) ? 'list' : 'brief')
+      expect(fallbackEmptyTileShape('list', resource, 1)).toBe('list')
+    }
   })
 })
 
