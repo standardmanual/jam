@@ -4,7 +4,8 @@
  * 기획 상세(S3)의 클라이언트 셸 (티켓 20260930_1817, 채원 화면 설계 「S3 기획 상세」·「1817 / 1818 경계」).
  *
  * 단계 표시줄 → 알림 → [미리보기 | 가운데(탭 + 목록 | 상세) | 서랍]을 한 화면에 놓고, 선택한 항목(`?item=`)과 편집
- * 초안(`draft`)을 들고 있다. `draft`를 여기에 두는 이유는 티켓 20260930_1501이 미리보기에 물릴 수 있게 하려는 것이다.
+ * 초안(`draft`)을 들고 있다. 알림은 형식 오류 요약 → 밸런스 알림 → 공개 연결 전 안내 → 전환 실패 순이다(티켓 20260930_1459).
+ * 밸런스(`balance`)는 서버가 평가한 결과를 받아 행 칩·5번째 탭 「밸런스 경고 N」·상세 블록·묶음 알림에 같은 줄로 나눠 준다. `draft`를 여기에 두는 이유는 티켓 20260930_1501이 미리보기에 물릴 수 있게 하려는 것이다.
  *
  * **슬롯(`barAction`·`rowLead`·`listHeader`·`notices`·`detailFooter`·`detailEdit`·`detailHistoryAction`)은 함수라 서버 컴포넌트에서
  * 넘길 수 없다.** 티켓 20260930_1818이 슬롯을 채운 client 래퍼(`OpsDecisionWorkspace.tsx`)를 만들었고 `page.tsx`가 그 래퍼를
@@ -44,6 +45,13 @@ import {
   type OpsItemFilter,
 } from '@/lib/admin/opsInbox/itemView'
 import type { OpsDecisionRecord, OpsItemRecord } from '@/lib/admin/opsInbox/query'
+import {
+  balanceItemIdSet,
+  buildBalanceView,
+  itemBalanceInfoOf,
+  type OpsBundleBalance,
+} from '@/lib/admin/opsInbox/balance/view'
+import { OpsBalanceBundleNotice } from './OpsBalanceWarnings'
 import { OpsDrawerFrame } from './OpsDrawerFrame'
 import { OpsFormatErrorSummary } from './OpsFormatErrors'
 import { OpsItemDetail } from './OpsItemDetail'
@@ -77,6 +85,10 @@ export interface OpsBundleWorkspaceProps {
   bundleFormatErrors: readonly string[]
   items: readonly OpsItemRecord[]
   decisions: readonly OpsDecisionRecord[]
+  /** 밸런스 평가 결과(서버가 계산해 넘긴다). 없으면 밸런스를 표시하지 않는다. */
+  balance?: OpsBundleBalance
+  /** 시험 묶음이면 밸런스 알림에 「다른 묶음의 경고 계산에 들어가지 않아요」 안내가 붙는다. */
+  isSample?: boolean
   barAction?: (ctx: OpsWorkspaceContext) => ReactNode
   rowLead?: (item: OpsItemRecord, ctx: OpsWorkspaceContext) => ReactNode
   listHeader?: (ctx: OpsWorkspaceContext) => ReactNode
@@ -104,6 +116,8 @@ export function OpsBundleWorkspace({
   bundleFormatErrors,
   items,
   decisions,
+  balance,
+  isSample = false,
   barAction,
   rowLead,
   listHeader,
@@ -128,8 +142,15 @@ export function OpsBundleWorkspace({
     return fromUrl ?? defaultSelectedItem(items)
   }, [items, itemParam])
 
-  const filteredItems = useMemo(() => items.filter((item) => matchesItemFilter(item, filter)), [items, filter])
-  const filterCounts = useMemo(() => countByItemFilter(items), [items])
+  // 밸런스 평가 결과를 화면 모양으로 바꾼다. 행 칩·탭 숫자·묶음 알림 건수가 같은 줄에서 나온다.
+  const balanceView = useMemo(() => buildBalanceView(balance), [balance])
+  const balanceItemIds = useMemo(() => balanceItemIdSet(balanceView), [balanceView])
+
+  const filteredItems = useMemo(
+    () => items.filter((item) => matchesItemFilter(item, filter, balanceItemIds)),
+    [items, filter, balanceItemIds]
+  )
+  const filterCounts = useMemo(() => countByItemFilter(items, balanceItemIds), [items, balanceItemIds])
   const statuses = useMemo(() => items.map((item) => item.status), [items])
 
   const replaceQuery = useCallback((mutate: (params: URLSearchParams) => void) => {
@@ -144,11 +165,11 @@ export function OpsBundleWorkspace({
       const target = items.find((item) => item.id === id)
       if (!target) return
       // 지금 탭에 없는 항목(다른 항목의 「연결」·오류 요약에서 옮겨 온 경우)이면 목록에서 보이도록 「전체」로 바꾼다.
-      if (!matchesItemFilter(target, filter)) setFilter('all')
+      if (!matchesItemFilter(target, filter, balanceItemIds)) setFilter('all')
       replaceQuery((params) => params.set(ITEM_PARAM, id))
       requestAnimationFrame(() => document.getElementById(opsItemRowId(id))?.scrollIntoView({ block: 'nearest' }))
     },
-    [items, filter, replaceQuery]
+    [items, filter, balanceItemIds, replaceQuery]
   )
 
   const selectByPosition = useCallback(
@@ -194,7 +215,8 @@ export function OpsBundleWorkspace({
   const barActionNode = barAction?.(ctx) ?? null
   const listHeaderNode = listHeader?.(ctx) ?? null
   const customNotices = notices?.(ctx) ?? null
-  const hasNotices = bundleFormatErrors.length > 0 || Boolean(customNotices) || transitionFailed
+  const balanceNoticeShown = balanceView.available && (balanceView.failed || balanceView.totals.warn + balanceView.totals.info > 0)
+  const hasNotices = bundleFormatErrors.length > 0 || balanceNoticeShown || Boolean(customNotices) || transitionFailed
 
   return (
     <div className="@container space-y-4">
@@ -203,6 +225,7 @@ export function OpsBundleWorkspace({
       {hasNotices && (
         <div className="space-y-3">
           <OpsFormatErrorSummary errors={bundleFormatErrors} onSelectItem={selectByPosition} />
+          <OpsBalanceBundleNotice view={balanceView} isSample={isSample} onShowItems={() => setFilter('balance')} />
           {customNotices}
           {transitionFailed && (
             <Alert variant="warning">
@@ -255,6 +278,7 @@ export function OpsBundleWorkspace({
                         onSelect={selectItem}
                         rowLead={rowLead ? (item) => rowLead(item, ctx) : undefined}
                         flashingIds={flashingIds}
+                        balanceLinesByItem={balanceView.linesByItem}
                       />
                     </div>
                   </div>
@@ -265,6 +289,7 @@ export function OpsBundleWorkspace({
                         items={items}
                         decisions={decisions}
                         onSelectItem={selectItem}
+                        balance={itemBalanceInfoOf(balanceView, selectedItem.id)}
                         detailEdit={detailEdit ? (item) => detailEdit(item, ctx) : undefined}
                         detailFooter={detailFooter ? (item) => detailFooter(item, ctx) : undefined}
                         detailHistoryAction={detailHistoryAction ? (item) => detailHistoryAction(item, ctx) : undefined}

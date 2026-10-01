@@ -10,7 +10,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { BALANCE_RULE_KEYS, isCountBadgeCondition, parseBalanceRules, type OpsRuleRow } from '../rules'
+import { BALANCE_RULE_KEYS, parseBalanceRules, type OpsRuleRow } from '../rules'
+import { isCountBadgeCondition } from '../evaluate'
 import { JAM_ACTION_CONDITION_KEYS } from '@/lib/badge-engine/jamActionBadges'
 import { SEED_ROWS, makeRules } from './fixtures'
 

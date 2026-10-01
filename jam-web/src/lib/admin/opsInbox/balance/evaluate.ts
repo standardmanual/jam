@@ -11,13 +11,14 @@
  * - R2·R3·R7의 경고는 항목 키를 비운다(묶음 알림). 나머지 경고와 모든 「점검 못 함」은 그 항목에 붙는다(규칙 값이 틀린 것만 비움).
  *   「항목 키」는 항목 행 ID(`ops_bundle_items.id`)다. 제출자가 정하는 `item_key`는 겹칠 수 있어 쓰지 않는다.
  */
+import { JAM_ACTION_CONDITION_KEYS } from '@/lib/badge-engine/jamActionBadges'
 import { isItemBookDroppable, type ItemBookVisibilityFields } from '@/lib/itembook/visibility'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
 import { asRecord, itemField, linksOf, type ViewableItem } from '@/lib/admin/opsInbox/itemView'
 import { isIsoDateTime } from '@/lib/admin/opsInbox/validate'
 import {
   BALANCE_RULE_KEYS,
-  isCountBadgeCondition,
+  BALANCE_SKIPPED_STATUSES,
   type BalanceLevel,
   type BalanceRuleKey,
   type BalanceRules,
@@ -41,9 +42,6 @@ import type { BalanceReferences, BalanceState } from './state'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const ROLLING_DAYS = 28
-
-/** 평가에서 빼는 항목 상태: 반려·취소·실패한 항목은 열리지 않으므로 세지도 점검하지도 않는다. */
-export const BALANCE_SKIPPED_STATUSES: readonly string[] = ['rejected', 'cancelled', 'failed']
 
 /** 승인 이후 상태. R4의 기준 시각이 지금이 아니라 승인 시각이 된다. */
 const APPROVED_STATUSES: readonly string[] = ['approved', 'preparing', 'scheduled', 'live', 'ended']
@@ -88,6 +86,16 @@ export interface BalanceEvaluation {
   unreadable: BalanceWarning[]
   /** 항목 행 ID → 그 항목에 적용되는 켜 둔 규칙 수. 평가에서 뺀 항목은 0이다. */
   checkedRuleCountByItem: Record<string, number>
+}
+
+/**
+ * 횟수형 JAM! 배지인지: `condition_json`에 JAM! 행동 지표 키(`JAM_ACTION_CONDITION_KEYS`) 가운데 `recipe_first_success`가 아닌
+ * 키가 있으면 횟수형이고, 그 밖의 JAM! 배지는 달성형이다(PRD §5.2). 조건 값이 객체가 아니면 판정할 수 없어 `null`이다.
+ */
+export function isCountBadgeCondition(conditionJson: unknown): boolean | null {
+  const record = asRecord(conditionJson)
+  if (!record) return null
+  return JAM_ACTION_CONDITION_KEYS.some((key) => key !== 'recipe_first_success' && key in record)
 }
 
 // ── 읽기 도우미 ─────────────────────────────────────────────────────────────────────────────────

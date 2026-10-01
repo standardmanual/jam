@@ -4,9 +4,10 @@
  * 규칙표·초기값·읽는 자리의 정본은 `docs/specs/prd/ops-tool/PRD.md` §5.2다. 값은 DB(`ops_rules`, 마이그레이션 207)에 있고
  * 이 파일은 그 행을 읽어 타입이 있는 값으로 바꾼다. **값 모양이 틀린 규칙은 그 규칙만 「읽을 수 없음」으로 두고** 다른 규칙은
  * 그대로 계산한다(평가가 「점검 못 함」으로 보여 준다). 규칙 행이 아예 없으면 그 규칙은 만들지 않은 것으로 본다.
+ *
+ * 화면(클라이언트 부품)이 규칙 이름·종류 이름표와 제외 상태를 읽으므로 이 파일은 **서버 전용 코드를 끌어오지 않는다**
+ * (JAM! 행동 지표 키를 쓰는 배지 종류 판정은 `evaluate.ts`에 있다).
  */
-import { JAM_ACTION_CONDITION_KEYS } from '@/lib/badge-engine/jamActionBadges'
-
 // ── 규칙 키 ─────────────────────────────────────────────────────────────────────────────────────
 
 /** 밸런스 규칙 8개(PRD §5.2). 순서가 화면과 평가 결과의 순서다. */
@@ -70,6 +71,16 @@ export const BALANCE_RULE_DESCRIPTIONS: Record<BalanceRuleKey, string> = {
   single_action_points: '한 번의 행동으로 받는 포인트 합의 한도예요(항목별 포인트 값을 따라요)',
   count_ladder_points: '같은 계열 횟수형 배지의 단계별 포인트 합의 한도예요(달성형 값을 따라요)',
   economy_keys: '기획에서 바꾸지 않는 경제 정책 값의 이름 목록이에요',
+}
+
+/**
+ * 평가에서 빼는 항목 상태: 반려·취소·실패한 항목은 열리지 않으므로 세지도 점검하지도 않는다.
+ * 화면(클라이언트 부품)도 읽는 값이라 서버 전용 코드를 끌어오지 않는 이 파일에 둔다.
+ */
+export const BALANCE_SKIPPED_STATUSES: readonly string[] = ['rejected', 'cancelled', 'failed']
+
+export function isBalanceSkippedStatus(status: string): boolean {
+  return BALANCE_SKIPPED_STATUSES.includes(status)
 }
 
 // ── 포인트 종류(R5) ─────────────────────────────────────────────────────────────────────────────
@@ -229,15 +240,4 @@ export function parseBalanceRules(rows: readonly OpsRuleRow[]): BalanceRules | n
     }
   }
   return found === 0 ? null : rules
-}
-
-// ── 배지 종류 판정(R5·R7) ───────────────────────────────────────────────────────────────────────
-
-/**
- * 횟수형 JAM! 배지인지: `condition_json`에 JAM! 행동 지표 키(`JAM_ACTION_CONDITION_KEYS`) 가운데 `recipe_first_success`가 아닌
- * 키가 있으면 횟수형이고, 그 밖의 JAM! 배지는 달성형이다(PRD §5.2). 조건 값이 객체가 아니면 판정할 수 없어 `null`이다.
- */
-export function isCountBadgeCondition(conditionJson: unknown): boolean | null {
-  if (!isRecord(conditionJson)) return null
-  return JAM_ACTION_CONDITION_KEYS.some((key) => key !== 'recipe_first_success' && key in conditionJson)
 }

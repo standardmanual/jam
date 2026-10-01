@@ -1,21 +1,23 @@
-import { IconAlertTriangle, IconFlask2 } from '@tabler/icons-react'
+import { IconAlertTriangle, IconFlask2, IconScale } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { OPS_ITEM_STATUSES, type OpsItemStatus } from '@/lib/admin/opsInbox/constants'
 import type { OpsBundleStage } from '@/lib/admin/opsInbox/bundleStatus'
 import { OPS_BUNDLE_STAGE_LABELS, OPS_ITEM_STATUS_LABELS } from '@/lib/admin/opsInbox/labels'
+import { balanceRowChipLabel } from '@/lib/admin/opsInbox/balance/messages'
 import { OPS_BUNDLE_STAGE_ICONS, OPS_ITEM_STATUS_ICONS, type OpsIcon } from './opsIcons'
 
 /**
  * 받은 기획함의 상태 표시(티켓 20260930_1817, 채원 화면 설계 「토큰과 상태 표시」). S1·S2·S3·S4가 함께 쓴다.
  *
- * 항목 상태 10개, 묶음 단계, 「일부 실패」, 「형식 오류 N」, 「시험」을 **아이콘과 글자**로 그린다(색만으로 나누지 않는다).
+ * 항목 상태 10개, 묶음 단계, 「일부 실패」, 「형식 오류 N」, 「시험」, 「밸런스 주의·참고 N」을 **아이콘과 글자**로 그린다(색만으로 나누지 않는다).
  * 새 토큰은 없다 — shadcn 시맨틱 토큰과 어드민 Alert warning 값(`border-amber-300 bg-amber-50 text-amber-900`)만 쓴다.
  * 반려·실패는 붉은 테두리와 글자뿐이고 연한 붉은 배경은 쓰지 않는다(대비 실측: 연한 붉은 배경 위 붉은 글은 12px 기준 미달).
  */
 
 const CHIP = 'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium'
 
-const TONE = {
+/** 칩 틀과 색(밸런스 경고 줄의 수준 칩 `OpsBalanceWarnings`도 같은 것을 쓴다). */
+export const TONE = {
   neutral: 'border-border bg-background text-foreground',
   secondary: 'border-transparent bg-secondary text-secondary-foreground',
   primary: 'border-transparent bg-primary text-primary-foreground',
@@ -24,7 +26,7 @@ const TONE = {
   warning: 'border-amber-300 bg-amber-50 text-amber-900',
 } as const
 
-type Tone = keyof typeof TONE
+export type Tone = keyof typeof TONE
 
 const ITEM_STATUS_TONES: Record<OpsItemStatus, Tone> = {
   arrived: 'neutral',
@@ -64,8 +66,10 @@ export type OpsStatusBadgeProps =
   | { type: 'format-errors'; count: number; short?: boolean }
   /** 시험 묶음. */
   | { type: 'sample' }
+  /** 항목의 밸런스 경고 칩(티켓 20260930_1459). 주의가 있으면 「밸런스 주의 N」, 참고·점검 못 함만 있으면 「밸런스 참고 N」이다. */
+  | { type: 'balance'; level: 'warn' | 'info'; count: number }
 
-function Chip({ tone, Icon, className, children }: { tone: Tone; Icon: OpsIcon; className?: string; children: string }) {
+export function Chip({ tone, Icon, className, children }: { tone: Tone; Icon: OpsIcon; className?: string; children: string }) {
   return (
     <span className={cn(CHIP, TONE[tone], className)}>
       <Icon className="size-3.5 shrink-0" aria-hidden="true" />
@@ -114,6 +118,12 @@ export function OpsStatusBadge(props: OpsStatusBadgeProps & { className?: string
       return (
         <Chip tone="neutral" Icon={IconFlask2} className={className}>
           시험
+        </Chip>
+      )
+    case 'balance':
+      return (
+        <Chip tone={props.level === 'warn' ? 'warning' : 'neutral'} Icon={IconScale} className={className}>
+          {balanceRowChipLabel(props.level, props.count)}
         </Chip>
       )
   }

@@ -7,6 +7,7 @@
  */
 import type { Json } from '@/types/database.generated'
 import { kstDateKey, formatKstDay } from '@/lib/admin/opsInbox/labels'
+import { BALANCE_TAB_LABEL } from '@/lib/admin/opsInbox/balance/messages'
 
 export interface ViewableItem {
   original: Json
@@ -147,9 +148,9 @@ export function defaultSelectedItem<T extends Orderable & { status: string }>(it
   return ordered.find((item) => isUndecidedStatus(item.status)) ?? ordered[0] ?? null
 }
 
-// ── 가운데 열 탭: 전체 · 결정할 것 · 형식 오류 · 멈춘 것 ─────────────────────────────────────────
+// ── 가운데 열 탭: 전체 · 결정할 것 · 형식 오류 · 멈춘 것 · 밸런스 경고 ───────────────────────────
 
-export const OPS_ITEM_FILTERS = ['all', 'decide', 'error', 'stopped'] as const
+export const OPS_ITEM_FILTERS = ['all', 'decide', 'error', 'stopped', 'balance'] as const
 export type OpsItemFilter = (typeof OPS_ITEM_FILTERS)[number]
 
 export const OPS_ITEM_FILTER_LABELS: Record<OpsItemFilter, string> = {
@@ -157,15 +158,21 @@ export const OPS_ITEM_FILTER_LABELS: Record<OpsItemFilter, string> = {
   decide: '결정할 것',
   error: '형식 오류',
   stopped: '멈춘 것',
+  balance: BALANCE_TAB_LABEL,
 }
 
 interface Filterable {
+  /** 항목 행 ID. 「밸런스 경고」 탭이 이 값으로 항목을 찾는다(없으면 그 탭에는 걸리지 않는다). */
+  id?: string
   status: string
   formatErrors: readonly string[]
 }
 
-/** 멈춘 것 = 표시줄 밖 상태(반려·취소·실패)인 항목이다. */
-export function matchesItemFilter(item: Filterable, filter: OpsItemFilter): boolean {
+/**
+ * 멈춘 것 = 표시줄 밖 상태(반려·취소·실패)인 항목이다. 밸런스 경고 = 항목 줄이 하나라도 있는 항목이다
+ * (`balanceItemIds`: 밸런스 평가 결과에서 항목 줄이 있는 항목 ID, 티켓 20260930_1459).
+ */
+export function matchesItemFilter(item: Filterable, filter: OpsItemFilter, balanceItemIds?: ReadonlySet<string>): boolean {
   switch (filter) {
     case 'all':
       return true
@@ -175,14 +182,17 @@ export function matchesItemFilter(item: Filterable, filter: OpsItemFilter): bool
       return item.formatErrors.length > 0
     case 'stopped':
       return item.status === 'rejected' || item.status === 'cancelled' || item.status === 'failed'
+    case 'balance':
+      return item.id !== undefined && balanceItemIds?.has(item.id) === true
   }
 }
 
-export function countByItemFilter(items: readonly Filterable[]): Record<OpsItemFilter, number> {
+export function countByItemFilter(items: readonly Filterable[], balanceItemIds?: ReadonlySet<string>): Record<OpsItemFilter, number> {
   return {
     all: items.length,
     decide: items.filter((item) => matchesItemFilter(item, 'decide')).length,
     error: items.filter((item) => matchesItemFilter(item, 'error')).length,
     stopped: items.filter((item) => matchesItemFilter(item, 'stopped')).length,
+    balance: items.filter((item) => matchesItemFilter(item, 'balance', balanceItemIds)).length,
   }
 }
