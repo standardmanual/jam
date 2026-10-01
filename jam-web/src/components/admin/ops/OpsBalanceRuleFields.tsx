@@ -63,6 +63,11 @@ function fieldDomId(idBase: string, path: string): string {
   return `${idBase}-${path.replace(/\./g, '-')}`
 }
 
+/** 값 칸 이름표(`<label>`)의 ID. 임시값 체크가 이름에 이어 붙인다. */
+function fieldLabelId(idBase: string, path: string): string {
+  return `${fieldDomId(idBase, path)}-label`
+}
+
 function LevelField({ idBase, level, disabled, onChange }: { idBase: string; level: BalanceLevel; disabled: boolean; onChange: (level: BalanceLevel) => void }) {
   const id = `${idBase}-level`
   return (
@@ -86,11 +91,16 @@ function LevelField({ idBase, level, disabled, onChange }: { idBase: string; lev
   )
 }
 
-function ProvisionalCheck({ id, checked, disabled, onChange }: { id: string; checked: boolean; disabled: boolean; onChange: (checked: boolean) => void }) {
+/**
+ * 임시값 체크. 한 카드에 같은 이름의 체크가 여러 개(R5 종류별)라서 접근 가능한 이름에 값 칸의 이름표를 앞에 붙인다
+ * (「횟수형 JAM! 배지 임시값」). 보이는 글자 「임시값」이 이름에 들어 있다.
+ */
+function ProvisionalCheck({ id, labelledById, checked, disabled, onChange }: { id: string; labelledById: string; checked: boolean; disabled: boolean; onChange: (checked: boolean) => void }) {
+  const textId = `${id}-text`
   return (
     <label htmlFor={id} className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
-      <Checkbox id={id} checked={checked} disabled={disabled} onCheckedChange={(next) => onChange(next === true)} />
-      {PROVISIONAL_CHECK_LABEL}
+      <Checkbox id={id} checked={checked} disabled={disabled} aria-labelledby={`${labelledById} ${textId}`} onCheckedChange={(next) => onChange(next === true)} />
+      <span id={textId}>{PROVISIONAL_CHECK_LABEL}</span>
     </label>
   )
 }
@@ -113,7 +123,7 @@ function NumberField({ spec, idBase, draft, error, result, disabled, onText, onT
   const resultId = `${id}-result`
   return (
     <div className="min-w-0 space-y-1.5">
-      <label htmlFor={id} className="text-sm font-medium">
+      <label id={fieldLabelId(idBase, spec.path)} htmlFor={id} className="text-sm font-medium">
         {spec.label}
       </label>
       <div className="flex items-center gap-2">
@@ -186,6 +196,7 @@ export function OpsBalanceRuleFields({
           <div className="@[40rem]:pt-[1.625rem]">
             <ProvisionalCheck
               id={fieldDomId(idBase, spec.provisionalPath)}
+              labelledById={fieldLabelId(idBase, spec.path)}
               checked={draft.provisional[spec.provisionalPath] === true}
               disabled={disabled}
               onChange={(checked) => setProvisional(spec.provisionalPath, checked)}
@@ -222,6 +233,7 @@ export function OpsBalanceRuleFields({
               <div className="@[40rem]:pt-[1.625rem]">
                 <ProvisionalCheck
                   id={fieldDomId(idBase, spec.provisionalPath)}
+                  labelledById={fieldLabelId(idBase, spec.path)}
                   checked={draft.provisional[spec.provisionalPath] === true}
                   disabled={disabled}
                   onChange={(checked) => setProvisional(spec.provisionalPath, checked)}

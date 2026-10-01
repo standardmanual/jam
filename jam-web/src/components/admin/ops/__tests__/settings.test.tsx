@@ -75,7 +75,7 @@ describe('OpsBalanceSettings — 규칙 8개와 그룹', () => {
 
   it('카드마다 작은 폼이다(Enter로 저장). 카드 안 입력은 이름표와 이어져 있다', () => {
     expect(out.match(/<form /g)).toHaveLength(8)
-    expect(out).toContain('<label for="rule-open_collections_max-max"')
+    expect(out).toContain('<label id="rule-open_collections_max-max-label" for="rule-open_collections_max-max"')
     expect(out).toContain('id="rule-open_collections_max-max"')
   })
 
@@ -187,6 +187,12 @@ describe('OpsBalanceSettings — 칩과 저장 전 상태', () => {
     // R5: 횟수형(임시값)·미션(임시값)만 켜져 있다
     expect(cardOf(out, 'point_reward_max').match(/role="checkbox"[^>]*aria-checked="true"/g)).toHaveLength(2)
     expect(cardOf(out, 'single_action_points')).not.toContain('role="checkbox"')
+  })
+
+  it('같은 이름의 임시값 체크는 접근 가능한 이름에 값 칸 이름표가 앞에 붙는다(R5 종류별)', () => {
+    const card = cardOf(out, 'point_reward_max')
+    expect(card).toContain('aria-labelledby="rule-point_reward_max-kinds-mission-max-label rule-point_reward_max-kinds-mission-provisional-text"')
+    expect(card).toContain('id="rule-point_reward_max-kinds-mission-provisional-text"')
   })
 
   it('바꾼 것이 없으면 「저장 전」 칩이 없고 [저장하기]가 비활성이며 「바꾼 내용 취소」도 없다', () => {
