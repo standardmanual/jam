@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('poi')
-    .select('id, name, category, latitude, longitude, radius_meters, linked_badge_id')
+    .select('id, name, category, latitude, longitude, radius_meters, linked_badge_id, is_active')
     .ilike('name', `%${query}%`)
     .order('name', { ascending: true })
     .limit(MAX_RESULTS)

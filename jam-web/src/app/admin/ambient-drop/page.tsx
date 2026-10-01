@@ -1,16 +1,19 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAmbientDropConfig } from '@/lib/ambient-drop/config'
 import { isWithinAmbientDropExclusionWindow } from '@/lib/ambient-drop/schedule'
+import { listAmbientDropSchedules } from '@/lib/ambient-drop/scheduleList'
 import type { PoiCategoryRow, ItemBookRow } from '@/types/database'
 import AmbientDropForm, { type AmbientDropHistoryEntry } from './AmbientDropForm'
+import ScheduleSection from './ScheduleSection'
 
 export default async function AdminAmbientDropPage() {
   const supabase = createServiceClient()
   const config = await getAmbientDropConfig()
 
-  const [{ data: categoriesRaw }, { data: booksRaw }, { data: historyRaw }] = await Promise.all([
+  const now = new Date()
+  const [{ data: categoriesRaw }, { data: booksRaw }, { data: historyRaw }, { data: tribesRaw }, schedules] = await Promise.all([
     supabase.from('poi_categories').select('slug, label').order('label'),
-    supabase.from('item_books').select('id, name').eq('is_active', true).order('name'),
+    supabase.from('item_books').select('id, name, valid_from, valid_until').eq('is_active', true).order('name'),
     supabase
       .from('engine_decision_log')
       .select('id, created_at, payload')
@@ -18,15 +21,18 @@ export default async function AdminAmbientDropPage() {
       .eq('event', 'ambient_batch_result')
       .order('created_at', { ascending: false })
       .limit(20),
+    supabase.from('tribes').select('id, name').order('name'),
+    listAmbientDropSchedules(supabase, now),
   ])
 
   const categories = (categoriesRaw ?? []) as Pick<PoiCategoryRow, 'slug' | 'label'>[]
-  const books = (booksRaw ?? []) as Pick<ItemBookRow, 'id' | 'name'>[]
+  const books = (booksRaw ?? []) as Pick<ItemBookRow, 'id' | 'name' | 'valid_from' | 'valid_until'>[]
+  const tribes = (tribesRaw ?? []) as { id: string; name: string }[]
   const history = (historyRaw ?? []) as AmbientDropHistoryEntry[]
 
   const isBlocked =
     config.auto_enabled &&
-    isWithinAmbientDropExclusionWindow(new Date(), config.schedule_hour_kst, config.exclusion_window_minutes)
+    isWithinAmbientDropExclusionWindow(now, config.schedule_hour_kst, config.exclusion_window_minutes)
 
   return (
     <div className="p-8">
@@ -43,6 +49,17 @@ export default async function AdminAmbientDropPage() {
         books={books}
         history={history}
         initialBlocked={isBlocked}
+        scheduleSection={
+          <ScheduleSection
+            initialItems={schedules.ok ? schedules.schedules : []}
+            initialNames={schedules.ok ? schedules.names : { pois: {}, badges: {}, collections: {} }}
+            initialError={schedules.ok ? null : schedules.error}
+            nowIso={now.toISOString()}
+            categories={categories}
+            books={books}
+            tribes={tribes}
+          />
+        }
       />
     </div>
   )

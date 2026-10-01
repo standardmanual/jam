@@ -8,7 +8,7 @@
  * 취소는 DB 상태(`status`), 시각 수정은 파생 상태(`state`)를 따른다. DB가 `scheduled`인데 예정 시각 + 3시간이
  * 지나 「놓침」으로 읽히는 예약은 취소만 열린다(티켓 20261001_2132).
  */
-import { formatKstYmdHm } from '@/lib/admin/kst-format'
+import { formatKstYmdHm, toKstLocalInputValue } from '@/lib/admin/kst-format'
 import type { AmbientDropItemMode, AmbientDropPoiMode, AmbientDropScheduleStatus } from '@/types/database'
 import type { AmbientDropScheduleState } from './scheduleSpec'
 
@@ -201,4 +201,115 @@ export function describeScheduleOutcome(item: {
       return text
     }
   }
+}
+
+// ── 등록 폼용 규칙 (티켓 20261001_2154) ─────────────────────────────────────────────
+
+/**
+ * 드랍 시각. 지금은 「한국 시각 날짜 + 정시」만 있다. 2053이 「지금 바로」를 `{ kind: 'now' }`로 더한다.
+ */
+export type ScheduleWhen = { kind: 'at'; ymd: string; hour: number }
+
+/** 등록 폼이 들고 있는 입력. 고르지 않은 모드의 칸은 본문에 넣지 않는다 */
+export interface ScheduleDraft {
+  title: string
+  when: ScheduleWhen
+  poiMode: AmbientDropPoiMode
+  poiIds: string[]
+  perPoiCount: number
+  /** null이면 전체 종류 */
+  poiCategory: string | null
+  totalCount: number
+  itemMode: AmbientDropItemMode
+  badgeIds: string[]
+  collectionIds: string[]
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/** 「2026-10-05」 + 9 → 「2026-10-05T09:00:00+09:00」 */
+export function toScheduledAtIso(ymd: string, hour: number): string {
+  return `${ymd}T${pad2(hour)}:00:00+09:00`
+}
+
+/** ISO 시각을 한국 시각의 날짜(「YYYY-MM-DD」)와 시로 쪼갠다 */
+export function scheduleAtParts(iso: string): { ymd: string; hour: number } {
+  const local = toKstLocalInputValue(iso)
+  return { ymd: local.slice(0, 10), hour: Number(local.slice(11, 13)) }
+}
+
+/** 지금(ISO)의 한국 시각 날짜 「YYYY-MM-DD」 — 날짜 입력의 `min`에 쓴다 */
+export function kstYmd(nowIso: string): string {
+  return toKstLocalInputValue(nowIso).slice(0, 10)
+}
+
+/** 등록·미리 확인 API 본문. 고른 모드의 칸만 담고 비어 있는 이름은 뺀다 */
+export function buildScheduleBody(draft: ScheduleDraft): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    scheduled_at: toScheduledAtIso(draft.when.ymd, draft.when.hour),
+  }
+  const title = draft.title.trim()
+  if (title !== '') body.title = title
+
+  if (draft.poiMode === 'list') {
+    body.poi_ids = draft.poiIds
+    body.per_poi_count = draft.perPoiCount
+  } else {
+    if (draft.poiCategory) body.poi_category = draft.poiCategory
+    body.total_count = draft.totalCount
+  }
+
+  if (draft.itemMode === 'items') body.badge_ids = draft.badgeIds
+  else body.collection_ids = draft.collectionIds
+  return body
+}
+
+/** 이 입력이 놓으려는 드랍 수 */
+export function scheduleDraftTotal(draft: ScheduleDraft): number {
+  return draft.poiMode === 'list' ? draft.poiIds.length * draft.perPoiCount : draft.totalCount
+}
+
+export type BookExposure = 'live' | 'prelaunch' | 'ended'
+
+/** 컬렉션이 지금 노출 중인지: 노출 중 / 공개 전 / 기간 끝남 */
+export function bookExposure(
+  book: { valid_from: string | null; valid_until: string | null },
+  nowIso: string
+): BookExposure {
+  const now = new Date(nowIso).getTime()
+  if (book.valid_until && new Date(book.valid_until).getTime() < now) return 'ended'
+  if (book.valid_from && new Date(book.valid_from).getTime() > now) return 'prelaunch'
+  return 'live'
+}
+
+/** 실행 이력의 건너뜀·실패 사유 코드를 짧은 한글로 */
+export const SKIP_REASON_SHORT: Record<string, string> = {
+  auto_disabled: '자동 배포 꺼짐',
+  no_eligible_collection: '노출 중인 컬렉션 없음',
+  no_eligible_poi: '드랍할 지점 없음',
+  no_candidate_badges: '유효한 아이템 없음',
+  insert_failed: '드랍 생성 실패',
+}
+
+/**
+ * 실행 이력 한 줄 요약. `cron` 자동·`manual` 수동은 기존 문장 그대로, `scheduled` 예약은
+ * 「[예약] 요청 N개 · 드랍 M개 · 겹친 지점 K곳 (사유)」다.
+ */
+export function formatAmbientBatchSummary(payload: Record<string, unknown>): string {
+  const spawned = typeof payload.spawned === 'number' ? payload.spawned : 0
+  const reason = typeof payload.reason === 'string' ? payload.reason : undefined
+  const trigger = typeof payload.trigger === 'string' ? payload.trigger : undefined
+  const reasonText = reason ? ` (${SKIP_REASON_SHORT[reason] ?? reason})` : ''
+
+  if (trigger === 'scheduled') {
+    const requested = typeof payload.requested === 'number' ? payload.requested : 0
+    const overlapped = typeof payload.overlappedPoiCount === 'number' ? payload.overlappedPoiCount : 0
+    return `[예약] 요청 ${requested}개 · 드랍 ${spawned}개 · 겹친 지점 ${overlapped}곳${reasonText}`
+  }
+
+  const category = (payload.effectiveCategorySlug as string | null | undefined) ?? '전체'
+  const collectionIds = Array.isArray(payload.effectiveCollectionIds) ? (payload.effectiveCollectionIds as string[]) : []
+  const triggerLabel = trigger === 'cron' ? '자동' : trigger === 'manual' ? '수동' : (trigger ?? '?')
+  const collectionLabel = collectionIds.length > 0 ? `컬렉션 ${collectionIds.length}개` : '전체 컬렉션'
+  return `[${triggerLabel}] 카테고리: ${category} · ${collectionLabel} · 배치 ${spawned}개${reasonText}`
 }

@@ -1918,7 +1918,13 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
   남는다. 회수 기능은 필요해지면 후속 티켓으로 한다.
 - **이력.** 실행 결과는 `engine_decision_log`(`engine='drop'`, `event='ambient_batch_result'`)에 `trigger: 'scheduled'`와 `scheduleId`로 남고
   (정기 배포는 `cron`·`manual`), 예약 행의 `result`에 요약(요청 수·놓은 수·실패 수·건너뜀 사유·제외 목록·겹친 지점 수·놓은 drop id)이 남는다.
-  뜻이 같은 스킵 사유는 `AmbientDropSkipReason`을 그대로 쓴다.
+  뜻이 같은 스킵 사유는 `AmbientDropSkipReason`을 그대로 쓴다. 어드민 이력에서 `scheduled`는 「예약」, `cron`은 「자동」, `manual`은 「수동」으로 보인다.
+- **어드민 화면**(20261001_2052·2154). `/admin/ambient-drop`의 「즉시 배포」 뒤·「최근 실행 이력」 앞에 「날짜 예약」 구역이 있다. 폼은 지점(직접 선택 /
+  종류+개수) × 놓을 것(아이템 직접 선택 / 컬렉션 선택) 2×2이고, 「확인하기」는 예정 시각 기준으로 쓰기 없이 점검해 지점 직접 모드의 겹침 N곳과 놓을 수 없는
+  대상(`problem`)을 알린다. 입력이 바뀌면 다시 확인해야 등록할 수 있다. 목록은 최근 50건이고 상태 라벨은 8개(예약됨·실행 중·멈춤·완료·건너뜀·실패·취소·놓침)다.
+  결과는 오류 원문 대신 사유 문장으로 보인다. 버튼은 취소가 DB 상태 `scheduled`일 때, 시각 수정이 파생 상태도 `scheduled`일 때만 열린다(놓침 예약은
+  취소만). API는 `GET·POST /api/admin/ambient-drop/schedules`, `POST …/schedules/preview`, `PATCH·DELETE …/schedules/[id]` 세 경로이고 DELETE는 취소이며 행은
+  `canceled`로 남는다. 종류+개수 모드의 미리 확인 지점 수는 지점당 한도(`max_active_per_poi`) 미만인 지점만 센다.
 
 **배포 옵션 — 3축, 축별 명시/무작위 + 전체 무작위 메타 옵션** (`ambient_drop_config` 싱글톤):
 
