@@ -11,6 +11,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { previewAmbientDropSchedule, summarizeSchedulePreview } from '../schedulePreview'
+import type { AmbientDropScheduleSpec } from '../scheduleSpec'
 import type { ScheduleTargets } from '../scheduleTargets'
 import { createFakeDb, type FakeDb } from './schedule-test-db'
 import {
@@ -205,14 +206,14 @@ describe('summarizeSchedulePreview — 순수 요약', () => {
   })
 
   it('종류+개수는 maxActivePerPoi를 주면 한도 미만 지점만 센다', () => {
-    const spec = { poiMode: 'category', poiCategory: null, totalCount: 4, itemMode: 'items', badgeIds: [B_LIVE] } as const
+    const spec: AmbientDropScheduleSpec = { poiMode: 'category', poiCategory: null, totalCount: 4, itemMode: 'items', badgeIds: [B_LIVE] }
     expect(summarizeSchedulePreview(spec, AT_ISO, targets(), 1).eligiblePoiCount).toBe(1)
     expect(summarizeSchedulePreview(spec, AT_ISO, targets(), 3).eligiblePoiCount).toBe(2)
     expect(summarizeSchedulePreview(spec, AT_ISO, targets()).eligiblePoiCount).toBe(2)
   })
 
   it('지점 직접은 maxActivePerPoi를 줘도 한도를 적용하지 않는다', () => {
-    const spec = { poiMode: 'list', poiIds: [P1, P2], perPoiCount: 1, itemMode: 'items', badgeIds: [B_LIVE] } as const
+    const spec: AmbientDropScheduleSpec = { poiMode: 'list', poiIds: [P1, P2], perPoiCount: 1, itemMode: 'items', badgeIds: [B_LIVE] }
     expect(summarizeSchedulePreview(spec, AT_ISO, targets(), 1).eligiblePoiCount).toBe(2)
   })
 
