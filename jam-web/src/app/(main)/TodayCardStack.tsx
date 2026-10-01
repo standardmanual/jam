@@ -3,6 +3,7 @@ import type { ComponentType, SVGProps } from 'react'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import type { TodayCardTemplateType } from '@/types/database'
 import { Card } from '@ds/components/cards/Card'
+import { LabelChip } from '@ds/components/cards/LabelChip'
 import SafeImage from '@/components/SafeImage'
 import RankingListRow from '@/components/ranking/RankingListRow'
 import TodayCardTracker from './TodayCardTracker'
@@ -42,14 +43,6 @@ const TemplateIcon: Record<TodayCardTemplateType, ComponentType<SVGProps<SVGSVGE
   ranking_board: RankingIcon,
 }
 
-function TemplateChip({ card }: { card: TodayCardWithHref }) {
-  return (
-    <span className="inline-flex items-center text-[length:var(--text-caption)] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text">
-      {templateLabel[card.template_type]}
-    </span>
-  )
-}
-
 /**
  * 커버 이미지 결정 — `cover_image_url`이 없으면 첫 배지 이미지를 승격한다.
  *
@@ -86,7 +79,7 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
   return (
     <Card
       tone="inverse"
-      className="overflow-hidden active:scale-[0.98] transition-transform duration-100"
+      className="overflow-hidden jam-press"
       style={{ padding: 0 }}
     >
       {/* 20260824_004: cover_image_url은 어드민 자유 입력이라 호스트를 알 수 없다.
@@ -99,7 +92,7 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
       />
       <div className="p-[var(--spacing-24)]">
         <div className="flex items-center gap-2 mb-2">
-          <TemplateChip card={card} />
+          <LabelChip>{templateLabel[card.template_type]}</LabelChip>
           {card.template_type === 'location_trend' && card.region_label && (
             <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] text-text-inverse/60">
               <PinIcon className="w-3 h-3" />{card.region_label}
@@ -122,9 +115,9 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
 /** 배지목록형 — 배지 여러 개를 가로 갤러리로 나열 */
 function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
   return (
-    <Card tone="inverse" className="active:scale-[0.98] transition-transform duration-100">
+    <Card tone="inverse" className="jam-press">
       <div className="flex items-center gap-2 mb-2">
-        <TemplateChip card={card} />
+        <LabelChip>{templateLabel[card.template_type]}</LabelChip>
         {card.region_label && (
           <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] text-text-inverse/60">
             <PinIcon className="w-3 h-3" />{card.region_label}
@@ -167,7 +160,7 @@ function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
 function ShortcutCard({ card }: { card: TodayCardWithHref }) {
   const Icon = TemplateIcon[card.template_type]
   return (
-    <Card tone="inverse" className="p-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
+    <Card tone="inverse" className="p-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] jam-press">
       <div className="w-11 h-11 rounded-[var(--radius-cards)] bg-black/[0.04] flex items-center justify-center shrink-0">
         <Icon className="w-5 h-5 text-text-inverse/60" />
       </div>
@@ -198,7 +191,7 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
   }
 
   return (
-    <article className="relative rounded-[var(--radius-cards)] overflow-hidden aspect-[4/5] active:scale-[0.98] transition-transform duration-100 bg-surface-inverse">
+    <article className="relative rounded-[var(--radius-cards)] overflow-hidden aspect-[4/5] jam-press bg-surface-inverse">
       <SafeImage
         src={cover}
         alt={card.title}
@@ -209,7 +202,7 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
       {/* 흑백 스크림 — 사진 위 텍스트 가독성 확보용 기능적 처리(브랜드 그라데이션 아님, 컬러 도입 없음) */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-[var(--spacing-24)] pt-10 pb-[var(--spacing-24)]">
         <div className="mb-2">
-          <TemplateChip card={card} />
+          <LabelChip>{templateLabel[card.template_type]}</LabelChip>
         </div>
         <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-white">{card.title}</h3>
         {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-white/80 mt-1">{card.subtitle}</p>}
@@ -224,8 +217,8 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
 /** 기타 — 위 4종에 안 맞는 콘텐츠를 위한 기본형(이미지 없는 담백한 카드) */
 function OtherCard({ card }: { card: TodayCardWithHref }) {
   return (
-    <Card tone="inverse" className="active:scale-[0.98] transition-transform duration-100">
-      <div className="mb-2"><TemplateChip card={card} /></div>
+    <Card tone="inverse" className="jam-press">
+      <div className="mb-2"><LabelChip>{templateLabel[card.template_type]}</LabelChip></div>
       <h3 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{card.title}</h3>
       {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
       {getDescription(card) && (
@@ -277,7 +270,7 @@ function RankingListCard({
   const isMissionTarget = ranking?.metricType === 'mission_progress'
   const header = (
     <>
-      <div className="mb-2"><TemplateChip card={card} /></div>
+      <div className="mb-2"><LabelChip>{templateLabel[card.template_type]}</LabelChip></div>
       <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{card.title}</h3>
       {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
       {getDescription(card) && (
@@ -294,7 +287,7 @@ function RankingListCard({
         // ranking_list 카드는 클릭이 행별 링크(유저 프로필)에서 일어나므로 카드 단위
         // 클릭은 세지 않는다(노출만 추적, 티켓 20260924_0004).
         <TodayCardTracker cardId={card.id} trackClick={false}>
-          <Link href={card.resolved_href} className="block active:scale-[0.98] transition-transform duration-100">
+          <Link href={card.resolved_href} className="block jam-press">
             {header}
           </Link>
         </TodayCardTracker>

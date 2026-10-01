@@ -217,7 +217,9 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 
 **커버 결정**: `cover_image_url`이 있으면 그 이미지를 그대로 쓴다. 없으면 첫 번째 배지 이미지를 커버로 올리고, 유저가 그 배지를 아직 갖지 않았으면 흑백으로 그린다. 둘 다 없거나 이미지를 불러오지 못하면 **커버 영역 자체를 그리지 않고** 템플릿 칩·제목·부제만 보인다(대체 이미지 없음, `SafeImage`가 빈 요소를 돌려준다). `mission_spotlight`는 배지를 쓰지 않으므로 커버를 넣지 않으면 글자만 있는 카드가 된다 — 그래서 운영 규칙은 미션 대표 이미지(`missions.image_url`)를 커버로 넣는다(content-automation PRD §8). 커버 주소는 어드민 자유 입력이라 호스트를 알 수 없으므로 `SafeImage`로 그려 잘못된 주소가 홈 전체를 깨뜨리지 않게 한다.
 
-근거: `jam-web/src/app/(main)/TodayCardStack.tsx`(`resolveCover`·레이아웃별 카드 컴포넌트), `jam-web/src/components/SafeImage.tsx`, `jam-web/supabase/migrations/049_today_cards_layout_type.sql`
+**눌림과 칩**: 카드를 누르는 동안의 반응은 공용 클래스 `.jam-press`(누르면 0.98배, 80ms)로 그리고, 동작 줄이기 설정에서는 눌림이 없다. 적용 범위는 이전과 같다(링크로 감싸는 카드와 현황 스트립 셀). 카드 좌상단 템플릿 칩은 MODULAR `LabelChip`이 그린다(모양은 이전과 같다)(티켓 [20261001_1458](../../../tickets/p2-normal/20261001_1458_UI_투데이-카드-틀과-짧은-소식-모양을-만든다.md)).
+
+근거: `jam-web/src/app/(main)/TodayCardStack.tsx`(`resolveCover`·레이아웃별 카드 컴포넌트), `jam-web/src/components/SafeImage.tsx`, `jam-web/src/components/transitions.css`(`.jam-press`), `jam-web/supabase/migrations/049_today_cards_layout_type.sql`
 
 레이아웃 값·라벨(`TODAY_LAYOUT_OPTIONS`):
 

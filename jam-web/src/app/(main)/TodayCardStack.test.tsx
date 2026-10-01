@@ -104,3 +104,41 @@ describe('TodayCardStack — 게재용 설명문', () => {
     expect(render(makeCard({ description: `  ${DESCRIPTION}  ` }))).toContain(`>${DESCRIPTION}</p>`)
   })
 })
+
+describe('TodayCardStack — 옛 렌더러의 눌림과 칩 (티켓 20261001_1458)', () => {
+  const layouts: TodayCardLayoutType[] = ['large_thumbnail', 'badge_gallery', 'shortcut', 'banner', 'other']
+
+  it.each(layouts)('%s: 눌림은 jam-press 하나이고 예전 눌림 문자열은 남지 않는다', (layout) => {
+    const html = render(makeCard({ layout_type: layout }))
+    expect(html).toContain('jam-press')
+    expect(html).not.toContain('active:scale-[0.98]')
+    expect(html).not.toContain('duration-100')
+  })
+
+  it('ranking_list: 미션 대상 랭킹의 제목 링크가 jam-press를 쓴다', () => {
+    const html = render(
+      makeCard({
+        layout_type: 'ranking_list',
+        template_type: 'ranking_board',
+        resolved_href: '/missions/m-1/status',
+        resolved_ranking: {
+          metricType: 'mission_progress',
+          missionType: null,
+          conditionFieldKey: null,
+          totalParticipants: 0,
+          entries: [],
+        },
+      })
+    )
+    expect(html).toContain('block jam-press')
+    expect(html).not.toContain('active:scale-[0.98]')
+  })
+
+  // shortcut은 칩 없이 아이콘·제목 한 줄이라 제외한다
+  const chipLayouts = layouts.filter((layout) => layout !== 'shortcut')
+  it.each(chipLayouts)('%s: 칩은 MODULAR LabelChip(인라인 6px 10px)이고 예전 칩 클래스는 없다', (layout) => {
+    const html = render(makeCard({ layout_type: layout }))
+    expect(html).toMatch(/<span class="" style="[^"]*padding:6px 10px[^"]*">배지 소개<\/span>/)
+    expect(html).not.toContain('px-2.5 py-1.5')
+  })
+})
