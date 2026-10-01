@@ -214,6 +214,14 @@ describe('OpsBalanceSettings — 칩과 저장 전 상태', () => {
     expect(out).not.toContain('aria-invalid')
   })
 
+  it('저장된 값부터 틀린 칸은 칸을 떠나기 전에도 오류 문장이 보인다(R1 값 0, 조각 B 게이트 WARN 1)', () => {
+    const broken = flat(<OpsBalanceSettings rules={seedRecords({ open_collections_max: { value: { max: 0, provisional: true } } })} openCollectionsNow={30} />)
+    const card = cardOf(broken, 'open_collections_max')
+    expect(card).toContain('1 이상의 정수로 적어 주세요')
+    expect(card).toContain('aria-invalid="true"')
+    expect(cardOf(broken, 'weekly_new_collections_max')).not.toContain('aria-invalid')
+  })
+
   it('저장 결과를 읽어 주는 영역(aria-live)이 카드마다 있다', () => {
     expect(out.match(/aria-live="polite"/g)).toHaveLength(8)
   })
