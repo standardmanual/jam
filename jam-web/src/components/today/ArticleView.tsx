@@ -44,8 +44,8 @@ export default function ArticleView({ view }: { view: ArticleViewData }) {
       )}
 
       <article className="px-[var(--spacing-16)] pt-[var(--spacing-24)]">
-        {/* 칩은 inline-flex라 article(block) 안에서 줄 상자 여백이 생길 수 있어 한 번 감싼다 */}
-        <div>
+        {/* 칩은 inline-flex라 article(block) 안에 바로 두면 줄 상자 여백(실측 1px)이 생겨 flex 칸으로 한 번 감싼다 */}
+        <div className="flex">
           <LabelChip tone="inverse">{view.label}</LabelChip>
         </div>
 

@@ -108,7 +108,7 @@ export const Default: Story = {
     // 칩 높이는 LabelChip 규격(24px)이고 감싼 줄과 같아 줄 상자 여백이 없다
     const chip = canvasElement.querySelector<HTMLElement>('article span')!
     expect(Math.abs(chip.getBoundingClientRect().height - 24)).toBeLessThanOrEqual(1)
-    expect(Math.abs(chip.parentElement!.getBoundingClientRect().height - chip.getBoundingClientRect().height)).toBeLessThanOrEqual(1)
+    expect(Math.abs(chip.parentElement!.getBoundingClientRect().height - chip.getBoundingClientRect().height)).toBeLessThanOrEqual(0.5)
     // CTA는 링크이고 터치 영역이 44px 이상이다
     const cta = canvasElement.querySelector<HTMLAnchorElement>('a')!
     expect(cta.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
