@@ -109,6 +109,8 @@ describe('TodayCardStack — 새 틀과 옛 렌더러 분기 (티켓 20261001_14
   // 새 틀(`brief`)은 최소 높이 클래스로, 새 틀(`hero`)은 16:9 이미지 칸으로, 눌림 링크는 `rounded-[var(--radius-cards)] jam-press`로 알아본다
   const NEW_FRAME = 'min-h-[88px]'
   const HERO_FRAME = 'relative aspect-video overflow-hidden bg-surface'
+  const POSTER_FRAME = 'relative aspect-[4/5] overflow-hidden bg-surface'
+  const SQUARE_FRAME = 'relative aspect-square overflow-hidden bg-surface'
   const NEW_LINK = 'block rounded-[var(--radius-cards)] jam-press'
   const badge = (id: string) => ({ id, name: `배지 ${id}`, image_url: null, rarity: 'rare', earned: true })
 
@@ -159,16 +161,37 @@ describe('TodayCardStack — 새 틀과 옛 렌더러 분기 (티켓 20261001_14
     expect(html).toContain('>10월 5일</time>')
   })
 
-  it('shape가 brief·hero가 아닌 모양으로 저장된 카드는 옛 렌더러가 그린다(b4·b5 전까지)', () => {
-    for (const shape of ['poster', 'square'] as const) {
-      const html = render(makeCard({ shape }))
-      expect(html).not.toContain(NEW_FRAME)
-      expect(html).not.toContain(HERO_FRAME)
-      expect(html).toContain('이번 주 새로 열렸어요')
-    }
+  it('shape가 poster로 저장된 카드는 새 틀로 그린다(링크·눌림·4:5 이미지 칸·막 위 글자, 요약·끝 줄 없음)', () => {
+    const html = render(makeCard({ shape: 'poster', title: '성수동 신규 배지', subtitle: '이번 주 새로 열렸어요' }))
+    expect(html).toContain(POSTER_FRAME)
+    expect(html).toContain('absolute inset-x-0 bottom-0')
+    expect(html).toContain(NEW_LINK)
+    expect(html).toContain('href="/badges"')
+    expect(html).toContain('성수동 신규 배지')
+    expect(html).not.toContain(HERO_FRAME)
+    // 요약·끝 줄은 포스터에 없다(옛 렌더러의 부제 줄도 없다)
+    expect(html).not.toContain('이번 주 새로 열렸어요')
+    expect(html).not.toContain('자세히 보기')
+  })
+
+  it('shape가 square로 저장된 카드는 새 틀로 그린다(링크·눌림·1:1 이미지 칸·흰 본문, 설명문·끝 줄 없음)', () => {
+    const html = render(makeCard({ shape: 'square', title: '성수동 신규 배지', subtitle: '이번 주 새로 열렸어요', description: DESCRIPTION }))
+    expect(html).toContain(SQUARE_FRAME)
+    expect(html).toContain('object-contain')
+    expect(html).toContain(NEW_LINK)
+    expect(html).toContain('href="/badges"')
+    expect(html).toContain('성수동 신규 배지')
+    // 요약은 정사각 카드에 있고 설명문·끝 줄은 없다
+    expect(html).toContain('이번 주 새로 열렸어요')
+    expect(html).not.toContain(DESCRIPTION)
+    expect(html).not.toContain('자세히 보기')
+    expect(html).not.toContain(HERO_FRAME)
+    expect(html).not.toContain(POSTER_FRAME)
+  })
+
+  it('shape가 list로 저장된 카드는 옛 렌더러가 그린다(b5 전까지)', () => {
     const list = render(makeCard({ shape: 'list', layout_type: 'badge_gallery', resolved_badges: [badge('a')] }))
-    expect(list).not.toContain(NEW_FRAME)
-    expect(list).not.toContain(HERO_FRAME)
+    for (const frame of [NEW_FRAME, HERO_FRAME, POSTER_FRAME, SQUARE_FRAME]) expect(list).not.toContain(frame)
   })
 
   it('타일이 0개인 list로 저장된 카드는 화면도 brief다(기록 모양과 같다)', () => {
@@ -183,7 +206,13 @@ describe('TodayCardStack — 새 틀과 옛 렌더러 분기 (티켓 20261001_14
         cards={[
           makeCard({ id: 'a', shape: null, title: '옛 카드 가' }),
           makeCard({ id: 'b', shape: 'brief', title: '새 카드 나' }),
-          makeCard({ id: 'c', shape: 'poster', title: '옛 카드 다' }),
+          makeCard({
+            id: 'c',
+            shape: 'list',
+            layout_type: 'badge_gallery',
+            title: '옛 카드 다',
+            resolved_badges: [{ id: 'a', name: '배지 a', image_url: null, rarity: 'rare', earned: true }],
+          }),
         ]}
       />
     )
@@ -207,7 +236,7 @@ describe('TodayCardStack — 새 틀과 옛 렌더러 분기 (티켓 20261001_14
   })
 
   it('새 틀 카드에는 눌림이 링크 하나에만 있고 옛 눌림 문자열이 없다', () => {
-    for (const shape of ['brief', 'hero'] as const) {
+    for (const shape of ['brief', 'hero', 'poster', 'square'] as const) {
       const html = render(makeCard({ shape }))
       expect(html.match(/jam-press/g)).toHaveLength(1)
       expect(html).not.toContain('active:scale-[0.98]')

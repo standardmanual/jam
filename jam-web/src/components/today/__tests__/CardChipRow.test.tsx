@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import CardChipRow, { type CardChipRowView } from '../CardChipRow'
+import CardChipRow, { type CardChipRowOn, type CardChipRowView } from '../CardChipRow'
 import { PinIcon } from '@/components/ui/icons'
 
 const view = (overrides: Partial<CardChipRowView> = {}): CardChipRowView => ({
@@ -16,8 +16,8 @@ const view = (overrides: Partial<CardChipRowView> = {}): CardChipRowView => ({
   ...overrides,
 })
 
-const render = (overrides: Partial<CardChipRowView> = {}, className?: string) =>
-  renderToStaticMarkup(<CardChipRow view={view(overrides)} className={className} />)
+const render = (overrides: Partial<CardChipRowView> = {}, className?: string, on?: CardChipRowOn) =>
+  renderToStaticMarkup(<CardChipRow view={view(overrides)} className={className} on={on} />)
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -148,5 +148,62 @@ describe('CardChipRow — 옅은 글자', () => {
     })
     expect(html).toContain('text-text-inverse/60')
     for (const level of ['/30', '/40', '/50', '/70']) expect(html).not.toContain(`text-text-inverse${level}`)
+  })
+})
+
+describe('CardChipRow — 막 위(on="scrim", 티켓 20261001_2013 b4)', () => {
+  const FULL = {
+    resource: 'badge',
+    label: '배지 소개',
+    regionLabel: '성수동',
+    rarity: 'epic',
+    publishedAt: '2026-10-05T03:00:00.000Z',
+  } as const
+
+  it('on을 주지 않거나 white면 변경 전과 글자 단위로 같다(라벨 칩 기본 색조, 옅은 글자 /60)', () => {
+    const base = render(FULL)
+    expect(render(FULL, undefined, 'white')).toBe(base)
+    expect(base).toContain('background:var(--color-surface);color:var(--color-text)')
+    expect(base).not.toContain('text-white')
+  })
+
+  it('라벨 칩이 surface-inverse 색조(흰 알약·어두운 글자)다 — 기본 색조(짙은 알약)는 검정 막 위에서 묻힌다', () => {
+    const html = render(FULL, undefined, 'scrim')
+    expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--color-surface-inverse\);color:var\(--color-text-inverse\)[^"]*">배지 소개<\/span>/)
+    expect(html).not.toContain('background:var(--color-surface);')
+  })
+
+  it('지역 핀·게재일 글자는 text-white이고 옅은 단계(/60)가 없다', () => {
+    const html = render(FULL, undefined, 'scrim')
+    expect(html).toContain(
+      '<span class="inline-flex items-center gap-1 min-w-0 text-[length:var(--text-caption)] text-white">',
+    )
+    expect(html).toContain(
+      'class="ml-auto shrink-0 whitespace-nowrap text-[length:var(--text-caption)] text-white">10월 5일</time>',
+    )
+    expect(html).not.toContain('text-text-inverse')
+    expect(html).not.toContain('/60')
+  })
+
+  it('줄바꿈 금지·핀만 줄어듦·희귀도 칩은 바탕과 상관없이 같다', () => {
+    const html = render(FULL, undefined, 'scrim')
+    expect(html).toMatch(/^<div class="flex items-center gap-\[var\(--spacing-8\)\]">/)
+    expect(html).not.toContain('flex-wrap')
+    expect(html).toContain('<span class="truncate">성수동</span>')
+    expect(html).toMatch(/<span class="shrink-0" style="[^"]*font-size:var\(--text-micro\)[^"]*">Epic<\/span>/)
+    expect(html).toContain(renderToStaticMarkup(<PinIcon className="w-3 h-3 shrink-0" />))
+  })
+
+  it('드랍은 막 위에서도 핀을 그리지 않는다(규칙은 이 파일 한 곳)', () => {
+    const html = render({ resource: 'drop', label: '드랍', regionLabel: '한강공원' }, undefined, 'scrim')
+    expect(html).not.toContain('truncate')
+    expect(html).not.toContain('한강공원')
+  })
+
+  it('왼쪽부터 라벨 → 지역 핀 → 희귀도 → 게재일 순서는 바탕과 상관없이 같다', () => {
+    const html = render(FULL, undefined, 'scrim')
+    const order = ['배지 소개</span>', '성수동', 'Epic', '10월 5일'].map((needle) => html.indexOf(needle))
+    for (const index of order) expect(index).toBeGreaterThan(-1)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
   })
 })
