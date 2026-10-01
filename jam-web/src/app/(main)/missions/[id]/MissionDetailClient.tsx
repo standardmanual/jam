@@ -395,7 +395,7 @@ export default function MissionDetailClient({
         {/* 미션 상황 보기 — 참가자만 */}
         {(participating || isCompleted) && (
           <Link href={`/missions/${mission.id}/status`}>
-            <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-4 text-center text-[length:var(--text-body-sm)] text-text-secondary active:scale-[0.98] transition-transform duration-100">
+            <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-4 text-center text-[length:var(--text-body-sm)] text-text-secondary jam-press">
               {d.missions.statusViewButton}
             </div>
           </Link>

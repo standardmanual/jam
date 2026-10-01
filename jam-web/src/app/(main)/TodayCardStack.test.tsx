@@ -223,8 +223,8 @@ describe('TodayCardStack — 랭킹 행형만 카드 전체 링크가 없다', (
     expect(html).toContain('href="/runner2"')
     // 제목 링크 하나 + 행 링크 둘
     expect(html.match(/<a /g)).toHaveLength(3)
-    // 눌림은 제목 링크 하나
-    expect(html.match(/jam-press/g)).toHaveLength(1)
+    // 눌림은 제목 링크 하나와 순위 행 둘(행이 링크일 때 `ListRowCard`가 `.jam-press`를 붙인다) — 카드 전체에는 없다
+    expect(html.match(/jam-press/g)).toHaveLength(3)
     expect(html).not.toContain('전체 보기')
   })
 
@@ -300,9 +300,8 @@ describe('TodayCardStack — 옛 렌더러의 클래스·마크업이 남지 않
     rankingCard(),
   ]
 
-  it('예전 눌림 문자열(active:scale-[0.98]·duration-100)이 없다', () => {
-    // 랭킹 행형의 순위 행(`ListRowCard`)은 홈 밖 화면과 공용이라 따로 바꾼다 — 같은 티켓의 눌림 통일 조각이 이 단언에 랭킹을 더한다
-    for (const card of all.filter((c) => c.layout_type !== 'ranking_list')) {
+  it('예전 눌림 문자열(active:scale-[0.98]·duration-100)이 없다(순위 행 포함)', () => {
+    for (const card of all) {
       const html = render([card])
       expect(html).not.toContain('active:scale-[0.98]')
       expect(html).not.toContain('duration-100')

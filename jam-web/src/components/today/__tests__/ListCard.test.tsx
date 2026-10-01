@@ -105,7 +105,10 @@ function maxAnchorDepth(html: string): number {
 }
 
 const anchors = (html: string) => html.match(/<a /g)?.length ?? 0
-const pressCount = (html: string) => html.match(/jam-press/g)?.length ?? 0
+/** 카드·제목 영역 링크(`CardLink`)의 눌림 개수 — 포커스 윤곽선 클래스가 함께 붙은 `.jam-press`만 센다. 순위 행(`ListRowCard`)의 눌림은 `rowPressCount`다. */
+const pressCount = (html: string) => html.match(/jam-press focus-visible/g)?.length ?? 0
+/** 링크인 순위 행 하나가 `.jam-press` 하나를 가진다(티켓 20261001_2244: 옛 `active:scale-[0.98]`를 `.jam-press`로 통일). 카드·제목 링크 눌림은 뺀다. */
+const rowPressCount = (html: string) => (html.match(/jam-press/g)?.length ?? 0) - pressCount(html)
 const positionsInOrder = (html: string, needles: string[]) => needles.map((needle) => html.indexOf(needle))
 const expectOrdered = (positions: number[]) => {
   for (const position of positions) expect(position).toBeGreaterThan(-1)
@@ -344,6 +347,7 @@ describe('ListCard 행형 — 링크 구조', () => {
     const html = render(live(rankingView()))
     expect(anchors(html)).toBe(1 + 3)
     expect(pressCount(html)).toBe(1)
+    expect(rowPressCount(html)).toBe(3)
     expect(html).toContain('href="/missions/m1/status"')
     for (const username of ['runner1', 'runner2', 'runner3']) expect(html).toContain(`href="/${username}"`)
     // 제목 링크는 칩 줄·제목·요약·설명문을 모두 감싼다

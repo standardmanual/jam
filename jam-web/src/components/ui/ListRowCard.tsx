@@ -54,9 +54,12 @@ export default function ListRowCard({
   'aria-controls': ariaControls,
 }: ListRowCardProps) {
   const interactive = !!(href || onClick)
+  // 눌림은 공용 `.jam-press`(0.98배·80ms, 동작 줄이기 설정에서는 없음)다. 비활성(disabled) 버튼에는 붙이지 않는다 — 링크(`href`)는 `disabled`와 무관하다.
+  const pressable = interactive && (href ? true : !disabled)
   const cls = [
     BASE,
-    interactive && 'active:scale-[0.98] transition-transform duration-100 cursor-pointer',
+    interactive && 'cursor-pointer',
+    pressable && 'jam-press',
     className,
   ]
     .filter(Boolean)

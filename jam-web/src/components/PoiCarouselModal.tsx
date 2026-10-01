@@ -998,7 +998,7 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-white/[0.04] active:scale-[0.98] transition-transform duration-100 text-left disabled:cursor-default${pulse ? ' jam-quest-pulse' : ''}`}
+      className={`w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-white/[0.04]${disabled ? '' : ' jam-press'} text-left disabled:cursor-default${pulse ? ' jam-quest-pulse' : ''}`}
     >
       {/* 카운터 서클의 기준점 — BadgeGridCard의 카운터 필과 같은 이유로 relative를
           overflow-hidden 밖(아이콘 wrapper)에 둔다: 아이콘 자체에 relative를 걸면

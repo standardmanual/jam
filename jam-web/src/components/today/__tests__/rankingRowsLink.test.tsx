@@ -103,9 +103,9 @@ describe('랭킹 행형 판단 — TodayCard의 링크 범위와 ListCard의 갈
     const html = renderToStaticMarkup(<TodayCard view={listView(resource)} />)
     expect(maxAnchorDepth(html)).toBe(1)
     if (isRankingRows(resource)) {
-      // 제목 링크 하나(미션 대상 랭킹이고 href가 있을 때) + 행 링크 둘, 눌림은 제목 링크 하나
+      // 제목 링크 하나(미션 대상 랭킹이고 href가 있을 때) + 행 링크 둘, 눌림은 링크마다 하나(카드 전체에는 없다)
       expect(html.match(/<a /g)).toHaveLength(3)
-      expect(html.match(/jam-press/g)).toHaveLength(1)
+      expect(html.match(/jam-press/g)).toHaveLength(3)
     } else {
       expect(html.match(/<a /g)).toHaveLength(1)
       expect(html.match(/jam-press/g)).toHaveLength(1)
