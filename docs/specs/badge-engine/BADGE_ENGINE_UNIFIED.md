@@ -1867,10 +1867,58 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 - **즉시 배포**: 어드민 `/admin/ambient-drop`의 「지금 배포」 버튼(`POST /api/admin/ambient-drop/deploy`).
   저장된 설정값으로 그 자리에서 1회 배포한다.
 - 두 갈래는 **같은 설정값**(3축 + `all_random` + `batch_size` + `max_active_per_poi`)을 쓴다.
-  설정은 하나이고 실행 시점만 다르다.
+  설정은 하나이고 실행 시점만 다르다. 날짜 예약 배포(아래)는 이 설정을 쓰지 않는다 — 등급 비율과
+  지점당 한도만 읽기 전용으로 빌려 쓴다.
 - 상호 배제: `auto_enabled=true`일 때, **설정된 배포 시각** 전후 `exclusion_window_minutes`분
   (어드민 설정값) 동안은 즉시 배포를 거부한다(409) — 레이스 컨디션 방지 목적. 이 창 밖에서는
   자유롭게 즉시 배포 가능. 서버(API) 레벨에서 강제하고, 어드민 화면 버튼 비활성화는 UX 편의일 뿐.
+
+**날짜 예약 배포 (O6, 티켓 [20260930_1457](../../tickets/p1-high/20260930_1457_Service_앰비언트-드랍-지점-날짜-예약-아이템-지정-O6.md) · 저장소와 실행 [20261001_2051](../../tickets/p1-high/20261001_2051_Service_앰비언트-드랍-예약-1-저장소와-실행.md))**:
+정기 배포·즉시 배포와 별개로, 날짜(KST 정시)·지점·아이템을 정해 두면 그 시각에 한 번 놓는 예약이다.
+코드는 `src/lib/ambient-drop/`의 `scheduleSpec.ts`(입력 검증·상태)·`scheduleTargets.ts`(대상 읽기)·`schedulePlan.ts`(배치 계획)·
+`scheduleStore.ts`(서버 함수)·`scheduleRun.ts`(실행기)·`placement.ts`(자리 분산과 놓기, 정기 배포와 공용)이고,
+저장소는 `ambient_drop_schedules`(마이그레이션 209, [02_DATA_MODEL.md](../prd/02_DATA_MODEL.md))다.
+
+- **설정을 쓰지 않는다.** 예약은 등록·시각 수정·취소·실행 어느 단계에서도 `ambient_drop_config`에 쓰지 않는다. 정기 배포는 예약이
+  있어도 그대로 돌고 예약은 그 위에 더해진다(예약에는 상호 배제 창을 적용하지 않는다). 예약은 등급 비율(`rarity_*`, 컬렉션 선택일 때만)과
+  지점당 한도(`max_active_per_poi`, 지점 종류+개수일 때만)를 읽기만 한다.
+- **지점 × 아이템 2×2 모드.** 예약 하나는 지점 방식 하나와 아이템 방식 하나를 고른다. 한 예약 안에서 섞지 않는다.
+
+| | 아이템 직접 선택(`badge_ids`) | 컬렉션 선택(`collection_ids`) |
+|---|---|---|
+| **지점 직접 선택**(`poi_ids` + 지점당 `per_poi_count`) | 지정한 지점마다 개수만큼 놓는다. 섞은 아이템 풀을 돌려가며 배정해 고르게 놓는다 | 지정한 지점마다 개수만큼 놓는다. 노출 중 컬렉션의 아이템을 정기 배포와 같은 등급 가중 추첨·폴백으로 고른다 |
+| **지점 종류+총 개수**(`poi_category` + `total_count`) | 정기 배포와 같은 분산(활성 드랍 0인 지점 우선, `max_active_per_poi` 미만 지점)으로 총 개수만큼 자리를 정하고 아이템 풀을 돌려가며 놓는다 | 같은 분산에 등급 가중 추첨·폴백 |
+
+- **겹침 규칙.** 지점 직접 선택은 그 지점에 활성 시스템 드랍이 이미 있어도 한도 없이 겹쳐 놓고, 겹친 지점 수를 결과에 남긴다
+  (사용자 결정 Q3, 2026-10-01). 지점 종류+개수는 `max_active_per_poi`로 흩어 놓고 자리가 모자라면 있는 만큼만 놓는다.
+- **노출 판정을 두 번 한다(fail-closed).** 대상은 활성 지점, `type='item'`·삭제되지 않음·컬렉션 소속·`valid_from <= 기준 <= valid_until`인
+  아이템 배지, 노출 중 컬렉션(`isItemBookDroppable`, [02_DATA_MODEL.md](../prd/02_DATA_MODEL.md) «컬렉션 노출 판정»)이다.
+  **등록·시각 수정** 때는 「예정 시각」 기준으로 미리 돌려, 걸린 대상이 하나라도 있으면 400으로 거절한다(지금은 공개 전이지만 예정 시각에
+  공개되는 컬렉션은 통과하고, 예정 시각에 기간이 끝난 컬렉션은 걸린다). **실행** 때는 실행 시각 기준으로 다시 돌려, 걸린 대상은
+  놓지 않고 사유(`excluded`)를 결과에 남긴다. 대상 조회가 실패하면 놓지 않는다. 두 시점이 같은 함수(`loadScheduleTargets`)를 쓴다.
+- **상태.** `stalled`는 DB 상태가 아니라 `running`이 30분(임시값) 넘게 남았을 때 읽는 쪽이 파생한다(`ambientDropScheduleState`).
+
+| 상태 | 뜻 |
+|---|---|
+| `scheduled` | 대기. 공개(실행) 전에는 취소·시각 수정이 된다 |
+| `running` | cron이 선점해 실행 중 |
+| `done` | 하나 이상 놓았다(일부만 실패했으면 결과의 실패 수에 남는다) |
+| `skipped` | 실행 때 놓을 대상이 없었다(사유가 결과에 남는다) |
+| `failed` | 전부 실패했거나 대상 조회·실행 중 오류가 났다 |
+| `missed` | 예정 시각 + 3시간(임시값)을 넘겨 놓쳤다. 놓지 않는다 |
+| `canceled` | 공개 전에 취소했다 |
+
+- **실행은 한 번, 재시도 없음.** 매시 cron(`/api/cron/ambient-drop`)이 `auto_enabled`·배포 시각과 무관하게, 정기 배포 판정보다 먼저
+  도래한 예약을 처리한다. `status='scheduled'` 조건부 UPDATE로 한 건씩 선점(`running`)하므로 같은 예약을 둘이 실행하지 않는다.
+  취소·시각 수정도 같은 조건부 UPDATE라 선점과 겹치면 한쪽만 이긴다. 실행 중·실행 뒤의 취소는 409다. 예약 하나의 오류는
+  그 예약만 `failed`로 하고 다음 예약과 정기 배포를 막지 않는다. 한 호출의 시간 예산(40초, 임시값)을 넘기면 남은 예약은
+  다음 정시로 넘기고, 예정 시각에서 3시간을 넘기면 `missed`다. 라우트 `maxDuration`은 60초다.
+- **1건 총 100개 상한**(임시값). 지점 직접은 지점 수 × 지점당 개수, 종류+개수는 총 개수다. 위반은 400이다.
+- **놓은 뒤 내리지 않는다**(사용자 결정 Q5, 2026-10-01). 예약은 `done`에서 끝나고 종료 상태가 없으며, 안 주워진 드랍은 위 «만료 메커니즘 없음»대로
+  남는다. 회수 기능은 필요해지면 후속 티켓으로 한다.
+- **이력.** 실행 결과는 `engine_decision_log`(`engine='drop'`, `event='ambient_batch_result'`)에 `trigger: 'scheduled'`와 `scheduleId`로 남고
+  (정기 배포는 `cron`·`manual`), 예약 행의 `result`에 요약(요청 수·놓은 수·실패 수·건너뜀 사유·제외 목록·겹친 지점 수·놓은 drop id)이 남는다.
+  뜻이 같은 스킵 사유는 `AmbientDropSkipReason`을 그대로 쓴다.
 
 **배포 옵션 — 3축, 축별 명시/무작위 + 전체 무작위 메타 옵션** (`ambient_drop_config` 싱글톤):
 
@@ -2190,6 +2238,7 @@ supabase/migrations/100_remove_ambient_drop.sql         앰비언트 드랍 제�
 supabase/migrations/104_ambient_drop_reintroduce.sql    앰비언트 드랍 재도입(2026-08-26) — §3.12
 supabase/migrations/137_ambient_drop_schedule_hour.sql  예약 배포 시각 어드민 설정(2026-09-06) — §3.12
 supabase/migrations/137_ambient_drop_schedule_hour.sql  예약 배포 시각(KST) 어드민 설정 — §3.12
+supabase/migrations/209_ambient_drop_schedules.sql       앰비언트 드랍 날짜 예약 저장소(2026-10-01) — §3.12
 supabase/migrations/076_walking_badges_v4.sql           걷기 신규 배지 32종 — §2.10
 supabase/migrations/077_common_streak_numeric.sql       common_streak NUMERIC 확장 — §3.15
 supabase/migrations/128_user_family_progress_consistency_trigger.sql   진행 스냅샷 테이블 + 계열 정합성 트리거 — §2.13

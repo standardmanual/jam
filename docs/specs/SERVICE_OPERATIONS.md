@@ -1089,7 +1089,7 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 |--------|------|------|
 | GET | `/api/cron/poi-cleanup` | 만료 POI 드랍 소각, 3개월 지난 부정 이용 탐지 기록(`abusing_logs`) 삭제 |
 | GET | `/api/cron/notifications` | 알림(소식) T2 배치 생성 |
-| GET | `/api/cron/ambient-drop` | 앰비언트(시스템) POI 드랍 배치 |
+| GET | `/api/cron/ambient-drop` | 앰비언트(시스템) POI 드랍 배치 + 날짜 예약 배포 처리 |
 
 ### 어드민
 

@@ -452,6 +452,29 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 > 실행마다 3축을 골라 `batch_size`개를 그때그때 배치하는 배치 실행형이다 — 티켓
 > [20260826_009](../../tickets/p1-high/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md).
 
+### ambient_drop_schedules (신규 — 마이그레이션 209, 티켓 20261001_2051)
+앰비언트 드랍 **날짜 예약**. 날짜(KST 정시)·지점·아이템을 정해 두면 매시 cron이 도래한 예약을 한 번만 실행한다.
+싱글톤 `ambient_drop_config`와 별개 테이블이고 예약 경로는 그 설정에 쓰지 않는다. 어드민 API·cron 전용이라 RLS를 켜고
+정책을 만들지 않았다(service_role만 접근). 로직은 [BadgeEngine 문서](../badge-engine/BADGE_ENGINE_UNIFIED.md) §3.12 「날짜 예약 배포」.
+
+| 칸 | 뜻 |
+|---|---|
+| `id`, `title` | 예약 id, 운영자가 알아보는 이름(100자 이하, 없어도 됨) |
+| `scheduled_at` | 놓을 시각. **KST 정시만** 받는다(CHECK) |
+| `status` | `scheduled`·`running`·`done`·`skipped`·`failed`·`missed`·`canceled`. `stalled`(`running`이 30분 넘게 남음)는 DB 상태가 아니라 읽는 쪽이 파생한다 |
+| `poi_mode` | `list`(지점 직접 선택: `poi_ids` 1개 이상 + 지점당 `per_poi_count`) · `category`(지점 종류+개수: `poi_category` + `total_count` 1~100, `poi_ids`는 비어 있음) |
+| `poi_category` | `poi_categories.slug`. null은 「전체 종류」. **FK를 걸지 않았다** — `ON DELETE SET NULL`이면 종류가 지워질 때 예약이 「전체」로 넓어진다. 앱이 등록 때 존재를 확인하고 실행 때 없으면 대상 없음으로 건너뛴다 |
+| `item_mode` | `items`(`badge_ids` 1개 이상, `collection_ids` 비어 있음) · `collections`(`collection_ids` 1개 이상, `badge_ids` 비어 있음) |
+| `per_poi_count`, `total_count` | 1 이상. `list`는 지점 수 × `per_poi_count` ≤ 100, `category`는 `total_count` ≤ 100(1건 총 100개 상한, 임시값) |
+| `created_by`, `created_at`, `updated_at` | 등록한 관리자 이메일과 시각 |
+| `claimed_at`, `finished_at`, `canceled_at` | cron이 선점한 시각, 실행이 끝난 시각, 공개 전에 취소한 시각 |
+| `result` | 실행 결과 요약(JSONB): 요청 수·놓은 수·실패 수·건너뜀 사유·제외 목록·겹친 지점 수·놓은 drop id. `missed`는 `{"reason":"missed"}` |
+
+- 대기 중인 예약만 담은 부분 인덱스 `idx_ambient_drop_schedules_due (scheduled_at) WHERE status = 'scheduled'`가 cron의 도래 조회를 받친다.
+- 칸 이름 `poi_ids`·`poi_category`·`badge_ids`·`collection_ids`·`per_poi_count`·`total_count`는 밸런스 규칙 R8의 키(`ops_rules`의 `economy_keys` 23개)와 겹치지 않는다.
+  `jam-web/src/lib/ambient-drop/__tests__/schedule-r8-keys.test.ts`가 대조한다.
+- 놓인 드랍(`poi_drops`)은 이 테이블을 가리키지 않는다. 실행 이력은 `engine_decision_log`(`ambient_batch_result`, `trigger: 'scheduled'`, `scheduleId`)에 남는다.
+
 ---
 
 ## 7. 조합 (combine) — 신규 도메인
