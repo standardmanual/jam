@@ -201,6 +201,12 @@ badge-engine 밖의 세 번째 평가 경로.
 - **시도 = 성공 기록 수 + `no_recipe_match` 실패 수**(재료가 소각된 시도). 소각 전에 끝난
   실패(`invalid_count`·`items_not_found`·`recipe_not_found`)는 시도에도 실패에도 세지 않는다.
   빈손 성공(레시피는 일치했는데 보상이 전부 비어 재료만 소각됨)은 성공 1건이다.
+- **운영자의 공개 전 시험 믹스는 기록·판정하지 않는다**(티켓 20261001_1159) — 운영자가 공개 시각 전의
+  레시피를 믹스하면 `user_combine_success_logs`·`user_combine_fail_logs`에 행을 남기지 않고
+  `jamTriggersForCombineResult`가 빈 배열을 돌려주므로 시도·성공·실패 횟수와 `recipe_first_success`에
+  들어가지 않는다(운영자가 «최초 성공» 표시를 먼저 차지하는 것을 막는다). 보상 지급과 재료 소각은
+  일반 믹스와 같다. 시험 믹스의 범위와 이유는 `jam-doc/planning/content/COMBINE_RECIPES.md` 2절 「공개 시각」이
+  단일 출처다.
 - **`recipe_first_success`는 상태 기반이다** — 그 레시피의 `is_recipe_first=true` 행이 내 것이면
   현재값 1, 아니면 0이고 임계는 1이다. 여러 번 평가해도 같은 결과라 멱등이다.
   `triggered_by`는 `recipe_first_success:{recipe_id}`다. 배지를 붙이기 **전에** 이미 성공한
@@ -1614,7 +1620,8 @@ triggeredByPrefix: CATALOG_REEVALUATION_TRIGGER })`를 한 번 더 부른다. �
   1건 적재된다. 비공개 레시피 개념(힌트만 노출)은 2026-09-17 스펙 아웃됐다 — 유저는 노출된
   목록에서 직접 선택하며, 목록에는 공개 시각(`combination_recipes.valid_from`)이 지난 레시피만
   나온다(비어 있으면 바로 공개). 공개 전 레시피로 시도하면 없는 레시피와 같이 재료 소각 전에
-  `recipe_not_found`로 거절된다(티켓 20261001_1157).
+  `recipe_not_found`로 거절된다(티켓 20261001_1157). 운영자만 예외로 통과하며 이는 기록에 남지 않는
+  시험 믹스다(티켓 20261001_1159).
   **성공도 `user_combine_success_logs`에 1건 적재된다**(티켓 20261001_0631, 마이그레이션 200) —
   ①의 보상·포인트 지급이 끝난 뒤 `record_combine_success()` RPC를 한 번 부르며, 보상이 전부
   비어 재료만 소각된 빈손 성공도 성공 1건이다. RPC는 그 레시피의 **최초 성공자 표시**

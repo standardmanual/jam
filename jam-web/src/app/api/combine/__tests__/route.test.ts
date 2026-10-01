@@ -7,6 +7,8 @@
  *  - 래퍼가 거부돼도 응답(상태 코드·JSON 키·message)은 래퍼가 정상일 때와 같다
  *  - 응답 JSON 키 집합과 「빈손 성공」 메시지는 변경 전과 같다
  *  - 401·400 입력 오류에서는 믹스도 판정도 하지 않는다
+ *  - 운영자 판정(`hasAdminAccess`)을 `allowUnreleased`로 믹스 엔진에 넘기고, 시험 믹스(`testMix`) 응답은
+ *    키만 더해지며 지표 판정을 하지 않는다. 판정이 실패하면 일반 유저처럼 닫는다(티켓 20261001_1159)
  *
  * 실행: cd jam-web && npx vitest run src/app/api/combine/__tests__/route.test.ts
  */
@@ -17,13 +19,20 @@ import { d } from '@/lib/i18n'
 
 const USER_ID = 'user-1'
 
+const USER_EMAIL = 'admin@example.com'
+
 const state = vi.hoisted(() => ({
   authenticated: true,
   callOrder: [] as string[],
 }))
 
 const combineMock = vi.hoisted(() =>
-  vi.fn<(userId: string, recipeId: string, itemIds: string[]) => Promise<CombineResult>>()
+  vi.fn<
+    (userId: string, recipeId: string, itemIds: string[], options?: { allowUnreleased?: boolean }) => Promise<CombineResult>
+  >()
+)
+const hasAdminAccessMock = vi.hoisted(() =>
+  vi.fn<(userId: string, email: string | null | undefined) => Promise<boolean>>()
 )
 const runJamActionMock = vi.hoisted(() => vi.fn<(userId: string, triggers: readonly string[]) => Promise<void>>())
 
@@ -32,7 +41,7 @@ vi.mock('@/lib/supabase/server', () => ({
     auth: {
       getUser: async () =>
         state.authenticated
-          ? { data: { user: { id: USER_ID } }, error: null }
+          ? { data: { user: { id: USER_ID, email: USER_EMAIL } }, error: null }
           : { data: { user: null }, error: { message: 'no session' } },
     },
   }),
@@ -44,12 +53,20 @@ vi.mock('@/lib/combine/index', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/combine/index')>()
   return {
     ...actual,
-    combineRecipeAttempt: (userId: string, recipeId: string, itemIds: string[]) => {
+    combineRecipeAttempt: (
+      userId: string,
+      recipeId: string,
+      itemIds: string[],
+      options?: { allowUnreleased?: boolean }
+    ) => {
       state.callOrder.push('combine')
-      return combineMock(userId, recipeId, itemIds)
+      return combineMock(userId, recipeId, itemIds, options)
     },
   }
 })
+vi.mock('@/lib/admin/auth', () => ({
+  hasAdminAccess: (userId: string, email: string | null | undefined) => hasAdminAccessMock(userId, email),
+}))
 vi.mock('@/lib/badge-engine/jamActionRoute', () => ({
   runJamActionEvaluation: (userId: string, triggers: readonly string[]) => {
     state.callOrder.push('jam_action')
@@ -79,6 +96,7 @@ beforeEach(() => {
   state.callOrder = []
   combineMock.mockResolvedValue(SUCCESS)
   runJamActionMock.mockResolvedValue(undefined)
+  hasAdminAccessMock.mockResolvedValue(false)
 })
 
 describe('결과별로 판정할 지표', () => {
@@ -200,5 +218,73 @@ describe('판정 없이 끝나는 요청', () => {
     expect(res.status).toBe(400)
     expect(combineMock).not.toHaveBeenCalled()
     expect(runJamActionMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('운영자 시험 믹스 (티켓 20261001_1159)', () => {
+  it('운영자 판정 결과를 allowUnreleased로 믹스 엔진에 넘긴다', async () => {
+    hasAdminAccessMock.mockResolvedValue(true)
+    await POST(request(VALID_BODY))
+    expect(hasAdminAccessMock).toHaveBeenCalledWith(USER_ID, USER_EMAIL)
+    expect(combineMock).toHaveBeenCalledWith(USER_ID, 'recipe-1', ['item-1', 'item-2'], { allowUnreleased: true })
+  })
+
+  it('운영자가 아니면 allowUnreleased: false로 넘긴다', async () => {
+    hasAdminAccessMock.mockResolvedValue(false)
+    await POST(request(VALID_BODY))
+    expect(combineMock).toHaveBeenCalledWith(USER_ID, 'recipe-1', ['item-1', 'item-2'], { allowUnreleased: false })
+  })
+
+  it('운영자 판정이 예외로 실패하면 일반 유저처럼 allowUnreleased: false로 닫고 믹스는 진행한다(fail-closed)', async () => {
+    hasAdminAccessMock.mockRejectedValue(new Error('조회 실패'))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const res = await POST(request(VALID_BODY))
+    consoleError.mockRestore()
+    expect(res.status).toBe(200)
+    expect(combineMock).toHaveBeenCalledWith(USER_ID, 'recipe-1', ['item-1', 'item-2'], { allowUnreleased: false })
+  })
+
+  it('시험 믹스 성공 응답은 기존 키에 testMix만 더해지고 지표 판정은 빈 목록이다', async () => {
+    hasAdminAccessMock.mockResolvedValue(true)
+    combineMock.mockResolvedValue({ ...SUCCESS, testMix: true })
+    const res = await POST(request(VALID_BODY))
+    const body = await res.json()
+    expect(Object.keys(body).sort()).toEqual(['path', 'pointsAwarded', 'resultBadges', 'success', 'testMix'])
+    expect(body.testMix).toBe(true)
+    expect(runJamActionMock).toHaveBeenCalledWith(USER_ID, [])
+  })
+
+  it('시험 믹스의 미매칭 응답도 message·위로 문구는 그대로이고 testMix만 더해진다', async () => {
+    hasAdminAccessMock.mockResolvedValue(true)
+    combineMock.mockResolvedValue({ success: false, reason: 'no_recipe_match', pointsAwarded: 5, testMix: true })
+    const res = await POST(request(VALID_BODY))
+    const body = await res.json()
+    expect(Object.keys(body).sort()).toEqual(['message', 'pointsAwarded', 'reason', 'success', 'testMix'])
+    expect(body.message).toBe(`${d.combine.recipeFail}. 그래도 5 포인트가 남았어요.`)
+    expect(runJamActionMock).toHaveBeenCalledWith(USER_ID, [])
+  })
+
+  it('일반 믹스 응답에는 testMix 키가 없다', async () => {
+    const res = await POST(request(VALID_BODY))
+    const body = await res.json()
+    expect('testMix' in body).toBe(false)
+  })
+
+  it('일반 유저가 공개 전 레시피를 보내면 recipe_not_found 응답이고 testMix가 없다', async () => {
+    hasAdminAccessMock.mockResolvedValue(false)
+    combineMock.mockResolvedValue({ success: false, reason: 'recipe_not_found', pointsAwarded: 0 })
+    const res = await POST(request(VALID_BODY))
+    const body = await res.json()
+    expect(body.reason).toBe('recipe_not_found')
+    expect('testMix' in body).toBe(false)
+  })
+
+  it('401·400 입력 오류에서는 운영자 판정도 부르지 않는다', async () => {
+    state.authenticated = false
+    await POST(request(VALID_BODY))
+    state.authenticated = true
+    await POST(request({ item_ids: ['item-1', 'item-2'] }))
+    await POST(request({ recipe_id: 'recipe-1', item_ids: [] }))
+    expect(hasAdminAccessMock).not.toHaveBeenCalled()
   })
 })

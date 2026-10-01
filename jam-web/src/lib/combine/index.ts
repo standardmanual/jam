@@ -34,6 +34,12 @@
  * 존재하지 않는 레시피와 똑같이 처리한다 — 0단계에서 `recipe_not_found`로 거절하며, 재료
  * 소각·포인트 지급은 일어나지 않는다. 판정은 `lib/combine/visibility.ts`의 `isRecipeReleased`
  * 하나다.
+ *
+ * 운영자 시험 믹스(티켓 20261001_1159): 호출부가 `allowUnreleased: true`를 넘기면(운영자) 공개 전
+ * 레시피도 믹스할 수 있다. 이때만 결과를 «시험 믹스»(`testMix: true`)로 본다 — 재료 소각·인벤토리
+ * 칸 반환·Consume 이벤트·보상 배지·포인트 지급은 실제와 똑같이 처리하고, 성공·실패 기록
+ * (`user_combine_success_logs`·`user_combine_fail_logs`)과 JAM! 믹스 지표 판정은 남기지 않는다.
+ * 공개 시각이 지난 레시피는 `allowUnreleased`여도 일반 믹스다(기록이 정상으로 남는다).
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
@@ -60,14 +66,24 @@ export type CombineResult =
       path: 'recipe'
       resultBadges: { id: string; name: string; rarity: string }[]
       pointsAwarded: number
+      /** 공개 전 레시피를 운영자가 믹스한 시험 믹스 — 기록·지표에 남지 않는다. 일반 믹스에는 키가 없다. */
+      testMix?: true
     }
   | {
       success: false
       reason: CombineFailReason
       pointsAwarded: number
+      /** 공개 전 레시피를 운영자가 믹스한 시험 믹스 — 기록·지표에 남지 않는다. 일반 믹스에는 키가 없다. */
+      testMix?: true
     }
 
 const MAX_ITEMS = 10
+
+/** `combineRecipeAttempt()` 호출 옵션 */
+export interface CombineAttemptOptions {
+  /** 공개 전 레시피도 믹스를 허용한다(운영자 전용). 허용된 공개 전 믹스는 시험 믹스가 된다. */
+  allowUnreleased?: boolean
+}
 
 /**
  * `combineRecipeAttempt()` 실행 중 갱신되는 `inventory.used_slots` 캐시 카운터의 로컬 사본.
@@ -84,7 +100,8 @@ type InventorySlotState = { id: string; used_slots: number; max_slots: number }
 export async function combineRecipeAttempt(
   userId: string,
   recipeId: string,
-  itemIds: string[]
+  itemIds: string[],
+  options: CombineAttemptOptions = {}
 ): Promise<CombineResult> {
   if (
     typeof recipeId !== 'string' ||
@@ -102,17 +119,26 @@ export async function combineRecipeAttempt(
   const supabase = createServiceClient()
 
   // 0. 선택된 레시피 존재·공개 확인 — 여기서부터는 이 레시피 하나만 검증 대상이다.
-  // 공개 전 레시피는 없는 레시피와 같다(재료 소각보다 반드시 앞에서 거절한다).
+  // 공개 전 레시피는 없는 레시피와 같다(재료 소각보다 반드시 앞에서 거절한다). 운영자
+  // (`allowUnreleased`)만 공개 전 레시피를 통과한다.
   const { data: recipeRaw } = await supabase
     .from('combination_recipes')
     .select('*')
     .eq('id', recipeId)
     .maybeSingle()
   const recipe = recipeRaw as CombinationRecipeRow | null
-  if (!recipe || !isRecipeReleased(recipe)) {
+  const released = recipe ? isRecipeReleased(recipe) : false
+  if (!recipe || (!released && !options.allowUnreleased)) {
     await logFailure(supabase, userId, [], 'recipe_not_found', 0)
     return { success: false, reason: 'recipe_not_found', pointsAwarded: 0 }
   }
+
+  // 여기까지 왔는데 공개 전이면 운영자의 시험 믹스다. 이후 결과는 전부 `testMix`를 달고 나가며,
+  // 실패 이력(`recordFailure`)과 성공 기록(`recordCombineSuccess`)은 남기지 않는다.
+  const testMix = !released
+  const withTestMix = <T extends CombineResult>(result: T): T => (testMix ? { ...result, testMix: true } : result)
+  const recordFailure = (ingredientBadgeIds: string[], failReason: CombineFailReason, pointsAwarded: number) =>
+    testMix ? Promise.resolve() : logFailure(supabase, userId, ingredientBadgeIds, failReason, pointsAwarded)
 
   const { data: slotsRaw } = await supabase
     .from('combination_recipe_slots')
@@ -130,8 +156,8 @@ export async function combineRecipeAttempt(
 
   const inventory = invRaw as InventorySlotState | null
   if (!inventory) {
-    await logFailure(supabase, userId, [], 'items_not_found', 0)
-    return { success: false, reason: 'items_not_found', pointsAwarded: 0 }
+    await recordFailure([], 'items_not_found', 0)
+    return withTestMix({ success: false, reason: 'items_not_found', pointsAwarded: 0 })
   }
 
   // 2. 해당 아이템들이 실제로 이 유저 소유인지 확인
@@ -147,8 +173,8 @@ export async function combineRecipeAttempt(
 
   const items = (itemsRaw ?? []) as Pick<InventoryItemRow, 'id' | 'badge_id'>[]
   if (items.length !== itemIds.length) {
-    await logFailure(supabase, userId, items.map((i) => i.badge_id), 'items_not_found', 0)
-    return { success: false, reason: 'items_not_found', pointsAwarded: 0 }
+    await recordFailure(items.map((i) => i.badge_id), 'items_not_found', 0)
+    return withTestMix({ success: false, reason: 'items_not_found', pointsAwarded: 0 })
   }
 
   const badgeIds = items.map((i) => i.badge_id)
@@ -177,8 +203,8 @@ export async function combineRecipeAttempt(
 
   if (destroyError) {
     console.error('[combineRecipeAttempt] 아이템 소각 오류:', destroyError)
-    await logFailure(supabase, userId, badgeIds, 'items_not_found', 0)
-    return { success: false, reason: 'items_not_found', pointsAwarded: 0 }
+    await recordFailure(badgeIds, 'items_not_found', 0)
+    return withTestMix({ success: false, reason: 'items_not_found', pointsAwarded: 0 })
   }
 
   if (!destroyedRows || destroyedRows.length !== itemIds.length) {
@@ -187,8 +213,8 @@ export async function combineRecipeAttempt(
       actual: destroyedRows?.length ?? 0,
       userId,
     })
-    await logFailure(supabase, userId, badgeIds, 'items_not_found', 0)
-    return { success: false, reason: 'items_not_found', pointsAwarded: 0 }
+    await recordFailure(badgeIds, 'items_not_found', 0)
+    return withTestMix({ success: false, reason: 'items_not_found', pointsAwarded: 0 })
   }
 
   // used_slots 감소 — 소각한 재료 개수만큼 인벤토리 칸을 반환한다(20260912_2101).
@@ -253,17 +279,21 @@ export async function combineRecipeAttempt(
 
     // 성공 기록 — 보상·포인트 지급이 끝난 뒤에 남긴다(재료 소각·보상 지급 순서는 그대로).
     // 빈손 성공(보상 배지가 하나도 지급되지 않은 경우)도 성공 1건이다. 기록이 실패해도
-    // 응답과 보상은 그대로다(티켓 20261001_0631, 믹스 행동 지표).
-    await recordCombineSuccess(
-      supabase,
-      userId,
-      matched.id,
-      badgeIds,
-      resultBadges.map((b) => b.id),
-      pointsAwarded
-    )
+    // 응답과 보상은 그대로다(티켓 20261001_0631, 믹스 행동 지표). 시험 믹스는 기록하지 않는다 —
+    // 남기면 운영자가 공개 전에 먼저 성공해 실제 첫 성공 유저의 «레시피 최초 성공» 몫을 가로챈다
+    // (티켓 20261001_1159).
+    if (!testMix) {
+      await recordCombineSuccess(
+        supabase,
+        userId,
+        matched.id,
+        badgeIds,
+        resultBadges.map((b) => b.id),
+        pointsAwarded
+      )
+    }
 
-    return { success: true, path: 'recipe', resultBadges, pointsAwarded }
+    return withTestMix({ success: true, path: 'recipe', resultBadges, pointsAwarded })
   }
 
   // 5-b. 미매칭 — 배지 없이 고정 포인트만
@@ -273,8 +303,8 @@ export async function combineRecipeAttempt(
     const ok = await awardPoints(userId, policy.fail_reward_points, 'combine_fail_reward')
     if (ok) pointsAwarded = policy.fail_reward_points
   }
-  await logFailure(supabase, userId, badgeIds, 'no_recipe_match', pointsAwarded)
-  return { success: false, reason: 'no_recipe_match', pointsAwarded }
+  await recordFailure(badgeIds, 'no_recipe_match', pointsAwarded)
+  return withTestMix({ success: false, reason: 'no_recipe_match', pointsAwarded })
 }
 
 /**
@@ -466,8 +496,10 @@ async function recordCombineSuccess(
  *  - 성공: 시도·성공·레시피 최초 성공
  *  - `no_recipe_match`(재료가 소각된 실패): 시도·실패
  *  - 그 밖의 실패(`invalid_count`·`items_not_found`·`recipe_not_found`)는 재료가 소각되기 전에 끝났으므로 판정하지 않는다
+ *  - 시험 믹스(`testMix`)는 성공·실패와 관계없이 판정하지 않는다(티켓 20261001_1159)
  */
 export function jamTriggersForCombineResult(result: CombineResult): JamActionTrigger[] {
+  if (result.testMix) return []
   if (result.success) return ['combine_attempt_count', 'combine_success_count', 'recipe_first_success']
   if (result.reason === 'no_recipe_match') return ['combine_attempt_count', 'combine_fail_count']
   return []

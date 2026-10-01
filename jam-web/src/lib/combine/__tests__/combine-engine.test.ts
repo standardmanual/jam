@@ -10,6 +10,9 @@
  *  5) 성공 기록(티켓 20261001_0631) — 성공 갈래에서만 `record_combine_success` RPC를 1회 부른다(빈손 성공 포함).
  *     소각 전 실패·`no_recipe_match`는 성공 기록을 남기지 않고, RPC 오류·예외가 나도 응답과 보상은 그대로다
  *  6) `jamTriggersForCombineResult` — 결과별로 다시 판정할 JAM! 행동 지표
+ *  7) 운영자 시험 믹스(티켓 20261001_1159) — `allowUnreleased`인 운영자가 공개 전 레시피를 믹스하면 재료 소각·
+ *     보상·위로 포인트는 실제와 같고 성공·실패 기록과 지표 판정은 남지 않는다(`testMix: true`).
+ *     공개 후 레시피는 운영자가 믹스해도 일반 믹스다
  *
  * 실행: cd jam-web && npx vitest run src/lib/combine/__tests__/combine-engine.test.ts
  */
@@ -687,6 +690,113 @@ describe('성공 기록 — record_combine_success (티켓 20261001_0631)', () =
   })
 })
 
+describe('운영자 시험 믹스 — 공개 전 레시피 (티켓 20261001_1159)', () => {
+  const futureAt = () => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  const pastAt = () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const ADMIN = { allowUnreleased: true }
+
+  it('운영자가 공개 전 레시피를 믹스해 성공하면 보상은 지급하되 성공 기록은 남기지 않고 testMix: true를 돌려준다', async () => {
+    stub.recipes = [recipe({ reward_points: 120, reward_badge_ids: [REWARD], valid_from: futureAt() })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2], ADMIN)
+
+    expect(result.success).toBe(true)
+    expect(result.testMix).toBe(true)
+    if (result.success) {
+      expect(result.resultBadges.map((b) => b.id)).toEqual([REWARD])
+      expect(result.pointsAwarded).toBe(120)
+    }
+    // 실제와 같은 처리 — 재료 소각·칸 반환·보상 배지·포인트
+    expect(stub.destroyedItemIds).toEqual([ITEM_1, ITEM_2])
+    expect(stub.grantedBadgeIds).toEqual([REWARD])
+    expect(awardPointsMock).toHaveBeenCalledWith(USER, 120, 'combine_recipe_reward')
+    expect(stub.usedSlotsHistory).toEqual([3, 4])
+    // 기록에서 빠진다 — record_combine_success 0회, 실패 로그 0건
+    expect(stub.successRpcCalls).toHaveLength(0)
+    expect(stub.callOrder).toEqual(['release_inventory_slots', 'grant_inventory_item', 'award_points'])
+    expect(stub.failLogs).toHaveLength(0)
+  })
+
+  it('운영자가 공개 전 레시피를 믹스해 미매칭이면 소각·위로 포인트는 그대로이고 실패 로그는 0건이다', async () => {
+    stub.recipes = [recipe({ valid_from: futureAt() })]
+    stub.slots = [] // 어떤 투입도 충족될 수 없다
+    stub.failRewardPoints = 5
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2], ADMIN)
+
+    expect(result).toEqual({ success: false, reason: 'no_recipe_match', pointsAwarded: 5, testMix: true })
+    expect(stub.destroyedItemIds).toEqual([ITEM_1, ITEM_2])
+    expect(stub.grantedBadgeIds).toEqual([])
+    expect(awardPointsMock).toHaveBeenCalledWith(USER, 5, 'combine_fail_reward')
+    expect(stub.failLogs).toHaveLength(0)
+    expect(stub.successRpcCalls).toHaveLength(0)
+  })
+
+  it('운영자의 공개 전 믹스가 재료 부족(items_not_found)으로 끝나도 실패 로그를 남기지 않고 testMix를 단다', async () => {
+    stub.recipes = [recipe({ valid_from: futureAt() })]
+    stub.slots = itemSlots()
+
+    // 스텁은 항상 2개만 돌려주므로 3개를 요청하면 조회된 재료 수가 모자란다
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2, 'item-3'], ADMIN)
+
+    expect(result).toEqual({ success: false, reason: 'items_not_found', pointsAwarded: 0, testMix: true })
+    expect(stub.destroyedItemIds).toEqual([])
+    expect(stub.failLogs).toHaveLength(0)
+  })
+
+  it('일반 유저(allowUnreleased 없음·false)는 공개 전 레시피를 믹스할 수 없다 — recipe_not_found, testMix 키도 없다', async () => {
+    stub.recipes = [recipe({ reward_points: 500, valid_from: futureAt() })]
+    stub.slots = itemSlots()
+
+    const omitted = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+    const explicit = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2], { allowUnreleased: false })
+
+    for (const result of [omitted, explicit]) {
+      expect(result).toEqual({ success: false, reason: 'recipe_not_found', pointsAwarded: 0 })
+      expect('testMix' in result).toBe(false)
+    }
+    expect(stub.destroyedItemIds).toEqual([])
+    expect(stub.callOrder).toEqual([])
+    expect(awardPointsMock).not.toHaveBeenCalled()
+    expect(stub.failLogs).toHaveLength(2) // recipe_not_found 이력은 ①대로 남는다
+  })
+
+  it('공개 후 레시피는 운영자가 믹스해도 시험 믹스가 아니다 — 성공 기록이 정상으로 남는다', async () => {
+    stub.recipes = [recipe({ reward_points: 120, reward_badge_ids: [REWARD], valid_from: pastAt() })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2], ADMIN)
+
+    expect(result.success).toBe(true)
+    expect('testMix' in result).toBe(false)
+    expect(stub.successRpcCalls).toHaveLength(1)
+    expect(stub.callOrder).toEqual(['release_inventory_slots', 'grant_inventory_item', 'award_points', 'record_combine_success'])
+  })
+
+  it('공개 시각이 없는 레시피(처음부터 공개)도 운영자 믹스는 일반 믹스다 — 실패 로그가 정상으로 남는다', async () => {
+    stub.recipes = [recipe({ valid_from: null })]
+    stub.slots = []
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2], ADMIN)
+
+    expect(result.success).toBe(false)
+    expect('testMix' in result).toBe(false)
+    expect(stub.failLogs).toHaveLength(1)
+    expect(stub.failLogs[0].fail_reason).toBe('no_recipe_match')
+  })
+
+  it('없는 레시피는 운영자여도 recipe_not_found이고 이력이 남는다(시험 믹스 대상이 아니다)', async () => {
+    stub.recipes = []
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2], ADMIN)
+
+    expect(result).toEqual({ success: false, reason: 'recipe_not_found', pointsAwarded: 0 })
+    expect(stub.failLogs).toHaveLength(1)
+    expect(stub.destroyedItemIds).toEqual([])
+  })
+})
+
 describe('jamTriggersForCombineResult — 결과별로 다시 판정할 지표', () => {
   it('성공은 시도·성공·레시피 최초 성공', () => {
     const result: CombineResult = { success: true, path: 'recipe', resultBadges: [], pointsAwarded: 0 }
@@ -710,4 +820,13 @@ describe('jamTriggersForCombineResult — 결과별로 다시 판정할 지표',
       expect(jamTriggersForCombineResult({ success: false, reason, pointsAwarded: 0 })).toEqual([])
     }
   )
+
+  it('시험 믹스(testMix)는 성공이든 실패든 판정할 지표가 없다 (티켓 20261001_1159)', () => {
+    expect(
+      jamTriggersForCombineResult({ success: true, path: 'recipe', resultBadges: [], pointsAwarded: 0, testMix: true })
+    ).toEqual([])
+    expect(
+      jamTriggersForCombineResult({ success: false, reason: 'no_recipe_match', pointsAwarded: 5, testMix: true })
+    ).toEqual([])
+  })
 })

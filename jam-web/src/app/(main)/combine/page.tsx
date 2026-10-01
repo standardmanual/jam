@@ -10,7 +10,8 @@ import type {
 import CombineClient, { type RecipeWithSlots } from './CombineClient'
 import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
-import { filterReleasedRecipes } from '@/lib/combine/visibility'
+import { filterReleasedRecipes, isRecipeReleased } from '@/lib/combine/visibility'
+import { hasAdminAccess } from '@/lib/admin/auth'
 
 export default async function CombinePage() {
   const supabase = await createClient()
@@ -22,9 +23,16 @@ export default async function CombinePage() {
   const [
     { data: invRaw, error: invError },
     { data: recipesRaw, error: recipesError },
+    isAdmin,
   ] = await Promise.all([
     service.from('inventory').select('id').eq('user_id', user.id).maybeSingle(),
     service.from('combination_recipes').select('*'),
+    // 운영자는 공개 전 레시피도 본다(티켓 20261001_1159). 판정 조회가 실패하면 일반 유저 화면과 같게
+    // 닫는다(fail-closed) — 같은 왕복에 실어 보내 응답 시간을 늘리지 않는다.
+    hasAdminAccess(user.id, user.email).catch((adminError: unknown) => {
+      console.error('[combine/page] 운영자 판정 실패 — 일반 유저 화면으로 처리합니다', adminError)
+      return false
+    }),
   ])
   // .maybeSingle()이라 무인벤토리는 error 없이 data null로 오고, 실제 쿼리 오류만 error로 잡힌다
   if (invError) console.error('[combine/page] inventory 조회 실패', invError)
@@ -33,8 +41,11 @@ export default async function CombinePage() {
   // 티켓 20260917_1427(비공개 레시피 스펙 아웃): 공개 시각이 지난 레시피만 공개로 취급한다.
   // 공개 전 레시피는 목록·슬롯·보상 미리보기에서 모두 빠진다(티켓 20261001_1157). 슬롯·배지
   // 조회는 아래 publicRecipeIds를 쓰므로 이 필터를 그대로 따라온다.
+  // 운영자(티켓 20261001_1159)는 이 필터를 건너뛴다 — 그래서 `publicRecipeRows`·`publicRecipeIds`는
+  // 운영자에게는 «공개 전 레시피까지 포함한 목록»이다(이름은 일반 유저 기준으로 남아 있다).
+  // 서버 정렬 순서는 그대로 둔다: 공개 뒤 일반 유저가 보게 될 순서와 같아야 한다.
   const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
-  const publicRecipeRows = filterReleasedRecipes(recipes)
+  const publicRecipeRows = isAdmin ? recipes : filterReleasedRecipes(recipes)
   const publicRecipeIds = publicRecipeRows.map((r) => r.id)
 
   // 유저 화면이 레시피 선택형 플로우로 바뀌면서, 레시피는 슬롯 목록과 슬롯별 후보 배지
@@ -116,6 +127,9 @@ export default async function CombinePage() {
 
   const publicRecipes: RecipeWithSlots[] = publicRecipeRows.map((r) => ({
     ...r,
+    // 공개 전 레시피에만 공개 시각을 넣는다 — 이미 공개된 레시피에 「공개 예정」이 붙지 않게
+    // 서버가 `isRecipeReleased` 기준으로 정해 내려준다(일반 유저는 공개 전 행 자체가 없다).
+    releaseAt: isRecipeReleased(r) ? null : (r.valid_from ?? null),
     slots: (slotsByRecipe.get(r.id) ?? []).sort((a, b) => a.slot_order - b.slot_order),
     rewardBadges: r.reward_badge_ids
       .map((id) => badgeDetailMap.get(id))
