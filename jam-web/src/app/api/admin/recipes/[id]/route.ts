@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
 import { collectRecipeReferences } from '@/lib/admin/recipe-references'
 import { recipeDeleteBlockedMessage } from '@/lib/admin/recipe-bulk'
-import { assertValidFromChange, buildRecipeRow, replaceRecipeSlots } from '@/lib/admin/recipe-write'
+import { assertValidFromChange, assertValidPeriod, buildRecipeRow, replaceRecipeSlots } from '@/lib/admin/recipe-write'
 import { isUuid } from '@/lib/admin/uuid'
 
 /**
@@ -64,9 +64,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const supabase = createServiceClient()
 
-  // 공개 시각 변경 가드(티켓 20261001_1158)를 위해 기존 행을 먼저 읽는다. 없는 레시피는 404다.
+  // 공개 시각 변경 가드(티켓 20261001_1158)와 공개·종료 시각 순서 가드(티켓 20261002_0710)를 위해 기존 행을
+  // 먼저 읽는다. 없는 레시피는 404다.
   const { data: existing, error: existingError } = isUuid(id)
-    ? await supabase.from('combination_recipes').select('id, valid_from').eq('id', id).maybeSingle()
+    ? await supabase.from('combination_recipes').select('id, valid_from, valid_until').eq('id', id).maybeSingle()
     : { data: null, error: null }
   if (existingError) {
     console.error('[recipes PATCH] 기존 레시피 조회 실패:', existingError)
@@ -81,8 +82,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!built.ok) return NextResponse.json({ error: built.error }, { status: 400 })
 
   // 이미 공개된 레시피는 공개 시각을 바꿀 수 없다 — 예약 중일 때만 시각 변경·바로 공개 전환이 된다.
-  const change = assertValidFromChange(existing as { valid_from: string | null }, built.row.valid_from)
+  const existingPeriod = existing as { valid_from: string | null; valid_until: string | null }
+  const change = assertValidFromChange(existingPeriod, built.row.valid_from)
   if (!change.ok) return NextResponse.json({ error: change.error }, { status: 409 })
+
+  // 종료 시각은 공개 뒤에도 바꿀 수 있다(앞당기기·늦추기·지우기, 티켓 20261002_0710). 제출하지 않은 쪽은 기존 값으로
+  // 비교해 공개 시각보다 뒤인지만 본다.
+  const period = assertValidPeriod(existingPeriod, built.row.valid_from, built.row.valid_until)
+  if (!period.ok) return NextResponse.json({ error: period.error }, { status: 400 })
 
   const { data, error } = await supabase
     .from('combination_recipes')

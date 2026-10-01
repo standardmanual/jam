@@ -86,6 +86,8 @@ export async function POST(req: NextRequest) {
     { header: '보상 배지', value: (r) => (r.reward_badge_ids ?? []).map(nameOf).join(', ') },
     // 비어 있으면 처음부터 공개된 레시피다(티켓 20261001_1158). 시각은 KST로 적는다.
     { header: '공개 시각', value: (r) => (r.valid_from ? formatKstYmdHm(r.valid_from) : '') },
+    // 비어 있으면 종료 없이 상시인 레시피다(티켓 20261002_0710). 시각은 KST로 적는다.
+    { header: '종료 시각', value: (r) => (r.valid_until ? formatKstYmdHm(r.valid_until) : '') },
     { header: '등록일', value: (r) => kstDateString(r.created_at) },
   ])
 

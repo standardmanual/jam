@@ -13,6 +13,9 @@
  * 공개 시각(티켓 20261001_1158): 생성(`createRecipeWithSlots`)·예약 취소(`cancelScheduledRecipe`)·
  * 시각 변경 가드(`assertValidFromChange`)·공개 상태 판정(`recipeReleaseState`)을 이 파일에서 낸다 —
  * 어드민 라우트와 운영툴 자원 연결(티켓 20260930_1500)이 같은 함수를 부른다.
+ *
+ * 종료 시각(티켓 20261002_0710): `valid_until`은 공개 뒤에도 바꿀 수 있고(앞당기기·늦추기·지우기) 지난 시각도
+ * 받는다. 공개 시각과의 순서는 `assertValidPeriod` 하나가 보고 어드민 화면도 같은 함수를 쓴다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
 import {
@@ -21,7 +24,7 @@ import {
   type NormalizedSlot,
   type RecipePayloadInput,
 } from '@/lib/combine/recipe-payload'
-import { isRecipeReleased, type RecipeReleaseInput } from '@/lib/combine/visibility'
+import { recipeReleaseState, type RecipeReleaseInput } from '@/lib/combine/visibility'
 import { collectRecipeReferences } from '@/lib/admin/recipe-references'
 import { recipeDeleteBlockedMessage } from '@/lib/admin/recipe-bulk'
 import { isUuid } from '@/lib/admin/uuid'
@@ -37,6 +40,8 @@ export interface RecipeRow {
   reward_badge_ids: string[]
   /** 제출하지 않으면 행에 넣지 않는다(수정 때 기존 공개 시각을 그대로 둔다). `null`은 바로 공개 */
   valid_from?: string | null
+  /** 제출하지 않으면 행에 넣지 않는다(수정 때 기존 종료 시각을 그대로 둔다). `null`은 종료 없음(상시) */
+  valid_until?: string | null
 }
 
 export interface RecipeSlotRow {
@@ -53,7 +58,7 @@ export async function buildRecipeRow(
   const normalized = normalizeRecipePayload(body, now)
   if (!normalized.ok) return normalized
 
-  const { name, slots, rewardPoints, rewardBadgeIds, validFrom } = normalized.value
+  const { name, slots, rewardPoints, rewardBadgeIds, validFrom, validUntil } = normalized.value
 
   // 슬롯 후보 배지 전체의 실제 타입 조회 — 삭제된 배지는 후보로 쓸 수 없다.
   const allowedBadgeIds = [...new Set(slots.flatMap((s) => s.allowedBadgeIds))]
@@ -108,6 +113,7 @@ export async function buildRecipeRow(
       reward_points: rewardPoints,
       reward_badge_ids: rewardBadgeIds,
       ...(validFrom !== undefined ? { valid_from: validFrom } : {}),
+      ...(validUntil !== undefined ? { valid_until: validUntil } : {}),
     },
     slots: slots.map((s, idx) => ({
       slot_order: idx,
@@ -165,6 +171,10 @@ export async function createRecipeWithSlots(
   const built = await buildRecipeRow(supabase, body, now)
   if (!built.ok) return { ok: false, status: 400, error: built.error }
 
+  // 새 레시피에는 기존 값이 없다 — 이번에 제출한 공개·종료 시각끼리만 순서를 본다.
+  const period = assertValidPeriod(null, built.row.valid_from, built.row.valid_until)
+  if (!period.ok) return { ok: false, status: 400, error: period.error }
+
   const { data, error } = await supabase.from('combination_recipes').insert(built.row).select().single()
   if (error) return { ok: false, status: 500, error: error.message }
 
@@ -183,7 +193,8 @@ export type CancelScheduledRecipeResult =
   | { ok: false; status: 404 | 409 | 500; error: string }
 
 /**
- * 공개 전(예약 중) 레시피 취소 = 삭제(티켓 20261001_1158). 레시피에는 종료 시각이 없어 «취소»는 곧 삭제다.
+ * 공개 전(예약 중) 레시피 취소 = 삭제(티켓 20261001_1158). 공개 전에는 유저에게 없는 레시피라 종료 시각으로 내릴
+ * 대상이 아니고, 예약을 거두는 길은 삭제뿐이다. 공개 뒤에 내리는 길은 종료 시각(티켓 20261002_0710)이다.
  *
  * 1. 삭제 가드(`collectRecipeReferences`)를 먼저 거친다 — 배지 조건이 가리키는 레시피는 예약 중이어도 지울 수 없다.
  *    조회가 실패하면 fail-closed로 막는다.
@@ -239,13 +250,15 @@ export async function cancelScheduledRecipe(
   return {
     ok: false,
     status: 409,
-    error: '이미 공개된 레시피는 예약을 취소할 수 없어요. 내리려면 레시피 삭제를 이용해 주세요.',
+    error: '이미 공개된 레시피는 예약을 취소할 수 없어요. 내리려면 종료 시각을 정하거나 레시피를 삭제해 주세요.',
   }
 }
 
 /**
  * 공개 시각 변경 가드(티켓 20261001_1158) — 이미 공개된 레시피는 공개 시각을 바꿀 수 없다. 예약 중이면 다른
  * 미래 시각이나 `null`(바로 공개)로 바꿀 수 있다(미래 여부는 `normalizeValidFrom`이 이미 걸렀다).
+ * 종료된 레시피(`ended`)도 한 번 공개된 것이라 같은 잠금을 받는다 — 종료 시각(티켓 20261002_0710)을 지워 다시
+ * 공개 중으로 돌릴 수는 있어도 공개 시각을 미래로 옮겨 예약으로 되돌리지는 못한다.
  * `nextValidFrom`이 `undefined`(제출하지 않음)이거나 기존 값과 같은 시각이면 바뀌는 게 없으니 통과한다.
  * 거절이면 호출부가 409로 돌려준다.
  */
@@ -255,7 +268,7 @@ export function assertValidFromChange(
   now: Date = new Date()
 ): { ok: true } | { ok: false; error: string } {
   if (nextValidFrom === undefined) return { ok: true }
-  if (!isRecipeReleased(existing, now)) return { ok: true }
+  if (recipeReleaseState(existing, now) === 'scheduled') return { ok: true }
   if (sameReleaseInstant(existing.valid_from ?? null, nextValidFrom)) return { ok: true }
   return {
     ok: false,
@@ -266,4 +279,32 @@ export function assertValidFromChange(
 function sameReleaseInstant(a: string | null, b: string | null): boolean {
   if (a === null || b === null) return a === b
   return new Date(a).getTime() === new Date(b).getTime()
+}
+
+/**
+ * 공개·종료 시각의 순서 가드(티켓 20261002_0710) — 둘 다 있으면 종료 시각이 공개 시각보다 뒤여야 한다
+ * (같아도 안 된다. DB CHECK `combination_recipes_valid_period_check`와 같은 규칙이다).
+ * 제출하지 않은 쪽(`undefined`)은 `existing`의 값으로 비교한다 — 공개된 레시피의 종료 시각만 바꿀 때
+ * 기존 공개 시각과 견준다. 새 레시피는 `existing`을 `null`로 넘긴다. 둘 중 하나라도 비어 있으면(바로 공개·종료
+ * 없음) 순서를 볼 일이 없다. 종료 시각이 지난 시각인지는 보지 않는다(지난 시각이면 곧바로 내려간다).
+ * 거절이면 호출부가 400으로 돌려준다. 어드민 폼도 같은 함수로 먼저 거른다.
+ */
+export function assertValidPeriod(
+  existing: RecipeReleaseInput | null,
+  nextValidFrom: string | null | undefined,
+  nextValidUntil: string | null | undefined
+): { ok: true } | { ok: false; error: string } {
+  const validFrom = nextValidFrom !== undefined ? nextValidFrom : (existing?.valid_from ?? null)
+  const validUntil = nextValidUntil !== undefined ? nextValidUntil : (existing?.valid_until ?? null)
+  if (validFrom === null || validUntil === null) return { ok: true }
+
+  const from = new Date(validFrom).getTime()
+  const until = new Date(validUntil).getTime()
+  // 읽을 수 없는 값은 여기서 판단하지 않는다 — 형식은 `normalizeValidFrom`·`normalizeValidUntil`이, 마지막 방어선은 DB CHECK가 맡는다.
+  if (Number.isNaN(from) || Number.isNaN(until)) return { ok: true }
+  if (until > from) return { ok: true }
+  return {
+    ok: false,
+    error: '종료 시각은 공개 시각보다 늦어야 해요. 종료 시각을 공개 시각 이후로 다시 선택해 주세요.',
+  }
 }
