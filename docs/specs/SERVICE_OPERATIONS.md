@@ -1106,7 +1106,8 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | POST | `/api/admin/poi/review/bulk` | 검토 큐 다중선택 일괄 처리 ([[20260907_1242]]) |
 | GET | `/api/admin/poi/review/ids` | 검토 큐 필터 결과의 전체 ID(전체 선택용, 상한 1,000) |
 | GET, POST | `/api/admin/recipes` | 조합 레시피 목록/생성 |
-| PATCH, DELETE | `/api/admin/recipes/[id]` | 레시피 수정/삭제 |
+| PATCH, DELETE | `/api/admin/recipes/[id]` | 레시피 수정/삭제. PATCH는 공개된 레시피의 공개 시각 변경을 409로 거절한다 |
+| POST | `/api/admin/recipes/[id]/cancel-release` | 공개 전(예약 중) 레시피 취소 = 삭제. 삭제 가드를 거치고, 이미 공개됐으면 409, 없으면 404 ([[20261001_1158]]) |
 | GET | `/api/admin/users` | 유저 검색(자동완성용) |
 | POST | `/api/admin/users/[id]/reset` | 유저 데이터 리셋 (본인·어드민 계정은 403) |
 | GET | `/api/admin/users/ids` | 유저 목록 필터 결과의 전체 ID(전체 선택용, 상한 1,000) |
