@@ -26,7 +26,7 @@ import {
   type OpsBundleStage,
   type OpsInboxTab,
 } from '@/lib/admin/opsInbox/bundleStatus'
-import { OPS_RULE_COLUMNS, parseBalanceRules, type BalanceRules, type OpsRuleRow } from '@/lib/admin/opsInbox/balance/rules'
+import { OPS_RULE_COLUMNS, parseBalanceRules, type BalanceRules } from '@/lib/admin/opsInbox/balance/rules'
 import {
   collectBalanceReferences,
   countOpenCollectionsAt,
@@ -299,21 +299,9 @@ const DECISION_COLUMNS = 'id, item_id, action, actor, batch_id, diff, reason, sl
 
 // ── 밸런스 평가 (티켓 20260930_1459) ─────────────────────────────────────────────────────────────
 
-/**
- * `ops_rules`는 마이그레이션 207이 만든 테이블이라 `database.generated.ts`를 다시 만들기 전에는 클라이언트 타입에 없다.
- * 그 전에는 필요한 모양만 좁은 타입으로 받는다(재생성 뒤에는 이 좁은 타입을 지우고 생성 타입을 쓴다).
- */
-interface OpsRulesClient {
-  from(table: 'ops_rules'): {
-    select(columns: string): {
-      eq(column: 'rule_group', value: 'balance'): PromiseLike<{ data: OpsRuleRow[] | null; error: { message: string } | null }>
-    }
-  }
-}
-
 /** 밸런스 규칙을 읽는다. 조회 오류나 빈 규칙 테이블은 평가 실패다(던진다). */
 async function readBalanceRules(supabase: ReturnType<typeof createServiceClient>): Promise<BalanceRules> {
-  const { data, error } = await (supabase as unknown as OpsRulesClient)
+  const { data, error } = await supabase
     .from('ops_rules')
     .select(OPS_RULE_COLUMNS)
     .eq('rule_group', 'balance')
