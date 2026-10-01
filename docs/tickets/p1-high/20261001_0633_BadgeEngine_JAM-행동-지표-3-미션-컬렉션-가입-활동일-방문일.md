@@ -2,9 +2,9 @@
 id: "20261001_0633"
 category: BadgeEngine
 priority: P1
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-10-01
-closed:
+closed: 2026-10-01
 parent: "20260930_1456"
 ---
 
@@ -278,27 +278,46 @@ parent: "20260930_1456"
 
 ### 구현 내용 요약
 
+- ①의 공용 틀에 주 키 5개(`mission_complete_count`·`collection_complete_count`·`days_since_signup`·`weekly_active_days`·`same_spot_checkin_days`)와 보조 키 `signup_recent_active_days`를 더했다(아현, 4커밋·37파일, +3,613 −85).
+  「활동한 날」은 가입한 날(KST) 이후, JAM! 종목·걷기 게이트·차량 속도 필터를 통과한 활동의 날짜와 활동 날짜가 있는 체크인한 날의 합집합이다. 주 경계·날짜 차는 KST 날짜 문자열과 `Date.UTC`로만 계산한다.
+- 판정은 동기화 끝(`sync.ts`의 `evaluateJamActionSafely`, 새 활동이 있으면 주 키 5개·없으면 가입 경과일만, 결산에 합침)과 컬렉션 장착 POST 성공 뒤 `after()` 두 곳이다. 가입 경과일은 전용 분기에서 보조 키가 있는 배지에만 최근 30일 활동일을 확인한다.
+- 공용 정리: 드랍 지표의 페이지 읽기를 `jamActionPaging.ts`로 옮기고(동작 불변), 차량 속도 상한 해석을 `effectiveVehicleSpeedFilterKmh`(`abusing/policy.ts`) 한 곳으로 모았다(`sync.ts` 로그·동작 동일).
+- 계획과 다른 구현(아현 신고, 민지 확인): 보조 키 단독 저장 거부를 `badge-validation.ts` 수정 대신 기존 짝 필드 장치(`PAIR_ENFORCED_CONDITION_KEYS`)에 보조 키를 등록해 구현했다. 결과는 같고 테스트로 고정했다.
+- 문서 3종(`BADGE_ENGINE_UNIFIED.md`, `CONDITION_JSON_SPEC.md`, `02_DATA_MODEL.md`)을 아현이 갱신했고, `BADGE_ENGINE_UNIFIED.md` 머리말의 「199~202 실행 전」 표기도 정정했다.
+- 게이트: 민지 1차 PASS(CI 36798551482). 머지 `8bd1bb22`(리뷰 브랜치 `claude/jamwork-20261001_0633-progress-metrics`, 범위 `60382976..cc37a09d`).
+  머지 뒤 경미 수정 `359bd791`: 주간 활동일 도움말의 종목을 JAM! 다섯 종목 표기(러닝·사이클·트레일러닝·하이킹·걷기)로 맞추고, 커서 동기화 테스트에 JAM! 판정 모킹 한 줄을 더했다(테스트 64건·eslint 통과).
+
 ### 변경된 파일
 ```
--
+jam-web/supabase/migrations/203_condition_json_progress_keys.sql
+jam-web/src/lib/badge-engine/{jamActionCompletionMetrics,jamActionDayMetrics,jamActionPaging,jamActionProgressTriggers}.ts (신규)
+jam-web/src/lib/badge-engine/{conditionRegistry,jamActionBadges,jamActionDropMetrics,jamActionRoute}.ts, jam-web/src/lib/abusing/policy.ts
+jam-web/src/lib/strava/sync.ts, jam-web/src/app/api/itembooks/[id]/slot/route.ts
+jam-web/src/types/database.ts, jam-web/src/app/admin/badges/conditionFormFields.ts, jam-web/src/lib/badgeConditionText.ts
+테스트 신규 7: jam-action-{completion-metrics,day-metrics,progress-badges,progress-triggers}, sync-jam-action-hook, slot route, effective-vehicle-speed-filter
+테스트 수정 13: condition-registry, conditionFormFields, badge-validation, badgeConditionText, 동기화 테스트 9개(JAM! 판정 모킹 한 줄)
+docs/specs/badge-engine/{BADGE_ENGINE_UNIFIED,CONDITION_JSON_SPEC}.md, docs/specs/prd/02_DATA_MODEL.md
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] CI verify 36798551482 성공(검토 커밋 `cc37a09d`와 같은 SHA). 월·수·금 활동 + 일요일 동기화 → 3, 같은 날 같은 지점 → 1, KST 주 경계, TZ 3종 독립, R1·R2·R3·R5, 30,000/30,001행 경계, 장착 `after()` 예약·미예약.
+- [x] 마이그레이션 실행(사용자 승인, 2026-10-01 10:05 KST, `apply_migration` `203_condition_json_progress_keys`). 실행 전 라이브 CHECK의 키 66개가 203의 기존 66개와 정확히 같음을 대조했다(빠진 키·남는 키 없음).
+- [x] 실행 뒤: 허용 키 72개, 조건이 있는 배지 634개 그대로, 새 키를 쓰는 배지 0개. 새 6키 INSERT가 CHECK를 통과함을 DO 블록 롤백으로 확인(남은 행 0), 미등록 키 INSERT는 CHECK 위반으로 거부됨을 확인. `database.generated.ts`는 바뀌지 않는다.
+- [x] 라이브 기준값(유저 8명, 2026-10-01 10시 KST, 1번 SQL에 「오늘 이후 날짜 제외」를 더해 실행): 시험 계정 4명은 가입 경과일 25·나머지 모두 0이다.
+  `25782789…` 가입 25·최근 30일 10·주간 5·같은 지점 6, `3649ed39…` 미션 1·컬렉션 3·가입 25·최근 30일 10·주간 3·같은 지점 3, `cbecda65…` 가입 25·최근 30일 11·주간 4·같은 지점 3, `dad44dda…` 미션 1·가입 22·최근 30일 10·주간 4·같은 지점 6.
+  미래 날짜 활동은 0건이라 민지가 지적한 코드(미래 날짜 제외)와 203 주석 SQL(포함)의 차이는 지금 값에 영향이 없다. 실데이터에서 코드 계산을 돌린 대조는 ④(0634) dry-run이 맡는다.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
-- [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
-- [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)
-- [ ] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
-- [ ] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
-- [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
+- [x] 용어 일관성: 유저 조건 문구 「완료한 미션 N개 이상」·「완성한 컬렉션 N개 이상」·「가입 후 N일 이상」·「최근 30일 동안 N일 이상 활동」·「한 주(월~일)에 N일 이상 활동」·「같은 지점에 N일 이상 체크인」.
+  고정 용어 「체크인」을 쓰고 금지어(방문·POI·충족·달성·놓 등)가 없다(테스트).
+- [x] 톤앤매너·문장 규칙: 다른 조건 문구처럼 명사구로 끝나 「… 조건을 채우면 획득할 수 있어요.」와 이어진다. 「주」에는 (월~일)을 붙였다.
 
 ### 배포 정보
-- 배포일: 
-- 환경: production
-- 커밋: 
+- 배포일: (프로덕션 미배포, staging 반영 2026-10-01)
+- 환경: staging(DB는 공용이라 203은 프로덕션에도 반영됨)
+- 커밋: 8bd1bb22, 359bd791
 
 ### 실행 지표
 > Workflow 완료 알림 `<usage>`(전체 토큰·소요·에이전트 수·도구 호출)와 결과의 `tokenUsage`
@@ -308,8 +327,8 @@ parent: "20260930_1456"
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1차 | 2 | 651,079 | 187,160 / 36,356 | 32분 21초 | 227 |
+| 합계 | 2 | 651,079 | 187,160 / 36,356 | 32분 21초 | 227 |
 
 ### 주요 의사결정 / 핵심 메모
 > 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
@@ -320,6 +339,13 @@ parent: "20260930_1456"
   - 카리나가 혜린 초안에서 바꾼 것: 체크인 날짜가 없는 행을 `earned_at`으로 대신 세던 안을 「세지 않는다」로 바꿨다(R5). 라이브의 그 7행은 모두 시험 계정이고 활동과 연결되지 않았다.
   - 선택하지 않은 안: 티켓을 ③-a(미션·컬렉션·가입 경과일)와 ③-b(활동일·체크인 일수)로 쪼개는 안. CHECK 마이그레이션과 문서 갱신이 두 번 생기고, 「활동한 날」 정의를 두 티켓이 함께 쓴다.
     보조 키를 `days_since_signup`의 객체 값(`{ days, recent_active_days }`)으로 담는 안. 레지스트리의 정수 입력·폼·문구 조립을 모두 새 형태로 바꿔야 해서 기존 `pairedWith` 짝 필드 방식을 골랐다.
+- 정정: 착수 때 사용자에게 JAM! 종목을 「걷기·러닝·트레일 러닝·자전거」 넷으로 안내했고 계획의 도움말도 그렇게 적었다. 실제 JAM! 종목은 하이킹을 포함한 다섯이고 코드는 다섯 종목을 센다(민지 발견). 도움말은 머지 뒤 경미 수정으로 고쳤다.
+- 머지 전 오염 검사 실패 경위: 아현이 `60382976`에서 갈라진 뒤 staging에 커밋 3개(다른 세션의 문서 체계 티켓 20261001_0945, 리포트 확인 표시 2건)가 들어와 검사가 실패했다.
+  리뷰 브랜치에는 0633 커밋 4개만 있어 오염이 아니었고, 겹친 파일 2개(`BADGE_ENGINE_UNIFIED.md`, `badgeConditionText.ts`)는 상대 쪽이 경로 표기만 바꿔 시험 머지에서 충돌이 없었다. 사용자에게 경위를 알리고 승인받아 머지했다.
+- 범위 밖 발견물(민지) 처리: 도움말 종목 누락·표기 → 머지 뒤 경미 수정, 커서 동기화 테스트 모킹 누락 → 머지 뒤 경미 수정, 활동일 지표들의 겹친 조회 → 20261001_1002(P3),
+  되돌림 SQL의 파일 참조 → 20261001_1003(P3), 기준값 SQL의 미래 날짜 → 대조 때 「오늘 이후 제외」를 더해 실행(203은 실행한 파일이라 고치지 않음),
+  커밋 ① 단독 테스트 실패(bisect 불가) → 처리 규칙표 카리나 절에 「키 선언과 판정기를 같은 커밋에」 한 줄. 오염 검사 실패 때 원인을 가르는 절차도 같은 절에 한 줄 더했다.
 
 ### 잔여 이슈
--
+- 0635(장착으로 완성하면 보상 배지 미지급)가 장착 RPC 반환에 완성 여부를 더하면 `slot/route.ts`의 무조건 판정(R6)을 좁힌다.
+- 새 배지를 열기 전에 받을 유저 수와 포인트 합계는 ④ 20261001_0634의 dry-run으로 본다(Q1).
