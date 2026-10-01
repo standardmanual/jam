@@ -39,6 +39,7 @@ vi.mock('@/lib/strava/api', () => ({
 vi.mock('@/lib/badge-engine/index', () => ({ evaluateBadges: evaluateBadgesMock }))
 vi.mock('@/lib/drop-engine/index', () => ({ tryItemDrop: vi.fn(async () => []) }))
 vi.mock('@/lib/poi/matcher', () => ({ matchPoisForActivity: vi.fn(async () => []) }))
+vi.mock('@/lib/badge-engine/jamActionBadges', () => ({ evaluateJamActionBadges: vi.fn(async () => []) })) // JAM! 행동 지표 판정은 sync-jam-action-hook.test.ts가 따로 확인한다 (티켓 20261001_0633)
 vi.mock('@/lib/itembook/checker', () => ({
   checkItemBookCompletion: vi.fn(async () => ({ completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] })),
 }))
