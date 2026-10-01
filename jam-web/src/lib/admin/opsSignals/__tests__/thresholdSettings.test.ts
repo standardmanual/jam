@@ -21,6 +21,7 @@ import {
   changedFieldLine,
   checkSignalDraft,
   checkThresholdInput,
+  draftAfterRevert,
   draftFromSignalRecords,
   formatThresholdDisplay,
   isThresholdKey,
@@ -440,6 +441,17 @@ describe('초안', () => {
     })
     // 저장된 최대(8)와 합쳐 보면 통과한다
     expect(checkSignalDraft(c, records([row('maxLiveCards', { value: 8 })]), { ...draftFromSignalRecords(c, records([row('maxLiveCards', { value: 8 })])), minLiveCards: '6' }).errors).toEqual({})
+  })
+
+  it('칸 하나를 되돌리면 그 칸만 기본값이 되고 같은 카드 다른 칸의 입력 중 값은 남는다', () => {
+    const c = card('routine_failed')
+    const map = records([row('weeklyRoutineDeadlineHour', { value: 9 }), row('monthlyRoutineDay', { value: 5 })])
+    const typing: SignalDraft = { ...draftFromSignalRecords(c, map), weeklyRoutineDeadlineHour: '10', monthlyRoutineDay: '6' }
+    const after = draftAfterRevert(typing, toThresholdRecord('weeklyRoutineDeadlineHour'))
+    expect(after).toEqual({ ...typing, weeklyRoutineDeadlineHour: '12' })
+    // 되돌린 뒤 저장된 칸 상태(행이 지워짐)로 견주면 되돌린 칸은 바꾼 것이 아니고 입력 중이던 다른 칸만 바꾼 것이다
+    const mapAfter = { ...map, weeklyRoutineDeadlineHour: toThresholdRecord('weeklyRoutineDeadlineHour') }
+    expect(signalDraftChangedKeys(c, mapAfter, after)).toEqual(['monthlyRoutineDay'])
   })
 
   it('저장 본문: 고친 칸의 값과 칸별 수정 시각(행이 없으면 null)을 담는다', () => {

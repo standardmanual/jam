@@ -22,6 +22,7 @@ import {
   UNREADABLE_STORED_MESSAGE,
   changedCountChipLabel,
   checkSignalDraft,
+  draftAfterRevert,
   draftFromSignalRecords,
   recordMapOf,
   signalAnchorId,
@@ -168,7 +169,7 @@ export function OpsSignalCard({ card, records, onRecords }: OpsSignalCardProps) 
     if (res.ok) {
       onRecords([res.threshold])
       // 그 칸만 기본값으로 바꾼다. 같은 카드 다른 칸의 입력 중 값은 그대로 둔다.
-      setDraft((current) => ({ ...current, [key]: String(res.threshold.value) }))
+      setDraft((current) => draftAfterRevert(current, res.threshold))
       setTouched((current) => {
         const next = new Set(current)
         next.delete(key)
@@ -196,10 +197,11 @@ export function OpsSignalCard({ card, records, onRecords }: OpsSignalCardProps) 
       setFailure({ kind: 'reload' })
       return
     }
-    // 최신 값으로 카드 초안 전체를 새로 만든다.
+    // 최신 값으로 카드 초안 전체를 새로 만든다. 다른 카드의 값은 건드리지 않는다(그 카드의 입력 중 값과 어긋나지 않게).
+    const mine = res.thresholds.filter((record) => card.fields.some((field) => field.key === record.ruleKey))
     setFailure(null)
-    resetFrom(recordMapOf(res.thresholds))
-    onRecords(res.thresholds)
+    resetFrom(recordMapOf(mine))
+    onRecords(mine)
   }
 
   return (

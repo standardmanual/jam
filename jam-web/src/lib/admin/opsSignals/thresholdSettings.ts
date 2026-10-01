@@ -484,6 +484,11 @@ export function draftFromSignalRecords(card: SignalCardSpec, records: SignalReco
   return draft
 }
 
+/** 칸 하나를 기본값으로 되돌린 뒤의 초안: 그 칸만 기본값으로 바꾸고 **같은 카드 다른 칸의 입력 중 값은 그대로 둔다**. */
+export function draftAfterRevert(draft: SignalDraft, reverted: SignalThresholdRecord): SignalDraft {
+  return { ...draft, [reverted.ruleKey]: String(reverted.value) }
+}
+
 /** 입력한 글을 검증 함수가 읽는 값으로 바꾼다: 빈 글은 그대로(빈 칸 오류), 숫자 모양이면 숫자, 그 밖은 글 그대로(오류). 배수 칸만 소수를 받는다. */
 export function textToThresholdInput(key: OpsSignalThresholdKey, text: string): number | string {
   const trimmed = text.trim()

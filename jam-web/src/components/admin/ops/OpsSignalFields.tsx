@@ -160,9 +160,7 @@ function ReadOnlyTimeField({ field, idBase, records }: Pick<FieldProps, 'field' 
       <p id={`${id}-label`} className="text-sm font-medium">
         {field.label}
       </p>
-      <p aria-labelledby={`${id}-label`} className="break-words text-sm">
-        {readOnlyTimeText(records[field.key])}
-      </p>
+      <p className="break-words text-sm">{readOnlyTimeText(records[field.key])}</p>
       {field.hint && <p className="break-words text-xs text-muted-foreground">{field.hint}</p>}
     </div>
   )
