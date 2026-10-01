@@ -35,6 +35,10 @@ export interface FakeDb {
   writesTo: (table: string) => DbCall[]
   /** 이 테이블에서 조회 오류를 일으킬 때 채운다 */
   failReads: Set<string>
+  /** 이 테이블에 대한 쓰기(insert·update·delete)가 오류를 돌려주게 할 때 채운다. 행은 바뀌지 않는다 */
+  failWrites: Set<string>
+  /** 쿼리가 실행되기 직전에 불린다 — 읽고 쓰는 사이에 다른 요청이 끼어드는 경합을 흉내 낼 때 쓴다 */
+  beforeExecute: ((call: DbCall) => void) | null
   client: unknown
 }
 
@@ -93,6 +97,8 @@ export function createFakeDb(initial: Record<string, Row[]> = {}): FakeDb {
     }),
     writesTo: (table) => db.calls.filter((c) => c.table === table && c.op !== 'select'),
     failReads: new Set(),
+    failWrites: new Set(),
+    beforeExecute: null,
     client: null,
   }
 
@@ -107,9 +113,12 @@ export function createFakeDb(initial: Record<string, Row[]> = {}): FakeDb {
 
     function execute(): { data: unknown; error: { message: string } | null } {
       const rows = (db.tables[table] ??= [])
-      db.calls.push({ table, op, payload })
+      const call: DbCall = { table, op, payload }
+      db.calls.push(call)
+      db.beforeExecute?.(call)
 
       if (op === 'select' && db.failReads.has(table)) return { data: null, error: { message: `${table} 조회 실패(테스트)` } }
+      if (op !== 'select' && db.failWrites.has(table)) return { data: null, error: { message: `${table} 쓰기 실패(테스트)` } }
 
       let result: Row[]
       if (op === 'insert') {
