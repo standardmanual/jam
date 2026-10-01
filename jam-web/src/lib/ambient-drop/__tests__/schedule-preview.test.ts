@@ -51,7 +51,8 @@ afterEach(() => {
   expect(db.writesTo('ambient_drop_schedules')).toEqual([])
   expect(db.writesTo('poi_drops')).toEqual([])
   expect(db.rpcCalls).toEqual([])
-  expect(db.calls.filter((c) => c.table === 'ambient_drop_config')).toEqual([])
+  // 종류+개수 모드는 지점당 한도를 위해 설정을 읽는다 — 읽기만 한다(위 select 검사)
+  expect(db.writesTo('ambient_drop_config')).toEqual([])
   expect(db.tables.ambient_drop_config).toEqual(world().ambient_drop_config)
   expect(db.tables.ambient_drop_schedules).toEqual([])
 })
@@ -93,7 +94,8 @@ describe('지점 모드 — 겹침 알림', () => {
     expect(p).toMatchObject({
       requested: 5,
       poiMode: 'category',
-      eligiblePoiCount: 2,
+      // 설정의 지점당 한도가 1이라 이미 드랍이 있는 P1은 세지 않는다(실행 결과의 eligiblePoiCount와 같은 기준)
+      eligiblePoiCount: 1,
       overlappedPoiCount: 0,
       overlapNotice: null,
       problem: null,
@@ -200,6 +202,18 @@ describe('summarizeSchedulePreview — 순수 요약', () => {
   it('종류+개수는 활성 드랍이 있는 지점이 있어도 겹침을 세지 않는다', () => {
     const p = summarizeSchedulePreview({ poiMode: 'category', poiCategory: null, totalCount: 4, itemMode: 'items', badgeIds: [B_LIVE] }, AT_ISO, targets())
     expect(p).toMatchObject({ requested: 4, overlappedPoiCount: 0, overlapNotice: null })
+  })
+
+  it('종류+개수는 maxActivePerPoi를 주면 한도 미만 지점만 센다', () => {
+    const spec = { poiMode: 'category', poiCategory: null, totalCount: 4, itemMode: 'items', badgeIds: [B_LIVE] } as const
+    expect(summarizeSchedulePreview(spec, AT_ISO, targets(), 1).eligiblePoiCount).toBe(1)
+    expect(summarizeSchedulePreview(spec, AT_ISO, targets(), 3).eligiblePoiCount).toBe(2)
+    expect(summarizeSchedulePreview(spec, AT_ISO, targets()).eligiblePoiCount).toBe(2)
+  })
+
+  it('지점 직접은 maxActivePerPoi를 줘도 한도를 적용하지 않는다', () => {
+    const spec = { poiMode: 'list', poiIds: [P1, P2], perPoiCount: 1, itemMode: 'items', badgeIds: [B_LIVE] } as const
+    expect(summarizeSchedulePreview(spec, AT_ISO, targets(), 1).eligiblePoiCount).toBe(2)
   })
 
   it('놓을 대상이 하나도 없으면 사유 문장을 problem에 싣는다', () => {

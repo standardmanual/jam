@@ -11,6 +11,14 @@ import type { AmbientDropScheduleStatus } from '@/types/database'
 import type { AmbientDropScheduleState } from '../scheduleSpec'
 import {
   SCHEDULE_STATE_LABEL,
+  bookExposure,
+  buildScheduleBody,
+  formatAmbientBatchSummary,
+  kstYmd,
+  scheduleAtParts,
+  scheduleDraftTotal,
+  toScheduledAtIso,
+  type ScheduleDraft,
   describeScheduleOutcome,
   formatScheduleAt,
   scheduleActions,
@@ -172,5 +180,95 @@ describe('scheduleRequestedCount·formatScheduleAt', () => {
   it('시각은 한국 시각으로 쓴다', () => {
     expect(formatScheduleAt('2026-10-05T00:00:00.000Z')).toBe('2026.10.05 09:00')
     expect(formatScheduleAt('2026-10-05T15:00:00.000Z')).toBe('2026.10.06 00:00')
+  })
+})
+
+describe('등록 폼 규칙 (티켓 20261001_2154)', () => {
+  const base: ScheduleDraft = {
+    title: '',
+    when: { kind: 'at', ymd: '2026-10-05', hour: 9 },
+    poiMode: 'list',
+    poiIds: ['p1', 'p2'],
+    perPoiCount: 2,
+    poiCategory: 'cafe',
+    totalCount: 10,
+    itemMode: 'items',
+    badgeIds: ['b1'],
+    collectionIds: ['c1'],
+  }
+  const AT = '2026-10-05T09:00:00+09:00'
+
+  it('buildScheduleBody: 지점 직접 × 아이템 직접은 그 모드의 칸만 담는다', () => {
+    expect(buildScheduleBody(base)).toEqual({
+      scheduled_at: AT,
+      poi_ids: ['p1', 'p2'],
+      per_poi_count: 2,
+      badge_ids: ['b1'],
+    })
+  })
+
+  it('buildScheduleBody: 지점 직접 × 컬렉션', () => {
+    expect(buildScheduleBody({ ...base, itemMode: 'collections' })).toEqual({
+      scheduled_at: AT,
+      poi_ids: ['p1', 'p2'],
+      per_poi_count: 2,
+      collection_ids: ['c1'],
+    })
+  })
+
+  it('buildScheduleBody: 종류+개수 × 아이템 직접, 전체 종류면 poi_category가 없다', () => {
+    expect(buildScheduleBody({ ...base, poiMode: 'category' })).toEqual({
+      scheduled_at: AT,
+      poi_category: 'cafe',
+      total_count: 10,
+      badge_ids: ['b1'],
+    })
+    const all = buildScheduleBody({ ...base, poiMode: 'category', poiCategory: null, itemMode: 'collections' })
+    expect(all).toEqual({ scheduled_at: AT, total_count: 10, collection_ids: ['c1'] })
+    expect(all).not.toHaveProperty('poi_category')
+  })
+
+  it('buildScheduleBody: 이름은 다듬어 넣고 비면 뺀다', () => {
+    expect(buildScheduleBody({ ...base, title: '  시월 드랍 ' }).title).toBe('시월 드랍')
+    expect(buildScheduleBody({ ...base, title: '   ' })).not.toHaveProperty('title')
+  })
+
+  it('scheduleDraftTotal은 모드별 드랍 수다', () => {
+    expect(scheduleDraftTotal(base)).toBe(4)
+    expect(scheduleDraftTotal({ ...base, poiMode: 'category' })).toBe(10)
+  })
+
+  it('toScheduledAtIso·scheduleAtParts는 왕복한다', () => {
+    expect(toScheduledAtIso('2026-10-05', 9)).toBe(AT)
+    expect(scheduleAtParts(AT)).toEqual({ ymd: '2026-10-05', hour: 9 })
+    expect(scheduleAtParts(toScheduledAtIso('2026-10-05', 0))).toEqual({ ymd: '2026-10-05', hour: 0 })
+    expect(scheduleAtParts('2026-10-04T15:00:00.000Z')).toEqual({ ymd: '2026-10-05', hour: 0 })
+  })
+
+  it('kstYmd는 한국 시각 날짜다', () => {
+    expect(kstYmd('2026-10-01T16:00:00.000Z')).toBe('2026-10-02')
+  })
+
+  it('bookExposure: 노출 중·공개 전·기간 끝남', () => {
+    const now = '2026-10-01T03:00:00.000Z'
+    expect(bookExposure({ valid_from: null, valid_until: null }, now)).toBe('live')
+    expect(bookExposure({ valid_from: '2026-09-01T00:00:00Z', valid_until: '2026-12-01T00:00:00Z' }, now)).toBe('live')
+    expect(bookExposure({ valid_from: '2026-10-10T00:00:00Z', valid_until: null }, now)).toBe('prelaunch')
+    expect(bookExposure({ valid_from: null, valid_until: '2026-09-30T00:00:00Z' }, now)).toBe('ended')
+  })
+
+  it('formatAmbientBatchSummary: 자동·수동은 기존 문장, 예약은 요청·드랍·겹침', () => {
+    expect(
+      formatAmbientBatchSummary({ trigger: 'cron', effectiveCategorySlug: 'cafe', effectiveCollectionIds: ['a'], spawned: 3 })
+    ).toBe('[자동] 카테고리: cafe · 컬렉션 1개 · 배치 3개')
+    expect(formatAmbientBatchSummary({ trigger: 'manual', spawned: 0, reason: 'auto_disabled' })).toBe(
+      '[수동] 카테고리: 전체 · 전체 컬렉션 · 배치 0개 (자동 배포 꺼짐)'
+    )
+    expect(formatAmbientBatchSummary({ trigger: 'scheduled', requested: 4, spawned: 3, overlappedPoiCount: 1 })).toBe(
+      '[예약] 요청 4개 · 드랍 3개 · 겹친 지점 1곳'
+    )
+    expect(
+      formatAmbientBatchSummary({ trigger: 'scheduled', requested: 4, spawned: 0, overlappedPoiCount: 0, reason: 'no_eligible_poi' })
+    ).toBe('[예약] 요청 4개 · 드랍 0개 · 겹친 지점 0곳 (드랍할 지점 없음)')
   })
 })

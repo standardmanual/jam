@@ -9,6 +9,7 @@
  * 등록 버튼을 막고 같은 문장을 보여 준다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
+import { getAmbientDropConfig } from './config'
 import { parseAmbientDropScheduleInput, type AmbientDropScheduleSpec } from './scheduleSpec'
 import { describeScheduleTargetProblems, loadScheduleTargets, type ScheduleTargets } from './scheduleTargets'
 import { scheduleRequestedCount, type AmbientDropSchedulePreview } from './scheduleView'
@@ -24,11 +25,16 @@ const TARGET_CHECK_FAILED = '예약 대상을 확인하지 못했어요. 잠시 
 const CATEGORY_NOT_FOUND =
   '지점 종류를 찾을 수 없어요. 선택한 종류가 지워졌거나 잘못된 값이에요. 지점 종류를 다시 선택해 주세요.'
 
-/** 대상 판정 결과를 화면용 요약으로 줄인다(순수 함수) */
+/**
+ * 대상 판정 결과를 화면용 요약으로 줄인다(순수 함수).
+ * 종류+개수 모드에서 `maxActivePerPoi`를 주면 `eligiblePoiCount`는 그 한도 미만 지점만 센다 —
+ * 실행 결과(`planScheduleDrops`)와 같은 기준이다(티켓 20261001_2154).
+ */
 export function summarizeSchedulePreview(
   spec: AmbientDropScheduleSpec,
   scheduledAt: string,
-  targets: ScheduleTargets
+  targets: ScheduleTargets,
+  maxActivePerPoi?: number
 ): AmbientDropSchedulePreview {
   // 겹침은 지점 직접 모드의 이야기다. 종류+개수 모드는 활성 드랍이 없는 지점부터 흩어 놓아 겹치지 않는다
   const overlappedPoiCount =
@@ -37,7 +43,10 @@ export function summarizeSchedulePreview(
     scheduledAt,
     requested: scheduleRequestedCount(spec),
     poiMode: spec.poiMode,
-    eligiblePoiCount: targets.pois.length,
+    eligiblePoiCount:
+      spec.poiMode === 'category' && maxActivePerPoi !== undefined
+        ? targets.pois.filter((poi) => poi.activeSystemCount < maxActivePerPoi).length
+        : targets.pois.length,
     overlappedPoiCount,
     overlapNotice:
       overlappedPoiCount > 0
@@ -75,5 +84,7 @@ export async function previewAmbientDropSchedule(
     console.error('[ambient-drop-schedule] 미리 확인: 대상 판정 실패:', err)
     return { ok: false, status: 500, error: TARGET_CHECK_FAILED }
   }
-  return { ok: true, preview: summarizeSchedulePreview(spec, scheduledAt, targets) }
+  // 종류+개수 모드의 지점당 한도 — 설정은 읽기만 한다
+  const maxActivePerPoi = spec.poiMode === 'category' ? (await getAmbientDropConfig()).max_active_per_poi : undefined
+  return { ok: true, preview: summarizeSchedulePreview(spec, scheduledAt, targets, maxActivePerPoi) }
 }
