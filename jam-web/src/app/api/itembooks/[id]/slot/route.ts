@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
+import { runSlotRewardIssue } from '@/lib/itembook/slotReward'
 import { jamTriggersForSlot } from '@/lib/badge-engine/jamActionProgressTriggers'
 import { isItemBookLaunched, type ItemBookVisibilityFields } from '@/lib/itembook/visibility'
 import { d } from '@/lib/i18n'
@@ -112,11 +113,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: mapped.message }, { status: mapped.status })
   }
 
-  // JAM! 행동 지표(완성한 컬렉션 수) — 응답을 보낸 뒤에 장착한 사람의 배지를 판정한다(티켓 20261001_0633).
-  // 성공 분기에서만 예약한다(해제·교체·실패에서는 예약하지 않는다). 장착 RPC가 완성 여부를 돌려주지 않아 장착이
-  // 성공할 때마다 판정하지만, 완성이 아닌 장착이면 값이 그대로라 잘못 발급되지 않는다.
-  // `runJamActionEvaluation`은 예외를 던지지 않아 장착 응답은 그대로다.
-  after(() => runJamActionEvaluation(user.id, jamTriggersForSlot()))
+  // 응답을 보낸 뒤에 장착한 사람의 배지를 발급·판정한다. 성공 분기에서만 예약한다(해제·교체·실패에서는 예약하지 않는다).
+  // 두 함수 모두 예외를 던지지 않아 장착 응답은 그대로다.
+  // 1) 컬렉션 보상 배지(티켓 20261001_0635) — 장착 RPC는 완성 포인트만 주고 보상 배지는 주지 않는다. 완성 기록이
+  //    있고 `reward_badge_id`가 있을 때만 발급하며, 동기화 보정과 같은 발급 함수를 써서 한 번만 나간다.
+  // 2) JAM! 행동 지표(완성한 컬렉션 수)(티켓 20261001_0633) — 장착 RPC가 완성 여부를 돌려주지 않아 장착이
+  //    성공할 때마다 판정하지만, 완성이 아닌 장착이면 값이 그대로라 잘못 발급되지 않는다.
+  // 순서: 보상 배지를 먼저 발급해 두 결과를 따로 알린다(한 장착이 둘 다 내면 결산이 두 행일 수 있다 — 드문 경우라 합치지 않는다).
+  after(async () => {
+    await runSlotRewardIssue(user.id, itemBookId)
+    await runJamActionEvaluation(user.id, jamTriggersForSlot())
+  })
 
   return NextResponse.json({ slot: result.slot }, { status: 201 })
 }

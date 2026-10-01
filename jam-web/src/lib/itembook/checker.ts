@@ -8,11 +8,15 @@
  *
  * 주의: 슬롯 기반 완성은 /api/itembooks/[id]/slot POST 핸들러에서 실시간으로 처리됨.
  *       이 함수는 Strava sync 등 배치 맥락에서 누락된 완성을 보정하는 catch-up 용도.
+ *       장착 RPC는 완성 기록과 포인트만 만들고 보상 배지는 주지 않는다(마이그레이션 179). 보상 배지는
+ *       `issueItemBookRewardBadges()` 한 곳에서 발급하고, 장착 라우트(`slotReward.ts`)와 이 함수의
+ *       동기화 보정이 같은 함수를 쓴다(티켓 20261001_0635). 완성 기록이 이미 있는 컬렉션도 보상 배지가
+ *       없으면 이 함수가 따라잡아 발급한다.
  *
  * service_role 클라이언트 사용 (RLS 우회)
  */
 import { createServiceClient } from '@/lib/supabase/server'
-import type { ItemBookRow, InventoryRow, BadgeType } from '@/types/database'
+import type { ItemBookRow, BadgeType } from '@/types/database'
 import { computeBookCompletion } from './completion-basis'
 import { buildFilledByBook } from './filled-by-book'
 import { applyDroppableItemBookFilter } from './visibility'
@@ -147,8 +151,11 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   )
 
   // 5. 완성 판정
+  //    completedIds는 이번에 «새로» 완성한 북만 담는다(완성 기록·`itemBooksCompleted` 집계의 기준).
+  //    보상 배지 후보(completeBooks)는 이미 완성 기록이 있는 북도 담는다 — 장착 RPC가 완성 기록만 남기고
+  //    보상 배지를 주지 않던 시기의 완성분을 따라잡기 위해서다(티켓 20261001_0635).
   const completedIds: string[] = []
-  const completedBooks: ItemBookRow[] = []
+  const completeBooks: ItemBookRow[] = []
 
   const completionByBook = computeBookCompletion(bookBadges, new Set<string>(), {
     types: ['item', 'checkin'],
@@ -159,64 +166,76 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     // 분모가 0인 북(배지 없음)은 complete=false
     if (!completionByBook.get(book.id)?.complete) continue
 
-    if (!alreadyCompletedSet.has(book.id)) {
-      completedIds.push(book.id)
-      completedBooks.push(book)
-    }
+    completeBooks.push(book)
+    if (!alreadyCompletedSet.has(book.id)) completedIds.push(book.id)
   }
 
-  if (completedIds.length === 0) {
+  if (completeBooks.length === 0) {
     return { completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] }
   }
 
-  console.info(`[checkItemBookCompletion] 완성된 아이템북 — userId: ${userId}, ids: ${completedIds.join(', ')}`)
+  // 6. 완성 기록 upsert (새로 완성한 북만)
+  if (completedIds.length > 0) {
+    console.info(`[checkItemBookCompletion] 완성된 아이템북 — userId: ${userId}, ids: ${completedIds.join(', ')}`)
+    const completionRows = completedIds.map((id) => ({ user_id: userId, item_book_id: id }))
+    const completionsTable = supabase.from('user_item_book_completions')
+    await completionsTable.upsert(completionRows, { onConflict: 'user_id,item_book_id', ignoreDuplicates: true })
+  }
 
-  // 6. 완성 기록 upsert
-  const completionRows = completedIds.map((id) => ({ user_id: userId, item_book_id: id }))
-  const completionsTable = supabase.from('user_item_book_completions')
-  await completionsTable.upsert(completionRows, { onConflict: 'user_id,item_book_id', ignoreDuplicates: true })
+  // 7. reward_badge_id 발급 — 새 완성분과 보정분(완성 기록은 있으나 배지가 없는 북)을 함께 넘긴다
+  const rewardBadgeIds = await issueItemBookRewardBadges(supabase, userId, completeBooks)
 
-  // 7. reward_badge_id 발급
+  return { completedIds, rewardBadgesIssued: rewardBadgeIds.length, rewardBadgeIds }
+}
+
+/** 보상 배지 발급에 필요한 `item_books` 컬럼만 */
+export type ItemBookRewardFields = Pick<ItemBookRow, 'id' | 'name' | 'reward_badge_id'>
+
+/**
+ * 완성한 컬렉션의 보상 배지(`reward_badge_id`)를 발급한다. 반환값은 이번 호출에서 실제로 발급된 배지 id(발급 순서).
+ *
+ * 동기화 보정(`checkItemBookCompletion`)과 컬렉션 장착 라우트(`slotReward.ts`)가 **같은 함수**를 쓴다
+ * (티켓 20261001_0635). 완성 여부는 부르는 쪽이 판정한다 — 이 함수는 받은 북이 모두 완성됐다고 보고
+ * 보유 확인 → insert만 한다. 이미 보유했거나(`user_activity_badges`에 있음) 동시 발급 경합으로 `23505`가
+ * 나면 건너뛰므로 같은 배지는 한 번만 발급된다. `reward_badge_id`가 빈 북은 건너뛴다.
+ */
+export async function issueItemBookRewardBadges(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string,
+  books: readonly ItemBookRewardFields[]
+): Promise<string[]> {
   const rewardBadgeIds: string[] = []
-
-  // 유저 인벤토리
-  const { data: inventoryRaw } = await supabase
-    .from('inventory')
-    .select('id')
-    .eq('user_id', userId)
-    .single()
-  const inventory = inventoryRaw as Pick<InventoryRow, 'id'> | null
 
   // 7-0. 보상 배지 타입 확인 — 아래 발급 로직은 "보상 배지는 항상 activity 타입"이라는
   //      가정 하에 무조건 user_activity_badges에 쓴다. 이 가정이 깨지면(예: 콘텐츠 쪽에서
   //      checkin/item 타입 배지를 보상으로 지정) 조용히 잘못된 테이블에 기록되므로,
   //      동작은 바꾸지 않되 경고 로그로 드러낸다 (티켓 20260906_2023).
-  const rewardBadgeIdCandidates = completedBooks
+  const rewardBadgeIdCandidates = books
     .map((b) => b.reward_badge_id)
     .filter((id): id is string => Boolean(id))
-  const rewardBadgeTypeById = new Map<string, BadgeType>()
-  if (rewardBadgeIdCandidates.length > 0) {
-    const { data: rewardBadgeTypesRaw, error: rewardBadgeTypesError } = await supabase
-      .from('badges')
-      .select('id, type')
-      .in('id', rewardBadgeIdCandidates)
+  if (rewardBadgeIdCandidates.length === 0) return rewardBadgeIds
 
-    if (rewardBadgeTypesError) {
-      console.error('[checkItemBookCompletion] reward_badge type 조회 오류:', rewardBadgeTypesError)
-    } else {
-      for (const b of (rewardBadgeTypesRaw ?? []) as { id: string; type: BadgeType }[]) {
-        rewardBadgeTypeById.set(b.id, b.type)
-      }
+  const rewardBadgeTypeById = new Map<string, BadgeType>()
+  const { data: rewardBadgeTypesRaw, error: rewardBadgeTypesError } = await supabase
+    .from('badges')
+    .select('id, type')
+    .in('id', rewardBadgeIdCandidates)
+
+  if (rewardBadgeTypesError) {
+    console.error('[issueItemBookRewardBadges] reward_badge type 조회 오류:', rewardBadgeTypesError)
+  } else {
+    for (const b of (rewardBadgeTypesRaw ?? []) as { id: string; type: BadgeType }[]) {
+      rewardBadgeTypeById.set(b.id, b.type)
     }
   }
 
-  for (const book of completedBooks) {
+  for (const book of books) {
     if (!book.reward_badge_id) continue
 
     const rewardBadgeType = rewardBadgeTypeById.get(book.reward_badge_id)
     if (rewardBadgeType && rewardBadgeType !== 'activity') {
       console.error(
-        `[checkItemBookCompletion] reward_badge type 불일치 — book: ${book.id}, reward_badge_id: ${book.reward_badge_id}, type: ${rewardBadgeType} (activity 예상, user_activity_badges에 기록됨)`
+        `[issueItemBookRewardBadges] reward_badge type 불일치 — book: ${book.id}, reward_badge_id: ${book.reward_badge_id}, type: ${rewardBadgeType} (activity 예상, user_activity_badges에 기록됨)`
       )
     }
 
@@ -239,16 +258,13 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
 
     if (insertError) {
       if (insertError.code === '23505') continue
-      console.error(`[checkItemBookCompletion] 보상 배지 발급 오류 (book: ${book.id}):`, insertError)
+      console.error(`[issueItemBookRewardBadges] 보상 배지 발급 오류 (book: ${book.id}):`, insertError)
       continue
     }
 
-    // 인벤토리 used_slots 업데이트 (보상 배지는 activity badge이므로 인벤토리 대상 아님)
-    void inventory // 보상 배지는 user_activity_badges에만 저장
-
     rewardBadgeIds.push(book.reward_badge_id)
-    console.info(`[checkItemBookCompletion] 보상 배지 발급 완료 — userId: ${userId}, book: ${book.name}, reward_badge_id: ${book.reward_badge_id}`)
+    console.info(`[issueItemBookRewardBadges] 보상 배지 발급 완료 — userId: ${userId}, book: ${book.name}, reward_badge_id: ${book.reward_badge_id}`)
   }
 
-  return { completedIds, rewardBadgesIssued: rewardBadgeIds.length, rewardBadgeIds }
+  return rewardBadgeIds
 }

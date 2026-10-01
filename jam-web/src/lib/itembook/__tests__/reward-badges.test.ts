@@ -1,0 +1,332 @@
+/**
+ * 컬렉션 보상 배지 발급 — 동기화 보정(`checkItemBookCompletion`)과 장착 직후 발급(`runSlotRewardIssue`)이
+ * 같은 발급 함수(`issueItemBookRewardBadges`)를 쓰는지 검증한다 (티켓 20261001_0635).
+ *
+ * 배경: 장착 RPC(마이그레이션 179)는 완성 기록과 포인트만 만들고 보상 배지(`reward_badge_id`)는 주지 않는다.
+ * 동기화 보정은 완성 기록이 이미 있으면 건너뛰어서, 장착으로 완성한 유저는 보상 배지를 받지 못했다.
+ *
+ * 검증 대상:
+ *  - 동기화 보정: 새로 완성하면 완성 기록과 보상 배지를 함께 만든다
+ *  - 동기화 보정: 완성 기록은 있는데 보상 배지가 없으면(장착으로 완성한 경우) 배지만 따라잡아 발급한다. `completedIds`에는 넣지 않는다
+ *  - 이미 보유했거나 `23505` 경합이면 다시 발급하지 않고 오류도 내지 않는다. 두 번 불러도 한 번만 발급된다
+ *  - `reward_badge_id`가 비면 발급하지 않는다
+ *  - 장착 직후 발급(`runSlotRewardIssue`): 완성 기록이 있으면 발급하고 `activity_recap` 결산으로 알린다. 완성이 아니거나
+ *    이미 보유했거나 보상 배지가 없으면 발급·알림이 없다. 어떤 실패도 던지지 않는다
+ *  - 장착 직후 발급 뒤 이어지는 동기화 보정은 같은 배지를 다시 발급하지 않는다
+ *
+ * Supabase는 메모리 테이블로 흉내 낸다(필터 `eq`·`in`만 해석, 컬럼 선택은 무시).
+ *
+ * 실행: cd jam-web && npx vitest run src/lib/itembook/__tests__/reward-badges.test.ts
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+
+type Row = Record<string, unknown>
+
+const USER_ID = 'user-1'
+const BOOK_ID = 'book-1'
+const REWARD_BADGE_ID = 'reward-1'
+
+const db = vi.hoisted(() => ({
+  tables: {} as Record<string, Row[]>,
+  /** user_activity_badges insert 호출 기록 */
+  inserts: [] as Row[],
+  /** user_item_book_completions upsert 호출 기록 */
+  upserts: [] as Row[][],
+  /** 설정하면 user_activity_badges insert가 이 오류로 실패한다 */
+  insertError: null as { code: string; message: string } | null,
+}))
+
+const notifyMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>())
+
+interface FakeBuilder extends PromiseLike<{ data: Row[]; error: null }> {
+  select: (columns?: string) => FakeBuilder
+  eq: (column: string, value: unknown) => FakeBuilder
+  in: (column: string, values: unknown[]) => FakeBuilder
+  or: (filters: string) => FakeBuilder
+  order: (column: string) => FakeBuilder
+  range: (from: number, to: number) => FakeBuilder
+  maybeSingle: () => Promise<{ data: Row | null; error: null }>
+  insert: (payload: Row) => Promise<{ error: { code: string; message: string } | null }>
+  upsert: (rows: Row[]) => Promise<{ error: null }>
+}
+
+vi.mock('@/lib/supabase/server', () => ({
+  createServiceClient: () => ({
+    from(table: string): FakeBuilder {
+      const filters: ((row: Row) => boolean)[] = []
+      let window: [number, number] | null = null
+      const run = (): Row[] => {
+        const rows = (db.tables[table] ?? []).filter((row) => filters.every((f) => f(row)))
+        return window ? rows.slice(window[0], window[1] + 1) : rows
+      }
+      const builder: FakeBuilder = {
+        select: () => builder,
+        eq: (column, value) => {
+          filters.push((row) => row[column] === value)
+          return builder
+        },
+        in: (column, values) => {
+          filters.push((row) => values.includes(row[column]))
+          return builder
+        },
+        or: () => builder,
+        order: () => builder,
+        range: (from, to) => {
+          window = [from, to]
+          return builder
+        },
+        maybeSingle: async () => ({ data: run()[0] ?? null, error: null }),
+        insert: async (payload) => {
+          db.inserts.push(payload)
+          if (db.insertError) return { error: db.insertError }
+          db.tables[table] = [...(db.tables[table] ?? []), payload]
+          return { error: null }
+        },
+        upsert: async (rows) => {
+          db.upserts.push(rows)
+          db.tables[table] = [...(db.tables[table] ?? []), ...rows]
+          return { error: null }
+        },
+        then: (onfulfilled, onrejected) =>
+          Promise.resolve({ data: run(), error: null as null }).then(onfulfilled, onrejected),
+      }
+      return builder
+    },
+  }),
+}))
+vi.mock('@/lib/strava/sync', () => ({
+  notifyActivityBadgesEarned: (...args: unknown[]) => notifyMock(...args),
+}))
+
+import { checkItemBookCompletion, issueItemBookRewardBadges } from '../checker'
+import { runSlotRewardIssue } from '../slotReward'
+import { createServiceClient } from '@/lib/supabase/server'
+
+/** 컬렉션 1개(배지 2종)를 둔다. 유저는 두 배지를 모두 장착했다 = 완성 조건 충족 */
+function seed(opts: { rewardBadgeId?: string | null; completionRecorded?: boolean; alreadyHeld?: boolean } = {}) {
+  const rewardBadgeId = opts.rewardBadgeId === undefined ? REWARD_BADGE_ID : opts.rewardBadgeId
+  db.tables = {
+    item_books: [{ id: BOOK_ID, name: '테스트 컬렉션', reward_badge_id: rewardBadgeId, is_active: true }],
+    badges: [
+      { id: 'b1', item_book_id: BOOK_ID, type: 'item', drop_excluded: false },
+      { id: 'b2', item_book_id: BOOK_ID, type: 'item', drop_excluded: false },
+      // 보상 배지 자신은 컬렉션 소속이 아니다(item_book_id 없음)
+      { id: REWARD_BADGE_ID, item_book_id: null, type: 'activity', drop_excluded: false },
+    ],
+    user_item_book_slots: [
+      { user_id: USER_ID, item_book_id: BOOK_ID, badge_id: 'b1' },
+      { user_id: USER_ID, item_book_id: BOOK_ID, badge_id: 'b2' },
+    ],
+    user_item_book_completions: opts.completionRecorded ? [{ user_id: USER_ID, item_book_id: BOOK_ID }] : [],
+    user_activity_badges: opts.alreadyHeld ? [{ user_id: USER_ID, badge_id: REWARD_BADGE_ID }] : [],
+  }
+}
+
+let consoleError: ReturnType<typeof vi.spyOn>
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  db.tables = {}
+  db.inserts = []
+  db.upserts = []
+  db.insertError = null
+  notifyMock.mockResolvedValue(undefined)
+  vi.spyOn(console, 'info').mockImplementation(() => {})
+  consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+describe('동기화 보정(checkItemBookCompletion) — 보상 배지 발급', () => {
+  it('새로 완성하면 완성 기록과 보상 배지를 함께 만든다', async () => {
+    seed()
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result).toEqual({ completedIds: [BOOK_ID], rewardBadgesIssued: 1, rewardBadgeIds: [REWARD_BADGE_ID] })
+    expect(db.upserts).toEqual([[{ user_id: USER_ID, item_book_id: BOOK_ID }]])
+    expect(db.inserts).toEqual([
+      { user_id: USER_ID, badge_id: REWARD_BADGE_ID, triggered_by: `itembook_complete:${BOOK_ID}` },
+    ])
+  })
+
+  it('완성 기록은 있는데 보상 배지가 없으면(장착으로 완성한 경우) 배지만 따라잡아 발급한다', async () => {
+    seed({ completionRecorded: true })
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    // 새로 완성한 컬렉션이 아니므로 completedIds·완성 기록 upsert에는 들지 않는다
+    expect(result.completedIds).toEqual([])
+    expect(db.upserts).toEqual([])
+    // 보상 배지는 보정으로 발급되고, 반환(동기화 결산 입력)에도 담긴다
+    expect(result.rewardBadgeIds).toEqual([REWARD_BADGE_ID])
+    expect(result.rewardBadgesIssued).toBe(1)
+    expect(db.inserts).toEqual([
+      { user_id: USER_ID, badge_id: REWARD_BADGE_ID, triggered_by: `itembook_complete:${BOOK_ID}` },
+    ])
+  })
+
+  it('이미 보유한 보상 배지는 다시 발급하지 않는다', async () => {
+    seed({ completionRecorded: true, alreadyHeld: true })
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result).toEqual({ completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] })
+    expect(db.inserts).toEqual([])
+  })
+
+  it('같은 보정을 두 번 돌려도 보상 배지는 한 번만 발급된다', async () => {
+    seed({ completionRecorded: true })
+
+    const first = await checkItemBookCompletion(USER_ID)
+    const second = await checkItemBookCompletion(USER_ID)
+
+    expect(first.rewardBadgeIds).toEqual([REWARD_BADGE_ID])
+    expect(second.rewardBadgeIds).toEqual([])
+    expect(db.inserts).toHaveLength(1)
+  })
+
+  it('동시 발급 경합(23505)은 오류 없이 건너뛰고 발급분에 넣지 않는다', async () => {
+    seed({ completionRecorded: true })
+    db.insertError = { code: '23505', message: 'duplicate key value violates unique constraint' }
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result).toEqual({ completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] })
+    expect(db.inserts).toHaveLength(1)
+    expect(consoleError).not.toHaveBeenCalled()
+  })
+
+  it('23505가 아닌 insert 오류는 로그를 남기고 발급분에 넣지 않는다', async () => {
+    seed({ completionRecorded: true })
+    db.insertError = { code: '08006', message: '연결 오류' }
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result.rewardBadgeIds).toEqual([])
+    expect(consoleError).toHaveBeenCalledTimes(1)
+  })
+
+  it('reward_badge_id가 비면 새로 완성해도 발급하지 않는다(완성 기록은 만든다)', async () => {
+    seed({ rewardBadgeId: null })
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result).toEqual({ completedIds: [BOOK_ID], rewardBadgesIssued: 0, rewardBadgeIds: [] })
+    expect(db.upserts).toHaveLength(1)
+    expect(db.inserts).toEqual([])
+  })
+
+  it('완성 조건을 채우지 못한 컬렉션은 완성 기록도 보상 배지도 만들지 않는다', async () => {
+    seed()
+    db.tables.user_item_book_slots = [{ user_id: USER_ID, item_book_id: BOOK_ID, badge_id: 'b1' }]
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result).toEqual({ completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] })
+    expect(db.upserts).toEqual([])
+    expect(db.inserts).toEqual([])
+  })
+})
+
+describe('issueItemBookRewardBadges — 발급 함수', () => {
+  it('보상 배지가 activity 타입이 아니어도 동작은 같고 경고 로그만 남긴다', async () => {
+    seed()
+    db.tables.badges = [
+      ...db.tables.badges.filter((b) => b.id !== REWARD_BADGE_ID),
+      { id: REWARD_BADGE_ID, item_book_id: null, type: 'item', drop_excluded: false },
+    ]
+
+    const issued = await issueItemBookRewardBadges(createServiceClient(), USER_ID, [
+      { id: BOOK_ID, name: '테스트 컬렉션', reward_badge_id: REWARD_BADGE_ID },
+    ])
+
+    expect(issued).toEqual([REWARD_BADGE_ID])
+    expect(consoleError).toHaveBeenCalledTimes(1)
+    expect(String(consoleError.mock.calls[0][0])).toContain('reward_badge type 불일치')
+  })
+
+  it('보상 배지가 없는 컬렉션만 넘기면 아무것도 읽거나 쓰지 않는다', async () => {
+    seed({ rewardBadgeId: null })
+
+    const issued = await issueItemBookRewardBadges(createServiceClient(), USER_ID, [
+      { id: BOOK_ID, name: '테스트 컬렉션', reward_badge_id: null },
+    ])
+
+    expect(issued).toEqual([])
+    expect(db.inserts).toEqual([])
+  })
+})
+
+describe('장착 직후 발급(runSlotRewardIssue)', () => {
+  it('완성 기록이 있으면 보상 배지를 발급하고 activity_recap 결산으로 알린다', async () => {
+    seed({ completionRecorded: true })
+
+    await runSlotRewardIssue(USER_ID, BOOK_ID)
+
+    expect(db.inserts).toEqual([
+      { user_id: USER_ID, badge_id: REWARD_BADGE_ID, triggered_by: `itembook_complete:${BOOK_ID}` },
+    ])
+    expect(notifyMock).toHaveBeenCalledTimes(1)
+    // (service, userId, 발급 배지 id, 활동 id 목록)
+    expect(notifyMock.mock.calls[0].slice(1)).toEqual([USER_ID, [REWARD_BADGE_ID], []])
+  })
+
+  it('완성 기록이 없으면(이 장착으로 완성하지 않았으면) 발급도 알림도 없다', async () => {
+    seed({ completionRecorded: false })
+
+    await runSlotRewardIssue(USER_ID, BOOK_ID)
+
+    expect(db.inserts).toEqual([])
+    expect(notifyMock).not.toHaveBeenCalled()
+  })
+
+  it('이미 보유한 보상 배지는 다시 발급하지 않고 알리지도 않는다', async () => {
+    seed({ completionRecorded: true, alreadyHeld: true })
+
+    await runSlotRewardIssue(USER_ID, BOOK_ID)
+
+    expect(db.inserts).toEqual([])
+    expect(notifyMock).not.toHaveBeenCalled()
+  })
+
+  it('reward_badge_id가 비면 완성 기록을 읽지 않고 끝낸다', async () => {
+    seed({ rewardBadgeId: null, completionRecorded: true })
+
+    await runSlotRewardIssue(USER_ID, BOOK_ID)
+
+    expect(db.inserts).toEqual([])
+    expect(notifyMock).not.toHaveBeenCalled()
+  })
+
+  it('동시 발급 경합(23505)이면 오류 없이 끝나고 알리지 않는다', async () => {
+    seed({ completionRecorded: true })
+    db.insertError = { code: '23505', message: 'duplicate key value violates unique constraint' }
+
+    await expect(runSlotRewardIssue(USER_ID, BOOK_ID)).resolves.toBeUndefined()
+
+    expect(notifyMock).not.toHaveBeenCalled()
+    expect(consoleError).not.toHaveBeenCalled()
+  })
+
+  it('알림이 실패해도 예외를 던지지 않고 로그만 남긴다', async () => {
+    seed({ completionRecorded: true })
+    notifyMock.mockRejectedValue(new Error('알림 장애'))
+
+    await expect(runSlotRewardIssue(USER_ID, BOOK_ID)).resolves.toBeUndefined()
+
+    expect(consoleError).toHaveBeenCalledTimes(1)
+  })
+
+  it('장착 직후 발급 뒤에 이어진 동기화 보정은 같은 보상 배지를 다시 발급하지 않는다', async () => {
+    seed({ completionRecorded: true })
+
+    await runSlotRewardIssue(USER_ID, BOOK_ID)
+    const catchUp = await checkItemBookCompletion(USER_ID)
+
+    expect(catchUp.rewardBadgeIds).toEqual([])
+    expect(db.inserts).toHaveLength(1)
+  })
+})

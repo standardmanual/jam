@@ -303,14 +303,18 @@ badge-engine 밖의 세 번째 평가 경로.
   |---|---|---|
   | 새 활동이 있는 동기화의 끝(`processFetchedActivities`) | 주 키 5개(`JAM_SYNC_TRIGGERS`) | 활동 기록 저장·`recordDailySyncAndEvaluate` 뒤, 결산 앞에서 1회. 획득 id는 결산(`notifyActivityBadgesEarned`)과 `earnedBadgeIds`에 합치고 반환의 `badges` 수에는 넣지 않는다 |
   | 새 활동이 없는 동기화(빈 배치 이른 반환) | 가입 경과일(`JAM_EMPTY_SYNC_TRIGGERS`) | `evaluateBadges` 뒤 1회. 날짜가 지나면 값이 바뀌는 지표는 이것뿐이다. 오래 쉰 계정은 보조 키가 막는다(R4) |
-  | 컬렉션 장착 `POST /api/itembooks/[id]/slot` 성공 | `collection_complete_count`(`jamTriggersForSlot`) | `after()` 예약(`runJamActionEvaluation`). 해제(DELETE)·교체(PATCH)·실패 분기에서는 예약하지 않는다. 장착 RPC가 완성 여부를 돌려주지 않아 장착이 성공할 때마다 판정하며, 완성이 아닌 장착이면 값이 그대로라 발급되지 않는다(R6) |
+  | 컬렉션 장착 `POST /api/itembooks/[id]/slot` 성공 | `collection_complete_count`(`jamTriggersForSlot`) | `after()` 예약 1회 안에서 컬렉션 보상 배지 발급(`runSlotRewardIssue`) 뒤에 판정(`runJamActionEvaluation`). 해제(DELETE)·교체(PATCH)·실패 분기에서는 예약하지 않는다. 장착 RPC가 완성 여부를 돌려주지 않아 장착이 성공할 때마다 판정하며, 완성이 아닌 장착이면 값이 그대로라 발급되지 않는다(R6) |
   | 기존 유저 재평가 배치 `POST /api/admin/badges/reevaluate-all`(`reevaluateUsersForCatalog`) | `JAM_ACTION_CONDITION_KEYS` 전체 + 사용량 지표 6종 | 유저마다 메인 엔진(`evaluateBadgesDetailed`) 뒤 JAM! → 사용량(`reevaluateUsageMetricBadges`) 순으로 각 1회, 각각 별도 `try/catch`. `dryRun`·`silent: true`·`triggeredByPrefix: 'catalog_reevaluation'`을 넘겨 dry-run은 아무것도 쓰지 않고 피드는 만들지 않으며 포인트는 정상 지급한다. 알림은 부르지 않는다. 절차·응답 필드는 §2.17 |
 
   동기화 끝에서 한 번에 판정하는 이유: 활동 기록 저장(`recordProcessedActivities`)이 판정보다 앞서야 주간 활동일이
   이번 배치를 본다. 체크인 루프나 미션 판정 직후에 따로 부르면 호출마다 배지 전체를 읽는다. `user_checkin_badge_earns`
   insert는 `sync.ts`에서만, 미션 완료(`checkMissions`)와 아이템북 완성 보정(`checkItemBookCompletion`)도 `sync.ts`에서만
   호출되어(2026-10-01 grep) 동기화가 끝나는 시점이면 충분하다. 컬렉션 완성은 장착 RPC(`slot_item_into_book`)에서도
-  일어나서 장착 라우트가 따로 판정한다. 기존 유저 재평가 배치(`reevaluateCatalog.ts`)는 위 표의 마지막 행처럼 유저마다
+  일어나서 장착 라우트가 따로 판정한다. 장착 RPC는 완성 기록과 잼 포인트만 만들고 컬렉션 보상 배지(`reward_badge_id`)는 주지
+  않으므로, 장착 라우트가 응답 뒤에 `runSlotRewardIssue`(`lib/itembook/slotReward.ts`)로 그 컬렉션의 보상 배지도 발급한다.
+  동기화 보정과 장착 라우트는 같은 발급 함수 `issueItemBookRewardBadges`(`checker.ts`)를 쓰며, 보정은 완성 기록이 이미
+  있어도 보상 배지가 없으면 따라잡아 발급한다. 이미 보유했거나 동시 발급 경합(`23505`)이면 건너뛰어 같은 배지는 한 번만
+  나간다(티켓 20261001_0635). 기존 유저 재평가 배치(`reevaluateCatalog.ts`)는 위 표의 마지막 행처럼 유저마다
   `JAM_ACTION_CONDITION_KEYS` 전체를 한 번에 넘긴다(티켓 20261001_0634). 사용량 지표 6종도 그 뒤에 이어서 돌린다(티켓 20261001_1022).
 - **순환 방지**: `sync.ts`가 `jamActionBadges.ts`를 import하므로 `jamActionBadges.ts`는 `@/lib/strava/sync`도,
   `sync.ts`를 import하는 `jamActionRoute.ts`도 import하지 않는다(테스트가 소스 텍스트로 확인한다).
@@ -2043,7 +2047,7 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 | 분자 | `s.item_book_id = 대상 북` 슬롯 중 `b.item_book_id = 대상 북`인 배지 (중복 제거) | 북별 채운 집합(`filledByBook`)과 분모의 교집합. 슬롯은 `s.item_book_id`의 북에만, checkin 획득 이력은 배지가 속한 북에만 넣는다 |
 | 배지 컬렉션이 A→B로 바뀐 뒤 | A에 장착된 X는 B 분자에 들지 않는다 | 같음 (이 티켓 이전에는 X가 B 분자에 들어 B가 잘못 완성될 수 있었다) |
 | checkin 배지 | 슬롯 대상 아님 | 획득 이력이 1회 이상이면 채움 |
-| 완성 기록 | 최초 삽입 때만 잼 포인트 지급 | 기록만 upsert하고 보상 배지 발급, 잼 포인트는 주지 않는다 |
+| 완성 기록 | 최초 삽입 때만 잼 포인트 지급. 보상 배지는 주지 않는다(장착 라우트가 응답 뒤 `runSlotRewardIssue`로 발급) | 새 완성은 기록만 upsert하고, 완성 기록이 이미 있는 컬렉션도 보상 배지가 없으면 `issueItemBookRewardBadges`로 따라잡아 발급한다. 잼 포인트는 주지 않는다 |
 | 소프트 삭제 배지 | 분모·분자에서 제외 (통일은 티켓 20260921_1114) | 분모·분자에 포함 (§3.16) |
 
 `computeBookCompletion`의 `filledByBook` 옵션이 북별 분자 계산을 맡는다. 북별 집합은 순수 함수 `buildFilledByBook`
