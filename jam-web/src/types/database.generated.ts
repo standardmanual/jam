@@ -1994,6 +1994,7 @@ export type Database = {
       today_card_events: {
         Row: {
           card_id: string | null
+          card_shape: string | null
           content_type_id: string | null
           event: string
           followup_action: string | null
@@ -2002,6 +2003,7 @@ export type Database = {
         }
         Insert: {
           card_id?: string | null
+          card_shape?: string | null
           content_type_id?: string | null
           event: string
           followup_action?: string | null
@@ -2010,6 +2012,7 @@ export type Database = {
         }
         Update: {
           card_id?: string | null
+          card_shape?: string | null
           content_type_id?: string | null
           event?: string
           followup_action?: string | null
@@ -2045,12 +2048,14 @@ export type Database = {
           mission_id: string | null
           ranking_mode_id: string | null
           region_label: string | null
+          shape: string | null
           sort_order: number
           starts_at: string
           subtitle: string | null
           target_href: string | null
           template_type: string
           title: string
+          title_in_image: boolean | null
         }
         Insert: {
           badge_ids?: string[]
@@ -2070,12 +2075,14 @@ export type Database = {
           mission_id?: string | null
           ranking_mode_id?: string | null
           region_label?: string | null
+          shape?: string | null
           sort_order?: number
           starts_at: string
           subtitle?: string | null
           target_href?: string | null
           template_type: string
           title: string
+          title_in_image?: boolean | null
         }
         Update: {
           badge_ids?: string[]
@@ -2095,12 +2102,14 @@ export type Database = {
           mission_id?: string | null
           ranking_mode_id?: string | null
           region_label?: string | null
+          shape?: string | null
           sort_order?: number
           starts_at?: string
           subtitle?: string | null
           target_href?: string | null
           template_type?: string
           title?: string
+          title_in_image?: boolean | null
         }
         Relationships: [
           {
