@@ -546,6 +546,8 @@ inventory_items (슬롯당 1개)
 POST /api/itembooks/[id]/slot
 
 검증:
+  ⓪ 컬렉션이 «공개됨»이 아니면 RPC 호출 전에 404 item_book_not_found
+     (판정 정의는 02_DATA_MODEL.md «컬렉션 노출 판정», 티켓 20260930_1516)
   ① inventory_items.slotted_in IS NULL (미장착 상태)
   ② badges.item_book_id === 요청한 itemBookId (해당 북 소속 배지)
   ③ 소유자: inventory.user_id === 현재 유저

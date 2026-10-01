@@ -165,7 +165,7 @@ code:
   글꼴 다운로드 실패 등 어떤 오류든 한국어 메시지로 종료 코드 1로 끝난다(기본 글꼴로 조용히 대체하지 않는다).
   프리셋 조회 경로는 환경변수로 고른다(`.env.local`과 `process.env`를 합쳐 읽고 `process.env`가 우선한다,
   `jam-web/scripts/asset-generator/presetSource.mjs`의 `pickPresetSource`). ① **어드민 읽기 API**:
-  `ADMIN_API_BASE_URL`·`ADMIN_API_READ_TOKEN`이 둘 다 있으면 이 경로를 쓴다(예약 실행 환경). ② **서비스 롤 키**(로컬 세션):
+  `ADMIN_API_BASE_URL`·`ADMIN_API_READ_TOKEN`이 둘 다 있으면 이 경로를 쓴다(두 변수는 클라우드 예약 환경에도 등록돼 있다. 다만 아래처럼 지금 예약 실행은 이 CLI를 돌리지 않는다). ② **서비스 롤 키**(로컬 세션):
   API 변수가 없고 `NEXT_PUBLIC_SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`(기존 `jam-web/scripts/recraft/*.js`와 같은 이름)가
   둘 다 있으면 DB에서 직접 읽는다. 두 경로 모두 불가하면 없는 변수명을 알리고 종료 코드 1로 끝난다.
 - **예약(클라우드) 실행에서의 사용: 없다.** 주간 예약 실행은 이미지·묶음·`--dry-run`을 만들지 않고 `render.mjs`도 실행하지 않는다(티켓 20260930_1519가 티켓 20260926_1207의 주간 이미지 단계를 껐다). 이미지는 승인 뒤 세션에서 만든다. 정본은 `.claude/skills/jam-work/references/scheduled-jobs.md` 4-12이고 이미지가 필요한 카드의 판별 기준은 [HOME_FEED_REGISTRATION_BUNDLE.md](HOME_FEED_REGISTRATION_BUNDLE.md) §1.1이다.
