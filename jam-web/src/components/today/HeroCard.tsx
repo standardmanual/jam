@@ -16,6 +16,8 @@ import CardImageSlot from './CardImageSlot'
  * - `--text-body-sm`은 서비스에서 14px이 아니라 16px이다. 필수 정보·설명문 14px은 `--text-small`이다.
  * - 옅은 글자는 `text-text-inverse/60` 한 단계로 통일한다(흰 면 위 AA 이상). `/30`·`/40`은 쓰지 않는다.
  * - 이미지 위에는 아무것도 얹지 않는다(칩·그림자·어두운 막 없음). 칩 줄은 이미지 아래 흰 본문의 첫 줄이다.
+ * - 본문 제목 그룹·필수 정보 마크업은 `SquareCard` 본문과 같은 클래스다(티켓 20261001_2013). 일부러 공용으로 빼지 않았다 — b5 `ListCard`가 셋째 소비자가 되면 공용으로 뺀다.
+ *   그때까지 한쪽만 고쳐지는 드리프트가 없도록 두 파일을 함께 고친다.
  */
 
 export default function HeroCard({ view }: { view: ImageCardView }) {
