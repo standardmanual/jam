@@ -29,10 +29,16 @@
  *
  * 재료로 투입한 아이템 개체는 성공/실패 무관하게 항상 소각된다. 보유 조건 배지
  * (액티비티·체크인)는 소각되지 않는다.
+ *
+ * 공개 시각(마이그레이션 204, 티켓 20261001_1157): 공개 시각이 아직 지나지 않은 레시피는
+ * 존재하지 않는 레시피와 똑같이 처리한다 — 0단계에서 `recipe_not_found`로 거절하며, 재료
+ * 소각·포인트 지급은 일어나지 않는다. 판정은 `lib/combine/visibility.ts`의 `isRecipeReleased`
+ * 하나다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
 import { getCombinePolicy } from '@/lib/combine/policy'
+import { isRecipeReleased } from '@/lib/combine/visibility'
 import type { JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
 import {
   isInventoryFull,
@@ -95,14 +101,15 @@ export async function combineRecipeAttempt(
 
   const supabase = createServiceClient()
 
-  // 0. 선택된 레시피 존재 확인 — 여기서부터는 이 레시피 하나만 검증 대상이다.
+  // 0. 선택된 레시피 존재·공개 확인 — 여기서부터는 이 레시피 하나만 검증 대상이다.
+  // 공개 전 레시피는 없는 레시피와 같다(재료 소각보다 반드시 앞에서 거절한다).
   const { data: recipeRaw } = await supabase
     .from('combination_recipes')
     .select('*')
     .eq('id', recipeId)
     .maybeSingle()
   const recipe = recipeRaw as CombinationRecipeRow | null
-  if (!recipe) {
+  if (!recipe || !isRecipeReleased(recipe)) {
     await logFailure(supabase, userId, [], 'recipe_not_found', 0)
     return { success: false, reason: 'recipe_not_found', pointsAwarded: 0 }
   }
