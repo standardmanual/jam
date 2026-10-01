@@ -16,7 +16,7 @@ const h = vi.hoisted(() => {
   type Result = { data?: unknown; error: { message: string } | null }
 
   const state = {
-    tables: { ops_bundles: [], ops_bundle_items: [], ops_decisions: [] } as Record<string, Row[]>,
+    tables: { ops_bundles: [], ops_bundle_items: [], ops_decisions: [], tribes: [] } as Record<string, Row[]>,
     failOn: new Set<string>(),
     seq: 0,
     clock: 0,
@@ -143,6 +143,7 @@ vi.mock('@/lib/admin/opsInbox/slack', async (importOriginal) => {
   return { ...actual, postOpsSlack: h.state.postOpsSlack }
 })
 
+import { validateOpsBundle } from '../validate'
 import {
   approveItem,
   bulkApprove,
@@ -165,6 +166,8 @@ const I3 = '00000000-0000-4000-8000-000000000003'
 const I4 = '00000000-0000-4000-8000-000000000004'
 const FOREIGN = '00000000-0000-4000-8000-0000000000ff'
 const T0 = '2026-10-01T00:00:00.000Z'
+const TRIBE_A = '3f2c9a10-5b7e-4d21-8a64-0c1e7b9d2f55'
+const TRIBE_MISSING = '9a8b7c6d-1e2f-4a3b-8c4d-5e6f7a8b9c0d'
 
 const WORLD_REVIEW = { world_related: false, winter_reviewed: false, reason: '운영성 카드예요' }
 
@@ -172,6 +175,8 @@ function makeOriginal(overrides: Record<string, unknown> = {}) {
   return {
     item_key: 'card-1',
     kind: 'home_feed_card',
+    shape: 'hero',
+    exposure_tags: ['all'],
     user_experience: '비 오는 월요일 아침에 카드를 만나요',
     starts_at: '2026-10-05T09:00:00+09:00',
     ends_at: '2026-10-06T09:00:00+09:00',
@@ -207,6 +212,7 @@ function seed(items = [makeItem(I1, 0), makeItem(I2, 1), makeItem(I3, 2, { statu
   h.state.tables = {
     ops_bundles: [{ id: B, is_sample: true, format_errors: [], ...bundle }, { id: OTHER_B, is_sample: false, format_errors: [] }],
     ops_bundle_items: items.map((item) => ({ ...item })),
+    tribes: [{ id: TRIBE_A }],
     ops_decisions: [{ id: 'd-submit', bundle_id: B, item_id: null, action: 'submit', actor: 'token:윤진', batch_id: null, diff: null, reason: null, slack_result: null, created_at: T0 }],
   }
 }
@@ -538,6 +544,96 @@ describe('직접 수정', () => {
     it('수정 뒤에도 공개 시각 오류가 없으면 항목 오류 목록에 새로 생기지 않는다', async () => {
       await edit({ user_experience: '문장', starts_at: '2026-10-05T08:00:00+09:00' })
       expect(item(I1).format_errors).toEqual([LINK_ERROR])
+    })
+  })
+
+  describe('카드 칸 다시 검사 (티켓 20261001_1152)', () => {
+    const SHAPE_ERROR_START = 'items[0].shape: 필수 항목이 없어요'
+    const TAGS_ERROR_START = 'items[0].exposure_tags: 필수 항목이 없어요'
+    const MISSING_TRIBE_ERROR = `items[0].tribe_id: 없는 트라이브예요(받은 값: "${TRIBE_MISSING}"). 트라이브 ID를 확인해 주세요.`
+
+    function seedWith(original: Record<string, unknown>) {
+      seed([makeItem(I1, 0, { original }), makeItem(I2, 1)])
+    }
+    // 앞 수정이 수정 시각을 바꾸므로 두 번째부터는 지금 항목의 수정 시각을 넘긴다.
+    const editNow = (values: Record<string, unknown>) =>
+      editItem(service, { bundleId: B, itemId: I1, actor: 'admin-1', values, expectedUpdatedAt: item(I1).updated_at })
+
+    it('옛 형식 항목(segment만)을 고치면 저장되고 새 칸 오류가 붙지만 막지 않는다', async () => {
+      const legacy = makeOriginal({ segment: 'new_user' }) as Record<string, unknown>
+      delete legacy.shape
+      delete legacy.exposure_tags
+      seedWith(legacy)
+
+      const out = await edit({ 'copy.title': '새 제목' })
+      expect(out.ok).toBe(true)
+      expect(item(I1).edited).toEqual({ copy: { title: '새 제목', body: '오늘은 비가 와요' } })
+      expect(item(I1).format_errors).toHaveLength(2)
+      expect(item(I1).format_errors[0]).toContain(SHAPE_ERROR_START)
+      expect(item(I1).format_errors[1]).toContain(TAGS_ERROR_START)
+      // 묶음 오류 목록에도 그 항목의 새 결과가 들어간다
+      const bundle = h.state.tables.ops_bundles.find((row) => row.id === B)
+      expect(bundle?.format_errors).toEqual(item(I1).format_errors)
+      // 대상(segment)을 고쳐도 막지 않는다(shape·exposure_tags는 이 화면에서 고치는 칸이 아니다)
+      expect((await editNow({ segment: 'all' })).ok).toBe(true)
+    })
+
+    it('tribes에 없는 tribe_id를 가진 항목을 고치면 제출 때와 같은 오류가 붙고 저장은 막지 않는다', async () => {
+      seedWith(makeOriginal({ tribe_id: TRIBE_MISSING }))
+
+      const out = await edit({ 'copy.title': '새 제목' })
+      expect(out.ok).toBe(true)
+      expect(item(I1).format_errors).toEqual([MISSING_TRIBE_ERROR])
+
+      // 같은 항목·같은 목록으로 제출 검증을 돌린 결과와 같다
+      const submitted = validateOpsBundle(
+        { bundle_id: 'b', author: 'a', items: [makeOriginal({ tribe_id: TRIBE_MISSING })] },
+        { tribeIds: new Set([TRIBE_A]) }
+      )
+      expect(item(I1).format_errors).toEqual(submitted.items[0].format_errors)
+    })
+
+    it('tribes에 있는 tribe_id면 오류가 없다', async () => {
+      seedWith(makeOriginal({ tribe_id: TRIBE_A }))
+      expect((await edit({ 'copy.title': '새 제목' })).ok).toBe(true)
+      expect(item(I1).format_errors).toEqual([])
+    })
+
+    it('tribes 목록을 새로 읽는다(고칠 때마다 조회해 같은 규칙으로 판정한다)', async () => {
+      seedWith(makeOriginal({ tribe_id: TRIBE_MISSING }))
+      await edit({ 'copy.title': '첫 수정' })
+      expect(item(I1).format_errors).toEqual([MISSING_TRIBE_ERROR])
+
+      h.state.tables.tribes.push({ id: TRIBE_MISSING }) // 그 사이 트라이브가 생겼다
+      await editNow({ 'copy.title': '둘째 수정' })
+      expect(item(I1).format_errors).toEqual([])
+    })
+
+    it('트라이브 목록을 읽지 못하면 저장하지 않고 500이다(오류 원문은 싣지 않는다)', async () => {
+      h.state.failOn.add('tribes.select')
+      const before = JSON.stringify(item(I1))
+      const out = failure(await edit({ 'copy.title': '새 제목' }))
+      expect(out.status).toBe(500)
+      expect(out.error).toBe('저장하지 못했어요. 잠시 뒤 다시 눌러 주세요.')
+      expect(JSON.stringify(out)).not.toContain('boom')
+      expect(JSON.stringify(item(I1))).toBe(before)
+      expect(decisions()).toHaveLength(0)
+    })
+
+    it('되돌릴 때도 같은 목록으로 다시 검사하고, 목록을 읽지 못하면 되돌리지 않는다', async () => {
+      seedWith(makeOriginal({ tribe_id: TRIBE_MISSING }))
+      expect((await edit({ 'copy.title': 'A1' })).ok).toBe(true)
+
+      const out = success(await revertLastEdit(service, { bundleId: B, itemId: I1, actor: 'admin-2' }))
+      expect(out.ok).toBe(true)
+      expect(item(I1).format_errors).toEqual([MISSING_TRIBE_ERROR])
+
+      await editNow({ 'copy.title': 'A2' })
+      const edited = JSON.stringify(item(I1).edited)
+      h.state.failOn.add('tribes.select')
+      const failed = failure(await revertLastEdit(service, { bundleId: B, itemId: I1, actor: 'admin-2' }))
+      expect(failed).toMatchObject({ status: 500, error: '되돌리지 못했어요. 잠시 뒤 다시 눌러 주세요.' })
+      expect(JSON.stringify(item(I1).edited)).toBe(edited)
     })
   })
 })

@@ -7,6 +7,8 @@
  * - 재제출: 같은 내용 200(슬랙 없음) / 다른 내용 409(덮어쓰지 않음), 동시 제출은 유일 제약으로 같은 처리
  * - 400(JSON 아님·필수 형식·1MB·항목 60개), 429(시간당 20회), 저장 중 실패는 되돌림(500)
  * - 슬랙: 응답 뒤에 게시하고, 실패하거나 환경변수가 없어도 제출은 성공이며 결과가 결정 기록에 남는다
+ * - 카드 칸(티켓 20261001_1152): 옛 형식 묶음도 201(오류 문장 포함, 원본 보존), 뺀 항목 사유 없음은 묶음 오류만,
+ *   없는 tribe_id는 항목 오류, 트라이브 조회가 실패하면 500이고 아무것도 저장하지 않는다
  */
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 
@@ -15,9 +17,10 @@ const h = vi.hoisted(() => {
   type Result = { data?: unknown; count?: number | null; error: { code?: string; message: string } | null }
 
   const state = {
-    tables: { ops_bundles: [], ops_bundle_items: [], ops_decisions: [], users: [] } as Record<string, Row[]>,
+    tables: { ops_bundles: [], ops_bundle_items: [], ops_decisions: [], users: [], tribes: [] } as Record<string, Row[]>,
     failInsert: new Set<string>(),
     failCount: false,
+    failTribes: false,
     hideExistingOnce: false,
     seq: 0,
     afterCallbacks: [] as Array<() => unknown>,
@@ -115,6 +118,7 @@ const h = vi.hoisted(() => {
         return { data: null, error: null }
       }
 
+      if (this.table === 'tribes' && state.failTribes) return { data: null, error: { message: 'tribes boom secret detail' } }
       if (this.countMode) {
         if (state.failCount) return { count: null, error: { message: 'count failed' } }
         return { count: matches().length, error: null }
@@ -156,11 +160,15 @@ const URL_OK = 'http://localhost/api/admin/ops-inbox'
 const ENV_KEYS = ['ADMIN_API_READ_TOKEN', 'ADMIN_EMAILS'] as const
 
 const REVIEW = { world_related: false, winter_reviewed: false, reason: '운영성 카드예요' }
+const TRIBE_ID = '3f2c9a10-5b7e-4d21-8a64-0c1e7b9d2f55'
+const MISSING_TRIBE_ID = '9a8b7c6d-1e2f-4a3b-8c4d-5e6f7a8b9c0d'
 
 function makeItem(overrides: Record<string, unknown> = {}) {
   return {
     item_key: 'card-1',
     kind: 'home_feed_card',
+    shape: 'hero',
+    exposure_tags: ['all'],
     pattern_no: 'P-07',
     starts_at: '2026-10-05T09:00:00+09:00',
     ends_at: '2026-10-06T09:00:00+09:00',
@@ -224,9 +232,10 @@ describe('POST /api/admin/ops-inbox', () => {
     for (const key of ENV_KEYS) saved[key] = process.env[key]
     process.env.ADMIN_API_READ_TOKEN = TOKEN
     process.env.ADMIN_EMAILS = 'admin@example.com'
-    h.state.tables = { ops_bundles: [], ops_bundle_items: [], ops_decisions: [], users: [] }
+    h.state.tables = { ops_bundles: [], ops_bundle_items: [], ops_decisions: [], users: [], tribes: [{ id: TRIBE_ID }] }
     h.state.failInsert.clear()
     h.state.failCount = false
+    h.state.failTribes = false
     h.state.hideExistingOnce = false
     h.state.seq = 0
     h.state.afterCallbacks = []
@@ -575,6 +584,63 @@ describe('POST /api/admin/ops-inbox', () => {
       const res = await submit(makeBundle())
       expect(res.status).toBe(201)
       expect(h.state.tables.ops_bundles).toHaveLength(1)
+    })
+  })
+
+  describe('카드 칸 (티켓 20261001_1152)', () => {
+    it('옛 형식 묶음(segment만 있는 항목)은 201이고 오류 문장을 돌려주며 segment를 원본에 보존한다', async () => {
+      const legacy = { ...makeItem(), segment: 'new_user' } as Record<string, unknown>
+      delete legacy.shape
+      delete legacy.exposure_tags
+      const body = makeBundle({ items: [legacy] })
+      const res = await submit(body)
+
+      expect(res.status).toBe(201)
+      const json = await res.json()
+      expect(json.format_errors).toHaveLength(2)
+      expect(json.format_errors[0]).toMatch(/^items\[0\]\.shape: 필수 항목이 없어요/)
+      expect(json.format_errors[1]).toMatch(/^items\[0\]\.exposure_tags: 필수 항목이 없어요/)
+      expect(h.state.tables.ops_bundle_items[0].format_errors).toEqual(json.format_errors)
+      expect(h.state.tables.ops_bundle_items[0].original).toMatchObject({ segment: 'new_user' })
+      expect(h.state.tables.ops_bundles[0].raw).toEqual(body)
+    })
+
+    it('뺀 항목에 사유가 없으면 201이고 묶음 오류에만 담긴다(항목 오류에는 없다)', async () => {
+      const res = await submit(makeBundle({ excluded_items: [{ item_key: 'x-1', stage: 'world_review' }] }))
+
+      expect(res.status).toBe(201)
+      const json = await res.json()
+      expect(json.format_errors).toEqual(['excluded_items[0].reason: 필수 항목이 없어요(뺀 이유를 한 줄로 적어 주세요).'])
+      expect(h.state.tables.ops_bundles[0].format_errors).toEqual(json.format_errors)
+      for (const stored of h.state.tables.ops_bundle_items) expect(stored.format_errors).toEqual([])
+    })
+
+    it('tribes에 없는 tribe_id는 201이고 그 항목의 형식 오류다', async () => {
+      const res = await submit(
+        makeBundle({ items: [makeItem({ tribe_id: TRIBE_ID }), makeItem({ item_key: 'card-2', tribe_id: MISSING_TRIBE_ID })] })
+      )
+
+      expect(res.status).toBe(201)
+      const json = await res.json()
+      expect(json.format_errors).toHaveLength(1)
+      expect(json.format_errors[0]).toMatch(/^items\[1\]\.tribe_id: 없는 트라이브예요/)
+      expect(h.state.tables.ops_bundle_items[0].format_errors).toEqual([])
+      expect(h.state.tables.ops_bundle_items[1].format_errors).toEqual(json.format_errors)
+    })
+
+    it('트라이브 목록을 읽지 못하면 500이고 아무것도 저장하지 않으며 슬랙 글도 없다(같은 본문을 다시 내면 받는다)', async () => {
+      h.state.failTribes = true
+      const res = await submit(makeBundle())
+
+      expect(res.status).toBe(500)
+      expect(JSON.stringify(await res.json())).not.toContain('secret detail')
+      expect(h.state.tables.ops_bundles).toHaveLength(0)
+      expect(h.state.tables.ops_bundle_items).toHaveLength(0)
+      expect(h.state.tables.ops_decisions).toHaveLength(0)
+      expect(h.state.afterCallbacks).toHaveLength(0)
+
+      h.state.failTribes = false
+      expect((await submit(makeBundle())).status).toBe(201)
     })
   })
 
