@@ -316,7 +316,8 @@ JAM! 배지판처럼 다른 방식으로 운영할 수 있는 아이디어다.
 - 아이템배지 900종은 모두 common이다. 등급 활용(3.1)을 위해 등급별 아이템이 먼저 필요하다.
 - 컬렉션 완성 보상 배지 필드(`item_books.reward_badge_id`)가 있지만 100개 모두 비어 있다.
 - 완성 판정 코드(`jam-web/src/lib/itembook/checker.ts`)에는 `reward_badge_id`가 채워져 있으면 보상 배지를 발급하는 경로가 있다.
-  슬롯 장착 RPC(마이그레이션 179) 경로도 같은 보상 배지를 주는지는 확인하지 않았다.
+  슬롯 장착 RPC(마이그레이션 179)는 완성 포인트만 주고 보상 배지는 주지 않는다. 장착 라우트가 응답 뒤에 같은 발급 함수로
+  보상 배지를 발급한다(`jam-web/src/lib/itembook/slotReward.ts`, 티켓 20261001_0635).
 - 컬렉션 완성 포인트 필드(`item_books.reward_points`)는 마이그레이션 157로 추가됐다.
 - 유저 드랍: 자기 드랍을 자기가 다시 주울 수 있다(`jam-web/supabase/migrations/047_reallow_pickup_own_drop.sql`, 최신 `pickup_drop`은
   `jam-web/supabase/migrations/108_item_identity_custody_model.sql`에 본인 차단이 없다). 드랍 등록의 거절 사유는

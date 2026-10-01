@@ -580,10 +580,15 @@ checkItemBookCompletion(userId, activities):
   각 북에 대해:
     총 badge 수 = badges WHERE item_book_id AND type='item' COUNT
     유저 슬롯 수 = user_item_book_slots WHERE user_id AND item_book_id COUNT
-    슬롯 수 >= 총 badge 수 AND 미완성 상태 → 완성 판정
-    → user_item_book_completions UPSERT (ignore duplicates)
-    → reward_badge_id 있으면 activity badge 발급
+    슬롯 수 >= 총 badge 수 → 완성 판정
+    → 미완성 상태였으면 user_item_book_completions UPSERT (ignore duplicates)
+    → reward_badge_id 있고 유저가 그 배지를 아직 없으면 activity badge 발급
+       (완성 기록이 이미 있어도 따라잡아 발급 — issueItemBookRewardBadges)
 ```
+
+장착으로 완성하면 장착 라우트(`POST /api/itembooks/[id]/slot`)가 응답 뒤 `after()`에서 같은 발급 함수로 보상 배지를
+바로 발급한다(`runSlotRewardIssue`, `src/lib/itembook/slotReward.ts`). 이 경로는 완성 기록(`user_item_book_completions`)이
+있는지로 완성을 판정한다. 두 경로가 보유 확인과 `23505` 건너뜀을 공유해 배지는 한 번만 나간다(티켓 20261001_0635).
 
 ---
 
