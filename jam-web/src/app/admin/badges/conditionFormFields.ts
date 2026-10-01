@@ -121,6 +121,13 @@ export type ConditionFormFields = {
   pickupItemCount: string
   pickupFromUserCount: string
   pickedUpByUserCount: string
+  // JAM! 카테고리 — 미션·컬렉션·가입 경과일·활동일·체크인 일수 지표 6종 (티켓 20261001_0633)
+  missionCompleteCount: string
+  collectionCompleteCount: string
+  daysSinceSignup: string
+  signupRecentActiveDays: string
+  weeklyActiveDays: string
+  sameSpotCheckinDays: string
 }
 
 /** 빈 폼(신규 등록)의 초기값. 조건 폼 state의 단일 출처다 */
@@ -199,6 +206,12 @@ export function emptyConditionFormFields(): ConditionFormFields {
     pickupItemCount: '',
     pickupFromUserCount: '',
     pickedUpByUserCount: '',
+    missionCompleteCount: '',
+    collectionCompleteCount: '',
+    daysSinceSignup: '',
+    signupRecentActiveDays: '',
+    weeklyActiveDays: '',
+    sameSpotCheckinDays: '',
   }
 }
 

@@ -93,6 +93,10 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 2단계 온보
 > 입력 UI가 한 번도 만들어진 적 없는 죽은 컬럼이었다 — 티켓 20260909_2119에서 PRD 삭제 +
 > DB 컬럼 삭제 + 참조 코드 정리로 완전히 제거했다.
 
+**JAM! 행동 지표의 원천**: `created_at`(가입 시각)이 가입 경과일(`days_since_signup`)의 기준이다. 가입한 날(KST)부터
+오늘(KST)까지의 날짜 차를 세고, 주간 활동일·최근 30일 활동일·같은 지점 체크인 일수는 가입한 날 이후 기록만 센다
+(티켓 20261001_0633, [BADGE_ENGINE_UNIFIED.md](../badge-engine/BADGE_ENGINE_UNIFIED.md) ③ JAM! 카테고리).
+
 ### user_onboarding_quests (신규)
 온보딩 퀘스트(1~7단계, 연출용) 유저별 진행 상태(마이그레이션 195, 티켓 20260927_2124/상위 20260927_2123). `user_id`(PK, `users(id)` FK, 유저 삭제 시 CASCADE), `step_progress`(단계 키 `sync`·`bag`·`pickup`·`mix_fail`·`mix_success`·`drop`·`browse` → 완료 시각 ISO 문자열 JSONB, 기본값 `{}`), `skipped_at`(건너뛰기 T8 시각, 있으면 완료 배지 불가), `completed_at`(실제 첫 활동 유입 시각 T6), `reward_granted_at`(완료 배지·100P 지급 시각 T7, 멱등 기준), `created_at`.
 
@@ -117,6 +121,11 @@ Strava 동기화 실패 기록(마이그레이션 176). `failure_type`(`token_re
 확장 필드를 소급 채운 행은 `normalized.extendedBackfilledAt`(ISO 문자열)로 표시한다 — **`processed_via`는 덮어쓰지 않는다.** 그 값은 «이 행이 어떤 경로로 들어왔는가»이지 «나중에 무엇으로 채워졌는가»가 아니며, 덮어쓰면 유입 경로 이력이 사라진다
 (`jam-web/scripts/backfill-strava-extended-fields.ts`). `'reconcile'`은 2026-08-10 이전 과거 데이터에만
 있고 신규 기록은 없다.
+
+**JAM! 행동 지표의 원천**: 주간 활동일(`weekly_active_days`)과 최근 30일 활동일(`signup_recent_active_days`)의
+「활동한 날」이 이 테이블의 `start_date`(timestamptz — 현지 시각 열은 없다)를 KST 날짜로 옮겨 센다. 가입한 날
+이후 행만 읽고, `normalized`의 `jamActivityType`·`distanceKm`·`movingTimeSec`·`averageSpeedKmh`로 JAM! 종목·걷기
+게이트·차량 속도 필터를 통과한 활동만 센다(티켓 20261001_0633). 수동 입력 활동은 저장된 정보로 가를 수 없다.
 
 ---
 
@@ -184,6 +193,11 @@ badges / item_books / tribes 세 테이블이 같은 배경 컬럼 세트를 갖
 > `notification_type` `'poi_badge_earned'` → `'checkin_badge_earned'`,
 > `missions.mission_type` `'poi_visit'` → `'checkin'`으로 함께 개명됐다.
 
+**JAM! 행동 지표의 원천**: 같은 지점 체크인 일수(`same_spot_checkin_days`)는 `poi_id`별
+`triggered_by_activity_date`(체크인을 만든 활동의 시각)의 서로 다른 KST 날짜 수의 최댓값이다. 동기화 시각
+(`earned_at`)이 아니라 활동 날짜로 센다 — 며칠 뒤에 동기화한 체크인이 있기 때문이다. 활동 날짜가 없는 행은 세지
+않는다. 이 날짜는 주간 활동일의 «체크인한 날»로도 쓰인다(티켓 20261001_0633).
+
 ---
 
 ## 3. 인벤토리
@@ -241,6 +255,8 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
     "어느 개체인가"는 이 컬럼으로만 확정된다. 컬렉션 화면의 배지 상세 링크가 싣는
     `?item={inventory_item_id}`의 출처이기도 하다 (티켓 20260907_2059).
 - `user_item_book_completions`: 완성 기록 (PK user_id+item_book_id)
+  - **JAM! 행동 지표의 원천**: 완성한 컬렉션 수(`collection_complete_count`)가 `user_id`로 거른 행 수를 센다.
+    PK라 행 수가 서로 다른 컬렉션 수이고, 장착 해제·교체는 이 기록을 지우지 않는다(티켓 20261001_0633).
 
 ---
 
@@ -337,7 +353,7 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 이 테이블을 읽는다 — 드랍 1건 = 1행이고, `inventory_item_id`가 있는 행의 **서로 다른 개체·유저 수**로
 센다(`dropper_user_id` NULL은 시스템·탈퇴한 놓은 사람, `picked_up_by` NULL은 미픽업·탈퇴한 줍는 사람).
 조회는 놓은 사람 기준(`dropper_user_id`)과 주운 사람 기준(`picked_up_by`) 두 가지이며, 마이그레이션 202가
-부분 인덱스 2개를 더한다(실행 전): `idx_poi_drops_dropper_lookup (dropper_user_id, id)`·
+부분 인덱스 2개를 더한다(실행됨): `idx_poi_drops_dropper_lookup (dropper_user_id, id)`·
 `idx_poi_drops_picker_lookup (picked_up_by, id)`, 둘 다 `WHERE inventory_item_id IS NOT NULL`.
 기존 인덱스는 `idx_poi_drops_available`·`idx_poi_drops_inventory_item`·`idx_poi_drops_system_available`다.
 세는 규칙은 [BADGE_ENGINE_UNIFIED.md](../badge-engine/BADGE_ENGINE_UNIFIED.md) ③ JAM! 카테고리의
@@ -507,6 +523,9 @@ service_role만 접근한다.
 
 ### user_mission_participations / user_mission_completions
 참가(진행도 추적)와 완료를 별도 테이블로 관리. "참가 필수·취소 불가" 정책 — 참가자만 완료 보상 대상.
+
+**JAM! 행동 지표의 원천**: 완료한 미션 수(`mission_complete_count`)가 `user_mission_completions`에서 `user_id`로 거른
+행 수를 센다. `UNIQUE(user_id, mission_id)`라 행 수가 서로 다른 미션 수이고, 가입 이전 기록도 센다(티켓 20261001_0633).
 
 ---
 

@@ -23,7 +23,7 @@ import { recordActivityRecap } from '@/lib/notifications/recap'
 import { selectCompletableDrafts } from '@/lib/notifications/batch/collections'
 import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
 import { logEngineDecision } from '@/lib/engine-log'
-import { getAbusingPolicy, DEFAULT_POLICY } from '@/lib/abusing/policy'
+import { getAbusingPolicy, DEFAULT_POLICY, effectiveVehicleSpeedFilterKmh } from '@/lib/abusing/policy'
 import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 import { classifyStravaSyncFailure, recordStravaSyncFailure } from '@/lib/strava/syncFailures'
@@ -31,6 +31,10 @@ import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completi
 // JAM! 카테고리 — 서비스 사용량 배지(티켓 20260910_1557). 카운터 증가·판정 로직은
 // recordDailySyncAndEvaluate() 한 곳(usageBadges.ts)에 있다 — 이 파일은 synced>0 게이트만 쥔다.
 import { recordDailySyncAndEvaluate, evaluateCheckinUsageBadges, type UsageBadgeEarned } from '@/lib/badge-engine/usageBadges'
+// JAM! 행동 지표(미션·컬렉션·가입 경과일·활동일·체크인 일수) 판정 — 동기화 끝에서 한 번 부른다
+// (티켓 20261001_0633). 호출 지점별로 어떤 키를 넘기는지는 jamActionProgressTriggers.ts가 정한다.
+import { evaluateJamActionBadges, type JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
+import { JAM_EMPTY_SYNC_TRIGGERS, JAM_SYNC_TRIGGERS } from '@/lib/badge-engine/jamActionProgressTriggers'
 import { computeUserPeriodMetrics, computeBadgeProgress } from '@/lib/badge-engine/badgeProgress'
 // 배지 «종류» 판정의 단일 출처 — 계열 프런티어 산출이 발급 엔진과 같은 기준을 본다
 // (티켓 20260905_0031, 0030이 넘긴 「레벨형 계열 통째 누락」 항목).
@@ -278,6 +282,26 @@ export async function notifyActivityBadgesEarned(
     activity_ids: activityIds,
     activity_badges: rows.map((r) => ({ id: r.id, name: r.name, rarity: r.rarity })),
   })
+}
+
+/**
+ * JAM! 행동 지표(미션·컬렉션·가입 경과일·활동일·체크인 일수) 판정 — 동기화가 끝날 때 부른다 (티켓 20261001_0633)
+ *
+ * 판정이 던져도 동기화는 정상 완료돼야 하므로 `try/catch`로 격리한다(실패하면 로그만 남기고 빈 배열).
+ * **주입된 `supabase`를 그대로 넘긴다** — 동기화는 클라이언트 주입 사슬을 유지한다(20260831_1300).
+ * 획득 배지는 호출부가 결산(`notifyActivityBadgesEarned`)과 `earnedBadgeIds`에 합친다.
+ */
+async function evaluateJamActionSafely(
+  supabase: SupabaseClient,
+  userId: string,
+  triggers: readonly JamActionTrigger[]
+): Promise<UsageBadgeEarned[]> {
+  try {
+    return await evaluateJamActionBadges(userId, triggers, supabase)
+  } catch (error) {
+    console.error(`[evaluateJamActionSafely] JAM! 행동 지표 판정 실패 (userId: ${userId}, triggers: ${triggers.join(',')}):`, error)
+    return []
+  }
 }
 
 /**
@@ -640,7 +664,7 @@ export async function processFetchedActivities(
   badges: number
   itemBooksCompleted: number
   missionsCompleted: number
-  /** 이번 처리에서 발급된 배지 id — 획득 순서(체크인 → 아이템 드랍 → 액티비티 → 컬렉션·미션 보상) */
+  /** 이번 처리에서 발급된 배지 id — 획득 순서(체크인 → 아이템 드랍 → 액티비티 → 컬렉션·미션 보상 → 사용량 → JAM! 행동 지표) */
   earnedBadgeIds: string[]
   /** 이번 처리에서 새로 완료된 미션 id — GA4 mission_complete 계측용 (20260903_1034) */
   completedMissionIds: string[]
@@ -659,12 +683,16 @@ export async function processFetchedActivities(
     // 소식)만 벗긴다. evaluateBadges는 내부에서 이력 전체를 다시 읽으므로 빈 배열을
     // 넘겨도 이미 조건을 채운 배지를 잡아낼 수 있다.
     const activityBadgeIds = await evaluateBadges(userId, [])
-    await notifyActivityBadgesEarned(supabase, userId, activityBadgeIds, [])
+    // JAM! 행동 지표 중 가입 경과일만 판정한다 — 날짜가 지나면 값이 바뀌는 지표는 이것뿐이라, 새 활동이 없는
+    // 동기화에서도 따라잡는다(티켓 20261001_0633, R4). 오래 쉰 계정은 배지의 보조 키(최근 30일 활동일)가 막는다.
+    // 획득은 결산과 earnedBadgeIds에 합치되, 반환의 `badges` 수에는 넣지 않는다(사용량 배지와 같다).
+    const jamBadgeIds = (await evaluateJamActionSafely(supabase, userId, JAM_EMPTY_SYNC_TRIGGERS)).map((b) => b.id)
+    await notifyActivityBadgesEarned(supabase, userId, [...activityBadgeIds, ...jamBadgeIds], [])
     return {
       badges: activityBadgeIds.length,
       itemBooksCompleted: 0,
       missionsCompleted: 0,
-      earnedBadgeIds: activityBadgeIds,
+      earnedBadgeIds: [...activityBadgeIds, ...jamBadgeIds],
       completedMissionIds: [],
     }
   }
@@ -934,8 +962,11 @@ export async function processFetchedActivities(
   // 때문에 임계값 0이 조용히 60으로 둔갑했다.
   // (abusingPolicy는 위쪽 교통수단 구간 감지에서 이미 조회해 뒀다 — 20260909_1012, 같은 배치
   // 안에서 두 번 조회하지 않도록 재사용한다)
-  let vehicleSpeedFilterKmh = abusingPolicy.vehicle_speed_filter_kmh
-  if (!Number.isFinite(vehicleSpeedFilterKmh) || vehicleSpeedFilterKmh <= 0) {
+  // 비정상 값 해석(유한·양수가 아니면 기본값)은 effectiveVehicleSpeedFilterKmh 한 곳에 있다 —
+  // JAM! 행동 지표의 「활동한 날」 판정(jamActionDayMetrics.ts)이 같은 규칙을 쓴다(티켓 20261001_0633).
+  const configuredVehicleSpeedFilterKmh = abusingPolicy.vehicle_speed_filter_kmh
+  const vehicleSpeedFilterKmh = effectiveVehicleSpeedFilterKmh(abusingPolicy)
+  if (vehicleSpeedFilterKmh !== configuredVehicleSpeedFilterKmh) {
     // 페일세이프 — 필터식이 `평균속도 <= 임계값`이라 임계값이 0 이하면 사실상 모든 활동이
     // 탈락하고, activitiesFiltered는 배지뿐 아니라 아이템 드랍·미션까지 흘러가므로 핵심
     // 보상 루프 전체가 멈춘다. 그래서 폴백 방향을 **핵심 루프를 살리는 쪽**(기본 임계값)으로
@@ -944,10 +975,9 @@ export async function processFetchedActivities(
     // 경로(어드민 정책 라우트)가 소유한다. 운영자가 의도적으로 넣은 값을 소비 지점이 조용히
     // 덮어쓰면 "저장한 값과 실제 동작이 다른" 같은 종류의 불일치가 재발한다.
     console.error(
-      `[processFetchedActivities] vehicle_speed_filter_kmh 값이 비정상(${vehicleSpeedFilterKmh}) — ` +
+      `[processFetchedActivities] vehicle_speed_filter_kmh 값이 비정상(${configuredVehicleSpeedFilterKmh}) — ` +
         `기본값 ${DEFAULT_POLICY.vehicle_speed_filter_kmh}km/h로 폴백, userId: ${userId}`
     )
-    vehicleSpeedFilterKmh = DEFAULT_POLICY.vehicle_speed_filter_kmh
   }
   const activitiesFiltered = activities.filter((a) => a.averageSpeedKmh <= vehicleSpeedFilterKmh)
 
@@ -1087,14 +1117,23 @@ export async function processFetchedActivities(
     console.error(`[processFetchedActivities] daily_sync_count 사용량 배지 평가 실패 (userId: ${userId}):`, usageBadgeError)
   }
 
-  // ① 결산에 활동배지 + JAM! 사용량 배지를 함께 싣는다 (묶음 단위는 KST 하루라 대표 활동을
-  // 고를 필요가 없다). 이전에는 이 호출이 활동배지 평가 직후(현재는 위로 이동)에 있어
+  // JAM! 행동 지표 — 미션 완료·컬렉션 완성·가입 경과일·주간 활동일·같은 지점 체크인 일수 (티켓 20261001_0633).
+  //
+  // 동기화가 끝나는 이 자리에서 한 번에 판정한다. 활동 기록 저장(recordProcessedActivities)이 위에서
+  // 이미 끝나 주간 활동일이 이번 배치를 본다. 체크인 루프나 미션 판정 직후에 따로 부르면 활동 기록이 아직
+  // 없어 이번 배치를 못 보고, 호출이 세 번이면 배지 읽기도 세 번이다. 미션 완료·컬렉션 보정은 이 시점에
+  // 이미 DB에 있다. 판정이 던져도 동기화는 계속된다(evaluateJamActionSafely).
+  const jamEarned = await evaluateJamActionSafely(supabase, userId, JAM_SYNC_TRIGGERS)
+  earnedBadgeIds.push(...jamEarned.map((b) => b.id))
+
+  // ① 결산에 활동배지 + JAM! 사용량 배지 + JAM! 행동 지표 배지를 함께 싣는다 (묶음 단위는 KST 하루라 대표
+  // 활동을 고를 필요가 없다). 이전에는 이 호출이 활동배지 평가 직후(현재는 위로 이동)에 있어
   // JAM! 배지가 평가되기 전에 알림 결산이 이미 끝나 있었다 — JAM! 배지 획득이 알림함에
   // 전혀 반영되지 않는 원인이었다(티켓 20260910_2258).
   await notifyActivityBadgesEarned(
     supabase,
     userId,
-    [...activityBadgeIds, ...usageEarned.map((b) => b.id)],
+    [...activityBadgeIds, ...usageEarned.map((b) => b.id), ...jamEarned.map((b) => b.id)],
     activities.map((a) => a.stravaId)
   )
 

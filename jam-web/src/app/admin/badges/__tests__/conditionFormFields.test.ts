@@ -154,6 +154,13 @@ describe('condition_json ↔ 폼 라운드트립 (티켓 20260905_0032)', () => 
     pickup_item_count: 20,
     pickup_from_user_count: 3,
     picked_up_by_user_count: 3,
+    // JAM! 카테고리 — 미션·컬렉션·가입 경과일·활동일·체크인 일수 지표 6종 (티켓 20261001_0633)
+    mission_complete_count: 3,
+    collection_complete_count: 2,
+    days_since_signup: 100,
+    signup_recent_active_days: 4,
+    weekly_active_days: 3,
+    same_spot_checkin_days: 10,
   }
 
   it('표본이 폼 지원 필드를 전부 덮는다 — 새 필드를 추가하면 여기도 채워야 한다', () => {
@@ -435,6 +442,8 @@ describe('조건 폼 그룹 재편 (티켓 20260911_0901)', () => {
         'checkin_category_count', 'checkin_badge_count',
         'combine_attempt_count', 'combine_success_count', 'combine_fail_count', 'recipe_first_success',
         'drop_item_count', 'pickup_item_count', 'pickup_from_user_count', 'picked_up_by_user_count',
+        'mission_complete_count', 'collection_complete_count', 'days_since_signup', 'signup_recent_active_days',
+        'weekly_active_days', 'same_spot_checkin_days',
       ])
     )
   })
@@ -518,5 +527,44 @@ describe('드랍·픽업 행동 지표 4종 — 폼 입력·저장·복원 (티�
     expect(fields.pickedUpByUserCount).toBe('4')
     expect(fields.dropItemCount).toBe('')
     expect(fields.pickupFromUserCount).toBe('')
+  })
+})
+
+describe('미션·컬렉션·가입 경과일·활동일·체크인 일수 지표 6종 — 폼 입력·저장·복원 (티켓 20261001_0633)', () => {
+  it('폼 입력이 condition_json으로 조립된다', () => {
+    const fields = emptyFields({
+      missionCompleteCount: '3',
+      collectionCompleteCount: '2',
+      daysSinceSignup: '100',
+      signupRecentActiveDays: '4',
+      weeklyActiveDays: '3',
+      sameSpotCheckinDays: '10',
+    })
+    expect(buildConditionJsonFromFields(fields)).toEqual({
+      mission_complete_count: 3,
+      collection_complete_count: 2,
+      days_since_signup: 100,
+      signup_recent_active_days: 4,
+      weekly_active_days: 3,
+      same_spot_checkin_days: 10,
+    })
+  })
+
+  it('보조 키만 비워 두면 가입 경과일만 저장된다', () => {
+    expect(buildConditionJsonFromFields(emptyFields({ daysSinceSignup: '100' }))).toEqual({ days_since_signup: 100 })
+  })
+
+  it('빈 입력이면 6키 모두 결과에 없다', () => {
+    expect(buildConditionJsonFromFields(emptyFields())).toBeNull()
+  })
+
+  it('저장된 값을 폼 입력으로 되돌린다 — 저장하지 않은 키는 빈 문자열이다', () => {
+    const fields = conditionFormFieldsFrom({ days_since_signup: 100, signup_recent_active_days: 4, weekly_active_days: 3 })
+    expect(fields.daysSinceSignup).toBe('100')
+    expect(fields.signupRecentActiveDays).toBe('4')
+    expect(fields.weeklyActiveDays).toBe('3')
+    expect(fields.missionCompleteCount).toBe('')
+    expect(fields.collectionCompleteCount).toBe('')
+    expect(fields.sameSpotCheckinDays).toBe('')
   })
 })

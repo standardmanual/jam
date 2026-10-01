@@ -41,11 +41,10 @@
  * 그 지표만 건너뛴다 — 잘린 값으로 임계를 잘못 넘기지 않도록 fail-closed다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { selectAllPages } from './jamActionPaging'
 
-/** 한 페이지 행 수 — PostgREST 기본 응답 상한(1,000행)과 같다 (`itembook/checker.ts`의 페이징과 같은 선례) */
-const PAGE_SIZE = 1000
-/** 이 페이지 수를 넘겨 행이 더 있으면 오류 — 한 유저의 드랍·픽업 행이 이만큼 쌓이면 RPC로 옮길 때다 */
-const MAX_PAGES = 30
+/** 오류 메시지 접두어 — 로그에서 어느 계산인지 알아보도록 공용 페이징에 넘긴다 */
+const TAG = 'jamActionDropMetrics'
 
 /** 내가 놓은 드랍 행(놓은 사람 기준) — `inventory_item_id`가 있는 행만 조회한다 */
 export interface MyDropRow {
@@ -104,36 +103,9 @@ export function computeDropPickupMetrics(
   }
 }
 
-function throwQueryError(label: string, error: { message?: string }): never {
-  throw new Error(`[jamActionDropMetrics] ${label} 조회 오류: ${error.message ?? '알 수 없는 오류'}`)
-}
-
-type PageResult<T> = PromiseLike<{ data: T[] | null; error: { message?: string } | null }>
-
-/**
- * `.order('id').range()` 페이지를 끝까지 읽는다. `MAX_PAGES` 페이지를 모두 채우고도 다음 페이지에 행이
- * 더 있으면 오류를 던진다(정확히 `MAX_PAGES * PAGE_SIZE`행이면 통과한다).
- */
-async function selectAllPages<T>(label: string, pageOf: (from: number, to: number) => PageResult<T>): Promise<T[]> {
-  const rows: T[] = []
-  for (let page = 0; page <= MAX_PAGES; page++) {
-    const from = page * PAGE_SIZE
-    const { data, error } = await pageOf(from, from + PAGE_SIZE - 1)
-    if (error) throwQueryError(label, error)
-    const batch = data ?? []
-    if (page === MAX_PAGES) {
-      if (batch.length > 0) throw new Error(`[jamActionDropMetrics] ${label}이 ${MAX_PAGES}페이지(${MAX_PAGES * PAGE_SIZE}행)를 넘었다 — RPC 전환 필요`)
-      break
-    }
-    rows.push(...batch)
-    if (batch.length < PAGE_SIZE) break
-  }
-  return rows
-}
-
 /** 내가 놓은 드랍 행 — `inventory_item_id`가 있는 행만(옛 행 제외) */
 export async function fetchMyDropRows(supabase: SupabaseClient, userId: string): Promise<MyDropRow[]> {
-  return selectAllPages<MyDropRow>('내가 놓은 드랍', (from, to) =>
+  return selectAllPages<MyDropRow>(TAG, '내가 놓은 드랍', (from, to) =>
     supabase
       .from('poi_drops')
       .select('inventory_item_id, picked_up_by')
@@ -146,7 +118,7 @@ export async function fetchMyDropRows(supabase: SupabaseClient, userId: string):
 
 /** 내가 주운 드랍 행 — `inventory_item_id`가 있는 행만(옛 행 제외) */
 export async function fetchMyPickupRows(supabase: SupabaseClient, userId: string): Promise<MyPickupRow[]> {
-  return selectAllPages<MyPickupRow>('내가 주운 드랍', (from, to) =>
+  return selectAllPages<MyPickupRow>(TAG, '내가 주운 드랍', (from, to) =>
     supabase
       .from('poi_drops')
       .select('inventory_item_id, dropper_user_id')

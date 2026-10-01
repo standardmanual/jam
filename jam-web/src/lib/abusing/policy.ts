@@ -117,6 +117,20 @@ export function findPolicyRateMismatches(current: AbusingPolicy): AbusingPolicyM
 export const MIN_VEHICLE_SPEED_FILTER_KMH = 20
 
 /**
+ * 차량 속도 필터에 **실제로 적용할** 상한(km/h) — 필터식은 `평균속도 <= 이 값`이다.
+ *
+ * 유한하고 0보다 크면 정책 값 그대로이고, 아니면(0·음수·NaN·Infinity) `DEFAULT_POLICY`의 값(60)으로
+ * 폴백한다. 상한이 0 이하이면 사실상 모든 활동이 탈락해 핵심 보상 루프가 멈추기 때문이다.
+ * 동기화(`sync.ts`)와 JAM! 행동 지표의 「활동한 날」 판정(`jamActionDayMetrics.ts`)이 같은 규칙을
+ * 쓰도록 해석을 이 함수 한 곳에 둔다(티켓 20261001_0633). 하한(`MIN_VEHICLE_SPEED_FILTER_KMH`)은
+ * 여기서 재검사하지 않는다 — 위 주석대로 저장 경로가 소유한다.
+ */
+export function effectiveVehicleSpeedFilterKmh(policy: Pick<AbusingPolicy, 'vehicle_speed_filter_kmh'>): number {
+  const configured = policy.vehicle_speed_filter_kmh
+  return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_POLICY.vehicle_speed_filter_kmh
+}
+
+/**
  * 어뷰징 정책을 읽는 **정식 경로**. 정규화·폴백·관측이 모두 여기에 있으므로
  * `abusing_policy`를 직접 select하지 말고 이 함수를 쓴다 (티켓 20260831_1300).
  *

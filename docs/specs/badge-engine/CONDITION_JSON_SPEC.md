@@ -364,6 +364,12 @@ interface BadgeGateRequirement {
 | `pickup_item_count` | `number`(정수 ≥1) | [JAM! 카테고리] 픽업한 아이템 수 ≥ 조건값. 내가 주운 서로 다른 개체 수 — **내가 드랍한 것은 뺀다**. 시스템 드랍·놓은 사람이 탈퇴한 드랍은 포함한다 | 위와 동일 — `POST /api/drops/[dropId]/pickup` 성공 뒤 `after()`로 줍는 사람을 판정 |
 | `pickup_from_user_count` | `number`(정수 ≥1) | [JAM! 카테고리] 내가 픽업한 드랍을 놓은 **서로 다른 유저** 수 ≥ 조건값(함께 줍기). 자기·시스템·탈퇴 유저는 뺀다 | 위와 동일 — 줍는 사람 판정 |
 | `picked_up_by_user_count` | `number`(정수 ≥1) | [JAM! 카테고리] 내가 드랍한 아이템을 픽업한 **서로 다른 유저** 수 ≥ 조건값(나눔가). 자기·탈퇴 유저(`picked_up_by` NULL)는 뺀다 | 위와 동일 — 같은 픽업 성공 뒤 **놓은 사람**을 판정해 발급·알림한다 |
+| `mission_complete_count` | `number`(정수 ≥1) | [JAM! 카테고리] 완료한 미션 수 ≥ 조건값. 내가 완료한 **서로 다른 미션** 수(`user_mission_completions` 행 수, `UNIQUE(user_id, mission_id)`). 전체 기록이라 가입 이전 완료도 센다 | badge-engine 내 **항상 fail** — `jamActionBadges.ts`의 `evaluateJamActionBadges()`가 새 활동이 있는 동기화가 끝날 때(`sync.ts`) 판정 |
+| `collection_complete_count` | `number`(정수 ≥1) | [JAM! 카테고리] 완성한 컬렉션 수 ≥ 조건값. 내가 완성한 **서로 다른 컬렉션** 수(`user_item_book_completions` 행 수). 전체 기록이며 장착 해제·교체는 완성 기록을 지우지 않는다 | 위와 동일 — 동기화 끝과 컬렉션 장착 `POST /api/itembooks/[id]/slot` 성공 뒤 `after()`에서 판정 |
+| `days_since_signup` | `number`(정수 1~3650) | [JAM! 카테고리] 가입 경과일 ≥ 조건값. 가입한 날(KST)부터 오늘(KST)까지의 **날짜 차**(가입한 날이 0) | 위와 동일 — 동기화 끝에서 판정. 새 활동이 없는 동기화에서도 판정한다 |
+| `signup_recent_active_days` | `number`(정수 1~30) | [JAM! 카테고리] `days_since_signup`의 **보조 키**(선택). 오늘(KST)을 포함한 최근 30일 가운데 활동한 날 수 ≥ 조건값. 있으면 가입 일수와 이 조건을 둘 다 채워야 발급한다 | 지표가 아니라 `days_since_signup` 배지를 거르는 조건이다 — 단독으로 저장할 수 없다(짝 필드 `days_since_signup`) |
+| `weekly_active_days` | `number`(정수 1~7) | [JAM! 카테고리] 주간 활동일 ≥ 조건값. 월~일(KST) 한 주 안의 활동한 날 수의 **역대 최고 주** 값. 가입한 날부터 센다 | 위와 동일 — 동기화 끝에서 판정 |
+| `same_spot_checkin_days` | `number`(정수 ≥1) | [JAM! 카테고리] 같은 지점 체크인 일수 ≥ 조건값. 지점(`poi_id`)별 체크인한 서로 다른 날(KST) 수의 **최댓값**(합이 아니다). 가입한 날부터 센다 | 위와 동일 — 동기화 끝에서 판정 |
 
 > ⚠️ 배경(티켓 20260825_028): 마이그레이션 `084_badge_condition_cleanup.sql`이 배지 상세화면
 > 표시용으로 미션보상배지 15종에 `{"mission_reward": true}`를 넣었는데, 당시 badge-engine은
@@ -418,6 +424,18 @@ interface BadgeGateRequirement {
 > 세지 않으며, 줍는 사람이 탈퇴한 행은 「내 드랍을 픽업한 유저 수」에 세지 않는다. 계산이 읽는
 > 행이 30,000개를 넘으면 그 지표만 건너뛴다(fail-closed). 세부 규칙과 호출 지점은
 > [BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) ③ JAM! 카테고리의 드랍·픽업 절에 있다.
+>
+> **미션·컬렉션·가입 경과일·활동일·체크인 일수 지표 6키** (2026-10-01, 티켓 20261001_0633): 같은 틀에
+> 키와 계산 모듈(`jamActionCompletionMetrics.ts`·`jamActionDayMetrics.ts`)을 더한 정수형이다(CHECK 키 확장은
+> 마이그레이션 203). 「활동한 날」은 하나의 정의를 쓴다 — **가입한 날(KST) 이후, JAM! 종목이 있고 걷기 게이트·차량
+> 속도 필터를 통과한 활동의 시작 날짜(KST) ∪ 체크인한 날**(체크인을 만든 활동의 날짜, 날짜가 없는 체크인은 세지
+> 않는다). 동기화만 한 날은 세지 않는다. 주 경계는 KST(월~일)다.
+>
+> `signup_recent_active_days`는 **보조 키**다. `days_since_signup`과 함께 저장해야 하고(짝 필드, 단독 저장은
+> 거부), 사용량 지표가 아니라서 아래 §4의 「사용량 지표는 한 배지에 하나」 가드에 걸리지 않는다
+> (`USAGE_METRIC_CONDITION_KEYS`에서 뺀다). 예) `{ "days_since_signup": 100, "signup_recent_active_days": 4 }`는
+> 「가입 100일 이상 + 최근 30일 중 4일 이상 활동」이다. 세부 규칙·호출 지점·한계(수동 입력 활동을 가를 수 없다)는
+> [BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) ③ JAM! 카테고리의 해당 절에 있다.
 
 ---
 
@@ -449,26 +467,31 @@ interface BadgeGateRequirement {
 - 휴식 4종(§2.13)은 **`repeat_count`와 휴식 키 1개까지 조합 가능하다**(2026-09-06, 티켓
   20260906_2056) — 전용 술어가 "휴식 조건을 만족한 복귀 사건"만 센다. 휴식 키 2개 이상은
   사건 경계가 정의되지 않아 여전히 「회차와 함께 쓸 수 없는 조건」으로 막힌다
-- **사용량 지표 14종(§3 — `follower_count`·`following_count`·`daily_sync_count`·
+- **사용량 지표 19종(§3 — `follower_count`·`following_count`·`daily_sync_count`·
   `daily_sync_streak_days`·`checkin_category_count`·`checkin_badge_count`·
   `combine_attempt_count`·`combine_success_count`·`combine_fail_count`·`recipe_first_success`·
-  `drop_item_count`·`pickup_item_count`·`pickup_from_user_count`·`picked_up_by_user_count`.
-  단일 출처는 `conditionRegistry.ts`의 `USAGE_METRIC_CONDITION_KEYS` — 메타 키에서
-  `mission_reward`를 뺀 목록이라 지표를 더하면 이 규칙이 자동으로 붙는다)은 `repeat_count`와
+  `drop_item_count`·`pickup_item_count`·`pickup_from_user_count`·`picked_up_by_user_count`·
+  `mission_complete_count`·`collection_complete_count`·`days_since_signup`·`weekly_active_days`·
+  `same_spot_checkin_days`. 단일 출처는 `conditionRegistry.ts`의 `USAGE_METRIC_CONDITION_KEYS` —
+  메타 키에서 `mission_reward`와 보조 키 `signup_recent_active_days`를 뺀 목록이라 지표를 더하면 이 규칙이
+  자동으로 붙는다. 보조 키는 사용량 지표가 아니다)은 `repeat_count`와
   함께 쓸 수 없다**(2026-09-10, 티켓 20260910_1719; 20260911_2304에서 4번째 키로 확장;
   20260914_1725에서 체크인 배지 보유 2종 추가; 20261001_0631에서 믹스 행동 지표 4종 추가;
-  20261001_0632에서 드랍·픽업 행동 지표 4종 추가) —
+  20261001_0632에서 드랍·픽업 행동 지표 4종 추가; 20261001_0633에서 미션·컬렉션·가입 경과일·활동일·체크인 일수
+  지표 5종 추가) —
   `usageBadges.ts`·`jamActionBadges.ts`의
   발급 경로는 등급형(이름 그룹 내 최상위 tier 1개만)·레벨형(family_key 연속 발급)만
   구현돼 있다. `badgeKindOf()`가 아니라 `isLeveledBadge()`(rarity==null 이진 판정)로만
   갈라 반복형(세 번째 종류)을 구분하지 못하므로, 등급형 경로로 흘러가 회차가 조용히
   무시된다 — 저장 시점에 `findUsageMetricRepeatConflictError`(`badge-condition-guards.ts`)가
-  막는다. 같은 함수(`findUsageMetricOtherMeasurableConflictError`)가 이 14종과 다른
+  막는다. 같은 함수(`findUsageMetricOtherMeasurableConflictError`)가 이 19종과 다른
   measurable 필드(예: `distance_km`)의 조합도 막는다
-- **사용량 지표 14종은 한 배지에 하나만 쓸 수 있다**(2026-10-01, 티켓 20261001_0712; 저장 가드
+- **사용량 지표 19종은 한 배지에 하나만 쓸 수 있다**(2026-10-01, 티켓 20261001_0712; 저장 가드
   `findMultipleUsageMetricsError`, `badge-condition-guards.ts`). 지표마다 따로 판정돼 둘 이상을
   넣으면 AND(모두 충족)가 아니라 먼저 채운 지표 하나로 발급되기 때문이다 — AND 판정은
-  구현하지 않고 저장 때 막는다
+  구현하지 않고 저장 때 막는다. 보조 키 `signup_recent_active_days`는 지표가 아니라 `days_since_signup`의
+  짝이므로 `days_since_signup` + 보조 키 조합은 통과한다(티켓 20261001_0633). 보조 키만 저장하는 것은
+  짝 필드 가드(`findUnpairedConditionError`, `PAIR_ENFORCED_CONDITION_KEYS`)가 막는다
 - 교차 게이트 3종(§2.12)도 fail-closed 대상이 **아니다** — 다만 값의 형태가 깨지면
   **그 게이트 때문에 발급이 막힌다**(통과가 아니다). 게이트는 조건 평가가 아니라 후보
   선별 단계에서 판정되므로, 수치 조건이 하나도 없는 배지는 여전히 「평가 가능한 조건 없음」이다

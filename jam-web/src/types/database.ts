@@ -1461,6 +1461,27 @@ export interface BadgeCondition {
   pickup_from_user_count?: number
   /** [JAM!] 내가 놓은 드랍을 주운 서로 다른 유저 수 ≥ 값. 나·탈퇴 유저는 제외(나눔가). */
   picked_up_by_user_count?: number
+
+  // ── JAM! 카테고리 — 미션·컬렉션·가입 경과일·활동일·체크인 일수 지표 6종 (티켓 20261001_0633) ──
+  //
+  // 위 조건들과 같은 `evaluation: 'external'`이다. 판정·발급은 `jamActionBadges.ts`, 값 계산은
+  // `jamActionCompletionMetrics.ts`(미션·컬렉션)·`jamActionDayMetrics.ts`(나머지 넷)가 전담한다.
+
+  /** [JAM!] 내가 완료한 서로 다른 미션 수 ≥ 값. 전체 기록(`user_mission_completions` 행 수). */
+  mission_complete_count?: number
+  /** [JAM!] 내가 완성한 서로 다른 컬렉션 수 ≥ 값. 전체 기록(`user_item_book_completions` 행 수). */
+  collection_complete_count?: number
+  /** [JAM!] 가입한 날(KST)부터 오늘(KST)까지의 날짜 차 ≥ 값. 가입한 날이 0. 동기화할 때 판정한다. */
+  days_since_signup?: number
+  /**
+   * [JAM!] `days_since_signup`의 보조 키(선택, 단독 저장 불가). 오늘(KST)을 포함한 최근 30일 가운데
+   * 활동한 날 수 ≥ 값. 있으면 가입 일수와 이 조건을 둘 다 채워야 발급한다.
+   */
+  signup_recent_active_days?: number
+  /** [JAM!] 월~일(KST) 한 주 안의 활동한 날 수 ≥ 값. 역대 최고 주의 값. 가입한 날부터 센다. */
+  weekly_active_days?: number
+  /** [JAM!] 지점(`poi_id`)별 체크인한 서로 다른 날(KST) 수의 최댓값 ≥ 값. 합이 아니다. 가입한 날부터 센다. */
+  same_spot_checkin_days?: number
 }
 
 // =========================================

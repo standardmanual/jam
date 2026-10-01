@@ -212,8 +212,10 @@ describe('findBadgeConditionSaveError — 믹스 행동 지표 4종', () => {
     expect(error).toContain('서비스 사용량 지표')
   })
 
-  it('CONDITION_META_KEYS에서 mission_reward를 뺀 모든 키가 repeat_count 가드에 걸린다 — 지표를 더하면 가드가 자동으로 붙는다', () => {
-    const usageKeys = CONDITION_META_KEYS.filter((k) => k !== 'mission_reward')
+  it('CONDITION_META_KEYS에서 mission_reward와 보조 키를 뺀 모든 키가 repeat_count 가드에 걸린다 — 지표를 더하면 가드가 자동으로 붙는다', () => {
+    // 보조 키(signup_recent_active_days, 티켓 20261001_0633)는 지표가 아니라 `days_since_signup`의 짝이다.
+    // 혼자 저장되는 조합은 짝 필드 가드가 다른 문구로 막는다(아래 0633 describe에서 확인한다).
+    const usageKeys = CONDITION_META_KEYS.filter((k) => k !== 'mission_reward' && k !== 'signup_recent_active_days')
     expect(usageKeys.length).toBeGreaterThanOrEqual(10)
     for (const key of usageKeys) {
       const cond = { [key]: 1, repeat_count: 3 } as unknown as BadgeCondition
@@ -265,6 +267,84 @@ describe('findBadgeConditionSaveError — 드랍·픽업 행동 지표 4종', ()
 
   it('드랍·픽업 지표 둘 이상을 한 배지에 함께 저장하는 것도 막는다(0712 가드)', () => {
     const cond = { drop_item_count: 5, pickup_item_count: 20 } as unknown as BadgeCondition
+    expect(findBadgeConditionSaveError(badge, 'activity', cond)).not.toBeNull()
+  })
+})
+
+// 미션·컬렉션·가입 경과일·활동일·체크인 일수 지표 — 저장 시점 가드 (티켓 20261001_0633)
+describe('findBadgeConditionSaveError — 미션·컬렉션·가입 경과일·활동일·체크인 일수 지표', () => {
+  const badge = { name: '진행 배지', family_key: 'jam:progress' }
+  const MAIN_KEYS = [
+    'mission_complete_count',
+    'collection_complete_count',
+    'days_since_signup',
+    'weekly_active_days',
+    'same_spot_checkin_days',
+  ] as const
+
+  it.each(MAIN_KEYS)('%s 단독 조건은 저장된다', (key) => {
+    const cond = { [key]: 3 } as unknown as BadgeCondition
+    expect(findBadgeConditionSaveError(badge, 'activity', cond)).toBeNull()
+  })
+
+  it.each(MAIN_KEYS)('%s + repeat_count는 저장을 막는다', (key) => {
+    const cond = { [key]: 3, repeat_count: 3 } as unknown as BadgeCondition
+    const error = findBadgeConditionSaveError(badge, 'activity', cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('등급형·레벨형')
+  })
+
+  it.each(MAIN_KEYS)('%s + 다른 measurable 조건(distance_km)은 저장을 막는다', (key) => {
+    const cond = { [key]: 3, distance_km: 5 } as unknown as BadgeCondition
+    const error = findBadgeConditionSaveError(badge, 'activity', cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('서비스 사용량 지표')
+  })
+
+  it('주 키 5개는 사용량 지표 목록에 들어 있다 — 레지스트리 파생이라 가드가 자동으로 붙는다', () => {
+    for (const key of MAIN_KEYS) {
+      expect(USAGE_METRIC_CONDITION_KEYS, `${key}가 사용량 지표 목록에 없다`).toContain(key)
+    }
+  })
+
+  it('가입 경과일 + 보조 키(최근 30일 활동일)는 저장된다 — 「한 배지에 사용량 지표 하나」 가드에 걸리지 않는다', () => {
+    const cond = { days_since_signup: 100, signup_recent_active_days: 4 } as BadgeCondition
+    expect(findBadgeConditionSaveError(badge, 'activity', cond)).toBeNull()
+    expect(USAGE_METRIC_CONDITION_KEYS).not.toContain('signup_recent_active_days')
+  })
+
+  it('보조 키 + repeat_count도 짝 없이는 저장을 막는다', () => {
+    expect(
+      findBadgeConditionSaveError(badge, 'activity', { signup_recent_active_days: 4, repeat_count: 3 } as BadgeCondition)
+    ).not.toBeNull()
+  })
+
+  it('보조 키만 있으면 저장을 막는다 — 기존 짝 필드 오류 문구 형식', () => {
+    const error = findBadgeConditionSaveError(badge, 'activity', { signup_recent_active_days: 4 })
+    expect(error).not.toBeNull()
+    expect(error).toContain('짝 필드가 없어')
+    expect(error).toContain('signup_recent_active_days')
+  })
+
+  it('가입 경과일 + 보조 키 + 다른 사용량 지표는 저장을 막는다', () => {
+    const cond = { days_since_signup: 100, signup_recent_active_days: 4, weekly_active_days: 3 } as BadgeCondition
+    const error = findBadgeConditionSaveError(badge, 'activity', cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('한 배지에 하나만')
+  })
+
+  it('가입 경과일 + 보조 키 + repeat_count는 저장을 막는다', () => {
+    const cond = { days_since_signup: 100, signup_recent_active_days: 4, repeat_count: 3 } as BadgeCondition
+    expect(findBadgeConditionSaveError(badge, 'activity', cond)).not.toBeNull()
+  })
+
+  it('가입 경과일 + 보조 키 + 다른 measurable 조건(distance_km)은 저장을 막는다', () => {
+    const cond = { days_since_signup: 100, signup_recent_active_days: 4, distance_km: 5 } as BadgeCondition
+    expect(findBadgeConditionSaveError(badge, 'activity', cond)).not.toBeNull()
+  })
+
+  it('주 키 5개를 둘 이상 함께 쓰는 것도 막는다(0712 가드)', () => {
+    const cond = { mission_complete_count: 3, weekly_active_days: 3 } as BadgeCondition
     expect(findBadgeConditionSaveError(badge, 'activity', cond)).not.toBeNull()
   })
 })

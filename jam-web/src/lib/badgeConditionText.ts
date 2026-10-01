@@ -200,6 +200,18 @@ const USER_PHRASE: Partial<Record<ConditionKey, (c: BadgeCondition) => string | 
   pickup_item_count: (c) => `아이템 ${c.pickup_item_count}개 이상 픽업`,
   pickup_from_user_count: (c) => `서로 다른 유저 ${c.pickup_from_user_count}명 이상의 드랍 픽업`,
   picked_up_by_user_count: (c) => `내 드랍을 픽업한 유저 ${c.picked_up_by_user_count}명 이상`,
+
+  // ── 미션·컬렉션·가입 경과일·활동일·체크인 일수 지표 (티켓 20261001_0633) ─
+  // 여섯 문구 모두 명사구로 끝나 「… 조건을 채우면 획득할 수 있어요.」와 이어진다(조각은 ` · `로 이어진다).
+  // 고정 용어 「체크인」만 쓰고 「방문」·「장소」를 쓰지 않는다(UX Writing). 「주」에는 (월~일)을 붙인다.
+  // 가입 경과일은 선언 순서상 보조 키(최근 30일 활동일)보다 앞이라 「가입 후 100일 이상 · 최근 30일 동안
+  // 4일 이상 활동」 순서로 읽힌다.
+  mission_complete_count: (c) => `완료한 미션 ${c.mission_complete_count}개 이상`,
+  collection_complete_count: (c) => `완성한 컬렉션 ${c.collection_complete_count}개 이상`,
+  days_since_signup: (c) => `가입 후 ${c.days_since_signup}일 이상`,
+  signup_recent_active_days: (c) => `최근 30일 동안 ${c.signup_recent_active_days}일 이상 활동`,
+  weekly_active_days: (c) => `한 주(월~일)에 ${c.weekly_active_days}일 이상 활동`,
+  same_spot_checkin_days: (c) => `같은 지점에 ${c.same_spot_checkin_days}일 이상 체크인`,
 }
 
 /**
