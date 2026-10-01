@@ -4,6 +4,13 @@ import { aggregateTodayCardEvents, type TodayCardEventType } from '@/lib/today/e
 
 const DEFAULT_RANGE_DAYS = 7
 
+type EventCounts = Record<TodayCardEventType, number>
+
+/** 열람률 = 열람(click) / 노출(impression). 노출이 0이면 나눌 수 없어 null. */
+function clickThroughRateOf(counts: EventCounts): number | null {
+  return counts.impression > 0 ? counts.click / counts.impression : null
+}
+
 function resolveRange(searchParams: URLSearchParams): { from: string; to: string } {
   const toParam = searchParams.get('to')
   const toDate = toParam && !Number.isNaN(Date.parse(toParam)) ? new Date(toParam) : new Date()
@@ -40,24 +47,33 @@ export async function GET(req: NextRequest) {
   try {
     const rows = await aggregateTodayCardEvents(range.from, range.to)
 
-    const byType = new Map<string, Record<TodayCardEventType, number>>()
+    const byType = new Map<string, EventCounts>()
+    const byShapeCounts = new Map<string, EventCounts>()
     for (const row of rows) {
-      const key = row.contentTypeId ?? 'unknown'
-      const bucket = byType.get(key) ?? { impression: 0, click: 0, followup: 0 }
-      bucket[row.event] += row.count
-      byType.set(key, bucket)
+      const typeKey = row.contentTypeId ?? 'unknown'
+      const typeBucket = byType.get(typeKey) ?? { impression: 0, click: 0, followup: 0 }
+      typeBucket[row.event] += row.count
+      byType.set(typeKey, typeBucket)
+
+      const shapeKey = row.cardShape ?? 'unknown'
+      const shapeBucket = byShapeCounts.get(shapeKey) ?? { impression: 0, click: 0, followup: 0 }
+      shapeBucket[row.event] += row.count
+      byShapeCounts.set(shapeKey, shapeBucket)
     }
 
     const types = Array.from(byType.entries())
       .map(([contentTypeId, counts]) => ({
         contentTypeId,
         ...counts,
-        // 열람률 = 열람(click) / 노출(impression). 노출이 0이면 나눌 수 없어 null.
-        clickThroughRate: counts.impression > 0 ? counts.click / counts.impression : null,
+        clickThroughRate: clickThroughRateOf(counts),
       }))
       .sort((a, b) => a.contentTypeId.localeCompare(b.contentTypeId))
 
-    return NextResponse.json({ range, types })
+    const byShape = Array.from(byShapeCounts.entries())
+      .map(([shape, counts]) => ({ shape, ...counts, clickThroughRate: clickThroughRateOf(counts) }))
+      .sort((a, b) => a.shape.localeCompare(b.shape))
+
+    return NextResponse.json({ range, types, byShape })
   } catch (err) {
     console.error('[/api/admin/today/metrics] 집계 오류:', err)
     return NextResponse.json({ error: '집계 중 오류가 발생했습니다.' }, { status: 500 })

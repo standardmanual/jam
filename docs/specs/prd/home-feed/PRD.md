@@ -310,8 +310,9 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 
 - 전송은 `navigator.sendBeacon`을 먼저 쓰고, 안 되면 `fetch(keepalive)`로 보낸다. 실패는 조용히 무시한다.
 - 서버는 로그인 세션이 있어야 받고, 유저별 분당 60건을 넘으면 429다. 카드가 존재하고 활성이며 노출 기간 안일 때만 기록한다(아니면 400). `followup` 이벤트는 400으로 거부한다.
-- 저장(`today_card_events`)에는 카드 ID·기록 시점 유형 ID·이벤트 종류만 남고 **유저 식별자는 없다.** 유저 ID는 빈도 제한 판정에만 인스턴스 메모리에서 쓴다.
-- 집계: `GET /api/admin/today/metrics?from=&to=`(기본 최근 7일, 어드민 읽기 토큰 허용)가 유형 ID별 노출·열람 수와 열람률을 돌려준다.
+- 저장(`today_card_events`)에는 카드 ID·기록 시점 유형 ID·기록 시점에 그려진 모양(`card_shape`)·이벤트 종류만 남고 **유저 식별자는 없다.** 유저 ID는 빈도 제한 판정에만 인스턴스 메모리에서 쓴다.
+- 그려진 모양은 노출 검증이 카드를 조회할 때 함께 읽은 값(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)으로 정한다(카드는 한 번만 조회). 저장된 `shape`가 있으면 그 모양이고, 배지가 없는 타일형 `list`는 화면처럼 `brief`로 기록한다. `shape`가 없는 옛 카드는 옛 렌더러로 그려지는 동안(전환 상수 `LEGACY_SHAPE_CUTOVER`가 꺼져 있는 동안) NULL이다.
+- 집계: `GET /api/admin/today/metrics?from=&to=`(기본 최근 7일, 어드민 읽기 토큰 허용)가 유형 ID별 노출·열람 수와 열람률(`types`)을 돌려주고, 그려진 모양별 노출·열람·후속 건수와 열람률(`byShape`)을 함께 돌려준다. `card_shape`가 NULL인 기록(모양 도입 전 기록, 전환 전 옛 카드)은 `byShape`에서 `unknown`으로 묶는다.
 - 기사 상세 화면·CTA 버튼·오늘의 현황 스트립은 이 계측 대상이 아니다.
 - 어드민 투데이의 미리보기(날짜 미리보기 모달, 카드 폼의 「홈 화면 미리보기」)는 계측 대상이 아니다. `TodayCardStack`에 `preview`를 넘기면 `TodayCardTracker`와 카드 링크(랭킹 카드는 순위 행 링크 포함)를 그리지 않아 노출·클릭 요청과 GA 이벤트가 나가지 않고, 눌러도 이동하지 않는다. 홈은 `preview` 없이 그려 계측이 그대로 동작한다.
 
@@ -322,7 +323,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | 테이블 | 쓰임 |
 |---|---|
 | `today_cards` | 카드 한 장 = 한 행. 제목·부제·게재용 설명문(`description`)·템플릿·레이아웃·노출 태그·노출 기간·활성 여부·정렬·대상 필드(`badge_ids`·`mission_id`·`item_book_id`·`ranking_mode_id`·`region_label`·`target_href`)·기사 본문·커버·유형 ID·이미지 제작 경로(`image_source`)·카드 모양(`shape`)·이미지 안 제목 여부(`title_in_image`). 두 칸은 NULL 허용이고 NULL이면 옛 카드라 규칙으로 판정한다(판정 규칙은 §6의 「카드 모양 판정」) |
-| `today_card_events` | 노출·열람 기록(§9). 기록 시점에 그려진 모양을 `card_shape`로 복사한다(NULL 허용, 모양 도입 전 기록은 NULL). 유저 식별자 없음 |
+| `today_card_events` | 노출·열람 기록(§9). 기록 시점에 그려진 모양을 `card_shape`로 복사한다(NULL 허용, 모양 도입 전 기록과 전환 전 옛 카드는 NULL). 유저 식별자 없음 |
 | `external_input_daily` | 날씨·특일 하루 값(§4) |
 
 컬럼의 정확한 정의는 [02_DATA_MODEL.md](../02_DATA_MODEL.md)와 `jam-web/src/types/database.generated.ts`가 정본이다. 카드는 어드민 `/admin/today` 화면, 주간 편성 시드 SQL, 에셋 제너레이터 등록 스크립트 세 경로로 만들어지며 `image_source`로 구분된다(§11).

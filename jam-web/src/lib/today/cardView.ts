@@ -239,6 +239,14 @@ export interface ToCardViewOptions {
 }
 
 /**
+ * 타일이 0개인 타일형 `list`는 `brief`로 그린다(확정 설계 1절). 랭킹 행형(`ranking`)은 타일이 아니라 순위 행이라 해당하지 않는다.
+ * `toCardView`와 계측(`events.ts`의 기록 시점 모양)이 같은 규칙을 쓰려고 한 함수로 둔다(티켓 20261001_1431).
+ */
+export function fallbackEmptyTileShape(shape: CardShape, resource: CardResource, tileCount: number): CardShape {
+  return shape === 'list' && resource !== 'ranking' && tileCount === 0 ? 'brief' : shape
+}
+
+/**
  * 서버 조회 결과를 표시 데이터로 바꾼다. 모양은 `resolveShape`로 정한다 — 미리보기는 늘 새 모양으로 그리므로
  * 전환 상수(`LEGACY_SHAPE_CUTOVER`)와 무관하다. 홈이 지금 그릴 모양(`drawnShape`)은 호출하는 쪽이 가른다.
  */
@@ -256,9 +264,8 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
     earned: b.earned,
   }))
 
-  // 타일이 0개인 타일형은 brief로 그린다(확정 설계 1절). 랭킹 행형은 타일이 아니라 순위 행이라 해당하지 않는다.
-  let shape = resolveShape(card)
-  if (shape === 'list' && resource !== 'ranking' && tiles.length === 0) shape = 'brief'
+  // 타일이 0개인 타일형은 brief로 그린다(확정 설계 1절).
+  const shape = fallbackEmptyTileShape(resolveShape(card), resource, tiles.length)
 
   const singleBadge = badges.length === 1 ? badges[0] : null
   const facts = buildFacts(
