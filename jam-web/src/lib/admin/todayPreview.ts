@@ -10,21 +10,38 @@
  * 즉 "이 날짜에 켜져 있는 카드 전체"를 보여주는 상한선 시뮬레이션이다. 실제 개별 유저가
  * 보는 목록은 개인화 조건에 따라 이 중 일부일 수 있다.
  *
- * `getTodayCards()`·`TodayCardStack.tsx`(유저向 로직·화면)는 이 티켓에서 변경하지
- * 않는다 — 이 파일은 그 둘의 타입(`TodayCardWithHref`, `ResolvedBadge`)과 순수 함수
- * (`resolveTargetHref`)만 재사용하는 별도 조회 경로다.
+ * `getTodayCards()`·`TodayCardStack.tsx`(유저向 로직·화면)는 변경하지 않는다 — 이 파일은 그 둘의
+ * 타입(`TodayCardWithHref`, `ResolvedBadge`)과 순수 함수(`resolveTargetHref`)·자원 조회 함수
+ * (`fetchMissionsById`·`fetchCollectionsById`)만 재사용하는 별도 조회 경로다.
+ *
+ * 표시 데이터(`toCardView`)가 필요로 하는 미션 값(`resolved_mission`)과 컬렉션 값(`resolved_collection`)은
+ * 홈 조회와 같은 규칙으로 싣는다(티켓 20261001_2208). 배지는 보유 여부(`earned`)를 싣지 않는다 — 유저 정보가
+ * 없는 미리보기라 표시 데이터가 컬러로 그린다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { TodayCardRow } from '@/types/database'
-import { resolveTargetHref, fetchRankingBoardData, type TodayCardWithHref, type ResolvedBadge } from '@/lib/today/cards'
-import { kstDayBoundsIso } from './today-calendar'
+import {
+  resolveTargetHref,
+  fetchRankingBoardData,
+  fetchMissionsById,
+  fetchCollectionsById,
+  missionIdsToResolve,
+  collectionIdsToResolve,
+  resourceNeedsMission,
+  toResolvedMission,
+  type TodayCardWithHref,
+  type ResolvedBadge,
+} from '@/lib/today/cards'
+import { kstDayBoundsIso, previewBaseTime } from './today-calendar'
 
 /**
  * 선택한 날짜(KST 달력 기준 'YYYY-MM-DD')에 실제 유저가 봤을/볼 투데이 카드 목록을
  * 시뮬레이션한다. 정렬은 `getTodayCards()`와 동일(sort_order asc, starts_at desc).
+ * `now`는 기준 시각 규칙(`previewBaseTime`)의 「지금」이다 — 컬렉션 공개 판정의 기준 시각을 정한다.
  */
-export async function getAdminTodayPreviewCards(dateStr: string): Promise<TodayCardWithHref[]> {
+export async function getAdminTodayPreviewCards(dateStr: string, now: Date = new Date()): Promise<TodayCardWithHref[]> {
   const { startIso, endIso } = kstDayBoundsIso(dateStr)
+  const baseIso = previewBaseTime(dateStr, now).toISOString()
   const supabase = createServiceClient()
 
   const { data, error } = await supabase
@@ -58,8 +75,15 @@ export async function getAdminTodayPreviewCards(dateStr: string): Promise<TodayC
   // 가지 단순화(exposure_tags·참가여부 미필터링)와 달리 그대로 실제 값을 보여준다.
   const rankingByModeId = await fetchRankingBoardData(supabase, cards)
 
+  // 미션·컬렉션 값은 홈 조회와 같은 함수·규칙으로 한 번에 읽는다(카드마다 읽지 않는다).
+  const [missionsById, collectionsById] = await Promise.all([
+    fetchMissionsById(supabase, missionIdsToResolve(cards)),
+    fetchCollectionsById(supabase, collectionIdsToResolve(cards), baseIso),
+  ])
+
   return cards.map((card) => {
     const ranking = card.ranking_mode_id ? rankingByModeId.get(card.ranking_mode_id) : undefined
+    const mission = card.mission_id ? missionsById.get(card.mission_id) : undefined
     return {
       ...card,
       resolved_href: resolveTargetHref(
@@ -70,6 +94,8 @@ export async function getAdminTodayPreviewCards(dateStr: string): Promise<TodayC
       ),
       resolved_badges: (card.badge_ids ?? []).map((id) => badgesById.get(id)).filter((b): b is ResolvedBadge => Boolean(b)),
       resolved_ranking: ranking?.result ?? null,
+      resolved_mission: mission && resourceNeedsMission(card) ? toResolvedMission(mission) : null,
+      resolved_collection: card.item_book_id ? (collectionsById.get(card.item_book_id) ?? null) : null,
     }
   })
 }

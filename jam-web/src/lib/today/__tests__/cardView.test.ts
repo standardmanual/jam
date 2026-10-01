@@ -398,6 +398,12 @@ describe('toCardView — 표시 데이터', () => {
       expect(owned).not.toHaveProperty('imageDimmed')
     })
 
+    it('보유 여부를 모르면(earned 없음, 유저 정보가 없는 미리보기) 승격한 배지 그림은 컬러다 (티켓 20261001_2208)', () => {
+      const view = toCardView(makeCard({ cover_image_url: null, resolved_badges: [badge('a', { earned: undefined })] }))
+      expect(view).toMatchObject({ shape: 'square', imageUrl: 'https://cdn.example/a.png' })
+      expect(view).not.toHaveProperty('imageDimmed')
+    })
+
     it('커버도 배지 그림도 없으면 imageUrl은 null이다(이미지 칸은 그리는 쪽이 유지한다)', () => {
       const view = toCardView(makeCard({ cover_image_url: null, resolved_badges: [] }))
       expect(view).toMatchObject({ shape: 'hero', imageUrl: null })
@@ -489,7 +495,7 @@ describe('toCardView — 표시 데이터', () => {
       expect(view).toMatchObject({ shape: 'brief', resource: 'auto', facts: ['기간 상시'] })
     })
 
-    it('드랍 카드: 지역 줄과 지역 핀', () => {
+    it('드랍 카드: 필수 정보 지역 줄과 칩 줄 지역 핀', () => {
       const view = toCardView(makeCard({ template_type: 'drop_alert', layout_type: 'shortcut', region_label: '한강공원' }))
       expect(view).toMatchObject({ shape: 'brief', resource: 'drop', facts: ['지역 한강공원'], regionLabel: '한강공원' })
     })
@@ -542,6 +548,12 @@ describe('toCardView — 표시 데이터', () => {
     it('유저가 갖지 않은 배지는 흑백(thumbnailDimmed)이다', () => {
       const view = toCardView(briefBadgeCard([badge('a', { earned: false })]))
       expect(view).toMatchObject({ thumbnailUrl: 'https://cdn.example/a.png', thumbnailDimmed: true })
+    })
+
+    it('보유 여부를 모르면(earned 없음, 유저 정보가 없는 미리보기) 썸네일은 컬러다 (티켓 20261001_2208)', () => {
+      const view = toCardView(briefBadgeCard([badge('a', { earned: undefined })]))
+      expect(view).toMatchObject({ shape: 'brief', thumbnailUrl: 'https://cdn.example/a.png' })
+      expect(view).not.toHaveProperty('thumbnailDimmed')
     })
 
     it('배지 그림이 없으면(null·빈 값) 썸네일 키가 없다 — 그리는 쪽이 자원 아이콘을 그린다', () => {
