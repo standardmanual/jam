@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -8,8 +8,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/admin/ui/dialog'
-import { formatKstDateLabel } from '@/lib/admin/today-calendar'
-import TodayCardStack from '@/app/(main)/TodayCardStack'
+import { formatKstDateLabel, previewBaseTime } from '@/lib/admin/today-calendar'
+import TodayCardPreview from './TodayCardPreview'
+import { toCardView } from '@/lib/today/cardView'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 
 interface Props {
@@ -21,12 +22,16 @@ interface Props {
 /**
  * 어드민 투데이 캘린더뷰(20260902_1028) [미리보기] — 실제 라이브 페이지가 아니라 선택 날짜
  * 기준 노출조건(is_active + 날짜 구간, 개인화 exposure_tags는 무시)으로 재현한 시뮬레이션이다.
- * 유저向 홈 화면과 동일한 `TodayCardStack`을 그대로 재사용해 실제로 보일 모양을 그대로 반영한다.
- * `preview`를 켜서 노출·클릭 계측과 카드 이동을 끈다(티켓 20260930_1645) — 어드민이 미리 보는
+ * 조회 결과를 표시 데이터(`toCardView`)로 바꿔 새 틀(`TodayCard`)로 그린다(티켓 20261001_2208) — 홈 전환 상수와
+ * 무관하게 늘 새 모양이라, 저장된 옛 카드(`shape` NULL)도 새 모양으로 어떻게 보일지 여기서 먼저 볼 수 있다.
+ * 계측 정보(`tracking`)를 싣지 않아 노출·클릭 계측과 카드 이동이 없다(티켓 20260930_1645) — 어드민이 미리 보는
  * 것이 실제 노출 수치에 섞이면 안 된다.
+ *
+ * 기준 시각(「N일 남음」 계산과 컬렉션 공개 판정)은 선택한 날짜가 오늘이면 지금, 아니면 그 날짜 00:00(KST)이다.
  */
 export default function TodayPreviewModal({ open, onOpenChange, selectedDate }: Props) {
-  const [cards, setCards] = useState<TodayCardWithHref[] | null>(null)
+  // 조회한 카드와 그 기준 시각(ISO). 기준 시각은 조회가 끝난 순간에 한 번 정해 같은 값으로 그린다.
+  const [data, setData] = useState<{ cards: TodayCardWithHref[]; baseTime: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [themeContainer] = useState<HTMLElement | null>(() =>
@@ -46,7 +51,7 @@ export default function TodayPreviewModal({ open, onOpenChange, selectedDate }: 
         const res = await fetch(`/api/admin/today/preview?date=${selectedDate}`)
         if (!res.ok) throw new Error('조회 실패')
         const json = (await res.json()) as { cards: TodayCardWithHref[] }
-        if (!cancelled) setCards(json.cards)
+        if (!cancelled) setData({ cards: json.cards, baseTime: previewBaseTime(selectedDate).toISOString() })
       } catch {
         if (!cancelled) setError('미리보기를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
       } finally {
@@ -60,9 +65,15 @@ export default function TodayPreviewModal({ open, onOpenChange, selectedDate }: 
     }
   }, [open, selectedDate])
 
+  const views = useMemo(() => {
+    if (!data) return []
+    const now = new Date(data.baseTime)
+    return data.cards.map((card) => toCardView(card, { now }))
+  }, [data])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent container={themeContainer ?? undefined} className="max-w-[480px] p-0 overflow-hidden">
+      <DialogContent container={themeContainer ?? undefined} className="max-w-[520px] p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>{formatKstDateLabel(selectedDate)} 미리보기</DialogTitle>
           <DialogDescription>
@@ -71,15 +82,14 @@ export default function TodayPreviewModal({ open, onOpenChange, selectedDate }: 
           </DialogDescription>
         </DialogHeader>
 
-        {/* 홈 화면 실제 캔버스와 동일한 배경(bg-surface, DS v2 다크 그레이) 위에 카드를 그려야
-            TodayCardStack의 tone="inverse"(흰 카드) 대비가 실제 화면과 같게 보인다. */}
-        <div className="max-h-[70vh] overflow-y-auto p-6 pt-4 bg-surface text-text">
-          {loading && <p className="text-sm text-text-secondary">불러오는 중...</p>}
-          {!loading && error && <p className="text-sm text-red-400">{error}</p>}
-          {!loading && !error && cards && cards.length === 0 && (
-            <p className="text-sm text-text-secondary">이 날짜에 노출될 카드가 없습니다.</p>
+        {/* 카드를 얹는 bg-surface 판(홈 캔버스와 같은 배경)과 기기 폭 전환은 TodayCardPreview가 그린다. */}
+        <div className="max-h-[70vh] overflow-y-auto p-6 pt-4">
+          {loading && <p className="text-sm text-muted-foreground">불러오는 중...</p>}
+          {!loading && error && <p className="text-sm text-destructive">{error}</p>}
+          {!loading && !error && data && data.cards.length === 0 && (
+            <p className="text-sm text-muted-foreground">이 날짜에 노출될 카드가 없습니다.</p>
           )}
-          {!loading && !error && cards && cards.length > 0 && <TodayCardStack cards={cards} preview />}
+          {!loading && !error && data && data.cards.length > 0 && <TodayCardPreview views={views} />}
         </div>
       </DialogContent>
     </Dialog>
