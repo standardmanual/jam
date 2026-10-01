@@ -38,6 +38,12 @@ export interface RecipeWithSlots extends CombinationRecipeRow {
   slots: RecipeSlotWithCandidates[]
   /** 레시피 목록 미리보기·결과 캐러셀에 쓰는 보상 배지 상세(name·image_url·rarity·description) */
   rewardBadges: BadgeDetail[]
+  /**
+   * 공개 시각 — 서버(`page.tsx`)가 «공개 전 레시피를 운영자에게 보여 줄 때만» `valid_from` 값을 넣는다
+   * (티켓 20261001_1159). 공개된 레시피는 운영자에게도 없거나 null이다. 클라이언트는 행 전체에 딸려 오는
+   * `valid_from`으로 공개 여부를 다시 판정하지 않는다. 온보딩 연출 레시피(`DEMO_MIX_RECIPE`)에는 없다.
+   */
+  releaseAt?: string | null
 }
 
 interface Props {
@@ -74,6 +80,15 @@ interface BagRow {
   imageUrl: string | null
   /** active: 탭해서 채울 수 있음 · used: 다른 슬롯에 이미 씀 · needed: 아예 보유하지 않음 */
   state: 'active' | 'used' | 'needed'
+}
+
+/**
+ * 순수 판정 — 결과 오버레이를 닫는 순간 띄울 시험 믹스 안내 문구(없으면 null). 서버 응답의 `testMix`만
+ * 근거로 삼는다: 화면을 열어 둔 사이 공개 시각이 지났다면 서버는 일반 믹스로 기록하므로, 클라이언트가
+ * `releaseAt`으로 추측하면 거짓 안내가 나간다(티켓 20261001_1159).
+ */
+export function testMixNoticeOnClose(result: { testMix?: boolean } | null): string | null {
+  return result?.testMix ? d.combine.testMixNotice : null
 }
 
 /** 표시용 이름 — 기존 레시피(마이그레이션 175 이전 데이터)는 name이 NULL일 수 있다(티켓 20260917_1828) */
@@ -195,6 +210,8 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
     badges: RevealBadge[]
     points: number
     message?: string
+    /** 서버 응답의 testMix — 운영자의 공개 전 시험 믹스(티켓 20261001_1159) */
+    testMix?: boolean
   } | null>(null)
   const { toast } = useToast()
   const router = useRouter()
@@ -426,7 +443,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
             : (data.message ?? d.combine.genericFail)
           : undefined
 
-      setResult({ success: !!data.success, badges: revealBadges, points, message })
+      setResult({ success: !!data.success, badges: revealBadges, points, message, testMix: data.testMix === true })
       // 재료 소각·조합 결과 반영 — 슬롯만 비우고 같은 레시피 화면은 유지한다(오버레이를 닫을 때 처리).
       router.refresh()
     } catch {
@@ -437,6 +454,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
   }
 
   function closeResult() {
+    const testMixNotice = testMixNoticeOnClose(result)
     setResult(null)
     if (demoMode) {
       // 온보딩 퀘스트 4~5단계 완료 — 같은 화면에 남지 않고 홈으로 이동한다(사용자 결정 3).
@@ -445,6 +463,9 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
     }
     // 티켓 요구사항: 오버레이를 닫으면 같은 레시피 화면에 슬롯만 비운 채로 남는다.
     setFills({})
+    // 시험 믹스 안내는 오버레이를 닫은 뒤에 띄운다 — 오버레이가 떠 있는 동안 토스트(z-60)가 올라오면
+    // 같은 z의 캐러셀 하단 조작을 가로챌 수 있다(티켓 20261001_1159).
+    if (testMixNotice) toast(testMixNotice, 'info')
   }
 
   function renderRecipeRow(recipe: RecipeWithSlots, onPick: (id: string) => void) {
@@ -455,6 +476,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
         slotCount={recipe.slots.length}
         badges={recipe.rewardBadges}
         points={recipe.reward_points}
+        releaseAt={recipe.releaseAt}
         onClick={() => onPick(recipe.id)}
         className={pulseTarget?.type === 'recipe' ? 'jam-quest-pulse' : ''}
       />
@@ -532,6 +554,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
               slotCount={selectedRecipe.slots.length}
               badges={selectedRecipe.rewardBadges}
               points={selectedRecipe.reward_points}
+              releaseAt={selectedRecipe.releaseAt}
             />
           </div>
 
@@ -581,6 +604,10 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
             {/* 재료 소각 안내 — 아이템 슬롯이 있는 레시피에서만, 버튼 아래 상시 노출(티켓 20260924_0813) */}
             {hasItemSlot && (
               <p className="text-[length:var(--text-caption)] text-text-secondary text-center">{d.combine.burnNotice}</p>
+            )}
+            {/* 시험 믹스 사전 안내 — 공개 전 레시피(운영자)에만. 조건형 문구라 화면이 낡아 공개 시각이 지나도 거짓이 되지 않는다(티켓 20261001_1159) */}
+            {selectedRecipe.releaseAt && (
+              <p className="text-[length:var(--text-caption)] text-text-secondary text-center">{d.combine.testMixPreNotice}</p>
             )}
           </div>
 
