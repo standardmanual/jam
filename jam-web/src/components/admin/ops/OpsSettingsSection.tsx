@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
  * 구역마다 이 틀 하나로 감싸고, 안쪽 본문은 `Suspense` + `skeleton`으로 따로 읽는다(한 구역이 실패해도 다른 구역은 보인다).
  * 구역을 더하는 일은 `app/admin/ops-settings/sections.tsx`의 배열 한 줄과 구역 본문 컴포넌트 하나다.
  *
- * 서버·클라이언트 어디서나 쓰는 순수 틀이다. `scroll-mt-20`은 헤더(`h-14`) 아래로 앵커가 닿게 한다.
+ * 서버·클라이언트 어디서나 쓰는 순수 틀이다. `scroll-mt-32`는 헤더(`h-14`)와 그 아래 붙는 구역 이동 링크(`OpsSettingsNav`) 아래로 앵커가 닿게 한다(구역이 2개 이상이면 이동 링크가 보인다).
  */
 export interface OpsSettingsSectionProps {
   /** 구역 앵커 ID(`OpsSettingsNav`의 링크가 가리킨다). */
@@ -18,7 +18,7 @@ export interface OpsSettingsSectionProps {
 
 export function OpsSettingsSection({ id, title, description = [], children }: OpsSettingsSectionProps) {
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20 space-y-4">
+    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-32 space-y-4">
       <div className="space-y-1">
         <h2 id={`${id}-title`} className="text-lg font-semibold">
           {title}

@@ -545,3 +545,93 @@ describe('loadOpsSignals — 원천 하나가 실패하면 그 원천에 기대�
     expect(console.error).toHaveBeenCalled()
   })
 })
+
+describe('loadOpsSignals — S7에서 바꾼 기준값(ops_rules 신호 행, 티켓 20260930_1459 조각 C)', () => {
+  const ruleRow = (key: string, value: unknown) => ({ rule_key: key, rule_group: 'signal', value })
+  const DAY_MS = 24 * 3600_000
+
+  beforeEach(() => {
+    h.state.tables.ops_bundles = [bundleRow('b1')]
+    // 공개 시각이 지금(10/1 12:00)에서 60시간 뒤인 도착 항목: 기본값 48시간으로는 안 뜨고 72시간으로 바꾸면 뜬다
+    h.state.tables.ops_bundle_items = [itemRow('i1', 'b1', { status: 'arrived', starts_at: kst('2026-10-04', '00:00') })]
+  })
+
+  it('신호 행만 읽는다(rule_group = signal 필터)', async () => {
+    await loadOpsSignals({ now: NOW })
+    const select = h.state.selects.find((entry) => entry.table === 'ops_rules')
+    expect(select?.filters).toEqual(['eq:rule_group:signal'])
+    expect(select?.columns).toBe('rule_key, value')
+  })
+
+  it('행이 없으면 기본값으로 계산한다(DB에 기본값 행이 없다)', async () => {
+    const result = await loadOpsSignals({ now: NOW })
+    expect(signal(result, 'approval_deadline').state).toBe('clear')
+  })
+
+  it('바꾼 기준값이 신호 계산에 쓰인다(승인 마감 48 → 72시간)', async () => {
+    h.state.tables.ops_rules = [ruleRow('approvalDeadlineHours', { value: 72 })]
+    const result = await loadOpsSignals({ now: NOW })
+    const approval = signal(result, 'approval_deadline')
+    expect(approval.state).toBe('raised')
+    expect(approval.results[0].message).toContain('72시간도 남지 않았는데')
+  })
+
+  it('읽기 전용 시각(routineCheckStartsAt)은 1504가 채운 값을 그대로 읽어 루틴 실패 점검이 시작된다', async () => {
+    const before = await loadOpsSignals({ now: NOW })
+    expect(signal(before, 'routine_failed')).toMatchObject({ state: 'unchecked', uncheckedReason: 'not_started' })
+    h.state.tables.ops_rules = [ruleRow('routineCheckStartsAt', { value: '2026-09-28T00:00:00+09:00' })]
+    const after = await loadOpsSignals({ now: NOW })
+    expect(signal(after, 'routine_failed').state).toBe('raised')
+  })
+
+  it('모양이 틀리거나 범위를 벗어난 행은 그 키만 버리고 기본값을 쓴다(다른 키는 읽는다)', async () => {
+    h.state.tables.ops_rules = [
+      ruleRow('approvalDeadlineHours', { value: 0 }), // 범위 밖
+      ruleRow('missedScheduleMinutes', { value: 'abc' }), // 모양 틀림
+      ruleRow('minLiveCards', { value: 2 }), // 정상
+      ruleRow('notAThreshold', { value: 9 }), // 모르는 키
+    ]
+    const result = await loadOpsSignals({ now: NOW })
+    expect(signal(result, 'approval_deadline').state).toBe('clear') // 기본값 48시간
+    expect(result.sourceErrors).toEqual({})
+  })
+
+  it('덮어쓰기 읽기가 실패하면 기본값으로 계산하고 서버 로그만 남긴다(다른 원천 오류로 세지 않는다)', async () => {
+    h.state.errors.ops_rules = '권한 없음'
+    h.state.tables.ops_rules = [ruleRow('approvalDeadlineHours', { value: 72 })]
+    const result = await loadOpsSignals({ now: NOW })
+    expect(signal(result, 'approval_deadline').state).toBe('clear')
+    expect(result.sourceErrors).toEqual({})
+    expect(console.error).toHaveBeenCalled()
+  })
+
+  it('쓰기 메서드를 부르지 않는다', async () => {
+    h.state.tables.ops_rules = [ruleRow('approvalDeadlineHours', { value: 72 })]
+    await loadOpsSignals({ now: NOW })
+    expect(h.state.calls.filter((call) => WRITE_CALL.test(call))).toEqual([])
+  })
+
+  it('monotonyWindowDays를 바꾸면 카드를 읽는 범위가 따라 바뀐다(기본 7일 → 10일)', async () => {
+    h.state.tables.ops_rules = [ruleRow('monotonyWindowDays', { value: 10 })]
+    await loadOpsSignals({ now: NOW })
+    const select = h.state.selects.find((entry) => entry.table === 'today_cards')
+    // 오늘(10/1)의 앞 9일 0시(9/22 KST = 9/21 15:00Z)부터. 기본값이면 앞 6일 0시(9/24 15:00Z)다.
+    expect(select?.filters).toContain('gte:ends_at:2026-09-21T15:00:00.000Z')
+  })
+
+  it('actionSpikeBaselineWeeks를 바꾸면 직전 기간을 읽는 범위와 주평균이 따라 바뀐다(4주 → 8주)', async () => {
+    h.state.tables.ops_rules = [ruleRow('actionSpikeBaselineWeeks', { value: 8 })]
+    // 최근 7일 30건, 그 앞 5~8주 사이 120건(주 15건)
+    h.state.tables.poi_drops = [
+      ...rowsWith(30, (n) => ({ id: `r${n}`, source: 'user', dropped_at: recent(60), picked_up_at: recent(3) })),
+      ...rowsWith(120, (n) => ({ id: `b${n}`, source: 'user', dropped_at: recent(60), picked_up_at: recent(40 + (n % 14)) })),
+    ]
+    const result = await loadOpsSignals({ now: NOW })
+    const baselineStartIso = new Date(NOW.getTime() - (7 + 8 * 7) * DAY_MS).toISOString()
+    const pickupSelects = h.state.selects.filter((entry) => entry.table === 'poi_drops' && entry.head)
+    expect(pickupSelects.some((entry) => entry.filters.includes(`gte:picked_up_at:${baselineStartIso}`))).toBe(true)
+    expect(signal(result, 'action_spike').results.map((entry) => entry.message)).toContain(
+      '픽업: 최근 7일 30건으로, 직전 8주 평균(주 15건)의 2배예요.'
+    )
+  })
+})

@@ -251,7 +251,8 @@ export function parseBalanceRules(rows: readonly OpsRuleRow[]): BalanceRules | n
 
 /**
  * 설정 화면과 API가 다루는 규칙 한 건(`ops_rules` 한 행을 camelCase로 옮긴 것). `value`는 DB에 있는 그대로이고(모양이 틀릴 수 있다),
- * 화면은 `parseRuleValue`로 읽는다. `updatedBy`는 마지막으로 바꾼 관리자의 ID이고 시드 그대로면 `null`이다.
+ * 화면은 `parseRuleValue`로 읽는다. 마지막으로 바꾼 관리자의 ID(`updated_by`)는 화면·API 응답에 싣지 않고, 바꾼 적이 있는지(`edited`)만 알린다
+ * (티켓 20260930_1459 조각 C: 관리자 사용자 ID는 읽기 토큰으로 읽는 응답에 나가지 않는다).
  */
 export interface OpsRuleRecord {
   ruleKey: string
@@ -260,7 +261,8 @@ export interface OpsRuleRecord {
   level: BalanceLevel
   enabled: boolean
   updatedAt: string
-  updatedBy: string | null
+  /** 관리자가 한 번이라도 저장했는지(시드 그대로면 `false`). 「처음 값 그대로예요」를 정한다. */
+  edited: boolean
   /** 값이 바뀔 때 이전 값을 넣는다. 한 번도 값을 안 바꿨으면 `null`. */
   previousValue: Json | null
 }
@@ -288,7 +290,7 @@ export function toRuleRecord(row: OpsRuleRecordRow): OpsRuleRecord {
     level: row.level === 'info' ? 'info' : 'warn',
     enabled: row.enabled === true,
     updatedAt: row.updated_at,
-    updatedBy: row.updated_by,
+    edited: row.updated_by !== null,
     previousValue: row.previous_value,
   }
 }

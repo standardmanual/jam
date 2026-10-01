@@ -13,6 +13,8 @@
  *   것만, 묶음 몇 개씩 따로 받는다(받은 기획함 목록이 원본을 가져오지 않는 것과 같은 이유).
  * - 행동 5종 건수: 최근 7일과 직전 기간의 건수만 센다(`head: true`, 행을 가져오지 않는다). 믹스 시도·유저 드랍·픽업·미션 완료·
  *   컬렉션 완성의 전체 유저 원시 건수다.
+ * - `ops_rules`의 신호 행(`overrides.ts`): S7(운영 설정)에서 바꾼 기준값만 있다(티켓 20260930_1459 조각 C). 신호 계산에 얹고, 카드·미션을 읽는 범위
+ *   (`monotonyWindowDays`)와 직전 기간 주 수(`actionSpikeBaselineWeeks`)도 이 값을 따른다. 읽지 못하면 기본값으로 계산한다.
  *
  * ⚠️ **PostgREST 기본 페이지 상한(1000행)** — 에러 없이 잘린 목록이 돌아오므로 `range`로 끝까지 넘겨 전량을 받는다.
  *
@@ -37,7 +39,8 @@ import type {
   SignalCardInput,
   SignalMissionInput,
 } from '@/lib/admin/opsSignals/composition'
-import { DEFAULT_OPS_SIGNAL_THRESHOLD_VALUES } from '@/lib/admin/opsSignals/thresholds'
+import { loadSignalOverrides } from '@/lib/admin/opsSignals/overrides'
+import { resolveThresholdValues } from '@/lib/admin/opsSignals/thresholds'
 
 const FETCH_PAGE_SIZE = 1000
 /** 제출 원본을 한 번에 받는 묶음 수. 원본은 묶음마다 최대 1MB라 한꺼번에 받지 않는다. */
@@ -277,9 +280,8 @@ async function sumCounters(counters: readonly Counter[], fromIso: string, toIso:
   return total
 }
 
-/** 지표마다 최근 7일 합계와 직전 기간의 주평균을 센다. 하나라도 읽지 못하면 던진다. */
-async function loadActionCounts(supabase: Supabase, now: Date): Promise<ActionCounts> {
-  const weeks = DEFAULT_OPS_SIGNAL_THRESHOLD_VALUES.actionSpikeBaselineWeeks
+/** 지표마다 최근 7일 합계와 직전 기간(`weeks`주)의 주평균을 센다. 하나라도 읽지 못하면 던진다. */
+async function loadActionCounts(supabase: Supabase, now: Date, weeks: number): Promise<ActionCounts> {
   const nowIso = now.toISOString()
   const recentStartIso = new Date(now.getTime() - ACTION_RECENT_DAYS * DAY_MS).toISOString()
   const baselineStartIso = new Date(now.getTime() - (ACTION_RECENT_DAYS + weeks * 7) * DAY_MS).toISOString()
@@ -319,18 +321,20 @@ export async function loadOpsSignals(options: LoadOpsSignalsOptions = {}): Promi
     }
   }
 
-  // 카드·미션은 오늘 앞 6일부터 다음 주 일요일까지(검사 범위의 최대치와 단조로운 흐름이 되돌아보는 기간)
+  // S7에서 바꾼 기준값(없으면 기본값). 데이터를 읽는 범위(되돌아보는 기간·직전 주 수)도 이 값을 따른다.
+  const overrides = await loadSignalOverrides(supabase)
+  const thresholds = resolveThresholdValues(overrides)
+
+  // 카드·미션은 오늘 앞 (기간-1)일부터 다음 주 일요일까지(검사 범위의 최대치와 단조로운 흐름이 되돌아보는 기간)
   const today = todayKstDateString(now)
-  const rangeStartIso = kstDayBoundsIso(
-    shiftDateStr(today, -(DEFAULT_OPS_SIGNAL_THRESHOLD_VALUES.monotonyWindowDays - 1))
-  ).startIso
+  const rangeStartIso = kstDayBoundsIso(shiftDateStr(today, -(thresholds.monotonyWindowDays - 1))).startIso
   const rangeEndIso = kstDayBoundsIso(shiftDateStr(mondayOfWeek(today), 13)).endIso
 
   const [cards, missions, bundles, actions] = await Promise.all([
     settle('cards', () => loadCards(supabase, rangeStartIso, rangeEndIso)),
     settle('missions', () => loadMissions(supabase, rangeStartIso, rangeEndIso)),
     settle('bundles', () => loadBundles(supabase, includeSample)),
-    settle('actions', () => loadActionCounts(supabase, now)),
+    settle('actions', () => loadActionCounts(supabase, now, thresholds.actionSpikeBaselineWeeks)),
   ])
 
   if (bundles) {
@@ -339,5 +343,5 @@ export async function loadOpsSignals(options: LoadOpsSignalsOptions = {}): Promi
   }
 
   const input: ComputeOpsSignalsInput = { cards, missions, bundles, actions }
-  return { ...computeOpsSignals(input, { now, includeSample }), sourceErrors }
+  return { ...computeOpsSignals(input, { now, includeSample, thresholds: overrides }), sourceErrors }
 }

@@ -1,10 +1,10 @@
 /**
- * GET·PATCH /api/admin/ops-rules (티켓 20260930_1459 조각 B)
+ * GET·PATCH /api/admin/ops-rules (티켓 20260930_1459 조각 B·C)
  *
  * 규칙 저장·검증의 처리는 `opsInbox/balance/__tests__/save.test.ts`가 지킨다. 여기서는 라우트가 맡은 것만 본다. 인증은 실제 `@/lib/admin/auth`를
- * 쓰고(세션·읽기 토큰만 모의한다), 처리 함수(`listOpsRules`·`saveOpsRule`)는 모의한다:
+ * 쓰고(세션·읽기 토큰만 모의한다), 처리 함수(`listOpsRules`·`saveOpsRule`·`listSignalThresholds`)는 모의한다:
  * - GET: 읽기 토큰만으로도 읽힌다(관리자 세션도 된다). 토큰이 틀리거나 없고 세션도 없으면 403. `group`은 balance(기본)·signal만, 그 밖은 400.
- *   조회가 실패하면 고정 문장 500이고 원문은 싣지 않는다
+ *   `group=signal`은 기준값 25개의 현재 값을 돌려주고(조각 C) 응답에 관리자 사용자 ID가 없다. 조회가 실패하면 고정 문장 500이고 원문은 싣지 않는다
  * - PATCH: 읽기 토큰만으로는 막힌다(403, 처리 함수를 부르지 않는다). 관리자 세션만 통과하고 행위자는 관리자 ID다. 본문 형식 오류는 400,
  *   처리 실패(400 칸별 오류·404·409·500)는 상태와 본문을 그대로 돌려준다
  * 두 파일이 각자 GET만, PATCH만 export하는지는 `admin/__tests__/token-write-contract.test.ts`가 소스로 지킨다.
@@ -15,6 +15,7 @@ const h = vi.hoisted(() => ({
   user: null as { id: string; email: string } | null,
   listOpsRules: vi.fn(),
   saveOpsRule: vi.fn(),
+  listSignalThresholds: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -26,6 +27,11 @@ vi.mock('@/lib/admin/opsInbox/balance/save', async (importOriginal) => {
   return { ...actual, listOpsRules: h.listOpsRules, saveOpsRule: h.saveOpsRule }
 })
 
+vi.mock('@/lib/admin/opsSignals/saveThresholds', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/admin/opsSignals/saveThresholds')>()
+  return { ...actual, listSignalThresholds: h.listSignalThresholds }
+})
+
 import { GET } from '../route'
 import { PATCH } from '../[ruleKey]/route'
 
@@ -33,6 +39,20 @@ const TOKEN = 'test-admin-read-token-abcdef'
 const ADMIN = { id: 'admin-1', email: 'admin@example.com' }
 const ENV_KEYS = ['ADMIN_API_READ_TOKEN', 'ADMIN_EMAILS'] as const
 const RULES = [{ ruleKey: 'open_collections_max', group: 'balance', value: { max: 6, provisional: true }, level: 'warn', enabled: true }]
+const THRESHOLDS = [
+  {
+    ruleKey: 'approvalDeadlineHours',
+    group: 'signal',
+    signal: 'approval_deadline',
+    readOnly: false,
+    value: 36,
+    defaultValue: 48,
+    changed: true,
+    unreadable: false,
+    previousValue: 48,
+    updatedAt: '2026-10-01T06:20:00+00:00',
+  },
+]
 
 function getRequest(query = '', headers: Record<string, string> = {}) {
   return new Request(`http://localhost/api/admin/ops-rules${query}`, { method: 'GET', headers })
@@ -56,6 +76,8 @@ beforeEach(() => {
   h.listOpsRules.mockResolvedValue(RULES)
   h.saveOpsRule.mockReset()
   h.saveOpsRule.mockResolvedValue({ ok: true, rule: RULES[0], changed: true })
+  h.listSignalThresholds.mockReset()
+  h.listSignalThresholds.mockResolvedValue(THRESHOLDS)
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -95,11 +117,30 @@ describe('GET /api/admin/ops-rules', () => {
   it('group은 balance(기본)·signal만 받는다', async () => {
     const signal = await GET(getRequest('?group=signal', { 'x-admin-read-token': TOKEN }))
     expect(signal.status).toBe(200)
-    expect(h.listOpsRules).toHaveBeenLastCalledWith(expect.anything(), 'signal')
-    h.listOpsRules.mockClear()
+    expect(h.listSignalThresholds).toHaveBeenCalledTimes(1)
+    expect(h.listOpsRules).not.toHaveBeenCalled()
     const bad = await GET(getRequest('?group=drop', { 'x-admin-read-token': TOKEN }))
     expect(bad.status).toBe(400)
     expect(h.listOpsRules).not.toHaveBeenCalled()
+    expect(h.listSignalThresholds).toHaveBeenCalledTimes(1)
+  })
+
+  it('group=signal은 읽기 토큰으로 읽히고 기준값 25개의 현재 값을 돌려주며 관리자 사용자 ID가 없다(조각 C)', async () => {
+    const res = await GET(getRequest('?group=signal', { 'x-admin-read-token': TOKEN }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body).toEqual({ group: 'signal', rules: THRESHOLDS })
+    expect(Object.keys(body.rules[0])).not.toContain('updatedBy')
+    expect(Object.keys(body.rules[0])).not.toContain('updated_by')
+    // 세션 없이 토큰도 없으면 막힌다
+    expect((await GET(getRequest('?group=signal'))).status).toBe(403)
+  })
+
+  it('group=signal 조회가 실패해도 고정 문장 500이고 원문은 싣지 않는다', async () => {
+    h.listSignalThresholds.mockRejectedValue(new Error('기준값 조회 실패: relation secret'))
+    const res = await GET(getRequest('?group=signal', { 'x-admin-read-token': TOKEN }))
+    expect(res.status).toBe(500)
+    expect(JSON.stringify(await res.json())).not.toContain('secret')
   })
 
   it('조회가 실패하면 고정 문장 500이고 원문은 싣지 않는다', async () => {

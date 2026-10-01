@@ -131,8 +131,16 @@ describe('listOpsRules', () => {
     db.rows.reverse()
     const rules = await listOpsRules(client, 'balance')
     expect(rules.map((r) => r.ruleKey)).toEqual(['open_collections_max', 'point_reward_max', 'single_action_points', 'economy_keys'])
-    expect(rules[0]).toMatchObject({ group: 'balance', level: 'warn', enabled: true, updatedAt: T0, updatedBy: null, previousValue: null })
+    expect(rules[0]).toMatchObject({ group: 'balance', level: 'warn', enabled: true, updatedAt: T0, edited: false, previousValue: null })
     expect((await listOpsRules(client, 'signal')).map((r) => r.ruleKey)).toEqual(['some_signal'])
+  })
+
+  it('바꾼 관리자의 사용자 ID는 돌려주지 않고 바꾼 적이 있는지(edited)만 알린다(조각 C 게이트 발견물)', async () => {
+    db.rows[0].updated_by = ACTOR
+    const rules = await listOpsRules(client, 'balance')
+    expect(rules.find((r) => r.ruleKey === 'open_collections_max')?.edited).toBe(true)
+    expect(rules.find((r) => r.ruleKey === 'point_reward_max')?.edited).toBe(false)
+    expect(JSON.stringify(rules)).not.toContain(ACTOR)
   })
 
   it('조회 오류는 던진다', async () => {
@@ -228,12 +236,14 @@ describe('saveOpsRule 저장', () => {
       ruleKey: 'open_collections_max',
       value: { max: 9, provisional: false },
       previousValue: R1,
-      updatedBy: ACTOR,
+      edited: true,
       level: 'warn',
       enabled: true,
     })
     expect(outcome.rule.updatedAt).not.toBe(T0)
     expect(db.updates[0]).toMatchObject({ value: { max: 9, provisional: false }, previous_value: R1, updated_by: ACTOR })
+    // 응답의 규칙에는 관리자 ID가 없다(바꾼 적이 있는지만 `edited`로 알린다)
+    expect(JSON.stringify(outcome.rule)).not.toContain(ACTOR)
   })
 
   it('켜기·경고 수준만 바꾸면 값과 직전 값은 그대로 두고 바꾼 사람·시각만 채운다', async () => {
@@ -241,7 +251,7 @@ describe('saveOpsRule 저장', () => {
     const outcome = await save({ value: undefined, level: 'info', enabled: false })
     expect(outcome).toMatchObject({ ok: true, changed: true })
     if (!outcome.ok) return
-    expect(outcome.rule).toMatchObject({ value: R1, previousValue: { max: 5, provisional: true }, level: 'info', enabled: false, updatedBy: ACTOR })
+    expect(outcome.rule).toMatchObject({ value: R1, previousValue: { max: 5, provisional: true }, level: 'info', enabled: false, edited: true })
     expect(db.updates[0]).toEqual({ updated_at: expect.any(String), updated_by: ACTOR, level: 'info', enabled: false })
   })
 

@@ -396,7 +396,7 @@ export interface LastChangeLines {
 }
 
 export function lastChangeLines(record: OpsRuleRecord): LastChangeLines {
-  if (record.updatedBy === null) return { changed: '처음 값 그대로예요', previous: null }
+  if (!record.edited) return { changed: '처음 값 그대로예요', previous: null }
   const when = formatKstDayTime(record.updatedAt)
   const changed = when ? `마지막으로 바꾼 사람 관리자 · ${when}` : '마지막으로 바꾼 사람 관리자'
   if (record.previousValue === null) return { changed, previous: '값은 처음 그대로예요' }
