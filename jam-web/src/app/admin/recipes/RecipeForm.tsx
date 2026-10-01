@@ -7,6 +7,8 @@ import type { BadgeRow, CombinationRecipeRow, CombinationRecipeSlotRow, CombineS
 import MultiBadgeSearchSelect, { badgeLabel, type SelectedBadge } from '@/components/admin/MultiBadgeSearchSelect'
 import { Input } from '@/components/admin/ui/input'
 import { MAX_SLOTS, MIN_ITEM_SLOTS, MIN_SLOTS } from '@/lib/combine/recipe-payload'
+import { recipeReleaseState } from '@/lib/combine/visibility'
+import { formatKstYmdHm, toKstLocalInputValue } from '@/lib/admin/kst-format'
 
 type BadgeBrief = Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>
 
@@ -27,6 +29,17 @@ interface SlotState {
 }
 
 const EMPTY_SLOT: SlotState = { badgeType: null, badges: [] }
+
+type ReleaseMode = 'now' | 'scheduled'
+
+/**
+ * `datetime-local` 입력값(KST 「YYYY-MM-DDTHH:mm」)을 시간대가 붙은 UTC ISO로 바꾼다 — 서버는 시간대 없는 값을
+ * 받지 않는다. 브라우저 시간대에 기대지 않고 `+09:00`을 명시한다. 읽을 수 없으면 null.
+ */
+function kstLocalToIso(local: string): string | null {
+  const date = new Date(`${local}:00+09:00`)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
 
 const SLOT_TYPE_LABEL: Record<CombineSlotBadgeType, string> = {
   item: '아이템',
@@ -76,7 +89,15 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
   const [rewardBadges, setRewardBadges] = useState<SelectedBadge[]>(
     recipe ? rewardBadgesFromRecipe(recipe, badgeMap) : []
   )
+  // 공개 시점(티켓 20261001_1158) — 이미 공개된 레시피는 공개 시각을 바꿀 수 없어 읽기 전용 문구로만 보여 주고
+  // 저장 때 보내지 않는다(서버도 409로 막는다). 예약 중이면 시각 변경·바로 공개 전환·예약 취소가 된다.
+  const [alreadyReleased] = useState(() => (recipe ? recipeReleaseState(recipe) === 'released' : false))
+  const scheduledFrom = recipe?.valid_from && !alreadyReleased ? recipe.valid_from : null
+  const [releaseMode, setReleaseMode] = useState<ReleaseMode>(scheduledFrom ? 'scheduled' : 'now')
+  const [validFromLocal, setValidFromLocal] = useState(scheduledFrom ? toKstLocalInputValue(scheduledFrom) : '')
+  const canCancelRelease = Boolean(editingId) && !alreadyReleased
   const [saving, setSaving] = useState(false)
+  const [canceling, setCanceling] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
@@ -120,6 +141,29 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
       return
     }
 
+    // 이미 공개된 레시피는 공개 시각을 보내지 않는다(undefined). 그 외에는 예약이면 UTC ISO, 바로 공개면 null.
+    let validFrom: string | null | undefined
+    if (!alreadyReleased) {
+      if (releaseMode === 'scheduled') {
+        if (!validFromLocal) {
+          setError('공개 시각을 선택해 주세요. 바로 공개하려면 「바로 공개」를 골라 주세요.')
+          return
+        }
+        const iso = kstLocalToIso(validFromLocal)
+        if (!iso) {
+          setError('공개 시각을 읽을 수 없어요. 날짜와 시각을 다시 선택해 주세요.')
+          return
+        }
+        if (new Date(iso).getTime() <= Date.now()) {
+          setError('공개 시각이 이미 지났어요. 지금보다 늦은 시각을 고르거나 「바로 공개」로 바꿔 주세요.')
+          return
+        }
+        validFrom = iso
+      } else {
+        validFrom = null
+      }
+    }
+
     setSaving(true)
     const payload = {
       name: name.trim(),
@@ -129,6 +173,7 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
       })),
       reward_points: points,
       reward_badge_ids: rewardBadges.map((b) => b.id),
+      ...(validFrom !== undefined ? { valid_from: validFrom } : {}),
     }
     try {
       const res = await fetch(
@@ -150,6 +195,28 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
       setError('네트워크 오류로 저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  /** 예약 취소 = 레시피 삭제 — 공개 전에만 된다. 삭제 가드와 공개 여부 확인은 서버가 한다 */
+  async function handleCancelRelease() {
+    if (!editingId) return
+    if (!confirm('취소하면 이 레시피가 삭제돼요. 되돌릴 수 없어요.')) return
+    setError(null)
+    setCanceling(true)
+    try {
+      const res = await fetch(`/api/admin/recipes/${editingId}/cancel-release`, { method: 'POST' })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setError(json.error ?? '예약을 취소하지 못했어요. 잠시 후 다시 시도해 주세요.')
+        return
+      }
+      router.push('/admin/recipes')
+      router.refresh()
+    } catch {
+      setError('네트워크 오류로 예약을 취소하지 못했어요. 연결을 확인하고 다시 시도해 주세요.')
+    } finally {
+      setCanceling(false)
     }
   }
 
@@ -286,12 +353,63 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
         </div>
       </div>
 
+      {/* 공개 시점 — 바로 공개 또는 시각을 정해 예약. 종료 시각은 없고 내릴 때는 삭제한다 */}
+      <div className="space-y-3 border-t border-border pt-4">
+        <p className="text-sm font-bold">공개 시점</p>
+        {alreadyReleased ? (
+          <p className="text-sm text-muted-foreground">
+            {recipe?.valid_from
+              ? `${formatKstYmdHm(recipe.valid_from)}에 공개됐어요. 공개된 레시피는 공개 시각을 바꿀 수 없어요.`
+              : '처음부터 공개돼 있어요. 공개된 레시피는 공개 시각을 바꿀 수 없어요.'}
+          </p>
+        ) : (
+          <>
+            <div className="flex items-center gap-4 text-sm">
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="radio"
+                  name="release-mode"
+                  checked={releaseMode === 'now'}
+                  onChange={() => setReleaseMode('now')}
+                />
+                바로 공개
+              </label>
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="radio"
+                  name="release-mode"
+                  checked={releaseMode === 'scheduled'}
+                  onChange={() => setReleaseMode('scheduled')}
+                />
+                시각을 정해 예약
+              </label>
+            </div>
+            {releaseMode === 'scheduled' ? (
+              <div>
+                <label htmlFor="recipe-valid-from" className="text-xs text-muted-foreground mb-1 block">
+                  공개 시각 (한국 시간) — 이 시각 전에는 유저에게 보이지 않아요
+                </label>
+                <input
+                  id="recipe-valid-from"
+                  type="datetime-local"
+                  value={validFromLocal}
+                  onChange={(e) => setValidFromLocal(e.target.value)}
+                  className="bg-white border border-border rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">저장하면 바로 유저에게 공개돼요.</p>
+            )}
+          </>
+        )}
+      </div>
+
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex items-center gap-3">
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || canceling}
           className="bg-primary text-white font-bold px-4 py-2 rounded-xl hover:bg-primary/90 transition-colors text-sm disabled:opacity-50"
         >
           {saving ? '저장 중...' : editingId ? '수정 저장' : '저장'}
@@ -299,6 +417,15 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
         <Link href="/admin/recipes" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           취소
         </Link>
+        {canCancelRelease && (
+          <button
+            onClick={handleCancelRelease}
+            disabled={saving || canceling}
+            className="ml-auto text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
+          >
+            {canceling ? '취소하는 중...' : '예약 취소'}
+          </button>
+        )}
       </div>
     </div>
   )
