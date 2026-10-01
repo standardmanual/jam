@@ -114,11 +114,13 @@ export function OpsRuleCard({ ruleKey, record, pointRewardValue, openCollections
   const changes = draftChanges(record, draft)
   const liveErrors = useMemo(() => draftFieldErrors(ruleKey, draft), [ruleKey, draft])
   const hasErrors = Object.keys(liveErrors).length > 0
+  // 저장된 값부터 형식이 틀린 칸은 칸을 떠나기 전에도 문구를 보인다(이유 없이 [저장하기]만 비활성으로 보이지 않게).
+  const savedErrors = useMemo(() => draftFieldErrors(ruleKey, draftFromRecord(record)), [ruleKey, record])
   const visibleErrors = useMemo(() => {
     const shown: Record<string, string> = {}
-    for (const [path, message] of Object.entries(liveErrors)) if (touched.has(path)) shown[path] = message
+    for (const [path, message] of Object.entries(liveErrors)) if (touched.has(path) || path in savedErrors) shown[path] = message
     return { ...shown, ...serverErrors }
-  }, [liveErrors, touched, serverErrors])
+  }, [liveErrors, touched, serverErrors, savedErrors])
 
   const last = lastChangeLines(record)
   const showProvisionalChip = Object.values(draft.provisional).some(Boolean)
@@ -147,6 +149,8 @@ export function OpsRuleCard({ ruleKey, record, pointRewardValue, openCollections
       setDraft(draftFromRecord(res.rule))
       setTouched(new Set())
       onRecord(res.rule)
+      // 서버가 같은 값으로 본 저장(예: 「6」→「06」)은 아무것도 쓰지 않았으므로 바꿨다고 알리지 않는다.
+      if (!res.changed) return
       setFlash(true)
       setSavedLive(true)
       toast.success(savedToastTitle(name), { description: SAVED_TOAST_DESCRIPTION })
@@ -202,7 +206,14 @@ export function OpsRuleCard({ ruleKey, record, pointRewardValue, openCollections
 
   return (
     <Card id={idBase} className={cn('scroll-mt-20 transition-colors motion-reduce:transition-none', flash && 'bg-muted')}>
-      <form onSubmit={submit} aria-labelledby={titleId} className="@container space-y-4 p-5" noValidate>
+      <form
+        onSubmit={submit}
+        // 오류가 있으면 [저장하기]가 비활성이라 Enter 제출이 막힌다. 저장을 시도한 순간 오류 칸의 문구를 모두 보인다.
+        onKeyDown={(event) => event.key === 'Enter' && hasErrors && setTouched(new Set([...touched, ...Object.keys(liveErrors)]))}
+        aria-labelledby={titleId}
+        className="@container space-y-4 p-5"
+        noValidate
+      >
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <h4 id={titleId} className="text-base font-semibold">
             {name}
