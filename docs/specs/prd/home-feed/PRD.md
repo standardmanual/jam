@@ -307,8 +307,8 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 
 | 테이블 | 쓰임 |
 |---|---|
-| `today_cards` | 카드 한 장 = 한 행. 제목·부제·게재용 설명문(`description`)·템플릿·레이아웃·노출 태그·노출 기간·활성 여부·정렬·대상 필드(`badge_ids`·`mission_id`·`item_book_id`·`ranking_mode_id`·`region_label`·`target_href`)·기사 본문·커버·유형 ID·이미지 제작 경로(`image_source`) |
-| `today_card_events` | 노출·열람 기록(§9). 유저 식별자 없음 |
+| `today_cards` | 카드 한 장 = 한 행. 제목·부제·게재용 설명문(`description`)·템플릿·레이아웃·노출 태그·노출 기간·활성 여부·정렬·대상 필드(`badge_ids`·`mission_id`·`item_book_id`·`ranking_mode_id`·`region_label`·`target_href`)·기사 본문·커버·유형 ID·이미지 제작 경로(`image_source`)·카드 모양(`shape`)·이미지 안 제목 여부(`title_in_image`). 두 칸은 NULL 허용이고 NULL이면 옛 카드라 규칙으로 판정한다(그리는 규칙은 모양 판정을 만드는 조각에서 이 문서에 적는다) |
+| `today_card_events` | 노출·열람 기록(§9). 기록 시점에 그려진 모양을 `card_shape`로 복사한다(NULL 허용, 모양 도입 전 기록은 NULL). 유저 식별자 없음 |
 | `external_input_daily` | 날씨·특일 하루 값(§4) |
 
 컬럼의 정확한 정의는 [02_DATA_MODEL.md](../02_DATA_MODEL.md)와 `jam-web/src/types/database.generated.ts`가 정본이다. 카드는 어드민 `/admin/today` 화면, 주간 편성 시드 SQL, 에셋 제너레이터 등록 스크립트 세 경로로 만들어지며 `image_source`로 구분된다(§11).
