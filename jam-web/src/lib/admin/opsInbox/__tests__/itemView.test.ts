@@ -4,6 +4,8 @@
 import { describe, it, expect } from 'vitest'
 import type { Json } from '@/types/database.generated'
 import {
+  OPS_ITEM_FILTERS,
+  OPS_ITEM_FILTER_LABELS,
   asRecord,
   countByItemFilter,
   defaultSelectedItem,
@@ -178,19 +180,19 @@ describe('groupItemsByDay — 공개 시각(KST) 날짜별 묶음', () => {
   })
 })
 
-describe('가운데 열 탭 — 전체 · 결정할 것 · 형식 오류 · 멈춘 것', () => {
+describe('가운데 열 탭 — 전체 · 결정할 것 · 형식 오류 · 멈춘 것 · 밸런스 경고', () => {
   const rows = [
-    { status: 'arrived', formatErrors: [] as string[] },
-    { status: 'reviewing', formatErrors: ['a', 'b'] },
-    { status: 'approved', formatErrors: [] },
-    { status: 'rejected', formatErrors: [] },
-    { status: 'cancelled', formatErrors: ['c'] },
-    { status: 'failed', formatErrors: [] },
-    { status: 'live', formatErrors: [] },
+    { id: 'r0', status: 'arrived', formatErrors: [] as string[] },
+    { id: 'r1', status: 'reviewing', formatErrors: ['a', 'b'] },
+    { id: 'r2', status: 'approved', formatErrors: [] },
+    { id: 'r3', status: 'rejected', formatErrors: [] },
+    { id: 'r4', status: 'cancelled', formatErrors: ['c'] },
+    { id: 'r5', status: 'failed', formatErrors: [] },
+    { id: 'r6', status: 'live', formatErrors: [] },
   ]
 
-  it('개수를 센다', () => {
-    expect(countByItemFilter(rows)).toEqual({ all: 7, decide: 2, error: 2, stopped: 3 })
+  it('개수를 센다(밸런스 경고 항목이 없으면 0)', () => {
+    expect(countByItemFilter(rows)).toEqual({ all: 7, decide: 2, error: 2, stopped: 3, balance: 0 })
   })
 
   it('결정할 것은 도착·검토중, 멈춘 것은 반려·취소·실패다', () => {
@@ -203,7 +205,23 @@ describe('가운데 열 탭 — 전체 · 결정할 것 · 형식 오류 · 멈�
     expect(rows.filter((r) => matchesItemFilter(r, 'error'))).toHaveLength(2)
   })
 
+  it('밸런스 경고 탭은 경고 줄이 있는 항목 ID로 거르고 숫자도 같은 값이다', () => {
+    const ids = new Set(['r1', 'r6', 'not-in-list'])
+    expect(rows.filter((r) => matchesItemFilter(r, 'balance', ids)).map((r) => r.id)).toEqual(['r1', 'r6'])
+    expect(countByItemFilter(rows, ids).balance).toBe(2)
+  })
+
+  it('ID가 없는 행이나 항목 ID 목록이 없으면 밸런스 경고 탭에 걸리지 않는다', () => {
+    expect(matchesItemFilter({ status: 'live', formatErrors: [] }, 'balance', new Set(['x']))).toBe(false)
+    expect(matchesItemFilter(rows[0], 'balance')).toBe(false)
+  })
+
+  it('탭 목록은 5개이고 마지막이 「밸런스 경고」다', () => {
+    expect([...OPS_ITEM_FILTERS]).toEqual(['all', 'decide', 'error', 'stopped', 'balance'])
+    expect(OPS_ITEM_FILTER_LABELS.balance).toBe('밸런스 경고')
+  })
+
   it('항목이 없으면 모두 0이다', () => {
-    expect(countByItemFilter([])).toEqual({ all: 0, decide: 0, error: 0, stopped: 0 })
+    expect(countByItemFilter([])).toEqual({ all: 0, decide: 0, error: 0, stopped: 0, balance: 0 })
   })
 })

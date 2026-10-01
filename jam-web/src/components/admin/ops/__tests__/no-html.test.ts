@@ -44,6 +44,7 @@ describe('받은 기획함 화면 소스 계약', () => {
     const names = sourceFiles.map(rel)
     expect(names).toContain('components/admin/ops/OpsItemDetail.tsx')
     expect(names).toContain('components/admin/ops/OpsBundleWorkspace.tsx')
+    expect(names).toContain('components/admin/ops/OpsBalanceWarnings.tsx')
     expect(names).toContain('app/admin/ops-inbox/page.tsx')
     expect(names).toContain('app/admin/ops-inbox/[bundleId]/page.tsx')
     expect(sourceFiles.length).toBeGreaterThanOrEqual(12)
@@ -79,6 +80,16 @@ describe('받은 기획함 화면 소스 계약', () => {
   it('화면에 내부 테이블 이름을 쓰지 않는다', () => {
     const offenders = sourceFiles
       .filter((file) => /ops_bundles|ops_bundle_items|ops_decisions/.test(stripComments(readFileSync(file, 'utf8'))))
+      .map(rel)
+    expect(offenders).toEqual([])
+  })
+
+  it('화면 부품은 밸런스 평가·서비스 상태 모듈을 값으로 가져오지 않는다(서버 전용 코드가 클라이언트 번들로 들어간다)', () => {
+    // `balance/evaluate`는 JAM! 행동 지표 키(`badge-engine`, 서버 클라이언트를 끌어온다)를, `balance/state`는 DB 조회를 쓴다.
+    // 화면은 타입(`import type`)만 가져오고 값은 `rules`·`messages`·`view`에서만 가져온다.
+    const valueImport = /^import\s+(?!type\b)[^;]*from\s+'@\/lib\/admin\/opsInbox\/balance\/(evaluate|state)'/m
+    const offenders = sourceFiles
+      .filter((file) => file.includes(`${sep}components${sep}`) && valueImport.test(readFileSync(file, 'utf8')))
       .map(rel)
     expect(offenders).toEqual([])
   })

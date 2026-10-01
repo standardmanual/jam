@@ -6,6 +6,9 @@
  * 셸(`OpsBundleWorkspace`)의 슬롯은 함수라 서버 컴포넌트에서 넘길 수 없다 — 슬롯을 채운 client 래퍼(`OpsDecisionWorkspace`, 티켓 20260930_1818)를
  * 렌더한다. 시험 묶음이면 머리 오른쪽에 「...」 메뉴(시험 묶음 지우기)를 둔다.
  *
+ * 밸런스 경고(티켓 20260930_1459)는 이 읽기 요청이 규칙과 서비스 상태로 계산한 결과(`detail.balance`)를 화면에 그대로 넘긴다.
+ * 평가가 실패해도 상세는 열린다(실패 알림만 뜬다).
+ *
  * 제목은 대상 주차다. `author`·`bundle_id`·`item_key`는 제출자가 정한 값(자기 신고)이라 제목으로 쓰지 않는다.
  */
 import Link from 'next/link'
@@ -27,7 +30,7 @@ export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPag
   const detail = await getOpsBundleDetail(bundleId)
   if (!detail) notFound()
 
-  const { bundle, items, decisions } = detail
+  const { bundle, items, decisions, balance } = detail
   const range = formatWeekRange(bundle.week)
 
   return (
@@ -60,6 +63,8 @@ export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPag
           bundleFormatErrors={bundle.formatErrors}
           items={items}
           decisions={decisions}
+          balance={balance}
+          isSample={bundle.isSample}
         />
       </Suspense>
     </div>
