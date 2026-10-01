@@ -356,7 +356,6 @@ export const ko = {
     dropAlert: '드랍',
     editorialArticle: '기사',
     rankingBoard: '랭킹',
-    backToToday: '투데이로',
     noBody: '본문이 없어요',
     rankingEmpty: '아직 랭킹이 없어요',
     /** 기사 본문 CTA 버튼 라벨 — 대상 종류별 고정 문구(티켓 20260924_0107) */

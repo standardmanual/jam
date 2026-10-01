@@ -304,12 +304,14 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 
 `/today/[cardId]`는 `editorial_article` 카드만 연다. 카드가 활성이고 지금이 노출 기간 안일 때만 보이며, 그 밖(예약 발행 전·종료 뒤·비활성·다른 템플릿)은 404다.
 
-- 상단에 `cover_image_url` 커버를 그린다. 비어 있으면 커버 영역 없이 본문부터 보인다.
+- 상단에 서비스 TopNav(제목 「투데이」, 뒤로 `/`, 동기화·알림·아바타)가 있고, 그 바로 아래에 `cover_image_url` 커버를 16:9로 그린다(우선 로드, `alt`는 빈 값 — 바로 아래 제목이 글자로 보인다). 비어 있으면 16:9 칸 없이 본문부터 보인다. 커버 주소가 있는데 로드에 실패하면 칸이 사라진다. 「← 투데이로」 링크는 없다(TopNav의 뒤로가기가 대신한다).
+- 칩은 MODULAR `LabelChip`의 반전 색조(`tone="inverse"`, 검정 바탕 위 흰 칩)이고 칩·제목·부제·게재일·본문·CTA 순서로 보인다. 게재일은 「2026년 10월 5일」(연도 유지)이고, 게재일·부제·「본문이 없어요」의 옅은 글자는 `text/60` 이상이다.
 - **본문(`body_markdown`)은 마크다운으로 렌더되지 않는다.** 빈 줄로 문단을 나누고 문단 안 줄바꿈은 그대로 보인다. `**`·`#`·`-` 같은 문법은 글자 그대로 나온다.
 - 본문 끝 CTA 버튼은 1개이며 우선순위는 §7의 두 번째 표다. 라벨은 직접 링크 「자세히 보기」, 컬렉션 「컬렉션 보기」, 미션 「미션 보기」다. 대상이 모두 없으면 버튼을 그리지 않는다.
 - 기사 화면과 CTA 버튼에는 계측이 없다(§9).
+- **표시 데이터**: 본문(커버~CTA, TopNav 제외)은 표시 데이터(`ArticleView`: 제목·라벨·부제·커버 주소·게재일·문단 배열·CTA)만 받는 컴포넌트가 그리고, 카드 행을 그 값으로 바꾸는 일은 순수 함수 `toArticleView`가 한다(문단 나누기와 CTA 우선순위·라벨이 이 함수 안에 있다). 운영툴 미리보기(티켓 20261001_1501)가 같은 함수로 같은 화면을 그린다. 미리보기용 옵션(`linkless`)을 주면 CTA의 링크만 빠지고, 이때 CTA는 링크가 아닌 같은 모양의 정적 필로 그려진다(대상이 없어 CTA 자체가 없는 것과는 다른 상태다).
 
-근거: `jam-web/src/app/(main)/today/[cardId]/page.tsx`, `jam-web/src/lib/today/cards.ts`(`getPublishedArticleCard`), 문구 `jam-web/src/lib/i18n/ko.ts`(`todayCard.ctaView*`)
+근거: `jam-web/src/app/(main)/today/[cardId]/page.tsx`, `jam-web/src/components/today/ArticleView.tsx`, `jam-web/src/lib/today/articleView.ts`(`toArticleView`), `jam-web/src/lib/today/cards.ts`(`getPublishedArticleCard`), `jam-web/src/components/ui/TopNav.tsx`, 문구 `jam-web/src/lib/i18n/ko.ts`(`todayCard.ctaView*`), 티켓 20261001_1737
 
 ## 9. 계측
 
