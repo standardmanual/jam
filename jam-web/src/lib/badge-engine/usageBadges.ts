@@ -49,6 +49,19 @@ export interface UsageBadgeEarned {
 }
 
 /**
+ * `issueQualifyingBadges` 발급 부수효과 옵션 — 기존 재평가 배치(`reevaluateCatalog.ts`)가 JAM! 지표를
+ * 돌릴 때 쓴다(티켓 20261001_0634). 전부 생략하면 자연 발급과 똑같이 동작한다.
+ */
+export interface IssueBadgeOptions {
+  /** true면 섀도우밴 판정까지 하고 통과한 배지를 `earned`에 담기만 한다 — 어떤 쓰기(insert·포인트·피드)도 하지 않는다 */
+  dryRun?: boolean
+  /** true면 `badge_earned` 피드 이벤트만 건너뛴다 — insert와 포인트 지급은 그대로 한다 */
+  silent?: boolean
+  /** 주어지면 `triggered_by`를 `${prefix}:${triggeredByOf(badge)}`로 남긴다(자연 발급과 구분하는 근거) */
+  triggeredByPrefix?: string
+}
+
+/**
  * `metric` 조건을 가진 배지 후보를 조회해 `currentValue`로 판정하고, 조건을 충족하는
  * 배지를 발급한다(`user_activity_badges` insert + `point_reward` 지급 + `badge_earned`
  * 피드 이벤트 — 기존 배지 발급과 동일한 부수효과).
@@ -115,6 +128,9 @@ export async function evaluateUsageBadges(
  * `thresholdOf`/`currentValueOf` 함수를 받는다. `triggeredByOf`도 마찬가지로 후보마다 다른
  * `triggered_by` 문자열을 만들 수 있게 함수로 받는다(체크인 카테고리 지표는 카테고리 값을
  * 함께 남긴다).
+ *
+ * 마지막 인자 `options`(`dryRun`·`silent`·`triggeredByPrefix`)는 기존 유저 재평가 배치가 쓴다
+ * (티켓 20261001_0634). 생략하면 위 설명 그대로 insert·포인트·피드를 모두 한다.
  */
 export async function issueQualifyingBadges(
   supabase: SupabaseClient,
@@ -123,7 +139,8 @@ export async function issueQualifyingBadges(
   thresholdOf: (badge: BadgeRow) => number,
   currentValueOf: (badge: BadgeRow) => number,
   triggeredByOf: (badge: BadgeRow) => string,
-  logContext: string
+  logContext: string,
+  options?: IssueBadgeOptions
 ): Promise<UsageBadgeEarned[]> {
   const { data: ownedRaw, error: ownedError } = await supabase
     .from('user_activity_badges')
@@ -209,9 +226,19 @@ export async function issueQualifyingBadges(
       continue
     }
 
+    // dry-run — 섀도우밴을 통과한 «받게 될 배지»만 담고 쓰기는 하나도 하지 않는다
+    // (메인 엔진도 섀도우밴 게이트 뒤에서 dryRun을 가른다 — 같은 순서)
+    if (options?.dryRun) {
+      earned.push({ id: badge.id, name: badge.name })
+      continue
+    }
+
+    const triggeredBy = options?.triggeredByPrefix
+      ? `${options.triggeredByPrefix}:${triggeredByOf(badge)}`
+      : triggeredByOf(badge)
     const { error: insertError } = await supabase
       .from('user_activity_badges')
-      .insert({ user_id: userId, badge_id: badge.id, triggered_by: triggeredByOf(badge) })
+      .insert({ user_id: userId, badge_id: badge.id, triggered_by: triggeredBy })
 
     if (insertError) {
       // 23505(중복키)는 «이미 보유»다 — 동시 호출이 같은 배지를 동시에 채운 경우뿐이므로
@@ -234,14 +261,17 @@ export async function issueQualifyingBadges(
       await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: badge.id })
     }
 
-    // 피드 이벤트 — badge-engine의 Step 3-d와 동일한 페이로드(활동 귀속 필드는 없음)
-    await recordFeedEvent(userId, 'badge_earned', {
-      badge_id: badge.id,
-      badge_name: badge.name,
-      badge_image_url: badge.image_url ?? '',
-      rarity: badge.rarity,
-      ...(pointReward > 0 ? { point_reward: pointReward } : {}),
-    })
+    // 피드 이벤트 — badge-engine의 Step 3-d와 동일한 페이로드(활동 귀속 필드는 없음).
+    // `silent`(재평가 배치)면 건너뛴다 — 한꺼번에 쏟아지는 피드를 막기 위해서다
+    if (!options?.silent) {
+      await recordFeedEvent(userId, 'badge_earned', {
+        badge_id: badge.id,
+        badge_name: badge.name,
+        badge_image_url: badge.image_url ?? '',
+        rarity: badge.rarity,
+        ...(pointReward > 0 ? { point_reward: pointReward } : {}),
+      })
+    }
   }
 
   return earned

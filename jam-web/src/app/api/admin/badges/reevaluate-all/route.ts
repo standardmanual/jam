@@ -10,6 +10,11 @@
  * `false`로 보내야만 실제로 DB에 반영된다 — 실수로 전체 유저에게 즉시 발급되는 사고를
  * 막기 위한 안전장치다.
  *
+ * ## JAM! 행동 지표도 포함한다 (티켓 20261001_0634)
+ * 메인 엔진 평가 뒤에 JAM! 행동 지표(믹스·드랍·픽업·미션·컬렉션·가입 경과일·활동일 등)까지 같이 돌린다.
+ * 응답의 `jamActionAffectedUserCount`·`totalJamActionBadgesIssued`·`totalJamActionPointsAwarded`가
+ * 그 몫만 따로 보여 준다(위 합계에는 이미 포함돼 있다).
+ *
  * ## 로직은 여기 없다
  * 평가·집계는 전부 `reevaluateUsersForCatalog`(`@/lib/badge-engine/reevaluateCatalog`)에
  * 있다. 이 라우트는 인증·입력 검증·대상 유저 조회·상한 체크만 한다.
@@ -58,6 +63,9 @@ export async function POST(req: NextRequest) {
       totalBadgesIssued: 0,
       totalPointsAwarded: 0,
       totalCounterIncrements: 0,
+      jamActionAffectedUserCount: 0,
+      totalJamActionBadgesIssued: 0,
+      totalJamActionPointsAwarded: 0,
       users: [],
     })
   }

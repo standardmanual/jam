@@ -17,7 +17,9 @@
  *    드랍·픽업 라우트, 컬렉션 장착 `/api/itembooks/[id]/slot`(③의 `after()`). 동기화는 `sync.ts`의
  *    `evaluateJamActionSafely`가 새 활동이 있을 때 5키(`JAM_SYNC_TRIGGERS`), 없을 때 가입 경과일
  *    (`JAM_EMPTY_SYNC_TRIGGERS`)을 판정하고 획득 id를 결산에 합친다. 어느 호출 지점에 어떤 키를 넘기는지는
- *    `jamActionDropTriggers.ts`·`jamActionProgressTriggers.ts`가 정한다.
+ *    `jamActionDropTriggers.ts`·`jamActionProgressTriggers.ts`가 정한다. 기존 유저 재평가 배치
+ *    (`reevaluateCatalog.ts`, 티켓 20261001_0634)도 호출 지점이다 — 키 전부(`JAM_ACTION_CONDITION_KEYS`)를
+ *    `options`(dryRun·silent·접두 `triggered_by`)와 함께 넘긴다.
  *
  * ## 가입 경과일은 전용 분기다
  * `days_since_signup`은 보조 키(`signup_recent_active_days`, 선택)가 붙을 수 있어 «유저 단위로 한 번 계산한 숫자
@@ -31,7 +33,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRow } from '@/types/database'
-import { issueQualifyingBadges, type UsageBadgeEarned } from './usageBadges'
+import { issueQualifyingBadges, type IssueBadgeOptions, type UsageBadgeEarned } from './usageBadges'
 import {
   countCombineAttempts,
   countCombineFail,
@@ -142,11 +144,15 @@ function isMetricTrigger(trigger: JamActionTrigger): trigger is JamActionMetric 
  * (`runJamActionEvaluation` 등)가 한 번 더 `try/catch`로 감싼다.
  *
  * `client`를 생략하면 새 service_role 클라이언트를 만든다.
+ *
+ * `options`는 `issueQualifyingBadges`에 그대로 넘긴다(수치형·`days_since_signup`·`recipe_first_success` 세 곳).
+ * 생략하면 자연 발급과 같다. 재평가 배치만 쓴다(`dryRun`·`silent`·`triggeredByPrefix`, 티켓 20261001_0634).
  */
 export async function evaluateJamActionBadges(
   userId: string,
   triggers: readonly JamActionTrigger[],
-  client?: SupabaseClient
+  client?: SupabaseClient,
+  options?: IssueBadgeOptions
 ): Promise<UsageBadgeEarned[]> {
   const requested = [...new Set(triggers)]
   if (requested.length === 0) return []
@@ -184,7 +190,8 @@ export async function evaluateJamActionBadges(
           (b) => b.condition_json?.[trigger] as number,
           () => currentValue,
           () => `jam_action:${trigger}`,
-          `evaluateJamActionBadges(metric: ${trigger})`
+          `evaluateJamActionBadges(metric: ${trigger})`,
+          options
         )
         earned.push(...issued)
         continue
@@ -216,7 +223,8 @@ export async function evaluateJamActionBadges(
             return required === null || recentActiveDays >= required ? daysSinceSignup : 0
           },
           () => 'jam_action:days_since_signup',
-          'evaluateJamActionBadges(days_since_signup)'
+          'evaluateJamActionBadges(days_since_signup)',
+          options
         )
         earned.push(...issued)
         continue
@@ -235,7 +243,8 @@ export async function evaluateJamActionBadges(
         () => 1,
         (b) => (firstRecipeIds.has(recipeIdOf(b)) ? 1 : 0),
         (b) => `recipe_first_success:${recipeIdOf(b)}`,
-        'evaluateJamActionBadges(recipe_first_success)'
+        'evaluateJamActionBadges(recipe_first_success)',
+        options
       )
       earned.push(...issued)
     } catch (error) {
