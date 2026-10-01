@@ -5,9 +5,12 @@
  * 유저 식별자는 어떤 형태로도 인자로 받지도, 저장하지도 않는다(PRD content-automation/PRD.md
  * §9 "개인 식별자는 저장하지 않는다", 결정 4-6). content_type_id는 기록 시점 카드의 값을
  * 그대로 복제해 저장한다 — 카드가 나중에 유형을 바꾸거나 삭제돼도 이벤트의 유형 귀속이
- * 흔들리지 않는다(마이그레이션 183 COMMENT).
+ * 흔들리지 않는다(마이그레이션 183 COMMENT). card_shape(그려진 모양, 마이그레이션 206)도 같은 방식으로
+ * 기록 시점 값을 복제한다(티켓 20261001_1431).
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { fallbackEmptyTileShape, resourceOfTemplate } from './cardView'
+import { drawnShape, type CardShape, type ShapeCardInput } from './shape'
 
 export const TODAY_CARD_EVENT_TYPES = ['impression', 'click', 'followup'] as const
 export type TodayCardEventType = (typeof TODAY_CARD_EVENT_TYPES)[number]
@@ -53,6 +56,11 @@ export function parseTodayCardEventInput(body: unknown): TodayCardEventValidatio
 
 export interface ExposableCard {
   content_type_id: string | null
+  /**
+   * 그 카드가 지금 화면에 그려지는 모양. `shape`가 저장되지 않은 옛 카드는 전환 상수(`LEGACY_SHAPE_CUTOVER`)가 꺼져 있는 동안
+   * `null`이다(옛 렌더러로 그려지므로 새 모양이 없다).
+   */
+  card_shape: CardShape | null
 }
 
 export type CardExposureValidation = { ok: true; card: ExposableCard } | { ok: false; error: string }
@@ -60,12 +68,13 @@ export type CardExposureValidation = { ok: true; card: ExposableCard } | { ok: f
 /**
  * 카드가 존재하고 `is_active`이며 `now`가 `[starts_at, ends_at]`(양끝 포함, 기존 노출 조회와 동일) 안일 때만 통과한다(티켓 20260924_0111).
  * 통과하면 조회한 카드 행을 돌려줘 `recordTodayCardEvent`가 `today_cards`를 다시 조회하지 않게 한다(티켓 20260924_0139).
+ * 그려진 모양 판정에 필요한 칸(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)도 같은 조회에서 읽는다(티켓 20261001_1431).
  */
 export async function assertCardExposable(cardId: string, now: Date): Promise<CardExposureValidation> {
   const supabase = createServiceClient()
   const { data: card, error } = await supabase
     .from('today_cards')
-    .select('is_active, starts_at, ends_at, content_type_id')
+    .select('is_active, starts_at, ends_at, content_type_id, shape, template_type, layout_type, cover_image_url, badge_ids')
     .eq('id', cardId)
     .maybeSingle()
 
@@ -80,7 +89,20 @@ export async function assertCardExposable(cardId: string, now: Date): Promise<Ca
   if (nowMs < new Date(card.starts_at).getTime() || nowMs > new Date(card.ends_at).getTime()) {
     return { ok: false, error: '노출 기간이 아닌 카드입니다.' }
   }
-  return { ok: true, card: { content_type_id: card.content_type_id } }
+  // 생성 타입은 template_type·layout_type을 string으로 읽어 모양 판정 입력 타입으로 좁혀 넘긴다(DB CHECK가 값을 보장한다).
+  return { ok: true, card: { content_type_id: card.content_type_id, card_shape: resolveDrawnShape(card as ShapeCardInput) } }
+}
+
+/**
+ * 화면(`toCardView`)이 그리는 모양과 같은 값을 정한다. 저장된 `shape` → (전환 상수가 켜졌을 때만) 옛 값 판정은 `drawnShape`,
+ * 「타일이 0개인 타일형 list는 brief」는 `toCardView`와 같은 함수(`fallbackEmptyTileShape`)를 쓴다.
+ * 타일 수는 화면이 읽은 배지 수(삭제된 배지 제외) 대신 카드 행의 `badge_ids` 개수로 갈음한다 — 배지를 다시 조회하지 않기 위해서다.
+ * 그래서 `badge_ids`가 전부 삭제된 배지인 타일형 `list`만 화면은 `brief`, 기록은 `list`로 갈린다.
+ */
+function resolveDrawnShape(card: ShapeCardInput): CardShape | null {
+  const shape = drawnShape(card)
+  if (!shape) return null
+  return fallbackEmptyTileShape(shape, resourceOfTemplate(card.template_type), card.badge_ids?.length ?? 0)
 }
 
 export type RateLimitResult = { ok: true } | { ok: false }
@@ -120,7 +142,7 @@ export function checkRateLimit(key: string, limit: number, windowMs: number): Ra
 export type RecordTodayCardEventResult = { ok: true } | { ok: false; error: string }
 
 /**
- * `assertCardExposable`이 이미 조회한 카드의 `content_type_id`를 함께 insert한다(카드 재조회 없음).
+ * `assertCardExposable`이 이미 조회한 카드의 `content_type_id`·그려진 모양(`card_shape`)을 함께 insert한다(카드 재조회 없음).
  * 인자로도, insert 페이로드로도 유저 식별자를 받거나 담지 않는다 — 호출부(API 라우트)는 로그인
  * 여부만 확인하고 유저 ID는 이 함수에 넘기지 않는다.
  */
@@ -133,6 +155,7 @@ export async function recordTodayCardEvent(
   const { error: insertError } = await supabase.from('today_card_events').insert({
     card_id: input.cardId,
     content_type_id: card.content_type_id,
+    card_shape: card.card_shape,
     event: input.event,
     // followupAction을 받지 않으므로 항상 null이다(2026-09-24 사용자 결정, 티켓 20260924_0810).
     followup_action: null,
@@ -144,6 +167,8 @@ export async function recordTodayCardEvent(
 
 export interface TodayCardEventAggregateRow {
   contentTypeId: string | null
+  /** 기록 시점에 그려진 모양. NULL이면 모양 도입 전 기록이거나 전환 전 옛 카드다. */
+  cardShape: string | null
   event: TodayCardEventType
   count: number
 }
@@ -153,7 +178,8 @@ export interface TodayCardEventAggregateRow {
 const AGGREGATE_PAGE_SIZE = 1000
 
 /**
- * 기간(`from` 이상 `to` 미만, ISO 문자열) 안의 이벤트를 유형 ID×이벤트별 건수로 집계한다.
+ * 기간(`from` 이상 `to` 미만, ISO 문자열) 안의 이벤트를 유형 ID×모양×이벤트별 건수로 집계한다. 유형별 합계는 같은 유형 행을
+ * 모양에 상관없이 더하면 지금과 같고, 모양별 합계는 같은 모양 행을 유형에 상관없이 더하면 된다(티켓 20261001_1431).
  * `computeKpiWeeklyMetrics`(kpiWeekly.ts)와 같은 방식 — 원본 행을 읽어 서버에서 그룹핑한다.
  * `id` 오름차순으로 `.range()` 페이지를 반복해 1,000행 상한에서 잘리지 않게 한다.
  */
@@ -164,7 +190,7 @@ export async function aggregateTodayCardEvents(from: string, to: string): Promis
   for (let offset = 0; ; offset += AGGREGATE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from('today_card_events')
-      .select('content_type_id, event')
+      .select('content_type_id, card_shape, event')
       .gte('occurred_at', from)
       .lt('occurred_at', to)
       .order('id', { ascending: true })
@@ -172,16 +198,17 @@ export async function aggregateTodayCardEvents(from: string, to: string): Promis
 
     if (error) throw error
     for (const row of data ?? []) {
-      const key = `${row.content_type_id ?? ''}\u0000${row.event}`
+      const key = `${row.content_type_id ?? ''}\u0000${row.card_shape ?? ''}\u0000${row.event}`
       counts.set(key, (counts.get(key) ?? 0) + 1)
     }
     if (!data || data.length < AGGREGATE_PAGE_SIZE) break
   }
 
   return Array.from(counts.entries()).map(([key, count]) => {
-    const [contentTypeId, event] = key.split('\u0000')
+    const [contentTypeId, cardShape, event] = key.split('\u0000')
     return {
       contentTypeId: contentTypeId === '' ? null : contentTypeId,
+      cardShape: cardShape === '' ? null : cardShape,
       event: event as TodayCardEventType,
       count,
     }

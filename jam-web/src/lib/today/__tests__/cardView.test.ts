@@ -14,6 +14,7 @@ import type { TodayCardWithHref, ResolvedBadge } from '../cards'
 import {
   CARD_RESOURCES,
   buildFacts,
+  fallbackEmptyTileShape,
   formatKstMonthDay,
   resourceOfTemplate,
   toCardView,
@@ -263,6 +264,23 @@ function makeCard(overrides: Partial<TodayCardWithHref> = {}): TodayCardWithHref
     ...overrides,
   }
 }
+
+describe('fallbackEmptyTileShape — 타일이 0개인 타일형 list는 brief (계측과 화면이 함께 쓰는 규칙)', () => {
+  it('타일형 list는 타일이 0개일 때만 brief로 바꾼다', () => {
+    expect(fallbackEmptyTileShape('list', 'badge', 0)).toBe('brief')
+    expect(fallbackEmptyTileShape('list', 'badge', 1)).toBe('list')
+  })
+
+  it('랭킹 행형 list는 타일이 0개여도 그대로 둔다', () => {
+    expect(fallbackEmptyTileShape('list', 'ranking', 0)).toBe('list')
+  })
+
+  it('list가 아닌 모양은 타일 수와 상관없이 그대로 둔다', () => {
+    for (const shape of ['hero', 'poster', 'square', 'brief'] as const) {
+      expect(fallbackEmptyTileShape(shape, 'badge', 0)).toBe(shape)
+    }
+  })
+})
 
 describe('toCardView — 표시 데이터', () => {
   it('손으로 만든 최소 표시 데이터가 타입에 맞는다(카드 ID·활성 여부·노출 기간·정렬 순서 없이)', () => {

@@ -84,6 +84,53 @@ describe('집계 결과 가공', () => {
   })
 })
 
+describe('모양별 집계(byShape)', () => {
+  const bodyOf = async (rows: unknown[]) => {
+    aggregate.mockResolvedValue(rows)
+    return (await call()).json()
+  }
+
+  it('모양별 노출·열람·후속 건수와 열람률을 돌려준다(유형이 달라도 같은 모양은 합산)', async () => {
+    const { byShape } = await bodyOf([
+      { contentTypeId: 'T01', cardShape: 'hero', event: 'impression', count: 4 },
+      { contentTypeId: 'T02', cardShape: 'hero', event: 'impression', count: 6 },
+      { contentTypeId: 'T02', cardShape: 'hero', event: 'click', count: 2 },
+      { contentTypeId: 'T02', cardShape: 'brief', event: 'click', count: 1 },
+    ])
+    expect(byShape).toEqual([
+      { shape: 'brief', impression: 0, click: 1, followup: 0, clickThroughRate: null },
+      { shape: 'hero', impression: 10, click: 2, followup: 0, clickThroughRate: 0.2 },
+    ])
+  })
+
+  it('cardShape가 null이거나 없는 기록은 unknown으로 묶는다', async () => {
+    const { byShape } = await bodyOf([
+      { contentTypeId: 'T01', cardShape: null, event: 'impression', count: 2 },
+      { contentTypeId: 'T01', event: 'impression', count: 3 },
+      { contentTypeId: 'T01', cardShape: null, event: 'click', count: 1 },
+      { contentTypeId: 'T01', cardShape: 'poster', event: 'impression', count: 1 },
+    ])
+    expect(byShape).toEqual([
+      { shape: 'poster', impression: 1, click: 0, followup: 0, clickThroughRate: 0 },
+      { shape: 'unknown', impression: 5, click: 1, followup: 0, clickThroughRate: 0.2 },
+    ])
+  })
+
+  it('기록이 없으면 빈 배열이다', async () => {
+    expect((await bodyOf([])).byShape).toEqual([])
+  })
+
+  it('모양이 나뉜 기록이어도 기존 range·types는 유형별 합계 그대로다', async () => {
+    const body = await bodyOf([
+      { contentTypeId: 'T02', cardShape: 'hero', event: 'impression', count: 3 },
+      { contentTypeId: 'T02', cardShape: 'brief', event: 'impression', count: 1 },
+      { contentTypeId: 'T02', cardShape: 'hero', event: 'click', count: 1 },
+    ])
+    expect(body.range).toEqual(DEFAULT_RANGE)
+    expect(body.types).toEqual([{ contentTypeId: 'T02', impression: 4, click: 1, followup: 0, clickThroughRate: 0.25 }])
+  })
+})
+
 it('집계가 실패하면 500과 안내 문구를 돌려준다', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
   aggregate.mockRejectedValue(new Error('db down'))

@@ -104,12 +104,23 @@ describe('상태 코드', () => {
     expect(console.error).toHaveBeenCalled()
   })
 
-  it('성공하면 204에 본문이 없고 유저 ID 없이 유형 ID만 저장한다', async () => {
+  it('성공하면 204에 본문이 없고 유저 ID 없이 유형 ID·그려진 모양만 저장한다(모양이 없는 옛 카드는 null)', async () => {
     const res = await POST(post(VALID_BODY))
     expect(res.status).toBe(204)
     expect(await res.text()).toBe('')
     expect(insert).toHaveBeenCalledWith({
-      card_id: CARD_ID, content_type_id: 'type-1', event: 'impression', followup_action: null,
+      card_id: CARD_ID, content_type_id: 'type-1', card_shape: null, event: 'impression', followup_action: null,
+    })
+  })
+
+  it('shape가 저장된 카드는 그 모양을 card_shape로 저장한다', async () => {
+    maybeSingle.mockResolvedValue({
+      data: { is_active: true, starts_at: '2000-01-01', ends_at: '2999-01-01', content_type_id: 'type-1', shape: 'poster', template_type: 'badge_spotlight', layout_type: 'banner', cover_image_url: null, badge_ids: [] },
+      error: null,
+    })
+    expect((await POST(post(VALID_BODY))).status).toBe(204)
+    expect(insert).toHaveBeenCalledWith({
+      card_id: CARD_ID, content_type_id: 'type-1', card_shape: 'poster', event: 'impression', followup_action: null,
     })
   })
 })
