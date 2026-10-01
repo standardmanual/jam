@@ -13,11 +13,20 @@
  *    (`Record<JamActionMetric, …>`라 계산 함수를 빠뜨리면 컴파일 오류다)
  * 3. `jamActionMetrics.ts`(또는 별도 파일)에 계산 함수 1개
  * 4. CHECK 키 확장 마이그레이션 1개(199 복사), `types/database.ts`·`conditionFormFields.ts`
- * 5. 호출 지점: 라우트는 `runJamActionEvaluation(userId, [키…])`(jamActionRoute.ts), 동기화는
- *    `evaluateJamActionBadges`를 직접 부르고 획득을 합친다.
+ * 5. 호출 지점: 라우트는 `runJamActionEvaluation(userId, [키…])`(jamActionRoute.ts) — 믹스 `/api/combine`,
+ *    드랍·픽업 라우트, 컬렉션 장착 `/api/itembooks/[id]/slot`(③의 `after()`). 동기화는 `sync.ts`의
+ *    `evaluateJamActionSafely`가 새 활동이 있을 때 5키(`JAM_SYNC_TRIGGERS`), 없을 때 가입 경과일
+ *    (`JAM_EMPTY_SYNC_TRIGGERS`)을 판정하고 획득 id를 결산에 합친다. 어느 호출 지점에 어떤 키를 넘기는지는
+ *    `jamActionDropTriggers.ts`·`jamActionProgressTriggers.ts`가 정한다.
  *
- * ⚠️ 이 파일은 `@/lib/strava/sync`를 import하지 않는다 — 동기화 경로(`sync.ts`)가 이 파일을 import하므로
- * 순환을 막기 위해서다. 알림 생성은 호출부(`jamActionRoute.ts`)가 맡는다.
+ * ## 가입 경과일은 전용 분기다
+ * `days_since_signup`은 보조 키(`signup_recent_active_days`, 선택)가 붙을 수 있어 «유저 단위로 한 번 계산한 숫자
+ * 하나»를 모든 후보에 비교하는 `METRIC_COMPUTERS` 흐름에 맞지 않는다(`recipe_first_success`처럼 전용 분기).
+ * 보조 키는 트리거가 아니라 후보를 거르는 조건이라 `JAM_ACTION_CONDITION_KEYS`가 아닌
+ * `JAM_ACTION_MODIFIER_KEYS`에 둔다.
+ *
+ * ⚠️ 이 파일은 `@/lib/strava/sync`도, `sync.ts`를 import하는 `jamActionRoute.ts`도 import하지 않는다 —
+ * `sync.ts`가 이 파일을 import하므로 순환을 막기 위해서다. 알림 생성은 호출부(`jamActionRoute.ts`와 `sync.ts`)가 맡는다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -35,6 +44,13 @@ import {
   countPickedUpItems,
   countPickupFromUsers,
 } from './jamActionDropMetrics'
+import { countCollectionCompletions, countMissionCompletions } from './jamActionCompletionMetrics'
+import {
+  countDaysSinceSignup,
+  countRecentActiveDays,
+  countSameSpotCheckinDays,
+  countWeeklyActiveDays,
+} from './jamActionDayMetrics'
 
 /** 이 파일이 판정하는 JAM! 행동 지표 키 — `conditionRegistry.ts` 선언과 1:1 대응 */
 export const JAM_ACTION_CONDITION_KEYS = [
@@ -47,12 +63,29 @@ export const JAM_ACTION_CONDITION_KEYS = [
   'pickup_item_count',
   'pickup_from_user_count',
   'picked_up_by_user_count',
+  // 미션·컬렉션·가입 경과일·활동일·체크인 일수 5종 (티켓 20261001_0633)
+  'mission_complete_count',
+  'collection_complete_count',
+  'days_since_signup',
+  'weekly_active_days',
+  'same_spot_checkin_days',
 ] as const
+
+/**
+ * 판정 트리거가 아닌 보조 키 — 다른 지표(`days_since_signup`)가 붙은 배지를 거르는 조건이다.
+ * `conditionRegistry.ts`에서는 `USAGE_METRIC_CONDITION_KEYS`에서 빠지는 키와 1:1 대응한다.
+ *  - `signup_recent_active_days`: 값이 있으면 `days_since_signup` 배지는 «오늘(KST)을 포함한 최근 30일 가운데
+ *    활동한 날 수 ≥ 값»도 채워야 발급한다.
+ */
+export const JAM_ACTION_MODIFIER_KEYS = ['signup_recent_active_days'] as const
 
 export type JamActionConditionKey = (typeof JAM_ACTION_CONDITION_KEYS)[number]
 
-/** 「유저 단위로 한 번 계산한 숫자 하나」를 모든 후보에 비교하는 수치형 지표 (`recipe_first_success` 제외) */
-export type JamActionMetric = Exclude<JamActionConditionKey, 'recipe_first_success'>
+/**
+ * 「유저 단위로 한 번 계산한 숫자 하나」를 모든 후보에 비교하는 수치형 지표.
+ * `recipe_first_success`(후보마다 레시피가 다르다)와 `days_since_signup`(후보마다 보조 키가 다르다)은 전용 분기라 뺀다.
+ */
+export type JamActionMetric = Exclude<JamActionConditionKey, 'recipe_first_success' | 'days_since_signup'>
 
 /** 호출부가 「이번 행동으로 다시 볼 지표」로 넘기는 키 */
 export type JamActionTrigger = JamActionConditionKey
@@ -71,6 +104,10 @@ const METRIC_COMPUTERS: Record<JamActionMetric, MetricComputer> = {
   pickup_item_count: countPickedUpItems,
   pickup_from_user_count: countPickupFromUsers,
   picked_up_by_user_count: countPickedUpByUsers,
+  mission_complete_count: countMissionCompletions,
+  collection_complete_count: countCollectionCompletions,
+  weekly_active_days: countWeeklyActiveDays,
+  same_spot_checkin_days: countSameSpotCheckinDays,
 }
 
 function isRecipeFirstSuccessValue(v: unknown): v is { recipe_id: string } {
@@ -96,6 +133,10 @@ function isMetricTrigger(trigger: JamActionTrigger): trigger is JamActionMetric 
  *  ④ 수치형은 `issueQualifyingBadges`로 발급한다(`triggered_by` = `jam_action:${metric}`)
  *  ⑤ `recipe_first_success`는 내가 최초 성공자인 레시피 집합으로 현재값 1/0을 만든다
  *     (상태 기반이라 여러 번 불러도 같은 결과 — 재실행해도 멱등). `triggered_by` = `recipe_first_success:${recipe_id}`
+ *  ⑥ `days_since_signup`은 가입 경과일을 한 번 계산하고, 후보 중 보조 키(`signup_recent_active_days`)가 숫자인
+ *     배지가 있을 때만 최근 30일 활동일을 한 번 더 계산한다. 보조 키가 있는 배지의 현재값은 최근 활동일이 보조 키
+ *     이상일 때만 가입 경과일이고 아니면 0이다(발급되지 않는다). 어느 계산이든 던지면 이 분기 전체를 건너뛴다.
+ *     `triggered_by` = `jam_action:days_since_signup`
  *
  * 이 함수는 조회 오류·계산 오류를 삼키지만 그 밖의 예기치 못한 예외까지 막지는 않는다 — 호출부
  * (`runJamActionEvaluation` 등)가 한 번 더 `try/catch`로 감싼다.
@@ -144,6 +185,38 @@ export async function evaluateJamActionBadges(
           () => currentValue,
           () => `jam_action:${trigger}`,
           `evaluateJamActionBadges(metric: ${trigger})`
+        )
+        earned.push(...issued)
+        continue
+      }
+
+      if (trigger === 'days_since_signup') {
+        // 후보마다 보조 키가 다르므로 지표 하나로 비교할 수 없다 — 가입 경과일은 한 번만 계산한다
+        const candidates = allBadges.filter((b) => typeof b.condition_json?.days_since_signup === 'number')
+        if (candidates.length === 0) continue
+
+        const recentActiveRequirementOf = (b: BadgeRow): number | null => {
+          const required = b.condition_json?.signup_recent_active_days
+          return typeof required === 'number' ? required : null
+        }
+
+        // 같은 판정 안에서 날짜 경계가 어긋나지 않도록 두 계산이 같은 시각을 본다
+        const asOf = new Date()
+        const daysSinceSignup = await countDaysSinceSignup(supabase, userId, asOf)
+        const recentActiveDays = candidates.some((b) => recentActiveRequirementOf(b) !== null)
+          ? await countRecentActiveDays(supabase, userId, asOf)
+          : 0
+        const issued = await issueQualifyingBadges(
+          supabase,
+          userId,
+          candidates,
+          (b) => b.condition_json?.days_since_signup as number,
+          (b) => {
+            const required = recentActiveRequirementOf(b)
+            return required === null || recentActiveDays >= required ? daysSinceSignup : 0
+          },
+          () => 'jam_action:days_since_signup',
+          'evaluateJamActionBadges(days_since_signup)'
         )
         earned.push(...issued)
         continue

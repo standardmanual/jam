@@ -1,0 +1,45 @@
+/**
+ * 미션·컬렉션·가입 경과일·활동일·체크인 일수 지표가 «다시 볼 지표»를 정하는 규칙
+ * (순수 함수·상수, 티켓 20261001_0633, 상위 20260930_1456 ③)
+ *
+ * 동기화 끝(`sync.ts`)과 컬렉션 장착 라우트(`/api/itembooks/[id]/slot`)가 `evaluateJamActionBadges`에 넘기는
+ * `triggers`를 여기서 정한다. 호출 지점마다 분기를 흩어 두지 않고 DB 없이 테스트할 수 있게 한다.
+ * 지표 정의와 세는 규칙은 `jamActionCompletionMetrics.ts`·`jamActionDayMetrics.ts`에 있다.
+ *
+ * ⚠️ 이 파일은 `@/lib/strava/sync`를 import하지 않는다 — `sync.ts`가 이 파일을 import하므로 순환을 막기 위해서다.
+ * `jamActionBadges`는 type만 가져온다.
+ *
+ * ## 왜 동기화 끝에서 한 번에 판정하는가
+ * 활동 기록 저장(`recordProcessedActivities`)이 판정 호출보다 앞서야 주간 활동일이 이번 배치를 볼 수 있다.
+ * 체크인 루프 안에서 따로 부르면 호출이 늘어 배지 읽기도 늘어나고(호출마다 배지 전체 조회 1회), 미션 완료·컬렉션
+ * 보정은 동기화가 끝나는 시점에 이미 DB에 있다. 체크인과 미션 완료는 동기화 안에서만 일어나므로(라우트에서 일어나지
+ * 않는다) 동기화 끝 한 번이 판정 시점으로 충분하다. 컬렉션 완성은 장착 라우트에서도 일어나 따로 판정한다.
+ */
+import type { JamActionTrigger } from './jamActionBadges'
+
+/**
+ * 새 활동이 있는 동기화가 끝날 때 다시 볼 지표 — 주 키 5개.
+ * 보조 키(`signup_recent_active_days`)는 트리거가 아니라 `days_since_signup` 배지를 거르는 조건이라 넣지 않는다.
+ */
+export const JAM_SYNC_TRIGGERS: readonly JamActionTrigger[] = [
+  'mission_complete_count',
+  'collection_complete_count',
+  'days_since_signup',
+  'weekly_active_days',
+  'same_spot_checkin_days',
+]
+
+/**
+ * 새 활동이 없는 동기화가 끝날 때 다시 볼 지표 — 가입 경과일만.
+ * 날짜가 지나면 값이 바뀌는 지표는 가입 경과일뿐이다. 오래 쉰 계정은 배지의 보조 키(최근 30일 활동일)가 막는다.
+ */
+export const JAM_EMPTY_SYNC_TRIGGERS: readonly JamActionTrigger[] = ['days_since_signup']
+
+/**
+ * 컬렉션 장착이 성공하면 컬렉션 완성 수를 다시 본다.
+ * 장착 RPC가 완성 여부를 돌려주지 않으므로 장착이 성공할 때마다 판정한다 — 완성이 아닌 장착이면 값이 그대로라
+ * 잘못 발급되지 않는다.
+ */
+export function jamTriggersForSlot(): JamActionTrigger[] {
+  return ['collection_complete_count']
+}

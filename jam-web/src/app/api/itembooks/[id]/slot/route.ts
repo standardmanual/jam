@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
+import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
+import { jamTriggersForSlot } from '@/lib/badge-engine/jamActionProgressTriggers'
 import { d } from '@/lib/i18n'
 
 // 티켓 20260830_0057: 장착/해제는 각각 원자적 RPC(slot_item_into_book/
@@ -88,6 +90,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
     return NextResponse.json({ error: mapped.message }, { status: mapped.status })
   }
+
+  // JAM! 행동 지표(완성한 컬렉션 수) — 응답을 보낸 뒤에 장착한 사람의 배지를 판정한다(티켓 20261001_0633).
+  // 성공 분기에서만 예약한다(해제·교체·실패에서는 예약하지 않는다). 장착 RPC가 완성 여부를 돌려주지 않아 장착이
+  // 성공할 때마다 판정하지만, 완성이 아닌 장착이면 값이 그대로라 잘못 발급되지 않는다.
+  // `runJamActionEvaluation`은 예외를 던지지 않아 장착 응답은 그대로다.
+  after(() => runJamActionEvaluation(user.id, jamTriggersForSlot()))
 
   return NextResponse.json({ slot: result.slot }, { status: 201 })
 }
