@@ -463,6 +463,12 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 비공개 레시피 컬럼(`is_public`·`hint_text`)은 제거됐다 — 재료는 아래 `combination_recipe_slots`로
 옮겨졌다.
 
+**삭제 가드** (`recipe-references.ts`, 티켓 20261001_1200): `combination_recipes.id`를 FK로 참조하는
+테이블은 없다. 대신 삭제되지 않은(`deleted_at IS NULL`) 배지의 조건
+`condition_json.recipe_first_success.recipe_id`가 레시피를 가리키면 단건·일괄 삭제를 막는다(단건
+409, 일괄은 건너뜀 사유 — 「이 레시피를 가리키는 배지가 N개 있어요」). 참조 조회가 실패해도
+삭제를 막는다(fail-closed).
+
 ### combination_recipe_slots (신규, 티켓 20260917_1427)
 레시피당 슬롯 2~10개(최소 1개는 아이템 타입). `slot_order`, `badge_type`(item/activity/checkin,
 슬롯 단위로 고정), `allowed_badge_ids[]`(같은 타입 배지 후보, OR — 유저는 슬롯당 하나만 채운다).
@@ -487,8 +493,8 @@ service_role만 접근한다.
   `attempted_at`, `ingredient_badge_ids[]`, `result_badge_ids[]`, `points_awarded`(≥0),
   `is_recipe_first`(BOOLEAN — 그 레시피를 전체 유저 중 처음 성공한 행이면 true).
 - **`recipe_id`에는 FK를 걸지 않았다.** 레시피를 지워도 그 유저의 성공 횟수와 최초 성공 기록이
-  남아야 하고, 레시피 삭제 가드가 전제하는 「이 레시피를 참조하는 행이 없다」
-  (`recipe-references.ts`)를 유지하기 위해서다.
+  남아야 하기 때문이다. 그래서 레시피 삭제 가드(`recipe-references.ts`)는 이 테이블을 세지
+  않는다.
 - 인덱스: `(user_id, attempted_at DESC)`, 부분 유니크 `(recipe_id) WHERE is_recipe_first` —
   레시피마다 최초 표시 행을 DB가 1개로 강제한다.
 - RLS를 켜고 정책을 만들지 않는다 — service_role만 접근한다(유저 화면 비노출).
