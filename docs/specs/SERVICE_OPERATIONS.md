@@ -1113,6 +1113,9 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | GET, POST | `/api/admin/recipes` | 조합 레시피 목록/생성 |
 | PATCH, DELETE | `/api/admin/recipes/[id]` | 레시피 수정/삭제. PATCH는 공개된 레시피의 공개 시각 변경을 409로 거절한다 |
 | POST | `/api/admin/recipes/[id]/cancel-release` | 공개 전(예약 중) 레시피 취소 = 삭제. 삭제 가드를 거치고, 이미 공개됐으면 409, 없으면 404 ([[20261001_1158]]) |
+| GET, POST | `/api/admin/ambient-drop/schedules` | 앰비언트 드랍 날짜 예약 목록(최근 50건)/등록 ([[20261001_2052]]) |
+| POST | `/api/admin/ambient-drop/schedules/preview` | 날짜 예약 등록 전 미리 확인(예정 시각 기준, 쓰기 없음, 겹침 지점 수) |
+| PATCH, DELETE | `/api/admin/ambient-drop/schedules/[id]` | 날짜 예약 시각 수정/공개 전 취소(행은 `canceled`로 남음) |
 | GET | `/api/admin/users` | 유저 검색(자동완성용) |
 | POST | `/api/admin/users/[id]/reset` | 유저 데이터 리셋 (본인·어드민 계정은 403) |
 | GET | `/api/admin/users/ids` | 유저 목록 필터 결과의 전체 ID(전체 선택용, 상한 1,000) |
