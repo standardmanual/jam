@@ -545,9 +545,9 @@ export const RankingTargets: Story = {
     expect(titleLink.querySelector('h3')).not.toBeNull()
     expect(titleLink.textContent).not.toContain('러너 1')
     expect(titleLink.className).toContain('jam-press')
-    // 눌림은 미션 대상 카드의 제목 링크 하나뿐이다
-    expect(mission.querySelectorAll('.jam-press')).toHaveLength(1)
-    expect(user.querySelectorAll('.jam-press')).toHaveLength(0)
+    // 눌림은 링크마다 하나다: 미션 대상 카드는 제목 링크 하나와 순위 행 셋, 유저 직접 지정 카드는 순위 행 셋(카드 전체에는 없다)
+    expect(mission.querySelectorAll('.jam-press')).toHaveLength(1 + 3)
+    expect(user.querySelectorAll('.jam-press')).toHaveLength(3)
     expectNoNestedAnchors(canvasElement)
     // 카드 전체를 감싸는 링크가 없다: 카드(흰 면)의 첫 자식 요소는 링크가 아니다
     for (const card of [mission, user]) expect(card.querySelector(':scope > a')).toBeNull()
@@ -735,7 +735,7 @@ export const RankingTrackedVsPreview: Story = {
   beforeEach: sendBeaconOff,
   render: () => (
     <div style={ROW_STYLE}>
-      <Case caption="홈(계측 있음) — 앵커 1(제목) + 3(행) = 4, 눌림 1, 내 순위 강조" view={live(rankingCard())} width={W360} currentUserId="user-2" />
+      <Case caption="홈(계측 있음) — 앵커 1(제목) + 3(행) = 4, 눌림 4(링크마다), 내 순위 강조" view={live(rankingCard())} width={W360} currentUserId="user-2" />
       <Case caption="미리보기(계측 없음) — 앵커 0, 눌림 0, 강조 없음" view={rankingCard()} width={W360} currentUserId="user-2" />
     </div>
   ),
@@ -743,7 +743,7 @@ export const RankingTrackedVsPreview: Story = {
     const [home, preview] = cardsOf(canvasElement)
     expect(anchorsOf(home)).toHaveLength(4)
     expect(anchorsOf(preview)).toHaveLength(0)
-    expect(home.querySelectorAll('.jam-press')).toHaveLength(1)
+    expect(home.querySelectorAll('.jam-press')).toHaveLength(4)
     expect(preview.querySelectorAll('.jam-press')).toHaveLength(0)
     expectNoNestedAnchors(canvasElement)
     // 두 카드는 같은 높이다(링크 유무가 모양을 바꾸지 않는다)
