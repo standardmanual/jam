@@ -11,6 +11,8 @@
  * 3. 다른 `route.ts`는 읽기 토큰 헤더나 `isValidAdminReadToken`을 직접 다루지 않는다(`requireAdminRead`만 쓴다)
  * 4. 토큰 쓰기 판정 함수는 auth.ts·래퍼·proxy.ts 밖의 서비스 코드에서 쓰이지 않는다
  * 5. 제출 경로 상수와 라우트 파일 위치가 같다
+ * 6. 규칙 읽기·바꾸기(`ops-rules`, 티켓 20260930_1459 조각 B): 읽기(`GET`)는 `requireAdminRead`로 토큰이 되고, 바꾸기(`PATCH`)는
+ *    `getAdminUser()`로 관리자 세션만 통과한다 — 토큰 쓰기 예외가 늘지 않는다
  *
  * 실행: cd jam-web && npx vitest run src/app/api/admin/__tests__/token-write-contract.test.ts
  */
@@ -126,6 +128,34 @@ describe('읽기 토큰의 쓰기 권한 — 제출 라우트 하나', () => {
     const code = readRaw(join(SRC, 'proxy.ts'))
     expect(code).toMatch(/\bisOpsInboxTokenRequest\s*\(/)
     expect(code).not.toContain('/ops-inbox')
+  })
+
+  describe('규칙 읽기·바꾸기(ops-rules): 읽기는 토큰이 되고 바꾸기는 관리자 세션만 된다', () => {
+    const READ_ROUTE = join(SRC, 'app/api/admin/ops-rules/route.ts')
+    const WRITE_ROUTE = join(SRC, 'app/api/admin/ops-rules/[ruleKey]/route.ts')
+    const exportedMethods = (code: string) =>
+      ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'].filter((method) =>
+        new RegExp(`export\\s+(async\\s+)?function\\s+${method}\\s*\\(|export\\s+(const|let|var)\\s+${method}\\b|export\\s*\\{[^}]*\\b${method}\\b[^}]*\\}`).test(code)
+      )
+
+    it('두 라우트 파일이 어드민 라우트 목록에 있다', () => {
+      expect(adminRouteFiles.map(rel)).toContain('app/api/admin/ops-rules/route.ts')
+      expect(adminRouteFiles.map(rel)).toContain('app/api/admin/ops-rules/[ruleKey]/route.ts')
+    })
+
+    it('읽기 라우트는 GET만 export하고 requireAdminRead(req)로 인증한다', () => {
+      const code = readCode(READ_ROUTE)
+      expect(exportedMethods(code)).toEqual(['GET'])
+      expect(code).toMatch(/await\s+requireAdminRead\s*\(\s*req\s*\)/)
+    })
+
+    it('바꾸기 라우트는 PATCH만 export하고 getAdminUser()로 관리자 세션만 통과시킨다(읽기 토큰 판정을 쓰지 않는다)', () => {
+      const code = readCode(WRITE_ROUTE)
+      expect(exportedMethods(code)).toEqual(['PATCH'])
+      expect(code).toMatch(/await\s+getAdminUser\s*\(\s*\)/)
+      expect(code).not.toMatch(/\brequireAdminRead\b/)
+      expect(code).not.toMatch(TOKEN_WRITE_CHECKS)
+    })
   })
 
   it('제출 경로 상수가 /api/admin/ops-inbox이고 라우트 파일이 그 위치에 있다', () => {
