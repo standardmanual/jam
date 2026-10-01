@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Card } from '@ds/components/cards/Card'
+import { LabelChip } from '@ds/components/cards/LabelChip'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { ChevronRightIcon, HourglassIcon } from '@/components/ui/icons'
 import Button from '@/components/ui/Button'
@@ -17,10 +18,9 @@ import QuestStartTracker from './QuestStartTracker'
  * 온보딩 퀘스트 홈 카드 (티켓 20260927_2133, 상위 20260927_2123 T1b · 경로 변경 20260928_0136 ·
  * 보상 문구 제거·CTA 버튼화 20260928_1537).
  *
- * 채원 사전 판정 — 재사용. 신규 컴포넌트·신규 토큰 없이 Card(tone="inverse")·ProgressBar·
- * icons.tsx·서비스 Button만으로 조립한다. 칩 마크업은 TodayStatusStrip의 CellLabel·
- * TodayCardStack의 TemplateChip과 같은 인라인 클래스를 세 번째로 복제한다 — 공용화는 별도
- * 티켓(승격 후보).
+ * 채원 사전 판정 — 재사용. 신규 토큰 없이 Card(tone="inverse")·ProgressBar·icons.tsx·서비스
+ * Button만으로 조립한다. 칩은 MODULAR `LabelChip`(티켓 20261001_1204)을 쓴다 — 세 번째로
+ * 복제하던 인라인 클래스를 공용 컴포넌트로 합쳤다.
  *
  * ②·③ 상태는 카드 전체가 더 이상 `<Link>`가 아니다 — CTA 버튼만 인터랙티브다. `<a>` 안에
  * `<button>`을 두는 중첩 인터랙티브 요소를 피하기 위한 결정(채원 사전 판정, MissionCard와
@@ -49,8 +49,6 @@ const CTA_ROW_CLASS = 'flex'
 // 맞춰 펄스 링이 버튼 실루엣과 어긋나지 않게 한다(채원 사전 판정). self-start가 없으면 이 줄 자체가
 // 카드 폭으로 늘어나 펄스 링이 카드 폭 전체에 그려진다(티켓 20260928_2137).
 const CTA_ROW_PULSE_CLASS = `${CTA_ROW_CLASS} self-start rounded-[var(--radius-pill)] jam-quest-pulse`
-const CHIP_CLASS =
-  'self-start inline-flex items-center text-[length:var(--text-caption)] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text'
 const CHIP_ROW_CLASS = 'flex items-center justify-between'
 // ProgressBar.jsx의 fraction 라벨 인라인 스타일(fontSize: var(--text-small); fontWeight:700;
 // color: var(--color-primary))을 그대로 복제한 클래스 — 새 토큰이 아니라 배치만 칩 줄로 옮긴다.
@@ -59,7 +57,7 @@ const TITLE_CLASS = 'text-[length:var(--text-body)] leading-[var(--leading-body)
 const DESC_CLASS = 'text-[length:var(--text-small)] text-text-secondary break-words [overflow-wrap:anywhere]'
 
 function Chip() {
-  return <span className={CHIP_CLASS}>{d.onboardingQuest.chipLabel}</span>
+  return <LabelChip className="self-start">{d.onboardingQuest.chipLabel}</LabelChip>
 }
 
 interface Props {

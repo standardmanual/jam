@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Card } from '@ds/components/cards/Card'
+import { LabelChip } from '@ds/components/cards/LabelChip'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { PackageIcon, TargetIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
@@ -19,16 +20,12 @@ const CELL_CLASS =
 const CELL_BODY_CLASS = 'flex-1 flex flex-col justify-center gap-[var(--spacing-8)]'
 
 /**
- * 카드 좌측 상단 타이틀 레이블 (티켓 20260830_2121). TodayCardStack.tsx의 TemplateChip
- * 스타일 관례(캡션 크기·bold·bg-surface text-text 칩)를 인라인으로 차용 — TemplateChip은
- * TodayCardTemplateType에 의존적이라 그대로 import하지 않는다.
+ * 카드 좌측 상단 타이틀 레이블 (티켓 20260830_2121). 칩 모양은 MODULAR `LabelChip`
+ * (티켓 20261001_1204)이 그리고, flex-col 셀에서 칩이 가로로 늘어나지 않게 하는 `self-start`만
+ * 여기서 붙인다.
  */
 function CellLabel({ children }: { children: string }) {
-  return (
-    <span className="self-start inline-flex items-center text-[length:var(--text-caption)] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text">
-      {children}
-    </span>
-  )
+  return <LabelChip className="self-start">{children}</LabelChip>
 }
 
 function LeftCell({ status }: { status: TodayLeftStatus }) {
