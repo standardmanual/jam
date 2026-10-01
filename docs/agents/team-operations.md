@@ -181,7 +181,7 @@ tags: [워크플로]
 | 채원 | `jam-web/design-system/`, Storybook, 지정된 diff | 없음 | 〃 |
 | 혜린 | 티켓·PRD·컨텐츠 문서 | 없음 | 〃 (Bash도 없음) |
 | 윈터 | `jam-doc/planning/content/TRIBES.md` 중심 + 웹 | 없음 | 〃 |
-| 윤진 | `jam-doc/marketing/`, 리포트 + 웹 | 세션: `jam-doc/assets/`의 묶음 폴더 3곳(`badge-bundles/`·`mission-bundles/`·`home-feed-bundles/`의 `<묶음 ID>/`) · 예약 주간 실행: `jam-doc/operations/reports/weekly/<YYYY-Www>-images/<묶음 ID>/`(모드 ⑧ 한정, Bash) | Bash 도구는 물리적으로 좁혀지지 않는다. `render.mjs`·`list-presets.mjs` 실행·묶음 폴더 쓰기·`register-*.mjs --dry-run`만 허용한다는 것은 정의 문서의 지시(프롬프트 규칙)다. 예약 실행은 홈피드 카드에 한해서만 이미지를 만든다. 등록(`--dry-run` 없음·`--undo`)·프리셋 생성·수정·DB·스토리지 쓰기·git은 금지 |
+| 윤진 | `jam-doc/marketing/`, 리포트 + 웹 | 세션: `jam-doc/assets/`의 묶음 폴더 3곳(`badge-bundles/`·`mission-bundles/`·`home-feed-bundles/`의 `<묶음 ID>/`, 모드 ⑧ 한정, Bash) | Bash 도구는 물리적으로 좁혀지지 않는다. `render.mjs`·`list-presets.mjs` 실행·묶음 폴더 쓰기·`register-*.mjs --dry-run`만 허용한다는 것은 정의 문서의 지시(프롬프트 규칙)다. 예약 실행은 이미지를 만들지 않는다(티켓 20260930_1519). 등록(`--dry-run` 없음·`--undo`)·프리셋 생성·수정·DB·스토리지 쓰기·git은 금지 |
 | 카즈하 | 리포트·티켓·지표 API | 없음 | 〃 |
 | 하니 | 문서 체계 전반 | 없음 | 〃 (Bash도 없음) |
 
