@@ -300,6 +300,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 - 저장(`today_card_events`)에는 카드 ID·기록 시점 유형 ID·이벤트 종류만 남고 **유저 식별자는 없다.** 유저 ID는 빈도 제한 판정에만 인스턴스 메모리에서 쓴다.
 - 집계: `GET /api/admin/today/metrics?from=&to=`(기본 최근 7일, 어드민 읽기 토큰 허용)가 유형 ID별 노출·열람 수와 열람률을 돌려준다.
 - 기사 상세 화면·CTA 버튼·오늘의 현황 스트립은 이 계측 대상이 아니다.
+- 어드민 투데이의 미리보기(날짜 미리보기 모달, 카드 폼의 「홈 화면 미리보기」)는 계측 대상이 아니다. `TodayCardStack`에 `preview`를 넘기면 `TodayCardTracker`와 카드 링크(랭킹 카드는 순위 행 링크 포함)를 그리지 않아 노출·클릭 요청과 GA 이벤트가 나가지 않고, 눌러도 이동하지 않는다. 홈은 `preview` 없이 그려 계측이 그대로 동작한다.
 
 근거: `jam-web/src/app/(main)/TodayCardTracker.tsx`, `jam-web/src/lib/today/cardEventClient.ts`·`events.ts`, `jam-web/src/app/api/today/events/route.ts`, `jam-web/src/app/api/admin/today/metrics/route.ts`
 

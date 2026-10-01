@@ -251,8 +251,19 @@ function OtherCard({ card }: { card: TodayCardWithHref }) {
  * 으로 링크한다. 유저 직접 지정 랭킹은 탭해도 이동할 "더 자세히 볼" 기존 화면이 없어(Out of
  * Scope — 랭킹모드를 투데이카드 밖에 노출하지 않음) 제목 영역에 아무 링크도 걸지 않는다
  * (2026-09-11 게이트 리뷰 WARN 대응 — 이전에는 `/missions` 목록으로 보냈었다).
+ *
+ * `preview`면 트래커와 제목 링크를 그리지 않고, 순위 행도 링크 없이 그린다(`TodayCardStack`의
+ * `preview` 설명 참고). 순위 행은 `username`이 null이면 링크 없는 행이 된다(탈퇴 유저와 같은 처리).
  */
-function RankingListCard({ card, currentUserId }: { card: TodayCardWithHref; currentUserId?: string }) {
+function RankingListCard({
+  card,
+  currentUserId,
+  preview,
+}: {
+  card: TodayCardWithHref
+  currentUserId?: string
+  preview: boolean
+}) {
   const ranking = card.resolved_ranking
   const entries = ranking?.entries ?? []
   const maxValue = entries[0]?.value ?? 0
@@ -277,7 +288,9 @@ function RankingListCard({ card, currentUserId }: { card: TodayCardWithHref; cur
 
   return (
     <Card tone="inverse">
-      {isMissionTarget ? (
+      {preview ? (
+        <div>{header}</div>
+      ) : isMissionTarget ? (
         // ranking_list 카드는 클릭이 행별 링크(유저 프로필)에서 일어나므로 카드 단위
         // 클릭은 세지 않는다(노출만 추적, 티켓 20260924_0004).
         <TodayCardTracker cardId={card.id} trackClick={false}>
@@ -298,7 +311,7 @@ function RankingListCard({ card, currentUserId }: { card: TodayCardWithHref; cur
           {entries.map((entry) => (
             <RankingListRow
               key={entry.userId}
-              entry={entry}
+              entry={preview ? { ...entry, username: null } : entry}
               maxValue={maxValue}
               isMe={entry.userId === currentUserId}
               formatValue={formatValue}
@@ -314,6 +327,15 @@ function RankingListCard({ card, currentUserId }: { card: TodayCardWithHref; cur
   )
 }
 
+/** `ranking_list`를 뺀 레이아웃 선택 — 홈과 미리보기가 같은 본문을 그린다(감싸는 쪽만 다르다) */
+function CardBody({ card }: { card: TodayCardWithHref }) {
+  return card.layout_type === 'badge_gallery' ? <BadgeGalleryCard card={card} />
+    : card.layout_type === 'shortcut' ? <ShortcutCard card={card} />
+    : card.layout_type === 'banner' ? <BannerCard card={card} />
+    : card.layout_type === 'other' ? <OtherCard card={card} />
+    : <LargeThumbnailCard card={card} />
+}
+
 /**
  * 투데이 카드 스택 (홈 화면 최상단). 카드 0개면 아무것도 렌더링하지 않는다.
  * layout_type에 따라 서로 다른 UI로 렌더링(콘텐츠 종류인 template_type과는 별개 축).
@@ -322,10 +344,17 @@ function RankingListCard({ card, currentUserId }: { card: TodayCardWithHref; cur
 export default function TodayCardStack({
   cards,
   currentUserId,
+  preview = false,
 }: {
   cards: TodayCardWithHref[]
   /** 랭킹보드 카드(ranking_list 레이아웃)에서 내 순위 행을 강조하는 데 쓴다(선택 — 없으면 강조 없음) */
   currentUserId?: string
+  /**
+   * 어드민 미리보기(티켓 20260930_1645). true면 모양만 그리고 노출·클릭 계측(`TodayCardTracker`)과
+   * 이동(카드 `<Link>`, 순위 행 링크)을 모두 걸지 않는다 — 어드민이 미리 보는 것이 실제 노출
+   * 수치에 섞이지 않게 하고, 눌러도 서비스 화면으로 이동하지 않게 한다. 홈은 기본값(false)이라 그대로다.
+   */
+  preview?: boolean
 }) {
   if (!cards || cards.length === 0) return null
 
@@ -341,15 +370,15 @@ export default function TodayCardStack({
           // ranking_list는 행마다 자체 <Link>(유저 프로필)를 가지므로 공통 카드 래핑
           // <Link>를 건너뛴다 — 중첩 앵커 방지(RankingListCard 주석 참고).
           card.layout_type === 'ranking_list' ? (
-            <RankingListCard key={card.id} card={card} currentUserId={currentUserId} />
+            <RankingListCard key={card.id} card={card} currentUserId={currentUserId} preview={preview} />
+          ) : preview ? (
+            <div key={card.id} className="block">
+              <CardBody card={card} />
+            </div>
           ) : (
             <TodayCardTracker key={card.id} cardId={card.id} contentTypeId={card.content_type_id} templateType={card.template_type}>
               <Link href={card.resolved_href} className="block">
-                {card.layout_type === 'badge_gallery' ? <BadgeGalleryCard card={card} />
-                  : card.layout_type === 'shortcut' ? <ShortcutCard card={card} />
-                  : card.layout_type === 'banner' ? <BannerCard card={card} />
-                  : card.layout_type === 'other' ? <OtherCard card={card} />
-                  : <LargeThumbnailCard card={card} />}
+                <CardBody card={card} />
               </Link>
             </TodayCardTracker>
           )
