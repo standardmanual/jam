@@ -1324,6 +1324,155 @@ export type Database = {
           },
         ]
       }
+      ops_pattern_common_rules: {
+        Row: {
+          body: string
+          created_at: string
+          rule_no: number
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          rule_no: number
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          rule_no?: number
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ops_pattern_taste_signals: {
+        Row: {
+          basis: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          evidence_decision_id: string | null
+          id: string
+          name: string
+          pattern_no: string | null
+          reason: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          basis?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          evidence_decision_id?: string | null
+          id?: string
+          name: string
+          pattern_no?: string | null
+          reason: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          basis?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          evidence_decision_id?: string | null
+          id?: string
+          name?: string
+          pattern_no?: string | null
+          reason?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ops_pattern_taste_signals_evidence_decision_id_fkey"
+            columns: ["evidence_decision_id"]
+            isOneToOne: false
+            referencedRelation: "ops_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ops_pattern_taste_signals_pattern_no_fkey"
+            columns: ["pattern_no"]
+            isOneToOne: false
+            referencedRelation: "ops_patterns"
+            referencedColumns: ["pattern_no"]
+          },
+        ]
+      }
+      ops_patterns: {
+        Row: {
+          card_shapes: Json
+          created_at: string
+          knobs: Json
+          menus: string[]
+          name: string
+          origin: string
+          origin_item_id: string | null
+          pattern_no: string
+          pause_reason: string | null
+          pitfalls: string
+          principle: string
+          samples: Json
+          status: string
+          updated_at: string
+          updated_by: string | null
+          user_experience: string
+        }
+        Insert: {
+          card_shapes?: Json
+          created_at?: string
+          knobs?: Json
+          menus?: string[]
+          name: string
+          origin?: string
+          origin_item_id?: string | null
+          pattern_no: string
+          pause_reason?: string | null
+          pitfalls?: string
+          principle: string
+          samples?: Json
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_experience: string
+        }
+        Update: {
+          card_shapes?: Json
+          created_at?: string
+          knobs?: Json
+          menus?: string[]
+          name?: string
+          origin?: string
+          origin_item_id?: string | null
+          pattern_no?: string
+          pause_reason?: string | null
+          pitfalls?: string
+          principle?: string
+          samples?: Json
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_experience?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ops_patterns_origin_item_id_fkey"
+            columns: ["origin_item_id"]
+            isOneToOne: false
+            referencedRelation: "ops_bundle_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ops_rules: {
         Row: {
           enabled: boolean
@@ -2033,6 +2182,7 @@ export type Database = {
           followup_action: string | null
           id: number
           occurred_at: string
+          pattern_no: string | null
         }
         Insert: {
           card_id?: string | null
@@ -2042,6 +2192,7 @@ export type Database = {
           followup_action?: string | null
           id?: number
           occurred_at?: string
+          pattern_no?: string | null
         }
         Update: {
           card_id?: string | null
@@ -2051,6 +2202,7 @@ export type Database = {
           followup_action?: string | null
           id?: number
           occurred_at?: string
+          pattern_no?: string | null
         }
         Relationships: [
           {
@@ -2079,6 +2231,7 @@ export type Database = {
           item_book_id: string | null
           layout_type: string
           mission_id: string | null
+          pattern_no: string | null
           ranking_mode_id: string | null
           region_label: string | null
           shape: string | null
@@ -2106,6 +2259,7 @@ export type Database = {
           item_book_id?: string | null
           layout_type?: string
           mission_id?: string | null
+          pattern_no?: string | null
           ranking_mode_id?: string | null
           region_label?: string | null
           shape?: string | null
@@ -2133,6 +2287,7 @@ export type Database = {
           item_book_id?: string | null
           layout_type?: string
           mission_id?: string | null
+          pattern_no?: string | null
           ranking_mode_id?: string | null
           region_label?: string | null
           shape?: string | null

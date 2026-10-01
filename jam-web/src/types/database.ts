@@ -1093,6 +1093,8 @@ export interface TodayCardRow {
   shape?: string | null
   /** 이미지 안에 제목이 들어 있는지(마이그레이션 206). NULL이면 옛 카드라 `resolveTitleInImage` 규칙으로 판정한다. 선택인 이유는 `shape`와 같다. */
   title_in_image?: boolean | null
+  /** 운영 항목의 패턴 번호 복사본(마이그레이션 211, 티켓 20261001_2056). NULL이면 패턴 없음이거나 옛 카드다. 선택인 이유는 `shape`와 같다. */
+  pattern_no?: string | null
 }
 
 // =========================================
