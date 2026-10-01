@@ -30,6 +30,7 @@ import {
   IconSparkles,
   IconEyeglass,
   IconInbox,
+  IconAdjustmentsHorizontal,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -42,7 +43,10 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'live-ops',
     label: '라이브 운영',
-    items: [{ href: '/admin/ops-inbox', label: '받은 기획함', icon: IconInbox }],
+    items: [
+      { href: '/admin/ops-inbox', label: '받은 기획함', icon: IconInbox },
+      { href: '/admin/ops-settings', label: '운영 설정', icon: IconAdjustmentsHorizontal },
+    ],
   },
   {
     id: 'content',

@@ -151,7 +151,7 @@ describe('OpsBalanceItemWarnings — 항목 상세 블록', () => {
     expect(flat(<OpsBalanceItemWarnings lines={[line('warn')]} editing />)).toContain('고치는 중이에요. 저장하면 밸런스를 다시 확인해요')
   })
 
-  it('「밸런스 규칙 보기」는 설정 화면이 생기기 전에는 숨기고, 켜면 새 탭 링크다', () => {
+  it('「밸런스 규칙 보기」는 속성을 켜야 보이고, 켜면 새 탭 링크다', () => {
     expect(flat(<OpsBalanceItemWarnings lines={[line('warn')]} />)).not.toContain('밸런스 규칙 보기')
     const out = flat(<OpsBalanceItemWarnings lines={[line('warn')]} showRuleLink />)
     expect(out).toContain('밸런스 규칙 보기')
@@ -463,6 +463,24 @@ describe('평가 실패 · 반려한 항목 · 편집 중', () => {
     expect(flat(<OpsItemDetail {...base} detailEdit={() => <div>편집 양식</div>} />)).toContain(
       '고치는 중이에요. 저장하면 밸런스를 다시 확인해요'
     )
+  })
+
+  it('기획 상세의 경고 블록에는 「밸런스 규칙 보기」가 설정 화면의 그 규칙 카드로 가는 새 탭 링크로 켜져 있다(조각 B)', () => {
+    const item = makeItem({ id: 'a' })
+    const info = itemBalanceInfoOf(
+      buildBalanceView({
+        status: 'ok',
+        warnings: [warning({ itemId: 'a', ruleKey: 'open_collections_max' })],
+        unreadable: [],
+        checkedRuleCountByItem: { a: 3 },
+        openCollectionsNow: null,
+      }),
+      'a'
+    )
+    const out = flat(<OpsItemDetail item={item} items={[item]} decisions={[]} onSelectItem={() => {}} balance={info} />)
+    expect(out).toContain('밸런스 규칙 보기')
+    expect(out).toContain('href="/admin/ops-settings#rule-open_collections_max"')
+    expect(out).toContain('target="_blank"')
   })
 
   it('⑤ 「에이전트가 적은 밸런스 판정」은 이름이 바뀌었고 툴 점검과 따로 보인다', () => {

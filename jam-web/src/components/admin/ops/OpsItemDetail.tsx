@@ -351,7 +351,7 @@ export function OpsItemDetail({
         <OpsItemFormatErrors errors={item.formatErrors} />
 
         {/* ②′ 밸런스 경고: 형식 오류 바로 아래. 줄이 있을 때만 그린다. 편집 중이면 저장하면 다시 확인한다고 알린다. */}
-        {balance && <OpsBalanceItemWarnings lines={balance.lines} editing={editNode !== null} />}
+        {balance && <OpsBalanceItemWarnings lines={balance.lines} editing={editNode !== null} showRuleLink />}
 
         {editNode ?? (
           <>
