@@ -172,11 +172,11 @@ describe('buildFacts — 남은 시간 (종료 7일 이내, 기간 줄 대신)',
 })
 
 describe('buildFacts — 그 밖의 자원', () => {
-  it('드랍: 장소 한 줄(시각은 값이 없어 생략)', () => {
-    expect(buildFacts('drop', { place: '한강공원' }, NOW)).toEqual(['장소 한강공원'])
+  it('드랍: 지역 한 줄(시각은 값이 없어 생략)', () => {
+    expect(buildFacts('drop', { place: '한강공원' }, NOW)).toEqual(['지역 한강공원'])
   })
 
-  it('드랍: 장소가 비었거나 공백이면 줄이 없다', () => {
+  it('드랍: 지역이 비었거나 공백이면 줄이 없다', () => {
     expect(buildFacts('drop', { place: '' }, NOW)).toEqual([])
     expect(buildFacts('drop', { place: '   ' }, NOW)).toEqual([])
     expect(buildFacts('drop', { place: null }, NOW)).toEqual([])
@@ -489,9 +489,9 @@ describe('toCardView — 표시 데이터', () => {
       expect(view).toMatchObject({ shape: 'brief', resource: 'auto', facts: ['기간 상시'] })
     })
 
-    it('드랍 카드: 장소 줄과 지역 핀', () => {
+    it('드랍 카드: 지역 줄과 지역 핀', () => {
       const view = toCardView(makeCard({ template_type: 'drop_alert', layout_type: 'shortcut', region_label: '한강공원' }))
-      expect(view).toMatchObject({ shape: 'brief', resource: 'drop', facts: ['장소 한강공원'], regionLabel: '한강공원' })
+      expect(view).toMatchObject({ shape: 'brief', resource: 'drop', facts: ['지역 한강공원'], regionLabel: '한강공원' })
     })
 
     it('컬렉션 카드: 이름과 아이템 수', () => {

@@ -75,7 +75,7 @@ function BriefSlot({ view }: { view: BriefCardView }) {
 }
 
 export default function BriefCard({ view }: { view: BriefCardView }) {
-  // 드랍은 필수 정보 「장소 ○○」 줄이 같은 지역 값을 이미 내므로 칩 줄에서는 뺀다(한 카드에 같은 값이 두 번 보이지 않게)
+  // 드랍은 필수 정보 「지역 ○○」 줄이 같은 지역 값을 이미 내므로 칩 줄에서는 뺀다(한 카드에 같은 값이 두 번 보이지 않게)
   const showRegionPin = Boolean(view.regionLabel) && view.resource !== 'drop'
   const facts = view.facts ?? []
 
