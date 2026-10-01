@@ -205,6 +205,20 @@
       {
         "text": "`[분류 대기]`를 붙여",
         "reason": "제목 접두 방식의 초안 티켓 파일은 폐지됐다 — 리포트 본문에만 적는다 (티켓 20260922_1130)"
+      },
+      {
+        "text": "C0C2S11PPRQ",
+        "reason": "#jam-alert 채널 ID는 scheduled-jobs.md 「Slack 알림」에만 적는다 — 다른 곳은 그 절을 가리킨다 (티켓 20260930_1819)",
+        "allow_in": [".claude/skills/jam-work/references/scheduled-jobs.md"]
+      },
+      {
+        "text": "C0C2U1T186M",
+        "reason": "#jam-report 채널 ID는 scheduled-jobs.md 「Slack 알림」에만 적는다 — 다른 곳은 그 절을 가리킨다 (티켓 20260930_1819)",
+        "allow_in": [".claude/skills/jam-work/references/scheduled-jobs.md"]
+      },
+      {
+        "text": "automation-list.md` \"Slack 채널\" 절이다",
+        "reason": "채널 ID의 단일 원천은 automation-list.md가 아니라 scheduled-jobs.md 「Slack 알림」이다 (티켓 20260930_1819)"
       }
     ]
   },

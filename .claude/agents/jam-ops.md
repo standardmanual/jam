@@ -136,8 +136,10 @@ section, copy the two lines that `node scripts/admin-api-read.mjs` prints (`공�
 judge or recount them yourself. The rule is `docs/specs/SERVICE_OPERATIONS.md` §9-5.
 
 **Slack is the only external publication allowed** (decision 5-1):
-- `#jam-report` (`C0C2U1T186M`): 3–5 line summary + report link. Never post the report body.
-- `#jam-alert` (`C0C2S11PPRQ`): immediate-alert risks and total failure of the scheduled run only.
+- `#jam-report`: 3–5 line summary + report link. Never post the report body.
+- `#jam-alert`: immediate-alert risks and total failure of the scheduled run only.
+- Channel IDs live only in `.claude/skills/jam-work/references/scheduled-jobs.md` 「Slack 알림」 (single
+  source, ticket 20260930_1819). Read them there; do not copy them into reports or this file.
 
 ## Personal data
 

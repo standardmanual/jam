@@ -18,14 +18,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 async function testPostToSlackCallsChatPostMessageWithAuthAndBody() {
   const calls = []
   const result = await postToSlack({
-    channel: 'C0C2S11PPRQ',
+    channel: 'C0TESTCHAN1',
     text: '테스트 메시지',
     token: 'xoxb-fake-token',
     fetchImpl: async (url, options) => {
       calls.push({ url, options })
       return {
         ok: true,
-        json: async () => ({ ok: true, channel: 'C0C2S11PPRQ', ts: '123.456' }),
+        json: async () => ({ ok: true, channel: 'C0TESTCHAN1', ts: '123.456' }),
       }
     },
   })
@@ -34,7 +34,7 @@ async function testPostToSlackCallsChatPostMessageWithAuthAndBody() {
   assert.equal(calls[0].url, 'https://slack.com/api/chat.postMessage')
   assert.equal(calls[0].options.headers.Authorization, 'Bearer xoxb-fake-token')
   const body = JSON.parse(calls[0].options.body)
-  assert.equal(body.channel, 'C0C2S11PPRQ')
+  assert.equal(body.channel, 'C0TESTCHAN1')
   assert.equal(body.text, '테스트 메시지')
   assert.equal(result.ok, true)
 }
@@ -43,7 +43,7 @@ function testMissingTokenFailsWithOneLineMessageAndExitCode1() {
   const scriptPath = path.join(__dirname, 'slack-post.mjs')
   const res = spawnSync(
     process.execPath,
-    [scriptPath, '--channel', 'C0C2S11PPRQ', '--text', '테스트'],
+    [scriptPath, '--channel', 'C0TESTCHAN1', '--text', '테스트'],
     {
       encoding: 'utf8',
       env: { PATH: process.env.PATH }, // SLACK_BOT_TOKEN 없이 실행

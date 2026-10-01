@@ -6,14 +6,12 @@
 // 계정으로 표시됐다. 이 스크립트는 별도 Slack 앱("JAM 봇")의 Bot Token으로 Slack Web API
 // `chat.postMessage`를 직접 호출해 봇 계정 이름으로 게시한다.
 //
-// 채널 ID는 넘겨받은 값을 그대로 쓴다(하드코딩하지 않는다). 단일 원천은
-// `.claude/skills/jam-work/references/automation-list.md` "Slack 채널" 절이다:
-//   #jam-alert  → C0C2S11PPRQ
-//   #jam-report → C0C2U1T186M
+// 채널 ID는 넘겨받은 값을 그대로 쓴다(하드코딩하지 않는다). 값의 단일 원천은
+// `.claude/skills/jam-work/references/scheduled-jobs.md` 「Slack 알림」 절이다(티켓 20260930_1819).
 //
 // 사용법:
 //   SLACK_BOT_TOKEN=xoxb-... \
-//     node scripts/slack-post.mjs --channel C0C2S11PPRQ --text "게시할 내용"
+//     node scripts/slack-post.mjs --channel <채널 ID> --text "게시할 내용"
 
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'

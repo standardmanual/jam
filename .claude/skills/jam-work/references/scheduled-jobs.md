@@ -148,6 +148,14 @@ GA4는 광고 차단기 유저를 놓치고 일부 이벤트가 특정 경로에
 | `#jam-alert` (`C0C2S11PPRQ`) | 즉시 알림급 위험(장애·비용 급증·개인정보·경제 붕괴), 예약 작업 전체 실패 |
 | `#jam-report` (`C0C2U1T186M`) | 주간·월간 리포트 요약 |
 
+- **채널 ID의 단일 원천은 이 표다.** 다른 문서·에이전트 정의·스크립트 머리말은 ID를 옮겨 적지 않고
+  이 절을 가리킨다. 이 절 밖에 ID가 다시 적히면 `docs/agents/contract.json`의 `stale_phrases` 검사가
+  커밋을 막는다(티켓 20260930_1819). 루틴 저장 프롬프트는 저장소 밖에 있어 검사 대상이 아니므로,
+  ID를 바꾸면 저장 프롬프트도 함께 고친다.
+- 운영툴 서버가 읽는 Vercel 환경변수 `SLACK_CHANNEL_JAM_REPORT`·`SLACK_CHANNEL_JAM_ALERT`(티켓
+  20260930_1816, 표는 `docs/specs/prd/04_PROJECT_SPEC.md` 환경변수)는 각각 위 표의 `#jam-report`·
+  `#jam-alert` ID와 같아야 한다. ID를 바꾸면 Vercel 두 프로젝트의 값도 같은 날 바꾼다.
+
 - 글 내용은 **요약 3~5줄 + 리포트 링크**다. 리포트 본문은 올리지 않는다(원본은 저장소).
 - 개인정보 규칙(4-6)은 Slack 글에도 똑같이 적용한다.
 - 루틴은 `scripts/slack-post.mjs`로 `SLACK_BOT_TOKEN` 환경변수를 써서 직접 게시한다
