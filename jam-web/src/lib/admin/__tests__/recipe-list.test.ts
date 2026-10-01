@@ -2,7 +2,13 @@
  * 믹스 레시피 목록 조건·삭제 분류 회귀 (티켓 20260924_0949)
  * 실행: cd jam-web && npx vitest run src/lib/admin/__tests__/recipe-list.test.ts
  */
-import { RECIPE_LIST_COLUMNS, parseRecipeListParams, applyRecipeListQuery, type RecipeListQuery } from '../recipe-list'
+import {
+  RECIPE_LIST_COLUMNS,
+  parseRecipeListParams,
+  applyRecipeListQuery,
+  recipeStatusDisplay,
+  type RecipeListQuery,
+} from '../recipe-list'
 import { classifyRecipeDeletion, recipeDeleteBlockedMessage, type RecipeDeletionCandidate } from '../recipe-bulk'
 
 interface RecordedCall {
@@ -83,6 +89,12 @@ describe('RECIPE_LIST_COLUMNS — 공개 시각 칸 (티켓 20261001_1158)', () 
   })
 })
 
+describe('RECIPE_LIST_COLUMNS — 종료 시각 칸 (티켓 20261002_0710)', () => {
+  it('목록·내보내기가 종료 시각(valid_until)을 공개 시각과 함께 조회한다', () => {
+    expect(RECIPE_LIST_COLUMNS.split(', ')).toEqual(expect.arrayContaining(['valid_from', 'valid_until']))
+  })
+})
+
 describe('classifyRecipeDeletion — 참조로 막힌 레시피는 사유와 함께 건너뛴다', () => {
   const candidate = (overrides: Partial<RecipeDeletionCandidate> = {}): RecipeDeletionCandidate => ({
     id: 'r1',
@@ -123,5 +135,45 @@ describe('classifyRecipeDeletion — 참조로 막힌 레시피는 사유와 함
     const result = classifyRecipeDeletion(['r1', 'r2', 'r3'], candidates)
     expect(result.deletable).toEqual(['r1', 'r3'])
     expect(result.skipped.map((s) => s.id)).toEqual(['r2'])
+  })
+})
+
+describe('recipeStatusDisplay — 목록 「상태」 열 (티켓 20261002_0710)', () => {
+  const NOW = new Date('2026-10-10T03:00:00.000Z')
+
+  it('공개 시각 전이면 「공개 예정」에 공개 시각(KST)을 붙인다', () => {
+    expect(recipeStatusDisplay({ valid_from: '2026-10-20T00:00:00.000Z', valid_until: null }, NOW)).toEqual({
+      state: 'scheduled',
+      label: '공개 예정 2026.10.20 09:00',
+    })
+  })
+
+  it('공개 중이고 종료 시각이 없으면 「공개 중」만 보인다', () => {
+    expect(recipeStatusDisplay({ valid_from: null, valid_until: null }, NOW)).toEqual({ state: 'released', label: '공개 중' })
+    expect(recipeStatusDisplay({ valid_from: '2026-10-01T00:00:00.000Z', valid_until: null }, NOW)).toEqual({
+      state: 'released',
+      label: '공개 중',
+    })
+  })
+
+  it('공개 중이고 종료 시각이 있으면 「~10/12 09:00」(KST)을 붙인다', () => {
+    expect(recipeStatusDisplay({ valid_from: null, valid_until: '2026-10-12T00:00:00.000Z' }, NOW)).toEqual({
+      state: 'released',
+      label: '공개 중 ~10/12 09:00',
+    })
+  })
+
+  it('종료 시각이 지났거나 지금이면 「종료됨」이다(경계 포함)', () => {
+    expect(recipeStatusDisplay({ valid_from: null, valid_until: '2026-10-09T00:00:00.000Z' }, NOW)).toEqual({
+      state: 'ended',
+      label: '종료됨',
+    })
+    expect(recipeStatusDisplay({ valid_from: null, valid_until: NOW.toISOString() }, NOW).state).toBe('ended')
+  })
+
+  it('종료 시각 칸이 없는 응답(undefined)은 「공개 중」이다', () => {
+    expect(recipeStatusDisplay({ valid_from: null } as { valid_from: string | null; valid_until: string | null }, NOW).label).toBe(
+      '공개 중'
+    )
   })
 })

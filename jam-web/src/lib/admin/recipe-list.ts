@@ -3,18 +3,42 @@
  * 전체 선택용 ID 조회(`api/admin/recipes/ids`)가 같은 검색·정렬 규칙을 쓰도록
  * `parseRecipeListParams`(URL → 타입) + `applyRecipeListQuery`(타입 → 쿼리)로 나눈다
  * (`poi-list-query.ts`와 같은 구조). 레시피에는 활성 여부 칸이 없고 공개 시각(`valid_from`, 티켓
- * 20261001_1158)만 있다 — 공개 상태 필터는 만들지 않아 필터는 이름 검색뿐이다.
+ * 20261001_1158)·종료 시각(`valid_until`, 티켓 20261002_0710)만 있다 — 공개 상태 필터는 만들지 않아
+ * 필터는 이름 검색뿐이다.
  */
+import { recipeReleaseState, type RecipeReleaseState } from '@/lib/combine/visibility'
 import type { CombinationRecipeRow } from '@/types/database'
+import { formatKstMdHm, formatKstYmdHm } from './kst-format'
 import { sanitizeSearchTerm } from './search-term'
 
 /** 목록·내보내기에 쓰는 컬럼 — 슬롯은 별도 조회한다 */
-export const RECIPE_LIST_COLUMNS = 'id, name, reward_points, reward_badge_ids, valid_from, created_at'
+export const RECIPE_LIST_COLUMNS = 'id, name, reward_points, reward_badge_ids, valid_from, valid_until, created_at'
 
 export type RecipeListRow = Pick<
   CombinationRecipeRow,
-  'id' | 'name' | 'reward_points' | 'reward_badge_ids' | 'valid_from' | 'created_at'
+  'id' | 'name' | 'reward_points' | 'reward_badge_ids' | 'valid_from' | 'valid_until' | 'created_at'
 >
+
+export interface RecipeStatusDisplay {
+  state: RecipeReleaseState
+  label: string
+}
+
+/**
+ * 목록 「상태」 열 표시(티켓 20261002_0710) — 「공개 예정」(공개 시각 KST를 함께), 「공개 중」(종료 시각이 있으면
+ * 「~10/12 09:00」), 「종료됨」. 판정은 유저 화면과 같은 `recipeReleaseState` 하나를 쓴다.
+ */
+export function recipeStatusDisplay(
+  recipe: Pick<RecipeListRow, 'valid_from' | 'valid_until'>,
+  now: Date = new Date()
+): RecipeStatusDisplay {
+  const state = recipeReleaseState(recipe, now)
+  if (state === 'scheduled') {
+    return { state, label: recipe.valid_from ? `공개 예정 ${formatKstYmdHm(recipe.valid_from)}` : '공개 예정' }
+  }
+  if (state === 'ended') return { state, label: '종료됨' }
+  return { state, label: recipe.valid_until ? `공개 중 ~${formatKstMdHm(recipe.valid_until)}` : '공개 중' }
+}
 
 const RECIPE_LIST_SORTS = ['created_desc', 'created_asc', 'name_asc', 'name_desc'] as const
 export type RecipeListSort = (typeof RECIPE_LIST_SORTS)[number]
