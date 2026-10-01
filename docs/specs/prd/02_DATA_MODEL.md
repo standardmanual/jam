@@ -549,7 +549,7 @@ service_role만 접근한다.
 유저당 1개. `balance`는 원장(point_transactions)에서 파생된 캐시값 — 직접 UPDATE 금지.
 
 ### point_transactions
-append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `admin_grant` / `admin_deduct` / `combine_fail_reward` / `combine_recipe_reward`.
+append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `admin_grant` / `admin_deduct` / `combine_fail_reward` / `combine_recipe_reward` / `item_book_completion_point_reward`(마이그레이션 157).
 
 ### point_treasury
 전체 발행/회수 총량 싱글톤 장부 — 어드민에서 유통량·월렛합·원장합 정합성 검사에 사용.
