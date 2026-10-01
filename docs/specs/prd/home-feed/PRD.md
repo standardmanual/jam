@@ -240,8 +240,10 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 - **판정 순서(`resolveShape`)**: ① 저장된 `today_cards.shape`가 모양 값이면 그대로 → ② `editorial_article`은 레이아웃과 상관없이 `hero` → ③ 옛 `layout_type` 대응표(알 수 없는 값은 큰 썸네일형으로 본다). `list`의 타일형·행형 구분(랭킹 카드는 행형)과 「타일이 0개인 타일형은 `brief`」는 표시 데이터가 정한다.
 - **전환 상수(`LEGACY_SHAPE_CUTOVER`)**: 지금 `false`다. 꺼져 있는 동안 새 모양으로 그려지는 카드는 `shape`가 저장된 카드뿐이고(`drawnShape`), `shape`가 없는 옛 카드는 그려질 모양이 `null`이라 옛 렌더러가 그린다. 어드민 미리보기용 표시 데이터는 늘 `resolveShape`로 모양을 정한다. 상수를 켜는 것은 b7이다.
 - **이미지에 제목 있음(`resolveTitleInImage`)**: 저장된 `title_in_image`가 `true`/`false`면 그 값이다. NULL(옛 카드)이면 미션 소개 카드이고 커버 주소가 연결 미션의 `image_url`과 같을 때만 `true`, 그 밖은 `false`다.
+- **표시 데이터(`toCardView`)**: 카드 행(서버 조회 결과)을 화면용 값 묶음으로 바꾼다. 카드 ID·활성 여부·노출 기간·정렬 순서·유저별 보유 여부 없이도 만들 수 있어서 홈 그리기와 어드민 미리보기가 같은 값으로 같은 카드를 그린다. 필수 값은 `shape`·`resource`(미션·드랍·레시피·배지·기사·랭킹·컬렉션·자동)·`title`이다. 계측 정보(카드 ID·유형 ID·그려진 모양)는 `tracking` 하나에 묶고, 이 값이 없으면 그리는 쪽이 트래커와 링크를 그리지 않는다. 필수 정보 줄(`buildFacts`)은 자원별로 최대 2줄이고 값이 없는 줄은 생략한다. 자원의 종료가 7일 이내면 「N일 남음」(내림), 24시간 이내면 「N시간 남음」(올림)이 기간 줄을 대신한다. 날짜는 KST 기준이다.
+- **조회**: `getTodayCards`가 표시 데이터에 필요한 값을 카드에 함께 싣는다 — `resolved_mission`(미션 소개 카드와 미션을 가리키는 자동 카드의 기간·보상·이미지), `resolved_collection`(컬렉션 소식 카드의 이름·아이템 수). 미션 행은 노출 판정과 같은 읽기를 쓰고 컬렉션은 카드 수와 상관없이 한 번에 읽는다. 기존 반환 필드는 그대로다.
 
-근거: `jam-web/src/lib/today/shape.ts`, `jam-web/supabase/migrations/206_today_cards_shape_and_events_card_shape.sql`, 티켓 20261001_1357
+근거: `jam-web/src/lib/today/shape.ts`, `jam-web/src/lib/today/cardView.ts`, `jam-web/src/lib/today/cards.ts`, `jam-web/supabase/migrations/206_today_cards_shape_and_events_card_shape.sql`, 티켓 20261001_1357
 
 ## 7. 이동 목적지
 

@@ -363,6 +363,19 @@ export const ko = {
     ctaViewCollection: '컬렉션 보기',
     ctaViewMission: '미션 보기',
     ctaViewDetails: '자세히 보기',
+    /** 카드 필수 정보 줄(티켓 20261001_1357, 1453 확정 설계 2절) — 아이콘 없이 글자로 쓰고, 값이 없는 줄은 만들지 않는다 */
+    factPeriod: '기간 {range}',
+    factPeriodRange: '{start}~{end}',
+    factPeriodOngoing: '기간 상시',
+    factMonthDay: '{month}월 {day}일',
+    factReward: '보상 {items}',
+    factRewardPoints: '{points} 포인트',
+    factRewardBadges: '배지 {count}개',
+    factPlace: '장소 {place}',
+    factItemCount: '아이템 {count}개',
+    /** 남은 시간 — 종료 7일 이내에만 기간 줄 대신 쓴다. 초·분 단위와 카운트다운은 쓰지 않는다 */
+    remainingDays: '{count}일 남음',
+    remainingHours: '{count}시간 남음',
   },
 
   /** 배지 목록/상세 화면 */
