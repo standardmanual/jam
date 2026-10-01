@@ -8,6 +8,7 @@ import {
   hasSeenImpression,
   markImpressionSeen,
   sendTodayCardEvent,
+  todayCardClickParams,
 } from '@/lib/today/cardEventClient'
 
 /**
@@ -22,6 +23,7 @@ export default function TodayCardTracker({
   cardId,
   contentTypeId,
   templateType,
+  shape,
   trackClick = true,
   children,
 }: {
@@ -29,6 +31,12 @@ export default function TodayCardTracker({
   /** GA `today_card_click` 파라미터(티켓 20260924_0859) — 카드 클릭을 GA에서도 유형별로 보기 위함 */
   contentTypeId?: string | null
   templateType?: string
+  /**
+   * GA `today_card_click`의 `shape` 파라미터(티켓 20261001_1458) — 그 카드가 화면에 그려진 모양. 새 틀(`CardFrame`)은 표시 데이터의
+   * `tracking.shape`를, 옛 렌더러는 `drawnShape`(전환 전 옛 카드는 null)를 넘긴다. 이 값은 GA에만 간다(`/api/today/events`는 서버가
+   * 카드를 다시 조회해 모양을 정한다).
+   */
+  shape?: string | null
   /**
    * ranking_list 레이아웃은 클릭이 행별 링크(유저 프로필)에서 일어나므로 카드 단위 클릭을
    * 세지 않는다(노출만 추적) — `TodayCardStack.tsx`의 `RankingListCard` 참고.
@@ -65,7 +73,7 @@ export default function TodayCardTracker({
         reportClick
           ? () => {
               reportClick()
-              trackEvent('today_card_click', { card_id: cardId, content_type_id: contentTypeId ?? null, template_type: templateType ?? null })
+              trackEvent('today_card_click', todayCardClickParams({ cardId, contentTypeId, templateType, shape }))
             }
           : undefined
       }

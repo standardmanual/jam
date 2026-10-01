@@ -242,7 +242,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 - **판정 순서(`resolveShape`)**: ① 저장된 `today_cards.shape`가 모양 값이면 그대로 → ② `editorial_article`은 레이아웃과 상관없이 `hero` → ③ 옛 `layout_type` 대응표(알 수 없는 값은 큰 썸네일형으로 본다). `list`의 타일형·행형 구분(랭킹 카드는 행형)과 「타일이 0개인 타일형은 `brief`」는 표시 데이터가 정한다.
 - **전환 상수(`LEGACY_SHAPE_CUTOVER`)**: 지금 `false`다. 꺼져 있는 동안 새 모양으로 그려지는 카드는 `shape`가 저장된 카드뿐이고(`drawnShape`), `shape`가 없는 옛 카드는 그려질 모양이 `null`이라 옛 렌더러가 그린다. 어드민 미리보기용 표시 데이터는 늘 `resolveShape`로 모양을 정한다. 상수를 켜는 것은 b7이다.
 - **이미지에 제목 있음(`resolveTitleInImage`)**: 저장된 `title_in_image`가 `true`/`false`면 그 값이다. NULL(옛 카드)이면 미션 소개 카드이고 커버 주소가 연결 미션의 `image_url`과 같을 때만 `true`, 그 밖은 `false`다.
-- **표시 데이터(`toCardView`)**: 카드 행(서버 조회 결과)을 화면용 값 묶음으로 바꾼다. 카드 ID·활성 여부·노출 기간·정렬 순서·유저별 보유 여부 없이도 만들 수 있어서 홈 그리기와 어드민 미리보기가 같은 값으로 같은 카드를 그린다. 필수 값은 `shape`·`resource`(미션·드랍·레시피·배지·기사·랭킹·컬렉션·자동)·`title`이다. 계측 정보(카드 ID·유형 ID·그려진 모양)는 `tracking` 하나에 묶고, 이 값이 없으면 그리는 쪽이 트래커와 링크를 그리지 않는다. 필수 정보 줄(`buildFacts`)은 자원별로 최대 2줄이고 값이 없는 줄은 생략한다. 자원의 종료가 7일 이내면 「N일 남음」(내림), 24시간 이내면 「N시간 남음」(올림)이 기간 줄을 대신한다. 날짜는 KST 기준이다.
+- **표시 데이터(`toCardView`)**: 카드 행(서버 조회 결과)을 화면용 값 묶음으로 바꾼다. 카드 ID·활성 여부·노출 기간·정렬 순서·유저별 보유 여부 없이도 만들 수 있어서 홈 그리기와 어드민 미리보기가 같은 값으로 같은 카드를 그린다. 필수 값은 `shape`·`resource`(미션·드랍·레시피·배지·기사·랭킹·컬렉션·자동)·`title`이다. 계측 정보(카드 ID·유형 ID·템플릿·그려진 모양)는 `tracking` 하나에 묶고, 이 값이 없으면 그리는 쪽이 트래커와 링크를 그리지 않는다. 필수 정보 줄(`buildFacts`)은 자원별로 최대 2줄이고 값이 없는 줄은 생략한다. 자원의 종료가 7일 이내면 「N일 남음」(내림), 24시간 이내면 「N시간 남음」(올림)이 기간 줄을 대신한다. 날짜는 KST 기준이다. `brief`에는 64px 칸에 그릴 배지 그림이 선택 값(`thumbnailUrl`)으로 있다 — JAM! 배지 카드에서 배지가 정확히 1개이고 그림이 있을 때만 싣고, 유저가 그 배지를 갖지 않았으면 `thumbnailDimmed`(흑백)가 함께 있다. 커버와 미션 이미지는 싣지 않는다(`imageUrl`은 「이미지가 있는 모양」 전용이다).
 - **조회**: `getTodayCards`가 표시 데이터에 필요한 값을 카드에 함께 싣는다 — `resolved_mission`(미션 소개 카드와 미션을 가리키는 자동 카드의 기간·보상·이미지), `resolved_collection`(컬렉션 소식 카드의 이름·아이템 수). 미션 행은 노출 판정과 같은 읽기를 쓰고 컬렉션은 카드 수와 상관없이 한 번에 읽는다. 컬렉션은 공개된 것(활성이고 공개 시각이 비었거나 지금 이전)만 싣는다 — 컬렉션 화면·목록 API와 같은 판정(`applyLaunchedItemBookFilter`)이라, 비활성이거나 공개 전인 컬렉션은 카드는 남고 `resolved_collection`이 NULL이라 이름·아이템 수가 보이지 않는다(종료 시각은 보지 않는다). 기존 반환 필드는 그대로다.
 
 근거: `jam-web/src/lib/today/shape.ts`, `jam-web/src/lib/today/cardView.ts`, `jam-web/src/lib/today/cards.ts`, `jam-web/src/lib/itembook/visibility.ts`, `jam-web/supabase/migrations/206_today_cards_shape_and_events_card_shape.sql`, 티켓 20261001_1357
@@ -308,17 +308,18 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | 이벤트 | 언제 | 어디로 |
 |---|---|---|
 | `impression` | 카드가 화면에 50% 이상 보였을 때. 같은 브라우저 세션에서 카드당 1회(`sessionStorage`) | `POST /api/today/events` |
-| `click` | 카드를 눌렀을 때. `ranking_list`는 세지 않는다(노출만) | `POST /api/today/events` + GA 이벤트 `today_card_click`(`card_id`·`content_type_id`·`template_type`) |
+| `click` | 카드를 눌렀을 때. `ranking_list`는 세지 않는다(노출만) | `POST /api/today/events` + GA 이벤트 `today_card_click`(`card_id`·`content_type_id`·`template_type`·`shape`) |
 
 - 전송은 `navigator.sendBeacon`을 먼저 쓰고, 안 되면 `fetch(keepalive)`로 보낸다. 실패는 조용히 무시한다.
 - 서버는 로그인 세션이 있어야 받고, 유저별 분당 60건을 넘으면 429다. 카드가 존재하고 활성이며 노출 기간 안일 때만 기록한다(아니면 400). `followup` 이벤트는 400으로 거부한다.
 - 저장(`today_card_events`)에는 카드 ID·기록 시점 유형 ID·기록 시점에 그려진 모양(`card_shape`)·이벤트 종류만 남고 **유저 식별자는 없다.** 유저 ID는 빈도 제한 판정에만 인스턴스 메모리에서 쓴다.
 - 그려진 모양은 노출 검증이 카드를 조회할 때 함께 읽은 값(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)으로 정한다(카드는 한 번만 조회). 저장된 `shape`가 있으면 그 모양이고, 배지가 없는 타일형 `list`는 화면처럼 `brief`로 기록한다. `shape`가 없는 옛 카드는 옛 렌더러로 그려지는 동안(전환 상수 `LEGACY_SHAPE_CUTOVER`가 꺼져 있는 동안) NULL이다.
+- GA `today_card_click`의 `shape`는 그 카드가 화면에 그려진 모양이다. 새 틀(`components/today`)은 표시 데이터의 `tracking.shape`를, 옛 렌더러는 그려질 모양(`drawnShape`)을 보내고 `shape`가 없는 옛 카드는 null이다. 기존 세 파라미터의 이름과 값은 그대로다. `/api/today/events`는 모양을 받지 않고 서버가 카드를 조회해 정한다.
 - 집계: `GET /api/admin/today/metrics?from=&to=`(기본 최근 7일, 어드민 읽기 토큰 허용)가 유형 ID별 노출·열람 수와 열람률(`types`)을 돌려주고, 그려진 모양별 노출·열람·후속 건수와 열람률(`byShape`)을 함께 돌려준다. `card_shape`가 NULL인 기록(모양 도입 전 기록, 전환 전 옛 카드)은 `byShape`에서 `unknown`으로 묶는다.
 - 기사 상세 화면·CTA 버튼·오늘의 현황 스트립은 이 계측 대상이 아니다.
 - 어드민 투데이의 미리보기(날짜 미리보기 모달, 카드 폼의 「홈 화면 미리보기」)는 계측 대상이 아니다. `TodayCardStack`에 `preview`를 넘기면 `TodayCardTracker`와 카드 링크(랭킹 카드는 순위 행 링크 포함)를 그리지 않아 노출·클릭 요청과 GA 이벤트가 나가지 않고, 눌러도 이동하지 않는다. 홈은 `preview` 없이 그려 계측이 그대로 동작한다.
 
-근거: `jam-web/src/app/(main)/TodayCardTracker.tsx`, `jam-web/src/lib/today/cardEventClient.ts`·`events.ts`, `jam-web/src/app/api/today/events/route.ts`, `jam-web/src/app/api/admin/today/metrics/route.ts`
+근거: `jam-web/src/app/(main)/TodayCardTracker.tsx`, `jam-web/src/lib/today/cardEventClient.ts`(`todayCardClickParams`)·`events.ts`, `jam-web/src/app/api/today/events/route.ts`, `jam-web/src/app/api/admin/today/metrics/route.ts`
 
 ## 10. 데이터
 
