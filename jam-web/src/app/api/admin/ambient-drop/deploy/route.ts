@@ -6,7 +6,7 @@
  *    그 시각(schedule_hour_kst, KST 정시) 전후 exclusion_window_minutes분 동안은 거부한다(409) — 화면의 버튼
  *    비활성화는 UX 편의이고, 실제 강제는 여기서 한다 (레이스 컨디션 방지가 목적, 티켓 20260826_009 §3).
  * 2. 본문이 있음: 지정 배포(티켓 20261001_2053). 날짜 예약 폼의 「지금」이 보낸다. 본문은 예약 등록과 같고
- *    `scheduled_at`은 없거나 `"now"`다. 지정한 지점·아이템으로 한 번만 놓고 `ambient_drop_config`는 읽기만 한다.
+ *    `scheduled_at`은 없거나 `"now"`다(다른 값은 400). 지정한 지점·아이템으로 한 번만 놓고 `ambient_drop_config`는 읽기만 한다.
  *    저장된 설정으로 도는 매일 배포와 지점·아이템이 다르고 설정을 쓰지 않아 상호 배제 창을 적용하지 않는다.
  *
  * 응답: 설정 배포는 `{ result }`, 지정 배포는 `{ outcome }`.
@@ -43,6 +43,13 @@ async function readOptionalBody(req: Request): Promise<{ empty: true } | { empty
   }
 }
 
+/** 본문에 `scheduled_at` 키가 있는데 `"now"`가 아니면 true (키 없음은 false, `null`·빈 문자열은 true) */
+function hasNonNowScheduledAt(body: unknown): boolean {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return false
+  const record = body as Record<string, unknown>
+  return record.scheduled_at !== undefined && record.scheduled_at !== 'now'
+}
+
 export async function POST(req: NextRequest) {
   try {
     const admin = await getAdminUser()
@@ -51,6 +58,17 @@ export async function POST(req: NextRequest) {
     const read = await readOptionalBody(req)
 
     if (!read.empty) {
+      // 지정 배포는 항상 바로 드랍한다. 시각이 들어오면 무시하고 즉시 놓게 되므로(되돌릴 수 없다) 먼저 거절한다
+      if (hasNonNowScheduledAt(read.body)) {
+        return NextResponse.json(
+          {
+            error:
+              '지금 드랍에는 시각을 정할 수 없어요. 이 요청은 시각과 상관없이 바로 드랍하기 때문이에요. 시각을 정하려면 날짜 예약으로 등록해 주세요.',
+          },
+          { status: 400 }
+        )
+      }
+
       const now = new Date()
       const parsed = parseAmbientDropScheduleInput(read.body, now, { allowNow: true })
       if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })

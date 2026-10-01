@@ -147,6 +147,22 @@ describe('본문 있는 POST — 지정 배포', () => {
     expect(db.rpcCalls).toEqual([])
   })
 
+  it('미래 ISO 시각은 400이고 아무것도 놓지 않는다', async () => {
+    const res = await POST(post({ ...NOW_BODY, scheduled_at: '2026-12-25T09:00:00+09:00' }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('시각을 정할 수 없어요')
+    expect(db.rpcCalls).toEqual([])
+    expect(state.batch).not.toHaveBeenCalled()
+  })
+
+  it('scheduled_at이 null이나 빈 문자열이어도 400이다', async () => {
+    for (const value of [null, '']) {
+      const res = await POST(post({ ...NOW_BODY, scheduled_at: value }))
+      expect(res.status).toBe(400)
+    }
+    expect(db.rpcCalls).toEqual([])
+  })
+
   it('지난 시각은 400이다', async () => {
     const res = await POST(post({ ...NOW_BODY, scheduled_at: '2026-01-01T09:00:00+09:00' }))
     expect(res.status).toBe(400)
