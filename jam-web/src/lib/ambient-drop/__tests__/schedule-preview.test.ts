@@ -145,9 +145,30 @@ describe('대상 판정 — 예정 시각 기준, 문제는 200의 problem', () 
   })
 })
 
+describe('「지금」(allowNow) — 티켓 20261001_2053', () => {
+  const withoutAt: Record<string, unknown> = { ...LIST_ITEMS }
+  delete withoutAt.scheduled_at
+
+  it('allowNow가 없으면 scheduled_at: "now"도 400이다', async () => {
+    expect(await preview({ ...LIST_ITEMS, scheduled_at: 'now' })).toMatchObject({ ok: false, status: 400 })
+  })
+
+  it('allowNow면 "now"를 받고 지금을 예정 시각으로 대상을 판정한다', async () => {
+    const result = await previewAmbientDropSchedule(sb(), { ...LIST_ITEMS, scheduled_at: 'now' }, NOW, { allowNow: true })
+    if (!result.ok) throw new Error(result.error)
+    expect(result.preview.scheduledAt).toBe(NOW.toISOString())
+    expect(result.preview.requested).toBe(4)
+  })
+
+  it('allowNow가 없으면 시각이 빠진 요청은 400을 유지한다', async () => {
+    expect(await preview(withoutAt)).toMatchObject({ ok: false, status: 400 })
+  })
+})
+
 describe('입력 오류와 읽기 실패', () => {
   it('예정 시각이 없으면 400이다(「지금」은 이 경로에서 받지 않는다)', async () => {
-    const { scheduled_at: _omit, ...withoutAt } = LIST_ITEMS
+    const withoutAt: Record<string, unknown> = { ...LIST_ITEMS }
+  delete withoutAt.scheduled_at
     const result = await preview(withoutAt)
     expect(result).toMatchObject({ ok: false, status: 400 })
     expect(!result.ok && result.error).toContain('놓을 시각이 없어요')

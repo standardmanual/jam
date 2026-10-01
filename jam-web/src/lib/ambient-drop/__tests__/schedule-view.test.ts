@@ -13,6 +13,8 @@ import {
   SCHEDULE_STATE_LABEL,
   bookExposure,
   buildScheduleBody,
+  describeNowRunOutcome,
+  nowDeployConfirmText,
   formatAmbientBatchSummary,
   kstYmd,
   scheduleAtParts,
@@ -205,6 +207,33 @@ describe('등록 폼 규칙 (티켓 20261001_2154)', () => {
       per_poi_count: 2,
       badge_ids: ['b1'],
     })
+  })
+
+  it("buildScheduleBody: 「지금」은 scheduled_at이 'now'다", () => {
+    expect(buildScheduleBody({ ...base, when: { kind: 'now' } })).toEqual({
+      scheduled_at: 'now',
+      poi_ids: ['p1', 'p2'],
+      per_poi_count: 2,
+      badge_ids: ['b1'],
+    })
+  })
+
+  it('nowDeployConfirmText: 곳 수와 개수를 넣고 되돌릴 수 없다고 알린다', () => {
+    expect(nowDeployConfirmText(4, 2)).toBe('2곳에 4개를 지금 드랍해요. 드랍한 뒤에는 되돌릴 수 없어요.')
+  })
+
+  it('describeNowRunOutcome: done·skipped·failed 한 문장', () => {
+    const base = { requested: 4, spawned: 4, failedCount: 0, overlappedPoiCount: 0 }
+    expect(describeNowRunOutcome({ ...base, status: 'done' })).toBe('4개를 드랍했어요(요청 4개).')
+    expect(describeNowRunOutcome({ ...base, status: 'done', spawned: 3, failedCount: 1, overlappedPoiCount: 2 })).toBe(
+      '3개를 드랍했어요(요청 4개). 1개는 만들지 못했어요. 이미 드랍이 있던 지점 2곳에 겹쳐 드랍했어요.'
+    )
+    expect(describeNowRunOutcome({ ...base, status: 'skipped', spawned: 0, reason: 'no_eligible_poi' })).toContain(
+      '드랍하지 않았어요. 놓을 대상이 없어요(드랍할 지점 없음)'
+    )
+    expect(describeNowRunOutcome({ ...base, status: 'failed', spawned: 0, reason: 'insert_failed' })).toContain(
+      '드랍하지 못했어요(드랍 생성 실패)'
+    )
   })
 
   it('buildScheduleBody: 지점 직접 × 컬렉션', () => {

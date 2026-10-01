@@ -206,9 +206,9 @@ export function describeScheduleOutcome(item: {
 // ── 등록 폼용 규칙 (티켓 20261001_2154) ─────────────────────────────────────────────
 
 /**
- * 드랍 시각. 지금은 「한국 시각 날짜 + 정시」만 있다. 2053이 「지금 바로」를 `{ kind: 'now' }`로 더한다.
+ * 드랍 시각. 「한국 시각 날짜 + 정시」이거나, 저장 행 없이 한 번만 바로 놓는 「지금」(티켓 20261001_2053)이다.
  */
-export type ScheduleWhen = { kind: 'at'; ymd: string; hour: number }
+export type ScheduleWhen = { kind: 'at'; ymd: string; hour: number } | { kind: 'now' }
 
 /** 등록 폼이 들고 있는 입력. 고르지 않은 모드의 칸은 본문에 넣지 않는다 */
 export interface ScheduleDraft {
@@ -246,7 +246,7 @@ export function kstYmd(nowIso: string): string {
 /** 등록·미리 확인 API 본문. 고른 모드의 칸만 담고 비어 있는 이름은 뺀다 */
 export function buildScheduleBody(draft: ScheduleDraft): Record<string, unknown> {
   const body: Record<string, unknown> = {
-    scheduled_at: toScheduledAtIso(draft.when.ymd, draft.when.hour),
+    scheduled_at: draft.when.kind === 'now' ? 'now' : toScheduledAtIso(draft.when.ymd, draft.when.hour),
   }
   const title = draft.title.trim()
   if (title !== '') body.title = title
@@ -267,6 +267,11 @@ export function buildScheduleBody(draft: ScheduleDraft): Record<string, unknown>
 /** 이 입력이 놓으려는 드랍 수 */
 export function scheduleDraftTotal(draft: ScheduleDraft): number {
   return draft.poiMode === 'list' ? draft.poiIds.length * draft.perPoiCount : draft.totalCount
+}
+
+/** 지정 배포(「지금」) 확인 대화상자 문장 */
+export function nowDeployConfirmText(draftTotal: number, poiCount: number): string {
+  return `${poiCount}곳에 ${draftTotal}개를 지금 드랍해요. 드랍한 뒤에는 되돌릴 수 없어요.`
 }
 
 export type BookExposure = 'live' | 'prelaunch' | 'ended'
@@ -312,4 +317,31 @@ export function formatAmbientBatchSummary(payload: Record<string, unknown>): str
   const triggerLabel = trigger === 'cron' ? '자동' : trigger === 'manual' ? '수동' : (trigger ?? '?')
   const collectionLabel = collectionIds.length > 0 ? `컬렉션 ${collectionIds.length}개` : '전체 컬렉션'
   return `[${triggerLabel}] 카테고리: ${category} · ${collectionLabel} · 배치 ${spawned}개${reasonText}`
+}
+
+/** 지정 배포 응답의 `outcome` 중 화면이 쓰는 칸 */
+export interface NowRunOutcomeView {
+  status: 'done' | 'skipped' | 'failed'
+  reason?: string
+  requested: number
+  spawned: number
+  failedCount: number
+  overlappedPoiCount: number
+}
+
+/** 지정 배포(「지금」) 결과를 해요체 한 문장으로. 사유 코드는 `SKIP_REASON_SHORT`의 짧은 한글로 바꾼다 */
+export function describeNowRunOutcome(outcome: NowRunOutcomeView): string {
+  const reasonText = outcome.reason ? SKIP_REASON_SHORT[outcome.reason] ?? outcome.reason : null
+  switch (outcome.status) {
+    case 'done': {
+      let text = `${outcome.spawned}개를 드랍했어요(요청 ${outcome.requested}개).`
+      if (outcome.failedCount > 0) text += ` ${outcome.failedCount}개는 만들지 못했어요.`
+      if (outcome.overlappedPoiCount > 0) text += ` 이미 드랍이 있던 지점 ${outcome.overlappedPoiCount}곳에 겹쳐 드랍했어요.`
+      return text
+    }
+    case 'skipped':
+      return `드랍하지 않았어요. 놓을 대상이 없어요${reasonText ? `(${reasonText})` : ''}. 지점이나 아이템을 바꿔 다시 시도해 주세요.`
+    case 'failed':
+      return `드랍하지 못했어요${reasonText ? `(${reasonText})` : ''}. 잠시 뒤 다시 시도하고, 같은 일이 반복되면 개발팀에 알려 주세요.`
+  }
 }

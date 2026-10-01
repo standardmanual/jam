@@ -101,6 +101,10 @@ export default function ScheduleSection({
     await reload()
   }
 
+  const handleDeployed = (resultText: string) => {
+    toast.success(resultText)
+  }
+
   const handleCancel = async () => {
     const target = cancelTarget
     if (!target) return
@@ -163,11 +167,18 @@ export default function ScheduleSection({
         <p className="text-muted-foreground text-xs">
           날짜(한국 시각 정시)·지점·아이템을 정해 두면 그 시각에 한 번 드랍해요. 예약 배포 설정은 쓰지도 바꾸지도
           않아요. 드랍한 뒤에는 내리지 않아요. 실행 전에는 취소하거나 시각을 바꿀 수 있고, 내용을 바꾸려면
-          취소하고 새로 등록해요.
+          취소하고 새로 등록해요. 「지금」을 고르면 저장 없이 바로 한 번 드랍해요.
         </p>
       </div>
 
-      <ScheduleForm nowIso={nowIso} categories={categories} books={books} tribes={tribes} onRegistered={handleRegistered} />
+      <ScheduleForm
+        nowIso={nowIso}
+        categories={categories}
+        books={books}
+        tribes={tribes}
+        onRegistered={handleRegistered}
+        onDeployed={handleDeployed}
+      />
 
       <div className="border-t border-border pt-5">
         <div className="flex items-center justify-between mb-3">

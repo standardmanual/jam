@@ -154,7 +154,7 @@ export default function AmbientDropForm({
           시각에 매일 저절로 배포하고, <strong className="text-foreground">즉시 배포</strong>는 「지금
           배포」를 누른 그 자리에서 1회 배포해요. 두 갈래는 저장된 같은 설정값을 써요.{' '}
           <strong className="text-foreground">날짜 예약</strong>은 아래 「날짜 예약」에서 날짜·지점·아이템을
-          정해 한 번만 드랍하고, 이 설정을 바꾸지 않아요.
+          정해 한 번만 드랍하고, 이 설정을 바꾸지 않아요. 날짜 대신 「지금」을 고르면 바로 한 번 드랍해요.
         </p>
 
         <div className="flex items-center gap-3">
@@ -373,6 +373,8 @@ export default function AmbientDropForm({
         <h2 className="font-bold mb-1">즉시 배포</h2>
         <p className="text-muted-foreground text-xs mb-4">
           저장된 설정값으로 지금 1회 배포해요. 아직 저장하지 않은 변경사항은 반영되지 않아요.
+          지점·아이템을 정해 한 번만 드랍하려면 아래 날짜 예약에서 「지금」을 고르세요. 이 버튼은 저장된 설정으로
+          배포해요.
         </p>
         <button
           onClick={handleDeploy}

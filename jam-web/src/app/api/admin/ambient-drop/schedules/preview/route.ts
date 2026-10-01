@@ -15,7 +15,10 @@ export async function POST(req: NextRequest) {
     if (!admin) return forbidden()
 
     const body = await readJson(req)
-    const result = await previewAmbientDropSchedule(createServiceClient(), body, new Date())
+    // 「지금」은 본문에 `scheduled_at: 'now'`가 명시됐을 때만 받는다 — 시각이 빠진 요청이 조용히 「지금」이 되지 않게 한다(티켓 20261001_2053)
+    const allowNow =
+      typeof body === 'object' && body !== null && (body as Record<string, unknown>).scheduled_at === 'now'
+    const result = await previewAmbientDropSchedule(createServiceClient(), body, new Date(), { allowNow })
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status })
     return NextResponse.json({ preview: result.preview })
   } catch (err) {
