@@ -452,7 +452,7 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 > 실행마다 3축을 골라 `batch_size`개를 그때그때 배치하는 배치 실행형이다 — 티켓
 > [20260826_009](../../tickets/p1-high/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md).
 
-### ambient_drop_schedules (신규 — 마이그레이션 209, 티켓 20261001_2051)
+### ambient_drop_schedules (마이그레이션 209, 티켓 20261001_2051, 2026-10-01 적용 — RLS 활성·정책 0개·CHECK 9개 확인)
 앰비언트 드랍 **날짜 예약**. 날짜(KST 정시)·지점·아이템을 정해 두면 매시 cron이 도래한 예약을 한 번만 실행한다.
 싱글톤 `ambient_drop_config`와 별개 테이블이고 예약 경로는 그 설정에 쓰지 않는다. 어드민 API·cron 전용이라 RLS를 켜고
 정책을 만들지 않았다(service_role만 접근). 로직은 [BadgeEngine 문서](../badge-engine/BADGE_ENGINE_UNIFIED.md) §3.12 「날짜 예약 배포」.
