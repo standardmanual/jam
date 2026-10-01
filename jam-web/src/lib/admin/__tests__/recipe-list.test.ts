@@ -3,7 +3,7 @@
  * 실행: cd jam-web && npx vitest run src/lib/admin/__tests__/recipe-list.test.ts
  */
 import { parseRecipeListParams, applyRecipeListQuery, type RecipeListQuery } from '../recipe-list'
-import { classifyRecipeDeletion, type RecipeDeletionCandidate } from '../recipe-bulk'
+import { classifyRecipeDeletion, recipeDeleteBlockedMessage, type RecipeDeletionCandidate } from '../recipe-bulk'
 
 interface RecordedCall {
   method: string
@@ -84,11 +84,11 @@ describe('classifyRecipeDeletion — 참조로 막힌 레시피는 사유와 함
     expect(result).toEqual({ deletable: ['r1'], skipped: [] })
   })
 
-  it('참조가 하나라도 있으면 단건 DELETE 409와 같은 형식의 사유로 건너뛴다', () => {
+  it('참조가 하나라도 있으면 단건 DELETE 409와 같은 문장의 사유로 건너뛴다', () => {
     const result = classifyRecipeDeletion(['r1'], new Map([['r1', candidate({ total: 2 })]]))
     expect(result.deletable).toEqual([])
     expect(result.skipped).toEqual([
-      { id: 'r1', label: '믹스 A', reason: '삭제할 수 없습니다. 이 레시피를 가리키는 참조가 2건 있습니다.' },
+      { id: 'r1', label: '믹스 A', reason: recipeDeleteBlockedMessage(2) },
     ])
   })
 

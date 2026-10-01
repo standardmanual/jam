@@ -11,6 +11,15 @@ export interface RecipeDeletionCandidate {
   total: number
 }
 
+/**
+ * 레시피 삭제 거부 문구 — 단건 DELETE 409 응답과 일괄 삭제 건너뜀 사유가 같은 문장을 쓴다
+ * (티켓 20261001_1200). 참조 소스가 배지 조건(`recipe_first_success`) 하나뿐이라 `count`는
+ * 가리키는 배지 수다(`recipe-references.ts` 머리 주석).
+ */
+export function recipeDeleteBlockedMessage(count: number): string {
+  return `삭제할 수 없어요. 이 레시피를 가리키는 배지가 ${count}개 있어요. 배지 조건에서 이 레시피를 먼저 바꿔 주세요.`
+}
+
 export interface RecipeDeletionClassification {
   deletable: string[]
   skipped: BulkSkip[]
@@ -19,7 +28,7 @@ export interface RecipeDeletionClassification {
 /**
  * 삭제 대상을 "삭제 가능"과 "건너뜀"으로 나눈다 — 존재하지 않는 id와 참조가 하나라도 있는
  * 레시피는 건너뛴다. 참조 사유 문구는 단건 DELETE(`api/admin/recipes/[id]/route.ts`)의
- * 409 응답과 같은 형식이다.
+ * 409 응답과 같은 `recipeDeleteBlockedMessage`다.
  */
 export function classifyRecipeDeletion(
   ids: string[],
@@ -38,7 +47,7 @@ export function classifyRecipeDeletion(
       skipped.push({
         id,
         label: candidate.name ?? undefined,
-        reason: `삭제할 수 없습니다. 이 레시피를 가리키는 참조가 ${candidate.total}건 있습니다.`,
+        reason: recipeDeleteBlockedMessage(candidate.total),
       })
       continue
     }
