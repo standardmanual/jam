@@ -1,20 +1,8 @@
-import type { ComponentType, SVGProps } from 'react'
 import { Card } from '@ds/components/cards/Card'
-import { LabelChip } from '@ds/components/cards/LabelChip'
-import { RarityBadge, type Rarity } from '@ds/components/cards/RarityBadge'
 import SafeImage from '@/components/SafeImage'
-import {
-  BookIcon,
-  FlaskIcon,
-  HourglassIcon,
-  MedalIcon,
-  NewspaperIcon,
-  PackageIcon,
-  PinIcon,
-  RankingIcon,
-  TargetIcon,
-} from '@/components/ui/icons'
-import type { BriefCardView, CardResource } from '@/lib/today/cardView'
+import type { BriefCardView } from '@/lib/today/cardView'
+import CardChipRow from './CardChipRow'
+import { resourceIconOf } from './resourceIcon'
 
 /**
  * 짧은 소식(`brief`) 모양 — 면(표면) 겹 (티켓 20261001_1458, 상위 20260930_1453 확정 설계 1·3·4절).
@@ -29,21 +17,6 @@ import type { BriefCardView, CardResource } from '@/lib/today/cardView'
  */
 
 /**
- * 자원 → 아이콘. 색이 아니라 아이콘 모양으로만 구분한다(제3의 컬러 도입 금지).
- * `Record<CardResource, …>`라 자원이 늘면 컴파일이 잡는다. b3~b5가 같은 매핑이 필요해지면 `today/resourceIcon.ts`로 뺀다.
- */
-const RESOURCE_ICON: Record<CardResource, ComponentType<SVGProps<SVGSVGElement>>> = {
-  mission: TargetIcon,
-  drop: PackageIcon,
-  recipe: FlaskIcon,
-  badge: MedalIcon,
-  article: NewspaperIcon,
-  ranking: RankingIcon,
-  collection: BookIcon,
-  auto: HourglassIcon,
-}
-
-/**
  * 64px 칸. 배지 썸네일(`thumbnailUrl`)이 있으면 그리고, 없거나 로드에 실패하면 같은 칸에 자원 아이콘을 그려 카드 높이가 변하지 않는다.
  * `BadgeGalleryCard`의 64px 타일과 같은 값이라 b5 `list` 타일이 이어 쓴다(둘째 소비자가 생기는 b5에서 공용으로 뺄지 정한다).
  *
@@ -51,11 +24,8 @@ const RESOURCE_ICON: Record<CardResource, ComponentType<SVGProps<SVGSVGElement>>
  * 흑백은 미보유 배지(`thumbnailDimmed`)에만 건다 — 색 외에 글자 단서가 없는 기존 규칙이다(티켓 20260905_0038 B).
  */
 function BriefSlot({ view }: { view: BriefCardView }) {
-  // `auto`는 진행 알림(`progress_nudge`)과 지역 트렌드(`location_trend`)를 한 값으로 묶어서 템플릿을 구분할 수 없다. 그래서 지역 값이
-  // 있으면 핀, 없으면 모래시계로 가른다(옛 렌더러의 구분을 그대로 지키는 임시 판별 — 템플릿 구분이 따로 필요해지면 b7에서 표시 데이터에
-  // 구분 값을 더한다).
-  const Icon = view.resource === 'auto' && view.regionLabel ? PinIcon : RESOURCE_ICON[view.resource]
-  const icon = <Icon className="w-6 h-6 text-text-inverse/60" />
+  // 자원 → 아이콘 선택은 `HeroCard`의 이미지 없음 자리 표시와 같은 규칙이라 `resourceIcon.ts` 한 곳에 있다
+  const icon = resourceIconOf(view, { className: 'w-6 h-6 text-text-inverse/60' })
   return (
     <div className="w-16 h-16 shrink-0 rounded-[var(--radius-cards)] bg-black/[0.04] overflow-hidden flex items-center justify-center">
       {view.thumbnailUrl ? (
@@ -75,8 +45,6 @@ function BriefSlot({ view }: { view: BriefCardView }) {
 }
 
 export default function BriefCard({ view }: { view: BriefCardView }) {
-  // 드랍은 필수 정보 「지역 ○○」 줄이 같은 지역 값을 이미 내므로 칩 줄에서는 뺀다(한 카드에 같은 값이 두 번 보이지 않게)
-  const showRegionPin = Boolean(view.regionLabel) && view.resource !== 'drop'
   const facts = view.facts ?? []
 
   return (
@@ -88,18 +56,11 @@ export default function BriefCard({ view }: { view: BriefCardView }) {
       <BriefSlot view={view} />
 
       <div className="flex-1 min-w-0">
-        {/* 칩 줄 — 좁아지면 줄어드는 것은 지역 핀뿐이다(라벨·희귀도 칩은 shrink-0) */}
-        <div className="flex items-center gap-[var(--spacing-8)] mb-[var(--spacing-8)]">
-          <LabelChip className="shrink-0">{view.label}</LabelChip>
-          {showRegionPin && (
-            <span className="inline-flex items-center gap-1 min-w-0 text-[length:var(--text-caption)] text-text-inverse/60">
-              <PinIcon className="w-3 h-3 shrink-0" />
-              <span className="truncate">{view.regionLabel}</span>
-            </span>
-          )}
-          {/* Common·등급 없음(null)·미지 값은 컴포넌트가 스스로 아무것도 그리지 않는다. 희귀도는 배지 자체의 정보라 흑백으로 만들지 않는다 */}
-          <RarityBadge rarity={view.rarity as Rarity | null | undefined} size="md" className="shrink-0" />
-        </div>
+        {/* 칩 줄은 `hero`와 공용이다(`CardChipRow`: 좁아지면 줄어드는 것은 지역 핀뿐, 드랍은 핀 생략). brief에는 게재일 칸이 없어 `publishedAt`을 넘기지 않는다 */}
+        <CardChipRow
+          view={{ resource: view.resource, label: view.label, regionLabel: view.regionLabel, rarity: view.rarity }}
+          className="mb-[var(--spacing-8)]"
+        />
 
         <h3 className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse line-clamp-2 break-keep break-words">
           {view.title}
