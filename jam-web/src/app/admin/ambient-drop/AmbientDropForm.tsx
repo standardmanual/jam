@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { AmbientDropConfig } from '@/lib/ambient-drop/config'
 import type { AmbientDropAxisMode } from '@/types/database'
 import type { AmbientDropBatchResult } from '@/lib/ambient-drop'
+import { formatAmbientBatchSummary } from '@/lib/ambient-drop/scheduleView'
 import { Switch } from '@/components/admin/ui/switch'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
@@ -27,6 +28,8 @@ interface AmbientDropFormProps {
   books: { id: string; name: string }[]
   history: AmbientDropHistoryEntry[]
   initialBlocked: boolean
+  /** 「날짜 예약」 구역(티켓 20261001_2154). 최근 실행 이력 앞에 그린다 */
+  scheduleSection?: ReactNode
 }
 
 const ALL_CATEGORY_VALUE = '__ALL__'
@@ -57,23 +60,13 @@ function AxisModeToggle({
   )
 }
 
-function formatPayloadSummary(payload: Record<string, unknown>): string {
-  const category = (payload.effectiveCategorySlug as string | null) ?? '전체'
-  const collectionIds = (payload.effectiveCollectionIds as string[] | undefined) ?? []
-  const spawned = payload.spawned as number | undefined
-  const reason = payload.reason as string | undefined
-  const trigger = payload.trigger as string | undefined
-  const triggerLabel = trigger === 'cron' ? '자동' : trigger === 'manual' ? '수동' : trigger ?? '?'
-  const collectionLabel = collectionIds.length > 0 ? `컬렉션 ${collectionIds.length}개` : '전체 컬렉션'
-  return `[${triggerLabel}] 카테고리: ${category} · ${collectionLabel} · 배치 ${spawned ?? 0}개${reason ? ` (${reason})` : ''}`
-}
-
 export default function AmbientDropForm({
   initial,
   categories,
   books,
   history,
   initialBlocked,
+  scheduleSection,
 }: AmbientDropFormProps) {
   // Select 드롭다운(Radix Portal)은 기본적으로 document.body에 렌더링되는데, shadcn 어드민
   // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
@@ -157,10 +150,11 @@ export default function AmbientDropForm({
       <section className="bg-white border border-border rounded-2xl p-6">
         <h2 className="font-bold mb-1">배포 트리거</h2>
         <p className="text-muted-foreground text-xs mb-4">
-          배포는 두 갈래예요. <strong className="text-foreground">예약 배포</strong>는 아래에서 정한
-          시각에 매일 저절로 배포하고, <strong className="text-foreground">즉시 배포</strong>는 아래
-          「즉시 배포」의 「지금 배포」를 누른 그 자리에서 1회 배포해요. 두 갈래 모두 저장된 같은
-          설정값을 써요.
+          배포는 세 갈래예요. <strong className="text-foreground">예약 배포</strong>는 아래에서 정한
+          시각에 매일 저절로 배포하고, <strong className="text-foreground">즉시 배포</strong>는 「지금
+          배포」를 누른 그 자리에서 1회 배포해요. 두 갈래는 저장된 같은 설정값을 써요.{' '}
+          <strong className="text-foreground">날짜 예약</strong>은 아래 「날짜 예약」에서 날짜·지점·아이템을
+          정해 한 번만 드랍하고, 이 설정을 바꾸지 않아요.
         </p>
 
         <div className="flex items-center gap-3">
@@ -397,10 +391,13 @@ export default function AmbientDropForm({
         {deployError && <p className="text-sm text-red-600 mt-2">{deployError}</p>}
         {deployResult && (
           <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mt-3">
-            {formatPayloadSummary(deployResult as unknown as Record<string, unknown>)}
+            {formatAmbientBatchSummary(deployResult as unknown as Record<string, unknown>)}
           </div>
         )}
       </section>
+
+      {/* 날짜 예약 — 서버 페이지가 주입한다 */}
+      {scheduleSection}
 
       {/* 최근 실행 이력 */}
       <section className="bg-white border border-border rounded-2xl p-6">
@@ -412,7 +409,7 @@ export default function AmbientDropForm({
             {history.map((h) => (
               <li key={h.id} className="text-xs text-foreground flex flex-col gap-0.5">
                 <span className="text-muted-foreground">{new Date(h.created_at).toLocaleString('ko-KR')}</span>
-                <span>{formatPayloadSummary(h.payload)}</span>
+                <span>{formatAmbientBatchSummary(h.payload)}</span>
               </li>
             ))}
           </ul>
