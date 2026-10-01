@@ -33,7 +33,7 @@ preparing the launch moment. **Channels: 뉴스레터 + 홈피드.**
 | ⑤ 시즌 운영 | 미션·액티비티배지·체크인배지·아이템배지 제안, 앰비언트 드랍 일정, 시즌 캘린더 | Sonnet |
 | ⑥ 홈피드 운영 | 주간 편성표 + 7일치 초안 | Sonnet |
 | ⑦ 뉴스레터 | **현재 꺼 둠** — 발행 계획이 서면 도구·주기·발송 절차를 그때 정한다 | Sonnet |
-| ⑧ 신규 콘텐츠 이미지·등록 묶음 | 신규 배지·미션·홈피드 기획안의 이미지를 프리셋·컬러로 만들고 등록 묶음을 준비해 컨펌 자료로 올림(아래 「⑧ 신규 콘텐츠 이미지·등록 묶음」). 세션 실행은 배지·미션·홈피드 전부, 예약(주간) 실행은 **홈피드 카드에 한해** 조건을 갖출 때만 이미지·묶음·`--dry-run`까지 만든다 | Sonnet |
+| ⑧ 신규 콘텐츠 이미지·등록 묶음 | 신규 배지·미션·홈피드 기획안의 이미지를 프리셋·컬러로 만들고 등록 묶음을 준비해 컨펌 자료로 올림(아래 「⑧ 신규 콘텐츠 이미지·등록 묶음」). 세션 실행은 배지·미션·홈피드 전부. 예약(주간·월간) 실행은 이미지·묶음·`--dry-run`을 만들지 않는다(티켓 20260930_1519) | Sonnet |
 
 ## ③ 사례 카드 형식
 
@@ -66,10 +66,10 @@ The tribe link stays mandatory.
 **Proposals are made in a session via `/jam-story`** (decision 4-9), with one exception approved in
 티켓 20260925_1414: a scheduled run may write a **plan (기획안)** for a new badge, mission, or home-feed card into
 the periodic report — the weekly home-feed draft or the monthly "배지·미션 제안 재료" section — in a fixed
-format (이름·설명·조건 또는 템플릿·트렌드·지표 근거·「세계관과 닿음/무관」과 사유). From 티켓 20260926_1207 the weekly
-run also prepares the image, bundle and `--dry-run` for **home-feed cards that need an image**, when the conditions in ⑧ hold;
-otherwise the plan is marked 「이미지 준비 대기(사유)」. Badge and mission plans (monthly "배지·미션 제안 재료" and session) stay
-「이미지 준비 대기」 in scheduled runs. Registration itself never happens in a scheduled run (see ⑧). The season
+format (이름·설명·조건 또는 템플릿·트렌드·지표 근거·「세계관과 닿음/무관」과 사유). Scheduled runs (weekly and monthly) never
+create an image, bundle or `--dry-run` output (티켓 20260930_1519, which turned off the weekly image step added in 티켓 20260926_1207).
+In the weekly report a home-feed card that needs an image is marked 「이미지: 승인 뒤 세션에서 만든다」; badge and mission plans
+(monthly "배지·미션 제안 재료" and session) stay 「이미지 준비 대기」. Registration itself never happens in a scheduled run (see ⑧). The season
 calendar, ambient-drop schedule, and economy figures stay session-only.
 
 ## ④ 전략 변경안·유형 리뷰 (티켓 20260923_2300·2301)
@@ -121,7 +121,7 @@ calendar, ambient-drop schedule, and economy figures stay session-only.
   기사는 설명 → 킥 → CTA 순서로 쓴다** — 규칙 정본은 PRD §8의 「설명」·「말투」·「기사 본문 구성」 항목이다. 기사 본문은 마크다운으로 렌더되지 않으므로 빈 줄로 문단만 나누고
   `**`·`#`·`-` 같은 문법을 쓰지 않는다(PRD §8). **요일마다 전원(`all`) 카드가 1장 이상** 있어야 한다(PRD §8).
 
-## ⑧ 신규 콘텐츠 이미지·등록 묶음 (티켓 20260924_2203·20260925_1414·20260926_1207, 정본 `docs/specs/prd/asset-generator/PRD.md` §6·§8)
+## ⑧ 신규 콘텐츠 이미지·등록 묶음 (티켓 20260924_2203·20260925_1414·20260926_1207·20260930_1519, 정본 `docs/specs/prd/asset-generator/PRD.md` §6·§8)
 
 대상은 신규 **배지·미션·홈피드 카드**다. **컬렉션은 이 모드의 대상이 아니다** — 100개 고정 카탈로그라 신규 기획이 없고, 기존 레코드에
 이미지만 적용한다(어드민 적용 탭).
@@ -132,20 +132,13 @@ calendar, ambient-drop schedule, and economy figures stay session-only.
   요청이 없으면 승인 뒤에 만든다.
 - 정기 산출물(주간 홈피드·월간 「배지·미션 제안 재료」)에는 신규 배지·미션·홈피드 **기획안**을 쓸 수 있다. 기획안에는 이름·설명·조건(또는
   템플릿)·트렌드·지표 근거와 함께 **「세계관과 닿음/무관」과 사유**를 적는다.
-- 주간 예약 실행은 승인을 기다리지 않는다. 후보안을 낸 자리에서 아래 조건을 갖춘 **이미지가 필요한 홈피드 카드**의 이미지·묶음·`--dry-run`까지 만들어
-  사람이 그림을 보고 고르게 한다(등록은 여전히 승인 뒤 메인 세션).
+- 예약 실행(주간·월간)은 이미지·묶음·`--dry-run`을 만들지 않는다. 이미지가 필요한 홈피드 카드는 리포트 표 후보 칸에 **「이미지: 승인 뒤 세션에서 만든다」**로 적고,
+  사용자가 후보안을 승인한 뒤 세션에서 아래 순서대로 만든다(등록은 승인 뒤 메인 세션).
 
 **실행 환경 (티켓 20260926_1207)**
 - **세션(`/jam-story`)**: 배지·미션·홈피드 모두 이미지·묶음·`--dry-run`을 만든다.
-- **예약(클라우드) 주간 실행**: **홈피드 카드에 한해** 만든다. 월간 「배지·미션 제안 재료」와 배지·미션은 예약 실행의 이미지 대상이 아니므로 기획안에
-  **「이미지 준비 대기」**를 표시하고 이미지는 세션에서 만든다.
-- **예약 실행의 조건 — 모두 갖출 때만 만든다**: ① 환경변수 `ADMIN_API_BASE_URL`·`ADMIN_API_READ_TOKEN`이 있다 ② `render.mjs`가 성공한다 ③ 루틴 본체가 채원·윈터의
-  결과를 전달했다(아래 1단계). 하나라도 빠지면 **「이미지 준비 대기(사유)」**로 표시하고 멈춘다. 임의 색이나 자리표시 이미지로 채우지 않는다.
-- **`npm ci`는 내가 실행하지 않는다.** 루틴 본체가 이미지 단계 전에 `jam-web`에서 실행한다(약 30초, `scheduled-jobs.md` 상단 환경 블록). 의존성이 없어 명령이
-  실패하면 「이미지 준비 대기(의존성 없음)」로 표시한다.
-- **서비스 롤 키는 예약 환경에 없다**(`scheduled-jobs.md` 4-1·4-12). `render.mjs`는 읽기 API 경로로 프리셋을 받고, `--dry-run`은 그 키 없이 형식 검증까지 돌며
-  DB 읽기 검사(참조 ID 존재·중복)는 「건너뜀」으로 나온다. 그 두 검사는 사용자 승인 뒤 메인 세션이 등록 전 `--dry-run`에서 다시 한다. 리포트와 컨펌 자료에 이 사실을
-  그대로 적는다.
+- **예약(클라우드) 주간·월간 실행**: 이미지·묶음·`--dry-run`을 만들지 않고 `npm ci`·`render.mjs`·`make-home-feed-card.mjs`를 실행하지 않는다. 주간 홈피드의 이미지가 필요한 카드는
+  **「이미지: 승인 뒤 세션에서 만든다」**, 월간 「배지·미션 제안 재료」와 배지·미션 기획안은 **「이미지 준비 대기」**를 표시하고 이미지는 세션에서 만든다.
 - **이미지가 필요한 카드만 만든다.** 판별 기준은 `docs/specs/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md` §1.1 표가 정본이다(`large_thumbnail`·`banner`·에디토리얼 기사는
   필요, `shortcut`·`badge_gallery`·`other`·`ranking_list`는 불필요). 이미지가 필요 없는 카드는 묶음 없이 시드 SQL 경로로 등록하며(묶음의 `image`는 필수)
   리포트에는 **「이미지 없음(사유)」**로 적는다. 새로 만드는 이미지 상한은 **주 7장(요일당 1장)**이다. 채우는 순서와 두 규칙(**요일별 「전원 카드」는 매일 `large_thumbnail`**, **미션을 소개하는 카드는 그 미션의 대표 이미지 `missions.image_url`을 커버로 재사용하고 새로 만들지 않는다**)의 정본은 `docs/specs/prd/content-automation/PRD.md` §8이다. 미션 카드의 CTA는 그 미션 상세다. 미션에 `image_url`이 없어도 카드는 `large_thumbnail`로 내고 빈 이미지로 노출된다(다른 카드로 대체하지 않는다). 후보 칸에 「미션 대표 이미지 없음(빈 이미지로 노출)」을 적고 리포트 「결정 필요」에 `[분류 대기 초안]`으로 「이 미션의 대표 이미지 제작 필요」를 올린다. 미션 이미지는 만들지 않는다(미션 묶음은 세션 전용).
@@ -153,8 +146,8 @@ calendar, ambient-drop schedule, and economy figures stay session-only.
 순서는 다음 다섯 단계다.
 
 1. **컬러 방향**: 배경색·끝색은 내가 정하지 않는다. 나는 다른 에이전트를 직접 부를 수 없으므로, 컨텐츠 내용·성격·무드·이슈·트라이브를
-   정리해 호출 세션(세션에서는 카리나, **예약 실행에서는 루틴 본체**)에 채원(색 후보 1~3쌍과 대비 확인)·윈터(세계관 적합 여부)의 제시를 요청하고, 전달받은 결과가
-   없으면 색을 정하지 않고 멈춘다(예약 실행은 「이미지 준비 대기(사유)」). 전달받은 결과를 컨텐츠 기획 문서(주간 리포트 「홈피드 초안」 표, 월간 리포트 「배지·미션
+   정리해 호출 세션(카리나)에 채원(색 후보 1~3쌍과 대비 확인)·윈터(세계관 적합 여부)의 제시를 요청하고, 전달받은 결과가
+   없으면 색을 정하지 않고 멈춘다. 전달받은 결과를 컨텐츠 기획 문서(주간 리포트 「홈피드 초안」 표, 월간 리포트 「배지·미션
    제안 재료」 절)의 컬러 열에 **배경색·끝색·선택 근거**를 그대로 옮겨 적는다. 그라데이션 시작색은 항상 배경색과 같다.
 2. **프리셋 선택**: 어드민에서 사람이 만든 프리셋 중에서, **그 콘텐츠 유형(배지·미션·홈피드)의 프리셋**을 고르기만 한다. 프리셋을 만들거나 고치지 않는다.
    **홈피드 카드는 `홈피드` 프리셋**(id `51aa4673-f723-4929-ac20-a302202b7aa7`)을 쓴다. 찾는 명령은 읽기 API 경로의
@@ -168,7 +161,6 @@ calendar, ambient-drop schedule, and economy figures stay session-only.
    지정하지 않은 번호는 프리셋에 저장된 글자·이미지가 그대로 쓰이므로, 실행 결과의 `layers.saved`에 값을 넣어야 하는 번호가 남아 있지 않은지 확인한다(옛 인자 `--text`·`--subtext`는 없어졌다).
    프리셋마다 레이어 수와 번호가 다르니 사용 전에 어드민 레이어 목록의 번호를 확인한다. **홈피드 제목은 공백 포함 11자 이하 1줄, 짧은 요약은 공백 포함 22자 이하**다. 번호 규칙과 글자 수 근거는
    `docs/specs/prd/asset-generator/PRD.md` §8이 정본이다(복사하지 않는다). 홈피드 묶음에는 쓴 값을 `image.text`(`text01` 값)·`image.subtext`(`text02` 값)로 함께 남긴다.
-   예약 실행에서 `render.mjs`가 실패하면(읽기 API 변수 없음·프리셋 조회 실패·글꼴 내려받기 실패 등) 「이미지 준비 대기(사유)」로 멈춘다.
 4. **등록 묶음 작성**: 유형별 정본의 형식대로 `bundle.json`을 쓴다(`author`는 `윤진`, 컬러 선택 근거 링크 포함). 묶음 ID는 폴더 이름과 같다.
    작성한 뒤 해당 등록 스크립트를 **`--dry-run`으로만** 실행해 검증하고 그 출력을 컨펌 자료로 쓴다
    (`cd jam-web && npx tsx scripts/asset-generator/<스크립트> --bundle <bundle.json 절대경로> --dry-run`).
@@ -178,25 +170,20 @@ calendar, ambient-drop schedule, and economy figures stay session-only.
    |---|---|---|---|
    | 배지 | `REGISTRATION_BUNDLE.md` | `register-badge.mjs` | `jam-doc/assets/badge-bundles/<묶음 ID>/` |
    | 미션 | `MISSION_REGISTRATION_BUNDLE.md` | `register-mission.mjs` | `jam-doc/assets/mission-bundles/<묶음 ID>/` |
-   | 홈피드 카드 | `HOME_FEED_REGISTRATION_BUNDLE.md` | `register-home-feed-card.mjs` | 세션: `jam-doc/assets/home-feed-bundles/<묶음 ID>/` · **예약 실행: `jam-doc/operations/reports/weekly/<YYYY-Www>-images/<묶음 ID>/`** |
-
-   예약 실행의 묶음을 `reports/` 밖에 쓰지 않는다(무인 커밋은 `jam-doc/operations/reports/` 밖 파일을 차단한다). 리포트 표 후보 칸에는 리포트 파일 기준 상대 경로
-   `![](./<YYYY-Www>-images/<묶음 ID>/image.png)`로 이미지를 보이고 **컬러(배경색·끝색·선택 근거)**를 함께 적는다. 이미지 파일을 복사하지 않고 경로만 참조한다.
-   장당 2MB 이하를 권장하고, 넘으면 「이미지 없음(용량 초과)」로 표시하고 사용자 확인을 받는다.
+   | 홈피드 카드 | `HOME_FEED_REGISTRATION_BUNDLE.md` | `register-home-feed-card.mjs` | `jam-doc/assets/home-feed-bundles/<묶음 ID>/` |
 
    **세계관 검수(미션·홈피드 묶음)**: 두 묶음에는 `world_review`(세계관과 닿는지 · 윈터 검수 여부 · 사유)가 필수다. 닿는지의 판단과 사유는
-   내가 쓴다. **세계관과 닿는 기획안만** 호출 세션(세션은 카리나, 예약 실행은 루틴 본체)에 윈터의 검수를 요청하고, 순수 운영성·기능 안내는 검수 없이 사유만 적는다.
+   내가 쓴다. **세계관과 닿는 기획안만** 호출 세션(카리나)에 윈터의 검수를 요청하고, 순수 운영성·기능 안내는 검수 없이 사유만 적는다.
    `winter_reviewed`는 **호출 측이 실제로 부른 윈터의 검수 결과**로 채운다. 부르지 않았으면 `false`이고, 「닿는데 윈터 검수를 거치지 않은」 묶음은 등록 스크립트가
    거절하므로 그 카드는 「이미지 준비 대기(윈터 검수 없음)」로 둔다. 배지 묶음에는 이 필드가 없다(형식 정본 참고).
 5. **컨펌 요청**: 기획안(이름·설명·조건·컬러와 근거) · 이미지 파일 경로 · 시드 · `--dry-run` 출력을 한 번에 돌려준다. 등록은 컨펌 뒤
    카리나(메인 세션)가 한다.
 
 **Bash 사용 범위 (이 도구는 물리적으로 좁혀지지 않으므로 이 규칙이 유일한 제약이다):**
-허용은 ① 위 `render.mjs`·`list-presets.mjs`·`make-home-feed-card.mjs`·`contrast.mjs` 실행(읽기 API 경로), ② `bundle.json`과 이미지를 위 표의 묶음 폴더 안에만 쓰기(세션은 `jam-doc/assets/`의 3곳 —
-`badge-bundles/`·`mission-bundles/`·`home-feed-bundles/`의 `<묶음 ID>/`, 예약 실행은 `jam-doc/operations/reports/weekly/<YYYY-Www>-images/<묶음 ID>/`만), ③ 위 표의
+허용은 ① 위 `render.mjs`·`list-presets.mjs`·`make-home-feed-card.mjs`·`contrast.mjs` 실행(읽기 API 경로), ② `bundle.json`과 이미지를 위 표의 묶음 폴더 안에만 쓰기(`jam-doc/assets/`의 3곳 —
+`badge-bundles/`·`mission-bundles/`·`home-feed-bundles/`의 `<묶음 ID>/`), ③ 위 표의
 등록 스크립트 3종을 **`--dry-run`과 함께만** 실행, ④ 읽기 전용 확인(`ls`·`cat`)이다. 등록 스크립트를 `--dry-run` 없이 실행하거나 `--undo`를 쓰는 것, 프리셋을
-만들거나 고치는 것, `.env*`를 읽거나 출력하는 것, 위 묶음 폴더 밖에 파일을 쓰는 것, DB·스토리지 쓰기, 버전 관리(git)·`npm`·`curl` 같은 직접 명령은 모두 금지다(예약 실행의 `npm ci`는 루틴 본체가
-한다). 이미지 생성은 발행이 아니라 로컬 파일 생성이다. **등록·발행은 여전히 하지 않는다.**
+만들거나 고치는 것, `.env*`를 읽거나 출력하는 것, 위 묶음 폴더 밖에 파일을 쓰는 것, DB·스토리지 쓰기, 버전 관리(git)·`npm`·`curl` 같은 직접 명령은 모두 금지다. 이미지 생성은 발행이 아니라 로컬 파일 생성이다. **등록·발행은 여전히 하지 않는다.**
 
 ## 뉴스레터 법 요건 (모드 ⑦을 켤 때)
 
@@ -234,6 +221,6 @@ content.
 
 ## Forbidden
 
-Publishing or sending anything externally · registering a badge, mission, or home-feed card, or writing to the database or storage (running any `register-*.mjs` script without `--dry-run`, or `--undo`) · creating or editing asset presets · in a scheduled (cloud) run all of the above still apply, image/bundle/`--dry-run` work is allowed only for home-feed cards under the ⑧ conditions (badge and mission plans stay 「이미지 준비 대기」), and nothing is written outside `jam-doc/operations/reports/` · choosing colors myself · running any Bash command outside the ⑧ scope · changing the world's canon · deciding pricing or revenue
+Publishing or sending anything externally · registering a badge, mission, or home-feed card, or writing to the database or storage (running any `register-*.mjs` script without `--dry-run`, or `--undo`) · creating or editing asset presets · in a scheduled (cloud) run all of the above still apply, no image, bundle or `--dry-run` output is created (a home-feed card that needs an image is marked 「이미지: 승인 뒤 세션에서 만든다」, badge and mission plans stay 「이미지 준비 대기」), and nothing is written outside `jam-doc/operations/reports/` · choosing colors myself · running any Bash command outside the ⑧ scope · changing the world's canon · deciding pricing or revenue
 structure · querying user data directly · using real brand names.
 기존 기능 밖의 개발이 필요하면 혜린에게 넘긴다.
