@@ -226,6 +226,10 @@ describe('ScheduleForm 첫 렌더', () => {
     expect(out).toContain('한 예약 최대 100개')
     expect(out).toContain('min="2026-10-01"')
     const register = out.match(/<button[^>]*>예약 등록<\/button>/)?.[0] ?? ''
+    expect(out).toContain('날짜 지정')
+    expect(out).toContain('>지금<')
+    // 「지금 드랍」 버튼은 「지금」 탭을 고른 뒤에만 나온다
+    expect(out).not.toMatch(/<button[^>]*>지금 드랍<\/button>/)
     expect(register).toContain('disabled=""')
     const preview = out.match(/<button[^>]*>확인하기<\/button>/)?.[0] ?? ''
     expect(preview).toContain('disabled=""')
