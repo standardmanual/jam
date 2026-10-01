@@ -6,7 +6,7 @@
  * `register-badge.mjs` 하나뿐이다.
  *
  * ## 등록 순서와 실패 처리 (티켓 20260924_2202 요구사항)
- * 1. 묶음 검증 → DB 읽기 검사(이름 중복·트라이브·컬렉션 존재) — 여기서 하나라도 실패하면 아무것도 쓰지 않는다.
+ * 1. 묶음 검증 → DB 읽기 검사(이름 중복·트라이브·컬렉션 존재 — `src/lib/admin/registerChecks/badge.ts`) — 여기서 하나라도 실패하면 아무것도 쓰지 않는다.
  * 2. 새 배지 id를 미리 정한다(이미지 저장 경로에 쓰려고).
  * 3. 이미지 업로드(원본 PNG → WebP). 하나라도 실패하면 이미 올라간 파일을 지우고 끝낸다.
  * 4. 배지 행 insert. 실패하면 올라간 이미지 2개를 지우고 끝낸다.
@@ -17,7 +17,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { findCheckinBadgeNamesNotFoundError } from '../../src/lib/admin/badge-validation'
+import { runBadgeDbChecks } from '../../src/lib/admin/registerChecks/badge'
+import {
+  BADGE_UNDO_ARRAY_REFERENCE_COLUMNS as UNDO_ARRAY_REFERENCE_COLUMNS,
+  BADGE_UNDO_REFERENCES as ALL_UNDO_REFERENCES,
+  BADGE_UNDO_REFERENCE_TABLES as UNDO_REFERENCE_TABLES,
+  findBadgeUndoReferences,
+} from '../../src/lib/admin/registerChecks/references'
 import { APPLY_GENERATED_IMAGE_BUCKET } from '../../src/lib/admin/applyGeneratedImageConstants'
 
 import {
@@ -40,46 +46,10 @@ import {
 export const STORAGE_BUCKET = APPLY_GENERATED_IMAGE_BUCKET
 
 /**
- * 되돌림 전에 «이 배지가 아직 아무 데도 쓰이지 않았는지» 읽는 관계 표(티켓 20260925_0540). `badges`를 가리키는 외래 키
- * 10곳 전부다(운영 DB `pg_constraint` 조회 2026-09-25, 생성 타입 `database.generated.ts`와 테스트로 대조한다).
- * - 삭제 차단(NO ACTION, DB가 막아 주지만 --undo가 중간에 실패하면 저장소 파일과 행이 어긋날 수 있어 미리 읽는다):
- *   user_activity_badges · inventory_items · poi_drops · poi.linked_badge_id · point_transactions.source_badge_id
- * - 연쇄 삭제(CASCADE, 지우면 유저 기록이 경고 없이 함께 사라짐): user_checkin_badge_earns · user_item_book_slots
- * - 연결 해제(SET NULL, 조용히 연결이 끊김): item_books.reward_badge_id · item_books.required_activity_badge_id · missions.gated_badge_id
- * 조회는 각 표의 배지 id 컬럼으로 센다(표마다 `id` 컬럼 유무가 달라 컬럼을 그대로 쓴다).
- * 참조 표를 바꿀 때는 이 목록만 고친다 — 코드·SQL 기록 주석은 이 상수에서 나온다.
+ * 되돌림 전 참조 확인 목록의 원본은 `src/lib/admin/registerChecks/references.ts`다(티켓 20261002_0827 — 서버도 같은 목록을 쓰게 옮겼다).
+ * 여기서는 기존 이름으로 다시 내보낸다. 참조 표를 바꿀 때는 그 파일의 목록만 고친다.
  */
-export const UNDO_REFERENCE_TABLES = [
-  { table: 'user_activity_badges', column: 'badge_id', effect: '삭제 차단' },
-  { table: 'inventory_items', column: 'badge_id', effect: '삭제 차단' },
-  { table: 'poi_drops', column: 'badge_id', effect: '삭제 차단' },
-  { table: 'poi', column: 'linked_badge_id', effect: '삭제 차단' },
-  { table: 'point_transactions', column: 'source_badge_id', effect: '삭제 차단' },
-  { table: 'user_checkin_badge_earns', column: 'badge_id', effect: '연쇄 삭제' },
-  { table: 'user_item_book_slots', column: 'badge_id', effect: '연쇄 삭제' },
-  { table: 'item_books', column: 'reward_badge_id', effect: '연결 해제' },
-  { table: 'item_books', column: 'required_activity_badge_id', effect: '연결 해제' },
-  { table: 'missions', column: 'gated_badge_id', effect: '연결 해제' },
-]
-
-/**
- * 배열 컬럼에 들어 있는 배지 참조(티켓 20260926_0200). 외래 키가 아니라 DB가 막지 않고, 배지 행을 지우면 삭제된 id가 배열에 그대로 남는다.
- * 어드민 배지 삭제가 보는 참조 목록(`src/lib/admin/badge-references.ts`의 `BADGE_REFERENCE_SOURCES`) 중 배열 컬럼 4곳과 맞춘다:
- * missions_reward · today_cards · recipes_result · recipes_ingredient/recipes_required(같은 컬럼 `allowed_badge_ids`).
- * 조회는 배열에 배지 id가 들어 있는 행 수를 센다(`contains`). 미션·홈피드 `--undo`의 비외래 키 참조는 이 목록의 범위 밖이다.
- */
-export const UNDO_ARRAY_REFERENCE_COLUMNS = [
-  { table: 'missions', column: 'reward_badge_ids', effect: '배열에 id가 남음' },
-  { table: 'today_cards', column: 'badge_ids', effect: '배열에 id가 남음' },
-  { table: 'combination_recipes', column: 'reward_badge_ids', effect: '배열에 id가 남음' },
-  { table: 'combination_recipe_slots', column: 'allowed_badge_ids', effect: '배열에 id가 남음' },
-]
-
-/** `--undo`가 지우기 전에 읽는 참조 전체(외래 키 + 배열 컬럼). 표 이름 목록·요약 건수는 여기서 나온다. */
-const ALL_UNDO_REFERENCES = [
-  ...UNDO_REFERENCE_TABLES.map((r) => ({ ...r, isArray: false })),
-  ...UNDO_ARRAY_REFERENCE_COLUMNS.map((r) => ({ ...r, isArray: true })),
-]
+export { UNDO_REFERENCE_TABLES, UNDO_ARRAY_REFERENCE_COLUMNS }
 
 const errorMessage = (e) => (e instanceof Error ? e.message : String(e))
 
@@ -94,62 +64,11 @@ export function storagePathsFor(badgeId) {
 /**
  * DB를 읽어야 알 수 있는 검사를 돌린다(읽기 전용). `supabase`가 null이면 «건너뜀»으로 표시한다.
  * 반환: `{ checks: [{ label, status, detail }], errors: string[] }` — status는 통과·실패·건너뜀·해당 없음.
+ * 검사 본문은 `src/lib/admin/registerChecks/badge.ts`에 있다(티켓 20261002_0827). TS 함수를 그대로 다시 내보내지 않고 JS
+ * 래퍼를 두는 이유: 테스트의 호출이 TS 시그니처로 typecheck되면 손으로 만든 스텁이 통과하지 못한다.
  */
 export async function runDbChecks({ supabase, badge }) {
-  const checks = []
-  const errors = []
-
-  const add = async (label, applicable, run) => {
-    if (!applicable) {
-      checks.push({ label, status: '해당 없음', detail: '' })
-      return
-    }
-    if (!supabase) {
-      checks.push({ label, status: '건너뜀', detail: '서비스 키(.env.local)가 없어 DB를 읽지 않았어요' })
-      return
-    }
-    let failure
-    try {
-      failure = await run()
-    } catch (e) {
-      failure = `DB 조회에 실패했어요: ${errorMessage(e)}`
-    }
-    if (failure) {
-      checks.push({ label, status: '실패', detail: failure })
-      errors.push(`${label}: ${failure}`)
-    } else {
-      checks.push({ label, status: '통과', detail: '' })
-    }
-  }
-
-  await add('이름 중복', true, async () => {
-    const { data, error } = await supabase.from('badges').select('id').eq('name', badge.name).is('deleted_at', null).limit(1)
-    if (error) return `DB 조회에 실패했어요: ${error.message}`
-    if (data && data.length > 0) {
-      return `같은 이름의 배지가 이미 있어요(id: ${data[0].id}). 기존 배지 갱신은 이 스크립트 범위 밖이라 중복으로 거절해요.`
-    }
-    return null
-  })
-
-  await add('트라이브 존재', Boolean(badge.tribe_id), async () => {
-    const { data, error } = await supabase.from('tribes').select('id').eq('id', badge.tribe_id).maybeSingle()
-    if (error) return `DB 조회에 실패했어요: ${error.message}`
-    return data ? null : `tribe_id에 해당하는 트라이브가 없어요: ${badge.tribe_id}`
-  })
-
-  await add('컬렉션 존재', Boolean(badge.item_book_id), async () => {
-    const { data, error } = await supabase.from('item_books').select('id').eq('id', badge.item_book_id).maybeSingle()
-    if (error) return `DB 조회에 실패했어요: ${error.message}`
-    return data ? null : `item_book_id에 해당하는 컬렉션이 없어요: ${badge.item_book_id}`
-  })
-
-  const checkinNames = badge.condition_json?.checkin_badge_count?.checkin_badge_names
-  await add('체크인 배지 이름 목록', Array.isArray(checkinNames) && checkinNames.length > 0, async () => {
-    // 어드민 API와 같은 함수를 그대로 쓴다(조회 자체가 실패하면 함수가 통과로 본다 — 발급 시점이 안전망이다).
-    return findCheckinBadgeNamesNotFoundError(badge.condition_json ?? null, supabase)
-  })
-
-  return { checks, errors }
+  return runBadgeDbChecks({ supabase, badge })
 }
 
 async function uploadFile(storage, filePath, buffer, contentType, label) {
@@ -283,21 +202,8 @@ export async function undoRegistration({ supabase, record, dryRun }) {
     throw new Error(`이 배지는 에이전트 등록(image_source=${AGENT_IMAGE_SOURCE})이 아니라서 지우지 않아요(현재 값: ${row.image_source ?? '없음'}).`)
   }
 
-  const references = []
-  if (row) {
-    for (const { table, column, effect, isArray } of ALL_UNDO_REFERENCES) {
-      const query = supabase.from(table).select(column, { count: 'exact', head: true })
-      const { count, error } = await (isArray ? query.contains(column, [badgeId]) : query.eq(column, badgeId))
-      if (error) throw new Error(`${table}.${column} 참조를 확인하지 못해서 중단했어요(확인 없이 지우지 않아요): ${error.message}`)
-      if (count && count > 0) references.push({ table, column, effect, count })
-    }
-    if (references.length > 0) {
-      const detail = references.map((r) => `${r.table}.${r.column} ${r.count}건(${r.effect})`).join(', ')
-      throw new Error(
-        `이미 사용자 데이터나 다른 항목의 연결이 붙어서 되돌리지 않고 중단했어요 — ${detail}. 삭제 대신 어드민에서 배지를 소프트 삭제해 주세요.`
-      )
-    }
-  }
+  // 참조 확인(붙어 있으면 Error로 중단)은 `registerChecks/references.ts`의 `findBadgeUndoReferences`다.
+  const references = row ? await findBadgeUndoReferences(supabase, badgeId) : []
 
   const result = { badgeId, rowFound: Boolean(row), references, rowDeleted: false, filesRemoved: false, warnings: [] }
   if (dryRun) return result

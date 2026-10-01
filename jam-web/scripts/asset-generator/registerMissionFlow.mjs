@@ -1,14 +1,14 @@
 /**
  * JAM! 에셋 제너레이터 미션 등록 — DB 읽기 검사·등록·되돌림·명령 실행 흐름 (티켓 20260925_1412)
  *
- * 배지판(`registerFlow.mjs`, 수정 금지)의 미션 버전이다. Supabase 클라이언트와 WebP 변환기·UUID 생성기·
+ * 배지판(`registerFlow.mjs`)의 미션 버전이다. Supabase 클라이언트와 WebP 변환기·UUID 생성기·
  * 시각 함수를 인자로 받아, 스텁으로 순서와 실패 처리를 검증할 수 있게 했다
  * (`__tests__/registerMissionFlow.test.ts`). 실제 클라이언트를 만드는 곳은 `register-mission.mjs` 하나뿐이다.
  * 배지판에서는 `STORAGE_BUCKET`·`writeRegistrationFiles`(내용과 무관한 부품)만 가져오고, 배지 전용으로 묶인
  * 업로드·삭제 보조 함수(비공개)는 여기에 다시 적었다.
  *
  * ## 등록 순서와 실패 처리 (배지와 같다)
- * 1. 묶음 검증 → DB 읽기 검사(제목 중복·보상 배지·조건 배지·조건 지점 존재) — 하나라도 실패하면 아무것도 쓰지 않는다.
+ * 1. 묶음 검증 → DB 읽기 검사(제목 중복·보상 배지·조건 배지·조건 지점 존재 — `src/lib/admin/registerChecks/mission.ts`) — 하나라도 실패하면 아무것도 쓰지 않는다.
  * 2. 새 미션 id를 미리 정한다(이미지 저장 경로에 쓰려고).
  * 3. 이미지 업로드(원본 PNG → WebP). 하나라도 실패하면 이미 올라간 파일을 지우고 끝낸다.
  * 4. 미션 행 insert. 실패하면 올라간 이미지 2개를 지우고 끝낸다.
@@ -18,6 +18,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { runMissionDbChecks as runMissionDbChecksImpl } from '../../src/lib/admin/registerChecks/mission'
+import {
+  MISSION_UNDO_REFERENCE_TABLES as UNDO_REFERENCE_TABLES,
+  findMissionUndoReferences,
+} from '../../src/lib/admin/registerChecks/references'
 import { STORAGE_BUCKET, writeRegistrationFiles } from './registerFlow.mjs'
 import {
   AGENT_IMAGE_SOURCE,
@@ -39,24 +44,10 @@ import {
 export { STORAGE_BUCKET }
 
 /**
- * 되돌림 전에 «이미 사용자 데이터가 붙었는지» 읽는 곳(테이블과 미션 id를 가진 컬럼). 티켓 20260925_1412.
- * 근거: `src/types/database.generated.ts`에서 `referencedRelation: "missions"`인 외래 키 6곳(2026-09-25 확인) —
- * 삭제 규칙은 `src/lib/admin/reference-guards.ts` 머리말(011·012·048·080·099)과 마이그레이션 158 참고.
- * - CASCADE(지우면 사용자 기록이 함께 사라짐): user_mission_completions · user_mission_participations · mission_rank_snapshots
- * - NO ACTION(지우면 삭제 자체가 실패): point_transactions.source_mission_id
- * - SET NULL(조용히 연결이 끊김): today_cards.mission_id · ranking_modes.target_mission_id
- * SET NULL 두 곳은 어드민 삭제 가드(`MISSION_REFERENCE_SOURCES`)에서 차단 사유가 아니지만, 이 스크립트의 되돌림은
- * «방금 등록한 미션이 아직 아무 데도 쓰이지 않았다»는 전제여서 하나라도 붙었으면 중단한다.
- * `mission_rank_snapshots`에는 `id` 컬럼이 없어서 조회는 각 표의 미션 id 컬럼으로 센다.
+ * 되돌림 전 참조 확인 목록의 원본은 `src/lib/admin/registerChecks/references.ts`의 `MISSION_UNDO_REFERENCE_TABLES`다
+ * (티켓 20261002_0827 — 서버도 같은 목록을 쓰게 옮겼다). 여기서는 기존 이름으로 다시 내보낸다.
  */
-export const UNDO_REFERENCE_TABLES = [
-  { table: 'user_mission_completions', column: 'mission_id' },
-  { table: 'user_mission_participations', column: 'mission_id' },
-  { table: 'mission_rank_snapshots', column: 'mission_id' },
-  { table: 'point_transactions', column: 'source_mission_id' },
-  { table: 'today_cards', column: 'mission_id' },
-  { table: 'ranking_modes', column: 'target_mission_id' },
-]
+export { UNDO_REFERENCE_TABLES }
 
 const errorMessage = (e) => (e instanceof Error ? e.message : String(e))
 
@@ -71,69 +62,11 @@ export function missionStoragePathsFor(missionId) {
 /**
  * DB를 읽어야 알 수 있는 검사를 돌린다(읽기 전용). `supabase`가 null이면 «건너뜀»으로 표시한다.
  * 반환: `{ checks: [{ label, status, detail }], errors: string[] }` — status는 통과·실패·건너뜀·해당 없음.
+ * 검사 본문은 `src/lib/admin/registerChecks/mission.ts`에 있다(티켓 20261002_0827). TS 함수를 그대로 다시 내보내지 않고 JS
+ * 래퍼를 두는 이유: 테스트의 호출이 TS 시그니처로 typecheck되면 손으로 만든 스텁이 통과하지 못한다.
  */
 export async function runMissionDbChecks({ supabase, mission }) {
-  const checks = []
-  const errors = []
-
-  const add = async (label, applicable, run) => {
-    if (!applicable) {
-      checks.push({ label, status: '해당 없음', detail: '' })
-      return
-    }
-    if (!supabase) {
-      checks.push({ label, status: '건너뜀', detail: '서비스 키(.env.local)가 없어 DB를 읽지 않았어요' })
-      return
-    }
-    let failure
-    try {
-      failure = await run()
-    } catch (e) {
-      failure = `DB 조회에 실패했어요: ${errorMessage(e)}`
-    }
-    if (failure) {
-      checks.push({ label, status: '실패', detail: failure })
-      errors.push(`${label}: ${failure}`)
-    } else {
-      checks.push({ label, status: '통과', detail: '' })
-    }
-  }
-
-  await add('제목 중복', true, async () => {
-    const { data, error } = await supabase.from('missions').select('id').eq('title', mission.title).limit(1)
-    if (error) return `DB 조회에 실패했어요: ${error.message}`
-    if (data && data.length > 0) {
-      return `같은 제목의 미션이 이미 있어요(id: ${data[0].id}). 기존 미션 갱신은 이 스크립트 범위 밖이라 중복으로 거절해요.`
-    }
-    return null
-  })
-
-  const rewardBadgeIds = mission.reward_badge_ids ?? []
-  await add('보상 배지 존재', rewardBadgeIds.length > 0, async () => {
-    const { data, error } = await supabase.from('badges').select('id').in('id', rewardBadgeIds).is('deleted_at', null)
-    if (error) return `DB 조회에 실패했어요: ${error.message}`
-    const found = new Set((data ?? []).map((row) => String(row.id).toLowerCase()))
-    const missing = rewardBadgeIds.filter((id) => !found.has(id.toLowerCase()))
-    return missing.length === 0 ? null : `reward_badge_ids에 해당하는 배지가 없거나 삭제됐어요: ${missing.join(', ')}`
-  })
-
-  // 조건 값 검증(`checkMissionConditionValue`)은 UUID 형식만 본다 — 실제 행이 있는지는 DB를 읽어야 안다.
-  // 없는 배지·지점을 가리키면 그 미션은 영원히 달성되지 않는다(티켓 20260905_1327).
-  const conditionBadgeId = mission.mission_type === 'item_collect' ? mission.condition_json?.badge_id : null
-  await add('조건 배지 존재', typeof conditionBadgeId === 'string', async () => {
-    const { data, error } = await supabase.from('badges').select('id').eq('id', conditionBadgeId).is('deleted_at', null).maybeSingle()
-    if (error) return `DB 조회에 실패했어요: ${error.message}`
-    return data ? null : `condition_json.badge_id에 해당하는 배지가 없거나 삭제됐어요: ${conditionBadgeId}`
-  })
-
-  const conditionPoiId = mission.mission_type === 'checkin' ? mission.condition_json?.poi_id : null
-  await add('조건 지점 존재', typeof conditionPoiId === 'string', async () => {
-    const { data, error } = await supabase.from('poi').select('id').eq('id', conditionPoiId).maybeSingle()
-    if (error) return `DB 조회에 실패했어요: ${error.message}`
-    return data ? null : `condition_json.poi_id에 해당하는 지점이 없어요: ${conditionPoiId}`
-  })
-
-  return { checks, errors }
+  return runMissionDbChecksImpl({ supabase, mission })
 }
 
 async function uploadFile(storage, filePath, buffer, contentType, label) {
@@ -266,20 +199,8 @@ export async function undoMissionRegistration({ supabase, record, dryRun }) {
     throw new Error(`이 미션은 에이전트 등록(image_source=${AGENT_IMAGE_SOURCE})이 아니라서 지우지 않아요(현재 값: ${row.image_source ?? '없음'}).`)
   }
 
-  const references = []
-  if (row) {
-    for (const { table, column } of UNDO_REFERENCE_TABLES) {
-      const { count, error } = await supabase.from(table).select(column, { count: 'exact', head: true }).eq(column, missionId)
-      if (error) throw new Error(`${table} 참조를 확인하지 못해서 중단했어요(확인 없이 지우지 않아요): ${error.message}`)
-      if (count && count > 0) references.push({ table, count })
-    }
-    if (references.length > 0) {
-      const detail = references.map((r) => `${r.table} ${r.count}건`).join(', ')
-      throw new Error(
-        `이미 사용자 데이터가 붙어서 되돌리지 않고 중단했어요 — ${detail}. 삭제 대신 어드민에서 미션 노출을 숨김으로 바꿔 주세요.`
-      )
-    }
-  }
+  // 참조 확인(붙어 있으면 Error로 중단)은 `registerChecks/references.ts`의 `findMissionUndoReferences`다.
+  const references = row ? await findMissionUndoReferences(supabase, missionId) : []
 
   const result = { missionId, rowFound: Boolean(row), references, rowDeleted: false, filesRemoved: false, warnings: [] }
   if (dryRun) return result
