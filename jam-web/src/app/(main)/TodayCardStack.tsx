@@ -3,10 +3,14 @@ import type { ComponentType, SVGProps } from 'react'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import type { TodayCardTemplateType } from '@/types/database'
 import { Card } from '@ds/components/cards/Card'
+import { LabelChip } from '@ds/components/cards/LabelChip'
 import SafeImage from '@/components/SafeImage'
 import RankingListRow from '@/components/ranking/RankingListRow'
 import TodayCardTracker from './TodayCardTracker'
+import TodayCard, { isRenderedShape } from '@/components/today/TodayCard'
 import { formatRankingMetricValue } from '@/lib/ranking/format'
+import { toCardView } from '@/lib/today/cardView'
+import { drawnShape } from '@/lib/today/shape'
 import { d } from '@/lib/i18n'
 import {
   MedalIcon,
@@ -40,14 +44,6 @@ const TemplateIcon: Record<TodayCardTemplateType, ComponentType<SVGProps<SVGSVGE
   drop_alert: PackageIcon,
   editorial_article: NewspaperIcon,
   ranking_board: RankingIcon,
-}
-
-function TemplateChip({ card }: { card: TodayCardWithHref }) {
-  return (
-    <span className="inline-flex items-center text-[length:var(--text-caption)] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text">
-      {templateLabel[card.template_type]}
-    </span>
-  )
 }
 
 /**
@@ -86,7 +82,7 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
   return (
     <Card
       tone="inverse"
-      className="overflow-hidden active:scale-[0.98] transition-transform duration-100"
+      className="overflow-hidden jam-press"
       style={{ padding: 0 }}
     >
       {/* 20260824_004: cover_image_url은 어드민 자유 입력이라 호스트를 알 수 없다.
@@ -99,7 +95,7 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
       />
       <div className="p-[var(--spacing-24)]">
         <div className="flex items-center gap-2 mb-2">
-          <TemplateChip card={card} />
+          <LabelChip>{templateLabel[card.template_type]}</LabelChip>
           {card.template_type === 'location_trend' && card.region_label && (
             <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] text-text-inverse/60">
               <PinIcon className="w-3 h-3" />{card.region_label}
@@ -122,9 +118,9 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
 /** 배지목록형 — 배지 여러 개를 가로 갤러리로 나열 */
 function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
   return (
-    <Card tone="inverse" className="active:scale-[0.98] transition-transform duration-100">
+    <Card tone="inverse" className="jam-press">
       <div className="flex items-center gap-2 mb-2">
-        <TemplateChip card={card} />
+        <LabelChip>{templateLabel[card.template_type]}</LabelChip>
         {card.region_label && (
           <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] text-text-inverse/60">
             <PinIcon className="w-3 h-3" />{card.region_label}
@@ -167,7 +163,7 @@ function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
 function ShortcutCard({ card }: { card: TodayCardWithHref }) {
   const Icon = TemplateIcon[card.template_type]
   return (
-    <Card tone="inverse" className="p-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
+    <Card tone="inverse" className="p-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] jam-press">
       <div className="w-11 h-11 rounded-[var(--radius-cards)] bg-black/[0.04] flex items-center justify-center shrink-0">
         <Icon className="w-5 h-5 text-text-inverse/60" />
       </div>
@@ -198,7 +194,7 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
   }
 
   return (
-    <article className="relative rounded-[var(--radius-cards)] overflow-hidden aspect-[4/5] active:scale-[0.98] transition-transform duration-100 bg-surface-inverse">
+    <article className="relative rounded-[var(--radius-cards)] overflow-hidden aspect-[4/5] jam-press bg-surface-inverse">
       <SafeImage
         src={cover}
         alt={card.title}
@@ -209,7 +205,7 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
       {/* 흑백 스크림 — 사진 위 텍스트 가독성 확보용 기능적 처리(브랜드 그라데이션 아님, 컬러 도입 없음) */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-[var(--spacing-24)] pt-10 pb-[var(--spacing-24)]">
         <div className="mb-2">
-          <TemplateChip card={card} />
+          <LabelChip>{templateLabel[card.template_type]}</LabelChip>
         </div>
         <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-white">{card.title}</h3>
         {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-white/80 mt-1">{card.subtitle}</p>}
@@ -224,8 +220,8 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
 /** 기타 — 위 4종에 안 맞는 콘텐츠를 위한 기본형(이미지 없는 담백한 카드) */
 function OtherCard({ card }: { card: TodayCardWithHref }) {
   return (
-    <Card tone="inverse" className="active:scale-[0.98] transition-transform duration-100">
-      <div className="mb-2"><TemplateChip card={card} /></div>
+    <Card tone="inverse" className="jam-press">
+      <div className="mb-2"><LabelChip>{templateLabel[card.template_type]}</LabelChip></div>
       <h3 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{card.title}</h3>
       {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
       {getDescription(card) && (
@@ -277,7 +273,7 @@ function RankingListCard({
   const isMissionTarget = ranking?.metricType === 'mission_progress'
   const header = (
     <>
-      <div className="mb-2"><TemplateChip card={card} /></div>
+      <div className="mb-2"><LabelChip>{templateLabel[card.template_type]}</LabelChip></div>
       <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{card.title}</h3>
       {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
       {getDescription(card) && (
@@ -294,7 +290,7 @@ function RankingListCard({
         // ranking_list 카드는 클릭이 행별 링크(유저 프로필)에서 일어나므로 카드 단위
         // 클릭은 세지 않는다(노출만 추적, 티켓 20260924_0004).
         <TodayCardTracker cardId={card.id} trackClick={false}>
-          <Link href={card.resolved_href} className="block active:scale-[0.98] transition-transform duration-100">
+          <Link href={card.resolved_href} className="block jam-press">
             {header}
           </Link>
         </TodayCardTracker>
@@ -340,6 +336,9 @@ function CardBody({ card }: { card: TodayCardWithHref }) {
  * 투데이 카드 스택 (홈 화면 최상단). 카드 0개면 아무것도 렌더링하지 않는다.
  * layout_type에 따라 서로 다른 UI로 렌더링(콘텐츠 종류인 template_type과는 별개 축).
  * 카드 클릭 시 resolved_href 로 이동 (editorial_article은 /today/[id]).
+ *
+ * 모양(`shape`)이 저장된 카드 중 새 틀(`components/today`)이 그리는 모양(지금은 `brief`)은 새 틀로 그린다(티켓 20261001_1458).
+ * 그 밖의 카드는 위 옛 렌더러가 그린다 — 조각 b7이 옛 카드까지 새 모양으로 전환하고 옛 렌더러를 지운다.
  */
 export default function TodayCardStack({
   cards,
@@ -366,23 +365,38 @@ export default function TodayCardStack({
       </div>
 
       <div className="flex flex-col gap-[var(--spacing-16)]">
-        {cards.map((card) =>
+        {cards.map((card) => {
+          // 새 틀로 그릴지 한 곳에서 정한다(티켓 20261001_1458). 그려질 모양(`drawnShape`)이 없으면(`shape`가 없는 옛 카드 + 전환 상수가
+          // 꺼진 동안) 옛 렌더러다. 있으면 표시 데이터의 모양이 새 틀이 그리는 모양(`RENDERED_SHAPES`)일 때만 새 틀로 간다 — 표시 데이터의
+          // 모양을 보는 이유는 기록 모양(`events.ts`)과 같은 규칙(타일 0개 `list` → `brief`)을 적용하려는 것이다('화면 모양 = 기록 모양').
+          // 새 틀은 표시 데이터에 계측 정보가 있어야 트래커·링크를 그리므로 미리보기(`preview`)면 싣지 않는다.
+          const shape = drawnShape(card)
+          const view = shape ? toCardView(card, { tracking: !preview }) : null
+          if (view && isRenderedShape(view.shape)) return <TodayCard key={card.id} view={view} />
+
+          // 아래는 옛 렌더러다(조각 b7에서 지운다).
           // ranking_list는 행마다 자체 <Link>(유저 프로필)를 가지므로 공통 카드 래핑
           // <Link>를 건너뛴다 — 중첩 앵커 방지(RankingListCard 주석 참고).
-          card.layout_type === 'ranking_list' ? (
+          return card.layout_type === 'ranking_list' ? (
             <RankingListCard key={card.id} card={card} currentUserId={currentUserId} preview={preview} />
           ) : preview ? (
             <div key={card.id} className="block">
               <CardBody card={card} />
             </div>
           ) : (
-            <TodayCardTracker key={card.id} cardId={card.id} contentTypeId={card.content_type_id} templateType={card.template_type}>
+            <TodayCardTracker
+              key={card.id}
+              cardId={card.id}
+              contentTypeId={card.content_type_id}
+              templateType={card.template_type}
+              shape={shape}
+            >
               <Link href={card.resolved_href} className="block">
                 <CardBody card={card} />
               </Link>
             </TodayCardTracker>
           )
-        )}
+        })}
       </div>
     </section>
   )

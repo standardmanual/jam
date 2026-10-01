@@ -8,6 +8,7 @@
  * 3. 기존 반환 필드(`resolved_href`·`resolved_badges`·`resolved_ranking`)는 그대로고,
  *    미션 소개 카드의 노출 판정(없는 미션은 걸러지고, 미션 행이 하나도 없으면 그대로 둔다)이 이전과 같다.
  * 4. 새 조회가 실패해도 카드는 사라지지 않는다.
+ * 5. 공개 전(시작 시각 전)·비활성 컬렉션은 `resolved_collection`이 null이다 — 컬렉션 화면과 같은 공개 판정을 쓴다(티켓 20261001_1458).
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/cards-resources.test.ts
  */
@@ -20,15 +21,48 @@ const fx = vi.hoisted(() => ({
   errors: {} as Record<string, { message: string } | null>,
   /** 읽기 기록: 테이블 이름 */
   reads: [] as string[],
+  /** `item_books` 조회에 걸린 `or` 조건 문자열 */
+  itemBookOrFilters: [] as string[],
 }))
+
+/**
+ * `item_books`에 걸린 `eq`·`or` 조건을 행에 실제로 적용한다 — 공개 판정(`applyLaunchedItemBookFilter`)이 걸러내는지 보려는 것이다.
+ * 다른 테이블의 조건은 따지지 않는다(이 파일의 기존 시험은 조건 없이 행을 그대로 돌려받는 전제다).
+ * `or`는 `칸.is.null`·`칸.lte.값` 조각만 해석한다.
+ */
+function matchesOr(row: Row, expression: string): boolean {
+  return expression.split(',').some((clause) => {
+    const [column, op, ...rest] = clause.split('.')
+    const value = rest.join('.')
+    const cell = row[column] as string | null | undefined
+    if (op === 'is' && value === 'null') return cell == null
+    if (op === 'lte') return cell != null && new Date(cell).getTime() <= new Date(value).getTime()
+    throw new Error(`테스트가 해석하지 못하는 or 조건: ${clause}`)
+  })
+}
 
 function fakeSupabase() {
   const from = (table: string) => {
     fx.reads.push(table)
     const builder: Record<string, unknown> = {}
-    for (const op of ['select', 'eq', 'lte', 'gte', 'overlaps', 'order', 'in', 'is']) builder[op] = () => builder
+    const filters: ((row: Row) => boolean)[] = []
+    for (const op of ['select', 'lte', 'gte', 'overlaps', 'order', 'in', 'is']) builder[op] = () => builder
+    builder.eq = (column: string, value: unknown) => {
+      if (table === 'item_books') filters.push((row) => row[column] === value)
+      return builder
+    }
+    builder.or = (expression: string) => {
+      if (table === 'item_books') {
+        fx.itemBookOrFilters.push(expression)
+        filters.push((row) => matchesOr(row, expression))
+      }
+      return builder
+    }
     builder.then = (resolve: (v: unknown) => void) =>
-      Promise.resolve({ data: fx.tables[table] ?? [], error: fx.errors[table] ?? null }).then(resolve)
+      Promise.resolve({
+        data: (fx.tables[table] ?? []).filter((row) => filters.every((f) => f(row))),
+        error: fx.errors[table] ?? null,
+      }).then(resolve)
     return builder
   }
   return { from }
@@ -93,12 +127,18 @@ function missionRow(id: string, overrides: Row = {}): Row {
   }
 }
 
+/** 공개된 컬렉션 행(활성, 공개 시각 없음). 필요한 칸만 덮어쓴다 */
+function bookRow(id: string, name: string, overrides: Row = {}): Row {
+  return { id, name, is_active: true, valid_from: null, valid_until: null, ...overrides }
+}
+
 const NOW = new Date('2026-10-05T03:00:00Z')
 
 beforeEach(() => {
   fx.tables = {}
   fx.errors = {}
   fx.reads = []
+  fx.itemBookOrFilters = []
 })
 
 describe('getTodayCards — 표시 데이터용 자원 값', () => {
@@ -108,7 +148,7 @@ describe('getTodayCards — 표시 데이터용 자원 값', () => {
       cardRow({ id: 'b', template_type: 'itembook_milestone', item_book_id: 'book1' }),
     ]
     fx.tables.missions = [missionRow('m1')]
-    fx.tables.item_books = [{ id: 'book1', name: '한강 컬렉션' }]
+    fx.tables.item_books = [bookRow('book1', '한강 컬렉션')]
     fx.tables.badges = [
       { id: 'i1', item_book_id: 'book1', type: 'item', drop_excluded: false },
       { id: 'i2', item_book_id: 'book1', type: 'item', drop_excluded: false },
@@ -157,8 +197,8 @@ describe('getTodayCards — 표시 데이터용 자원 값', () => {
     ]
     fx.tables.missions = [missionRow('m1'), missionRow('m2')]
     fx.tables.item_books = [
-      { id: 'book1', name: '컬렉션 1' },
-      { id: 'book2', name: '컬렉션 2' },
+      bookRow('book1', '컬렉션 1'),
+      bookRow('book2', '컬렉션 2'),
     ]
 
     await getTodayCards('u1', null, NOW)
@@ -231,6 +271,54 @@ describe('getTodayCards — 미션 소개 카드 노출 판정은 이전과 같�
   })
 })
 
+describe('getTodayCards — 컬렉션은 공개된 것만 싣는다 (티켓 20261001_1458)', () => {
+  const milestoneCard = () => cardRow({ id: 'a', template_type: 'itembook_milestone', item_book_id: 'book1' })
+
+  it('컬렉션 조회에 공개 조건(활성 + 시작 시각이 없거나 지금 이전)을 기준 시각으로 건다', async () => {
+    fx.tables.today_cards = [milestoneCard()]
+    fx.tables.item_books = [bookRow('book1', '한강 컬렉션')]
+
+    await getTodayCards('u1', null, NOW)
+
+    expect(fx.itemBookOrFilters).toEqual([`valid_from.is.null,valid_from.lte.${NOW.toISOString()}`])
+  })
+
+  it('비활성 컬렉션은 카드는 남고 resolved_collection이 null이다', async () => {
+    fx.tables.today_cards = [milestoneCard()]
+    fx.tables.item_books = [bookRow('book1', '숨긴 컬렉션', { is_active: false })]
+
+    const cards = await getTodayCards('u1', null, NOW)
+
+    expect(cards.map((c) => c.id)).toEqual(['a'])
+    expect(cards[0].resolved_collection).toBeNull()
+  })
+
+  it('공개 시각이 아직 오지 않은 컬렉션은 resolved_collection이 null이다', async () => {
+    fx.tables.today_cards = [milestoneCard()]
+    fx.tables.item_books = [bookRow('book1', '곧 공개', { valid_from: '2026-10-06T00:00:00Z' })]
+
+    const [card] = await getTodayCards('u1', null, NOW)
+
+    expect(card.resolved_collection).toBeNull()
+  })
+
+  it('공개 시각이 지났으면 싣는다(경계값 포함), 기간이 끝난 컬렉션도 공개된 것이라 싣는다', async () => {
+    fx.tables.today_cards = [
+      milestoneCard(),
+      cardRow({ id: 'b', template_type: 'itembook_milestone', item_book_id: 'book2' }),
+    ]
+    fx.tables.item_books = [
+      bookRow('book1', '지금 공개', { valid_from: NOW.toISOString() }),
+      bookRow('book2', '기간 끝난 컬렉션', { valid_from: '2026-01-01T00:00:00Z', valid_until: '2026-09-01T00:00:00Z' }),
+    ]
+
+    const cards = await getTodayCards('u1', null, NOW)
+
+    expect(cards[0].resolved_collection?.name).toBe('지금 공개')
+    expect(cards[1].resolved_collection?.name).toBe('기간 끝난 컬렉션')
+  })
+})
+
 describe('getTodayCards — 새 조회가 실패해도 카드는 사라지지 않는다', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -248,7 +336,7 @@ describe('getTodayCards — 새 조회가 실패해도 카드는 사라지지 �
 
   it('컬렉션 아이템 조회만 실패하면 이름은 싣고 아이템 수는 null이다', async () => {
     fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'itembook_milestone', item_book_id: 'book1' })]
-    fx.tables.item_books = [{ id: 'book1', name: '한강 컬렉션' }]
+    fx.tables.item_books = [bookRow('book1', '한강 컬렉션')]
     fx.errors.badges = { message: 'boom' }
 
     const [card] = await getTodayCards('u1', null, NOW)
@@ -258,7 +346,7 @@ describe('getTodayCards — 새 조회가 실패해도 카드는 사라지지 �
 
   it('아이템 배지가 하나도 없는 컬렉션은 아이템 수가 0이다', async () => {
     fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'itembook_milestone', item_book_id: 'book1' })]
-    fx.tables.item_books = [{ id: 'book1', name: '빈 컬렉션' }]
+    fx.tables.item_books = [bookRow('book1', '빈 컬렉션')]
 
     const [card] = await getTodayCards('u1', null, NOW)
 

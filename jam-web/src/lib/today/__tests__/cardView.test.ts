@@ -308,9 +308,10 @@ describe('toCardView — 표시 데이터', () => {
     expect(toCardView(makeCard(), { tracking: false }).tracking).toBeUndefined()
   })
 
-  it('계측 정보는 카드 ID·유형 ID·그려진 모양을 하나로 묶는다', () => {
+  it('계측 정보는 카드 ID·유형 ID·템플릿·그려진 모양을 하나로 묶는다', () => {
     const view = toCardView(makeCard({ shape: 'poster' }), { tracking: true })
-    expect(view.tracking).toEqual({ cardId: 'card-1', contentTypeId: 'T05', shape: 'poster' })
+    expect(view.tracking).toEqual({ cardId: 'card-1', contentTypeId: 'T05', templateType: 'badge_spotlight', shape: 'poster' })
+    expect(toCardView(makeCard({ template_type: 'drop_alert', shape: 'brief' }), { tracking: true }).tracking?.templateType).toBe('drop_alert')
     expect(toCardView(makeCard({ content_type_id: null }), { tracking: true }).tracking?.contentTypeId).toBeNull()
   })
 
@@ -525,6 +526,68 @@ describe('toCardView — 표시 데이터', () => {
     it('등급이 없는 무한레벨형 배지 하나는 희귀도가 null이다', () => {
       const view = toCardView(makeCard({ layout_type: 'shortcut', resolved_badges: [badge('a', { rarity: null })] }))
       expect(view.rarity).toBeNull()
+    })
+  })
+
+  describe('brief 썸네일 (64px 칸, 티켓 20261001_1458)', () => {
+    const briefBadgeCard = (badges: ResolvedBadge[], overrides: Partial<TodayCardWithHref> = {}) =>
+      makeCard({ layout_type: 'shortcut', cover_image_url: null, resolved_badges: badges, ...overrides })
+
+    it('JAM! 배지가 하나이고 그림이 있으면 그 그림이 썸네일이다(보유한 배지는 컬러)', () => {
+      const view = toCardView(briefBadgeCard([badge('a', { earned: true })]))
+      expect(view).toMatchObject({ shape: 'brief', thumbnailUrl: 'https://cdn.example/a.png' })
+      expect(view).not.toHaveProperty('thumbnailDimmed')
+    })
+
+    it('유저가 갖지 않은 배지는 흑백(thumbnailDimmed)이다', () => {
+      const view = toCardView(briefBadgeCard([badge('a', { earned: false })]))
+      expect(view).toMatchObject({ thumbnailUrl: 'https://cdn.example/a.png', thumbnailDimmed: true })
+    })
+
+    it('배지 그림이 없으면(null·빈 값) 썸네일 키가 없다 — 그리는 쪽이 자원 아이콘을 그린다', () => {
+      expect(toCardView(briefBadgeCard([badge('a', { image_url: null })]))).not.toHaveProperty('thumbnailUrl')
+      expect(toCardView(briefBadgeCard([badge('a', { image_url: '' })]))).not.toHaveProperty('thumbnailUrl')
+    })
+
+    it('배지가 여러 개이면 썸네일이 없다(여러 개는 list가 맞다)', () => {
+      const view = toCardView(briefBadgeCard([badge('a'), badge('b')], { shape: 'brief' }))
+      expect(view.shape).toBe('brief')
+      expect(view).not.toHaveProperty('thumbnailUrl')
+    })
+
+    it('커버와 미션 이미지는 썸네일로 쓰지 않는다', () => {
+      const cover = toCardView(makeCard({ layout_type: 'shortcut', cover_image_url: 'https://cdn.example/cover.png' }))
+      expect(cover.shape).toBe('brief')
+      expect(cover).not.toHaveProperty('thumbnailUrl')
+      const mission = toCardView(
+        makeCard({
+          template_type: 'mission_spotlight',
+          layout_type: 'shortcut',
+          mission_id: 'm1',
+          cover_image_url: null,
+          resolved_mission: {
+            starts_at: '2026-10-01T00:00:00+09:00',
+            ends_at: null,
+            reward_points: null,
+            reward_badge_count: 0,
+            image_url: 'https://cdn.example/mission.png',
+          },
+        }),
+      )
+      expect(mission.shape).toBe('brief')
+      expect(mission).not.toHaveProperty('thumbnailUrl')
+    })
+
+    it('JAM! 배지 자원이 아니면 배지가 하나 걸려 있어도 썸네일이 없다', () => {
+      const view = toCardView(briefBadgeCard([badge('a')], { template_type: 'drop_alert' }))
+      expect(view).toMatchObject({ shape: 'brief', resource: 'drop' })
+      expect(view).not.toHaveProperty('thumbnailUrl')
+    })
+
+    it('이미지 모양에는 thumbnailUrl이 없다(imageUrl과 섞이지 않는다)', () => {
+      const view = toCardView(makeCard({ cover_image_url: null, resolved_badges: [badge('a')] }))
+      expect(view.shape).toBe('square')
+      expect(view).not.toHaveProperty('thumbnailUrl')
     })
   })
 })

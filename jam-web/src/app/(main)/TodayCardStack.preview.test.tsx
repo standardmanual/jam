@@ -115,11 +115,30 @@ describe('TodayCardStack — preview는 계측과 이동을 모두 끈다', () =
     }
   )
 
+  it('brief(새 틀): 트래커도 링크도 눌림도 없이 모양은 그대로 그리고, href가 있으면 끝 ›만 보인다 (티켓 20261001_1458)', () => {
+    const html = renderToStaticMarkup(<TodayCardStack cards={[makeCard({ shape: 'brief' })]} preview />)
+    expect(html).toContain('min-h-[88px]')
+    expect(html).toContain('성수동 신규 배지')
+    expect(html).not.toContain('data-tracker')
+    expect(html).not.toContain('href=')
+    expect(html).not.toContain('<a')
+    expect(html).not.toContain('jam-press')
+    expect(html).toContain('aria-hidden="true">›</span>')
+  })
+
+  it('brief(새 틀): 홈(기본값)은 같은 카드를 트래커로 감싸고 링크를 건다', () => {
+    const html = renderToStaticMarkup(<TodayCardStack cards={[makeCard({ shape: 'brief' })]} />)
+    expect(html).toContain('data-tracker="card-1"')
+    expect(html).toContain('data-track-click="true"')
+    expect(html).toContain('href="/badges"')
+  })
+
   it('여러 장을 한꺼번에 그려도 어느 카드의 트래커도 남지 않는다', () => {
     const cards = [
       makeCard({ id: 'a' }),
       makeCard({ id: 'b', layout_type: 'badge_gallery' }),
       { ...rankingCard('mission_progress'), id: 'c' },
+      makeCard({ id: 'd', shape: 'brief' }),
     ]
     const html = renderToStaticMarkup(<TodayCardStack cards={cards} preview />)
     expect(html).not.toContain('data-tracker')

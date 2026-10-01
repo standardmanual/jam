@@ -10,6 +10,7 @@ code:
   - "jam-web/src/app/(main)/TodayCardStack.tsx"
   - "jam-web/src/app/(main)/TodayCardTracker.tsx"
   - "jam-web/src/app/(main)/TodayStatusStrip.tsx"
+  - "jam-web/src/components/today"
   - "jam-web/src/app/(main)/OnboardingQuestCard.tsx"
   - "jam-web/src/lib/onboarding-quest/status.ts"
   - "jam-web/src/lib/onboarding-quest/screen-gate.ts"
@@ -217,7 +218,9 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 
 **커버 결정**: `cover_image_url`이 있으면 그 이미지를 그대로 쓴다. 없으면 첫 번째 배지 이미지를 커버로 올리고, 유저가 그 배지를 아직 갖지 않았으면 흑백으로 그린다. 둘 다 없거나 이미지를 불러오지 못하면 **커버 영역 자체를 그리지 않고** 템플릿 칩·제목·부제만 보인다(대체 이미지 없음, `SafeImage`가 빈 요소를 돌려준다). `mission_spotlight`는 배지를 쓰지 않으므로 커버를 넣지 않으면 글자만 있는 카드가 된다 — 그래서 운영 규칙은 미션 대표 이미지(`missions.image_url`)를 커버로 넣는다(content-automation PRD §8). 커버 주소는 어드민 자유 입력이라 호스트를 알 수 없으므로 `SafeImage`로 그려 잘못된 주소가 홈 전체를 깨뜨리지 않게 한다.
 
-근거: `jam-web/src/app/(main)/TodayCardStack.tsx`(`resolveCover`·레이아웃별 카드 컴포넌트), `jam-web/src/components/SafeImage.tsx`, `jam-web/supabase/migrations/049_today_cards_layout_type.sql`
+**눌림과 칩**: 카드를 누르는 동안의 반응은 공용 클래스 `.jam-press`(누르면 0.98배, 80ms)로 그리고, 동작 줄이기 설정에서는 눌림이 없다. 적용 범위는 이전과 같다(링크로 감싸는 카드와 현황 스트립 셀). 카드 좌상단 템플릿 칩은 MODULAR `LabelChip`이 그린다(모양은 이전과 같다)(티켓 [20261001_1458](../../../tickets/p2-normal/20261001_1458_UI_투데이-카드-틀과-짧은-소식-모양을-만든다.md)).
+
+근거: `jam-web/src/app/(main)/TodayCardStack.tsx`(`resolveCover`·레이아웃별 카드 컴포넌트), `jam-web/src/components/SafeImage.tsx`, `jam-web/src/components/transitions.css`(`.jam-press`), `jam-web/supabase/migrations/049_today_cards_layout_type.sql`
 
 레이아웃 값·라벨(`TODAY_LAYOUT_OPTIONS`):
 
@@ -232,18 +235,21 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | `ranking_list` | 순위 리스트형 — 랭킹보드 목록(포디엄 없음) |
 <!-- END generated: layouts -->
 
-### 카드 모양 판정 (코드만 있고 홈 화면에는 아직 쓰이지 않는다)
+### 카드 모양 판정 (모양이 `brief`로 저장된 카드는 새 틀로 그린다)
 
-카드 표현 형식 리뉴얼(티켓 20260930_1453)이 정한 새 카드 모양 5개(`hero`·`poster`·`square`·`brief`·`list`)를 고르는 규칙이다. 위 레이아웃 표의 옛 값을 새 모양으로 바꾸는 대응표는 같은 사실을 두 곳에 두지 않으려고 이 문서에 옮기지 않는다 — 전환 조각(1453-b7) 전까지는 티켓 20260930_1453 「확정 설계」 6절이 정본이고, b7에서 이 문서의 생성 구간으로 옮긴다.
+카드 표현 형식 리뉴얼(티켓 20260930_1453)이 정한 새 카드 모양 5개(`hero`·`poster`·`square`·`brief`·`list`)를 고르는 규칙이고, 그 모양을 그리는 새 틀(`components/today`)이다. 새 틀이 그리는 모양은 지금 `brief`(짧은 소식) 하나이고 나머지 모양은 조각 b3~b5가 하나씩 더한다. 위 레이아웃 표의 옛 값을 새 모양으로 바꾸는 대응표는 같은 사실을 두 곳에 두지 않으려고 이 문서에 옮기지 않는다 — 전환 조각(1453-b7) 전까지는 티켓 20260930_1453 「확정 설계」 6절이 정본이고, b7에서 이 문서의 생성 구간으로 옮긴다.
 
 - **모양 상수**: `CARD_SHAPES`(5개)·`IMAGE_CARD_SHAPES`(이미지가 있는 모양 `hero`·`poster`·`square`)와 술어 `isCardShape`·`isImageShape`다. `CARD_SHAPES`는 마이그레이션 206의 `today_cards_shape_check`와 같은 목록이다.
 - **판정 순서(`resolveShape`)**: ① 저장된 `today_cards.shape`가 모양 값이면 그대로 → ② `editorial_article`은 레이아웃과 상관없이 `hero` → ③ 옛 `layout_type` 대응표(알 수 없는 값은 큰 썸네일형으로 본다). `list`의 타일형·행형 구분(랭킹 카드는 행형)과 「타일이 0개인 타일형은 `brief`」는 표시 데이터가 정한다.
 - **전환 상수(`LEGACY_SHAPE_CUTOVER`)**: 지금 `false`다. 꺼져 있는 동안 새 모양으로 그려지는 카드는 `shape`가 저장된 카드뿐이고(`drawnShape`), `shape`가 없는 옛 카드는 그려질 모양이 `null`이라 옛 렌더러가 그린다. 어드민 미리보기용 표시 데이터는 늘 `resolveShape`로 모양을 정한다. 상수를 켜는 것은 b7이다.
+- **새 틀로 그리는 조건**: `TodayCardStack`이 카드마다 한 곳에서 가른다. 그려질 모양(`drawnShape`)이 `null`이면 옛 렌더러다. 아니면 표시 데이터(`toCardView`)를 만들어 그 모양이 새 틀이 그리는 모양 목록(`RENDERED_SHAPES`)에 있을 때만 새 틀(`TodayCard`)로 그리고, 없으면(`hero`·`poster`·`square`·`list`로 저장된 카드) 옛 렌더러가 그린다. 표시 데이터의 모양을 보는 이유는 기록 모양(§9)과 같은 규칙(타일이 0개인 `list`는 `brief`)을 적용해 「화면 모양 = 기록 모양」을 지키려는 것이다. 지금은 `shape`가 저장된 카드가 0장이고 모양을 저장하는 경로도 아직 없어 홈 화면은 그대로다. `brief` 외 모양이 저장된 카드가 b3~b5 전에 생기면 기록 모양은 저장된 모양이고 화면은 옛 렌더러가 되는 차이는 허용한다.
+- **새 틀의 계측 규칙**: 카드 틀(`CardFrame`)은 모양을 모르고 표시 데이터만 읽는다. 계측 정보(`tracking`)가 있으면 `TodayCardTracker`로 감싸고, `tracking`과 `href`가 모두 있으면 그 안에 블록 링크를 둔다(눌림 `.jam-press`와 키보드 포커스 윤곽선 2px·오프셋 2px·`--color-primary`는 이 링크에만 붙는다). `tracking`이 없으면(`TodayCardStack`에 `preview`를 넘기면 만들지 않는다) 트래커·링크·눌림이 없고, `href`가 있으면 끝 `›`만 보인다.
+- **`brief` 모양**: 흰 카드(최소 높이 88px)에 왼쪽 64px 칸(배지 썸네일, 없거나 로드에 실패하면 자원 아이콘)·칩 줄(라벨 칩 → 지역 핀 → 희귀도 칩)·제목 16px(2줄 말줄임)·필수 정보 14px(최대 2줄, 말줄임 없이 줄바꿈)·끝 `›`(`href`가 있을 때만)가 있다. 자원은 아이콘 모양으로만 구분한다(미션 과녁·드랍 상자·레시피 플라스크·JAM! 배지 메달·기사 신문·랭킹 막대·컬렉션 책, 자동 카드는 모래시계이고 지역 값이 있으면 핀). 지역 핀은 드랍 카드에서 칩 줄에 그리지 않는다(필수 정보 「장소」 줄이 같은 값을 낸다). 희귀도는 JAM! 배지 1개 카드에서 Rare·Epic·Mystic만 칩으로 보이고 Common·등급 없음은 칩이 없다. 미보유 배지 썸네일은 흑백, 유저 정보가 없는 미리보기는 컬러다.
 - **이미지에 제목 있음(`resolveTitleInImage`)**: 저장된 `title_in_image`가 `true`/`false`면 그 값이다. NULL(옛 카드)이면 미션 소개 카드이고 커버 주소가 연결 미션의 `image_url`과 같을 때만 `true`, 그 밖은 `false`다.
-- **표시 데이터(`toCardView`)**: 카드 행(서버 조회 결과)을 화면용 값 묶음으로 바꾼다. 카드 ID·활성 여부·노출 기간·정렬 순서·유저별 보유 여부 없이도 만들 수 있어서 홈 그리기와 어드민 미리보기가 같은 값으로 같은 카드를 그린다. 필수 값은 `shape`·`resource`(미션·드랍·레시피·배지·기사·랭킹·컬렉션·자동)·`title`이다. 계측 정보(카드 ID·유형 ID·그려진 모양)는 `tracking` 하나에 묶고, 이 값이 없으면 그리는 쪽이 트래커와 링크를 그리지 않는다. 필수 정보 줄(`buildFacts`)은 자원별로 최대 2줄이고 값이 없는 줄은 생략한다. 자원의 종료가 7일 이내면 「N일 남음」(내림), 24시간 이내면 「N시간 남음」(올림)이 기간 줄을 대신한다. 날짜는 KST 기준이다.
-- **조회**: `getTodayCards`가 표시 데이터에 필요한 값을 카드에 함께 싣는다 — `resolved_mission`(미션 소개 카드와 미션을 가리키는 자동 카드의 기간·보상·이미지), `resolved_collection`(컬렉션 소식 카드의 이름·아이템 수). 미션 행은 노출 판정과 같은 읽기를 쓰고 컬렉션은 카드 수와 상관없이 한 번에 읽는다. 기존 반환 필드는 그대로다.
+- **표시 데이터(`toCardView`)**: 카드 행(서버 조회 결과)을 화면용 값 묶음으로 바꾼다. 카드 ID·활성 여부·노출 기간·정렬 순서·유저별 보유 여부 없이도 만들 수 있어서 홈 그리기와 어드민 미리보기가 같은 값으로 같은 카드를 그린다. 필수 값은 `shape`·`resource`(미션·드랍·레시피·배지·기사·랭킹·컬렉션·자동)·`title`이다. 계측 정보(카드 ID·유형 ID·템플릿·그려진 모양)는 `tracking` 하나에 묶고, 이 값이 없으면 그리는 쪽이 트래커와 링크를 그리지 않는다. 필수 정보 줄(`buildFacts`)은 자원별로 최대 2줄이고 값이 없는 줄은 생략한다. 자원의 종료가 7일 이내면 「N일 남음」(내림), 24시간 이내면 「N시간 남음」(올림)이 기간 줄을 대신한다. 날짜는 KST 기준이다. `brief`에는 64px 칸에 그릴 배지 그림이 선택 값(`thumbnailUrl`)으로 있다 — JAM! 배지 카드에서 배지가 정확히 1개이고 그림이 있을 때만 싣고, 유저가 그 배지를 갖지 않았으면 `thumbnailDimmed`(흑백)가 함께 있다. 커버와 미션 이미지는 싣지 않는다(`imageUrl`은 「이미지가 있는 모양」 전용이다).
+- **조회**: `getTodayCards`가 표시 데이터에 필요한 값을 카드에 함께 싣는다 — `resolved_mission`(미션 소개 카드와 미션을 가리키는 자동 카드의 기간·보상·이미지), `resolved_collection`(컬렉션 소식 카드의 이름·아이템 수). 미션 행은 노출 판정과 같은 읽기를 쓰고 컬렉션은 카드 수와 상관없이 한 번에 읽는다. 컬렉션은 공개된 것(활성이고 공개 시각이 비었거나 지금 이전)만 싣는다 — 컬렉션 화면·목록 API와 같은 판정(`applyLaunchedItemBookFilter`)이라, 비활성이거나 공개 전인 컬렉션은 카드는 남고 `resolved_collection`이 NULL이라 이름·아이템 수가 보이지 않는다(종료 시각은 보지 않는다). 기존 반환 필드는 그대로다.
 
-근거: `jam-web/src/lib/today/shape.ts`, `jam-web/src/lib/today/cardView.ts`, `jam-web/src/lib/today/cards.ts`, `jam-web/supabase/migrations/206_today_cards_shape_and_events_card_shape.sql`, 티켓 20261001_1357
+근거: `jam-web/src/lib/today/shape.ts`, `jam-web/src/lib/today/cardView.ts`, `jam-web/src/lib/today/cards.ts`, `jam-web/src/components/today/`(`TodayCard.tsx`·`CardFrame.tsx`·`BriefCard.tsx`), `jam-web/src/app/(main)/TodayCardStack.tsx`, `jam-web/src/lib/itembook/visibility.ts`, `jam-web/supabase/migrations/206_today_cards_shape_and_events_card_shape.sql`, 티켓 20261001_1357·20261001_1458
 
 ## 7. 이동 목적지
 
@@ -306,17 +312,18 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | 이벤트 | 언제 | 어디로 |
 |---|---|---|
 | `impression` | 카드가 화면에 50% 이상 보였을 때. 같은 브라우저 세션에서 카드당 1회(`sessionStorage`) | `POST /api/today/events` |
-| `click` | 카드를 눌렀을 때. `ranking_list`는 세지 않는다(노출만) | `POST /api/today/events` + GA 이벤트 `today_card_click`(`card_id`·`content_type_id`·`template_type`) |
+| `click` | 카드를 눌렀을 때. `ranking_list`는 세지 않는다(노출만) | `POST /api/today/events` + GA 이벤트 `today_card_click`(`card_id`·`content_type_id`·`template_type`·`shape`) |
 
 - 전송은 `navigator.sendBeacon`을 먼저 쓰고, 안 되면 `fetch(keepalive)`로 보낸다. 실패는 조용히 무시한다.
 - 서버는 로그인 세션이 있어야 받고, 유저별 분당 60건을 넘으면 429다. 카드가 존재하고 활성이며 노출 기간 안일 때만 기록한다(아니면 400). `followup` 이벤트는 400으로 거부한다.
 - 저장(`today_card_events`)에는 카드 ID·기록 시점 유형 ID·기록 시점에 그려진 모양(`card_shape`)·이벤트 종류만 남고 **유저 식별자는 없다.** 유저 ID는 빈도 제한 판정에만 인스턴스 메모리에서 쓴다.
 - 그려진 모양은 노출 검증이 카드를 조회할 때 함께 읽은 값(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)으로 정한다(카드는 한 번만 조회). 저장된 `shape`가 있으면 그 모양이고, 배지가 없는 타일형 `list`는 화면처럼 `brief`로 기록한다. `shape`가 없는 옛 카드는 옛 렌더러로 그려지는 동안(전환 상수 `LEGACY_SHAPE_CUTOVER`가 꺼져 있는 동안) NULL이다.
+- GA `today_card_click`의 `shape`는 그 카드가 화면에 그려진 모양이다. 새 틀(`components/today`)은 표시 데이터의 `tracking.shape`를, 옛 렌더러는 그려질 모양(`drawnShape`)을 보내고 `shape`가 없는 옛 카드는 null이다. 기존 세 파라미터의 이름과 값은 그대로다. `/api/today/events`는 모양을 받지 않고 서버가 카드를 조회해 정한다.
 - 집계: `GET /api/admin/today/metrics?from=&to=`(기본 최근 7일, 어드민 읽기 토큰 허용)가 유형 ID별 노출·열람 수와 열람률(`types`)을 돌려주고, 그려진 모양별 노출·열람·후속 건수와 열람률(`byShape`)을 함께 돌려준다. `card_shape`가 NULL인 기록(모양 도입 전 기록, 전환 전 옛 카드)은 `byShape`에서 `unknown`으로 묶는다.
 - 기사 상세 화면·CTA 버튼·오늘의 현황 스트립은 이 계측 대상이 아니다.
 - 어드민 투데이의 미리보기(날짜 미리보기 모달, 카드 폼의 「홈 화면 미리보기」)는 계측 대상이 아니다. `TodayCardStack`에 `preview`를 넘기면 `TodayCardTracker`와 카드 링크(랭킹 카드는 순위 행 링크 포함)를 그리지 않아 노출·클릭 요청과 GA 이벤트가 나가지 않고, 눌러도 이동하지 않는다. 홈은 `preview` 없이 그려 계측이 그대로 동작한다.
 
-근거: `jam-web/src/app/(main)/TodayCardTracker.tsx`, `jam-web/src/lib/today/cardEventClient.ts`·`events.ts`, `jam-web/src/app/api/today/events/route.ts`, `jam-web/src/app/api/admin/today/metrics/route.ts`
+근거: `jam-web/src/app/(main)/TodayCardTracker.tsx`, `jam-web/src/lib/today/cardEventClient.ts`(`todayCardClickParams`)·`events.ts`, `jam-web/src/app/api/today/events/route.ts`, `jam-web/src/app/api/admin/today/metrics/route.ts`
 
 ## 10. 데이터
 

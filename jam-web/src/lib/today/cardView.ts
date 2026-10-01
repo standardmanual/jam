@@ -7,7 +7,7 @@
  * 이 값이 없으면 그리는 쪽이 트래커와 링크를 그리지 않는다(미리보기가 계측을 남기지 않게 하는 장치).
  *
  * 순수 파일이다: 서버 모듈을 값으로 불러오지 않는다(클라이언트 컴포넌트도 읽는다). `cards.ts`·`rankingDataSource.ts`는 타입만 가져온다.
- * 이 조각에서는 홈 화면이 이 값을 그리지 않는다(그리는 조각은 b2~b5).
+ * 홈 화면이 이 값을 그리는 모양은 `components/today`의 `RENDERED_SHAPES`가 정한다(조각 b2~b5가 하나씩 더한다).
  */
 import type { TodayCardWithHref } from './cards'
 import type { RankingBoardResult } from '@/lib/ranking/rankingDataSource'
@@ -174,12 +174,14 @@ export interface CardViewTile {
 }
 
 /**
- * 계측 정보 — 카드 ID·유형 ID·그려진 모양. 표시 데이터에 이 값이 없으면 그리는 쪽이 트래커와 링크를 그리지 않는다
+ * 계측 정보 — 카드 ID·유형 ID·템플릿·그려진 모양. 표시 데이터에 이 값이 없으면 그리는 쪽이 트래커와 링크를 그리지 않는다
  * (운영툴 미리보기가 노출·클릭 기록을 남기지 않게 하는 장치, 티켓 20260930_1645와 이어진다).
+ * 템플릿은 GA `today_card_click`의 `template_type`으로 보낸다(새 틀도 옛 렌더러와 같은 값을 보내야 해서 싣는다, 티켓 20261001_1458).
  */
 export interface CardViewTracking {
   cardId: string
   contentTypeId: string | null
+  templateType: TodayCardTemplateType
   shape: CardShape
 }
 
@@ -216,6 +218,14 @@ export interface ImageCardView extends CardViewBase {
 
 export interface BriefCardView extends CardViewBase {
   shape: 'brief'
+  /**
+   * 64px 칸에 그릴 배지 그림 — JAM! 배지가 정확히 1개이고 그림이 있을 때만 있다. 없으면 그리는 쪽이 자원 아이콘을 그린다.
+   * `imageUrl`을 쓰지 않는 이유: `imageUrl`은 「이미지가 있는 모양」(`isImageShape`, 이미지 제작 필요 신호의 단일 원천)의 값이라
+   * `brief`에 쓰면 그 판정과 섞인다. 커버(`cover_image_url`)와 미션 이미지는 썸네일로 쓰지 않는다.
+   */
+  thumbnailUrl?: string
+  /** 유저가 그 배지를 아직 갖지 않았을 때 true(흑백으로 그린다). 값이 없으면(유저 정보가 없는 미리보기) 컬러다. */
+  thumbnailDimmed?: true
 }
 
 /**
@@ -298,7 +308,12 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
   if (resource === 'badge' && singleBadge) base.rarity = singleBadge.rarity
   if (options.now) base.now = options.now.toISOString()
   if (options.tracking) {
-    base.tracking = { cardId: card.id, contentTypeId: card.content_type_id ?? null, shape }
+    base.tracking = {
+      cardId: card.id,
+      contentTypeId: card.content_type_id ?? null,
+      templateType: card.template_type,
+      shape,
+    }
   }
 
   if (shape === 'list') {
@@ -306,7 +321,15 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
     if (resource === 'ranking') view.ranking = card.resolved_ranking ?? null
     return view
   }
-  if (shape === 'brief') return { ...base, shape }
+  if (shape === 'brief') {
+    const view: BriefCardView = { ...base, shape }
+    // 64px 칸의 썸네일은 JAM! 배지 1개 카드의 배지 그림뿐이다(여러 개는 `list`가 맞다)
+    if (resource === 'badge' && singleBadge?.image_url) {
+      view.thumbnailUrl = singleBadge.image_url
+      if (!singleBadge.earned) view.thumbnailDimmed = true
+    }
+    return view
+  }
 
   // hero·poster·square — 커버가 있으면 커버, 없으면 첫 배지 그림(옛 카드가 올려 쓰던 규칙 그대로)
   const first = badges[0]

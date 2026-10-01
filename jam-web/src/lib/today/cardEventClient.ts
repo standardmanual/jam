@@ -56,3 +56,22 @@ export function createClickReporter(cardId: string, trackClick: boolean): (() =>
   if (!trackClick) return undefined
   return () => sendTodayCardEvent(cardId, 'click')
 }
+
+/**
+ * GA `today_card_click` 파라미터. `shape`는 그 카드가 화면에 그려진 모양이다(티켓 20261001_1458) — 새 틀은 표시 데이터의
+ * `tracking.shape`, 옛 렌더러는 `drawnShape`라서 옛 카드는 null이다. 값이 없는 칸은 빈 값이 아니라 null로 보낸다.
+ * 기존 파라미터(`card_id`·`content_type_id`·`template_type`)의 이름과 값은 그대로다.
+ */
+export function todayCardClickParams(card: {
+  cardId: string
+  contentTypeId?: string | null
+  templateType?: string
+  shape?: string | null
+}): { card_id: string; content_type_id: string | null; template_type: string | null; shape: string | null } {
+  return {
+    card_id: card.cardId,
+    content_type_id: card.contentTypeId ?? null,
+    template_type: card.templateType ?? null,
+    shape: card.shape ?? null,
+  }
+}

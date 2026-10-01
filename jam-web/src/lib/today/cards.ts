@@ -13,6 +13,7 @@ import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
 import { isMissionExposed, resolveMissionVisibility, type MissionVisibilityInput } from '@/lib/missions/visibility'
 import { computeRankingModeResult, type RankingBoardResult } from '@/lib/ranking/rankingDataSource'
 import { computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
+import { applyLaunchedItemBookFilter } from '@/lib/itembook/visibility'
 import { resourceOfTemplate } from './cardView'
 /**
  * 순수 함수라 서버 전용 의존이 없는 `targetHref.ts`로 옮겼다(티켓 20260911_1454) — 이 파일
@@ -128,7 +129,7 @@ export async function getTodayCards(
   const [badgesById, rankingByModeId, collectionsById] = await Promise.all([
     fetchBadgesById(supabase, cards.flatMap((c) => c.badge_ids ?? []), userId),
     fetchRankingBoardData(supabase, cards),
-    fetchCollectionsById(supabase, collectionIdsToResolve(cards)),
+    fetchCollectionsById(supabase, collectionIdsToResolve(cards), nowIso),
   ])
 
   return cards.map((card) => {
@@ -262,14 +263,20 @@ export async function fetchMissionsById(supabase: ServiceClient, missionIds: str
 /**
  * 컬렉션 이름과 아이템 수를 id 목록으로 한 번에 읽는다(컬렉션 한 개당 2번이 아니라 전체 2번).
  * 아이템 수는 컬렉션 목록 화면과 같은 기준(`computeBookCompletion`의 분모 — 드랍 제외 배지를 뺀 수)이다.
+ * 공개된 컬렉션만 싣는다 — 비활성이거나 공개 시각(`valid_from`) 전인 컬렉션은 맵에 없어 이름·아이템 수가 카드에 실리지 않는다
+ * (컬렉션 화면·목록 API와 같은 판정 `applyLaunchedItemBookFilter`, 티켓 20261001_1458). `nowIso`는 「지금」의 기준 시각이다.
  * 조회가 실패해도 카드 노출은 막지 않는다 — 이름을 못 읽으면 그 컬렉션은 빠지고, 수만 못 읽으면 `item_count`가 null이다.
  */
-export async function fetchCollectionsById(supabase: ServiceClient, bookIds: string[]): Promise<Map<string, ResolvedCollection>> {
+export async function fetchCollectionsById(
+  supabase: ServiceClient,
+  bookIds: string[],
+  nowIso: string,
+): Promise<Map<string, ResolvedCollection>> {
   const map = new Map<string, ResolvedCollection>()
   if (bookIds.length === 0) return map
 
   const [booksResult, badgesResult] = await Promise.all([
-    supabase.from('item_books').select('id, name').in('id', bookIds),
+    applyLaunchedItemBookFilter(supabase.from('item_books').select('id, name').in('id', bookIds), nowIso),
     supabase
       .from('badges')
       .select('id, item_book_id, type, drop_excluded')

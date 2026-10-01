@@ -6,6 +6,7 @@
  *    keepalive fetch 폴백, fetch 거부는 삼킨다. 페이로드는 `cardId`·`event`만 담는다
  * 2. 노출 임계값 0.5, `sessionStorage` 기반 중복 억제와 접근 예외 안전
  * 3. `createClickReporter` — `trackClick=false`면 클릭을 보내지 않는다
+ * 4. `todayCardClickParams` — GA `today_card_click` 파라미터에 그려진 모양(`shape`)이 실린다(티켓 20261001_1458)
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/cardEventClient.test.ts
  */
@@ -16,6 +17,7 @@ import {
   hasSeenImpression,
   markImpressionSeen,
   sendTodayCardEvent,
+  todayCardClickParams,
 } from '../cardEventClient'
 
 const CARD_ID = '11111111-1111-4111-8111-111111111111'
@@ -138,5 +140,27 @@ describe('createClickReporter', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ cardId: CARD_ID, event: 'click' })
+  })
+})
+
+describe('todayCardClickParams — GA today_card_click 파라미터 (티켓 20261001_1458)', () => {
+  it('기존 파라미터(card_id·content_type_id·template_type)는 그대로이고 그려진 모양(shape)이 더해진다', () => {
+    expect(
+      todayCardClickParams({ cardId: CARD_ID, contentTypeId: 'T05', templateType: 'drop_alert', shape: 'brief' }),
+    ).toEqual({ card_id: CARD_ID, content_type_id: 'T05', template_type: 'drop_alert', shape: 'brief' })
+  })
+
+  it('옛 렌더러의 카드는 그려진 모양이 없어(null·생략) shape가 null이다', () => {
+    expect(todayCardClickParams({ cardId: CARD_ID, contentTypeId: 'T05', templateType: 'drop_alert', shape: null }).shape).toBeNull()
+    expect(todayCardClickParams({ cardId: CARD_ID, contentTypeId: 'T05', templateType: 'drop_alert' }).shape).toBeNull()
+  })
+
+  it('값이 없는 칸은 undefined가 아니라 null로 보낸다', () => {
+    expect(todayCardClickParams({ cardId: CARD_ID })).toEqual({
+      card_id: CARD_ID,
+      content_type_id: null,
+      template_type: null,
+      shape: null,
+    })
   })
 })

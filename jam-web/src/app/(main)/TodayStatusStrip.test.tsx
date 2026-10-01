@@ -30,6 +30,18 @@ describe('TodayStatusStrip — 칩은 MODULAR LabelChip(티켓 20261001_1204)', 
     expect(html).not.toContain('px-2.5 py-1.5')
   })
 
+  it('셀의 눌림은 jam-press 하나이고 예전 눌림 문자열은 남지 않는다 (티켓 20261001_1458)', () => {
+    const html = renderToStaticMarkup(
+      <TodayStatusStrip
+        left={{ kind: 'strava_disconnected', href: '/strava' }}
+        right={{ kind: 'friend_activity', count: 2, href: '/feed', singleFriendName: null }}
+      />
+    )
+    expect(html).toContain('jam-press')
+    expect(html).not.toContain('active:scale-[0.98]')
+    expect(html).not.toContain('duration-100')
+  })
+
   it('오른쪽 셀이 없으면(none) 왼쪽 칩만 그린다', () => {
     const html = renderToStaticMarkup(
       <TodayStatusStrip
