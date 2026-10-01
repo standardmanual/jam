@@ -7,12 +7,15 @@
  *
  * 티켓 20261001_1158: 공개 시각 — 생성(`createRecipeWithSlots`), 예약 취소(`cancelScheduledRecipe`),
  * 시각 변경 가드(`assertValidFromChange`)를 함께 검증한다.
+ * 티켓 20261002_0710: 종료 시각 — 행 변환(`valid_until`)·생성 때 기간 확인·`assertValidPeriod`·종료된 레시피의
+ * 공개 시각 잠금을 함께 검증한다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/admin/__tests__/recipe-write.test.ts
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   assertValidFromChange,
+  assertValidPeriod,
   buildRecipeRow,
   cancelScheduledRecipe,
   createRecipeWithSlots,
@@ -176,6 +179,41 @@ describe('buildRecipeRow — 공개 시각(valid_from)', () => {
   })
 })
 
+describe('buildRecipeRow — 종료 시각(valid_until, 티켓 20261002_0710)', () => {
+  const NOW = new Date('2026-10-01T00:00:00Z')
+  const base = { name: '테스트 레시피', slots: [itemSlot([ITEM_A]), activitySlot([ACT])], reward_points: 10 }
+
+  it('제출하지 않으면 행에 valid_until 키를 넣지 않는다(수정 때 기존 값을 건드리지 않는다)', async () => {
+    const result = await buildRecipeRow(makeClient(), base, NOW)
+
+    expect(result.ok).toBe(true)
+    if (result.ok) expect('valid_until' in result.row).toBe(false)
+  })
+
+  it('시각이면 UTC ISO로, null·빈 값이면 null(종료 없음)로 행에 넣는다', async () => {
+    const timed = await buildRecipeRow(makeClient(), { ...base, valid_until: '2026-10-12T09:00:00+09:00' }, NOW)
+    const cleared = await buildRecipeRow(makeClient(), { ...base, valid_until: null }, NOW)
+    const blank = await buildRecipeRow(makeClient(), { ...base, valid_until: '' }, NOW)
+
+    expect(timed.ok && timed.row.valid_until).toBe('2026-10-12T00:00:00.000Z')
+    expect(cleared.ok && cleared.row.valid_until).toBeNull()
+    expect(blank.ok && blank.row.valid_until).toBeNull()
+  })
+
+  it('지난 시각도 받는다 — 저장하면 곧바로 내려간다', async () => {
+    const result = await buildRecipeRow(makeClient(), { ...base, valid_until: '2026-09-01T00:00:00Z' }, NOW)
+
+    expect(result.ok && result.row.valid_until).toBe('2026-09-01T00:00:00.000Z')
+  })
+
+  it('형식이 올바르지 않으면 거부한다', async () => {
+    const result = await buildRecipeRow(makeClient(), { ...base, valid_until: '2026-10-12 09:00' }, NOW)
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toContain('종료 시각 형식이 올바르지 않아요')
+  })
+})
+
 describe('createRecipeWithSlots — 행 + 슬롯 생성', () => {
   const NOW = new Date('2026-10-01T00:00:00Z')
   const body = {
@@ -268,6 +306,60 @@ describe('createRecipeWithSlots — 행 + 슬롯 생성', () => {
     expect(result).toMatchObject({ ok: false, status: 400 })
     expect(calls.recipeInserts).toHaveLength(0)
     expect(calls.slotInserts).toHaveLength(0)
+  })
+
+  it('공개 시각과 종료 시각을 함께 저장한다 (티켓 20261002_0710)', async () => {
+    const { client, calls } = makeWriteClient()
+
+    const result = await createRecipeWithSlots(
+      client,
+      { ...body, valid_from: '2026-10-05T09:00:00+09:00', valid_until: '2026-10-12T09:00:00+09:00' },
+      NOW
+    )
+
+    expect(result.ok).toBe(true)
+    expect(calls.recipeInserts[0].valid_from).toBe('2026-10-05T00:00:00.000Z')
+    expect(calls.recipeInserts[0].valid_until).toBe('2026-10-12T00:00:00.000Z')
+  })
+
+  it('종료 시각을 비우면 행에 valid_until을 넣지 않아 상시(DB 기본값 null)다', async () => {
+    const { client, calls } = makeWriteClient()
+
+    const result = await createRecipeWithSlots(client, body, NOW)
+
+    expect(result.ok).toBe(true)
+    expect('valid_until' in calls.recipeInserts[0]).toBe(false)
+  })
+
+  it('종료 시각이 공개 시각과 같거나 앞서면 400으로 거절하고 아무것도 저장하지 않는다', async () => {
+    const { client, calls } = makeWriteClient()
+
+    const same = await createRecipeWithSlots(
+      client,
+      { ...body, valid_from: '2026-10-05T09:00:00+09:00', valid_until: '2026-10-05T09:00:00+09:00' },
+      NOW
+    )
+    const before = await createRecipeWithSlots(
+      client,
+      { ...body, valid_from: '2026-10-05T09:00:00+09:00', valid_until: '2026-10-04T09:00:00+09:00' },
+      NOW
+    )
+
+    for (const result of [same, before]) {
+      expect(result).toMatchObject({ ok: false, status: 400 })
+      if (!result.ok) expect(result.error).toContain('종료 시각은 공개 시각보다 늦어야 해요')
+    }
+    expect(calls.recipeInserts).toHaveLength(0)
+    expect(calls.slotInserts).toHaveLength(0)
+  })
+
+  it('바로 공개(공개 시각 없음)에 종료 시각만 있으면 순서를 볼 일이 없어 저장한다', async () => {
+    const { client, calls } = makeWriteClient()
+
+    const result = await createRecipeWithSlots(client, { ...body, valid_until: '2026-10-12T09:00:00+09:00' }, NOW)
+
+    expect(result.ok).toBe(true)
+    expect(calls.recipeInserts[0].valid_until).toBe('2026-10-12T00:00:00.000Z')
   })
 
   it('슬롯 저장이 실패하면 방금 만든 행을 지우고 500을 돌려준다(반쪽 상태 방지)', async () => {
@@ -382,13 +474,16 @@ describe('cancelScheduledRecipe — 공개 전 취소(= 삭제)', () => {
     expect(state.deleteGt).toEqual([NOW.toISOString()])
   })
 
-  it('공개 시각이 지난 레시피는 409로 거절하고 지우지 않는다', async () => {
+  it('공개 시각이 지난 레시피는 409로 거절하고 지우지 않는다 — 내리는 길로 종료 시각을 안내한다', async () => {
     state.recipes.set(ID, PAST)
 
     const result = await cancelScheduledRecipe(makeCancelClient(), ID, NOW)
 
     expect(result).toMatchObject({ ok: false, status: 409 })
-    if (!result.ok) expect(result.error).toContain('이미 공개된')
+    if (!result.ok) {
+      expect(result.error).toContain('이미 공개된')
+      expect(result.error).toContain('종료 시각을 정하거나 레시피를 삭제해 주세요')
+    }
     expect(state.recipes.has(ID)).toBe(true)
   })
 
@@ -495,6 +590,74 @@ describe('assertValidFromChange — 공개 시각 변경 가드', () => {
     expect(assertValidFromChange({ valid_from: PAST }, '2026-09-01T00:00:00Z', NOW).ok).toBe(true)
     expect(assertValidFromChange({ valid_from: null }, null, NOW).ok).toBe(true)
   })
+
+  it('종료된 레시피도 한 번 공개된 것이라 공개 시각 변경은 거절한다 (티켓 20261002_0710)', () => {
+    const ended = { valid_from: PAST, valid_until: '2026-09-20T00:00:00.000Z' }
+
+    expect(assertValidFromChange(ended, FUTURE, NOW).ok).toBe(false)
+    expect(assertValidFromChange(ended, null, NOW).ok).toBe(false)
+    expect(assertValidFromChange(ended, '2026-09-01T00:00:00Z', NOW).ok).toBe(true) // 같은 값은 통과
+    expect(assertValidFromChange({ valid_from: null, valid_until: '2026-09-20T00:00:00.000Z' }, FUTURE, NOW).ok).toBe(false)
+  })
+
+  it('종료 시각이 미래여도 예약 중이면 공개 시각을 바꿀 수 있다', () => {
+    expect(assertValidFromChange({ valid_from: FUTURE, valid_until: '2026-10-20T00:00:00.000Z' }, LATER, NOW).ok).toBe(true)
+  })
+})
+
+describe('assertValidPeriod — 공개·종료 시각 순서 가드 (티켓 20261002_0710)', () => {
+  const FROM = '2026-10-05T00:00:00.000Z'
+  const AFTER = '2026-10-12T00:00:00.000Z'
+  const BEFORE = '2026-10-01T00:00:00.000Z'
+
+  it('둘 다 있으면 종료 시각이 공개 시각보다 뒤여야 한다', () => {
+    expect(assertValidPeriod(null, FROM, AFTER).ok).toBe(true)
+    expect(assertValidPeriod(null, FROM, BEFORE).ok).toBe(false)
+  })
+
+  it('종료 시각이 공개 시각과 같아도 거절한다(같은 순간이면 기간이 0이다)', () => {
+    const sameInstant = assertValidPeriod(null, FROM, FROM)
+    const sameInstantOtherZone = assertValidPeriod(null, FROM, '2026-10-05T09:00:00+09:00') // 00:00Z와 같은 순간
+
+    expect(sameInstant.ok).toBe(false)
+    expect(sameInstantOtherZone.ok).toBe(false)
+    if (!sameInstant.ok) expect(sameInstant.error).toContain('종료 시각은 공개 시각보다 늦어야 해요')
+  })
+
+  it('공개 시각이 없거나(바로 공개) 종료 시각이 없으면(상시) 순서를 보지 않는다', () => {
+    expect(assertValidPeriod(null, null, BEFORE).ok).toBe(true)
+    expect(assertValidPeriod(null, FROM, null).ok).toBe(true)
+    expect(assertValidPeriod(null, null, null).ok).toBe(true)
+    expect(assertValidPeriod(null, undefined, undefined).ok).toBe(true)
+  })
+
+  it('제출하지 않은 쪽은 기존 값으로 비교한다 — 공개된 레시피의 종료 시각만 바꾸는 경우', () => {
+    const released = { valid_from: '2026-09-01T00:00:00.000Z', valid_until: null }
+
+    expect(assertValidPeriod(released, undefined, '2026-10-12T00:00:00.000Z').ok).toBe(true)
+    expect(assertValidPeriod(released, undefined, '2026-08-01T00:00:00.000Z').ok).toBe(false) // 공개 시각보다 앞
+    expect(assertValidPeriod(released, undefined, '2026-09-01T00:00:00.000Z').ok).toBe(false) // 공개 시각과 같음
+    expect(assertValidPeriod(released, undefined, null).ok).toBe(true) // 종료 시각 지우기
+  })
+
+  it('지난 종료 시각도 공개 시각보다 뒤면 받는다 — 저장하면 곧바로 내려간다', () => {
+    const released = { valid_from: '2026-09-01T00:00:00.000Z', valid_until: null }
+
+    expect(assertValidPeriod(released, undefined, '2026-09-15T00:00:00.000Z').ok).toBe(true)
+  })
+
+  it('공개 시각만 새로 정하고 종료 시각은 제출하지 않으면 기존 종료 시각과 비교한다', () => {
+    const scheduled = { valid_from: FROM, valid_until: AFTER }
+
+    expect(assertValidPeriod(scheduled, '2026-10-08T00:00:00.000Z', undefined).ok).toBe(true)
+    expect(assertValidPeriod(scheduled, '2026-10-20T00:00:00.000Z', undefined).ok).toBe(false)
+    expect(assertValidPeriod(scheduled, null, undefined).ok).toBe(true) // 바로 공개로 돌리면 순서를 볼 일이 없다
+  })
+
+  it('기존 행에 칸이 없는 응답(undefined)이면 상시로 본다', () => {
+    expect(assertValidPeriod({}, FROM, undefined).ok).toBe(true)
+    expect(assertValidPeriod({ valid_from: FROM }, undefined, BEFORE).ok).toBe(false)
+  })
 })
 
 describe('recipeReleaseState — 운영툴 자원 연결용 재내보내기', () => {
@@ -503,5 +666,6 @@ describe('recipeReleaseState — 운영툴 자원 연결용 재내보내기', ()
 
     expect(recipeReleaseState({ valid_from: null }, now)).toBe('released')
     expect(recipeReleaseState({ valid_from: '2026-10-05T00:00:00Z' }, now)).toBe('scheduled')
+    expect(recipeReleaseState({ valid_from: null, valid_until: '2026-09-30T00:00:00Z' }, now)).toBe('ended')
   })
 })

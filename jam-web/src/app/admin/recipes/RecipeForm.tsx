@@ -8,6 +8,7 @@ import MultiBadgeSearchSelect, { badgeLabel, type SelectedBadge } from '@/compon
 import { Input } from '@/components/admin/ui/input'
 import { MAX_SLOTS, MIN_ITEM_SLOTS, MIN_SLOTS } from '@/lib/combine/recipe-payload'
 import { recipeReleaseState } from '@/lib/combine/visibility'
+import { assertValidPeriod } from '@/lib/admin/recipe-write'
 import { formatKstYmdHm, toKstLocalInputValue } from '@/lib/admin/kst-format'
 
 type BadgeBrief = Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>
@@ -89,12 +90,18 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
   const [rewardBadges, setRewardBadges] = useState<SelectedBadge[]>(
     recipe ? rewardBadgesFromRecipe(recipe, badgeMap) : []
   )
-  // 공개 시점(티켓 20261001_1158) — 이미 공개된 레시피는 공개 시각을 바꿀 수 없어 읽기 전용 문구로만 보여 주고
-  // 저장 때 보내지 않는다(서버도 409로 막는다). 예약 중이면 시각 변경·바로 공개 전환·예약 취소가 된다.
-  const [alreadyReleased] = useState(() => (recipe ? recipeReleaseState(recipe) === 'released' : false))
+  // 공개 시점(티켓 20261001_1158) — 이미 공개된 레시피(종료된 레시피 포함)는 공개 시각을 바꿀 수 없어 읽기 전용
+  // 문구로만 보여 주고 저장 때 보내지 않는다(서버도 409로 막는다). 예약 중이면 시각 변경·바로 공개 전환·예약
+  // 취소가 된다.
+  const [releaseState] = useState(() => (recipe ? recipeReleaseState(recipe) : null))
+  const alreadyReleased = releaseState === 'released' || releaseState === 'ended'
   const scheduledFrom = recipe?.valid_from && !alreadyReleased ? recipe.valid_from : null
   const [releaseMode, setReleaseMode] = useState<ReleaseMode>(scheduledFrom ? 'scheduled' : 'now')
   const [validFromLocal, setValidFromLocal] = useState(scheduledFrom ? toKstLocalInputValue(scheduledFrom) : '')
+  // 종료 시각(티켓 20261002_0710) — 선택. 공개 뒤에도 바꿀 수 있다(앞당기기·늦추기·지우기). 칸을 바꾸지 않으면
+  // 저장 때 보내지 않아 기존 값(초 단위 포함)을 그대로 둔다.
+  const initialValidUntilLocal = recipe?.valid_until ? toKstLocalInputValue(recipe.valid_until) : ''
+  const [validUntilLocal, setValidUntilLocal] = useState(initialValidUntilLocal)
   const canCancelRelease = Boolean(editingId) && !alreadyReleased
   const [saving, setSaving] = useState(false)
   const [canceling, setCanceling] = useState(false)
@@ -164,6 +171,33 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
       }
     }
 
+    // 종료 시각 — 칸을 바꾸지 않았으면 보내지 않고(undefined), 비웠으면 null(종료 없음), 값이 있으면 UTC ISO.
+    let validUntil: string | null | undefined
+    if (validUntilLocal !== initialValidUntilLocal) {
+      if (!validUntilLocal) {
+        validUntil = null
+      } else {
+        const iso = kstLocalToIso(validUntilLocal)
+        if (!iso) {
+          setError('종료 시각을 읽을 수 없어요. 날짜와 시각을 다시 선택해 주세요.')
+          return
+        }
+        validUntil = iso
+      }
+    }
+
+    // 공개 시각과 종료 시각의 순서 — 서버(생성·수정 API)와 같은 함수로 먼저 거른다. 제출하지 않은 쪽은 기존 값으로 비교한다.
+    const period = assertValidPeriod(recipe ?? null, validFrom, validUntil)
+    if (!period.ok) {
+      setError(period.error)
+      return
+    }
+
+    // 지난 시각으로 바꾸면 저장 즉시 유저에게서 사라진다 — 확인을 거친다(되돌리려면 종료 시각을 늦추거나 지운다).
+    if (typeof validUntil === 'string' && new Date(validUntil).getTime() <= Date.now()) {
+      if (!confirm('저장하면 이 레시피가 바로 유저에게서 사라져요.')) return
+    }
+
     setSaving(true)
     const payload = {
       name: name.trim(),
@@ -174,6 +208,7 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
       reward_points: points,
       reward_badge_ids: rewardBadges.map((b) => b.id),
       ...(validFrom !== undefined ? { valid_from: validFrom } : {}),
+      ...(validUntil !== undefined ? { valid_until: validUntil } : {}),
     }
     try {
       const res = await fetch(
@@ -353,7 +388,7 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
         </div>
       </div>
 
-      {/* 공개 시점 — 바로 공개 또는 시각을 정해 예약. 종료 시각은 없고 내릴 때는 삭제한다 */}
+      {/* 공개 시점 — 바로 공개 또는 시각을 정해 예약. 내리는 길은 아래 종료 시각이고, 예약 취소는 삭제다 */}
       <div className="space-y-3 border-t border-border pt-4">
         <p className="text-sm font-bold">공개 시점</p>
         {alreadyReleased ? (
@@ -401,6 +436,38 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
               <p className="text-xs text-muted-foreground">저장하면 바로 유저에게 공개돼요.</p>
             )}
           </>
+        )}
+      </div>
+
+      {/* 종료 시각 — 선택, 한국 시간. 비우면 계속 공개된다. 공개된 레시피도 고칠 수 있고(Q2), 지난 시각으로 저장하면 곧바로 내려간다 */}
+      <div className="space-y-3 border-t border-border pt-4">
+        <p className="text-sm font-bold">종료 시각 (선택)</p>
+        <div>
+          <label htmlFor="recipe-valid-until" className="text-xs text-muted-foreground mb-1 block">
+            종료 시각 (한국 시간) — 이 시각부터 유저에게서 사라져요. 비워 두면 계속 공개돼요
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              id="recipe-valid-until"
+              type="datetime-local"
+              value={validUntilLocal}
+              onChange={(e) => setValidUntilLocal(e.target.value)}
+              className="bg-white border border-border rounded-xl px-3 py-2 text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => setValidUntilLocal('')}
+              disabled={!validUntilLocal}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            >
+              종료 시각 지우기
+            </button>
+          </div>
+        </div>
+        {releaseState === 'ended' && (
+          <p className="text-xs text-muted-foreground">
+            이미 종료된 레시피예요. 종료 시각을 늦추거나 지우면 다시 공개돼요.
+          </p>
         )}
       </div>
 

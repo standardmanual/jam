@@ -40,8 +40,9 @@ export interface RecipeWithSlots extends CombinationRecipeRow {
   rewardBadges: BadgeDetail[]
   /**
    * 공개 시각 — 서버(`page.tsx`)가 «공개 전 레시피를 운영자에게 보여 줄 때만» `valid_from` 값을 넣는다
-   * (티켓 20261001_1159). 공개된 레시피는 운영자에게도 없거나 null이다. 클라이언트는 행 전체에 딸려 오는
-   * `valid_from`으로 공개 여부를 다시 판정하지 않는다. 온보딩 연출 레시피(`DEMO_MIX_RECIPE`)에는 없다.
+   * (티켓 20261001_1159). 공개된 레시피는 운영자에게도 없거나 null이고, 종료된 레시피는 운영자에게도 목록에
+   * 없다(티켓 20261002_0710). 클라이언트는 행 전체에 딸려 오는 `valid_from`·`valid_until`로 공개 여부를 다시
+   * 판정하지 않는다. 온보딩 연출 레시피(`DEMO_MIX_RECIPE`)에는 없다.
    */
   releaseAt?: string | null
 }

@@ -91,7 +91,7 @@ const ROUTES: RouteCase[] = [
     load: () => import('../recipes/export/route'),
     empty: '내보낼 레시피를 선택해주세요.',
     filePrefix: 'recipes',
-    headers: ['ID', '이름', '슬롯 수', '슬롯 상세', '보상 포인트', '보상 배지', '공개 시각', '등록일'],
+    headers: ['ID', '이름', '슬롯 수', '슬롯 상세', '보상 포인트', '보상 배지', '공개 시각', '종료 시각', '등록일'],
     chunkedTable: 'combination_recipes',
   },
   {

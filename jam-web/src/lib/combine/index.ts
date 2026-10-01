@@ -30,21 +30,22 @@
  * 재료로 투입한 아이템 개체는 성공/실패 무관하게 항상 소각된다. 보유 조건 배지
  * (액티비티·체크인)는 소각되지 않는다.
  *
- * 공개 시각(마이그레이션 204, 티켓 20261001_1157): 공개 시각이 아직 지나지 않은 레시피는
- * 존재하지 않는 레시피와 똑같이 처리한다 — 0단계에서 `recipe_not_found`로 거절하며, 재료
- * 소각·포인트 지급은 일어나지 않는다. 판정은 `lib/combine/visibility.ts`의 `isRecipeReleased`
- * 하나다.
+ * 공개 기간(마이그레이션 204·213, 티켓 20261001_1157·20261002_0710): 공개 시각이 아직 지나지 않았거나
+ * 종료 시각이 지난 레시피는 존재하지 않는 레시피와 똑같이 처리한다 — 0단계에서 `recipe_not_found`로
+ * 거절하며, 재료 소각·포인트 지급은 일어나지 않는다. 판정은 `lib/combine/visibility.ts`의
+ * `recipeReleaseState` 하나다. 종료된 레시피로 이미 받은 보상은 그대로다.
  *
  * 운영자 시험 믹스(티켓 20261001_1159): 호출부가 `allowUnreleased: true`를 넘기면(운영자) 공개 전
  * 레시피도 믹스할 수 있다. 이때만 결과를 «시험 믹스»(`testMix: true`)로 본다 — 재료 소각·인벤토리
  * 칸 반환·Consume 이벤트·보상 배지·포인트 지급은 실제와 똑같이 처리하고, 성공·실패 기록
  * (`user_combine_success_logs`·`user_combine_fail_logs`)과 JAM! 믹스 지표 판정은 남기지 않는다.
  * 공개 시각이 지난 레시피는 `allowUnreleased`여도 일반 믹스다(기록이 정상으로 남는다).
+ * 종료된 레시피는 `allowUnreleased`여도 거절한다 — 시험 믹스는 «공개 전 확인»이 목적이다(티켓 20261002_0710 G7).
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
 import { getCombinePolicy } from '@/lib/combine/policy'
-import { isRecipeReleased } from '@/lib/combine/visibility'
+import { recipeReleaseState } from '@/lib/combine/visibility'
 import type { JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
 import {
   isInventoryFull,
@@ -119,16 +120,18 @@ export async function combineRecipeAttempt(
   const supabase = createServiceClient()
 
   // 0. 선택된 레시피 존재·공개 확인 — 여기서부터는 이 레시피 하나만 검증 대상이다.
-  // 공개 전 레시피는 없는 레시피와 같다(재료 소각보다 반드시 앞에서 거절한다). 운영자
-  // (`allowUnreleased`)만 공개 전 레시피를 통과한다.
+  // 공개 전·종료된 레시피는 없는 레시피와 같다(재료 소각보다 반드시 앞에서 거절한다). 운영자
+  // (`allowUnreleased`)만 공개 전(`scheduled`) 레시피를 통과한다. 종료된(`ended`) 레시피는 운영자도
+  // 거절한다(티켓 20261002_0710 G7).
   const { data: recipeRaw } = await supabase
     .from('combination_recipes')
     .select('*')
     .eq('id', recipeId)
     .maybeSingle()
   const recipe = recipeRaw as CombinationRecipeRow | null
-  const released = recipe ? isRecipeReleased(recipe) : false
-  if (!recipe || (!released && !options.allowUnreleased)) {
+  const releaseState = recipe ? recipeReleaseState(recipe) : null
+  const released = releaseState === 'released'
+  if (!recipe || !(released || (releaseState === 'scheduled' && options.allowUnreleased))) {
     await logFailure(supabase, userId, [], 'recipe_not_found', 0)
     return { success: false, reason: 'recipe_not_found', pointsAwarded: 0 }
   }

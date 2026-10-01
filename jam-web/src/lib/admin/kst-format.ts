@@ -41,6 +41,13 @@ export function formatKstYmdHm(iso: string): string {
   return `${p.year}.${pad(p.month)}.${pad(p.day)} ${pad(p.hour)}:${pad(p.minute)}`
 }
 
+/** "MM/DD HH:mm" 형식으로 날짜·시각 포맷(KST 고정) — 표 안에서 연도 없이 짧게 보일 때 쓴다 */
+export function formatKstMdHm(iso: string): string {
+  const p = kstPartsOf(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(p.month)}/${pad(p.day)} ${pad(p.hour)}:${pad(p.minute)}`
+}
+
 /** ISO(UTC) 문자열을 datetime-local input이 요구하는 "YYYY-MM-DDTHH:mm"(KST 고정)으로 변환 */
 export function toKstLocalInputValue(iso: string): string {
   const p = kstPartsOf(iso)

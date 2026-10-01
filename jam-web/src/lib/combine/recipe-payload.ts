@@ -45,6 +45,12 @@ export interface RecipePayloadInput {
    * 값이 있으면 시간대가 포함된 미래 ISO여야 한다.
    */
   valid_from?: unknown
+  /**
+   * 종료 시각(마이그레이션 213, 티켓 20261002_0710) — 칸이 없으면 건드리지 않고, 빈 값·null이면 종료 없음(상시),
+   * 값이 있으면 시간대가 포함된 ISO여야 한다. 지난 시각도 받는다(곧바로 내려간다). 공개 시각보다 뒤인지는
+   * `lib/admin/recipe-write.ts`의 `assertValidPeriod`가 기존 행과 함께 본다.
+   */
+  valid_until?: unknown
 }
 
 export interface NormalizedRecipePayload {
@@ -54,6 +60,8 @@ export interface NormalizedRecipePayload {
   rewardBadgeIds: string[]
   /** `undefined`는 제출하지 않음(행을 바꾸지 않는다), `null`은 바로 공개, 문자열은 UTC ISO 예약 시각 */
   validFrom: string | null | undefined
+  /** `undefined`는 제출하지 않음(행을 바꾸지 않는다), `null`은 종료 없음(상시), 문자열은 UTC ISO 종료 시각 */
+  validUntil: string | null | undefined
 }
 
 /** 시간대가 붙은 ISO 8601 — 시간대가 없는 값은 서버 시간대로 해석돼 예약이 어긋나므로 받지 않는다 */
@@ -76,16 +84,8 @@ export function normalizeValidFrom(
         '공개 시각 형식이 올바르지 않아요. 시간대가 포함된 날짜와 시각이어야 해요(예: 2026-10-05T09:00:00+09:00). 시각을 다시 선택해 주세요.',
     }
   }
-  const trimmed = value.trim()
-  const at = new Date(trimmed)
-  // `new Date`는 2월 31일을 3월 3일로 조용히 넘겨 읽는다 — 예약이 모르는 사이 밀리지 않도록 달력에 있는 날짜인지 따로 본다.
-  const [, year, month, day] = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed) ?? []
-  const calendarDay = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
-  if (
-    Number.isNaN(at.getTime()) ||
-    calendarDay.getUTCMonth() !== Number(month) - 1 ||
-    calendarDay.getUTCDate() !== Number(day)
-  ) {
+  const at = parseCalendarSafeDate(value.trim())
+  if (!at) {
     return { ok: false, error: '공개 시각을 읽을 수 없어요. 존재하는 날짜와 시각으로 다시 선택해 주세요.' }
   }
   if (at.getTime() <= now.getTime()) {
@@ -98,7 +98,50 @@ export function normalizeValidFrom(
 }
 
 /**
- * 형식 검증 — 슬롯 배열 구조, 슬롯 개수 하한/상한, 슬롯당 후보 최소 1개, 보상 3분기, 공개 시각.
+ * 종료 시각 입력을 정규화한다(티켓 20261002_0710) — 칸 없음(`undefined`)은 그대로, 빈 문자열·null은 종료 없음(`null`),
+ * 값이 있으면 `normalizeValidFrom`과 같은 형식·달력 검사를 거친다. 공개 시각과 달리 **지난 시각도 받는다** —
+ * 지난 시각으로 저장하면 레시피가 곧바로 내려간다(「지금 종료」도 같은 칸을 지금으로 바꾸는 방식이다).
+ * 공개 시각보다 뒤인지는 이 함수가 보지 않는다(기존 행의 공개 시각이 필요해 `assertValidPeriod`가 본다).
+ */
+export function normalizeValidUntil(
+  value: unknown
+): { ok: true; value: string | null | undefined } | { ok: false; error: string } {
+  if (value === undefined) return { ok: true, value: undefined }
+  if (value === null || (typeof value === 'string' && value.trim() === '')) return { ok: true, value: null }
+  if (typeof value !== 'string' || !ISO_WITH_ZONE.test(value.trim())) {
+    return {
+      ok: false,
+      error:
+        '종료 시각 형식이 올바르지 않아요. 시간대가 포함된 날짜와 시각이어야 해요(예: 2026-10-12T09:00:00+09:00). 시각을 다시 선택해 주세요.',
+    }
+  }
+  const at = parseCalendarSafeDate(value.trim())
+  if (!at) {
+    return { ok: false, error: '종료 시각을 읽을 수 없어요. 존재하는 날짜와 시각으로 다시 선택해 주세요.' }
+  }
+  return { ok: true, value: at.toISOString() }
+}
+
+/**
+ * `new Date`는 2월 31일을 3월 3일로 조용히 넘겨 읽는다 — 시각이 모르는 사이 밀리지 않도록 달력에 있는 날짜인지
+ * 따로 본다. 읽을 수 없으면 `null`. 공개 시각·종료 시각이 같은 검사를 쓴다.
+ */
+function parseCalendarSafeDate(trimmed: string): Date | null {
+  const at = new Date(trimmed)
+  const [, year, month, day] = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed) ?? []
+  const calendarDay = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
+  if (
+    Number.isNaN(at.getTime()) ||
+    calendarDay.getUTCMonth() !== Number(month) - 1 ||
+    calendarDay.getUTCDate() !== Number(day)
+  ) {
+    return null
+  }
+  return at
+}
+
+/**
+ * 형식 검증 — 슬롯 배열 구조, 슬롯 개수 하한/상한, 슬롯당 후보 최소 1개, 보상 3분기, 공개·종료 시각.
  * 배지 실제 타입 조회가 필요한 검증(슬롯 내 타입 일치, 아이템 타입 슬롯 하한)은
  * `validateSlotTypes()`가 담당한다.
  */
@@ -142,9 +185,12 @@ export function normalizeRecipePayload(
   const validFrom = normalizeValidFrom(body.valid_from, now)
   if (!validFrom.ok) return validFrom
 
+  const validUntil = normalizeValidUntil(body.valid_until)
+  if (!validUntil.ok) return validUntil
+
   return {
     ok: true,
-    value: { name, slots, rewardPoints, rewardBadgeIds, validFrom: validFrom.value },
+    value: { name, slots, rewardPoints, rewardBadgeIds, validFrom: validFrom.value, validUntil: validUntil.value },
   }
 }
 
