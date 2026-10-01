@@ -168,6 +168,10 @@
     {
       "name": "BadgeFamilyCardHeader",
       "sourcePath": "components/patterns/BadgeFamilyCardHeader.jsx"
+    },
+    {
+      "name": "LabelChip",
+      "sourcePath": "components/cards/LabelChip.jsx"
     }
   ],
   "startingPoints": [],
@@ -1172,6 +1176,27 @@
       "value": "linear-gradient(90deg in oklab, var(--status-short-solid), var(--status-done-solid))",
       "kind": "color",
       "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--scale-press-card",
+      "value": "0.98",
+      "kind": "other",
+      "definedIn": "tokens/motion.css",
+      "annotation": "other"
+    },
+    {
+      "name": "--duration-quest-pulse",
+      "value": "1.6s",
+      "kind": "other",
+      "definedIn": "tokens/motion.css",
+      "annotation": "other"
+    },
+    {
+      "name": "--ease-quest-pulse",
+      "value": "cubic-bezier(0.2, 0, 0, 1)",
+      "kind": "other",
+      "definedIn": "tokens/motion.css",
+      "annotation": "other"
     }
   ],
   "themes": [],

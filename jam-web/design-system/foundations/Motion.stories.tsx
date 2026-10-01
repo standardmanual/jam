@@ -180,6 +180,7 @@ function MotionPage() {
           Scale (press / modal)
         </h2>
         <ScaleRow token="--scale-press" desc="버튼 눌림 — button:active CSS 피드백" />
+        <ScaleRow token="--scale-press-card" desc="카드 눌림 — .jam-press" />
         <ScaleRow token="--scale-modal" desc="모달 등장 시작 스케일 (100% 에서 시작)" />
       </div>
     </div>

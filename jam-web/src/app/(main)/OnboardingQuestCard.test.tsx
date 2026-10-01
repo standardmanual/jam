@@ -83,6 +83,27 @@ describe('OnboardingQuestCard — 진행도 n/7 위치(티켓 20260928_1537)', (
   })
 })
 
+describe('OnboardingQuestCard — 칩은 MODULAR LabelChip(티켓 20261001_1204)', () => {
+  // LabelChip은 Tailwind 클래스 대신 인라인 style로 그린다 — 모양(계산 스타일)은 LabelChip.test.tsx가
+  // 고정하고, 여기서는 카드 상태 3종(진행 중 · 진행 중 sync 차례 · 첫 활동 대기 두 갈래) 모두 칩이
+  // 같은 컴포넌트를 거치고 호출부 배치 클래스 self-start만 붙는지 본다.
+  const CHIP_PATTERN = new RegExp(
+    `<span class="self-start" style="[^"]*padding:6px 10px[^"]*">${d.onboardingQuest.chipLabel}</span>`,
+    'g'
+  )
+
+  it.each([
+    { kind: 'in_progress', done: 0, total: 7, nextStep: 'sync' },
+    { kind: 'in_progress', done: 1, total: 7, nextStep: 'bag' },
+    { kind: 'awaiting_sync', stravaConnected: false, skipped: false },
+    { kind: 'awaiting_sync', stravaConnected: true, skipped: false },
+  ] as const)('칩 라벨이 self-start LabelChip으로 한 번 그려진다 (%j)', (state) => {
+    const html = render(state as OnboardingQuestCardState)
+    expect(html.match(CHIP_PATTERN)).toHaveLength(1)
+    expect(html).not.toContain('px-2.5 py-1.5')
+  })
+})
+
 describe('OnboardingQuestCard — 상태별 CTA 버튼(티켓 20260928_1537, 확정한 결정 3)', () => {
   it('① sync 차례: 「동기화」 버튼이 있고 카드를 감싸는 <a> 링크가 없다', () => {
     const html = render({ kind: 'in_progress', done: 0, total: 7, nextStep: 'sync' })

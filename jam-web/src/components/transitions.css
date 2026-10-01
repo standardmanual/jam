@@ -599,3 +599,23 @@
 @media (prefers-reduced-motion: reduce) {
   .jam-quest-pulse { animation: none; }
 }
+
+/* 카드 전체 눌림(티켓 20261001_1204, 상위 20260930_1453 b0) — 카드 래퍼(`<a>`/`Link`는 display:block이어야
+   transform이 먹는다)에 붙이면 눌렀을 때 --scale-press-card(0.98)로 줄어든다. 흩어져 있던
+   `active:scale-[0.98] transition-transform duration-100`을 대체한다(시간 100ms → --duration-micro 80ms,
+   이징 Tailwind 기본 → --ease-out). 지금까지의 문자열과 달리 동작 줄이기 설정에서는 배율·전환이 모두
+   없다. 비활성 카드에는 붙이지 않는다. 이 조각에서는 적용처가 없고 b2(새 카드)가 붙인다.
+   design-system/styles.css의 `[role="button"]:active`와 특이도가 같지만 서비스 globals.css는 styles.css를
+   import하지 않아 서비스에서는 충돌이 없다(Storybook은 globals.css가 나중이라 이 클래스가 이긴다). */
+.jam-press {
+  transition-property: transform;
+  transition-duration: var(--duration-micro);
+  transition-timing-function: var(--ease-out);
+}
+.jam-press:active {
+  transform: scale(var(--scale-press-card));
+}
+@media (prefers-reduced-motion: reduce) {
+  .jam-press { transition: none; }
+  .jam-press:active { transform: none; }
+}

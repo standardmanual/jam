@@ -19,6 +19,7 @@
   --ease-out: ease-out;
 
   --scale-press: 0.96;
+  --scale-press-card: 0.98;
   --scale-modal: 0.96;
 
   /* 온보딩 퀘스트 「지금 눌러야 할 곳」 펄스 전용(티켓 20260928_1752, 상위 20260927_2123 Q1).
@@ -27,6 +28,7 @@
   --ease-quest-pulse: cubic-bezier(0.2, 0, 0, 1);
 
   /* --scale-press/--scale-modal은 press 시 transform: scale() 피드백용(전환 배율)이다.
+   * 카드 전체 눌림은 --scale-press-card(.jam-press, 티켓 20261001_1204).
    * --scale-compact은 성격이 다르다 — transform이 아니라 minHeight/padding 같은 절대
    * 치수를 calc(44px * var(--scale-compact))처럼 곱해 "조밀한 컨텍스트 전용" 사이즈를
    * 도출할 때 쓴다(예: 내비게이션 바 안의 44px 버튼 → 32px 컴팩트 버튼). 20260824_010. */
