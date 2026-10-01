@@ -92,9 +92,6 @@ export const OPS_STOPPED_ITEM_STATUSES: readonly string[] = ['rejected', 'cancel
 /** 승인 전 상태: 도착·검토중·승인됨·준비중(A8). */
 export const OPS_PRE_APPROVAL_STATUSES: readonly string[] = ['arrived', 'reviewing', 'approved', 'preparing']
 
-/** 결정 전 상태: 도착·검토중. */
-export const OPS_UNDECIDED_STATUSES: readonly string[] = ['arrived', 'reviewing']
-
 /** 날짜 구성이 세는 항목 상태인가(10개 안의 값이고 반려·취소·실패가 아니다). */
 export function isCountedItemStatus(status: string): boolean {
   return KNOWN_STATUSES.has(status) && !OPS_STOPPED_ITEM_STATUSES.includes(status)
@@ -149,7 +146,8 @@ export function describeBundleItem(item: Pick<SignalBundleItemInput, 'original' 
   return item.itemKey?.trim() || kindLabel(item.kind)
 }
 
-function parseTime(iso: string | null | undefined): number | null {
+/** ISO 시각 → epoch ms. 비었거나 읽을 수 없으면 null이다. */
+export function parseTime(iso: string | null | undefined): number | null {
   if (!iso) return null
   const time = Date.parse(iso)
   return Number.isNaN(time) ? null : time

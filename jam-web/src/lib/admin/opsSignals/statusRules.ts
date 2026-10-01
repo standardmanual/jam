@@ -10,10 +10,11 @@ import { OPS_FIELD_UNKNOWN, readBundleExcludedItems } from '@/lib/admin/opsInbox
 import { formatKstDayTime, kindLabel, kstDateKey } from '@/lib/admin/opsInbox/labels'
 import { kstDayBoundsIso, shiftDateStr, todayKstDateString } from '@/lib/admin/today-calendar'
 import { mondayOfWeek } from '@/lib/admin/cronSchedule'
-import { makeSignalResult, type OpsSignalResult } from '@/lib/admin/opsSignals/catalog'
+import { OPS_WEEKDAY_LABELS, makeSignalResult, type OpsSignalResult } from '@/lib/admin/opsSignals/catalog'
+import { isUndecidedStatus } from '@/lib/admin/opsInbox/itemView'
 import {
-  OPS_UNDECIDED_STATUSES,
   describeBundleItem,
+  parseTime,
   type SignalBundleInput,
   type SignalBundleItemInput,
 } from '@/lib/admin/opsSignals/composition'
@@ -28,14 +29,7 @@ export interface StatusRuleContext {
 
 const HOUR_MS = 3600_000
 const DAY_MS = 24 * HOUR_MS
-const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 const EXCLUDED_STAGE_LABELS: Record<string, string> = { world_review: '세계관 검수', balance_check: '밸런스 점검' }
-
-function parseTime(iso: string | null | undefined): number | null {
-  if (!iso) return null
-  const time = Date.parse(iso)
-  return Number.isNaN(time) ? null : time
-}
 
 /** 「홈피드 카드 「봄맞이」」처럼 항목을 가리키는 말. */
 function itemName(item: SignalBundleItemInput): string {
@@ -109,7 +103,7 @@ export function evaluateApprovalDeadline(ctx: StatusRuleContext): OpsSignalResul
   const results: OpsSignalResult[] = []
   for (const bundle of ctx.bundles) {
     for (const item of bundle.items) {
-      if (!OPS_UNDECIDED_STATUSES.includes(item.status)) continue
+      if (!isUndecidedStatus(item.status)) continue
       const startsMs = parseTime(item.startsAt)
       if (startsMs === null || startsMs > limitMs) continue
       const when = formatKstDayTime(item.startsAt)
@@ -228,7 +222,7 @@ export function evaluateRoutineFailed(ctx: StatusRuleContext): OpsSignalResult[]
       return at !== null && at >= weekWindowMs && routineBundleKinds(bundle).weekly
     })
     if (!submitted) {
-      const weekday = WEEKDAY_LABELS[thresholds.weeklyRoutineWeekday]
+      const weekday = OPS_WEEKDAY_LABELS[thresholds.weeklyRoutineWeekday]
       results.push(
         makeSignalResult(
           `주간 루틴이 ${weekday}요일 ${thresholds.weeklyRoutineDeadlineHour}시까지 기획안을 내지 못했어요.`,

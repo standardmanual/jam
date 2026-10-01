@@ -110,7 +110,8 @@ export interface OpsSignalOutcome {
   results: OpsSignalResult[]
 }
 
-const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
+/** 요일 이름. 번호는 0=일 … 6=토다. */
+export const OPS_WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
 /** `YYYY-MM-DD` → 「10월 7일(화)」. 형식이 틀리면 받은 글자를 그대로 돌려준다. */
 export function formatSignalDay(date: string): string {
@@ -118,7 +119,7 @@ export function formatSignalDay(date: string): string {
   if (!match) return date
   const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])]
   const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay()
-  return `${month}월 ${day}일(${WEEKDAY_LABELS[weekday]})`
+  return `${month}월 ${day}일(${OPS_WEEKDAY_LABELS[weekday]})`
 }
 
 /** 결과를 만든다. 값이 없는 칸은 null·false로 채운다. */
