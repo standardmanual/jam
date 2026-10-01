@@ -39,6 +39,7 @@ import {
 } from '@/lib/admin/opsInbox/edit'
 import { editPathLabel, formatKstDayTime, kindLabel, splitFormatError } from '@/lib/admin/opsInbox/labels'
 import { formatDecisionMessage, postOpsSlack, type DecisionMessageInput } from '@/lib/admin/opsInbox/slack'
+import { loadTribeIds } from '@/lib/admin/opsInbox/tribes'
 import { revalidateOpsItem, validateEditedColor, type ValidatedOpsItem } from '@/lib/admin/opsInbox/validate'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
@@ -453,6 +454,16 @@ async function loadBundleItemKeys(service: ServiceClient, bundleId: string, fail
   return (data ?? []).map((row) => ({ position: row.position, itemKey: row.item_key }))
 }
 
+/** 다시 검사에 쓸 트라이브 목록. 제출 때와 같은 목록·같은 규칙이라야 판정이 같다(`tribes.ts`). 조회가 실패하면 저장하지 않는다. */
+async function loadTribeContext(service: ServiceClient, failMessage: string) {
+  try {
+    return { tribeIds: await loadTribeIds(service) }
+  } catch (error) {
+    logError('트라이브 목록 조회 실패', error instanceof Error ? error : null)
+    return fail(500, failMessage)
+  }
+}
+
 /**
  * 직접 수정. 검토중 항목만 고치고 제출 원본은 바꾸지 않는다. 바뀐 칸은 차이 목록으로 결정 기록에 남긴다.
  * 고친 칸에 걸린 형식 오류는 저장을 막고(400, 칸별 문장), 그 밖의 오류는 항목·묶음 형식 오류를 새 결과로 바꾼다.
@@ -511,7 +522,9 @@ export async function editItem(
   const newEdited = applyDiff(item.original, item.edited, diff, 'forward')
   const keys = await loadBundleItemKeys(service, bundleId, EDIT_FAILED)
   if (isFailure(keys)) return keys
-  const validated = revalidateOpsItem(mergeItemForValidation(item.original, newEdited), item.position, keys)
+  const ctx = await loadTribeContext(service, EDIT_FAILED)
+  if (isFailure(ctx)) return ctx
+  const validated = revalidateOpsItem(mergeItemForValidation(item.original, newEdited), item.position, keys, ctx)
 
   const fieldErrors = blockingFieldErrors(validated, touchedKeys(diff))
   if (Object.keys(fieldErrors).length > 0) {
@@ -583,7 +596,9 @@ export async function revertLastEdit(
 
   const keys = await loadBundleItemKeys(service, bundleId, REVERT_FAILED)
   if (isFailure(keys)) return keys
-  const validated = revalidateOpsItem(mergeItemForValidation(item.original, newEdited), item.position, keys)
+  const ctx = await loadTribeContext(service, REVERT_FAILED)
+  if (isFailure(ctx)) return ctx
+  const validated = revalidateOpsItem(mergeItemForValidation(item.original, newEdited), item.position, keys, ctx)
 
   const saved = await saveEditedItem(service, {
     bundle,

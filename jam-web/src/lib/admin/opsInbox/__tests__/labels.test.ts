@@ -150,6 +150,27 @@ describe('formatErrorPathLabel · parseFormatErrorPath', () => {
     expect(formatErrorPathLabel('items')).toBe('항목 목록')
   })
 
+  it('카드 칸 이름표(티켓 20261001_1152): 카드 모양·노출 대상·트라이브·색 대기', () => {
+    expect(formatErrorPathLabel('items[0].shape')).toBe('카드 모양')
+    expect(formatErrorPathLabel('items[0].exposure_tags')).toBe('노출 대상')
+    expect(formatErrorPathLabel('items[0].tribe_id')).toBe('트라이브')
+    expect(formatErrorPathLabel('items[0].color_pending')).toBe('색 대기')
+    expect(parseFormatErrorPath('items[2].shape')).toEqual({ itemPosition: 2, label: '카드 모양' })
+  })
+
+  it('뺀 항목 이름표: 목록은 「뺀 항목」, excluded_items[n].reason은 「뺀 항목 사유」(「검수 이유」가 아니다), 단계는 「뺀 단계」', () => {
+    expect(formatErrorPathLabel('excluded_items')).toBe('뺀 항목')
+    expect(formatErrorPathLabel('excluded_items[0]')).toBe('뺀 항목')
+    expect(formatErrorPathLabel('excluded_items[0].reason')).toBe('뺀 항목 사유')
+    expect(formatErrorPathLabel('excluded_items[12].reason')).toBe('뺀 항목 사유')
+    expect(formatErrorPathLabel('excluded_items[1].item_key')).toBe('뺀 항목 키')
+    expect(formatErrorPathLabel('excluded_items[1].kind')).toBe('뺀 항목 종류')
+    expect(formatErrorPathLabel('excluded_items[1].stage')).toBe('뺀 단계')
+    expect(parseFormatErrorPath('excluded_items[0].reason')).toEqual({ itemPosition: null, label: '뺀 항목 사유' })
+    // 세계관 검수의 reason은 그대로 「검수 이유」다
+    expect(formatErrorPathLabel('items[0].world_review.reason')).toBe('검수 이유')
+  })
+
   it('항목 전체에 걸린 오류(items[3])는 「항목」이고 몇 번째인지 담는다', () => {
     expect(parseFormatErrorPath('items[3]')).toEqual({ itemPosition: 3, label: '항목' })
     expect(parseFormatErrorPath('items[2].kind')).toEqual({ itemPosition: 2, label: '종류' })
@@ -175,6 +196,7 @@ describe('formatErrorPathLabel · parseFormatErrorPath', () => {
       hypothesis: 3,
       color_rationale_link: 3,
       routine_run: 3,
+      excluded_items: [5, { item_key: 3, kind: 'x', stage: 'y' }],
       items: [
         5,
         {
@@ -185,10 +207,18 @@ describe('formatErrorPathLabel · parseFormatErrorPath', () => {
           ends_at: 'y',
           links: ['nope'],
           world_review: { world_related: 'yes', winter_reviewed: 'no', reason: 3, extra: 1 },
+          shape: 'banner',
+          exposure_tags: 'all',
+          tribe_id: 'ranger',
+          color_pending: 'yes',
         },
       ],
     })
     expect(result.errors.length).toBeGreaterThan(8)
+    expect(result.errors.filter((message) => message.startsWith('excluded_items'))).toHaveLength(5)
+    for (const key of ['shape', 'exposure_tags', 'tribe_id', 'color_pending']) {
+      expect(result.errors.some((message) => message.startsWith(`items[1].${key}:`)), key).toBe(true)
+    }
     for (const message of result.errors) {
       const { path } = splitFormatError(message)
       const label = formatErrorPathLabel(path)

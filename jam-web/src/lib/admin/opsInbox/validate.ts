@@ -6,19 +6,41 @@
  *   `items`가 배열이 아님, 항목 수 상한 초과.
  * - `errors`: 받아서 저장하고 응답으로 돌려주는 「형식 오류」다. 「경로: 사유」 문자열(해요체)이고,
  *   항목별 오류는 그 항목의 `format_errors`에도 같은 문장으로 담는다. 공통 필드(종류 허용값, 시각,
- *   연결 키 실재, `item_key` 중복, `user_experience` 유무, `week` 표기, `world_review` 규칙)만 본다.
+ *   연결 키 실재, `item_key` 중복, `user_experience` 유무, `week` 표기, `world_review` 규칙)와 카드 칸(티켓 20261001_1152:
+ *   `shape`·`exposure_tags`·`tribe_id`·`color_pending`, 묶음의 `excluded_items`)만 본다.
  *   종류별 세부 검증은 티켓 20260930_1500이 승인 때 등록 전 검증으로 한다(상위 티켓 가정 12).
+ *
+ * 카드 칸: 홈피드 카드(`kind`가 `home_feed_card`)는 `shape`·`exposure_tags`가 필수이고(없으면 형식 오류, 저장은 한다),
+ * 다른 종류는 값이 있을 때만 형식을 본다. `tribe_id`·`color_pending`은 선택이다. `tribe_id`가 실제 트라이브인지는
+ * 호출한 쪽이 `tribes`를 조회해 `ctx.tribeIds`로 넘길 때만 본다(순수 함수라 DB를 부르지 않는다). 옛 형식 항목(`segment`만 있는
+ * 항목)은 받아서 저장하고, 새 칸 오류만 붙는다. 칸을 읽는 쪽은 `fields.ts`다.
  *
  * `world_review` 규칙은 `jam-web/scripts/asset-generator/registerHomeFeedBundle.mjs`의
  * `validateWorldReview`(`WORLD_REVIEW_FIELDS`)와 같다. 그 스크립트는 지금의 등록 절차라 고치지 않고 규칙을
  * 여기에 다시 적었으며, 두 구현이 같은 입력에 같은 문장을 내는지 `validate.test.ts`가 대조한다.
  */
 import type { Json } from '@/types/database.generated'
-import { MAX_ITEMS, OPS_ITEM_KINDS } from '@/lib/admin/opsInbox/constants'
+import {
+  MAX_ITEMS,
+  OPS_EXCLUDED_ITEM_STAGES,
+  OPS_HOME_FEED_CARD_KIND,
+  OPS_ITEM_KINDS,
+} from '@/lib/admin/opsInbox/constants'
+import { TODAY_EXPOSURE_TAG_OPTIONS } from '@/lib/admin/today-sections'
+import { isUuid } from '@/lib/admin/uuid'
+import { CARD_SHAPES, isCardShape } from '@/lib/today/shape'
 
 // 신원 값의 길이 상한(티켓 20260930_2100). 넘으면 유일 인덱스 행 크기 제한에 걸려 500이 나므로 400으로 먼저 거절한다.
 const MAX_BUNDLE_ID_LENGTH = 200
 const MAX_AUTHOR_LENGTH = 100
+
+/**
+ * 검증이 밖에서 받는 재료. `tribeIds`는 `tribes`에 있는 트라이브 ID 전체(소문자)다 — 있으면 `tribe_id`가 그 안에 있는지까지 본다.
+ * 없으면 형식(UUID)만 본다.
+ */
+export interface OpsValidationContext {
+  tribeIds?: ReadonlySet<string>
+}
 
 export interface ValidatedOpsBundle {
   bundle_id: string
@@ -132,6 +154,102 @@ export function validateWorldReview(review: unknown, path = 'world_review'): str
   return errors
 }
 
+// ── 카드 칸·뺀 항목 (티켓 20261001_1152) ─────────────────────────────────────────────────────────
+
+// registerHomeFeedBundle.mjs의 EXPOSURE_TAGS와 같은 원천(`today-sections.ts`)이다.
+const EXPOSURE_TAGS: readonly string[] = TODAY_EXPOSURE_TAG_OPTIONS.map((option) => option.value)
+
+/**
+ * 노출 대상(`exposure_tags`) 값 검사. 태그 1개 이상, 허용 목록 안, 중복 없음. 문장은 registerHomeFeedBundle.mjs의
+ * `card.exposure_tags` 검사와 같다(앞의 경로만 다르다). 값이 없는 경우는 부르는 쪽이 가린다 — 여기서는 「배열이어야 해요」다.
+ */
+export function validateExposureTags(value: unknown, path: string): string[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    return [`${path}: 노출 조건 태그를 1개 이상 넣은 배열이어야 해요(항상 노출하려면 ["all"]).`]
+  }
+  const invalid = value.filter((tag) => typeof tag !== 'string' || !EXPOSURE_TAGS.includes(tag))
+  if (invalid.length > 0) {
+    return [`${path}: 허용하지 않는 태그예요 — ${invalid.map(describeValue).join(', ')}. 허용 태그: ${EXPOSURE_TAGS.join(', ')}`]
+  }
+  if (new Set(value).size !== value.length) return [`${path}: 같은 태그를 두 번 넣을 수 없어요.`]
+  return []
+}
+
+/**
+ * 항목의 카드 칸 검사(`shape`·`exposure_tags`·`tribe_id`·`color_pending`). `path`는 `items[2]`다.
+ * 홈피드 카드는 `shape`·`exposure_tags`가 필수이고, 다른 종류는 값이 있을 때만 본다. `tribe_id`는 null을 「없음」으로 본다.
+ */
+export function validateOpsCardFields(raw: Record<string, unknown>, path: string, ctx: OpsValidationContext = {}): string[] {
+  const errors: string[] = []
+  const isCard = raw.kind === OPS_HOME_FEED_CARD_KIND
+
+  if (!isPresent(raw.shape)) {
+    if (isCard) errors.push(`${path}.shape: 필수 항목이 없어요(카드 모양을 ${CARD_SHAPES.join(', ')} 중 하나로 적어 주세요).`)
+  } else if (!isCardShape(raw.shape)) {
+    errors.push(`${path}.shape: 허용되지 않는 카드 모양이에요(받은 값: ${describeShort(raw.shape)}). 허용값: ${CARD_SHAPES.join(', ')}`)
+  }
+
+  if (!isPresent(raw.exposure_tags)) {
+    if (isCard) errors.push(`${path}.exposure_tags: 필수 항목이 없어요(노출 대상을 태그 배열로 적어 주세요. 전원이면 ["all"]).`)
+  } else {
+    errors.push(...validateExposureTags(raw.exposure_tags, `${path}.exposure_tags`))
+  }
+
+  if (isPresent(raw.tribe_id)) {
+    if (typeof raw.tribe_id !== 'string' || !isUuid(raw.tribe_id)) {
+      errors.push(`${path}.tribe_id: 트라이브 ID(UUID) 형식이어야 해요(받은 값: ${describeShort(raw.tribe_id)}).`)
+    } else if (ctx.tribeIds && !ctx.tribeIds.has(raw.tribe_id.toLowerCase())) {
+      errors.push(`${path}.tribe_id: 없는 트라이브예요(받은 값: ${describeShort(raw.tribe_id)}). 트라이브 ID를 확인해 주세요.`)
+    }
+  }
+
+  if (isPresent(raw.color_pending) && typeof raw.color_pending !== 'boolean') {
+    errors.push(`${path}.color_pending: true 또는 false여야 해요(받은 값: ${describeShort(raw.color_pending)}).`)
+  }
+
+  return errors
+}
+
+/**
+ * 묶음의 뺀 항목(`excluded_items`) 검사. 없으면(undefined·null) 오류가 아니다. 원소마다 `reason`은 필수(`world_review.reason`과
+ * 같은 규칙: 비어 있지 않은 한 줄)이고, `item_key`는 문자열, `kind`·`stage`는 허용값이다. 이 오류는 묶음 오류에만 담는다.
+ */
+export function validateExcludedItems(value: unknown, path = 'excluded_items'): string[] {
+  if (!isPresent(value)) return []
+  if (!Array.isArray(value)) return [`${path}: 배열이어야 해요(받은 값: ${describeShort(value)}).`]
+
+  const errors: string[] = []
+  value.forEach((entry: unknown, index: number) => {
+    const at = `${path}[${index}]`
+    if (!isPlainObject(entry)) {
+      errors.push(`${at}: 객체여야 해요(받은 값: ${describeShort(entry)}).`)
+      return
+    }
+    if (!isPresent(entry.reason)) {
+      errors.push(`${at}.reason: 필수 항목이 없어요(뺀 이유를 한 줄로 적어 주세요).`)
+    } else if (!isNonEmptyString(entry.reason)) {
+      errors.push(`${at}.reason: 비어 있지 않은 문자열이어야 해요.`)
+    } else if (CONTROL_OR_LINE_BREAK.test(entry.reason)) {
+      errors.push(`${at}.reason: 줄바꿈이나 제어 문자를 쓸 수 없어요(한 줄로 적어 주세요).`)
+    }
+    if (isPresent(entry.item_key) && typeof entry.item_key !== 'string') {
+      errors.push(`${at}.item_key: 문자열이어야 해요(받은 값: ${describeShort(entry.item_key)}).`)
+    }
+    if (isPresent(entry.kind) && (typeof entry.kind !== 'string' || !(OPS_ITEM_KINDS as readonly string[]).includes(entry.kind))) {
+      errors.push(`${at}.kind: 허용되지 않는 종류예요(받은 값: ${describeShort(entry.kind)}). 허용값: ${OPS_ITEM_KINDS.join(', ')}`)
+    }
+    if (
+      isPresent(entry.stage) &&
+      (typeof entry.stage !== 'string' || !(OPS_EXCLUDED_ITEM_STAGES as readonly string[]).includes(entry.stage))
+    ) {
+      errors.push(
+        `${at}.stage: 허용되지 않는 단계예요(받은 값: ${describeShort(entry.stage)}). 허용값: ${OPS_EXCLUDED_ITEM_STAGES.join(', ')}`
+      )
+    }
+  })
+  return errors
+}
+
 // ── 항목 ─────────────────────────────────────────────────────────────────────────────────────────
 
 function validateItem(
@@ -139,7 +257,8 @@ function validateItem(
   position: number,
   ownKey: string | null,
   firstIndexByKey: Map<string, number>,
-  allKeys: Set<string>
+  allKeys: Set<string>,
+  ctx: OpsValidationContext
 ): ValidatedOpsItem {
   const path = `items[${position}]`
   const errors: string[] = []
@@ -240,6 +359,7 @@ function validateItem(
   }
 
   errors.push(...validateWorldReview(raw.world_review, `${path}.world_review`))
+  errors.push(...validateOpsCardFields(raw, path, ctx))
 
   return {
     position,
@@ -263,12 +383,14 @@ export interface BundleItemKeyRef {
 
 /**
  * 직접 수정으로 바뀐 항목 하나를 다시 검사한다(수정본을 제출 원본 위에 덮은 항목 한 벌 `raw`). 제출 때 검사와 같은 규칙·같은
- * 문장을 내려고 안쪽 `validateItem`을 그대로 쓴다. `bundleItems`는 묶음 전체 항목의 자리와 `item_key`다.
+ * 문장을 내려고 안쪽 `validateItem`을 그대로 쓴다. `bundleItems`는 묶음 전체 항목의 자리와 `item_key`다. `ctx`는 제출 때와 같은
+ * 트라이브 목록을 넘겨 같은 판정을 내게 한다.
  */
 export function revalidateOpsItem(
   raw: unknown,
   position: number,
-  bundleItems: readonly BundleItemKeyRef[]
+  bundleItems: readonly BundleItemKeyRef[],
+  ctx: OpsValidationContext = {}
 ): ValidatedOpsItem {
   const firstIndexByKey = new Map<string, number>()
   const allKeys = new Set<string>()
@@ -278,7 +400,7 @@ export function revalidateOpsItem(
     allKeys.add(itemKey)
   }
   const ownKey = isPlainObject(raw) && isNonEmptyString(raw.item_key) ? raw.item_key : null
-  return validateItem(raw, position, ownKey, firstIndexByKey, allKeys)
+  return validateItem(raw, position, ownKey, firstIndexByKey, allKeys, ctx)
 }
 
 // 배경색 필드(`components/admin/BackgroundColorField.tsx`의 `HEX_COLOR_PATTERN`)와 같은 규칙이다. 그 파일은 클라이언트 모듈이라
@@ -295,7 +417,7 @@ export function validateEditedColor(value: string): string | null {
 /**
  * 제출 본문을 검증한다. 오류를 첫 줄에서 멈추지 않고 모두 모아 한 번에 알린다(에이전트가 한 번에 고친다).
  */
-export function validateOpsBundle(raw: unknown): OpsBundleValidation {
+export function validateOpsBundle(raw: unknown, ctx: OpsValidationContext = {}): OpsBundleValidation {
   const fatal: string[] = []
 
   if (!isPlainObject(raw)) {
@@ -363,6 +485,9 @@ export function validateOpsBundle(raw: unknown): OpsBundleValidation {
     else bundleErrors.push(`routine_run: 객체여야 해요(받은 값: ${describeShort(raw.routine_run)}).`)
   }
 
+  // 뺀 항목은 묶음 오류에만 담는다(어느 항목에도 속하지 않는다).
+  bundleErrors.push(...validateExcludedItems(raw.excluded_items))
+
   // 불리언이 아닌 값은 위 fatal에서 이미 거절했다.
   const isSample = raw.is_sample === true
 
@@ -378,7 +503,7 @@ export function validateOpsBundle(raw: unknown): OpsBundleValidation {
 
   const items = rawItems.map((item: unknown, index: number) => {
     const ownKey = isPlainObject(item) && isNonEmptyString(item.item_key) ? item.item_key : null
-    return validateItem(item, index, ownKey, firstIndexByKey, allKeys)
+    return validateItem(item, index, ownKey, firstIndexByKey, allKeys, ctx)
   })
 
   return {

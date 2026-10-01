@@ -101,7 +101,22 @@ const FORMAT_ERROR_PATH_LABELS: Record<string, string> = {
   copy: '문안',
   colors: '색',
   items: '항목 목록',
+  shape: '카드 모양',
+  exposure_tags: '노출 대상',
+  tribe_id: '트라이브',
+  color_pending: '색 대기',
+  excluded_items: '뺀 항목',
 }
+
+// 뺀 항목(`excluded_items[n].<키>`)의 원소 칸. `reason`·`kind`·`item_key`는 다른 곳에서 쓰는 이름표(검수 이유·종류·항목 키)와 헷갈리지
+// 않게 「뺀 항목」을 붙인다.
+const EXCLUDED_ITEM_FIELD_LABELS: Record<string, string> = {
+  reason: '뺀 항목 사유',
+  item_key: '뺀 항목 키',
+  kind: '뺀 항목 종류',
+  stage: '뺀 단계',
+}
+const EXCLUDED_ITEM_PATH = /^excluded_items\[\d+\]\.([^.[\]]+)$/
 
 const ITEM_PATH_PREFIX = /^items\[(\d+)\]\.?/
 
@@ -118,6 +133,10 @@ export function parseFormatErrorPath(path: string): { itemPosition: number | nul
     itemPosition = Number(match[1])
     rest = path.slice(match[0].length)
     if (rest === '') return { itemPosition, label: '항목' }
+  }
+  const excluded = EXCLUDED_ITEM_PATH.exec(rest)
+  if (excluded && Object.prototype.hasOwnProperty.call(EXCLUDED_ITEM_FIELD_LABELS, excluded[1])) {
+    return { itemPosition, label: EXCLUDED_ITEM_FIELD_LABELS[excluded[1]] }
   }
   const lastKey = rest.split('.').pop()?.replace(/\[\d+\]$/, '') ?? ''
   if (lastKey && Object.prototype.hasOwnProperty.call(FORMAT_ERROR_PATH_LABELS, lastKey)) {

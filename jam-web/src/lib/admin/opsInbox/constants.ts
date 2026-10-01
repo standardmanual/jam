@@ -34,6 +34,14 @@ export const OPS_ITEM_KINDS = [
 
 export type OpsItemKind = (typeof OPS_ITEM_KINDS)[number]
 
+/** 카드 모양(`shape`)·노출 대상(`exposure_tags`)이 필수인 항목 종류(티켓 20261001_1152). */
+export const OPS_HOME_FEED_CARD_KIND: OpsItemKind = 'home_feed_card'
+
+/** 뺀 항목(`excluded_items`)의 `stage` 허용값. 뺀 단계: 세계관 검수 · 밸런스 점검(티켓 20261001_1152). */
+export const OPS_EXCLUDED_ITEM_STAGES = ['world_review', 'balance_check'] as const
+
+export type OpsExcludedItemStage = (typeof OPS_EXCLUDED_ITEM_STAGES)[number]
+
 /** 항목 상태 10개(PRD §7). 새로 도착한 항목은 `arrived`다. */
 export const OPS_ITEM_STATUSES = [
   'arrived',

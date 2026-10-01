@@ -4,6 +4,8 @@
  * - fatal(400): 객체가 아님, bundle_id·author 없음이나 길이 초과, is_sample이 불리언이 아님, items가 배열이 아님, 항목 60개 초과
  * - 저장되는 형식 오류: 종류 허용값, 시각(형식·순서), 연결 키 실재, item_key 중복, user_experience 유무, week 표기, world_review
  * - world_review 규칙은 registerHomeFeedBundle.mjs와 같은 입력에 같은 문장을 낸다(대조)
+ * - 카드 칸(티켓 20261001_1152): shape·exposure_tags(홈피드 카드는 필수)·tribe_id·color_pending, 묶음의 excluded_items,
+ *   옛 형식 항목(segment만)은 fatal 없이 받고 새 칸 오류만 붙는다. exposure_tags는 등록 스크립트와 같은 입력에 같은 문장이다.
  */
 import { describe, it, expect } from 'vitest'
 // 지금의 등록 스크립트(.mjs)를 대조용으로 불러온다. 스크립트는 고치지 않는다.
@@ -14,16 +16,22 @@ import {
   EDIT_HEX_COLOR_PATTERN,
   revalidateOpsItem,
   validateEditedColor,
+  validateExcludedItems,
+  validateExposureTags,
   validateOpsBundle,
   validateWorldReview,
 } from '../validate'
 
 const REVIEW = { world_related: false, winter_reviewed: false, reason: '운영성 카드라 세계관과 무관해요' }
+const TRIBE_A = '3f2c9a10-5b7e-4d21-8a64-0c1e7b9d2f55'
+const TRIBE_MISSING = '9a8b7c6d-1e2f-4a3b-8c4d-5e6f7a8b9c0d'
 
 function makeItem(overrides: Record<string, unknown> = {}) {
   return {
     item_key: 'card-1',
     kind: 'home_feed_card',
+    shape: 'hero',
+    exposure_tags: ['all'],
     pattern_no: 'P-07',
     starts_at: '2026-10-05T09:00:00+09:00',
     ends_at: '2026-10-06T09:00:00+09:00',
@@ -370,6 +378,290 @@ describe('revalidateOpsItem — 수정 뒤 다시 검사 (티켓 20260930_1818)'
   it('고친 값이 비어 있으면 「유저가 겪는 것」 오류가 다시 난다', () => {
     const again = revalidateOpsItem(makeItem({ user_experience: '   ' }), 0, keys)
     expect(again.format_errors).toEqual(['items[0].user_experience: 비어 있지 않은 문자열이어야 해요.'])
+  })
+})
+
+describe('카드 칸 — shape (티켓 20261001_1152)', () => {
+  function shapeResult(itemOverrides: Record<string, unknown>, removeKeys: string[] = []) {
+    const item: Record<string, unknown> = makeItem(itemOverrides)
+    for (const key of removeKeys) delete item[key]
+    const result = validateOpsBundle(makeBundle({ items: [item] }))
+    expect(result.fatal).toEqual([])
+    return result
+  }
+
+  it('홈피드 카드에 shape가 없으면 필수 오류이고 항목은 저장 대상으로 남는다(fatal이 아니다)', () => {
+    const result = shapeResult({}, ['shape'])
+    expect(result.bundle).not.toBeNull()
+    expect(result.items).toHaveLength(1)
+    expect(result.errors).toEqual([
+      'items[0].shape: 필수 항목이 없어요(카드 모양을 hero, poster, square, brief, list 중 하나로 적어 주세요).',
+    ])
+    expect(result.items[0].format_errors).toEqual(result.errors)
+  })
+
+  it('shape가 null이어도 없는 것으로 본다', () => {
+    expect(shapeResult({ shape: null }).errors[0]).toMatch(/^items\[0\]\.shape: 필수 항목이 없어요/)
+  })
+
+  it.each(['hero', 'poster', 'square', 'brief', 'list'])('모양 %s는 통과한다', (shape) => {
+    expect(shapeResult({ shape }).errors).toEqual([])
+  })
+
+  it.each([
+    ['허용값 밖', 'banner', '"banner"'],
+    ['대문자', 'Hero', '"Hero"'],
+    ['옛 layout 값', 'large_thumbnail', '"large_thumbnail"'],
+    ['숫자', 3, '3'],
+    ['빈 문자열', '', '""'],
+  ])('shape가 %s이면 허용값을 안내한다', (_label, shape, shown) => {
+    expect(shapeResult({ shape }).errors).toEqual([
+      `items[0].shape: 허용되지 않는 카드 모양이에요(받은 값: ${shown}). 허용값: hero, poster, square, brief, list`,
+    ])
+  })
+
+  it('카드가 아닌 종류는 shape가 없어도 오류가 없고, 있으면 형식을 본다', () => {
+    expect(shapeResult({ kind: 'mission' }, ['shape']).errors).toEqual([])
+    expect(shapeResult({ kind: 'mission', shape: 'list' }).errors).toEqual([])
+    expect(shapeResult({ kind: 'mission', shape: 'banner' }).errors[0]).toMatch(
+      /^items\[0\]\.shape: 허용되지 않는 카드 모양이에요/
+    )
+  })
+})
+
+describe('카드 칸 — exposure_tags (티켓 20261001_1152)', () => {
+  function tagErrors(itemOverrides: Record<string, unknown>, removeKeys: string[] = []) {
+    const item: Record<string, unknown> = makeItem(itemOverrides)
+    for (const key of removeKeys) delete item[key]
+    const result = validateOpsBundle(makeBundle({ items: [item] }))
+    expect(result.fatal).toEqual([])
+    return result.errors
+  }
+
+  it('홈피드 카드에 exposure_tags가 없으면 필수 오류다', () => {
+    expect(tagErrors({}, ['exposure_tags'])).toEqual([
+      'items[0].exposure_tags: 필수 항목이 없어요(노출 대상을 태그 배열로 적어 주세요. 전원이면 ["all"]).',
+    ])
+    expect(tagErrors({ exposure_tags: null })[0]).toMatch(/^items\[0\]\.exposure_tags: 필수 항목이 없어요/)
+  })
+
+  it('전원(all)과 신규(new_user)는 통과한다', () => {
+    expect(tagErrors({ exposure_tags: ['all'] })).toEqual([])
+    expect(tagErrors({ exposure_tags: ['new_user'] })).toEqual([])
+    expect(tagErrors({ exposure_tags: ['time_morning', 'new_user'] })).toEqual([])
+  })
+
+  it('문자열·빈 배열·허용값 밖·중복은 각각 다른 문장이다', () => {
+    const asString = tagErrors({ exposure_tags: 'all' })
+    const empty = tagErrors({ exposure_tags: [] })
+    const unknownTag = tagErrors({ exposure_tags: ['all', 'segment_vip'] })
+    const duplicated = tagErrors({ exposure_tags: ['all', 'all'] })
+
+    expect(asString).toEqual([
+      'items[0].exposure_tags: 노출 조건 태그를 1개 이상 넣은 배열이어야 해요(항상 노출하려면 ["all"]).',
+    ])
+    expect(empty).toEqual(asString)
+    expect(unknownTag).toHaveLength(1)
+    expect(unknownTag[0]).toMatch(/^items\[0\]\.exposure_tags: 허용하지 않는 태그예요 — "segment_vip"\. 허용 태그: all, /)
+    expect(duplicated).toEqual(['items[0].exposure_tags: 같은 태그를 두 번 넣을 수 없어요.'])
+    expect(new Set([asString[0], unknownTag[0], duplicated[0]]).size).toBe(3)
+  })
+
+  it('카드가 아닌 종류는 없어도 오류가 없고, 있으면 형식을 본다', () => {
+    expect(tagErrors({ kind: 'recipe' }, ['exposure_tags'])).toEqual([])
+    expect(tagErrors({ kind: 'recipe', exposure_tags: ['all'] })).toEqual([])
+    expect(tagErrors({ kind: 'recipe', exposure_tags: 'all' })).toHaveLength(1)
+  })
+
+  // 등록 스크립트(registerHomeFeedBundle.mjs)의 card.exposure_tags 검사와 같은 입력에 같은 문장이다(앞의 경로만 다르다).
+  const inputs: Array<[string, unknown]> = [
+    ['정상(전원)', ['all']],
+    ['정상(여러 태그)', ['time_morning', 'new_user']],
+    ['문자열', 'all'],
+    ['숫자', 5],
+    ['빈 배열', []],
+    ['객체', { 0: 'all' }],
+    ['허용값 밖 하나', ['bogus']],
+    ['허용값 밖 여럿', ['all', 'bogus', 'other']],
+    ['문자열이 아닌 원소', ['all', 5]],
+    ['중복', ['all', 'all']],
+    ['중복 + 허용값 밖', ['all', 'all', 'bogus']],
+  ]
+
+  it.each(inputs)('등록 스크립트와 같은 문장: %s', (_label, value) => {
+    const scriptErrors = (
+      validateHomeFeedBundle({ card: { exposure_tags: value } }, { bundleFile: '/tmp/bundle.json' }).errors as string[]
+    ).filter((message) => message.startsWith('card.exposure_tags'))
+    expect(validateExposureTags(value, 'card.exposure_tags')).toEqual(scriptErrors)
+  })
+})
+
+describe('카드 칸 — tribe_id·color_pending (티켓 20261001_1152)', () => {
+  const ctx = { tribeIds: new Set([TRIBE_A]) }
+
+  function errorsOf(itemOverrides: Record<string, unknown>, withCtx: boolean, removeKeys: string[] = []) {
+    const item: Record<string, unknown> = makeItem(itemOverrides)
+    for (const key of removeKeys) delete item[key]
+    const result = validateOpsBundle(makeBundle({ items: [item] }), withCtx ? ctx : undefined)
+    expect(result.fatal).toEqual([])
+    return result.errors
+  }
+
+  it('tribe_id가 없거나 null이면 통과한다(선택 칸)', () => {
+    expect(errorsOf({}, true)).toEqual([])
+    expect(errorsOf({ tribe_id: null }, true)).toEqual([])
+  })
+
+  it('목록에 있는 UUID는 통과하고(대소문자 무관) 목록에 없는 UUID는 「없는 트라이브」 오류다', () => {
+    expect(errorsOf({ tribe_id: TRIBE_A }, true)).toEqual([])
+    expect(errorsOf({ tribe_id: TRIBE_A.toUpperCase() }, true)).toEqual([])
+    expect(errorsOf({ tribe_id: TRIBE_MISSING }, true)).toEqual([
+      `items[0].tribe_id: 없는 트라이브예요(받은 값: "${TRIBE_MISSING}"). 트라이브 ID를 확인해 주세요.`,
+    ])
+  })
+
+  it("'ranger'·숫자 같은 UUID가 아닌 값은 UUID 형식 오류다(목록이 있어도 없어도 같다)", () => {
+    for (const withCtx of [true, false]) {
+      expect(errorsOf({ tribe_id: 'ranger' }, withCtx)).toEqual([
+        'items[0].tribe_id: 트라이브 ID(UUID) 형식이어야 해요(받은 값: "ranger").',
+      ])
+      expect(errorsOf({ tribe_id: 7 }, withCtx)).toEqual([
+        'items[0].tribe_id: 트라이브 ID(UUID) 형식이어야 해요(받은 값: 7).',
+      ])
+    }
+  })
+
+  it('ctx 없이 부르면 형식만 본다(목록에 없는 UUID도 통과)', () => {
+    expect(errorsOf({ tribe_id: TRIBE_MISSING }, false)).toEqual([])
+    expect(validateOpsBundle(makeBundle({ items: [makeItem({ tribe_id: TRIBE_MISSING })] })).errors).toEqual([])
+  })
+
+  it('color_pending은 불리언만 통과한다', () => {
+    expect(errorsOf({ color_pending: true }, true)).toEqual([])
+    expect(errorsOf({ color_pending: false }, true)).toEqual([])
+    expect(errorsOf({ color_pending: null }, true)).toEqual([])
+    expect(errorsOf({ color_pending: 'yes' }, true)).toEqual([
+      'items[0].color_pending: true 또는 false여야 해요(받은 값: "yes").',
+    ])
+    expect(errorsOf({ color_pending: 1 }, true)).toEqual(['items[0].color_pending: true 또는 false여야 해요(받은 값: 1).'])
+  })
+
+  it('카드가 아닌 종류도 이 두 칸이 있으면 형식을 본다', () => {
+    expect(errorsOf({ kind: 'mission', tribe_id: 'ranger' }, true, ['shape', 'exposure_tags'])).toHaveLength(1)
+    expect(errorsOf({ kind: 'mission', color_pending: 'yes' }, true, ['shape', 'exposure_tags'])).toHaveLength(1)
+  })
+})
+
+describe('묶음의 excluded_items (티켓 20261001_1152)', () => {
+  const GOOD = { item_key: 'mission-9', kind: 'mission', stage: 'world_review', reason: '세계관 검수에서 빠졌어요' }
+
+  function bundleResult(excluded: unknown) {
+    const result = validateOpsBundle(makeBundle({ excluded_items: excluded }))
+    expect(result.fatal).toEqual([])
+    return result
+  }
+
+  it('없거나 null, 빈 배열, 정상 항목은 오류가 없다', () => {
+    expect(validateOpsBundle(makeBundle()).errors).toEqual([])
+    expect(bundleResult(null).errors).toEqual([])
+    expect(bundleResult([]).errors).toEqual([])
+    expect(bundleResult([GOOD]).errors).toEqual([])
+    expect(bundleResult([{ reason: '이유만 있어요' }]).errors).toEqual([])
+    expect(bundleResult([{ reason: '밸런스 점검', stage: 'balance_check' }]).errors).toEqual([])
+  })
+
+  it.each([
+    ['배열이 아님(문자열)', 'x', ['excluded_items: 배열이어야 해요(받은 값: "x").']],
+    ['배열이 아님(객체)', { reason: 'x' }, ['excluded_items: 배열이어야 해요(받은 값: {"reason":"x"}).']],
+    ['원소가 객체가 아님', ['x'], ['excluded_items[0]: 객체여야 해요(받은 값: "x").']],
+    ['reason 없음', [{ item_key: 'a' }], ['excluded_items[0].reason: 필수 항목이 없어요(뺀 이유를 한 줄로 적어 주세요).']],
+    ['reason 빈 값', [{ reason: '  ' }], ['excluded_items[0].reason: 비어 있지 않은 문자열이어야 해요.']],
+    [
+      'reason 줄바꿈',
+      [{ reason: '첫 줄\n둘째 줄' }],
+      ['excluded_items[0].reason: 줄바꿈이나 제어 문자를 쓸 수 없어요(한 줄로 적어 주세요).'],
+    ],
+    ['reason 숫자', [{ reason: 5 }], ['excluded_items[0].reason: 비어 있지 않은 문자열이어야 해요.']],
+    ['item_key 숫자', [{ reason: '사유', item_key: 5 }], ['excluded_items[0].item_key: 문자열이어야 해요(받은 값: 5).']],
+  ])('%s이면 묶음 오류다', (_label, excluded, expected) => {
+    expect(bundleResult(excluded).errors).toEqual(expected)
+  })
+
+  it('kind·stage가 허용값 밖이면 묶음 오류다', () => {
+    const kindErrors = bundleResult([{ reason: '사유', kind: 'banner' }]).errors
+    expect(kindErrors).toHaveLength(1)
+    expect(kindErrors[0]).toMatch(
+      /^excluded_items\[0\]\.kind: 허용되지 않는 종류예요\(받은 값: "banner"\)\. 허용값: home_feed_card,/
+    )
+    expect(bundleResult([{ reason: '사유', stage: 'review' }]).errors).toEqual([
+      'excluded_items[0].stage: 허용되지 않는 단계예요(받은 값: "review"). 허용값: world_review, balance_check',
+    ])
+  })
+
+  it('여러 원소의 오류를 모두 모으고 원소 번호를 붙인다', () => {
+    expect(bundleResult([{ reason: '가' }, { item_key: 'b' }, 'x']).errors).toEqual([
+      'excluded_items[1].reason: 필수 항목이 없어요(뺀 이유를 한 줄로 적어 주세요).',
+      'excluded_items[2]: 객체여야 해요(받은 값: "x").',
+    ])
+  })
+
+  it('이 오류는 묶음 오류에만 있고 어느 항목의 format_errors에도 들어가지 않는다', () => {
+    const result = bundleResult([{ item_key: 'card-1' }])
+    expect(result.errors).toHaveLength(1)
+    expect(result.items[0].format_errors).toEqual([])
+  })
+
+  it('묶음 오류는 항목 오류보다 앞에 놓인다', () => {
+    const result = validateOpsBundle(
+      makeBundle({ excluded_items: [{ item_key: 'x' }], items: [makeItem({ shape: 'banner' })] })
+    )
+    expect(result.errors[0]).toMatch(/^excluded_items\[0\]\.reason/)
+    expect(result.errors[1]).toMatch(/^items\[0\]\.shape/)
+  })
+
+  it('validateExcludedItems는 경로를 바꿔 부를 수 있다', () => {
+    expect(validateExcludedItems([{ item_key: 'a' }], 'raw.excluded_items')[0]).toMatch(/^raw\.excluded_items\[0\]\.reason/)
+  })
+})
+
+describe('옛 형식 항목(segment만) 받기 (티켓 20261001_1152)', () => {
+  it('fatal 없이 받고 shape·exposure_tags 오류만 붙는다(segment는 검사하지 않고 원본에 남는다)', () => {
+    const legacy = makeItem({ segment: 'new_user' }) as Record<string, unknown>
+    delete legacy.shape
+    delete legacy.exposure_tags
+    const result = validateOpsBundle(makeBundle({ items: [legacy] }))
+
+    expect(result.fatal).toEqual([])
+    expect(result.items).toHaveLength(1)
+    expect(result.errors).toHaveLength(2)
+    expect(result.errors[0]).toMatch(/^items\[0\]\.shape: /)
+    expect(result.errors[1]).toMatch(/^items\[0\]\.exposure_tags: /)
+    expect(result.items[0].original).toEqual(legacy)
+  })
+
+  it('segment 값이 어떤 모양이어도 오류를 내지 않는다', () => {
+    for (const segment of ['new_user', 5, ['a'], { any: 1 }, null]) {
+      expect(validateOpsBundle(makeBundle({ items: [makeItem({ segment })] })).errors).toEqual([])
+    }
+  })
+})
+
+describe('revalidateOpsItem — 카드 칸 (티켓 20261001_1152)', () => {
+  const keys = [{ position: 0, itemKey: 'card-1' }]
+  const ctx = { tribeIds: new Set([TRIBE_A]) }
+
+  it('제출 때와 같은 문장을 낸다(shape·exposure_tags·tribe_id)', () => {
+    const raw = makeItem({ shape: 'banner', exposure_tags: [], tribe_id: TRIBE_MISSING })
+    const submitted = validateOpsBundle(makeBundle({ items: [raw] }), ctx)
+    const revalidated = revalidateOpsItem(raw, 0, keys, ctx)
+
+    expect(revalidated.format_errors).toHaveLength(3)
+    expect(revalidated.format_errors).toEqual(submitted.items[0].format_errors)
+  })
+
+  it('ctx를 넘기지 않으면 형식만 본다', () => {
+    expect(revalidateOpsItem(makeItem({ tribe_id: TRIBE_MISSING }), 0, keys).format_errors).toEqual([])
+    expect(revalidateOpsItem(makeItem({ tribe_id: TRIBE_MISSING }), 0, keys, ctx).format_errors).toHaveLength(1)
   })
 })
 

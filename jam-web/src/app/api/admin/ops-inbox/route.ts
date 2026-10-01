@@ -5,7 +5,7 @@
  * 경로**다(경로·메서드는 `opsInbox/constants.ts` 상수 하나를 proxy와 이 라우트가 함께 쓴다). 관리자 로그인
  * 세션으로도 낼 수 있다.
  *
- * 흐름: ① 인증 → ② 본문 1MB 확인 → ③ JSON 파싱 → ④ 필수 형식 검증(fatal이면 400) → ⑤ 최근 1시간 제출 수 확인(429)
+ * 흐름: ① 인증 → ② 본문 1MB 확인 → ③ JSON 파싱 → ④ 트라이브 목록 조회(실패하면 저장 없이 500) 뒤 필수 형식 검증(fatal이면 400) → ⑤ 최근 1시간 제출 수 확인(429)
  *  → ⑥ 같은 bundle_id 확인(같은 내용 200 / 다른 내용 409) → ⑦ 묶음·항목·결정 기록 저장(실패하면 묶음을 지워 되돌림)
  *  → ⑧ 201 → ⑨ 응답 뒤 슬랙 도착 글 게시(실패해도 제출은 성공, 결과는 결정 기록에 남긴다).
  *
@@ -23,6 +23,7 @@ import {
 } from '@/lib/admin/opsInbox/constants'
 import { computeRawHash } from '@/lib/admin/opsInbox/rawHash'
 import { formatArrivalMessage, postOpsSlack } from '@/lib/admin/opsInbox/slack'
+import { loadTribeIds } from '@/lib/admin/opsInbox/tribes'
 import { validateOpsBundle } from '@/lib/admin/opsInbox/validate'
 
 const ONE_HOUR_MS = 60 * 60 * 1000
@@ -93,8 +94,17 @@ export async function POST(req: Request) {
     return badRequest('본문을 JSON으로 읽을 수 없어요. 올바른 JSON인지 확인하고 다시 보내 주세요.')
   }
 
-  // ④ 필수 형식(fatal). 그 밖의 형식 오류는 저장하고 돌려준다.
-  const validation = validateOpsBundle(parsed)
+  // ④ 필수 형식(fatal). 그 밖의 형식 오류는 저장하고 돌려준다. 항목의 tribe_id가 실제 트라이브인지 보려고 목록을 먼저 가져온다
+  // (직접 수정 때도 같은 목록으로 판정한다). 조회가 실패하면 아무것도 저장하지 않고 500이다 — 같은 본문을 다시 보내면 된다.
+  const service = createServiceClient()
+  let tribeIds: Set<string>
+  try {
+    tribeIds = await loadTribeIds(service)
+  } catch (err) {
+    console.error('[ops-inbox] 트라이브 목록 조회 실패:', err instanceof Error ? err.message : 'unknown')
+    return serverError()
+  }
+  const validation = validateOpsBundle(parsed, { tribeIds })
   if (validation.fatal.length > 0 || !validation.bundle) {
     return badRequest('제출 본문의 필수 형식이 맞지 않아요. details를 보고 고쳐서 다시 보내 주세요.', validation.fatal)
   }
@@ -102,8 +112,6 @@ export async function POST(req: Request) {
   const actor = auth.via === 'token' ? `token:${bundle.author}` : auth.adminId
   const rawHash = computeRawHash(parsed)
   const summary = { bundle_id: bundle.bundle_id, item_count: items.length, format_errors: errors }
-
-  const service = createServiceClient()
 
   // ⑤ 최근 1시간 제출 수
   const since = new Date(Date.now() - ONE_HOUR_MS).toISOString()
