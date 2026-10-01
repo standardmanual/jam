@@ -1,0 +1,343 @@
+/**
+ * 운영 신호 조회 (티켓 20261001_1155) — 서버 전용(`createServiceClient`가 `next/headers`를 문다).
+ *
+ * **읽기만 한다.** `select`만 부르고 `insert`·`update`·`upsert`·`delete`는 부르지 않는다(`__tests__/load.test.ts`가 지킨다).
+ * 신호 계산은 `compute.ts`가 하고, 이 파일은 재료를 읽어 그 입력 모양으로 바꾸기만 한다.
+ *
+ * 읽는 것:
+ * - `today_cards`: 검사 범위(오늘부터 다음 주 일요일까지)와 앞 6일에 걸치는 활성 카드. 실제 카드의 모양은 카드 행을 그대로
+ *   `resolveShape`(`lib/today/shape.ts`)에 넘겨 채운다 — 옛 카드의 옛→새 모양 대응은 거기가 원본이다. 신호 계산에는 지금 화면에
+ *   그려질 모양(`drawnShape`)이 아니라 이 판정값을 쓴다.
+ * - `missions`: 같은 범위에 걸치는 미션(일정표용 구성에만 쓰이고 어떤 신호도 기대지 않는다).
+ * - `ops_bundles`·`ops_bundle_items`: 묶음과 항목. 제출 원본(`raw`, 최대 1MB)은 뺀 항목을 읽는 데만 쓰이므로 끝나지 않은 묶음의
+ *   것만, 묶음 몇 개씩 따로 받는다(받은 기획함 목록이 원본을 가져오지 않는 것과 같은 이유).
+ * - 행동 5종 건수: 최근 7일과 직전 기간의 건수만 센다(`head: true`, 행을 가져오지 않는다). 믹스 시도·유저 드랍·픽업·미션 완료·
+ *   컬렉션 완성의 전체 유저 원시 건수다.
+ *
+ * ⚠️ **PostgREST 기본 페이지 상한(1000행)** — 에러 없이 잘린 목록이 돌아오므로 `range`로 끝까지 넘겨 전량을 받는다.
+ *
+ * 원천 하나가 실패하면 그 원천은 `null`로 넘어가 그 원천에 기대는 신호만 「확인하지 못했어요」가 된다(A11). 실패한 원천의 사유는
+ * `sourceErrors`에 담는다.
+ */
+import { createServiceClient } from '@/lib/supabase/server'
+import type { Json } from '@/types/database.generated'
+import { computeBundleStatus, tabOfBundleStage } from '@/lib/admin/opsInbox/bundleStatus'
+import { mondayOfWeek } from '@/lib/admin/cronSchedule'
+import { kstDayBoundsIso, shiftDateStr, todayKstDateString } from '@/lib/admin/today-calendar'
+import { isCardShape, resolveShape, type ShapeCardInput } from '@/lib/today/shape'
+import { ACTION_METRIC_KEYS, ACTION_RECENT_DAYS, type ActionCounts, type ActionMetricKey } from '@/lib/admin/opsSignals/actionSpike'
+import {
+  computeOpsSignals,
+  type ComputeOpsSignalsInput,
+  type OpsSignalsComputation,
+} from '@/lib/admin/opsSignals/compute'
+import type {
+  SignalBundleInput,
+  SignalBundleItemInput,
+  SignalCardInput,
+  SignalMissionInput,
+} from '@/lib/admin/opsSignals/composition'
+import { DEFAULT_OPS_SIGNAL_THRESHOLD_VALUES } from '@/lib/admin/opsSignals/thresholds'
+
+const FETCH_PAGE_SIZE = 1000
+/** 제출 원본을 한 번에 받는 묶음 수. 원본은 묶음마다 최대 1MB라 한꺼번에 받지 않는다. */
+const RAW_CHUNK_SIZE = 10
+const DAY_MS = 24 * 3600_000
+
+type Supabase = ReturnType<typeof createServiceClient>
+
+/** 읽지 못한 원천 이름. `bundle_raw`는 묶음은 읽었지만 제출 원본을 읽지 못한 경우다(뺀 항목 목록만 못 읽는다). */
+export type OpsSignalSource = 'cards' | 'missions' | 'bundles' | 'bundle_raw' | 'actions'
+
+export interface LoadOpsSignalsOptions {
+  /** 계산 기준 시각. 기본은 지금이다. */
+  now?: Date
+  /** 시험 묶음을 포함할지. 기본은 `false`다. */
+  includeSample?: boolean
+}
+
+export interface LoadedOpsSignals extends OpsSignalsComputation {
+  /** 읽지 못한 원천과 사유. 모두 읽었으면 빈 객체다. */
+  sourceErrors: Partial<Record<OpsSignalSource, string>>
+}
+
+type PageResult<T> = { data: T[] | null; error: { message: string } | null }
+
+/** `range`로 1000행씩 끝까지 읽는다. 오류가 나면 던진다. */
+async function fetchAllPages<T>(fetchPage: (from: number, to: number) => PromiseLike<PageResult<T>>): Promise<T[]> {
+  const rows: T[] = []
+  for (let from = 0; ; from += FETCH_PAGE_SIZE) {
+    const { data, error } = await fetchPage(from, from + FETCH_PAGE_SIZE - 1)
+    if (error) throw new Error(error.message)
+    const page = data ?? []
+    rows.push(...page)
+    if (page.length < FETCH_PAGE_SIZE) break
+  }
+  return rows
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function stringList(value: Json | null | undefined): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : []
+}
+
+// ── 카드 ─────────────────────────────────────────────────────────────────────────────────────────
+
+interface CardRow {
+  id: string
+  title: string
+  starts_at: string
+  ends_at: string
+  is_active: boolean
+  sort_order: number
+  shape: string | null
+  template_type: string
+  layout_type: string
+  cover_image_url: string | null
+  badge_ids: string[]
+  exposure_tags: string[]
+}
+
+const CARD_COLUMNS =
+  'id, title, starts_at, ends_at, is_active, sort_order, shape, template_type, layout_type, cover_image_url, badge_ids, exposure_tags'
+
+function toCardInput(row: CardRow): SignalCardInput {
+  return {
+    id: row.id,
+    title: row.title,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    isActive: row.is_active,
+    sortOrder: row.sort_order,
+    // 카드 행을 그대로 넘긴다: 저장된 모양 → 기사 → 옛 레이아웃 순으로 정하고, 커버가 없고 배지가 걸린 옛 카드는 `square`다.
+    shape: resolveShape(row as unknown as ShapeCardInput),
+    shapeStored: isCardShape(row.shape),
+    exposureTags: row.exposure_tags ?? [],
+    hasCover: (row.cover_image_url ?? '').trim() !== '',
+  }
+}
+
+async function loadCards(supabase: Supabase, rangeStartIso: string, rangeEndIso: string): Promise<SignalCardInput[]> {
+  const rows = await fetchAllPages<CardRow>((from, to) =>
+    supabase
+      .from('today_cards')
+      .select(CARD_COLUMNS)
+      .eq('is_active', true)
+      .lte('starts_at', rangeEndIso)
+      .gte('ends_at', rangeStartIso)
+      .order('id')
+      .range(from, to)
+  )
+  return rows.map(toCardInput)
+}
+
+// ── 미션 ─────────────────────────────────────────────────────────────────────────────────────────
+
+async function loadMissions(supabase: Supabase, rangeStartIso: string, rangeEndIso: string): Promise<SignalMissionInput[]> {
+  const rows = await fetchAllPages<{ id: string; title: string; starts_at: string; ends_at: string | null }>((from, to) =>
+    supabase.from('missions').select('id, title, starts_at, ends_at').lte('starts_at', rangeEndIso).order('id').range(from, to)
+  )
+  const rangeStartMs = Date.parse(rangeStartIso)
+  return rows
+    .filter((row) => row.ends_at === null || Date.parse(row.ends_at) >= rangeStartMs)
+    .map((row) => ({ id: row.id, title: row.title, startsAt: row.starts_at, endsAt: row.ends_at }))
+}
+
+// ── 운영 묶음 ────────────────────────────────────────────────────────────────────────────────────
+
+interface BundleRow {
+  id: string
+  week: string | null
+  is_sample: boolean
+  received_at: string
+  format_errors: Json
+}
+
+interface ItemRow {
+  id: string
+  bundle_id: string
+  position: number
+  item_key: string | null
+  kind: string | null
+  pattern_no: string | null
+  starts_at: string | null
+  ends_at: string | null
+  status: string
+  original: Json
+  edited: Json | null
+  format_errors: Json
+  updated_at: string
+}
+
+const BUNDLE_COLUMNS = 'id, week, is_sample, received_at, format_errors'
+const ITEM_COLUMNS =
+  'id, bundle_id, position, item_key, kind, pattern_no, starts_at, ends_at, status, original, edited, format_errors, updated_at'
+
+function toItemInput(row: ItemRow): SignalBundleItemInput {
+  return {
+    id: row.id,
+    position: row.position,
+    itemKey: row.item_key,
+    kind: row.kind,
+    status: row.status,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    patternNo: row.pattern_no,
+    original: row.original,
+    edited: row.edited,
+    formatErrors: stringList(row.format_errors),
+    updatedAt: row.updated_at,
+  }
+}
+
+/** 묶음과 항목을 읽는다. 제출 원본은 아직 받지 않는다(`raw`는 null). */
+async function loadBundles(supabase: Supabase, includeSample: boolean): Promise<SignalBundleInput[]> {
+  const bundleRows = await fetchAllPages<BundleRow>((from, to) => {
+    const query = supabase.from('ops_bundles').select(BUNDLE_COLUMNS)
+    return (includeSample ? query : query.eq('is_sample', false))
+      .order('received_at', { ascending: false })
+      .order('id')
+      .range(from, to)
+  })
+  const itemRows = await fetchAllPages<ItemRow>((from, to) =>
+    supabase.from('ops_bundle_items').select(ITEM_COLUMNS).order('id').range(from, to)
+  )
+
+  const itemsByBundle = new Map<string, SignalBundleItemInput[]>()
+  for (const row of itemRows) {
+    const list = itemsByBundle.get(row.bundle_id)
+    if (list) list.push(toItemInput(row))
+    else itemsByBundle.set(row.bundle_id, [toItemInput(row)])
+  }
+
+  return bundleRows.map((row) => ({
+    id: row.id,
+    week: row.week,
+    isSample: row.is_sample,
+    receivedAt: row.received_at,
+    formatErrors: stringList(row.format_errors),
+    raw: null,
+    items: (itemsByBundle.get(row.id) ?? []).sort((a, b) => a.position - b.position),
+  }))
+}
+
+/** 끝나지 않은 묶음(결정할 것·진행 중)의 제출 원본을 몇 개씩 받아 채운다. 실패하면 던진다. */
+async function attachOpenBundleRaw(supabase: Supabase, bundles: SignalBundleInput[]): Promise<void> {
+  const open = bundles.filter(
+    (bundle) => tabOfBundleStage(computeBundleStatus(bundle.items.map((item) => item.status)).stage) !== 'closed'
+  )
+  const byId = new Map(open.map((bundle) => [bundle.id, bundle]))
+  for (let start = 0; start < open.length; start += RAW_CHUNK_SIZE) {
+    const ids = open.slice(start, start + RAW_CHUNK_SIZE).map((bundle) => bundle.id)
+    const { data, error } = await supabase.from('ops_bundles').select('id, raw').in('id', ids)
+    if (error) throw new Error(error.message)
+    for (const row of data ?? []) {
+      const bundle = byId.get(row.id)
+      if (bundle) bundle.raw = row.raw
+    }
+  }
+}
+
+// ── 행동 건수 ────────────────────────────────────────────────────────────────────────────────────
+
+type CountResult = { count: number | null; error: { message: string } | null }
+type Counter = (fromIso: string, toIso: string) => PromiseLike<CountResult>
+
+/** 지표마다 센 표. 한 지표가 표 두 개를 더한다(믹스 시도 = 성공 로그 + 실패 로그). 전체 유저 원시 건수라 유저 조건이 없다. */
+function buildCounters(supabase: Supabase): Record<ActionMetricKey, Counter[]> {
+  const head = { count: 'exact', head: true } as const
+  return {
+    mix_attempt: [
+      (a, b) => supabase.from('user_combine_success_logs').select('*', head).gte('attempted_at', a).lt('attempted_at', b),
+      (a, b) => supabase.from('user_combine_fail_logs').select('*', head).gte('attempted_at', a).lt('attempted_at', b),
+    ],
+    user_drop: [
+      (a, b) => supabase.from('poi_drops').select('*', head).eq('source', 'user').gte('dropped_at', a).lt('dropped_at', b),
+    ],
+    pickup: [(a, b) => supabase.from('poi_drops').select('*', head).gte('picked_up_at', a).lt('picked_up_at', b)],
+    mission_complete: [
+      (a, b) => supabase.from('user_mission_completions').select('*', head).gte('completed_at', a).lt('completed_at', b),
+    ],
+    collection_complete: [
+      (a, b) => supabase.from('user_item_book_completions').select('*', head).gte('completed_at', a).lt('completed_at', b),
+    ],
+  }
+}
+
+async function sumCounters(counters: readonly Counter[], fromIso: string, toIso: string): Promise<number> {
+  const results = await Promise.all(counters.map((counter) => counter(fromIso, toIso)))
+  let total = 0
+  for (const { count, error } of results) {
+    if (error) throw new Error(error.message)
+    total += count ?? 0
+  }
+  return total
+}
+
+/** 지표마다 최근 7일 합계와 직전 기간의 주평균을 센다. 하나라도 읽지 못하면 던진다. */
+async function loadActionCounts(supabase: Supabase, now: Date): Promise<ActionCounts> {
+  const weeks = DEFAULT_OPS_SIGNAL_THRESHOLD_VALUES.actionSpikeBaselineWeeks
+  const nowIso = now.toISOString()
+  const recentStartIso = new Date(now.getTime() - ACTION_RECENT_DAYS * DAY_MS).toISOString()
+  const baselineStartIso = new Date(now.getTime() - (ACTION_RECENT_DAYS + weeks * 7) * DAY_MS).toISOString()
+  const counters = buildCounters(supabase)
+
+  const entries = await Promise.all(
+    ACTION_METRIC_KEYS.map(async (metric) => {
+      const [recent, baselineTotal] = await Promise.all([
+        sumCounters(counters[metric], recentStartIso, nowIso),
+        sumCounters(counters[metric], baselineStartIso, recentStartIso),
+      ])
+      return [metric, { recent, baselineWeeklyAverage: baselineTotal / weeks }] as const
+    })
+  )
+  return Object.fromEntries(entries) as ActionCounts
+}
+
+// ── 진입점 ───────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 신호 13종과 날짜별 구성을 읽어 계산한다(서버 전용, 읽기만 한다). 원천 하나가 실패해도 던지지 않는다 — 실패한 원천은
+ * `sourceErrors`에 담고 그 원천에 기대는 신호만 「확인하지 못했어요」로 돌려준다.
+ */
+export async function loadOpsSignals(options: LoadOpsSignalsOptions = {}): Promise<LoadedOpsSignals> {
+  const now = options.now ?? new Date()
+  const includeSample = options.includeSample === true
+  const supabase = createServiceClient()
+  const sourceErrors: LoadedOpsSignals['sourceErrors'] = {}
+
+  async function settle<T>(source: OpsSignalSource, task: () => Promise<T>): Promise<T | null> {
+    try {
+      return await task()
+    } catch (error) {
+      sourceErrors[source] = errorMessage(error)
+      console.error(`[admin/ops-signals] ${source} 조회 오류:`, error)
+      return null
+    }
+  }
+
+  // 카드·미션은 오늘 앞 6일부터 다음 주 일요일까지(검사 범위의 최대치와 단조로운 흐름이 되돌아보는 기간)
+  const today = todayKstDateString(now)
+  const rangeStartIso = kstDayBoundsIso(
+    shiftDateStr(today, -(DEFAULT_OPS_SIGNAL_THRESHOLD_VALUES.monotonyWindowDays - 1))
+  ).startIso
+  const rangeEndIso = kstDayBoundsIso(shiftDateStr(mondayOfWeek(today), 13)).endIso
+
+  const [cards, missions, bundles, actions] = await Promise.all([
+    settle('cards', () => loadCards(supabase, rangeStartIso, rangeEndIso)),
+    settle('missions', () => loadMissions(supabase, rangeStartIso, rangeEndIso)),
+    settle('bundles', () => loadBundles(supabase, includeSample)),
+    settle('actions', () => loadActionCounts(supabase, now)),
+  ])
+
+  if (bundles) {
+    // 제출 원본을 못 읽으면 `raw`가 null로 남아 그 묶음의 뺀 항목 목록은 「읽지 못했어요」로 보인다.
+    await settle('bundle_raw', () => attachOpenBundleRaw(supabase, bundles))
+  }
+
+  const input: ComputeOpsSignalsInput = { cards, missions, bundles, actions }
+  return { ...computeOpsSignals(input, { now, includeSample }), sourceErrors }
+}
