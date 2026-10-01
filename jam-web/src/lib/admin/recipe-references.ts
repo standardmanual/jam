@@ -77,13 +77,15 @@ export async function collectRecipeReferences(
   supabase: ServiceClient,
   recipeIds: string[]
 ): Promise<RecipeReferenceReport> {
+  // 배지 조건의 recipe_id는 text로 비교되므로, 주소로 들어온 대문자 uuid도 소문자로 맞춰 센다.
+  const ids = recipeIds.map((id) => id.toLowerCase())
   let badgeCount = 0
-  for (let i = 0; i < recipeIds.length; i += REFERENCE_CHUNK) {
+  for (let i = 0; i < ids.length; i += REFERENCE_CHUNK) {
     const { count, error } = await supabase
       .from('badges')
       .select('id', { count: 'exact', head: true })
       .is('deleted_at', null)
-      .in(BADGE_RECIPE_ID_PATH, recipeIds.slice(i, i + REFERENCE_CHUNK))
+      .in(BADGE_RECIPE_ID_PATH, ids.slice(i, i + REFERENCE_CHUNK))
     if (error) {
       return { blockingTotal: 0, cascadeTotal: 0, total: 0, error: error.message }
     }
@@ -153,7 +155,7 @@ export interface BadgeInRecipeReferenceReport {
  * reward_badge_ids`(둘 다 uuid[])에 남아 있는 레시피 수를 센다 (티켓 20260910_1515,
  * 슬롯 이관은 티켓 20260917_1427).
  *
- * `combination_recipes`가 레시피 행을 참조하는 인바운드 참조는 없지만(파일 상단 주석),
+ * 레시피 행을 가리키는 참조는 배지 조건 하나뿐이고(파일 상단 주석, `collectRecipeReferences`),
  * **반대 방향**(레시피/슬롯이 배지를 참조하는 방향)은 배열 컬럼이라 FK가 걸리지 않는다.
  * 그래서 소프트 삭제(`badges` PATCH)가 이 참조를 막지는 않되, 운영이 탐지할 수 있도록
  * 경고만 남긴다 — `badge-references.ts`가 하드 삭제 차단용으로 이미 세는 것과 같은 컬럼을

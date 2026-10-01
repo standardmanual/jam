@@ -77,6 +77,15 @@ describe('collectRecipeReferences', () => {
     expect(badgeCalls[0]).toMatchObject({ column: PATH, ids: ['r1'], deletedAtIsNull: true })
   })
 
+  it('주소로 들어온 대문자 id도 소문자로 맞춰 센다', async () => {
+    const { client, badgeCalls } = createStubSupabase({ badgesByRecipeId: { r1: 1 } })
+
+    const result = await collectRecipeReferences(client, ['R1'])
+
+    expect(result.total).toBe(1)
+    expect(badgeCalls[0].ids).toEqual(['r1'])
+  })
+
   it('가리키는 배지가 없으면 0건이다', async () => {
     const { client } = createStubSupabase({})
     expect(await collectRecipeReferences(client, ['r1'])).toEqual({
