@@ -706,8 +706,8 @@ stateDiagram-v2
   `cancelScheduledAmbientDrop`(공개 전 취소, 실행 중·뒤는 409), `rescheduleAmbientDrop`(공개 전 시각 수정, 놓침으로 읽히면 409), `getAmbientDropSchedule`(상태 읽기, 파생 상태
   `missed`·`stalled` 포함). 1500은 시각 수정을 부르지 않는다(G14). 같은 묶음이면 컬렉션 생성이 드랍 예약보다 먼저다(등록 판정이 예정 시각 기준이라 그 시각에 노출 중인 컬렉션이어야 한다).
 - 레시피(O16, 티켓 20261001_1158): `jam-web/src/lib/admin/recipe-write.ts`의 `createRecipeWithSlots`(공개 시각을 넣어 생성), `cancelScheduledRecipe`(공개 전 취소 = 삭제, 삭제 가드를
-  거치고 공개된 뒤에는 409), `recipeReleaseState`(공개됨 / 공개 예정 판정). 종료 시각(`valid_until`)과 「종료됨」 판정은 영향 티켓 20261002_0710이 더하고(사용자 결정 2026-10-02), ⑧은 그 뒤에
-  레시피 항목의 `ends_at`을 넘긴다.
+  거치고 공개된 뒤에는 409), `recipeReleaseState`(공개 중 / 공개 예정 / 종료됨 판정). 종료 시각(`valid_until`, 마이그레이션 213)과 「종료됨」 판정은 영향 티켓 20261002_0710이 더했다(사용자 결정 2026-10-02).
+  `createRecipeWithSlots`는 `valid_until`을 받아 공개 시각보다 늦은지 확인하고(어기면 400, `assertValidPeriod`), ⑧은 레시피 항목의 `ends_at`을 `valid_until`로 넘긴다.
 
 ### 8.6 상태 맞추기 (10분)
 

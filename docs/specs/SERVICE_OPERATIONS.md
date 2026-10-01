@@ -610,8 +610,8 @@ POST /api/combine { recipe_id: string, item_ids: string[] }  (item_ids 1~10개, 
 
 3. combineRecipeAttempt — 지정한 레시피 하나만 검증한다(전체 레시피 스캔 없음)
    - item_ids에 중복이 있거나 상한을 넘으면 → invalid_count
-   - 레시피가 없거나 공개 시각이 아직 지나지 않았으면 → recipe_not_found
-     (공개 전 레시피는 없는 레시피와 같다. 판정은 lib/combine/visibility.ts의 isRecipeReleased)
+   - 레시피가 없거나 공개 기간 밖이면(공개 시각 전이거나 종료 시각이 지났으면) → recipe_not_found
+     (공개 전·종료된 레시피는 없는 레시피와 같다. 판정은 lib/combine/visibility.ts의 recipeReleaseState)
    - 투입한 개체를 내 인벤토리에서 조회한다(아이템북에 꽂히지 않았고 드랍되지 않은 것만).
      하나라도 못 찾으면 → items_not_found
    이 세 경우는 소각도 포인트 지급도 없다.
@@ -645,7 +645,8 @@ combination_recipes {
   id, name,
   reward_points: integer          -- 성공 시 지급 포인트(0이면 미지급)
   reward_badge_ids: UUID[]        -- 성공 시 확정 지급하는 아이템배지
-  valid_from: timestamptz | null  -- 공개 시각(null이면 처음부터 공개). 종료 시각은 없다
+  valid_from: timestamptz | null  -- 공개 시각(null이면 처음부터 공개)
+  valid_until: timestamptz | null -- 종료 시각(null이면 종료 없음). 둘 다 있으면 valid_from < valid_until
 }
 combination_recipe_slots {
   recipe_id, slot_order,
@@ -657,9 +658,11 @@ combine_policy { fail_reward_points: integer }  -- 미매칭 시 지급하는 �
 
 레시피당 슬롯은 2~10개이고 아이템 슬롯이 1개 이상 있어야 한다(`recipe-payload.ts`).
 
-공개 시각(`valid_from`)이 지나지 않은 레시피는 일반 유저에게 없는 레시피와 같다. `/combine` 화면은
-공개된 레시피만 내려 주고(`filterReleasedRecipes`), 믹스 시도는 재료를 소각하기 전에
-`recipe_not_found`로 거절한다. 레시피를 내릴 때는 삭제한다(종료 시각 없음).
+공개 기간(공개 시각 `valid_from` ≤ 지금 < 종료 시각 `valid_until`) 밖의 레시피는 일반 유저에게 없는
+레시피와 같다. `/combine` 화면은 공개 중인 레시피만 내려 주고(`filterReleasedRecipes`), 믹스 시도는
+재료를 소각하기 전에 `recipe_not_found`로 거절한다. 종료 시각은 선택이고(비우면 상시) 공개 뒤에도 바꾸거나
+지울 수 있다. 종료된 레시피로 이미 받은 보상은 그대로다. 레시피를 내리는 길은 종료 시각이고, 삭제도
+남는다(삭제 가드 포함).
 
 ---
 
@@ -1111,7 +1114,7 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | POST | `/api/admin/poi/review/bulk` | 검토 큐 다중선택 일괄 처리 ([[20260907_1242]]) |
 | GET | `/api/admin/poi/review/ids` | 검토 큐 필터 결과의 전체 ID(전체 선택용, 상한 1,000) |
 | GET, POST | `/api/admin/recipes` | 조합 레시피 목록/생성 |
-| PATCH, DELETE | `/api/admin/recipes/[id]` | 레시피 수정/삭제. PATCH는 공개된 레시피의 공개 시각 변경을 409로 거절한다 |
+| PATCH, DELETE | `/api/admin/recipes/[id]` | 레시피 수정/삭제. PATCH는 공개된 레시피의 공개 시각 변경을 409로 거절하고, 종료 시각은 공개 뒤에도 바꾸거나 지울 수 있다(공개 시각 이하이면 400, [[20261002_0710]]) |
 | POST | `/api/admin/recipes/[id]/cancel-release` | 공개 전(예약 중) 레시피 취소 = 삭제. 삭제 가드를 거치고, 이미 공개됐으면 409, 없으면 404 ([[20261001_1158]]) |
 | GET, POST | `/api/admin/ambient-drop/schedules` | 앰비언트 드랍 날짜 예약 목록(최근 50건)/등록 ([[20261001_2052]]) |
 | POST | `/api/admin/ambient-drop/schedules/preview` | 날짜 예약 등록 전 미리 확인(예정 시각 기준, 쓰기 없음, 겹침 지점 수) |
@@ -1144,7 +1147,7 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | `item_books` | 아이템북 정의 (tribe_id, reward_badge_id, is_active) | 001 |
 | `poi` | 관심 지점 (위치, 반경, linked_badge_id, osm_id) | 001 |
 | `tribes` | 트라이브 정의 | 014, 152(리네임) |
-| `combination_recipes` | 조합 레시피 (name, reward_points, reward_badge_ids, valid_from) | 011, 174, 175, 204 |
+| `combination_recipes` | 조합 레시피 (name, reward_points, reward_badge_ids, valid_from, valid_until) | 011, 174, 175, 204, 213 |
 | `missions` | 미션 정의 (type, condition_json, starts/ends_at, max_completions) | 011 |
 | `user_mission_participations` | 미션 참가 기록 | 012 |
 | `user_mission_completions` | 미션 완료 기록 | 011 |
