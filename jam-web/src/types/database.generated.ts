@@ -221,6 +221,72 @@ export type Database = {
           },
         ]
       }
+      ambient_drop_schedules: {
+        Row: {
+          badge_ids: string[]
+          canceled_at: string | null
+          claimed_at: string | null
+          collection_ids: string[]
+          created_at: string
+          created_by: string | null
+          finished_at: string | null
+          id: string
+          item_mode: string
+          per_poi_count: number | null
+          poi_category: string | null
+          poi_ids: string[]
+          poi_mode: string
+          result: Json | null
+          scheduled_at: string
+          status: string
+          title: string | null
+          total_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          badge_ids?: string[]
+          canceled_at?: string | null
+          claimed_at?: string | null
+          collection_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          finished_at?: string | null
+          id?: string
+          item_mode: string
+          per_poi_count?: number | null
+          poi_category?: string | null
+          poi_ids?: string[]
+          poi_mode: string
+          result?: Json | null
+          scheduled_at: string
+          status?: string
+          title?: string | null
+          total_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          badge_ids?: string[]
+          canceled_at?: string | null
+          claimed_at?: string | null
+          collection_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          finished_at?: string | null
+          id?: string
+          item_mode?: string
+          per_poi_count?: number | null
+          poi_category?: string | null
+          poi_ids?: string[]
+          poi_mode?: string
+          result?: Json | null
+          scheduled_at?: string
+          status?: string
+          title?: string | null
+          total_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       asset_presets: {
         Row: {
           created_at: string

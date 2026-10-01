@@ -994,6 +994,57 @@ export interface AmbientDropConfigRow {
   updated_at: string
 }
 
+/** 앰비언트 드랍 예약 상태 — DB `status` CHECK와 같다. `stalled`·표시용 `missed` 파생은 `lib/ambient-drop/scheduleSpec.ts` */
+export type AmbientDropScheduleStatus =
+  | 'scheduled'
+  | 'running'
+  | 'done'
+  | 'skipped'
+  | 'failed'
+  | 'missed'
+  | 'canceled'
+
+/** 놓을 지점을 정하는 방식 — `list`(지점 직접 선택) · `category`(지점 종류+개수) */
+export type AmbientDropPoiMode = 'list' | 'category'
+
+/** 놓을 아이템을 정하는 방식 — `items`(배지 직접 선택) · `collections`(컬렉션 선택) */
+export type AmbientDropItemMode = 'items' | 'collections'
+
+/**
+ * 앰비언트 드랍 날짜 예약(마이그레이션 209, 티켓 20261001_2051). 싱글톤 `ambient_drop_config`를 쓰지 않는
+ * 별도 테이블이다. 로직: `src/lib/ambient-drop/schedule*.ts`.
+ */
+export interface AmbientDropScheduleRow {
+  id: string
+  /** 운영자가 알아보는 이름(100자 이하) */
+  title: string | null
+  /** 놓을 시각 — KST 정시만 */
+  scheduled_at: string
+  status: AmbientDropScheduleStatus
+  poi_mode: AmbientDropPoiMode
+  /** `list` 모드의 지점 id. `category` 모드는 빈 배열 */
+  poi_ids: string[]
+  /** `category` 모드의 지점 종류(poi_categories.slug, FK 없음). null은 「전체 종류」 */
+  poi_category: string | null
+  item_mode: AmbientDropItemMode
+  /** `items` 모드의 아이템 배지 id. `collections` 모드는 빈 배열 */
+  badge_ids: string[]
+  /** `collections` 모드의 컬렉션 id. `items` 모드는 빈 배열 */
+  collection_ids: string[]
+  /** `list` 모드에서 지점마다 놓을 개수 */
+  per_poi_count: number | null
+  /** `category` 모드에서 놓을 총 개수 */
+  total_count: number | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  claimed_at: string | null
+  finished_at: string | null
+  canceled_at: string | null
+  /** 실행 결과 요약(`runDueAmbientDropSchedules`가 채운다) */
+  result: Record<string, unknown> | null
+}
+
 export interface UserItemBookSlotRow {
   id: string
   user_id: string
@@ -2047,6 +2098,12 @@ export interface Database {
         Row: AmbientDropConfigRow
         Insert: Partial<AmbientDropConfigRow> & { id: number }
         Update: Partial<Omit<AmbientDropConfigRow, 'id'>>
+        Relationships: []
+      }
+      ambient_drop_schedules: {
+        Row: AmbientDropScheduleRow
+        Insert: Partial<AmbientDropScheduleRow> & Pick<AmbientDropScheduleRow, 'scheduled_at' | 'poi_mode' | 'item_mode'>
+        Update: Partial<Omit<AmbientDropScheduleRow, 'id'>>
         Relationships: []
       }
       user_item_book_slots: {
