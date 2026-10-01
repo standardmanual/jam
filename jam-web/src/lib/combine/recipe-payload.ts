@@ -40,6 +40,11 @@ export interface RecipePayloadInput {
   slots?: unknown
   reward_points?: unknown
   reward_badge_ids?: unknown
+  /**
+   * 공개 시각(마이그레이션 204, 티켓 20261001_1158) — 칸이 없으면 건드리지 않고, 빈 값·null이면 바로 공개,
+   * 값이 있으면 시간대가 포함된 미래 ISO여야 한다.
+   */
+  valid_from?: unknown
 }
 
 export interface NormalizedRecipePayload {
@@ -47,15 +52,59 @@ export interface NormalizedRecipePayload {
   slots: NormalizedSlot[]
   rewardPoints: number
   rewardBadgeIds: string[]
+  /** `undefined`는 제출하지 않음(행을 바꾸지 않는다), `null`은 바로 공개, 문자열은 UTC ISO 예약 시각 */
+  validFrom: string | null | undefined
+}
+
+/** 시간대가 붙은 ISO 8601 — 시간대가 없는 값은 서버 시간대로 해석돼 예약이 어긋나므로 받지 않는다 */
+const ISO_WITH_ZONE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/
+
+/**
+ * 공개 시각 입력을 정규화한다 — 칸 없음(`undefined`)은 그대로, 빈 문자열·null은 바로 공개(`null`),
+ * 값이 있으면 시간대가 포함된 ISO이고 해석 가능하며 `now`보다 미래여야 한다(가정 A6: 과거 시각은 오류).
+ */
+export function normalizeValidFrom(
+  value: unknown,
+  now: Date = new Date()
+): { ok: true; value: string | null | undefined } | { ok: false; error: string } {
+  if (value === undefined) return { ok: true, value: undefined }
+  if (value === null || (typeof value === 'string' && value.trim() === '')) return { ok: true, value: null }
+  if (typeof value !== 'string' || !ISO_WITH_ZONE.test(value.trim())) {
+    return {
+      ok: false,
+      error:
+        '공개 시각 형식이 올바르지 않아요. 시간대가 포함된 날짜와 시각이어야 해요(예: 2026-10-05T09:00:00+09:00). 시각을 다시 선택해 주세요.',
+    }
+  }
+  const trimmed = value.trim()
+  const at = new Date(trimmed)
+  // `new Date`는 2월 31일을 3월 3일로 조용히 넘겨 읽는다 — 예약이 모르는 사이 밀리지 않도록 달력에 있는 날짜인지 따로 본다.
+  const [, year, month, day] = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed) ?? []
+  const calendarDay = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
+  if (
+    Number.isNaN(at.getTime()) ||
+    calendarDay.getUTCMonth() !== Number(month) - 1 ||
+    calendarDay.getUTCDate() !== Number(day)
+  ) {
+    return { ok: false, error: '공개 시각을 읽을 수 없어요. 존재하는 날짜와 시각으로 다시 선택해 주세요.' }
+  }
+  if (at.getTime() <= now.getTime()) {
+    return {
+      ok: false,
+      error: '공개 시각이 이미 지났어요. 지금보다 늦은 시각을 고르거나 「바로 공개」로 바꿔 주세요.',
+    }
+  }
+  return { ok: true, value: at.toISOString() }
 }
 
 /**
- * 형식 검증 — 슬롯 배열 구조, 슬롯 개수 하한/상한, 슬롯당 후보 최소 1개, 보상 3분기.
+ * 형식 검증 — 슬롯 배열 구조, 슬롯 개수 하한/상한, 슬롯당 후보 최소 1개, 보상 3분기, 공개 시각.
  * 배지 실제 타입 조회가 필요한 검증(슬롯 내 타입 일치, 아이템 타입 슬롯 하한)은
  * `validateSlotTypes()`가 담당한다.
  */
 export function normalizeRecipePayload(
-  body: RecipePayloadInput
+  body: RecipePayloadInput,
+  now: Date = new Date()
 ): { ok: true; value: NormalizedRecipePayload } | { ok: false; error: string } {
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   if (!name) return { ok: false, error: '레시피 이름을 입력해 주세요.' }
@@ -90,9 +139,12 @@ export function normalizeRecipePayload(
     return { ok: false, error: '보상을 하나 이상 지정해 주세요. 포인트나 배지 중 최소 하나가 필요해요.' }
   }
 
+  const validFrom = normalizeValidFrom(body.valid_from, now)
+  if (!validFrom.ok) return validFrom
+
   return {
     ok: true,
-    value: { name, slots, rewardPoints, rewardBadgeIds },
+    value: { name, slots, rewardPoints, rewardBadgeIds, validFrom: validFrom.value },
   }
 }
 

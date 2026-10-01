@@ -3,7 +3,8 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
 import { collectRecipeReferences } from '@/lib/admin/recipe-references'
 import { recipeDeleteBlockedMessage } from '@/lib/admin/recipe-bulk'
-import { buildRecipeRow, replaceRecipeSlots } from '@/lib/admin/recipe-write'
+import { assertValidFromChange, buildRecipeRow, replaceRecipeSlots } from '@/lib/admin/recipe-write'
+import { isUuid } from '@/lib/admin/uuid'
 
 /**
  * 하드 삭제 — 참조 카운트 가드는 `lib/admin/recipe-references.ts`가 단일 출처다(티켓
@@ -62,11 +63,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const supabase = createServiceClient()
+
+  // 공개 시각 변경 가드(티켓 20261001_1158)를 위해 기존 행을 먼저 읽는다. 없는 레시피는 404다.
+  const { data: existing, error: existingError } = isUuid(id)
+    ? await supabase.from('combination_recipes').select('id, valid_from').eq('id', id).maybeSingle()
+    : { data: null, error: null }
+  if (existingError) {
+    console.error('[recipes PATCH] 기존 레시피 조회 실패:', existingError)
+    return NextResponse.json({ error: '레시피를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' }, { status: 500 })
+  }
+  if (!existing) return NextResponse.json({ error: '레시피를 찾을 수 없어요.' }, { status: 404 })
+
   // 티켓 20260910_1408: 이전에는 body를 `as never`로 캐스팅해 그대로 update했다. POST와 같은
   // 검증 규칙을 `buildRecipeRow()` 한 곳에서 공유한다. 티켓 20260917_1427: 슬롯 기반 재설계로
   // 재료 분류가 슬롯 배열 검증으로 바뀌었다 — 슬롯은 레시피 update 성공 후 전체 교체한다.
   const built = await buildRecipeRow(supabase, body)
   if (!built.ok) return NextResponse.json({ error: built.error }, { status: 400 })
+
+  // 이미 공개된 레시피는 공개 시각을 바꿀 수 없다 — 예약 중일 때만 시각 변경·바로 공개 전환이 된다.
+  const change = assertValidFromChange(existing as { valid_from: string | null }, built.row.valid_from)
+  if (!change.ok) return NextResponse.json({ error: change.error }, { status: 409 })
 
   const { data, error } = await supabase
     .from('combination_recipes')

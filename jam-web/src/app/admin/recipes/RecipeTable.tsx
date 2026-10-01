@@ -19,6 +19,8 @@ import { runBulk, fetchListIds, downloadResponseAsFile, type BulkRunResponse } f
 import { toastBulkResult } from '@/components/admin/ui/toast-helpers'
 import type { CombinationRecipeSlotRow } from '@/types/database'
 import type { RecipeListRow } from '@/lib/admin/recipe-list'
+import { formatKstYmdHm } from '@/lib/admin/kst-format'
+import { recipeReleaseState } from '@/lib/combine/visibility'
 
 export type RecipeWithSlots = RecipeListRow & { slots: CombinationRecipeSlotRow[] }
 
@@ -45,7 +47,8 @@ interface DeletePreview {
 /**
  * 믹스 레시피 목록 표(티켓 20260924_0949, 상위 티켓 §1·§4.1). 행 아무 곳이나 눌러 상세로
  * 이동하고, 삭제는 행을 선택한 뒤 일괄 삭제(등급 3 — 확인 문구 입력) 한 경로뿐이다. 레시피에는
- * 활성 여부 칸이 없어 표 안 대표 기능은 두지 않는다. 삭제가 참조로 막힌 항목은 결과 안내에
+ * 활성 여부 칸이 없고 공개 시각만 있어(「공개」 열에 공개됨 / 공개 예정으로 보인다, 티켓
+ * 20261001_1158) 표 안 대표 기능은 두지 않는다. 삭제가 참조로 막힌 항목은 결과 안내에
  * 사유와 함께 나온다.
  */
 function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
@@ -124,6 +127,19 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
             ) : (
               <span className="text-xs text-red-600">보상 미지정</span>
             )
+          },
+        }),
+        columnHelper.display({
+          id: 'release',
+          header: '공개',
+          enableSorting: false,
+          enableHiding: false,
+          cell: ({ row }) => {
+            const validFrom = row.original.valid_from
+            if (!validFrom || recipeReleaseState(row.original) === 'released') {
+              return <span className="text-sm">공개됨</span>
+            }
+            return <span className="text-sm text-amber-700">공개 예정 {formatKstYmdHm(validFrom)}</span>
           },
         }),
       ]),

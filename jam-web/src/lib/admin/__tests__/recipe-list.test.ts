@@ -2,7 +2,7 @@
  * 믹스 레시피 목록 조건·삭제 분류 회귀 (티켓 20260924_0949)
  * 실행: cd jam-web && npx vitest run src/lib/admin/__tests__/recipe-list.test.ts
  */
-import { parseRecipeListParams, applyRecipeListQuery, type RecipeListQuery } from '../recipe-list'
+import { RECIPE_LIST_COLUMNS, parseRecipeListParams, applyRecipeListQuery, type RecipeListQuery } from '../recipe-list'
 import { classifyRecipeDeletion, recipeDeleteBlockedMessage, type RecipeDeletionCandidate } from '../recipe-bulk'
 
 interface RecordedCall {
@@ -68,6 +68,18 @@ describe('applyRecipeListQuery', () => {
       { method: 'order', args: [column, { ascending }] },
       { method: 'order', args: ['id', { ascending: true }] },
     ])
+  })
+})
+
+describe('RECIPE_LIST_COLUMNS — 공개 시각 칸 (티켓 20261001_1158)', () => {
+  it('목록·내보내기가 공개 시각(valid_from)을 함께 조회한다', () => {
+    expect(RECIPE_LIST_COLUMNS.split(', ')).toContain('valid_from')
+  })
+
+  it('기존 칸은 그대로 조회한다', () => {
+    expect(RECIPE_LIST_COLUMNS.split(', ')).toEqual(
+      expect.arrayContaining(['id', 'name', 'reward_points', 'reward_badge_ids', 'created_at'])
+    )
   })
 })
 

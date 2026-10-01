@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
-import { buildRecipeRow, replaceRecipeSlots } from '@/lib/admin/recipe-write'
+import { createRecipeWithSlots } from '@/lib/admin/recipe-write'
 import type { CombinationRecipeSlotRow } from '@/types/database'
 
 export async function GET() {
@@ -42,10 +42,9 @@ export async function GET() {
 }
 
 /**
- * 티켓 20260917_1427: 슬롯 기반 OR 매칭으로 재설계 — `buildRecipeRow()`가 형식 검증 +
- * 슬롯별 배지 실제 타입 일치 검증을 수행하고, 레시피 upsert 성공 후 `replaceRecipeSlots()`가
- * 슬롯 전체를 delete-then-insert 한다(레시피 id가 먼저 확정돼야 슬롯의 recipe_id를 채울 수
- * 있어 신규 생성 시 두 단계로 분리된다).
+ * 티켓 20260917_1427: 슬롯 기반 OR 매칭으로 재설계 — 검증·행 insert·슬롯 저장은
+ * `createRecipeWithSlots()`가 한다(티켓 20261001_1158: 운영툴 자원 연결과 같은 함수를 쓰도록 옮겼다).
+ * 공개 시각(`valid_from`)은 비우면 바로 공개, 값이 있으면 시간대가 포함된 미래 시각이어야 한다.
  */
 export async function POST(req: NextRequest) {
   const authError = await requireAdmin()
@@ -57,24 +56,8 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServiceClient()
-  const built = await buildRecipeRow(supabase, body)
-  if (!built.ok) return NextResponse.json({ error: built.error }, { status: 400 })
+  const created = await createRecipeWithSlots(supabase, body)
+  if (!created.ok) return NextResponse.json({ error: created.error }, { status: created.status })
 
-  const { data, error } = await supabase
-    .from('combination_recipes')
-    .insert(built.row)
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  const recipe = data as { id: string }
-  const slotResult = await replaceRecipeSlots(supabase, recipe.id, built.slots)
-  if (!slotResult.ok) {
-    // 슬롯 저장 실패 — 레시피 행만 남는 반쪽 상태를 방지하기 위해 되돌린다.
-    await supabase.from('combination_recipes').delete().eq('id', recipe.id)
-    return NextResponse.json({ error: slotResult.error }, { status: 500 })
-  }
-
-  return NextResponse.json({ ...data, slots: built.slots })
+  return NextResponse.json({ ...created.recipe, slots: created.slots })
 }
