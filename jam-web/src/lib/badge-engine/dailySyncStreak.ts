@@ -43,6 +43,29 @@ export function calcCurrentSyncStreakDays(syncDates: readonly string[], today: s
 }
 
 /**
+ * 동기화 발생일 목록(`YYYY-MM-DD`, 순서 무관·중복 허용)에서 «기록 중 가장 긴 연속일수»를 계산하는
+ * 순수 함수(티켓 20261001_1022). 기존 유저 재평가 배치가 쓴다 — 오늘 동기화 여부와 무관하게
+ * 기록 전체에서 가장 길게 이어진 구간을 센다. 오늘 기준 «현재 연속»은 `calcCurrentSyncStreakDays`다.
+ * 빈 목록이면 0이다.
+ */
+export function calcLongestSyncStreakDays(syncDates: readonly string[]): number {
+  const dateSet = new Set(syncDates)
+  let longest = 0
+  for (const date of dateSet) {
+    // 구간의 첫날(전날 기록이 없는 날)에서만 앞으로 세어 각 날짜를 한 번씩만 지난다
+    if (dateSet.has(shiftDateString(date, -1))) continue
+    let length = 0
+    let cursor = date
+    while (dateSet.has(cursor)) {
+      length++
+      cursor = shiftDateString(cursor, 1)
+    }
+    if (length > longest) longest = length
+  }
+  return longest
+}
+
+/**
  * `user_daily_sync_counts`에서 유저의 동기화 발생일을 조회해 `calcCurrentSyncStreakDays`로
  * 넘긴다. 조회 실패는 예외를 던지지 않고 0으로 폴백한다(로그만 남긴다) — 이 판정 실패가
  * 동기화 자체를 막으면 안 된다(`recordDailySyncAndEvaluate`와 같은 방어 원칙).
