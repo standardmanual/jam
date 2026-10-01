@@ -221,6 +221,15 @@ describe('saveSignalThresholds — 400·404', () => {
     expect(db.upserts).toEqual([])
   })
 
+  it('요청 본문의 `__proto__` 키도 카드에 없는 칸이라 400이고 아무것도 쓰지 않는다(조각 C 게이트 WARN 1)', async () => {
+    const body = JSON.parse('{"values":{"__proto__":5},"expectedUpdatedAt":{"__proto__":null}}')
+    const outcome = await save('approval_deadline', body.values, body.expectedUpdatedAt)
+    if (outcome.ok) throw new Error('400이어야 한다')
+    expect(outcome.status).toBe(400)
+    expect(Object.keys(outcome.fieldErrors ?? {})).toEqual(['__proto__'])
+    expect(db.upserts).toEqual([])
+  })
+
   it('범위 밖 값은 칸별 오류이고 카드의 칸 하나라도 틀리면 맞는 칸도 쓰지 않는다', async () => {
     const outcome = await save(
       'routine_failed',

@@ -102,7 +102,8 @@ export async function saveSignalThresholds(service: ServiceClient, input: SaveTh
 
   // 1. 칸별 확인(카드에 없는 칸·읽기 전용 칸·범위 밖 값). 하나라도 틀리면 아무것도 쓰지 않는다.
   const cardKeys = new Set<string>(card.fields.map((field) => field.key))
-  const fieldErrors: Record<string, string> = {}
+  // 프로토타입 없는 객체: 일반 객체면 `__proto__` 키에 문구를 넣는 대입이 무시돼 오류가 없는 것으로 판정된다(조각 C 게이트 WARN 1).
+  const fieldErrors: Record<string, string> = Object.create(null)
   for (const [key, raw] of Object.entries(values)) {
     if (!isThresholdKey(key) || !cardKeys.has(key)) fieldErrors[key] = '이 신호에 없는 기준값이에요'
     else {
