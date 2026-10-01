@@ -17,6 +17,7 @@ import { applyDroppableItemBookFilter } from '@/lib/itembook/visibility'
 import type { AmbientDropConfig } from './config'
 import { getAmbientDropConfig } from './config'
 import { resolveAmbientTargetCollections } from './collectionTarget'
+import { distributePoiSlots, placeAmbientDrops } from './placement'
 import {
   fallbackPickBadge,
   pickRandom,
@@ -26,7 +27,7 @@ import {
 } from './rarity'
 import type { BadgeRarity } from '@/types/database'
 
-export type AmbientDropTrigger = 'cron' | 'manual'
+export type AmbientDropTrigger = 'cron' | 'manual' | 'scheduled'
 
 export type AmbientDropSkipReason =
   | 'auto_disabled'
@@ -129,7 +130,7 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
 
   if (target.reason) {
     const result: AmbientDropBatchResult = { ...baseResult, eligiblePoiCount: 0, spawned: 0, reason: target.reason }
-    await logResult(result, booksError ? '노출 중 컬렉션 조회 실패' : undefined)
+    await logAmbientBatchResult(result, booksError ? '노출 중 컬렉션 조회 실패' : undefined)
     return result
   }
 
@@ -151,7 +152,7 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
 
   if (allPoiIds.length === 0) {
     const result: AmbientDropBatchResult = { ...baseResult, eligiblePoiCount: 0, spawned: 0, reason: 'no_eligible_poi' }
-    await logResult(result)
+    await logAmbientBatchResult(result)
     return result
   }
 
@@ -184,7 +185,7 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
       spawned: 0,
       reason: 'no_eligible_poi',
     }
-    await logResult(result)
+    await logAmbientBatchResult(result)
     return result
   }
 
@@ -232,29 +233,26 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
       spawned: 0,
       reason: 'no_candidate_badges',
     }
-    await logResult(result)
+    await logAmbientBatchResult(result)
     return result
   }
 
   // ── 배치 생성 — 활성 드랍 0개인 POI를 우선 분산 배치 (발견 경험 분산, 구 엔진과 동일 원칙) ──
+  // 자리 분산은 날짜 예약(scheduleRun)과 같은 함수를 쓴다(placement.ts, 티켓 20261001_2051).
+  const poiSlots = distributePoiSlots({
+    candidatePoiIds,
+    activeByPoi,
+    maxActivePerPoi: config.max_active_per_poi,
+    count: config.batch_size,
+    pick: pickRandom,
+  })
   const inserts: { poi_id: string; badge_id: string }[] = []
-  const localActiveByPoi = new Map(activeByPoi)
-
-  for (let i = 0; i < config.batch_size; i++) {
-    const zeroPois = candidatePoiIds.filter((id) => (localActiveByPoi.get(id) ?? 0) === 0)
-    const pool =
-      zeroPois.length > 0
-        ? zeroPois
-        : candidatePoiIds.filter((id) => (localActiveByPoi.get(id) ?? 0) < config.max_active_per_poi)
-    const poiId = pickRandom(pool)
-    if (!poiId) break // 배치 가능한 POI 슬롯 소진
-
+  for (const poiId of poiSlots) {
     const rarity = weightedPickRarity(effectiveRarityDistribution)
     const badge = fallbackPickBadge(badgesByRarity, rarity)
     if (!badge) break // 후보 배지 자체가 없음(이론상 totalCandidates>0 체크로 도달하지 않음)
 
     inserts.push({ poi_id: poiId, badge_id: badge.id })
-    localActiveByPoi.set(poiId, (localActiveByPoi.get(poiId) ?? 0) + 1)
   }
 
   if (inserts.length === 0) {
@@ -264,43 +262,13 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
       spawned: 0,
       reason: 'no_candidate_badges',
     }
-    await logResult(result)
+    await logAmbientBatchResult(result)
     return result
   }
 
-  // 20260829_2101: 개체 정체성 모델 — 일련번호가 확정되는 시점은 정확히 ①드랍엔진 직접지급
-  // ②시스템(앰비언트) 드랍이 POI에 "배치되는 순간" 둘뿐이다. 이후 픽업은 소유권 이전일 뿐
-  // 재발급이 아니므로, poi_drops row를 만들기 "전"에 InventoryItem을 먼저 선발급(pre-mint)
-  // 한다 — 기존에는 pickup_drop() RPC가 픽업 시점에 새 row를 INSERT해 새 일련번호를
-  // 부여했었다(의도와 반대 동작). obtained_by='ambient_drop'은 assign_random_serial()
-  // 트리거가 일련번호 범위(50,001~999,999)를 판별하는 값이기도 하다(migrations/108).
-  //
-  // 게이트 리뷰 지적(2026-08-29): 선발급(개별 INSERT)과 poi_drops 배치 INSERT를 애플리케이션
-  // 레벨에서 분리 실행하면, 배치 INSERT가 통째로 실패할 때 이미 발급된 inventory_items가
-  // 어디에도 연결되지 못한 채 영구 고아로 남는다(일련번호 점유, custody_events 없음).
-  // mint_and_place_ambient_drop() RPC로 개체 1건 단위(선발급+poi_drops 연결+Minted 기록)를
-  // 원자적 트랜잭션으로 묶어 이 문제를 해소한다(migrations/108).
-  const spawnedDrops: { id: string; inventory_item_id: string; poi_id: string }[] = []
-
-  for (const row of inserts) {
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('mint_and_place_ambient_drop', {
-      p_poi_id: row.poi_id,
-      p_badge_id: row.badge_id,
-    })
-
-    if (rpcError) {
-      console.error('[ambient-drop] mint_and_place_ambient_drop RPC 오류:', rpcError.message, row)
-      continue
-    }
-
-    const result = rpcResult as { ok: boolean; drop_id?: string; inventory_item_id?: string }
-    if (!result.ok || !result.drop_id || !result.inventory_item_id) {
-      console.error('[ambient-drop] 개체 선발급+배치 실패:', result, row)
-      continue
-    }
-
-    spawnedDrops.push({ id: result.drop_id, inventory_item_id: result.inventory_item_id, poi_id: row.poi_id })
-  }
+  // 20260829_2101: 개체 정체성 모델 — 선발급+poi_drops 연결+Minted 기록을 RPC 1건으로 원자 처리한다.
+  // 근거와 실패 처리는 placement.ts `placeAmbientDrops`에 있다(날짜 예약과 공용, 티켓 20261001_2051).
+  const { spawned: spawnedDrops } = await placeAmbientDrops(supabase, inserts)
 
   if (spawnedDrops.length === 0) {
     const result: AmbientDropBatchResult = {
@@ -309,7 +277,7 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
       spawned: 0,
       reason: 'insert_failed',
     }
-    await logResult(result, '개체 선발급+배치 전부 실패')
+    await logAmbientBatchResult(result, '개체 선발급+배치 전부 실패')
     return result
   }
 
@@ -318,12 +286,13 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
     eligiblePoiCount: candidatePoiIds.length,
     spawned: spawnedDrops.length,
   }
-  await logResult(result)
+  await logAmbientBatchResult(result)
   return result
 }
 
-async function logResult(result: AmbientDropBatchResult, error?: string): Promise<void> {
-  await logEngineDecision('drop', 'ambient_batch_result', null, { ...result, error })
+/** 배치 결과를 `engine_decision_log`에 남긴다. 정기 배포와 날짜 예약(scheduleRun)이 같은 이벤트를 쓴다 */
+export async function logAmbientBatchResult(result: object, error?: string): Promise<void> {
+  await logEngineDecision('drop', 'ambient_batch_result', null, { ...(result as Record<string, unknown>), error })
 }
 
 export type { AmbientDropConfig }
