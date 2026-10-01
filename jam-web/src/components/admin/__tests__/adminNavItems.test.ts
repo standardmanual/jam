@@ -51,14 +51,23 @@ describe('NAV_GROUPS (티켓 20260908_1806: 그룹·항목 전면 재배열)', (
     expect(NAV_GROUPS.map((g) => g.label)).toEqual(['라이브 운영', '컨텐츠 관리', '정책 및 밸런스', '운영 도구', '디자인'])
   })
 
-  it('라이브 운영 그룹(티켓 20260930_1817)은 맨 위에 있고 받은 기획함 하나를 담는다', () => {
+  it('라이브 운영 그룹(티켓 20260930_1817)은 맨 위에 있고 받은 기획함과, 마지막에 운영 설정(티켓 20260930_1459 조각 B)을 담는다', () => {
     expect(NAV_GROUPS[0].id).toBe('live-ops')
-    expect(NAV_GROUPS[0].items.map((i) => [i.href, i.label])).toEqual([['/admin/ops-inbox', '받은 기획함']])
+    expect(NAV_GROUPS[0].items.map((i) => [i.href, i.label])).toEqual([
+      ['/admin/ops-inbox', '받은 기획함'],
+      ['/admin/ops-settings', '운영 설정'],
+    ])
   })
 
   it('기획 상세 경로에서도 받은 기획함이 활성이다', () => {
     expect(mostSpecificActiveItem('/admin/ops-inbox')?.href).toBe('/admin/ops-inbox')
     expect(mostSpecificActiveItem('/admin/ops-inbox/4ca7d1ad-43b2-41a3-9ed4-f03bc73604ee')?.href).toBe('/admin/ops-inbox')
+  })
+
+  it('운영 설정 경로에서는 운영 설정만 활성이고 헤더 제목이 「운영 설정」이다', () => {
+    expect(mostSpecificActiveItem('/admin/ops-settings')?.href).toBe('/admin/ops-settings')
+    expect(mostSpecificActiveItem('/admin/ops-settings')?.label).toBe('운영 설정')
+    expect(mostSpecificActiveItem('/admin/ops-settings')?.href).not.toBe('/admin/ops-inbox')
   })
 
   it('디자인 그룹은 배지 이미지 생성 2종 + 에셋 제너레이터를 포함하고 테마 컬러·쉐이더 랩 항목은 ' +

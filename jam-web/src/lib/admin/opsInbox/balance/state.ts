@@ -8,29 +8,38 @@
  * 평가 전체는 이어진다. 서비스 클라이언트는 인자로 받는다(`query.ts`가 `createServiceClient()`를 만들어 넘기고, 테스트는 가짜를
  * 넘긴다). 모듈이 서버 전용 코드를 끌어오지 않도록 클라이언트 타입만 가져온다.
  *
- * 다른 묶음의 신규 개방은 **시험이 아닌 묶음, 반려·취소·실패가 아닌 항목, 만들어진 자원 ID가 없는 `collection_launch`** 만 센다.
+ * 다른 묶음의 신규 개방은 **시험이 아닌 묶음의 반려·취소·실패가 아닌 `collection_launch`** 를 센다. 만들어진 자원 ID가 있는 항목도
+ * 목록에 넣고 `resourceCreated`로 표시한다 — R2·R3(개방 속도)은 이미 만든 개방도 센 개수라서 모두 세고, R1(동시 개방 수)은 만들어진 것을
+ * DB 컬렉션(`books`)에서 이미 세므로 `resourceCreated`가 아닌 것만 항목에서 더한다(두 번 세지 않는다. 티켓 20260930_1459 조각 B).
  * 지금 평가하는 묶음은 뺀다(그 항목은 평가 입력으로 따로 들어온다). 그래서 시험 묶음끼리는 서로 세지 않는다.
+ *
+ * 평가할 `collection_launch` 항목이 없는 묶음은 컬렉션·다른 묶음 조회를 건너뛴다(`BalanceReferences.hasLaunches`). 건너뛴 상태는
+ * `ok: false`이지만 그 상태를 쓰는 규칙(R1~R3)은 신규 개방 항목이 있어야 돌므로 「점검 못 함」으로 나오지 않는다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
 import type { Json } from '@/types/database.generated'
 import type { ItemBookVisibilityFields } from '@/lib/itembook/visibility'
 import { isUuid } from '@/lib/admin/uuid'
 import { BALANCE_SKIPPED_STATUSES } from './rules'
-import { isCountBadgeCondition, readTimeValue } from './evaluate'
+import { countOpenCollectionsAt, isCountBadgeCondition, readTimeValue } from './evaluate'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
 const FETCH_PAGE_SIZE = 1000
 const LOG_LABEL = 'ops-inbox/balance'
 
-/** 읽은 결과. `ok: false`면 그 상태를 쓰는 규칙이 「점검 못 함」이 된다. */
+/** 읽은 결과. `ok: false`면 그 상태를 쓰는 규칙이 「점검 못 함」이 된다(읽지 못한 경우와, 쓸 규칙이 없어 읽지 않은 경우). */
 export type StateRead<T> = { ok: true; data: T } | { ok: false }
 
-/** 다른 묶음의 아직 만들어지지 않은 신규 개방 하나. 시각은 읽을 수 있는 ISO 문자열이고, 못 읽으면 `null`이다. */
+/**
+ * 다른 묶음의 신규 개방 하나(`collection_launch` 항목). 시각은 읽을 수 있는 ISO 문자열이고, 못 읽으면 `null`이다.
+ * `resourceCreated`는 컬렉션이 이미 만들어졌는지(`created_resource`가 있음)다 — 만들어졌으면 R1은 DB 컬렉션에서 세므로 항목에서 더하지 않는다.
+ */
 export interface PendingLaunch {
   itemId: string
   startsAt: string | null
   endsAt: string | null
+  resourceCreated: boolean
 }
 
 /** 같은 계열의 기존 배지 하나(R7). `countType`은 횟수형 여부이고 조건을 읽지 못하면 `null`이다. */
@@ -40,10 +49,12 @@ export interface ExistingFamilyBadge {
   countType: boolean | null
 }
 
-/** 평가 입력이 가리키는 외부 자원: 보상 배지 ID(R6)와 계열 이름(R7). */
+/** 평가 입력이 가리키는 외부 자원: 보상 배지 ID(R6)와 계열 이름(R7), 그리고 평가할 신규 개방(`collection_launch`) 항목이 있는지(R1~R3). */
 export interface BalanceReferences {
   rewardBadgeIds: string[]
   familyKeys: string[]
+  /** 평가할 `collection_launch` 항목이 하나라도 있는지. 없으면 컬렉션·다른 묶음 조회를 건너뛴다. */
+  hasLaunches: boolean
 }
 
 export interface BalanceState {
@@ -88,8 +99,8 @@ function launchTime(row: LaunchRow, field: 'starts_at' | 'ends_at'): string | nu
 }
 
 /**
- * 다른 묶음의 신규 개방을 고른다(순수 함수). 지금 평가하는 묶음·시험 묶음·알 수 없는 묶음의 항목, 반려·취소·실패 항목,
- * 이미 자원이 만들어진 항목(`created_resource`가 있음)은 뺀다.
+ * 다른 묶음의 신규 개방을 고른다(순수 함수). 지금 평가하는 묶음·시험 묶음·알 수 없는 묶음의 항목, 반려·취소·실패 항목은 뺀다.
+ * 이미 자원이 만들어진 항목은 빼지 않고 `resourceCreated`로 표시한다(R2·R3은 센다, R1은 DB 컬렉션에서 이미 세므로 더하지 않는다).
  */
 export function selectOtherLaunches(
   rows: readonly LaunchRow[],
@@ -100,11 +111,14 @@ export function selectOtherLaunches(
   return rows
     .filter(
       (row) =>
-        countedBundles.has(row.bundle_id) &&
-        !BALANCE_SKIPPED_STATUSES.includes(row.status) &&
-        (row.created_resource === null || row.created_resource === undefined)
+        countedBundles.has(row.bundle_id) && !BALANCE_SKIPPED_STATUSES.includes(row.status)
     )
-    .map((row) => ({ itemId: row.id, startsAt: launchTime(row, 'starts_at'), endsAt: launchTime(row, 'ends_at') }))
+    .map((row) => ({
+      itemId: row.id,
+      startsAt: launchTime(row, 'starts_at'),
+      endsAt: launchTime(row, 'ends_at'),
+      resourceCreated: row.created_resource !== null && row.created_resource !== undefined,
+    }))
 }
 
 // ── 조회 ────────────────────────────────────────────────────────────────────────────────────────
@@ -188,16 +202,18 @@ async function loadFamilyBadges(
 
 /**
  * 평가에 필요한 서비스 상태를 읽는다. 조회마다 실패를 따로 받아 `ok: false`로 돌려주므로 이 함수는 던지지 않는다.
- * 보상 배지·계열 이름이 없으면 그 조회는 하지 않는다(빈 결과로 성공 처리).
+ * 보상 배지·계열 이름이 없으면 그 조회는 하지 않는다(빈 결과로 성공 처리). 평가할 `collection_launch` 항목이 없으면(`hasLaunches`가 거짓)
+ * 컬렉션·다른 묶음 조회를 건너뛰고 `ok: false`로 둔다 — R1~R3은 그런 묶음에서 돌지 않으므로 어느 규칙도 「점검 못 함」이 되지 않는다.
  */
 export async function loadBalanceState(
   supabase: ServiceClient,
   options: { currentBundleId: string; references: BalanceReferences }
 ): Promise<BalanceState> {
   const { currentBundleId, references } = options
+  const skipped: StateRead<never> = { ok: false }
   const [books, otherLaunches, badgePoints, familyBadges] = await Promise.all([
-    attempt('item_books', () => loadBooks(supabase)),
-    attempt('ops_bundle_items', () => loadOtherLaunches(supabase, currentBundleId)),
+    references.hasLaunches ? attempt('item_books', () => loadBooks(supabase)) : Promise.resolve<StateRead<ItemBookVisibilityFields[]>>(skipped),
+    references.hasLaunches ? attempt('ops_bundle_items', () => loadOtherLaunches(supabase, currentBundleId)) : Promise.resolve<StateRead<PendingLaunch[]>>(skipped),
     references.rewardBadgeIds.length > 0
       ? attempt('badges(보상 배지)', () => loadBadgePoints(supabase, references.rewardBadgeIds))
       : Promise.resolve<StateRead<Record<string, number>>>({ ok: true, data: {} }),
@@ -206,4 +222,12 @@ export async function loadBalanceState(
       : Promise.resolve<StateRead<Record<string, ExistingFamilyBadge[]>>>({ ok: true, data: {} }),
   ])
   return { books, otherLaunches, badgePoints, familyBadges }
+}
+
+/**
+ * 지금 열려 있는(노출 중인) 컬렉션 수 — 설정 화면(S7)의 「지금 서비스」 상자가 쓴다. 읽기에 실패하면 던지지 않고 `ok: false`다.
+ * 기획 상세의 「지금 열린 컬렉션」과 같은 판정(`isItemBookDroppable`)과 같은 읽기(`loadBooks`)다.
+ */
+export async function loadOpenCollectionsNow(supabase: ServiceClient, nowIso: string = new Date().toISOString()): Promise<StateRead<number>> {
+  return attempt('item_books(열린 컬렉션 수)', async () => countOpenCollectionsAt(await loadBooks(supabase), nowIso))
 }

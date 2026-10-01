@@ -3,6 +3,7 @@
  *
  * 규칙별 경계값(값과 같으면 통과, 넘으면 경고) · 점검 못 함 3종(시각·숫자·서비스 상태) · 수정본 우선 · 반려 제외 · 꺼진 규칙 ·
  * R5 종류 판정(횟수형·달성형) · R1 공개 시각 기준 노출 판정 · 확인한 규칙 수를 지킨다.
+ * 조각 B(티켓 20260930_1459): R1은 DB 컬렉션 + 자원이 아직 없는 개방 항목을, R2·R3은 자원이 만들어졌든 아니든 모든 개방 항목을 센다.
  * 시각은 KST로 적는다(2026-10-01은 목요일, 10/12는 월요일이다). 문장은 채원 확정 설계의 문구와 글자 그대로 견준다.
  */
 import { describe, it, expect } from 'vitest'
@@ -80,17 +81,30 @@ describe('R1 동시 개방 컬렉션 수', () => {
 
   it('다른 묶음의 신규 개방은 그 시각에 열려 있을 때만 센다', () => {
     const others = [
-      { itemId: 'o1', startsAt: '2026-10-05T00:00:00.000Z', endsAt: '2026-12-01T00:00:00.000Z' }, // 열려 있음
-      { itemId: 'o2', startsAt: '2026-10-05T00:00:00.000Z', endsAt: null }, // 끝이 없음 = 계속 열림
-      { itemId: 'o3', startsAt: '2026-10-20T00:00:00.000Z', endsAt: null }, // 아직 안 열림
-      { itemId: 'o4', startsAt: '2026-09-01T00:00:00.000Z', endsAt: '2026-10-01T00:00:00.000Z' }, // 이미 닫힘
-      { itemId: 'o5', startsAt: null, endsAt: null }, // 시각을 못 읽어 자리를 못 잡음
+      { itemId: 'o1', startsAt: '2026-10-05T00:00:00.000Z', endsAt: '2026-12-01T00:00:00.000Z', resourceCreated: false }, // 열려 있음
+      { itemId: 'o2', startsAt: '2026-10-05T00:00:00.000Z', endsAt: null, resourceCreated: false }, // 끝이 없음 = 계속 열림
+      { itemId: 'o3', startsAt: '2026-10-20T00:00:00.000Z', endsAt: null, resourceCreated: false }, // 아직 안 열림
+      { itemId: 'o4', startsAt: '2026-09-01T00:00:00.000Z', endsAt: '2026-10-01T00:00:00.000Z', resourceCreated: false }, // 이미 닫힘
+      { itemId: 'o5', startsAt: null, endsAt: null, resourceCreated: false }, // 시각을 못 읽어 자리를 못 잡음
     ]
     const state = makeState({ books: { ok: true, data: openBooks(3) }, otherLaunches: { ok: true, data: others } })
     // 3(DB) + 2(다른 묶음) + 1(새) = 6 → 통과
     expect(run([launch(T)], rules, state).warnings).toEqual([])
     const more = makeState({ books: { ok: true, data: openBooks(4) }, otherLaunches: { ok: true, data: others } })
     expect(run([launch(T)], rules, more).warnings[0]?.measured).toBe(7)
+  })
+
+  it('이미 만들어진 다른 묶음의 개방은 DB 컬렉션에서만 센다(항목에서 한 번 더 더하지 않는다)', () => {
+    const others = [
+      { itemId: 'made', startsAt: '2026-10-05T00:00:00.000Z', endsAt: null, resourceCreated: true }, // DB의 열린 컬렉션 3개 중 하나
+      { itemId: 'todo', startsAt: '2026-10-05T00:00:00.000Z', endsAt: null, resourceCreated: false },
+    ]
+    const state = makeState({ books: { ok: true, data: openBooks(3) }, otherLaunches: { ok: true, data: others } })
+    // 3(DB, 만들어진 개방 포함) + 1(아직 안 만든 개방) + 1(새) = 5 → 통과. 이중으로 세면 6이 된다.
+    const result = run([launch(T)], rules, state)
+    expect(result.warnings).toEqual([])
+    const tight = makeState({ books: { ok: true, data: openBooks(5) }, otherLaunches: { ok: true, data: others } })
+    expect(run([launch(T)], rules, tight).warnings[0]?.measured).toBe(7) // 5 + 1 + 1
   })
 
   it('같은 묶음의 다른 신규 개방도 그 시각에 열려 있으면 센다', () => {
@@ -190,8 +204,8 @@ describe('R2 한 주 신규 개방 수', () => {
       otherLaunches: {
         ok: true,
         data: [
-          { itemId: 'o1', startsAt: '2026-10-14T00:00:00.000Z', endsAt: null }, // 같은 주
-          { itemId: 'o2', startsAt: '2026-10-28T00:00:00.000Z', endsAt: null }, // 다른 주
+          { itemId: 'o1', startsAt: '2026-10-14T00:00:00.000Z', endsAt: null, resourceCreated: false }, // 같은 주
+          { itemId: 'o2', startsAt: '2026-10-28T00:00:00.000Z', endsAt: null, resourceCreated: false }, // 다른 주
         ],
       },
     })
@@ -200,9 +214,18 @@ describe('R2 한 주 신규 개방 수', () => {
     expect(result.warnings[0].measured).toBe(2)
     // 이 묶음이 열지 않는 주(10/26 주)는 다른 묶음이 이미 넘겨도 이 묶음의 경고가 아니다
     const quiet = makeState({
-      otherLaunches: { ok: true, data: [{ itemId: 'o', startsAt: '2026-10-28T00:00:00.000Z', endsAt: null }, { itemId: 'p', startsAt: '2026-10-29T00:00:00.000Z', endsAt: null }] },
+      otherLaunches: { ok: true, data: [{ itemId: 'o', startsAt: '2026-10-28T00:00:00.000Z', endsAt: null, resourceCreated: false }, { itemId: 'p', startsAt: '2026-10-29T00:00:00.000Z', endsAt: null, resourceCreated: false }] },
     })
     expect(run([launch('2026-10-12T09:00:00+09:00')], rules, quiet).warnings).toEqual([])
+  })
+
+  it('이미 만들어진 다른 묶음의 개방도 같은 주 개수에 센다(자원 ID가 있어도 빠지지 않는다)', () => {
+    const state = makeState({
+      otherLaunches: { ok: true, data: [{ itemId: 'made', startsAt: '2026-10-14T00:00:00.000Z', endsAt: null, resourceCreated: true }] },
+    })
+    const result = run([launch('2026-10-12T09:00:00+09:00')], rules, state)
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0].measured).toBe(2)
   })
 
   it('다른 묶음 상태를 읽지 못하면 점검 못 함이고, 공개 시각이 없으면 그 항목이 점검 못 함이다', () => {
@@ -226,8 +249,8 @@ describe('R3 28일 신규 개방 수', () => {
       otherLaunches: {
         ok: true,
         data: [
-          { itemId: 'o1', startsAt: '2026-10-12T00:00:00.000Z', endsAt: null },
-          { itemId: 'o2', startsAt: '2026-10-19T00:00:00.000Z', endsAt: null },
+          { itemId: 'o1', startsAt: '2026-10-12T00:00:00.000Z', endsAt: null, resourceCreated: false },
+          { itemId: 'o2', startsAt: '2026-10-19T00:00:00.000Z', endsAt: null, resourceCreated: false },
         ],
       },
     })
@@ -262,8 +285,8 @@ describe('R3 28일 신규 개방 수', () => {
           otherLaunches: {
             ok: true,
             data: [
-              { itemId: 'o1', startsAt: earlier, endsAt: null },
-              { itemId: 'o2', startsAt: '2026-10-20T00:00:00.000Z', endsAt: null },
+              { itemId: 'o1', startsAt: earlier, endsAt: null, resourceCreated: false },
+              { itemId: 'o2', startsAt: '2026-10-20T00:00:00.000Z', endsAt: null, resourceCreated: false },
             ],
           },
         })
@@ -272,9 +295,24 @@ describe('R3 28일 신규 개방 수', () => {
     expect(make(justOutside).warnings).toEqual([]) // 1분 밖 = 2개
   })
 
+  it('이미 만들어진 다른 묶음의 개방도 28일 개수에 센다(자원 ID가 있어도 빠지지 않는다)', () => {
+    const state = makeState({
+      otherLaunches: {
+        ok: true,
+        data: [
+          { itemId: 'made1', startsAt: '2026-10-12T00:00:00.000Z', endsAt: null, resourceCreated: true },
+          { itemId: 'made2', startsAt: '2026-10-19T00:00:00.000Z', endsAt: null, resourceCreated: true },
+        ],
+      },
+    })
+    const result = run([launch('2026-10-26T09:00:00+09:00')], rules, state)
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0].measured).toBe(3)
+  })
+
   it('앞선 개방이 아니라 뒤의 개방만 있으면 그 시점부터 거슬러 센다(미래 개방은 세지 않는다)', () => {
     const state = makeState({
-      otherLaunches: { ok: true, data: [{ itemId: 'o1', startsAt: '2026-11-30T00:00:00.000Z', endsAt: null }, { itemId: 'o2', startsAt: '2026-12-01T00:00:00.000Z', endsAt: null }] },
+      otherLaunches: { ok: true, data: [{ itemId: 'o1', startsAt: '2026-11-30T00:00:00.000Z', endsAt: null, resourceCreated: false }, { itemId: 'o2', startsAt: '2026-12-01T00:00:00.000Z', endsAt: null, resourceCreated: false }] },
     })
     expect(run([launch('2026-10-26T09:00:00+09:00')], rules, state).warnings).toEqual([])
   })
@@ -735,6 +773,14 @@ describe('collectBalanceReferences', () => {
     expect(collectBalanceReferences(items)).toEqual({
       rewardBadgeIds: [id, '22222222-2222-4222-8222-222222222222'],
       familyKeys: ['run_count'],
+      hasLaunches: true,
     })
+  })
+
+  it('평가할 collection_launch 항목이 없으면 hasLaunches가 거짓이다(반려한 개방만 있어도 같다)', () => {
+    expect(collectBalanceReferences([mission(10), badge(1, COUNT, { family_key: 'run_count' })]).hasLaunches).toBe(false)
+    expect(collectBalanceReferences([launch('2026-10-12T09:00:00+09:00', undefined, {}, { status: 'rejected' })]).hasLaunches).toBe(false)
+    expect(collectBalanceReferences([]).hasLaunches).toBe(false)
+    expect(collectBalanceReferences([launch('2026-10-12T09:00:00+09:00')]).hasLaunches).toBe(true)
   })
 })
