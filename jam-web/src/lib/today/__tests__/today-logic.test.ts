@@ -23,23 +23,33 @@ function check(name: string, fn: () => void) {
   console.log(`  ✓ ${name}`)
 }
 
-// KST 기준: UTC 15:00 = KST 00:00(새벽), UTC 20:00 = KST 05:00(새벽),
-// UTC 21:00 = KST 06:00(아침), UTC 03:00 = KST 12:00(오후),
-// UTC 09:00 = KST 18:00(저녁), UTC 13:00 = KST 22:00(밤)
-check('timeOfDayTag: KST 00시 → dawn', () => {
-  assert.equal(timeOfDayTag(new Date('2026-07-26T15:00:00Z')), 'time_dawn')
-})
-check('timeOfDayTag: KST 06시 → morning', () => {
-  assert.equal(timeOfDayTag(new Date('2026-07-26T21:00:00Z')), 'time_morning')
-})
-check('timeOfDayTag: KST 12시 → afternoon', () => {
-  assert.equal(timeOfDayTag(new Date('2026-07-26T03:00:00Z')), 'time_afternoon')
-})
-check('timeOfDayTag: KST 18시 → evening', () => {
-  assert.equal(timeOfDayTag(new Date('2026-07-26T09:00:00Z')), 'time_evening')
-})
-check('timeOfDayTag: KST 22시 → night', () => {
-  assert.equal(timeOfDayTag(new Date('2026-07-26T13:00:00Z')), 'time_night')
+// 시간대 태그 경계 (티켓 20261001_1201, 운영 패턴 사전의 시각 정의와 일치).
+// night 22~05 / dawn 05~08 / morning 08~11 / afternoon 11~17 / evening 17~22 (KST)
+// KST 오프셋(+09:00)을 붙여 만든 시각으로 경계 직전·직후를 고정한다.
+function kstAt(hhmm: string): Date {
+  return new Date(`2026-07-26T${hhmm}:00+09:00`)
+}
+const TIME_OF_DAY_BOUNDARIES: ReadonlyArray<readonly [string, string]> = [
+  ['00:00', 'time_night'],
+  ['04:59', 'time_night'],
+  ['05:00', 'time_dawn'],
+  ['07:59', 'time_dawn'],
+  ['08:00', 'time_morning'],
+  ['10:59', 'time_morning'],
+  ['11:00', 'time_afternoon'],
+  ['16:59', 'time_afternoon'],
+  ['17:00', 'time_evening'],
+  ['21:59', 'time_evening'],
+  ['22:00', 'time_night'],
+  ['23:59', 'time_night'],
+]
+for (const [hhmm, expected] of TIME_OF_DAY_BOUNDARIES) {
+  check(`timeOfDayTag: KST ${hhmm} → ${expected}`, () => {
+    assert.equal(timeOfDayTag(kstAt(hhmm)), expected)
+  })
+}
+check('timeOfDayTag: 서버가 UTC여도 KST 기준 (UTC 20:00 = KST 05:00 → dawn)', () => {
+  assert.equal(timeOfDayTag(new Date('2026-07-26T20:00:00Z')), 'time_dawn')
 })
 
 check('isNewUser: 3일 전 가입 → true', () => {

@@ -137,11 +137,11 @@ export function todayTemplateFields(templateType: TodayCardTemplateType): TodayT
 
 export const TODAY_EXPOSURE_TAG_OPTIONS: readonly { value: string; label: string }[] = [
   { value: 'all', label: 'all (항상 노출)' },
-  { value: 'time_dawn', label: 'time_dawn (00~06)' },
-  { value: 'time_morning', label: 'time_morning (06~11)' },
+  { value: 'time_dawn', label: 'time_dawn (05~08)' },
+  { value: 'time_morning', label: 'time_morning (08~11)' },
   { value: 'time_afternoon', label: 'time_afternoon (11~17)' },
-  { value: 'time_evening', label: 'time_evening (17~21)' },
-  { value: 'time_night', label: 'time_night (21~24)' },
+  { value: 'time_evening', label: 'time_evening (17~22)' },
+  { value: 'time_night', label: 'time_night (22~05)' },
   { value: 'has_participating_mission', label: 'has_participating_mission' },
   { value: 'has_ending_soon_mission', label: 'has_ending_soon_mission' },
   { value: 'has_incomplete_itembook', label: 'has_incomplete_itembook' },

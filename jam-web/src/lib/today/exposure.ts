@@ -32,11 +32,12 @@ export const STRAVA_STALE_DAYS = 14
  */
 export function timeOfDayTag(now: Date): TimeOfDayTag {
   const kstHour = Math.floor(((now.getTime() + 9 * 3600_000) / 3600_000) % 24)
-  if (kstHour < 6) return 'time_dawn' // 00~06
-  if (kstHour < 11) return 'time_morning' // 06~11
+  if (kstHour < 5) return 'time_night' // 00~05 (심야 후반)
+  if (kstHour < 8) return 'time_dawn' // 05~08
+  if (kstHour < 11) return 'time_morning' // 08~11
   if (kstHour < 17) return 'time_afternoon' // 11~17
-  if (kstHour < 21) return 'time_evening' // 17~21
-  return 'time_night' // 21~24
+  if (kstHour < 22) return 'time_evening' // 17~22
+  return 'time_night' // 22~24 (심야 전반)
 }
 
 /**

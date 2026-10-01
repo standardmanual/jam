@@ -115,7 +115,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 
 | 태그 | 판정 |
 |---|---|
-| `time_*` | KST 시각 기준. 00~06 `dawn`, 06~11 `morning`, 11~17 `afternoon`, 17~21 `evening`, 21~24 `night` |
+| `time_*` | KST 시각 기준. 05~08 `dawn`, 08~11 `morning`, 11~17 `afternoon`, 17~22 `evening`, 22~05 `night`(자정을 넘는 구간) |
 | `has_participating_mission` | 참가했지만 완료하지 않은 미션이 1개 이상 |
 | `has_ending_soon_mission` | 그중 `ends_at`이 지금부터 3일 안인 미션이 있음 |
 | `has_incomplete_itembook` | 슬롯을 채우기 시작했지만 완성하지 않은 컬렉션이 있음(분모는 드랍 제외 배지를 뺀 아이템 배지) |
@@ -135,11 +135,11 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | 값 | 라벨 |
 |---|---|
 | `all` | all (항상 노출) |
-| `time_dawn` | time_dawn (00~06) |
-| `time_morning` | time_morning (06~11) |
+| `time_dawn` | time_dawn (05~08) |
+| `time_morning` | time_morning (08~11) |
 | `time_afternoon` | time_afternoon (11~17) |
-| `time_evening` | time_evening (17~21) |
-| `time_night` | time_night (21~24) |
+| `time_evening` | time_evening (17~22) |
+| `time_night` | time_night (22~05) |
 | `has_participating_mission` | has_participating_mission |
 | `has_ending_soon_mission` | has_ending_soon_mission |
 | `has_incomplete_itembook` | has_incomplete_itembook |
