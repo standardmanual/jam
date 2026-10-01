@@ -545,13 +545,15 @@ describe('buildTodayCardInsertPayload', () => {
     });
   });
 
-  it('생성 타입 컬럼 대조: today_cards Insert 컬럼 중 DB 기본값에 맡기는 created_at·created_by를 뺀 전부를 채운다', () => {
+  it('생성 타입 컬럼 대조: today_cards Insert 컬럼 중 DB 기본값에 맡기는 created_at·created_by와 아직 쓰지 않는 pattern_no를 뺀 전부를 채운다', () => {
     const source = fs.readFileSync(GENERATED_TYPES_FILE, 'utf8');
     const table = source.slice(source.indexOf('      today_cards: {'));
     const insert = table.slice(table.indexOf('Insert: {'), table.indexOf('Update: {'));
     const columns = [...insert.matchAll(/^\s+(\w+)\??:/gm)].map((m) => m[1]);
     expect(columns.length).toBeGreaterThan(15);
-    const expected = columns.filter((c) => !['created_at', 'created_by'].includes(c)).sort();
+    // pattern_no(마이그레이션 211, 티켓 20261001_2056)는 NULL로 두는 칸이다. 채우는 쪽은 카드를 만드는 티켓 1500이고,
+    // 칸이 적용되기 전에 등록 스크립트가 이 칸을 보내면 삽입이 실패하므로 그때까지 페이로드에 넣지 않는다.
+    const expected = columns.filter((c) => !['created_at', 'created_by', 'pattern_no'].includes(c)).sort();
     expect(Object.keys(payloadOf()).sort()).toEqual(expected);
   });
 });
