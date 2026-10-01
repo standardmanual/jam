@@ -72,6 +72,7 @@
       ".obsidian/.gitignore",
       "jam-doc/README.md",
       "jam-doc/planning/content/TRIBES.md",
+      "jam-doc/assets/content-seed/v5_seed_build.py",
       "jam-doc/operations/reports",
       "docs/agents/workflow/README.md",
       "jam-web/supabase/migrations/198_ops_inbox.sql",
@@ -92,13 +93,14 @@
   },
 
   "paths_absent": {
-    "_why": "재통합으로 사라진 것들(티켓 20260920_1412). 다시 생기면 분리 구조가 되살아난 것이다. scripts/deploy-gate-wrapper.mjs(티켓 20260924_1614)는 무인 배포 루틴이 scripts/deploy-gate.mjs 파일 하나만 /tmp로 꺼내 실행하므로 옆 파일을 불러오면 ERR_MODULE_NOT_FOUND로 죽는다 — 판정 코드는 deploy-gate.mjs 안에 둔다.",
+    "_why": "재통합으로 사라진 것들(티켓 20260920_1412). 다시 생기면 분리 구조가 되살아난 것이다. scripts/deploy-gate-wrapper.mjs(티켓 20260924_1614)는 무인 배포 루틴이 scripts/deploy-gate.mjs 파일 하나만 /tmp로 꺼내 실행하므로 옆 파일을 불러오면 ERR_MODULE_NOT_FOUND로 죽는다 — 판정 코드는 deploy-gate.mjs 안에 둔다. jam-doc/planning/content/v5_seed_build.py(티켓 20261001_0945)는 v5 시드 생성기 묶음이 jam-doc/assets/content-seed/로 옮겨 간 옛 자리다 — planning/content/는 현재 상태 문서 자리라 실행 스크립트를 두지 않는다.",
     "paths": [
       "jam-doc/.git",
       "jam-doc/.githooks",
       "jam-doc/scripts/doc-check.mjs",
       "jam-doc/scripts/doc-check.config.json",
-      "scripts/deploy-gate-wrapper.mjs"
+      "scripts/deploy-gate-wrapper.mjs",
+      "jam-doc/planning/content/v5_seed_build.py"
     ]
   },
 

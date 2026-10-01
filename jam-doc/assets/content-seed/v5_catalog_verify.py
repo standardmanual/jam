@@ -4,7 +4,7 @@
 입력: v5_catalog_design.json (설계 원본, 수정 금지)
 출력: v5_catalog_verified.json (검증·조정을 마친 정본)
 
-실행: python3 "jam-doc/planning/content/v5_catalog_verify.py"
+실행: python3 "jam-doc/assets/content-seed/v5_catalog_verify.py"
 """
 import json, os, re
 from collections import OrderedDict

@@ -14,7 +14,7 @@ v5 액티비티 배지 카탈로그 → 시드 SQL 생성 + 드라이런 검증 
 
 ⚠️ 이 스크립트는 SQL 파일을 «쓰기»만 한다. DB에 접속하지 않는다.
 
-실행: python3 "jam-doc/planning/content/v5_seed_build.py"
+실행: python3 "jam-doc/assets/content-seed/v5_seed_build.py"
 """
 import json
 import os
@@ -751,7 +751,7 @@ A('--      SELECT is_nullable, column_default FROM information_schema.columns')
 A("--       WHERE table_name='badges' AND column_name='image_url';")
 A('--    NOT NULL이고 기본값이 없으면 이 INSERT는 첫 행에서 실패한다(데이터는 남지 않는다).')
 A('--')
-A('-- 생성: jam-doc/planning/content/v5_seed_build.py (재생성 가능 — 손으로 고치지 말 것)')
+A('-- 생성: jam-doc/assets/content-seed/v5_seed_build.py (재생성 가능 — 손으로 고치지 말 것)')
 A(f'-- 규모: {len(seeded)}계열 · {total_rows}종')
 A('--')
 A('-- 멱등: 같은 (family_key, rarity, level) 행이 이미 있으면 넣지 않는다. 두 번 돌려도 안전하다.')
@@ -760,7 +760,7 @@ A('-- ⚠️ 문안(name·description)만 고쳐서 이 시드를 다시 돌려�
 A('--    (WHERE NOT EXISTS가 이미 있는 행을 건너뛴다). v5_catalog_writing.json을 고치면:')
 A('--      v5_seed_build.py → 이 파일·rows.json 재생성 · v5_doc_build.mjs → 문서 재생성 ·')
 A('--      DB 반영은 별도 UPDATE 마이그레이션이 필요하다 (티켓 20260906_1421).')
-A('--    드리프트 확인: python3 "jam-doc/planning/content/v5_verify_db.py" (읽기 전용)')
+A('--    드리프트 확인: python3 "jam-doc/assets/content-seed/v5_verify_db.py" (읽기 전용)')
 A('--')
 A('-- ── 표기 규약 ──────────────────────────────────────────────────────────────')
 A('--   [필터] 필터 키(time_range·month·day_of_week·season·day_of_month)를 측정 축과 함께 쓴다.')

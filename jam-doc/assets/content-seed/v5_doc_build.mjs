@@ -2,6 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 const R = path.dirname(fileURLToPath(import.meta.url)) + path.sep
+// 생성기는 jam-doc/assets/content-seed/에, 생성 문서는 jam-doc/planning/content/에 있다 (티켓 20261001_0945)
+const OUT = path.resolve(R, '..', '..', 'planning', 'content', 'ACTIVITY_BADGES.md')
 const map = JSON.parse(fs.readFileSync(R + 'v5_condition_mapping.json', 'utf8'))
 const writ = JSON.parse(fs.readFileSync(R + 'v5_catalog_writing.json', 'utf8'))
 const miss = JSON.parse(fs.readFileSync(R + 'v5_mission_badges.json', 'utf8'))
@@ -25,9 +27,9 @@ const total = map['계열'].reduce((n, f) => n + f['종수'], 0)
 
 A('# 액티비티 배지 카탈로그 v5')
 A()
-A('> **정본은 DB다.** 이 문서는 `jam-doc/planning/content/`의 산출물에서 생성했다 —')
+A('> **정본은 DB다.** 이 문서는 `jam-doc/assets/content-seed/`의 산출물에서 생성했다 —')
 A('> 손으로 고치지 말고 `v5_seed_build.py`가 만드는 데이터를 고친 뒤 다시 생성한다.')
-A('> 생성 스크립트: `jam-doc/planning/content/v5_doc_build.mjs` (티켓 20260905_0035 C묶음)')
+A('> 생성 스크립트: `jam-doc/assets/content-seed/v5_doc_build.mjs` (티켓 20260905_0035 C묶음)')
 A('>')
 A(`> **규모: ${map['계열'].length}계열 · ${total}종** — 2026-09-05 프로덕션 시딩 완료`)
 A('>')
@@ -197,7 +199,8 @@ A('---')
 A()
 A('## 산출물 색인')
 A()
-A('`jam-doc/planning/content/` 아래 v5 산출물이 무엇이고 어느 것이 정본인지.')
+A('`jam-doc/assets/content-seed/` 아래 v5 산출물이 무엇이고 어느 것이 정본인지.')
+A('기록 문서 `v5_badge_name_split.md`만 이 문서와 같은 `jam-doc/planning/content/`에 있다.')
 A()
 A('| 파일 | 역할 | 정본? |')
 A('|---|---|---|')
@@ -237,5 +240,5 @@ A('- 설계·시딩 티켓 — `docs/tickets/20260905_0035_Content_액티비티�
 A('- 엔진 확장 — `docs/tickets/20260906_0110_BadgeEngine_v5-카탈로그가-요구하는-엔진-확장-5건.md`')
 A('- 마스터 — `docs/tickets/20260905_0026_*`')
 
-fs.writeFileSync(R + 'ACTIVITY_BADGES.md', L.join('\n') + '\n')
+fs.writeFileSync(OUT, L.join('\n') + '\n')
 console.log('생성:', L.length, '줄 ·', map['계열'].length, '계열 ·', total, '종')

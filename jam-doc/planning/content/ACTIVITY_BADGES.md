@@ -4,21 +4,21 @@ description: "v5 액티비티배지의 조건·설명과 설계 원칙, 시딩�
 tags: [배지, 등급, 미션]
 source_of_truth: db
 source:
-  - "jam-doc/planning/content/v5_catalog_names.json"
-  - "jam-doc/planning/content/v5_catalog_writing.json"
-  - "jam-doc/planning/content/v5_condition_mapping.json"
-  - "jam-doc/planning/content/v5_mission_badges.json"
-  - "jam-doc/planning/content/seed_v5_activity_badges.rows.json"
-  - "jam-doc/planning/content/v5_seed_build.py"
-  - "jam-doc/planning/content/v5_doc_build.mjs"
+  - "jam-doc/assets/content-seed/v5_catalog_names.json"
+  - "jam-doc/assets/content-seed/v5_catalog_writing.json"
+  - "jam-doc/assets/content-seed/v5_condition_mapping.json"
+  - "jam-doc/assets/content-seed/v5_mission_badges.json"
+  - "jam-doc/assets/content-seed/seed_v5_activity_badges.rows.json"
+  - "jam-doc/assets/content-seed/v5_seed_build.py"
+  - "jam-doc/assets/content-seed/v5_doc_build.mjs"
 snapshot: "2026-09-05"
 ---
 
 # 액티비티 배지 카탈로그 v5
 
-> **정본은 DB다.** 이 문서는 `jam-doc/planning/content/`의 산출물에서 생성했다 —
+> **정본은 DB다.** 이 문서는 `jam-doc/assets/content-seed/`의 산출물에서 생성했다 —
 > 손으로 고치지 말고 `v5_seed_build.py`가 만드는 데이터를 고친 뒤 다시 생성한다.
-> 생성 스크립트: `jam-doc/planning/content/v5_doc_build.mjs` (티켓 20260905_0035 C묶음)
+> 생성 스크립트: `jam-doc/assets/content-seed/v5_doc_build.mjs` (티켓 20260905_0035 C묶음)
 >
 > **규모: 194계열 · 630종** — 2026-09-05 프로덕션 시딩 완료
 >
@@ -1752,7 +1752,8 @@ snapshot: "2026-09-05"
 
 ## 산출물 색인
 
-`jam-doc/planning/content/` 아래 v5 산출물이 무엇이고 어느 것이 정본인지.
+`jam-doc/assets/content-seed/` 아래 v5 산출물이 무엇이고 어느 것이 정본인지.
+기록 문서 `v5_badge_name_split.md`만 이 문서와 같은 `jam-doc/planning/content/`에 있다.
 
 | 파일 | 역할 | 정본? |
 |---|---|---|

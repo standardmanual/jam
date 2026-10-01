@@ -69,7 +69,7 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
    - Folder write rules are in `CLAUDE.md` ("폴더 = 수명주기"). `jam-doc/archive/` is read-only,
      and `.githooks/pre-commit` blocks new files there as well as version copies of the service
      plan and TRIBES. Overwrite the current document instead of adding a dated copy.
-   - Content seed generators (`jam-doc/planning/content/v5_*.py`) may be run from the worktree
+   - Content seed generators (`jam-doc/assets/content-seed/v5_*.py`) may be run from the worktree
      root: they resolve paths relative to their own location and write into your worktree's
      `jam-web/supabase/migrations/`.
 10. **Do not claim "Google login blocks verification."** `stage.j-a-m.app`

@@ -24,7 +24,7 @@ v5 액티비티 배지 정본↔DB 드리프트 검증 (티켓 20260906_1421)
 대조 키: (family_key, rarity, level) — rows.json 안에서 유일함을 이미 검증했다(중복 0건).
 비교 항목: name · description
 
-실행: python3 "jam-doc/planning/content/v5_verify_db.py"
+실행: python3 "jam-doc/assets/content-seed/v5_verify_db.py"
 종료 코드: 0 = 불일치 없음 / 1 = 불일치 있음 또는 접속 실패
 """
 import json

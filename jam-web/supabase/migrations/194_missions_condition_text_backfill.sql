@@ -1,6 +1,6 @@
 -- 194: 게이트 미션 53행의 설명(산문)·달성 조건 문장 반영 (티켓 20260927_0026)
 --
--- 생성: jam-doc/planning/content/v5_mission_seed_build.py. 문안은 티켓 20260927_0025 「컨텐츠 관점」 최종 표(40종)다.
+-- 생성: jam-doc/assets/content-seed/v5_mission_seed_build.py. 문안은 티켓 20260927_0025 「컨텐츠 관점」 최종 표(40종)다.
 --
 -- ⚠️ 이 파일은 jam-developer 서브에이전트가 **작성만 하고 실행하지 않았다.**
 --    실행은 사용자 승인 후 오케스트레이터가 처리한다. Supabase는 staging·프로덕션 공용 단일 DB라

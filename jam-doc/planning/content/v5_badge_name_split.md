@@ -102,7 +102,7 @@ tags: [배지, 등급]
 
 ## 반영 대상
 
-- `jam-doc/planning/content/v5_catalog_verified.json` — 정본 카탈로그의 계열 이름
+- `jam-doc/assets/content-seed/v5_catalog_verified.json` — 정본 카탈로그의 계열 이름
 - 라이팅 아티팩트(fdffc886) 이관본 — 이름·설명·조건문 164행 (B묶음)
 - 설명문도 함께 본다 — 이름을 바꾸면 설명이 이름과 겹치는지 다시 확인해야 한다
 

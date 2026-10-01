@@ -698,7 +698,7 @@ CHECK 제약·어드민 API 검증과 단일 소스를 공유한다(전체 허�
 
 전체 목록·조건값·설명: **`jam-doc/planning/content/ACTIVITY_BADGES.md`**.
 DB 시드: `jam-web/supabase/migrations/seed_v5_activity_badges.sql`
-(생성기 `jam-doc/planning/content/v5_seed_build.py` — 손으로 고치지 말 것).
+(생성기 `jam-doc/assets/content-seed/v5_seed_build.py` — 손으로 고치지 말 것).
 
 ⚠️ **카탈로그가 엔진 능력을 일부 앞선 상태다.** 630종 시딩 시점(0035)에는 엔진이 평가할 수
 있는 것이 약 269종(그중 40종은 미션 전용)뿐이었다. 티켓 `20260906_0110`(CLOSED)이 v5 스칼라
@@ -761,7 +761,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > **현행(v5)**: 미션 게이팅은 `missions.gated_badge_id`(배지 1개 지목)가 아니라
 > **`gate_axis` · `gate_stage` · `visibility_rule_json`**(축·단계·노출 조건)으로 한다
 > — 마이그레이션 135, 티켓 `20260905_0033`. 미션 보상 배지는 종목당 8개 × 5종목 = **40종**이고
-> 각각 «여는 축»이 지정돼 있다(`jam-doc/planning/content/v5_mission_badges.json`).
+> 각각 «여는 축»이 지정돼 있다(`jam-doc/assets/content-seed/v5_mission_badges.json`).
 > 판정은 `resolveMissionVisibility()`(`lib/missions/visibility.ts`)가 하며, 규칙 형태가
 > 깨지면 `OPEN`이 아니라 `locked`로 **fail-closed**한다.
 >
@@ -771,7 +771,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > 요약」류)에 게이트가 걸렸고, 그 86종과 같은 계열의 Epic 79종에도 축 내/축 간 교차
 > 조건이 매핑됐다(`seed_v5_gate_conditions.sql`, 165행). 레벨형 계열 11건은 `min_level=6`
 > (5종목 누적축 사다리 중 가장 짧은 것의 상한 — 콘텐츠 재검토 여지 있음, confidence:
-> medium)으로 통일했다. 축→계열 상세 규칙표는 `jam-doc/planning/content/v5_gate_mapping.json`.
+> medium)으로 통일했다. 축→계열 상세 규칙표는 `jam-doc/assets/content-seed/v5_gate_mapping.json`.
 > 무한레벨형(누적) 계열 자신의 Lv.5+/Lv.8+ 자체 게이트는 이번 매핑 범위 밖 — 별도
 > 콘텐츠 작업으로 남았다.
 >
@@ -797,7 +797,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > 축 교차만으로 충분하고 미션이 필요 없다(0033 설계, v5 게이트 확정 이전 가정이 남아 있었다).
 >
 > **미션 40종(걷기 8 + 4종목 32, 실제 DB 행은 축 중복으로 53행) 시딩 SQL** —
-> `jam-doc/planning/content/v5_mission_seed_build.py`가 `v5_gate_build.py`(1947)의
+> `jam-doc/assets/content-seed/v5_mission_seed_build.py`가 `v5_gate_build.py`(1947)의
 > `MISSION_MAP`·`family_keys_of_axis`를 그대로 재사용해 생성한다
 > (`jam-web/supabase/migrations/seed_v5_gate_missions.sql`, **미실행** — 사용자 승인 후
 > 오케스트레이터가 처리). 마이그레이션 135가 남긴 "레거시 게이트 미션 15개 폐기 + v5 40개

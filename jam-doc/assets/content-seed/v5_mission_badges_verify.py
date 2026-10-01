@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """v5 미션 보상 배지 32종 검증 — 티켓 20260905_0035 B묶음 선행 조건 ⑥
 
-  python3 "jam-doc/planning/content/v5_mission_badges_verify.py"
+  python3 "jam-doc/assets/content-seed/v5_mission_badges_verify.py"
 
 검사 항목
   ① 이름 유일성 — 168계열(v5_catalog_writing.json) + 미션 32종 = 200개가 전부 유일한가
