@@ -239,7 +239,7 @@ describe('OpsBalanceSettings — 마지막 변경과 직전 값', () => {
     const out = flat(
       <OpsBalanceSettings
         rules={seedRecords({
-          open_collections_max: { value: { max: 9, provisional: false }, updatedBy: 'admin-1', previousValue: { max: 6, provisional: true } },
+          open_collections_max: { value: { max: 9, provisional: false }, edited: true, previousValue: { max: 6, provisional: true } },
         })}
         openCollectionsNow={30}
       />
@@ -254,7 +254,7 @@ describe('OpsBalanceSettings — 마지막 변경과 직전 값', () => {
   })
 
   it('켜기·수준만 바꾼 규칙은 값은 처음 그대로라고 말한다', () => {
-    const out = flat(<OpsBalanceSettings rules={seedRecords({ economy_keys: { updatedBy: 'admin-1', enabled: false } })} openCollectionsNow={30} />)
+    const out = flat(<OpsBalanceSettings rules={seedRecords({ economy_keys: { edited: true, enabled: false } })} openCollectionsNow={30} />)
     expect(cardOf(out, 'economy_keys')).toContain('값은 처음 그대로예요')
   })
 })

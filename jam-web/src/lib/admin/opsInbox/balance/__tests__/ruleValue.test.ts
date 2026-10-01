@@ -191,7 +191,7 @@ describe('규칙 행 읽기', () => {
       level: 'warn',
       enabled: true,
       updatedAt: '2026-10-01T05:00:00+00:00',
-      updatedBy: null,
+      edited: false,
       previousValue: null,
     })
     expect(toRuleRecord({ ...row, level: 'info' }).level).toBe('info')

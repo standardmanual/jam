@@ -11,8 +11,8 @@
  * 3. 다른 `route.ts`는 읽기 토큰 헤더나 `isValidAdminReadToken`을 직접 다루지 않는다(`requireAdminRead`만 쓴다)
  * 4. 토큰 쓰기 판정 함수는 auth.ts·래퍼·proxy.ts 밖의 서비스 코드에서 쓰이지 않는다
  * 5. 제출 경로 상수와 라우트 파일 위치가 같다
- * 6. 규칙 읽기·바꾸기(`ops-rules`, 티켓 20260930_1459 조각 B): 읽기(`GET`)는 `requireAdminRead`로 토큰이 되고, 바꾸기(`PATCH`)는
- *    `getAdminUser()`로 관리자 세션만 통과한다 — 토큰 쓰기 예외가 늘지 않는다
+ * 6. 규칙 읽기·바꾸기(`ops-rules`, 티켓 20260930_1459 조각 B·C): 읽기(`GET`)는 `requireAdminRead`로 토큰이 되고, 바꾸기(`PATCH`)·신호 기준값 저장(`PATCH`)·
+ *    기본값으로 되돌리기(`DELETE`)는 `getAdminUser()`로 관리자 세션만 통과한다 — 토큰 쓰기 예외가 늘지 않는다
  *
  * 실행: cd jam-web && npx vitest run src/app/api/admin/__tests__/token-write-contract.test.ts
  */
@@ -133,14 +133,18 @@ describe('읽기 토큰의 쓰기 권한 — 제출 라우트 하나', () => {
   describe('규칙 읽기·바꾸기(ops-rules): 읽기는 토큰이 되고 바꾸기는 관리자 세션만 된다', () => {
     const READ_ROUTE = join(SRC, 'app/api/admin/ops-rules/route.ts')
     const WRITE_ROUTE = join(SRC, 'app/api/admin/ops-rules/[ruleKey]/route.ts')
+    const SIGNAL_SAVE_ROUTE = join(SRC, 'app/api/admin/ops-rules/signals/[signalKey]/route.ts')
+    const SIGNAL_REVERT_ROUTE = join(SRC, 'app/api/admin/ops-rules/signals/[signalKey]/[thresholdKey]/route.ts')
     const exportedMethods = (code: string) =>
       ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'].filter((method) =>
         new RegExp(`export\\s+(async\\s+)?function\\s+${method}\\s*\\(|export\\s+(const|let|var)\\s+${method}\\b|export\\s*\\{[^}]*\\b${method}\\b[^}]*\\}`).test(code)
       )
 
-    it('두 라우트 파일이 어드민 라우트 목록에 있다', () => {
+    it('규칙 라우트 파일 네 개가 어드민 라우트 목록에 있다', () => {
       expect(adminRouteFiles.map(rel)).toContain('app/api/admin/ops-rules/route.ts')
       expect(adminRouteFiles.map(rel)).toContain('app/api/admin/ops-rules/[ruleKey]/route.ts')
+      expect(adminRouteFiles.map(rel)).toContain('app/api/admin/ops-rules/signals/[signalKey]/route.ts')
+      expect(adminRouteFiles.map(rel)).toContain('app/api/admin/ops-rules/signals/[signalKey]/[thresholdKey]/route.ts')
     })
 
     it('읽기 라우트는 GET만 export하고 requireAdminRead(req)로 인증한다', () => {
@@ -155,6 +159,19 @@ describe('읽기 토큰의 쓰기 권한 — 제출 라우트 하나', () => {
       expect(code).toMatch(/await\s+getAdminUser\s*\(\s*\)/)
       expect(code).not.toMatch(/\brequireAdminRead\b/)
       expect(code).not.toMatch(TOKEN_WRITE_CHECKS)
+    })
+
+    it('신호 기준값 저장 라우트는 PATCH만, 되돌리기 라우트는 DELETE만 export하고 둘 다 getAdminUser()로 관리자 세션만 통과시킨다', () => {
+      for (const [file, method] of [
+        [SIGNAL_SAVE_ROUTE, 'PATCH'],
+        [SIGNAL_REVERT_ROUTE, 'DELETE'],
+      ] as const) {
+        const code = readCode(file)
+        expect(exportedMethods(code), file).toEqual([method])
+        expect(code, file).toMatch(/await\s+getAdminUser\s*\(\s*\)/)
+        expect(code, file).not.toMatch(/\brequireAdminRead\b/)
+        expect(code, file).not.toMatch(TOKEN_WRITE_CHECKS)
+      }
     })
   })
 

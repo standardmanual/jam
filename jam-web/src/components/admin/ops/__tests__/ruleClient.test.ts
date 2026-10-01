@@ -9,7 +9,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NETWORK_ERROR_MESSAGE } from '@/components/admin/data-table/admin-fetch'
-import { fetchOpsRules, patchOpsRule } from '../ruleClient'
+import { fetchOpsRules, fetchSignalThresholds, patchOpsRule, patchSignalThresholds, revertSignalThreshold } from '../ruleClient'
 
 const RULE = {
   ruleKey: 'open_collections_max',
@@ -18,7 +18,7 @@ const RULE = {
   level: 'warn',
   enabled: true,
   updatedAt: '2026-10-01T06:30:00+00:00',
-  updatedBy: 'admin-1',
+  edited: true,
   previousValue: { max: 6, provisional: true },
 }
 
@@ -107,5 +107,72 @@ describe('fetchOpsRules', () => {
     expect(await fetchOpsRules()).toEqual({ ok: false, status: 500, error: '규칙을 불러오지 못했어요.' })
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
     expect(await fetchOpsRules()).toEqual({ ok: false, status: 0, error: NETWORK_ERROR_MESSAGE })
+  })
+})
+
+describe('신호 기준값 호출 (조각 C)', () => {
+  const THRESHOLD = { ruleKey: 'approvalDeadlineHours', group: 'signal', value: 36, defaultValue: 48, changed: true, updatedAt: '2026-10-01T06:30:00+00:00' }
+  const BODY = { values: { approvalDeadlineHours: 36 }, expectedUpdatedAt: { approvalDeadlineHours: null } }
+
+  it('patchSignalThresholds: PATCH로 카드 한 장을 보내고 성공하면 카드 칸들을 돌려준다(신호 키는 주소에 인코딩한다)', async () => {
+    fetchMock.mockReturnValue(respond(200, { thresholds: [THRESHOLD], changed: true }))
+    expect(await patchSignalThresholds('approval_deadline', BODY)).toEqual({ ok: true, thresholds: [THRESHOLD], changed: true })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/admin/ops-rules/signals/approval_deadline')
+    expect(init.method).toBe('PATCH')
+    expect(JSON.parse(init.body)).toEqual(BODY)
+    fetchMock.mockReturnValue(respond(404, { error: '찾을 수 없는 신호예요.' }))
+    await patchSignalThresholds('a/b', BODY)
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/admin/ops-rules/signals/a%2Fb')
+  })
+
+  it('patchSignalThresholds: 400은 기준값 키별 fieldErrors를, 409는 상태 코드를 돌려준다', async () => {
+    fetchMock.mockReturnValue(respond(400, { error: '값을 확인해 주세요.', fieldErrors: { minLiveCards: '최소 장수는 최대 장수(5장)보다 클 수 없어요', bad: 3 } }))
+    expect(await patchSignalThresholds('empty_content', BODY)).toEqual({
+      ok: false,
+      status: 400,
+      error: '값을 확인해 주세요.',
+      fieldErrors: { minLiveCards: '최소 장수는 최대 장수(5장)보다 클 수 없어요' },
+    })
+    fetchMock.mockReturnValue(respond(409, { error: '그사이 바뀌었어요' }))
+    expect(await patchSignalThresholds('empty_content', BODY)).toMatchObject({ ok: false, status: 409 })
+  })
+
+  it('patchSignalThresholds: 네트워크가 끊기면 던지지 않고 status 0과 고정 문장이다', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+    const result = await patchSignalThresholds('empty_content', BODY)
+    expect(result).toEqual({ ok: false, status: 0, error: NETWORK_ERROR_MESSAGE, fieldErrors: {} })
+    expect(JSON.stringify(result)).not.toContain('Failed to fetch')
+  })
+
+  it('revertSignalThreshold: 칸 하나를 DELETE로 되돌리고 수정 시각을 쿼리에 인코딩해 싣는다', async () => {
+    const reverted = { ...THRESHOLD, value: 48, changed: false, updatedAt: null }
+    fetchMock.mockReturnValue(respond(200, { threshold: reverted }))
+    expect(await revertSignalThreshold('approval_deadline', 'approvalDeadlineHours', '2026-10-01T06:30:00+00:00')).toEqual({ ok: true, threshold: reverted })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/admin/ops-rules/signals/approval_deadline/approvalDeadlineHours?expectedUpdatedAt=2026-10-01T06%3A30%3A00%2B00%3A00')
+    expect(init.method).toBe('DELETE')
+  })
+
+  it('revertSignalThreshold: 409·서버 오류·네트워크 끊김은 던지지 않고 ok:false다', async () => {
+    fetchMock.mockReturnValue(respond(409, { error: '그사이 바뀌었어요' }))
+    expect(await revertSignalThreshold('approval_deadline', 'approvalDeadlineHours', 't')).toEqual({ ok: false, status: 409, error: '그사이 바뀌었어요' })
+    fetchMock.mockReturnValue(respond(200, { ok: true }))
+    expect(await revertSignalThreshold('approval_deadline', 'approvalDeadlineHours', 't')).toMatchObject({ ok: false, status: 200 })
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+    expect(await revertSignalThreshold('approval_deadline', 'approvalDeadlineHours', 't')).toEqual({ ok: false, status: 0, error: NETWORK_ERROR_MESSAGE })
+  })
+
+  it('fetchSignalThresholds: group=signal을 캐시 없이 읽는다', async () => {
+    fetchMock.mockReturnValue(respond(200, { group: 'signal', rules: [THRESHOLD] }))
+    expect(await fetchSignalThresholds()).toEqual({ ok: true, thresholds: [THRESHOLD] })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/admin/ops-rules?group=signal')
+    expect(init.method).toBe('GET')
+    expect(init.cache).toBe('no-store')
+    fetchMock.mockReturnValue(respond(500, { error: '규칙을 불러오지 못했어요.' }))
+    expect(await fetchSignalThresholds()).toEqual({ ok: false, status: 500, error: '규칙을 불러오지 못했어요.' })
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+    expect(await fetchSignalThresholds()).toEqual({ ok: false, status: 0, error: NETWORK_ERROR_MESSAGE })
   })
 })

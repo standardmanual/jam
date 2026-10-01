@@ -46,7 +46,7 @@ function record(ruleKey: string, value: unknown, overrides: Partial<OpsRuleRecor
     level: 'warn',
     enabled: true,
     updatedAt: T0,
-    updatedBy: null,
+    edited: false,
     previousValue: null,
     ...overrides,
   }
@@ -345,12 +345,12 @@ describe('마지막 변경과 직전 값', () => {
   })
 
   it('바꿨으면 「마지막으로 바꾼 사람 관리자 · 10/1(목) 15:20」과 「직전 값 6개」다', () => {
-    const changed = record('open_collections_max', { max: 9, provisional: false }, { updatedBy: 'admin-1', previousValue: { max: 6, provisional: true } })
+    const changed = record('open_collections_max', { max: 9, provisional: false }, { edited: true, previousValue: { max: 6, provisional: true } })
     expect(lastChangeLines(changed)).toEqual({ changed: '마지막으로 바꾼 사람 관리자 · 10/1(목) 15:20', previous: '직전 값 6개' })
   })
 
   it('켜기·수준만 바꿨으면 값은 처음 그대로라고 말한다', () => {
-    const toggled = record('open_collections_max', R1.value, { updatedBy: 'admin-1' })
+    const toggled = record('open_collections_max', R1.value, { edited: true })
     expect(lastChangeLines(toggled).previous).toBe('값은 처음 그대로예요')
   })
 
@@ -363,7 +363,7 @@ describe('마지막 변경과 직전 값', () => {
   })
 
   it('직전 값을 읽을 수 없으면 그 사실을 말한다', () => {
-    const broken = record('open_collections_max', R1.value, { updatedBy: 'admin-1', previousValue: { max: 'x' } })
+    const broken = record('open_collections_max', R1.value, { edited: true, previousValue: { max: 'x' } })
     expect(lastChangeLines(broken).previous).toBe('직전 값을 읽을 수 없어요')
   })
 
