@@ -326,7 +326,7 @@ describe('OpsSettingsSection·OpsSettingsNav', () => {
     expect(out).toContain('>밸런스 규칙</h2>')
     expect(out).toContain('첫째 설명')
     expect(out).toContain('둘째 설명')
-    expect(out).toContain('scroll-mt-20')
+    expect(out).toContain('scroll-mt-32')
     expect(out).toContain('본문')
   })
 

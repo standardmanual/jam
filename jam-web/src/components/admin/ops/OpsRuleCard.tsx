@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { IconAlertTriangle, IconRuler2 } from '@tabler/icons-react'
+import { useMemo, useState, type FormEvent } from 'react'
+import { IconRuler2 } from '@tabler/icons-react'
 import { toast } from 'sonner'
-import { Alert, AlertDescription, AlertTitle } from '@/components/admin/ui/alert'
 import { Button } from '@/components/admin/ui/button'
 import { Card } from '@/components/admin/ui/card'
 import { Switch } from '@/components/admin/ui/switch'
@@ -13,23 +12,18 @@ import { PROVISIONAL_CHIP_LABEL } from '@/lib/admin/opsInbox/balance/messages'
 import {
   CANCEL_CHANGES_LABEL,
   CONFLICT_MESSAGE,
-  CONFLICT_RELOAD_LABEL,
   ECONOMY_OFF_NOTE,
   ENABLED_LABELS,
   POINT_REWARD_OFF_NOTE,
   PROVISIONAL_HINT,
-  RELOAD_FAILED_MESSAGE,
   RETRY_SAVE_LABEL,
   REVERT_LABEL,
   RULE_EASY_DESCRIPTIONS,
   RULE_OFF_NOTE,
   SAVED_LIVE_MESSAGE,
   SAVED_TOAST_DESCRIPTION,
-  SAVE_FAILED_KEEP_NOTE,
-  SAVE_FAILED_TITLE,
   SAVE_LABEL,
   SAVING_LABEL,
-  UNSAVED_CHIP_LABEL,
   canRevertToPrevious,
   draftChanges,
   draftFieldErrors,
@@ -46,6 +40,7 @@ import {
 import { fetchOpsRules, patchOpsRule } from './ruleClient'
 import { OpsBalanceRuleFields } from './OpsBalanceRuleFields'
 import { Chip } from './OpsStatusBadge'
+import { SaveFailureAlerts, UnsavedChip, judgeFailedResponse, useFlash, type CardFailure } from './OpsRuleCardParts'
 
 /**
  * 밸런스 규칙 카드 한 장 (티켓 20260930_1459 조각 B, 채원 확정 설계 「조각 B (S7 운영 설정)」). 카드 하나가 작은 `<form>`이라 Enter로 저장하고,
@@ -59,10 +54,6 @@ import { Chip } from './OpsStatusBadge'
  * 저장된 규칙(`record`)이 바뀌면(저장·최신 값 불러오기·화면 새로 읽기) 초안을 그 값으로 다시 만든다(렌더 중에 비교한다. effect 안에서 `setState`하지 않는다).
  */
 
-const FLASH_MS = 1200
-
-type Failure = { kind: 'error'; message: string } | { kind: 'conflict' } | { kind: 'reload' }
-
 export interface OpsRuleCardProps {
   ruleKey: BalanceRuleKey
   record: OpsRuleRecord
@@ -71,14 +62,6 @@ export interface OpsRuleCardProps {
   openCollectionsNow: number | null
   /** 저장했거나 최신 값을 불러왔다. 부모가 규칙 목록을 갱신한다. */
   onRecord: (record: OpsRuleRecord) => void
-}
-
-function UnsavedChip() {
-  return (
-    <span className="inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-foreground">
-      {UNSAVED_CHIP_LABEL}
-    </span>
-  )
 }
 
 export function OpsRuleCard({ ruleKey, record, pointRewardValue, openCollectionsNow, onRecord }: OpsRuleCardProps) {
@@ -90,10 +73,10 @@ export function OpsRuleCard({ ruleKey, record, pointRewardValue, openCollections
   const [baseStamp, setBaseStamp] = useState(record.updatedAt)
   const [touched, setTouched] = useState<ReadonlySet<string>>(new Set())
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({})
-  const [failure, setFailure] = useState<Failure | null>(null)
+  const [failure, setFailure] = useState<CardFailure | null>(null)
   const [saving, setSaving] = useState(false)
   const [reloading, setReloading] = useState(false)
-  const [flash, setFlash] = useState(false)
+  const { flash, start: startFlash } = useFlash()
   const [savedLive, setSavedLive] = useState(false)
 
   // 저장된 규칙이 바뀌었으면 초안을 그 값으로 다시 만든다(저장·최신 값 불러오기·화면 새로 읽기).
@@ -104,12 +87,6 @@ export function OpsRuleCard({ ruleKey, record, pointRewardValue, openCollections
     setServerErrors({})
     setFailure(null)
   }
-
-  useEffect(() => {
-    if (!flash) return
-    const timer = setTimeout(() => setFlash(false), FLASH_MS)
-    return () => clearTimeout(timer)
-  }, [flash])
 
   const changes = draftChanges(record, draft)
   const liveErrors = useMemo(() => draftFieldErrors(ruleKey, draft), [ruleKey, draft])
@@ -151,22 +128,15 @@ export function OpsRuleCard({ ruleKey, record, pointRewardValue, openCollections
       onRecord(res.rule)
       // 서버가 같은 값으로 본 저장(예: 「6」→「06」)은 아무것도 쓰지 않았으므로 바꿨다고 알리지 않는다.
       if (!res.changed) return
-      setFlash(true)
+      startFlash()
       setSavedLive(true)
       toast.success(savedToastTitle(name), { description: SAVED_TOAST_DESCRIPTION })
       return
     }
-    if (res.status === 409) {
-      setFailure({ kind: 'conflict' })
-      return
-    }
-    if (res.status === 400 && Object.keys(res.fieldErrors).length > 0) {
-      setServerErrors(res.fieldErrors)
-      // 칸에 붙지 않는 오류(값 전체의 형식 등)는 카드 안 알림으로도 알린다.
-      if (res.fieldErrors.value) setFailure({ kind: 'error', message: res.fieldErrors.value })
-      return
-    }
-    setFailure({ kind: 'error', message: res.error })
+    const judged = judgeFailedResponse(res)
+    setServerErrors(judged.fieldErrors)
+    // 칸에 붙지 않는 오류(값 전체의 형식 등)는 카드 안 알림으로도 알린다.
+    setFailure(judged.failure)
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -205,7 +175,7 @@ export function OpsRuleCard({ ruleKey, record, pointRewardValue, openCollections
   const offNote = ruleKey === 'economy_keys' ? ECONOMY_OFF_NOTE : RULE_OFF_NOTE
 
   return (
-    <Card id={idBase} className={cn('scroll-mt-20 transition-colors motion-reduce:transition-none', flash && 'bg-muted')}>
+    <Card id={idBase} className={cn('scroll-mt-32 transition-colors motion-reduce:transition-none', flash && 'bg-muted')}>
       <form
         onSubmit={submit}
         // 오류가 있으면 [저장하기]가 비활성이라 Enter 제출이 막힌다. 저장을 시도한 순간 오류 칸의 문구를 모두 보인다.
@@ -275,30 +245,7 @@ export function OpsRuleCard({ ruleKey, record, pointRewardValue, openCollections
           )}
         </div>
 
-        {failure?.kind === 'error' && (
-          <Alert variant="destructive">
-            <IconAlertTriangle className="size-4" aria-hidden="true" />
-            <AlertTitle>{SAVE_FAILED_TITLE}</AlertTitle>
-            <AlertDescription>
-              <p className="break-words">{failure.message}</p>
-              <p className="mt-1">{SAVE_FAILED_KEEP_NOTE}</p>
-            </AlertDescription>
-          </Alert>
-        )}
-        {(failure?.kind === 'conflict' || failure?.kind === 'reload') && (
-          <Alert variant="warning">
-            <IconAlertTriangle className="size-4" aria-hidden="true" />
-            <AlertTitle>{SAVE_FAILED_TITLE}</AlertTitle>
-            <AlertDescription>
-              <p className="break-words">{failure.kind === 'conflict' ? CONFLICT_MESSAGE : RELOAD_FAILED_MESSAGE}</p>
-              <div className="mt-2">
-                <Button type="button" variant="outline" size="sm" disabled={reloading} onClick={() => void reloadLatest()}>
-                  {CONFLICT_RELOAD_LABEL}
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
+        <SaveFailureAlerts failure={failure} conflictMessage={CONFLICT_MESSAGE} reloading={reloading} onReload={() => void reloadLatest()} />
 
         <p className="sr-only" aria-live="polite">
           {savedLive ? SAVED_LIVE_MESSAGE : ''}

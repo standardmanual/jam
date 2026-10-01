@@ -3,11 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconScale } from '@tabler/icons-react'
-import { Button } from '@/components/admin/ui/button'
-import { Card } from '@/components/admin/ui/card'
 import type { OpsRuleRecord } from '@/lib/admin/opsInbox/balance/rules'
 import { BALANCE_RULE_GROUPS, SECTION_EMPTY, SECTION_LOAD_FAILED, readPointRewardValue } from '@/lib/admin/opsInbox/balance/settings'
 import { OpsRuleCard } from './OpsRuleCard'
+import { NoticeCard } from './OpsRuleCardParts'
 
 /**
  * 운영 설정(S7)의 「밸런스 규칙」 구역 본문 (티켓 20260930_1459 조각 B, 채원 확정 설계). 규칙 8개를 세 그룹(컬렉션 개방 R1~R4 · 포인트 크기 R5~R7 ·
@@ -25,21 +24,6 @@ export interface OpsBalanceSettingsProps {
   rules: readonly OpsRuleRecord[] | null
   /** 지금 열린 컬렉션 수(R1 카드의 「지금 서비스」). 읽지 못했으면 `null`이고 저장은 막지 않는다. */
   openCollectionsNow: number | null
-}
-
-function NoticeCard({ title, description, onRetry }: { title: string; description: string; onRetry?: { label: string; run: () => void } }) {
-  return (
-    <Card className="flex flex-col items-start gap-2 p-5">
-      <IconScale className="size-5 text-muted-foreground" aria-hidden="true" />
-      <p className="font-medium">{title}</p>
-      <p className="text-sm text-muted-foreground">{description}</p>
-      {onRetry && (
-        <Button type="button" variant="outline" size="sm" onClick={onRetry.run}>
-          {onRetry.label}
-        </Button>
-      )}
-    </Card>
-  )
 }
 
 export function OpsBalanceSettings({ rules, openCollectionsNow }: OpsBalanceSettingsProps) {
@@ -62,9 +46,9 @@ export function OpsBalanceSettings({ rules, openCollectionsNow }: OpsBalanceSett
   }, [])
 
   if (rules === null) {
-    return <NoticeCard title={SECTION_LOAD_FAILED.title} description={SECTION_LOAD_FAILED.description} onRetry={{ label: SECTION_LOAD_FAILED.retry, run: () => router.refresh() }} />
+    return <NoticeCard Icon={IconScale} title={SECTION_LOAD_FAILED.title} description={SECTION_LOAD_FAILED.description} onRetry={{ label: SECTION_LOAD_FAILED.retry, run: () => router.refresh() }} />
   }
-  if (rules.length === 0) return <NoticeCard title={SECTION_EMPTY.title} description={SECTION_EMPTY.description} />
+  if (rules.length === 0) return <NoticeCard Icon={IconScale} title={SECTION_EMPTY.title} description={SECTION_EMPTY.description} />
 
   return (
     <div className="space-y-8">
