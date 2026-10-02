@@ -78,6 +78,7 @@
       "docs/agents/workflow/README.md",
       "jam-web/supabase/migrations/198_ops_inbox.sql",
       "jam-web/supabase/migrations/207_ops_rules.sql",
+      "jam-web/supabase/migrations/214_today_cards_select_period.sql",
       "jam-web/src/lib/admin/opsInbox/balance/evaluate.ts",
       "jam-web/src/lib/admin/opsInbox/balance/save.ts",
       "jam-web/src/lib/admin/opsInbox/balance/settings.ts",
