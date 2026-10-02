@@ -14,19 +14,25 @@ const at = (offsetMs: number) => new Date(NOW.getTime() + offsetMs).toISOString(
 const run = (items: ReturnType<typeof makeItem>[], handlers = FULL_REGISTRY) => precheckBundle(items, { now: NOW, handlers })
 
 describe('핸들러 레지스트리', () => {
-  it('지금 레지스트리는 home_feed_card(티켓 20261002_1255)와 mission(티켓 20261002_1944) 둘이다', () => {
-    expect(Object.keys(EXECUTE_HANDLERS)).toEqual(['home_feed_card', 'mission'])
+  it('지금 레지스트리는 home_feed_card(티켓 20261002_1255)·mission(티켓 20261002_1944)·recipe(티켓 20261002_2221) 셋이다', () => {
+    expect(Object.keys(EXECUTE_HANDLERS)).toEqual(['home_feed_card', 'mission', 'recipe'])
     expect(EXECUTE_HANDLERS.home_feed_card).toMatchObject({ kind: 'home_feed_card', resourceKey: RESOURCE_KEY_BY_KIND.home_feed_card, idFirst: true })
     expect(EXECUTE_HANDLERS.mission).toMatchObject({ kind: 'mission', resourceKey: RESOURCE_KEY_BY_KIND.mission, idFirst: true })
+    expect(EXECUTE_HANDLERS.recipe).toMatchObject({ kind: 'recipe', resourceKey: RESOURCE_KEY_BY_KIND.recipe, idFirst: true })
   })
 
-  it('카드와 미션은 예약할 수 있고 레시피 같은 나머지 종류는 여전히 「아직 연결하지 않은 종류」로 막힌다', () => {
+  it('카드·미션·레시피는 예약할 수 있고 드랍 같은 나머지 종류는 여전히 「아직 연결하지 않은 종류」로 막힌다', () => {
     const result = precheckBundle(
-      [makeItem({ key: 'card', kind: 'home_feed_card' }), makeItem({ key: 'mission', kind: 'mission' }), makeItem({ key: 'recipe', kind: 'recipe' })],
+      [
+        makeItem({ key: 'card', kind: 'home_feed_card' }),
+        makeItem({ key: 'mission', kind: 'mission' }),
+        makeItem({ key: 'recipe', kind: 'recipe' }),
+        makeItem({ key: 'drop', kind: 'drop_schedule' }),
+      ],
       { now: NOW }
     )
-    expect(result.ready).toEqual(['card', 'mission'])
-    expect(result.blocked).toEqual([{ id: 'recipe', reasons: [PRECHECK_MESSAGES.noHandler] }])
+    expect(result.ready).toEqual(['card', 'mission', 'recipe'])
+    expect(result.blocked).toEqual([{ id: 'drop', reasons: [PRECHECK_MESSAGES.noHandler] }])
   })
 
   it('빈 레지스트리를 넘기면 모든 승인 항목이 「아직 연결하지 않은 종류」로 막힌다', () => {
@@ -526,12 +532,12 @@ describe('그룹 결과 · 생성 순서와 linkedIds 계획', () => {
 
 describe('모듈 계약 — DB와 서버 전용 코드를 값으로 가져오지 않는다', () => {
   const dir = path.join(__dirname, '..')
-  // 실행 `run.ts`(티켓 20261002_1123)·공개 전 취소 `cancel.ts`(티켓 20261002_1256)·상태 맞추기 `reconcile.ts`(티켓 20261002_1813)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 여섯만 본다.
+  // 실행 `run.ts`(티켓 20261002_1123)·공개 전 취소 `cancel.ts`(티켓 20261002_1256)·상태 맞추기 `reconcile.ts`(티켓 20261002_1813)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 일곱만 본다.
   const SERVER_ONLY = ['run.ts', 'cancel.ts', 'reconcile.ts']
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.ts') && !SERVER_ONLY.includes(name))
 
-  it('순수 모듈 여섯 개가 있다', () => {
-    expect(files.sort()).toEqual(['groups.ts', 'handlers.ts', 'homeFeedCard.ts', 'mission.ts', 'precheck.ts', 'registry.ts'])
+  it('순수 모듈 일곱 개가 있다', () => {
+    expect(files.sort()).toEqual(['groups.ts', 'handlers.ts', 'homeFeedCard.ts', 'mission.ts', 'precheck.ts', 'recipe.ts', 'registry.ts'])
   })
 
   it.each(files)('%s는 node: 모듈과 Supabase·서버 모듈의 값 import가 없다', (name) => {

@@ -5,6 +5,8 @@
  * 취소(티켓 20261002_1256)가 쓰는 `gt`(두 값이 날짜 문자열이면 시각으로 비교한다)와 `delete().select()`의 지운 행 돌려주기도 받는다.
  * 상태 맞추기(티켓 20261002_1813)가 쓰는 `order`(칸 값이 같거나 없으면 내림차순은 나중에 넣은 행이 먼저)도 받는다.
  * 미션 핸들러(티켓 20261002_1944)가 쓰는 미션 참조 표(`user_mission_*`·`mission_rank_snapshots`·`point_transactions`)와 `poi`가 기본 테이블에 있다.
+ * 레시피 핸들러(티켓 20261002_2221)가 쓰는 `combination_recipes`·`combination_recipe_slots`도 기본 테이블에 있고, 레시피를 지우면 슬롯도 함께 지워진다(DB의 CASCADE).
+ * `in`은 PostgREST JSON 경로 칸(`condition_json->recipe_first_success->>recipe_id`)도 읽는다(레시피 참조 확인이 쓴다).
  */
 import type { ExecuteServiceClient } from '../handlers'
 
@@ -20,6 +22,18 @@ export interface FakeCall {
 
 /** DB 오류 원문 자리. 응답·결정 기록·슬랙 어디에도 나오면 안 된다. */
 export const DB_SECRET = 'boom secret detail relation "ops_bundle_items" violates'
+
+/** 칸 값 하나. `a->b->>c` 같은 PostgREST JSON 경로면 JSON 안으로 내려가 읽고, 없으면 `undefined`다. */
+function readCell(row: Row, col: string): unknown {
+  if (!col.includes('->')) return row[col]
+  const [head, ...keys] = col.split(/->>?/)
+  let value: unknown = row[head]
+  for (const key of keys) {
+    if (value === null || typeof value !== 'object') return undefined
+    value = (value as Row)[key]
+  }
+  return value
+}
 
 function sortRows(rows: Row[], { col, ascending }: { col: string; ascending: boolean }): Row[] {
   return rows
@@ -74,7 +88,7 @@ class FakeQuery implements PromiseLike<Result> {
     return this
   }
   in(col: string, vals: unknown[]) {
-    this.filters.push([col, (row) => vals.includes(row[col])])
+    this.filters.push([col, (row) => vals.includes(readCell(row, col))])
     this.log.push([col, vals])
     return this
   }
@@ -153,6 +167,10 @@ class FakeQuery implements PromiseLike<Result> {
     if (this.mode === 'delete') {
       const gone = new Set(matches())
       this.db.tables[this.table] = rows.filter((row) => !gone.has(row))
+      if (this.table === 'combination_recipes') {
+        const goneIds = new Set([...gone].map((row) => row.id))
+        this.db.tables.combination_recipe_slots = this.db.tables.combination_recipe_slots.filter((slot) => !goneIds.has(slot.recipe_id))
+      }
       return { data: this.returning ? [...gone].map((row) => ({ id: row.id })) : null, error: null }
     }
     const matched = matches()
@@ -180,6 +198,9 @@ export class FakeDb {
     mission_rank_snapshots: [],
     point_transactions: [],
     poi: [],
+    // 레시피 핸들러(티켓 20261002_2221): 레시피와 슬롯. 레시피 참조 확인은 `badges`의 JSON 경로를 읽는다.
+    combination_recipes: [],
+    combination_recipe_slots: [],
   }
   calls: FakeCall[] = []
   seq = 0
