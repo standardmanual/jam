@@ -3,7 +3,7 @@
  *
  * - 쓰는 이벤트는 「기획안 도착」(티켓 20260930_1816)과 결정 글(승인·반려·일괄 승인·수정·되돌림, 티켓 20260930_1818),
  *   예약 등록 요약(티켓 20261002_1123)과 공개 전 취소 글(티켓 20261002_1256)이 `#jam-report`, 예약 등록 실패 글(티켓 20261002_1123)과
- *   취소를 끝내지 못한 글(티켓 20261002_1256)이 `#jam-alert`다. 상태 맞추기의 알림은 뒤 티켓이 같은 두 채널로 보낸다.
+ *   취소를 끝내지 못한 글(티켓 20261002_1256)이 `#jam-alert`다. 상태 맞추기(티켓 20261002_1813)는 공개·종료 요약을 `#jam-report`로, 실패·밖에서 지워짐을 `#jam-alert`로 보낸다.
  * - **던지지 않는다.** 환경변수가 없거나, 네트워크가 실패하거나, 슬랙이 `ok: false`로 답해도 `{ ok: false, error }`를
  *   돌려준다. 슬랙 게시 실패가 제출 요청을 실패시키면 안 된다(상위 티켓 가정 16). 오류에는 종류(이름)만 담고
  *   토큰 값·응답 본문은 담지 않는다.
@@ -204,6 +204,86 @@ export function formatCancelFailureMessage(input: CancelFailureMessageInput): st
       lines.push(`• ${safeField(problem.itemLabel)} — ${safeField(problem.reason, SLACK_REASON_MAX_CHARS)}`)
     }
     const rest = input.problems.length - SLACK_CANCEL_ITEMS_MAX
+    if (rest > 0) lines.push(`외 ${rest}건`)
+  }
+  if (input.decisionLogFailed) lines.push('결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요')
+  const text = lines.join('\n')
+  return input.isSample ? `[시험] ${text}` : text
+}
+
+// ── 상태 맞추기 글 (티켓 20261002_1813) ─────────────────────────────────────────────────────────
+
+/** 상태 맞추기 글에 항목을 나열하는 건수(예약 등록 글과 같다). 넘으면 「외 N건」으로 줄인다. */
+const SLACK_RECONCILE_ITEMS_MAX = 5
+
+export interface ReconcileReportMessageInput {
+  isSample: boolean
+  /** 공개한 항목 이름(「종류 · 공개 시각(KST)」). */
+  published: readonly string[]
+  /** 종료 시각이 지나 종료한 항목 이름. */
+  ended: readonly string[]
+}
+
+/**
+ * 상태 맞추기 요약 글(`#jam-report`). 한 회차에 한 건이고, 공개·종료가 있을 때만 보낸다. 항목은 5건까지 나열하고 나머지는 「외 N건」이다.
+ * 시험 묶음이면 맨 앞에 「[시험]」을 붙인다. 예: `3개 공개, 2개 종료` 다음 줄부터 `• 공개 · 홈피드 카드 · 10/10(토) 09:00`
+ */
+export function formatReconcileReportMessage(input: ReconcileReportMessageInput): string {
+  const counts = [
+    ...(input.published.length > 0 ? [`${input.published.length}개 공개`] : []),
+    ...(input.ended.length > 0 ? [`${input.ended.length}개 종료`] : []),
+  ]
+  const entries = [...input.published.map((label) => `공개 · ${safeField(label)}`), ...input.ended.map((label) => `종료 · ${safeField(label)}`)]
+  const lines = [counts.join(', '), ...entries.slice(0, SLACK_RECONCILE_ITEMS_MAX).map((entry) => `• ${entry}`)]
+  const rest = entries.length - SLACK_RECONCILE_ITEMS_MAX
+  if (rest > 0) lines.push(`외 ${rest}건`)
+  const text = lines.join('\n')
+  return input.isSample ? `[시험] ${text}` : text
+}
+
+export interface ReconcileAlertItem {
+  /** 항목 이름(「종류 · 공개 시각(KST)」). */
+  itemLabel: string
+  /** 쉬운 문장. DB 오류 원문은 싣지 않는다. */
+  reason: string
+  /** 지우지 못해 남은 자원의 ID. 운영자가 직접 정리해야 해서 이 글에만 싣는다. */
+  resourceId?: string | null
+}
+
+export interface ReconcileAlertMessageInput {
+  isSample: boolean
+  failed: readonly ReconcileAlertItem[]
+  /** 예약됨인데 자원이 운영툴 밖에서 지워져 취소한 항목. */
+  cancelled: readonly ReconcileAlertItem[]
+  /** 게재중인데 자원이 운영툴 밖에서 지워져 종료한 항목. */
+  ended: readonly ReconcileAlertItem[]
+  /** 상태는 바꿨는데 결정 기록을 남기지 못했다. */
+  decisionLogFailed?: boolean
+}
+
+/**
+ * 상태 맞추기 알림 글(`#jam-alert`). 한 회차에 한 건이고, 실패·밖에서 지워짐이 있을 때 보낸다. 항목은 실패, 취소, 종료 순으로 5건까지 나열하고 나머지는 「외 N건」이다.
+ * 결정 기록을 남기지 못했으면 그 줄이 더해진다. 시험 묶음이면 맨 앞에 「[시험]」을 붙인다.
+ * 예: `상태 맞추기에서 확인할 항목이 있어요 · 실패 1건, 취소 1건` 다음 줄부터 `• 실패 · 홈피드 카드 · 10/10(토) 09:00 — 예약 등록이 끝나지 않았어요`
+ */
+export function formatReconcileAlertMessage(input: ReconcileAlertMessageInput): string {
+  const groups = [
+    { label: '실패', items: input.failed },
+    { label: '취소', items: input.cancelled },
+    { label: '종료', items: input.ended },
+  ].filter((group) => group.items.length > 0)
+
+  const lines: string[] = []
+  if (groups.length > 0) {
+    lines.push(`상태 맞추기에서 확인할 항목이 있어요 · ${groups.map((group) => `${group.label} ${group.items.length}건`).join(', ')}`)
+    const entries = groups.flatMap((group) =>
+      group.items.map((item) => {
+        const resource = item.resourceId ? ` · 자원 ID: ${safeField(item.resourceId)}` : ''
+        return `• ${group.label} · ${safeField(item.itemLabel)} — ${safeField(item.reason, SLACK_REASON_MAX_CHARS)}${resource}`
+      })
+    )
+    lines.push(...entries.slice(0, SLACK_RECONCILE_ITEMS_MAX))
+    const rest = entries.length - SLACK_RECONCILE_ITEMS_MAX
     if (rest > 0) lines.push(`외 ${rest}건`)
   }
   if (input.decisionLogFailed) lines.push('결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요')
