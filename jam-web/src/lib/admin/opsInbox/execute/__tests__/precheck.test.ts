@@ -4,8 +4,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { EXECUTE_HANDLERS, asRegisterChecksClient, type ExecuteServiceClient } from '../handlers'
+import { RESOURCE_KEY_BY_KIND, asRegisterChecksClient, type ExecuteServiceClient } from '../handlers'
 import { EXECUTE_LEAD_MS, PRECHECK_MESSAGES, precheckBundle } from '../precheck'
+import { EXECUTE_HANDLERS } from '../registry'
 import { FULL_REGISTRY, LATER, NOW, fakeRegistry, makeItem } from './fixtures'
 
 const MINUTE = 60_000
@@ -13,9 +14,19 @@ const at = (offsetMs: number) => new Date(NOW.getTime() + offsetMs).toISOString(
 const run = (items: ReturnType<typeof makeItem>[], handlers = FULL_REGISTRY) => precheckBundle(items, { now: NOW, handlers })
 
 describe('핸들러 레지스트리', () => {
-  it('지금 레지스트리는 비어 있어 모든 승인 항목이 「아직 연결하지 않은 종류」로 막힌다', () => {
-    expect(Object.keys(EXECUTE_HANDLERS)).toEqual([])
+  it('지금 레지스트리는 home_feed_card 하나뿐이다(티켓 20261002_1255)', () => {
+    expect(Object.keys(EXECUTE_HANDLERS)).toEqual(['home_feed_card'])
+    expect(EXECUTE_HANDLERS.home_feed_card).toMatchObject({ kind: 'home_feed_card', resourceKey: RESOURCE_KEY_BY_KIND.home_feed_card, idFirst: true })
+  })
+
+  it('카드는 예약할 수 있고 미션은 여전히 「아직 연결하지 않은 종류」로 막힌다', () => {
     const result = precheckBundle([makeItem({ key: 'card', kind: 'home_feed_card' }), makeItem({ key: 'mission', kind: 'mission' })], { now: NOW })
+    expect(result.ready).toEqual(['card'])
+    expect(result.blocked).toEqual([{ id: 'mission', reasons: [PRECHECK_MESSAGES.noHandler] }])
+  })
+
+  it('빈 레지스트리를 넘기면 모든 승인 항목이 「아직 연결하지 않은 종류」로 막힌다', () => {
+    const result = precheckBundle([makeItem({ key: 'card', kind: 'home_feed_card' }), makeItem({ key: 'mission', kind: 'mission' })], { now: NOW, handlers: {} })
     expect(result.ready).toEqual([])
     expect(result.blocked).toEqual([
       { id: 'card', reasons: [PRECHECK_MESSAGES.noHandler] },
@@ -357,11 +368,11 @@ describe('그룹 결과 · 생성 순서와 linkedIds 계획', () => {
 
 describe('모듈 계약 — DB와 서버 전용 코드를 값으로 가져오지 않는다', () => {
   const dir = path.join(__dirname, '..')
-  // 실행 `run.ts`(티켓 20261002_1123)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 셋만 본다.
+  // 실행 `run.ts`(티켓 20261002_1123)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 다섯만 본다.
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.ts') && name !== 'run.ts')
 
-  it('순수 모듈 세 개가 있다', () => {
-    expect(files.sort()).toEqual(['groups.ts', 'handlers.ts', 'precheck.ts'])
+  it('순수 모듈 다섯 개가 있다', () => {
+    expect(files.sort()).toEqual(['groups.ts', 'handlers.ts', 'homeFeedCard.ts', 'precheck.ts', 'registry.ts'])
   })
 
   it.each(files)('%s는 node: 모듈과 Supabase·서버 모듈의 값 import가 없다', (name) => {

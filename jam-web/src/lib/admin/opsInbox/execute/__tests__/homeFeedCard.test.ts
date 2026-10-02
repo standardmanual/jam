@@ -1,0 +1,353 @@
+/**
+ * 홈피드 카드 핸들러 (티켓 20261002_1255, 상위 20260930_1500 ④-a). 가정 1~6은 티켓 「착수 전에 정한 것」 번호다.
+ *
+ * - prepare: 페이로드의 `id`·`pattern_no`·종료 시각 보충·`cover_image_url`·연결 칸, 형식 오류 문장과 「외 N건」
+ * - check: 검사 라벨마다 고정 문장(가정 3 표), DB 오류·기존 카드 ID는 `reason`에 없다
+ * - create: insert 칸·같은 ID 반환(가정 4), 오류 때 정리 delete 한 번과 원문 비노출
+ * - undo: 참조가 있으면 지우지 않고, 없으면 ID로 지운다(가정 5). 오류 원문 비노출
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+const h = vi.hoisted(() => ({ override: null as null | (() => unknown) }))
+
+// 표에 없는 라벨의 실패를 만들기 위해 DB 검사 결과를 바꿔 끼울 수 있게 한다. 값이 없으면 실제 검사를 그대로 부른다.
+vi.mock('@/lib/admin/registerChecks/homeFeed', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/admin/registerChecks/homeFeed')>()
+  return {
+    ...actual,
+    runHomeFeedDbChecks: (args: Parameters<typeof actual.runHomeFeedDbChecks>[0]) => (h.override ? h.override() : actual.runHomeFeedDbChecks(args)),
+  }
+})
+
+import { asRegisterChecksClient, RESOURCE_KEY_BY_KIND, type ExecuteLinkedIds } from '../handlers'
+import { HOME_FEED_CARD_HANDLER as handler } from '../homeFeedCard'
+import { DB_SECRET, FakeDb, type Row } from './fakeDb'
+import { LATER, makeItem } from './fixtures'
+
+const uid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+const CARD_ID = uid(1)
+const EXISTING_CARD_ID = uid(2)
+const MISSION_ID = uid(3)
+const BOOK_ID = uid(4)
+const BADGE_ID = uid(5)
+const RANKING_ID = uid(6)
+const ACTOR = 'admin-1'
+/** `LATER`(10/10 09:00 KST)를 등록 형식으로 바꾼 시작 일시. */
+const STARTS_AT = new Date(LATER).toISOString()
+/** 공개한 날의 끝(10/10 23:59:59.999 KST). */
+const ENDS_AT = '2026-10-10T14:59:59.999Z'
+
+type Raw = Record<string, unknown>
+
+/** 검사를 통과하는 카드 항목. `resource`·`original`·`copy`는 칸 단위로 덮는다. */
+function cardItem(resource: Raw = {}, original: Raw = {}, copy: Raw = {}) {
+  return makeItem({
+    key: 'card',
+    kind: 'home_feed_card',
+    original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '가을 아침 러닝', ...copy }, ...original },
+    resource: { template_type: 'drop_alert', ...resource },
+  })
+}
+
+function prepared(item = cardItem(), linkedIds: ExecuteLinkedIds = {}) {
+  const outcome = handler.prepare(item, { id: CARD_ID, actorId: ACTOR, linkedIds })
+  if (!outcome.ok) throw new Error(`prepare 실패: ${outcome.failure.reason}`)
+  return outcome.value
+}
+
+const checkOf = (db: FakeDb, item = cardItem(), linkedIds: ExecuteLinkedIds = {}) => handler.check(asRegisterChecksClient(db.service), prepared(item, linkedIds))
+const deletes = (db: FakeDb) => db.calls.filter((call) => call.op === 'delete')
+
+beforeEach(() => {
+  h.override = null
+})
+
+describe('핸들러 정의', () => {
+  it('종류·자원 키·정한 ID 먼저 만들기가 계약대로다', () => {
+    expect(handler.kind).toBe('home_feed_card')
+    expect(handler.resourceKey).toBe(RESOURCE_KEY_BY_KIND.home_feed_card)
+    expect(handler.resourceKey).toBe('today_card_id')
+    expect(handler.idFirst).toBe(true)
+  })
+})
+
+describe('prepare', () => {
+  it('정한 ID·작성자·보충한 종료 시각·패턴 번호·대표 이미지가 페이로드에 들어간다', () => {
+    const value = prepared(cardItem({ cover_image_url: 'https://cdn.example.com/card.webp' }, { pattern_no: 'P07' }))
+    expect(value.id).toBe(CARD_ID)
+    expect(value.payload).toMatchObject({
+      id: CARD_ID,
+      title: '가을 아침 러닝',
+      template_type: 'drop_alert',
+      shape: 'hero',
+      exposure_tags: ['all'],
+      starts_at: STARTS_AT,
+      ends_at: ENDS_AT,
+      pattern_no: 'P07',
+      cover_image_url: 'https://cdn.example.com/card.webp',
+      image_source: null,
+      created_by: ACTOR,
+      is_active: true,
+    })
+    expect(value.linkFields).toEqual([])
+  })
+
+  it('대표 이미지·패턴 번호가 없으면 null이다', () => {
+    const value = prepared()
+    expect(value.payload).toMatchObject({ cover_image_url: null, pattern_no: null, image_source: null })
+  })
+
+  it('연결 칸: 연결로 채운 ID가 페이로드에 들어가고 linkFields·linkedIds가 그대로 남는다', () => {
+    const linkedIds = { mission_id: MISSION_ID, badge_ids: [BADGE_ID] }
+    const value = prepared(cardItem({ template_type: 'progress_nudge' }), linkedIds)
+    expect(value.payload).toMatchObject({ mission_id: MISSION_ID, badge_ids: [BADGE_ID] })
+    expect([...value.linkFields].sort()).toEqual(['badge_ids', 'mission_id'])
+    expect(value.linkedIds).toBe(linkedIds)
+  })
+
+  it('경고는 막지 않고 그대로 돌려준다', () => {
+    const value = prepared(cardItem({ mood: 'calm' }))
+    expect(value.warnings.map((issue) => issue.path)).toEqual(['resource.mood'])
+  })
+
+  it('형식 오류가 하나면 「카드 형식이 맞지 않아요: {오류 문장}」이고 DB 오류 원문은 없다', () => {
+    const outcome = handler.prepare(cardItem({}, { shape: undefined }), { id: CARD_ID, actorId: ACTOR, linkedIds: {} })
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) return
+    expect(outcome.failure.reason).toMatch(/^카드 형식이 맞지 않아요: card\.shape: /)
+    expect(outcome.failure.reason).not.toMatch(/외 \d+건/)
+    expect(outcome.failure.detail).toContain('shape')
+  })
+
+  it('형식 오류가 둘 이상이면 첫 문장만 싣고 끝에 「 (외 N건)」을 붙인다', () => {
+    const outcome = handler.prepare(cardItem({ template_type: 'nope' }, { shape: undefined }, { title: '' }), { id: CARD_ID, actorId: ACTOR, linkedIds: {} })
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) return
+    const errors = outcome.failure.detail?.split(' / ') ?? []
+    expect(errors.length).toBeGreaterThanOrEqual(3)
+    expect(outcome.failure.reason).toMatch(new RegExp(`^카드 형식이 맞지 않아요: .+ \\(외 ${errors.length - 1}건\\)$`))
+    // 첫 문장 하나만 싣는다
+    expect(outcome.failure.reason).not.toContain(errors[1])
+  })
+
+  it('다른 종류의 항목은 변환 오류로 막는다', () => {
+    const outcome = handler.prepare(makeItem({ key: 'm', kind: 'mission' }), { id: CARD_ID, actorId: ACTOR, linkedIds: {} })
+    expect(outcome.ok).toBe(false)
+    if (!outcome.ok) expect(outcome.failure.reason).toMatch(/^카드 형식이 맞지 않아요: kind: /)
+  })
+})
+
+describe('check — 가정 3 표의 고정 문장', () => {
+  it('모두 있으면 통과하고 검사한 칸은 title·starts_at·연결 칸이다', async () => {
+    const db = new FakeDb()
+    db.tables.missions = [{ id: MISSION_ID }]
+    db.tables.item_books = [{ id: BOOK_ID }]
+    db.tables.badges = [{ id: BADGE_ID, deleted_at: null }]
+    db.tables.ranking_modes = [{ id: RANKING_ID }]
+    expect(await checkOf(db, cardItem({ template_type: 'mission_spotlight', mission_id: MISSION_ID }))).toBeNull()
+    expect(await checkOf(db, cardItem({ template_type: 'itembook_milestone', item_book_id: BOOK_ID }))).toBeNull()
+    expect(await checkOf(db, cardItem({ template_type: 'badge_spotlight', badge_ids: [BADGE_ID] }))).toBeNull()
+    expect(await checkOf(db, cardItem({ template_type: 'ranking_board', ranking_mode_id: RANKING_ID }))).toBeNull()
+    const dup = db.calls.find((call) => call.table === 'today_cards')
+    expect(dup?.filters).toEqual([
+      ['title', '가을 아침 러닝'],
+      ['starts_at', STARTS_AT],
+    ])
+  })
+
+  it('제목·시작 일시 중복 → 「같은 제목·같은 공개 시각의 카드가 이미 있어요」이고 기존 카드 ID는 detail에만 있다', async () => {
+    const db = new FakeDb()
+    db.tables.today_cards = [{ id: EXISTING_CARD_ID, title: '가을 아침 러닝', starts_at: STARTS_AT }]
+    const failure = await checkOf(db)
+    expect(failure?.reason).toBe('같은 제목·같은 공개 시각의 카드가 이미 있어요')
+    expect(failure?.reason).not.toContain(EXISTING_CARD_ID)
+    expect(failure?.reason).not.toContain(CARD_ID)
+    expect(failure?.detail).toContain(EXISTING_CARD_ID)
+  })
+
+  it('같은 제목이어도 시작 일시가 다르면 통과한다', async () => {
+    const db = new FakeDb()
+    db.tables.today_cards = [{ id: EXISTING_CARD_ID, title: '가을 아침 러닝', starts_at: '2026-10-11T00:00:00.000Z' }]
+    expect(await checkOf(db)).toBeNull()
+  })
+
+  it.each([
+    ['미션 존재', cardItem({ template_type: 'mission_spotlight', mission_id: MISSION_ID }), '연결한 미션을 찾을 수 없어요', MISSION_ID],
+    ['컬렉션 존재', cardItem({ template_type: 'itembook_milestone', item_book_id: BOOK_ID }), '연결한 컬렉션을 찾을 수 없어요', BOOK_ID],
+    ['배지 존재', cardItem({ template_type: 'badge_spotlight', badge_ids: [BADGE_ID] }), '연결한 배지가 없거나 삭제됐어요', BADGE_ID],
+    ['랭킹 모드 존재', cardItem({ template_type: 'ranking_board', ranking_mode_id: RANKING_ID }), '연결한 랭킹 모드를 찾을 수 없어요', RANKING_ID],
+  ])('%s 실패 → 「%s」이고 칼럼 이름·ID는 detail에만 있다', async (_label, item, reason, missingId) => {
+    const db = new FakeDb()
+    const failure = await checkOf(db, item)
+    expect(failure?.reason).toBe(reason)
+    expect(failure?.reason).not.toMatch(/_id|ids/)
+    expect(failure?.reason).not.toContain(missingId)
+    expect(failure?.detail).toContain(missingId)
+  })
+
+  it('삭제된 배지(deleted_at이 있음)는 없는 것으로 본다', async () => {
+    const db = new FakeDb()
+    db.tables.badges = [{ id: BADGE_ID, deleted_at: '2026-10-01T00:00:00.000Z' }]
+    const failure = await checkOf(db, cardItem({ template_type: 'badge_spotlight', badge_ids: [BADGE_ID] }))
+    expect(failure?.reason).toBe('연결한 배지가 없거나 삭제됐어요')
+  })
+
+  it('연결로 채운 칸은 같은 실행에서 만들 ID라 존재 확인에서 뺀다', async () => {
+    const db = new FakeDb() // 미션·배지 테이블이 비어 있어도 통과한다
+    const item = cardItem({ template_type: 'progress_nudge' })
+    expect(await checkOf(db, item, { mission_id: MISSION_ID, badge_ids: [BADGE_ID] })).toBeNull()
+    expect(db.calls.map((call) => call.table)).toEqual(['today_cards'])
+  })
+
+  it('DB를 읽지 못하면 라벨과 상관없이 「등록 전 확인 중 DB를 읽지 못했어요」이고 원문은 detail에만 있다', async () => {
+    const db = new FakeDb()
+    db.failIf = (call) => call.table === 'today_cards' && call.op === 'select'
+    const failure = await checkOf(db)
+    expect(failure?.reason).toBe('등록 전 확인 중 DB를 읽지 못했어요')
+    expect(failure?.reason).not.toContain(DB_SECRET)
+    expect(failure?.reason).not.toContain(CARD_ID)
+    expect(failure?.detail).toContain(DB_SECRET)
+
+    const other = new FakeDb()
+    other.failIf = (call) => call.table === 'missions'
+    const otherFailure = await checkOf(other, cardItem({ template_type: 'mission_spotlight', mission_id: MISSION_ID }))
+    expect(otherFailure?.reason).toBe('등록 전 확인 중 DB를 읽지 못했어요')
+    expect(otherFailure?.detail).toContain(DB_SECRET)
+  })
+
+  it('표에 없는 라벨은 「등록 전 확인을 통과하지 못했어요」다', async () => {
+    h.override = () => ({
+      checks: [{ label: '새 검사', status: '실패', detail: '내부 사정 SECRET_LABEL_DETAIL' }],
+      errors: ['새 검사: 내부 사정 SECRET_LABEL_DETAIL'],
+    })
+    const failure = await checkOf(new FakeDb())
+    expect(failure?.reason).toBe('등록 전 확인을 통과하지 못했어요')
+    expect(failure?.detail).toContain('SECRET_LABEL_DETAIL')
+  })
+
+  it('처음 실패한 검사의 문장을 쓴다', async () => {
+    const db = new FakeDb()
+    db.tables.today_cards = [{ id: EXISTING_CARD_ID, title: '가을 아침 러닝', starts_at: STARTS_AT }]
+    const failure = await checkOf(db, cardItem({ template_type: 'mission_spotlight', mission_id: MISSION_ID }))
+    expect(failure?.reason).toBe('같은 제목·같은 공개 시각의 카드가 이미 있어요')
+    expect(failure?.detail).toContain(EXISTING_CARD_ID)
+    expect(failure?.detail).toContain(MISSION_ID)
+  })
+})
+
+describe('create — 정한 ID로 만든다', () => {
+  it('insert 페이로드의 id는 prepared.id이고 같은 ID를 돌려준다', async () => {
+    const db = new FakeDb()
+    const value = prepared(cardItem({ cover_image_url: 'https://cdn.example.com/card.webp' }, { pattern_no: 'P07' }))
+    const outcome = await handler.create(db.service, value)
+
+    expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
+    const inserts = db.calls.filter((call) => call.op === 'insert')
+    expect(inserts).toHaveLength(1)
+    expect(inserts[0].table).toBe('today_cards')
+    expect(inserts[0].payload).toBe(value.payload)
+    expect(db.tables.today_cards).toHaveLength(1)
+    expect(db.tables.today_cards[0]).toMatchObject({
+      id: CARD_ID,
+      title: '가을 아침 러닝',
+      starts_at: STARTS_AT,
+      ends_at: ENDS_AT,
+      pattern_no: 'P07',
+      cover_image_url: 'https://cdn.example.com/card.webp',
+      created_by: ACTOR,
+      is_active: true,
+    })
+    expect(deletes(db)).toEqual([])
+  })
+
+  it('insert가 오류를 받으면 같은 ID로 delete를 한 번 시도하고 사유에는 원문이 없다', async () => {
+    const db = new FakeDb()
+    // 오류 응답인데 행이 생긴 경우를 흉내 낸다.
+    db.beforeRun = (call) => {
+      if (call.op === 'insert') db.tables.today_cards.push({ id: CARD_ID })
+    }
+    db.failIf = (call) => call.op === 'insert'
+    const outcome = await handler.create(db.service, prepared())
+
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) return
+    expect(outcome.failure.reason).toBe('카드를 만들지 못했어요')
+    expect(outcome.failure.reason).not.toContain(DB_SECRET)
+    expect(outcome.failure.reason).not.toContain(CARD_ID)
+    expect(outcome.failure.detail).toContain(DB_SECRET)
+    expect(deletes(db)).toHaveLength(1)
+    expect(deletes(db)[0]).toMatchObject({ table: 'today_cards', filters: [['id', CARD_ID]] })
+    expect(db.tables.today_cards).toEqual([])
+  })
+
+  it('정리 delete도 실패하면 결과를 detail에만 적고 사유는 그대로다', async () => {
+    const db = new FakeDb()
+    db.failIf = (call) => call.table === 'today_cards' && call.op !== 'select'
+    const outcome = await handler.create(db.service, prepared())
+
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) return
+    expect(outcome.failure.reason).toBe('카드를 만들지 못했어요')
+    expect(outcome.failure.detail).toContain('정리 delete 실패')
+    expect(outcome.failure.detail).toContain(DB_SECRET)
+    expect(deletes(db)).toHaveLength(1)
+  })
+})
+
+describe('undo — 참조를 확인한 뒤 ID로 지운다', () => {
+  const seed = (db: FakeDb) => {
+    db.tables.today_cards = [{ id: CARD_ID }, { id: EXISTING_CARD_ID }]
+  }
+
+  it('노출·열람 기록이 있으면 지우지 않고 고정 사유를 돌려준다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    db.tables.today_card_events = [{ id: 'event-1', card_id: CARD_ID }]
+    const failure = await handler.undo(db.service, CARD_ID)
+
+    expect(failure?.reason).toBe('노출 기록이 있거나 확인하지 못해 카드를 지우지 않았어요')
+    expect(failure?.reason).not.toContain('today_card_events')
+    expect(failure?.detail).toContain('today_card_events')
+    expect(deletes(db)).toEqual([])
+    expect(db.tables.today_cards).toHaveLength(2)
+  })
+
+  it('참조를 읽지 못하면 확인 없이 지우지 않고 원문은 detail에만 있다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    db.failIf = (call) => call.table === 'today_card_events'
+    const failure = await handler.undo(db.service, CARD_ID)
+
+    expect(failure?.reason).toBe('노출 기록이 있거나 확인하지 못해 카드를 지우지 않았어요')
+    expect(failure?.reason).not.toContain(DB_SECRET)
+    expect(failure?.detail).toContain(DB_SECRET)
+    expect(deletes(db)).toEqual([])
+    expect(db.tables.today_cards).toHaveLength(2)
+  })
+
+  it('기록이 없으면 카드를 ID로 지우고 다른 카드는 건드리지 않는다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    db.tables.today_card_events = [{ id: 'event-1', card_id: EXISTING_CARD_ID }]
+    expect(await handler.undo(db.service, CARD_ID)).toBeNull()
+
+    expect(deletes(db)).toHaveLength(1)
+    expect(deletes(db)[0]).toMatchObject({ table: 'today_cards', filters: [['id', CARD_ID]] })
+    expect((db.tables.today_cards as Row[]).map((row) => row.id)).toEqual([EXISTING_CARD_ID])
+    // 참조 확인이 지우기보다 먼저다
+    const order = db.calls.map((call) => `${call.table}:${call.op}`)
+    expect(order.indexOf('today_card_events:select')).toBeLessThan(order.indexOf('today_cards:delete'))
+  })
+
+  it('delete 오류는 「카드를 지우지 못했어요」이고 원문은 detail에만 있다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    db.failIf = (call) => call.op === 'delete'
+    const failure = await handler.undo(db.service, CARD_ID)
+
+    expect(failure?.reason).toBe('카드를 지우지 못했어요')
+    expect(failure?.reason).not.toContain(DB_SECRET)
+    expect(failure?.reason).not.toContain(CARD_ID)
+    expect(failure?.detail).toContain(DB_SECRET)
+  })
+})
