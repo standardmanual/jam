@@ -286,8 +286,8 @@ export interface HomeFeedCardInput {
 export interface HomeFeedPayloadOptions {
   /** 이미지 저장 경로에 쓰려고 등록 전에 정한 UUID. */
   id: string
-  /** 업로드한 WebP 공개 주소(`?v=` 캐시 무효화 쿼리 포함). */
-  coverImageUrl: string
+  /** 업로드한 WebP 공개 주소(`?v=` 캐시 무효화 쿼리 포함). 이미지 없이 예약하는 카드(운영툴, 티켓 20261002_1028)는 null이다. */
+  coverImageUrl: string | null
   /** 생략하면 `agent-generator`. 값을 주면(null 포함) 그대로 넣는다. */
   imageSource?: string | null
   /** 생략하면 null(옛 렌더러로 그리는 기존 카드와 같은 값). */

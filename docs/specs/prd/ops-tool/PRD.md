@@ -559,7 +559,7 @@ stateDiagram-v2
 
 > **설계 확정, 구현 전(티켓 [20261001_2205](../../../tickets/p2-normal/20261001_2205_Infra_운영툴-자원-연결-1-문서-계약-선행-수정.md), 상위 1500 ①).** 1500 시작 검토의 사용자 결정 Q1~Q5와
 > 가정 G1~G15(티켓 [20260930_1500](../../../tickets/p2-normal/20260930_1500_Admin_운영툴-자원-연결-예약-공개-취소-되돌림.md) 「주요 의사결정」)를 계약으로 옮겼다. 구현은 1500의 조각 ②~⑫가
-> 하고, 조각이 끝날 때마다 해당 하위 절 머리에 「구현됨」을 붙인다(§13 C행). 이미 구현된 것은 §8.5의 드랍 일정·레시피 서버 함수뿐이다.
+> 하고, 조각이 끝날 때마다 해당 하위 절 머리에 「구현됨」을 붙인다(§13 C행). 구현된 것은 §8.5의 서버 함수와, 하위 절 머리에 「구현됨」이 붙은 부분이다.
 
 승인은 「승인됨」에서 멈춘다. 사용자가 [N개 예약 등록하기]로 한 번 더 확인해야 자원이 만들어진다(Q1).
 
@@ -654,6 +654,19 @@ stateDiagram-v2
 
 운영 항목에서 자원 칸을 읽는 규칙이다. ②(등록 전 검증 공용화)가 항목을 등록 형식으로 바꾸는 함수를 만들고, 검증은 지금의 등록 스크립트·어드민 API와 같은 함수를 쓴다.
 
+> **구현됨(카드·미션, 티켓 [20261002_1028](../../../tickets/p2-normal/20261002_1028_Admin_운영툴-자원-연결-2-2b-운영-항목을-카드-미션-등록-형식으로-바꾼다.md), 상위 1500 ②-2b).**
+> `jam-web/src/lib/admin/opsInbox/registerInput.ts`의 `toTodayCardRegisterInput`(카드)·`toMissionRegisterInput`(미션)이 아래 표대로 읽어 `today_cards`·`missions` insert 값을 만든다.
+> 결과는 `{ payload, errors, warnings, linkFields }`이고, 오류가 하나라도 있으면 `payload`는 null이다. DB에 접근하지 않는다(쓰기는 ③·④·⑥). JAM! 배지·컬렉션·레시피·드랍 일정은 이 함수가 읽지 않는다(⑨~⑧).
+> - 이미지: 운영툴이 만드는 행의 `image_source`는 null이다. 대표 이미지 주소(`resource.cover_image_url`·`resource.image_url`)가 없으면 null이다. 이미지 제작 경로 표시는 1501이 정한다.
+> - 카드의 `created_by`는 예약 등록을 실행한 관리자 ID다(변환 함수의 인자 `actorId`).
+> - 카드의 `pattern_no`는 등록 스크립트 페이로드의 키가 아니라 이 변환이 덧붙인다(G11). 사전 번호 형식이면 쓰고, 아니면 비우고 경고한다.
+> - 카드 종료 시각이 없으면 공개한 날의 끝(23:59:59.999 KST)으로 채운다. 신호 계산(§5 「날짜 구성에 넣는 항목」)과 같은 값이다.
+> - 검사 오류 문장(`card.title: …`·`mission.condition_json: …`)은 등록 스크립트와 같고, 함수는 문장을 그대로 두고 운영 항목 경로(`copy.title`·`resource.template_type`·`starts_at`·`shape` 등)를 함께 돌려준다. 화면 표기는 ⑤가 정한다.
+> - 연결로 채우는 칸(`mission_id`·`badge_ids`·`item_book_id`·`reward_badge_ids`, §8.3)은 호출부가 `linkedIds`로 넘기고, 결과의 `linkFields`가 채운 칸을 알린다. 등록 전 DB 검사에는 `withoutLinkedFields`로 그 칸을 뺀 사본을 넘겨
+>   그 ID의 존재 확인을 건너뛴다(같은 실행에서 만들어질 ID라 생성 순서가 존재를 보장한다). 형식·필수 참조 검사에는 미리 정한 UUID를 `linkedIds`로 넘겨 통과시킨다(G3).
+> - 제목 글자 수가 모양별 상한(`jam-web/src/lib/today/shape.ts`의 `CARD_TITLE_MAX_LENGTH`)을 넘으면 경고만 한다(G15).
+> - `jam_badge` 행의 `activity_types`(JAM! 배지는 종목과 함께 쓰지 않는다는 어드민 폼 규칙과 맞는지)는 ⑨에서 정한다.
+
 **공통 규칙.**
 - 값은 수정본이 있으면 수정본, 없으면 제출 원본에서 읽는다(§7.3).
 - **항목 공통 칸이 먼저다.** 공개·종료 시각은 항목의 `starts_at`·`ends_at`, 카드의 모양·노출 대상과 컬렉션의 트라이브는 §3.1의 칸(`shape`·`exposure_tags`·`tribe_id`)에서
@@ -667,8 +680,8 @@ stateDiagram-v2
 | 종류 | 공통 칸 | `copy` | `resource` | 툴이 정하는 값 |
 |---|---|---|---|---|
 | `home_feed_card` | `starts_at`(필수), `ends_at`(없으면 G10), `shape`(필수), `exposure_tags`(필수), `pattern_no`(G11) | `title`(필수), `subtitle`, `description`(40자), `body_markdown`, `region_label` | `template_type`(필수), `layout_type`, `title_in_image`, `cover_image_url`, `badge_ids`, `mission_id`, `item_book_id`, `ranking_mode_id`, `content_type_id`, `target_href`, `sort_order` | `is_active = true`. `layout_type`이 없으면 템플릿의 추천값 |
-| `mission` | `starts_at`(필수), `ends_at` | `title`(필수), `description`, `condition_text` | `mission_type`(필수), `condition_json`(필수), `reward_points`, `reward_badge_ids`, `status_display_type`, `visible_rank_count`, `max_completions`, `gate_axis`, `gate_stage`, `visibility_rule_json`, `image_url` | `exposure_mode = 'start_date'`, `exposure_at`·`reward_type`·`reward_id`·`gated_badge_id`는 NULL(미션 등록 스크립트와 같다) |
-| `jam_badge` | `starts_at`(필수, `valid_from`으로), `ends_at`(`valid_until`로) | `name`(필수), `description` | `condition_json`(필수), `point_reward`, `rarity`, `level`, `family_key`, `sort_order`, `activity_types`, `image_url` | `type = 'activity'`, `admin_category = 'jam'` |
+| `mission` | `starts_at`(필수), `ends_at` | `title`(필수), `description`(필수), `condition_text` | `mission_type`(필수), `condition_json`(필수), `reward_points`, `reward_badge_ids`, `status_display_type`, `visible_rank_count`, `max_completions`, `gate_axis`, `gate_stage`, `visibility_rule_json`, `image_url` | `exposure_mode = 'start_date'`, `exposure_at`·`reward_type`·`reward_id`·`gated_badge_id`는 NULL(미션 등록 스크립트와 같다) |
+| `jam_badge` | `starts_at`(필수, `valid_from`으로), `ends_at`(`valid_until`로) | `name`(필수), `description`(필수) | `condition_json`(필수), `point_reward`, `rarity`, `level`, `family_key`, `sort_order`, `activity_types`, `image_url` | `type = 'activity'`, `admin_category = 'jam'` |
 | `collection_launch` | `starts_at`(필수, `valid_from`으로), `ends_at`(`valid_until`로), `tribe_id` | `name`(필수), `description`, `story_text` | `image_url`(대표 이미지 주소), `reward_points`, `reward_badge_id` | `is_active = true` |
 | `recipe` | `starts_at`(필수, `valid_from`으로), `ends_at`(`valid_until`로) | `name`(필수) | `slots`(필수, `[{ badge_type, allowed_badge_ids }]`), `reward_points`, `reward_badge_ids`(아이템 배지만) | — |
 | `drop_schedule` | `starts_at`(필수, `scheduled_at`으로). `ends_at`이 있으면 형식 오류 | `title`(100자) | §3.1의 6개 키 | — |

@@ -203,8 +203,8 @@ export interface MissionInput {
 export interface MissionPayloadOptions {
   /** 이미지 저장 경로에 쓰려고 등록 전에 정한 UUID. */
   id: string
-  /** 업로드한 WebP 공개 주소(`?v=` 캐시 무효화 쿼리 포함). */
-  imageUrl: string
+  /** 업로드한 WebP 공개 주소(`?v=` 캐시 무효화 쿼리 포함). 이미지 없이 예약하는 미션(운영툴, 티켓 20261002_1028)은 null이다. */
+  imageUrl: string | null
   /** 생략하면 `agent-generator`. 값을 주면(null 포함) 그대로 넣는다. */
   imageSource?: string | null
   /** 생략하면 null — 비워 두면 화면이 기본 문구를 쓴다. */
