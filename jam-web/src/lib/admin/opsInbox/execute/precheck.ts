@@ -5,7 +5,9 @@
  * 못 하는 항목(`blocked`) · 실패로 닫을 항목(`failClose`). 쓰기 없는 순수 함수라 실행 API와 요약창([N개 예약 등록하기]의 N)이 같은 결과를 쓴다.
  *
  * 판정은 연결 그룹(`groups.ts`) 단위다. 그룹의 한 항목이 못 하는 항목이면 같은 그룹의 승인됨 항목도 모두 못 하고,
- * 결정 전 항목이 있으면 모두 기다린다. 한 항목에 둘 이상 걸리면 못 하는 항목 > 기다리는 중 > 실패로 닫을 항목 순으로 정한다.
+ * 결정 전 항목이 있으면 모두 기다린다. 한 항목에 둘 이상 걸리면 실패로 닫을 항목 > 못 하는 항목 > 기다리는 중 순으로 정한다
+ * (사용자 확정 2026-10-02, 티켓 20261002_1123: 반려된 대상을 가리키는 항목은 어차피 예약될 수 없으니 「승인됨」에 남기지 않고 실패로 닫는다).
+ * 실패로 닫을 항목은 그 항목이 혼자 갖는 이유로 같은 그룹의 다른 항목을 막지 않는다.
  *
  * 보지 않는 것: 제출 때 남은 형식 오류(`format_errors`)는 이 점검이 막지 않는다. 종류별 변환·검사(§8.4)가 실행 때 걸러 낸다(가정 1).
  * `pattern_proposal` 승인 항목은 예약 등록 대상이 아니라 `excluded`로 따로 돌려주고 N에 세지 않는다(가정 2).
@@ -37,7 +39,7 @@ export const PRECHECK_MESSAGES = {
   startMissing: '공개 시각이 없어요',
   startInvalid: '공개 시각을 읽을 수 없어요',
   startPassed: '공개 시각이 이미 지났어요',
-  startTooSoon: '공개 시각까지 10분도 남지 않았어요',
+  startTooSoon: '공개 시각까지 10분보다 많이 남아야 해요',
   noHandler: '아직 연결하지 않은 종류예요',
   linkUnreadable: '연결을 읽을 수 없어요',
   groupBlocked: '연결된 항목을 예약할 수 없어요',
@@ -121,12 +123,13 @@ function subjectOf(kind: string | null): string {
 
 const STOPPED_VERBS: Record<string, string> = { rejected: '반려됐어요', cancelled: '취소됐어요', failed: '실패했어요' }
 
+/** 못 하는 이유 문장. 화면과 결정 기록에 그대로 나가므로 DB 칼럼 이름을 싣지 않는다. */
 function conflictReason(conflict: LinkConflict): string {
   switch (conflict.code) {
     case 'multiple_targets':
-      return `연결된 ${subjectOf(conflict.pair.to)} 둘 이상이라 한 칸(${conflict.pair.field})에 담을 수 없어요`
+      return `연결된 ${subjectOf(conflict.pair.to)} 둘 이상이라 ${kindLabel(conflict.pair.from)} 하나에 담을 수 없어요`
     case 'own_resource_field':
-      return `${conflict.pair.field} 칸에 값이 이미 있어서 연결된 항목으로 채울 수 없어요`
+      return `이미 값이 들어 있는 칸이라 연결된 ${kindLabel(conflict.pair.to)} 항목으로 채울 수 없어요`
     case 'direct_selection':
       return '아이템을 직접 고른 드랍은 컬렉션과 연결할 수 없어요'
   }
@@ -166,9 +169,15 @@ function ownBlockReasons(item: ExecuteItem, nowMs: number, handlers: ExecuteHand
   return reasons
 }
 
+/** 이미 공개됐거나 끝난 항목. 공개 시각이 서로 다른지 비교할 때 뺀다. */
+function isPublishedItem(item: ExecuteItem): boolean {
+  return item.status === 'live' || item.status === 'ended'
+}
+
+/** 같은 그룹의 공개 시각이 서로 다르면 경고한다. 이미 게재 중·종료된 항목은 뺀다(바꿀 수 없는 시각이라 알릴 이유가 없다). */
 function startsDifferWarning(group: LinkGroup): PrecheckWarning | null {
   const times = group.items
-    .filter((item) => item.kind !== PATTERN_PROPOSAL_KIND)
+    .filter((item) => item.kind !== PATTERN_PROPOSAL_KIND && !isPublishedItem(item))
     .flatMap((item) => {
       const start = readStart(item)
       return start.ok ? [{ id: item.id, ms: start.ms }] : []
@@ -220,7 +229,8 @@ export function precheckBundle(
 
     // 그룹 전파: 그룹에 읽을 수 없는 연결이 있으면(가정 3) 승인됨 항목 모두 같은 사유로, 한 항목이라도 못 하면 나머지는
     // 「연결된 항목을 예약할 수 없어요」로 막는다.
-    const anyOwnBlock = [...reasonsById.values()].some((reasons) => reasons.length > 0)
+    // 실패로 닫을 항목의 이유는 그 항목 혼자의 일이라 그룹으로 퍼지지 않는다.
+    const anyOwnBlock = classified.some((item) => !stoppedReferences.has(item.id) && (reasonsById.get(item.id) as string[]).length > 0)
     for (const item of classified) {
       const reasons = reasonsById.get(item.id) as string[]
       if (unreadableIds.size > 0) reasons.push(PRECHECK_MESSAGES.linkUnreadable)
@@ -231,17 +241,17 @@ export function precheckBundle(
     for (const item of classified) {
       const reasons = reasonsById.get(item.id) as string[]
       const stoppedReference = stoppedReferences.get(item.id)
-      if (reasons.length > 0) {
-        result.blocked.push({ id: item.id, reasons })
-      } else if (hasUndecided) {
-        result.waiting.push(item.id)
-      } else if (stoppedReference) {
+      if (stoppedReference) {
         const stopped = byId.get(stoppedReference.stoppedId)
         const subject = `${subjectOf(stopped?.kind ?? null)} ${STOPPED_VERBS[stopped?.status ?? ''] ?? '멈췄어요'}`
         result.failClose.push({
           id: item.id,
           reason: stoppedReference.direct ? `연결된 ${subject}` : `연결된 항목을 거쳐 이어진 ${subject}`,
         })
+      } else if (reasons.length > 0) {
+        result.blocked.push({ id: item.id, reasons })
+      } else if (hasUndecided) {
+        result.waiting.push(item.id)
       } else {
         readyInGroup.add(item.id)
         result.ready.push(item.id)
