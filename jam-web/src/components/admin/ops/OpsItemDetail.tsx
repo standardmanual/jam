@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { Card } from '@/components/admin/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/admin/ui/accordion'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
-import { formatKstDayTime, kindLabel } from '@/lib/admin/opsInbox/labels'
+import { formatDiffValue, formatKstDayTime, kindLabel } from '@/lib/admin/opsInbox/labels'
 import {
   describeValue,
   entriesOf,
@@ -229,29 +229,66 @@ const DECISION_ACTION_LABELS: Record<string, string> = {
   execute: '예약 등록했어요',
   fail: '예약 등록에 실패했어요',
   cancel: '공개 전에 취소했어요',
+  end: '종료했어요',
+  external_change: '밖에서 바뀐 것을 찾았어요',
 }
 
-/** 사람이 한 일이 아니라 일이 잘못돼 남는 기록. 앞에 「관리자가」를 붙이지 않는다(실행한 관리자가 실패한 것이 아니다). */
+/** 사람이 한 일이 아니라 일이 잘못돼 남는 기록. 행위자가 사람이면 앞에 「관리자가」를 붙이지 않는다(실행한 관리자가 실패한 것이 아니다). */
 const DECISION_OUTCOME_ACTIONS: ReadonlySet<string> = new Set(['fail'])
 
-/** 사유 줄 앞에 붙는 이름. 반려의 사유는 「반려 이유」, 수정의 사유는 「수정한 이유」, 실패·취소의 사유는 「실패 사유」·「취소 사유」다. */
+/** 상태 맞추기 같은 시스템이 남긴 기록의 행위자는 `system:`으로 시작한다(예: `system:reconcile`). */
+const SYSTEM_ACTOR_PREFIX = 'system:'
+
+/** 시스템이 실패로 닫은 기록. 사람의 실패 기록(「예약 등록에 실패했어요」)과 달리 닫은 주체가 시스템이다. */
+const SYSTEM_FAIL_LABEL = '시스템이 실패로 닫았어요'
+
+/** 사유 줄 앞에 붙는 이름. 반려의 사유는 「반려 이유」, 수정의 사유는 「수정한 이유」, 실패·취소·종료의 사유는 「실패 사유」·「취소 사유」·「종료 사유」다. */
 const DECISION_REASON_LABELS: Record<string, string> = {
   reject: '반려 이유',
   edit: '수정한 이유',
   fail: '실패 사유',
   cancel: '취소 사유',
+  end: '종료 사유',
 }
 
 function decisionLine(decision: OpsDecisionRecord): string {
   const action = Object.prototype.hasOwnProperty.call(DECISION_ACTION_LABELS, decision.action)
     ? DECISION_ACTION_LABELS[decision.action]
     : '기록을 남겼어요'
+  const bySystem = decision.actor.startsWith(SYSTEM_ACTOR_PREFIX)
+  if (bySystem && decision.action === 'fail') return SYSTEM_FAIL_LABEL
   if (DECISION_OUTCOME_ACTIONS.has(decision.action)) return action
+  if (bySystem) return `시스템이 ${action}`
   if (decision.actor.startsWith('token:')) {
     // 토큰 제출의 이름은 자기 신고라 글자로만 보여 준다(권한 판단에 쓰지 않는다).
     return `에이전트(${truncateText(decision.actor.slice('token:'.length), 40)})가 ${action}`
   }
   return `관리자가 ${action}`
+}
+
+const EXTERNAL_TIME_FIELDS = [
+  ['starts_at', '공개 시각'],
+  ['ends_at', '종료 시각'],
+] as const
+
+/**
+ * `external_change`의 `diff`(상태 맞추기 `ExternalDiff`)를 줄마다 읽는다. 시각 칸은 「공개 시각: 항목 → 자원」(KST, 없으면 「(없음)」),
+ * 자원이 꺼져 있으면 「자원이 비활성이에요」다. 모양이 맞지 않는 칸은 건너뛴다.
+ */
+function externalChangeLines(value: unknown): string[] {
+  const asObject = (v: unknown): Record<string, unknown> | null => (v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null)
+  const diff = asObject(value)
+  if (!diff) return []
+  const lines: string[] = []
+  for (const [path, label] of EXTERNAL_TIME_FIELDS) {
+    const field = asObject(diff[path])
+    if (!field) continue
+    const { item, resource } = field
+    if ((item !== null && typeof item !== 'string') || (resource !== null && typeof resource !== 'string')) continue
+    lines.push(`${label}: ${formatDiffValue(path, item)} → ${formatDiffValue(path, resource)}`)
+  }
+  if (asObject(diff.is_active)?.resource === false) lines.push('자원이 비활성이에요')
+  return lines
 }
 
 function DecisionLog({ decisions }: { decisions: readonly OpsDecisionRecord[] }) {
@@ -265,6 +302,7 @@ function DecisionLog({ decisions }: { decisions: readonly OpsDecisionRecord[] })
         const when = formatKstDayTime(decision.createdAt)
         const isBulk = decision.action === 'approve' && decision.batchId !== null
         const diff = decision.action === 'edit' || decision.action === 'revert' ? readDiff(decision.diff) : []
+        const externalLines = decision.action === 'external_change' ? externalChangeLines(decision.diff) : []
         const reasonLabel = Object.prototype.hasOwnProperty.call(DECISION_REASON_LABELS, decision.action)
           ? DECISION_REASON_LABELS[decision.action]
           : null
@@ -292,6 +330,15 @@ function DecisionLog({ decisions }: { decisions: readonly OpsDecisionRecord[] })
               </p>
             )}
             {diff.length > 0 && <OpsDiffLines diff={diff} className="mt-1 text-xs" />}
+            {externalLines.length > 0 && (
+              <ul className="mt-1 space-y-1 text-xs">
+                {externalLines.map((line) => (
+                  <li key={line} className="break-words">
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            )}
             {slackFailed && (
               <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">
                 <IconAlertTriangle className="size-3.5 shrink-0" aria-hidden="true" />

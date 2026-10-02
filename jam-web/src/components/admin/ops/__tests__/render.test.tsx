@@ -865,6 +865,75 @@ describe('OpsItemDetail — 결정 기록(1818)', () => {
     expect(out).not.toContain('관리자가 예약 등록에 실패했어요')
   })
 
+  describe('상태 맞추기(20261002_1814) — 시스템 행위자·end·external_change', () => {
+    const SYSTEM = 'system:reconcile'
+
+    it('행위자가 system:으로 시작하면 「시스템이」로 쓴다(관리자·에이전트로 읽히지 않는다)', () => {
+      const out = flat(
+        <OpsItemDetail item={makeItem()} {...base} decisions={[decision({ id: 'd1', action: 'cancel', actor: SYSTEM, reason: '연결된 자원이 밖에서 지워졌어요' })]} />
+      )
+      expect(out).toContain('시스템이 공개 전에 취소했어요')
+      expect(out).toContain('취소 사유: 연결된 자원이 밖에서 지워졌어요')
+      expect(out).not.toContain('관리자가')
+      expect(out).not.toContain('에이전트(')
+    })
+
+    it('end: 「종료했어요」와 「종료 사유」', () => {
+      const out = flat(
+        <OpsItemDetail item={makeItem()} {...base} decisions={[decision({ action: 'end', actor: SYSTEM, reason: '연결된 자원이 밖에서 지워졌어요' })]} />
+      )
+      expect(out).toContain('시스템이 종료했어요')
+      expect(out).toContain('종료 사유: 연결된 자원이 밖에서 지워졌어요')
+      expect(out).not.toContain('기록을 남겼어요')
+    })
+
+    it('fail: 행위자가 시스템이면 「시스템이 실패로 닫았어요」, 사람이면 지금처럼 「예약 등록에 실패했어요」', () => {
+      const bySystem = flat(<OpsItemDetail item={makeItem()} {...base} decisions={[decision({ action: 'fail', actor: SYSTEM, reason: '준비중에서 멈췄어요' })]} />)
+      expect(bySystem).toContain('시스템이 실패로 닫았어요')
+      expect(bySystem).toContain('실패 사유: 준비중에서 멈췄어요')
+      expect(bySystem).not.toContain('예약 등록에 실패했어요')
+      const byAdmin = flat(<OpsItemDetail item={makeItem()} {...base} decisions={[decision({ action: 'fail', actor: 'admin-1', reason: '이유' })]} />)
+      expect(byAdmin).toContain('예약 등록에 실패했어요')
+      expect(byAdmin).not.toContain('시스템이')
+      expect(byAdmin).not.toContain('관리자가 예약 등록에 실패했어요')
+    })
+
+    it('external_change: 이름표와 시각·비활성 차이를 줄마다 보인다(KST)', () => {
+      const diff = {
+        starts_at: { item: '2026-10-07T00:00:00Z', resource: '2026-10-07T03:30:00Z' },
+        ends_at: { item: '2026-10-09T00:00:00Z', resource: null },
+        is_active: { item: true, resource: false },
+      }
+      const out = flat(<OpsItemDetail item={makeItem()} {...base} decisions={[decision({ action: 'external_change', actor: SYSTEM, diff })]} />)
+      expect(out).toContain('시스템이 밖에서 바뀐 것을 찾았어요')
+      expect(out).toContain('공개 시각: 10/7(수) 09:00 → 10/7(수) 12:30')
+      expect(out).toContain('종료 시각: 10/9(금) 09:00 → (없음)')
+      expect(out).toContain('자원이 비활성이에요')
+    })
+
+    it('external_change: 다른 칸만 줄로 그리고, 모양이 맞지 않는 칸·값은 건너뛴다', () => {
+      const only = flat(
+        <OpsItemDetail item={makeItem()} {...base} decisions={[decision({ action: 'external_change', actor: SYSTEM, diff: { ends_at: { item: null, resource: '2026-10-09T00:00:00Z' } } })]} />
+      )
+      expect(only).toContain('종료 시각: (없음) → 10/9(금) 09:00')
+      expect(only).not.toContain('공개 시각:')
+      expect(only).not.toContain('자원이 비활성이에요')
+      for (const diff of [null, 'x', [], { starts_at: 'x', ends_at: { item: 1, resource: null }, is_active: { item: true, resource: true } }]) {
+        const out = flat(<OpsItemDetail item={makeItem()} {...base} decisions={[decision({ action: 'external_change', actor: SYSTEM, diff: diff as OpsDecisionRecord['diff'] })]} />)
+        expect(out).toContain('시스템이 밖에서 바뀐 것을 찾았어요')
+        expect(out).not.toContain('시각:')
+        expect(out).not.toContain('자원이 비활성이에요')
+      }
+    })
+
+    it('external_change의 diff는 edit·revert의 차이 줄(취소선)로 그리지 않는다', () => {
+      const out = flat(
+        <OpsItemDetail item={makeItem()} {...base} decisions={[decision({ action: 'external_change', actor: SYSTEM, diff: { starts_at: { item: '2026-10-07T00:00:00Z', resource: '2026-10-07T03:30:00Z' } } })]} />
+      )
+      expect(out).not.toContain('line-through')
+    })
+  })
+
   it('되돌림 줄에는 버튼이 없다', () => {
     const decisions = [decision({ action: 'revert', diff: [{ path: 'copy.body', before: 'a', after: 'b' }] })]
     const out = flat(<OpsItemDetail item={makeItem()} {...base} decisions={decisions} />)
