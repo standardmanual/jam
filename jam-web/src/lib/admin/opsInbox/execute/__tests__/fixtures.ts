@@ -24,6 +24,10 @@ export interface ItemSpec {
   resource?: unknown
   /** 행의 `starts_at`. 생략하면 `LATER`. */
   startsAt?: string | null
+  /** 행의 `ends_at`. 생략하면 `null`. */
+  endsAt?: string | null
+  /** 행의 `updated_at`. 생략하면 10/4 09:00 KST(`NOW`보다 한참 앞). */
+  updatedAt?: string
   /** 제출 원본에 더할 값(`starts_at` 같은 공통 칸). */
   original?: Record<string, unknown>
   /** 직접 수정본. */
@@ -50,17 +54,17 @@ export function makeItem(spec: ItemSpec = {}): ExecuteItem {
     kind,
     status: spec.status ?? 'approved',
     starts_at: spec.startsAt === undefined ? LATER : spec.startsAt,
-    ends_at: null,
+    ends_at: spec.endsAt === undefined ? null : spec.endsAt,
     pattern_no: null,
     original: original as Json,
     edited: spec.edited ?? null,
     created_resource: spec.createdResource ?? null,
     format_errors: spec.formatErrors ?? [],
-    updated_at: '2026-10-04T00:00:00.000Z',
+    updated_at: spec.updatedAt ?? '2026-10-04T00:00:00.000Z',
   }
 }
 
-/** 종류 하나의 가짜 핸들러. 아무것도 만들지 않고, 취소는 늘 성공한다. */
+/** 종류 하나의 가짜 핸들러. 아무것도 만들지 않고, 취소는 늘 성공하며, 자원은 있지만 아직 공개 전으로 읽힌다(`observe`, 티켓 20261002_1813). */
 export function fakeHandler(kind: ExecutableKind): ExecuteHandler {
   return {
     kind,
@@ -71,6 +75,7 @@ export function fakeHandler(kind: ExecutableKind): ExecuteHandler {
     create: async () => ({ ok: true, value: { id: 'created' } }),
     undo: async () => null,
     cancel: async () => ({ ok: true, missing: false }),
+    observe: async () => ({ status: 'present', published: false, ended: false, startsAt: null, endsAt: null, inactive: false }),
   }
 }
 
