@@ -2,22 +2,28 @@
  * JAM! 에셋 제너레이터 미션 등록 묶음 — 읽기·검증·미션 행 매핑 (티켓 20260925_1412)
  *
  * 등록 묶음(`bundle.json`)의 형식 정본은 `docs/specs/prd/asset-generator/MISSION_REGISTRATION_BUNDLE.md`다.
- * 이 파일은 그 문서의 검증 규칙을 코드로 옮긴 순수 함수 모음이다(파일 읽기는 이미지 존재·PNG 여부
+ * 이 파일은 그 문서의 검증 규칙을 코드로 옮긴 함수 모음이다(파일 읽기는 이미지 존재·PNG 여부
  * 확인에만 쓴다). DB·저장소에는 쓰지 않는다.
+ *
+ * ## 미션 검사·페이로드는 `src/`에 있다 (티켓 20261002_1027)
+ * 미션 한 건의 순수 검사(`validateMission`)·미션 쪽 상수·insert 페이로드 코어(`buildMissionInsertPayload`)는 서버(운영툴 예약
+ * 등록)도 같은 함수를 쓰도록 `src/lib/admin/registerChecks/missionFields.ts`로 옮겼고, 정규식·보조 함수는 같은 폴더의
+ * `bundleRules.ts`에 있다. 이 파일은 그 상수를 같은 이름으로 다시 내보내고, `validateMission`을 부르며,
+ * `buildMissionInsertPayload`를 얇은 JS 래퍼로 감싼다(TS 시그니처가 테스트의 느슨한 호출과 충돌하지 않게). 동작·오류 문장·
+ * 페이로드 키 집합은 옮기기 전과 같다. 세계관 검토·이미지 검사(`validateWorldReview`·`validateImage`)와 묶음 전체 검사
+ * (`validateMissionBundle`)는 서버가 쓰지 않아 여기 남는다.
  *
  * ## 배지 등록 모듈과의 관계 (티켓 1412 결정 기록 2)
  * 배지 등록 스크립트(`registerBundle.mjs` 등 5개 파일)는 티켓 2202로 실제 등록·되돌림까지 검증된
- * 자산이라 **고치지 않는다.** 내용과 무관한 부품(`readBundleFile`·`findPreviousRecordError`·
- * `UUID_PATTERN`·`AGENT_IMAGE_SOURCE`)만 그 모듈에서 가져오고, 배지 전용으로 묶여 있는 이미지 검증·
- * 문자열 검사는 이 파일에 미션용으로 다시 적었다(비공개 함수라 가져올 수 없다). 세 유형(배지·미션·
- * 홈피드)이 모두 생긴 뒤 공통화가 필요하면 별도 티켓으로 다룬다.
+ * 자산이라 **고치지 않는다.** 내용과 무관한 부품(`readBundleFile`·`findPreviousRecordError`)만 그 모듈에서 가져온다.
+ * `UUID_PATTERN`·`AGENT_IMAGE_SOURCE`와 보조 함수의 원본은 `bundleRules.ts` 한 곳이다.
  *
  * ## 어드민 미션 생성 API와 같은 규칙
  * 미션 행 생성 규칙은 어드민 API(`jam-web/src/app/api/admin/missions/route.ts` POST)와 같아야 한다.
  * 그래서 검증 3종을 **재사용한다**(복사하지 않는다), 라우트와 같은 호출 순서(키 → 값 → 게이트)로:
  * `checkMissionCondition`·`checkMissionConditionValue`(`lib/missions/condition-keys`),
- * `findGateMissionSaveError`(`lib/missions/gateMissions`). 이 함수들이 내부에서 `@/` 별칭을 쓰므로
- * 이 파일을 불러오는 스크립트는 **cwd가 `jam-web`인 tsx**로 실행해야 한다(`register-badge.mjs` 머리말).
+ * `findGateMissionSaveError`(`lib/missions/gateMissions`). 이 호출은 `missionFields.ts`에 있고, 그 함수들이 내부에서 `@/` 별칭을
+ * 쓰므로 이 파일을 불러오는 스크립트는 **cwd가 `jam-web`인 tsx**로 실행해야 한다(`register-badge.mjs` 머리말).
  *
  * insert 페이로드는 라우트가 요청 body를 그대로 넘기는 구조(`insert(body)`)라 매핑 함수가 없다.
  * 기준은 `src/types/database.generated.ts`의 missions Insert 타입이며, 컬럼 목록이 어긋나면 테스트
@@ -26,85 +32,40 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { checkMissionCondition, checkMissionConditionValue } from '../../src/lib/missions/condition-keys'
-import { findGateMissionSaveError } from '../../src/lib/missions/gateMissions'
-import { MISSION_TYPES } from '../../src/lib/admin/badge-labels'
 import { MAX_APPLY_IMAGE_BYTES } from '../../src/lib/admin/applyGeneratedImageConstants'
-import { AGENT_IMAGE_SOURCE, CONTROL_OR_LINE_BREAK, UUID_PATTERN } from './registerBundle.mjs'
+import {
+  UUID_PATTERN,
+  checkRequired,
+  describeValue,
+  hasControlOrLineBreak,
+  isIsoDateTime,
+  isNonEmptyString,
+  isPlainObject,
+  isPresent,
+  unknownKeys,
+} from '../../src/lib/admin/registerChecks/bundleRules'
+import {
+  EXPOSURE_MODES,
+  MISSION_OPTIONAL_FIELDS,
+  MISSION_REQUIRED_FIELDS,
+  STATUS_DISPLAY_TYPES,
+  buildMissionInsertPayload as buildMissionInsertPayloadImpl,
+  validateMission,
+} from '../../src/lib/admin/registerChecks/missionFields'
 
 export { AGENT_IMAGE_SOURCE, UUID_PATTERN, findPreviousRecordError, readBundleFile } from './registerBundle.mjs'
 
+// 미션 쪽 상수의 원본은 `missionFields.ts`다 — 지금까지 이 파일이 내보내던 이름 그대로 다시 내보낸다.
+export { MISSION_REQUIRED_FIELDS, MISSION_OPTIONAL_FIELDS, STATUS_DISPLAY_TYPES, EXPOSURE_MODES }
+
 export const BUNDLE_TOP_REQUIRED = ['bundle_id', 'author', 'created_at', 'color_rationale_link', 'world_review', 'mission', 'image']
-export const MISSION_REQUIRED_FIELDS = ['title', 'description', 'mission_type', 'condition_json', 'starts_at']
-export const MISSION_OPTIONAL_FIELDS = [
-  'ends_at',
-  'reward_points',
-  'reward_badge_ids',
-  'status_display_type',
-  'visible_rank_count',
-  'max_completions',
-  'gate_axis',
-  'gate_stage',
-  'visibility_rule_json',
-  'exposure_mode',
-  'exposure_at',
-]
 export const WORLD_REVIEW_FIELDS = ['world_related', 'winter_reviewed', 'reason']
 export const IMAGE_REQUIRED_FIELDS = ['path', 'seed', 'preset_id', 'bg_color', 'end_color']
 export const IMAGE_OPTIONAL_FIELDS = ['text']
 
-export const STATUS_DISPLAY_TYPES = ['ranking', 'achievement', 'individual']
-export const EXPOSURE_MODES = ['hidden', 'start_date', 'scheduled']
-
 const BUNDLE_ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/
-const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
-
-// 한 줄 텍스트(작성자·미션 제목) 검사(개행·제어 문자 정규식 원본은 `registerBundle.mjs`의 `CONTROL_OR_LINE_BREAK` 한 곳). 이 값들은 등록 기록 SQL(registration.sql)의 `--` 주석에도 들어가고 그 파일은
-// 마이그레이션 폴더에 커밋되어 다시 실행될 수 있다. 줄바꿈이 섞이면 뒷부분이 주석 밖의 실행 가능한 문장이 되므로
-// (티켓 20260924_2202 게이트 재현) 개행·제어 문자를 검증에서 거절한다.
-
-function isPlainObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
-function isNonEmptyString(value) {
-  return typeof value === 'string' && value.trim().length > 0
-}
-
-function hasControlOrLineBreak(value) {
-  return typeof value === 'string' && CONTROL_OR_LINE_BREAK.test(value)
-}
-
-function isIsoDateTime(value) {
-  return typeof value === 'string' && ISO_DATE_TIME_PATTERN.test(value) && !Number.isNaN(Date.parse(value))
-}
-
-function isPresent(value) {
-  return value !== undefined && value !== null
-}
-
-function describeValue(value) {
-  if (value === undefined) return '없음'
-  return typeof value === 'string' ? `"${value}"` : JSON.stringify(value)
-}
-
-function unknownKeys(obj, allowed) {
-  return Object.keys(obj).filter((key) => !allowed.includes(key))
-}
-
-function checkRequired(errors, prefix, obj, keys) {
-  for (const key of keys) {
-    if (!isPresent(obj[key])) errors.push(`${prefix}${key}: 필수 항목이 없어요.`)
-  }
-}
-
-/** 어드민 검증 함수 결과(`{ error, warning }`)를 묶음 오류·주의 목록에 옮긴다. */
-function collectCheck(errors, warnings, prefix, check) {
-  if (check.error) errors.push(`${prefix}${check.error}`)
-  if (check.warning) warnings.push(`${prefix}${check.warning}`)
-}
 
 function validateWorldReview(errors, review) {
   if (!isPlainObject(review)) {
@@ -131,113 +92,6 @@ function validateWorldReview(errors, review) {
   // 세계관 내용이 있으면 윈터 검수를 거쳐야 한다(상위 티켓 1404 결정 6·11). 순수 운영성이면 검수 없이 진행하되 사유를 남긴다.
   if (review.world_related === true && review.winter_reviewed === false) {
     errors.push('world_review.winter_reviewed: 세계관과 닿는 미션(world_related=true)은 윈터 검수를 거쳐야 해서 true여야 해요.')
-  }
-}
-
-function validateMission(errors, warnings, mission) {
-  const prefix = 'mission.'
-  if (!isPlainObject(mission)) {
-    errors.push('mission: 객체여야 해요.')
-    return
-  }
-
-  const supportedKeys = [...MISSION_REQUIRED_FIELDS, ...MISSION_OPTIONAL_FIELDS]
-  const unknown = unknownKeys(mission, supportedKeys)
-  if (unknown.length > 0) {
-    errors.push(`mission: 묶음이 지원하지 않는 필드예요 — ${unknown.join(', ')}. 지원 필드: ${supportedKeys.join(', ')}`)
-  }
-  checkRequired(errors, prefix, mission, MISSION_REQUIRED_FIELDS)
-
-  const { title, description, mission_type, condition_json } = mission
-  if (isPresent(title) && !isNonEmptyString(title)) {
-    errors.push('mission.title: 비어 있지 않은 문자열이어야 해요.')
-  } else if (hasControlOrLineBreak(title)) {
-    errors.push('mission.title: 줄바꿈이나 제어 문자를 쓸 수 없어요(한 줄로 적어 주세요).')
-  }
-  if (isPresent(description) && !isNonEmptyString(description)) {
-    errors.push('mission.description: 비어 있지 않은 문자열이어야 해요.')
-  }
-
-  let typeOk = false
-  if (isPresent(mission_type)) {
-    if (typeof mission_type !== 'string' || !MISSION_TYPES.includes(mission_type)) {
-      errors.push(`mission.mission_type: ${MISSION_TYPES.join(' · ')} 중 하나여야 해요(받은 값: ${describeValue(mission_type)}).`)
-    } else {
-      typeOk = true
-    }
-  }
-
-  // 조건 검증 — 어드민 API와 같은 함수·같은 순서(키 → 값). 라우트는 형태(객체) 검사도 `checkMissionCondition`에 맡긴다.
-  if (isPresent(condition_json) && !isPlainObject(condition_json)) {
-    errors.push('mission.condition_json: 객체여야 해요.')
-  } else if (typeOk && isPresent(condition_json)) {
-    try {
-      const keyCheck = checkMissionCondition(mission_type, condition_json)
-      collectCheck(errors, warnings, 'mission.condition_json: ', keyCheck)
-      if (!keyCheck.error) {
-        collectCheck(errors, warnings, 'mission.condition_json: ', checkMissionConditionValue(mission_type, condition_json))
-      }
-    } catch (e) {
-      errors.push(`mission.condition_json: 조건을 검증하다 오류가 났어요 — ${e instanceof Error ? e.message : String(e)}`)
-    }
-  }
-
-  // 기간
-  for (const key of ['starts_at', 'ends_at', 'exposure_at']) {
-    if (isPresent(mission[key]) && !isIsoDateTime(mission[key])) {
-      errors.push(`mission.${key}: 시간대가 붙은 ISO 8601 형식이어야 해요(예: 2026-10-01T00:00:00+09:00).`)
-    }
-  }
-  if (isIsoDateTime(mission.starts_at) && isIsoDateTime(mission.ends_at) && Date.parse(mission.starts_at) >= Date.parse(mission.ends_at)) {
-    errors.push('mission.starts_at: ends_at보다 앞이어야 해요.')
-  }
-
-  // 노출 모드 — exposure_at은 scheduled일 때만 쓰이고(마이그레이션 163), 그때는 필수다.
-  const exposureMode = mission.exposure_mode
-  if (isPresent(exposureMode) && !EXPOSURE_MODES.includes(exposureMode)) {
-    errors.push(`mission.exposure_mode: ${EXPOSURE_MODES.join(' · ')} 중 하나여야 해요(받은 값: ${describeValue(exposureMode)}).`)
-  } else {
-    if (exposureMode === 'scheduled' && !isPresent(mission.exposure_at)) {
-      errors.push('mission.exposure_at: exposure_mode가 scheduled면 노출 시각이 필요해요.')
-    }
-    if (exposureMode !== 'scheduled' && isPresent(mission.exposure_at)) {
-      errors.push('mission.exposure_at: exposure_mode가 scheduled일 때만 쓸 수 있어요(그 외 모드에서는 무시돼요).')
-    }
-  }
-
-  // 표시·보상·횟수
-  if (isPresent(mission.status_display_type) && !STATUS_DISPLAY_TYPES.includes(mission.status_display_type)) {
-    errors.push(`mission.status_display_type: ${STATUS_DISPLAY_TYPES.join(' · ')} 중 하나여야 해요(받은 값: ${describeValue(mission.status_display_type)}).`)
-  }
-  for (const key of ['visible_rank_count', 'max_completions']) {
-    const value = mission[key]
-    if (isPresent(value) && !(Number.isInteger(value) && value >= 1)) {
-      errors.push(`mission.${key}: 1 이상의 정수여야 해요.`)
-    }
-  }
-  if (isPresent(mission.reward_points) && !(Number.isInteger(mission.reward_points) && mission.reward_points >= 0)) {
-    errors.push('mission.reward_points: 0 이상의 정수여야 해요.')
-  }
-  if (isPresent(mission.reward_badge_ids)) {
-    const ids = mission.reward_badge_ids
-    if (!Array.isArray(ids) || ids.some((id) => !(typeof id === 'string' && UUID_PATTERN.test(id)))) {
-      errors.push('mission.reward_badge_ids: 배지 ID(UUID) 문자열의 배열이어야 해요.')
-    } else if (new Set(ids.map((id) => id.toLowerCase())).size !== ids.length) {
-      errors.push('mission.reward_badge_ids: 같은 배지를 두 번 넣을 수 없어요.')
-    }
-  }
-
-  // 게이트 필드 — 라우트와 같은 진입점. 레거시 게이트 배지(`gated_badge_id`)는 묶음이 받지 않으므로 null로 넘긴다.
-  try {
-    const gateError = findGateMissionSaveError({
-      gate_axis: mission.gate_axis,
-      gate_stage: mission.gate_stage,
-      visibility_rule_json: mission.visibility_rule_json,
-      gated_badge_id: null,
-    })
-    if (gateError) errors.push(`mission.gate: ${gateError}`)
-  } catch (e) {
-    errors.push(`mission.gate: 게이트 필드를 검증하다 오류가 났어요 — ${e instanceof Error ? e.message : String(e)}`)
   }
 }
 
@@ -370,39 +224,12 @@ export function validateMissionBundle(raw, { bundleFile }) {
 }
 
 /**
- * 미션 행 insert 페이로드를 만든다. 어드민 미션 생성 API(POST `/api/admin/missions`)는 body를 그대로
- * `insert`하므로 매핑이 없다 — 여기서는 어드민 폼이 «값 없음»일 때 남는 DB 기본값을 명시해서 등록 기록 SQL이
- * 실제로 들어간 값을 그대로 보여 주게 했다. 다른 점은 셋뿐이다.
- * - `id`: 이미지 저장 경로에 쓰려고 등록 전에 정한 UUID를 넣는다(라우트는 DB 기본값에 맡긴다).
- * - `image_url`: 업로드한 WebP 공개 주소(`?v=` 캐시 무효화 쿼리 포함).
- * - `image_source`: 항상 `agent-generator`(묶음 값은 받지 않는다).
- * 폐기 예정 필드(`reward_type`·`reward_id`·`gated_badge_id`)와 `condition_text`는 항상 null이다. `created_at`은 DB 기본값에 맡긴다.
+ * 미션 행 insert 페이로드를 만든다. 값 매핑 본문과 설명(`id`·`image_url`·`image_source`가 다른 점, 폐기 예정 필드와
+ * `condition_text`가 null인 이유)은 `src/lib/admin/registerChecks/missionFields.ts`의 `buildMissionInsertPayload`에 있다
+ * (티켓 20261002_1027). TS 함수를 그대로 다시 내보내지 않고 JS 래퍼를 두는 이유: 테스트의 호출이 TS 시그니처로 typecheck되면
+ * 느슨한 입력(`Record<string, unknown>`)이 통과하지 못한다. 선택 인자는 넘기지 않는다 — 스크립트 등록은 `image_source`가 항상
+ * `agent-generator`이고 `condition_text`는 null이다.
  */
 export function buildMissionInsertPayload(mission, { id, imageUrl }) {
-  return {
-    id,
-    title: mission.title,
-    description: mission.description,
-    mission_type: mission.mission_type,
-    condition_json: mission.condition_json,
-    // 달성 조건 문장(티켓 20260927_0026)은 묶음이 받지 않는다 — 비워 두면 화면이 기본 문구를 쓴다.
-    condition_text: null,
-    reward_type: null,
-    reward_id: null,
-    reward_points: mission.reward_points ?? null,
-    reward_badge_ids: mission.reward_badge_ids ?? [],
-    status_display_type: mission.status_display_type ?? 'ranking',
-    visible_rank_count: mission.visible_rank_count ?? null,
-    starts_at: mission.starts_at,
-    ends_at: mission.ends_at ?? null,
-    max_completions: mission.max_completions ?? null,
-    image_url: imageUrl,
-    image_source: AGENT_IMAGE_SOURCE,
-    gated_badge_id: null,
-    gate_axis: mission.gate_axis ?? null,
-    gate_stage: mission.gate_stage ?? null,
-    visibility_rule_json: mission.visibility_rule_json ?? null,
-    exposure_mode: mission.exposure_mode ?? 'start_date',
-    exposure_at: mission.exposure_at ?? null,
-  }
+  return buildMissionInsertPayloadImpl(mission, { id, imageUrl })
 }
