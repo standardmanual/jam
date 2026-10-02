@@ -9,6 +9,8 @@ import { vi, beforeEach, afterEach, describe, it, expect } from 'vitest'
 import {
   escapeSlackText,
   formatArrivalMessage,
+  formatCancelFailureMessage,
+  formatCancelMessage,
   formatDecisionMessage,
   formatExecuteFailureMessage,
   formatExecuteSummaryMessage,
@@ -186,6 +188,65 @@ describe('예약 등록 글 (티켓 20261002_1123)', () => {
     const escaped = formatExecuteFailureMessage({ isSample: false, failures: [{ itemLabel: '<!here>', reason: '<@U1> & x' }] })
     expect(escaped).toContain('&lt;!here&gt; — &lt;@U1&gt; &amp; x')
     expect(escaped).not.toContain('<!here>')
+  })
+})
+
+describe('공개 전 취소 글 (티켓 20261002_1256)', () => {
+  const label = '홈피드 카드 · 10/10(토) 09:00'
+
+  it('취소 글: 건수와 항목 이름을 한 줄씩 싣는다', () => {
+    expect(formatCancelMessage({ isSample: false, itemLabels: [label, '미션 · 10/10(토) 09:00'] })).toBe(
+      ['공개 전 취소 2건', '• 홈피드 카드 · 10/10(토) 09:00', '• 미션 · 10/10(토) 09:00'].join('\n')
+    )
+    expect(formatCancelMessage({ isSample: false, itemLabels: [label] })).toBe(['공개 전 취소 1건', `• ${label}`].join('\n'))
+  })
+
+  it('취소 글: 시험 묶음이면 맨 앞에 「[시험]」이 붙는다', () => {
+    expect(formatCancelMessage({ isSample: true, itemLabels: [label] }).startsWith('[시험] 공개 전 취소 1건')).toBe(true)
+    expect(formatCancelMessage({ isSample: false, itemLabels: [label] }).startsWith('[시험]')).toBe(false)
+  })
+
+  it('취소 글: 5건까지 나열하고 나머지는 「외 N건」이다', () => {
+    const text = formatCancelMessage({ isSample: false, itemLabels: Array.from({ length: 8 }, (_, i) => `항목${i}`) })
+    expect(text.split('\n')).toHaveLength(1 + 5 + 1)
+    expect(text.split('\n')[0]).toBe('공개 전 취소 8건')
+    expect(text).toContain('• 항목4')
+    expect(text).not.toContain('항목5')
+    expect(text.endsWith('외 3건')).toBe(true)
+  })
+
+  it('취소 글: 항목 이름의 슬랙 특수문자를 이스케이프하고 60자로 자른다', () => {
+    const text = formatCancelMessage({ isSample: false, itemLabels: ['<!here> & x', '가'.repeat(80)] })
+    expect(text).toContain('• &lt;!here&gt; &amp; x')
+    expect(text).not.toContain('<!here>')
+    expect(text).toContain(`• ${'가'.repeat(60)}…`)
+  })
+
+  it('끝내지 못한 글: 취소한 건수와 남은 항목·사유를 싣는다', () => {
+    const text = formatCancelFailureMessage({ isSample: false, cancelled: 1, problems: [{ itemLabel: label, reason: '카드를 지우지 못했어요' }] })
+    expect(text).toBe(['공개 전 취소를 끝내지 못했어요 · 1건 취소, 1건 남음', `• ${label} — 카드를 지우지 못했어요`].join('\n'))
+  })
+
+  it('끝내지 못한 글: 시험 묶음 표시, 5건 상한과 「외 N건」, 사유 100자 자르기와 이스케이프', () => {
+    const problems = Array.from({ length: 7 }, (_, i) => ({ itemLabel: `항목${i}`, reason: `사유${i}` }))
+    const text = formatCancelFailureMessage({ isSample: true, cancelled: 0, problems })
+    expect(text.startsWith('[시험] 공개 전 취소를 끝내지 못했어요 · 0건 취소, 7건 남음')).toBe(true)
+    expect(text).toContain('• 항목4 — 사유4')
+    expect(text).not.toContain('항목5')
+    expect(text.endsWith('외 2건')).toBe(true)
+
+    const long = formatCancelFailureMessage({ isSample: false, cancelled: 0, problems: [{ itemLabel: label, reason: '가'.repeat(150) }] })
+    expect(long.endsWith(`${'가'.repeat(100)}…`)).toBe(true)
+    const escaped = formatCancelFailureMessage({ isSample: false, cancelled: 0, problems: [{ itemLabel: '<!here>', reason: '<@U1> & x' }] })
+    expect(escaped).toContain('&lt;!here&gt; — &lt;@U1&gt; &amp; x')
+  })
+
+  it('끝내지 못한 글: 결정 기록을 남기지 못했으면 그 줄을 더하고, 남은 항목이 없어도 글이 된다', () => {
+    const withProblem = formatCancelFailureMessage({ isSample: false, cancelled: 1, problems: [{ itemLabel: label, reason: '사유' }], decisionLogFailed: true })
+    expect(withProblem.split('\n').at(-1)).toBe('결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요')
+    expect(formatCancelFailureMessage({ isSample: false, cancelled: 2, problems: [], decisionLogFailed: true })).toBe(
+      '결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요'
+    )
   })
 })
 
