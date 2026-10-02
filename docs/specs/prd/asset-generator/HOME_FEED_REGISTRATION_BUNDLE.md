@@ -15,6 +15,8 @@ code:
   - "jam-web/scripts/asset-generator/registerHomeFeedFlow.mjs"
   - "jam-web/scripts/asset-generator/registerHomeFeedRecord.mjs"
   - "jam-web/src/lib/admin/registerChecks/shared.ts"
+  - "jam-web/src/lib/admin/registerChecks/bundleRules.ts"
+  - "jam-web/src/lib/admin/registerChecks/homeFeedFields.ts"
   - "jam-web/src/lib/admin/registerChecks/homeFeed.ts"
   - "jam-web/src/lib/admin/registerChecks/references.ts"
 ---
@@ -41,9 +43,16 @@ code:
 - **배지·미션 스크립트와 별개다.** 배지·미션 스크립트에서는 내용과 무관한 부품(인자 파싱·묶음 파일 읽기·UUID 형식·기록 파일
   쓰기·시각 표기)만 가져다 쓴다. 홈피드 전용 부분은 `registerHomeFeed*.mjs`에 있다. 다만 등록 전 DB 검사와 되돌림 전 참조 확인은
   서버(운영툴 예약 등록)도 같은 함수를 쓰도록 세 유형 모두 `jam-web/src/lib/admin/registerChecks/`의 TS 모듈로 옮겼고, 이 스크립트의
-  `runHomeFeedDbChecks`·`UNDO_REFERENCE_TABLES`는 그 모듈을 감싼다(티켓 20261002_0827).
+  `runHomeFeedDbChecks`·`UNDO_REFERENCE_TABLES`는 그 모듈을 감싼다(티켓 20261002_0827). 카드 한 건의 순수 검사(`validateCard`)·카드 상수
+  (`CARD_REQUIRED_FIELDS`·`TEMPLATE_TYPES`·`REQUIRED_REFERENCE_FIELDS` 등)·insert 페이로드 코어(`buildTodayCardInsertPayload`)도 같은 폴더의
+  `homeFeedFields.ts`로 옮겼고, 정규식(`UUID_PATTERN`·`CONTROL_OR_LINE_BREAK`)과 보조 함수는 `bundleRules.ts`로 옮겼다(티켓 20261002_1027).
+  이 스크립트는 그 상수를 같은 이름으로 다시 내보내고 `validateCard`를 부르며, `buildTodayCardInsertPayload`는 얇은 JS 래퍼다. 동작·오류 문장·페이로드
+  키 집합은 옮기기 전과 같다. 세계관 검토·이미지 검사·묶음 전체 검사(`validateWorldReview`·`validateImage`·`validateHomeFeedBundle`)는
+  서버가 쓰지 않아 이 스크립트에 남는다.
 - 묶음이 다루지 않는 필드는 스크립트가 정한다: `id`(등록 전에 정한 UUID), `cover_image_url`(업로드한 WebP 공개 주소),
   `image_source`(항상 `agent-generator`), `created_by`(NULL — 스크립트에는 어드민 계정이 없다), `created_at`(DB 기본값).
+  `homeFeedFields.ts`의 페이로드 코어는 서버가 `image_source`·`shape`·`title_in_image`를 정해 넘길 선택 인자를 받는다. 스크립트는 넘기지
+  않으므로 값은 위와 같고 `shape`·`title_in_image`는 NULL이다.
 - 형식은 **JSON 한 벌(`bundle.json`)** 이다. 사람이 읽고 컨펌하는 자료는 별도 형식이 아니라 `--dry-run` 출력(§6)이 맡는다.
 - **시험 등록은 비활성·기간 2099년의 임시 카드 1건으로 한다.** `is_active: false`이면 기간과 무관하게 어디에도 노출되지 않고,
   2099년 기간은 활성으로 바꿔도 실수로 노출되지 않게 하는 이중 안전장치다. 시험 뒤에는 `--undo`로 되돌린다.
@@ -120,8 +129,8 @@ code:
 이름은 `today_cards` 컬럼 이름과 같다. 필수·선택 구분은 `jam-web/src/types/database.generated.ts`의 `today_cards` Insert 타입(필수
 `title`·`template_type`·`starts_at`·`ends_at`)에 어드민 폼의 필수 검사(노출 조건 태그 1개 이상, `TodayCardForm.tsx`의 `collectMissing`)를
 더한 것이다. 어드민 생성 API(`api/admin/today/route.ts` POST)는 본문을 검증 없이 insert하므로 **API에는 재사용할 검증 함수가 없다.**
-규칙의 원천은 폼·`lib/admin/today-sections.ts` 상수·DB CHECK 제약이고, 허용값 목록은 그 상수를 그대로 import해 쓴다(테스트가 DB CHECK
-마이그레이션 158·183과 대조한다).
+규칙의 원천은 폼·`lib/admin/today-sections.ts` 상수·DB CHECK 제약이고, 허용값 목록은 그 상수에서 뽑는다(테스트가 DB CHECK
+마이그레이션 158·183과 대조한다). 이 규칙을 코드로 옮긴 원본은 `jam-web/src/lib/admin/registerChecks/homeFeedFields.ts`다(`bundleRules.ts`의 보조 함수를 쓴다).
 
 | 필드 | 필수 | 형식 | 검증 규칙·기본값 |
 |---|---|---|---|

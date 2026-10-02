@@ -319,8 +319,8 @@ describe('registerChecks 계약 — 서버에서 가져올 수 있어야 한다'
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.ts'))
   const NODE_BUILTINS = ['fs', 'path', 'os', 'child_process', 'crypto', 'url', 'util', 'stream', 'process']
 
-  it('모듈 다섯 개가 있다', () => {
-    expect(files.sort()).toEqual(['badge.ts', 'homeFeed.ts', 'mission.ts', 'references.ts', 'shared.ts'])
+  it('모듈 여덟 개가 있다', () => {
+    expect(files.sort()).toEqual(['badge.ts', 'bundleRules.ts', 'homeFeed.ts', 'homeFeedFields.ts', 'mission.ts', 'missionFields.ts', 'references.ts', 'shared.ts'])
   })
 
   it.each(files)('%s는 node: 모듈·내장 모듈과 scripts/ 아래 파일을 가져오지 않는다', (name) => {

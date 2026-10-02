@@ -673,8 +673,9 @@ stateDiagram-v2
 | `recipe` | `starts_at`(필수, `valid_from`으로), `ends_at`(`valid_until`로) | `name`(필수) | `slots`(필수, `[{ badge_type, allowed_badge_ids }]`), `reward_points`, `reward_badge_ids`(아이템 배지만) | — |
 | `drop_schedule` | `starts_at`(필수, `scheduled_at`으로). `ends_at`이 있으면 형식 오류 | `title`(100자) | §3.1의 6개 키 | — |
 
-- **종류별 검사.** 카드는 홈피드 등록 묶음의 카드 검사(`registerHomeFeedBundle.mjs`: 템플릿별로 쓰지 않는 칸과 필수 참조, 노출 태그, 설명문 40자)이고 이미지는 보지 않는다(§8.8).
-  미션은 미션 등록 묶음 검사, JAM! 배지는 어드민 배지 검증(`jam-web/src/lib/admin/badge-validation.ts`, `recipe_first_success`의 레시피 존재 포함), 레시피는
+- **종류별 검사.** 카드는 홈피드 등록 묶음의 카드 검사(`jam-web/src/lib/admin/registerChecks/homeFeedFields.ts`의 `validateCard`: 템플릿별로 쓰지 않는 칸과 필수 참조, 노출 태그, 설명문 40자)이고
+  이미지는 보지 않는다(§8.8). 미션은 미션 등록 묶음 검사(`registerChecks/missionFields.ts`의 `validateMission`)다. 두 검사가 쓰는 정규식·보조 함수는 `registerChecks/bundleRules.ts`에 있고,
+  등록 스크립트(`registerHomeFeedBundle.mjs`·`registerMissionBundle.mjs`)는 같은 함수를 부른다(티켓 20261002_1027). JAM! 배지는 어드민 배지 검증(`jam-web/src/lib/admin/badge-validation.ts`, `recipe_first_success`의 레시피 존재 포함), 레시피는
   `normalizeRecipePayload`와 슬롯 후보 배지 존재 확인, 드랍 일정은 `parseAmbientDropScheduleInput`(§3.1)이다. 컬렉션 틀은 트라이브와 보상 배지의 존재를 본다.
 - 레시피 보상·슬롯 배지가 아직 열리지 않은 컬렉션 소속이면 사전 점검에서 막는다(1458 메모, ⑧). 레시피만 열려도 그 배지를 얻을 수 있기 때문이다.
 - 컬렉션의 아이템 배지는 지금처럼 기존 어드민에서 공개 전에 채운다(Q4). 아이템 배지가 없는 컬렉션은 공개 전 점검이 알린다(⑩).

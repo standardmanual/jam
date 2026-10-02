@@ -25,6 +25,11 @@ import { isValidFamilyKey } from '../../src/lib/admin/badge-families'
 import { buildBadgeInsertPayload as buildRouteBadgeInsertPayload } from '../../src/lib/admin/badge-insert-payload'
 import { ADMIN_ACTIVITY_TYPES } from '../../src/lib/admin/badge-sections'
 import { MAX_APPLY_IMAGE_BYTES } from '../../src/lib/admin/applyGeneratedImageConstants'
+import { AGENT_IMAGE_SOURCE, CONTROL_OR_LINE_BREAK, UUID_PATTERN } from '../../src/lib/admin/registerChecks/bundleRules'
+
+// 아래 세 이름의 원본은 `src/lib/admin/registerChecks/bundleRules.ts`다(티켓 20261002_1027 — 서버도 같은 값을 쓰게 옮겼다).
+// 미션·홈피드 묶음 검사·등록 기록 SQL 정리·미션 이미지 적용 흐름이 이 파일에서 같은 이름으로 가져가므로 그대로 다시 내보낸다.
+export { AGENT_IMAGE_SOURCE, CONTROL_OR_LINE_BREAK, UUID_PATTERN }
 
 /** 1차에서 지원하는 배지 유형. checkin은 POI 연결이 필요해 범위 밖이다(REGISTRATION_BUNDLE.md §1). */
 export const SUPPORTED_BADGE_TYPES = ['activity', 'item']
@@ -48,12 +53,8 @@ export const BADGE_OPTIONAL_FIELDS = [
 export const IMAGE_REQUIRED_FIELDS = ['path', 'seed', 'preset_id', 'bg_color', 'end_color']
 export const IMAGE_OPTIONAL_FIELDS = ['text']
 
-/** 이 스크립트가 등록하는 배지의 `badges.image_source` 값(마이그레이션 186 CHECK 허용값). */
-export const AGENT_IMAGE_SOURCE = 'agent-generator'
-
 const BUNDLE_ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/
-export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
@@ -65,11 +66,8 @@ function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0
 }
 
-// 한 줄 텍스트(작성자·배지 이름) 검사. 이 값들은 등록 기록 SQL(registration.sql)의 `--` 주석에도 들어가고
-// 그 파일은 마이그레이션 폴더에 커밋되어 다시 실행될 수 있다. 줄바꿈이 섞이면 뒷부분이 주석 밖의 실행 가능한
-// 문장이 되므로(20260924_2202 게이트 재현), 개행·제어 문자를 검증에서 거절한다.
-// 이 정규식의 원본은 여기 한 곳이다 — 등록 기록 SQL 주석 정리(`registerRecord.mjs`)도 이것을 가져다 쓴다(티켓 20260925_0549).
-export const CONTROL_OR_LINE_BREAK = /[\u0000-\u001f\u007f\u0085\u2028\u2029]/
+// 한 줄 텍스트(작성자·배지 이름) 검사. 개행·제어 문자 정규식 `CONTROL_OR_LINE_BREAK`의 원본과 그 사유는
+// `src/lib/admin/registerChecks/bundleRules.ts`에 있다(등록 기록 SQL 주석 정리 `registerRecord.mjs`도 이 파일을 거쳐 가져다 쓴다, 티켓 20260925_0549).
 
 function hasControlOrLineBreak(value) {
   return typeof value === 'string' && CONTROL_OR_LINE_BREAK.test(value)
