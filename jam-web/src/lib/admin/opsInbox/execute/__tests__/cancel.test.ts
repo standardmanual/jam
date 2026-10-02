@@ -10,6 +10,7 @@
  * - 미리 보기(가정 5): 쓰기 없음. 슬랙(가정 6): 요약·알림과 `slack_result`
  * - 예약됨 미션 취소(⑥): 실제 미션 핸들러, 미션을 가리키는 카드를 먼저 지운 뒤 미션을 지운다
  * - 예약됨 레시피 취소(⑧-a, 티켓 20261002_2221): 실제 레시피 핸들러, 공개 전 취소·이미 공개·종료됨·가장 먼저 성공 배지가 가리킴(409)·없음·시험 묶음
+ * - 예약됨 드랍 취소(⑧-b, 티켓 20261002_2306): 실제 드랍 핸들러, 공개 전 취소(지우지 않고 「취소」 상태)·예정 시각이 지남·실행 시작·끝남(409)·밖에서 취소됨·없음·시험 묶음
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -444,8 +445,8 @@ describe('함께 취소할 항목 — 가짜 종류 핸들러(가정 3·4)', () 
     expect(nonSelect(db)).toEqual([])
   })
 
-  it('실제 레지스트리에 아직 없는 종류(드랍 등)는 409로 막힌다', async () => {
-    const { db, run } = setup([{ id: ID.poster, key: 'drop', kind: 'drop_schedule', status: 'scheduled', createdResource: { ambient_drop_schedule_id: uid(21) } }])
+  it('실제 레지스트리에 아직 없는 종류(JAM! 배지 등)는 409로 막힌다', async () => {
+    const { db, run } = setup([{ id: ID.poster, key: 'badge', kind: 'jam_badge', status: 'scheduled', createdResource: { badge_id: uid(21) } }])
     const failure = bad(await run(ID.poster))
     expect(failure.status).toBe(409)
     expect(failure.error).toBe('아직 취소를 연결하지 않은 종류예요')
@@ -737,6 +738,169 @@ describe('예약됨 레시피 취소 — 실제 레시피 핸들러 (티켓 2026
   })
 })
 
+// ── 드랍 예약 취소 ───────────────────────────────────────────────────────────────────────────────
+
+describe('예약됨 드랍 취소 — 실제 드랍 핸들러 (티켓 20261002_2306)', () => {
+  const DROP_RES = uid(31)
+  const OTHER_DROP = uid(96)
+  const DROP_LABEL = '드랍 일정 · 10/10(토) 09:00'
+  const PUBLISHED = '공개 시각이 지나 취소할 수 없어요'
+  const dropSpec = (extra: ItemSpec = {}): ItemSpec => ({
+    id: ID.poster,
+    key: 'drop',
+    kind: 'drop_schedule',
+    status: 'scheduled',
+    createdResource: { ambient_drop_schedule_id: DROP_RES },
+    ...extra,
+  })
+  const dropRow = (extra: Row = {}): Row => ({
+    id: DROP_RES,
+    status: 'scheduled',
+    scheduled_at: LATER,
+    claimed_at: null,
+    canceled_at: null,
+    finished_at: null,
+    ...extra,
+  })
+  const statuses = (db: FakeDb) => (db.tables.ambient_drop_schedules as Row[]).map((row) => [row.id, row.status])
+
+  /** 취소할 예약과 다른 예약 하나가 있는 DB. */
+  function dropSetup(options: Parameters<typeof setup>[1] = {}, specs: ItemSpec[] = [dropSpec()]) {
+    const made = setup(specs, { ...options, cards: [] })
+    made.db.tables.ambient_drop_schedules = [dropRow(), dropRow({ id: OTHER_DROP })]
+    return made
+  }
+
+  it('공개 전이면 예약을 지우지 않고 「취소」 상태로 남기고 항목을 「취소」로 두며 cancel 기록을 남긴다. 다른 예약은 건드리지 않는다', async () => {
+    const { db, run } = dropSetup()
+    const result = ok(await run(ID.poster, '드랍을 접어요'))
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.poster], missing: [] })
+    expect(statuses(db)).toEqual([
+      [DROP_RES, 'canceled'],
+      [OTHER_DROP, 'scheduled'],
+    ])
+    expect(db.tables.ambient_drop_schedules[0]).toMatchObject({ canceled_at: NOW.toISOString(), updated_at: NOW.toISOString() })
+    expect(db.calls.filter((call) => call.table === 'ambient_drop_schedules' && call.op === 'delete')).toEqual([])
+    expect(db.calls.find((call) => call.table === 'ambient_drop_schedules' && call.op === 'update')?.filters).toEqual([
+      ['id', DROP_RES],
+      ['status', 'scheduled'],
+    ])
+    expect(statusOf(db, ID.poster)).toBe('cancelled')
+    expect(db.decisions('cancel').map((row) => [row.item_id, row.reason, row.batch_id])).toEqual([[ID.poster, '드랍을 접어요', result.batchId]])
+    expect(result.slack.cancelledLabels).toEqual([DROP_LABEL])
+  })
+
+  it('예정 시각이 지난 예약은 아직 scheduled여도 409이고 아무것도 바꾸지 않는다(서버 함수는 시각을 보지 않아 핸들러가 막는다)', async () => {
+    const { db, run } = dropSetup()
+    db.tables.ambient_drop_schedules = [dropRow({ scheduled_at: PAST })]
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe(PUBLISHED)
+    expect(failure.slack).toBeUndefined()
+    expect(nonSelect(db)).toEqual([])
+    expect(statuses(db)).toEqual([[DROP_RES, 'scheduled']])
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+    expect(db.decisions()).toEqual([])
+  })
+
+  it.each([
+    ['실행 중', { status: 'running', claimed_at: PAST }],
+    ['멈춤', { status: 'running', claimed_at: '2026-10-05T01:00:00.000Z' }],
+    ['완료', { status: 'done', finished_at: PAST }],
+    ['건너뜀', { status: 'skipped', finished_at: PAST }],
+    ['실패', { status: 'failed', finished_at: PAST }],
+    ['놓침', { status: 'missed', finished_at: PAST }],
+  ])('%s 예약은 409이고 아무것도 바꾸지 않는다', async (_name, extra) => {
+    const { db, run } = dropSetup()
+    db.tables.ambient_drop_schedules = [dropRow(extra)]
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe(PUBLISHED)
+    expect(nonSelect(db)).toEqual([])
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+  })
+
+  it('밖에서 이미 취소된 예약은 missing으로 두고 항목만 「취소」로 둔다. 예약 행은 다시 쓰지 않는다', async () => {
+    const { db, run } = dropSetup()
+    db.tables.ambient_drop_schedules = [dropRow({ status: 'canceled', canceled_at: PAST })]
+    const result = ok(await run(ID.poster))
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.poster], missing: [ID.poster] })
+    expect(statusOf(db, ID.poster)).toBe('cancelled')
+    expect(nonSelect(db).filter((call) => call.table === 'ambient_drop_schedules')).toEqual([])
+  })
+
+  it('밖에서 지워진 예약은 missing으로 두고 항목만 「취소」로 둔다', async () => {
+    const { db, run } = setup([dropSpec()], { cards: [] })
+    const result = ok(await run(ID.poster))
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.poster], missing: [ID.poster] })
+    expect(statusOf(db, ID.poster)).toBe('cancelled')
+    expect(nonSelect(db).filter((call) => call.table === 'ambient_drop_schedules')).toEqual([])
+  })
+
+  it('읽지 못하면 500 고정 문장이고 DB 오류 원문·예약 ID는 응답·기록·슬랙에 없다. 항목은 예약됨 그대로다', async () => {
+    const { db, run } = dropSetup()
+    db.failIf = (call) => call.table === 'ambient_drop_schedules' && call.op === 'select'
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(500)
+    for (const output of await outputsOf(db, failure)) {
+      expect(output).not.toContain(DB_SECRET)
+      expect(output).not.toContain(DROP_RES)
+    }
+    expect(statuses(db)).toEqual([
+      [DROP_RES, 'scheduled'],
+      [OTHER_DROP, 'scheduled'],
+    ])
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+    expect(logged()).toContain(DB_SECRET)
+  })
+
+  it('상태를 바꾸는 쓰기가 실패하면 500이고 예약은 그대로다. 원문은 로그에만 남는다', async () => {
+    const { db, run } = dropSetup()
+    db.failIf = (call) => call.table === 'ambient_drop_schedules' && call.op === 'update'
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(500)
+    expect(statuses(db)[0]).toEqual([DROP_RES, 'scheduled'])
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+    for (const output of await outputsOf(db, failure)) expect(output).not.toContain(DB_SECRET)
+  })
+
+  it('읽은 뒤 쓰기 전에 실행이 시작되면 취소하지 않고 409다', async () => {
+    const { db, run } = dropSetup()
+    db.beforeRun = (call) => {
+      if (call.table === 'ambient_drop_schedules' && call.op === 'update') db.tables.ambient_drop_schedules[0].status = 'running'
+    }
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe(PUBLISHED)
+    expect(statuses(db)[0]).toEqual([DROP_RES, 'running'])
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+    expect(db.decisions()).toEqual([])
+  })
+
+  it('시험 묶음은 예약 표를 읽지도 쓰지도 않고 항목만 「취소」로 둔다', async () => {
+    const { db, run } = setup([dropSpec({ createdResource: { sample: true } })], { bundle: { is_sample: true }, cards: [] })
+    const result = ok(await run(ID.poster))
+
+    expect(result.body.cancelled).toEqual([ID.poster])
+    expect(db.calls.filter((call) => call.table === 'ambient_drop_schedules')).toEqual([])
+  })
+
+  it('미리 보기는 쓰기 없이 드랍 하나를 돌려준다', async () => {
+    const { db, preview } = dropSetup()
+    expect(await preview(ID.poster)).toEqual({ ok: true, body: { ok: true, dryRun: true, cancelIds: [ID.poster], blockers: [] } })
+    expect(nonSelect(db)).toEqual([])
+    expect(db.calls.some((call) => call.table === 'ambient_drop_schedules')).toBe(false)
+  })
+})
+
 // ── 실패 ─────────────────────────────────────────────────────────────────────────────────────────
 
 describe('실패 경로 — 첫 실패에서 멈춘다(가정 4)', () => {
@@ -857,7 +1021,7 @@ describe('미리 보기 { dryRun: true }(가정 5)', () => {
   })
 
   it('예약됨이 아니면 409, 묶음에 없는 항목은 404, 핸들러가 없으면 409다', async () => {
-    const { db, preview } = setup([cardSpec({ status: 'approved' }), { id: ID.poster, key: 'drop', kind: 'drop_schedule', status: 'scheduled', createdResource: { ambient_drop_schedule_id: uid(21) } }])
+    const { db, preview } = setup([cardSpec({ status: 'approved' }), { id: ID.poster, key: 'badge', kind: 'jam_badge', status: 'scheduled', createdResource: { badge_id: uid(21) } }])
     expect(await preview(ID.card)).toMatchObject({ ok: false, status: 409, error: '예약됨 항목만 취소할 수 있어요' })
     expect(await preview(uid(77))).toMatchObject({ ok: false, status: 404 })
     expect(await preview(ID.poster)).toMatchObject({ ok: false, status: 409, error: '아직 취소를 연결하지 않은 종류예요' })

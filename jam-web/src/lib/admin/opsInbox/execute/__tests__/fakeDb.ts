@@ -6,6 +6,8 @@
  * 상태 맞추기(티켓 20261002_1813)가 쓰는 `order`(칸 값이 같거나 없으면 내림차순은 나중에 넣은 행이 먼저)도 받는다.
  * 미션 핸들러(티켓 20261002_1944)가 쓰는 미션 참조 표(`user_mission_*`·`mission_rank_snapshots`·`point_transactions`)와 `poi`가 기본 테이블에 있다.
  * 레시피 핸들러(티켓 20261002_2221)가 쓰는 `combination_recipes`·`combination_recipe_slots`도 기본 테이블에 있고, 레시피를 지우면 슬롯도 함께 지워진다(DB의 CASCADE).
+ * 드랍 예약 핸들러(티켓 20261002_2306)가 쓰는 `ambient_drop_schedules`(넣을 때 `status`를 DB 기본값 `scheduled`로 채운다)·`poi_categories`도 기본 테이블에 있다. 예약 대상 판정(`loadScheduleTargets`)은 `or`·`not`·`range` 같은 질의를 써서
+ * 이 가짜 DB가 받지 않으므로, 통합 테스트는 그 함수를 mock으로 바꾼다(드랍 저장소의 가짜 DB `ambient-drop/__tests__/schedule-test-db.ts`는 실제 판정을 돌린다).
  * `in`은 PostgREST JSON 경로 칸(`condition_json->recipe_first_success->>recipe_id`)도 읽는다(레시피 참조 확인이 쓴다).
  */
 import type { ExecuteServiceClient } from '../handlers'
@@ -152,7 +154,12 @@ class FakeQuery implements PromiseLike<Result> {
     if (this.mode === 'insert') {
       const list = Array.isArray(this.payload) ? this.payload : [this.payload]
       const inserted = list.map((item) => {
-        const defaults: Row = this.table === 'ops_decisions' ? { item_id: null, batch_id: null, diff: null, reason: null, slack_result: null } : {}
+        const defaults: Row =
+          this.table === 'ops_decisions'
+            ? { item_id: null, batch_id: null, diff: null, reason: null, slack_result: null }
+            : this.table === 'ambient_drop_schedules'
+              ? { status: 'scheduled' } // DB 기본값. 만들 때 상태를 넘기지 않는다
+              : {}
         const row: Row = { id: `id-${++this.db.seq}`, ...defaults, ...item }
         rows.push(row)
         return row
@@ -201,6 +208,9 @@ export class FakeDb {
     // 레시피 핸들러(티켓 20261002_2221): 레시피와 슬롯. 레시피 참조 확인은 `badges`의 JSON 경로를 읽는다.
     combination_recipes: [],
     combination_recipe_slots: [],
+    // 드랍 예약 핸들러(티켓 20261002_2306): 예약 행과 지점 종류 확인.
+    ambient_drop_schedules: [],
+    poi_categories: [],
   }
   calls: FakeCall[] = []
   seq = 0

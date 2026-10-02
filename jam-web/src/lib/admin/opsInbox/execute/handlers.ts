@@ -76,10 +76,10 @@ export type CancelResult =
 
 /**
  * 자원 상태 읽기 한 건의 결과(티켓 20261002_1813 가정 2, §8.6). 상태 맞추기가 항목 상태와 견준다.
- * - `missing`: 자원이 없다(드랍은 `canceled`도 여기. ⑧이 붙인다).
+ * - `missing`: 자원이 없다(드랍은 `canceled`도 여기. `dropSchedule.ts`가 돌려준다).
  * - `present`: 자원이 있다. `published`는 지금 유저 화면에 보이는지, `ended`는 자원의 종료 시각이 지났는지, `inactive`는 운영툴 밖에서 비활성·숨김이 됐는지다.
  *   `startsAt`·`endsAt`은 자원의 공개·종료 시각(ISO 문자열, 종료 시각이 없는 상시 자원은 `null`)이다.
- * - `failed`: 자원이 공개되지 못하고 끝났다(드랍의 `skipped`·`failed`·`missed`. ⑧이 붙인다). `reason`은 결정 기록·슬랙에 그대로 나가는 쉬운 문장이다.
+ * - `failed`: 자원이 공개되지 못하고 끝났다(드랍의 `skipped`·`failed`·`missed`. `dropSchedule.ts`가 돌려준다). `reason`은 결정 기록·슬랙에 그대로 나가는 쉬운 문장이다.
  * - `error`: 읽지 못했다. 상태를 바꾸지 않고 `detail`은 서버 로그에만 남긴다.
  */
 export type ResourceObservation =
@@ -90,7 +90,7 @@ export type ResourceObservation =
 
 /**
  * 연결 그룹(§8.3)이 채우는 칸에 넣을 ID. 카드·미션 칸 이름은 `registerInput.ts`의 `CardLinkedIds`·`MissionLinkedIds`와 같다.
- * 나머지는 뒤 조각의 변환이 읽는다: `reward_badge_id`(컬렉션), `collection_ids`(드랍), `recipe_id`(JAM! 배지의 `recipe_first_success`).
+ * `collection_ids`는 드랍 변환(`toDropScheduleRegisterInput`)이 읽는다. 나머지는 뒤 조각의 변환이 읽는다: `reward_badge_id`(컬렉션), `recipe_id`(JAM! 배지의 `recipe_first_success`).
  */
 export type ExecuteLinkedIds = CardLinkedIds &
   MissionLinkedIds & {

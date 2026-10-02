@@ -15,14 +15,22 @@
  * - 실제 레지스트리(⑥): 카드+미션 그룹이 함께 예약되고 하나가 실패하면 역순(카드 먼저)으로 되돌려진다, 사전 점검 두 규칙, 원문 비노출
  * - 실제 레지스트리(⑧-a, 티켓 20261002_2221): 레시피가 공개 전 행과 슬롯으로 예약되고 `created_resource.recipe_id`가 만들기 전에 적힌다, 안 열린 컬렉션 검사,
  *   연결된 카드가 실패하면 레시피도 되돌려진다, 원문 비노출
+ * - 실제 레지스트리(⑧-b, 티켓 20261002_2306): 드랍이 `ambient_drop_schedules`의 `scheduled` 행으로 예약되고 `created_resource.ambient_drop_schedule_id`가 만들기 전에 적힌다,
+ *   대상 문제·형식 오류는 그 드랍과 연결 그룹이 실패, 연결된 카드가 실패하면 드랍 예약도 되돌려진다, 원문 비노출. 예정 시각 기준 대상 판정(`loadScheduleTargets`)은 mock이다
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
-const h = vi.hoisted(() => ({ postOpsSlack: vi.fn() }))
+const h = vi.hoisted(() => ({ postOpsSlack: vi.fn(), loadScheduleTargets: vi.fn() }))
 
 vi.mock('@/lib/admin/opsInbox/slack', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/admin/opsInbox/slack')>()
   return { ...actual, postOpsSlack: h.postOpsSlack }
+})
+
+// 예약 대상 판정은 `or`·`not`·`range` 같은 질의를 써서 이 파일의 가짜 DB가 받지 않는다. 판정 자체는 `dropSchedule.test.ts`가 실제 함수로 본다.
+vi.mock('@/lib/ambient-drop/scheduleTargets', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/ambient-drop/scheduleTargets')>()
+  return { ...actual, loadScheduleTargets: h.loadScheduleTargets }
 })
 
 import {
@@ -33,6 +41,7 @@ import {
   type ExecuteHandlerRegistry,
   type ExecuteLinkedIds,
 } from '../handlers'
+import type { ScheduleTargets } from '@/lib/ambient-drop/scheduleTargets'
 import { PRECHECK_MESSAGES, precheckBundle } from '../precheck'
 import { EXECUTE_HANDLERS } from '../registry'
 import { dryRunExecution, executeBundle, notifyExecution, type ExecuteSuccess, type RunFailure } from '../run'
@@ -142,10 +151,20 @@ const bad = (outcome: unknown) => {
 const nonSelect = (db: FakeDb) => db.calls.filter((call) => call.op !== 'select')
 const statusOf = (db: FakeDb, id: string) => db.item(id).status
 
+/** 놓을 대상이 모두 있는 예정 시각 기준 대상 판정 결과(드랍 핸들러의 `check`가 받는다). */
+const targetsOk = (): ScheduleTargets => ({
+  pois: [{ id: uid(41), activeSystemCount: 0 }],
+  badgePool: [{ id: uid(43), rarity: 'common', itemBookId: uid(42) }],
+  excluded: { pois: [], badges: [], collections: [] },
+  effectiveCollectionIds: [uid(42)],
+})
+
 let errorSpy: MockInstance<typeof console.error>
 beforeEach(() => {
   h.postOpsSlack.mockReset()
   h.postOpsSlack.mockResolvedValue({ ok: true })
+  h.loadScheduleTargets.mockReset()
+  h.loadScheduleTargets.mockResolvedValue(targetsOk())
   errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 const logged = () => errorSpy.mock.calls.map((args) => args.join(' ')).join('\n')
@@ -912,8 +931,8 @@ describe('실제 레지스트리: 홈피드 카드 핸들러 (티켓 20261002_12
     expect(order.indexOf('today_card_events:select')).toBeLessThan(order.lastIndexOf('today_cards:delete'))
   })
 
-  it('아직 연결하지 않은 종류(드랍 등)는 막힌다', async () => {
-    const { db, run } = setupReal([{ id: ID.solo, key: 'solo', kind: 'drop_schedule' }])
+  it('아직 연결하지 않은 종류(JAM! 배지 등)는 막힌다', async () => {
+    const { db, run } = setupReal([{ id: ID.solo, key: 'solo', kind: 'jam_badge' }])
     const failure = bad(await run([ID.solo]))
     expect(failure.status).toBe(409)
     expect(failure.extra?.skipped).toEqual([{ id: ID.solo, reason: PRECHECK_MESSAGES.noHandler }])
@@ -1424,5 +1443,311 @@ describe('실제 레지스트리: 레시피 핸들러 (티켓 20261002_2221)', (
 
     expect(second.status).toBe(409)
     expect(writes(db, 'combination_recipes', 'insert')).toHaveLength(1)
+  })
+})
+
+// ── 실제 레지스트리(드랍 예약 핸들러, 티켓 20261002_2306) ──────────────────────────────────────────
+
+describe('실제 레지스트리: 드랍 예약 핸들러 (티켓 20261002_2306)', () => {
+  const DROP = uid(40)
+  const POI = uid(41)
+  const BOOK = uid(42)
+  const COLLECTION_ITEM = uid(44)
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+  const GROUP_FAILED = '연결된 항목을 만들지 못해 함께 실패했어요'
+  const PROBLEM = '예정 시각에 놓을 수 없는 대상이 있어요(노출 중이 아닌 컬렉션 1건). 예약은 예정 시각의 상태로 확인해요. 해당 대상을 빼거나 시각을 바꿔서 다시 시도해 주세요.'
+  const NOT_EXPOSED: ScheduleTargets = { ...targetsOk(), excluded: { pois: [], badges: [], collections: [{ id: BOOK, reason: 'collection_not_exposed' }] } }
+
+  /** 검사를 통과하는 드랍(지점 직접 × 컬렉션). 예정 시각은 행의 `LATER`(10/10 09:00 KST), 종료 시각은 없다. */
+  const drop = (over: Partial<ItemSpec> = {}): ItemSpec => ({
+    id: DROP,
+    key: 'drop',
+    kind: 'drop_schedule',
+    original: { copy: { title: '가을 아침 드랍' } },
+    resource: { poi_ids: [POI], per_poi_count: 2, collection_ids: [BOOK] },
+    ...over,
+  })
+  /** 드랍과 같은 그룹인 카드. 카드 → 드랍 쌍은 칸을 채우지 않아 그룹으로만 묶인다(PRD §8.3). 드랍이 카드보다 먼저 만들어진다. */
+  const card = (over: Partial<ItemSpec> = {}): ItemSpec => ({
+    id: ID.card,
+    key: 'card',
+    kind: 'home_feed_card',
+    links: ['drop'],
+    original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '가을 드랍 카드' } },
+    resource: { template_type: 'drop_alert' },
+    ...over,
+  })
+  const writes = (db: FakeDb, table: string, op: FakeCall['op']) => db.calls.filter((call) => call.table === table && call.op === op)
+  const scheduleWrites = (db: FakeDb) => db.calls.filter((call) => call.table === 'ambient_drop_schedules' && call.op !== 'select')
+
+  it('승인된 드랍 하나를 실행하면 공개 전(scheduled) 예약 행이 생기고 created_resource.ambient_drop_schedule_id와 ID가 같다', async () => {
+    const { db, run } = setupReal([drop()])
+    const result = ok(await run([DROP]))
+
+    expect(result.body.scheduled).toEqual([DROP])
+    expect(result.body.failed).toEqual([])
+    expect(db.tables.ambient_drop_schedules).toHaveLength(1)
+    const row = db.tables.ambient_drop_schedules[0]
+    const created = db.item(DROP).created_resource as { ambient_drop_schedule_id: string }
+    expect(created.ambient_drop_schedule_id).toMatch(UUID_PATTERN)
+    expect(row.id).toBe(created.ambient_drop_schedule_id)
+    // 예정 시각 = 항목 공개 시각. created_by는 실행한 관리자 ID다. 상태는 만들 때 넘기지 않는 DB 기본값(scheduled)이다.
+    expect(row).toMatchObject({
+      status: 'scheduled',
+      title: '가을 아침 드랍',
+      scheduled_at: '2026-10-10T00:00:00.000Z',
+      poi_mode: 'list',
+      poi_ids: [POI],
+      per_poi_count: 2,
+      item_mode: 'collections',
+      collection_ids: [BOOK],
+      created_by: ACTOR,
+    })
+    expect((db.calls.find((call) => call.table === 'ambient_drop_schedules' && call.op === 'insert')?.payload as Row)).not.toHaveProperty('status')
+    expect(statusOf(db, DROP)).toBe('scheduled')
+    expect(db.decisions('execute').map((entry) => entry.item_id)).toEqual([DROP])
+    // 정한 ID와 돌려준 ID가 같아 created_resource는 만들기 전에 한 번만 적는다
+    const resourceWrites = db.itemWrites().filter((call) => call.op === 'update' && 'created_resource' in (call.payload as Row))
+    expect(resourceWrites).toHaveLength(1)
+    expect(scheduleWrites(db)).toHaveLength(1)
+  })
+
+  it('created_resource.ambient_drop_schedule_id는 예약을 만들기 전에 적힌다(만드는 도중 끊겨도 상태 맞추기가 예약을 찾는다)', async () => {
+    const { db, run } = setupReal([drop()])
+    let writtenBeforeInsert: unknown = null
+    db.beforeRun = (call) => {
+      if (call.table === 'ambient_drop_schedules' && call.op === 'insert') {
+        writtenBeforeInsert = (db.item(DROP).created_resource as { ambient_drop_schedule_id?: string } | null)?.ambient_drop_schedule_id ?? null
+      }
+    }
+    ok(await run([DROP]))
+
+    expect(writtenBeforeInsert).toMatch(UUID_PATTERN)
+    expect(writtenBeforeInsert).toBe(db.tables.ambient_drop_schedules[0].id)
+  })
+
+  it('예정 시각 기준 대상 판정은 항목의 공개 시각으로 부른다', async () => {
+    const { run } = setupReal([drop()])
+    ok(await run([DROP]))
+
+    expect(h.loadScheduleTargets).toHaveBeenCalled()
+    for (const call of h.loadScheduleTargets.mock.calls) expect(call[2]).toBe('2026-10-10T00:00:00.000Z')
+  })
+
+  it('종류+개수 × 컬렉션도 예약된다. 지점 종류는 확인한다', async () => {
+    const { db, run } = setupReal([drop({ resource: { poi_category: 'cafe', total_count: 3, collection_ids: [BOOK] } })])
+    db.tables.poi_categories = [{ slug: 'cafe' }]
+    const result = ok(await run([DROP]))
+
+    expect(result.body.scheduled).toEqual([DROP])
+    expect(db.tables.ambient_drop_schedules[0]).toMatchObject({ poi_mode: 'category', poi_category: 'cafe', total_count: 3, per_poi_count: null })
+  })
+
+  it('없는 지점 종류는 고정 사유로 실패하고 아무것도 만들지 않는다', async () => {
+    const { db, run } = setupReal([drop({ resource: { poi_category: 'nowhere', total_count: 3, collection_ids: [BOOK] } })])
+    const result = ok(await run([DROP]))
+
+    expect(result.body.failed).toEqual([{ id: DROP, reason: '지점 종류를 찾을 수 없어요' }])
+    expect(statusOf(db, DROP)).toBe('failed')
+    expect(scheduleWrites(db)).toEqual([])
+    expect(db.decisions('fail').map((entry) => entry.reason)).toEqual(['지점 종류를 찾을 수 없어요'])
+  })
+
+  it('예정 시각에 놓을 대상이 걸리면 쉬운 문장으로 실패하고 아무것도 만들지 않는다. 컬렉션 ID는 응답·기록·슬랙에 없다', async () => {
+    h.loadScheduleTargets.mockResolvedValue(NOT_EXPOSED)
+    const { db, run } = setupReal([drop()])
+    const result = ok(await run([DROP]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed).toEqual([{ id: DROP, reason: PROBLEM }])
+    expect(statusOf(db, DROP)).toBe('failed')
+    expect(db.tables.ambient_drop_schedules).toEqual([])
+    expect(scheduleWrites(db)).toEqual([])
+    expect(db.decisions('fail').map((entry) => entry.reason)).toEqual([PROBLEM])
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(BOOK)
+  })
+
+  it('놓을 대상이 하나도 없어도(대상 없음) 같다: 「예정 시각에 노출 중인 컬렉션이 없어요」', async () => {
+    h.loadScheduleTargets.mockResolvedValue({ ...targetsOk(), badgePool: [], effectiveCollectionIds: [], reason: 'no_eligible_collection' })
+    const { db, run } = setupReal([drop()])
+    const result = ok(await run([DROP]))
+
+    expect(result.body.failed).toHaveLength(1)
+    expect(result.body.failed[0].reason).toContain('예정 시각에 노출 중인 컬렉션이 없어요')
+    expect(db.tables.ambient_drop_schedules).toEqual([])
+  })
+
+  it('대상 판정에 걸리면 연결된 카드도 함께 실패하고 카드도 만들지 않는다', async () => {
+    h.loadScheduleTargets.mockResolvedValue(NOT_EXPOSED)
+    const { db, run } = setupReal([card(), drop()])
+    const result = ok(await run([ID.card, DROP]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed.find((entry) => entry.id === DROP)?.reason).toBe(PROBLEM)
+    expect(result.body.failed.find((entry) => entry.id === ID.card)?.reason).toBe(GROUP_FAILED)
+    expect(db.tables.ambient_drop_schedules).toEqual([])
+    expect(db.tables.today_cards).toEqual([])
+    expect(db.calls.filter((call) => (call.table === 'today_cards' || call.table === 'ambient_drop_schedules') && call.op !== 'select')).toEqual([])
+  })
+
+  it('대상을 읽지 못하면 고정 사유로 실패한다. DB 오류 원문은 로그에만 남는다', async () => {
+    h.loadScheduleTargets.mockRejectedValue(new Error(DB_SECRET))
+    const { db, run } = setupReal([drop()])
+    const result = ok(await run([DROP]))
+
+    expect(result.body.failed).toEqual([{ id: DROP, reason: '드랍 대상을 확인하지 못했어요' }])
+    expect(db.tables.ambient_drop_schedules).toEqual([])
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(DB_SECRET)
+    expect(logged()).toContain(DB_SECRET)
+  })
+
+  it('형식 오류는 첫 문장으로 실패하고 만든 행이 없다: 종료 시각이 있으면 「드랍 예약 형식이 맞지 않아요: drop_schedule.ends_at: …」', async () => {
+    const { db, run } = setupReal([drop({ endsAt: '2026-10-17T00:00:00.000Z' })])
+    const result = ok(await run([DROP]))
+
+    expect(result.body.failed).toHaveLength(1)
+    expect(result.body.failed[0].reason).toMatch(/^드랍 예약 형식이 맞지 않아요: drop_schedule\.ends_at: /)
+    expect(db.tables.ambient_drop_schedules).toEqual([])
+    expect(statusOf(db, DROP)).toBe('failed')
+  })
+
+  it('공개 시각이 정시가 아니면 드랍 파서의 쉬운 문장으로 실패한다', async () => {
+    const { db, run } = setupReal([drop({ startsAt: '2026-10-10T00:30:00.000Z' })])
+    const result = ok(await run([DROP]))
+
+    expect(result.body.failed).toHaveLength(1)
+    expect(result.body.failed[0].reason).toMatch(/^드랍 예약 형식이 맞지 않아요: 놓을 시각이 정시가 아니에요/)
+    expect(db.tables.ambient_drop_schedules).toEqual([])
+  })
+
+  it('지점과 아이템을 정하는 방식이 섞이면 형식 오류로 실패한다', async () => {
+    const { db, run } = setupReal([drop({ resource: { poi_ids: [POI], per_poi_count: 2, collection_ids: [BOOK], badge_ids: [uid(43)] } })])
+    const result = ok(await run([DROP]))
+
+    expect(result.body.failed).toHaveLength(1)
+    expect(result.body.failed[0].reason).toContain('놓을 것을 정하는 방식이 섞여 있어요')
+    expect(db.tables.ambient_drop_schedules).toEqual([])
+  })
+
+  it('예약 insert가 실패하면 고정 사유로 실패하고 같은 ID로 status 조건의 정리 delete를 한 번 시도한다. 원문과 예약 ID는 어디에도 없다', async () => {
+    const { db, run } = setupReal([drop()])
+    db.failIf = (call) => call.table === 'ambient_drop_schedules' && call.op === 'insert'
+    const result = ok(await run([DROP]))
+
+    expect(result.body.failed).toEqual([{ id: DROP, reason: '드랍 예약을 만들지 못했어요' }])
+    expect(db.tables.ambient_drop_schedules).toEqual([])
+    expect(statusOf(db, DROP)).toBe('failed')
+    const plannedId = (db.item(DROP).created_resource as { ambient_drop_schedule_id: string }).ambient_drop_schedule_id
+    const cleanup = writes(db, 'ambient_drop_schedules', 'delete')
+    expect(cleanup).toHaveLength(1)
+    expect(cleanup[0].filters).toEqual([
+      ['id', plannedId],
+      ['status', 'scheduled'],
+    ])
+    for (const output of await outputsOf(db, result)) {
+      expect(output).not.toContain(DB_SECRET)
+      expect(output).not.toContain(plannedId)
+    }
+  })
+
+  it('드랍과 카드가 함께 예약된다: 드랍이 먼저 만들어지고 카드가 그다음이다', async () => {
+    const { db, run } = setupReal([card(), drop()])
+    const result = ok(await run([ID.card, DROP]))
+
+    expect([...result.body.scheduled].sort()).toEqual([ID.card, DROP].sort())
+    expect(db.tables.ambient_drop_schedules).toHaveLength(1)
+    expect(db.tables.today_cards).toHaveLength(1)
+    const inserts = db.calls.filter((call) => call.op === 'insert' && (call.table === 'ambient_drop_schedules' || call.table === 'today_cards')).map((call) => call.table)
+    expect(inserts).toEqual(['ambient_drop_schedules', 'today_cards'])
+    expect(db.item(DROP).created_resource).toEqual({ ambient_drop_schedule_id: db.tables.ambient_drop_schedules[0].id })
+  })
+
+  it('연결된 카드를 만들지 못하면 먼저 만든 드랍 예약을 지우고 그룹 전체가 실패한다. 원문은 로그에만 남는다', async () => {
+    const { db, run } = setupReal([card(), drop()])
+    db.failIf = (call) => call.table === 'today_cards' && call.op === 'insert'
+    const result = ok(await run([ID.card, DROP]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed.find((entry) => entry.id === ID.card)?.reason).toBe('카드를 만들지 못했어요')
+    expect(result.body.failed.find((entry) => entry.id === DROP)?.reason).toBe(GROUP_FAILED)
+    expect(writes(db, 'ambient_drop_schedules', 'insert')).toHaveLength(1)
+    expect(writes(db, 'ambient_drop_schedules', 'delete')).toHaveLength(1)
+    expect(db.tables.ambient_drop_schedules).toEqual([])
+    expect(db.tables.today_cards).toEqual([])
+    expect(statusOf(db, ID.card)).toBe('failed')
+    expect(statusOf(db, DROP)).toBe('failed')
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(DB_SECRET)
+    expect(logged()).toContain(DB_SECRET)
+  })
+
+  it('드랍 예약 insert가 실패하면 카드는 만들기 전이라 아무것도 만들지 않는다. 드랍 사유가 원인이다', async () => {
+    const { db, run } = setupReal([card(), drop()])
+    db.failIf = (call) => call.table === 'ambient_drop_schedules' && call.op === 'insert'
+    const result = ok(await run([ID.card, DROP]))
+
+    expect(result.body.failed.find((entry) => entry.id === DROP)?.reason).toBe('드랍 예약을 만들지 못했어요')
+    expect(result.body.failed.find((entry) => entry.id === ID.card)?.reason).toBe(GROUP_FAILED)
+    expect(db.tables.ambient_drop_schedules).toEqual([])
+    expect(writes(db, 'today_cards', 'insert')).toEqual([])
+  })
+
+  it('되돌리는 사이 드랍 실행이 시작되면 예약을 지우지 않고 「되돌리지 못한 자원이 있어요」를 덧붙인다. 예약 ID는 사유에 없다', async () => {
+    const { db, run } = setupReal([card(), drop()])
+    db.failIf = (call) => call.table === 'today_cards' && call.op === 'insert'
+    // 카드를 만들기 직전, 드랍 실행기가 이 예약을 선점한 경우를 흉내 낸다.
+    db.beforeRun = (call) => {
+      if (call.table === 'today_cards' && call.op === 'insert') db.tables.ambient_drop_schedules[0].status = 'running'
+    }
+    const result = ok(await run([ID.card, DROP]))
+
+    expect(result.body.failed.find((entry) => entry.id === DROP)?.reason).toBe(`${GROUP_FAILED}. 되돌리지 못한 자원이 있어요`)
+    expect(db.tables.ambient_drop_schedules).toHaveLength(1)
+    expect(db.tables.ambient_drop_schedules[0].status).toBe('running')
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(db.tables.ambient_drop_schedules[0].id as string)
+  })
+
+  it('시험 묶음은 등록 전 검사까지 하고 예약 표에 쓰지 않는다. created_resource는 { sample: true }다', async () => {
+    const { db, run } = setupReal([drop()], { is_sample: true })
+    const result = ok(await run([DROP]))
+
+    expect(result.body.scheduled).toEqual([DROP])
+    expect(db.tables.ambient_drop_schedules).toEqual([])
+    expect(h.loadScheduleTargets).toHaveBeenCalled() // 대상 판정은 했다
+    expect(db.calls.filter((call) => call.table === 'ambient_drop_schedules')).toEqual([])
+    expect(db.item(DROP).created_resource).toEqual({ sample: true })
+  })
+
+  it('시험 묶음도 대상 판정에 걸리면 실패한다', async () => {
+    h.loadScheduleTargets.mockResolvedValue(NOT_EXPOSED)
+    const { run } = setupReal([drop()], { is_sample: true })
+    const result = ok(await run([DROP]))
+
+    expect(result.body.failed).toEqual([{ id: DROP, reason: PROBLEM }])
+  })
+
+  it('같은 묶음을 두 번 실행해도 예약은 한 번만 만든다', async () => {
+    const { db, run } = setupReal([drop()])
+    ok(await run([DROP]))
+    const second = bad(await run([DROP]))
+
+    expect(second.status).toBe(409)
+    expect(writes(db, 'ambient_drop_schedules', 'insert')).toHaveLength(1)
+  })
+
+  it('같은 묶음의 컬렉션 항목과 연결된 드랍은 컬렉션 핸들러(⑩)가 없어 둘 다 막힌다. 아무것도 쓰지 않는다', async () => {
+    const { db, run } = setupReal([
+      drop({ links: ['collection'], resource: { poi_ids: [POI], per_poi_count: 2 } }),
+      { id: COLLECTION_ITEM, key: 'collection', kind: 'collection_launch' },
+    ])
+    const failure = bad(await run([DROP, COLLECTION_ITEM]))
+
+    expect(failure.status).toBe(409)
+    expect(failure.extra?.skipped).toEqual(
+      expect.arrayContaining([
+        { id: COLLECTION_ITEM, reason: PRECHECK_MESSAGES.noHandler },
+        { id: DROP, reason: PRECHECK_MESSAGES.groupBlocked },
+      ])
+    )
+    expect(nonSelect(db)).toEqual([])
   })
 })
