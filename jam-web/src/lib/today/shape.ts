@@ -19,6 +19,18 @@ export const CARD_SHAPES = ['hero', 'poster', 'square', 'brief', 'list'] as cons
 
 export type CardShape = (typeof CARD_SHAPES)[number]
 
+/**
+ * 모양별 카드 제목 글자 수 상한(홈피드 PRD §6 「글자 배치 상한」 표, 1453 확정 설계 3절). 글자 수는 운영자가 문구를 쓸 때 지킬 설계 상한이라
+ * 어겨도 막지 않고 경고한다(티켓 20261002_1028). `CARD_SHAPES`와 같은 키를 가진다.
+ */
+export const CARD_TITLE_MAX_LENGTH: Record<CardShape, number> = {
+  hero: 22,
+  poster: 18,
+  square: 22,
+  brief: 28,
+  list: 22,
+}
+
 /** 이미지가 있는 모양 — 이미지 제작이 필요한 모양이다. */
 export const IMAGE_CARD_SHAPES = ['hero', 'poster', 'square'] as const satisfies readonly CardShape[]
 
