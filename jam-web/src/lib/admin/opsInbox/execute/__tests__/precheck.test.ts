@@ -368,8 +368,9 @@ describe('그룹 결과 · 생성 순서와 linkedIds 계획', () => {
 
 describe('모듈 계약 — DB와 서버 전용 코드를 값으로 가져오지 않는다', () => {
   const dir = path.join(__dirname, '..')
-  // 실행 `run.ts`(티켓 20261002_1123)와 공개 전 취소 `cancel.ts`(티켓 20261002_1256)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 다섯만 본다.
-  const files = fs.readdirSync(dir).filter((name) => name.endsWith('.ts') && name !== 'run.ts' && name !== 'cancel.ts')
+  // 실행 `run.ts`(티켓 20261002_1123)·공개 전 취소 `cancel.ts`(티켓 20261002_1256)·상태 맞추기 `reconcile.ts`(티켓 20261002_1813)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 다섯만 본다.
+  const SERVER_ONLY = ['run.ts', 'cancel.ts', 'reconcile.ts']
+  const files = fs.readdirSync(dir).filter((name) => name.endsWith('.ts') && !SERVER_ONLY.includes(name))
 
   it('순수 모듈 다섯 개가 있다', () => {
     expect(files.sort()).toEqual(['groups.ts', 'handlers.ts', 'homeFeedCard.ts', 'precheck.ts', 'registry.ts'])

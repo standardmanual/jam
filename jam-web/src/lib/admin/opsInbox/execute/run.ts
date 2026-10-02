@@ -133,8 +133,8 @@ function isRunFailure<T extends object>(value: T | RunFailure): value is RunFail
 
 // ── 읽기 재료 ────────────────────────────────────────────────────────────────────────────────────
 
-/** `ExecuteItem`의 열 전부. 결정 처리(`decide.ts`)의 목록과 달리 `created_resource`·`pattern_no`가 들어 있다. */
-const ITEM_COLUMNS =
+/** `ExecuteItem`의 열 전부. 결정 처리(`decide.ts`)의 목록과 달리 `created_resource`·`pattern_no`가 들어 있다. 상태 맞추기(`reconcile.ts`)도 같이 쓴다. */
+export const ITEM_COLUMNS =
   'id, bundle_id, position, item_key, kind, status, starts_at, ends_at, pattern_no, original, edited, created_resource, format_errors, updated_at'
 
 /** 묶음과 그 항목을 읽는다. 공개 전 취소(`cancel.ts`)도 같이 쓴다. */
@@ -531,20 +531,29 @@ export async function executeBundle(
 
 // ── 슬랙 알림 ────────────────────────────────────────────────────────────────────────────────────
 
-/** 글을 올리고 그 결과를 결정 기록의 `slack_result`에 채운다(같은 `batch_id`의 그 `action` 행). 던지지 않는다. 공개 전 취소(`cancel.ts`)도 같이 쓴다. */
+/**
+ * 글을 올리고 그 결과를 결정 기록의 `slack_result`에 채운다(같은 `batch_id`의 그 `action` 행). 던지지 않는다. 공개 전 취소(`cancel.ts`)·상태 맞추기(`reconcile.ts`)도 같이 쓴다.
+ * `action`이 배열이면 그 가운데 어느 것이든 채우고(빈 배열이면 글만 올린다), `itemIds`를 주면 그 항목의 행만 채운다
+ * (상태 맞추기는 한 회차의 `batch_id` 하나로 시험 묶음 글과 실제 묶음 글을 따로 보내서 항목으로 가른다, 티켓 20261002_1813).
+ */
 export async function postAndRecord(
   service: ServiceClient,
   slack: Pick<ExecuteNotification, 'batchId' | 'decisionLogFailed'>,
   channel: OpsSlackChannel,
-  action: string,
-  text: string
+  action: string | readonly string[],
+  text: string,
+  itemIds?: readonly string[]
 ): Promise<void> {
   try {
     const result: OpsSlackResult = await postOpsSlack(channel, text)
     if (!result.ok) console.error(`${LOG} 슬랙 알림 실패(${channel}):`, result.error)
-    if (slack.decisionLogFailed) return
+    const actions = typeof action === 'string' ? [action] : action
+    if (slack.decisionLogFailed || actions.length === 0) return
     const slackResult: Json = result.error ? { channel, ok: result.ok, error: result.error } : { channel, ok: result.ok }
-    const { error } = await service.from('ops_decisions').update({ slack_result: slackResult }).eq('batch_id', slack.batchId).eq('action', action)
+    let update = service.from('ops_decisions').update({ slack_result: slackResult }).eq('batch_id', slack.batchId)
+    update = actions.length === 1 ? update.eq('action', actions[0]) : update.in('action', [...actions])
+    if (itemIds) update = update.in('item_id', [...itemIds])
+    const { error } = await update
     if (error) logError('알림 결과 기록 실패', error)
   } catch (err) {
     console.error(`${LOG} 슬랙 알림 처리 중 예외:`, err instanceof Error ? err.name : 'unknown')
