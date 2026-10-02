@@ -1,11 +1,12 @@
 /**
  * 예약 등록 실행 테스트용 메모리 DB (티켓 20261002_1123). `opsInbox/__tests__/decide.test.ts`의 가짜 Supabase 질의와 같은 모양이다
  * (실 DB에 접속하지 않는다). 쓰기 직전에 부르는 `beforeRun`으로 동시 실행을 흉내 내고, `failIf`로 원하는 쓰기만 실패시킨다.
+ * 카드 핸들러(티켓 20261002_1255)가 쓰는 질의도 받는다: `is`·`limit`, 참조 세기의 `select(칼럼, { count, head })`, 기본 테이블 `today_cards` 등.
  */
 import type { ExecuteServiceClient } from '../handlers'
 
 export type Row = Record<string, unknown>
-type Result = { data?: unknown; error: { message: string } | null }
+type Result = { data?: unknown; error: { message: string } | null; count?: number | null }
 
 export interface FakeCall {
   table: string
@@ -23,14 +24,17 @@ class FakeQuery implements PromiseLike<Result> {
   private filters: Array<[string, (row: Row) => boolean]> = []
   private log: Array<[string, unknown]> = []
   private returning = false
+  private head = false
+  private limitTo: number | null = null
 
   constructor(
     private db: FakeDb,
     private table: string
   ) {}
 
-  select() {
+  select(_columns?: string, options?: { count?: 'exact'; head?: boolean }) {
     if (this.mode !== 'select') this.returning = true
+    if (options?.head) this.head = true
     return this
   }
   insert(payload: Row | Row[]) {
@@ -55,6 +59,16 @@ class FakeQuery implements PromiseLike<Result> {
   in(col: string, vals: unknown[]) {
     this.filters.push([col, (row) => vals.includes(row[col])])
     this.log.push([col, vals])
+    return this
+  }
+  /** `is(col, null)`: 칸이 비었거나 없는 행. */
+  is(col: string, val: null) {
+    this.filters.push([col, (row) => (row[col] ?? null) === val])
+    this.log.push([col, val])
+    return this
+  }
+  limit(count: number) {
+    this.limitTo = count
     return this
   }
   async single() {
@@ -89,15 +103,8 @@ class FakeQuery implements PromiseLike<Result> {
     if (this.mode === 'insert') {
       const list = Array.isArray(this.payload) ? this.payload : [this.payload]
       const inserted = list.map((item) => {
-        const row: Row = {
-          id: `id-${++this.db.seq}`,
-          item_id: null,
-          batch_id: null,
-          diff: null,
-          reason: null,
-          slack_result: null,
-          ...item,
-        }
+        const defaults: Row = this.table === 'ops_decisions' ? { item_id: null, batch_id: null, diff: null, reason: null, slack_result: null } : {}
+        const row: Row = { id: `id-${++this.db.seq}`, ...defaults, ...item }
         rows.push(row)
         return row
       })
@@ -113,12 +120,25 @@ class FakeQuery implements PromiseLike<Result> {
       this.db.tables[this.table] = rows.filter((row) => !gone.has(row))
       return { data: null, error: null }
     }
-    return { data: matches().map((row) => ({ ...row })), error: null }
+    const hit = matches()
+    // 참조 세기(`select(칼럼, { count: 'exact', head: true })`)는 행 없이 건수만 돌려준다.
+    if (this.head) return { data: null, count: hit.length, error: null }
+    return { data: (this.limitTo === null ? hit : hit.slice(0, this.limitTo)).map((row) => ({ ...row })), error: null }
   }
 }
 
 export class FakeDb {
-  tables: Record<string, Row[]> = { ops_bundles: [], ops_bundle_items: [], ops_decisions: [] }
+  tables: Record<string, Row[]> = {
+    ops_bundles: [],
+    ops_bundle_items: [],
+    ops_decisions: [],
+    today_cards: [],
+    today_card_events: [],
+    missions: [],
+    item_books: [],
+    badges: [],
+    ranking_modes: [],
+  }
   calls: FakeCall[] = []
   seq = 0
   /** 쓰기·읽기 직전에 부른다. 다른 곳에서 같은 행을 먼저 바꾼 상황을 흉내 낼 때 쓴다. */

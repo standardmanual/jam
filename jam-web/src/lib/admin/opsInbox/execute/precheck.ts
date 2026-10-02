@@ -25,7 +25,8 @@ import {
   type LinkFill,
   type LinkGroup,
 } from './groups'
-import { EXECUTE_HANDLERS, RESOURCE_KEY_BY_KIND, isExecutableKind, type ExecuteHandlerRegistry, type ExecuteItem } from './handlers'
+import { RESOURCE_KEY_BY_KIND, isExecutableKind, type ExecuteHandlerRegistry, type ExecuteItem } from './handlers'
+import { EXECUTE_HANDLERS } from './registry'
 
 /** 공개 시각까지 이만큼(10분) 남았거나 더 적으면 막는다. 정확히 10분 남아도 막는다(G6, 가정 5). */
 export const EXECUTE_LEAD_MS = 10 * 60_000

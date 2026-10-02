@@ -1,8 +1,8 @@
 /**
  * 예약 등록의 종류별 핸들러 계약 (티켓 20261002_1122, 상위 20260930_1500 ③-a). 규칙의 정본은 `docs/specs/prd/ops-tool/PRD.md` §8이다.
  *
- * 이 파일은 타입과 빈 레지스트리만 둔다. DB를 부르지 않고, Supabase는 타입으로만 가져온다(값 import 없음). 실제 핸들러는
- * 종류마다 뒤 조각(④ 카드·⑥ 미션·⑧ 레시피·드랍·⑨ 배지·⑩ 컬렉션)이 만들어 `EXECUTE_HANDLERS`에 붙인다.
+ * 이 파일은 타입과 공용 도우미만 둔다. DB를 부르지 않고, Supabase는 타입으로만 가져온다(값 import 없음). 실제 핸들러는
+ * 종류마다 파일을 따로 두고(④ 카드는 `homeFeedCard.ts`) `registry.ts`의 `EXECUTE_HANDLERS`에 붙인다. 이 파일은 핸들러를 가져오지 않는다(순환 import 방지).
  * 레지스트리에 없는 종류는 사전 점검(`precheck.ts`)이 「아직 연결하지 않은 종류예요」로 막는다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
@@ -111,9 +111,6 @@ export interface ExecuteHandler<P = unknown> {
 
 /** 종류 → 핸들러. 없는 종류는 사전 점검이 막는다. */
 export type ExecuteHandlerRegistry = { readonly [kind: string]: ExecuteHandler | undefined }
-
-/** 지금 연결된 핸들러. 비어 있다. 종류마다 뒤 조각(④ 카드)이 여기에 붙인다. */
-export const EXECUTE_HANDLERS: ExecuteHandlerRegistry = {}
 
 /**
  * service-role 클라이언트를 등록 전 DB 검사가 받는 최소 인터페이스로 좁힌다. 생성 타입 클라이언트를 그대로 넘기면

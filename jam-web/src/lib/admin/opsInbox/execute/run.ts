@@ -4,7 +4,7 @@
  * `dryRunExecution`은 사전 점검 결과를 돌려준다(쓰기 없음). `executeBundle`은 요청한 항목 가운데 지금도 예약할 수 있는 항목을 실행한다:
  * 선점(`approved` → `preparing`) → 그룹마다 등록 전 검증 → 생성(실패하면 이번에 만든 자원을 역순으로 `undo`) → 상태 갱신 → 결정 기록.
  * 서비스 클라이언트와 핸들러 레지스트리는 인자로 받는다(라우트가 실제 것을, 테스트가 가짜를 넘긴다). 실패해도 던지지 않고
- * `{ ok: false, status, error }`를 돌려준다. 실제 종류별 핸들러는 뒤 조각이 `EXECUTE_HANDLERS`에 붙인다.
+ * `{ ok: false, status, error }`를 돌려준다. 종류별 핸들러는 `registry.ts`의 `EXECUTE_HANDLERS`에 붙어 있다(지금은 홈피드 카드).
  *
  * 지키는 규칙
  * - 선점은 조건부 update다(`status = 'approved'`). 하나도 차지하지 못하면 409라 같은 묶음을 두 번 실행해도 한 번만 반영된다.
@@ -25,7 +25,6 @@ import { asRecord } from '@/lib/admin/opsInbox/itemView'
 import { formatKstDayTime, kindLabel } from '@/lib/admin/opsInbox/labels'
 import { formatExecuteFailureMessage, formatExecuteSummaryMessage, postOpsSlack, type OpsSlackChannel, type OpsSlackResult } from '@/lib/admin/opsInbox/slack'
 import {
-  EXECUTE_HANDLERS,
   RESOURCE_KEY_BY_KIND,
   asRegisterChecksClient,
   isExecutableKind,
@@ -39,6 +38,7 @@ import {
   type ExecuteServiceClient,
 } from './handlers'
 import { PRECHECK_MESSAGES, precheckBundle, type PrecheckGroup, type PrecheckResult } from './precheck'
+import { EXECUTE_HANDLERS } from './registry'
 
 type ServiceClient = ExecuteServiceClient
 
