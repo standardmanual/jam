@@ -39,7 +39,8 @@ code:
   쓰기·시각 표기)만 가져다 쓴다. 미션 전용 부분은 `registerMission*.mjs`에 있다. 다만 DB 읽기 검사와 `--undo` 전 참조 확인은
   서버(운영툴 예약 등록)도 같은 함수를 쓰도록 세 유형 모두 `jam-web/src/lib/admin/registerChecks/`의 TS 모듈로 옮겼다
   (미션은 `mission.ts`의 `runMissionDbChecks`, `references.ts`의 `MISSION_UNDO_REFERENCE_TABLES`·`findMissionUndoReferences`.
-  티켓 20261002_0827). 스크립트의 같은 이름 함수는 그 모듈을 부르는 얇은 래퍼다. 미션 한 건의 순수 검사(`validateMission`)·미션 상수
+  티켓 20261002_0827). 스크립트의 같은 이름 함수는 그 모듈을 부르는 얇은 래퍼다. 운영툴 예약 등록(티켓 20261002_1944)은 같은 `runMissionDbChecks`에 `titleDuplicate: 'overlap'`을
+  골라 「제목 중복」을 기간이 겹칠 때만 건다. 스크립트는 고르지 않으므로 묶음의 `starts_at`을 함께 넘겨도 지금까지처럼 같은 제목이 하나라도 있으면 거절한다. 미션 한 건의 순수 검사(`validateMission`)·미션 상수
   (`MISSION_REQUIRED_FIELDS`·`STATUS_DISPLAY_TYPES`·`EXPOSURE_MODES` 등)·insert 페이로드 코어(`buildMissionInsertPayload`)도 `missionFields.ts`로,
   정규식(`UUID_PATTERN`·`CONTROL_OR_LINE_BREAK`)과 보조 함수는 `bundleRules.ts`로 옮겼다(티켓 20261002_1027). `registerMissionBundle.mjs`는 그 상수를
   같은 이름으로 다시 내보내고 `validateMission`을 부르며, `buildMissionInsertPayload`는 얇은 JS 래퍼다. 동작·오류 문장·페이로드 키 집합은

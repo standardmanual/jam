@@ -1,6 +1,6 @@
 /**
  * 공개 전 취소 (티켓 20261002_1256, 상위 20260930_1500 ④-b). 가정 1~6은 티켓 「착수 전에 정한 것」 번호다.
- * 카드는 실제 핸들러와 메모리 DB(`fakeDb.ts`)로, 함께 취소·부분 실패는 가짜 종류 핸들러로 지킨다(레지스트리에는 카드만 있다).
+ * 카드와 미션(티켓 20261002_1944, ⑥)은 실제 핸들러와 메모리 DB(`fakeDb.ts`)로, 함께 취소·부분 실패는 가짜 종류 핸들러로 지킨다.
  *
  * - 카드 취소(가정 2·4): 행 삭제·항목 취소·`cancel` 기록, 시험 묶음은 `today_cards`에 쓰지 않는다
  * - 막는 경우: 공개 시각이 지남·노출 기록·예약됨이 아님·핸들러 없음·묶음에 없는 항목은 쓰기 없이 4xx
@@ -8,6 +8,7 @@
  * - 함께 취소(가정 3): 예약됨 항목이 가리키면 함께, 게재중·준비중이 가리키면 409, 가리키는 대상은 그대로
  * - 부분 실패·상태 저장 실패·결정 기록 실패(`decisionLogFailed`)·상태 경합
  * - 미리 보기(가정 5): 쓰기 없음. 슬랙(가정 6): 요약·알림과 `slack_result`
+ * - 예약됨 미션 취소(⑥): 실제 미션 핸들러, 미션을 가리키는 카드를 먼저 지운 뒤 미션을 지운다
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -442,9 +443,9 @@ describe('함께 취소할 항목 — 가짜 종류 핸들러(가정 3·4)', () 
     expect(nonSelect(db)).toEqual([])
   })
 
-  it('실제 레지스트리에는 카드만 있어 미션 항목은 409로 막힌다', async () => {
-    const { db, run } = setup([missionSpec()])
-    const failure = bad(await run(ID.mission))
+  it('실제 레지스트리에 아직 없는 종류(레시피 등)는 409로 막힌다', async () => {
+    const { db, run } = setup([{ id: ID.poster, key: 'recipe', kind: 'recipe', status: 'scheduled', createdResource: { recipe_id: uid(21) } }])
+    const failure = bad(await run(ID.poster))
     expect(failure.status).toBe(409)
     expect(failure.error).toBe('아직 취소를 연결하지 않은 종류예요')
     expect(nonSelect(db)).toEqual([])
@@ -470,6 +471,128 @@ describe('함께 취소할 항목 — 가짜 종류 핸들러(가정 3·4)', () 
     const { run } = setup(linked(), { handlers: fakeRegistry(rec, { [CARD_RES]: { ok: true, missing: true } }) })
     const result = ok(await run(ID.mission))
     expect(result.body).toEqual({ ok: true, cancelled: [ID.card, ID.mission], missing: [ID.card] })
+  })
+})
+
+// ── 미션 취소 ────────────────────────────────────────────────────────────────────────────────────
+
+describe('예약됨 미션 취소 — 실제 카드·미션 핸들러 (티켓 20261002_1944)', () => {
+  const missionRow = (extra: Row = {}): Row => ({ id: MISSION_RES, starts_at: LATER, ends_at: null, exposure_mode: 'start_date', exposure_at: null, ...extra })
+  /** 카드가 미션을 가리키는 그룹. 카드 행은 미션 ID를 `mission_id`로 갖는다. */
+  function linkedSetup(options: Parameters<typeof setup>[1] = {}, specs: ItemSpec[] = [cardSpec({ links: ['mission'] }), missionSpec()]) {
+    const made = setup(specs, { ...options, cards: [{ id: CARD_RES, starts_at: LATER, mission_id: MISSION_RES }] })
+    made.db.tables.missions = [missionRow(), { id: uid(98), starts_at: LATER, ends_at: null, exposure_mode: 'start_date', exposure_at: null }]
+    return made
+  }
+  const orderOf = (db: FakeDb) => db.calls.map((call) => `${call.table}:${call.op}`)
+
+  it('미션을 취소하면 그 미션을 가리키는 카드를 먼저 지운 뒤 미션을 지운다. 카드가 남아 있으면 미션의 참조 확인에 걸리기 때문이다', async () => {
+    const { db, run } = linkedSetup()
+    const result = ok(await run(ID.mission, '미션을 접어요'))
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.card, ID.mission], missing: [] })
+    expect(db.tables.today_cards).toEqual([])
+    expect((db.tables.missions as Row[]).map((row) => row.id)).toEqual([uid(98)])
+    expect(statusOf(db, ID.card)).toBe('cancelled')
+    expect(statusOf(db, ID.mission)).toBe('cancelled')
+    expect(db.decisions('cancel').map((row) => [row.item_id, row.reason, row.batch_id])).toEqual([
+      [ID.card, '미션을 접어요', result.batchId],
+      [ID.mission, '미션을 접어요', result.batchId],
+    ])
+    const order = orderOf(db)
+    expect(order.indexOf('today_cards:delete')).toBeLessThan(order.indexOf('missions:delete'))
+    // 미션의 참조 확인(today_cards를 미션 ID로 센다)은 카드를 지운 뒤에 이뤄졌다
+    expect(order.lastIndexOf('today_cards:select')).toBeGreaterThan(order.indexOf('today_cards:delete'))
+    expect(db.calls.find((call) => call.table === 'missions' && call.op === 'delete')?.filters).toEqual([['id', MISSION_RES], ['starts_at >', NOW.toISOString()]])
+    expect(result.slack.cancelledLabels).toEqual([CARD_LABEL, MISSION_LABEL])
+  })
+
+  it('카드만 취소하면 미션은 남는다', async () => {
+    const { db, run } = linkedSetup()
+    const result = ok(await run(ID.card))
+
+    expect(result.body.cancelled).toEqual([ID.card])
+    expect(db.tables.today_cards).toEqual([])
+    expect((db.tables.missions as Row[]).map((row) => row.id)).toEqual([MISSION_RES, uid(98)])
+    expect(statusOf(db, ID.mission)).toBe('scheduled')
+  })
+
+  it('운영툴 밖에서 만든 카드가 미션을 가리키면 409이고 아무것도 지우지 않는다. 테이블 이름은 응답에 없다', async () => {
+    const { db, run } = setup([missionSpec()], { cards: [{ id: uid(60), starts_at: LATER, mission_id: MISSION_RES }] })
+    db.tables.missions = [missionRow()]
+    const failure = bad(await run(ID.mission))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe('참여 기록이나 연결이 있거나 확인하지 못해 미션을 지우지 않았어요')
+    expect(failure.error).not.toContain('today_cards')
+    expect(nonSelect(db)).toEqual([])
+    expect(statusOf(db, ID.mission)).toBe('scheduled')
+    expect(logged()).toContain('today_cards')
+  })
+
+  it('참여 기록이 붙은 미션은 409이고 지우지 않는다', async () => {
+    const { db, run } = setup([missionSpec()], { cards: [] })
+    db.tables.missions = [missionRow()]
+    db.tables.user_mission_participations = [{ id: 'p-1', mission_id: MISSION_RES }]
+    const failure = bad(await run(ID.mission))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe('참여 기록이나 연결이 있거나 확인하지 못해 미션을 지우지 않았어요')
+    expect(nonSelect(db)).toEqual([])
+    expect(db.tables.missions).toHaveLength(1)
+    expect(logged()).toContain('user_mission_participations')
+  })
+
+  it('공개 시각이 지난 미션은 409이고 아무것도 지우지 않는다(상태 맞추기가 아직 게재중으로 바꾸지 않은 미션)', async () => {
+    const { db, run } = setup([missionSpec()], { cards: [] })
+    db.tables.missions = [missionRow({ starts_at: PAST })]
+    const failure = bad(await run(ID.mission))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe('공개 시각이 지나 취소할 수 없어요')
+    expect(failure.slack).toBeUndefined()
+    expect(nonSelect(db)).toEqual([])
+    expect(statusOf(db, ID.mission)).toBe('scheduled')
+    expect(db.decisions()).toEqual([])
+  })
+
+  it('밖에서 이미 지워진 미션은 missing으로 두고 항목만 「취소」로 둔다', async () => {
+    const { db, run } = setup([missionSpec()], { cards: [] })
+    const result = ok(await run(ID.mission))
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.mission], missing: [ID.mission] })
+    expect(statusOf(db, ID.mission)).toBe('cancelled')
+    expect(nonSelect(db).filter((call) => call.table === 'missions')).toEqual([])
+  })
+
+  it('시험 묶음은 missions를 읽지도 쓰지도 않고 항목만 「취소」로 둔다', async () => {
+    const { db, run } = setup([cardSpec({ links: ['mission'], createdResource: { sample: true } }), missionSpec({ createdResource: { sample: true } })], { bundle: { is_sample: true } })
+    const result = ok(await run(ID.mission))
+
+    expect(result.body.cancelled).toEqual([ID.card, ID.mission])
+    expect(db.calls.filter((call) => call.table === 'missions' || call.table === 'today_cards')).toEqual([])
+  })
+
+  it('미션은 이미 공개 시각이 지났는데 카드는 공개 전이면 카드만 지우고 미션에서 막혀 부분 실패(500)다', async () => {
+    const { db, run } = linkedSetup()
+    ;(db.tables.missions[0] as Row).starts_at = PAST
+    const failure = bad(await run(ID.mission))
+
+    expect(failure.status).toBe(500)
+    expect(failure.error).toBe('일부만 취소했어요. 나머지는 취소하지 못했어요. 화면을 새로 고쳐 확인해 주세요.')
+    expect(failure.extra).toEqual({ cancelled: [ID.card] })
+    expect(db.tables.today_cards).toEqual([])
+    expect((db.tables.missions as Row[]).map((row) => row.id)).toContain(MISSION_RES)
+    expect(statusOf(db, ID.card)).toBe('cancelled')
+    expect(statusOf(db, ID.mission)).toBe('scheduled')
+    expect(failure.slack).toMatchObject({ cancelledLabels: [CARD_LABEL], problems: [{ itemLabel: MISSION_LABEL, reason: '공개 시각이 지나 취소할 수 없어요' }] })
+  })
+
+  it('미리 보기는 미션과 그 미션을 가리키는 카드를 쓰기 없이 돌려준다', async () => {
+    const { db, preview } = linkedSetup()
+    expect(await preview(ID.mission)).toEqual({ ok: true, body: { ok: true, dryRun: true, cancelIds: [ID.card, ID.mission], blockers: [] } })
+    expect(nonSelect(db)).toEqual([])
+    expect(db.calls.some((call) => call.table === 'missions')).toBe(false)
   })
 })
 
@@ -593,10 +716,10 @@ describe('미리 보기 { dryRun: true }(가정 5)', () => {
   })
 
   it('예약됨이 아니면 409, 묶음에 없는 항목은 404, 핸들러가 없으면 409다', async () => {
-    const { db, preview } = setup([cardSpec({ status: 'approved' }), missionSpec()])
+    const { db, preview } = setup([cardSpec({ status: 'approved' }), { id: ID.poster, key: 'recipe', kind: 'recipe', status: 'scheduled', createdResource: { recipe_id: uid(21) } }])
     expect(await preview(ID.card)).toMatchObject({ ok: false, status: 409, error: '예약됨 항목만 취소할 수 있어요' })
     expect(await preview(uid(77))).toMatchObject({ ok: false, status: 404 })
-    expect(await preview(ID.mission)).toMatchObject({ ok: false, status: 409, error: '아직 취소를 연결하지 않은 종류예요' })
+    expect(await preview(ID.poster)).toMatchObject({ ok: false, status: 409, error: '아직 취소를 연결하지 않은 종류예요' })
     expect(nonSelect(db)).toEqual([])
   })
 

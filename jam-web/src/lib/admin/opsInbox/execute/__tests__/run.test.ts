@@ -1,6 +1,7 @@
 /**
  * 예약 등록 실행 (티켓 20261002_1123, 상위 20260930_1500 ③-b). 실행 흐름은 가짜 핸들러 레지스트리와 메모리 DB(`fakeDb.ts`)로 지킨다.
- * 가정 1~6은 티켓 「착수 전에 정한 것」 번호다. 맨 끝 「실제 레지스트리」는 ④-a(티켓 20261002_1255)가 붙인 홈피드 카드 핸들러까지 통합해 본다.
+ * 가정 1~6은 티켓 「착수 전에 정한 것」 번호다. 맨 끝 「실제 레지스트리」는 ④-a(티켓 20261002_1255)가 붙인 홈피드 카드 핸들러와
+ * ⑥(티켓 20261002_1944)이 붙인 미션 핸들러까지 통합해 본다.
  *
  * - 사전 점검 요청: 쓰기 없음
  * - 선점: 조건부 update, 두 번째 실행·동시 실행 409, 그룹 일부만 차지했을 때(가정 3)
@@ -11,6 +12,7 @@
  * - ④-a 가정 6: 실행할 그룹이 없어도 실패로 닫을 항목은 닫는다(200). 닫을 것도 예약할 것도 없을 때만 409
  * - 슬랙 두 갈래와 slack_result 나눠 채우기
  * - 실제 레지스트리: 승인된 카드 → today_cards 행, 시험 묶음은 쓰지 않음, 등록 전 검사 실패는 고정 사유
+ * - 실제 레지스트리(⑥): 카드+미션 그룹이 함께 예약되고 하나가 실패하면 역순(카드 먼저)으로 되돌려진다, 사전 점검 두 규칙, 원문 비노출
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -742,7 +744,21 @@ describe('슬랙 알림 notifyExecution', () => {
   })
 })
 
-// ── 실제 레지스트리(홈피드 카드 핸들러) ──────────────────────────────────────────────────────────
+// ── 실제 레지스트리(홈피드 카드·미션 핸들러) ─────────────────────────────────────────────────────
+
+function setupReal(specs: ItemSpec[], bundle: Row = {}) {
+  const db = new FakeDb()
+  db.tables.ops_bundles = [{ id: B, is_sample: false, ...bundle }]
+  db.tables.ops_bundle_items = specs.map((spec) => ({ ...makeItem(spec), bundle_id: B }))
+  const run = (itemIds: unknown) => executeBundle(db.service, { bundleId: B, itemIds, actor: ACTOR }, { handlers: EXECUTE_HANDLERS, now: () => NOW })
+  return { db, run }
+}
+
+/** 응답·결정 기록·슬랙에 나간 모든 글. */
+async function outputsOf(db: FakeDb, result: ExecuteSuccess) {
+  await notifyExecution(db.service, result)
+  return [JSON.stringify(result.body), JSON.stringify(db.tables.ops_decisions), h.postOpsSlack.mock.calls.map((call) => call[1]).join('\n')]
+}
 
 describe('실제 레지스트리: 홈피드 카드 핸들러 (티켓 20261002_1255)', () => {
   const MISSING_MISSION = uid(8)
@@ -757,20 +773,6 @@ describe('실제 레지스트리: 홈피드 카드 핸들러 (티켓 20261002_12
     resource: { template_type: 'drop_alert', cover_image_url: 'https://cdn.example.com/card.webp' },
     ...over,
   })
-
-  function setupReal(specs: ItemSpec[], bundle: Row = {}) {
-    const db = new FakeDb()
-    db.tables.ops_bundles = [{ id: B, is_sample: false, ...bundle }]
-    db.tables.ops_bundle_items = specs.map((spec) => ({ ...makeItem(spec), bundle_id: B }))
-    const run = (itemIds: unknown) => executeBundle(db.service, { bundleId: B, itemIds, actor: ACTOR }, { handlers: EXECUTE_HANDLERS, now: () => NOW })
-    return { db, run }
-  }
-
-  /** 응답·결정 기록·슬랙에 나간 모든 글. */
-  async function outputsOf(db: FakeDb, result: ExecuteSuccess) {
-    await notifyExecution(db.service, result)
-    return [JSON.stringify(result.body), JSON.stringify(db.tables.ops_decisions), h.postOpsSlack.mock.calls.map((call) => call[1]).join('\n')]
-  }
 
   it('승인된 카드 하나를 실행하면 today_cards에 공개 전 행이 생기고 created_resource.today_card_id와 ID가 같다', async () => {
     const { db, run } = setupReal([card()])
@@ -895,11 +897,223 @@ describe('실제 레지스트리: 홈피드 카드 핸들러 (티켓 20261002_12
     expect(order.indexOf('today_card_events:select')).toBeLessThan(order.lastIndexOf('today_cards:delete'))
   })
 
-  it('미션 등 다른 종류는 아직 연결하지 않은 종류로 막힌다', async () => {
-    const { db, run } = setupReal([{ id: ID.mission, key: 'mission', kind: 'mission' }])
-    const failure = bad(await run([ID.mission]))
+  it('아직 연결하지 않은 종류(레시피 등)는 막힌다', async () => {
+    const { db, run } = setupReal([{ id: ID.recipe, key: 'recipe', kind: 'recipe' }])
+    const failure = bad(await run([ID.recipe]))
     expect(failure.status).toBe(409)
-    expect(failure.extra?.skipped).toEqual([{ id: ID.mission, reason: PRECHECK_MESSAGES.noHandler }])
+    expect(failure.extra?.skipped).toEqual([{ id: ID.recipe, reason: PRECHECK_MESSAGES.noHandler }])
     expect(nonSelect(db)).toEqual([])
+  })
+})
+
+// ── 실제 레지스트리(미션 핸들러와 카드↔미션 연결, 티켓 20261002_1944) ────────────────────────────
+
+describe('실제 레지스트리: 미션 핸들러와 카드↔미션 연결 (티켓 20261002_1944)', () => {
+  const MISSING_BADGE = uid(8)
+  const GROUP_FAILED = '연결된 항목을 만들지 못해 함께 실패했어요'
+  /** 공개 시각은 행의 `LATER`(10/10 09:00 KST)다. 카드는 연결로 미션 ID를 받는다(`mission_spotlight`는 `mission_id`가 있어야 한다). */
+  const card = (over: Partial<ItemSpec> = {}): ItemSpec => ({
+    id: ID.card,
+    key: 'card',
+    kind: 'home_feed_card',
+    links: ['mission'],
+    original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '주말 러닝 카드' } },
+    resource: { template_type: 'mission_spotlight' },
+    ...over,
+  })
+  const mission = (over: Partial<ItemSpec> = {}): ItemSpec => ({
+    id: ID.mission,
+    key: 'mission',
+    kind: 'mission',
+    original: { copy: { title: '주말 러닝', description: '주말에 30km를 달려요.' } },
+    resource: { mission_type: 'distance', condition_json: { activity_type: 'running', distance_km: 30 } },
+    ...over,
+  })
+  const writes = (db: FakeDb, table: string, op: FakeCall['op']) => db.calls.filter((call) => call.table === table && call.op === op)
+
+  it('승인된 카드+미션 그룹이 함께 예약된다: 미션이 먼저 만들어지고 카드가 그 ID를 mission_id로 갖는다', async () => {
+    const { db, run } = setupReal([card(), mission()])
+    const result = ok(await run([ID.card, ID.mission]))
+
+    expect([...result.body.scheduled].sort()).toEqual([ID.card, ID.mission].sort())
+    expect(result.body.failed).toEqual([])
+    expect(db.tables.missions).toHaveLength(1)
+    expect(db.tables.today_cards).toHaveLength(1)
+    const missionRow = db.tables.missions[0]
+    expect(missionRow).toMatchObject({
+      title: '주말 러닝',
+      starts_at: '2026-10-10T00:00:00.000Z',
+      ends_at: null,
+      exposure_mode: 'start_date',
+      exposure_at: null,
+      image_source: null,
+    })
+    expect(db.tables.today_cards[0].mission_id).toBe(missionRow.id)
+    expect(db.item(ID.mission).created_resource).toEqual({ mission_id: missionRow.id })
+    expect(statusOf(db, ID.card)).toBe('scheduled')
+    expect(statusOf(db, ID.mission)).toBe('scheduled')
+    expect(db.decisions('execute').map((entry) => entry.item_id).sort()).toEqual([ID.card, ID.mission].sort())
+    // 미션을 먼저 만든다
+    const inserts = db.calls.filter((call) => call.op === 'insert' && (call.table === 'missions' || call.table === 'today_cards')).map((call) => call.table)
+    expect(inserts).toEqual(['missions', 'today_cards'])
+    // 정한 ID와 돌려준 ID가 같아 created_resource는 미션도 만들기 전에 한 번만 적는다
+    const missionResourceWrites = db.itemWrites().filter((call) => call.op === 'update' && JSON.stringify(call.payload).includes('"mission_id"'))
+    expect(missionResourceWrites).toHaveLength(1)
+  })
+
+  it('미션 하나만 있어도 예약된다. 보상 배지는 resource가 정한 것을 존재 확인한 뒤 담는다', async () => {
+    const { db, run } = setupReal([mission({ resource: { mission_type: 'distance', condition_json: { distance_km: 30 }, reward_badge_ids: [ID.badge] } })])
+    db.tables.badges = [{ id: ID.badge, deleted_at: null }]
+    const result = ok(await run([ID.mission]))
+
+    expect(result.body.scheduled).toEqual([ID.mission])
+    expect(db.tables.missions[0]).toMatchObject({ reward_badge_ids: [ID.badge] })
+  })
+
+  it('카드 insert가 실패하면 먼저 만든 미션을 되돌리고 그룹 전체가 실패한다. 카드 사유가 원인이고 미션은 함께 실패다', async () => {
+    const { db, run } = setupReal([card(), mission()])
+    db.failIf = (call) => call.table === 'today_cards' && call.op === 'insert'
+    const result = ok(await run([ID.card, ID.mission]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed.find((entry) => entry.id === ID.card)?.reason).toBe('카드를 만들지 못했어요')
+    expect(result.body.failed.find((entry) => entry.id === ID.mission)?.reason).toBe(GROUP_FAILED)
+    expect(db.tables.missions).toEqual([])
+    expect(db.tables.today_cards).toEqual([])
+    expect(writes(db, 'missions', 'insert')).toHaveLength(1)
+    expect(writes(db, 'missions', 'delete')).toHaveLength(1)
+    expect(statusOf(db, ID.card)).toBe('failed')
+    expect(statusOf(db, ID.mission)).toBe('failed')
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(DB_SECRET)
+    expect(logged()).toContain(DB_SECRET)
+  })
+
+  it('미션 insert가 실패하면 카드는 만들기 전이라 아무것도 만들지 않는다. 미션 사유가 원인이다', async () => {
+    const { db, run } = setupReal([card(), mission()])
+    db.failIf = (call) => call.table === 'missions' && call.op === 'insert'
+    const result = ok(await run([ID.card, ID.mission]))
+
+    expect(result.body.failed.find((entry) => entry.id === ID.mission)?.reason).toBe('미션을 만들지 못했어요')
+    expect(result.body.failed.find((entry) => entry.id === ID.card)?.reason).toBe(GROUP_FAILED)
+    expect(db.tables.missions).toEqual([])
+    expect(db.tables.today_cards).toEqual([])
+    expect(writes(db, 'today_cards', 'insert')).toEqual([])
+  })
+
+  it('예약됨으로 옮기지 못하면 카드를 먼저, 미션을 나중에 지운다(미션을 먼저 지우면 카드의 mission_id 참조에 걸린다)', async () => {
+    const { db, run } = setupReal([card(), mission()])
+    db.failIf = (call) => call.table === 'ops_bundle_items' && call.op === 'update' && (call.payload as Row).status === 'scheduled'
+    const result = ok(await run([ID.card, ID.mission]))
+
+    expect(result.body.failed.map((entry) => entry.reason)).toEqual(Array(2).fill('예약 등록을 마무리하지 못했어요'))
+    expect(db.tables.today_cards).toEqual([])
+    expect(db.tables.missions).toEqual([])
+    const order = db.calls.map((call) => `${call.table}:${call.op}`)
+    expect(order.lastIndexOf('today_cards:delete')).toBeLessThan(order.lastIndexOf('missions:delete'))
+  })
+
+  it('미션 등록 전 검사가 실패하면 카드도 함께 실패하고 아무것도 만들지 않는다', async () => {
+    const { db, run } = setupReal([card(), mission({ resource: { mission_type: 'distance', condition_json: { distance_km: 30 }, reward_badge_ids: [MISSING_BADGE] } })])
+    const result = ok(await run([ID.card, ID.mission]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed.find((entry) => entry.id === ID.mission)?.reason).toBe('보상으로 정한 배지가 없거나 삭제됐어요')
+    expect(result.body.failed.find((entry) => entry.id === ID.card)?.reason).toBe(GROUP_FAILED)
+    expect(db.tables.missions).toEqual([])
+    expect(db.tables.today_cards).toEqual([])
+    expect(db.calls.filter((call) => (call.table === 'missions' || call.table === 'today_cards') && call.op !== 'select')).toEqual([])
+    for (const output of await outputsOf(db, result)) {
+      expect(output).not.toContain(MISSING_BADGE)
+      expect(output).not.toContain('reward_badge_ids')
+    }
+    expect(logged()).toContain(MISSING_BADGE)
+  })
+
+  it('미션 형식 오류는 변환 오류의 첫 문장으로 실패하고 카드도 함께 실패한다', async () => {
+    const { db, run } = setupReal([card(), mission({ original: { copy: { title: '주말 러닝' } } })]) // description 없음
+    const result = ok(await run([ID.card, ID.mission]))
+
+    expect(result.body.failed.find((entry) => entry.id === ID.mission)?.reason).toMatch(/^미션 형식이 맞지 않아요: mission\.description: /)
+    expect(result.body.failed.find((entry) => entry.id === ID.card)?.reason).toBe(GROUP_FAILED)
+    expect(db.tables.missions).toEqual([])
+    expect(db.tables.today_cards).toEqual([])
+  })
+
+  it('같은 제목의 기존 미션과 기간이 겹치면 고정 사유로 실패한다. 기존 미션 ID는 응답·기록·슬랙에 없다', async () => {
+    const { db, run } = setupReal([mission()])
+    const EXISTING = uid(9)
+    db.tables.missions = [{ id: EXISTING, title: '주말 러닝', starts_at: '2026-10-01T00:00:00.000Z', ends_at: null }]
+    const result = ok(await run([ID.mission]))
+
+    expect(result.body.failed).toEqual([{ id: ID.mission, reason: '같은 제목의 미션이 이미 있고 기간이 겹쳐요' }])
+    expect(db.tables.missions).toHaveLength(1)
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(EXISTING)
+    expect(logged()).toContain(EXISTING)
+  })
+
+  it('같은 제목의 기존 미션이 있어도 기간이 겹치지 않으면 예약된다(기존 미션의 종료와 새 미션의 공개가 같은 시각)', async () => {
+    const { db, run } = setupReal([mission()])
+    db.tables.missions = [{ id: uid(9), title: '주말 러닝', starts_at: '2026-10-03T00:00:00.000Z', ends_at: '2026-10-10T00:00:00.000Z' }]
+    const result = ok(await run([ID.mission]))
+
+    expect(result.body.scheduled).toEqual([ID.mission])
+    expect(db.tables.missions).toHaveLength(2)
+  })
+
+  it('등록 전 검사에서 DB를 읽지 못하면 고정 사유로 실패하고 DB 오류 원문은 로그에만 남는다', async () => {
+    const { db, run } = setupReal([mission()])
+    db.failIf = (call) => call.table === 'missions' && call.op === 'select'
+    const result = ok(await run([ID.mission]))
+
+    expect(result.body.failed).toEqual([{ id: ID.mission, reason: '등록 전 확인 중 DB를 읽지 못했어요' }])
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(DB_SECRET)
+    expect(logged()).toContain(DB_SECRET)
+  })
+
+  it('시험 묶음은 등록 전 검사까지 하고 missions에 쓰지 않는다. created_resource는 { sample: true }다', async () => {
+    const { db, run } = setupReal([card(), mission()], { is_sample: true })
+    const result = ok(await run([ID.card, ID.mission]))
+
+    expect([...result.body.scheduled].sort()).toEqual([ID.card, ID.mission].sort())
+    expect(db.tables.missions).toEqual([])
+    expect(db.tables.today_cards).toEqual([])
+    expect(db.calls.some((call) => call.table === 'missions' && call.op === 'select')).toBe(true) // 제목 중복 검사를 했다
+    expect(db.item(ID.mission).created_resource).toEqual({ sample: true })
+  })
+
+  it('카드가 여는 미션보다 먼저 공개되면 실행되지 않는다: 카드는 못 하는 항목, 미션은 연결된 항목을 예약할 수 없다', async () => {
+    const { db, run } = setupReal([card({ startsAt: '2026-10-09T00:00:00.000Z' }), mission()])
+    const failure = bad(await run([ID.card, ID.mission]))
+
+    expect(failure.status).toBe(409)
+    expect(failure.extra?.skipped).toEqual([
+      { id: ID.card, reason: PRECHECK_MESSAGES.cardBeforeMission },
+      { id: ID.mission, reason: PRECHECK_MESSAGES.groupBlocked },
+    ])
+    expect(nonSelect(db)).toEqual([])
+    expect(db.tables.missions).toEqual([])
+  })
+
+  it('같은 기획 안에서 기간이 겹치는 같은 제목의 미션은 뒤 항목이 실행되지 않고, 앞 항목만 예약된다', async () => {
+    const second = uid(10)
+    const { db, run } = setupReal([mission(), mission({ id: second, key: 'second' })])
+    const result = ok(await run([ID.mission, second]))
+
+    expect(result.body.scheduled).toEqual([ID.mission])
+    expect(result.body.skipped).toEqual([{ id: second, reason: PRECHECK_MESSAGES.missionTitleOverlap }])
+    expect(db.tables.missions).toHaveLength(1)
+    expect(statusOf(db, second)).toBe('approved')
+  })
+
+  it('이미 예약된 미션을 가리키는 카드는 그 미션의 ID를 created_resource에서 읽어 채운다', async () => {
+    const existing = uid(11)
+    const { db, run } = setupReal([card(), mission({ status: 'scheduled', createdResource: { mission_id: existing } })])
+    const result = ok(await run([ID.card]))
+
+    expect(result.body.scheduled).toEqual([ID.card])
+    expect(db.tables.today_cards[0].mission_id).toBe(existing)
+    // 이미 예약된 미션은 건드리지 않는다
+    expect(db.tables.missions).toEqual([])
+    expect(writes(db, 'missions', 'insert')).toEqual([])
   })
 })

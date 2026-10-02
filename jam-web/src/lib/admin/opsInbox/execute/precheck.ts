@@ -9,12 +9,17 @@
  * (사용자 확정 2026-10-02, 티켓 20261002_1123: 반려된 대상을 가리키는 항목은 어차피 예약될 수 없으니 「승인됨」에 남기지 않고 실패로 닫는다).
  * 실패로 닫을 항목은 그 항목이 혼자 갖는 이유로 같은 그룹의 다른 항목을 막지 않는다.
  *
+ * 미션이 붙은 뒤(티켓 20261002_1944, ⑥)의 두 규칙은 못 하는 항목 이유로 더한다(사용자 결정 2026-10-02):
+ * 카드가 그 카드가 여는 미션보다 먼저 공개되면(G4 예외), 같은 묶음의 예약할 미션끼리 같은 제목이고 기간이 겹치면 뒤 항목(`position`이 큰 쪽)이다.
+ *
  * 보지 않는 것: 제출 때 남은 형식 오류(`format_errors`)는 이 점검이 막지 않는다. 종류별 변환·검사(§8.4)가 실행 때 걸러 낸다(가정 1).
  * `pattern_proposal` 승인 항목은 예약 등록 대상이 아니라 `excluded`로 따로 돌려주고 N에 세지 않는다(가정 2).
  */
 import { asRecord, isUndecidedStatus, itemField } from '@/lib/admin/opsInbox/itemView'
 import { kindLabel } from '@/lib/admin/opsInbox/labels'
+import { toMissionRegisterInput } from '@/lib/admin/opsInbox/registerInput'
 import { isIsoDateTime } from '@/lib/admin/registerChecks/bundleRules'
+import { missionPeriodsOverlap } from '@/lib/admin/registerChecks/mission'
 import {
   buildLinkGroups,
   isStoppedItem,
@@ -34,6 +39,10 @@ export const EXECUTE_LEAD_MS = 10 * 60_000
 /** 예약 등록 대상이 아닌 종류. 승인돼도 사전 점검 넷 밖이다. */
 const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
 
+const MISSION_KIND = 'mission'
+/** 카드가 미션을 여는 연결 칸(`LINK_PAIRS`의 card→mission 쌍). 이 칸을 채우는 대상의 공개 시각과 견준다(G4 예외). */
+const CARD_MISSION_FIELD = 'mission_id'
+
 /** 요약창에 그대로 보이는 사유 문장. */
 export const PRECHECK_MESSAGES = {
   waiting: '연결된 항목이 아직 결정 전이에요',
@@ -46,6 +55,8 @@ export const PRECHECK_MESSAGES = {
   groupBlocked: '연결된 항목을 예약할 수 없어요',
   targetResourceMissing: '연결된 항목이 만든 자원을 찾지 못했어요',
   startsDiffer: '연결된 항목의 공개 시각이 서로 달라요',
+  cardBeforeMission: '카드가 여는 미션보다 먼저 공개돼요',
+  missionTitleOverlap: '같은 기획 안에 기간이 겹치는 같은 제목의 미션이 있어요',
 } as const
 
 // ── 결과 ────────────────────────────────────────────────────────────────────────────────────────
@@ -175,6 +186,48 @@ function isPublishedItem(item: ExecuteItem): boolean {
   return item.status === 'live' || item.status === 'ended'
 }
 
+/**
+ * 카드가 그 카드가 여는 미션(card→mission 쌍의 대상)보다 먼저 공개되는지(G4 예외, 사용자 결정 2026-10-02). 진행 독려 카드가 공개 전 미션의 기간·보상을
+ * 미리 보여 주고 404로 이어지기 때문이다. 대상이 아직 만들기 전이거나 예약됐으면 그 항목의 공개 시각과 견주고, 이미 게재 중이거나 종료됐으면 견주지 않는다.
+ * 같은 시각은 통과다. 두 시각 중 하나라도 읽을 수 없으면 견주지 않는다(읽을 수 없는 쪽이 따로 이유를 갖는다).
+ */
+function opensLaterMission(item: ExecuteItem, fills: readonly LinkFill[], byId: ReadonlyMap<string, ExecuteItem>): boolean {
+  const start = readStart(item)
+  if (!start.ok) return false
+  return fills
+    .filter((fill) => fill.field === CARD_MISSION_FIELD)
+    .some((fill) =>
+      fill.targetItemIds.some((targetId) => {
+        const target = byId.get(targetId)
+        if (!target || isPublishedItem(target)) return false
+        const targetStart = readStart(target)
+        return targetStart.ok && start.ms < targetStart.ms
+      })
+    )
+}
+
+/**
+ * 같은 묶음에서 예약할 미션끼리 같은 제목이고 기간이 겹치면, 뒤 항목(`position`이 큰 쪽)의 ID를 모은다(사용자 결정 2026-10-02).
+ * 예약할 미션은 승인된 미션 항목이고, 변환(`toMissionRegisterInput`)이 값을 읽는 항목만 센다 — 형식 오류 항목은 실행 때 변환이 걸러 낸다.
+ * 제목은 등록 전 DB 검사(`runMissionDbChecks`)와 같게 글자 그대로 견준다. 실패로 닫을 항목은 만들지 않으니 뺀다.
+ * 앞 항목이 다른 이유로 못 하게 되는 경우까지 따지지 않는다: 실행 때 DB 검사가 같은 제목·겹침을 다시 잡는다.
+ */
+function laterDuplicateMissionIds(items: readonly ExecuteItem[], closingIds: ReadonlySet<string>): Set<string> {
+  const candidates = items
+    .filter((item) => item.status === 'approved' && item.kind === MISSION_KIND && !closingIds.has(item.id))
+    .sort((a, b) => a.position - b.position || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .flatMap((item) => {
+      const { payload } = toMissionRegisterInput(item, { id: item.id })
+      return payload ? [{ id: item.id, title: payload.title, starts_at: payload.starts_at, ends_at: payload.ends_at }] : []
+    })
+
+  const later = new Set<string>()
+  candidates.forEach((candidate, index) => {
+    if (candidates.slice(0, index).some((earlier) => earlier.title === candidate.title && missionPeriodsOverlap(earlier, candidate))) later.add(candidate.id)
+  })
+  return later
+}
+
 /** 같은 그룹의 공개 시각이 서로 다르면 경고한다. 이미 게재 중·종료된 항목은 뺀다(바꿀 수 없는 시각이라 알릴 이유가 없다). */
 function startsDifferWarning(group: LinkGroup): PrecheckWarning | null {
   const times = group.items
@@ -200,6 +253,7 @@ export function precheckBundle(
   const byId = new Map(items.map((item) => [item.id, item]))
   const stoppedIds = new Set(items.filter(isStoppedItem).map((item) => item.id))
   const stoppedReferences = referencersOf(items, stoppedIds)
+  const laterDuplicateMissions = laterDuplicateMissionIds(items, new Set(stoppedReferences.keys()))
 
   const result: PrecheckResult = { ready: [], waiting: [], blocked: [], failClose: [], excluded: [], groups: [], warnings: [] }
   const isClassified = (item: ExecuteItem) => item.status === 'approved' && item.kind !== PATTERN_PROPOSAL_KIND
@@ -225,6 +279,8 @@ export function precheckBundle(
         })
       )
       if (missingResource) reasons.push(PRECHECK_MESSAGES.targetResourceMissing)
+      if (opensLaterMission(item, fills, byId)) reasons.push(PRECHECK_MESSAGES.cardBeforeMission)
+      if (laterDuplicateMissions.has(item.id)) reasons.push(PRECHECK_MESSAGES.missionTitleOverlap)
       reasonsById.set(item.id, reasons)
     }
 

@@ -14,15 +14,19 @@ const at = (offsetMs: number) => new Date(NOW.getTime() + offsetMs).toISOString(
 const run = (items: ReturnType<typeof makeItem>[], handlers = FULL_REGISTRY) => precheckBundle(items, { now: NOW, handlers })
 
 describe('핸들러 레지스트리', () => {
-  it('지금 레지스트리는 home_feed_card 하나뿐이다(티켓 20261002_1255)', () => {
-    expect(Object.keys(EXECUTE_HANDLERS)).toEqual(['home_feed_card'])
+  it('지금 레지스트리는 home_feed_card(티켓 20261002_1255)와 mission(티켓 20261002_1944) 둘이다', () => {
+    expect(Object.keys(EXECUTE_HANDLERS)).toEqual(['home_feed_card', 'mission'])
     expect(EXECUTE_HANDLERS.home_feed_card).toMatchObject({ kind: 'home_feed_card', resourceKey: RESOURCE_KEY_BY_KIND.home_feed_card, idFirst: true })
+    expect(EXECUTE_HANDLERS.mission).toMatchObject({ kind: 'mission', resourceKey: RESOURCE_KEY_BY_KIND.mission, idFirst: true })
   })
 
-  it('카드는 예약할 수 있고 미션은 여전히 「아직 연결하지 않은 종류」로 막힌다', () => {
-    const result = precheckBundle([makeItem({ key: 'card', kind: 'home_feed_card' }), makeItem({ key: 'mission', kind: 'mission' })], { now: NOW })
-    expect(result.ready).toEqual(['card'])
-    expect(result.blocked).toEqual([{ id: 'mission', reasons: [PRECHECK_MESSAGES.noHandler] }])
+  it('카드와 미션은 예약할 수 있고 레시피 같은 나머지 종류는 여전히 「아직 연결하지 않은 종류」로 막힌다', () => {
+    const result = precheckBundle(
+      [makeItem({ key: 'card', kind: 'home_feed_card' }), makeItem({ key: 'mission', kind: 'mission' }), makeItem({ key: 'recipe', kind: 'recipe' })],
+      { now: NOW }
+    )
+    expect(result.ready).toEqual(['card', 'mission'])
+    expect(result.blocked).toEqual([{ id: 'recipe', reasons: [PRECHECK_MESSAGES.noHandler] }])
   })
 
   it('빈 레지스트리를 넘기면 모든 승인 항목이 「아직 연결하지 않은 종류」로 막힌다', () => {
@@ -288,10 +292,10 @@ describe('실패로 닫을 항목 · 가정 4', () => {
 })
 
 describe('경고 · 가정 6', () => {
-  it('그룹 안 공개 시각이 서로 달라도 막지 않고 경고만 한다', () => {
+  it('그룹 안 공개 시각이 서로 달라도 막지 않고 경고만 한다(카드가 미션보다 먼저가 아닌 경우)', () => {
     const result = run([
-      makeItem({ key: 'card', kind: 'home_feed_card', links: ['mission'], startsAt: at(60 * MINUTE) }),
-      makeItem({ key: 'mission', kind: 'mission', startsAt: at(120 * MINUTE) }),
+      makeItem({ key: 'card', kind: 'home_feed_card', links: ['mission'], startsAt: at(120 * MINUTE) }),
+      makeItem({ key: 'mission', kind: 'mission', startsAt: at(60 * MINUTE) }),
     ])
     expect(result.ready).toEqual(['card', 'mission'])
     expect(result.warnings).toEqual([{ itemIds: ['card', 'mission'], message: PRECHECK_MESSAGES.startsDiffer }])
@@ -338,6 +342,160 @@ describe('경고 · 가정 6', () => {
   })
 })
 
+describe('카드가 여는 미션보다 먼저 공개되면 막는다 (티켓 20261002_1944, 사용자 결정 2026-10-02)', () => {
+  const card = (startsAt: string, extra: Partial<Parameters<typeof makeItem>[0]> = {}) =>
+    makeItem({ key: 'card', kind: 'home_feed_card', links: ['mission'], startsAt, ...extra })
+  const mission = (startsAt: string, extra: Partial<Parameters<typeof makeItem>[0]> = {}) => makeItem({ key: 'mission', kind: 'mission', startsAt, ...extra })
+
+  it('카드가 미션보다 이르면 카드는 못 하는 항목이고, 같은 그룹의 나머지 승인 항목은 「연결된 항목을 예약할 수 없어요」로 막힌다', () => {
+    const result = run([card(at(60 * MINUTE)), mission(at(120 * MINUTE))])
+    expect(result.ready).toEqual([])
+    expect(result.blocked).toEqual([
+      { id: 'card', reasons: [PRECHECK_MESSAGES.cardBeforeMission] },
+      { id: 'mission', reasons: [PRECHECK_MESSAGES.groupBlocked] },
+    ])
+    expect(PRECHECK_MESSAGES.cardBeforeMission).toBe('카드가 여는 미션보다 먼저 공개돼요')
+  })
+
+  it('같은 시각이거나 카드가 더 늦으면 통과다(1밀리초 이르면 막는다)', () => {
+    expect(run([card(at(60 * MINUTE)), mission(at(60 * MINUTE))]).ready).toEqual(['card', 'mission'])
+    expect(run([card(at(120 * MINUTE)), mission(at(60 * MINUTE))]).ready).toEqual(['card', 'mission'])
+    const justBefore = run([card(at(60 * MINUTE - 1)), mission(at(60 * MINUTE))])
+    expect(justBefore.blocked[0]).toEqual({ id: 'card', reasons: [PRECHECK_MESSAGES.cardBeforeMission] })
+  })
+
+  it('대상 미션이 이미 예약된 항목이면 그 항목의 공개 시각과 견준다', () => {
+    const scheduled = (startsAt: string) => mission(startsAt, { status: 'scheduled', createdResource: { mission_id: 'mission-uuid' } })
+    const early = run([card(at(60 * MINUTE)), scheduled(at(120 * MINUTE))])
+    expect(early.ready).toEqual([])
+    expect(early.blocked).toEqual([{ id: 'card', reasons: [PRECHECK_MESSAGES.cardBeforeMission] }])
+    expect(run([card(at(180 * MINUTE)), scheduled(at(120 * MINUTE))]).ready).toEqual(['card'])
+  })
+
+  it('대상 미션이 이미 게재 중이거나 종료됐으면 견주지 않는다', () => {
+    for (const status of ['live', 'ended']) {
+      const result = run([card(at(60 * MINUTE)), mission(at(120 * MINUTE), { status, createdResource: { mission_id: 'mission-uuid' } })])
+      expect(result.ready, status).toEqual(['card'])
+      expect(result.blocked, status).toEqual([])
+    }
+  })
+
+  it('대상 미션이 결정 전이어도 견준다. 막는 이유가 기다리는 중보다 앞선다', () => {
+    const result = run([card(at(60 * MINUTE)), mission(at(120 * MINUTE), { status: 'reviewing' })])
+    expect(result.waiting).toEqual([])
+    expect(result.blocked).toEqual([{ id: 'card', reasons: [PRECHECK_MESSAGES.cardBeforeMission] }])
+  })
+
+  it('카드나 미션의 공개 시각을 읽을 수 없으면 견주지 않는다(그 항목이 따로 이유를 갖는다)', () => {
+    const noCardStart = run([card(at(0), { startsAt: null }), mission(at(120 * MINUTE))])
+    expect(noCardStart.blocked[0]).toEqual({ id: 'card', reasons: [PRECHECK_MESSAGES.startMissing] })
+    const noMissionStart = run([card(at(60 * MINUTE)), mission(at(0), { startsAt: null })])
+    expect(noMissionStart.blocked).toEqual([
+      { id: 'card', reasons: [PRECHECK_MESSAGES.groupBlocked] },
+      { id: 'mission', reasons: [PRECHECK_MESSAGES.startMissing] },
+    ])
+  })
+
+  it('카드가 미션 ID를 직접 갖고 있어 연결로 채우지 않으면 견주지 않는다', () => {
+    const result = run([card(at(60 * MINUTE), { resource: { mission_id: 'direct-mission-uuid' } }), mission(at(120 * MINUTE))])
+    expect(result.blocked[0]).toEqual({ id: 'card', reasons: ['이미 값이 들어 있는 칸이라 연결된 미션 항목으로 채울 수 없어요'] })
+  })
+
+  it('미션과 이어지지 않은 카드·배지를 가리키는 카드는 이 규칙의 대상이 아니다', () => {
+    const result = run([
+      makeItem({ key: 'card', kind: 'home_feed_card', links: ['badge'], startsAt: at(60 * MINUTE) }),
+      makeItem({ key: 'badge', kind: 'jam_badge', startsAt: at(120 * MINUTE) }),
+    ])
+    expect(result.ready).toEqual(['card', 'badge'])
+  })
+})
+
+describe('같은 기획 안에서 기간이 겹치는 같은 제목의 미션은 뒤 항목을 막는다 (티켓 20261002_1944, 사용자 결정 2026-10-02)', () => {
+  const REASON = PRECHECK_MESSAGES.missionTitleOverlap
+  /** 검사를 통과하는 미션 항목. 제목·기간·제출 순서를 고른다. */
+  const mission = (key: string, title: string, over: Partial<Parameters<typeof makeItem>[0]> = {}) =>
+    makeItem({
+      key,
+      kind: 'mission',
+      original: { copy: { title, description: '설명' } },
+      resource: { mission_type: 'distance', condition_json: { distance_km: 30 } },
+      ...over,
+    })
+
+  it('같은 제목이고 기간이 겹치면 제출 순서가 뒤(position이 큰 쪽)인 미션이 못 하는 항목이다', () => {
+    const result = run([mission('a', '주말 러닝', { position: 1 }), mission('b', '주말 러닝', { position: 2 })])
+    expect(result.ready).toEqual(['a'])
+    expect(result.blocked).toEqual([{ id: 'b', reasons: [REASON] }])
+    expect(REASON).toBe('같은 기획 안에 기간이 겹치는 같은 제목의 미션이 있어요')
+  })
+
+  it('입력 배열 순서가 아니라 position으로 뒤 항목을 정한다', () => {
+    const result = run([mission('late', '주말 러닝', { position: 9 }), mission('early', '주말 러닝', { position: 2 })])
+    expect(result.ready).toEqual(['early'])
+    expect(result.blocked).toEqual([{ id: 'late', reasons: [REASON] }])
+  })
+
+  it('제목이 다르면(글자 그대로 견준다) 통과한다', () => {
+    expect(run([mission('a', '주말 러닝'), mission('b', '주말 러닝 ')]).ready).toEqual(['a', 'b'])
+    expect(run([mission('a', '주말 러닝'), mission('b', '평일 러닝')]).ready).toEqual(['a', 'b'])
+  })
+
+  it('기간이 겹치지 않으면 통과한다: 한쪽의 종료와 다른 쪽의 공개가 같은 경계는 겹치지 않고, 1밀리초 겹치면 막는다', () => {
+    const first = { startsAt: at(60 * MINUTE), endsAt: at(120 * MINUTE) }
+    const touching = run([mission('a', '주말 러닝', first), mission('b', '주말 러닝', { startsAt: at(120 * MINUTE) })])
+    expect(touching.ready).toEqual(['a', 'b'])
+    const overlapping = run([mission('a', '주말 러닝', first), mission('b', '주말 러닝', { startsAt: at(120 * MINUTE - 1) })])
+    expect(overlapping.blocked).toEqual([{ id: 'b', reasons: [REASON] }])
+  })
+
+  it('종료가 없으면 끝없음이라 뒤에 열리는 같은 제목과 겹친다', () => {
+    const result = run([mission('a', '주말 러닝', { startsAt: at(60 * MINUTE) }), mission('b', '주말 러닝', { startsAt: at(600 * MINUTE) })])
+    expect(result.blocked).toEqual([{ id: 'b', reasons: [REASON] }])
+  })
+
+  it('세 개가 같은 제목·겹치는 기간이면 첫 항목만 남고 나머지는 막힌다', () => {
+    const result = run([mission('a', 'm'), mission('b', 'm'), mission('c', 'm')])
+    expect(result.ready).toEqual(['a'])
+    expect(result.blocked.map((entry) => entry.id)).toEqual(['b', 'c'])
+  })
+
+  it('막힌 미션과 이어진 그룹의 나머지 승인 항목은 「연결된 항목을 예약할 수 없어요」로 막힌다', () => {
+    const result = run([
+      mission('a', '주말 러닝', { position: 1 }),
+      mission('b', '주말 러닝', { position: 2, links: ['card'] }),
+      makeItem({ key: 'card', kind: 'home_feed_card', position: 3, links: ['b'] }),
+    ])
+    expect(result.ready).toEqual(['a'])
+    expect(result.blocked).toEqual([
+      { id: 'b', reasons: [REASON] },
+      { id: 'card', reasons: [PRECHECK_MESSAGES.groupBlocked] },
+    ])
+  })
+
+  it('이번에 예약할 미션끼리만 견준다: 이미 예약된 미션은 실행 때 DB 검사가 본다', () => {
+    const scheduled = mission('old', '주말 러닝', { status: 'scheduled', createdResource: { mission_id: 'mission-uuid' } })
+    expect(run([scheduled, mission('new', '주말 러닝')]).ready).toEqual(['new'])
+  })
+
+  it('형식 오류로 변환되지 않는 미션과 실패로 닫을 미션은 견주지 않는다', () => {
+    const noDescription = mission('bad', '주말 러닝', { position: 1, original: { copy: { title: '주말 러닝' } } })
+    expect(run([noDescription, mission('b', '주말 러닝', { position: 2 })]).ready).toEqual(['bad', 'b'])
+
+    const closing = run([
+      mission('a', '주말 러닝', { position: 1, links: ['badge'] }),
+      makeItem({ key: 'badge', kind: 'jam_badge', status: 'rejected', position: 2 }),
+      mission('b', '주말 러닝', { position: 3 }),
+    ])
+    expect(closing.failClose.map((entry) => entry.id)).toEqual(['a'])
+    expect(closing.ready).toEqual(['b'])
+  })
+
+  it('다른 이유로 막힌 항목에는 이유가 이어 붙는다', () => {
+    const result = run([mission('a', 'm', { position: 1 }), mission('b', 'm', { position: 2, startsAt: at(MINUTE) })])
+    expect(result.blocked).toEqual([{ id: 'b', reasons: [PRECHECK_MESSAGES.startTooSoon, REASON] }])
+  })
+})
+
 describe('그룹 결과 · 생성 순서와 linkedIds 계획', () => {
   it('그룹마다 생성 순서와 만들 항목, 채울 칸 계획을 싣는다', () => {
     const result = run([
@@ -368,12 +526,12 @@ describe('그룹 결과 · 생성 순서와 linkedIds 계획', () => {
 
 describe('모듈 계약 — DB와 서버 전용 코드를 값으로 가져오지 않는다', () => {
   const dir = path.join(__dirname, '..')
-  // 실행 `run.ts`(티켓 20261002_1123)·공개 전 취소 `cancel.ts`(티켓 20261002_1256)·상태 맞추기 `reconcile.ts`(티켓 20261002_1813)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 다섯만 본다.
+  // 실행 `run.ts`(티켓 20261002_1123)·공개 전 취소 `cancel.ts`(티켓 20261002_1256)·상태 맞추기 `reconcile.ts`(티켓 20261002_1813)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 여섯만 본다.
   const SERVER_ONLY = ['run.ts', 'cancel.ts', 'reconcile.ts']
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.ts') && !SERVER_ONLY.includes(name))
 
-  it('순수 모듈 다섯 개가 있다', () => {
-    expect(files.sort()).toEqual(['groups.ts', 'handlers.ts', 'homeFeedCard.ts', 'precheck.ts', 'registry.ts'])
+  it('순수 모듈 여섯 개가 있다', () => {
+    expect(files.sort()).toEqual(['groups.ts', 'handlers.ts', 'homeFeedCard.ts', 'mission.ts', 'precheck.ts', 'registry.ts'])
   })
 
   it.each(files)('%s는 node: 모듈과 Supabase·서버 모듈의 값 import가 없다', (name) => {

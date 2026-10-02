@@ -13,6 +13,7 @@
  *   `external_change`와 차이가 같으면 다시 남기지 않는다.
  * - 「준비중」으로 10분이 지난 항목은 실패로 닫는다. 실제 묶음이고 자원 ID가 있으면 핸들러 `undo`(참조 확인 포함)로 지운다. 지우지 못하면 자원은 남기고 사유에
  *   「만든 자원이 남아 있어요」를 덧붙이고 알림 글에 자원 ID를 싣는다. 가장 최근 결정 기록이 이미 `fail`이면 새로 남기지 않는다.
+ *   자원을 지우는 항목끼리는 생성 순서의 역순(`orderForUndo`, 카드가 미션보다 먼저)으로 부른다. 미션을 먼저 지우면 카드의 `mission_id` 참조에 걸려 미션이 남는다(티켓 20261002_1944).
  * - 시험 묶음은 자원을 읽지 않고 항목의 시각만 본다(§8.8). 드랍 항목은 공개 시각에 곧바로 종료한다. 멈춘 준비중은 `undo` 없이 닫는다.
  * - 상태는 항목마다 조건부 update(`status = 지금 상태`)이고 돌아온 id로 실제 바뀐 항목만 센다. 크론이 겹쳐 돌아도 한 번만 바뀐다(잠금·DB 변경 없음).
  *   결정 기록은 바뀐 항목에만 남기고(`external_change`는 차이가 새로울 때) 행위자는 `system:reconcile`, 회차마다 `batch_id` 하나다.
@@ -43,6 +44,7 @@ import {
   type ExecuteServiceClient,
   type ResourceObservation,
 } from './handlers'
+import { orderForUndo } from './groups'
 import { EXECUTE_HANDLERS } from './registry'
 import { ITEM_COLUMNS, itemLabelOf, postAndRecord, type ExecuteDeps, type RunFailure } from './run'
 
@@ -405,6 +407,23 @@ async function loadTargets(service: ServiceClient): Promise<LoadedTargets | null
   return { items, sampleOf, lastAction, lastExternalDiff }
 }
 
+/**
+ * 판정을 적용하는 순서(티켓 20261002_1944 가정 4). 멈춘 준비중이 만든 자원을 지우는 전이끼리는 생성 순서의 역순(`orderForUndo`)으로 부른다:
+ * 카드와 미션이 함께 멈추면 미션을 먼저 지우려다 카드의 `mission_id` 참조에 걸려 미션이 남기 때문이다(실행의 그룹 되돌림도 같은 순서다).
+ * 자원을 지우는 전이끼리만 자리를 서로 바꾸고, 나머지 전이는 제자리에 둔다. 입력을 바꾸지 않는다.
+ */
+function inApplyOrder(transitions: readonly ReconcileTransition[]): ReconcileTransition[] {
+  const slots = transitions.flatMap((planned, index) => (planned.undoResourceId ? [index] : []))
+  const ordered = orderForUndo({
+    items: slots.map((index) => ({ kind: transitions[index].item.kind, position: transitions[index].item.position, planned: transitions[index] })),
+  })
+  const result = [...transitions]
+  slots.forEach((slot, rank) => {
+    result[slot] = ordered[rank].planned
+  })
+  return result
+}
+
 interface ApplyContext {
   service: ServiceClient
   handlers: ExecuteHandlerRegistry
@@ -521,7 +540,7 @@ export async function reconcileOpsItems(service: ServiceClient, deps: Partial<Ex
     cancelled: result.cancelled,
     failed: result.failed,
   }
-  for (const planned of plan.transitions) {
+  for (const planned of inApplyOrder(plan.transitions)) {
     try {
       const change = await applyTransition(ctx, planned)
       if (change) bucketOf[planned.to].push(change)

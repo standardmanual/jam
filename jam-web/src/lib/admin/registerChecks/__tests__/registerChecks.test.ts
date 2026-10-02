@@ -8,7 +8,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { runBadgeDbChecks } from '../badge'
 import { runHomeFeedDbChecks } from '../homeFeed'
-import { runMissionDbChecks } from '../mission'
+import { missionPeriodsOverlap, runMissionDbChecks } from '../mission'
 import {
   BADGE_UNDO_ARRAY_REFERENCE_COLUMNS,
   BADGE_UNDO_REFERENCES,
@@ -196,6 +196,90 @@ describe('runMissionDbChecks', () => {
     const result = await runMissionDbChecks({ supabase: client, mission: { title: '미션' } })
     expect(result.checks[0]).toEqual({ label: '제목 중복', status: '실패', detail: 'DB 조회에 실패했어요: boom' })
     expect(result.errors).toEqual(['제목 중복: DB 조회에 실패했어요: boom'])
+  })
+})
+
+describe('미션 제목 중복 — 기간이 겹칠 때만 건다 (티켓 20261002_1944)', () => {
+  const T1 = '2026-10-10T00:00:00.000Z'
+  const T2 = '2026-10-20T00:00:00.000Z'
+  const T3 = '2026-10-30T00:00:00.000Z'
+  const sameTitle = (...rows: Array<{ id: string; starts_at: string; ends_at: string | null }>) =>
+    createStub((e) => (e.table === 'missions' ? { data: rows } : { data: [] }))
+  const overlap = (stub: ReturnType<typeof createStub>, starts_at: string | null, ends_at: string | null) =>
+    runMissionDbChecks({ supabase: stub.client, mission: { title: '미션', starts_at, ends_at, titleDuplicate: 'overlap' } })
+
+  describe('missionPeriodsOverlap — 기간은 [공개, 종료)', () => {
+    it('한쪽의 종료 시각과 다른 쪽의 공개 시각이 같으면 겹치지 않는다(양쪽 방향)', () => {
+      expect(missionPeriodsOverlap({ starts_at: T1, ends_at: T2 }, { starts_at: T2, ends_at: T3 })).toBe(false)
+      expect(missionPeriodsOverlap({ starts_at: T2, ends_at: T3 }, { starts_at: T1, ends_at: T2 })).toBe(false)
+    })
+
+    it('1밀리초라도 겹치면 겹친다', () => {
+      const justBefore = new Date(Date.parse(T2) - 1).toISOString()
+      expect(missionPeriodsOverlap({ starts_at: T1, ends_at: T2 }, { starts_at: justBefore, ends_at: T3 })).toBe(true)
+    })
+
+    it('종료가 없으면 끝없음이다: 뒤에 시작하는 기간과 겹치고, 그 앞에서 끝나는 기간과는 겹치지 않는다', () => {
+      expect(missionPeriodsOverlap({ starts_at: T2, ends_at: null }, { starts_at: T3, ends_at: null })).toBe(true)
+      expect(missionPeriodsOverlap({ starts_at: T2, ends_at: null }, { starts_at: T3, ends_at: undefined })).toBe(true)
+      expect(missionPeriodsOverlap({ starts_at: T2, ends_at: null }, { starts_at: T1, ends_at: T2 })).toBe(false)
+      expect(missionPeriodsOverlap({ starts_at: T2, ends_at: null }, { starts_at: T1, ends_at: T3 })).toBe(true)
+    })
+
+    it('시각을 읽을 수 없으면 겹친 것으로 본다(판단할 수 없는데 통과시키지 않는다)', () => {
+      expect(missionPeriodsOverlap({ starts_at: 'x', ends_at: T2 }, { starts_at: T2, ends_at: T3 })).toBe(true)
+      expect(missionPeriodsOverlap({ starts_at: T1, ends_at: T2 }, { starts_at: null, ends_at: T3 })).toBe(true)
+      expect(missionPeriodsOverlap({ starts_at: T1, ends_at: 'x' }, { starts_at: T2, ends_at: T3 })).toBe(true)
+    })
+  })
+
+  it('같은 제목이 없으면 통과하고, 같은 제목의 기존 미션은 id·공개·종료를 모두 읽는다(건수 제한 없음)', async () => {
+    const stub = sameTitle()
+    const result = await overlap(stub, T1, T2)
+    expect(result.checks[0]).toEqual({ label: '제목 중복', status: '통과', detail: '' })
+    expect(stub.entries[0]).toMatchObject({ table: 'missions', columns: 'id, starts_at, ends_at', terminal: 'await' })
+    expect(stub.entries[0].filters).toEqual([['eq', 'title', '미션']])
+  })
+
+  it('같은 제목이어도 기간이 겹치지 않으면 통과한다(뒤에서 이어 여는 미션)', async () => {
+    const result = await overlap(sameTitle({ id: 'old', starts_at: T1, ends_at: T2 }), T2, T3)
+    expect(result.errors).toEqual([])
+    expect(statuses(result)[0]).toBe('통과')
+  })
+
+  it('기간이 겹치는 같은 제목이 있으면 막고 문장에 기존 id를 싣는다', async () => {
+    const result = await overlap(sameTitle({ id: 'old', starts_at: T1, ends_at: T3 }), T2, null)
+    expect(result.checks[0]).toEqual({ label: '제목 중복', status: '실패', detail: '같은 제목의 미션이 이미 있고 기간이 겹쳐요(id: old).' })
+    expect(result.errors).toEqual(['제목 중복: 같은 제목의 미션이 이미 있고 기간이 겹쳐요(id: old).'])
+  })
+
+  it('기존 미션의 종료가 없어도 새 미션이 그 뒤에 열리면 겹친다. 새 미션이 기존 공개 시각에 끝나면 겹치지 않는다', async () => {
+    const open = { id: 'open', starts_at: T2, ends_at: null }
+    expect((await overlap(sameTitle(open), T3, null)).errors).toHaveLength(1)
+    expect((await overlap(sameTitle(open), T1, T2)).errors).toEqual([])
+    expect((await overlap(sameTitle(open), T1, T3)).errors).toHaveLength(1)
+  })
+
+  it('여러 개 중 하나라도 겹치면 막는다', async () => {
+    const result = await overlap(sameTitle({ id: 'far', starts_at: T1, ends_at: T2 }, { id: 'near', starts_at: T3, ends_at: null }), T2, null)
+    expect(result.errors).toEqual(['제목 중복: 같은 제목의 미션이 이미 있고 기간이 겹쳐요(id: near).'])
+  })
+
+  it('읽은 미션의 시각을 읽을 수 없거나 새 미션의 공개 시각이 없으면 겹친 것으로 본다', async () => {
+    expect((await overlap(sameTitle({ id: 'bad', starts_at: 'not-a-time', ends_at: null }), T1, T2)).errors).toHaveLength(1)
+    expect((await overlap(sameTitle({ id: 'old', starts_at: T1, ends_at: T2 }), null, null)).errors).toHaveLength(1)
+  })
+
+  it('조회 오류는 «DB 조회에 실패했어요»로 기록한다', async () => {
+    const result = await overlap(createStub(() => ({ data: null, error: { message: 'boom' } })), T1, T2)
+    expect(result.checks[0]).toEqual({ label: '제목 중복', status: '실패', detail: 'DB 조회에 실패했어요: boom' })
+  })
+
+  it('titleDuplicate를 고르지 않으면 공개·종료 시각을 넘겨도 지금까지처럼 같은 제목이 하나라도 있으면 막는다(등록 스크립트)', async () => {
+    const stub = sameTitle({ id: 'old', starts_at: T1, ends_at: T2 })
+    const result = await runMissionDbChecks({ supabase: stub.client, mission: { title: '미션', starts_at: T2, ends_at: T3 } })
+    expect(result.checks[0].detail).toBe('같은 제목의 미션이 이미 있어요(id: old). 기존 미션 갱신은 이 스크립트 범위 밖이라 중복으로 거절해요.')
+    expect(stub.entries[0].columns).toBe('id')
   })
 })
 
