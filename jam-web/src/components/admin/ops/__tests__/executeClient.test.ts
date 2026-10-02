@@ -1,16 +1,17 @@
 /**
- * 예약 등록 요청 호출 (티켓 20261002_1648) — `postExecute`
+ * 예약 등록·공개 전 취소 요청 호출 (티켓 20261002_1648, 20261002_1649) — `postExecute`·`postCancel`
  *
- * 요약창과 주 버튼이 기대는 결과 모양을 고정한다(던지지 않고 결과를 돌려준다):
+ * 요약창과 주 버튼, 취소 확인창이 기대는 결과 모양을 고정한다(던지지 않고 결과를 돌려준다):
  * - 요청 형식: POST, 본문 JSON(`{ dryRun: true }` 또는 `{ itemIds }`), 묶음 ID는 주소에 싣는다
  * - 200: 응답 본문을 그대로 돌려준다
  * - 409: 서버 문장에 「화면을 새로 불러왔어요」를 덧붙여 상태 코드로 알아본다(`postDecision`과 같다)
  * - 500·서버 문장이 없는 오류: 서버 문장 또는 고정 문장
  * - 네트워크가 끊기면 status 0과 고정 문장(NETWORK_ERROR_MESSAGE)이고 던지지 않는다
+ * - `postCancel`은 같은 규칙을 항목 주소(`items/[itemId]/cancel`)에 적용하고, 본문은 `{ dryRun: true }`·`{ reason }`·`{}`다
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NETWORK_ERROR_MESSAGE } from '@/components/admin/data-table/admin-fetch'
-import { postExecute } from '../executeClient'
+import { postCancel, postExecute } from '../executeClient'
 
 function respond(status: number, body: unknown) {
   return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
@@ -83,6 +84,67 @@ describe('postExecute', () => {
   it('네트워크가 끊기면 던지지 않고 status 0과 고정 문장이다(영어 원문을 노출하지 않는다)', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
     const result = await postExecute('bundle-1', { itemIds: ['a'] })
+    expect(result).toEqual({ ok: false, status: 0, error: NETWORK_ERROR_MESSAGE, data: {} })
+    expect(JSON.stringify(result)).not.toContain('Failed to fetch')
+  })
+})
+
+describe('postCancel', () => {
+  it('미리 보기는 항목 주소로 POST { dryRun: true }를 JSON으로 보내고 200이면 응답을 그대로 돌려준다', async () => {
+    const body = { ok: true, dryRun: true, cancelIds: ['item-1', 'item-2'], blockers: [] }
+    fetchMock.mockReturnValue(respond(200, body))
+    expect(await postCancel('bundle-1', 'item-1', { dryRun: true })).toEqual({ ok: true, data: body })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/admin/ops-inbox/bundle-1/items/item-1/cancel')
+    expect(init.method).toBe('POST')
+    expect(init.headers).toEqual({ 'Content-Type': 'application/json' })
+    expect(JSON.parse(init.body)).toEqual({ dryRun: true })
+  })
+
+  it('취소는 { reason }을 보내고 200이면 응답을 그대로 돌려준다', async () => {
+    const body = { ok: true, cancelled: ['item-2', 'item-1'], missing: [] }
+    fetchMock.mockReturnValue(respond(200, body))
+    expect(await postCancel('bundle-1', 'item-1', { reason: '공개 시각이 바뀌었어요' })).toEqual({ ok: true, data: body })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ reason: '공개 시각이 바뀌었어요' })
+  })
+
+  it('사유 없는 취소는 빈 객체를 보낸다', async () => {
+    fetchMock.mockReturnValue(respond(200, { ok: true, cancelled: ['item-1'], missing: [] }))
+    await postCancel('bundle-1', 'item-1', {})
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({})
+  })
+
+  it('409는 서버 문장에 「화면을 새로 불러왔어요」를 덧붙이고 막는 항목을 data에 남긴다', async () => {
+    const blockers = [{ id: 'item-2', reason: '이 항목을 가리키는 항목이 이미 게재 중이에요. 그 항목을 먼저 종료해 주세요.' }]
+    fetchMock.mockReturnValue(respond(409, { error: blockers[0].reason, blockers }))
+    const result = await postCancel('bundle-1', 'item-1', { reason: '사유' })
+    expect(result).toMatchObject({
+      ok: false,
+      status: 409,
+      error: '이 항목을 가리키는 항목이 이미 게재 중이에요. 그 항목을 먼저 종료해 주세요. 화면을 새로 불러왔어요.',
+    })
+    expect(result.ok === false && result.data.blockers).toEqual(blockers)
+  })
+
+  it('500은 서버 문장을 그대로 돌려주고 일부만 취소한 항목(cancelled)은 data에 남는다', async () => {
+    const error = '일부만 취소했어요. 나머지는 취소하지 못했어요. 화면을 새로 고쳐 확인해 주세요.'
+    fetchMock.mockReturnValue(respond(500, { error, cancelled: ['item-2'] }))
+    expect(await postCancel('bundle-1', 'item-1', {})).toEqual({ ok: false, status: 500, error, data: { error, cancelled: ['item-2'] } })
+  })
+
+  it('서버 문장이 없는 오류는 고정 문장이다', async () => {
+    fetchMock.mockReturnValue(Promise.resolve(new Response('<html>oops</html>', { status: 502 })))
+    expect(await postCancel('bundle-1', 'item-1', { dryRun: true })).toEqual({
+      ok: false,
+      status: 502,
+      error: '요청을 처리하지 못했어요. 잠시 뒤 다시 시도해 주세요.',
+      data: {},
+    })
+  })
+
+  it('네트워크가 끊기면 던지지 않고 status 0과 고정 문장이다(영어 원문을 노출하지 않는다)', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+    const result = await postCancel('bundle-1', 'item-1', {})
     expect(result).toEqual({ ok: false, status: 0, error: NETWORK_ERROR_MESSAGE, data: {} })
     expect(JSON.stringify(result)).not.toContain('Failed to fetch')
   })

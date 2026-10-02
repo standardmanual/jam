@@ -965,6 +965,42 @@ describe('OpsDecisionWorkspace — 결정 슬롯', () => {
     for (const label of ['반려하기', '수정하기', '승인하기']) expect(out).toContain(`>${label}<`)
   })
 
+  describe('상세 카드 아래 줄 — 예약됨 항목은 공개 전 취소(티켓 20261002_1649)', () => {
+    const scheduled = makeItem({ id: 's1', position: 3, status: 'scheduled', original: { user_experience: '예약된 경험' } })
+    const live = makeItem({ id: 'l1', position: 4, status: 'live', original: { user_experience: '게재 중인 경험' } })
+    const withScheduled = [...items, scheduled, live]
+
+    it('예약됨 항목을 고르면 안내와 [공개 전 취소하기]가 나오고 [반려하기]·[수정하기]·[승인하기]는 없다', () => {
+      nav.search = 'item=s1'
+      const out = flat(<OpsDecisionWorkspace {...props} items={withScheduled} decisions={[SUBMIT]} />)
+      expect(out).toContain('예약된 항목이에요. 공개 시각 전에는 취소할 수 있어요.')
+      expect(out).toContain('>공개 전 취소하기<')
+      for (const label of ['반려하기', '수정하기', '승인하기']) expect(out).not.toContain(`>${label}<`)
+      // 확인창은 처음에 닫혀 있다(열 때 미리 보기 요청을 보낸다)
+      expect(out).not.toContain('이 항목을 공개 전에 취소할까요?')
+    })
+
+    it('검토중 항목을 고르면 지금처럼 [반려하기]·[수정하기]·[승인하기]이고 취소 버튼은 없다', () => {
+      nav.search = 'item=a'
+      const out = flat(<OpsDecisionWorkspace {...props} items={withScheduled} decisions={[SUBMIT]} />)
+      for (const label of ['반려하기', '수정하기', '승인하기']) expect(out).toContain(`>${label}<`)
+      expect(out).not.toContain('공개 전 취소하기')
+      expect(out).not.toContain('예약된 항목이에요')
+    })
+
+    it('승인됨·게재중 항목은 지금처럼 안내 글만 나오고 취소 버튼은 없다', () => {
+      nav.search = 'item=c'
+      const approved = flat(<OpsDecisionWorkspace {...props} items={withScheduled} decisions={[SUBMIT]} />)
+      expect(approved).toContain('승인한 항목은 여기서 고칠 수 없어요')
+      expect(approved).not.toContain('공개 전 취소하기')
+
+      nav.search = 'item=l1'
+      const liveOut = flat(<OpsDecisionWorkspace {...props} items={withScheduled} decisions={[SUBMIT]} />)
+      expect(liveOut).toContain('이 항목은 이미 다음 단계에 있어서 여기서 결정하거나 고칠 수 없어요')
+      expect(liveOut).not.toContain('공개 전 취소하기')
+    })
+  })
+
   it('검토중 항목이 없으면 승인 버튼·전체 선택·체크박스가 없고 안내 글만 나온다', () => {
     const out = flat(<OpsDecisionWorkspace {...props} items={[items[2]]} decisions={[SUBMIT]} />)
     expect(out).not.toContain('전체 선택')

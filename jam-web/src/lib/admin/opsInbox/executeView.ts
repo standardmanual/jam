@@ -1,8 +1,8 @@
 /**
- * 예약 등록 화면이 읽는 순수 함수 (티켓 20261002_1648, 상위 20260930_1500 ⑤-a, 운영툴 PRD §8.2).
+ * 예약 등록·공개 전 취소 화면이 읽는 순수 함수 (티켓 20261002_1648, 상위 20260930_1500 ⑤-a, 운영툴 PRD §8.2. 공개 전 취소는 ⑤-b 티켓 20261002_1649, §8.7).
  *
  * 요약창의 구역 만들기(사전 점검 응답 → 구역·표시 순서), 실행 결과 토스트 문장, 항목별 가장 최근 실패 사유, 「아직 연결하지 않은 종류」
- * 안내 문장이다. 화면(client)이 값으로 가져오므로 **레지스트리·핸들러·사전 점검 모듈(`execute/*`)을 값으로 가져오지 않는다**(서버 전용 코드가
+ * 안내 문장, 공개 전 취소 확인창의 문장·미리 보기 읽기·결과 토스트다. 화면(client)이 값으로 가져오므로 **레지스트리·핸들러·사전 점검 모듈(`execute/*`)을 값으로 가져오지 않는다**(서버 전용 코드가
  * 클라이언트 번들로 들어간다). 사전 점검은 서버 로더(`query.ts`)와 실행 API의 `{ dryRun: true }`만 부르고, 이 파일은 그 응답을 읽기만 한다.
  */
 import { OPS_DECISION_ACTION_FAIL } from '@/lib/admin/opsInbox/constants'
@@ -246,4 +246,92 @@ export function latestFailReasons(decisions: readonly Pick<OpsDecisionRecord, 'i
     if (reason && !Object.prototype.hasOwnProperty.call(reasons, decision.itemId)) reasons[decision.itemId] = reason
   }
   return reasons
+}
+
+// ── 공개 전 취소 확인창 (⑤-b, PRD §8.7) ─────────────────────────────────────────────────────────
+
+export const CANCEL_GUIDANCE = '예약된 항목이에요. 공개 시각 전에는 취소할 수 있어요.'
+export const CANCEL_TITLE = '이 항목을 공개 전에 취소할까요?'
+/** 상세 카드 아래 버튼 글자이면서 확인창 주 버튼의 기본 글자다(함께 취소될 항목이 있으면 `cancelButtonLabel`). */
+export const CANCEL_BUTTON = '공개 전 취소하기'
+export const CANCEL_PENDING = '취소하는 중'
+/** 보조 버튼. 기본값 「취소」가 주 버튼 「공개 전 취소하기」와 겹쳐서 「닫기」로 바꾼다. */
+export const CANCEL_CLOSE = '닫기'
+export const CANCEL_LOADING = '함께 취소될 항목을 확인하는 중이에요'
+export const CANCEL_REASON_LABEL = '취소 사유(선택)'
+export const CANCEL_REASON_HELP = '결정 기록에 남아요'
+export const CANCEL_IRREVERSIBLE = '공개 전 취소는 되돌릴 수 없어요. 예약해 둔 자원도 지워져요.'
+export const CANCEL_IRREVERSIBLE_SAMPLE = '공개 전 취소는 되돌릴 수 없어요. 시험 묶음이라 지울 자원은 없어요.'
+export const CANCEL_DECISION_LOG_FAILED = '결정 기록을 남기지 못했어요. 취소는 그대로예요.'
+
+/** 확인창 마지막 줄. 시험 묶음은 지울 자원이 없다(§8.8). */
+export function cancelIrreversibleNotice(isSample: boolean): string {
+  return isSample ? CANCEL_IRREVERSIBLE_SAMPLE : CANCEL_IRREVERSIBLE
+}
+
+export const cancelAlsoTitle = (count: number): string => `함께 취소될 항목 ${count}개`
+export const cancelBlockersTitle = (count: number): string => `취소를 막는 항목 ${count}개`
+
+/** 확인창 주 버튼. 함께 취소될 항목이 있으면 「N개 공개 전 취소하기」(N은 이 항목 포함)다. */
+export function cancelButtonLabel(alsoCount: number): string {
+  return alsoCount > 0 ? `${alsoCount + 1}개 ${CANCEL_BUTTON}` : CANCEL_BUTTON
+}
+
+/** 미리 보기 응답(`{ dryRun: true }`)으로 만든 확인창 내용. */
+export interface CancelPreviewView {
+  /** 함께 취소될 항목: 미리 보기의 `cancelIds`에서 이 항목을 뺀 것(제출 순서). */
+  also: Array<{ id: string; line: string }>
+  /** 취소를 막는 항목과 서버 이유. 있으면 확인 버튼을 끈다. */
+  blockers: Array<{ id: string; line: string; reason: string }>
+  canConfirm: boolean
+  confirmLabel: string
+}
+
+const UNKNOWN_CANCEL_LINE = '항목'
+
+/**
+ * 미리 보기 응답에서 확인창이 쓰는 칸을 읽는다. 응답은 JSON이라 모양을 믿지 않고 읽는다. `items`는 화면이 들고 있는 항목이고 한 줄 요약을 붙이는 데만 쓴다
+ * (없는 ID는 「항목」). 막는 항목의 이유가 비어 있으면 그 항목은 이유 없이 한 줄만 보인다.
+ */
+export function buildCancelPreview<T extends { id: string }>(
+  data: Record<string, unknown>,
+  itemId: string,
+  items: readonly T[],
+  lineOf: (item: T) => string
+): CancelPreviewView {
+  const byId = new Map(items.map((item) => [item.id, item]))
+  const lineById = (id: string): string => {
+    const item = byId.get(id)
+    return item ? lineOf(item) : UNKNOWN_CANCEL_LINE
+  }
+  const also = stringList(data.cancelIds)
+    .filter((id) => id !== itemId)
+    .map((id) => ({ id, line: lineById(id) }))
+  const blockers = recordList(data.blockers).flatMap((entry) =>
+    typeof entry.id === 'string' ? [{ id: entry.id, line: lineById(entry.id), reason: typeof entry.reason === 'string' ? entry.reason : '' }] : []
+  )
+  return { also, blockers, canConfirm: blockers.length === 0, confirmLabel: cancelButtonLabel(also.length) }
+}
+
+export interface CancelToast {
+  message: string
+  /** 결정 기록을 남기지 못했을 때만 따로 띄우는 경고 토스트. */
+  logWarning: string | null
+}
+
+/** 취소 응답(`{ cancelled, missing, decisionLogFailed? }`)의 결과 토스트. 1개면 「공개 전에 취소했어요」, 2개 이상이면 「N개를 공개 전에 취소했어요」다. */
+export function cancelToast(data: Record<string, unknown>): CancelToast {
+  const count = stringList(data.cancelled).length
+  return {
+    message: count > 1 ? `${count}개를 공개 전에 취소했어요` : '공개 전에 취소했어요',
+    logWarning: data.decisionLogFailed === true ? CANCEL_DECISION_LOG_FAILED : null,
+  }
+}
+
+/**
+ * 취소 요청(미리 보기 포함)이 실패했을 때 화면을 새로 읽어야 하는지. 409는 그사이 다른 곳에서 바뀌었다는 뜻이고(`decisionFailureMessage`가 「화면을 새로
+ * 불러왔어요」를 붙이므로 실제로 새로 읽어야 말이 맞다), 500에 `cancelled`가 있으면 일부만 취소한 것이라 항목 상태가 바뀌어 있다. 그 밖의 500·네트워크 오류는 문장만 보인다.
+ */
+export function cancelNeedsRefresh(status: number, data: Record<string, unknown>): boolean {
+  return status === 409 || (status === 500 && Array.isArray(data.cancelled))
 }

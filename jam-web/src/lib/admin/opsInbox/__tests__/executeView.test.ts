@@ -6,6 +6,7 @@
  * - 주 버튼: 예약할 항목이 있으면 「N개 예약 등록하기」, 없고 실패로 닫을 항목만 있으면 「실패로 닫기」, 둘 다 없으면 꺼진다
  * - 실행 응답 → 토스트 문장(성공·일부 실패·실패로만 닫음·건너뜀·결정 기록 실패)
  * - 항목별 가장 최근 `fail` 사유, 「아직 연결하지 않은 종류」 안내 문장
+ * - 공개 전 취소 확인창(티켓 20261002_1649, §8.7): 미리 보기 응답 → 함께 취소될 항목·막는 항목·주 버튼 문구, 마지막 줄(시험 묶음은 다르다), 결과 토스트, 화면을 새로 읽을 실패
  * - 이 파일은 레지스트리·사전 점검 모듈을 값으로 가져오지 않는다(클라이언트가 가져온다). 문장이 사전 점검과 어긋나지 않는지는 여기서만 맞춰 본다.
  */
 import { describe, it, expect } from 'vitest'
@@ -13,9 +14,17 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { PRECHECK_MESSAGES } from '../execute/precheck'
 import {
+  CANCEL_DECISION_LOG_FAILED,
   EXECUTE_DECISION_LOG_FAILED,
   EXECUTE_WAITING_REASON,
+  buildCancelPreview,
   buildExecuteSummary,
+  cancelAlsoTitle,
+  cancelBlockersTitle,
+  cancelButtonLabel,
+  cancelIrreversibleNotice,
+  cancelNeedsRefresh,
+  cancelToast,
   executeButtonLabel,
   executeToast,
   itemDisplayName,
@@ -311,5 +320,107 @@ describe('latestFailReasons', () => {
 
   it('기록이 없으면 빈 객체다', () => {
     expect(latestFailReasons([])).toEqual({})
+  })
+})
+
+describe('buildCancelPreview — 미리 보기 응답 읽기', () => {
+  const items = [{ id: 'a1' }, { id: 'a2' }, { id: 'a3' }]
+  const lineOf = (item: { id: string }) => `줄 ${item.id}`
+  const preview = (data: Record<string, unknown>) => buildCancelPreview(data, 'a1', items, lineOf)
+
+  it('함께 취소될 항목은 cancelIds에서 이 항목을 뺀 것이고 제출 순서를 지킨다', () => {
+    const view = preview({ ok: true, dryRun: true, cancelIds: ['a2', 'a1', 'a3'], blockers: [] })
+    expect(view.also).toEqual([
+      { id: 'a2', line: '줄 a2' },
+      { id: 'a3', line: '줄 a3' },
+    ])
+    expect(view.blockers).toEqual([])
+    expect(view.canConfirm).toBe(true)
+  })
+
+  it('이 항목뿐이면 함께 취소될 항목이 없고 주 버튼은 「공개 전 취소하기」다', () => {
+    const view = preview({ cancelIds: ['a1'], blockers: [] })
+    expect(view.also).toEqual([])
+    expect(view.confirmLabel).toBe('공개 전 취소하기')
+  })
+
+  it('함께 취소될 항목이 있으면 주 버튼은 「N개 공개 전 취소하기」이고 N은 이 항목을 포함한다', () => {
+    expect(preview({ cancelIds: ['a1', 'a2'] }).confirmLabel).toBe('2개 공개 전 취소하기')
+    expect(preview({ cancelIds: ['a1', 'a2', 'a3'] }).confirmLabel).toBe('3개 공개 전 취소하기')
+    expect(cancelButtonLabel(0)).toBe('공개 전 취소하기')
+    expect(cancelButtonLabel(2)).toBe('3개 공개 전 취소하기')
+  })
+
+  it('막는 항목은 한 줄 요약과 서버 이유를 싣고 확인할 수 없게 한다', () => {
+    const reason = '이 항목을 가리키는 항목이 이미 게재 중이에요. 그 항목을 먼저 종료해 주세요.'
+    const view = preview({ cancelIds: ['a1'], blockers: [{ id: 'a3', reason }] })
+    expect(view.blockers).toEqual([{ id: 'a3', line: '줄 a3', reason }])
+    expect(view.canConfirm).toBe(false)
+  })
+
+  it('화면에 없는 ID는 「항목」으로 보인다', () => {
+    const view = preview({ cancelIds: ['a1', 'zz'], blockers: [{ id: 'yy', reason: '이유' }] })
+    expect(view.also).toEqual([{ id: 'zz', line: '항목' }])
+    expect(view.blockers).toEqual([{ id: 'yy', line: '항목', reason: '이유' }])
+  })
+
+  it('응답 모양을 믿지 않는다: 칸이 없거나 틀리면 비어 있고, 이유가 문자열이 아니면 빈 이유다', () => {
+    expect(preview({})).toMatchObject({ also: [], blockers: [], canConfirm: true })
+    expect(preview({ cancelIds: 'a2', blockers: 'x' })).toMatchObject({ also: [], blockers: [] })
+    expect(preview({ cancelIds: [1, null, 'a2'], blockers: [null, { id: 3 }, { id: 'a3', reason: 5 }] })).toMatchObject({
+      also: [{ id: 'a2', line: '줄 a2' }],
+      blockers: [{ id: 'a3', line: '줄 a3', reason: '' }],
+    })
+  })
+})
+
+describe('공개 전 취소 확인창 문장', () => {
+  it('구역 제목에 개수가 붙는다', () => {
+    expect(cancelAlsoTitle(2)).toBe('함께 취소될 항목 2개')
+    expect(cancelBlockersTitle(1)).toBe('취소를 막는 항목 1개')
+  })
+
+  it('마지막 줄은 되돌릴 수 없다는 것과 자원이 지워진다는 것을 알리고, 시험 묶음은 지울 자원이 없다고 알린다', () => {
+    expect(cancelIrreversibleNotice(false)).toBe('공개 전 취소는 되돌릴 수 없어요. 예약해 둔 자원도 지워져요.')
+    expect(cancelIrreversibleNotice(true)).toBe('공개 전 취소는 되돌릴 수 없어요. 시험 묶음이라 지울 자원은 없어요.')
+    expect(cancelIrreversibleNotice(true)).not.toContain('예약해 둔 자원도 지워져요')
+  })
+})
+
+describe('cancelToast', () => {
+  it('1개면 「공개 전에 취소했어요」', () => {
+    expect(cancelToast({ ok: true, cancelled: ['a1'], missing: [] })).toEqual({ message: '공개 전에 취소했어요', logWarning: null })
+  })
+
+  it('2개 이상이면 「N개를 공개 전에 취소했어요」', () => {
+    expect(cancelToast({ ok: true, cancelled: ['a2', 'a1'], missing: [] }).message).toBe('2개를 공개 전에 취소했어요')
+    expect(cancelToast({ ok: true, cancelled: ['a3', 'a2', 'a1'], missing: [] }).message).toBe('3개를 공개 전에 취소했어요')
+  })
+
+  it('결정 기록을 남기지 못했으면 경고 문장을 따로 돌려준다(취소 문장은 그대로)', () => {
+    const toast = cancelToast({ ok: true, cancelled: ['a1'], missing: [], decisionLogFailed: true })
+    expect(toast.message).toBe('공개 전에 취소했어요')
+    expect(toast.logWarning).toBe('결정 기록을 남기지 못했어요. 취소는 그대로예요.')
+    expect(toast.logWarning).toBe(CANCEL_DECISION_LOG_FAILED)
+  })
+
+  it('decisionLogFailed는 true일 때만 경고이고, 칸이 없는 응답도 1개 문장이 나온다', () => {
+    expect(cancelToast({ cancelled: ['a1'], decisionLogFailed: 'yes' }).logWarning).toBeNull()
+    expect(cancelToast({}).message).toBe('공개 전에 취소했어요')
+  })
+})
+
+describe('cancelNeedsRefresh', () => {
+  it('409는 화면을 새로 읽는다(그사이 바뀌었다)', () => {
+    expect(cancelNeedsRefresh(409, { error: '예약됨 항목만 취소할 수 있어요' })).toBe(true)
+  })
+
+  it('500에 cancelled가 있으면(일부만 취소) 새로 읽고, 그 밖의 500·오류는 읽지 않는다', () => {
+    expect(cancelNeedsRefresh(500, { error: '일부만 취소했어요', cancelled: ['a2'] })).toBe(true)
+    expect(cancelNeedsRefresh(500, { error: '항목 상태를 바꾸지 못했어요', cancelled: [] })).toBe(true)
+    expect(cancelNeedsRefresh(500, { error: '취소하지 못했어요. 잠시 뒤 다시 눌러 주세요.' })).toBe(false)
+    expect(cancelNeedsRefresh(0, {})).toBe(false)
+    expect(cancelNeedsRefresh(400, {})).toBe(false)
+    expect(cancelNeedsRefresh(404, {})).toBe(false)
   })
 })
