@@ -5,8 +5,12 @@
  * 그 배열을 그대로 읽어 파싱한다. 표시용 한국어 이름만 경로를 키로 별도 매핑해 둔다.
  *
  * cron 식은 "분 시 일 월 요일" 5필드 표준을 따른다. 이 함수는 분·시(1·2번째 필드)와
- * 요일(5번째 필드)만 해석한다 — 일·월(3·4번째 필드)은 현재 4개 크론이 모두 '*'라 검사하지
+ * 요일(5번째 필드)만 해석한다 — 일·월(3·4번째 필드)은 현재 크론이 모두 '*'라 검사하지
  * 않는다. 둘 중 하나라도 '*'가 아닌 크론이 추가되면 이 함수를 확장해야 한다.
+ *
+ * 시 필드가 '*'인 크론은 칸에 시각을 나열하지 않고 요일당 한 줄로 묶는다. 분 필드가 N분
+ * 간격(별표 뒤에 슬래시와 N)이면 그 줄은 「N분마다」로, 아니면 「매시간」으로 보인다
+ * (티켓 20261002_1814 — 10분마다 도는 운영툴 상태 맞추기 크론).
  *
  * 표시 시각은 KST다. Vercel 크론은 UTC로 실행되므로 시(hour)에 9시간을 더해 KST로
  * 바꾸는데, 더한 값이 24 이상이면 실제로는 다음 날 KST에 실행된 것이라 요일도 하루
@@ -33,6 +37,8 @@ export interface CronOccurrence {
   minute: number
   /** 매시간 실행되는 크론(시 필드가 '*') — 캘린더 칸에는 시각을 나열하지 않고 한 줄로 묶는다 */
   hourly: boolean
+  /** 분 필드가 N분 간격이면 그 N(hourly가 true일 때만). 없으면 「매시간」으로 보인다 */
+  intervalMinutes?: number
 }
 
 const CRON_LABELS: Record<string, string> = {
@@ -40,6 +46,7 @@ const CRON_LABELS: Record<string, string> = {
   '/api/cron/notifications': '알림 발송',
   '/api/cron/ambient-drop': '앰비언트 드랍',
   '/api/cron/external-inputs': '외부 입력 동기화',
+  '/api/cron/ops-reconcile': '운영 상태 맞추기',
 }
 
 /**
@@ -51,6 +58,17 @@ function parseCronField(field: string): number[] | '*' | null {
   if (field === '*') return '*'
   const nums = field.split(',').map((s) => Number(s.trim()))
   return nums.some((n) => Number.isNaN(n)) ? null : nums
+}
+
+/**
+ * 분 필드의 N분 간격(별표 뒤에 슬래시와 N)에서 N을 꺼낸다. N은 1~59의 정수만 받고, 그 밖의
+ * 모양이면 `null`을 반환해 호출부가 그 크론을 건너뛰게 한다(0이나 60 이상은 간격이 아니다).
+ */
+function parseMinuteStep(field: string): number | null {
+  const match = /^\*\/(\d+)$/.exec(field)
+  if (!match) return null
+  const step = Number(match[1])
+  return step >= 1 && step <= 59 ? step : null
 }
 
 /**
@@ -68,8 +86,13 @@ export function cronToWeeklyOccurrences(path: string, schedule: string): CronOcc
   const weekdays = weekdaysParsed === '*' ? [0, 1, 2, 3, 4, 5, 6] : weekdaysParsed
 
   if (hourField === '*') {
-    // 매시간 실행 — 시각을 나열하지 않고 요일마다 한 줄로 묶는다
-    return weekdays.map((w) => ({ path, label, weekday: w, hour: 0, minute: 0, hourly: true }))
+    // 매시간 실행 — 시각을 나열하지 않고 요일마다 한 줄로 묶는다. 분 필드가 N분 간격이면 그 N을 함께 싣는다
+    if (!minuteField.includes('/')) {
+      return weekdays.map((w) => ({ path, label, weekday: w, hour: 0, minute: 0, hourly: true }))
+    }
+    const intervalMinutes = parseMinuteStep(minuteField)
+    if (intervalMinutes === null) return []
+    return weekdays.map((w) => ({ path, label, weekday: w, hour: 0, minute: 0, hourly: true, intervalMinutes }))
   }
 
   const hoursParsed = parseCronField(hourField)
@@ -95,9 +118,9 @@ export function getWeeklyCronOccurrences(defs: CronDef[] = vercelConfig.crons): 
   return defs.flatMap((c) => cronToWeeklyOccurrences(c.path, c.schedule))
 }
 
-/** 캘린더 칸에 표시할 시각 문자열("09:00" 또는 "매시간") */
+/** 캘린더 칸에 표시할 시각 문자열("09:00", "매시간" 또는 "10분마다") */
 export function formatOccurrenceTime(occ: CronOccurrence): string {
-  if (occ.hourly) return '매시간'
+  if (occ.hourly) return occ.intervalMinutes ? `${occ.intervalMinutes}분마다` : '매시간'
   return `${String(occ.hour).padStart(2, '0')}:${String(occ.minute).padStart(2, '0')}`
 }
 
