@@ -7,6 +7,8 @@
  * 3. 매시간 크론(`0 * * * *`)은 시각을 나열하지 않고 요일당 한 줄(`hourly: true`)로 묶인다
  * 4. 해석할 수 없는 cron 식은 조용히 빈 배열을 반환한다(잘못된 값을 화면에 내보내지 않는다)
  * 5. 주 이동 유틸(월요일 계산 · 주간 범위 라벨)이 KST 달력 기준으로 정확하다
+ * 6. 시 필드가 '*'이고 분 필드가 N분 간격인 크론(운영툴 상태 맞추기, 티켓 20261002_1814)은 하루 144번을 찍지 않고
+ *    요일당 한 줄(`hourly: true`, `intervalMinutes: N`)로 묶여 「N분마다」로 보인다. N이 1~59의 정수가 아니면 건너뛴다
  */
 import { describe, it, expect } from 'vitest'
 import {
@@ -39,6 +41,29 @@ describe('cronToWeeklyOccurrences', () => {
     expect(occ).toHaveLength(7)
     expect(occ.every((o) => o.hourly)).toBe(true)
     expect(occ.map((o) => formatOccurrenceTime(o))).toEqual(Array(7).fill('매시간'))
+  })
+
+  it('ops-reconcile(*/10 * * * *) → 요일당 한 줄만 생성되고 「10분마다」로 보인다', () => {
+    const occ = cronToWeeklyOccurrences('/api/cron/ops-reconcile', '*/10 * * * *')
+    expect(occ).toHaveLength(7)
+    expect(occ.every((o) => o.hourly && o.intervalMinutes === 10)).toBe(true)
+    expect(new Set(occ.map((o) => o.weekday))).toEqual(new Set([0, 1, 2, 3, 4, 5, 6]))
+    expect(occ.map((o) => formatOccurrenceTime(o))).toEqual(Array(7).fill('10분마다'))
+    expect(occ[0].label).toBe('운영 상태 맞추기')
+  })
+
+  it('요일이 지정된 N분 간격 크론(*/30 * * * 1)은 그 요일 한 줄만 「30분마다」', () => {
+    const occ = cronToWeeklyOccurrences('/api/cron/example', '*/30 * * * 1')
+    expect(occ).toHaveLength(1)
+    expect(occ[0]).toMatchObject({ weekday: 1, hourly: true, intervalMinutes: 30 })
+    expect(formatOccurrenceTime(occ[0])).toBe('30분마다')
+  })
+
+  it('N분 간격이 1~59의 정수가 아니면 빈 배열', () => {
+    expect(cronToWeeklyOccurrences('/x', '*/0 * * * *')).toEqual([])
+    expect(cronToWeeklyOccurrences('/x', '*/60 * * * *')).toEqual([])
+    expect(cronToWeeklyOccurrences('/x', '*/abc * * * *')).toEqual([])
+    expect(cronToWeeklyOccurrences('/x', '1-5/10 * * * *')).toEqual([])
   })
 
   it('요일이 지정된 크론(0 21 * * 1, UTC 월요일 21시)은 KST 화요일 06:00로 하루 밀린다', () => {
@@ -88,10 +113,16 @@ describe('cronOccurrenceId', () => {
     const ambientDrop = cronToWeeklyOccurrences('/api/cron/ambient-drop', '0 * * * *')[0]
     expect(cronOccurrenceId(ambientDrop, date)).toBe('/api/cron/ambient-drop-2026-09-22-매시간')
   })
+
+  it('N분 간격 크론도 id에 「N분마다」가 들어가 같은 날짜의 다른 크론과 겹치지 않는다', () => {
+    const date = '2026-09-22'
+    const opsReconcile = cronToWeeklyOccurrences('/api/cron/ops-reconcile', '*/10 * * * *')[0]
+    expect(cronOccurrenceId(opsReconcile, date)).toBe('/api/cron/ops-reconcile-2026-09-22-10분마다')
+  })
 })
 
 describe('getWeeklyCronOccurrences', () => {
-  it('vercel.json의 crons 4개를 모두 변환한다(매일 6개 요일 항목 + 매시간 7개)', () => {
+  it('vercel.json의 crons 5개를 모두 변환한다(매일 3개 + 매시간 1개 + 10분마다 1개, 각 요일 7개)', () => {
     const occ = getWeeklyCronOccurrences()
     const paths = new Set(occ.map((o) => o.path))
     expect(paths).toEqual(
@@ -100,10 +131,18 @@ describe('getWeeklyCronOccurrences', () => {
         '/api/cron/notifications',
         '/api/cron/ambient-drop',
         '/api/cron/external-inputs',
+        '/api/cron/ops-reconcile',
       ])
     )
-    // 매일 실행 크론 3개(7개씩) + 매시간 크론 1개(7개) = 28개
-    expect(occ).toHaveLength(28)
+    // 매일 실행 크론 3개(7개씩) + 매시간 크론 1개(7개) + 10분마다 크론 1개(7개) = 35개
+    expect(occ).toHaveLength(35)
+  })
+
+  it('vercel.json의 ops-reconcile 크론은 달력에서 「10분마다」 한 줄로 보인다(하루 144번을 찍지 않는다)', () => {
+    const occ = getWeeklyCronOccurrences().filter((o) => o.path === '/api/cron/ops-reconcile')
+    expect(occ).toHaveLength(7)
+    expect(occ.map((o) => formatOccurrenceTime(o))).toEqual(Array(7).fill('10분마다'))
+    expect(occ.every((o) => o.label === '운영 상태 맞추기')).toBe(true)
   })
 })
 

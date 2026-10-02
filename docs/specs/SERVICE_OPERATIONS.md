@@ -1093,6 +1093,8 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | GET | `/api/cron/poi-cleanup` | 만료 POI 드랍 소각, 3개월 지난 부정 이용 탐지 기록(`abusing_logs`) 삭제 |
 | GET | `/api/cron/notifications` | 알림(소식) T2 배치 생성 |
 | GET | `/api/cron/ambient-drop` | 앰비언트(시스템) POI 드랍 배치 + 날짜 예약 배포 처리 |
+| GET | `/api/cron/external-inputs` | 날씨·특일을 미리 받아 `external_input_daily`에 저장 |
+| GET | `/api/cron/ops-reconcile` | 운영툴 항목 상태를 실제 자원에 맞춤(공개·종료·취소·실패, 밖에서 바뀐 것은 결정 기록만) |
 
 ### 어드민
 
