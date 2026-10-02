@@ -50,6 +50,7 @@ import { OpsBalanceItemWarnings } from './OpsBalanceWarnings'
  * - `detailHistoryAction`: ⑦ 결정 기록 머리의 오른쪽(「마지막 수정 되돌리기」). 비어 있으면 자리를 잡지 않는다.
  *
  * ⑦ 결정 기록은 승인·반려·수정·수정 되돌림(「되돌림」 태그, 버튼 없음)·일괄 승인 표시와 사유, 수정 전후 차이 줄(`OpsDiffLines`)을 그린다.
+ * 예약 등록의 `execute`(관리자가 예약 등록했어요)·`fail`(예약 등록에 실패했어요, 사유는 「실패 사유」)·`cancel`(관리자가 공개 전에 취소했어요, 사유는 「취소 사유」)도 같은 줄이다(티켓 20261002_1648).
  */
 
 interface OpsItemDetailProps {
@@ -225,18 +226,27 @@ const DECISION_ACTION_LABELS: Record<string, string> = {
   reject: '반려했어요',
   edit: '수정했어요',
   revert: '수정을 되돌렸어요',
+  execute: '예약 등록했어요',
+  fail: '예약 등록에 실패했어요',
+  cancel: '공개 전에 취소했어요',
 }
 
-/** 사유 줄 앞에 붙는 이름. 반려의 사유는 「반려 이유」, 수정의 사유는 「수정한 이유」다. */
+/** 사람이 한 일이 아니라 일이 잘못돼 남는 기록. 앞에 「관리자가」를 붙이지 않는다(실행한 관리자가 실패한 것이 아니다). */
+const DECISION_OUTCOME_ACTIONS: ReadonlySet<string> = new Set(['fail'])
+
+/** 사유 줄 앞에 붙는 이름. 반려의 사유는 「반려 이유」, 수정의 사유는 「수정한 이유」, 실패·취소의 사유는 「실패 사유」·「취소 사유」다. */
 const DECISION_REASON_LABELS: Record<string, string> = {
   reject: '반려 이유',
   edit: '수정한 이유',
+  fail: '실패 사유',
+  cancel: '취소 사유',
 }
 
 function decisionLine(decision: OpsDecisionRecord): string {
   const action = Object.prototype.hasOwnProperty.call(DECISION_ACTION_LABELS, decision.action)
     ? DECISION_ACTION_LABELS[decision.action]
     : '기록을 남겼어요'
+  if (DECISION_OUTCOME_ACTIONS.has(decision.action)) return action
   if (decision.actor.startsWith('token:')) {
     // 토큰 제출의 이름은 자기 신고라 글자로만 보여 준다(권한 판단에 쓰지 않는다).
     return `에이전트(${truncateText(decision.actor.slice('token:'.length), 40)})가 ${action}`

@@ -24,9 +24,10 @@ export type DecisionResponse =
       data: Record<string, unknown>
     }
 
-const FALLBACK_ERROR = '요청을 처리하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
+/** 서버 문장이 없을 때 쓰는 고정 문장. 예약 등록 호출(`executeClient.ts`)도 같은 문장을 쓴다. */
+export const FALLBACK_ERROR = '요청을 처리하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
 
-function asRecord(value: unknown): Record<string, unknown> {
+export function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
 

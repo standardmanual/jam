@@ -11,6 +11,10 @@
  * 기획 상세에는 밸런스 평가 결과(`balance`)가 함께 온다(티켓 20260930_1459). 규칙(`ops_rules`)과 서비스 상태를 읽어 계산하고
  * 어느 쪽이 실패해도 던지지 않는다 — 실패는 `balance.status = 'failed'`로 화면에 넘어가고 기획 상세는 그대로 열린다.
  *
+ * 기획 상세에는 예약 등록 요약(`execution`)도 함께 온다(티켓 20261002_1648, 운영툴 PRD §8.2). 항목 원본 행으로 사전 점검(`precheckBundle`)을 돌려
+ * [N개 예약 등록하기]의 N과 「아직 연결하지 않은 종류」를 센다. 레지스트리·카드 핸들러가 클라이언트 번들로 끌려가지 않도록 화면은 이 계산을
+ * 하지 않고 결과만 받는다. 이 계산도 던지지 않는다.
+ *
  * ⚠️ **PostgREST 기본 페이지 상한(1000행)** — 에러 없이 잘린 목록이 돌아오므로 `range`로 끝까지 넘겨 전량을 받는다
  * (`badge-families-query.ts`의 `fetchActivityFamilyBadges`와 같은 방식이다).
  */
@@ -35,6 +39,10 @@ import {
 } from '@/lib/admin/opsInbox/balance/evaluate'
 import { loadBalanceState } from '@/lib/admin/opsInbox/balance/state'
 import type { OpsBundleBalance } from '@/lib/admin/opsInbox/balance/view'
+import { isStoppedItem } from '@/lib/admin/opsInbox/execute/groups'
+import { isExecutableKind, type ExecuteHandlerRegistry, type ExecuteItem } from '@/lib/admin/opsInbox/execute/handlers'
+import { hasHandler, precheckBundle } from '@/lib/admin/opsInbox/execute/precheck'
+import { EXECUTE_HANDLERS } from '@/lib/admin/opsInbox/execute/registry'
 
 const FETCH_PAGE_SIZE = 1000
 const ERROR_LABEL = 'ops-inbox'
@@ -279,6 +287,19 @@ export interface OpsDecisionRecord {
   createdAt: string
 }
 
+/** 예약 등록 요약(티켓 20261002_1648). 기획 상세를 읽을 때마다 그 순간의 항목과 지금 연결된 핸들러로 센다. 저장하지 않는다. */
+export interface OpsBundleExecution {
+  /** 「승인됨」 항목 수. 0이면 [예약 등록하기] 버튼이 없다. */
+  approvedCount: number
+  /** 사전 점검의 「예약할 항목」 수. [N개 예약 등록하기]의 N이다. */
+  readyCount: number
+  /**
+   * 아직 예약 등록을 연결하지 않은 종류(묶음 안 첫 등장 순). 멈추지 않은(반려·취소·실패·종료가 아닌) 항목 가운데 예약 등록 대상 종류인데
+   * 핸들러가 없는 것이다. 예약 등록 대상이 아닌 종류(`pattern_proposal`)와 종류를 읽을 수 없는 항목은 세지 않는다.
+   */
+  unconnectedKinds: string[]
+}
+
 export interface OpsBundleDetail {
   bundle: OpsBundleHeader
   /** `position` 순. */
@@ -290,11 +311,14 @@ export interface OpsBundleDetail {
    * 저장하지 않는다. 평가가 실패하면 `status: 'failed'`이고 상세는 그대로 열린다.
    */
   balance: OpsBundleBalance
+  /** 예약 등록 요약(티켓 20261002_1648). */
+  execution: OpsBundleExecution
 }
 
 const BUNDLE_DETAIL_COLUMNS = 'id, bundle_id, week, hypothesis, author, is_sample, format_errors, received_at'
+// `created_resource`는 사전 점검(연결 대상이 만든 자원 확인)만 읽는다. 화면 항목(`OpsItemRecord`)에는 싣지 않는다.
 const ITEM_DETAIL_COLUMNS =
-  'id, position, item_key, kind, pattern_no, starts_at, ends_at, status, original, edited, format_errors, updated_at'
+  'id, position, item_key, kind, pattern_no, starts_at, ends_at, status, original, edited, created_resource, format_errors, updated_at'
 const DECISION_COLUMNS = 'id, item_id, action, actor, batch_id, diff, reason, slack_result, created_at'
 
 // ── 밸런스 평가 (티켓 20260930_1459) ─────────────────────────────────────────────────────────────
@@ -364,6 +388,35 @@ export async function evaluateOpsBundleBalance(
   }
 }
 
+// ── 예약 등록 요약 (티켓 20261002_1648) ──────────────────────────────────────────────────────────
+
+/** 이미 끝난 항목. 멈춘 항목(반려·취소·실패)과 함께 「아직 연결하지 않은 종류」 안내에서 뺀다. */
+const ENDED_STATUS = 'ended'
+
+/**
+ * 묶음의 예약 등록 요약을 만든다. `items`는 한 묶음의 항목 전부다(결정 전·멈춘 항목 포함: 그룹 판정에 필요하다).
+ * 사전 점검이 던져도 기획 상세가 열리도록 던지지 않고, 그때는 예약할 항목 0개·안내 없음으로 둔다(요약창은 열 때 사전 점검을 새로 보낸다).
+ */
+export function buildOpsExecution(
+  items: readonly ExecuteItem[],
+  now: Date,
+  handlers: ExecuteHandlerRegistry = EXECUTE_HANDLERS
+): OpsBundleExecution {
+  const approvedCount = items.filter((item) => item.status === 'approved').length
+  try {
+    const unconnectedKinds: string[] = []
+    for (const item of items) {
+      if (isStoppedItem(item) || item.status === ENDED_STATUS) continue
+      if (!isExecutableKind(item.kind) || hasHandler(handlers, item.kind) || unconnectedKinds.includes(item.kind)) continue
+      unconnectedKinds.push(item.kind)
+    }
+    return { approvedCount, readyCount: precheckBundle(items, { now, handlers }).ready.length, unconnectedKinds }
+  } catch (error) {
+    console.error(`[admin/${ERROR_LABEL}] 예약 등록 요약 실패:`, error)
+    return { approvedCount, readyCount: 0, unconnectedKinds: [] }
+  }
+}
+
 /** 기획 상세. UUID가 아니거나 없는 묶음이면 null이다(조회 오류는 던진다). 밸런스 평가 실패는 던지지 않고 `balance`에 담는다. */
 export async function getOpsBundleDetail(id: string): Promise<OpsBundleDetail | null> {
   if (!isUuid(id)) return null
@@ -381,7 +434,8 @@ export async function getOpsBundleDetail(id: string): Promise<OpsBundleDetail | 
   throwOnQueryError(itemsResult.error, ERROR_LABEL)
   throwOnQueryError(decisionsResult.error, ERROR_LABEL)
 
-  const items: OpsItemRecord[] = (itemsResult.data ?? []).map((item) => ({
+  const itemRows = itemsResult.data ?? []
+  const items: OpsItemRecord[] = itemRows.map((item) => ({
     id: item.id,
     position: item.position,
     itemKey: item.item_key,
@@ -421,5 +475,9 @@ export async function getOpsBundleDetail(id: string): Promise<OpsBundleDetail | 
     items,
     decisions,
     balance: await evaluateOpsBundleBalance(supabase, bundle.id, items, decisions),
+    execution: buildOpsExecution(
+      itemRows.map((row) => ({ ...row, bundle_id: bundle.id })),
+      new Date()
+    ),
   }
 }

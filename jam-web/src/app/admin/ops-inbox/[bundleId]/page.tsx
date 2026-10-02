@@ -8,6 +8,7 @@
  *
  * 밸런스 경고(티켓 20260930_1459)는 이 읽기 요청이 규칙과 서비스 상태로 계산한 결과(`detail.balance`)를 화면에 그대로 넘긴다.
  * 평가가 실패해도 상세는 열린다(실패 알림만 뜬다).
+ * 예약 등록 요약(`detail.execution`, 티켓 20261002_1648)도 같은 읽기 요청이 세서 넘긴다 — 레지스트리를 화면으로 끌어오지 않으려고 계산은 서버가 한다.
  *
  * 제목은 대상 주차다. `author`·`bundle_id`·`item_key`는 제출자가 정한 값(자기 신고)이라 제목으로 쓰지 않는다.
  */
@@ -30,7 +31,7 @@ export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPag
   const detail = await getOpsBundleDetail(bundleId)
   if (!detail) notFound()
 
-  const { bundle, items, decisions, balance } = detail
+  const { bundle, items, decisions, balance, execution } = detail
   const range = formatWeekRange(bundle.week)
 
   return (
@@ -65,6 +66,7 @@ export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPag
           decisions={decisions}
           balance={balance}
           isSample={bundle.isSample}
+          execution={execution}
         />
       </Suspense>
     </div>
