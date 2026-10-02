@@ -21,7 +21,7 @@ import { asRecord } from '@/lib/admin/opsInbox/itemView'
 import { kindLabel } from '@/lib/admin/opsInbox/labels'
 import { formatCancelFailureMessage, formatCancelMessage } from '@/lib/admin/opsInbox/slack'
 import { cancelSetOf, orderForUndo } from './groups'
-import type { CancelResult, ExecuteHandler, ExecuteItem, ExecuteServiceClient } from './handlers'
+import { isExecutableKind, type CancelResult, type ExecuteHandler, type ExecuteHandlerRegistry, type ExecuteItem, type ExecuteServiceClient } from './handlers'
 import { EXECUTE_HANDLERS } from './registry'
 import { itemLabelOf, loadBundleItems, postAndRecord, type ExecuteDeps, type RunFailure } from './run'
 
@@ -156,7 +156,12 @@ function blockerMessage(blockers: CancelPlan['blockers']): string {
   return (blockers.find((blocker) => blocker.status === 'live') ?? blockers[0]).reason
 }
 
-const hasNoHandler = (plan: CancelPlan, handlers: ExecuteDeps['handlers']) => plan.ordered.some((item) => !handlers[item.kind ?? ''])
+/** 항목 종류의 핸들러. 예약 등록 대상 종류만 찾는다(`kind`는 제출 문자열이라 `constructor` 같은 이름이 레지스트리 객체의 기본 속성을 집지 않게 한다). */
+function handlerOf(handlers: ExecuteHandlerRegistry, item: ExecuteItem): ExecuteHandler | undefined {
+  return isExecutableKind(item.kind) ? handlers[item.kind] : undefined
+}
+
+const hasNoHandler = (plan: CancelPlan, handlers: ExecuteHandlerRegistry) => plan.ordered.some((item) => !handlerOf(handlers, item))
 
 // ── 미리 보기 ────────────────────────────────────────────────────────────────────────────────────
 
@@ -208,7 +213,7 @@ export async function cancelItem(
       done.push(item)
       continue
     }
-    const handler = handlers[item.kind ?? ''] as ExecuteHandler
+    const handler = handlerOf(handlers, item) as ExecuteHandler
     const resourceId = resourceIdOf(item, handler)
     if (!resourceId) {
       console.error(`${LOG} 자원 ID가 없는 예약됨 항목이에요. 자원이 이미 없는 것으로 보고 상태만 바꿔요(${kindLabel(item.kind)})`)

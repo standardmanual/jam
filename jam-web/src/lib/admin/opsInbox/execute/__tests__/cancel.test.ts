@@ -434,6 +434,14 @@ describe('함께 취소할 항목 — 가짜 종류 핸들러(가정 3·4)', () 
     expect(nonSelect(db)).toEqual([])
   })
 
+  it('종류 이름이 레지스트리 객체의 기본 속성과 같아도 핸들러로 보지 않는다', async () => {
+    const { db, run } = setup([cardSpec({ kind: 'constructor' })])
+    const failure = bad(await run())
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe('아직 취소를 연결하지 않은 종류예요')
+    expect(nonSelect(db)).toEqual([])
+  })
+
   it('실제 레지스트리에는 카드만 있어 미션 항목은 409로 막힌다', async () => {
     const { db, run } = setup([missionSpec()])
     const failure = bad(await run(ID.mission))
