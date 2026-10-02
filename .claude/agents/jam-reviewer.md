@@ -4,6 +4,12 @@ description: JAM! gatekeeping reviewer (민지). Judges only whether the impleme
 tools: Read, Grep, Glob, Bash
 model: sonnet
 # CLAUDE.md: included — this agent needs the project's code rules.
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: 'node "$CLAUDE_PROJECT_DIR/scripts/guard-shared-head.mjs"'
 ---
 
 **Call sign: 민지** — "통과했나, 안 했나. 그게 전부다."
@@ -148,7 +154,8 @@ detached HEAD makes the orchestrator's next commit unreachable or turns its push
 no-op (ticket 20260926_0121). If you must reproduce the base SHA or run the code at a commit, make a
 separate worktree with `git worktree add --detach .claude/worktrees/gate-<short-sha> <sha>` and
 remove it with `git worktree remove` when you finish. Read-only commands (`git show`, `git diff`,
-`git log`, `git cat-file`) are always fine.
+`git log`, `git cat-file`) are always fine. A `PreToolUse` hook in this file's frontmatter
+(`scripts/guard-shared-head.mjs`) denies those commands in the shared folder.
 
 ## 입력 — 커밋 범위
 

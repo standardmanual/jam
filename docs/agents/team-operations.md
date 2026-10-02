@@ -295,6 +295,7 @@ tags: [워크플로]
 | 아현이 낡은 워크트리를 미커밋·미push 확인 없이 강제 제거 (격리 제약 아래, 유실은 없었음) | 1회 | `cleanup-stale-worktree.sh`가 검사 후 종료 코드 2로 거부 — 판단을 기억에 맡기지 않는다 (20260922_1056) |
 | 브라우저 검증 중 실제 배지 이미지에 쓰기 버튼을 눌러 덮어씀, 복구 불가 | 1회 | 실데이터 쓰기 금지, `[TEST]` 더미 또는 API 응답 형태만 확인 (`DEV_PROCESS_GUARDRAILS.md` 패턴 13) |
 | 함수 인자 수를 바꾸며 옛 시그니처를 안 지워 오버로드가 남고 런타임 `is not unique` | 1회 | `DROP FUNCTION IF EXISTS` 선행 (패턴 14, 20260911_1259) |
+| 민지가 읽기 명령에 `git checkout --detach`를 섞어 공유 작업 폴더의 HEAD를 `staging`에서 분리 (정의는 이미 금지, 제자리 복구로 유실 없음) | 2회 (2026-10-02, 두 번째는 권한 단계에서 거부됨) | 민지·채원 정의 frontmatter의 `PreToolUse` 훅(`scripts/guard-shared-head.mjs`)이 메인 워크트리에서 HEAD·작업 트리를 바꾸는 git 명령을 deny, `.claude/worktrees/*` 아래 실행은 허용 (20261002_1905) |
 | 격리 워크트리에서 `git push`가 osxkeychain 자격 증명 프롬프트에 멈춤 | 1회 (2026-09-22) | `-c credential.helper=!gh auth git-credential`로 push (아현 정의 「CI stamp」) |
 | 아현 반환 요약이 30줄 형식을 세 건 연속 위반하고 diff 원문까지 포함 — 카리나·민지·채원② 세 곳에 실림 | 3회 | `DEV_RESULT.summary` 스키마 `maxLength: 3000` (20260922_0620 → 20260922_1755) |
 | 커밋마다 staging push → Vercel 배포 1,212개(20일), Build CPU $66.15 | 누적 (2026-09-06 실측) | 티켓당 push 1회, `jam-web/` 밖만 바뀐 push는 `vercel-ignore.sh`가 건너뜀 |
