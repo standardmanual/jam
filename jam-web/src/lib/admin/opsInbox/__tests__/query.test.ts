@@ -598,11 +598,12 @@ describe('getOpsBundleDetail — 예약 등록 요약 (티켓 20261002_1648)', (
     expect(detail!.items[0]).not.toHaveProperty('createdResource')
   })
 
-  it('승인됨 수, 예약할 항목 수(지금 연결된 홈피드 카드), 아직 연결하지 않은 종류(묶음 안 첫 등장 순)를 센다', async () => {
+  it('승인됨 수, 예약할 항목 수(지금 연결된 홈피드 카드·미션), 아직 연결하지 않은 종류(묶음 안 첫 등장 순)를 센다', async () => {
     seed([
       row('a1'), // 카드 승인됨, 먼 미래 → 예약할 항목
       row('a2', { kind: 'drop_schedule' }), // 승인됨이지만 핸들러 없음 → 못 하는 항목
-      row('a3', { kind: 'mission', status: 'reviewing' }), // 결정 전이라도 아직 연결하지 않은 종류에 든다
+      row('a3', { kind: 'collection_launch', status: 'reviewing' }), // 결정 전이라도 아직 연결하지 않은 종류에 든다
+      row('a9', { kind: 'mission', status: 'reviewing' }), // 미션은 연결됐다(티켓 20261002_1944) → 안내에 들지 않는다
       row('a4', { kind: 'drop_schedule', status: 'reviewing' }), // 같은 종류는 한 번만
       row('a5', { kind: 'recipe', status: 'rejected' }), // 멈춘 항목은 센 대상이 아니다
       row('a6', { kind: 'jam_badge', status: 'ended' }), // 끝난 항목도 아니다
@@ -610,7 +611,7 @@ describe('getOpsBundleDetail — 예약 등록 요약 (티켓 20261002_1648)', (
       row('a8', { kind: null, status: 'reviewing' }), // 종류를 읽을 수 없으면 세지 않는다
     ])
     const detail = await getOpsBundleDetail(ID)
-    expect(detail!.execution).toEqual({ approvedCount: 3, readyCount: 1, unconnectedKinds: ['drop_schedule', 'mission'] })
+    expect(detail!.execution).toEqual({ approvedCount: 3, readyCount: 1, unconnectedKinds: ['drop_schedule', 'collection_launch'] })
   })
 
   it('승인됨 항목이 없으면 approvedCount·readyCount가 0이다', async () => {

@@ -4,6 +4,7 @@
  * 카드 핸들러(티켓 20261002_1255)가 쓰는 질의도 받는다: `is`·`limit`, 참조 세기의 `select(칼럼, { count, head })`, 기본 테이블 `today_cards` 등.
  * 취소(티켓 20261002_1256)가 쓰는 `gt`(두 값이 날짜 문자열이면 시각으로 비교한다)와 `delete().select()`의 지운 행 돌려주기도 받는다.
  * 상태 맞추기(티켓 20261002_1813)가 쓰는 `order`(칸 값이 같거나 없으면 내림차순은 나중에 넣은 행이 먼저)도 받는다.
+ * 미션 핸들러(티켓 20261002_1944)가 쓰는 미션 참조 표(`user_mission_*`·`mission_rank_snapshots`·`point_transactions`)와 `poi`가 기본 테이블에 있다.
  */
 import type { ExecuteServiceClient } from '../handlers'
 
@@ -173,6 +174,12 @@ export class FakeDb {
     item_books: [],
     badges: [],
     ranking_modes: [],
+    // 미션 핸들러(티켓 20261002_1944)가 읽는 표: 되돌림 전 참조 확인(`MISSION_UNDO_REFERENCE_TABLES`)과 조건 지점 존재 확인.
+    user_mission_completions: [],
+    user_mission_participations: [],
+    mission_rank_snapshots: [],
+    point_transactions: [],
+    poi: [],
   }
   calls: FakeCall[] = []
   seq = 0
