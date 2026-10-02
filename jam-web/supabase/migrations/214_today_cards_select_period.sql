@@ -28,13 +28,13 @@
 --   - 컬럼·함수 변경이 없는 정책 교체라 확장→전환→축소로 나누지 않는다. `anon`은 이전에도 정책이 없어 읽을 수 없고,
 --     쓰기 정책은 이전에도 없다. 이 파일은 두 가지를 바꾸지 않는다.
 --
--- 재실행 가능(idempotent): DROP POLICY IF EXISTS 뒤에 같은 이름으로 CREATE POLICY.
+-- 재실행 가능(idempotent): ALTER POLICY로 같은 정책의 USING 식만 바꾼다. 정책을 지우지 않으므로 정책이 비는 순간이 없다.
+-- (2026-10-02: 처음 쓴 DROP POLICY → CREATE POLICY 형태는 Supabase MCP apply_migration이 세 번 모두 60초 시간 초과로 끝나
+--  적용되지 않았다. 결과가 같은 ALTER POLICY로 바꿨다. 티켓 20261002_1257 완료 기록 참고.)
 
 BEGIN;
 
-DROP POLICY IF EXISTS "today_cards: 인증 유저 읽기" ON public.today_cards;
-CREATE POLICY "today_cards: 인증 유저 읽기" ON public.today_cards
-  FOR SELECT TO authenticated
+ALTER POLICY "today_cards: 인증 유저 읽기" ON public.today_cards
   USING (is_active = TRUE AND starts_at <= now() AND ends_at >= now());
 
 COMMIT;
@@ -63,7 +63,6 @@ COMMIT;
 -- ROLLBACK;
 
 -- 되돌림 SQL
--- 원래 정책(048, `is_active = TRUE`만 봄)을 다시 만든다. 되돌리면 공개 전·종료된 카드가 인증 유저의 직접 조회에 다시 보인다.
--- DROP POLICY IF EXISTS "today_cards: 인증 유저 읽기" ON public.today_cards;
--- CREATE POLICY "today_cards: 인증 유저 읽기" ON public.today_cards
---   FOR SELECT TO authenticated USING (is_active = TRUE);
+-- 정책의 USING 식을 원래 조건(048, `is_active = TRUE`만 봄)으로 되돌린다. 되돌리면 공개 전·종료된 카드가 인증 유저의 직접 조회에 다시 보인다.
+-- ALTER POLICY "today_cards: 인증 유저 읽기" ON public.today_cards
+--   USING (is_active = TRUE);
