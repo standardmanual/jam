@@ -162,11 +162,15 @@ export type CreateRecipeResult =
  * 레시피 행 + 슬롯 생성 — 검증(`buildRecipeRow`) → 행 insert → 슬롯 저장. 슬롯 저장이 실패하면 행만
  * 남는 반쪽 상태를 막으려고 방금 만든 행을 지운다. POST 라우트와 운영툴 자원 연결(티켓 20260930_1500)이
  * 같이 쓴다(티켓 20261001_1158).
+ *
+ * `options.id`(티켓 20261002_2221): 주면 그 ID로 행을 넣는다. 운영툴 예약 등록이 만들기 전에 정한 ID를
+ * `created_resource`에 먼저 적고 그 ID로 만들기 위한 것이다. 주지 않으면(어드민 POST 라우트) DB가 ID를 정한다.
  */
 export async function createRecipeWithSlots(
   supabase: ServiceClient,
   body: RecipePayloadInput,
-  now: Date = new Date()
+  now: Date = new Date(),
+  options: { id?: string } = {}
 ): Promise<CreateRecipeResult> {
   const built = await buildRecipeRow(supabase, body, now)
   if (!built.ok) return { ok: false, status: 400, error: built.error }
@@ -175,7 +179,8 @@ export async function createRecipeWithSlots(
   const period = assertValidPeriod(null, built.row.valid_from, built.row.valid_until)
   if (!period.ok) return { ok: false, status: 400, error: period.error }
 
-  const { data, error } = await supabase.from('combination_recipes').insert(built.row).select().single()
+  const insertRow = options.id ? { ...built.row, id: options.id } : built.row
+  const { data, error } = await supabase.from('combination_recipes').insert(insertRow).select().single()
   if (error) return { ok: false, status: 500, error: error.message }
 
   const recipe = data as CombinationRecipeRow
