@@ -5,6 +5,7 @@
  * - check: 검사 라벨마다 고정 문장(가정 3 표), DB 오류·기존 카드 ID는 `reason`에 없다
  * - create: insert 칸·같은 ID 반환(가정 4), 오류 때 정리 delete 한 번과 원문 비노출
  * - undo: 참조가 있으면 지우지 않고, 없으면 ID로 지운다(가정 5). 오류 원문 비노출
+ * - cancel(티켓 20261002_1256 가정 2): 없음·공개됨·기록 있음·삭제 경합·오류 비노출
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -22,7 +23,7 @@ vi.mock('@/lib/admin/registerChecks/homeFeed', async (importOriginal) => {
 import { asRegisterChecksClient, RESOURCE_KEY_BY_KIND, type ExecuteLinkedIds } from '../handlers'
 import { HOME_FEED_CARD_HANDLER as handler } from '../homeFeedCard'
 import { DB_SECRET, FakeDb, type Row } from './fakeDb'
-import { LATER, makeItem } from './fixtures'
+import { LATER, NOW, makeItem } from './fixtures'
 
 const uid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 const CARD_ID = uid(1)
@@ -349,5 +350,132 @@ describe('undo — 참조를 확인한 뒤 ID로 지운다', () => {
     expect(failure?.reason).not.toContain(DB_SECRET)
     expect(failure?.reason).not.toContain(CARD_ID)
     expect(failure?.detail).toContain(DB_SECRET)
+  })
+})
+
+describe('cancel — 공개 전에만 지운다(티켓 20261002_1256 가정 2)', () => {
+  const PAST = '2026-10-05T02:00:00.000Z' // NOW(10/5 12:00 KST)보다 앞
+  const seed = (db: FakeDb, startsAt: string = LATER) => {
+    db.tables.today_cards = [
+      { id: CARD_ID, starts_at: startsAt },
+      { id: EXISTING_CARD_ID, starts_at: LATER },
+    ]
+  }
+  const cancel = (db: FakeDb) => handler.cancel(db.service, CARD_ID, { now: NOW })
+  const ids = (db: FakeDb) => (db.tables.today_cards as Row[]).map((row) => row.id)
+
+  it('공개 전이고 기록이 없으면 ID로 지우고 다른 카드는 건드리지 않는다. 지울 때 공개 시각 조건을 건다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    expect(await cancel(db)).toEqual({ ok: true, missing: false })
+
+    expect(ids(db)).toEqual([EXISTING_CARD_ID])
+    expect(deletes(db)).toHaveLength(1)
+    expect(deletes(db)[0]).toMatchObject({ table: 'today_cards', filters: [['id', CARD_ID], ['starts_at >', NOW.toISOString()]] })
+    // 읽기 → 참조 확인 → 지우기 순서
+    const order = db.calls.map((call) => `${call.table}:${call.op}`)
+    expect(order.indexOf('today_cards:select')).toBeLessThan(order.indexOf('today_card_events:select'))
+    expect(order.indexOf('today_card_events:select')).toBeLessThan(order.indexOf('today_cards:delete'))
+  })
+
+  it('행이 없으면 밖에서 지워진 것이라 성공(missing)이고 아무것도 쓰지 않는다', async () => {
+    const db = new FakeDb()
+    expect(await cancel(db)).toEqual({ ok: true, missing: true })
+    expect(db.calls.filter((call) => call.op !== 'select')).toEqual([])
+    expect(db.calls.some((call) => call.table === 'today_card_events')).toBe(false)
+  })
+
+  it.each([
+    ['공개 시각이 지났다', PAST],
+    ['공개 시각이 정확히 지금이다', NOW.toISOString()],
+  ])('%s: published이고 지우지 않으며 참조도 읽지 않는다', async (_label, startsAt) => {
+    const db = new FakeDb()
+    seed(db, startsAt)
+    const result = await cancel(db)
+
+    expect(result).toEqual({ ok: false, code: 'published', failure: { reason: '공개 시각이 지나 취소할 수 없어요' } })
+    expect(deletes(db)).toEqual([])
+    expect(ids(db)).toEqual([CARD_ID, EXISTING_CARD_ID])
+    expect(db.calls.some((call) => call.table === 'today_card_events')).toBe(false)
+  })
+
+  it('노출·열람 기록이 있으면 referenced이고 지우지 않는다. 테이블 이름은 detail에만 있다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    db.tables.today_card_events = [{ id: 'event-1', card_id: CARD_ID }]
+    const result = await cancel(db)
+
+    expect(result).toMatchObject({ ok: false, code: 'referenced', failure: { reason: '노출 기록이 있거나 확인하지 못해 카드를 지우지 않았어요' } })
+    if (result.ok) throw new Error('실패여야 해요')
+    expect(result.failure.reason).not.toContain('today_card_events')
+    expect(result.failure.detail).toContain('today_card_events')
+    expect(deletes(db)).toEqual([])
+  })
+
+  it('참조를 읽지 못하면 referenced이고 지우지 않는다. DB 오류 원문은 detail에만 있다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    db.failIf = (call) => call.table === 'today_card_events'
+    const result = await cancel(db)
+
+    expect(result).toMatchObject({ ok: false, code: 'referenced' })
+    if (result.ok) throw new Error('실패여야 해요')
+    expect(result.failure.reason).not.toContain(DB_SECRET)
+    expect(result.failure.detail).toContain(DB_SECRET)
+    expect(deletes(db)).toEqual([])
+  })
+
+  it('읽은 뒤 공개 시각이 지나면(삭제 경합) 지운 행이 없고, 다시 읽어 행이 있으면 published다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    db.beforeRun = (call) => {
+      if (call.op === 'delete') (db.tables.today_cards[0] as Row).starts_at = PAST
+    }
+    const result = await cancel(db)
+
+    expect(result).toMatchObject({ ok: false, code: 'published', failure: { reason: '공개 시각이 지나 취소할 수 없어요' } })
+    expect(ids(db)).toEqual([CARD_ID, EXISTING_CARD_ID])
+  })
+
+  it('지우려는 사이 다른 곳에서 먼저 지우면(삭제 경합) 다시 읽어 행이 없으니 missing이다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    db.beforeRun = (call) => {
+      if (call.op === 'delete') db.tables.today_cards = (db.tables.today_cards as Row[]).filter((row) => row.id !== CARD_ID)
+    }
+    expect(await cancel(db)).toEqual({ ok: true, missing: true })
+    expect(ids(db)).toEqual([EXISTING_CARD_ID])
+  })
+
+  it.each([
+    ['처음 읽기', (call: { op: string; table: string }) => call.table === 'today_cards' && call.op === 'select'],
+    ['지우기', (call: { op: string; table: string }) => call.table === 'today_cards' && call.op === 'delete'],
+  ])('%s 오류는 error이고 「카드를 지우지 못했어요」다. DB 오류 원문·카드 ID는 reason에 없다', async (_label, fails) => {
+    const db = new FakeDb()
+    seed(db)
+    db.failIf = fails
+    const result = await cancel(db)
+
+    expect(result).toMatchObject({ ok: false, code: 'error', failure: { reason: '카드를 지우지 못했어요' } })
+    if (result.ok) throw new Error('실패여야 해요')
+    expect(result.failure.reason).not.toContain(DB_SECRET)
+    expect(result.failure.reason).not.toContain(CARD_ID)
+    expect(result.failure.detail).toContain(DB_SECRET)
+    expect(ids(db)).toEqual([CARD_ID, EXISTING_CARD_ID])
+  })
+
+  it('지운 행이 없고 다시 읽기마저 실패하면 error다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    let selects = 0
+    db.beforeRun = (call) => {
+      if (call.op === 'delete') (db.tables.today_cards[0] as Row).starts_at = PAST
+    }
+    db.failIf = (call) => call.table === 'today_cards' && call.op === 'select' && ++selects === 2
+    const result = await cancel(db)
+
+    expect(result).toMatchObject({ ok: false, code: 'error', failure: { reason: '카드를 지우지 못했어요' } })
+    if (result.ok) throw new Error('실패여야 해요')
+    expect(result.failure.detail).toContain(DB_SECRET)
   })
 })

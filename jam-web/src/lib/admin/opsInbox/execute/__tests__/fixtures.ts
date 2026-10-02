@@ -60,7 +60,7 @@ export function makeItem(spec: ItemSpec = {}): ExecuteItem {
   }
 }
 
-/** 종류 하나의 가짜 핸들러. 아무것도 만들지 않는다. */
+/** 종류 하나의 가짜 핸들러. 아무것도 만들지 않고, 취소는 늘 성공한다. */
 export function fakeHandler(kind: ExecutableKind): ExecuteHandler {
   return {
     kind,
@@ -70,6 +70,7 @@ export function fakeHandler(kind: ExecutableKind): ExecuteHandler {
     check: async () => null,
     create: async () => ({ ok: true, value: { id: 'created' } }),
     undo: async () => null,
+    cancel: async () => ({ ok: true, missing: false }),
   }
 }
 

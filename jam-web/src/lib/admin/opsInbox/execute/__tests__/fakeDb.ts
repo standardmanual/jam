@@ -2,6 +2,7 @@
  * 예약 등록 실행 테스트용 메모리 DB (티켓 20261002_1123). `opsInbox/__tests__/decide.test.ts`의 가짜 Supabase 질의와 같은 모양이다
  * (실 DB에 접속하지 않는다). 쓰기 직전에 부르는 `beforeRun`으로 동시 실행을 흉내 내고, `failIf`로 원하는 쓰기만 실패시킨다.
  * 카드 핸들러(티켓 20261002_1255)가 쓰는 질의도 받는다: `is`·`limit`, 참조 세기의 `select(칼럼, { count, head })`, 기본 테이블 `today_cards` 등.
+ * 취소(티켓 20261002_1256)가 쓰는 `gt`(두 값이 날짜 문자열이면 시각으로 비교한다)와 `delete().select()`의 지운 행 돌려주기도 받는다.
  */
 import type { ExecuteServiceClient } from '../handlers'
 
@@ -61,6 +62,19 @@ class FakeQuery implements PromiseLike<Result> {
     this.log.push([col, vals])
     return this
   }
+  /** `gt(col, val)`: 칸이 val보다 큰 행. 날짜 문자열끼리는 시각으로 비교한다. 로그에는 칸 이름 뒤에 ` >`를 붙여 `eq`와 가른다. */
+  gt(col: string, val: string | number) {
+    this.filters.push([
+      col,
+      (row) => {
+        const cell = row[col]
+        if (typeof cell === 'string' && typeof val === 'string') return Date.parse(cell) > Date.parse(val)
+        return typeof cell === 'number' && typeof val === 'number' && cell > val
+      },
+    ])
+    this.log.push([`${col} >`, val])
+    return this
+  }
   /** `is(col, null)`: 칸이 비었거나 없는 행. */
   is(col: string, val: null) {
     this.filters.push([col, (row) => (row[col] ?? null) === val])
@@ -118,7 +132,7 @@ class FakeQuery implements PromiseLike<Result> {
     if (this.mode === 'delete') {
       const gone = new Set(matches())
       this.db.tables[this.table] = rows.filter((row) => !gone.has(row))
-      return { data: null, error: null }
+      return { data: this.returning ? [...gone].map((row) => ({ id: row.id })) : null, error: null }
     }
     const hit = matches()
     // 참조 세기(`select(칼럼, { count: 'exact', head: true })`)는 행 없이 건수만 돌려준다.

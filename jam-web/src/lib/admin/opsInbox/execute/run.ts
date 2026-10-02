@@ -137,7 +137,8 @@ function isRunFailure<T extends object>(value: T | RunFailure): value is RunFail
 const ITEM_COLUMNS =
   'id, bundle_id, position, item_key, kind, status, starts_at, ends_at, pattern_no, original, edited, created_resource, format_errors, updated_at'
 
-async function loadBundleItems(
+/** 묶음과 그 항목을 읽는다. 공개 전 취소(`cancel.ts`)도 같이 쓴다. */
+export async function loadBundleItems(
   service: ServiceClient,
   bundleId: string,
   failMessage: string
@@ -158,7 +159,7 @@ async function loadBundleItems(
 }
 
 /** 「종류 · 공개 시각(KST)」. 슬랙 글의 항목 이름이다(`author`·`item_key`는 자기 신고라 쓰지 않는다). */
-function itemLabelOf(item: Pick<ExecuteItem, 'kind' | 'starts_at'>): string {
+export function itemLabelOf(item: Pick<ExecuteItem, 'kind' | 'starts_at'>): string {
   return [kindLabel(item.kind), formatKstDayTime(item.starts_at)].filter(Boolean).join(' · ')
 }
 
@@ -530,10 +531,10 @@ export async function executeBundle(
 
 // ── 슬랙 알림 ────────────────────────────────────────────────────────────────────────────────────
 
-/** 글을 올리고 그 결과를 결정 기록의 `slack_result`에 채운다(같은 `batch_id`의 그 `action` 행). 던지지 않는다. */
-async function postAndRecord(
+/** 글을 올리고 그 결과를 결정 기록의 `slack_result`에 채운다(같은 `batch_id`의 그 `action` 행). 던지지 않는다. 공개 전 취소(`cancel.ts`)도 같이 쓴다. */
+export async function postAndRecord(
   service: ServiceClient,
-  slack: ExecuteNotification,
+  slack: Pick<ExecuteNotification, 'batchId' | 'decisionLogFailed'>,
   channel: OpsSlackChannel,
   action: string,
   text: string

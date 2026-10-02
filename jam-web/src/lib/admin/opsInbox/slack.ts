@@ -2,8 +2,8 @@
  * 운영툴 슬랙 이력 알림 (티켓 20260930_1816) — 서버(Vercel)에서 `chat.postMessage`를 부른다.
  *
  * - 쓰는 이벤트는 「기획안 도착」(티켓 20260930_1816)과 결정 글(승인·반려·일괄 승인·수정·되돌림, 티켓 20260930_1818),
- *   예약 등록 요약(티켓 20261002_1123)이 `#jam-report`, 예약 등록 실패 글(같은 티켓)이 `#jam-alert`다.
- *   상태 맞추기의 알림은 뒤 티켓이 같은 두 채널로 보낸다.
+ *   예약 등록 요약(티켓 20261002_1123)과 공개 전 취소 글(티켓 20261002_1256)이 `#jam-report`, 예약 등록 실패 글(티켓 20261002_1123)과
+ *   취소를 끝내지 못한 글(티켓 20261002_1256)이 `#jam-alert`다. 상태 맞추기의 알림은 뒤 티켓이 같은 두 채널로 보낸다.
  * - **던지지 않는다.** 환경변수가 없거나, 네트워크가 실패하거나, 슬랙이 `ok: false`로 답해도 `{ ok: false, error }`를
  *   돌려준다. 슬랙 게시 실패가 제출 요청을 실패시키면 안 된다(상위 티켓 가정 16). 오류에는 종류(이름)만 담고
  *   토큰 값·응답 본문은 담지 않는다.
@@ -151,6 +151,59 @@ export function formatExecuteFailureMessage(input: ExecuteFailureMessageInput): 
       lines.push(`• ${safeField(failure.itemLabel)} — ${safeField(failure.reason, SLACK_REASON_MAX_CHARS)}`)
     }
     const rest = input.failures.length - SLACK_EXECUTE_FAILURES_MAX
+    if (rest > 0) lines.push(`외 ${rest}건`)
+  }
+  if (input.decisionLogFailed) lines.push('결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요')
+  const text = lines.join('\n')
+  return input.isSample ? `[시험] ${text}` : text
+}
+
+// ── 공개 전 취소 글 (티켓 20261002_1256) ────────────────────────────────────────────────────────
+
+/** 취소 글에 항목을 나열하는 건수(예약 등록 글과 같다). 넘으면 「외 N건」으로 줄인다. */
+const SLACK_CANCEL_ITEMS_MAX = 5
+
+export interface CancelMessageInput {
+  isSample: boolean
+  /** 취소한 항목 이름(「종류 · 공개 시각(KST)」). */
+  itemLabels: readonly string[]
+}
+
+/**
+ * 공개 전 취소 글(`#jam-report`). 취소 한 번에 한 건이고, 함께 취소한 항목을 한 건에 모은다. 항목은 5건까지 나열하고 나머지는 「외 N건」이다.
+ * 시험 묶음이면 맨 앞에 「[시험]」을 붙인다. 예: `[시험] 공개 전 취소 2건` 다음 줄부터 `• 홈피드 카드 · 10/10(토) 09:00`
+ */
+export function formatCancelMessage(input: CancelMessageInput): string {
+  const lines = [`공개 전 취소 ${input.itemLabels.length}건`]
+  for (const label of input.itemLabels.slice(0, SLACK_CANCEL_ITEMS_MAX)) lines.push(`• ${safeField(label)}`)
+  const rest = input.itemLabels.length - SLACK_CANCEL_ITEMS_MAX
+  if (rest > 0) lines.push(`외 ${rest}건`)
+  const text = lines.join('\n')
+  return input.isSample ? `[시험] ${text}` : text
+}
+
+export interface CancelFailureMessageInput {
+  isSample: boolean
+  /** 취소를 끝내지 못해 남은 항목: 이름(「종류 · 공개 시각(KST)」)과 사유(쉬운 문장). DB 오류 원문은 싣지 않는다. */
+  problems: ReadonlyArray<{ itemLabel: string; reason: string }>
+  /** 취소를 마친 항목 수. */
+  cancelled: number
+  /** 취소했는데 결정 기록을 남기지 못했다. */
+  decisionLogFailed?: boolean
+}
+
+/**
+ * 공개 전 취소를 끝내지 못했을 때의 글(`#jam-alert`). 취소 한 번에 한 건이다. 항목은 5건까지 나열하고 나머지는 「외 N건」이다.
+ * 결정 기록을 남기지 못했으면 그 줄이 더해진다. 시험 묶음이면 맨 앞에 「[시험]」을 붙인다.
+ */
+export function formatCancelFailureMessage(input: CancelFailureMessageInput): string {
+  const lines: string[] = []
+  if (input.problems.length > 0) {
+    lines.push(`공개 전 취소를 끝내지 못했어요 · ${input.cancelled}건 취소, ${input.problems.length}건 남음`)
+    for (const problem of input.problems.slice(0, SLACK_CANCEL_ITEMS_MAX)) {
+      lines.push(`• ${safeField(problem.itemLabel)} — ${safeField(problem.reason, SLACK_REASON_MAX_CHARS)}`)
+    }
+    const rest = input.problems.length - SLACK_CANCEL_ITEMS_MAX
     if (rest > 0) lines.push(`외 ${rest}건`)
   }
   if (input.decisionLogFailed) lines.push('결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요')
