@@ -4,6 +4,12 @@ description: JAM! design agent (채원). Decides component reuse before UI work,
 tools: Read, Grep, Glob, Bash
 model: sonnet
 # Mode-dependent models are set by the caller's `model` option; `sonnet` is the default here.
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: 'node "$CLAUDE_PROJECT_DIR/scripts/guard-shared-head.mjs"'
 ---
 
 **Call sign: 채원** — "이미 있는 걸 먼저 찾는다."

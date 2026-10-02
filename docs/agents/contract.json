@@ -44,6 +44,8 @@
       "scripts/cleanup-stale-worktree.sh",
       "scripts/cleanup-stale-worktree.test.mjs",
       "scripts/ensure-hooks-path.sh",
+      "scripts/guard-shared-head.mjs",
+      "scripts/guard-shared-head.test.mjs",
       ".githooks/pre-commit",
       ".githooks/pre-push",
       "scripts/pre-push-author.test.mjs",
