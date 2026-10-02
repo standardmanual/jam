@@ -136,8 +136,8 @@ function conflictReason(conflict: LinkConflict): string {
   }
 }
 
-/** 핸들러가 붙은 종류인지. `constructor` 같은 이름이 객체 기본 속성에 걸리지 않게 자기 속성만 본다. */
-function hasHandler(handlers: ExecuteHandlerRegistry, kind: string | null): boolean {
+/** 핸들러가 붙은 종류인지. `constructor` 같은 이름이 객체 기본 속성에 걸리지 않게 자기 속성만 본다. 기획 상세의 예약 등록 요약(`query.ts`)도 쓴다. */
+export function hasHandler(handlers: ExecuteHandlerRegistry, kind: string | null): boolean {
   return kind !== null && Object.prototype.hasOwnProperty.call(handlers, kind) && handlers[kind] !== undefined
 }
 

@@ -7,6 +7,7 @@
  * - **`listOpsBundles`·`getOpsBundleDetail`은 select 계열만 부르고 insert·update·upsert·delete를 부르지 않는다**
  *   (읽기만으로 상태가 바뀌지 않는다는 완료 조건)
  * - 목록은 제출 원본(`raw`)을 가져오지 않는다
+ * - 기획 상세의 예약 등록 요약(`execution`, 티켓 20261002_1648): 승인됨 수·예약할 항목 수·아직 연결하지 않은 종류
  */
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 
@@ -115,11 +116,13 @@ vi.mock('@/lib/supabase/server', () => ({
 import { SEED_ROWS } from '../balance/__tests__/fixtures'
 import {
   buildOpsBundleList,
+  buildOpsExecution,
   getOpsBundleDetail,
   listOpsBundles,
   parseOpsInboxParams,
   type OpsInboxParams,
 } from '../query'
+import type { ExecuteHandler, ExecuteHandlerRegistry, ExecuteItem } from '../execute/handlers'
 
 const BASE: OpsInboxParams = { tab: 'all', sortKey: 'received_at', sortDesc: true, page: 1 }
 const WRITE_CALL = /\.(insert|update|upsert|delete)$/
@@ -553,5 +556,127 @@ describe('getOpsBundleDetail — 밸런스 평가 (티켓 20260930_1459)', () =>
     await getOpsBundleDetail(ID)
     expect(h.state.calls.filter((c) => WRITE_CALL.test(c))).toEqual([])
     expect(JSON.stringify(h.state.tables)).toBe(before)
+  })
+})
+
+describe('getOpsBundleDetail — 예약 등록 요약 (티켓 20261002_1648)', () => {
+  const ID = '4ca7d1ad-43b2-41a3-9ed4-f03bc73604ee'
+  const FUTURE = '2099-01-01T00:00:00Z'
+
+  function row(id: string, overrides: Record<string, unknown> = {}) {
+    return {
+      id,
+      bundle_id: ID,
+      position: Number(id.replace(/\D/g, '')) || 0,
+      item_key: id,
+      kind: 'home_feed_card',
+      pattern_no: null,
+      starts_at: FUTURE,
+      ends_at: null,
+      status: 'approved',
+      original: {},
+      edited: null,
+      created_resource: null,
+      format_errors: [],
+      updated_at: '2026-10-01T00:00:00Z',
+      ...overrides,
+    }
+  }
+
+  function seed(items: Array<Record<string, unknown>>) {
+    h.state.tables.ops_bundles = [{ ...bundle(ID), bundle_id: 'b' }]
+    h.state.tables.ops_bundle_items = items
+    h.state.tables.ops_rules = SEED_ROWS.map((r) => ({ ...r }))
+  }
+
+  it('항목을 읽을 때 created_resource도 읽고, 화면 항목(OpsItemRecord)에는 싣지 않는다', async () => {
+    seed([row('a1', { created_resource: { today_card_id: 'x' } })])
+    const detail = await getOpsBundleDetail(ID)
+    const itemSelect = h.state.selects.find((s) => s.table === 'ops_bundle_items')!
+    expect(itemSelect.columns).toMatch(/\bcreated_resource\b/)
+    expect(detail!.items[0]).not.toHaveProperty('created_resource')
+    expect(detail!.items[0]).not.toHaveProperty('createdResource')
+  })
+
+  it('승인됨 수, 예약할 항목 수(지금 연결된 홈피드 카드), 아직 연결하지 않은 종류(묶음 안 첫 등장 순)를 센다', async () => {
+    seed([
+      row('a1'), // 카드 승인됨, 먼 미래 → 예약할 항목
+      row('a2', { kind: 'drop_schedule' }), // 승인됨이지만 핸들러 없음 → 못 하는 항목
+      row('a3', { kind: 'mission', status: 'reviewing' }), // 결정 전이라도 아직 연결하지 않은 종류에 든다
+      row('a4', { kind: 'drop_schedule', status: 'reviewing' }), // 같은 종류는 한 번만
+      row('a5', { kind: 'recipe', status: 'rejected' }), // 멈춘 항목은 센 대상이 아니다
+      row('a6', { kind: 'jam_badge', status: 'ended' }), // 끝난 항목도 아니다
+      row('a7', { kind: 'pattern_proposal', status: 'approved' }), // 예약 등록 대상이 아닌 종류는 연결 대상이 아니다
+      row('a8', { kind: null, status: 'reviewing' }), // 종류를 읽을 수 없으면 세지 않는다
+    ])
+    const detail = await getOpsBundleDetail(ID)
+    expect(detail!.execution).toEqual({ approvedCount: 3, readyCount: 1, unconnectedKinds: ['drop_schedule', 'mission'] })
+  })
+
+  it('승인됨 항목이 없으면 approvedCount·readyCount가 0이다', async () => {
+    seed([row('a1', { status: 'reviewing' })])
+    expect((await getOpsBundleDetail(ID))!.execution).toEqual({ approvedCount: 0, readyCount: 0, unconnectedKinds: [] })
+  })
+
+  it('공개 시각이 지난 승인 항목은 예약할 항목에 세지 않는다(그래도 승인됨 수에는 든다)', async () => {
+    seed([row('a1', { starts_at: '2020-01-01T00:00:00Z' })])
+    expect((await getOpsBundleDetail(ID))!.execution).toMatchObject({ approvedCount: 1, readyCount: 0 })
+  })
+
+  it('요약을 만들 때도 select 계열만 부르고 상태를 바꾸지 않는다', async () => {
+    seed([row('a1'), row('a2', { kind: 'mission' })])
+    const before = JSON.stringify(h.state.tables)
+    await getOpsBundleDetail(ID)
+    expect(h.state.calls.filter((c) => WRITE_CALL.test(c))).toEqual([])
+    expect(JSON.stringify(h.state.tables)).toBe(before)
+  })
+})
+
+describe('buildOpsExecution — 핸들러를 주입해 센다', () => {
+  const fakeHandler = {} as ExecuteHandler
+  const handlers: ExecuteHandlerRegistry = { mission: fakeHandler }
+
+  function exec(id: string, overrides: Partial<ExecuteItem> = {}): ExecuteItem {
+    return {
+      id,
+      bundle_id: 'b',
+      position: Number(id.replace(/\D/g, '')) || 0,
+      item_key: id,
+      kind: 'mission',
+      status: 'approved',
+      starts_at: '2099-01-01T00:00:00Z',
+      ends_at: null,
+      pattern_no: null,
+      original: {},
+      edited: null,
+      created_resource: null,
+      format_errors: [],
+      updated_at: '2026-10-01T00:00:00Z',
+      ...overrides,
+    }
+  }
+
+  const NOW = new Date('2026-10-02T00:00:00Z')
+
+  it('핸들러가 붙은 종류는 예약할 항목에 세고 안내에서 뺀다', () => {
+    const items = [exec('m1'), exec('c1', { kind: 'home_feed_card' }), exec('r1', { kind: 'recipe', status: 'reviewing' })]
+    expect(buildOpsExecution(items, NOW, handlers)).toEqual({ approvedCount: 2, readyCount: 1, unconnectedKinds: ['home_feed_card', 'recipe'] })
+  })
+
+  it('종류 이름이 `constructor` 같은 객체 기본 속성이어도 연결하지 않은 종류로 세지 않는다', () => {
+    const items = [exec('x1', { kind: 'constructor', status: 'reviewing' })]
+    expect(buildOpsExecution(items, NOW, {})).toEqual({ approvedCount: 0, readyCount: 0, unconnectedKinds: [] })
+  })
+
+  it('사전 점검이 던져도 던지지 않고 예약할 항목 0개·안내 없음으로 돌려준다', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const throwing: ExecuteHandlerRegistry = {}
+    Object.defineProperty(throwing, 'mission', {
+      enumerable: true,
+      get() {
+        throw new Error('boom')
+      },
+    })
+    expect(buildOpsExecution([exec('m1')], NOW, throwing)).toEqual({ approvedCount: 1, readyCount: 0, unconnectedKinds: [] })
   })
 })
