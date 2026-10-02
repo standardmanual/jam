@@ -573,6 +573,21 @@ describe('예약됨 미션 취소 — 실제 카드·미션 핸들러 (티켓 20
     expect(db.calls.filter((call) => call.table === 'missions' || call.table === 'today_cards')).toEqual([])
   })
 
+  it('미션은 이미 공개 시각이 지났는데 카드는 공개 전이면 카드만 지우고 미션에서 막혀 부분 실패(500)다', async () => {
+    const { db, run } = linkedSetup()
+    ;(db.tables.missions[0] as Row).starts_at = PAST
+    const failure = bad(await run(ID.mission))
+
+    expect(failure.status).toBe(500)
+    expect(failure.error).toBe('일부만 취소했어요. 나머지는 취소하지 못했어요. 화면을 새로 고쳐 확인해 주세요.')
+    expect(failure.extra).toEqual({ cancelled: [ID.card] })
+    expect(db.tables.today_cards).toEqual([])
+    expect((db.tables.missions as Row[]).map((row) => row.id)).toContain(MISSION_RES)
+    expect(statusOf(db, ID.card)).toBe('cancelled')
+    expect(statusOf(db, ID.mission)).toBe('scheduled')
+    expect(failure.slack).toMatchObject({ cancelledLabels: [CARD_LABEL], problems: [{ itemLabel: MISSION_LABEL, reason: '공개 시각이 지나 취소할 수 없어요' }] })
+  })
+
   it('미리 보기는 미션과 그 미션을 가리키는 카드를 쓰기 없이 돌려준다', async () => {
     const { db, preview } = linkedSetup()
     expect(await preview(ID.mission)).toEqual({ ok: true, body: { ok: true, dryRun: true, cancelIds: [ID.card, ID.mission], blockers: [] } })
