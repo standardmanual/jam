@@ -5,7 +5,7 @@
  * - `CRON_SECRET`이 비었거나 헤더가 없거나 다르면 401이고, 그 경우 상태 맞추기를 부르지 않는다(「Bearer undefined」가 통과하지 않는다)
  * - 읽기 재료를 읽지 못한 `RunFailure`는 그 상태 코드와 `{ ok: false, error }`이고 슬랙 글을 올리지 않는다
  * - 성공 본문은 개수만 싣는다(항목 ID·사유 없음). 건너뛴 항목이 없으면 200, 있으면 500
- * - 성공이면 오류가 있어도 응답 뒤(`after`) 슬랙 글을 올린다. 슬랙이 던져도 응답은 그대로다
+ * - 성공이면 오류가 있어도 응답 뒤(`after`) 슬랙 글을 올린다
  * - GET만 export하고 maxDuration이 60이다
  *
  * 실행: cd jam-web && npx vitest run src/app/api/cron/ops-reconcile/__tests__/route.test.ts

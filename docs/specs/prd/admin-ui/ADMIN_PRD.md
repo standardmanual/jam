@@ -270,7 +270,7 @@ GPX 파일:  hangang_ride.gpx
   어디서 가져오는지는 알지 못한다.
 - **Vercel 크론 실행 예정**: `jam-web/vercel.json`의 `crons`를 읽어 요일 칸에 KST 시각으로
   표시한다. 크론 목록의 원천은 이 파일 하나이며 화면에 따로 적지 않는다. 매시간 도는 크론은
-  요일마다 "매시간" 한 줄로 묶는다. **예정만 표시하며 실제 실행 여부·성공 여부는 기록하지
+  요일마다 "매시간" 한 줄로, 분 칸이 `*/N`인 크론(예: 운영 상태 맞추기 `*/10`)은 요일마다 "N분마다" 한 줄로 묶는다. **예정만 표시하며 실제 실행 여부·성공 여부는 기록하지
   않는다**(실행 기록 테이블 없음).
 - **Claude 예약 루틴**: `.claude/skills/jam-work/references/scheduled-jobs.md`의 루틴 절(주간·
   선별·주간 배포 승인·월간)을 `scripts/gen-scheduled-jobs.mjs`가 `scheduledJobs.generated.ts`로

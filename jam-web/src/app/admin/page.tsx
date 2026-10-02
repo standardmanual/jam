@@ -51,7 +51,7 @@ interface AdminDashboardPageProps {
 }
 
 export default async function AdminDashboardPage({ searchParams }: AdminDashboardPageProps) {
-  // 20260924_0904: 어드민 메인 주간 캘린더 — 크론 4개의 실행 예정을 요일 칸에 표시한다.
+  // 20260924_0904: 어드민 메인 주간 캘린더 — `vercel.json` 크론의 실행 예정을 요일 칸에 표시한다.
   // 20260924_0905: Claude 예약 루틴 4개(주간·선별·주간 배포 승인·월간)도 같은 칸에 얹는다.
   // 20260924_0906: 홈피드 카드 편성(단기 카드 개별 표시·장기 카드 묶음·미편성 판정)도 같은 칸에 얹는다.
   const resolvedSearchParams = await searchParams
