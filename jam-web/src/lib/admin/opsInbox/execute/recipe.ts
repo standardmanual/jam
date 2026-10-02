@@ -59,7 +59,7 @@ function asServiceClient(client: RegisterChecksClient): ExecuteServiceClient {
   return client as unknown as ExecuteServiceClient
 }
 
-/** 읽은 행을 공개 판정이 받는 모양으로 좁힌다. */
+/** 공개 판정(`recipeReleaseState`)이 읽는 시각 두 칸. */
 type RecipeTimes = { valid_from: string | null; valid_until: string | null }
 
 /** 두 시각 칸이 시각으로 읽히는지(비어 있으면 읽을 필요가 없다). */
