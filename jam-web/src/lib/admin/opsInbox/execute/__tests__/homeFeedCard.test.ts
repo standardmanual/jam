@@ -6,6 +6,7 @@
  * - create: insert 칸·같은 ID 반환(가정 4), 오류 때 정리 delete 한 번과 원문 비노출
  * - undo: 참조가 있으면 지우지 않고, 없으면 ID로 지운다(가정 5). 오류 원문 비노출
  * - cancel(티켓 20261002_1256 가정 2): 없음·공개됨·기록 있음·삭제 경합·오류 비노출
+ * - observe(티켓 20261002_1813 가정 2): 없음·공개 판정(양 끝 포함)·종료·비활성·쓰기 없음·읽기 실패 비노출
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -477,5 +478,77 @@ describe('cancel — 공개 전에만 지운다(티켓 20261002_1256 가정 2)',
     expect(result).toMatchObject({ ok: false, code: 'error', failure: { reason: '카드를 지우지 못했어요' } })
     if (result.ok) throw new Error('실패여야 해요')
     expect(result.failure.detail).toContain(DB_SECRET)
+  })
+})
+
+describe('observe — 카드의 지금 상태를 읽는다(티켓 20261002_1813 가정 2)', () => {
+  const STARTS = '2026-10-05T00:00:00.000Z' // NOW(10/5 12:00 KST = 03:00Z)보다 앞
+  const ENDS = '2026-10-05T14:59:59.999Z' // NOW보다 뒤
+  const seed = (db: FakeDb, card: Row = {}) => {
+    db.tables.today_cards = [
+      { id: CARD_ID, is_active: true, starts_at: STARTS, ends_at: ENDS, ...card },
+      { id: EXISTING_CARD_ID, is_active: true, starts_at: LATER, ends_at: LATER },
+    ]
+  }
+  const observe = (db: FakeDb, now: Date = NOW) => handler.observe(db.service, CARD_ID, { now })
+
+  it('켜져 있고 기간 안이면 공개 중이다. 시각은 카드의 값 그대로 돌려주고 아무것도 쓰지 않는다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    expect(await observe(db)).toEqual({ status: 'present', published: true, ended: false, startsAt: STARTS, endsAt: ENDS, inactive: false })
+    expect(db.calls.filter((call) => call.op !== 'select')).toEqual([])
+    expect(db.calls.map((call) => call.table)).toEqual(['today_cards'])
+  })
+
+  it('공개 시각 전이면 공개 중이 아니고 종료도 아니다', async () => {
+    const db = new FakeDb()
+    seed(db, { starts_at: LATER, ends_at: '2026-10-10T14:59:59.999Z' })
+    expect(await observe(db)).toMatchObject({ status: 'present', published: false, ended: false, inactive: false })
+  })
+
+  it.each([
+    ['공개 시각이 정확히 지금이다', { starts_at: NOW.toISOString() }],
+    ['종료 시각이 정확히 지금이다', { ends_at: NOW.toISOString() }],
+  ])('%s: 양 끝을 포함해 공개 중이고 종료는 아니다', async (_label, card) => {
+    const db = new FakeDb()
+    seed(db, card)
+    expect(await observe(db)).toMatchObject({ status: 'present', published: true, ended: false })
+  })
+
+  it('종료 시각이 1밀리초 지나면 공개 중이 아니고 종료다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    expect(await observe(db, new Date(Date.parse(ENDS) + 1))).toMatchObject({ status: 'present', published: false, ended: true })
+  })
+
+  it('꺼진 카드는 공개 중이 아니고 inactive다. 기간이 지났으면 종료이기도 하다', async () => {
+    const db = new FakeDb()
+    seed(db, { is_active: false })
+    expect(await observe(db)).toMatchObject({ status: 'present', published: false, ended: false, inactive: true })
+
+    seed(db, { is_active: false, ends_at: '2026-10-05T02:00:00.000Z' })
+    expect(await observe(db)).toMatchObject({ status: 'present', published: false, ended: true, inactive: true })
+  })
+
+  it('행이 없으면 missing이다', async () => {
+    const db = new FakeDb()
+    expect(await observe(db)).toEqual({ status: 'missing' })
+  })
+
+  it('읽지 못하면 error이고 원문은 detail에만 있다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    db.failIf = (call) => call.table === 'today_cards'
+    const result = await observe(db)
+
+    expect(result.status).toBe('error')
+    if (result.status !== 'error') throw new Error('error여야 해요')
+    expect(result.detail).toContain(DB_SECRET)
+  })
+
+  it('시각을 읽을 수 없으면 판정하지 않고 error다', async () => {
+    const db = new FakeDb()
+    seed(db, { ends_at: 'not-a-date' })
+    expect(await observe(db)).toMatchObject({ status: 'error' })
   })
 })

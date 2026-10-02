@@ -64,6 +64,7 @@ export const OPS_ITEM_INITIAL_STATUS: OpsItemStatus = 'arrived'
 /**
  * 결정 기록의 `action` 값. 제출은 1816, 승인·반려·수정·되돌림은 1818이 쓰고, 예약 등록(`execute`)과 실패로 닫기(`fail`)는
  * 예약 등록 실행 API(티켓 20261002_1123), 공개 전 취소(`cancel`)는 취소 API(티켓 20261002_1256)가 쓴다(뒤 티켓이 값을 더한다).
+ * `end`(운영툴 밖에서 지워진 게재 중 자원)와 `external_change`(밖에서 바뀐 시각·비활성)는 상태 맞추기(티켓 20261002_1813)가 쓴다.
  */
 export const OPS_DECISION_ACTION_SUBMIT = 'submit'
 export const OPS_DECISION_ACTION_APPROVE = 'approve'
@@ -73,6 +74,23 @@ export const OPS_DECISION_ACTION_REVERT = 'revert'
 export const OPS_DECISION_ACTION_EXECUTE = 'execute'
 export const OPS_DECISION_ACTION_FAIL = 'fail'
 export const OPS_DECISION_ACTION_CANCEL = 'cancel'
+export const OPS_DECISION_ACTION_END = 'end'
+export const OPS_DECISION_ACTION_EXTERNAL_CHANGE = 'external_change'
+
+/** 상태 맞추기(티켓 20261002_1813)가 남기는 결정 기록의 행위자. 관리자 ID가 아니라 시스템이다. */
+export const OPS_RECONCILE_ACTOR = 'system:reconcile'
+
+/** 상태 맞추기가 결정 기록 사유와 슬랙 글에 싣는 고정 문장(티켓 20261002_1813 가정 3). */
+export const OPS_RECONCILE_REASONS = {
+  /** 예약됨 → 취소, 게재중 → 종료: 자원이 운영툴 밖에서 지워졌다. */
+  deletedOutside: '운영툴 밖에서 지워졌어요',
+  /** 준비중으로 10분이 지났다. */
+  preparingStalled: '예약 등록이 끝나지 않았어요',
+  /** 멈춘 준비중을 닫으면서 만든 자원을 지우지 못했다. 앞 문장 뒤에 덧붙인다. */
+  resourceRemains: '만든 자원이 남아 있어요',
+  /** 자원이 공개되지 못하고 끝났는데 `observe`가 문장을 주지 않았다. */
+  notPublished: '자원이 공개되지 못했어요',
+} as const
 
 /** 반려·수정 사유 길이 상한(글자). */
 export const MAX_DECISION_REASON_CHARS = 500

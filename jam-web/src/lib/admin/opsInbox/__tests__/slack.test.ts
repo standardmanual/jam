@@ -14,6 +14,8 @@ import {
   formatDecisionMessage,
   formatExecuteFailureMessage,
   formatExecuteSummaryMessage,
+  formatReconcileAlertMessage,
+  formatReconcileReportMessage,
   postOpsSlack,
 } from '../slack'
 
@@ -247,6 +249,95 @@ describe('공개 전 취소 글 (티켓 20261002_1256)', () => {
     expect(formatCancelFailureMessage({ isSample: false, cancelled: 2, problems: [], decisionLogFailed: true })).toBe(
       '결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요'
     )
+  })
+})
+
+describe('상태 맞추기 글 (티켓 20261002_1813)', () => {
+  const label = '홈피드 카드 · 10/10(토) 09:00'
+  const LOG_LINE = '결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요'
+
+  it('요약 글: 공개·종료 건수를 첫 줄에, 항목을 한 줄씩 싣는다', () => {
+    expect(formatReconcileReportMessage({ isSample: false, published: [label, '미션 · 10/10(토) 10:00'], ended: ['홈피드 카드 · 10/9(금) 09:00'] })).toBe(
+      ['2개 공개, 1개 종료', `• 공개 · ${label}`, '• 공개 · 미션 · 10/10(토) 10:00', '• 종료 · 홈피드 카드 · 10/9(금) 09:00'].join('\n')
+    )
+  })
+
+  it('요약 글: 한쪽만 있으면 그쪽 구절만 있다', () => {
+    expect(formatReconcileReportMessage({ isSample: false, published: [label], ended: [] })).toBe(['1개 공개', `• 공개 · ${label}`].join('\n'))
+    expect(formatReconcileReportMessage({ isSample: false, published: [], ended: [label] })).toBe(['1개 종료', `• 종료 · ${label}`].join('\n'))
+  })
+
+  it('요약 글: 시험 묶음이면 맨 앞에 「[시험]」이 붙는다', () => {
+    expect(formatReconcileReportMessage({ isSample: true, published: [label], ended: [] }).startsWith('[시험] 1개 공개')).toBe(true)
+    expect(formatReconcileReportMessage({ isSample: false, published: [label], ended: [] }).startsWith('[시험]')).toBe(false)
+  })
+
+  it('요약 글: 5건까지 나열하고 나머지는 「외 N건」이며 건수는 전체다', () => {
+    const text = formatReconcileReportMessage({ isSample: false, published: Array.from({ length: 4 }, (_, i) => `공개${i}`), ended: Array.from({ length: 3 }, (_, i) => `종료${i}`) })
+    const lines = text.split('\n')
+    expect(lines[0]).toBe('4개 공개, 3개 종료')
+    expect(lines).toHaveLength(1 + 5 + 1)
+    expect(text).toContain('• 종료 · 종료0')
+    expect(text).not.toContain('종료1')
+    expect(text.endsWith('외 2건')).toBe(true)
+  })
+
+  it('요약 글: 항목 이름의 슬랙 특수문자를 이스케이프한다', () => {
+    const text = formatReconcileReportMessage({ isSample: false, published: ['<!here> & x'], ended: [] })
+    expect(text).toContain('• 공개 · &lt;!here&gt; &amp; x')
+    expect(text).not.toContain('<!here>')
+  })
+
+  it('알림 글: 실패·취소·종료 순으로 건수와 항목·사유를 싣는다', () => {
+    const text = formatReconcileAlertMessage({
+      isSample: false,
+      failed: [{ itemLabel: label, reason: '예약 등록이 끝나지 않았어요' }],
+      cancelled: [{ itemLabel: '미션 · 10/10(토) 09:00', reason: '운영툴 밖에서 지워졌어요' }],
+      ended: [{ itemLabel: '배지 · 10/1(목) 09:00', reason: '운영툴 밖에서 지워졌어요' }],
+    })
+    expect(text).toBe(
+      [
+        '상태 맞추기에서 확인할 항목이 있어요 · 실패 1건, 취소 1건, 종료 1건',
+        `• 실패 · ${label} — 예약 등록이 끝나지 않았어요`,
+        '• 취소 · 미션 · 10/10(토) 09:00 — 운영툴 밖에서 지워졌어요',
+        '• 종료 · 배지 · 10/1(목) 09:00 — 운영툴 밖에서 지워졌어요',
+      ].join('\n')
+    )
+  })
+
+  it('알림 글: 항목이 없는 구절은 첫 줄에서 빠진다', () => {
+    const text = formatReconcileAlertMessage({ isSample: false, failed: [], cancelled: [{ itemLabel: label, reason: '사유' }], ended: [] })
+    expect(text.split('\n')[0]).toBe('상태 맞추기에서 확인할 항목이 있어요 · 취소 1건')
+  })
+
+  it('알림 글: 지우지 못해 남은 자원의 ID를 그 항목 줄 끝에 싣는다', () => {
+    const text = formatReconcileAlertMessage({
+      isSample: false,
+      failed: [{ itemLabel: label, reason: '예약 등록이 끝나지 않았어요. 만든 자원이 남아 있어요', resourceId: '00000000-0000-4000-8000-000000000011' }],
+      cancelled: [],
+      ended: [],
+    })
+    expect(text).toContain(`• 실패 · ${label} — 예약 등록이 끝나지 않았어요. 만든 자원이 남아 있어요 · 자원 ID: 00000000-0000-4000-8000-000000000011`)
+  })
+
+  it('알림 글: 시험 묶음 표시, 5건 상한과 「외 N건」, 사유 100자 자르기와 이스케이프', () => {
+    const failed = Array.from({ length: 7 }, (_, i) => ({ itemLabel: `항목${i}`, reason: `사유${i}` }))
+    const text = formatReconcileAlertMessage({ isSample: true, failed, cancelled: [], ended: [] })
+    expect(text.startsWith('[시험] 상태 맞추기에서 확인할 항목이 있어요 · 실패 7건')).toBe(true)
+    expect(text).toContain('• 실패 · 항목4 — 사유4')
+    expect(text).not.toContain('항목5')
+    expect(text.endsWith('외 2건')).toBe(true)
+
+    const long = formatReconcileAlertMessage({ isSample: false, failed: [{ itemLabel: label, reason: '가'.repeat(150) }], cancelled: [], ended: [] })
+    expect(long.endsWith(`${'가'.repeat(100)}…`)).toBe(true)
+    const escaped = formatReconcileAlertMessage({ isSample: false, failed: [{ itemLabel: '<!here>', reason: '<@U1> & x' }], cancelled: [], ended: [] })
+    expect(escaped).toContain('&lt;!here&gt; — &lt;@U1&gt; &amp; x')
+  })
+
+  it('알림 글: 결정 기록을 남기지 못했으면 그 줄을 더하고, 항목이 없어도 글이 된다', () => {
+    const withItem = formatReconcileAlertMessage({ isSample: false, failed: [{ itemLabel: label, reason: '사유' }], cancelled: [], ended: [], decisionLogFailed: true })
+    expect(withItem.split('\n').at(-1)).toBe(LOG_LINE)
+    expect(formatReconcileAlertMessage({ isSample: false, failed: [], cancelled: [], ended: [], decisionLogFailed: true })).toBe(LOG_LINE)
   })
 })
 

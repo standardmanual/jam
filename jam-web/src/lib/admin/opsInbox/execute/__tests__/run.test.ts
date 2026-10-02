@@ -98,6 +98,7 @@ function makeHandler(kind: ExecutableKind, rec: Recorder, options: Record<string
       return optionsOf(key).failUndo ?? null
     },
     cancel: async () => ({ ok: true, missing: false }),
+    observe: async () => ({ status: 'missing' }),
   }
 }
 

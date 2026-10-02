@@ -3,6 +3,7 @@
  * (실 DB에 접속하지 않는다). 쓰기 직전에 부르는 `beforeRun`으로 동시 실행을 흉내 내고, `failIf`로 원하는 쓰기만 실패시킨다.
  * 카드 핸들러(티켓 20261002_1255)가 쓰는 질의도 받는다: `is`·`limit`, 참조 세기의 `select(칼럼, { count, head })`, 기본 테이블 `today_cards` 등.
  * 취소(티켓 20261002_1256)가 쓰는 `gt`(두 값이 날짜 문자열이면 시각으로 비교한다)와 `delete().select()`의 지운 행 돌려주기도 받는다.
+ * 상태 맞추기(티켓 20261002_1813)가 쓰는 `order`(칸 값이 같거나 없으면 내림차순은 나중에 넣은 행이 먼저)도 받는다.
  */
 import type { ExecuteServiceClient } from '../handlers'
 
@@ -19,6 +20,19 @@ export interface FakeCall {
 /** DB 오류 원문 자리. 응답·결정 기록·슬랙 어디에도 나오면 안 된다. */
 export const DB_SECRET = 'boom secret detail relation "ops_bundle_items" violates'
 
+function sortRows(rows: Row[], { col, ascending }: { col: string; ascending: boolean }): Row[] {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const x = a.row[col] as string | number | undefined
+      const y = b.row[col] as string | number | undefined
+      const cmp = x === undefined || y === undefined || x === y ? 0 : x < y ? -1 : 1
+      const signed = ascending ? cmp : -cmp
+      return signed !== 0 ? signed : ascending ? a.index - b.index : b.index - a.index
+    })
+    .map(({ row }) => row)
+}
+
 class FakeQuery implements PromiseLike<Result> {
   private mode: FakeCall['op'] = 'select'
   private payload: Row | Row[] = {}
@@ -27,6 +41,7 @@ class FakeQuery implements PromiseLike<Result> {
   private returning = false
   private head = false
   private limitTo: number | null = null
+  private orderBy: { col: string; ascending: boolean } | null = null
 
   constructor(
     private db: FakeDb,
@@ -85,6 +100,11 @@ class FakeQuery implements PromiseLike<Result> {
     this.limitTo = count
     return this
   }
+  /** `order(col, { ascending })`: 칸 값으로 줄 세운다. 값이 같거나 없으면 넣은 순서를 따른다(내림차순은 거꾸로: 가장 나중에 넣은 행이 먼저). */
+  order(col: string, options?: { ascending?: boolean }) {
+    this.orderBy = { col, ascending: options?.ascending ?? true }
+    return this
+  }
   async single() {
     const result = this.run()
     const rows = Array.isArray(result.data) ? result.data : []
@@ -134,7 +154,8 @@ class FakeQuery implements PromiseLike<Result> {
       this.db.tables[this.table] = rows.filter((row) => !gone.has(row))
       return { data: this.returning ? [...gone].map((row) => ({ id: row.id })) : null, error: null }
     }
-    const hit = matches()
+    const matched = matches()
+    const hit = this.orderBy ? sortRows(matched, this.orderBy) : matched
     // 참조 세기(`select(칼럼, { count: 'exact', head: true })`)는 행 없이 건수만 돌려준다.
     if (this.head) return { data: null, count: hit.length, error: null }
     return { data: (this.limitTo === null ? hit : hit.slice(0, this.limitTo)).map((row) => ({ ...row })), error: null }
