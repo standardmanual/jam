@@ -549,8 +549,8 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
 <div class="tw"><table class=""><thead><tr><th>에이전트</th><th>읽는 곳</th><th>쓰는 곳</th><th>물리적 제약</th></tr></thead><tbody>
 <tr><td>카리나</td><td>전부</td><td>전부</td><td>없음 (채팅에서 받는 사용자 승인이 유일한 제약. Supabase MCP의 SQL 실행 도구는 자동 허용이라 도구 프롬프트가 관문 역할을 하지 않는다)</td></tr>
 <tr><td>아현</td><td>워크트리 전체</td><td>워크트리 안, 자기 브랜치</td><td>DB 도구 없음 · <code>CLOSED</code> 커밋 차단 · main/staging push 차단</td></tr>
-<tr><td>민지</td><td>지정된 커밋 범위의 diff + 티켓 + 스펙</td><td>없음</td><td>Write·Edit 도구 자체가 없음</td></tr>
-<tr><td>채원</td><td><code>jam-web/design-system/</code>, Storybook, 지정된 diff</td><td>없음</td><td>〃</td></tr>
+<tr><td>민지</td><td>지정된 커밋 범위의 diff + 티켓 + 스펙</td><td>없음</td><td>Write·Edit 도구 자체가 없음 · 공유 작업 폴더에서 HEAD·작업 트리를 옮기는 git 명령 차단(정의 frontmatter 훅, 티켓 20261002_1905)</td></tr>
+<tr><td>채원</td><td><code>jam-web/design-system/</code>, Storybook, 지정된 diff</td><td>없음</td><td>〃 (민지와 같은 git 명령 차단 훅)</td></tr>
 <tr><td>혜린</td><td>티켓·PRD·컨텐츠 문서</td><td>없음</td><td>〃 (Bash도 없음)</td></tr>
 <tr><td>윈터</td><td><code>jam-doc/planning/content/TRIBES.md</code> 중심 + 웹</td><td>없음</td><td>〃</td></tr>
 <tr><td>윤진</td><td><code>jam-doc/marketing/</code>, 리포트 + 웹</td><td>세션: <code>jam-doc/assets/</code>의 묶음 폴더 3곳(<code>badge-bundles/</code>·<code>mission-bundles/</code>·<code>home-feed-bundles/</code>의 <code>&lt;묶음 ID&gt;/</code>, 모드 ⑧ 한정, Bash)</td><td>Bash 도구는 물리적으로 좁혀지지 않는다. <code>render.mjs</code>·<code>list-presets.mjs</code> 실행·묶음 폴더 쓰기·<code>register-*.mjs --dry-run</code>만 허용한다는 것은 정의 문서의 지시(프롬프트 규칙)다. 예약 실행은 이미지를 만들지 않는다(티켓 20260930_1519). 등록(<code>--dry-run</code> 없음·<code>--undo</code>)·프리셋 생성·수정·DB·스토리지 쓰기·git은 금지</td></tr>

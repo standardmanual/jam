@@ -177,8 +177,8 @@ tags: [워크플로]
 |---|---|---|---|
 | 카리나 | 전부 | 전부 | 없음 (채팅에서 받는 사용자 승인이 유일한 제약. Supabase MCP의 SQL 실행 도구는 자동 허용이라 도구 프롬프트가 관문 역할을 하지 않는다) |
 | 아현 | 워크트리 전체 | 워크트리 안, 자기 브랜치 | DB 도구 없음 · `CLOSED` 커밋 차단 · main/staging push 차단 |
-| 민지 | 지정된 커밋 범위의 diff + 티켓 + 스펙 | 없음 | Write·Edit 도구 자체가 없음 |
-| 채원 | `jam-web/design-system/`, Storybook, 지정된 diff | 없음 | 〃 |
+| 민지 | 지정된 커밋 범위의 diff + 티켓 + 스펙 | 없음 | Write·Edit 도구 자체가 없음 · 공유 작업 폴더에서 HEAD·작업 트리를 옮기는 git 명령 차단(정의 frontmatter 훅, 티켓 20261002_1905) |
+| 채원 | `jam-web/design-system/`, Storybook, 지정된 diff | 없음 | 〃 (민지와 같은 git 명령 차단 훅) |
 | 혜린 | 티켓·PRD·컨텐츠 문서 | 없음 | 〃 (Bash도 없음) |
 | 윈터 | `jam-doc/planning/content/TRIBES.md` 중심 + 웹 | 없음 | 〃 |
 | 윤진 | `jam-doc/marketing/`, 리포트 + 웹 | 세션: `jam-doc/assets/`의 묶음 폴더 3곳(`badge-bundles/`·`mission-bundles/`·`home-feed-bundles/`의 `<묶음 ID>/`, 모드 ⑧ 한정, Bash) | Bash 도구는 물리적으로 좁혀지지 않는다. `render.mjs`·`list-presets.mjs` 실행·묶음 폴더 쓰기·`register-*.mjs --dry-run`만 허용한다는 것은 정의 문서의 지시(프롬프트 규칙)다. 예약 실행은 이미지를 만들지 않는다(티켓 20260930_1519). 등록(`--dry-run` 없음·`--undo`)·프리셋 생성·수정·DB·스토리지 쓰기·git은 금지 |
