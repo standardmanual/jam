@@ -1,11 +1,13 @@
 /**
- * 운영 항목 → 카드·미션·레시피 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b. 레시피는 티켓 20261002_2221 ⑧-a).
+ * 운영 항목 → 카드·미션·레시피·드랍 예약 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b. 레시피는 티켓 20261002_2221 ⑧-a, 드랍 예약은 티켓 20261002_2306 ⑧-b).
  *
  * 승인된 운영 항목(`ops_bundle_items`, 수정본 우선)의 `home_feed_card`·`mission`을 `today_cards`·`missions` insert 값으로 바꾼다.
  * 읽는 규칙은 `docs/specs/prd/ops-tool/PRD.md` §8.4이고, 검사는 등록 스크립트가 쓰는 `registerChecks/homeFeedFields.ts`의
  * `validateCard`와 `registerChecks/missionFields.ts`의 `validateMission`을 그대로 부른다. DB에 접근하지 않는다(쓰기는 ③·④·⑥).
  * `recipe`는 행이 아니라 레시피 서버 함수(`lib/admin/recipe-write.ts`)의 입력(`RecipePayloadInput`)으로 바꾼다. 형식 검사는 그 입력을 받는
  * `normalizeRecipePayload`가 현재 시각과 함께 하므로 변환은 칸 읽기까지만 한다(핸들러의 `prepare`가 이어서 부른다).
+ * `drop_schedule`은 드랍 예약 서버 함수의 입력(평평한 키, 티켓 20261002_2306 ⑧-b)으로 바꾼다. 검사는 그 입력을 받는 `parseAmbientDropScheduleInput`이
+ * 현재 시각과 함께 하므로 변환은 칸 읽기와 `ends_at` 거절까지만 한다(핸들러의 `prepare`가 이어서 부른다).
  *
  * 결과는 `{ payload, errors, warnings, linkFields }`다. 오류가 하나라도 있으면 `payload`는 null이다.
  * - 오류·경고 한 건은 `{ path, message }`다. `message`는 검사 문장 그대로(`card.title: …`)이고 `path`는 운영 항목 경로
@@ -17,6 +19,7 @@
  * 이미지는 보지 않는다. `image_source`는 null이고(결정 1) 대표 이미지 주소(`resource.cover_image_url`·`resource.image_url`)가
  * 없으면 null로 둔다. 서버·화면이 함께 읽는 순수 모듈이라 서버 전용 모듈과 Supabase를 가져오지 않는다.
  */
+import { DROP_SCHEDULE_RESOURCE_KEYS } from '@/lib/ambient-drop/scheduleSpec'
 import { asRecord, itemField, type ViewableItem } from '@/lib/admin/opsInbox/itemView'
 import { kstDateKey } from '@/lib/admin/opsInbox/labels'
 import { OPS_HOME_FEED_CARD_KIND } from '@/lib/admin/opsInbox/constants'
@@ -76,6 +79,17 @@ export type MissionRegisterPayload = ReturnType<typeof buildMissionInsertPayload
 /** 레시피 서버 함수(`buildRecipeRow`·`createRecipeWithSlots`)가 받는 입력. 공개 시각은 `valid_from`, 종료 시각은 `valid_until`이다. */
 export type RecipeRegisterPayload = RecipePayloadInput
 
+/** 드랍 예약의 연결 칸에 넣을 ID. 같은 묶음의 컬렉션이 만들 컬렉션 ID를 `resource.collection_ids` 뒤에 더한다(§8.3). */
+export type DropLinkedIds = {
+  collection_ids?: readonly string[] | null
+}
+
+/**
+ * 드랍 예약 서버 함수(`parseAmbientDropScheduleInput`·`createAmbientDropSchedule`)가 받는 입력. 평평한 키다.
+ * 공개 시각은 `scheduled_at`이고 종료 시각 칸은 없다. 값은 읽은 그대로라 형식은 파서가 본다.
+ */
+export type DropScheduleRegisterPayload = Partial<Record<'scheduled_at' | 'title' | (typeof DROP_SCHEDULE_RESOURCE_KEYS)[number], unknown>>
+
 // ── 읽을 칸 목록(PRD §8.4 표) ────────────────────────────────────────────────────────────────
 
 const CARD_COMMON_KEYS = ['starts_at', 'ends_at', 'shape', 'exposure_tags', 'pattern_no']
@@ -120,6 +134,13 @@ const RECIPE_RESOURCE_KEYS = ['slots', 'reward_points', 'reward_badge_ids']
 const RECIPE_TOOL_KEYS = ['id', 'created_at']
 
 const RECIPE_KIND = 'recipe'
+
+const DROP_COMMON_KEYS = ['starts_at', 'ends_at']
+const DROP_COPY_KEYS = ['title']
+const DROP_RESOURCE_KEYS: readonly string[] = DROP_SCHEDULE_RESOURCE_KEYS
+const DROP_TOOL_KEYS = ['id', 'created_at']
+
+const DROP_KIND = 'drop_schedule'
 
 // ── 읽기 도우미 ─────────────────────────────────────────────────────────────────────────────
 
@@ -473,6 +494,58 @@ export function toRecipeRegisterInput(item: OpsRegisterItem): RegisterInputResul
   else payload.slots = resource.slots
   if (isPresent(resource.reward_points)) payload.reward_points = resource.reward_points
   if (isPresent(resource.reward_badge_ids)) payload.reward_badge_ids = resource.reward_badge_ids
+
+  if (errors.length > 0) return { payload: null, errors, warnings, linkFields }
+  return { payload, errors, warnings, linkFields }
+}
+
+// ── 드랍 예약 ───────────────────────────────────────────────────────────────────────────────
+
+/**
+ * `drop_schedule` 항목을 드랍 예약 서버 함수의 입력으로 바꾼다(PRD §8.4 드랍 행).
+ * - 공통 칸: `starts_at`(필수)은 `scheduled_at`으로 읽는다. 드랍은 놓은 뒤 내리지 않아 `ends_at`이 있으면 변환 오류다.
+ * - 글자 칸 `title`(100자)은 `copy` 먼저, 없으면 `resource`. `resource`의 6개 키(`DROP_SCHEDULE_RESOURCE_KEYS`)는 값 그대로 넘긴다.
+ * - 연결로 채우는 칸 `collection_ids`는 `resource` 몫 뒤에 `linkedIds.collection_ids`를 더하고 `linkFields`에 알린다(§8.3).
+ *   대상이 아이템 직접 선택(`badge_ids`)이면 연결 그룹 사전 점검이 이미 막는다(`directSelectKey`).
+ * - 값의 형식(시각 형식·정시·미래, 지점·아이템 방식, 개수 상한, 제목 길이)은 보지 않는다. `parseAmbientDropScheduleInput`이 현재 시각과 함께 본다.
+ */
+export function toDropScheduleRegisterInput(
+  item: OpsRegisterItem,
+  { linkedIds = {} }: { linkedIds?: DropLinkedIds } = {}
+): RegisterInputResult<DropScheduleRegisterPayload> {
+  const errors: RegisterInputIssue[] = []
+  const warnings: RegisterInputIssue[] = []
+  const linkFields: string[] = []
+
+  if (item.kind !== DROP_KIND) {
+    errors.push({ path: 'kind', message: `kind: ${DROP_KIND} 항목만 드랍 예약으로 바꿀 수 있어요(받은 값: ${describeValue(item.kind ?? undefined)}).` })
+    return { payload: null, errors, warnings, linkFields }
+  }
+
+  const copy = readGroup(item, 'copy', errors)
+  const resource = readGroup(item, 'resource', errors)
+  warnUnreadKeys(warnings, 'copy', copy, DROP_COPY_KEYS, DROP_COMMON_KEYS, DROP_TOOL_KEYS)
+  warnUnreadKeys(warnings, 'resource', resource, [...DROP_RESOURCE_KEYS, ...DROP_COPY_KEYS], DROP_COMMON_KEYS, DROP_TOOL_KEYS)
+
+  const payload: DropScheduleRegisterPayload = {}
+
+  // 놓을 시각은 필수다. 비어 있으면 서버 함수도 거절하지만, 변환이 먼저 어느 칸인지 알린다.
+  const startsAt = readTimeString(itemField(item, 'starts_at'), item.starts_at)
+  if (startsAt === undefined) errors.push({ path: 'starts_at', message: 'drop_schedule.scheduled_at: 필수 항목이 없어요(공개 시각 starts_at이 필요해요).' })
+  else payload.scheduled_at = startsAt
+  const endsAt = readTimeString(itemField(item, 'ends_at'), item.ends_at)
+  if (endsAt !== undefined) {
+    errors.push({ path: 'ends_at', message: 'drop_schedule.ends_at: 드랍 일정은 놓은 뒤 내리지 않아서 종료 시각이 없어요. 종료 시각을 빼 주세요.' })
+  }
+
+  const title = readText(copy, resource, 'title')
+  if (title.value !== undefined) payload.title = title.value
+
+  for (const key of DROP_SCHEDULE_RESOURCE_KEYS) {
+    if (key === 'collection_ids') continue
+    if (isPresent(resource[key])) payload[key] = resource[key]
+  }
+  if (appendLinkedIds(payload, 'collection_ids', resource.collection_ids, linkedIds.collection_ids)) linkFields.push('collection_ids')
 
   if (errors.length > 0) return { payload: null, errors, warnings, linkFields }
   return { payload, errors, warnings, linkFields }
