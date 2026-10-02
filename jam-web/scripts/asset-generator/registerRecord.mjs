@@ -132,7 +132,7 @@ export function buildRegistrationRecord({ bundle, badgeId, bucket, pngPath, webp
 /**
  * 등록과 동등한 INSERT 문 + 되돌림 SQL 주석 블록이 든 `registration.sql` 본문을 만든다.
  * 이미 등록이 끝난 기록이라 같은 id가 있으면 아무 일도 하지 않게(`ON CONFLICT DO NOTHING`) 둔다.
- * `undoTables`: 되돌림 전에 참조를 확인하는 표 이름(`registerFlow.mjs`의 `UNDO_REFERENCE_TABLES`가 원본이라 호출부가 넘긴다).
+ * `undoTables`: 되돌림 전에 참조를 확인하는 표 이름(`src/lib/admin/registerChecks/references.ts`의 `BADGE_UNDO_REFERENCES`가 원본이라 호출부가 넘긴다).
  */
 export function buildRegistrationSql({ payload, record, undoTables }) {
   const columns = Object.keys(payload)

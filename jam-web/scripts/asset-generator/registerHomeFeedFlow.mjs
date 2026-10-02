@@ -1,14 +1,14 @@
 /**
  * JAM! 에셋 제너레이터 홈피드 카드 등록 — DB 읽기 검사·등록·되돌림·명령 실행 흐름 (티켓 20260925_1413)
  *
- * 배지판(`registerFlow.mjs`)·미션판(`registerMissionFlow.mjs`)의 홈피드 버전이다(둘 다 고치지 않는다).
+ * 배지판(`registerFlow.mjs`)·미션판(`registerMissionFlow.mjs`)의 홈피드 버전이다.
  * Supabase 클라이언트와 WebP 변환기·UUID 생성기·시각 함수를 인자로 받아, 스텁으로 순서와 실패 처리를 검증할 수
  * 있게 했다(`__tests__/registerHomeFeedFlow.test.ts`). 실제 클라이언트를 만드는 곳은 `register-home-feed-card.mjs`
  * 하나뿐이다. 배지판에서는 `STORAGE_BUCKET`·`writeRegistrationFiles`(내용과 무관한 부품)만 가져오고, 업로드·삭제
  * 보조 함수(비공개)는 여기에 다시 적었다.
  *
  * ## 등록 순서와 실패 처리 (배지·미션과 같다)
- * 1. 묶음 검증 → DB 읽기 검사(제목+시작 일시 중복·참조 행 존재) — 하나라도 실패하면 아무것도 쓰지 않는다.
+ * 1. 묶음 검증 → DB 읽기 검사(제목+시작 일시 중복·참조 행 존재 — `src/lib/admin/registerChecks/homeFeed.ts`) — 하나라도 실패하면 아무것도 쓰지 않는다.
  * 2. 새 카드 id를 미리 정한다(이미지 저장 경로에 쓰려고).
  * 3. 이미지 업로드(원본 PNG → WebP). 하나라도 실패하면 이미 올라간 파일을 지우고 끝낸다.
  * 4. 카드 행 insert. 실패하면 올라간 이미지 2개를 지우고 끝낸다.
@@ -18,6 +18,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { runHomeFeedDbChecks as runHomeFeedDbChecksImpl } from '../../src/lib/admin/registerChecks/homeFeed'
+import {
+  HOME_FEED_UNDO_REFERENCE_TABLES as UNDO_REFERENCE_TABLES,
+  findHomeFeedUndoReferences,
+} from '../../src/lib/admin/registerChecks/references'
 import { STORAGE_BUCKET, writeRegistrationFiles } from './registerFlow.mjs'
 import {
   AGENT_IMAGE_SOURCE,
@@ -39,17 +44,10 @@ import {
 export { STORAGE_BUCKET }
 
 /**
- * 되돌림 전에 «이미 사용자 데이터가 붙었는지» 읽는 곳(테이블과 카드 id를 가진 컬럼). 티켓 20260925_1413.
- * 근거: `src/types/database.generated.ts`에서 `referencedRelation: "today_cards"`인 외래 키는
- * `today_card_events.card_id` 하나뿐이다(2026-09-25 확인, 테스트가 생성 타입과 대조한다).
- * 삭제 규칙은 마이그레이션 183: `card_id UUID REFERENCES public.today_cards(id) ON DELETE SET NULL` — 카드를 지워도
- * 삭제는 막히지 않고 이벤트 행의 card_id만 NULL로 바뀐다. 그래서 «지우면 실패하는» 참조는 아니다. 그래도 노출·열람 기록이
- * 이미 붙었다는 것은 이 카드가 실제 유저에게 나갔다는 뜻이고, 지우면 그 기록이 어느 카드의 것인지 잃는다(유형별 집계용
- * content_type_id는 남는다). 이 스크립트의 되돌림은 «방금 등록한 카드가 아직 아무에게도 노출되지 않았다»는 전제여서
- * 하나라도 붙었으면 중단한다.
- * 그 밖에 코드에서 카드 id를 담는 곳은 알림 announcement 페이로드의 `today_card_id`(JSON 안의 값, 외래 키 아님)뿐이다.
+ * 되돌림 전 참조 확인 목록의 원본은 `src/lib/admin/registerChecks/references.ts`의 `HOME_FEED_UNDO_REFERENCE_TABLES`다
+ * (티켓 20261002_0827 — 서버도 같은 목록을 쓰게 옮겼다). 여기서는 기존 이름으로 다시 내보낸다.
  */
-export const UNDO_REFERENCE_TABLES = [{ table: 'today_card_events', column: 'card_id' }]
+export { UNDO_REFERENCE_TABLES }
 
 const errorMessage = (e) => (e instanceof Error ? e.message : String(e))
 
@@ -65,72 +63,11 @@ export function homeFeedStoragePathsFor(cardId) {
  * DB를 읽어야 알 수 있는 검사를 돌린다(읽기 전용). `supabase`가 null이면 «건너뜀»으로 표시한다.
  * `payload`는 `buildTodayCardInsertPayload`가 만든 페이로드(제목은 다듬어졌고 시작 일시는 UTC ISO 문자열이다).
  * 반환: `{ checks: [{ label, status, detail }], errors: string[] }` — status는 통과·실패·건너뜀·해당 없음.
+ * 검사 본문은 `src/lib/admin/registerChecks/homeFeed.ts`에 있다(티켓 20261002_0827). TS 함수를 그대로 다시 내보내지 않고 JS
+ * 래퍼를 두는 이유: 테스트의 호출이 TS 시그니처로 typecheck되면 손으로 만든 스텁이 통과하지 못한다.
  */
 export async function runHomeFeedDbChecks({ supabase, payload }) {
-  const checks = []
-  const errors = []
-
-  const add = async (label, applicable, run) => {
-    if (!applicable) {
-      checks.push({ label, status: '해당 없음', detail: '' })
-      return
-    }
-    if (!supabase) {
-      checks.push({ label, status: '건너뜀', detail: '서비스 키(.env.local)가 없어 DB를 읽지 않았어요' })
-      return
-    }
-    let failure
-    try {
-      failure = await run()
-    } catch (e) {
-      failure = `DB 조회에 실패했어요: ${errorMessage(e)}`
-    }
-    if (failure) {
-      checks.push({ label, status: '실패', detail: failure })
-      errors.push(`${label}: ${failure}`)
-    } else {
-      checks.push({ label, status: '통과', detail: '' })
-    }
-  }
-
-  // 카드는 날짜만 다르게 같은 제목을 다시 쓸 수 있어 제목만 보면 정상 카드를 막는다 — 제목과 시작 일시를 함께 본다.
-  // 동시에 두 번 등록하는 경합은 막지 못한다(단일 메인 세션 실행이 전제, 티켓 20260925_2106).
-  await add('제목·시작 일시 중복', true, async () => {
-    const { data, error } = await supabase.from('today_cards').select('id').eq('title', payload.title).eq('starts_at', payload.starts_at).limit(1)
-    if (error) return `DB 조회에 실패했어요: ${error.message}`
-    if (data && data.length > 0) {
-      return `같은 제목·같은 시작 일시의 카드가 이미 있어요(id: ${data[0].id}). 기존 카드 갱신은 이 스크립트 범위 밖이라 중복으로 거절해요.`
-    }
-    return null
-  })
-
-  await add('미션 존재', typeof payload.mission_id === 'string', async () => {
-    const { data, error } = await supabase.from('missions').select('id').eq('id', payload.mission_id).maybeSingle()
-    if (error) return `DB 조회에 실패했어요: ${error.message}`
-    return data ? null : `mission_id에 해당하는 미션이 없어요: ${payload.mission_id}`
-  })
-
-  await add('컬렉션 존재', typeof payload.item_book_id === 'string', async () => {
-    const { data, error } = await supabase.from('item_books').select('id').eq('id', payload.item_book_id).maybeSingle()
-    if (error) return `DB 조회에 실패했어요: ${error.message}`
-    return data ? null : `item_book_id에 해당하는 컬렉션이 없어요: ${payload.item_book_id}`
-  })
-
-  await add('배지 존재', payload.badge_ids.length > 0, async () => {
-    const { data, error } = await supabase.from('badges').select('id').in('id', payload.badge_ids).is('deleted_at', null)
-    if (error) return `DB 조회에 실패했어요: ${error.message}`
-    const found = new Set((data ?? []).map((row) => String(row.id).toLowerCase()))
-    const missing = payload.badge_ids.filter((id) => !found.has(id.toLowerCase()))
-    return missing.length === 0 ? null : `badge_ids에 해당하는 배지가 없거나 삭제됐어요: ${missing.join(', ')}`
-  })
-
-  await add('랭킹 모드 존재', typeof payload.ranking_mode_id === 'string', async () => {
-    const { data, error } = await supabase.from('ranking_modes').select('id').eq('id', payload.ranking_mode_id).maybeSingle()
-    if (error) return `DB 조회에 실패했어요: ${error.message}`
-    return data ? null : `ranking_mode_id에 해당하는 랭킹 모드가 없어요: ${payload.ranking_mode_id}`
-  })
-
-  return { checks, errors }
+  return runHomeFeedDbChecksImpl({ supabase, payload })
 }
 
 async function uploadFile(storage, filePath, buffer, contentType, label) {
@@ -263,20 +200,8 @@ export async function undoHomeFeedRegistration({ supabase, record, dryRun }) {
     throw new Error(`이 카드는 에이전트 등록(image_source=${AGENT_IMAGE_SOURCE})이 아니라서 지우지 않아요(현재 값: ${row.image_source ?? '없음'}).`)
   }
 
-  const references = []
-  if (row) {
-    for (const { table, column } of UNDO_REFERENCE_TABLES) {
-      const { count, error } = await supabase.from(table).select(column, { count: 'exact', head: true }).eq(column, cardId)
-      if (error) throw new Error(`${table} 참조를 확인하지 못해서 중단했어요(확인 없이 지우지 않아요): ${error.message}`)
-      if (count && count > 0) references.push({ table, count })
-    }
-    if (references.length > 0) {
-      const detail = references.map((r) => `${r.table} ${r.count}건`).join(', ')
-      throw new Error(
-        `이미 노출·열람 기록이 붙어서 되돌리지 않고 중단했어요 — ${detail}. 지우면 그 기록의 card_id가 비게 돼요. 삭제 대신 어드민에서 카드를 비활성으로 바꿔 주세요.`
-      )
-    }
-  }
+  // 참조 확인(붙어 있으면 Error로 중단)은 `registerChecks/references.ts`의 `findHomeFeedUndoReferences`다.
+  const references = row ? await findHomeFeedUndoReferences(supabase, cardId) : []
 
   const result = { cardId, rowFound: Boolean(row), references, rowDeleted: false, filesRemoved: false, warnings: [] }
   if (dryRun) return result

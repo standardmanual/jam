@@ -582,8 +582,10 @@ stateDiagram-v2
 | `drop_schedule` | `ambient_drop_schedules` 1행 | 서버 함수 `createAmbientDropSchedule`(§8.5) | `scheduled_at` | 없다. 있으면 형식 오류 | `cancelScheduledAmbientDrop` | 놓은 직후 항목을 종료로 닫는다(§8.6). 버튼 없음 | ⑧ |
 | `pattern_proposal` | 예약 등록 대상이 아니다. 승인할 때 패턴 사전에 들어간다(§10.1, 1503 ⑪) | — | — | — | — | — | — |
 
-- 행 삭제는 지우기 전에 참조를 확인한다. 참조가 하나라도 있거나 확인하지 못하면 지우지 않는다. 확인하는 참조 목록은 등록 스크립트 `--undo`와 같고
-  (`jam-web/scripts/asset-generator/registerFlow.mjs`의 `UNDO_REFERENCE_TABLES`·`UNDO_ARRAY_REFERENCE_COLUMNS`, 미션·홈피드판도 같은 방식), ②가 `src/lib`로 옮긴다(G2).
+- 행 삭제는 지우기 전에 참조를 확인한다. 참조가 하나라도 있거나 확인하지 못하면 지우지 않는다. 확인하는 참조 목록은 등록 스크립트 `--undo`와 같고,
+  원본은 `jam-web/src/lib/admin/registerChecks/references.ts`다(배지 `BADGE_UNDO_REFERENCE_TABLES`·`BADGE_UNDO_ARRAY_REFERENCE_COLUMNS`, 미션 `MISSION_UNDO_REFERENCE_TABLES`,
+  홈피드 `HOME_FEED_UNDO_REFERENCE_TABLES`와 판별 함수 `findBadgeUndoReferences`·`findMissionUndoReferences`·`findHomeFeedUndoReferences`). 등록 전 DB 검사 세 함수도 같은 폴더에 있고
+  스크립트가 그것을 부른다(티켓 20261002_0827, G2의 앞 절반). 순수 검사·페이로드 함수의 이전은 ②-2다.
 - 조각을 아직 만들지 않은 종류는 사전 점검에서 「아직 연결하지 않은 종류」로 막는다(§8.2). 그 항목은 「승인됨」에 남는다.
 
 ### 8.2 예약 등록과 사전 점검
