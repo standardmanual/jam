@@ -1,10 +1,11 @@
 /**
  * 상태 맞추기 엔진 (티켓 20261002_1813, 상위 20260930_1500 ⑦-a). 가정 1~6은 티켓 「착수 전에 정한 것」 번호다.
- * 카드는 실제 핸들러와 메모리 DB(`fakeDb.ts`)로, 오류·경합·카드가 아닌 종류는 가짜 핸들러로 지킨다(레지스트리에는 카드만 있다).
+ * 카드와 미션(티켓 20261002_1944, ⑥)은 실제 핸들러와 메모리 DB(`fakeDb.ts`)로, 오류·경합은 가짜 핸들러로 지킨다.
  *
  * - 판정(`planReconcile`, 가정 2·3·4): §8.6 표의 행마다, 시험 묶음(§8.8), 같은 차이는 한 번, 이미 `fail`, 읽기 결과가 없는 항목
  * - 실행(`reconcileOpsItems`, 가정 5): 조건부 상태 변경·결정 기록(행위자·`batch_id`)·멈춘 준비중 `undo`·동시 두 회차·오류 건너뜀
  * - 슬랙(`notifyReconcile`, 가정 6): 요약·알림·시험 묶음 따로·바뀐 것이 없으면 안 보냄·`slack_result`
+ * - 미션(⑥): 실제 미션 핸들러의 공개·종료·밖에서 지워짐·숨김·노출일 판정, 멈춘 준비중 카드·미션은 카드부터 지운다(가정 4)
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -60,6 +61,21 @@ const cardItem = (extra: SpecInBundle = {}): SpecInBundle => ({
 })
 
 const cardRow = (extra: Row = {}): Row => ({ id: CARD_RES, is_active: true, starts_at: STARTS, ends_at: ENDS, ...extra })
+
+/** 상시 미션 항목(종료 시각 없음). 공개 시각은 `STARTS`다. */
+const missionItem = (extra: SpecInBundle = {}): SpecInBundle => ({
+  id: ID.mission,
+  key: 'mission',
+  kind: 'mission',
+  status: 'scheduled',
+  startsAt: STARTS,
+  endsAt: null,
+  createdResource: { mission_id: MISSION_RES },
+  ...extra,
+})
+
+const missionRow = (extra: Row = {}): Row => ({ id: MISSION_RES, starts_at: STARTS, ends_at: null, exposure_mode: 'start_date', exposure_at: null, ...extra })
+const MISSION_LABEL = '미션 · 10/5(월) 09:00'
 
 // ── 판정(순수) ───────────────────────────────────────────────────────────────────────────────────
 
@@ -305,6 +321,7 @@ describe('판정 — 시험 묶음은 자원 대신 항목의 시각만 본다 (
 
 interface SetupOptions {
   cards?: Row[]
+  missions?: Row[]
   decisions?: Row[]
   handlers?: ExecuteHandlerRegistry
 }
@@ -317,6 +334,7 @@ function setup(specs: SpecInBundle[], options: SetupOptions = {}) {
   ]
   db.tables.ops_bundle_items = specs.map(({ sample, ...spec }) => ({ ...makeItem(spec), bundle_id: sample ? SB_ID : B }))
   db.tables.today_cards = options.cards ?? []
+  db.tables.missions = options.missions ?? []
   db.tables.ops_decisions = options.decisions ?? []
   const handlers = options.handlers ?? EXECUTE_HANDLERS
   const run = () => reconcileOpsItems(db.service, { handlers, now: () => NOW })
@@ -630,6 +648,175 @@ describe('실행 — 멈춘 준비중 (가정 3)', () => {
     expect(undo).not.toHaveBeenCalled()
     expect(db.decisions()).toEqual([])
     expect(result.failed).toEqual([])
+  })
+})
+
+describe('실행 — 미션의 상태 전이 (티켓 20261002_1944, 실제 미션 핸들러)', () => {
+  it('예약됨 미션이 공개 중이면 게재중으로 옮기고 결정 기록은 없다', async () => {
+    const { db, run } = setup([missionItem()], { missions: [missionRow()] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.mission)).toBe('live')
+    expect(db.decisions()).toEqual([])
+    expect(result.published[0]).toMatchObject({ itemId: ID.mission, itemLabel: MISSION_LABEL, isSample: false, action: null, reason: null })
+    expect(countsOf(result)).toEqual([1, 0, 0, 0, 0, 0])
+    expect(db.calls.filter((call) => call.table === 'missions' && call.op !== 'select')).toEqual([])
+  })
+
+  it('공개 시각 전이면 아무것도 바꾸지 않는다', async () => {
+    const { db, run } = setup([missionItem({ startsAt: LATER })], { missions: [missionRow({ starts_at: LATER })] })
+    const result = ok(await run())
+
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it('상시 미션(종료 시각 없음)은 종료되지 않고 밖에서 바뀐 것도 아니다', async () => {
+    const { db, run } = setup([missionItem({ status: 'live' })], { missions: [missionRow()] })
+    const result = ok(await run())
+
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+    expect(statusOf(db, ID.mission)).toBe('live')
+    expect(db.decisions()).toEqual([])
+  })
+
+  it('게재중 미션의 종료 시각이 지났으면 종료한다. 결정 기록은 없다', async () => {
+    const { db, run } = setup([missionItem({ status: 'live', endsAt: at(-1) })], { missions: [missionRow({ ends_at: at(-1) })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.mission)).toBe('ended')
+    expect(db.decisions()).toEqual([])
+    expect(result.ended[0]).toMatchObject({ itemId: ID.mission, action: null })
+  })
+
+  it('예약됨 미션이 밖에서 지워졌으면 취소하고 cancel을, 게재중 미션이면 종료하고 end를 남긴다', async () => {
+    const scheduled = setup([missionItem()])
+    const cancelled = ok(await scheduled.run())
+    expect(statusOf(scheduled.db, ID.mission)).toBe('cancelled')
+    expect(scheduled.db.decisions()[0]).toMatchObject({ item_id: ID.mission, action: 'cancel', actor: ACTOR, reason: OUTSIDE, batch_id: cancelled.batchId })
+
+    const live = setup([missionItem({ status: 'live' })])
+    ok(await live.run())
+    expect(statusOf(live.db, ID.mission)).toBe('ended')
+    expect(live.db.decisions()[0]).toMatchObject({ item_id: ID.mission, action: 'end', reason: OUTSIDE })
+  })
+
+  it('운영툴 밖에서 숨김이 된 미션은 상태를 두고 is_active 전후를 기록만 한다. 예약됨에 남는다', async () => {
+    const { db, run } = setup([missionItem()], { missions: [missionRow({ exposure_mode: 'hidden' })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.mission)).toBe('scheduled')
+    expect(db.decisions()).toHaveLength(1)
+    expect(db.decisions()[0]).toMatchObject({ item_id: ID.mission, action: 'external_change', actor: ACTOR, diff: { is_active: { item: true, resource: false } } })
+    expect(result.externalChanged).toHaveLength(1)
+    expect(db.itemWrites()).toEqual([])
+    // 같은 차이는 다시 남기지 않는다
+    ok(await run())
+    expect(db.decisions()).toHaveLength(1)
+  })
+
+  it('밖에서 노출일 지정으로 바뀌면 공개 시각은 노출일이다: 노출일 전이면 게재중이 되지 않고 시각 차이를 기록한다', async () => {
+    const { db, run } = setup([missionItem()], { missions: [missionRow({ exposure_mode: 'scheduled', exposure_at: LATER })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.mission)).toBe('scheduled')
+    expect(db.decisions()[0]).toMatchObject({ action: 'external_change', diff: { starts_at: { item: STARTS, resource: LATER } } })
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 1, 0])
+  })
+
+  it('밖에서 종료 시각이 정해지면 상태는 그대로 두고 ends_at 차이를 기록한다(항목은 상시)', async () => {
+    const { db, run } = setup([missionItem({ status: 'live' })], { missions: [missionRow({ ends_at: FUTURE_ENDS })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.mission)).toBe('live')
+    expect(db.decisions()[0]).toMatchObject({ action: 'external_change', diff: { ends_at: { item: null, resource: FUTURE_ENDS } } })
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 1, 0])
+  })
+
+  it('미션 시각을 읽을 수 없으면 그 항목만 건너뛰고 상태를 바꾸지 않는다', async () => {
+    const { db, run } = setup([missionItem()], { missions: [missionRow({ ends_at: 'not-a-date' })] })
+    const result = ok(await run())
+
+    expect(result.errors).toBe(1)
+    expect(statusOf(db, ID.mission)).toBe('scheduled')
+    expect(nonSelect(db)).toEqual([])
+  })
+})
+
+describe('실행 — 멈춘 준비중 카드·미션은 카드부터 지운다 (티켓 20261002_1944 가정 4)', () => {
+  const stuck = (extra: SpecInBundle = {}): SpecInBundle => ({ status: 'preparing', updatedAt: at(-11 * MINUTE), ...extra })
+  /** 제출 순서는 미션이 앞이다: 순서를 맞추지 않으면 미션을 먼저 지우려다 카드의 mission_id 참조에 걸린다. */
+  const pair = (): SpecInBundle[] => [missionItem(stuck({ position: 1 })), cardItem(stuck({ position: 2, links: ['mission'] }))]
+  const seed = (db: FakeDb) => {
+    db.tables.missions = [missionRow({ starts_at: LATER }), missionRow({ id: uid(98) })]
+    db.tables.today_cards = [cardRow({ starts_at: LATER, ends_at: FUTURE_ENDS, mission_id: MISSION_RES }), cardRow({ id: CARD_RES2 })]
+  }
+
+  it('카드와 미션이 함께 멈추면 카드를 먼저 지워 미션도 남기지 않는다', async () => {
+    const { db, run } = setup(pair())
+    seed(db)
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.card)).toBe('failed')
+    expect(statusOf(db, ID.mission)).toBe('failed')
+    expect((db.tables.today_cards as Row[]).map((row) => row.id)).toEqual([CARD_RES2])
+    expect((db.tables.missions as Row[]).map((row) => row.id)).toEqual([uid(98)])
+    const order = db.calls.map((call) => `${call.table}:${call.op}`)
+    expect(order.indexOf('today_cards:delete')).toBeLessThan(order.indexOf('missions:delete'))
+    // 남은 자원이 없으니 사유에 「만든 자원이 남아 있어요」가 붙지 않는다
+    expect(result.failed.map((change) => [change.itemId, change.reason, change.resourceId])).toEqual([
+      [ID.card, STALLED, null],
+      [ID.mission, STALLED, null],
+    ])
+    expect(db.decisions('fail').map((row) => row.item_id)).toEqual([ID.card, ID.mission])
+  })
+
+  it('제출 순서와 상관없이 같다(카드가 앞이어도 카드가 먼저다)', async () => {
+    const { db, run } = setup([cardItem(stuck({ position: 1, links: ['mission'] })), missionItem(stuck({ position: 2 }))])
+    seed(db)
+    const result = ok(await run())
+
+    expect(idsOf(result.failed)).toEqual([ID.card, ID.mission])
+    expect((db.tables.missions as Row[]).map((row) => row.id)).toEqual([uid(98)])
+  })
+
+  it('자원을 지우지 않는 전이는 제자리에 둔다: 다른 전이의 결과 순서가 바뀌지 않는다', async () => {
+    const stuckCard = uid(6)
+    const { db, run } = setup([
+      cardItem({ id: ID.card2, key: 'card2', createdResource: { today_card_id: CARD_RES2 } }), // 공개 → 게재중
+      missionItem(stuck({ position: 1 })),
+      cardItem(stuck({ id: stuckCard, key: 'card-stuck', position: 2, createdResource: { today_card_id: CARD_RES } })),
+    ])
+    db.tables.missions = [missionRow({ starts_at: LATER })]
+    db.tables.today_cards = [cardRow({ id: CARD_RES2 }), cardRow({ starts_at: LATER, ends_at: FUTURE_ENDS })]
+    const result = ok(await run())
+
+    expect(idsOf(result.published)).toEqual([ID.card2])
+    expect(idsOf(result.failed)).toEqual([stuckCard, ID.mission])
+    expect(db.tables.missions).toEqual([])
+  })
+
+  it('카드가 이미 지워져 있어도(밖에서 또는 앞서) 미션은 지워진다', async () => {
+    const { db, run } = setup(pair())
+    db.tables.missions = [missionRow({ starts_at: LATER })]
+    db.tables.today_cards = []
+    ok(await run())
+
+    expect(db.tables.missions).toEqual([])
+    expect(statusOf(db, ID.mission)).toBe('failed')
+  })
+
+  it('운영툴 밖의 카드가 미션을 가리키면 미션은 지우지 못하고 자원 ID와 함께 실패로 닫는다', async () => {
+    const { db, run } = setup([missionItem(stuck())])
+    db.tables.missions = [missionRow({ starts_at: LATER })]
+    db.tables.today_cards = [cardRow({ id: uid(60), mission_id: MISSION_RES })]
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.mission)).toBe('failed')
+    expect(db.tables.missions).toHaveLength(1)
+    expect(result.failed[0]).toMatchObject({ reason: `${STALLED}. ${REMAINS}`, resourceId: MISSION_RES })
+    expect(JSON.stringify([result, db.decisions()])).not.toContain('today_cards')
+    expect(logged()).toContain('today_cards')
   })
 })
 
