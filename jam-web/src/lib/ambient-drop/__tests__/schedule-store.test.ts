@@ -39,8 +39,6 @@ import {
   world,
 } from './schedule-fixtures'
 
-vi.mock('@/lib/notifications/batch/shared', async () => (await import('./schedule-test-db')).sharedMock)
-
 /** 2026-10-01 12:00 KST */
 const NOW = new Date('2026-10-01T03:00:00.000Z')
 /** 2026-10-05 09:00 KST */
