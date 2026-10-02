@@ -2,7 +2,7 @@
 id: "20261002_1905"
 category: Infra
 priority: P2
-status: OPEN
+status: IN_PROGRESS
 created: 2026-10-02
 closed:
 ---
@@ -19,6 +19,29 @@ closed:
 - 구현 계획(착수 때 확정): 후보는 (가) 서브에이전트의 Bash `PreToolUse` 훅이 메인 트리에서 `git checkout`·`git switch`·`git reset --hard`·`git rebase`를 막는다(작업 폴더가 `.claude/worktrees/` 아래면 허용),
   (나) 워크플로(`.claude/workflows/jam-work.js`)가 민지를 격리 워크트리에서 부른다. 민지는 `baseSha..commitSha` 두 커밋 사이만 보므로 (나)로도 판정은 같다.
 - 관련 파일: `.claude/settings.json` 68행 `hooks`, `.claude/agents/jam-reviewer.md` 142–150행, `.claude/workflows/jam-work.js`(민지 호출부의 `isolation`), 티켓 20260926_0121(같은 위험의 첫 사고).
+
+## 착수 전에 정한 것 (2026-10-02 카리나, 사용자 지시 「1905(민지 checkout을 기계적으로 막기)」)
+
+1. **(가) 훅으로 막는다. 다만 `settings.json`이 아니라 민지 정의의 frontmatter에 건다.** Claude Code는 서브에이전트 정의 파일 frontmatter의 `hooks`(`PreToolUse`, matcher `Bash`)를
+   그 서브에이전트가 도는 동안에만 적용한다(공식 문서 hooks.md 「Subagent hooks (defined in frontmatter) run only while that subagent is running」, 2026-10-02 claude-code-guide 확인).
+   Workflow의 `agent(…, { agentType })`와 Agent 도구(`/jam-ship` 5단계의 민지 모드 ②·③) 양쪽에 걸리고, 메인 세션(카리나)의 `git checkout staging` 같은 명령은 막지 않는다.
+   (나) 격리 워크트리 호출은 민지가 매번 리뷰 커밋을 체크아웃하고 `node_modules`를 연결해야 해서 게이트 흐름이 바뀌므로 고르지 않았다.
+2. **막는 조건.** 훅 입력(stdin JSON)의 `tool_input.command`에 공유 폴더의 HEAD·작업 트리를 바꾸는 git 하위 명령(`checkout`·`switch`·`reset`·`rebase`·`merge`·`pull`·`cherry-pick`·`revert`·`stash`·`restore`·`clean`·`commit`·`am`)이 있고,
+   `cwd`가 메인 워크트리(`git rev-parse --path-format=absolute --git-dir`과 `--git-common-dir`이 같음)이며, 명령이 `.claude/worktrees/` 아래 경로로 옮겨 실행하지 않을 때(`cd <경로>`나 `git -C <경로>`가 그 아래가 아님) 막는다.
+   `git worktree add --detach .claude/worktrees/gate-<sha> <sha>` → 그 안에서 실행하는 정의의 탈출구는 그대로 쓸 수 있다. `git show`·`diff`·`log`·`cat-file`·`status`·`fetch`·`worktree` 같은 읽기·워크트리 명령은 막지 않는다.
+3. **막는 방식.** 종료 코드 0과 `hookSpecificOutput.permissionDecision: "deny"`·`permissionDecisionReason`(한국어, 정의의 「Never move the folder you are running in」과 탈출구 안내) JSON을 출력한다. 사유 문장은 모델이 본다.
+   입력을 읽지 못하거나 git 판정이 실패하면 막지 않고 stderr에 남긴다(읽기 명령까지 막아 판정을 못 하게 되는 일을 피한다. 2026-10-02 두 번째 발생 때 거부 뒤 읽기까지 막혔다).
+4. **적용 대상.** 민지(`jam-reviewer`)와, 같은 게이트 단계에서 같은 공유 폴더 규칙(`WORKDIR_RULE`)을 받는 채원(`jam-designer`). 아현은 격리 워크트리에서 돌아 대상이 아니다.
+5. 스크립트는 저장소 관례대로 Node(`scripts/*.mjs`)로 쓴다(`jq` 의존 없음). 훅 명령은 `node "$CLAUDE_PROJECT_DIR/scripts/guard-shared-head.mjs"`.
+
+## 구현 계획 (파일 단위)
+
+1. 새 `scripts/guard-shared-head.mjs`: stdin JSON 읽기 → 명령 분석(위 2) → 메인 워크트리 판정 → deny JSON 출력. 판정 함수는 내보내 테스트한다.
+2. 새 `scripts/guard-shared-head.test.mjs`(`verify.sh`가 `scripts/*.test.mjs`로 돈다): 막는 명령(`git checkout -q --detach <sha>`, `git switch`, `git reset --hard`, `&&`로 이은 읽기+checkout), 통과하는 명령(`git show`·`diff`·`log`·`fetch`,
+   `git worktree add --detach .claude/worktrees/gate-x <sha>`, `cd .claude/worktrees/gate-x && git checkout …`, `git -C .claude/worktrees/gate-x checkout …`), 격리 워크트리 `cwd`면 통과, 잘못된 입력이면 통과,
+   그리고 두 정의 파일 frontmatter에 훅 명령이 등록돼 있는지(빠지면 실패).
+3. `.claude/agents/jam-reviewer.md`·`.claude/agents/jam-designer.md` frontmatter에 `hooks.PreToolUse`(matcher `Bash`). 민지 본문 「Never move the folder you are running in」(142–150행)에 「훅이 막는다」 한 줄.
+4. `docs/agents/contract.json` `paths_exist`에 스크립트와 테스트. `docs/agents/team-operations.md` §8 사고 이력에 이 티켓의 기계 방어 한 줄(생성 구간이면 근거 설정을 고치고 `node scripts/gen-team-doc.mjs`).
 
 ## 완료 조건
 
