@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/admin/ui/alert'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import { findRevertTarget } from '@/lib/admin/opsInbox/edit'
-import { executeToast, readExecuteResult, unconnectedKindsNotice } from '@/lib/admin/opsInbox/executeView'
+import { cancelToast, executeToast, readExecuteResult, unconnectedKindsNotice } from '@/lib/admin/opsInbox/executeView'
 import { formatKstDayTime, kindLabel } from '@/lib/admin/opsInbox/labels'
 import {
   isDecidable,
@@ -22,6 +22,7 @@ import {
 import type { OpsBundleExecution, OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { OpsBulkApprove, bulkResultMessage } from './OpsBulkApprove'
 import { OpsBundleWorkspace, type OpsBundleWorkspaceProps, type OpsWorkspaceContext } from './OpsBundleWorkspace'
+import { OpsCancelItem } from './OpsCancelItem'
 import { postDecision } from './decisionClient'
 import { OpsExecuteBundle } from './OpsExecuteBundle'
 import { OpsItemActions } from './OpsItemActions'
@@ -34,7 +35,8 @@ import { OpsItemEditForm } from './OpsItemEditForm'
  * - `barAction`: 「N개 승인하기」와 요약 창 (`OpsBulkApprove`), 그 오른쪽에 「N개 예약 등록하기」와 요약창 (`OpsExecuteBundle`, 승인됨 항목이 있을 때만. 티켓 20261002_1648)
  * - `rowLead`·`listHeader`: 행 체크박스와 「전체 선택 · 결정할 것 12개 중 11개 선택」
  * - `notices`: 「{종류} 항목은 아직 예약 등록을 연결하지 않았어요」(연결하지 않은 종류가 있을 때만, 서버 로더가 센 `execution.unconnectedKinds`)
- * - `detailFooter`: 반려·수정·승인 (`OpsItemActions`)   - `detailEdit`: 직접 수정 양식 (`OpsItemEditForm`)
+ * - `detailFooter`: 「예약됨」 항목이면 안내와 [공개 전 취소하기] (`OpsCancelItem`, 티켓 20261002_1649), 그 밖에는 반려·수정·승인 (`OpsItemActions`)
+ * - `detailEdit`: 직접 수정 양식 (`OpsItemEditForm`)
  * - `detailHistoryAction`: 「마지막 수정 되돌리기」(수정 내역이 있는 검토중 항목만, 확인창 없음)
  *
  * 체크 상태는 사람이 바꾼 것만 항목 수정 시각과 함께 기억하고 나머지는 항목에서 계산한다(`selection.ts`) — 서버 화면을 다시 읽어 항목이
@@ -140,6 +142,14 @@ export function OpsDecisionWorkspace({
     refresh()
   }
 
+  /** 공개 전 취소가 끝났을 때. 결과 문장은 `cancelToast`가 만들고, 결정 기록을 남기지 못했으면 경고 토스트를 하나 더 띄운다. */
+  const handleCancelled = (data: Record<string, unknown>) => {
+    const toastResult = cancelToast(data)
+    toast.success(toastResult.message)
+    if (toastResult.logWarning) toast.warning(toastResult.logWarning)
+    refresh()
+  }
+
   const checkLabel = (item: OpsItemRecord): string => {
     const startsAt = formatKstDayTime(item.startsAt)
     return `${kindLabel(item.kind)}${startsAt ? ` ${startsAt}` : ''} 승인 대상으로 고르기`
@@ -221,15 +231,26 @@ export function OpsDecisionWorkspace({
           </Alert>
         ) : null
       }}
-      detailFooter={(item, ctx) => (
-        <OpsItemActions
-          bundleId={bundleId}
-          item={item}
-          ctx={ctx}
-          onDecided={(kind, itemId) => handleDecided(ctx, kind, itemId)}
-          onConflict={refresh}
-        />
-      )}
+      detailFooter={(item, ctx) =>
+        item.status === 'scheduled' ? (
+          <OpsCancelItem
+            bundleId={bundleId}
+            item={item}
+            items={ctx.items}
+            isSample={isSample ?? false}
+            onCancelled={handleCancelled}
+            onConflict={refresh}
+          />
+        ) : (
+          <OpsItemActions
+            bundleId={bundleId}
+            item={item}
+            ctx={ctx}
+            onDecided={(kind, itemId) => handleDecided(ctx, kind, itemId)}
+            onConflict={refresh}
+          />
+        )
+      }
       detailEdit={(item, ctx) =>
         item.status === 'reviewing' && ctx.draft?.itemId === item.id ? (
           <OpsItemEditForm bundleId={bundleId} item={item} ctx={ctx} onSaved={handleSaved} onConflict={refresh} />
