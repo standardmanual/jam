@@ -9,7 +9,7 @@
  * 응답·결정 기록·슬랙에 나가는 `reason`은 아래 고정 문장뿐이다. DB 오류 원문·기존 미션 ID·칼럼 이름은 `detail`(서버 로그)에만 둔다.
  * 단, 형식 오류는 변환 오류 문장(운영 항목에 붙은 오류)의 첫 문장을 그대로 싣는다.
  *
- * - `check`는 「제목 중복」을 기간이 겹칠 때만 건다(`titleDuplicate: 'overlap'`, 사용자 결정 2026-10-02). 같은 실행에서 앞 그룹이 만든 미션은 DB에 이미 있어 이 검사가 잡는다.
+ * - `check`는 「제목 중복」을 기간이 겹칠 때만 건다(사용자 결정 2026-10-02, 등록 스크립트도 같은 규칙). 같은 실행에서 앞 그룹이 만든 미션은 DB에 이미 있어 이 검사가 잡는다.
  * - `create`는 정한 ID(`prepared.id`)로 만들고 같은 ID를 돌려준다(`idFirst`). 오류 응답이면 같은 ID로 정리 delete를 한 번 시도한다.
  * - `undo`는 사용자 데이터·연결 참조를 확인한 뒤 ID로 지운다. 등록 스크립트의 `undoMissionRegistration`은 `image_source` 조건이 있어 쓰지 않는다(운영툴 미션의 `image_source`는 null).
  * - `cancel`은 미션을 다시 읽어 공개됐으면 막고, 참조를 확인한 뒤, 지울 때도 `starts_at > now` 조건을 함께 건다(읽은 뒤 공개 시각이 지나는 경합). 카드 취소와 같은 흐름이다.
@@ -104,7 +104,7 @@ export const MISSION_HANDLER: ExecuteHandler<MissionRegisterPayload> = {
     )
     const result = await runMissionDbChecks({
       supabase: client,
-      mission: { title, mission_type, condition_json: asRecord(condition_json), reward_badge_ids, starts_at, ends_at, titleDuplicate: 'overlap' },
+      mission: { title, mission_type, condition_json: asRecord(condition_json), reward_badge_ids, starts_at, ends_at },
     })
     if (result.errors.length === 0) return null
     return { reason: reasonOfCheck(result.checks.find((check) => check.status === '실패')), detail: result.errors.join(' / ') }

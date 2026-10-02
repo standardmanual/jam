@@ -29,8 +29,8 @@ code:
 
 ## 1. 범위
 
-- **신규 미션만 등록한다.** 기존 미션 갱신은 범위 밖이다. 같은 제목의 미션이 이미 있으면 중복으로 거절한다
-  (`missions`에는 삭제 컬럼이 없어 삭제 여부는 보지 않는다). 제목을 읽고 나서 등록하는 두 단계라 **동시에 두 번 등록하는 경합은 막지 못한다** —
+- **신규 미션만 등록한다.** 기존 미션 갱신은 범위 밖이다. 같은 제목의 미션이 이미 있고 기간 [공개, 종료)이 겹치면 중복으로 거절한다
+  (종료 시각이 없으면 끝없음이다. 기간이 겹치지 않는 같은 제목은 통과한다. `missions`에는 삭제 컬럼이 없어 삭제 여부는 보지 않는다). 제목을 읽고 나서 등록하는 두 단계라 **동시에 두 번 등록하는 경합은 막지 못한다** —
   **메인 세션이 한 번에 하나씩 실행한다**는 전제다(홈피드와 같은 전제, 티켓
   [20260925_2106](../../../tickets/p3-low/20260925_2106_Infra_등록-스크립트-제목-중복-검사의-동시-등록-경합.md) 결정 A, 2026-09-25). DB에 제목
   UNIQUE 제약을 더하지 않기로 했고, 병렬 실행이 실제로 필요해지면 그때 제약을 다시 검토한다.
@@ -39,8 +39,9 @@ code:
   쓰기·시각 표기)만 가져다 쓴다. 미션 전용 부분은 `registerMission*.mjs`에 있다. 다만 DB 읽기 검사와 `--undo` 전 참조 확인은
   서버(운영툴 예약 등록)도 같은 함수를 쓰도록 세 유형 모두 `jam-web/src/lib/admin/registerChecks/`의 TS 모듈로 옮겼다
   (미션은 `mission.ts`의 `runMissionDbChecks`, `references.ts`의 `MISSION_UNDO_REFERENCE_TABLES`·`findMissionUndoReferences`.
-  티켓 20261002_0827). 스크립트의 같은 이름 함수는 그 모듈을 부르는 얇은 래퍼다. 운영툴 예약 등록(티켓 20261002_1944)은 같은 `runMissionDbChecks`에 `titleDuplicate: 'overlap'`을
-  골라 「제목 중복」을 기간이 겹칠 때만 건다. 스크립트는 고르지 않으므로 묶음의 `starts_at`을 함께 넘겨도 지금까지처럼 같은 제목이 하나라도 있으면 거절한다. 미션 한 건의 순수 검사(`validateMission`)·미션 상수
+  티켓 20261002_0827). 스크립트의 같은 이름 함수는 그 모듈을 부르는 얇은 래퍼다. 운영툴 예약 등록(티켓 20261002_1944)도 같은 `runMissionDbChecks`를
+  부르고, 「제목 중복」은 두 경로가 같은 규칙 하나다 — 같은 제목의 기존 미션을 모두 읽어 기간이 겹치는 것이 있을 때만 거절한다(티켓 20261002_2024, 사용자 결정 2026-10-02).
+  모드를 고르는 인자는 없고, 묶음의 `mission`에 어떤 키가 들어 있어도 이 규칙은 바뀌지 않는다. 시각을 읽을 수 없으면 겹친 것으로 본다(공개 시각이 없는 입력도 같은 제목이 있으면 막힌다). 미션 한 건의 순수 검사(`validateMission`)·미션 상수
   (`MISSION_REQUIRED_FIELDS`·`STATUS_DISPLAY_TYPES`·`EXPOSURE_MODES` 등)·insert 페이로드 코어(`buildMissionInsertPayload`)도 `missionFields.ts`로,
   정규식(`UUID_PATTERN`·`CONTROL_OR_LINE_BREAK`)과 보조 함수는 `bundleRules.ts`로 옮겼다(티켓 20261002_1027). `registerMissionBundle.mjs`는 그 상수를
   같은 이름으로 다시 내보내고 `validateMission`을 부르며, `buildMissionInsertPayload`는 얇은 JS 래퍼다. 동작·오류 문장·페이로드 키 집합은
@@ -103,7 +104,7 @@ jam-doc/assets/mission-bundles/<묶음 ID>/
 
 | 필드 | 필수 | 형식 | 검증 규칙·기본값 |
 |---|---|---|---|
-| `title` | 필수 | 문자열 | 공백뿐이면 거절. 줄바꿈·제어 문자가 있으면 거절(`author`와 같은 이유). 같은 제목의 미션이 있으면 거절(DB 읽기) |
+| `title` | 필수 | 문자열 | 공백뿐이면 거절. 줄바꿈·제어 문자가 있으면 거절(`author`와 같은 이유). 같은 제목의 미션과 기간이 겹치면 거절(DB 읽기) |
 | `description` | 필수 | 문자열 | 공백뿐이면 거절. 화면 문구는 [UX 라이팅 가이드](../../UX_WRITING_GUIDELINE.md)를 따른다 |
 | `mission_type` | 필수 | 문자열 | `distance`·`checkin`·`activity_count`·`item_collect`·`streak_days`·`duration_minutes`·`elevation_gain_m`·`engine_condition` 중 하나(DB CHECK와 어드민 폼과 같은 목록, `lib/admin/badge-labels.ts`의 `MISSION_TYPES`) |
 | `condition_json` | 필수 | 객체 | 어드민 저장 검증과 **같은 함수·같은 순서**로 판정한다: ① `checkMissionCondition`(모르는 키·평가 구현이 없는 키 거절, 오타 제안) → ② `checkMissionConditionValue`(유형별 필수 값이 비었거나 0 이하이면 거절 — 영구 미달성 방지). ①이 실패하면 ②는 하지 않는다. 판정에 영향이 없는 필드 고지(`warning`)는 등록을 막지 않고 dry-run의 «알아둘 점»에 보인다 |
@@ -152,7 +153,7 @@ jam-doc/assets/mission-bundles/<묶음 ID>/
 | 기간 순서 | `mission.starts_at: ends_at보다 앞이어야 해요.` |
 | 예약 노출에 시각 없음 | `mission.exposure_at: exposure_mode가 scheduled면 노출 시각이 필요해요.` |
 | 이미지 없음·PNG 아님 | `image.path: 이미지 파일을 찾을 수 없어요: <절대경로>` · `image.path: PNG 파일이 아니에요: <절대경로>` |
-| 제목 중복(DB 읽기) | `제목 중복: 같은 제목의 미션이 이미 있어요(id: …). 기존 미션 갱신은 이 스크립트 범위 밖이라 중복으로 거절해요.` |
+| 제목 중복(DB 읽기) | `제목 중복: 같은 제목의 미션이 이미 있고 기간이 겹쳐요(id: …).` |
 | 보상 배지 없음(DB 읽기) | `보상 배지 존재: reward_badge_ids에 해당하는 배지가 없거나 삭제됐어요: <id>` |
 
 ## 5. 예시
