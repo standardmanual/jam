@@ -1,9 +1,11 @@
 /**
- * 운영 항목 → 카드·미션 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b).
+ * 운영 항목 → 카드·미션·레시피 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b. 레시피는 티켓 20261002_2221 ⑧-a).
  *
  * 승인된 운영 항목(`ops_bundle_items`, 수정본 우선)의 `home_feed_card`·`mission`을 `today_cards`·`missions` insert 값으로 바꾼다.
  * 읽는 규칙은 `docs/specs/prd/ops-tool/PRD.md` §8.4이고, 검사는 등록 스크립트가 쓰는 `registerChecks/homeFeedFields.ts`의
  * `validateCard`와 `registerChecks/missionFields.ts`의 `validateMission`을 그대로 부른다. DB에 접근하지 않는다(쓰기는 ③·④·⑥).
+ * `recipe`는 행이 아니라 레시피 서버 함수(`lib/admin/recipe-write.ts`)의 입력(`RecipePayloadInput`)으로 바꾼다. 형식 검사는 그 입력을 받는
+ * `normalizeRecipePayload`가 현재 시각과 함께 하므로 변환은 칸 읽기까지만 한다(핸들러의 `prepare`가 이어서 부른다).
  *
  * 결과는 `{ payload, errors, warnings, linkFields }`다. 오류가 하나라도 있으면 `payload`는 null이다.
  * - 오류·경고 한 건은 `{ path, message }`다. `message`는 검사 문장 그대로(`card.title: …`)이고 `path`는 운영 항목 경로
@@ -25,6 +27,7 @@ import { buildTodayCardInsertPayload, validateCard } from '@/lib/admin/registerC
 import type { HomeFeedCardInput } from '@/lib/admin/registerChecks/homeFeedFields'
 import { buildMissionInsertPayload, validateMission } from '@/lib/admin/registerChecks/missionFields'
 import type { MissionInput } from '@/lib/admin/registerChecks/missionFields'
+import type { RecipePayloadInput } from '@/lib/combine/recipe-payload'
 import { CARD_SHAPES, CARD_TITLE_MAX_LENGTH, isCardShape } from '@/lib/today/shape'
 
 /** 변환이 읽는 운영 항목. `ViewableItem`(제출 원본·수정본)에 행 칸을 더했다. */
@@ -70,6 +73,9 @@ export type TodayCardRegisterPayload = ReturnType<typeof buildTodayCardInsertPay
 
 export type MissionRegisterPayload = ReturnType<typeof buildMissionInsertPayload>
 
+/** 레시피 서버 함수(`buildRecipeRow`·`createRecipeWithSlots`)가 받는 입력. 공개 시각은 `valid_from`, 종료 시각은 `valid_until`이다. */
+export type RecipeRegisterPayload = RecipePayloadInput
+
 // ── 읽을 칸 목록(PRD §8.4 표) ────────────────────────────────────────────────────────────────
 
 const CARD_COMMON_KEYS = ['starts_at', 'ends_at', 'shape', 'exposure_tags', 'pattern_no']
@@ -107,6 +113,13 @@ const MISSION_RESOURCE_KEYS = [
 const MISSION_TOOL_KEYS = ['id', 'created_at', 'image_source', 'exposure_mode', 'exposure_at', 'reward_type', 'reward_id', 'gated_badge_id']
 
 const MISSION_KIND = 'mission'
+
+const RECIPE_COMMON_KEYS = ['starts_at', 'ends_at']
+const RECIPE_COPY_KEYS = ['name']
+const RECIPE_RESOURCE_KEYS = ['slots', 'reward_points', 'reward_badge_ids']
+const RECIPE_TOOL_KEYS = ['id', 'created_at']
+
+const RECIPE_KIND = 'recipe'
 
 // ── 읽기 도우미 ─────────────────────────────────────────────────────────────────────────────
 
@@ -416,6 +429,52 @@ export function toMissionRegisterInput(
 
   // `validateMission`을 통과했으므로 필수 칸이 있고 형식이 맞다.
   const payload = buildMissionInsertPayload(mission as unknown as MissionInput, { id, imageUrl, imageSource: null, conditionText })
+  return { payload, errors, warnings, linkFields }
+}
+
+// ── 레시피 ──────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * `recipe` 항목을 레시피 서버 함수의 입력으로 바꾼다(PRD §8.4 레시피 행).
+ * - 공통 칸: `starts_at`(필수)은 `valid_from`으로, `ends_at`은 `valid_until`로 읽는다. `ends_at`이 없으면 칸을 넣지 않는다(상시).
+ * - 글자 칸 `name`(필수)은 `copy` 먼저, 없으면 `resource`. `resource`의 `slots`(필수)·`reward_points`·`reward_badge_ids`는 값 그대로 넘긴다.
+ * - 값의 형식(슬롯 개수·보상·시각 형식과 공개 시각이 미래인지)은 보지 않는다. `normalizeRecipePayload`가 현재 시각과 함께 본다.
+ * - 연결로 채우는 칸이 없어 `linkFields`는 늘 빈 배열이다(`jam_badge` → `recipe` 쌍은 배지 쪽 칸이다, §8.3).
+ */
+export function toRecipeRegisterInput(item: OpsRegisterItem): RegisterInputResult<RecipeRegisterPayload> {
+  const errors: RegisterInputIssue[] = []
+  const warnings: RegisterInputIssue[] = []
+  const linkFields: string[] = []
+
+  if (item.kind !== RECIPE_KIND) {
+    errors.push({ path: 'kind', message: `kind: ${RECIPE_KIND} 항목만 레시피로 바꿀 수 있어요(받은 값: ${describeValue(item.kind ?? undefined)}).` })
+    return { payload: null, errors, warnings, linkFields }
+  }
+
+  const copy = readGroup(item, 'copy', errors)
+  const resource = readGroup(item, 'resource', errors)
+  warnUnreadKeys(warnings, 'copy', copy, RECIPE_COPY_KEYS, RECIPE_COMMON_KEYS, RECIPE_TOOL_KEYS)
+  warnUnreadKeys(warnings, 'resource', resource, [...RECIPE_RESOURCE_KEYS, ...RECIPE_COPY_KEYS], RECIPE_COMMON_KEYS, RECIPE_TOOL_KEYS)
+
+  const payload: RecipeRegisterPayload = {}
+
+  const name = readText(copy, resource, 'name')
+  if (name.value === undefined) errors.push({ path: name.path, message: 'recipe.name: 필수 항목이 없어요.' })
+  else payload.name = name.value
+
+  // 공개 시각은 필수다. 비워 두면 서버 함수가 「바로 공개」로 읽어 예약이 아니게 된다.
+  const startsAt = readTimeString(itemField(item, 'starts_at'), item.starts_at)
+  if (startsAt === undefined) errors.push({ path: 'starts_at', message: 'recipe.valid_from: 필수 항목이 없어요(공개 시각 starts_at이 필요해요).' })
+  else payload.valid_from = startsAt
+  const endsAt = readTimeString(itemField(item, 'ends_at'), item.ends_at)
+  if (endsAt !== undefined) payload.valid_until = endsAt
+
+  if (!isPresent(resource.slots)) errors.push({ path: 'resource.slots', message: 'recipe.slots: 필수 항목이 없어요.' })
+  else payload.slots = resource.slots
+  if (isPresent(resource.reward_points)) payload.reward_points = resource.reward_points
+  if (isPresent(resource.reward_badge_ids)) payload.reward_badge_ids = resource.reward_badge_ids
+
+  if (errors.length > 0) return { payload: null, errors, warnings, linkFields }
   return { payload, errors, warnings, linkFields }
 }
 
