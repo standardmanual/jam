@@ -102,7 +102,7 @@ export type ExecuteLinkedIds = CardLinkedIds &
 /** 등록 형식으로 바꾼 항목(§8.4). `payload`의 모양은 종류마다 다르다. */
 export interface ExecutePrepared<P = unknown> {
   item: ExecuteItem
-  /** 만들 자원의 ID. `idFirst`가 아닌 종류는 검증용으로 미리 정한 값이다(G3). */
+  /** 만들 자원의 ID. 모든 종류가 만들기 전에 이 ID를 `created_resource`에 적고 이 ID로 만든다(G3). 만든 직후 적는 `idFirst: false` 분기에서는 검증용으로 미리 정한 값이다. */
   id: string
   payload: P
   /** 연결로 채운 칸 이름. 등록 전 DB 검사에는 이 칸을 뺀 사본을 넘긴다(`withoutLinkedFields`). */
@@ -119,14 +119,20 @@ export interface ExecuteHandler<P = unknown> {
   kind: ExecutableKind
   /** `created_resource`에 적는 키(§8.5). `RESOURCE_KEY_BY_KIND[kind]`와 같다. */
   resourceKey: (typeof RESOURCE_KEY_BY_KIND)[ExecutableKind]
-  /** 만들기 전에 ID를 정해 `created_resource`에 먼저 적는 종류인지(카드·미션·배지·컬렉션). 레시피·드랍은 서버 함수가 ID를 정한다(§8.5). */
+  /**
+   * 만들기 전에 ID를 정해 `created_resource`에 먼저 적는 종류인지. 모든 종류가 `true`다(§8.5). 만든 직후 적는 `false` 분기는 가짜 핸들러 테스트가 쓰므로 남긴다.
+   * 만든 직후 적으면 적기 전에 요청이 끊길 때 상태 맞추기가 자원을 찾지 못한다.
+   */
   idFirst: boolean
-  /** 항목을 등록 형식으로 바꾸고 형식을 검사한다(§8.4). DB에 접근하지 않는다. */
-  prepare(item: ExecuteItem, context: { id: string; actorId: string; linkedIds: ExecuteLinkedIds }): ExecuteOutcome<ExecutePrepared<P>>
-  /** 등록 전 DB 검사(참조 ID 존재·중복). 통과하면 `null`. */
-  check(client: RegisterChecksClient, prepared: ExecutePrepared<P>): Promise<ExecuteFailure | null>
-  /** 자원을 만들고 그 ID를 돌려준다. */
-  create(service: ExecuteServiceClient, prepared: ExecutePrepared<P>): Promise<ExecuteOutcome<{ id: string }>>
+  /**
+   * 항목을 등록 형식으로 바꾸고 형식을 검사한다(§8.4). DB에 접근하지 않는다. `now`는 이번 실행의 현재 시각이다(공개 시각이 지났는지 가르는 기준으로, 한 회차 안에서 같은 값).
+   * 카드·미션 핸들러는 `now`를 쓰지 않는다(메서드 매개변수가 적으면 그대로 맞는다).
+   */
+  prepare(item: ExecuteItem, context: { id: string; actorId: string; linkedIds: ExecuteLinkedIds; now: Date }): ExecuteOutcome<ExecutePrepared<P>>
+  /** 등록 전 DB 검사(참조 ID 존재·중복). 통과하면 `null`. `now`는 `prepare`와 같은 값이다. */
+  check(client: RegisterChecksClient, prepared: ExecutePrepared<P>, context: { now: Date }): Promise<ExecuteFailure | null>
+  /** 자원을 만들고 그 ID를 돌려준다. `now`는 `prepare`와 같은 값이다. */
+  create(service: ExecuteServiceClient, prepared: ExecutePrepared<P>, context: { now: Date }): Promise<ExecuteOutcome<{ id: string }>>
   /** 이번 실행이 만든 자원을 지운다(지우기 전 참조 확인 포함). 지웠으면 `null`. */
   undo(service: ExecuteServiceClient, resourceId: string): Promise<ExecuteFailure | null>
   /**

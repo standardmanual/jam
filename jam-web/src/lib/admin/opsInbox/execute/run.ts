@@ -205,6 +205,8 @@ interface RunContext {
   isSample: boolean
   handlers: ExecuteHandlerRegistry
   byId: ReadonlyMap<string, ExecuteItem>
+  /** 이번 실행의 현재 시각. 핸들러의 `prepare`·`check`·`create`가 받는다(한 번 실행 안에서 같은 값). */
+  now: Date
   stamp: () => string
 }
 
@@ -302,7 +304,7 @@ async function runGroup(ctx: RunContext, group: PrecheckGroup): Promise<GroupRes
     if (!linked.ok) return linked
     const id = plannedIds.get(item.id) as string
     return guarded<ExecuteOutcome<ExecutePrepared>>(
-      () => handlerOf(item).prepare(item, { id, actorId: ctx.actor, linkedIds: linked.value }),
+      () => handlerOf(item).prepare(item, { id, actorId: ctx.actor, linkedIds: linked.value, now: ctx.now }),
       asFailedOutcome
     )
   }
@@ -311,7 +313,7 @@ async function runGroup(ctx: RunContext, group: PrecheckGroup): Promise<GroupRes
   for (const item of items) {
     const prepared = await prepare(item)
     if (!prepared.ok) return failGroup(ctx, items, [], item.id, prepared.failure)
-    const checked = await guarded(() => handlerOf(item).check(asRegisterChecksClient(ctx.service), prepared.value), (thrown) => thrown)
+    const checked = await guarded(() => handlerOf(item).check(asRegisterChecksClient(ctx.service), prepared.value, { now: ctx.now }), (thrown) => thrown)
     if (checked) return failGroup(ctx, items, [], item.id, checked)
   }
 
@@ -328,7 +330,7 @@ async function runGroup(ctx: RunContext, group: PrecheckGroup): Promise<GroupRes
         const written = await writeCreatedResource(ctx, item, handler.resourceKey, plannedId)
         if (written) return failGroup(ctx, items, created, item.id, written)
       }
-      const made = await guarded<ExecuteOutcome<{ id: string }>>(() => handler.create(ctx.service, prepared.value), asFailedOutcome)
+      const made = await guarded<ExecuteOutcome<{ id: string }>>(() => handler.create(ctx.service, prepared.value, { now: ctx.now }), asFailedOutcome)
       if (!made.ok) return failGroup(ctx, items, created, item.id, made.failure)
 
       const resourceId = made.value.id
@@ -411,7 +413,8 @@ export async function executeBundle(
   const byId = new Map(items.map((item) => [item.id, item]))
   if (ids.some((id) => !byId.has(id))) return fail(400, MESSAGES.notInBundle)
 
-  const ctx: RunContext = { service, bundleId, actor, isSample, handlers, byId, stamp: () => now().toISOString() }
+  // 한 번 실행 안의 핸들러 호출은 같은 시각을 받는다. `stamp`(DB에 적는 갱신 시각)은 호출 때마다 읽는다.
+  const ctx: RunContext = { service, bundleId, actor, isSample, handlers, byId, now: now(), stamp: () => now().toISOString() }
 
   // 사전 점검을 다시 해 지금도 예약할 수 있는 항목만 실행한다.
   const precheck = precheckBundle(items, { now: now(), handlers })

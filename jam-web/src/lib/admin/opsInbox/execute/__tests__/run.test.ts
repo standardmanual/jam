@@ -60,6 +60,8 @@ interface Recorder {
   linked: Record<string, ExecuteLinkedIds[]>
   /** 항목 키 → 만든 자원 ID. */
   created: Record<string, string>
+  /** 핸들러가 받은 현재 시각(티켓 20261002_2221 가정 4). 부른 순서대로 단계 이름과 함께 쌓는다. */
+  nows: Array<{ step: 'prepare' | 'check' | 'create'; now: Date }>
 }
 
 function makeHandler(kind: ExecutableKind, rec: Recorder, options: Record<string, HandlerOptions>): ExecuteHandler {
@@ -70,23 +72,26 @@ function makeHandler(kind: ExecutableKind, rec: Recorder, options: Record<string
     kind,
     resourceKey: RESOURCE_KEY_BY_KIND[kind],
     idFirst,
-    prepare: (item, { id, linkedIds }) => {
+    prepare: (item, { id, linkedIds, now }) => {
       const key = item.item_key as string
       rec.events.push(`prepare:${key}`)
+      rec.nows.push({ step: 'prepare', now })
       ;(rec.linked[key] ??= []).push(linkedIds)
       const failure = optionsOf(key).failPrepare
       if (failure) return { ok: false, failure }
       return { ok: true, value: { item, id, payload: {}, linkFields: [], linkedIds, warnings: [] } }
     },
-    check: async (_client, prepared) => {
+    check: async (_client, prepared, { now }) => {
       const key = prepared.item.item_key as string
       rec.events.push(`check:${key}`)
+      rec.nows.push({ step: 'check', now })
       if (optionsOf(key).throwOn === 'check') throw new Error(DB_SECRET)
       return optionsOf(key).failCheck ?? null
     },
-    create: async (_service, prepared) => {
+    create: async (_service, prepared, { now }) => {
       const key = prepared.item.item_key as string
       rec.events.push(`create:${key}`)
+      rec.nows.push({ step: 'create', now })
       if (optionsOf(key).throwOn === 'create') throw new Error(DB_SECRET)
       const failure = optionsOf(key).failCreate
       if (failure) return { ok: false, failure }
@@ -117,7 +122,7 @@ function setup(specs: ItemSpec[], options: Record<string, HandlerOptions> = {}, 
   const db = new FakeDb()
   db.tables.ops_bundles = [{ id: B, is_sample: false, ...bundle }]
   db.tables.ops_bundle_items = specs.map((spec) => ({ ...makeItem(spec), bundle_id: B }))
-  const rec: Recorder = { events: [], linked: {}, created: {} }
+  const rec: Recorder = { events: [], linked: {}, created: {}, nows: [] }
   const handlers: ExecuteHandlerRegistry = Object.fromEntries(ALL_KINDS.map((kind) => [kind, makeHandler(kind, rec, options)]))
   const run = (itemIds: unknown) => executeBundle(db.service, { bundleId: B, itemIds, actor: ACTOR }, { handlers, now: () => NOW })
   return { db, rec, handlers, run }
@@ -245,6 +250,14 @@ describe('선점', () => {
     expect(db.item(ID.card).created_resource).toEqual({ today_card_id: rec.created.card })
     expect(rec.linked.card.at(-1)).toEqual({ mission_id: rec.created.mission })
     expect(rec.linked.mission.at(-1)).toEqual({ reward_badge_ids: [rec.created.badge] })
+  })
+
+  it('핸들러는 prepare·check·create 모두에서 이번 실행의 현재 시각을 받는다(티켓 20261002_2221 가정 4)', async () => {
+    const { rec, run } = setup([{ id: ID.solo, key: 'solo', kind: 'mission' }])
+    ok(await run([ID.solo]))
+    // 검증 단계 prepare·check, 생성 단계 prepare·create
+    expect(rec.nows.map((entry) => entry.step)).toEqual(['prepare', 'check', 'prepare', 'create'])
+    for (const entry of rec.nows) expect(entry.now.toISOString()).toBe(ISO_NOW)
   })
 
   it('같은 묶음을 두 번 실행하면 두 번째는 409이고 자원을 다시 만들지 않는다', async () => {
