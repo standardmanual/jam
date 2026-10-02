@@ -6,7 +6,14 @@
  * - fetch 실패·HTTP 오류·`ok: false` 응답에서도 던지지 않는다(제출 요청을 실패시키면 안 된다)
  */
 import { vi, beforeEach, afterEach, describe, it, expect } from 'vitest'
-import { escapeSlackText, formatArrivalMessage, formatDecisionMessage, postOpsSlack } from '../slack'
+import {
+  escapeSlackText,
+  formatArrivalMessage,
+  formatDecisionMessage,
+  formatExecuteFailureMessage,
+  formatExecuteSummaryMessage,
+  postOpsSlack,
+} from '../slack'
 
 describe('escapeSlackText', () => {
   it('&, <, >를 슬랙 규칙대로 바꾼다', () => {
@@ -120,6 +127,65 @@ describe('formatDecisionMessage (티켓 20260930_1818)', () => {
     const edit = formatDecisionMessage({ action: 'edit', isSample: false, itemLabel: label, changedLabels: ['문안 · <!here>'] })
     expect(edit).toContain('문안 · &lt;!here&gt;')
     expect(edit).not.toContain('<!here>')
+  })
+})
+
+describe('예약 등록 글 (티켓 20261002_1123)', () => {
+  const label = '홈피드 카드 · 10/10(토) 09:00'
+
+  it('요약: 「N개 예약 등록, M개 제외」 한 건이고 실패가 있을 때만 「, K개 실패」가 붙는다', () => {
+    expect(formatExecuteSummaryMessage({ isSample: false, scheduled: 11, excluded: 1, failed: 0 })).toBe('11개 예약 등록, 1개 제외')
+    expect(formatExecuteSummaryMessage({ isSample: false, scheduled: 11, excluded: 1, failed: 1 })).toBe('11개 예약 등록, 1개 제외, 1개 실패')
+    expect(formatExecuteSummaryMessage({ isSample: false, scheduled: 0, excluded: 0, failed: 2 })).toBe('0개 예약 등록, 0개 제외, 2개 실패')
+  })
+
+  it('시험 묶음이면 요약과 실패 글 모두 앞에 「[시험]」이 붙는다', () => {
+    expect(formatExecuteSummaryMessage({ isSample: true, scheduled: 11, excluded: 1, failed: 1 })).toBe('[시험] 11개 예약 등록, 1개 제외, 1개 실패')
+    const failure = formatExecuteFailureMessage({ isSample: true, failures: [{ itemLabel: label, reason: '사유' }] })
+    expect(failure.startsWith('[시험] ')).toBe(true)
+    expect(formatExecuteFailureMessage({ isSample: false, failures: [{ itemLabel: label, reason: '사유' }] }).startsWith('[시험]')).toBe(false)
+  })
+
+  it('실패 글: 항목 이름과 사유를 한 줄씩 싣는다', () => {
+    const text = formatExecuteFailureMessage({
+      isSample: false,
+      failures: [
+        { itemLabel: label, reason: '연결된 미션이 반려됐어요' },
+        { itemLabel: '미션 · 10/10(토) 09:00', reason: '연결된 항목을 만들지 못해 함께 실패했어요' },
+      ],
+    })
+    expect(text).toBe(
+      [
+        '예약 등록에 실패했어요 · 2건',
+        '• 홈피드 카드 · 10/10(토) 09:00 — 연결된 미션이 반려됐어요',
+        '• 미션 · 10/10(토) 09:00 — 연결된 항목을 만들지 못해 함께 실패했어요',
+      ].join('\n')
+    )
+  })
+
+  it('실패 글: 5건까지 나열하고 나머지는 「외 N건」이다', () => {
+    const failures = Array.from({ length: 8 }, (_, i) => ({ itemLabel: `항목${i}`, reason: `사유${i}` }))
+    const text = formatExecuteFailureMessage({ isSample: false, failures })
+    expect(text.split('\n')).toHaveLength(1 + 5 + 1)
+    expect(text).toContain('항목4 — 사유4')
+    expect(text).not.toContain('항목5')
+    expect(text.endsWith('외 3건')).toBe(true)
+  })
+
+  it('실패 글: 결정 기록을 남기지 못했으면 그 줄을 더하고, 실패 항목이 없어도 글이 된다', () => {
+    const withFailure = formatExecuteFailureMessage({ isSample: false, failures: [{ itemLabel: label, reason: '사유' }], decisionLogFailed: true })
+    expect(withFailure.split('\n').at(-1)).toBe('결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요')
+    expect(formatExecuteFailureMessage({ isSample: false, failures: [], decisionLogFailed: true })).toBe(
+      '결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요'
+    )
+  })
+
+  it('실패 글: 사유가 길면 100자로 자르고 슬랙 특수문자를 이스케이프한다', () => {
+    const long = formatExecuteFailureMessage({ isSample: false, failures: [{ itemLabel: label, reason: '가'.repeat(150) }] })
+    expect(long.endsWith(`${'가'.repeat(100)}…`)).toBe(true)
+    const escaped = formatExecuteFailureMessage({ isSample: false, failures: [{ itemLabel: '<!here>', reason: '<@U1> & x' }] })
+    expect(escaped).toContain('&lt;!here&gt; — &lt;@U1&gt; &amp; x')
+    expect(escaped).not.toContain('<!here>')
   })
 })
 

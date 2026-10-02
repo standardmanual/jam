@@ -1,8 +1,9 @@
 /**
  * 운영툴 슬랙 이력 알림 (티켓 20260930_1816) — 서버(Vercel)에서 `chat.postMessage`를 부른다.
  *
- * - 쓰는 이벤트는 「기획안 도착」(티켓 20260930_1816)과 결정 글(승인·반려·일괄 승인·수정·되돌림, 티켓 20260930_1818)이고 모두
- *   `#jam-report`다. `alert` 채널은 뒤 티켓(실패·되돌림 실패)이 쓴다.
+ * - 쓰는 이벤트는 「기획안 도착」(티켓 20260930_1816)과 결정 글(승인·반려·일괄 승인·수정·되돌림, 티켓 20260930_1818),
+ *   예약 등록 요약(티켓 20261002_1123)이 `#jam-report`, 예약 등록 실패 글(같은 티켓)이 `#jam-alert`다.
+ *   상태 맞추기의 알림은 뒤 티켓이 같은 두 채널로 보낸다.
  * - **던지지 않는다.** 환경변수가 없거나, 네트워크가 실패하거나, 슬랙이 `ok: false`로 답해도 `{ ok: false, error }`를
  *   돌려준다. 슬랙 게시 실패가 제출 요청을 실패시키면 안 된다(상위 티켓 가정 16). 오류에는 종류(이름)만 담고
  *   토큰 값·응답 본문은 담지 않는다.
@@ -102,6 +103,58 @@ export function formatDecisionMessage(input: DecisionMessageInput): string {
       break
     }
   }
+  return input.isSample ? `[시험] ${text}` : text
+}
+
+// ── 예약 등록 글 (티켓 20261002_1123) ───────────────────────────────────────────────────────────
+
+/** 실패 글에 항목을 나열하는 건수. 넘으면 「외 N건」으로 줄인다. */
+const SLACK_EXECUTE_FAILURES_MAX = 5
+
+export interface ExecuteSummaryMessageInput {
+  isSample: boolean
+  /** 예약 등록한 항목 수. */
+  scheduled: number
+  /** 제외한 항목 수: 사전 점검에서 실행하지 못한 승인 항목과 그사이 바뀌어 건너뛴 항목. */
+  excluded: number
+  /** 실패한 항목 수. */
+  failed: number
+}
+
+/**
+ * 예약 등록 요약 글(`#jam-report`). 실행 한 번에 한 건이다. 시험 묶음이면 맨 앞에 「[시험]」을 붙인다.
+ * 예: `[시험] 11개 예약 등록, 1개 제외, 1개 실패`(실패가 없으면 뒤 구절이 없다)
+ */
+export function formatExecuteSummaryMessage(input: ExecuteSummaryMessageInput): string {
+  const failed = input.failed > 0 ? `, ${input.failed}개 실패` : ''
+  const text = `${input.scheduled}개 예약 등록, ${input.excluded}개 제외${failed}`
+  return input.isSample ? `[시험] ${text}` : text
+}
+
+export interface ExecuteFailureMessageInput {
+  isSample: boolean
+  /** 항목 이름(「종류 · 공개 시각(KST)」)과 사유(쉬운 문장). DB 오류 원문은 싣지 않는다. */
+  failures: ReadonlyArray<{ itemLabel: string; reason: string }>
+  /** 자원은 만들었는데 결정 기록을 남기지 못했다. */
+  decisionLogFailed?: boolean
+}
+
+/**
+ * 예약 등록 실패 글(`#jam-alert`). 실행 한 번에 한 건이고, 항목은 5건까지 나열하고 나머지는 「외 N건」이다.
+ * 결정 기록을 남기지 못했으면 그 줄이 더해진다. 시험 묶음이면 맨 앞에 「[시험]」을 붙인다.
+ */
+export function formatExecuteFailureMessage(input: ExecuteFailureMessageInput): string {
+  const lines: string[] = []
+  if (input.failures.length > 0) {
+    lines.push(`예약 등록에 실패했어요 · ${input.failures.length}건`)
+    for (const failure of input.failures.slice(0, SLACK_EXECUTE_FAILURES_MAX)) {
+      lines.push(`• ${safeField(failure.itemLabel)} — ${safeField(failure.reason, SLACK_REASON_MAX_CHARS)}`)
+    }
+    const rest = input.failures.length - SLACK_EXECUTE_FAILURES_MAX
+    if (rest > 0) lines.push(`외 ${rest}건`)
+  }
+  if (input.decisionLogFailed) lines.push('결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요')
+  const text = lines.join('\n')
   return input.isSample ? `[시험] ${text}` : text
 }
 
