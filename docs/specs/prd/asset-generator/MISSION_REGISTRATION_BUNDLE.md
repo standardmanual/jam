@@ -15,6 +15,8 @@ code:
   - "jam-web/scripts/asset-generator/registerMissionFlow.mjs"
   - "jam-web/scripts/asset-generator/registerMissionRecord.mjs"
   - "jam-web/src/lib/admin/registerChecks/shared.ts"
+  - "jam-web/src/lib/admin/registerChecks/bundleRules.ts"
+  - "jam-web/src/lib/admin/registerChecks/missionFields.ts"
   - "jam-web/src/lib/admin/registerChecks/mission.ts"
   - "jam-web/src/lib/admin/registerChecks/references.ts"
 ---
@@ -37,8 +39,12 @@ code:
   쓰기·시각 표기)만 가져다 쓴다. 미션 전용 부분은 `registerMission*.mjs`에 있다. 다만 DB 읽기 검사와 `--undo` 전 참조 확인은
   서버(운영툴 예약 등록)도 같은 함수를 쓰도록 세 유형 모두 `jam-web/src/lib/admin/registerChecks/`의 TS 모듈로 옮겼다
   (미션은 `mission.ts`의 `runMissionDbChecks`, `references.ts`의 `MISSION_UNDO_REFERENCE_TABLES`·`findMissionUndoReferences`.
-  티켓 20261002_0827). 스크립트의 같은 이름 함수는 그 모듈을 부르는 얇은 래퍼다. 공통화는 세 유형(배지·미션·홈피드)이
-  모두 생긴 뒤 필요하면 별도로 다룬다.
+  티켓 20261002_0827). 스크립트의 같은 이름 함수는 그 모듈을 부르는 얇은 래퍼다. 미션 한 건의 순수 검사(`validateMission`)·미션 상수
+  (`MISSION_REQUIRED_FIELDS`·`STATUS_DISPLAY_TYPES`·`EXPOSURE_MODES` 등)·insert 페이로드 코어(`buildMissionInsertPayload`)도 `missionFields.ts`로,
+  정규식(`UUID_PATTERN`·`CONTROL_OR_LINE_BREAK`)과 보조 함수는 `bundleRules.ts`로 옮겼다(티켓 20261002_1027). `registerMissionBundle.mjs`는 그 상수를
+  같은 이름으로 다시 내보내고 `validateMission`을 부르며, `buildMissionInsertPayload`는 얇은 JS 래퍼다. 동작·오류 문장·페이로드 키 집합은
+  옮기기 전과 같다. 세계관 검토·이미지 검사·묶음 전체 검사(`validateWorldReview`·`validateImage`·`validateMissionBundle`)는 서버가 쓰지 않아 스크립트에
+  남는다. 배지 쪽 검사·페이로드의 이전은 별도 티켓에서 다룬다.
 - 묶음이 다루지 않는 필드는 기본값으로 들어간다: `reward_type`·`reward_id`·`gated_badge_id`(폐기 예정 필드)는 항상 null이고,
   `created_at`은 DB 기본값이다. 필요하면 등록 뒤 어드민에서 고친다.
 - 형식은 **JSON 한 벌(`bundle.json`)** 이다. 사람이 읽고 컨펌하는 자료는 별도 형식이 아니라 `--dry-run` 출력(§6)이 맡는다.
@@ -113,11 +119,13 @@ jam-doc/assets/mission-bundles/<묶음 ID>/
 | `exposure_at` | 조건부 | ISO 8601 | `exposure_mode`가 `scheduled`일 때만 쓸 수 있다(그 외 모드에서는 DB가 무시하므로 거절한다) |
 
 세 검증 함수(`checkMissionCondition`·`checkMissionConditionValue`·`findGateMissionSaveError`)는 어드민 미션 API가 부르는 것과 같은
-함수이며 복사하지 않고 그대로 불러 쓴다. 어드민 API의 호출 순서(키 → 값 → 게이트)가 바뀌면 테스트가 실패한다.
+함수이며 복사하지 않고 그대로 불러 쓴다(호출은 `registerChecks/missionFields.ts`의 `validateMission`에 있다). 어드민 API의 호출 순서(키 → 값 → 게이트)가
+바뀌면 테스트가 실패한다.
 
 스크립트가 정하는 값(묶음에서 받지 않는다): `id`(등록 전에 정한 UUID), `image_url`(업로드한 WebP 공개 주소, `?v=` 캐시 무효화 쿼리
 포함), `image_source`(항상 `agent-generator`, 마이그레이션 188의 CHECK 허용값, PRD §10), `reward_type`·`reward_id`·`gated_badge_id`
 (항상 null). `condition_text`(달성 조건 문장, 마이그레이션 193)는 묶음이 받지 않는 칸이라 비워 둔다(NULL) — 필요하면 어드민 폼에서 채운다.
+`missionFields.ts`의 페이로드 코어는 서버가 `image_source`·`condition_text`를 정해 넘길 선택 인자를 받는다. 스크립트는 넘기지 않으므로 값은 위와 같다.
 
 ### 3.4 image
 
