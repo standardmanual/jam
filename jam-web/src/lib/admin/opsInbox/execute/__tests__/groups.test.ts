@@ -1,11 +1,12 @@
 /**
- * 연결 그룹·생성 순서·종류 쌍 (티켓 20261002_1122, PRD §8.3)
+ * 연결 그룹·생성 순서·종류 쌍 (티켓 20261002_1122, PRD §8.3)와 함께 취소할 항목(`cancelSetOf`, 티켓 20261002_1256, PRD §8.7)
  */
 import { describe, it, expect } from 'vitest'
 import {
   CREATION_KIND_ORDER,
   LINK_PAIRS,
   buildLinkGroups,
+  cancelSetOf,
   orderForCreation,
   orderForUndo,
   planLinkFills,
@@ -229,5 +230,94 @@ describe('planLinkFills · 연결 칸 채우기 계획', () => {
     ])
     expect(byCollection.conflicts).toEqual([])
     expect(byCollection.fills.get('drop')?.[0]).toMatchObject({ field: 'collection_ids', mode: 'append', targetItemIds: ['collection'] })
+  })
+})
+
+describe('cancelSetOf · 함께 취소할 항목(PRD §8.7)', () => {
+  // 배지 ← 미션 ← 카드(카드가 미션을, 미션이 배지를 가리킨다)
+  const chain = (status: { card?: string; mission?: string; badge?: string } = {}) => [
+    makeItem({ key: 'card', kind: 'home_feed_card', status: status.card ?? 'scheduled', links: ['mission'], position: 1 }),
+    makeItem({ key: 'mission', kind: 'mission', status: status.mission ?? 'scheduled', links: ['badge'], position: 2 }),
+    makeItem({ key: 'badge', kind: 'jam_badge', status: status.badge ?? 'scheduled', position: 3 }),
+  ]
+
+  it('연결이 없는 항목은 자기 자신만 취소한다', () => {
+    expect(cancelSetOf([makeItem({ key: 'solo', kind: 'home_feed_card', status: 'scheduled' })], 'solo')).toEqual({ cancelIds: ['solo'], blockers: [] })
+  })
+
+  it('항목을 직접 가리키는 예약됨 항목을 함께 취소한다(미션을 취소하면 그 미션을 여는 카드도)', () => {
+    expect(cancelSetOf(chain(), 'mission')).toEqual({ cancelIds: ['card', 'mission'], blockers: [] })
+  })
+
+  it('다른 예약됨 항목을 거쳐 가리키는 항목도 따라간다', () => {
+    expect(cancelSetOf(chain(), 'badge')).toEqual({ cancelIds: ['card', 'mission', 'badge'], blockers: [] })
+  })
+
+  it('가리키는 대상 쪽은 따라가지 않는다(카드를 취소해도 미션은 남는다)', () => {
+    expect(cancelSetOf(chain(), 'card')).toEqual({ cancelIds: ['card'], blockers: [] })
+  })
+
+  it('어느 쪽 links에 적혔는지와 관계없이 종류 쌍으로 가리키는 쪽을 정한다', () => {
+    const items = [
+      makeItem({ key: 'card', kind: 'home_feed_card', status: 'scheduled', position: 1 }),
+      makeItem({ key: 'mission', kind: 'mission', status: 'scheduled', links: ['card'], position: 2 }), // 미션 쪽이 적었지만 가리키는 쪽은 카드다
+    ]
+    expect(cancelSetOf(items, 'mission')).toEqual({ cancelIds: ['card', 'mission'], blockers: [] })
+    expect(cancelSetOf(items, 'card')).toEqual({ cancelIds: ['card'], blockers: [] })
+  })
+
+  it('게재 중인 항목이 가리키면 막는 항목이다. 그 너머는 따라가지 않는다', () => {
+    const items = [...chain({ card: 'live', mission: 'scheduled' }), makeItem({ key: 'poster', kind: 'home_feed_card', status: 'scheduled', links: ['card'], position: 4 })]
+    expect(cancelSetOf(items, 'mission')).toEqual({ cancelIds: ['mission'], blockers: [{ id: 'card', status: 'live' }] })
+  })
+
+  it('예약 등록이 진행 중인 항목도 막는 항목이다', () => {
+    expect(cancelSetOf(chain({ card: 'preparing' }), 'mission')).toEqual({ cancelIds: ['mission'], blockers: [{ id: 'card', status: 'preparing' }] })
+  })
+
+  it('다른 예약됨 항목을 거쳐 가리키는 게재중 항목도 막는다', () => {
+    const items = [
+      makeItem({ key: 'card', kind: 'home_feed_card', status: 'live', links: ['mission'], position: 1 }),
+      makeItem({ key: 'mission', kind: 'mission', status: 'scheduled', links: ['badge'], position: 2 }),
+      makeItem({ key: 'badge', kind: 'jam_badge', status: 'scheduled', position: 3 }),
+    ]
+    expect(cancelSetOf(items, 'badge')).toEqual({ cancelIds: ['mission', 'badge'], blockers: [{ id: 'card', status: 'live' }] })
+  })
+
+  it.each(['arrived', 'reviewing', 'approved', 'ended', 'rejected', 'cancelled', 'failed'])('가리키는 항목이 %s이면 건드리지 않고 막지도 않는다', (status) => {
+    expect(cancelSetOf(chain({ card: status }), 'mission')).toEqual({ cancelIds: ['mission'], blockers: [] })
+  })
+
+  it('건드리지 않는 항목 너머의 예약됨 항목은 따라가지 않는다', () => {
+    const items = [
+      makeItem({ key: 'card', kind: 'home_feed_card', status: 'scheduled', links: ['mission'], position: 1 }),
+      makeItem({ key: 'mission', kind: 'mission', status: 'ended', links: ['badge'], position: 2 }),
+      makeItem({ key: 'badge', kind: 'jam_badge', status: 'scheduled', position: 3 }),
+    ]
+    expect(cancelSetOf(items, 'badge')).toEqual({ cancelIds: ['badge'], blockers: [] })
+  })
+
+  it('표에 없는 쌍(같은 종류끼리)은 가리키는 관계가 아니라 건드리지 않는다', () => {
+    const items = [
+      makeItem({ key: 'a', kind: 'mission', status: 'scheduled', links: ['b'], position: 1 }),
+      makeItem({ key: 'b', kind: 'mission', status: 'live', position: 2 }),
+    ]
+    expect(cancelSetOf(items, 'a')).toEqual({ cancelIds: ['a'], blockers: [] })
+  })
+
+  it('같은 항목을 여러 길로 가리켜도 한 번만 센다. 제출 순서로 돌려준다', () => {
+    const items = [
+      makeItem({ key: 'badge', kind: 'jam_badge', status: 'scheduled', position: 5 }),
+      makeItem({ key: 'card', kind: 'home_feed_card', status: 'scheduled', links: ['mission', 'badge'], position: 3 }),
+      makeItem({ key: 'mission', kind: 'mission', status: 'scheduled', links: ['badge'], position: 4 }),
+    ]
+    expect(cancelSetOf(items, 'badge')).toEqual({ cancelIds: ['card', 'mission', 'badge'], blockers: [] })
+  })
+
+  it('묶음에 없는 항목이면 빈 결과다. 입력을 바꾸지 않는다', () => {
+    const items = chain()
+    const before = JSON.stringify(items)
+    expect(cancelSetOf(items, 'nope')).toEqual({ cancelIds: [], blockers: [] })
+    expect(JSON.stringify(items)).toBe(before)
   })
 })

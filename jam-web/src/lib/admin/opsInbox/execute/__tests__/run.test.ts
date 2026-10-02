@@ -97,6 +97,7 @@ function makeHandler(kind: ExecutableKind, rec: Recorder, options: Record<string
       rec.events.push(`undo:${key}`)
       return optionsOf(key).failUndo ?? null
     },
+    cancel: async () => ({ ok: true, missing: false }),
   }
 }
 

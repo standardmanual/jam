@@ -53,7 +53,7 @@ export function isExecutableKind(kind: string | null | undefined): kind is Execu
 
 // ── 핸들러 인터페이스 ───────────────────────────────────────────────────────────────────────────
 
-/** 서버에서 쓰는 service-role 클라이언트. `create`·`undo`가 쓴다. */
+/** 서버에서 쓰는 service-role 클라이언트. `create`·`undo`·`cancel`이 쓴다. */
 export type ExecuteServiceClient = ReturnType<typeof createServiceClient>
 
 /**
@@ -65,6 +65,14 @@ export interface ExecuteFailure {
 }
 
 export type ExecuteOutcome<T> = { ok: true; value: T } | { ok: false; failure: ExecuteFailure }
+
+/**
+ * 공개 전 취소 한 건의 결과(티켓 20261002_1256, §8.7). `ok`면 자원이 이제 없다: `missing`은 지우기 전에 이미 없었다는 뜻이다(운영툴 밖에서 지워짐).
+ * 실패의 `code`는 응답 상태를 가른다: `published`(공개 시각이 지났다)·`referenced`(노출 기록이 있거나 확인하지 못했다)는 409, `error`는 500이다.
+ */
+export type CancelResult =
+  | { ok: true; missing: boolean }
+  | { ok: false; code: 'published' | 'referenced' | 'error'; failure: ExecuteFailure }
 
 /**
  * 연결 그룹(§8.3)이 채우는 칸에 넣을 ID. 카드·미션 칸 이름은 `registerInput.ts`의 `CardLinkedIds`·`MissionLinkedIds`와 같다.
@@ -91,7 +99,7 @@ export interface ExecutePrepared<P = unknown> {
 
 /**
  * 종류 하나의 핸들러. 메서드 문법으로 적어 종류마다 다른 `payload` 모양을 레지스트리에 함께 담을 수 있다.
- * 모든 실패는 던지지 않고 `ExecuteFailure`로 돌려준다.
+ * 모든 실패는 던지지 않고 `ExecuteFailure`(취소는 `CancelResult`)로 돌려준다.
  */
 export interface ExecuteHandler<P = unknown> {
   kind: ExecutableKind
@@ -107,6 +115,11 @@ export interface ExecuteHandler<P = unknown> {
   create(service: ExecuteServiceClient, prepared: ExecutePrepared<P>): Promise<ExecuteOutcome<{ id: string }>>
   /** 이번 실행이 만든 자원을 지운다(지우기 전 참조 확인 포함). 지웠으면 `null`. */
   undo(service: ExecuteServiceClient, resourceId: string): Promise<ExecuteFailure | null>
+  /**
+   * 예약된 자원을 공개 전에 지운다(§8.7). `undo`와 달리 지우기 전에 자원을 다시 읽어 공개 시각이 지났는지 확인하고, 지울 때도 같은 조건을 건다.
+   * 자원이 이미 없으면 성공(`missing: true`)이다. `now`는 공개 여부를 가르는 기준 시각이다.
+   */
+  cancel(service: ExecuteServiceClient, resourceId: string, context: { now: Date }): Promise<CancelResult>
 }
 
 /** 종류 → 핸들러. 없는 종류는 사전 점검이 막는다. */

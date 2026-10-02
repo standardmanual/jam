@@ -63,7 +63,7 @@ export const OPS_ITEM_INITIAL_STATUS: OpsItemStatus = 'arrived'
 
 /**
  * 결정 기록의 `action` 값. 제출은 1816, 승인·반려·수정·되돌림은 1818이 쓰고, 예약 등록(`execute`)과 실패로 닫기(`fail`)는
- * 예약 등록 실행 API(티켓 20261002_1123)가 쓴다(뒤 티켓이 값을 더한다).
+ * 예약 등록 실행 API(티켓 20261002_1123), 공개 전 취소(`cancel`)는 취소 API(티켓 20261002_1256)가 쓴다(뒤 티켓이 값을 더한다).
  */
 export const OPS_DECISION_ACTION_SUBMIT = 'submit'
 export const OPS_DECISION_ACTION_APPROVE = 'approve'
@@ -72,6 +72,7 @@ export const OPS_DECISION_ACTION_EDIT = 'edit'
 export const OPS_DECISION_ACTION_REVERT = 'revert'
 export const OPS_DECISION_ACTION_EXECUTE = 'execute'
 export const OPS_DECISION_ACTION_FAIL = 'fail'
+export const OPS_DECISION_ACTION_CANCEL = 'cancel'
 
 /** 반려·수정 사유 길이 상한(글자). */
 export const MAX_DECISION_REASON_CHARS = 500

@@ -9,7 +9,9 @@
  * 단, 형식 오류는 변환 오류 문장(운영 항목에 붙은 오류)의 첫 문장을 그대로 싣는다.
  *
  * - `create`는 정한 ID(`prepared.id`)로 만들고 같은 ID를 돌려준다(`idFirst`). 실행 뼈대는 돌려준 ID가 정한 ID와 같으면 `created_resource`를 다시 쓰지 않는다.
- * - `undo`는 노출·열람 기록을 확인한 뒤 ID로 지운다. 공개 전 여부 확인은 취소(④-b)가 하고, 되돌림은 방금 만든 카드만 지운다.
+ * - `undo`는 노출·열람 기록을 확인한 뒤 ID로 지운다. 되돌림은 방금 만든 카드만 지우므로 공개 전 여부는 보지 않는다.
+ * - `cancel`(티켓 20261002_1256, ④-b)은 예약된 카드를 공개 전에 지운다: 행을 다시 읽어 공개 시각이 지났으면 막고, 노출·열람 기록을 확인한 뒤,
+ *   지울 때도 공개 시각 조건(`starts_at > now`)을 함께 건다(읽은 뒤 공개 시각이 지나는 경합).
  */
 import { toTodayCardRegisterInput, withoutLinkedFields } from '@/lib/admin/opsInbox/registerInput'
 import type { TodayCardRegisterPayload } from '@/lib/admin/opsInbox/registerInput'
@@ -17,7 +19,7 @@ import { runHomeFeedDbChecks } from '@/lib/admin/registerChecks/homeFeed'
 import { findHomeFeedUndoReferences } from '@/lib/admin/registerChecks/references'
 import type { RegisterCheck } from '@/lib/admin/registerChecks/shared'
 import { RESOURCE_KEY_BY_KIND, asRegisterChecksClient } from './handlers'
-import type { ExecuteFailure, ExecuteHandler, ExecuteOutcome, ExecutePrepared, ExecuteServiceClient } from './handlers'
+import type { CancelResult, ExecuteFailure, ExecuteHandler, ExecuteOutcome, ExecutePrepared, ExecuteServiceClient } from './handlers'
 
 /** 응답·결정 기록·슬랙에 나가는 사유(티켓 20261002_1255 가정 3). */
 const HOME_FEED_CARD_MESSAGES = {
@@ -32,6 +34,8 @@ const HOME_FEED_CARD_MESSAGES = {
   createFailed: '카드를 만들지 못했어요',
   undoBlocked: '노출 기록이 있거나 확인하지 못해 카드를 지우지 않았어요',
   undoFailed: '카드를 지우지 못했어요',
+  // 취소(티켓 20261002_1256 가정 2). 노출 기록과 지우기 실패 문장은 되돌림과 같은 것을 쓴다.
+  cancelPublished: '공개 시각이 지나 취소할 수 없어요',
 } as const
 
 /** 등록 전 DB 검사의 라벨(`registerChecks/homeFeed.ts`) → 사유. */
@@ -112,5 +116,30 @@ export const HOME_FEED_CARD_HANDLER: ExecuteHandler<TodayCardRegisterPayload> = 
     const removed = await service.from('today_cards').delete().eq('id', resourceId)
     if (removed.error) return { reason: HOME_FEED_CARD_MESSAGES.undoFailed, detail: removed.error.message }
     return null
+  },
+
+  async cancel(service: ExecuteServiceClient, resourceId, { now }): Promise<CancelResult> {
+    const failed = (detail: string): CancelResult => ({ ok: false, code: 'error', failure: { reason: HOME_FEED_CARD_MESSAGES.undoFailed, detail } })
+    const published: CancelResult = { ok: false, code: 'published', failure: { reason: HOME_FEED_CARD_MESSAGES.cancelPublished } }
+
+    const read = await service.from('today_cards').select('id, starts_at').eq('id', resourceId).maybeSingle()
+    if (read.error) return failed(`카드 조회 실패: ${read.error.message}`)
+    if (!read.data) return { ok: true, missing: true }
+    if (Date.parse(read.data.starts_at) <= now.getTime()) return published
+
+    try {
+      await findHomeFeedUndoReferences(asRegisterChecksClient(service), resourceId)
+    } catch (err) {
+      return { ok: false, code: 'referenced', failure: { reason: HOME_FEED_CARD_MESSAGES.undoBlocked, detail: messageOf(err) } }
+    }
+
+    // 읽은 뒤 공개 시각이 지날 수 있어 지울 때도 같은 조건을 건다. 지운 행이 없으면 다시 읽어 공개됐는지, 그사이 없어졌는지 가른다.
+    const removed = await service.from('today_cards').delete().eq('id', resourceId).gt('starts_at', now.toISOString()).select('id')
+    if (removed.error) return failed(`카드 삭제 실패: ${removed.error.message}`)
+    if (removed.data && removed.data.length > 0) return { ok: true, missing: false }
+
+    const reread = await service.from('today_cards').select('id').eq('id', resourceId).maybeSingle()
+    if (reread.error) return failed(`삭제 뒤 카드 재조회 실패: ${reread.error.message}`)
+    return reread.data ? published : { ok: true, missing: true }
   },
 }

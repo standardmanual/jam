@@ -6,6 +6,7 @@
  * - 읽을 수 없는 연결(가정 3): `item_key`가 겹치는 항목, `links`가 없는 키·자기 자신·겹친 키를 가리키는 항목을 표시한다.
  *   제출 때는 형식 오류로만 남으므로(`validate.ts`) 여기서 다시 걸러야 한다.
  * - 종류 쌍(`LINK_PAIRS`): 어느 쪽이 `links`에 적었는지와 관계없이 두 항목의 종류로 가리키는 쪽이 정해진다.
+ * - 함께 취소할 항목(`cancelSetOf`, 티켓 20261002_1256 가정 3): 취소하는 항목을 직접 또는 다른 항목을 거쳐 가리키는 항목을 상태에 따라 나눈다.
  */
 import { linksOf, isUndecidedStatus, asRecord, itemField } from '@/lib/admin/opsInbox/itemView'
 import { isBalanceSkippedStatus } from '@/lib/admin/opsInbox/balance/rules'
@@ -231,6 +232,51 @@ export function referencersOf(
     }
   }
   return result
+}
+
+// ── 함께 취소할 항목(가정 3) ────────────────────────────────────────────────────────────────────
+
+export interface CancelSet {
+  /** 취소할 항목: 시작 항목과, 그것을 직접 또는 다른 「예약됨」 항목을 거쳐 가리키는 「예약됨」 항목. 제출 순서. */
+  cancelIds: string[]
+  /** 막는 항목: 가리키는데 이미 게재 중(`live`)이거나 예약 등록이 진행 중(`preparing`)이라 함께 취소할 수 없다. 제출 순서. */
+  blockers: Array<{ id: string; status: 'live' | 'preparing' }>
+}
+
+/**
+ * 공개 전 취소(§8.7)의 범위를 정한다. 시작 항목(`itemId`, 「예약됨」이어야 하는 것은 호출부가 본다)을 가리키는 항목을 종류 쌍(`LINK_PAIRS`)으로 찾아 상태로 나눈다.
+ * - 예약됨: 함께 취소하고, 그 항목을 가리키는 항목도 따라간다.
+ * - 게재중·준비중: 막는 항목이다. 그 너머는 따라가지 않는다(하나라도 있으면 아무것도 취소하지 않는다).
+ * - 그 밖(결정 전·승인됨·종료·반려·취소·실패): 건드리지 않고 따라가지도 않는다. 승인됨 항목은 다음 사전 점검이 「실패로 닫을 항목」으로 닫는다(§8.2).
+ * 시작 항목이 가리키는 대상은 그대로 둔다(카드를 취소해도 미션은 남는다). 입력을 바꾸지 않는다.
+ */
+export function cancelSetOf(items: readonly ExecuteItem[], itemId: string): CancelSet {
+  const byId = new Map(items.map((item) => [item.id, item]))
+  if (!byId.has(itemId)) return { cancelIds: [], blockers: [] }
+  const graph = resolveLinkGraph(items)
+
+  const cancel = new Set<string>([itemId])
+  const blockers = new Map<string, 'live' | 'preparing'>()
+  const queue = [itemId]
+  while (queue.length > 0) {
+    const target = byId.get(queue.shift() as string) as ExecuteItem
+    for (const neighborId of graph.neighbors.get(target.id) ?? []) {
+      const neighbor = byId.get(neighborId) as ExecuteItem
+      if (cancel.has(neighborId) || blockers.has(neighborId) || !pairOf(neighbor.kind, target.kind)) continue
+      if (neighbor.status === 'scheduled') {
+        cancel.add(neighborId)
+        queue.push(neighborId)
+      } else if (neighbor.status === 'live' || neighbor.status === 'preparing') {
+        blockers.set(neighborId, neighbor.status)
+      }
+    }
+  }
+
+  const inOrder = (ids: Iterable<string>) => [...ids].map((id) => byId.get(id) as ExecuteItem).sort(byPosition)
+  return {
+    cancelIds: inOrder(cancel).map((item) => item.id),
+    blockers: inOrder(blockers.keys()).map((item) => ({ id: item.id, status: blockers.get(item.id) as 'live' | 'preparing' })),
+  }
 }
 
 // ── 연결 칸 채우기 계획 ─────────────────────────────────────────────────────────────────────────
