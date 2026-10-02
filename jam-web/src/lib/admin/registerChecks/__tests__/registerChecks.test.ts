@@ -173,7 +173,8 @@ describe('runMissionDbChecks', () => {
       supabase: createStub((e) => (e.table === 'missions' ? { data: [{ id: 'dup' }] } : { data: [] })).client,
       mission: { title: '미션' },
     })
-    expect(dup.checks[0].detail).toBe('같은 제목의 미션이 이미 있어요(id: dup). 기존 미션 갱신은 이 스크립트 범위 밖이라 중복으로 거절해요.')
+    // 공개 시각을 넘기지 않으면 겹침을 가를 수 없어 같은 제목이 있는 것만으로 막힌다(안전 규칙).
+    expect(dup.checks[0].detail).toBe('같은 제목의 미션이 이미 있고 기간이 겹쳐요(id: dup).')
 
     const missingBadge = await runMissionDbChecks({
       supabase: createStub(() => ({ data: [] })).client,
@@ -200,14 +201,14 @@ describe('runMissionDbChecks', () => {
   })
 })
 
-describe('미션 제목 중복 — 기간이 겹칠 때만 건다 (티켓 20261002_1944)', () => {
+describe('미션 제목 중복 — 기간이 겹칠 때만 건다, 스크립트와 운영툴이 같은 규칙 (티켓 20261002_1944·20261002_2024)', () => {
   const T1 = '2026-10-10T00:00:00.000Z'
   const T2 = '2026-10-20T00:00:00.000Z'
   const T3 = '2026-10-30T00:00:00.000Z'
   const sameTitle = (...rows: Array<{ id: string; starts_at: string; ends_at: string | null }>) =>
     createStub((e) => (e.table === 'missions' ? { data: rows } : { data: [] }))
   const overlap = (stub: ReturnType<typeof createStub>, starts_at: string | null, ends_at: string | null) =>
-    runMissionDbChecks({ supabase: stub.client, mission: { title: '미션', starts_at, ends_at, titleDuplicate: 'overlap' } })
+    runMissionDbChecks({ supabase: stub.client, mission: { title: '미션', starts_at, ends_at } })
 
   describe('missionPeriodsOverlap — 기간은 [공개, 종료)', () => {
     it('한쪽의 종료 시각과 다른 쪽의 공개 시각이 같으면 겹치지 않는다(양쪽 방향)', () => {
@@ -276,11 +277,33 @@ describe('미션 제목 중복 — 기간이 겹칠 때만 건다 (티켓 202610
     expect(result.checks[0]).toEqual({ label: '제목 중복', status: '실패', detail: 'DB 조회에 실패했어요: boom' })
   })
 
-  it('titleDuplicate를 고르지 않으면 공개·종료 시각을 넘겨도 지금까지처럼 같은 제목이 하나라도 있으면 막는다(등록 스크립트)', async () => {
+  it('입력에 titleDuplicate: any 같은 옛 모드 키가 섞여 와도 읽지 않고 겹침 규칙으로 가른다(묶음 JSON의 mission을 그대로 넘기는 스크립트)', async () => {
+    // 모드 칸은 사라졌다. 타입에는 없으므로 JSON에서 온 값처럼 캐스팅해 넘긴다.
+    const withModeKey = (extra: Record<string, unknown>) =>
+      ({ title: '미션', starts_at: T2, ends_at: T3, ...extra }) as Parameters<typeof runMissionDbChecks>[0]['mission']
+
+    const notOverlapping = sameTitle({ id: 'old', starts_at: T1, ends_at: T2 })
+    const passed = await runMissionDbChecks({ supabase: notOverlapping.client, mission: withModeKey({ titleDuplicate: 'any' }) })
+    expect(passed.errors).toEqual([])
+    expect(passed.checks[0]).toEqual({ label: '제목 중복', status: '통과', detail: '' })
+    expect(notOverlapping.entries[0].columns).toBe('id, starts_at, ends_at')
+
+    const overlapping = sameTitle({ id: 'old', starts_at: T1, ends_at: T3 })
+    const blocked = await runMissionDbChecks({ supabase: overlapping.client, mission: withModeKey({ titleDuplicate: 'any' }) })
+    expect(blocked.errors).toEqual(['제목 중복: 같은 제목의 미션이 이미 있고 기간이 겹쳐요(id: old).'])
+
+    // 값이 'overlap'이든 알 수 없는 값이든 결과는 같다.
+    for (const titleDuplicate of ['overlap', 'whatever', null]) {
+      const stub = sameTitle({ id: 'old', starts_at: T1, ends_at: T2 })
+      const result = await runMissionDbChecks({ supabase: stub.client, mission: withModeKey({ titleDuplicate }) })
+      expect(result.errors).toEqual([])
+    }
+  })
+
+  it('공개 시각을 넘기지 않아도 같은 제목이 있으면 막는다(시각을 읽을 수 없으면 겹친 것으로 본다)', async () => {
     const stub = sameTitle({ id: 'old', starts_at: T1, ends_at: T2 })
-    const result = await runMissionDbChecks({ supabase: stub.client, mission: { title: '미션', starts_at: T2, ends_at: T3 } })
-    expect(result.checks[0].detail).toBe('같은 제목의 미션이 이미 있어요(id: old). 기존 미션 갱신은 이 스크립트 범위 밖이라 중복으로 거절해요.')
-    expect(stub.entries[0].columns).toBe('id')
+    const result = await runMissionDbChecks({ supabase: stub.client, mission: { title: '미션' } })
+    expect(result.errors).toEqual(['제목 중복: 같은 제목의 미션이 이미 있고 기간이 겹쳐요(id: old).'])
   })
 })
 

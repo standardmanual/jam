@@ -613,8 +613,8 @@ stateDiagram-v2
 > **구현됨(미션 핸들러, 티켓 [20261002_1944](../../../tickets/p2-normal/20261002_1944_Admin_운영툴-자원-연결-6-미션-핸들러와-카드-미션-연결.md), 상위 1500 ⑥).**
 > `jam-web/src/lib/admin/opsInbox/execute/mission.ts`의 `MISSION_HANDLER`(`idFirst: true`, `resourceKey: 'mission_id'`)가 승인된 미션 항목을 `missions` 1행(공개 전)으로 만든다. 순수 모듈이다(Supabase·서버 모듈을 값으로 가져오지 않는다. 공개 판정은 순수 모듈 `lib/missions/visibility.ts`의 `isMissionExposed`를 쓴다).
 > - `prepare`는 §8.4의 `toMissionRegisterInput`, `check`는 `runMissionDbChecks`(연결로 채운 보상 배지는 `withoutLinkedFields`로 뺀 사본), `undo`는 `findMissionUndoReferences`를 감싼다.
->   「제목 중복」은 같은 제목의 기존 미션을 모두 읽어 기간 [공개, 종료)이 겹치는 것이 있을 때만 건다(`titleDuplicate: 'overlap'`, 사용자 결정 2026-10-02). 종료가 없으면 끝없음이고, 한쪽의 종료 시각과 다른 쪽의 공개 시각이 같으면 겹치지 않는다.
->   같은 실행에서 앞 그룹이 만든 미션은 DB에 이미 있어 이 검사가 잡는다. 등록 스크립트도 같은 함수를 부르는데 `titleDuplicate`를 고르지 않아 지금까지처럼 같은 제목이 하나라도 있으면 막는다.
+>   「제목 중복」은 같은 제목의 기존 미션을 모두 읽어 기간 [공개, 종료)이 겹치는 것이 있을 때만 건다(사용자 결정 2026-10-02). 종료가 없으면 끝없음이고, 한쪽의 종료 시각과 다른 쪽의 공개 시각이 같으면 겹치지 않는다.
+>   같은 실행에서 앞 그룹이 만든 미션은 DB에 이미 있어 이 검사가 잡는다. 등록 스크립트도 같은 함수를 부르고 규칙이 같다(모드 인자는 없다. 티켓 [20261002_2024](../../../tickets/p2-normal/20261002_2024_Admin_미션-등록-스크립트의-제목-중복-규칙을-운영툴과-같게-기간-겹침으로-바꾼다.md)).
 > - `create`는 정한 ID(`idFirst`)로 insert하고 같은 ID를 돌려준다. insert가 오류를 받으면 같은 ID로 delete를 한 번 시도한다. `undo`는 참조(사용자 기록 3곳·포인트·카드 연결·랭킹 모드 연결)를 확인한 뒤 ID로 지운다.
 >   등록 스크립트의 `undoMissionRegistration`은 `image_source` 조건이 있어 쓰지 않는다(운영툴 미션의 `image_source`는 null). 카드가 미션을 가리키는 동안은 미션이 지워지지 않으므로 되돌림·취소는 카드를 먼저 지운다(§8.3·§8.7).
 > - `cancel`·`observe`는 §8.7·§8.6의 「구현됨」에 있다.

@@ -265,11 +265,32 @@ describe('runMissionDbChecks', () => {
     ]);
   });
 
-  it('같은 제목의 미션이 있으면 중복으로 거절한다', async () => {
-    const stub = createStub({ resolve: (e) => (e.table === 'missions' ? { data: [{ id: 'existing-id' }] } : { data: [{ id: badgeId }] }) });
-    const { errors } = await runMissionDbChecks({ supabase: stub.supabase, mission });
-    expect(errors).toEqual(['제목 중복: 같은 제목의 미션이 이미 있어요(id: existing-id). 기존 미션 갱신은 이 스크립트 범위 밖이라 중복으로 거절해요.']);
+  // 제목 중복은 운영툴과 같은 규칙이다 — 같은 제목의 기존 미션과 기간 [공개, 종료)이 겹칠 때만 막는다(티켓 20261002_2024).
+  const T1 = '2026-10-10T00:00:00.000Z';
+  const T2 = '2026-10-20T00:00:00.000Z';
+  const T3 = '2026-10-30T00:00:00.000Z';
+  const withExisting = (existing: { id: string; starts_at: string | null; ends_at: string | null }) =>
+    createStub({ resolve: (e) => (e.table === 'missions' ? { data: [existing] } : { data: [{ id: badgeId }] }) });
+
+  it('같은 제목의 미션과 기간이 겹치면 중복으로 거절한다', async () => {
+    const stub = withExisting({ id: 'existing-id', starts_at: T1, ends_at: T3 });
+    const { errors } = await runMissionDbChecks({ supabase: stub.supabase, mission: { ...mission, starts_at: T2, ends_at: null } });
+    expect(errors).toEqual(['제목 중복: 같은 제목의 미션이 이미 있고 기간이 겹쳐요(id: existing-id).']);
+    expect(stub.entries[0].cols).toBe('id, starts_at, ends_at');
     expect(stub.entries[0].filters).toContainEqual(['eq', 'title', '제목']);
+  });
+
+  it('같은 제목이어도 기간이 겹치지 않으면 통과한다(기존 미션이 끝난 시각에 이어 여는 미션)', async () => {
+    const stub = withExisting({ id: 'existing-id', starts_at: T1, ends_at: T2 });
+    const { errors, checks } = await runMissionDbChecks({ supabase: stub.supabase, mission: { ...mission, starts_at: T2, ends_at: T3 } });
+    expect(errors).toEqual([]);
+    expect(checks[0]).toEqual({ label: '제목 중복', status: '통과', detail: '' });
+  });
+
+  it('공개 시각을 읽을 수 없으면 같은 제목이 있는 것만으로 거절한다', async () => {
+    const stub = withExisting({ id: 'existing-id', starts_at: T1, ends_at: T2 });
+    const { errors } = await runMissionDbChecks({ supabase: stub.supabase, mission });
+    expect(errors).toEqual(['제목 중복: 같은 제목의 미션이 이미 있고 기간이 겹쳐요(id: existing-id).']);
   });
 
   it('보상 배지가 하나라도 없거나 삭제됐으면 그 id를 알린다', async () => {
@@ -451,15 +472,40 @@ describe('runMissionRegister — 실제 등록', () => {
     expect(fs.existsSync(path.join(workDir, 'registration-record.json'))).toBe(false);
   });
 
-  it('같은 제목의 미션이 있으면 중복으로 거절하고 아무것도 쓰지 않는다', async () => {
-    const stub = createStub({ resolve: () => ({ data: [{ id: 'existing-id' }] }) });
+  // 예시 묶음의 기간은 2026-10-03T00:00+09:00(= 10-02T15:00Z) ~ 2026-10-10T00:00+09:00(= 10-09T15:00Z)이다.
+  const existingMission = (starts_at: string, ends_at: string | null) =>
+    createStub({ resolve: (e) => (e.table === 'missions' && e.op === 'select' ? { data: [{ id: 'existing-id', starts_at, ends_at }] } : { data: [] }) });
+
+  it('같은 제목의 미션과 기간이 겹치면 중복으로 거절하고 아무것도 쓰지 않는다', async () => {
+    const stub = existingMission('2026-10-05T00:00:00+09:00', null);
     const { out, errors } = createOut();
     const code = await runMissionRegister({ args: registerArgs(), supabase: stub.supabase, convertToWebp: fakeWebp, randomUUID: fixedUuid, now: fixedNow, out });
     expect(code).toBe(1);
-    expect(errors.join('\n')).toContain('같은 제목의 미션이 이미 있어요(id: existing-id)');
+    expect(errors.join('\n')).toContain('같은 제목의 미션이 이미 있고 기간이 겹쳐요(id: existing-id)');
     expect(stub.uploads).toHaveLength(0);
     expect(stub.count('insert')).toBe(0);
     expect(fs.existsSync(path.join(workDir, 'registration-record.json'))).toBe(false);
+  });
+
+  it('같은 제목의 미션이 있어도 기간이 겹치지 않으면 등록한다(기존 미션이 끝난 시각에 이어 여는 미션)', async () => {
+    const stub = existingMission('2026-09-26T00:00:00+09:00', '2026-10-03T00:00:00+09:00');
+    const { out, errors } = createOut();
+    const code = await runMissionRegister({ args: registerArgs(), supabase: stub.supabase, convertToWebp: fakeWebp, randomUUID: fixedUuid, now: fixedNow, out });
+    expect(errors).toEqual([]);
+    expect(code).toBe(0);
+    expect(stub.events).toEqual(['select:missions', 'upload:png', 'upload:webp', 'insert:missions']);
+  });
+
+  it('묶음의 mission에 옛 모드 키(titleDuplicate)가 있으면 묶음 검증이 막아 DB를 읽기 전에 멈춘다', async () => {
+    editBundle((raw) => {
+      raw.mission.titleDuplicate = 'any';
+    });
+    const stub = createStub();
+    const { out, errors } = createOut();
+    const code = await runMissionRegister({ args: registerArgs(), supabase: stub.supabase, convertToWebp: fakeWebp, randomUUID: fixedUuid, now: fixedNow, out });
+    expect(code).toBe(1);
+    expect(errors.join('\n')).toContain('titleDuplicate');
+    expect(stub.entries).toHaveLength(0);
   });
 
   it('insert가 실패하면 파일을 지우고 종료 코드 1이며 기록 파일은 만들지 않는다', async () => {

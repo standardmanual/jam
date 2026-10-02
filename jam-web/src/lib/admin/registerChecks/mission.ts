@@ -1,7 +1,7 @@
 /**
  * 미션 등록 전 DB 검사(티켓 20261002_0827) — `scripts/asset-generator/registerMissionFlow.mjs`의 `runMissionDbChecks`를 옮겼다.
  * 동작·라벨·오류 문장·질의 순서는 그대로다. 스크립트는 같은 이름의 얇은 JS 래퍼로 이 함수를 부른다.
- * 운영툴 예약 등록(티켓 20261002_1944)은 `titleDuplicate: 'overlap'`을 골라 「제목 중복」을 기간이 겹칠 때만 건다. 고르지 않으면 지금까지와 같다.
+ * 「제목 중복」은 스크립트와 운영툴 예약 등록(티켓 20261002_1944)이 같은 규칙이다 — 같은 제목의 기존 미션과 기간이 겹칠 때만 막는다(티켓 20261002_2024).
  */
 import { createCheckCollector } from './shared'
 import type { RegisterChecksClient, RegisterDbCheckResult } from './shared'
@@ -12,17 +12,10 @@ export interface MissionDbCheckInput {
   mission_type?: string | null
   reward_badge_ids?: string[] | null
   condition_json?: Record<string, unknown> | null
-  /** 공개 시각. `titleDuplicate: 'overlap'`일 때만 읽는다(티켓 20261002_1944). */
+  /** 공개 시각. 「제목 중복」이 기간 겹침을 가를 때 읽는다. 없으면 같은 제목이 있는 것만으로 막힌다. */
   starts_at?: string | null
-  /** 종료 시각. 없으면 끝없음이다. `titleDuplicate: 'overlap'`일 때만 읽는다. */
+  /** 종료 시각. 없으면 끝없음이다. 「제목 중복」이 기간 겹침을 가를 때 읽는다. */
   ends_at?: string | null
-  /**
-   * 「제목 중복」을 어떻게 가를지(티켓 20261002_1944, 사용자 결정 2026-10-02).
-   * - 생략·`'any'`: 같은 제목의 미션이 하나라도 있으면 막는다. 등록 스크립트(`registerMissionFlow.mjs`)가 이 모드다.
-   * - `'overlap'`: 같은 제목이어도 기간이 겹치는 미션이 있을 때만 막는다. 운영툴 예약 등록(`execute/mission.ts`)이 이 모드다.
-   * 스크립트도 이 함수를 부르고 묶음의 `starts_at`을 함께 넘기므로, 시각이 있다는 것만으로 모드를 바꾸지 않고 호출부가 고르게 한다.
-   */
-  titleDuplicate?: 'any' | 'overlap'
 }
 
 /** 미션 기간 하나. 종료가 없으면 끝없음이다. */
@@ -62,24 +55,16 @@ export async function runMissionDbChecks({
   const { checks, errors, add } = createCheckCollector(supabase)
 
   await add('제목 중복', true, async (client) => {
-    if (mission.titleDuplicate === 'overlap') {
-      // 같은 제목의 기존 미션을 모두 읽어 기간이 겹치는 것이 있을 때만 막는다. 읽은 행의 시각을 읽을 수 없으면 겹친 것으로 본다.
-      const sameTitle = await client.from('missions').select('id, starts_at, ends_at').eq('title', mission.title)
-      if (sameTitle.error) return `DB 조회에 실패했어요: ${sameTitle.error.message}`
-      const overlapping = (sameTitle.data ?? []).find((row) =>
-        missionPeriodsOverlap(
-          { starts_at: mission.starts_at, ends_at: mission.ends_at },
-          { starts_at: row.starts_at as string | null, ends_at: row.ends_at as string | null }
-        )
+    // 같은 제목의 기존 미션을 모두 읽어 기간이 겹치는 것이 있을 때만 막는다. 읽은 행의 시각을 읽을 수 없으면 겹친 것으로 본다.
+    const sameTitle = await client.from('missions').select('id, starts_at, ends_at').eq('title', mission.title)
+    if (sameTitle.error) return `DB 조회에 실패했어요: ${sameTitle.error.message}`
+    const overlapping = (sameTitle.data ?? []).find((row) =>
+      missionPeriodsOverlap(
+        { starts_at: mission.starts_at, ends_at: mission.ends_at },
+        { starts_at: row.starts_at as string | null, ends_at: row.ends_at as string | null }
       )
-      return overlapping ? `같은 제목의 미션이 이미 있고 기간이 겹쳐요(id: ${overlapping.id}).` : null
-    }
-    const { data, error } = await client.from('missions').select('id').eq('title', mission.title).limit(1)
-    if (error) return `DB 조회에 실패했어요: ${error.message}`
-    if (data && data.length > 0) {
-      return `같은 제목의 미션이 이미 있어요(id: ${data[0].id}). 기존 미션 갱신은 이 스크립트 범위 밖이라 중복으로 거절해요.`
-    }
-    return null
+    )
+    return overlapping ? `같은 제목의 미션이 이미 있고 기간이 겹쳐요(id: ${overlapping.id}).` : null
   })
 
   const rewardBadgeIds = mission.reward_badge_ids ?? []
