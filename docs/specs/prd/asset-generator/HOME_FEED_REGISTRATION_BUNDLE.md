@@ -38,9 +38,10 @@ code:
   골라 카드로 편성하고 시드 SQL로 등록한다. 이 스크립트는 **신규 기획 카드와 그 이미지를 함께** 등록한다. 어느 경로로 만든
   카드인지는 `today_cards.image_source`로 구분된다: 이 스크립트가 만든 카드는 `agent-generator`, 시드 SQL로 등록한 카드는 NULL이고,
   어드민 적용 탭이 대표 이미지를 반영한 카드는 `admin-generator`다(마이그레이션 190).
-- **배지·미션 스크립트와 별개다.** 배지 5개 파일과 미션 4개 파일은 고치지 않고, 내용과 무관한 부품(인자 파싱·묶음 파일 읽기·UUID
-  형식·기록 파일 쓰기·시각 표기)만 가져다 쓴다. 홈피드 전용 부분은 `registerHomeFeed*.mjs`에 있다. 공통화는 세 유형이 모두 생긴
-  뒤 필요하면 별도로 다룬다.
+- **배지·미션 스크립트와 별개다.** 배지·미션 스크립트에서는 내용과 무관한 부품(인자 파싱·묶음 파일 읽기·UUID 형식·기록 파일
+  쓰기·시각 표기)만 가져다 쓴다. 홈피드 전용 부분은 `registerHomeFeed*.mjs`에 있다. 다만 등록 전 DB 검사와 되돌림 전 참조 확인은
+  서버(운영툴 예약 등록)도 같은 함수를 쓰도록 세 유형 모두 `jam-web/src/lib/admin/registerChecks/`의 TS 모듈로 옮겼고, 이 스크립트의
+  `runHomeFeedDbChecks`·`UNDO_REFERENCE_TABLES`는 그 모듈을 감싼다(티켓 20261002_0827).
 - 묶음이 다루지 않는 필드는 스크립트가 정한다: `id`(등록 전에 정한 UUID), `cover_image_url`(업로드한 WebP 공개 주소),
   `image_source`(항상 `agent-generator`), `created_by`(NULL — 스크립트에는 어드민 계정이 없다), `created_at`(DB 기본값).
 - 형식은 **JSON 한 벌(`bundle.json`)** 이다. 사람이 읽고 컨펌하는 자료는 별도 형식이 아니라 `--dry-run` 출력(§6)이 맡는다.
