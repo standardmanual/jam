@@ -662,7 +662,8 @@ stateDiagram-v2
 > - 카드의 `pattern_no`는 등록 스크립트 페이로드의 키가 아니라 이 변환이 덧붙인다(G11). 사전 번호 형식이면 쓰고, 아니면 비우고 경고한다.
 > - 카드 종료 시각이 없으면 공개한 날의 끝(23:59:59.999 KST)으로 채운다. 신호 계산(§5 「날짜 구성에 넣는 항목」)과 같은 값이다.
 > - 검사 오류 문장(`card.title: …`·`mission.condition_json: …`)은 등록 스크립트와 같고, 함수는 문장을 그대로 두고 운영 항목 경로(`copy.title`·`resource.template_type`·`starts_at`·`shape` 등)를 함께 돌려준다. 화면 표기는 ⑤가 정한다.
-> - 연결로 채우는 칸(`mission_id`·`badge_ids`·`item_book_id`·`reward_badge_ids`, §8.3)은 호출부가 `linkedIds`로 넘기고, 결과의 `linkFields`가 채운 칸을 알린다. 등록 전 DB 검사에는 `withoutLinkedFields`로 그 칸을 뺀 사본을 넘겨
+> - 연결로 채우는 칸(`mission_id`·`badge_ids`·`item_book_id`·`reward_badge_ids`, §8.3)은 호출부가 `linkedIds`로 넘기고, 결과의 `linkFields`가 채운 칸을 알린다. 등록 전 DB 검사에는 `withoutLinkedFields(payload, linkFields, linkedIds)`로 그 칸을 뺀 사본을 넘겨
+>   (배열 칸은 `linkedIds`의 연결 몫만 빼고 `resource` 몫은 남긴다)
 >   그 ID의 존재 확인을 건너뛴다(같은 실행에서 만들어질 ID라 생성 순서가 존재를 보장한다). 형식·필수 참조 검사에는 미리 정한 UUID를 `linkedIds`로 넘겨 통과시킨다(G3).
 > - 제목 글자 수가 모양별 상한(`jam-web/src/lib/today/shape.ts`의 `CARD_TITLE_MAX_LENGTH`)을 넘으면 경고만 한다(G15).
 > - `jam_badge` 행의 `activity_types`(JAM! 배지는 종목과 함께 쓰지 않는다는 어드민 폼 규칙과 맞는지)는 ⑨에서 정한다.
