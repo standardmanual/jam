@@ -362,6 +362,50 @@ describe('createRecipeWithSlots — 행 + 슬롯 생성', () => {
     expect(calls.recipeInserts[0].valid_until).toBe('2026-10-12T00:00:00.000Z')
   })
 
+  it('id 인자를 넘기면 그 ID로 행을 넣고 슬롯도 그 레시피에 묶는다 (티켓 20261002_2221, 운영툴 예약 등록)', async () => {
+    const { client, calls } = makeWriteClient()
+    const id = '11111111-1111-4111-8111-111111111111'
+
+    const result = await createRecipeWithSlots(client, { ...body, valid_from: '2026-10-05T09:00:00+09:00' }, NOW, { id })
+
+    expect(result.ok).toBe(true)
+    expect(calls.recipeInserts).toHaveLength(1)
+    expect(calls.recipeInserts[0].id).toBe(id)
+    expect(calls.recipeInserts[0].valid_from).toBe('2026-10-05T00:00:00.000Z')
+    if (result.ok) expect(result.recipe.id).toBe(id)
+  })
+
+  it('id 인자를 넘기지 않으면 행에 id 칸을 넣지 않아 기존 동작과 같다(어드민 POST 라우트)', async () => {
+    const { client, calls } = makeWriteClient()
+
+    expect((await createRecipeWithSlots(client, body, NOW)).ok).toBe(true)
+    expect((await createRecipeWithSlots(client, body, NOW, {})).ok).toBe(true)
+
+    expect(calls.recipeInserts).toHaveLength(2)
+    for (const row of calls.recipeInserts) expect('id' in row).toBe(false)
+  })
+
+  it('id를 넘겨도 검증에서 거절하면 아무것도 저장하지 않는다', async () => {
+    const { client, calls } = makeWriteClient()
+
+    const result = await createRecipeWithSlots(client, { ...body, valid_from: '2026-09-01T09:00:00+09:00' }, NOW, {
+      id: '11111111-1111-4111-8111-111111111111',
+    })
+
+    expect(result).toMatchObject({ ok: false, status: 400 })
+    expect(calls.recipeInserts).toHaveLength(0)
+  })
+
+  it('id를 넘겼을 때 슬롯 저장이 실패하면 그 ID의 행을 지운다', async () => {
+    const { client, calls } = makeWriteClient({ slotInsertError: 'slot insert failed' })
+    const id = '11111111-1111-4111-8111-111111111111'
+
+    const result = await createRecipeWithSlots(client, body, NOW, { id })
+
+    expect(result).toMatchObject({ ok: false, status: 500 })
+    expect(calls.recipeDeletes).toEqual([id])
+  })
+
   it('슬롯 저장이 실패하면 방금 만든 행을 지우고 500을 돌려준다(반쪽 상태 방지)', async () => {
     const { client, calls } = makeWriteClient({ slotInsertError: 'slot insert failed' })
 

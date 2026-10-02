@@ -6,6 +6,7 @@
  * - 실행(`reconcileOpsItems`, 가정 5): 조건부 상태 변경·결정 기록(행위자·`batch_id`)·멈춘 준비중 `undo`·동시 두 회차·오류 건너뜀
  * - 슬랙(`notifyReconcile`, 가정 6): 요약·알림·시험 묶음 따로·바뀐 것이 없으면 안 보냄·`slack_result`
  * - 미션(⑥): 실제 미션 핸들러의 공개·종료·밖에서 지워짐·숨김·노출일 판정, 멈춘 준비중 카드·미션은 카드부터 지운다(가정 4)
+ * - 레시피(⑧-a, 티켓 20261002_2221): 실제 레시피 핸들러의 공개·종료(종료 시각 그 순간부터)·밖에서 지워짐·시각 차이 external_change, 멈춘 준비중 레시피 undo
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -26,11 +27,12 @@ import { LATER, NOW, fakeHandler, makeItem, type ItemSpec } from './fixtures'
 const SB_ID = '5db8e2be-54c3-42b2-8ee5-04cd84714fff'
 const B = '4ca7d1ad-43b2-41a3-9ed4-f03bc73604ee'
 const uid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-const ID = { card: uid(1), card2: uid(2), card3: uid(3), mission: uid(4), drop: uid(5) }
+const ID = { card: uid(1), card2: uid(2), card3: uid(3), mission: uid(4), drop: uid(5), recipe: uid(6) }
 const CARD_RES = uid(11)
 const CARD_RES2 = uid(12)
 const CARD_RES3 = uid(13)
 const MISSION_RES = uid(14)
+const RECIPE_RES = uid(15)
 
 /** NOW(10/5 12:00 KST = 03:00Z)보다 앞인 공개 시각(10/5 09:00 KST)과, 그날의 끝(23:59:59.999 KST)인 종료 시각. */
 const STARTS = '2026-10-05T00:00:00.000Z'
@@ -76,6 +78,21 @@ const missionItem = (extra: SpecInBundle = {}): SpecInBundle => ({
 
 const missionRow = (extra: Row = {}): Row => ({ id: MISSION_RES, starts_at: STARTS, ends_at: null, exposure_mode: 'start_date', exposure_at: null, ...extra })
 const MISSION_LABEL = '미션 · 10/5(월) 09:00'
+
+/** 상시 레시피 항목(종료 시각 없음). 공개 시각은 `STARTS`다. */
+const recipeItem = (extra: SpecInBundle = {}): SpecInBundle => ({
+  id: ID.recipe,
+  key: 'recipe',
+  kind: 'recipe',
+  status: 'scheduled',
+  startsAt: STARTS,
+  endsAt: null,
+  createdResource: { recipe_id: RECIPE_RES },
+  ...extra,
+})
+
+const recipeRow = (extra: Row = {}): Row => ({ id: RECIPE_RES, valid_from: STARTS, valid_until: null, ...extra })
+const RECIPE_LABEL = '믹스 레시피 · 10/5(월) 09:00'
 
 // ── 판정(순수) ───────────────────────────────────────────────────────────────────────────────────
 
@@ -322,6 +339,7 @@ describe('판정 — 시험 묶음은 자원 대신 항목의 시각만 본다 (
 interface SetupOptions {
   cards?: Row[]
   missions?: Row[]
+  recipes?: Row[]
   decisions?: Row[]
   handlers?: ExecuteHandlerRegistry
 }
@@ -335,6 +353,7 @@ function setup(specs: SpecInBundle[], options: SetupOptions = {}) {
   db.tables.ops_bundle_items = specs.map(({ sample, ...spec }) => ({ ...makeItem(spec), bundle_id: sample ? SB_ID : B }))
   db.tables.today_cards = options.cards ?? []
   db.tables.missions = options.missions ?? []
+  db.tables.combination_recipes = options.recipes ?? []
   db.tables.ops_decisions = options.decisions ?? []
   const handlers = options.handlers ?? EXECUTE_HANDLERS
   const run = () => reconcileOpsItems(db.service, { handlers, now: () => NOW })
@@ -817,6 +836,161 @@ describe('실행 — 멈춘 준비중 카드·미션은 카드부터 지운다 (
     expect(result.failed[0]).toMatchObject({ reason: `${STALLED}. ${REMAINS}`, resourceId: MISSION_RES })
     expect(JSON.stringify([result, db.decisions()])).not.toContain('today_cards')
     expect(logged()).toContain('today_cards')
+  })
+})
+
+describe('실행 — 레시피의 상태 전이 (티켓 20261002_2221, 실제 레시피 핸들러)', () => {
+  const recipeWrites = (db: FakeDb) => db.calls.filter((call) => call.table.startsWith('combination_recipe') && call.op !== 'select')
+
+  it('예약됨 레시피가 공개 중이면 게재중으로 옮기고 결정 기록은 없다. 레시피 표에는 쓰지 않는다', async () => {
+    const { db, run } = setup([recipeItem()], { recipes: [recipeRow()] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.recipe)).toBe('live')
+    expect(db.decisions()).toEqual([])
+    expect(result.published[0]).toMatchObject({ itemId: ID.recipe, itemLabel: RECIPE_LABEL, isSample: false, action: null, reason: null })
+    expect(countsOf(result)).toEqual([1, 0, 0, 0, 0, 0])
+    expect(recipeWrites(db)).toEqual([])
+  })
+
+  it('공개 시각 전이면 아무것도 바꾸지 않는다', async () => {
+    const { db, run } = setup([recipeItem({ startsAt: LATER })], { recipes: [recipeRow({ valid_from: LATER })] })
+    const result = ok(await run())
+
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it('공개 시각이 정확히 지금이면 게재중이다', async () => {
+    const { db, run } = setup([recipeItem({ startsAt: NOW.toISOString() })], { recipes: [recipeRow({ valid_from: NOW.toISOString() })] })
+    ok(await run())
+
+    expect(statusOf(db, ID.recipe)).toBe('live')
+  })
+
+  it('상시 레시피(종료 시각 없음)는 종료되지 않고 밖에서 바뀐 것도 아니다', async () => {
+    const { db, run } = setup([recipeItem({ status: 'live' })], { recipes: [recipeRow()] })
+    const result = ok(await run())
+
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+    expect(statusOf(db, ID.recipe)).toBe('live')
+    expect(db.decisions()).toEqual([])
+  })
+
+  it('게재중 레시피의 종료 시각이 지났으면 종료한다. 결정 기록은 없다', async () => {
+    const { db, run } = setup([recipeItem({ status: 'live', endsAt: at(-1) })], { recipes: [recipeRow({ valid_until: at(-1) })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.recipe)).toBe('ended')
+    expect(db.decisions()).toEqual([])
+    expect(result.ended[0]).toMatchObject({ itemId: ID.recipe, action: null })
+  })
+
+  it('레시피는 종료 시각 그 순간부터 끝이다(미션·카드와 달리 정확히 지금이어도 종료다)', async () => {
+    const { db, run } = setup([recipeItem({ status: 'live', endsAt: NOW.toISOString() })], { recipes: [recipeRow({ valid_until: NOW.toISOString() })] })
+    ok(await run())
+
+    expect(statusOf(db, ID.recipe)).toBe('ended')
+  })
+
+  it('예약됨 레시피가 밖에서 지워졌으면 취소하고 cancel을, 게재중 레시피면 종료하고 end를 남긴다', async () => {
+    const scheduled = setup([recipeItem()])
+    const cancelled = ok(await scheduled.run())
+    expect(statusOf(scheduled.db, ID.recipe)).toBe('cancelled')
+    expect(scheduled.db.decisions()[0]).toMatchObject({ item_id: ID.recipe, action: 'cancel', actor: ACTOR, reason: OUTSIDE, batch_id: cancelled.batchId })
+
+    const live = setup([recipeItem({ status: 'live' })])
+    ok(await live.run())
+    expect(statusOf(live.db, ID.recipe)).toBe('ended')
+    expect(live.db.decisions()[0]).toMatchObject({ item_id: ID.recipe, action: 'end', reason: OUTSIDE })
+  })
+
+  it('밖에서 종료 시각이 정해지면 상태는 그대로 두고 ends_at 차이를 기록한다(항목은 상시). 같은 차이는 다시 남기지 않는다', async () => {
+    const { db, run } = setup([recipeItem({ status: 'live' })], { recipes: [recipeRow({ valid_until: FUTURE_ENDS })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.recipe)).toBe('live')
+    expect(db.decisions()[0]).toMatchObject({ action: 'external_change', diff: { ends_at: { item: null, resource: FUTURE_ENDS } } })
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 1, 0])
+    ok(await run())
+    expect(db.decisions()).toHaveLength(1)
+  })
+
+  it('밖에서 공개 시각이 바뀌면 상태는 레시피의 공개 판정을 따르고 starts_at 차이를 기록한다', async () => {
+    const { db, run } = setup([recipeItem()], { recipes: [recipeRow({ valid_from: LATER })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.recipe)).toBe('scheduled')
+    expect(db.decisions()[0]).toMatchObject({ action: 'external_change', diff: { starts_at: { item: STARTS, resource: LATER } } })
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 1, 0])
+  })
+
+  it('레시피에는 비활성 칸이 없어 is_active 차이는 만들지 않는다', async () => {
+    const { db, run } = setup([recipeItem()], { recipes: [recipeRow()] })
+    ok(await run())
+
+    expect(db.decisions().filter((row) => row.action === 'external_change')).toEqual([])
+  })
+
+  it('레시피 시각을 읽을 수 없으면 그 항목만 건너뛰고 상태를 바꾸지 않는다', async () => {
+    const { db, run } = setup([recipeItem()], { recipes: [recipeRow({ valid_until: 'not-a-date' })] })
+    const result = ok(await run())
+
+    expect(result.errors).toBe(1)
+    expect(statusOf(db, ID.recipe)).toBe('scheduled')
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  describe('멈춘 준비중 레시피', () => {
+    const stuck = (extra: SpecInBundle = {}) => recipeItem({ status: 'preparing', updatedAt: at(-11 * MINUTE), ...extra })
+    const OTHER = uid(96)
+
+    it('10분이 지난 준비중은 실패로 닫고 만든 레시피를 지운다(슬롯도 함께). 다른 레시피는 건드리지 않고 fail을 남긴다', async () => {
+      const { db, run } = setup([stuck()], { recipes: [recipeRow({ valid_from: LATER }), recipeRow({ id: OTHER })] })
+      db.tables.combination_recipe_slots = [
+        { id: 's1', recipe_id: RECIPE_RES },
+        { id: 's2', recipe_id: OTHER },
+      ]
+      const result = ok(await run())
+
+      expect(statusOf(db, ID.recipe)).toBe('failed')
+      expect((db.tables.combination_recipes as Row[]).map((row) => row.id)).toEqual([OTHER])
+      expect((db.tables.combination_recipe_slots as Row[]).map((row) => row.id)).toEqual(['s2'])
+      expect(db.decisions()[0]).toMatchObject({ item_id: ID.recipe, action: 'fail', actor: ACTOR, reason: STALLED, batch_id: result.batchId })
+      expect(result.failed[0]).toMatchObject({ itemId: ID.recipe, action: 'fail', reason: STALLED, resourceId: null })
+    })
+
+    it('공개 시각이 이미 지난 멈춘 레시피도 지운다(시각 조건 없음)', async () => {
+      const { db, run } = setup([stuck({ startsAt: STARTS })], { recipes: [recipeRow()] })
+      ok(await run())
+
+      expect(statusOf(db, ID.recipe)).toBe('failed')
+      expect(db.tables.combination_recipes).toEqual([])
+    })
+
+    it('만든 레시피를 가리키는 배지가 있으면 지우지 않고 사유에 덧붙이며 결과에 자원 ID를 싣는다. 배지 정보는 응답·기록에 없다', async () => {
+      const { db, run } = setup([stuck()], { recipes: [recipeRow()] })
+      db.tables.badges = [{ id: uid(60), deleted_at: null, condition_json: { recipe_first_success: { recipe_id: RECIPE_RES } } }]
+      const result = ok(await run())
+
+      expect(statusOf(db, ID.recipe)).toBe('failed')
+      expect(db.tables.combination_recipes).toHaveLength(1)
+      expect(db.decisions()[0]).toMatchObject({ action: 'fail', reason: `${STALLED}. ${REMAINS}` })
+      expect(result.failed[0]).toMatchObject({ reason: `${STALLED}. ${REMAINS}`, resourceId: RECIPE_RES })
+      expect(JSON.stringify([result, db.decisions()])).not.toContain(uid(60))
+      expect(logged()).toContain('이 레시피를 가리키는 배지')
+    })
+
+    it('참조를 읽지 못해도 지우지 않고 실패로 닫는다. DB 오류 원문은 기록에 없다', async () => {
+      const { db, run } = setup([stuck()], { recipes: [recipeRow()] })
+      db.failIf = (call) => call.table === 'badges'
+      const result = ok(await run())
+
+      expect(statusOf(db, ID.recipe)).toBe('failed')
+      expect(db.tables.combination_recipes).toHaveLength(1)
+      expect(result.failed[0].resourceId).toBe(RECIPE_RES)
+      expect(JSON.stringify([result, db.decisions()])).not.toContain(DB_SECRET)
+    })
   })
 })
 

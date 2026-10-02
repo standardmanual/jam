@@ -52,12 +52,12 @@ function cardItem(resource: Raw = {}, original: Raw = {}, copy: Raw = {}) {
 }
 
 function prepared(item = cardItem(), linkedIds: ExecuteLinkedIds = {}) {
-  const outcome = handler.prepare(item, { id: CARD_ID, actorId: ACTOR, linkedIds })
+  const outcome = handler.prepare(item, { id: CARD_ID, actorId: ACTOR, linkedIds, now: NOW })
   if (!outcome.ok) throw new Error(`prepare 실패: ${outcome.failure.reason}`)
   return outcome.value
 }
 
-const checkOf = (db: FakeDb, item = cardItem(), linkedIds: ExecuteLinkedIds = {}) => handler.check(asRegisterChecksClient(db.service), prepared(item, linkedIds))
+const checkOf = (db: FakeDb, item = cardItem(), linkedIds: ExecuteLinkedIds = {}) => handler.check(asRegisterChecksClient(db.service), prepared(item, linkedIds), { now: NOW })
 const deletes = (db: FakeDb) => db.calls.filter((call) => call.op === 'delete')
 
 beforeEach(() => {
@@ -113,7 +113,7 @@ describe('prepare', () => {
   })
 
   it('형식 오류가 하나면 「카드 형식이 맞지 않아요: {오류 문장}」이고 DB 오류 원문은 없다', () => {
-    const outcome = handler.prepare(cardItem({}, { shape: undefined }), { id: CARD_ID, actorId: ACTOR, linkedIds: {} })
+    const outcome = handler.prepare(cardItem({}, { shape: undefined }), { id: CARD_ID, actorId: ACTOR, linkedIds: {}, now: NOW })
     expect(outcome.ok).toBe(false)
     if (outcome.ok) return
     expect(outcome.failure.reason).toMatch(/^카드 형식이 맞지 않아요: card\.shape: /)
@@ -122,7 +122,7 @@ describe('prepare', () => {
   })
 
   it('형식 오류가 둘 이상이면 첫 문장만 싣고 끝에 「 (외 N건)」을 붙인다', () => {
-    const outcome = handler.prepare(cardItem({ template_type: 'nope' }, { shape: undefined }, { title: '' }), { id: CARD_ID, actorId: ACTOR, linkedIds: {} })
+    const outcome = handler.prepare(cardItem({ template_type: 'nope' }, { shape: undefined }, { title: '' }), { id: CARD_ID, actorId: ACTOR, linkedIds: {}, now: NOW })
     expect(outcome.ok).toBe(false)
     if (outcome.ok) return
     const errors = outcome.failure.detail?.split(' / ') ?? []
@@ -133,7 +133,7 @@ describe('prepare', () => {
   })
 
   it('다른 종류의 항목은 변환 오류로 막는다', () => {
-    const outcome = handler.prepare(makeItem({ key: 'm', kind: 'mission' }), { id: CARD_ID, actorId: ACTOR, linkedIds: {} })
+    const outcome = handler.prepare(makeItem({ key: 'm', kind: 'mission' }), { id: CARD_ID, actorId: ACTOR, linkedIds: {}, now: NOW })
     expect(outcome.ok).toBe(false)
     if (!outcome.ok) expect(outcome.failure.reason).toMatch(/^카드 형식이 맞지 않아요: kind: /)
   })
@@ -241,7 +241,7 @@ describe('create — 정한 ID로 만든다', () => {
   it('insert 페이로드의 id는 prepared.id이고 같은 ID를 돌려준다', async () => {
     const db = new FakeDb()
     const value = prepared(cardItem({ cover_image_url: 'https://cdn.example.com/card.webp' }, { pattern_no: 'P07' }))
-    const outcome = await handler.create(db.service, value)
+    const outcome = await handler.create(db.service, value, { now: NOW })
 
     expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
     const inserts = db.calls.filter((call) => call.op === 'insert')
@@ -269,7 +269,7 @@ describe('create — 정한 ID로 만든다', () => {
       if (call.op === 'insert') db.tables.today_cards.push({ id: CARD_ID })
     }
     db.failIf = (call) => call.op === 'insert'
-    const outcome = await handler.create(db.service, prepared())
+    const outcome = await handler.create(db.service, prepared(), { now: NOW })
 
     expect(outcome.ok).toBe(false)
     if (outcome.ok) return
@@ -285,7 +285,7 @@ describe('create — 정한 ID로 만든다', () => {
   it('정리 delete도 실패하면 결과를 detail에만 적고 사유는 그대로다', async () => {
     const db = new FakeDb()
     db.failIf = (call) => call.table === 'today_cards' && call.op !== 'select'
-    const outcome = await handler.create(db.service, prepared())
+    const outcome = await handler.create(db.service, prepared(), { now: NOW })
 
     expect(outcome.ok).toBe(false)
     if (outcome.ok) return

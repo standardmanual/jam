@@ -1,5 +1,5 @@
 /**
- * 운영 항목 → 카드·미션 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b)
+ * 운영 항목 → 카드·미션·레시피 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b. 레시피는 티켓 20261002_2221 ⑧-a)
  *
  * 규칙은 `docs/specs/prd/ops-tool/PRD.md` §8.4와 티켓의 「착수 전에 정한 것」 1~8이다.
  * 오류 문장 하나하나는 등록 스크립트 테스트(`scripts/asset-generator/__tests__/`)가 시험한다. 여기서는 «항목에서 읽는 자리»,
@@ -15,7 +15,7 @@ import type { MissionInput } from '@/lib/admin/registerChecks/missionFields'
 import { buildTodayCardInsertPayload } from '@/lib/admin/registerChecks/homeFeedFields'
 import type { HomeFeedCardInput } from '@/lib/admin/registerChecks/homeFeedFields'
 import { CARD_SHAPES, CARD_TITLE_MAX_LENGTH } from '@/lib/today/shape'
-import { toMissionRegisterInput, toTodayCardRegisterInput, withoutLinkedFields } from '@/lib/admin/opsInbox/registerInput'
+import { toMissionRegisterInput, toRecipeRegisterInput, toTodayCardRegisterInput, withoutLinkedFields } from '@/lib/admin/opsInbox/registerInput'
 import type { OpsRegisterItem, RegisterInputIssue } from '@/lib/admin/opsInbox/registerInput'
 
 const CARD_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
@@ -71,6 +71,24 @@ function missionOriginal(over: Raw = {}): Raw {
 }
 
 const missionItem = (over: Raw = {}, extra: Parameters<typeof opsItem>[2] = {}) => opsItem('mission', missionOriginal(over), extra)
+
+/** 검사를 통과하는 레시피 항목. */
+function recipeOriginal(over: Raw = {}): Raw {
+  return {
+    starts_at: '2026-10-06T09:00:00+09:00',
+    copy: { name: '[TEST] 가을 믹스' },
+    resource: {
+      slots: [
+        { badge_type: 'item', allowed_badge_ids: [UUID_A] },
+        { badge_type: 'activity', allowed_badge_ids: [UUID_B] },
+      ],
+      reward_points: 10,
+    },
+    ...over,
+  }
+}
+
+const recipeItem = (over: Raw = {}, extra: Parameters<typeof opsItem>[2] = {}) => opsItem('recipe', recipeOriginal(over), extra)
 
 const paths = (issues: RegisterInputIssue[]) => issues.map((issue) => issue.path)
 
@@ -740,6 +758,129 @@ describe('toMissionRegisterInput', () => {
     const columns = [...insert.matchAll(/^\s+(\w+)\??:/gm)].map((m) => m[1])
     expect(columns.length).toBeGreaterThan(10)
     expect(Object.keys(toMission(missionItem()).payload ?? {}).sort()).toEqual(columns.filter((c) => c !== 'created_at').sort())
+  })
+})
+
+describe('toRecipeRegisterInput (티켓 20261002_2221, PRD §8.4 레시피 행)', () => {
+  const SLOTS = [
+    { badge_type: 'item', allowed_badge_ids: [UUID_A] },
+    { badge_type: 'activity', allowed_badge_ids: [UUID_B] },
+  ]
+
+  it('공통 칸 starts_at은 valid_from으로, name은 copy에서, 슬롯·보상은 resource에서 읽고 오류·경고·연결 칸이 없다', () => {
+    const result = toRecipeRegisterInput(recipeItem({ resource: { slots: SLOTS, reward_points: 10, reward_badge_ids: [UUID_C] } }))
+    expect(result.errors).toEqual([])
+    expect(result.warnings).toEqual([])
+    expect(result.linkFields).toEqual([])
+    expect(result.payload).toEqual({
+      name: '[TEST] 가을 믹스',
+      valid_from: '2026-10-06T09:00:00+09:00',
+      slots: SLOTS,
+      reward_points: 10,
+      reward_badge_ids: [UUID_C],
+    })
+  })
+
+  it('종료 시각(ends_at)이 없으면 valid_until 칸을 넣지 않는다(상시). 있으면 valid_until로 읽는다', () => {
+    const open = toRecipeRegisterInput(recipeItem())
+    expect(open.payload).not.toBeNull()
+    expect('valid_until' in (open.payload as object)).toBe(false)
+
+    const closed = toRecipeRegisterInput(recipeItem({ ends_at: '2026-10-13T09:00:00+09:00' }))
+    expect(closed.errors).toEqual([])
+    expect(closed.payload).toMatchObject({ valid_from: '2026-10-06T09:00:00+09:00', valid_until: '2026-10-13T09:00:00+09:00' })
+  })
+
+  it('항목 값이 비었으면 행 칸(starts_at·ends_at)으로 시각을 읽는다', () => {
+    const { starts_at: _omit, ...withoutStart } = recipeOriginal()
+    const result = toRecipeRegisterInput(opsItem('recipe', withoutStart, { starts_at: '2026-10-06T00:00:00.000Z', ends_at: '2026-10-13T00:00:00.000Z' }))
+    expect(result.errors).toEqual([])
+    expect(result.payload).toMatchObject({ valid_from: '2026-10-06T00:00:00.000Z', valid_until: '2026-10-13T00:00:00.000Z' })
+  })
+
+  it('수정본에 값이 있으면 수정본을 먼저 읽고, 수정본에 없는 칸은 제출 원본에서 읽는다', () => {
+    const result = toRecipeRegisterInput(
+      recipeItem({}, { edited: { starts_at: '2026-10-07T09:00:00+09:00', copy: { name: '고친 이름' }, resource: { slots: SLOTS, reward_points: 20 } } })
+    )
+    expect(result.errors).toEqual([])
+    expect(result.payload).toMatchObject({ name: '고친 이름', valid_from: '2026-10-07T09:00:00+09:00', reward_points: 20 })
+
+    const partial = toRecipeRegisterInput(recipeItem({}, { edited: { copy: { name: '고친 이름' } } }))
+    expect(partial.errors).toEqual([])
+    expect(partial.payload).toMatchObject({ name: '고친 이름', valid_from: '2026-10-06T09:00:00+09:00', slots: SLOTS })
+  })
+
+  it('name은 copy를 먼저 읽고, 없으면 resource의 name을 읽는다', () => {
+    const fromResource = toRecipeRegisterInput(recipeItem({ copy: {}, resource: { name: 'resource 이름', slots: SLOTS, reward_points: 10 } }))
+    expect(fromResource.errors).toEqual([])
+    expect(fromResource.warnings).toEqual([])
+    expect(fromResource.payload).toMatchObject({ name: 'resource 이름' })
+
+    const both = toRecipeRegisterInput(recipeItem({ copy: { name: 'copy 이름' }, resource: { name: 'resource 이름', slots: SLOTS, reward_points: 10 } }))
+    expect(both.payload).toMatchObject({ name: 'copy 이름' })
+  })
+
+  it('필수 칸이 없으면 오류를 칸마다 쌓고 payload는 null이다. 경로는 운영 항목 경로다', () => {
+    const result = toRecipeRegisterInput(opsItem('recipe', { copy: {}, resource: {} }))
+    expect(result.payload).toBeNull()
+    expect(result.errors).toEqual([
+      { path: 'copy.name', message: 'recipe.name: 필수 항목이 없어요.' },
+      { path: 'starts_at', message: 'recipe.valid_from: 필수 항목이 없어요(공개 시각 starts_at이 필요해요).' },
+      { path: 'resource.slots', message: 'recipe.slots: 필수 항목이 없어요.' },
+    ])
+  })
+
+  it('공개 시각이 빈 문자열이어도 없는 것이다 — 서버 함수가 바로 공개로 읽어 예약이 아니게 되는 것을 막는다', () => {
+    const result = toRecipeRegisterInput(recipeItem({ starts_at: '' }))
+    expect(result.payload).toBeNull()
+    expect(paths(result.errors)).toEqual(['starts_at'])
+  })
+
+  it('값의 형식은 보지 않고 그대로 넘긴다(형식 검사는 normalizeRecipePayload가 현재 시각과 한다)', () => {
+    const result = toRecipeRegisterInput(
+      recipeItem({ starts_at: 'not-a-time', resource: { slots: 'nope', reward_points: 'abc', reward_badge_ids: 'x' } })
+    )
+    expect(result.errors).toEqual([])
+    expect(result.payload).toMatchObject({ valid_from: 'not-a-time', slots: 'nope', reward_points: 'abc', reward_badge_ids: 'x' })
+  })
+
+  it('표에 없는 칸·툴이 정하는 값·공통 칸과 겹치는 resource 키는 경고하고 읽지 않는다', () => {
+    const result = toRecipeRegisterInput(
+      recipeItem({
+        copy: { name: '[TEST] 가을 믹스', mood: 'calm' },
+        resource: { slots: SLOTS, reward_points: 10, id: UUID_A, starts_at: '2027-01-01T00:00:00+09:00', valid_from: '2027-01-01T00:00:00+09:00' },
+      })
+    )
+    expect(result.errors).toEqual([])
+    expect(result.payload).toMatchObject({ valid_from: '2026-10-06T09:00:00+09:00' })
+    expect(result.payload).not.toHaveProperty('id')
+    expect(result.warnings).toEqual([
+      { path: 'copy.mood', message: 'copy.mood: 표에 없는 칸이라 읽지 않아요.' },
+      { path: 'resource.id', message: 'resource.id: 툴이 정하는 값이라 읽지 않아요.' },
+      { path: 'resource.starts_at', message: 'resource.starts_at: 항목 공통 칸(starts_at)이 먼저라 이 값은 읽지 않아요.' },
+      { path: 'resource.valid_from', message: 'resource.valid_from: 표에 없는 칸이라 읽지 않아요.' },
+    ])
+  })
+
+  it('copy·resource가 객체가 아니면 오류다', () => {
+    const result = toRecipeRegisterInput(recipeItem({ copy: 'x', resource: [1] }))
+    expect(result.payload).toBeNull()
+    expect(result.errors).toEqual(expect.arrayContaining([{ path: 'copy', message: 'copy: 객체여야 해요.' }, { path: 'resource', message: 'resource: 객체여야 해요.' }]))
+  })
+
+  it('다른 종류의 항목은 변환 오류로 막는다', () => {
+    const result = toRecipeRegisterInput(missionItem())
+    expect(result.payload).toBeNull()
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0]).toMatchObject({ path: 'kind' })
+    expect(result.errors[0].message).toMatch(/^kind: recipe 항목만 레시피로 바꿀 수 있어요/)
+  })
+
+  it('입력 항목을 바꾸지 않는다', () => {
+    const item = recipeItem()
+    const before = JSON.stringify(item)
+    toRecipeRegisterInput(item)
+    expect(JSON.stringify(item)).toBe(before)
   })
 })
 

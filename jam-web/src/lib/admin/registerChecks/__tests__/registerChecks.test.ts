@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest'
 import { runBadgeDbChecks } from '../badge'
 import { runHomeFeedDbChecks } from '../homeFeed'
 import { missionPeriodsOverlap, runMissionDbChecks } from '../mission'
+import { findUnlaunchedCollectionBadges } from '../recipe'
 import {
   BADGE_UNDO_ARRAY_REFERENCE_COLUMNS,
   BADGE_UNDO_REFERENCES,
@@ -398,13 +399,141 @@ describe('되돌림 참조 확인', () => {
   })
 })
 
+describe('findUnlaunchedCollectionBadges — 레시피 공개 시각에 열리지 않은 컬렉션의 배지 (티켓 20261002_2221)', () => {
+  const AT = '2026-10-10T00:00:00.000Z'
+  const BADGE_1 = '10000000-0000-4000-8000-000000000001'
+  const BADGE_2 = '10000000-0000-4000-8000-000000000002'
+  const BADGE_3 = '10000000-0000-4000-8000-000000000003'
+  const BOOK_1 = '20000000-0000-4000-8000-000000000001'
+  const BOOK_2 = '20000000-0000-4000-8000-000000000002'
+  const book = (id: string, over: Record<string, unknown> = {}) => ({ id, is_active: true, valid_from: null, valid_until: null, ...over })
+  /** 배지 표와 컬렉션 표를 고정해 답하는 스텁. */
+  const stubOf = (badges: RegisterRow[], books: RegisterRow[]) =>
+    createStub((e) => ({ data: e.table === 'badges' ? badges : e.table === 'item_books' ? books : [] }))
+
+  it('열린 컬렉션(활성이고 공개 시각이 레시피보다 이르다)의 배지는 통과한다. 배지와 컬렉션을 이 순서로 읽는다', async () => {
+    const { client, entries } = stubOf(
+      [
+        { id: BADGE_1, item_book_id: BOOK_1 },
+        { id: BADGE_2, item_book_id: BOOK_2 },
+      ],
+      [book(BOOK_1, { valid_from: '2026-10-09T00:00:00.000Z' }), book(BOOK_2)]
+    )
+    expect(await findUnlaunchedCollectionBadges(client, [BADGE_1, BADGE_2], AT)).toEqual([])
+
+    expect(entries.map((e) => e.table)).toEqual(['badges', 'item_books'])
+    expect(entries[0].columns).toBe('id, item_book_id')
+    expect(entries[0].filters).toEqual([
+      ['in', 'id', [BADGE_1, BADGE_2]],
+      ['is', 'deleted_at', null],
+    ])
+    expect(entries[1].filters).toEqual([['in', 'id', [BOOK_1, BOOK_2]]])
+  })
+
+  it('컬렉션의 공개 시각이 레시피보다 늦으면 그 배지를 돌려준다', async () => {
+    const { client } = stubOf([{ id: BADGE_1, item_book_id: BOOK_1 }], [book(BOOK_1, { valid_from: '2026-10-10T00:00:01.000Z' })])
+    expect(await findUnlaunchedCollectionBadges(client, [BADGE_1], AT)).toEqual([{ badgeId: BADGE_1, itemBookId: BOOK_1 }])
+  })
+
+  it('컬렉션의 공개 시각이 레시피와 같은 시각이면 통과한다(경계 포함). 시간대 표기가 달라도 시각으로 견준다', async () => {
+    const same = stubOf([{ id: BADGE_1, item_book_id: BOOK_1 }], [book(BOOK_1, { valid_from: AT })])
+    expect(await findUnlaunchedCollectionBadges(same.client, [BADGE_1], AT)).toEqual([])
+
+    const offset = stubOf([{ id: BADGE_1, item_book_id: BOOK_1 }], [book(BOOK_1, { valid_from: '2026-10-10T09:00:00+09:00' })])
+    expect(await findUnlaunchedCollectionBadges(offset.client, [BADGE_1], AT)).toEqual([])
+  })
+
+  it('비활성 컬렉션은 공개 시각과 상관없이 열리지 않은 것이다', async () => {
+    const { client } = stubOf([{ id: BADGE_1, item_book_id: BOOK_1 }], [book(BOOK_1, { is_active: false, valid_from: '2026-10-01T00:00:00.000Z' })])
+    expect(await findUnlaunchedCollectionBadges(client, [BADGE_1], AT)).toEqual([{ badgeId: BADGE_1, itemBookId: BOOK_1 }])
+  })
+
+  it('컬렉션 종료 시각은 보지 않는다(이미 끝난 컬렉션도 공개된 적이 있어 열린 것으로 본다)', async () => {
+    const { client } = stubOf([{ id: BADGE_1, item_book_id: BOOK_1 }], [book(BOOK_1, { valid_until: '2026-10-01T00:00:00.000Z' })])
+    expect(await findUnlaunchedCollectionBadges(client, [BADGE_1], AT)).toEqual([])
+  })
+
+  it('컬렉션이 없는 배지는 무시하고, 모두 그렇다면 컬렉션 표를 읽지 않는다', async () => {
+    const { client, entries } = stubOf(
+      [
+        { id: BADGE_1, item_book_id: null },
+        { id: BADGE_2, item_book_id: '' },
+      ],
+      []
+    )
+    expect(await findUnlaunchedCollectionBadges(client, [BADGE_1, BADGE_2], AT)).toEqual([])
+    expect(entries.map((e) => e.table)).toEqual(['badges'])
+  })
+
+  it('열린 배지와 안 열린 배지가 섞이면 안 열린 배지만 돌려주고, 같은 컬렉션은 한 번만 읽는다', async () => {
+    const { client, entries } = stubOf(
+      [
+        { id: BADGE_1, item_book_id: BOOK_1 },
+        { id: BADGE_2, item_book_id: BOOK_1 },
+        { id: BADGE_3, item_book_id: BOOK_2 },
+      ],
+      [book(BOOK_1, { valid_from: '2026-10-20T00:00:00.000Z' }), book(BOOK_2)]
+    )
+    expect(await findUnlaunchedCollectionBadges(client, [BADGE_1, BADGE_2, BADGE_3], AT)).toEqual([
+      { badgeId: BADGE_1, itemBookId: BOOK_1 },
+      { badgeId: BADGE_2, itemBookId: BOOK_1 },
+    ])
+    expect(entries[1].filters).toEqual([['in', 'id', [BOOK_1, BOOK_2]]])
+  })
+
+  it('배지가 가리키는 컬렉션 행이 없으면 열리지 않은 것으로 본다(판단할 수 없는데 통과시키지 않는다)', async () => {
+    const { client } = stubOf([{ id: BADGE_1, item_book_id: BOOK_1 }], [])
+    expect(await findUnlaunchedCollectionBadges(client, [BADGE_1], AT)).toEqual([{ badgeId: BADGE_1, itemBookId: BOOK_1 }])
+  })
+
+  it('같은 배지 ID는 한 번만 읽고, 목록이 비면 아무것도 읽지 않는다', async () => {
+    const dup = stubOf([], [])
+    await findUnlaunchedCollectionBadges(dup.client, [BADGE_1, BADGE_1], AT)
+    expect(dup.entries[0].filters).toEqual([
+      ['in', 'id', [BADGE_1]],
+      ['is', 'deleted_at', null],
+    ])
+
+    const empty = stubOf([], [])
+    expect(await findUnlaunchedCollectionBadges(empty.client, [], AT)).toEqual([])
+    expect(empty.entries).toEqual([])
+  })
+
+  it('배지가 많으면 80개씩 나눠 읽는다', async () => {
+    const ids = Array.from({ length: 170 }, (_, i) => `30000000-0000-4000-8000-${String(i).padStart(12, '0')}`)
+    const { client, entries } = stubOf([], [])
+    await findUnlaunchedCollectionBadges(client, ids, AT)
+    expect(entries.map((e) => (e.filters[0][2] as string[]).length)).toEqual([80, 80, 10])
+  })
+
+  it('배지를 읽지 못하면 확인 없이 통과시키지 않고 던진다', async () => {
+    const { client } = createStub(() => ({ error: { message: 'badges boom' } }))
+    await expect(findUnlaunchedCollectionBadges(client, [BADGE_1], AT)).rejects.toThrow('DB 조회에 실패했어요: badges boom')
+  })
+
+  it('컬렉션을 읽지 못해도 던진다', async () => {
+    const { client } = createStub((e) => (e.table === 'badges' ? { data: [{ id: BADGE_1, item_book_id: BOOK_1 }] } : { error: { message: 'books boom' } }))
+    await expect(findUnlaunchedCollectionBadges(client, [BADGE_1], AT)).rejects.toThrow('DB 조회에 실패했어요: books boom')
+  })
+})
+
 describe('registerChecks 계약 — 서버에서 가져올 수 있어야 한다', () => {
   const dir = path.join(__dirname, '..')
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.ts'))
   const NODE_BUILTINS = ['fs', 'path', 'os', 'child_process', 'crypto', 'url', 'util', 'stream', 'process']
 
-  it('모듈 여덟 개가 있다', () => {
-    expect(files.sort()).toEqual(['badge.ts', 'bundleRules.ts', 'homeFeed.ts', 'homeFeedFields.ts', 'mission.ts', 'missionFields.ts', 'references.ts', 'shared.ts'])
+  it('모듈 아홉 개가 있다', () => {
+    expect(files.sort()).toEqual([
+      'badge.ts',
+      'bundleRules.ts',
+      'homeFeed.ts',
+      'homeFeedFields.ts',
+      'mission.ts',
+      'missionFields.ts',
+      'recipe.ts',
+      'references.ts',
+      'shared.ts',
+    ])
   })
 
   it.each(files)('%s는 node: 모듈·내장 모듈과 scripts/ 아래 파일을 가져오지 않는다', (name) => {

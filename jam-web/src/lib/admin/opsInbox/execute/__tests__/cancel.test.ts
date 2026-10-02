@@ -9,6 +9,7 @@
  * - 부분 실패·상태 저장 실패·결정 기록 실패(`decisionLogFailed`)·상태 경합
  * - 미리 보기(가정 5): 쓰기 없음. 슬랙(가정 6): 요약·알림과 `slack_result`
  * - 예약됨 미션 취소(⑥): 실제 미션 핸들러, 미션을 가리키는 카드를 먼저 지운 뒤 미션을 지운다
+ * - 예약됨 레시피 취소(⑧-a, 티켓 20261002_2221): 실제 레시피 핸들러, 공개 전 취소·이미 공개·종료됨·가장 먼저 성공 배지가 가리킴(409)·없음·시험 묶음
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -443,8 +444,8 @@ describe('함께 취소할 항목 — 가짜 종류 핸들러(가정 3·4)', () 
     expect(nonSelect(db)).toEqual([])
   })
 
-  it('실제 레지스트리에 아직 없는 종류(레시피 등)는 409로 막힌다', async () => {
-    const { db, run } = setup([{ id: ID.poster, key: 'recipe', kind: 'recipe', status: 'scheduled', createdResource: { recipe_id: uid(21) } }])
+  it('실제 레지스트리에 아직 없는 종류(드랍 등)는 409로 막힌다', async () => {
+    const { db, run } = setup([{ id: ID.poster, key: 'drop', kind: 'drop_schedule', status: 'scheduled', createdResource: { ambient_drop_schedule_id: uid(21) } }])
     const failure = bad(await run(ID.poster))
     expect(failure.status).toBe(409)
     expect(failure.error).toBe('아직 취소를 연결하지 않은 종류예요')
@@ -596,6 +597,146 @@ describe('예약됨 미션 취소 — 실제 카드·미션 핸들러 (티켓 20
   })
 })
 
+// ── 레시피 취소 ──────────────────────────────────────────────────────────────────────────────────
+
+describe('예약됨 레시피 취소 — 실제 레시피 핸들러 (티켓 20261002_2221)', () => {
+  const RECIPE_RES = uid(21)
+  const OTHER_RECIPE = uid(97)
+  const BADGE_RES = uid(22)
+  const RECIPE_LABEL = '믹스 레시피 · 10/10(토) 09:00'
+  const REFERENCED = '가장 먼저 성공 배지가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요'
+  const recipeSpec = (extra: ItemSpec = {}): ItemSpec => ({
+    id: ID.poster,
+    key: 'recipe',
+    kind: 'recipe',
+    status: 'scheduled',
+    createdResource: { recipe_id: RECIPE_RES },
+    ...extra,
+  })
+  const recipeRow = (extra: Row = {}): Row => ({ id: RECIPE_RES, valid_from: LATER, valid_until: null, ...extra })
+  const firstSuccessBadge: Row = { id: BADGE_RES, deleted_at: null, condition_json: { recipe_first_success: { recipe_id: RECIPE_RES } } }
+
+  /** 지울 레시피(슬롯 포함)와 다른 레시피 하나가 있는 DB. */
+  function recipeSetup(options: Parameters<typeof setup>[1] = {}, specs: ItemSpec[] = [recipeSpec()]) {
+    const made = setup(specs, { ...options, cards: [] })
+    made.db.tables.combination_recipes = [recipeRow(), recipeRow({ id: OTHER_RECIPE })]
+    made.db.tables.combination_recipe_slots = [
+      { id: 's1', recipe_id: RECIPE_RES },
+      { id: 's2', recipe_id: OTHER_RECIPE },
+    ]
+    return made
+  }
+  const recipeIds = (db: FakeDb) => (db.tables.combination_recipes as Row[]).map((row) => row.id)
+
+  it('공개 전이고 가리키는 배지가 없으면 레시피와 슬롯을 지우고 항목을 「취소」로 두며 cancel 기록을 남긴다. 다른 레시피는 건드리지 않는다', async () => {
+    const { db, run } = recipeSetup()
+    const result = ok(await run(ID.poster, '레시피를 접어요'))
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.poster], missing: [] })
+    expect(recipeIds(db)).toEqual([OTHER_RECIPE])
+    expect((db.tables.combination_recipe_slots as Row[]).map((slot) => slot.id)).toEqual(['s2'])
+    expect(statusOf(db, ID.poster)).toBe('cancelled')
+    expect(db.decisions('cancel').map((row) => [row.item_id, row.reason, row.batch_id])).toEqual([[ID.poster, '레시피를 접어요', result.batchId]])
+    expect(db.calls.find((call) => call.table === 'combination_recipes' && call.op === 'delete')?.filters).toEqual([['id', RECIPE_RES], ['valid_from >', NOW.toISOString()]])
+    expect(result.slack.cancelledLabels).toEqual([RECIPE_LABEL])
+  })
+
+  it('공개 시각이 지난 레시피는 409이고 아무것도 지우지 않는다(상태 맞추기가 아직 게재중으로 바꾸지 않은 레시피)', async () => {
+    const { db, run } = recipeSetup()
+    db.tables.combination_recipes = [recipeRow({ valid_from: PAST })]
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe('공개 시각이 지나 취소할 수 없어요')
+    expect(failure.slack).toBeUndefined()
+    expect(nonSelect(db)).toEqual([])
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+    expect(db.decisions()).toEqual([])
+  })
+
+  it('공개됐다가 종료된 레시피도 409이고 지우지 않는다', async () => {
+    const { db, run } = recipeSetup()
+    db.tables.combination_recipes = [recipeRow({ valid_from: PAST, valid_until: '2026-10-05T02:30:00.000Z' })]
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe('공개 시각이 지나 취소할 수 없어요')
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it('가장 먼저 성공 배지가 이 레시피를 가리키면 409이고 아무것도 지우지 않는다. 레시피·배지 ID는 응답에 없다', async () => {
+    const { db, run } = recipeSetup()
+    db.tables.badges = [firstSuccessBadge]
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe(REFERENCED)
+    expect(failure.error).not.toContain(RECIPE_RES)
+    expect(failure.error).not.toContain(BADGE_RES)
+    expect(nonSelect(db)).toEqual([])
+    expect(recipeIds(db)).toEqual([RECIPE_RES, OTHER_RECIPE])
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+    expect(db.decisions()).toEqual([])
+  })
+
+  it('가리키는 배지가 지워졌거나 다른 레시피를 가리키면 취소할 수 있다', async () => {
+    const { db, run } = recipeSetup()
+    db.tables.badges = [{ ...firstSuccessBadge, deleted_at: '2026-10-01T00:00:00.000Z' }, { id: uid(23), deleted_at: null, condition_json: { recipe_first_success: { recipe_id: OTHER_RECIPE } } }]
+    ok(await run(ID.poster))
+
+    expect(recipeIds(db)).toEqual([OTHER_RECIPE])
+  })
+
+  it('밖에서 이미 지워진 레시피는 missing으로 두고 항목만 「취소」로 둔다', async () => {
+    const { db, run } = setup([recipeSpec()], { cards: [] })
+    const result = ok(await run(ID.poster))
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.poster], missing: [ID.poster] })
+    expect(statusOf(db, ID.poster)).toBe('cancelled')
+    expect(nonSelect(db).filter((call) => call.table.startsWith('combination_recipe'))).toEqual([])
+  })
+
+  it('읽지 못하면 500 고정 문장이고 DB 오류 원문·레시피 ID는 응답·기록·슬랙에 없다. 항목은 예약됨 그대로다', async () => {
+    const { db, run } = recipeSetup()
+    db.failIf = (call) => call.table === 'combination_recipes' && call.op === 'select'
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(500)
+    for (const output of await outputsOf(db, failure)) {
+      expect(output).not.toContain(DB_SECRET)
+      expect(output).not.toContain(RECIPE_RES)
+    }
+    expect(recipeIds(db)).toEqual([RECIPE_RES, OTHER_RECIPE])
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+    expect(logged()).toContain(DB_SECRET)
+  })
+
+  it('가리키는 배지를 읽지 못하면 지우지 않고 500이다(확인 없이 지우지 않는다)', async () => {
+    const { db, run } = recipeSetup()
+    db.failIf = (call) => call.table === 'badges'
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(500)
+    expect(recipeIds(db)).toEqual([RECIPE_RES, OTHER_RECIPE])
+    expect(JSON.stringify(failure)).not.toContain(DB_SECRET)
+  })
+
+  it('시험 묶음은 레시피 표를 읽지도 쓰지도 않고 항목만 「취소」로 둔다', async () => {
+    const { db, run } = setup([recipeSpec({ createdResource: { sample: true } })], { bundle: { is_sample: true }, cards: [] })
+    const result = ok(await run(ID.poster))
+
+    expect(result.body.cancelled).toEqual([ID.poster])
+    expect(db.calls.filter((call) => call.table.startsWith('combination_recipe'))).toEqual([])
+  })
+
+  it('미리 보기는 쓰기 없이 레시피 하나를 돌려준다', async () => {
+    const { db, preview } = recipeSetup()
+    expect(await preview(ID.poster)).toEqual({ ok: true, body: { ok: true, dryRun: true, cancelIds: [ID.poster], blockers: [] } })
+    expect(nonSelect(db)).toEqual([])
+    expect(db.calls.some((call) => call.table.startsWith('combination_recipe'))).toBe(false)
+  })
+})
+
 // ── 실패 ─────────────────────────────────────────────────────────────────────────────────────────
 
 describe('실패 경로 — 첫 실패에서 멈춘다(가정 4)', () => {
@@ -716,7 +857,7 @@ describe('미리 보기 { dryRun: true }(가정 5)', () => {
   })
 
   it('예약됨이 아니면 409, 묶음에 없는 항목은 404, 핸들러가 없으면 409다', async () => {
-    const { db, preview } = setup([cardSpec({ status: 'approved' }), { id: ID.poster, key: 'recipe', kind: 'recipe', status: 'scheduled', createdResource: { recipe_id: uid(21) } }])
+    const { db, preview } = setup([cardSpec({ status: 'approved' }), { id: ID.poster, key: 'drop', kind: 'drop_schedule', status: 'scheduled', createdResource: { ambient_drop_schedule_id: uid(21) } }])
     expect(await preview(ID.card)).toMatchObject({ ok: false, status: 409, error: '예약됨 항목만 취소할 수 있어요' })
     expect(await preview(uid(77))).toMatchObject({ ok: false, status: 404 })
     expect(await preview(ID.poster)).toMatchObject({ ok: false, status: 409, error: '아직 취소를 연결하지 않은 종류예요' })
