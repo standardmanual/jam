@@ -57,7 +57,13 @@ function stringList(value: unknown): string[] {
 }
 
 function recordList(value: unknown): Record<string, unknown>[] {
-  return Array.isArray(value) ? value.flatMap((entry) => recordOf(entry) ?? []) : []
+  if (!Array.isArray(value)) return []
+  const records: Record<string, unknown>[] = []
+  for (const entry of value) {
+    const record = recordOf(entry)
+    if (record) records.push(record)
+  }
+  return records
 }
 
 export function readPrecheck(data: Record<string, unknown>): PrecheckView {

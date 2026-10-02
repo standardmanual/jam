@@ -31,11 +31,11 @@ import { OpsDiffLines } from '../OpsDiffLines'
 import { OpsBulkApprove, OpsBulkApprovePanel, buildBulkSummary, bulkResultMessage } from '../OpsBulkApprove'
 import { FormatErrorWarning, OpsItemActions, OpsRejectPanel, canSubmitRejectReason, decisionGuidance } from '../OpsItemActions'
 import { OPS_EDIT_STALE_MESSAGE, OpsItemEditForm } from '../OpsItemEditForm'
-import { OPS_PUBLISH_NOT_CONNECTED_NOTICE, OpsDecisionWorkspace } from '../OpsDecisionWorkspace'
+import { OpsDecisionWorkspace } from '../OpsDecisionWorkspace'
 import { OpsSampleDeleteMenu } from '../OpsSampleDeleteMenu'
 import { readEditableValues } from '@/lib/admin/opsInbox/edit'
 import type { OpsWorkspaceContext } from '../OpsBundleWorkspace'
-import type { OpsDecisionRecord, OpsItemRecord } from '@/lib/admin/opsInbox/query'
+import type { OpsBundleExecution, OpsDecisionRecord, OpsItemRecord } from '@/lib/admin/opsInbox/query'
 
 const html = (node: ReactElement) => renderToStaticMarkup(<TooltipProvider>{node}</TooltipProvider>)
 /** 글자 사이의 React 주석(`<!-- -->`)을 벗겨 문장으로 읽는다. */
@@ -244,6 +244,29 @@ describe('OpsItemList', () => {
     expect(out).not.toContain('<img')
     expect(out).not.toContain('<script>')
     expect(out).toContain('&lt;img src=x onerror=alert(1)&gt;')
+  })
+
+  it('상태가 「실패」인 행에만 칩 아래에 실패 사유가 한 줄(줄임)로 보인다', () => {
+    const items = [
+      makeItem({ id: 'f', status: 'failed', position: 0 }),
+      makeItem({ id: 'g', status: 'failed', position: 1 }),
+      makeItem({ id: 'a', status: 'approved', position: 2 }),
+    ]
+    const reasons = { f: '연결된 미션이 반려됐어요', a: '승인된 행에는 보이지 않아요' }
+    const out = html(<OpsItemList items={items} selectedId={null} onSelect={noop} failReasonsByItem={reasons} />)
+    expect(out).toContain('연결된 미션이 반려됐어요')
+    expect(out).toMatch(/<p class="truncate[^"]*"[^>]*>연결된 미션이 반려됐어요<\/p>/)
+    expect(out).not.toContain('승인된 행에는 보이지 않아요')
+    // 사유가 없는 실패 행은 줄을 그리지 않는다
+    expect(out.match(/class="truncate/g)).toHaveLength(1)
+    // 칩 줄 아래, 유저가 겪는 것 위에 놓인다
+    expect(out.indexOf('연결된 미션이 반려됐어요')).toBeLessThan(out.indexOf('비 오는 월요일 아침'))
+    expect(out.indexOf('실패</span>')).toBeLessThan(out.indexOf('연결된 미션이 반려됐어요'))
+  })
+
+  it('실패 사유 지도가 없으면 줄을 그리지 않는다', () => {
+    const out = html(<OpsItemList items={[makeItem({ status: 'failed' })]} selectedId={null} onSelect={noop} />)
+    expect(out).not.toContain('class="truncate')
   })
 
   it('rowLead 슬롯이 있을 때만 행 왼쪽 자리를 잡는다', () => {
@@ -612,7 +635,8 @@ describe('일괄 승인', () => {
     expect(out).toContain('홈피드 카드 7 · 미션 2 · 드랍 일정 2')
     expect(out).toContain('제외할 것')
     expect(out).toContain('형식 오류가 있어요')
-    expect(out).toContain('승인은 되돌릴 수 없어요. 공개는 아직 연결 전이에요.')
+    expect(out).toContain('승인은 되돌릴 수 없어요. 예약은 승인한 뒤 [예약 등록하기]에서 해요.')
+    expect(out).not.toContain('공개는 아직 연결 전이에요')
     expect(isDisabled(buttonOf(out, '11개 승인하기'))).toBe(false)
     // 승인할 것에 형식 오류가 없으면 경고 상자는 없다
     expect(out).not.toContain('형식 오류가 있는 항목')
@@ -821,6 +845,26 @@ describe('OpsItemDetail — 결정 기록(1818)', () => {
     expect(out).toContain('되돌림')
   })
 
+  it('예약 등록 기록: execute·fail·cancel 이름표와 「실패 사유」·「취소 사유」', () => {
+    const decisions = [
+      decision({ id: 'd1', action: 'execute' }),
+      decision({ id: 'd2', action: 'fail', reason: '연결된 미션이 반려됐어요' }),
+      decision({ id: 'd3', action: 'cancel', reason: '기획이 바뀌었어요' }),
+    ]
+    const out = flat(<OpsItemDetail item={makeItem()} {...base} decisions={decisions} />)
+    expect(out).toContain('관리자가 예약 등록했어요')
+    expect(out).toContain('실패 사유: 연결된 미션이 반려됐어요')
+    expect(out).toContain('관리자가 공개 전에 취소했어요')
+    expect(out).toContain('취소 사유: 기획이 바뀌었어요')
+    expect(out).not.toContain('기록을 남겼어요')
+  })
+
+  it('실패 기록은 「관리자가」를 붙이지 않는다(실행한 관리자가 실패한 것이 아니다)', () => {
+    const out = flat(<OpsItemDetail item={makeItem()} {...base} decisions={[decision({ action: 'fail', reason: '이유' })]} />)
+    expect(out).toContain('예약 등록에 실패했어요')
+    expect(out).not.toContain('관리자가 예약 등록에 실패했어요')
+  })
+
   it('되돌림 줄에는 버튼이 없다', () => {
     const decisions = [decision({ action: 'revert', diff: [{ path: 'copy.body', before: 'a', after: 'b' }] })]
     const out = flat(<OpsItemDetail item={makeItem()} {...base} decisions={decisions} />)
@@ -845,7 +889,8 @@ describe('OpsItemDetail — 결정 기록(1818)', () => {
 })
 
 describe('OpsDecisionWorkspace — 결정 슬롯', () => {
-  const props = { bundleId: 'bundle-1', bundleFormatErrors: [] as string[] }
+  const NO_EXECUTION: OpsBundleExecution = { approvedCount: 0, readyCount: 0, unconnectedKinds: [] }
+  const props = { bundleId: 'bundle-1', bundleFormatErrors: [] as string[], execution: NO_EXECUTION }
   const items = [
     makeItem({ id: 'a', position: 0, status: 'reviewing' }),
     makeItem({ id: 'b', position: 1, status: 'reviewing', kind: 'mission', formatErrors: ['items[1].kind: 틀려요.'] }),
@@ -862,11 +907,57 @@ describe('OpsDecisionWorkspace — 결정 슬롯', () => {
     expect(out).toContain('1개 승인하기')
   })
 
-  it('알림에 「공개는 아직 연결 전이에요」가 늘 있다', () => {
+  it('「공개는 아직 연결 전이에요」는 어디에도 없고, 연결하지 않은 종류가 없으면 알림 줄을 그리지 않는다', () => {
     const out = flat(<OpsDecisionWorkspace {...props} items={items} decisions={[SUBMIT]} />)
-    expect(out).toContain(OPS_PUBLISH_NOT_CONNECTED_NOTICE)
+    expect(out).not.toContain('공개는 아직 연결 전이에요')
+    expect(out).not.toContain('아직 예약 등록을 연결하지 않았어요')
     const empty = flat(<OpsDecisionWorkspace {...props} items={[]} decisions={[SUBMIT]} />)
-    expect(empty).toContain(OPS_PUBLISH_NOT_CONNECTED_NOTICE)
+    expect(empty).not.toContain('공개는 아직 연결 전이에요')
+    expect(empty).not.toContain('role="alert"')
+  })
+
+  it('연결하지 않은 종류가 있을 때만 「{종류} 항목은 아직 예약 등록을 연결하지 않았어요」 알림이 뜬다', () => {
+    const execution: OpsBundleExecution = { approvedCount: 0, readyCount: 0, unconnectedKinds: ['mission', 'drop_schedule'] }
+    const out = flat(<OpsDecisionWorkspace {...props} execution={execution} items={items} decisions={[SUBMIT]} />)
+    expect(out).toContain('미션·드랍 일정 항목은 아직 예약 등록을 연결하지 않았어요. 승인해도 예약되지 않아요.')
+  })
+
+  it('승인됨 항목이 있으면 단계 표시줄 오른쪽에 예약 등록 버튼이 있고, 문구는 예약할 항목 수(N)에 따라 나뉜다', () => {
+    const ready = flat(<OpsDecisionWorkspace {...props} execution={{ approvedCount: 2, readyCount: 2, unconnectedKinds: [] }} items={items} decisions={[SUBMIT]} />)
+    expect(ready).toContain('>2개 예약 등록하기<')
+    const none = flat(<OpsDecisionWorkspace {...props} execution={{ approvedCount: 1, readyCount: 0, unconnectedKinds: [] }} items={items} decisions={[SUBMIT]} />)
+    expect(none).toContain('>예약 등록하기<')
+    // 못 하는 이유를 볼 수 있게 끄지 않는다
+    expect(isDisabled(buttonOf(none, '예약 등록하기'))).toBe(false)
+  })
+
+  it('승인됨 항목이 없으면 예약 등록 버튼이 없다', () => {
+    const out = flat(<OpsDecisionWorkspace {...props} items={items} decisions={[SUBMIT]} />)
+    expect(out).not.toContain('예약 등록하기')
+  })
+
+  it('일괄 승인 버튼이 함께 있으면 예약 등록 버튼은 그 오른쪽이다', () => {
+    const out = flat(<OpsDecisionWorkspace {...props} execution={{ approvedCount: 1, readyCount: 1, unconnectedKinds: [] }} items={items} decisions={[SUBMIT]} />)
+    expect(out.indexOf('1개 승인하기')).toBeGreaterThan(-1)
+    expect(out.indexOf('1개 승인하기')).toBeLessThan(out.indexOf('1개 예약 등록하기'))
+  })
+
+  it('결정 전 항목이 없어 일괄 승인이 없어도 예약 등록 버튼은 혼자 보인다', () => {
+    const out = flat(<OpsDecisionWorkspace {...props} execution={{ approvedCount: 1, readyCount: 1, unconnectedKinds: [] }} items={[items[2]]} decisions={[SUBMIT]} />)
+    expect(out).not.toContain('개 승인하기')
+    expect(out).toContain('1개 예약 등록하기')
+  })
+
+  it('실패한 항목의 사유는 결정 기록에서 가장 최근 fail을 모아 행에 보인다', () => {
+    const failed = makeItem({ id: 'x', position: 5, status: 'failed' })
+    const decisions: OpsDecisionRecord[] = [
+      { ...SUBMIT, id: 'f2', itemId: 'x', action: 'fail', reason: '두 번째 사유', createdAt: '2026-10-02T02:00:00Z' },
+      { ...SUBMIT, id: 'f1', itemId: 'x', action: 'fail', reason: '첫 사유', createdAt: '2026-10-02T01:00:00Z' },
+      SUBMIT,
+    ]
+    const out = flat(<OpsDecisionWorkspace {...props} items={[...items, failed]} decisions={decisions} />)
+    expect(out).toContain('두 번째 사유')
+    expect(out).not.toContain('첫 사유')
   })
 
   it('선택한 검토중 항목 아래에 [반려하기]·[수정하기]·[승인하기]가 있다', () => {

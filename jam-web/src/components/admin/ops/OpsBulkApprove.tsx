@@ -109,7 +109,7 @@ export function OpsBulkApprovePanel({ summary, pending, error, onConfirm, onCanc
               <span>형식 오류가 있는 항목 {errorCount}개가 들어 있어요</span>
             </p>
           )}
-          <p>승인은 되돌릴 수 없어요. 공개는 아직 연결 전이에요.</p>
+          <p>승인은 되돌릴 수 없어요. 예약은 승인한 뒤 [예약 등록하기]에서 해요.</p>
         </div>
       }
     />

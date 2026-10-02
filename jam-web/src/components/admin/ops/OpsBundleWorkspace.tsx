@@ -4,15 +4,16 @@
  * 기획 상세(S3)의 클라이언트 셸 (티켓 20260930_1817, 채원 화면 설계 「S3 기획 상세」·「1817 / 1818 경계」).
  *
  * 단계 표시줄 → 알림 → [미리보기 | 가운데(탭 + 목록 | 상세) | 서랍]을 한 화면에 놓고, 선택한 항목(`?item=`)과 편집
- * 초안(`draft`)을 들고 있다. 알림은 형식 오류 요약 → 밸런스 알림 → 공개 연결 전 안내 → 전환 실패 순이다(티켓 20260930_1459).
+ * 초안(`draft`)을 들고 있다. 알림은 형식 오류 요약 → 밸런스 알림 → 아직 연결하지 않은 종류 안내(있을 때만) → 전환 실패 순이다(티켓 20260930_1459, 20261002_1648).
  * 밸런스(`balance`)는 서버가 평가한 결과를 받아 행 칩·5번째 탭 「밸런스 경고 N」·상세 블록·묶음 알림에 같은 줄로 나눠 준다. `draft`를 여기에 두는 이유는 티켓 20260930_1501이 미리보기에 물릴 수 있게 하려는 것이다.
+ * 실패한 항목의 사유(「실패」 행 칩 아래 한 줄)는 결정 기록에서 항목별 가장 최근 `fail` 사유를 모아(`latestFailReasons`) 목록에 넘긴다(티켓 20261002_1648).
  *
  * **슬롯(`barAction`·`rowLead`·`listHeader`·`notices`·`detailFooter`·`detailEdit`·`detailHistoryAction`)은 함수라 서버 컴포넌트에서
  * 넘길 수 없다.** 티켓 20260930_1818이 슬롯을 채운 client 래퍼(`OpsDecisionWorkspace.tsx`)를 만들었고 `page.tsx`가 그 래퍼를
  * 렌더한다. 슬롯이 비면 접혀 자리를 잡지 않는다.
- * - `barAction`: 단계 표시줄 오른쪽(「N개 승인하기」)  - `rowLead`: 목록 행 왼쪽(체크박스)
+ * - `barAction`: 단계 표시줄 오른쪽(「N개 승인하기」·「N개 예약 등록하기」)  - `rowLead`: 목록 행 왼쪽(체크박스)
  * - `listHeader`: 목록 머리줄(「전체 선택」과 「결정할 것 12개 중 11개 선택」)
- * - `notices`: 알림 줄(「공개는 아직 연결 전이에요」)  - `detailFooter`: 상세 카드 아래 고정 줄(반려·수정·승인)
+ * - `notices`: 알림 줄(「아직 예약 등록을 연결하지 않았어요」)  - `detailFooter`: 상세 카드 아래 고정 줄(반려·수정·승인)
  * - `detailEdit`: 상세의 「유저가 겪는 것」·「내용」 자리를 대신하는 편집 모드
  * - `detailHistoryAction`: 결정 기록 머리 오른쪽(「마지막 수정 되돌리기」)
  *
@@ -36,6 +37,7 @@ import { Button } from '@/components/admin/ui/button'
 import { Card } from '@/components/admin/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/admin/ui/tabs'
 import { requestJson } from '@/components/admin/data-table/admin-fetch'
+import { latestFailReasons } from '@/lib/admin/opsInbox/executeView'
 import {
   OPS_ITEM_FILTERS,
   OPS_ITEM_FILTER_LABELS,
@@ -145,6 +147,9 @@ export function OpsBundleWorkspace({
   // 밸런스 평가 결과를 화면 모양으로 바꾼다. 행 칩·탭 숫자·묶음 알림 건수가 같은 줄에서 나온다.
   const balanceView = useMemo(() => buildBalanceView(balance), [balance])
   const balanceItemIds = useMemo(() => balanceItemIdSet(balanceView), [balanceView])
+
+  // 실패한 항목의 최근 사유. 목록의 「실패」 행이 칩 아래에 한 줄로 보인다.
+  const failReasonsByItem = useMemo(() => latestFailReasons(decisions), [decisions])
 
   const filteredItems = useMemo(
     () => items.filter((item) => matchesItemFilter(item, filter, balanceItemIds)),
@@ -279,6 +284,7 @@ export function OpsBundleWorkspace({
                         rowLead={rowLead ? (item) => rowLead(item, ctx) : undefined}
                         flashingIds={flashingIds}
                         balanceLinesByItem={balanceView.linesByItem}
+                        failReasonsByItem={failReasonsByItem}
                       />
                     </div>
                   </div>

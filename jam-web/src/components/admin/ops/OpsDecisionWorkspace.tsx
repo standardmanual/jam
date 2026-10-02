@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/admin/ui/alert'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import { findRevertTarget } from '@/lib/admin/opsInbox/edit'
+import { executeToast, readExecuteResult, unconnectedKindsNotice } from '@/lib/admin/opsInbox/executeView'
 import { formatKstDayTime, kindLabel } from '@/lib/admin/opsInbox/labels'
 import {
   isDecidable,
@@ -18,10 +19,11 @@ import {
   withCheck,
   type CheckOverrides,
 } from '@/lib/admin/opsInbox/selection'
-import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
+import type { OpsBundleExecution, OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { OpsBulkApprove, bulkResultMessage } from './OpsBulkApprove'
 import { OpsBundleWorkspace, type OpsBundleWorkspaceProps, type OpsWorkspaceContext } from './OpsBundleWorkspace'
 import { postDecision } from './decisionClient'
+import { OpsExecuteBundle } from './OpsExecuteBundle'
 import { OpsItemActions } from './OpsItemActions'
 import { OpsItemEditForm } from './OpsItemEditForm'
 
@@ -29,9 +31,9 @@ import { OpsItemEditForm } from './OpsItemEditForm'
  * 결정 슬롯을 채운 기획 상세 (티켓 20260930_1818). 기획 상세(S3) 페이지가 셸(`OpsBundleWorkspace`) 대신 이 래퍼를 그린다.
  *
  * 셸의 슬롯은 함수라 서버 컴포넌트에서 넘길 수 없다 — 그래서 client 래퍼가 슬롯 다섯 갈래를 채운다.
- * - `barAction`: 「N개 승인하기」와 요약 창 (`OpsBulkApprove`)
+ * - `barAction`: 「N개 승인하기」와 요약 창 (`OpsBulkApprove`), 그 오른쪽에 「N개 예약 등록하기」와 요약창 (`OpsExecuteBundle`, 승인됨 항목이 있을 때만. 티켓 20261002_1648)
  * - `rowLead`·`listHeader`: 행 체크박스와 「전체 선택 · 결정할 것 12개 중 11개 선택」
- * - `notices`: 「공개는 아직 연결 전이에요」(티켓 20260930_1500이 공개를 잇기 전까지 늘 둔다)
+ * - `notices`: 「{종류} 항목은 아직 예약 등록을 연결하지 않았어요」(연결하지 않은 종류가 있을 때만, 서버 로더가 센 `execution.unconnectedKinds`)
  * - `detailFooter`: 반려·수정·승인 (`OpsItemActions`)   - `detailEdit`: 직접 수정 양식 (`OpsItemEditForm`)
  * - `detailHistoryAction`: 「마지막 수정 되돌리기」(수정 내역이 있는 검토중 항목만, 확인창 없음)
  *
@@ -40,14 +42,15 @@ import { OpsItemEditForm } from './OpsItemEditForm'
  * 서버 화면을 다시 읽고, 항목 하나를 결정했으면 다음 결정 전 항목을 선택한다.
  */
 
-export const OPS_PUBLISH_NOT_CONNECTED_NOTICE = '공개는 아직 연결 전이에요. 공개는 지금 쓰는 방법으로 해 주세요.'
-
 const UNDO_TOAST_MS = 10_000
 
 type OpsDecisionWorkspaceProps = Pick<
   OpsBundleWorkspaceProps,
   'bundleId' | 'bundleFormatErrors' | 'items' | 'decisions' | 'balance' | 'isSample'
->
+> & {
+  /** 서버 로더가 센 예약 등록 요약(승인됨 수·예약할 항목 수·아직 연결하지 않은 종류). 레지스트리를 화면으로 끌어오지 않으려고 계산은 서버가 한다. */
+  execution: OpsBundleExecution
+}
 
 /** 「마지막 수정 되돌리기」 버튼. 확인창 없이 바로 요청하고, 요청 중에는 다시 눌리지 않는다. */
 function RevertLastEditButton({ onRevert }: { onRevert: () => Promise<void> }) {
@@ -76,6 +79,7 @@ export function OpsDecisionWorkspace({
   decisions,
   balance,
   isSample,
+  execution,
 }: OpsDecisionWorkspaceProps) {
   const router = useRouter()
   const [overrides, setOverrides] = useState<CheckOverrides>({})
@@ -127,6 +131,15 @@ export function OpsDecisionWorkspace({
     refresh()
   }
 
+  /** 예약 등록이 끝났을 때. 결과 문장은 `executeToast`가 만들고, 결정 기록을 남기지 못했으면 경고 토스트를 하나 더 띄운다. */
+  const handleExecuted = (data: Record<string, unknown>) => {
+    const toastResult = executeToast(readExecuteResult(data))
+    if (toastResult.level === 'warning') toast.warning(toastResult.message)
+    else toast.success(toastResult.message)
+    if (toastResult.logWarning) toast.warning(toastResult.logWarning)
+    refresh()
+  }
+
   const checkLabel = (item: OpsItemRecord): string => {
     const startsAt = formatKstDayTime(item.startsAt)
     return `${kindLabel(item.kind)}${startsAt ? ` ${startsAt}` : ''} 승인 대상으로 고르기`
@@ -140,17 +153,36 @@ export function OpsDecisionWorkspace({
       decisions={decisions}
       balance={balance}
       isSample={isSample}
-      barAction={(ctx) =>
-        decidable.length > 0 ? (
-          <OpsBulkApprove
-            bundleId={bundleId}
-            checked={checked}
-            excluded={excluded}
-            onApproved={(result) => handleBulkApproved(ctx, result)}
-            onConflict={refresh}
-          />
+      barAction={(ctx) => {
+        const bulkApprove =
+          decidable.length > 0 ? (
+            <OpsBulkApprove
+              bundleId={bundleId}
+              checked={checked}
+              excluded={excluded}
+              onApproved={(result) => handleBulkApproved(ctx, result)}
+              onConflict={refresh}
+            />
+          ) : null
+        const executeBundle =
+          execution.approvedCount > 0 ? (
+            <OpsExecuteBundle
+              bundleId={bundleId}
+              items={items}
+              readyCount={execution.readyCount}
+              isSample={isSample ?? false}
+              onExecuted={handleExecuted}
+              onConflict={refresh}
+            />
+          ) : null
+        // 일괄 승인 버튼이 함께 있으면 예약 등록 버튼은 그 오른쪽이다. 둘 다 없으면 자리를 잡지 않는다.
+        return bulkApprove || executeBundle ? (
+          <div className="flex items-start gap-2">
+            {bulkApprove}
+            {executeBundle}
+          </div>
         ) : null
-      }
+      }}
       rowLead={(item) =>
         isDecidable(item) ? (
           <label className="flex size-10 cursor-pointer items-center justify-center">
@@ -180,12 +212,15 @@ export function OpsDecisionWorkspace({
           </div>
         ) : null
       }
-      notices={() => (
-        <Alert>
-          <IconInfoCircle className="size-4" aria-hidden="true" />
-          <AlertDescription>{OPS_PUBLISH_NOT_CONNECTED_NOTICE}</AlertDescription>
-        </Alert>
-      )}
+      notices={() => {
+        const notice = unconnectedKindsNotice(execution.unconnectedKinds)
+        return notice ? (
+          <Alert>
+            <IconInfoCircle className="size-4" aria-hidden="true" />
+            <AlertDescription>{notice}</AlertDescription>
+          </Alert>
+        ) : null
+      }}
       detailFooter={(item, ctx) => (
         <OpsItemActions
           bundleId={bundleId}

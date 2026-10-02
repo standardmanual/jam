@@ -50,8 +50,14 @@ describe('문장 — 사전 점검과 어긋나지 않는다', () => {
 
   it('executeView.ts는 레지스트리·핸들러·사전 점검 모듈과 서버 조회 모듈을 값으로 가져오지 않는다(타입 import만 허용)', () => {
     const code = readFileSync(join(process.cwd(), 'src/lib/admin/opsInbox/executeView.ts'), 'utf8')
-    const imports = code.split('\n').filter((line) => /^import\s/.test(line) && !/^import\s+type\b/.test(line))
-    expect(imports.filter((line) => /opsInbox\/execute\/|\/query'/.test(line))).toEqual([])
+    const statements = code.match(/^import\s[\s\S]*?\sfrom\s+'[^']+'/gm) ?? []
+    expect(statements.length).toBeGreaterThan(0)
+    const valuePaths = statements
+      .filter((statement) => !/^import\s+type\b/.test(statement))
+      .map((statement) => /'([^']+)'$/.exec(statement)?.[1] ?? '')
+    expect(valuePaths.filter((path) => /opsInbox\/execute\/|opsInbox\/query$/.test(path))).toEqual([])
+    // 타입 import는 있다(이 검사가 빈 껍데기가 아니다)
+    expect(statements.some((statement) => /^import\s+type\b/.test(statement) && /opsInbox\/query'$/.test(statement))).toBe(true)
   })
 })
 
