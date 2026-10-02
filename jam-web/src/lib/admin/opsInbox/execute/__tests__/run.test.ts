@@ -8,6 +8,7 @@
  * - 생성 중 실패: 이번에 만든 자원만 역순 undo, undo 실패, 던지는 핸들러
  * - 시험 묶음: 검증까지 하고 만들지 않는다
  * - 결정 기록(execute·fail, 같은 batch_id)과 가정 1(결정 기록 insert 실패)·가정 4·6(실패로 닫을 항목)·가정 5(원문 비노출)
+ * - ④-a 가정 6: 실행할 그룹이 없어도 실패로 닫을 항목은 닫는다(200). 닫을 것도 예약할 것도 없을 때만 409
  * - 슬랙 두 갈래와 slack_result 나눠 채우기
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
@@ -542,14 +543,85 @@ describe('결정 기록', () => {
     expect(result.body.skipped).toEqual([])
   })
 
-  it('실행한 그룹이 없으면 실패로 닫을 항목도 그대로 두고 409다', async () => {
+  it('가정 6: 실행할 그룹이 없어도 실패로 닫을 항목은 닫는다 — 200, scheduled는 비고 fail 기록과 #jam-alert 글이 남는다', async () => {
+    const { db, rec, run } = setup([
+      { id: ID.card, key: 'card', kind: 'home_feed_card', links: ['mission'] },
+      { id: ID.mission, key: 'mission', kind: 'mission', status: 'rejected' },
+    ])
+    const result = ok(await run([ID.card]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed).toEqual([{ id: ID.card, reason: '연결된 미션이 반려됐어요' }])
+    expect(result.body.skipped).toEqual([])
+    expect(statusOf(db, ID.card)).toBe('failed')
+    expect(db.item(ID.card).updated_at).toBe(ISO_NOW)
+    expect(statusOf(db, ID.mission)).toBe('rejected')
+    expect(rec.events).toEqual([]) // 선점도 핸들러 호출도 없다
+    expect(nonSelect(db).filter((call) => (call.payload as Row | undefined)?.status === 'preparing')).toEqual([])
+    expect(db.decisions('execute')).toEqual([])
+    expect(db.decisions('fail').map((row) => [row.item_id, row.reason, row.batch_id])).toEqual([[ID.card, '연결된 미션이 반려됐어요', result.batchId]])
+
+    await notifyExecution(db.service, result)
+    expect(h.postOpsSlack.mock.calls.map(([channel]) => channel)).toEqual(['report', 'alert'])
+    expect(h.postOpsSlack.mock.calls[1][1]).toContain('연결된 미션이 반려됐어요')
+  })
+
+  it('가정 6: 요청한 항목이 모두 건너뛰어져도 요청에 없는 실패로 닫을 항목은 닫는다', async () => {
+    const { db, run } = setup([
+      { id: ID.card, key: 'card', kind: 'home_feed_card', links: ['mission'] },
+      { id: ID.mission, key: 'mission', kind: 'mission', status: 'rejected' },
+      { id: ID.solo, key: 'solo', kind: 'recipe', startsAt: null },
+    ])
+    const result = ok(await run([ID.solo]))
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed).toEqual([{ id: ID.card, reason: '연결된 미션이 반려됐어요' }])
+    expect(result.body.skipped).toEqual([{ id: ID.solo, reason: PRECHECK_MESSAGES.startMissing }])
+    expect(statusOf(db, ID.card)).toBe('failed')
+    expect(statusOf(db, ID.solo)).toBe('approved')
+  })
+
+  it('가정 6: 동시 실행으로 요청한 그룹을 다 건너뛰어도 실패로 닫을 항목은 닫는다', async () => {
+    const { db, run } = setup([
+      { id: ID.card, key: 'card', kind: 'home_feed_card', links: ['mission'] },
+      { id: ID.mission, key: 'mission', kind: 'mission', status: 'rejected' },
+      { id: ID.solo, key: 'solo', kind: 'recipe' },
+    ])
+    db.beforeRun = (call) => {
+      if (call.op === 'update' && (call.payload as Row).status === 'preparing') db.item(ID.solo).status = 'preparing' // 다른 요청이 먼저 차지했다
+    }
+    const result = ok(await run([ID.solo]))
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed).toEqual([{ id: ID.card, reason: '연결된 미션이 반려됐어요' }])
+    expect(result.body.skipped).toEqual([{ id: ID.solo, reason: '다른 곳에서 동시에 처리해서 건너뛰었어요' }])
+    expect(statusOf(db, ID.solo)).toBe('preparing') // 다른 요청이 차지한 항목은 건드리지 않는다
+    expect(statusOf(db, ID.card)).toBe('failed')
+  })
+
+  it('가정 6: 실행할 그룹도 실패로 닫을 항목도 없으면 409이고 아무것도 쓰지 않는다', async () => {
+    const { db, run } = setup([
+      { id: ID.solo, key: 'solo', kind: 'recipe', startsAt: null },
+      { id: ID.other, key: 'other', kind: 'mission', status: 'reviewing' },
+    ])
+    const failure = bad(await run([ID.solo]))
+    expect(failure.status).toBe(409)
+    expect(failure.extra?.skipped).toEqual([{ id: ID.solo, reason: PRECHECK_MESSAGES.startMissing }])
+    expect(failure.extra?.excludedCount).toBe(1)
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it('가정 6: 직접 요청한 실패로 닫을 항목을 그사이 닫지 못해도 응답에 나온다(409의 skipped)', async () => {
     const { db, run } = setup([
       { id: ID.card, key: 'card', kind: 'home_feed_card', links: ['mission'] },
       { id: ID.mission, key: 'mission', kind: 'mission', status: 'rejected' },
     ])
-    expect(bad(await run([ID.card])).status).toBe(409)
-    expect(statusOf(db, ID.card)).toBe('approved')
-    expect(nonSelect(db)).toEqual([])
+    db.beforeRun = (call) => {
+      if (call.op === 'update' && (call.payload as Row).status === 'failed') db.item(ID.card).status = 'scheduled' // 닫기 직전에 다른 곳에서 바꿨다
+    }
+    const failure = bad(await run([ID.card]))
+    expect(failure.status).toBe(409)
+    expect(failure.extra?.skipped).toEqual([{ id: ID.card, reason: '이미 다른 곳에서 처리한 항목이에요' }])
+    expect(statusOf(db, ID.card)).toBe('scheduled')
+    expect(db.decisions()).toEqual([])
   })
 
   it('실패로 닫는 중 DB 오류가 나면 그 항목은 건너뛴 항목으로 알리고 원문은 싣지 않는다', async () => {

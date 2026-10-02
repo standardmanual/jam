@@ -11,7 +11,8 @@
  *   그룹의 일부만 차지했으면(동시 실행) 차지한 항목을 `approved`로 되돌리고 그 그룹을 건너뛴다.
  * - 연결 그룹은 함께 예약한다. 요청에 그룹의 예약할 항목이 다 있지 않으면 그 그룹은 건너뛴다(대상이 만든 ID를 채울 수 없다).
  * - 그룹의 검증·생성 중 하나라도 실패하면 이번에 만든 자원을 역순으로 지우고 그룹 전체를 「실패」로 둔다. 다른 그룹은 계속한다.
- * - 실패로 닫을 항목(반려·취소·실패한 대상을 가리키는 항목)은 요청에 없어도 실행 때 함께 `failed`로 닫는다. 실행한 그룹이 없으면 닫지 않는다.
+ * - 실패로 닫을 항목(반려·취소·실패한 대상을 가리키는 항목)은 요청에 없어도 실행 때 함께 `failed`로 닫는다. 실행할 그룹이 없어도 닫는다.
+ *   예약한 항목도 실패로 닫은 항목도 없을 때만 409다(티켓 20261002_1255 가정 6).
  * - 자원을 만든 뒤 결정 기록 insert가 실패하면 자원과 상태는 그대로 두고 `decisionLogFailed`로 알린다(되돌리면 자원을 지워야 한다).
  * - 응답·결정 기록·슬랙에는 핸들러의 `reason`(쉬운 문장)만 싣고, `detail`과 DB 오류 원문은 서버 로그에만 남긴다.
  * - 시험 묶음은 검증까지 하고 자원은 만들지 않는다. 성공한 항목의 `created_resource`는 `{ "sample": true }`다(§8.8).
@@ -385,7 +386,8 @@ async function releaseClaim(ctx: RunContext, itemIds: string[]) {
 
 /**
  * 실행 요청(`{ itemIds }`). `itemIds`는 요약창이 보인 「예약할 항목」이다. 서버는 사전 점검을 다시 해서 지금도 예약할 수 있는 항목만 실행하고,
- * 나머지 요청 항목은 `skipped`로 알린다. 실행한 그룹이 하나도 없으면 409다.
+ * 나머지 요청 항목은 `skipped`로 알린다. 실행할 그룹이 없어도 실패로 닫을 항목은 닫아 `failed`에 싣는다.
+ * 예약한 항목도 실패로 닫은 항목도 하나도 없으면 409다.
  */
 export async function executeBundle(
   service: ServiceClient,
@@ -427,36 +429,35 @@ export async function executeBundle(
     if (wanted.length < group.executeIds.length) skipped.push(...wanted.map((id) => ({ id, reason: MESSAGES.partialGroup })))
     else candidates.push(group)
   }
-  const nothingToRun = () => fail(409, MESSAGES.nothingToRun, { skipped, excludedCount: countExcluded(precheck, skipped) })
 
-  // 선점: 「승인됨 → 준비중」을 조건부로 차지한다. 하나도 차지하지 못하면 409다.
+  // 선점: 「승인됨 → 준비중」을 조건부로 차지한다. 선점할 항목이 없으면 이 단계를 건너뛴다(실패로 닫기는 아래에서 그대로 탄다).
   const claimIds = candidates.flatMap((group) => group.executeIds)
-  if (claimIds.length === 0) return nothingToRun()
-  const claim = await service
-    .from('ops_bundle_items')
-    .update({ status: 'preparing', updated_at: ctx.stamp() })
-    .eq('bundle_id', bundleId)
-    .eq('status', 'approved')
-    .in('id', claimIds)
-    .select('id')
-  if (claim.error) {
-    logError('선점 실패', claim.error)
-    return fail(500, MESSAGES.executeFailed)
-  }
-  const claimed = new Set((claim.data ?? []).map((row) => row.id))
-
-  // 그룹 일부만 차지했으면(동시 실행) 차지한 항목을 되돌리고 그 그룹을 건너뛴다.
   const toRun: PrecheckGroup[] = []
-  for (const group of candidates) {
-    const mine = group.executeIds.filter((id) => claimed.has(id))
-    if (mine.length === group.executeIds.length) {
-      toRun.push(group)
-      continue
+  if (claimIds.length > 0) {
+    const claim = await service
+      .from('ops_bundle_items')
+      .update({ status: 'preparing', updated_at: ctx.stamp() })
+      .eq('bundle_id', bundleId)
+      .eq('status', 'approved')
+      .in('id', claimIds)
+      .select('id')
+    if (claim.error) {
+      logError('선점 실패', claim.error)
+      return fail(500, MESSAGES.executeFailed)
     }
-    if (mine.length > 0) await releaseClaim(ctx, mine)
-    skipped.push(...group.executeIds.map((id) => ({ id, reason: MESSAGES.concurrent })))
+    const claimed = new Set((claim.data ?? []).map((row) => row.id))
+
+    // 그룹 일부만 차지했으면(동시 실행) 차지한 항목을 되돌리고 그 그룹을 건너뛴다.
+    for (const group of candidates) {
+      const mine = group.executeIds.filter((id) => claimed.has(id))
+      if (mine.length === group.executeIds.length) {
+        toRun.push(group)
+        continue
+      }
+      if (mine.length > 0) await releaseClaim(ctx, mine)
+      skipped.push(...group.executeIds.map((id) => ({ id, reason: MESSAGES.concurrent })))
+    }
   }
-  if (toRun.length === 0) return nothingToRun()
 
   const scheduled: string[] = []
   const failed: ItemReason[] = []
@@ -476,7 +477,7 @@ export async function executeBundle(
     if (closed.error) logError('실패 상태 변경 실패(항목이 준비중으로 남아 있을 수 있어요)', closed.error)
   }
 
-  // 실패로 닫을 항목: 요청에 없어도 함께 닫는다(§8.2). 그사이 바뀌어 닫지 못한 항목은 건너뛴 항목이다.
+  // 실패로 닫을 항목: 요청에 없어도 함께 닫는다(§8.2). 실행한 그룹이 없어도 이 블록을 탄다. 그사이 바뀌어 닫지 못한 항목은 건너뛴 항목이다.
   if (precheck.failClose.length > 0) {
     const closing = await service
       .from('ops_bundle_items')
@@ -491,6 +492,11 @@ export async function executeBundle(
       if (closedIds.has(entry.id)) failed.push({ id: entry.id, reason: cleanReason(entry.reason) })
       else skipped.push({ id: entry.id, reason: closing.error ? MESSAGES.closeFailed : MESSAGES.alreadyHandled })
     }
+  }
+
+  // 예약한 항목도 실패로 닫은 항목도 없으면 409다(쓴 것이 없으니 결정 기록도 남기지 않는다).
+  if (scheduled.length === 0 && failed.length === 0) {
+    return fail(409, MESSAGES.nothingToRun, { skipped, excludedCount: countExcluded(precheck, skipped) })
   }
 
   // 결정 기록: 예약된 항목마다 `execute`, 실패한 항목마다 `fail`(사유 필수), 같은 `batch_id`다.
