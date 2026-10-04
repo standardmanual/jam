@@ -9,7 +9,7 @@
  * 실행: cd jam-web && npx vitest run src/lib/ambient-drop/__tests__/schedule-store.test.ts
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { AMBIENT_SCHEDULE_LATE_WINDOW_MS, AMBIENT_SCHEDULE_STALLED_AFTER_MS } from '../scheduleSpec'
+import { AMBIENT_SCHEDULE_LATE_WINDOW_MS, AMBIENT_SCHEDULE_STALLED_AFTER_MS, parseAmbientDropScheduleInput } from '../scheduleSpec'
 import {
   cancelScheduledAmbientDrop,
   claimDueAmbientDropSchedules,
@@ -19,6 +19,7 @@ import {
   markMissedAmbientDropSchedules,
   rescheduleAmbientDrop,
 } from '../scheduleStore'
+import { loadScheduleTargets } from '../scheduleTargets'
 import { createFakeDb, uuid, type FakeDb, type Row } from './schedule-test-db'
 import {
   BOOK_ENDING,
@@ -257,6 +258,121 @@ describe('createAmbientDropSchedule — 예정 시각 기준 노출 판정', () 
     const result = await createAmbientDropSchedule(sb(), { ...CATEGORY_ITEMS, poi_category: 'park' }, null, NOW)
     expect(result).toMatchObject({ ok: false, status: 400 })
     expect(!result.ok && result.error).toContain('놓을 수 있는 지점이 없어요')
+  })
+})
+
+describe('미룬 컬렉션(deferredCollectionIds) — 운영툴이 연결로 채운 컬렉션의 등록 판정 미루기 (티켓 20261004_2242)', () => {
+  const FUTURE_BOOK = uuid(7777)
+  const EMPTY_BOOK = uuid(7778)
+  const bookReads = () => db.calls.filter((c) => c.table === 'item_books' || c.table === 'badges')
+  const specOf = (body: Record<string, unknown>) => {
+    const parsed = parseAmbientDropScheduleInput(body, NOW)
+    if (!parsed.ok) throw new Error(parsed.error)
+    return parsed.spec
+  }
+
+  beforeEach(() => {
+    db.tables.item_books.push({ id: EMPTY_BOOK, is_active: true, valid_from: null, valid_until: null })
+  })
+
+  it('미룬 ID만 가리키면 DB에 없거나 비어 있어도 등록되고, 저장되는 collection_ids는 미룬 ID를 포함한 전체다', async () => {
+    const result = await createAmbientDropSchedule(sb(), { ...LIST_COLLECTIONS, collection_ids: [FUTURE_BOOK, EMPTY_BOOK] }, 'admin-1', NOW, {
+      deferredCollectionIds: [FUTURE_BOOK, EMPTY_BOOK],
+    })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.schedule.collection_ids).toEqual([FUTURE_BOOK, EMPTY_BOOK])
+  })
+
+  it('미룬 ID만 가리킬 때 컬렉션·배지 표를 조회하지 않는다 — 남은 목록이 비어도 「전체」로 읽지 않는다', async () => {
+    const targets = await loadScheduleTargets(db.client as Parameters<typeof loadScheduleTargets>[0], specOf({ ...LIST_COLLECTIONS, collection_ids: [FUTURE_BOOK, EMPTY_BOOK] }), AT_ISO, {
+      deferredCollectionIds: [FUTURE_BOOK, EMPTY_BOOK],
+    })
+    expect(bookReads()).toEqual([])
+    expect(targets.reason).toBeUndefined()
+    expect(targets.badgePool).toEqual([])
+    expect(targets.effectiveCollectionIds).toEqual([])
+    expect(targets.excluded.collections).toEqual([])
+  })
+
+  it('미루지 않은 컬렉션은 그대로 판정한다 — 직접 적은 컬렉션이 노출 중이 아니면 400이다', async () => {
+    const result = await createAmbientDropSchedule(sb(), { ...LIST_COLLECTIONS, collection_ids: [BOOK_ENDING, FUTURE_BOOK] }, null, NOW, {
+      deferredCollectionIds: [FUTURE_BOOK],
+    })
+    expect(result).toMatchObject({ ok: false, status: 400 })
+    expect(!result.ok && result.error).toContain('노출 중이 아닌 컬렉션 1건')
+    expect(!result.ok && result.error).not.toContain('노출 중인 컬렉션이 없어요')
+    expect(db.writesTo('ambient_drop_schedules')).toEqual([])
+  })
+
+  it('직접 적은 컬렉션과 미룬 컬렉션이 섞이면 직접 쪽만 읽고, 후보 풀은 직접 쪽에서 만든다', async () => {
+    const targets = await loadScheduleTargets(db.client as Parameters<typeof loadScheduleTargets>[0], specOf({ ...LIST_COLLECTIONS, collection_ids: [BOOK_LIVE, FUTURE_BOOK] }), AT_ISO, {
+      deferredCollectionIds: [FUTURE_BOOK],
+    })
+    expect(targets.reason).toBeUndefined()
+    expect(targets.effectiveCollectionIds).toEqual([BOOK_LIVE])
+    expect(targets.badgePool.map((b) => b.id)).toEqual([B_LIVE])
+    expect(targets.excluded.collections).toEqual([])
+    // 미룬 ID는 컬렉션·배지 조회 조건에 실리지 않는다
+    expect(JSON.stringify(db.calls)).not.toContain(FUTURE_BOOK)
+  })
+
+  it('직접 적은 컬렉션만 노출 중이 아니고 미룬 컬렉션이 있으면 사유(reason)는 없고 걸린 컬렉션만 excluded에 남는다', async () => {
+    const targets = await loadScheduleTargets(db.client as Parameters<typeof loadScheduleTargets>[0], specOf({ ...LIST_COLLECTIONS, collection_ids: [BOOK_ENDING, FUTURE_BOOK] }), AT_ISO, {
+      deferredCollectionIds: [FUTURE_BOOK],
+    })
+    expect(targets.reason).toBeUndefined()
+    expect(targets.excluded.collections).toEqual([{ id: BOOK_ENDING, reason: 'collection_not_exposed' }])
+    expect(targets.effectiveCollectionIds).toEqual([])
+    expect(targets.badgePool).toEqual([])
+  })
+
+  it('직접 적은 컬렉션의 후보 아이템이 없어도 미룬 컬렉션이 있으면 「후보 아이템 없음」을 내지 않는다. 미룬 컬렉션이 없으면 지금처럼 낸다', async () => {
+    const body = { ...LIST_COLLECTIONS, collection_ids: [EMPTY_BOOK, FUTURE_BOOK] }
+    const deferred = await loadScheduleTargets(db.client as Parameters<typeof loadScheduleTargets>[0], specOf(body), AT_ISO, { deferredCollectionIds: [FUTURE_BOOK] })
+    expect(deferred.reason).toBeUndefined()
+    const plain = await loadScheduleTargets(db.client as Parameters<typeof loadScheduleTargets>[0], specOf(body), AT_ISO)
+    expect(plain.reason).toBe('no_candidate_badges')
+  })
+
+  it('지점 쪽 판정은 그대로다 — 운영 중인 지점이 없으면 미룬 컬렉션이 있어도 no_eligible_poi다', async () => {
+    const targets = await loadScheduleTargets(db.client as Parameters<typeof loadScheduleTargets>[0], specOf({ ...LIST_COLLECTIONS, poi_ids: [P_INACTIVE], collection_ids: [FUTURE_BOOK] }), AT_ISO, {
+      deferredCollectionIds: [FUTURE_BOOK],
+    })
+    expect(targets.reason).toBe('no_eligible_poi')
+    expect(targets.excluded.pois).toEqual([{ id: P_INACTIVE, reason: 'poi_inactive' }])
+  })
+
+  it('미룬 ID는 소문자로 견준다(파서가 spec의 ID를 소문자로 만든다)', async () => {
+    const targets = await loadScheduleTargets(db.client as Parameters<typeof loadScheduleTargets>[0], specOf({ ...LIST_COLLECTIONS, collection_ids: [FUTURE_BOOK] }), AT_ISO, {
+      deferredCollectionIds: [FUTURE_BOOK.toUpperCase()],
+    })
+    expect(targets.reason).toBeUndefined()
+    expect(bookReads()).toEqual([])
+  })
+
+  it('인자를 넘기지 않거나 빈 목록이면 지금과 같다 — DB에 없는 컬렉션은 걸린다', async () => {
+    const body = { ...LIST_COLLECTIONS, collection_ids: [FUTURE_BOOK] }
+    const withoutOptions = await createAmbientDropSchedule(sb(), body, null, NOW)
+    expect(withoutOptions).toMatchObject({ ok: false, status: 400 })
+    const emptyOptions = await createAmbientDropSchedule(sb(), body, null, NOW, { deferredCollectionIds: [] })
+    expect(emptyOptions).toMatchObject({ ok: false, status: 400 })
+    // 컬렉션 선택이 아닌 예약에서는 미룬 ID가 있어도 아무 영향이 없다
+    const items = await createAmbientDropSchedule(sb(), LIST_ITEMS, null, NOW, { deferredCollectionIds: [FUTURE_BOOK] })
+    expect(items.ok).toBe(true)
+  })
+
+  it('미룬 ID가 예약 내용에 없으면 영향이 없다 — 직접 적은 노출 중 컬렉션만 있으면 지금처럼 통과하고 판정한다', async () => {
+    const result = await createAmbientDropSchedule(sb(), LIST_COLLECTIONS, null, NOW, { deferredCollectionIds: [FUTURE_BOOK] })
+    expect(result.ok).toBe(true)
+    expect(bookReads().length).toBeGreaterThan(0)
+  })
+
+  it('어드민 시각 수정은 미루지 않는다 — 빈 컬렉션을 가리키는 예약은 아이템을 채우기 전까지 거절된다', async () => {
+    insertSchedule({ item_mode: 'collections', badge_ids: [], collection_ids: [EMPTY_BOOK] })
+    const result = await rescheduleAmbientDrop(sb(), SCHEDULE_ID, '2026-10-06T00:00:00.000Z', NOW)
+    expect(result).toMatchObject({ ok: false, status: 400 })
+    expect(!result.ok && result.error).toContain('놓을 수 있는 아이템이 없어요')
   })
 })
 

@@ -11,6 +11,8 @@
  * - `missions`: 같은 범위에 걸치는 미션(일정표용 구성에만 쓰이고 어떤 신호도 기대지 않는다).
  * - `ops_bundles`·`ops_bundle_items`: 묶음과 항목. 제출 원본(`raw`, 최대 1MB)은 뺀 항목을 읽는 데만 쓰이므로 끝나지 않은 묶음의
  *   것만, 묶음 몇 개씩 따로 받는다(받은 기획함 목록이 원본을 가져오지 않는 것과 같은 이유).
+ * - `badges`: 「예약됨」·「게재중」 컬렉션 항목이 만든 컬렉션의 아이템 배지 수(`item_book_id`만 읽는다, 티켓 20261004_2242). 「비어 있는 컨텐츠」의 「아이템이 없는 컬렉션」 검사에 쓴다.
+ *   대상 컬렉션 ID가 없으면 조회하지 않는다. 아이템 배지는 `type = 'item'`이고 삭제되지 않은 것이다(드랍 대상과 같은 기준).
  * - 행동 5종 건수: 최근 7일과 직전 기간의 건수만 센다(`head: true`, 행을 가져오지 않는다). 믹스 시도·유저 드랍·픽업·미션 완료·
  *   컬렉션 완성의 전체 유저 원시 건수다.
  * - `ops_rules`의 신호 행(`overrides.ts`): S7(운영 설정)에서 바꾼 기준값만 있다(티켓 20260930_1459 조각 C). 신호 계산에 얹고, 카드·미션을 읽는 범위
@@ -22,6 +24,7 @@
  * `sourceErrors`에 담는다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { IN_CHUNK_SIZE } from '@/lib/db/fetchAllRows'
 import type { Json } from '@/types/database.generated'
 import { computeBundleStatus, tabOfBundleStage } from '@/lib/admin/opsInbox/bundleStatus'
 import { mondayOfWeek } from '@/lib/admin/cronSchedule'
@@ -40,6 +43,7 @@ import type {
   SignalMissionInput,
 } from '@/lib/admin/opsSignals/composition'
 import { loadSignalOverrides } from '@/lib/admin/opsSignals/overrides'
+import { collectionBookIdsToCheck } from '@/lib/admin/opsSignals/statusRules'
 import { resolveThresholdValues } from '@/lib/admin/opsSignals/thresholds'
 
 const FETCH_PAGE_SIZE = 1000
@@ -49,8 +53,11 @@ const DAY_MS = 24 * 3600_000
 
 type Supabase = ReturnType<typeof createServiceClient>
 
-/** 읽지 못한 원천 이름. `bundle_raw`는 묶음은 읽었지만 제출 원본을 읽지 못한 경우다(뺀 항목 목록만 못 읽는다). */
-export type OpsSignalSource = 'cards' | 'missions' | 'bundles' | 'bundle_raw' | 'actions'
+/**
+ * 읽지 못한 원천 이름. `bundle_raw`는 묶음은 읽었지만 제출 원본을 읽지 못한 경우다(뺀 항목 목록만 못 읽는다).
+ * `collection_items`는 컬렉션별 아이템 배지 수를 읽지 못한 경우다(「비어 있는 컨텐츠」 전체가 확인하지 못한 상태가 된다).
+ */
+export type OpsSignalSource = 'cards' | 'missions' | 'bundles' | 'bundle_raw' | 'collection_items' | 'actions'
 
 export interface LoadOpsSignalsOptions {
   /** 계산 기준 시각. 기본은 지금이다. */
@@ -173,11 +180,12 @@ interface ItemRow {
   edited: Json | null
   format_errors: Json
   updated_at: string
+  created_resource: Json | null
 }
 
 const BUNDLE_COLUMNS = 'id, week, is_sample, received_at, format_errors'
 const ITEM_COLUMNS =
-  'id, bundle_id, position, item_key, kind, pattern_no, starts_at, ends_at, status, original, edited, format_errors, updated_at'
+  'id, bundle_id, position, item_key, kind, pattern_no, starts_at, ends_at, status, original, edited, format_errors, updated_at, created_resource'
 
 function toItemInput(row: ItemRow): SignalBundleItemInput {
   return {
@@ -193,6 +201,7 @@ function toItemInput(row: ItemRow): SignalBundleItemInput {
     edited: row.edited,
     formatErrors: stringList(row.format_errors),
     updatedAt: row.updated_at,
+    createdResource: row.created_resource ?? null,
   }
 }
 
@@ -242,6 +251,34 @@ async function attachOpenBundleRaw(supabase: Supabase, bundles: SignalBundleInpu
       if (bundle) bundle.raw = row.raw
     }
   }
+}
+
+// ── 컬렉션 아이템 수 ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 「예약됨」·「게재중」 컬렉션 항목이 만든 컬렉션마다 아이템 배지 수를 센다. 아이템 배지는 `type = 'item'`이고 삭제되지 않은 것이다.
+ * 대상 컬렉션이 없으면 조회하지 않고 빈 지도를 돌려준다. 배지가 없는 컬렉션은 지도에 없다(호출부가 0개로 읽는다). 하나라도 읽지 못하면 던진다.
+ */
+async function loadCollectionItemCounts(supabase: Supabase, bundles: readonly SignalBundleInput[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>()
+  const bookIds = collectionBookIdsToCheck(bundles)
+  for (let start = 0; start < bookIds.length; start += IN_CHUNK_SIZE) {
+    const chunk = bookIds.slice(start, start + IN_CHUNK_SIZE)
+    const rows = await fetchAllPages<{ id: string; item_book_id: string | null }>((from, to) =>
+      supabase
+        .from('badges')
+        .select('id, item_book_id')
+        .eq('type', 'item')
+        .is('deleted_at', null)
+        .in('item_book_id', chunk)
+        .order('id')
+        .range(from, to)
+    )
+    for (const row of rows) {
+      if (row.item_book_id) counts.set(row.item_book_id, (counts.get(row.item_book_id) ?? 0) + 1)
+    }
+  }
+  return counts
 }
 
 // ── 행동 건수 ────────────────────────────────────────────────────────────────────────────────────
@@ -342,6 +379,9 @@ export async function loadOpsSignals(options: LoadOpsSignalsOptions = {}): Promi
     await settle('bundle_raw', () => attachOpenBundleRaw(supabase, bundles))
   }
 
-  const input: ComputeOpsSignalsInput = { cards, missions, bundles, actions }
+  // 묶음을 읽어야 대상 컬렉션을 알 수 있다. 묶음을 못 읽었으면 이 데이터도 못 읽은 것이다(그 사유는 `bundles`에 있다).
+  const collectionItemCounts = bundles ? await settle('collection_items', () => loadCollectionItemCounts(supabase, bundles)) : null
+
+  const input: ComputeOpsSignalsInput = { cards, missions, bundles, actions, collectionItemCounts }
   return { ...computeOpsSignals(input, { now, includeSample, thresholds: overrides }), sourceErrors }
 }

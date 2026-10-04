@@ -21,7 +21,8 @@
  *   배지 → 레시피 칸은 만든 레시피 ID로 덮인다, 배지가 실패하면 그룹이 되돌려지고 카드·미션이 실패하면 배지도 역순으로 되돌려진다, 사전 점검 두 규칙, 형식·등록 전 검사 실패, 원문 비노출
  * - 실제 레지스트리(⑩-a, 티켓 20261004_2039): 컬렉션이 공개 전 `item_books` 행으로 예약되고 `created_resource.item_book_id`가 만들기 전에 적힌다, 카드의 `item_book_id`·컬렉션의 `reward_badge_id`가 만든 ID로 채워진다,
  *   컬렉션 보상 배지는 발급 조건이 없어도 예약되고 연결이 없으면 형식 오류다, 컬렉션이나 카드가 실패하면 그룹이 역순(카드→컬렉션→배지)으로 되돌려진다, 사전 점검 두 규칙, 이름 중복·트라이브·보상 배지 검사 실패, 원문 비노출.
- *   새 컬렉션을 가리키는 드랍은 ⑩-b 전까지 드랍 검사에서 실패한다
+ * - ⑩-b(티켓 20261004_2242): 같은 실행에서 만들 컬렉션을 가리키는 드랍과 이전 실행이 만든 컬렉션을 가리키는 드랍이 대상 판정에 그 컬렉션 ID를 미룰 ID로 넘기고 함께 예약된다(드랍 판정 자체는 mock),
+ *   드랍이 연결된 컬렉션보다 먼저 공개되면 사전 점검이 막는다
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -1775,26 +1776,95 @@ describe('실제 레지스트리: 드랍 예약 핸들러 (티켓 20261002_2306)
     expect(writes(db, 'ambient_drop_schedules', 'insert')).toHaveLength(1)
   })
 
-  it('같은 묶음의 컬렉션 항목과 연결된 드랍은 ⑩-b 전까지 드랍 검사에서 실패한다: 만들 컬렉션은 등록 전 검증 때 아직 DB에 없다. 컬렉션도 함께 실패하고 아무것도 만들지 않는다 (티켓 20261004_2039 가정 1)', async () => {
-    const { db, run } = setupReal([
-      drop({ links: ['collection'], resource: { poi_ids: [POI], per_poi_count: 2 } }),
-      { id: COLLECTION_ITEM, key: 'collection', kind: 'collection_launch', original: { copy: { name: '가을 컬렉션', description: '가을 길에서 모아요.' } } },
-    ])
-    // 예정 시각 기준 대상 판정(`loadScheduleTargets`)은 mock이라, 실제 판정처럼 DB에 없는 컬렉션은 노출 중이 아닌 것으로 돌려준다.
-    h.loadScheduleTargets.mockImplementation(async (_service: unknown, spec: { collectionIds?: string[] }) => {
-      const missing = (spec.collectionIds ?? []).filter((id) => !db.tables.item_books.some((row) => row.id === id))
-      return missing.length === 0 ? targetsOk() : { ...targetsOk(), excluded: { pois: [], badges: [], collections: missing.map((id) => ({ id, reason: 'collection_not_exposed' as const })) } }
+  describe('연결 컬렉션을 가리키는 드랍 (티켓 20261004_2242 ⑩-b)', () => {
+    const collectionItem = (over: Partial<ItemSpec> = {}): ItemSpec => ({
+      id: COLLECTION_ITEM,
+      key: 'collection',
+      kind: 'collection_launch',
+      original: { copy: { name: '가을 컬렉션', description: '가을 길에서 모아요.' } },
+      ...over,
     })
-    const result = ok(await run([DROP, COLLECTION_ITEM]))
+    const linkedDrop = (over: Partial<ItemSpec> = {}) => drop({ links: ['collection'], resource: { poi_ids: [POI], per_poi_count: 2 }, ...over })
+    /** `loadScheduleTargets` mock이 받은 마지막 인자의 미룰 ID 목록. 판정은 mock이라 넘긴 값만 본다. */
+    const deferredArgs = () => h.loadScheduleTargets.mock.calls.map((args) => (args[3] as { deferredCollectionIds?: string[] } | undefined)?.deferredCollectionIds)
 
-    expect(result.body.scheduled).toEqual([])
-    expect(result.body.failed.find((entry) => entry.id === DROP)?.reason).toBe(PROBLEM)
-    expect(result.body.failed.find((entry) => entry.id === COLLECTION_ITEM)?.reason).toBe(GROUP_FAILED)
-    expect(db.tables.item_books).toEqual([])
-    expect(db.tables.ambient_drop_schedules).toEqual([])
-    expect(db.calls.filter((call) => ['item_books', 'ambient_drop_schedules'].includes(call.table) && call.op !== 'select')).toEqual([])
-    expect(statusOf(db, DROP)).toBe('failed')
-    expect(statusOf(db, COLLECTION_ITEM)).toBe('failed')
+    it('같은 묶음의 컬렉션 항목과 연결된 드랍은 컬렉션과 함께 예약된다: 만들 컬렉션 ID를 미룰 ID로 넘기고, 저장된 collection_ids에 그 ID가 들어 있다', async () => {
+      const { db, run } = setupReal([linkedDrop(), collectionItem()])
+      const result = ok(await run([DROP, COLLECTION_ITEM]))
+
+      expect(result.body.failed).toEqual([])
+      expect([...result.body.scheduled].sort()).toEqual([DROP, COLLECTION_ITEM].sort())
+      expect(db.tables.item_books).toHaveLength(1)
+      expect(db.tables.ambient_drop_schedules).toHaveLength(1)
+      const bookId = (db.item(COLLECTION_ITEM).created_resource as { item_book_id: string }).item_book_id
+      expect(db.tables.item_books[0].id).toBe(bookId)
+      expect(db.tables.ambient_drop_schedules[0]).toMatchObject({ status: 'scheduled', item_mode: 'collections', collection_ids: [bookId] })
+      // 컬렉션이 드랍보다 먼저 만들어진다(그룹 생성 순서).
+      const inserts = db.calls.filter((call) => call.op === 'insert' && (call.table === 'item_books' || call.table === 'ambient_drop_schedules')).map((call) => call.table)
+      expect(inserts).toEqual(['item_books', 'ambient_drop_schedules'])
+      // 등록 전 검사(`check`)와 만들기(`create`)가 모두 만들 컬렉션 ID를 미룰 ID로 넘겼다.
+      expect(h.loadScheduleTargets).toHaveBeenCalled()
+      for (const deferred of deferredArgs()) expect(deferred).toEqual([bookId])
+      expect(statusOf(db, DROP)).toBe('scheduled')
+      expect(statusOf(db, COLLECTION_ITEM)).toBe('scheduled')
+    })
+
+    it('이전 실행이 만든 컬렉션을 가리키는 드랍도 그 컬렉션 ID(created_resource)를 미룰 ID로 넘기고 예약된다', async () => {
+      const previousBook = uid(60)
+      const { db, run } = setupReal([
+        linkedDrop(),
+        collectionItem({ status: 'scheduled', createdResource: { item_book_id: previousBook } }),
+      ])
+      const result = ok(await run([DROP]))
+
+      expect(result.body.failed).toEqual([])
+      expect(result.body.scheduled).toEqual([DROP])
+      expect(db.tables.ambient_drop_schedules).toHaveLength(1)
+      expect(db.tables.ambient_drop_schedules[0]).toMatchObject({ collection_ids: [previousBook] })
+      for (const deferred of deferredArgs()) expect(deferred).toEqual([previousBook])
+      // 이미 예약된 컬렉션은 건드리지 않는다.
+      expect(db.calls.filter((call) => call.table === 'item_books' && call.op !== 'select')).toEqual([])
+    })
+
+    it('직접 적은 컬렉션은 미룰 ID에 들지 않고, 연결로 채운 컬렉션만 넘어간다', async () => {
+      const { db, run } = setupReal([drop({ links: ['collection'] }), collectionItem()])
+      const result = ok(await run([DROP, COLLECTION_ITEM]))
+
+      expect(result.body.failed).toEqual([])
+      const bookId = (db.item(COLLECTION_ITEM).created_resource as { item_book_id: string }).item_book_id
+      expect(db.tables.ambient_drop_schedules[0].collection_ids).toEqual([BOOK, bookId])
+      for (const deferred of deferredArgs()) expect(deferred).toEqual([bookId])
+    })
+
+    it('연결 컬렉션이 없는 드랍은 미룰 ID 없이 판정한다', async () => {
+      const { run } = setupReal([drop()])
+      ok(await run([DROP]))
+      for (const deferred of deferredArgs()) expect(deferred ?? []).toEqual([])
+    })
+
+    it('드랍 판정이 직접 적은 컬렉션 때문에 실패하면 컬렉션도 함께 실패하고 아무것도 만들지 않는다', async () => {
+      h.loadScheduleTargets.mockResolvedValue(NOT_EXPOSED)
+      const { db, run } = setupReal([drop({ links: ['collection'] }), collectionItem()])
+      const result = ok(await run([DROP, COLLECTION_ITEM]))
+
+      expect(result.body.scheduled).toEqual([])
+      expect(result.body.failed.find((entry) => entry.id === DROP)?.reason).toBe(PROBLEM)
+      expect(result.body.failed.find((entry) => entry.id === COLLECTION_ITEM)?.reason).toBe(GROUP_FAILED)
+      expect(db.tables.item_books).toEqual([])
+      expect(db.tables.ambient_drop_schedules).toEqual([])
+      expect(db.calls.filter((call) => ['item_books', 'ambient_drop_schedules'].includes(call.table) && call.op !== 'select')).toEqual([])
+    })
+
+    it('드랍이 연결된 컬렉션보다 먼저 공개되면 사전 점검이 막고 아무것도 만들지 않는다', async () => {
+      const { db, run } = setupReal([linkedDrop({ startsAt: '2026-10-09T00:00:00.000Z' }), collectionItem()])
+      const result = bad(await run([DROP, COLLECTION_ITEM]))
+
+      expect(result.status).toBe(409)
+      expect(db.calls.filter((call) => call.op !== 'select' && ['item_books', 'ambient_drop_schedules'].includes(call.table))).toEqual([])
+      const items = [DROP, COLLECTION_ITEM].map((id) => db.item(id))
+      const precheck = precheckBundle(items as never, { now: NOW, handlers: EXECUTE_HANDLERS })
+      expect(precheck.blocked.find((entry) => entry.id === DROP)?.reasons).toContain(PRECHECK_MESSAGES.beforeLinkedCollection)
+    })
   })
 })
 
@@ -1994,7 +2064,7 @@ describe('실제 레지스트리: 컬렉션 핸들러 (티켓 20261004_2039)', (
 
     expect(failure.status).toBe(409)
     expect(failure.extra?.skipped).toEqual([
-      { id: ID.card, reason: PRECHECK_MESSAGES.cardBeforeCollection },
+      { id: ID.card, reason: PRECHECK_MESSAGES.beforeLinkedCollection },
       { id: BOOK_ITEM, reason: PRECHECK_MESSAGES.groupBlocked },
     ])
     expect(nonSelect(db)).toEqual([])

@@ -8,6 +8,7 @@
  * - 제출 원본(`raw`)은 끝나지 않은 묶음의 것만 따로 받는다
  * - 행동 건수는 행을 가져오지 않고(`head`) 센다
  * - 원천 하나가 실패하면 그 원천에 기대는 신호만 `load_failed`다
+ * - 「예약됨」·「게재중」 컬렉션 항목이 만든 컬렉션의 아이템 배지 수를 `badges`에서 읽는다(티켓 20261004_2242). 대상이 없으면 조회하지 않고, 읽지 못하면 「비어 있는 컨텐츠」가 `load_failed`다
  */
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 
@@ -89,6 +90,10 @@ const h = vi.hoisted(() => {
         const c = compare(row[col], val)
         return c !== null && c < 0
       })
+    }
+    is(col: string, val: unknown) {
+      this.note('is')
+      return this.addFilter(`is:${col}:${val}`, (row) => (row[col] ?? null) === val)
     }
     in(col: string, values: unknown[]) {
       this.note('in')
@@ -203,6 +208,7 @@ function itemRow(id: string, bundleId: string, over: Record<string, unknown> = {
     edited: null,
     format_errors: [],
     updated_at: kst('2026-10-01', '09:00'),
+    created_resource: null,
     ...over,
   }
 }
@@ -231,6 +237,7 @@ beforeEach(() => {
     poi_drops: [],
     user_mission_completions: [],
     user_item_book_completions: [],
+    badges: [],
   }
   h.state.errors = {}
   h.state.errorWhen = null
@@ -543,6 +550,137 @@ describe('loadOpsSignals — 원천 하나가 실패하면 그 원천에 기대�
     h.state.errors.today_cards = '시간 초과'
     await loadOpsSignals({ now: NOW })
     expect(console.error).toHaveBeenCalled()
+  })
+})
+
+describe('loadOpsSignals — 아이템이 없는 컬렉션 (티켓 20261004_2242)', () => {
+  const BOOK = '5b0c7e92-1d34-4f6a-8a5e-2c9d1e7f4b60'
+  const OTHER_BOOK = '7a1c0d3e-9b2f-4c5d-8e6a-1f2b3c4d5e6f'
+  const WRITE = /\.(insert|update|upsert|delete)$/
+  const bookItem = (id: string, bookId: string | null, over: Record<string, unknown> = {}) =>
+    itemRow(id, 'b1', {
+      kind: 'collection_launch',
+      status: 'scheduled',
+      starts_at: kst('2026-10-05', '09:00'),
+      original: { copy: { name: `컬렉션 ${id}` } },
+      created_resource: bookId ? { item_book_id: bookId } : null,
+      ...over,
+    })
+  const itemBadge = (id: string, bookId: string, over: Record<string, unknown> = {}) => ({ id, type: 'item', deleted_at: null, item_book_id: bookId, ...over })
+  const emptyMessages = (result: Awaited<ReturnType<typeof loadOpsSignals>>) =>
+    signal(result, 'empty_content').results.map((entry) => entry.message).filter((message) => message.includes('아이템이 없어요'))
+  const badgeSelects = () => h.state.selects.filter((entry) => entry.table === 'badges')
+
+  beforeEach(() => {
+    h.state.tables.ops_bundles = [bundleRow('b1')]
+  })
+
+  it('항목의 created_resource 칸을 함께 읽는다', async () => {
+    h.state.tables.ops_bundle_items = [bookItem('i1', BOOK)]
+    await loadOpsSignals({ now: NOW })
+    const select = h.state.selects.find((entry) => entry.table === 'ops_bundle_items')
+    expect(select?.columns).toContain('created_resource')
+  })
+
+  it('예약됨 컬렉션 항목의 컬렉션에 아이템 배지가 없으면 신호가 뜨고, 있으면 안 뜬다', async () => {
+    h.state.tables.ops_bundle_items = [bookItem('empty', BOOK), bookItem('filled', OTHER_BOOK)]
+    h.state.tables.badges = [itemBadge('b-1', OTHER_BOOK)]
+    const result = await loadOpsSignals({ now: NOW })
+    expect(emptyMessages(result)).toEqual([
+      '10/5(월) 09:00에 공개할 컬렉션 런칭 「컬렉션 empty」에 아이템이 없어요. 공개 전에 기존 어드민에서 아이템 배지를 채워 주세요.',
+    ])
+    expect(result.sourceErrors).toEqual({})
+  })
+
+  it('게재중 컬렉션 항목도 본다', async () => {
+    h.state.tables.ops_bundle_items = [bookItem('live', BOOK, { status: 'live' })]
+    const result = await loadOpsSignals({ now: NOW })
+    expect(emptyMessages(result)).toEqual(['게재 중인 컬렉션 런칭 「컬렉션 live」에 아이템이 없어요.'])
+  })
+
+  it('badges는 item 종류이고 삭제되지 않은 배지만, 대상 컬렉션 ID 목록으로 읽는다. 삭제됐거나 item이 아닌 배지는 세지 않는다', async () => {
+    h.state.tables.ops_bundle_items = [bookItem('i1', BOOK), bookItem('i2', OTHER_BOOK)]
+    h.state.tables.badges = [
+      itemBadge('deleted', BOOK, { deleted_at: '2026-09-01T00:00:00+00:00' }),
+      itemBadge('activity', BOOK, { type: 'activity' }),
+      itemBadge('other-book-badge', OTHER_BOOK),
+    ]
+    const result = await loadOpsSignals({ now: NOW })
+    const selects = badgeSelects()
+    expect(selects).toHaveLength(1)
+    expect(selects[0].columns).toBe('id, item_book_id')
+    expect(selects[0].filters).toEqual(['eq:type:item', 'is:deleted_at:null', `in:item_book_id:${BOOK},${OTHER_BOOK}`])
+    // BOOK에는 삭제된 배지와 item이 아닌 배지뿐이라 비어 있다
+    expect(emptyMessages(result)).toHaveLength(1)
+    expect(emptyMessages(result)[0]).toContain('컬렉션 i1')
+  })
+
+  it('컬렉션 ID는 소문자로 견준다', async () => {
+    h.state.tables.ops_bundle_items = [bookItem('upper', BOOK.toUpperCase())]
+    h.state.tables.badges = [itemBadge('b-1', BOOK)]
+    const result = await loadOpsSignals({ now: NOW })
+    expect(emptyMessages(result)).toEqual([])
+    expect(badgeSelects()[0].filters).toContain(`in:item_book_id:${BOOK}`)
+  })
+
+  it('대상이 없으면 badges를 조회하지 않는다(컬렉션 항목 없음·준비중·승인됨·만든 컬렉션 없음)', async () => {
+    h.state.tables.ops_bundle_items = [
+      itemRow('card', 'b1'),
+      bookItem('preparing', BOOK, { status: 'preparing' }),
+      bookItem('approved', BOOK, { status: 'approved' }),
+      bookItem('no-resource', null),
+      bookItem('sample', null, { created_resource: { sample: true } }),
+    ]
+    const result = await loadOpsSignals({ now: NOW })
+    expect(badgeSelects()).toEqual([])
+    expect(h.state.calls.filter((call) => call.startsWith('badges.'))).toEqual([])
+    expect(emptyMessages(result)).toEqual([])
+    expect(result.sourceErrors).toEqual({})
+  })
+
+  it('같은 컬렉션은 한 번만 조회 목록에 싣는다', async () => {
+    h.state.tables.ops_bundle_items = [bookItem('a', BOOK), bookItem('b', BOOK, { status: 'live' })]
+    await loadOpsSignals({ now: NOW })
+    expect(badgeSelects()[0].filters.at(-1)).toBe(`in:item_book_id:${BOOK}`)
+  })
+
+  it('컬렉션이 200개를 넘으면 나눠서 읽고 모두 합쳐 센다', async () => {
+    const ids = Array.from({ length: 250 }, (_, n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`)
+    h.state.tables.ops_bundle_items = ids.map((id, n) => bookItem(`i${n}`, id))
+    // 마지막 컬렉션만 아이템이 없다(두 번째 조각에 들어 있다)
+    h.state.tables.badges = ids.slice(0, -1).map((id, n) => itemBadge(`b${n}`, id))
+    const result = await loadOpsSignals({ now: NOW })
+    expect(badgeSelects()).toHaveLength(2)
+    expect(emptyMessages(result)).toHaveLength(1)
+    expect(emptyMessages(result)[0]).toContain('컬렉션 i249')
+  })
+
+  it('읽기만 한다', async () => {
+    h.state.tables.ops_bundle_items = [bookItem('i1', BOOK)]
+    await loadOpsSignals({ now: NOW })
+    expect(h.state.calls.filter((call) => WRITE.test(call))).toEqual([])
+  })
+
+  it('badges 조회가 실패하면 「비어 있는 컨텐츠」만 확인하지 못했어요이고 나머지 신호는 그대로다. 사유는 sourceErrors에만 있다', async () => {
+    h.state.tables.ops_bundle_items = [bookItem('i1', BOOK), itemRow('failed', 'b1', { status: 'failed' })]
+    h.state.errors.badges = '연결 끊김'
+    const result = await loadOpsSignals({ now: NOW })
+    expect(result.sourceErrors).toEqual({ collection_items: '연결 끊김' })
+    const empty = signal(result, 'empty_content')
+    expect(empty.state).toBe('unchecked')
+    expect(empty.uncheckedReason).toBe('load_failed')
+    expect(empty.results).toEqual([])
+    expect(signal(result, 'execution_failed').state).toBe('raised')
+    expect(signal(result, 'no_new_content').uncheckedReason).toBeNull()
+    expect(console.error).toHaveBeenCalled()
+  })
+
+  it('묶음을 읽지 못하면 badges는 조회하지 않고 sourceErrors에는 묶음 사유만 있다', async () => {
+    h.state.errors.ops_bundles = '시간 초과'
+    const result = await loadOpsSignals({ now: NOW })
+    expect(badgeSelects()).toEqual([])
+    expect(result.sourceErrors).toEqual({ bundles: '시간 초과' })
+    expect(signal(result, 'empty_content').uncheckedReason).toBe('load_failed')
   })
 })
 

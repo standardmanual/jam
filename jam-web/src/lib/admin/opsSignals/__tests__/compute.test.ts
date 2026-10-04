@@ -155,6 +155,20 @@ describe('재료를 읽지 못하면 그 재료에 기대는 신호만 「확인
     expect(states(result)).toEqual({ ...baseline, action_spike: 'unchecked:load_failed' })
   })
 
+  it('컬렉션 아이템 수를 읽지 못하면(null) 「비어 있는 컨텐츠」만 load_failed이고 나머지는 그대로다(티켓 20261004_2242)', () => {
+    const baseline = states(run())
+    const result = run({ collectionItemCounts: null })
+    expect(states(result)).toEqual({ ...baseline, empty_content: 'unchecked:load_failed' })
+    expect(find(result, 'empty_content').results).toEqual([])
+    // 넘기지 않으면(undefined) 컬렉션 검사를 하지 않아 기존과 같다. 빈 지도면 대상이 없어 안 뜬다.
+    expect(states(run({ collectionItemCounts: undefined }))).toEqual(baseline)
+    expect(states(run({ collectionItemCounts: new Map() }))).toEqual(baseline)
+  })
+
+  it('묶음을 읽지 못하면 컬렉션 아이템 수와 관계없이 「비어 있는 컨텐츠」는 load_failed다', () => {
+    expect(find(run({ bundles: null, collectionItemCounts: new Map() }), 'empty_content').uncheckedReason).toBe('load_failed')
+  })
+
   it('미션을 읽지 못해도 어떤 신호도 바뀌지 않는다(미션에 기대는 신호가 없다)', () => {
     const baseline = states(run())
     expect(states(run({ missions: null }))).toEqual(baseline)

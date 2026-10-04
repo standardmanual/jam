@@ -603,7 +603,7 @@ describe('컬렉션이 연결된 완성 보상 JAM! 배지보다 먼저 공개�
 })
 
 describe('카드가 연결된 컬렉션보다 먼저 공개되면 막는다 (티켓 20261004_2039, 사용자 확인 2026-10-04)', () => {
-  const REASON = PRECHECK_MESSAGES.cardBeforeCollection
+  const REASON = PRECHECK_MESSAGES.beforeLinkedCollection
   type Spec = Partial<Parameters<typeof makeItem>[0]>
   const card = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'card', kind: 'home_feed_card', links: ['collection'], startsAt, ...extra })
   const collection = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'collection', kind: 'collection_launch', startsAt, ...extra })
@@ -677,6 +677,82 @@ describe('카드가 연결된 컬렉션보다 먼저 공개되면 막는다 (티
     expect(result.blocked.find((entry) => entry.id === 'card')?.reasons).toEqual([REASON])
     expect(result.blocked.find((entry) => entry.id === 'collection')?.reasons).toEqual([PRECHECK_MESSAGES.beforeLinkedBadge])
     expect(result.blocked.find((entry) => entry.id === 'badge')?.reasons).toEqual([PRECHECK_MESSAGES.groupBlocked])
+  })
+})
+
+describe('드랍이 연결된 컬렉션보다 먼저 공개되면 막는다 (티켓 20261004_2242 ⑩-b, 사용자 확인 2026-10-04)', () => {
+  const REASON = PRECHECK_MESSAGES.beforeLinkedCollection
+  type Spec = Partial<Parameters<typeof makeItem>[0]>
+  const drop = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'drop', kind: 'drop_schedule', links: ['collection'], startsAt, ...extra })
+  const collection = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'collection', kind: 'collection_launch', startsAt, ...extra })
+
+  it('드랍이 컬렉션보다 이르면 드랍이 못 하는 항목이고 같은 그룹의 나머지 승인 항목은 「연결된 항목을 예약할 수 없어요」로 막힌다', () => {
+    const result = run([drop(at(60 * MINUTE)), collection(at(120 * MINUTE))])
+    expect(result.ready).toEqual([])
+    expect(result.blocked).toEqual([
+      { id: 'drop', reasons: [REASON] },
+      { id: 'collection', reasons: [PRECHECK_MESSAGES.groupBlocked] },
+    ])
+  })
+
+  it('같은 시각이거나 드랍이 더 늦으면 통과다(1밀리초 이르면 막는다)', () => {
+    expect(run([drop(at(60 * MINUTE)), collection(at(60 * MINUTE))]).ready).toEqual(['drop', 'collection'])
+    expect(run([drop(at(120 * MINUTE)), collection(at(60 * MINUTE))]).ready).toEqual(['drop', 'collection'])
+    const justBefore = run([drop(at(60 * MINUTE - 1)), collection(at(60 * MINUTE))])
+    expect(justBefore.blocked[0]).toEqual({ id: 'drop', reasons: [REASON] })
+  })
+
+  it('대상 컬렉션이 이전 실행에서 이미 예약된 항목이면 그 항목의 공개 시각과 견준다', () => {
+    const scheduled = (startsAt: string) => collection(startsAt, { status: 'scheduled', createdResource: { item_book_id: 'book-uuid' } })
+    const early = run([drop(at(60 * MINUTE)), scheduled(at(120 * MINUTE))])
+    expect(early.ready).toEqual([])
+    expect(early.blocked).toEqual([{ id: 'drop', reasons: [REASON] }])
+    expect(run([drop(at(180 * MINUTE)), scheduled(at(120 * MINUTE))]).ready).toEqual(['drop'])
+  })
+
+  it('대상 컬렉션이 이미 게재 중이거나 종료됐으면 견주지 않는다', () => {
+    for (const status of ['live', 'ended']) {
+      const result = run([drop(at(60 * MINUTE)), collection(at(120 * MINUTE), { status, createdResource: { item_book_id: 'book-uuid' } })])
+      expect(result.ready, status).toEqual(['drop'])
+      expect(result.blocked, status).toEqual([])
+    }
+  })
+
+  it('대상 컬렉션이 결정 전이어도 견준다. 막는 이유가 기다리는 중보다 앞선다', () => {
+    const result = run([drop(at(60 * MINUTE)), collection(at(120 * MINUTE), { status: 'reviewing' })])
+    expect(result.waiting).toEqual([])
+    expect(result.blocked).toEqual([{ id: 'drop', reasons: [REASON] }])
+  })
+
+  it('드랍이나 컬렉션의 공개 시각을 읽을 수 없으면 견주지 않는다(그 항목이 따로 이유를 갖는다)', () => {
+    const noDropStart = run([drop(at(0), { startsAt: null }), collection(at(120 * MINUTE))])
+    expect(noDropStart.blocked[0]).toEqual({ id: 'drop', reasons: [PRECHECK_MESSAGES.startMissing] })
+    const noCollectionStart = run([drop(at(60 * MINUTE)), collection(at(0), { startsAt: null })])
+    expect(noCollectionStart.blocked).toEqual([
+      { id: 'drop', reasons: [PRECHECK_MESSAGES.groupBlocked] },
+      { id: 'collection', reasons: [PRECHECK_MESSAGES.startMissing] },
+    ])
+  })
+
+  it('컬렉션 ID를 resource에 직접 적은 드랍은 견주지 않는다', () => {
+    const direct = run([makeItem({ key: 'drop', kind: 'drop_schedule', startsAt: at(60 * MINUTE), resource: { collection_ids: ['direct-book-uuid'] } })])
+    expect(direct.ready).toEqual(['drop'])
+  })
+
+  it('연결된 컬렉션이 둘 이상이면 하나라도 늦게 열릴 때 막는다', () => {
+    const second = makeItem({ key: 'collection2', kind: 'collection_launch', startsAt: at(180 * MINUTE) })
+    const early = run([drop(at(120 * MINUTE), { links: ['collection', 'collection2'] }), collection(at(60 * MINUTE)), second])
+    expect(early.blocked.find((entry) => entry.id === 'drop')?.reasons).toEqual([REASON])
+    const allEarlier = run([drop(at(240 * MINUTE), { links: ['collection', 'collection2'] }), collection(at(60 * MINUTE)), second])
+    expect([...allEarlier.ready].sort()).toEqual(['collection', 'collection2', 'drop'])
+  })
+
+  it('같은 컬렉션을 가리키는 카드와 드랍은 각자의 항목에 같은 이유가 붙는다', () => {
+    const card = makeItem({ key: 'card', kind: 'home_feed_card', links: ['collection'], startsAt: at(30 * MINUTE) })
+    const result = run([card, drop(at(40 * MINUTE)), collection(at(60 * MINUTE))])
+    expect(result.blocked.find((entry) => entry.id === 'card')?.reasons).toEqual([REASON])
+    expect(result.blocked.find((entry) => entry.id === 'drop')?.reasons).toEqual([REASON])
+    expect(result.blocked.find((entry) => entry.id === 'collection')?.reasons).toEqual([PRECHECK_MESSAGES.groupBlocked])
   })
 })
 

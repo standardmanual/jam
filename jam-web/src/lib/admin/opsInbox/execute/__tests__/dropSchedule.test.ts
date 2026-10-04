@@ -5,7 +5,8 @@
  * 예정 시각 기준 대상 판정도 실제 `loadScheduleTargets`다. 운영툴 실행 전체와 만나는 통합은 `run.test.ts`·`cancel.test.ts`·`reconcile.test.ts`가 본다.
  *
  * - prepare: 페이로드(정한 ID·예정 시각·`created_by`·연결 `collection_ids`)·형식 오류 문장과 「외 N건」, 현재 시각으로 정시이고 미래인 공개 시각을 본다(가정 3·4)
- * - check: 지점 종류 확인과 예정 시각 기준 대상 판정의 쉬운 문장을 사유로 쓰고, 읽지 못하면 고정 문장이다. DB 오류 원문·ID는 `reason`에 없다
+ * - check: 지점 종류 확인과 예정 시각 기준 대상 판정의 쉬운 문장을 사유로 쓰고, 읽지 못하면 고정 문장이다. DB 오류 원문·ID는 `reason`에 없다.
+ *   연결로 채운 컬렉션(같은 묶음이 만들 컬렉션·이전 실행이 만든 컬렉션)은 판정을 건너뛴다(티켓 20261004_2242 ⑩-b, 가정 1~3)
  * - create: 정한 ID로 `scheduled` 행을 만들고 놓지 않는다. 서버 오류(500)면 같은 ID로 정리 delete(`status = 'scheduled'` 조건)를 한 번 시도한다. 검증 오류(400)는 정리하지 않는다
  * - undo: `status = 'scheduled'` 조건으로 지운다. 시작·끝난 예약은 지우지 않고 실패, 이미 없거나 밖에서 취소된 예약은 성공이다
  * - cancel: 공개 전에만 서버 함수로 「취소」 상태를 남긴다(지우지 않는다). 예정 시각이 지났거나 실행이 시작됐으면 published, 경합·오류 비노출
@@ -47,7 +48,8 @@ function prepared(item = dropItem(), linkedIds: ExecuteLinkedIds = {}, now: Date
   return outcome.value
 }
 
-const checkOf = (db: FakeDb, item = dropItem()) => handler.check(asRegisterChecksClient(service(db)), prepared(item), { now: NOW })
+const checkOf = (db: FakeDb, item = dropItem(), linkedIds: ExecuteLinkedIds = {}) =>
+  handler.check(asRegisterChecksClient(service(db)), prepared(item, linkedIds), { now: NOW })
 const createOf = (db: FakeDb, item = dropItem(), linkedIds: ExecuteLinkedIds = {}) => handler.create(service(db), prepared(item, linkedIds), { now: NOW })
 
 const schedules = (db: FakeDb) => db.tables.ambient_drop_schedules
@@ -279,12 +281,89 @@ describe('check — 지점 종류와 예정 시각 기준 대상 판정', () => 
       const failure = await checkOf(db, dropItem({ collection_ids: [BOOK_ENDING] }))
       expect(failure?.reason).toContain('예정 시각에 놓을 수 없는 대상이 있어요(노출 중이 아닌 컬렉션 1건)')
     })
+  })
 
-    it('같은 묶음의 컬렉션 항목이 만들 컬렉션(연결로 채운, 아직 DB에 없는 ID)은 걸린다 — 컬렉션 핸들러(⑩)가 정할 한계', async () => {
-      const futureBook = uuid(7777)
-      expect(await checkOf(db)).toBeNull()
-      const failure = await handler.check(asRegisterChecksClient(service(db)), prepared(dropItem(), { collection_ids: [futureBook] }), { now: NOW })
+  describe('연결로 채운 컬렉션은 판정을 미룬다(티켓 20261004_2242 ⑩-b)', () => {
+    /** 연결로만 채운 드랍(resource에 컬렉션이 없다). */
+    const linkedOnly = () => dropItem({ collection_ids: undefined })
+    /** 컬렉션 항목이 아직 만들지 않은 컬렉션 — DB에 행이 없다. */
+    const futureBook = uuid(7777)
+    /** 이전 실행이 만든 컬렉션 — 행은 있지만 아이템 배지가 없다. */
+    const EMPTY_BOOK = uuid(7778)
+
+    it('같은 묶음의 컬렉션 항목이 만들 컬렉션(아직 DB에 없는 ID)만 가리켜도 통과하고 읽기만 한다', async () => {
+      expect(await checkOf(db, linkedOnly(), { collection_ids: [futureBook] })).toBeNull()
+      expect(db.calls.filter((call) => call.op !== 'select')).toEqual([])
+    })
+
+    it('이전 실행이 만든, 아이템이 비어 있는 컬렉션만 가리켜도 통과한다', async () => {
+      db.tables.item_books.push({ id: EMPTY_BOOK, is_active: true, valid_from: null, valid_until: null })
+      expect(await checkOf(db, linkedOnly(), { collection_ids: [EMPTY_BOOK] })).toBeNull()
+    })
+
+    it('연결 컬렉션이 노출 중이 아니어도(기간이 끝난 행) 건너뛴다 — 예정 시각의 판정은 실행기가 다시 한다', async () => {
+      expect(await checkOf(db, linkedOnly(), { collection_ids: [BOOK_ENDING] })).toBeNull()
+    })
+
+    it('연결 ID만 있을 때 남은 목록이 비어도 「전체」로 읽지 않는다 — 컬렉션·배지 표를 조회하지 않는다', async () => {
+      expect(await checkOf(db, linkedOnly(), { collection_ids: [futureBook, EMPTY_BOOK] })).toBeNull()
+      expect(db.calls.filter((call) => call.table === 'item_books' || call.table === 'badges')).toEqual([])
+    })
+
+    it('연결 ID는 대문자로 와도 소문자로 읽은 spec과 견준다', async () => {
+      expect(await checkOf(db, linkedOnly(), { collection_ids: [futureBook.toUpperCase()] })).toBeNull()
+      expect(db.calls.filter((call) => call.table === 'item_books' || call.table === 'badges')).toEqual([])
+    })
+
+    it('직접 적은 컬렉션이 노출 중이면 연결 컬렉션과 섞여도 통과한다. 직접 컬렉션만 읽는다', async () => {
+      expect(await checkOf(db, dropItem({ collection_ids: [BOOK_LIVE] }), { collection_ids: [futureBook] })).toBeNull()
+      const bookReads = db.calls.filter((call) => call.table === 'item_books')
+      expect(bookReads.length).toBeGreaterThan(0)
+    })
+
+    it('직접 적은 컬렉션이 노출 중이 아니면 연결 컬렉션이 있어도 지금처럼 막는다(「노출 중인 컬렉션이 없어요」는 내지 않는다)', async () => {
+      const failure = await checkOf(db, dropItem({ collection_ids: [BOOK_ENDING] }), { collection_ids: [futureBook] })
+      expect(failure?.reason).toContain('예정 시각에 놓을 수 없는 대상이 있어요(노출 중이 아닌 컬렉션 1건)')
+      expect(failure?.reason).not.toContain('노출 중인 컬렉션이 없어요')
+      expectClean(failure?.reason)
+      expectClean(failure?.detail)
+    })
+
+    it('직접 적은 컬렉션 중 일부만 걸려도 막는다', async () => {
+      const failure = await checkOf(db, dropItem({ collection_ids: [BOOK_LIVE, BOOK_ENDING] }), { collection_ids: [futureBook] })
       expect(failure?.reason).toContain('노출 중이 아닌 컬렉션 1건')
+    })
+
+    it('직접 적은 컬렉션의 후보 배지가 없어도 연결 컬렉션이 있으면 「놓을 수 있는 아이템이 없어요」를 내지 않는다', async () => {
+      db.tables.item_books.push({ id: EMPTY_BOOK, is_active: true, valid_from: null, valid_until: null })
+      expect(await checkOf(db, dropItem({ collection_ids: [EMPTY_BOOK] }), { collection_ids: [futureBook] })).toBeNull()
+    })
+
+    it('연결 컬렉션이 없으면 직접 적은 컬렉션이 비어 있을 때 지금처럼 「놓을 수 있는 아이템이 없어요」다', async () => {
+      db.tables.item_books.push({ id: EMPTY_BOOK, is_active: true, valid_from: null, valid_until: null })
+      const failure = await checkOf(db, dropItem({ collection_ids: [EMPTY_BOOK] }))
+      expect(failure?.reason).toContain('놓을 수 있는 아이템이 없어요')
+    })
+
+    it('지점 쪽 문제는 연결 컬렉션이 있어도 막는다', async () => {
+      const failure = await checkOf(db, dropItem({ poi_ids: [P1, P_INACTIVE], collection_ids: undefined }), { collection_ids: [futureBook] })
+      expect(failure?.reason).toContain('운영이 끝난 지점 1건')
+      expectClean(failure?.reason)
+    })
+
+    it('운영 중인 지점이 없으면 연결 컬렉션이 있어도 「놓을 수 있는 지점이 없어요」다', async () => {
+      db.tables.poi = db.tables.poi.map((row) => ({ ...row, is_active: false }))
+      const failure = await checkOf(
+        db,
+        dropItem({ poi_ids: undefined, per_poi_count: undefined, collection_ids: undefined, poi_category: 'cafe', total_count: 3 }),
+        { collection_ids: [futureBook] }
+      )
+      expect(failure?.reason).toContain('놓을 수 있는 지점이 없어요')
+    })
+
+    it('판정 문장에 연결 컬렉션 ID가 없다', async () => {
+      const failure = await checkOf(db, dropItem({ poi_ids: [P_MISSING], collection_ids: undefined }), { collection_ids: [futureBook] })
+      expect(failure?.reason).toContain('찾을 수 없는 지점 1건')
       expect(failure?.reason).not.toContain(futureBook)
     })
   })
@@ -353,6 +432,49 @@ describe('create — 정한 ID로 만든다', () => {
     const outcome = await createOf(db, dropItem(), { collection_ids: [BOOK_PRELAUNCH] })
     expect(outcome.ok).toBe(true)
     expect(scheduleOf(db)?.collection_ids).toEqual([BOOK_LIVE, BOOK_PRELAUNCH])
+  })
+
+  describe('연결로 채운 컬렉션은 등록 판정을 미룬다(티켓 20261004_2242 ⑩-b)', () => {
+    const linkedOnly = () => dropItem({ collection_ids: undefined })
+    const futureBook = uuid(7777)
+    const EMPTY_BOOK = uuid(7778)
+
+    it('같은 묶음이 만들 컬렉션(DB에 없는 ID)만 가리켜도 1행이 되고, 저장된 collection_ids에 연결 ID가 들어 있다', async () => {
+      const outcome = await createOf(db, linkedOnly(), { collection_ids: [futureBook] })
+      expect(outcome).toEqual({ ok: true, value: { id: SCHEDULE_ID } })
+      expect(schedules(db)).toHaveLength(1)
+      expect(scheduleOf(db)).toMatchObject({ status: 'scheduled', item_mode: 'collections', collection_ids: [futureBook], badge_ids: [] })
+      expect(scheduleWrites(db)).toHaveLength(1)
+    })
+
+    it('이전 실행이 만든, 아이템이 비어 있는 컬렉션과 같은 실행의 컬렉션이 섞여도 만든다. 저장은 미룬 ID를 포함한 전체다', async () => {
+      db.tables.item_books.push({ id: EMPTY_BOOK, is_active: true, valid_from: null, valid_until: null })
+      const outcome = await createOf(db, dropItem({ collection_ids: [BOOK_LIVE] }), { collection_ids: [EMPTY_BOOK, futureBook] })
+      expect(outcome.ok).toBe(true)
+      expect(scheduleOf(db)?.collection_ids).toEqual([BOOK_LIVE, EMPTY_BOOK, futureBook])
+    })
+
+    it('연결 ID만 있을 때 컬렉션·배지 표를 조회하지 않는다(빈 목록이 「전체」로 읽히지 않는다)', async () => {
+      await createOf(db, linkedOnly(), { collection_ids: [futureBook] })
+      expect(db.calls.filter((call) => call.table === 'item_books' || call.table === 'badges')).toEqual([])
+    })
+
+    it('직접 적은 컬렉션이 노출 중이 아니면 연결 컬렉션이 있어도 400 문장으로 막고 아무것도 쓰지 않는다', async () => {
+      const outcome = await createOf(db, dropItem({ collection_ids: [BOOK_ENDING] }), { collection_ids: [futureBook] })
+      expect(outcome.ok).toBe(false)
+      if (outcome.ok) return
+      expect(outcome.failure.reason).toContain('노출 중이 아닌 컬렉션 1건')
+      expectClean(outcome.failure.reason)
+      expect(scheduleWrites(db)).toEqual([])
+    })
+
+    it('지점 쪽 문제는 연결 컬렉션이 있어도 막는다', async () => {
+      const outcome = await createOf(db, dropItem({ poi_ids: [P_INACTIVE], collection_ids: undefined }), { collection_ids: [futureBook] })
+      expect(outcome.ok).toBe(false)
+      if (outcome.ok) return
+      expect(outcome.failure.reason).toContain('운영이 끝난 지점 1건')
+      expect(scheduleWrites(db)).toEqual([])
+    })
   })
 
   it('종류+개수 × 아이템 직접으로도 만든다', async () => {
