@@ -2,9 +2,9 @@
 id: "20261002_1905"
 category: Infra
 priority: P2
-status: WAITING
+status: CLOSED
 created: 2026-10-02
-closed:
+closed: 2026-10-04
 ---
 
 # [Infra] 민지가 정의의 금지에도 공유 작업 폴더에서 git checkout을 실행했다
@@ -129,6 +129,8 @@ docs/agents/contract.json, docs/agents/team-operations.md(§8 아현, §5 카리
   사용자 「머지 승인」으로 머지했고(f4618f28) 카리나가 그 문장을 보완했다. 범위 밖 발견물 셋은 P3 20261004_1754로 뗐다.
 - 2차 실행 지표: 1회차(아현, 실패) 전체 121,219토큰·10분 37초·도구 79회, 2회차(`gateOnly` 민지) 전체 68,877토큰·4분 15초·도구 15회, 게이트 출력 21,006토큰.
 - 남은 일(후속 범위 대체): 머지 뒤 첫 워크플로(1500 ⑨-a)의 실행 기록에서 `jam-reviewer`가 `isolation: worktree`로 돌았는지 확인하면 CLOSED.
+- 2026-10-04 확인(카리나): 머지 뒤 첫 워크플로(1500 ⑨-a, run wf_1fe85d11-651)의 실행 기록에서 `jam-reviewer`가 `isolation: worktree`로 돌았다. 민지의 워크트리(`.claude/worktrees/wf_1fe85d11-651-2`)는 리뷰 커밋 b765f551에 분리 체크아웃돼 있었고,
+  메인 폴더는 `staging`에 그대로였다. 2차 완료 조건을 충족해 사용자 「머지 승인」(⑨-a와 함께 1905를 닫겠다고 보고)으로 CLOSED. 1차 훅이 클라우드에서 걸리지 않은 원인은 확인하지 못한 채 남는다(문서에 그렇게 적혀 있다).
 
 ### 잔여 이슈
 -
