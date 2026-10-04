@@ -2,7 +2,7 @@
 id: "20261002_1905"
 category: Infra
 priority: P2
-status: WAITING
+status: IN_PROGRESS
 created: 2026-10-02
 closed:
 ---
@@ -33,6 +33,34 @@ closed:
    입력을 읽지 못하거나 git 판정이 실패하면 막지 않고 stderr에 남긴다(읽기 명령까지 막아 판정을 못 하게 되는 일을 피한다. 2026-10-02 두 번째 발생 때 거부 뒤 읽기까지 막혔다).
 4. **적용 대상.** 민지(`jam-reviewer`)와, 같은 게이트 단계에서 같은 공유 폴더 규칙(`WORKDIR_RULE`)을 받는 채원(`jam-designer`). 아현은 격리 워크트리에서 돌아 대상이 아니다.
 5. 스크립트는 저장소 관례대로 Node(`scripts/*.mjs`)로 쓴다(`jq` 의존 없음). 훅 명령은 `node "$CLAUDE_PROJECT_DIR/scripts/guard-shared-head.mjs"`.
+
+## 2차: 격리 워크트리로 바꾼다 (2026-10-04, 사용자 결정 「민지를 격리 워크트리에서 부르기」)
+
+> 1차(frontmatter 훅)는 머지했지만 실제 호출에서 걸리지 않았다(2026-10-02 같은 세션, 2026-10-04 컨테이너 재시작 뒤 다시 연 세션 모두 `git clean -n`이 그대로 실행됨). 원인은 확인하지 못했다(아래 완료 기록).
+> 사용자가 후속 범위의 대안 가운데 (나)를 골랐다. 명령을 막는 대신 게이트 에이전트가 공유 폴더에 서지 않게 한다.
+
+1. **게이트 단계의 민지와 채원②를 격리 워크트리에서 부른다.** `runGateReview`의 두 `agent()` 호출에 `isolation: 'worktree'`(아현과 같은 방식). 표준 경로와 `gateOnly`가 이 함수를 함께 쓰므로 둘 다 바뀐다.
+   채원① 사전 판정은 아현 전에 돌고 사고 이력이 없어 이번에 바꾸지 않는다.
+2. **프롬프트.** `WORKDIR_RULE`을 「지금 폴더는 너만의 격리 워크트리다. 첫 명령으로 `git fetch origin <review 브랜치> && git checkout --detach <commitSha>`(범위가 없으면 `git fetch origin staging && git checkout --detach origin/staging`)를 실행하고,
+   테스트를 직접 돌려야 할 때만 `scripts/workspace-setup.sh link "$(pwd)"`로 `node_modules`를 연결한다. 그 전에 본 파일은 무효다. 메인 작업 폴더(공유 폴더)로 `cd`하지 않는다」로 바꾼다. 브랜치·SHA는 `devResult`에서 넣는다.
+   격리 워크트리가 기본 브랜치(main) 기준이라, 체크아웃 전에는 staging에만 있는 티켓·코드가 보이지 않는다(아현 프롬프트와 같은 이유).
+3. **1차 훅은 남긴다.** 해가 없고, 다른 실행 환경(PC CLI)에서는 동작할 수 있다. 다만 문서에는 「등록돼 있으나 클라우드 세션의 실제 호출에서 걸리지 않음」만 사실로 적는다(CLAUDE.md 규칙 5). `team-operations.md` §5의 「차단」 문장을 고친다.
+4. **`/jam-ship` 5단계의 민지 호출.** 카리나가 Agent 도구로 민지 모드 ②·③을 부를 때도 `isolation: "worktree"`를 주고 첫 명령으로 `git fetch origin staging && git checkout --detach origin/staging`을 지시하게 한다(`.claude/skills/jam-ship/SKILL.md` 135행 부근).
+5. **계약.** `docs/agents/contract.json` `worktree_isolated_agents.agents`에 `jam-reviewer`·`jam-designer`를 더하고 `_why`를 「쓰기 주체 + 공유 폴더에서 git을 쓰는 게이트 에이전트」로 고친다(`scripts/check-contract.mjs`가 `jam-work.js`의 `agentType`·`isolation` 쌍을 대조한다.
+   정규식이 `[^}]*`라 채원② 호출은 `isolation`을 스프레드(`...(workType === 'ds' ? {} : {...})`)보다 앞에 둔다). `team-operations.md`의 생성 구간(`worktree-isolation`)은 `node scripts/gen-team-doc.mjs`로, `team-map.html`은 `node scripts/gen-team-map.mjs`로 다시 만든다.
+
+### 2차 구현 계획 (파일 단위)
+
+1. `.claude/workflows/jam-work.js` `runGateReview`(160–245행 부근): 두 호출의 `isolation`, `WORKDIR_RULE`(194–197행) 교체, 범위 지시(`rangeInstruction`)와 겹치는 fetch 문장 정리.
+2. `.claude/workflows/jam-work.test.mjs`: 게이트 두 호출이 `isolation: 'worktree'`이고 프롬프트에 체크아웃 첫 명령이 들어가는지(표준·`gateOnly` 둘 다).
+3. `.claude/agents/jam-reviewer.md` 「Never move the folder you are running in」(142–150행 부근): 워크플로 게이트에서는 격리 워크트리에서 돌고 첫 명령으로 리뷰 커밋을 체크아웃한다, 그 밖의 호출에서는 기존 규칙 그대로. `jam-designer.md`에 같은 취지 한 줄.
+4. `.claude/skills/jam-ship/SKILL.md` 5단계(가정 4).
+5. `docs/agents/contract.json`(가정 5), `docs/agents/team-operations.md`(§5 민지·채원 「물리적 제약」 칸, §8 1905 행, 생성 구간 재생성), `docs/agents/team-map.html`(재생성).
+
+### 2차 완료 조건
+
+- 워크플로 게이트의 민지·채원②가 격리 워크트리에서 돌고, 첫 명령으로 리뷰 커밋을 체크아웃한다(워크플로 테스트, 머지 뒤 첫 워크플로 실행의 `isolation` 기록으로 카리나가 확인).
+- `scripts/check-contract.mjs`·`scripts/verify.sh` 전 항목 통과. 문서는 확인한 사실만 적는다.
 
 ## 구현 계획 (파일 단위)
 
