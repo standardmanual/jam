@@ -11,8 +11,10 @@
  * DB 오류 원문·예약·지점·배지·컬렉션 ID·칼럼 이름은 `detail`(서버 로그)에만 둔다. 단, 형식 오류는 변환·파서 오류 문장을 그대로 싣는다.
  *
  * - `prepare`는 변환 뒤 `parseAmbientDropScheduleInput(payload, now)`로 형식(지점·아이템 방식, 개수, 정시이고 미래인 공개 시각)을 본다. 현재 시각은 실행이 넘긴다(`now`). `created_by`는 실행한 관리자 ID다(카드와 같다).
- * - `check`는 지점 종류 확인 → 예정 시각 기준 대상 판정(`loadScheduleTargets` → `describeScheduleTargetProblems`) 순서다. 읽지 못하면 실패다. 같은 묶음의 컬렉션 항목이 만들 컬렉션은 아직 DB에 없어 걸린다(컬렉션 핸들러 ⑩이 다룬다).
- * - `create`는 정한 ID(`prepared.id`)로 만들고 같은 ID를 돌려준다(`idFirst`). 서버 오류(500)면 같은 ID로 정리 delete(`status = 'scheduled'` 조건)를 한 번 시도한다.
+ * - `check`는 지점 종류 확인 → 예정 시각 기준 대상 판정(`loadScheduleTargets` → `describeScheduleTargetProblems`) 순서다. 읽지 못하면 실패다.
+ *   연결로 채운 컬렉션(같은 묶음의 컬렉션 항목이 만들 컬렉션과 이전 실행이 만든 컬렉션, `prepared.linkedIds.collection_ids`)은 아직 DB에 없거나 아이템이 비어 있을 수 있어 판정을 건너뛴다
+ *   (티켓 20261004_2242, PRD §8.4). 예정 시각의 판정은 드랍 실행기가 다시 한다. `resource`에 직접 적은 컬렉션과 지점 쪽 판정은 그대로 한다.
+ * - `create`는 정한 ID(`prepared.id`)로 만들고 같은 ID를 돌려준다(`idFirst`). 같은 컬렉션을 건너뛰고(`check`와 같다), 서버 오류(500)면 같은 ID로 정리 delete(`status = 'scheduled'` 조건)를 한 번 시도한다.
  * - `undo`는 방금 만든 예약이라 기록 없이 `status = 'scheduled'` 조건으로 지운다. 지운 행이 없을 때 이미 실행이 시작·끝났으면 지우지 않고 실패다.
  * - `cancel`은 지우지 않고 서버 함수로 「취소」 상태를 남긴다. 서버 함수는 예정 시각이 지났는지 보지 않으므로 이 핸들러가 먼저 막는다. 서버 함수의 문장은 어드민 화면용이라 사유로 쓰지 않는다.
  * - `observe`(상태 맞추기, §8.6)는 파생 상태(`missed`·`stalled` 포함)로 나눈다: 놓음 → 종료, 놓지 못함(`skipped`·`failed`·`missed`) → 실패, 취소 → 없음, 그 밖 → 공개 전. 놓인 드랍은 내리지 않아 종료 시각과 `inactive`는 없다.
@@ -60,6 +62,14 @@ function asServiceClient(client: RegisterChecksClient): ExecuteServiceClient {
   return client as unknown as ExecuteServiceClient
 }
 
+/**
+ * 등록 판정을 예정 시각으로 미룰 컬렉션 ID — 연결로 채운 컬렉션 전부다. 같은 실행에서 만들 컬렉션과 이전 실행이 만든 컬렉션을 가리지 않는다.
+ * 이전 실행이 만든 컬렉션도 아이템을 공개 전에 채우므로 지금은 비어 있을 수 있다(티켓 20261004_2242).
+ */
+function deferredCollectionIdsOf(prepared: ExecutePrepared<DropSchedulePayload>): readonly string[] {
+  return prepared.linkedIds.collection_ids ?? []
+}
+
 export const DROP_SCHEDULE_HANDLER: ExecuteHandler<DropSchedulePayload> = {
   kind: 'drop_schedule',
   resourceKey: RESOURCE_KEY_BY_KIND.drop_schedule,
@@ -101,8 +111,11 @@ export const DROP_SCHEDULE_HANDLER: ExecuteHandler<DropSchedulePayload> = {
     }
 
     // 예정 시각 기준 대상 판정. 걸린 대상이 하나라도 있거나 놓을 대상이 없으면 그 문장이 사유다(쉬운 문장, ID 없음).
+    // 연결로 채운 컬렉션은 건너뛴다(예정 시각의 판정은 드랍 실행기가 한다).
     try {
-      const problem = describeScheduleTargetProblems(await loadScheduleTargets(service, spec, scheduledAt))
+      const problem = describeScheduleTargetProblems(
+        await loadScheduleTargets(service, spec, scheduledAt, { deferredCollectionIds: deferredCollectionIdsOf(prepared) })
+      )
       return problem ? { reason: problem, detail: problem } : null
     } catch (err) {
       return { reason: DROP_MESSAGES.targetReadFailed, detail: `드랍 대상 확인 실패: ${messageOf(err)}` }
@@ -111,7 +124,10 @@ export const DROP_SCHEDULE_HANDLER: ExecuteHandler<DropSchedulePayload> = {
 
   async create(service: ExecuteServiceClient, prepared, { now }): Promise<ExecuteOutcome<{ id: string }>> {
     const { created_by: createdBy, ...input } = prepared.payload
-    const created = await createAmbientDropSchedule(service, input, createdBy, now, { id: prepared.id })
+    const created = await createAmbientDropSchedule(service, input, createdBy, now, {
+      id: prepared.id,
+      deferredCollectionIds: deferredCollectionIdsOf(prepared),
+    })
     if (created.ok) return { ok: true, value: { id: prepared.id } }
 
     // 검증 오류(400)는 쉬운 문장이라 그대로 싣는다. 서버 오류(500)는 고정 문장이고 원문은 detail에만 둔다.

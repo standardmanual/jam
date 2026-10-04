@@ -79,13 +79,16 @@ async function readSchedule(supabase: ServiceClient, id: string): Promise<Ambien
  * INSERT. 등록 판정은 지금이 아니라 예정 시각 기준이다 — 지금은 공개 전이지만 예정 시각에 공개되는 컬렉션은
  * 통과하고, 예정 시각에 기간이 끝난 컬렉션은 걸린다. 걸린 대상이 하나라도 있으면 400이다(fail-closed).
  * `options.id`는 운영툴 예약 등록이 만들기 전에 정한 ID다(티켓 20261002_2306). 어드민 라우트는 넘기지 않아 DB가 ID를 정한다.
+ * `options.deferredCollectionIds`는 운영툴이 연결로 채운 컬렉션 ID다 — 이 컬렉션은 등록 때 대상 판정을 건너뛴다
+ * (공개 전에 아이템을 채우므로 지금은 비어 있거나 아직 없을 수 있다. 예정 시각의 판정은 드랍 실행기가 한다,
+ * 티켓 20261004_2242). 저장되는 `collection_ids`는 미룬 ID를 포함한 전체다. 어드민 라우트는 넘기지 않는다.
  */
 export async function createAmbientDropSchedule(
   supabase: ServiceClient,
   body: unknown,
   createdBy: string | null,
   now: Date = new Date(),
-  options: { id?: string } = {}
+  options: { id?: string; deferredCollectionIds?: readonly string[] } = {}
 ): Promise<CreateAmbientDropScheduleResult> {
   const parsed = parseAmbientDropScheduleInput(body, now)
   if (!parsed.ok) return { ok: false, status: 400, error: parsed.error }
@@ -109,7 +112,9 @@ export async function createAmbientDropSchedule(
 
   let problem: string | null
   try {
-    problem = describeScheduleTargetProblems(await loadScheduleTargets(supabase, spec, scheduledAt))
+    problem = describeScheduleTargetProblems(
+      await loadScheduleTargets(supabase, spec, scheduledAt, { deferredCollectionIds: options.deferredCollectionIds })
+    )
   } catch (err) {
     console.error('[ambient-drop-schedule] 등록 대상 판정 실패:', err)
     return { ok: false, status: 500, error: TARGET_CHECK_FAILED }

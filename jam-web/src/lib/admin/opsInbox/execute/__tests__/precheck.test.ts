@@ -603,7 +603,7 @@ describe('컬렉션이 연결된 완성 보상 JAM! 배지보다 먼저 공개�
 })
 
 describe('카드가 연결된 컬렉션보다 먼저 공개되면 막는다 (티켓 20261004_2039, 사용자 확인 2026-10-04)', () => {
-  const REASON = PRECHECK_MESSAGES.cardBeforeCollection
+  const REASON = PRECHECK_MESSAGES.beforeLinkedCollection
   type Spec = Partial<Parameters<typeof makeItem>[0]>
   const card = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'card', kind: 'home_feed_card', links: ['collection'], startsAt, ...extra })
   const collection = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'collection', kind: 'collection_launch', startsAt, ...extra })

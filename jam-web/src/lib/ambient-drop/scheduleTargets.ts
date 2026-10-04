@@ -13,6 +13,11 @@
  * 등록 때는 「예정 시각」을 기준으로 미리 돌린다 — 지금은 공개 전이지만 예정 시각에 공개되는 컬렉션은
  * 통과하고, 예정 시각에 이미 기간이 끝난 컬렉션은 걸린다. 조회가 실패하면 던진다(호출부가 등록 500 또는
  * 실행 `failed`로 처리, fail-closed). 빈 결과를 「대상 없음」과 「전체」로 헷갈리지 않게 한다.
+ *
+ * 판정을 미룰 컬렉션(`options.deferredCollectionIds`, 티켓 20261004_2242): 운영툴이 연결로 채운 컬렉션은
+ * 등록 시점에 아직 없거나 아이템이 비어 있을 수 있다(아이템은 공개 전에 채운다). 호출부가 그 ID를 넘기면
+ * 그 컬렉션은 노출 중 판정과 후보 배지 읽기를 건너뛴다 — 예정 시각의 판정은 드랍 실행기가 같은 함수로
+ * 다시 한다(실행기는 이 인자를 넘기지 않는다). 넘기지 않으면 동작이 이전과 같다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
 import { fetchAllRows, fetchAllRowsIn } from '@/lib/db/fetchAllRows'
@@ -162,8 +167,16 @@ interface ItemSide {
   reason?: AmbientDropSkipReason
 }
 
-/** 아이템 쪽 대상 — 아이템 직접 선택이면 지정 배지를, 컬렉션 선택이면 노출 중 컬렉션의 배지를 읽는다 */
-async function loadItemTargets(supabase: ServiceClient, spec: AmbientDropScheduleSpec, atIso: string): Promise<ItemSide> {
+/**
+ * 아이템 쪽 대상 — 아이템 직접 선택이면 지정 배지를, 컬렉션 선택이면 노출 중 컬렉션의 배지를 읽는다.
+ * `deferredIds`(소문자)에 든 컬렉션은 판정을 미룬다(컬렉션 선택일 때만 뜻이 있다).
+ */
+async function loadItemTargets(
+  supabase: ServiceClient,
+  spec: AmbientDropScheduleSpec,
+  atIso: string,
+  deferredIds: ReadonlySet<string>
+): Promise<ItemSide> {
   const atMs = new Date(atIso).getTime()
 
   if (spec.itemMode === 'items') {
@@ -218,13 +231,20 @@ async function loadItemTargets(supabase: ServiceClient, spec: AmbientDropSchedul
     }
   }
 
-  // 컬렉션 선택 — 노출 중인 것만 남긴다(정기 배포의 explicit 모드와 같은 판정)
-  const droppableBooks = await fetchAllRowsIn<{ id: string }, string>('item_books(예약 컬렉션)', 'id', spec.collectionIds, (chunk) =>
+  // 컬렉션 선택 — 노출 중인 것만 남긴다(정기 배포의 explicit 모드와 같은 판정).
+  // 판정을 미룬 컬렉션은 빼고 나머지만 판정한다. 남은 목록이 비면 조회하지 않는다 — 빈 목록은 「전체」로 읽힌다.
+  const hasDeferred = spec.collectionIds.some((id) => deferredIds.has(id.toLowerCase()))
+  const checkedIds = hasDeferred ? spec.collectionIds.filter((id) => !deferredIds.has(id.toLowerCase())) : spec.collectionIds
+  if (hasDeferred && checkedIds.length === 0) {
+    return { badgePool: [], excludedBadges: [], excludedCollections: [], effectiveCollectionIds: [] }
+  }
+
+  const droppableBooks = await fetchAllRowsIn<{ id: string }, string>('item_books(예약 컬렉션)', 'id', checkedIds, (chunk) =>
     applyDroppableItemBookFilter(supabase.from('item_books').select('id').in('id', chunk), atIso)
   )
   const target = resolveAmbientTargetCollections({
     useRandom: false,
-    configIds: spec.collectionIds,
+    configIds: checkedIds,
     droppableIds: droppableBooks.map((b) => b.id),
     pick: pickRandom,
   })
@@ -238,7 +258,8 @@ async function loadItemTargets(supabase: ServiceClient, spec: AmbientDropSchedul
       excludedBadges: [],
       excludedCollections,
       effectiveCollectionIds: [],
-      reason: target.reason,
+      // 미룬 컬렉션이 있으면 노출 중 컬렉션이 예정 시각에 생길 수 있다 — 직접 적은 컬렉션이 걸린 사실은 excluded로 남는다
+      ...(hasDeferred ? {} : { reason: target.reason }),
     }
   }
 
@@ -263,8 +284,20 @@ async function loadItemTargets(supabase: ServiceClient, spec: AmbientDropSchedul
     excludedBadges: [],
     excludedCollections,
     effectiveCollectionIds: kept,
-    ...(pool.length === 0 ? { reason: 'no_candidate_badges' as const } : {}),
+    // 후보 풀이 비어도 미룬 컬렉션이 예정 시각에 아이템을 채울 수 있어 막지 않는다
+    ...(pool.length === 0 && !hasDeferred ? { reason: 'no_candidate_badges' as const } : {}),
   }
+}
+
+/** 대상 읽기의 선택 인자. 넘기지 않으면 모든 컬렉션을 `atIso` 기준으로 판정한다 */
+export interface LoadScheduleTargetsOptions {
+  /**
+   * 판정을 예정 시각으로 미룰 컬렉션 ID(운영툴이 연결로 채운 컬렉션, 티켓 20261004_2242). 소문자·대문자 모두 받는다.
+   * 이 ID는 노출 중 판정과 후보 배지 읽기를 건너뛴다. 미룬 컬렉션이 하나라도 있으면 「노출 중인 컬렉션 없음」과
+   * 「후보 배지 없음」은 내지 않는다(예정 시각에 그 컬렉션에서 생길 수 있다). 직접 적은 컬렉션이 노출 중이
+   * 아니면 지금처럼 `excluded.collections`에 담긴다. 지점 쪽 판정은 그대로다.
+   */
+  deferredCollectionIds?: readonly string[]
 }
 
 /**
@@ -274,9 +307,14 @@ async function loadItemTargets(supabase: ServiceClient, spec: AmbientDropSchedul
 export async function loadScheduleTargets(
   supabase: ServiceClient,
   spec: AmbientDropScheduleSpec,
-  atIso: string
+  atIso: string,
+  options: LoadScheduleTargetsOptions = {}
 ): Promise<ScheduleTargets> {
-  const [poiSide, itemSide] = await Promise.all([loadPoiTargets(supabase, spec), loadItemTargets(supabase, spec, atIso)])
+  const deferredIds = new Set((options.deferredCollectionIds ?? []).map((id) => id.toLowerCase()))
+  const [poiSide, itemSide] = await Promise.all([
+    loadPoiTargets(supabase, spec),
+    loadItemTargets(supabase, spec, atIso, deferredIds),
+  ])
 
   let reason: AmbientDropSkipReason | undefined
   if (itemSide.reason === 'no_eligible_collection') reason = 'no_eligible_collection'

@@ -1994,7 +1994,7 @@ describe('실제 레지스트리: 컬렉션 핸들러 (티켓 20261004_2039)', (
 
     expect(failure.status).toBe(409)
     expect(failure.extra?.skipped).toEqual([
-      { id: ID.card, reason: PRECHECK_MESSAGES.cardBeforeCollection },
+      { id: ID.card, reason: PRECHECK_MESSAGES.beforeLinkedCollection },
       { id: BOOK_ITEM, reason: PRECHECK_MESSAGES.groupBlocked },
     ])
     expect(nonSelect(db)).toEqual([])
