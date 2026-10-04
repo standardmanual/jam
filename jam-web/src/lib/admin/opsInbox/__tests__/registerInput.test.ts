@@ -1,5 +1,6 @@
 /**
- * 운영 항목 → 카드·미션·JAM! 배지·레시피·드랍 예약 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b. 레시피는 티켓 20261002_2221 ⑧-a, 드랍 예약은 티켓 20261002_2306 ⑧-b, JAM! 배지는 티켓 20261004_1756 ⑨-a)
+ * 운영 항목 → 카드·미션·JAM! 배지·컬렉션·레시피·드랍 예약 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b. 레시피는 티켓 20261002_2221 ⑧-a, 드랍 예약은 티켓 20261002_2306 ⑧-b, JAM! 배지는 티켓 20261004_1756 ⑨-a,
+ * 컬렉션은 티켓 20261004_2039 ⑩-a)
  *
  * 규칙은 `docs/specs/prd/ops-tool/PRD.md` §8.4와 티켓의 「착수 전에 정한 것」 1~8이다.
  * 오류 문장 하나하나는 등록 스크립트 테스트(`scripts/asset-generator/__tests__/`)가 시험한다. 여기서는 «항목에서 읽는 자리»,
@@ -18,6 +19,7 @@ import { CARD_SHAPES, CARD_TITLE_MAX_LENGTH } from '@/lib/today/shape'
 import { buildBadgeInsertPayload } from '@/lib/admin/badge-insert-payload'
 import {
   JAM_BADGE_RECIPE_LINK_FIELD,
+  toCollectionLaunchRegisterInput,
   toDropScheduleRegisterInput,
   toJamBadgeRegisterInput,
   toMissionRegisterInput,
@@ -26,7 +28,7 @@ import {
   withoutLinkedFields,
   withoutSavePrefix,
 } from '@/lib/admin/opsInbox/registerInput'
-import type { OpsRegisterItem, RegisterInputIssue } from '@/lib/admin/opsInbox/registerInput'
+import type { CollectionLaunchLinkedIds, OpsRegisterItem, RegisterInputIssue } from '@/lib/admin/opsInbox/registerInput'
 
 const CARD_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
 const BADGE_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
@@ -115,6 +117,22 @@ const badgeItem = (over: Raw = {}, extra: Parameters<typeof opsItem>[2] = {}) =>
 
 function toBadge(item: OpsRegisterItem, linkedIds?: Parameters<typeof toJamBadgeRegisterInput>[1]['linkedIds']) {
   return toJamBadgeRegisterInput(item, { id: BADGE_ID, linkedIds })
+}
+
+/** 검사를 통과하는 컬렉션 항목(틀만: 이름·설명·공개 시각). */
+function collectionOriginal(over: Raw = {}): Raw {
+  return {
+    starts_at: '2026-10-06T09:00:00+09:00',
+    copy: { name: '[TEST] 가을 컬렉션', description: '가을 길에서 모아요.' },
+    resource: {},
+    ...over,
+  }
+}
+
+const collectionItem = (over: Raw = {}, extra: Parameters<typeof opsItem>[2] = {}) => opsItem('collection_launch', collectionOriginal(over), extra)
+
+function toCollection(item: OpsRegisterItem, linkedIds?: CollectionLaunchLinkedIds) {
+  return toCollectionLaunchRegisterInput(item, { linkedIds })
 }
 
 /** 검사를 통과하는 드랍 예약 항목(지점 직접 × 컬렉션). */
@@ -1321,6 +1339,203 @@ describe('toJamBadgeRegisterInput (티켓 20261004_1756, PRD §8.4 JAM! 배지 �
   })
 })
 
+describe('toCollectionLaunchRegisterInput (티켓 20261004_2039, PRD §8.4 컬렉션 행)', () => {
+  it('공통 칸 starts_at·ends_at·tribe_id, copy의 name·description·story_text, resource의 image_url·reward_points·reward_badge_id를 읽어 item_books 틀 칸을 만든다', () => {
+    const result = toCollection(
+      collectionItem({
+        ends_at: '2026-10-13T09:00:00+09:00',
+        tribe_id: UUID_A,
+        copy: { name: ' [TEST] 가을 컬렉션 ', description: '가을 길에서 모아요.', story_text: '낙엽이 쌓인 길을 따라가요.' },
+        resource: { image_url: 'https://example.com/book.png', reward_points: 50, reward_badge_id: UUID_B },
+      })
+    )
+    expect(result.errors).toEqual([])
+    expect(result.warnings).toEqual([])
+    expect(result.linkFields).toEqual([])
+    expect(result.payload).toEqual({
+      name: '[TEST] 가을 컬렉션',
+      description: '가을 길에서 모아요.',
+      story_text: '낙엽이 쌓인 길을 따라가요.',
+      image_url: 'https://example.com/book.png',
+      reward_points: 50,
+      reward_badge_id: UUID_B,
+      tribe_id: UUID_A,
+      valid_from: '2026-10-06T09:00:00+09:00',
+      valid_until: '2026-10-13T09:00:00+09:00',
+      is_active: true,
+    })
+  })
+
+  it('없는 칸의 기본값: 이야기·이미지·보상 배지·트라이브·종료 시각은 null(상시), 보상 포인트는 0, 툴이 정하는 is_active는 true다(G1). 어드민 표시 전용 칸은 payload에 없다', () => {
+    const payload = toCollection(collectionItem()).payload!
+    expect(payload).toEqual({
+      name: '[TEST] 가을 컬렉션',
+      description: '가을 길에서 모아요.',
+      story_text: null,
+      image_url: null,
+      reward_points: 0,
+      reward_badge_id: null,
+      tribe_id: null,
+      valid_from: '2026-10-06T09:00:00+09:00',
+      valid_until: null,
+      is_active: true,
+    })
+    for (const key of ['id', 'required_activity_badge_id', 'image_source', 'drop_excluded', 'drop_condition_json', 'background_color']) {
+      expect(Object.keys(payload)).not.toContain(key)
+    }
+  })
+
+  it('항목 값이 비었으면 행 칸(starts_at·ends_at)으로 시각을 읽고, 수정본이 있으면 수정본을 먼저 읽는다', () => {
+    const withoutStart = collectionOriginal()
+    delete withoutStart.starts_at
+    const fromRow = toCollection(opsItem('collection_launch', withoutStart, { starts_at: '2026-10-06T00:00:00.000Z', ends_at: '2026-10-13T00:00:00.000Z' }))
+    expect(fromRow.errors).toEqual([])
+    expect(fromRow.payload).toMatchObject({ valid_from: '2026-10-06T00:00:00.000Z', valid_until: '2026-10-13T00:00:00.000Z' })
+
+    const edited = toCollection(collectionItem({}, { edited: { starts_at: '2026-10-07T09:00:00+09:00', copy: { name: '고친 이름', description: '고친 설명' } } }))
+    expect(edited.errors).toEqual([])
+    expect(edited.payload).toMatchObject({ name: '고친 이름', description: '고친 설명', valid_from: '2026-10-07T09:00:00+09:00' })
+  })
+
+  it('name·description·story_text는 copy를 먼저 읽고, 없으면 resource에서 읽는다. 앞뒤 공백은 뗀다', () => {
+    const result = toCollection(collectionItem({ copy: {}, resource: { name: ' resource 이름 ', description: 'resource 설명', story_text: ' resource 이야기 ' } }))
+    expect(result.errors).toEqual([])
+    expect(result.warnings).toEqual([])
+    expect(result.payload).toMatchObject({ name: 'resource 이름', description: 'resource 설명', story_text: 'resource 이야기' })
+  })
+
+  it('필수 칸(이름·설명·공개 시각)이 없으면 칸마다 오류를 쌓고 payload가 없다(경로는 copy.name·copy.description·starts_at)', () => {
+    const withoutStart = collectionOriginal({ copy: {} })
+    delete withoutStart.starts_at
+    const result = toCollection(opsItem('collection_launch', withoutStart))
+    expect(result.payload).toBeNull()
+    expect(paths(result.errors)).toEqual(['copy.name', 'copy.description', 'starts_at'])
+    expect(result.errors.map((issue) => issue.message)).toEqual([
+      'collection.name: 필수 항목이 없어요.',
+      'collection.description: 필수 항목이 없어요.',
+      'collection.valid_from: 필수 항목이 없어요(공개 시각 starts_at이 필요해요).',
+    ])
+  })
+
+  it('이름·설명이 빈 문자열이거나 공백뿐이면 없는 것으로 보고, 문자열이 아니면 형식 오류다', () => {
+    const blank = toCollection(collectionItem({ copy: { name: '', description: '   ' } }))
+    expect(blank.errors).toEqual([
+      { path: 'copy.name', message: 'collection.name: 필수 항목이 없어요.' },
+      { path: 'copy.description', message: 'collection.description: 필수 항목이 없어요.' },
+    ])
+    const notText = toCollection(collectionItem({ copy: { name: 7, description: '설명' } }))
+    expect(notText.errors).toEqual([{ path: 'copy.name', message: 'collection.name: 문자열이어야 해요(받은 값: 7).' }])
+  })
+
+  it('시각은 시간대가 붙은 ISO여야 하고 종료는 공개보다 늦어야 한다', () => {
+    const badStart = toCollection(collectionItem({ starts_at: '내일 아침' }))
+    expect(badStart.errors).toEqual([{ path: 'starts_at', message: 'collection.valid_from: 시간대가 붙은 ISO 형식이어야 해요(받은 값: "내일 아침").' }])
+    const badEnd = toCollection(collectionItem({ ends_at: '다음 주' }))
+    expect(badEnd.errors).toEqual([{ path: 'ends_at', message: 'collection.valid_until: 시간대가 붙은 ISO 형식이어야 해요(받은 값: "다음 주").' }])
+    const same = toCollection(collectionItem({ ends_at: '2026-10-06T09:00:00+09:00' }))
+    expect(same.errors).toEqual([{ path: 'ends_at', message: 'collection.valid_until: 종료 시각은 공개 시각보다 늦어야 해요.' }])
+    const earlier = toCollection(collectionItem({ ends_at: '2026-10-05T09:00:00+09:00' }))
+    expect(paths(earlier.errors)).toEqual(['ends_at'])
+  })
+
+  it('보상 포인트는 0 이상의 정수여야 한다(조용히 0이 되지 않는다). 0은 통과한다', () => {
+    const bad = toCollection(collectionItem({ resource: { reward_points: '50' } }))
+    expect(bad.payload).toBeNull()
+    expect(bad.errors).toEqual([{ path: 'resource.reward_points', message: 'collection.reward_points: 0 이상의 정수여야 해요(받은 값: "50").' }])
+    expect(toCollection(collectionItem({ resource: { reward_points: -1 } })).errors[0].message).toContain('(받은 값: -1)')
+    expect(toCollection(collectionItem({ resource: { reward_points: 1.5 } })).errors[0].message).toContain('(받은 값: 1.5)')
+    expect(toCollection(collectionItem({ resource: { reward_points: 0 } })).payload).toMatchObject({ reward_points: 0 })
+  })
+
+  it('트라이브는 항목 공통 칸에서 읽고 UUID가 아니면 오류다. 없으면 null이다', () => {
+    expect(toCollection(collectionItem()).payload).toMatchObject({ tribe_id: null })
+    expect(toCollection(collectionItem({ tribe_id: UUID_A })).payload).toMatchObject({ tribe_id: UUID_A })
+    const bad = toCollection(collectionItem({ tribe_id: 'tribe-1' }))
+    expect(bad.payload).toBeNull()
+    expect(bad.errors).toEqual([{ path: 'tribe_id', message: 'collection.tribe_id: 트라이브 ID(UUID) 형식이 아니에요(받은 값: "tribe-1").' }])
+  })
+
+  it('이미지 주소·이야기가 문자열이 아니면 형식 오류다. 공백뿐이면 없는 것이다', () => {
+    const image = toCollection(collectionItem({ resource: { image_url: 5 } }))
+    expect(image.errors).toEqual([{ path: 'resource.image_url', message: 'collection.image_url: 문자열이어야 해요(받은 값: 5).' }])
+    const story = toCollection(collectionItem({ copy: { name: '이름', description: '설명', story_text: 9 } }))
+    expect(story.errors).toEqual([{ path: 'copy.story_text', message: 'collection.story_text: 문자열이어야 해요(받은 값: 9).' }])
+    const blank = toCollection(collectionItem({ copy: { name: '이름', description: '설명', story_text: '  ' }, resource: { image_url: ' ' } }))
+    expect(blank.errors).toEqual([])
+    expect(blank.payload).toMatchObject({ story_text: null, image_url: null })
+  })
+
+  it('is_active·id는 툴이 정하는 값이라 읽지 않고, resource의 tribe_id는 공통 칸이 먼저라 읽지 않고, 어드민 표시 전용 칸은 표에 없는 칸이라 읽지 않고 경고한다', () => {
+    const result = toCollection(
+      collectionItem({
+        tribe_id: UUID_A,
+        resource: {
+          is_active: false,
+          id: UUID_C,
+          tribe_id: UUID_B,
+          required_activity_badge_id: UUID_B,
+          image_source: 'admin-generator',
+          drop_excluded: true,
+          drop_condition_json: { x: 1 },
+          background_color: '#fff',
+        },
+      })
+    )
+    expect(result.errors).toEqual([])
+    expect(result.payload).toMatchObject({ is_active: true, tribe_id: UUID_A })
+    expect(Object.keys(result.payload!)).not.toContain('required_activity_badge_id')
+    expect(Object.fromEntries(result.warnings.map((issue) => [issue.path, issue.message]))).toEqual({
+      'resource.is_active': 'resource.is_active: 툴이 정하는 값이라 읽지 않아요.',
+      'resource.id': 'resource.id: 툴이 정하는 값이라 읽지 않아요.',
+      'resource.tribe_id': 'resource.tribe_id: 항목 공통 칸(tribe_id)이 먼저라 이 값은 읽지 않아요.',
+      'resource.required_activity_badge_id': 'resource.required_activity_badge_id: 표에 없는 칸이라 읽지 않아요.',
+      'resource.image_source': 'resource.image_source: 표에 없는 칸이라 읽지 않아요.',
+      'resource.drop_excluded': 'resource.drop_excluded: 표에 없는 칸이라 읽지 않아요.',
+      'resource.drop_condition_json': 'resource.drop_condition_json: 표에 없는 칸이라 읽지 않아요.',
+      'resource.background_color': 'resource.background_color: 표에 없는 칸이라 읽지 않아요.',
+    })
+  })
+
+  describe('연결 칸 reward_badge_id(§8.3)', () => {
+    it('연결 ID가 있으면 그 값이고 linkFields에 알린다', () => {
+      const result = toCollection(collectionItem(), { reward_badge_id: UUID_B })
+      expect(result.errors).toEqual([])
+      expect(result.linkFields).toEqual(['reward_badge_id'])
+      expect(result.payload).toMatchObject({ reward_badge_id: UUID_B })
+    })
+
+    it('resource에도 같은 칸이 있으면 오류다(연결로 채우는 칸이라 같이 적을 수 없다)', () => {
+      const result = toCollection(collectionItem({ resource: { reward_badge_id: UUID_A } }), { reward_badge_id: UUID_B })
+      expect(result.payload).toBeNull()
+      expect(result.errors).toEqual([
+        { path: 'resource.reward_badge_id', message: 'collection.reward_badge_id: 연결된 항목으로 채우는 칸이라 resource에 같이 적을 수 없어요.' },
+      ])
+    })
+
+    it('연결 ID가 없으면(null·빈 문자열 포함) resource에 직접 적은 UUID를 쓰고 linkFields는 비어 있다', () => {
+      for (const linked of [undefined, { reward_badge_id: null }, { reward_badge_id: '' }]) {
+        const result = toCollection(collectionItem({ resource: { reward_badge_id: UUID_A } }), linked)
+        expect(result.errors).toEqual([])
+        expect(result.linkFields).toEqual([])
+        expect(result.payload).toMatchObject({ reward_badge_id: UUID_A })
+      }
+    })
+
+    it('직접 적은 보상 배지가 UUID 형식이 아니거나 문자열이 아니면 오류다', () => {
+      const text = toCollection(collectionItem({ resource: { reward_badge_id: 'badge-1' } }))
+      expect(text.errors).toEqual([{ path: 'resource.reward_badge_id', message: 'collection.reward_badge_id: 배지 ID(UUID) 형식이어야 해요(받은 값: "badge-1").' }])
+      const number = toCollection(collectionItem({ resource: { reward_badge_id: 3 } }))
+      expect(number.errors).toEqual([{ path: 'resource.reward_badge_id', message: 'collection.reward_badge_id: 배지 ID(UUID) 형식이어야 해요(받은 값: 3).' }])
+    })
+  })
+
+  it('kind가 collection_launch가 아니면 오류다', () => {
+    const result = toCollectionLaunchRegisterInput(opsItem('mission', collectionOriginal()))
+    expect(result.payload).toBeNull()
+    expect(result.errors).toEqual([{ path: 'kind', message: 'kind: collection_launch 항목만 컬렉션으로 바꿀 수 있어요(받은 값: "mission").' }])
+  })
+})
+
 describe('withoutSavePrefix', () => {
   it('어드민 저장 검사 문장 앞의 「저장할 수 없습니다.」만 뗀다', () => {
     expect(withoutSavePrefix('저장할 수 없습니다. 등급 값을 알 수 없습니다.')).toBe('등급 값을 알 수 없습니다.')
@@ -1373,6 +1588,15 @@ describe('withoutLinkedFields · 등록 전 DB 검사용 사본(결정 8)', () =
     const copy = withoutLinkedFields(result.payload!, result.linkFields, { reward_badge_ids: [UUID_B] })
     expect(copy.reward_badge_ids).toEqual([UUID_A])
     expect(result.payload!.reward_badge_ids).toEqual([UUID_A, UUID_B])
+  })
+
+  it('컬렉션의 reward_badge_id는 연결로 채웠을 때만 null로 비운다', () => {
+    const linked = toCollection(collectionItem(), { reward_badge_id: UUID_B })
+    expect(withoutLinkedFields(linked.payload!, linked.linkFields, { reward_badge_id: UUID_B }).reward_badge_id).toBeNull()
+    expect(linked.payload!.reward_badge_id).toBe(UUID_B)
+
+    const direct = toCollection(collectionItem({ resource: { reward_badge_id: UUID_A } }))
+    expect(withoutLinkedFields(direct.payload!, direct.linkFields, {}).reward_badge_id).toBe(UUID_A)
   })
 
   it('연결 몫을 빼면 배열이 비는 경우도 빈 배열이다', () => {
