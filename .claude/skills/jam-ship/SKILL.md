@@ -137,8 +137,9 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
 `ship.toml`의 제약). 커밋 범위는 1단계에서 이미 확인한 `origin/main..origin/staging`을 그대로
 넘긴다.
 
-민지는 Agent 도구에 `isolation: "worktree"`를 주어 부르고, 프롬프트에 **첫 명령으로**
-`git fetch origin staging && git checkout --detach origin/staging`을 실행하라고 지시한다. 격리
+민지는 Agent 도구에 `isolation: "worktree"`를 주어 부르고, 프롬프트에 「지금 폴더는 너만의 격리
+워크트리다」라고 밝힌 뒤 **첫 명령으로** `git fetch origin staging && git checkout --detach origin/staging`을
+실행하라고 지시한다. 민지 정의는 이 두 가지가 프롬프트에 함께 있을 때만 HEAD 이동을 허용한다. 격리
 워크트리는 기본 브랜치(main) 기준으로 만들어져 staging에만 있는 변경이 보이지 않기 때문이다.
 공유 작업 폴더에서 민지가 HEAD를 옮기는 사고(티켓 20261002_1905)를 막으려는 것이다.
 
