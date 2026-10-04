@@ -5,6 +5,8 @@
  * 「읽지 못함」이다. 읽지 못한 재료에 기대는 신호만 「확인하지 못했어요」(`load_failed`)가 되고 나머지는 계산한다(A11). 신호가 안 뜬
  * 것(`clear`)과 확인하지 못한 것을 섞지 않는다.
  *
+ * - 「비어 있는 컨텐츠」는 날짜 구성 검사 외에 「예약됨」·「게재중」 컬렉션 항목이 만든 컬렉션에 아이템 배지가 없으면 한 건을 더한다(검사 날짜와 무관, 티켓 20261004_2242).
+ *   그 데이터(`collectionItemCounts`)를 읽지 못했으면(`null`) 이 신호 전체가 「확인하지 못했어요」다.
  * - 시험 묶음(`isSample`)은 기본으로 모든 계산에서 뺀다. `includeSample`을 주면 들어가고 결과에 `isSample` 표식이 붙는다.
  *   루틴 실패는 스위치와 관계없이 시험 묶음을 세지 않는다.
  * - 11종(실행 실패·예약 누락·루틴 실패·형식 오류·비어 있는 컨텐츠·새 컨텐츠가 없는 날·승인 마감 임박·에이전트가 뺀 항목·겹침·
@@ -34,6 +36,7 @@ import {
 import { evaluateDayRules } from '@/lib/admin/opsSignals/dayRules'
 import {
   evaluateApprovalDeadline,
+  evaluateEmptyCollections,
   evaluateExcludedItems,
   evaluateExecutionFailed,
   evaluateFormatError,
@@ -50,6 +53,11 @@ export interface ComputeOpsSignalsInput {
   missions: readonly SignalMissionInput[] | null
   bundles: readonly SignalBundleInput[] | null
   actions: ActionCounts | null
+  /**
+   * 컬렉션 ID(소문자)별 아이템 배지 수(티켓 20261004_2242). 「비어 있는 컨텐츠」의 「아이템이 없는 컬렉션」 검사가 쓴다.
+   * 없으면(넘기지 않음) 그 검사를 하지 않고, `null`이면 읽지 못한 것이라 「비어 있는 컨텐츠」 전체가 「확인하지 못했어요」다.
+   */
+  collectionItemCounts?: ReadonlyMap<string, number> | null
 }
 
 export interface ComputeOpsSignalsOptions {
@@ -140,7 +148,14 @@ export function computeOpsSignals(input: ComputeOpsSignalsInput, options: Comput
     }
   } else {
     const dayResults = evaluateDayRules({ compositions, scanDates, thresholds })
-    decisions.set('empty_content', decided(dayResults.empty_content))
+    // 「비어 있는 컨텐츠」는 날짜 구성 검사에 「아이템이 없는 컬렉션」 검사를 더한다. 컬렉션 쪽 데이터를 읽지 못했으면 이 신호 전체를 확인하지 못한 것으로 둔다.
+    if (input.collectionItemCounts === null) {
+      decisions.set('empty_content', unchecked('load_failed'))
+    } else {
+      const emptyCollections =
+        input.collectionItemCounts === undefined ? [] : evaluateEmptyCollections(bundles, input.collectionItemCounts)
+      decisions.set('empty_content', decided(sortSignalResults([...dayResults.empty_content, ...emptyCollections])))
+    }
     decisions.set('no_new_content', decided(dayResults.no_new_content))
     decisions.set('overlap', decided(dayResults.overlap))
     decisions.set('monotony', decided(dayResults.monotony))

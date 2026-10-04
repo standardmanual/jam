@@ -6,6 +6,7 @@
  * 시험 데이터의 상태·시각으로 검증한다. 모든 시험은 2026-10-01(목) 12:00 KST를 지금으로 한다 — 검사 범위는 그날부터 일요일까지다.
  *
  * 기준 구성(`healthyCards`)은 모든 날짜에 카드가 3장씩 있어 어떤 신호도 걸리지 않는다. 각 줄은 기준 구성에서 한 가지만 바꾼다.
+ * 「비어 있는 컨텐츠」의 「아이템이 없는 컬렉션」(티켓 20261004_2242)은 표에 두 줄을 두고, 대상 상태·날짜와 무관·읽지 못한 재료는 아래 따로 본다.
  */
 import { describe, expect, it } from 'vitest'
 import type { Json } from '@/types/database.generated'
@@ -17,6 +18,7 @@ import {
   type ComputeOpsSignalsInput,
   type ComputeOpsSignalsOptions,
 } from '@/lib/admin/opsSignals/compute'
+import { collectionBookIdToCheck, collectionBookIdsToCheck } from '@/lib/admin/opsSignals/statusRules'
 import { DEFAULT_OPS_SIGNAL_THRESHOLD_VALUES } from '@/lib/admin/opsSignals/thresholds'
 import {
   HEALTHY_FROM,
@@ -90,6 +92,21 @@ function homeItem(date: string, original: Record<string, Json> = {}, over: Parti
 }
 
 const TRIBE_ID = '3f2b8d6e-5a7c-4e1d-9b2a-0c4d8e6f1a23'
+const BOOK_ID = '5b0c7e92-1d34-4f6a-8a5e-2c9d1e7f4b60'
+
+/** 예약 등록이 컬렉션을 만든 항목(`created_resource.item_book_id`). 공개 시각은 이번 주 안이다(날짜 구성 신호에 걸리지 않는 컬렉션 종류). */
+function collectionItem(over: Partial<SignalBundleItemInput> = {}): SignalBundleItemInput {
+  return makeItem({
+    kind: 'collection_launch',
+    status: 'scheduled',
+    startsAt: kst('2026-10-02', '09:00'),
+    endsAt: null,
+    original: { copy: { name: '가을 컬렉션' } },
+    createdResource: { item_book_id: BOOK_ID },
+    ...over,
+  })
+}
+const countsOf = (entries: Array<[string, number]> = []) => new Map(entries)
 const NO_IMAGE = { resource: { sort_order: 9 } }
 
 // ── 13종 조건 표 ─────────────────────────────────────────────────────────────────────────────────
@@ -277,6 +294,18 @@ const ROWS: Row[] = [
     condition: '이미지가 없는 모양(brief)이 대표 카드인 날',
     raised: () => ({ input: { cards: withRepShapes(base(), { '2026-10-02': 'brief' }) } }),
     clear: () => ({ input: { cards: withRepShapes(base(), { '2026-10-02': 'poster' }) } }),
+  },
+  {
+    key: 'empty_content',
+    condition: '「예약됨」 컬렉션 항목이 만든 컬렉션에 아이템 배지가 0개(1개면 안 뜬다)',
+    raised: () => ({ input: { bundles: [makeBundle([collectionItem()])], collectionItemCounts: countsOf() } }),
+    clear: () => ({ input: { bundles: [makeBundle([collectionItem()])], collectionItemCounts: countsOf([[BOOK_ID, 1]]) } }),
+  },
+  {
+    key: 'empty_content',
+    condition: '「게재중」 컬렉션 항목이 만든 컬렉션에 아이템 배지가 0개(승인 전·준비중 항목은 안 뜬다)',
+    raised: () => ({ input: { bundles: [makeBundle([collectionItem({ status: 'live' })])], collectionItemCounts: countsOf([['다른-컬렉션', 3]]) } }),
+    clear: () => ({ input: { bundles: [makeBundle([collectionItem({ status: 'preparing' })])], collectionItemCounts: countsOf() } }),
   },
   // ── 새 컨텐츠가 없는 날: 그날 새로 게재를 시작하는 홈피드 카드 0장
   {
@@ -665,6 +694,128 @@ describe('루틴 실패 — 점검 시작 전', () => {
       'routine_failed'
     )
     expect(weekly.results.map((entry) => entry.message)).toEqual(['주간 루틴이 화요일 12시까지 기획안을 내지 못했어요.'])
+  })
+})
+
+describe('비어 있는 컨텐츠 — 아이템이 없는 컬렉션 (티켓 20261004_2242)', () => {
+  const emptyContent = (scenario: Scenario) => outcome(scenario, 'empty_content')
+  const states = (result: ReturnType<typeof run>) =>
+    Object.fromEntries(result.signals.map((signal) => [signal.key, signal.state === 'unchecked' ? `unchecked:${signal.uncheckedReason}` : signal.state]))
+  const withBundle = (items: SignalBundleItemInput[], counts: Array<[string, number]> = [], over = {}) => ({
+    input: { bundles: [makeBundle(items, over)], collectionItemCounts: countsOf(counts) },
+  })
+
+  it('「예약됨」은 공개 시각과 함께 공개 전에 채우라고 알리고, 날짜는 공개 시각의 KST 날짜다', () => {
+    const item = collectionItem({ startsAt: kst('2026-10-02', '09:00') })
+    const bundle = makeBundle([item])
+    const result = emptyContent({ input: { bundles: [bundle], collectionItemCounts: countsOf() } })
+    expect(result.state).toBe('raised')
+    expect(result.results).toEqual([
+      {
+        message: '10/2(금) 09:00에 공개할 컬렉션 런칭 「가을 컬렉션」에 아이템이 없어요. 공개 전에 기존 어드민에서 아이템 배지를 채워 주세요.',
+        date: '2026-10-02',
+        bundleId: bundle.id,
+        itemId: item.id,
+        isSample: false,
+      },
+    ])
+  })
+
+  it('「게재중」은 공개를 알리지 않고 아이템이 없다고만 알린다', () => {
+    const result = emptyContent(withBundle([collectionItem({ status: 'live', startsAt: kst('2026-09-30', '09:00') })]))
+    expect(result.results.map((entry) => [entry.date, entry.message])).toEqual([['2026-09-30', '게재 중인 컬렉션 런칭 「가을 컬렉션」에 아이템이 없어요.']])
+  })
+
+  it('문장과 결과에 자원 ID(컬렉션 ID)가 없다', () => {
+    const result = emptyContent(withBundle([collectionItem(), collectionItem({ status: 'live' })]))
+    expect(result.results).toHaveLength(2)
+    expect(JSON.stringify(result.results)).not.toContain(BOOK_ID)
+  })
+
+  it('검사 날짜와 관계없이 본다: 검사 범위 밖(먼 미래·이미 공개된 지난 날짜)이어도 뜬다', () => {
+    const far = collectionItem({ startsAt: kst('2026-12-24', '09:00') })
+    const past = collectionItem({ status: 'live', startsAt: kst('2026-08-01', '09:00'), createdResource: { item_book_id: '7a1c0d3e-9b2f-4c5d-8e6a-1f2b3c4d5e6f' } })
+    const result = emptyContent(withBundle([far, past]))
+    expect(result.results.map((entry) => entry.date).sort()).toEqual(['2026-08-01', '2026-12-24'])
+  })
+
+  it('공개 시각을 읽을 수 없어도 뜬다(날짜 없음, 예약됨 문장은 시각 없이)', () => {
+    const result = emptyContent(withBundle([collectionItem({ startsAt: null })]))
+    expect(result.results).toHaveLength(1)
+    expect(result.results[0].date).toBeNull()
+    expect(result.results[0].message).toBe('공개할 컬렉션 런칭 「가을 컬렉션」에 아이템이 없어요. 공개 전에 기존 어드민에서 아이템 배지를 채워 주세요.')
+  })
+
+  it.each(['arrived', 'reviewing', 'approved', 'preparing', 'ended', 'rejected', 'cancelled', 'failed'])('상태가 %s인 컬렉션 항목은 안 뜬다', (status) => {
+    expect(emptyContent(withBundle([collectionItem({ status })])).state).toBe('clear')
+  })
+
+  it('아이템 배지가 하나라도 있으면 안 뜬다(여럿이어도 한 컬렉션이면 한 건도 안 뜬다)', () => {
+    expect(emptyContent(withBundle([collectionItem()], [[BOOK_ID, 1]])).state).toBe('clear')
+    expect(emptyContent(withBundle([collectionItem()], [[BOOK_ID, 40]])).state).toBe('clear')
+  })
+
+  it('컬렉션 ID는 대소문자를 가리지 않고 견준다', () => {
+    const upper = collectionItem({ createdResource: { item_book_id: BOOK_ID.toUpperCase() } })
+    expect(emptyContent(withBundle([upper], [[BOOK_ID, 2]])).state).toBe('clear')
+    expect(emptyContent(withBundle([upper], [])).state).toBe('raised')
+  })
+
+  it('컬렉션 항목이 아니거나 만든 자원이 없거나 컬렉션 ID가 문자열이 아니면 안 뜬다', () => {
+    const items = [
+      collectionItem({ kind: 'jam_badge' }),
+      collectionItem({ createdResource: null }),
+      collectionItem({ createdResource: undefined }),
+      collectionItem({ createdResource: { sample: true } }),
+      collectionItem({ createdResource: { item_book_id: 7 } }),
+      collectionItem({ createdResource: { item_book_id: '  ' } }),
+      collectionItem({ createdResource: { today_card_id: BOOK_ID } }),
+    ]
+    expect(emptyContent(withBundle(items)).state).toBe('clear')
+  })
+
+  it('시험 묶음은 기본으로 세지 않고, 시험을 포함하면 시험 표식이 붙는다', () => {
+    const scenario = withBundle([collectionItem()], [], { isSample: true })
+    expect(emptyContent(scenario).state).toBe('clear')
+    const included = outcome({ ...scenario, options: { includeSample: true } }, 'empty_content')
+    expect(included.state).toBe('raised')
+    expect(included.results[0].isSample).toBe(true)
+  })
+
+  it('컬렉션 아이템 수를 넘기지 않으면(undefined) 컬렉션 검사를 하지 않아 기존 결과 그대로다', () => {
+    const scenario: Scenario = { input: { bundles: [makeBundle([collectionItem()])] } }
+    expect(emptyContent(scenario).state).toBe('clear')
+    expect(states(run(scenario))).toEqual(states(run()))
+  })
+
+  it('컬렉션 아이템 수를 읽지 못하면(null) 「비어 있는 컨텐츠」만 확인하지 못했어요이고 나머지 신호는 그대로다', () => {
+    const baseline = states(run({ input: { bundles: [] } }))
+    const result = run({ input: { bundles: [makeBundle([collectionItem()])], collectionItemCounts: null } })
+    expect(states(result)).toEqual({ ...baseline, empty_content: 'unchecked:load_failed' })
+    expect(result.signals.find((signal) => signal.key === 'empty_content')?.results).toEqual([])
+  })
+
+  it('날짜 구성 검사 결과와 함께 뜨고 날짜 순으로 합쳐진다', () => {
+    const cards = dropDay(base(), '2026-10-03', (card) => card.sortOrder === 2)
+    const result = emptyContent({
+      input: { cards, bundles: [makeBundle([collectionItem({ startsAt: kst('2026-10-02', '09:00') })])], collectionItemCounts: countsOf() },
+    })
+    expect(result.results.map((entry) => entry.date)).toEqual(['2026-10-02', '2026-10-03'])
+    expect(result.results[0].message).toContain('아이템이 없어요')
+    expect(result.results[1].message).toContain('카드가 2장')
+  })
+
+  it('collectionBookIdToCheck·collectionBookIdsToCheck는 대상 상태의 컬렉션 ID만 소문자·중복 없이 돌려준다', () => {
+    expect(collectionBookIdToCheck(collectionItem())).toBe(BOOK_ID)
+    expect(collectionBookIdToCheck(collectionItem({ createdResource: { item_book_id: ` ${BOOK_ID.toUpperCase()} ` } }))).toBe(BOOK_ID)
+    expect(collectionBookIdToCheck(collectionItem({ status: 'approved' }))).toBeNull()
+    const bundles = [
+      makeBundle([collectionItem(), collectionItem({ status: 'live' }), collectionItem({ status: 'preparing' })]),
+      makeBundle([collectionItem({ createdResource: { item_book_id: BOOK_ID.toUpperCase() } })]),
+    ]
+    expect(collectionBookIdsToCheck(bundles)).toEqual([BOOK_ID])
+    expect(collectionBookIdsToCheck([makeBundle([collectionItem({ createdResource: null })])])).toEqual([])
+    expect(collectionBookIdsToCheck([])).toEqual([])
   })
 })
 

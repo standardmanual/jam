@@ -68,6 +68,11 @@ export interface SignalBundleItemInput extends ViewableItem {
   patternNo: string | null
   formatErrors: string[]
   updatedAt: string
+  /**
+   * 예약 등록이 만든 자원의 ID(`ops_bundle_items.created_resource`, 예: `{ item_book_id }`). 「아이템이 없는 컬렉션」 신호만 읽는다
+   * (티켓 20261004_2242). 넘기지 않으면(또는 null) 만든 자원이 없는 항목으로 본다.
+   */
+  createdResource?: Json | null
 }
 
 /** 운영 묶음 한 건. `raw`가 null이면 제출 원본을 읽어 오지 않은 것이다(뺀 항목 목록을 읽을 수 없다). */

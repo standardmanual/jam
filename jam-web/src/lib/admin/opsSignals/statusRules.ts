@@ -4,6 +4,9 @@
  * 실행 실패(A2)·예약 누락(가정 19)·루틴 실패(A1)·형식 오류(A4)·승인 마감 임박(A3)·에이전트가 뺀 항목(A4).
  * 입력의 묶음은 시험 묶음을 거른 뒤의 목록이다(거르기는 `compute.ts`가 한다). 항목 값은 수정본을 먼저 읽는다
  * (`itemView.itemField`). 신호 문장은 운영자가 읽는 쉬운 해요체다.
+ *
+ * 아이템이 없는 컬렉션(티켓 20261004_2242)은 날짜 구성이 아니라 항목 상태를 보는 규칙이라 여기 둔다. 신호는 「비어 있는 컨텐츠」(`empty_content`)에
+ * 한 건을 더하고(합치기는 `compute.ts`), 검사 날짜와 관계없이 본다 — 날짜 구성은 종료 시각이 없는 컬렉션을 공개한 날 하루에만 걸쳐 먼 미래·이미 공개된 컬렉션을 놓친다.
  */
 import { computeBundleStatus, tabOfBundleStage } from '@/lib/admin/opsInbox/bundleStatus'
 import { OPS_FIELD_UNKNOWN, readBundleExcludedItems } from '@/lib/admin/opsInbox/fields'
@@ -11,7 +14,7 @@ import { formatKstDayTime, kindLabel, kstDateKey } from '@/lib/admin/opsInbox/la
 import { kstDayBoundsIso, shiftDateStr, todayKstDateString } from '@/lib/admin/today-calendar'
 import { mondayOfWeek } from '@/lib/admin/cronSchedule'
 import { OPS_WEEKDAY_LABELS, makeSignalResult, type OpsSignalResult } from '@/lib/admin/opsSignals/catalog'
-import { isUndecidedStatus } from '@/lib/admin/opsInbox/itemView'
+import { asRecord, isUndecidedStatus } from '@/lib/admin/opsInbox/itemView'
 import {
   describeBundleItem,
   parseTime,
@@ -172,6 +175,64 @@ export function evaluateExcludedItems(ctx: StatusRuleContext): OpsSignalResult[]
         makeSignalResult(`${stage ? `${stage}에서 ` : ''}에이전트가 항목을 뺐어요${key}. 사유: ${entry.reason}`, {
           bundleId: bundle.id,
           itemId: matched?.id ?? null,
+          isSample: bundle.isSample,
+        })
+      )
+    }
+  }
+  return results
+}
+
+// ── 아이템이 없는 컬렉션 (티켓 20261004_2242) ───────────────────────────────────────────────────
+
+const COLLECTION_LAUNCH_KIND = 'collection_launch'
+
+/**
+ * 「아이템이 없는 컬렉션」을 검사할 항목이 만든 컬렉션의 ID. 대상은 「예약됨」·「게재중」인 컬렉션 항목이고 `created_resource.item_book_id`가 문자열이어야 한다.
+ * 준비중·승인 전·종료·시험 묶음 항목은 자원이 없거나 곧 바뀌거나 이미 끝나 뺀다. 대상이 아니면 `null`이다. 같은 값은 소문자로 돌려준다(DB가 소문자 UUID다).
+ */
+export function collectionBookIdToCheck(item: SignalBundleItemInput): string | null {
+  if (item.kind !== COLLECTION_LAUNCH_KIND) return null
+  if (item.status !== 'scheduled' && item.status !== 'live') return null
+  const id = asRecord(item.createdResource)?.item_book_id
+  return typeof id === 'string' && id.trim() !== '' ? id.trim().toLowerCase() : null
+}
+
+/** 검사할 컬렉션 ID 전체(중복 없음). 조회 함수가 아이템 배지 수를 읽을 대상이다. 대상이 없으면 빈 목록이라 조회하지 않는다. */
+export function collectionBookIdsToCheck(bundles: readonly SignalBundleInput[]): string[] {
+  const ids = new Set<string>()
+  for (const bundle of bundles) {
+    for (const item of bundle.items) {
+      const id = collectionBookIdToCheck(item)
+      if (id !== null) ids.add(id)
+    }
+  }
+  return [...ids]
+}
+
+/**
+ * 컬렉션 항목이 만든 컬렉션에 아이템 배지가 하나도 없으면 한 건이다. `itemCounts`는 컬렉션 ID(소문자)별 아이템 배지 수이고, 없는 ID는 0개다.
+ * 결과의 날짜는 항목 공개 시각의 KST 날짜다(읽을 수 없으면 날짜 없음). 자원 ID는 문장에 넣지 않는다.
+ */
+export function evaluateEmptyCollections(
+  bundles: readonly SignalBundleInput[],
+  itemCounts: ReadonlyMap<string, number>
+): OpsSignalResult[] {
+  const results: OpsSignalResult[] = []
+  for (const bundle of bundles) {
+    for (const item of bundle.items) {
+      const bookId = collectionBookIdToCheck(item)
+      if (bookId === null || (itemCounts.get(bookId) ?? 0) > 0) continue
+      const when = formatKstDayTime(item.startsAt)
+      const message =
+        item.status === 'scheduled'
+          ? `${when ? `${when}에 ` : ''}공개할 ${itemName(item)}에 아이템이 없어요. 공개 전에 기존 어드민에서 아이템 배지를 채워 주세요.`
+          : `게재 중인 ${itemName(item)}에 아이템이 없어요.`
+      results.push(
+        makeSignalResult(message, {
+          date: kstDateKey(item.startsAt),
+          bundleId: bundle.id,
+          itemId: item.id,
           isSample: bundle.isSample,
         })
       )
