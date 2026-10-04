@@ -78,12 +78,14 @@ async function readSchedule(supabase: ServiceClient, id: string): Promise<Ambien
  * 예약 등록. 입력 검증(`parseAmbientDropScheduleInput`) → 지점 종류 존재 확인 → 「예정 시각」 기준 대상 판정 →
  * INSERT. 등록 판정은 지금이 아니라 예정 시각 기준이다 — 지금은 공개 전이지만 예정 시각에 공개되는 컬렉션은
  * 통과하고, 예정 시각에 기간이 끝난 컬렉션은 걸린다. 걸린 대상이 하나라도 있으면 400이다(fail-closed).
+ * `options.id`는 운영툴 예약 등록이 만들기 전에 정한 ID다(티켓 20261002_2306). 어드민 라우트는 넘기지 않아 DB가 ID를 정한다.
  */
 export async function createAmbientDropSchedule(
   supabase: ServiceClient,
   body: unknown,
   createdBy: string | null,
-  now: Date = new Date()
+  now: Date = new Date(),
+  options: { id?: string } = {}
 ): Promise<CreateAmbientDropScheduleResult> {
   const parsed = parseAmbientDropScheduleInput(body, now)
   if (!parsed.ok) return { ok: false, status: 400, error: parsed.error }
@@ -116,7 +118,7 @@ export async function createAmbientDropSchedule(
 
   const { data, error } = await supabase
     .from(TABLE)
-    .insert(rowFromSpec(spec, scheduledAt, createdBy, title))
+    .insert(rowFromSpec(spec, scheduledAt, createdBy, title, options.id))
     .select()
     .single()
   if (error) {

@@ -1,5 +1,5 @@
 /**
- * 운영 항목 → 카드·미션·레시피 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b. 레시피는 티켓 20261002_2221 ⑧-a)
+ * 운영 항목 → 카드·미션·레시피·드랍 예약 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b. 레시피는 티켓 20261002_2221 ⑧-a, 드랍 예약은 티켓 20261002_2306 ⑧-b)
  *
  * 규칙은 `docs/specs/prd/ops-tool/PRD.md` §8.4와 티켓의 「착수 전에 정한 것」 1~8이다.
  * 오류 문장 하나하나는 등록 스크립트 테스트(`scripts/asset-generator/__tests__/`)가 시험한다. 여기서는 «항목에서 읽는 자리»,
@@ -15,7 +15,7 @@ import type { MissionInput } from '@/lib/admin/registerChecks/missionFields'
 import { buildTodayCardInsertPayload } from '@/lib/admin/registerChecks/homeFeedFields'
 import type { HomeFeedCardInput } from '@/lib/admin/registerChecks/homeFeedFields'
 import { CARD_SHAPES, CARD_TITLE_MAX_LENGTH } from '@/lib/today/shape'
-import { toMissionRegisterInput, toRecipeRegisterInput, toTodayCardRegisterInput, withoutLinkedFields } from '@/lib/admin/opsInbox/registerInput'
+import { toDropScheduleRegisterInput, toMissionRegisterInput, toRecipeRegisterInput, toTodayCardRegisterInput, withoutLinkedFields } from '@/lib/admin/opsInbox/registerInput'
 import type { OpsRegisterItem, RegisterInputIssue } from '@/lib/admin/opsInbox/registerInput'
 
 const CARD_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
@@ -89,6 +89,18 @@ function recipeOriginal(over: Raw = {}): Raw {
 }
 
 const recipeItem = (over: Raw = {}, extra: Parameters<typeof opsItem>[2] = {}) => opsItem('recipe', recipeOriginal(over), extra)
+
+/** 검사를 통과하는 드랍 예약 항목(지점 직접 × 컬렉션). */
+function dropOriginal(over: Raw = {}): Raw {
+  return {
+    starts_at: '2026-10-06T09:00:00+09:00',
+    copy: { title: '[TEST] 가을 아침 드랍' },
+    resource: { poi_ids: [UUID_A], per_poi_count: 2, collection_ids: [UUID_B] },
+    ...over,
+  }
+}
+
+const dropItem = (over: Raw = {}, extra: Parameters<typeof opsItem>[2] = {}) => opsItem('drop_schedule', dropOriginal(over), extra)
 
 const paths = (issues: RegisterInputIssue[]) => issues.map((issue) => issue.path)
 
@@ -884,6 +896,183 @@ describe('toRecipeRegisterInput (티켓 20261002_2221, PRD §8.4 레시피 행)'
   })
 })
 
+describe('toDropScheduleRegisterInput (티켓 20261002_2306, PRD §8.4 드랍 행)', () => {
+  it('공통 칸 starts_at은 scheduled_at으로, title은 copy에서, 6개 키는 resource에서 읽고 오류·경고·연결 칸이 없다', () => {
+    const result = toDropScheduleRegisterInput(dropItem())
+    expect(result.errors).toEqual([])
+    expect(result.warnings).toEqual([])
+    expect(result.linkFields).toEqual([])
+    expect(result.payload).toEqual({
+      scheduled_at: '2026-10-06T09:00:00+09:00',
+      title: '[TEST] 가을 아침 드랍',
+      poi_ids: [UUID_A],
+      per_poi_count: 2,
+      collection_ids: [UUID_B],
+    })
+  })
+
+  it('resource의 6개 키(poi_ids·poi_category·badge_ids·collection_ids·per_poi_count·total_count)를 값 그대로 넘긴다', () => {
+    const category = toDropScheduleRegisterInput(dropItem({ resource: { poi_category: 'cafe', total_count: 5, badge_ids: [UUID_A, UUID_B] } }))
+    expect(category.errors).toEqual([])
+    expect(category.payload).toMatchObject({ poi_category: 'cafe', total_count: 5, badge_ids: [UUID_A, UUID_B] })
+    expect(category.payload).not.toHaveProperty('poi_ids')
+    expect(category.payload).not.toHaveProperty('collection_ids')
+  })
+
+  it('값의 형식은 보지 않고 그대로 넘긴다(형식 검사는 parseAmbientDropScheduleInput이 현재 시각과 한다)', () => {
+    const result = toDropScheduleRegisterInput(dropItem({ starts_at: 'not-a-time', resource: { poi_ids: 'x', per_poi_count: 0, total_count: 'abc' } }))
+    expect(result.errors).toEqual([])
+    expect(result.payload).toMatchObject({ scheduled_at: 'not-a-time', poi_ids: 'x', per_poi_count: 0, total_count: 'abc' })
+  })
+
+  it('title은 copy를 먼저 읽고, 없으면 resource의 title을 읽고, 둘 다 없으면 칸을 넣지 않는다(길이는 파서가 본다)', () => {
+    const fromResource = toDropScheduleRegisterInput(dropItem({ copy: {}, resource: { title: 'resource 제목', total_count: 1, badge_ids: [UUID_A] } }))
+    expect(fromResource.errors).toEqual([])
+    expect(fromResource.warnings).toEqual([])
+    expect(fromResource.payload).toMatchObject({ title: 'resource 제목' })
+
+    const both = toDropScheduleRegisterInput(
+      dropItem({ copy: { title: 'copy 제목' }, resource: { title: 'resource 제목', poi_ids: [UUID_A], per_poi_count: 1, badge_ids: [UUID_A] } })
+    )
+    expect(both.payload).toMatchObject({ title: 'copy 제목' })
+
+    const none = toDropScheduleRegisterInput(dropItem({ copy: {} }))
+    expect(none.errors).toEqual([])
+    expect(none.payload).not.toHaveProperty('title')
+
+    const long = toDropScheduleRegisterInput(dropItem({ copy: { title: '가'.repeat(101) } }))
+    expect(long.errors).toEqual([])
+    expect((long.payload as { title: string }).title).toHaveLength(101)
+  })
+
+  it('항목 값이 비었으면 행 칸(starts_at)으로 공개 시각을 읽는다. 수정본이 있으면 수정본을 먼저 읽는다', () => {
+    const fromColumn = toDropScheduleRegisterInput(opsItem('drop_schedule', dropOriginal({ starts_at: undefined }), { starts_at: '2026-10-06T00:00:00.000Z' }))
+    expect(fromColumn.errors).toEqual([])
+    expect(fromColumn.payload).toMatchObject({ scheduled_at: '2026-10-06T00:00:00.000Z' })
+
+    const edited = toDropScheduleRegisterInput(dropItem({}, { edited: { starts_at: '2026-10-07T09:00:00+09:00', copy: { title: '고친 제목' } } }))
+    expect(edited.errors).toEqual([])
+    expect(edited.payload).toMatchObject({ scheduled_at: '2026-10-07T09:00:00+09:00', title: '고친 제목', poi_ids: [UUID_A] })
+  })
+
+  it('공개 시각이 없으면 변환 오류다. 빈 문자열이어도 없는 것이다. 경로는 starts_at이다', () => {
+    const result = toDropScheduleRegisterInput(opsItem('drop_schedule', { copy: { title: '[TEST]' }, resource: { total_count: 1, badge_ids: [UUID_A] } }))
+    expect(result.payload).toBeNull()
+    expect(result.errors).toEqual([{ path: 'starts_at', message: 'drop_schedule.scheduled_at: 필수 항목이 없어요(공개 시각 starts_at이 필요해요).' }])
+
+    const blank = toDropScheduleRegisterInput(dropItem({ starts_at: '' }))
+    expect(blank.payload).toBeNull()
+    expect(paths(blank.errors)).toEqual(['starts_at'])
+  })
+
+  it('종료 시각(ends_at)이 있으면 변환 오류다. 항목 값이든 행 칸이든 같다', () => {
+    const fromItem = toDropScheduleRegisterInput(dropItem({ ends_at: '2026-10-13T09:00:00+09:00' }))
+    expect(fromItem.payload).toBeNull()
+    expect(fromItem.errors).toEqual([
+      { path: 'ends_at', message: 'drop_schedule.ends_at: 드랍 일정은 놓은 뒤 내리지 않아서 종료 시각이 없어요. 종료 시각을 빼 주세요.' },
+    ])
+
+    const fromColumn = toDropScheduleRegisterInput(dropItem({}, { ends_at: '2026-10-13T00:00:00.000Z' }))
+    expect(fromColumn.payload).toBeNull()
+    expect(paths(fromColumn.errors)).toEqual(['ends_at'])
+
+    // 종료 시각이 없으면 payload에도 ends_at 칸이 없다.
+    expect(toDropScheduleRegisterInput(dropItem()).payload).not.toHaveProperty('ends_at')
+  })
+
+  it('공개 시각이 없고 종료 시각이 있으면 오류를 칸마다 쌓는다', () => {
+    const result = toDropScheduleRegisterInput(dropItem({ starts_at: undefined }, { ends_at: '2026-10-13T00:00:00.000Z' }))
+    expect(result.payload).toBeNull()
+    expect(paths(result.errors)).toEqual(['starts_at', 'ends_at'])
+  })
+
+  describe('연결 칸 collection_ids(§8.3)', () => {
+    it('연결 ID가 있으면 resource 몫 뒤에 더하고 linkFields에 알린다', () => {
+      const result = toDropScheduleRegisterInput(dropItem(), { linkedIds: { collection_ids: [UUID_C] } })
+      expect(result.errors).toEqual([])
+      expect(result.payload).toMatchObject({ collection_ids: [UUID_B, UUID_C] })
+      expect(result.linkFields).toEqual(['collection_ids'])
+    })
+
+    it('resource에 collection_ids가 없으면 연결 ID만 들어간다', () => {
+      const result = toDropScheduleRegisterInput(dropItem({ resource: { poi_category: 'cafe', total_count: 3 } }), { linkedIds: { collection_ids: [UUID_C, UUID_A] } })
+      expect(result.errors).toEqual([])
+      expect(result.payload).toMatchObject({ collection_ids: [UUID_C, UUID_A], poi_category: 'cafe', total_count: 3 })
+      expect(result.linkFields).toEqual(['collection_ids'])
+    })
+
+    it('연결 ID가 비어 있거나 없으면 resource 값 그대로이고 linkFields는 비어 있다', () => {
+      for (const linkedIds of [undefined, {}, { collection_ids: null }, { collection_ids: [] }]) {
+        const result = toDropScheduleRegisterInput(dropItem(), linkedIds === undefined ? undefined : { linkedIds })
+        expect(result.payload).toMatchObject({ collection_ids: [UUID_B] })
+        expect(result.linkFields).toEqual([])
+      }
+    })
+
+    it('받은 연결 ID 배열을 바꾸지 않는다', () => {
+      const linked = [UUID_C]
+      toDropScheduleRegisterInput(dropItem(), { linkedIds: { collection_ids: linked } })
+      expect(linked).toEqual([UUID_C])
+    })
+
+    it('resource에 badge_ids가 있는 채로 연결 ID가 더해지면 변환은 막지 않고 둘 다 넘긴다(섞임은 파서가 막는다)', () => {
+      const result = toDropScheduleRegisterInput(dropItem({ resource: { poi_ids: [UUID_A], per_poi_count: 1, badge_ids: [UUID_A] } }), {
+        linkedIds: { collection_ids: [UUID_C] },
+      })
+      expect(result.errors).toEqual([])
+      expect(result.payload).toMatchObject({ badge_ids: [UUID_A], collection_ids: [UUID_C] })
+    })
+  })
+
+  it('표에 없는 칸·툴이 정하는 값·공통 칸과 겹치는 resource 키는 경고하고 읽지 않는다', () => {
+    const result = toDropScheduleRegisterInput(
+      dropItem({
+        copy: { title: '[TEST] 가을 아침 드랍', mood: 'calm' },
+        resource: {
+          total_count: 1,
+          badge_ids: [UUID_A],
+          id: UUID_A,
+          starts_at: '2027-01-01T00:00:00+09:00',
+          scheduled_at: '2027-01-01T00:00:00+09:00',
+          rarity_common: 5,
+        },
+      })
+    )
+    expect(result.errors).toEqual([])
+    expect(result.payload).toMatchObject({ scheduled_at: '2026-10-06T09:00:00+09:00' })
+    expect(result.payload).not.toHaveProperty('id')
+    expect(result.payload).not.toHaveProperty('rarity_common')
+    expect(result.warnings).toEqual([
+      { path: 'copy.mood', message: 'copy.mood: 표에 없는 칸이라 읽지 않아요.' },
+      { path: 'resource.id', message: 'resource.id: 툴이 정하는 값이라 읽지 않아요.' },
+      { path: 'resource.starts_at', message: 'resource.starts_at: 항목 공통 칸(starts_at)이 먼저라 이 값은 읽지 않아요.' },
+      { path: 'resource.scheduled_at', message: 'resource.scheduled_at: 표에 없는 칸이라 읽지 않아요.' },
+      { path: 'resource.rarity_common', message: 'resource.rarity_common: 표에 없는 칸이라 읽지 않아요.' },
+    ])
+  })
+
+  it('copy·resource가 객체가 아니면 오류다', () => {
+    const result = toDropScheduleRegisterInput(dropItem({ copy: 'x', resource: [1] }))
+    expect(result.payload).toBeNull()
+    expect(result.errors).toEqual(expect.arrayContaining([{ path: 'copy', message: 'copy: 객체여야 해요.' }, { path: 'resource', message: 'resource: 객체여야 해요.' }]))
+  })
+
+  it('다른 종류의 항목은 변환 오류로 막는다', () => {
+    const result = toDropScheduleRegisterInput(missionItem())
+    expect(result.payload).toBeNull()
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0]).toMatchObject({ path: 'kind' })
+    expect(result.errors[0].message).toMatch(/^kind: drop_schedule 항목만 드랍 예약으로 바꿀 수 있어요/)
+  })
+
+  it('입력 항목을 바꾸지 않는다', () => {
+    const item = dropItem()
+    const before = JSON.stringify(item)
+    toDropScheduleRegisterInput(item, { linkedIds: { collection_ids: [UUID_C] } })
+    expect(JSON.stringify(item)).toBe(before)
+  })
+})
+
 describe('withoutLinkedFields · 등록 전 DB 검사용 사본(결정 8)', () => {
   it('연결로 채운 단일 칸은 null로, 배열 칸은 연결 몫만 빼고 resource 몫은 남긴다', () => {
     const linkedIds = { mission_id: UUID_A, badge_ids: [UUID_B, UUID_C], item_book_id: UUID_A }
@@ -948,5 +1137,15 @@ describe('모듈 경계', () => {
       expect(specifier, specifier).not.toMatch(/^node:/)
     }
     expect(source).not.toMatch(/\.from\(\s*['"`]/)
+  })
+
+  it('드랍 입력 키를 가져오는 scheduleSpec도 Supabase·서버 전용 모듈을 값으로 가져오지 않는다', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'ambient-drop', 'scheduleSpec.ts'), 'utf8')
+    const imports = [...source.matchAll(/^import\s+(?!type\b)[\s\S]*?from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1])
+    expect(imports).toContain('@/lib/admin/uuid')
+    for (const specifier of imports) {
+      expect(specifier, specifier).not.toMatch(/supabase/i)
+      expect(specifier, specifier).not.toMatch(/^node:/)
+    }
   })
 })

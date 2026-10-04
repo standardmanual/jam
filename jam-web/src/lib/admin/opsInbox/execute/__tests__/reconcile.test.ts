@@ -7,6 +7,8 @@
  * - 슬랙(`notifyReconcile`, 가정 6): 요약·알림·시험 묶음 따로·바뀐 것이 없으면 안 보냄·`slack_result`
  * - 미션(⑥): 실제 미션 핸들러의 공개·종료·밖에서 지워짐·숨김·노출일 판정, 멈춘 준비중 카드·미션은 카드부터 지운다(가정 4)
  * - 레시피(⑧-a, 티켓 20261002_2221): 실제 레시피 핸들러의 공개·종료(종료 시각 그 순간부터)·밖에서 지워짐·시각 차이 external_change, 멈춘 준비중 레시피 undo
+ * - 드랍 예약(⑧-b, 티켓 20261002_2306): 실제 드랍 핸들러의 놓음 → 기록 없이 종료, 놓침·건너뜀·실패 → fail과 사유, 밖에서 취소·지워짐 → cancel, 실행 중·멈춤은 그대로,
+ *   예정 시각 차이 external_change, 멈춘 준비중 드랍 예약 undo
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -33,6 +35,7 @@ const CARD_RES2 = uid(12)
 const CARD_RES3 = uid(13)
 const MISSION_RES = uid(14)
 const RECIPE_RES = uid(15)
+const DROP_RES = uid(16)
 
 /** NOW(10/5 12:00 KST = 03:00Z)보다 앞인 공개 시각(10/5 09:00 KST)과, 그날의 끝(23:59:59.999 KST)인 종료 시각. */
 const STARTS = '2026-10-05T00:00:00.000Z'
@@ -93,6 +96,30 @@ const recipeItem = (extra: SpecInBundle = {}): SpecInBundle => ({
 
 const recipeRow = (extra: Row = {}): Row => ({ id: RECIPE_RES, valid_from: STARTS, valid_until: null, ...extra })
 const RECIPE_LABEL = '믹스 레시피 · 10/5(월) 09:00'
+
+/** 드랍 예약 항목(종료 시각 없음). 예정 시각은 `STARTS`다. */
+const dropItem = (extra: SpecInBundle = {}): SpecInBundle => ({
+  id: ID.drop,
+  key: 'drop',
+  kind: 'drop_schedule',
+  status: 'scheduled',
+  startsAt: STARTS,
+  endsAt: null,
+  createdResource: { ambient_drop_schedule_id: DROP_RES },
+  ...extra,
+})
+
+/** 예약 행. 예정 시각은 `STARTS`(지금보다 3시간 전)다. 기본은 아직 `scheduled`다(놓침으로 읽히는 건 3시간을 넘긴 뒤부터). */
+const dropRow = (extra: Row = {}): Row => ({
+  id: DROP_RES,
+  status: 'scheduled',
+  scheduled_at: STARTS,
+  claimed_at: null,
+  finished_at: null,
+  canceled_at: null,
+  ...extra,
+})
+const DROP_LABEL = '드랍 일정 · 10/5(월) 09:00'
 
 // ── 판정(순수) ───────────────────────────────────────────────────────────────────────────────────
 
@@ -340,6 +367,7 @@ interface SetupOptions {
   cards?: Row[]
   missions?: Row[]
   recipes?: Row[]
+  drops?: Row[]
   decisions?: Row[]
   handlers?: ExecuteHandlerRegistry
 }
@@ -354,6 +382,7 @@ function setup(specs: SpecInBundle[], options: SetupOptions = {}) {
   db.tables.today_cards = options.cards ?? []
   db.tables.missions = options.missions ?? []
   db.tables.combination_recipes = options.recipes ?? []
+  db.tables.ambient_drop_schedules = options.drops ?? []
   db.tables.ops_decisions = options.decisions ?? []
   const handlers = options.handlers ?? EXECUTE_HANDLERS
   const run = () => reconcileOpsItems(db.service, { handlers, now: () => NOW })
@@ -989,6 +1018,171 @@ describe('실행 — 레시피의 상태 전이 (티켓 20261002_2221, 실제 �
       expect(statusOf(db, ID.recipe)).toBe('failed')
       expect(db.tables.combination_recipes).toHaveLength(1)
       expect(result.failed[0].resourceId).toBe(RECIPE_RES)
+      expect(JSON.stringify([result, db.decisions()])).not.toContain(DB_SECRET)
+    })
+  })
+})
+
+describe('실행 — 드랍 예약의 상태 전이 (티켓 20261002_2306, 실제 드랍 핸들러)', () => {
+  const dropWrites = (db: FakeDb) => db.calls.filter((call) => call.table === 'ambient_drop_schedules' && call.op !== 'select')
+  const UNPLACED = (label: string) => `드랍을 놓지 못했어요(${label})`
+
+  it('놓은 드랍(done)은 종료로 옮기고 결정 기록을 남기지 않는다. 예약 표에는 쓰지 않는다. 놓인 드랍은 그대로다', async () => {
+    const { db, run } = setup([dropItem()], { drops: [dropRow({ status: 'done', finished_at: at(-2 * MINUTE) })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.drop)).toBe('ended')
+    expect(db.decisions()).toEqual([])
+    expect(result.ended[0]).toMatchObject({ itemId: ID.drop, itemLabel: DROP_LABEL, isSample: false, action: null, reason: null })
+    expect(countsOf(result)).toEqual([0, 1, 0, 0, 0, 0])
+    expect(dropWrites(db)).toEqual([])
+  })
+
+  it('예정 시각이 지났어도 아직 scheduled(실행기가 선점하기 전)면 그대로 둔다. 게재중으로도 넘기지 않는다', async () => {
+    const { db, run } = setup([dropItem()], { drops: [dropRow()] })
+    const result = ok(await run())
+
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+    expect(statusOf(db, ID.drop)).toBe('scheduled')
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it('공개 시각 전의 예약도 그대로 둔다', async () => {
+    const { db, run } = setup([dropItem({ startsAt: LATER })], { drops: [dropRow({ scheduled_at: LATER })] })
+    const result = ok(await run())
+
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it.each([
+    ['실행 중', { status: 'running', claimed_at: at(-5 * MINUTE) }],
+    ['멈춤(선점 뒤 30분이 지난 running)', { status: 'running', claimed_at: at(-31 * MINUTE) }],
+  ])('%s인 예약은 그대로 둔다(놓기가 끝나기 전에는 바꾸지 않는다)', async (_name, extra) => {
+    const { db, run } = setup([dropItem()], { drops: [dropRow(extra)] })
+    const result = ok(await run())
+
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+    expect(statusOf(db, ID.drop)).toBe('scheduled')
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it.each([
+    ['skipped', '건너뜀'],
+    ['failed', '실패'],
+    ['missed', '놓침'],
+  ])('%s는 예약됨 항목을 실패로 닫고 fail과 「드랍을 놓지 못했어요(%s)」를 남긴다', async (status, label) => {
+    const { db, run } = setup([dropItem()], { drops: [dropRow({ status, finished_at: at(-2 * MINUTE) })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.drop)).toBe('failed')
+    expect(db.decisions()[0]).toMatchObject({ item_id: ID.drop, action: 'fail', actor: ACTOR, reason: UNPLACED(label), batch_id: result.batchId })
+    expect(result.failed[0]).toMatchObject({ itemId: ID.drop, itemLabel: DROP_LABEL, action: 'fail', reason: UNPLACED(label) })
+    expect(countsOf(result)).toEqual([0, 0, 0, 1, 0, 0])
+    expect(dropWrites(db)).toEqual([])
+  })
+
+  it('cron이 아직 표시하지 못했어도 예정 시각 + 3시간이 지난 scheduled 예약은 놓침으로 읽어 실패로 닫는다', async () => {
+    const { db, run } = setup([dropItem()], { drops: [dropRow({ scheduled_at: at(-3 * 60 * MINUTE - 1) })] })
+    ok(await run())
+
+    expect(statusOf(db, ID.drop)).toBe('failed')
+    expect(db.decisions()[0]).toMatchObject({ action: 'fail', reason: UNPLACED('놓침') })
+    expect(dropWrites(db)).toEqual([])
+  })
+
+  it('밖에서 취소된 예약은 항목을 취소로 옮기고 cancel을 남긴다. 예약이 지워졌어도 같다', async () => {
+    const canceled = setup([dropItem()], { drops: [dropRow({ status: 'canceled', canceled_at: at(-MINUTE) })] })
+    const first = ok(await canceled.run())
+    expect(statusOf(canceled.db, ID.drop)).toBe('cancelled')
+    expect(canceled.db.decisions()[0]).toMatchObject({ item_id: ID.drop, action: 'cancel', actor: ACTOR, reason: OUTSIDE, batch_id: first.batchId })
+    expect(countsOf(first)).toEqual([0, 0, 1, 0, 0, 0])
+
+    const deleted = setup([dropItem()])
+    ok(await deleted.run())
+    expect(statusOf(deleted.db, ID.drop)).toBe('cancelled')
+    expect(deleted.db.decisions()[0]).toMatchObject({ action: 'cancel', reason: OUTSIDE })
+  })
+
+  it('밖에서 예정 시각이 바뀌면 상태는 예약의 상태를 따르고 starts_at 차이를 기록한다. 같은 차이는 다시 남기지 않는다', async () => {
+    const { db, run } = setup([dropItem()], { drops: [dropRow({ scheduled_at: LATER })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.drop)).toBe('scheduled')
+    expect(db.decisions()[0]).toMatchObject({ action: 'external_change', diff: { starts_at: { item: STARTS, resource: LATER } } })
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 1, 0])
+    ok(await run())
+    expect(db.decisions()).toHaveLength(1)
+  })
+
+  it('드랍에는 종료 시각과 비활성 칸이 없어 ends_at·is_active 차이는 만들지 않는다', async () => {
+    const { db, run } = setup([dropItem()], { drops: [dropRow()] })
+    ok(await run())
+
+    expect(db.decisions().filter((row) => row.action === 'external_change')).toEqual([])
+  })
+
+  it('읽지 못하면 그 항목만 건너뛰고 상태를 바꾸지 않는다. DB 오류 원문은 기록에 없다', async () => {
+    const { db, run } = setup([dropItem()], { drops: [dropRow({ status: 'done' })] })
+    db.failIf = (call) => call.table === 'ambient_drop_schedules'
+    const result = ok(await run())
+
+    expect(result.errors).toBe(1)
+    expect(statusOf(db, ID.drop)).toBe('scheduled')
+    expect(nonSelect(db)).toEqual([])
+    expect(JSON.stringify([result, db.decisions()])).not.toContain(DB_SECRET)
+  })
+
+  it('예정 시각을 읽을 수 없으면 그 항목만 건너뛰고 상태를 바꾸지 않는다', async () => {
+    const { db, run } = setup([dropItem()], { drops: [dropRow({ status: 'done', scheduled_at: 'not-a-date' })] })
+    const result = ok(await run())
+
+    expect(result.errors).toBe(1)
+    expect(statusOf(db, ID.drop)).toBe('scheduled')
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  describe('멈춘 준비중 드랍 예약', () => {
+    const stuck = (extra: SpecInBundle = {}) => dropItem({ status: 'preparing', updatedAt: at(-11 * MINUTE), ...extra })
+    const OTHER = uid(95)
+
+    it('10분이 지난 준비중은 실패로 닫고 만든 예약을 지운다. 다른 예약은 건드리지 않고 fail을 남긴다', async () => {
+      const { db, run } = setup([stuck()], { drops: [dropRow({ scheduled_at: LATER }), dropRow({ id: OTHER, scheduled_at: LATER })] })
+      const result = ok(await run())
+
+      expect(statusOf(db, ID.drop)).toBe('failed')
+      expect((db.tables.ambient_drop_schedules as Row[]).map((row) => row.id)).toEqual([OTHER])
+      expect(db.decisions()[0]).toMatchObject({ item_id: ID.drop, action: 'fail', actor: ACTOR, reason: STALLED, batch_id: result.batchId })
+      expect(result.failed[0]).toMatchObject({ itemId: ID.drop, action: 'fail', reason: STALLED, resourceId: null })
+    })
+
+    it('예정 시각이 이미 지난 공개 전 예약도 지운다(시각 조건 없음)', async () => {
+      const { db, run } = setup([stuck({ startsAt: STARTS })], { drops: [dropRow()] })
+      ok(await run())
+
+      expect(statusOf(db, ID.drop)).toBe('failed')
+      expect(db.tables.ambient_drop_schedules).toEqual([])
+    })
+
+    it('이미 실행이 시작된 예약은 지우지 않고 사유에 덧붙이며 결과에 자원 ID를 싣는다. 예약 ID는 기록에 없다', async () => {
+      const { db, run } = setup([stuck()], { drops: [dropRow({ status: 'running', claimed_at: at(-MINUTE) })] })
+      const result = ok(await run())
+
+      expect(statusOf(db, ID.drop)).toBe('failed')
+      expect(db.tables.ambient_drop_schedules).toHaveLength(1)
+      expect(db.decisions()[0]).toMatchObject({ action: 'fail', reason: `${STALLED}. ${REMAINS}` })
+      expect(result.failed[0]).toMatchObject({ reason: `${STALLED}. ${REMAINS}`, resourceId: DROP_RES })
+      expect(JSON.stringify(db.decisions())).not.toContain(DROP_RES)
+    })
+
+    it('지우지 못해도 실패로 닫는다. DB 오류 원문은 기록에 없다', async () => {
+      const { db, run } = setup([stuck()], { drops: [dropRow()] })
+      db.failIf = (call) => call.table === 'ambient_drop_schedules' && call.op === 'delete'
+      const result = ok(await run())
+
+      expect(statusOf(db, ID.drop)).toBe('failed')
+      expect(db.tables.ambient_drop_schedules).toHaveLength(1)
+      expect(result.failed[0].resourceId).toBe(DROP_RES)
       expect(JSON.stringify([result, db.decisions()])).not.toContain(DB_SECRET)
     })
   })

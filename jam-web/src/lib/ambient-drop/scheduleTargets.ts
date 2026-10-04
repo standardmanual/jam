@@ -15,7 +15,7 @@
  * 실행 `failed`로 처리, fail-closed). 빈 결과를 「대상 없음」과 「전체」로 헷갈리지 않게 한다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
-import { fetchAllRows, fetchAllRowsIn } from '@/lib/notifications/batch/shared'
+import { fetchAllRows, fetchAllRowsIn } from '@/lib/db/fetchAllRows'
 import { applyDroppableItemBookFilter, isItemBookDroppable } from '@/lib/itembook/visibility'
 import { resolveAmbientTargetCollections } from './collectionTarget'
 import { pickRandom } from './rarity'

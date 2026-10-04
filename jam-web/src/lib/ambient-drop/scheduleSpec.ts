@@ -317,13 +317,18 @@ export function specFromRow(row: SpecRowInput): AmbientDropScheduleSpec {
   return { ...poiSpec, ...itemSpec }
 }
 
-/** 예약 내용을 INSERT 페이로드로 바꾼다 — 쓰지 않는 모드의 칸은 비워 DB CHECK와 맞춘다 */
+/**
+ * 예약 내용을 INSERT 페이로드로 바꾼다 — 쓰지 않는 모드의 칸은 비워 DB CHECK와 맞춘다.
+ * `id`를 주면 그 ID로 만든다(운영툴 예약 등록이 만들기 전에 ID를 먼저 적는다, 티켓 20261002_2306). 안 주면 `id` 칸 없이 DB가 정한다.
+ */
 export function rowFromSpec(
   spec: AmbientDropScheduleSpec,
   scheduledAt: string,
   createdBy: string | null,
-  title: string | null = null
+  title: string | null = null,
+  id?: string
 ): {
+  id?: string
   title: string | null
   scheduled_at: string
   poi_mode: AmbientDropPoiMode
@@ -337,6 +342,7 @@ export function rowFromSpec(
   created_by: string | null
 } {
   return {
+    ...(id === undefined ? {} : { id }),
     title,
     scheduled_at: scheduledAt,
     poi_mode: spec.poiMode,

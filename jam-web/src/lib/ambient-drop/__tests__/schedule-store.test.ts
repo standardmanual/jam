@@ -39,8 +39,6 @@ import {
   world,
 } from './schedule-fixtures'
 
-vi.mock('@/lib/notifications/batch/shared', async () => (await import('./schedule-test-db')).sharedMock)
-
 /** 2026-10-01 12:00 KST */
 const NOW = new Date('2026-10-01T03:00:00.000Z')
 /** 2026-10-05 09:00 KST */
@@ -115,6 +113,31 @@ describe('createAmbientDropSchedule — 네 조합 등록', () => {
     // 등록은 예약 행 하나를 더할 뿐이다 — 드랍을 놓지 않는다
     expect(db.rpcCalls).toHaveLength(0)
     expect(db.writesTo('poi_drops')).toEqual([])
+  })
+
+  // 운영툴 예약 등록이 만들기 전에 정한 ID(티켓 20261002_2306)
+  it('options.id를 주면 그 ID로 저장하고, 안 주면 id 칸 없이 DB가 정한다(어드민 라우트와 같다)', async () => {
+    const chosen = uuid(777)
+    const withId = await createAmbientDropSchedule(sb(), LIST_ITEMS, 'admin-1', NOW, { id: chosen })
+    expect(withId.ok).toBe(true)
+    if (!withId.ok) return
+    expect(withId.schedule.id).toBe(chosen)
+    expect(db.tables.ambient_drop_schedules.map((row) => row.id)).toEqual([chosen])
+    expect(db.writesTo('ambient_drop_schedules')[0].payload).toMatchObject({ id: chosen, created_by: 'admin-1' })
+
+    const withoutId = await createAmbientDropSchedule(sb(), LIST_ITEMS, 'admin-1', NOW)
+    expect(withoutId.ok).toBe(true)
+    if (!withoutId.ok) return
+    expect(withoutId.schedule.id).not.toBe(chosen)
+    expect('id' in (db.writesTo('ambient_drop_schedules')[1].payload as Row)).toBe(false)
+  })
+
+  it('options.id를 줘도 검증이 실패하면 그 ID로 만들지 않는다', async () => {
+    const chosen = uuid(778)
+    const result = await createAmbientDropSchedule(sb(), { ...LIST_ITEMS, scheduled_at: '2026-10-05T10:30:00+09:00' }, null, NOW, { id: chosen })
+    expect(result).toMatchObject({ ok: false, status: 400 })
+    expect(db.tables.ambient_drop_schedules.some((row) => row.id === chosen)).toBe(false)
+    expect(db.writesTo('ambient_drop_schedules')).toEqual([])
   })
 
   it('입력 검증 실패는 400이고 아무것도 쓰지 않는다', async () => {

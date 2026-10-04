@@ -295,6 +295,13 @@ describe('rowFromSpec · specFromRow', () => {
     expect(row).toMatchObject({ created_by: 'admin@example.com', title: '가을', scheduled_at: AT_ISO })
   })
 
+  it('id를 주면 행에 그 id가 있고, 안 주면 id 칸 자체가 없다(DB가 정한다, 티켓 20261002_2306)', () => {
+    const chosen = '00000000-0000-4000-8000-000000000777'
+    expect(rowFromSpec(specs[0], AT_ISO, null, null, chosen)).toMatchObject({ id: chosen })
+    expect('id' in rowFromSpec(specs[0], AT_ISO, null)).toBe(false)
+    expect('id' in rowFromSpec(specs[0], AT_ISO, null, '가을')).toBe(false)
+  })
+
   it('쓰지 않는 모드의 칸은 비워 DB CHECK와 맞춘다', () => {
     const listItems = rowFromSpec(specs[0], AT_ISO, null)
     expect(listItems).toMatchObject({ poi_category: null, total_count: null, collection_ids: [] })
