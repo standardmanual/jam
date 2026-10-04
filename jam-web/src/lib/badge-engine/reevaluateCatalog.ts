@@ -274,3 +274,118 @@ export async function reevaluateUsersForCatalog(
     users,
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// 열릴 예정 배지 미리보기 (티켓 20261001_2203, 상위 20260930_1450)
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface UpcomingBadgePreviewItem {
+  badgeId: string
+  name: string
+  /** null이면 이미 열려 있거나 처음부터 제한이 없는 배지(`badgeIds`로 명시한 경우만 나온다) */
+  validFrom: string | null
+  /** 지금 기록으로 이 배지를 받게 될 유저 수 */
+  userCount: number
+  /** `userCount × point_reward` */
+  points: number
+}
+
+export interface PreviewUpcomingJamBadgesResult {
+  targetUserCount: number
+  /** 아래 배지를 1개 이상 받게 될 유저 수 */
+  affectedUserCount: number
+  totalPoints: number
+  badges: UpcomingBadgePreviewItem[]
+  /** 평가 중 던진 유저 — 다른 유저 처리는 계속된다 */
+  errors: { userId: string; message: string }[]
+}
+
+type BadgeMeta = Pick<BadgeRow, 'id' | 'name' | 'point_reward' | 'valid_from'>
+
+/**
+ * «공개 예정인 JAM! 행동 지표 배지가 열리면 몇 명에게 몇 포인트가 나가는가»를 센다 — 읽기 전용(항상 dry-run).
+ *
+ * 예약 공개 배지는 공개 시각에 옛 기록으로 소급 지급되고 회수할 수 없다. 기본 재평가(`reevaluateUsersForCatalog`)는
+ * `valid_from`이 미래인 배지를 후보에서 빼므로(BADGE_ENGINE_UNIFIED §2.17 알려진 한계) 승인 전에 이 수를 셀 수 없다.
+ * 이 함수는 `valid_from` 필터만 풀어 같은 판정(보유 제외·섀도우밴·등급/레벨 규칙)을 돌린다. 숫자는 **미리보기 시점의
+ * 기록 기준**이라 공개 시각까지 기록이 더 쌓이면 늘어난다 — 화면에는 「약」을 붙인다.
+ *
+ * - JAM! 경로만 센다(메인 엔진·사용량 지표 배지는 범위 밖). 기존 `reevaluateUsersForCatalog`는 건드리지 않는다
+ * - `candidateBadges`: DB에 아직 없는 배지 정의(예약 등록 요약창은 배지를 만들기 전에 뜬다). 그 정의의 `point_reward`를 쓴다
+ * - `badgeIds`: 값이 있으면 이 배지들만 센다(`candidateBadges`의 id도 여기 넣어야 센다). 없으면 `valid_from`이 미래인
+ *   배지와 `candidateBadges`만 센다 — 이미 열린 배지는 기본 dry-run의 몫이다
+ */
+export async function previewUpcomingJamBadges(
+  supabase: ReturnType<typeof createServiceClient>,
+  options: { userIds: string[]; badgeIds?: string[]; candidateBadges?: BadgeRow[] }
+): Promise<PreviewUpcomingJamBadgesResult> {
+  const userIds = [...new Set(options.userIds)]
+  const badgeIds = options.badgeIds?.length ? options.badgeIds : undefined
+  const candidateBadges = options.candidateBadges ?? []
+
+  // 배지 메타(이름·포인트·공개 시각) — 유저 루프 밖에서 한 번만. 실패하면 숫자를 낼 수 없으므로 던진다
+  const { data: badgesRaw, error: badgesError } = await supabase
+    .from('badges')
+    .select('id, name, point_reward, valid_from')
+    .eq('type', 'activity')
+    .is('deleted_at', null)
+  if (badgesError) throw new Error(`배지 목록 조회 실패: ${badgesError.message}`)
+
+  const metaById = new Map<string, BadgeMeta>(((badgesRaw ?? []) as BadgeMeta[]).map((b) => [b.id, b]))
+  // 같은 id면 candidateBadges의 정의가 이긴다 — 판정(`evaluateJamActionBadges`)과 같은 규칙
+  for (const b of candidateBadges) metaById.set(b.id, b)
+  const candidateIds = new Set(candidateBadges.map((b) => b.id))
+
+  const nowMs = Date.now()
+  const isCounted = (id: string): boolean => {
+    if (badgeIds) return badgeIds.includes(id)
+    if (candidateIds.has(id)) return true
+    const validFrom = metaById.get(id)?.valid_from
+    return validFrom != null && Date.parse(validFrom) > nowMs
+  }
+
+  const userCountByBadge = new Map<string, number>()
+  const affectedUsers = new Set<string>()
+  const errors: PreviewUpcomingJamBadgesResult['errors'] = []
+
+  for (const userId of userIds) {
+    try {
+      const earned = await evaluateJamActionBadges(
+        userId,
+        JAM_ACTION_CONDITION_KEYS,
+        supabase,
+        { dryRun: true, silent: true, triggeredByPrefix: CATALOG_REEVALUATION_TRIGGER },
+        { includeUpcoming: true, extraCandidates: candidateBadges, badgeIds }
+      )
+      // 한 배지가 지표 키를 둘 이상 가졌어도 한 번만 센다
+      const ids = [...new Set(earned.map((b) => b.id))].filter(isCounted)
+      for (const id of ids) userCountByBadge.set(id, (userCountByBadge.get(id) ?? 0) + 1)
+      if (ids.length > 0) affectedUsers.add(userId)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.error(`[previewUpcomingJamBadges] 유저 평가 실패 — userId: ${userId}:`, err)
+      errors.push({ userId, message })
+    }
+  }
+
+  const badges: UpcomingBadgePreviewItem[] = [...userCountByBadge.entries()]
+    .map(([badgeId, userCount]) => {
+      const meta = metaById.get(badgeId)
+      return {
+        badgeId,
+        name: meta?.name ?? badgeId,
+        validFrom: meta?.valid_from ?? null,
+        userCount,
+        points: userCount * (meta?.point_reward ?? 0),
+      }
+    })
+    .sort((a, b) => b.userCount - a.userCount || a.name.localeCompare(b.name))
+
+  return {
+    targetUserCount: userIds.length,
+    affectedUserCount: affectedUsers.size,
+    totalPoints: badges.reduce((sum, b) => sum + b.points, 0),
+    badges,
+    errors,
+  }
+}

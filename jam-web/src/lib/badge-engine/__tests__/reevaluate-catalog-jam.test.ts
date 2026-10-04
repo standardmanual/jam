@@ -9,6 +9,8 @@
  *  ③ 다시 실행: 이미 보유한 배지는 다시 발급하지 않는다(발급 0건, 포인트 0)
  *  ④ JAM! 판정이 던져도 메인 엔진 결과는 남고 `error`에 `JAM! 지표:`가 남는다
  *  ⑤ 기존 동작 고정: `issueQualifyingBadges`를 옵션 없이 부르면 insert·포인트·피드를 모두 한다
+ *  ⑥ 열릴 예정 배지 미리보기(티켓 20261001_2203): `valid_from`이 미래인 배지를 읽기 전용으로 센다. 기본 dry-run·실제 실행은
+ *     여전히 그 배지를 세지 않는다. 모킹의 `or`가 `valid_from`·`valid_until`을 실제로 거른다
  *
  * 메인 엔진(`evaluateBadgesDetailed`)은 모킹하고 JAM! 경로(`evaluateJamActionBadges` → `issueQualifyingBadges`)는
  * 실제 코드를 탄다. 테이블 모킹은 `jam-action-badges.test.ts`와 같은 방식(메모리 테이블에 `eq`·`in` 적용)이다.
@@ -87,10 +89,22 @@ function resetState() {
   state.inserts = []
 }
 
+function matchesOrCondition(row: Row, cond: string): boolean {
+  const [col, op, ...rest] = cond.split('.')
+  const value = row[col]
+  if (op === 'is') return value === null || value === undefined
+  if (value === null || value === undefined) return false
+  const operand = Date.parse(rest.join('.'))
+  if (op === 'lte') return Date.parse(String(value)) <= operand
+  if (op === 'gte') return Date.parse(String(value)) >= operand
+  return false
+}
+
 function mockSupabase(): SupabaseClient {
   const from = (table: string) => {
     const eqs: [string, unknown][] = []
     const ins: [string, unknown[]][] = []
+    const ors: string[] = []
     let head = false
     const builder: Record<string, unknown> = {}
     builder.select = (_cols: string, opts?: { head?: boolean }) => {
@@ -106,7 +120,11 @@ function mockSupabase(): SupabaseClient {
       return builder
     }
     builder.is = () => builder
-    builder.or = () => builder
+    // `col.is.null`·`col.lte.<ISO>`·`col.gte.<ISO>`를 쉼표로 이은 OR 필터 — `valid_from`·`valid_until` 거르기용(티켓 20261001_2203)
+    builder.or = (expr: string) => {
+      ors.push(expr)
+      return builder
+    }
     builder.insert = (payload: { user_id: string; badge_id: string; triggered_by: string }) => {
       if (table !== 'user_activity_badges') return Promise.resolve({ data: null, error: null })
       const owned = state.tables.user_activity_badges
@@ -124,7 +142,10 @@ function mockSupabase(): SupabaseClient {
       const rejection = state.rejects[table]?.(nth)
       if (rejection) return Promise.reject(rejection).then(resolve, reject)
       const rows = (state.tables[table] ?? []).filter(
-        (r) => eqs.every(([c, v]) => r[c] === v) && ins.every(([c, v]) => v.includes(r[c]))
+        (r) =>
+          eqs.every(([c, v]) => r[c] === v) &&
+          ins.every(([c, v]) => v.includes(r[c])) &&
+          ors.every((expr) => expr.split(',').some((cond) => matchesOrCondition(r, cond)))
       )
       return Promise.resolve(
         head ? { data: null, count: rows.length, error: null } : { data: rows, error: null }
@@ -154,7 +175,8 @@ vi.mock('@/lib/abusing/policy', async (importOriginal) => {
   return { ...actual, getAbusingPolicy: vi.fn(async () => actual.DEFAULT_POLICY) }
 })
 
-import { reevaluateUsersForCatalog, CATALOG_REEVALUATION_TRIGGER } from '../reevaluateCatalog'
+import { reevaluateUsersForCatalog, previewUpcomingJamBadges, CATALOG_REEVALUATION_TRIGGER } from '../reevaluateCatalog'
+import { evaluateJamActionBadges, JAM_ACTION_CONDITION_KEYS } from '../jamActionBadges'
 import { issueQualifyingBadges } from '../usageBadges'
 
 const U_QUALIFIED = 'user-qualified' // 믹스 성공 3회 — JAM_MIXER 조건 충족
@@ -418,5 +440,152 @@ describe('issueQualifyingBadges — 옵션 없이 부르면 지금처럼 동작'
     expect(state.inserts).toEqual([])
     expect(awardPointsMock).not.toHaveBeenCalled()
     expect(recordFeedEventMock).not.toHaveBeenCalled()
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// ⑥ 열릴 예정 배지 미리보기 (티켓 20261001_2203)
+// ═══════════════════════════════════════════════════════════════════════
+
+const FUTURE = '2099-01-01T00:00:00Z'
+const PAST = '2020-01-01T00:00:00Z'
+
+/** 공개 예정(valid_from 미래) JAM! 배지 — 믹스 성공 3회, 포인트 80 */
+const UPCOMING = makeBadge({
+  id: 'jam-upcoming',
+  name: '예정 믹서',
+  point_reward: 80,
+  valid_from: FUTURE,
+  condition_json: { combine_success_count: 3 },
+})
+
+describe('열릴 예정 배지 미리보기', () => {
+  beforeEach(() => {
+    state.tables.badges = [JAM_MIXER, MAIN_BADGE, UPCOMING] as unknown as Row[]
+  })
+
+  it('① 기본 dry-run·실제 실행은 valid_from이 미래인 배지를 세지 않는다', async () => {
+    const dry = await reevaluateUsersForCatalog(mockSupabase(), { dryRun: true, userIds: ALL_USERS })
+    expect(dry.totalJamActionBadgesIssued).toBe(1) // JAM_MIXER만
+    expect(dry.totalJamActionPointsAwarded).toBe(50)
+
+    const real = await reevaluateUsersForCatalog(mockSupabase(), { dryRun: false, userIds: ALL_USERS })
+    expect(real.totalJamActionBadgesIssued).toBe(1)
+    expect(state.inserts.map((i) => i.badge_id)).toEqual([JAM_MIXER.id])
+  })
+
+  it('② 공개 예정 배지를 넣어 배지별 유저 수·포인트 합을 낸다(이미 열린 배지는 세지 않는다)', async () => {
+    const result = await previewUpcomingJamBadges(mockSupabase(), { userIds: ALL_USERS })
+
+    // 믹스 성공 3회인 U_QUALIFIED·U_OWNER가 받는다. U_SHORT는 1회라 못 받는다
+    expect(result.targetUserCount).toBe(3)
+    expect(result.affectedUserCount).toBe(2)
+    expect(result.totalPoints).toBe(160)
+    expect(result.badges).toEqual([
+      { badgeId: 'jam-upcoming', name: '예정 믹서', validFrom: FUTURE, userCount: 2, points: 160 },
+    ])
+    expect(result.errors).toEqual([])
+  })
+
+  it('③ 미리보기는 insert·awardPoints·recordFeedEvent를 한 번도 부르지 않는다', async () => {
+    await previewUpcomingJamBadges(mockSupabase(), { userIds: ALL_USERS })
+
+    expect(state.inserts).toEqual([])
+    expect(state.tables.user_activity_badges).toEqual([{ user_id: U_OWNER, badge_id: JAM_MIXER.id }])
+    expect(awardPointsMock).not.toHaveBeenCalled()
+    expect(recordFeedEventMock).not.toHaveBeenCalled()
+  })
+
+  it('④ candidateBadges(DB에 없는 정의)도 세고 그 정의의 point_reward를 쓴다', async () => {
+    const candidate = makeBadge({ id: 'cand-new', name: '새 배지', point_reward: 30, condition_json: { combine_success_count: 1 } })
+
+    const result = await previewUpcomingJamBadges(mockSupabase(), { userIds: ALL_USERS, candidateBadges: [candidate] })
+
+    // 믹스 성공이 1회 이상인 세 명 모두 + 기존 공개 예정 배지(2명)
+    expect(result.badges).toEqual([
+      { badgeId: 'cand-new', name: '새 배지', validFrom: null, userCount: 3, points: 90 },
+      { badgeId: 'jam-upcoming', name: '예정 믹서', validFrom: FUTURE, userCount: 2, points: 160 },
+    ])
+    expect(result.totalPoints).toBe(250)
+    expect(state.inserts).toEqual([])
+  })
+
+  it('⑤ badgeIds를 주면 다른 미발급 배지는 세지 않는다', async () => {
+    const other = makeBadge({
+      id: 'jam-other',
+      name: '다른 예정',
+      point_reward: 20,
+      valid_from: FUTURE,
+      condition_json: { combine_success_count: 1 },
+    })
+    state.tables.badges.push(other as unknown as Row)
+
+    const all = await previewUpcomingJamBadges(mockSupabase(), { userIds: ALL_USERS })
+    expect(all.badges.map((b) => b.badgeId).sort()).toEqual(['jam-other', 'jam-upcoming'])
+
+    const only = await previewUpcomingJamBadges(mockSupabase(), { userIds: ALL_USERS, badgeIds: ['jam-upcoming'] })
+    expect(only.badges.map((b) => b.badgeId)).toEqual(['jam-upcoming'])
+    expect(only.totalPoints).toBe(160)
+  })
+
+  it('⑥ 이미 보유한 유저와 섀도우밴 유저는 뺀다', async () => {
+    state.tables.user_activity_badges.push({ user_id: U_OWNER, badge_id: UPCOMING.id })
+    const owned = await previewUpcomingJamBadges(mockSupabase(), { userIds: ALL_USERS })
+    expect(owned.badges).toEqual([{ badgeId: 'jam-upcoming', name: '예정 믹서', validFrom: FUTURE, userCount: 1, points: 80 }])
+
+    // hard 밴은 mystic 등급형 발급을 막는다 — 미리보기 숫자에도 반영된다
+    getUserBanLevelMock.mockResolvedValue('hard')
+    const mystic = makeBadge({
+      id: 'jam-mystic-upcoming',
+      name: '신화 예정',
+      rarity: 'mystic',
+      point_reward: 500,
+      valid_from: FUTURE,
+      condition_json: { combine_success_count: 1 },
+    })
+    state.tables.badges.push(mystic as unknown as Row)
+    const banned = await previewUpcomingJamBadges(mockSupabase(), { userIds: [U_QUALIFIED], badgeIds: [mystic.id] })
+    expect(banned.badges).toEqual([])
+    expect(banned.affectedUserCount).toBe(0)
+  })
+
+  it('⑦ includeUpcoming·extraCandidates를 dryRun 없이 켜면 던진다', async () => {
+    const run = (candidateOptions: Parameters<typeof evaluateJamActionBadges>[4], options?: { dryRun?: boolean }) =>
+      evaluateJamActionBadges(U_QUALIFIED, JAM_ACTION_CONDITION_KEYS, mockSupabase(), options, candidateOptions)
+
+    await expect(run({ includeUpcoming: true })).rejects.toThrow('dryRun')
+    await expect(run({ includeUpcoming: true }, { dryRun: false })).rejects.toThrow('dryRun')
+    await expect(run({ extraCandidates: [UPCOMING] })).rejects.toThrow('dryRun')
+    await expect(run({ includeUpcoming: true }, { dryRun: true })).resolves.toEqual([
+      { id: JAM_MIXER.id, name: JAM_MIXER.name },
+      { id: UPCOMING.id, name: UPCOMING.name },
+    ])
+    expect(state.inserts).toEqual([])
+  })
+
+  it('⑧ valid_until이 지난 배지는 빠진다(DB 배지도 candidateBadges도)', async () => {
+    state.tables.badges.push(
+      makeBadge({
+        id: 'jam-expired',
+        name: '끝난 예정',
+        valid_from: PAST,
+        valid_until: PAST,
+        condition_json: { combine_success_count: 1 },
+      }) as unknown as Row
+    )
+    const expiredCandidate = makeBadge({
+      id: 'cand-expired',
+      name: '끝난 후보',
+      valid_until: PAST,
+      condition_json: { combine_success_count: 1 },
+    })
+
+    const result = await previewUpcomingJamBadges(mockSupabase(), {
+      userIds: ALL_USERS,
+      badgeIds: ['jam-expired', 'cand-expired', 'jam-upcoming'],
+      candidateBadges: [expiredCandidate],
+    })
+
+    expect(result.badges.map((b) => b.badgeId)).toEqual(['jam-upcoming'])
   })
 })
