@@ -137,6 +137,11 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
 `ship.toml`의 제약). 커밋 범위는 1단계에서 이미 확인한 `origin/main..origin/staging`을 그대로
 넘긴다.
 
+민지는 Agent 도구에 `isolation: "worktree"`를 주어 부르고, 프롬프트에 **첫 명령으로**
+`git fetch origin staging && git checkout --detach origin/staging`을 실행하라고 지시한다. 격리
+워크트리는 기본 브랜치(main) 기준으로 만들어져 staging에만 있는 변경이 보이지 않기 때문이다.
+공유 작업 폴더에서 민지가 HEAD를 옮기는 사고(티켓 20261002_1905)를 막으려는 것이다.
+
 ### 생략 조건
 `git diff --numstat origin/main origin/staging -- jam-web`의 추가+삭제 합계가 0줄이면(문서만
 바뀐 배포) 병렬 점검을 건너뛰고 10단계 보고에 "해당 없음(jam-web 변경 0줄)"이라고 적는다. 그

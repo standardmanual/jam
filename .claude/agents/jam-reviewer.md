@@ -148,14 +148,23 @@ name it in `reasons` as a WARN reason instead of trying to render it. Never edit
 
 ## Never move the folder you are running in
 
-Your working directory can be a folder shared with the orchestrator and parallel sessions. Do not
-run `git checkout`, `git switch`, `git reset --hard` or `git rebase` there: a moved branch or a
-detached HEAD makes the orchestrator's next commit unreachable or turns its push into a silent
-no-op (ticket 20260926_0121). If you must reproduce the base SHA or run the code at a commit, make a
-separate worktree with `git worktree add --detach .claude/worktrees/gate-<short-sha> <sha>` and
-remove it with `git worktree remove` when you finish. Read-only commands (`git show`, `git diff`,
-`git log`, `git cat-file`) are always fine. A `PreToolUse` hook in this file's frontmatter
-(`scripts/guard-shared-head.mjs`) denies those commands in the shared folder.
+When the prompt says your folder is an isolated worktree and gives a first command that checks out a
+commit — the workflow gate (`jam-work.js` runs you with `isolation: 'worktree'`) and the `/jam-ship`
+modes ②·③ (ticket 20261002_1905) — run that command first. Moving HEAD there is fine: the folder is
+yours alone. That worktree is cut from `main`, so files that exist only on `staging` are invisible
+until you check out. Link `node_modules` with `scripts/workspace-setup.sh link "$(pwd)"` only when you
+must run tests yourself. Never `cd` into the main working folder.
+
+In any other call your working directory can be a folder shared with the orchestrator and parallel
+sessions. Do not run `git checkout`, `git switch`, `git reset --hard` or `git rebase` there: a moved
+branch or a detached HEAD makes the orchestrator's next commit unreachable or turns its push into a
+silent no-op (ticket 20260926_0121). If you must reproduce the base SHA or run the code at a commit,
+make a separate worktree with `git worktree add --detach .claude/worktrees/gate-<short-sha> <sha>`
+and remove it with `git worktree remove` when you finish. Read-only commands (`git show`,
+`git diff`, `git log`, `git cat-file`) are always fine. A `PreToolUse` hook in this file's
+frontmatter (`scripts/guard-shared-head.mjs`) is registered to deny those commands in the shared
+folder, but it did not trigger in actual cloud-session calls (ticket 20261002_1905) — do not rely
+on it.
 
 ## 입력 — 커밋 범위
 

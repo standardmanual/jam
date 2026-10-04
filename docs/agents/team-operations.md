@@ -130,14 +130,17 @@ tags: [워크플로]
 ## 4. 워크트리 — 누가 어디서 도는가
 
 <!-- BEGIN generated: worktree-isolation -->
-격리 워크트리에서 도는 에이전트는 **아현(`jam-developer`)** 뿐이다. 나머지 에이전트는 메인 작업 폴더에서 읽는다.
+격리 워크트리에서 도는 에이전트는 **민지(`jam-reviewer`) · 채원(`jam-designer`) · 아현(`jam-developer`)** 뿐이다. 나머지 에이전트는 메인 작업 폴더에서 읽는다.
 <!-- END generated: worktree-isolation -->
 
 근거는 `.claude/workflows/jam-work.js`의 `isolation: 'worktree'` 호출이며, 위 문장은 그 파일에서
 자동 생성된다.
 
 이유는 동시성이다. 여러 `/jam-work`가 병렬로 돌 때 모두 메인 트리에서 `git checkout`을 하면
-서로의 작업을 덮어쓴다. 아현만 브랜치를 만들고 커밋하므로, 아현만 격리하면 충분하다.
+서로의 작업을 덮어쓴다. 처음에는 브랜치를 만들고 커밋하는 아현만 격리했다. 이후 민지가 공유 작업
+폴더에서 `git checkout --detach`를 실행하는 일이 두 번 있어, 워크플로 게이트의 민지·채원②와
+`/jam-ship` 5단계의 민지도 격리 워크트리에서 부른다(티켓 20261002_1905). 채원① 사전 판정
+(`jam-designer-pre`)은 사고 이력이 없어 격리하지 않으므로 메인 작업 폴더에서 돈다.
 
 ### 워크트리에 무엇이 들어 있나
 
@@ -156,7 +159,8 @@ tags: [워크플로]
 
 1. **생성**: Workflow 도구가 `.claude/worktrees/wf_*` 아래에 만든다. 기본 브랜치(`main`) 기준으로
    생성되므로, 아현의 첫 명령은 반드시 `git fetch origin staging && git checkout --detach origin/staging`이다.
-   이 지시가 없으면 `staging`에만 있는 변경이 보이지 않아 "없는 파일"로 오판한다(티켓 20260918_1158).
+   민지·채원②의 첫 명령은 리뷰 커밋을 체크아웃하는 `git fetch origin <review 브랜치> && git checkout --detach <commitSha>`다
+   (커밋 범위가 없으면 아현과 같다). 이 지시가 없으면 `staging`에만 있는 변경이 보이지 않아 "없는 파일"로 오판한다(티켓 20260918_1158).
 2. **연결**: `scripts/workspace-setup.sh link "$(pwd)"`로 `node_modules`를 잇는다. `npm install`을
    다시 돌리지 않기 위함이다.
 3. **정리**: `scripts/workspace-setup.sh cleanup`이 staging에 머지됐고 미커밋 변경이 없는
@@ -177,8 +181,8 @@ tags: [워크플로]
 |---|---|---|---|
 | 카리나 | 전부 | 전부 | 없음 (채팅에서 받는 사용자 승인이 유일한 제약. Supabase MCP의 SQL 실행 도구는 자동 허용이라 도구 프롬프트가 관문 역할을 하지 않는다) |
 | 아현 | 워크트리 전체 | 워크트리 안, 자기 브랜치 | DB 도구 없음 · `CLOSED` 커밋 차단 · main/staging push 차단 |
-| 민지 | 지정된 커밋 범위의 diff + 티켓 + 스펙 | 없음 | Write·Edit 도구 자체가 없음 · 공유 작업 폴더에서 HEAD·작업 트리를 옮기는 git 명령 차단(정의 frontmatter 훅, 티켓 20261002_1905) |
-| 채원 | `jam-web/design-system/`, Storybook, 지정된 diff | 없음 | 〃 (민지와 같은 git 명령 차단 훅) |
+| 민지 | 지정된 커밋 범위의 diff + 티켓 + 스펙 | 없음 | Write·Edit 도구 자체가 없음 · 워크플로 게이트와 `/jam-ship` 5단계에서 격리 워크트리에 실행(티켓 20261002_1905) · 공유 작업 폴더에서 HEAD·작업 트리를 옮기는 git 명령을 막는 정의 frontmatter 훅은 등록돼 있으나 클라우드 세션의 실제 호출에서 걸리지 않음 |
+| 채원 | `jam-web/design-system/`, Storybook, 지정된 diff | 없음 | Write·Edit 도구 자체가 없음 · 사후 리뷰(②)만 워크플로 게이트에서 격리 워크트리에 실행 · 민지와 같은 frontmatter 훅(같은 상태) |
 | 혜린 | 티켓·PRD·컨텐츠 문서 | 없음 | 〃 (Bash도 없음) |
 | 윈터 | `jam-doc/planning/content/TRIBES.md` 중심 + 웹 | 없음 | 〃 |
 | 윤진 | `jam-doc/marketing/`, 리포트 + 웹 | 세션: `jam-doc/assets/`의 묶음 폴더 3곳(`badge-bundles/`·`mission-bundles/`·`home-feed-bundles/`의 `<묶음 ID>/`, 모드 ⑧ 한정, Bash) | Bash 도구는 물리적으로 좁혀지지 않는다. `render.mjs`·`list-presets.mjs` 실행·묶음 폴더 쓰기·`register-*.mjs --dry-run`만 허용한다는 것은 정의 문서의 지시(프롬프트 규칙)다. 예약 실행은 이미지를 만들지 않는다(티켓 20260930_1519). 등록(`--dry-run` 없음·`--undo`)·프리셋 생성·수정·DB·스토리지 쓰기·git은 금지 |
@@ -295,7 +299,7 @@ tags: [워크플로]
 | 아현이 낡은 워크트리를 미커밋·미push 확인 없이 강제 제거 (격리 제약 아래, 유실은 없었음) | 1회 | `cleanup-stale-worktree.sh`가 검사 후 종료 코드 2로 거부 — 판단을 기억에 맡기지 않는다 (20260922_1056) |
 | 브라우저 검증 중 실제 배지 이미지에 쓰기 버튼을 눌러 덮어씀, 복구 불가 | 1회 | 실데이터 쓰기 금지, `[TEST]` 더미 또는 API 응답 형태만 확인 (`DEV_PROCESS_GUARDRAILS.md` 패턴 13) |
 | 함수 인자 수를 바꾸며 옛 시그니처를 안 지워 오버로드가 남고 런타임 `is not unique` | 1회 | `DROP FUNCTION IF EXISTS` 선행 (패턴 14, 20260911_1259) |
-| 민지가 읽기 명령에 `git checkout --detach`를 섞어 공유 작업 폴더의 HEAD를 `staging`에서 분리 (정의는 이미 금지, 제자리 복구로 유실 없음) | 2회 (2026-10-02, 두 번째는 권한 단계에서 거부됨) | 민지·채원 정의 frontmatter의 `PreToolUse` 훅(`scripts/guard-shared-head.mjs`)이 메인 워크트리에서 HEAD·작업 트리를 바꾸는 git 명령을 deny, `.claude/worktrees/*` 아래 실행은 허용 (20261002_1905) |
+| 민지가 읽기 명령에 `git checkout --detach`를 섞어 공유 작업 폴더의 HEAD를 `staging`에서 분리 (정의는 이미 금지, 제자리 복구로 유실 없음) | 2회 (2026-10-02, 두 번째는 권한 단계에서 거부됨) | 1차: 민지·채원 정의 frontmatter에 `PreToolUse` 훅(`scripts/guard-shared-head.mjs`)을 등록했으나 실제 호출에서 걸리지 않았다(2026-10-02, 2026-10-04 `git clean -n`이 그대로 실행됨, 원인 미확인). 2차: 워크플로 게이트의 민지·채원②와 `/jam-ship` 5단계의 민지를 격리 워크트리에서 불러 공유 폴더에 서지 않게 한다 (20261002_1905) |
 | 격리 워크트리에서 `git push`가 osxkeychain 자격 증명 프롬프트에 멈춤 | 1회 (2026-09-22) | `-c credential.helper=!gh auth git-credential`로 push (아현 정의 「CI stamp」) |
 | 아현 반환 요약이 30줄 형식을 세 건 연속 위반하고 diff 원문까지 포함 — 카리나·민지·채원② 세 곳에 실림 | 3회 | `DEV_RESULT.summary` 스키마 `maxLength: 3000` (20260922_0620 → 20260922_1755) |
 | 커밋마다 staging push → Vercel 배포 1,212개(20일), Build CPU $66.15 | 누적 (2026-09-06 실측) | 티켓당 push 1회, `jam-web/` 밖만 바뀐 push는 `vercel-ignore.sh`가 건너뜀 |
