@@ -11,6 +11,8 @@
  *   예정 시각 차이 external_change, 멈춘 준비중 드랍 예약 undo
  * - JAM! 배지(⑨-a, 티켓 20261004_1756): 실제 배지 핸들러의 공개·종료(양 끝 포함)·밖에서 지워짐·소프트 삭제·시각 차이 external_change, 멈춘 준비중 배지 undo(참조 확인),
  *   카드·미션·배지가 함께 멈추면 카드 → 미션 → 배지 순으로 지운다
+ * - 컬렉션(⑩-a, 티켓 20261004_2039): 실제 컬렉션 핸들러의 공개(공개 시각이 비어도 공개)·종료·밖에서 지워짐·밖에서 비활성(기록만, 상태 유지)·시각 차이 external_change, 멈춘 준비중 컬렉션 undo(참조 확인),
+ *   카드·컬렉션·보상 배지가 함께 멈추면 카드 → 컬렉션 → 배지 순으로 지운다
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -39,6 +41,7 @@ const MISSION_RES = uid(14)
 const RECIPE_RES = uid(15)
 const DROP_RES = uid(16)
 const BADGE_RES = uid(17)
+const BOOK_RES = uid(18)
 
 /** NOW(10/5 12:00 KST = 03:00Z)보다 앞인 공개 시각(10/5 09:00 KST)과, 그날의 끝(23:59:59.999 KST)인 종료 시각. */
 const STARTS = '2026-10-05T00:00:00.000Z'
@@ -138,6 +141,22 @@ const badgeItem = (extra: SpecInBundle = {}): SpecInBundle => ({
 
 const badgeRow = (extra: Row = {}): Row => ({ id: BADGE_RES, valid_from: STARTS, valid_until: null, deleted_at: null, ...extra })
 const BADGE_LABEL = 'JAM! 배지 · 10/5(월) 09:00'
+
+/** 상시 컬렉션 항목(종료 시각 없음). 공개 시각은 `STARTS`다. */
+const bookItem = (extra: SpecInBundle = {}): SpecInBundle => ({
+  id: uid(8),
+  key: 'collection',
+  kind: 'collection_launch',
+  status: 'scheduled',
+  startsAt: STARTS,
+  endsAt: null,
+  createdResource: { item_book_id: BOOK_RES },
+  ...extra,
+})
+const BOOK_ITEM_ID = uid(8)
+
+const bookRow = (extra: Row = {}): Row => ({ id: BOOK_RES, is_active: true, valid_from: STARTS, valid_until: null, ...extra })
+const BOOK_LABEL = '컬렉션 런칭 · 10/5(월) 09:00'
 
 // ── 판정(순수) ───────────────────────────────────────────────────────────────────────────────────
 
@@ -387,6 +406,7 @@ interface SetupOptions {
   recipes?: Row[]
   drops?: Row[]
   badges?: Row[]
+  books?: Row[]
   decisions?: Row[]
   handlers?: ExecuteHandlerRegistry
 }
@@ -403,6 +423,7 @@ function setup(specs: SpecInBundle[], options: SetupOptions = {}) {
   db.tables.combination_recipes = options.recipes ?? []
   db.tables.ambient_drop_schedules = options.drops ?? []
   db.tables.badges = options.badges ?? []
+  db.tables.item_books = options.books ?? []
   db.tables.ops_decisions = options.decisions ?? []
   const handlers = options.handlers ?? EXECUTE_HANDLERS
   const run = () => reconcileOpsItems(db.service, { handlers, now: () => NOW })
@@ -1386,6 +1407,204 @@ describe('실행 — JAM! 배지의 상태 전이 (티켓 20261004_1756, 실제 
     expect(statusOf(db, ID.badge)).toBe('live')
     expect(countsOf(result)).toEqual([1, 0, 0, 0, 0, 0])
     expect(db.calls.some((call) => call.table === 'badges')).toBe(false)
+  })
+})
+
+describe('실행 — 컬렉션의 상태 전이 (티켓 20261004_2039, 실제 컬렉션 핸들러)', () => {
+  const bookWrites = (db: FakeDb) => db.calls.filter((call) => call.table === 'item_books' && call.op !== 'select')
+
+  it('예약됨 컬렉션이 공개 중이면 게재중으로 옮기고 결정 기록은 없다. item_books 표에는 쓰지 않는다', async () => {
+    const { db, run } = setup([bookItem()], { books: [bookRow()] })
+    const result = ok(await run())
+
+    expect(statusOf(db, BOOK_ITEM_ID)).toBe('live')
+    expect(db.decisions()).toEqual([])
+    expect(result.published[0]).toMatchObject({ itemId: BOOK_ITEM_ID, itemLabel: BOOK_LABEL, isSample: false, action: null, reason: null })
+    expect(countsOf(result)).toEqual([1, 0, 0, 0, 0, 0])
+    expect(bookWrites(db)).toEqual([])
+  })
+
+  it('공개 시각 전이면 아무것도 바꾸지 않는다', async () => {
+    const { db, run } = setup([bookItem({ startsAt: LATER })], { books: [bookRow({ valid_from: LATER })] })
+    const result = ok(await run())
+
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it('공개 시각이 정확히 지금이면 게재중이다(양 끝 포함)', async () => {
+    const { db, run } = setup([bookItem({ startsAt: NOW.toISOString() })], { books: [bookRow({ valid_from: NOW.toISOString() })] })
+    ok(await run())
+
+    expect(statusOf(db, BOOK_ITEM_ID)).toBe('live')
+  })
+
+  it('상시 컬렉션(종료 시각 없음)은 종료되지 않고 밖에서 바뀐 것도 아니다', async () => {
+    const { db, run } = setup([bookItem({ status: 'live' })], { books: [bookRow()] })
+    const result = ok(await run())
+
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+    expect(statusOf(db, BOOK_ITEM_ID)).toBe('live')
+    expect(db.decisions()).toEqual([])
+  })
+
+  it('게재중 컬렉션의 종료 시각이 지났으면 종료한다. 결정 기록은 없다', async () => {
+    const { db, run } = setup([bookItem({ status: 'live', endsAt: at(-1) })], { books: [bookRow({ valid_until: at(-1) })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, BOOK_ITEM_ID)).toBe('ended')
+    expect(db.decisions()).toEqual([])
+    expect(result.ended[0]).toMatchObject({ itemId: BOOK_ITEM_ID, action: null })
+  })
+
+  it('종료 시각이 정확히 지금이면 아직 게재중이다(양 끝 포함)', async () => {
+    const { db, run } = setup([bookItem({ status: 'live', endsAt: NOW.toISOString() })], { books: [bookRow({ valid_until: NOW.toISOString() })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, BOOK_ITEM_ID)).toBe('live')
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+  })
+
+  it('예약됨인데 공개·종료 시각이 모두 지난 늦은 회차는 게재중을 거치지 않고 곧바로 종료한다. 결정 기록은 없다', async () => {
+    const { db, run } = setup([bookItem({ endsAt: at(-1) })], { books: [bookRow({ valid_until: at(-1) })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, BOOK_ITEM_ID)).toBe('ended')
+    expect(db.decisions()).toEqual([])
+    expect(countsOf(result)).toEqual([0, 1, 0, 0, 0, 0])
+  })
+
+  it('밖에서 공개 시각이 비워지면(바로 공개) 공개 중으로 읽고 항목과 시각 차이를 external_change로 기록한다', async () => {
+    const { db, run } = setup([bookItem()], { books: [bookRow({ valid_from: null })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, BOOK_ITEM_ID)).toBe('live')
+    expect(db.decisions()[0]).toMatchObject({ item_id: BOOK_ITEM_ID, action: 'external_change', diff: { starts_at: { item: STARTS, resource: null } } })
+    expect(countsOf(result)).toEqual([1, 0, 0, 0, 1, 0])
+  })
+
+  it('예약됨 컬렉션이 밖에서 지워졌으면 취소하고 cancel을, 게재중 컬렉션이면 종료하고 end를 남긴다', async () => {
+    const scheduled = setup([bookItem()])
+    const cancelled = ok(await scheduled.run())
+    expect(statusOf(scheduled.db, BOOK_ITEM_ID)).toBe('cancelled')
+    expect(scheduled.db.decisions()[0]).toMatchObject({ item_id: BOOK_ITEM_ID, action: 'cancel', actor: ACTOR, reason: OUTSIDE, batch_id: cancelled.batchId })
+
+    const live = setup([bookItem({ status: 'live' })])
+    ok(await live.run())
+    expect(statusOf(live.db, BOOK_ITEM_ID)).toBe('ended')
+    expect(live.db.decisions()[0]).toMatchObject({ item_id: BOOK_ITEM_ID, action: 'end', reason: OUTSIDE })
+  })
+
+  it('밖에서 비활성이 되면 상태는 그대로 두고 is_active 차이를 external_change로 한 번만 기록한다(⑦-a 사용자 결정: 밖에서 숨겨도 기록만)', async () => {
+    const scheduled = setup([bookItem({ startsAt: LATER })], { books: [bookRow({ valid_from: LATER, is_active: false })] })
+    const result = ok(await scheduled.run())
+    expect(statusOf(scheduled.db, BOOK_ITEM_ID)).toBe('scheduled')
+    expect(scheduled.db.decisions()[0]).toMatchObject({ item_id: BOOK_ITEM_ID, action: 'external_change', diff: { is_active: { item: true, resource: false } } })
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 1, 0])
+    ok(await scheduled.run())
+    expect(scheduled.db.decisions()).toHaveLength(1)
+
+    // 공개 시각이 지난 예약됨도 비활성이면 게재중으로 옮기지 않는다
+    const passed = setup([bookItem()], { books: [bookRow({ is_active: false })] })
+    ok(await passed.run())
+    expect(statusOf(passed.db, BOOK_ITEM_ID)).toBe('scheduled')
+    expect(passed.db.decisions()[0]).toMatchObject({ action: 'external_change', diff: { is_active: { item: true, resource: false } } })
+
+    // 게재중 컬렉션이 비활성이 돼도 종료로 옮기지 않는다
+    const live = setup([bookItem({ status: 'live' })], { books: [bookRow({ is_active: false })] })
+    ok(await live.run())
+    expect(statusOf(live.db, BOOK_ITEM_ID)).toBe('live')
+  })
+
+  it('밖에서 공개 시각이 바뀌면 상태는 그대로 두고 시각 차이를 external_change로 한 번만 기록한다', async () => {
+    const { db, run } = setup([bookItem()], { books: [bookRow({ valid_from: LATER })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, BOOK_ITEM_ID)).toBe('scheduled')
+    expect(db.decisions()[0]).toMatchObject({ item_id: BOOK_ITEM_ID, action: 'external_change', actor: ACTOR, diff: { starts_at: { item: STARTS, resource: LATER } } })
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 1, 0])
+    ok(await run())
+    expect(db.decisions()).toHaveLength(1)
+  })
+
+  it('밖에서 종료 시각이 정해지면 상태는 그대로 두고 ends_at 차이를 기록한다(항목은 상시)', async () => {
+    const { db, run } = setup([bookItem({ status: 'live' })], { books: [bookRow({ valid_until: FUTURE_ENDS })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, BOOK_ITEM_ID)).toBe('live')
+    expect(db.decisions()[0]).toMatchObject({ action: 'external_change', diff: { ends_at: { item: null, resource: FUTURE_ENDS } } })
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 1, 0])
+  })
+
+  it.each([
+    ['공개 시각을 읽을 수 없다', { valid_from: 'not-a-date' }],
+    ['종료 시각을 읽을 수 없다', { valid_until: 'not-a-date' }],
+  ])('%s: 그 항목만 건너뛰고 상태를 바꾸지 않는다', async (_label, row) => {
+    const { db, run } = setup([bookItem()], { books: [bookRow(row)] })
+    const result = ok(await run())
+
+    expect(result.errors).toBe(1)
+    expect(statusOf(db, BOOK_ITEM_ID)).toBe('scheduled')
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  describe('멈춘 준비중 컬렉션', () => {
+    const stuck = (extra: SpecInBundle = {}): SpecInBundle => ({ status: 'preparing', updatedAt: at(-11 * MINUTE), ...extra })
+
+    it('핸들러 undo가 참조를 확인한 뒤 지우고 실패(fail)로 닫는다. 공개 시각이 지난 뒤여도 지운다', async () => {
+      const { db, run } = setup([bookItem(stuck())], { books: [bookRow({ valid_from: STARTS }), bookRow({ id: uid(98) })] })
+      const result = ok(await run())
+
+      expect(statusOf(db, BOOK_ITEM_ID)).toBe('failed')
+      expect((db.tables.item_books as Row[]).map((row) => row.id)).toEqual([uid(98)])
+      expect(db.decisions('fail')[0]).toMatchObject({ item_id: BOOK_ITEM_ID, reason: STALLED })
+      expect(result.failed[0]).toMatchObject({ itemId: BOOK_ITEM_ID, reason: STALLED, resourceId: null })
+      const order = db.calls.map((call) => `${call.table}:${call.op}`)
+      expect(order.indexOf('user_item_book_slots:select')).toBeLessThan(order.lastIndexOf('item_books:delete'))
+    })
+
+    it('아이템 배지·유저 기록이 붙어 지우지 못하면 자원은 남기고 사유에 「만든 자원이 남아 있어요」를 덧붙인다. 테이블 이름은 응답·기록에 없다', async () => {
+      const { db, run } = setup([bookItem(stuck())], { books: [bookRow({ valid_from: LATER })] })
+      db.tables.badges = [{ id: uid(60), item_book_id: BOOK_RES, deleted_at: null }]
+      const result = ok(await run())
+
+      expect(statusOf(db, BOOK_ITEM_ID)).toBe('failed')
+      expect(db.tables.item_books).toHaveLength(1)
+      expect(result.failed[0]).toMatchObject({ reason: `${STALLED}. ${REMAINS}`, resourceId: BOOK_RES })
+      expect(JSON.stringify([result, db.decisions()])).not.toContain('badges')
+      expect(logged()).toContain('badges.item_book_id')
+    })
+
+    it('카드·컬렉션·보상 배지가 함께 멈추면 카드 → 컬렉션 → 배지 순으로 지운다(배지를 먼저 지우려면 컬렉션이 남아 참조에 걸린다)', async () => {
+      // 제출 순서는 배지가 앞이다(생성 순서의 정반대로 지워야 한다).
+      const { db, run } = setup([
+        badgeItem(stuck({ position: 1 })),
+        bookItem(stuck({ position: 2, links: ['badge'] })),
+        cardItem(stuck({ position: 3, links: ['collection'] })),
+      ])
+      db.tables.badges = [badgeRow({ valid_from: LATER }), badgeRow({ id: uid(98) })]
+      db.tables.item_books = [bookRow({ valid_from: LATER, reward_badge_id: BADGE_RES })]
+      db.tables.today_cards = [cardRow({ starts_at: LATER, ends_at: FUTURE_ENDS, item_book_id: BOOK_RES })]
+      const result = ok(await run())
+
+      expect(idsOf(result.failed)).toEqual([ID.card, BOOK_ITEM_ID, ID.badge])
+      expect(db.tables.today_cards).toEqual([])
+      expect(db.tables.item_books).toEqual([])
+      expect((db.tables.badges as Row[]).map((row) => row.id)).toEqual([uid(98)])
+      const order = db.calls.map((call) => `${call.table}:${call.op}`)
+      expect(order.indexOf('today_cards:delete')).toBeLessThan(order.indexOf('item_books:delete'))
+      expect(order.indexOf('item_books:delete')).toBeLessThan(order.indexOf('badges:delete'))
+      for (const failed of result.failed) expect(failed.reason).toBe(STALLED)
+    })
+  })
+
+  it('시험 묶음의 컬렉션은 item_books를 읽지 않고 항목의 시각만 본다', async () => {
+    const { db, run } = setup([bookItem({ sample: true, createdResource: { sample: true } })])
+    const result = ok(await run())
+
+    expect(statusOf(db, BOOK_ITEM_ID)).toBe('live')
+    expect(countsOf(result)).toEqual([1, 0, 0, 0, 0, 0])
+    expect(db.calls.some((call) => call.table === 'item_books')).toBe(false)
   })
 })
 

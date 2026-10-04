@@ -13,6 +13,8 @@
  * 카드가 그 카드가 여는 미션보다 먼저 공개되면(G4 예외), 같은 묶음의 예약할 미션끼리 같은 제목이고 기간이 겹치면 뒤 항목(`position`이 큰 쪽)이다.
  * JAM! 배지가 붙은 뒤(티켓 20261004_1756, ⑨-a)의 두 규칙도 같다(사용자 결정 2026-10-04): 미션·카드가 연결된 JAM! 배지보다 먼저 공개되면 그 미션·카드가,
  * 「가장 먼저 성공」 배지와 연결된 레시피의 공개 시각이 다르면 그 배지가 못 하는 항목이다.
+ * 컬렉션이 붙은 뒤(티켓 20261004_2039, ⑩-a)의 두 규칙도 같다(사용자 확인 2026-10-04): 컬렉션이 연결된 완성 보상 JAM! 배지보다 먼저 공개되면 그 컬렉션이(이유는 JAM! 배지 규칙과 같은 문장),
+ * 카드가 연결된 컬렉션보다 먼저 공개되면 그 카드가 못 하는 항목이다.
  *
  * 보지 않는 것: 제출 때 남은 형식 오류(`format_errors`)는 이 점검이 막지 않는다. 종류별 변환·검사(§8.4)가 실행 때 걸러 낸다(가정 1).
  * `pattern_proposal` 승인 항목은 예약 등록 대상이 아니라 `excluded`로 따로 돌려주고 N에 세지 않는다(가정 2).
@@ -44,8 +46,13 @@ const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
 const MISSION_KIND = 'mission'
 /** 카드가 미션을 여는 연결 칸(`LINK_PAIRS`의 card→mission 쌍). 이 칸을 채우는 대상의 공개 시각과 견준다(G4 예외). */
 const CARD_MISSION_FIELDS: readonly string[] = ['mission_id']
-/** 미션·카드가 JAM! 배지를 가리키는 연결 칸(`LINK_PAIRS`의 mission→jam_badge·card→jam_badge 쌍). 이 칸을 채우는 대상 배지의 공개 시각과 견준다(티켓 20261004_1756). */
-const LINKED_BADGE_FIELDS: readonly string[] = ['reward_badge_ids', 'badge_ids']
+/**
+ * 미션·카드·컬렉션이 JAM! 배지를 가리키는 연결 칸(`LINK_PAIRS`의 mission→jam_badge·card→jam_badge·collection_launch→jam_badge 쌍). 이 칸을 채우는 대상 배지의 공개 시각과 견준다
+ * (티켓 20261004_1756, 컬렉션은 티켓 20261004_2039).
+ */
+const LINKED_BADGE_FIELDS: readonly string[] = ['reward_badge_ids', 'badge_ids', 'reward_badge_id']
+/** 카드가 컬렉션을 가리키는 연결 칸(`LINK_PAIRS`의 card→collection_launch 쌍). 이 칸을 채우는 대상 컬렉션의 공개 시각과 견준다(티켓 20261004_2039). */
+const CARD_COLLECTION_FIELDS: readonly string[] = ['item_book_id']
 /** 「가장 먼저 성공」 배지가 레시피를 가리키는 연결 칸(`LINK_PAIRS`의 jam_badge→recipe 쌍). 대상 레시피의 공개 시각과 견준다(티켓 20261004_1756). */
 const BADGE_RECIPE_FIELDS: readonly string[] = ['recipe_id']
 
@@ -63,6 +70,7 @@ export const PRECHECK_MESSAGES = {
   startsDiffer: '연결된 항목의 공개 시각이 서로 달라요',
   cardBeforeMission: '카드가 여는 미션보다 먼저 공개돼요',
   beforeLinkedBadge: '연결된 JAM! 배지보다 먼저 공개돼요',
+  cardBeforeCollection: '연결된 컬렉션보다 먼저 공개돼요',
   firstSuccessStartsDiffer: '가장 먼저 성공 배지는 레시피와 같은 시각에 공개돼야 해요',
   missionTitleOverlap: '같은 기획 안에 기간이 겹치는 같은 제목의 미션이 있어요',
 } as const
@@ -200,6 +208,8 @@ function isPublishedItem(item: ExecuteItem): boolean {
  * - 카드가 그 카드가 여는 미션(card→mission 쌍)보다 먼저 공개되면 못 한다(G4 예외, 사용자 결정 2026-10-02). 진행 독려 카드가 공개 전 미션의 기간·보상을 미리 보여 주고 404로 이어지기 때문이다.
  * - 미션(mission→jam_badge 쌍)·카드(card→jam_badge 쌍)가 연결된 JAM! 배지보다 먼저 공개되면 못 한다(사용자 결정 2026-10-04). 미션 보상 지급과 카드는 배지의 공개 시각을 보지 않아
  *   공개 전 배지가 지급되거나 보이기 때문이다. `resource`가 직접 가진 기존 배지 ID는 견주지 않는다(사전 점검은 DB를 읽지 않는다).
+ * - 컬렉션(collection_launch→jam_badge 쌍)이 연결된 완성 보상 배지보다 먼저 공개되면 못 한다(사용자 확인 2026-10-04). 완성 보상 지급이 배지의 공개 시각을 보지 않기 때문이다.
+ *   카드(home_feed_card→collection_launch 쌍)가 연결된 컬렉션보다 먼저 공개되면 못 한다(카드가 아직 열리지 않은 컬렉션으로 이어진다). `resource`에 직접 적은 컬렉션·배지 ID는 견주지 않는다.
  */
 function opensBeforeLinked(item: ExecuteItem, fills: readonly LinkFill[], byId: ReadonlyMap<string, ExecuteItem>, fields: readonly string[]): boolean {
   const start = readStart(item)
@@ -311,6 +321,7 @@ export function precheckBundle(
       if (missingResource) reasons.push(PRECHECK_MESSAGES.targetResourceMissing)
       if (opensBeforeLinked(item, fills, byId, CARD_MISSION_FIELDS)) reasons.push(PRECHECK_MESSAGES.cardBeforeMission)
       if (opensBeforeLinked(item, fills, byId, LINKED_BADGE_FIELDS)) reasons.push(PRECHECK_MESSAGES.beforeLinkedBadge)
+      if (opensBeforeLinked(item, fills, byId, CARD_COLLECTION_FIELDS)) reasons.push(PRECHECK_MESSAGES.cardBeforeCollection)
       if (differsFromLinkedRecipe(item, fills, byId)) reasons.push(PRECHECK_MESSAGES.firstSuccessStartsDiffer)
       if (laterDuplicateMissions.has(item.id)) reasons.push(PRECHECK_MESSAGES.missionTitleOverlap)
       reasonsById.set(item.id, reasons)

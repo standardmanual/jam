@@ -15,16 +15,18 @@ const at = (offsetMs: number) => new Date(NOW.getTime() + offsetMs).toISOString(
 const run = (items: ReturnType<typeof makeItem>[], handlers = FULL_REGISTRY) => precheckBundle(items, { now: NOW, handlers })
 
 describe('핸들러 레지스트리', () => {
-  it('지금 레지스트리는 home_feed_card(티켓 20261002_1255)·mission(티켓 20261002_1944)·jam_badge(티켓 20261004_1756)·recipe(티켓 20261002_2221)·drop_schedule(티켓 20261002_2306) 다섯이다', () => {
-    expect(Object.keys(EXECUTE_HANDLERS)).toEqual(['home_feed_card', 'mission', 'jam_badge', 'recipe', 'drop_schedule'])
+  it('지금 레지스트리는 home_feed_card(티켓 20261002_1255)·mission(티켓 20261002_1944)·jam_badge(티켓 20261004_1756)·collection_launch(티켓 20261004_2039)·recipe(티켓 20261002_2221)·drop_schedule(티켓 20261002_2306) 여섯이다(예약 등록 대상 전부)', () => {
+    expect(Object.keys(EXECUTE_HANDLERS)).toEqual(['home_feed_card', 'mission', 'jam_badge', 'collection_launch', 'recipe', 'drop_schedule'])
+    expect(Object.keys(EXECUTE_HANDLERS).sort()).toEqual(Object.keys(RESOURCE_KEY_BY_KIND).sort())
     expect(EXECUTE_HANDLERS.jam_badge).toMatchObject({ kind: 'jam_badge', resourceKey: RESOURCE_KEY_BY_KIND.jam_badge, idFirst: true })
     expect(EXECUTE_HANDLERS.home_feed_card).toMatchObject({ kind: 'home_feed_card', resourceKey: RESOURCE_KEY_BY_KIND.home_feed_card, idFirst: true })
     expect(EXECUTE_HANDLERS.mission).toMatchObject({ kind: 'mission', resourceKey: RESOURCE_KEY_BY_KIND.mission, idFirst: true })
     expect(EXECUTE_HANDLERS.recipe).toMatchObject({ kind: 'recipe', resourceKey: RESOURCE_KEY_BY_KIND.recipe, idFirst: true })
     expect(EXECUTE_HANDLERS.drop_schedule).toMatchObject({ kind: 'drop_schedule', resourceKey: RESOURCE_KEY_BY_KIND.drop_schedule, idFirst: true })
+    expect(EXECUTE_HANDLERS.collection_launch).toMatchObject({ kind: 'collection_launch', resourceKey: RESOURCE_KEY_BY_KIND.collection_launch, idFirst: true })
   })
 
-  it('카드·미션·JAM! 배지·레시피·드랍은 예약할 수 있고 컬렉션 같은 나머지 종류는 여전히 「아직 연결하지 않은 종류」로 막힌다', () => {
+  it('예약 등록 대상 여섯 종류(카드·미션·JAM! 배지·컬렉션·레시피·드랍)는 모두 실제 레지스트리로 예약할 수 있다', () => {
     const result = precheckBundle(
       [
         makeItem({ key: 'card', kind: 'home_feed_card' }),
@@ -36,7 +38,14 @@ describe('핸들러 레지스트리', () => {
       ],
       { now: NOW }
     )
-    expect(result.ready).toEqual(['card', 'mission', 'recipe', 'drop', 'badge'])
+    expect(result.ready).toEqual(['card', 'mission', 'recipe', 'drop', 'badge', 'collection'])
+    expect(result.blocked).toEqual([])
+  })
+
+  it('핸들러가 없는 종류가 생기면 「아직 연결하지 않은 종류」로 막는다(분기는 가짜 레지스트리로 시험한다. 컬렉션 핸들러만 뺀 레지스트리)', () => {
+    const withoutCollection = fakeRegistry(['home_feed_card', 'mission', 'jam_badge', 'recipe', 'drop_schedule'])
+    const result = precheckBundle([makeItem({ key: 'card', kind: 'home_feed_card' }), makeItem({ key: 'collection', kind: 'collection_launch' })], { now: NOW, handlers: withoutCollection })
+    expect(result.ready).toEqual(['card'])
     expect(result.blocked).toEqual([{ id: 'collection', reasons: [PRECHECK_MESSAGES.noHandler] }])
   })
 
@@ -521,6 +530,156 @@ describe('미션·카드가 연결된 JAM! 배지보다 먼저 공개되면 막�
   })
 })
 
+describe('컬렉션이 연결된 완성 보상 JAM! 배지보다 먼저 공개되면 막는다 (티켓 20261004_2039, 사용자 확인 2026-10-04)', () => {
+  const REASON = PRECHECK_MESSAGES.beforeLinkedBadge
+  type Spec = Partial<Parameters<typeof makeItem>[0]>
+  const collection = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'collection', kind: 'collection_launch', links: ['badge'], startsAt, ...extra })
+  const badge = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'badge', kind: 'jam_badge', startsAt, ...extra })
+
+  it('컬렉션이 보상 배지보다 이르면 컬렉션이 못 하는 항목이고, 이유는 JAM! 배지 규칙과 같은 문장이다. 같은 그룹의 나머지 승인 항목은 「연결된 항목을 예약할 수 없어요」로 막힌다', () => {
+    const result = run([collection(at(60 * MINUTE)), badge(at(120 * MINUTE))])
+    expect(result.ready).toEqual([])
+    expect(result.blocked).toEqual([
+      { id: 'collection', reasons: [REASON] },
+      { id: 'badge', reasons: [PRECHECK_MESSAGES.groupBlocked] },
+    ])
+  })
+
+  it('같은 시각이거나 컬렉션이 더 늦으면 통과다(1밀리초 이르면 막는다). 배지가 컬렉션보다 먼저 열리는 것은 막지 않는다', () => {
+    expect(run([collection(at(60 * MINUTE)), badge(at(60 * MINUTE))]).ready).toEqual(['collection', 'badge'])
+    expect(run([collection(at(120 * MINUTE)), badge(at(60 * MINUTE))]).ready).toEqual(['collection', 'badge'])
+    const justBefore = run([collection(at(60 * MINUTE - 1)), badge(at(60 * MINUTE))])
+    expect(justBefore.blocked[0]).toEqual({ id: 'collection', reasons: [REASON] })
+  })
+
+  it('대상 배지가 이미 예약된 항목이면 그 항목의 공개 시각과 견준다', () => {
+    const scheduled = (startsAt: string) => badge(startsAt, { status: 'scheduled', createdResource: { badge_id: 'badge-uuid' } })
+    const early = run([collection(at(60 * MINUTE)), scheduled(at(120 * MINUTE))])
+    expect(early.ready).toEqual([])
+    expect(early.blocked).toEqual([{ id: 'collection', reasons: [REASON] }])
+    expect(run([collection(at(180 * MINUTE)), scheduled(at(120 * MINUTE))]).ready).toEqual(['collection'])
+  })
+
+  it('대상 배지가 이미 게재 중이거나 종료됐으면 견주지 않는다', () => {
+    for (const status of ['live', 'ended']) {
+      const result = run([collection(at(60 * MINUTE)), badge(at(120 * MINUTE), { status, createdResource: { badge_id: 'badge-uuid' } })])
+      expect(result.ready, status).toEqual(['collection'])
+      expect(result.blocked, status).toEqual([])
+    }
+  })
+
+  it('대상 배지가 결정 전이어도 견준다. 막는 이유가 기다리는 중보다 앞선다', () => {
+    const result = run([collection(at(60 * MINUTE)), badge(at(120 * MINUTE), { status: 'reviewing' })])
+    expect(result.waiting).toEqual([])
+    expect(result.blocked).toEqual([{ id: 'collection', reasons: [REASON] }])
+  })
+
+  it('두 시각 중 하나라도 읽을 수 없으면 견주지 않는다(그 항목이 따로 이유를 갖는다)', () => {
+    const noCollectionStart = run([collection(at(0), { startsAt: null }), badge(at(120 * MINUTE))])
+    expect(noCollectionStart.blocked[0]).toEqual({ id: 'collection', reasons: [PRECHECK_MESSAGES.startMissing] })
+    const noBadgeStart = run([collection(at(60 * MINUTE)), badge(at(0), { startsAt: null })])
+    expect(noBadgeStart.blocked).toEqual([
+      { id: 'collection', reasons: [PRECHECK_MESSAGES.groupBlocked] },
+      { id: 'badge', reasons: [PRECHECK_MESSAGES.startMissing] },
+    ])
+  })
+
+  it('resource가 보상 배지 ID를 직접 갖고 연결로 채우지 않으면 견주지 않는다(사전 점검은 DB를 읽지 않는다)', () => {
+    const result = run([makeItem({ key: 'collection', kind: 'collection_launch', startsAt: at(60 * MINUTE), resource: { reward_badge_id: 'direct-badge-uuid' } })])
+    expect(result.ready).toEqual(['collection'])
+  })
+
+  it('배지는 카드·미션·컬렉션이 함께 가리켜도 항목마다 자기 칸으로 견준다', () => {
+    const result = run([
+      collection(at(60 * MINUTE)),
+      makeItem({ key: 'card', kind: 'home_feed_card', links: ['badge'], startsAt: at(180 * MINUTE) }),
+      makeItem({ key: 'mission', kind: 'mission', links: ['badge'], startsAt: at(30 * MINUTE) }),
+      badge(at(120 * MINUTE)),
+    ])
+    expect(result.blocked.find((entry) => entry.id === 'collection')?.reasons).toEqual([REASON])
+    expect(result.blocked.find((entry) => entry.id === 'mission')?.reasons).toEqual([REASON])
+    expect(result.blocked.find((entry) => entry.id === 'card')?.reasons).toEqual([PRECHECK_MESSAGES.groupBlocked])
+  })
+})
+
+describe('카드가 연결된 컬렉션보다 먼저 공개되면 막는다 (티켓 20261004_2039, 사용자 확인 2026-10-04)', () => {
+  const REASON = PRECHECK_MESSAGES.cardBeforeCollection
+  type Spec = Partial<Parameters<typeof makeItem>[0]>
+  const card = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'card', kind: 'home_feed_card', links: ['collection'], startsAt, ...extra })
+  const collection = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'collection', kind: 'collection_launch', startsAt, ...extra })
+
+  it('문장은 「연결된 컬렉션보다 먼저 공개돼요」다', () => {
+    expect(REASON).toBe('연결된 컬렉션보다 먼저 공개돼요')
+  })
+
+  it('카드가 컬렉션보다 이르면 카드가 못 하는 항목이고 같은 그룹의 나머지 승인 항목은 「연결된 항목을 예약할 수 없어요」로 막힌다', () => {
+    const result = run([card(at(60 * MINUTE)), collection(at(120 * MINUTE))])
+    expect(result.ready).toEqual([])
+    expect(result.blocked).toEqual([
+      { id: 'card', reasons: [REASON] },
+      { id: 'collection', reasons: [PRECHECK_MESSAGES.groupBlocked] },
+    ])
+  })
+
+  it('같은 시각이거나 카드가 더 늦으면 통과다(1밀리초 이르면 막는다)', () => {
+    expect(run([card(at(60 * MINUTE)), collection(at(60 * MINUTE))]).ready).toEqual(['card', 'collection'])
+    expect(run([card(at(120 * MINUTE)), collection(at(60 * MINUTE))]).ready).toEqual(['card', 'collection'])
+    const justBefore = run([card(at(60 * MINUTE - 1)), collection(at(60 * MINUTE))])
+    expect(justBefore.blocked[0]).toEqual({ id: 'card', reasons: [REASON] })
+  })
+
+  it('대상 컬렉션이 이미 예약된 항목이면 그 항목의 공개 시각과 견준다', () => {
+    const scheduled = (startsAt: string) => collection(startsAt, { status: 'scheduled', createdResource: { item_book_id: 'book-uuid' } })
+    const early = run([card(at(60 * MINUTE)), scheduled(at(120 * MINUTE))])
+    expect(early.ready).toEqual([])
+    expect(early.blocked).toEqual([{ id: 'card', reasons: [REASON] }])
+    expect(run([card(at(180 * MINUTE)), scheduled(at(120 * MINUTE))]).ready).toEqual(['card'])
+  })
+
+  it('대상 컬렉션이 이미 게재 중이거나 종료됐으면 견주지 않는다', () => {
+    for (const status of ['live', 'ended']) {
+      const result = run([card(at(60 * MINUTE)), collection(at(120 * MINUTE), { status, createdResource: { item_book_id: 'book-uuid' } })])
+      expect(result.ready, status).toEqual(['card'])
+      expect(result.blocked, status).toEqual([])
+    }
+  })
+
+  it('대상 컬렉션이 결정 전이어도 견준다. 막는 이유가 기다리는 중보다 앞선다', () => {
+    const result = run([card(at(60 * MINUTE)), collection(at(120 * MINUTE), { status: 'reviewing' })])
+    expect(result.waiting).toEqual([])
+    expect(result.blocked).toEqual([{ id: 'card', reasons: [REASON] }])
+  })
+
+  it('카드나 컬렉션의 공개 시각을 읽을 수 없으면 견주지 않는다(그 항목이 따로 이유를 갖는다)', () => {
+    const noCardStart = run([card(at(0), { startsAt: null }), collection(at(120 * MINUTE))])
+    expect(noCardStart.blocked[0]).toEqual({ id: 'card', reasons: [PRECHECK_MESSAGES.startMissing] })
+    const noCollectionStart = run([card(at(60 * MINUTE)), collection(at(0), { startsAt: null })])
+    expect(noCollectionStart.blocked).toEqual([
+      { id: 'card', reasons: [PRECHECK_MESSAGES.groupBlocked] },
+      { id: 'collection', reasons: [PRECHECK_MESSAGES.startMissing] },
+    ])
+  })
+
+  it('카드가 컬렉션 ID를 직접 갖고 있어 연결로 채우지 않으면 견주지 않는다. 연결과 같이 적으면 칸 충돌로 막는다', () => {
+    const direct = run([makeItem({ key: 'card', kind: 'home_feed_card', startsAt: at(60 * MINUTE), resource: { item_book_id: 'direct-book-uuid' } })])
+    expect(direct.ready).toEqual(['card'])
+    const both = run([card(at(60 * MINUTE), { resource: { item_book_id: 'direct-book-uuid' } }), collection(at(120 * MINUTE))])
+    expect(both.blocked[0].reasons).not.toContain(REASON)
+    expect(both.blocked[0].reasons).toHaveLength(1)
+  })
+
+  it('컬렉션이 보상 배지를 함께 가리키면 컬렉션 쪽 이유와 카드 쪽 이유는 각자의 항목에 붙는다', () => {
+    const result = run([
+      card(at(30 * MINUTE)),
+      makeItem({ key: 'collection', kind: 'collection_launch', links: ['badge'], startsAt: at(60 * MINUTE) }),
+      makeItem({ key: 'badge', kind: 'jam_badge', startsAt: at(90 * MINUTE) }),
+    ])
+    expect(result.blocked.find((entry) => entry.id === 'card')?.reasons).toEqual([REASON])
+    expect(result.blocked.find((entry) => entry.id === 'collection')?.reasons).toEqual([PRECHECK_MESSAGES.beforeLinkedBadge])
+    expect(result.blocked.find((entry) => entry.id === 'badge')?.reasons).toEqual([PRECHECK_MESSAGES.groupBlocked])
+  })
+})
+
 describe('「가장 먼저 성공」 배지와 레시피의 공개 시각이 다르면 막는다 (티켓 20261004_1756, 사용자 결정 2026-10-04)', () => {
   const REASON = PRECHECK_MESSAGES.firstSuccessStartsDiffer
   type Spec = Partial<Parameters<typeof makeItem>[0]>
@@ -722,12 +881,23 @@ describe('그룹 결과 · 생성 순서와 linkedIds 계획', () => {
 
 describe('모듈 계약 — DB와 서버 전용 코드를 값으로 가져오지 않는다', () => {
   const dir = path.join(__dirname, '..')
-  // 실행 `run.ts`(티켓 20261002_1123)·공개 전 취소 `cancel.ts`(티켓 20261002_1256)·상태 맞추기 `reconcile.ts`(티켓 20261002_1813)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 아홉만 본다.
+  // 실행 `run.ts`(티켓 20261002_1123)·공개 전 취소 `cancel.ts`(티켓 20261002_1256)·상태 맞추기 `reconcile.ts`(티켓 20261002_1813)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 열만 본다.
   const SERVER_ONLY = ['run.ts', 'cancel.ts', 'reconcile.ts']
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.ts') && !SERVER_ONLY.includes(name))
 
-  it('순수 모듈 아홉 개가 있다', () => {
-    expect(files.sort()).toEqual(['dropSchedule.ts', 'groups.ts', 'handlers.ts', 'homeFeedCard.ts', 'jamBadge.ts', 'mission.ts', 'precheck.ts', 'recipe.ts', 'registry.ts'])
+  it('순수 모듈 열 개가 있다', () => {
+    expect(files.sort()).toEqual([
+      'collectionLaunch.ts',
+      'dropSchedule.ts',
+      'groups.ts',
+      'handlers.ts',
+      'homeFeedCard.ts',
+      'jamBadge.ts',
+      'mission.ts',
+      'precheck.ts',
+      'recipe.ts',
+      'registry.ts',
+    ])
   })
 
   it.each(files)('%s는 node: 모듈과 Supabase·서버 모듈의 값 import가 없다', (name) => {

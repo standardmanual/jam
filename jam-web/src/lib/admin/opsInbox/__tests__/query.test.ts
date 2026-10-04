@@ -625,15 +625,15 @@ describe('getOpsBundleDetail — 예약 등록 요약 (티켓 20261002_1648)', (
     expect(detail!.items[0]).not.toHaveProperty('createdResource')
   })
 
-  it('승인됨 수, 예약할 항목 수(지금 연결된 홈피드 카드·미션·JAM! 배지·레시피·드랍), 아직 연결하지 않은 종류를 센다', async () => {
+  it('승인됨 수, 예약할 항목 수(지금 연결된 홈피드 카드·미션·JAM! 배지·컬렉션·레시피·드랍 여섯 종류 모두), 아직 연결하지 않은 종류를 센다(실제 레지스트리에는 남지 않는다)', async () => {
     seed([
       row('a1'), // 카드 승인됨, 먼 미래 → 예약할 항목
       row('a2', { kind: 'jam_badge' }), // JAM! 배지 승인됨, 먼 미래 → 예약할 항목(티켓 20261004_1756: 핸들러가 붙었다)
-      row('a3', { kind: 'collection_launch', status: 'reviewing' }), // 결정 전이라도 아직 연결하지 않은 종류에 든다
+      row('a3', { kind: 'collection_launch', status: 'reviewing' }), // 컬렉션도 연결됐다(티켓 20261004_2039) → 안내에 들지 않는다
       row('a9', { kind: 'mission', status: 'reviewing' }), // 미션은 연결됐다(티켓 20261002_1944) → 안내에 들지 않는다
       row('a10', { kind: 'recipe', status: 'reviewing' }), // 레시피도 연결됐다(티켓 20261002_2221) → 안내에 들지 않는다
       row('a11', { kind: 'recipe' }), // 레시피 승인됨, 먼 미래 → 예약할 항목
-      row('a4', { kind: 'collection_launch', status: 'reviewing' }), // 같은 종류는 한 번만
+      row('a4', { kind: 'collection_launch' }), // 컬렉션 승인됨, 먼 미래 → 예약할 항목
       row('a12', { kind: 'drop_schedule', status: 'reviewing' }), // 드랍도 연결됐다(티켓 20261002_2306) → 안내에 들지 않는다
       row('a5', { kind: 'recipe', status: 'rejected' }), // 멈춘 항목은 센 대상이 아니다
       row('a6', { kind: 'collection_launch', status: 'ended' }), // 끝난 항목도 아니다
@@ -641,7 +641,7 @@ describe('getOpsBundleDetail — 예약 등록 요약 (티켓 20261002_1648)', (
       row('a8', { kind: null, status: 'reviewing' }), // 종류를 읽을 수 없으면 세지 않는다
     ])
     const detail = await getOpsBundleDetail(ID)
-    expect(detail!.execution).toEqual({ approvedCount: 4, readyCount: 3, unconnectedKinds: ['collection_launch'] })
+    expect(detail!.execution).toEqual({ approvedCount: 5, readyCount: 4, unconnectedKinds: [] })
   })
 
   it('승인됨 항목이 없으면 approvedCount·readyCount가 0이다', async () => {
@@ -692,6 +692,12 @@ describe('buildOpsExecution — 핸들러를 주입해 센다', () => {
   it('핸들러가 붙은 종류는 예약할 항목에 세고 안내에서 뺀다', () => {
     const items = [exec('m1'), exec('c1', { kind: 'home_feed_card' }), exec('r1', { kind: 'recipe', status: 'reviewing' })]
     expect(buildOpsExecution(items, NOW, handlers)).toEqual({ approvedCount: 2, readyCount: 1, unconnectedKinds: ['home_feed_card', 'recipe'] })
+  })
+
+  it('실제 레지스트리에서 컬렉션 핸들러만 빼면 컬렉션 항목이 「아직 연결하지 않은 종류」에 든다(분기는 앞으로의 종류를 위해 남아 있다. 티켓 20261004_2039)', () => {
+    const items = [exec('m1'), exec('k1', { kind: 'collection_launch' }), exec('k2', { kind: 'collection_launch', status: 'reviewing' })]
+    expect(buildOpsExecution(items, NOW, { mission: fakeHandler })).toEqual({ approvedCount: 2, readyCount: 1, unconnectedKinds: ['collection_launch'] })
+    expect(buildOpsExecution(items, NOW, { mission: fakeHandler, collection_launch: fakeHandler })).toEqual({ approvedCount: 2, readyCount: 2, unconnectedKinds: [] })
   })
 
   it('종류 이름이 `constructor` 같은 객체 기본 속성이어도 연결하지 않은 종류로 세지 않는다', () => {

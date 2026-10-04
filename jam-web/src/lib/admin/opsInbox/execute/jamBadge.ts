@@ -12,6 +12,8 @@
  *
  * - `prepare`는 변환 뒤 조건 저장 규칙(`findBadgeConditionSaveError`)과 발급 조건 유무를 본다. 발급 조건이 없는 배지(`USAGE_METRIC_CONDITION_KEYS`·`JAM_ACTION_CONDITION_KEYS`·
  *   `recipe_first_success` 가운데 하나도 없고 `mission_reward: true`도 아닌 것)는 메인 엔진이 `admin_category = 'jam'`을 후보에서 빼므로 영원히 발급되지 않아 형식 오류다.
+ *   단, 같은 그룹의 컬렉션 항목이 `reward_badge_id` 칸으로 이 배지를 가리키면(`pointedBy`, 실행이 그룹의 `linkPlan`에서 계산해 넘긴다) 이 검사만 건너뛴다: 발급 경로가 컬렉션 완성(`issueItemBookRewardBadges`)이라
+ *   엔진 조건이 필요 없다(사용자 결정 2026-10-04, 티켓 20261004_2039 가정 2). 연결이 없으면(가리키던 컬렉션이 반려되는 등) 지금처럼 형식 오류다. 조건 저장 규칙과 `condition_json` 필수(빈 객체 `{}` 가능)는 그대로다.
  * - `check`는 이름 중복 등 DB 검사(`runBadgeDbChecks`)를 라벨별 고정 문장으로 바꾸고, 연결 없이 `condition_json`에 직접 적은 레시피(`recipe_first_success`)가
  *   있으면 DB의 레시피를 읽어 같은 시각에 공개되는지 본다(§8.2의 「가장 먼저 성공 배지는 레시피와 같은 시각」). 같은 실행에서 만들 레시피(연결)는 존재 확인을 건너뛴다
  *   (생성 순서가 보장하고, 시각은 사전 점검이 항목으로 본다). `runBadgeDbChecks`는 레시피 ID를 읽지 않아 연결 칸을 뺀 사본이 필요 없다.
@@ -33,7 +35,7 @@ import { USAGE_METRIC_CONDITION_KEYS } from '@/lib/badge-engine/conditionRegistr
 import { JAM_ACTION_CONDITION_KEYS } from '@/lib/badge-engine/jamActionKeys'
 import type { BadgeCondition } from '@/types/database'
 import { RESOURCE_KEY_BY_KIND, asRegisterChecksClient } from './handlers'
-import type { CancelResult, ExecuteFailure, ExecuteHandler, ExecuteOutcome, ExecutePrepared, ExecuteServiceClient, ResourceObservation } from './handlers'
+import type { CancelResult, ExecuteFailure, ExecuteHandler, ExecuteOutcome, ExecutePrepared, ExecuteServiceClient, PointedByEntry, ResourceObservation } from './handlers'
 
 /** 응답·결정 기록·슬랙에 나가는 사유(티켓 20261004_1756 가정 7). */
 export const JAM_BADGE_MESSAGES = {
@@ -50,6 +52,10 @@ export const JAM_BADGE_MESSAGES = {
   // 취소. 참조 확인과 지우기 실패 문장은 되돌림과 같은 것을 쓴다.
   cancelPublished: '공개 시각이 지나 취소할 수 없어요',
 } as const
+
+/** 컬렉션 항목이 이 배지를 완성 보상으로 가리키는 연결(`LINK_PAIRS`의 `collection_launch` → `jam_badge` 쌍의 칸). 이 연결이 있으면 발급 조건 검사를 건너뛴다(티켓 20261004_2039). */
+const COLLECTION_LAUNCH_KIND = 'collection_launch'
+const COLLECTION_REWARD_LINK_FIELD = 'reward_badge_id'
 
 /** 읽은 배지 행의 시각이 시각으로 읽히지 않을 때(상태 맞추기). 사유가 아니라 서버 로그용이다. */
 const OBSERVE_BAD_TIME = '배지 시각을 읽을 수 없어요'
@@ -91,15 +97,23 @@ function firstSuccessRecipeId(condition: Record<string, unknown> | null): string
   return typeof value === 'string' ? value : undefined
 }
 
-/** 변환이 통과한 뒤의 조건 형식 검사. 어드민 배지 저장 검사(`findBadgeConditionSaveError`)와 발급 조건 유무, 레시피 ID 형식이다. */
-function conditionIssues(payload: JamBadgeRegisterPayload): RegisterInputIssue[] {
+/** 같은 그룹의 컬렉션이 이 배지를 완성 보상(`reward_badge_id`)으로 가리키는지. 그러면 발급 경로가 컬렉션 완성이라 발급 조건이 필요 없다. */
+function isCollectionReward(pointedBy: readonly PointedByEntry[] | undefined): boolean {
+  return (pointedBy ?? []).some((entry) => entry.kind === COLLECTION_LAUNCH_KIND && entry.field === COLLECTION_REWARD_LINK_FIELD)
+}
+
+/**
+ * 변환이 통과한 뒤의 조건 형식 검사. 어드민 배지 저장 검사(`findBadgeConditionSaveError`)와 발급 조건 유무, 레시피 ID 형식이다.
+ * `collectionReward`면 발급 조건 유무만 건너뛴다(나머지는 그대로).
+ */
+function conditionIssues(payload: JamBadgeRegisterPayload, { collectionReward }: { collectionReward: boolean }): RegisterInputIssue[] {
   const issues: RegisterInputIssue[] = []
   const condition = asRecord(payload.condition_json) ?? {}
 
   const saveError = findBadgeConditionSaveError({ name: payload.name, family_key: payload.family_key ?? null }, 'activity', condition as BadgeCondition)
   if (saveError) issues.push({ path: 'resource.condition_json', message: `badge.condition_json: ${withoutSavePrefix(saveError)}` })
 
-  if (!hasIssuingCondition(condition)) {
+  if (!collectionReward && !hasIssuingCondition(condition)) {
     issues.push({
       path: 'resource.condition_json',
       message: 'badge.condition_json: 발급 조건이 없는 배지예요. JAM! 행동 지표(믹스·드랍·미션 등)나 미션 보상(mission_reward) 조건이 하나 있어야 발급돼요.',
@@ -149,11 +163,11 @@ export const JAM_BADGE_HANDLER: ExecuteHandler<JamBadgeRegisterPayload> = {
   resourceKey: RESOURCE_KEY_BY_KIND.jam_badge,
   idFirst: true,
 
-  prepare(item, { id, linkedIds }): ExecuteOutcome<ExecutePrepared<JamBadgeRegisterPayload>> {
+  prepare(item, { id, linkedIds, pointedBy }): ExecuteOutcome<ExecutePrepared<JamBadgeRegisterPayload>> {
     const result = toJamBadgeRegisterInput(item, { id, linkedIds })
     const issues: RegisterInputIssue[] = [...result.errors]
     // 변환이 통과한 뒤에야 조건 검사를 한다(변환 오류가 있으면 payload가 없다).
-    if (result.payload !== null && issues.length === 0) issues.push(...conditionIssues(result.payload))
+    if (result.payload !== null && issues.length === 0) issues.push(...conditionIssues(result.payload, { collectionReward: isCollectionReward(pointedBy) }))
     if (result.payload === null || issues.length > 0) {
       const [first, ...rest] = issues
       const more = rest.length > 0 ? ` (외 ${rest.length}건)` : ''

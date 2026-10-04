@@ -184,6 +184,67 @@ describe('prepare', () => {
     })
   })
 
+  describe('컬렉션 완성 보상으로 연결된 배지(pointedBy, 티켓 20261004_2039 가정 2·사용자 결정 2026-10-04)', () => {
+    const REWARD = [{ kind: 'collection_launch', field: 'reward_badge_id' }]
+    const prepareWith = (item: ReturnType<typeof badgeItem>, pointedBy?: readonly { kind: string; field: string }[]) =>
+      handler.prepare(item, { id: BADGE_ID, actorId: 'admin-1', linkedIds: {}, now: NOW, pointedBy })
+
+    it.each([
+      ['빈 조건', {}],
+      ['일반 활동 조건만 있다', { distance_km: 10 }],
+      ['mission_reward가 true가 아니다', { mission_reward: false }],
+    ])('발급 조건이 없어도(%s) 같은 그룹의 컬렉션이 reward_badge_id로 가리키면 통과한다', (_label, condition) => {
+      const outcome = prepareWith(badgeItem({ condition_json: condition }), REWARD)
+      expect(outcome.ok).toBe(true)
+      if (!outcome.ok) throw new Error('통과해야 해요')
+      expect(outcome.value.payload.condition_json).toEqual(condition)
+    })
+
+    it.each([
+      ['pointedBy가 없다(컬렉션이 없는 그룹·다른 핸들러 경로)', undefined],
+      ['pointedBy가 비어 있다(가리키던 컬렉션이 반려되는 등)', []],
+      ['다른 종류가 가리킨다(미션 보상 칸)', [{ kind: 'mission', field: 'reward_badge_ids' }]],
+      ['다른 종류가 가리킨다(카드 배지 칸)', [{ kind: 'home_feed_card', field: 'badge_ids' }]],
+      ['컬렉션이 다른 칸으로 가리킨다', [{ kind: 'collection_launch', field: 'item_book_id' }]],
+    ])('%s: 연결이 없으면 지금처럼 「발급 조건이 없는 배지예요」 형식 오류다', (_label, pointedBy) => {
+      const outcome = prepareWith(badgeItem({ condition_json: {} }), pointedBy)
+      expect(outcome.ok).toBe(false)
+      if (outcome.ok) throw new Error('실패여야 해요')
+      expect(outcome.failure.reason).toContain('배지 형식이 맞지 않아요: badge.condition_json: 발급 조건이 없는 배지예요.')
+    })
+
+    it('예외는 발급 조건 유무뿐이다: 조건 저장 규칙(엔진이 모르는 키·사용량 지표 둘)은 그대로 막는다', () => {
+      const unknown = prepareWith(badgeItem({ condition_json: { mystery_key: 3 } }), REWARD)
+      expect(unknown.ok).toBe(false)
+      if (unknown.ok) throw new Error('실패여야 해요')
+      expect(unknown.failure.reason).toContain('condition_json에 엔진이 모르는 필드(mystery_key)가 있습니다')
+
+      const many = prepareWith(badgeItem({ condition_json: { combine_success_count: 1, combine_attempt_count: 5 } }), REWARD)
+      expect(many.ok).toBe(false)
+    })
+
+    it('condition_json 자체는 여전히 필수다(빈 객체 {}는 되지만 칸이 없으면 형식 오류)', () => {
+      const outcome = prepareWith(badgeItem({ condition_json: undefined }), REWARD)
+      expect(outcome.ok).toBe(false)
+      if (outcome.ok) throw new Error('실패여야 해요')
+      expect(outcome.failure.reason).toBe('배지 형식이 맞지 않아요: badge.condition_json: 필수 항목이 없어요.')
+    })
+
+    it('다른 형식 오류도 그대로다(이름 없음·희귀도와 레벨 동시)', () => {
+      const noName = prepareWith(badgeItem({ condition_json: {} }, {}, { name: undefined }), REWARD)
+      expect(noName.ok).toBe(false)
+      const both = prepareWith(badgeItem({ condition_json: {}, level: 1 }), REWARD)
+      expect(both.ok).toBe(false)
+    })
+
+    it('연결 예외가 있어도 발급 조건이 있는 배지는 그대로 통과한다(조건 값을 바꾸지 않는다)', () => {
+      const outcome = prepareWith(badgeItem(), REWARD)
+      expect(outcome.ok).toBe(true)
+      if (!outcome.ok) throw new Error('통과해야 해요')
+      expect(outcome.value.payload.condition_json).toEqual(CONDITION)
+    })
+  })
+
   it('연결 없이 직접 적은 recipe_first_success의 레시피 ID가 UUID가 아니면 막는다', () => {
     const failure = failureOf(badgeItem({ condition_json: { recipe_first_success: { recipe_id: 'not-a-uuid' } } }))
     expect(failure.reason).toContain('recipe_first_success의 recipe_id가 레시피 ID(UUID) 형식이 아니에요')

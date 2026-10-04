@@ -283,6 +283,12 @@ function createdBadgeIdOf(item: BalanceItemInput): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value : null
 }
 
+/** `collection_launch` 항목이 이미 만든 컬렉션의 ID(`created_resource.item_book_id`). 아직 만들지 않았으면 `null`이다(티켓 20261004_2039 가정 9). */
+function createdBookIdOf(item: BalanceItemInput): string | null {
+  const value = asRecord(item.createdResource)?.item_book_id
+  return typeof value === 'string' && value.trim() !== '' ? value : null
+}
+
 /** `resource.family_key`. 없거나 문자열이 아니거나 비어 있으면 계열이 없는 배지다(R7이 보지 않는다). */
 function readFamilyKey(item: BalanceItemInput): string | null {
   const resource = readResource(item)
@@ -430,11 +436,12 @@ export function evaluateBundleBalance(
   const times = new Map(launches.map((item) => [item.id, { start: readItemTime(item, 'starts_at'), end: readItemTime(item, 'ends_at') }]))
 
   // 시간 축: 이 묶음의 신규 개방(시작을 읽을 수 있는 것)과 다른 묶음의 신규 개방. R2·R3은 모두 세고(만들어진 것도 이미 한 개방이다),
-  // R1은 `inDb`가 아닌 것만 더한다(만들어진 컬렉션은 DB에서 이미 센다).
+  // R1은 `inDb`가 아닌 것만 더한다(만들어진 컬렉션은 DB에서 이미 센다). 이 묶음의 항목도 `created_resource.item_book_id`가 있으면 DB에서 세므로
+  // 항목에서 다시 세지 않는다(예약 등록 뒤 다시 평가할 때 한 컬렉션이 두 번 세어지던 것을 고친다. 티켓 20261004_2039 가정 9).
   const timeline: Launch[] = []
   for (const item of launches) {
     const { start, end } = times.get(item.id)!
-    if (start.ok) timeline.push({ startMs: start.value, endMs: end.ok ? end.value : null, own: true, inDb: false })
+    if (start.ok) timeline.push({ startMs: start.value, endMs: end.ok ? end.value : null, own: true, inDb: createdBookIdOf(item) !== null })
   }
   if (state.otherLaunches.ok) {
     for (const other of state.otherLaunches.data) {

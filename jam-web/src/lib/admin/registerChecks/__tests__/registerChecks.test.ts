@@ -7,17 +7,23 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { runBadgeDbChecks } from '../badge'
+import { runCollectionDbChecks } from '../collection'
 import { runHomeFeedDbChecks } from '../homeFeed'
 import { missionPeriodsOverlap, runMissionDbChecks } from '../mission'
 import { findUnlaunchedCollectionBadges } from '../recipe'
 import {
+  AMBIENT_SCHEDULE_UNFINISHED_STATUSES,
   BADGE_UNDO_ARRAY_REFERENCE_COLUMNS,
   BADGE_UNDO_REFERENCES,
   BADGE_UNDO_REFERENCE_TABLES,
   HOME_FEED_UNDO_REFERENCE_TABLES,
+  ITEM_BOOK_UNDO_ARRAY_REFERENCE_COLUMNS,
+  ITEM_BOOK_UNDO_REFERENCES,
+  ITEM_BOOK_UNDO_REFERENCE_TABLES,
   MISSION_UNDO_REFERENCE_TABLES,
   findBadgeUndoReferences,
   findHomeFeedUndoReferences,
+  findItemBookUndoReferences,
   findMissionUndoReferences,
 } from '../references'
 import type { RegisterChecksClient, RegisterQuery, RegisterQueryResult, RegisterRow } from '../shared'
@@ -422,6 +428,149 @@ describe('되돌림 참조 확인', () => {
   })
 })
 
+describe('runCollectionDbChecks (티켓 20261004_2039)', () => {
+  const collection = { name: '[TEST] 가을 컬렉션', tribe_id: ID_A, reward_badge_id: ID_B }
+  /** 이름이 같은 컬렉션은 없고(목록 빈 배열), 트라이브·활동 배지는 있는(단건) DB. */
+  const clean = (e: Entry): StubResult => {
+    if (e.table === 'badges') return { data: { id: ID_B, type: 'activity', deleted_at: null } }
+    return allPresent(e)
+  }
+
+  it('통과: 이름 중복·트라이브·보상 배지 존재·보상 배지 종류를 이 순서로 읽고 모두 통과로 기록한다', async () => {
+    const { client, entries } = createStub(clean)
+    const result = await runCollectionDbChecks({ supabase: client, collection })
+    expect(statuses(result)).toEqual(['통과', '통과', '통과', '통과'])
+    expect(result.checks.map((c) => c.label)).toEqual(['이름 중복', '트라이브 존재', '보상 배지 존재', '보상 배지 종류'])
+    expect(result.errors).toEqual([])
+    // 보상 배지는 한 번만 읽는다(존재·삭제·종류를 같은 행으로 가른다).
+    expect(entries.map((e) => e.table)).toEqual(['item_books', 'tribes', 'badges'])
+    expect(entries[0].filters).toEqual([['eq', 'name', '[TEST] 가을 컬렉션']])
+    expect(entries[2].columns).toBe('id, type, deleted_at')
+  })
+
+  it('실패: 정확히 같은 이름의 컬렉션이 있으면 이름 중복을 실패로 기록한다(소프트 삭제 개념이 없어 삭제 필터가 없다)', async () => {
+    const { client } = createStub((e) => (e.table === 'item_books' ? { data: [{ id: 'dup-id' }] } : clean(e)))
+    const result = await runCollectionDbChecks({ supabase: client, collection })
+    expect(result.checks[0]).toEqual({ label: '이름 중복', status: '실패', detail: '같은 이름의 컬렉션이 이미 있어요(id: dup-id).' })
+    expect(result.errors).toEqual([`이름 중복: ${result.checks[0].detail}`])
+  })
+
+  it('실패: 트라이브가 없으면 «tribe_id에 해당하는 트라이브가 없어요»', async () => {
+    const { client } = createStub((e) => (e.table === 'tribes' ? { data: null } : clean(e)))
+    const result = await runCollectionDbChecks({ supabase: client, collection })
+    expect(result.checks[1]).toMatchObject({ label: '트라이브 존재', status: '실패', detail: `tribe_id에 해당하는 트라이브가 없어요: ${ID_A}` })
+  })
+
+  it('실패: 보상 배지가 없으면 존재 검사가 실패하고, 없는 배지의 종류는 보지 않는다', async () => {
+    const { client } = createStub((e) => (e.table === 'badges' ? { data: null } : clean(e)))
+    const result = await runCollectionDbChecks({ supabase: client, collection })
+    expect(result.checks[2]).toMatchObject({ label: '보상 배지 존재', status: '실패', detail: `reward_badge_id에 해당하는 배지가 없어요: ${ID_B}` })
+    expect(result.checks[3].status).toBe('해당 없음')
+  })
+
+  it('실패: 소프트 삭제된 보상 배지는 삭제됐다고 실패하고, 종류는 보지 않는다', async () => {
+    const { client } = createStub((e) => (e.table === 'badges' ? { data: { id: ID_B, type: 'activity', deleted_at: '2026-09-01T00:00:00.000Z' } } : clean(e)))
+    const result = await runCollectionDbChecks({ supabase: client, collection })
+    expect(result.checks[2]).toMatchObject({ status: '실패', detail: `reward_badge_id의 배지가 삭제됐어요: ${ID_B}` })
+    expect(result.checks[3].status).toBe('해당 없음')
+  })
+
+  it('실패: 보상 배지가 활동 배지가 아니면 종류 검사가 실패한다', async () => {
+    const { client } = createStub((e) => (e.table === 'badges' ? { data: { id: ID_B, type: 'item', deleted_at: null } } : clean(e)))
+    const result = await runCollectionDbChecks({ supabase: client, collection })
+    expect(statuses(result)).toEqual(['통과', '통과', '통과', '실패'])
+    expect(result.checks[3]).toMatchObject({ label: '보상 배지 종류' })
+    expect(result.checks[3].detail).toContain('활동 배지')
+    expect(result.checks[3].detail).toContain('받은 종류: item')
+  })
+
+  it('보상 배지·트라이브가 없으면(연결로 채우는 배지는 호출부가 비운다) 이름 중복만 읽고 나머지는 해당 없음이다', async () => {
+    const { client, entries } = createStub(clean)
+    const result = await runCollectionDbChecks({ supabase: client, collection: { name: '새 컬렉션', tribe_id: null, reward_badge_id: null } })
+    expect(statuses(result)).toEqual(['통과', '해당 없음', '해당 없음', '해당 없음'])
+    expect(entries.map((e) => e.table)).toEqual(['item_books'])
+  })
+
+  it('조회 오류: 응답의 error와 던져진 예외를 모두 «DB 조회에 실패했어요»로 기록한다. 읽지 못한 배지의 종류는 해당 없음이다', async () => {
+    const withError = createStub((e) => (e.table === 'badges' ? { data: null, error: { message: 'boom' } } : clean(e)))
+    const r1 = await runCollectionDbChecks({ supabase: withError.client, collection })
+    expect(r1.checks[2]).toMatchObject({ status: '실패', detail: 'DB 조회에 실패했어요: boom' })
+    expect(r1.checks[3].status).toBe('해당 없음')
+
+    const withThrow = createStub(() => {
+      throw new Error('kaboom')
+    })
+    const r2 = await runCollectionDbChecks({ supabase: withThrow.client, collection: { name: 'n' } })
+    expect(r2.checks[0]).toMatchObject({ status: '실패', detail: 'DB 조회에 실패했어요: kaboom' })
+    expect(r2.errors).toEqual(['이름 중복: DB 조회에 실패했어요: kaboom'])
+  })
+
+  it('클라이언트가 없으면 적용 대상 검사는 «건너뜀», 아니면 «해당 없음»이고 아무것도 읽지 않는다', async () => {
+    const result = await runCollectionDbChecks({ supabase: null, collection })
+    expect(statuses(result)).toEqual(['건너뜀', '건너뜀', '건너뜀', '해당 없음'])
+    expect(result.errors).toEqual([])
+  })
+})
+
+describe('컬렉션 되돌림 참조 확인 (티켓 20261004_2039 가정 7)', () => {
+  it('item_books를 가리키는 외래 키 6곳과 같다(생성 타입 대조)', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'types', 'database.generated.ts'), 'utf8')
+    const found: string[] = []
+    const starts = [...source.matchAll(/^ {6}(\w+): \{\n {8}Row: \{/gm)].map((m) => ({ name: m[1], index: m.index }))
+    starts.forEach((start, i) => {
+      const block = source.slice(start.index, starts[i + 1]?.index ?? source.length)
+      for (const fk of block.matchAll(/columns: \["(\w+)"\]\n\s+isOneToOne: \w+\n\s+referencedRelation: "item_books"/g)) found.push(`${start.name}.${fk[1]}`)
+    })
+    const declared = ITEM_BOOK_UNDO_REFERENCE_TABLES.map((r) => `${r.table}.${r.column}`)
+    expect(declared.sort()).toEqual(found.sort())
+    expect(found).toHaveLength(6)
+  })
+
+  it('외래 키는 eq, 배열 칸은 contains로 목록 순서대로 읽고, 드랍 예약은 끝나지 않은 상태(scheduled·running)만 센다', async () => {
+    const { client, entries } = createStub(() => ({ count: 0, error: null }))
+    expect(await findItemBookUndoReferences(client, ID_A)).toEqual([])
+    expect(entries.map((e) => `${e.table}.${e.columns}`)).toEqual(ITEM_BOOK_UNDO_REFERENCES.map((r) => `${r.table}.${r.column}`))
+    expect(entries.every((e) => e.options?.count === 'exact' && e.options.head === true)).toBe(true)
+
+    const fkCount = ITEM_BOOK_UNDO_REFERENCE_TABLES.length
+    expect(entries.slice(0, fkCount).every((e) => e.filters.length === 1 && e.filters[0][0] === 'eq' && e.filters[0][2] === ID_A)).toBe(true)
+    expect(entries.slice(fkCount).map((e) => e.filters[0])).toEqual(ITEM_BOOK_UNDO_ARRAY_REFERENCE_COLUMNS.map((r) => ['contains', r.column, [ID_A]]))
+    // 설정 표는 상태가 없다. 예약 표만 상태 조건이 붙는다.
+    expect(entries.find((e) => e.table === 'ambient_drop_config')?.filters).toHaveLength(1)
+    expect(entries.find((e) => e.table === 'ambient_drop_schedules')?.filters[1]).toEqual(['in', 'status', ['scheduled', 'running']])
+    expect(AMBIENT_SCHEDULE_UNFINISHED_STATUSES).toEqual(['scheduled', 'running'])
+  })
+
+  it('아이템 배지(소프트 삭제 포함)·카드·유저 기록·포인트·드랍 상태·드랍 배열 칸이 모두 확인 대상이다', () => {
+    expect(ITEM_BOOK_UNDO_REFERENCES.map((r) => `${r.table}.${r.column}`)).toEqual([
+      'badges.item_book_id',
+      'today_cards.item_book_id',
+      'user_item_book_slots.item_book_id',
+      'user_item_book_completions.item_book_id',
+      'user_drop_state.last_drop_book_id',
+      'point_transactions.source_item_book_id',
+      'ambient_drop_config.collection_ids',
+      'ambient_drop_schedules.collection_ids',
+    ])
+  })
+
+  it('붙어 있는 곳이 있으면 건수와 영향을 담아 던진다', async () => {
+    const { client } = createStub((e) => ({ count: e.table === 'badges' ? 2 : e.table === 'ambient_drop_schedules' ? 1 : 0, error: null }))
+    await expect(findItemBookUndoReferences(client, ID_A)).rejects.toThrow(
+      '이미 아이템 배지나 유저 기록·연결이 붙어서 되돌리지 않고 중단했어요 — badges.item_book_id 2건(연결 해제), ambient_drop_schedules.collection_ids 1건(배열에 id가 남음). 삭제 대신 어드민에서 컬렉션을 비활성으로 바꿔 주세요.'
+    )
+  })
+
+  it('읽지 못하면 «확인 없이 지우지 않아요» 문장으로 던지고 그 뒤 표는 읽지 않는다. 예약 표의 오류도 같다', async () => {
+    const { client, entries } = createStub((e) => (e.table === 'user_item_book_slots' ? { count: null, error: { message: 'boom' } } : { count: 0, error: null }))
+    await expect(findItemBookUndoReferences(client, ID_A)).rejects.toThrow('user_item_book_slots.item_book_id 참조를 확인하지 못해서 중단했어요(확인 없이 지우지 않아요): boom')
+    expect(entries.map((e) => e.table)).toEqual(['badges', 'today_cards', 'user_item_book_slots'])
+
+    const lastFails = createStub((e) => (e.table === 'ambient_drop_schedules' ? { count: null, error: { message: 'boom' } } : { count: 0, error: null }))
+    await expect(findItemBookUndoReferences(lastFails.client, ID_A)).rejects.toThrow('ambient_drop_schedules.collection_ids 참조를 확인하지 못해서 중단했어요')
+  })
+})
+
 describe('findUnlaunchedCollectionBadges — 레시피 공개 시각에 열리지 않은 컬렉션의 배지 (티켓 20261002_2221)', () => {
   const AT = '2026-10-10T00:00:00.000Z'
   const BADGE_1 = '10000000-0000-4000-8000-000000000001'
@@ -545,10 +694,11 @@ describe('registerChecks 계약 — 서버에서 가져올 수 있어야 한다'
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.ts'))
   const NODE_BUILTINS = ['fs', 'path', 'os', 'child_process', 'crypto', 'url', 'util', 'stream', 'process']
 
-  it('모듈 아홉 개가 있다', () => {
+  it('모듈 열 개가 있다', () => {
     expect(files.sort()).toEqual([
       'badge.ts',
       'bundleRules.ts',
+      'collection.ts',
       'homeFeed.ts',
       'homeFeedFields.ts',
       'mission.ts',

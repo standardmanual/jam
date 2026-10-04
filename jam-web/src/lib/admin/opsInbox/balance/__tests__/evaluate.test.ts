@@ -107,6 +107,34 @@ describe('R1 동시 개방 컬렉션 수', () => {
     expect(run([launch(T)], rules, tight).warnings[0]?.measured).toBe(7) // 5 + 1 + 1
   })
 
+  it('이 묶음의 개방 항목이 이미 컬렉션을 만들었으면(created_resource.item_book_id) DB 컬렉션에서만 센다(항목에서 한 번 더 더하지 않는다. 티켓 20261004_2039 가정 9)', () => {
+    const made = launch(T, '2026-12-31T09:00:00+09:00', {}, { createdResource: { item_book_id: 'book-1' }, status: 'scheduled' })
+    // DB의 열린 컬렉션 6개에 방금 만든 컬렉션이 이미 들어 있다. 이중으로 세면 7이 되어 경고가 난다.
+    const result = run([made], rules, makeState({ books: { ok: true, data: openBooks(6) } }))
+    expect(result.warnings).toEqual([])
+    expect(result.unreadable).toEqual([])
+    // 만들어지지 않은 같은 항목은 DB 6 + 새 1 = 7로 경고다.
+    expect(run([launch(T)], rules, makeState({ books: { ok: true, data: openBooks(6) } })).warnings[0]?.measured).toBe(7)
+    // DB가 7개이면 만들어진 항목도 7로 경고한다(DB 값을 그대로 쓴다).
+    expect(run([made], rules, makeState({ books: { ok: true, data: openBooks(7) } })).warnings[0]?.measured).toBe(7)
+  })
+
+  it('만들어진 항목과 아직 만들지 않은 항목이 섞이면 만들지 않은 항목만 항목에서 더한다', () => {
+    const made = launch(T, '2026-12-31T09:00:00+09:00', {}, { createdResource: { item_book_id: 'book-1' }, status: 'scheduled' })
+    const todo = launch(T)
+    const result = run([made, todo], rules, makeState({ books: { ok: true, data: openBooks(5) } }))
+    // 각 항목의 시점: DB 5(만든 컬렉션 포함) + 아직 안 만든 1 = 6 → 통과. 이중으로 세면 7이 된다.
+    expect(result.warnings).toEqual([])
+  })
+
+  it('created_resource에 item_book_id가 없거나 형식이 아니면(null·빈 객체·sample·빈 문자열·숫자) 아직 만들지 않은 것으로 센다', () => {
+    for (const createdResource of [null, {}, { sample: true }, { item_book_id: '' }, { item_book_id: 5 }, { badge_id: 'b1' }]) {
+      const item = launch(T, '2026-12-31T09:00:00+09:00', {}, { createdResource, status: 'scheduled' })
+      const result = run([item], rules, makeState({ books: { ok: true, data: openBooks(6) } }))
+      expect(result.warnings[0], JSON.stringify(createdResource)).toMatchObject({ measured: 7, limit: 6 })
+    }
+  })
+
   it('같은 묶음의 다른 신규 개방도 그 시각에 열려 있으면 센다', () => {
     const a = launch('2026-10-12T09:00:00+09:00')
     const b = launch('2026-10-13T09:00:00+09:00')
@@ -228,6 +256,15 @@ describe('R2 한 주 신규 개방 수', () => {
     expect(result.warnings[0].measured).toBe(2)
   })
 
+  it('이 묶음의 개방 항목은 컬렉션을 이미 만들었어도(created_resource.item_book_id) 한 번만 센다(R1은 DB에서, R2는 항목에서 센다. 티켓 20261004_2039 가정 9)', () => {
+    const made = launch('2026-10-12T09:00:00+09:00', '2026-12-31T09:00:00+09:00', {}, { createdResource: { item_book_id: 'book-1' }, status: 'scheduled' })
+    expect(run([made], rules).warnings).toEqual([]) // 1개 = 기준
+    const second = launch('2026-10-15T09:00:00+09:00')
+    const result = run([made, second], rules)
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0]).toMatchObject({ measured: 2, limit: 1 }) // 만들어진 항목도 세고 두 번 세지 않는다
+  })
+
   it('다른 묶음 상태를 읽지 못하면 점검 못 함이고, 공개 시각이 없으면 그 항목이 점검 못 함이다', () => {
     const down = run([launch('2026-10-12T09:00:00+09:00')], rules, makeState({ otherLaunches: { ok: false } }))
     expect(down.warnings).toEqual([])
@@ -271,6 +308,15 @@ describe('R3 28일 신규 개방 수', () => {
     const result = run(items, rules)
     expect(result.warnings).toHaveLength(1)
     expect(result.warnings[0].message).toBe('공개 시각(10/26)부터 거슬러 28일 안에 새 컬렉션이 3개예요. 28일에 2개까지가 기준이에요.')
+  })
+
+  it('이 묶음의 개방 항목은 컬렉션을 이미 만들었어도(created_resource.item_book_id) 한 번만 센다(티켓 20261004_2039 가정 9)', () => {
+    const made = (startsAt: string) => launch(startsAt, '2026-12-31T09:00:00+09:00', {}, { createdResource: { item_book_id: `book-${startsAt}` }, status: 'scheduled' })
+    const items = [made('2026-10-12T09:00:00+09:00'), made('2026-10-19T09:00:00+09:00'), launch('2026-10-26T09:00:00+09:00')]
+    const result = run(items, rules)
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0]).toMatchObject({ measured: 3, limit: 2 })
+    expect(run(items.slice(0, 2), rules).warnings).toEqual([]) // 만들어진 둘만 = 2개 = 기준
   })
 
   it('경계: 2개이면 통과, 28일(정확히)을 거슬러 포함하고 1분 더 앞이면 빠진다', () => {
