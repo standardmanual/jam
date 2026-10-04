@@ -109,6 +109,8 @@
       "jam-web/src/lib/admin/opsInbox/execute/recipe.ts",
       "jam-web/src/lib/admin/opsInbox/execute/dropSchedule.ts",
       "jam-web/src/lib/admin/opsInbox/execute/jamBadge.ts",
+      "jam-web/src/lib/admin/opsInbox/execute/collectionLaunch.ts",
+      "jam-web/src/lib/admin/registerChecks/collection.ts",
       "jam-web/src/lib/badge-engine/jamActionKeys.ts",
       "jam-web/src/lib/admin/familyKey.ts",
       "jam-web/src/lib/db/fetchAllRows.ts",
