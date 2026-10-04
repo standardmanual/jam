@@ -1408,8 +1408,31 @@ triggeredByPrefix: CATALOG_REEVALUATION_TRIGGER })`를 한 번 더 부른다. �
    삼키므로(그 지표만 건너뛴다) 배치 응답의 `error`에 올라오지 않고 서버 로그로만 보인다. dry-run 숫자가 기대보다
    작으면 로그의 `[evaluateJamActionBadges] … 판정 실패`를 먼저 확인한다. 사용량 지표 가운데 팔로워·팔로잉·동기화 4종은
    값 계산·조회 오류가 `error`에 올라온다. 체크인 2종은 이 한계와 같이 오류가 삼켜진다(아래 「실패 격리와 오류 노출」).
-2. **아직 열리지 않은 배지는 dry-run에 들어가지 않는다.** `valid_from`이 미래인 배지는 후보 조회에서 빠진다. 열기 전에
-   미리 세어 보는 옵션은 두지 않았다.
+2. **아직 열리지 않은 배지는 기본 dry-run에 들어가지 않는다.** `valid_from`이 미래인 배지는 후보 조회에서 빠진다.
+   열기 전에 세려면 아래 「열릴 예정 배지 포함 미리보기」 옵션을 쓴다(기본 동작은 그대로 제외다).
+
+#### 열릴 예정 배지 포함 미리보기 (티켓 20261001_2203, 상위 20260930_1450)
+
+예약 공개되는 JAM! 배지는 공개 시각에 옛 기록으로 소급 지급되고 회수할 수 없다. 승인 때 「공개되면 약 N명에게 P포인트」를
+셀 수 있도록 `valid_from`이 미래인 배지를 후보에 넣어 보는 **읽기 전용** 미리보기를 둔다.
+
+```
+POST /api/admin/badges/reevaluate-all
+{ "includeUpcoming": true, "badgeIds": ["..."], "userIds": ["..."] }   // badgeIds·userIds는 선택
+```
+
+- **판정**: `evaluateJamActionBadges`의 5번째 인자 `candidateOptions`(`includeUpcoming`·`extraCandidates`·`badgeIds`)가 후보를
+  넓힌다. `valid_from` 필터만 빼고 `valid_until` 필터는 그대로다. 보유 제외·섀도우밴·등급형/레벨형 규칙은 기본 dry-run과 같다.
+  `includeUpcoming`·`extraCandidates`를 `dryRun` 없이 켜면 **던진다** — 공개 전 배지가 실제로 발급되면 안 되기 때문이다.
+- **진입점**: 라우트는 운영자 수동 확인용이다. 예약 등록 요약창은 서버 함수 `previewUpcomingJamBadges(supabase, { userIds,
+  badgeIds?, candidateBadges? })`(`reevaluateCatalog.ts`)를 직접 부른다. `candidateBadges`는 DB에 아직 없는 배지 정의이고
+  그 정의의 `point_reward`를 쓴다. `badgeIds`가 없으면 `valid_from`이 미래인 배지와 `candidateBadges`만 센다(이미 열린
+  배지는 기본 dry-run의 몫). 있으면 그 배지들만 센다.
+- **응답**: `targetUserCount`·`affectedUserCount`·`totalPoints`·`badges[]`(`badgeId`·`name`·`validFrom`·`userCount`·`points`)·
+  `errors[]`(`userId`·`message`). 기본 재평가 응답과 모양이 다르다. 대상 500명 상한은 같다.
+- **쓰기 없음**: `user_activity_badges` insert·`awardPoints`·`recordFeedEvent`를 부르지 않는다(JAM! 행동 지표 배지만 센다 —
+  메인 엔진·사용량 지표 배지는 이 미리보기 범위 밖).
+- **숫자는 «약»이다**: 미리보기 시점의 기록 기준이라 공개 시각까지 기록이 쌓이면 실제 지급 수가 늘 수 있다. 화면 문구에 「약」을 붙인다.
 
 #### 사용량 지표 6종도 같은 배치에서 돌린다 (티켓 20261001_1022, 상위 20260930_1456)
 
