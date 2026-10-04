@@ -61,6 +61,11 @@ export interface BalanceItemInput extends ViewableItem {
   endsAt: string | null
   /** 가장 최근 승인 결정의 시각. 승인 전이면 `null`. */
   approvedAt: string | null
+  /**
+   * 항목이 만든 자원을 가리키는 키(`ops_bundle_items.created_resource`, §8.5). 아직 만들지 않았거나 읽지 않았으면 비어 있다.
+   * R7이 이미 만든 JAM! 배지(`badge_id`)를 DB에서 세고 항목에서 다시 세지 않는 데 쓴다(티켓 20261004_1756 가정 8).
+   */
+  createdResource?: unknown
 }
 
 /** 결과 한 건(PRD §5.2). 경고와 「점검 못 함」이 같은 모양이다. */
@@ -270,6 +275,12 @@ export function collectBalanceReferences(items: readonly BalanceItemInput[]): Ba
     familyKeys: [...familyKeys],
     hasLaunches: live.some((item) => item.kind === 'collection_launch'),
   }
+}
+
+/** `jam_badge` 항목이 이미 만든 배지의 ID(`created_resource.badge_id`). 아직 만들지 않았으면 `null`이다. */
+function createdBadgeIdOf(item: BalanceItemInput): string | null {
+  const value = asRecord(item.createdResource)?.badge_id
+  return typeof value === 'string' && value.trim() !== '' ? value : null
 }
 
 /** `resource.family_key`. 없거나 문자열이 아니거나 비어 있으면 계열이 없는 배지다(R7이 보지 않는다). */
@@ -636,6 +647,8 @@ export function evaluateBundleBalance(
       let skipped = false
       let ownSum = 0
       for (const item of members) {
+        // 이미 만든 배지는 DB의 같은 계열 배지(`state.familyBadges`)에서 세므로 항목에서 다시 더하지 않는다(두 번 세기 방지. PRD §8.5의 컬렉션 규칙과 같다).
+        if (createdBadgeIdOf(item) !== null) continue
         const badgeKind = readBadgeKind(item)
         const points = readPoints(item, 'point_reward')
         if (!badgeKind.ok) {

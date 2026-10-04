@@ -550,6 +550,33 @@ describe('getOpsBundleDetail — 밸런스 평가 (티켓 20260930_1459)', () =>
     expect(detail!.balance.warnings.some((w) => w.ruleKey === 'weekly_new_collections_max')).toBe(false) // 주 한도는 1개뿐이라 통과
   })
 
+  it('이미 만든 JAM! 배지(created_resource.badge_id)는 DB에서 세고 항목에서 다시 세지 않는다 (티켓 20261004_1756, R7)', async () => {
+    const badgeRow = (id: string, status: string, createdResource: unknown, points: number) => ({
+      id,
+      bundle_id: ID,
+      position: 0,
+      item_key: id,
+      kind: 'jam_badge',
+      pattern_no: null,
+      starts_at: '2026-12-12T00:00:00Z',
+      ends_at: null,
+      status,
+      original: { resource: { family_key: 'run_count', point_reward: points, condition_json: { combine_attempt_count: 5 } } },
+      edited: null,
+      created_resource: createdResource,
+      format_errors: [],
+      updated_at: '2026-10-01T00:00:00Z',
+    })
+    seed([badgeRow('made', 'scheduled', { badge_id: 'badge-made' }, 60), badgeRow('new', 'reviewing', null, 50)])
+    h.state.tables.badges = [{ id: 'badge-made', family_key: 'run_count', point_reward: 60, condition_json: { combine_attempt_count: 5 }, deleted_at: null }]
+    const detail = await getOpsBundleDetail(ID)
+    if (detail!.balance.status !== 'ok') throw new Error('평가가 성공해야 해요')
+    const r7 = detail!.balance.warnings.filter((w) => w.ruleKey === 'count_ladder_points')
+    // DB의 만든 배지 60 + 새 단계 50 = 110. 만든 배지의 항목 값 60을 다시 더하면 170이 된다.
+    expect(r7).toHaveLength(1)
+    expect(r7[0]).toMatchObject({ itemId: null, measured: 110 })
+  })
+
   it('평가도 select 계열만 부르고 상태를 바꾸지 않는다', async () => {
     seed([launchItem('i1')], { books: 3 })
     const before = JSON.stringify(h.state.tables)
