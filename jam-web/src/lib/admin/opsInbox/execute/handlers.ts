@@ -9,7 +9,7 @@ import type { createServiceClient } from '@/lib/supabase/server'
 import type { Json } from '@/types/database.generated'
 import type { OpsItemKind } from '@/lib/admin/opsInbox/constants'
 import type { ViewableItem } from '@/lib/admin/opsInbox/itemView'
-import type { CardLinkedIds, MissionLinkedIds, RegisterInputIssue } from '@/lib/admin/opsInbox/registerInput'
+import type { CardLinkedIds, JamBadgeLinkedIds, MissionLinkedIds, RegisterInputIssue } from '@/lib/admin/opsInbox/registerInput'
 import type { RegisterChecksClient } from '@/lib/admin/registerChecks/shared'
 
 /** 예약 등록이 읽는 항목 행(`ops_bundle_items`). 값 칸은 수정본이 있으면 수정본, 없으면 제출 원본이다(`ViewableItem`). */
@@ -89,14 +89,15 @@ export type ResourceObservation =
   | { status: 'error'; detail: string }
 
 /**
- * 연결 그룹(§8.3)이 채우는 칸에 넣을 ID. 카드·미션 칸 이름은 `registerInput.ts`의 `CardLinkedIds`·`MissionLinkedIds`와 같다.
- * `collection_ids`는 드랍 변환(`toDropScheduleRegisterInput`)이 읽는다. 나머지는 뒤 조각의 변환이 읽는다: `reward_badge_id`(컬렉션), `recipe_id`(JAM! 배지의 `recipe_first_success`).
+ * 연결 그룹(§8.3)이 채우는 칸에 넣을 ID. 카드·미션·JAM! 배지 칸 이름은 `registerInput.ts`의 `CardLinkedIds`·`MissionLinkedIds`·`JamBadgeLinkedIds`와 같다
+ * (`recipe_id`는 JAM! 배지 변환 `toJamBadgeRegisterInput`이 `recipe_first_success`에 덮는다).
+ * `collection_ids`는 드랍 변환(`toDropScheduleRegisterInput`)이 읽는다. 나머지는 뒤 조각의 변환이 읽는다: `reward_badge_id`(컬렉션).
  */
 export type ExecuteLinkedIds = CardLinkedIds &
-  MissionLinkedIds & {
+  MissionLinkedIds &
+  JamBadgeLinkedIds & {
     reward_badge_id?: string | null
     collection_ids?: readonly string[] | null
-    recipe_id?: string | null
   }
 
 /** 등록 형식으로 바꾼 항목(§8.4). `payload`의 모양은 종류마다 다르다. */

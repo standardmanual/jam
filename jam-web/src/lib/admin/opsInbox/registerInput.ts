@@ -1,5 +1,5 @@
 /**
- * 운영 항목 → 카드·미션·레시피·드랍 예약 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b. 레시피는 티켓 20261002_2221 ⑧-a, 드랍 예약은 티켓 20261002_2306 ⑧-b).
+ * 운영 항목 → 카드·미션·JAM! 배지·레시피·드랍 예약 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b. 레시피는 티켓 20261002_2221 ⑧-a, 드랍 예약은 티켓 20261002_2306 ⑧-b, JAM! 배지는 티켓 20261004_1756 ⑨-a).
  *
  * 승인된 운영 항목(`ops_bundle_items`, 수정본 우선)의 `home_feed_card`·`mission`을 `today_cards`·`missions` insert 값으로 바꾼다.
  * 읽는 규칙은 `docs/specs/prd/ops-tool/PRD.md` §8.4이고, 검사는 등록 스크립트가 쓰는 `registerChecks/homeFeedFields.ts`의
@@ -8,6 +8,8 @@
  * `normalizeRecipePayload`가 현재 시각과 함께 하므로 변환은 칸 읽기까지만 한다(핸들러의 `prepare`가 이어서 부른다).
  * `drop_schedule`은 드랍 예약 서버 함수의 입력(평평한 키, 티켓 20261002_2306 ⑧-b)으로 바꾼다. 검사는 그 입력을 받는 `parseAmbientDropScheduleInput`이
  * 현재 시각과 함께 하므로 변환은 칸 읽기와 `ends_at` 거절까지만 한다(핸들러의 `prepare`가 이어서 부른다).
+ * `jam_badge`는 어드민 배지 생성 API와 같은 변환(`buildBadgeInsertPayload`)으로 `badges` insert 값을 만든다. 칸 형식·희귀도와 레벨·계열 키는 이 변환이 보고,
+ * 조건 저장 규칙·발급 조건 유무는 핸들러의 `prepare`가 이어서 본다(티켓 20261004_1756 가정 5·6).
  *
  * 결과는 `{ payload, errors, warnings, linkFields }`다. 오류가 하나라도 있으면 `payload`는 null이다.
  * - 오류·경고 한 건은 `{ path, message }`다. `message`는 검사 문장 그대로(`card.title: …`)이고 `path`는 운영 항목 경로
@@ -20,6 +22,9 @@
  * 없으면 null로 둔다. 서버·화면이 함께 읽는 순수 모듈이라 서버 전용 모듈과 Supabase를 가져오지 않는다.
  */
 import { DROP_SCHEDULE_RESOURCE_KEYS } from '@/lib/ambient-drop/scheduleSpec'
+import { buildBadgeInsertPayload } from '@/lib/admin/badge-insert-payload'
+import { findRarityLevelError } from '@/lib/admin/badge-condition-guards'
+import { isValidFamilyKey } from '@/lib/admin/familyKey'
 import { asRecord, itemField, type ViewableItem } from '@/lib/admin/opsInbox/itemView'
 import { kstDateKey } from '@/lib/admin/opsInbox/labels'
 import { OPS_HOME_FEED_CARD_KIND } from '@/lib/admin/opsInbox/constants'
@@ -76,6 +81,20 @@ export type TodayCardRegisterPayload = ReturnType<typeof buildTodayCardInsertPay
 
 export type MissionRegisterPayload = ReturnType<typeof buildMissionInsertPayload>
 
+/**
+ * JAM! 배지의 연결 칸에 넣을 ID. `jam_badge` → `recipe` 쌍(§8.3)이 정한 레시피 ID로 `condition_json.recipe_first_success.recipe_id`를 덮는다.
+ * 검증용으로는 미리 정한 UUID를 넣는다(G3).
+ */
+export type JamBadgeLinkedIds = {
+  recipe_id?: string | null
+}
+
+/** `badges` insert 값. 어드민 배지 생성 API의 변환(`buildBadgeInsertPayload`) 결과에 정한 ID를 더했다(변환 함수에는 `id` 칸이 없다). */
+export type JamBadgeRegisterPayload = ReturnType<typeof buildBadgeInsertPayload> & { id: string }
+
+/** 연결로 채운 칸 이름(`linkFields`)에 들어가는 JAM! 배지의 칸. 최상위 칸이 아니라 `withoutLinkedFields`가 다루지 않는다. */
+export const JAM_BADGE_RECIPE_LINK_FIELD = 'condition_json.recipe_first_success.recipe_id'
+
 /** 레시피 서버 함수(`buildRecipeRow`·`createRecipeWithSlots`)가 받는 입력. 공개 시각은 `valid_from`, 종료 시각은 `valid_until`이다. */
 export type RecipeRegisterPayload = RecipePayloadInput
 
@@ -127,6 +146,14 @@ const MISSION_RESOURCE_KEYS = [
 const MISSION_TOOL_KEYS = ['id', 'created_at', 'image_source', 'exposure_mode', 'exposure_at', 'reward_type', 'reward_id', 'gated_badge_id']
 
 const MISSION_KIND = 'mission'
+
+const BADGE_COMMON_KEYS = ['starts_at', 'ends_at']
+const BADGE_COPY_KEYS = ['name', 'description']
+const BADGE_RESOURCE_KEYS = ['condition_json', 'point_reward', 'rarity', 'level', 'family_key', 'sort_order', 'image_url']
+// `activity_types`는 JAM! 배지가 종목과 함께 쓰지 않는다는 어드민 폼 규칙이라 툴이 빈 배열로 정한다(티켓 20261004_1756 가정 5).
+const BADGE_TOOL_KEYS = ['id', 'created_at', 'type', 'admin_category', 'activity_types']
+
+const BADGE_KIND = 'jam_badge'
 
 const RECIPE_COMMON_KEYS = ['starts_at', 'ends_at']
 const RECIPE_COPY_KEYS = ['name']
@@ -205,7 +232,7 @@ function toIssue(sentence: string, prefix: 'card' | 'mission', pathOf: (field: s
 /** 문자열 칸 하나. 값이 없거나 공백뿐이면 null이고, 문자열이 아니면 오류를 쌓는다. */
 function readOptionalString(
   errors: RegisterInputIssue[],
-  prefix: 'card' | 'mission',
+  prefix: 'card' | 'mission' | 'badge',
   key: string,
   path: string,
   value: unknown
@@ -451,6 +478,142 @@ export function toMissionRegisterInput(
   // `validateMission`을 통과했으므로 필수 칸이 있고 형식이 맞다.
   const payload = buildMissionInsertPayload(mission as unknown as MissionInput, { id, imageUrl, imageSource: null, conditionText })
   return { payload, errors, warnings, linkFields }
+}
+
+// ── JAM! 배지 ───────────────────────────────────────────────────────────────────────────────
+
+/** 어드민 배지 저장 검사 문장이 앞에 붙이는 「저장할 수 없습니다.」를 뗀다(예약 등록의 사유는 저장 화면 문장이 아니다). */
+export function withoutSavePrefix(sentence: string): string {
+  return sentence.replace(/^저장할 수 없습니다\.\s*/, '')
+}
+
+/** 필수 글자 칸 하나(`name`·`description`). 비어 있거나 공백뿐이면 없는 것이고, 문자열이 아니면 오류다. 앞뒤 공백을 뗀 값을 돌려준다. */
+function readRequiredBadgeText(errors: RegisterInputIssue[], key: 'name' | 'description', read: { value: unknown; path: string }): string | null {
+  if (read.value === undefined || (typeof read.value === 'string' && read.value.trim() === '')) {
+    errors.push({ path: read.path, message: `badge.${key}: 필수 항목이 없어요.` })
+    return null
+  }
+  if (typeof read.value !== 'string') {
+    errors.push({ path: read.path, message: `badge.${key}: 문자열이어야 해요(받은 값: ${describeValue(read.value)}).` })
+    return null
+  }
+  return read.value.trim()
+}
+
+/** 0 이상의 정수 칸 하나(`point_reward`·`sort_order`). 값이 없으면 `undefined`이고, 정수가 아니거나 음수면 오류를 쌓는다. */
+function readBadgeCount(errors: RegisterInputIssue[], key: string, value: unknown): number | undefined {
+  if (!isPresent(value)) return undefined
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    errors.push({ path: `resource.${key}`, message: `badge.${key}: 0 이상의 정수여야 해요(받은 값: ${describeValue(value)}).` })
+    return undefined
+  }
+  return value
+}
+
+/**
+ * `jam_badge` 항목을 `badges` insert 값으로 바꾼다(PRD §8.4 JAM! 배지 행).
+ * - 공통 칸: `starts_at`(필수)은 `valid_from`으로, `ends_at`은 `valid_until`로 읽는다. `ends_at`이 없으면 상시다. 둘 다 시간대가 붙은 ISO여야 하고 종료는 공개보다 늦어야 한다.
+ * - 글자 칸 `name`·`description`(필수)은 `copy` 먼저, 없으면 `resource`. `resource`의 `condition_json`(필수, 객체)·`point_reward`·`sort_order`(0 이상의 정수)·
+ *   `rarity`·`level`(정확히 하나, `findRarityLevelError`)·`family_key`("종목:이름" 형태, `isValidFamilyKey`)·`image_url`(없으면 null)을 읽는다.
+ * - 툴이 정하는 값: `type = 'activity'`, `admin_category = 'jam'`, `activity_types = []`(JAM! 배지는 종목과 함께 쓰지 않는다), `id`. `resource`에 있어도 읽지 않고 경고한다.
+ * - 연결로 채우는 칸 `condition_json.recipe_first_success.recipe_id`는 `linkedIds.recipe_id`가 있으면 그 값으로 **덮고** `linkFields`에 알린다(§8.3 「덮는 칸」.
+ *   `resource`에 같은 값이 있어도 충돌이 아니다). 항목에 `recipe_first_success`가 없으면 칸을 만든다.
+ * - 조건 저장 규칙(`findBadgeConditionSaveError`)과 발급 조건 유무는 보지 않는다. 핸들러의 `prepare`가 이어서 본다.
+ * - 값은 `buildBadgeInsertPayload`(어드민 배지 생성 API·등록 스크립트와 같은 변환)로 만든다.
+ */
+export function toJamBadgeRegisterInput(
+  item: OpsRegisterItem,
+  { id, linkedIds = {} }: { id: string; linkedIds?: JamBadgeLinkedIds }
+): RegisterInputResult<JamBadgeRegisterPayload> {
+  const errors: RegisterInputIssue[] = []
+  const warnings: RegisterInputIssue[] = []
+  const linkFields: string[] = []
+
+  if (item.kind !== BADGE_KIND) {
+    errors.push({ path: 'kind', message: `kind: ${BADGE_KIND} 항목만 JAM! 배지로 바꿀 수 있어요(받은 값: ${describeValue(item.kind ?? undefined)}).` })
+    return { payload: null, errors, warnings, linkFields }
+  }
+
+  const copy = readGroup(item, 'copy', errors)
+  const resource = readGroup(item, 'resource', errors)
+  warnUnreadKeys(warnings, 'copy', copy, BADGE_COPY_KEYS, BADGE_COMMON_KEYS, BADGE_TOOL_KEYS)
+  warnUnreadKeys(warnings, 'resource', resource, [...BADGE_RESOURCE_KEYS, ...BADGE_COPY_KEYS], BADGE_COMMON_KEYS, BADGE_TOOL_KEYS)
+
+  const name = readRequiredBadgeText(errors, 'name', readText(copy, resource, 'name'))
+  const description = readRequiredBadgeText(errors, 'description', readText(copy, resource, 'description'))
+
+  // 공개 시각은 필수다. 종료 시각이 없으면 상시다.
+  const startsAt = readTimeString(itemField(item, 'starts_at'), item.starts_at)
+  if (startsAt === undefined) {
+    errors.push({ path: 'starts_at', message: 'badge.valid_from: 필수 항목이 없어요(공개 시각 starts_at이 필요해요).' })
+  } else if (!isIsoDateTime(startsAt)) {
+    errors.push({ path: 'starts_at', message: `badge.valid_from: 시간대가 붙은 ISO 형식이어야 해요(받은 값: ${describeValue(startsAt)}).` })
+  }
+  const endsAt = readTimeString(itemField(item, 'ends_at'), item.ends_at)
+  if (endsAt !== undefined && !isIsoDateTime(endsAt)) {
+    errors.push({ path: 'ends_at', message: `badge.valid_until: 시간대가 붙은 ISO 형식이어야 해요(받은 값: ${describeValue(endsAt)}).` })
+  } else if (isIsoDateTime(startsAt) && isIsoDateTime(endsAt) && Date.parse(endsAt) <= Date.parse(startsAt)) {
+    errors.push({ path: 'ends_at', message: 'badge.valid_until: 종료 시각은 공개 시각보다 늦어야 해요.' })
+  }
+
+  // 발급 조건. 연결로 채우는 레시피 ID는 항목 값 위에 덮는다.
+  let condition: Record<string, unknown> | null = null
+  if (!isPresent(resource.condition_json)) {
+    errors.push({ path: 'resource.condition_json', message: 'badge.condition_json: 필수 항목이 없어요.' })
+  } else {
+    const record = asRecord(resource.condition_json)
+    if (record) condition = { ...record }
+    else errors.push({ path: 'resource.condition_json', message: `badge.condition_json: 객체여야 해요(받은 값: ${describeValue(resource.condition_json)}).` })
+  }
+  if (condition !== null && isPresent(linkedIds.recipe_id) && linkedIds.recipe_id !== '') {
+    condition.recipe_first_success = { ...(asRecord(condition.recipe_first_success) ?? {}), recipe_id: linkedIds.recipe_id }
+    linkFields.push(JAM_BADGE_RECIPE_LINK_FIELD)
+  }
+
+  const pointReward = readBadgeCount(errors, 'point_reward', resource.point_reward)
+  const sortOrder = readBadgeCount(errors, 'sort_order', resource.sort_order)
+
+  // 등급형(rarity)과 레벨형(level) 가운데 정확히 하나. DB CHECK에 걸리기 전에 쉬운 문장으로 막는다.
+  const rarityLevelError = findRarityLevelError(resource.rarity ?? null, resource.level ?? null)
+  if (rarityLevelError) {
+    const levelOnly = isPresent(resource.level) && resource.level !== '' && !isPresent(resource.rarity)
+    const field = levelOnly ? 'level' : 'rarity'
+    errors.push({ path: `resource.${field}`, message: `badge.${field}: ${withoutSavePrefix(rarityLevelError)}` })
+  }
+
+  let familyKey: string | null = null
+  if (isPresent(resource.family_key)) {
+    if (typeof resource.family_key !== 'string') {
+      errors.push({ path: 'resource.family_key', message: `badge.family_key: 문자열이어야 해요(받은 값: ${describeValue(resource.family_key)}).` })
+    } else if (resource.family_key.trim() !== '') {
+      familyKey = resource.family_key.trim()
+      if (!isValidFamilyKey(familyKey)) {
+        errors.push({ path: 'resource.family_key', message: `badge.family_key: 계열 키 형태(${familyKey})가 올바르지 않아요. "종목:이름" 형태로, 쉼표 없이 적어 주세요.` })
+      }
+    }
+  }
+
+  const imageUrl = readOptionalString(errors, 'badge', 'image_url', 'resource.image_url', resource.image_url)
+
+  if (errors.length > 0 || name === null || description === null || !isIsoDateTime(startsAt)) return { payload: null, errors, warnings, linkFields }
+
+  const built = buildBadgeInsertPayload({
+    name,
+    description,
+    type: 'activity',
+    rarity: resource.rarity,
+    level: resource.level,
+    family_key: familyKey,
+    sort_order: sortOrder,
+    image_url: imageUrl,
+    activity_types: [],
+    condition_json: condition,
+    admin_category: 'jam',
+    valid_from: startsAt,
+    valid_until: isIsoDateTime(endsAt) ? endsAt : null,
+    point_reward: pointReward,
+  })
+  return { payload: { id, ...built }, errors, warnings, linkFields }
 }
 
 // ── 레시피 ──────────────────────────────────────────────────────────────────────────────────

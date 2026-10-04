@@ -1,5 +1,5 @@
 /**
- * 운영 항목 → 카드·미션·레시피·드랍 예약 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b. 레시피는 티켓 20261002_2221 ⑧-a, 드랍 예약은 티켓 20261002_2306 ⑧-b)
+ * 운영 항목 → 카드·미션·JAM! 배지·레시피·드랍 예약 등록 형식 변환 (티켓 20261002_1028, 상위 20260930_1500 ②-2b. 레시피는 티켓 20261002_2221 ⑧-a, 드랍 예약은 티켓 20261002_2306 ⑧-b, JAM! 배지는 티켓 20261004_1756 ⑨-a)
  *
  * 규칙은 `docs/specs/prd/ops-tool/PRD.md` §8.4와 티켓의 「착수 전에 정한 것」 1~8이다.
  * 오류 문장 하나하나는 등록 스크립트 테스트(`scripts/asset-generator/__tests__/`)가 시험한다. 여기서는 «항목에서 읽는 자리»,
@@ -15,10 +15,21 @@ import type { MissionInput } from '@/lib/admin/registerChecks/missionFields'
 import { buildTodayCardInsertPayload } from '@/lib/admin/registerChecks/homeFeedFields'
 import type { HomeFeedCardInput } from '@/lib/admin/registerChecks/homeFeedFields'
 import { CARD_SHAPES, CARD_TITLE_MAX_LENGTH } from '@/lib/today/shape'
-import { toDropScheduleRegisterInput, toMissionRegisterInput, toRecipeRegisterInput, toTodayCardRegisterInput, withoutLinkedFields } from '@/lib/admin/opsInbox/registerInput'
+import { buildBadgeInsertPayload } from '@/lib/admin/badge-insert-payload'
+import {
+  JAM_BADGE_RECIPE_LINK_FIELD,
+  toDropScheduleRegisterInput,
+  toJamBadgeRegisterInput,
+  toMissionRegisterInput,
+  toRecipeRegisterInput,
+  toTodayCardRegisterInput,
+  withoutLinkedFields,
+  withoutSavePrefix,
+} from '@/lib/admin/opsInbox/registerInput'
 import type { OpsRegisterItem, RegisterInputIssue } from '@/lib/admin/opsInbox/registerInput'
 
 const CARD_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+const BADGE_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
 const MISSION_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
 const ACTOR_ID = 'aaaaaaaa-0000-4000-8000-000000000001'
 const UUID_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -89,6 +100,22 @@ function recipeOriginal(over: Raw = {}): Raw {
 }
 
 const recipeItem = (over: Raw = {}, extra: Parameters<typeof opsItem>[2] = {}) => opsItem('recipe', recipeOriginal(over), extra)
+
+/** 검사를 통과하는 JAM! 배지 항목(믹스 성공 1회, 등급형). */
+function badgeOriginal(over: Raw = {}): Raw {
+  return {
+    starts_at: '2026-10-06T09:00:00+09:00',
+    copy: { name: '[TEST] 첫 믹스', description: '믹스에 처음 성공했어요.' },
+    resource: { condition_json: { combine_success_count: 1 }, rarity: 'common', point_reward: 10 },
+    ...over,
+  }
+}
+
+const badgeItem = (over: Raw = {}, extra: Parameters<typeof opsItem>[2] = {}) => opsItem('jam_badge', badgeOriginal(over), extra)
+
+function toBadge(item: OpsRegisterItem, linkedIds?: Parameters<typeof toJamBadgeRegisterInput>[1]['linkedIds']) {
+  return toJamBadgeRegisterInput(item, { id: BADGE_ID, linkedIds })
+}
 
 /** 검사를 통과하는 드랍 예약 항목(지점 직접 × 컬렉션). */
 function dropOriginal(over: Raw = {}): Raw {
@@ -1070,6 +1097,232 @@ describe('toDropScheduleRegisterInput (티켓 20261002_2306, PRD §8.4 드랍 �
     const before = JSON.stringify(item)
     toDropScheduleRegisterInput(item, { linkedIds: { collection_ids: [UUID_C] } })
     expect(JSON.stringify(item)).toBe(before)
+  })
+})
+
+describe('toJamBadgeRegisterInput (티켓 20261004_1756, PRD §8.4 JAM! 배지 행)', () => {
+  it('공통 칸 starts_at은 valid_from으로, name·description은 copy에서, 나머지는 resource에서 읽고 어드민 배지 변환(buildBadgeInsertPayload)과 같은 값을 만든다', () => {
+    const result = toBadge(
+      badgeItem({
+        resource: { condition_json: { combine_success_count: 1 }, rarity: 'rare', point_reward: 30, family_key: 'jam:첫 믹스', sort_order: 3, image_url: 'https://example.com/badge.png' },
+      })
+    )
+    expect(result.errors).toEqual([])
+    expect(result.warnings).toEqual([])
+    expect(result.linkFields).toEqual([])
+    expect(result.payload).toEqual({
+      id: BADGE_ID,
+      ...buildBadgeInsertPayload({
+        name: '[TEST] 첫 믹스',
+        description: '믹스에 처음 성공했어요.',
+        type: 'activity',
+        rarity: 'rare',
+        level: undefined,
+        family_key: 'jam:첫 믹스',
+        sort_order: 3,
+        image_url: 'https://example.com/badge.png',
+        activity_types: [],
+        condition_json: { combine_success_count: 1 },
+        admin_category: 'jam',
+        valid_from: '2026-10-06T09:00:00+09:00',
+        valid_until: null,
+        point_reward: 30,
+      }),
+    })
+  })
+
+  it('툴이 정하는 값: type = activity, admin_category = jam, activity_types = [] 이고 이미지가 없으면 null이다(G1)', () => {
+    const payload = toBadge(badgeItem()).payload!
+    expect(payload).toMatchObject({ id: BADGE_ID, type: 'activity', admin_category: 'jam', activity_types: [], image_url: null, family_key: null, sort_order: 0, point_reward: 10, level: null, rarity: 'common' })
+  })
+
+  it('종료 시각(ends_at)이 없으면 valid_until이 null(상시)이고, 있으면 valid_until로 읽는다', () => {
+    expect(toBadge(badgeItem()).payload).toMatchObject({ valid_from: '2026-10-06T09:00:00+09:00', valid_until: null })
+    const closed = toBadge(badgeItem({ ends_at: '2026-10-13T09:00:00+09:00' }))
+    expect(closed.errors).toEqual([])
+    expect(closed.payload).toMatchObject({ valid_until: '2026-10-13T09:00:00+09:00' })
+  })
+
+  it('항목 값이 비었으면 행 칸(starts_at·ends_at)으로 시각을 읽고, 수정본이 있으면 수정본을 먼저 읽는다', () => {
+    const { starts_at: _omit, ...withoutStart } = badgeOriginal()
+    const fromRow = toBadge(opsItem('jam_badge', withoutStart, { starts_at: '2026-10-06T00:00:00.000Z', ends_at: '2026-10-13T00:00:00.000Z' }))
+    expect(fromRow.errors).toEqual([])
+    expect(fromRow.payload).toMatchObject({ valid_from: '2026-10-06T00:00:00.000Z', valid_until: '2026-10-13T00:00:00.000Z' })
+
+    // 수정본의 copy·resource는 묶음 단위로 읽는다(수정본에 copy가 있으면 그 객체 전체가 copy다). 수정본에 없는 묶음·공통 칸은 제출 원본에서 읽는다.
+    const edited = toBadge(badgeItem({}, { edited: { starts_at: '2026-10-07T09:00:00+09:00', copy: { name: '고친 이름', description: '고친 설명' } } }))
+    expect(edited.errors).toEqual([])
+    expect(edited.payload).toMatchObject({ name: '고친 이름', description: '고친 설명', valid_from: '2026-10-07T09:00:00+09:00', point_reward: 10, rarity: 'common' })
+  })
+
+  it('name·description은 copy를 먼저 읽고, 없으면 resource에서 읽는다. 앞뒤 공백은 뗀다', () => {
+    const fromResource = toBadge(
+      badgeItem({ copy: {}, resource: { name: ' resource 이름 ', description: 'resource 설명', condition_json: { combine_success_count: 1 }, rarity: 'common' } })
+    )
+    expect(fromResource.errors).toEqual([])
+    expect(fromResource.warnings).toEqual([])
+    expect(fromResource.payload).toMatchObject({ name: 'resource 이름', description: 'resource 설명' })
+  })
+
+  it('필수 칸이 없으면 칸마다 오류를 쌓고 payload가 없다(경로는 copy.name·copy.description·starts_at·resource.condition_json)', () => {
+    const { starts_at: _omit, ...withoutStart } = badgeOriginal({ copy: {}, resource: { rarity: 'common' } })
+    const result = toBadge(opsItem('jam_badge', withoutStart))
+    expect(result.payload).toBeNull()
+    expect(paths(result.errors)).toEqual(['copy.name', 'copy.description', 'starts_at', 'resource.condition_json'])
+    expect(result.errors.map((issue) => issue.message)).toEqual([
+      'badge.name: 필수 항목이 없어요.',
+      'badge.description: 필수 항목이 없어요.',
+      'badge.valid_from: 필수 항목이 없어요(공개 시각 starts_at이 필요해요).',
+      'badge.condition_json: 필수 항목이 없어요.',
+    ])
+  })
+
+  it('이름·설명이 공백뿐이면 없는 것으로 보고, 문자열이 아니면 형식 오류다', () => {
+    const blank = toBadge(badgeItem({ copy: { name: '   ', description: '설명' } }))
+    expect(blank.errors).toEqual([{ path: 'copy.name', message: 'badge.name: 필수 항목이 없어요.' }])
+    const notText = toBadge(badgeItem({ copy: { name: 7, description: '설명' } }))
+    expect(notText.errors).toEqual([{ path: 'copy.name', message: 'badge.name: 문자열이어야 해요(받은 값: 7).' }])
+  })
+
+  it('조건은 객체여야 한다', () => {
+    const result = toBadge(badgeItem({ resource: { condition_json: 'combine_success_count', rarity: 'common' } }))
+    expect(result.payload).toBeNull()
+    expect(result.errors).toEqual([{ path: 'resource.condition_json', message: 'badge.condition_json: 객체여야 해요(받은 값: "combine_success_count").' }])
+  })
+
+  it('시각은 시간대가 붙은 ISO여야 하고 종료는 공개보다 늦어야 한다', () => {
+    const badStart = toBadge(badgeItem({ starts_at: '내일 아침' }))
+    expect(badStart.errors).toEqual([{ path: 'starts_at', message: 'badge.valid_from: 시간대가 붙은 ISO 형식이어야 해요(받은 값: "내일 아침").' }])
+    const badEnd = toBadge(badgeItem({ ends_at: '다음 주' }))
+    expect(badEnd.errors).toEqual([{ path: 'ends_at', message: 'badge.valid_until: 시간대가 붙은 ISO 형식이어야 해요(받은 값: "다음 주").' }])
+    const same = toBadge(badgeItem({ ends_at: '2026-10-06T09:00:00+09:00' }))
+    expect(same.errors).toEqual([{ path: 'ends_at', message: 'badge.valid_until: 종료 시각은 공개 시각보다 늦어야 해요.' }])
+    const earlier = toBadge(badgeItem({ ends_at: '2026-10-05T09:00:00+09:00' }))
+    expect(paths(earlier.errors)).toEqual(['ends_at'])
+  })
+
+  it('희귀도와 레벨은 정확히 하나여야 한다(둘 다·둘 다 없음·알 수 없는 값·잘못된 레벨), 문장 앞의 「저장할 수 없습니다.」는 뗀다', () => {
+    const both = toBadge(badgeItem({ resource: { condition_json: { combine_success_count: 1 }, rarity: 'common', level: 1 } }))
+    expect(both.payload).toBeNull()
+    expect(paths(both.errors)).toEqual(['resource.rarity'])
+    expect(both.errors[0].message).toBe('badge.rarity: 등급형과 레벨형은 함께 지정할 수 없습니다. 등급(common~mystic)이나 레벨(Lv.1 이상) 중 하나만 남겨주세요.')
+
+    const none = toBadge(badgeItem({ resource: { condition_json: { combine_success_count: 1 } } }))
+    expect(paths(none.errors)).toEqual(['resource.rarity'])
+    expect(none.errors[0].message).toContain('배지 종류가 정해지지 않았습니다')
+
+    const unknownRarity = toBadge(badgeItem({ resource: { condition_json: { combine_success_count: 1 }, rarity: 'shiny' } }))
+    expect(unknownRarity.errors[0].message).toContain('등급 값(shiny)을 알 수 없습니다')
+
+    const badLevel = toBadge(badgeItem({ resource: { condition_json: { combine_success_count: 1 }, level: 0 } }))
+    expect(paths(badLevel.errors)).toEqual(['resource.level'])
+    expect(badLevel.errors[0].message).toContain('레벨 값(0)이 올바르지 않습니다')
+
+    const leveled = toBadge(badgeItem({ resource: { condition_json: { combine_success_count: 1 }, level: 2 } }))
+    expect(leveled.errors).toEqual([])
+    expect(leveled.payload).toMatchObject({ level: 2, rarity: null })
+  })
+
+  it('계열 키는 "종목:이름" 형태여야 하고 문자열이어야 한다', () => {
+    const bad = toBadge(badgeItem({ resource: { condition_json: { combine_success_count: 1 }, rarity: 'common', family_key: '쉼표,있음:이름' } }))
+    expect(bad.payload).toBeNull()
+    expect(bad.errors[0].path).toBe('resource.family_key')
+    expect(bad.errors[0].message).toContain('계열 키 형태(쉼표,있음:이름)가 올바르지 않아요')
+
+    const notText = toBadge(badgeItem({ resource: { condition_json: { combine_success_count: 1 }, rarity: 'common', family_key: 3 } }))
+    expect(notText.errors).toEqual([{ path: 'resource.family_key', message: 'badge.family_key: 문자열이어야 해요(받은 값: 3).' }])
+
+    const blank = toBadge(badgeItem({ resource: { condition_json: { combine_success_count: 1 }, rarity: 'common', family_key: '  ' } }))
+    expect(blank.errors).toEqual([])
+    expect(blank.payload).toMatchObject({ family_key: null })
+  })
+
+  it('포인트와 정렬 값은 0 이상의 정수여야 한다(조용히 0으로 바뀌지 않는다)', () => {
+    const result = toBadge(badgeItem({ resource: { condition_json: { combine_success_count: 1 }, rarity: 'common', point_reward: '10', sort_order: -1 } }))
+    expect(result.payload).toBeNull()
+    expect(result.errors).toEqual([
+      { path: 'resource.point_reward', message: 'badge.point_reward: 0 이상의 정수여야 해요(받은 값: "10").' },
+      { path: 'resource.sort_order', message: 'badge.sort_order: 0 이상의 정수여야 해요(받은 값: -1).' },
+    ])
+  })
+
+  it('이미지 주소가 문자열이 아니면 형식 오류다', () => {
+    const result = toBadge(badgeItem({ resource: { condition_json: { combine_success_count: 1 }, rarity: 'common', image_url: 5 } }))
+    expect(result.errors).toEqual([{ path: 'resource.image_url', message: 'badge.image_url: 문자열이어야 해요(받은 값: 5).' }])
+  })
+
+  it('activity_types·type·admin_category는 툴이 정하는 값이라 읽지 않고 경고한다. 표에 없는 칸(tribe_id·item_book_id 등)도 경고한다', () => {
+    const result = toBadge(
+      badgeItem({
+        resource: {
+          condition_json: { combine_success_count: 1 },
+          rarity: 'common',
+          activity_types: ['running'],
+          type: 'item',
+          admin_category: 'other',
+          tribe_id: UUID_A,
+          item_book_id: UUID_B,
+        },
+      })
+    )
+    expect(result.errors).toEqual([])
+    expect(result.payload).toMatchObject({ type: 'activity', admin_category: 'jam', activity_types: [], tribe_id: null, item_book_id: null })
+    expect(Object.fromEntries(result.warnings.map((issue) => [issue.path, issue.message]))).toEqual({
+      'resource.activity_types': 'resource.activity_types: 툴이 정하는 값이라 읽지 않아요.',
+      'resource.type': 'resource.type: 툴이 정하는 값이라 읽지 않아요.',
+      'resource.admin_category': 'resource.admin_category: 툴이 정하는 값이라 읽지 않아요.',
+      'resource.tribe_id': 'resource.tribe_id: 표에 없는 칸이라 읽지 않아요.',
+      'resource.item_book_id': 'resource.item_book_id: 표에 없는 칸이라 읽지 않아요.',
+    })
+  })
+
+  describe('연결 칸 condition_json.recipe_first_success.recipe_id(§8.3 「덮는 칸」)', () => {
+    it('연결 ID가 있으면 항목의 값 위에 덮고 linkFields에 알린다. resource의 같은 값은 충돌이 아니다', () => {
+      const result = toBadge(
+        badgeItem({ resource: { condition_json: { recipe_first_success: { recipe_id: UUID_A } }, rarity: 'common' } }),
+        { recipe_id: UUID_B }
+      )
+      expect(result.errors).toEqual([])
+      expect(result.linkFields).toEqual([JAM_BADGE_RECIPE_LINK_FIELD])
+      expect(result.linkFields).toEqual(['condition_json.recipe_first_success.recipe_id'])
+      expect(result.payload?.condition_json).toEqual({ recipe_first_success: { recipe_id: UUID_B } })
+    })
+
+    it('항목에 recipe_first_success가 없으면 칸을 만들고, 값이 객체가 아닌 칸도 연결 ID로 맞춘다', () => {
+      const none = toBadge(badgeItem({ resource: { condition_json: { mission_reward: true }, rarity: 'common' } }), { recipe_id: UUID_B })
+      expect(none.payload?.condition_json).toEqual({ mission_reward: true, recipe_first_success: { recipe_id: UUID_B } })
+
+      const notObject = toBadge(badgeItem({ resource: { condition_json: { recipe_first_success: true }, rarity: 'common' } }), { recipe_id: UUID_B })
+      expect(notObject.payload?.condition_json).toEqual({ recipe_first_success: { recipe_id: UUID_B } })
+    })
+
+    it('연결 ID가 없으면(null·빈 문자열 포함) 항목의 값을 그대로 두고 linkFields는 비어 있다', () => {
+      for (const linked of [undefined, { recipe_id: null }, { recipe_id: '' }]) {
+        const result = toBadge(badgeItem({ resource: { condition_json: { recipe_first_success: { recipe_id: UUID_A } }, rarity: 'common' } }), linked)
+        expect(result.linkFields).toEqual([])
+        expect(result.payload?.condition_json).toEqual({ recipe_first_success: { recipe_id: UUID_A } })
+      }
+    })
+
+    it('원본 항목의 condition_json 객체를 바꾸지 않는다', () => {
+      const original = badgeOriginal({ resource: { condition_json: { recipe_first_success: { recipe_id: UUID_A } }, rarity: 'common' } })
+      const before = JSON.stringify(original)
+      toBadge(opsItem('jam_badge', original), { recipe_id: UUID_B })
+      expect(JSON.stringify(original)).toBe(before)
+    })
+  })
+
+  it('kind가 jam_badge가 아니면 오류다', () => {
+    const result = toJamBadgeRegisterInput(opsItem('mission', badgeOriginal()), { id: BADGE_ID })
+    expect(result.payload).toBeNull()
+    expect(result.errors).toEqual([{ path: 'kind', message: 'kind: jam_badge 항목만 JAM! 배지로 바꿀 수 있어요(받은 값: "mission").' }])
+  })
+})
+
+describe('withoutSavePrefix', () => {
+  it('어드민 저장 검사 문장 앞의 「저장할 수 없습니다.」만 뗀다', () => {
+    expect(withoutSavePrefix('저장할 수 없습니다. 등급 값을 알 수 없습니다.')).toBe('등급 값을 알 수 없습니다.')
+    expect(withoutSavePrefix('등급 값을 알 수 없습니다. 저장할 수 없습니다.')).toBe('등급 값을 알 수 없습니다. 저장할 수 없습니다.')
   })
 })
 
