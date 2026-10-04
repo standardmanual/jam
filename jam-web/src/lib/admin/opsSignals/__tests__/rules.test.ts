@@ -328,7 +328,7 @@ const ROWS: Row[] = [
       },
     }),
   },
-  // ── 승인 마감 임박 (A3): 결정 전 항목의 공개 시각이 48시간 안
+  // ── 승인 마감 임박 (A3): 결정 전·승인됨(예약 등록 전) 항목의 공개 시각이 48시간 안
   {
     key: 'approval_deadline',
     condition: '공개 시각이 지금부터 정확히 48시간 뒤(경계 포함)',
@@ -339,7 +339,19 @@ const ROWS: Row[] = [
     key: 'approval_deadline',
     condition: '공개 시각이 이미 지났는데 검토중이다',
     raised: () => ({ input: { bundles: [makeBundle([statusItem({ status: 'reviewing', startsAt: kst('2026-09-30', '09:00') })])] } }),
-    clear: () => ({ input: { bundles: [makeBundle([statusItem({ status: 'approved', startsAt: kst('2026-09-30', '09:00') })])] } }),
+    clear: () => ({ input: { bundles: [makeBundle([statusItem({ status: 'scheduled', startsAt: kst('2026-09-30', '09:00') })])] } }),
+  },
+  {
+    key: 'approval_deadline',
+    condition: '승인했지만 예약 등록을 하지 않았고 공개 시각이 지금부터 정확히 48시간 뒤(경계 포함)',
+    raised: () => ({ input: { bundles: [makeBundle([statusItem({ status: 'approved', startsAt: kst('2026-10-03', '12:00') })])] } }),
+    clear: () => ({ input: { bundles: [makeBundle([statusItem({ status: 'approved', startsAt: kst('2026-10-03', '12:01') })])] } }),
+  },
+  {
+    key: 'approval_deadline',
+    condition: '승인했지만 예약 등록을 하지 않았는데 공개 시각이 이미 지났다(같은 시각 예약됨은 이 신호가 아니라 예약 누락이 본다)',
+    raised: () => ({ input: { bundles: [makeBundle([statusItem({ status: 'approved', startsAt: kst('2026-09-30', '09:00') })])] } }),
+    clear: () => ({ input: { bundles: [makeBundle([statusItem({ status: 'scheduled', startsAt: kst('2026-09-30', '09:00') })])] } }),
   },
   // ── 에이전트가 뺀 항목 (A4)
   {
@@ -858,6 +870,19 @@ describe('신호 결과의 모양', () => {
       'approval_deadline'
     )
     expect(result.results[0].message).toContain('공개 시각(9/30(수) 09:00)이 지났는데 아직 승인되지 않았어요.')
+  })
+
+  it('승인 마감 임박은 승인됨 항목에 「승인했지만 아직 예약 등록을 하지 않았어요」라고 말한다', () => {
+    const past = outcome(
+      { input: { bundles: [makeBundle([statusItem({ status: 'approved', startsAt: kst('2026-09-30', '09:00') })])] } },
+      'approval_deadline'
+    )
+    expect(past.results[0].message).toContain('공개 시각(9/30(수) 09:00)이 지났는데 승인했지만 아직 예약 등록을 하지 않았어요.')
+    const soon = outcome(
+      { input: { bundles: [makeBundle([statusItem({ status: 'approved', startsAt: kst('2026-10-02', '18:00') })])] } },
+      'approval_deadline'
+    )
+    expect(soon.results[0].message).toContain('48시간도 남지 않았는데 승인했지만 아직 예약 등록을 하지 않았어요.')
   })
 
   it('에이전트가 뺀 항목은 단계와 사유를 보이고, 읽을 수 없으면 읽지 못했다고 말한다', () => {

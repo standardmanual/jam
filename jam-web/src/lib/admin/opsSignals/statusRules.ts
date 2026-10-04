@@ -78,7 +78,7 @@ export function evaluateExecutionFailed(ctx: StatusRuleContext): OpsSignalResult
 
 // ── 예약 누락 (가정 19) ──────────────────────────────────────────────────────────────────────────
 
-/** 예약됨·준비중 항목의 공개 시각 + `missedScheduleMinutes`분이 지났다. 승인됨은 뺀다(1500 연결 전에는 멈춰 있는 것이 정상). */
+/** 예약됨·준비중 항목의 공개 시각 + `missedScheduleMinutes`분이 지났다. 승인됨은 뺀다(예약 등록 전이라 멈춰 있는 것이 정상이고, 예약 등록을 잊은 항목은 `evaluateApprovalDeadline`이 본다). */
 export function evaluateMissedSchedule(ctx: StatusRuleContext): OpsSignalResult[] {
   const graceMs = ctx.thresholds.missedScheduleMinutes * 60_000
   const results: OpsSignalResult[] = []
@@ -100,20 +100,25 @@ export function evaluateMissedSchedule(ctx: StatusRuleContext): OpsSignalResult[
 
 // ── 승인 마감 임박 (A3) ──────────────────────────────────────────────────────────────────────────
 
-/** 도착·검토중 항목의 공개 시각이 `approvalDeadlineHours`시간 안이다. 이미 지났어도 같은 신호로 「공개 시각이 지났어요」라고 보인다. */
+/**
+ * 결정 전(도착·검토중)이거나 승인했지만 아직 예약 등록을 하지 않은(승인됨) 항목의 공개 시각이 `approvalDeadlineHours`시간 안이다.
+ * 이미 지났어도 같은 신호로 「공개 시각이 지났어요」라고 보인다. 문구는 결정 전과 승인됨이 갈린다.
+ */
 export function evaluateApprovalDeadline(ctx: StatusRuleContext): OpsSignalResult[] {
   const limitMs = ctx.now.getTime() + ctx.thresholds.approvalDeadlineHours * HOUR_MS
   const results: OpsSignalResult[] = []
   for (const bundle of ctx.bundles) {
     for (const item of bundle.items) {
-      if (!isUndecidedStatus(item.status)) continue
+      const isApproved = item.status === 'approved'
+      if (!isUndecidedStatus(item.status) && !isApproved) continue
       const startsMs = parseTime(item.startsAt)
       if (startsMs === null || startsMs > limitMs) continue
       const when = formatKstDayTime(item.startsAt)
+      const pending = isApproved ? '승인했지만 아직 예약 등록을 하지 않았어요.' : '아직 승인되지 않았어요.'
       const message =
         startsMs <= ctx.now.getTime()
-          ? `${itemName(item)}의 공개 시각(${when})이 지났는데 아직 승인되지 않았어요.`
-          : `${itemName(item)}의 공개 시각(${when})까지 ${ctx.thresholds.approvalDeadlineHours}시간도 남지 않았는데 아직 승인되지 않았어요.`
+          ? `${itemName(item)}의 공개 시각(${when})이 지났는데 ${pending}`
+          : `${itemName(item)}의 공개 시각(${when})까지 ${ctx.thresholds.approvalDeadlineHours}시간도 남지 않았는데 ${pending}`
       results.push(
         makeSignalResult(message, {
           date: kstDateKey(item.startsAt),
