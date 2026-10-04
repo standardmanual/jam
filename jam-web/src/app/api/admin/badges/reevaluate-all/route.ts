@@ -20,6 +20,12 @@
  * 오늘이 아니라 과거 기록 기준이다. 응답의 `usageMetricAffectedUserCount`·`totalUsageMetricBadgesIssued`·
  * `totalUsageMetricPointsAwarded`가 그 몫을 따로 보여 준다(위 합계에는 이미 포함돼 있다).
  *
+ * ## 「열릴 예정 배지 포함」 미리보기 (티켓 20261001_2203)
+ * body에 `includeUpcoming: true`(선택 `badgeIds`)를 보내면 `valid_from`이 미래인 JAM! 배지까지 «공개되면 받게 될 유저 수·포인트»를
+ * 센다(`previewUpcomingJamBadges`). 읽기 전용이라 `dryRun: false`와 함께 보내면 400이다. 응답 모양이 위와 달라
+ * `badges[]`(배지별 유저 수·포인트)·`totalPoints`·`errors[]`를 준다. 숫자는 지금 기록 기준이라 «약»이다.
+ * 대상 유저 500명 상한은 그대로다. 예약 등록 요약창(1500 ⑨)은 이 라우트가 아니라 서버 함수를 직접 부른다.
+ *
  * ## 로직은 여기 없다
  * 평가·집계는 전부 `reevaluateUsersForCatalog`(`@/lib/badge-engine/reevaluateCatalog`)에
  * 있다. 이 라우트는 인증·입력 검증·대상 유저 조회·상한 체크만 한다.
@@ -27,7 +33,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
-import { reevaluateUsersForCatalog, MAX_TARGET_USERS_PER_CALL } from '@/lib/badge-engine/reevaluateCatalog'
+import {
+  reevaluateUsersForCatalog,
+  previewUpcomingJamBadges,
+  MAX_TARGET_USERS_PER_CALL,
+} from '@/lib/badge-engine/reevaluateCatalog'
 
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
@@ -40,6 +50,16 @@ export async function POST(req: NextRequest) {
 
   // 기본값 true — 명시적으로 false를 보내야만 실제 발급된다 (전체 유저 대상 실수 방지)
   const dryRun = body?.dryRun !== false
+
+  // 열릴 예정 배지 미리보기 — 읽기 전용이라 dryRun:false와 같이 보낼 수 없다
+  const includeUpcoming = body?.includeUpcoming === true
+  if (includeUpcoming && body?.dryRun === false) {
+    return NextResponse.json({ error: 'includeUpcoming은 미리보기 전용이라 dryRun: false와 함께 보낼 수 없습니다.' }, { status: 400 })
+  }
+  const rawBadgeIds = body?.badgeIds
+  if (rawBadgeIds !== undefined && (!Array.isArray(rawBadgeIds) || rawBadgeIds.some((v: unknown) => typeof v !== 'string' || !v.trim()))) {
+    return NextResponse.json({ error: 'badgeIds는 문자열 배열이어야 합니다.' }, { status: 400 })
+  }
 
   const rawUserIds = body?.userIds
   if (rawUserIds !== undefined && (!Array.isArray(rawUserIds) || rawUserIds.some((v: unknown) => typeof v !== 'string' || !v.trim()))) {
@@ -60,7 +80,7 @@ export async function POST(req: NextRequest) {
     targetUserIds = ((data ?? []) as { id: string }[]).map((u) => u.id)
   }
 
-  if (targetUserIds.length === 0) {
+  if (targetUserIds.length === 0 && !includeUpcoming) {
     return NextResponse.json({
       dryRun,
       targetUserCount: 0,
@@ -85,6 +105,19 @@ export async function POST(req: NextRequest) {
       },
       { status: 400 }
     )
+  }
+
+  if (includeUpcoming) {
+    try {
+      const preview = await previewUpcomingJamBadges(supabase, {
+        userIds: targetUserIds,
+        badgeIds: rawBadgeIds as string[] | undefined,
+      })
+      return NextResponse.json({ dryRun: true, includeUpcoming: true, ...preview })
+    } catch (err) {
+      console.error('[/api/admin/badges/reevaluate-all] 열릴 예정 배지 미리보기 오류:', err)
+      return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 })
+    }
   }
 
   const result = await reevaluateUsersForCatalog(supabase, { dryRun, userIds: targetUserIds })
