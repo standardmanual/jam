@@ -129,6 +129,13 @@ date and result alongside the results so the next audit skips what was already c
 - 출력 규격(긴 변 1280px WebP, 유형 구분 없이 통일 — PRD asset-generator §9)과 실제 화면 크기에서의 확대 선명도는 판단하지 않는다.
 - 파일은 여전히 수정하지 않는다. 취향이 걸린 최종 선택은 사용자가 한다.
 
+## Your working folder
+
+When the prompt says your folder is an isolated worktree and gives a first command that checks out a
+commit (mode ② in the workflow gate, ticket 20261002_1905), run that command first; moving HEAD there
+is fine. In any other call your folder may be shared with the orchestrator and parallel sessions —
+do not run `git checkout`, `git switch`, `git reset --hard` or `git rebase` there (ticket 20260926_0121).
+
 ## Forbidden
 
 Editing files · finalising a new token or component (propose, the user decides) · judging
