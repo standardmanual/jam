@@ -11,6 +11,8 @@
  * `in`은 PostgREST JSON 경로 칸(`condition_json->recipe_first_success->>recipe_id`)도 읽는다(레시피 참조 확인이 쓴다).
  * JAM! 배지 핸들러(티켓 20261004_1756)가 쓰는 배지 참조 표(`user_activity_badges`·`inventory_items`·`poi_drops`·`user_checkin_badge_earns`·`user_item_book_slots`)가 기본 테이블에 있고,
  * 배열 칸에 값이 들어 있는지 보는 `contains(col, [값])`(배지 참조 확인의 `missions.reward_badge_ids`·`today_cards.badge_ids` 등)도 받는다.
+ * 컬렉션 핸들러(티켓 20261004_2039)가 쓰는 트라이브 존재 확인(`tribes`)과 컬렉션 참조 표(`user_item_book_completions`·`user_drop_state`·`ambient_drop_config`)가 기본 테이블에 있다.
+ * 컬렉션 참조 확인의 드랍 예약 표는 끝나지 않은 상태만 세려고 `contains` 뒤에 `in('status', […])`를 이어 붙인다(둘 다 받는다).
  */
 import type { ExecuteServiceClient } from '../handlers'
 
@@ -225,6 +227,11 @@ export class FakeDb {
     poi_drops: [],
     user_checkin_badge_earns: [],
     user_item_book_slots: [],
+    // 컬렉션 핸들러(티켓 20261004_2039): 트라이브 존재 확인과 되돌림·취소 전 컬렉션 참조 확인(`ITEM_BOOK_UNDO_REFERENCES`)이 읽는 표. 나머지(`badges`·`today_cards`·`user_item_book_slots`·`point_transactions`·`ambient_drop_schedules`)는 위에 있다.
+    tribes: [],
+    user_item_book_completions: [],
+    user_drop_state: [],
+    ambient_drop_config: [],
   }
   calls: FakeCall[] = []
   seq = 0

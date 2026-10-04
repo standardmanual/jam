@@ -19,6 +19,9 @@
  *   대상 문제·형식 오류는 그 드랍과 연결 그룹이 실패, 연결된 카드가 실패하면 드랍 예약도 되돌려진다, 원문 비노출. 예정 시각 기준 대상 판정(`loadScheduleTargets`)은 mock이다
  * - 실제 레지스트리(⑨-a, 티켓 20261004_1756): JAM! 배지가 공개 전 `badges` 행으로 예약되고 `created_resource.badge_id`가 만들기 전에 적힌다, 미션 보상 칸·카드 배지 칸이 만든 ID로 채워진다,
  *   배지 → 레시피 칸은 만든 레시피 ID로 덮인다, 배지가 실패하면 그룹이 되돌려지고 카드·미션이 실패하면 배지도 역순으로 되돌려진다, 사전 점검 두 규칙, 형식·등록 전 검사 실패, 원문 비노출
+ * - 실제 레지스트리(⑩-a, 티켓 20261004_2039): 컬렉션이 공개 전 `item_books` 행으로 예약되고 `created_resource.item_book_id`가 만들기 전에 적힌다, 카드의 `item_book_id`·컬렉션의 `reward_badge_id`가 만든 ID로 채워진다,
+ *   컬렉션 보상 배지는 발급 조건이 없어도 예약되고 연결이 없으면 형식 오류다, 컬렉션이나 카드가 실패하면 그룹이 역순(카드→컬렉션→배지)으로 되돌려진다, 사전 점검 두 규칙, 이름 중복·트라이브·보상 배지 검사 실패, 원문 비노출.
+ *   새 컬렉션을 가리키는 드랍은 ⑩-b 전까지 드랍 검사에서 실패한다
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -42,6 +45,7 @@ import {
   type ExecuteHandler,
   type ExecuteHandlerRegistry,
   type ExecuteLinkedIds,
+  type PointedByEntry,
 } from '../handlers'
 import type { ScheduleTargets } from '@/lib/ambient-drop/scheduleTargets'
 import { PRECHECK_MESSAGES, precheckBundle } from '../precheck'
@@ -71,6 +75,8 @@ interface Recorder {
   events: string[]
   /** 항목 키 → prepare가 받은 linkedIds(부른 순서대로). */
   linked: Record<string, ExecuteLinkedIds[]>
+  /** 항목 키 → prepare가 받은 pointedBy(이 항목을 연결 칸으로 가리키는 항목의 종류·칸, 부른 순서대로. 티켓 20261004_2039 가정 2). */
+  pointed: Record<string, Array<readonly PointedByEntry[] | undefined>>
   /** 항목 키 → 만든 자원 ID. */
   created: Record<string, string>
   /** 핸들러가 받은 현재 시각(티켓 20261002_2221 가정 4). 부른 순서대로 단계 이름과 함께 쌓는다. */
@@ -85,11 +91,12 @@ function makeHandler(kind: ExecutableKind, rec: Recorder, options: Record<string
     kind,
     resourceKey: RESOURCE_KEY_BY_KIND[kind],
     idFirst,
-    prepare: (item, { id, linkedIds, now }) => {
+    prepare: (item, { id, linkedIds, now, pointedBy }) => {
       const key = item.item_key as string
       rec.events.push(`prepare:${key}`)
       rec.nows.push({ step: 'prepare', now })
       ;(rec.linked[key] ??= []).push(linkedIds)
+      ;(rec.pointed[key] ??= []).push(pointedBy)
       const failure = optionsOf(key).failPrepare
       if (failure) return { ok: false, failure }
       return { ok: true, value: { item, id, payload: {}, linkFields: [], linkedIds, warnings: [] } }
@@ -135,7 +142,7 @@ function setup(specs: ItemSpec[], options: Record<string, HandlerOptions> = {}, 
   const db = new FakeDb()
   db.tables.ops_bundles = [{ id: B, is_sample: false, ...bundle }]
   db.tables.ops_bundle_items = specs.map((spec) => ({ ...makeItem(spec), bundle_id: B }))
-  const rec: Recorder = { events: [], linked: {}, created: {}, nows: [] }
+  const rec: Recorder = { events: [], linked: {}, pointed: {}, created: {}, nows: [] }
   const handlers: ExecuteHandlerRegistry = Object.fromEntries(ALL_KINDS.map((kind) => [kind, makeHandler(kind, rec, options)]))
   const run = (itemIds: unknown) => executeBundle(db.service, { bundleId: B, itemIds, actor: ACTOR }, { handlers, now: () => NOW })
   return { db, rec, handlers, run }
@@ -273,6 +280,38 @@ describe('선점', () => {
     expect(db.item(ID.card).created_resource).toEqual({ today_card_id: rec.created.card })
     expect(rec.linked.card.at(-1)).toEqual({ mission_id: rec.created.mission })
     expect(rec.linked.mission.at(-1)).toEqual({ reward_badge_ids: [rec.created.badge] })
+  })
+
+  it('prepare는 이 항목을 연결 칸으로 가리키는 항목의 종류·칸(pointedBy)을 그룹의 linkPlan에서 받는다. 검증 단계와 생성 단계가 같다(티켓 20261004_2039 가정 2)', async () => {
+    const { rec, run } = setup(chain())
+    ok(await run([ID.card, ID.mission, ID.badge]))
+
+    // 카드 → 미션(mission_id), 미션 → 배지(reward_badge_ids). 카드는 아무도 가리키지 않는다.
+    for (const entries of [rec.pointed.badge, rec.pointed.mission]) expect(entries).toHaveLength(2)
+    for (const entries of rec.pointed.badge) expect(entries).toEqual([{ kind: 'mission', field: 'reward_badge_ids' }])
+    for (const entries of rec.pointed.mission) expect(entries).toEqual([{ kind: 'home_feed_card', field: 'mission_id' }])
+    for (const entries of rec.pointed.card) expect(entries).toEqual([])
+  })
+
+  it('pointedBy에는 가리키는 항목이 이번 실행의 예약할 항목일 때만 든다: 이미 예약된 항목이 가리키면 비어 있다', async () => {
+    const { rec, run } = setup([
+      { id: ID.mission, key: 'mission', kind: 'mission', status: 'scheduled', links: ['badge'], createdResource: { mission_id: 'mission-uuid-1' } },
+      { id: ID.badge, key: 'badge', kind: 'jam_badge' },
+    ])
+    ok(await run([ID.badge]))
+
+    expect(rec.pointed.badge).toEqual([[], []])
+    expect(rec.events.some((event) => event.endsWith(':mission'))).toBe(false)
+  })
+
+  it('컬렉션이 보상 칸으로 가리키는 배지는 pointedBy에 컬렉션 종류와 reward_badge_id 칸을 받는다', async () => {
+    const { rec, run } = setup([
+      { id: ID.badge, key: 'badge', kind: 'jam_badge' },
+      { id: ID.recipe, key: 'collection', kind: 'collection_launch', links: ['badge'] },
+    ])
+    ok(await run([ID.badge, ID.recipe]))
+
+    for (const entries of rec.pointed.badge) expect(entries).toEqual([{ kind: 'collection_launch', field: 'reward_badge_id' }])
   })
 
   it('핸들러는 prepare·check·create 모두에서 이번 실행의 현재 시각을 받는다(티켓 20261002_2221 가정 4)', async () => {
@@ -782,11 +821,11 @@ describe('슬랙 알림 notifyExecution', () => {
 
 // ── 실제 레지스트리(홈피드 카드·미션 핸들러) ─────────────────────────────────────────────────────
 
-function setupReal(specs: ItemSpec[], bundle: Row = {}) {
+function setupReal(specs: ItemSpec[], bundle: Row = {}, handlers: ExecuteHandlerRegistry = EXECUTE_HANDLERS) {
   const db = new FakeDb()
   db.tables.ops_bundles = [{ id: B, is_sample: false, ...bundle }]
   db.tables.ops_bundle_items = specs.map((spec) => ({ ...makeItem(spec), bundle_id: B }))
-  const run = (itemIds: unknown) => executeBundle(db.service, { bundleId: B, itemIds, actor: ACTOR }, { handlers: EXECUTE_HANDLERS, now: () => NOW })
+  const run = (itemIds: unknown) => executeBundle(db.service, { bundleId: B, itemIds, actor: ACTOR }, { handlers, now: () => NOW })
   return { db, run }
 }
 
@@ -933,8 +972,8 @@ describe('실제 레지스트리: 홈피드 카드 핸들러 (티켓 20261002_12
     expect(order.indexOf('today_card_events:select')).toBeLessThan(order.lastIndexOf('today_cards:delete'))
   })
 
-  it('아직 연결하지 않은 종류(컬렉션 등)는 막힌다', async () => {
-    const { db, run } = setupReal([{ id: ID.solo, key: 'solo', kind: 'collection_launch' }])
+  it('핸들러가 없는 종류는 막힌다(실제 레지스트리는 여섯 종류가 모두 연결돼 컬렉션 핸들러만 뺀 레지스트리로 본다)', async () => {
+    const { db, run } = setupReal([{ id: ID.solo, key: 'solo', kind: 'collection_launch' }], {}, { ...EXECUTE_HANDLERS, collection_launch: undefined })
     const failure = bad(await run([ID.solo]))
     expect(failure.status).toBe(409)
     expect(failure.extra?.skipped).toEqual([{ id: ID.solo, reason: PRECHECK_MESSAGES.noHandler }])
@@ -1736,20 +1775,385 @@ describe('실제 레지스트리: 드랍 예약 핸들러 (티켓 20261002_2306)
     expect(writes(db, 'ambient_drop_schedules', 'insert')).toHaveLength(1)
   })
 
-  it('같은 묶음의 컬렉션 항목과 연결된 드랍은 컬렉션 핸들러(⑩)가 없어 둘 다 막힌다. 아무것도 쓰지 않는다', async () => {
+  it('같은 묶음의 컬렉션 항목과 연결된 드랍은 ⑩-b 전까지 드랍 검사에서 실패한다: 만들 컬렉션은 등록 전 검증 때 아직 DB에 없다. 컬렉션도 함께 실패하고 아무것도 만들지 않는다 (티켓 20261004_2039 가정 1)', async () => {
     const { db, run } = setupReal([
       drop({ links: ['collection'], resource: { poi_ids: [POI], per_poi_count: 2 } }),
-      { id: COLLECTION_ITEM, key: 'collection', kind: 'collection_launch' },
+      { id: COLLECTION_ITEM, key: 'collection', kind: 'collection_launch', original: { copy: { name: '가을 컬렉션', description: '가을 길에서 모아요.' } } },
     ])
-    const failure = bad(await run([DROP, COLLECTION_ITEM]))
+    // 예정 시각 기준 대상 판정(`loadScheduleTargets`)은 mock이라, 실제 판정처럼 DB에 없는 컬렉션은 노출 중이 아닌 것으로 돌려준다.
+    h.loadScheduleTargets.mockImplementation(async (_service: unknown, spec: { collectionIds?: string[] }) => {
+      const missing = (spec.collectionIds ?? []).filter((id) => !db.tables.item_books.some((row) => row.id === id))
+      return missing.length === 0 ? targetsOk() : { ...targetsOk(), excluded: { pois: [], badges: [], collections: missing.map((id) => ({ id, reason: 'collection_not_exposed' as const })) } }
+    })
+    const result = ok(await run([DROP, COLLECTION_ITEM]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed.find((entry) => entry.id === DROP)?.reason).toBe(PROBLEM)
+    expect(result.body.failed.find((entry) => entry.id === COLLECTION_ITEM)?.reason).toBe(GROUP_FAILED)
+    expect(db.tables.item_books).toEqual([])
+    expect(db.tables.ambient_drop_schedules).toEqual([])
+    expect(db.calls.filter((call) => ['item_books', 'ambient_drop_schedules'].includes(call.table) && call.op !== 'select')).toEqual([])
+    expect(statusOf(db, DROP)).toBe('failed')
+    expect(statusOf(db, COLLECTION_ITEM)).toBe('failed')
+  })
+})
+
+// ── 실제 레지스트리(컬렉션 핸들러, 티켓 20261004_2039) ───────────────────────────────────────────
+
+describe('실제 레지스트리: 컬렉션 핸들러 (티켓 20261004_2039)', () => {
+  const BOOK_ITEM = uid(50)
+  const TRIBE = uid(51)
+  const ACTIVITY_BADGE = uid(52)
+  const ITEM_BADGE = uid(53)
+  const EXISTING_BOOK = uid(54)
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+  const GROUP_FAILED = '연결된 항목을 만들지 못해 함께 실패했어요'
+
+  /** 검사를 통과하는 컬렉션(틀만). 공개 시각은 행의 `LATER`(10/10 09:00 KST)다. */
+  const book = (over: Partial<ItemSpec> = {}): ItemSpec => ({
+    id: BOOK_ITEM,
+    key: 'collection',
+    kind: 'collection_launch',
+    original: { copy: { name: '가을 컬렉션', description: '가을 길에서 모아요.', story_text: '낙엽이 쌓인 길을 따라가요.' } },
+    resource: { image_url: 'https://cdn.example.com/book.webp', reward_points: 50 },
+    ...over,
+  })
+  /** 컬렉션을 여는 카드. `itembook_milestone`은 `item_book_id`가 있어야 하고 연결로 채운다. */
+  const card = (over: Partial<ItemSpec> = {}): ItemSpec => ({
+    id: ID.card,
+    key: 'card',
+    kind: 'home_feed_card',
+    links: ['collection'],
+    original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '가을 컬렉션 카드' } },
+    resource: { template_type: 'itembook_milestone' },
+    ...over,
+  })
+  /** 컬렉션의 완성 보상으로 가리키는 JAM! 배지. 발급 조건은 비어 있다(컬렉션 완성이 발급 경로다). */
+  const rewardBadge = (over: Partial<ItemSpec> = {}): ItemSpec => ({
+    id: ID.badge,
+    key: 'badge',
+    kind: 'jam_badge',
+    original: { copy: { name: '가을 컬렉터', description: '가을 컬렉션을 완성했어요.' } },
+    resource: { condition_json: {}, rarity: 'rare', point_reward: 20 },
+    ...over,
+  })
+  /** 보상 배지를 컬렉션이 가리키는 쪽(`collection → badge`)으로 연결한 컬렉션. */
+  const bookWithReward = (over: Partial<ItemSpec> = {}): ItemSpec => book({ links: ['badge'], ...over })
+
+  const setup = (specs: ItemSpec[], bundle: Row = {}) => {
+    const real = setupReal(specs, bundle)
+    real.db.tables.tribes = [{ id: TRIBE }]
+    real.db.tables.badges = [
+      { id: ACTIVITY_BADGE, name: '활동 배지', type: 'activity', deleted_at: null, item_book_id: null },
+      { id: ITEM_BADGE, name: '아이템 배지', type: 'item', deleted_at: null, item_book_id: null },
+    ]
+    return real
+  }
+  const created = (db: FakeDb) => db.tables.item_books.filter((row) => row.name === '가을 컬렉션')
+  const inserted = (db: FakeDb, table: string) => db.calls.filter((call) => call.table === table && call.op === 'insert')
+  const order = (db: FakeDb) => db.calls.map((call) => `${call.table}:${call.op}`)
+  const writes = (db: FakeDb, table: string, op: FakeCall['op']) => db.calls.filter((call) => call.table === table && call.op === op)
+
+  it('승인된 컬렉션 하나를 실행하면 공개 전 item_books 행이 생기고 created_resource.item_book_id가 만들기 전에 적힌다', async () => {
+    const { db, run } = setup([book()])
+    const result = ok(await run([BOOK_ITEM]))
+
+    expect(result.body.scheduled).toEqual([BOOK_ITEM])
+    expect(result.body.failed).toEqual([])
+    expect(created(db)).toHaveLength(1)
+    const row = created(db)[0]
+    const resource = db.item(BOOK_ITEM).created_resource as { item_book_id: string }
+    expect(resource.item_book_id).toMatch(UUID_PATTERN)
+    expect(row.id).toBe(resource.item_book_id)
+    // 틀 칸만 채운다: 공개 시각 = 항목 공개 시각, 활성, 종료 시각 없음(상시), 보상 배지·트라이브 없음
+    expect(row).toMatchObject({
+      name: '가을 컬렉션',
+      description: '가을 길에서 모아요.',
+      story_text: '낙엽이 쌓인 길을 따라가요.',
+      image_url: 'https://cdn.example.com/book.webp',
+      reward_points: 50,
+      reward_badge_id: null,
+      tribe_id: null,
+      is_active: true,
+      valid_from: '2026-10-10T00:00:00.000Z',
+      valid_until: null,
+    })
+    expect(Object.keys(row)).not.toContain('required_activity_badge_id')
+    expect(Object.keys(row)).not.toContain('image_source')
+    expect(statusOf(db, BOOK_ITEM)).toBe('scheduled')
+    expect(db.decisions('execute').map((entry) => entry.item_id)).toEqual([BOOK_ITEM])
+    // 만들기 전에 created_resource를 먼저 적는다(정한 ID와 돌려준 ID가 같아 한 번만 적는다)
+    const written = db.itemWrites().filter((call) => call.op === 'update' && JSON.stringify(call.payload).includes('"item_book_id"'))
+    expect(written).toHaveLength(1)
+    expect(db.calls.indexOf(written[0])).toBeLessThan(order(db).indexOf('item_books:insert'))
+  })
+
+  it('종료 시각·트라이브·직접 적은 활동 배지 보상이 들어간다', async () => {
+    const { db, run } = setup([book({ endsAt: '2026-10-17T00:00:00.000Z', original: { tribe_id: TRIBE, copy: { name: '가을 컬렉션', description: '설명' } }, resource: { reward_badge_id: ACTIVITY_BADGE } })])
+    const result = ok(await run([BOOK_ITEM]))
+
+    expect(result.body.failed).toEqual([])
+    expect(created(db)[0]).toMatchObject({ valid_from: '2026-10-10T00:00:00.000Z', valid_until: '2026-10-17T00:00:00.000Z', tribe_id: TRIBE, reward_badge_id: ACTIVITY_BADGE })
+  })
+
+  it('카드 → 컬렉션: 컬렉션이 먼저 만들어지고 카드의 컬렉션 칸(item_book_id)이 그 ID로 채워진다', async () => {
+    const { db, run } = setup([card(), book()])
+    const result = ok(await run([ID.card, BOOK_ITEM]))
+
+    expect([...result.body.scheduled].sort()).toEqual([ID.card, BOOK_ITEM].sort())
+    expect(result.body.failed).toEqual([])
+    expect(db.tables.today_cards).toHaveLength(1)
+    expect(db.tables.today_cards[0].item_book_id).toBe(created(db)[0].id)
+    expect(db.item(BOOK_ITEM).created_resource).toEqual({ item_book_id: created(db)[0].id })
+    expect(db.item(ID.card).created_resource).toEqual({ today_card_id: db.tables.today_cards[0].id })
+    expect(order(db).indexOf('item_books:insert')).toBeLessThan(order(db).indexOf('today_cards:insert'))
+  })
+
+  it('컬렉션 → 보상 배지: 배지가 먼저 만들어지고 컬렉션의 보상 배지 칸(reward_badge_id)이 그 ID로 채워진다', async () => {
+    const { db, run } = setup([bookWithReward(), rewardBadge()])
+    const result = ok(await run([BOOK_ITEM, ID.badge]))
+
+    expect([...result.body.scheduled].sort()).toEqual([BOOK_ITEM, ID.badge].sort())
+    expect(result.body.failed).toEqual([])
+    const badgeRow = db.tables.badges.find((row) => row.name === '가을 컬렉터') as Row
+    expect(badgeRow).toMatchObject({ type: 'activity', admin_category: 'jam', condition_json: {}, valid_from: '2026-10-10T00:00:00.000Z' })
+    expect(created(db)[0].reward_badge_id).toBe(badgeRow.id)
+    expect(db.item(ID.badge).created_resource).toEqual({ badge_id: badgeRow.id })
+    expect(order(db).indexOf('badges:insert')).toBeLessThan(order(db).indexOf('item_books:insert'))
+    // 연결로 채운 보상 배지는 아직 없을 수 있어 DB의 배지를 id로 미리 읽어 견주지 않는다(컬렉션 쪽 읽기)
+    expect(db.calls.filter((call) => call.table === 'badges' && call.op === 'select' && call.filters.some(([column]) => column === 'id'))).toEqual([])
+  })
+
+  it('카드·컬렉션·보상 배지가 한 그룹이면 배지 → 컬렉션 → 카드 순으로 만들고 두 칸 모두 만든 ID로 채운다', async () => {
+    const { db, run } = setup([card(), bookWithReward(), rewardBadge()])
+    const result = ok(await run([ID.card, BOOK_ITEM, ID.badge]))
+
+    expect(result.body.scheduled).toHaveLength(3)
+    const badgeId = (db.tables.badges.find((row) => row.name === '가을 컬렉터') as Row).id
+    expect(created(db)[0].reward_badge_id).toBe(badgeId)
+    expect(db.tables.today_cards[0].item_book_id).toBe(created(db)[0].id)
+    const inserts = db.calls.filter((call) => call.op === 'insert' && ['badges', 'item_books', 'today_cards'].includes(call.table)).map((call) => call.table)
+    expect(inserts).toEqual(['badges', 'item_books', 'today_cards'])
+  })
+
+  describe('컬렉션 완성 보상으로 연결된 JAM! 배지는 발급 조건이 없어도 예약된다 (사용자 결정 2026-10-04)', () => {
+    it('연결이 없는 같은 배지는 지금처럼 형식 오류다', async () => {
+      const { db, run } = setup([rewardBadge()])
+      const result = ok(await run([ID.badge]))
+
+      expect(result.body.scheduled).toEqual([])
+      expect(result.body.failed).toHaveLength(1)
+      expect(result.body.failed[0].reason).toMatch(/^배지 형식이 맞지 않아요: badge\.condition_json: 발급 조건이 없는 배지예요\./)
+      expect(db.tables.badges.filter((row) => row.name === '가을 컬렉터')).toEqual([])
+    })
+
+    it('가리키던 컬렉션이 반려되면 연결이 없어져 배지는 형식 오류로 실패한다(컬렉션은 만들지 않는다)', async () => {
+      const { db, run } = setup([bookWithReward({ status: 'rejected' }), rewardBadge()])
+      const result = ok(await run([ID.badge]))
+
+      expect(result.body.scheduled).toEqual([])
+      expect(result.body.failed[0].reason).toMatch(/발급 조건이 없는 배지예요/)
+      expect(created(db)).toEqual([])
+    })
+
+    it('같은 그룹의 컬렉션이 이번 실행에서 막혀 예약할 항목이 아니면(기다림) 연결 계획에 없어 배지도 실행되지 않는다', async () => {
+      const { db, run } = setup([bookWithReward({ status: 'reviewing' }), rewardBadge()])
+      const failure = bad(await run([ID.badge]))
+
+      expect(failure.status).toBe(409)
+      expect(nonSelect(db)).toEqual([])
+    })
+
+    it('미션이 가리키는 발급 조건 없는 배지는 여전히 형식 오류다(예외는 컬렉션 보상 칸뿐이다)', async () => {
+      const { run } = setup([
+        { id: ID.mission, key: 'mission', kind: 'mission', links: ['badge'], original: { copy: { title: '주말 러닝', description: '30km' } }, resource: { mission_type: 'distance', condition_json: { distance_km: 30 } } },
+        rewardBadge(),
+      ])
+      const result = ok(await run([ID.mission, ID.badge]))
+
+      expect(result.body.scheduled).toEqual([])
+      expect(result.body.failed.find((entry) => entry.id === ID.badge)?.reason).toMatch(/발급 조건이 없는 배지예요/)
+    })
+  })
+
+  it('컬렉션이 연결된 보상 배지보다 먼저 공개되면 실행되지 않는다: 컬렉션은 못 하는 항목, 배지는 연결된 항목을 예약할 수 없다', async () => {
+    const { db, run } = setup([bookWithReward({ startsAt: '2026-10-09T00:00:00.000Z' }), rewardBadge()])
+    const failure = bad(await run([BOOK_ITEM, ID.badge]))
 
     expect(failure.status).toBe(409)
-    expect(failure.extra?.skipped).toEqual(
-      expect.arrayContaining([
-        { id: COLLECTION_ITEM, reason: PRECHECK_MESSAGES.noHandler },
-        { id: DROP, reason: PRECHECK_MESSAGES.groupBlocked },
-      ])
-    )
+    expect(failure.extra?.skipped).toEqual([
+      { id: BOOK_ITEM, reason: PRECHECK_MESSAGES.beforeLinkedBadge },
+      { id: ID.badge, reason: PRECHECK_MESSAGES.groupBlocked },
+    ])
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it('카드가 연결된 컬렉션보다 먼저 공개되면 실행되지 않는다: 카드는 못 하는 항목, 컬렉션은 연결된 항목을 예약할 수 없다', async () => {
+    const { db, run } = setup([card({ startsAt: '2026-10-09T00:00:00.000Z' }), book()])
+    const failure = bad(await run([ID.card, BOOK_ITEM]))
+
+    expect(failure.status).toBe(409)
+    expect(failure.extra?.skipped).toEqual([
+      { id: ID.card, reason: PRECHECK_MESSAGES.cardBeforeCollection },
+      { id: BOOK_ITEM, reason: PRECHECK_MESSAGES.groupBlocked },
+    ])
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it('이미 예약된 컬렉션을 가리키는 카드는 그 컬렉션의 ID를 created_resource에서 읽어 채운다. 컬렉션은 건드리지 않는다', async () => {
+    const existing = uid(60)
+    const { db, run } = setup([card(), book({ status: 'scheduled', createdResource: { item_book_id: existing } })])
+    const result = ok(await run([ID.card]))
+
+    expect(result.body.scheduled).toEqual([ID.card])
+    expect(db.tables.today_cards[0].item_book_id).toBe(existing)
+    expect(inserted(db, 'item_books')).toEqual([])
+  })
+
+  it('컬렉션 insert가 실패하면 그룹 전체가 실패하고 먼저 만든 보상 배지도 되돌려진다. 컬렉션 사유가 원인이다', async () => {
+    const { db, run } = setup([card(), bookWithReward(), rewardBadge()])
+    db.failIf = (call) => call.table === 'item_books' && call.op === 'insert'
+    const result = ok(await run([ID.card, BOOK_ITEM, ID.badge]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed.find((entry) => entry.id === BOOK_ITEM)?.reason).toBe('컬렉션을 만들지 못했어요')
+    expect(result.body.failed.filter((entry) => entry.reason === GROUP_FAILED)).toHaveLength(2)
+    expect(db.tables.badges.filter((row) => row.name === '가을 컬렉터')).toEqual([])
+    expect(created(db)).toEqual([])
+    expect(db.tables.today_cards).toEqual([])
+    for (const id of [ID.card, BOOK_ITEM, ID.badge]) expect(statusOf(db, id)).toBe('failed')
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(DB_SECRET)
+    expect(logged()).toContain(DB_SECRET)
+  })
+
+  it('카드 insert가 실패하면 먼저 만든 컬렉션·보상 배지가 역순(컬렉션 먼저)으로 되돌려진다', async () => {
+    const { db, run } = setup([card(), bookWithReward(), rewardBadge()])
+    db.failIf = (call) => call.table === 'today_cards' && call.op === 'insert'
+    const result = ok(await run([ID.card, BOOK_ITEM, ID.badge]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed.find((entry) => entry.id === ID.card)?.reason).toBe('카드를 만들지 못했어요')
+    expect(result.body.failed.filter((entry) => entry.reason === GROUP_FAILED)).toHaveLength(2)
+    expect(created(db)).toEqual([])
+    expect(db.tables.badges.filter((row) => row.name === '가을 컬렉터')).toEqual([])
+    expect(db.tables.today_cards).toEqual([])
+    // 컬렉션이 배지를 가리키는 동안은 배지가 지워지지 않으므로 컬렉션을 먼저 지운다
+    expect(order(db).lastIndexOf('item_books:delete')).toBeLessThan(order(db).lastIndexOf('badges:delete'))
+  })
+
+  it('예약됨으로 옮기지 못하면 만든 컬렉션을 참조 확인 뒤 지운다', async () => {
+    const { db, run } = setup([book()])
+    db.failIf = (call) => call.table === 'ops_bundle_items' && call.op === 'update' && (call.payload as Row).status === 'scheduled'
+    const result = ok(await run([BOOK_ITEM]))
+
+    expect(result.body.failed).toEqual([{ id: BOOK_ITEM, reason: '예약 등록을 마무리하지 못했어요' }])
+    expect(created(db)).toEqual([])
+    const names = order(db)
+    expect(names.indexOf('user_item_book_slots:select')).toBeLessThan(names.lastIndexOf('item_books:delete'))
+  })
+
+  it('같은 이름의 기존 컬렉션이 있으면 고정 사유로 실패한다. 기존 컬렉션 ID는 응답·기록·슬랙에 없다', async () => {
+    const { db, run } = setup([book()])
+    db.tables.item_books.push({ id: EXISTING_BOOK, name: '가을 컬렉션' })
+    const result = ok(await run([BOOK_ITEM]))
+
+    expect(result.body.failed).toEqual([{ id: BOOK_ITEM, reason: '같은 이름의 컬렉션이 이미 있어요' }])
+    expect(db.tables.item_books).toHaveLength(1) // 기존 컬렉션 하나뿐이다
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(EXISTING_BOOK)
+    expect(logged()).toContain(EXISTING_BOOK)
+  })
+
+  it('트라이브가 없으면 고정 사유로 실패한다. 트라이브 ID는 어디에도 없다', async () => {
+    const { db, run } = setup([book({ original: { tribe_id: uid(70), copy: { name: '가을 컬렉션', description: '설명' } } })])
+    const result = ok(await run([BOOK_ITEM]))
+
+    expect(result.body.failed).toEqual([{ id: BOOK_ITEM, reason: '트라이브를 찾을 수 없어요' }])
+    expect(created(db)).toEqual([])
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(uid(70))
+  })
+
+  it('직접 적은 보상 배지가 없거나 활동 배지가 아니면 고정 사유로 실패한다', async () => {
+    const missing = setup([book({ resource: { reward_badge_id: uid(71) } })])
+    expect(ok(await missing.run([BOOK_ITEM])).body.failed).toEqual([{ id: BOOK_ITEM, reason: '보상으로 정한 배지가 없거나 삭제됐어요' }])
+
+    const wrongKind = setup([book({ resource: { reward_badge_id: ITEM_BADGE } })])
+    const result = ok(await wrongKind.run([BOOK_ITEM]))
+    expect(result.body.failed).toEqual([{ id: BOOK_ITEM, reason: '완성 보상 배지는 활동 배지여야 해요' }])
+    for (const output of await outputsOf(wrongKind.db, result)) expect(output).not.toContain(ITEM_BADGE)
+    expect(created(wrongKind.db)).toEqual([])
+  })
+
+  it('등록 전 검사에서 DB를 읽지 못하면 고정 사유로 실패하고 DB 오류 원문은 로그에만 남는다', async () => {
+    const { db, run } = setup([book()])
+    db.failIf = (call) => call.table === 'item_books' && call.op === 'select'
+    const result = ok(await run([BOOK_ITEM]))
+
+    expect(result.body.failed).toEqual([{ id: BOOK_ITEM, reason: '등록 전 확인 중 DB를 읽지 못했어요' }])
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(DB_SECRET)
+    expect(logged()).toContain(DB_SECRET)
+  })
+
+  it('형식 오류는 변환 오류의 첫 문장으로 실패하고 만든 행이 없다: 설명이 없으면 「컬렉션 형식이 맞지 않아요: collection.description: …」', async () => {
+    const { db, run } = setup([book({ original: { copy: { name: '가을 컬렉션' } } })])
+    const result = ok(await run([BOOK_ITEM]))
+
+    expect(result.body.failed).toEqual([{ id: BOOK_ITEM, reason: '컬렉션 형식이 맞지 않아요: collection.description: 필수 항목이 없어요.' }])
+    expect(created(db)).toEqual([])
+    expect(statusOf(db, BOOK_ITEM)).toBe('failed')
+  })
+
+  it('보상 포인트 형식·종료 시각 순서도 형식 오류다', async () => {
+    const points = setup([book({ resource: { reward_points: -5 } })])
+    expect(ok(await points.run([BOOK_ITEM])).body.failed[0].reason).toMatch(/^컬렉션 형식이 맞지 않아요: collection\.reward_points: 0 이상의 정수여야 해요/)
+    const period = setup([book({ endsAt: '2026-10-09T00:00:00.000Z' })])
+    expect(ok(await period.run([BOOK_ITEM])).body.failed[0].reason).toMatch(/^컬렉션 형식이 맞지 않아요: collection\.valid_until: 종료 시각은 공개 시각보다 늦어야 해요/)
+  })
+
+  it('insert가 실패하면 고정 사유로 실패하고 같은 ID로 정리 delete를 한 번 시도한다. 원문과 컬렉션 ID는 어디에도 없다', async () => {
+    const { db, run } = setup([book()])
+    db.failIf = (call) => call.table === 'item_books' && call.op === 'insert'
+    const result = ok(await run([BOOK_ITEM]))
+
+    expect(result.body.failed).toEqual([{ id: BOOK_ITEM, reason: '컬렉션을 만들지 못했어요' }])
+    expect(created(db)).toEqual([])
+    expect(statusOf(db, BOOK_ITEM)).toBe('failed')
+    const plannedId = (db.item(BOOK_ITEM).created_resource as { item_book_id: string }).item_book_id
+    expect(writes(db, 'item_books', 'delete')).toHaveLength(1)
+    expect(writes(db, 'item_books', 'delete')[0].filters).toEqual([['id', plannedId]])
+    for (const output of await outputsOf(db, result)) {
+      expect(output).not.toContain(DB_SECRET)
+      expect(output).not.toContain(plannedId)
+    }
+    expect(logged()).toContain(DB_SECRET)
+  })
+
+  it('시험 묶음은 검사까지 하고 item_books에 쓰지 않는다. created_resource는 { sample: true }다', async () => {
+    const { db, run } = setup([card(), bookWithReward(), rewardBadge()], { is_sample: true })
+    const result = ok(await run([ID.card, BOOK_ITEM, ID.badge]))
+
+    expect(result.body.scheduled).toHaveLength(3)
+    expect(db.tables.item_books).toEqual([])
+    expect(db.calls.filter((call) => call.table === 'item_books' && call.op !== 'select')).toEqual([])
+    expect(db.calls.some((call) => call.table === 'item_books' && call.op === 'select')).toBe(true) // 이름 중복 검사를 했다
+    expect(db.item(BOOK_ITEM).created_resource).toEqual({ sample: true })
+  })
+
+  it('같은 묶음을 두 번 실행해도 컬렉션은 한 번만 만든다', async () => {
+    const { db, run } = setup([book()])
+    ok(await run([BOOK_ITEM]))
+    const second = bad(await run([BOOK_ITEM]))
+
+    expect(second.status).toBe(409)
+    expect(inserted(db, 'item_books')).toHaveLength(1)
+  })
+
+  it('요약창의 사전 점검(dryRun)이 컬렉션을 예약할 항목으로 센다. 쓰기는 없다', async () => {
+    const { db } = setup([book()])
+    const result = await dryRunExecution(db.service, B, { now: () => NOW, handlers: EXECUTE_HANDLERS })
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error('성공이어야 해요')
+    expect(result.body.ready).toEqual([BOOK_ITEM])
+    expect(result.body.blocked).toEqual([])
     expect(nonSelect(db)).toEqual([])
   })
 })

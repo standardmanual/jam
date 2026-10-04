@@ -3,13 +3,13 @@
  *
  * 이 파일은 타입과 공용 도우미만 둔다. DB를 부르지 않고, Supabase는 타입으로만 가져온다(값 import 없음). 실제 핸들러는
  * 종류마다 파일을 따로 두고(④ 카드는 `homeFeedCard.ts`) `registry.ts`의 `EXECUTE_HANDLERS`에 붙인다. 이 파일은 핸들러를 가져오지 않는다(순환 import 방지).
- * 레지스트리에 없는 종류는 사전 점검(`precheck.ts`)이 「아직 연결하지 않은 종류예요」로 막는다.
+ * 레지스트리에 없는 종류는 사전 점검(`precheck.ts`)이 「아직 연결하지 않은 종류예요」로 막는다(예약 등록 대상 6종은 ⑩-a로 모두 붙었다. 분기는 가짜 레지스트리 테스트와 앞으로의 종류를 위해 남긴다).
  */
 import type { createServiceClient } from '@/lib/supabase/server'
 import type { Json } from '@/types/database.generated'
 import type { OpsItemKind } from '@/lib/admin/opsInbox/constants'
 import type { ViewableItem } from '@/lib/admin/opsInbox/itemView'
-import type { CardLinkedIds, JamBadgeLinkedIds, MissionLinkedIds, RegisterInputIssue } from '@/lib/admin/opsInbox/registerInput'
+import type { CardLinkedIds, CollectionLaunchLinkedIds, JamBadgeLinkedIds, MissionLinkedIds, RegisterInputIssue } from '@/lib/admin/opsInbox/registerInput'
 import type { RegisterChecksClient } from '@/lib/admin/registerChecks/shared'
 
 /** 예약 등록이 읽는 항목 행(`ops_bundle_items`). 값 칸은 수정본이 있으면 수정본, 없으면 제출 원본이다(`ViewableItem`). */
@@ -89,16 +89,26 @@ export type ResourceObservation =
   | { status: 'error'; detail: string }
 
 /**
- * 연결 그룹(§8.3)이 채우는 칸에 넣을 ID. 카드·미션·JAM! 배지 칸 이름은 `registerInput.ts`의 `CardLinkedIds`·`MissionLinkedIds`·`JamBadgeLinkedIds`와 같다
- * (`recipe_id`는 JAM! 배지 변환 `toJamBadgeRegisterInput`이 `recipe_first_success`에 덮는다).
- * `collection_ids`는 드랍 변환(`toDropScheduleRegisterInput`)이 읽는다. 나머지는 뒤 조각의 변환이 읽는다: `reward_badge_id`(컬렉션).
+ * 연결 그룹(§8.3)이 채우는 칸에 넣을 ID. 카드·미션·JAM! 배지·컬렉션 칸 이름은 `registerInput.ts`의 `CardLinkedIds`·`MissionLinkedIds`·`JamBadgeLinkedIds`·`CollectionLaunchLinkedIds`와 같다
+ * (`recipe_id`는 JAM! 배지 변환 `toJamBadgeRegisterInput`이 `recipe_first_success`에 덮고, `reward_badge_id`는 컬렉션 변환 `toCollectionLaunchRegisterInput`이 읽는다).
+ * `collection_ids`는 드랍 변환(`toDropScheduleRegisterInput`)이 읽는다.
  */
 export type ExecuteLinkedIds = CardLinkedIds &
   MissionLinkedIds &
-  JamBadgeLinkedIds & {
-    reward_badge_id?: string | null
+  JamBadgeLinkedIds &
+  CollectionLaunchLinkedIds & {
     collection_ids?: readonly string[] | null
   }
+
+/**
+ * 이 항목을 연결 칸으로 가리키는 항목 하나(티켓 20261004_2039 가정 2). `kind`는 가리키는 항목의 종류, `field`는 가리키는 쪽이 채우는 칸(`LINK_PAIRS`의 `field`)이다.
+ * 실행(`run.ts`)이 그룹의 `linkPlan`에서 계산해 `prepare`에 넘긴다. 가리키는 항목이 이번 실행의 예약할 항목일 때만 들어 있다. JAM! 배지 핸들러만 읽는다
+ * (컬렉션 완성 보상 배지는 발급 조건이 없어도 통과한다). 다른 핸들러는 쓰지 않는다.
+ */
+export interface PointedByEntry {
+  kind: string
+  field: string
+}
 
 /** 등록 형식으로 바꾼 항목(§8.4). `payload`의 모양은 종류마다 다르다. */
 export interface ExecutePrepared<P = unknown> {
@@ -127,9 +137,12 @@ export interface ExecuteHandler<P = unknown> {
   idFirst: boolean
   /**
    * 항목을 등록 형식으로 바꾸고 형식을 검사한다(§8.4). DB에 접근하지 않는다. `now`는 이번 실행의 현재 시각이다(공개 시각이 지났는지 가르는 기준으로, 한 회차 안에서 같은 값).
-   * 카드·미션 핸들러는 `now`를 쓰지 않는다(메서드 매개변수가 적으면 그대로 맞는다).
+   * 카드·미션 핸들러는 `now`를 쓰지 않는다(메서드 매개변수가 적으면 그대로 맞는다). `pointedBy`는 이 항목을 연결 칸으로 가리키는 항목의 종류·칸이다(없으면 가리키는 항목이 없다. JAM! 배지 핸들러만 읽는다).
    */
-  prepare(item: ExecuteItem, context: { id: string; actorId: string; linkedIds: ExecuteLinkedIds; now: Date }): ExecuteOutcome<ExecutePrepared<P>>
+  prepare(
+    item: ExecuteItem,
+    context: { id: string; actorId: string; linkedIds: ExecuteLinkedIds; now: Date; pointedBy?: readonly PointedByEntry[] }
+  ): ExecuteOutcome<ExecutePrepared<P>>
   /** 등록 전 DB 검사(참조 ID 존재·중복). 통과하면 `null`. `now`는 `prepare`와 같은 값이다. */
   check(client: RegisterChecksClient, prepared: ExecutePrepared<P>, context: { now: Date }): Promise<ExecuteFailure | null>
   /** 자원을 만들고 그 ID를 돌려준다. `now`는 `prepare`와 같은 값이다. */

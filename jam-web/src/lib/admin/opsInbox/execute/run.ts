@@ -4,7 +4,7 @@
  * `dryRunExecution`은 사전 점검 결과를 돌려준다(쓰기 없음). `executeBundle`은 요청한 항목 가운데 지금도 예약할 수 있는 항목을 실행한다:
  * 선점(`approved` → `preparing`) → 그룹마다 등록 전 검증 → 생성(실패하면 이번에 만든 자원을 역순으로 `undo`) → 상태 갱신 → 결정 기록.
  * 서비스 클라이언트와 핸들러 레지스트리는 인자로 받는다(라우트가 실제 것을, 테스트가 가짜를 넘긴다). 실패해도 던지지 않고
- * `{ ok: false, status, error }`를 돌려준다. 종류별 핸들러는 `registry.ts`의 `EXECUTE_HANDLERS`에 붙어 있다(지금은 홈피드 카드).
+ * `{ ok: false, status, error }`를 돌려준다. 종류별 핸들러는 `registry.ts`의 `EXECUTE_HANDLERS`에 붙어 있다(예약 등록 대상 6종 모두).
  *
  * 지키는 규칙
  * - 선점은 조건부 update다(`status = 'approved'`). 하나도 차지하지 못하면 409라 같은 묶음을 두 번 실행해도 한 번만 반영된다.
@@ -36,6 +36,7 @@ import {
   type ExecuteOutcome,
   type ExecutePrepared,
   type ExecuteServiceClient,
+  type PointedByEntry,
 } from './handlers'
 import { PRECHECK_MESSAGES, precheckBundle, type PrecheckGroup, type PrecheckResult } from './precheck'
 import { EXECUTE_HANDLERS } from './registry'
@@ -249,6 +250,22 @@ function linkedIdsFor(
   return { ok: true, value: linked as ExecuteLinkedIds }
 }
 
+/**
+ * 이 항목을 연결 칸으로 가리키는 항목의 종류·칸(티켓 20261004_2039 가정 2). 그룹의 `linkPlan`(가리키는 항목 ID → 채울 칸)에서 대상이 이 항목인 칸을 모은다.
+ * `linkPlan`에는 이번 실행의 예약할 항목만 들어 있으므로, 가리키는 항목이 이번에 만들지 않거나 막힌 항목이면 비어 있다. JAM! 배지 핸들러만 읽는다.
+ */
+function pointedByOf(ctx: RunContext, group: PrecheckGroup, item: ExecuteItem): PointedByEntry[] {
+  const found: PointedByEntry[] = []
+  for (const [referencerId, fills] of Object.entries(group.linkPlan)) {
+    const kind = ctx.byId.get(referencerId)?.kind
+    if (!kind) continue
+    for (const fill of fills) {
+      if (fill.targetItemIds.includes(item.id)) found.push({ kind, field: fill.field })
+    }
+  }
+  return found
+}
+
 /** 항목의 `created_resource`를 적는다(`preparing`인 동안만). 적지 못하면 실패 사유를 돌려준다. */
 async function writeCreatedResource(ctx: RunContext, item: ExecuteItem, key: string, resourceId: string): Promise<ExecuteFailure | null> {
   const written = await ctx.service
@@ -304,7 +321,7 @@ async function runGroup(ctx: RunContext, group: PrecheckGroup): Promise<GroupRes
     if (!linked.ok) return linked
     const id = plannedIds.get(item.id) as string
     return guarded<ExecuteOutcome<ExecutePrepared>>(
-      () => handlerOf(item).prepare(item, { id, actorId: ctx.actor, linkedIds: linked.value, now: ctx.now }),
+      () => handlerOf(item).prepare(item, { id, actorId: ctx.actor, linkedIds: linked.value, now: ctx.now, pointedBy: pointedByOf(ctx, group, item) }),
       asFailedOutcome
     )
   }

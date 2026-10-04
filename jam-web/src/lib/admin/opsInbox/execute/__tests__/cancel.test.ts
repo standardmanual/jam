@@ -12,6 +12,8 @@
  * - 예약됨 레시피 취소(⑧-a, 티켓 20261002_2221): 실제 레시피 핸들러, 공개 전 취소·이미 공개·종료됨·가장 먼저 성공 배지가 가리킴(409)·없음·시험 묶음
  * - 예약됨 드랍 취소(⑧-b, 티켓 20261002_2306): 실제 드랍 핸들러, 공개 전 취소(지우지 않고 「취소」 상태)·예정 시각이 지남·실행 시작·끝남(409)·밖에서 취소됨·없음·시험 묶음
  * - 예약됨 JAM! 배지 취소(⑨-a, 티켓 20261004_1756): 실제 배지 핸들러, 공개 전 취소·공개됨·참조 있음(409)·밖에서 지워짐·소프트 삭제·배지를 가리키는 미션·카드 함께 취소(카드→미션→배지 순)·시험 묶음
+ * - 예약됨 컬렉션 취소(⑩-a, 티켓 20261004_2039): 실제 컬렉션 핸들러, 공개 전 취소·공개됨·참조 있음(아이템 배지 포함, 409)·밖에서 지워짐·컬렉션을 가리키는 카드 함께 취소(카드→컬렉션 순)·
+ *   보상 배지와 함께 취소될 때 컬렉션이 먼저 지워짐(카드→컬렉션→배지 순)·시험 묶음
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -446,8 +448,10 @@ describe('함께 취소할 항목 — 가짜 종류 핸들러(가정 3·4)', () 
     expect(nonSelect(db)).toEqual([])
   })
 
-  it('실제 레지스트리에 아직 없는 종류(컬렉션 등)는 409로 막힌다', async () => {
-    const { db, run } = setup([{ id: ID.poster, key: 'collection', kind: 'collection_launch', status: 'scheduled', createdResource: { item_book_id: uid(21) } }])
+  it('핸들러가 없는 종류는 409로 막힌다(실제 레지스트리는 여섯 종류가 모두 연결돼 컬렉션 핸들러만 뺀 레지스트리로 본다)', async () => {
+    const { db, run } = setup([{ id: ID.poster, key: 'collection', kind: 'collection_launch', status: 'scheduled', createdResource: { item_book_id: uid(21) } }], {
+      handlers: { ...EXECUTE_HANDLERS, collection_launch: undefined },
+    })
     const failure = bad(await run(ID.poster))
     expect(failure.status).toBe(409)
     expect(failure.error).toBe('아직 취소를 연결하지 않은 종류예요')
@@ -1086,6 +1090,230 @@ describe('예약됨 JAM! 배지 취소 — 실제 배지 핸들러 (티켓 20261
   })
 })
 
+// ── 컬렉션 취소 ──────────────────────────────────────────────────────────────────────────────────
+
+describe('예약됨 컬렉션 취소 — 실제 컬렉션 핸들러 (티켓 20261004_2039)', () => {
+  const BOOK_RES = uid(14)
+  const BADGE_RES = uid(13)
+  const bookSpec = (extra: ItemSpec = {}): ItemSpec => ({
+    id: ID.poster,
+    key: 'collection',
+    kind: 'collection_launch',
+    status: 'scheduled',
+    createdResource: { item_book_id: BOOK_RES },
+    ...extra,
+  })
+  const badgeSpec = (extra: ItemSpec = {}): ItemSpec => ({
+    id: ID.badge,
+    key: 'badge',
+    kind: 'jam_badge',
+    status: 'scheduled',
+    createdResource: { badge_id: BADGE_RES },
+    ...extra,
+  })
+  const bookRow = (extra: Row = {}): Row => ({ id: BOOK_RES, name: '가을 컬렉션', is_active: true, valid_from: LATER, valid_until: null, reward_badge_id: null, ...extra })
+  const OTHER_BOOK = { id: uid(97), name: '기존 컬렉션', is_active: true, valid_from: PAST, valid_until: null }
+  const BOOK_LABEL = '컬렉션 런칭 · 10/10(토) 09:00'
+  const BADGE_LABEL = 'JAM! 배지 · 10/10(토) 09:00'
+  const orderOf = (db: FakeDb) => db.calls.map((call) => `${call.table}:${call.op}`)
+  const bookIds = (db: FakeDb) => (db.tables.item_books as Row[]).map((row) => row.id)
+
+  /** 컬렉션만 있는 묶음. 카드 행은 없다. */
+  function soloSetup(options: Parameters<typeof setup>[1] = {}) {
+    const made = setup([bookSpec()], { ...options, cards: [] })
+    made.db.tables.item_books = [bookRow(), OTHER_BOOK]
+    return made
+  }
+
+  /** 카드가 컬렉션을 가리키는 그룹. 카드 행은 컬렉션 ID를 `item_book_id`로 갖는다. */
+  function cardSetup(options: Parameters<typeof setup>[1] = {}, specs: ItemSpec[] = [cardSpec({ links: ['collection'] }), bookSpec()]) {
+    const made = setup(specs, { ...options, cards: [{ id: CARD_RES, starts_at: LATER, item_book_id: BOOK_RES }] })
+    made.db.tables.item_books = [bookRow(), OTHER_BOOK]
+    return made
+  }
+
+  /** 카드 → 컬렉션 → 보상 배지 그룹. 컬렉션 행은 `reward_badge_id`로 배지 ID를 갖는다. */
+  function chainSetup(options: Parameters<typeof setup>[1] = {}) {
+    const made = setup([cardSpec({ links: ['collection'] }), bookSpec({ links: ['badge'] }), badgeSpec()], {
+      ...options,
+      cards: [{ id: CARD_RES, starts_at: LATER, item_book_id: BOOK_RES }],
+    })
+    made.db.tables.item_books = [bookRow({ reward_badge_id: BADGE_RES }), OTHER_BOOK]
+    made.db.tables.badges = [{ id: BADGE_RES, name: '완성 보상', valid_from: LATER, valid_until: null, deleted_at: null }]
+    return made
+  }
+
+  it('공개 전 컬렉션을 취소하면 그 ID의 행만 지우고 지울 때 `valid_from > 지금` 조건을 건다. 항목은 「취소」, 결정 기록 한 줄이다', async () => {
+    const { db, run } = soloSetup()
+    const result = ok(await run(ID.poster, '컬렉션을 접어요'))
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.poster], missing: [] })
+    expect(bookIds(db)).toEqual([OTHER_BOOK.id])
+    expect(statusOf(db, ID.poster)).toBe('cancelled')
+    expect(db.decisions('cancel').map((row) => [row.item_id, row.reason, row.batch_id])).toEqual([[ID.poster, '컬렉션을 접어요', result.batchId]])
+    expect(db.calls.find((call) => call.table === 'item_books' && call.op === 'delete')?.filters).toEqual([['id', BOOK_RES], ['valid_from >', NOW.toISOString()]])
+    expect(result.slack.cancelledLabels).toEqual([BOOK_LABEL])
+    // created_resource는 지운 뒤에도 남는다(무엇을 만들었다가 지웠는지)
+    expect(db.item(ID.poster).created_resource).toEqual({ item_book_id: BOOK_RES })
+  })
+
+  it('컬렉션을 취소하면 그 컬렉션을 가리키는 카드가 먼저 취소되고 컬렉션은 나중에 지워진다. 카드가 남아 있으면 컬렉션의 참조 확인에 걸리기 때문이다', async () => {
+    const { db, run } = cardSetup()
+    const result = ok(await run(ID.poster))
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.card, ID.poster], missing: [] })
+    expect(db.tables.today_cards).toEqual([])
+    expect(bookIds(db)).toEqual([OTHER_BOOK.id])
+    for (const id of [ID.card, ID.poster]) expect(statusOf(db, id)).toBe('cancelled')
+    const order = orderOf(db)
+    expect(order.indexOf('today_cards:delete')).toBeLessThan(order.indexOf('item_books:delete'))
+    // 컬렉션의 참조 확인(카드의 컬렉션 칸을 센다)은 카드를 지운 뒤에 이뤄졌다
+    expect(order.lastIndexOf('today_cards:select')).toBeGreaterThan(order.indexOf('today_cards:delete'))
+    expect(result.slack.cancelledLabels).toEqual([CARD_LABEL, BOOK_LABEL])
+  })
+
+  it('카드만 취소하면 컬렉션은 남는다', async () => {
+    const { db, run } = cardSetup()
+    const result = ok(await run(ID.card))
+
+    expect(result.body.cancelled).toEqual([ID.card])
+    expect(bookIds(db)).toEqual([BOOK_RES, OTHER_BOOK.id])
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+  })
+
+  it('보상 배지를 취소하면 그 배지를 보상으로 가리키는 컬렉션(과 그 컬렉션을 가리키는 카드)이 먼저 취소되고 배지는 마지막에 지워진다. 컬렉션이 남아 있으면 배지의 참조 확인에 걸리기 때문이다', async () => {
+    const { db, run } = chainSetup()
+    const result = ok(await run(ID.badge))
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.card, ID.poster, ID.badge], missing: [] })
+    expect(db.tables.today_cards).toEqual([])
+    expect(bookIds(db)).toEqual([OTHER_BOOK.id])
+    expect(db.tables.badges).toEqual([])
+    for (const id of [ID.card, ID.poster, ID.badge]) expect(statusOf(db, id)).toBe('cancelled')
+    const order = orderOf(db)
+    expect(order.indexOf('today_cards:delete')).toBeLessThan(order.indexOf('item_books:delete'))
+    expect(order.indexOf('item_books:delete')).toBeLessThan(order.indexOf('badges:delete'))
+    // 배지의 참조 확인(컬렉션의 보상 배지 칸을 센다)은 컬렉션을 지운 뒤에 이뤄졌다
+    expect(order.lastIndexOf('item_books:select')).toBeGreaterThan(order.indexOf('item_books:delete'))
+    expect(result.slack.cancelledLabels).toEqual([CARD_LABEL, BOOK_LABEL, BADGE_LABEL])
+  })
+
+  it('컬렉션만 취소하면 보상 배지는 남는다(가리키는 쪽만 함께 취소된다)', async () => {
+    const { db, run } = chainSetup()
+    const result = ok(await run(ID.poster))
+
+    expect(result.body.cancelled).toEqual([ID.card, ID.poster])
+    expect(bookIds(db)).toEqual([OTHER_BOOK.id])
+    expect(db.tables.badges).toHaveLength(1)
+    expect(statusOf(db, ID.badge)).toBe('scheduled')
+  })
+
+  it.each([
+    ['공개 시각이 지났다', { valid_from: PAST }],
+    ['공개 시각이 정확히 지금이다', { valid_from: NOW.toISOString() }],
+    ['공개 시각이 비었다', { valid_from: null }],
+  ])('%s: 409이고 아무것도 지우지 않는다(상태 맞추기가 아직 게재중으로 바꾸지 않은 컬렉션)', async (_label, row) => {
+    const { db, run } = soloSetup()
+    ;(db.tables.item_books[0] as Row).valid_from = row.valid_from
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe('공개 시각이 지나 취소할 수 없어요')
+    expect(failure.slack).toBeUndefined()
+    expect(nonSelect(db)).toEqual([])
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+    expect(db.decisions()).toEqual([])
+  })
+
+  it.each([
+    ['아이템 배지가 붙었다(소프트 삭제된 배지도)', 'badges', { id: uid(70), item_book_id: BOOK_RES, deleted_at: '2026-09-01T00:00:00.000Z' }],
+    ['유저가 장착했다', 'user_item_book_slots', { user_id: uid(71), item_book_id: BOOK_RES }],
+    ['유저가 완성했다', 'user_item_book_completions', { user_id: uid(71), item_book_id: BOOK_RES }],
+    ['포인트 내역이 있다', 'point_transactions', { id: uid(72), source_item_book_id: BOOK_RES }],
+    ['자동 드랍 설정이 고른 컬렉션이다', 'ambient_drop_config', { id: 1, collection_ids: [BOOK_RES] }],
+    ['끝나지 않은 드랍 예약이 고른 컬렉션이다', 'ambient_drop_schedules', { id: uid(73), status: 'scheduled', collection_ids: [BOOK_RES] }],
+  ])('%s: 409이고 지우지 않는다. 테이블 이름은 응답에 없다', async (_label, table, row) => {
+    const { db, run } = soloSetup()
+    db.tables[table] = [row]
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe('아이템 배지나 유저 기록·연결이 있거나 확인하지 못해 컬렉션을 지우지 않았어요')
+    expect(failure.error).not.toContain(table)
+    expect(nonSelect(db)).toEqual([])
+    expect(db.tables.item_books).toHaveLength(2)
+    expect(logged()).toContain(table)
+  })
+
+  it('공개 전에 취소된 드랍 예약(「취소」로 남은 행)은 막지 않는다', async () => {
+    const { db, run } = soloSetup()
+    db.tables.ambient_drop_schedules = [{ id: uid(74), status: 'canceled', collection_ids: [BOOK_RES] }]
+    const result = ok(await run(ID.poster))
+    expect(result.body.cancelled).toEqual([ID.poster])
+  })
+
+  it('밖에서 이미 지워진 컬렉션은 missing으로 두고 항목만 「취소」로 둔다', async () => {
+    const gone = setup([bookSpec()], { cards: [] })
+    const result = ok(await gone.run(ID.poster))
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.poster], missing: [ID.poster] })
+    expect(statusOf(gone.db, ID.poster)).toBe('cancelled')
+    expect(nonSelect(gone.db).filter((call) => call.table === 'item_books')).toEqual([])
+  })
+
+  it('컬렉션을 가리키는 카드가 이미 게재 중이면 아무것도 취소하지 않고 409다', async () => {
+    const { db, run } = cardSetup({}, [cardSpec({ links: ['collection'], status: 'live' }), bookSpec()])
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toContain('이미 게재 중')
+    expect(nonSelect(db)).toEqual([])
+    expect(bookIds(db)).toEqual([BOOK_RES, OTHER_BOOK.id])
+  })
+
+  it('컬렉션은 취소 시점에 공개 시각이 지났는데 카드는 공개 전이면 카드만 지우고 컬렉션에서 막혀 부분 실패(500)다', async () => {
+    const { db, run } = cardSetup()
+    ;(db.tables.item_books[0] as Row).valid_from = PAST
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(500)
+    expect(failure.extra).toEqual({ cancelled: [ID.card] })
+    expect(db.tables.today_cards).toEqual([])
+    expect(bookIds(db)).toContain(BOOK_RES)
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+    expect(failure.slack).toMatchObject({ problems: [{ itemLabel: BOOK_LABEL, reason: '공개 시각이 지나 취소할 수 없어요' }] })
+  })
+
+  it('지우는 중 DB 오류는 500 고정 문장이다. DB 오류 원문·컬렉션 ID는 응답·기록·슬랙에 없고 서버 로그에만 있다', async () => {
+    const { db, run } = soloSetup()
+    db.failIf = (call) => call.table === 'item_books' && call.op === 'delete'
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(500)
+    expect(failure.error).toBe('취소하지 못했어요. 잠시 뒤 다시 눌러 주세요.')
+    for (const output of await outputsOf(db, failure)) {
+      expect(output).not.toContain(DB_SECRET)
+      expect(output).not.toContain(BOOK_RES)
+    }
+    expect(logged()).toContain(DB_SECRET)
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+  })
+
+  it('시험 묶음은 item_books를 읽지도 쓰지도 않고 항목만 「취소」로 둔다', async () => {
+    const { db, run } = setup([bookSpec({ createdResource: { sample: true } })], { bundle: { is_sample: true }, cards: [] })
+    const result = ok(await run(ID.poster))
+
+    expect(result.body.cancelled).toEqual([ID.poster])
+    expect(db.calls.filter((call) => call.table === 'item_books')).toEqual([])
+  })
+
+  it('미리 보기는 컬렉션과 그 컬렉션을 가리키는 카드를 쓰기 없이 돌려준다', async () => {
+    const { db, preview } = cardSetup()
+    expect(await preview(ID.poster)).toEqual({ ok: true, body: { ok: true, dryRun: true, cancelIds: [ID.card, ID.poster], blockers: [] } })
+    expect(nonSelect(db)).toEqual([])
+    expect(db.calls.some((call) => call.table === 'item_books')).toBe(false)
+  })
+})
+
 // ── 실패 ─────────────────────────────────────────────────────────────────────────────────────────
 
 describe('실패 경로 — 첫 실패에서 멈춘다(가정 4)', () => {
@@ -1206,7 +1434,9 @@ describe('미리 보기 { dryRun: true }(가정 5)', () => {
   })
 
   it('예약됨이 아니면 409, 묶음에 없는 항목은 404, 핸들러가 없으면 409다', async () => {
-    const { db, preview } = setup([cardSpec({ status: 'approved' }), { id: ID.poster, key: 'collection', kind: 'collection_launch', status: 'scheduled', createdResource: { item_book_id: uid(21) } }])
+    const { db, preview } = setup([cardSpec({ status: 'approved' }), { id: ID.poster, key: 'collection', kind: 'collection_launch', status: 'scheduled', createdResource: { item_book_id: uid(21) } }], {
+      handlers: { ...EXECUTE_HANDLERS, collection_launch: undefined },
+    })
     expect(await preview(ID.card)).toMatchObject({ ok: false, status: 409, error: '예약됨 항목만 취소할 수 있어요' })
     expect(await preview(uid(77))).toMatchObject({ ok: false, status: 404 })
     expect(await preview(ID.poster)).toMatchObject({ ok: false, status: 409, error: '아직 취소를 연결하지 않은 종류예요' })

@@ -15,16 +15,18 @@ const at = (offsetMs: number) => new Date(NOW.getTime() + offsetMs).toISOString(
 const run = (items: ReturnType<typeof makeItem>[], handlers = FULL_REGISTRY) => precheckBundle(items, { now: NOW, handlers })
 
 describe('핸들러 레지스트리', () => {
-  it('지금 레지스트리는 home_feed_card(티켓 20261002_1255)·mission(티켓 20261002_1944)·jam_badge(티켓 20261004_1756)·recipe(티켓 20261002_2221)·drop_schedule(티켓 20261002_2306) 다섯이다', () => {
-    expect(Object.keys(EXECUTE_HANDLERS)).toEqual(['home_feed_card', 'mission', 'jam_badge', 'recipe', 'drop_schedule'])
+  it('지금 레지스트리는 home_feed_card(티켓 20261002_1255)·mission(티켓 20261002_1944)·jam_badge(티켓 20261004_1756)·collection_launch(티켓 20261004_2039)·recipe(티켓 20261002_2221)·drop_schedule(티켓 20261002_2306) 여섯이다(예약 등록 대상 전부)', () => {
+    expect(Object.keys(EXECUTE_HANDLERS)).toEqual(['home_feed_card', 'mission', 'jam_badge', 'collection_launch', 'recipe', 'drop_schedule'])
+    expect(Object.keys(EXECUTE_HANDLERS).sort()).toEqual(Object.keys(RESOURCE_KEY_BY_KIND).sort())
     expect(EXECUTE_HANDLERS.jam_badge).toMatchObject({ kind: 'jam_badge', resourceKey: RESOURCE_KEY_BY_KIND.jam_badge, idFirst: true })
     expect(EXECUTE_HANDLERS.home_feed_card).toMatchObject({ kind: 'home_feed_card', resourceKey: RESOURCE_KEY_BY_KIND.home_feed_card, idFirst: true })
     expect(EXECUTE_HANDLERS.mission).toMatchObject({ kind: 'mission', resourceKey: RESOURCE_KEY_BY_KIND.mission, idFirst: true })
     expect(EXECUTE_HANDLERS.recipe).toMatchObject({ kind: 'recipe', resourceKey: RESOURCE_KEY_BY_KIND.recipe, idFirst: true })
     expect(EXECUTE_HANDLERS.drop_schedule).toMatchObject({ kind: 'drop_schedule', resourceKey: RESOURCE_KEY_BY_KIND.drop_schedule, idFirst: true })
+    expect(EXECUTE_HANDLERS.collection_launch).toMatchObject({ kind: 'collection_launch', resourceKey: RESOURCE_KEY_BY_KIND.collection_launch, idFirst: true })
   })
 
-  it('카드·미션·JAM! 배지·레시피·드랍은 예약할 수 있고 컬렉션 같은 나머지 종류는 여전히 「아직 연결하지 않은 종류」로 막힌다', () => {
+  it('예약 등록 대상 여섯 종류(카드·미션·JAM! 배지·컬렉션·레시피·드랍)는 모두 실제 레지스트리로 예약할 수 있다', () => {
     const result = precheckBundle(
       [
         makeItem({ key: 'card', kind: 'home_feed_card' }),
@@ -36,7 +38,14 @@ describe('핸들러 레지스트리', () => {
       ],
       { now: NOW }
     )
-    expect(result.ready).toEqual(['card', 'mission', 'recipe', 'drop', 'badge'])
+    expect(result.ready).toEqual(['card', 'mission', 'recipe', 'drop', 'badge', 'collection'])
+    expect(result.blocked).toEqual([])
+  })
+
+  it('핸들러가 없는 종류가 생기면 「아직 연결하지 않은 종류」로 막는다(분기는 가짜 레지스트리로 시험한다. 컬렉션 핸들러만 뺀 레지스트리)', () => {
+    const withoutCollection = fakeRegistry(['home_feed_card', 'mission', 'jam_badge', 'recipe', 'drop_schedule'])
+    const result = precheckBundle([makeItem({ key: 'card', kind: 'home_feed_card' }), makeItem({ key: 'collection', kind: 'collection_launch' })], { now: NOW, handlers: withoutCollection })
+    expect(result.ready).toEqual(['card'])
     expect(result.blocked).toEqual([{ id: 'collection', reasons: [PRECHECK_MESSAGES.noHandler] }])
   })
 
@@ -872,12 +881,23 @@ describe('그룹 결과 · 생성 순서와 linkedIds 계획', () => {
 
 describe('모듈 계약 — DB와 서버 전용 코드를 값으로 가져오지 않는다', () => {
   const dir = path.join(__dirname, '..')
-  // 실행 `run.ts`(티켓 20261002_1123)·공개 전 취소 `cancel.ts`(티켓 20261002_1256)·상태 맞추기 `reconcile.ts`(티켓 20261002_1813)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 아홉만 본다.
+  // 실행 `run.ts`(티켓 20261002_1123)·공개 전 취소 `cancel.ts`(티켓 20261002_1256)·상태 맞추기 `reconcile.ts`(티켓 20261002_1813)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 열만 본다.
   const SERVER_ONLY = ['run.ts', 'cancel.ts', 'reconcile.ts']
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.ts') && !SERVER_ONLY.includes(name))
 
-  it('순수 모듈 아홉 개가 있다', () => {
-    expect(files.sort()).toEqual(['dropSchedule.ts', 'groups.ts', 'handlers.ts', 'homeFeedCard.ts', 'jamBadge.ts', 'mission.ts', 'precheck.ts', 'recipe.ts', 'registry.ts'])
+  it('순수 모듈 열 개가 있다', () => {
+    expect(files.sort()).toEqual([
+      'collectionLaunch.ts',
+      'dropSchedule.ts',
+      'groups.ts',
+      'handlers.ts',
+      'homeFeedCard.ts',
+      'jamBadge.ts',
+      'mission.ts',
+      'precheck.ts',
+      'recipe.ts',
+      'registry.ts',
+    ])
   })
 
   it.each(files)('%s는 node: 모듈과 Supabase·서버 모듈의 값 import가 없다', (name) => {
