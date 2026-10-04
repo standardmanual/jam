@@ -1144,7 +1144,8 @@ describe('toJamBadgeRegisterInput (티켓 20261004_1756, PRD §8.4 JAM! 배지 �
   })
 
   it('항목 값이 비었으면 행 칸(starts_at·ends_at)으로 시각을 읽고, 수정본이 있으면 수정본을 먼저 읽는다', () => {
-    const { starts_at: _omit, ...withoutStart } = badgeOriginal()
+    const withoutStart = badgeOriginal()
+    delete withoutStart.starts_at
     const fromRow = toBadge(opsItem('jam_badge', withoutStart, { starts_at: '2026-10-06T00:00:00.000Z', ends_at: '2026-10-13T00:00:00.000Z' }))
     expect(fromRow.errors).toEqual([])
     expect(fromRow.payload).toMatchObject({ valid_from: '2026-10-06T00:00:00.000Z', valid_until: '2026-10-13T00:00:00.000Z' })
@@ -1165,7 +1166,8 @@ describe('toJamBadgeRegisterInput (티켓 20261004_1756, PRD §8.4 JAM! 배지 �
   })
 
   it('필수 칸이 없으면 칸마다 오류를 쌓고 payload가 없다(경로는 copy.name·copy.description·starts_at·resource.condition_json)', () => {
-    const { starts_at: _omit, ...withoutStart } = badgeOriginal({ copy: {}, resource: { rarity: 'common' } })
+    const withoutStart = badgeOriginal({ copy: {}, resource: { rarity: 'common' } })
+    delete withoutStart.starts_at
     const result = toBadge(opsItem('jam_badge', withoutStart))
     expect(result.payload).toBeNull()
     expect(paths(result.errors)).toEqual(['copy.name', 'copy.description', 'starts_at', 'resource.condition_json'])

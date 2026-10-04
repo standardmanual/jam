@@ -17,6 +17,8 @@
  *   연결된 카드가 실패하면 레시피도 되돌려진다, 원문 비노출
  * - 실제 레지스트리(⑧-b, 티켓 20261002_2306): 드랍이 `ambient_drop_schedules`의 `scheduled` 행으로 예약되고 `created_resource.ambient_drop_schedule_id`가 만들기 전에 적힌다,
  *   대상 문제·형식 오류는 그 드랍과 연결 그룹이 실패, 연결된 카드가 실패하면 드랍 예약도 되돌려진다, 원문 비노출. 예정 시각 기준 대상 판정(`loadScheduleTargets`)은 mock이다
+ * - 실제 레지스트리(⑨-a, 티켓 20261004_1756): JAM! 배지가 공개 전 `badges` 행으로 예약되고 `created_resource.badge_id`가 만들기 전에 적힌다, 미션 보상 칸·카드 배지 칸이 만든 ID로 채워진다,
+ *   배지 → 레시피 칸은 만든 레시피 ID로 덮인다, 배지가 실패하면 그룹이 되돌려지고 카드·미션이 실패하면 배지도 역순으로 되돌려진다, 사전 점검 두 규칙, 형식·등록 전 검사 실패, 원문 비노출
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -931,8 +933,8 @@ describe('실제 레지스트리: 홈피드 카드 핸들러 (티켓 20261002_12
     expect(order.indexOf('today_card_events:select')).toBeLessThan(order.lastIndexOf('today_cards:delete'))
   })
 
-  it('아직 연결하지 않은 종류(JAM! 배지 등)는 막힌다', async () => {
-    const { db, run } = setupReal([{ id: ID.solo, key: 'solo', kind: 'jam_badge' }])
+  it('아직 연결하지 않은 종류(컬렉션 등)는 막힌다', async () => {
+    const { db, run } = setupReal([{ id: ID.solo, key: 'solo', kind: 'collection_launch' }])
     const failure = bad(await run([ID.solo]))
     expect(failure.status).toBe(409)
     expect(failure.extra?.skipped).toEqual([{ id: ID.solo, reason: PRECHECK_MESSAGES.noHandler }])
@@ -1749,5 +1751,344 @@ describe('실제 레지스트리: 드랍 예약 핸들러 (티켓 20261002_2306)
       ])
     )
     expect(nonSelect(db)).toEqual([])
+  })
+})
+
+// ── 실제 레지스트리(JAM! 배지 핸들러, 티켓 20261004_1756) ────────────────────────────────────────
+
+describe('실제 레지스트리: JAM! 배지 핸들러 (티켓 20261004_1756)', () => {
+  const ITEM_BADGE = uid(30)
+  const ACTIVITY_BADGE = uid(31)
+  const OTHER_RECIPE = uid(32)
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+  const GROUP_FAILED = '연결된 항목을 만들지 못해 함께 실패했어요'
+  const SLOTS = [
+    { badge_type: 'item', allowed_badge_ids: [ITEM_BADGE] },
+    { badge_type: 'activity', allowed_badge_ids: [ACTIVITY_BADGE] },
+  ]
+
+  /** 검사를 통과하는 JAM! 배지(믹스 성공 1회, 등급형). 공개 시각은 행의 `LATER`(10/10 09:00 KST)다. */
+  const badge = (over: Partial<ItemSpec> = {}): ItemSpec => ({
+    id: ID.badge,
+    key: 'badge',
+    kind: 'jam_badge',
+    original: { copy: { name: '첫 믹스', description: '믹스에 처음 성공했어요.' } },
+    resource: { condition_json: { combine_success_count: 1 }, rarity: 'common', point_reward: 10 },
+    ...over,
+  })
+  /** 배지를 보상으로 가리키는 미션. `reward_badge_ids`는 연결로 채운다. */
+  const mission = (over: Partial<ItemSpec> = {}): ItemSpec => ({
+    id: ID.mission,
+    key: 'mission',
+    kind: 'mission',
+    links: ['badge'],
+    original: { copy: { title: '주말 러닝', description: '주말에 30km를 달려요.' } },
+    resource: { mission_type: 'distance', condition_json: { activity_type: 'running', distance_km: 30 } },
+    ...over,
+  })
+  /** 배지를 가리키는 카드. `badge_spotlight`는 `badge_ids`가 있어야 하고 연결로 채운다. */
+  const card = (over: Partial<ItemSpec> = {}): ItemSpec => ({
+    id: ID.card,
+    key: 'card',
+    kind: 'home_feed_card',
+    links: ['badge'],
+    original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '첫 믹스 배지 카드' } },
+    resource: { template_type: 'badge_spotlight' },
+    ...over,
+  })
+  /** 「가장 먼저 성공」 배지가 가리키는 레시피. 공개 시각은 행의 `LATER`다. */
+  const recipe = (over: Partial<ItemSpec> = {}): ItemSpec => ({
+    id: ID.recipe,
+    key: 'recipe',
+    kind: 'recipe',
+    original: { copy: { name: '가을 믹스' } },
+    resource: { slots: SLOTS, reward_points: 10 },
+    ...over,
+  })
+  /** 레시피 슬롯 후보 두 개가 있는 DB를 만든다. */
+  const setup = (specs: ItemSpec[], bundle: Row = {}) => {
+    const real = setupReal(specs, bundle)
+    real.db.tables.badges = [
+      { id: ITEM_BADGE, name: '아이템 배지', type: 'item', deleted_at: null, item_book_id: null },
+      { id: ACTIVITY_BADGE, name: '활동 배지', type: 'activity', deleted_at: null, item_book_id: null },
+    ]
+    return real
+  }
+  const created = (db: FakeDb) => db.tables.badges.filter((row) => row.name === '첫 믹스')
+  const inserted = (db: FakeDb, table: string) => db.calls.filter((call) => call.table === table && call.op === 'insert')
+  const order = (db: FakeDb) => db.calls.map((call) => `${call.table}:${call.op}`)
+
+  it('승인된 배지 하나를 실행하면 공개 전 badges 행이 생기고 created_resource.badge_id가 만들기 전에 적힌다', async () => {
+    const { db, run } = setup([badge()])
+    const result = ok(await run([ID.badge]))
+
+    expect(result.body.scheduled).toEqual([ID.badge])
+    expect(result.body.failed).toEqual([])
+    expect(created(db)).toHaveLength(1)
+    const row = created(db)[0]
+    const resource = db.item(ID.badge).created_resource as { badge_id: string }
+    expect(resource.badge_id).toMatch(UUID_PATTERN)
+    expect(row.id).toBe(resource.badge_id)
+    // 공개 시각 = 항목 공개 시각, 종은 activity·JAM!, 종목은 비운다
+    expect(row).toMatchObject({
+      name: '첫 믹스',
+      description: '믹스에 처음 성공했어요.',
+      type: 'activity',
+      admin_category: 'jam',
+      activity_types: [],
+      rarity: 'common',
+      point_reward: 10,
+      condition_json: { combine_success_count: 1 },
+      valid_from: '2026-10-10T00:00:00.000Z',
+      valid_until: null,
+      image_url: null,
+    })
+    expect(statusOf(db, ID.badge)).toBe('scheduled')
+    expect(db.decisions('execute').map((entry) => entry.item_id)).toEqual([ID.badge])
+    // 만들기 전에 created_resource를 먼저 적는다(정한 ID와 돌려준 ID가 같아 한 번만 적는다)
+    const names = order(db)
+    const written = db.itemWrites().filter((call) => call.op === 'update' && JSON.stringify(call.payload).includes('"badge_id"'))
+    expect(written).toHaveLength(1)
+    expect(db.calls.indexOf(written[0])).toBeLessThan(names.indexOf('badges:insert'))
+  })
+
+  it('종료 시각이 있으면 valid_until로 들어간다', async () => {
+    const { db, run } = setup([badge({ endsAt: '2026-10-17T00:00:00.000Z' })])
+    ok(await run([ID.badge]))
+    expect(created(db)[0]).toMatchObject({ valid_from: '2026-10-10T00:00:00.000Z', valid_until: '2026-10-17T00:00:00.000Z' })
+  })
+
+  it('미션 → 배지: 배지가 먼저 만들어지고 미션의 보상 배지 칸이 그 ID로 채워진다', async () => {
+    const { db, run } = setup([mission(), badge()])
+    const result = ok(await run([ID.mission, ID.badge]))
+
+    expect([...result.body.scheduled].sort()).toEqual([ID.mission, ID.badge].sort())
+    expect(result.body.failed).toEqual([])
+    const badgeRow = created(db)[0]
+    expect(db.tables.missions).toHaveLength(1)
+    expect(db.tables.missions[0].reward_badge_ids).toEqual([badgeRow.id])
+    expect(db.item(ID.mission).created_resource).toEqual({ mission_id: db.tables.missions[0].id })
+    expect(db.item(ID.badge).created_resource).toEqual({ badge_id: badgeRow.id })
+    expect(inserted(db, 'badges').length + inserted(db, 'missions').length).toBe(2)
+    expect(order(db).indexOf('badges:insert')).toBeLessThan(order(db).indexOf('missions:insert'))
+  })
+
+  it('카드 → 배지: 카드의 배지 칸(badge_ids)이 만든 배지 ID로 채워진다', async () => {
+    const { db, run } = setup([card(), badge()])
+    const result = ok(await run([ID.card, ID.badge]))
+
+    expect([...result.body.scheduled].sort()).toEqual([ID.card, ID.badge].sort())
+    expect(db.tables.today_cards).toHaveLength(1)
+    expect(db.tables.today_cards[0].badge_ids).toEqual([created(db)[0].id])
+    expect(order(db).indexOf('badges:insert')).toBeLessThan(order(db).indexOf('today_cards:insert'))
+  })
+
+  it('카드·미션·배지가 한 그룹이면 배지 → 미션 → 카드 순으로 만들고 두 칸 모두 같은 배지 ID로 채운다', async () => {
+    const { db, run } = setup([card(), mission(), badge()])
+    const result = ok(await run([ID.card, ID.mission, ID.badge]))
+
+    expect(result.body.scheduled).toHaveLength(3)
+    const badgeId = created(db)[0].id
+    expect(db.tables.missions[0].reward_badge_ids).toEqual([badgeId])
+    expect(db.tables.today_cards[0].badge_ids).toEqual([badgeId])
+    const inserts = db.calls.filter((call) => call.op === 'insert' && ['badges', 'missions', 'today_cards'].includes(call.table)).map((call) => call.table)
+    expect(inserts).toEqual(['badges', 'missions', 'today_cards'])
+  })
+
+  it('배지 → 레시피: 레시피가 먼저 만들어지고 배지의 「가장 먼저 성공」 칸이 항목에 적은 값 대신 만든 레시피 ID로 덮인다', async () => {
+    const { db, run } = setup([
+      badge({
+        links: ['recipe'],
+        resource: { condition_json: { recipe_first_success: { recipe_id: OTHER_RECIPE } }, rarity: 'common', point_reward: 10 },
+      }),
+      recipe(),
+    ])
+    const result = ok(await run([ID.badge, ID.recipe]))
+
+    expect([...result.body.scheduled].sort()).toEqual([ID.badge, ID.recipe].sort())
+    expect(result.body.failed).toEqual([])
+    expect(db.tables.combination_recipes).toHaveLength(1)
+    const recipeId = db.tables.combination_recipes[0].id
+    expect(created(db)[0].condition_json).toEqual({ recipe_first_success: { recipe_id: recipeId } })
+    expect(JSON.stringify(created(db)[0])).not.toContain(OTHER_RECIPE)
+    expect(db.item(ID.recipe).created_resource).toEqual({ recipe_id: recipeId })
+    expect(order(db).indexOf('combination_recipes:insert')).toBeLessThan(order(db).indexOf('badges:insert'))
+    // 연결로 채운 레시피는 아직 있지 않을 수 있어 DB의 레시피를 미리 읽어 견주지 않는다(배지 쪽 읽기)
+    expect(db.calls.filter((call) => call.table === 'combination_recipes' && call.op === 'select' && call.filters.some(([column]) => column === 'id'))).toEqual([])
+  })
+
+  it('항목에 recipe_first_success가 없어도 레시피를 연결하면 칸이 만들어진다', async () => {
+    const { db, run } = setup([badge({ links: ['recipe'], resource: { condition_json: { mission_reward: true }, rarity: 'common' } }), recipe()])
+    ok(await run([ID.badge, ID.recipe]))
+    expect(created(db)[0].condition_json).toEqual({ mission_reward: true, recipe_first_success: { recipe_id: db.tables.combination_recipes[0].id } })
+  })
+
+  it('레시피를 연결한 배지에 다른 사용량 지표가 이미 있으면(지표 둘) 형식 오류로 실패하고 레시피도 만들지 않는다', async () => {
+    const { db, run } = setup([badge({ links: ['recipe'] }), recipe()]) // 기본 조건이 믹스 성공 횟수라 「가장 먼저 성공」과 겹친다
+    const result = ok(await run([ID.badge, ID.recipe]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed.find((entry) => entry.id === ID.badge)?.reason).toContain('서비스 사용량 지표는 한 배지에 하나만 쓸 수 있습니다')
+    expect(db.tables.combination_recipes).toEqual([])
+    expect(created(db)).toEqual([])
+  })
+
+  it('배지 insert가 실패하면 그룹 전체가 실패하고 먼저 만든 레시피도 되돌려진다. 배지 사유가 원인이다', async () => {
+    const { db, run } = setup([badge({ links: ['recipe'], resource: { condition_json: { recipe_first_success: { recipe_id: OTHER_RECIPE } }, rarity: 'common' } }), recipe()])
+    db.failIf = (call) => call.table === 'badges' && call.op === 'insert'
+    const result = ok(await run([ID.badge, ID.recipe]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed.find((entry) => entry.id === ID.badge)?.reason).toBe('배지를 만들지 못했어요')
+    expect(result.body.failed.find((entry) => entry.id === ID.recipe)?.reason).toBe(GROUP_FAILED)
+    expect(db.tables.combination_recipes).toEqual([])
+    expect(db.tables.combination_recipe_slots).toEqual([])
+    expect(created(db)).toEqual([])
+    expect(statusOf(db, ID.badge)).toBe('failed')
+    expect(statusOf(db, ID.recipe)).toBe('failed')
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(DB_SECRET)
+    expect(logged()).toContain(DB_SECRET)
+  })
+
+  it('카드 insert가 실패하면 먼저 만든 배지·미션이 역순(미션 먼저)으로 되돌려진다', async () => {
+    const { db, run } = setup([card(), mission(), badge()])
+    db.failIf = (call) => call.table === 'today_cards' && call.op === 'insert'
+    const result = ok(await run([ID.card, ID.mission, ID.badge]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed.find((entry) => entry.id === ID.card)?.reason).toBe('카드를 만들지 못했어요')
+    expect(result.body.failed.filter((entry) => entry.reason === GROUP_FAILED)).toHaveLength(2)
+    expect(created(db)).toEqual([])
+    expect(db.tables.missions).toEqual([])
+    expect(db.tables.today_cards).toEqual([])
+    // 미션이 배지를 가리키는 동안은 배지가 지워지지 않으므로 미션을 먼저 지운다
+    expect(order(db).lastIndexOf('missions:delete')).toBeLessThan(order(db).lastIndexOf('badges:delete'))
+  })
+
+  it('예약됨으로 옮기지 못하면 만든 배지를 참조 확인 뒤 지운다', async () => {
+    const { db, run } = setup([badge()])
+    db.failIf = (call) => call.table === 'ops_bundle_items' && call.op === 'update' && (call.payload as Row).status === 'scheduled'
+    const result = ok(await run([ID.badge]))
+
+    expect(result.body.failed).toEqual([{ id: ID.badge, reason: '예약 등록을 마무리하지 못했어요' }])
+    expect(created(db)).toEqual([])
+    const names = order(db)
+    expect(names.indexOf('user_activity_badges:select')).toBeLessThan(names.lastIndexOf('badges:delete'))
+  })
+
+  it('이미 예약된 배지를 가리키는 미션은 그 배지의 ID를 created_resource에서 읽어 채운다. 배지는 건드리지 않는다', async () => {
+    const existing = uid(40)
+    const { db, run } = setup([mission(), badge({ status: 'scheduled', createdResource: { badge_id: existing } })])
+    const result = ok(await run([ID.mission]))
+
+    expect(result.body.scheduled).toEqual([ID.mission])
+    expect(db.tables.missions[0].reward_badge_ids).toEqual([existing])
+    expect(inserted(db, 'badges')).toEqual([])
+  })
+
+  it('미션·카드가 연결된 배지보다 먼저 공개되면 실행되지 않는다: 미션은 못 하는 항목, 배지는 연결된 항목을 예약할 수 없다', async () => {
+    const { db, run } = setup([mission({ startsAt: '2026-10-09T00:00:00.000Z' }), badge()])
+    const failure = bad(await run([ID.mission, ID.badge]))
+
+    expect(failure.status).toBe(409)
+    expect(failure.extra?.skipped).toEqual([
+      { id: ID.mission, reason: PRECHECK_MESSAGES.beforeLinkedBadge },
+      { id: ID.badge, reason: PRECHECK_MESSAGES.groupBlocked },
+    ])
+    expect(nonSelect(db)).toEqual([])
+    expect(created(db)).toEqual([])
+  })
+
+  it('「가장 먼저 성공」 배지와 레시피의 공개 시각이 다르면 실행되지 않는다', async () => {
+    const { db, run } = setup([badge({ links: ['recipe'], startsAt: '2026-10-11T00:00:00.000Z' }), recipe()])
+    const failure = bad(await run([ID.badge, ID.recipe]))
+
+    expect(failure.status).toBe(409)
+    expect(failure.extra?.skipped).toEqual([
+      { id: ID.badge, reason: PRECHECK_MESSAGES.firstSuccessStartsDiffer },
+      { id: ID.recipe, reason: PRECHECK_MESSAGES.groupBlocked },
+    ])
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it('발급 조건이 없는 배지는 형식 오류로 실패한다. 만든 것은 없다', async () => {
+    const { db, run } = setup([badge({ resource: { condition_json: { distance_km: 10 }, rarity: 'common' } })])
+    const result = ok(await run([ID.badge]))
+
+    expect(result.body.scheduled).toEqual([])
+    expect(result.body.failed).toHaveLength(1)
+    expect(result.body.failed[0].reason).toMatch(/^배지 형식이 맞지 않아요: badge\.condition_json: 발급 조건이 없는 배지예요\./)
+    expect(created(db)).toEqual([])
+  })
+
+  it('희귀도와 레벨을 함께 적으면 형식 오류로 실패한다', async () => {
+    const { db, run } = setup([badge({ resource: { condition_json: { combine_success_count: 1 }, rarity: 'common', level: 1 } })])
+    const result = ok(await run([ID.badge]))
+
+    expect(result.body.failed[0].reason).toMatch(/^배지 형식이 맞지 않아요: badge\.rarity: 등급형과 레벨형은 함께 지정할 수 없습니다\./)
+    expect(created(db)).toEqual([])
+  })
+
+  it('같은 이름의 기존 배지가 있으면 고정 사유로 실패한다. 기존 배지 ID는 응답·기록·슬랙에 없다', async () => {
+    const { db, run } = setup([badge()])
+    const EXISTING = uid(41)
+    db.tables.badges.push({ id: EXISTING, name: '첫 믹스', type: 'activity', deleted_at: null })
+    const result = ok(await run([ID.badge]))
+
+    expect(result.body.failed).toEqual([{ id: ID.badge, reason: '같은 이름의 배지가 이미 있어요' }])
+    expect(created(db)).toHaveLength(1) // 기존 배지 하나뿐이다
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(EXISTING)
+    expect(logged()).toContain(EXISTING)
+  })
+
+  it('연결 없이 직접 적은 레시피는 DB의 레시피와 공개 시각이 같아야 한다', async () => {
+    const direct = (recipeFrom: string) => {
+      const real = setup([badge({ resource: { condition_json: { recipe_first_success: { recipe_id: OTHER_RECIPE } }, rarity: 'common' } })])
+      real.db.tables.combination_recipes = [{ id: OTHER_RECIPE, valid_from: recipeFrom }]
+      return real
+    }
+    const same = direct('2026-10-10T00:00:00.000Z')
+    expect(ok(await same.run([ID.badge])).body.scheduled).toEqual([ID.badge])
+
+    const differs = direct('2026-10-11T00:00:00.000Z')
+    const result = ok(await differs.run([ID.badge]))
+    expect(result.body.failed).toEqual([{ id: ID.badge, reason: '가장 먼저 성공 배지는 레시피와 같은 시각에 공개돼야 해요' }])
+    expect(created(differs.db)).toEqual([])
+    for (const output of await outputsOf(differs.db, result)) expect(output).not.toContain(OTHER_RECIPE)
+  })
+
+  it('등록 전 검사에서 DB를 읽지 못하면 고정 사유로 실패하고 DB 오류 원문은 로그에만 남는다', async () => {
+    const { db, run } = setup([badge()])
+    db.failIf = (call) => call.table === 'badges' && call.op === 'select'
+    const result = ok(await run([ID.badge]))
+
+    expect(result.body.failed).toEqual([{ id: ID.badge, reason: '등록 전 확인 중 DB를 읽지 못했어요' }])
+    for (const output of await outputsOf(db, result)) expect(output).not.toContain(DB_SECRET)
+    expect(logged()).toContain(DB_SECRET)
+  })
+
+  it('시험 묶음은 검사까지 하고 badges에 쓰지 않는다. created_resource는 { sample: true }다', async () => {
+    const { db, run } = setup([mission(), badge()], { is_sample: true })
+    const result = ok(await run([ID.mission, ID.badge]))
+
+    expect([...result.body.scheduled].sort()).toEqual([ID.mission, ID.badge].sort())
+    expect(created(db)).toEqual([])
+    expect(inserted(db, 'badges')).toEqual([])
+    expect(db.calls.some((call) => call.table === 'badges' && call.op === 'select')).toBe(true) // 이름 중복 검사를 했다
+    expect(db.item(ID.badge).created_resource).toEqual({ sample: true })
+  })
+
+  it('실패 응답·결정 기록·슬랙에는 DB 오류 원문과 배지 ID가 없다', async () => {
+    const { db, run } = setup([badge()])
+    db.failIf = (call) => call.table === 'badges' && call.op === 'insert'
+    const result = ok(await run([ID.badge]))
+
+    expect(result.body.failed).toEqual([{ id: ID.badge, reason: '배지를 만들지 못했어요' }])
+    const plannedId = (db.item(ID.badge).created_resource as { badge_id: string }).badge_id
+    for (const output of await outputsOf(db, result)) {
+      expect(output).not.toContain(DB_SECRET)
+      expect(output).not.toContain(plannedId)
+    }
+    expect(logged()).toContain(DB_SECRET)
   })
 })

@@ -9,6 +9,8 @@
  * - 레시피(⑧-a, 티켓 20261002_2221): 실제 레시피 핸들러의 공개·종료(종료 시각 그 순간부터)·밖에서 지워짐·시각 차이 external_change, 멈춘 준비중 레시피 undo
  * - 드랍 예약(⑧-b, 티켓 20261002_2306): 실제 드랍 핸들러의 놓음 → 기록 없이 종료, 놓침·건너뜀·실패 → fail과 사유, 밖에서 취소·지워짐 → cancel, 실행 중·멈춤은 그대로,
  *   예정 시각 차이 external_change, 멈춘 준비중 드랍 예약 undo
+ * - JAM! 배지(⑨-a, 티켓 20261004_1756): 실제 배지 핸들러의 공개·종료(양 끝 포함)·밖에서 지워짐·소프트 삭제·시각 차이 external_change, 멈춘 준비중 배지 undo(참조 확인),
+ *   카드·미션·배지가 함께 멈추면 카드 → 미션 → 배지 순으로 지운다
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -29,13 +31,14 @@ import { LATER, NOW, fakeHandler, makeItem, type ItemSpec } from './fixtures'
 const SB_ID = '5db8e2be-54c3-42b2-8ee5-04cd84714fff'
 const B = '4ca7d1ad-43b2-41a3-9ed4-f03bc73604ee'
 const uid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-const ID = { card: uid(1), card2: uid(2), card3: uid(3), mission: uid(4), drop: uid(5), recipe: uid(6) }
+const ID = { card: uid(1), card2: uid(2), card3: uid(3), mission: uid(4), drop: uid(5), recipe: uid(6), badge: uid(7) }
 const CARD_RES = uid(11)
 const CARD_RES2 = uid(12)
 const CARD_RES3 = uid(13)
 const MISSION_RES = uid(14)
 const RECIPE_RES = uid(15)
 const DROP_RES = uid(16)
+const BADGE_RES = uid(17)
 
 /** NOW(10/5 12:00 KST = 03:00Z)보다 앞인 공개 시각(10/5 09:00 KST)과, 그날의 끝(23:59:59.999 KST)인 종료 시각. */
 const STARTS = '2026-10-05T00:00:00.000Z'
@@ -120,6 +123,21 @@ const dropRow = (extra: Row = {}): Row => ({
   ...extra,
 })
 const DROP_LABEL = '드랍 일정 · 10/5(월) 09:00'
+
+/** 상시 JAM! 배지 항목(종료 시각 없음). 공개 시각은 `STARTS`다. */
+const badgeItem = (extra: SpecInBundle = {}): SpecInBundle => ({
+  id: ID.badge,
+  key: 'badge',
+  kind: 'jam_badge',
+  status: 'scheduled',
+  startsAt: STARTS,
+  endsAt: null,
+  createdResource: { badge_id: BADGE_RES },
+  ...extra,
+})
+
+const badgeRow = (extra: Row = {}): Row => ({ id: BADGE_RES, valid_from: STARTS, valid_until: null, deleted_at: null, ...extra })
+const BADGE_LABEL = 'JAM! 배지 · 10/5(월) 09:00'
 
 // ── 판정(순수) ───────────────────────────────────────────────────────────────────────────────────
 
@@ -368,6 +386,7 @@ interface SetupOptions {
   missions?: Row[]
   recipes?: Row[]
   drops?: Row[]
+  badges?: Row[]
   decisions?: Row[]
   handlers?: ExecuteHandlerRegistry
 }
@@ -383,6 +402,7 @@ function setup(specs: SpecInBundle[], options: SetupOptions = {}) {
   db.tables.missions = options.missions ?? []
   db.tables.combination_recipes = options.recipes ?? []
   db.tables.ambient_drop_schedules = options.drops ?? []
+  db.tables.badges = options.badges ?? []
   db.tables.ops_decisions = options.decisions ?? []
   const handlers = options.handlers ?? EXECUTE_HANDLERS
   const run = () => reconcileOpsItems(db.service, { handlers, now: () => NOW })
@@ -1185,6 +1205,187 @@ describe('실행 — 드랍 예약의 상태 전이 (티켓 20261002_2306, 실�
       expect(result.failed[0].resourceId).toBe(DROP_RES)
       expect(JSON.stringify([result, db.decisions()])).not.toContain(DB_SECRET)
     })
+  })
+})
+
+describe('실행 — JAM! 배지의 상태 전이 (티켓 20261004_1756, 실제 배지 핸들러)', () => {
+  const badgeWrites = (db: FakeDb) => db.calls.filter((call) => call.table === 'badges' && call.op !== 'select')
+
+  it('예약됨 배지가 공개 중이면 게재중으로 옮기고 결정 기록은 없다. badges 표에는 쓰지 않는다', async () => {
+    const { db, run } = setup([badgeItem()], { badges: [badgeRow()] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.badge)).toBe('live')
+    expect(db.decisions()).toEqual([])
+    expect(result.published[0]).toMatchObject({ itemId: ID.badge, itemLabel: BADGE_LABEL, isSample: false, action: null, reason: null })
+    expect(countsOf(result)).toEqual([1, 0, 0, 0, 0, 0])
+    expect(badgeWrites(db)).toEqual([])
+  })
+
+  it('공개 시각 전이면 아무것도 바꾸지 않는다', async () => {
+    const { db, run } = setup([badgeItem({ startsAt: LATER })], { badges: [badgeRow({ valid_from: LATER })] })
+    const result = ok(await run())
+
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  it('공개 시각이 정확히 지금이면 게재중이다(양 끝 포함)', async () => {
+    const { db, run } = setup([badgeItem({ startsAt: NOW.toISOString() })], { badges: [badgeRow({ valid_from: NOW.toISOString() })] })
+    ok(await run())
+
+    expect(statusOf(db, ID.badge)).toBe('live')
+  })
+
+  it('상시 배지(종료 시각 없음)는 종료되지 않고 밖에서 바뀐 것도 아니다', async () => {
+    const { db, run } = setup([badgeItem({ status: 'live' })], { badges: [badgeRow()] })
+    const result = ok(await run())
+
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+    expect(statusOf(db, ID.badge)).toBe('live')
+    expect(db.decisions()).toEqual([])
+  })
+
+  it('게재중 배지의 종료 시각이 지났으면 종료한다. 결정 기록은 없다', async () => {
+    const { db, run } = setup([badgeItem({ status: 'live', endsAt: at(-1) })], { badges: [badgeRow({ valid_until: at(-1) })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.badge)).toBe('ended')
+    expect(db.decisions()).toEqual([])
+    expect(result.ended[0]).toMatchObject({ itemId: ID.badge, action: null })
+  })
+
+  it('종료 시각이 정확히 지금이면 아직 게재중이다(양 끝 포함: 발급 엔진과 같다)', async () => {
+    const { db, run } = setup([badgeItem({ status: 'live', endsAt: NOW.toISOString() })], { badges: [badgeRow({ valid_until: NOW.toISOString() })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.badge)).toBe('live')
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+  })
+
+  it('예약됨인데 공개·종료 시각이 모두 지난 늦은 회차는 게재중을 거치지 않고 곧바로 종료한다. 결정 기록은 없다', async () => {
+    const { db, run } = setup([badgeItem({ endsAt: at(-1) })], { badges: [badgeRow({ valid_until: at(-1) })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.badge)).toBe('ended')
+    expect(db.decisions()).toEqual([])
+    expect(countsOf(result)).toEqual([0, 1, 0, 0, 0, 0])
+  })
+
+  it('예약됨 배지가 밖에서 지워졌으면 취소하고 cancel을, 게재중 배지면 종료하고 end를 남긴다', async () => {
+    const scheduled = setup([badgeItem()])
+    const cancelled = ok(await scheduled.run())
+    expect(statusOf(scheduled.db, ID.badge)).toBe('cancelled')
+    expect(scheduled.db.decisions()[0]).toMatchObject({ item_id: ID.badge, action: 'cancel', actor: ACTOR, reason: OUTSIDE, batch_id: cancelled.batchId })
+
+    const live = setup([badgeItem({ status: 'live' })])
+    ok(await live.run())
+    expect(statusOf(live.db, ID.badge)).toBe('ended')
+    expect(live.db.decisions()[0]).toMatchObject({ item_id: ID.badge, action: 'end', reason: OUTSIDE })
+  })
+
+  it('소프트 삭제된 배지도 밖에서 지워진 것으로 본다(예약됨 → 취소, 게재중 → 종료)', async () => {
+    const deleted = { deleted_at: '2026-10-05T01:00:00.000Z' }
+    const scheduled = setup([badgeItem()], { badges: [badgeRow(deleted)] })
+    ok(await scheduled.run())
+    expect(statusOf(scheduled.db, ID.badge)).toBe('cancelled')
+    expect(scheduled.db.decisions()[0]).toMatchObject({ action: 'cancel', reason: OUTSIDE })
+
+    const live = setup([badgeItem({ status: 'live' })], { badges: [badgeRow(deleted)] })
+    ok(await live.run())
+    expect(statusOf(live.db, ID.badge)).toBe('ended')
+    expect(live.db.decisions()[0]).toMatchObject({ action: 'end', reason: OUTSIDE })
+  })
+
+  it('밖에서 공개 시각이 바뀌면 상태는 그대로 두고 시각 차이를 external_change로 한 번만 기록한다', async () => {
+    const { db, run } = setup([badgeItem()], { badges: [badgeRow({ valid_from: LATER })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.badge)).toBe('scheduled')
+    expect(db.decisions()[0]).toMatchObject({ item_id: ID.badge, action: 'external_change', actor: ACTOR, diff: { starts_at: { item: STARTS, resource: LATER } } })
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 1, 0])
+    ok(await run())
+    expect(db.decisions()).toHaveLength(1)
+  })
+
+  it('밖에서 종료 시각이 정해지면 상태는 그대로 두고 ends_at 차이를 기록한다(항목은 상시)', async () => {
+    const { db, run } = setup([badgeItem({ status: 'live' })], { badges: [badgeRow({ valid_until: FUTURE_ENDS })] })
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.badge)).toBe('live')
+    expect(db.decisions()[0]).toMatchObject({ action: 'external_change', diff: { ends_at: { item: null, resource: FUTURE_ENDS } } })
+    expect(countsOf(result)).toEqual([0, 0, 0, 0, 1, 0])
+  })
+
+  it.each([
+    ['공개 시각이 비었다', { valid_from: null }],
+    ['종료 시각을 읽을 수 없다', { valid_until: 'not-a-date' }],
+  ])('%s: 그 항목만 건너뛰고 상태를 바꾸지 않는다', async (_label, row) => {
+    const { db, run } = setup([badgeItem()], { badges: [badgeRow(row)] })
+    const result = ok(await run())
+
+    expect(result.errors).toBe(1)
+    expect(statusOf(db, ID.badge)).toBe('scheduled')
+    expect(nonSelect(db)).toEqual([])
+  })
+
+  describe('멈춘 준비중 배지', () => {
+    const stuck = (extra: SpecInBundle = {}): SpecInBundle => ({ status: 'preparing', updatedAt: at(-11 * MINUTE), ...extra })
+
+    it('핸들러 undo가 참조를 확인한 뒤 지우고 실패(fail)로 닫는다', async () => {
+      const { db, run } = setup([badgeItem(stuck())], { badges: [badgeRow({ valid_from: LATER }), badgeRow({ id: uid(98) })] })
+      const result = ok(await run())
+
+      expect(statusOf(db, ID.badge)).toBe('failed')
+      expect((db.tables.badges as Row[]).map((row) => row.id)).toEqual([uid(98)])
+      expect(db.decisions('fail')[0]).toMatchObject({ item_id: ID.badge, reason: STALLED })
+      expect(result.failed[0]).toMatchObject({ itemId: ID.badge, reason: STALLED, resourceId: null })
+      const order = db.calls.map((call) => `${call.table}:${call.op}`)
+      expect(order.indexOf('user_activity_badges:select')).toBeLessThan(order.lastIndexOf('badges:delete'))
+    })
+
+    it('획득 기록이 붙어 지우지 못하면 자원은 남기고 사유에 「만든 자원이 남아 있어요」를 덧붙인다. 테이블 이름은 응답·기록에 없다', async () => {
+      const { db, run } = setup([badgeItem(stuck())], { badges: [badgeRow({ valid_from: LATER })] })
+      db.tables.user_activity_badges = [{ id: 'u-1', badge_id: BADGE_RES }]
+      const result = ok(await run())
+
+      expect(statusOf(db, ID.badge)).toBe('failed')
+      expect(db.tables.badges).toHaveLength(1)
+      expect(result.failed[0]).toMatchObject({ reason: `${STALLED}. ${REMAINS}`, resourceId: BADGE_RES })
+      expect(JSON.stringify([result, db.decisions()])).not.toContain('user_activity_badges')
+      expect(logged()).toContain('user_activity_badges')
+    })
+
+    it('카드·미션·배지가 함께 멈추면 카드 → 미션 → 배지 순으로 지운다(배지를 먼저 지우려면 가리키는 쪽이 남아 참조에 걸린다)', async () => {
+      // 제출 순서는 배지가 앞이다(생성 순서의 정반대로 지워야 한다).
+      const { db, run } = setup([
+        badgeItem(stuck({ position: 1 })),
+        missionItem(stuck({ position: 2, links: ['badge'] })),
+        cardItem(stuck({ position: 3, links: ['badge'] })),
+      ])
+      db.tables.badges = [badgeRow({ valid_from: LATER }), badgeRow({ id: uid(98) })]
+      db.tables.missions = [missionRow({ starts_at: LATER, reward_badge_ids: [BADGE_RES] })]
+      db.tables.today_cards = [cardRow({ starts_at: LATER, ends_at: FUTURE_ENDS, badge_ids: [BADGE_RES] })]
+      const result = ok(await run())
+
+      expect(idsOf(result.failed)).toEqual([ID.card, ID.mission, ID.badge])
+      expect(db.tables.today_cards).toEqual([])
+      expect(db.tables.missions).toEqual([])
+      expect((db.tables.badges as Row[]).map((row) => row.id)).toEqual([uid(98)])
+      const order = db.calls.map((call) => `${call.table}:${call.op}`)
+      expect(order.indexOf('today_cards:delete')).toBeLessThan(order.indexOf('missions:delete'))
+      expect(order.indexOf('missions:delete')).toBeLessThan(order.indexOf('badges:delete'))
+      for (const failed of result.failed) expect(failed.reason).toBe(STALLED)
+    })
+  })
+
+  it('시험 묶음의 배지는 badges를 읽지 않고 항목의 시각만 본다', async () => {
+    const { db, run } = setup([badgeItem({ sample: true, createdResource: { sample: true } })])
+    const result = ok(await run())
+
+    expect(statusOf(db, ID.badge)).toBe('live')
+    expect(countsOf(result)).toEqual([1, 0, 0, 0, 0, 0])
+    expect(db.calls.some((call) => call.table === 'badges')).toBe(false)
   })
 })
 

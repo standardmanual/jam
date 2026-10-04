@@ -57,7 +57,7 @@ function serverReaches(entry: string): string[] {
   return hits
 }
 
-/** 순수 파일로 옮긴 것들(티켓 20261004_1756). 핸들러 파일은 이어서 더한다. */
+/** 순수 파일로 옮긴 것들과, 그것을 가져오는 JAM! 배지 핸들러·변환·레지스트리·사전 점검(티켓 20261004_1756). */
 const PURE_ENTRIES = [
   'lib/badge-engine/jamActionKeys.ts',
   'lib/admin/familyKey.ts',
@@ -66,6 +66,10 @@ const PURE_ENTRIES = [
   'lib/admin/badge-condition-guards.ts',
   'lib/admin/registerChecks/badge.ts',
   'lib/admin/registerChecks/references.ts',
+  'lib/admin/opsInbox/registerInput.ts',
+  'lib/admin/opsInbox/execute/jamBadge.ts',
+  'lib/admin/opsInbox/execute/registry.ts',
+  'lib/admin/opsInbox/execute/precheck.ts',
 ]
 
 describe('순수 모듈 경계 — 값 import를 끝까지 따라가도 서버 전용 모듈에 닿지 않는다', () => {

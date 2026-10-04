@@ -9,6 +9,8 @@
  * 드랍 예약 핸들러(티켓 20261002_2306)가 쓰는 `ambient_drop_schedules`(넣을 때 `status`를 DB 기본값 `scheduled`로 채운다)·`poi_categories`도 기본 테이블에 있다. 예약 대상 판정(`loadScheduleTargets`)은 `or`·`not`·`range` 같은 질의를 써서
  * 이 가짜 DB가 받지 않으므로, 통합 테스트는 그 함수를 mock으로 바꾼다(드랍 저장소의 가짜 DB `ambient-drop/__tests__/schedule-test-db.ts`는 실제 판정을 돌린다).
  * `in`은 PostgREST JSON 경로 칸(`condition_json->recipe_first_success->>recipe_id`)도 읽는다(레시피 참조 확인이 쓴다).
+ * JAM! 배지 핸들러(티켓 20261004_1756)가 쓰는 배지 참조 표(`user_activity_badges`·`inventory_items`·`poi_drops`·`user_checkin_badge_earns`·`user_item_book_slots`)가 기본 테이블에 있고,
+ * 배열 칸에 값이 들어 있는지 보는 `contains(col, [값])`(배지 참조 확인의 `missions.reward_badge_ids`·`today_cards.badge_ids` 등)도 받는다.
  */
 import type { ExecuteServiceClient } from '../handlers'
 
@@ -105,6 +107,12 @@ class FakeQuery implements PromiseLike<Result> {
       },
     ])
     this.log.push([`${col} >`, val])
+    return this
+  }
+  /** `contains(col, [값…])`: 배열 칸이 모든 값을 들고 있는 행. 칸이 배열이 아니면 걸리지 않는다. */
+  contains(col: string, vals: unknown[]) {
+    this.filters.push([col, (row) => Array.isArray(row[col]) && vals.every((value) => (row[col] as unknown[]).includes(value))])
+    this.log.push([`${col} @>`, vals])
     return this
   }
   /** `is(col, null)`: 칸이 비었거나 없는 행. */
@@ -211,6 +219,12 @@ export class FakeDb {
     // 드랍 예약 핸들러(티켓 20261002_2306): 예약 행과 지점 종류 확인.
     ambient_drop_schedules: [],
     poi_categories: [],
+    // JAM! 배지 핸들러(티켓 20261004_1756): 되돌림·취소 전 배지 참조 확인(`BADGE_UNDO_REFERENCE_TABLES`)이 읽는 표. 나머지(`poi`·`item_books`·`missions`·`point_transactions` 등)는 위에 있다.
+    user_activity_badges: [],
+    inventory_items: [],
+    poi_drops: [],
+    user_checkin_badge_earns: [],
+    user_item_book_slots: [],
   }
   calls: FakeCall[] = []
   seq = 0
