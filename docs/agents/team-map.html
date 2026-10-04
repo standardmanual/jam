@@ -233,7 +233,7 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
     <dt>도구</dt><dd><span class="chip ">Read</span> <span class="chip ">Grep</span> <span class="chip ">Glob</span> <span class="chip ">Bash</span></dd>
     <dt>쓰기</dt><dd><span class="chip ">없음</span></dd>
     <dt>관여</dt><dd>항상 · 배포 시 병렬 호출</dd>
-    
+    <dt>실행 위치</dt><dd><span class="chip dashed">격리 워크트리</span></dd>
     <dt>스킬</dt><dd><code>/jam-ship</code> <code>/jam-work</code></dd>
   </dl>
   <footer><code>.claude/agents/jam-reviewer.md</code></footer>
@@ -251,7 +251,7 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
     <dt>도구</dt><dd><span class="chip ">Read</span> <span class="chip ">Grep</span> <span class="chip ">Glob</span> <span class="chip ">Bash</span></dd>
     <dt>쓰기</dt><dd><span class="chip ">없음</span></dd>
     <dt>관여</dt><dd>UI·DS 작업 시</dd>
-    
+    <dt>실행 위치</dt><dd><span class="chip dashed">격리 워크트리</span></dd>
     <dt>스킬</dt><dd><code>/jam-design</code> <code>/jam-work</code></dd>
   </dl>
   <footer><code>.claude/agents/jam-designer.md</code></footer>
@@ -384,7 +384,7 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
   <a href="#agent-jam-reviewer">
     <rect x="-72" y="-36" width="144" height="72" rx="20"/>
     <text class="nname" y="-13">민지</text>
-    <text class="nsub" y="5">jam-reviewer</text>
+    <text class="nsub" y="5">jam-reviewer · 격리</text>
     <text class="nrole" y="23">게이트 리뷰 · 배포 전 점검</text>
   </a>
 </g>
@@ -393,7 +393,7 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
   <a href="#agent-jam-designer">
     <rect x="-72" y="-36" width="144" height="72" rx="20"/>
     <text class="nname" y="-13">채원</text>
-    <text class="nsub" y="5">jam-designer</text>
+    <text class="nsub" y="5">jam-designer · 격리</text>
     <text class="nrole" y="23">디자인</text>
   </a>
 </g>
@@ -465,14 +465,14 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
   <div class="who"><a href="#agent-jam-developer">아현</a></div>
   <code class="lbl">jam-developer</code>
   <div class="notes"><span>isolation: worktree</span></div>
-</div></div><div class="arrow" aria-hidden="true">→</div><div class="phase"><p class="ptitle">게이트 리뷰</p><div class="step ">
+</div></div><div class="arrow" aria-hidden="true">→</div><div class="phase"><p class="ptitle">게이트 리뷰</p><div class="step isolated">
   <div class="who"><a href="#agent-jam-reviewer">민지</a></div>
   <code class="lbl">jam-reviewer</code>
-  <div class="notes"><span>병렬</span></div>
-</div></div><div class="arrow" aria-hidden="true">→</div><div class="phase"><p class="ptitle">채원 사후 리뷰</p><div class="step ">
+  <div class="notes"><span>isolation: worktree</span><span>병렬</span></div>
+</div></div><div class="arrow" aria-hidden="true">→</div><div class="phase"><p class="ptitle">채원 사후 리뷰</p><div class="step isolated">
   <div class="who"><a href="#agent-jam-designer">채원</a></div>
   <code class="lbl">jam-designer-post</code>
-  <div class="notes"><span>ui·ds 유형만</span><span>diff 15줄 미만이면 생략</span><span>기본 외 모델: haiku-4-5</span><span>병렬</span></div>
+  <div class="notes"><span>ui·ds 유형만</span><span>diff 15줄 미만이면 생략</span><span>isolation: worktree</span><span>기본 외 모델: haiku-4-5</span><span>병렬</span></div>
 </div></div><div class="arrow" aria-hidden="true">→</div><div class="phase after"><p class="ptitle">승인 · 머지</p>
 <div class="step"><div class="who"><a href="#agent-orchestrator">카리나</a></div><div class="notes"><span>결과 해석 · 승인 요청</span></div></div>
 <div class="step"><div class="who">사용자</div><div class="notes"><span>머지 승인</span></div></div>
@@ -493,12 +493,12 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
 <div class="wt">
   <div class="lane main">
     <p class="lt">메인 작업 폴더 <code>JAM!/</code> — <code>staging</code> 체크아웃</p>
-    <div class="box">카리나(메인 세션) · 읽기만 하는 에이전트: 민지·채원·혜린·윈터·윤진·카즈하·하니</div>
+    <div class="box">카리나(메인 세션) · 읽기만 하는 에이전트: 혜린·윈터·윤진·카즈하·하니</div>
     <div class="box dim">jam-web/node_modules 실체 · 시크릿 파일(.env.local 등)</div>
     <div class="box dim">세션 시작 훅: <ul class="hooks"><li><code>scripts/ticket-dashboard.mjs</code></li><li><code>scripts/check-routine-reports.mjs</code></li><li><code>scripts/workspace-setup.sh</code></li><li><code>scripts/ensure-hooks-path.sh</code></li></ul></div>
   </div>
   <div class="lane iso">
-    <p class="lt">격리 워크트리 <code>.claude/worktrees/wf_*</code> — 아현 전용</p>
+    <p class="lt">격리 워크트리 <code>.claude/worktrees/wf_*</code> — 아현·민지·채원 전용</p>
     <div class="box">첫 명령: <code>git fetch origin staging</code> → <code>git checkout --detach origin/staging</code> → <code>workspace-setup.sh link</code></div>
     <div class="box">브랜치 <code>claude/jamwork-{ticket}-{slug}</code>에 커밋 → 리뷰 브랜치로만 push</div>
     <div class="box dim">jam-web/node_modules → 메인 폴더로 향하는 심볼릭 링크 · 시크릿 없음 · <code>jam-doc/</code>는 실제 폴더로 따라옴</div>
@@ -549,8 +549,8 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
 <div class="tw"><table class=""><thead><tr><th>에이전트</th><th>읽는 곳</th><th>쓰는 곳</th><th>물리적 제약</th></tr></thead><tbody>
 <tr><td>카리나</td><td>전부</td><td>전부</td><td>없음 (채팅에서 받는 사용자 승인이 유일한 제약. Supabase MCP의 SQL 실행 도구는 자동 허용이라 도구 프롬프트가 관문 역할을 하지 않는다)</td></tr>
 <tr><td>아현</td><td>워크트리 전체</td><td>워크트리 안, 자기 브랜치</td><td>DB 도구 없음 · <code>CLOSED</code> 커밋 차단 · main/staging push 차단</td></tr>
-<tr><td>민지</td><td>지정된 커밋 범위의 diff + 티켓 + 스펙</td><td>없음</td><td>Write·Edit 도구 자체가 없음 · 공유 작업 폴더에서 HEAD·작업 트리를 옮기는 git 명령 차단(정의 frontmatter 훅, 티켓 20261002_1905)</td></tr>
-<tr><td>채원</td><td><code>jam-web/design-system/</code>, Storybook, 지정된 diff</td><td>없음</td><td>〃 (민지와 같은 git 명령 차단 훅)</td></tr>
+<tr><td>민지</td><td>지정된 커밋 범위의 diff + 티켓 + 스펙</td><td>없음</td><td>Write·Edit 도구 자체가 없음 · 워크플로 게이트와 <code>/jam-ship</code> 5단계에서 격리 워크트리에 실행(티켓 20261002_1905) · 공유 작업 폴더에서 HEAD·작업 트리를 옮기는 git 명령을 막는 정의 frontmatter 훅은 등록돼 있으나 클라우드 세션의 실제 호출에서 걸리지 않음</td></tr>
+<tr><td>채원</td><td><code>jam-web/design-system/</code>, Storybook, 지정된 diff</td><td>없음</td><td>Write·Edit 도구 자체가 없음 · 사후 리뷰(②)만 워크플로 게이트에서 격리 워크트리에 실행 · 민지와 같은 frontmatter 훅(같은 상태)</td></tr>
 <tr><td>혜린</td><td>티켓·PRD·컨텐츠 문서</td><td>없음</td><td>〃 (Bash도 없음)</td></tr>
 <tr><td>윈터</td><td><code>jam-doc/planning/content/TRIBES.md</code> 중심 + 웹</td><td>없음</td><td>〃</td></tr>
 <tr><td>윤진</td><td><code>jam-doc/marketing/</code>, 리포트 + 웹</td><td>세션: <code>jam-doc/assets/</code>의 묶음 폴더 3곳(<code>badge-bundles/</code>·<code>mission-bundles/</code>·<code>home-feed-bundles/</code>의 <code>&lt;묶음 ID&gt;/</code>, 모드 ⑧ 한정, Bash)</td><td>Bash 도구는 물리적으로 좁혀지지 않는다. <code>render.mjs</code>·<code>list-presets.mjs</code> 실행·묶음 폴더 쓰기·<code>register-*.mjs --dry-run</code>만 허용한다는 것은 정의 문서의 지시(프롬프트 규칙)다. 예약 실행은 이미지를 만들지 않는다(티켓 20260930_1519). 등록(<code>--dry-run</code> 없음·<code>--undo</code>)·프리셋 생성·수정·DB·스토리지 쓰기·git은 금지</td></tr>

@@ -165,12 +165,18 @@ async function runGateReview({ ticketPath, workType, devResult, designDecisionTe
   // 대조로 구조적으로 보완한다.
   const commitRange = devResult?.baseSha && devResult?.commitSha
     ? `${devResult.baseSha}..${devResult.commitSha}` : null
+  // 게이트 에이전트는 격리 워크트리에서 돈다(티켓 20261002_1905). 첫 명령으로 리뷰 커밋을
+  // 체크아웃하게 하므로 범위 지시에는 fetch 문장을 따로 두지 않는다. 범위가 없으면 리뷰 커밋을
+  // 특정할 수 없어 origin/staging을 체크아웃한다. 브랜치 이름이 비어 있으면 `git fetch origin`이
+  // 모든 브랜치를 가져온다.
+  const firstCommand = commitRange
+    ? `git fetch origin${devResult.branch ? ` ${devResult.branch}` : ''} && git checkout --detach ${devResult.commitSha}`
+    : 'git fetch origin staging && git checkout --detach origin/staging'
   const rangeInstruction = commitRange
-    ? `\n검토 범위는 \`${commitRange}\`다. \`git fetch origin ${devResult.branch}\`로 review ` +
-      `브랜치를 가져온 뒤 \`git diff --numstat ${commitRange} -- jam-web\`으로 비교하고, ` +
-      `\`reviewedRange\`에 \`${commitRange}\`를 그대로 적어라.\n`
-    : `\n커밋 범위를 채우지 못했다 — \`git fetch origin staging\`으로 origin/staging을 ` +
-      `갱신한 뒤 \`git diff --numstat <review 브랜치> origin/staging -- jam-web\`으로 비교하고, ` +
+    ? `\n검토 범위는 \`${commitRange}\`다. \`git diff --numstat ${commitRange} -- jam-web\`으로 ` +
+      `비교하고, \`reviewedRange\`에 \`${commitRange}\`를 그대로 적어라.\n`
+    : `\n커밋 범위를 채우지 못했다 — review 브랜치를 \`git fetch origin <review 브랜치>\`로 가져온 뒤 ` +
+      `\`git diff --numstat <review 브랜치> origin/staging -- jam-web\`으로 비교하고, ` +
       `\`reviewedRange\`에 실제로 비교한 범위를 적어라.\n`
 
   // 2026-09-18부터는 채원② 사후 리뷰 생략 판단에만 쓴다 — 개선 리뷰 단계 자체가 사라졌기
@@ -189,12 +195,17 @@ async function runGateReview({ ticketPath, workType, devResult, designDecisionTe
   // 크다)만 Sonnet으로 두고 나머지는 Haiku로 부른다.
   // 병렬 호출이라 전후 토큰 차이를 에이전트별로 쪼갤 수 없다 — 두 호출을 묶어 하나로 기록한다.
   const parallelT0 = tokensSpent()
-  // 게이트 에이전트가 공유 작업 폴더의 브랜치·HEAD를 옮기지 못하게 한다(티켓 20260926_0121).
-  // 재현이 필요하면 별도 워크트리를 쓰게 한다.
+  // 게이트 에이전트가 공유 작업 폴더(카리나의 메인 트리)에 서지 않게 한다(티켓 20260926_0121).
+  // 1차는 frontmatter 훅이었으나 실제 호출에서 걸리지 않아, 2차로 두 호출을 격리 워크트리에서
+  // 부른다(티켓 20261002_1905, 아현과 같은 방식). 격리 워크트리는 기본 브랜치(main) 기준이라
+  // staging에만 있는 파일이 보이지 않으므로, 아현 프롬프트와 같은 이유로 첫 명령으로 리뷰
+  // 커밋을 체크아웃하게 한다.
   const WORKDIR_RULE =
-    `\n작업 폴더 규칙: 지금 폴더는 카리나·병렬 세션과 공유된다. git checkout·switch·reset --hard·rebase로 ` +
-    `브랜치나 HEAD를 옮기지 마라. 특정 커밋을 재현해야 하면 git worktree add --detach 로 별도 폴더를 만들고 ` +
-    `끝나면 git worktree remove 로 지워라. git show·diff·log 같은 읽기 명령은 자유다.\n`
+    `\n작업 폴더 규칙: 지금 폴더는 너만의 격리 워크트리다. 이 워크트리는 기본 브랜치(main) 기준으로 ` +
+    `만들어져 staging에만 있는 변경이 빠져 있다. 티켓을 포함해 어떤 파일도 읽기 전에, **첫 명령으로** ` +
+    `\`${firstCommand}\`를 실행하라. 그 전에 본 파일 내용은 무효다. 테스트를 직접 돌려야 할 때만 ` +
+    `\`scripts/workspace-setup.sh link "$(pwd)"\`로 jam-web/node_modules를 연결한다(npm install은 ` +
+    `돌리지 않는다). 메인 작업 폴더(공유 폴더)로 \`cd\`하지 마라. git show·diff·log 같은 읽기 명령은 자유다.\n`
   const [gate, designReview] = await parallel([
     () => agent(
       `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult?.summary ?? devResult}\n` +
@@ -206,7 +217,7 @@ async function runGateReview({ ticketPath, workType, devResult, designDecisionTe
       // 이번 실행의 면제 값을 그대로 넘겨 점검표 5번에서 대조하게 한다.
       `\n이번 실행의 계획 반환 면제: ${planOnlyWaiverReason || '없음'}\n` +
       `\n스펙대로 동작하는지 판정하라.`,
-      { agentType: 'jam-reviewer', label: 'jam-reviewer', schema: VERDICT }
+      { agentType: 'jam-reviewer', label: 'jam-reviewer', isolation: 'worktree', schema: VERDICT }
     ),
     () => runDesignReview ? agent(
       `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult?.summary ?? devResult}\n` +
@@ -221,6 +232,9 @@ async function runGateReview({ ticketPath, workType, devResult, designDecisionTe
         agentType: 'jam-designer',
         label: 'jam-designer-post',
         phase: '채원 사후 리뷰',
+        // isolation은 아래 spread보다 앞에 둔다 — check-contract.mjs의 정규식은 중괄호를 만나면
+        // 끊긴다. 이 주석에도 중괄호를 쓰지 않는다(티켓 20261002_1905).
+        isolation: 'worktree',
         schema: DESIGN_REVIEW,
         ...(workType === 'ds' ? {} : { model: 'claude-haiku-4-5-20251001' }),
       }

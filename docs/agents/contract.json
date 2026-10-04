@@ -154,8 +154,8 @@
   },
 
   "worktree_isolated_agents": {
-    "_why": "격리 워크트리에서 도는 에이전트. 병렬 세션이 메인 트리에서 동시에 git 조작을 하지 않게 하려는 것이므로, 쓰기 주체와 일치해야 한다.",
-    "agents": ["jam-developer"]
+    "_why": "격리 워크트리에서 도는 에이전트. 병렬 세션이 메인 트리에서 동시에 git 조작을 하지 않게 하려는 것이므로, 쓰기 주체(아현)와 공유 폴더에서 git을 쓰는 게이트 에이전트(민지·채원②)와 일치해야 한다(티켓 20261002_1905).",
+    "agents": ["jam-developer", "jam-reviewer", "jam-designer"]
   },
 
   "worktree_contains": {

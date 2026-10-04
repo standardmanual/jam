@@ -24,7 +24,7 @@ function makeRunner({ agentImpl, budgetStep = 100 }) {
   let spent = 0
   const calls = []
   const agent = async (prompt, opts) => {
-    calls.push({ label: opts?.label, agentType: opts?.agentType, prompt })
+    calls.push({ label: opts?.label, agentType: opts?.agentType, isolation: opts?.isolation, prompt })
     spent += budgetStep
     return agentImpl(prompt, opts)
   }
@@ -483,6 +483,86 @@ async function test23_devResultSummaryHasMaxLength() {
   console.log('PASS test23_devResultSummaryHasMaxLength')
 }
 
+// ── 게이트 에이전트의 격리 워크트리(티켓 20261002_1905) ────────────────────────────────────────
+// 1차 frontmatter 훅이 실제 호출에서 걸리지 않아, 민지·채원②를 아현처럼 격리 워크트리에서 부른다.
+// 격리 워크트리는 main 기준이라 첫 명령으로 리뷰 커밋을 체크아웃해야 staging의 티켓·코드가 보인다.
+async function test24_standardGateCallsAreIsolatedAndCheckOutFirst() {
+  const { run, calls } = makeRunner({
+    agentImpl: (prompt, opts) => {
+      if (opts.label === 'jam-designer-pre') return { decision: '재사용', needsApproval: false }
+      if (opts.label === 'jam-developer') {
+        return {
+          status: 'done', summary: '구현 완료',
+          branch: 'claude/jamwork-t-slug', commitSha: 'cccc111', baseSha: 'bbbb000',
+          diffLineCount: 20,
+        }
+      }
+      if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [], reviewedRange: 'bbbb000..cccc111' }
+      if (opts.label === 'jam-designer-post') return { hasCritical: false, proposals: [] }
+      throw new Error(`예상치 못한 호출: ${opts.label}`)
+    },
+  })
+  await run({ ticketPath: 't.md', userRequest: 'r', workType: 'ui' })
+  const gateCall = calls.find((c) => c.label === 'jam-reviewer')
+  const designPostCall = calls.find((c) => c.label === 'jam-designer-post')
+  assert.equal(gateCall.isolation, 'worktree', '민지는 격리 워크트리에서 불러야 한다')
+  assert.equal(designPostCall.isolation, 'worktree', '채원②도 격리 워크트리에서 불러야 한다')
+  const firstCommand = 'git fetch origin claude/jamwork-t-slug && git checkout --detach cccc111'
+  for (const call of [gateCall, designPostCall]) {
+    assert.ok(call.prompt.includes(firstCommand), `${call.label} 프롬프트에 리뷰 커밋 체크아웃 첫 명령이 들어가야 한다`)
+    assert.ok(call.prompt.includes('scripts/workspace-setup.sh link'), `${call.label} 프롬프트에 node_modules 연결 안내가 들어가야 한다`)
+    assert.ok(call.prompt.includes('격리 워크트리'), `${call.label} 프롬프트가 격리 워크트리임을 알려야 한다`)
+    assert.ok(!call.prompt.includes('카리나·병렬 세션과 공유된다'), `${call.label} 프롬프트에 공유 폴더 서술이 남으면 안 된다`)
+  }
+  // 채원① 사전 판정과 아현은 이번 변경 대상이 아니다.
+  assert.equal(calls.find((c) => c.label === 'jam-designer-pre').isolation, undefined, '채원①은 격리 대상이 아니다')
+  assert.equal(calls.find((c) => c.label === 'jam-developer').isolation, 'worktree', '아현은 기존대로 격리 워크트리다')
+  console.log('PASS test24_standardGateCallsAreIsolatedAndCheckOutFirst')
+}
+
+async function test25_gateOnlyCallsAreIsolatedAndCheckOutFirst() {
+  const { run, calls } = makeRunner({
+    agentImpl: (prompt, opts) => {
+      if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [] }
+      if (opts.label === 'jam-designer-post') return { hasCritical: false, proposals: [] }
+      throw new Error(`예상치 못한 호출: ${opts.label}`)
+    },
+  })
+  await run({
+    gateOnly: true,
+    ticketPath: 't.md',
+    workType: 'ui',
+    branch: 'claude/jamwork-t-slug',
+    commitRange: 'aaa111..bbb222',
+    devResult: { summary: '버튼 라벨 수정', diffLineCount: 20 },
+  })
+  assert.equal(calls.length, 2, '민지와 채원②가 모두 불려야 한다')
+  const firstCommand = 'git fetch origin claude/jamwork-t-slug && git checkout --detach bbb222'
+  for (const call of calls) {
+    assert.equal(call.isolation, 'worktree', `${call.label}는 gateOnly에서도 격리 워크트리에서 불러야 한다`)
+    assert.ok(call.prompt.includes(firstCommand), `${call.label} 프롬프트에 리뷰 커밋 체크아웃 첫 명령이 들어가야 한다`)
+  }
+  console.log('PASS test25_gateOnlyCallsAreIsolatedAndCheckOutFirst')
+}
+
+async function test26_gateWithoutRangeChecksOutOriginStaging() {
+  const { run, calls } = makeRunner({
+    agentImpl: (prompt, opts) => {
+      if (opts.label === 'jam-developer') return { status: 'done', summary: '구현 완료', diffLineCount: 20 }
+      if (opts.label === 'jam-reviewer') return { verdict: 'PASS', reasons: [] }
+      throw new Error(`예상치 못한 호출: ${opts.label}`)
+    },
+  })
+  await run({ ticketPath: 't.md', userRequest: 'r', workType: 'infra' })
+  const gateCall = calls.find((c) => c.label === 'jam-reviewer')
+  assert.equal(gateCall.isolation, 'worktree')
+  assert.ok(
+    gateCall.prompt.includes('git fetch origin staging && git checkout --detach origin/staging'),
+    '커밋 범위가 없으면 origin/staging을 체크아웃하는 첫 명령이 들어가야 한다'
+  )
+  console.log('PASS test26_gateWithoutRangeChecksOutOriginStaging')
+}
+
 async function main() {
   await test1_needsApprovalStops()
   await test2_needsApprovalNoneProceedsInParallel()
@@ -507,6 +587,9 @@ async function main() {
   await test21_gateOnlySkipsDesignerAndDeveloper()
   await test22_gateOnlyRunsDesignReviewForLargeUiDiff()
   await test23_devResultSummaryHasMaxLength()
+  await test24_standardGateCallsAreIsolatedAndCheckOutFirst()
+  await test25_gateOnlyCallsAreIsolatedAndCheckOutFirst()
+  await test26_gateWithoutRangeChecksOutOriginStaging()
   console.log('전체 통과')
 }
 
