@@ -605,6 +605,45 @@ describe('R7 파밍 방지(횟수형 사다리 합)', () => {
   })
 })
 
+describe('R7 이미 만든 배지는 DB에서 세고 항목에서 다시 세지 않는다 (티켓 20261004_1756 가정 8, PRD §8.5)', () => {
+  const rules = rulesOnly(['count_ladder_points'])
+  const BADGE_ID = '11111111-1111-4111-8111-111111111111'
+  const step = (points: unknown, overrides: Partial<BalanceItemInput> = {}) => badge(points, COUNT, { family_key: 'run_count' }, overrides)
+  const created = { createdResource: { badge_id: BADGE_ID }, status: 'scheduled' }
+  const inDb = (extra: Array<{ id: string; pointReward: number; countType: boolean | null }> = []) =>
+    makeState({ familyBadges: { ok: true, data: { run_count: [{ id: BADGE_ID, pointReward: 60, countType: true }, ...extra] } } })
+
+  it('만든 배지(DB 60)와 새 단계(50)의 합은 110이다. 만든 배지의 항목 값 60을 다시 더하지 않는다', () => {
+    const result = run([step(60, created), step(50)], rules, inDb())
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0]).toMatchObject({ ruleKey: 'count_ladder_points', itemId: null, measured: 110, limit: 100 })
+  })
+
+  it('만든 배지만 있으면 DB 값 하나만 센다: 항목 60 + DB 60 = 120으로 경고하지 않는다', () => {
+    const result = run([step(60, created)], rules, inDb())
+    expect(result).toMatchObject({ warnings: [], unreadable: [] })
+  })
+
+  it('만든 배지만 있어도 DB의 같은 계열 합이 기준을 넘으면 묶음 줄로 알린다', () => {
+    const result = run([step(60, created)], rules, inDb([{ id: 'b2', pointReward: 50, countType: true }]))
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0]).toMatchObject({ itemId: null, measured: 110, limit: 100 })
+  })
+
+  it('만든 배지는 항목의 포인트·조건을 읽지 못해도 「점검 못 함」이 아니다(DB 값을 쓴다)', () => {
+    const result = run([badge('x', 'not-an-object', { family_key: 'run_count' }, created), step(30)], rules, inDb())
+    expect(result.unreadable).toEqual([])
+    expect(result.warnings).toEqual([])
+  })
+
+  it('created_resource에 badge_id가 없으면(비었거나 다른 키) 아직 만들지 않은 것이라 항목 값을 센다', () => {
+    for (const createdResource of [null, {}, { sample: true }, { badge_id: '' }, { badge_id: 5 }]) {
+      const result = run([step(60, { createdResource, status: 'scheduled' }), step(50)], rules)
+      expect(result.warnings[0], JSON.stringify(createdResource)).toMatchObject({ measured: 110, limit: 100 })
+    }
+  })
+})
+
 describe('R8 경제 수치 불변', () => {
   const rules = rulesOnly(['economy_keys'])
 

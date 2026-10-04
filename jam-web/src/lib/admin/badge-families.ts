@@ -30,6 +30,7 @@ import {
 import { RARITY_LABEL, RARITY_TIER } from '@/lib/rarity'
 // 「sort_order = 0은 맨 뒤」는 배지 트리와 같은 규칙을 써야 한다 — 다시 선언하지 않는다.
 import { sortRank, TREE_ACTIVITY_ORDER } from '@/lib/badgeTree'
+import { isValidFamilyKey } from './familyKey'
 
 /** 계열 화면이 다루는 배지 한 건. 목록·상세·초안 조립에 필요한 컬럼만 받는다 */
 export type FamilyBadge = Pick<
@@ -319,18 +320,9 @@ export function buildFamilyKey(activityType: string, name: string): string {
   return `${activityType}:${familyKeySlug(name)}`
 }
 
-/**
- * 키로 쓸 수 있는 형태인가. **관대하게 본다** — 기존 207종의 키는 마이그레이션 130이
- * `"{activity_type}:{name}"`으로 구워 공백이 든 한글이 그대로 들어 있고(`walking:밤의 보행자`),
- * 그 키를 교차 게이트가 이미 가리키고 있을 수 있다. 여기서 막아야 하는 것은 «게이트에
- * 적을 수 없게 되는 형태»뿐이다.
- */
-export function isValidFamilyKey(key: string): boolean {
-  if (!key || key !== key.trim()) return false
-  if (key.includes(',')) return false // 교차 게이트 입력이 쉼표 구분 목록이다
-  if (key.startsWith('#')) return false // `#name:`은 `familyKeyOf`의 폴백 접두어 전용
-  return key.includes(':')
-}
+// 키 형식 판정은 순수 파일 `familyKey.ts`로 옮겼다(티켓 20261004_1756: 운영툴 예약 등록 핸들러가 이 파일의 무거운 의존 없이 쓴다).
+// 기존 호출부가 그대로 이 파일에서 가져오도록 다시 내보낸다.
+export { isValidFamilyKey }
 
 /**
  * 계열 키 «발급»을 막아야 하는 이유를 돌려준다. 없으면 null.

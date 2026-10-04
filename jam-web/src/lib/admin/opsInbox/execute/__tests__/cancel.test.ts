@@ -11,6 +11,7 @@
  * - 예약됨 미션 취소(⑥): 실제 미션 핸들러, 미션을 가리키는 카드를 먼저 지운 뒤 미션을 지운다
  * - 예약됨 레시피 취소(⑧-a, 티켓 20261002_2221): 실제 레시피 핸들러, 공개 전 취소·이미 공개·종료됨·가장 먼저 성공 배지가 가리킴(409)·없음·시험 묶음
  * - 예약됨 드랍 취소(⑧-b, 티켓 20261002_2306): 실제 드랍 핸들러, 공개 전 취소(지우지 않고 「취소」 상태)·예정 시각이 지남·실행 시작·끝남(409)·밖에서 취소됨·없음·시험 묶음
+ * - 예약됨 JAM! 배지 취소(⑨-a, 티켓 20261004_1756): 실제 배지 핸들러, 공개 전 취소·공개됨·참조 있음(409)·밖에서 지워짐·소프트 삭제·배지를 가리키는 미션·카드 함께 취소(카드→미션→배지 순)·시험 묶음
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 
@@ -445,8 +446,8 @@ describe('함께 취소할 항목 — 가짜 종류 핸들러(가정 3·4)', () 
     expect(nonSelect(db)).toEqual([])
   })
 
-  it('실제 레지스트리에 아직 없는 종류(JAM! 배지 등)는 409로 막힌다', async () => {
-    const { db, run } = setup([{ id: ID.poster, key: 'badge', kind: 'jam_badge', status: 'scheduled', createdResource: { badge_id: uid(21) } }])
+  it('실제 레지스트리에 아직 없는 종류(컬렉션 등)는 409로 막힌다', async () => {
+    const { db, run } = setup([{ id: ID.poster, key: 'collection', kind: 'collection_launch', status: 'scheduled', createdResource: { item_book_id: uid(21) } }])
     const failure = bad(await run(ID.poster))
     expect(failure.status).toBe(409)
     expect(failure.error).toBe('아직 취소를 연결하지 않은 종류예요')
@@ -901,6 +902,190 @@ describe('예약됨 드랍 취소 — 실제 드랍 핸들러 (티켓 20261002_2
   })
 })
 
+// ── JAM! 배지 취소 ───────────────────────────────────────────────────────────────────────────────
+
+describe('예약됨 JAM! 배지 취소 — 실제 배지 핸들러 (티켓 20261004_1756)', () => {
+  const BADGE_RES = uid(13)
+  const badgeSpec = (extra: ItemSpec = {}): ItemSpec => ({
+    id: ID.badge,
+    key: 'badge',
+    kind: 'jam_badge',
+    status: 'scheduled',
+    createdResource: { badge_id: BADGE_RES },
+    ...extra,
+  })
+  const badgeRow = (extra: Row = {}): Row => ({ id: BADGE_RES, name: '첫 믹스', valid_from: LATER, valid_until: null, deleted_at: null, ...extra })
+  const OTHER_BADGE = { id: uid(98), name: '기존 배지', valid_from: PAST, valid_until: null, deleted_at: null }
+  const BADGE_LABEL = 'JAM! 배지 · 10/10(토) 09:00'
+  const orderOf = (db: FakeDb) => db.calls.map((call) => `${call.table}:${call.op}`)
+
+  /** 배지만 있는 묶음. 카드·미션 행은 없다. */
+  function soloSetup(options: Parameters<typeof setup>[1] = {}) {
+    const made = setup([badgeSpec()], { ...options, cards: [] })
+    made.db.tables.badges = [badgeRow(), OTHER_BADGE]
+    return made
+  }
+
+  /** 카드와 미션이 배지를 가리키는 그룹. 카드 행은 `badge_ids`, 미션 행은 `reward_badge_ids`로 배지 ID를 갖는다. */
+  function linkedSetup(options: Parameters<typeof setup>[1] = {}, specs: ItemSpec[] = [cardSpec({ links: ['badge'] }), missionSpec({ links: ['badge'] }), badgeSpec()]) {
+    const made = setup(specs, { ...options, cards: [{ id: CARD_RES, starts_at: LATER, badge_ids: [BADGE_RES] }] })
+    made.db.tables.missions = [{ id: MISSION_RES, starts_at: LATER, ends_at: null, exposure_mode: 'start_date', exposure_at: null, reward_badge_ids: [BADGE_RES] }]
+    made.db.tables.badges = [badgeRow(), OTHER_BADGE]
+    return made
+  }
+
+  it('공개 전 배지를 취소하면 그 ID의 행만 지우고 지울 때 `valid_from > 지금` 조건을 건다. 항목은 「취소」, 결정 기록 한 줄이다', async () => {
+    const { db, run } = soloSetup()
+    const result = ok(await run(ID.badge, '배지를 접어요'))
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.badge], missing: [] })
+    expect((db.tables.badges as Row[]).map((row) => row.id)).toEqual([OTHER_BADGE.id])
+    expect(statusOf(db, ID.badge)).toBe('cancelled')
+    expect(db.decisions('cancel').map((row) => [row.item_id, row.reason, row.batch_id])).toEqual([[ID.badge, '배지를 접어요', result.batchId]])
+    expect(db.calls.find((call) => call.table === 'badges' && call.op === 'delete')?.filters).toEqual([['id', BADGE_RES], ['valid_from >', NOW.toISOString()]])
+    expect(result.slack.cancelledLabels).toEqual([BADGE_LABEL])
+    // created_resource는 지운 뒤에도 남는다(무엇을 만들었다가 지웠는지)
+    expect(db.item(ID.badge).created_resource).toEqual({ badge_id: BADGE_RES })
+  })
+
+  it('배지를 취소하면 그 배지를 가리키는 카드·미션이 먼저 취소되고 배지는 마지막에 지워진다. 가리키는 항목이 남아 있으면 배지의 참조 확인에 걸리기 때문이다', async () => {
+    const { db, run } = linkedSetup()
+    const result = ok(await run(ID.badge))
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.card, ID.mission, ID.badge], missing: [] })
+    expect(db.tables.today_cards).toEqual([])
+    expect(db.tables.missions).toEqual([])
+    expect((db.tables.badges as Row[]).map((row) => row.id)).toEqual([OTHER_BADGE.id])
+    for (const id of [ID.card, ID.mission, ID.badge]) expect(statusOf(db, id)).toBe('cancelled')
+    const order = orderOf(db)
+    expect(order.indexOf('today_cards:delete')).toBeLessThan(order.indexOf('missions:delete'))
+    expect(order.indexOf('missions:delete')).toBeLessThan(order.indexOf('badges:delete'))
+    // 배지의 참조 확인(배열 칸을 배지 ID로 센다)은 가리키던 행을 지운 뒤에 이뤄졌다
+    expect(order.lastIndexOf('missions:select')).toBeGreaterThan(order.indexOf('missions:delete'))
+    expect(result.slack.cancelledLabels).toEqual([CARD_LABEL, MISSION_LABEL, BADGE_LABEL])
+    expect(new Set(db.decisions('cancel').map((row) => row.batch_id))).toEqual(new Set([result.batchId]))
+  })
+
+  it('카드만 취소하면 배지는 남는다', async () => {
+    const { db, run } = linkedSetup()
+    const result = ok(await run(ID.card))
+
+    expect(result.body.cancelled).toEqual([ID.card])
+    expect((db.tables.badges as Row[]).map((row) => row.id)).toEqual([BADGE_RES, OTHER_BADGE.id])
+    expect(statusOf(db, ID.badge)).toBe('scheduled')
+    expect(statusOf(db, ID.mission)).toBe('scheduled')
+  })
+
+  it.each([
+    ['공개 시각이 지났다', { valid_from: PAST }],
+    ['공개 시각이 정확히 지금이다', { valid_from: NOW.toISOString() }],
+    ['공개 시각이 비었다', { valid_from: null }],
+  ])('%s: 409이고 아무것도 지우지 않는다(상태 맞추기가 아직 게재중으로 바꾸지 않은 배지)', async (_label, row) => {
+    const { db, run } = soloSetup()
+    ;(db.tables.badges[0] as Row).valid_from = row.valid_from
+    const failure = bad(await run(ID.badge))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe('공개 시각이 지나 취소할 수 없어요')
+    expect(failure.slack).toBeUndefined()
+    expect(nonSelect(db)).toEqual([])
+    expect(statusOf(db, ID.badge)).toBe('scheduled')
+    expect(db.decisions()).toEqual([])
+  })
+
+  it('획득 기록이 붙은 배지는 409이고 지우지 않는다. 테이블 이름은 응답에 없다', async () => {
+    const { db, run } = soloSetup()
+    db.tables.user_activity_badges = [{ id: 'u-1', badge_id: BADGE_RES }]
+    const failure = bad(await run(ID.badge))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe('획득 기록이나 연결이 있거나 확인하지 못해 배지를 지우지 않았어요')
+    expect(failure.error).not.toContain('user_activity_badges')
+    expect(nonSelect(db)).toEqual([])
+    expect(db.tables.badges).toHaveLength(2)
+    expect(logged()).toContain('user_activity_badges')
+  })
+
+  it('운영툴 밖에서 만든 미션이 배지를 보상으로 가리키면 409이고 아무것도 지우지 않는다', async () => {
+    const { db, run } = soloSetup()
+    db.tables.missions = [{ id: uid(61), starts_at: LATER, reward_badge_ids: [BADGE_RES] }]
+    const failure = bad(await run(ID.badge))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe('획득 기록이나 연결이 있거나 확인하지 못해 배지를 지우지 않았어요')
+    expect(nonSelect(db)).toEqual([])
+    expect(logged()).toContain('missions.reward_badge_ids')
+  })
+
+  it('밖에서 이미 지워지거나 소프트 삭제된 배지는 missing으로 두고 항목만 「취소」로 둔다', async () => {
+    const gone = setup([badgeSpec()], { cards: [] })
+    const goneResult = ok(await gone.run(ID.badge))
+    expect(goneResult.body).toEqual({ ok: true, cancelled: [ID.badge], missing: [ID.badge] })
+    expect(statusOf(gone.db, ID.badge)).toBe('cancelled')
+    expect(nonSelect(gone.db).filter((call) => call.table === 'badges')).toEqual([])
+
+    const soft = soloSetup()
+    ;(soft.db.tables.badges[0] as Row).deleted_at = '2026-10-04T00:00:00.000Z'
+    const softResult = ok(await soft.run(ID.badge))
+    expect(softResult.body).toEqual({ ok: true, cancelled: [ID.badge], missing: [ID.badge] })
+    expect(soft.db.tables.badges).toHaveLength(2) // 소프트 삭제된 행은 그대로 둔다
+  })
+
+  it('배지를 가리키는 미션이 이미 게재 중이면 아무것도 취소하지 않고 409다', async () => {
+    const { db, run } = linkedSetup({}, [missionSpec({ links: ['badge'], status: 'live' }), badgeSpec()])
+    const failure = bad(await run(ID.badge))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toContain('이미 게재 중')
+    expect(nonSelect(db)).toEqual([])
+    expect((db.tables.badges as Row[]).map((row) => row.id)).toEqual([BADGE_RES, OTHER_BADGE.id])
+  })
+
+  it('배지는 취소 시점에 공개 시각이 지났는데 미션·카드는 공개 전이면 카드·미션만 지우고 배지에서 막혀 부분 실패(500)다', async () => {
+    const { db, run } = linkedSetup()
+    ;(db.tables.badges[0] as Row).valid_from = PAST
+    const failure = bad(await run(ID.badge))
+
+    expect(failure.status).toBe(500)
+    expect(failure.extra).toEqual({ cancelled: [ID.card, ID.mission] })
+    expect(db.tables.today_cards).toEqual([])
+    expect(db.tables.missions).toEqual([])
+    expect((db.tables.badges as Row[]).map((row) => row.id)).toContain(BADGE_RES)
+    expect(statusOf(db, ID.badge)).toBe('scheduled')
+    expect(failure.slack).toMatchObject({ problems: [{ itemLabel: BADGE_LABEL, reason: '공개 시각이 지나 취소할 수 없어요' }] })
+  })
+
+  it('지우는 중 DB 오류는 500 고정 문장이다. DB 오류 원문·배지 ID는 응답·기록·슬랙에 없고 서버 로그에만 있다', async () => {
+    const { db, run } = soloSetup()
+    db.failIf = (call) => call.table === 'badges' && call.op === 'delete'
+    const failure = bad(await run(ID.badge))
+
+    expect(failure.status).toBe(500)
+    expect(failure.error).toBe('취소하지 못했어요. 잠시 뒤 다시 눌러 주세요.')
+    for (const output of await outputsOf(db, failure)) {
+      expect(output).not.toContain(DB_SECRET)
+      expect(output).not.toContain(BADGE_RES)
+    }
+    expect(logged()).toContain(DB_SECRET)
+    expect(statusOf(db, ID.badge)).toBe('scheduled')
+  })
+
+  it('시험 묶음은 badges를 읽지도 쓰지도 않고 항목만 「취소」로 둔다', async () => {
+    const { db, run } = setup([badgeSpec({ createdResource: { sample: true } })], { bundle: { is_sample: true }, cards: [] })
+    const result = ok(await run(ID.badge))
+
+    expect(result.body.cancelled).toEqual([ID.badge])
+    expect(db.calls.filter((call) => call.table === 'badges')).toEqual([])
+  })
+
+  it('미리 보기는 배지와 그 배지를 가리키는 카드·미션을 쓰기 없이 돌려준다', async () => {
+    const { db, preview } = linkedSetup()
+    expect(await preview(ID.badge)).toEqual({ ok: true, body: { ok: true, dryRun: true, cancelIds: [ID.card, ID.mission, ID.badge], blockers: [] } })
+    expect(nonSelect(db)).toEqual([])
+    expect(db.calls.some((call) => call.table === 'badges')).toBe(false)
+  })
+})
+
 // ── 실패 ─────────────────────────────────────────────────────────────────────────────────────────
 
 describe('실패 경로 — 첫 실패에서 멈춘다(가정 4)', () => {
@@ -1021,7 +1206,7 @@ describe('미리 보기 { dryRun: true }(가정 5)', () => {
   })
 
   it('예약됨이 아니면 409, 묶음에 없는 항목은 404, 핸들러가 없으면 409다', async () => {
-    const { db, preview } = setup([cardSpec({ status: 'approved' }), { id: ID.poster, key: 'badge', kind: 'jam_badge', status: 'scheduled', createdResource: { badge_id: uid(21) } }])
+    const { db, preview } = setup([cardSpec({ status: 'approved' }), { id: ID.poster, key: 'collection', kind: 'collection_launch', status: 'scheduled', createdResource: { item_book_id: uid(21) } }])
     expect(await preview(ID.card)).toMatchObject({ ok: false, status: 409, error: '예약됨 항목만 취소할 수 있어요' })
     expect(await preview(uid(77))).toMatchObject({ ok: false, status: 404 })
     expect(await preview(ID.poster)).toMatchObject({ ok: false, status: 409, error: '아직 취소를 연결하지 않은 종류예요' })

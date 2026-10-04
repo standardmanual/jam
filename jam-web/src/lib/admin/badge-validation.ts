@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { CUMULATIVE_CONDITION_FIELDS } from '@/lib/drop-engine/index'
+// 같은 상수가 서버 전용 의존이 없는 순수 파일에 있다. `@/lib/drop-engine/index`에서 가져오면 서버 모듈이 끌려와
+// 운영툴 예약 등록 핸들러(순수 모듈 계약)가 이 파일을 쓸 수 없다(티켓 20261004_1756).
+import { CUMULATIVE_CONDITION_FIELDS } from '@/lib/drop-engine/cumulativeConditionFields'
 import { ALL_CONDITION_KEYS } from '@/lib/badge-engine/condition-schema'
 // 순수 판정은 서버 전용 의존이 없는 파일에 있다 — 어드민 조건 폼(클라이언트 컴포넌트)이
 // **같은 문자열**을 쓰려면 이 파일(→ drop-engine → next/headers)을 import할 수 없다.

@@ -550,6 +550,33 @@ describe('getOpsBundleDetail — 밸런스 평가 (티켓 20260930_1459)', () =>
     expect(detail!.balance.warnings.some((w) => w.ruleKey === 'weekly_new_collections_max')).toBe(false) // 주 한도는 1개뿐이라 통과
   })
 
+  it('이미 만든 JAM! 배지(created_resource.badge_id)는 DB에서 세고 항목에서 다시 세지 않는다 (티켓 20261004_1756, R7)', async () => {
+    const badgeRow = (id: string, status: string, createdResource: unknown, points: number) => ({
+      id,
+      bundle_id: ID,
+      position: 0,
+      item_key: id,
+      kind: 'jam_badge',
+      pattern_no: null,
+      starts_at: '2026-12-12T00:00:00Z',
+      ends_at: null,
+      status,
+      original: { resource: { family_key: 'run_count', point_reward: points, condition_json: { combine_attempt_count: 5 } } },
+      edited: null,
+      created_resource: createdResource,
+      format_errors: [],
+      updated_at: '2026-10-01T00:00:00Z',
+    })
+    seed([badgeRow('made', 'scheduled', { badge_id: 'badge-made' }, 60), badgeRow('new', 'reviewing', null, 50)])
+    h.state.tables.badges = [{ id: 'badge-made', family_key: 'run_count', point_reward: 60, condition_json: { combine_attempt_count: 5 }, deleted_at: null }]
+    const detail = await getOpsBundleDetail(ID)
+    if (detail!.balance.status !== 'ok') throw new Error('평가가 성공해야 해요')
+    const r7 = detail!.balance.warnings.filter((w) => w.ruleKey === 'count_ladder_points')
+    // DB의 만든 배지 60 + 새 단계 50 = 110. 만든 배지의 항목 값 60을 다시 더하면 170이 된다.
+    expect(r7).toHaveLength(1)
+    expect(r7[0]).toMatchObject({ itemId: null, measured: 110 })
+  })
+
   it('평가도 select 계열만 부르고 상태를 바꾸지 않는다', async () => {
     seed([launchItem('i1')], { books: 3 })
     const before = JSON.stringify(h.state.tables)
@@ -598,23 +625,23 @@ describe('getOpsBundleDetail — 예약 등록 요약 (티켓 20261002_1648)', (
     expect(detail!.items[0]).not.toHaveProperty('createdResource')
   })
 
-  it('승인됨 수, 예약할 항목 수(지금 연결된 홈피드 카드·미션·레시피·드랍), 아직 연결하지 않은 종류(묶음 안 첫 등장 순)를 센다', async () => {
+  it('승인됨 수, 예약할 항목 수(지금 연결된 홈피드 카드·미션·JAM! 배지·레시피·드랍), 아직 연결하지 않은 종류를 센다', async () => {
     seed([
       row('a1'), // 카드 승인됨, 먼 미래 → 예약할 항목
-      row('a2', { kind: 'jam_badge' }), // 승인됨이지만 핸들러 없음 → 못 하는 항목
+      row('a2', { kind: 'jam_badge' }), // JAM! 배지 승인됨, 먼 미래 → 예약할 항목(티켓 20261004_1756: 핸들러가 붙었다)
       row('a3', { kind: 'collection_launch', status: 'reviewing' }), // 결정 전이라도 아직 연결하지 않은 종류에 든다
       row('a9', { kind: 'mission', status: 'reviewing' }), // 미션은 연결됐다(티켓 20261002_1944) → 안내에 들지 않는다
       row('a10', { kind: 'recipe', status: 'reviewing' }), // 레시피도 연결됐다(티켓 20261002_2221) → 안내에 들지 않는다
       row('a11', { kind: 'recipe' }), // 레시피 승인됨, 먼 미래 → 예약할 항목
-      row('a4', { kind: 'jam_badge', status: 'reviewing' }), // 같은 종류는 한 번만
+      row('a4', { kind: 'collection_launch', status: 'reviewing' }), // 같은 종류는 한 번만
       row('a12', { kind: 'drop_schedule', status: 'reviewing' }), // 드랍도 연결됐다(티켓 20261002_2306) → 안내에 들지 않는다
       row('a5', { kind: 'recipe', status: 'rejected' }), // 멈춘 항목은 센 대상이 아니다
-      row('a6', { kind: 'jam_badge', status: 'ended' }), // 끝난 항목도 아니다
+      row('a6', { kind: 'collection_launch', status: 'ended' }), // 끝난 항목도 아니다
       row('a7', { kind: 'pattern_proposal', status: 'approved' }), // 예약 등록 대상이 아닌 종류는 연결 대상이 아니다
       row('a8', { kind: null, status: 'reviewing' }), // 종류를 읽을 수 없으면 세지 않는다
     ])
     const detail = await getOpsBundleDetail(ID)
-    expect(detail!.execution).toEqual({ approvedCount: 4, readyCount: 2, unconnectedKinds: ['jam_badge', 'collection_launch'] })
+    expect(detail!.execution).toEqual({ approvedCount: 4, readyCount: 3, unconnectedKinds: ['collection_launch'] })
   })
 
   it('승인됨 항목이 없으면 approvedCount·readyCount가 0이다', async () => {

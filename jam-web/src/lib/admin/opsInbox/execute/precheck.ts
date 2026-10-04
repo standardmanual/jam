@@ -11,6 +11,8 @@
  *
  * 미션이 붙은 뒤(티켓 20261002_1944, ⑥)의 두 규칙은 못 하는 항목 이유로 더한다(사용자 결정 2026-10-02):
  * 카드가 그 카드가 여는 미션보다 먼저 공개되면(G4 예외), 같은 묶음의 예약할 미션끼리 같은 제목이고 기간이 겹치면 뒤 항목(`position`이 큰 쪽)이다.
+ * JAM! 배지가 붙은 뒤(티켓 20261004_1756, ⑨-a)의 두 규칙도 같다(사용자 결정 2026-10-04): 미션·카드가 연결된 JAM! 배지보다 먼저 공개되면 그 미션·카드가,
+ * 「가장 먼저 성공」 배지와 연결된 레시피의 공개 시각이 다르면 그 배지가 못 하는 항목이다.
  *
  * 보지 않는 것: 제출 때 남은 형식 오류(`format_errors`)는 이 점검이 막지 않는다. 종류별 변환·검사(§8.4)가 실행 때 걸러 낸다(가정 1).
  * `pattern_proposal` 승인 항목은 예약 등록 대상이 아니라 `excluded`로 따로 돌려주고 N에 세지 않는다(가정 2).
@@ -41,7 +43,11 @@ const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
 
 const MISSION_KIND = 'mission'
 /** 카드가 미션을 여는 연결 칸(`LINK_PAIRS`의 card→mission 쌍). 이 칸을 채우는 대상의 공개 시각과 견준다(G4 예외). */
-const CARD_MISSION_FIELD = 'mission_id'
+const CARD_MISSION_FIELDS: readonly string[] = ['mission_id']
+/** 미션·카드가 JAM! 배지를 가리키는 연결 칸(`LINK_PAIRS`의 mission→jam_badge·card→jam_badge 쌍). 이 칸을 채우는 대상 배지의 공개 시각과 견준다(티켓 20261004_1756). */
+const LINKED_BADGE_FIELDS: readonly string[] = ['reward_badge_ids', 'badge_ids']
+/** 「가장 먼저 성공」 배지가 레시피를 가리키는 연결 칸(`LINK_PAIRS`의 jam_badge→recipe 쌍). 대상 레시피의 공개 시각과 견준다(티켓 20261004_1756). */
+const BADGE_RECIPE_FIELDS: readonly string[] = ['recipe_id']
 
 /** 요약창에 그대로 보이는 사유 문장. */
 export const PRECHECK_MESSAGES = {
@@ -56,6 +62,8 @@ export const PRECHECK_MESSAGES = {
   targetResourceMissing: '연결된 항목이 만든 자원을 찾지 못했어요',
   startsDiffer: '연결된 항목의 공개 시각이 서로 달라요',
   cardBeforeMission: '카드가 여는 미션보다 먼저 공개돼요',
+  beforeLinkedBadge: '연결된 JAM! 배지보다 먼저 공개돼요',
+  firstSuccessStartsDiffer: '가장 먼저 성공 배지는 레시피와 같은 시각에 공개돼야 해요',
   missionTitleOverlap: '같은 기획 안에 기간이 겹치는 같은 제목의 미션이 있어요',
 } as const
 
@@ -187,21 +195,43 @@ function isPublishedItem(item: ExecuteItem): boolean {
 }
 
 /**
- * 카드가 그 카드가 여는 미션(card→mission 쌍의 대상)보다 먼저 공개되는지(G4 예외, 사용자 결정 2026-10-02). 진행 독려 카드가 공개 전 미션의 기간·보상을
- * 미리 보여 주고 404로 이어지기 때문이다. 대상이 아직 만들기 전이거나 예약됐으면 그 항목의 공개 시각과 견주고, 이미 게재 중이거나 종료됐으면 견주지 않는다.
+ * 항목이 연결 칸(`fields`)으로 가리키는 대상보다 먼저 공개되는지. 대상이 아직 만들기 전이거나 예약됐으면 그 항목의 공개 시각과 견주고, 이미 게재 중이거나 종료됐으면 견주지 않는다.
  * 같은 시각은 통과다. 두 시각 중 하나라도 읽을 수 없으면 견주지 않는다(읽을 수 없는 쪽이 따로 이유를 갖는다).
+ * - 카드가 그 카드가 여는 미션(card→mission 쌍)보다 먼저 공개되면 못 한다(G4 예외, 사용자 결정 2026-10-02). 진행 독려 카드가 공개 전 미션의 기간·보상을 미리 보여 주고 404로 이어지기 때문이다.
+ * - 미션(mission→jam_badge 쌍)·카드(card→jam_badge 쌍)가 연결된 JAM! 배지보다 먼저 공개되면 못 한다(사용자 결정 2026-10-04). 미션 보상 지급과 카드는 배지의 공개 시각을 보지 않아
+ *   공개 전 배지가 지급되거나 보이기 때문이다. `resource`가 직접 가진 기존 배지 ID는 견주지 않는다(사전 점검은 DB를 읽지 않는다).
  */
-function opensLaterMission(item: ExecuteItem, fills: readonly LinkFill[], byId: ReadonlyMap<string, ExecuteItem>): boolean {
+function opensBeforeLinked(item: ExecuteItem, fills: readonly LinkFill[], byId: ReadonlyMap<string, ExecuteItem>, fields: readonly string[]): boolean {
   const start = readStart(item)
   if (!start.ok) return false
   return fills
-    .filter((fill) => fill.field === CARD_MISSION_FIELD)
+    .filter((fill) => fields.includes(fill.field))
     .some((fill) =>
       fill.targetItemIds.some((targetId) => {
         const target = byId.get(targetId)
         if (!target || isPublishedItem(target)) return false
         const targetStart = readStart(target)
         return targetStart.ok && start.ms < targetStart.ms
+      })
+    )
+}
+
+/**
+ * 「가장 먼저 성공」 배지(jam_badge→recipe 쌍)의 공개 시각이 연결된 레시피 항목과 다른지(사용자 결정 2026-10-04). 이 배지는 믹스에 성공할 때만 판정해 배지가 늦게 열리면 첫 성공자가
+ * 받지 못하고 일찍 열리면 레시피보다 먼저 보인다. 대상 레시피 항목의 상태와 관계없이 견준다(이미 게재 중인 레시피에 나중에 여는 배지는 첫 성공을 놓친다).
+ * 밀리초로 견주고, 두 시각 중 하나라도 읽을 수 없으면 견주지 않는다.
+ */
+function differsFromLinkedRecipe(item: ExecuteItem, fills: readonly LinkFill[], byId: ReadonlyMap<string, ExecuteItem>): boolean {
+  const start = readStart(item)
+  if (!start.ok) return false
+  return fills
+    .filter((fill) => BADGE_RECIPE_FIELDS.includes(fill.field))
+    .some((fill) =>
+      fill.targetItemIds.some((targetId) => {
+        const target = byId.get(targetId)
+        if (!target) return false
+        const targetStart = readStart(target)
+        return targetStart.ok && start.ms !== targetStart.ms
       })
     )
 }
@@ -279,7 +309,9 @@ export function precheckBundle(
         })
       )
       if (missingResource) reasons.push(PRECHECK_MESSAGES.targetResourceMissing)
-      if (opensLaterMission(item, fills, byId)) reasons.push(PRECHECK_MESSAGES.cardBeforeMission)
+      if (opensBeforeLinked(item, fills, byId, CARD_MISSION_FIELDS)) reasons.push(PRECHECK_MESSAGES.cardBeforeMission)
+      if (opensBeforeLinked(item, fills, byId, LINKED_BADGE_FIELDS)) reasons.push(PRECHECK_MESSAGES.beforeLinkedBadge)
+      if (differsFromLinkedRecipe(item, fills, byId)) reasons.push(PRECHECK_MESSAGES.firstSuccessStartsDiffer)
       if (laterDuplicateMissions.has(item.id)) reasons.push(PRECHECK_MESSAGES.missionTitleOverlap)
       reasonsById.set(item.id, reasons)
     }

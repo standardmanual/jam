@@ -34,6 +34,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRow } from '@/types/database'
 import { issueQualifyingBadges, type IssueBadgeOptions, type UsageBadgeEarned } from './usageBadges'
+import { JAM_ACTION_CONDITION_KEYS, JAM_ACTION_MODIFIER_KEYS, type JamActionConditionKey } from './jamActionKeys'
 import {
   countCombineAttempts,
   countCombineFail,
@@ -54,34 +55,10 @@ import {
   countWeeklyActiveDays,
 } from './jamActionDayMetrics'
 
-/** 이 파일이 판정하는 JAM! 행동 지표 키 — `conditionRegistry.ts` 선언과 1:1 대응 */
-export const JAM_ACTION_CONDITION_KEYS = [
-  'combine_attempt_count',
-  'combine_success_count',
-  'combine_fail_count',
-  'recipe_first_success',
-  // 드랍·픽업 4종 (티켓 20261001_0632)
-  'drop_item_count',
-  'pickup_item_count',
-  'pickup_from_user_count',
-  'picked_up_by_user_count',
-  // 미션·컬렉션·가입 경과일·활동일·체크인 일수 5종 (티켓 20261001_0633)
-  'mission_complete_count',
-  'collection_complete_count',
-  'days_since_signup',
-  'weekly_active_days',
-  'same_spot_checkin_days',
-] as const
-
-/**
- * 판정 트리거가 아닌 보조 키 — 다른 지표(`days_since_signup`)가 붙은 배지를 거르는 조건이다.
- * `conditionRegistry.ts`에서는 `USAGE_METRIC_CONDITION_KEYS`에서 빠지는 키와 1:1 대응한다.
- *  - `signup_recent_active_days`: 값이 있으면 `days_since_signup` 배지는 «오늘(KST)을 포함한 최근 30일 가운데
- *    활동한 날 수 ≥ 값»도 채워야 발급한다.
- */
-export const JAM_ACTION_MODIFIER_KEYS = ['signup_recent_active_days'] as const
-
-export type JamActionConditionKey = (typeof JAM_ACTION_CONDITION_KEYS)[number]
+// 이 파일이 판정하는 JAM! 행동 지표 키와 보조 키. 서버 모듈 없이 키만 필요한 순수 모듈(운영툴 예약 등록 핸들러)이 쓰도록
+// 순수 파일 `jamActionKeys.ts`로 옮겼고(티켓 20261004_1756), 기존 호출부가 그대로 쓰도록 여기서 다시 내보낸다.
+export { JAM_ACTION_CONDITION_KEYS, JAM_ACTION_MODIFIER_KEYS }
+export type { JamActionConditionKey }
 
 /**
  * 「유저 단위로 한 번 계산한 숫자 하나」를 모든 후보에 비교하는 수치형 지표.

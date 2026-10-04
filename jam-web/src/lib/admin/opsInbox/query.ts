@@ -353,7 +353,8 @@ function latestApprovalTimes(decisions: readonly OpsDecisionRecord[]): Map<strin
 export async function evaluateOpsBundleBalance(
   supabase: ReturnType<typeof createServiceClient>,
   bundleDbId: string,
-  items: readonly OpsItemRecord[],
+  // `createdResource`는 화면 항목(`OpsItemRecord`)에 싣지 않는 칸이라 평가 호출부가 따로 붙인다(R7이 이미 만든 배지를 두 번 세지 않는 데 쓴다).
+  items: readonly (OpsItemRecord & { createdResource?: Json | null })[],
   decisions: readonly OpsDecisionRecord[],
   nowIso: string = new Date().toISOString()
 ): Promise<OpsBundleBalance> {
@@ -371,6 +372,7 @@ export async function evaluateOpsBundleBalance(
       original: item.original,
       edited: item.edited,
       approvedAt: approvedAt.get(item.id) ?? null,
+      createdResource: item.createdResource ?? null,
     }))
     const state = await loadBalanceState(supabase, {
       currentBundleId: bundleDbId,
@@ -474,7 +476,12 @@ export async function getOpsBundleDetail(id: string): Promise<OpsBundleDetail | 
     },
     items,
     decisions,
-    balance: await evaluateOpsBundleBalance(supabase, bundle.id, items, decisions),
+    balance: await evaluateOpsBundleBalance(
+      supabase,
+      bundle.id,
+      items.map((item, index) => ({ ...item, createdResource: itemRows[index].created_resource })),
+      decisions
+    ),
     execution: buildOpsExecution(
       itemRows.map((row) => ({ ...row, bundle_id: bundle.id })),
       new Date()
