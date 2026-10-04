@@ -59,6 +59,9 @@ describe('아이템에서 막는 누적 조건 목록은 한 곳에서 온다', 
   })
 
   it('서버 저장 검증도 같은 배열을 쓴다', () => {
-    expect(VALIDATION).toMatch(/import \{ CUMULATIVE_CONDITION_FIELDS \} from '@\/lib\/drop-engine\/index'/)
+    // 드랍 엔진 index는 같은 배열을 다시 내보낼 뿐이라(위 첫 테스트) 서버 모듈을 거치지 않는 새 모듈에서 바로 가져온다.
+    // 운영툴 예약 등록의 JAM! 배지 핸들러가 이 파일을 순수 모듈로 쓰기 때문이다(티켓 20261004_1756).
+    expect(VALIDATION).toMatch(/import \{ CUMULATIVE_CONDITION_FIELDS \} from '@\/lib\/drop-engine\/cumulativeConditionFields'/)
+    expect(VALIDATION).not.toMatch(/from '@\/lib\/drop-engine\/index'/)
   })
 })
