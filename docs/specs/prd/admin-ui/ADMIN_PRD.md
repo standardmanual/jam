@@ -92,6 +92,10 @@ code:
 | patch_price_krw | 숫자 입력 (patch_available=true 시 활성) | X |
 | condition_json | **조건 빌더** (아래 별도 설명) | X (item 타입은 불필요) |
 
+**유효기간(valid_from·valid_until)**
+- 기간은 KST 날짜·시각(`datetime-local`)으로 입력하고, 바꾸지 않은 칸은 원래 값을 그대로 저장한다
+  (`resolvePeriodInputIso`, `jam-web/src/lib/admin/kst-format.ts`, 티켓 20261004_2043).
+
 **condition_json 조건 빌더**
 - **입력 UI를 제공하는 필드 목록은 여기에 나열하지 않는다** — `jam-web/src/lib/badge-engine/conditionRegistry.ts`의
   `form` 선언에서 파생된다(티켓 20260905_0028). 필드를 늘릴 때 이 문서가 낡지 않게 하기 위함이다.
@@ -128,6 +132,7 @@ code:
 | required_activity_badge_id | 배지 검색·선택 (type=activity만 표시) | O |
 | required_item_badge_ids | 배지 다중 검색·선택 (type=item만 표시) | O |
 | reward_badge_id | 배지 검색·선택 (완성 시 발급 배지) | X |
+| valid_from · valid_until | KST 날짜·시각(`datetime-local`) — 바꾸지 않은 칸은 원래 값을 그대로 저장 | X |
 
 ### 5-5. 시뮬레이터
 
