@@ -24,6 +24,7 @@ import BackgroundGeneratorPreview, {
 } from '../badges/BackgroundGeneratorPreview'
 import { FieldLabel, FieldMessage, SuffixInput } from '../badges/BadgeFormControls'
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
+import { resolvePeriodInputIso, toKstLocalInputValue } from '@/lib/admin/kst-format'
 import { parseBlobAnimation, type BlobAnimationParams } from '@/lib/blobAnimation'
 import ItemBookDetailPreviewFrame from './ItemBookDetailPreviewFrame'
 import { BadgeActiveToggleButton } from '@/components/admin/badges/BadgeActiveToggleButton'
@@ -77,10 +78,10 @@ export default function ItemBookForm({
   const [storyText, setStoryText] = useState(book?.story_text ?? '')
   const [isActive, setIsActive] = useState(book?.is_active ?? true)
   // 노출 기간(20260914_1729) — badges.valid_from/valid_until(BadgeForm.tsx)과 동일한 패턴.
-  // date input은 시각 없이 날짜만 다루므로 저장 시 ISO 문자열로 변환한다.
-  const toDateInput = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : '')
-  const [validFrom, setValidFrom] = useState<string>(toDateInput(book?.valid_from))
-  const [validUntil, setValidUntil] = useState<string>(toDateInput(book?.valid_until))
+  // 기간은 KST 날짜·시각(datetime-local)으로 입력하고, 칸을 바꾸지 않았으면 저장된 ISO를 그대로 보낸다(20261004_2043).
+  const toPeriodInput = (iso: string | null | undefined) => (iso ? toKstLocalInputValue(iso) : '')
+  const [validFrom, setValidFrom] = useState<string>(toPeriodInput(book?.valid_from))
+  const [validUntil, setValidUntil] = useState<string>(toPeriodInput(book?.valid_until))
   // 배경 테마 (20260818_004). "하위 배지에 일괄 적용" 버튼은 티켓 20260925_1416에서 제거.
   // 제너레이터(패턴/애니메이션/Paper 필터)와 배경 쉐이더 드롭다운은 티켓 20260901_1929에서 제거.
   const [backgroundColor, setBackgroundColor] = useState<string>(book?.background_color ?? '')
@@ -128,8 +129,8 @@ export default function ItemBookForm({
       tribe_id: tribeId || null,
       story_text: storyText || null,
       is_active: isActive,
-      valid_from: validFrom ? new Date(validFrom).toISOString() : null,
-      valid_until: validUntil ? new Date(validUntil).toISOString() : null,
+      valid_from: resolvePeriodInputIso(book?.valid_from, validFrom),
+      valid_until: resolvePeriodInputIso(book?.valid_until, validUntil),
       // [20260901_1944] 애니메이션 모드에서는 배경색을 검증하지 않으므로 hex가 아닌 값은 null로
       // 정리한다. 배경색 모드는 위에서 이미 검증돼 동작이 달라지지 않는다.
       background_color: HEX_COLOR_PATTERN.test(trimmedBackgroundColor) ? trimmedBackgroundColor : null,
@@ -350,23 +351,28 @@ export default function ItemBookForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <FieldLabel id="itembook-period-label">노출 기간</FieldLabel>
+        <FieldLabel id="itembook-period-label">노출 기간 (한국 시각)</FieldLabel>
         <div
           role="group"
           aria-labelledby="itembook-period-label"
           aria-describedby="itembook-period-help"
           className="grid max-w-[440px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2"
         >
-          <Input type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} aria-label="시작일" />
+          <Input
+            type="datetime-local"
+            value={validFrom}
+            onChange={(e) => setValidFrom(e.target.value)}
+            aria-label="시작 시각"
+          />
           <span className="text-xs text-muted-foreground" aria-hidden="true">
             ~
           </span>
           <Input
-            type="date"
+            type="datetime-local"
             value={validUntil}
             onChange={(e) => setValidUntil(e.target.value)}
             min={validFrom || undefined}
-            aria-label="종료일"
+            aria-label="종료 시각"
           />
         </div>
         <FieldMessage id="itembook-period-help">
