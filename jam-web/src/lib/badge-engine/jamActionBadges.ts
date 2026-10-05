@@ -19,7 +19,8 @@
  *    (`JAM_EMPTY_SYNC_TRIGGERS`)을 판정하고 획득 id를 결산에 합친다. 어느 호출 지점에 어떤 키를 넘기는지는
  *    `jamActionDropTriggers.ts`·`jamActionProgressTriggers.ts`가 정한다. 기존 유저 재평가 배치
  *    (`reevaluateCatalog.ts`, 티켓 20261001_0634)도 호출 지점이다 — 키 전부(`JAM_ACTION_CONDITION_KEYS`)를
- *    `options`(dryRun·silent·접두 `triggered_by`)와 함께 넘긴다.
+ *    `options`(dryRun·silent·접두 `triggered_by`)와 함께 넘긴다. 열릴 예정 배지 미리보기(`previewUpcomingJamBadges`,
+ *    티켓 20261001_2203)도 같은 배치 파일에서 dryRun과 5번째 인자 `candidateOptions`를 넘겨 부른다.
  *
  * ## 가입 경과일은 전용 분기다
  * `days_since_signup`은 보조 키(`signup_recent_active_days`, 선택)가 붙을 수 있어 «유저 단위로 한 번 계산한 숫자
@@ -102,6 +103,13 @@ function isMetricTrigger(trigger: JamActionTrigger): trigger is JamActionMetric 
   return trigger in METRIC_COMPUTERS
 }
 
+/** `evaluateJamActionBadges`의 후보 확장 옵션 — 열릴 예정 배지 미리보기 전용(티켓 20261001_2203). 의미는 함수 설명 참고 */
+export interface JamActionCandidateOptions {
+  includeUpcoming?: boolean
+  extraCandidates?: readonly BadgeRow[]
+  badgeIds?: readonly string[]
+}
+
 /**
  * 요청한 지표(`triggers`)를 조건으로 가진 배지를 조회해 판정하고, 조건을 채운 배지를 발급한다
  * (`user_activity_badges` insert + `point_reward` 지급 + `badge_earned` 피드 이벤트).
@@ -124,32 +132,49 @@ function isMetricTrigger(trigger: JamActionTrigger): trigger is JamActionMetric 
  *
  * `options`는 `issueQualifyingBadges`에 그대로 넘긴다(수치형·`days_since_signup`·`recipe_first_success` 세 곳).
  * 생략하면 자연 발급과 같다. 재평가 배치만 쓴다(`dryRun`·`silent`·`triggeredByPrefix`, 티켓 20261001_0634).
+ *
+ * `candidateOptions`는 «열릴 예정 배지 미리보기» 전용이다(티켓 20261001_2203). 생략하면 위 설명 그대로
+ * `valid_from`이 지났고 `valid_until`이 안 지난 배지만 후보다. 켜면 후보가 넓어지므로 **`options.dryRun`이 아니면 던진다**
+ * (미래 배지를 실제로 발급하면 공개 전에 소급 지급된다).
+ *  - `includeUpcoming`: `valid_from` 필터만 뺀다. `valid_until` 필터는 그대로 둔다
+ *  - `extraCandidates`: DB에 아직 없는 배지 정의를 조회 결과에 합친다(같은 id면 이쪽이 이긴다). `valid_until`이 지난 정의는 뺀다
+ *  - `badgeIds`: 값이 있으면 후보를 이 id들로 좁힌다(같은 이름·계열 배지의 등급·레벨 판정도 좁혀진 후보 안에서 한다)
  */
 export async function evaluateJamActionBadges(
   userId: string,
   triggers: readonly JamActionTrigger[],
   client?: SupabaseClient,
-  options?: IssueBadgeOptions
+  options?: IssueBadgeOptions,
+  candidateOptions?: JamActionCandidateOptions
 ): Promise<UsageBadgeEarned[]> {
+  const widensCandidates = Boolean(candidateOptions?.includeUpcoming) || (candidateOptions?.extraCandidates?.length ?? 0) > 0
+  if (widensCandidates && !options?.dryRun) {
+    throw new Error('includeUpcoming·extraCandidates는 dryRun에서만 쓸 수 있다 — 공개 전 배지를 실제로 발급할 수 없다')
+  }
+
   const requested = [...new Set(triggers)]
   if (requested.length === 0) return []
 
   const supabase = client ?? createServiceClient()
   const now = new Date().toISOString()
 
-  const { data: allBadgesRaw, error: badgesError } = await supabase
-    .from('badges')
-    .select('*')
-    .eq('type', 'activity')
-    .is('deleted_at', null)
-    .or(`valid_from.is.null,valid_from.lte.${now}`)
-    .or(`valid_until.is.null,valid_until.gte.${now}`)
+  let query = supabase.from('badges').select('*').eq('type', 'activity').is('deleted_at', null)
+  if (!candidateOptions?.includeUpcoming) query = query.or(`valid_from.is.null,valid_from.lte.${now}`)
+  const { data: allBadgesRaw, error: badgesError } = await query.or(`valid_until.is.null,valid_until.gte.${now}`)
 
   if (badgesError) {
     console.error('[evaluateJamActionBadges] 배지 목록 조회 오류:', badgesError)
     return []
   }
-  const allBadges = (allBadgesRaw as BadgeRow[] | null) ?? []
+  let allBadges = (allBadgesRaw as BadgeRow[] | null) ?? []
+
+  const extras = (candidateOptions?.extraCandidates ?? []).filter((b) => !b.valid_until || Date.parse(b.valid_until) >= Date.parse(now))
+  if (extras.length > 0) {
+    const extraIds = new Set(extras.map((b) => b.id))
+    allBadges = [...allBadges.filter((b) => !extraIds.has(b.id)), ...extras]
+  }
+  const onlyIds = candidateOptions?.badgeIds?.length ? new Set(candidateOptions.badgeIds) : null
+  if (onlyIds) allBadges = allBadges.filter((b) => onlyIds.has(b.id))
 
   const earned: UsageBadgeEarned[] = []
 
