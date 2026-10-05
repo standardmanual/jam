@@ -1433,6 +1433,9 @@ POST /api/admin/badges/reevaluate-all
 - **쓰기 없음**: `user_activity_badges` insert·`awardPoints`·`recordFeedEvent`를 부르지 않는다(JAM! 행동 지표 배지만 센다 —
   메인 엔진·사용량 지표 배지는 이 미리보기 범위 밖).
 - **숫자는 «약»이다**: 미리보기 시점의 기록 기준이라 공개 시각까지 기록이 쌓이면 실제 지급 수가 늘 수 있다. 화면 문구에 「약」을 붙인다.
+- **라우트가 400으로 돌려주는 요청**: `includeUpcoming`이 불리언이 아님, `includeUpcoming: true`와 `dryRun: false`를 함께 보냄,
+  `badgeIds`를 `includeUpcoming: true` 없이 보냄. 일반 재평가는 배지를 좁히지 않으므로, 마지막 경우를 받아 주면 좁혀진다고 믿은
+  `dryRun: false` 요청이 전체 카탈로그를 실제로 발급한다.
 
 #### 사용량 지표 6종도 같은 배치에서 돌린다 (티켓 20261001_1022, 상위 20260930_1456)
 
