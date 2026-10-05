@@ -97,7 +97,9 @@ export async function GET(
   }
 
   // 소프트 삭제된 배지(badges.deleted_at)는 존재하지 않는 배지와 동일하게 취급한다(20260824_007).
-  const { data: badgeRaw } = await supabase.from('badges').select('*').eq('id', id).is('deleted_at', null).single()
+  // 20261005_1151: .maybeSingle() — 정책(마이그레이션 216)이 공개 전 활동 배지·비공개 컬렉션 소속 배지를
+  // 0행으로 돌려주므로 0행은 오류가 아니라 같은 404다(.single()이면 PGRST116 오류가 난다).
+  const { data: badgeRaw } = await supabase.from('badges').select('*').eq('id', id).is('deleted_at', null).maybeSingle()
   if (!badgeRaw) {
     return NextResponse.json({ error: 'badge_not_found' }, { status: 404 })
   }
