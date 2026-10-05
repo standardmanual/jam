@@ -43,6 +43,7 @@ import {
   type ConditionFormFields,
 } from './conditionFormFields'
 import { BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
+import { resolvePeriodInputIso, toKstLocalInputValue } from '@/lib/admin/kst-format'
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import {
   ADMIN_ACTIVITY_TYPES,
@@ -194,9 +195,10 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
   const isJamCategory = adminCategory === 'jam'
   const isJamActivity = type === 'activity' && isJamCategory
   const [dropWeight, setDropWeight] = useState<string>(badge?.drop_weight?.toString() ?? '1.0')
-  const toDateInput = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : '')
-  const [validFrom, setValidFrom] = useState<string>(toDateInput(badge?.valid_from))
-  const [validUntil, setValidUntil] = useState<string>(toDateInput(badge?.valid_until))
+  // 기간은 KST 날짜·시각(datetime-local)으로 입력하고, 칸을 바꾸지 않았으면 저장된 ISO를 그대로 보낸다(20261004_2043).
+  const toPeriodInput = (iso: string | null | undefined) => (iso ? toKstLocalInputValue(iso) : '')
+  const [validFrom, setValidFrom] = useState<string>(toPeriodInput(badge?.valid_from))
+  const [validUntil, setValidUntil] = useState<string>(toPeriodInput(badge?.valid_until))
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -482,8 +484,8 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
         // 어차피 마커 조회에 쓰지 않으므로 값 그대로 보낸다(티켓 20260912_1053).
         show_on_map: showOnMap,
         drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
-        valid_from: validFrom ? new Date(validFrom).toISOString() : null,
-        valid_until: validUntil ? new Date(validUntil).toISOString() : null,
+        valid_from: resolvePeriodInputIso(badge?.valid_from, validFrom),
+        valid_until: resolvePeriodInputIso(badge?.valid_until, validUntil),
         point_reward: Math.max(0, parseInt(pointReward, 10) || 0),
         // background_shader_id/background_image_url/background_video_url은 보내지 않는다
         // (티켓 20260901_1929) — 저장 API는 누락된 필드를 기존 DB 값 그대로 둔다.
@@ -1088,23 +1090,28 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
           </div>
 
           <div className={cn('flex min-w-0 flex-col gap-1.5', fieldSpanClass(3))}>
-            <FieldLabel id="badge-period-label">유효기간</FieldLabel>
+            <FieldLabel id="badge-period-label">유효기간 (한국 시각)</FieldLabel>
             <div
               role="group"
               aria-labelledby="badge-period-label"
               aria-describedby="badge-period-help"
               className="grid max-w-[440px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2"
             >
-              <Input type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} aria-label="시작일" />
+              <Input
+                type="datetime-local"
+                value={validFrom}
+                onChange={(e) => setValidFrom(e.target.value)}
+                aria-label="시작 시각"
+              />
               <span className="text-xs text-muted-foreground" aria-hidden="true">
                 ~
               </span>
               <Input
-                type="date"
+                type="datetime-local"
                 value={validUntil}
                 onChange={(e) => setValidUntil(e.target.value)}
                 min={validFrom || undefined}
-                aria-label="종료일"
+                aria-label="종료 시각"
               />
             </div>
             <FieldMessage id="badge-period-help">
