@@ -596,7 +596,7 @@ export function signalResultSentence(card: SignalCardSpec, records: SignalRecord
     case 'no_new_content':
       return `그날 새로 게재를 시작하는 홈피드 카드가 ${v('minNewContentCards')}장보다 적으면 알려요`
     case 'approval_deadline':
-      return `공개 시각 ${v('approvalDeadlineHours')}시간 전까지 승인되지 않은 항목이 있으면 알려요`
+      return `공개 시각 ${v('approvalDeadlineHours')}시간 전까지 승인하지 않았거나 예약 등록하지 않은 항목이 있으면 알려요`
     case 'overlap':
       return `같은 날 이미지가 있는 모양의 카드가 ${v('overlapImageShapeCards')}장 이상이거나, 이미지가 없는 모양의 카드가 ${v('minNonImageShapeCards')}장보다 적거나, 신규 유저에게 보이는 카드가 ${v('maxNewUserCards')}장보다 많으면 알려요`
     case 'monotony':

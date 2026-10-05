@@ -478,7 +478,7 @@ describe('결과 문장 9개(채원 확정 문구, 기본값 기준)', () => {
     expect(sentence('routine_failed')).toBe('주간 루틴은 화요일 12시까지, 월간 루틴은 매월 1일 12시까지 기획안이 나오지 않으면 알려요')
     expect(sentence('empty_content')).toBe('하루에 게재하는 카드가 3장보다 적거나 5장보다 많은 날을 알려요. 다음 주 편성은 금요일부터 검사해요')
     expect(sentence('no_new_content')).toBe('그날 새로 게재를 시작하는 홈피드 카드가 1장보다 적으면 알려요')
-    expect(sentence('approval_deadline')).toBe('공개 시각 48시간 전까지 승인되지 않은 항목이 있으면 알려요')
+    expect(sentence('approval_deadline')).toBe('공개 시각 48시간 전까지 승인하지 않았거나 예약 등록하지 않은 항목이 있으면 알려요')
     expect(sentence('overlap')).toBe(
       '같은 날 이미지가 있는 모양의 카드가 3장 이상이거나, 이미지가 없는 모양의 카드가 1장보다 적거나, 신규 유저에게 보이는 카드가 3장보다 많으면 알려요'
     )

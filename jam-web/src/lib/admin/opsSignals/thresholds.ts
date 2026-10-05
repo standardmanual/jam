@@ -96,7 +96,7 @@ export const OPS_SIGNAL_THRESHOLDS = {
     '시간',
     true,
     'approval_deadline',
-    '공개 시각 몇 시간 전까지 승인되지 않으면 띄우는지',
+    '공개 시각 몇 시간 전까지 승인·예약 등록되지 않으면 띄우는지',
     HYERIN_ESTIMATE
   ),
   // 비어 있는 컨텐츠(날짜 구성 신호 4종이 함께 쓰는 검사 범위 값도 여기 둔다)

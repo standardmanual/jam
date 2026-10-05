@@ -103,7 +103,7 @@ describe('OpsSignalSettings — 카드 9장과 그룹', () => {
   it('칸 이름표는 thresholds.ts의 label과 UI 전용 문구이고 입력은 이름표와 이어져 있다', () => {
     const card = cardOf(out, 'approval_deadline')
     expect(card).toContain('<label id="signal-approval_deadline-approvalDeadlineHours-label" for="signal-approval_deadline-approvalDeadlineHours"')
-    expect(card).toContain('공개 시각 몇 시간 전까지 승인되지 않으면 띄우는지')
+    expect(card).toContain('공개 시각 몇 시간 전까지 승인·예약 등록되지 않으면 띄우는지')
     expect(card).toMatch(/id="signal-approval_deadline-approvalDeadlineHours"[^>]*value="48"/)
     expect(card).toContain('>시간<')
     const routine = cardOf(out, 'routine_failed')

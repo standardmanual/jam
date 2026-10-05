@@ -258,6 +258,13 @@ describe('기준값 덮어쓰기와 이름표', () => {
     expect(find(run({ bundles }, { thresholds: { approvalDeadlineHours: 24 } }), 'approval_deadline').state).toBe('clear')
   })
 
+  it('기준값을 덮어쓰면 승인됨(예약 등록 전) 항목에도 적용된다', () => {
+    const item = statusItem({ status: 'approved', startsAt: kst('2026-10-02', '18:00') })
+    const bundles = [makeBundle([item])]
+    expect(find(run({ bundles }), 'approval_deadline').state).toBe('raised')
+    expect(find(run({ bundles }, { thresholds: { approvalDeadlineHours: 24 } }), 'approval_deadline').state).toBe('clear')
+  })
+
   it('수준과 이름은 이름표를 따른다', () => {
     const result = run()
     expect(result.signals.map((signal) => [signal.key, signal.name, signal.level])).toEqual(
