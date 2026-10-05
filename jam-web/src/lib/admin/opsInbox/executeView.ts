@@ -2,7 +2,7 @@
  * 예약 등록·공개 전 취소 화면이 읽는 순수 함수 (티켓 20261002_1648, 상위 20260930_1500 ⑤-a, 운영툴 PRD §8.2. 공개 전 취소는 ⑤-b 티켓 20261002_1649, §8.7).
  *
  * 요약창의 구역 만들기(사전 점검 응답 → 구역·표시 순서), 실행 결과 토스트 문장, 항목별 가장 최근 실패 사유, 「아직 연결하지 않은 종류」
- * 안내 문장, 공개 전 취소 확인창의 문장·미리 보기 읽기·결과 토스트다. 화면(client)이 값으로 가져오므로 **레지스트리·핸들러·사전 점검 모듈(`execute/*`)을 값으로 가져오지 않는다**(서버 전용 코드가
+ * 안내 문장, 공개 전 취소 확인창의 문장·미리 보기 읽기·결과 토스트, 요약창의 JAM! 배지 소급 미리 세기 구역(티켓 20261005_1607 ⑨-b)이다. 화면(client)이 값으로 가져오므로 **레지스트리·핸들러·사전 점검 모듈(`execute/*`)을 값으로 가져오지 않는다**(서버 전용 코드가
  * 클라이언트 번들로 들어간다). 사전 점검은 서버 로더(`query.ts`)와 실행 API의 `{ dryRun: true }`만 부르고, 이 파일은 그 응답을 읽기만 한다.
  */
 import { OPS_DECISION_ACTION_FAIL } from '@/lib/admin/opsInbox/constants'
@@ -23,6 +23,11 @@ export const EXECUTE_SAMPLE_NOTICE = '시험 묶음이라 자원은 만들지 �
 export const EXECUTE_NOTHING_TO_RUN = '지금 예약할 수 있는 항목이 없어요'
 export const EXECUTE_LOADING = '사전 점검하는 중이에요'
 export const EXECUTE_DECISION_LOG_FAILED = '결정 기록을 남기지 못했어요. 예약은 그대로예요.'
+/** 요약창의 JAM! 배지 구역(⑨-b). 「획득」은 UX 가이드의 고정 용어이고 포인트는 「P」로 줄이지 않는다. */
+export const EXECUTE_BADGE_PREVIEW_TITLE = '공개되면 바로 획득하는 유저'
+export const EXECUTE_BADGE_PREVIEW_LOADING = '미리 세는 중이에요'
+/** 구역 전체가 실패했을 때와 배지 한 줄을 세지 못했을 때 같은 문장이다. */
+export const EXECUTE_BADGE_PREVIEW_FAILED = '미리 세지 못했어요'
 
 /** [N개 예약 등록하기]. 예약할 항목이 없으면 「예약 등록하기」다(눌러서 왜 못 하는지 볼 수 있게 끄지 않는다). */
 export function executeButtonLabel(readyCount: number): string {
@@ -184,6 +189,117 @@ export function buildExecuteSummary(precheck: PrecheckView, items: readonly Summ
     pendingLabel: action === 'close' ? '실패로 닫는 중' : '예약 등록하는 중',
     requestIds: action === 'close' ? closeIds : readyIds,
   }
+}
+
+// ── JAM! 배지 소급 미리 세기 (⑨-b, 티켓 20261005_1607) ──────────────────────────────────────────
+
+const JAM_BADGE_KIND = 'jam_badge'
+
+/** 미리 세기 줄의 상태. 서버 `badgePreview.ts`의 `BadgePreviewStatus`와 같다(그 모듈을 값으로 가져올 수 없어 여기에 적는다). */
+const BADGE_PREVIEW_STATUSES = ['counted', 'collectionReward', 'missionReward', 'notCountable', 'formatInvalid', 'failed'] as const
+export type BadgePreviewStatus = (typeof BADGE_PREVIEW_STATUSES)[number]
+
+export type BadgePreviewLine = { itemId: string; status: 'counted'; userCount: number; points: number } | { itemId: string; status: Exclude<BadgePreviewStatus, 'counted'> }
+
+/** 배지 미리 세기 응답(`{ badgePreview: true }`)에서 요약창이 쓰는 칸. */
+export interface BadgePreviewView {
+  totalUsers: number
+  evaluatedUsers: number
+  sampled: boolean
+  failedUsers: number
+  lines: BadgePreviewLine[]
+}
+
+/** 요약창의 배지 구역 한 줄. `name`은 예약할 항목과 같은 표시, `text`는 센 값이나 세지 않은 이유다. */
+export interface BadgePreviewLineView {
+  id: string
+  name: string
+  text: string
+}
+
+export interface BadgePreviewLines {
+  lines: BadgePreviewLineView[]
+  /** 표본으로 추정했거나 일부 유저를 세지 못했다는 안내. 센 배지가 있을 때만 나온다. */
+  notes: string[]
+}
+
+/** 요약창의 배지 구역 상태: 세는 중 · 실패 · 완료. 구역이 없으면(예약할 JAM! 배지가 없다) 화면이 `null`을 넘긴다. */
+export type BadgePreviewSection = { status: 'loading' } | { status: 'failed' } | ({ status: 'done' } & BadgePreviewLines)
+
+function isCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+}
+
+function isPreviewStatus(value: unknown): value is BadgePreviewStatus {
+  return typeof value === 'string' && (BADGE_PREVIEW_STATUSES as readonly string[]).includes(value)
+}
+
+/**
+ * 배지 미리 세기 응답에서 요약창이 쓰는 칸을 읽는다. 응답은 JSON이라 모양을 믿지 않고 읽는다. 읽을 수 없으면 null이다(구역은 「미리 세지 못했어요」).
+ * 줄에서 항목 ID가 없는 것은 버리고, 모르는 상태나 값이 틀린 센 줄은 「세지 못함」으로 둔다(숫자를 지어내지 않는다).
+ */
+export function readBadgePreview(data: Record<string, unknown>): BadgePreviewView | null {
+  const raw = recordOf(data.badgePreview)
+  if (!raw || !Array.isArray(raw.lines)) return null
+  const { totalUsers, evaluatedUsers, failedUsers } = raw
+  if (!isCount(totalUsers) || !isCount(evaluatedUsers) || !isCount(failedUsers)) return null
+
+  const lines = recordList(raw.lines).flatMap((entry): BadgePreviewLine[] => {
+    if (typeof entry.itemId !== 'string') return []
+    const itemId = entry.itemId
+    if (!isPreviewStatus(entry.status)) return [{ itemId, status: 'failed' }]
+    if (entry.status !== 'counted') return [{ itemId, status: entry.status }]
+    return isCount(entry.userCount) && isCount(entry.points) ? [{ itemId, status: 'counted', userCount: entry.userCount, points: entry.points }] : [{ itemId, status: 'failed' }]
+  })
+  return { totalUsers, evaluatedUsers, sampled: raw.sampled === true, failedUsers, lines }
+}
+
+const formatCount = (value: number): string => value.toLocaleString('ko-KR')
+
+/** 센 줄의 문장: 「공개되면 약 N명에게 P포인트」, 배지 포인트가 0이면 「공개되면 약 N명이 획득해요」, 0명이면 「공개돼도 바로 획득하는 유저는 없어요」. */
+function badgeLineText(line: BadgePreviewLine): string {
+  switch (line.status) {
+    case 'counted':
+      if (line.userCount === 0) return '공개돼도 바로 획득하는 유저는 없어요'
+      return line.points > 0 ? `공개되면 약 ${formatCount(line.userCount)}명에게 ${formatCount(line.points)}포인트` : `공개되면 약 ${formatCount(line.userCount)}명이 획득해요`
+    case 'collectionReward':
+      return '컬렉션을 완성하면 획득해요'
+    case 'missionReward':
+      return '미션 보상으로 획득해요'
+    case 'notCountable':
+      return '이 조건은 미리 세지 않아요'
+    case 'formatInvalid':
+      return '형식이 맞지 않아 세지 않았어요'
+    case 'failed':
+      return EXECUTE_BADGE_PREVIEW_FAILED
+  }
+}
+
+/**
+ * 배지 구역의 줄과 안내를 만든다. 줄 이름은 예약할 항목과 같은 표시(`itemDisplayName`)이고, 화면이 모르는 항목은 「항목」이다.
+ * 안내는 센 줄이 하나라도 있을 때만 붙는다: 표본이면 「유저 M명 중 K명을 세어 추정했어요」, 세다가 오류가 난 유저가 있으면 「N명은 세지 못해 빼고 셌어요」.
+ */
+export function badgePreviewLines(view: BadgePreviewView, items: readonly SummarySource[]): BadgePreviewLines {
+  const byId = new Map(items.map((item) => [item.id, item]))
+  const lines = view.lines.map((line): BadgePreviewLineView => {
+    const item = byId.get(line.itemId)
+    return { id: line.itemId, name: item ? itemDisplayName(item) : UNKNOWN_ITEM_NAME, text: badgeLineText(line) }
+  })
+  const notes: string[] = []
+  if (view.lines.some((line) => line.status === 'counted')) {
+    if (view.sampled && view.totalUsers > 0 && view.evaluatedUsers > 0) notes.push(`유저 ${formatCount(view.totalUsers)}명 중 ${formatCount(view.evaluatedUsers)}명을 세어 추정했어요`)
+    if (view.failedUsers > 0) notes.push(`${formatCount(view.failedUsers)}명은 세지 못해 빼고 셌어요`)
+  }
+  return { lines, notes }
+}
+
+/**
+ * 사전 점검의 「예약할 항목」 가운데 JAM! 배지의 항목 ID. 있을 때만 배지 미리 세기를 요청한다(없으면 요청을 보내지 않는다).
+ * 서버는 자기 사전 점검으로 다시 판정하므로 이 목록은 요청 여부를 정하는 데만 쓴다. 화면이 모르는 항목(`items`에 없음)은 세지 않는다.
+ */
+export function readyJamBadgeIds(precheck: PrecheckView, items: readonly Pick<SummarySource, 'id' | 'kind'>[]): string[] {
+  const kindById = new Map(items.map((item) => [item.id, item.kind]))
+  return precheck.ready.filter((id) => kindById.get(id) === JAM_BADGE_KIND)
 }
 
 // ── 실행 결과 ───────────────────────────────────────────────────────────────────────────────────
