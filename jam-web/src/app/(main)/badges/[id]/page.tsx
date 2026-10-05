@@ -83,7 +83,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     // 소프트 삭제된 배지(badges.deleted_at)는 직접 접근 시 존재하지 않는 배지와 동일하게 취급한다
     // (20260824_007) — 없으면 아래 notFound()로 빠진다. 이후 이 배지에 종속된 소속 컬렉션·
     // POI 역조회 조회는 notFound() 이후 코드라 자동으로 함께 막힌다.
-    supabase.from('badges').select('*').eq('id', id).is('deleted_at', null).single(),
+    // 20261005_1151: .maybeSingle() — 정책(마이그레이션 216)이 공개 전 활동 배지·비공개 컬렉션 소속 배지를
+    // 0행으로 돌려주므로 0행은 오류가 아니라 같은 404다(.single()이면 PGRST116이 아래 badgeError 로그에 남는다).
+    supabase.from('badges').select('*').eq('id', id).is('deleted_at', null).maybeSingle(),
         service
       .from('user_activity_badges')
       .select('*, poi:triggered_by_poi_id(id, name, latitude, longitude, radius_meters)')
