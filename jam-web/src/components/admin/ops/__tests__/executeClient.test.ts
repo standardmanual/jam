@@ -2,16 +2,17 @@
  * 예약 등록·공개 전 취소 요청 호출 (티켓 20261002_1648, 20261002_1649) — `postExecute`·`postCancel`
  *
  * 요약창과 주 버튼, 취소 확인창이 기대는 결과 모양을 고정한다(던지지 않고 결과를 돌려준다):
- * - 요청 형식: POST, 본문 JSON(`{ dryRun: true }` 또는 `{ itemIds }`), 묶음 ID는 주소에 싣는다
+ * - 요청 형식: POST, 본문 JSON(`{ dryRun: true }`·`{ badgePreview: true }`(티켓 20261005_1607) 또는 `{ itemIds }`), 묶음 ID는 주소에 싣는다
  * - 200: 응답 본문을 그대로 돌려준다
  * - 409: 서버 문장에 「화면을 새로 불러왔어요」를 덧붙여 상태 코드로 알아본다(`postDecision`과 같다)
  * - 500·서버 문장이 없는 오류: 서버 문장 또는 고정 문장
  * - 네트워크가 끊기면 status 0과 고정 문장(NETWORK_ERROR_MESSAGE)이고 던지지 않는다
+ * - `fetchBadgePreview`(티켓 20261005_1607): `{ badgePreview: true }`를 보내 응답을 배지 구역 상태로 바꾸고, 어떤 실패도 던지지 않고 `failed`로 돌려준다
  * - `postCancel`은 같은 규칙을 항목 주소(`items/[itemId]/cancel`)에 적용하고, 본문은 `{ dryRun: true }`·`{ reason }`·`{}`다
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NETWORK_ERROR_MESSAGE } from '@/components/admin/data-table/admin-fetch'
-import { postCancel, postExecute } from '../executeClient'
+import { fetchBadgePreview, postCancel, postExecute } from '../executeClient'
 
 function respond(status: number, body: unknown) {
   return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
@@ -38,6 +39,16 @@ describe('postExecute', () => {
     expect(init.method).toBe('POST')
     expect(init.headers).toEqual({ 'Content-Type': 'application/json' })
     expect(JSON.parse(init.body)).toEqual({ dryRun: true })
+  })
+
+  it('배지 미리 세기는 같은 주소로 { badgePreview: true }를 JSON으로 보낸다', async () => {
+    const body = { ok: true, badgePreview: { totalUsers: 0, evaluatedUsers: 0, sampled: false, failedUsers: 0, lines: [] } }
+    fetchMock.mockReturnValue(respond(200, body))
+    expect(await postExecute('bundle-1', { badgePreview: true })).toEqual({ ok: true, data: body })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/admin/ops-inbox/bundle-1/execute')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ badgePreview: true })
   })
 
   it('실행은 { itemIds }를 보내고 200이면 응답을 그대로 돌려준다', async () => {
@@ -86,6 +97,38 @@ describe('postExecute', () => {
     const result = await postExecute('bundle-1', { itemIds: ['a'] })
     expect(result).toEqual({ ok: false, status: 0, error: NETWORK_ERROR_MESSAGE, data: {} })
     expect(JSON.stringify(result)).not.toContain('Failed to fetch')
+  })
+})
+
+describe('fetchBadgePreview', () => {
+  const items = [{ id: 'b1', position: 1, kind: 'jam_badge', startsAt: '2026-10-10T00:00:00Z', original: { user_experience: '첫 믹스 배지' }, edited: null }]
+  const ok = { totalUsers: 40, evaluatedUsers: 40, sampled: false, failedUsers: 0, lines: [{ itemId: 'b1', status: 'counted', userCount: 12, points: 120 }] }
+
+  it('{ badgePreview: true }를 보내고 응답을 완료 상태(줄·안내)로 바꾼다', async () => {
+    fetchMock.mockReturnValue(respond(200, { ok: true, badgePreview: ok }))
+    const section = await fetchBadgePreview('bundle-1', items)
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ badgePreview: true })
+    expect(section).toEqual({
+      status: 'done',
+      lines: [{ id: 'b1', name: 'JAM! 배지 · 10/10(토) 09:00 시작 · 첫 믹스 배지', text: '공개되면 약 12명에게 120포인트' }],
+      notes: [],
+    })
+  })
+
+  it('서버 오류·권한 오류·네트워크 오류는 던지지 않고 failed다', async () => {
+    for (const status of [400, 403, 404, 500, 502]) {
+      fetchMock.mockReturnValueOnce(respond(status, { error: '서버 문장' }))
+      expect(await fetchBadgePreview('bundle-1', items), String(status)).toEqual({ status: 'failed' })
+    }
+    fetchMock.mockReturnValueOnce(Promise.reject(new TypeError('Failed to fetch')))
+    expect(await fetchBadgePreview('bundle-1', items)).toEqual({ status: 'failed' })
+  })
+
+  it('읽을 수 없는 응답 모양은 failed다', async () => {
+    fetchMock.mockReturnValueOnce(respond(200, { ok: true }))
+    expect(await fetchBadgePreview('bundle-1', items)).toEqual({ status: 'failed' })
+    fetchMock.mockReturnValueOnce(respond(200, { ok: true, badgePreview: { ...ok, totalUsers: 'many' } }))
+    expect(await fetchBadgePreview('bundle-1', items)).toEqual({ status: 'failed' })
   })
 })
 

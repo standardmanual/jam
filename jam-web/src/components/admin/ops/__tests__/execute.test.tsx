@@ -6,6 +6,8 @@
  * - 요약창: 구역 순서와 문구, 연결 묶음은 한 덩어리, 경고, 시험 묶음 문장, 비어 있는 구역은 그리지 않는다
  * - 주 버튼: 「N개 예약 등록하기」 · 「실패로 닫기」 · 꺼짐(「지금 예약할 수 있는 항목이 없어요」), 진행형 문구
  * - 불러오는 중·실패는 창 안 문장이고 주 버튼은 꺼진다
+ * - JAM! 배지 구역(티켓 20261005_1607 ⑨-b): 「공개되면 바로 획득하는 유저」가 예약할 항목 구역 바로 뒤에 놓이고, 세는 중 · 줄 목록과 안내 · 실패가 구역 안 문장이다.
+ *   구역이 어떤 상태여도 주 버튼은 미리 세기와 무관하다. 구역이 없으면(예약할 JAM! 배지가 없다) 그리지 않는다
  * - 소스 계약: 「공개는 아직 연결 전이에요」가 화면 소스에서 사라졌고, 화면은 레지스트리·사전 점검 모듈을 값으로 가져오지 않는다
  * 열기 → 사전 점검 요청 → 실행 → 토스트 흐름은 브라우저 동작이라 여기서 다루지 않는다(순수 함수는 `executeView.test.ts`, 호출은 `executeClient.test.ts`).
  */
@@ -16,7 +18,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, sep } from 'node:path'
 import { TooltipProvider } from '@/components/admin/ui/tooltip'
 import { AlertDialog } from '@/components/admin/ui/alert-dialog'
-import { buildExecuteSummary, type PrecheckView, type SummarySource } from '@/lib/admin/opsInbox/executeView'
+import { badgePreviewLines, buildExecuteSummary, type BadgePreviewSection, type BadgePreviewView, type PrecheckView, type SummarySource } from '@/lib/admin/opsInbox/executeView'
 import { OpsExecuteBundle, OpsExecutePanel } from '../OpsExecuteBundle'
 
 const html = (node: ReactElement) => renderToStaticMarkup(<TooltipProvider>{node}</TooltipProvider>)
@@ -237,6 +239,109 @@ describe('OpsExecutePanel — 불러오는 중·점검 실패', () => {
   })
 })
 
+describe('OpsExecutePanel — JAM! 배지 구역 (티켓 20261005_1607)', () => {
+  const items = [
+    ...ITEMS,
+    source('b1', { kind: 'jam_badge', startsAt: '2026-10-10T00:00:00Z', original: { user_experience: '첫 믹스 배지' } }),
+    source('b2', { kind: 'jam_badge', startsAt: '2026-10-11T00:00:00Z', original: { user_experience: '믹스 마스터' } }),
+  ]
+  const ready = buildExecuteSummary(precheck({ ready: ['a1', 'b1', 'b2'], waiting: ['a3'] }), items, false)
+  const done = (view: Partial<BadgePreviewView> = {}): BadgePreviewSection => ({
+    status: 'done',
+    ...badgePreviewLines(
+      {
+        totalUsers: 40,
+        evaluatedUsers: 40,
+        sampled: false,
+        failedUsers: 0,
+        lines: [
+          { itemId: 'b1', status: 'counted', userCount: 12, points: 120 },
+          { itemId: 'b2', status: 'collectionReward' },
+        ],
+        ...view,
+      },
+      items
+    ),
+  })
+
+  it('세는 중에는 구역 제목과 「미리 세는 중이에요」가 보이고, 주 버튼은 그대로 켜져 있다', () => {
+    const out = panel(ready, { badgePreview: { status: 'loading' } })
+    expect(out).toContain('공개되면 바로 획득하는 유저')
+    expect(out).toContain('미리 세는 중이에요')
+    const button = buttonOf(out, '3개 예약 등록하기')
+    expect(button).not.toBe('')
+    expect(isDisabled(button)).toBe(false)
+    expect(isDisabled(buttonOf(out, '닫기'))).toBe(false)
+  })
+
+  it('다 세면 배지마다 이름과 한 줄이 나오고, 세는 중 문장은 사라진다', () => {
+    const out = panel(ready, { badgePreview: done() })
+    expect(out).toContain('JAM! 배지 · 10/10(토) 09:00 시작 · 첫 믹스 배지')
+    expect(out).toContain('공개되면 약 12명에게 120포인트')
+    expect(out).toContain('JAM! 배지 · 10/11(일) 09:00 시작 · 믹스 마스터')
+    expect(out).toContain('컬렉션을 완성하면 획득해요')
+    expect(out).not.toContain('미리 세는 중이에요')
+    expect(isDisabled(buttonOf(out, '3개 예약 등록하기'))).toBe(false)
+  })
+
+  it('표본으로 추정했거나 일부 유저를 세지 못했으면 안내가 구역 안에 붙는다', () => {
+    const out = panel(ready, { badgePreview: done({ totalUsers: 1200, evaluatedUsers: 500, sampled: true, failedUsers: 3 }) })
+    expect(out).toContain('유저 1,200명 중 500명을 세어 추정했어요')
+    expect(out).toContain('3명은 세지 못해 빼고 셌어요')
+    expect(out.indexOf('공개되면 약 12명에게')).toBeLessThan(out.indexOf('유저 1,200명 중'))
+    expect(panel(ready, { badgePreview: done() })).not.toContain('추정했어요')
+  })
+
+  it('실패하면 구역 안에 「미리 세지 못했어요」만 보이고 요약창·주 버튼은 그대로다', () => {
+    const out = panel(ready, { badgePreview: { status: 'failed' } })
+    expect(out).toContain('공개되면 바로 획득하는 유저')
+    expect(out).toContain('미리 세지 못했어요')
+    expect(out).toContain('예약할 항목 3개')
+    expect(out).toContain('기다리는 항목 1개')
+    expect(out).not.toContain('role="alert"')
+    expect(isDisabled(buttonOf(out, '3개 예약 등록하기'))).toBe(false)
+  })
+
+  it('구역은 예약할 항목 구역 바로 뒤, 기다리는 항목 구역 앞에 놓인다', () => {
+    const out = panel(ready, { badgePreview: done() })
+    const order = ['예약할 항목 3개', '공개되면 바로 획득하는 유저', '기다리는 항목 1개'].map((text) => out.indexOf(text))
+    expect(order.every((at) => at > -1)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+  })
+
+  it('구역이 없으면(예약할 JAM! 배지가 없다) 그리지 않는다. 줄이 하나도 없는 완료도 그리지 않는다', () => {
+    for (const badgePreview of [undefined, null, { status: 'done', lines: [], notes: [] } as BadgePreviewSection]) {
+      const out = panel(ready, { badgePreview })
+      expect(out).not.toContain('공개되면 바로 획득하는 유저')
+      expect(out).toContain('예약할 항목 3개')
+    }
+  })
+
+  it('예약할 항목이 없어 주 버튼이 꺼진 요약에서도 구역 상태와 무관하게 주 버튼 판정은 그대로다', () => {
+    const none = buildExecuteSummary(precheck({ waiting: ['a3'] }), items, false)
+    const out = panel(none, { badgePreview: { status: 'loading' } })
+    expect(isDisabled(buttonOf(out, '예약 등록하기'))).toBe(true)
+  })
+
+  it('처리 중에는 구역이 어떤 상태여도 두 버튼이 꺼진다(미리 세기가 아니라 실행 때문이다)', () => {
+    const out = panel(ready, { badgePreview: done(), pending: true })
+    expect(isDisabled(buttonOf(out, '예약 등록하는 중'))).toBe(true)
+  })
+
+  it('항목 이름은 HTML로 해석되지 않는다', () => {
+    const evil = source('b9', { kind: 'jam_badge', original: { user_experience: '<img src=x onerror=1>' } })
+    const out = panel(buildExecuteSummary(precheck({ ready: ['b9'] }), [evil], false), {
+      badgePreview: {
+        status: 'done',
+        ...badgePreviewLines({ totalUsers: 1, evaluatedUsers: 1, sampled: false, failedUsers: 0, lines: [{ itemId: 'b9', status: 'counted', userCount: 1, points: 0 }] }, [evil]),
+      },
+    })
+    expect(out).not.toContain('<img')
+    expect(out).toContain('&lt;img src=x onerror=1&gt;')
+    expect(out).toContain('공개되면 약 1명이 획득해요')
+  })
+})
+
 // ── 소스 계약 ────────────────────────────────────────────────────────────────────────────────────
 
 const SRC = join(process.cwd(), 'src')
@@ -293,6 +398,16 @@ describe('소스 계약 — 예약 등록 화면 (티켓 20261002_1648)', () => 
       .filter((file) => file.includes(`${sep}components${sep}`) && valueImportPaths(readFileSync(file, 'utf8')).some((path) => serverOnly.test(path)))
       .map((file) => file.slice(SRC.length))
     expect(offenders).toEqual([])
+  })
+
+  it('요약창은 예약할 JAM! 배지가 있을 때만 두 번째 요청을 보내고, 창을 닫았다 다시 열면 앞선 응답을 버린다(티켓 20261005_1607)', () => {
+    // 브라우저 흐름은 단위 테스트로 열 수 없어(jsdom 없음) 소스의 연결 지점을 고정한다. 실제 흐름은 PC 세션에서 본다.
+    const code = stripComments(readFileSync(join(SRC, 'components/admin/ops/OpsExecuteBundle.tsx'), 'utf8'))
+    expect(code).toMatch(/if \(readyJamBadgeIds\(precheck, items\)\.length > 0\) void loadBadgePreview\(run\)/)
+    expect(code).toMatch(/if \(run === precheckRun\.current\) setBadgePreview\(section\)/)
+    expect(code).toMatch(/setBadgePreview\(null\)/)
+    // 주 버튼 판정(`confirmDisabled`)은 배지 구역 상태를 읽지 않는다.
+    expect(code).toMatch(/confirmDisabled=\{!summary \|\| summary\.action === 'none'\}/)
   })
 
   it('값 import를 찾는 도우미가 type import와 여러 줄 import를 구분한다(빈 검사로 통과하지 않는다)', () => {

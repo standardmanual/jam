@@ -7,6 +7,7 @@
  * - 실행 응답 → 토스트 문장(성공·일부 실패·실패로만 닫음·건너뜀·결정 기록 실패)
  * - 항목별 가장 최근 `fail` 사유, 「아직 연결하지 않은 종류」 안내 문장
  * - 공개 전 취소 확인창(티켓 20261002_1649, §8.7): 미리 보기 응답 → 함께 취소될 항목·막는 항목·주 버튼 문구, 마지막 줄(시험 묶음은 다르다), 결과 토스트, 화면을 새로 읽을 실패
+ * - JAM! 배지 소급 미리 세기(티켓 20261005_1607 ⑨-b): 응답 방어 읽기, 줄 문구(센 값·0명·포인트 0·세 가지 구분·형식 오류·실패), 표본·일부 유저 실패 안내, 요청 여부를 정하는 예약할 JAM! 배지 ID
  * - 이 파일은 레지스트리·사전 점검 모듈을 값으로 가져오지 않는다(클라이언트가 가져온다). 문장이 사전 점검과 어긋나지 않는지는 여기서만 맞춰 본다.
  */
 import { describe, it, expect } from 'vitest'
@@ -15,8 +16,12 @@ import { join } from 'node:path'
 import { PRECHECK_MESSAGES } from '../execute/precheck'
 import {
   CANCEL_DECISION_LOG_FAILED,
+  EXECUTE_BADGE_PREVIEW_FAILED,
+  EXECUTE_BADGE_PREVIEW_LOADING,
+  EXECUTE_BADGE_PREVIEW_TITLE,
   EXECUTE_DECISION_LOG_FAILED,
   EXECUTE_WAITING_REASON,
+  badgePreviewLines,
   buildCancelPreview,
   buildExecuteSummary,
   cancelAlsoTitle,
@@ -29,9 +34,12 @@ import {
   executeToast,
   itemDisplayName,
   latestFailReasons,
+  readBadgePreview,
   readExecuteResult,
   readPrecheck,
+  readyJamBadgeIds,
   unconnectedKindsNotice,
+  type BadgePreviewView,
   type PrecheckView,
   type SummarySource,
 } from '../executeView'
@@ -223,6 +231,191 @@ describe('buildExecuteSummary — 주 버튼', () => {
   it('둘 다 없으면 꺼진다(할 일 없음)', () => {
     const summary = buildExecuteSummary(precheck({ waiting: ['a1'], blocked: [{ id: 'a2', reasons: ['이유'] }] }), items, false)
     expect(summary).toMatchObject({ action: 'none', confirmLabel: '예약 등록하기', requestIds: [] })
+  })
+})
+
+describe('JAM! 배지 소급 미리 세기 — 응답 읽기', () => {
+  const response = (overrides: Record<string, unknown> = {}) => ({
+    ok: true,
+    badgePreview: {
+      totalUsers: 1200,
+      evaluatedUsers: 500,
+      sampled: true,
+      failedUsers: 3,
+      lines: [
+        { itemId: 'b1', status: 'counted', userCount: 480, points: 4800 },
+        { itemId: 'b2', status: 'collectionReward' },
+      ],
+      ...overrides,
+    },
+  })
+
+  it('응답에서 요약창이 쓰는 칸을 읽는다', () => {
+    expect(readBadgePreview(response())).toEqual({
+      totalUsers: 1200,
+      evaluatedUsers: 500,
+      sampled: true,
+      failedUsers: 3,
+      lines: [
+        { itemId: 'b1', status: 'counted', userCount: 480, points: 4800 },
+        { itemId: 'b2', status: 'collectionReward' },
+      ],
+    })
+  })
+
+  it('표본 표시가 true가 아니면 표본이 아니다', () => {
+    expect(readBadgePreview(response({ sampled: 'true' }))?.sampled).toBe(false)
+    expect(readBadgePreview(response({ sampled: undefined }))?.sampled).toBe(false)
+  })
+
+  it('읽을 수 없는 모양이면 null이다(구역은 「미리 세지 못했어요」)', () => {
+    expect(readBadgePreview({})).toBeNull()
+    expect(readBadgePreview({ badgePreview: null })).toBeNull()
+    expect(readBadgePreview({ badgePreview: [] })).toBeNull()
+    expect(readBadgePreview(response({ lines: 'x' }))).toBeNull()
+    expect(readBadgePreview(response({ lines: undefined }))).toBeNull()
+    for (const key of ['totalUsers', 'evaluatedUsers', 'failedUsers']) {
+      for (const bad of [-1, 1.5, '3', null, undefined, Number.NaN]) {
+        expect(readBadgePreview(response({ [key]: bad })), `${key}=${String(bad)}`).toBeNull()
+      }
+    }
+  })
+
+  it('줄은 모양을 믿지 않는다: 항목 ID가 없으면 버리고, 모르는 상태나 값이 틀린 센 줄은 「세지 못함」이다', () => {
+    const view = readBadgePreview(
+      response({
+        lines: [
+          { status: 'counted', userCount: 1, points: 1 },
+          'oops',
+          { itemId: 'b1', status: 'surprise' },
+          { itemId: 'b2', status: 'counted', userCount: -1, points: 0 },
+          { itemId: 'b3', status: 'counted', userCount: 2 },
+          { itemId: 'b4', status: 'counted', userCount: '2', points: 20 },
+          { itemId: 'b5', status: 'counted', userCount: 0, points: 0 },
+          { itemId: 'b6', status: 'notCountable', userCount: 99 },
+        ],
+      })
+    )
+    expect(view?.lines).toEqual([
+      { itemId: 'b1', status: 'failed' },
+      { itemId: 'b2', status: 'failed' },
+      { itemId: 'b3', status: 'failed' },
+      { itemId: 'b4', status: 'failed' },
+      { itemId: 'b5', status: 'counted', userCount: 0, points: 0 },
+      { itemId: 'b6', status: 'notCountable' },
+    ])
+  })
+})
+
+describe('JAM! 배지 소급 미리 세기 — 구역 문구', () => {
+  const view = (overrides: Partial<BadgePreviewView> = {}): BadgePreviewView => ({
+    totalUsers: 40,
+    evaluatedUsers: 40,
+    sampled: false,
+    failedUsers: 0,
+    lines: [],
+    ...overrides,
+  })
+  const items = [src('b1', { kind: 'jam_badge', startsAt: '2026-10-10T00:00:00Z', original: { user_experience: '첫 믹스 배지' } }), src('b2', { kind: 'jam_badge', startsAt: null, original: {} })]
+  const textOf = (line: BadgePreviewView['lines'][number]) => badgePreviewLines(view({ lines: [line] }), items).lines[0].text
+
+  it('구역 제목·세는 중·실패 문장은 고정 용어(획득·포인트)를 쓰고 「P」로 줄이지 않는다', () => {
+    expect(EXECUTE_BADGE_PREVIEW_TITLE).toBe('공개되면 바로 획득하는 유저')
+    expect(EXECUTE_BADGE_PREVIEW_LOADING).toBe('미리 세는 중이에요')
+    expect(EXECUTE_BADGE_PREVIEW_FAILED).toBe('미리 세지 못했어요')
+  })
+
+  it('센 값은 「공개되면 약 N명에게 P포인트」이고 큰 숫자는 천 단위로 끊는다', () => {
+    expect(textOf({ itemId: 'b1', status: 'counted', userCount: 12, points: 120 })).toBe('공개되면 약 12명에게 120포인트')
+    expect(textOf({ itemId: 'b1', status: 'counted', userCount: 1234, points: 12340 })).toBe('공개되면 약 1,234명에게 12,340포인트')
+  })
+
+  it('배지 포인트가 0이면 「공개되면 약 N명이 획득해요」다', () => {
+    expect(textOf({ itemId: 'b1', status: 'counted', userCount: 3, points: 0 })).toBe('공개되면 약 3명이 획득해요')
+  })
+
+  it('0명이면 「공개돼도 바로 획득하는 유저는 없어요」다', () => {
+    expect(textOf({ itemId: 'b1', status: 'counted', userCount: 0, points: 0 })).toBe('공개돼도 바로 획득하는 유저는 없어요')
+  })
+
+  it('컬렉션 완성 보상·미션 보상·미리 세지 않는 조건·형식 오류·세지 못함이 서로 다른 문장이다', () => {
+    const texts = (['collectionReward', 'missionReward', 'notCountable', 'formatInvalid', 'failed'] as const).map((status) => textOf({ itemId: 'b1', status }))
+    expect(texts).toEqual([
+      '컬렉션을 완성하면 획득해요',
+      '미션 보상으로 획득해요',
+      '이 조건은 미리 세지 않아요',
+      '형식이 맞지 않아 세지 않았어요',
+      '미리 세지 못했어요',
+    ])
+    expect(new Set(texts).size).toBe(5)
+  })
+
+  it('줄 이름은 예약할 항목과 같은 표시이고, 화면이 모르는 항목은 「항목」이다. 순서는 응답 그대로다', () => {
+    const lines = badgePreviewLines(
+      view({
+        lines: [
+          { itemId: 'b2', status: 'notCountable' },
+          { itemId: 'b1', status: 'counted', userCount: 1, points: 10 },
+          { itemId: 'zz', status: 'failed' },
+        ],
+      }),
+      items
+    ).lines
+    expect(lines.map((line) => line.id)).toEqual(['b2', 'b1', 'zz'])
+    expect(lines[1].name).toBe('JAM! 배지 · 10/10(토) 09:00 시작 · 첫 믹스 배지')
+    expect(lines[0].name).toBe('JAM! 배지')
+    expect(lines[2].name).toBe('항목')
+  })
+
+  it('표본으로 추정했으면 「유저 M명 중 K명을 세어 추정했어요」 안내가 붙는다', () => {
+    const { notes } = badgePreviewLines(view({ totalUsers: 1200, evaluatedUsers: 500, sampled: true, lines: [{ itemId: 'b1', status: 'counted', userCount: 480, points: 4800 }] }), items)
+    expect(notes).toEqual(['유저 1,200명 중 500명을 세어 추정했어요'])
+  })
+
+  it('세다가 오류가 난 유저가 있으면 「N명은 세지 못해 빼고 셌어요」 안내가 붙는다. 표본과 함께면 둘 다다', () => {
+    const counted = { itemId: 'b1', status: 'counted', userCount: 5, points: 50 } as const
+    expect(badgePreviewLines(view({ failedUsers: 2, lines: [counted] }), items).notes).toEqual(['2명은 세지 못해 빼고 셌어요'])
+    expect(badgePreviewLines(view({ totalUsers: 100, evaluatedUsers: 54, sampled: true, failedUsers: 6, lines: [counted] }), items).notes).toEqual([
+      '유저 100명 중 54명을 세어 추정했어요',
+      '6명은 세지 못해 빼고 셌어요',
+    ])
+  })
+
+  it('다 셌고 오류도 없으면 안내가 없다. 센 줄이 없으면 표본이어도 안내가 없다', () => {
+    expect(badgePreviewLines(view({ lines: [{ itemId: 'b1', status: 'counted', userCount: 5, points: 50 }] }), items).notes).toEqual([])
+    expect(badgePreviewLines(view({ totalUsers: 1200, evaluatedUsers: 500, sampled: true, failedUsers: 4, lines: [{ itemId: 'b1', status: 'collectionReward' }] }), items).notes).toEqual([])
+    expect(badgePreviewLines(view({ lines: [{ itemId: 'b1', status: 'failed' }], sampled: true, failedUsers: 4 }), items).notes).toEqual([])
+  })
+
+  it('센 유저 수나 전체 유저 수가 0이면 「0명 중」 같은 안내를 만들지 않는다', () => {
+    const counted = { itemId: 'b1', status: 'counted', userCount: 0, points: 0 } as const
+    expect(badgePreviewLines(view({ totalUsers: 0, evaluatedUsers: 0, sampled: true, lines: [counted] }), items).notes).toEqual([])
+  })
+})
+
+describe('readyJamBadgeIds — 배지 미리 세기를 요청할지', () => {
+  const items = [
+    src('b1', { kind: 'jam_badge' }),
+    src('b2', { kind: 'jam_badge' }),
+    src('b3', { kind: 'jam_badge' }),
+    src('b4', { kind: 'jam_badge' }),
+    src('c1', { kind: 'home_feed_card' }),
+    src('m1', { kind: 'mission' }),
+  ]
+
+  it('예약할 항목 가운데 JAM! 배지만 사전 점검의 순서대로 돌려준다', () => {
+    expect(readyJamBadgeIds(precheck({ ready: ['c1', 'b2', 'm1', 'b1'] }), items)).toEqual(['b2', 'b1'])
+  })
+
+  it('기다리는 중·못 하는 항목·실패로 닫을 항목인 배지는 세지 않는다', () => {
+    const view = precheck({ ready: ['c1'], waiting: ['b1'], blocked: [{ id: 'b2', reasons: ['공개 시각이 없어요'] }], failClose: [{ id: 'b3', reason: '이유' }] })
+    expect(readyJamBadgeIds(view, items)).toEqual([])
+  })
+
+  it('예약할 JAM! 배지가 없으면 비어 있다(요청을 보내지 않는다). 화면이 모르는 항목도 뺀다', () => {
+    expect(readyJamBadgeIds(precheck(), items)).toEqual([])
+    expect(readyJamBadgeIds(precheck({ ready: ['c1', 'm1'] }), items)).toEqual([])
+    expect(readyJamBadgeIds(precheck({ ready: ['unknown'] }), items)).toEqual([])
   })
 })
 

@@ -2,8 +2,9 @@
  * POST /api/admin/ops-inbox/[bundleId]/execute — 예약 등록 (티켓 20261002_1123)
  *
  * 실행 규칙(선점·그룹 생성·되돌림·결정 기록)은 `opsInbox/execute/__tests__/run.test.ts`가 지킨다. 여기서는 라우트가 맡은 것만 본다:
- * - 비로그인·비관리자 403, UUID가 아니면 400, 본문 형식·크기 400, dryRun과 itemIds 중 정확히 하나만 받는다
- * - dryRun은 사전 점검만 부르고 슬랙 글을 올리지 않는다. 실행은 행위자(관리자 ID)와 항목 ID를 넘기고 실패 상태·본문을 그대로 돌려준다
+ * - 비로그인·비관리자 403, UUID가 아니면 400, 본문 형식·크기 400
+ * - 본문은 dryRun(사전 점검)·badgePreview(JAM! 배지 미리 세기, 티켓 20261005_1607)·itemIds(실행) 가운데 정확히 하나다
+ * - dryRun은 사전 점검만 부르고 슬랙 글을 올리지 않는다. 배지 미리 세기도 읽기 전용이라 슬랙 글도 결정 기록도 없다. 실행은 행위자(관리자 ID)와 항목 ID를 넘기고 실패 상태·본문을 그대로 돌려준다
  * - 응답 뒤 슬랙 글: 요약 한 건(#jam-report), 실패가 있으면 한 건(#jam-alert). 슬랙이 실패하거나 던져도 응답은 200이다
  * - POST만 export하고 maxDuration이 60이며 읽기 토큰을 다루지 않는다
  */
@@ -18,6 +19,7 @@ const h = vi.hoisted(() => {
     decisionUpdates: [] as Array<{ payload: unknown; filters: Array<[string, unknown]> }>,
     postOpsSlack: vi.fn(),
     dryRunExecution: vi.fn(),
+    badgePreviewExecution: vi.fn(),
     executeBundle: vi.fn(),
   }
 
@@ -56,7 +58,7 @@ vi.mock('@/lib/admin/opsInbox/slack', async (importOriginal) => {
 // 처리 함수는 모의하고, 슬랙 결과를 채우는 notifyExecution은 실제 코드를 쓴다.
 vi.mock('@/lib/admin/opsInbox/execute/run', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/admin/opsInbox/execute/run')>()
-  return { ...actual, dryRunExecution: h.state.dryRunExecution, executeBundle: h.state.executeBundle }
+  return { ...actual, dryRunExecution: h.state.dryRunExecution, badgePreviewExecution: h.state.badgePreviewExecution, executeBundle: h.state.executeBundle }
 })
 
 import { POST } from '../route'
@@ -64,6 +66,8 @@ import { POST } from '../route'
 const B = '4ca7d1ad-43b2-41a3-9ed4-f03bc73604ee'
 const I1 = '00000000-0000-4000-8000-000000000001'
 const I2 = '00000000-0000-4000-8000-000000000002'
+
+const PREVIEW = { totalUsers: 3, evaluatedUsers: 3, sampled: false, failedUsers: 0, lines: [{ itemId: I1, status: 'counted', userCount: 3, points: 30 }] }
 
 function call(body: unknown, bundleId = B, raw?: string) {
   return POST(
@@ -93,13 +97,14 @@ beforeEach(() => {
   h.state.admin = { id: 'admin-1', email: 'a@example.com' }
   h.state.afterCallbacks = []
   h.state.decisionUpdates = []
-  for (const key of ['postOpsSlack', 'dryRunExecution', 'executeBundle'] as const) h.state[key].mockReset()
+  for (const key of ['postOpsSlack', 'dryRunExecution', 'badgePreviewExecution', 'executeBundle'] as const) h.state[key].mockReset()
   h.state.dryRunExecution.mockResolvedValue({ ok: true, body: { ok: true, dryRun: true, ready: [I1], waiting: [], blocked: [], failClose: [], excluded: [], groups: [], warnings: [] } })
+  h.state.badgePreviewExecution.mockResolvedValue({ ok: true, body: { ok: true, badgePreview: PREVIEW } })
   h.state.executeBundle.mockResolvedValue(executed())
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
-const processors = () => [h.state.dryRunExecution, h.state.executeBundle]
+const processors = () => [h.state.dryRunExecution, h.state.badgePreviewExecution, h.state.executeBundle]
 
 describe('인증과 입력', () => {
   it('로그인하지 않았거나 관리자가 아니면 403이고 아무것도 처리하지 않는다', async () => {
@@ -129,8 +134,23 @@ describe('인증과 입력', () => {
     expect(h.state.executeBundle).not.toHaveBeenCalled()
   })
 
-  it('dryRun과 itemIds 중 정확히 하나만 받는다(둘 다·둘 다 없음·dryRun이 true가 아님은 400)', async () => {
-    for (const body of [{}, { dryRun: true, itemIds: [I1] }, { dryRun: false }, { dryRun: 'true' }, { dryRun: 1 }, { dryRun: false, itemIds: [I1] }, { action: 'execute' }]) {
+  it('dryRun·badgePreview·itemIds 중 정확히 하나만 받는다(둘 이상·모두 없음·dryRun이나 badgePreview가 true가 아님은 400)', async () => {
+    for (const body of [
+      {},
+      { dryRun: true, itemIds: [I1] },
+      { dryRun: false },
+      { dryRun: 'true' },
+      { dryRun: 1 },
+      { dryRun: false, itemIds: [I1] },
+      { action: 'execute' },
+      { badgePreview: false },
+      { badgePreview: 'true' },
+      { badgePreview: 1 },
+      { badgePreview: null },
+      { badgePreview: true, dryRun: true },
+      { badgePreview: true, itemIds: [I1] },
+      { badgePreview: true, dryRun: true, itemIds: [I1] },
+    ]) {
       expect((await call(body)).status, JSON.stringify(body)).toBe(400)
     }
     for (const fn of processors()) expect(fn).not.toHaveBeenCalled()
@@ -151,6 +171,28 @@ describe('사전 점검 { dryRun: true }', () => {
   it('실패는 그 상태와 본문을 그대로 돌려준다', async () => {
     h.state.dryRunExecution.mockResolvedValue({ ok: false, status: 404, error: '찾을 수 없는 기획이에요.' })
     const res = await call({ dryRun: true })
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ error: '찾을 수 없는 기획이에요.' })
+  })
+})
+
+describe('배지 미리 세기 { badgePreview: true }', () => {
+  it('미리 센 결과를 200으로 돌려주고 사전 점검·실행·슬랙은 부르지 않는다', async () => {
+    const res = await call({ badgePreview: true })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true, badgePreview: PREVIEW })
+    expect(h.state.badgePreviewExecution).toHaveBeenCalledWith(expect.anything(), B)
+    expect(h.state.dryRunExecution).not.toHaveBeenCalled()
+    expect(h.state.executeBundle).not.toHaveBeenCalled()
+    // 읽기 전용: 결정 기록도 슬랙 글도 없다
+    expect(h.state.afterCallbacks).toHaveLength(0)
+    expect(h.state.postOpsSlack).not.toHaveBeenCalled()
+    expect(h.state.decisionUpdates).toEqual([])
+  })
+
+  it('실패는 그 상태와 본문을 그대로 돌려준다', async () => {
+    h.state.badgePreviewExecution.mockResolvedValue({ ok: false, status: 404, error: '찾을 수 없는 기획이에요.' })
+    const res = await call({ badgePreview: true })
     expect(res.status).toBe(404)
     expect(await res.json()).toEqual({ error: '찾을 수 없는 기획이에요.' })
   })

@@ -4,6 +4,9 @@ import { useRef, useState, type ReactNode } from 'react'
 import { IconAlertTriangle } from '@tabler/icons-react'
 import { Button } from '@/components/admin/ui/button'
 import {
+  EXECUTE_BADGE_PREVIEW_FAILED,
+  EXECUTE_BADGE_PREVIEW_LOADING,
+  EXECUTE_BADGE_PREVIEW_TITLE,
   EXECUTE_FAIL_CLOSE_NOTE,
   EXECUTE_LOADING,
   EXECUTE_NOTHING_TO_RUN,
@@ -13,11 +16,13 @@ import {
   buildExecuteSummary,
   executeButtonLabel,
   readPrecheck,
+  readyJamBadgeIds,
+  type BadgePreviewSection,
   type ExecuteSummary,
   type SummaryItem,
 } from '@/lib/admin/opsInbox/executeView'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
-import { postExecute } from './executeClient'
+import { fetchBadgePreview, postExecute } from './executeClient'
 import { OpsConfirmPanel, OpsDialogShell } from './OpsConfirmDialog'
 
 /**
@@ -27,6 +32,9 @@ import { OpsConfirmPanel, OpsDialogShell } from './OpsConfirmDialog'
  * 새로 보내 그 결과로 그린다** — 요약이 곧 확인이다(확인창을 한 번 더 두지 않는다). 구역은 예약할 항목(공개 시각 순, 연결 묶음은 한 덩어리) ·
  * 기다리는 항목 · 예약할 수 없는 항목 · 실패로 닫을 항목 · 경고이고, 시험 묶음이면 자원을 만들지 않는다는 문장이 붙는다. 비어 있는 구역은 그리지 않는다.
  * 주 버튼은 예약할 항목이 있으면 「N개 예약 등록하기」, 없고 실패로 닫을 항목만 있으면 「실패로 닫기」, 둘 다 없으면 꺼진다.
+ *
+ * 예약할 JAM! 배지가 있으면 사전 점검 결과로 요약을 그린 뒤 **두 번째 요청**(`{ badgePreview: true }`)을 따로 보내 「공개되면 바로 획득하는 유저」 구역을 채운다(티켓 20261005_1607 ⑨-b).
+ * 구역은 「미리 세는 중이에요」로 시작해 배지마다 한 줄로 바뀌고, 느리거나 실패해도 요약창과 주 버튼은 영향을 받지 않는다(실패는 구역 안 문장이다). 예약할 JAM! 배지가 없으면 요청도 구역도 없다.
  *
  * 사전 점검은 서버가 한다: 이 파일은 레지스트리·카드 핸들러를 값으로 가져오지 않고, 응답을 읽어 그리기만 한다(`executeView.ts`).
  * 목록이 길면 창 안에서 스크롤한다(`AlertDialogContent`에 높이 제한이 없다). 실패는 창 안 인라인이고 창은 유지한다.
@@ -48,6 +56,8 @@ function ItemName({ item }: { item: SummaryItem }) {
 interface OpsExecutePanelProps {
   /** 사전 점검 결과로 만든 구역. 아직 없으면(불러오는 중이거나 실패) null이다. */
   summary: ExecuteSummary | null
+  /** 예약할 JAM! 배지의 소급 미리 세기 구역. 예약할 JAM! 배지가 없으면(요청을 보내지 않았으면) null이다. */
+  badgePreview?: BadgePreviewSection | null
   loading?: boolean
   pending?: boolean
   error?: string | null
@@ -56,7 +66,7 @@ interface OpsExecutePanelProps {
 }
 
 /** 요약창의 알맹이(포털 밖). */
-export function OpsExecutePanel({ summary, loading, pending, error, onConfirm, onCancel }: OpsExecutePanelProps) {
+export function OpsExecutePanel({ summary, badgePreview, loading, pending, error, onConfirm, onCancel }: OpsExecutePanelProps) {
   return (
     <OpsConfirmPanel
       title={EXECUTE_SUMMARY_TITLE}
@@ -95,6 +105,29 @@ export function OpsExecutePanel({ summary, loading, pending, error, onConfirm, o
                     )
                   )}
                 </ul>
+              </Section>
+            )}
+            {badgePreview && !(badgePreview.status === 'done' && badgePreview.lines.length === 0) && (
+              <Section title={EXECUTE_BADGE_PREVIEW_TITLE}>
+                {badgePreview.status === 'loading' && <p>{EXECUTE_BADGE_PREVIEW_LOADING}</p>}
+                {badgePreview.status === 'failed' && <p>{EXECUTE_BADGE_PREVIEW_FAILED}</p>}
+                {badgePreview.status === 'done' && (
+                  <>
+                    <ul className="space-y-1">
+                      {badgePreview.lines.map((line) => (
+                        <li key={line.id} className="break-words">
+                          <ItemName item={line} />
+                          <span className="block text-xs">{line.text}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {badgePreview.notes.map((note) => (
+                      <p key={note} className="text-xs">
+                        {note}
+                      </p>
+                    ))}
+                  </>
+                )}
               </Section>
             )}
             {summary.waiting.length > 0 && (
@@ -175,22 +208,37 @@ export function OpsExecuteBundle({ bundleId, items, readyCount, isSample, onExec
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [summary, setSummary] = useState<ExecuteSummary | null>(null)
+  const [badgePreview, setBadgePreview] = useState<BadgePreviewSection | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  /** 사전 점검 요청의 순번. 창을 닫았다 다시 열면 앞선 요청의 응답은 버린다. */
+  /** 사전 점검 요청의 순번. 창을 닫았다 다시 열면 앞선 요청(배지 미리 세기 포함)의 응답은 버린다. */
   const precheckRun = useRef(0)
+
+  /** 두 번째 요청. 요약창이 이미 떠 있으므로 기다리지 않고, 실패해도 구역 안 문장으로만 알린다. */
+  const loadBadgePreview = async (run: number) => {
+    setBadgePreview({ status: 'loading' })
+    const section = await fetchBadgePreview(bundleId, items)
+    if (run === precheckRun.current) setBadgePreview(section)
+  }
 
   const openDialog = async () => {
     const run = ++precheckRun.current
     setSummary(null)
+    setBadgePreview(null)
     setError(null)
     setLoading(true)
     setOpen(true)
     const result = await postExecute(bundleId, { dryRun: true })
     if (run !== precheckRun.current) return
     setLoading(false)
-    if (result.ok) setSummary(buildExecuteSummary(readPrecheck(result.data), items, isSample))
-    else setError(result.error)
+    if (!result.ok) {
+      setError(result.error)
+      return
+    }
+    const precheck = readPrecheck(result.data)
+    setSummary(buildExecuteSummary(precheck, items, isSample))
+    // 예약할 JAM! 배지가 있을 때만 두 번째 요청을 보낸다.
+    if (readyJamBadgeIds(precheck, items).length > 0) void loadBadgePreview(run)
   }
 
   const closeDialog = () => {
@@ -224,6 +272,7 @@ export function OpsExecuteBundle({ bundleId, items, readyCount, isSample, onExec
         <OpsDialogShell open onOpenChange={(next) => !next && closeDialog()} pending={pending} wide>
           <OpsExecutePanel
             summary={summary}
+            badgePreview={badgePreview}
             loading={loading}
             pending={pending}
             error={error}
