@@ -1540,7 +1540,7 @@ stateDiagram-v2
   - `decisions`: 최신순(`createdAt` 내림차순, 같으면 `id` 내림차순), 쪽당 200건. 한 건은 `id`·`createdAt`·`action`·`actorType`(`admin`·`agent`·`system`)·`agentName`(에이전트일 때만 이름)·`bundleId`(제출자가 정한 묶음 식별자)·`week`·`itemId`·`itemKey`·`kind`·`patternNo`·`itemStatus`(결정 시점이 아니라 지금의 항목 상태)·`batchId`·`diff`(수정 전후 차이, JSONB 그대로)·`reason`이다.
   - `nextCursor`: 다음 쪽이 있으면 `<createdAt>|<id>`(마지막 행의 값), 없으면 `null`이다. 같은 시각의 행이 쪽 경계에 걸려도 겹치거나 빠지지 않는다.
   - `byPattern`: **쪽이 아니라 같은 기간 전체**의 패턴별 결정 집계다(`patternNo`·`action` 조건과 무관하다). 한 줄은 `{ patternNo, items, actions }`이고 `items`는 기간 안에 결정이 한 번이라도 있었던 항목 수, `actions`는 행동별 결정 행 수(없는 행동은 키가 없다)다. 비율 계산은 쓰는 쪽이 한다. 패턴 번호의 숫자 순서이고, 패턴이 없는 항목의 결정은 `patternNo: null` 한 줄로 맨 끝에 온다.
-- **묶음 단위 결정 제외.** 항목에 붙지 않은 결정(`item_id`가 없는 행)은 항목·묶음과의 inner join으로 목록과 집계에서 빠진다.
+- **묶음 단위 결정 제외.** 항목에 붙지 않은 결정(`item_id`가 없는 행)은 항목·묶음과의 inner join으로 목록과 집계에서 빠진다. 제출(`submit`)은 늘 묶음 단위 행이라(제출 라우트가 `item_id` 없이 남긴다) `action=submit`은 400이 아니라 빈 목록이다.
 - **시험 묶음은 항상 뺀다.** 시험 묶음(`is_sample`)의 기록은 `decisions`와 `byPattern` 어디에도 들어가지 않고, 이 조건을 끄는 쿼리는 받지 않는다. ⑫ 화면이 lib 함수를 직접 부를 때만 `includeSample` 옵션으로 켠다.
 - **비노출.** 응답에 `actor` 원문(관리자 ID·`token:<이름>`)·제출 원본(`raw`)·슬랙 결과(`slack_result`)를 싣지 않는다. `raw`·`slack_result`는 select 목록에 넣지 않는다. `actor`는 행위자 종류를 가르려면 읽어야 해서 select에 들어가지만 변환 함수가 곧바로 `actorType`·`agentName`으로 바꿔 버린다(`token:윤진` → `agent`·`윤진`, `system:`으로 시작하면 `system`, 그 밖은 `admin`). 에이전트 이름은 토큰 제출의 자기 신고 값이다.
 - **오류:** 조회 실패는 500이고 고정 문장 하나만 싣는다(원문은 서버 로그 `[admin/ops-decisions]`에만 남는다).
