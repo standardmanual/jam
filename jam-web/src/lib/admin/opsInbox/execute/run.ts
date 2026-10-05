@@ -1,7 +1,7 @@
 /**
  * 예약 등록 실행 (티켓 20261002_1123, 상위 20260930_1500 ③-b) — **서버 전용**이다. 규칙의 정본은 `docs/specs/prd/ops-tool/PRD.md` §8.2다.
  *
- * `dryRunExecution`은 사전 점검 결과를 돌려준다(쓰기 없음). `executeBundle`은 요청한 항목 가운데 지금도 예약할 수 있는 항목을 실행한다:
+ * `dryRunExecution`은 사전 점검 결과를 돌려준다(쓰기 없음). `badgePreviewExecution`은 예약할 JAM! 배지의 소급 지급 수를 미리 센다(쓰기 없음, 티켓 20261005_1607 ⑨-b, `badgePreview.ts`). `executeBundle`은 요청한 항목 가운데 지금도 예약할 수 있는 항목을 실행한다:
  * 선점(`approved` → `preparing`) → 그룹마다 등록 전 검증 → 생성(실패하면 이번에 만든 자원을 역순으로 `undo`) → 상태 갱신 → 결정 기록.
  * 서비스 클라이언트와 핸들러 레지스트리는 인자로 받는다(라우트가 실제 것을, 테스트가 가짜를 넘긴다). 실패해도 던지지 않고
  * `{ ok: false, status, error }`를 돌려준다. 종류별 핸들러는 `registry.ts`의 `EXECUTE_HANDLERS`에 붙어 있다(예약 등록 대상 6종 모두).
@@ -38,6 +38,7 @@ import {
   type ExecuteServiceClient,
   type PointedByEntry,
 } from './handlers'
+import { previewBundleBadges, type BadgePreviewInput, type BundleBadgePreview } from './badgePreview'
 import { PRECHECK_MESSAGES, precheckBundle, type PrecheckGroup, type PrecheckResult } from './precheck'
 import { EXECUTE_HANDLERS } from './registry'
 
@@ -48,6 +49,7 @@ const LOG = '[ops-inbox/execute]'
 const MESSAGES = {
   executeFailed: '예약 등록하지 못했어요. 잠시 뒤 다시 눌러 주세요.',
   dryRunFailed: '사전 점검을 하지 못했어요. 잠시 뒤 다시 눌러 주세요.',
+  badgePreviewFailed: '미리 세지 못했어요. 잠시 뒤 다시 시도해 주세요.',
   bundleNotFound: '찾을 수 없는 기획이에요.',
   pickItems: '예약할 항목을 골라 주세요.',
   badItemId: '항목 ID 형식이 올바르지 않아요.',
@@ -86,6 +88,11 @@ export interface RunFailure {
 export interface DryRunSuccess {
   ok: true
   body: { ok: true; dryRun: true } & PrecheckResult
+}
+
+export interface BadgePreviewSuccess {
+  ok: true
+  body: { ok: true; badgePreview: BundleBadgePreview }
 }
 
 /** 슬랙 글 재료. 응답이 나간 뒤 `notifyExecution`이 쓴다. */
@@ -174,6 +181,29 @@ export async function dryRunExecution(service: ServiceClient, bundleId: string, 
   return { ok: true, body: { ok: true, dryRun: true, ...result } }
 }
 
+/**
+ * 배지 미리 세기 요청(`{ badgePreview: true }`, 티켓 20261005_1607). 사전 점검과 따로 요청한다: 유저 수에 비례해 느려질 수 있어 요약창이 먼저 열리고 배지 구역만 뒤에 채워진다.
+ * 쓰기 없음. 결정 기록도 슬랙도 남기지 않는다. 예약할 항목(`ready`)에 든 JAM! 배지만 센다(`previewBundleBadges`). 센 도중 오류는 줄의 상태로 알리고, 여기서는 던지지 않는다.
+ */
+export async function badgePreviewExecution(
+  service: ServiceClient,
+  bundleId: string,
+  deps: Partial<ExecuteDeps> & Partial<Omit<BadgePreviewInput, 'linkedIdsFor' | 'pointedByOf'>> = {}
+): Promise<BadgePreviewSuccess | RunFailure> {
+  const loaded = await loadBundleItems(service, bundleId, MESSAGES.badgePreviewFailed)
+  if (isRunFailure(loaded)) return loaded
+  const { handlers: registry, now: clockNow, ...previewDeps } = deps
+  const now = clockNow ?? (() => new Date())
+  const precheck = precheckBundle(loaded.items, { now: now(), handlers: registry ?? EXECUTE_HANDLERS })
+  try {
+    const badgePreview = await previewBundleBadges(service, loaded.items, precheck, { ...previewDeps, now, linkedIdsFor, pointedByOf })
+    return { ok: true, body: { ok: true, badgePreview } }
+  } catch (err) {
+    console.error(`${LOG} 배지 미리 세기 실패:`, err instanceof Error ? err.message : 'unknown')
+    return fail(500, MESSAGES.badgePreviewFailed)
+  }
+}
+
 // ── 핸들러 호출 ──────────────────────────────────────────────────────────────────────────────────
 
 /** 핸들러 계약은 던지지 않는 것이다. 던지면 그룹 실패로 바꿔 항목이 「준비중」에 남지 않게 한다. */
@@ -228,10 +258,10 @@ function existingResourceId(item: ExecuteItem | undefined): string | null {
 
 /**
  * 이 항목의 연결 칸에 넣을 ID. 대상이 이번 실행에서 만드는 항목이면 `resourceIds`(검증 때는 미리 정한 ID, 생성 때는 만들어진 ID),
- * 이미 처리된 항목이면 그 항목의 `created_resource`다.
+ * 이미 처리된 항목이면 그 항목의 `created_resource`다. `byId`는 묶음의 모든 항목이다. 배지 미리 세기(`badgePreview.ts`)도 같은 규칙으로 채우려고 부른다(티켓 20261005_1607).
  */
-function linkedIdsFor(
-  ctx: RunContext,
+export function linkedIdsFor(
+  byId: ReadonlyMap<string, ExecuteItem>,
   group: PrecheckGroup,
   item: ExecuteItem,
   resourceIds: ReadonlyMap<string, string>
@@ -240,7 +270,7 @@ function linkedIdsFor(
   for (const fill of group.linkPlan[item.id] ?? []) {
     const targets: string[] = []
     for (const targetId of fill.targetItemIds) {
-      const resourceId = resourceIds.get(targetId) ?? existingResourceId(ctx.byId.get(targetId))
+      const resourceId = resourceIds.get(targetId) ?? existingResourceId(byId.get(targetId))
       if (!resourceId) return { ok: false, failure: { reason: PRECHECK_MESSAGES.targetResourceMissing } }
       targets.push(resourceId)
     }
@@ -253,11 +283,12 @@ function linkedIdsFor(
 /**
  * 이 항목을 연결 칸으로 가리키는 항목의 종류·칸(티켓 20261004_2039 가정 2). 그룹의 `linkPlan`(가리키는 항목 ID → 채울 칸)에서 대상이 이 항목인 칸을 모은다.
  * `linkPlan`에는 이번 실행의 예약할 항목만 들어 있으므로, 가리키는 항목이 이번에 만들지 않거나 막힌 항목이면 비어 있다. JAM! 배지 핸들러만 읽는다.
+ * 배지 미리 세기(`badgePreview.ts`)도 같은 값을 쓴다(티켓 20261005_1607).
  */
-function pointedByOf(ctx: RunContext, group: PrecheckGroup, item: ExecuteItem): PointedByEntry[] {
+export function pointedByOf(byId: ReadonlyMap<string, ExecuteItem>, group: PrecheckGroup, item: ExecuteItem): PointedByEntry[] {
   const found: PointedByEntry[] = []
   for (const [referencerId, fills] of Object.entries(group.linkPlan)) {
-    const kind = ctx.byId.get(referencerId)?.kind
+    const kind = byId.get(referencerId)?.kind
     if (!kind) continue
     for (const fill of fills) {
       if (fill.targetItemIds.includes(item.id)) found.push({ kind, field: fill.field })
@@ -317,11 +348,11 @@ async function runGroup(ctx: RunContext, group: PrecheckGroup): Promise<GroupRes
   const handlerOf = (item: ExecuteItem) => ctx.handlers[item.kind ?? ''] as ExecuteHandler
 
   const prepare = async (item: ExecuteItem): Promise<ExecuteOutcome<ExecutePrepared>> => {
-    const linked = linkedIdsFor(ctx, group, item, resourceIds)
+    const linked = linkedIdsFor(ctx.byId, group, item, resourceIds)
     if (!linked.ok) return linked
     const id = plannedIds.get(item.id) as string
     return guarded<ExecuteOutcome<ExecutePrepared>>(
-      () => handlerOf(item).prepare(item, { id, actorId: ctx.actor, linkedIds: linked.value, now: ctx.now, pointedBy: pointedByOf(ctx, group, item) }),
+      () => handlerOf(item).prepare(item, { id, actorId: ctx.actor, linkedIds: linked.value, now: ctx.now, pointedBy: pointedByOf(ctx.byId, group, item) }),
       asFailedOutcome
     )
   }

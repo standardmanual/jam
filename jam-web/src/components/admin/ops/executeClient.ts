@@ -1,7 +1,7 @@
 /**
  * 예약 등록·공개 전 취소 요청 호출 (티켓 20261002_1648 ⑤-a, 20261002_1649 ⑤-b).
  *
- * - `postExecute` — `POST /api/admin/ops-inbox/[bundleId]/execute`. 사전 점검(`{ dryRun: true }`, 쓰기 없음)과 실행(`{ itemIds }`)이 같은 호출을 쓴다.
+ * - `postExecute` — `POST /api/admin/ops-inbox/[bundleId]/execute`. 사전 점검(`{ dryRun: true }`, 쓰기 없음)·배지 미리 세기(`{ badgePreview: true }`, 쓰기 없음, 티켓 20261005_1607)·실행(`{ itemIds }`)이 같은 호출을 쓴다.
  * - `postCancel` — `POST /api/admin/ops-inbox/[bundleId]/items/[itemId]/cancel`. 미리 보기(`{ dryRun: true }`, 쓰기 없음)와 취소(`{ reason? }`)가 같은 호출을 쓴다.
  *
  * 둘 다 `postDecision`(`decisionClient.ts`)처럼 **던지지 않고** 상태 코드와 서버 문장을 결과로 돌려준다(요청 순서는 `postOpsJson` 한 곳이다).
@@ -9,7 +9,7 @@
  */
 import { postOpsJson, type OpsJsonResponse } from './decisionClient'
 
-export type ExecuteRequest = { dryRun: true } | { itemIds: string[] }
+export type ExecuteRequest = { dryRun: true } | { badgePreview: true } | { itemIds: string[] }
 
 export type ExecuteResponse = OpsJsonResponse
 

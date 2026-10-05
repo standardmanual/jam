@@ -4,6 +4,7 @@
  * ⑥(티켓 20261002_1944)이 붙인 미션 핸들러까지 통합해 본다.
  *
  * - 사전 점검 요청: 쓰기 없음
+ * - 배지 미리 세기 요청(⑨-b, 티켓 20261005_1607): 묶음 없음 404, 예약할 JAM! 배지만 넘김, 쓰기·슬랙 없음, 오류 비노출. 연결 도우미(`linkedIdsFor`·`pointedByOf`)는 `byId`만 받는다
  * - 선점: 조건부 update, 두 번째 실행·동시 실행 409, 그룹 일부만 차지했을 때(가정 3)
  * - 검증 단계 실패: 만든 것 없이 그룹 전체 실패, 다른 그룹은 계속
  * - 생성 중 실패: 이번에 만든 자원만 역순 undo, undo 실패, 던지는 핸들러
@@ -51,7 +52,8 @@ import {
 import type { ScheduleTargets } from '@/lib/ambient-drop/scheduleTargets'
 import { PRECHECK_MESSAGES, precheckBundle } from '../precheck'
 import { EXECUTE_HANDLERS } from '../registry'
-import { dryRunExecution, executeBundle, notifyExecution, type ExecuteSuccess, type RunFailure } from '../run'
+import { badgePreviewExecution, dryRunExecution, executeBundle, linkedIdsFor, notifyExecution, pointedByOf, type ExecuteSuccess, type RunFailure } from '../run'
+import type { BadgePreviewInput } from '../badgePreview'
 import { DB_SECRET, FakeDb, type FakeCall, type Row } from './fakeDb'
 import { ALL_KINDS, NOW, makeItem, type ItemSpec } from './fixtures'
 
@@ -207,6 +209,115 @@ describe('사전 점검 요청 dryRunExecution', () => {
     const outcome = await dryRunExecution(db.service, B, { handlers: {}, now: () => NOW })
     expect(outcome.ok && outcome.body.ready).toEqual([])
     expect(outcome.ok && outcome.body.blocked.map((entry) => entry.reasons[0])).toEqual(Array(3).fill(PRECHECK_MESSAGES.noHandler))
+  })
+})
+
+// ── 배지 미리 세기 요청 (⑨-b, 티켓 20261005_1607) ────────────────────────────────────────────────
+
+describe('배지 미리 세기 요청 badgePreviewExecution', () => {
+  const BADGE_READY = uid(61)
+  const BADGE_BLOCKED = uid(62)
+  const COLLECTION = uid(63)
+  type PreviewFn = NonNullable<BadgePreviewInput['preview']>
+
+  const badgeItem = (over: Partial<ItemSpec> = {}): ItemSpec => ({
+    id: BADGE_READY,
+    key: 'badge',
+    kind: 'jam_badge',
+    original: { copy: { name: '첫 믹스', description: '믹스에 처음 성공했어요.' } },
+    resource: { condition_json: { combine_success_count: 1 }, rarity: 'common', point_reward: 10 },
+    ...over,
+  })
+  const earnsAll = (): PreviewFn =>
+    vi.fn<PreviewFn>(async (_service, { userIds, candidateBadges }) => ({
+      targetUserCount: userIds.length,
+      affectedUserCount: userIds.length,
+      totalPoints: 0,
+      badges: candidateBadges.map((badge) => ({ badgeId: badge.id, name: badge.name, validFrom: badge.valid_from, userCount: userIds.length, points: 0 })),
+      errors: [],
+    }))
+
+  it('없는 묶음은 404, 항목 조회가 실패하면 원문 없이 500이다', async () => {
+    const { db } = setup([])
+    expect(bad(await badgePreviewExecution(db.service, uid(99))).status).toBe(404)
+
+    db.failIf = (call) => call.table === 'ops_bundle_items' && call.op === 'select'
+    const failure = bad(await badgePreviewExecution(db.service, B))
+    expect(failure.status).toBe(500)
+    expect(JSON.stringify(failure)).not.toContain(DB_SECRET)
+  })
+
+  it('예약할 JAM! 배지만 미리 세기 함수에 넘기고, 아무것도 쓰지 않으며 슬랙 글도 올리지 않는다', async () => {
+    const { db, handlers } = setup([
+      badgeItem(),
+      badgeItem({ id: BADGE_BLOCKED, key: 'blocked', startsAt: null }), // 공개 시각이 없어 못 한다
+      { id: ID.card, key: 'card', kind: 'home_feed_card' },
+    ])
+    const preview = earnsAll()
+    const outcome = await badgePreviewExecution(db.service, B, { handlers, now: () => NOW, preview, loadUserIds: async () => ['u1', 'u2', 'u3'], random: () => 0 })
+
+    expect(outcome).toEqual({
+      ok: true,
+      body: {
+        ok: true,
+        badgePreview: { totalUsers: 3, evaluatedUsers: 3, sampled: false, failedUsers: 0, lines: [{ itemId: BADGE_READY, status: 'counted', userCount: 3, points: 30 }] },
+      },
+    })
+    expect(preview).toHaveBeenCalledTimes(1)
+    const call = (preview as unknown as MockInstance<PreviewFn>).mock.calls[0][1]
+    expect(call.candidateBadges.map((badge) => badge.id)).toEqual([BADGE_READY])
+    expect(nonSelect(db)).toEqual([])
+    expect(h.postOpsSlack).not.toHaveBeenCalled()
+  })
+
+  it('예약할 JAM! 배지가 없으면 유저를 읽지 않고 빈 줄이다', async () => {
+    const { db, handlers } = setup([{ id: ID.card, key: 'card', kind: 'home_feed_card' }])
+    const loadUserIds = vi.fn(async () => ['u1'])
+    const outcome = await badgePreviewExecution(db.service, B, { handlers, now: () => NOW, loadUserIds })
+    expect(outcome).toEqual({ ok: true, body: { ok: true, badgePreview: { totalUsers: 0, evaluatedUsers: 0, sampled: false, failedUsers: 0, lines: [] } } })
+    expect(loadUserIds).not.toHaveBeenCalled()
+  })
+
+  it('컬렉션이 완성 보상으로 가리키는 배지는 실행과 같은 연결 규칙으로 읽어 컬렉션 보상 줄이 된다', async () => {
+    const { db, handlers } = setup([badgeItem({ resource: { condition_json: {}, rarity: 'common' } }), { id: COLLECTION, key: 'collection', kind: 'collection_launch', links: ['badge'] }])
+    const preview = earnsAll()
+    const outcome = await badgePreviewExecution(db.service, B, { handlers, now: () => NOW, preview, loadUserIds: async () => ['u1'] })
+    expect(outcome.ok && outcome.body.badgePreview.lines).toEqual([{ itemId: BADGE_READY, status: 'collectionReward' }])
+    expect(preview).not.toHaveBeenCalled()
+  })
+
+  it('센 도중 던져도 응답은 200이고 줄이 failed다. 원문은 응답에 없고 서버 로그에만 남는다', async () => {
+    const { db, handlers } = setup([badgeItem()])
+    const preview = vi.fn<PreviewFn>(async () => {
+      throw new Error(DB_SECRET)
+    })
+    const outcome = await badgePreviewExecution(db.service, B, { handlers, now: () => NOW, preview, loadUserIds: async () => ['u1'] })
+    expect(outcome.ok && outcome.body.badgePreview.lines).toEqual([{ itemId: BADGE_READY, status: 'failed' }])
+    expect(JSON.stringify(outcome)).not.toContain(DB_SECRET)
+    expect(logged()).toContain(DB_SECRET)
+  })
+
+  it('연결 도우미는 묶음의 항목 표(byId)만 받는다: 이미 만든 대상은 created_resource, 가리키는 항목은 linkPlan에서 찾는다', () => {
+    const items = [
+      { ...makeItem({ id: ID.badge, key: 'badge', kind: 'jam_badge' }), bundle_id: B },
+      { ...makeItem({ id: ID.recipe, key: 'recipe', kind: 'recipe', status: 'scheduled', createdResource: { recipe_id: ID.other } }), bundle_id: B },
+      { ...makeItem({ id: COLLECTION, key: 'collection', kind: 'collection_launch' }), bundle_id: B },
+    ]
+    const byId = new Map(items.map((item) => [item.id, item]))
+    const group = {
+      itemIds: items.map((item) => item.id),
+      executeIds: [ID.badge, COLLECTION],
+      linkPlan: {
+        [ID.badge]: [{ field: 'recipe_id' as const, mode: 'single' as const, targetItemIds: [ID.recipe] }],
+        [COLLECTION]: [{ field: 'reward_badge_id' as const, mode: 'single' as const, targetItemIds: [ID.badge] }],
+      },
+    }
+    const placeholders = new Map([[ID.badge, uid(70)]])
+    expect(linkedIdsFor(byId, group, items[0], placeholders)).toEqual({ ok: true, value: { recipe_id: ID.other } })
+    expect(linkedIdsFor(byId, group, items[2], placeholders)).toEqual({ ok: true, value: { reward_badge_id: uid(70) } })
+    expect(linkedIdsFor(byId, group, items[2], new Map())).toMatchObject({ ok: false })
+    expect(pointedByOf(byId, group, items[0])).toEqual([{ kind: 'collection_launch', field: 'reward_badge_id' }])
+    expect(pointedByOf(byId, group, items[2])).toEqual([])
   })
 })
 

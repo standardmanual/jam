@@ -2,7 +2,7 @@
  * 예약 등록·공개 전 취소 요청 호출 (티켓 20261002_1648, 20261002_1649) — `postExecute`·`postCancel`
  *
  * 요약창과 주 버튼, 취소 확인창이 기대는 결과 모양을 고정한다(던지지 않고 결과를 돌려준다):
- * - 요청 형식: POST, 본문 JSON(`{ dryRun: true }` 또는 `{ itemIds }`), 묶음 ID는 주소에 싣는다
+ * - 요청 형식: POST, 본문 JSON(`{ dryRun: true }`·`{ badgePreview: true }`(티켓 20261005_1607) 또는 `{ itemIds }`), 묶음 ID는 주소에 싣는다
  * - 200: 응답 본문을 그대로 돌려준다
  * - 409: 서버 문장에 「화면을 새로 불러왔어요」를 덧붙여 상태 코드로 알아본다(`postDecision`과 같다)
  * - 500·서버 문장이 없는 오류: 서버 문장 또는 고정 문장
@@ -38,6 +38,16 @@ describe('postExecute', () => {
     expect(init.method).toBe('POST')
     expect(init.headers).toEqual({ 'Content-Type': 'application/json' })
     expect(JSON.parse(init.body)).toEqual({ dryRun: true })
+  })
+
+  it('배지 미리 세기는 같은 주소로 { badgePreview: true }를 JSON으로 보낸다', async () => {
+    const body = { ok: true, badgePreview: { totalUsers: 0, evaluatedUsers: 0, sampled: false, failedUsers: 0, lines: [] } }
+    fetchMock.mockReturnValue(respond(200, body))
+    expect(await postExecute('bundle-1', { badgePreview: true })).toEqual({ ok: true, data: body })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/admin/ops-inbox/bundle-1/execute')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ badgePreview: true })
   })
 
   it('실행은 { itemIds }를 보내고 200이면 응답을 그대로 돌려준다', async () => {
