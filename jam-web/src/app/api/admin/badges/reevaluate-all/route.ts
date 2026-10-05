@@ -52,6 +52,9 @@ export async function POST(req: NextRequest) {
   const dryRun = body?.dryRun !== false
 
   // 열릴 예정 배지 미리보기 — 읽기 전용이라 dryRun:false와 같이 보낼 수 없다
+  if (body?.includeUpcoming !== undefined && typeof body.includeUpcoming !== 'boolean') {
+    return NextResponse.json({ error: 'includeUpcoming은 true 또는 false여야 합니다.' }, { status: 400 })
+  }
   const includeUpcoming = body?.includeUpcoming === true
   if (includeUpcoming && body?.dryRun === false) {
     return NextResponse.json({ error: 'includeUpcoming은 미리보기 전용이라 dryRun: false와 함께 보낼 수 없습니다.' }, { status: 400 })
@@ -59,6 +62,10 @@ export async function POST(req: NextRequest) {
   const rawBadgeIds = body?.badgeIds
   if (rawBadgeIds !== undefined && (!Array.isArray(rawBadgeIds) || rawBadgeIds.some((v: unknown) => typeof v !== 'string' || !v.trim()))) {
     return NextResponse.json({ error: 'badgeIds는 문자열 배열이어야 합니다.' }, { status: 400 })
+  }
+  // 일반 재평가는 배지를 좁히지 않는다 — 좁혀진다고 믿고 dryRun:false로 보내면 전체 카탈로그가 실제로 발급된다
+  if (rawBadgeIds !== undefined && !includeUpcoming) {
+    return NextResponse.json({ error: 'badgeIds는 includeUpcoming: true와 함께만 보낼 수 있습니다.' }, { status: 400 })
   }
 
   const rawUserIds = body?.userIds

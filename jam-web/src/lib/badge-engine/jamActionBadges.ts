@@ -19,7 +19,8 @@
  *    (`JAM_EMPTY_SYNC_TRIGGERS`)을 판정하고 획득 id를 결산에 합친다. 어느 호출 지점에 어떤 키를 넘기는지는
  *    `jamActionDropTriggers.ts`·`jamActionProgressTriggers.ts`가 정한다. 기존 유저 재평가 배치
  *    (`reevaluateCatalog.ts`, 티켓 20261001_0634)도 호출 지점이다 — 키 전부(`JAM_ACTION_CONDITION_KEYS`)를
- *    `options`(dryRun·silent·접두 `triggered_by`)와 함께 넘긴다.
+ *    `options`(dryRun·silent·접두 `triggered_by`)와 함께 넘긴다. 열릴 예정 배지 미리보기(`previewUpcomingJamBadges`,
+ *    티켓 20261001_2203)도 같은 배치 파일에서 dryRun과 5번째 인자 `candidateOptions`를 넘겨 부른다.
  *
  * ## 가입 경과일은 전용 분기다
  * `days_since_signup`은 보조 키(`signup_recent_active_days`, 선택)가 붙을 수 있어 «유저 단위로 한 번 계산한 숫자
