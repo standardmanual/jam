@@ -9,7 +9,7 @@ import { Input } from '@/components/admin/ui/input'
 import { MAX_SLOTS, MIN_ITEM_SLOTS, MIN_SLOTS } from '@/lib/combine/recipe-payload'
 import { recipeReleaseState } from '@/lib/combine/visibility'
 import { assertValidPeriod } from '@/lib/admin/recipe-write'
-import { formatKstYmdHm, toKstLocalInputValue } from '@/lib/admin/kst-format'
+import { formatKstYmdHm, kstLocalInputToIso, toKstLocalInputValue } from '@/lib/admin/kst-format'
 
 type BadgeBrief = Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>
 
@@ -32,15 +32,6 @@ interface SlotState {
 const EMPTY_SLOT: SlotState = { badgeType: null, badges: [] }
 
 type ReleaseMode = 'now' | 'scheduled'
-
-/**
- * `datetime-local` 입력값(KST 「YYYY-MM-DDTHH:mm」)을 시간대가 붙은 UTC ISO로 바꾼다 — 서버는 시간대 없는 값을
- * 받지 않는다. 브라우저 시간대에 기대지 않고 `+09:00`을 명시한다. 읽을 수 없으면 null.
- */
-function kstLocalToIso(local: string): string | null {
-  const date = new Date(`${local}:00+09:00`)
-  return Number.isNaN(date.getTime()) ? null : date.toISOString()
-}
 
 const SLOT_TYPE_LABEL: Record<CombineSlotBadgeType, string> = {
   item: '아이템',
@@ -156,7 +147,7 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
           setError('공개 시각을 선택해 주세요. 바로 공개하려면 「바로 공개」를 골라 주세요.')
           return
         }
-        const iso = kstLocalToIso(validFromLocal)
+        const iso = kstLocalInputToIso(validFromLocal)
         if (!iso) {
           setError('공개 시각을 읽을 수 없어요. 날짜와 시각을 다시 선택해 주세요.')
           return
@@ -177,7 +168,7 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
       if (!validUntilLocal) {
         validUntil = null
       } else {
-        const iso = kstLocalToIso(validUntilLocal)
+        const iso = kstLocalInputToIso(validUntilLocal)
         if (!iso) {
           setError('종료 시각을 읽을 수 없어요. 날짜와 시각을 다시 선택해 주세요.')
           return

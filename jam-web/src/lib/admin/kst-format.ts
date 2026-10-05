@@ -55,6 +55,29 @@ export function toKstLocalInputValue(iso: string): string {
   return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}`
 }
 
+/**
+ * `datetime-local` 입력값(KST 「YYYY-MM-DDTHH:mm」)을 시간대가 붙은 UTC ISO로 바꾼다 — 서버는 시간대 없는 값을
+ * 받지 않는다. 브라우저 시간대에 기대지 않고 `+09:00`을 명시한다. 읽을 수 없으면 null.
+ * (티켓 20261004_2043: 레시피 폼의 `kstLocalToIso`를 공용으로 옮겼다. 구현은 같다.)
+ */
+export function kstLocalInputToIso(local: string): string | null {
+  const date = new Date(`${local}:00+09:00`)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
+
+/**
+ * 기간 입력 칸(`datetime-local`, KST)의 저장값을 정한다(티켓 20261004_2043).
+ * - 빈 칸이면 null(기간 없음).
+ * - 입력값이 원래 ISO를 분 단위로 보여 준 값과 같으면(= 칸을 바꾸지 않았으면) 원래 ISO를 그대로 돌려준다.
+ *   분 단위로 왕복하면 초·밀리초가 잘리고, 날짜만 넣어 저장된 UTC 자정 값도 바뀌지 않게 하기 위함이다.
+ * - 그 밖에는 입력값을 `+09:00` 기준으로 읽은 ISO. 읽을 수 없으면 null.
+ */
+export function resolvePeriodInputIso(originalIso: string | null | undefined, local: string): string | null {
+  if (!local) return null
+  if (originalIso && toKstLocalInputValue(originalIso) === local) return originalIso
+  return kstLocalInputToIso(local)
+}
+
 /** "YYYY.MM.DD" 형식으로 날짜 포맷(KST 고정) — 어드민 배지 화면(`BadgesTable.tsx`·
  *  `BadgeCard.tsx`·`BadgeDetail.tsx`)의 동일한 로컬 게터 조립 패턴을 대체한다. */
 export function formatKstYmd(iso: string): string {
