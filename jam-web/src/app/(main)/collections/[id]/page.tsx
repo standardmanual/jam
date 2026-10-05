@@ -88,8 +88,10 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     .from('item_books')
     .select('*, tribe:tribes(*)')
     .eq('id', id)
-    .single()
+    .maybeSingle()
   // 20260901_1848: DB 조회 실패도 !bookRaw로 걸려 404(notFound)로 위장된다 — 로그로 구분
+  // 20261004_2041: .maybeSingle() — 정책(마이그레이션 215)이 비활성·공개 전 컬렉션을 0행으로 돌려주므로
+  // 0행은 오류가 아니라 같은 404다(.single()이면 PGRST116이 로그에 남는다)
   if (bookError) console.error('[collections/[id]/page] item_books 조회 실패', bookError)
   if (!bookRaw) notFound()
   const book = bookRaw as unknown as ItemBookWithTribe
