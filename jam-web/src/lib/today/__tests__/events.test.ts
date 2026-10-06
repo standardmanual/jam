@@ -9,6 +9,7 @@
  * 3. `aggregateTodayCardEvents` — 유형 ID×모양×이벤트별 건수 집계 형태
  * 4. 그려진 모양(`card_shape`, 티켓 20261001_1431) — 모양 판정 칸을 카드 조회 한 번에 읽고, 기록에 복사한다.
  *    레시피 공개 카드는 `recipe_id`로 레시피의 공개 상태를 읽어 타일 수를 정한다(티켓 20261006_1218)
+ *    타일 수가 모양 판정에 쓰이지 않는 카드(모양이 null·`list`가 아닌 모양)는 레시피를 읽지 않는다(티켓 20261006_1344)
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/events.test.ts
  */
@@ -89,9 +90,14 @@ function mockSupabase() {
 }
 
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabase() }))
+// `LEGACY_SHAPE_CUTOVER`가 켜져 있어 실제 `drawnShape`는 null을 돌려주지 않는다 — 모양이 null로 정해지는 경우(전환 상수 꺼짐)는 한 번만 null로 바꿔 시험한다.
+vi.mock('../shape', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../shape')>()
+  return { ...actual, drawnShape: vi.fn(actual.drawnShape) }
+})
 
 import { parseTodayCardEventInput, recordTodayCardEvent, aggregateTodayCardEvents, assertCardExposable, checkRateLimit, getRateLimitKeyCount } from '../events'
-import { LEGACY_SHAPE_CUTOVER } from '../shape'
+import { LEGACY_SHAPE_CUTOVER, drawnShape } from '../shape'
 
 const VALID_UUID = '11111111-1111-4111-8111-111111111111'
 
@@ -409,6 +415,27 @@ describe('assertCardExposable — 그려진 모양(card_shape) 판정', () => {
         const result = await withRecipe(RELEASED, { shape })
         expect(result.ok && result.card.card_shape).toBe(shape)
       }
+    })
+
+    it('모양이 null로 정해지는 카드(shape가 없고 전환 상수가 꺼짐)는 레시피를 읽지 않고 기록 모양 null로 끝낸다(티켓 20261006_1344)', async () => {
+      vi.mocked(drawnShape).mockReturnValueOnce(null)
+      const result = await withRecipe(RELEASED, { shape: null })
+      expect(result.ok && result.card.card_shape).toBeNull()
+      expect(fixtures.recipeQueryCount).toBe(0)
+    })
+
+    it('저장된 모양이 list가 아니면 타일 수가 쓰이지 않으므로 레시피를 읽지 않는다(티켓 20261006_1344)', async () => {
+      for (const shape of ['hero', 'poster', 'square', 'brief'] as const) {
+        const result = await withRecipe(RELEASED, { shape })
+        expect(result.ok && result.card.card_shape).toBe(shape)
+        expect(fixtures.recipeQueryCount).toBe(0)
+      }
+    })
+
+    it('저장된 모양이 list면 타일 수가 쓰이므로 레시피를 읽는다(티켓 20261006_1344)', async () => {
+      const result = await withRecipe(RELEASED, { shape: 'list' })
+      expect(result.ok && result.card.card_shape).toBe('list')
+      expect(fixtures.recipeQueryCount).toBe(1)
     })
 
     it('레시피를 읽지 못해도 이벤트 기록은 막히지 않는다 — 그 카드는 brief로 기록하고 오류는 로그에만 남긴다', async () => {

@@ -71,6 +71,7 @@ export type CardExposureValidation = { ok: true; card: ExposableCard } | { ok: f
  * 통과하면 조회한 카드 행을 돌려줘 `recordTodayCardEvent`가 `today_cards`를 다시 조회하지 않게 한다(티켓 20260924_0139).
  * 그려진 모양 판정에 필요한 칸(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)도 같은 조회에서 읽는다(티켓 20261001_1431).
  * 레시피 공개 카드는 타일 수를 레시피의 공개 상태로 정하므로 `recipe_id`도 함께 읽고, 그 카드에 한해 레시피 행을 한 번 더 읽는다(티켓 20261006_1218).
+ * 다만 타일 수가 모양 판정에 쓰이는 카드(모양이 `list`로 정해진 타일형)에 한한다 — 모양이 null이거나 `list`가 아니면 레시피를 읽지 않는다(티켓 20261006_1344).
  */
 export async function assertCardExposable(cardId: string, now: Date): Promise<CardExposureValidation> {
   const supabase = createServiceClient()
@@ -93,8 +94,7 @@ export async function assertCardExposable(cardId: string, now: Date): Promise<Ca
   }
   // 생성 타입은 template_type·layout_type을 string으로 읽어 모양 판정 입력 타입으로 좁혀 넘긴다(DB CHECK가 값을 보장한다).
   const shapeInput = card as ShapeCardInput & { recipe_id: string | null }
-  const tileCount = await drawnTileCount(supabase, shapeInput, now)
-  return { ok: true, card: { content_type_id: card.content_type_id, card_shape: resolveDrawnShape(shapeInput, tileCount) } }
+  return { ok: true, card: { content_type_id: card.content_type_id, card_shape: await resolveDrawnShape(supabase, shapeInput, now) } }
 }
 
 /**
@@ -127,14 +127,22 @@ async function drawnTileCount(
  * 「타일이 0개인 타일형 list는 brief」는 `toCardView`와 같은 함수(`fallbackEmptyTileShape`)를 쓴다.
  * 같은 카드 행이면 두 경로가 같은 입력(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)으로 판정한다 —
  * 커버 없는 옛 큰 카드의 `square` 승격은 배지 그림 유무가 아니라 `badge_ids` 유무로 정한다(`shape.ts`).
- * 타일 수(`tileCount`, `drawnTileCount`)는 화면이 읽은 배지 수(삭제된 배지 제외) 대신 카드 행의 `badge_ids` 개수(레시피 공개 카드는 레시피의 공개 상태)로
+ * 타일 수(`drawnTileCount`)는 모양을 먼저 정한 뒤 판정에 쓰일 때만 센다 — 모양이 null이거나, 타일 수가 0이어도 모양이 바뀌지 않는 모양(`list`가 아니거나 랭킹 행형)이면
+ * 레시피 행을 읽지 않는다(티켓 20261006_1344). 그 판정은 `fallbackEmptyTileShape`를 타일 수 0으로 불러 모양이 그대로인지 보는 것이라, 함수의 조건을 여기에 다시 적지 않는다.
+ * 타일 수는 화면이 읽은 배지 수(삭제된 배지 제외) 대신 카드 행의 `badge_ids` 개수(레시피 공개 카드는 레시피의 공개 상태)로
  * 갈음한다 — 배지를 다시 조회하지 않기 위해서다. 그래서 `badge_ids`가 전부 삭제된 배지인 타일형 `list`, 후보 배지가 전부 삭제된 공개 뒤 레시피 공개 카드만
  * 화면은 `brief`, 기록은 `list`로 갈린다(허용 차이, 홈피드 PRD §9).
  */
-function resolveDrawnShape(card: ShapeCardInput, tileCount: number): CardShape | null {
+async function resolveDrawnShape(
+  supabase: ReturnType<typeof createServiceClient>,
+  card: ShapeCardInput & { recipe_id: string | null },
+  now: Date,
+): Promise<CardShape | null> {
   const shape = drawnShape(card)
   if (!shape) return null
-  return fallbackEmptyTileShape(shape, resourceOfTemplate(card.template_type), tileCount)
+  const resource = resourceOfTemplate(card.template_type)
+  if (fallbackEmptyTileShape(shape, resource, 0) === shape) return shape
+  return fallbackEmptyTileShape(shape, resource, await drawnTileCount(supabase, card, now))
 }
 
 export type RateLimitResult = { ok: true } | { ok: false }
