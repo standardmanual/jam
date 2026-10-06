@@ -4,8 +4,7 @@ import { IconSearch } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { kindLabel } from '@/lib/admin/opsInbox/labels'
 import {
-  DAY_EMPTY_TEXT,
-  dayItemsNotice,
+  dayItemsSection,
   dayRepresentativeNotice,
   daySignalNotice,
   formatDayTitle,
@@ -25,6 +24,7 @@ import { OpsStatusBadge } from './OpsStatusBadge'
  * - 신호: 줄은 중단 → 주의 → 참고 순이다. 검사 범위 밖 날짜는 「이 날짜는 신호를 확인하는 기간이 아니에요」(「이상 없음」을 말하지 않는다), 신호를 못 읽었으면 신호가 없다는 뜻이 아니라고 알린다.
  *   신호 줄의 이동 링크는 `OpsSignalRow`가 정한다(항목이 있으면 기획 상세, 날짜만 있으면 그날).
  * - 항목 목록: 칸에 올라간 항목(운영 항목·옛 카드·미션). 반려·취소·실패 항목은 칸에 없어 여기에도 없다(가정 4). 못 읽은 재료가 있으면 빠졌을 수 있다고 알린다.
+ *   항목이 0개인데 못 읽은 재료가 있으면 「올라온 항목이 없어요」를 쓰지 않고 안내만 보인다(`dayItemsSection`, ③-b에서 넘어온 조건, 티켓 20261006_1538).
  * - 대표 카드: 그날 전원 대상 카드 가운데 정렬이 가장 앞인 카드. 목록에 있는 항목이면 눌러 항목 서랍을 연다.
  */
 
@@ -82,7 +82,7 @@ export function OpsScheduleDayDrawer({ date, days, sourceErrors, includeSample, 
 
   const signalNotice = daySignalNotice(day.signals)
   const signalLines = day.signals?.lines ?? []
-  const itemsNotice = dayItemsNotice(sourceErrors)
+  const itemsSection = dayItemsSection(day.items.length, sourceErrors)
   const representative = day.representative
   const representativeNotice = dayRepresentativeNotice(day, sourceErrors)
   const representativeItem = representative ? day.items.find((item) => item.drawerKey === representative.drawerKey) : undefined
@@ -105,10 +105,10 @@ export function OpsScheduleDayDrawer({ date, days, sourceErrors, includeSample, 
         </section>
 
         <section aria-label="항목">
-          <SectionTitle>{`항목 ${day.items.length}개`}</SectionTitle>
-          {itemsNotice && <p className="mb-2 text-sm text-muted-foreground">{itemsNotice}</p>}
+          <SectionTitle>{itemsSection.title}</SectionTitle>
+          {itemsSection.notice && <p className={cn('text-sm text-muted-foreground', day.items.length > 0 && 'mb-2')}>{itemsSection.notice}</p>}
           {day.items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{DAY_EMPTY_TEXT}</p>
+            itemsSection.emptyText && <p className="text-sm text-muted-foreground">{itemsSection.emptyText}</p>
           ) : (
             <ul className="space-y-0.5">
               {day.items.map((item) => (
