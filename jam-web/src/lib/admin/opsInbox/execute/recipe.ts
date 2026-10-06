@@ -15,6 +15,8 @@
  * - `create`는 정한 ID(`prepared.id`)로 만들고 같은 ID를 돌려준다(`idFirst`). 서버 오류(500)면 같은 ID로 정리 delete를 한 번 시도한다(슬롯은 CASCADE).
  * - `undo`는 이 레시피를 가리키는 배지(`recipe_first_success`)를 확인한 뒤 ID로 지운다. 시각 조건은 걸지 않는다(상태 맞추기의 멈춘 준비중 정리는 공개 시각이 지난 뒤에 올 수 있다).
  * - `cancel`은 레시피를 다시 읽어 공개됐으면 막고, 지우기는 `cancelScheduledRecipe`(참조 확인·`valid_from > now` 조건)에 맡긴다. 서버 함수의 문장은 어드민 화면용이라 사유로 쓰지 않는다.
+ * - `end`(티켓 20261006_0950, ⑪-a)는 공개 중인 레시피를 지금 끝낸다: 레시피를 다시 읽어 없으면 `missing`, `recipeReleaseState`가 `ended`(`valid_until`의 그 순간부터)면 `alreadyEnded`, `scheduled`면 `not_published`,
+ *   그 밖에는 `valid_until`을 지금으로 바꾼다(읽은 `valid_until`을 조건으로 건다). DB의 `valid_until > valid_from` 제약에 걸리면 `error`로 돌아온다(공개 시각과 같은 순간에 끝낼 때).
  * - `observe`(상태 맞추기, §8.6)는 `recipeReleaseState`로 공개 중·종료를 돌려준다. 레시피에는 비활성 칸이 없어 `inactive`는 늘 `false`다.
  */
 import { collectRecipeReferences } from '@/lib/admin/recipe-references'
@@ -25,8 +27,9 @@ import { findUnlaunchedCollectionBadges } from '@/lib/admin/registerChecks/recip
 import type { RegisterChecksClient } from '@/lib/admin/registerChecks/shared'
 import { normalizeRecipePayload } from '@/lib/combine/recipe-payload'
 import { recipeReleaseState } from '@/lib/combine/visibility'
+import { endError, endNotPublished, endResourceNow } from './endColumn'
 import { RESOURCE_KEY_BY_KIND } from './handlers'
-import type { CancelResult, ExecuteFailure, ExecuteHandler, ExecuteOutcome, ExecutePrepared, ExecuteServiceClient, ResourceObservation } from './handlers'
+import type { CancelResult, EndResult, ExecuteFailure, ExecuteHandler, ExecuteOutcome, ExecutePrepared, ExecuteServiceClient, ResourceObservation } from './handlers'
 
 /** 응답·결정 기록·슬랙에 나가는 사유(티켓 20261002_2221 가정 5). */
 const RECIPE_MESSAGES = {
@@ -164,6 +167,21 @@ export const RECIPE_HANDLER: ExecuteHandler<RecipeRegisterPayload> = {
     if (!reread.data) return { ok: true, missing: true }
     if (recipeReleaseState(reread.data, now) !== 'scheduled') return published
     return { ok: false, code: 'referenced', failure: { reason: RECIPE_MESSAGES.cancelReferenced, detail: cancelled.error } }
+  },
+
+  async end(service: ExecuteServiceClient, resourceId, { now }): Promise<EndResult> {
+    const read = await service.from('combination_recipes').select(READ_COLUMNS).eq('id', resourceId).maybeSingle()
+    if (read.error) return endError(`레시피 조회 실패: ${read.error.message}`)
+    if (!read.data) return { ok: true, state: 'missing' }
+
+    // 읽을 수 없는 시각은 서버 함수의 판정이 「공개 전」·「종료」로 기울어 닫히므로 쓰기 전에 먼저 가른다.
+    const row: RecipeTimes = { valid_from: read.data.valid_from, valid_until: read.data.valid_until }
+    if (!timesReadable(row)) return endError(OBSERVE_BAD_TIME)
+
+    const state = recipeReleaseState(row, now)
+    if (state === 'ended') return { ok: true, state: 'alreadyEnded' }
+    if (state === 'scheduled') return endNotPublished()
+    return endResourceNow(service, { table: 'combination_recipes', column: 'valid_until', resourceId, readValue: row.valid_until, now })
   },
 
   async observe(service: ExecuteServiceClient, resourceId, { now }): Promise<ResourceObservation> {

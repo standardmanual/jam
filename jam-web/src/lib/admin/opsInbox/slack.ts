@@ -211,6 +211,57 @@ export function formatCancelFailureMessage(input: CancelFailureMessageInput): st
   return input.isSample ? `[시험] ${text}` : text
 }
 
+// ── 지금 종료 글 (티켓 20261006_0950) ───────────────────────────────────────────────────────────
+
+export interface EndMessageInput {
+  isSample: boolean
+  /** 끝낸 항목 이름(「종류 · 공개 시각(KST)」). */
+  itemLabel: string
+  /** 운영자가 적은 사유. 없으면 `null`이다. */
+  reason: string | null
+  /** `ended`는 이번에 자원의 종료 시각을 바꿨고, `alreadyEnded`·`missing`은 자원을 건드리지 않았다(이미 끝나 있었거나 이미 없었다). */
+  resourceState: 'ended' | 'alreadyEnded' | 'missing'
+}
+
+const END_STATE_SUFFIX: Readonly<Record<EndMessageInput['resourceState'], string>> = {
+  ended: '',
+  alreadyEnded: ' (이미 끝나 있었어요)',
+  missing: ' (자원이 이미 없었어요)',
+}
+
+/**
+ * 지금 종료 글(`#jam-report`). 요청 한 번에 항목 한 건이다. 자원이 이미 끝났거나 없었으면 항목 줄 끝에 표시하고, 사유가 있으면 줄을 더한다.
+ * 시험 묶음이면 맨 앞에 「[시험]」을 붙인다. 예: `지금 종료 1건` 다음 줄 `• 홈피드 카드 · 10/10(토) 09:00`, `사유: 오류가 있었어요`
+ */
+export function formatEndMessage(input: EndMessageInput): string {
+  const lines = ['지금 종료 1건', `• ${safeField(input.itemLabel)}${END_STATE_SUFFIX[input.resourceState]}`]
+  if (input.reason) lines.push(`사유: ${safeField(input.reason, SLACK_REASON_MAX_CHARS)}`)
+  const text = lines.join('\n')
+  return input.isSample ? `[시험] ${text}` : text
+}
+
+export interface EndFailureMessageInput {
+  isSample: boolean
+  /** 끝내지 못한 항목: 이름(「종류 · 공개 시각(KST)」)과 사유(쉬운 문장). DB 오류 원문은 싣지 않는다. 종료는 됐는데 결정 기록만 못 남겼으면 `null`이다. */
+  problem: { itemLabel: string; reason: string } | null
+  /** 결정 기록을 남기지 못했다. */
+  decisionLogFailed?: boolean
+}
+
+/**
+ * 지금 종료를 끝내지 못했을 때의 글(`#jam-alert`). 요청 한 번에 한 건이다. 결정 기록을 남기지 못했으면 그 줄이 더해진다(종료는 됐고 기록만 못 남긴 경우는 이 줄만 있다).
+ * 시험 묶음이면 맨 앞에 「[시험]」을 붙인다.
+ */
+export function formatEndFailureMessage(input: EndFailureMessageInput): string {
+  const lines: string[] = []
+  if (input.problem) {
+    lines.push('지금 종료를 끝내지 못했어요', `• ${safeField(input.problem.itemLabel)} — ${safeField(input.problem.reason, SLACK_REASON_MAX_CHARS)}`)
+  }
+  if (input.decisionLogFailed) lines.push('결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요')
+  const text = lines.join('\n')
+  return input.isSample ? `[시험] ${text}` : text
+}
+
 // ── 상태 맞추기 글 (티켓 20261002_1813) ─────────────────────────────────────────────────────────
 
 /** 상태 맞추기 글에 항목을 나열하는 건수(예약 등록 글과 같다). 넘으면 「외 N건」으로 줄인다. */

@@ -1672,6 +1672,59 @@ describe('실행 — 경합 (가정 5)', () => {
     expect(result.errors).toBe(0)
   })
 
+  // 지금 종료 API(티켓 20261006_0950 가정 9): 읽은 뒤 그 API가 항목을 먼저 닫으면 전이는 0행인데, 읽은 시각 차이는 낡은 값이라 「밖에서 바뀜」으로 남기면 안 된다.
+  describe('계획한 전이가 0행인 항목의 밖에서 바뀜(지금 종료 API와의 경합)', () => {
+    /** 게재중 카드: 자원은 방금 끝났고(종료 시각이 항목과 다르다) 항목은 아직 게재중이라 `live → ended` 전이와 시각 차이가 함께 계획된다. */
+    const endingCard = () => cardItem({ status: 'live' })
+    const endedRow = () => cardRow({ ends_at: at(-MINUTE) })
+
+    it('항목을 읽은 뒤 다른 곳이 먼저 닫으면 전이가 0행이라 external_change 행도 「종료」 집계도 남지 않는다', async () => {
+      const { db, run } = setup([endingCard()], { cards: [endedRow()] })
+      db.beforeRun = (call) => {
+        if (call.table === 'ops_bundle_items' && call.op === 'update') db.item(ID.card).status = 'ended'
+      }
+      const result = ok(await run())
+
+      expect(result.ended).toEqual([])
+      expect(result.externalChanged).toEqual([])
+      expect(db.decisions()).toEqual([])
+      expect(countsOf(result)).toEqual([0, 0, 0, 0, 0, 0])
+    })
+
+    it('경합이 없으면 같은 항목은 종료되고 시각 차이도 남는다(회귀)', async () => {
+      const { db, run } = setup([endingCard()], { cards: [endedRow()] })
+      const result = ok(await run())
+
+      expect(statusOf(db, ID.card)).toBe('ended')
+      expect(result.ended).toHaveLength(1)
+      expect(idsOf(result.externalChanged)).toEqual([ID.card])
+      expect(db.decisions().map((row) => row.action)).toEqual(['external_change']) // 종료 시각이 지나 닫히는 전이는 기록 없이 집계만 한다
+    })
+
+    it('전이를 계획하지 않은 항목의 차이는 그대로 남고, 경합으로 진 항목만 뺀다', async () => {
+      const { db, run } = setup([endingCard(), cardItem({ id: ID.card2, key: 'card2', createdResource: { today_card_id: CARD_RES2 } })], {
+        cards: [endedRow(), cardRow({ id: CARD_RES2, is_active: false })],
+      })
+      db.beforeRun = (call) => {
+        if (call.table === 'ops_bundle_items' && call.op === 'update') db.item(ID.card).status = 'ended'
+      }
+      const result = ok(await run())
+
+      expect(idsOf(result.externalChanged)).toEqual([ID.card2])
+      expect(db.decisions().map((row) => [row.item_id, row.action])).toEqual([[ID.card2, 'external_change']])
+    })
+
+    it('전이가 오류로 던진 항목의 차이는 지금처럼 남는다', async () => {
+      const { db, run } = setup([endingCard()], { cards: [endedRow()] })
+      db.failIf = (call) => call.table === 'ops_bundle_items' && call.op === 'update'
+      const result = ok(await run())
+
+      expect(result.errors).toBe(1)
+      expect(result.ended).toEqual([])
+      expect(idsOf(result.externalChanged)).toEqual([ID.card])
+    })
+  })
+
   it('상태 변경은 항목 ID와 지금 상태를 함께 조건으로 건다', async () => {
     const { db, run } = setup([cardItem()])
     ok(await run())

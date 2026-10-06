@@ -1,5 +1,6 @@
 /**
- * 연결 그룹·생성 순서·종류 쌍 (티켓 20261002_1122, PRD §8.3)와 함께 취소할 항목(`cancelSetOf`, 티켓 20261002_1256, PRD §8.7)
+ * 연결 그룹·생성 순서·종류 쌍 (티켓 20261002_1122, PRD §8.3)와 함께 취소할 항목(`cancelSetOf`, 티켓 20261002_1256, PRD §8.7),
+ * 지금 종료가 알릴 항목(`pointingLiveOf`, 티켓 20261006_0950, PRD §8.7)
  */
 import { describe, it, expect } from 'vitest'
 import {
@@ -10,6 +11,7 @@ import {
   orderForCreation,
   orderForUndo,
   planLinkFills,
+  pointingLiveOf,
   referencersOf,
 } from '../groups'
 import { makeItem } from './fixtures'
@@ -319,5 +321,46 @@ describe('cancelSetOf · 함께 취소할 항목(PRD §8.7)', () => {
     const before = JSON.stringify(items)
     expect(cancelSetOf(items, 'nope')).toEqual({ cancelIds: [], blockers: [] })
     expect(JSON.stringify(items)).toBe(before)
+  })
+})
+
+describe('pointingLiveOf · 지금 종료가 알릴 항목(PRD §8.7)', () => {
+  const items = () => [
+    makeItem({ key: 'card', kind: 'home_feed_card', status: 'live', links: ['mission'], position: 1 }),
+    makeItem({ key: 'mission', kind: 'mission', status: 'live', links: ['badge'], position: 2 }),
+    makeItem({ key: 'badge', kind: 'jam_badge', status: 'live', position: 3 }),
+  ]
+
+  it('이 항목을 직접 가리키는 게재 중 항목만 돌려준다. 다른 항목을 거쳐 가리키는 항목과 이 항목이 가리키는 항목은 뺀다', () => {
+    expect(idsOf(pointingLiveOf(items(), 'mission'))).toEqual(['card'])
+    expect(idsOf(pointingLiveOf(items(), 'badge'))).toEqual(['mission'])
+    expect(pointingLiveOf(items(), 'card')).toEqual([])
+  })
+
+  it('예약됨·종료·반려 같은 게재 중이 아닌 항목은 넣지 않는다', () => {
+    for (const status of ['scheduled', 'ended', 'rejected', 'cancelled', 'preparing', 'approved']) {
+      const list = items().map((item) => (item.id === 'card' ? { ...item, status } : item))
+      expect(pointingLiveOf(list, 'mission'), status).toEqual([])
+    }
+  })
+
+  it('표에 없는 쌍(같은 종류끼리)은 가리키는 관계가 아니다', () => {
+    const list = [
+      makeItem({ key: 'a', kind: 'mission', status: 'live', links: ['b'], position: 1 }),
+      makeItem({ key: 'b', kind: 'mission', status: 'live', position: 2 }),
+    ]
+    expect(pointingLiveOf(list, 'b')).toEqual([])
+  })
+
+  it('가리키는 항목이 여럿이면 제출 순서로 돌려준다. 묶음에 없는 항목이면 빈 결과이고 입력을 바꾸지 않는다', () => {
+    const list = [
+      makeItem({ key: 'mission', kind: 'mission', status: 'live', position: 9 }),
+      makeItem({ key: 'cardB', kind: 'home_feed_card', status: 'live', links: ['mission'], position: 5 }),
+      makeItem({ key: 'cardA', kind: 'home_feed_card', status: 'live', links: ['mission'], position: 4 }),
+    ]
+    const before = JSON.stringify(list)
+    expect(idsOf(pointingLiveOf(list, 'mission'))).toEqual(['cardA', 'cardB'])
+    expect(pointingLiveOf(list, 'nope')).toEqual([])
+    expect(JSON.stringify(list)).toBe(before)
   })
 })

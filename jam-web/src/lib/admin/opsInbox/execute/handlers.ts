@@ -75,6 +75,16 @@ export type CancelResult =
   | { ok: false; code: 'published' | 'referenced' | 'error'; failure: ExecuteFailure }
 
 /**
+ * 공개 뒤 「지금 종료」 한 건의 결과(티켓 20261006_0950 ⑪-a 가정 8, §8.7). `ok`면 자원이 이제 끝나 있다:
+ * `ended`는 이번에 종료 시각을 지금으로 바꿨다는 뜻이고, `alreadyEnded`는 종료 시각이 이미 지나 있어 자원을 건드리지 않았다는 뜻(상태 맞추기가 아직 돌지 않음),
+ * `missing`은 자원이 없다는 뜻(행 없음·배지 `deleted_at`)이다. 셋 다 항목을 「종료」로 닫는 성공이다.
+ * 실패의 `code`: `not_published`(자원이 아직 공개 전이라 끝낼 것이 없다)·`changed`(읽은 뒤 다른 곳이 종료 시각을 바꿨다)·`error`(읽기·쓰기 오류). `failure.detail`은 서버 로그에만 남긴다.
+ */
+export type EndResult =
+  | { ok: true; state: 'ended' | 'alreadyEnded' | 'missing' }
+  | { ok: false; code: 'not_published' | 'changed' | 'error'; failure: ExecuteFailure }
+
+/**
  * 자원 상태 읽기 한 건의 결과(티켓 20261002_1813 가정 2, §8.6). 상태 맞추기가 항목 상태와 견준다.
  * - `missing`: 자원이 없다(드랍은 `canceled`도 여기. `dropSchedule.ts`가 돌려준다).
  * - `present`: 자원이 있다. `published`는 지금 유저 화면에 보이는지, `ended`는 자원의 종료 시각이 지났는지, `inactive`는 운영툴 밖에서 비활성·숨김이 됐는지다.
@@ -154,6 +164,12 @@ export interface ExecuteHandler<P = unknown> {
    * 자원이 이미 없으면 성공(`missing: true`)이다. `now`는 공개 여부를 가르는 기준 시각이다.
    */
   cancel(service: ExecuteServiceClient, resourceId: string, context: { now: Date }): Promise<CancelResult>
+  /**
+   * 게재 중인 자원을 지금 끝낸다(티켓 20261006_0950 ⑪-a, §8.7). 자원을 다시 읽어 종료 시각이 이미 지났으면 건드리지 않고(`alreadyEnded`), 없으면 `missing`, 아직 공개 전이면 `not_published`이며,
+   * 그 밖에는 종료 시각 칸을 `now`로 바꾼다. 쓸 때 읽은 값을 조건으로 걸어 읽은 뒤 바뀐 자원은 `changed`다(`endColumn.ts`). **선택 메서드다**: 없는 종류(드랍 예약)는 지금 종료가 없다.
+   * 던지지 않고 `EndResult`로 돌려준다.
+   */
+  end?(service: ExecuteServiceClient, resourceId: string, context: { now: Date }): Promise<EndResult>
   /**
    * 자원의 지금 상태를 읽는다(상태 맞추기, §8.6). 쓰지 않는다. 읽지 못하면 던지지 않고 `error`를 돌려준다.
    * `now`는 공개·종료 여부를 가르는 기준 시각이다(한 회차 안에서 같은 값).
