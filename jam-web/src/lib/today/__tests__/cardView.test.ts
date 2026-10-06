@@ -10,7 +10,7 @@
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/cardView.test.ts
  */
 import { describe, it, expect } from 'vitest'
-import type { TodayCardWithHref, ResolvedBadge } from '../cards'
+import type { TodayCardWithHref, ResolvedBadge, ResolvedRecipe } from '../cards'
 import {
   CARD_RESOURCES,
   buildFacts,
@@ -175,6 +175,48 @@ describe('buildFacts — 남은 시간 (종료 7일 이내, 기간 줄 대신)',
   })
 })
 
+describe('buildFacts — 레시피 (티켓 20261006_1217)', () => {
+  it('공개 전: 「재료 N개」와 「공개 M월 D일」(KST)', () => {
+    expect(buildFacts('recipe', { ingredientCount: 4, revealAt: '2026-10-12T18:00:00+09:00' }, NOW)).toEqual(['재료 4개', '공개 10월 12일'])
+  })
+
+  it('공개일은 UTC가 아니라 KST 날짜다(경계 1초 전후)', () => {
+    expect(buildFacts('recipe', { ingredientCount: 2, revealAt: '2026-10-11T14:59:59Z' }, NOW)[1]).toBe('공개 10월 11일')
+    expect(buildFacts('recipe', { ingredientCount: 2, revealAt: '2026-10-11T15:00:00Z' }, NOW)[1]).toBe('공개 10월 12일')
+  })
+
+  it('공개 뒤: 「재료 N개」와 보상(공개일은 이미 지나 줄에서 빠진다)', () => {
+    expect(buildFacts('recipe', { ingredientCount: 4, rewardPoints: 300, rewardBadgeCount: 1 }, NOW)).toEqual([
+      '재료 4개',
+      '보상 300 포인트 · 배지 1개',
+    ])
+    expect(buildFacts('recipe', { ingredientCount: 3, rewardPoints: 0, rewardBadgeCount: 2 }, NOW)).toEqual(['재료 3개', '보상 배지 2개'])
+  })
+
+  it('보상이 0이면 그 줄만 생략한다', () => {
+    expect(buildFacts('recipe', { ingredientCount: 4, rewardPoints: 0, rewardBadgeCount: 0 }, NOW)).toEqual(['재료 4개'])
+    expect(buildFacts('recipe', { ingredientCount: 4 }, NOW)).toEqual(['재료 4개'])
+  })
+
+  it('공개일을 읽을 수 없으면 공개일 줄만 생략하고, 공개일이 있으면 보상은 쓰지 않는다', () => {
+    expect(buildFacts('recipe', { ingredientCount: 4, revealAt: 'not-a-date' }, NOW)).toEqual(['재료 4개'])
+    expect(buildFacts('recipe', { ingredientCount: 4, revealAt: '2026-10-12T00:00:00+09:00', rewardPoints: 300 }, NOW)).toEqual([
+      '재료 4개',
+      '공개 10월 12일',
+    ])
+  })
+
+  it('재료 수가 없거나 0이면 그 줄이 없다', () => {
+    expect(buildFacts('recipe', { revealAt: '2026-10-12T00:00:00+09:00' }, NOW)).toEqual(['공개 10월 12일'])
+    expect(buildFacts('recipe', { ingredientCount: 0, revealAt: '2026-10-12T00:00:00+09:00' }, NOW)).toEqual(['공개 10월 12일'])
+    expect(buildFacts('recipe', {}, NOW)).toEqual([])
+  })
+
+  it('다른 자원의 값(기간·지역 등)은 쓰지 않는다', () => {
+    expect(buildFacts('recipe', { period: endsIn(DAY), place: '한강', collectionName: '컬렉션', badgeName: '배지' }, NOW)).toEqual([])
+  })
+})
+
 describe('buildFacts — 그 밖의 자원', () => {
   it('드랍: 지역 한 줄(시각은 값이 없어 생략)', () => {
     expect(buildFacts('drop', { place: '한강공원' }, NOW)).toEqual(['지역 한강공원'])
@@ -207,7 +249,7 @@ describe('buildFacts — 그 밖의 자원', () => {
     expect(buildFacts('auto', { period: null }, NOW)).toEqual([])
   })
 
-  it.each(['article', 'ranking', 'recipe'] as CardResource[])('%s: 필수 정보 줄이 없다(다른 자원의 값이 들어와도 쓰지 않는다)', (resource) => {
+  it.each(['article', 'ranking'] as CardResource[])('%s: 필수 정보 줄이 없다(다른 자원의 값이 들어와도 쓰지 않는다)', (resource) => {
     expect(
       buildFacts(resource, { period: endsIn(DAY), rewardPoints: 300, place: '한강', collectionName: '컬렉션', badgeName: '배지' }, NOW),
     ).toEqual([])
@@ -222,6 +264,8 @@ describe('buildFacts — 그 밖의 자원', () => {
       collectionName: '컬렉션',
       itemCount: 4,
       badgeName: '배지',
+      ingredientCount: 4,
+      revealAt: '2026-10-12T00:00:00+09:00',
     }
     for (const resource of CARD_RESOURCES) expect(buildFacts(resource, all, NOW).length).toBeLessThanOrEqual(2)
   })
@@ -632,6 +676,7 @@ describe('toCardView — 템플릿 구분 값(template, 티켓 20261001_2244)', 
     'itembook_milestone',
     'progress_nudge',
     'location_trend',
+    'recipe_reveal',
   ] as const
 
   it.each(TEMPLATES)('%s: 계측 정보(tracking)가 없어도 카드의 템플릿을 늘 싣는다', (templateType) => {
@@ -654,4 +699,172 @@ describe('toCardView — 템플릿 구분 값(template, 티켓 20261001_2244)', 
     expect(nudge.template).not.toBe(trend.template)
   })
 })
-    'recipe_reveal',
+
+describe('toCardView — 레시피 공개 카드 (티켓 20261006_1217)', () => {
+  const recipeCard = (overrides: Partial<TodayCardWithHref> = {}) =>
+    makeCard({
+      template_type: 'recipe_reveal',
+      layout_type: 'badge_gallery',
+      title: '새 레시피가 공개돼요',
+      cover_image_url: null,
+      resolved_href: '/combine',
+      ...overrides,
+    })
+
+  const scheduled: ResolvedRecipe = { state: 'scheduled', ingredient_count: 4, release_at: '2026-10-12T18:00:00+09:00' }
+  const released = (tiles: ResolvedBadge[], overrides: Partial<Extract<ResolvedRecipe, { state: 'released' }>> = {}): ResolvedRecipe => ({
+    state: 'released',
+    ingredient_count: tiles.length,
+    reward_points: 300,
+    reward_badge_count: 1,
+    tiles,
+    ...overrides,
+  })
+
+  describe('공개 전', () => {
+    it('list로 저장된 카드도 타일이 0개라 brief로 그려지고, 「재료 N개」·「공개 M월 D일」 두 줄과 칩 줄 라벨이 있다', () => {
+      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: scheduled }), { tracking: true, now: NOW })
+      expect(view).toMatchObject({
+        shape: 'brief',
+        resource: 'recipe',
+        template: 'recipe_reveal',
+        label: '레시피 공개',
+        title: '새 레시피가 공개돼요',
+        facts: ['재료 4개', '공개 10월 12일'],
+        href: '/combine',
+      })
+      // 그려진 모양을 기록하므로 계측 정보도 brief다
+      expect(view.tracking?.shape).toBe('brief')
+    })
+
+    it('옛 값(layout badge_gallery)만 있는 카드도 brief다', () => {
+      expect(toCardView(recipeCard({ resolved_recipe: scheduled }), { now: NOW }).shape).toBe('brief')
+    })
+
+    it('표시 데이터에 레시피 이름·슬롯 후보·보상 값이 없다 — 객체 키 단위로 확인한다(사용자 결정 Q3)', () => {
+      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: scheduled }), { tracking: true, now: NOW })
+      expect(Object.keys(view).sort()).toEqual(
+        ['facts', 'href', 'label', 'now', 'resource', 'shape', 'template', 'title', 'titleInImage', 'tracking'].sort(),
+      )
+      // 타일·썸네일·희귀도 같은 배지 값도, 보상·이름 같은 레시피 값도 어느 깊이에도 없다
+      const json = JSON.stringify(view)
+      for (const forbidden of ['tiles', 'thumbnailUrl', 'rarity', 'reward', 'candidates', 'allowed_badge_ids', 'name']) {
+        expect(json).not.toContain(forbidden)
+      }
+      expect(view.facts?.join(' ')).not.toContain('보상')
+    })
+
+    it('운영자가 poster를 골랐으면 같은 두 줄이 이미지 모양의 정보 줄로 보인다(타일은 없다)', () => {
+      const view = toCardView(recipeCard({ shape: 'poster', cover_image_url: 'https://cdn.example/teaser.png', resolved_recipe: scheduled }), { now: NOW })
+      expect(view).toMatchObject({
+        shape: 'poster',
+        imageUrl: 'https://cdn.example/teaser.png',
+        facts: ['재료 4개', '공개 10월 12일'],
+      })
+      expect(view).not.toHaveProperty('tiles')
+    })
+
+    it('커버가 없는 poster는 imageUrl이 null이라 자리 표시(플라스크 아이콘)를 그린다', () => {
+      expect(toCardView(recipeCard({ shape: 'poster', resolved_recipe: scheduled }), { now: NOW })).toMatchObject({
+        shape: 'poster',
+        imageUrl: null,
+      })
+    })
+
+    it('공개 시각을 읽을 수 없으면 공개일 줄만 생략한다', () => {
+      const view = toCardView(recipeCard({ resolved_recipe: { ...scheduled, release_at: 'not-a-date' } }), { now: NOW })
+      expect(view.facts).toEqual(['재료 4개'])
+    })
+  })
+
+  describe('공개 뒤', () => {
+    const tiles = [badge('a'), badge('b', { earned: false }), badge('c', { image_url: null }), badge('d', { earned: false })]
+
+    it('list로 그려지고 슬롯 수만큼 타일이 있다 — 정보 줄은 「재료 N개」·「보상 …」이다', () => {
+      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released(tiles) }), { tracking: true, now: NOW })
+      expect(view.shape).toBe('list')
+      if (view.shape !== 'list') throw new Error('list여야 한다')
+      expect(view).toMatchObject({ resource: 'recipe', label: '레시피 공개', facts: ['재료 4개', '보상 300 포인트 · 배지 1개'], href: '/combine' })
+      expect(view.tiles).toEqual([
+        { name: '배지 a', imageUrl: 'https://cdn.example/a.png', rarity: 'rare', earned: true },
+        { name: '배지 b', imageUrl: 'https://cdn.example/b.png', rarity: 'rare', earned: false },
+        { name: '배지 c', imageUrl: null, rarity: 'rare', earned: true },
+        { name: '배지 d', imageUrl: 'https://cdn.example/d.png', rarity: 'rare', earned: false },
+      ])
+      expect(view.tracking?.shape).toBe('list')
+    })
+
+    it('타일을 자르지 않는다 — 슬롯 최대 10개가 모두 타일이다', () => {
+      const ten = Array.from({ length: 10 }, (_, i) => badge(`t${i}`))
+      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released(ten) }), { now: NOW })
+      if (view.shape !== 'list') throw new Error('list여야 한다')
+      expect(view.tiles).toHaveLength(10)
+      expect(view.facts?.[0]).toBe('재료 10개')
+    })
+
+    it('카드에 걸린 배지(resolved_badges)는 타일이 아니다 — 타일은 레시피 슬롯에서만 나온다', () => {
+      const view = toCardView(recipeCard({ shape: 'list', resolved_badges: [badge('x')], resolved_recipe: released([badge('a')]) }), { now: NOW })
+      if (view.shape !== 'list') throw new Error('list여야 한다')
+      expect(view.tiles.map((t) => t.name)).toEqual(['배지 a'])
+    })
+
+    it('보상이 0이면 보상 줄만 생략한다', () => {
+      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released(tiles, { reward_points: 0, reward_badge_count: 0 }) }), { now: NOW })
+      expect(view.facts).toEqual(['재료 4개'])
+    })
+
+    it('보유 여부를 모르면(earned 없음, 어드민 미리보기) 타일은 컬러다', () => {
+      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released([badge('a', { earned: undefined })]) }), { now: NOW })
+      if (view.shape !== 'list') throw new Error('list여야 한다')
+      expect(view.tiles[0].earned).toBeUndefined()
+    })
+
+    it('후보가 전부 삭제돼 타일이 하나도 없으면 brief다(재료 수는 슬롯 수 그대로)', () => {
+      const view = toCardView(recipeCard({ shape: 'list', resolved_recipe: released([], { ingredient_count: 3 }) }), { now: NOW })
+      expect(view.shape).toBe('brief')
+      expect(view.facts).toEqual(['재료 3개', '보상 300 포인트 · 배지 1개'])
+    })
+
+    it.each(['poster', 'hero', 'square'] as const)('%s: 타일 줄 없이 정보 줄만 「재료 N개」·「보상 …」이다', (shape) => {
+      const view = toCardView(recipeCard({ shape, cover_image_url: 'https://cdn.example/c.png', resolved_recipe: released(tiles) }), { now: NOW })
+      expect(view).toMatchObject({ shape, facts: ['재료 4개', '보상 300 포인트 · 배지 1개'] })
+      expect(view).not.toHaveProperty('tiles')
+    })
+  })
+
+  describe('레시피 줄이 없는 카드(recipe_id 없음·레시피 없음·끝남·조회 실패)', () => {
+    it.each([['null', null], ['undefined', undefined]])('resolved_recipe가 %s이면 정보 줄 없이 brief다', (_label, value) => {
+      const card = recipeCard({ shape: 'list', resolved_recipe: value })
+      const view = toCardView(card, { tracking: true, now: NOW })
+      expect(view.shape).toBe('brief')
+      expect(view.facts).toBeUndefined()
+      expect(view).toMatchObject({ label: '레시피 공개', title: '새 레시피가 공개돼요' })
+      expect(view.tracking?.shape).toBe('brief')
+    })
+
+    it('poster도 정보 줄 없이 그려진다', () => {
+      const view = toCardView(recipeCard({ shape: 'poster', cover_image_url: 'https://cdn.example/c.png' }), { now: NOW })
+      expect(view).toMatchObject({ shape: 'poster' })
+      expect(view.facts).toBeUndefined()
+    })
+  })
+
+  it('레시피 값은 레시피 공개 카드만 읽는다 — 다른 카드에 실어도 줄·타일에 번지지 않는다', () => {
+    const view = toCardView(makeCard({ template_type: 'badge_spotlight', layout_type: 'badge_gallery', resolved_recipe: released([badge('a')]) }), { now: NOW })
+    expect(view.shape).toBe('brief')
+    expect(view.facts).toBeUndefined()
+  })
+
+  describe('처음 보는 템플릿 값 (안전망)', () => {
+    it('던지지 않고 그려진다 — 자원·라벨·정보 줄 없이 brief이고 제목은 그대로다', () => {
+      const card = makeCard({ template_type: 'future_template' as never, layout_type: 'badge_gallery', title: '미래 카드' })
+      let view!: CardView
+      expect(() => {
+        view = toCardView(card, { tracking: true })
+      }).not.toThrow()
+      expect(view).toMatchObject({ shape: 'brief', title: '미래 카드', template: 'future_template' })
+      expect(view.label).toBeUndefined()
+      expect(view.facts).toBeUndefined()
+    })
+  })
+})

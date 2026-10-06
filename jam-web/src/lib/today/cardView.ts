@@ -68,6 +68,10 @@ export interface CardFactValues {
   itemCount?: number | null
   /** JAM! 배지 이름(배지 1개일 때) */
   badgeName?: string | null
+  /** 레시피 재료 수(슬롯 수). 0이거나 없으면 그 줄이 없다 */
+  ingredientCount?: number | null
+  /** 레시피 공개 시각(ISO). 값이 있으면(공개 전) 두 번째 줄이 공개일이고, 없으면(공개 뒤) 보상이다 */
+  revealAt?: string | null
 }
 
 /** KST 기준 「M월 D일」. 시각을 읽을 수 없으면 null. */
@@ -123,7 +127,8 @@ function nonBlank(value: string | null | undefined): string | null {
  *
  * - 미션: 기간(또는 남은 시간) · 보상 / 자동 카드: 미션을 가리키면 그 미션의 기간
  * - 드랍: 지역(시각은 값이 없어 생략, 티켓 O6 1457) / 컬렉션: 이름 · 아이템 N개 / JAM! 배지: 이름
- * - 기사(게재일은 `publishedAt`으로 따로 둔다)·랭킹·레시피(템플릿이 아직 없다): 없음
+ * - 레시피: 공개 전은 재료 N개 · 공개 M월 D일, 공개 뒤는 재료 N개 · 보상(공개일은 이미 지나 정보가 못 된다, 티켓 20261006_1217)
+ * - 기사(게재일은 `publishedAt`으로 따로 둔다)·랭킹: 없음
  */
 export function buildFacts(resource: CardResource, values: CardFactValues, now: Date): string[] {
   const lines: (string | null)[] = []
@@ -149,9 +154,23 @@ export function buildFacts(resource: CardResource, values: CardFactValues, now: 
     case 'badge':
       lines.push(nonBlank(values.badgeName))
       break
+    case 'recipe': {
+      lines.push(
+        values.ingredientCount && values.ingredientCount > 0
+          ? t(d.todayCard.factIngredientCount, { count: values.ingredientCount })
+          : null,
+      )
+      if (values.revealAt) {
+        // 공개일을 읽을 수 없으면(예약 값 형식 오류) 이 줄만 생략한다
+        const date = formatKstMonthDay(values.revealAt)
+        lines.push(date ? t(d.todayCard.factRevealDate, { date }) : null)
+      } else {
+        lines.push(rewardLine(values.rewardPoints, values.rewardBadgeCount))
+      }
+      break
+    }
     case 'article':
     case 'ranking':
-    case 'recipe':
       break
   }
   return lines.filter((line): line is string => line !== null).slice(0, MAX_FACTS)
@@ -259,8 +278,13 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
   const badges = card.resolved_badges ?? []
   const mission = card.resolved_mission ?? null
   const collection = card.resolved_collection ?? null
+  // 레시피 값은 레시피 공개 카드만 읽는다(손으로 만든 표시 데이터가 다른 카드에 실어도 그 카드의 줄·타일에는 번지지 않는다).
+  const recipe = resource === 'recipe' ? (card.resolved_recipe ?? null) : null
+  const releasedRecipe = recipe?.state === 'released' ? recipe : null
 
-  const tiles: CardViewTile[] = badges.map((b) => ({
+  // 레시피 공개 카드의 타일은 카드에 걸린 배지가 아니라 레시피의 슬롯에서 나온다 — 공개 뒤 슬롯마다 하나, 공개 전·레시피 없음은 0개(그래서 `list`는 `brief`가 된다).
+  const tileBadges = resource === 'recipe' ? (releasedRecipe?.tiles ?? []) : badges
+  const tiles: CardViewTile[] = tileBadges.map((b) => ({
     name: b.name,
     imageUrl: b.image_url,
     rarity: b.rarity,
@@ -275,12 +299,15 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
     resource,
     {
       period: mission ? { startsAt: mission.starts_at, endsAt: mission.ends_at } : null,
-      rewardPoints: mission?.reward_points,
-      rewardBadgeCount: mission?.reward_badge_count,
+      rewardPoints: mission?.reward_points ?? releasedRecipe?.reward_points,
+      rewardBadgeCount: mission?.reward_badge_count ?? releasedRecipe?.reward_badge_count,
       place: card.region_label,
       collectionName: collection?.name,
       itemCount: collection?.item_count,
       badgeName: singleBadge?.name,
+      ingredientCount: recipe?.ingredient_count,
+      // 공개 전에만 공개일을 싣는다. 공개 뒤에는 이 줄이 보상이다(`buildFacts`)
+      revealAt: recipe?.state === 'scheduled' ? recipe.release_at : null,
     },
     now,
   )

@@ -14,6 +14,7 @@ import { isMissionExposed, resolveMissionVisibility, type MissionVisibilityInput
 import { computeRankingModeResult, type RankingBoardResult } from '@/lib/ranking/rankingDataSource'
 import { computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
 import { applyLaunchedItemBookFilter } from '@/lib/itembook/visibility'
+import { recipeReleaseState } from '@/lib/combine/visibility'
 import { resourceOfTemplate } from './cardView'
 /**
  * 순수 함수라 서버 전용 의존이 없는 `targetHref.ts`로 옮겼다(티켓 20260911_1454) — 이 파일
@@ -71,6 +72,37 @@ export interface ResolvedCollection {
   item_count: number | null
 }
 
+/**
+ * 레시피 공개 카드(`recipe_reveal`)의 표시 데이터에 필요한 레시피 값 (티켓 20261006_1217, 1500 ⑫ 사용자 결정 Q3).
+ *
+ * **공개 전(`scheduled`)에는 재료 수와 공개 시각 두 값뿐이다.** 레시피 이름·슬롯 후보·보상은 서버가 읽고도 이 값에 싣지 않는다 — 공개 전 레시피는 일반 유저에게 없는
+ * 레시피와 같아야 하기 때문이다(`lib/combine/visibility.ts`). 공개 뒤(`released`)에는 슬롯마다 대표 후보 하나를 타일로 싣는다.
+ * 레시피가 끝났거나 없거나 읽지 못했으면 이 값 자체가 null이다(카드는 레시피 줄 없이 그려진다).
+ */
+export type ResolvedRecipe = ResolvedScheduledRecipe | ResolvedReleasedRecipe
+
+export interface ResolvedScheduledRecipe {
+  state: 'scheduled'
+  /** 재료 수 = 슬롯 수 */
+  ingredient_count: number
+  /** 공개 시각(`valid_from`, ISO 문자열). 해석할 수 없는 값이면 화면이 공개일 줄만 생략한다 */
+  release_at: string
+}
+
+export interface ResolvedReleasedRecipe {
+  state: 'released'
+  /** 재료 수 = 슬롯 수. 후보가 전부 삭제돼 타일을 못 그린 슬롯도 센다 */
+  ingredient_count: number
+  reward_points: number
+  /** `reward_badge_ids`의 개수(보상 줄 「배지 N개」) */
+  reward_badge_count: number
+  /**
+   * 슬롯 순서(`slot_order` 오름차순)대로 슬롯마다 대표 후보 배지 하나(후보를 펼치지 않는다). 대표는 유저가 가진 후보(`earned: true`)가 있으면 그것,
+   * 없으면 `allowed_badge_ids` 순서의 첫 번째로 삭제되지 않은 후보(`earned: false`)다. 후보가 전부 삭제된 슬롯은 타일이 없다.
+   */
+  tiles: ResolvedBadge[]
+}
+
 /** resolveTargetHref 를 적용한 카드 (UI에서 바로 링크로 사용) */
 export type TodayCardWithHref = TodayCardRow & {
   resolved_href: string
@@ -90,6 +122,11 @@ export type TodayCardWithHref = TodayCardRow & {
   resolved_mission?: ResolvedMission | null
   /** 컬렉션 소식 카드(`itembook_milestone`)의 컬렉션 값. 그 밖의 카드이거나 컬렉션을 찾지 못하면 null (티켓 20261001_1357) */
   resolved_collection?: ResolvedCollection | null
+  /**
+   * 레시피 공개 카드(`recipe_reveal`)의 레시피 값. 그 밖의 카드이거나 `recipe_id`가 비었거나 레시피가 없거나 끝났거나 읽지 못했으면 null,
+   * 손으로 만든 카드(어드민 미리보기 등)에는 없을 수 있다(티켓 20261006_1217).
+   */
+  resolved_recipe?: ResolvedRecipe | null
 }
 
 /**
@@ -129,8 +166,11 @@ export async function getTodayCards(
   // 20260825_028: 미션 소개 카드도 미션 목록과 같은 노출 규칙을 따른다 —
   // 이미 완료했거나 아직 열리지 않은 미션은 오늘 카드로도 권하지 않는다.
   const cards = await filterMissionSpotlightCards(userId, allCards, missionsById)
+  // 레시피 공개 카드의 레시피는 공개 뒤 재료 타일의 후보 배지 id를 알아야 배지 조회에 합칠 수 있어서 배지 조회보다 먼저 읽는다.
+  // 레시피 공개 카드가 없으면 아무것도 읽지 않는다.
+  const recipesById = await fetchRecipesById(supabase, recipeIdsToResolve(cards), now)
   const [badgesById, rankingByModeId, collectionsById] = await Promise.all([
-    fetchBadgesById(supabase, cards.flatMap((c) => c.badge_ids ?? []), userId),
+    fetchBadgesById(supabase, [...cards.flatMap((c) => c.badge_ids ?? []), ...recipeCandidateBadgeIds(recipesById)], userId),
     fetchRankingBoardData(supabase, cards),
     fetchCollectionsById(supabase, collectionIdsToResolve(cards), nowIso),
   ])
@@ -151,6 +191,7 @@ export async function getTodayCards(
       resolved_mission:
         mission && resourceNeedsMission(card) ? toResolvedMission(mission) : null,
       resolved_collection: card.item_book_id ? (collectionsById.get(card.item_book_id) ?? null) : null,
+      resolved_recipe: resourceNeedsRecipe(card) ? toResolvedRecipe(recipesById.get(card.recipe_id as string), badgesById) : null,
     }
   })
 }
@@ -311,6 +352,142 @@ export async function fetchCollectionsById(
     })
   }
   return map
+}
+
+/**
+ * 레시피 값을 읽어야 하는 카드인지 — 레시피 공개 카드(자원 `recipe`)이고 `recipe_id`가 있을 때. `recipe_id` 칼럼은 ⑫-b(티켓 20261006_1218)가 만들기 전에는
+ * 없어 `undefined`로 오고, 그 카드는 레시피 줄 없이 그려진다. 자원 대응(`resourceOfTemplate`)을 따른다.
+ */
+export function resourceNeedsRecipe(card: TodayCardRow): boolean {
+  return Boolean(card.recipe_id) && resourceOfTemplate(card.template_type) === 'recipe'
+}
+
+/** 레시피 값을 읽어야 하는 카드들의 레시피 id (중복 제거) */
+export function recipeIdsToResolve(cards: TodayCardRow[]): string[] {
+  return [...new Set(cards.filter(resourceNeedsRecipe).map((c) => c.recipe_id as string))]
+}
+
+/**
+ * 읽어 온 레시피. 공개 전(`scheduled`)은 화면에 실을 값(재료 수·공개 시각)만 갖고 있다 — 슬롯 후보와 보상은 읽은 자리에서 버린다(사용자 결정 Q3).
+ * 공개 뒤(`released`)만 슬롯별 후보 배지 id(`allowed_badge_ids` 순서 그대로)와 보상을 갖는다. 종료된 레시피는 맵에 없다.
+ */
+export type FetchedRecipe =
+  | ResolvedScheduledRecipe
+  | (Omit<ResolvedReleasedRecipe, 'tiles'> & {
+      /** 슬롯 순서대로 슬롯마다 후보 배지 id */
+      slot_candidates: string[][]
+    })
+
+/** 공개 뒤 레시피의 후보 배지 id 전부(배지 조회에 합친다). 공개 전 레시피의 후보는 읽지도 않으므로 여기 없다. */
+export function recipeCandidateBadgeIds(recipes: ReadonlyMap<string, FetchedRecipe>): string[] {
+  const ids: string[] = []
+  for (const recipe of recipes.values()) {
+    if (recipe.state === 'released') for (const candidates of recipe.slot_candidates) ids.push(...candidates)
+  }
+  return ids
+}
+
+/**
+ * 레시피와 슬롯을 id 목록으로 한 번에 읽는다(레시피마다 읽으면 홈 한 번 로드에 N번 왕복한다). 레시피 읽기 한 번 + 슬롯 읽기 한 번이다.
+ * 공개 상태는 믹스 화면·믹스 시도와 같은 판정 하나(`recipeReleaseState`, 기준 시각 `now`)로 가른다 — 종료된 레시피와 없는 레시피는 맵에 없다.
+ * `valid_from`을 해석할 수 없으면 공개 전(fail-closed)이다.
+ * 조회가 실패해도 카드 노출은 막지 않는다 — 실패하면 `console.error` 뒤 맵에서 빠지고 그 카드는 레시피 줄 없이 그려진다(`fetchCollectionsById`와 같은 방식).
+ * 이 테이블은 RLS 정책이 없어 서비스 클라이언트로만 읽힌다. export하는 이유: 한 번에 읽는지(조회 횟수)를 시험이 확인한다.
+ */
+export async function fetchRecipesById(
+  supabase: ServiceClient,
+  recipeIds: string[],
+  now: Date,
+): Promise<Map<string, FetchedRecipe>> {
+  const map = new Map<string, FetchedRecipe>()
+  if (recipeIds.length === 0) return map
+
+  const { data: recipeRows, error: recipesError } = await supabase
+    .from('combination_recipes')
+    .select('id, reward_points, reward_badge_ids, valid_from, valid_until')
+    .in('id', recipeIds)
+  if (recipesError) {
+    console.error('[fetchRecipesById] 레시피 조회 오류:', recipesError.message)
+    return map
+  }
+
+  const live = ((recipeRows ?? []) as RecipeRow[]).filter((r) => recipeReleaseState(r, now) !== 'ended')
+  if (live.length === 0) return map
+
+  const { data: slotRows, error: slotsError } = await supabase
+    .from('combination_recipe_slots')
+    .select('recipe_id, slot_order, allowed_badge_ids')
+    .in(
+      'recipe_id',
+      live.map((r) => r.id),
+    )
+  if (slotsError) {
+    console.error('[fetchRecipesById] 레시피 슬롯 조회 오류:', slotsError.message)
+    return map
+  }
+
+  // 슬롯 순서는 여기서 정한다(`slot_order` 오름차순). 읽은 순서에 기대지 않는다.
+  const slotsByRecipe = new Map<string, SlotRow[]>()
+  for (const slot of (slotRows ?? []) as SlotRow[]) {
+    const list = slotsByRecipe.get(slot.recipe_id) ?? []
+    list.push(slot)
+    slotsByRecipe.set(slot.recipe_id, list)
+  }
+
+  for (const recipe of live) {
+    const slots = (slotsByRecipe.get(recipe.id) ?? []).sort((a, b) => a.slot_order - b.slot_order)
+    if (recipeReleaseState(recipe, now) === 'scheduled') {
+      // 공개 전: 재료 수와 공개 시각만 남긴다. 슬롯 후보·보상은 버린다.
+      map.set(recipe.id, { state: 'scheduled', ingredient_count: slots.length, release_at: recipe.valid_from as string })
+      continue
+    }
+    map.set(recipe.id, {
+      state: 'released',
+      ingredient_count: slots.length,
+      reward_points: recipe.reward_points ?? 0,
+      reward_badge_count: recipe.reward_badge_ids?.length ?? 0,
+      slot_candidates: slots.map((s) => s.allowed_badge_ids ?? []),
+    })
+  }
+  return map
+}
+
+type RecipeRow = {
+  id: string
+  reward_points: number | null
+  reward_badge_ids: string[] | null
+  valid_from: string | null
+  valid_until: string | null
+}
+
+type SlotRow = { recipe_id: string; slot_order: number; allowed_badge_ids: string[] | null }
+
+/**
+ * 읽어 온 레시피를 카드에 실을 값으로 바꾼다. 공개 전은 그대로, 공개 뒤는 슬롯마다 대표 후보 하나를 타일로 고른다(후보를 펼치지 않는다):
+ * 유저가 가진 후보가 있으면 `allowed_badge_ids` 순서로 그 첫 번째(`earned: true`), 없으면 삭제되지 않은 첫 번째 후보(`earned: false`)다.
+ * 보유 여부는 `fetchBadgesById`의 판정(활동·체크인·인벤토리 아이템 3원)을 그대로 쓴다. 후보가 전부 삭제된 슬롯은 타일만 빠지고 재료 수에는 든다.
+ * 레시피를 읽지 못했으면(`undefined`) null이다.
+ */
+export function toResolvedRecipe(
+  recipe: FetchedRecipe | undefined,
+  badgesById: ReadonlyMap<string, ResolvedBadge>,
+): ResolvedRecipe | null {
+  if (!recipe) return null
+  if (recipe.state === 'scheduled') return recipe
+
+  const tiles: ResolvedBadge[] = []
+  for (const candidateIds of recipe.slot_candidates) {
+    const candidates = candidateIds.map((id) => badgesById.get(id)).filter((b): b is ResolvedBadge => Boolean(b))
+    const representative = candidates.find((b) => b.earned === true) ?? candidates[0]
+    if (representative) tiles.push(representative)
+  }
+  return {
+    state: 'released',
+    ingredient_count: recipe.ingredient_count,
+    reward_points: recipe.reward_points,
+    reward_badge_count: recipe.reward_badge_count,
+    tiles,
+  }
 }
 
 /**
