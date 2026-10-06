@@ -9,6 +9,7 @@ import { Input } from '@/components/admin/ui/input'
 import { MAX_SLOTS, MIN_ITEM_SLOTS, MIN_SLOTS } from '@/lib/combine/recipe-payload'
 import { recipeReleaseState } from '@/lib/combine/visibility'
 import { assertValidPeriod } from '@/lib/admin/recipe-write'
+import { recipeCardNoticeMessage } from '@/lib/admin/recipe-bulk'
 import { formatKstYmdHm, kstLocalInputToIso, toKstLocalInputValue } from '@/lib/admin/kst-format'
 
 type BadgeBrief = Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>
@@ -21,6 +22,8 @@ interface Props {
   badges: BadgeBrief[]
   tribes: { id: string; name: string }[]
   itemBooks: { id: string; name: string }[]
+  /** 수정 대상을 가리키는 홈 카드 수 — 0보다 크면 예약 취소 확인 문구에 안내를 덧붙인다(취소는 막지 않는다) */
+  cardCount?: number
 }
 
 /** 슬롯 하나 — 첫 후보 배지를 고르는 순간 badgeType이 고정되고, 이후 다른 타입은 검색에서 제외된다 */
@@ -67,7 +70,7 @@ function rewardBadgesFromRecipe(r: CombinationRecipeRow, badgeMap: Map<string, B
  * 안내 문구로도 알린다). 소각 여부는 타입으로 고정 결정된다(아이템=소각,
  * 액티비티·체크인=비소각) — 별도 토글 없음.
  */
-export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tribes, itemBooks }: Props) {
+export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tribes, itemBooks, cardCount = 0 }: Props) {
   const editingId = recipe?.id ?? null
   const badgeMap = useMemo(() => new Map(badges.map((b) => [b.id, b])), [badges])
 
@@ -227,7 +230,9 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
   /** 예약 취소 = 레시피 삭제 — 공개 전에만 된다. 삭제 가드와 공개 여부 확인은 서버가 한다 */
   async function handleCancelRelease() {
     if (!editingId) return
-    if (!confirm('취소하면 이 레시피가 삭제돼요. 되돌릴 수 없어요.')) return
+    const cardNotice = recipeCardNoticeMessage(cardCount)
+    const confirmMessage = ['취소하면 이 레시피가 삭제돼요. 되돌릴 수 없어요.', cardNotice].filter(Boolean).join('\n\n')
+    if (!confirm(confirmMessage)) return
     setError(null)
     setCanceling(true)
     try {

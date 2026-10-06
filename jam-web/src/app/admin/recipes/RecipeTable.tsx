@@ -19,6 +19,7 @@ import { runBulk, fetchListIds, downloadResponseAsFile, type BulkRunResponse } f
 import { toastBulkResult } from '@/components/admin/ui/toast-helpers'
 import type { CombinationRecipeSlotRow } from '@/types/database'
 import { recipeStatusDisplay, type RecipeListRow } from '@/lib/admin/recipe-list'
+import { recipeCardNoticeMessage } from '@/lib/admin/recipe-bulk'
 
 export type RecipeWithSlots = RecipeListRow & { slots: CombinationRecipeSlotRow[] }
 
@@ -40,6 +41,8 @@ interface DeletePreview {
   skipped: BulkRunResponse['skipped']
   requiredPhrase: string
   slotCount: number
+  /** 삭제 대상을 가리키는 홈 카드 수 — 0보다 크면 확인창에 안내를 더한다(삭제는 막지 않는다) */
+  cardCount: number
 }
 
 /**
@@ -179,6 +182,7 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
         skipped: result.skipped,
         requiredPhrase: result.requiredPhrase ?? '',
         slotCount: (result.impact?.slotCount as number | undefined) ?? 0,
+        cardCount: (result.impact?.cardCount as number | undefined) ?? 0,
       })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '영향 범위를 확인하지 못했습니다.')
@@ -222,6 +226,8 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
       setBulkPending(false)
     }
   }
+
+  const cardNotice = deletePreview ? recipeCardNoticeMessage(deletePreview.cardCount) : null
 
   const actions: DataTableBulkAction[] = [
     { key: 'export', label: '내보내기', onClick: handleExport, disabled: bulkPending },
@@ -270,6 +276,7 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
                   레시피 {deletePreview.processed.length}개와 슬롯 {deletePreview.slotCount}개가 함께 삭제됩니다. 되돌릴 수
                   없습니다.
                 </p>
+                {cardNotice && <p className="mt-1">{cardNotice}</p>}
                 {deletePreview.skipped.length > 0 && (
                   <>
                     <p className="mt-1">선택한 레시피 중 {deletePreview.skipped.length}개는 삭제 대상에서 제외됩니다.</p>
