@@ -8,7 +8,9 @@
  *
  * 카드 표시 기준(2026-09-24 사용자 결정):
  * - 기간(`ends_at - starts_at`)이 `SHORT_CARD_MAX_DAYS`일 이하면 단기 카드 — 한 장씩 표시한다.
- * - 그보다 길면 장기 카드 — "장기 카드 N장"으로 묶고, N은 활성 카드만 센다.
+ * - 그보다 길면 장기 카드 — "장기 카드 N장"으로 묶고, N은 활성 카드만 센다. 비활성 장기 카드는 따로 세어
+ *   「장기 카드 N장 · 비활성 M장」으로 알린다(티켓 20260924_1151을 20261006_1536 ③-a가 흡수). 그날 걸치는 카드 수 불변식:
+ *   단기(활성+비활성) + 활성 장기 + 비활성 장기 = `/admin/today?date=` 목록 수.
  * - 활성 단기 카드가 하나도 없는 날은 미편성이다. 비활성 단기 카드는 흐리게 표시하되
  *   미편성 판정에는 넣지 않는다(비활성만 있어도 활성 단기 카드가 없으면 미편성).
  */
@@ -31,6 +33,8 @@ export interface WeeklyCardDay {
   shortCards: WeeklyCardInput[]
   /** 그 날짜에 걸치는 활성 장기 카드 수 */
   longActiveCount: number
+  /** 그 날짜에 걸치는 비활성 장기 카드 수(티켓 20261006_1536). 0이면 표시를 바꾸지 않는다. */
+  longInactiveCount: number
   /** 활성 단기 카드가 하나도 없으면 true */
   unprogrammed: boolean
 }
@@ -67,7 +71,8 @@ export function weeklyCards(cards: WeeklyCardInput[], weekStart: string): Weekly
     const overlapping = cards.filter((c) => overlapsDay(c, startIso, endIso))
     const shortCards = sortShortCards(overlapping.filter(isShortCard))
     const longActiveCount = overlapping.filter((c) => !isShortCard(c) && c.is_active).length
+    const longInactiveCount = overlapping.filter((c) => !isShortCard(c) && !c.is_active).length
     const unprogrammed = !shortCards.some((c) => c.is_active)
-    return { date, shortCards, longActiveCount, unprogrammed }
+    return { date, shortCards, longActiveCount, longInactiveCount, unprogrammed }
   })
 }

@@ -7,8 +7,10 @@
  * - 이동 대상: 항목이 있으면 받은 기획함 상세의 그 항목(`/admin/ops-inbox/{묶음}?item={항목}`), 묶음만 있으면 그 기획 상세,
  *   날짜만 있으면 그날(`dayHref`), 셋 다 없으면 링크 없음(null)이다. 항목은 묶음이 있어야 열 수 있어 묶음 없는 항목은 날짜로 넘어간다.
  * - 날짜 링크는 일정표(③, `/admin/ops-schedule`)가 생기기 전까지 `/admin/today?date=`다. 일정표가 생기면 `dayHref` 한 곳만 바꾼다.
+ * - 일정표(S4) 링크는 `scheduleHref`·`scheduleHomeHref`에서만 만든다(티켓 20261006_1536 ③-a). 운영 홈의 날짜 링크(`dayHref`)는 ③-d에서 일정표로 바꾼다.
  */
 import type { OpsInboxTab } from '@/lib/admin/opsInbox/bundleStatus'
+import type { ScheduleDrawerKind, ScheduleView } from '@/lib/admin/opsSchedule/params'
 
 /** 시험 묶음 포함 여부를 담는 쿼리 키. */
 export const SAMPLE_PARAM = 'sample'
@@ -73,6 +75,44 @@ function finish(href: string, options: OpsLinkOptions): string {
 /** 그 날짜로 가는 링크(KST 달력 날짜 `YYYY-MM-DD`). 일정표가 생기면(③) 이 함수의 대상만 바꾼다. */
 export function dayHref(date: string, options: OpsLinkOptions = {}): string {
   return finish(`/admin/today?date=${encodeURIComponent(date)}`, options)
+}
+
+/** 일정표(S4) 경로. 링크는 `scheduleHref`·`scheduleHomeHref`에서만 만든다(티켓 20261006_1536 ③-a). */
+export const SCHEDULE_PATH = '/admin/ops-schedule'
+
+/** 일정표 링크가 담는 값. 비어 있거나 없는 값은 쿼리에 넣지 않는다. */
+export interface ScheduleHrefTarget {
+  view?: ScheduleView
+  /** 기준일(KST `YYYY-MM-DD`). 날짜 서랍(`drawer: 'day'`)이면 그 날짜다. */
+  date?: string | null
+  kinds?: readonly string[]
+  tribes?: readonly string[]
+  patterns?: readonly string[]
+  drawer?: ScheduleDrawerKind | null
+  /** 항목 서랍이 가리키는 항목 키(운영 항목 ID, `card:<ID>`, `mission:<ID>`). */
+  item?: string | null
+}
+
+/**
+ * 일정표 링크. 쿼리 순서는 `view`·`date`·`kind`·`tribe`·`pattern`·`drawer`·`item`·`sample`이다(같은 값은 늘 같은 글자라 새로고침·비교가 안정적이다).
+ * `includeSample`이면 `sample=1`을 이어 붙인다 — 주 이동·보기 전환·서랍 열기 모두 시험 묶음 포함을 잃지 않는다.
+ */
+export function scheduleHref(target: ScheduleHrefTarget = {}, options: OpsLinkOptions = {}): string {
+  const params = new URLSearchParams()
+  if (target.view) params.set('view', target.view)
+  if (target.date) params.set('date', target.date)
+  for (const kind of target.kinds ?? []) params.append('kind', kind)
+  for (const tribe of target.tribes ?? []) params.append('tribe', tribe)
+  for (const pattern of target.patterns ?? []) params.append('pattern', pattern)
+  if (target.drawer) params.set('drawer', target.drawer)
+  if (target.item) params.set('item', target.item)
+  const query = params.toString()
+  return finish(query ? `${SCHEDULE_PATH}?${query}` : SCHEDULE_PATH, options)
+}
+
+/** 일정표 첫 화면 링크(운영 홈의 「일정표 보기」, 사이드바 「일정표」). 시험 묶음 포함만 이어 붙인다. */
+export function scheduleHomeHref(options: OpsLinkOptions = {}): string {
+  return scheduleHref({}, options)
 }
 
 /**

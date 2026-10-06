@@ -13,6 +13,8 @@ import {
   opsTargetKind,
   readIncludeSample,
   sampleToggleHref,
+  scheduleHomeHref,
+  scheduleHref,
   signalResultHref,
   withSampleParam,
 } from '@/lib/admin/opsHome/links'
@@ -164,5 +166,50 @@ describe('opsTargetKind', () => {
     expect(opsTargetKind({ date: '2026-10-07' })).toBe('day')
     expect(opsTargetKind({ itemId: 'i1' })).toBeNull()
     expect(opsTargetKind({})).toBeNull()
+  })
+})
+
+describe('scheduleHref — 일정표 링크(티켓 20261006_1536 ③-a)', () => {
+  it('값이 없으면 일정표 첫 화면이다', () => {
+    expect(scheduleHref()).toBe('/admin/ops-schedule')
+    expect(scheduleHomeHref()).toBe('/admin/ops-schedule')
+  })
+
+  it('보기와 기준일을 쿼리로 담는다', () => {
+    expect(scheduleHref({ view: 'week', date: '2026-10-07' })).toBe('/admin/ops-schedule?view=week&date=2026-10-07')
+    expect(scheduleHref({ view: 'timeline', date: null })).toBe('/admin/ops-schedule?view=timeline')
+  })
+
+  it('거르기는 같은 키를 반복해 담고, 서랍은 drawer·item으로 담는다', () => {
+    expect(
+      scheduleHref({
+        view: 'month',
+        date: '2026-10-07',
+        kinds: ['mission', 'home_feed_card'],
+        tribes: ['runner'],
+        patterns: ['P01', 'P02'],
+        drawer: 'item',
+        item: 'card:3f2b8c1e-0000-4000-8000-000000000001',
+      })
+    ).toBe(
+      '/admin/ops-schedule?view=month&date=2026-10-07&kind=mission&kind=home_feed_card&tribe=runner&pattern=P01&pattern=P02&drawer=item&item=card%3A3f2b8c1e-0000-4000-8000-000000000001'
+    )
+    expect(scheduleHref({ view: 'week', date: '2026-10-07', drawer: 'day' })).toBe(
+      '/admin/ops-schedule?view=week&date=2026-10-07&drawer=day'
+    )
+  })
+
+  it('시험 묶음을 포함하는 중이면 sample=1이 맨 뒤에 이어 붙고, 아니면 키가 없다', () => {
+    expect(scheduleHref({ view: 'week', date: '2026-10-07' }, { includeSample: true })).toBe(
+      '/admin/ops-schedule?view=week&date=2026-10-07&sample=1'
+    )
+    expect(scheduleHomeHref({ includeSample: true })).toBe('/admin/ops-schedule?sample=1')
+    expect(scheduleHref({ view: 'week' }, { includeSample: false })).toBe('/admin/ops-schedule?view=week')
+  })
+
+  it('만든 링크를 시험 스위치가 그대로 끄고 켤 수 있다(쿼리 키 보존)', () => {
+    const on = scheduleHref({ view: 'week', date: '2026-10-07', kinds: ['mission'] }, { includeSample: true })
+    const [path, query] = on.split('?')
+    expect(sampleToggleHref(path, query, false)).toBe('/admin/ops-schedule?view=week&date=2026-10-07&kind=mission')
   })
 })

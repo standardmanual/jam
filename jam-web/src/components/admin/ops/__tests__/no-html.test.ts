@@ -2,8 +2,9 @@
  * 제출 문자열은 HTML로 그리지 않는다 — 소스 계약 (티켓 20260930_1817)
  *
  * 받은 기획함에는 에이전트가 보낸 문자열(문안·가설·에이전트 이름·형식 오류 문장·제출 원본)이 그대로 들어온다. 이 문자열을
- * HTML로 해석하면 저장형 XSS가 된다. 화면(`components/admin/ops/**`, `app/admin/ops-inbox/**`)은 React 텍스트 노드로만
- * 그리고, 색 견본만 값이 `#rrggbb`를 통과할 때 `style`에 넣는다. 이 테스트는 소스를 훑어 그 규칙이 깨지면 잡는다.
+ * HTML로 해석하면 저장형 XSS가 된다. 화면(`components/admin/ops/**`, `app/admin/ops-inbox/**`, `app/admin/ops-schedule/**`와 일정표가 함께 쓰는
+ * `app/admin/WeeklyCalendar.tsx`)은 React 텍스트 노드로만 그리고, 색 견본만 값이 `#rrggbb`를 통과할 때 `style`에 넣는다(주간 캘린더의 미션 막대 열 위치는
+ * 날짜에서 계산한 숫자라 예외 한 곳이다). 이 테스트는 소스를 훑어 그 규칙이 깨지면 잡는다.
  *
  * 실행: cd jam-web && npx vitest run src/components/admin/ops/__tests__/no-html.test.ts
  */
@@ -12,7 +13,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 
 const SRC = join(process.cwd(), 'src')
-const ROOTS = [join(SRC, 'components/admin/ops'), join(SRC, 'app/admin/ops-inbox')]
+const ROOTS = [join(SRC, 'components/admin/ops'), join(SRC, 'app/admin/ops-inbox'), join(SRC, 'app/admin/ops-schedule')]
+/** 폴더가 아닌 단일 파일 화면 부품: 일정표(티켓 20261006_1536)가 운영 홈과 함께 쓰는 주간 캘린더. 운영 항목의 제목·상태를 그린다. */
+const FILES = [join(SRC, 'app/admin/WeeklyCalendar.tsx')]
 
 function walk(dir: string): string[] {
   const files: string[] = []
@@ -35,7 +38,7 @@ function stripComments(source: string): string {
     .join('\n')
 }
 
-const sourceFiles = ROOTS.flatMap((root) => walk(root)).filter(
+const sourceFiles = [...ROOTS.flatMap((root) => walk(root)), ...FILES].filter(
   (file) => /\.(ts|tsx)$/.test(file) && !file.includes(`${sep}__tests__${sep}`)
 )
 
@@ -54,6 +57,12 @@ describe('받은 기획함 화면 소스 계약', () => {
     expect(names).toContain('components/admin/ops/OpsRecentDecisions.tsx')
     expect(names).toContain('components/admin/ops/OpsWeekStatus.tsx')
     expect(names).toContain('components/admin/ops/OpsSectionNotice.tsx')
+    // 일정표(티켓 20261006_1536): 운영 항목 제목이 칸·막대에 그대로 들어오는 화면과 주간 캘린더도 같은 검사를 받는다
+    expect(names).toContain('app/admin/ops-schedule/page.tsx')
+    expect(names).toContain('app/admin/ops-schedule/ScheduleBody.tsx')
+    expect(names).toContain('app/admin/ops-schedule/ScheduleToolbar.tsx')
+    expect(names).toContain('app/admin/ops-schedule/OpsScheduleBoard.tsx')
+    expect(names).toContain('app/admin/WeeklyCalendar.tsx')
     expect(names).toContain('app/admin/ops-inbox/page.tsx')
     expect(names).toContain('app/admin/ops-inbox/[bundleId]/page.tsx')
     expect(sourceFiles.length).toBeGreaterThanOrEqual(12)
@@ -73,9 +82,9 @@ describe('받은 기획함 화면 소스 계약', () => {
     expect(offenders).toEqual([])
   })
 
-  it('`style` 속성은 색 견본 한 곳뿐이고 `HEX_COLOR_PATTERN`을 통과한 값만 넣는다', () => {
+  it('`style` 속성은 색 견본 한 곳과 미션 막대 열 위치 한 곳뿐이고, 색 견본은 `HEX_COLOR_PATTERN`을 통과한 값만 넣는다', () => {
     const withStyle = sourceFiles.filter((file) => /\bstyle=\{/.test(stripComments(readFileSync(file, 'utf8'))))
-    expect(withStyle.map(rel)).toEqual(['components/admin/ops/OpsItemDetail.tsx'])
+    expect(withStyle.map(rel)).toEqual(['components/admin/ops/OpsItemDetail.tsx', 'app/admin/WeeklyCalendar.tsx'])
 
     const code = stripComments(readFileSync(withStyle[0], 'utf8'))
     expect(code).toMatch(/import\s*\{\s*HEX_COLOR_PATTERN\s*\}\s*from\s*'@\/components\/admin\/BackgroundColorField'/)
@@ -84,6 +93,11 @@ describe('받은 기획함 화면 소스 계약', () => {
     expect(code).toMatch(/\{isHex\s*&&\s*\(/)
     // style에는 검사를 통과한 값(text)만 들어가고 다른 속성은 없다
     expect(code.match(/style=\{\{[^}]*\}\}/g)).toEqual(['style={{ backgroundColor: text }}'])
+
+    // 주간 캘린더의 `style`은 막대가 걸치는 열(숫자 `startCol`·`endCol`에서 계산한 `grid-column`) 하나뿐이다. 제출 문자열은 거기에 닿지 않는다.
+    const calendar = stripComments(readFileSync(withStyle[1], 'utf8'))
+    expect(calendar.match(/\bstyle=\{/g)).toHaveLength(1)
+    expect(calendar).toContain('style={{ gridColumn: `${bar.startCol + 1} / ${bar.endCol + 2}` }}')
   })
 
   it('화면에 내부 테이블 이름을 쓰지 않는다', () => {
@@ -106,5 +120,9 @@ describe('받은 기획함 화면 소스 계약', () => {
   it('S2·S3는 서버에서 렌더한다(loading.tsx를 만들지 않는다)', () => {
     expect(existsSync(join(SRC, 'app/admin/ops-inbox/loading.tsx'))).toBe(false)
     expect(existsSync(join(SRC, 'app/admin/ops-inbox/[bundleId]/loading.tsx'))).toBe(false)
+  })
+
+  it('S4는 본문만 Suspense로 읽는다(머리·도구줄은 바로 보여야 해서 loading.tsx를 만들지 않는다)', () => {
+    expect(existsSync(join(SRC, 'app/admin/ops-schedule/loading.tsx'))).toBe(false)
   })
 })
