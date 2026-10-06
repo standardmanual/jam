@@ -313,7 +313,7 @@ Next.js App Router는 **`_`로 시작하는 폴더를 private folder로 보아 �
 
 `hasAdminAccess()`(`src/lib/admin/auth.ts`)는 **`ADMIN_EMAILS` 환경변수 화이트리스트
 OR `users.is_admin` 컬럼**으로 어드민 권한을 판정한다. 로컬 개발 계정(`dev-login`이 만드는
-고정 유저, 이메일은 `src/app/api/dev-login/route.ts`의 `DEV_USER_EMAIL` 단일 출처 —
+고정 유저, 이메일은 `src/lib/env/test-accounts.ts`의 `DEV_LOGIN_USER_EMAIL` 단일 출처 —
 이 문서에 값을 옮겨 적지 않는다)은 기본적으로 `is_admin = false`이므로, **셸 환경변수로
 `ADMIN_EMAILS`를 그 이메일 하나만 넣어 서버를 띄우면** 어드민 전 화면이 로그인·DB 변경
 없이 그대로 렌더된다.
@@ -331,6 +331,10 @@ ADMIN_EMAILS=<dev-login 계정 이메일> npm run dev
   연결돼 있어 고치면 모든 PC에 전파된다. 반드시 **커맨드 앞에 붙이는 셸 환경변수**로만 준다
   (프로세스 종료와 함께 사라진다)
 - **프로덕션·staging의 `ADMIN_EMAILS` 서버 환경변수는 건드리지 않는다** — 이건 로컬 한정 절차다
+- **staging에서는 자동 로그인 계정이 관리자가 될 수 없다**(코드 차단, 티켓 20261006_1527).
+  `STAGING_MODE=true`이면 `hasAdminAccess()`가 dev-login 계정을 `ADMIN_EMAILS`·`is_admin`보다
+  먼저 거부한다. stage.j-a-m.app의 어드민은 이 계정으로 열 수 없으므로 어드민 확인은 위 로컬
+  실렌더로 한다. 로컬(`STAGING_MODE` 없음)은 위 절차대로 열린다
 - `dev-login` 라우트 자체는 `NODE_ENV=development` 또는 `STAGING_MODE=true`가 아니면 404다
   (프로덕션에서 열리지 않는 이유 — 티켓 20260812_004). 「그럼 프로덕션에도 열자」로 이어지지
   않는다
