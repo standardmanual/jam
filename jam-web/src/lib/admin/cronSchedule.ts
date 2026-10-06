@@ -47,6 +47,7 @@ const CRON_LABELS: Record<string, string> = {
   '/api/cron/ambient-drop': '앰비언트 드랍',
   '/api/cron/external-inputs': '외부 입력 동기화',
   '/api/cron/ops-reconcile': '운영 상태 맞추기',
+  '/api/cron/ops-stop-signals': '운영 중단 신호 점검',
 }
 
 /**

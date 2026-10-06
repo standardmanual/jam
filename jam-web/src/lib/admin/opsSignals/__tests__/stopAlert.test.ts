@@ -17,6 +17,7 @@ import { makeSignalResult } from '@/lib/admin/opsSignals/catalog'
 import type { SignalBundleInput, SignalBundleItemInput } from '@/lib/admin/opsSignals/composition'
 import { computeOpsSignals } from '@/lib/admin/opsSignals/compute'
 import type { OpsSignalThresholdValues } from '@/lib/admin/opsSignals/thresholds'
+import vercelConfig from '../../../../../vercel.json'
 import { kst, makeBundle, makeItem } from './fixtures'
 
 const h = vi.hoisted(() => ({
@@ -96,6 +97,18 @@ describe('hourlyWindow — 끝은 정시 + 5분 슬롯이고 창은 (끝 − 60�
     const window = hourlyWindow(new Date('2026-10-01T03:06:30.000Z'))
     expect(new Date(window.endMs).toISOString()).toBe('2026-10-01T03:05:00.000Z')
     expect(new Date(window.startMs).toISOString()).toBe('2026-10-01T02:05:00.000Z')
+  })
+})
+
+describe('크론 등록 — 일정의 분이 창의 끝 슬롯과 같다', () => {
+  const cron = vercelConfig.crons.find((entry) => entry.path === '/api/cron/ops-stop-signals')
+
+  it('vercel.json에 매시 같은 분(`STOP_CHECK_SLOT_MINUTE`)으로 올라 있다', () => {
+    expect(cron?.schedule).toBe(`${STOP_CHECK_SLOT_MINUTE} * * * *`)
+  })
+
+  it('10분마다 도는 상태 맞추기(0·10·20… 분)와 같은 분에 돌지 않는다', () => {
+    expect(STOP_CHECK_SLOT_MINUTE % 10).not.toBe(0)
   })
 })
 
