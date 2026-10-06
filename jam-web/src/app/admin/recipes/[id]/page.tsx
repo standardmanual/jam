@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRow, CombinationRecipeRow, CombinationRecipeSlotRow } from '@/types/database'
+import { collectRecipeReferences } from '@/lib/admin/recipe-references'
 import RecipeForm from '../RecipeForm'
 
 export default async function EditRecipePage({ params }: { params: Promise<{ id: string }> }) {
@@ -33,12 +34,16 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
     : { data: [] as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[] }
   const badges = (usedBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[]
 
-  const [{ data: tribesRaw }, { data: itemBooksRaw }] = await Promise.all([
+  const [{ data: tribesRaw }, { data: itemBooksRaw }, references] = await Promise.all([
     supabase.from('tribes').select('id, name').order('name'),
     supabase.from('item_books').select('id, name').order('name'),
+    // 이 레시피를 가리키는 홈 카드 수 — 예약 취소 확인 문구에 안내로만 쓴다(티켓 20261006_1342).
+    collectRecipeReferences(supabase, [id]),
   ])
   const tribes = (tribesRaw ?? []) as { id: string; name: string }[]
   const itemBooks = (itemBooksRaw ?? []) as { id: string; name: string }[]
+  // 조회가 실패하면 안내만 뺀다. 예약 취소 가능 여부와 삭제 판정은 서버가 따로 하므로 화면은 그대로 연다.
+  const cardCount = references.error ? 0 : references.noticeTotal
 
   return (
     <div className="p-8">
@@ -48,7 +53,7 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
         </Link>
         <h1 className="text-2xl font-bold mt-2">레시피 수정</h1>
       </div>
-      <RecipeForm recipe={recipe} slots={slots} badges={badges} tribes={tribes} itemBooks={itemBooks} />
+      <RecipeForm recipe={recipe} slots={slots} badges={badges} tribes={tribes} itemBooks={itemBooks} cardCount={cardCount} />
     </div>
   )
 }
