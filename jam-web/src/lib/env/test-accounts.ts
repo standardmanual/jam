@@ -19,12 +19,20 @@ export function isStagingOrDevEnv(): boolean {
 }
 
 /**
+ * `/api/dev-login`이 만드는 고정 테스트 유저의 user_id·이메일 (하드코딩 위치 단일화).
+ * dev-login 라우트와 어드민 권한 판정(`hasAdminAccess`의 staging 차단, 티켓 20261006_1527)이
+ * 같은 값을 쓴다.
+ */
+export const DEV_LOGIN_USER_ID = '00000000-0000-0000-0000-000000000001'
+export const DEV_LOGIN_USER_EMAIL = 'dev-tester@jam.local'
+
+/**
  * 스테이징 전용 테스트 계정 user_id 목록.
  * 새 테스트 계정이 생기면 이 배열에만 추가하면 된다 (하드코딩 위치 단일화).
  */
 export const TEST_ACCOUNT_USER_IDS: readonly string[] = [
   // dev-login이 생성하는 고정 스테이징 테스트 유저 (username: 589132427_stage)
-  '00000000-0000-0000-0000-000000000001',
+  DEV_LOGIN_USER_ID,
   // 알림(소식) 기능 QA용으로 수동 시드된 팔로잉/팔로워 상대 계정 3종
   // (username: jiwon.kim / minjun.park / sora.lee, 이메일 전부 @jam.local,
   // 생성일 2026-08-15. 이 파일 도입(027) 당시 존재를 놓쳤던 계정 — 티켓 20260825_030 후속)

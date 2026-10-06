@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { OPS_INBOX_METHOD, OPS_INBOX_PATH } from '@/lib/admin/opsInbox/constants'
+import { DEV_LOGIN_USER_EMAIL, DEV_LOGIN_USER_ID } from '@/lib/env/test-accounts'
 
 export function isWhitelistedAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false
@@ -24,16 +25,29 @@ export function isAdminAccount(user: {
   return isWhitelistedAdminEmail(user.email) || Boolean(user.is_admin)
 }
 
+// staging에서 dev-login 자동 로그인 계정이면 true — id 또는 이메일(대소문자 무시) 중 하나만 맞아도 해당.
+function isBlockedStagingAutoLogin(userId: string, email: string | null | undefined): boolean {
+  if (process.env.STAGING_MODE !== 'true') return false
+  return userId === DEV_LOGIN_USER_ID || email?.toLowerCase() === DEV_LOGIN_USER_EMAIL
+}
+
 /**
- * 어드민 권한 판정 (20260827_015): `ADMIN_EMAILS` 환경변수 화이트리스트 OR `users.is_admin`
+ * 어드민 권한 판정 (20260827_015):`ADMIN_EMAILS` 환경변수 화이트리스트 OR `users.is_admin`
  * 컬럼. 화이트리스트에 있으면 DB 조회 없이 즉시 허용한다 — 기존 화이트리스트 계정은
  * 이 변경으로 영향받지 않는다. `proxy.ts`(미들웨어)·`admin/layout.tsx`(서버 컴포넌트
  * defense-in-depth)·`getAdminUser()`(API 라우트) 3곳이 모두 이 판정을 공유한다.
+ *
+ * staging(`STAGING_MODE=true`)에서는 `/api/dev-login` 자동 로그인 계정(id 또는 이메일)을 맨 앞에서
+ * 거부한다(티켓 20261006_1527). stage.j-a-m.app은 쿠키 없는 요청에 이 계정 세션을 주는데, DB는
+ * staging·프로덕션 공용이라 이 계정이 관리자면 누구나 공용 DB 어드민을 쓸 수 있다. `ADMIN_EMAILS`·
+ * `users.is_admin`보다 먼저 보므로 DB 값과 무관하다. 로컬 개발(`STAGING_MODE` 없음)은 대상이 아니라
+ * `ADMIN_EMAILS` 셸 변수로 관리자가 될 수 있다(패턴 13).
  */
 export async function hasAdminAccess(
   userId: string,
   email: string | null | undefined
 ): Promise<boolean> {
+  if (isBlockedStagingAutoLogin(userId, email)) return false
   if (isWhitelistedAdminEmail(email)) return true
 
   const service = createServiceClient()
