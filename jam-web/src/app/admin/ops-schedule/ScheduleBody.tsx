@@ -24,7 +24,6 @@ export const SCHEDULE_LOAD_FAILED_TITLE = '일정을 불러오지 못했어요'
 export const SCHEDULE_PARTIAL_FAILED_TITLE = '일부 일정을 불러오지 못했어요'
 export const SCHEDULE_PARTIAL_FAILED_DESCRIPTION = '서버에 문제가 있었을 수 있어요. 새로 고쳐 다시 불러와 주세요'
 export const SCHEDULE_EMPTY_TITLE = '이 기간에는 올라온 항목이 없어요'
-export const SCHEDULE_EMPTY_DESCRIPTION = '에이전트가 기획을 보내거나 카드·미션을 등록하면 여기에 나타나요'
 export const SCHEDULE_TO_TODAY_LABEL = '오늘로 이동'
 
 /** 못 읽은 재료마다의 안내 문장. 카드를 못 읽었을 때 「미편성」으로 단정하지 않는다. */
@@ -84,7 +83,6 @@ export async function ScheduleBody({ params }: { params: ScheduleParams }) {
         <Card className="flex flex-col items-start gap-2 p-5">
           <IconCalendarOff className="size-5 text-muted-foreground" aria-hidden="true" />
           <p className="font-medium">{SCHEDULE_EMPTY_TITLE}</p>
-          <p className="text-sm text-muted-foreground">{SCHEDULE_EMPTY_DESCRIPTION}</p>
           {!showsToday && (
             <Button asChild variant="outline" size="sm">
               <Link
