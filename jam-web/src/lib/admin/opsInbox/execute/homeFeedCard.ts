@@ -34,6 +34,7 @@ const HOME_FEED_CARD_MESSAGES = {
   collectionMissing: '연결한 컬렉션을 찾을 수 없어요',
   badgeMissing: '연결한 배지가 없거나 삭제됐어요',
   rankingModeMissing: '연결한 랭킹 모드를 찾을 수 없어요',
+  recipeMissing: '연결한 레시피를 찾을 수 없어요',
   checkReadFailed: '등록 전 확인 중 DB를 읽지 못했어요',
   checkFailed: '등록 전 확인을 통과하지 못했어요',
   createFailed: '카드를 만들지 못했어요',
@@ -53,6 +54,7 @@ const REASON_BY_CHECK_LABEL: Readonly<Record<string, string>> = {
   '컬렉션 존재': HOME_FEED_CARD_MESSAGES.collectionMissing,
   '배지 존재': HOME_FEED_CARD_MESSAGES.badgeMissing,
   '랭킹 모드 존재': HOME_FEED_CARD_MESSAGES.rankingModeMissing,
+  '레시피 존재': HOME_FEED_CARD_MESSAGES.recipeMissing,
 }
 
 /** DB를 읽지 못했을 때 검사가 남기는 실패 문장의 앞부분(`registerChecks/shared.ts`·`homeFeed.ts`). */
@@ -90,12 +92,12 @@ export const HOME_FEED_CARD_HANDLER: ExecuteHandler<TodayCardRegisterPayload> = 
 
   async check(client, prepared): Promise<ExecuteFailure | null> {
     // 연결로 채운 칸은 같은 실행에서 만들 ID라 존재 확인에서 뺀다(생성 순서가 존재를 보장한다).
-    const { title, starts_at, mission_id, item_book_id, badge_ids, ranking_mode_id } = withoutLinkedFields(
+    const { title, starts_at, mission_id, item_book_id, badge_ids, ranking_mode_id, recipe_id } = withoutLinkedFields(
       prepared.payload,
       prepared.linkFields,
       prepared.linkedIds
     )
-    const result = await runHomeFeedDbChecks({ supabase: client, payload: { title, starts_at, mission_id, item_book_id, badge_ids, ranking_mode_id } })
+    const result = await runHomeFeedDbChecks({ supabase: client, payload: { title, starts_at, mission_id, item_book_id, badge_ids, ranking_mode_id, recipe_id } })
     if (result.errors.length === 0) return null
     return { reason: reasonOfCheck(result.checks.find((check) => check.status === '실패')), detail: result.errors.join(' / ') }
   },

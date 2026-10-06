@@ -1,5 +1,6 @@
 /**
- * 레시피 삭제 가드 — 배지 조건 `recipe_first_success.recipe_id` 참조 집계 (티켓 20261001_1200)
+ * 레시피 삭제 가드 — 배지 조건 `recipe_first_success.recipe_id` 참조 집계 (티켓 20261001_1200)와
+ * 투데이 카드 `recipe_id` 참조(삭제를 막지 않는 안내 건수, 티켓 20261006_1218)
  * DB는 기록형 스텁이다. 실제 조회는 하지 않는다.
  * 실행: cd jam-web && npx vitest run src/lib/admin/__tests__/recipe-references.test.ts
  */
@@ -14,17 +15,25 @@ interface BadgeCall {
   deletedAtIsNull: boolean
 }
 
+interface CardCall {
+  column: string
+  ids: string[]
+}
+
 /**
- * `combination_recipes`(이름 조회)와 `badges`(참조 집계)만 흉내 낸다.
- * `badgesByRecipeId`는 레시피 id별로 그 레시피를 가리키는 배지 수를 정한다.
+ * `combination_recipes`(이름 조회)와 `badges`·`today_cards`(참조 집계)만 흉내 낸다.
+ * `badgesByRecipeId`·`cardsByRecipeId`는 레시피 id별로 그 레시피를 가리키는 배지·카드 수를 정한다.
  */
 function createStubSupabase(options: {
   recipes?: { id: string; name: string }[]
   badgesByRecipeId?: Record<string, number>
+  cardsByRecipeId?: Record<string, number>
   failBadges?: boolean
+  failCards?: boolean
 }) {
-  const { recipes = [], badgesByRecipeId = {}, failBadges = false } = options
+  const { recipes = [], badgesByRecipeId = {}, cardsByRecipeId = {}, failBadges = false, failCards = false } = options
   const badgeCalls: BadgeCall[] = []
+  const cardCalls: CardCall[] = []
 
   const client = {
     from(table: string) {
@@ -59,11 +68,22 @@ function createStubSupabase(options: {
           },
         }
       }
+      if (table === 'today_cards') {
+        return {
+          select: () => ({
+            in: async (column: string, ids: string[]) => {
+              cardCalls.push({ column, ids })
+              if (failCards) return { count: null, error: { message: 'today_cards 조회 실패' } }
+              return { count: ids.reduce((sum, id) => sum + (cardsByRecipeId[id] ?? 0), 0), error: null }
+            },
+          }),
+        }
+      }
       throw new Error(`예상하지 못한 테이블: ${table}`)
     },
   }
 
-  return { client: client as unknown as Parameters<typeof collectRecipeReferences>[0], badgeCalls }
+  return { client: client as unknown as Parameters<typeof collectRecipeReferences>[0], badgeCalls, cardCalls }
 }
 
 describe('collectRecipeReferences', () => {
@@ -72,7 +92,7 @@ describe('collectRecipeReferences', () => {
 
     const result = await collectRecipeReferences(client, ['r1'])
 
-    expect(result).toEqual({ blockingTotal: 2, cascadeTotal: 0, total: 2, error: null })
+    expect(result).toEqual({ blockingTotal: 2, cascadeTotal: 0, total: 2, noticeTotal: 0, error: null })
     expect(badgeCalls).toHaveLength(1)
     expect(badgeCalls[0]).toMatchObject({ column: PATH, ids: ['r1'], deletedAtIsNull: true })
   })
@@ -92,6 +112,28 @@ describe('collectRecipeReferences', () => {
       blockingTotal: 0,
       cascadeTotal: 0,
       total: 0,
+      noticeTotal: 0,
+      error: null,
+    })
+  })
+
+  it('레시피 공개 카드가 가리키면 noticeTotal로만 세고 삭제를 막는 total은 늘지 않는다(어드민 삭제는 막지 않는다, 티켓 20261006_1218 가정 B)', async () => {
+    const { client, cardCalls } = createStubSupabase({ cardsByRecipeId: { r1: 3 } })
+
+    const result = await collectRecipeReferences(client, ['R1'])
+
+    expect(result).toEqual({ blockingTotal: 0, cascadeTotal: 0, total: 0, noticeTotal: 3, error: null })
+    expect(cardCalls).toEqual([{ column: 'recipe_id', ids: ['r1'] }])
+  })
+
+  it('배지와 카드가 함께 가리키면 배지만 total에 들고 카드는 noticeTotal에 든다', async () => {
+    const { client } = createStubSupabase({ badgesByRecipeId: { r1: 1 }, cardsByRecipeId: { r1: 2 } })
+
+    expect(await collectRecipeReferences(client, ['r1'])).toEqual({
+      blockingTotal: 1,
+      cascadeTotal: 0,
+      total: 1,
+      noticeTotal: 2,
       error: null,
     })
   })
@@ -104,12 +146,17 @@ describe('collectRecipeReferences', () => {
 
   it('id가 많으면 80개씩 나눠 조회하고 합산한다', async () => {
     const ids = Array.from({ length: 200 }, (_, i) => `r${i}`)
-    const { client, badgeCalls } = createStubSupabase({ badgesByRecipeId: { r0: 1, r100: 2, r199: 3 } })
+    const { client, badgeCalls, cardCalls } = createStubSupabase({
+      badgesByRecipeId: { r0: 1, r100: 2, r199: 3 },
+      cardsByRecipeId: { r50: 4 },
+    })
 
     const result = await collectRecipeReferences(client, ids)
 
     expect(badgeCalls.map((c) => c.ids.length)).toEqual([80, 80, 40])
+    expect(cardCalls.map((c) => c.ids.length)).toEqual([80, 80, 40])
     expect(result.total).toBe(6)
+    expect(result.noticeTotal).toBe(4)
   })
 
   it('조회가 실패하면 0건이 아니라 error를 돌려준다(fail-closed)', async () => {
@@ -119,6 +166,14 @@ describe('collectRecipeReferences', () => {
 
     expect(result.error).toBe('badges 조회 실패')
     expect(result.total).toBe(0)
+  })
+
+  it('카드 조회가 실패해도 0건이 아니라 error를 돌려준다(fail-closed, 운영툴 취소가 막힌다)', async () => {
+    const { client } = createStubSupabase({ badgesByRecipeId: { r1: 1 }, failCards: true })
+
+    const result = await collectRecipeReferences(client, ['r1'])
+
+    expect(result).toEqual({ blockingTotal: 0, cascadeTotal: 0, total: 0, noticeTotal: 0, error: 'today_cards 조회 실패' })
   })
 })
 
@@ -148,6 +203,17 @@ describe('collectRecipeDeletionCandidates', () => {
     expect(lookup.error).toBeNull()
     expect(deletable).toEqual(['r1', 'r3'])
     expect(skipped).toEqual([{ id: 'r2', label: '믹스 B', reason: recipeDeleteBlockedMessage(3) }])
+  })
+
+  it('레시피 공개 카드만 가리키는 레시피는 일괄 삭제에서 건너뛰지 않는다(카드는 레시피 줄만 비운다)', async () => {
+    const { client } = createStubSupabase({ recipes, cardsByRecipeId: { r2: 5 } })
+
+    const lookup = await collectRecipeDeletionCandidates(client, ['r1', 'r2', 'r3'])
+    const { deletable, skipped } = classifyRecipeDeletion(['r1', 'r2', 'r3'], lookup.candidates)
+
+    expect(lookup.error).toBeNull()
+    expect(deletable).toEqual(['r1', 'r2', 'r3'])
+    expect(skipped).toEqual([])
   })
 
   it('참조 조회가 실패하면 error를 돌려준다(호출부는 삭제를 막는다)', async () => {

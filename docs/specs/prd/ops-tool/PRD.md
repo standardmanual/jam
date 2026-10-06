@@ -655,7 +655,7 @@ stateDiagram-v2
 >   | 검사 | 컬렉션을 읽지 못함 | 「등록 전 확인 중 DB를 읽지 못했어요」 |
 >   | 생성 | insert·슬롯 저장 오류(500) | 「레시피를 만들지 못했어요」 |
 >   | 되돌림 | 가리키는 배지가 있거나 읽지 못함 / delete 오류 | 「연결된 배지가 있거나 확인하지 못해 레시피를 지우지 않았어요」 / 「레시피를 지우지 못했어요」 |
->   | 취소 | 공개 시각이 지남 / 가장 먼저 성공 배지가 가리킴 | 「공개 시각이 지나 취소할 수 없어요」 / 「가장 먼저 성공 배지가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요」 |
+>   | 취소 | 공개 시각이 지남 / 가장 먼저 성공 배지나 운영툴 밖 카드가 가리킴 | 「공개 시각이 지나 취소할 수 없어요」 / 「가장 먼저 성공 배지나 카드가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요」 |
 
 > **구현됨(드랍 예약 핸들러, 티켓 [20261002_2306](../../../tickets/p2-normal/20261002_2306_Admin_운영툴-자원-연결-8b-앰비언트-드랍-핸들러.md), 상위 1500 ⑧-b).**
 > `jam-web/src/lib/admin/opsInbox/execute/dropSchedule.ts`의 `DROP_SCHEDULE_HANDLER`(`idFirst: true`, `resourceKey: 'ambient_drop_schedule_id'`)가 승인된 드랍 항목을 `ambient_drop_schedules` 1행(`scheduled`)으로 만든다. 예정 시각은 항목의 공개 시각(`starts_at`)이다.
@@ -846,6 +846,8 @@ stateDiagram-v2
   일찍 열리면 레시피보다 먼저 보인다(사용자 결정 2026-10-04, 구현됨: ⑨-a. 앞서 적었던 「레시피 시각으로 덮고 경고」를 바꿨다). 이유 문장은 「가장 먼저 성공 배지는 레시피와 같은 시각에 공개돼야 해요」다.
   밀리초로 견주고 대상 레시피 항목의 상태와 관계없이 견준다(이미 게재 중인 레시피에 나중에 여는 배지는 첫 성공을 놓친다). 두 시각 중 하나라도 읽을 수 없으면 견주지 않는다.
   연결이 아니라 `resource.condition_json.recipe_first_success.recipe_id`에 기존 레시피를 직접 적은 배지는 사전 점검이 DB를 읽지 않으므로 등록 전 검사가 같은 규칙으로 막는다(§8.1 「구현됨(JAM! 배지 핸들러)」).
+  **카드 → 레시피 쌍에는 이 검사도 공개 순서 검사도 없다**(⑫-b, 티켓 20261006_1218). 레시피 공개 카드는 레시피가 공개되기 전에 먼저 공개돼 예고할 수 있다(07 §4.5 예외). 두 쌍의 칸 이름이 같은 `recipe_id`라서
+  `precheck.ts`의 `differsFromLinkedRecipe`는 가리키는 쪽이 JAM! 배지(`jam_badge`)일 때만 견준다.
 - 같은 기획 안에서 기간이 겹치는 같은 제목의 미션이 둘 이상이면 뒤 항목이 못 하는 항목이다(사용자 결정 2026-10-02, 구현됨: ⑥). 이미 있는 미션과의 겹침은 실행 때 등록 전 검증이 본다(§8.1).
 - 글자 수 상한(1453 확정 설계: `hero` 22·`poster` 18·`square` 22·`brief` 28·`list` 22자, 홈피드 PRD §6)은 경고만 한다(G15).
 - `pattern_no`가 사전 번호 형식(`^P[0-9]{2,}$`)이 아니면 카드의 `pattern_no` 칸을 비우고 경고한다(G11). 제출 때 거르는 일은 영향 티켓 20261001_2057이 한다.
@@ -878,6 +880,8 @@ stateDiagram-v2
 > - `item_key`가 겹치거나 `links`가 없는 키·자기 자신·겹친 키를 가리키는 항목은 못 하는 항목이고, 그 그룹 전체가 「연결을 읽을 수 없어요」로 함께 막힌다. 제출 때는 형식 오류로만 남는다(`validate.ts`).
 > - 표의 단일 칸에 대상이 둘 이상이면 못 한다. `jam_badge` → `recipe`는 대상의 `recipe_id`로 덮는 칸이라 `resource`의 같은 값은 충돌이 아니지만, 레시피가 둘 이상이면 못 한다.
 > - 표의 `jam_badge` → `recipe` 쌍에서 배지와 레시피의 공개 시각이 다르면 막는 일은 ⑨-a가 구현했다(§8.2, 사용자 결정 2026-10-04).
+> - 카드 → 레시피 쌍(⑫-b, 티켓 [20261006_1218](../../../tickets/p2-normal/20261006_1218_Admin_운영툴-자원-연결-12b-카드-레시피-칸과-운영툴-연결.md))이 `today_cards.recipe_id`를 채운다. 카드 하나가 레시피 둘 이상을 가리키거나 `resource.recipe_id`도 있으면 못 하는 항목이다.
+>   `resource.recipe_id`만 있으면(연결 없음) 기존 레시피를 직접 가리킨다(등록 전 검사가 레시피 존재를 본다). 카드가 레시피보다 먼저 공개돼도 막지 않는다(공개 예고, 07 §4.5 예외). 레시피 칸은 레시피 공개 카드(`recipe_reveal`)만 받는다.
 > - 배지의 `condition_json.recipe_first_success.recipe_id`는 `toJamBadgeRegisterInput`이 대상 레시피의 ID로 덮고(항목에 같은 값이 있어도 충돌이 아니다. 항목에 `recipe_first_success`가 없으면 칸을 만든다) 결과의 `linkFields`에 `condition_json.recipe_first_success.recipe_id`로 알린다(⑨-a).
 
 `links`로 이어진 항목끼리 한 그룹이다. 방향과 관계없이 이어진 항목을 모두 모은다. 그룹은 함께 예약하고, 예약 등록 중 하나가 실패하면 함께 되돌린다(07 4.4).
@@ -890,12 +894,12 @@ stateDiagram-v2
 | `home_feed_card` | `mission` | `today_cards.mission_id` | 대상의 `mission_id`. 카드 하나가 미션 둘 이상을 가리키거나 `resource.mission_id`도 있으면 못 하는 항목 |
 | `home_feed_card` | `jam_badge` | `today_cards.badge_ids` | `resource.badge_ids` 뒤에 대상의 `badge_id`를 더한다 |
 | `home_feed_card` | `collection_launch` | `today_cards.item_book_id` | 대상의 `item_book_id`. 둘 이상이거나 `resource.item_book_id`도 있으면 못 하는 항목 |
+| `home_feed_card` | `recipe` | `today_cards.recipe_id` | 대상의 `recipe_id`. 둘 이상이거나 `resource.recipe_id`도 있으면 못 하는 항목. 카드가 레시피보다 먼저 공개돼도 막지 않는다(07 §4.5 예외, 사전 점검에 공개 순서 검사 없음) |
 | `mission` | `jam_badge` | `missions.reward_badge_ids` | `resource.reward_badge_ids` 뒤에 더한다 |
 | `collection_launch` | `jam_badge` | `item_books.reward_badge_id` | 대상의 `badge_id`. 둘 이상이거나 `resource.reward_badge_id`도 있으면 못 하는 항목 |
 | `drop_schedule` | `collection_launch` | 드랍 예약의 `collection_ids` | 컬렉션 선택(`resource.collection_ids`)이면 뒤에 더한다. 아이템 직접 선택(`resource.badge_ids`)이면 못 하는 항목 |
 | `jam_badge` | `recipe` | `badges.condition_json.recipe_first_success.recipe_id` | 대상의 `recipe_id`로 덮는다. 배지와 레시피의 공개 시각이 다르면 사전 점검이 막는다(§8.2, 사용자 결정 2026-10-04. 1458 메모의 「같은 `valid_from`」을 맞추는 방법) |
 
-- 레시피 공개 카드(카드 → 레시피)의 칸은 ⑫가 DB를 넓힐 때 이 표에 더한다. 그 전에는 그룹으로만 묶인다.
 - 밸런스 규칙의 보상 배지 읽기(§5.2 「규칙이 읽는 자리」)도 이 표의 `mission`·`collection_launch` → `jam_badge` 쌍과 같은 뜻이다.
 
 **생성 순서.** 참조당하는 쪽이 먼저다. 종류 순서로 정한다: `recipe` → `jam_badge` → `collection_launch` → `mission` → `drop_schedule` → `home_feed_card`. 같은 종류끼리는
@@ -917,7 +921,7 @@ stateDiagram-v2
 > - 카드의 `pattern_no`는 등록 스크립트 페이로드의 키가 아니라 이 변환이 덧붙인다(G11). 사전 번호 형식이면 쓰고, 아니면 비우고 경고한다.
 > - 카드 종료 시각이 없으면 공개한 날의 끝(23:59:59.999 KST)으로 채운다. 신호 계산(§5 「날짜 구성에 넣는 항목」)과 같은 값이다.
 > - 검사 오류 문장(`card.title: …`·`mission.condition_json: …`)은 등록 스크립트와 같고, 함수는 문장을 그대로 두고 운영 항목 경로(`copy.title`·`resource.template_type`·`starts_at`·`shape` 등)를 함께 돌려준다. 화면 표기는 ⑤가 정한다.
-> - 연결로 채우는 칸(`mission_id`·`badge_ids`·`item_book_id`·`reward_badge_ids`, §8.3)은 호출부가 `linkedIds`로 넘기고, 결과의 `linkFields`가 채운 칸을 알린다. 등록 전 DB 검사에는 `withoutLinkedFields(payload, linkFields, linkedIds)`로 그 칸을 뺀 사본을 넘겨
+> - 연결로 채우는 칸(`mission_id`·`badge_ids`·`item_book_id`·`recipe_id`·`reward_badge_ids`, §8.3)은 호출부가 `linkedIds`로 넘기고, 결과의 `linkFields`가 채운 칸을 알린다. 등록 전 DB 검사에는 `withoutLinkedFields(payload, linkFields, linkedIds)`로 그 칸을 뺀 사본을 넘겨
 >   (배열 칸은 `linkedIds`의 연결 몫만 빼고 `resource` 몫은 남긴다)
 >   그 ID의 존재 확인을 건너뛴다(같은 실행에서 만들어질 ID라 생성 순서가 존재를 보장한다). 형식·필수 참조 검사에는 미리 정한 UUID를 `linkedIds`로 넘겨 통과시킨다(G3).
 > - 제목 글자 수가 모양별 상한(`jam-web/src/lib/today/shape.ts`의 `CARD_TITLE_MAX_LENGTH`)을 넘으면 경고만 한다(G15).
@@ -969,13 +973,16 @@ stateDiagram-v2
 
 | 종류 | 공통 칸 | `copy` | `resource` | 툴이 정하는 값 |
 |---|---|---|---|---|
-| `home_feed_card` | `starts_at`(필수), `ends_at`(없으면 G10), `shape`(필수), `exposure_tags`(필수), `pattern_no`(G11) | `title`(필수), `subtitle`, `description`(40자), `body_markdown`, `region_label` | `template_type`(필수), `layout_type`, `title_in_image`, `cover_image_url`, `badge_ids`, `mission_id`, `item_book_id`, `ranking_mode_id`, `content_type_id`, `target_href`, `sort_order` | `is_active = true`. `layout_type`이 없으면 템플릿의 추천값 |
+| `home_feed_card` | `starts_at`(필수), `ends_at`(없으면 G10), `shape`(필수), `exposure_tags`(필수), `pattern_no`(G11) | `title`(필수), `subtitle`, `description`(40자), `body_markdown`, `region_label` | `template_type`(필수), `layout_type`, `title_in_image`, `cover_image_url`, `badge_ids`, `mission_id`, `item_book_id`, `ranking_mode_id`, `recipe_id`, `content_type_id`, `target_href`, `sort_order` | `is_active = true`. `layout_type`이 없으면 템플릿의 추천값 |
 | `mission` | `starts_at`(필수), `ends_at` | `title`(필수), `description`(필수), `condition_text` | `mission_type`(필수), `condition_json`(필수), `reward_points`, `reward_badge_ids`, `status_display_type`, `visible_rank_count`, `max_completions`, `gate_axis`, `gate_stage`, `visibility_rule_json`, `image_url` | `exposure_mode = 'start_date'`, `exposure_at`·`reward_type`·`reward_id`·`gated_badge_id`는 NULL(미션 등록 스크립트와 같다) |
 | `jam_badge` | `starts_at`(필수, `valid_from`으로), `ends_at`(`valid_until`로) | `name`(필수), `description`(필수) | `condition_json`(필수), `point_reward`, `rarity`, `level`, `family_key`, `sort_order`, `image_url` | `type = 'activity'`, `admin_category = 'jam'`, `activity_types = []` |
 | `collection_launch` | `starts_at`(필수, `valid_from`으로), `ends_at`(`valid_until`로), `tribe_id` | `name`(필수), `description`(필수), `story_text` | `image_url`(대표 이미지 주소), `reward_points`, `reward_badge_id` | `is_active = true` |
 | `recipe` | `starts_at`(필수, `valid_from`으로), `ends_at`(`valid_until`로) | `name`(필수) | `slots`(필수, `[{ badge_type, allowed_badge_ids }]`), `reward_points`, `reward_badge_ids`(아이템 배지만) | — |
 | `drop_schedule` | `starts_at`(필수, `scheduled_at`으로). `ends_at`이 있으면 형식 오류 | `title`(100자) | §3.1의 6개 키 | — |
 
+- **레시피 공개 카드의 칸(⑫-b, 티켓 20261006_1218).** `recipe_id`는 `recipe_reveal` 카드만 받는다(다른 템플릿에 적으면 형식 오류, 어드민 폼이 저장할 때 비우는 칸이라 «적은 대로 등록된다»를 지킨다). `target_href`도 받는다
+  (운영자가 지정한 주소가 레시피 공개 카드의 기본 `/combine`보다 앞선다). 레시피 칸은 비어도 카드가 그려진다(레시피 줄 없이). 등록 전 검사는 `recipe_id`가 있으면 `combination_recipes`에 그 레시피가 있는지 본다
+  (공개 전 레시피도 가리킬 수 있다). 연결로 채운 `recipe_id`는 같은 실행에서 만들 레시피라 존재 확인에서 뺀다. 사유는 「연결한 레시피를 찾을 수 없어요」다.
 - **종류별 검사.** 카드는 홈피드 등록 묶음의 카드 검사(`jam-web/src/lib/admin/registerChecks/homeFeedFields.ts`의 `validateCard`: 템플릿별로 쓰지 않는 칸과 필수 참조, 노출 태그, 설명문 40자)이고
   이미지는 보지 않는다(§8.8). 미션은 미션 등록 묶음 검사(`registerChecks/missionFields.ts`의 `validateMission`)다. 두 검사가 쓰는 정규식·보조 함수는 `registerChecks/bundleRules.ts`에 있고,
   등록 스크립트(`registerHomeFeedBundle.mjs`·`registerMissionBundle.mjs`)는 같은 함수를 부른다(티켓 20261002_1027). JAM! 배지는 어드민 배지 검증(`jam-web/src/lib/admin/badge-validation.ts`의 조건 저장 규칙)과 발급 조건 유무, 연결 없이 직접 적은 `recipe_first_success`의 레시피 존재·공개 시각(DB를 읽는 등록 전 검사, §8.1), 레시피는
@@ -1137,7 +1144,7 @@ stateDiagram-v2
 - **가리키는 항목도 함께 취소한다.** 취소하는 항목을 `links`로 가리키는 항목은 칸이 대상을 잃으므로 함께 취소한다(미션을 취소하면 그 미션을 여는 카드도). 확인창이 함께 취소될
   항목을 보인다. 그 가운데 이미 게재 중인 항목이 있으면 아무것도 취소하지 않고 409다(예: 「이 미션을 여는 카드가 이미 게재 중이에요. 카드를 먼저 종료해 주세요.」). 가리키는 대상은
   그대로 둔다(카드를 취소해도 미션은 남는다).
-- 운영툴 밖의 자원이 참조하고 있으면(기존 어드민에서 만든 카드가 이 미션을 가리키는 등) 지우지 않고 409다.
+- 운영툴 밖의 자원이 참조하고 있으면(기존 어드민에서 만든 카드가 이 미션·레시피를 가리키는 등) 지우지 않고 409다. 어드민의 레시피 삭제·예약 취소는 카드가 가리켜도 막지 않는다(카드는 남고 레시피 줄만 빈다, 미션의 어드민 삭제와 같다).
 - 공개 시각이 지났는데 상태 맞추기가 아직 「게재중」으로 바꾸지 않은 항목은 취소하지 않는다. 서버가 자원의 공개 판정을 다시 보고 409로 돌려보낸다.
 - 확인창은 되돌릴 수 없다는 것을 알린다. 사유는 선택이고 500자까지다. 결정 기록은 `cancel`(함께 취소한 항목마다 1행, 같은 `batch_id`), 슬랙은 `#jam-report`다.
 
@@ -1166,10 +1173,14 @@ stateDiagram-v2
 
 > **구현됨(레시피 `cancel`, 티켓 [20261002_2221](../../../tickets/p2-normal/20261002_2221_Admin_운영툴-자원-연결-8a-레시피-핸들러.md), 상위 1500 ⑧-a).** `recipe.ts`의 `cancel`은 레시피를 다시 읽고(`id, valid_from, valid_until`) 지우기를 서버 함수 `cancelScheduledRecipe`에 맡긴다.
 > - 행이 없으면 밖에서 지워진 것이라 성공(`missing`)이다. `recipeReleaseState`가 공개 전(`scheduled`)이 아니면(공개 중·종료됨·`valid_from`이 비어 바로 공개) 409 「공개 시각이 지나 취소할 수 없어요」다.
-> - `cancelScheduledRecipe(service, id, 지금)`이 이 레시피를 가리키는 배지(`recipe_first_success`)를 확인하고(있거나 읽지 못하면 지우지 않는다) `valid_from > 지금` 조건으로 지운다. 슬롯은 CASCADE로 함께 지워진다. 성공이면 지운 것이고 404이면 `missing`이다.
->   409(참조 있음 또는 그사이 공개됨)는 핸들러가 레시피를 다시 읽어 가른다: 공개됐으면 409 「공개 시각이 지나 취소할 수 없어요」, 아직 공개 전이면 409 「가장 먼저 성공 배지가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요」, 다시 읽어도 행이 없으면 `missing`이다.
+> - `cancelScheduledRecipe(service, id, 지금, { blockOnCards: true })`가 이 레시피를 가리키는 배지(`recipe_first_success`)와 레시피 공개 카드(`today_cards.recipe_id`)를 확인하고(있거나 읽지 못하면 지우지 않는다) `valid_from > 지금` 조건으로 지운다. 슬롯은 CASCADE로 함께 지워진다. 성공이면 지운 것이고 404이면 `missing`이다.
+>   409(참조 있음 또는 그사이 공개됨)는 핸들러가 레시피를 다시 읽어 가른다: 공개됐으면 409 「공개 시각이 지나 취소할 수 없어요」, 아직 공개 전이면 409 「가장 먼저 성공 배지나 카드가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요」, 다시 읽어도 행이 없으면 `missing`이다.
 >   500(참조를 읽지 못한 경우 포함)은 500 「레시피를 지우지 못했어요」다. 서버 함수의 문장은 어드민 화면용이라 사유로 쓰지 않고 상태 코드로만 가른다.
 > - 운영툴 밖에서 만든 배지가 이 레시피를 가리키면 위 참조 확인에서 409다.
+> - **카드가 가리키는 레시피(⑫-b, 티켓 [20261006_1218](../../../tickets/p2-normal/20261006_1218_Admin_운영툴-자원-연결-12b-카드-레시피-칸과-운영툴-연결.md), 가정 A).** 레시피를 취소하면 그 레시피를 여는 예약됨 카드가 함께 취소되고, 되돌림 순서(`orderForUndo`)가 카드를 먼저 지운다.
+>   게재 중 카드가 가리키면 아무것도 취소하지 않고 409다(위 「가리키는 항목도 함께 취소한다」). 같은 묶음의 카드가 먼저 지워진 뒤에도 카드가 남아 있으면 운영툴 밖(어드민)에서 만든 카드이므로 레시피를 지우지 않고 409다.
+>   막는 쪽은 서버 함수 `cancelScheduledRecipe`의 선택 인자 `blockOnCards`이고 운영툴 핸들러만 켠다 — 어드민의 예약 취소(`POST /api/admin/recipes/[id]/cancel-release`)와 삭제(`DELETE /api/admin/recipes/[id]`·일괄 삭제)는 카드가 가리켜도
+>   막지 않는다(가정 B). 단건 삭제 응답은 카드가 있었으면 `notice`로 알린다. 카드 → 레시피에는 공개 순서 검사가 없으므로 취소 순서 때문에 막히는 일은 없다.
 
 > **구현됨(드랍 `cancel`, 티켓 [20261002_2306](../../../tickets/p2-normal/20261002_2306_Admin_운영툴-자원-연결-8b-앰비언트-드랍-핸들러.md), 상위 1500 ⑧-b).** `dropSchedule.ts`의 `cancel`은 예약을 지우지 않고 서버 함수 `cancelScheduledAmbientDrop`으로 「취소」 상태(`canceled`, 취소 시각)를 남긴다. 행이 남아 예약 목록에서 취소된 예약으로 보인다.
 > - `getAmbientDropSchedule`로 읽는다. 행이 없으면 `missing`이다. 상태가 `canceled`면 밖에서 취소된 것이라 성공(`missing`)이다.

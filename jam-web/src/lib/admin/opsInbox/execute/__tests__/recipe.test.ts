@@ -498,7 +498,7 @@ describe('undo — 가리키는 배지를 확인한 뒤 ID로 지운다', () => 
 })
 
 describe('cancel — 공개 전에만 지운다', () => {
-  const CANCEL_REFERENCED = '가장 먼저 성공 배지가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요'
+  const CANCEL_REFERENCED = '가장 먼저 성공 배지나 카드가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요'
   const seed = (db: FakeDb, recipe: Row = {}) => {
     db.tables.combination_recipes = [
       { id: RECIPE_ID, valid_from: LATER, valid_until: null, ...recipe },
@@ -560,6 +560,41 @@ describe('cancel — 공개 전에만 지운다', () => {
     if (result.ok) throw new Error('실패여야 해요')
     expect(result.failure.reason).not.toContain(RECIPE_ID)
     expect(result.failure.reason).not.toContain(FIRST_SUCCESS_BADGE)
+    expect(deletes(db)).toEqual([])
+    expect(recipeIds(db)).toEqual([RECIPE_ID, EXISTING_RECIPE_ID])
+  })
+
+  it('운영툴 밖 카드(레시피 공개 카드)가 이 레시피를 가리키면 referenced이고 지우지 않는다. 카드·레시피 ID는 reason에 없다(티켓 20261006_1218)', async () => {
+    const db = new FakeDb()
+    seed(db)
+    db.tables.today_cards = [{ id: 'card-outside', recipe_id: RECIPE_ID }, { id: 'card-other', recipe_id: EXISTING_RECIPE_ID }]
+    const result = await cancel(db)
+
+    expect(result).toMatchObject({ ok: false, code: 'referenced', failure: { reason: CANCEL_REFERENCED } })
+    if (result.ok) throw new Error('실패여야 해요')
+    expect(result.failure.reason).not.toContain(RECIPE_ID)
+    expect(result.failure.reason).not.toContain('card-outside')
+    expect(deletes(db)).toEqual([])
+    expect(recipeIds(db)).toEqual([RECIPE_ID, EXISTING_RECIPE_ID])
+  })
+
+  it('다른 레시피나 레시피 칸이 빈 카드만 있으면 취소할 수 있다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    db.tables.today_cards = [{ id: 'card-other', recipe_id: EXISTING_RECIPE_ID }, { id: 'card-empty', recipe_id: null }]
+    expect(await cancel(db)).toEqual({ ok: true, missing: false })
+    expect(recipeIds(db)).toEqual([EXISTING_RECIPE_ID])
+  })
+
+  it('카드를 읽지 못하면 지우지 않고 error다(확인 없이 지우지 않는다). DB 오류 원문은 reason에도 detail에도 없다', async () => {
+    const db = new FakeDb()
+    seed(db)
+    db.failIf = (call) => call.table === 'today_cards'
+    const result = await cancel(db)
+
+    expect(result).toMatchObject({ ok: false, code: 'error', failure: { reason: '레시피를 지우지 못했어요' } })
+    if (result.ok) throw new Error('실패여야 해요')
+    expect(result.failure.detail).not.toContain(DB_SECRET)
     expect(deletes(db)).toEqual([])
     expect(recipeIds(db)).toEqual([RECIPE_ID, EXISTING_RECIPE_ID])
   })

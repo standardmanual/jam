@@ -19,6 +19,7 @@ import {
   buildRecipeRow,
   cancelScheduledRecipe,
   createRecipeWithSlots,
+  recipeCancelBlockedByCardsMessage,
   recipeReleaseState,
 } from '../recipe-write'
 import type { createServiceClient } from '@/lib/supabase/server'
@@ -436,6 +437,9 @@ describe('cancelScheduledRecipe — 공개 전 취소(= 삭제)', () => {
     recipes: new Map<string, string | null>(),
     badgeCount: 0,
     badgeError: null as { message: string } | null,
+    /** 이 레시피를 가리키는 레시피 공개 카드 수(`today_cards.recipe_id`) */
+    cardCount: 0,
+    cardError: null as { message: string } | null,
     deleteError: null as { message: string } | null,
     /** DELETE에 실린 `.gt('valid_from', …)` 값 */
     deleteGt: [] as string[],
@@ -458,6 +462,16 @@ describe('cancelScheduledRecipe — 공개 전 취소(= 삭제)', () => {
               ),
           }
           return { select: () => builder }
+        }
+        if (table === 'today_cards') {
+          return {
+            select: () => ({
+              in: () =>
+                Promise.resolve(
+                  state.cardError ? { count: null, error: state.cardError } : { count: state.cardCount, error: null }
+                ),
+            }),
+          }
         }
         return {
           delete: () => {
@@ -498,6 +512,8 @@ describe('cancelScheduledRecipe — 공개 전 취소(= 삭제)', () => {
     state.recipes = new Map()
     state.badgeCount = 0
     state.badgeError = null
+    state.cardCount = 0
+    state.cardError = null
     state.deleteError = null
     state.deleteGt = []
     state.deleteCalls = 0
@@ -572,6 +588,47 @@ describe('cancelScheduledRecipe — 공개 전 취소(= 삭제)', () => {
     if (!result.ok) expect(result.error).toContain('이 레시피를 가리키는 배지가 2개 있어요')
     expect(state.deleteCalls).toBe(0)
     expect(state.recipes.has(ID)).toBe(true)
+  })
+
+  it('레시피 공개 카드가 가리켜도 기본(어드민)은 막지 않고 지운다 — 카드는 레시피 줄만 비운다(티켓 20261006_1218 가정 B)', async () => {
+    state.recipes.set(ID, FUTURE)
+    state.cardCount = 3
+
+    const result = await cancelScheduledRecipe(makeCancelClient(), ID, NOW)
+
+    expect(result).toEqual({ ok: true })
+    expect(state.recipes.has(ID)).toBe(false)
+  })
+
+  it('blockOnCards(운영툴)이면 카드가 가리킬 때 409로 막고 지우지 않는다. 카드가 없으면 지운다(가정 A)', async () => {
+    state.recipes.set(ID, FUTURE)
+    state.cardCount = 2
+
+    const blocked = await cancelScheduledRecipe(makeCancelClient(), ID, NOW, { blockOnCards: true })
+
+    expect(blocked).toMatchObject({ ok: false, status: 409 })
+    if (!blocked.ok) expect(blocked.error).toBe(recipeCancelBlockedByCardsMessage(2))
+    expect(state.deleteCalls).toBe(0)
+    expect(state.recipes.has(ID)).toBe(true)
+
+    state.cardCount = 0
+    expect(await cancelScheduledRecipe(makeCancelClient(), ID, NOW, { blockOnCards: true })).toEqual({ ok: true })
+    expect(state.recipes.has(ID)).toBe(false)
+  })
+
+  it('blockOnCards여도 배지 참조가 먼저다(배지 문구 409). 카드 조회가 실패하면 500으로 막는다(fail-closed)', async () => {
+    state.recipes.set(ID, FUTURE)
+    state.badgeCount = 1
+    state.cardCount = 2
+    const byBadge = await cancelScheduledRecipe(makeCancelClient(), ID, NOW, { blockOnCards: true })
+    expect(byBadge).toMatchObject({ ok: false, status: 409 })
+    if (!byBadge.ok) expect(byBadge.error).toContain('이 레시피를 가리키는 배지가 1개 있어요')
+
+    state.badgeCount = 0
+    state.cardError = { message: 'today_cards 조회 실패' }
+    const failed = await cancelScheduledRecipe(makeCancelClient(), ID, NOW, { blockOnCards: true })
+    expect(failed).toMatchObject({ ok: false, status: 500 })
+    expect(state.deleteCalls).toBe(0)
   })
 
   it('참조 조회가 실패하면 500으로 막는다(fail-closed, 삭제 시도 없음)', async () => {

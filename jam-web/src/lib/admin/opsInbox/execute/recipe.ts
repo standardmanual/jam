@@ -14,7 +14,7 @@
  *   컬렉션 검사는 레시피 공개 시각(`valid_from`) 기준이고, 컬렉션을 읽지 못하면 실패다. 사전 점검은 DB를 읽지 않아 이 검사를 하지 못한다(§8.4).
  * - `create`는 정한 ID(`prepared.id`)로 만들고 같은 ID를 돌려준다(`idFirst`). 서버 오류(500)면 같은 ID로 정리 delete를 한 번 시도한다(슬롯은 CASCADE).
  * - `undo`는 이 레시피를 가리키는 배지(`recipe_first_success`)를 확인한 뒤 ID로 지운다. 시각 조건은 걸지 않는다(상태 맞추기의 멈춘 준비중 정리는 공개 시각이 지난 뒤에 올 수 있다).
- * - `cancel`은 레시피를 다시 읽어 공개됐으면 막고, 지우기는 `cancelScheduledRecipe`(참조 확인·`valid_from > now` 조건)에 맡긴다. 서버 함수의 문장은 어드민 화면용이라 사유로 쓰지 않는다.
+ * - `cancel`은 레시피를 다시 읽어 공개됐으면 막고, 지우기는 `cancelScheduledRecipe`(참조 확인·`valid_from > now` 조건)에 맡긴다. 참조는 가장 먼저 성공 배지에 더해 운영툴 밖 카드도 막는다(티켓 20261006_1218). 서버 함수의 문장은 어드민 화면용이라 사유로 쓰지 않는다.
  * - `end`(티켓 20261006_0950, ⑪-a)는 공개 중인 레시피를 지금 끝낸다: 레시피를 다시 읽어 없으면 `missing`, `recipeReleaseState`가 `ended`(`valid_until`의 그 순간부터)면 `alreadyEnded`, `scheduled`면 `not_published`,
  *   그 밖에는 `valid_until`을 지금으로 바꾼다(읽은 `valid_until`을 조건으로 건다). DB의 `valid_until > valid_from` 제약에 걸리면 `error`로 돌아온다(공개 시각과 같은 순간에 끝낼 때).
  * - `observe`(상태 맞추기, §8.6)는 `recipeReleaseState`로 공개 중·종료를 돌려준다. 레시피에는 비활성 칸이 없어 `inactive`는 늘 `false`다.
@@ -41,7 +41,7 @@ const RECIPE_MESSAGES = {
   undoFailed: '레시피를 지우지 못했어요',
   // 취소. 지우기 실패 문장은 되돌림과 같은 것을 쓴다.
   cancelPublished: '공개 시각이 지나 취소할 수 없어요',
-  cancelReferenced: '가장 먼저 성공 배지가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요',
+  cancelReferenced: '가장 먼저 성공 배지나 카드가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요',
 } as const
 
 /** 읽은 레시피 행의 시각이 시각으로 읽히지 않을 때(상태 맞추기). 사유가 아니라 서버 로그용이다. */
@@ -156,7 +156,9 @@ export const RECIPE_HANDLER: ExecuteHandler<RecipeRegisterPayload> = {
     if (recipeReleaseState(read.data, now) !== 'scheduled') return published
 
     // 참조 확인과 `valid_from > now` 조건의 삭제는 서버 함수가 한다. 서버 함수의 문장은 어드민 화면용이라 상태 코드만 쓴다.
-    const cancelled = await cancelScheduledRecipe(service, resourceId, now)
+    // 운영툴 밖에서 만든 카드가 이 레시피를 가리키면 지우지 않는다(`blockOnCards`, 운영툴 PRD §8.7): 같은 묶음의 카드는 되돌림 순서(`orderForUndo`)가 레시피보다 먼저 지웠으므로
+    // 남은 카드는 밖의 카드다. 어드민의 삭제·예약 취소는 카드가 가리켜도 막지 않는다(카드는 레시피 줄만 비운다) — 막는 것은 이 운영툴 경로뿐이다.
+    const cancelled = await cancelScheduledRecipe(service, resourceId, now, { blockOnCards: true })
     if (cancelled.ok) return { ok: true, missing: false }
     if (cancelled.status === 404) return { ok: true, missing: true }
     if (cancelled.status === 500) return failed(`레시피 취소 실패: ${cancelled.error}`)

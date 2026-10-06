@@ -17,7 +17,7 @@
  * 결과는 `{ payload, errors, warnings, linkFields }`다. 오류가 하나라도 있으면 `payload`는 null이다.
  * - 오류·경고 한 건은 `{ path, message }`다. `message`는 검사 문장 그대로(`card.title: …`)이고 `path`는 운영 항목 경로
  *   (`copy.title`·`resource.template_type`·`starts_at`·`shape` 등)다. 화면 표기는 ⑤가 정한다(결정 7).
- * - `linkFields`: 연결 그룹(§8.3)이 채운 칸 이름(`mission_id`·`badge_ids`·`item_book_id`·`reward_badge_ids`·`reward_badge_id`)이다.
+ * - `linkFields`: 연결 그룹(§8.3)이 채운 칸 이름(`mission_id`·`badge_ids`·`item_book_id`·`recipe_id`·`reward_badge_ids`·`reward_badge_id`)이다.
  *   등록 전 DB 검사에는 `withoutLinkedFields`로 그 칸을 뺀 사본을 넘긴다. 같은 실행에서 만들어질 ID라 존재 확인을 건너뛴다
  *   (생성 순서가 존재를 보장한다, 결정 8).
  *
@@ -72,6 +72,8 @@ export type CardLinkedIds = {
   mission_id?: string | null
   badge_ids?: readonly string[] | null
   item_book_id?: string | null
+  /** 레시피 공개 카드의 레시피(`home_feed_card` → `recipe` 쌍, 티켓 20261006_1218). */
+  recipe_id?: string | null
 }
 
 /** 미션의 연결 칸에 넣을 ID. */
@@ -149,6 +151,7 @@ const CARD_RESOURCE_KEYS = [
   'mission_id',
   'item_book_id',
   'ranking_mode_id',
+  'recipe_id',
   'content_type_id',
   'target_href',
   'sort_order',
@@ -384,6 +387,7 @@ export function toTodayCardRegisterInput(
   if (fillLinkedId(card, errors, 'card', 'mission_id', resource.mission_id, linkedIds.mission_id)) linkFields.push('mission_id')
   if (appendLinkedIds(card, 'badge_ids', resource.badge_ids, linkedIds.badge_ids)) linkFields.push('badge_ids')
   if (fillLinkedId(card, errors, 'card', 'item_book_id', resource.item_book_id, linkedIds.item_book_id)) linkFields.push('item_book_id')
+  if (fillLinkedId(card, errors, 'card', 'recipe_id', resource.recipe_id, linkedIds.recipe_id)) linkFields.push('recipe_id')
 
   // 이미지 칸(결정 1): 주소가 없으면 null, `image_source`는 항상 null이다.
   const coverImageUrl = readOptionalString(errors, 'card', 'cover_image_url', 'resource.cover_image_url', resource.cover_image_url)

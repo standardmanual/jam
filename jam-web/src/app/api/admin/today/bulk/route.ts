@@ -15,7 +15,7 @@ import { classifyTodayEndPeriod, type TodayCardPeriodRow } from '@/lib/admin/tod
  * 종료(등급 1)와 삭제(등급 3). 옛 `bulk-delete/route.ts`(삭제만, 확인 문구 없음)를 대체한다.
  *
  * 삭제에 참조 보호를 두지 않는다: 카드는 다른 콘텐츠가 참조하는 대상이 아니라 참조하는 쪽이다
- * (`mission_id`·`item_book_id`·`badge_ids`·`ranking_mode_id`가 모두 today_cards → 다른 엔티티
+ * (`mission_id`·`item_book_id`·`badge_ids`·`ranking_mode_id`·`recipe_id`가 모두 today_cards → 다른 엔티티
  * 방향, 옛 `bulk-delete` 주석과 같은 조사 결과).
  */
 const READ_CHUNK_SIZE = 200

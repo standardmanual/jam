@@ -45,6 +45,7 @@ export const EXECUTE_LEAD_MS = 10 * 60_000
 const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
 
 const MISSION_KIND = 'mission'
+const JAM_BADGE_KIND = 'jam_badge'
 /** 카드가 미션을 여는 연결 칸(`LINK_PAIRS`의 card→mission 쌍). 이 칸을 채우는 대상의 공개 시각과 견준다(G4 예외). */
 const CARD_MISSION_FIELDS: readonly string[] = ['mission_id']
 /**
@@ -56,7 +57,10 @@ const LINKED_BADGE_FIELDS: readonly string[] = ['reward_badge_ids', 'badge_ids',
 const CARD_COLLECTION_FIELDS: readonly string[] = ['item_book_id']
 /** 드랍 예약이 컬렉션을 가리키는 연결 칸(`LINK_PAIRS`의 drop_schedule→collection_launch 쌍). 이 칸을 채우는 대상 컬렉션의 공개 시각과 견준다(티켓 20261004_2242). */
 const DROP_COLLECTION_FIELDS: readonly string[] = ['collection_ids']
-/** 「가장 먼저 성공」 배지가 레시피를 가리키는 연결 칸(`LINK_PAIRS`의 jam_badge→recipe 쌍). 대상 레시피의 공개 시각과 견준다(티켓 20261004_1756). */
+/**
+ * 「가장 먼저 성공」 배지가 레시피를 가리키는 연결 칸(`LINK_PAIRS`의 jam_badge→recipe 쌍). 대상 레시피의 공개 시각과 견준다(티켓 20261004_1756).
+ * 카드가 레시피를 가리키는 칸(card→recipe 쌍, 티켓 20261006_1218)도 이름이 같은 `recipe_id`라 칸 이름만으로는 가를 수 없다 — 검사는 가리키는 쪽이 JAM! 배지일 때만 한다.
+ */
 const BADGE_RECIPE_FIELDS: readonly string[] = ['recipe_id']
 
 /** 요약창에 그대로 보이는 사유 문장. */
@@ -234,9 +238,10 @@ function opensBeforeLinked(item: ExecuteItem, fills: readonly LinkFill[], byId: 
 /**
  * 「가장 먼저 성공」 배지(jam_badge→recipe 쌍)의 공개 시각이 연결된 레시피 항목과 다른지(사용자 결정 2026-10-04). 이 배지는 믹스에 성공할 때만 판정해 배지가 늦게 열리면 첫 성공자가
  * 받지 못하고 일찍 열리면 레시피보다 먼저 보인다. 대상 레시피 항목의 상태와 관계없이 견준다(이미 게재 중인 레시피에 나중에 여는 배지는 첫 성공을 놓친다).
- * 밀리초로 견주고, 두 시각 중 하나라도 읽을 수 없으면 견주지 않는다.
+ * 밀리초로 견주고, 두 시각 중 하나라도 읽을 수 없으면 견주지 않는다. 카드(card→recipe 쌍)에는 공개 순서 검사를 하지 않는다 — 카드는 레시피보다 먼저 공개돼도 막지 않는다(07 §4.5 예외).
  */
 function differsFromLinkedRecipe(item: ExecuteItem, fills: readonly LinkFill[], byId: ReadonlyMap<string, ExecuteItem>): boolean {
+  if (item.kind !== JAM_BADGE_KIND) return false
   const start = readStart(item)
   if (!start.ok) return false
   return fills

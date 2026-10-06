@@ -9,7 +9,8 @@
  * - 부분 실패·상태 저장 실패·결정 기록 실패(`decisionLogFailed`)·상태 경합
  * - 미리 보기(가정 5): 쓰기 없음. 슬랙(가정 6): 요약·알림과 `slack_result`
  * - 예약됨 미션 취소(⑥): 실제 미션 핸들러, 미션을 가리키는 카드를 먼저 지운 뒤 미션을 지운다
- * - 예약됨 레시피 취소(⑧-a, 티켓 20261002_2221): 실제 레시피 핸들러, 공개 전 취소·이미 공개·종료됨·가장 먼저 성공 배지가 가리킴(409)·없음·시험 묶음
+ * - 예약됨 레시피 취소(⑧-a, 티켓 20261002_2221): 실제 레시피 핸들러, 공개 전 취소·이미 공개·종료됨·가장 먼저 성공 배지가 가리킴(409)·없음·시험 묶음.
+ *   카드 → 레시피 연결(⑫-b, 티켓 20261006_1218): 가리키는 카드를 함께 취소·게재 중 카드 409·운영툴 밖 카드 409
  * - 예약됨 드랍 취소(⑧-b, 티켓 20261002_2306): 실제 드랍 핸들러, 공개 전 취소(지우지 않고 「취소」 상태)·예정 시각이 지남·실행 시작·끝남(409)·밖에서 취소됨·없음·시험 묶음
  * - 예약됨 JAM! 배지 취소(⑨-a, 티켓 20261004_1756): 실제 배지 핸들러, 공개 전 취소·공개됨·참조 있음(409)·밖에서 지워짐·소프트 삭제·배지를 가리키는 미션·카드 함께 취소(카드→미션→배지 순)·시험 묶음
  * - 예약됨 컬렉션 취소(⑩-a, 티켓 20261004_2039): 실제 컬렉션 핸들러, 공개 전 취소·공개됨·참조 있음(아이템 배지 포함, 409)·밖에서 지워짐·컬렉션을 가리키는 카드 함께 취소(카드→컬렉션 순)·
@@ -610,7 +611,7 @@ describe('예약됨 레시피 취소 — 실제 레시피 핸들러 (티켓 2026
   const OTHER_RECIPE = uid(97)
   const BADGE_RES = uid(22)
   const RECIPE_LABEL = '믹스 레시피 · 10/10(토) 09:00'
-  const REFERENCED = '가장 먼저 성공 배지가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요'
+  const REFERENCED = '가장 먼저 성공 배지나 카드가 이 레시피를 가리키고 있거나 확인하지 못해 지우지 않았어요'
   const recipeSpec = (extra: ItemSpec = {}): ItemSpec => ({
     id: ID.poster,
     key: 'recipe',
@@ -633,6 +634,13 @@ describe('예약됨 레시피 취소 — 실제 레시피 핸들러 (티켓 2026
     return made
   }
   const recipeIds = (db: FakeDb) => (db.tables.combination_recipes as Row[]).map((row) => row.id)
+  /** 카드가 레시피를 가리키는 그룹(티켓 20261006_1218). 카드 행은 레시피 ID를 `recipe_id`로 갖는다. */
+  function linkedRecipeSetup(options: Parameters<typeof setup>[1] = {}, specs: ItemSpec[] = [cardSpec({ links: ['recipe'] }), recipeSpec()]) {
+    const made = recipeSetup(options, specs)
+    made.db.tables.today_cards = [{ id: CARD_RES, starts_at: LATER, recipe_id: RECIPE_RES }]
+    return made
+  }
+  const orderOf = (db: FakeDb) => db.calls.map((call) => `${call.table}:${call.op}`)
 
   it('공개 전이고 가리키는 배지가 없으면 레시피와 슬롯을 지우고 항목을 「취소」로 두며 cancel 기록을 남긴다. 다른 레시피는 건드리지 않는다', async () => {
     const { db, run } = recipeSetup()
@@ -683,6 +691,66 @@ describe('예약됨 레시피 취소 — 실제 레시피 핸들러 (티켓 2026
     expect(recipeIds(db)).toEqual([RECIPE_RES, OTHER_RECIPE])
     expect(statusOf(db, ID.poster)).toBe('scheduled')
     expect(db.decisions()).toEqual([])
+  })
+
+  it('레시피를 취소하면 그 레시피를 여는 카드를 먼저 지운 뒤 레시피를 지운다. 카드가 남아 있으면 레시피의 참조 확인에 걸리기 때문이다', async () => {
+    const { db, run } = linkedRecipeSetup()
+    const result = ok(await run(ID.poster, '레시피를 접어요'))
+
+    expect(result.body).toEqual({ ok: true, cancelled: [ID.card, ID.poster], missing: [] })
+    expect(db.tables.today_cards).toEqual([])
+    expect(recipeIds(db)).toEqual([OTHER_RECIPE])
+    expect(statusOf(db, ID.card)).toBe('cancelled')
+    expect(statusOf(db, ID.poster)).toBe('cancelled')
+    const order = orderOf(db)
+    expect(order.indexOf('today_cards:delete')).toBeLessThan(order.indexOf('combination_recipes:delete'))
+    // 레시피의 참조 확인(today_cards를 레시피 ID로 센다)은 카드를 지운 뒤에 이뤄졌다
+    expect(order.lastIndexOf('today_cards:select')).toBeGreaterThan(order.indexOf('today_cards:delete'))
+  })
+
+  it('카드만 취소하면 레시피는 남는다', async () => {
+    const { db, run } = linkedRecipeSetup()
+    const result = ok(await run(ID.card))
+
+    expect(result.body.cancelled).toEqual([ID.card])
+    expect(db.tables.today_cards).toEqual([])
+    expect(recipeIds(db)).toEqual([RECIPE_RES, OTHER_RECIPE])
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+  })
+
+  it('레시피를 여는 카드가 이미 게재 중이면 409이고 아무것도 취소하지 않는다(그 카드를 먼저 종료해야 한다)', async () => {
+    const { db, run } = linkedRecipeSetup({}, [cardSpec({ links: ['recipe'], status: 'live' }), recipeSpec()])
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe('이 항목을 가리키는 항목이 이미 게재 중이에요. 그 항목을 먼저 종료해 주세요.')
+    expect(failure.extra).toEqual({ blockers: [{ id: ID.card, reason: failure.error }] })
+    expect(nonSelect(db)).toEqual([])
+    expect(recipeIds(db)).toEqual([RECIPE_RES, OTHER_RECIPE])
+  })
+
+  it('운영툴 밖에서 만든 카드(어드민 카드)가 레시피를 가리키면 409이고 아무것도 지우지 않는다. 테이블 이름·ID는 응답에 없다(티켓 20261006_1218 가정 A)', async () => {
+    const { db, run } = recipeSetup({}, [recipeSpec()])
+    db.tables.today_cards = [{ id: uid(60), starts_at: LATER, recipe_id: RECIPE_RES }]
+    const failure = bad(await run(ID.poster))
+
+    expect(failure.status).toBe(409)
+    expect(failure.error).toBe(REFERENCED)
+    expect(failure.error).not.toContain('today_cards')
+    expect(failure.error).not.toContain(RECIPE_RES)
+    expect(nonSelect(db)).toEqual([])
+    expect(recipeIds(db)).toEqual([RECIPE_RES, OTHER_RECIPE])
+    expect(statusOf(db, ID.poster)).toBe('scheduled')
+    expect(db.decisions()).toEqual([])
+  })
+
+  it('다른 레시피를 가리키는 어드민 카드는 취소를 막지 않는다', async () => {
+    const { db, run } = recipeSetup({}, [recipeSpec()])
+    db.tables.today_cards = [{ id: uid(60), starts_at: LATER, recipe_id: OTHER_RECIPE }, { id: uid(61), starts_at: LATER, recipe_id: null }]
+    ok(await run(ID.poster))
+
+    expect(recipeIds(db)).toEqual([OTHER_RECIPE])
+    expect((db.tables.today_cards as Row[]).map((row) => row.id)).toEqual([uid(60), uid(61)])
   })
 
   it('가리키는 배지가 지워졌거나 다른 레시피를 가리키면 취소할 수 있다', async () => {
