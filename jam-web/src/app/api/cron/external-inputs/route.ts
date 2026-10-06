@@ -13,8 +13,10 @@ import { refreshTodayWeather, todayWeatherDateKst } from '@/lib/inputs/weather'
 import { refreshTodaySpecialDays, todaySpecialDaysDateKst } from '@/lib/inputs/holidays'
 
 export async function GET(req: NextRequest) {
+  // CRON_SECRET이 비어 있으면 「Bearer undefined」가 통과하므로 값을 먼저 막는다(P1 20260929_1636)
+  const secret = process.env.CRON_SECRET
   const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!secret || authHeader !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

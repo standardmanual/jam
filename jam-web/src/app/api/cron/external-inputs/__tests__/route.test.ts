@@ -55,6 +55,22 @@ describe('인증', () => {
     expect(refreshSpecialDays).not.toHaveBeenCalled()
     expect(writeDailyInput).not.toHaveBeenCalled()
   })
+
+  it('CRON_SECRET이 비어 있으면 「Bearer undefined」를 보내도 401이고 외부 호출·저장을 하지 않는다 (P1 20260929_1636)', async () => {
+    vi.stubEnv('CRON_SECRET', undefined)
+    const res = await GET(requestWith('Bearer undefined'))
+    expect(res.status).toBe(401)
+    expect(refreshWeather).not.toHaveBeenCalled()
+    expect(refreshSpecialDays).not.toHaveBeenCalled()
+    expect(writeDailyInput).not.toHaveBeenCalled()
+  })
+
+  it('CRON_SECRET이 빈 문자열이어도 「Bearer 」를 보내면 401이다', async () => {
+    vi.stubEnv('CRON_SECRET', '')
+    const res = await GET(requestWith('Bearer '))
+    expect(res.status).toBe(401)
+    expect(refreshWeather).not.toHaveBeenCalled()
+  })
 })
 
 describe('응답 계약', () => {
