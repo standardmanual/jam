@@ -81,7 +81,7 @@ function DrawerNotice({
       <p className="font-medium">{title}</p>
       {description && <p className="text-sm text-muted-foreground">{description}</p>}
       {retry && (
-        <Button type="button" variant="outline" size="sm" className="h-11 @[40rem]:h-9" onClick={retry.run}>
+        <Button type="button" variant="outline" className="h-11 @[40rem]:h-10" onClick={retry.run}>
           {retry.label}
         </Button>
       )}
@@ -109,7 +109,7 @@ function PlanLinkNotice({ text, href }: { text: string; href: string | null }) {
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm text-muted-foreground">{text}</p>
       {href && (
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" className="h-11 @[40rem]:h-10">
           <Link href={href}>
             {SCHEDULE_PLAN_LINK_LABEL}
             <IconArrowRight aria-hidden="true" />

@@ -209,6 +209,26 @@ describe('도구줄 — 보기 탭·기간 이동', () => {
     expect(toolbar({ date: '2026-10-07' })).not.toContain('sample=1')
   })
 
+  it('버튼·탭 높이는 컨테이너 40rem 이상 40px(h-10)·미만 44px(h-11)이고 36px(h-9)은 없다(③-a에서 넘긴 조건, 티켓 20261006_1537)', () => {
+    const out = toolbar()
+    const classOf = (pattern: RegExp) => pattern.exec(out)?.[1] ?? ''
+    // 보기 탭(주간 링크·눌리지 않는 월간·타임라인 글자)
+    for (const label of ['주간', '월간', '타임라인']) {
+      const tab = classOf(new RegExp(`class="([^"]*)"[^>]*>${label}<`))
+      expect(tab, label).toContain('min-h-11')
+      expect(tab, label).toContain('@[40rem]:min-h-10')
+    }
+    // 오늘 버튼
+    const today = classOf(/class="([^"]*)"[^>]*>오늘</)
+    expect(today).toContain('h-11')
+    expect(today).toContain('@[40rem]:h-10')
+    // 이전·다음 아이콘 버튼(링크 자체에 높이가 아니라 감싼 버튼 클래스가 붙는다)
+    expect(out).toContain('h-11 w-11 @[40rem]:h-10 @[40rem]:w-10')
+    expect(out.match(/h-11 w-11 @\[40rem\]:h-10 @\[40rem\]:w-10/g)).toHaveLength(2)
+    // 36px은 어디에도 없다
+    expect(out).not.toMatch(/\bh-9\b|\bmin-h-9\b|:h-9\b|:min-h-9\b/)
+  })
+
   it('거르기는 이어 가고 서랍은 닫힌다(기간을 옮기면 서랍 키를 잇지 않는다)', () => {
     const out = toolbar({
       date: '2026-10-07',

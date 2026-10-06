@@ -44,7 +44,7 @@ interface OpsScheduleDayDrawerProps {
 
 export const SCHEDULE_DAY_MISSING_TEXT = '이 주 일정에 없는 날짜예요'
 const DAY_ITEM_BUTTON =
-  'flex min-h-11 w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring @[40rem]:min-h-9'
+  'flex min-h-11 w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring @[40rem]:min-h-10'
 
 function SectionTitle({ children }: { children: string }) {
   return <h3 className="mb-1.5 text-xs font-semibold text-muted-foreground">{children}</h3>
