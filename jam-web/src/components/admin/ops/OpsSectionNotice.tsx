@@ -1,7 +1,15 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { IconBell, IconCalendarWeek, IconHistory } from '@tabler/icons-react'
+import {
+  IconBell,
+  IconCalendarWeek,
+  IconChartBar,
+  IconChartLine,
+  IconDatabase,
+  IconHistory,
+  IconShieldCheck,
+} from '@tabler/icons-react'
 import { NoticeCard } from './OpsRuleCardParts'
 import type { OpsIcon } from './opsIcons'
 
@@ -20,6 +28,11 @@ const ICONS = {
   week: IconCalendarWeek,
   signal: IconBell,
   history: IconHistory,
+  // 티켓 20261006_1341 ②-c: 운영 홈의 나머지 구역(서비스 점검·주간 핵심 지표·배지 경제 흐름·통계). 주간 캘린더는 `week`를 쓴다.
+  service: IconShieldCheck,
+  kpi: IconChartBar,
+  trend: IconChartLine,
+  stats: IconDatabase,
 } as const satisfies Record<string, OpsIcon>
 
 export type OpsSectionNoticeIcon = keyof typeof ICONS

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { summarizeTrend, TREND_LONG_DAYS, TREND_SHORT_DAYS } from '@/lib/admin/economyTrend'
+import { SAMPLE_PARAM, SAMPLE_PARAM_ON } from '@/lib/admin/opsHome/links'
 
 /**
  * 어드민 메인 — 배지 경제 흐름(티켓 20260924_0911). 일별 배지 발급량과 일별 앰비언트 드랍량을
@@ -21,13 +22,16 @@ interface EconomyTrendProps {
   todayKst: string
   /** 보고 있는 주 캘린더의 `week` 쿼리(없으면 null) — 기간 전환 링크에서 유지한다 */
   week: string | null
+  /** 시험 묶음을 포함해서 보는 중이면 기간 전환 링크에서도 `sample=1`을 유지한다(티켓 20261006_1341 ②-c 가정 8) */
+  includeSample?: boolean
   badges: TrendSeries
   drops: TrendSeries
 }
 
-function trendHref(days: number, week: string | null): string {
+export function trendHref(days: number, week: string | null, includeSample = false): string {
   const params = new URLSearchParams({ trend: String(days) })
   if (week) params.set('week', week)
+  if (includeSample) params.set(SAMPLE_PARAM, SAMPLE_PARAM_ON)
   return `/admin?${params.toString()}`
 }
 
@@ -48,9 +52,9 @@ function TrendCard({ title, unit, dates, todayKst, series, barClass }: TrendCard
   if (series.counts === null) {
     return (
       <div className="bg-white border border-red-200 rounded-2xl p-5">
-        <p className="text-sm font-semibold text-red-600">{title}</p>
-        <p className="text-sm text-red-500 mt-1">불러오지 못했어요.</p>
-        {series.error && <p className="text-xs text-red-600 mt-1">{series.error}</p>}
+        <p className="text-sm font-semibold text-red-700">{title}</p>
+        <p className="text-sm text-red-700 mt-1">불러오지 못했어요.</p>
+        {series.error && <p className="text-xs text-red-700 mt-1">{series.error}</p>}
       </div>
     )
   }
@@ -99,7 +103,7 @@ function TrendCard({ title, unit, dates, todayKst, series, barClass }: TrendCard
   )
 }
 
-export default function EconomyTrend({ dates, days, todayKst, week, badges, drops }: EconomyTrendProps) {
+export default function EconomyTrend({ dates, days, todayKst, week, includeSample = false, badges, drops }: EconomyTrendProps) {
   const options = [TREND_SHORT_DAYS, TREND_LONG_DAYS]
   return (
     <section className="mb-10" aria-label="배지 경제 흐름">
@@ -109,7 +113,7 @@ export default function EconomyTrend({ dates, days, todayKst, week, badges, drop
           {options.map((option) => (
             <Link
               key={option}
-              href={trendHref(option, week)}
+              href={trendHref(option, week, includeSample)}
               aria-current={option === days ? 'true' : undefined}
               className={
                 option === days
