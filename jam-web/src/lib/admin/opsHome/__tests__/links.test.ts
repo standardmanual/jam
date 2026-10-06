@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import {
   SAMPLE_PARAM,
   dayHref,
+  inboxListHref,
   opsTargetHref,
   opsTargetKind,
   readIncludeSample,
@@ -140,6 +141,19 @@ describe('sampleToggleHref — 시험 스위치가 이동하는 주소', () => {
     expect(sampleToggleHref('/admin/ops-schedule', 'view=month&date=2026-10-07&sample=1', false)).toBe(
       '/admin/ops-schedule?view=month&date=2026-10-07'
     )
+  })
+})
+
+describe('inboxListHref — 받은 기획함 목록(운영 홈 링크, 티켓 20261006_1340)', () => {
+  it('탭 없이 목록, 탭을 주면 그 탭이 열린다', () => {
+    expect(inboxListHref()).toBe('/admin/ops-inbox')
+    expect(inboxListHref({ tab: 'decide' })).toBe('/admin/ops-inbox?tab=decide')
+  })
+
+  it('시험 묶음을 포함하는 중이면 sample=1을 이어 붙이고 다른 키는 유지한다', () => {
+    expect(inboxListHref({ includeSample: true })).toBe('/admin/ops-inbox?sample=1')
+    expect(inboxListHref({ tab: 'decide', includeSample: true })).toBe('/admin/ops-inbox?tab=decide&sample=1')
+    expect(inboxListHref({ tab: 'decide', includeSample: false })).toBe('/admin/ops-inbox?tab=decide')
   })
 })
 

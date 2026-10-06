@@ -49,6 +49,11 @@ describe('받은 기획함 화면 소스 계약', () => {
     expect(names).toContain('components/admin/ops/OpsSignalRow.tsx')
     expect(names).toContain('components/admin/ops/OpsSampleSwitch.tsx')
     expect(names).toContain('components/admin/ops/OpsStatusBadge.tsx')
+    // 운영 홈 부품(티켓 20261006_1340): 신호 문장·에이전트 이름·결정 문장이 섞여 들어오는 패널·이력·상태 칸도 같은 검사를 받는다
+    expect(names).toContain('components/admin/ops/OpsSignalPanel.tsx')
+    expect(names).toContain('components/admin/ops/OpsRecentDecisions.tsx')
+    expect(names).toContain('components/admin/ops/OpsWeekStatus.tsx')
+    expect(names).toContain('components/admin/ops/OpsSectionNotice.tsx')
     expect(names).toContain('app/admin/ops-inbox/page.tsx')
     expect(names).toContain('app/admin/ops-inbox/[bundleId]/page.tsx')
     expect(sourceFiles.length).toBeGreaterThanOrEqual(12)

@@ -22,14 +22,19 @@ import {
   OPS_DECISION_PERIOD_ORDER_MESSAGE,
   OPS_DECISION_PERIOD_TOO_LONG_MESSAGE,
   OPS_DECISION_READ_COLUMNS,
+  OPS_RECENT_DECISION_COLUMNS,
+  OPS_RECENT_DECISION_LIMIT,
   aggregateByPattern,
   classifyActor,
   listOpsDecisions,
+  listRecentOpsDecisions,
   parseDecisionQuery,
   toDecisionRecord,
+  toRecentDecisionRecord,
   type OpsDecisionAggregateRow,
   type OpsDecisionQuery,
   type OpsDecisionRow,
+  type OpsRecentDecisionRow,
 } from '../read'
 import { OPS_PATTERN_NO_INVALID_MESSAGE } from '../../opsPatterns/read'
 
@@ -546,5 +551,122 @@ describe('listOpsDecisions', () => {
   it('조회 오류는 던진다', async () => {
     db.error = 'relation missing'
     await expect(listOpsDecisions(service, query())).rejects.toThrow('결정 기록 조회 실패')
+  })
+})
+
+// ── 운영 홈 최근 이력 (티켓 20261006_1340 ②-b) ───────────────────────────────────────────────────
+
+/** 최근 이력이 읽는 행: 결정 행 `bundle_id`(묶음 행 ID)와 묶음 시험 여부, 항목 종류·패턴이 들어 있다. */
+function recentRow(n: number, extra: Row = {}): Row {
+  return {
+    id: uuid(n),
+    created_at: `2026-10-03T00:${String(n % 60).padStart(2, '0')}:00.000Z`,
+    action: 'approve',
+    actor: ADMIN_ID_VALUE,
+    bundle_id: uuid(5000 + n),
+    item_id: uuid(1000 + n),
+    slack_result: { channel: SLACK_SECRET, ok: true },
+    raw: { secret: 'raw-body' },
+    ops_bundles: { is_sample: false },
+    ops_bundle_items: { kind: 'home_feed_card', pattern_no: 'P02' },
+    ...extra,
+  }
+}
+
+describe('toRecentDecisionRecord', () => {
+  it('응답 칸만 싣는다 — actor 원문·slack_result·raw가 섞여 들어와도 나가지 않고, 묶음은 행 ID다', () => {
+    const record = toRecentDecisionRecord(recentRow(1) as unknown as OpsRecentDecisionRow)
+    expect(Object.keys(record).sort()).toEqual(
+      ['action', 'actorType', 'agentName', 'bundleId', 'createdAt', 'id', 'isSample', 'itemId', 'kind', 'patternNo'].sort()
+    )
+    expect(record).toMatchObject({
+      id: uuid(1),
+      actorType: 'admin',
+      agentName: null,
+      bundleId: uuid(5001),
+      itemId: uuid(1001),
+      kind: 'home_feed_card',
+      patternNo: 'P02',
+      isSample: false,
+    })
+    const text = JSON.stringify(record)
+    for (const forbidden of [ADMIN_ID_VALUE, SLACK_SECRET, 'raw-body', '"actor"', 'slack']) expect(text).not.toContain(forbidden)
+  })
+
+  it('에이전트 이름을 싣고, 묶음 단위 결정이면 항목 칸이 null이며, 시험 묶음은 isSample이다', () => {
+    const agent = toRecentDecisionRecord(recentRow(2, { actor: 'token:윤진' }) as unknown as OpsRecentDecisionRow)
+    expect(agent).toMatchObject({ actorType: 'agent', agentName: '윤진' })
+    const bundleLevel = toRecentDecisionRecord(
+      recentRow(3, { item_id: null, ops_bundle_items: null, ops_bundles: [{ is_sample: true }] }) as unknown as OpsRecentDecisionRow
+    )
+    expect(bundleLevel).toMatchObject({ itemId: null, kind: null, patternNo: null, isSample: true })
+  })
+})
+
+describe('listRecentOpsDecisions — 운영 홈 최근 이력', () => {
+  it('기본은 10건이고 최신순이며 기간·집계 없이 한 번만 읽는다', async () => {
+    db.rows = Array.from({ length: 14 }, (_, i) => recentRow(i + 1))
+    const records = await listRecentOpsDecisions(service)
+    expect(records).toHaveLength(OPS_RECENT_DECISION_LIMIT)
+    expect(records.map((r) => r.id)).toEqual(Array.from({ length: 10 }, (_, i) => uuid(14 - i)))
+    // 쿼리 한 번: 칸 목록은 최근 이력용이고, 기간(gte·lt)·집계 조회가 없다
+    expect(db.selects).toEqual([OPS_RECENT_DECISION_COLUMNS])
+    expect(db.filters.some((f) => f.startsWith('gte') || f.startsWith('lt'))).toBe(false)
+    expect(db.ranges).toEqual([[0, 9]])
+  })
+
+  it('같은 시각이면 id 내림차순이다', async () => {
+    db.rows = [1, 2, 3].map((n) => recentRow(n, { created_at: '2026-10-03T00:00:00.000Z' }))
+    const ids = (await listRecentOpsDecisions(service)).map((r) => r.id)
+    expect(ids).toEqual([uuid(3), uuid(2), uuid(1)])
+  })
+
+  it('시험 묶음은 기본으로 빠지고 includeSample을 켜면 시험 표시와 함께 더해진다', async () => {
+    db.rows = [recentRow(1), recentRow(2, { ops_bundles: { is_sample: true } }), recentRow(3, { ops_bundles: { is_sample: true } })]
+    const off = await listRecentOpsDecisions(service)
+    expect(off.map((r) => r.id)).toEqual([uuid(1)])
+    expect(db.filters).toContain('eq ops_bundles.is_sample=false')
+    db.filters = []
+    const on = await listRecentOpsDecisions(service, { includeSample: true })
+    expect(on.map((r) => [r.id, r.isSample])).toEqual([
+      [uuid(3), true],
+      [uuid(2), true],
+      [uuid(1), false],
+    ])
+    expect(db.filters).not.toContain('eq ops_bundles.is_sample=false')
+  })
+
+  it('묶음 단위 결정(항목 없음)도 읽는다 — 묶음은 inner join이고 항목은 left join이다', async () => {
+    expect(OPS_RECENT_DECISION_COLUMNS).toContain('ops_bundles!inner(is_sample)')
+    expect(OPS_RECENT_DECISION_COLUMNS).toContain('ops_bundle_items(kind, pattern_no)')
+    expect(OPS_RECENT_DECISION_COLUMNS).not.toContain('ops_bundle_items!inner')
+    db.rows = [recentRow(1, { item_id: null, ops_bundle_items: null })]
+    const [record] = await listRecentOpsDecisions(service)
+    expect(record).toMatchObject({ itemId: null, kind: null, bundleId: uuid(5001) })
+  })
+
+  it('읽는 칸에 raw·slack_result가 없다', () => {
+    expect(OPS_RECENT_DECISION_COLUMNS).not.toMatch(/raw|slack_result/)
+  })
+
+  it('limit을 주면 그만큼만 읽고, 잘못된 값은 기본 10건이다', async () => {
+    db.rows = Array.from({ length: 30 }, (_, i) => recentRow(i + 1))
+    expect(await listRecentOpsDecisions(service, { limit: 3 })).toHaveLength(3)
+    expect(await listRecentOpsDecisions(service, { limit: 0 })).toHaveLength(10)
+    expect(await listRecentOpsDecisions(service, { limit: Number.NaN })).toHaveLength(10)
+  })
+
+  it('기록이 없으면 빈 목록이다', async () => {
+    expect(await listRecentOpsDecisions(service)).toEqual([])
+  })
+
+  it('조회 오류는 던진다', async () => {
+    db.error = 'relation missing'
+    await expect(listRecentOpsDecisions(service)).rejects.toThrow('최근 결정 기록 조회 실패')
+  })
+
+  it('기존 읽기의 칸 목록은 그대로다(묶음 식별자·항목 inner join)', () => {
+    expect(OPS_DECISION_READ_COLUMNS).toContain('ops_bundles!inner(bundle_id, week, is_sample)')
+    expect(OPS_DECISION_READ_COLUMNS).toContain('ops_bundle_items!inner(item_key, kind, pattern_no, status)')
   })
 })

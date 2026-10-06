@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildDayCompositions,
+  checksNextWeek,
   hasItemCopy,
   needsImageProduction,
   pickRepresentative,
@@ -18,6 +19,8 @@ import {
   type DayCompositionInput,
   type SignalBundleItemInput,
 } from '@/lib/admin/opsSignals/composition'
+import { mondayOfWeek } from '@/lib/admin/cronSchedule'
+import { shiftDateStr } from '@/lib/admin/today-calendar'
 import { cardOriginal, dayEnd, dayStart, kst, makeBundle, makeCard, makeDayCard, makeItem } from './fixtures'
 
 function compose(input: Partial<DayCompositionInput>, dates: string[] = ['2026-10-01']): DayComposition[] {
@@ -304,6 +307,35 @@ describe('signalScanDates — 검사 범위(가정 15)', () => {
 
   it('KST 자정을 넘기면 날짜가 바뀐다(UTC로는 아직 전날)', () => {
     expect(signalScanDates(new Date('2026-09-30T15:30:00Z'), options)[0]).toBe('2026-10-01')
+  })
+})
+
+describe('checksNextWeek — 다음 주를 보는 날(검사 범위와 운영 홈 다음 주 줄이 같은 판정, 티켓 20261006_1340)', () => {
+  const options = { nextWeekCheckFromWeekday: 5 }
+  const at = (date: string) => new Date(`${date}T12:00:00+09:00`)
+
+  it('기준 요일(금)부터와 일요일에 참이고 그 전에는 거짓이다', () => {
+    expect(checksNextWeek(at('2026-10-05'), options)).toBe(false)
+    expect(checksNextWeek(at('2026-10-01'), options)).toBe(false)
+    expect(checksNextWeek(at('2026-10-02'), options)).toBe(true)
+    expect(checksNextWeek(at('2026-10-03'), options)).toBe(true)
+    expect(checksNextWeek(at('2026-10-04'), options)).toBe(true)
+  })
+
+  it('다음 주 기획이 도착했으면 기준 요일 전에도 참이다', () => {
+    expect(checksNextWeek(at('2026-10-01'), { ...options, nextWeekArrived: true })).toBe(true)
+  })
+
+  it('기준 요일을 S7에서 바꾸면 그 요일부터다', () => {
+    expect(checksNextWeek(at('2026-10-01'), { nextWeekCheckFromWeekday: 4 })).toBe(true)
+    expect(checksNextWeek(at('2026-10-01'), { nextWeekCheckFromWeekday: 6 })).toBe(false)
+  })
+
+  it('검사 범위(signalScanDates)가 같은 판정을 쓴다: 다음 주 월요일이 범위에 있는 날이 곧 참인 날이다', () => {
+    for (const date of ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-07']) {
+      const nextMonday = shiftDateStr(mondayOfWeek(date), 7)
+      expect(signalScanDates(at(date), options).includes(nextMonday)).toBe(checksNextWeek(at(date), options))
+    }
   })
 })
 

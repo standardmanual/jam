@@ -570,9 +570,16 @@ export function buildDayCompositions(input: DayCompositionInput, dates: readonly
 // ── 검사 범위 ────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * 신호를 검사하는 날짜(가정 15). 이번 주는 오늘(포함)부터 일요일까지 항상 보고, 다음 주(월~일)는 `nextWeekCheckFromWeekday`요일
- * (금요일)부터 본다. 그 전이라도 다음 주 기획이 이미 도착했으면(`nextWeekArrived`) 다음 주도 본다.
- * 다음 주를 보는 요일은 일요일(0)도 포함한다 — 일요일은 이번 주의 마지막 날이라 곧 다음 주다.
+ * 다음 주(월~일)를 보는 날인가(가정 15). `nextWeekCheckFromWeekday`요일(금요일)부터 보고, 그 전이라도 다음 주 기획이 이미 도착했으면(`nextWeekArrived`) 본다.
+ * 일요일(0)은 이번 주의 마지막 날이라 곧 다음 주이므로 항상 본다. 신호 검사 범위(`signalScanDates`)와 운영 홈의 다음 주 줄(티켓 20261006_1340)이 같은 판정을 쓴다.
+ */
+export function checksNextWeek(now: Date, options: { nextWeekArrived?: boolean; nextWeekCheckFromWeekday: number }): boolean {
+  const weekday = new Date(`${todayKstDateString(now)}T00:00:00Z`).getUTCDay()
+  return weekday === 0 || weekday >= options.nextWeekCheckFromWeekday || options.nextWeekArrived === true
+}
+
+/**
+ * 신호를 검사하는 날짜(가정 15). 이번 주는 오늘(포함)부터 일요일까지 항상 보고, 다음 주(월~일)는 `checksNextWeek`가 참일 때 본다.
  */
 export function signalScanDates(
   now: Date,
@@ -580,15 +587,13 @@ export function signalScanDates(
 ): string[] {
   const today = todayKstDateString(now)
   const thisMonday = mondayOfWeek(today)
-  const weekday = new Date(`${today}T00:00:00Z`).getUTCDay()
-  const checksNextWeek = weekday === 0 || weekday >= options.nextWeekCheckFromWeekday || options.nextWeekArrived === true
 
   const dates: string[] = []
   for (let i = 0; i < 7; i++) {
     const date = shiftDateStr(thisMonday, i)
     if (date >= today) dates.push(date)
   }
-  if (checksNextWeek) {
+  if (checksNextWeek(now, options)) {
     for (let i = 7; i < 14; i++) dates.push(shiftDateStr(thisMonday, i))
   }
   return dates
