@@ -23,6 +23,8 @@ const VIEW_ORDER: readonly ScheduleView[] = ['week', 'month', 'timeline']
 const PREVIOUS_LABELS: Record<ScheduleView, string> = { week: '이전 주', month: '이전 달', timeline: '이전 4주' }
 const NEXT_LABELS: Record<ScheduleView, string> = { week: '다음 주', month: '다음 달', timeline: '다음 4주' }
 export const SCHEDULE_TODAY_LABEL = '오늘'
+/** 타임라인의 이전·다음 버튼에 보이는 간격 글자: [‹ 4주]·[4주 ›](채원 판정). 다른 보기는 화살표 아이콘만이다. */
+export const SCHEDULE_TIMELINE_STEP_LABEL = '4주'
 
 const TAB_BASE = 'inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium @[40rem]:min-h-10'
 
@@ -67,19 +69,37 @@ export function ScheduleToolbar({ view, params }: ScheduleToolbarProps) {
         </ul>
       </nav>
       <div className="flex flex-wrap items-center gap-2">
-        <Button asChild variant="ghost" size="icon" className="h-11 w-11 @[40rem]:h-10 @[40rem]:w-10">
-          <Link href={previousHref} aria-label={PREVIOUS_LABELS[view]}>
-            <IconChevronLeft className="size-4" aria-hidden="true" />
-          </Link>
-        </Button>
+        {view === 'timeline' ? (
+          <Button asChild variant="ghost" size="sm" className="h-11 px-2 @[40rem]:h-10">
+            <Link href={previousHref} aria-label={PREVIOUS_LABELS[view]}>
+              <IconChevronLeft className="size-4" aria-hidden="true" />
+              {SCHEDULE_TIMELINE_STEP_LABEL}
+            </Link>
+          </Button>
+        ) : (
+          <Button asChild variant="ghost" size="icon" className="h-11 w-11 @[40rem]:h-10 @[40rem]:w-10">
+            <Link href={previousHref} aria-label={PREVIOUS_LABELS[view]}>
+              <IconChevronLeft className="size-4" aria-hidden="true" />
+            </Link>
+          </Button>
+        )}
         <Button asChild variant="outline" size="sm" className="h-11 @[40rem]:h-10">
           <Link href={todayHref}>{SCHEDULE_TODAY_LABEL}</Link>
         </Button>
-        <Button asChild variant="ghost" size="icon" className="h-11 w-11 @[40rem]:h-10 @[40rem]:w-10">
-          <Link href={nextHref} aria-label={NEXT_LABELS[view]}>
-            <IconChevronRight className="size-4" aria-hidden="true" />
-          </Link>
-        </Button>
+        {view === 'timeline' ? (
+          <Button asChild variant="ghost" size="sm" className="h-11 px-2 @[40rem]:h-10">
+            <Link href={nextHref} aria-label={NEXT_LABELS[view]}>
+              {SCHEDULE_TIMELINE_STEP_LABEL}
+              <IconChevronRight className="size-4" aria-hidden="true" />
+            </Link>
+          </Button>
+        ) : (
+          <Button asChild variant="ghost" size="icon" className="h-11 w-11 @[40rem]:h-10 @[40rem]:w-10">
+            <Link href={nextHref} aria-label={NEXT_LABELS[view]}>
+              <IconChevronRight className="size-4" aria-hidden="true" />
+            </Link>
+          </Button>
+        )}
         <span className="text-sm font-bold">{formatPeriodLabel(view, date)}</span>
         {view !== 'week' && <OpsStatusLegend />}
       </div>

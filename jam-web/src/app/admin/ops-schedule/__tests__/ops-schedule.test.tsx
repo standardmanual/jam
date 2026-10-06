@@ -230,6 +230,13 @@ describe('도구줄 — 보기 탭·기간 이동', () => {
     expect(timeline).toContain('date=2026-09-09')
     expect(timeline).toContain('date=2026-11-04')
     expect(timeline).toContain('2026년 10월 5일 ~ 11월 15일')
+    // 타임라인은 [‹ 4주][오늘][4주 ›] 글자가 보이고(이름은 이전·다음 4주), 높이는 같은 규칙이다
+    expect(timeline).toMatch(/<a aria-label="이전 4주"[^>]*>(<svg[\s\S]*?<\/svg>)4주<\/a>/)
+    expect(timeline).toMatch(/<a aria-label="다음 4주"[^>]*>4주<svg/)
+    expect(timeline.match(/h-11 px-2 @\[40rem\]:h-10/g)).toHaveLength(2)
+    // 주간·월간은 화살표 아이콘만이다
+    expect(toolbar({}, 'week')).not.toContain('4주')
+    expect(toolbar({}, 'month')).not.toContain('>4주<')
   })
 
   it('[상태 아이콘 보기]는 월간·타임라인에만 있다(주간 칩은 글자가 보인다)', () => {
