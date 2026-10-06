@@ -5,7 +5,12 @@
  * 실행: cd jam-web && npx vitest run src/lib/admin/__tests__/recipe-references.test.ts
  */
 import { collectRecipeReferences, collectRecipeDeletionCandidates } from '../recipe-references'
-import { classifyRecipeDeletion, recipeDeleteBlockedMessage, recipeCardNoticeMessage } from '../recipe-bulk'
+import {
+  classifyRecipeDeletion,
+  recipeDeleteBlockedMessage,
+  recipeCardNoticeMessage,
+  cancelReleaseConfirmMessage,
+} from '../recipe-bulk'
 
 const PATH = 'condition_json->recipe_first_success->>recipe_id'
 
@@ -243,5 +248,32 @@ describe('recipeCardNoticeMessage', () => {
   it('음수·NaN처럼 세지 못한 값에도 문구를 내지 않는다', () => {
     expect(recipeCardNoticeMessage(-1)).toBeNull()
     expect(recipeCardNoticeMessage(Number.NaN)).toBeNull()
+  })
+
+  it('일괄 삭제는 여러 레시피를 가리키는 「지울 레시피를」 표현을 쓴다', () => {
+    expect(recipeCardNoticeMessage(5, 'bulk')).toBe('홈 카드 5장이 지울 레시피를 가리켜요. 지우면 그 카드는 레시피 정보 없이 남아요.')
+  })
+
+  it('대상을 정하지 않으면 레시피 하나를 가리키는 「이 레시피를」 표현이다', () => {
+    expect(recipeCardNoticeMessage(5)).toBe(recipeCardNoticeMessage(5, 'single'))
+    expect(recipeCardNoticeMessage(5, 'single')).toContain('이 레시피를 가리켜요')
+  })
+
+  it('일괄 삭제 표현도 0장·음수·NaN이면 문구가 없다', () => {
+    expect(recipeCardNoticeMessage(0, 'bulk')).toBeNull()
+    expect(recipeCardNoticeMessage(-1, 'bulk')).toBeNull()
+    expect(recipeCardNoticeMessage(Number.NaN, 'bulk')).toBeNull()
+  })
+})
+
+describe('cancelReleaseConfirmMessage', () => {
+  it('카드가 0장이면 삭제 경고만 남는다', () => {
+    expect(cancelReleaseConfirmMessage(0)).toBe('취소하면 이 레시피가 삭제돼요. 되돌릴 수 없어요.')
+  })
+
+  it('카드가 있으면 삭제 경고 아래 빈 줄을 두고 「이 레시피를」 안내를 잇는다', () => {
+    expect(cancelReleaseConfirmMessage(2)).toBe(
+      '취소하면 이 레시피가 삭제돼요. 되돌릴 수 없어요.\n\n홈 카드 2장이 이 레시피를 가리켜요. 지우면 그 카드는 레시피 정보 없이 남아요.'
+    )
   })
 })

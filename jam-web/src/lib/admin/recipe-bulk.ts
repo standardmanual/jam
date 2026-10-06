@@ -20,15 +20,30 @@ export function recipeDeleteBlockedMessage(count: number): string {
   return `삭제할 수 없어요. 이 레시피를 가리키는 배지가 ${count}개 있어요. 배지 조건에서 이 레시피를 먼저 바꿔 주세요.`
 }
 
+/** 카드 안내가 가리키는 대상 — 편집 화면은 레시피 하나(`single`), 일괄 삭제는 고른 여러 개의 합(`bulk`)이다 */
+export type RecipeCardNoticeTarget = 'single' | 'bulk'
+
 /**
  * 레시피를 지우기 전 확인 단계에 덧붙이는 안내 — 이 레시피를 가리키는 홈 카드(`today_cards.recipe_id`)가 있을 때만
  * 나온다(티켓 20261006_1342). 카드는 `ON DELETE SET NULL`이라 지워도 남고 레시피 줄만 빈다. 삭제를 막지 않고 알리기만
- * 한다(어드민의 삭제·예약 취소는 카드가 가리켜도 막지 않는다, 티켓 20261006_1218 가정 B). 일괄 삭제 확인창과 편집
- * 화면의 예약 취소 확인 문구가 같은 문장을 쓴다. 0장이면 `null`이다.
+ * 한다(어드민의 삭제·예약 취소는 카드가 가리켜도 막지 않는다, 티켓 20261006_1218 가정 B). 편집 화면의 예약 취소
+ * 확인 문구는 레시피 하나라 「이 레시피를」(`single`), 일괄 삭제 확인창의 카드 수는 지울 레시피 전체의 합이라
+ * 「지울 레시피를」(`bulk`)이다(티켓 20261006_1405). 0장이면 `null`이다.
  */
-export function recipeCardNoticeMessage(cardCount: number): string | null {
+export function recipeCardNoticeMessage(cardCount: number, target: RecipeCardNoticeTarget = 'single'): string | null {
   if (!(cardCount > 0)) return null
-  return `홈 카드 ${cardCount}장이 이 레시피를 가리켜요. 지우면 그 카드는 레시피 정보 없이 남아요.`
+  const subject = target === 'bulk' ? '지울 레시피를' : '이 레시피를'
+  return `홈 카드 ${cardCount}장이 ${subject} 가리켜요. 지우면 그 카드는 레시피 정보 없이 남아요.`
+}
+
+/**
+ * 편집 화면 「예약 취소」 확인창 문구 — 취소는 곧 삭제라 삭제 경고에 카드 안내(`recipeCardNoticeMessage`)를 이어 붙인다.
+ * 카드가 없으면 삭제 경고만 남는다(티켓 20261006_1405).
+ */
+export function cancelReleaseConfirmMessage(cardCount: number): string {
+  return ['취소하면 이 레시피가 삭제돼요. 되돌릴 수 없어요.', recipeCardNoticeMessage(cardCount, 'single')]
+    .filter(Boolean)
+    .join('\n\n')
 }
 
 export interface RecipeDeletionClassification {
