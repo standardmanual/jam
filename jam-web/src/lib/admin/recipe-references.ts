@@ -197,7 +197,7 @@ export interface BadgeInRecipeReferenceReport {
  * reward_badge_ids`(둘 다 uuid[])에 남아 있는 레시피 수를 센다 (티켓 20260910_1515,
  * 슬롯 이관은 티켓 20260917_1427).
  *
- * 레시피 행을 가리키는 참조는 배지 조건 하나뿐이고(파일 상단 주석, `collectRecipeReferences`),
+ * 레시피 행을 가리키는 참조는 배지 조건과 투데이 카드의 `recipe_id`(마이그레이션 217) 둘이고(파일 상단 주석, `collectRecipeReferences`),
  * **반대 방향**(레시피/슬롯이 배지를 참조하는 방향)은 배열 컬럼이라 FK가 걸리지 않는다.
  * 그래서 소프트 삭제(`badges` PATCH)가 이 참조를 막지는 않되, 운영이 탐지할 수 있도록
  * 경고만 남긴다 — `badge-references.ts`가 하드 삭제 차단용으로 이미 세는 것과 같은 컬럼을
