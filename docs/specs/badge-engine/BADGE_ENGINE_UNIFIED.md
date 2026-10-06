@@ -1982,6 +1982,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 | 명시 — 「전체」(빈 배열) | `effectiveCollectionIds`는 빈 배열로 두되 후보 배지를 노출 중이고 드랍 제외가 아닌 컬렉션의 배지로 좁힌다 | 모든 컬렉션으로 넓어지지 않고 건너뜀 |
 
 노출 중 컬렉션 조회가 실패해도 같은 방식으로 건너뛴다(오류는 `console.error`와 로그의 `error`에 남는다).
+어드민 「아이템 얻을 길」(`GET /api/admin/item-paths`, `lib/admin/itemPaths/compute.ts`)이 같은 노출 판정(`isItemBookDroppable`)을 쓴다 — 운영툴 PRD §11.11.
 
 **드랍 제외는 활동 드랍과 앰비언트 드랍(정기·무작위·지정 예약·지금 배포) 모두에 적용된다** (티켓
 [20261005_1957](../../tickets/p2-normal/20261005_1957_Feature_앰비언트-드랍이-드랍-제외-컬렉션과-아이템을-거르지-않는다.md), 사용자 결정 2026-10-06):

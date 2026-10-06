@@ -1407,7 +1407,7 @@ stateDiagram-v2
 | 승인·수정·취소·실행, 설정(S7) 변경 | 사용자 → 툴 | 관리자 로그인 |
 
 제출 경로와 요청·응답은 §11.1이고(티켓 20260930_1816), 기획 상세를 열 때 도착 항목을 검토중으로 바꾸는 요청은 §11.2다(티켓 20260930_1817). 승인·반려·일괄 승인·직접 수정·되돌리기는 §11.3,
-시험 묶음 지우기는 §11.4다(티켓 20260930_1818). 패턴 사전 읽기는 §11.6이다(티켓 20261001_2134). 결정 기록 읽기는 §11.10이다(티켓 20261004_1639). 조합 뽑기·결과·획득 경로 읽기의 경로와 형식은 1503에서 정해 이 절에 적는다. 밸런스 규칙 읽기와 설정 변경은 §11.5다(티켓 20260930_1459). 예약 등록·공개 전 취소·지금 종료는 §11.7, 상태 맞추기 크론은 §11.8이다(티켓 1500). 중단 신호 매시 점검 크론은 §11.9다(티켓 1502 ④).
+시험 묶음 지우기는 §11.4다(티켓 20260930_1818). 패턴 사전 읽기는 §11.6이다(티켓 20261001_2134). 결정 기록 읽기는 §11.10이고(티켓 20261004_1639), 아이템 얻을 길(획득 경로) 읽기는 §11.11이다(티켓 20261004_1641). 조합 뽑기·결과 읽기의 경로와 형식은 1503에서 정해 이 절에 적는다. 밸런스 규칙 읽기와 설정 변경은 §11.5다(티켓 20260930_1459). 예약 등록·공개 전 취소·지금 종료는 §11.7, 상태 맞추기 크론은 §11.8이다(티켓 1500). 중단 신호 매시 점검 크론은 §11.9다(티켓 1502 ④).
 
 ### 11.1 기획안 제출 `POST /api/admin/ops-inbox` (구현됨: 티켓 20260930_1816)
 
@@ -1640,6 +1640,35 @@ stateDiagram-v2
 - **비노출.** 응답에 `actor` 원문(관리자 ID·`token:<이름>`)·제출 원본(`raw`)·슬랙 결과(`slack_result`)를 싣지 않는다. `raw`·`slack_result`는 select 목록에 넣지 않는다. `actor`는 행위자 종류를 가르려면 읽어야 해서 select에 들어가지만 변환 함수가 곧바로 `actorType`·`agentName`으로 바꿔 버린다(`token:윤진` → `agent`·`윤진`, `system:`으로 시작하면 `system`, 그 밖은 `admin`). 에이전트 이름은 토큰 제출의 자기 신고 값이다.
 - **오류:** 조회 실패는 500이고 고정 문장 하나만 싣는다(원문은 서버 로그 `[admin/ops-decisions]`에만 남는다).
 - **성능.** `ops_decisions`에는 `created_at` 인덱스가 없다. 기록이 많아지면 인덱스 마이그레이션이 필요하다.
+
+### 11.11 아이템 얻을 길 읽기 `GET /api/admin/item-paths` (구현됨: 티켓 [20261004_1641](../../../tickets/p2-normal/20261004_1641_API_운영툴-패턴-사전-7b-아이템-얻을-길-읽기-API.md))
+
+컬렉션마다 아이템이 드랍·믹스·미션 세 길 중 어디가 열려 있는지 요청 때 계산해 돌려준다. **저장하지 않는다.** 계산은 `jam-web/src/lib/admin/itemPaths/compute.ts`(`computeItemPaths`, 티켓 20261004_1640)가 하고,
+입력 읽기는 `jam-web/src/lib/admin/itemPaths/load.ts`(`loadItemPathInputs`), 라우트(`jam-web/src/app/api/admin/item-paths/route.ts`)는 인증·쿼리·쪽 나누기·응답만 맡는다. ⑬ 화면(S6)과 에이전트가 쓴다.
+`compute.ts`는 서버 전용 모듈(`lib/missions/checker.ts`)을 값으로 가져오므로 서버(라우트·서버 컴포넌트)에서만 부르고, 클라이언트 컴포넌트가 값으로 가져오지 않는다.
+
+- **인증:** 관리자 세션 또는 어드민 읽기 토큰(`requireAdminRead`, GET 전용). **쓰기 메서드는 두지 않는다**(토큰으로 POST하면 세션 검사로 넘어가 403이다).
+- **읽는 범위** (`load.ts`):
+  - 컬렉션(`item_books`): **공개된 것 전부**다 — 활성이고 시작 시각이 지난 것(`applyLaunchedItemBookFilter`). **기간이 끝난 컬렉션도 싣는다**(막힘을 찾는 것이 목적이다). 비활성·공개 전 컬렉션은 읽지 않는다.
+  - 아이템 배지(`badges`, `type = 'item'`): 위 컬렉션에 속하고 소프트 삭제되지 않은 것. 3,600개가 넘어 1,000행 쪽 읽기(`fetchAllRows`)로 끝까지 읽는다.
+  - 레시피(`combination_recipes`)·미션(`missions`): 전부. 공개·노출·진행 중인지는 계산 함수가 가른다.
+  - **원천 하나라도 읽기에 실패하면 500이다.** 읽지 못한 표를 빈 목록으로 두면 그 길이 조용히 「닫힘」이 되어 아이템이 막힘으로 보이기 때문이다.
+- **쿼리**(모두 선택):
+  - `limit`: 한 쪽에 싣는 **컬렉션** 수. 1~50, 기본 10. `offset`: 건너뛸 컬렉션 수. 0 이상, 기본 0. 숫자가 아니거나 범위 밖이면 400이고 읽지 않는다.
+  - `onlyBlocked=true`: 막힘(`blocked`) 아이템이 하나라도 있는 컬렉션만 싣고, 그 컬렉션의 `items`도 막힘 아이템만 싣는다. 개수 칸(`total`·`open`·`blocked`·`dropExcluded`)은 컬렉션 전체 기준 그대로다. `true`가 아닌 값은 거르지 않는다.
+    쪽 나누기는 거른 뒤의 컬렉션 수 기준이다.
+- **응답 200** `{ now, total, limit, offset, nextOffset, collections }`.
+  - `now`: 계산 기준 시각(ISO). `total`: 조건에 맞는 컬렉션 수(쪽 나누기 전). `nextOffset`: 다음 쪽의 `offset`, 마지막 쪽이면 `null`. `offset`이 끝을 넘으면 `collections`가 빈 배열인 200이다.
+  - `collections`: 컬렉션 `id` 순서(쪽을 이어 읽어도 겹치거나 빠지지 않는다). 한 건은 `collectionId`·`total`(삭제되지 않은 아이템 수)·`open`·`blocked`·`dropExcluded`·`items`다. 표시용 이름은 싣지 않는다(ID만).
+  - `items`의 한 건은 `itemId`·`collectionId`·`status`·`drop`·`mix`·`mission`이다. `status`는 `open`(한 길이라도 열림)·`blocked`(세 길 모두 닫힘)·`drop_excluded`(드랍 제외 설정이고 다른 길이 없음) 중 하나다.
+    `drop`·`mix`·`mission`은 `{ open, reasons }`이고 `mix`는 `recipeIds`, `mission`은 `missionIds`(그 아이템을 보상으로 주는 열린 레시피·미션 ID)를 더 싣는다. `reasons`는 닫혔을 때만 채운다.
+    사유 값: 드랍 `collection_inactive`·`collection_not_launched`·`collection_ended`·`collection_drop_excluded`·`item_drop_excluded`·`item_out_of_period`, 믹스 `no_recipe`·`recipe_scheduled`·`recipe_ended`,
+    미션 `no_mission`·`mission_hidden`·`mission_not_exposed`·`mission_not_started`·`mission_ended`.
+- **「드랍 제외」는 막힘과 다르다.** 컬렉션 또는 아이템이 `drop_excluded`이면 드랍 길이 닫히고, 다른 길도 없으면 상태가 `blocked`가 아니라 `drop_excluded`다(운영자가 일부러 드랍에서 뺀 것이라 「막힘」 신호로 세지 않는다).
+  `onlyBlocked`에도 들어가지 않는다. 드랍 길은 활동 드랍 또는 앰비언트 드랍으로 보고 누적 조건(`condition_json`)은 보지 않으며, 드랍 제외를 앰비언트 드랍에도 적용하는 것으로 정의한다(사용자 결정, P2 20261005_1957 A. 앰비언트 쪽 코드는 그 티켓이 맞춘다).
+  어드민 직접 지급·컬렉션 완성 보상은 길로 세지 않고, 선착순 미션이 다 찬 경우도 이번에는 세지 않는다(열림). 판정은 기존 함수(`isItemBookDroppable`·`recipeReleaseState`·`isMissionExposed`·`isMissionActive`)를 그대로 쓴다.
+- **관리자 ID는 응답에 싣지 않는다.** select 목록에 관리자 ID 칸이 없어 읽지도 돌려주지도 않는다(§11.5와 같은 원칙, §10.1 「읽기 응답 규칙」).
+- **오류:** 조회 실패는 500이고 고정 문장 하나만 싣는다(원문은 서버 로그 `[admin/item-paths]`에만 남는다). `limit`·`offset` 형식 오류는 400이다.
 
 ## 12. 안전장치 (07 4.9)
 
