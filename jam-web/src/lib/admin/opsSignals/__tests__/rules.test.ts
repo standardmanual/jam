@@ -729,6 +729,7 @@ describe('비어 있는 컨텐츠 — 아이템이 없는 컬렉션 (티켓 2026
         bundleId: bundle.id,
         itemId: item.id,
         isSample: false,
+        onsetAt: null,
       },
     ])
   })
@@ -843,6 +844,7 @@ describe('신호 결과의 모양', () => {
         bundleId: bundle.id,
         itemId: item.id,
         isSample: false,
+        onsetAt: '2026-09-30T01:00:00.000Z',
       },
     ])
   })
@@ -941,6 +943,52 @@ describe('신호 결과의 모양', () => {
       'empty_content'
     )
     expect(result.results.map((entry) => entry.date)).toEqual(['2026-10-02', '2026-10-03'])
+  })
+})
+
+describe('시작 시각(onsetAt) — 매시 점검이 직전 한 시간 창에 새로 걸린 것만 고르는 재료 (티켓 20261001_1154)', () => {
+  it('예약 누락은 공개 시각 + 30분이다', () => {
+    const result = outcome({ input: { bundles: [makeBundle([statusItem({ status: 'scheduled', startsAt: kst('2026-10-01', '11:00') })])] } }, 'missed_schedule')
+    expect(result.results.map((entry) => entry.onsetAt)).toEqual(['2026-10-01T02:30:00.000Z'])
+  })
+
+  it('예약 누락의 시작 시각은 S7에서 바꾼 기준 분을 따른다', () => {
+    const result = outcome(
+      {
+        input: { bundles: [makeBundle([statusItem({ status: 'preparing', startsAt: kst('2026-10-01', '11:00') })])] },
+        options: { thresholds: { missedScheduleMinutes: 10 } },
+      },
+      'missed_schedule'
+    )
+    expect(result.results.map((entry) => entry.onsetAt)).toEqual(['2026-10-01T02:10:00.000Z'])
+  })
+
+  it('루틴 실패는 마감 시각이다(주간은 화요일 12시, 월간은 1일 12시)', () => {
+    const weekly = outcome({ options: { now: new Date('2026-09-29T13:00:00+09:00'), thresholds: ROUTINE_START } }, 'routine_failed')
+    expect(weekly.results.map((entry) => entry.onsetAt)).toEqual(['2026-09-29T03:00:00.000Z'])
+
+    const monthly = outcome(
+      { options: { now: new Date('2026-10-01T12:00:00+09:00'), thresholds: { routineCheckStartsAt: '2026-09-30T00:00:00+09:00' } } },
+      'routine_failed'
+    )
+    expect(monthly.results.map((entry) => entry.onsetAt)).toEqual(['2026-10-01T03:00:00.000Z'])
+  })
+
+  it('실행 실패는 항목이 바뀐 시각(updatedAt)이다', () => {
+    const result = outcome(
+      { input: { bundles: [makeBundle([statusItem({ status: 'failed', updatedAt: kst('2026-09-30', '10:00') })])] } },
+      'execution_failed'
+    )
+    expect(result.results.map((entry) => entry.onsetAt)).toEqual(['2026-09-30T01:00:00.000Z'])
+  })
+
+  it('시작 시각을 정의하지 않은 신호의 결과는 null이다', () => {
+    const result = outcome(
+      { input: { bundles: [makeBundle([statusItem({ status: 'arrived', startsAt: kst('2026-10-01', '13:00') })])] } },
+      'approval_deadline'
+    )
+    expect(result.state).toBe('raised')
+    expect(result.results.every((entry) => entry.onsetAt === null)).toBe(true)
   })
 })
 

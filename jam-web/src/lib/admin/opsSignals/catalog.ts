@@ -96,6 +96,11 @@ export interface OpsSignalResult {
   itemId: string | null
   /** 시험 묶음의 항목이 들어 있는 결과(시험 묶음을 포함해서 볼 때만 생긴다). */
   isSample: boolean
+  /**
+   * 이 결과가 「걸리기 시작한」 시각(ISO). 매시 점검(티켓 20261001_1154)이 직전 한 시간 창에 새로 걸린 것만 고를 때 쓴다.
+   * 예약 누락은 공개 시각 + 기준 분, 루틴 실패는 마감 시각, 실행 실패는 항목이 바뀐 시각이다. 시작 시각을 정의하지 않은 결과는 null이다.
+   */
+  onsetAt: string | null
 }
 
 /** 신호 한 종류의 계산 결과. */
@@ -133,6 +138,7 @@ export function makeSignalResult(
     bundleId: fields.bundleId ?? null,
     itemId: fields.itemId ?? null,
     isSample: fields.isSample ?? false,
+    onsetAt: fields.onsetAt ?? null,
   }
 }
 

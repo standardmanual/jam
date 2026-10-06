@@ -69,6 +69,7 @@ export function evaluateExecutionFailed(ctx: StatusRuleContext): OpsSignalResult
           bundleId: bundle.id,
           itemId: item.id,
           isSample: bundle.isSample,
+          onsetAt: new Date(updatedMs).toISOString(),
         })
       )
     }
@@ -90,7 +91,14 @@ export function evaluateMissedSchedule(ctx: StatusRuleContext): OpsSignalResult[
       results.push(
         makeSignalResult(
           `${itemName(item)}의 공개 시각(${formatKstDayTime(item.startsAt)})이 지났는데 아직 공개되지 않았어요.`,
-          { date: kstDateKey(item.startsAt), bundleId: bundle.id, itemId: item.id, isSample: bundle.isSample }
+          {
+            date: kstDateKey(item.startsAt),
+            bundleId: bundle.id,
+            itemId: item.id,
+            isSample: bundle.isSample,
+            // 신호가 걸리기 시작한 시각 = 공개 시각 + 기준 분(S7 값이 반영된 `thresholds`다)
+            onsetAt: new Date(startsMs + graceMs).toISOString(),
+          }
         )
       )
     }
@@ -292,7 +300,7 @@ export function evaluateRoutineFailed(ctx: StatusRuleContext): OpsSignalResult[]
       results.push(
         makeSignalResult(
           `주간 루틴이 ${weekday}요일 ${thresholds.weeklyRoutineDeadlineHour}시까지 기획안을 내지 못했어요.`,
-          { date: weekDate }
+          { date: weekDate, onsetAt: new Date(weekDeadlineMs).toISOString() }
         )
       )
     }
@@ -311,7 +319,7 @@ export function evaluateRoutineFailed(ctx: StatusRuleContext): OpsSignalResult[]
       results.push(
         makeSignalResult(
           `월간 루틴이 ${thresholds.monthlyRoutineDay}일 ${thresholds.monthlyRoutineDeadlineHour}시까지 기획안을 내지 못했어요.`,
-          { date: monthDate }
+          { date: monthDate, onsetAt: new Date(monthDeadlineMs).toISOString() }
         )
       )
     }
