@@ -172,7 +172,7 @@ code:
 
 **어드민 (`/admin`, 데스크탑 우선)**
 ```
-대시보드 / badges / tribes / itembooks / poi(+categories) / missions /
+운영 홈 / badges / tribes / itembooks / poi(+categories) / missions /
 recipes / drop-policy / ambient-drop / combine-policy / points /
 users / theme / today / simulator(GPX 업로드 배지발급 시뮬레이션) / abusing
 ```
