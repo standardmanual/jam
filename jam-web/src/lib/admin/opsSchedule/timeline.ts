@@ -13,7 +13,8 @@
  *   실제 자원 막대의 상태는 값에서 계산한 것이다: 미션·컬렉션은 기간(예정·진행·종료), 드랍 일정은 예약 상태(`ambientDropScheduleState`).
  *   상시 미션(종료 없음)은 막대로 그리지 않는다(주간처럼 개수 줄이 맡는다). 종료가 없는 컬렉션은 창 끝까지 열린 막대다.
  * - 컬렉션 막대 앞에는 **준비 구간**(점선, `[시작 − 리드일, 시작)`)이 붙고 노출 구간은 실선이다. 리드일은 R4 `launch_lead_days_min`(꺼졌거나 못 읽으면 28일)이다.
- *   시작이 창 앞이면 준비 구간은 없다. 시작이 창 밖(뒤)인 컬렉션은 막대도 준비 구간도 그리지 않는다(눌러서 열 막대가 없는 점선만 남지 않게).
+ *   시작이 창 앞이면 준비 구간은 없다. 시작이 창 뒤인 컬렉션도 준비 구간이 창과 겹치면
+ *   그 부분만 점선 칸으로 그린다(막대는 없고 그 칸이 서랍·관리 화면을 연다, 티켓 20261006_1539).
  *
  * ## 막대 모양
  * 색은 `ITEM_STATUS_TONES`(승인 전 neutral 점선·예약됨 secondary·게재중 primary·종료 muted·실패 destructive 테두리). 막대마다 `aria-label`(종류·기간·상태)이 있고,
@@ -21,6 +22,7 @@
  */
 import type { BalanceRules } from '@/lib/admin/opsInbox/balance/rules'
 import { RESOURCE_KEY_BY_KIND } from '@/lib/admin/opsInbox/execute/handlers'
+import { OPS_FIELD_UNKNOWN, readOpsItemTribeId, type OpsFieldUnknown } from '@/lib/admin/opsInbox/fields'
 import { kindLabel, kstDateKey, OPS_ITEM_STATUS_LABELS } from '@/lib/admin/opsInbox/labels'
 import { OPS_ITEM_STATUSES, type OpsItemStatus } from '@/lib/admin/opsInbox/constants'
 import { ambientDropScheduleState } from '@/lib/ambient-drop/scheduleSpec'
@@ -111,9 +113,17 @@ export interface TimelineBar {
   dashed: boolean
   /** 컬렉션 준비 구간. 시작이 창 앞이거나 리드일이 0이면 null이다. */
   prep: { startCol: number; endCol: number; startDate: string } | null
+  /**
+   * 노출 구간이 창 뒤에서 시작해 막대는 창에 없고 준비 구간(점선)만 창과 겹치는 컬렉션(티켓 20261006_1539). 참이면 `prep`가 있고 화면은 점선 칸 하나만 그린다(그 칸이 서랍·관리 화면을 연다).
+   * `startCol`은 점선의 첫 열, `endCol`은 창의 마지막 열이다.
+   */
+  afterWindow?: boolean
   /** 같은 줄 안의 가로줄(0부터). */
   lane: number
   ariaLabel: string
+  /** 트라이브 ID(소문자)·패턴 번호. 운영 항목 막대만 값이 있다(거르기가 읽는다, 티켓 20261006_1539). */
+  tribeId?: string | null
+  patternNo?: string | null
 }
 
 export interface TimelineRow {
@@ -232,6 +242,8 @@ interface BarCandidate {
   startDate: string
   /** null이면 끝없이 열린 구간이다. */
   endDate: string | null
+  tribeId?: string | null
+  patternNo?: string | null
 }
 
 interface RealResource {
@@ -272,6 +284,11 @@ const DROP_STATE_STATUS: Readonly<Record<string, OpsItemStatus>> = {
   skipped: 'ended',
   failed: 'failed',
   missed: 'failed',
+}
+
+/** 거르기가 읽는 트라이브 값: 읽을 수 있는 UUID만 소문자로, 없거나 읽을 수 없으면 null이다. */
+function tribeValue(value: string | null | OpsFieldUnknown): string | null {
+  return typeof value === 'string' && value !== OPS_FIELD_UNKNOWN ? value.toLowerCase() : null
 }
 
 function opsCandidates(input: BuildTimelineInput, real: Record<TimelineRowKey, Map<string, RealResource>>) {
@@ -316,6 +333,8 @@ function opsCandidates(input: BuildTimelineInput, real: Record<TimelineRowKey, M
         dim: false,
         startDate,
         endDate,
+        tribeId: tribeValue(readOpsItemTribeId(item)),
+        patternNo: item.patternNo,
       })
     }
   }
@@ -384,11 +403,48 @@ function legacyCandidates(input: BuildTimelineInput, merged: Record<TimelineRowK
   return candidates
 }
 
+/**
+ * 노출 구간이 창 뒤에서 시작하는 컬렉션: 준비 구간 `[시작 − 리드일, 시작)`이 창과 겹치면 그 겹치는 부분만 점선으로 둔다(막대는 없다). 겹치지 않거나 컬렉션 런칭이 아니거나 리드일이 0이면 null이다.
+ */
+function placePrepOnly(candidate: BarCandidate, input: BuildTimelineInput, columnCount: number): TimelineBar | null {
+  const { start, end, leadDays } = input
+  if (candidate.rowKey !== 'collection_launch' || leadDays <= 0) return null
+  const prepStartDate = shiftDateStr(candidate.startDate, -leadDays)
+  if (prepStartDate > end) return null
+  const prepStartCol = Math.max(1, dayOffset(start, prepStartDate) + 1)
+  const bar: TimelineBar = {
+    id: candidate.id,
+    rowKey: candidate.rowKey,
+    origin: candidate.origin,
+    drawerKey: candidate.drawerKey,
+    href: candidate.href,
+    title: candidate.title,
+    status: candidate.status,
+    isSample: candidate.isSample,
+    dim: candidate.dim,
+    startDate: candidate.startDate,
+    endDate: candidate.endDate,
+    startCol: prepStartCol,
+    endCol: columnCount,
+    clippedStart: false,
+    clippedEnd: true,
+    dashed: true,
+    prep: { startCol: prepStartCol, endCol: columnCount, startDate: prepStartDate },
+    afterWindow: true,
+    lane: 0,
+    ariaLabel: '',
+    ...(candidate.origin === 'ops' ? { tribeId: candidate.tribeId ?? null, patternNo: candidate.patternNo ?? null } : {}),
+  }
+  bar.ariaLabel = barAriaLabel(bar)
+  return bar
+}
+
 /** 후보를 창에 맞춰 열 위치로 바꾼다. 노출 구간이 창 밖이면 null이다. 레인은 나중에 정한다(0). */
 function placeCandidate(candidate: BarCandidate, input: BuildTimelineInput, columnCount: number): TimelineBar | null {
   const { start, end, leadDays } = input
   const { startDate, endDate } = candidate
-  if (startDate > end || (endDate !== null && endDate < start)) return null
+  if (endDate !== null && endDate < start) return null
+  if (startDate > end) return placePrepOnly(candidate, input, columnCount)
 
   const clippedStart = startDate < start
   const clippedEnd = endDate === null || endDate > end
@@ -421,13 +477,14 @@ function placeCandidate(candidate: BarCandidate, input: BuildTimelineInput, colu
     prep,
     lane: 0,
     ariaLabel: '',
+    ...(candidate.origin === 'ops' ? { tribeId: candidate.tribeId ?? null, patternNo: candidate.patternNo ?? null } : {}),
   }
   bar.ariaLabel = barAriaLabel(bar)
   return bar
 }
 
 /** 겹치는 막대를 가로줄로 나눈다(먼저 시작하는 막대부터 가장 위의 빈 줄에 둔다). 준비 구간도 자리를 차지한다. */
-function assignLanes(bars: TimelineBar[]): number {
+export function assignLanes(bars: TimelineBar[]): number {
   const occupiedStart = (bar: TimelineBar) => bar.prep?.startCol ?? bar.startCol
   const ordered = [...bars].sort((a, b) => occupiedStart(a) - occupiedStart(b) || a.startCol - b.startCol || (a.id < b.id ? -1 : 1))
   const laneEnds: number[] = []

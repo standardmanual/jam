@@ -15,7 +15,6 @@ import { loadDayCompositions, loadOpsSignals, type LoadedOpsSignals } from '@/li
 import { loadSignalOverrides } from '@/lib/admin/opsSignals/overrides'
 import { resolveThresholdValues } from '@/lib/admin/opsSignals/thresholds'
 import { computeKpiWeeklyMetrics, resolveKpiWeeklyRange, DEFAULT_KPI_WEEKLY_DAYS, type KpiWeeklyMetrics } from '@/lib/admin/kpiWeekly'
-import { normalizeWeekParam } from '@/lib/admin/cronSchedule'
 import { shiftDateStr, kstDayBoundsIso, todayKstDateString } from '@/lib/admin/today-calendar'
 import {
   trendDates,
@@ -46,7 +45,6 @@ import EconomyTrend, { type TrendSeries } from '../EconomyTrend'
  * 구역 안의 출처가 여럿이면 일부만 못 읽은 것은 그 칸·그래프의 기존 오류 표시를 그대로 둔다(「나머지 수치는 표시된다」, 티켓 20260924_0909·0911).
  * 구역이 읽는 것을 **전부** 못 읽었을 때 구역 안내 카드가 된다. 실패를 0이나 빈 상태로 보이지 않는다.
  *
- * 주간 캘린더 구역은 `CalendarSection.tsx`다(그대로 옮긴 것).
  */
 
 /** 구역별 조회 실패 제목. 받침에 따라 조사가 달라 문장으로 적는다. */
@@ -263,8 +261,6 @@ export async function RecentDecisionsSection({ includeSample }: { includeSample:
 interface TrendSectionProps {
   /** `?trend=`. `7`이면 7일, 그 외는 30일이다. */
   trendParam: string | undefined
-  /** `?week=`(주간 캘린더가 보는 주). 있으면 기간 전환 링크에서 유지한다. */
-  weekParam: string | undefined
   includeSample: boolean
 }
 
@@ -272,7 +268,7 @@ interface TrendSectionProps {
  * 20260924_0911: 배지 발급량·앰비언트 드랍량은 30일 범위로 한 번씩만 읽고 7일 보기는 그 결과에서 잘라 쓴다.
  * 두 조회는 서로 독립적으로 실패한다(한쪽 그래프만 오류 카드로 바뀐다). 둘 다 못 읽으면 구역이 안내 카드다.
  */
-export async function TrendSection({ trendParam, weekParam, includeSample }: TrendSectionProps) {
+export async function TrendSection({ trendParam, includeSample }: TrendSectionProps) {
   let view: Pick<ComponentProps<typeof EconomyTrend>, 'dates' | 'days' | 'todayKst' | 'badges' | 'drops'>
   try {
     const trendDays = trendParam === String(TREND_SHORT_DAYS) ? TREND_SHORT_DAYS : TREND_LONG_DAYS
@@ -301,7 +297,7 @@ export async function TrendSection({ trendParam, weekParam, includeSample }: Tre
     console.error('[admin/home] 배지 경제 흐름 구역 오류:', error)
     return <OpsSectionNotice icon="trend" title={SECTION_NOTICE_TITLES.trend} />
   }
-  return <EconomyTrend {...view} week={weekParam ? normalizeWeekParam(weekParam) : null} includeSample={includeSample} />
+  return <EconomyTrend {...view} includeSample={includeSample} />
 }
 
 // ── 통계 ─────────────────────────────────────────────────────────────────────────────────────────

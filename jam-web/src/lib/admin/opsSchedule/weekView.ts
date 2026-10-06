@@ -1,7 +1,7 @@
 /**
  * 일정표 주간 보기의 계산 (티켓 20261006_1536 ③-a, 상위 20260930_1502 「채원 S1·S4 사전 판정」 S4 주간·카리나 가정 3·4·6·11, 순수 함수 — DB 접근 없음).
  *
- * 운영 홈의 주간 캘린더 조립(`app/admin/_home/CalendarSection.tsx`)을 순수 함수로 옮기고, 운영 항목(받은 기획함)·상태·시험·신호를 더했다.
+ * 옛 운영 홈의 주간 캘린더 조립(③-d에서 제거한 `_home/CalendarSection.tsx`)을 순수 함수로 옮기고, 운영 항목(받은 기획함)·상태·시험·신호를 더했다.
  * 반환값은 일반 객체(`Map`·`Date`·함수 없음)라 서버 컴포넌트에서 클라이언트 컴포넌트로 그대로 넘길 수 있다.
  *
  * ## 대표 카드
@@ -34,6 +34,7 @@ import {
   getWeeklyCronOccurrences,
   type CronOccurrence,
 } from '@/lib/admin/cronSchedule'
+import { OPS_FIELD_UNKNOWN } from '@/lib/admin/opsInbox/fields'
 import { OPS_HOME_FEED_CARD_KIND } from '@/lib/admin/opsInbox/constants'
 import { formatKstClock, kstDateKey } from '@/lib/admin/opsInbox/labels'
 import { opsTargetHref } from '@/lib/admin/opsHome/links'
@@ -83,6 +84,9 @@ export interface ScheduleItem {
   href: string | null
   /** 제목 아래 작은 글씨(카드의 노출·열람 수). */
   note: string | null
+  /** 트라이브 ID(소문자)·패턴 번호. 운영 항목만 값이 있고 옛 카드·미션과 읽을 수 없는 값은 없다(거르기가 읽는다, 티켓 20261006_1539). */
+  tribeId?: string | null
+  patternNo?: string | null
 }
 
 /** 자동 실행 한 줄(크론·예약 루틴). */
@@ -136,6 +140,8 @@ export interface ScheduleMissionBar {
   /** 운영 미션은 항목 ID, 옛 미션은 `mission:<ID>`. */
   drawerKey: string
   href: string | null
+  tribeId?: string | null
+  patternNo?: string | null
 }
 
 export interface ScheduleWeek {
@@ -176,6 +182,11 @@ function dayOffset(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS)
 }
 
+/** 거르기가 읽는 트라이브 값: UUID 글자만 소문자로 남기고 없거나 읽을 수 없으면 null이다. */
+function tribeOf(value: string | null | typeof OPS_FIELD_UNKNOWN): string | null {
+  return typeof value === 'string' && value !== OPS_FIELD_UNKNOWN ? value.toLowerCase() : null
+}
+
 function clock(iso: string): string {
   return formatKstClock(iso) ?? ''
 }
@@ -206,6 +217,8 @@ function opsCardItem(
     dim: false,
     href: opsHref(card.bundleId, card.id, includeSample),
     note: card.resourceId === null ? null : (cardNote?.(card.resourceId, date) ?? null),
+    tribeId: tribeOf(card.tribeId),
+    patternNo: card.patternNo,
   }
 }
 
@@ -222,6 +235,8 @@ function opsBundleItem(entry: CompositionBundleItem, date: string, includeSample
     dim: false,
     href: opsHref(entry.bundleId, entry.itemId, includeSample),
     note: null,
+    tribeId: tribeOf(entry.tribeId),
+    patternNo: entry.patternNo,
   }
 }
 
@@ -410,5 +425,7 @@ function opsMissionBar(
     isSample: entry.isSample,
     drawerKey: entry.itemId,
     href: opsHref(entry.bundleId, entry.itemId, includeSample),
+    tribeId: tribeOf(entry.tribeId),
+    patternNo: entry.patternNo,
   }
 }

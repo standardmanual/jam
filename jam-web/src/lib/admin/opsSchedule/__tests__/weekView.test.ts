@@ -497,3 +497,27 @@ describe('buildScheduleWeek — 서버에서 클라이언트로 넘기는 모양
     expect(JSON.parse(JSON.stringify(week))).toEqual(week)
   })
 })
+
+describe('buildScheduleWeek — 거르기가 읽는 트라이브·패턴 (티켓 20261006_1539)', () => {
+  const TRIBE = '3F2A9C1E-0000-4000-8000-00000000000A'
+
+  it('운영 카드·운영 항목·운영 미션 막대에 트라이브(소문자)와 패턴 번호가 실린다', () => {
+    const card = makeItem({ id: 'item-t1', patternNo: 'P03', status: 'scheduled', startsAt: kst('2026-10-06', '09:00'), original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '카드' }, tribe_id: TRIBE } })
+    const drop = makeItem({ id: 'item-t2', kind: 'drop_schedule', patternNo: 'P04', status: 'scheduled', startsAt: kst('2026-10-06', '10:00'), original: { copy: { title: '드랍' } } })
+    const missionItem = makeItem({ id: 'item-t3', kind: 'mission', patternNo: 'P05', status: 'scheduled', startsAt: kst('2026-10-06', '09:00'), endsAt: kst('2026-10-08', '18:00'), original: { copy: { title: '미션' }, tribe_id: TRIBE } })
+    const week = build({ bundles: [makeBundle([card, drop, missionItem])] })
+    const found = Object.fromEntries(itemsOf(week, '2026-10-06').map((entry) => [entry.drawerKey, [entry.tribeId, entry.patternNo]]))
+    expect(found['item-t1']).toEqual([TRIBE.toLowerCase(), 'P03'])
+    // 트라이브 칸이 없는 항목은 null이다
+    expect(found['item-t2']).toEqual([null, 'P04'])
+    expect(week.missionBars.find((bar) => bar.drawerKey === 'item-t3')).toMatchObject({ tribeId: TRIBE.toLowerCase(), patternNo: 'P05' })
+  })
+
+  it('읽을 수 없는 트라이브 값(UUID가 아님)은 null이고, 옛 카드에는 값이 없다', () => {
+    const bad = makeItem({ id: 'item-t4', status: 'scheduled', startsAt: kst('2026-10-06', '09:00'), original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '카드' }, tribe_id: 'not-a-uuid' } })
+    const legacy = realCard('card-l', kst('2026-10-07', '09:00'), kst('2026-10-07', '21:00'))
+    const week = build({ cards: [legacy], bundles: [makeBundle([bad])] })
+    expect(itemsOf(week, '2026-10-06').find((entry) => entry.drawerKey === 'item-t4')?.tribeId).toBeNull()
+    expect(itemsOf(week, '2026-10-07').find((entry) => entry.origin === 'card')?.tribeId).toBeUndefined()
+  })
+})

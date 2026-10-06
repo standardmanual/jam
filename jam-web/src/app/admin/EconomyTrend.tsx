@@ -20,17 +20,14 @@ interface EconomyTrendProps {
   days: number
   /** 오늘(KST), 'YYYY-MM-DD' — 이 날짜 막대에 "오늘"을 붙인다 */
   todayKst: string
-  /** 보고 있는 주 캘린더의 `week` 쿼리(없으면 null) — 기간 전환 링크에서 유지한다 */
-  week: string | null
   /** 시험 묶음을 포함해서 보는 중이면 기간 전환 링크에서도 `sample=1`을 유지한다(티켓 20261006_1341 ②-c 가정 8) */
   includeSample?: boolean
   badges: TrendSeries
   drops: TrendSeries
 }
 
-export function trendHref(days: number, week: string | null, includeSample = false): string {
+export function trendHref(days: number, includeSample = false): string {
   const params = new URLSearchParams({ trend: String(days) })
-  if (week) params.set('week', week)
   if (includeSample) params.set(SAMPLE_PARAM, SAMPLE_PARAM_ON)
   return `/admin?${params.toString()}`
 }
@@ -103,7 +100,7 @@ function TrendCard({ title, unit, dates, todayKst, series, barClass }: TrendCard
   )
 }
 
-export default function EconomyTrend({ dates, days, todayKst, week, includeSample = false, badges, drops }: EconomyTrendProps) {
+export default function EconomyTrend({ dates, days, todayKst, includeSample = false, badges, drops }: EconomyTrendProps) {
   const options = [TREND_SHORT_DAYS, TREND_LONG_DAYS]
   return (
     <section className="mb-10" aria-label="배지 경제 흐름">
@@ -113,7 +110,7 @@ export default function EconomyTrend({ dates, days, todayKst, week, includeSampl
           {options.map((option) => (
             <Link
               key={option}
-              href={trendHref(option, week, includeSample)}
+              href={trendHref(option, includeSample)}
               aria-current={option === days ? 'true' : undefined}
               className={
                 option === days

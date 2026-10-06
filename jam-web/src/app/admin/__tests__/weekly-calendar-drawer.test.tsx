@@ -9,7 +9,7 @@
  * - 선택한 항목·날짜 머리는 `aria-current="true"`와 왼쪽 굵은 선·배경이다. 상태가 방금 바뀐 항목은 잔상 배경이다(선택과 겹쳐 그리지 않는다)
  * - 서랍 키가 없는 항목(자동 실행)은 눌리지 않고, 옛 카드·미션 키(`card:`·`mission:`)도 같은 방식이다
  * - 버튼은 포커스 표시가 있고 40rem 미만에서는 44px 높이다
- * - 서랍을 주지 않으면 서랍 표식이 하나도 없다(③-a 출력 그대로, 옛 모드는 `weekly-calendar.test.tsx`의 정답 마크업이 지킨다)
+ * - 서랍을 주지 않으면 서랍 표식이 하나도 없다(③-a 출력 그대로)
  */
 import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -19,7 +19,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }))
 
-import WeeklyCalendar, { type CalendarColumn, type CalendarDrawerControl } from '../WeeklyCalendar'
+import WeeklyCalendar, { type CalendarColumn, type CalendarDrawerControl } from '../ops-schedule/WeeklyCalendar'
 import { OPS_ITEM_STATUS_LABELS } from '@/lib/admin/opsInbox/labels'
 
 const ITEM_KEY = '3f2a9c1e-0000-4000-8000-0000000000a1'
@@ -43,7 +43,7 @@ function column(over: Partial<CalendarColumn> = {}): CalendarColumn {
 
 function render(columns: CalendarColumn[], props: Partial<ComponentProps<typeof WeeklyCalendar>> = {}): string {
   return renderToStaticMarkup(
-    <WeeklyCalendar weekStart="2026-10-05" weekRangeLabel="2026년 10월 5일 ~ 10월 11일" columns={columns} {...props} />
+    <WeeklyCalendar columns={columns} {...props} />
   )
 }
 
@@ -204,7 +204,7 @@ describe('미션 막대', () => {
 
 describe('서랍을 주지 않을 때', () => {
   it('서랍 표식이 하나도 없고 항목은 옛처럼 링크다(③-a 출력 그대로)', () => {
-    const out = render([column({ signal: { level: 'warn', count: 1 }, isToday: true })], { adaptive: true, nav: false })
+    const out = render([column({ signal: { level: 'warn', count: 1 }, isToday: true })], { adaptive: true })
     expect(out).not.toContain('data-drawer-trigger')
     expect(out).not.toContain('서랍 열기')
     expect(out).toContain('href="/admin/ops-inbox/b1?item=i1"')

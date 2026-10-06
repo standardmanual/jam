@@ -247,12 +247,12 @@ describe('OpsSignalRow', () => {
     expect(on).toContain('href="/admin/ops-inbox/b1?item=i1&amp;sample=1"')
   })
 
-  it('묶음만 있으면 기획 상세, 날짜만 있으면 그날(/admin/today?date=)이다', () => {
+  it('묶음만 있으면 기획 상세, 날짜만 있으면 일정표의 그날 날짜 서랍이다', () => {
     const bundleOnly = html(<OpsSignalRow name="형식 오류" level="warn" result={result({ bundleId: 'b1' })} />)
     expect(bundleOnly).toContain('href="/admin/ops-inbox/b1"')
     expect(bundleOnly).toContain('기획 보기')
     const dateOnly = flat(<OpsSignalRow name="겹침" level="info" result={result({ date: '2026-10-07' })} />)
-    expect(dateOnly).toContain('href="/admin/today?date=2026-10-07"')
+    expect(dateOnly).toContain('href="/admin/ops-schedule?view=week&amp;date=2026-10-07&amp;drawer=day"')
     expect(dateOnly).toContain('그날 보기')
   })
 

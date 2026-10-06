@@ -4,53 +4,16 @@
  * 저장소에 jsdom·testing-library가 없어(`app/admin/__tests__/home-sections.test.tsx`와 같은 방식) `renderToStaticMarkup`으로 그려 모양을 고정한다.
  *
  * 지키는 것:
- * - **옛 모드 출력은 그대로다**: 확장 속성을 하나도 주지 않으면 운영 홈이 그리던 마크업과 글자 단위로 같다
- *   (`fixtures/weekly-calendar-old-mode.html`은 확장 전 컴포넌트가 아래 `OLD_MODE_PROPS`로 그린 실제 출력이다).
- * - 확장은 모두 선택이다: 항목 종류·상태·시험 칩, 칸 머리 신호 칩, 오늘 표시, 장기 카드 줄의 비활성 수, 「자동 실행 N개」 접힘 줄, 이전·다음 주 이동 끄기, 달력 폭에 맞는 7열↔날짜별 가로 줄
+ * - 옛 모드(운영 홈 캘린더의 「미편성」·주 이동)는 ③-d(티켓 20261006_1539)에서 지웠다. 골든 마크업(`fixtures/weekly-calendar-old-mode.html`)도 함께 지웠다.
+ * - 확장은 모두 선택이다: 항목 종류·상태·시험 칩, 칸 머리 신호 칩, 오늘 표시, 장기 카드 줄의 비활성 수, 「자동 실행 N개」 접힘 줄, 달력 폭에 맞는 7열↔날짜별 가로 줄
  * - 신호·상태는 색만이 아니라 아이콘 + 글자로 말한다
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import type { ComponentProps } from 'react'
 
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
-}))
-
-import WeeklyCalendar, { type CalendarColumn } from '../WeeklyCalendar'
+import WeeklyCalendar, { type CalendarColumn } from '../ops-schedule/WeeklyCalendar'
 import { OPS_ITEM_STATUS_LABELS } from '@/lib/admin/opsInbox/labels'
-
-const OLD_MODE_MARKUP = readFileSync(path.join(__dirname, 'fixtures/weekly-calendar-old-mode.html'), 'utf8')
-
-const OLD_MODE_PROPS = {
-  weekStart: '2026-09-21',
-  weekRangeLabel: '2026년 9월 21일 ~ 9월 27일',
-  columns: [
-    {
-      date: '2026-09-21',
-      weekdayLabel: '월',
-      dateLabel: '9월 21일',
-      items: [
-        { id: 'card-1', time: 'T03', label: '카드 하나', kind: 'card' as const, href: '/admin/today/1?date=2026-09-21', note: '노출 3 · 열람 1' },
-        { id: 'card-2', time: '유형 없음', label: '꺼진 카드', kind: 'card' as const, dim: true },
-        { id: 'mission-1', time: '상시', label: '새 상시 미션', kind: 'mission' as const, href: '/admin/missions/1' },
-        { id: 'cron-1', time: '09:00', label: 'POI 정리' },
-        { id: 'routine-1', time: '10:00', label: '주간 루틴', kind: 'routine' as const, dim: true },
-      ],
-      longCardsCount: 2,
-      unprogrammed: false,
-    },
-    { date: '2026-09-22', weekdayLabel: '화', dateLabel: '9월 22일', items: [], unprogrammed: true },
-    { date: '2026-09-23', weekdayLabel: '수', dateLabel: '9월 23일', items: [] },
-  ],
-  missionBars: [
-    { id: 'm1', title: '기간 미션', startCol: 0, endCol: 2, startsThisWeek: true, endsThisWeek: false, isGate: true },
-    { id: 'm2', title: '다른 미션', startCol: 1, endCol: 1, startsThisWeek: false, endsThisWeek: true, isGate: false },
-  ],
-  openEndedMissionCount: 5,
-}
 
 function column(over: Partial<CalendarColumn> = {}): CalendarColumn {
   return { date: '2026-10-06', weekdayLabel: '화', dateLabel: '10월 6일', items: [], ...over }
@@ -58,35 +21,23 @@ function column(over: Partial<CalendarColumn> = {}): CalendarColumn {
 
 function render(columns: CalendarColumn[], props: Partial<ComponentProps<typeof WeeklyCalendar>> = {}): string {
   return renderToStaticMarkup(
-    <WeeklyCalendar weekStart="2026-10-05" weekRangeLabel="2026년 10월 5일 ~ 10월 11일" columns={columns} {...props} />
+    <WeeklyCalendar columns={columns} {...props} />
   )
 }
 
 /** React가 인접한 글자 사이에 넣는 주석 표식을 지운다. */
 const plain = (markup: string) => markup.replace(/<!-- -->/g, '')
 
-describe('WeeklyCalendar — 옛 모드(운영 홈)', () => {
-  it('확장 속성을 주지 않으면 확장 전 출력과 글자 단위로 같다', () => {
-    expect(renderToStaticMarkup(<WeeklyCalendar {...OLD_MODE_PROPS} />)).toBe(OLD_MODE_MARKUP)
-  })
-
-  it('옛 모드에는 확장의 흔적이 없다(오늘·신호·접힘 줄·컨테이너 클래스·aria-current)', () => {
-    for (const marker of ['오늘', 'aria-current', '<details', '@container', '@[56rem]', 'data-drawer-key', '비활성']) {
-      expect(OLD_MODE_MARKUP, marker).not.toContain(marker)
-    }
-    expect(OLD_MODE_MARKUP).toContain('aria-label="이전 주"')
-    expect(OLD_MODE_MARKUP).toContain('미편성')
+describe('WeeklyCalendar — 옛 모드 제거(티켓 20261006_1539 ③-d)', () => {
+  it('「미편성」·주 이동 단추를 그리지 않는다(운영 홈의 캘린더와 함께 옛 모드를 지웠다)', () => {
+    const out = render([column(), column({ date: '2026-10-07', weekdayLabel: '수', dateLabel: '10월 7일' })])
+    expect(out).not.toContain('미편성')
+    expect(out).not.toContain('aria-label="이전 주"')
+    expect(out).not.toContain('aria-label="다음 주"')
   })
 })
 
-describe('WeeklyCalendar — 이동·틀', () => {
-  it('nav={false}면 이전·다음 주 이동을 그리지 않는다', () => {
-    const out = render([column()], { nav: false })
-    expect(out).not.toContain('aria-label="이전 주"')
-    expect(out).not.toContain('aria-label="다음 주"')
-    expect(out).not.toContain('2026년 10월 5일 ~ 10월 11일')
-  })
-
+describe('WeeklyCalendar — 틀', () => {
   it('adaptive면 달력 영역이 컨테이너이고 56rem 이상은 7열·미만은 날짜별 가로 줄이다', () => {
     const out = render([column()], { adaptive: true })
     expect(out).toContain('class="mb-10 @container"')

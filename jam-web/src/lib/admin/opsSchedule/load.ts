@@ -7,7 +7,7 @@
  * 읽는 것(출처마다 격리 — 하나가 실패해도 나머지는 그대로 그리고, 실패는 `sourceErrors`에 담아 호출부가 「읽지 못해 빠져 있어요」를 알린다):
  * - 날짜 구성 7일(`loadDayCompositions`): 운영 항목과 합친 실제 카드·미션. 묶음·항목도 함께 받는다.
  * - `today_cards` **전체**: 비활성 카드까지(가정 11). `loadDayCompositions`는 활성 카드만 읽어서 비활성 카드를 따로 읽는다.
- *   쿼리는 옛 캘린더(`_home/CalendarSection.tsx`)와 같다. 운영 항목과 합쳐진 카드는 `buildScheduleWeek`가 뺀다.
+ *   쿼리는 옛 운영 홈 캘린더(③-d에서 제거)와 같다. 운영 항목과 합쳐진 카드는 `buildScheduleWeek`가 뺀다.
  * - `missions` + `gate_axis`: 옛 막대·상시 미션 수. 게이트 미션 표식이 필요해서 `gate_axis`를 함께 읽는다.
  * - 카드 노출·열람 수: 오늘 이전(포함)에 시작하는 주에서만 단기 카드 한 번에 읽는다(옛 캘린더와 같다).
  * - 신호 13종(`loadOpsSignals`): 칸 머리 신호 칩.

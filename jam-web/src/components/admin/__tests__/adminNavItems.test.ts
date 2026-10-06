@@ -51,10 +51,11 @@ describe('NAV_GROUPS (티켓 20260908_1806: 그룹·항목 전면 재배열)', (
     expect(NAV_GROUPS.map((g) => g.label)).toEqual(['라이브 운영', '컨텐츠 관리', '정책 및 밸런스', '운영 도구', '디자인'])
   })
 
-  it('라이브 운영 그룹(티켓 20260930_1817)은 맨 위에 있고 받은 기획함과, 마지막에 운영 설정(티켓 20260930_1459 조각 B)을 담는다', () => {
+  it('라이브 운영 그룹(티켓 20260930_1817)은 맨 위에 있고 받은 기획함·일정표(티켓 20261006_1539)와, 마지막에 운영 설정(티켓 20260930_1459 조각 B)을 담는다', () => {
     expect(NAV_GROUPS[0].id).toBe('live-ops')
     expect(NAV_GROUPS[0].items.map((i) => [i.href, i.label])).toEqual([
       ['/admin/ops-inbox', '받은 기획함'],
+      ['/admin/ops-schedule', '일정표'],
       ['/admin/ops-settings', '운영 설정'],
     ])
   })
@@ -62,6 +63,11 @@ describe('NAV_GROUPS (티켓 20260908_1806: 그룹·항목 전면 재배열)', (
   it('기획 상세 경로에서도 받은 기획함이 활성이다', () => {
     expect(mostSpecificActiveItem('/admin/ops-inbox')?.href).toBe('/admin/ops-inbox')
     expect(mostSpecificActiveItem('/admin/ops-inbox/4ca7d1ad-43b2-41a3-9ed4-f03bc73604ee')?.href).toBe('/admin/ops-inbox')
+  })
+
+  it('일정표 경로에서는 일정표만 활성이다(받은 기획함·운영 설정은 아니다)', () => {
+    expect(mostSpecificActiveItem('/admin/ops-schedule')?.href).toBe('/admin/ops-schedule')
+    expect(mostSpecificActiveItem('/admin/ops-schedule')?.label).toBe('일정표')
   })
 
   it('운영 설정 경로에서는 운영 설정만 활성이고 헤더 제목이 「운영 설정」이다', () => {

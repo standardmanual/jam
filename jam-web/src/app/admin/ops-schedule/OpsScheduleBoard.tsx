@@ -17,7 +17,7 @@ import {
 } from '@/lib/admin/opsSchedule/drawerParams'
 import { statusByDrawerKey, type ScheduleDrawerSource, type ScheduleSourceErrors } from '@/lib/admin/opsSchedule/drawerView'
 import type { ScheduleMonth } from '@/lib/admin/opsSchedule/monthView'
-import { formatPeriodLabel, parseScheduleParams } from '@/lib/admin/opsSchedule/params'
+import { parseScheduleParams } from '@/lib/admin/opsSchedule/params'
 import type { ScheduleTimeline } from '@/lib/admin/opsSchedule/timeline'
 import type { ScheduleDay, ScheduleItem, ScheduleMissionBar, ScheduleWeek } from '@/lib/admin/opsSchedule/weekView'
 import WeeklyCalendar, {
@@ -25,13 +25,13 @@ import WeeklyCalendar, {
   type CalendarColumn,
   type CalendarDrawerControl,
   type CalendarMissionBar,
-} from '../WeeklyCalendar'
+} from './WeeklyCalendar'
 
 /**
  * 일정표의 보기 래퍼 (티켓 20261006_1536 ③-a, 서랍은 티켓 20261006_1537 ③-b, 상위 20260930_1502 「채원 S1·S4 사전 판정」 S4 주간·서랍).
  *
  * 서버가 읽어 계산한 한 주(`ScheduleWeek`, 일반 객체)를 받아 `WeeklyCalendar`에 얹고, 칸 머리·항목·미션 막대를 눌러 여는 서랍을 달력 옆에 둔다.
- * 이동은 도구줄(`ScheduleToolbar`)이 하므로 달력 머리의 이전·다음 주는 그리지 않고(`nav={false}`), 달력 폭에 맞춰 7열↔날짜별 가로 줄이 바뀐다(`adaptive`).
+ * 이동은 도구줄(`ScheduleToolbar`)이 하고, 달력 폭에 맞춰 7열↔날짜별 가로 줄이 바뀐다(`adaptive`).
  *
  * 월간(`month`, `OpsScheduleMonth`)·타임라인(`timeline`, `OpsScheduleTimeline`)도 같은 틀에서 같은 서랍을 연다(티켓 20261006_1538 ③-c). 셋 중 **하나만** 준다.
  * 서랍이 찾아보는 칸은 `drawerSource`다: 주간은 한 주, 월간은 달력 전체, 타임라인은 창 전체(날짜 서랍·옛 미션 요약). 월간·타임라인은 미션 막대가 없다.
@@ -169,12 +169,9 @@ export function OpsScheduleBoard(props: OpsScheduleBoardProps) {
         <div className="min-w-0">
           {week && (
             <WeeklyCalendar
-              weekStart={week.weekStart}
-              weekRangeLabel={formatPeriodLabel('week', week.weekStart)}
               columns={week.days.map(toColumn)}
               missionBars={week.missionBars.length > 0 ? week.missionBars.map(toBar) : undefined}
               openEndedMissionCount={week.openEndedMissionCount ?? undefined}
-              nav={false}
               adaptive
               drawer={drawerControl}
             />

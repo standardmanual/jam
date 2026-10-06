@@ -242,6 +242,23 @@ describe('OpsWeekStatus', () => {
     expect(out).toContain('승인됨 1 · 준비중 1')
   })
 
+  it('머리 오른쪽에 [일정표 보기 →]가 있고 시험 묶음 포함이면 sample=1을 이어 붙인다(티켓 20261006_1539 ③-d)', () => {
+    const { week } = buildHome(false)
+    const off = flat(<OpsWeekStatus status={week} />)
+    expect(off).toContain('href="/admin/ops-schedule"')
+    expect(off).toContain('일정표 보기')
+    // 이번 주 상태 머리 안(제목 뒤, 칸 앞)에 있다
+    expect(off.indexOf('일정표 보기')).toBeGreaterThan(off.indexOf('이번 주 상태'))
+    expect(off.indexOf('일정표 보기')).toBeLessThan(off.indexOf('text-3xl'))
+    const on = flat(<OpsWeekStatus status={week} includeSample />)
+    expect(on).toContain('href="/admin/ops-schedule?sample=1"')
+  })
+
+  it('이번 주에 올라온 기획이 없어도 [일정표 보기 →]는 머리에 남는다', () => {
+    const week = computeWeekStatus({ bundles: [], compositions: [], weekStart: '2026-09-28' })
+    expect(flat(<OpsWeekStatus status={week} />)).toContain('href="/admin/ops-schedule"')
+  })
+
   it('이번 주에 올라온 기획이 없으면 빈 상태와 받은 기획함 링크다(칸은 그리지 않는다)', () => {
     const week = computeWeekStatus({ bundles: [], compositions: [], weekStart: '2026-09-28' })
     const out = flat(<OpsWeekStatus status={week} />)

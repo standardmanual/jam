@@ -2,7 +2,7 @@
  * 운영 홈 페이지 조립 (티켓 20261006_1341 ②-c, 승인 #12·#18)
  *
  * 구역은 `_home/sections`의 가짜(표식만 그리는 동기 컴포넌트)로 바꿔 **페이지가 하는 일**만 본다: 머리, 구역 순서, 구역마다 `Suspense`,
- * 쿼리(`sample`·`trend`·`week`) 전달, 주간 지표를 한 번만 읽어 두 구역에 같이 넘기기, 빠른 실행 4개의 링크.
+ * 쿼리(`sample`·`trend`) 전달(주간 캘린더는 ③-d에서 일정표로 옮겨 `week`는 읽지 않는다), 주간 지표를 한 번만 읽어 두 구역에 같이 넘기기, 빠른 실행 4개의 링크.
  * 구역 안의 읽기·격리는 `home-sections.test.tsx`가 본다.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -20,10 +20,6 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }),
   usePathname: () => '/admin',
   useSearchParams: () => new URLSearchParams(''),
-}))
-
-vi.mock('../_home/CalendarSection', () => ({
-  CalendarSection: (props: Record<string, unknown>) => stub('calendar', props),
 }))
 
 vi.mock('../_home/sections', () => ({
@@ -82,7 +78,7 @@ describe('운영 홈 머리 (승인 #12)', () => {
 
 describe('구역 순서 (승인 #18)', () => {
   it('이번 주 상태 → 신호 → 서비스 점검 → 최근 이력 → KPI → 주간 캘린더 → 경제 추이 → 통계다', async () => {
-    expect(sectionOrder(await renderPage())).toEqual(['switch', 'week', 'signal', 'service', 'history', 'kpi', 'calendar', 'trend', 'stats'])
+    expect(sectionOrder(await renderPage())).toEqual(['switch', 'week', 'signal', 'service', 'history', 'kpi', 'trend', 'stats'])
   })
 
   it('빠른 실행은 통계 다음이고 링크 4개가 같다', async () => {
@@ -101,8 +97,9 @@ describe('구역 순서 (승인 #18)', () => {
     expect(shortcuts.match(/<a /g)).toHaveLength(4)
   })
 
-  it('「일정표 보기」 링크는 없다(승인 #13은 ③)', async () => {
-    expect(await renderPage()).not.toContain('일정표 보기')
+  it('주간 캘린더 구역이 없다(일정표로 옮겼다, 「일정표 보기」 링크는 이번 주 상태 구역이 그린다)', async () => {
+    await renderPage()
+    expect(hoisted.props.calendar).toBeUndefined()
   })
 })
 
@@ -111,16 +108,16 @@ describe('구역마다 Suspense + 스켈레톤 (승인 #18)', () => {
     hoisted.suspended.add('signal')
     const out = await renderPage()
     expect(out.match(/role="status" aria-label="불러오는 중"/g)).toHaveLength(1)
-    expect(sectionOrder(out)).toEqual(['switch', 'week', 'service', 'history', 'kpi', 'calendar', 'trend', 'stats'])
+    expect(sectionOrder(out)).toEqual(['switch', 'week', 'service', 'history', 'kpi', 'trend', 'stats'])
     // 대체 화면이 신호 자리(이번 주 상태 다음, 서비스 점검 앞)에 있다
     expect(out.indexOf('data-section="week"')).toBeLessThan(out.indexOf('불러오는 중'))
     expect(out.indexOf('불러오는 중')).toBeLessThan(out.indexOf('data-section="service"'))
   })
 
   it('모든 구역이 읽는 중이면 구역마다 스켈레톤이 하나씩이다(스위치 자리는 role 없는 막대다)', async () => {
-    for (const key of ['week', 'signal', 'service', 'history', 'kpi', 'calendar', 'trend', 'stats']) hoisted.suspended.add(key)
+    for (const key of ['week', 'signal', 'service', 'history', 'kpi', 'trend', 'stats']) hoisted.suspended.add(key)
     const out = await renderPage()
-    expect(out.match(/role="status" aria-label="불러오는 중"/g)).toHaveLength(8)
+    expect(out.match(/role="status" aria-label="불러오는 중"/g)).toHaveLength(7)
   })
 })
 
@@ -136,10 +133,10 @@ describe('쿼리와 주간 지표', () => {
     expect(hoisted.props.week.includeSample).toBe(true)
   })
 
-  it('trend·week 쿼리를 구역에 넘긴다(같은 키가 둘이면 값 없음으로 읽는다 — 옛 페이지와 같다)', async () => {
+  it('trend 쿼리를 구역에 넘기고 week는 무시한다(같은 키가 둘이면 값 없음으로 읽는다)', async () => {
     await renderPage({ trend: '7', week: '2026-09-21' })
-    expect(hoisted.props.trend).toMatchObject({ trendParam: '7', weekParam: '2026-09-21' })
-    expect(hoisted.props.calendar).toMatchObject({ weekParam: '2026-09-21' })
+    expect(hoisted.props.trend).toMatchObject({ trendParam: '7' })
+    expect(hoisted.props.trend).not.toHaveProperty('weekParam')
     await renderPage({ trend: ['30', '7'] })
     expect(hoisted.props.trend.trendParam).toBeUndefined()
   })
