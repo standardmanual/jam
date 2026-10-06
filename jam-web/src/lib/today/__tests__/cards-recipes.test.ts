@@ -5,7 +5,7 @@
  * 1. 공개 뒤 레시피: 슬롯 순서(`slot_order`)대로 슬롯마다 대표 후보 하나를 싣는다 — 유저가 가진 후보가 있으면 그것(`earned: true`),
  *    없으면 `allowed_badge_ids` 순서의 첫 번째로 삭제되지 않은 후보(`earned: false`). 후보가 전부 삭제된 슬롯은 타일만 빠지고 재료 수에는 든다.
  * 2. 공개 전 레시피: 재료 수와 공개 시각 두 값뿐이다. 이름·슬롯 후보·보상은 읽은 자리에서 버리고, 후보 배지를 조회하지도 않는다(사용자 결정 Q3).
- * 3. 끝났거나 없는 레시피, `recipe_id`가 비었거나(칼럼이 없어 `undefined`) 레시피 공개 카드가 아닌 카드는 null이다.
+ * 3. 끝났거나 없는 레시피, `recipe_id`가 비었거나 레시피 공개 카드가 아닌 카드는 null이다.
  * 4. 읽기 횟수: 레시피 공개 카드가 여럿이어도 레시피 1번·슬롯 1번이고, 후보 배지는 카드 배지와 함께 1번에 읽는다. 레시피 공개 카드가 없으면 읽지 않는다.
  * 5. 조회가 실패해도 카드는 사라지지 않는다. 처음 보는 템플릿 값의 카드도 던지지 않는다.
  *
@@ -303,7 +303,7 @@ describe('getTodayCards — 레시피 줄이 없는 경우', () => {
     expect(card.resolved_recipe).toBeNull()
   })
 
-  it('recipe_id가 비었거나 칼럼이 없으면(⑫-b 전, undefined) 레시피 테이블을 읽지 않고 null이다', async () => {
+  it('recipe_id가 비었거나 없으면(null·undefined·빈 문자열) 레시피 테이블을 읽지 않고 null이다', async () => {
     fx.tables.today_cards = [cardRow({ id: 'a', recipe_id: null }), cardRow({ id: 'b' }), cardRow({ id: 'c', recipe_id: '' })]
 
     const cards = await getTodayCards(USER, null, NOW)

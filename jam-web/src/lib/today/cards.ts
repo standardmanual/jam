@@ -355,8 +355,8 @@ export async function fetchCollectionsById(
 }
 
 /**
- * 레시피 값을 읽어야 하는 카드인지 — 레시피 공개 카드(자원 `recipe`)이고 `recipe_id`가 있을 때. `recipe_id` 칼럼은 ⑫-b(티켓 20261006_1218)가 만들기 전에는
- * 없어 `undefined`로 오고, 그 카드는 레시피 줄 없이 그려진다. 자원 대응(`resourceOfTemplate`)을 따른다.
+ * 레시피 값을 읽어야 하는 카드인지 — 레시피 공개 카드(자원 `recipe`)이고 `recipe_id`가 있을 때. `recipe_id`가 비어 있으면(칼럼은 마이그레이션 217, 티켓 20261006_1218) 그 카드는
+ * 레시피 줄 없이 그려진다. 자원 대응(`resourceOfTemplate`)을 따른다.
  */
 export function resourceNeedsRecipe(card: TodayCardRow): boolean {
   return Boolean(card.recipe_id) && resourceOfTemplate(card.template_type) === 'recipe'
