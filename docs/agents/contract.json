@@ -120,6 +120,8 @@
       "jam-web/src/app/api/admin/ops-inbox/[bundleId]/execute/route.ts",
       "jam-web/src/app/api/admin/ops-inbox/[bundleId]/route.ts",
       "jam-web/src/app/api/cron/ops-reconcile/route.ts",
+      "jam-web/src/app/api/cron/ops-stop-signals/route.ts",
+      "jam-web/src/lib/admin/opsSignals/stopAlert.ts",
       "jam-web/src/app/admin/ops-inbox/page.tsx",
       "jam-web/src/app/admin/ops-inbox/[bundleId]/page.tsx",
       "jam-web/src/app/api/admin/__tests__/token-write-contract.test.ts"

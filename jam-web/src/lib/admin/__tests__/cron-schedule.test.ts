@@ -52,6 +52,14 @@ describe('cronToWeeklyOccurrences', () => {
     expect(occ[0].label).toBe('운영 상태 맞추기')
   })
 
+  it('ops-stop-signals(5 * * * *) → 요일당 한 줄만 생성되고 「매시간」으로 보인다', () => {
+    const occ = cronToWeeklyOccurrences('/api/cron/ops-stop-signals', '5 * * * *')
+    expect(occ).toHaveLength(7)
+    expect(occ.every((o) => o.hourly && o.intervalMinutes === undefined)).toBe(true)
+    expect(occ.map((o) => formatOccurrenceTime(o))).toEqual(Array(7).fill('매시간'))
+    expect(occ[0].label).toBe('운영 중단 신호 점검')
+  })
+
   it('요일이 지정된 N분 간격 크론(*/30 * * * 1)은 그 요일 한 줄만 「30분마다」', () => {
     const occ = cronToWeeklyOccurrences('/api/cron/example', '*/30 * * * 1')
     expect(occ).toHaveLength(1)
@@ -122,7 +130,7 @@ describe('cronOccurrenceId', () => {
 })
 
 describe('getWeeklyCronOccurrences', () => {
-  it('vercel.json의 crons 5개를 모두 변환한다(매일 3개 + 매시간 1개 + 10분마다 1개, 각 요일 7개)', () => {
+  it('vercel.json의 crons 6개를 모두 변환한다(매일 3개 + 매시간 2개 + 10분마다 1개, 각 요일 7개)', () => {
     const occ = getWeeklyCronOccurrences()
     const paths = new Set(occ.map((o) => o.path))
     expect(paths).toEqual(
@@ -132,10 +140,18 @@ describe('getWeeklyCronOccurrences', () => {
         '/api/cron/ambient-drop',
         '/api/cron/external-inputs',
         '/api/cron/ops-reconcile',
+        '/api/cron/ops-stop-signals',
       ])
     )
-    // 매일 실행 크론 3개(7개씩) + 매시간 크론 1개(7개) + 10분마다 크론 1개(7개) = 35개
-    expect(occ).toHaveLength(35)
+    // 매일 실행 크론 3개(7개씩) + 매시간 크론 2개(14개) + 10분마다 크론 1개(7개) = 42개
+    expect(occ).toHaveLength(42)
+  })
+
+  it('vercel.json의 ops-stop-signals 크론은 달력에서 「운영 중단 신호 점검」이 「매시간」 한 줄로 보인다', () => {
+    const occ = getWeeklyCronOccurrences().filter((o) => o.path === '/api/cron/ops-stop-signals')
+    expect(occ).toHaveLength(7)
+    expect(occ.map((o) => formatOccurrenceTime(o))).toEqual(Array(7).fill('매시간'))
+    expect(occ.every((o) => o.label === '운영 중단 신호 점검')).toBe(true)
   })
 
   it('vercel.json의 ops-reconcile 크론은 달력에서 「10분마다」 한 줄로 보인다(하루 144번을 찍지 않는다)', () => {

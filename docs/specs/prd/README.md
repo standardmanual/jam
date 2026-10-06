@@ -75,7 +75,7 @@ description: "PRD 폴더의 문서 구성, 읽는 시점, 주제별 PRD 하위 �
 |------|------|
 | 프레임워크 | Next.js 16 (App Router), React 19 |
 | DB/백엔드 | Supabase (PostgreSQL) |
-| 배포 | Vercel (Cron 5건) |
+| 배포 | Vercel (Cron 6건) |
 | 인증 | Supabase Auth + Google OAuth (어드민은 이중 인증) |
 | 스타일 | Tailwind CSS 4 + Radix UI |
 | 지도 / POI 자동수집 | **네이버 지도(NCP Maps.js) / 네이버 지역검색 오픈API** |

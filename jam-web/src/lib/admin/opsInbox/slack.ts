@@ -4,6 +4,7 @@
  * - 쓰는 이벤트는 「기획안 도착」(티켓 20260930_1816)과 결정 글(승인·반려·일괄 승인·수정·되돌림, 티켓 20260930_1818),
  *   예약 등록 요약(티켓 20261002_1123)과 공개 전 취소 글(티켓 20261002_1256)이 `#jam-report`, 예약 등록 실패 글(티켓 20261002_1123)과
  *   취소를 끝내지 못한 글(티켓 20261002_1256)이 `#jam-alert`다. 상태 맞추기(티켓 20261002_1813)는 공개·종료 요약을 `#jam-report`로, 실패·밖에서 지워짐을 `#jam-alert`로 보낸다.
+ *   매시 중단 신호 점검(티켓 20261001_1154)은 새로 걸린 예약 누락·루틴 실패를 `#jam-alert`로 보낸다.
  * - **던지지 않는다.** 환경변수가 없거나, 네트워크가 실패하거나, 슬랙이 `ok: false`로 답해도 `{ ok: false, error }`를
  *   돌려준다. 슬랙 게시 실패가 제출 요청을 실패시키면 안 된다(상위 티켓 가정 16). 오류에는 종류(이름)만 담고
  *   토큰 값·응답 본문은 담지 않는다.
@@ -340,6 +341,39 @@ export function formatReconcileAlertMessage(input: ReconcileAlertMessageInput): 
   if (input.decisionLogFailed) lines.push('결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요')
   const text = lines.join('\n')
   return input.isSample ? `[시험] ${text}` : text
+}
+
+// ── 중단 신호 글 (티켓 20261001_1154) ───────────────────────────────────────────────────────────
+
+/** 중단 신호 글에 결과를 나열하는 건수(예약 등록 글과 같다). 넘으면 「외 N건」으로 줄인다. */
+const SLACK_STOP_SIGNAL_ITEMS_MAX = 5
+
+export interface StopSignalAlertGroup {
+  /** 신호 이름(「예약 누락」·「루틴 실패」). */
+  label: string
+  /** 새로 걸린 결과의 문장(운영자가 읽는 해요체). 항목 이름에 제출 문자열이 들어 있어 이스케이프해서 싣는다. */
+  messages: readonly string[]
+}
+
+export interface StopSignalAlertMessageInput {
+  groups: readonly StopSignalAlertGroup[]
+}
+
+/**
+ * 중단 신호 알림 글(`#jam-alert`). 매시 점검 한 회차에 한 건이고, 새로 걸린 것이 있을 때만 보낸다(건수가 0인 신호는 빠진다). 결과는 5건까지 나열하고 나머지는 「외 N건」이다.
+ * 시험 묶음은 점검에서 걸러지므로 「[시험]」 글은 없다. 새로 걸린 것이 없으면 빈 글자를 돌려주니 호출부가 보내지 않는다.
+ * 예: `중단 신호가 새로 걸렸어요 · 예약 누락 1건, 루틴 실패 1건` 다음 줄부터 `• 예약 누락 · 홈피드 카드 「봄맞이」의 공개 시각(10/10(토) 09:00)이 지났는데 …`
+ */
+export function formatStopSignalAlertMessage(input: StopSignalAlertMessageInput): string {
+  const groups = input.groups.filter((group) => group.messages.length > 0)
+  if (groups.length === 0) return ''
+
+  const lines = [`중단 신호가 새로 걸렸어요 · ${groups.map((group) => `${group.label} ${group.messages.length}건`).join(', ')}`]
+  const entries = groups.flatMap((group) => group.messages.map((message) => `• ${safeField(group.label)} · ${safeField(message, SLACK_REASON_MAX_CHARS)}`))
+  lines.push(...entries.slice(0, SLACK_STOP_SIGNAL_ITEMS_MAX))
+  const rest = entries.length - SLACK_STOP_SIGNAL_ITEMS_MAX
+  if (rest > 0) lines.push(`외 ${rest}건`)
+  return lines.join('\n')
 }
 
 /** 슬랙에 글을 올린다. 던지지 않고 결과를 돌려준다. */
