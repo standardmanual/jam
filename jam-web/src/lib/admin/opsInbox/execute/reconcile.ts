@@ -32,6 +32,7 @@ import {
   OPS_RECONCILE_ACTOR,
   OPS_RECONCILE_REASONS,
 } from '@/lib/admin/opsInbox/constants'
+import { removeOpsImageFiles } from '@/lib/admin/opsInbox/image'
 import { asRecord } from '@/lib/admin/opsInbox/itemView'
 import { kindLabel, kstDateKey } from '@/lib/admin/opsInbox/labels'
 import { formatReconcileAlertMessage, formatReconcileReportMessage, type ReconcileAlertItem } from '@/lib/admin/opsInbox/slack'
@@ -436,7 +437,10 @@ async function undoLeftover(ctx: ApplyContext, item: ExecuteItem, resourceId: st
   if (!handler) return resourceId
   try {
     const undone = await handler.undo(ctx.service, resourceId)
-    if (!undone) return null
+    if (!undone) {
+      await removeOpsImageFiles(ctx.service, { kind: item.kind, itemId: item.id })
+      return null
+    }
     console.error(`${LOG} 멈춘 준비중이 만든 자원을 지우지 못했어요(${kindLabel(item.kind)}):`, undone.detail ?? undone.reason)
   } catch (err) {
     console.error(`${LOG} 멈춘 준비중이 만든 자원을 지우다 예외가 났어요(${kindLabel(item.kind)}):`, messageOf(err))

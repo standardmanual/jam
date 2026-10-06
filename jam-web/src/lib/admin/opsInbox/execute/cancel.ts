@@ -18,6 +18,7 @@
  */
 import { OPS_DECISION_ACTION_CANCEL } from '@/lib/admin/opsInbox/constants'
 import { asRecord } from '@/lib/admin/opsInbox/itemView'
+import { removeOpsImageFiles } from '@/lib/admin/opsInbox/image'
 import { kindLabel } from '@/lib/admin/opsInbox/labels'
 import { formatCancelFailureMessage, formatCancelMessage } from '@/lib/admin/opsInbox/slack'
 import { cancelSetOf, orderForUndo } from './groups'
@@ -218,6 +219,7 @@ export async function cancelItem(
     if (!resourceId) {
       console.error(`${LOG} 자원 ID가 없는 예약됨 항목이에요. 자원이 이미 없는 것으로 보고 상태만 바꿔요(${kindLabel(item.kind)})`)
       missing.add(item.id)
+      await removeOpsImageFiles(service, { kind: item.kind, itemId: item.id })
       done.push(item)
       continue
     }
@@ -228,6 +230,7 @@ export async function cancelItem(
       break
     }
     if (result.missing) missing.add(item.id)
+    await removeOpsImageFiles(service, { kind: item.kind, itemId: item.id })
     done.push(item)
   }
 

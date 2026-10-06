@@ -146,6 +146,8 @@ describe('예약됨 카드 취소 — 실제 카드 핸들러(가정 2·4)', () 
     ])
     expect(result.slack).toMatchObject({ isSample: false, cancelledLabels: [CARD_LABEL], problems: [], decisionLogFailed: false })
     expect(logged()).toBe('')
+    // 항목 ID 기준 경로의 이미지 파일을 정리한다(티켓 20261006_1801). 자원 ID 경로는 건드리지 않는다.
+    expect(db.removedFiles).toEqual([{ bucket: 'images', paths: [`ops-inbox/today_cards/${ID.card}.png`, `ops-inbox/today_cards/${ID.card}.webp`] }])
   })
 
   it('사유가 없으면 reason은 null이다', async () => {
@@ -250,6 +252,8 @@ describe('예약됨 카드 취소 — 실제 카드 핸들러(가정 2·4)', () 
     expect(result.body).toEqual({ ok: true, cancelled: [ID.card], missing: [ID.card] })
     expect(db.calls.filter((call) => call.table === 'today_cards')).toEqual([])
     expect(logged()).toContain('자원 ID가 없는 예약됨 항목')
+    // 자원 ID가 없어도 항목 ID 기준 파일은 정리한다.
+    expect(db.removedFiles).toHaveLength(1)
   })
 
   it('DB 오류는 500 고정 문장이고 원문·카드 ID는 응답·기록·슬랙에 없다. 아무것도 남기지 않는다', async () => {
