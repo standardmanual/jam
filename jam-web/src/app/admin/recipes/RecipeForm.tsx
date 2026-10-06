@@ -9,7 +9,7 @@ import { Input } from '@/components/admin/ui/input'
 import { MAX_SLOTS, MIN_ITEM_SLOTS, MIN_SLOTS } from '@/lib/combine/recipe-payload'
 import { recipeReleaseState } from '@/lib/combine/visibility'
 import { assertValidPeriod } from '@/lib/admin/recipe-write'
-import { recipeCardNoticeMessage } from '@/lib/admin/recipe-bulk'
+import { cancelReleaseConfirmMessage } from '@/lib/admin/recipe-bulk'
 import { formatKstYmdHm, kstLocalInputToIso, toKstLocalInputValue } from '@/lib/admin/kst-format'
 
 type BadgeBrief = Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>
@@ -230,9 +230,7 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
   /** 예약 취소 = 레시피 삭제 — 공개 전에만 된다. 삭제 가드와 공개 여부 확인은 서버가 한다 */
   async function handleCancelRelease() {
     if (!editingId) return
-    const cardNotice = recipeCardNoticeMessage(cardCount)
-    const confirmMessage = ['취소하면 이 레시피가 삭제돼요. 되돌릴 수 없어요.', cardNotice].filter(Boolean).join('\n\n')
-    if (!confirm(confirmMessage)) return
+    if (!confirm(cancelReleaseConfirmMessage(cardCount))) return
     setError(null)
     setCanceling(true)
     try {

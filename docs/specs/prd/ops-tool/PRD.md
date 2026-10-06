@@ -1183,9 +1183,9 @@ stateDiagram-v2
 >   게재 중 카드가 가리키면 아무것도 취소하지 않고 409다(위 「가리키는 항목도 함께 취소한다」). 같은 묶음의 카드가 먼저 지워진 뒤에도 카드가 남아 있으면 운영툴 밖(어드민)에서 만든 카드이므로 레시피를 지우지 않고 409다.
 >   막는 쪽은 서버 함수 `cancelScheduledRecipe`의 선택 인자 `blockOnCards`이고 운영툴 핸들러만 켠다 — 어드민의 예약 취소(`POST /api/admin/recipes/[id]/cancel-release`)와 삭제(`DELETE /api/admin/recipes/[id]`·일괄 삭제)는 카드가 가리켜도
 >   막지 않는다(가정 B). 대신 어드민 화면의 확인 단계에서 가리키는 카드 수를 안내한다(티켓 [20261006_1342](../../../tickets/p2-normal/20261006_1342_Admin_어드민-레시피-삭제-때-가리키는-카드-안내가-화면에-없다.md)).
->   - 목록의 일괄 삭제 확인창(`RecipeTable.tsx`): 미리보기(`dry_run`) 응답의 `impact.cardCount`(삭제 대상을 가리키는 `today_cards.recipe_id` 수)가 0보다 크면 「홈 카드 N장이 이 레시피를 가리켜요. 지우면 그 카드는 레시피 정보 없이 남아요.」를 더한다. 카드 수를 읽지 못하면 미리보기가 500이다(fail-closed).
->   - 편집 화면의 「예약 취소」 확인 문구(`RecipeForm.tsx`): 로더가 이 레시피를 가리키는 카드 수를 읽어 넘기고, 0보다 크면 같은 문장을 덧붙인다. 읽지 못하면 안내만 빠지고 화면은 그대로 열린다.
->   - 문구는 두 곳이 `recipeCardNoticeMessage`(`recipe-bulk.ts`) 하나를 쓰고, 0장이면 없다. 단건 삭제 응답(`DELETE /api/admin/recipes/[id]`)은 카드가 있었으면 `notice`로 알린다(이 응답을 읽는 화면은 없다).
+>   - 목록의 일괄 삭제 확인창(`RecipeTable.tsx`): 미리보기(`dry_run`) 응답의 `impact.cardCount`(삭제 대상을 가리키는 `today_cards.recipe_id` 수)가 0보다 크면 「홈 카드 N장이 지울 레시피를 가리켜요. 지우면 그 카드는 레시피 정보 없이 남아요.」를 더한다(카드 수가 고른 레시피 전체의 합이라 「지울 레시피를」이다). 영향 안내 묶음은 표시 컴포넌트 `RecipeDeleteImpact.tsx`가 그린다. 카드 수를 읽지 못하면 미리보기가 500이다(fail-closed).
+>   - 편집 화면의 「예약 취소」 확인 문구(`RecipeForm.tsx`): 로더가 이 레시피를 가리키는 카드 수를 읽어 넘기고, 0보다 크면 「홈 카드 N장이 이 레시피를 가리켜요. …」를 덧붙인다(문구 조립은 `cancelReleaseConfirmMessage`). 읽지 못하면 안내만 빠지고 화면은 그대로 열린다.
+>   - 문구는 두 곳이 `recipeCardNoticeMessage`(`recipe-bulk.ts`) 하나를 쓰고(대상 표현만 `single`·`bulk`로 갈린다), 0장이면 없다. 단건 삭제 응답(`DELETE /api/admin/recipes/[id]`)은 카드가 있었으면 `notice`로 알린다(이 응답을 읽는 화면은 없다).
 >
 >   카드 → 레시피에는 공개 순서 검사가 없으므로 취소 순서 때문에 막히는 일은 없다.
 

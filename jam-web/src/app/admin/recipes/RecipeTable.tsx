@@ -19,7 +19,7 @@ import { runBulk, fetchListIds, downloadResponseAsFile, type BulkRunResponse } f
 import { toastBulkResult } from '@/components/admin/ui/toast-helpers'
 import type { CombinationRecipeSlotRow } from '@/types/database'
 import { recipeStatusDisplay, type RecipeListRow } from '@/lib/admin/recipe-list'
-import { recipeCardNoticeMessage } from '@/lib/admin/recipe-bulk'
+import { RecipeDeleteImpact } from './RecipeDeleteImpact'
 
 export type RecipeWithSlots = RecipeListRow & { slots: CombinationRecipeSlotRow[] }
 
@@ -227,8 +227,6 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
     }
   }
 
-  const cardNotice = deletePreview ? recipeCardNoticeMessage(deletePreview.cardCount) : null
-
   const actions: DataTableBulkAction[] = [
     { key: 'export', label: '내보내기', onClick: handleExport, disabled: bulkPending },
     { key: 'delete', label: '삭제', onClick: openDelete, disabled: bulkPending, variant: 'destructive' },
@@ -271,25 +269,12 @@ function RecipeTableInner({ recipes, badgeMap, totalCount }: RecipeTableProps) {
           count={deletePreview?.processed.length ?? selectedIds.length}
           impact={
             deletePreview ? (
-              <>
-                <p>
-                  레시피 {deletePreview.processed.length}개와 슬롯 {deletePreview.slotCount}개가 함께 삭제됩니다. 되돌릴 수
-                  없습니다.
-                </p>
-                {cardNotice && <p className="mt-1">{cardNotice}</p>}
-                {deletePreview.skipped.length > 0 && (
-                  <>
-                    <p className="mt-1">선택한 레시피 중 {deletePreview.skipped.length}개는 삭제 대상에서 제외됩니다.</p>
-                    <p className="mt-1">
-                      {deletePreview.skipped
-                        .slice(0, 3)
-                        .map((s) => `${s.label ?? s.id.slice(0, 8)}: ${s.reason}`)
-                        .join(' / ')}
-                      {deletePreview.skipped.length > 3 ? ` 외 ${deletePreview.skipped.length - 3}개` : ''}
-                    </p>
-                  </>
-                )}
-              </>
+              <RecipeDeleteImpact
+                processedCount={deletePreview.processed.length}
+                slotCount={deletePreview.slotCount}
+                cardCount={deletePreview.cardCount}
+                skipped={deletePreview.skipped}
+              />
             ) : null
           }
           impactLoading={previewLoading}
