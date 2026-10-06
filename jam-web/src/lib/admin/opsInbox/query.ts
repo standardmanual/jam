@@ -12,7 +12,7 @@
  * 어느 쪽이 실패해도 던지지 않는다 — 실패는 `balance.status = 'failed'`로 화면에 넘어가고 기획 상세는 그대로 열린다.
  *
  * 기획 상세에는 예약 등록 요약(`execution`)도 함께 온다(티켓 20261002_1648, 운영툴 PRD §8.2). 항목 원본 행으로 사전 점검(`precheckBundle`)을 돌려
- * [N개 예약 등록하기]의 N과 「아직 연결하지 않은 종류」를 센다. 레지스트리·카드 핸들러가 클라이언트 번들로 끌려가지 않도록 화면은 이 계산을
+ * [N개 예약 등록하기]의 N을 센다. 레지스트리·카드 핸들러가 클라이언트 번들로 끌려가지 않도록 화면은 이 계산을
  * 하지 않고 결과만 받는다. 이 계산도 던지지 않는다.
  *
  * ⚠️ **PostgREST 기본 페이지 상한(1000행)** — 에러 없이 잘린 목록이 돌아오므로 `range`로 끝까지 넘겨 전량을 받는다
@@ -39,9 +39,8 @@ import {
 } from '@/lib/admin/opsInbox/balance/evaluate'
 import { loadBalanceState } from '@/lib/admin/opsInbox/balance/state'
 import type { OpsBundleBalance } from '@/lib/admin/opsInbox/balance/view'
-import { isStoppedItem } from '@/lib/admin/opsInbox/execute/groups'
-import { isExecutableKind, type ExecuteHandlerRegistry, type ExecuteItem } from '@/lib/admin/opsInbox/execute/handlers'
-import { hasHandler, precheckBundle } from '@/lib/admin/opsInbox/execute/precheck'
+import type { ExecuteHandlerRegistry, ExecuteItem } from '@/lib/admin/opsInbox/execute/handlers'
+import { precheckBundle } from '@/lib/admin/opsInbox/execute/precheck'
 import { EXECUTE_HANDLERS } from '@/lib/admin/opsInbox/execute/registry'
 
 const FETCH_PAGE_SIZE = 1000
@@ -293,11 +292,6 @@ export interface OpsBundleExecution {
   approvedCount: number
   /** 사전 점검의 「예약할 항목」 수. [N개 예약 등록하기]의 N이다. */
   readyCount: number
-  /**
-   * 아직 예약 등록을 연결하지 않은 종류(묶음 안 첫 등장 순). 멈추지 않은(반려·취소·실패·종료가 아닌) 항목 가운데 예약 등록 대상 종류인데
-   * 핸들러가 없는 것이다. 예약 등록 대상이 아닌 종류(`pattern_proposal`)와 종류를 읽을 수 없는 항목은 세지 않는다.
-   */
-  unconnectedKinds: string[]
 }
 
 export interface OpsBundleDetail {
@@ -392,12 +386,9 @@ export async function evaluateOpsBundleBalance(
 
 // ── 예약 등록 요약 (티켓 20261002_1648) ──────────────────────────────────────────────────────────
 
-/** 이미 끝난 항목. 멈춘 항목(반려·취소·실패)과 함께 「아직 연결하지 않은 종류」 안내에서 뺀다. */
-const ENDED_STATUS = 'ended'
-
 /**
  * 묶음의 예약 등록 요약을 만든다. `items`는 한 묶음의 항목 전부다(결정 전·멈춘 항목 포함: 그룹 판정에 필요하다).
- * 사전 점검이 던져도 기획 상세가 열리도록 던지지 않고, 그때는 예약할 항목 0개·안내 없음으로 둔다(요약창은 열 때 사전 점검을 새로 보낸다).
+ * 사전 점검이 던져도 기획 상세가 열리도록 던지지 않고, 그때는 예약할 항목 0개로 둔다(요약창은 열 때 사전 점검을 새로 보낸다).
  */
 export function buildOpsExecution(
   items: readonly ExecuteItem[],
@@ -406,16 +397,10 @@ export function buildOpsExecution(
 ): OpsBundleExecution {
   const approvedCount = items.filter((item) => item.status === 'approved').length
   try {
-    const unconnectedKinds: string[] = []
-    for (const item of items) {
-      if (isStoppedItem(item) || item.status === ENDED_STATUS) continue
-      if (!isExecutableKind(item.kind) || hasHandler(handlers, item.kind) || unconnectedKinds.includes(item.kind)) continue
-      unconnectedKinds.push(item.kind)
-    }
-    return { approvedCount, readyCount: precheckBundle(items, { now, handlers }).ready.length, unconnectedKinds }
+    return { approvedCount, readyCount: precheckBundle(items, { now, handlers }).ready.length }
   } catch (error) {
     console.error(`[admin/${ERROR_LABEL}] 예약 등록 요약 실패:`, error)
-    return { approvedCount, readyCount: 0, unconnectedKinds: [] }
+    return { approvedCount, readyCount: 0 }
   }
 }
 

@@ -958,7 +958,7 @@ describe('OpsItemDetail — 결정 기록(1818)', () => {
 })
 
 describe('OpsDecisionWorkspace — 결정 슬롯', () => {
-  const NO_EXECUTION: OpsBundleExecution = { approvedCount: 0, readyCount: 0, unconnectedKinds: [] }
+  const NO_EXECUTION: OpsBundleExecution = { approvedCount: 0, readyCount: 0 }
   const props = { bundleId: 'bundle-1', bundleFormatErrors: [] as string[], execution: NO_EXECUTION }
   const items = [
     makeItem({ id: 'a', position: 0, status: 'reviewing' }),
@@ -976,25 +976,19 @@ describe('OpsDecisionWorkspace — 결정 슬롯', () => {
     expect(out).toContain('1개 승인하기')
   })
 
-  it('「공개는 아직 연결 전이에요」는 어디에도 없고, 연결하지 않은 종류가 없으면 알림 줄을 그리지 않는다', () => {
+  it('「공개는 아직 연결 전이에요」와 연결하지 않은 종류 알림은 어디에도 없고 알림 줄을 그리지 않는다', () => {
     const out = flat(<OpsDecisionWorkspace {...props} items={items} decisions={[SUBMIT]} />)
     expect(out).not.toContain('공개는 아직 연결 전이에요')
-    expect(out).not.toContain('아직 예약 등록을 연결하지 않았어요')
+    expect(out).not.toContain('예약 등록을 연결하지 않았어요')
     const empty = flat(<OpsDecisionWorkspace {...props} items={[]} decisions={[SUBMIT]} />)
     expect(empty).not.toContain('공개는 아직 연결 전이에요')
     expect(empty).not.toContain('role="alert"')
   })
 
-  it('연결하지 않은 종류가 있을 때만 「{종류} 항목은 아직 예약 등록을 연결하지 않았어요」 알림이 뜬다', () => {
-    const execution: OpsBundleExecution = { approvedCount: 0, readyCount: 0, unconnectedKinds: ['mission', 'drop_schedule'] }
-    const out = flat(<OpsDecisionWorkspace {...props} execution={execution} items={items} decisions={[SUBMIT]} />)
-    expect(out).toContain('미션·드랍 일정 항목은 아직 예약 등록을 연결하지 않았어요. 승인해도 예약되지 않아요.')
-  })
-
   it('승인됨 항목이 있으면 단계 표시줄 오른쪽에 예약 등록 버튼이 있고, 문구는 예약할 항목 수(N)에 따라 나뉜다', () => {
-    const ready = flat(<OpsDecisionWorkspace {...props} execution={{ approvedCount: 2, readyCount: 2, unconnectedKinds: [] }} items={items} decisions={[SUBMIT]} />)
+    const ready = flat(<OpsDecisionWorkspace {...props} execution={{ approvedCount: 2, readyCount: 2 }} items={items} decisions={[SUBMIT]} />)
     expect(ready).toContain('>2개 예약 등록하기<')
-    const none = flat(<OpsDecisionWorkspace {...props} execution={{ approvedCount: 1, readyCount: 0, unconnectedKinds: [] }} items={items} decisions={[SUBMIT]} />)
+    const none = flat(<OpsDecisionWorkspace {...props} execution={{ approvedCount: 1, readyCount: 0 }} items={items} decisions={[SUBMIT]} />)
     expect(none).toContain('>예약 등록하기<')
     // 못 하는 이유를 볼 수 있게 끄지 않는다
     expect(isDisabled(buttonOf(none, '예약 등록하기'))).toBe(false)
@@ -1006,13 +1000,13 @@ describe('OpsDecisionWorkspace — 결정 슬롯', () => {
   })
 
   it('일괄 승인 버튼이 함께 있으면 예약 등록 버튼은 그 오른쪽이다', () => {
-    const out = flat(<OpsDecisionWorkspace {...props} execution={{ approvedCount: 1, readyCount: 1, unconnectedKinds: [] }} items={items} decisions={[SUBMIT]} />)
+    const out = flat(<OpsDecisionWorkspace {...props} execution={{ approvedCount: 1, readyCount: 1 }} items={items} decisions={[SUBMIT]} />)
     expect(out.indexOf('1개 승인하기')).toBeGreaterThan(-1)
     expect(out.indexOf('1개 승인하기')).toBeLessThan(out.indexOf('1개 예약 등록하기'))
   })
 
   it('결정 전 항목이 없어 일괄 승인이 없어도 예약 등록 버튼은 혼자 보인다', () => {
-    const out = flat(<OpsDecisionWorkspace {...props} execution={{ approvedCount: 1, readyCount: 1, unconnectedKinds: [] }} items={[items[2]]} decisions={[SUBMIT]} />)
+    const out = flat(<OpsDecisionWorkspace {...props} execution={{ approvedCount: 1, readyCount: 1 }} items={[items[2]]} decisions={[SUBMIT]} />)
     expect(out).not.toContain('개 승인하기')
     expect(out).toContain('1개 예약 등록하기')
   })
@@ -1057,16 +1051,53 @@ describe('OpsDecisionWorkspace — 결정 슬롯', () => {
       expect(out).not.toContain('예약된 항목이에요')
     })
 
-    it('승인됨·게재중 항목은 지금처럼 안내 글만 나오고 취소 버튼은 없다', () => {
+    it('승인됨 항목은 지금처럼 안내 글만 나오고 취소·지금 종료 버튼은 없다', () => {
       nav.search = 'item=c'
       const approved = flat(<OpsDecisionWorkspace {...props} items={withScheduled} decisions={[SUBMIT]} />)
       expect(approved).toContain('승인한 항목은 여기서 고칠 수 없어요')
       expect(approved).not.toContain('공개 전 취소하기')
+      expect(approved).not.toContain('지금 종료하기')
+    })
+  })
 
-      nav.search = 'item=l1'
-      const liveOut = flat(<OpsDecisionWorkspace {...props} items={withScheduled} decisions={[SUBMIT]} />)
-      expect(liveOut).toContain('이 항목은 이미 다음 단계에 있어서 여기서 결정하거나 고칠 수 없어요')
-      expect(liveOut).not.toContain('공개 전 취소하기')
+  describe('상세 카드 아래 줄 — 게재중 항목은 지금 종료(티켓 20261006_1038)', () => {
+    const live = makeItem({ id: 'l1', position: 4, status: 'live', original: { user_experience: '게재 중인 경험' } })
+    const liveDrop = makeItem({ id: 'l2', position: 5, status: 'live', kind: 'drop_schedule', original: { user_experience: '놓인 드랍' } })
+    const ended = makeItem({ id: 'e1', position: 6, status: 'ended', original: { user_experience: '끝난 경험' } })
+    const all = [...items, live, liveDrop, ended]
+
+    it('게재중 카드·미션·JAM! 배지·컬렉션·레시피는 안내와 [지금 종료하기]가 나오고 반려·수정·승인·취소 버튼은 없다', () => {
+      for (const kind of ['home_feed_card', 'mission', 'jam_badge', 'collection_launch', 'recipe']) {
+        nav.search = 'item=k1'
+        const out = flat(<OpsDecisionWorkspace {...props} items={[...items, makeItem({ id: 'k1', position: 7, status: 'live', kind })]} decisions={[SUBMIT]} />)
+        expect(out, kind).toContain('게재 중인 항목이에요. 지금 종료하면 유저 화면에서 바로 내려가요.')
+        expect(out, kind).toContain('>지금 종료하기<')
+        for (const label of ['반려하기', '수정하기', '승인하기', '공개 전 취소하기']) expect(out, `${kind} ${label}`).not.toContain(`>${label}<`)
+        // 확인창은 처음에 닫혀 있다(열 때 미리 보기 요청을 보낸다)
+        expect(out, kind).not.toContain('이 항목을 지금 종료할까요?')
+      }
+    })
+
+    it('지금 종료가 없는 종류(드랍 예약)는 게재중이어도 지금처럼 기본 안내 글만 나온다', () => {
+      nav.search = 'item=l2'
+      const out = flat(<OpsDecisionWorkspace {...props} items={all} decisions={[SUBMIT]} />)
+      expect(out).toContain('이 항목은 이미 다음 단계에 있어서 여기서 결정하거나 고칠 수 없어요')
+      expect(out).not.toContain('지금 종료하기')
+    })
+
+    it('종료한 항목은 「종료한 항목은 여기서 고칠 수 없어요」 안내만 나오고 버튼은 없다', () => {
+      nav.search = 'item=e1'
+      const out = flat(<OpsDecisionWorkspace {...props} items={all} decisions={[SUBMIT]} />)
+      expect(out).toContain('종료한 항목은 여기서 고칠 수 없어요')
+      expect(out).not.toContain('지금 종료하기')
+      expect(out).not.toContain('이 항목은 이미 다음 단계에 있어서')
+    })
+
+    it('검토중 항목에는 지금 종료 줄이 없다', () => {
+      nav.search = 'item=a'
+      const out = flat(<OpsDecisionWorkspace {...props} items={all} decisions={[SUBMIT]} />)
+      expect(out).not.toContain('지금 종료하기')
+      expect(out).not.toContain('게재 중인 항목이에요')
     })
   })
 

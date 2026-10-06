@@ -29,6 +29,7 @@ export function decisionGuidance(status: string): string {
   if (status === 'rejected') return '반려한 항목은 여기서 고칠 수 없어요'
   if (status === 'cancelled') return '취소한 항목은 여기서 고칠 수 없어요'
   if (status === 'failed') return '실패한 항목은 여기서 고칠 수 없어요'
+  if (status === 'ended') return '종료한 항목은 여기서 고칠 수 없어요'
   if (status === 'arrived') return '새로 도착한 항목이에요. 화면을 새로 고치면 검토중으로 바뀌고, 그때부터 결정할 수 있어요'
   return '이 항목은 이미 다음 단계에 있어서 여기서 결정하거나 고칠 수 없어요'
 }

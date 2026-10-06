@@ -1,5 +1,5 @@
 /**
- * 예약 등록·공개 전 취소 요청 호출 (티켓 20261002_1648, 20261002_1649) — `postExecute`·`postCancel`
+ * 예약 등록·공개 전 취소·지금 종료 요청 호출 (티켓 20261002_1648, 20261002_1649, 20261006_1038) — `postExecute`·`postCancel`·`postEnd`
  *
  * 요약창과 주 버튼, 취소 확인창이 기대는 결과 모양을 고정한다(던지지 않고 결과를 돌려준다):
  * - 요청 형식: POST, 본문 JSON(`{ dryRun: true }`·`{ badgePreview: true }`(티켓 20261005_1607) 또는 `{ itemIds }`), 묶음 ID는 주소에 싣는다
@@ -9,10 +9,11 @@
  * - 네트워크가 끊기면 status 0과 고정 문장(NETWORK_ERROR_MESSAGE)이고 던지지 않는다
  * - `fetchBadgePreview`(티켓 20261005_1607): `{ badgePreview: true }`를 보내 응답을 배지 구역 상태로 바꾸고, 어떤 실패도 던지지 않고 `failed`로 돌려준다
  * - `postCancel`은 같은 규칙을 항목 주소(`items/[itemId]/cancel`)에 적용하고, 본문은 `{ dryRun: true }`·`{ reason }`·`{}`다
+ * - `postEnd`는 항목 주소(`items/[itemId]/end`)에 같은 규칙을 적용한다. 되돌림 실패 500의 `itemEnded`는 `data`에 남는다
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NETWORK_ERROR_MESSAGE } from '@/components/admin/data-table/admin-fetch'
-import { fetchBadgePreview, postCancel, postExecute } from '../executeClient'
+import { fetchBadgePreview, postCancel, postEnd, postExecute } from '../executeClient'
 
 function respond(status: number, body: unknown) {
   return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
@@ -190,5 +191,46 @@ describe('postCancel', () => {
     const result = await postCancel('bundle-1', 'item-1', {})
     expect(result).toEqual({ ok: false, status: 0, error: NETWORK_ERROR_MESSAGE, data: {} })
     expect(JSON.stringify(result)).not.toContain('Failed to fetch')
+  })
+})
+
+describe('postEnd', () => {
+  it('미리 보기는 항목의 end 주소로 POST { dryRun: true }를 JSON으로 보내고 200이면 응답을 그대로 돌려준다', async () => {
+    const body = { ok: true, dryRun: true, isSample: false, kind: 'mission', pointedByLive: [], impact: { participants: 3, inProgressUsers: 1 } }
+    fetchMock.mockReturnValue(respond(200, body))
+    expect(await postEnd('bundle-1', 'item-1', { dryRun: true })).toEqual({ ok: true, data: body })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/admin/ops-inbox/bundle-1/items/item-1/end')
+    expect(init.method).toBe('POST')
+    expect(init.headers).toEqual({ 'Content-Type': 'application/json' })
+    expect(JSON.parse(init.body)).toEqual({ dryRun: true })
+  })
+
+  it('지금 종료는 { reason }을 보내고, 사유가 없으면 빈 객체를 보낸다', async () => {
+    fetchMock.mockReturnValue(respond(200, { ok: true, itemId: 'item-1', resourceState: 'ended' }))
+    await postEnd('bundle-1', 'item-1', { reason: '표기 오류가 있었어요' })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ reason: '표기 오류가 있었어요' })
+    await postEnd('bundle-1', 'item-1', {})
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({})
+  })
+
+  it('409는 서버 문장에 「화면을 새로 불러왔어요」를 덧붙인다', async () => {
+    fetchMock.mockReturnValue(respond(409, { error: '게재중인 항목만 지금 종료할 수 있어요.' }))
+    expect(await postEnd('bundle-1', 'item-1', {})).toMatchObject({
+      ok: false,
+      status: 409,
+      error: '게재중인 항목만 지금 종료할 수 있어요. 화면을 새로 불러왔어요.',
+    })
+  })
+
+  it('되돌림 실패 500은 서버 문장을 그대로 돌려주고 itemEnded는 data에 남는다', async () => {
+    const error = '지금 종료하지 못했어요. 항목은 종료로 바뀌었지만 자원은 아직 게재 중이에요. 기존 어드민에서 종료 시각을 확인해 주세요.'
+    fetchMock.mockReturnValue(respond(500, { error, itemEnded: true }))
+    expect(await postEnd('bundle-1', 'item-1', {})).toEqual({ ok: false, status: 500, error, data: { error, itemEnded: true } })
+  })
+
+  it('네트워크가 끊기면 던지지 않고 status 0과 고정 문장이다', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+    expect(await postEnd('bundle-1', 'item-1', { dryRun: true })).toEqual({ ok: false, status: 0, error: NETWORK_ERROR_MESSAGE, data: {} })
   })
 })

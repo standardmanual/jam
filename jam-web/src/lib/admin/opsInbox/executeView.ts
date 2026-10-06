@@ -1,8 +1,9 @@
 /**
  * 예약 등록·공개 전 취소 화면이 읽는 순수 함수 (티켓 20261002_1648, 상위 20260930_1500 ⑤-a, 운영툴 PRD §8.2. 공개 전 취소는 ⑤-b 티켓 20261002_1649, §8.7).
  *
- * 요약창의 구역 만들기(사전 점검 응답 → 구역·표시 순서), 실행 결과 토스트 문장, 항목별 가장 최근 실패 사유, 「아직 연결하지 않은 종류」
- * 안내 문장, 공개 전 취소 확인창의 문장·미리 보기 읽기·결과 토스트, 요약창의 JAM! 배지 소급 미리 세기 구역(티켓 20261005_1607 ⑨-b)이다. 화면(client)이 값으로 가져오므로 **레지스트리·핸들러·사전 점검 모듈(`execute/*`)을 값으로 가져오지 않는다**(서버 전용 코드가
+ * 요약창의 구역 만들기(사전 점검 응답 → 구역·표시 순서), 실행 결과 토스트 문장, 항목별 가장 최근 실패 사유,
+ * 공개 전 취소 확인창의 문장·미리 보기 읽기·결과 토스트, 요약창의 JAM! 배지 소급 미리 세기 구역(티켓 20261005_1607 ⑨-b),
+ * 공개 뒤 「지금 종료」 확인창의 문장·미리 보기 읽기·결과 토스트(티켓 20261006_1038 ⑪-b, §8.7)다. 화면(client)이 값으로 가져오므로 **레지스트리·핸들러·사전 점검 모듈(`execute/*`)을 값으로 가져오지 않는다**(서버 전용 코드가
  * 클라이언트 번들로 들어간다). 사전 점검은 서버 로더(`query.ts`)와 실행 API의 `{ dryRun: true }`만 부르고, 이 파일은 그 응답을 읽기만 한다.
  */
 import { OPS_DECISION_ACTION_FAIL } from '@/lib/admin/opsInbox/constants'
@@ -32,12 +33,6 @@ export const EXECUTE_BADGE_PREVIEW_FAILED = '미리 세지 못했어요'
 /** [N개 예약 등록하기]. 예약할 항목이 없으면 「예약 등록하기」다(눌러서 왜 못 하는지 볼 수 있게 끄지 않는다). */
 export function executeButtonLabel(readyCount: number): string {
   return readyCount > 0 ? `${readyCount}개 예약 등록하기` : '예약 등록하기'
-}
-
-/** 「아직 연결하지 않은 종류」 안내. 연결하지 않은 종류가 없으면 null이다(알림 줄을 그리지 않는다). */
-export function unconnectedKindsNotice(kinds: readonly string[]): string | null {
-  if (kinds.length === 0) return null
-  return `${kinds.map((kind) => kindLabel(kind)).join('·')} 항목은 아직 예약 등록을 연결하지 않았어요. 승인해도 예약되지 않아요.`
 }
 
 // ── 사전 점검 응답 읽기 ─────────────────────────────────────────────────────────────────────────
@@ -450,4 +445,170 @@ export function cancelToast(data: Record<string, unknown>): CancelToast {
  */
 export function cancelNeedsRefresh(status: number, data: Record<string, unknown>): boolean {
   return status === 409 || (status === 500 && Array.isArray(data.cancelled))
+}
+
+// ── 공개 뒤 지금 종료 확인창 (⑪-b, PRD §8.7) ────────────────────────────────────────────────────
+
+export const END_GUIDANCE = '게재 중인 항목이에요. 지금 종료하면 유저 화면에서 바로 내려가요.'
+export const END_TITLE = '이 항목을 지금 종료할까요?'
+/** 상세 카드 아래 버튼 글자이면서 확인창 주 버튼 글자다. */
+export const END_BUTTON = '지금 종료하기'
+export const END_PENDING = '종료하는 중'
+/** 보조 버튼. 기본값 「취소」가 주 버튼과 헷갈려서 공개 전 취소와 같이 「닫기」로 바꾼다. */
+export const END_CLOSE = '닫기'
+export const END_LOADING = '종료 영향을 확인하는 중이에요'
+export const END_REASON_LABEL = '종료 사유(선택)'
+export const END_REASON_HELP = '결정 기록에 남아요'
+export const END_SAMPLE_NOTICE = '시험 묶음이라 실제 자원은 바뀌지 않아요.'
+export const END_IRREVERSIBLE = '지금 종료는 되돌릴 수 없어요.'
+export const END_STILL_LIVE_NOTE = '이 항목을 가리키는 게재 중 항목은 함께 종료되지 않아요'
+export const END_DECISION_LOG_FAILED = '결정 기록을 남기지 못했어요. 종료는 그대로예요.'
+
+/**
+ * 「지금 종료」가 있는 종류. 서버 핸들러(`execute/*`)의 `end` 유무와 같아야 하지만 그 모듈을 값으로 가져올 수 없어 여기에 적는다
+ * (드랍 예약에는 `end`가 없다. 서버가 409 `noEnd`로 막는다).
+ */
+export const END_SUPPORTED_KINDS: readonly string[] = ['home_feed_card', 'mission', 'jam_badge', 'collection_launch', 'recipe']
+
+/** 「게재중」이고 지금 종료가 있는 종류일 때만 상세 하단에 지금 종료 줄을 보인다. */
+export function canEndItem(item: { status: string; kind: string | null }): boolean {
+  return item.status === 'live' && item.kind !== null && END_SUPPORTED_KINDS.includes(item.kind)
+}
+
+export const endStillLiveTitle = (count: number): string => `계속 보이는 항목 ${count}개`
+
+/** 영향 유저 수(미리 보기 응답의 `impact`). 세기가 실패했거나 칸이 없으면 `null`, 숫자가 없는 칸은 비어 있다. */
+export interface EndImpactView {
+  participants?: number
+  inProgressUsers?: number
+  fillingUsers?: number
+}
+
+export interface EndPreviewRead {
+  isSample: boolean
+  kind: string | null
+  pointedByLive: Array<{ id: string; kind: string | null; label: string }>
+  impact: EndImpactView | null
+}
+
+function countOf(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined
+}
+
+/** 미리 보기 응답(`{ dryRun: true }`)을 읽는다. 응답은 JSON이라 모양을 믿지 않고 읽는다. */
+export function readEndPreview(data: Record<string, unknown>): EndPreviewRead {
+  const impactRecord = recordOf(data.impact)
+  return {
+    isSample: data.isSample === true,
+    kind: typeof data.kind === 'string' ? data.kind : null,
+    pointedByLive: recordList(data.pointedByLive).flatMap((entry) =>
+      typeof entry.id === 'string'
+        ? [{ id: entry.id, kind: typeof entry.kind === 'string' ? entry.kind : null, label: typeof entry.label === 'string' ? entry.label : '' }]
+        : []
+    ),
+    impact: impactRecord
+      ? { participants: countOf(impactRecord.participants), inProgressUsers: countOf(impactRecord.inProgressUsers), fillingUsers: countOf(impactRecord.fillingUsers) }
+      : null,
+  }
+}
+
+/**
+ * 숫자가 들어가는 문장 한 줄. 수가 0이면 줄을 뺀다(null). 수를 모르면(세기 실패·칸 없음) 숫자 없는 문장이다.
+ * `withCount`는 수를 받아 문장을 만든다.
+ */
+function countedLine(count: number | undefined, withCount: (formatted: string) => string, withoutCount: string): string | null {
+  if (count === undefined) return withoutCount
+  if (count === 0) return null
+  return withCount(formatCount(count))
+}
+
+/** 종류별 확인창 문단(문장 배열). 지금 종료가 없는 종류는 빈 배열이다. 숫자 규칙은 `countedLine`이다. */
+export function endEffectLines(kind: string | null, impact: EndImpactView | null): string[] {
+  const lines: Array<string | null> = []
+  if (kind === 'home_feed_card') {
+    lines.push('홈피드와 카드 상세에서 바로 내려가요.')
+  } else if (kind === 'mission') {
+    lines.push(
+      '참가와 진행 집계가 바로 멈춰요.',
+      countedLine(impact?.inProgressUsers, (n) => `진행 중인 유저 ${n}명은 더는 달성할 수 없어요.`, '진행 중인 유저는 더는 달성할 수 없어요.'),
+      '받은 보상은 그대로예요.',
+      countedLine(impact?.participants, (n) => `다음 18시 알림에서 참가자 ${n}명에게 종료 결과 알림이 가요.`, '다음 18시 알림에서 참가자에게 종료 결과 알림이 가요.')
+    )
+  } else if (kind === 'jam_badge') {
+    lines.push('이 배지를 더는 획득할 수 없어요.', '이미 획득한 배지는 그대로예요.')
+  } else if (kind === 'collection_launch') {
+    lines.push(
+      '새 드랍과 완성 판정이 바로 멈춰요.',
+      countedLine(impact?.fillingUsers, (n) => `아직 완성하지 못한 유저 약 ${n}명은 더는 완성 보상을 받을 수 없어요.`, '아직 완성하지 못한 유저는 더는 완성 보상을 받을 수 없어요.'),
+      '장착한 배지는 그대로예요.'
+    )
+  } else if (kind === 'recipe') {
+    lines.push('믹스 화면에서 바로 사라지고 더는 믹스할 수 없어요.', '이미 받은 결과물은 그대로예요.')
+  }
+  return lines.filter((line): line is string => line !== null)
+}
+
+/** 미리 보기 응답으로 만든 확인창 내용. */
+export interface EndPreviewView {
+  isSample: boolean
+  /** 종류별 문단. */
+  effectLines: string[]
+  /** 함께 끝나지 않는 게재 중 항목(이 항목을 가리키는 것). 없으면 구역을 그리지 않는다. */
+  stillLive: Array<{ id: string; line: string }>
+}
+
+const UNKNOWN_END_LINE = '항목'
+
+/**
+ * 미리 보기 응답에서 확인창이 쓰는 칸을 읽는다. `items`는 화면이 들고 있는 항목이고 한 줄 요약을 붙이는 데 쓴다
+ * (화면에 없으면 서버 `label`, 그것도 없으면 「항목」). 이 항목 자신은 뺀다.
+ */
+export function buildEndPreview<T extends { id: string }>(
+  data: Record<string, unknown>,
+  itemId: string,
+  items: readonly T[],
+  lineOf: (item: T) => string
+): EndPreviewView {
+  const read = readEndPreview(data)
+  const byId = new Map(items.map((item) => [item.id, item]))
+  return {
+    isSample: read.isSample,
+    effectLines: endEffectLines(read.kind, read.impact),
+    stillLive: read.pointedByLive
+      .filter((entry) => entry.id !== itemId)
+      .map((entry) => {
+        const item = byId.get(entry.id)
+        return { id: entry.id, line: item ? lineOf(item) : entry.label || UNKNOWN_END_LINE }
+      }),
+  }
+}
+
+export interface EndToast {
+  message: string
+  /** 결정 기록을 남기지 못했을 때만 따로 띄우는 경고 토스트. */
+  logWarning: string | null
+}
+
+/** 지금 종료 응답(`{ resourceState, decisionLogFailed? }`)의 결과 토스트. */
+export function endToast(data: Record<string, unknown>): EndToast {
+  const message =
+    data.resourceState === 'alreadyEnded'
+      ? '이미 끝나 있어서 운영 항목만 종료로 닫았어요'
+      : data.resourceState === 'missing'
+        ? '자원이 이미 없어서 운영 항목만 종료로 닫았어요'
+        : '지금 종료했어요'
+  return { message, logWarning: data.decisionLogFailed === true ? END_DECISION_LOG_FAILED : null }
+}
+
+/** 지금 종료 응답이 되돌림까지 실패한 500인지(항목은 「종료」로 바뀌었는데 자원은 아직 게재 중이다). */
+export function endItemEnded(data: Record<string, unknown>): boolean {
+  return data.itemEnded === true
+}
+
+/**
+ * 지금 종료 요청(미리 보기 포함)이 실패했을 때 화면을 새로 읽어야 하는지. 409는 그사이 다른 곳에서 바뀌었다는 뜻이고(`decisionFailureMessage`가 「화면을 새로
+ * 불러왔어요」를 붙이므로 실제로 새로 읽어야 말이 맞다), 500에 `itemEnded`가 있으면 항목이 이미 「종료」로 바뀌어 있다. 그 밖의 500·네트워크 오류는 문장만 보인다.
+ */
+export function endNeedsRefresh(status: number, data: Record<string, unknown>): boolean {
+  return status === 409 || (status === 500 && endItemEnded(data))
 }
