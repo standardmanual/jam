@@ -18,6 +18,7 @@ import {
   formatExecuteSummaryMessage,
   formatReconcileAlertMessage,
   formatReconcileReportMessage,
+  formatStopSignalAlertMessage,
   postOpsSlack,
 } from '../slack'
 
@@ -340,6 +341,68 @@ describe('상태 맞추기 글 (티켓 20261002_1813)', () => {
     const withItem = formatReconcileAlertMessage({ isSample: false, failed: [{ itemLabel: label, reason: '사유' }], cancelled: [], ended: [], decisionLogFailed: true })
     expect(withItem.split('\n').at(-1)).toBe(LOG_LINE)
     expect(formatReconcileAlertMessage({ isSample: false, failed: [], cancelled: [], ended: [], decisionLogFailed: true })).toBe(LOG_LINE)
+  })
+})
+
+describe('중단 신호 글 (티켓 20261001_1154)', () => {
+  const missed = '홈피드 카드 「봄맞이」의 공개 시각(10/10(토) 09:00)이 지났는데 아직 공개되지 않았어요.'
+  const routine = '주간 루틴이 화요일 12시까지 기획안을 내지 못했어요.'
+
+  it('첫 줄에 신호별 건수를, 다음 줄부터 결과를 한 건씩 적는다', () => {
+    const text = formatStopSignalAlertMessage({
+      groups: [
+        { label: '예약 누락', messages: [missed] },
+        { label: '루틴 실패', messages: [routine] },
+      ],
+    })
+    expect(text.split('\n')).toEqual([
+      '중단 신호가 새로 걸렸어요 · 예약 누락 1건, 루틴 실패 1건',
+      `• 예약 누락 · ${missed}`,
+      `• 루틴 실패 · ${routine}`,
+    ])
+  })
+
+  it('건수가 0인 신호는 첫 줄에서 빠진다', () => {
+    const text = formatStopSignalAlertMessage({
+      groups: [
+        { label: '예약 누락', messages: [] },
+        { label: '루틴 실패', messages: [routine] },
+      ],
+    })
+    expect(text.split('\n')[0]).toBe('중단 신호가 새로 걸렸어요 · 루틴 실패 1건')
+  })
+
+  it('5건까지 나열하고 나머지는 「외 N건」이다(신호 순서대로 센다)', () => {
+    const messages = Array.from({ length: 4 }, (_, index) => `예약 ${index + 1}`)
+    const text = formatStopSignalAlertMessage({
+      groups: [
+        { label: '예약 누락', messages },
+        { label: '루틴 실패', messages: ['루틴 1', '루틴 2', '루틴 3'] },
+      ],
+    })
+    const lines = text.split('\n')
+    expect(lines[0]).toBe('중단 신호가 새로 걸렸어요 · 예약 누락 4건, 루틴 실패 3건')
+    expect(lines).toHaveLength(1 + 5 + 1)
+    expect(lines[5]).toBe('• 루틴 실패 · 루틴 1')
+    expect(lines[6]).toBe('외 2건')
+  })
+
+  it('5건 이하면 「외 N건」이 없다', () => {
+    const text = formatStopSignalAlertMessage({ groups: [{ label: '예약 누락', messages: Array.from({ length: 5 }, (_, index) => `예약 ${index + 1}`) }] })
+    expect(text).not.toContain('외 ')
+  })
+
+  it('제출 문자열은 이스케이프하고 문장은 100자까지만 싣는다', () => {
+    const escaped = formatStopSignalAlertMessage({ groups: [{ label: '예약 누락', messages: ['<!channel> <@U1> & x'] }] })
+    expect(escaped).toContain('&lt;!channel&gt; &lt;@U1&gt; &amp; x')
+    expect(escaped).not.toContain('<!channel>')
+    const long = formatStopSignalAlertMessage({ groups: [{ label: '예약 누락', messages: ['가'.repeat(150)] }] })
+    expect(long.split('\n')[1]).toBe(`• 예약 누락 · ${'가'.repeat(100)}…`)
+  })
+
+  it('새로 걸린 것이 없으면 빈 글자다(호출부가 보내지 않는다)', () => {
+    expect(formatStopSignalAlertMessage({ groups: [] })).toBe('')
+    expect(formatStopSignalAlertMessage({ groups: [{ label: '예약 누락', messages: [] }] })).toBe('')
   })
 })
 
