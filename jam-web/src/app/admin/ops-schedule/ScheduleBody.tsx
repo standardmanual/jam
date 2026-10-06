@@ -18,6 +18,8 @@ import { OpsScheduleBoard } from './OpsScheduleBoard'
  * 기간에 올라온 항목이 하나도 없고 못 읽은 재료도 없을 때만 「이 기간에는 올라온 항목이 없어요」를 알린다(달력은 그대로 보인다 — 자동 실행 줄이 있다).
  *
  * 읽기는 `try/catch`로 감싸고 JSX는 그 밖에서 만든다(`react-hooks/error-boundaries`가 `try` 안의 JSX를 막는다).
+ *
+ * 항목·날짜 서랍(티켓 20261006_1537 ③-b)은 보기 래퍼(`OpsScheduleBoard`)가 그린다. 못 읽은 재료(`sourceErrors`)를 함께 넘겨 날짜 서랍이 「대표 카드가 없어요」·「항목이 없어요」로 단정하지 않게 한다.
  */
 
 export const SCHEDULE_LOAD_FAILED_TITLE = '일정을 불러오지 못했어요'
@@ -97,7 +99,7 @@ export async function ScheduleBody({ params }: { params: ScheduleParams }) {
           )}
         </Card>
       )}
-      <OpsScheduleBoard week={week} />
+      <OpsScheduleBoard week={week} sourceErrors={sourceErrors} />
     </div>
   )
 }

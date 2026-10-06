@@ -60,6 +60,7 @@ import { OpsFormatErrorSummary } from './OpsFormatErrors'
 import { OpsItemDetail } from './OpsItemDetail'
 import { OpsItemList, opsItemRowId } from './OpsItemList'
 import { OpsStageBar } from './OpsStageBar'
+import { useStatusFlash } from './useStatusFlash'
 
 /**
  * 편집 초안. 어느 항목의 초안인지(`itemId`)와 고친 칸의 값을 담는다. 초안이 없으면 null이다.
@@ -107,8 +108,6 @@ export const OPS_TRANSITION_FAILED_MESSAGE =
 const DRAWER_PARAM = 'drawer'
 const DRAWER_EMPTY = 'empty'
 const ITEM_PARAM = 'item'
-const FLASH_MS = 1200
-const EMPTY_IDS: ReadonlySet<string> = new Set()
 
 function isItemFilter(value: string): value is OpsItemFilter {
   return (OPS_ITEM_FILTERS as readonly string[]).includes(value)
@@ -202,20 +201,8 @@ export function OpsBundleWorkspace({
   }, [hasArrived, bundleId, router])
 
   // ── 상태가 바뀐 행은 1.2초 동안 잔상을 남긴다 ──────────────────────────────────────────────────────
-  // 렌더 중에 이전 상태와 비교한다(effect 안에서 setState하지 않는다). 처음 그릴 때와 새로 나타난 항목은 잔상이 없다.
   const statusById = useMemo(() => Object.fromEntries(items.map((item) => [item.id, item.status])), [items])
-  const [seenStatus, setSeenStatus] = useState(statusById)
-  const [flashingIds, setFlashingIds] = useState<ReadonlySet<string>>(EMPTY_IDS)
-  if (seenStatus !== statusById) {
-    setSeenStatus(statusById)
-    const changed = Object.keys(statusById).filter((id) => seenStatus[id] !== undefined && seenStatus[id] !== statusById[id])
-    if (changed.length > 0) setFlashingIds(new Set(changed))
-  }
-  useEffect(() => {
-    if (flashingIds.size === 0) return
-    const timer = setTimeout(() => setFlashingIds(EMPTY_IDS), FLASH_MS)
-    return () => clearTimeout(timer)
-  }, [flashingIds])
+  const flashingIds = useStatusFlash(statusById)
 
   // ── 슬롯 ──────────────────────────────────────────────────────────────────────────────────────
   const barActionNode = barAction?.(ctx) ?? null

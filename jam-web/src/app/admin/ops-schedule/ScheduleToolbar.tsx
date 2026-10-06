@@ -13,7 +13,7 @@ import { todayKstDateString } from '@/lib/admin/today-calendar'
  * 보기를 바꿔도 기준일은 그대로이고, 기간을 옮기면 서랍은 닫힌다(`drawer`·`item`을 잇지 않는다). 링크뿐이라 훅이 없는 서버 컴포넌트다.
  *
  * ③-a에서는 주간 탭만 열려 있고 월간·타임라인은 ③-c가 만든다(`SCHEDULE_ENABLED_VIEWS`). 아직 못 누르는 탭은 링크가 아니라 눌리지 않는 글자로 둔다.
- * 컨테이너 폭 40rem 미만에서만 버튼·탭이 44px(`min-h-11`·`h-11`)다.
+ * 컨테이너 폭 40rem 미만에서만 버튼·탭이 44px(`min-h-11`·`h-11`)이고 그 이상은 40px(`h-10`)다(채원 판정 「버튼 데스크톱 `h-10`, 40rem 미만 `h-11`」, 티켓 20261006_1537).
  */
 
 /** 지금 화면이 그릴 수 있는 보기. ③-c가 월간·타임라인을 더한다. */
@@ -25,7 +25,7 @@ const PREVIOUS_LABELS: Record<ScheduleView, string> = { week: '이전 주', mont
 const NEXT_LABELS: Record<ScheduleView, string> = { week: '다음 주', month: '다음 달', timeline: '다음 4주' }
 export const SCHEDULE_TODAY_LABEL = '오늘'
 
-const TAB_BASE = 'inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium @[40rem]:min-h-9'
+const TAB_BASE = 'inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium @[40rem]:min-h-10'
 
 interface ScheduleToolbarProps {
   /** 지금 그리는 보기(주소의 `view`가 아직 못 그리는 보기면 호출부가 `week`로 바꿔 넘긴다). */
@@ -82,7 +82,7 @@ export function ScheduleToolbar({ view, params }: ScheduleToolbarProps) {
             <IconChevronLeft className="size-4" aria-hidden="true" />
           </Link>
         </Button>
-        <Button asChild variant="outline" size="sm" className="h-11 @[40rem]:h-9">
+        <Button asChild variant="outline" size="sm" className="h-11 @[40rem]:h-10">
           <Link href={todayHref}>{SCHEDULE_TODAY_LABEL}</Link>
         </Button>
         <Button asChild variant="ghost" size="icon" className="h-11 w-11 @[40rem]:h-10 @[40rem]:w-10">

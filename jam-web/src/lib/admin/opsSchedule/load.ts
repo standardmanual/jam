@@ -111,17 +111,20 @@ export async function loadScheduleWeek(options: LoadScheduleWeekOptions): Promis
             fetchWeeklyCardMetrics(shortCardIds, weekStartIso, weekEndIso),
             fetchFirstEventKstDate(),
           ])
-          return { counts, firstEventDate }
+          return { counts, firstEventDate, shortCardIds: new Set(shortCardIds) }
         })
       : null
+  // 노출·열람 수는 단기 카드만 읽는다. 운영 카드가 합친 실제 카드가 장기 카드면 수를 읽지 않았으므로 「노출 0」으로 보이지 않게 줄을 비운다.
   const cardNote = metrics
     ? (cardId: string, date: string) =>
-        formatCardMetricsNote({
-          date,
-          today,
-          firstEventDate: metrics.firstEventDate,
-          counts: metrics.counts.get(cardMetricKey(cardId, date)),
-        })
+        metrics.shortCardIds.has(cardId)
+          ? formatCardMetricsNote({
+              date,
+              today,
+              firstEventDate: metrics.firstEventDate,
+              counts: metrics.counts.get(cardMetricKey(cardId, date)),
+            })
+          : null
     : undefined
 
   const week = buildScheduleWeek({
