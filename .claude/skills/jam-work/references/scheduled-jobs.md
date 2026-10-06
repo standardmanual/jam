@@ -162,6 +162,7 @@ GA4는 광고 차단기 유저를 놓치고 일부 이벤트가 특정 경로에
 - 운영툴 서버가 읽는 Vercel 환경변수 `SLACK_CHANNEL_JAM_REPORT`·`SLACK_CHANNEL_JAM_ALERT`(티켓
   20260930_1816, 표는 `docs/specs/prd/04_PROJECT_SPEC.md` 환경변수)는 각각 위 표의 `#jam-report`·
   `#jam-alert` ID와 같아야 한다. ID를 바꾸면 Vercel 두 프로젝트의 값도 같은 날 바꾼다.
+- 서버 크론 `/api/cron/ops-stop-signals`(티켓 20261001_1154)도 새로 걸린 예약 누락·루틴 실패를 `#jam-alert`에 게시한다 — 예약 루틴이 아니라 Vercel 크론이라 일정은 `docs/specs/prd/04_PROJECT_SPEC.md` 크론 표를 따른다.
 
 - 글 내용은 **요약 3~5줄 + 리포트 링크**다. 리포트 본문은 올리지 않는다(원본은 저장소).
 - 개인정보 규칙(4-6)은 Slack 글에도 똑같이 적용한다.

@@ -25,7 +25,7 @@ code:
 | 프레임워크 | **Next.js 16.2.10** (App Router), React 19.2.4 | ⚠️ 원안은 Next.js 15로 기재돼 있었으나 실제는 16. Next 16은 브레이킹 체인지가 있어 `node_modules/next/dist/docs/`의 마이그레이션 노트를 먼저 확인할 것 |
 | 미들웨어 | **`src/proxy.ts`** (`proxy()` export + `config.matcher`) | Next 16 컨벤션 변경 — `middleware.ts`가 아님. 인증 리다이렉트·어드민 접근 제어 담당 |
 | DB / 백엔드 | Supabase (PostgreSQL) | `@supabase/supabase-js` ^2.110.1, `@supabase/ssr` ^0.12.0 |
-| 배포 | Vercel | `vercel.json`에 Cron 5건 등록 (아래 참고) |
+| 배포 | Vercel | `vercel.json`에 Cron 6건 등록 (아래 참고) |
 | 인증 | Supabase Auth + Google OAuth | 어드민은 이중 구조 — 아래 "어드민 인증" 참고 |
 | 스타일링 | Tailwind CSS 4 | + Radix UI(accordion/checkbox/dialog/select/slot/tabs), `class-variance-authority`, `tailwind-merge`, `lucide-react` |
 | 지도 | **네이버 지도 (NCP Maps.js)** | ⚠️ 원안은 Google Maps JS API였으나 2026-07-22 전환됨. `src/components/map/MapView.tsx` |
@@ -107,6 +107,7 @@ jam-web/
 | `/api/cron/ambient-drop` | 매시 정각 | 앰비언트(시스템) POI 드랍 배치 — 먼저 도래한 날짜 예약 배포(`ambient_drop_schedules`, 티켓 20261001_2051)를 매 호출 처리하고(`auto_enabled`와 무관, 실패해도 매일 배포를 막지 않음), 이어서 매일 배포는 어드민이 정한 시각(`ambient_drop_config.schedule_hour_kst`, KST 정시)에만 실제 배치하고 그 외 시각·`auto_enabled=false`·당일 이미 실행됨은 no-op. cron 표현식이 동적일 수 없어 매시 호출하고 핸들러가 판정한다 ([20260906_1206](../../tickets/p1-high/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)) |
 | `/api/cron/external-inputs` | 매일 21:00 | 날씨(기상청)·특일(공공데이터포털)을 미리 받아 `external_input_daily`에 저장 — KST 06:00. 카드 조회는 저장값만 읽고 외부 API를 부르지 않는다(값이 없으면 날씨·기념일 태그만 빠진다). 한쪽이라도 실패하면 502와 함께 실패 쪽을 응답에 표시 ([20260923_2333](../../tickets/p2-normal/20260923_2333_API_외부입력-호출을-카드조회-경로-밖으로-분리-사전갱신.md)) |
 | `/api/cron/ops-reconcile` | 10분마다 (`*/10 * * * *`) | 운영툴 상태 맞추기 — 「준비중」·「예약됨」·「게재중」 항목을 실제 자원과 견줘 게재중·종료·취소·실패로 맞추고, 밖에서 바뀐 것은 결정 기록(`external_change`)만 남긴다. `CRON_SECRET`이 비면 401, 건너뛴 항목이 있으면 500, 성공이면 공개·종료를 슬랙에 알린다. 어드민 달력에는 「운영 상태 맞추기」가 「10분마다」 한 줄로 보인다. `/api/cron/reconcile`은 예전 Strava 크론 이름이라 쓰지 않는다 ([20261002_1814](../../tickets/p2-normal/20261002_1814_Admin_운영툴-자원-연결-7b-상태-맞추기-크론과-결정-기록-이름표.md), 규칙은 운영툴 PRD §8.6·§11.8) |
+| `/api/cron/ops-stop-signals` | 매시 5분 (`5 * * * *`) | 운영툴 중단 신호 점검 — 먼저 상태 맞추기(`ops-reconcile`과 같은 함수, DB를 쓴다)를 한 번 하고, 신호를 계산해 직전 한 시간 창(정시 + 5분 슬롯 기준)에 새로 걸린 「예약 누락」·「루틴 실패」만 `#jam-alert`에 회차당 한 건 올린다. 신호 계산은 DB를 쓰지 않는다. 실행 실패와 시험 묶음은 알리지 않고, 상태 맞추기가 실패한 회차는 예약 누락 알림만 건너뛴다. `CRON_SECRET`이 비면 401, 맞추기 실패·묶음을 읽지 못함·슬랙 게시 실패는 500, 슬랙 값이 없으면 건너뛰고 200이다. 어드민 달력에는 「운영 중단 신호 점검」이 「매시간」 한 줄로 보인다 ([20261001_1154](../../tickets/p2-normal/20261001_1154_Admin_운영-홈-일정표-신호-4-중단-신호-매시-알림.md), 규칙은 운영툴 PRD §11.9) |
 
 > **2026-07-31 제거**: `/api/cron/sync`(전체 `strava_connections` 유저 순차 동기화, 매일 12:00 UTC = KST 21:00)는 유저 수 증가에 따른 배치 시간·Strava Rate Limit 부담과 "유저가 원치 않는 시점에 활동이 반영되는" 정책 문제로 삭제됐다(커밋 `b9609942`). 이후 Strava 동기화는 **수동 버튼(`POST /api/strava/sync`)과 OAuth 콜백 직후 1회**만 발생한다. 상세: [docs/tickets/20260731_001](../../tickets/p2-normal/20260731_001_Admin_Strava-전체-유저-자동-동기화-크론-api-cron-sync.md).
 
@@ -118,7 +119,7 @@ jam-web/
 
 > **2026-08-24 제거**: `/api/cron/wandering`(Mystic 아이템 재배치, 매일 06:00)은 해당 기능 자체가 전면 제거되면서 함께 삭제됐다. 스키마·Cron만 있고 컨텐츠가 한 번도 붙지 않아 프로덕션 실사용이 0건이었다. 상세: [docs/tickets/20260824_017](../../tickets/p2-normal/20260824_017_Infra_떠돌이신화-기능-전면제거.md).
 
-모든 Cron 라우트는 `Authorization: Bearer {CRON_SECRET}` 검증. (과거 Hobby 플랜에서는 일 1회 초과 빈도의 Cron이 배포 시점에 거부됐다 — [20260723_004](../../tickets/p2-normal/20260723_004_Admin_배포가-안-되던-근본-원인Vercel-Hobby-플랜-cron-빈도-제.md). **현재는 Pro 플랜이라 이 제약이 없다** — `/api/cron/ambient-drop`이 2026-09-06부터 매시 정각으로, `/api/cron/ops-reconcile`이 10분마다 돈다)
+모든 Cron 라우트는 `Authorization: Bearer {CRON_SECRET}` 검증. (과거 Hobby 플랜에서는 일 1회 초과 빈도의 Cron이 배포 시점에 거부됐다 — [20260723_004](../../tickets/p2-normal/20260723_004_Admin_배포가-안-되던-근본-원인Vercel-Hobby-플랜-cron-빈도-제.md). **현재는 Pro 플랜이라 이 제약이 없다** — `/api/cron/ambient-drop`이 2026-09-06부터 매시 정각으로, `/api/cron/ops-reconcile`이 10분마다, `/api/cron/ops-stop-signals`가 매시 5분에 돈다)
 
 ---
 
@@ -214,10 +215,10 @@ push로 배포하지 않는다(`.githooks/pre-push`가 `JAM_SHIP=1` 없는 main 
 | `ADMIN_EMAILS` | `/admin/*` 접근 허용 이메일 화이트리스트 (쉼표 구분) | `proxy.ts` |
 | `ADMIN_API_READ_TOKEN` | 어드민 자동화 읽기 토큰 (GET 전용. 쓰기는 `POST /api/admin/ops-inbox` 하나만 예외, 값을 바꾸면 이전 토큰 즉시 차단) | `requireAdminRead`, `isOpsInboxTokenRequest`, `proxy.ts` |
 | `ADMIN_SECRET` | 어드민 보조 인증 비밀번호 (쿠키 토큰 발급용) | 시뮬레이터 등 |
-| `CRON_SECRET` | Vercel Cron 요청 인증 | 5개 Cron 라우트 공통 |
+| `CRON_SECRET` | Vercel Cron 요청 인증 | 6개 Cron 라우트 공통 |
 | `SLACK_BOT_TOKEN` | 슬랙 봇(JAM 봇) 토큰. 운영 묶음 도착 글을 서버가 `chat.postMessage`로 게시한다 | `lib/admin/opsInbox/slack.ts`. 미설정이면 게시를 건너뛰고 결정 기록에 `not_configured`만 남긴다(제출은 성공). Vercel 두 프로젝트에 등록 필요 |
 | `SLACK_CHANNEL_JAM_REPORT` | 슬랙 `#jam-report` 채널 ID (도착·승인·예약·공개 알림) | `lib/admin/opsInbox/slack.ts`. 값의 원천은 `.claude/skills/jam-work/references/scheduled-jobs.md` 「Slack 알림」 |
-| `SLACK_CHANNEL_JAM_ALERT` | 슬랙 `#jam-alert` 채널 ID (실패·되돌림 알림) | `lib/admin/opsInbox/slack.ts`. 예약 등록 실패 글을 이 채널에 게시한다(티켓 20261002_1123). 상태 맞추기의 실패 알림은 뒤 조각이 같은 채널로 보낸다 |
+| `SLACK_CHANNEL_JAM_ALERT` | 슬랙 `#jam-alert` 채널 ID (실패·되돌림 알림) | `lib/admin/opsInbox/slack.ts`. 예약 등록 실패 글을 이 채널에 게시한다(티켓 20261002_1123). 상태 맞추기의 실패 알림(티켓 20261002_1813)과 매시 중단 신호 점검(티켓 20261001_1154)도 같은 채널에 게시한다 |
 | `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | 네이버 지도 SDK 클라이언트 ID | |
 | `NCP_MAP_CLIENT_SECRET` | 네이버 클라우드 플랫폼 지도 서버 인증 | |
 | `NEXT_PUBLIC_NAVER_MAP_STYLE_ID` | 네이버 지도 커스텀 스타일 ID | |

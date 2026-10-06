@@ -1095,6 +1095,7 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | GET | `/api/cron/ambient-drop` | 앰비언트(시스템) POI 드랍 배치 + 날짜 예약 배포 처리 |
 | GET | `/api/cron/external-inputs` | 날씨·특일을 미리 받아 `external_input_daily`에 저장 |
 | GET | `/api/cron/ops-reconcile` | 운영툴 항목 상태를 실제 자원에 맞춤(공개·종료·취소·실패, 밖에서 바뀐 것은 결정 기록만) |
+| GET | `/api/cron/ops-stop-signals` | 운영툴 중단 신호 점검 — 상태 맞추기를 먼저 하고, 직전 한 시간에 새로 걸린 예약 누락·루틴 실패를 `#jam-alert`에 알림 |
 
 ### 어드민
 
