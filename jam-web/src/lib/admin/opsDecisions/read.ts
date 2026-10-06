@@ -376,3 +376,85 @@ export async function listOpsDecisions(
     byPattern,
   }
 }
+
+// ── 운영 홈 최근 이력 (티켓 20261006_1340 ②-b, 상위 20260930_1502 S1 「최근 이력(최신 10건)」) ──────────────────────
+
+/** 운영 홈 최근 이력의 줄 수. */
+export const OPS_RECENT_DECISION_LIMIT = 10
+
+/**
+ * 최근 이력이 읽는 칸. 결정 행의 `bundle_id`는 묶음 DB 행 ID(`ops_bundles.id`)라 받은 기획함 링크(`/admin/ops-inbox/{행 ID}?item=`)에 그대로 쓴다
+ * (`OPS_DECISION_READ_COLUMNS`의 `ops_bundles.bundle_id`는 제출자가 정한 값이라 링크에 못 쓴다). 묶음은 시험 여부를 가르려고 inner join하고,
+ * 항목은 묶음 단위 결정도 보이게 left join이다(종류·패턴만 읽는다). `actor` 원문은 행위자 종류를 가르려고 읽고 응답에는 싣지 않는다.
+ */
+export const OPS_RECENT_DECISION_COLUMNS =
+  'id, created_at, action, actor, bundle_id, item_id, ops_bundles!inner(is_sample), ops_bundle_items(kind, pattern_no)'
+
+export interface OpsRecentDecisionRecord {
+  id: string
+  createdAt: string
+  action: string
+  actorType: OpsActorType
+  /** 에이전트(토큰 제출)일 때만 이름이다. */
+  agentName: string | null
+  /** 묶음 DB 행 ID(`ops_bundles.id`). 받은 기획함 링크에 쓴다. */
+  bundleId: string
+  /** 항목 DB 행 ID. 묶음 단위 결정이면 null이다. */
+  itemId: string | null
+  /** 항목 종류. 묶음 단위 결정이거나 항목을 읽지 못하면 null이다. */
+  kind: string | null
+  patternNo: string | null
+  isSample: boolean
+}
+
+export interface OpsRecentDecisionRow {
+  id: string
+  created_at: string
+  action: string
+  actor: string
+  bundle_id: string
+  item_id: string | null
+  ops_bundles: { is_sample: boolean } | { is_sample: boolean }[] | null
+  ops_bundle_items: { kind: string | null; pattern_no: string | null } | { kind: string | null; pattern_no: string | null }[] | null
+}
+
+/** 행에 다른 칸(`actor` 원문 포함)이 섞여 들어와도 응답 칸만 골라 싣는다. */
+export function toRecentDecisionRecord(row: OpsRecentDecisionRow): OpsRecentDecisionRecord {
+  const item = embedded(row.ops_bundle_items)
+  return {
+    id: row.id,
+    createdAt: row.created_at,
+    action: row.action,
+    ...classifyActor(row.actor),
+    bundleId: row.bundle_id,
+    itemId: row.item_id,
+    kind: item?.kind ?? null,
+    patternNo: item?.pattern_no ?? null,
+    isSample: embedded(row.ops_bundles)?.is_sample === true,
+  }
+}
+
+export interface ListRecentOpsDecisionsOptions {
+  /** 한 번에 읽는 건수. 기본은 10건이고 한 쪽(200건)을 넘기지 않는다. */
+  limit?: number
+  /** 시험 묶음의 기록까지 읽는다. 기본은 뺀다. **서버 컴포넌트(운영 홈)만 쓴다.** */
+  includeSample?: boolean
+}
+
+/**
+ * 운영 홈의 최근 이력: 기간·집계 없이 최신 순(`created_at desc, id desc`)으로 10건이다. 시험 묶음은 `includeSample`을 켤 때만 읽는다.
+ * 기존 읽기(`listOpsDecisions`)의 칸·응답 모양은 건드리지 않고 따로 읽는다. 조회 오류는 던진다(호출부가 그 구역만 안내한다).
+ */
+export async function listRecentOpsDecisions(
+  service: ServiceClient,
+  { limit = OPS_RECENT_DECISION_LIMIT, includeSample = false }: ListRecentOpsDecisionsOptions = {}
+): Promise<OpsRecentDecisionRecord[]> {
+  const size = Number.isInteger(limit) && limit > 0 ? Math.min(limit, OPS_DECISION_PAGE_SIZE) : OPS_RECENT_DECISION_LIMIT
+  const base = decisionsTable(service).select(OPS_RECENT_DECISION_COLUMNS)
+  const { data, error } = await (includeSample ? base : base.eq('ops_bundles.is_sample', false))
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(0, size - 1)
+  if (error) throw new Error(`최근 결정 기록 조회 실패: ${error.message}`)
+  return ((data ?? []) as OpsRecentDecisionRow[]).map(toRecentDecisionRecord)
+}
