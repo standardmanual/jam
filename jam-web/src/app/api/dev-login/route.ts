@@ -11,12 +11,16 @@
  */
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { isStagingOrDevEnv, TEST_ACCOUNT_USER_IDS } from '@/lib/env/test-accounts'
+import {
+  DEV_LOGIN_USER_EMAIL,
+  DEV_LOGIN_USER_ID,
+  isStagingOrDevEnv,
+} from '@/lib/env/test-accounts'
 
 // 고정 테스트 유저 — jam-web/supabase/seed_dev_test_user.sql과 동일한 값 사용
-// (프로덕션 공개 목록 제외 대상 — jam-web/src/lib/env/test-accounts.ts가 단일 진실)
-const DEV_USER_ID = TEST_ACCOUNT_USER_IDS[0]
-const DEV_USER_EMAIL = 'dev-tester@jam.local'
+// (프로덕션 공개 목록 제외 대상·staging 어드민 차단 대상 — jam-web/src/lib/env/test-accounts.ts가 단일 진실)
+const DEV_USER_ID = DEV_LOGIN_USER_ID
+const DEV_USER_EMAIL = DEV_LOGIN_USER_EMAIL
 
 export async function GET(request: NextRequest) {
   // 절대 최우선 게이트: 허용 환경이 아니면 라우트 자체가 존재하지 않는 것처럼 취급
