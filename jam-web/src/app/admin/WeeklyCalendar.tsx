@@ -1,5 +1,6 @@
 'use client'
 
+import type { ElementType, MouseEvent, ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
@@ -9,6 +10,7 @@ import { OpsStatusBadge } from '@/components/admin/ops/OpsStatusBadge'
 import { cn } from '@/lib/utils'
 import { kindLabel } from '@/lib/admin/opsInbox/labels'
 import type { OpsSignalLevel } from '@/lib/admin/opsSignals/catalog'
+import { drawerTriggerValue, isSameDrawerTarget, type ScheduleDrawerTarget } from '@/lib/admin/opsSchedule/drawerParams'
 import { shiftDateStr } from '@/lib/admin/today-calendar'
 import type { WeeklyMissionBar } from '@/lib/admin/weeklyMissions'
 
@@ -74,6 +76,19 @@ export interface CalendarColumn {
   automationItems?: CalendarCellItem[]
 }
 
+/**
+ * 서랍을 여는 칸 제어(일정표, 티켓 20261006_1537 ③-b). 주면 칸 머리와 항목이 링크가 아니라 버튼이 되어 눌렀을 때 서랍을 연다 — 항목 서랍(`item`)·날짜 서랍(`day`).
+ * 안 주면 옛 모양(링크) 그대로다. 서랍이 닫힐 때 포커스가 돌아올 칸을 찾을 수 있도록 버튼마다 `data-drawer-trigger`가 붙는다.
+ */
+export interface CalendarDrawerControl {
+  /** 칸 머리·항목을 눌렀다. 누른 요소(`trigger`)를 함께 넘겨 닫을 때 그 요소로 포커스를 돌려줄 수 있게 한다. */
+  onOpen: (target: ScheduleDrawerTarget, trigger: HTMLElement) => void
+  /** 지금 열린 서랍. 그 항목·칸 머리가 선택 표시(`aria-current`)다. */
+  selected: ScheduleDrawerTarget | null
+  /** 상태가 방금 바뀌어 1.2초 잔상을 보일 서랍 키(항목의 `drawerKey`). */
+  flashingKeys?: ReadonlySet<string>
+}
+
 interface WeeklyCalendarProps {
   /** 표시 중인 주의 월요일, 'YYYY-MM-DD' */
   weekStart: string
@@ -89,6 +104,8 @@ interface WeeklyCalendarProps {
   nav?: boolean
   /** true면 달력 영역 폭(`@container`)에 맞춰 56rem 이상은 7열, 미만은 날짜별 가로 줄로 바뀐다(티켓 20261006_1536). 기본은 항상 7열이다 */
   adaptive?: boolean
+  /** 있으면 칸 머리·항목·미션 막대가 서랍을 여는 버튼이 된다(티켓 20261006_1537). 없으면 옛 링크 모양 그대로다 */
+  drawer?: CalendarDrawerControl
 }
 
 /** 항목 칩 줄을 그려야 하는 항목인가(종류·상태·시험 중 하나라도 있으면 일정표용 두 줄 모양이다). 없으면 옛 모양 그대로다 */
@@ -96,8 +113,13 @@ function isRichItem(item: CalendarCellItem): boolean {
   return item.itemKind !== undefined || item.status !== undefined || item.isSample === true
 }
 
-/** 항목 한 줄. 옛 항목은 옛 마크업 그대로이고, 종류·상태·시험이 있는 항목은 아이콘 + 시각 + 제목 / 상태 칩 + 시험 칩 두 줄이다 */
-function CalendarItem({ item }: { item: CalendarCellItem }) {
+/** 선택·잔상 표시를 입힌 한 줄(서랍 모드). 선택 행은 왼쪽 굵은 선·배경, 상태가 방금 바뀐 행은 배경만 잠깐 남는다. */
+const DRAWER_ROW = 'rounded-md border-l-4 border-transparent'
+const DRAWER_BUTTON =
+  'block min-h-11 w-full rounded-md px-1.5 py-1 text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring @[40rem]:min-h-0'
+
+/** 항목 한 줄. 옛 항목은 옛 마크업 그대로이고, 종류·상태·시험이 있는 항목은 아이콘 + 시각 + 제목 / 상태 칩 + 시험 칩 두 줄이다. 서랍 모드에서는 전체가 서랍을 여는 버튼이다 */
+function CalendarItem({ item, drawer }: { item: CalendarCellItem; drawer?: CalendarDrawerControl }) {
   const content = (
     <>
       {item.time !== '' || !isRichItem(item) ? <span className="font-mono text-muted-foreground">{item.time}</span> : null}
@@ -111,6 +133,45 @@ function CalendarItem({ item }: { item: CalendarCellItem }) {
       <span>{item.label}</span>
     </>
   )
+
+  if (drawer && item.drawerKey !== undefined) {
+    const target: ScheduleDrawerTarget = { kind: 'item', key: item.drawerKey }
+    const selected = isSameDrawerTarget(drawer.selected, target)
+    const flashing = drawer.flashingKeys?.has(item.drawerKey) ?? false
+    return (
+      <li
+        data-drawer-key={item.drawerKey}
+        className={cn('text-xs leading-snug', DRAWER_ROW, item.dim && 'opacity-40', selected && 'border-foreground bg-muted', flashing && !selected && 'bg-muted')}
+      >
+        <button
+          type="button"
+          data-drawer-trigger={drawerTriggerValue(target)}
+          aria-current={selected ? 'true' : undefined}
+          onClick={(event) => drawer.onOpen(target, event.currentTarget)}
+          className={DRAWER_BUTTON}
+        >
+          <span className="flex items-start gap-1">
+            {item.itemKind !== undefined && (
+              <>
+                <OpsKindIcon kind={item.itemKind} className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                <span className="sr-only">{kindLabel(item.itemKind)}</span>
+              </>
+            )}
+            <span className="min-w-0 break-words">{content}</span>
+          </span>
+          {item.note && <span className="block text-[11px] text-muted-foreground">{item.note}</span>}
+          {(item.status !== undefined || item.isSample === true) && (
+            <span className="mt-1 flex flex-wrap items-center gap-1">
+              {item.status !== undefined && <OpsStatusBadge type="item" status={item.status} />}
+              {item.isSample === true && <OpsStatusBadge type="sample" />}
+            </span>
+          )}
+          <span className="sr-only"> 서랍 열기</span>
+        </button>
+      </li>
+    )
+  }
+
   const linked = item.href ? (
     <Link href={item.href} className="hover:underline">
       {content}
@@ -167,6 +228,75 @@ function MissionBarContent({ bar }: { bar: CalendarMissionBar }) {
 }
 
 /**
+ * 미션 막대의 바깥 요소. 옛 모양은 미션 상세로 가는 링크이고, 서랍 모드(`drawer`와 막대의 `drawerKey`가 있다)에서는 항목 서랍을 여는 버튼이다.
+ * 넓은 달력의 막대는 걸치는 열(`startCol`·`endCol`의 숫자에서 계산한 `grid-column`)을 `style`로 받는다 — 이 파일의 유일한 `style`이다. 링크와 버튼이 같은 요소 한 곳을 쓴다.
+ */
+function MissionBarShell({
+  bar,
+  drawer,
+  narrow = false,
+  children,
+}: {
+  bar: CalendarMissionBar
+  drawer?: CalendarDrawerControl
+  /** 좁은 달력의 쌓는 목록 한 줄이면 true다(7열에 걸지 않으므로 열 위치가 없다). */
+  narrow?: boolean
+  children: ReactNode
+}) {
+  const target: ScheduleDrawerTarget | null = drawer && bar.drawerKey !== undefined ? { kind: 'item', key: bar.drawerKey } : null
+  const selected = target !== null && isSameDrawerTarget(drawer?.selected ?? null, target)
+  const flashing = bar.drawerKey !== undefined && (drawer?.flashingKeys?.has(bar.drawerKey) ?? false)
+
+  if (narrow) {
+    const className = 'flex min-w-0 flex-wrap items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 text-xs hover:underline'
+    return target ? (
+      <button
+        type="button"
+        data-drawer-trigger={drawerTriggerValue(target)}
+        aria-current={selected ? 'true' : undefined}
+        onClick={(event) => drawer?.onOpen(target, event.currentTarget)}
+        className={cn(className, 'min-h-11 w-full text-left @[40rem]:min-h-0', selected && 'border-foreground', flashing && 'bg-background')}
+      >
+        {children}
+        <span className="sr-only"> 서랍 열기</span>
+      </button>
+    ) : (
+      <Link href={bar.href ?? `/admin/missions/${bar.id}`} className={className}>
+        {children}
+      </Link>
+    )
+  }
+
+  const Shell: ElementType = target ? 'button' : Link
+  const shellProps: Record<string, unknown> = target
+    ? {
+        type: 'button',
+        'data-drawer-trigger': drawerTriggerValue(target),
+        'aria-current': selected ? 'true' : undefined,
+        onClick: (event: MouseEvent<HTMLElement>) => drawer?.onOpen(target, event.currentTarget),
+      }
+    : { href: bar.href ?? `/admin/missions/${bar.id}` }
+  return (
+    <Shell
+      {...shellProps}
+      style={{ gridColumn: `${bar.startCol + 1} / ${bar.endCol + 2}` }}
+      className={
+        target
+          ? cn(
+              'flex items-center gap-1 truncate rounded-lg border border-border bg-muted px-2 py-1 text-left text-xs hover:underline',
+              selected && 'border-foreground',
+              flashing && 'bg-background'
+            )
+          : 'flex items-center gap-1 truncate rounded-lg border border-border bg-muted px-2 py-1 text-xs hover:underline'
+      }
+    >
+      {children}
+      {target && <span className="sr-only"> 서랍 열기</span>}
+    </Shell>
+  )
+}
+
+/**
  * 어드민 메인 주간 캘린더 뼈대(티켓 20260924_0904).
  *
  * 크론 전용이 아니라 **요일별 항목 목록**을 받는 범용 컴포넌트다 — 이 파일은 크론을
@@ -186,6 +316,7 @@ export default function WeeklyCalendar({
   openEndedMissionCount,
   nav = true,
   adaptive = false,
+  drawer,
 }: WeeklyCalendarProps) {
   const router = useRouter()
   const goToWeek = (monday: string) => router.push(`${basePath}?week=${monday}`)
@@ -219,14 +350,9 @@ export default function WeeklyCalendar({
         <>
           <div className={cn('grid grid-cols-7 gap-2 mb-2', adaptive && 'hidden @[56rem]:grid')}>
             {missionBars.map((bar) => (
-              <Link
-                key={bar.id}
-                href={bar.href ?? `/admin/missions/${bar.id}`}
-                style={{ gridColumn: `${bar.startCol + 1} / ${bar.endCol + 2}` }}
-                className="flex items-center gap-1 truncate rounded-lg border border-border bg-muted px-2 py-1 text-xs hover:underline"
-              >
+              <MissionBarShell key={bar.id} bar={bar} drawer={drawer}>
                 <MissionBarContent bar={bar} />
-              </Link>
+              </MissionBarShell>
             ))}
           </div>
           {adaptive && (
@@ -234,15 +360,12 @@ export default function WeeklyCalendar({
             <ul className="mb-2 space-y-1 @[56rem]:hidden">
               {missionBars.map((bar) => (
                 <li key={bar.id}>
-                  <Link
-                    href={bar.href ?? `/admin/missions/${bar.id}`}
-                    className="flex min-w-0 flex-wrap items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 text-xs hover:underline"
-                  >
+                  <MissionBarShell bar={bar} drawer={drawer} narrow>
                     <MissionBarContent bar={bar} />
                     <span className="text-[11px] text-muted-foreground">
                       {columns[bar.startCol]?.dateLabel} ~ {columns[bar.endCol]?.dateLabel}
                     </span>
-                  </Link>
+                  </MissionBarShell>
                 </li>
               ))}
             </ul>
@@ -257,25 +380,46 @@ export default function WeeklyCalendar({
       <div className={cn('grid grid-cols-7 gap-2', adaptive && 'grid-cols-1 @[56rem]:grid-cols-7')}>
         {columns.map((col) => {
           const contentEmpty = col.items.length === 0 && !col.longCardsCount && !col.longInactiveCount && !col.unprogrammed
-          const head =
-            col.signal || col.isToday ? (
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-1">
-                <p className="text-xs font-semibold text-muted-foreground">
-                  {col.weekdayLabel} <span className="font-normal">{col.dateLabel}</span>
-                  {col.isToday && <span className="ml-1 font-bold text-foreground">오늘</span>}
-                </p>
-                {col.signal && (
-                  <span className="inline-flex items-center gap-1">
-                    <OpsStatusBadge type="signal" level={col.signal.level} />
-                    <span className="text-xs tabular-nums text-muted-foreground">{col.signal.count}건</span>
-                  </span>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs font-semibold text-muted-foreground mb-2">
-                {col.weekdayLabel} <span className="font-normal">{col.dateLabel}</span>
-              </p>
-            )
+          const dayTarget: ScheduleDrawerTarget = { kind: 'day', date: col.date }
+          const daySelected = drawer ? isSameDrawerTarget(drawer.selected, dayTarget) : false
+          const headLabel = (
+            <>
+              {col.weekdayLabel} <span className="font-normal">{col.dateLabel}</span>
+              {col.isToday && <span className="ml-1 font-bold text-foreground">오늘</span>}
+            </>
+          )
+          const headSignal = col.signal ? (
+            <span className="inline-flex items-center gap-1">
+              <OpsStatusBadge type="signal" level={col.signal.level} />
+              <span className="text-xs tabular-nums text-muted-foreground">{col.signal.count}건</span>
+            </span>
+          ) : null
+          const head = drawer ? (
+            // 서랍 모드: 칸 머리 전체가 날짜 서랍을 여는 버튼이다(날짜·오늘 표시·신호 칩이 한 버튼 안에 있다).
+            <button
+              type="button"
+              data-drawer-trigger={drawerTriggerValue(dayTarget)}
+              aria-current={daySelected ? 'true' : undefined}
+              onClick={(event) => drawer.onOpen(dayTarget, event.currentTarget)}
+              className={cn(
+                'mb-2 flex min-h-11 w-full flex-wrap items-center justify-between gap-1 rounded-md px-1 py-0.5 text-left hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring @[40rem]:min-h-0',
+                daySelected && 'bg-muted'
+              )}
+            >
+              <span className="text-xs font-semibold text-muted-foreground">{headLabel}</span>
+              {headSignal}
+              <span className="sr-only"> 서랍 열기</span>
+            </button>
+          ) : col.signal || col.isToday ? (
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-1">
+              <p className="text-xs font-semibold text-muted-foreground">{headLabel}</p>
+              {headSignal}
+            </div>
+          ) : (
+            <p className="text-xs font-semibold text-muted-foreground mb-2">
+              {col.weekdayLabel} <span className="font-normal">{col.dateLabel}</span>
+            </p>
+          )
           const body = (
             <>
               {contentEmpty ? (
@@ -291,7 +435,7 @@ export default function WeeklyCalendar({
                   {col.items.length > 0 && (
                     <ul className="space-y-1">
                       {col.items.map((item) => (
-                        <CalendarItem key={item.id} item={item} />
+                        <CalendarItem key={item.id} item={item} drawer={drawer} />
                       ))}
                     </ul>
                   )}
