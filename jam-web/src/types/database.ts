@@ -1103,6 +1103,8 @@ export type TodayCardTemplateType =
   | 'drop_alert'
   | 'editorial_article'
   | 'ranking_board'
+  /** 레시피 공개 카드(티켓 20261006_1217). DB CHECK(`today_cards_template_type_check`)에는 ⑫-b(20261006_1218)의 마이그레이션 217이 더한다 — 그 전에는 DB가 이 값의 저장을 거절한다. */
+  | 'recipe_reveal'
 
 /** 카드가 화면에 어떤 형태로 노출될지 — template_type(콘텐츠 종류)과 별개 축 */
 export type TodayCardLayoutType =
@@ -1153,6 +1155,8 @@ export interface TodayCardRow {
   title_in_image?: boolean | null
   /** 운영 항목의 패턴 번호 복사본(마이그레이션 211, 티켓 20261001_2056). NULL이면 패턴 없음이거나 옛 카드다. 선택인 이유는 `shape`와 같다. */
   pattern_no?: string | null
+  /** 레시피 공개 카드(`recipe_reveal`)가 가리키는 레시피(티켓 20261006_1217). 칼럼은 ⑫-b(20261006_1218)의 마이그레이션 217이 만든다 — 그 전에는 칼럼이 없어 `undefined`로 온다. 선택인 이유는 `shape`와 같다. */
+  recipe_id?: string | null
 }
 
 // =========================================

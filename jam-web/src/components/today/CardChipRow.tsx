@@ -16,6 +16,8 @@ import { formatKstMonthDay, type CardView } from '@/lib/today/cardView'
  * - 그리는 값만 받는다. 간격(위·아래 마진)은 호출부가 `className`으로 준다.
  * - 줄바꿈하지 않는다(첫 줄 높이 고정). 좁아지면 줄어드는 것은 지역 핀 글자뿐이다(라벨·희귀도·게재일은 `shrink-0`).
  * - 드랍은 필수 정보 「지역 ○○」 줄이 같은 지역 값을 이미 내므로 핀을 뺀다(한 카드에 같은 값이 두 번 보이지 않게). 이 규칙은 여기 한 곳에만 둔다.
+ * - 그릴 것이 하나도 없으면(라벨·지역 핀·희귀도·게재일 모두 없음) 줄 자체를 그리지 않는다 — 이 코드가 모르는 템플릿 값의 카드는 라벨이 사전에 없어 생략되는데
+ *   빈 줄이 남으면 호출부가 준 아래 마진만 남아 제목이 8px 밀려 내려간다(티켓 20261006_1217).
  * - 게재일은 `publishedAt`이 있고 읽을 수 있을 때만 줄 끝에 「10월 5일」(KST, 연도 없음)로 그린다. 칩 줄 정렬 축이 둘(왼쪽 칩들, 줄 끝 게재일)인 것은
  *   분류 정보와 시점 정보를 갈라 읽게 하려는 의도라 게재일을 칩(필)으로 만들지 않는다.
  */
@@ -39,6 +41,8 @@ export default function CardChipRow({
   const mutedText = scrim ? 'text-white' : 'text-text-inverse/60'
   const showRegionPin = Boolean(view.regionLabel) && view.resource !== 'drop'
   const publishedDay = view.publishedAt ? formatKstMonthDay(view.publishedAt) : null
+
+  if (!view.label && !showRegionPin && !view.rarity && !publishedDay) return null
 
   return (
     <div className={className ? `flex items-center gap-[var(--spacing-8)] ${className}` : 'flex items-center gap-[var(--spacing-8)]'}>

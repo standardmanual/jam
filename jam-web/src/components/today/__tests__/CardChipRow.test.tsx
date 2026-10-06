@@ -60,6 +60,19 @@ describe('CardChipRow — 줄', () => {
   it('라벨이 없으면 라벨 칩을 그리지 않는다', () => {
     expect(render({ label: undefined })).not.toContain('padding:6px 10px')
   })
+
+  it('그릴 것이 하나도 없으면 줄 자체를 그리지 않는다 — 호출부가 준 아래 마진만 남지 않는다(처음 보는 템플릿 값의 카드, 티켓 20261006_1217)', () => {
+    expect(render({ label: undefined }, 'mb-[var(--spacing-8)]')).toBe('')
+    expect(render({ label: '' }, 'mb-[var(--spacing-8)]')).toBe('')
+    // 드랍은 지역 핀을 그리지 않으므로 라벨도 없으면 비어 있다
+    expect(render({ resource: 'drop', label: undefined, regionLabel: '한강공원' })).toBe('')
+  })
+
+  it('라벨이 없어도 지역 핀·희귀도·게재일 중 하나라도 있으면 줄은 그려진다', () => {
+    expect(render({ label: undefined, regionLabel: '성수동' })).toContain('성수동')
+    expect(render({ label: undefined, resource: 'badge', rarity: 'epic' })).toContain('Epic')
+    expect(render({ label: undefined, resource: 'article', publishedAt: '2026-10-05T03:00:00.000Z' })).toContain('10월 5일')
+  })
 })
 
 describe('CardChipRow — 지역 핀', () => {

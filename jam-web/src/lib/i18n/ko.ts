@@ -356,6 +356,8 @@ export const ko = {
     dropAlert: '드랍',
     editorialArticle: '기사',
     rankingBoard: '랭킹',
+    /** 레시피 공개 카드의 칩 줄 라벨(티켓 20261006_1217) — 어드민 템플릿 선택지 라벨과 같다 */
+    recipeReveal: '레시피 공개',
     noBody: '본문이 없어요',
     rankingEmpty: '아직 랭킹이 없어요',
     /** 기사 본문 CTA 버튼 라벨 — 대상 종류별 고정 문구(티켓 20260924_0107) */
@@ -372,6 +374,9 @@ export const ko = {
     factRewardBadges: '배지 {count}개',
     factPlace: '지역 {place}',
     factItemCount: '아이템 {count}개',
+    /** 레시피 공개 카드(티켓 20261006_1217) — 재료 수는 슬롯 수이고, 공개일은 공개 전 카드에만 있다 */
+    factIngredientCount: '재료 {count}개',
+    factRevealDate: '공개 {date}',
     /** 남은 시간 — 종료 7일 이내에만 기간 줄 대신 쓴다. 초·분 단위와 카운트다운은 쓰지 않는다 */
     remainingDays: '{count}일 남음',
     remainingHours: '{count}시간 남음',

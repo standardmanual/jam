@@ -97,6 +97,18 @@ describe('validateHomeFeedBundle — 통과', () => {
     expect(validate(raw).errors).toEqual([]);
   });
 
+  it('필수 참조가 없는 레시피 공개 카드(recipe_reveal)도 통과한다 — 레시피 칸은 ⑫-b(티켓 20261006_1218)가 만든다', () => {
+    const raw = validRaw();
+    raw.card = {
+      title: '레시피 공개',
+      template_type: 'recipe_reveal',
+      exposure_tags: ['all'],
+      starts_at: '2026-10-05T00:00:00+09:00',
+      ends_at: '2026-10-12T00:00:00+09:00',
+    };
+    expect(validate(raw).errors).toEqual([]);
+  });
+
   it('참조를 채운 미션 소개·배지 소개·진행 알림 카드도 통과한다', () => {
     const raw = validRaw();
     Object.assign(raw.card, { template_type: 'mission_spotlight', mission_id: MISSION_ID, body_markdown: undefined, target_href: '/missions/x' });
@@ -115,8 +127,13 @@ describe('validateHomeFeedBundle — 통과', () => {
 });
 
 describe('허용값 목록 — today-sections.ts·DB CHECK와 갈라지지 않는다', () => {
-  it('템플릿 목록은 today_cards_template_type_check(마이그레이션 158)와 같다', () => {
-    expect([...TEMPLATE_TYPES].sort()).toEqual(checkValues('158_ranking_modes.sql', 'today_cards_template_type_check').sort());
+  it('템플릿 목록은 today_cards_template_type_check(마이그레이션 158)와 같다 — 코드가 먼저 더한 recipe_reveal 하나만 빼고', () => {
+    // 임시 허용(티켓 20261006_1217): 코드 목록은 ⑫-a가 recipe_reveal을 먼저 더했고(1453 결정 5·16 — 그리는 코드를 DB보다 먼저 낸다), DB CHECK는 ⑫-b(티켓
+    // 20261006_1218)의 마이그레이션 217이 바꾼다. 그때까지 «코드 목록 − CHECK = recipe_reveal 하나»만 허용한다. 217이 들어오면 이 예외를 지우고 217과 대조한다.
+    const PENDING_IN_DB = ['recipe_reveal'];
+    const dbTemplates = checkValues('158_ranking_modes.sql', 'today_cards_template_type_check');
+    expect([...TEMPLATE_TYPES].filter((value) => !dbTemplates.includes(value)).sort()).toEqual(PENDING_IN_DB);
+    expect(dbTemplates.filter((value) => !(TEMPLATE_TYPES as string[]).includes(value))).toEqual([]);
   });
 
   it('노출 형태 목록은 today_cards_layout_type_check(마이그레이션 158)와 같다', () => {

@@ -174,6 +174,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | `drop_alert` | 드랍 유도 (drop_alert) | 바로가기형 — 이미지 없는 짧은 CTA | 설명문 |
 | `editorial_article` | 에디토리얼 기사 (editorial_article) | 큰 썸네일형 — 커버 이미지 크게 | 본문·미션·컬렉션·이동경로(target_href) |
 | `ranking_board` | 랭킹보드 (ranking_board) | 순위 리스트형 — 랭킹보드 목록(포디엄 없음) | 설명문·랭킹모드·이동경로(target_href) |
+| `recipe_reveal` | 레시피 공개 (recipe_reveal) | 배지목록형 — 배지 갤러리/리스트 | 설명문 |
 <!-- END generated: templates -->
 
 컨텐츠 유형 카탈로그(`TODAY_CONTENT_TYPE_OPTIONS`, PRD `content-automation/PRD.md` §6과 같은 값):
@@ -387,6 +388,8 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | `editorial_article` | 입력과 무관(카드 자신의 id로 고정, target_href·미션·컬렉션 입력은 무시) | `/today/{id}` |
 
 기사 본문 CTA 버튼의 목적지(`editorial_article` 전용, `resolveArticleCtaTarget`) — 우선순위:
+| `recipe_reveal` | 레시피 유무와 무관(공개 전·후 같다, 레시피별 주소는 없다) | `/combine` |
+| `recipe_reveal` | target_href 명시 | `{target_href}` |
 
 | 조건 | href | kind |
 |---|---|---|

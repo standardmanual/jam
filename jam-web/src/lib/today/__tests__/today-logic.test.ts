@@ -121,6 +121,16 @@ check('resolveTargetHref: drop_alert → /drops', () => {
   const card = makeCard({ template_type: 'drop_alert' })
   assert.equal(resolveTargetHref(card), '/drops')
 })
+check('resolveTargetHref: recipe_reveal → /combine (공개 전·후 같다, 레시피 id가 있어도 레시피별 주소는 없다, 티켓 20261006_1217)', () => {
+  assert.equal(resolveTargetHref(makeCard({ template_type: 'recipe_reveal' })), '/combine')
+  assert.equal(resolveTargetHref(makeCard({ template_type: 'recipe_reveal', recipe_id: 'r1' })), '/combine')
+})
+check('resolveTargetHref: recipe_reveal 운영자가 지정한 주소가 우선', () => {
+  const card = makeCard({ template_type: 'recipe_reveal', recipe_id: 'r1', target_href: '/combine?tab=recipes' })
+  assert.equal(resolveTargetHref(card), '/combine?tab=recipes')
+  // 공백뿐인 주소는 지정하지 않은 것과 같다
+  assert.equal(resolveTargetHref(makeCard({ template_type: 'recipe_reveal', target_href: '   ' })), '/combine')
+})
 check('resolveTargetHref: progress_nudge 배지없고 미션있으면 → /missions/{id}', () => {
   const card = makeCard({ template_type: 'progress_nudge', mission_id: 'm9' })
   assert.equal(resolveTargetHref(card), '/missions/m9')

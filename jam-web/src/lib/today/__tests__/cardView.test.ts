@@ -42,16 +42,20 @@ describe('resourceOfTemplate — 템플릿 → 자원 대응', () => {
     ['itembook_milestone', 'collection'],
     ['progress_nudge', 'auto'],
     ['location_trend', 'auto'],
+    ['recipe_reveal', 'recipe'],
   ] as const)('%s → %s', (template, resource) => {
     expect(resourceOfTemplate(template)).toBe(resource)
   })
 
-  it('recipe는 대응하는 템플릿이 아직 없다', () => {
-    expect(CARD_RESOURCES).toContain('recipe')
+  it('자원 8개 모두 대응하는 템플릿이 있다(recipe는 recipe_reveal이 맡는다, 티켓 20261006_1217)', () => {
     const mapped = (
-      ['mission_spotlight', 'drop_alert', 'badge_spotlight', 'editorial_article', 'ranking_board', 'itembook_milestone', 'progress_nudge', 'location_trend'] as const
+      ['mission_spotlight', 'drop_alert', 'badge_spotlight', 'editorial_article', 'ranking_board', 'itembook_milestone', 'progress_nudge', 'location_trend', 'recipe_reveal'] as const
     ).map(resourceOfTemplate)
-    expect(mapped).not.toContain('recipe')
+    expect([...new Set(mapped)].sort()).toEqual([...CARD_RESOURCES].sort())
+  })
+
+  it('처음 보는 템플릿 값은 undefined를 돌려준다(그리는 쪽이 견디는 안전망)', () => {
+    expect(resourceOfTemplate('future_template' as never)).toBeUndefined()
   })
 })
 
@@ -650,3 +654,4 @@ describe('toCardView — 템플릿 구분 값(template, 티켓 20261001_2244)', 
     expect(nudge.template).not.toBe(trend.template)
   })
 })
+    'recipe_reveal',
