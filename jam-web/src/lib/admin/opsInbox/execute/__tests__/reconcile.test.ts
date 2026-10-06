@@ -1361,6 +1361,8 @@ describe('실행 — JAM! 배지의 상태 전이 (티켓 20261004_1756, 실제 
       expect((db.tables.badges as Row[]).map((row) => row.id)).toEqual([uid(98)])
       expect(db.decisions('fail')[0]).toMatchObject({ item_id: ID.badge, reason: STALLED })
       expect(result.failed[0]).toMatchObject({ itemId: ID.badge, reason: STALLED, resourceId: null })
+      // 자원을 지웠으니 항목 ID 기준 이미지 파일도 정리한다(티켓 20261006_1801).
+      expect(db.removedFiles).toEqual([{ bucket: 'images', paths: [`ops-inbox/badges/${ID.badge}.png`, `ops-inbox/badges/${ID.badge}.webp`] }])
       const order = db.calls.map((call) => `${call.table}:${call.op}`)
       expect(order.indexOf('user_activity_badges:select')).toBeLessThan(order.lastIndexOf('badges:delete'))
     })
@@ -1375,6 +1377,7 @@ describe('실행 — JAM! 배지의 상태 전이 (티켓 20261004_1756, 실제 
       expect(result.failed[0]).toMatchObject({ reason: `${STALLED}. ${REMAINS}`, resourceId: BADGE_RES })
       expect(JSON.stringify([result, db.decisions()])).not.toContain('user_activity_badges')
       expect(logged()).toContain('user_activity_badges')
+      expect(db.removedFiles).toEqual([]) // 자원이 남았으니 파일도 남긴다
     })
 
     it('카드·미션·배지가 함께 멈추면 카드 → 미션 → 배지 순으로 지운다(배지를 먼저 지우려면 가리키는 쪽이 남아 참조에 걸린다)', async () => {

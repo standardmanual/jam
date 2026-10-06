@@ -590,7 +590,7 @@ describe('생성 단계', () => {
   })
 
   it('되돌리지 못한 자원이 있으면 그 항목의 사유에 알리고 나머지 되돌림은 계속한다', async () => {
-    const { rec, run } = setup(chain(), {
+    const { db, rec, run } = setup(chain(), {
       card: { failCreate: { reason: '카드를 만들지 못했어요' } },
       mission: { failUndo: { reason: '미션을 지우지 못했어요', detail: 'undo detail' } },
     })
@@ -600,6 +600,8 @@ describe('생성 단계', () => {
     expect(result.body.failed.find((entry) => entry.id === ID.badge)?.reason).toBe('연결된 항목을 만들지 못해 함께 실패했어요')
     expect(JSON.stringify(result)).not.toContain('undo detail')
     expect(logged()).toContain('undo detail')
+    // 되돌린 배지의 이미지 파일만 정리한다. 되돌리지 못한 미션의 파일은 자원이 남아 있어 그대로 둔다(티켓 20261006_1801).
+    expect(db.removedFiles.map((entry) => entry.paths[0])).toEqual([`ops-inbox/badges/${ID.badge}.png`])
   })
 
   it('서버가 ID를 정하는 종류(레시피)는 만든 ID를 대상 칸에 넣고 만든 직후 created_resource에 적는다', async () => {

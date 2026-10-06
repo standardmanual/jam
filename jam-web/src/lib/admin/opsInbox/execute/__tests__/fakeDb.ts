@@ -243,6 +243,16 @@ export class FakeDb {
     ambient_drop_config: [],
   }
   calls: FakeCall[] = []
+  /** 저장소 정리(티켓 20261006_1801)가 부르는 `storage.from(버킷).remove(경로들)`의 호출 기록만 남기는 스텁. */
+  removedFiles: Array<{ bucket: string; paths: string[] }> = []
+  storage = {
+    from: (bucket: string) => ({
+      remove: async (paths: string[]) => {
+        this.removedFiles.push({ bucket, paths })
+        return { data: [], error: null }
+      },
+    }),
+  }
   seq = 0
   /** 쓰기·읽기 직전에 부른다. 다른 곳에서 같은 행을 먼저 바꾼 상황을 흉내 낼 때 쓴다. */
   beforeRun?: (call: FakeCall) => void

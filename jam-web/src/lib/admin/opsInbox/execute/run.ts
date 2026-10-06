@@ -21,6 +21,7 @@
 import type { Json } from '@/types/database.generated'
 import { isUuid } from '@/lib/admin/uuid'
 import { MAX_DECISION_REASON_CHARS, MAX_ITEMS, OPS_DECISION_ACTION_EXECUTE, OPS_DECISION_ACTION_FAIL } from '@/lib/admin/opsInbox/constants'
+import { removeOpsImageFiles } from '@/lib/admin/opsInbox/image'
 import { asRecord } from '@/lib/admin/opsInbox/itemView'
 import { formatKstDayTime, kindLabel } from '@/lib/admin/opsInbox/labels'
 import { formatExecuteFailureMessage, formatExecuteSummaryMessage, postOpsSlack, type OpsSlackChannel, type OpsSlackResult } from '@/lib/admin/opsInbox/slack'
@@ -330,6 +331,8 @@ async function failGroup(
     if (undone) {
       undoFailedIds.add(entry.item.id)
       console.error(`${LOG} 되돌리지 못한 자원(${kindLabel(entry.item.kind)}):`, undone.detail ?? undone.reason)
+    } else {
+      await removeOpsImageFiles(ctx.service, { kind: entry.item.kind, itemId: entry.item.id })
     }
   }
 
