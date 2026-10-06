@@ -10,6 +10,7 @@
  *   선점이 0행이면 409다(두 번 눌러도 자원은 한 번만 바뀐다). 상태 맞추기(⑦)가 같은 순간 먼저 닫았어도 같은 409다.
  * - 자원 종료가 실패하면(`not_published`·`changed`·`error`) 항목을 `live`와 원래 `ends_at`으로 되돌린다(`status = 'ended'` 조건). 되돌림까지 성공하면 `not_published`는 409, 그 밖은 500이고 슬랙은 없다.
  *   되돌림도 실패하면 항목은 「종료」인데 자원은 아직 게재 중이다: 500과 `#jam-alert` 글을 남긴다(상태 맞추기는 「종료」 항목을 읽지 않으므로 사람이 확인해야 한다).
+ *   이 500 응답에는 `itemEnded: true`가 실린다(화면이 항목이 「종료」로 바뀐 것을 알고 서버 문장을 토스트로 보인다, 티켓 20261006_1038).
  * - 자원이 이미 끝났거나(`alreadyEnded`) 없으면(`missing`, 자원 ID가 비어 있는 항목 포함) 자원은 건드리지 않고 항목만 닫는다(공개 전 취소의 「이미 없음」과 같은 해석).
  * - 시험 묶음은 자원 단계를 건너뛰고 상태만 바꾼다(`created_resource`가 `{ sample: true }`라 자원이 없다, §8.8).
  * - 핸들러에 `end`가 없는 종류(드랍 예약)는 409다. 이 항목만 끝낸다: 이 항목을 가리키는 게재 중 항목은 그대로 두고 막지도 않는다(미리 보기가 알려 줄 뿐이다).
@@ -37,7 +38,7 @@ const MESSAGES = {
   revertFailed: '지금 종료하지 못했어요. 항목은 종료로 바뀌었지만 자원은 아직 게재 중이에요. 기존 어드민에서 종료 시각을 확인해 주세요.',
   previewFailed: '지금 종료할 항목을 확인하지 못했어요. 잠시 뒤 다시 눌러 주세요.',
   itemNotFound: '찾을 수 없는 항목이에요.',
-  notLive: '게재중인 항목만 지금 종료할 수 있어요. 화면을 새로 고쳐 상태를 확인해 주세요.',
+  notLive: '게재중인 항목만 지금 종료할 수 있어요.',
   noEnd: '이 종류는 지금 종료가 없어요. 놓인 드랍은 그대로 둬요.',
   // 슬랙 글에 나가는 사유
   slackRevertFailed: '항목은 종료로 바뀌었지만 자원은 아직 게재 중이에요',
@@ -106,8 +107,8 @@ export type EndFailure = RunFailure & { slack?: EndNotification }
 
 // ── 도우미 ───────────────────────────────────────────────────────────────────────────────────────
 
-function fail(status: RunFailure['status'], error: string): RunFailure {
-  return { ok: false, status, error }
+function fail(status: RunFailure['status'], error: string, extra?: Record<string, unknown>): RunFailure {
+  return { ok: false, status, error, ...(extra ? { extra } : {}) }
 }
 
 function logError(what: string, error: { message: string } | null | undefined) {
@@ -271,7 +272,7 @@ export async function endItem(
         const reverted = await revertItem(service, bundleId, target, stamp)
         if (!reverted) {
           return {
-            ...fail(500, MESSAGES.revertFailed),
+            ...fail(500, MESSAGES.revertFailed, { itemEnded: true }),
             slack: { batchId: crypto.randomUUID(), isSample, itemLabel, reason, resourceState: null, problem: MESSAGES.slackRevertFailed, decisionLogFailed: false },
           }
         }

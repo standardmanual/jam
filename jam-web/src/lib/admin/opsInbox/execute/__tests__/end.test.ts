@@ -5,6 +5,7 @@
  * - 막는 경우: 게재중이 아님(409 `notLive`)·`end`가 없는 종류(409 `noEnd`)·두 번째 요청(409, 자원은 한 번만)·아직 공개 전인 자원(409, 항목은 게재중으로)·묶음에 없는 항목(404)
  * - 실패(가정 6·14): 자원 종료 실패(DB 오류·읽은 뒤 바뀜·핸들러가 던짐)는 항목을 되돌리고 500 `endFailed`, 되돌림도 실패하면 500 `revertFailed`와 `#jam-alert` 글. DB 오류 원문은 어디에도 나오지 않는다
  * - 시험 묶음(가정 12): 자원 읽기·쓰기 없이 상태만 바꾸고 결정 기록을 남기며 슬랙 글이 「[시험]」으로 시작한다. 결정 기록 실패는 200 + `decisionLogFailed`
+ * - 티켓 20261006_1038(⑪-b): 숨긴(`hidden`) 게재 중 미션도 시작 시각이 지났으면 끝낸다, 노출일 지정 미션의 시작 시각은 `exposure_at`이다, 409 문장에서 「화면을 새로 고쳐…」를 뺐다, 되돌림 실패 500에 `itemEnded: true`가 실린다
  * - 미리 보기(가정 10·11): 쓰기 0회, 직접 가리키는 `live` 항목만, 미션·컬렉션의 영향 유저 수, 세기 실패는 `impact: null`
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
@@ -33,7 +34,7 @@ const ENDED_EARLIER = '2026-10-05T01:30:00.000Z'
 const LABEL = '홈피드 카드 · 10/10(토) 09:00'
 
 const SERVER_FIXED = {
-  notLive: '게재중인 항목만 지금 종료할 수 있어요. 화면을 새로 고쳐 상태를 확인해 주세요.',
+  notLive: '게재중인 항목만 지금 종료할 수 있어요.',
   noEnd: '이 종류는 지금 종료가 없어요. 놓인 드랍은 그대로 둬요.',
   itemNotFound: '찾을 수 없는 항목이에요.',
   endFailed: '지금 종료하지 못했어요. 자원은 그대로 게재 중이에요. 잠시 뒤 다시 눌러 주세요.',
@@ -176,6 +177,21 @@ describe('게재중 항목 종료 — 실제 핸들러(가정 6·7, 테스트 �
     ok(await offCard.run())
     expect(rowOf(offCard.db, 'today_cards').ends_at).toBe(NOW_ISO)
   })
+
+  it('운영툴 밖에서 숨긴(hidden) 게재 중 미션도 시작 시각이 지났으면 끝낸다(티켓 20261006_1038 결정 1)', async () => {
+    const { db, run } = setupKind(MISSION, { row: { exposure_mode: 'hidden' } })
+    const result = ok(await run())
+    expect(result.body.resourceState).toBe('ended')
+    expect(rowOf(db, 'missions').ends_at).toBe(NOW_ISO)
+    expect(db.item(ITEM_ID)).toMatchObject({ status: 'ended', ends_at: NOW_ISO })
+    expect(db.decisions('end')).toHaveLength(1)
+  })
+
+  it('노출일 지정 미션의 시작 시각은 exposure_at이다. exposure_at이 비어 있으면 starts_at으로 가른다', async () => {
+    const noExposureAt = setupKind(MISSION, { row: { exposure_mode: 'scheduled', exposure_at: null } })
+    expect(ok(await noExposureAt.run()).body.resourceState).toBe('ended')
+    expect(rowOf(noExposureAt.db, 'missions').ends_at).toBe(NOW_ISO)
+  })
 })
 
 describe('자원이 이미 끝났거나 없음(가정 8, 테스트 ③④)', () => {
@@ -282,7 +298,8 @@ describe('막는 경우(가정 13·14, 테스트 ⑤⑥⑦)', () => {
     const cases: Array<[KindCase, Partial<Row>]> = [
       [KINDS[0], { starts_at: future }],
       [MISSION, { starts_at: future }],
-      [MISSION, { exposure_mode: 'hidden' }],
+      [MISSION, { exposure_mode: 'hidden', starts_at: future }],
+      [MISSION, { exposure_mode: 'scheduled', exposure_at: future, starts_at: STARTED }],
       [KINDS[2], { valid_from: future }],
       [KINDS[3], { valid_from: future }],
       [KINDS[4], { valid_from: future }],
@@ -321,7 +338,9 @@ describe('자원 종료 실패(가정 6, 테스트 ⑧⑨)', () => {
     db.beforeRun = (call) => {
       if (call.table === 'missions' && call.op === 'update') rowOf(db, 'missions').ends_at = other
     }
-    expect(bad(await run())).toMatchObject({ status: 500, error: SERVER_FIXED.endFailed })
+    const failure = bad(await run())
+    expect(failure).toMatchObject({ status: 500, error: SERVER_FIXED.endFailed })
+    expect(failure.extra).toBeUndefined() // 항목을 되돌렸으니 itemEnded는 없다
     expect(db.item(ITEM_ID)).toMatchObject({ status: 'live', ends_at: ENDS })
     expect(rowOf(db, 'missions').ends_at).toBe(other)
     expect(db.decisions()).toEqual([])
@@ -358,7 +377,7 @@ describe('자원 종료 실패(가정 6, 테스트 ⑧⑨)', () => {
     db.failIf = (call) => (call.table === 'missions' && call.op === 'update') || (call.table === 'ops_bundle_items' && call.op === 'update' && (call.payload as Row).status === 'live')
     const failure = bad(await run())
 
-    expect(failure).toMatchObject({ status: 500, error: SERVER_FIXED.revertFailed })
+    expect(failure).toMatchObject({ status: 500, error: SERVER_FIXED.revertFailed, extra: { itemEnded: true } })
     expect(db.item(ITEM_ID).status).toBe('ended')
     expect(rowOf(db, 'missions').ends_at).toBe(ENDS)
     expect(db.decisions()).toEqual([])
