@@ -44,6 +44,7 @@ export const dynamic = 'force-dynamic'
 
 /** 미리보기 실패 응답의 고정 문장 — 다른 어드민 라우트처럼 상세 원인은 서버 로그에만 둔다 */
 const PREVIEW_FAILED_MESSAGE = '열릴 예정 배지 미리보기 중 오류가 발생했습니다. 서버 로그를 확인해 주세요.'
+const USERS_LOOKUP_FAILED_MESSAGE = '전체 유저 조회 중 오류가 발생했습니다. 서버 로그를 확인해 주세요.'
 
 export async function POST(req: NextRequest) {
   const admin = await getAdminUser()
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase.from('users').select('id')
     if (error) {
       console.error('[/api/admin/badges/reevaluate-all] 전체 유저 조회 오류:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: USERS_LOOKUP_FAILED_MESSAGE }, { status: 500 })
     }
     targetUserIds = ((data ?? []) as { id: string }[]).map((u) => u.id)
   }

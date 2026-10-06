@@ -219,6 +219,21 @@ describe('열릴 예정 배지 미리보기', () => {
   })
 })
 
+describe('전체 유저 조회 실패', () => {
+  it('500이고 응답에는 내부 오류 문장이 없다. 상세는 서버 로그에만 남고 평가는 하지 않는다', async () => {
+    state.usersError = { message: 'permission denied for table users' }
+
+    const res = await POST(post({}))
+
+    expect(res.status).toBe(500)
+    const raw = await res.text()
+    expect(JSON.parse(raw)).toEqual({ error: '전체 유저 조회 중 오류가 발생했습니다. 서버 로그를 확인해 주세요.' })
+    expect(raw).not.toContain('permission denied')
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('전체 유저 조회 오류'), state.usersError)
+    expect(reevaluateMock).not.toHaveBeenCalled()
+  })
+})
+
 describe('dryRun 기본값', () => {
   it('dryRun을 생략하면 true로 평가한다(실제 발급 경로가 열리지 않는다)', async () => {
     await POST(post({}))
