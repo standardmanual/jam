@@ -93,4 +93,4 @@ jam-web/src/app/api/cron/{ambient-drop,notifications,external-inputs,poi-cleanup
 - 직전 커밋 8ffe862b1은 이 티켓을 닫는다는 메시지였지만 편집 스크립트가 옛 완료 기록 형식에 걸려 실패해 1540 티켓만 들어갔다. 이 커밋이 실제 종료 기록이다.
 
 ### 잔여 이슈
-- staging 실제 확인: push 뒤 jam-stage 배포가 이 커밋을 서빙하면 `poi-cleanup`에 `Bearer undefined` 요청이 401인지 본다.
+- 없음. staging 실제 확인 완료: jam-stage가 15:42 배포(`dpl_BZV76atLbD6uU5JeV9gXQAbxaktA`, 74120aebd 포함)를 서빙하는 상태에서 15:48 `poi-cleanup`에 `Authorization: Bearer undefined`를 보내 401 `Unauthorized`를 받았다(나머지 3종은 공용 DB 영향 때문에 호출하지 않고 테스트로 갈음).
