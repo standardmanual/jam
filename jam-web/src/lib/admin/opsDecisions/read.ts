@@ -26,8 +26,8 @@ import {
   OPS_DECISION_ACTION_REJECT,
   OPS_DECISION_ACTION_REVERT,
   OPS_DECISION_ACTION_SUBMIT,
-  OPS_RECONCILE_ACTOR,
 } from '@/lib/admin/opsInbox/constants'
+import { classifyActor, type OpsActorType } from '@/lib/admin/opsDecisions/line'
 import { OPS_PATTERN_NO_PATTERN } from '@/lib/admin/opsPatterns/constants'
 import { OPS_PATTERN_NO_INVALID_MESSAGE, comparePatternNo } from '@/lib/admin/opsPatterns/read'
 
@@ -65,11 +65,6 @@ export const OPS_DECISION_ACTIONS: readonly string[] = [
   OPS_DECISION_ACTION_EXTERNAL_CHANGE,
 ]
 
-/** 에이전트 토큰 제출의 행위자 접두사(`token:<에이전트 이름>`, `app/api/admin/ops-inbox/route.ts`가 붙인다). */
-const AGENT_ACTOR_PREFIX = 'token:'
-/** 시스템 행위자 접두사(`system:reconcile` 등). 정본 값은 `OPS_RECONCILE_ACTOR`이고 앞으로 `system:` 아래에 값이 더 생길 수 있다. */
-const SYSTEM_ACTOR_PREFIX = OPS_RECONCILE_ACTOR.slice(0, OPS_RECONCILE_ACTOR.indexOf(':') + 1)
-
 /** 읽는 칸 목록. `raw`·`slack_result`는 일부러 넣지 않는다. 묶음의 `bundle_id`는 제출자가 정한 값이다(결정 행의 `bundle_id`는 행 ID라 쓰지 않는다). */
 export const OPS_DECISION_READ_COLUMNS =
   'id, created_at, action, actor, item_id, batch_id, diff, reason, ops_bundles!inner(bundle_id, week, is_sample), ops_bundle_items!inner(item_key, kind, pattern_no, status)'
@@ -78,7 +73,9 @@ export const OPS_DECISION_AGGREGATE_COLUMNS = 'id, action, item_id, ops_bundles!
 
 // ── 응답 모양(DB 스네이크 → 카멜). `actor` 원문 칸은 없다 ─────────────────────────────────────────
 
-export type OpsActorType = 'admin' | 'agent' | 'system'
+// 행위자 종류와 `actor` 원문 변환은 결정 기록 문장과 함께 `line.ts`가 정본이다(S1·S3·S4가 같은 문장을 쓴다).
+export { classifyActor }
+export type { OpsActorType }
 
 export interface OpsDecisionRecord {
   id: string
@@ -159,15 +156,6 @@ export interface OpsDecisionsResult {
 function embedded<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null
   return value ?? null
-}
-
-/** `actor` 원문을 행위자 종류로 바꾼다. 관리자 ID는 이름 없이 `admin`이 되어 원문이 남지 않는다. */
-export function classifyActor(actor: string): { actorType: OpsActorType; agentName: string | null } {
-  if (actor.startsWith(AGENT_ACTOR_PREFIX)) {
-    return { actorType: 'agent', agentName: actor.slice(AGENT_ACTOR_PREFIX.length) || null }
-  }
-  if (actor.startsWith(SYSTEM_ACTOR_PREFIX)) return { actorType: 'system', agentName: null }
-  return { actorType: 'admin', agentName: null }
 }
 
 /** 행에 다른 칸(`actor` 원문·`slack_result`·`raw` 포함)이 섞여 들어와도 응답 칸만 골라 싣는다. */

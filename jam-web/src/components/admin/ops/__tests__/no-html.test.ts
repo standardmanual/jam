@@ -45,6 +45,10 @@ describe('받은 기획함 화면 소스 계약', () => {
     expect(names).toContain('components/admin/ops/OpsItemDetail.tsx')
     expect(names).toContain('components/admin/ops/OpsBundleWorkspace.tsx')
     expect(names).toContain('components/admin/ops/OpsBalanceWarnings.tsx')
+    // 운영 홈·일정표 공용 부품(티켓 20261006_1339): 신호 문장은 에이전트가 보낸 제목이 섞일 수 있어 같은 검사를 받는다
+    expect(names).toContain('components/admin/ops/OpsSignalRow.tsx')
+    expect(names).toContain('components/admin/ops/OpsSampleSwitch.tsx')
+    expect(names).toContain('components/admin/ops/OpsStatusBadge.tsx')
     expect(names).toContain('app/admin/ops-inbox/page.tsx')
     expect(names).toContain('app/admin/ops-inbox/[bundleId]/page.tsx')
     expect(sourceFiles.length).toBeGreaterThanOrEqual(12)

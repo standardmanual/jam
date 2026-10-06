@@ -7,6 +7,7 @@ import {
   OPS_INBOX_TABS,
   OPS_STAGES,
   computeBundleStatus,
+  stageCounts,
   stageOfItemStatus,
   tabOfBundleStage,
 } from '@/lib/admin/opsInbox/bundleStatus'
@@ -147,6 +148,23 @@ describe('computeBundleStatus — 세는 값', () => {
   it('offBar는 반려·취소·실패 개수다', () => {
     const status = computeBundleStatus(['reviewing', 'rejected', 'rejected', 'cancelled', 'failed'])
     expect(status.offBar).toEqual({ rejected: 2, cancelled: 1, failed: 1 })
+  })
+})
+
+describe('stageCounts — 단계마다 센 항목 수', () => {
+  it('여섯 단계가 모두 키로 있고 항목이 없으면 0이다', () => {
+    expect(stageCounts([])).toEqual({ arrived: 0, review: 0, prepare: 0, scheduled: 0, live: 0, ended: 0 })
+  })
+
+  it('승인됨·준비중은 준비 한 칸으로 센다(PRD §7.1)', () => {
+    const counts = stageCounts(['arrived', 'reviewing', 'approved', 'preparing', 'scheduled', 'live', 'live', 'ended'])
+    expect(counts).toEqual({ arrived: 1, review: 1, prepare: 2, scheduled: 1, live: 2, ended: 1 })
+  })
+
+  it('반려·취소·실패와 10개 밖 값은 어느 단계에도 세지 않는다', () => {
+    const counts = stageCounts(['rejected', 'cancelled', 'failed', 'unknown_status', 'live'])
+    expect(Object.values(counts).reduce((sum, count) => sum + count, 0)).toBe(1)
+    expect(counts.live).toBe(1)
   })
 })
 

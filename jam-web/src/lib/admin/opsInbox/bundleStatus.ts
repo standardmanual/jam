@@ -54,6 +54,19 @@ export function stageOfItemStatus(status: string): OpsStage | null {
   return STAGE_OF_STATUS[status as OpsItemStatus]
 }
 
+/**
+ * 단계마다 항목 수를 센다(PRD §7.1 대응). 반려·취소·실패와 10개 밖 값은 어느 단계에도 세지 않는다. 단계 표시줄(S3)과 운영 홈의
+ * 「이번 주 상태」(S1)가 같은 값을 쓴다(티켓 20261006_1339).
+ */
+export function stageCounts(statuses: readonly string[]): Record<OpsStage, number> {
+  const counts = Object.fromEntries(OPS_STAGES.map((stage) => [stage, 0])) as Record<OpsStage, number>
+  for (const status of statuses) {
+    const stage = stageOfItemStatus(status)
+    if (stage) counts[stage] += 1
+  }
+  return counts
+}
+
 export function computeBundleStatus(statuses: readonly string[]): OpsBundleStatus {
   const count: Record<OpsItemStatus, number> = {
     arrived: 0,

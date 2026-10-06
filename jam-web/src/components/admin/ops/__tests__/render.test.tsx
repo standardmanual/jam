@@ -377,6 +377,12 @@ describe('OpsItemDetail', () => {
     expect(html(<OpsItemDetail item={makeItem()} {...base} decisions={[{ ...SUBMIT, actor: 'admin-uuid' }]} />)).toContain('관리자가 제출했어요')
   })
 
+  it('결정 기록: 에이전트 이름이 비어 있으면 「에이전트()가」 대신 「에이전트가」로 쓴다', () => {
+    const out = html(<OpsItemDetail item={makeItem()} {...base} decisions={[{ ...SUBMIT, actor: 'token:' }]} />)
+    expect(out).toContain('에이전트가 제출했어요')
+    expect(out).not.toContain('에이전트()')
+  })
+
   it('다른 항목의 결정 기록은 보이지 않는다', () => {
     const other: OpsDecisionRecord = { ...SUBMIT, id: 'd2', itemId: 'someone-else', actor: 'token:남' }
     const out = html(<OpsItemDetail item={makeItem()} {...base} decisions={[other]} />)

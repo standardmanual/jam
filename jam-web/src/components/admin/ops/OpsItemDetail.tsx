@@ -17,6 +17,7 @@ import {
   worldReviewOf,
 } from '@/lib/admin/opsInbox/itemView'
 import { readDiff } from '@/lib/admin/opsInbox/edit'
+import { classifyActor, decisionLineText } from '@/lib/admin/opsDecisions/line'
 import type { OpsDecisionRecord, OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import {
   AGENT_BALANCE_TITLE,
@@ -220,28 +221,6 @@ function ReviewLines({ item, balance }: { item: OpsItemRecord; balance?: ItemBal
   )
 }
 
-const DECISION_ACTION_LABELS: Record<string, string> = {
-  submit: '제출했어요',
-  approve: '승인했어요',
-  reject: '반려했어요',
-  edit: '수정했어요',
-  revert: '수정을 되돌렸어요',
-  execute: '예약 등록했어요',
-  fail: '예약 등록에 실패했어요',
-  cancel: '공개 전에 취소했어요',
-  end: '종료했어요',
-  external_change: '밖에서 바뀐 것을 찾았어요',
-}
-
-/** 사람이 한 일이 아니라 일이 잘못돼 남는 기록. 행위자가 사람이면 앞에 「관리자가」를 붙이지 않는다(실행한 관리자가 실패한 것이 아니다). */
-const DECISION_OUTCOME_ACTIONS: ReadonlySet<string> = new Set(['fail'])
-
-/** 상태 맞추기 같은 시스템이 남긴 기록의 행위자는 `system:`으로 시작한다(예: `system:reconcile`). */
-const SYSTEM_ACTOR_PREFIX = 'system:'
-
-/** 시스템이 실패로 닫은 기록. 사람의 실패 기록(「예약 등록에 실패했어요」)과 달리 닫은 주체가 시스템이다. */
-const SYSTEM_FAIL_LABEL = '시스템이 실패로 닫았어요'
-
 /** 사유 줄 앞에 붙는 이름. 반려의 사유는 「반려 이유」, 수정의 사유는 「수정한 이유」, 실패·취소·종료의 사유는 「실패 사유」·「취소 사유」·「종료 사유」다. */
 const DECISION_REASON_LABELS: Record<string, string> = {
   reject: '반려 이유',
@@ -252,18 +231,7 @@ const DECISION_REASON_LABELS: Record<string, string> = {
 }
 
 function decisionLine(decision: OpsDecisionRecord): string {
-  const action = Object.prototype.hasOwnProperty.call(DECISION_ACTION_LABELS, decision.action)
-    ? DECISION_ACTION_LABELS[decision.action]
-    : '기록을 남겼어요'
-  const bySystem = decision.actor.startsWith(SYSTEM_ACTOR_PREFIX)
-  if (bySystem && decision.action === 'fail') return SYSTEM_FAIL_LABEL
-  if (DECISION_OUTCOME_ACTIONS.has(decision.action)) return action
-  if (bySystem) return `시스템이 ${action}`
-  if (decision.actor.startsWith('token:')) {
-    // 토큰 제출의 이름은 자기 신고라 글자로만 보여 준다(권한 판단에 쓰지 않는다).
-    return `에이전트(${truncateText(decision.actor.slice('token:'.length), 40)})가 ${action}`
-  }
-  return `관리자가 ${action}`
+  return decisionLineText({ action: decision.action, ...classifyActor(decision.actor) })
 }
 
 const EXTERNAL_TIME_FIELDS = [

@@ -2,12 +2,7 @@ import type { ReactNode } from 'react'
 import { IconBan, IconCheck, IconCircleX, IconAlertTriangle } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/admin/ui/card'
-import {
-  OPS_STAGES,
-  computeBundleStatus,
-  stageOfItemStatus,
-  type OpsStage,
-} from '@/lib/admin/opsInbox/bundleStatus'
+import { OPS_STAGES, computeBundleStatus, stageCounts } from '@/lib/admin/opsInbox/bundleStatus'
 import { OPS_STAGE_BAR_LABELS } from '@/lib/admin/opsInbox/labels'
 
 /**
@@ -36,15 +31,6 @@ interface OffBarChip {
   text: string
   tone: 'destructive' | 'muted'
   Icon: typeof IconBan
-}
-
-function stageCounts(statuses: readonly string[]): Record<OpsStage, number> {
-  const counts = Object.fromEntries(OPS_STAGES.map((stage) => [stage, 0])) as Record<OpsStage, number>
-  for (const status of statuses) {
-    const stage = stageOfItemStatus(status)
-    if (stage) counts[stage] += 1
-  }
-  return counts
 }
 
 function bannerText(offBar: { rejected: number; cancelled: number }): string {

@@ -12,10 +12,16 @@
  * - 「패턴 제안」 항목은 유저에게 나가는 것이 아니라 날짜 구성에 넣지 않는다.
  * - 대표 카드는 그날 전원 대상(`all`) 카드 가운데 정렬이 가장 앞인 카드다(가정 16, A9).
  * - 카드 칸은 `opsInbox/fields.ts`의 읽기 함수로만 읽는다. 「모름」은 `OPS_FIELD_UNKNOWN`이다.
+ * - 운영툴이 만든 실제 카드·미션은 그 운영 항목과 **한 칸으로 합친다**(티켓 20261006_1339, 운영툴 PRD §5·§8.5). 세는 항목의
+ *   `created_resource`(`RESOURCE_KEY_BY_KIND`: 홈피드 카드는 `today_card_id`, 미션은 `mission_id`)가 가리키는 활성 실제 카드·미션을
+ *   따로 세지 않고 그 항목의 칸이 대신한다. 합친 칸의 값은 키·상태·시험·묶음 연결·트라이브·패턴·색 대기는 운영 항목, 날짜 겹침·제목·모양·
+ *   노출 대상·커버·정렬은 실제 카드(미션은 제목·기간)다. 멈춘 항목(반려·취소·실패)은 세지 않으므로 합치지 않고 실제 카드는 그대로 센다.
+ *   ID는 소문자로 비교한다. 같은 자원을 가리키는 항목이 둘이면 먼저 나온 항목만 합친다.
  */
 import type { Json } from '@/types/database.generated'
 import { mondayOfWeek } from '@/lib/admin/cronSchedule'
 import { OPS_HOME_FEED_CARD_KIND, OPS_ITEM_STATUSES } from '@/lib/admin/opsInbox/constants'
+import { RESOURCE_KEY_BY_KIND } from '@/lib/admin/opsInbox/execute/handlers'
 import {
   readOpsItemColorPending,
   readOpsItemExposureTags,
@@ -165,8 +171,13 @@ export interface CompositionCard {
   /** `card:<카드 ID>` 또는 `bundle:<항목 ID>`. 날짜가 달라도 같은 카드면 같은 값이다. */
   key: string
   source: 'card' | 'bundle'
-  /** 실제 카드 ID(`today_cards.id`) 또는 항목 ID(`ops_bundle_items.id`). */
+  /** 실제 카드 ID(`today_cards.id`) 또는 항목 ID(`ops_bundle_items.id`). 실제 카드와 합친 칸은 항목 ID다. */
   id: string
+  /**
+   * 이 칸이 가리키는 실제 카드 ID(`today_cards.id`). 실제 카드 칸은 자기 ID, 실제 카드와 합친 운영 항목 칸은 그 카드의 ID이고,
+   * 합치지 않은 운영 항목 칸은 null이다(일정표가 `created_resource`로 이어진 카드를 운영 항목으로 열 때 쓴다).
+   */
+  resourceId: string | null
   /** 운영 묶음 카드의 묶음 DB 행 ID. 실제 카드는 null. */
   bundleId: string | null
   isSample: boolean
@@ -201,6 +212,8 @@ export interface CompositionCard {
 export interface CompositionBundleItem {
   itemId: string
   bundleId: string
+  /** 합친 실제 미션 ID(`missions.id`). 실제 미션과 합치지 않았거나 미션이 아닌 항목이면 null이다. */
+  resourceId: string | null
   isSample: boolean
   kind: string | null
   status: string
@@ -311,6 +324,7 @@ function buildBundleCard(
     key: `bundle:${item.id}`,
     source: 'bundle',
     id: item.id,
+    resourceId: null,
     bundleId: bundle.id,
     isSample: bundle.isSample,
     title: describeBundleItem(item),
@@ -337,6 +351,7 @@ function buildRealCard(card: SignalCardInput, date: string): CompositionCard {
     key: `card:${card.id}`,
     source: 'card',
     id: card.id,
+    resourceId: card.id,
     bundleId: null,
     isSample: false,
     title: card.title,
@@ -359,16 +374,119 @@ function buildRealCard(card: SignalCardInput, date: string): CompositionCard {
   }
 }
 
+/** 실제 카드의 기간. 시작·종료 시각을 읽을 수 없으면 null이다(그 카드는 날짜에 올리지 않는다). */
+function cardPeriod(card: Pick<SignalCardInput, 'startsAt' | 'endsAt'>): Pick<Period, 'startMs' | 'endMs'> | null {
+  const startMs = parseTime(card.startsAt)
+  const endMs = parseTime(card.endsAt)
+  return startMs === null || endMs === null ? null : { startMs, endMs }
+}
+
+/** 실제 미션의 기간. 종료 시각이 없으면 끝이 없다(상시). 시작·종료 시각을 읽을 수 없으면 null이다. */
+function missionPeriod(mission: Pick<SignalMissionInput, 'startsAt' | 'endsAt'>): Pick<Period, 'startMs' | 'endMs'> | null {
+  const startMs = parseTime(mission.startsAt)
+  if (startMs === null) return null
+  const endMs = mission.endsAt === null ? Infinity : parseTime(mission.endsAt)
+  return endMs === null ? null : { startMs, endMs }
+}
+
+/** 합치기 키를 읽는 종류. 날짜 구성에 실제 짝이 있는 것은 홈피드 카드와 미션뿐이다(나머지 4종은 구성에 짝이 없다). */
+const MERGE_KEY_BY_KIND: Readonly<Record<string, string>> = {
+  [OPS_HOME_FEED_CARD_KIND]: RESOURCE_KEY_BY_KIND.home_feed_card,
+  mission: RESOURCE_KEY_BY_KIND.mission,
+}
+
+/**
+ * 항목이 만든 실제 카드·미션의 ID(`created_resource`의 종류별 키)를 소문자로 돌려준다. 키가 없거나(`null`·아직 만들지 않음·`{ sample: true }`)
+ * 문자열이 아니거나 비었으면 null이다. 합치기 대상 종류(홈피드 카드·미션) 밖이면 null이다.
+ */
+export function readMergeResourceId(item: Pick<SignalBundleItemInput, 'kind' | 'createdResource'>): string | null {
+  const kind = item.kind
+  if (kind === null || !Object.prototype.hasOwnProperty.call(MERGE_KEY_BY_KIND, kind)) return null
+  const value = asRecord(item.createdResource)?.[MERGE_KEY_BY_KIND[kind]]
+  if (typeof value !== 'string') return null
+  const id = value.trim().toLowerCase()
+  return id === '' ? null : id
+}
+
+/** 실제 카드와 합친 운영 항목 칸. 키·상태·시험·묶음 연결·트라이브·패턴·색 대기는 항목, 제목·기간·모양·노출 대상·커버·정렬은 실제 카드 값이다. */
+function buildMergedCard(
+  bundle: SignalBundleInput,
+  item: SignalBundleItemInput,
+  card: SignalCardInput,
+  date: string
+): CompositionCard {
+  return {
+    key: `bundle:${item.id}`,
+    source: 'bundle',
+    id: item.id,
+    resourceId: card.id,
+    bundleId: bundle.id,
+    isSample: bundle.isSample,
+    title: card.title,
+    startsAt: card.startsAt,
+    endsAt: card.endsAt,
+    startsOnDay: kstDateKey(card.startsAt) === date,
+    shape: card.shape,
+    exposureTags: card.exposureTags,
+    tribeId: readOpsItemTribeId(item),
+    patternNo: item.patternNo,
+    colorPending: readOpsItemColorPending(item),
+    hasCopy: card.title.trim() !== '',
+    imageMissing: card.shapeStored && isImageShape(card.shape) && !card.hasCover,
+    needsImageProduction: needsImageProduction(item),
+    sortOrder: card.sortOrder,
+    status: item.status,
+    submittedAtMs: parseTime(bundle.receivedAt) ?? 0,
+    position: item.position,
+  }
+}
+
 /** 날짜 목록(KST `YYYY-MM-DD`)마다 구성을 만든다. 입력 날짜 순서를 지킨다. */
 export function buildDayCompositions(input: DayCompositionInput, dates: readonly string[]): DayComposition[] {
   const realCards = input.cards.filter((card) => card.isActive)
-  const bundleEntries: Array<{ bundle: SignalBundleInput; item: SignalBundleItemInput; period: Period }> = []
+  const bundleEntries: Array<{
+    bundle: SignalBundleInput
+    item: SignalBundleItemInput
+    period: Period
+    /** 이 항목과 합친 실제 카드·미션(없으면 null). */
+    mergedCard: SignalCardInput | null
+    mergedMission: SignalMissionInput | null
+  }> = []
   for (const bundle of input.bundles) {
     for (const item of bundle.items) {
       if (!isCountedItemStatus(item.status)) continue
       if (item.kind === 'pattern_proposal') continue
       const period = bundleItemPeriod(item)
-      if (period) bundleEntries.push({ bundle, item, period })
+      if (period) bundleEntries.push({ bundle, item, period, mergedCard: null, mergedMission: null })
+    }
+  }
+
+  // 합치기: 세는 항목이 만든 활성 실제 카드·미션(기간을 읽을 수 있는 것)을 그 항목 칸으로 합치고 따로 세지 않는다.
+  const cardsById = new Map<string, SignalCardInput>()
+  for (const card of realCards) {
+    if (cardPeriod(card) && !cardsById.has(card.id.toLowerCase())) cardsById.set(card.id.toLowerCase(), card)
+  }
+  const missionsById = new Map<string, SignalMissionInput>()
+  for (const mission of input.missions) {
+    if (missionPeriod(mission) && !missionsById.has(mission.id.toLowerCase())) missionsById.set(mission.id.toLowerCase(), mission)
+  }
+  const mergedCardIds = new Set<string>()
+  const mergedMissionIds = new Set<string>()
+  for (const entry of bundleEntries) {
+    const resourceId = readMergeResourceId(entry.item)
+    if (resourceId === null) continue
+    if (entry.item.kind === OPS_HOME_FEED_CARD_KIND) {
+      const card = cardsById.get(resourceId)
+      if (card && !mergedCardIds.has(resourceId)) {
+        entry.mergedCard = card
+        mergedCardIds.add(resourceId)
+      }
+    } else {
+      const mission = missionsById.get(resourceId)
+      if (mission && !mergedMissionIds.has(resourceId)) {
+        entry.mergedMission = mission
+        mergedMissionIds.add(resourceId)
+      }
     }
   }
 
@@ -379,21 +497,43 @@ export function buildDayCompositions(input: DayCompositionInput, dates: readonly
 
     const cards: CompositionCard[] = []
     for (const card of realCards) {
-      const startMs = parseTime(card.startsAt)
-      const endMs = parseTime(card.endsAt)
-      if (startMs === null || endMs === null) continue
-      if (overlapsDay({ startMs, endMs }, dayStartMs, dayEndMs)) cards.push(buildRealCard(card, date))
+      if (mergedCardIds.has(card.id.toLowerCase())) continue
+      const period = cardPeriod(card)
+      if (period && overlapsDay(period, dayStartMs, dayEndMs)) cards.push(buildRealCard(card, date))
     }
 
     const bundleItems: CompositionBundleItem[] = []
-    for (const { bundle, item, period } of bundleEntries) {
-      if (!overlapsDay(period, dayStartMs, dayEndMs)) continue
+    for (const { bundle, item, period, mergedCard, mergedMission } of bundleEntries) {
       if (item.kind === OPS_HOME_FEED_CARD_KIND) {
-        cards.push(buildBundleCard(bundle, item, period, date))
-      } else {
+        if (mergedCard) {
+          const cardRange = cardPeriod(mergedCard)
+          if (cardRange && overlapsDay(cardRange, dayStartMs, dayEndMs)) cards.push(buildMergedCard(bundle, item, mergedCard, date))
+        } else if (overlapsDay(period, dayStartMs, dayEndMs)) {
+          cards.push(buildBundleCard(bundle, item, period, date))
+        }
+      } else if (mergedMission) {
+        const missionRange = missionPeriod(mergedMission)
+        if (missionRange && overlapsDay(missionRange, dayStartMs, dayEndMs)) {
+          bundleItems.push({
+            itemId: item.id,
+            bundleId: bundle.id,
+            resourceId: mergedMission.id,
+            isSample: bundle.isSample,
+            kind: item.kind,
+            status: item.status,
+            title: mergedMission.title,
+            startsAt: mergedMission.startsAt,
+            endsAt: mergedMission.endsAt,
+            startsOnDay: kstDateKey(mergedMission.startsAt) === date,
+            patternNo: item.patternNo,
+            tribeId: readOpsItemTribeId(item),
+          })
+        }
+      } else if (overlapsDay(period, dayStartMs, dayEndMs)) {
         bundleItems.push({
           itemId: item.id,
           bundleId: bundle.id,
+          resourceId: null,
           isSample: bundle.isSample,
           kind: item.kind,
           status: item.status,
@@ -409,11 +549,9 @@ export function buildDayCompositions(input: DayCompositionInput, dates: readonly
 
     const missions: CompositionMission[] = []
     for (const mission of input.missions) {
-      const startMs = parseTime(mission.startsAt)
-      if (startMs === null) continue
-      const endMs = mission.endsAt === null ? Infinity : parseTime(mission.endsAt)
-      if (endMs === null) continue
-      if (overlapsDay({ startMs, endMs }, dayStartMs, dayEndMs)) {
+      if (mergedMissionIds.has(mission.id.toLowerCase())) continue
+      const period = missionPeriod(mission)
+      if (period && overlapsDay(period, dayStartMs, dayEndMs)) {
         missions.push({
           id: mission.id,
           title: mission.title,
