@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { IconArrowRight } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
-import { inboxListHref } from '@/lib/admin/opsHome/links'
+import { inboxListHref, scheduleHomeHref } from '@/lib/admin/opsHome/links'
 import { WEEK_CELL_KEYS, WEEK_CELL_LABELS, type WeekCellKey, type WeekStatus } from '@/lib/admin/opsHome/homeView'
 import { formatKstDay } from '@/lib/admin/opsInbox/labels'
 import { OPS_ITEM_STATUS_ICONS, type OpsIcon } from './opsIcons'
@@ -99,11 +99,17 @@ export function OpsWeekStatus({ status, nextWeek = null, includeSample = false, 
   const footnote = footnoteText(status)
   return (
     <section aria-labelledby="ops-week-status-heading" className={cn('@container space-y-3', className)}>
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h2 id="ops-week-status-heading" className="text-lg font-semibold">
-          이번 주 상태
-        </h2>
-        <p className="text-sm text-muted-foreground">{weekRangeLabel(status)}</p>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 id="ops-week-status-heading" className="text-lg font-semibold">
+            이번 주 상태
+          </h2>
+          <p className="text-sm text-muted-foreground">{weekRangeLabel(status)}</p>
+        </div>
+        <Link href={scheduleHomeHref({ includeSample })} className={LINK_CLASS}>
+          일정표 보기
+          <IconArrowRight className="size-3.5" aria-hidden="true" />
+        </Link>
       </div>
 
       {empty ? (

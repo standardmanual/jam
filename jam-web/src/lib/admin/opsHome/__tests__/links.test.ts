@@ -2,7 +2,7 @@
  * 운영 홈·일정표의 이동 링크 (티켓 20261006_1339 ②-a)
  *
  * 지키는 것: `?sample=1` 읽기(서버 쿼리 객체·URLSearchParams 둘 다)와 이어 붙이기·빼기(다른 키·해시 유지, 중복 없음),
- * 이동 대상 판정(항목 → 기획 상세의 그 항목, 묶음만 → 기획 상세, 날짜만 → `/admin/today?date=`, 없으면 null), 켜져 있을 때 `sample=1` 이어 붙임.
+ * 이동 대상 판정(항목 → 기획 상세의 그 항목, 묶음만 → 기획 상세, 날짜만 → 일정표 그날 날짜 서랍, 없으면 null), 켜져 있을 때 `sample=1` 이어 붙임.
  */
 import { describe, expect, it } from 'vitest'
 import {
@@ -70,13 +70,13 @@ describe('withSampleParam', () => {
 })
 
 describe('dayHref', () => {
-  it('날짜 링크는 /admin/today?date=다(일정표가 생기기 전까지)', () => {
-    expect(dayHref('2026-10-07')).toBe('/admin/today?date=2026-10-07')
+  it('날짜 링크는 일정표 주간 보기의 그날 날짜 서랍이다(티켓 20261006_1539)', () => {
+    expect(dayHref('2026-10-07')).toBe('/admin/ops-schedule?view=week&date=2026-10-07&drawer=day')
   })
 
   it('시험 묶음을 포함하는 중이면 sample=1을 이어 붙인다', () => {
-    expect(dayHref('2026-10-07', { includeSample: true })).toBe('/admin/today?date=2026-10-07&sample=1')
-    expect(dayHref('2026-10-07', { includeSample: false })).toBe('/admin/today?date=2026-10-07')
+    expect(dayHref('2026-10-07', { includeSample: true })).toBe('/admin/ops-schedule?view=week&date=2026-10-07&drawer=day&sample=1')
+    expect(dayHref('2026-10-07', { includeSample: false })).toBe('/admin/ops-schedule?view=week&date=2026-10-07&drawer=day')
   })
 })
 
@@ -94,11 +94,11 @@ describe('opsTargetHref', () => {
   })
 
   it('날짜만 있으면 그날 링크다', () => {
-    expect(opsTargetHref({ bundleId: null, itemId: null, date: '2026-10-07' })).toBe('/admin/today?date=2026-10-07')
+    expect(opsTargetHref({ bundleId: null, itemId: null, date: '2026-10-07' })).toBe('/admin/ops-schedule?view=week&date=2026-10-07&drawer=day')
   })
 
   it('묶음 없이 항목만 있으면 열 수 없어 날짜로 넘어가고, 날짜도 없으면 null이다', () => {
-    expect(opsTargetHref({ itemId: 'i1', date: '2026-10-07' })).toBe('/admin/today?date=2026-10-07')
+    expect(opsTargetHref({ itemId: 'i1', date: '2026-10-07' })).toBe('/admin/ops-schedule?view=week&date=2026-10-07&drawer=day')
     expect(opsTargetHref({ itemId: 'i1' })).toBeNull()
   })
 
@@ -111,7 +111,7 @@ describe('opsTargetHref', () => {
     const on = { includeSample: true }
     expect(opsTargetHref({ bundleId: 'b1', itemId: 'i1' }, on)).toBe('/admin/ops-inbox/b1?item=i1&sample=1')
     expect(opsTargetHref({ bundleId: 'b1' }, on)).toBe('/admin/ops-inbox/b1?sample=1')
-    expect(opsTargetHref({ date: '2026-10-07' }, on)).toBe('/admin/today?date=2026-10-07&sample=1')
+    expect(opsTargetHref({ date: '2026-10-07' }, on)).toBe('/admin/ops-schedule?view=week&date=2026-10-07&drawer=day&sample=1')
     expect(opsTargetHref({}, on)).toBeNull()
   })
 })
@@ -119,7 +119,7 @@ describe('opsTargetHref', () => {
 describe('signalResultHref', () => {
   it('신호 결과의 bundleId·itemId·date로 같은 규칙을 쓴다', () => {
     expect(signalResultHref({ bundleId: 'b1', itemId: 'i1', date: '2026-10-07' })).toBe('/admin/ops-inbox/b1?item=i1')
-    expect(signalResultHref({ bundleId: null, itemId: null, date: '2026-10-07' })).toBe('/admin/today?date=2026-10-07')
+    expect(signalResultHref({ bundleId: null, itemId: null, date: '2026-10-07' })).toBe('/admin/ops-schedule?view=week&date=2026-10-07&drawer=day')
     expect(signalResultHref({ bundleId: null, itemId: null, date: null })).toBeNull()
   })
 

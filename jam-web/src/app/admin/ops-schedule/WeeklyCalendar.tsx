@@ -2,16 +2,13 @@
 
 import type { ElementType, MouseEvent, ReactNode } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
-import { Button } from '@/components/admin/ui/button'
+import { IconChevronRight } from '@tabler/icons-react'
 import { OpsKindIcon } from '@/components/admin/ops/opsIcons'
 import { OpsStatusBadge } from '@/components/admin/ops/OpsStatusBadge'
 import { cn } from '@/lib/utils'
 import { kindLabel } from '@/lib/admin/opsInbox/labels'
 import type { OpsSignalLevel } from '@/lib/admin/opsSignals/catalog'
 import { drawerTriggerValue, isSameDrawerTarget, type ScheduleDrawerTarget } from '@/lib/admin/opsSchedule/drawerParams'
-import { shiftDateStr } from '@/lib/admin/today-calendar'
 import type { WeeklyMissionBar } from '@/lib/admin/weeklyMissions'
 
 export interface CalendarCellItem {
@@ -64,8 +61,6 @@ export interface CalendarColumn {
   items: CalendarCellItem[]
   /** 그 날짜에 걸치는 활성 장기 카드 수. 있으면 "장기 카드 N장" 한 줄로 표시하고 `/admin/today?date=`로 링크한다(티켓 20260924_0906) */
   longCardsCount?: number
-  /** true면 "미편성"을 표시한다(활성 단기 카드가 없는 날, 티켓 20260924_0906) */
-  unprogrammed?: boolean
   /** 그 날짜에 걸치는 비활성 장기 카드 수. 있으면 「장기 카드 N장 · 비활성 M장」으로 표시한다(티켓 20260924_1151, 20261006_1536) */
   longInactiveCount?: number
   /** true면 오늘 칸이다. 「오늘」 글자 + 굵은 테두리 + `aria-current="date"`(티켓 20261006_1536) */
@@ -90,18 +85,11 @@ export interface CalendarDrawerControl {
 }
 
 interface WeeklyCalendarProps {
-  /** 표시 중인 주의 월요일, 'YYYY-MM-DD' */
-  weekStart: string
-  weekRangeLabel: string
   columns: CalendarColumn[]
-  /** 주 이동 시 이동할 경로. 기본값 '/admin' */
-  basePath?: string
   /** 그 주와 겹치는 기간 미션 막대 목록. 있으면 7칸 그리드 위에 같은 7열 그리드로 그린다(티켓 20260924_0907) */
   missionBars?: CalendarMissionBar[]
   /** 있으면 "상시 미션 N개" 한 줄을 `/admin/missions` 링크로 표시한다(티켓 20260924_0907) */
   openEndedMissionCount?: number
-  /** false면 머리의 이전·다음 주 이동을 그리지 않는다(일정표의 도구줄이 대신한다, 티켓 20261006_1536). 기본은 그린다 */
-  nav?: boolean
   /** true면 달력 영역 폭(`@container`)에 맞춰 56rem 이상은 7열, 미만은 날짜별 가로 줄로 바뀐다(티켓 20261006_1536). 기본은 항상 7열이다 */
   adaptive?: boolean
   /** 있으면 칸 머리·항목·미션 막대가 서랍을 여는 버튼이 된다(티켓 20261006_1537). 없으면 옛 링크 모양 그대로다 */
@@ -303,49 +291,13 @@ function MissionBarShell({
  * 전혀 모른다. 하위 티켓(루틴·카드·미션·반응, 0905~0908)이 각자의 항목을
  * `columns[].items`에 채워 같은 컴포넌트에 얹는다.
  *
- * 일정표(`/admin/ops-schedule`)의 주간 보기가 같은 컴포넌트를 쓴다(티켓 20261006_1536 ③-a, 상위 20260930_1502 「채원 S1·S4 사전 판정」).
- * 확장은 모두 **선택**이다 — `nav`·`adaptive`·항목의 `itemKind`·`status`·`isSample`·칸의 `isToday`·`signal`·`longInactiveCount`·`automationItems`·막대의 `status`를
- * 주지 않으면 운영 홈이 그리던 마크업 그대로다(`app/admin/__tests__/home-sections.test.tsx`가 지킨다).
+ * 일정표(`/admin/ops-schedule`)의 주간 보기가 쓴다(티켓 20261006_1536 ③-a, 상위 20260930_1502 「채원 S1·S4 사전 판정」). 운영 홈의 주간 캘린더는 ③-d(티켓 20261006_1539)에서
+ * 일정표로 옮기면서 이 파일도 `app/admin/ops-schedule/`로 옮겼고, 운영 홈 전용이던 「미편성」·주 이동(`basePath`·이전/다음 주)은 지웠다(「미편성」의 역할은 신호 칩이 한다, 승인 #15).
+ * 주 이동은 일정표 도구줄(`ScheduleToolbar`)이 한다. 확장(`adaptive`·항목의 `itemKind`·`status`·`isSample`·칸의 `isToday`·`signal`·`automationItems`·막대의 `status`)은 모두 **선택**이다.
  */
-export default function WeeklyCalendar({
-  weekStart,
-  weekRangeLabel,
-  columns,
-  basePath = '/admin',
-  missionBars,
-  openEndedMissionCount,
-  nav = true,
-  adaptive = false,
-  drawer,
-}: WeeklyCalendarProps) {
-  const router = useRouter()
-  const goToWeek = (monday: string) => router.push(`${basePath}?week=${monday}`)
-
+export default function WeeklyCalendar({ columns, missionBars, openEndedMissionCount, adaptive = false, drawer }: WeeklyCalendarProps) {
   return (
     <section className={cn('mb-10', adaptive && '@container')}>
-      {nav && (
-        <div className="flex items-center justify-between mb-4">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="이전 주"
-            onClick={() => goToWeek(shiftDateStr(weekStart, -7))}
-          >
-            <IconChevronLeft className="w-4 h-4" />
-          </Button>
-          <span className="font-bold text-sm">{weekRangeLabel}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="다음 주"
-            onClick={() => goToWeek(shiftDateStr(weekStart, 7))}
-          >
-            <IconChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-      )}
       {!!missionBars?.length && (
         <>
           <div className={cn('grid grid-cols-7 gap-2 mb-2', adaptive && 'hidden @[56rem]:grid')}>
@@ -379,7 +331,7 @@ export default function WeeklyCalendar({
       )}
       <div className={cn('grid grid-cols-7 gap-2', adaptive && 'grid-cols-1 @[56rem]:grid-cols-7')}>
         {columns.map((col) => {
-          const contentEmpty = col.items.length === 0 && !col.longCardsCount && !col.longInactiveCount && !col.unprogrammed
+          const contentEmpty = col.items.length === 0 && !col.longCardsCount && !col.longInactiveCount
           const dayTarget: ScheduleDrawerTarget = { kind: 'day', date: col.date }
           const daySelected = drawer ? isSameDrawerTarget(drawer.selected, dayTarget) : false
           const headLabel = (
@@ -426,7 +378,6 @@ export default function WeeklyCalendar({
                 <p className="text-xs text-muted-foreground/60">일정 없음</p>
               ) : (
                 <div className="space-y-1">
-                  {col.unprogrammed && <p className="text-xs font-bold text-red-600">미편성</p>}
                   {(!!col.longCardsCount || !!col.longInactiveCount) && (
                     <Link href={`/admin/today?date=${col.date}`} className="block text-xs hover:underline">
                       장기 카드 {col.longCardsCount ?? 0}장{!!col.longInactiveCount && ` · 비활성 ${col.longInactiveCount}장`}

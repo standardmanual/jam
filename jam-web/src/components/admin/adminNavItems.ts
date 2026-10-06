@@ -30,6 +30,7 @@ import {
   IconSparkles,
   IconEyeglass,
   IconInbox,
+  IconCalendarWeek,
   IconAdjustmentsHorizontal,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
@@ -46,6 +47,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: '라이브 운영',
     items: [
       { href: '/admin/ops-inbox', label: '받은 기획함', icon: IconInbox },
+      { href: '/admin/ops-schedule', label: '일정표', icon: IconCalendarWeek },
       { href: '/admin/ops-settings', label: '운영 설정', icon: IconAdjustmentsHorizontal },
     ],
   },

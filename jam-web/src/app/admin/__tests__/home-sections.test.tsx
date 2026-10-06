@@ -5,12 +5,12 @@
  * `renderToStaticMarkup`으로 그려 모양을 고정한다. DB·읽기 함수는 모두 가짜로 바꾼다(실 DB에 닿지 않는다).
  *
  * 지키는 것:
- * - 이번 주 상태·신호·최근 이력·서비스 점검·주간 핵심 지표·배지 경제 흐름·통계·주간 캘린더 8구역 가운데 한 구역의 읽기를 던지게 하면 그 구역만 안내 카드 + [새로 고치기]이고 나머지는 그대로다
+ * - 이번 주 상태·신호·최근 이력·서비스 점검·주간 핵심 지표·배지 경제 흐름·통계 7구역 가운데 한 구역의 읽기를 던지게 하면 그 구역만 안내 카드 + [새로 고치기]이고 나머지는 그대로다
  * - 구역 안의 일부 출처만 실패하면(제재 수·한쪽 그래프·지난주 지표·통계 한 칸) 그 칸의 기존 오류 표시만 남고 구역은 안내 카드가 되지 않는다
  * - 이상 신호 3장·KPI 2장·경제 추이(`?trend=`)·통계 4칸의 링크가 옛 화면과 같고, 「카드 편성 공백」은 없고 미션 공백이 서비스 점검 넷째 칸이다
  * - 이번 주 상태는 이번 주와 다음 주 14일치를 읽고, 다음 주 줄은 S7 기준 요일(`nextWeekCheckFromWeekday`)을 따른다
  * - 시험 묶음 포함(`sample=1`)이 읽기와 링크에 이어진다
- * - 페이지·`_home` 소스에 `unstable_cache`·`revalidate`·「일정표 보기」가 없고 `loading.tsx`가 없다
+ * - 페이지·`_home` 소스에 `unstable_cache`·`revalidate`·주간 캘린더가 없고 `loading.tsx`가 없다
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -50,7 +50,6 @@ const hoisted = vi.hoisted(() => {
       if (name === 'badges' && fail.has('statsCell')) return query({ count: null, error: { message: '배지 수 조회 실패(시험)' } })
       if (name === 'user_shadow_bans' && (fail.has('service') || fail.has('shadow'))) return query(boom, true)
       if (name === 'poi_blocks' && fail.has('service')) return query(boom, true)
-      if ((name === 'today_cards' || name === 'missions') && fail.has('calendarSources')) return query(boom, true)
       if (name === 'ops_bundles' && fail.has('sampleCount')) return query({ count: null, error: { message: '시험 묶음 수 조회 실패(시험)' } })
       if (name in hoisted.counts) return query({ count: hoisted.counts[name], error: null })
       return query({ data: [], error: null })
@@ -154,21 +153,6 @@ vi.mock('@/lib/admin/weeklyCardMetrics', async (importOriginal) => ({
   fetchFirstEventKstDate: vi.fn(async () => null),
 }))
 
-vi.mock('@/lib/admin/cronSchedule', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/admin/cronSchedule')>()
-  return {
-    ...actual,
-    getWeeklyCronOccurrences: () => {
-      failIf('calendar')
-      return actual.getWeeklyCronOccurrences()
-    },
-  }
-})
-
-import {
-  CalendarSection,
-  CALENDAR_LOAD_FAILED_TITLE,
-} from '../_home/CalendarSection'
 import {
   KpiSection,
   RecentDecisionsSection,
@@ -188,7 +172,7 @@ import { makeSignalResult, type OpsSignalOutcome } from '@/lib/admin/opsSignals/
 import { shiftDateStr } from '@/lib/admin/today-calendar'
 import { makeBundle, makeItem, kst } from '@/lib/admin/opsSignals/__tests__/fixtures'
 
-const SECTION_KEYS = ['week', 'signal', 'history', 'service', 'kpi', 'trend', 'stats', 'calendar'] as const
+const SECTION_KEYS = ['week', 'signal', 'history', 'service', 'kpi', 'trend', 'stats'] as const
 type SectionKey = (typeof SECTION_KEYS)[number]
 
 /** 구역이 제대로 그려졌을 때 마크업에 있는 표식(안내 카드의 제목에는 없는 것). */
@@ -200,10 +184,9 @@ const OK_MARKER: Record<SectionKey, string> = {
   kpi: 'ops-weekly-kpi-heading',
   trend: 'aria-label="배지 경제 흐름"',
   stats: 'aria-label="통계"',
-  calendar: 'aria-label="이전 주"',
 }
 
-const NOTICE_TITLE: Record<SectionKey, string> = { ...SECTION_NOTICE_TITLES, calendar: CALENDAR_LOAD_FAILED_TITLE }
+const NOTICE_TITLE: Record<SectionKey, string> = { ...SECTION_NOTICE_TITLES }
 
 /** 글자 사이의 React 주석(`<!-- -->`)을 벗겨 문장으로 읽는다. */
 const flat = (node: ReactElement) => renderToStaticMarkup(node).replace(/<!-- -->/g, '')
@@ -211,10 +194,9 @@ const flat = (node: ReactElement) => renderToStaticMarkup(node).replace(/<!-- --
 interface RenderOptions {
   includeSample?: boolean
   trend?: string
-  week?: string
 }
 
-/** 운영 홈 8구역을 같은 조건으로 한 번씩 그린다(페이지가 구역마다 하는 일). */
+/** 운영 홈 7구역을 같은 조건으로 한 번씩 그린다(페이지가 구역마다 하는 일). */
 async function renderAll(options: RenderOptions = {}): Promise<Record<SectionKey, string>> {
   const includeSample = options.includeSample ?? false
   const kpi = startKpiWeekly()
@@ -224,9 +206,8 @@ async function renderAll(options: RenderOptions = {}): Promise<Record<SectionKey
     history: await RecentDecisionsSection({ includeSample }),
     service: await ServiceCheckSection({ kpi }),
     kpi: await KpiSection({ kpi }),
-    trend: await TrendSection({ trendParam: options.trend, weekParam: options.week, includeSample }),
+    trend: await TrendSection({ trendParam: options.trend, includeSample }),
     stats: await StatsSection(),
-    calendar: await CalendarSection({ weekParam: options.week }),
   }
   const out = {} as Record<SectionKey, string>
   for (const key of SECTION_KEYS) out[key] = flat(elements[key])
@@ -262,7 +243,7 @@ afterEach(() => {
 // ── 구역별 격리 ──────────────────────────────────────────────────────────────────────────────────
 
 describe('구역별 격리 (완료 조건)', () => {
-  it('아무것도 던지지 않으면 8구역이 모두 그려지고 안내 카드는 없다', async () => {
+  it('아무것도 던지지 않으면 7구역이 모두 그려지고 안내 카드는 없다', async () => {
     const out = await renderAll()
     for (const key of SECTION_KEYS) {
       expect(out[key], key).toContain(OK_MARKER[key])
@@ -280,7 +261,6 @@ describe('구역별 격리 (완료 조건)', () => {
     kpi: 'kpi',
     trend: 'trend',
     stats: 'stats',
-    calendar: 'calendar',
   }
 
   for (const key of SECTION_KEYS) {
@@ -357,13 +337,6 @@ describe('구역 안의 일부 출처만 실패하면 구역은 안내 카드가
     expect(out.stats).toContain('>34<')
     expect(out.stats).toContain('>1,234<')
     expect(out.stats).toContain('text-red-700')
-  })
-
-  it('주간 캘린더: 카드·미션 조회가 실패해도 크론·루틴 항목은 그대로 보이고 안내 카드가 되지 않는다', async () => {
-    hoisted.fail.add('calendarSources')
-    const out = await renderAll()
-    expect(out.calendar).toContain('aria-label="이전 주"')
-    expect(out.calendar).not.toContain(CALENDAR_LOAD_FAILED_TITLE)
   })
 })
 
@@ -551,15 +524,15 @@ describe('옛 화면과 같은 링크 (완료 조건)', () => {
     expect(out).toContain('지난주 대비 +20')
   })
 
-  it('경제 추이: 기간 전환 링크가 ?trend= 그대로이고 week·sample을 유지한다(가정 8)', async () => {
+  it('경제 추이: 기간 전환 링크가 ?trend= 그대로이고 sample을 유지하며 week는 더하지 않는다(가정 8, 주간 캘린더는 일정표로 옮겼다)', async () => {
     const plain = (await renderAll()).trend
     expect(plain).toContain('href="/admin?trend=7"')
     expect(plain).toContain('href="/admin?trend=30"')
-    const kept = (await renderAll({ week: '2026-09-21', includeSample: true })).trend
-    expect(kept).toContain('href="/admin?trend=7&amp;week=2026-09-21&amp;sample=1"')
-    expect(kept).toContain('href="/admin?trend=30&amp;week=2026-09-21&amp;sample=1"')
-    expect(trendHref(7, null)).toBe('/admin?trend=7')
-    expect(trendHref(30, '2026-09-21', true)).toBe('/admin?trend=30&week=2026-09-21&sample=1')
+    const kept = (await renderAll({ includeSample: true })).trend
+    expect(kept).toContain('href="/admin?trend=7&amp;sample=1"')
+    expect(kept).toContain('href="/admin?trend=30&amp;sample=1"')
+    expect(trendHref(7)).toBe('/admin?trend=7')
+    expect(trendHref(30, true)).toBe('/admin?trend=30&sample=1')
   })
 
   it('경제 추이: ?trend=7이면 7일 보기가 현재이고 그 밖의 값은 30일이다', async () => {
@@ -573,14 +546,6 @@ describe('옛 화면과 같은 링크 (완료 조건)', () => {
     const out = (await renderAll()).stats
     for (const href of ['/admin/badges', '/admin/poi', '/admin/itembooks', '/admin/users']) expect(out).toContain(`href="${href}"`)
     for (const label of ['배지', 'POI', '컬렉션', '유저']) expect(out).toContain(`>${label}<`)
-  })
-
-  it('주간 캘린더는 그대로다(미편성 표시와 주 이동 단추가 있고 「일정표 보기」 링크는 없다, 승인 #13은 ③)', async () => {
-    const out = (await renderAll()).calendar
-    expect(out).toContain('aria-label="이전 주"')
-    expect(out).toContain('aria-label="다음 주"')
-    expect(out).toContain('9월 28일')
-    expect(out).not.toContain('일정표 보기')
   })
 })
 
@@ -616,12 +581,14 @@ describe('소스 규칙', () => {
       .join('\n')
 
   it('페이지·_home 소스에 unstable_cache·revalidate·React cache가 없다(운영 홈은 캐시하지 않는다)', () => {
-    expect(sources.length).toBeGreaterThanOrEqual(3)
+    expect(sources.length).toBeGreaterThanOrEqual(2)
     for (const file of sources) expect(codeOf(file), path.basename(file)).not.toMatch(/unstable_cache|revalidate|\bcache\(/)
   })
 
-  it('「일정표 보기」 글자·링크가 없다(주간 캘린더는 ③이 일정표로 옮길 때까지 그대로 둔다)', () => {
-    for (const file of sources) expect(codeOf(file), path.basename(file)).not.toContain('일정표 보기')
+  it('주간 캘린더 구역이 없다(일정표로 옮겼다 — 「일정표 보기」 링크는 이번 주 상태 컴포넌트가 그린다)', () => {
+    expect(existsSync(path.join(homeDir, 'CalendarSection.tsx'))).toBe(false)
+    expect(existsSync(path.join(adminDir, 'WeeklyCalendar.tsx'))).toBe(false)
+    for (const file of sources) expect(codeOf(file), path.basename(file)).not.toMatch(/CalendarSection|WeeklyCalendar|weekParam/)
   })
 
   it('app/admin/loading.tsx를 만들지 않는다(구역별 스켈레톤)', () => {

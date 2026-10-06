@@ -6,8 +6,8 @@
  * - 시험 묶음 포함 여부는 URL `?sample=1` 하나다(꺼짐이면 키가 없다, localStorage를 쓰지 않는다). 켜져 있으면 만든 링크에도 이어 붙인다.
  * - 이동 대상: 항목이 있으면 받은 기획함 상세의 그 항목(`/admin/ops-inbox/{묶음}?item={항목}`), 묶음만 있으면 그 기획 상세,
  *   날짜만 있으면 그날(`dayHref`), 셋 다 없으면 링크 없음(null)이다. 항목은 묶음이 있어야 열 수 있어 묶음 없는 항목은 날짜로 넘어간다.
- * - 날짜 링크는 일정표(③, `/admin/ops-schedule`)가 생기기 전까지 `/admin/today?date=`다. 일정표가 생기면 `dayHref` 한 곳만 바꾼다.
- * - 일정표(S4) 링크는 `scheduleHref`·`scheduleHomeHref`에서만 만든다(티켓 20261006_1536 ③-a). 운영 홈의 날짜 링크(`dayHref`)는 ③-d에서 일정표로 바꾼다.
+ * - 날짜 링크(`dayHref`)는 일정표(`/admin/ops-schedule?view=week&date=…&drawer=day`)의 그날 날짜 서랍이다(티켓 20261006_1539 ③-d).
+ * - 일정표(S4) 링크는 `scheduleHref`·`scheduleHomeHref`에서만 만든다(티켓 20261006_1536 ③-a).
  */
 import type { OpsInboxTab } from '@/lib/admin/opsInbox/bundleStatus'
 import type { ScheduleDrawerKind, ScheduleView } from '@/lib/admin/opsSchedule/params'
@@ -72,9 +72,9 @@ function finish(href: string, options: OpsLinkOptions): string {
   return options.includeSample ? withSampleParam(href, true) : href
 }
 
-/** 그 날짜로 가는 링크(KST 달력 날짜 `YYYY-MM-DD`). 일정표가 생기면(③) 이 함수의 대상만 바꾼다. */
+/** 그 날짜로 가는 링크(KST 달력 날짜 `YYYY-MM-DD`): 일정표의 주간 보기에서 그날의 날짜 서랍을 연다(티켓 20261006_1539 ③-d). */
 export function dayHref(date: string, options: OpsLinkOptions = {}): string {
-  return finish(`/admin/today?date=${encodeURIComponent(date)}`, options)
+  return scheduleHref({ view: 'week', date, drawer: 'day' }, options)
 }
 
 /** 일정표(S4) 경로. 링크는 `scheduleHref`·`scheduleHomeHref`에서만 만든다(티켓 20261006_1536 ③-a). */

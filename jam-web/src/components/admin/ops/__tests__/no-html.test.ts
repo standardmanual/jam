@@ -3,7 +3,7 @@
  *
  * 받은 기획함에는 에이전트가 보낸 문자열(문안·가설·에이전트 이름·형식 오류 문장·제출 원본)이 그대로 들어온다. 이 문자열을
  * HTML로 해석하면 저장형 XSS가 된다. 화면(`components/admin/ops/**`, `app/admin/ops-inbox/**`, `app/admin/ops-schedule/**`와 일정표가 함께 쓰는
- * `app/admin/WeeklyCalendar.tsx`)은 React 텍스트 노드로만 그리고, 색 견본만 값이 `#rrggbb`를 통과할 때 `style`에 넣는다(주간 캘린더의 미션 막대 열 위치와
+ * `app/admin/ops-schedule/WeeklyCalendar.tsx`)은 React 텍스트 노드로만 그리고, 색 견본만 값이 `#rrggbb`를 통과할 때 `style`에 넣는다(주간 캘린더의 미션 막대 열 위치와
  * 타임라인의 격자 위치·오늘 선 위치는 날짜에서 계산한 숫자라 예외 두 곳이다). 이 테스트는 소스를 훑어 그 규칙이 깨지면 잡는다.
  *
  * 실행: cd jam-web && npx vitest run src/components/admin/ops/__tests__/no-html.test.ts
@@ -15,8 +15,6 @@ import { TIMELINE_WINDOW_DAYS } from '@/lib/admin/opsSchedule/params'
 
 const SRC = join(process.cwd(), 'src')
 const ROOTS = [join(SRC, 'components/admin/ops'), join(SRC, 'app/admin/ops-inbox'), join(SRC, 'app/admin/ops-schedule')]
-/** 폴더가 아닌 단일 파일 화면 부품: 일정표(티켓 20261006_1536)가 운영 홈과 함께 쓰는 주간 캘린더. 운영 항목의 제목·상태를 그린다. */
-const FILES = [join(SRC, 'app/admin/WeeklyCalendar.tsx')]
 
 function walk(dir: string): string[] {
   const files: string[] = []
@@ -39,7 +37,7 @@ function stripComments(source: string): string {
     .join('\n')
 }
 
-const sourceFiles = [...ROOTS.flatMap((root) => walk(root)), ...FILES].filter(
+const sourceFiles = ROOTS.flatMap((root) => walk(root)).filter(
   (file) => /\.(ts|tsx)$/.test(file) && !file.includes(`${sep}__tests__${sep}`)
 )
 
@@ -63,7 +61,7 @@ describe('받은 기획함 화면 소스 계약', () => {
     expect(names).toContain('app/admin/ops-schedule/ScheduleBody.tsx')
     expect(names).toContain('app/admin/ops-schedule/ScheduleToolbar.tsx')
     expect(names).toContain('app/admin/ops-schedule/OpsScheduleBoard.tsx')
-    expect(names).toContain('app/admin/WeeklyCalendar.tsx')
+    expect(names).toContain('app/admin/ops-schedule/WeeklyCalendar.tsx')
     // 일정표 서랍(티켓 20261006_1537): 항목 상세·신호 문장·제목이 서랍에 그대로 들어오므로 같은 검사를 받는다
     expect(names).toContain('components/admin/ops/OpsScheduleDrawer.tsx')
     expect(names).toContain('components/admin/ops/OpsScheduleDayDrawer.tsx')
@@ -96,7 +94,7 @@ describe('받은 기획함 화면 소스 계약', () => {
     expect(withStyle.map(rel)).toEqual([
       'components/admin/ops/OpsItemDetail.tsx',
       'components/admin/ops/OpsScheduleTimeline.tsx',
-      'app/admin/WeeklyCalendar.tsx',
+      'app/admin/ops-schedule/WeeklyCalendar.tsx',
     ])
 
     const code = stripComments(readFileSync(withStyle[0], 'utf8'))
