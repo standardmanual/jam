@@ -242,7 +242,7 @@ describe('주소의 view', () => {
 })
 
 describe('본문 — 칸 내용', () => {
-  it('운영 항목은 상태 칩·시험 칩·기획 상세 링크로 칸에 그려진다', async () => {
+  it('운영 항목은 상태 칩·시험 칩과 항목 서랍을 여는 버튼으로 칸에 그려진다(③-b: 기획 상세 링크는 서랍 안에 있다)', async () => {
     hoisted.load.value = loaded(
       week({}, { '2026-10-06': { items: [item({ isSample: true, status: 'scheduled' })] } })
     )
@@ -250,8 +250,9 @@ describe('본문 — 칸 내용', () => {
     expect(out).toContain('운영 카드')
     expect(out).toContain('예약됨</span>')
     expect(out).toContain('시험</span>')
-    expect(out).toContain('href="/admin/ops-inbox/b1?item=i1"')
+    expect(out).toContain('data-drawer-trigger="item:i1"')
     expect(out).toContain('data-drawer-key="i1"')
+    expect(out).not.toContain('href="/admin/ops-inbox/b1?item=i1"')
   })
 
   it('그날 가장 높은 신호 수준 칩과 건수, 오늘 표시가 칸 머리에 있다', async () => {

@@ -63,6 +63,10 @@ describe('받은 기획함 화면 소스 계약', () => {
     expect(names).toContain('app/admin/ops-schedule/ScheduleToolbar.tsx')
     expect(names).toContain('app/admin/ops-schedule/OpsScheduleBoard.tsx')
     expect(names).toContain('app/admin/WeeklyCalendar.tsx')
+    // 일정표 서랍(티켓 20261006_1537): 항목 상세·신호 문장·제목이 서랍에 그대로 들어오므로 같은 검사를 받는다
+    expect(names).toContain('components/admin/ops/OpsScheduleDrawer.tsx')
+    expect(names).toContain('components/admin/ops/OpsScheduleDayDrawer.tsx')
+    expect(names).toContain('components/admin/ops/OpsItemFooter.tsx')
     expect(names).toContain('app/admin/ops-inbox/page.tsx')
     expect(names).toContain('app/admin/ops-inbox/[bundleId]/page.tsx')
     expect(sourceFiles.length).toBeGreaterThanOrEqual(12)

@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { Skeleton } from '@/components/admin/ui/skeleton'
 import { OpsSampleBusy, OpsSampleScope } from '@/components/admin/ops/OpsSampleSwitch'
-import { parseScheduleParams } from '@/lib/admin/opsSchedule/params'
+import { parseScheduleParams, periodOf } from '@/lib/admin/opsSchedule/params'
 import type { SearchParamsPromise } from '@/lib/searchParams'
 import { SampleSwitchSection } from '../_home/sections'
 import { ScheduleBody } from './ScheduleBody'
@@ -11,7 +11,7 @@ import { SCHEDULE_ENABLED_VIEWS, ScheduleToolbar } from './ScheduleToolbar'
  * 일정표 (`/admin/ops-schedule`, 티켓 20261006_1536 ③-a, 상위 20260930_1502 「채원 S1·S4 사전 판정」 S4·운영툴 PRD §6 S4).
  *
  * 머리(제목·부제·시험 묶음 스위치) → 도구줄(보기 탭·기간 이동) → 본문. 본문만 `Suspense` + 스켈레톤으로 따로 읽어, 머리와 도구줄은 바로 보인다.
- * 주소(`view`·`date`·`sample`)가 화면 상태의 전부라 새로고침해도 유지된다. 시험 스위치는 운영 홈(S1)과 같은 부품·같은 `?sample=1`이다.
+ * 주소(`view`·`date`·`sample`·서랍)가 화면 상태의 전부라 새로고침해도 유지된다. 시험 스위치는 운영 홈(S1)과 같은 부품·같은 `?sample=1`이다.
  * 사이드바 항목과 운영 홈의 「일정표 보기」는 ③-d가 더한다 — ③-a~③-c 동안은 주소로만 들어온다. 이 화면은 캐시하지 않는다(지금 상태를 보는 화면).
  *
  * ③-a는 주간 보기만 그린다. 주소의 `view`가 아직 못 그리는 보기(월간·타임라인, ③-c)면 주간 보기로 그린다.
@@ -55,8 +55,9 @@ export default async function OpsSchedulePage({ searchParams }: OpsSchedulePageP
 
         <OpsSampleBusy className="space-y-6">
           <ScheduleToolbar view={view} params={params} />
-          {/* 보기·기준일·시험 포함이 바뀔 때마다 대체 화면이 다시 보이도록 key를 준다 */}
-          <Suspense key={`${view}-${params.date}-${params.includeSample}`} fallback={<ScheduleFallback />}>
+          {/* 보기·기간·시험 포함이 바뀔 때마다 대체 화면이 다시 보이도록 key를 준다. 기준일이 아니라 기간의 시작일을 쓴다: 날짜 서랍을 열며 같은 주 안에서 `date`가 바뀌어도
+              (결정 뒤 서버 화면을 다시 읽어도) 보기 틀이 다시 만들어지지 않아야 서랍·선택·잔상이 남는다(티켓 20261006_1537) */}
+          <Suspense key={`${view}-${periodOf(view, params.date).start}-${params.includeSample}`} fallback={<ScheduleFallback />}>
             <ScheduleBody params={params} />
           </Suspense>
         </OpsSampleBusy>

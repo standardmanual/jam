@@ -15,6 +15,15 @@ import type { ScheduleParams } from '@/lib/admin/opsSchedule/params'
 /** 열린 서랍이 가리키는 곳. */
 export type ScheduleDrawerTarget = { kind: 'item'; key: string } | { kind: 'day'; date: string }
 
+/** 항목 서랍 키가 가리키는 곳: 운영 항목(받은 기획함), 옛 카드(`card:`), 옛 미션(`mission:`). `id`는 접두사를 뗀 UUID다(가정 12). */
+export type ItemKeyOrigin = 'ops' | 'card' | 'mission'
+
+export function splitItemKey(key: string): { origin: ItemKeyOrigin; id: string } {
+  if (key.startsWith('card:')) return { origin: 'card', id: key.slice('card:'.length) }
+  if (key.startsWith('mission:')) return { origin: 'mission', id: key.slice('mission:'.length) }
+  return { origin: 'ops', id: key }
+}
+
 const DRAWER_KEY = 'drawer'
 const ITEM_KEY = 'item'
 const DATE_KEY = 'date'
