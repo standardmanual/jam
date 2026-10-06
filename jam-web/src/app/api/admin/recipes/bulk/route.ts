@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { readBulkRequest, deleteByIds, bulkJson, type BulkServiceClient } from '@/lib/admin/bulk/server'
 import { confirmPhraseFor, isPhraseMatch } from '@/lib/admin/bulk/shared'
 import { classifyRecipeDeletion } from '@/lib/admin/recipe-bulk'
-import { collectRecipeDeletionCandidates, collectRecipeReferences } from '@/lib/admin/recipe-references'
+import { collectRecipeDeletionCandidates } from '@/lib/admin/recipe-references'
 
 /**
  * 믹스 레시피 목록 일괄 처리(티켓 20260924_0949, 상위 티켓 §4.1 믹스 레시피 행) — 삭제
@@ -58,19 +58,13 @@ export async function POST(req: NextRequest) {
     }
 
     // 삭제 대상을 가리키는 홈 카드 수 — 삭제를 막지 않고 확인창에서 알리기만 한다(티켓 20261006_1342).
-    // fail-closed: 읽지 못하면 "카드 0장"이라 안내를 빼지 않도록 미리보기를 막는다.
-    let cardCount = 0
-    if (deletable.length > 0) {
-      const references = await collectRecipeReferences(supabase, deletable)
-      if (references.error) {
-        console.error('[recipes bulk delete] 카드 참조 카운트 조회 실패 — 미리보기를 중단합니다:', references.error)
-        return NextResponse.json(
-          { error: '영향 범위를 확인하지 못했어요. 잠시 뒤 다시 시도해도 같으면 개발자에게 전달해 주세요.' },
-          { status: 500 }
-        )
-      }
-      cardCount = references.noticeTotal
-    }
+    // 참조 조회는 위 `collectRecipeDeletionCandidates` 한 번뿐이다(티켓 20261006_1406). 막힌 레시피가 없으면 전체를
+    // 센 값을, 있으면 삭제 대상만 후보별 값으로 더한다 — 건너뛴(막힌) 레시피를 가리키는 카드는 세지 않는다.
+    // 같은 id가 여러 번 들어와도 카드는 한 번만 센다(예전 `.in()` 집계와 같다).
+    // 조회가 실패하면 위에서 이미 500으로 막았으므로 "카드 0장"이라 오판하지 않는다(fail-closed).
+    const cardCount =
+      lookup.allNoticeTotal ??
+      [...new Set(deletable)].reduce((sum, id) => sum + (lookup.candidates.get(id)?.noticeTotal ?? 0), 0)
     return bulkJson(
       {
         processed: deletable,

@@ -222,6 +222,59 @@ describe('collectRecipeDeletionCandidates', () => {
     const lookup = await collectRecipeDeletionCandidates(client, ['r1', 'r2'])
 
     expect(lookup.error).toBe('badges 조회 실패')
+    expect(lookup.allNoticeTotal).toBeNull()
+  })
+
+  describe('홈 카드 수(noticeTotal)를 같은 조회에서 함께 돌려준다(티켓 20261006_1406)', () => {
+    it('막는 참조가 없으면 전체를 한 번 센 카드 수를 돌려주고 참조를 더 조회하지 않는다', async () => {
+      const { client, badgeCalls, cardCalls } = createStubSupabase({ recipes, cardsByRecipeId: { r1: 2, r3: 4 } })
+
+      const lookup = await collectRecipeDeletionCandidates(client, ['r1', 'r2', 'r3'])
+
+      expect(lookup.error).toBeNull()
+      expect(lookup.allNoticeTotal).toBe(6)
+      expect(badgeCalls).toHaveLength(1)
+      expect(cardCalls).toHaveLength(1)
+    })
+
+    it('카드가 없으면 전체 카드 수는 0이다', async () => {
+      const { client } = createStubSupabase({ recipes })
+
+      const lookup = await collectRecipeDeletionCandidates(client, ['r1', 'r2', 'r3'])
+
+      expect(lookup.allNoticeTotal).toBe(0)
+    })
+
+    it('막힌 레시피가 있으면 한 건씩 다시 세는 반복에서 레시피별 카드 수를 후보에 담는다', async () => {
+      const { client, cardCalls } = createStubSupabase({
+        recipes,
+        badgesByRecipeId: { r2: 3 },
+        cardsByRecipeId: { r1: 2, r2: 5, r3: 4 },
+      })
+
+      const lookup = await collectRecipeDeletionCandidates(client, ['r1', 'r2', 'r3'])
+
+      expect(lookup.error).toBeNull()
+      expect(lookup.allNoticeTotal).toBeNull()
+      expect([...lookup.candidates.values()].map((c) => [c.id, c.total, c.noticeTotal])).toEqual([
+        ['r1', 0, 2],
+        ['r2', 3, 5],
+        ['r3', 0, 4],
+      ])
+      // 전체 한 번 + 한 건씩 세 번 — 카드 수만을 위한 조회는 더 없다
+      expect(cardCalls).toHaveLength(4)
+    })
+
+    it('찾은 레시피가 없으면 참조를 조회하지 않는다', async () => {
+      const { client, badgeCalls, cardCalls } = createStubSupabase({ recipes: [] })
+
+      const lookup = await collectRecipeDeletionCandidates(client, ['ghost'])
+
+      expect(lookup.error).toBeNull()
+      expect(lookup.candidates.size).toBe(0)
+      expect(badgeCalls).toHaveLength(0)
+      expect(cardCalls).toHaveLength(0)
+    })
   })
 })
 
