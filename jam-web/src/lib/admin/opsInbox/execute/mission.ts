@@ -13,8 +13,9 @@
  * - `create`는 정한 ID(`prepared.id`)로 만들고 같은 ID를 돌려준다(`idFirst`). 오류 응답이면 같은 ID로 정리 delete를 한 번 시도한다.
  * - `undo`는 사용자 데이터·연결 참조를 확인한 뒤 ID로 지운다. 등록 스크립트의 `undoMissionRegistration`은 `image_source` 조건이 있어 쓰지 않는다(운영툴 미션의 `image_source`는 null).
  * - `cancel`은 미션을 다시 읽어 공개됐으면 막고, 참조를 확인한 뒤, 지울 때도 `starts_at > now` 조건을 함께 건다(읽은 뒤 공개 시각이 지나는 경합). 카드 취소와 같은 흐름이다.
- * - `end`(티켓 20261006_0950, ⑪-a)는 게재 중인 미션을 지금 끝낸다: 미션을 다시 읽어 없으면 `missing`, `ends_at`이 지났으면 `alreadyEnded`, 공개 판정(`isMissionExposed`, `observe`와 같다)이 거짓이면
+ * - `end`(티켓 20261006_0950, ⑪-a)는 게재 중인 미션을 지금 끝낸다: 미션을 다시 읽어 없으면 `missing`, `ends_at`이 지났으면 `alreadyEnded`, 시작 시각(`missionStartIso`)이 지금보다 뒤면
  *   `not_published`, 그 밖에는 `ends_at`을 지금으로 바꾼다(읽은 `ends_at`을 조건으로 건다). `ends_at`이 null인 상시 미션도 끝낸다(상시는 끝나지 않은 것이다).
+ *   운영툴 밖에서 숨긴(`hidden`) 게재 중 미션도 끝낼 수 있다(티켓 20261006_1038 결정 1): 공개 판정(`isMissionExposed`)이 아니라 시작 시각으로 가른다. `observe`는 바꾸지 않는다.
  * - `observe`(상태 맞추기, §8.6)는 `exposure_mode`·`exposure_at`·`starts_at`·`ends_at`으로 유저 화면의 공개 판정(`isMissionExposed`)과 종료 여부를 돌려준다.
  *   `exposure_mode = 'hidden'`은 카드의 `is_active = false`와 같게 `inactive`로 알린다(밖에서 바뀜으로 기록만 하고 상태는 유지).
  */
@@ -77,6 +78,14 @@ function reasonOfCheck(check: RegisterCheck | undefined): string {
 /** 읽은 행을 공개 판정이 받는 모양으로 좁힌다. DB의 `exposure_mode`는 문자열로 읽힌다. */
 function exposureOf(row: { starts_at: string; exposure_mode: string; exposure_at: string | null }) {
   return { starts_at: row.starts_at, exposure_mode: row.exposure_mode as MissionExposureMode, exposure_at: row.exposure_at }
+}
+
+/**
+ * 미션의 시작 시각. 노출일 지정(`scheduled`)이고 `exposure_at`이 있으면 `exposure_at`, 그 밖(`start_date`·`hidden`·null)은 `starts_at`이다.
+ * 종료(`end`)가 「아직 공개 전」을 가르는 데 쓴다. 숨김 여부는 보지 않는다.
+ */
+function missionStartIso(row: { starts_at: string; exposure_mode: string; exposure_at: string | null }): string {
+  return row.exposure_mode === 'scheduled' && row.exposure_at ? row.exposure_at : row.starts_at
 }
 
 export const MISSION_HANDLER: ExecuteHandler<MissionRegisterPayload> = {
@@ -171,9 +180,12 @@ export const MISSION_HANDLER: ExecuteHandler<MissionRegisterPayload> = {
 
     const row = read.data
     const endsMs = row.ends_at === null ? null : Date.parse(row.ends_at)
-    if (!Number.isFinite(Date.parse(row.starts_at)) || (endsMs !== null && !Number.isFinite(endsMs))) return endError(OBSERVE_BAD_TIME)
+    const startMs = Date.parse(missionStartIso(row))
+    if (!Number.isFinite(Date.parse(row.starts_at)) || !Number.isFinite(startMs) || (endsMs !== null && !Number.isFinite(endsMs))) return endError(OBSERVE_BAD_TIME)
     if (endsMs !== null && now.getTime() > endsMs) return { ok: true, state: 'alreadyEnded' }
-    if (!isMissionExposed(exposureOf(row), now)) return endNotPublished()
+    // 「아직 공개 전」은 시작 시각으로만 가른다. `isMissionExposed`는 운영툴 밖에서 숨긴 게재 중 미션(`hidden`)도 거짓이라 쓰지 않는다.
+    // 운영툴 밖에서 꺼진 카드(`is_active = false`)를 끝낼 수 있는 것과 같게 한다(티켓 20261006_1038 결정 1).
+    if (startMs > now.getTime()) return endNotPublished()
     return endResourceNow(service, { table: 'missions', column: 'ends_at', resourceId, readValue: row.ends_at, now })
   },
 

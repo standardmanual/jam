@@ -5,8 +5,9 @@
  * - 사전 점검 응답 → 요약창 구역(예약할 항목은 공개 시각 순·연결 묶음은 한 덩어리, 기다리는·못 하는·실패로 닫을 항목, 경고)
  * - 주 버튼: 예약할 항목이 있으면 「N개 예약 등록하기」, 없고 실패로 닫을 항목만 있으면 「실패로 닫기」, 둘 다 없으면 꺼진다
  * - 실행 응답 → 토스트 문장(성공·일부 실패·실패로만 닫음·건너뜀·결정 기록 실패)
- * - 항목별 가장 최근 `fail` 사유, 「아직 연결하지 않은 종류」 안내 문장
+ * - 항목별 가장 최근 `fail` 사유
  * - 공개 전 취소 확인창(티켓 20261002_1649, §8.7): 미리 보기 응답 → 함께 취소될 항목·막는 항목·주 버튼 문구, 마지막 줄(시험 묶음은 다르다), 결과 토스트, 화면을 새로 읽을 실패
+ * - 공개 뒤 지금 종료 확인창(티켓 20261006_1038 ⑪-b, §8.7): 보이는 조건, 미리 보기 응답 방어 읽기, 종류별 문단의 숫자 규칙, 계속 보이는 항목, 결과 토스트, 화면을 새로 읽을 실패
  * - JAM! 배지 소급 미리 세기(티켓 20261005_1607 ⑨-b): 응답 방어 읽기, 줄 문구(센 값·0명·포인트 0·세 가지 구분·형식 오류·실패), 표본·일부 유저 실패 안내, 요청 여부를 정하는 예약할 JAM! 배지 ID
  * - 이 파일은 레지스트리·사전 점검 모듈을 값으로 가져오지 않는다(클라이언트가 가져온다). 문장이 사전 점검과 어긋나지 않는지는 여기서만 맞춰 본다.
  */
@@ -20,25 +21,34 @@ import {
   EXECUTE_BADGE_PREVIEW_LOADING,
   EXECUTE_BADGE_PREVIEW_TITLE,
   EXECUTE_DECISION_LOG_FAILED,
+  END_DECISION_LOG_FAILED,
+  END_SUPPORTED_KINDS,
   EXECUTE_WAITING_REASON,
   badgePreviewLines,
   buildCancelPreview,
+  buildEndPreview,
   buildExecuteSummary,
+  canEndItem,
   cancelAlsoTitle,
   cancelBlockersTitle,
   cancelButtonLabel,
   cancelIrreversibleNotice,
   cancelNeedsRefresh,
   cancelToast,
+  endEffectLines,
+  endItemEnded,
+  endNeedsRefresh,
+  endStillLiveTitle,
+  endToast,
   executeButtonLabel,
   executeToast,
   itemDisplayName,
   latestFailReasons,
   readBadgePreview,
+  readEndPreview,
   readExecuteResult,
   readPrecheck,
   readyJamBadgeIds,
-  unconnectedKindsNotice,
   type BadgePreviewView,
   type PrecheckView,
   type SummarySource,
@@ -83,19 +93,6 @@ describe('executeButtonLabel', () => {
     expect(executeButtonLabel(3)).toBe('3개 예약 등록하기')
     expect(executeButtonLabel(1)).toBe('1개 예약 등록하기')
     expect(executeButtonLabel(0)).toBe('예약 등록하기')
-  })
-})
-
-describe('unconnectedKindsNotice', () => {
-  it('연결하지 않은 종류 이름을 ·로 이어 안내한다', () => {
-    expect(unconnectedKindsNotice(['mission', 'drop_schedule'])).toBe(
-      '미션·드랍 일정 항목은 아직 예약 등록을 연결하지 않았어요. 승인해도 예약되지 않아요.'
-    )
-    expect(unconnectedKindsNotice(['recipe'])).toBe('믹스 레시피 항목은 아직 예약 등록을 연결하지 않았어요. 승인해도 예약되지 않아요.')
-  })
-
-  it('없으면 null이다(알림 줄을 그리지 않는다)', () => {
-    expect(unconnectedKindsNotice([])).toBeNull()
   })
 })
 
@@ -615,5 +612,208 @@ describe('cancelNeedsRefresh', () => {
     expect(cancelNeedsRefresh(0, {})).toBe(false)
     expect(cancelNeedsRefresh(400, {})).toBe(false)
     expect(cancelNeedsRefresh(404, {})).toBe(false)
+  })
+})
+
+// ── 공개 뒤 지금 종료 (⑪-b) ──────────────────────────────────────────────────────────────────────
+
+describe('canEndItem — 지금 종료 줄을 보이는 조건', () => {
+  it('게재중이고 지금 종료가 있는 다섯 종류만 true다', () => {
+    expect([...END_SUPPORTED_KINDS]).toEqual(['home_feed_card', 'mission', 'jam_badge', 'collection_launch', 'recipe'])
+    for (const kind of END_SUPPORTED_KINDS) expect(canEndItem({ status: 'live', kind }), kind).toBe(true)
+  })
+
+  it('게재중이 아니면 어느 종류든 false다', () => {
+    for (const status of ['reviewing', 'approved', 'scheduled', 'ended', 'cancelled', 'rejected', 'failed', 'arrived', 'preparing']) {
+      expect(canEndItem({ status, kind: 'mission' }), status).toBe(false)
+    }
+  })
+
+  it('지금 종료가 없는 종류(드랍 예약)·알 수 없는 종류·종류 없음은 게재중이어도 false다', () => {
+    expect(canEndItem({ status: 'live', kind: 'drop_schedule' })).toBe(false)
+    expect(canEndItem({ status: 'live', kind: 'pattern_proposal' })).toBe(false)
+    expect(canEndItem({ status: 'live', kind: 'constructor' })).toBe(false)
+    expect(canEndItem({ status: 'live', kind: null })).toBe(false)
+  })
+})
+
+describe('readEndPreview — 미리 보기 응답 방어 읽기', () => {
+  it('정상 응답은 그대로 읽는다', () => {
+    expect(
+      readEndPreview({
+        ok: true,
+        dryRun: true,
+        isSample: false,
+        kind: 'mission',
+        pointedByLive: [{ id: 'c1', kind: 'home_feed_card', label: '홈피드 카드 · 10/10(토) 09:00' }],
+        impact: { participants: 12, inProgressUsers: 3 },
+      })
+    ).toEqual({
+      isSample: false,
+      kind: 'mission',
+      pointedByLive: [{ id: 'c1', kind: 'home_feed_card', label: '홈피드 카드 · 10/10(토) 09:00' }],
+      impact: { participants: 12, inProgressUsers: 3, fillingUsers: undefined },
+    })
+  })
+
+  it('모양을 믿지 않는다: 칸이 없거나 틀리면 시험 아님·종류 없음·가리키는 항목 없음·impact null이다', () => {
+    expect(readEndPreview({})).toEqual({ isSample: false, kind: null, pointedByLive: [], impact: null })
+    expect(readEndPreview({ isSample: 'yes', kind: 3, pointedByLive: 'x', impact: 'many' })).toEqual({ isSample: false, kind: null, pointedByLive: [], impact: null })
+    expect(readEndPreview({ pointedByLive: [null, { id: 5 }, { id: 'c2' }, { id: 'c3', kind: 7, label: 9 }] }).pointedByLive).toEqual([
+      { id: 'c2', kind: null, label: '' },
+      { id: 'c3', kind: null, label: '' },
+    ])
+  })
+
+  it('impact가 null(세기 실패)이면 null이고, 빈 객체는 숫자 칸이 모두 비어 있다', () => {
+    expect(readEndPreview({ impact: null }).impact).toBeNull()
+    expect(readEndPreview({ impact: {} }).impact).toEqual({ participants: undefined, inProgressUsers: undefined, fillingUsers: undefined })
+  })
+
+  it('숫자가 아니거나 음수·무한대인 수는 없는 것으로 읽는다', () => {
+    expect(readEndPreview({ impact: { participants: '5', inProgressUsers: -1, fillingUsers: Infinity } }).impact).toEqual({
+      participants: undefined,
+      inProgressUsers: undefined,
+      fillingUsers: undefined,
+    })
+  })
+})
+
+describe('endEffectLines — 종류별 문단', () => {
+  it('카드·JAM! 배지·레시피는 숫자 없이 고정 문장이다', () => {
+    expect(endEffectLines('home_feed_card', {})).toEqual(['홈피드와 카드 상세에서 바로 내려가요.'])
+    expect(endEffectLines('jam_badge', {})).toEqual(['이 배지를 더는 획득할 수 없어요.', '이미 획득한 배지는 그대로예요.'])
+    expect(endEffectLines('recipe', {})).toEqual(['믹스 화면에서 바로 사라지고 더는 믹스할 수 없어요.', '이미 받은 결과물은 그대로예요.'])
+  })
+
+  it('미션은 진행 중 유저 수와 참가자 수를 넣고 천 단위로 쉼표를 찍는다', () => {
+    expect(endEffectLines('mission', { inProgressUsers: 1234, participants: 5678 })).toEqual([
+      '참가와 진행 집계가 바로 멈춰요.',
+      '진행 중인 유저 1,234명은 더는 달성할 수 없어요.',
+      '받은 보상은 그대로예요.',
+      '다음 18시 알림에서 참가자 5,678명에게 종료 결과 알림이 가요.',
+    ])
+  })
+
+  it('컬렉션은 아직 완성하지 못한 유저 약 N명을 넣는다', () => {
+    expect(endEffectLines('collection_launch', { fillingUsers: 40 })).toEqual([
+      '새 드랍과 완성 판정이 바로 멈춰요.',
+      '아직 완성하지 못한 유저 약 40명은 더는 완성 보상을 받을 수 없어요.',
+      '장착한 배지는 그대로예요.',
+    ])
+  })
+
+  it('impact가 null(세기 실패)이거나 그 칸이 없으면 숫자 없는 문장이다', () => {
+    const noCount = [
+      '참가와 진행 집계가 바로 멈춰요.',
+      '진행 중인 유저는 더는 달성할 수 없어요.',
+      '받은 보상은 그대로예요.',
+      '다음 18시 알림에서 참가자에게 종료 결과 알림이 가요.',
+    ]
+    expect(endEffectLines('mission', null)).toEqual(noCount)
+    expect(endEffectLines('mission', {})).toEqual(noCount)
+    expect(endEffectLines('mission', { participants: 3 })).toContain('진행 중인 유저는 더는 달성할 수 없어요.')
+    expect(endEffectLines('collection_launch', null)).toEqual([
+      '새 드랍과 완성 판정이 바로 멈춰요.',
+      '아직 완성하지 못한 유저는 더는 완성 보상을 받을 수 없어요.',
+      '장착한 배지는 그대로예요.',
+    ])
+  })
+
+  it('그 수가 0이면 그 문장만 뺀다', () => {
+    expect(endEffectLines('mission', { inProgressUsers: 0, participants: 7 })).toEqual([
+      '참가와 진행 집계가 바로 멈춰요.',
+      '받은 보상은 그대로예요.',
+      '다음 18시 알림에서 참가자 7명에게 종료 결과 알림이 가요.',
+    ])
+    expect(endEffectLines('mission', { inProgressUsers: 2, participants: 0 })).toEqual([
+      '참가와 진행 집계가 바로 멈춰요.',
+      '진행 중인 유저 2명은 더는 달성할 수 없어요.',
+      '받은 보상은 그대로예요.',
+    ])
+    expect(endEffectLines('collection_launch', { fillingUsers: 0 })).toEqual(['새 드랍과 완성 판정이 바로 멈춰요.', '장착한 배지는 그대로예요.'])
+  })
+
+  it('지금 종료가 없는 종류와 종류 없음은 빈 배열이다', () => {
+    expect(endEffectLines('drop_schedule', {})).toEqual([])
+    expect(endEffectLines(null, {})).toEqual([])
+  })
+})
+
+describe('buildEndPreview — 확인창 내용', () => {
+  const items = [{ id: 'a1' }, { id: 'a2' }]
+  const lineOf = (item: { id: string }) => `줄 ${item.id}`
+  const preview = (data: Record<string, unknown>) => buildEndPreview(data, 'a1', items, lineOf)
+
+  it('종류별 문단과 시험 여부를 싣고, 가리키는 게재 중 항목은 화면의 한 줄 요약으로 보인다', () => {
+    const view = preview({ kind: 'mission', isSample: true, impact: {}, pointedByLive: [{ id: 'a2', kind: 'home_feed_card', label: '서버 이름' }] })
+    expect(view.isSample).toBe(true)
+    expect(view.effectLines).toEqual(endEffectLines('mission', {}))
+    expect(view.stillLive).toEqual([{ id: 'a2', line: '줄 a2' }])
+  })
+
+  it('화면에 없는 항목은 서버 label, 그것도 없으면 「항목」으로 보인다', () => {
+    const view = preview({ kind: 'recipe', pointedByLive: [{ id: 'zz', label: '믹스 레시피 · 10/10(토) 09:00' }, { id: 'yy' }] })
+    expect(view.stillLive).toEqual([
+      { id: 'zz', line: '믹스 레시피 · 10/10(토) 09:00' },
+      { id: 'yy', line: '항목' },
+    ])
+  })
+
+  it('이 항목 자신은 계속 보이는 항목에서 뺀다', () => {
+    expect(preview({ kind: 'recipe', pointedByLive: [{ id: 'a1' }] }).stillLive).toEqual([])
+  })
+
+  it('응답 칸이 없으면 문단·구역이 비어 있다', () => {
+    expect(preview({})).toEqual({ isSample: false, effectLines: [], stillLive: [] })
+  })
+})
+
+describe('지금 종료 확인창 문장', () => {
+  it('구역 제목에 개수가 붙는다', () => {
+    expect(endStillLiveTitle(2)).toBe('계속 보이는 항목 2개')
+  })
+})
+
+describe('endToast', () => {
+  it('ended는 「지금 종료했어요」', () => {
+    expect(endToast({ ok: true, itemId: 'a1', resourceState: 'ended' })).toEqual({ message: '지금 종료했어요', logWarning: null })
+  })
+
+  it('alreadyEnded와 missing은 운영 항목만 닫았다고 알린다', () => {
+    expect(endToast({ resourceState: 'alreadyEnded' }).message).toBe('이미 끝나 있어서 운영 항목만 종료로 닫았어요')
+    expect(endToast({ resourceState: 'missing' }).message).toBe('자원이 이미 없어서 운영 항목만 종료로 닫았어요')
+  })
+
+  it('결정 기록을 남기지 못했으면 경고 문장을 따로 돌려준다(종료 문장은 그대로)', () => {
+    const toast = endToast({ resourceState: 'ended', decisionLogFailed: true })
+    expect(toast.message).toBe('지금 종료했어요')
+    expect(toast.logWarning).toBe('결정 기록을 남기지 못했어요. 종료는 그대로예요.')
+    expect(toast.logWarning).toBe(END_DECISION_LOG_FAILED)
+  })
+
+  it('decisionLogFailed는 true일 때만 경고이고, 칸이 없는 응답도 「지금 종료했어요」가 나온다', () => {
+    expect(endToast({ resourceState: 'ended', decisionLogFailed: 'yes' }).logWarning).toBeNull()
+    expect(endToast({}).message).toBe('지금 종료했어요')
+  })
+})
+
+describe('endNeedsRefresh · endItemEnded', () => {
+  it('409(미리 보기 포함)는 화면을 새로 읽는다', () => {
+    expect(endNeedsRefresh(409, { error: '게재중인 항목만 지금 종료할 수 있어요.' })).toBe(true)
+  })
+
+  it('500에 itemEnded가 있으면(항목은 종료로 바뀜) 새로 읽고, 그 밖의 500·오류는 읽지 않는다', () => {
+    expect(endNeedsRefresh(500, { error: '되돌림 실패', itemEnded: true })).toBe(true)
+    expect(endNeedsRefresh(500, { error: '지금 종료하지 못했어요.' })).toBe(false)
+    expect(endNeedsRefresh(0, {})).toBe(false)
+    expect(endNeedsRefresh(400, {})).toBe(false)
+    expect(endNeedsRefresh(404, {})).toBe(false)
+  })
+
+  it('endItemEnded는 itemEnded가 true일 때만 참이다', () => {
+    expect(endItemEnded({ itemEnded: true })).toBe(true)
+    expect(endItemEnded({ itemEnded: 'true' })).toBe(false)
+    expect(endItemEnded({})).toBe(false)
   })
 })

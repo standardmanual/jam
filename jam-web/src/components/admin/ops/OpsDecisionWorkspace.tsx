@@ -2,13 +2,11 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { IconInfoCircle } from '@tabler/icons-react'
 import { toast } from 'sonner'
-import { Alert, AlertDescription } from '@/components/admin/ui/alert'
 import { Button } from '@/components/admin/ui/button'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import { findRevertTarget } from '@/lib/admin/opsInbox/edit'
-import { cancelToast, executeToast, readExecuteResult, unconnectedKindsNotice } from '@/lib/admin/opsInbox/executeView'
+import { canEndItem, cancelToast, endToast, executeToast, readExecuteResult } from '@/lib/admin/opsInbox/executeView'
 import { formatKstDayTime, kindLabel } from '@/lib/admin/opsInbox/labels'
 import {
   isDecidable,
@@ -24,6 +22,7 @@ import { OpsBulkApprove, bulkResultMessage } from './OpsBulkApprove'
 import { OpsBundleWorkspace, type OpsBundleWorkspaceProps, type OpsWorkspaceContext } from './OpsBundleWorkspace'
 import { OpsCancelItem } from './OpsCancelItem'
 import { postDecision } from './decisionClient'
+import { OpsEndItem } from './OpsEndItem'
 import { OpsExecuteBundle } from './OpsExecuteBundle'
 import { OpsItemActions } from './OpsItemActions'
 import { OpsItemEditForm } from './OpsItemEditForm'
@@ -31,11 +30,11 @@ import { OpsItemEditForm } from './OpsItemEditForm'
 /**
  * 결정 슬롯을 채운 기획 상세 (티켓 20260930_1818). 기획 상세(S3) 페이지가 셸(`OpsBundleWorkspace`) 대신 이 래퍼를 그린다.
  *
- * 셸의 슬롯은 함수라 서버 컴포넌트에서 넘길 수 없다 — 그래서 client 래퍼가 슬롯 다섯 갈래를 채운다.
+ * 셸의 슬롯은 함수라 서버 컴포넌트에서 넘길 수 없다 — 그래서 client 래퍼가 슬롯 갈래를 채운다.
  * - `barAction`: 「N개 승인하기」와 요약 창 (`OpsBulkApprove`), 그 오른쪽에 「N개 예약 등록하기」와 요약창 (`OpsExecuteBundle`, 승인됨 항목이 있을 때만. 티켓 20261002_1648)
  * - `rowLead`·`listHeader`: 행 체크박스와 「전체 선택 · 결정할 것 12개 중 11개 선택」
- * - `notices`: 「{종류} 항목은 아직 예약 등록을 연결하지 않았어요」(연결하지 않은 종류가 있을 때만, 서버 로더가 센 `execution.unconnectedKinds`)
- * - `detailFooter`: 「예약됨」 항목이면 안내와 [공개 전 취소하기] (`OpsCancelItem`, 티켓 20261002_1649), 그 밖에는 반려·수정·승인 (`OpsItemActions`)
+ * - `detailFooter`: 「예약됨」 항목이면 안내와 [공개 전 취소하기] (`OpsCancelItem`, 티켓 20261002_1649), 「게재중」이고 지금 종료가 있는 종류면 안내와 [지금 종료하기]
+ *   (`OpsEndItem`, 티켓 20261006_1038 ⑪-b), 그 밖에는 반려·수정·승인 (`OpsItemActions`)
  * - `detailEdit`: 직접 수정 양식 (`OpsItemEditForm`)
  * - `detailHistoryAction`: 「마지막 수정 되돌리기」(수정 내역이 있는 검토중 항목만, 확인창 없음)
  *
@@ -50,7 +49,7 @@ type OpsDecisionWorkspaceProps = Pick<
   OpsBundleWorkspaceProps,
   'bundleId' | 'bundleFormatErrors' | 'items' | 'decisions' | 'balance' | 'isSample'
 > & {
-  /** 서버 로더가 센 예약 등록 요약(승인됨 수·예약할 항목 수·아직 연결하지 않은 종류). 레지스트리를 화면으로 끌어오지 않으려고 계산은 서버가 한다. */
+  /** 서버 로더가 센 예약 등록 요약(승인됨 수·예약할 항목 수). 레지스트리를 화면으로 끌어오지 않으려고 계산은 서버가 한다. */
   execution: OpsBundleExecution
 }
 
@@ -150,6 +149,20 @@ export function OpsDecisionWorkspace({
     refresh()
   }
 
+  /** 지금 종료가 끝났을 때. 결과 문장은 `endToast`가 만들고, 결정 기록을 남기지 못했으면 경고 토스트를 하나 더 띄운다. */
+  const handleEnded = (data: Record<string, unknown>) => {
+    const toastResult = endToast(data)
+    toast.success(toastResult.message)
+    if (toastResult.logWarning) toast.warning(toastResult.logWarning)
+    refresh()
+  }
+
+  /** 항목은 「종료」로 바뀌었는데 자원 종료를 되돌리지 못했을 때. 항목이 바뀌어 창이 사라지므로 서버 문장을 토스트로 보인다. */
+  const handleItemEnded = (message: string) => {
+    toast.error(message)
+    refresh()
+  }
+
   const checkLabel = (item: OpsItemRecord): string => {
     const startsAt = formatKstDayTime(item.startsAt)
     return `${kindLabel(item.kind)}${startsAt ? ` ${startsAt}` : ''} 승인 대상으로 고르기`
@@ -222,15 +235,6 @@ export function OpsDecisionWorkspace({
           </div>
         ) : null
       }
-      notices={() => {
-        const notice = unconnectedKindsNotice(execution.unconnectedKinds)
-        return notice ? (
-          <Alert>
-            <IconInfoCircle className="size-4" aria-hidden="true" />
-            <AlertDescription>{notice}</AlertDescription>
-          </Alert>
-        ) : null
-      }}
       detailFooter={(item, ctx) =>
         item.status === 'scheduled' ? (
           <OpsCancelItem
@@ -240,6 +244,15 @@ export function OpsDecisionWorkspace({
             isSample={isSample ?? false}
             onCancelled={handleCancelled}
             onConflict={refresh}
+          />
+        ) : canEndItem(item) ? (
+          <OpsEndItem
+            bundleId={bundleId}
+            item={item}
+            items={ctx.items}
+            onEnded={handleEnded}
+            onConflict={refresh}
+            onItemEnded={handleItemEnded}
           />
         ) : (
           <OpsItemActions

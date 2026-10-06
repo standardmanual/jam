@@ -183,10 +183,10 @@ describe('미리 보기 { dryRun: true }', () => {
   })
 
   it('실패는 그 상태와 본문을 그대로 돌려준다', async () => {
-    h.state.previewEnd.mockResolvedValue({ ok: false, status: 409, error: '게재중인 항목만 지금 종료할 수 있어요. 화면을 새로 고쳐 상태를 확인해 주세요.' })
+    h.state.previewEnd.mockResolvedValue({ ok: false, status: 409, error: '게재중인 항목만 지금 종료할 수 있어요.' })
     const res = await call({ dryRun: true })
     expect(res.status).toBe(409)
-    expect(await res.json()).toEqual({ error: '게재중인 항목만 지금 종료할 수 있어요. 화면을 새로 고쳐 상태를 확인해 주세요.' })
+    expect(await res.json()).toEqual({ error: '게재중인 항목만 지금 종료할 수 있어요.' })
     for (const status of [404, 500] as const) {
       h.state.previewEnd.mockResolvedValue({ ok: false, status, error: '실패했어요.' })
       expect((await call({ dryRun: true })).status).toBe(status)
@@ -213,15 +213,22 @@ describe('지금 종료 { reason? }', () => {
   })
 
   it('처리 실패는 그 상태와 본문(error)을 그대로 돌려주고 슬랙 글을 올리지 않는다', async () => {
-    h.state.endItem.mockResolvedValue({ ok: false, status: 409, error: '게재중인 항목만 지금 종료할 수 있어요. 화면을 새로 고쳐 상태를 확인해 주세요.' })
+    h.state.endItem.mockResolvedValue({ ok: false, status: 409, error: '게재중인 항목만 지금 종료할 수 있어요.' })
     const res = await call({})
     expect(res.status).toBe(409)
-    expect(await res.json()).toEqual({ error: '게재중인 항목만 지금 종료할 수 있어요. 화면을 새로 고쳐 상태를 확인해 주세요.' })
+    expect(await res.json()).toEqual({ error: '게재중인 항목만 지금 종료할 수 있어요.' })
     for (const status of [404, 500] as const) {
       h.state.endItem.mockResolvedValue({ ok: false, status, error: '실패했어요.' })
       expect((await call({})).status).toBe(status)
     }
     expect(h.state.afterCallbacks).toHaveLength(0)
+  })
+
+  it('실패의 extra(되돌림 실패 500의 itemEnded)를 본문에 펼쳐 싣는다', async () => {
+    h.state.endItem.mockResolvedValue({ ok: false, status: 500, error: '되돌림 실패 문장', extra: { itemEnded: true } })
+    const res = await call({})
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: '되돌림 실패 문장', itemEnded: true })
   })
 })
 

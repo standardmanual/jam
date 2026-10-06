@@ -7,7 +7,7 @@
  * - **`listOpsBundles`·`getOpsBundleDetail`은 select 계열만 부르고 insert·update·upsert·delete를 부르지 않는다**
  *   (읽기만으로 상태가 바뀌지 않는다는 완료 조건)
  * - 목록은 제출 원본(`raw`)을 가져오지 않는다
- * - 기획 상세의 예약 등록 요약(`execution`, 티켓 20261002_1648): 승인됨 수·예약할 항목 수·아직 연결하지 않은 종류
+ * - 기획 상세의 예약 등록 요약(`execution`, 티켓 20261002_1648): 승인됨 수·예약할 항목 수
  */
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 
@@ -625,28 +625,28 @@ describe('getOpsBundleDetail — 예약 등록 요약 (티켓 20261002_1648)', (
     expect(detail!.items[0]).not.toHaveProperty('createdResource')
   })
 
-  it('승인됨 수, 예약할 항목 수(지금 연결된 홈피드 카드·미션·JAM! 배지·컬렉션·레시피·드랍 여섯 종류 모두), 아직 연결하지 않은 종류를 센다(실제 레지스트리에는 남지 않는다)', async () => {
+  it('승인됨 수, 예약할 항목 수(지금 연결된 홈피드 카드·미션·JAM! 배지·컬렉션·레시피·드랍 여섯 종류 모두)를 센다', async () => {
     seed([
       row('a1'), // 카드 승인됨, 먼 미래 → 예약할 항목
       row('a2', { kind: 'jam_badge' }), // JAM! 배지 승인됨, 먼 미래 → 예약할 항목(티켓 20261004_1756: 핸들러가 붙었다)
-      row('a3', { kind: 'collection_launch', status: 'reviewing' }), // 컬렉션도 연결됐다(티켓 20261004_2039) → 안내에 들지 않는다
-      row('a9', { kind: 'mission', status: 'reviewing' }), // 미션은 연결됐다(티켓 20261002_1944) → 안내에 들지 않는다
-      row('a10', { kind: 'recipe', status: 'reviewing' }), // 레시피도 연결됐다(티켓 20261002_2221) → 안내에 들지 않는다
+      row('a3', { kind: 'collection_launch', status: 'reviewing' }), // 승인 전이라 세지 않는다
+      row('a9', { kind: 'mission', status: 'reviewing' }), // 승인 전이라 세지 않는다
+      row('a10', { kind: 'recipe', status: 'reviewing' }), // 승인 전이라 세지 않는다
       row('a11', { kind: 'recipe' }), // 레시피 승인됨, 먼 미래 → 예약할 항목
       row('a4', { kind: 'collection_launch' }), // 컬렉션 승인됨, 먼 미래 → 예약할 항목
-      row('a12', { kind: 'drop_schedule', status: 'reviewing' }), // 드랍도 연결됐다(티켓 20261002_2306) → 안내에 들지 않는다
+      row('a12', { kind: 'drop_schedule', status: 'reviewing' }), // 승인 전이라 세지 않는다
       row('a5', { kind: 'recipe', status: 'rejected' }), // 멈춘 항목은 센 대상이 아니다
       row('a6', { kind: 'collection_launch', status: 'ended' }), // 끝난 항목도 아니다
-      row('a7', { kind: 'pattern_proposal', status: 'approved' }), // 예약 등록 대상이 아닌 종류는 연결 대상이 아니다
-      row('a8', { kind: null, status: 'reviewing' }), // 종류를 읽을 수 없으면 세지 않는다
+      row('a7', { kind: 'pattern_proposal', status: 'approved' }), // 예약 등록 대상이 아닌 종류는 승인돼도 예약할 항목에 세지 않는다
+      row('a8', { kind: null, status: 'reviewing' }), // 종류를 읽을 수 없으면 예약할 항목에 세지 않는다
     ])
     const detail = await getOpsBundleDetail(ID)
-    expect(detail!.execution).toEqual({ approvedCount: 5, readyCount: 4, unconnectedKinds: [] })
+    expect(detail!.execution).toEqual({ approvedCount: 5, readyCount: 4 })
   })
 
   it('승인됨 항목이 없으면 approvedCount·readyCount가 0이다', async () => {
     seed([row('a1', { status: 'reviewing' })])
-    expect((await getOpsBundleDetail(ID))!.execution).toEqual({ approvedCount: 0, readyCount: 0, unconnectedKinds: [] })
+    expect((await getOpsBundleDetail(ID))!.execution).toEqual({ approvedCount: 0, readyCount: 0 })
   })
 
   it('공개 시각이 지난 승인 항목은 예약할 항목에 세지 않는다(그래도 승인됨 수에는 든다)', async () => {
@@ -689,23 +689,23 @@ describe('buildOpsExecution — 핸들러를 주입해 센다', () => {
 
   const NOW = new Date('2026-10-02T00:00:00Z')
 
-  it('핸들러가 붙은 종류는 예약할 항목에 세고 안내에서 뺀다', () => {
+  it('핸들러가 붙은 종류만 예약할 항목에 센다', () => {
     const items = [exec('m1'), exec('c1', { kind: 'home_feed_card' }), exec('r1', { kind: 'recipe', status: 'reviewing' })]
-    expect(buildOpsExecution(items, NOW, handlers)).toEqual({ approvedCount: 2, readyCount: 1, unconnectedKinds: ['home_feed_card', 'recipe'] })
+    expect(buildOpsExecution(items, NOW, handlers)).toEqual({ approvedCount: 2, readyCount: 1 })
   })
 
-  it('실제 레지스트리에서 컬렉션 핸들러만 빼면 컬렉션 항목이 「아직 연결하지 않은 종류」에 든다(분기는 앞으로의 종류를 위해 남아 있다. 티켓 20261004_2039)', () => {
+  it('컬렉션 핸들러가 없으면 컬렉션 항목은 예약할 항목에 세지 않고, 붙이면 센다', () => {
     const items = [exec('m1'), exec('k1', { kind: 'collection_launch' }), exec('k2', { kind: 'collection_launch', status: 'reviewing' })]
-    expect(buildOpsExecution(items, NOW, { mission: fakeHandler })).toEqual({ approvedCount: 2, readyCount: 1, unconnectedKinds: ['collection_launch'] })
-    expect(buildOpsExecution(items, NOW, { mission: fakeHandler, collection_launch: fakeHandler })).toEqual({ approvedCount: 2, readyCount: 2, unconnectedKinds: [] })
+    expect(buildOpsExecution(items, NOW, { mission: fakeHandler })).toEqual({ approvedCount: 2, readyCount: 1 })
+    expect(buildOpsExecution(items, NOW, { mission: fakeHandler, collection_launch: fakeHandler })).toEqual({ approvedCount: 2, readyCount: 2 })
   })
 
-  it('종류 이름이 `constructor` 같은 객체 기본 속성이어도 연결하지 않은 종류로 세지 않는다', () => {
+  it('종류 이름이 `constructor` 같은 객체 기본 속성이어도 던지지 않고 센다', () => {
     const items = [exec('x1', { kind: 'constructor', status: 'reviewing' })]
-    expect(buildOpsExecution(items, NOW, {})).toEqual({ approvedCount: 0, readyCount: 0, unconnectedKinds: [] })
+    expect(buildOpsExecution(items, NOW, {})).toEqual({ approvedCount: 0, readyCount: 0 })
   })
 
-  it('사전 점검이 던져도 던지지 않고 예약할 항목 0개·안내 없음으로 돌려준다', () => {
+  it('사전 점검이 던져도 던지지 않고 예약할 항목 0개로 돌려준다', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const throwing: ExecuteHandlerRegistry = {}
     Object.defineProperty(throwing, 'mission', {
@@ -714,6 +714,6 @@ describe('buildOpsExecution — 핸들러를 주입해 센다', () => {
         throw new Error('boom')
       },
     })
-    expect(buildOpsExecution([exec('m1')], NOW, throwing)).toEqual({ approvedCount: 1, readyCount: 0, unconnectedKinds: [] })
+    expect(buildOpsExecution([exec('m1')], NOW, throwing)).toEqual({ approvedCount: 1, readyCount: 0 })
   })
 })

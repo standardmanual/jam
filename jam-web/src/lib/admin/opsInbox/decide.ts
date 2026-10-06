@@ -226,7 +226,7 @@ async function restoreStatus(service: ServiceClient, itemIds: string[], bundleId
   if (restored.error) logError('되돌림 실패(항목 상태가 어긋나 있을 수 있어요)', restored.error)
 }
 
-/** 항목 승인. 승인은 「승인됨」에서 멈춘다(공개는 티켓 20260930_1500이 잇는다). 사유는 받지 않는다. */
+/** 항목 승인. 승인은 「승인됨」에서 멈춘다(예약 등록은 단계 표시줄의 버튼이, 공개는 상태 맞추기가 잇는다). 사유는 받지 않는다. */
 export function approveItem(service: ServiceClient, input: StatusDecisionInput): Promise<DecisionOutcome> {
   return decideItemStatus(service, {
     ...input,
