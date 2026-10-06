@@ -2,9 +2,9 @@
 id: "20261006_1527"
 category: Infra
 priority: P1
-status: OPEN
+status: CLOSED
 created: 2026-10-06
-closed:
+closed: 2026-10-06
 ---
 
 # [Infra] staging 자동 로그인 계정이 관리자라 누구나 공용 DB 어드민을 쓸 수 있었다
@@ -43,27 +43,33 @@ closed:
 
 ### 구현 내용 요약
 
+- 응급 조치(2026-10-06 15:12 KST, 사용자 승인): dev-tester `is_admin = false`(`seed_dev_tester_not_admin.sql`). staging `/admin` → `/forbidden` 확인.
+- 코드 차단: `auth.ts`의 비공개 함수 `isBlockedStagingAutoLogin`을 `hasAdminAccess` 맨 앞에서 호출한다. `STAGING_MODE === 'true'`이고 id 또는 이메일(대소문자 무시)이 dev-login 계정이면
+  `ADMIN_EMAILS`·`users.is_admin`보다 먼저 false다. proxy·admin layout·`getAdminUser`(API)가 모두 이 함수를 거친다. 로컬은 `ADMIN_EMAILS` 셸 변수로 그대로 관리자가 된다. `isAdminAccount`는 그대로.
+- dev-login 계정 id·이메일은 `test-accounts.ts`의 `DEV_LOGIN_USER_ID`·`DEV_LOGIN_USER_EMAIL` 한 곳에 두고 dev-login 라우트가 그 상수를 쓴다. 패턴 13과 규칙표 70행을 현재 상태로 고쳤다.
+
 ### 변경된 파일
 ```
--
+jam-web/src/lib/admin/auth.ts, jam-web/src/lib/env/test-accounts.ts, jam-web/src/app/api/dev-login/route.ts, jam-web/src/lib/admin/__tests__/auth.test.ts(신규 11건),
+docs/specs/DEV_PROCESS_GUARDRAILS.md(패턴 13), .claude/skills/jam-work/references/handling-rules.md(70행, 카리나 머지 때), jam-web/supabase/migrations/seed_dev_tester_not_admin.sql(응급 조치 기록)
+(코드 5파일, jam-web 178줄. 리뷰 브랜치 claude/jamwork-20261006_1527-staging-dev-login-admin-block, 범위 e273c4035..699300c18, staging 머지 6ca80e960)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] 아현: 재현 테스트 먼저(수정 전 5건 실패) → 수정 뒤 11건 통과, `scripts/verify.sh` 전 단계 통과.
+- [x] CI `verify`(run 37429409139, headSha 699300c18) success.
+- [x] 민지: 점검표 **PASS**(9 보안: 차단이 화이트리스트·DB 조회보다 앞).
+- [x] 카리나: 1502 ③-a와 합친 상태(6ca80e960)로 `scripts/verify.sh` 전 단계 통과.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
-- [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
-- [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)
-- [ ] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
-- [ ] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
-- [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
+- [x] 사용자 노출 문구 신규·변경 없음(해당 없음)
 
 ### 배포 정보
-- 배포일: 
-- 환경: production
-- 커밋: 
+- 배포일: (staging 머지까지, 2026-10-06. 프로덕션은 STAGING_MODE가 없어 동작 변화 없음, 다음 `/jam-ship`에서 함께)
+- 환경: staging
+- 커밋: 머지 6ca80e960
 
 ### 실행 지표
 > Workflow 완료 알림 `<usage>`(전체 토큰·소요·에이전트 수·도구 호출)와 결과의 `tokenUsage`
@@ -73,11 +79,15 @@ closed:
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1 | 아현·민지 | 140,166 | 21,040 / 13,936 | 12분 10초 | 68 |
+| 합계 | 2 | 140,166 | 21,040 / 13,936 | 12분 10초 | 68 |
 
 ### 주요 의사결정 / 핵심 메모
 > 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
 
+- 2026-10-06 `/jam-ship` 보안 점검에서 발견 → 응급 조치(사용자 승인) → 코드 차단(사용자가 배포 직후 처리 승인). 게이트 PASS와 머지(사용자 승인). staging 믹스 화면에서 자동 로그인 계정은 공개 전 레시피를
+  더 보지 못한다(`allowUnreleased`가 같은 판정을 씀, 의도된 결과 — 공개 전 확인은 로컬 실렌더). 범위 밖: P2 20261006_1629(자동 로그인 세션의 일반 API 노출, 사용자 결정 「나중에 정한다」),
+  P3 20261006_1630(레거시 `ADMIN_SECRET` 쿠키 인증 경로). `hasAdminAccess` JSDoc의 공백 한 칸 변경은 동작 무관이라 그대로 뒀다.
+
 ### 잔여 이슈
--
+- staging 확인: push 뒤 jam-stage 배포에서 `/admin`이 `/forbidden`으로 가는지 본다(DB 값과 무관한 차단이라 결과는 응급 조치 뒤와 같다).
