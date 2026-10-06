@@ -7,8 +7,12 @@
  *
  * - 지점: 활성(`is_active`)인 지점. 활성 시스템 드랍 수를 함께 읽는다(겹침·한도 계산용)
  * - 아이템: `type='item'`, 삭제되지 않음, 컬렉션 소속, `valid_from <= 기준 <= valid_until`, 소속 컬렉션이 노출 중
- *   (`isItemBookDroppable`, 티켓 20260930_1516)
- * - 컬렉션: 노출 중인 것만(`applyDroppableItemBookFilter` + `resolveAmbientTargetCollections`)
+ *   (`isItemBookDroppable`, 티켓 20260930_1516), 아이템과 소속 컬렉션이 드랍 제외(`drop_excluded`)가 아님
+ * - 컬렉션: 노출 중이고 드랍 제외가 아닌 것만(`applyDroppableItemBookFilter` + `resolveAmbientTargetCollections`).
+ *   후보 풀에서도 드랍 제외 아이템은 뺀다
+ *
+ * 드랍 제외는 활동 드랍(`drop-engine`의 `fetchDropStructure`)과 같은 조건이다(티켓 20261005_1957, 사용자 결정 A).
+ * 특별히 놓으려면 운영자가 드랍 제외 표시를 먼저 끈다.
  *
  * 등록 때는 「예정 시각」을 기준으로 미리 돌린다 — 지금은 공개 전이지만 예정 시각에 공개되는 컬렉션은
  * 통과하고, 예정 시각에 이미 기간이 끝난 컬렉션은 걸린다. 조회가 실패하면 던진다(호출부가 등록 500 또는
@@ -40,7 +44,9 @@ export type ScheduleExcludeReason =
   | 'badge_without_collection'
   | 'badge_not_yet_valid'
   | 'badge_expired'
+  | 'badge_drop_excluded'
   | 'collection_not_exposed'
+  | 'collection_drop_excluded'
 
 /** 결과 JSON(`ambient_drop_schedules.result`)에 그대로 실리므로 interface가 아니라 type으로 둔다 */
 export type ScheduleExcluded = {
@@ -93,6 +99,7 @@ interface BadgeRow {
   item_book_id: string | null
   valid_from: string | null
   valid_until: string | null
+  drop_excluded: boolean
 }
 
 interface BookRow {
@@ -100,9 +107,10 @@ interface BookRow {
   is_active: boolean
   valid_from: string | null
   valid_until: string | null
+  drop_excluded: boolean
 }
 
-const BADGE_COLUMNS = 'id, type, rarity, deleted_at, item_book_id, valid_from, valid_until'
+const BADGE_COLUMNS = 'id, type, rarity, deleted_at, item_book_id, valid_from, valid_until, drop_excluded'
 
 function validAt(b: { valid_from: string | null; valid_until: string | null }, atMs: number): 'ok' | 'not_yet' | 'expired' {
   if (b.valid_from && new Date(b.valid_from).getTime() > atMs) return 'not_yet'
@@ -185,7 +193,7 @@ async function loadItemTargets(
     )
     const bookIds = [...new Set(badgeRows.map((b) => b.item_book_id).filter((id): id is string => !!id))]
     const bookRows = await fetchAllRowsIn<BookRow, string>('item_books(예약 아이템 소속)', 'id', bookIds, (chunk) =>
-      supabase.from('item_books').select('id, is_active, valid_from, valid_until').in('id', chunk)
+      supabase.from('item_books').select('id, is_active, valid_from, valid_until, drop_excluded').in('id', chunk)
     )
     const bookById = new Map(bookRows.map((b) => [b.id, b]))
     const badgeById = new Map(badgeRows.map((b) => [b.id, b]))
@@ -220,6 +228,14 @@ async function loadItemTargets(
         excluded.push({ id, reason: 'collection_not_exposed' })
         continue
       }
+      if (b.drop_excluded) {
+        excluded.push({ id, reason: 'badge_drop_excluded' })
+        continue
+      }
+      if (book.drop_excluded) {
+        excluded.push({ id, reason: 'collection_drop_excluded' })
+        continue
+      }
       pool.push({ id: b.id, rarity: b.rarity, itemBookId: b.item_book_id })
     }
     return {
@@ -231,7 +247,7 @@ async function loadItemTargets(
     }
   }
 
-  // 컬렉션 선택 — 노출 중인 것만 남긴다(정기 배포의 explicit 모드와 같은 판정).
+  // 컬렉션 선택 — 노출 중이고 드랍 제외가 아닌 것만 남긴다(정기 배포의 explicit 모드와 같은 판정).
   // 판정을 미룬 컬렉션은 빼고 나머지만 판정한다. 남은 목록이 비면 조회하지 않는다 — 빈 목록은 「전체」로 읽힌다.
   const hasDeferred = spec.collectionIds.some((id) => deferredIds.has(id.toLowerCase()))
   const checkedIds = hasDeferred ? spec.collectionIds.filter((id) => !deferredIds.has(id.toLowerCase())) : spec.collectionIds
@@ -239,18 +255,23 @@ async function loadItemTargets(
     return { badgePool: [], excludedBadges: [], excludedCollections: [], effectiveCollectionIds: [] }
   }
 
-  const droppableBooks = await fetchAllRowsIn<{ id: string }, string>('item_books(예약 컬렉션)', 'id', checkedIds, (chunk) =>
-    applyDroppableItemBookFilter(supabase.from('item_books').select('id').in('id', chunk), atIso)
+  // 노출 중인 컬렉션을 읽고 그 안에서 드랍 제외를 따로 가른다 — 걸린 이유를 「노출 중이 아님」과 「드랍 제외」로 구분하려는 것이다
+  const exposedBooks = await fetchAllRowsIn<{ id: string; drop_excluded: boolean }, string>(
+    'item_books(예약 컬렉션)',
+    'id',
+    checkedIds,
+    (chunk) => applyDroppableItemBookFilter(supabase.from('item_books').select('id, drop_excluded').in('id', chunk), atIso)
   )
+  const dropExcludedBookIds = new Set(exposedBooks.filter((b) => b.drop_excluded).map((b) => b.id))
   const target = resolveAmbientTargetCollections({
     useRandom: false,
     configIds: checkedIds,
-    droppableIds: droppableBooks.map((b) => b.id),
+    droppableIds: exposedBooks.filter((b) => !b.drop_excluded).map((b) => b.id),
     pick: pickRandom,
   })
-  const excludedCollections = target.excludedCollectionIds.map((id) => ({
+  const excludedCollections: ScheduleExcluded[] = target.excludedCollectionIds.map((id) => ({
     id,
-    reason: 'collection_not_exposed' as const,
+    reason: dropExcludedBookIds.has(id) ? 'collection_drop_excluded' : 'collection_not_exposed',
   }))
   if (target.reason) {
     return {
@@ -276,6 +297,7 @@ async function loadItemTargets(
   const pool: ScheduleTargetBadge[] = []
   for (const b of badgeRows) {
     if (!b.item_book_id) continue
+    if (b.drop_excluded) continue
     if (validAt(b, atMs) !== 'ok') continue
     pool.push({ id: b.id, rarity: b.rarity, itemBookId: b.item_book_id })
   }
@@ -344,7 +366,9 @@ export const SCHEDULE_EXCLUDE_REASON_LABEL: Record<ScheduleExcludeReason, string
   badge_without_collection: '컬렉션에 속하지 않은 아이템',
   badge_not_yet_valid: '아직 유효하지 않은 아이템',
   badge_expired: '유효기간이 끝난 아이템',
+  badge_drop_excluded: '드랍 제외 아이템',
   collection_not_exposed: '노출 중이 아닌 컬렉션',
+  collection_drop_excluded: '드랍 제외 컬렉션',
 }
 
 /**
@@ -366,7 +390,7 @@ export function describeScheduleTargetProblems(targets: ScheduleTargets): string
     case 'no_eligible_poi':
       return '놓을 수 있는 지점이 없어요. 선택한 종류에 운영 중인 지점이 없어요. 지점 종류를 바꿔서 다시 시도해 주세요.'
     case 'no_candidate_badges':
-      return '놓을 수 있는 아이템이 없어요. 예정 시각에 유효한 아이템 배지가 없어요. 아이템이나 시각을 바꿔서 다시 시도해 주세요.'
+      return '놓을 수 있는 아이템이 없어요. 예정 시각에 유효하면서 드랍 제외가 아닌 아이템 배지가 없어요. 아이템이나 시각을 바꿔서 다시 시도해 주세요.'
     default:
       return null
   }
