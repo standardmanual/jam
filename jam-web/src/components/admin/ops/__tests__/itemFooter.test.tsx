@@ -8,7 +8,7 @@
  * - 분기: 검토중은 반려·수정·승인, 예약됨은 공개 전 취소, 게재중이고 종료가 있는 종류는 지금 종료, 게재중이어도 종료가 없는 종류는 안내 글만
  * - `statusNotice`가 글을 돌려주면 결정 줄 대신 그 글이다(없거나 null이면 분기가 그린다)
  * - 잔상: 이전에 있던 키의 상태가 달라진 것만 센다(새로 나타난 키는 아니다)
- * - 서랍 틀: 제목(`title`)은 기본 「서랍」이고, 제목 글자는 포커스를 받을 수 있다(`tabindex="-1"`). 딤이 없다
+ * - 서랍 틀: 제목(`title`)은 기본 「서랍」이고, 제목 글자는 포커스를 받을 수 있다(`tabindex="-1"`). 딤이 없다. 글자를 적는 칸 안에서 누른 Esc는 서랍을 닫지 않는다(수정 초안 보호)
  */
 import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -16,7 +16,7 @@ import type { ReactElement } from 'react'
 import { TooltipProvider } from '@/components/admin/ui/tooltip'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import type { OpsWorkspaceContext } from '../OpsBundleWorkspace'
-import { OpsDrawerFrame } from '../OpsDrawerFrame'
+import { OpsDrawerFrame, isTextEntryTarget } from '../OpsDrawerFrame'
 import { OpsItemFooter, type OpsItemResultHandlers } from '../OpsItemFooter'
 import { FLASH_MS, changedStatusKeys } from '../useStatusFlash'
 
@@ -144,5 +144,28 @@ describe('OpsDrawerFrame — 제목 칸', () => {
     expect(out).toContain('안쪽')
     expect(out).not.toContain('서랍은 곧 열려요')
     expect(out).not.toContain('bg-black/80')
+  })
+})
+
+describe('isTextEntryTarget — 글자를 적는 칸 안의 Esc는 서랍을 닫지 않는다', () => {
+  it('입력·여러 줄 입력·선택·편집 가능한 영역을 가까운 조상까지 찾아보고, 찾으면 참이다', () => {
+    const asked: string[] = []
+    const inside = {
+      closest: (selector: string) => {
+        asked.push(selector)
+        return {}
+      },
+    }
+    expect(isTextEntryTarget(inside)).toBe(true)
+    for (const kind of ['input', 'textarea', 'select', '[contenteditable]']) expect(asked[0], kind).toContain(kind)
+    // contenteditable="false"는 글자를 적는 칸이 아니다
+    expect(asked[0]).toContain(':not([contenteditable="false"])')
+  })
+
+  it('찾지 못하거나 요소가 아니면 거짓이다(버튼·문서 등)', () => {
+    expect(isTextEntryTarget({ closest: () => null })).toBe(false)
+    expect(isTextEntryTarget(null)).toBe(false)
+    expect(isTextEntryTarget(undefined)).toBe(false)
+    expect(isTextEntryTarget({ nodeType: 9 })).toBe(false)
   })
 })

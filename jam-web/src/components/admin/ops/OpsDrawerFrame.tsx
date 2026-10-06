@@ -28,11 +28,22 @@ interface OpsDrawerFrameProps {
 
 const DEFAULT_TITLE = '서랍'
 
-/** 서랍이 열려 있는 동안 Esc로 닫는다. 다른 창(확인창·목록 상자)이 열려 있으면 그 창이 Esc를 쓰도록 비켜선다. */
+/**
+ * 글자를 적는 칸(입력·여러 줄 입력·선택·편집 가능한 영역)에서 온 이벤트인가. 그 안에서 누른 Esc는 서랍을 닫지 않는다 —
+ * 서랍에 직접 수정 양식이 들어오면(일정표 서랍, 티켓 20261006_1537) 적던 초안이 Esc 한 번에 사라지지 않게 한다.
+ */
+export function isTextEntryTarget(target: unknown): boolean {
+  const element = target as { closest?: (selector: string) => unknown } | null
+  if (!element || typeof element.closest !== 'function') return false
+  return element.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])') !== null
+}
+
+/** 서랍이 열려 있는 동안 Esc로 닫는다. 다른 창(확인창·목록 상자)이 열려 있으면 그 창이 Esc를 쓰도록 비켜서고, 글자를 적는 칸 안에서는 닫지 않는다. */
 function useCloseOnEscape(onClose: () => void) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return
+      if (isTextEntryTarget(event.target)) return
       if (document.querySelector('[role="dialog"], [role="alertdialog"], [role="listbox"], [role="menu"]')) return
       onClose()
     }
