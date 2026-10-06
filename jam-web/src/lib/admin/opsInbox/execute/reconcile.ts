@@ -540,16 +540,21 @@ export async function reconcileOpsItems(service: ServiceClient, deps: Partial<Ex
     cancelled: result.cancelled,
     failed: result.failed,
   }
+  // 계획한 전이가 0행이면(`applyTransition`이 null) 읽은 뒤 다른 곳(지금 종료 API 등, 티켓 20261006_0950 가정 9)이 항목 상태를 먼저 바꾼 것이다. 그 항목의 「밖에서 바뀜」은
+  // 낡은 상태를 읽은 결과라(항목은 그 API가 이미 종료 시각과 함께 맞춰 뒀다) 이번 회차에 남기지 않는다. 전이를 계획하지 않은 항목의 차이와 전이가 오류로 던진 항목은 그대로 남긴다.
+  const lostTransitionItemIds = new Set<string>()
   for (const planned of inApplyOrder(plan.transitions)) {
     try {
       const change = await applyTransition(ctx, planned)
       if (change) bucketOf[planned.to].push(change)
+      else lostTransitionItemIds.add(planned.item.id)
     } catch (err) {
       result.errors += 1
       console.error(`${LOG} 상태를 바꾸지 못해 건너뛰었어요(${kindLabel(planned.item.kind)}):`, messageOf(err))
     }
   }
   for (const planned of plan.externalChanges) {
+    if (lostTransitionItemIds.has(planned.item.id)) continue
     result.externalChanged.push({
       itemId: planned.item.id,
       bundleId: planned.item.bundle_id,
