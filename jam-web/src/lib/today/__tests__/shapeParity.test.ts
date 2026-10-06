@@ -5,7 +5,8 @@
  * (`toCardView`)이 같아야 한다. 이벤트 경로에는 배지 조회가 없어 배지 그림 유무를 모르므로, 두 경로는 같은 입력(카드 행의 `badge_ids`)으로
  * 판정한다. 옛 레이아웃 6종 × 커버 있음/없음 × 배지 0개/그림 있는 배지/그림 없는 배지(× 대표 템플릿 4종)를 전부 맞춰 본다.
  *
- * 피할 수 없는 차이 하나는 홈피드 PRD §9에 허용 차이로 적혀 있고 아래에서 고정한다: `badge_ids`가 있지만 그 배지가 전부 삭제된 타일형 `list`.
+ * 피할 수 없는 차이 둘은 홈피드 PRD §9에 허용 차이로 적혀 있고 아래에서 고정한다: `badge_ids`가 있지만 그 배지가 전부 삭제된 타일형 `list`,
+ * 그리고 공개 뒤 레시피 공개 카드의 `list`(타일이 레시피 슬롯에서 나와 `badge_ids`가 비어 있다, 티켓 20261006_1217).
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/shapeParity.test.ts
  */
@@ -153,5 +154,48 @@ describe('허용 차이 — badge_ids가 전부 삭제된 배지인 타일형 li
     const card = cardRow({ layout_type: 'badge_gallery', badge_ids: ['gone'], resolved_badges: [] })
     expect(toCardView(card).shape).toBe('brief')
     expect(await recordedShape(card)).toBe('list')
+  })
+})
+
+describe('허용 차이 — 레시피 공개 카드(recipe_reveal)의 공개 뒤 list (홈피드 PRD §9, 티켓 20261006_1217)', () => {
+  // 레시피 공개 카드는 `badge_ids`가 비어 있고 타일이 레시피 슬롯에서 나온다. 계측(`events.ts`)은 타일 수를 `badge_ids` 개수로 갈음하므로 늘 0개이고,
+  // 그래서 위 입력 묶음(4개 템플릿)이 `badge_ids` 비어 있는 경우를 «우연히» 통과시키지 않도록 이 경우를 명시한다. ⑫-b(티켓 20261006_1218)가
+  // `events.ts`가 `recipe_id`·공개 상태로 타일 수를 판정하게 하면 이 차이가 사라지고 이 시험은 «둘 다 list»로 바뀐다.
+  const recipeCard = (overrides: Partial<TodayCardWithHref> = {}) =>
+    cardRow({ template_type: 'recipe_reveal', layout_type: 'badge_gallery', shape: 'list', resolved_href: '/combine', ...overrides })
+
+  const releasedRecipe: TodayCardWithHref['resolved_recipe'] = {
+    state: 'released',
+    ingredient_count: 2,
+    reward_points: 100,
+    reward_badge_count: 0,
+    tiles: [withImage, { ...withImage, id: 'b2' }],
+  }
+  const scheduledRecipe: TodayCardWithHref['resolved_recipe'] = { state: 'scheduled', ingredient_count: 2, release_at: '2026-10-12T00:00:00Z' }
+
+  it('공개 뒤: 화면은 슬롯 타일이 있어 list, 기록은 badge_ids가 비어 brief다(허용 차이 둘째)', async () => {
+    const card = recipeCard({ resolved_recipe: releasedRecipe })
+    expect(toCardView(card).shape).toBe('list')
+    expect(await recordedShape(card)).toBe('brief')
+  })
+
+  it('공개 전: 화면도 기록도 brief다(타일 없음)', async () => {
+    const card = recipeCard({ resolved_recipe: scheduledRecipe })
+    expect(toCardView(card).shape).toBe('brief')
+    expect(await recordedShape(card)).toBe('brief')
+  })
+
+  it('레시피 줄이 없는 카드(레시피 없음·끝남·조회 실패)도 화면과 기록이 brief로 같다', async () => {
+    const card = recipeCard({ resolved_recipe: null })
+    expect(toCardView(card).shape).toBe('brief')
+    expect(await recordedShape(card)).toBe('brief')
+  })
+
+  it.each(['poster', 'hero', 'square', 'brief'] as const)('저장된 모양이 %s이면 공개 전·뒤 모두 화면과 기록이 같다', async (shape) => {
+    for (const resolved_recipe of [releasedRecipe, scheduledRecipe, null]) {
+      const card = recipeCard({ shape, resolved_recipe })
+      expect(toCardView(card).shape).toBe(shape)
+      expect(await recordedShape(card)).toBe(shape)
+    }
   })
 })

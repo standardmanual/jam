@@ -25,6 +25,7 @@ const ALL_TEMPLATES: TodayCardTemplateType[] = [
   'drop_alert',
   'editorial_article',
   'ranking_board',
+  'recipe_reveal',
 ]
 
 const base: TodaySectionSnapshot = {
@@ -41,13 +42,16 @@ const base: TodaySectionSnapshot = {
   hasEndsAt: true,
 }
 
-describe('visibleTodaySections — 참조 컨텐츠가 없는 템플릿(drop_alert)만 ref 섹션을 숨긴다', () => {
+describe('visibleTodaySections — 참조 컨텐츠가 없는 템플릿(drop_alert·recipe_reveal)만 ref 섹션을 숨긴다', () => {
   it('drop_alert는 참조 컨텐츠 섹션이 없다', () => {
     expect(visibleTodaySections('drop_alert')).toEqual(['class', 'basic', 'expose', 'period'])
   })
+  it('recipe_reveal도 참조 컨텐츠 섹션이 없다(레시피 입력 칸은 ⑫-b가 더한다, 티켓 20261006_1217)', () => {
+    expect(visibleTodaySections('recipe_reveal')).toEqual(['class', 'basic', 'expose', 'period'])
+  })
   it('그 외 7개 템플릿은 참조 컨텐츠 섹션을 포함한 5개 섹션을 모두 보인다', () => {
     for (const t of ALL_TEMPLATES) {
-      if (t === 'drop_alert') continue
+      if (t === 'drop_alert' || t === 'recipe_reveal') continue
       expect(visibleTodaySections(t)).toEqual(['class', 'basic', 'ref', 'expose', 'period'])
     }
   })
@@ -85,12 +89,48 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
   it('ranking_board는 랭킹모드·이동경로를 쓴다(티켓 20260911_1440)', () => {
     expect(todayTemplateFields('ranking_board')).toEqual({ description: true, rankingMode: true, targetHref: true })
   })
+  it('recipe_reveal은 설명문만 받는다(레시피 칸은 ⑫-b, 카드 자신의 이동 경로는 /combine 고정, 티켓 20261006_1217)', () => {
+    expect(todayTemplateFields('recipe_reveal')).toEqual({ description: true })
+  })
+  it('처음 보는 템플릿 값은 던지지 않고 빈 칸 목록을 돌려준다(어드민 상세·폼이 그 카드 하나 때문에 오류 화면이 되지 않는다)', () => {
+    const unknown = 'future_template' as TodayCardTemplateType
+    expect(todayTemplateFields(unknown)).toEqual({})
+    expect(visibleTodaySections(unknown)).toEqual(['class', 'basic', 'expose', 'period'])
+  })
+  it('처음 보는 템플릿 값도 섹션 상태·저장 페이로드를 던지지 않고 만든다(어드민 상세·폼이 쓰는 함수 전부)', () => {
+    const unknown = 'future_template' as TodayCardTemplateType
+    expect(() => computeTodaySectionStatuses({ ...base, templateType: unknown, badgeCount: 2 })).not.toThrow()
+    expect(computeTodaySectionStatuses({ ...base, templateType: unknown, badgeCount: 2 }).ref).toEqual({ tone: 'idle', text: '선택' })
+    // 모르는 템플릿은 어떤 참조 칸도 받지 않으므로 저장할 때 참조·설명문 값이 비워진다
+    const payload = buildTodayCardSavePayload({
+      templateType: unknown,
+      layoutType: 'other',
+      title: '제목',
+      subtitle: '',
+      description: '설명문',
+      coverImageUrl: '',
+      badgeIds: ['b1'],
+      missionId: 'm1',
+      itemBookId: '',
+      regionLabel: '성수동',
+      bodyMarkdown: '',
+      rankingModeId: '',
+      contentTypeId: '',
+      targetHref: '/x',
+      exposureTags: ['all'],
+      startsAt: '2026-09-11T00:00',
+      endsAt: '2026-09-12T00:00',
+      sortOrder: '0',
+      isActive: true,
+    })
+    expect(payload).toMatchObject({ badge_ids: [], mission_id: null, region_label: null, description: null, target_href: null })
+  })
   it('설명문 칸(티켓 20260929_1335)은 editorial_article만 쓰지 않는다', () => {
     for (const t of ALL_TEMPLATES) {
       expect(Boolean(todayTemplateFields(t).description)).toBe(t !== 'editorial_article')
     }
   })
-  it('8개 템플릿 모두 매핑이 존재한다', () => {
+  it('9개 템플릿 모두 매핑이 존재한다', () => {
     expect(Object.keys(TODAY_FIELDS_FOR).sort()).toEqual([...ALL_TEMPLATES].sort())
   })
 })

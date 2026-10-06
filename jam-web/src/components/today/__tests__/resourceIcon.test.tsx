@@ -67,6 +67,17 @@ describe('resourceIconOf', () => {
     expect(drawn(view as Parameters<typeof resourceIconOf>[0])).toBe(expected(HourglassIcon))
   })
 
+  it('레시피 공개 카드(recipe_reveal)는 플라스크다', () => {
+    expect(drawn({ resource: 'recipe', template: 'recipe_reveal' })).toBe(expected(FlaskIcon))
+  })
+
+  it('자원을 모르는 카드(처음 보는 템플릿 값, 자원이 undefined)는 던지지 않고 아이콘을 그리지 않는다(티켓 20261006_1217)', () => {
+    const unknown = { resource: undefined, template: 'future_template' } as unknown as Parameters<typeof resourceIconOf>[0]
+    expect(() => resourceIconOf(unknown, { className: CLASS })).not.toThrow()
+    expect(resourceIconOf(unknown, { className: CLASS })).toBeNull()
+    expect(renderToStaticMarkup(<>{resourceIconOf(unknown, { className: CLASS })}</>)).toBe('')
+  })
+
   it('템플릿이 지역 트렌드여도 자동 카드가 아닌 자원이면 자원 아이콘이 그대로다', () => {
     expect(drawn({ resource: 'mission', template: 'location_trend' })).toBe(expected(TargetIcon))
     expect(drawn({ resource: 'drop', template: 'location_trend' })).toBe(expected(PackageIcon))

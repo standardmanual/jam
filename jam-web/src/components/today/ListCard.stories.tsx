@@ -368,6 +368,69 @@ export const TileRecipeAndBadge: Story = {
   },
 }
 
+/**
+ * 레시피 공개 카드의 공개 뒤 모습(티켓 20261006_1217). 타일은 슬롯마다 하나(대표 후보)이고 후보를 펼치지 않는다 — 가진 후보가 있는 슬롯은 컬러, 없는 슬롯은 첫 후보의 흑백이다.
+ * 정보 줄은 「재료 N개」·「보상 …」, 타일 수는 재료 수와 같다. 328px 폭에서 4개는 딱 맞고 5개부터 잘려 보이며 슬롯 상한 10개까지 자르지 않는다.
+ * 타일이 하나도 없으면(레시피 줄 없음·후보 전부 삭제) `brief`로 그려져 이 Story의 맨 아래 카드가 보이지 않는다 — 그 모습은 `BriefCard`의 「레시피 공개 전」 Story에 있다.
+ */
+export const RecipeRevealTiles: Story = {
+  name: '레시피 공개 뒤 — 슬롯당 타일 하나(컬러·흑백 섞임), 4개 · 10개',
+  render: () => (
+    <Column width={W360}>
+      <Case
+        caption="슬롯 4개 — 가진 슬롯은 컬러, 없는 슬롯은 첫 후보의 흑백(이름은 컬러), 그림 없는 타일은 플라스크"
+        view={tileCard({
+          resource: 'recipe',
+          template: 'recipe_reveal',
+          label: d.todayCard.recipeReveal,
+          title: '성수동 탐험가 레시피가 열렸어요',
+          subtitle: undefined,
+          description: undefined,
+          facts: ['재료 4개', '보상 300 포인트 · 배지 1개'],
+          href: '/combine',
+          tiles: [
+            { name: '성수동 지도', imageUrl: SAMPLE[0], earned: true },
+            { name: '한강 물병', imageUrl: SAMPLE[1], earned: false },
+            { name: '뚝섬 돗자리', imageUrl: null, earned: false },
+            { name: '서울숲 손전등', imageUrl: SAMPLE[3], earned: true },
+          ],
+        })}
+      />
+      <Case
+        caption="슬롯 10개(상한) — 자르지 않고 모두 그린다, 다섯째부터 가장자리에서 잘려 보인다"
+        view={tileCard({
+          resource: 'recipe',
+          template: 'recipe_reveal',
+          label: d.todayCard.recipeReveal,
+          title: '열 칸 레시피가 열렸어요',
+          subtitle: undefined,
+          description: undefined,
+          facts: ['재료 10개', '보상 배지 1개'],
+          href: '/combine',
+          tiles: tiles(10, (index) => index % 3 === 0),
+        })}
+      />
+    </Column>
+  ),
+  play: async ({ canvasElement }) => {
+    expectNoHorizontalOverflow(canvasElement)
+    const [four, ten] = cardsOf(canvasElement)
+    expect(tilesOf(four)).toHaveLength(4)
+    expect(tilesOf(ten)).toHaveLength(10)
+    // 「재료 N개」와 타일 수가 같다
+    expect(four.textContent).toContain('재료 4개')
+    expect(ten.textContent).toContain('재료 10개')
+    // 흑백은 이미지에만 걸리고 이름은 컬러다
+    for (const el of Array.from(four.querySelectorAll('.grayscale'))) expect(el.tagName).toBe('IMG')
+    expect(four.querySelectorAll('.grayscale')).toHaveLength(1)
+    // 4개는 280px 안쪽 폭에 딱 맞아 스크롤이 없고, 10개는 스크롤이다
+    expect(scrolls(four)).toBe(false)
+    expect(scrolls(ten)).toBe(true)
+    // 「+N」·「외 N개」가 없다
+    for (const card of [four, ten]) expect(card.textContent).not.toMatch(/외 \d+개|\+\d+/)
+  },
+}
+
 /** 그림 주소가 없을 때와 로드에 실패했을 때(깨진 경로)는 같은 칸에 자원 아이콘이다. 칸 크기가 그림이 있는 타일과 같다. */
 export const TileNoImage: Story = {
   name: '타일 그림 없음 · 로드 실패 — 같은 64px 칸에 아이콘, 카드 높이 같음',

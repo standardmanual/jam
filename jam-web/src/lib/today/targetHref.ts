@@ -32,7 +32,7 @@ export interface ResolveTargetHrefContext {
  * 카드의 이동 경로를 결정한다.
  * - editorial_article: 어드민 입력을 무시하고 항상 /today/{id}
  * - 그 외: 어드민이 명시적으로 target_href를 채웠으면 그 값 우선
- * - 비어있으면 템플릿 규칙(Phase15_02 §2)으로 자동 생성
+ * - 비어있으면 템플릿 규칙(Phase15_02 §2)으로 자동 생성(레시피 공개 카드는 /combine)
  * (순수 함수 — 유닛테스트 대상)
  */
 export function resolveTargetHref(card: TodayCardRow, ctx: ResolveTargetHrefContext = {}): string {
@@ -62,6 +62,10 @@ export function resolveTargetHref(card: TodayCardRow, ctx: ResolveTargetHrefCont
       return card.item_book_id ? `/collections/${card.item_book_id}` : '/collections'
     case 'drop_alert':
       return '/drops'
+    case 'recipe_reveal':
+      // 레시피 공개 카드는 공개 전·후 모두 믹스 화면으로 보낸다(티켓 20261006_1217, 1500 ⑫ 사용자 결정 Q4). 공개 전 레시피는 그 목록에 없지만(없는 레시피와 같다)
+      // 카드의 「공개 M월 D일」 줄이 이유를 말한다. 레시피별 주소는 없다 — 믹스 화면은 레시피를 골라 들어가는 화면이다.
+      return '/combine'
     case 'ranking_board':
       // 대상이 미션 참가자면 그 미션의 기존 랭킹 화면(User Story 10 — "더 자세한 순위와 내
       // 진행 내역"은 이미 그 화면이 갖고 있다, 새로 만들지 않는다). 수동 지정 유저 대상은

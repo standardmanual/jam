@@ -665,6 +665,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         </div>
       )}
       {templateType === 'drop_alert' && <FieldMessage>이동 경로는 /drops로 고정돼요.</FieldMessage>}
+      {templateType === 'recipe_reveal' && <FieldMessage>이동 경로는 /combine으로 고정돼요.</FieldMessage>}
       {templateType === 'editorial_article' && <FieldMessage>카드 자체는 전용 기사 페이지(/today/{'{id}'})로 열려요. 여기 적은 이동 경로·컬렉션·미션은 기사 본문 끝의 버튼(자세히 보기·컬렉션 보기·미션 보기)이 가는 곳이에요.</FieldMessage>}
     </TodaySectionCard>
   )

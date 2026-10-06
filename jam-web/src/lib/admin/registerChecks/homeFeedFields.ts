@@ -97,6 +97,8 @@ export const REQUIRED_REFERENCE_FIELDS: Record<TodayCardTemplateType, string[]> 
   drop_alert: [],
   editorial_article: ['body_markdown'],
   ranking_board: ['ranking_mode_id'],
+  // 필수 참조 없음 — 레시피 칸(`recipe_id`)이 비어 있어도 카드가 그려진다(레시피 줄 없이). 칸 자체는 ⑫-b(티켓 20261006_1218)가 만든다.
+  recipe_reveal: [],
 }
 
 // 본문(body_markdown)만 줄바꿈·탭을 허용한다. SQL 값은 문자열 리터럴로만 들어가고 주석에는 쓰지 않는다.

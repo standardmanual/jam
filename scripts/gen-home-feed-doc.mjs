@@ -229,6 +229,9 @@ export function genDestinations(targetHrefMod) {
 
   add('drop_alert', '입력과 무관(고정)', {})
 
+  add('recipe_reveal', '레시피 유무와 무관(공개 전·후 같다, 레시피별 주소는 없다)', { recipe_id: '{id}' })
+  add('recipe_reveal', 'target_href 명시', { target_href: '{target_href}' })
+
   add('ranking_board', '미션 참가자 대상 맥락 있음', {}, { rankingModeTargetMissionId: '{id}' })
   add('ranking_board', '미션 참가자 대상 맥락 없음(수동 지정 유저 대상)', {}, {})
   add('ranking_board', 'target_href 명시', { target_href: '{target_href}' })

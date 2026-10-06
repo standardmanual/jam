@@ -104,7 +104,15 @@ const RANKING = brief({ resource: 'ranking', label: d.todayCard.rankingBoard, ti
 
 const ARTICLE = brief({ resource: 'article', label: d.todayCard.editorialArticle, title: '가을 한강 러닝 코스 가이드', href: '/today/a1' })
 
-const RECIPE = brief({ resource: 'recipe', label: '레시피', title: '새 조합법이 곧 공개돼요', href: '/combine' })
+/** 레시피 공개 카드(`recipe_reveal`)의 공개 전 모습 — 타일이 없어 `list`가 아니라 `brief`로 그려진다. 필수 정보는 재료 수·공개일뿐이다(티켓 20261006_1217). */
+const RECIPE = brief({
+  resource: 'recipe',
+  template: 'recipe_reveal',
+  label: d.todayCard.recipeReveal,
+  title: '새 레시피가 곧 공개돼요',
+  facts: buildFacts('recipe', { ingredientCount: 4, revealAt: '2026-10-12T18:00:00+09:00' }, NOW),
+  href: '/combine',
+})
 
 // ─── 배치 도우미 ───────────────────────────────────────────────────────────
 
@@ -162,7 +170,7 @@ type Story = StoryObj<typeof meta>
 
 // ─── 1. 자원별 ───────────────────────────────────────────────────────────
 
-/** 자원 8종(자동 카드는 진행 알림·지역 트렌드 둘). 마지막 셋(랭킹·기사·레시피)은 필수 정보 없이 아이콘 모양 구분만 본다. */
+/** 자원 8종(자동 카드는 진행 알림·지역 트렌드 둘). 랭킹·기사는 필수 정보 없이 아이콘 모양 구분만 보고, 레시피는 재료 수·공개일 두 줄이다. */
 export const ByResource: Story = {
   name: '자원별 8종 — 아이콘 모양으로만 구분',
   render: () => (
@@ -175,7 +183,7 @@ export const ByResource: Story = {
       <Case caption="자동 카드 — 지역 트렌드 (핀)" view={AUTO_TREND} />
       <Case caption="랭킹 — 필수 정보 없음" view={RANKING} />
       <Case caption="기사 — 필수 정보 없음" view={ARTICLE} />
-      <Case caption="레시피 — 필수 정보 없음" view={RECIPE} />
+      <Case caption="레시피 공개 전 — 재료 수 · 공개일 (플라스크)" view={RECIPE} />
     </Column>
   ),
   play: async ({ canvasElement }) => {
@@ -187,6 +195,43 @@ export const ByResource: Story = {
     // 배지 카드는 썸네일 이미지를 그려 아이콘이 없다
     expect(slotIcons).toHaveLength(8)
     expect(new Set(slotIcons).size).toBe(8)
+  },
+}
+
+// ─── 1-1. 레시피 공개 전 ───────────────────────────────────────────────────
+
+/**
+ * 레시피 공개 카드의 공개 전 · 레시피 줄이 없는 카드 · 공개일을 읽을 수 없는 카드. 모두 `brief`다 — 타일이 0개인 `list`는 `brief`로 그려진다.
+ * 레시피 이름·재료 후보·보상은 공개 전 값에 없으므로 어느 카드에도 나오지 않는다(1500 ⑫ 사용자 결정 Q3).
+ */
+export const RecipeReveal: Story = {
+  name: '레시피 공개 전 — 재료 수 · 공개일, 레시피 없음, 공개일 없음',
+  render: () => (
+    <Column width={W360}>
+      <Case caption="공개 전 — 재료 N개 · 공개 M월 D일 · › (플라스크)" view={RECIPE} />
+      <Case
+        caption="레시피 줄 없음(비었거나 끝났거나 조회 실패) — 정보 줄이 없다"
+        view={brief({ ...RECIPE, facts: undefined })}
+      />
+      <Case
+        caption="공개일을 읽을 수 없음 — 공개일 줄만 생략"
+        view={brief({ ...RECIPE, facts: buildFacts('recipe', { ingredientCount: 4, revealAt: 'not-a-date' }, NOW) })}
+      />
+      <Case
+        caption="처음 보는 템플릿 값 — 아이콘·칩 없이 그려지고 칩 줄 여백도 없다"
+        view={brief({ resource: undefined as never, template: 'future_template' as never, label: undefined, title: '미래 카드', href: '/' })}
+      />
+    </Column>
+  ),
+  play: async ({ canvasElement }) => {
+    expectNoHorizontalOverflow(canvasElement)
+    const [reveal, none, noDate, unknown] = cardsOf(canvasElement)
+    expect(Array.from(reveal.querySelectorAll('p')).map((p) => p.textContent)).toEqual(['재료 4개', '공개 10월 12일'])
+    expect(none.querySelectorAll('p')).toHaveLength(0)
+    expect(Array.from(noDate.querySelectorAll('p')).map((p) => p.textContent)).toEqual(['재료 4개'])
+    // 모르는 템플릿은 64px 칸이 비어 있어도 카드 높이는 최소 88px을 지킨다
+    expect(heightOf(unknown)).toBeGreaterThanOrEqual(88)
+    expect(unknown.querySelector('.w-16 svg')).toBeNull()
   },
 }
 

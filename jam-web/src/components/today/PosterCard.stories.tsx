@@ -72,11 +72,13 @@ const COLLECTION = poster({
   href: '/collections/c1',
 })
 
-/** 레시피는 대응하는 템플릿이 아직 없다(`recipe_reveal`은 티켓 1500·1458 소관). 필수 정보도 없다. */
+/** 레시피 공개 카드(`recipe_reveal`)의 공개 예고 — 운영자가 `poster`를 고르고 커버를 올린 경우. 공개 뒤에도 타일 줄은 없고 정보 줄만 바뀐다(티켓 20261006_1217). */
 const RECIPE = poster({
   resource: 'recipe',
-  label: '레시피',
-  title: '새 조합법이 곧 공개돼요',
+  template: 'recipe_reveal',
+  label: d.todayCard.recipeReveal,
+  title: '새 레시피가 곧 공개돼요',
+  facts: buildFacts('recipe', { ingredientCount: 4, revealAt: '2026-10-12T18:00:00+09:00' }, NOW),
   href: '/combine',
   imageUrl: COVER_ALT,
 })
@@ -210,7 +212,7 @@ export const ByResource: Story = {
   render: () => (
     <Column width={W360}>
       <Case caption="컬렉션 — 필수 정보 2줄" view={COLLECTION} />
-      <Case caption="레시피 공개 예고 — 필수 정보 없음" view={RECIPE} />
+      <Case caption="레시피 공개 예고 — 재료 수 · 공개일" view={RECIPE} />
       <Case caption="JAM! 배지 — 흰 알약 라벨 · 흰 글자 핀 · Epic 칩이 막의 첫 줄에 함께" view={BADGE_WITH_PIN} />
       <Case caption="미션 — 필수 정보 2줄" view={MISSION} />
       <Case caption="드랍 — 칩 줄에 지역 핀 없음(필수 정보 「지역」 줄이 같은 값)" view={DROP} />
@@ -236,6 +238,41 @@ export const ByResource: Story = {
       expect(card.textContent).not.toContain(d.today.cardReadMore)
       expect(card.textContent).not.toContain('→')
     }
+  },
+}
+
+// ─── 1-1. 레시피 공개 예고 ─────────────────────────────────────────────────
+
+/**
+ * 레시피 공개 카드를 운영자가 `poster`로 고른 경우(티켓 20261006_1217). 공개 전·뒤 모두 타일 줄이 없고 정보 줄만 막 위 흰 글자로 보인다:
+ * 공개 전은 「재료 N개 · 공개 M월 D일」, 공개 뒤는 「재료 N개 · 보상 …」. 커버가 없으면 자리 표시 판에 플라스크 아이콘이다(예고용 커버는 운영자가 만든다).
+ * 제목 상한은 18자라 레시피 이름을 제목에 쓸 때 주의한다.
+ */
+export const RecipeTeaser: Story = {
+  name: '레시피 공개 예고 — 공개 전 · 공개 뒤 · 커버 없음',
+  render: () => (
+    <Column width={W360}>
+      <Case caption="공개 전 — 재료 N개 · 공개 M월 D일" view={RECIPE} />
+      <Case
+        caption="공개 뒤 — 타일 줄 없이 재료 N개 · 보상"
+        view={poster({
+          ...RECIPE,
+          title: '새 레시피가 열렸어요',
+          facts: buildFacts('recipe', { ingredientCount: 4, rewardPoints: 300, rewardBadgeCount: 1 }, NOW),
+        })}
+      />
+      <Case caption="커버 없음 — 자리 표시(플라스크)" view={{ ...RECIPE, imageUrl: null }} />
+    </Column>
+  ),
+  play: async ({ canvasElement }) => {
+    expectNoHorizontalOverflow(canvasElement)
+    expectFourByFive(canvasElement)
+    const [before, after, noCover] = cardsOf(canvasElement)
+    const factTexts = (card: HTMLElement) => Array.from(scrimOf(card).querySelectorAll('p')).map((p) => p.textContent)
+    expect(factTexts(before)).toEqual(['재료 4개', '공개 10월 12일'])
+    expect(factTexts(after)).toEqual(['재료 4개', '보상 300 포인트 · 배지 1개'])
+    for (const card of [before, after, noCover]) expect(card.querySelectorAll('li')).toHaveLength(0)
+    expect(imageBoxOf(noCover).querySelectorAll('svg')).toHaveLength(1)
   },
 }
 

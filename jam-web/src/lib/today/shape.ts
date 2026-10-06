@@ -119,7 +119,7 @@ export function drawnShape(card: ShapeCardInput, legacyCutover: boolean = LEGACY
 
 // ─── 화면·계측이 함께 쓰는 순수 판정 (티켓 20261001_2244) ───────────────────────────────────
 
-/** 카드가 소개하는 자원. `recipe`는 대응하는 템플릿이 아직 없다(`recipe_reveal`은 티켓 1500·1458 소관). */
+/** 카드가 소개하는 자원. `recipe`는 레시피 공개 카드(`recipe_reveal`)가 소개한다(티켓 20261006_1217). */
 export const CARD_RESOURCES = ['mission', 'drop', 'recipe', 'badge', 'article', 'ranking', 'collection', 'auto'] as const
 
 export type CardResource = (typeof CARD_RESOURCES)[number]
@@ -134,8 +134,14 @@ const RESOURCE_BY_TEMPLATE: Record<TodayCardTemplateType, CardResource> = {
   itembook_milestone: 'collection',
   progress_nudge: 'auto',
   location_trend: 'auto',
+  recipe_reveal: 'recipe',
 }
 
+/**
+ * 템플릿 → 자원. 타입은 닫힌 유니온이지만 DB의 템플릿 값은 런타임에 열려 있다 — 이 코드가 모르는 값이 먼저 들어오면 `undefined`가 돌아온다
+ * (티켓 20261006_1217 안전망). 그 카드는 자원 줄(필수 정보)·자원 아이콘 없이 그려지고 홈은 오류 화면이 되지 않는다. 이 값을 읽는 쪽은 `undefined`를 견뎌야 한다
+ * (`resourceIconOf`는 아이콘을 그리지 않고, 그 밖의 읽기는 자원끼리 비교만 하므로 어느 자원도 아니다).
+ */
 export function resourceOfTemplate(templateType: TodayCardTemplateType): CardResource {
   return RESOURCE_BY_TEMPLATE[templateType]
 }
