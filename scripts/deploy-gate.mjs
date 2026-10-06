@@ -227,7 +227,20 @@ const SECRET_LABELS = {
 const ROLLBACK_MARKER = /^\s*--\s*(?:되돌림|ROLLBACK\b|DOWN\b)/i
 
 const ROUTE_FILE = /^jam-web\/src\/app\/api\/(?:(.+)\/)?route\.ts$/
-const ROUTE_AUTH = /auth\.getUser|@\/lib\/admin\/auth|CRON_SECRET|ADMIN_SECRET/
+const ROUTE_AUTH = /auth\.getUser|@\/lib\/admin\/auth|ADMIN_SECRET/
+
+// CRON_SECRET은 이름만 있다고 인증이 아니다(티켓 20261006_1540). 값이 없는 환경에서 `Bearer undefined`가 통과하므로
+// 빈 값을 먼저 막는 검사(`!secret ||`·`!process.env.CRON_SECRET`)가 있어야 인증으로 친다(P1 20260929_1636).
+// 주석·문자열은 비워서 판정한다. 모양만 보는 실수 방지용이라 다르게 쓴 올바른 코드는 차단될 수 있다(차단 쪽 오류).
+export function usesCronSecret(source) {
+  return stripSource(source, { keepStrings: true }).includes('CRON_SECRET')
+}
+export function hasCronSecretGuard(source) {
+  const code = stripSource(source, { keepStrings: false })
+  const names = ['CRON_SECRET']
+  for (const m of code.matchAll(new RegExp(`(?:const|let|var)\\s+(${IDENT})\\s*(?::[^=]+)?=\\s*process\\.env\\.CRON_SECRET${NOT_IDENT_AFTER}`, 'g'))) names.push(m[1])
+  return names.some((name) => new RegExp(`(?<!!)!\\s*(?:process\\.env\\.)?${name.replace(/\$/g, '\\$')}${NOT_IDENT_AFTER}`).test(code))
+}
 
 // 프로덕션 /login은 정적 자원의 ?dpl= 대신 <html data-dpl-id="…">로만 식별자를 내보낸다(티켓 20260924_0812)
 const DPL_ID = /(?:dpl=|data-dpl-id=")(dpl_[A-Za-z0-9]+)/
@@ -484,7 +497,11 @@ function gatherRoutes(repo, head, added, config, wrappers) {
     // 래퍼를 쓰는 라우트(가져오기 + 호출)를 찾는다. 무결성이 깨진 래퍼면 인증으로 치지 않는다.
     const used = wrappers.filter((w) => routeUsesWrapper(source, w.file, w.call))
     const intact = used.find((w) => w.ok)
-    if (ROUTE_AUTH.test(source)) {
+    const cron = usesCronSecret(source)
+    if (cron && !hasCronSecretGuard(source)) {
+      // 다른 인증이 함께 있어도 `Bearer undefined` 경로가 열려 있으므로 인증으로 치지 않는다.
+      entry.cronSecretUnguarded = true
+    } else if (cron || ROUTE_AUTH.test(source)) {
       entry.status = 'auth'
     } else if (intact) {
       entry.status = 'auth'
@@ -596,7 +613,9 @@ function renderText(r) {
     lines.push(`- API 라우트: 통과 — 새 라우트 ${r.routes.length}건(인증 확인 ${auth}건${viaText}, 공개 라우트 등록 ${pub}건)`)
   } else {
     for (const x of missingAuth) {
-      const hint = x.brokenWrappers
+      const hint = x.cronSecretUnguarded
+        ? 'CRON_SECRET을 쓰지만 값이 비었을 때를 먼저 막는 검사가 없어 「Bearer undefined」가 통과할 수 있음 (const secret = process.env.CRON_SECRET 뒤에 if (!secret || … !== `Bearer ${secret}`) 형태로 막기)'
+        : x.brokenWrappers
         ? `인증 래퍼 ${x.brokenWrappers.join(', ')}의 무결성 검증에 실패해 인증 확인으로 인정하지 않음(위 인증 래퍼 항목 참고)`
         : `인증 확인 호출이 없고 공개 라우트로 등록돼 있지 않음 (의도한 공개 라우트면 ${CONTRACT_REL}의 deploy_gate.public_routes에 "${x.route}" 등록, 공용 인증 래퍼를 쓰는 라우트라면 deploy_gate.auth_wrappers에 선언)`
       lines.push(`- API 라우트: 차단 — ${x.file} ${hint}`)
