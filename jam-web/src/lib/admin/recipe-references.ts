@@ -116,8 +116,22 @@ export async function collectRecipeReferences(
   return { blockingTotal: badgeCount, cascadeTotal: 0, total: badgeCount, noticeTotal: cardCount, error: null }
 }
 
+export interface RecipeDeletionLookupCandidate extends RecipeDeletionCandidate {
+  /**
+   * 이 레시피를 가리키는 안내용 참조 수(홈 카드, `noticeTotal`). 막는 참조가 있어 한 건씩 다시 센 경우에만
+   * 채운다 — 전체를 한 번에 센 경우는 레시피별로 나눌 수 없어 0이고, `RecipeDeletionLookup.allNoticeTotal`을 쓴다.
+   */
+  noticeTotal: number
+}
+
 export interface RecipeDeletionLookup {
-  candidates: Map<string, RecipeDeletionCandidate>
+  candidates: Map<string, RecipeDeletionLookupCandidate>
+  /**
+   * 찾은 레시피 전체를 한 번에 센 안내용 참조 수. 막는 참조가 0건이라 전원이 삭제 대상일 때만 값이 있다
+   * (이때 삭제 대상 = 찾은 전체라 호출부가 그대로 쓴다). 막힌 레시피가 있으면 `null`이고 호출부는
+   * 후보별 `noticeTotal`에서 삭제 대상만 더한다(티켓 20261006_1406).
+   */
+  allNoticeTotal: number | null
   error: string | null
 }
 
@@ -128,39 +142,45 @@ const LOOKUP_CHUNK = 200
  * id는 결과에 없다. 참조 판정은 단건 DELETE와 같은 `collectRecipeReferences` 하나만 쓴다:
  * 전체를 한 번에 세서 0건이면 그대로 통과, 0건이 아니면 어느 레시피가 막혔는지 가리도록
  * 한 건씩 다시 센다. 조회가 실패하면 `error`를 돌려주고 호출부는 삭제를 막는다(fail-closed).
+ *
+ * 홈 카드 수(`noticeTotal`)는 같은 조회에서 함께 돌려준다 — 미리보기가 카드 수를 세려고 참조를 한 번 더
+ * 조회하지 않게 한다(티켓 20261006_1406).
  */
 export async function collectRecipeDeletionCandidates(
   supabase: ServiceClient,
   recipeIds: string[]
 ): Promise<RecipeDeletionLookup> {
-  const candidates = new Map<string, RecipeDeletionCandidate>()
-  if (recipeIds.length === 0) return { candidates, error: null }
+  const candidates = new Map<string, RecipeDeletionLookupCandidate>()
+  if (recipeIds.length === 0) return { candidates, allNoticeTotal: null, error: null }
 
   for (let i = 0; i < recipeIds.length; i += LOOKUP_CHUNK) {
     const { data, error } = await supabase
       .from('combination_recipes')
       .select('id, name')
       .in('id', recipeIds.slice(i, i + LOOKUP_CHUNK))
-    if (error) return { candidates, error: error.message }
+    if (error) return { candidates, allNoticeTotal: null, error: error.message }
     for (const row of (data ?? []) as { id: string; name: string | null }[]) {
-      candidates.set(row.id, { id: row.id, name: row.name, total: 0 })
+      candidates.set(row.id, { id: row.id, name: row.name, total: 0, noticeTotal: 0 })
     }
   }
 
   const foundIds = [...candidates.keys()]
-  if (foundIds.length === 0) return { candidates, error: null }
+  if (foundIds.length === 0) return { candidates, allNoticeTotal: null, error: null }
 
   const all = await collectRecipeReferences(supabase, foundIds)
-  if (all.error) return { candidates, error: all.error }
-  if (all.total === 0) return { candidates, error: null }
+  if (all.error) return { candidates, allNoticeTotal: null, error: all.error }
+  if (all.total === 0) return { candidates, allNoticeTotal: all.noticeTotal, error: null }
 
   for (const id of foundIds) {
     const single = await collectRecipeReferences(supabase, [id])
-    if (single.error) return { candidates, error: single.error }
+    if (single.error) return { candidates, allNoticeTotal: null, error: single.error }
     const candidate = candidates.get(id)
-    if (candidate) candidate.total = single.total
+    if (candidate) {
+      candidate.total = single.total
+      candidate.noticeTotal = single.noticeTotal
+    }
   }
-  return { candidates, error: null }
+  return { candidates, allNoticeTotal: null, error: null }
 }
 
 export interface BadgeInRecipeReferenceReport {
