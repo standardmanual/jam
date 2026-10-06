@@ -10,7 +10,7 @@
 
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -306,11 +306,37 @@ assert.equal(firstLines(r, 1)[0], '배포 게이트: 차단(인증 확인 없는
 assert.match(r.stdout, /jam-web\/src\/app\/api\/open\/thing\/route\.ts 인증 확인 호출이 없고 공개 라우트로 등록돼 있지 않음/)
 assert.match(r.stdout, /deploy_gate\.public_routes에 "open\/thing" 등록/)
 
+// 11-1) CRON_SECRET은 빈 값 선검사가 있어야 인증으로 친다(티켓 20261006_1540) — 이름만 있으면 값이 없을 때 「Bearer undefined」가 통과한다
+const CRON_AUTH = 'authorization'
 onHead('cron·admin 비밀 라우트', (put) => {
-  put('jam-web/src/app/api/cron/job/route.ts', `if (req.headers.get("authorization") !== \`Bearer \${process.env.${ENV_NAME}}\`) throw 1\n`)
+  put('jam-web/src/app/api/cron/job/route.ts', `const secret = process.env.${ENV_NAME}\nif (!secret || req.headers.get("${CRON_AUTH}") !== \`Bearer \${secret}\`) throw 1\n`)
+  put('jam-web/src/app/api/cron/inline/route.ts', `if (!process.env.${ENV_NAME} || h !== \`Bearer \${process.env.${ENV_NAME}}\`) throw 1\n`)
   put('jam-web/src/app/api/admin/op/route.ts', 'if (secret !== process.env.ADMIN_SECRET) throw 1\n')
 })
-assert.equal(check().status, 0, 'CRON_SECRET·ADMIN_SECRET을 쓰는 새 라우트는 인증이 있는 것으로 본다')
+assert.equal(check().status, 0, '빈 값 선검사가 있는 CRON_SECRET 라우트와 ADMIN_SECRET 라우트는 인증이 있는 것으로 본다')
+for (const [label, body] of [
+  ['비교만 함', `if (h !== \`Bearer \${process.env.${ENV_NAME}}\`) throw 1\n`],
+  ['변수에 담고 비교만 함', `const secret = process.env.${ENV_NAME}\nif (h !== \`Bearer \${secret}\`) throw 1\n`],
+  ['선검사가 주석·문자열에만 있음', `// !secret ||\nconst secret = process.env.${ENV_NAME}\nconst note = "if (!secret) throw 1"\nif (h !== \`Bearer \${secret}\`) throw 1\n`],
+  ['다른 인증이 함께 있어도 빈 값 경로가 열림', `await supabase.auth.getUser()\nif (h !== \`Bearer \${process.env.${ENV_NAME}}\`) throw 1\n`],
+]) {
+  onHead(`CRON_SECRET 선검사 없음: ${label}`, (put) => put('jam-web/src/app/api/cron/bare/route.ts', body))
+  r = checkJson()
+  assert.equal(r.status, 1, `${label}는 차단해야 한다:\n${r.stdout}${r.stderr}`)
+  assert.deepEqual(r.json.routes, [{ file: 'jam-web/src/app/api/cron/bare/route.ts', route: 'cron/bare', status: 'missing', cronSecretUnguarded: true }], label)
+}
+assert.match(check().stdout, /cron\/bare\/route\.ts CRON_SECRET을 쓰지만 값이 비었을 때를 먼저 막는 검사가 없어/)
+
+// 지금 있는 크론 라우트는 모두 통과해야 한다 — 실제 파일을 새 라우트로 올려 본다
+const CRON_DIR = join(SCRIPTS, '..', 'jam-web', 'src', 'app', 'api', 'cron')
+const cronNames = readdirSync(CRON_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name)
+assert.ok(cronNames.length >= 6, `크론 라우트가 6종 이상이어야 한다: ${cronNames}`)
+onHead('실제 크론 라우트', (put) => {
+  for (const name of cronNames) put(`jam-web/src/app/api/cron/${name}/route.ts`, readFileSync(join(CRON_DIR, name, 'route.ts'), 'utf8'))
+})
+r = checkJson()
+assert.equal(r.status, 0, `실제 크론 라우트가 막혔다:\n${r.stdout}${r.stderr}`)
+assert.deepEqual(r.json.routes.map((x) => x.status), cronNames.map(() => 'auth'))
 
 onHead('기존 라우트 수정', (put) => {
   put('jam-web/src/app/api/existing/route.ts', 'export const GET = () => new Response("no auth now")\n')
