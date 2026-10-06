@@ -37,7 +37,8 @@ import { isPathActive } from '@/lib/isPathActive'
 export type NavItem = { href: string; label: string; icon: ComponentType<{ className?: string }>; exact?: boolean }
 export type NavGroup = { id: string; label: string; items: NavItem[] }
 
-export const DASHBOARD_ITEM: NavItem = { href: '/admin', label: '대시보드', icon: IconLayoutDashboard, exact: true }
+// 승인 #12(티켓 20261006_1341 ②-c): 「대시보드」를 「운영 홈」으로. 사이드바(`AdminSidebar`)와 상단 바(`AdminHeader`)가 이 라벨을 함께 쓴다.
+export const DASHBOARD_ITEM: NavItem = { href: '/admin', label: '운영 홈', icon: IconLayoutDashboard, exact: true }
 
 export const NAV_GROUPS: NavGroup[] = [
   {
