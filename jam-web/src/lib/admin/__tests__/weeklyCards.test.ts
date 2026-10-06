@@ -10,9 +10,12 @@
  * 4. 비활성 단기 카드는 shortCards에 포함되되(흐림 표시용) 미편성 판정에는 넣지 않는다
  * 5. 장기 카드 수는 활성 카드만 센다
  * 6. shortCards 정렬은 sort_order 오름차순 → starts_at 내림차순이다(`/admin/today`와 동일)
+ * 7. 비활성 장기 카드는 longInactiveCount로 따로 센다. 단기 + 활성 장기 + 비활성 장기 = 그날 겹치는 카드 수
+ *    (`/admin/today?date=` 목록 수와 같은 판정, 티켓 20260924_1151을 흡수한 20261006_1536)
  */
 import { describe, it, expect } from 'vitest'
 import { weeklyCards, SHORT_CARD_MAX_DAYS, type WeeklyCardInput } from '../weeklyCards'
+import { kstDayBoundsIso } from '../today-calendar'
 
 const MONDAY = '2026-09-21' // 이 주의 KST 하루 경계: 09-21은 UTC 09-20T15:00:00.000Z ~ 09-21T14:59:59.999Z
 
@@ -103,5 +106,39 @@ describe('weeklyCards', () => {
     const days = weeklyCards([a, b, c], MONDAY)
     // sort_order 1인 b·c가 먼저, 그중 starts_at이 늦은 c가 먼저(내림차순). 그다음 sort_order 2인 a
     expect(days[0].shortCards.map((x) => x.id)).toEqual(['c', 'b', 'a'])
+  })
+
+  it('비활성 장기 카드는 longInactiveCount로 따로 센다(활성 장기 수는 그대로)', () => {
+    const activeLong = card({ id: 'active-long', starts_at: '2026-08-01T00:00:00.000Z', ends_at: '2026-10-01T00:00:00.000Z', is_active: true })
+    const inactiveLong = card({ id: 'inactive-long', starts_at: '2026-08-01T00:00:00.000Z', ends_at: '2026-10-01T00:00:00.000Z', is_active: false })
+    const days = weeklyCards([activeLong, inactiveLong, { ...inactiveLong, id: 'inactive-long-2' }], MONDAY)
+    expect(days[0].longActiveCount).toBe(1)
+    expect(days[0].longInactiveCount).toBe(2)
+  })
+
+  it('비활성 장기 카드가 없는 날은 longInactiveCount가 0이다(표시가 지금과 같다)', () => {
+    const activeLong = card({ id: 'active-long', starts_at: '2026-08-01T00:00:00.000Z', ends_at: '2026-10-01T00:00:00.000Z', is_active: true })
+    const days = weeklyCards([activeLong], MONDAY)
+    expect(days.every((day) => day.longInactiveCount === 0)).toBe(true)
+  })
+
+  it('불변식: 단기(활성+비활성) + 활성 장기 + 비활성 장기 = 그날 겹치는 카드 수(/admin/today?date= 목록 수와 같은 겹침 판정)', () => {
+    const cards = [
+      card({ id: 's-active', starts_at: '2026-09-20T15:00:00.000Z', ends_at: '2026-09-21T14:59:59.999Z', is_active: true }),
+      card({ id: 's-inactive', starts_at: '2026-09-20T15:00:00.000Z', ends_at: '2026-09-23T14:59:59.999Z', is_active: false }),
+      card({ id: 'l-active', starts_at: '2026-08-01T00:00:00.000Z', ends_at: '2026-10-01T00:00:00.000Z', is_active: true }),
+      card({ id: 'l-inactive', starts_at: '2026-09-22T00:00:00.000Z', ends_at: '2026-10-30T00:00:00.000Z', is_active: false }),
+      card({ id: 'l-inactive-2', starts_at: '2026-08-01T00:00:00.000Z', ends_at: '2026-09-25T00:00:00.000Z', is_active: false }),
+      card({ id: 'outside', starts_at: '2026-10-10T00:00:00.000Z', ends_at: '2026-10-11T00:00:00.000Z', is_active: true }),
+    ]
+    const days = weeklyCards(cards, MONDAY)
+    for (const day of days) {
+      const { startIso, endIso } = kstDayBoundsIso(day.date)
+      // `/admin/today`의 겹침 판정을 독립적으로 다시 센다: starts_at <= 그날 끝 && ends_at >= 그날 시작
+      const listed = cards.filter((c) => new Date(c.starts_at).getTime() <= new Date(endIso).getTime() && new Date(c.ends_at).getTime() >= new Date(startIso).getTime())
+      expect(day.shortCards.length + day.longActiveCount + day.longInactiveCount, day.date).toBe(listed.length)
+    }
+    // 이 입력에는 비활성 장기 카드가 있는 날이 실제로 있다(불변식이 빈 값으로 통과하지 않는다)
+    expect(days.some((day) => day.longInactiveCount > 0)).toBe(true)
   })
 })
