@@ -242,12 +242,25 @@ describe('collectRecipeDeletionCandidates', () => {
       expect(cardCalls).toHaveLength(1)
     })
 
+    it('전체를 한 번에 센 경우 후보별 카드 수는 0장이 아니라 null이다(레시피별로 셀 수 없다, 티켓 20261006_1427)', async () => {
+      const { client } = createStubSupabase({ recipes, cardsByRecipeId: { r1: 2, r3: 4 } })
+
+      const lookup = await collectRecipeDeletionCandidates(client, ['r1', 'r2', 'r3'])
+
+      expect([...lookup.candidates.values()].map((c) => [c.id, c.noticeTotal])).toEqual([
+        ['r1', null],
+        ['r2', null],
+        ['r3', null],
+      ])
+    })
+
     it('카드가 없으면 전체 카드 수는 0이다', async () => {
       const { client } = createStubSupabase({ recipes })
 
       const lookup = await collectRecipeDeletionCandidates(client, ['r1', 'r2', 'r3'])
 
       expect(lookup.allNoticeTotal).toBe(0)
+      expect([...lookup.candidates.values()].map((c) => c.noticeTotal)).toEqual([null, null, null])
     })
 
     it('막힌 레시피가 있으면 한 건씩 다시 세는 반복에서 레시피별 카드 수를 후보에 담는다', async () => {

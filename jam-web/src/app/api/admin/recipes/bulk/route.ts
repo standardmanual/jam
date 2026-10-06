@@ -17,6 +17,9 @@ export const maxDuration = 60
 /** `.in()` 목록이 URL 16KB 상한에 걸리지 않도록 POI 삭제와 같은 200건으로 둔다 */
 const DELETE_MAX_IDS = 200
 
+const LOOKUP_FAILED_MESSAGE =
+  '삭제할 수 없습니다. 이력 조회 중 오류가 발생했어요. 다시 시도해도 같으면 개발자에게 전달해 주세요.'
+
 export async function POST(req: NextRequest) {
   const result = await readBulkRequest(req, {
     actions: { delete: { maxIds: DELETE_MAX_IDS } },
@@ -37,10 +40,7 @@ export async function POST(req: NextRequest) {
   // fail-closed: 참조 조회가 실패하면 "참조 0건"으로 오판하지 않도록 삭제를 막는다.
   if (lookup.error) {
     console.error('[recipes bulk delete] 참조 카운트 조회 실패 — 하드 삭제를 차단합니다:', lookup.error)
-    return NextResponse.json(
-      { error: '삭제할 수 없습니다. 이력 조회 중 오류가 발생했어요. 다시 시도해도 같으면 개발자에게 전달해 주세요.' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: LOOKUP_FAILED_MESSAGE }, { status: 500 })
   }
 
   const { deletable, skipped } = classifyRecipeDeletion(ids, lookup.candidates)
@@ -62,9 +62,20 @@ export async function POST(req: NextRequest) {
     // 센 값을, 있으면 삭제 대상만 후보별 값으로 더한다 — 건너뛴(막힌) 레시피를 가리키는 카드는 세지 않는다.
     // 같은 id가 여러 번 들어와도 카드는 한 번만 센다(예전 `.in()` 집계와 같다).
     // 조회가 실패하면 위에서 이미 500으로 막았으므로 "카드 0장"이라 오판하지 않는다(fail-closed).
-    const cardCount =
-      lookup.allNoticeTotal ??
-      [...new Set(deletable)].reduce((sum, id) => sum + (lookup.candidates.get(id)?.noticeTotal ?? 0), 0)
+    // 후보별 값이 null이면 레시피별로 세지 않은 것이라 0장으로 더하지 않고 같은 방식으로 막는다(티켓 20261006_1427).
+    // 전체를 세지 않았을 때(막힌 레시피가 있을 때)는 한 건씩 다시 세므로 후보별 값이 항상 있어 이 분기는 닿지 않는다.
+    let cardCount = lookup.allNoticeTotal
+    if (cardCount === null) {
+      cardCount = 0
+      for (const id of new Set(deletable)) {
+        const perRecipe = lookup.candidates.get(id)?.noticeTotal ?? null
+        if (perRecipe === null) {
+          console.error('[recipes bulk delete] 후보별 카드 수가 비어 있어 미리보기를 차단합니다:', id)
+          return NextResponse.json({ error: LOOKUP_FAILED_MESSAGE }, { status: 500 })
+        }
+        cardCount += perRecipe
+      }
+    }
     return bulkJson(
       {
         processed: deletable,

@@ -119,9 +119,10 @@ export async function collectRecipeReferences(
 export interface RecipeDeletionLookupCandidate extends RecipeDeletionCandidate {
   /**
    * 이 레시피를 가리키는 안내용 참조 수(홈 카드, `noticeTotal`). 막는 참조가 있어 한 건씩 다시 센 경우에만
-   * 채운다 — 전체를 한 번에 센 경우는 레시피별로 나눌 수 없어 0이고, `RecipeDeletionLookup.allNoticeTotal`을 쓴다.
+   * 수가 있다. 전체를 한 번에 센 경우는 레시피별로 나눌 수 없어 `null`이다 — 0장과 다르므로 읽는 쪽은
+   * `null`을 0으로 읽지 말고 `RecipeDeletionLookup.allNoticeTotal`을 쓴다(티켓 20261006_1427).
    */
-  noticeTotal: number
+  noticeTotal: number | null
 }
 
 export interface RecipeDeletionLookup {
@@ -160,7 +161,7 @@ export async function collectRecipeDeletionCandidates(
       .in('id', recipeIds.slice(i, i + LOOKUP_CHUNK))
     if (error) return { candidates, allNoticeTotal: null, error: error.message }
     for (const row of (data ?? []) as { id: string; name: string | null }[]) {
-      candidates.set(row.id, { id: row.id, name: row.name, total: 0, noticeTotal: 0 })
+      candidates.set(row.id, { id: row.id, name: row.name, total: 0, noticeTotal: null })
     }
   }
 
