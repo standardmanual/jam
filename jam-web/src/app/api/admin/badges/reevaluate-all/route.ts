@@ -42,6 +42,9 @@ import {
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
+/** 미리보기 실패 응답의 고정 문장 — 다른 어드민 라우트처럼 상세 원인은 서버 로그에만 둔다 */
+const PREVIEW_FAILED_MESSAGE = '열릴 예정 배지 미리보기 중 오류가 발생했습니다. 서버 로그를 확인해 주세요.'
+
 export async function POST(req: NextRequest) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: '어드민 권한이 필요합니다.' }, { status: 403 })
@@ -123,7 +126,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ dryRun: true, includeUpcoming: true, ...preview })
     } catch (err) {
       console.error('[/api/admin/badges/reevaluate-all] 열릴 예정 배지 미리보기 오류:', err)
-      return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 })
+      // 응답에는 내부 오류 문장을 싣지 않는다 — 상세는 위 console.error(서버 로그)에만 남는다 (티켓 20261006_1529)
+      return NextResponse.json({ error: PREVIEW_FAILED_MESSAGE }, { status: 500 })
     }
   }
 
