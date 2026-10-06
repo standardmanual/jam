@@ -9,7 +9,9 @@ import {
   SAMPLE_PARAM,
   dayHref,
   opsTargetHref,
+  opsTargetKind,
   readIncludeSample,
+  sampleToggleHref,
   signalResultHref,
   withSampleParam,
 } from '@/lib/admin/opsHome/links'
@@ -122,5 +124,31 @@ describe('signalResultHref', () => {
     expect(signalResultHref({ bundleId: 'b1', itemId: 'i1', date: null }, { includeSample: true })).toBe(
       '/admin/ops-inbox/b1?item=i1&sample=1'
     )
+  })
+})
+
+describe('sampleToggleHref — 시험 스위치가 이동하는 주소', () => {
+  it('켜면 sample=1만 붙이고 다른 키를 유지한다', () => {
+    expect(sampleToggleHref('/admin', '', true)).toBe('/admin?sample=1')
+    expect(sampleToggleHref('/admin', 'trend=week', true)).toBe('/admin?trend=week&sample=1')
+    expect(sampleToggleHref('/admin', '?trend=week', true)).toBe('/admin?trend=week&sample=1')
+  })
+
+  it('끄면 sample만 빼고 다른 키를 유지한다(키가 남지 않는다)', () => {
+    expect(sampleToggleHref('/admin', 'sample=1', false)).toBe('/admin')
+    expect(sampleToggleHref('/admin', 'sample=1&trend=week', false)).toBe('/admin?trend=week')
+    expect(sampleToggleHref('/admin/ops-schedule', 'view=month&date=2026-10-07&sample=1', false)).toBe(
+      '/admin/ops-schedule?view=month&date=2026-10-07'
+    )
+  })
+})
+
+describe('opsTargetKind', () => {
+  it('묶음이 있으면 기획 상세, 날짜만 있으면 그날, 없으면 null이다', () => {
+    expect(opsTargetKind({ bundleId: 'b1', itemId: 'i1', date: '2026-10-07' })).toBe('inbox')
+    expect(opsTargetKind({ bundleId: 'b1' })).toBe('inbox')
+    expect(opsTargetKind({ date: '2026-10-07' })).toBe('day')
+    expect(opsTargetKind({ itemId: 'i1' })).toBeNull()
+    expect(opsTargetKind({})).toBeNull()
   })
 })

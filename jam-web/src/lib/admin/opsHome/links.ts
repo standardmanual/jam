@@ -51,6 +51,15 @@ export function withSampleParam(href: string, includeSample: boolean): string {
   return `${path}${query ? `?${query}` : ''}${hash}`
 }
 
+/**
+ * 현재 경로와 쿼리에서 시험 묶음 포함만 바꾼 이동 주소(시험 스위치가 `router.replace`에 넘긴다). `search`는 `?` 없이도 `?`가 붙어도 된다.
+ * 다른 쿼리 키와 순서는 그대로 두고 `sample=1`만 붙이거나 뺀다.
+ */
+export function sampleToggleHref(pathname: string, search: string, includeSample: boolean): string {
+  const query = search.startsWith('?') ? search.slice(1) : search
+  return withSampleParam(query ? `${pathname}?${query}` : pathname, includeSample)
+}
+
 export interface OpsLinkOptions {
   /** 시험 묶음을 포함해서 보는 중이면 링크에 `sample=1`을 이어 붙인다. */
   includeSample?: boolean
@@ -81,13 +90,21 @@ function present(value: string | null | undefined): value is string {
   return typeof value === 'string' && value.trim() !== ''
 }
 
+/** 이동 대상의 종류: 받은 기획함 상세(`inbox`), 그날(`day`). 갈 곳이 없으면 null이다. 링크 글자를 정할 때 쓴다(`opsTargetHref`와 같은 판정). */
+export function opsTargetKind(target: OpsTarget): 'inbox' | 'day' | null {
+  if (present(target.bundleId)) return 'inbox'
+  if (present(target.date)) return 'day'
+  return null
+}
+
 /**
  * 이동 대상 링크. 항목(+묶음) → 그 항목의 기획 상세, 묶음만 → 기획 상세, 날짜만 → `dayHref`, 아무것도 없으면 null이다.
  * 묶음과 날짜가 함께 있고 항목이 없으면 묶음이 먼저다(기획 상세가 더 구체적이다).
  */
 export function opsTargetHref(target: OpsTarget, options: OpsLinkOptions = {}): string | null {
-  if (present(target.bundleId)) return inboxHref(target.bundleId, present(target.itemId) ? target.itemId : null, options)
-  if (present(target.date)) return dayHref(target.date, options)
+  const kind = opsTargetKind(target)
+  if (kind === 'inbox') return inboxHref(target.bundleId as string, present(target.itemId) ? target.itemId : null, options)
+  if (kind === 'day') return dayHref(target.date as string, options)
   return null
 }
 
