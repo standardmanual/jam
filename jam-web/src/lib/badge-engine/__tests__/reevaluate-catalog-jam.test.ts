@@ -10,7 +10,8 @@
  *  ④ JAM! 판정이 던져도 메인 엔진 결과는 남고 `error`에 `JAM! 지표:`가 남는다
  *  ⑤ 기존 동작 고정: `issueQualifyingBadges`를 옵션 없이 부르면 insert·포인트·피드를 모두 한다
  *  ⑥ 열릴 예정 배지 미리보기(티켓 20261001_2203): `valid_from`이 미래인 배지를 읽기 전용으로 센다. 기본 dry-run·실제 실행은
- *     여전히 그 배지를 세지 않는다. 모킹의 `or`가 `valid_from`·`valid_until`을 실제로 거른다
+ *     여전히 그 배지를 세지 않는다. 모킹의 `or`가 `valid_from`·`valid_until`을 실제로 거른다.
+ *     오류 경로(티켓 20261006_1529): 배지 메타 조회 실패는 던지고, 유저별 평가 실패는 `errors[]`에 담고 계속한다
  *
  * 메인 엔진(`evaluateBadgesDetailed`)은 모킹하고 JAM! 경로(`evaluateJamActionBadges` → `issueQualifyingBadges`)는
  * 실제 코드를 탄다. 테이블 모킹은 `jam-action-badges.test.ts`와 같은 방식(메모리 테이블에 `eq`·`in` 적용)이다.
@@ -69,6 +70,8 @@ const state = vi.hoisted(() => ({
   tables: {} as Record<string, Row[]>,
   /** 테이블별 n번째(1부터) 조회를 «거부(reject)»로 만든다 — 예기치 못한 예외 주입용 */
   rejects: {} as Record<string, (nth: number) => Error | undefined>,
+  /** 테이블별 n번째(1부터) 조회를 `{ data: null, error }`로 만든다 — Supabase가 던지지 않고 오류 객체로 돌려주는 경우 주입용 */
+  errors: {} as Record<string, (nth: number) => { message: string } | undefined>,
   /** 조회 실행 횟수 기록 */
   queried: [] as string[],
   /** `user_activity_badges.insert` 페이로드 기록 */
@@ -85,6 +88,7 @@ const recordFeedEventMock = vi.hoisted(() => vi.fn(async () => {}))
 function resetState() {
   state.tables = { badges: [], user_activity_badges: [], user_combine_success_logs: [], user_combine_fail_logs: [] }
   state.rejects = {}
+  state.errors = {}
   state.queried = []
   state.inserts = []
 }
@@ -141,6 +145,8 @@ function mockSupabase(): SupabaseClient {
       const nth = state.queried.filter((t) => t === table).length
       const rejection = state.rejects[table]?.(nth)
       if (rejection) return Promise.reject(rejection).then(resolve, reject)
+      const failure = state.errors[table]?.(nth)
+      if (failure) return Promise.resolve({ data: null, error: failure }).then(resolve, reject)
       const rows = (state.tables[table] ?? []).filter(
         (r) =>
           eqs.every(([c, v]) => r[c] === v) &&
@@ -587,5 +593,47 @@ describe('열릴 예정 배지 미리보기', () => {
     })
 
     expect(result.badges.map((b) => b.badgeId)).toEqual(['jam-upcoming'])
+  })
+
+  it('⑨ 배지 목록 조회가 오류를 돌려주면 숫자를 내지 않고 던진다(유저 평가는 시작하지 않는다)', async () => {
+    state.errors.badges = (nth) => (nth === 1 ? { message: 'permission denied' } : undefined)
+
+    await expect(previewUpcomingJamBadges(mockSupabase(), { userIds: ALL_USERS })).rejects.toThrow(
+      '배지 목록 조회 실패: permission denied'
+    )
+
+    // 첫 `badges` 조회(배지 메타)에서 멈춘다 — 유저별 후보 조회·섀도우밴 판정으로 넘어가지 않는다
+    expect(state.queried.filter((t) => t === 'badges')).toHaveLength(1)
+    expect(getUserBanLevelMock).not.toHaveBeenCalled()
+    expect(state.inserts).toEqual([])
+  })
+
+  it('⑩ 한 유저의 평가가 던져도 errors[]에 담고 다른 유저는 계속 센다', async () => {
+    // 첫 `badges` 조회는 배지 메타 — 둘째가 첫 유저(U_QUALIFIED)의 JAM! 후보 조회다
+    state.rejects.badges = (nth) => (nth === 2 ? new Error('connection reset') : undefined)
+
+    const result = await previewUpcomingJamBadges(mockSupabase(), { userIds: ALL_USERS })
+
+    expect(result.errors).toEqual([{ userId: U_QUALIFIED, message: 'connection reset' }])
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(`유저 평가 실패 — userId: ${U_QUALIFIED}`),
+      expect.any(Error)
+    )
+    // 실패한 유저는 센 숫자에서 빠지고, 나머지(U_SHORT는 조건 미충족, U_OWNER는 충족)는 그대로 센다
+    expect(result.targetUserCount).toBe(3)
+    expect(result.affectedUserCount).toBe(1)
+    expect(result.badges).toEqual([{ badgeId: 'jam-upcoming', name: '예정 믹서', validFrom: FUTURE, userCount: 1, points: 80 }])
+    expect(result.totalPoints).toBe(80)
+    expect(state.inserts).toEqual([])
+  })
+
+  it('⑪ Error가 아닌 값이 던져지면 문자열로 바꿔 errors[]에 담는다', async () => {
+    state.rejects.badges = (nth) => (nth === 2 ? ('string failure' as unknown as Error) : undefined)
+
+    const result = await previewUpcomingJamBadges(mockSupabase(), { userIds: [U_QUALIFIED] })
+
+    expect(result.errors).toEqual([{ userId: U_QUALIFIED, message: 'string failure' }])
+    expect(result.affectedUserCount).toBe(0)
+    expect(result.badges).toEqual([])
   })
 })
