@@ -5,7 +5,7 @@
  * 실행: cd jam-web && npx vitest run src/lib/admin/__tests__/recipe-references.test.ts
  */
 import { collectRecipeReferences, collectRecipeDeletionCandidates } from '../recipe-references'
-import { classifyRecipeDeletion, recipeDeleteBlockedMessage } from '../recipe-bulk'
+import { classifyRecipeDeletion, recipeDeleteBlockedMessage, recipeCardNoticeMessage } from '../recipe-bulk'
 
 const PATH = 'condition_json->recipe_first_success->>recipe_id'
 
@@ -228,5 +228,20 @@ describe('collectRecipeDeletionCandidates', () => {
 describe('recipeDeleteBlockedMessage', () => {
   it('가리키는 배지 수를 문장에 넣는다', () => {
     expect(recipeDeleteBlockedMessage(2)).toContain('이 레시피를 가리키는 배지가 2개 있어요')
+  })
+})
+
+describe('recipeCardNoticeMessage', () => {
+  it('카드가 있으면 장수를 넣은 안내 문장을 돌려준다', () => {
+    expect(recipeCardNoticeMessage(2)).toBe('홈 카드 2장이 이 레시피를 가리켜요. 지우면 그 카드는 레시피 정보 없이 남아요.')
+  })
+
+  it('0장이면 문구가 없다', () => {
+    expect(recipeCardNoticeMessage(0)).toBeNull()
+  })
+
+  it('음수·NaN처럼 세지 못한 값에도 문구를 내지 않는다', () => {
+    expect(recipeCardNoticeMessage(-1)).toBeNull()
+    expect(recipeCardNoticeMessage(Number.NaN)).toBeNull()
   })
 })
