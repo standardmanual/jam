@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { IconLayoutDashboard, IconAward, IconMapPin } from '@tabler/icons-react'
-import { isNavItemActive, mostSpecificActiveItem, NAV_GROUPS } from '@/components/admin/adminNavItems'
+import { DASHBOARD_ITEM, isNavItemActive, mostSpecificActiveItem, NAV_GROUPS } from '@/components/admin/adminNavItems'
 import type { NavItem } from '@/components/admin/adminNavItems'
 
 describe('isNavItemActive', () => {
@@ -91,5 +91,13 @@ describe('NAV_GROUPS (티켓 20260908_1806: 그룹·항목 전면 재배열)', (
     expect(content?.items.map((i) => i.href)).not.toContain('/admin/ranking-modes')
     const ops = NAV_GROUPS.find((g) => g.id === 'ops')
     expect(ops?.items.map((i) => i.href)).not.toContain('/admin/abusing')
+  })
+})
+
+describe('DASHBOARD_ITEM (티켓 20261006_1341 ②-c, 승인 #12: 「대시보드」 → 「운영 홈」)', () => {
+  it('사이드바와 상단 바가 함께 쓰는 라벨이 「운영 홈」이고 경로는 /admin 그대로다', () => {
+    expect(DASHBOARD_ITEM.label).toBe('운영 홈')
+    expect(DASHBOARD_ITEM.href).toBe('/admin')
+    expect(DASHBOARD_ITEM.exact).toBe(true)
   })
 })

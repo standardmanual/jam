@@ -1,14 +1,14 @@
 import Link from 'next/link'
 import { IconRun, IconShieldOff, IconMapPinOff, IconFlag, IconAward } from '@tabler/icons-react'
-import ContentGapCards from './ContentGapCards'
-import type { ContentGaps } from '@/lib/admin/contentGaps'
+import { MissionGapCard } from './ContentGapCards'
+import type { ContentGapSource, MissionGapResult } from '@/lib/admin/contentGaps'
 
 /**
- * 어드민 메인 상단 — 이상 신호(Strava 동기화 실패·제재·차단 POI)와 주간 핵심 지표
- * (미션 달성자 수·배지 발급량) (티켓 20260924_0909).
+ * 운영 홈의 서비스 점검(Strava 동기화 실패·제재·차단 POI·미션 공백)과 주간 핵심 지표
+ * (미션 달성자 수·배지 발급량) (티켓 20260924_0909, 20261006_1341 ②-c가 한 줄 4칸과 구역별 내보내기로 나눴다).
  *
- * 데이터는 전부 `page.tsx`가 조회해 내려준다 — 이 화면은 그리기와 증감·강조 판정만 한다
- * (게이트 미션 화면과 같은 원칙, `gate-missions/page.tsx` 주석 참고).
+ * 데이터는 전부 `_home/sections.tsx`가 조회해 내려준다 — 이 화면은 그리기와 증감·강조 판정만 한다
+ * (게이트 미션 화면과 같은 원칙, `gate-missions/page.tsx` 주석 참고). 빨간 카드의 글자색은 `text-red-700`이다(승인 #17).
  */
 
 /** 이상 신호 강조 기준선 — 값이 이 값보다 크면(즉 1 이상) 강조색을 켠다. */
@@ -50,14 +50,17 @@ export interface DashboardSignalMetric {
   error: string | null
 }
 
-export interface DashboardSignalsProps {
+export interface ServiceCheckProps {
   stravaSyncFailures: DashboardSignalMetric
   shadowBans: DashboardSignalMetric
   blockedPoi: DashboardSignalMetric
+  /** 미션 공백(티켓 20260924_0912, 승인 #16: 판정 그대로 서비스 점검 줄의 넷째 칸). 못 읽었으면 그 칸만 오류 카드다 */
+  missionGaps: ContentGapSource<MissionGapResult>
+}
+
+export interface WeeklyKpiProps {
   missionAchievers: DashboardSignalMetric
   badgeIssuance: DashboardSignalMetric
-  /** 컨텐츠 공백 경고(티켓 20260924_0912). 없으면 두 카드를 그리지 않는다 */
-  contentGaps?: ContentGaps
 }
 
 type TablerIcon = typeof IconRun
@@ -65,8 +68,8 @@ type TablerIcon = typeof IconRun
 function ErrorCard({ label, error }: { label: string; error: string | null }) {
   return (
     <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
-      <p className="font-semibold text-sm text-red-600 mb-1">{label}</p>
-      <p className="text-red-500 text-xs">불러오지 못했어요 — {error ?? '알 수 없는 오류'}</p>
+      <p className="font-semibold text-sm text-red-700 mb-1">{label}</p>
+      <p className="text-red-700 text-xs">불러오지 못했어요 — {error ?? '알 수 없는 오류'}</p>
     </div>
   )
 }
@@ -103,10 +106,10 @@ function AnomalyCard({
       }`}
     >
       <Icon className={`mb-2 h-8 w-8 ${elevated ? 'text-red-500' : 'text-muted-foreground'}`} />
-      <p className={`text-3xl font-bold tabular-nums ${elevated ? 'text-red-600' : 'text-foreground'}`}>
+      <p className={`text-3xl font-bold tabular-nums ${elevated ? 'text-red-700' : 'text-foreground'}`}>
         {value.toLocaleString()}
       </p>
-      <p className={`text-sm mt-1 ${elevated ? 'text-red-500' : 'text-muted-foreground'}`}>{label}</p>
+      <p className={`text-sm mt-1 ${elevated ? 'text-red-700' : 'text-muted-foreground'}`}>{label}</p>
     </Link>
   )
 }
@@ -131,38 +134,39 @@ function KpiCard({ label, icon: Icon, metric }: { label: string; icon: TablerIco
   )
 }
 
-export default function DashboardSignals({
-  stravaSyncFailures,
-  shadowBans,
-  blockedPoi,
-  missionAchievers,
-  badgeIssuance,
-  contentGaps,
-}: DashboardSignalsProps) {
+/** 서비스 점검: 한 줄 네 칸(Strava 동기화 실패·유효 제재 수·차단 POI 수·미션 공백). 링크는 옛 이상 신호 카드와 같다. */
+export function ServiceCheckRow({ stravaSyncFailures, shadowBans, blockedPoi, missionGaps }: ServiceCheckProps) {
   return (
-    <div className="mb-10 space-y-6">
-      <section>
-        <h2 className="text-base font-semibold mb-4 text-foreground">이상 신호</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <AnomalyCard
-            label="Strava 동기화 실패 건수"
-            href="/admin/strava-backfill"
-            icon={IconRun}
-            metric={stravaSyncFailures}
-          />
-          <AnomalyCard label="유효 제재 수" href="/admin/abusing" icon={IconShieldOff} metric={shadowBans} />
-          <AnomalyCard label="차단 POI 수" href="/admin/abusing" icon={IconMapPinOff} metric={blockedPoi} />
-        </div>
-        {contentGaps && <ContentGapCards gaps={contentGaps} />}
-      </section>
+    <section aria-labelledby="ops-service-check-heading" className="space-y-3">
+      <h2 id="ops-service-check-heading" className="text-lg font-semibold">
+        서비스 점검
+      </h2>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <AnomalyCard
+          label="Strava 동기화 실패 건수"
+          href="/admin/strava-backfill"
+          icon={IconRun}
+          metric={stravaSyncFailures}
+        />
+        <AnomalyCard label="유효 제재 수" href="/admin/abusing" icon={IconShieldOff} metric={shadowBans} />
+        <AnomalyCard label="차단 POI 수" href="/admin/abusing" icon={IconMapPinOff} metric={blockedPoi} />
+        <MissionGapCard source={missionGaps} />
+      </div>
+    </section>
+  )
+}
 
-      <section>
-        <h2 className="text-base font-semibold mb-4 text-foreground">주간 핵심 지표</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <KpiCard label="미션 달성자 수" icon={IconFlag} metric={missionAchievers} />
-          <KpiCard label="배지 발급량" icon={IconAward} metric={badgeIssuance} />
-        </div>
-      </section>
-    </div>
+/** 주간 핵심 지표: 미션 달성자 수·배지 발급량 두 장. */
+export function WeeklyKpiCards({ missionAchievers, badgeIssuance }: WeeklyKpiProps) {
+  return (
+    <section aria-labelledby="ops-weekly-kpi-heading" className="space-y-3">
+      <h2 id="ops-weekly-kpi-heading" className="text-base font-semibold text-foreground">
+        주간 핵심 지표
+      </h2>
+      <div className="grid grid-cols-2 gap-4">
+        <KpiCard label="미션 달성자 수" icon={IconFlag} metric={missionAchievers} />
+        <KpiCard label="배지 발급량" icon={IconAward} metric={badgeIssuance} />
+      </div>
+    </section>
   )
 }
