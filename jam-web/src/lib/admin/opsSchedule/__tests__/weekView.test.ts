@@ -2,6 +2,7 @@
  * 일정표 주간 보기 계산 (티켓 20261006_1536 ③-a)
  *
  * 지키는 것: 칸 항목(운영 카드는 걸치는 날마다, 그 밖의 운영 항목은 시작일 칸에만), 실제 카드·미션과 운영 항목의 합치기(비활성 카드 포함, 멈춘 항목은 합치지 않음),
+ * 합친 운영 카드의 카드 노출·열람 줄(티켓 20261006_1537 ③-b), 날짜 서랍의 대표 카드(③-b),
  * 미션 막대(운영 미션에 상태, 옛 막대에서 합친 미션 제외, 상시 미션 수는 전체), 장기 카드 활성·비활성 수, 오늘 표시, 칸 신호 연결, 못 읽은 재료 처리, 시험 묶음,
  * 서버 컴포넌트에서 클라이언트 컴포넌트로 넘길 수 있는 모양(JSON으로 왕복해도 같다).
  */
@@ -279,6 +280,37 @@ describe('buildScheduleWeek — 실제 카드와 합치기(가정 11)', () => {
     expect(itemsOf(week, '2026-10-07')[0].note).toBe('card-note/2026-10-07')
   })
 
+  it('실제 카드와 합친 운영 카드에도 그 카드의 노출·열람 줄이 붙는다(걸치는 날마다)', () => {
+    const card = realCard('card-merged', kst('2026-10-06', '09:00'), kst('2026-10-07', '21:00'))
+    const item = makeItem({ id: 'item-merged', status: 'scheduled', startsAt: kst('2026-10-06', '09:00'), createdResource: { today_card_id: 'card-merged' } })
+    const week = build({ cards: [card], bundles: [makeBundle([item])], overrides: { cardNote: (id, date) => `${id}/${date}` } })
+    expect(itemsOf(week, '2026-10-06')).toEqual([expect.objectContaining({ origin: 'ops', drawerKey: 'item-merged', note: 'card-merged/2026-10-06' })])
+    expect(itemsOf(week, '2026-10-07')).toEqual([expect.objectContaining({ origin: 'ops', drawerKey: 'item-merged', note: 'card-merged/2026-10-07' })])
+  })
+
+  it('합치지 않은 운영 카드는 줄이 없고 노출 줄을 조회하지도 않는다', () => {
+    const asked: string[] = []
+    const item = makeItem({ id: 'item-solo', status: 'scheduled', startsAt: kst('2026-10-06', '09:00') })
+    const week = build({
+      bundles: [makeBundle([item])],
+      overrides: {
+        cardNote: (id, date) => {
+          asked.push(`${id}/${date}`)
+          return '있으면 안 돼요'
+        },
+      },
+    })
+    expect(itemsOf(week, '2026-10-06')[0]).toMatchObject({ origin: 'ops', note: null })
+    expect(asked).toEqual([])
+  })
+
+  it('합친 운영 카드의 줄을 읽지 못했으면(cardNote 없음) 줄이 비고 나머지는 그대로다', () => {
+    const card = realCard('card-nm', kst('2026-10-06', '09:00'), kst('2026-10-06', '21:00'), { title: '제목' })
+    const item = makeItem({ id: 'item-nm', status: 'scheduled', startsAt: kst('2026-10-06', '09:00'), createdResource: { today_card_id: 'card-nm' } })
+    const week = build({ cards: [card], bundles: [makeBundle([item])] })
+    expect(itemsOf(week, '2026-10-06')[0]).toMatchObject({ origin: 'ops', title: '제목', note: null })
+  })
+
   it('운영 항목 → 카드 순서로 같은 칸에 나온다', () => {
     const card = realCard('card-order', kst('2026-10-06', '09:00'), kst('2026-10-06', '21:00'))
     const item = makeItem({ id: 'item-order', startsAt: kst('2026-10-06', '09:00') })
@@ -426,6 +458,33 @@ describe('buildScheduleWeek — 못 읽은 재료', () => {
     const card = realCard('card-b', kst('2026-10-06', '09:00'), kst('2026-10-06', '21:00'))
     const week = build({ cards: [card], overrides: { bundles: null } })
     expect(itemsOf(week, '2026-10-06').map((entry) => entry.origin)).toEqual(['card'])
+  })
+})
+
+describe('buildScheduleWeek — 대표 카드(날짜 서랍)', () => {
+  it('전원 대상 카드가 없으면 대표 카드가 없다', () => {
+    expect(build().days.every((day) => day.representative === null)).toBe(true)
+  })
+
+  it('실제 카드가 대표면 카드 키(card:)와 제목을 싣는다', () => {
+    const card = realCard('card-rep', kst('2026-10-06', '09:00'), kst('2026-10-06', '21:00'), { title: '대표 제목' })
+    const week = build({ cards: [card] })
+    expect(week.days[1].representative).toEqual({ title: '대표 제목', drawerKey: 'card:card-rep' })
+    expect(week.days[0].representative).toBeNull()
+  })
+
+  it('운영 카드(합친 카드 포함)가 대표면 항목 ID를 서랍 키로 싣는다', () => {
+    const merged = realCard('card-m', kst('2026-10-06', '09:00'), kst('2026-10-06', '21:00'), { title: '합친 카드', sortOrder: 0 })
+    const item = makeItem({ id: 'item-rep', status: 'scheduled', startsAt: kst('2026-10-06', '09:00'), createdResource: { today_card_id: 'card-m' } })
+    const week = build({ cards: [merged], bundles: [makeBundle([item])] })
+    expect(week.days[1].representative).toEqual({ title: '합친 카드', drawerKey: 'item-rep' })
+  })
+
+  it('시험 묶음을 숨기는 중이면 시험 카드는 대표가 아니다', () => {
+    const item = makeItem({ id: 'item-sample-rep', status: 'scheduled', startsAt: kst('2026-10-06', '09:00') })
+    const bundles = [makeBundle([item], { isSample: true })]
+    expect(build({ bundles, includeSample: false }).days[1].representative).toBeNull()
+    expect(build({ bundles, includeSample: true }).days[1].representative).toMatchObject({ drawerKey: 'item-sample-rep' })
   })
 })
 

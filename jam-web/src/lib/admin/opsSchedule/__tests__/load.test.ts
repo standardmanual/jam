@@ -125,7 +125,7 @@ vi.mock('@/lib/admin/weeklyCardMetrics', async (importOriginal) => ({
 
 import { loadScheduleWeek } from '@/lib/admin/opsSchedule/load'
 import { buildDayCompositions } from '@/lib/admin/opsSignals/composition'
-import { makeBundle, makeItem, kst } from '@/lib/admin/opsSignals/__tests__/fixtures'
+import { makeBundle, makeCard, makeItem, kst } from '@/lib/admin/opsSignals/__tests__/fixtures'
 import { shiftDateStr } from '@/lib/admin/today-calendar'
 
 const WEEK_START = '2026-10-05'
@@ -281,6 +281,29 @@ describe('loadScheduleWeek — 카드 노출·열람 수', () => {
     h.state.tables.today_cards = [card('short-2', kst('2026-10-09', '09:00'), kst('2026-10-09', '21:00'))]
     const later = await loadScheduleWeek({ weekStart: WEEK_START, includeSample: false, now: NOW })
     expect(later.week.days[4].items.find((item) => item.drawerKey === 'card:short-2')?.note).toBeNull()
+  })
+
+  it('실제 카드와 합친 운영 카드에도 줄이 붙고, 수를 읽지 않은 장기 카드와 합친 카드는 줄을 비운다(티켓 20261006_1537)', async () => {
+    h.state.tables.today_cards = [
+      card('short-m', kst('2026-10-06', '09:00'), kst('2026-10-06', '21:00')),
+      card('long-m', kst('2026-09-01', '00:00'), kst('2026-10-31', '23:00')),
+    ]
+    const bundles = [
+      makeBundle([
+        makeItem({ id: 'ops-short', status: 'scheduled', startsAt: kst('2026-10-06', '09:00'), createdResource: { today_card_id: 'short-m' } }),
+        makeItem({ id: 'ops-long', status: 'live', startsAt: kst('2026-09-01', '00:00'), endsAt: kst('2026-10-31', '23:00'), createdResource: { today_card_id: 'long-m' } }),
+      ]),
+    ]
+    const cards = [
+      makeCard({ id: 'short-m', startsAt: kst('2026-10-06', '09:00'), endsAt: kst('2026-10-06', '21:00') }),
+      makeCard({ id: 'long-m', startsAt: kst('2026-09-01', '00:00'), endsAt: kst('2026-10-31', '23:00') }),
+    ]
+    h.state.compositions = () => ({ bundles, compositions: buildDayCompositions({ cards, missions: [], bundles }, DATES), sourceErrors: {} })
+    h.state.metrics = () => new Map([['short-m|2026-10-06', { impression: 7, click: 2 }]])
+    const { week } = await loadScheduleWeek({ weekStart: WEEK_START, includeSample: false, now: NOW })
+    expect(h.state.metricCalls[0].ids).toEqual(['short-m'])
+    const notes = Object.fromEntries(week.days[1].items.map((item) => [item.drawerKey, item.note]))
+    expect(notes).toMatchObject({ 'ops-short': '노출 7 · 열람 2', 'ops-long': null })
   })
 
   it('미래 주는 읽지 않는다', async () => {

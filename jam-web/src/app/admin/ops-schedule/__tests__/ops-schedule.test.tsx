@@ -81,6 +81,7 @@ function day(date: string, over: Partial<ScheduleDay> = {}): ScheduleDay {
     longInactiveCount: 0,
     automation: [],
     signals: null,
+    representative: null,
     ...over,
   }
 }

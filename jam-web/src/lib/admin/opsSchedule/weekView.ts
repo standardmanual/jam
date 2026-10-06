@@ -4,8 +4,11 @@
  * 운영 홈의 주간 캘린더 조립(`app/admin/_home/CalendarSection.tsx`)을 순수 함수로 옮기고, 운영 항목(받은 기획함)·상태·시험·신호를 더했다.
  * 반환값은 일반 객체(`Map`·`Date`·함수 없음)라 서버 컴포넌트에서 클라이언트 컴포넌트로 그대로 넘길 수 있다.
  *
+ * ## 대표 카드
+ * 날짜 서랍이 「대표 카드」를 보이도록 하루마다 날짜 구성의 대표 카드(`representative`)의 제목과 서랍 키를 싣는다.
+ *
  * ## 칸 항목
- * - **운영 카드**(받은 기획함의 홈피드 카드 항목, 실제 카드와 합친 칸 포함): 걸치는 날마다 둔다(가정 3). 상태·시험 표식이 붙는다.
+ * - **운영 카드**(받은 기획함의 홈피드 카드 항목, 실제 카드와 합친 칸 포함): 걸치는 날마다 둔다(가정 3). 상태·시험 표식이 붙고, 실제 카드와 합친 칸에는 그 카드의 노출·열람 줄(`cardNote`)도 붙는다.
  * - **실제 단기 카드**: 걸치는 날마다, 비활성은 흐리게(`dim`). 노출·열람 수는 `cardNote`가 준다. 장기 카드는 줄 하나(`longActiveCount`·`longInactiveCount`)로만 보인다.
  * - **그 밖의 운영 항목**(미션·드랍 일정·믹스 레시피·JAM! 배지·컬렉션 런칭): **시작일 칸에만** 둔다(가정 3). 시작일이 이 주 앞이면 이 주의 **첫 칸**에 둔다 —
  *   그렇지 않으면 이미 진행 중인 항목이 이 주 어디에도 보이지 않는다.
@@ -107,6 +110,15 @@ export interface ScheduleDay {
   automation: ScheduleAutomationItem[]
   /** 그날 신호. 신호를 읽지 못했으면 null이다(없다고 단정하지 않는다). */
   signals: DaySignals | null
+  /** 그날의 대표 카드(전원 대상 카드 가운데 정렬이 가장 앞인 카드, 날짜 서랍이 보인다). 없으면 null이다. 반려·취소·실패 항목은 구성에 없어 대표가 될 수 없다. */
+  representative: ScheduleRepresentative | null
+}
+
+/** 날짜 서랍이 보이는 대표 카드. 카드 자체는 칸 항목이 아닐 수도 있다(장기 카드는 칸 항목이 아니다). */
+export interface ScheduleRepresentative {
+  title: string
+  /** 칸 항목과 같은 서랍 키: 운영 항목(합친 카드 포함)은 항목 ID, 실제 카드는 `card:<ID>`. 날짜 서랍에서 이 키가 그날 항목 안에 있으면 눌러 항목 서랍을 연다. */
+  drawerKey: string
 }
 
 /** 미션 막대(기간 미션). 열 위치 0(월)~6(일)이고 주 밖으로 넘치는 쪽은 0·6으로 자른다. */
@@ -172,7 +184,16 @@ function opsHref(bundleId: string | null, itemId: string, includeSample: boolean
   return opsTargetHref({ bundleId, itemId }, { includeSample })
 }
 
-function opsCardItem(card: CompositionCard, date: string, includeSample: boolean): ScheduleItem {
+/**
+ * 운영 카드 칸 항목. 실제 카드와 합친 카드(`resourceId`가 있다)는 그 실제 카드의 노출·열람 줄을 붙인다 — 합쳐도 줄이 사라지지 않게 한다(③-a에서 넘긴 조건).
+ * 합치지 않은 운영 카드는 아직 카드가 없어 줄이 없다.
+ */
+function opsCardItem(
+  card: CompositionCard,
+  date: string,
+  includeSample: boolean,
+  cardNote: BuildScheduleWeekInput['cardNote']
+): ScheduleItem {
   return {
     id: `ops-${card.id}-${date}`,
     origin: 'ops',
@@ -184,7 +205,7 @@ function opsCardItem(card: CompositionCard, date: string, includeSample: boolean
     isSample: card.isSample,
     dim: false,
     href: opsHref(card.bundleId, card.id, includeSample),
-    note: null,
+    note: card.resourceId === null ? null : (cardNote?.(card.resourceId, date) ?? null),
   }
 }
 
@@ -253,7 +274,7 @@ export function buildScheduleWeek(input: BuildScheduleWeekInput): ScheduleWeek {
 
     const opsCards = (composition?.cards ?? [])
       .filter((card) => card.source === 'bundle' && (includeSample || !card.isSample))
-      .map((card) => opsCardItem(card, date, includeSample))
+      .map((card) => opsCardItem(card, date, includeSample, input.cardNote))
 
     // 날짜 구성은 걸치는 날마다 같은 항목을 돌려준다. 카드가 아닌 운영 항목은 이 주에서 처음 만나는 칸(시작일, 또는 시작일이 주 앞이면 첫 칸)에만 둔다.
     const otherOps: ScheduleItem[] = []
@@ -323,6 +344,7 @@ export function buildScheduleWeek(input: BuildScheduleWeekInput): ScheduleWeek {
       longInactiveCount: cardDay?.longInactiveCount ?? 0,
       automation,
       signals: input.signals?.[date] ?? null,
+      representative: representativeOf(composition?.representative ?? null, includeSample),
     }
   })
 
@@ -339,6 +361,12 @@ export function buildScheduleWeek(input: BuildScheduleWeekInput): ScheduleWeek {
     openEndedMissionCount: missionsWeek?.openEndedCount ?? null,
     contentCount,
   }
+}
+
+/** 대표 카드 → 서랍 표시. 시험 묶음을 숨기는 중이면 시험 카드는 대표로 보이지 않는다(칸 항목과 같은 규칙). */
+function representativeOf(card: CompositionCard | null, includeSample: boolean): ScheduleRepresentative | null {
+  if (card === null || (!includeSample && card.isSample)) return null
+  return { title: card.title, drawerKey: card.source === 'bundle' ? card.id : `card:${card.id}` }
 }
 
 function realMissionBar(bar: WeeklyMissionBar): ScheduleMissionBar {
