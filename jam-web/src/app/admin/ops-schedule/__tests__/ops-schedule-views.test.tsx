@@ -47,7 +47,7 @@ vi.mock('@/lib/admin/opsSchedule/timelineLoad', () => ({
   }),
 }))
 
-import { ScheduleBody, SCHEDULE_SOURCE_NOTICES } from '../ScheduleBody'
+import { ScheduleBody, SCHEDULE_EMPTY_TITLE, SCHEDULE_SOURCE_NOTICES } from '../ScheduleBody'
 import { OpsScheduleBoard } from '../OpsScheduleBoard'
 import { buildSchedulePeriod, buildScheduleMonth } from '@/lib/admin/opsSchedule/monthView'
 import { parseScheduleParams, periodOf } from '@/lib/admin/opsSchedule/params'
@@ -461,6 +461,16 @@ describe('타임라인 본문 — 빈 줄과 오류', () => {
     expect(out).toContain('이 기간에는 올라온 항목이 없어요')
     expect(out).toContain(SCHEDULE_SOURCE_NOTICES.missions)
     expect(out).toContain(SCHEDULE_SOURCE_NOTICES.dropSchedules)
+  })
+
+  it('드랍 일정·컬렉션을 못 읽었으면 기간이 비었다고 단정하지 않는다', async () => {
+    for (const source of ['dropSchedules', 'itemBooks'] as const) {
+      const timeline = makeTimeline({ bundles: [], missions: [], today: '2026-12-31', [source]: null })
+      const out = await renderTimelineBody({ timeline, sourceErrors: { [source]: '실패' } })
+      expect(out).toContain(SCHEDULE_SOURCE_NOTICES[source])
+      expect(out).not.toContain(`<p class="font-medium">${SCHEDULE_EMPTY_TITLE}</p>`)
+      expect(out).not.toContain('오늘로 이동')
+    }
   })
 
   it('컬렉션 준비 기간 규칙을 못 읽으면 28일로 그렸다고 알린다', async () => {

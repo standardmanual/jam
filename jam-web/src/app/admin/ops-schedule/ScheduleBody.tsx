@@ -175,7 +175,9 @@ async function TimelineBody({ params }: { params: ScheduleParams }) {
     return <OpsSectionNotice icon="week" title={SCHEDULE_LOAD_FAILED_TITLE} />
   }
 
-  const isEmpty = timeline.contentCount === 0 && !anyContentFailed(sourceErrors)
+  // 드랍 일정·컬렉션은 타임라인에만 있는 재료라, 못 읽었으면 이 보기도 「없다」고 단정할 수 없다.
+  const timelineContentFailed = anyContentFailed(sourceErrors) || Boolean(sourceErrors.dropSchedules || sourceErrors.itemBooks)
+  const isEmpty = timeline.contentCount === 0 && !timelineContentFailed
   return (
     <div className="space-y-4">
       <SourceNotices sourceErrors={sourceErrors} />
