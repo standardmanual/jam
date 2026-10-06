@@ -22,6 +22,9 @@
  *
  * 원천 하나가 실패하면 그 원천은 `null`로 넘어가 그 원천에 기대는 신호만 「확인하지 못했어요」가 된다(A11). 실패한 원천의 사유는
  * `sourceErrors`에 담는다.
+ *
+ * `loadDayCompositions`(티켓 20261006_1339)는 신호 없이 **기간을 받아** 날짜별 구성만 읽는다(일정표의 월간·지난 주). 위의 카드·미션·묶음
+ * 읽기 함수를 그대로 쓰고, 실제 카드·미션과 운영 항목을 합치는 일은 구성 함수(`buildDayCompositions`)가 한다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { IN_CHUNK_SIZE } from '@/lib/db/fetchAllRows'
@@ -36,11 +39,13 @@ import {
   type ComputeOpsSignalsInput,
   type OpsSignalsComputation,
 } from '@/lib/admin/opsSignals/compute'
-import type {
-  SignalBundleInput,
-  SignalBundleItemInput,
-  SignalCardInput,
-  SignalMissionInput,
+import {
+  buildDayCompositions,
+  type DayComposition,
+  type SignalBundleInput,
+  type SignalBundleItemInput,
+  type SignalCardInput,
+  type SignalMissionInput,
 } from '@/lib/admin/opsSignals/composition'
 import { loadSignalOverrides } from '@/lib/admin/opsSignals/overrides'
 import { collectionBookIdsToCheck } from '@/lib/admin/opsSignals/statusRules'
@@ -334,6 +339,91 @@ async function loadActionCounts(supabase: Supabase, now: Date, weeks: number): P
     })
   )
   return Object.fromEntries(entries) as ActionCounts
+}
+
+// ── 기간을 받는 날짜 구성 ────────────────────────────────────────────────────────────────────────
+
+/** `loadDayCompositions`가 한 번에 읽는 기간의 상한(일, 양 끝 포함). 결정 기록 읽기(`OPS_DECISION_MAX_DAYS`)와 같다. */
+export const DAY_COMPOSITIONS_MAX_DAYS = 92
+
+export const DAY_COMPOSITIONS_PERIOD_INVALID_MESSAGE = '기간(from·to)은 2026-10-01처럼 날짜로 보내 주세요.'
+export const DAY_COMPOSITIONS_PERIOD_ORDER_MESSAGE = '기간의 시작(from)이 끝(to)보다 늦어요.'
+export const DAY_COMPOSITIONS_PERIOD_TOO_LONG_MESSAGE = `한 번에 읽을 수 있는 기간은 ${DAY_COMPOSITIONS_MAX_DAYS}일까지예요. 기간을 나눠서 읽어 주세요.`
+
+/** 기간이 올바르지 않을 때 던진다. 읽기 실패(원천 오류)는 던지지 않고 `sourceErrors`에 담는다. */
+export class DayCompositionPeriodError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'DayCompositionPeriodError'
+  }
+}
+
+export interface LoadDayCompositionsOptions {
+  /** 시작 날짜(KST `YYYY-MM-DD`, 포함). */
+  from: string
+  /** 끝 날짜(KST `YYYY-MM-DD`, 포함). */
+  to: string
+  /** 시험 묶음을 포함할지. 기본은 `false`다. */
+  includeSample?: boolean
+}
+
+export type DayCompositionSource = 'cards' | 'missions' | 'bundles'
+
+export interface LoadedDayCompositions {
+  /** 읽은 묶음과 항목(제출 원본 `raw`는 받지 않아 null이다). 묶음을 읽지 못했으면 null이다. */
+  bundles: SignalBundleInput[] | null
+  /** `from`~`to`의 날짜마다 한 건(날짜 오름차순). 읽지 못한 원천은 비어 있는 것으로 계산하므로 `sourceErrors`를 함께 봐야 한다. */
+  compositions: DayComposition[]
+  /** 읽지 못한 원천과 사유. 모두 읽었으면 빈 객체다. 호출부가 「읽지 못해 빠져 있어요」를 알린다(없다고 단정하지 않는다). */
+  sourceErrors: Partial<Record<DayCompositionSource, string>>
+}
+
+/** `YYYY-MM-DD` 형식이고 달력에 있는 날짜인가(2026-02-30은 아니다). */
+function isCalendarDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return false
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])]
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+}
+
+/**
+ * 기간을 받아 날짜별 구성(실제 카드·미션·운영 항목, 실제와 운영 항목은 `created_resource`로 합친 것)을 읽는다(서버 전용, 읽기만 한다).
+ * 기간이 틀리면 `DayCompositionPeriodError`를 던진다. 원천 하나가 실패해도 던지지 않고 `sourceErrors`에 담는다.
+ */
+export async function loadDayCompositions(options: LoadDayCompositionsOptions): Promise<LoadedDayCompositions> {
+  const { from, to } = options
+  if (!isCalendarDate(from) || !isCalendarDate(to)) throw new DayCompositionPeriodError(DAY_COMPOSITIONS_PERIOD_INVALID_MESSAGE)
+  if (from > to) throw new DayCompositionPeriodError(DAY_COMPOSITIONS_PERIOD_ORDER_MESSAGE)
+  const dayCount = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS) + 1
+  if (dayCount > DAY_COMPOSITIONS_MAX_DAYS) throw new DayCompositionPeriodError(DAY_COMPOSITIONS_PERIOD_TOO_LONG_MESSAGE)
+
+  const includeSample = options.includeSample === true
+  const supabase = createServiceClient()
+  const sourceErrors: LoadedDayCompositions['sourceErrors'] = {}
+
+  async function settle<T>(source: DayCompositionSource, task: () => Promise<T>): Promise<T | null> {
+    try {
+      return await task()
+    } catch (error) {
+      sourceErrors[source] = errorMessage(error)
+      console.error(`[admin/ops-signals] ${source} 조회 오류:`, error)
+      return null
+    }
+  }
+
+  const rangeStartIso = kstDayBoundsIso(from).startIso
+  const rangeEndIso = kstDayBoundsIso(to).endIso
+  const [cards, missions, bundles] = await Promise.all([
+    settle('cards', () => loadCards(supabase, rangeStartIso, rangeEndIso)),
+    settle('missions', () => loadMissions(supabase, rangeStartIso, rangeEndIso)),
+    settle('bundles', () => loadBundles(supabase, includeSample)),
+  ])
+
+  const dates: string[] = []
+  for (let date = from; date <= to; date = shiftDateStr(date, 1)) dates.push(date)
+  const compositions = buildDayCompositions({ cards: cards ?? [], missions: missions ?? [], bundles: bundles ?? [] }, dates)
+  return { bundles, compositions, sourceErrors }
 }
 
 // ── 진입점 ───────────────────────────────────────────────────────────────────────────────────────

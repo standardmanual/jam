@@ -157,7 +157,15 @@ vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({ from: (table: string) => new h.Query(table) }),
 }))
 
-import { loadOpsSignals } from '../load'
+import {
+  DAY_COMPOSITIONS_MAX_DAYS,
+  DAY_COMPOSITIONS_PERIOD_INVALID_MESSAGE,
+  DAY_COMPOSITIONS_PERIOD_ORDER_MESSAGE,
+  DAY_COMPOSITIONS_PERIOD_TOO_LONG_MESSAGE,
+  DayCompositionPeriodError,
+  loadDayCompositions,
+  loadOpsSignals,
+} from '../load'
 import { NOW, cardOriginal, dayEnd, dayStart, kst } from './fixtures'
 
 const WRITE_CALL = /\.(insert|update|upsert|delete)$/
@@ -265,6 +273,132 @@ describe('loadOpsSignals — 읽기만 한다', () => {
     expect(result.signals).toHaveLength(13)
     expect(result.sourceErrors).toEqual({})
     expect(result.includeSample).toBe(false)
+  })
+})
+
+describe('loadDayCompositions — 기간을 받는 날짜 구성(티켓 20261006_1339)', () => {
+  const CARD_ID = '3f1b2c9e-0d6a-4b7e-9a51-2c8d7e6f5a40'
+
+  it('select 계열만 부르고 제출 원본(raw)은 받지 않는다', async () => {
+    h.state.tables.today_cards = [cardRow('c1')]
+    h.state.tables.ops_bundles = [bundleRow('b1')]
+    h.state.tables.ops_bundle_items = [itemRow('i1', 'b1', { status: 'arrived' })]
+    await loadDayCompositions({ from: '2026-10-01', to: '2026-10-03' })
+    expect(h.state.calls.length).toBeGreaterThan(0)
+    expect(h.state.calls.filter((call) => WRITE_CALL.test(call))).toEqual([])
+    expect(h.state.selects.filter((entry) => entry.columns.includes('raw'))).toEqual([])
+  })
+
+  it('기간의 날짜마다 구성 한 건을 날짜 순으로 돌려준다(양 끝 포함)', async () => {
+    const result = await loadDayCompositions({ from: '2026-10-01', to: '2026-10-04' })
+    expect(result.compositions.map((day) => day.date)).toEqual(['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04'])
+    expect(result.sourceErrors).toEqual({})
+    expect(result.bundles).toEqual([])
+  })
+
+  it('기간에 걸치는 카드·미션만 읽고, 걸치지 않는 것은 읽지 않는다', async () => {
+    h.state.tables.today_cards = [
+      cardRow('in', { starts_at: dayStart('2026-10-02'), ends_at: dayEnd('2026-10-02') }),
+      cardRow('before', { starts_at: dayStart('2026-09-20'), ends_at: dayEnd('2026-09-20') }),
+      cardRow('after', { starts_at: dayStart('2026-11-20'), ends_at: dayEnd('2026-11-20') }),
+    ]
+    h.state.tables.missions = [
+      { id: 'm-in', title: '진행 중', starts_at: dayStart('2026-09-30'), ends_at: null },
+      { id: 'm-over', title: '끝남', starts_at: dayStart('2026-09-01'), ends_at: dayEnd('2026-09-10') },
+    ]
+    const result = await loadDayCompositions({ from: '2026-10-01', to: '2026-10-03' })
+    const ids = result.compositions.flatMap((day) => day.cards.map((card) => card.id))
+    expect(ids).toEqual(['in'])
+    expect(result.compositions.flatMap((day) => day.missions.map((mission) => mission.id))).toEqual(['m-in', 'm-in', 'm-in'])
+  })
+
+  it('실제 카드와 그 운영 항목(created_resource)은 한 칸으로 합쳐서 한 번만 센다', async () => {
+    h.state.tables.today_cards = [cardRow(CARD_ID, { title: '실제 제목' })]
+    h.state.tables.ops_bundles = [bundleRow('b1')]
+    h.state.tables.ops_bundle_items = [
+      itemRow('i1', 'b1', {
+        kind: 'home_feed_card',
+        status: 'live',
+        starts_at: dayStart('2026-10-01'),
+        ends_at: dayEnd('2026-10-01'),
+        original: cardOriginal(),
+        created_resource: { today_card_id: CARD_ID },
+      }),
+    ]
+    const result = await loadDayCompositions({ from: '2026-10-01', to: '2026-10-01' })
+    const cards = result.compositions[0].cards
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toMatchObject({ source: 'bundle', id: 'i1', resourceId: CARD_ID, bundleId: 'b1', title: '실제 제목', status: 'live' })
+  })
+
+  it('시험 묶음은 기본으로 읽지 않고, 포함하면 읽어 표식을 붙인다', async () => {
+    h.state.tables.ops_bundles = [bundleRow('real'), bundleRow('sample', { is_sample: true })]
+    h.state.tables.ops_bundle_items = [
+      itemRow('i1', 'real', { kind: 'home_feed_card', starts_at: dayStart('2026-10-01'), ends_at: dayEnd('2026-10-01'), original: cardOriginal() }),
+      itemRow('i2', 'sample', { kind: 'home_feed_card', starts_at: dayStart('2026-10-01'), ends_at: dayEnd('2026-10-01'), original: cardOriginal(), created_resource: { sample: true } }),
+    ]
+    const without = await loadDayCompositions({ from: '2026-10-01', to: '2026-10-01' })
+    expect(without.compositions[0].cards.map((card) => card.id)).toEqual(['i1'])
+    const withSample = await loadDayCompositions({ from: '2026-10-01', to: '2026-10-01', includeSample: true })
+    expect(withSample.compositions[0].cards.map((card) => [card.id, card.isSample]).sort()).toEqual([
+      ['i1', false],
+      ['i2', true],
+    ])
+  })
+
+  it('기간이 틀리면 DB를 읽기 전에 던진다(형식·없는 날짜·순서·상한)', async () => {
+    const attempts: Array<[{ from: string; to: string }, string]> = [
+      [{ from: '2026-10', to: '2026-10-03' }, DAY_COMPOSITIONS_PERIOD_INVALID_MESSAGE],
+      [{ from: '2026-10-01', to: '내일' }, DAY_COMPOSITIONS_PERIOD_INVALID_MESSAGE],
+      [{ from: '2026-02-30', to: '2026-03-02' }, DAY_COMPOSITIONS_PERIOD_INVALID_MESSAGE],
+      [{ from: '2026-10-05', to: '2026-10-01' }, DAY_COMPOSITIONS_PERIOD_ORDER_MESSAGE],
+      [{ from: '2026-10-01', to: '2027-01-01' }, DAY_COMPOSITIONS_PERIOD_TOO_LONG_MESSAGE],
+    ]
+    for (const [period, message] of attempts) {
+      const error = await loadDayCompositions(period).catch((caught: unknown) => caught)
+      expect(error, JSON.stringify(period)).toBeInstanceOf(DayCompositionPeriodError)
+      expect((error as Error).message).toBe(message)
+    }
+    expect(h.state.calls).toEqual([])
+  })
+
+  it('상한은 양 끝을 포함해 92일이다', async () => {
+    expect(DAY_COMPOSITIONS_MAX_DAYS).toBe(92)
+    const ok = await loadDayCompositions({ from: '2026-10-01', to: '2026-12-31' }) // 92일
+    expect(ok.compositions).toHaveLength(92)
+    await expect(loadDayCompositions({ from: '2026-10-01', to: '2027-01-01' })).rejects.toBeInstanceOf(DayCompositionPeriodError) // 93일
+  })
+
+  it('원천 하나를 읽지 못해도 던지지 않고 sourceErrors에 담는다(없다고 단정하지 않는다)', async () => {
+    h.state.errors = { today_cards: '카드 오류' }
+    const cardsFailed = await loadDayCompositions({ from: '2026-10-01', to: '2026-10-02' })
+    expect(cardsFailed.sourceErrors).toEqual({ cards: '카드 오류' })
+    expect(cardsFailed.compositions).toHaveLength(2)
+    expect(cardsFailed.bundles).toEqual([])
+
+    h.state.errors = { ops_bundles: '묶음 오류' }
+    const bundlesFailed = await loadDayCompositions({ from: '2026-10-01', to: '2026-10-02' })
+    expect(bundlesFailed.sourceErrors).toEqual({ bundles: '묶음 오류' })
+    expect(bundlesFailed.bundles).toBeNull()
+
+    h.state.errors = { missions: '미션 오류' }
+    const missionsFailed = await loadDayCompositions({ from: '2026-10-01', to: '2026-10-02' })
+    expect(missionsFailed.sourceErrors).toEqual({ missions: '미션 오류' })
+  })
+
+  it('1000행을 넘는 항목도 끝까지 받는다', async () => {
+    h.state.tables.ops_bundles = [bundleRow('b1')]
+    h.state.tables.ops_bundle_items = rowsWith(1_150, (n) =>
+      itemRow(`i${String(n).padStart(4, '0')}`, 'b1', {
+        kind: 'drop_schedule',
+        status: 'scheduled',
+        starts_at: dayStart('2026-10-01'),
+        ends_at: dayEnd('2026-10-01'),
+        position: n,
+      })
+    )
+    const result = await loadDayCompositions({ from: '2026-10-01', to: '2026-10-01' })
+    expect(result.compositions[0].bundleItems).toHaveLength(1_150)
   })
 })
 

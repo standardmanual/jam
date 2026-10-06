@@ -10,6 +10,7 @@ import {
   hasItemCopy,
   needsImageProduction,
   pickRepresentative,
+  readMergeResourceId,
   isoWeekOfDate,
   signalScanDates,
   type CompositionCard,
@@ -316,5 +317,218 @@ describe('isoWeekOfDate — 묶음의 week 칸과 같은 ISO 주 표기', () => 
   it('해가 바뀌는 주를 ISO 규칙대로 센다', () => {
     expect(isoWeekOfDate('2027-01-01')).toBe('2026-W53')
     expect(isoWeekOfDate('2024-12-30')).toBe('2025-W01')
+  })
+})
+
+describe('buildDayCompositions — 실제 카드·운영 항목 합치기(티켓 20261006_1339)', () => {
+  const CARD_ID = '3f1b2c9e-0d6a-4b7e-9a51-2c8d7e6f5a40'
+  const MISSION_ID = '7a2e4c10-9b3d-4f6a-8e15-5d0c1b2a3f90'
+
+  /** 운영 묶음의 홈피드 카드 항목. `created_resource`로 실제 카드를 가리킨다. */
+  const cardItem = (over: Partial<SignalBundleItemInput> = {}, resourceId: string | null = CARD_ID) =>
+    makeItem({
+      status: 'scheduled',
+      createdResource: resourceId === null ? null : { today_card_id: resourceId },
+      ...over,
+    })
+  const missionItem = (over: Partial<SignalBundleItemInput> = {}, resourceId: string | null = MISSION_ID) =>
+    makeItem({
+      kind: 'mission',
+      status: 'scheduled',
+      original: { copy: { title: '운영 미션' } },
+      createdResource: resourceId === null ? null : { mission_id: resourceId },
+      ...over,
+    })
+  const realCard = (over: Parameters<typeof makeCard>[0] = {}) => makeCard({ id: CARD_ID, title: '실제 카드', ...over })
+  const realMission = (over: Partial<{ id: string; title: string; startsAt: string; endsAt: string | null }> = {}) => ({
+    id: MISSION_ID,
+    title: '실제 미션',
+    startsAt: kst('2026-09-28', '09:00'),
+    endsAt: kst('2026-10-05', '09:00') as string | null,
+    ...over,
+  })
+
+  it('운영툴이 만든 실제 카드와 그 운영 항목은 한 칸으로 한 번만 센다', () => {
+    const item = cardItem()
+    const [day] = compose({ cards: [realCard()], bundles: [makeBundle([item])] })
+    expect(day.cards).toHaveLength(1)
+    expect(day.cards[0].source).toBe('bundle')
+    expect(day.cards[0].id).toBe(item.id)
+    expect(day.cards[0].resourceId).toBe(CARD_ID)
+  })
+
+  it('합친 칸의 값: 키·상태·시험·묶음 연결은 운영 항목, 제목·모양·노출 대상·커버·정렬은 실제 카드 값이다(가정 1)', () => {
+    const item = cardItem({
+      position: 3,
+      patternNo: 'P-07',
+      original: cardOriginal({ shape: 'brief', exposure_tags: ['new_user'], copy: { title: '항목 제목' }, resource: { sort_order: 9 } }),
+    })
+    const bundle = makeBundle([item], { isSample: true, receivedAt: kst('2026-09-30', '08:00') })
+    const card = realCard({ shape: 'poster', exposureTags: ['all'], sortOrder: 2, hasCover: false, title: '실제 제목' })
+    const [day] = compose({ cards: [card], bundles: [bundle] })
+    const merged = day.cards[0]
+    // 운영 항목 값
+    expect(merged.key).toBe(`bundle:${item.id}`)
+    expect(merged.status).toBe('scheduled')
+    expect(merged.isSample).toBe(true)
+    expect(merged.bundleId).toBe(bundle.id)
+    expect(merged.patternNo).toBe('P-07')
+    expect(merged.position).toBe(3)
+    expect(merged.submittedAtMs).toBe(Date.parse(kst('2026-09-30', '08:00')))
+    // 실제 카드 값
+    expect(merged.title).toBe('실제 제목')
+    expect(merged.shape).toBe('poster')
+    expect(merged.exposureTags).toEqual(['all'])
+    expect(merged.sortOrder).toBe(2)
+    expect(merged.imageMissing).toBe(true) // 커버가 없다
+    expect(merged.hasCopy).toBe(true)
+  })
+
+  it('날짜 겹침은 실제 카드의 기간이다(항목의 시각이 달라도 카드가 걸치는 날에 보인다)', () => {
+    const item = cardItem({ startsAt: dayStart('2026-10-01'), endsAt: dayEnd('2026-10-01') })
+    const card = realCard({ startsAt: dayStart('2026-10-03'), endsAt: dayEnd('2026-10-03') })
+    const days = compose({ cards: [card], bundles: [makeBundle([item])] }, ['2026-10-01', '2026-10-02', '2026-10-03'])
+    expect(days.map((day) => day.cards.length)).toEqual([0, 0, 1])
+    expect(days[2].cards[0].startsOnDay).toBe(true)
+    expect(days[2].cards[0].startsAt).toBe(card.startsAt)
+  })
+
+  it('항목에 없는 실제 카드는 따로 센다(합칠 짝이 없다)', () => {
+    const item = cardItem()
+    const other = makeCard({ id: 'other-card' })
+    const [day] = compose({ cards: [realCard(), other], bundles: [makeBundle([item])] })
+    expect(day.cards.map((card) => card.id).sort()).toEqual([item.id, other.id].sort())
+    expect(day.cards.find((card) => card.id === other.id)?.resourceId).toBe(other.id)
+  })
+
+  it('ID는 대소문자를 가리지 않고 앞뒤 빈칸을 무시해 비교한다', () => {
+    const item = cardItem({}, `  ${CARD_ID.toUpperCase()} `)
+    const [day] = compose({ cards: [realCard()], bundles: [makeBundle([item])] })
+    expect(day.cards).toHaveLength(1)
+    expect(day.cards[0].resourceId).toBe(CARD_ID)
+  })
+
+  it('멈춘 항목(반려·취소·실패)은 합치지 않는다: 실제 카드가 그대로 한 번 센다', () => {
+    for (const status of ['rejected', 'cancelled', 'failed']) {
+      const [day] = compose({ cards: [realCard()], bundles: [makeBundle([cardItem({ status })])] })
+      expect(day.cards, status).toHaveLength(1)
+      expect(day.cards[0].source, status).toBe('card')
+      expect(day.cards[0].id, status).toBe(CARD_ID)
+    }
+  })
+
+  it('created_resource가 {sample:true}이거나 비었거나 키가 다르면 합치지 않는다', () => {
+    const cases: Array<SignalBundleItemInput['createdResource']> = [
+      { sample: true },
+      null,
+      {},
+      { today_card_id: '' },
+      { today_card_id: 7 },
+      { mission_id: CARD_ID }, // 홈피드 카드 항목은 today_card_id만 읽는다
+    ]
+    for (const createdResource of cases) {
+      const item = makeItem({ status: 'scheduled', createdResource })
+      const [day] = compose({ cards: [realCard()], bundles: [makeBundle([item], { isSample: true })] })
+      expect(day.cards, JSON.stringify(createdResource)).toHaveLength(2)
+    }
+  })
+
+  it('비활성 실제 카드와는 합치지 않는다(항목이 자기 시각으로 센다)', () => {
+    const [day] = compose({ cards: [realCard({ isActive: false })], bundles: [makeBundle([cardItem()])] })
+    expect(day.cards).toHaveLength(1)
+    expect(day.cards[0].source).toBe('bundle')
+    expect(day.cards[0].resourceId).toBeNull()
+  })
+
+  it('가리키는 카드가 입력에 없으면 항목이 자기 시각으로 센다', () => {
+    const [day] = compose({ cards: [], bundles: [makeBundle([cardItem()])] })
+    expect(day.cards).toHaveLength(1)
+    expect(day.cards[0].resourceId).toBeNull()
+  })
+
+  it('같은 카드를 가리키는 항목이 둘이면 먼저 나온 항목만 합친다', () => {
+    const first = cardItem({ position: 0 })
+    const second = cardItem({ position: 1 })
+    const [day] = compose({ cards: [realCard()], bundles: [makeBundle([first, second])] })
+    expect(day.cards).toHaveLength(2)
+    expect(day.cards.find((card) => card.id === first.id)?.resourceId).toBe(CARD_ID)
+    expect(day.cards.find((card) => card.id === second.id)?.resourceId).toBeNull()
+  })
+
+  it('합친 칸은 대표 카드 정렬에서 실제 카드의 정렬 값을 쓴다', () => {
+    const item = cardItem()
+    const other = makeCard({ id: 'other-card', sortOrder: 5 })
+    const [day] = compose({ cards: [realCard({ sortOrder: 1 }), other], bundles: [makeBundle([item])] })
+    expect(day.representative?.id).toBe(item.id)
+    expect(day.cards.map((card) => card.id)).toEqual([item.id, other.id])
+  })
+
+  it('같은 자원을 두 번 세지 않아 하루 카드 수가 늘지 않는다', () => {
+    const cards = [realCard(), makeCard({ id: 'c2', sortOrder: 1 }), makeCard({ id: 'c3', sortOrder: 2 })]
+    const [day] = compose({ cards, bundles: [makeBundle([cardItem()])] })
+    expect(day.cards).toHaveLength(3)
+  })
+
+  it('실제 미션과 미션 항목도 한 칸으로 합친다(실제 미션 값: 제목·기간, 항목 값: 상태·시험·묶음 연결)', () => {
+    const item = missionItem({ patternNo: 'P-02' })
+    const bundle = makeBundle([item])
+    const [day] = compose({ missions: [realMission()], bundles: [bundle] })
+    expect(day.missions).toEqual([])
+    expect(day.bundleItems).toHaveLength(1)
+    const merged = day.bundleItems[0]
+    expect(merged.itemId).toBe(item.id)
+    expect(merged.resourceId).toBe(MISSION_ID)
+    expect(merged.title).toBe('실제 미션')
+    expect(merged.startsAt).toBe(kst('2026-09-28', '09:00'))
+    expect(merged.endsAt).toBe(kst('2026-10-05', '09:00'))
+    expect(merged.status).toBe('scheduled')
+    expect(merged.bundleId).toBe(bundle.id)
+    expect(merged.patternNo).toBe('P-02')
+  })
+
+  it('합친 미션의 날짜 겹침은 실제 미션 기간이다(상시 미션은 계속 걸친다)', () => {
+    const item = missionItem({ startsAt: dayStart('2026-10-01'), endsAt: dayEnd('2026-10-01') })
+    const permanent = realMission({ startsAt: dayStart('2026-09-30'), endsAt: null })
+    const days = compose({ missions: [permanent], bundles: [makeBundle([item])] }, ['2026-09-29', '2026-10-01', '2026-10-04'])
+    expect(days.map((day) => day.bundleItems.length)).toEqual([0, 1, 1])
+    expect(days.every((day) => day.missions.length === 0)).toBe(true)
+  })
+
+  it('멈춘 미션 항목은 합치지 않는다: 실제 미션이 그대로 센다', () => {
+    const [day] = compose({ missions: [realMission()], bundles: [makeBundle([missionItem({ status: 'failed' })])] })
+    expect(day.missions.map((mission) => mission.id)).toEqual([MISSION_ID])
+    expect(day.bundleItems).toEqual([])
+  })
+
+  it('미션이 아닌 항목(JAM! 배지 등)은 합치지 않는다', () => {
+    const badge = makeItem({ kind: 'jam_badge', status: 'scheduled', createdResource: { badge_id: MISSION_ID } })
+    const [day] = compose({ missions: [realMission()], bundles: [makeBundle([badge])] })
+    expect(day.missions.map((mission) => mission.id)).toEqual([MISSION_ID])
+    expect(day.bundleItems).toHaveLength(1)
+    expect(day.bundleItems[0].resourceId).toBeNull()
+  })
+
+  it('실제 카드 칸의 resourceId는 자기 ID이고, 합치지 않은 운영 항목 칸은 null이다', () => {
+    const real = makeCard({ id: 'solo' })
+    const plain = makeItem()
+    const [day] = compose({ cards: [real], bundles: [makeBundle([plain])] })
+    expect(day.cards.find((card) => card.source === 'card')?.resourceId).toBe('solo')
+    expect(day.cards.find((card) => card.source === 'bundle')?.resourceId).toBeNull()
+  })
+})
+
+describe('readMergeResourceId', () => {
+  it('종류별 키만 읽고 소문자로 돌려준다(카드 today_card_id, 미션 mission_id)', () => {
+    expect(readMergeResourceId({ kind: 'home_feed_card', createdResource: { today_card_id: 'ABC' } })).toBe('abc')
+    expect(readMergeResourceId({ kind: 'mission', createdResource: { mission_id: 'DEF' } })).toBe('def')
+    expect(readMergeResourceId({ kind: 'mission', createdResource: { today_card_id: 'abc' } })).toBeNull()
+  })
+
+  it('합치기 대상 종류가 아니거나 값이 없으면 null이다', () => {
+    expect(readMergeResourceId({ kind: 'jam_badge', createdResource: { badge_id: 'abc' } })).toBeNull()
+    expect(readMergeResourceId({ kind: null, createdResource: { today_card_id: 'abc' } })).toBeNull()
+    expect(readMergeResourceId({ kind: 'home_feed_card' })).toBeNull()
+    expect(readMergeResourceId({ kind: 'home_feed_card', createdResource: { sample: true } })).toBeNull()
+    expect(readMergeResourceId({ kind: 'toString', createdResource: { today_card_id: 'abc' } })).toBeNull()
   })
 })
