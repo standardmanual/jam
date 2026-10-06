@@ -130,6 +130,14 @@ describe('referencersOf · 멈춘 항목을 가리키는 항목', () => {
     expect([...referencersOf(items, ['mission'])]).toEqual([['card', { stoppedId: 'mission', direct: true }]])
   })
 
+  it('반려된 레시피를 여는 카드도 실패로 닫을 항목이다(카드 → 레시피 쌍, 티켓 20261006_1218)', () => {
+    const items = [
+      makeItem({ key: 'card', kind: 'home_feed_card', links: ['recipe'] }),
+      makeItem({ key: 'recipe', kind: 'recipe', status: 'rejected' }),
+    ]
+    expect([...referencersOf(items, ['recipe'])]).toEqual([['card', { stoppedId: 'recipe', direct: true }]])
+  })
+
   it('다른 항목을 거쳐 가리키는 항목도 찾는다', () => {
     const items = [
       makeItem({ key: 'card', kind: 'home_feed_card', links: ['mission'] }),
@@ -183,6 +191,43 @@ describe('planLinkFills · 연결 칸 채우기 계획', () => {
       ['badge_ids', 'append', ['badge']],
       ['item_book_id', 'single', ['collection']],
     ])
+  })
+
+  it('카드가 레시피를 가리키면 recipe_id를 대상 레시피의 ID로 채운다. 반대쪽에 적어도 같은 쌍으로 읽는다(티켓 20261006_1218)', () => {
+    const plan = planOf([
+      makeItem({ key: 'card', kind: 'home_feed_card' }),
+      makeItem({ key: 'recipe', kind: 'recipe', links: ['card'] }),
+    ])
+    expect(plan.conflicts).toEqual([])
+    expect(plan.fills.get('card')?.map((fill) => [fill.field, fill.mode, fill.targetItemIds])).toEqual([['recipe_id', 'single', ['recipe']]])
+    expect(plan.fills.has('recipe')).toBe(false)
+  })
+
+  it('카드 하나가 레시피 둘 이상을 가리키거나 resource에 recipe_id가 이미 있으면 못 하는 항목이다', () => {
+    const multiple = planOf([
+      makeItem({ key: 'card', kind: 'home_feed_card', links: ['r1', 'r2'] }),
+      makeItem({ key: 'r1', kind: 'recipe' }),
+      makeItem({ key: 'r2', kind: 'recipe' }),
+    ])
+    expect(multiple.conflicts.map((conflict) => [conflict.itemId, conflict.code])).toEqual([['card', 'multiple_targets']])
+    expect(multiple.fills.has('card')).toBe(false)
+
+    const own = planOf([
+      makeItem({ key: 'card', kind: 'home_feed_card', links: ['recipe'], resource: { recipe_id: 'r-0' } }),
+      makeItem({ key: 'recipe', kind: 'recipe' }),
+    ])
+    expect(own.conflicts.map((conflict) => conflict.code)).toEqual(['own_resource_field'])
+  })
+
+  it('JAM! 배지와 카드가 같은 레시피를 가리켜도 각자 자기 칸을 채운다(배지의 recipe_id와 카드의 recipe_id는 서로 다른 항목의 칸이다)', () => {
+    const plan = planOf([
+      makeItem({ key: 'card', kind: 'home_feed_card', links: ['recipe'] }),
+      makeItem({ key: 'badge', kind: 'jam_badge', links: ['recipe'] }),
+      makeItem({ key: 'recipe', kind: 'recipe' }),
+    ])
+    expect(plan.conflicts).toEqual([])
+    expect(plan.fills.get('card')?.map((fill) => fill.field)).toEqual(['recipe_id'])
+    expect(plan.fills.get('badge')?.map((fill) => fill.field)).toEqual(['recipe_id'])
   })
 
   it('표에 없는 쌍(같은 종류끼리 등)은 그룹으로만 묶고 칸을 채우지 않는다', () => {
@@ -253,6 +298,16 @@ describe('cancelSetOf · 함께 취소할 항목(PRD §8.7)', () => {
 
   it('다른 예약됨 항목을 거쳐 가리키는 항목도 따라간다', () => {
     expect(cancelSetOf(chain(), 'badge')).toEqual({ cancelIds: ['card', 'mission', 'badge'], blockers: [] })
+  })
+
+  it('레시피를 취소하면 그 레시피를 여는 예약됨 카드도 함께 취소하고, 게재 중 카드는 막는 항목이다(티켓 20261006_1218)', () => {
+    const items = (cardStatus: string) => [
+      makeItem({ key: 'card', kind: 'home_feed_card', status: cardStatus, links: ['recipe'], position: 1 }),
+      makeItem({ key: 'recipe', kind: 'recipe', status: 'scheduled', position: 2 }),
+    ]
+    expect(cancelSetOf(items('scheduled'), 'recipe')).toEqual({ cancelIds: ['card', 'recipe'], blockers: [] })
+    expect(cancelSetOf(items('live'), 'recipe')).toEqual({ cancelIds: ['recipe'], blockers: [{ id: 'card', status: 'live' }] })
+    expect(cancelSetOf(items('scheduled'), 'card')).toEqual({ cancelIds: ['card'], blockers: [] })
   })
 
   it('가리키는 대상 쪽은 따라가지 않는다(카드를 취소해도 미션은 남는다)', () => {
@@ -335,6 +390,15 @@ describe('pointingLiveOf · 지금 종료가 알릴 항목(PRD §8.7)', () => {
     expect(idsOf(pointingLiveOf(items(), 'mission'))).toEqual(['card'])
     expect(idsOf(pointingLiveOf(items(), 'badge'))).toEqual(['mission'])
     expect(pointingLiveOf(items(), 'card')).toEqual([])
+  })
+
+  it('레시피를 지금 끝낼 때는 그 레시피를 여는 게재 중 카드를 알린다(티켓 20261006_1218)', () => {
+    const list = [
+      makeItem({ key: 'card', kind: 'home_feed_card', status: 'live', links: ['recipe'], position: 1 }),
+      makeItem({ key: 'recipe', kind: 'recipe', status: 'live', position: 2 }),
+    ]
+    expect(idsOf(pointingLiveOf(list, 'recipe'))).toEqual(['card'])
+    expect(pointingLiveOf(list, 'card')).toEqual([])
   })
 
   it('예약됨·종료·반려 같은 게재 중이 아닌 항목은 넣지 않는다', () => {

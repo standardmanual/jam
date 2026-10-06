@@ -38,6 +38,8 @@ export const LINK_PAIRS: readonly LinkPair[] = [
   { from: 'home_feed_card', to: 'mission', field: 'mission_id', mode: 'single', ownResourceKey: 'mission_id', directSelectKey: null },
   { from: 'home_feed_card', to: 'jam_badge', field: 'badge_ids', mode: 'append', ownResourceKey: null, directSelectKey: null },
   { from: 'home_feed_card', to: 'collection_launch', field: 'item_book_id', mode: 'single', ownResourceKey: 'item_book_id', directSelectKey: null },
+  // 카드가 레시피보다 먼저 공개돼도 막지 않는다(07 §4.5 예외) — 그래서 `precheck.ts`는 이 쌍에 공개 순서 검사를 하지 않는다.
+  { from: 'home_feed_card', to: 'recipe', field: 'recipe_id', mode: 'single', ownResourceKey: 'recipe_id', directSelectKey: null },
   { from: 'mission', to: 'jam_badge', field: 'reward_badge_ids', mode: 'append', ownResourceKey: null, directSelectKey: null },
   { from: 'collection_launch', to: 'jam_badge', field: 'reward_badge_id', mode: 'single', ownResourceKey: 'reward_badge_id', directSelectKey: null },
   { from: 'drop_schedule', to: 'collection_launch', field: 'collection_ids', mode: 'append', ownResourceKey: null, directSelectKey: 'badge_ids' },

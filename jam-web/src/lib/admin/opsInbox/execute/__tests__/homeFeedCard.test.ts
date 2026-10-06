@@ -33,6 +33,7 @@ const MISSION_ID = uid(3)
 const BOOK_ID = uid(4)
 const BADGE_ID = uid(5)
 const RANKING_ID = uid(6)
+const RECIPE_ID = uid(7)
 const ACTOR = 'admin-1'
 /** `LATER`(10/10 09:00 KST)를 등록 형식으로 바꾼 시작 일시. */
 const STARTS_AT = new Date(LATER).toISOString()
@@ -146,10 +147,12 @@ describe('check — 가정 3 표의 고정 문장', () => {
     db.tables.item_books = [{ id: BOOK_ID }]
     db.tables.badges = [{ id: BADGE_ID, deleted_at: null }]
     db.tables.ranking_modes = [{ id: RANKING_ID }]
+    db.tables.combination_recipes = [{ id: RECIPE_ID, valid_from: '2099-01-01T00:00:00.000Z', valid_until: null }] // 공개 전 레시피도 가리킬 수 있다
     expect(await checkOf(db, cardItem({ template_type: 'mission_spotlight', mission_id: MISSION_ID }))).toBeNull()
     expect(await checkOf(db, cardItem({ template_type: 'itembook_milestone', item_book_id: BOOK_ID }))).toBeNull()
     expect(await checkOf(db, cardItem({ template_type: 'badge_spotlight', badge_ids: [BADGE_ID] }))).toBeNull()
     expect(await checkOf(db, cardItem({ template_type: 'ranking_board', ranking_mode_id: RANKING_ID }))).toBeNull()
+    expect(await checkOf(db, cardItem({ template_type: 'recipe_reveal', recipe_id: RECIPE_ID }))).toBeNull()
     const dup = db.calls.find((call) => call.table === 'today_cards')
     expect(dup?.filters).toEqual([
       ['title', '가을 아침 러닝'],
@@ -178,6 +181,7 @@ describe('check — 가정 3 표의 고정 문장', () => {
     ['컬렉션 존재', cardItem({ template_type: 'itembook_milestone', item_book_id: BOOK_ID }), '연결한 컬렉션을 찾을 수 없어요', BOOK_ID],
     ['배지 존재', cardItem({ template_type: 'badge_spotlight', badge_ids: [BADGE_ID] }), '연결한 배지가 없거나 삭제됐어요', BADGE_ID],
     ['랭킹 모드 존재', cardItem({ template_type: 'ranking_board', ranking_mode_id: RANKING_ID }), '연결한 랭킹 모드를 찾을 수 없어요', RANKING_ID],
+    ['레시피 존재', cardItem({ template_type: 'recipe_reveal', recipe_id: RECIPE_ID }), '연결한 레시피를 찾을 수 없어요', RECIPE_ID],
   ])('%s 실패 → 「%s」이고 칼럼 이름·ID는 detail에만 있다', async (_label, item, reason, missingId) => {
     const db = new FakeDb()
     const failure = await checkOf(db, item)
@@ -199,6 +203,11 @@ describe('check — 가정 3 표의 고정 문장', () => {
     const item = cardItem({ template_type: 'progress_nudge' })
     expect(await checkOf(db, item, { mission_id: MISSION_ID, badge_ids: [BADGE_ID] })).toBeNull()
     expect(db.calls.map((call) => call.table)).toEqual(['today_cards'])
+
+    // 레시피도 같다: 연결로 채운 recipe_id는 같은 실행에서 만들 레시피라 읽지 않는다(티켓 20261006_1218)
+    const recipeDb = new FakeDb()
+    expect(await checkOf(recipeDb, cardItem({ template_type: 'recipe_reveal' }), { recipe_id: RECIPE_ID })).toBeNull()
+    expect(recipeDb.calls.map((call) => call.table)).toEqual(['today_cards'])
   })
 
   it('DB를 읽지 못하면 라벨과 상관없이 「등록 전 확인 중 DB를 읽지 못했어요」이고 원문은 detail에만 있다', async () => {

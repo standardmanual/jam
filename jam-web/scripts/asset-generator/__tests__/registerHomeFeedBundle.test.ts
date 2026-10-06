@@ -28,6 +28,7 @@ const GENERATED_TYPES_FILE = path.join(JAM_WEB_DIR, 'src', 'types', 'database.ge
 
 const BADGE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const MISSION_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const RECIPE_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
 let workDir: string;
 let bundleFile: string;
@@ -97,11 +98,25 @@ describe('validateHomeFeedBundle — 통과', () => {
     expect(validate(raw).errors).toEqual([]);
   });
 
-  it('필수 참조가 없는 레시피 공개 카드(recipe_reveal)도 통과한다 — 레시피 칸은 ⑫-b(티켓 20261006_1218)가 만든다', () => {
+  it('필수 참조가 없는 레시피 공개 카드(recipe_reveal)도 통과한다 — 레시피 칸(recipe_id)은 비워 둘 수 있다', () => {
     const raw = validRaw();
     raw.card = {
       title: '레시피 공개',
       template_type: 'recipe_reveal',
+      exposure_tags: ['all'],
+      starts_at: '2026-10-05T00:00:00+09:00',
+      ends_at: '2026-10-12T00:00:00+09:00',
+    };
+    expect(validate(raw).errors).toEqual([]);
+  });
+
+  it('레시피 공개 카드(recipe_reveal)는 recipe_id와 이동 주소(target_href)를 받는다(티켓 20261006_1218)', () => {
+    const raw = validRaw();
+    raw.card = {
+      title: '레시피 공개',
+      template_type: 'recipe_reveal',
+      recipe_id: RECIPE_ID,
+      target_href: '/combine',
       exposure_tags: ['all'],
       starts_at: '2026-10-05T00:00:00+09:00',
       ends_at: '2026-10-12T00:00:00+09:00',
@@ -127,13 +142,8 @@ describe('validateHomeFeedBundle — 통과', () => {
 });
 
 describe('허용값 목록 — today-sections.ts·DB CHECK와 갈라지지 않는다', () => {
-  it('템플릿 목록은 today_cards_template_type_check(마이그레이션 158)와 같다 — 코드가 먼저 더한 recipe_reveal 하나만 빼고', () => {
-    // 임시 허용(티켓 20261006_1217): 코드 목록은 ⑫-a가 recipe_reveal을 먼저 더했고(1453 결정 5·16 — 그리는 코드를 DB보다 먼저 낸다), DB CHECK는 ⑫-b(티켓
-    // 20261006_1218)의 마이그레이션 217이 바꾼다. 그때까지 «코드 목록 − CHECK = recipe_reveal 하나»만 허용한다. 217이 들어오면 이 예외를 지우고 217과 대조한다.
-    const PENDING_IN_DB = ['recipe_reveal'];
-    const dbTemplates = checkValues('158_ranking_modes.sql', 'today_cards_template_type_check');
-    expect([...TEMPLATE_TYPES].filter((value) => !dbTemplates.includes(value)).sort()).toEqual(PENDING_IN_DB);
-    expect(dbTemplates.filter((value) => !(TEMPLATE_TYPES as string[]).includes(value))).toEqual([]);
+  it('템플릿 목록은 today_cards_template_type_check(마이그레이션 217, recipe_reveal을 더한 최신 정의)와 같다', () => {
+    expect([...TEMPLATE_TYPES].sort()).toEqual(checkValues('217_today_cards_recipe_reveal.sql', 'today_cards_template_type_check').sort());
   });
 
   it('노출 형태 목록은 today_cards_layout_type_check(마이그레이션 158)와 같다', () => {
@@ -289,6 +299,20 @@ describe('validateHomeFeedBundle — 카드 규칙(허용값·템플릿·기간)
         delete raw.card.body_markdown;
       }).join('\n')
     ).not.toContain('이 필드를 쓰지 않아요');
+  });
+
+  it('recipe_id는 레시피 공개 카드만 쓰고 UUID 형식이어야 한다(티켓 20261006_1218 가정 C)', () => {
+    const errors = errorsFor((raw) => {
+      raw.card.template_type = 'mission_spotlight';
+      raw.card.mission_id = MISSION_ID;
+      raw.card.recipe_id = RECIPE_ID;
+    });
+    expect(errors).toContain('card.recipe_id: mission_spotlight 템플릿은 이 필드를 쓰지 않아요(어드민 폼도 저장할 때 비워요). 묶음에서 빼 주세요.');
+    expect(
+      errorsFor((raw) => {
+        raw.card = { ...raw.card, template_type: 'recipe_reveal', recipe_id: 'not-a-uuid', body_markdown: undefined };
+      }).join('\n')
+    ).toContain('card.recipe_id: UUID 형식이어야 해요');
   });
 
   it('템플릿마다 꼭 있어야 하는 참조가 없으면 거절한다', () => {
@@ -520,6 +544,7 @@ describe('buildTodayCardInsertPayload', () => {
       item_book_id: null,
       region_label: null,
       ranking_mode_id: null,
+      recipe_id: null,
       content_type_id: 'T12',
       target_href: null,
       exposure_tags: ['all'],
@@ -529,6 +554,20 @@ describe('buildTodayCardInsertPayload', () => {
       is_active: false,
     });
     expect(payload.body_markdown).toContain('\n\n');
+  });
+
+  it('recipe_id는 레시피 공개 카드의 값을 그대로 insert 페이로드에 넣는다(티켓 20261006_1218)', () => {
+    const payload = payloadOf((raw) => {
+      raw.card = {
+        title: '레시피 공개',
+        template_type: 'recipe_reveal',
+        recipe_id: RECIPE_ID,
+        exposure_tags: ['all'],
+        starts_at: '2026-10-05T00:00:00+09:00',
+        ends_at: '2026-10-12T00:00:00+09:00',
+      };
+    });
+    expect(payload.recipe_id).toBe(RECIPE_ID);
   });
 
   it('description을 trim해 insert 페이로드에 넣고, 없으면 null이다(티켓 20260929_1335)', () => {

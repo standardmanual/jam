@@ -193,6 +193,11 @@ export async function createRecipeWithSlots(
   return { ok: true, recipe, slots: built.slots }
 }
 
+/** 운영툴 밖 카드가 가리키는 레시피의 공개 전 취소 거부 문구(티켓 20261006_1218). 운영툴 핸들러는 이 문장을 사유로 쓰지 않고 상태 코드로만 가른다. */
+export function recipeCancelBlockedByCardsMessage(count: number): string {
+  return `취소할 수 없어요. 이 레시피를 가리키는 카드가 ${count}장 있어요. 카드에서 이 레시피를 먼저 바꿔 주세요.`
+}
+
 export type CancelScheduledRecipeResult =
   | { ok: true }
   | { ok: false; status: 404 | 409 | 500; error: string }
@@ -202,7 +207,8 @@ export type CancelScheduledRecipeResult =
  * 대상이 아니고, 예약을 거두는 길은 삭제뿐이다. 공개 뒤에 내리는 길은 종료 시각(티켓 20261002_0710)이다.
  *
  * 1. 삭제 가드(`collectRecipeReferences`)를 먼저 거친다 — 배지 조건이 가리키는 레시피는 예약 중이어도 지울 수 없다.
- *    조회가 실패하면 fail-closed로 막는다.
+ *    조회가 실패하면 fail-closed로 막는다. 레시피 공개 카드(`today_cards.recipe_id`, `ON DELETE SET NULL`)는 기본으로 막지 않는다(어드민의 예약 취소는 카드의
+ *    레시피 줄만 비운다). `blockOnCards`를 켜면 카드가 가리킬 때 409로 막는다 — 운영툴의 공개 전 취소만 켠다(운영툴 PRD §8.7, 티켓 20261006_1218).
  * 2. 삭제는 `valid_from > now` 조건을 단 한 번의 DELETE로 건다 — 읽고 나서 지우는 사이에 공개 시각이 지나도
  *    공개된 레시피를 지우지 않는다. `valid_from`이 null인 행(바로 공개)은 조건에 걸리지 않는다.
  * 3. 지운 행이 없으면 행이 남아 있는지 다시 읽어 «이미 공개됨»(409)과 «없음»(404)을 가른다.
@@ -212,7 +218,8 @@ export type CancelScheduledRecipeResult =
 export async function cancelScheduledRecipe(
   supabase: ServiceClient,
   id: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  { blockOnCards = false }: { blockOnCards?: boolean } = {}
 ): Promise<CancelScheduledRecipeResult> {
   const notFound = { ok: false, status: 404, error: '레시피를 찾을 수 없어요.' } as const
   if (!isUuid(id)) return notFound
@@ -228,6 +235,9 @@ export async function cancelScheduledRecipe(
   }
   if (references.total > 0) {
     return { ok: false, status: 409, error: recipeDeleteBlockedMessage(references.total) }
+  }
+  if (blockOnCards && references.noticeTotal > 0) {
+    return { ok: false, status: 409, error: recipeCancelBlockedByCardsMessage(references.noticeTotal) }
   }
 
   const { data: deleted, error: deleteError } = await supabase

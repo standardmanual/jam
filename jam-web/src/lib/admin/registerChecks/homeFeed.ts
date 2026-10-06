@@ -13,6 +13,7 @@ export interface HomeFeedDbCheckInput {
   item_book_id?: string | null
   badge_ids: string[]
   ranking_mode_id?: string | null
+  recipe_id?: string | null
 }
 
 /**
@@ -64,6 +65,13 @@ export async function runHomeFeedDbChecks({
     const { data, error } = await client.from('ranking_modes').select('id').eq('id', payload.ranking_mode_id).maybeSingle()
     if (error) return `DB 조회에 실패했어요: ${error.message}`
     return data ? null : `ranking_mode_id에 해당하는 랭킹 모드가 없어요: ${payload.ranking_mode_id}`
+  })
+
+  // 레시피는 공개 전이어도 가리킬 수 있다(카드가 레시피보다 먼저 공개돼도 막지 않는다, 티켓 20261006_1218) — 있는지만 본다.
+  await add('레시피 존재', typeof payload.recipe_id === 'string', async (client) => {
+    const { data, error } = await client.from('combination_recipes').select('id').eq('id', payload.recipe_id).maybeSingle()
+    if (error) return `DB 조회에 실패했어요: ${error.message}`
+    return data ? null : `recipe_id에 해당하는 레시피가 없어요: ${payload.recipe_id}`
   })
 
   return { checks, errors }

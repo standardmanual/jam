@@ -29,6 +29,8 @@ export interface TodayCardFormValues {
   bodyMarkdown: string
   /** ranking_board 전용 — 연결할 랭킹모드 id (티켓 20260911_1440) */
   rankingModeId: string
+  /** recipe_reveal 전용 — 연결할 레시피 id (티켓 20261006_1218) */
+  recipeId: string
   /** 컨텐츠 유형 카탈로그(PRD content-automation/PRD.md §6) ID. T01~T17, 비움 허용(티켓 20260923_2259) */
   contentTypeId: string
   targetHref: string
@@ -53,6 +55,7 @@ export interface TodayCardSavePayload {
   region_label: string | null
   body_markdown: string | null
   ranking_mode_id: string | null
+  recipe_id: string | null
   content_type_id: string | null
   target_href: string | null
   exposure_tags: string[]
@@ -116,6 +119,8 @@ export interface TodayTemplateFields {
   description?: boolean
   /** ranking_board 전용 — 연결할 랭킹모드 선택 입력(티켓 20260911_1440) */
   rankingMode?: boolean
+  /** recipe_reveal 전용 — 연결할 레시피 선택 입력(티켓 20261006_1218) */
+  recipe?: boolean
   targetHref?: boolean
 }
 
@@ -132,9 +137,8 @@ export const TODAY_FIELDS_FOR: Record<TodayCardTemplateType, TodayTemplateFields
   // (우선순위 target_href → 컬렉션 → 미션, 티켓 20260924_0107).
   editorial_article: { body: true, mission: true, itemBook: true, targetHref: true },
   ranking_board: { description: true, rankingMode: true, targetHref: true },
-  // 받는 칸은 설명문뿐이다. 레시피 입력 칸은 카드의 레시피 칸(`recipe_id`)을 만드는 ⑫-b(티켓 20261006_1218)가 더한다.
-  // 카드 자신의 이동 경로는 기본 /combine이다(`resolveTargetHref`, 운영자가 지정한 주소가 있으면 그쪽).
-  recipe_reveal: { description: true },
+  // 카드 자신의 이동 경로는 기본 /combine이다(`resolveTargetHref`, 운영자가 지정한 주소가 있으면 그쪽, 티켓 20261006_1218).
+  recipe_reveal: { description: true, recipe: true, targetHref: true },
 }
 
 /** 모르는 템플릿이 받는 칸 — 어떤 칸도 받지 않는다(빈 목록) */
@@ -218,7 +222,7 @@ export function todaySectionHeadingId(id: TodaySectionId): string {
 export function visibleTodaySections(templateType: TodayCardTemplateType): TodaySectionId[] {
   const fields = todayTemplateFields(templateType)
   const hasRef = Boolean(
-    fields.badges || fields.mission || fields.itemBook || fields.region || fields.body || fields.rankingMode
+    fields.badges || fields.mission || fields.itemBook || fields.region || fields.body || fields.rankingMode || fields.recipe
   )
   return TODAY_SECTION_ORDER.filter((id) => (id === 'ref' ? hasRef : true))
 }
@@ -276,6 +280,8 @@ export interface TodaySectionSnapshot {
   bodyMarkdown: string
   /** ranking_board 전용(티켓 20260911_1440) */
   rankingModeId: string | null
+  /** recipe_reveal 전용(티켓 20261006_1218) */
+  recipeId: string | null
   exposureTagCount: number
   hasStartsAt: boolean
   hasEndsAt: boolean
@@ -292,6 +298,7 @@ export function computeTodaySectionStatuses(s: TodaySectionSnapshot): Record<Tod
     fields.region && s.regionLabel.trim().length > 0,
     fields.body && s.bodyMarkdown.trim().length > 0,
     fields.rankingMode && Boolean(s.rankingModeId),
+    fields.recipe && Boolean(s.recipeId),
   ].filter(Boolean).length
 
   const periodMissing = [!s.hasStartsAt, !s.hasEndsAt].filter(Boolean).length
@@ -330,6 +337,7 @@ export function buildTodayCardSavePayload(v: TodayCardFormValues): TodayCardSave
     region_label: fields.region ? v.regionLabel.trim() || null : null,
     body_markdown: fields.body ? v.bodyMarkdown || null : null,
     ranking_mode_id: fields.rankingMode ? v.rankingModeId || null : null,
+    recipe_id: fields.recipe ? v.recipeId || null : null,
     // 유형 ID는 템플릿과 무관하게 모든 카드에 붙일 수 있다(자동화 파이프라인이 만든 카드용,
     // 비움 허용) — rankingModeId처럼 템플릿별로 비우지 않는다.
     content_type_id: v.contentTypeId || null,

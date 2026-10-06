@@ -8,6 +8,8 @@
  * 4. 배지는 `earned` 없이 실린다(유저 정보가 없는 미리보기).
  * 5. 미션·컬렉션 조회가 실패해도 카드는 사라지지 않는다.
  * 6. 자원 판정 순수 함수(`resourceNeedsMission`·`missionIdsToResolve`·`collectionIdsToResolve`·`toResolvedMission`).
+ * 7. 레시피 공개 카드(`recipe_reveal`)에 `resolved_recipe`가 실린다(티켓 20261006_1218, 운영툴 PRD §6 「홈과 미리보기는 같은 값」) — 공개 전은 재료 수·공개일만,
+ *    공개 뒤는 슬롯마다 대표 후보 타일(보유 여부 없이 첫 후보)이고, 공개 판정은 미리보기 기준 시각을 쓴다. 레시피를 같은 함수로 한 번에 읽는다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/admin/__tests__/todayPreview.test.ts
  */
@@ -286,6 +288,106 @@ describe('getAdminTodayPreviewCards — 표시 데이터용 자원 값', () => {
     expect(cards.map((c) => c.id)).toEqual(['a', 'b'])
     expect(cards[0].resolved_mission).toBeNull()
     expect(cards[1].resolved_collection).toBeNull()
+  })
+})
+
+describe('getAdminTodayPreviewCards — 레시피 공개 카드의 레시피 값 (티켓 20261006_1218)', () => {
+  const recipeCard = (overrides: Row = {}) =>
+    cardRow({ id: 'a', template_type: 'recipe_reveal', layout_type: 'badge_gallery', shape: 'list', recipe_id: 'r1', resolved_href: '/combine', ...overrides })
+  const slot = (order: number, allowed: string[]): Row => ({ id: `s${order}`, recipe_id: 'r1', slot_order: order, allowed_badge_ids: allowed })
+  const badge = (id: string): Row => ({ id, name: `배지 ${id}`, image_url: `https://cdn.example/${id}.png`, rarity: 'rare' })
+
+  // 공개 시각: 2026-10-10 00:00 KST(= 10-09T15:00Z)
+  const RELEASE_AT = '2026-10-09T15:00:00Z'
+  const seed = (validFrom: string | null) => {
+    fx.tables.today_cards = [recipeCard()]
+    fx.tables.combination_recipes = [{ id: 'r1', reward_points: 300, reward_badge_ids: ['x', 'y'], valid_from: validFrom, valid_until: null }]
+    fx.tables.combination_recipe_slots = [slot(2, ['b1', 'b2']), slot(1, ['a1'])]
+    fx.tables.badges = [badge('a1'), badge('b1'), badge('b2')]
+  }
+
+  it('공개 뒤 레시피는 재료 수·보상과 슬롯마다 대표 후보 타일을 싣는다. 보유 여부(earned)는 싣지 않는다', async () => {
+    seed('2026-10-01T00:00:00Z')
+
+    const [card] = await getAdminTodayPreviewCards(TODAY, NOW)
+
+    expect(card.resolved_recipe).toEqual({
+      state: 'released',
+      ingredient_count: 2,
+      reward_points: 300,
+      reward_badge_count: 2,
+      tiles: [
+        { id: 'a1', name: '배지 a1', image_url: 'https://cdn.example/a1.png', rarity: 'rare' },
+        { id: 'b1', name: '배지 b1', image_url: 'https://cdn.example/b1.png', rarity: 'rare' },
+      ],
+    })
+    // 표시 데이터는 홈과 같은 모양(타일이 있는 list)으로 그린다
+    expect(toCardView(card, { now: NOW }).shape).toBe('list')
+  })
+
+  it('공개 전 레시피는 재료 수와 공개 시각만 싣고 후보 배지는 읽지 않는다', async () => {
+    seed(RELEASE_AT)
+
+    const [card] = await getAdminTodayPreviewCards(TODAY, NOW)
+
+    expect(card.resolved_recipe).toEqual({ state: 'scheduled', ingredient_count: 2, release_at: RELEASE_AT })
+    expect(fx.reads).not.toContain('badges')
+    expect(toCardView(card, { now: NOW }).shape).toBe('brief')
+  })
+
+  it('공개 판정은 미리보기 기준 시각을 쓴다 — 공개일 뒤 날짜를 고르면 같은 카드가 공개 뒤 값이다', async () => {
+    seed(RELEASE_AT)
+
+    const [before] = await getAdminTodayPreviewCards('2026-10-09', NOW)
+    const [onDay] = await getAdminTodayPreviewCards('2026-10-10', NOW)
+
+    expect(before.resolved_recipe).toMatchObject({ state: 'scheduled' })
+    expect(onDay.resolved_recipe).toMatchObject({ state: 'released', ingredient_count: 2 })
+  })
+
+  it('레시피 공개 카드가 여럿이어도 레시피는 한 번만 읽는다. 레시피 공개 카드가 없으면 읽지 않는다', async () => {
+    seed('2026-10-01T00:00:00Z')
+    fx.tables.today_cards = [recipeCard({ id: 'a' }), recipeCard({ id: 'b' }), recipeCard({ id: 'c', recipe_id: null })]
+
+    const cards = await getAdminTodayPreviewCards(TODAY, NOW)
+
+    expect(fx.reads.filter((t) => t === 'combination_recipes')).toHaveLength(1)
+    expect(fx.reads.filter((t) => t === 'combination_recipe_slots')).toHaveLength(1)
+    expect(cards.map((c) => c.resolved_recipe?.state ?? null)).toEqual(['released', 'released', null])
+
+    fx.reads = []
+    fx.tables.today_cards = [cardRow({ id: 'x' })]
+    await getAdminTodayPreviewCards(TODAY, NOW)
+    expect(fx.reads).not.toContain('combination_recipes')
+  })
+
+  it('recipe_id가 있어도 레시피 공개 카드가 아니면 읽지 않고 null이다', async () => {
+    seed('2026-10-01T00:00:00Z')
+    fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'badge_spotlight', recipe_id: 'r1' })]
+
+    const [card] = await getAdminTodayPreviewCards(TODAY, NOW)
+
+    expect(card.resolved_recipe).toBeNull()
+    expect(fx.reads).not.toContain('combination_recipes')
+  })
+
+  it('끝났거나 없는 레시피, 읽기 실패는 카드를 지우지 않고 레시피 값만 null이다', async () => {
+    seed('2026-09-01T00:00:00Z')
+    ;(fx.tables.combination_recipes[0] as Row).valid_until = '2026-10-04T00:00:00Z'
+    const [ended] = await getAdminTodayPreviewCards(TODAY, NOW)
+    expect(ended.resolved_recipe).toBeNull()
+
+    fx.tables.combination_recipes = []
+    const [gone] = await getAdminTodayPreviewCards(TODAY, NOW)
+    expect(gone.resolved_recipe).toBeNull()
+
+    seed('2026-10-01T00:00:00Z')
+    fx.errors.combination_recipes = { message: 'boom' }
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const cards = await getAdminTodayPreviewCards(TODAY, NOW)
+    spy.mockRestore()
+    expect(cards.map((c) => c.id)).toEqual(['a'])
+    expect(cards[0].resolved_recipe).toBeNull()
   })
 })
 

@@ -1,6 +1,6 @@
 /**
  * DELETE /api/admin/recipes/[id] — 배지 조건 `recipe_first_success`가 가리키는 레시피는 삭제를 막는다
- * (티켓 20261001_1200). DB는 기록형 스텁이고 실제 조회는 하지 않는다.
+ * (티켓 20261001_1200). 레시피 공개 카드(`today_cards.recipe_id`)가 가리켜도 막지 않고 삭제 뒤에 알린다(티켓 20261006_1218). DB는 기록형 스텁이고 실제 조회는 하지 않는다.
  * 실행: cd jam-web && npx vitest run "src/app/api/admin/recipes/[id]/__tests__/route.test.ts"
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -12,6 +12,8 @@ const state = vi.hoisted(() => ({
   badgeCount: 0,
   /** 값이 있으면 배지 참조 조회가 이 오류를 돌려준다 */
   badgeError: null as { message: string } | null,
+  /** 레시피를 가리키는 레시피 공개 카드 수 */
+  cardCount: 0,
   deletes: 0,
 }))
 
@@ -28,6 +30,9 @@ const fakeClient = {
           ),
       }
       return { select: () => builder }
+    }
+    if (table === 'today_cards') {
+      return { select: () => ({ in: () => Promise.resolve({ count: state.cardCount, error: null }) }) }
     }
     return {
       select: () => ({
@@ -65,6 +70,7 @@ beforeEach(() => {
   state.recipeExists = true
   state.badgeCount = 0
   state.badgeError = null
+  state.cardCount = 0
   state.deletes = 0
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -78,6 +84,19 @@ describe('DELETE /api/admin/recipes/[id]', () => {
 
     expect(res.status).toBe(200)
     expect(state.deletes).toBe(1)
+    expect(await res.json()).toEqual({ ok: true })
+  })
+
+  it('레시피 공개 카드가 가리켜도 막지 않고 삭제한다. 삭제 뒤 카드 수를 알린다(카드는 레시피 줄 없이 남는다, 티켓 20261006_1218 가정 B)', async () => {
+    state.cardCount = 2
+
+    const res = await del()
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(state.deletes).toBe(1)
+    expect(body.ok).toBe(true)
+    expect(body.notice).toContain('카드가 2장')
   })
 
   it('가리키는 배지가 있으면 409와 배지 수 문구로 막고 삭제하지 않는다', async () => {

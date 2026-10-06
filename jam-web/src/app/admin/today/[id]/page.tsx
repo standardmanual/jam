@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import TodayCardDetail, { type TodayCardDetailBadge } from '@/components/admin/today/TodayCardDetail'
 import { normalizeDateParam } from '@/lib/admin/today-calendar'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
+import { toTodayRecipeOptions, TODAY_RECIPE_OPTION_COLUMNS, type TodayRecipeOptionRow } from '@/lib/admin/todayRecipeOptions'
 import type { TodayCardRow } from '@/types/database'
 
 interface TodayCardDetailPageProps {
@@ -19,7 +20,7 @@ export default async function TodayCardDetailPage({ params, searchParams }: Toda
   if (!data) notFound()
   const card = data as TodayCardRow
 
-  const [{ data: badgesRaw }, { data: missionRaw }, { data: itemBookRaw }, { data: rankingModeRaw }] = await Promise.all([
+  const [{ data: badgesRaw }, { data: missionRaw }, { data: itemBookRaw }, { data: rankingModeRaw }, { data: recipeRaw }] = await Promise.all([
     (card.badge_ids ?? []).length > 0
       ? supabase.from('badges').select('id, name').in('id', card.badge_ids ?? [])
       : Promise.resolve({ data: [] as TodayCardDetailBadge[] }),
@@ -30,12 +31,16 @@ export default async function TodayCardDetailPage({ params, searchParams }: Toda
     card.ranking_mode_id
       ? supabase.from('ranking_modes').select('title').eq('id', card.ranking_mode_id).single()
       : Promise.resolve({ data: null }),
+    card.recipe_id
+      ? supabase.from('combination_recipes').select(TODAY_RECIPE_OPTION_COLUMNS).eq('id', card.recipe_id).single()
+      : Promise.resolve({ data: null }),
   ])
 
   const linkedBadges = (badgesRaw ?? []) as TodayCardDetailBadge[]
   const missionTitle = (missionRaw as { title: string } | null)?.title
   const itemBookName = (itemBookRaw as { name: string } | null)?.name
   const rankingModeTitle = (rankingModeRaw as { title: string } | null)?.title
+  const recipeLabel = recipeRaw ? toTodayRecipeOptions([recipeRaw as TodayRecipeOptionRow])[0].label : undefined
 
   return (
     <div className="p-4 md:p-8">
@@ -45,6 +50,7 @@ export default async function TodayCardDetailPage({ params, searchParams }: Toda
         missionTitle={missionTitle}
         itemBookName={itemBookName}
         rankingModeTitle={rankingModeTitle}
+        recipeLabel={recipeLabel}
         returnDate={returnDate}
       />
     </div>

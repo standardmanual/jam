@@ -150,6 +150,7 @@ describe('홈피드 카드 페이로드', () => {
     'region_label',
     'body_markdown',
     'ranking_mode_id',
+    'recipe_id',
     'content_type_id',
     'target_href',
     'exposure_tags',

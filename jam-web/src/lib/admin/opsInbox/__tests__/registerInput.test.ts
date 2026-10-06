@@ -437,6 +437,46 @@ describe('toTodayCardRegisterInput · 연결 칸(결정 8)', () => {
     expect(result.linkFields).toEqual(['item_book_id'])
   })
 
+  it('연결 레시피 ID로 recipe_id를 채우고 linkFields에 알린다(티켓 20261006_1218)', () => {
+    const result = toCard(cardItem({ resource: { template_type: 'recipe_reveal' } }), { recipe_id: UUID_B })
+    expect(result.errors).toEqual([])
+    expect(result.payload).toMatchObject({ recipe_id: UUID_B, template_type: 'recipe_reveal' })
+    expect(result.linkFields).toEqual(['recipe_id'])
+  })
+
+  it('연결 레시피 없이 resource.recipe_id로 기존 레시피를 직접 가리킬 수 있다. 연결과 직접 지정이 둘 다 있으면 오류다', () => {
+    const direct = toCard(cardItem({ resource: { template_type: 'recipe_reveal', recipe_id: UUID_B } }))
+    expect(direct.errors).toEqual([])
+    expect(direct.payload).toMatchObject({ recipe_id: UUID_B })
+    expect(direct.linkFields).toEqual([])
+
+    const both = toCard(cardItem({ resource: { template_type: 'recipe_reveal', recipe_id: UUID_A } }), { recipe_id: UUID_B })
+    expect(both.payload).toBeNull()
+    expect(paths(both.errors)).toEqual(['resource.recipe_id'])
+    expect(both.linkFields).toEqual([])
+  })
+
+  it('recipe_id는 레시피 공개 카드만 쓴다. 다른 템플릿에 연결 ID가 들어오거나 resource에 적으면 검사가 막고, UUID 형식도 본다', () => {
+    const linked = toCard(cardItem({ resource: { template_type: 'mission_spotlight', mission_id: UUID_A } }), { recipe_id: UUID_B })
+    expect(linked.payload).toBeNull()
+    expect(paths(linked.errors)).toEqual(['resource.recipe_id'])
+    expect(linked.errors[0].message).toContain('mission_spotlight 템플릿은 이 필드를 쓰지 않아요')
+
+    const own = toCard(cardItem({ resource: { template_type: 'drop_alert', recipe_id: UUID_A } }))
+    expect(own.payload).toBeNull()
+    expect(paths(own.errors)).toEqual(['resource.recipe_id'])
+
+    const malformed = toCard(cardItem({ resource: { template_type: 'recipe_reveal', recipe_id: 'not-a-uuid' } }))
+    expect(malformed.payload).toBeNull()
+    expect(malformed.errors[0].message).toContain('card.recipe_id: UUID 형식이어야 해요')
+  })
+
+  it('레시피 공개 카드는 이동 주소(target_href)를 받는다. 레시피 칸은 비어 있어도 통과한다', () => {
+    const result = toCard(cardItem({ resource: { template_type: 'recipe_reveal', target_href: '/combine' } }))
+    expect(result.errors).toEqual([])
+    expect(result.payload).toMatchObject({ target_href: '/combine', recipe_id: null })
+  })
+
   it('badge_ids는 resource 값 뒤에 연결 배지를 더한다', () => {
     const result = toCard(cardItem({ resource: { template_type: 'badge_spotlight', badge_ids: [UUID_A] } }), { badge_ids: [UUID_B, UUID_C] })
     expect(result.errors).toEqual([])
@@ -1562,6 +1602,13 @@ describe('withoutLinkedFields · 등록 전 DB 검사용 사본(결정 8)', () =
     // 원본은 바뀌지 않는다
     expect(result.payload!.mission_id).toBe(UUID_A)
     expect(result.payload!.badge_ids).toEqual([UUID_A, UUID_B, UUID_C])
+  })
+
+  it('연결로 채운 recipe_id도 null로 비운다(등록 전 레시피 존재 확인을 건너뛴다)', () => {
+    const result = toCard(cardItem({ resource: { template_type: 'recipe_reveal' } }), { recipe_id: UUID_B })
+    const copy = withoutLinkedFields(result.payload!, result.linkFields, { recipe_id: UUID_B })
+    expect(copy.recipe_id).toBeNull()
+    expect(result.payload!.recipe_id).toBe(UUID_B)
   })
 
   it('linkFields에 없는 칸은 건드리지 않는다', () => {

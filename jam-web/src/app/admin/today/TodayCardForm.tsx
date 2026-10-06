@@ -60,6 +60,7 @@ import {
 // 번들에 딸려 들어가 빌드 오류가 난다 — `TodayCardWithHref`는 타입만 필요하니 그대로 가져온다.
 import { resolveTargetHref } from '@/lib/today/targetHref'
 import { toKstLocalInputValue } from '@/lib/admin/kst-format'
+import type { TodayRecipeOption } from '@/lib/admin/todayRecipeOptions'
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import { toCardView } from '@/lib/today/cardView'
@@ -88,6 +89,9 @@ interface TodayCardFormProps {
    *  같은 방식(전체 목록을 그대로 넘김, 배지처럼 검색 API를 쓰지 않는다 — 운영 큐레이션 목적이라
    *  개수가 적을 것으로 본다). */
   rankingModes: RankingModeOption[]
+  /** recipe_reveal 카드가 연결할 수 있는 레시피 전체 목록(티켓 20261006_1218) — 「이름 · 공개 상태」 라벨은
+   *  서버가 만들어 넘긴다(`lib/admin/todayRecipeOptions.ts`). 랭킹모드와 같은 방식(전체 목록, 검색 API 없음). */
+  recipes: TodayRecipeOption[]
   /** 이미 카드에 연결된(badge_ids) 배지의 표시용 라벨 — 실제로 참조되는 id만 bounded 조회한
    *  결과다(수정 화면 전용, 20260826_011 A2와 동일 패턴). 생성 화면은 빈 배열로 시작한다. */
   badgeLabels: BadgeSearchResult[]
@@ -110,7 +114,7 @@ const FOCUS_ID = {
   endsAt: 'today-card-ends-at',
 } as const
 
-export default function TodayCardForm({ card, missions, itemBooks, rankingModes, badgeLabels, initialDate, returnDate, header }: TodayCardFormProps) {
+export default function TodayCardForm({ card, missions, itemBooks, rankingModes, recipes, badgeLabels, initialDate, returnDate, header }: TodayCardFormProps) {
   const router = useRouter()
   const isEdit = !!card
 
@@ -136,6 +140,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const [regionLabel, setRegionLabel] = useState(card?.region_label ?? '')
   const [bodyMarkdown, setBodyMarkdown] = useState(card?.body_markdown ?? '')
   const [rankingModeId, setRankingModeId] = useState(card?.ranking_mode_id ?? '')
+  const [recipeId, setRecipeId] = useState(card?.recipe_id ?? '')
   const [contentTypeId, setContentTypeId] = useState(card?.content_type_id ?? '')
   // 레일 실시간 미리보기(User Story 6)용 — 랭킹모드가 실제로 계산하는 순위 목록을 그 랭킹모드가
   // 바뀔 때만 가져온다(다른 필드 입력마다 다시 불러오지 않는다). 랭킹모드는 이미 저장돼 있어야
@@ -179,7 +184,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const [saveNotice, setSaveNotice] = useState<string | null>(null)
 
   const fields = todayTemplateFields(templateType)
-  const hasRef = Boolean(fields.badges || fields.mission || fields.itemBook || fields.region || fields.body || fields.rankingMode)
+  const hasRef = Boolean(fields.badges || fields.mission || fields.itemBook || fields.region || fields.body || fields.rankingMode || fields.recipe)
   const selectedBadgeChips = badgeIds.map((id) => badgeLabelCache.get(id)).filter((b): b is BadgeSearchResult => !!b)
 
   function changeTemplateType(next: TodayCardTemplateType) {
@@ -249,6 +254,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         regionLabel,
         bodyMarkdown,
         rankingModeId,
+        recipeId,
         contentTypeId,
         targetHref,
         exposureTags,
@@ -305,6 +311,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
     regionLabel,
     bodyMarkdown,
     rankingModeId: rankingModeId || null,
+    recipeId: recipeId || null,
     exposureTagCount: exposureTags.length,
     hasStartsAt: Boolean(startsAt),
     hasEndsAt: Boolean(endsAt),
@@ -339,6 +346,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
     region_label: regionLabel.trim() || null,
     body_markdown: bodyMarkdown || null,
     ranking_mode_id: rankingModeId || null,
+    recipe_id: recipeId || null,
     content_type_id: contentTypeId || null,
     target_href: targetHref.trim() || null,
     exposure_tags: exposureTags,
@@ -606,6 +614,28 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
           </FieldMessage>
         </div>
       )}
+
+      {fields.recipe && (
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <FieldLabel htmlFor="today-card-recipe">레시피</FieldLabel>
+          <Select value={recipeId || NONE_VALUE} onValueChange={(v) => setRecipeId(v === NONE_VALUE ? '' : v)}>
+            <SelectTrigger id="today-card-recipe" aria-describedby="today-card-recipe-help">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent container={themeContainer ?? undefined}>
+              <SelectItem value={NONE_VALUE}>없음</SelectItem>
+              {recipes.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FieldMessage id="today-card-recipe-help">
+            이 카드가 소개할 레시피예요. 레시피가 공개되기 전에도 고를 수 있어요.
+          </FieldMessage>
+        </div>
+      )}
     </TodaySectionCard>
   )
 
@@ -665,7 +695,6 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         </div>
       )}
       {templateType === 'drop_alert' && <FieldMessage>이동 경로는 /drops로 고정돼요.</FieldMessage>}
-      {templateType === 'recipe_reveal' && <FieldMessage>이동 경로는 /combine으로 고정돼요.</FieldMessage>}
       {templateType === 'editorial_article' && <FieldMessage>카드 자체는 전용 기사 페이지(/today/{'{id}'})로 열려요. 여기 적은 이동 경로·컬렉션·미션은 기사 본문 끝의 버튼(자세히 보기·컬렉션 보기·미션 보기)이 가는 곳이에요.</FieldMessage>}
     </TodaySectionCard>
   )

@@ -9,6 +9,7 @@
  * 기록 시점 값을 복제한다(티켓 20261001_1431).
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { recipeReleaseState } from '@/lib/combine/visibility'
 // 화면 모듈(`cardView.ts`)은 한국어 사전을 가져와 이벤트 API 번들이 무거워진다 — 순수 판정만 `shape.ts`에서 가져온다(티켓 20261001_2244).
 import { drawnShape, fallbackEmptyTileShape, resourceOfTemplate, type CardShape, type ShapeCardInput } from './shape'
 
@@ -69,12 +70,13 @@ export type CardExposureValidation = { ok: true; card: ExposableCard } | { ok: f
  * 카드가 존재하고 `is_active`이며 `now`가 `[starts_at, ends_at]`(양끝 포함, 기존 노출 조회와 동일) 안일 때만 통과한다(티켓 20260924_0111).
  * 통과하면 조회한 카드 행을 돌려줘 `recordTodayCardEvent`가 `today_cards`를 다시 조회하지 않게 한다(티켓 20260924_0139).
  * 그려진 모양 판정에 필요한 칸(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)도 같은 조회에서 읽는다(티켓 20261001_1431).
+ * 레시피 공개 카드는 타일 수를 레시피의 공개 상태로 정하므로 `recipe_id`도 함께 읽고, 그 카드에 한해 레시피 행을 한 번 더 읽는다(티켓 20261006_1218).
  */
 export async function assertCardExposable(cardId: string, now: Date): Promise<CardExposureValidation> {
   const supabase = createServiceClient()
   const { data: card, error } = await supabase
     .from('today_cards')
-    .select('is_active, starts_at, ends_at, content_type_id, shape, template_type, layout_type, cover_image_url, badge_ids')
+    .select('is_active, starts_at, ends_at, content_type_id, shape, template_type, layout_type, cover_image_url, badge_ids, recipe_id')
     .eq('id', cardId)
     .maybeSingle()
 
@@ -90,7 +92,34 @@ export async function assertCardExposable(cardId: string, now: Date): Promise<Ca
     return { ok: false, error: '노출 기간이 아닌 카드입니다.' }
   }
   // 생성 타입은 template_type·layout_type을 string으로 읽어 모양 판정 입력 타입으로 좁혀 넘긴다(DB CHECK가 값을 보장한다).
-  return { ok: true, card: { content_type_id: card.content_type_id, card_shape: resolveDrawnShape(card as ShapeCardInput) } }
+  const shapeInput = card as ShapeCardInput & { recipe_id: string | null }
+  const tileCount = await drawnTileCount(supabase, shapeInput, now)
+  return { ok: true, card: { content_type_id: card.content_type_id, card_shape: resolveDrawnShape(shapeInput, tileCount) } }
+}
+
+/**
+ * 카드가 그릴 타일 수. 레시피 공개 카드는 타일이 카드의 배지(`badge_ids`)가 아니라 레시피의 슬롯에서 나온다(`toCardView`) — 레시피가 공개 중이면
+ * 슬롯 타일이 있고(1 이상), 공개 전·끝남·레시피 없음·조회 실패는 0이다. 개수는 정확히 셀 필요가 없다: `fallbackEmptyTileShape`가 0인지만 가른다.
+ * 그 밖의 카드는 카드 행의 `badge_ids` 개수다. 레시피를 읽지 못해도 이벤트 기록은 막지 않는다(그 카드는 `brief`로 기록된다).
+ */
+async function drawnTileCount(
+  supabase: ReturnType<typeof createServiceClient>,
+  card: ShapeCardInput & { recipe_id: string | null },
+  now: Date,
+): Promise<number> {
+  if (resourceOfTemplate(card.template_type) !== 'recipe') return card.badge_ids?.length ?? 0
+  if (!card.recipe_id) return 0
+
+  const { data, error } = await supabase
+    .from('combination_recipes')
+    .select('valid_from, valid_until')
+    .eq('id', card.recipe_id)
+    .maybeSingle()
+  if (error) {
+    console.error('[today/events] 레시피 공개 상태 조회 오류:', error.message)
+    return 0
+  }
+  return data && recipeReleaseState(data, now) === 'released' ? 1 : 0
 }
 
 /**
@@ -98,13 +127,14 @@ export async function assertCardExposable(cardId: string, now: Date): Promise<Ca
  * 「타일이 0개인 타일형 list는 brief」는 `toCardView`와 같은 함수(`fallbackEmptyTileShape`)를 쓴다.
  * 같은 카드 행이면 두 경로가 같은 입력(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)으로 판정한다 —
  * 커버 없는 옛 큰 카드의 `square` 승격은 배지 그림 유무가 아니라 `badge_ids` 유무로 정한다(`shape.ts`).
- * 타일 수는 화면이 읽은 배지 수(삭제된 배지 제외) 대신 카드 행의 `badge_ids` 개수로 갈음한다 — 배지를 다시 조회하지 않기 위해서다.
- * 그래서 `badge_ids`가 전부 삭제된 배지인 타일형 `list`만 화면은 `brief`, 기록은 `list`로 갈린다(허용 차이, 홈피드 PRD §9).
+ * 타일 수(`tileCount`, `drawnTileCount`)는 화면이 읽은 배지 수(삭제된 배지 제외) 대신 카드 행의 `badge_ids` 개수(레시피 공개 카드는 레시피의 공개 상태)로
+ * 갈음한다 — 배지를 다시 조회하지 않기 위해서다. 그래서 `badge_ids`가 전부 삭제된 배지인 타일형 `list`, 후보 배지가 전부 삭제된 공개 뒤 레시피 공개 카드만
+ * 화면은 `brief`, 기록은 `list`로 갈린다(허용 차이, 홈피드 PRD §9).
  */
-function resolveDrawnShape(card: ShapeCardInput): CardShape | null {
+function resolveDrawnShape(card: ShapeCardInput, tileCount: number): CardShape | null {
   const shape = drawnShape(card)
   if (!shape) return null
-  return fallbackEmptyTileShape(shape, resourceOfTemplate(card.template_type), card.badge_ids?.length ?? 0)
+  return fallbackEmptyTileShape(shape, resourceOfTemplate(card.template_type), tileCount)
 }
 
 export type RateLimitResult = { ok: true } | { ok: false }

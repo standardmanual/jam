@@ -21,6 +21,11 @@
  * `user_combine_success_logs.recipe_id`는 FK를 일부러 걸지 않았다(마이그레이션 200) —
  * 레시피를 지워도 유저의 성공 횟수·최초 성공 기록은 남아야 하므로 가드 대상이 아니다.
  *
+ * 투데이 카드의 레시피 칸 `today_cards.recipe_id`(마이그레이션 217, 티켓 20261006_1218)는 `ON DELETE SET NULL`
+ * FK다 — 레시피를 지우면 카드는 남고 레시피 줄만 빈다(미션·컬렉션·랭킹모드 칸과 같다). 그래서 어드민의 삭제를 막지
+ * 않는다(`blocksDelete: false`, 건수는 `noticeTotal`로 알린다). 운영툴의 공개 전 취소만 이 건수로 막는다
+ * (운영툴 밖 카드가 가리키면 409, `execute/recipe.ts`의 `cancel`, 운영툴 PRD §8.7).
+ *
  * 이 파일은 `badge-references.ts`/`poi-references.ts`와 **같은 계약**(`collect*References`
  * → `blockingTotal`/`cascadeTotal`/`total`/`error`)을 유지한다.
  *
@@ -33,7 +38,7 @@ import type { RecipeDeletionCandidate } from './recipe-bulk'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
-export type RecipeReferenceKey = 'badges_recipe_first_success'
+export type RecipeReferenceKey = 'badges_recipe_first_success' | 'today_cards_recipe_id'
 
 export interface RecipeReferenceSource {
   key: RecipeReferenceKey
@@ -51,12 +56,22 @@ export const RECIPE_REFERENCE_SOURCES: RecipeReferenceSource[] = [
     blocksDelete: true,
     cascades: false,
   },
+  {
+    key: 'today_cards_recipe_id',
+    label: '레시피 공개 카드',
+    location: 'today_cards.recipe_id',
+    blocksDelete: false,
+    cascades: false,
+  },
 ]
 
 export interface RecipeReferenceReport {
   blockingTotal: number
   cascadeTotal: number
+  /** 삭제를 막는 참조의 합(`blockingTotal + cascadeTotal`). 안내만 하는 참조(`noticeTotal`)는 들어 있지 않다 — 호출부가 `total > 0`으로 삭제를 막는다. */
   total: number
+  /** 삭제를 막지 않고 지우면 칸만 비는 참조(`blocksDelete: false`)의 합 — 지금은 레시피 공개 카드 수다. */
+  noticeTotal: number
   error: string | null
 }
 
@@ -72,7 +87,8 @@ const REFERENCE_CHUNK = 80
 /**
  * 대상 레시피 집합을 가리키는 참조를 전부 센다. **아무것도 쓰지 않는다.**
  *
- * 삭제되지 않은 배지 중 `recipe_first_success.recipe_id`가 대상 집합에 드는 것을 센다.
+ * 삭제되지 않은 배지 중 `recipe_first_success.recipe_id`가 대상 집합에 드는 것(삭제를 막는다)과,
+ * `recipe_id`가 대상 집합에 드는 투데이 카드(삭제를 막지 않는다, `noticeTotal`)를 센다.
  * 조회가 하나라도 실패하면 부분 카운트로 «참조 0건»이라 판정하지 않도록 `error`를 채워
  * 돌려준다 — 호출부는 삭제를 막는다(fail-closed).
  */
@@ -83,18 +99,21 @@ export async function collectRecipeReferences(
   // 배지 조건의 recipe_id는 text로 비교되므로, 주소로 들어온 대문자 uuid도 소문자로 맞춰 센다.
   const ids = recipeIds.map((id) => id.toLowerCase())
   let badgeCount = 0
+  let cardCount = 0
   for (let i = 0; i < ids.length; i += REFERENCE_CHUNK) {
-    const { count, error } = await supabase
-      .from('badges')
-      .select('id', { count: 'exact', head: true })
-      .is('deleted_at', null)
-      .in(BADGE_RECIPE_ID_PATH, ids.slice(i, i + REFERENCE_CHUNK))
-    if (error) {
-      return { blockingTotal: 0, cascadeTotal: 0, total: 0, error: error.message }
+    const chunk = ids.slice(i, i + REFERENCE_CHUNK)
+    const [badges, cards] = await Promise.all([
+      supabase.from('badges').select('id', { count: 'exact', head: true }).is('deleted_at', null).in(BADGE_RECIPE_ID_PATH, chunk),
+      supabase.from('today_cards').select('id', { count: 'exact', head: true }).in('recipe_id', chunk),
+    ])
+    const failed = badges.error ?? cards.error
+    if (failed) {
+      return { blockingTotal: 0, cascadeTotal: 0, total: 0, noticeTotal: 0, error: failed.message }
     }
-    badgeCount += count ?? 0
+    badgeCount += badges.count ?? 0
+    cardCount += cards.count ?? 0
   }
-  return { blockingTotal: badgeCount, cascadeTotal: 0, total: badgeCount, error: null }
+  return { blockingTotal: badgeCount, cascadeTotal: 0, total: badgeCount, noticeTotal: cardCount, error: null }
 }
 
 export interface RecipeDeletionLookup {

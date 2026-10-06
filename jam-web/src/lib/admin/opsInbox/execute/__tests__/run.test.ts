@@ -1329,14 +1329,14 @@ describe('실제 레지스트리: 레시피 핸들러 (티켓 20261002_2221)', (
     resource: { slots: SLOTS, reward_points: 10 },
     ...over,
   })
-  /** 레시피와 같은 그룹인 카드. 카드 → 레시피 쌍은 칸을 채우지 않아 그룹으로만 묶인다(PRD §8.3). */
+  /** 레시피를 여는 카드(레시피 공개 카드). 카드는 연결로 레시피 ID를 `recipe_id`로 받는다(PRD §8.3, 티켓 20261006_1218). 레시피 칸은 비어 있어도 되지만 연결이 채운다. */
   const card = (over: Partial<ItemSpec> = {}): ItemSpec => ({
     id: ID.card,
     key: 'card',
     kind: 'home_feed_card',
     links: ['recipe'],
     original: { shape: 'hero', exposure_tags: ['all'], copy: { title: '가을 믹스 카드' } },
-    resource: { template_type: 'drop_alert' },
+    resource: { template_type: 'recipe_reveal' },
     ...over,
   })
   /** 슬롯 후보 두 개(`item` 배지에 컬렉션을 붙일 수 있다)와 보상 배지가 있는 DB를 만든다. */
@@ -1506,6 +1506,50 @@ describe('실제 레지스트리: 레시피 핸들러 (티켓 20261002_2221)', (
     const inserts = db.calls.filter((call) => call.op === 'insert' && (call.table === 'combination_recipes' || call.table === 'today_cards')).map((call) => call.table)
     expect(inserts).toEqual(['combination_recipes', 'today_cards'])
     expect(db.item(ID.recipe).created_resource).toEqual({ recipe_id: db.tables.combination_recipes[0].id })
+    // 카드의 recipe_id는 방금 만든 레시피의 ID다(티켓 20261006_1218)
+    expect(db.tables.today_cards[0]).toMatchObject({ template_type: 'recipe_reveal', recipe_id: db.tables.combination_recipes[0].id })
+  })
+
+  it('카드의 공개 시각이 레시피보다 이르거나 늦어도 함께 예약된다(카드 → 레시피에는 공개 순서 검사가 없다, 07 §4.5 예외)', async () => {
+    const { db, run } = setup([card({ startsAt: '2026-10-09T00:00:00.000Z' }), recipe()]) // 카드가 레시피(10/10)보다 하루 먼저 공개된다
+    const result = ok(await run([ID.card, ID.recipe]))
+
+    expect([...result.body.scheduled].sort()).toEqual([ID.card, ID.recipe].sort())
+    expect(db.tables.today_cards[0].recipe_id).toBe(db.tables.combination_recipes[0].id)
+  })
+
+  it('이미 예약된 레시피를 가리키는 카드는 그 레시피의 ID를 created_resource에서 읽어 채운다', async () => {
+    const existing = uid(11)
+    const { db, run } = setup([card(), recipe({ status: 'scheduled', createdResource: { recipe_id: existing } })])
+    const result = ok(await run([ID.card]))
+
+    expect(result.body.scheduled).toEqual([ID.card])
+    expect(db.tables.today_cards[0].recipe_id).toBe(existing)
+    expect(writes(db, 'combination_recipes', 'insert')).toEqual([])
+  })
+
+  it('카드가 이미 있는 레시피를 resource.recipe_id로 직접 가리키고 연결이 없으면 그 ID로 저장한다. 존재하지 않으면 고정 사유로 실패한다', async () => {
+    const EXISTING_RECIPE = uid(30)
+    const direct = setup([card({ links: [], resource: { template_type: 'recipe_reveal', recipe_id: EXISTING_RECIPE } })])
+    direct.db.tables.combination_recipes = [{ id: EXISTING_RECIPE, valid_from: '2026-10-10T00:00:00.000Z', valid_until: null }]
+    ok(await direct.run([ID.card]))
+    expect(direct.db.tables.today_cards[0].recipe_id).toBe(EXISTING_RECIPE)
+
+    const missing = setup([card({ links: [], resource: { template_type: 'recipe_reveal', recipe_id: EXISTING_RECIPE } })])
+    const result = ok(await missing.run([ID.card]))
+    expect(result.body.failed).toEqual([{ id: ID.card, reason: '연결한 레시피를 찾을 수 없어요' }])
+    expect(missing.db.tables.today_cards).toEqual([])
+  })
+
+  it('연결과 resource.recipe_id가 둘 다 있으면 못 하는 항목이라 아무것도 만들지 않는다', async () => {
+    const { db, run } = setup([card({ resource: { template_type: 'recipe_reveal', recipe_id: uid(30) } }), recipe()])
+    const failure = bad(await run([ID.card, ID.recipe]))
+
+    expect(failure.status).toBe(409)
+    expect((failure.extra?.skipped as Array<{ id: string; reason: string }>).find((entry) => entry.id === ID.card)?.reason).toContain('이미 값이 들어 있는 칸')
+    expect(db.tables.today_cards).toEqual([])
+    expect(db.tables.combination_recipes).toEqual([])
+    expect(db.calls.filter((call) => (call.table === 'today_cards' || call.table.startsWith('combination_recipe')) && call.op !== 'select')).toEqual([])
   })
 
   it('연결된 카드를 만들지 못하면 먼저 만든 레시피와 슬롯을 되돌리고 그룹 전체가 실패한다. 원문은 로그에만 남는다', async () => {

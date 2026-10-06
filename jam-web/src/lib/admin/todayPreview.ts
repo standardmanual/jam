@@ -15,8 +15,9 @@
  * (`fetchMissionsById`·`fetchCollectionsById`)만 재사용하는 별도 조회 경로다.
  *
  * 표시 데이터(`toCardView`)가 필요로 하는 미션 값(`resolved_mission`)과 컬렉션 값(`resolved_collection`)은
- * 홈 조회와 같은 규칙으로 싣는다(티켓 20261001_2208). 배지는 보유 여부(`earned`)를 싣지 않는다 — 유저 정보가
- * 없는 미리보기라 표시 데이터가 컬러로 그린다.
+ * 홈 조회와 같은 규칙으로 싣는다(티켓 20261001_2208). 레시피 값(`resolved_recipe`)도 홈과 같은 함수로 읽는다
+ * (티켓 20261006_1218, 운영툴 PRD §6 「홈과 미리보기는 같은 값」). 배지는 보유 여부(`earned`)를 싣지 않는다 — 유저
+ * 정보가 없는 미리보기라 표시 데이터가 컬러로 그린다. 레시피 공개 뒤 재료 타일도 그래서 슬롯마다 첫 후보로 고른다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { TodayCardRow } from '@/types/database'
@@ -27,8 +28,13 @@ import {
   fetchCollectionsById,
   missionIdsToResolve,
   collectionIdsToResolve,
+  fetchRecipesById,
+  recipeIdsToResolve,
+  recipeCandidateBadgeIds,
   resourceNeedsMission,
+  resourceNeedsRecipe,
   toResolvedMission,
+  toResolvedRecipe,
   type TodayCardWithHref,
   type ResolvedBadge,
 } from '@/lib/today/cards'
@@ -41,7 +47,8 @@ import { kstDayBoundsIso, previewBaseTime } from './today-calendar'
  */
 export async function getAdminTodayPreviewCards(dateStr: string, now: Date = new Date()): Promise<TodayCardWithHref[]> {
   const { startIso, endIso } = kstDayBoundsIso(dateStr)
-  const baseIso = previewBaseTime(dateStr, now).toISOString()
+  const baseTime = previewBaseTime(dateStr, now)
+  const baseIso = baseTime.toISOString()
   const supabase = createServiceClient()
 
   const { data, error } = await supabase
@@ -59,7 +66,9 @@ export async function getAdminTodayPreviewCards(dateStr: string, now: Date = new
   }
 
   const cards = (data ?? []) as TodayCardRow[]
-  const badgeIds = [...new Set(cards.flatMap((c) => c.badge_ids ?? []))]
+  // 공개 뒤 레시피의 재료 타일이 쓰는 후보 배지는 이름·그림을 읽어야 하므로 배지 조회보다 먼저 레시피를 읽는다(홈 조회와 같은 순서).
+  const recipesById = await fetchRecipesById(supabase, recipeIdsToResolve(cards), baseTime)
+  const badgeIds = [...new Set([...cards.flatMap((c) => c.badge_ids ?? []), ...recipeCandidateBadgeIds(recipesById)])]
 
   const badgesById = new Map<string, ResolvedBadge>()
   if (badgeIds.length > 0) {
@@ -96,6 +105,7 @@ export async function getAdminTodayPreviewCards(dateStr: string, now: Date = new
       resolved_ranking: ranking?.result ?? null,
       resolved_mission: mission && resourceNeedsMission(card) ? toResolvedMission(mission) : null,
       resolved_collection: card.item_book_id ? (collectionsById.get(card.item_book_id) ?? null) : null,
+      resolved_recipe: resourceNeedsRecipe(card) ? toResolvedRecipe(recipesById.get(card.recipe_id as string), badgesById) : null,
     }
   })
 }

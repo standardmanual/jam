@@ -841,6 +841,50 @@ describe('「가장 먼저 성공」 배지와 레시피의 공개 시각이 다
   })
 })
 
+describe('카드 → 레시피 연결에는 공개 순서 검사가 없다 (티켓 20261006_1218, 07 §4.5 예외)', () => {
+  type Spec = Partial<Parameters<typeof makeItem>[0]>
+  const card = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'card', kind: 'home_feed_card', links: ['recipe'], startsAt, ...extra })
+  const recipe = (startsAt: string, extra: Spec = {}) => makeItem({ key: 'recipe', kind: 'recipe', startsAt, ...extra })
+
+  it('카드가 레시피보다 먼저 공개돼도(공개 예고) 막지 않는다. 늦게 공개돼도 같다', () => {
+    for (const [cardAt, recipeAt] of [
+      [60, 120],
+      [120, 60],
+      [60, 60],
+    ]) {
+      const result = run([card(at(cardAt * MINUTE)), recipe(at(recipeAt * MINUTE))])
+      expect(result.blocked, `${cardAt}/${recipeAt}`).toEqual([])
+      expect(result.ready, `${cardAt}/${recipeAt}`).toEqual(['card', 'recipe'])
+    }
+  })
+
+  it('「가장 먼저 성공」 배지의 공개 시각 검사는 카드에 걸리지 않는다. 같은 칸 이름(recipe_id)이어도 가리키는 쪽이 배지일 때만 본다', () => {
+    const result = run([card(at(60 * MINUTE)), recipe(at(180 * MINUTE))])
+    expect(result.blocked.flatMap((entry) => entry.reasons)).not.toContain(PRECHECK_MESSAGES.firstSuccessStartsDiffer)
+    expect(result.groups[0].linkPlan.card?.map((fill) => fill.field)).toEqual(['recipe_id'])
+  })
+
+  it('같은 레시피를 여는 배지와 카드가 있으면 배지만 레시피와 시각을 맞춰야 한다', () => {
+    const result = run([
+      card(at(60 * MINUTE)),
+      makeItem({ key: 'badge', kind: 'jam_badge', links: ['recipe'], startsAt: at(120 * MINUTE) }),
+      recipe(at(180 * MINUTE)),
+    ])
+    expect(result.blocked).toEqual([
+      { id: 'card', reasons: [PRECHECK_MESSAGES.groupBlocked] },
+      { id: 'badge', reasons: [PRECHECK_MESSAGES.firstSuccessStartsDiffer] },
+      { id: 'recipe', reasons: [PRECHECK_MESSAGES.groupBlocked] },
+    ])
+  })
+
+  it('카드가 이미 게재 중이거나 레시피가 이미 예약된 항목이어도 순서를 견주지 않는다', () => {
+    const scheduled = recipe(at(180 * MINUTE), { status: 'scheduled', createdResource: { recipe_id: 'recipe-uuid' } })
+    const result = run([card(at(60 * MINUTE)), scheduled])
+    expect(result.ready).toEqual(['card'])
+    expect(result.blocked).toEqual([])
+  })
+})
+
 describe('같은 기획 안에서 기간이 겹치는 같은 제목의 미션은 뒤 항목을 막는다 (티켓 20261002_1944, 사용자 결정 2026-10-02)', () => {
   const REASON = PRECHECK_MESSAGES.missionTitleOverlap
   /** 검사를 통과하는 미션 항목. 제목·기간·제출 순서를 고른다. */

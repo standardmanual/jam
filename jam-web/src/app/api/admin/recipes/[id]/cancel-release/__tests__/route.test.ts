@@ -16,6 +16,8 @@ const state = vi.hoisted(() => ({
   validFrom: undefined as string | null | undefined,
   /** 레시피를 가리키는 삭제되지 않은 배지 수 */
   badgeCount: 0,
+  /** 레시피를 가리키는 레시피 공개 카드 수 */
+  cardCount: 0,
   deleteCalls: 0,
 }))
 
@@ -27,6 +29,9 @@ const fakeClient = {
         in: () => Promise.resolve({ count: state.badgeCount, error: null }),
       }
       return { select: () => builder }
+    }
+    if (table === 'today_cards') {
+      return { select: () => ({ in: () => Promise.resolve({ count: state.cardCount, error: null }) }) }
     }
     return {
       delete: () => {
@@ -72,6 +77,7 @@ beforeEach(() => {
   state.authResponse = null
   state.validFrom = undefined
   state.badgeCount = 0
+  state.cardCount = 0
   state.deleteCalls = 0
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -136,6 +142,16 @@ describe('POST /api/admin/recipes/[id]/cancel-release', () => {
     expect(body.error).toContain('이 레시피를 가리키는 배지가 1개 있어요')
     expect(state.deleteCalls).toBe(0)
     expect(state.validFrom).toBe(validFrom)
+  })
+
+  it('레시피 공개 카드가 가리켜도 어드민의 예약 취소는 막지 않는다. 카드는 레시피 줄만 비운다(운영툴의 공개 전 취소만 카드를 막는다, 티켓 20261006_1218)', async () => {
+    state.validFrom = new Date(Date.now() + 24 * HOUR).toISOString()
+    state.cardCount = 2
+
+    const res = await cancel()
+
+    expect(res.status).toBe(200)
+    expect(state.validFrom).toBeUndefined()
   })
 
   it.each([401, 403])('어드민이 아니면(%i) 그대로 돌려주고 아무것도 지우지 않는다', async (status) => {

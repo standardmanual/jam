@@ -49,6 +49,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { error } = await supabase.from('combination_recipes').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // 삭제를 막지 않는 참조(레시피 공개 카드, `ON DELETE SET NULL`)는 삭제 뒤에 알린다(티켓 20261006_1218) — 카드는 남고 레시피 줄만 빈다.
+  // 없으면 기존 응답 `{ ok: true }` 그대로다.
+  if (references.noticeTotal > 0) {
+    return NextResponse.json({ ok: true, notice: `삭제했어요. 레시피 줄이 비게 된 카드가 ${references.noticeTotal}장 있어요.` })
+  }
   return NextResponse.json({ ok: true })
 }
 

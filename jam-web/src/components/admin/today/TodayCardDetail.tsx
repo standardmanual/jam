@@ -62,6 +62,8 @@ interface TodayCardDetailProps {
   itemBookName?: string
   /** ranking_board 카드가 연결한 랭킹모드 제목(티켓 20260911_1440) */
   rankingModeTitle?: string
+  /** recipe_reveal 카드가 연결한 레시피 「이름 · 공개 상태」(티켓 20261006_1218) */
+  recipeLabel?: string
   /** 저장·취소 후 돌아갈 목록 날짜('YYYY-MM-DD') — 캘린더뷰 맥락 보존(20260902_1028) */
   returnDate: string
 }
@@ -84,7 +86,7 @@ function contentTypeLabel(value: string): string {
   return TODAY_CONTENT_TYPE_OPTIONS.find((t) => t.value === value)?.label ?? value
 }
 
-export default function TodayCardDetail({ card, linkedBadges, missionTitle, itemBookName, rankingModeTitle, returnDate }: TodayCardDetailProps) {
+export default function TodayCardDetail({ card, linkedBadges, missionTitle, itemBookName, rankingModeTitle, recipeLabel, returnDate }: TodayCardDetailProps) {
   const router = useRouter()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -130,7 +132,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
   }
 
   const fields = todayTemplateFields(card.template_type)
-  const hasRef = Boolean(fields.badges || fields.mission || fields.itemBook || fields.region || fields.body || fields.rankingMode)
+  const hasRef = Boolean(fields.badges || fields.mission || fields.itemBook || fields.region || fields.body || fields.rankingMode || fields.recipe)
   const sections = visibleTodaySections(card.template_type)
   const statuses = computeTodaySectionStatuses({
     templateType: card.template_type,
@@ -141,6 +143,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
     regionLabel: card.region_label ?? '',
     bodyMarkdown: card.body_markdown ?? '',
     rankingModeId: card.ranking_mode_id,
+    recipeId: card.recipe_id ?? null,
     exposureTagCount: card.exposure_tags?.length ?? 0,
     hasStartsAt: Boolean(card.starts_at),
     hasEndsAt: Boolean(card.ends_at),
@@ -212,6 +215,11 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
         {fields.rankingMode && (
           <ReadOnlyItem label="랭킹 규칙">
             {rankingModeTitle ?? (card.ranking_mode_id ? '(찾을 수 없음)' : <Empty />)}
+          </ReadOnlyItem>
+        )}
+        {fields.recipe && (
+          <ReadOnlyItem label="레시피" span={3}>
+            {recipeLabel ?? (card.recipe_id ? '(찾을 수 없음)' : <Empty />)}
           </ReadOnlyItem>
         )}
       </ReadOnlyGrid>

@@ -37,21 +37,22 @@ const base: TodaySectionSnapshot = {
   regionLabel: '',
   bodyMarkdown: '',
   rankingModeId: null,
+  recipeId: null,
   exposureTagCount: 1,
   hasStartsAt: true,
   hasEndsAt: true,
 }
 
-describe('visibleTodaySections — 참조 컨텐츠가 없는 템플릿(drop_alert·recipe_reveal)만 ref 섹션을 숨긴다', () => {
+describe('visibleTodaySections — 참조 컨텐츠가 없는 템플릿(drop_alert)만 ref 섹션을 숨긴다', () => {
   it('drop_alert는 참조 컨텐츠 섹션이 없다', () => {
     expect(visibleTodaySections('drop_alert')).toEqual(['class', 'basic', 'expose', 'period'])
   })
-  it('recipe_reveal도 참조 컨텐츠 섹션이 없다(레시피 입력 칸은 ⑫-b가 더한다, 티켓 20261006_1217)', () => {
-    expect(visibleTodaySections('recipe_reveal')).toEqual(['class', 'basic', 'expose', 'period'])
+  it('recipe_reveal은 레시피 입력 칸이 있어 참조 컨텐츠 섹션을 보인다(티켓 20261006_1218)', () => {
+    expect(visibleTodaySections('recipe_reveal')).toEqual(['class', 'basic', 'ref', 'expose', 'period'])
   })
-  it('그 외 7개 템플릿은 참조 컨텐츠 섹션을 포함한 5개 섹션을 모두 보인다', () => {
+  it('그 외 8개 템플릿은 참조 컨텐츠 섹션을 포함한 5개 섹션을 모두 보인다', () => {
     for (const t of ALL_TEMPLATES) {
-      if (t === 'drop_alert' || t === 'recipe_reveal') continue
+      if (t === 'drop_alert') continue
       expect(visibleTodaySections(t)).toEqual(['class', 'basic', 'ref', 'expose', 'period'])
     }
   })
@@ -89,8 +90,8 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
   it('ranking_board는 랭킹모드·이동경로를 쓴다(티켓 20260911_1440)', () => {
     expect(todayTemplateFields('ranking_board')).toEqual({ description: true, rankingMode: true, targetHref: true })
   })
-  it('recipe_reveal은 설명문만 받는다(레시피 칸은 ⑫-b, 카드 자신의 이동 경로는 /combine 고정, 티켓 20261006_1217)', () => {
-    expect(todayTemplateFields('recipe_reveal')).toEqual({ description: true })
+  it('recipe_reveal은 설명문·레시피·이동경로를 받는다(이동경로를 비우면 기본 /combine, 티켓 20261006_1218)', () => {
+    expect(todayTemplateFields('recipe_reveal')).toEqual({ description: true, recipe: true, targetHref: true })
   })
   it('처음 보는 템플릿 값은 던지지 않고 빈 칸 목록을 돌려준다(어드민 상세·폼이 그 카드 하나 때문에 오류 화면이 되지 않는다)', () => {
     const unknown = 'future_template' as TodayCardTemplateType
@@ -115,6 +116,7 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
       regionLabel: '성수동',
       bodyMarkdown: '',
       rankingModeId: '',
+      recipeId: '',
       contentTypeId: '',
       targetHref: '/x',
       exposureTags: ['all'],
@@ -173,6 +175,10 @@ describe('computeTodaySectionStatuses', () => {
       tone: 'idle',
       text: '선택',
     })
+    // recipe_reveal — recipeId를 채우면 1개 설정, 다른 템플릿은 recipeId를 채워도 idle(티켓 20261006_1218)
+    expect(computeTodaySectionStatuses({ ...base, templateType: 'recipe_reveal', recipeId: 'r1' }).ref).toEqual({ tone: 'set', text: '1개 설정' })
+    expect(computeTodaySectionStatuses({ ...base, templateType: 'recipe_reveal' }).ref).toEqual({ tone: 'idle', text: '선택' })
+    expect(computeTodaySectionStatuses({ ...base, templateType: 'mission_spotlight', recipeId: 'r1' }).ref).toEqual({ tone: 'idle', text: '선택' })
   })
 })
 
@@ -190,6 +196,7 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
     regionLabel: '',
     bodyMarkdown: '',
     rankingModeId: '',
+    recipeId: '',
     contentTypeId: '',
     targetHref: '',
     exposureTags: ['all'],
@@ -298,6 +305,36 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
   it('ranking_board가 아닌 템플릿은 rankingModeId가 있어도 ranking_mode_id를 null로 비운다', () => {
     const p = buildTodayCardSavePayload({ ...baseValues, templateType: 'badge_spotlight', rankingModeId: 'rm1' })
     expect(p.ranking_mode_id).toBeNull()
+  })
+  it('recipe_reveal — recipeId를 저장하고 이동 주소(targetHref)도 저장한다. 다른 참조 필드는 값이 있어도 비운다(티켓 20261006_1218)', () => {
+    const p = buildTodayCardSavePayload({
+      ...baseValues,
+      templateType: 'recipe_reveal',
+      recipeId: 'r1',
+      targetHref: '  /combine/special  ',
+      missionId: 'm1',
+      itemBookId: 'ib1',
+      regionLabel: '성수동',
+      bodyMarkdown: '본문',
+    })
+    expect(p.recipe_id).toBe('r1')
+    expect(p.target_href).toBe('/combine/special')
+    expect(p.badge_ids).toEqual([])
+    expect(p.mission_id).toBeNull()
+    expect(p.item_book_id).toBeNull()
+    expect(p.ranking_mode_id).toBeNull()
+    expect(p.region_label).toBeNull()
+    expect(p.body_markdown).toBeNull()
+  })
+  it('recipe_reveal — 레시피를 고르지 않거나 이동 주소를 비우면 null로 저장한다', () => {
+    const p = buildTodayCardSavePayload({ ...baseValues, templateType: 'recipe_reveal', recipeId: '', targetHref: '   ' })
+    expect(p.recipe_id).toBeNull()
+    expect(p.target_href).toBeNull()
+  })
+  it('recipe_reveal이 아닌 템플릿은 recipeId가 있어도 recipe_id를 null로 비운다', () => {
+    for (const t of ALL_TEMPLATES.filter((x) => x !== 'recipe_reveal')) {
+      expect(buildTodayCardSavePayload({ ...baseValues, templateType: t, recipeId: 'r1' }).recipe_id, t).toBeNull()
+    }
   })
   it('contentTypeId — 비우면 null로 저장한다', () => {
     const p = buildTodayCardSavePayload({ ...baseValues, contentTypeId: '' })

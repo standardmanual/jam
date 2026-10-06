@@ -7,7 +7,8 @@
  * 2. `recordTodayCardEvent` — 카드의 content_type_id를 조회해 함께 insert하고,
  *    insert 페이로드에 유저 식별자 키(user_id 등)가 전혀 없다
  * 3. `aggregateTodayCardEvents` — 유형 ID×모양×이벤트별 건수 집계 형태
- * 4. 그려진 모양(`card_shape`, 티켓 20261001_1431) — 모양 판정 칸을 카드 조회 한 번에 읽고, 기록에 복사한다
+ * 4. 그려진 모양(`card_shape`, 티켓 20261001_1431) — 모양 판정 칸을 카드 조회 한 번에 읽고, 기록에 복사한다.
+ *    레시피 공개 카드는 `recipe_id`로 레시피의 공개 상태를 읽어 타일 수를 정한다(티켓 20261006_1218)
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/events.test.ts
  */
@@ -27,8 +28,12 @@ const fixtures = vi.hoisted(() => ({
       layout_type?: string
       cover_image_url?: string | null
       badge_ids?: string[]
+      recipe_id?: string | null
     } | undefined
   >,
+  recipesById: {} as Record<string, { valid_from: string | null; valid_until: string | null } | undefined>,
+  recipeQueryCount: 0,
+  recipeError: null as { message: string } | null,
   insertedPayloads: [] as Record<string, unknown>[],
   eventRows: [] as { content_type_id: string | null; event: string; card_shape?: string | null }[],
   selectedColumns: [] as { table: string; columns: string }[],
@@ -56,6 +61,11 @@ function mockSupabase() {
       return builder
     }
     builder.maybeSingle = () => {
+      if (table === 'combination_recipes') {
+        fixtures.recipeQueryCount++
+        if (fixtures.recipeError) return Promise.resolve({ data: null, error: fixtures.recipeError })
+        return Promise.resolve({ data: fixtures.recipesById[state.eq?.val as string] ?? null, error: null })
+      }
       if (table !== 'today_cards') return Promise.resolve({ data: null, error: null })
       fixtures.cardQueryCount++
       if (fixtures.cardError) return Promise.resolve({ data: null, error: fixtures.cardError })
@@ -295,7 +305,7 @@ describe('assertCardExposable — 그려진 모양(card_shape) 판정', () => {
     expect(cardSelects).toHaveLength(1)
     expect(fixtures.cardQueryCount).toBe(1)
     const columns = cardSelects[0].columns.split(',').map((c) => c.trim())
-    for (const required of ['shape', 'template_type', 'layout_type', 'cover_image_url', 'badge_ids']) {
+    for (const required of ['shape', 'template_type', 'layout_type', 'cover_image_url', 'badge_ids', 'recipe_id']) {
       expect(columns).toContain(required)
     }
   })
@@ -334,6 +344,88 @@ describe('assertCardExposable — 그려진 모양(card_shape) 판정', () => {
   it('노출 검증을 통과하지 못한 카드는 모양을 돌려주지 않는다', async () => {
     const result = await exposeWith({ shape: 'hero', is_active: false })
     expect(result.ok).toBe(false)
+  })
+
+  describe('레시피 공개 카드 — 타일 수를 레시피의 공개 상태로 정한다(티켓 20261006_1218)', () => {
+    const RECIPE_ID = '66666666-6666-4666-8666-666666666666'
+    const recipeCard: Partial<CardFixture> = { shape: 'list', template_type: 'recipe_reveal', layout_type: 'badge_gallery', badge_ids: [], recipe_id: RECIPE_ID }
+    const withRecipe = async (recipe: { valid_from: string | null; valid_until: string | null } | undefined, patch: Partial<CardFixture> = {}) => {
+      fixtures.recipesById = recipe ? { [RECIPE_ID]: recipe } : {}
+      fixtures.recipeQueryCount = 0
+      fixtures.cardQueryCount = 0
+      return exposeWith({ ...recipeCard, ...patch })
+    }
+    // now = 2026-09-24T00:00Z
+    const RELEASED = { valid_from: '2026-09-01T00:00:00Z', valid_until: null }
+
+    afterEach(() => {
+      fixtures.recipesById = {}
+      fixtures.recipeError = null
+    })
+
+    it('레시피가 공개 중이면 list로 기록한다(badge_ids가 비어 있어도)', async () => {
+      const result = await withRecipe(RELEASED)
+      expect(result.ok && result.card.card_shape).toBe('list')
+      expect(fixtures.cardQueryCount).toBe(1)
+      expect(fixtures.recipeQueryCount).toBe(1)
+    })
+
+    it('공개 시각이 비어 있으면 처음부터 공개이므로 list다', async () => {
+      const result = await withRecipe({ valid_from: null, valid_until: null })
+      expect(result.ok && result.card.card_shape).toBe('list')
+    })
+
+    it('공개 전(valid_from이 미래)이면 brief다', async () => {
+      const result = await withRecipe({ valid_from: '2026-10-12T00:00:00Z', valid_until: null })
+      expect(result.ok && result.card.card_shape).toBe('brief')
+    })
+
+    it('종료된 레시피(valid_until이 지났다)와 읽을 수 없는 공개 시각은 brief다', async () => {
+      const ended = await withRecipe({ valid_from: '2026-08-01T00:00:00Z', valid_until: '2026-09-10T00:00:00Z' })
+      expect(ended.ok && ended.card.card_shape).toBe('brief')
+      const unreadable = await withRecipe({ valid_from: 'not-a-date', valid_until: null })
+      expect(unreadable.ok && unreadable.card.card_shape).toBe('brief')
+    })
+
+    it('레시피 행이 없으면(지워졌다) brief다', async () => {
+      const result = await withRecipe(undefined)
+      expect(result.ok && result.card.card_shape).toBe('brief')
+    })
+
+    it('recipe_id가 비어 있으면 레시피를 읽지 않고 brief다', async () => {
+      const result = await withRecipe(RELEASED, { recipe_id: null })
+      expect(result.ok && result.card.card_shape).toBe('brief')
+      expect(fixtures.recipeQueryCount).toBe(0)
+    })
+
+    it('레시피 공개 카드가 아니면 recipe_id가 있어도 레시피를 읽지 않고 badge_ids 개수로 정한다', async () => {
+      const result = await withRecipe(RELEASED, { template_type: 'badge_spotlight', badge_ids: ['b1'] })
+      expect(result.ok && result.card.card_shape).toBe('list')
+      expect(fixtures.recipeQueryCount).toBe(0)
+    })
+
+    it('저장된 모양이 brief·poster면 레시피 상태와 무관하게 그 모양이다', async () => {
+      for (const shape of ['brief', 'poster'] as const) {
+        const result = await withRecipe(RELEASED, { shape })
+        expect(result.ok && result.card.card_shape).toBe(shape)
+      }
+    })
+
+    it('레시피를 읽지 못해도 이벤트 기록은 막히지 않는다 — 그 카드는 brief로 기록하고 오류는 로그에만 남긴다', async () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      fixtures.recipeError = { message: 'connection refused: secret-host' }
+      const result = await withRecipe(RELEASED)
+      expect(result.ok && result.card.card_shape).toBe('brief')
+      expect(JSON.stringify(result)).not.toContain('secret-host')
+      expect(spy).toHaveBeenCalled()
+      spy.mockRestore()
+    })
+
+    it('노출 검증을 통과하지 못한 카드는 레시피를 읽지 않는다', async () => {
+      const result = await withRecipe(RELEASED, { is_active: false })
+      expect(result.ok).toBe(false)
+      expect(fixtures.recipeQueryCount).toBe(0)
+    })
   })
 })
 
