@@ -6,7 +6,7 @@ import { kindLabel } from '@/lib/admin/opsInbox/labels'
 import { drawerTriggerValue, isSameDrawerTarget, type ScheduleDrawerTarget } from '@/lib/admin/opsSchedule/drawerParams'
 import { monthCellItems, monthWeeks, type ScheduleMonth, type ScheduleMonthDay } from '@/lib/admin/opsSchedule/monthView'
 import type { ScheduleItem } from '@/lib/admin/opsSchedule/weekView'
-import type { CalendarDrawerControl } from '@/app/admin/WeeklyCalendar'
+import type { CalendarDrawerControl } from '@/app/admin/ops-schedule/WeeklyCalendar'
 import { OpsKindIcon } from './opsIcons'
 import { OpsStatusBadge } from './OpsStatusBadge'
 
@@ -87,10 +87,23 @@ function MonthCell({ day, firstOfGrid, drawer }: { day: ScheduleMonthDay; firstO
         onClick={(event) => drawer.onOpen(dayTarget, event.currentTarget)}
         className={cn(HEAD_BUTTON, daySelected && 'bg-muted')}
       >
-        <span className="text-xs font-semibold">
-          <span aria-hidden="true">{visibleLabel}</span>
+        <span className="whitespace-nowrap text-xs font-semibold">
+          {/* 좁은 칸(320px)은 날짜 숫자만 보인다 — 「9월 28일」·「6 오늘」이 한 글자씩 줄바꿈되지 않게 한다(티켓 20261006_1539). 오늘은 굵은 테두리와 읽기용 글자가 알린다. */}
+          <span aria-hidden="true" className="@[40rem]:hidden">
+            {dayNumber}
+          </span>
+          <span aria-hidden="true" className="hidden @[40rem]:inline">
+            {visibleLabel}
+          </span>
           <span className="sr-only">{`${day.dateLabel} ${day.weekdayLabel}요일`}</span>
-          {day.isToday && <span className="ml-1 font-bold text-foreground">오늘</span>}
+          {day.isToday && (
+            <>
+              <span className="sr-only">오늘</span>
+              <span aria-hidden="true" className="ml-1 hidden font-bold text-foreground @[40rem]:inline">
+                오늘
+              </span>
+            </>
+          )}
         </span>
         {signal && (
           <span className="inline-flex items-center gap-1">

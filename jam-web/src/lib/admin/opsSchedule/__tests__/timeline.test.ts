@@ -4,7 +4,7 @@
  * 지키는 것:
  * - 틀: 6주 창 42열, 주 눈금 6개, 오늘 열(창 안일 때만), 줄 순서(미션·드랍 일정·컬렉션 런칭), 서버에서 클라이언트로 넘길 수 있는 모양
  * - 막대: 운영 항목의 기간·상태·점선(승인 전)·실패 남김·반려/취소 제외, `aria-label`에 종류·기간·상태, 하루짜리, 창 앞뒤로 잘림
- * - 컬렉션 준비 구간(R4): 시작 앞 [시작 − 리드일, 시작) 점선 칸 + 노출 실선, 꺼졌거나 못 읽으면 28일, 창 앞에서 시작하면 없음, 창 뒤면 막대도 없음
+ * - 컬렉션 준비 구간(R4): 시작 앞 [시작 − 리드일, 시작) 점선 칸 + 노출 실선, 꺼졌거나 못 읽으면 28일, 창 앞에서 시작하면 없음, 창 뒤면 준비 구간 점선만(겹칠 때)
  * - 합치기: 운영 항목이 `created_resource`로 가리키는 미션·드랍 일정·컬렉션은 중복 없이 운영 항목 막대 하나(실제 자원의 제목·기간), 멈춘 항목은 합치지 않음
  * - 실제 자원 막대: 상태를 값에서 계산(기간·예약 상태), 취소된 드랍 일정·상시 미션·시작일 없는 컬렉션은 막대가 없다, 끝없는 컬렉션은 창 끝까지
  * - 레인: 겹치는 막대는 가로줄을 나누고 준비 구간도 자리를 차지한다
@@ -266,8 +266,27 @@ describe('buildTimeline — 컬렉션 준비 구간(R4)', () => {
     expect(earlier.clippedStart).toBe(true)
   })
 
-  it('시작이 창 뒤인 컬렉션은 막대도 준비 구간도 그리지 않는다(눌러 열 막대 없는 점선만 남지 않게)', () => {
+  it('시작이 창 뒤여도 준비 구간이 창과 겹치면 그 부분만 점선 칸으로 그린다(막대는 없다, 티켓 20261006_1539)', () => {
+    // 창은 2026-10-05부터 42일(~11-15). 시작 11-20 − 리드 28일 = 10-23부터 준비 → 창 끝까지 겹친다.
     const timeline = build({ bundles: bundlesOf(opsItem('collection_launch', 'c1', '먼 컬렉션', kst('2026-11-20', '09:00'), null)), leadDays: 28 })
+    const bars = rowOf(timeline, 'collection_launch').bars
+    expect(bars).toHaveLength(1)
+    expect(bars[0]).toMatchObject({
+      afterWindow: true,
+      drawerKey: 'c1',
+      startCol: 19,
+      endCol: 42,
+      prep: { startCol: 19, endCol: 42, startDate: '2026-10-23' },
+    })
+  })
+
+  it('시작이 창 뒤이고 준비 구간도 창에 닿지 않으면 아무것도 그리지 않는다', () => {
+    const timeline = build({ bundles: bundlesOf(opsItem('collection_launch', 'c1', '아주 먼 컬렉션', kst('2026-12-20', '09:00'), null)), leadDays: 28 })
+    expect(rowOf(timeline, 'collection_launch').bars).toEqual([])
+  })
+
+  it('시작이 창 뒤여도 리드일이 0이면 그릴 준비 구간이 없다', () => {
+    const timeline = build({ bundles: bundlesOf(opsItem('collection_launch', 'c1', '먼 컬렉션', kst('2026-11-20', '09:00'), null)), leadDays: 0 })
     expect(rowOf(timeline, 'collection_launch').bars).toEqual([])
   })
 
@@ -530,5 +549,20 @@ describe('barAriaLabel·formatBarPeriod', () => {
 describe('buildTimeline — 항목 수', () => {
   it('막대나 칸 항목이 하나라도 있으면 0이 아니다', () => {
     expect(build({ missions: [mission('a', kst('2026-10-06', '09:00'), kst('2026-10-12', '09:00'))] }).contentCount).toBeGreaterThan(0)
+  })
+})
+
+describe('buildTimeline — 거르기가 읽는 트라이브·패턴 (티켓 20261006_1539)', () => {
+  const TRIBE = '3F2A9C1E-0000-4000-8000-00000000000A'
+
+  it('운영 항목 막대에 트라이브(소문자)·패턴 번호가 실리고 옛 자원 막대에는 없다', () => {
+    const timeline = build({
+      bundles: bundlesOf(opsItem('mission', 'm1', '가을 미션', kst('2026-10-08', '09:00'), kst('2026-10-14', '09:00'), { patternNo: 'P02', original: { copy: { title: '가을 미션' }, tribe_id: TRIBE } })),
+      missions: [mission('legacy-m', kst('2026-10-08', '09:00'), kst('2026-10-14', '09:00'))],
+    })
+    const [opsBar, legacyBar] = [...rowOf(timeline, 'mission').bars].sort((a) => (a.origin === 'ops' ? -1 : 1))
+    expect(opsBar).toMatchObject({ origin: 'ops', tribeId: TRIBE.toLowerCase(), patternNo: 'P02' })
+    expect(legacyBar.origin).toBe('legacy')
+    expect(legacyBar.tribeId).toBeUndefined()
   })
 })

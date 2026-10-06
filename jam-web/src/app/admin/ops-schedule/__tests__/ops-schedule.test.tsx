@@ -239,10 +239,8 @@ describe('도구줄 — 보기 탭·기간 이동', () => {
     expect(toolbar({}, 'month')).not.toContain('>4주<')
   })
 
-  it('[상태 아이콘 보기]는 월간·타임라인에만 있다(주간 칩은 글자가 보인다)', () => {
-    expect(toolbar({}, 'week')).not.toContain('상태 아이콘 보기')
-    expect(toolbar({}, 'month')).toContain('상태 아이콘 보기')
-    expect(toolbar({}, 'timeline')).toContain('상태 아이콘 보기')
+  it('[상태 아이콘 보기]는 도구줄이 아니라 거르기 줄에 있다(티켓 20261006_1539 ③-d, `OpsScheduleFilters`가 보인다)', () => {
+    for (const view of ['week', 'month', 'timeline'] as const) expect(toolbar({}, view)).not.toContain('상태 아이콘 보기')
   })
 
   it('이전·오늘·다음 링크는 view·date를 담는다(주 이동 7일)', () => {
@@ -515,5 +513,60 @@ describe('본문 — 빈 기간', () => {
     const out = await renderBody({ date: '2026-10-07' })
     expect(out).toContain('이 기간에는 올라온 항목이 없어요')
     expect(out).toContain('자동 실행 1개')
+  })
+})
+
+describe('본문 — 거르기 (티켓 20261006_1539 ③-d)', () => {
+  const TRIBE = '3f2a9c1e-0000-4000-8000-00000000000a'
+  const flat = (markup: string) => markup.replace(/<!-- -->/g, '')
+
+  beforeEach(() => {
+    hoisted.load.value = loaded(
+      week(
+        {},
+        {
+          '2026-10-06': {
+            items: [
+              item({ id: 'a', drawerKey: 'a', title: '트라이브 카드', tribeId: TRIBE, patternNo: 'P01' }),
+              item({ id: 'b', drawerKey: 'b', title: '미션 항목', kind: 'mission' }),
+              item({ id: 'c', drawerKey: 'card:c', title: '옛 카드', origin: 'card', status: null }),
+            ],
+            automation: [{ id: 'cron-1', time: '09:00', label: 'POI 정리', routine: false, dim: false }],
+          },
+        }
+      )
+    )
+  })
+
+  it('거르기가 없으면 모든 항목이 있고 안내 문장이 없다', async () => {
+    const out = flat(await renderBody({}))
+    for (const title of ['트라이브 카드', '미션 항목', '옛 카드']) expect(out).toContain(title)
+    expect(out).toContain('자동 실행')
+    expect(out).not.toContain('옛 카드와 미션은 빠져요')
+  })
+
+  it('종류로 거르면 그 종류만 남고 자동 실행 줄이 숨는다(안내 문장은 없다)', async () => {
+    const out = flat(await renderBody({ kind: 'mission' }))
+    expect(out).toContain('미션 항목')
+    expect(out).not.toContain('트라이브 카드')
+    expect(out).not.toContain('옛 카드')
+    expect(out).not.toContain('자동 실행')
+    expect(out).not.toContain('옛 카드와 미션은 빠져요')
+  })
+
+  it('트라이브로 거르면 옛 카드·미션이 빠지고 안내 문장이 뜬다', async () => {
+    const out = flat(await renderBody({ tribe: TRIBE }))
+    expect(out).toContain('트라이브 카드')
+    expect(out).not.toContain('미션 항목')
+    expect(out).not.toContain('>옛 카드<')
+    expect(out).toContain('트라이브·패턴으로 거르면 운영툴로 받은 항목만 보여요. 옛 카드와 미션은 빠져요')
+  })
+
+  it('남는 항목이 0건이면 「이 조건에 맞는 항목이 없어요」 + [거르기 지우기]다', async () => {
+    const out = flat(await renderBody({ pattern: 'P09', view: 'week', date: '2026-10-06', sample: '1' }))
+    expect(out).toContain('이 조건에 맞는 항목이 없어요')
+    expect(out).not.toContain('이 기간에는 올라온 항목이 없어요')
+    expect(out).toContain('href="/admin/ops-schedule?view=week&amp;date=2026-10-06&amp;sample=1"')
+    expect(out).toContain('거르기 지우기')
   })
 })

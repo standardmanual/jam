@@ -5,6 +5,13 @@ import { Button } from '@/components/admin/ui/button'
 import { Card } from '@/components/admin/ui/card'
 import { OpsSectionNotice } from '@/components/admin/ops/OpsSectionNotice'
 import { scheduleHref } from '@/lib/admin/opsHome/links'
+import {
+  filterScheduleMonth,
+  filterScheduleTimeline,
+  filterScheduleWeek,
+  filtersExcludeLegacy,
+  hasScheduleFilters,
+} from '@/lib/admin/opsSchedule/filters'
 import { periodOf, type ScheduleParams } from '@/lib/admin/opsSchedule/params'
 import {
   loadScheduleMonth,
@@ -35,6 +42,10 @@ export const SCHEDULE_PARTIAL_FAILED_TITLE = '일부 일정을 불러오지 못�
 export const SCHEDULE_PARTIAL_FAILED_DESCRIPTION = '서버에 문제가 있었을 수 있어요. 새로 고쳐 다시 불러와 주세요'
 export const SCHEDULE_EMPTY_TITLE = '이 기간에는 올라온 항목이 없어요'
 export const SCHEDULE_TO_TODAY_LABEL = '오늘로 이동'
+export const SCHEDULE_FILTER_EMPTY_TITLE = '이 조건에 맞는 항목이 없어요'
+export const SCHEDULE_FILTER_CLEAR_LABEL = '거르기 지우기'
+/** 트라이브·패턴으로 거르면 옛 카드·미션(트라이브·패턴이 없는 실제 자원)이 빠진다는 안내(가정 6). */
+export const SCHEDULE_FILTER_LEGACY_NOTICE = '트라이브·패턴으로 거르면 운영툴로 받은 항목만 보여요. 옛 카드와 미션은 빠져요'
 
 /** 못 읽은 재료마다의 안내 문장. 카드를 못 읽었을 때 「미편성」으로 단정하지 않는다. */
 export const SCHEDULE_SOURCE_NOTICES: Record<ScheduleSource, string> = {
@@ -102,6 +113,30 @@ function EmptyPeriod({ params, showsToday }: { params: ScheduleParams; showsToda
   )
 }
 
+/** 거르기를 모두 지운 같은 화면 링크(보기·기준일·시험 묶음 포함은 그대로, 서랍은 닫는다). */
+function clearFiltersHref(params: ScheduleParams): string {
+  return scheduleHref({ view: params.view, date: params.date }, { includeSample: params.includeSample })
+}
+
+/** 거르기에 맞는 항목이 하나도 없을 때의 안내 + [거르기 지우기]. */
+function FilterEmpty({ params }: { params: ScheduleParams }) {
+  return (
+    <Card className="flex flex-col items-start gap-2 p-5">
+      <IconCalendarOff className="size-5 text-muted-foreground" aria-hidden="true" />
+      <p className="font-medium">{SCHEDULE_FILTER_EMPTY_TITLE}</p>
+      <Button asChild variant="outline" size="sm">
+        <Link href={clearFiltersHref(params)}>{SCHEDULE_FILTER_CLEAR_LABEL}</Link>
+      </Button>
+    </Card>
+  )
+}
+
+/** 거르기 결과 안내: 트라이브·패턴으로 거르면 옛 카드·미션이 빠진다는 문장. */
+function FilterLegacyNotice({ params }: { params: ScheduleParams }) {
+  if (!filtersExcludeLegacy(params)) return null
+  return <p className="text-sm text-muted-foreground">{SCHEDULE_FILTER_LEGACY_NOTICE}</p>
+}
+
 /** 이 기간(주·달력·창)에 오늘이 들어 있는가. */
 function periodShowsToday(view: ScheduleParams['view'], date: string): boolean {
   const { start, end } = periodOf(view, date)
@@ -119,19 +154,22 @@ async function WeekBody({ params }: { params: ScheduleParams }) {
     return <OpsSectionNotice icon="week" title={SCHEDULE_LOAD_FAILED_TITLE} />
   }
 
-  const { week, sourceErrors } = loaded
+  const { sourceErrors } = loaded
   if (allContentFailed(sourceErrors)) {
     return <OpsSectionNotice icon="week" title={SCHEDULE_LOAD_FAILED_TITLE} />
   }
 
+  const week = filterScheduleWeek(loaded.week, params)
   const today = todayKstDateString()
   const showsToday = week.days.some((day) => day.date === today)
   const isEmpty = week.contentCount === 0 && !anyContentFailed(sourceErrors)
+  const filtered = hasScheduleFilters(params)
 
   return (
     <div className="space-y-4">
       <SourceNotices sourceErrors={sourceErrors} />
-      {isEmpty && <EmptyPeriod params={params} showsToday={showsToday} />}
+      <FilterLegacyNotice params={params} />
+      {isEmpty && (filtered ? <FilterEmpty params={params} /> : <EmptyPeriod params={params} showsToday={showsToday} />)}
       <OpsScheduleBoard week={week} sourceErrors={sourceErrors} />
     </div>
   )
@@ -146,16 +184,19 @@ async function MonthBody({ params }: { params: ScheduleParams }) {
     return <OpsSectionNotice icon="week" title={SCHEDULE_LOAD_FAILED_TITLE} />
   }
 
-  const { month, sourceErrors } = loaded
+  const { sourceErrors } = loaded
   if (allContentFailed(sourceErrors)) {
     return <OpsSectionNotice icon="week" title={SCHEDULE_LOAD_FAILED_TITLE} />
   }
 
+  const month = filterScheduleMonth(loaded.month, params)
   const isEmpty = month.contentCount === 0 && !anyContentFailed(sourceErrors)
   return (
     <div className="space-y-4">
       <SourceNotices sourceErrors={sourceErrors} />
-      {isEmpty && <EmptyPeriod params={params} showsToday={periodShowsToday('month', params.date)} />}
+      <FilterLegacyNotice params={params} />
+      {isEmpty &&
+        (hasScheduleFilters(params) ? <FilterEmpty params={params} /> : <EmptyPeriod params={params} showsToday={periodShowsToday('month', params.date)} />)}
       <OpsScheduleBoard month={month} sourceErrors={sourceErrors} />
     </div>
   )
@@ -170,10 +211,11 @@ async function TimelineBody({ params }: { params: ScheduleParams }) {
     return <OpsSectionNotice icon="week" title={SCHEDULE_LOAD_FAILED_TITLE} />
   }
 
-  const { timeline, sourceErrors } = loaded
+  const { sourceErrors } = loaded
   if (allContentFailed(sourceErrors)) {
     return <OpsSectionNotice icon="week" title={SCHEDULE_LOAD_FAILED_TITLE} />
   }
+  const timeline = filterScheduleTimeline(loaded.timeline, params)
 
   // 드랍 일정·컬렉션은 타임라인에만 있는 재료라, 못 읽었으면 이 보기도 「없다」고 단정할 수 없다.
   const timelineContentFailed = anyContentFailed(sourceErrors) || Boolean(sourceErrors.dropSchedules || sourceErrors.itemBooks)
@@ -181,7 +223,8 @@ async function TimelineBody({ params }: { params: ScheduleParams }) {
   return (
     <div className="space-y-4">
       <SourceNotices sourceErrors={sourceErrors} />
-      {isEmpty && <EmptyPeriod params={params} showsToday={timeline.todayCol !== null} />}
+      <FilterLegacyNotice params={params} />
+      {isEmpty && (hasScheduleFilters(params) ? <FilterEmpty params={params} /> : <EmptyPeriod params={params} showsToday={timeline.todayCol !== null} />)}
       <OpsScheduleBoard timeline={timeline} sourceErrors={sourceErrors} />
     </div>
   )

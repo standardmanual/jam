@@ -14,7 +14,7 @@ import {
   type TimelineRow,
   type TimelineSignalCell,
 } from '@/lib/admin/opsSchedule/timeline'
-import type { CalendarDrawerControl } from '@/app/admin/WeeklyCalendar'
+import type { CalendarDrawerControl } from '@/app/admin/ops-schedule/WeeklyCalendar'
 import { OPS_ITEM_STATUS_ICONS } from './opsIcons'
 import { ITEM_STATUS_TONES, OpsStatusBadge, TONE } from './OpsStatusBadge'
 
@@ -113,10 +113,17 @@ function BarView({ bar, drawer }: { bar: TimelineBar; drawer: CalendarDrawerCont
     selected && 'ring-2 ring-foreground',
     flashing && !selected && 'ring-2 ring-border'
   )
+  // 창 뒤에서 시작하는 컬렉션: 막대는 없고 준비 구간 점선 칸 하나가 눌러서 여는 칸이다(티켓 20261006_1539).
   const style = placement(bar.startCol, bar.endCol, bar.lane + 1)
+  const prepOnlyClass = cn(
+    'z-[1] mx-px flex h-7 min-w-0 items-center gap-1 rounded-l-md rounded-r-none border border-r-0 border-dashed border-muted-foreground/60 bg-muted px-1.5 text-left text-xs text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+    bar.dim && 'opacity-40',
+    selected && 'ring-2 ring-foreground',
+    flashing && !selected && 'ring-2 ring-border'
+  )
   return (
     <>
-      {bar.prep && (
+      {bar.prep && !bar.afterWindow && (
         <span
           aria-hidden="true"
           className="mx-px h-7 rounded-l-md border border-dashed border-muted-foreground/60 bg-muted"
@@ -130,13 +137,13 @@ function BarView({ bar, drawer }: { bar: TimelineBar; drawer: CalendarDrawerCont
           aria-current={selected ? 'true' : undefined}
           aria-label={bar.ariaLabel}
           onClick={(event) => drawer.onOpen(target, event.currentTarget)}
-          className={className}
+          className={bar.afterWindow ? prepOnlyClass : className}
           style={style}
         >
           <BarContent bar={bar} />
         </button>
       ) : (
-        <Link href={bar.href ?? '#'} aria-label={bar.ariaLabel} className={className} style={style}>
+        <Link href={bar.href ?? '#'} aria-label={bar.ariaLabel} className={bar.afterWindow ? prepOnlyClass : className} style={style}>
           <BarContent bar={bar} />
         </Link>
       )}

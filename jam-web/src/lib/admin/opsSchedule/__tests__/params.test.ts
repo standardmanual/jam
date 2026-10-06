@@ -29,6 +29,7 @@ describe('parseScheduleParams — 기본값', () => {
       patterns: [],
       drawer: null,
       item: null,
+      drawerDate: null,
       includeSample: false,
     })
     expect(parseScheduleParams(null, NOW).date).toBe('2026-10-07')
@@ -137,6 +138,7 @@ describe('parseScheduleParams — 서랍·시험', () => {
       patterns: ['P02'],
       drawer: 'item',
       item: `card:${ITEM_ID}`,
+      drawerDate: null,
       includeSample: true,
     })
   })

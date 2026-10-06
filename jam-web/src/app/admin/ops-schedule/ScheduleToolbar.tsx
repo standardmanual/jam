@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import { Button } from '@/components/admin/ui/button'
-import { OpsStatusLegend } from '@/components/admin/ops/OpsStatusLegend'
 import { cn } from '@/lib/utils'
 import { scheduleHref } from '@/lib/admin/opsHome/links'
 import { formatPeriodLabel, shiftPeriod, type ScheduleParams, type ScheduleView } from '@/lib/admin/opsSchedule/params'
@@ -13,8 +12,8 @@ import { todayKstDateString } from '@/lib/admin/today-calendar'
  * `[주간 | 월간 | 타임라인]` 탭과 `[‹] [오늘] [›] 기간 글자`다. 모든 링크는 `scheduleHref`로만 만들어 시험 묶음 포함(`?sample=1`)·기준일·거르기를 잃지 않는다.
  * 보기를 바꿔도 기준일은 그대로이고, 기간을 옮기면 서랍은 닫힌다(`drawer`·`item`을 잇지 않는다). 링크뿐이라 훅이 없는 서버 컴포넌트다.
  *
- * 월간·타임라인(티켓 20261006_1538 ③-c)의 [‹ 4주]·[4주 ›]도 이 도구줄의 이전·다음이다(`shiftPeriod`: 월간은 한 달, 타임라인은 4주 격자 한 칸). 월간·타임라인에서는 아이콘만 보이는 상태의 뜻을
- * 알려 주는 [상태 아이콘 보기](`OpsStatusLegend`)가 기간 글자 옆에 붙는다(③-d가 거르기 줄을 만들면 그 줄로 옮긴다).
+ * 월간·타임라인(티켓 20261006_1538 ③-c)의 [‹ 4주]·[4주 ›]도 이 도구줄의 이전·다음이다(`shiftPeriod`: 월간은 한 달, 타임라인은 4주 격자 한 칸). 월간·타임라인의 [상태 아이콘 보기]는
+ * 거르기 줄(`OpsScheduleFilters`, 티켓 20261006_1539 ③-d)로 옮겼다.
  * 컨테이너 폭 40rem 미만에서만 버튼·탭이 44px(`min-h-11`·`h-11`)이고 그 이상은 40px(`h-10`)다(채원 판정 「버튼 데스크톱 `h-10`, 40rem 미만 `h-11`」, 티켓 20261006_1537).
  */
 
@@ -101,7 +100,6 @@ export function ScheduleToolbar({ view, params }: ScheduleToolbarProps) {
           </Button>
         )}
         <span className="text-sm font-bold">{formatPeriodLabel(view, date)}</span>
-        {view !== 'week' && <OpsStatusLegend />}
       </div>
     </div>
   )

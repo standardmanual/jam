@@ -2,7 +2,7 @@
  * 일정표(S4)의 주소 읽기와 기간 계산 (티켓 20261006_1536 ③-a, 상위 20260930_1502 「채원 S1·S4 사전 판정」 S4의 URL, 순수 함수 — DB 접근 없음).
  *
  * 쿼리: `view=week|month|timeline`(기본 week), `date=YYYY-MM-DD`(기본 오늘, 보기를 바꿔도 유지), 옛 `?week=`는 `date`가 없을 때만 읽는다(읽기 호환),
- * `kind`·`tribe`·`pattern`(여러 개), `sample=1`, `drawer=item|day`·`item`. 서버 페이지의 `searchParams`와 클라이언트의 `URLSearchParams` 모두 읽는다.
+ * `kind`·`tribe`·`pattern`(여러 개), `sample=1`, `drawer=item|day`·`item`·`day`(기간 밖 날짜 서랍의 날짜). 서버 페이지의 `searchParams`와 클라이언트의 `URLSearchParams` 모두 읽는다.
  *
  * 잘못된 값은 기본값으로 떨어뜨린다(화면이 500이 되지 않게). `view`·`date`·`week`·`drawer`·`item`은 같은 키가 두 번 오면 「값 없음」으로 본다
  * (어느 쪽이 의도인지 알 수 없다 — `lib/searchParams.ts`와 같은 이유). 거르기 키는 여러 개가 정상이다.
@@ -45,6 +45,11 @@ export interface ScheduleParams {
   drawer: ScheduleDrawerKind | null
   /** 항목 서랍이 가리키는 항목 키: 운영 항목 ID, 옛 카드 `card:<ID>`, 옛 미션 `mission:<ID>`. */
   item: string | null
+  /**
+   * 날짜 서랍이 가리키는 날짜(`day=YYYY-MM-DD`). 서랍을 연 날짜가 보이는 기간 밖(월간의 앞뒤 달 칸·타임라인 창 뒤쪽 칸)이라 `date`를 그 날짜로 바꾸면 새로고침 때 기간이 바뀔 때만 쓴다
+   * (티켓 20261006_1539). 없으면 날짜 서랍은 `date`를 가리킨다. 날짜 서랍이 아니면 null이다.
+   */
+  drawerDate: string | null
   /** 시험 묶음을 포함해서 보는가(`?sample=1`). */
   includeSample: boolean
 }
@@ -124,6 +129,7 @@ export function parseScheduleParams(source: ScheduleQuerySource, now: Date = new
     patterns: uniqueValid(readMany(source, 'pattern'), (value) => OPS_PATTERN_NO_PATTERN.test(value), (value) => value.toUpperCase()),
     drawer,
     item: drawer === 'item' ? item : null,
+    drawerDate: drawer === 'day' ? (validDate(readSingle(source, 'day'), now) ?? null) : null,
     includeSample: readIncludeSample(source as SearchParamsSource),
   }
 }

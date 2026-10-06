@@ -9,7 +9,8 @@
  * - 포커스 복귀 선택자: 서랍을 연 칸의 `data-drawer-trigger` 값과 한 글자도 어긋나지 않고, 따옴표로 선택자를 깨뜨릴 수 없다
  */
 import { describe, it, expect } from 'vitest'
-import { parseScheduleParams } from '../params'
+import { parseScheduleParams, periodOf } from '../params'
+import { shiftDateStr } from '@/lib/admin/today-calendar'
 import {
   closeDrawerQuery,
   drawerTargetOf,
@@ -73,6 +74,44 @@ describe('closeDrawerQuery', () => {
   it('열었다 닫으면 처음 쿼리로 돌아온다', () => {
     const start = 'view=week&date=2026-10-06&kind=mission&sample=1'
     expect(closeDrawerQuery(openDrawerQuery(start, { kind: 'item', key: ITEM }))).toBe(start)
+  })
+})
+
+describe('보이는 기간 밖 날짜의 서랍은 date를 덮어쓰지 않는다 (티켓 20261006_1539)', () => {
+  it('월간: 10월 달력의 9월 29일 칸은 date를 두고 day에 담는다 — 새로고침해도 10월 달력이다', () => {
+    const query = openDrawerQuery('view=month&date=2026-10-07', { kind: 'day', date: '2026-09-29' })
+    expect(query).toBe('view=month&date=2026-10-07&drawer=day&day=2026-09-29')
+    const params = parse(query)
+    expect(periodOf(params.view, params.date)).toEqual(periodOf('month', '2026-10-07'))
+    expect(drawerTargetOf(params)).toEqual({ kind: 'day', date: '2026-09-29' })
+  })
+
+  it('월간: 그 달 안의 날짜는 지금처럼 date를 그 날짜로 맞춘다', () => {
+    expect(openDrawerQuery('view=month&date=2026-10-07', { kind: 'day', date: '2026-10-20' })).toBe('view=month&date=2026-10-20&drawer=day')
+  })
+
+  it('타임라인: 창 뒤쪽 2주의 날짜도 같은 창을 유지한다', () => {
+    const start = periodOf('timeline', '2026-10-07')
+    const lateDate = shiftDateStr(start.end, -3)
+    const query = openDrawerQuery('view=timeline&date=2026-10-07', { kind: 'day', date: lateDate })
+    const params = parse(query)
+    expect(periodOf(params.view, params.date)).toEqual(start)
+    expect(drawerTargetOf(params)).toEqual({ kind: 'day', date: lateDate })
+  })
+
+  it('기간 밖에서 기간 안 날짜로 옮기면 day를 지우고, 항목 서랍으로 옮겨도 day를 지운다', () => {
+    const outside = openDrawerQuery('view=month&date=2026-10-07', { kind: 'day', date: '2026-09-29' })
+    expect(openDrawerQuery(outside, { kind: 'day', date: '2026-10-20' })).toBe('view=month&date=2026-10-20&drawer=day')
+    expect(openDrawerQuery(outside, { kind: 'item', key: ITEM })).toBe(`view=month&date=2026-10-07&drawer=item&item=${ITEM}`)
+  })
+
+  it('닫으면 day도 지우고 date는 남긴다', () => {
+    const outside = openDrawerQuery('view=month&date=2026-10-07', { kind: 'day', date: '2026-09-29' })
+    expect(closeDrawerQuery(outside)).toBe('view=month&date=2026-10-07')
+  })
+
+  it('틀린 day 값은 date를 쓴다', () => {
+    expect(drawerTargetOf(parse('drawer=day&date=2026-10-07&day=2026-13-40'))).toEqual({ kind: 'day', date: '2026-10-07' })
   })
 })
 

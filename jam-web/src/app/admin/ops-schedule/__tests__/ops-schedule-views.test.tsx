@@ -204,15 +204,20 @@ describe('월간 본문 — 읽기와 달력 틀', () => {
   it('오늘 칸에만 aria-current=date와 「오늘」 글자가 있고, 보이는 달 밖(9/28~30·11/1)은 흐리게 그린다', async () => {
     const out = await renderMonthBody()
     expect(out.match(/aria-current="date"/g)).toHaveLength(1)
-    expect(out.match(/>오늘</g)).toHaveLength(1)
+    // 넓은 칸은 보이는 「오늘」 글자, 좁은 칸은 읽기용 글자만이다(날짜 글자가 줄바꿈되지 않게, 티켓 20261006_1539)
+    expect(out.match(/<span aria-hidden="true" class="ml-1 hidden font-bold text-foreground @\[40rem\]:inline">오늘<\/span>/g)).toHaveLength(1)
+    expect(out.match(/<span class="sr-only">오늘<\/span>/g)).toHaveLength(1)
     expect(out.match(/bg-muted\/40 text-muted-foreground/g)).toHaveLength(4)
   })
 
   it('달의 첫날과 달력의 첫 칸은 「10월 1일」처럼 달을 쓰고 나머지는 숫자만이다(화면 읽기용 글자는 날짜 전체)', async () => {
     const out = await renderMonthBody()
-    expect(out).toContain('<span aria-hidden="true">9월 28일</span>')
-    expect(out).toContain('<span aria-hidden="true">10월 1일</span>')
-    expect(out).toContain('<span aria-hidden="true">15</span>')
+    // 넓은 칸은 달을 쓴 글자, 좁은 칸(320px)은 날짜 숫자만이다(`@[40rem]:hidden` 쪽, 줄바꿈 방지, 티켓 20261006_1539)
+    expect(out).toContain('<span aria-hidden="true" class="hidden @[40rem]:inline">9월 28일</span>')
+    expect(out).toContain('<span aria-hidden="true" class="hidden @[40rem]:inline">10월 1일</span>')
+    expect(out).toContain('<span aria-hidden="true" class="@[40rem]:hidden">28</span>')
+    expect(out).toContain('<span aria-hidden="true" class="hidden @[40rem]:inline">15</span>')
+    expect(out).toContain('whitespace-nowrap text-xs font-semibold')
     expect(out).toContain('<span class="sr-only">10월 15일 목요일</span>')
   })
 
@@ -310,12 +315,21 @@ describe('월간 본문 — 오류와 빈 기간', () => {
     expect(out).not.toContain('미편성')
   })
 
-  it('기간이 비면 「이 기간에는 올라온 항목이 없어요」 + [오늘로 이동](같은 보기·같은 거르기로 오늘)', async () => {
+  it('기간이 비면 「이 기간에는 올라온 항목이 없어요」 + [오늘로 이동](같은 보기로 오늘)', async () => {
+    const empty = buildScheduleMonth({ date: '2026-12-10', today: TODAY, includeSample: false, compositions: [], bundles: [], cards: [], missions: [], signals: null })
+    const out = await renderMonthBody({ month: empty, query: { date: '2026-12-10' } })
+    expect(out).toContain('이 기간에는 올라온 항목이 없어요')
+    expect(out).toContain(`href="/admin/ops-schedule?view=month&amp;date=${TODAY}"`)
+    expect(out).toContain('오늘로 이동')
+  })
+
+  it('거르기가 켜져 있고 남는 항목이 없으면 「이 조건에 맞는 항목이 없어요」 + [거르기 지우기](보기·기준일은 그대로)다', async () => {
     const empty = buildScheduleMonth({ date: '2026-12-10', today: TODAY, includeSample: false, compositions: [], bundles: [], cards: [], missions: [], signals: null })
     const out = await renderMonthBody({ month: empty, query: { date: '2026-12-10', kind: 'mission' } })
-    expect(out).toContain('이 기간에는 올라온 항목이 없어요')
-    expect(out).toContain(`href="/admin/ops-schedule?view=month&amp;date=${TODAY}&amp;kind=mission"`)
-    expect(out).toContain('오늘로 이동')
+    expect(out).toContain('이 조건에 맞는 항목이 없어요')
+    expect(out).not.toContain('이 기간에는 올라온 항목이 없어요')
+    expect(out).toContain('href="/admin/ops-schedule?view=month&amp;date=2026-12-10"')
+    expect(out).toContain('거르기 지우기')
   })
 
   it('오늘이 그 달에 있으면 [오늘로 이동]이 없다', async () => {

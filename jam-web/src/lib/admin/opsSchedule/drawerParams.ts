@@ -5,12 +5,13 @@
  * `drawer`·`item`·`date`만 바꾼다(`history.replaceState`용 쿼리 문자열을 만든다 — 서버를 다시 부르지 않는다).
  *
  * - 항목 서랍: `drawer=item&item=<키>`. 키는 운영 항목 ID, 옛 카드 `card:<ID>`, 옛 미션 `mission:<ID>`(가정 12). 기준일(`date`)은 건드리지 않는다.
- * - 날짜 서랍: `drawer=day&date=YYYY-MM-DD`. 그 날짜가 기준일이 된다(같은 주 안에서만 열리므로 보이는 기간이 바뀌지 않는다). 항목 키는 지운다.
- * - 닫기: `drawer`·`item`을 지우고 `date`는 남긴다.
+ * - 날짜 서랍: `drawer=day&date=YYYY-MM-DD`. 그 날짜가 보이는 기간 안이면 기준일이 된다(보이는 기간이 바뀌지 않는다). 기간 밖(월간 앞뒤 달 칸·타임라인 창 뒤쪽 칸)이면 `date`는 두고
+ *   `day=YYYY-MM-DD`에 담는다 — 새로고침해도 보던 달·창이 그대로다(티켓 20261006_1539). 항목 키는 지운다.
+ * - 닫기: `drawer`·`item`·`day`를 지우고 `date`는 남긴다.
  * - 포커스 복귀: 서랍을 연 칸(항목·칸 머리)에 `data-drawer-trigger="item:<키>"`·`"day:<날짜>"`를 달아 두고, 닫을 때 그 칸을 이 선택자로 찾아 포커스를 돌려준다.
  *   같은 항목이 여러 날 칸에 걸쳐 있으면 선택자는 여럿을 가리키므로, 호출부는 **누른 요소**를 먼저 쓰고 이 선택자는 그 요소가 사라졌을 때만 쓴다.
  */
-import type { ScheduleParams } from '@/lib/admin/opsSchedule/params'
+import { parseScheduleParams, periodOf, type ScheduleParams } from '@/lib/admin/opsSchedule/params'
 
 /** 열린 서랍이 가리키는 곳. */
 export type ScheduleDrawerTarget = { kind: 'item'; key: string } | { kind: 'day'; date: string }
@@ -27,11 +28,13 @@ export function splitItemKey(key: string): { origin: ItemKeyOrigin; id: string }
 const DRAWER_KEY = 'drawer'
 const ITEM_KEY = 'item'
 const DATE_KEY = 'date'
+/** 보이는 기간 밖 날짜의 서랍이 날짜를 담는 키(`date`는 보이는 기간을 정하므로 건드리지 않는다). */
+const DRAWER_DATE_KEY = 'day'
 
 /** 주소에서 읽은 값(`parseScheduleParams`)으로 지금 열린 서랍을 얻는다. 닫혀 있으면 null이다. */
-export function drawerTargetOf(params: Pick<ScheduleParams, 'drawer' | 'item' | 'date'>): ScheduleDrawerTarget | null {
+export function drawerTargetOf(params: Pick<ScheduleParams, 'drawer' | 'item' | 'date' | 'drawerDate'>): ScheduleDrawerTarget | null {
   if (params.drawer === 'item' && params.item) return { kind: 'item', key: params.item }
-  if (params.drawer === 'day') return { kind: 'day', date: params.date }
+  if (params.drawer === 'day') return { kind: 'day', date: params.drawerDate ?? params.date }
   return null
 }
 
@@ -50,19 +53,29 @@ export function openDrawerQuery(search: string, target: ScheduleDrawerTarget): s
   const params = paramsOf(search)
   params.set(DRAWER_KEY, target.kind)
   if (target.kind === 'item') {
+    params.delete(DRAWER_DATE_KEY)
     params.set(ITEM_KEY, target.key)
   } else {
     params.delete(ITEM_KEY)
-    params.set(DATE_KEY, target.date)
+    // 그 날짜가 지금 보이는 기간 안이면 `date`를 그 날짜로 맞춘다(같은 기간이라 새로고침해도 같은 화면이다). 기간 밖이면(월간의 앞뒤 달 칸·타임라인 창 뒤쪽 칸)
+    // `date`를 두고 날짜는 `day`에 담는다 — `date`를 바꾸면 새로고침 때 보던 달·창이 바뀐다.
+    const current = parseScheduleParams(params)
+    if (periodOf(current.view, current.date).start === periodOf(current.view, target.date).start) {
+      params.set(DATE_KEY, target.date)
+      params.delete(DRAWER_DATE_KEY)
+    } else {
+      params.set(DRAWER_DATE_KEY, target.date)
+    }
   }
   return params.toString()
 }
 
-/** 서랍을 닫은 뒤의 쿼리 문자열. `drawer`·`item`을 지우고 `date`는 남긴다. */
+/** 서랍을 닫은 뒤의 쿼리 문자열. `drawer`·`item`·`day`를 지우고 `date`는 남긴다. */
 export function closeDrawerQuery(search: string): string {
   const params = paramsOf(search)
   params.delete(DRAWER_KEY)
   params.delete(ITEM_KEY)
+  params.delete(DRAWER_DATE_KEY)
   return params.toString()
 }
 
