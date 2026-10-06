@@ -8,6 +8,7 @@
  *   날짜만 있으면 그날(`dayHref`), 셋 다 없으면 링크 없음(null)이다. 항목은 묶음이 있어야 열 수 있어 묶음 없는 항목은 날짜로 넘어간다.
  * - 날짜 링크는 일정표(③, `/admin/ops-schedule`)가 생기기 전까지 `/admin/today?date=`다. 일정표가 생기면 `dayHref` 한 곳만 바꾼다.
  */
+import type { OpsInboxTab } from '@/lib/admin/opsInbox/bundleStatus'
 
 /** 시험 묶음 포함 여부를 담는 쿼리 키. */
 export const SAMPLE_PARAM = 'sample'
@@ -72,6 +73,15 @@ function finish(href: string, options: OpsLinkOptions): string {
 /** 그 날짜로 가는 링크(KST 달력 날짜 `YYYY-MM-DD`). 일정표가 생기면(③) 이 함수의 대상만 바꾼다. */
 export function dayHref(date: string, options: OpsLinkOptions = {}): string {
   return finish(`/admin/today?date=${encodeURIComponent(date)}`, options)
+}
+
+/**
+ * 받은 기획함 목록 링크. `tab`을 주면 그 상태 탭이 열린다(운영 홈의 「받은 기획함에서 결정하기」는 `decide`). 티켓 20261006_1340 ②-b가 더했다.
+ * 운영 홈의 링크도 이 파일에서만 만든다.
+ */
+export function inboxListHref(options: OpsLinkOptions & { tab?: OpsInboxTab } = {}): string {
+  const base = '/admin/ops-inbox'
+  return finish(options.tab ? `${base}?tab=${encodeURIComponent(options.tab)}` : base, options)
 }
 
 /** 받은 기획함 상세 링크. 항목을 주면 그 항목이 선택된 채로 열린다. */
