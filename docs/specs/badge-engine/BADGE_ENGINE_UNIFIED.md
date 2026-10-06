@@ -1981,6 +1981,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 | 명시 — 「전체」(빈 배열) | `effectiveCollectionIds`는 빈 배열로 두되 후보 배지를 노출 중 컬렉션의 배지로 좁힌다 | 모든 컬렉션으로 넓어지지 않고 건너뜀 |
 
 노출 중 컬렉션 조회가 실패해도 같은 방식으로 건너뛴다(오류는 `console.error`와 로그의 `error`에 남는다).
+어드민 「아이템 얻을 길」(`GET /api/admin/item-paths`, `lib/admin/itemPaths/compute.ts`)이 같은 노출 판정(`isItemBookDroppable`)을 쓴다 — 운영툴 PRD §11.11.
 
 **배치 실행 로직** (`runAmbientDropBatch`, `src/lib/ambient-drop/index.ts`):
 1. 3축을 확정한다(카테고리 슬러그, 등급 분포, 대상 컬렉션 id 목록). 대상 컬렉션이 정해지지 않으면(`no_eligible_collection`) POI를 조회하기 전에 결과를 기록하고 끝낸다.
