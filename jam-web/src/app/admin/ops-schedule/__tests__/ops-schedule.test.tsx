@@ -7,7 +7,7 @@
  * 지키는 것:
  * - 머리(제목·부제·시험 스위치) → 도구줄 → 본문 순서이고, 본문만 `Suspense`로 읽는다(머리·도구줄은 바로 보인다)
  * - 주소(`view`·`date`·`sample`·거르기)가 도구줄 링크에 그대로 이어진다: 주 이동·오늘·보기 전환 모두 `sample=1`을 잃지 않는다(②-c 게이트 메모)
- * - 주간만 열려 있고 월간·타임라인은 눌리지 않는다. 주소의 `view`가 아직 못 그리는 보기면 주간으로 그린다
+ * - 보기 탭 3개가 모두 링크이고 보기를 바꿔도 기준일(`date`)·시험 포함·거르기가 유지된다(월간·타임라인 본문은 `ops-schedule-views.test.tsx`가 본다, 티켓 20261006_1538 ③-c)
  * - 오류(출처별 격리): 일부만 못 읽으면 달력은 그대로 + 「…를 읽지 못해 빠져 있어요」, 「미편성」으로 단정하지 않는다. 카드·미션·운영 항목을 모두 못 읽으면 안내 카드 하나
  * - 빈 기간은 「이 기간에는 올라온 항목이 없어요」 + [오늘로 이동](오늘이 그 주에 있으면 이동 버튼 없음), 못 읽은 재료가 있으면 빈 기간이라고 단정하지 않는다
  * - 칸에 상태 칩·신호 칩·오늘·장기 카드 비활성 수·자동 실행 접힘 줄·운영 미션 막대가 서버에서 읽은 값 그대로 그려진다
@@ -38,6 +38,16 @@ vi.mock('@/lib/admin/opsSchedule/load', () => ({
     hoisted.load.calls.push(options)
     if (hoisted.load.error) throw hoisted.load.error
     return hoisted.load.value
+  }),
+  // 월간·타임라인 본문은 `ops-schedule-views.test.tsx`가 따로 본다. 여기서는 본문 모듈이 불러올 이름만 둔다.
+  loadScheduleMonth: vi.fn(async () => {
+    throw new Error('이 시험은 월간 본문을 읽지 않아요')
+  }),
+}))
+
+vi.mock('@/lib/admin/opsSchedule/timelineLoad', () => ({
+  loadScheduleTimeline: vi.fn(async () => {
+    throw new Error('이 시험은 타임라인 본문을 읽지 않아요')
   }),
 }))
 
@@ -182,12 +192,50 @@ describe('도구줄 — 보기 탭·기간 이동', () => {
     return renderToStaticMarkup(<ScheduleToolbar view={view} params={parseScheduleParams(query, NOW)} />)
   }
 
-  it('주간 탭만 눌리고 월간·타임라인은 눌리지 않는 글자다(③-c가 연다)', () => {
-    const out = toolbar()
-    expect(out).toMatch(/<a[^>]*aria-current="page"[^>]*>주간<\/a>/)
-    expect(out).toMatch(/<span[^>]*aria-disabled="true"[^>]*>월간<\/span>/)
-    expect(out).toMatch(/<span[^>]*aria-disabled="true"[^>]*>타임라인<\/span>/)
-    expect(out).not.toMatch(/<a[^>]*>월간<\/a>/)
+  it('보기 탭 3개가 모두 링크이고 지금 보기만 aria-current다(③-c가 월간·타임라인을 열었다)', () => {
+    for (const view of ['week', 'month', 'timeline'] as const) {
+      const out = toolbar({}, view)
+      const label = { week: '주간', month: '월간', timeline: '타임라인' }[view]
+      expect(out, view).toMatch(new RegExp(`<a[^>]*aria-current="page"[^>]*>${label}</a>`))
+      expect(out.match(/aria-current="page"/g), view).toHaveLength(1)
+      expect(out, view).not.toContain('aria-disabled')
+      for (const other of ['주간', '월간', '타임라인']) expect(out, `${view}/${other}`).toMatch(new RegExp(`<a[^>]*>${other}</a>`))
+    }
+  })
+
+  it('보기를 바꿔도 기준일(date)·시험 포함·거르기가 유지된다', () => {
+    const out = toolbar({ date: '2026-10-21', sample: '1', kind: ['mission'], tribe: 'runner' }, 'week')
+    for (const view of ['week', 'month', 'timeline']) {
+      expect(out).toContain(`view=${view}&amp;date=2026-10-21`)
+    }
+    const tabs = [...out.matchAll(/href="([^"]+view=[^"]+)"[^>]*>(?:주간|월간|타임라인)</g)].map((match) => match[1])
+    expect(tabs).toHaveLength(3)
+    for (const href of tabs) {
+      expect(href).toContain('date=2026-10-21')
+      expect(href).toContain('sample=1')
+      expect(href).toContain('kind=mission')
+      expect(href).toContain('tribe=runner')
+    }
+  })
+
+  it('이전·다음 링크는 보기마다 한 칸씩 움직인다(주간 7일·월간 한 달·타임라인 4주)', () => {
+    const month = toolbar({ date: '2026-10-31' }, 'month')
+    expect(month).toContain('aria-label="이전 달"')
+    expect(month).toContain('date=2026-09-30')
+    expect(month).toContain('date=2026-11-30')
+    expect(month).toContain('2026년 10월<')
+    const timeline = toolbar({ date: '2026-10-07' }, 'timeline')
+    expect(timeline).toContain('aria-label="이전 4주"')
+    expect(timeline).toContain('aria-label="다음 4주"')
+    expect(timeline).toContain('date=2026-09-09')
+    expect(timeline).toContain('date=2026-11-04')
+    expect(timeline).toContain('2026년 10월 5일 ~ 11월 15일')
+  })
+
+  it('[상태 아이콘 보기]는 월간·타임라인에만 있다(주간 칩은 글자가 보인다)', () => {
+    expect(toolbar({}, 'week')).not.toContain('상태 아이콘 보기')
+    expect(toolbar({}, 'month')).toContain('상태 아이콘 보기')
+    expect(toolbar({}, 'timeline')).toContain('상태 아이콘 보기')
   })
 
   it('이전·오늘·다음 링크는 view·date를 담는다(주 이동 7일)', () => {
@@ -204,7 +252,7 @@ describe('도구줄 — 보기 탭·기간 이동', () => {
   it('주 이동·오늘·보기 탭이 모두 sample=1을 잃지 않는다(②-c 게이트 메모)', () => {
     const out = toolbar({ date: '2026-10-07', sample: '1' })
     const hrefs = [...out.matchAll(/href="([^"]+)"/g)].map((match) => match[1])
-    expect(hrefs).toHaveLength(4)
+    expect(hrefs).toHaveLength(6) // 보기 탭 3 + 이전·오늘·다음
     for (const href of hrefs) expect(href, href).toContain('sample=1')
     expect(toolbar({ date: '2026-10-07' })).not.toContain('sample=1')
   })
@@ -212,7 +260,7 @@ describe('도구줄 — 보기 탭·기간 이동', () => {
   it('버튼·탭 높이는 컨테이너 40rem 이상 40px(h-10)·미만 44px(h-11)이고 36px(h-9)은 없다(③-a에서 넘긴 조건, 티켓 20261006_1537)', () => {
     const out = toolbar()
     const classOf = (pattern: RegExp) => pattern.exec(out)?.[1] ?? ''
-    // 보기 탭(주간 링크·눌리지 않는 월간·타임라인 글자)
+    // 보기 탭 3개
     for (const label of ['주간', '월간', '타임라인']) {
       const tab = classOf(new RegExp(`class="([^"]*)"[^>]*>${label}<`))
       expect(tab, label).toContain('min-h-11')
@@ -251,13 +299,33 @@ describe('도구줄 — 보기 탭·기간 이동', () => {
 })
 
 describe('주소의 view', () => {
-  it('아직 그릴 수 없는 보기(월간·타임라인)는 주간으로 그린다', async () => {
-    for (const view of ['month', 'timeline']) {
+  it('세 보기 모두 그 보기의 탭이 지금 보기이고 기간 글자가 보기에 맞다', async () => {
+    const cases: Array<[string, string, string]> = [
+      ['week', '주간', '2026년 10월 5일 ~ 10월 11일'],
+      ['month', '월간', '2026년 10월'],
+      ['timeline', '타임라인', '2026년 10월 5일 ~ 11월 15일'],
+    ]
+    for (const [view, label, period] of cases) {
       const out = await renderPage({ view, date: '2026-10-07' })
-      expect(out, view).toMatch(/<a[^>]*aria-current="page"[^>]*>주간<\/a>/)
-      expect(out, view).toContain('2026년 10월 5일 ~ 10월 11일')
-      expect(hoisted.load.calls.at(-1)).toEqual({ weekStart: WEEK_START, includeSample: false })
+      expect(out, view).toMatch(new RegExp(`<a[^>]*aria-current="page"[^>]*>${label}</a>`))
+      expect(out, view).toContain(period)
     }
+  })
+
+  it('틀린 view는 주간으로 떨어진다', async () => {
+    const out = await renderPage({ view: 'year', date: '2026-10-07' })
+    expect(out).toMatch(/<a[^>]*aria-current="page"[^>]*>주간<\/a>/)
+  })
+
+  it('보기마다 읽는 동안의 대체 화면 모양이 다르다(주간 칸 7개·월간 달력 5줄·타임라인 줄)', async () => {
+    const week = await renderPage({ view: 'week' })
+    const month = await renderPage({ view: 'month' })
+    const timeline = await renderPage({ view: 'timeline' })
+    for (const out of [week, month, timeline]) expect(out.match(/role="status" aria-label="불러오는 중"/g)).toHaveLength(1)
+    expect(week.match(/h-28 w-full/g)).toHaveLength(7)
+    expect(month.match(/grid grid-cols-7 gap-1/g)).toHaveLength(5)
+    expect(timeline).toContain('rounded-xl border border-border p-3')
+    expect(timeline).not.toContain('grid-cols-7')
   })
 })
 
