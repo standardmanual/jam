@@ -12,6 +12,8 @@ import {
   formatCancelFailureMessage,
   formatCancelMessage,
   formatDecisionMessage,
+  formatEndFailureMessage,
+  formatEndMessage,
   formatExecuteFailureMessage,
   formatExecuteSummaryMessage,
   formatReconcileAlertMessage,
@@ -338,6 +340,58 @@ describe('상태 맞추기 글 (티켓 20261002_1813)', () => {
     const withItem = formatReconcileAlertMessage({ isSample: false, failed: [{ itemLabel: label, reason: '사유' }], cancelled: [], ended: [], decisionLogFailed: true })
     expect(withItem.split('\n').at(-1)).toBe(LOG_LINE)
     expect(formatReconcileAlertMessage({ isSample: false, failed: [], cancelled: [], ended: [], decisionLogFailed: true })).toBe(LOG_LINE)
+  })
+})
+
+describe('지금 종료 글 (티켓 20261006_0950)', () => {
+  const label = '홈피드 카드 · 10/10(토) 09:00'
+  const LOG_LINE = '결정 기록을 남기지 못했어요. 서버 로그를 확인해 주세요'
+
+  it('종료 글: 「지금 종료 1건」 다음 줄에 항목을 싣고, 사유가 있으면 사유 줄을 더한다', () => {
+    expect(formatEndMessage({ isSample: false, itemLabel: label, reason: null, resourceState: 'ended' })).toBe(['지금 종료 1건', `• ${label}`].join('\n'))
+    expect(formatEndMessage({ isSample: false, itemLabel: label, reason: '표기 오류가 있었어요', resourceState: 'ended' })).toBe(
+      ['지금 종료 1건', `• ${label}`, '사유: 표기 오류가 있었어요'].join('\n')
+    )
+  })
+
+  it('종료 글: 자원이 이미 끝나 있었거나 이미 없었으면 항목 줄 끝에 표시한다', () => {
+    expect(formatEndMessage({ isSample: false, itemLabel: label, reason: null, resourceState: 'alreadyEnded' })).toBe(['지금 종료 1건', `• ${label} (이미 끝나 있었어요)`].join('\n'))
+    expect(formatEndMessage({ isSample: false, itemLabel: label, reason: '사유', resourceState: 'missing' })).toBe(
+      ['지금 종료 1건', `• ${label} (자원이 이미 없었어요)`, '사유: 사유'].join('\n')
+    )
+  })
+
+  it('종료 글: 시험 묶음이면 맨 앞에 「[시험]」이 붙는다', () => {
+    expect(formatEndMessage({ isSample: true, itemLabel: label, reason: null, resourceState: 'ended' }).startsWith('[시험] 지금 종료 1건')).toBe(true)
+    expect(formatEndMessage({ isSample: false, itemLabel: label, reason: null, resourceState: 'ended' }).startsWith('[시험]')).toBe(false)
+  })
+
+  it('종료 글: 사유는 100자에서 자르고 슬랙 특수문자를 이스케이프한다', () => {
+    const long = formatEndMessage({ isSample: false, itemLabel: label, reason: '가'.repeat(150), resourceState: 'ended' })
+    expect(long.endsWith(`사유: ${'가'.repeat(100)}…`)).toBe(true)
+    const escaped = formatEndMessage({ isSample: false, itemLabel: '<!here>', reason: '<@U1> & x', resourceState: 'ended' })
+    expect(escaped).toContain('• &lt;!here&gt;')
+    expect(escaped).toContain('사유: &lt;@U1&gt; &amp; x')
+  })
+
+  it('알림 글: 끝내지 못한 항목과 사유를 싣는다', () => {
+    expect(formatEndFailureMessage({ isSample: false, problem: { itemLabel: label, reason: '지금 종료하지 못했어요' } })).toBe(
+      ['지금 종료를 끝내지 못했어요', `• ${label} — 지금 종료하지 못했어요`].join('\n')
+    )
+  })
+
+  it('알림 글: 결정 기록을 남기지 못했으면 그 줄을 더하고, 끝내지 못한 항목이 없어도(종료는 됨) 글이 된다', () => {
+    const withProblem = formatEndFailureMessage({ isSample: false, problem: { itemLabel: label, reason: '사유' }, decisionLogFailed: true })
+    expect(withProblem.split('\n').at(-1)).toBe(LOG_LINE)
+    expect(withProblem.split('\n')).toHaveLength(3)
+    expect(formatEndFailureMessage({ isSample: false, problem: null, decisionLogFailed: true })).toBe(LOG_LINE)
+  })
+
+  it('알림 글: 시험 묶음 표시, 사유 100자 자르기와 이스케이프', () => {
+    expect(formatEndFailureMessage({ isSample: true, problem: { itemLabel: label, reason: '사유' } }).startsWith('[시험] 지금 종료를 끝내지 못했어요')).toBe(true)
+    const long = formatEndFailureMessage({ isSample: false, problem: { itemLabel: label, reason: '가'.repeat(150) } })
+    expect(long.endsWith(`${'가'.repeat(100)}…`)).toBe(true)
+    expect(formatEndFailureMessage({ isSample: false, problem: { itemLabel: '<!here>', reason: '<@U1> & x' } })).toContain('&lt;!here&gt; — &lt;@U1&gt; &amp; x')
   })
 })
 

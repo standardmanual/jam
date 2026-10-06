@@ -958,14 +958,16 @@ describe('그룹 결과 · 생성 순서와 linkedIds 계획', () => {
 describe('모듈 계약 — DB와 서버 전용 코드를 값으로 가져오지 않는다', () => {
   const dir = path.join(__dirname, '..')
   // 실행 `run.ts`(티켓 20261002_1123)·공개 전 취소 `cancel.ts`(티켓 20261002_1256)·상태 맞추기 `reconcile.ts`(티켓 20261002_1813)·배지 미리 세기 `badgePreview.ts`(티켓 20261005_1607,
-  // 배지 엔진을 불러와 유저를 센다)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 열만 본다.
-  const SERVER_ONLY = ['run.ts', 'cancel.ts', 'reconcile.ts', 'badgePreview.ts']
+  // 배지 엔진을 불러와 유저를 센다)·지금 종료 `end.ts`·`endImpact.ts`(티켓 20261006_0950, 실행 도우미와 유저 수 세기)는 서버 전용이라 이 계약에서 뺀다. 순수 모듈 열한 개만 본다.
+  // `endColumn.ts`(같은 티켓)는 핸들러가 가져오므로 순수 모듈이다.
+  const SERVER_ONLY = ['run.ts', 'cancel.ts', 'reconcile.ts', 'badgePreview.ts', 'end.ts', 'endImpact.ts']
   const files = fs.readdirSync(dir).filter((name) => name.endsWith('.ts') && !SERVER_ONLY.includes(name))
 
-  it('순수 모듈 열 개가 있다', () => {
+  it('순수 모듈 열한 개가 있다', () => {
     expect(files.sort()).toEqual([
       'collectionLaunch.ts',
       'dropSchedule.ts',
+      'endColumn.ts',
       'groups.ts',
       'handlers.ts',
       'homeFeedCard.ts',

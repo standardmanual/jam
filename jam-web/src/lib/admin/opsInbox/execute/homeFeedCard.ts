@@ -12,6 +12,8 @@
  * - `undo`는 노출·열람 기록을 확인한 뒤 ID로 지운다. 되돌림은 방금 만든 카드만 지우므로 공개 전 여부는 보지 않는다.
  * - `cancel`(티켓 20261002_1256, ④-b)은 예약된 카드를 공개 전에 지운다: 행을 다시 읽어 공개 시각이 지났으면 막고, 노출·열람 기록을 확인한 뒤,
  *   지울 때도 공개 시각 조건(`starts_at > now`)을 함께 건다(읽은 뒤 공개 시각이 지나는 경합).
+ * - `end`(티켓 20261006_0950, ⑪-a)는 게재 중인 카드를 지금 끝낸다: 행을 다시 읽어 없으면 `missing`, `ends_at`이 지났으면 `alreadyEnded`(`observe`와 같은 경계: `지금 > ends_at`),
+ *   공개 시각 전이면 `not_published`, 그 밖에는 `ends_at`을 지금으로 바꾼다(읽은 `ends_at`을 조건으로 건다). `is_active`는 보지 않는다(꺼진 카드도 끝낼 수 있다).
  * - `observe`(티켓 20261002_1813, ⑦-a)는 상태 맞추기가 카드의 지금 상태를 읽는다: 행이 없으면 `missing`, 있으면 `is_active`·`starts_at`·`ends_at`으로
  *   유저 화면의 공개 판정(`lib/today/cards.ts`와 같다: 켜져 있고 `starts_at <= now <= ends_at`, 양 끝 포함)과 종료 여부를 돌려준다. 읽지 못하면 `error`다.
  */
@@ -20,8 +22,9 @@ import type { TodayCardRegisterPayload } from '@/lib/admin/opsInbox/registerInpu
 import { runHomeFeedDbChecks } from '@/lib/admin/registerChecks/homeFeed'
 import { findHomeFeedUndoReferences } from '@/lib/admin/registerChecks/references'
 import type { RegisterCheck } from '@/lib/admin/registerChecks/shared'
+import { endError, endNotPublished, endResourceNow } from './endColumn'
 import { RESOURCE_KEY_BY_KIND, asRegisterChecksClient } from './handlers'
-import type { CancelResult, ExecuteFailure, ExecuteHandler, ExecuteOutcome, ExecutePrepared, ExecuteServiceClient, ResourceObservation } from './handlers'
+import type { CancelResult, EndResult, ExecuteFailure, ExecuteHandler, ExecuteOutcome, ExecutePrepared, ExecuteServiceClient, ResourceObservation } from './handlers'
 
 /** 응답·결정 기록·슬랙에 나가는 사유(티켓 20261002_1255 가정 3). */
 const HOME_FEED_CARD_MESSAGES = {
@@ -146,6 +149,19 @@ export const HOME_FEED_CARD_HANDLER: ExecuteHandler<TodayCardRegisterPayload> = 
     const reread = await service.from('today_cards').select('id').eq('id', resourceId).maybeSingle()
     if (reread.error) return failed(`삭제 뒤 카드 재조회 실패: ${reread.error.message}`)
     return reread.data ? published : { ok: true, missing: true }
+  },
+
+  async end(service: ExecuteServiceClient, resourceId, { now }): Promise<EndResult> {
+    const read = await service.from('today_cards').select('id, starts_at, ends_at').eq('id', resourceId).maybeSingle()
+    if (read.error) return endError(`카드 조회 실패: ${read.error.message}`)
+    if (!read.data) return { ok: true, state: 'missing' }
+
+    const startsMs = Date.parse(read.data.starts_at)
+    const endsMs = Date.parse(read.data.ends_at)
+    if (!Number.isFinite(startsMs) || !Number.isFinite(endsMs)) return endError(OBSERVE_BAD_TIME)
+    if (now.getTime() > endsMs) return { ok: true, state: 'alreadyEnded' }
+    if (startsMs > now.getTime()) return endNotPublished()
+    return endResourceNow(service, { table: 'today_cards', column: 'ends_at', resourceId, readValue: read.data.ends_at, now })
   },
 
   async observe(service: ExecuteServiceClient, resourceId, { now }): Promise<ResourceObservation> {

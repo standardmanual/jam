@@ -23,8 +23,9 @@ import type { CollectionLaunchRegisterPayload, RegisterInputIssue } from '@/lib/
 import { runCollectionDbChecks } from '@/lib/admin/registerChecks/collection'
 import { findItemBookUndoReferences } from '@/lib/admin/registerChecks/references'
 import type { RegisterCheck } from '@/lib/admin/registerChecks/shared'
+import { endError, endNotPublished, endResourceNow } from './endColumn'
 import { RESOURCE_KEY_BY_KIND, asRegisterChecksClient } from './handlers'
-import type { CancelResult, ExecuteFailure, ExecuteHandler, ExecuteOutcome, ExecutePrepared, ExecuteServiceClient, ResourceObservation } from './handlers'
+import type { CancelResult, EndResult, ExecuteFailure, ExecuteHandler, ExecuteOutcome, ExecutePrepared, ExecuteServiceClient, ResourceObservation } from './handlers'
 
 /** 응답·결정 기록·슬랙에 나가는 사유(티켓 20261004_2039 가정 8). */
 export const COLLECTION_LAUNCH_MESSAGES = {
@@ -152,6 +153,21 @@ export const COLLECTION_LAUNCH_HANDLER: ExecuteHandler<CollectionLaunchRegisterP
     const reread = await service.from('item_books').select('id').eq('id', resourceId).maybeSingle()
     if (reread.error) return failed(`삭제 뒤 컬렉션 재조회 실패: ${reread.error.message}`)
     return reread.data ? published : { ok: true, missing: true }
+  },
+
+  async end(service: ExecuteServiceClient, resourceId, { now }): Promise<EndResult> {
+    const read = await service.from('item_books').select(READ_COLUMNS).eq('id', resourceId).maybeSingle()
+    if (read.error) return endError(`컬렉션 조회 실패: ${read.error.message}`)
+    if (!read.data) return { ok: true, state: 'missing' }
+
+    // 공개 시각이 없으면 이미 공개, 종료 시각이 없으면 끝없다(`observe`와 같다). 값이 있는데 시각으로 읽히지 않으면 건드리지 않는다.
+    const { valid_from: validFrom, valid_until: validUntil } = read.data
+    const fromMs = validFrom === null ? null : Date.parse(validFrom)
+    const untilMs = validUntil === null ? null : Date.parse(validUntil)
+    if ((fromMs !== null && !Number.isFinite(fromMs)) || (untilMs !== null && !Number.isFinite(untilMs))) return endError(OBSERVE_BAD_TIME)
+    if (untilMs !== null && now.getTime() > untilMs) return { ok: true, state: 'alreadyEnded' }
+    if (fromMs !== null && fromMs > now.getTime()) return endNotPublished()
+    return endResourceNow(service, { table: 'item_books', column: 'valid_until', resourceId, readValue: validUntil, now })
   },
 
   async observe(service: ExecuteServiceClient, resourceId, { now }): Promise<ResourceObservation> {

@@ -57,7 +57,11 @@ function serverReaches(entry: string): string[] {
   return hits
 }
 
-/** 순수 파일로 옮긴 것들과, 그것을 가져오는 JAM! 배지 핸들러·컬렉션 핸들러(티켓 20261004_2039, ⑩-a)·변환·레지스트리·사전 점검(티켓 20261004_1756). */
+/**
+ * 순수 파일로 옮긴 것들과, 그것을 가져오는 JAM! 배지 핸들러·컬렉션 핸들러(티켓 20261004_2039, ⑩-a)·변환·레지스트리·사전 점검(티켓 20261004_1756).
+ * `endColumn.ts`(티켓 20261006_0950, ⑪-a)는 다섯 핸들러가 가져오는 「지금 종료」 쓰기라 같은 계약이다(서비스 클라이언트는 인자로 받는다).
+ * 서버에서만 부르는 `end.ts`·`endImpact.ts`는 핸들러가 가져오지 않아 이 목록에 없다.
+ */
 const PURE_ENTRIES = [
   'lib/badge-engine/jamActionKeys.ts',
   'lib/admin/familyKey.ts',
@@ -68,6 +72,7 @@ const PURE_ENTRIES = [
   'lib/admin/registerChecks/collection.ts',
   'lib/admin/registerChecks/references.ts',
   'lib/admin/opsInbox/registerInput.ts',
+  'lib/admin/opsInbox/execute/endColumn.ts',
   'lib/admin/opsInbox/execute/jamBadge.ts',
   'lib/admin/opsInbox/execute/collectionLaunch.ts',
   'lib/admin/opsInbox/execute/registry.ts',

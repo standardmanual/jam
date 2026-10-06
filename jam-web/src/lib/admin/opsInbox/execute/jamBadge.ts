@@ -20,6 +20,8 @@
  * - `create`는 정한 ID(`prepared.id`)로 만들고 같은 ID를 돌려준다(`idFirst`). 오류 응답이면 같은 ID로 정리 delete를 한 번 시도한다.
  * - `undo`는 참조(획득 기록·연결·배열 칸)를 확인한 뒤 ID로 지운다. 하드 삭제다(등록 스크립트 `--undo`와 같다).
  * - `cancel`은 배지를 다시 읽어 공개됐으면 막고, 참조를 확인한 뒤, 지울 때도 `valid_from > now` 조건을 함께 건다(읽은 뒤 공개 시각이 지나는 경합). 미션 취소와 같은 흐름이다.
+ * - `end`(티켓 20261006_0950, ⑪-a)는 게재 중인 배지를 지금 끝낸다: 배지를 다시 읽어 없거나 소프트 삭제됐으면 `missing`, `valid_until`이 지났으면 `alreadyEnded`, 공개 시각 전이면 `not_published`,
+ *   그 밖에는 `valid_until`을 지금으로 바꾼다(읽은 `valid_until`을 조건으로 건다). 발급이 끝날 뿐 이미 받은 배지는 그대로다.
  * - `observe`(상태 맞추기, §8.6)는 `valid_from <= 지금 <= valid_until`(종료가 없으면 끝없음, 발급 엔진과 같은 양 끝 포함)로 공개 중, `지금 > valid_until`로 종료를 돌려준다.
  *   배지에는 비활성 칸이 없어 `inactive`는 늘 `false`다. 소프트 삭제된 배지(`deleted_at`)는 운영툴 밖에서 지워진 것으로 본다.
  */
@@ -34,8 +36,9 @@ import { isUuid } from '@/lib/admin/uuid'
 import { USAGE_METRIC_CONDITION_KEYS } from '@/lib/badge-engine/conditionRegistry'
 import { JAM_ACTION_CONDITION_KEYS } from '@/lib/badge-engine/jamActionKeys'
 import type { BadgeCondition } from '@/types/database'
+import { endError, endNotPublished, endResourceNow } from './endColumn'
 import { RESOURCE_KEY_BY_KIND, asRegisterChecksClient } from './handlers'
-import type { CancelResult, ExecuteFailure, ExecuteHandler, ExecuteOutcome, ExecutePrepared, ExecuteServiceClient, PointedByEntry, ResourceObservation } from './handlers'
+import type { CancelResult, EndResult, ExecuteFailure, ExecuteHandler, ExecuteOutcome, ExecutePrepared, ExecuteServiceClient, PointedByEntry, ResourceObservation } from './handlers'
 
 /** 응답·결정 기록·슬랙에 나가는 사유(티켓 20261004_1756 가정 7). */
 export const JAM_BADGE_MESSAGES = {
@@ -249,6 +252,20 @@ export const JAM_BADGE_HANDLER: ExecuteHandler<JamBadgeRegisterPayload> = {
     const reread = await service.from('badges').select('id, deleted_at').eq('id', resourceId).maybeSingle()
     if (reread.error) return failed(`삭제 뒤 배지 재조회 실패: ${reread.error.message}`)
     return reread.data && !reread.data.deleted_at ? published : { ok: true, missing: true }
+  },
+
+  async end(service: ExecuteServiceClient, resourceId, { now }): Promise<EndResult> {
+    const read = await service.from('badges').select(READ_COLUMNS).eq('id', resourceId).maybeSingle()
+    if (read.error) return endError(`배지 조회 실패: ${read.error.message}`)
+    if (!read.data || read.data.deleted_at) return { ok: true, state: 'missing' }
+
+    const row = read.data
+    const fromMs = row.valid_from === null ? NaN : Date.parse(row.valid_from)
+    const untilMs = row.valid_until === null ? null : Date.parse(row.valid_until)
+    if (!Number.isFinite(fromMs) || (untilMs !== null && !Number.isFinite(untilMs))) return endError(OBSERVE_BAD_TIME)
+    if (untilMs !== null && now.getTime() > untilMs) return { ok: true, state: 'alreadyEnded' }
+    if (fromMs > now.getTime()) return endNotPublished()
+    return endResourceNow(service, { table: 'badges', column: 'valid_until', resourceId, readValue: row.valid_until, now })
   },
 
   async observe(service: ExecuteServiceClient, resourceId, { now }): Promise<ResourceObservation> {

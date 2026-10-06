@@ -7,6 +7,7 @@
  *   제출 때는 형식 오류로만 남으므로(`validate.ts`) 여기서 다시 걸러야 한다.
  * - 종류 쌍(`LINK_PAIRS`): 어느 쪽이 `links`에 적었는지와 관계없이 두 항목의 종류로 가리키는 쪽이 정해진다.
  * - 함께 취소할 항목(`cancelSetOf`, 티켓 20261002_1256 가정 3): 취소하는 항목을 직접 또는 다른 항목을 거쳐 가리키는 항목을 상태에 따라 나눈다.
+ * - 지금 종료 미리 보기(`pointingLiveOf`, 티켓 20261006_0950 가정 10): 종료하는 항목을 직접 가리키는 게재 중 항목만 모은다(함께 끝내지 않는다).
  */
 import { linksOf, isUndecidedStatus, asRecord, itemField } from '@/lib/admin/opsInbox/itemView'
 import { isBalanceSkippedStatus } from '@/lib/admin/opsInbox/balance/rules'
@@ -277,6 +278,24 @@ export function cancelSetOf(items: readonly ExecuteItem[], itemId: string): Canc
     cancelIds: inOrder(cancel).map((item) => item.id),
     blockers: inOrder(blockers.keys()).map((item) => ({ id: item.id, status: blockers.get(item.id) as 'live' | 'preparing' })),
   }
+}
+
+// ── 지금 종료가 알릴 항목(⑪-a 가정 10) ──────────────────────────────────────────────────────────
+
+/**
+ * 이 항목(`itemId`)을 연결 칸으로 **직접** 가리키는 게재 중(`live`) 항목을 제출 순서로 돌려준다(운영툴 PRD §8.7). 종류 쌍(`LINK_PAIRS`)으로 가리키는 쪽을 정하므로
+ * 미션을 끝낼 때는 그 미션을 가리키는 카드가 들어 오고, 그 미션이 가리키는 배지는 들어 오지 않는다. 다른 항목을 거쳐 가리키는 항목·예약됨·종료 항목도 넣지 않는다.
+ * 「지금 종료」는 그 항목만 끝내고 이 항목들은 그대로 두므로(막지도 않는다) 확인창이 알려 주는 재료다. 입력을 바꾸지 않는다.
+ */
+export function pointingLiveOf(items: readonly ExecuteItem[], itemId: string): ExecuteItem[] {
+  const byId = new Map(items.map((item) => [item.id, item]))
+  const target = byId.get(itemId)
+  if (!target) return []
+  const graph = resolveLinkGraph(items)
+  return [...(graph.neighbors.get(itemId) ?? [])]
+    .map((id) => byId.get(id) as ExecuteItem)
+    .filter((neighbor) => neighbor.status === 'live' && pairOf(neighbor.kind, target.kind) !== undefined)
+    .sort(byPosition)
 }
 
 // ── 연결 칸 채우기 계획 ─────────────────────────────────────────────────────────────────────────

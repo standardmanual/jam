@@ -6,13 +6,14 @@
  * 상태 맞추기(티켓 20261002_1813)가 쓰는 `order`(칸 값이 같거나 없으면 내림차순은 나중에 넣은 행이 먼저)도 받는다.
  * 미션 핸들러(티켓 20261002_1944)가 쓰는 미션 참조 표(`user_mission_*`·`mission_rank_snapshots`·`point_transactions`)와 `poi`가 기본 테이블에 있다.
  * 레시피 핸들러(티켓 20261002_2221)가 쓰는 `combination_recipes`·`combination_recipe_slots`도 기본 테이블에 있고, 레시피를 지우면 슬롯도 함께 지워진다(DB의 CASCADE).
- * 드랍 예약 핸들러(티켓 20261002_2306)가 쓰는 `ambient_drop_schedules`(넣을 때 `status`를 DB 기본값 `scheduled`로 채운다)·`poi_categories`도 기본 테이블에 있다. 예약 대상 판정(`loadScheduleTargets`)은 `or`·`not`·`range` 같은 질의를 써서
+ * 드랍 예약 핸들러(티켓 20261002_2306)가 쓰는 `ambient_drop_schedules`(넣을 때 `status`를 DB 기본값 `scheduled`로 채운다)·`poi_categories`도 기본 테이블에 있다. 예약 대상 판정(`loadScheduleTargets`)은 `or`·`not` 같은 질의를 써서
  * 이 가짜 DB가 받지 않으므로, 통합 테스트는 그 함수를 mock으로 바꾼다(드랍 저장소의 가짜 DB `ambient-drop/__tests__/schedule-test-db.ts`는 실제 판정을 돌린다).
  * `in`은 PostgREST JSON 경로 칸(`condition_json->recipe_first_success->>recipe_id`)도 읽는다(레시피 참조 확인이 쓴다).
  * JAM! 배지 핸들러(티켓 20261004_1756)가 쓰는 배지 참조 표(`user_activity_badges`·`inventory_items`·`poi_drops`·`user_checkin_badge_earns`·`user_item_book_slots`)가 기본 테이블에 있고,
  * 배열 칸에 값이 들어 있는지 보는 `contains(col, [값])`(배지 참조 확인의 `missions.reward_badge_ids`·`today_cards.badge_ids` 등)도 받는다.
  * 컬렉션 핸들러(티켓 20261004_2039)가 쓰는 트라이브 존재 확인(`tribes`)과 컬렉션 참조 표(`user_item_book_completions`·`user_drop_state`·`ambient_drop_config`)가 기본 테이블에 있다.
  * 컬렉션 참조 확인의 드랍 예약 표는 끝나지 않은 상태만 세려고 `contains` 뒤에 `in('status', […])`를 이어 붙인다(둘 다 받는다).
+ * 지금 종료 미리 보기(티켓 20261006_0950)가 쓰는 `range(from, to)`(양 끝 포함)도 받는다: 유저 수 세기(`countRowsByKey`·`fetchAllRows`)가 페이지를 이어 읽는다.
  */
 import type { ExecuteServiceClient } from '../handlers'
 
@@ -62,6 +63,7 @@ class FakeQuery implements PromiseLike<Result> {
   private returning = false
   private head = false
   private limitTo: number | null = null
+  private rangeBy: { from: number; to: number } | null = null
   private orderBy: { col: string; ascending: boolean } | null = null
 
   constructor(
@@ -125,6 +127,11 @@ class FakeQuery implements PromiseLike<Result> {
   }
   limit(count: number) {
     this.limitTo = count
+    return this
+  }
+  /** `range(from, to)`: 줄 세운 행 가운데 from번째부터 to번째까지(양 끝 포함, 0부터). */
+  range(from: number, to: number) {
+    this.rangeBy = { from, to }
     return this
   }
   /** `order(col, { ascending })`: 칸 값으로 줄 세운다. 값이 같거나 없으면 넣은 순서를 따른다(내림차순은 거꾸로: 가장 나중에 넣은 행이 먼저). */
@@ -194,7 +201,9 @@ class FakeQuery implements PromiseLike<Result> {
     const hit = this.orderBy ? sortRows(matched, this.orderBy) : matched
     // 참조 세기(`select(칼럼, { count: 'exact', head: true })`)는 행 없이 건수만 돌려준다.
     if (this.head) return { data: null, count: hit.length, error: null }
-    return { data: (this.limitTo === null ? hit : hit.slice(0, this.limitTo)).map((row) => ({ ...row })), error: null }
+    const limited = this.limitTo === null ? hit : hit.slice(0, this.limitTo)
+    const paged = this.rangeBy === null ? limited : limited.slice(this.rangeBy.from, this.rangeBy.to + 1)
+    return { data: paged.map((row) => ({ ...row })), error: null }
   }
 }
 
