@@ -5,6 +5,9 @@
  * 노출 기간 안, 판정은 `lib/itembook/visibility.ts`)뿐이다. DB 조회(`index.ts`)와 분리해 세 모드
  * (random·explicit·「전체」)를 결정론적으로 테스트한다.
  *
+ * 드랍 제외(`drop_excluded`) 컬렉션도 대상이 아니다(티켓 20261005_1957). 이 함수는 판정하지 않고, 호출부가 읽어 넘기는
+ * `droppableIds`에서 이미 빠져 있다 — 노출 중이 아닌 컬렉션과 같은 경로로 `excludedCollectionIds`에 남는다.
+ *
  * 주의: 호출부는 `effectiveCollectionIds`가 빈 배열이면 「전체 컬렉션」으로 읽는다. 그래서 대상이 없을 때
  * 빈 배열로 흘려보내면 모든 컬렉션으로 넓어진다 — 이 함수는 그 경우를 `reason`으로 돌려주고, 호출부는
  * `reason`이 있으면 드랍하지 않고 건너뛴다. 「전체」 설정은 `effectiveCollectionIds`를 빈 배열로 두되
@@ -16,7 +19,7 @@ export interface ResolveAmbientTargetInput {
   useRandom: boolean
   /** 설정된 `collection_ids`. 빈 배열은 「전체 컬렉션」 */
   configIds: readonly string[]
-  /** 지금 노출 중인 컬렉션 id 전부 */
+  /** 지금 노출 중이고 드랍 제외가 아닌 컬렉션 id 전부 */
   droppableIds: readonly string[]
   /** 배열에서 하나를 고른다(비었으면 null). 운영은 `pickRandom`, 테스트는 결정값을 넘긴다 */
   pick: (ids: readonly string[]) => string | null
@@ -27,7 +30,7 @@ export interface ResolvedAmbientTarget {
   effectiveCollectionIds: string[]
   /** 후보 배지를 이 컬렉션들로만 좁힌다. null이면 `effectiveCollectionIds`만 쓴다 */
   restrictToCollectionIds: string[] | null
-  /** 설정에는 있었지만 노출 중이 아니라 뺀 컬렉션 id */
+  /** 설정에는 있었지만 노출 중이 아니거나 드랍 제외라 뺀 컬렉션 id */
   excludedCollectionIds: string[]
   /** 있으면 이번 실행은 드랍하지 않는다 */
   reason?: 'no_eligible_collection'
