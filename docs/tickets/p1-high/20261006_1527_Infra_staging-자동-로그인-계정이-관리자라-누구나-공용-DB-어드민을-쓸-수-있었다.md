@@ -90,4 +90,4 @@ docs/specs/DEV_PROCESS_GUARDRAILS.md(패턴 13), .claude/skills/jam-work/referen
   P3 20261006_1630(레거시 `ADMIN_SECRET` 쿠키 인증 경로). `hasAdminAccess` JSDoc의 공백 한 칸 변경은 동작 무관이라 그대로 뒀다.
 
 ### 잔여 이슈
-- staging 확인: push 뒤 jam-stage 배포에서 `/admin`이 `/forbidden`으로 가는지 본다(DB 값과 무관한 차단이라 결과는 응급 조치 뒤와 같다).
+- 없음. staging 확인(16:39 KST, 서빙 배포 `dpl_9noULTtWuRChtsW5vNTJLUYMLnwX`): 쿠키 없이 `/api/dev-login` → `/admin` 요청이 `/forbidden`(200)으로 간다. DB 값(false)과 코드 차단이 함께 걸린 상태라 요청만으로 둘을 가를 수는 없고, 코드 차단 자체는 테스트 11건이 보증한다.
