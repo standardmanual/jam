@@ -158,6 +158,12 @@ describe('항목 서랍 — 운영 항목', () => {
     expect(out).toContain('유저가 겪는 것')
   })
 
+  it('상세 위에 카드 미리보기(기기 폭 전환)가 있다', () => {
+    const out = itemView(ok())
+    expect(out).toContain('기기 폭')
+    expect(out.indexOf('기기 폭')).toBeLessThan(out.indexOf('유저가 겪는 것'))
+  })
+
   it('시험 묶음의 항목이면 칩 줄에 시험 칩이 붙는다', () => {
     expect(itemView(ok({}, { isSample: true }))).toContain('시험</span>')
     expect(itemView(ok({}, { isSample: false }))).not.toContain('시험</span>')
