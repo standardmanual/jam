@@ -94,10 +94,10 @@ vi.mock('@/lib/notifications/batch/shared', () => ({
 import { runAmbientDropBatch } from '../index'
 
 function book(id: string, overrides: Row = {}): Row {
-  return { id, is_active: true, valid_from: null, valid_until: null, ...overrides }
+  return { id, is_active: true, valid_from: null, valid_until: null, drop_excluded: false, ...overrides }
 }
 
-function itemBadge(id: string, itemBookId: string): Row {
+function itemBadge(id: string, itemBookId: string, overrides: Row = {}): Row {
   return {
     id,
     type: 'item',
@@ -106,6 +106,8 @@ function itemBadge(id: string, itemBookId: string): Row {
     item_book_id: itemBookId,
     valid_from: null,
     valid_until: null,
+    drop_excluded: false,
+    ...overrides,
   }
 }
 
@@ -113,6 +115,7 @@ const LIVE = 'book-live'
 const ENDED = 'book-ended'
 const FUTURE = 'book-future'
 const INACTIVE = 'book-inactive'
+const EXCLUDED = 'book-drop-excluded'
 
 function baseConfig(overrides: Partial<AmbientDropConfig> = {}): Record<string, unknown> {
   return {
@@ -246,6 +249,62 @@ describe('explicit 「전체」 (collection_ids가 빈 배열)', () => {
     const result = await runAmbientDropBatch('manual')
 
     expect(result.reason).toBe('no_eligible_collection')
+    expect(state.rpcCalls).toHaveLength(0)
+  })
+})
+
+// 드랍 제외(`drop_excluded`)는 활동 드랍과 같은 조건으로 정기·즉시 배포에도 적용된다 (티켓 20261005_1957)
+describe('드랍 제외 — 컬렉션·아이템 모두 후보에서 뺀다', () => {
+  beforeEach(() => {
+    // 노출 중이지만 컬렉션째 드랍 제외인 컬렉션을 목록 맨 앞에 둔다 — 필터가 없으면 첫 후보로 뽑힌다
+    state.tables.item_books = [book(EXCLUDED, { drop_excluded: true }), book(LIVE)]
+    state.tables.badges = [
+      itemBadge('badge-in-excluded-book', EXCLUDED),
+      itemBadge('badge-live', LIVE),
+      itemBadge('badge-live-excluded', LIVE, { drop_excluded: true }),
+    ]
+  })
+
+  it('random: 드랍 제외 컬렉션은 고르지 않는다', async () => {
+    state.config = baseConfig({ collection_mode: 'random' })
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const result = await runAmbientDropBatch('manual')
+
+    expect(result.effectiveCollectionIds).toEqual([LIVE])
+    expect(new Set(pickedBadgeIds())).toEqual(new Set(['badge-live']))
+  })
+
+  it('random: 드랍 제외 컬렉션만 있으면 모든 컬렉션으로 넓어지지 않고 건너뛴다', async () => {
+    state.config = baseConfig({ collection_mode: 'random' })
+    state.tables.item_books = [book(EXCLUDED, { drop_excluded: true })]
+    const result = await runAmbientDropBatch('manual')
+
+    expect(result.reason).toBe('no_eligible_collection')
+    expect(state.rpcCalls).toHaveLength(0)
+  })
+
+  it('explicit 컬렉션 지정: 드랍 제외 컬렉션은 빼고 사유와 함께 결과에 남긴다', async () => {
+    state.config = baseConfig({ collection_ids: [LIVE, EXCLUDED] })
+    const result = await runAmbientDropBatch('manual')
+
+    expect(result.effectiveCollectionIds).toEqual([LIVE])
+    expect(result.excludedCollectionIds).toEqual([EXCLUDED])
+    expect(new Set(pickedBadgeIds())).toEqual(new Set(['badge-live']))
+  })
+
+  it('explicit 「전체」: 드랍 제외 컬렉션의 배지와 드랍 제외 배지는 후보가 아니다', async () => {
+    const result = await runAmbientDropBatch('manual')
+
+    expect(result.reason).toBeUndefined()
+    expect(result.spawned).toBeGreaterThan(0)
+    expect(new Set(pickedBadgeIds())).toEqual(new Set(['badge-live']))
+  })
+
+  it('노출 중 컬렉션의 배지가 전부 드랍 제외면 후보가 없어 건너뛴다(no_candidate_badges)', async () => {
+    state.tables.badges = [itemBadge('badge-live-excluded', LIVE, { drop_excluded: true })]
+    const result = await runAmbientDropBatch('manual')
+
+    expect(result.reason).toBe('no_candidate_badges')
     expect(state.rpcCalls).toHaveLength(0)
   })
 })

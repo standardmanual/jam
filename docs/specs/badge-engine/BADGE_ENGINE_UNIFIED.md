@@ -1923,7 +1923,8 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 - **겹침 규칙.** 지점 직접 선택은 그 지점에 활성 시스템 드랍이 이미 있어도 한도 없이 겹쳐 놓고, 겹친 지점 수를 결과에 남긴다
   (사용자 결정 Q3, 2026-10-01). 지점 종류+개수는 `max_active_per_poi`로 흩어 놓고 자리가 모자라면 있는 만큼만 놓는다.
 - **노출 판정을 두 번 한다(fail-closed).** 대상은 활성 지점, `type='item'`·삭제되지 않음·컬렉션 소속·`valid_from <= 기준 <= valid_until`인
-  아이템 배지, 노출 중 컬렉션(`isItemBookDroppable`, [02_DATA_MODEL.md](../prd/02_DATA_MODEL.md) «컬렉션 노출 판정»)이다.
+  아이템 배지, 노출 중 컬렉션(`isItemBookDroppable`, [02_DATA_MODEL.md](../prd/02_DATA_MODEL.md) «컬렉션 노출 판정»)이고,
+  아이템과 소속 컬렉션이 드랍 제외(`drop_excluded`)가 아니어야 한다(아래 «드랍 제외»).
   **등록·시각 수정** 때는 「예정 시각」 기준으로 미리 돌려, 걸린 대상이 하나라도 있으면 400으로 거절한다(지금은 공개 전이지만 예정 시각에
   공개되는 컬렉션은 통과하고, 예정 시각에 기간이 끝난 컬렉션은 걸린다). **실행** 때는 실행 시각 기준으로 다시 돌려, 걸린 대상은
   놓지 않고 사유(`excluded`)를 결과에 남긴다. 대상 조회가 실패하면 놓지 않는다. 두 시점이 같은 함수(`loadScheduleTargets`)를 쓴다.
@@ -1969,23 +1970,32 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 (비파괴적 오버라이드 — 저장값은 그대로 남는다).
 
 **대상 컬렉션 축은 노출 중 컬렉션에만 드랍한다** (티켓 [20260930_1516](../../tickets/p1-high/20260930_1516_Service_컬렉션-노출-판정을-모든-화면과-드랍-경로에서-같게.md)):
-공개 전(비활성·시작 전)이거나 기간이 끝난 컬렉션에는 드랍하지 않는다. 「노출 중」의 정의는
+공개 전(비활성·시작 전)이거나 기간이 끝난 컬렉션, 드랍 제외(`item_books.drop_excluded`) 컬렉션에는 드랍하지 않는다. 「노출 중」의 정의는
 [02_DATA_MODEL.md](../prd/02_DATA_MODEL.md) `item_books` 절의 «컬렉션 노출 판정»이 단일 원천이고, 코드는
 `src/lib/itembook/visibility.ts`의 `applyDroppableItemBookFilter`다. 축 3은 노출 중 컬렉션 id를 한 번 읽어
 정하며, 결정 로직은 순수 함수 `resolveAmbientTargetCollections`(`src/lib/ambient-drop/collectionTarget.ts`)다.
 
 | 모드 | 대상 | 노출 중 컬렉션이 없을 때 |
 |---|---|---|
-| 무작위 | 노출 중 컬렉션 중 하나 | 건너뜀(`no_eligible_collection`) |
-| 명시 — 컬렉션 지정 | 설정한 `collection_ids` 가운데 노출 중인 것만. 빠진 것은 `excludedCollectionIds`로 결과와 로그에 남는다 | 지정한 것이 하나도 남지 않으면 건너뜀 |
-| 명시 — 「전체」(빈 배열) | `effectiveCollectionIds`는 빈 배열로 두되 후보 배지를 노출 중 컬렉션의 배지로 좁힌다 | 모든 컬렉션으로 넓어지지 않고 건너뜀 |
+| 무작위 | 노출 중이고 드랍 제외가 아닌 컬렉션 중 하나 | 건너뜀(`no_eligible_collection`) |
+| 명시 — 컬렉션 지정 | 설정한 `collection_ids` 가운데 노출 중이고 드랍 제외가 아닌 것만. 빠진 것은 `excludedCollectionIds`로 결과와 로그에 남는다 | 지정한 것이 하나도 남지 않으면 건너뜀 |
+| 명시 — 「전체」(빈 배열) | `effectiveCollectionIds`는 빈 배열로 두되 후보 배지를 노출 중이고 드랍 제외가 아닌 컬렉션의 배지로 좁힌다 | 모든 컬렉션으로 넓어지지 않고 건너뜀 |
 
 노출 중 컬렉션 조회가 실패해도 같은 방식으로 건너뛴다(오류는 `console.error`와 로그의 `error`에 남는다).
+
+**드랍 제외는 활동 드랍과 앰비언트 드랍(정기·무작위·지정 예약·지금 배포) 모두에 적용된다** (티켓
+[20261005_1957](../../tickets/p2-normal/20261005_1957_Feature_앰비언트-드랍이-드랍-제외-컬렉션과-아이템을-거르지-않는다.md), 사용자 결정 2026-10-06):
+드랍 제외는 「드랍 후보에서만 뺀다」는 표시라, 활동 드랍(`fetchDropStructure`)과 같은 조건으로 앰비언트 드랍의 컬렉션·아이템 조회에도 건다
+(`item_books.drop_excluded = false`, `badges.drop_excluded = false`). 조건은 노출 판정(`applyDroppableItemBookFilter`)에 넣지 않고 앰비언트의 두 조회
+(`index.ts`·`scheduleTargets.ts`)에서 더한다 — 그 필터는 완성 판정(`checker.ts`)·완성 가능 소식(`completable.ts`)도 쓰는데, 완성 쪽의 드랍 제외 취급은 분모에서 빼는 것이라 다르기 때문이다(§3.16).
+지정 예약·지금 배포에서 드랍 제외 아이템·컬렉션을 지정하면 등록 판정이 `badge_drop_excluded`(「드랍 제외 아이템」)·`collection_drop_excluded`(「드랍 제외 컬렉션」) 사유로 막고,
+컬렉션 지정 모드의 후보 풀에서는 드랍 제외 아이템이 조용히 빠진다. 특별히 놓으려면 운영자가 드랍 제외 표시를 먼저 끈다. 어드민이 보여 주는 아이템의 얻을 길(`lib/admin/itemPaths/compute.ts`)의
+드랍 길 판정도 같은 기준이다. 이미 놓인 시스템 드랍은 소급 회수하지 않는다.
 
 **배치 실행 로직** (`runAmbientDropBatch`, `src/lib/ambient-drop/index.ts`):
 1. 3축을 확정한다(카테고리 슬러그, 등급 분포, 대상 컬렉션 id 목록). 대상 컬렉션이 정해지지 않으면(`no_eligible_collection`) POI를 조회하기 전에 결과를 기록하고 끝낸다.
 2. 대상 카테고리의 POI 전체를 조회하고, `max_active_per_poi` 미만인 POI만 후보로 남긴다.
-3. `type='item' AND deleted_at IS NULL AND item_book_id IS NOT NULL`(+ 컬렉션 필터, + 유효기간
+3. `type='item' AND deleted_at IS NULL AND drop_excluded = false AND item_book_id IS NOT NULL`(+ 컬렉션 필터, + 유효기간
    `valid_from/valid_until`)로 후보 배지를 rarity별로 분류한다. **컬렉션 소속이 없는 아이템배지는
    대상에서 제외된다** — 이 축이 "컬렉션 채우기"를 돕는 것이 목적이기 때문.
 4. `batch_size`회 반복 — 활성 드랍이 0개인 POI를 우선 골라 분산 배치하고(발견 경험 분산, 구
@@ -1996,7 +2006,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
    자동/수동 모두 동일하게 기록되어 어드민 화면에서 최근 실행 이력으로 조회 가능하다.
 
 **스킵 사유(`AmbientDropSkipReason`)**: `auto_disabled`(자동 실행 OFF로 no-op) ·
-`no_eligible_collection`(노출 중인 대상 컬렉션이 없음) ·
+`no_eligible_collection`(노출 중이고 드랍 제외가 아닌 대상 컬렉션이 없음) ·
 `no_eligible_poi`(대상 카테고리에 배치 가능한 POI 없음) · `no_candidate_badges`(조건에 맞는
 후보 배지 없음) · `insert_failed`(배지는 뽑았으나 `poi_drops` INSERT 자체가 실패) —
 `engine_decision_log`에 그대로 기록되어 실행 이력에서 원인을 구분할 수 있다.
@@ -2141,7 +2151,7 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 - **예외 — 등록 배지가 전부 드랍 제외**: 제외를 뺀 분모가 0이 되는 컬렉션(등록 배지는 1개 이상)은 등록 배지
   전체(소프트 삭제 제외)를 분모로 세고, 분자는 그 집합과 채운 배지의 교집합이다. 등록 배지가 0개인
   컬렉션은 완성이 아니다. 슬롯 RPC `slot_item_into_book`(179)과 `computeBookCompletion`이 같은 규칙을 쓴다.
-  드랍엔진의 후보 계산(`buildBadgeIdsOfBook`)은 제외 배지를 그대로 뺀다.
+  드랍엔진의 후보 계산(`buildBadgeIdsOfBook`)은 제외 배지를 그대로 뺀다. 앰비언트 드랍(§3.12)도 같은 조건으로 뺀다.
 - **분자·분모 집합 일치**: 분자는 분모와의 교집합이므로 항상 같은 배지 집합을 기준으로 계산된다.
   삭제 배지를 분모에 포함하는 위 정책은 그대로다.
 

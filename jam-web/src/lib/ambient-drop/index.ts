@@ -46,7 +46,7 @@ export interface AmbientDropBatchResult {
    * 단 `reason`이 `no_eligible_collection`이면 대상이 없어 드랍하지 않은 실행이다
    */
   effectiveCollectionIds: string[]
-  /** 설정에는 있었지만 노출 중이 아니라 뺀 컬렉션 id(없으면 필드 없음) */
+  /** 설정에는 있었지만 노출 중이 아니거나 드랍 제외라 뺀 컬렉션 id(없으면 필드 없음) */
   excludedCollectionIds?: string[]
   effectiveRarityDistribution: RarityDistribution
   eligiblePoiCount: number
@@ -97,12 +97,14 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
 
   // ── 축 3: 대상 컬렉션 ───────────────────────────────────────
   // 드랍 대상은 노출 중 컬렉션(is_active + 노출 기간 안)뿐이다 — 공개 전·기간이 끝난 컬렉션에는 드랍하지
-  // 않는다(티켓 20260930_1516, 판정은 lib/itembook/visibility.ts). 조회가 실패하면 대상이 없는 것으로
-  // 보고 건너뛴다 — 빈 배열이 「전체 컬렉션」으로 읽혀 넓어지는 것을 막는다.
+  // 않는다(티켓 20260930_1516, 판정은 lib/itembook/visibility.ts). 드랍 제외(`drop_excluded`) 컬렉션도 활동 드랍
+  // (`fetchDropStructure`)처럼 뺀다(티켓 20261005_1957) — 이 조건은 완성 판정이 함께 쓰는 노출 판정이 아니라
+  // 드랍 후보에만 거는 것이라 공용 필터(`applyDroppableItemBookFilter`)에 넣지 않고 여기서 더한다.
+  // 조회가 실패하면 대상이 없는 것으로 보고 건너뛴다 — 빈 배열이 「전체 컬렉션」으로 읽혀 넓어지는 것을 막는다.
   const { data: droppableBooks, error: booksError } = await fetchAllRows<{ id: string }>(
     'item_books',
     'id',
-    () => applyDroppableItemBookFilter(supabase.from('item_books').select('id'), ranAt)
+    () => applyDroppableItemBookFilter(supabase.from('item_books').select('id'), ranAt).eq('drop_excluded', false)
   )
     .then((data) => ({ data, error: null as { message: string } | null }))
     .catch((err: unknown) => ({
@@ -189,7 +191,7 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
     return result
   }
 
-  // ── 후보 배지 로드 (item 타입 + 컬렉션 소속 + 활성 + 유효기간, rarity별로 분류) ──
+  // ── 후보 배지 로드 (item 타입 + 컬렉션 소속 + 활성 + 드랍 제외 아님 + 유효기간, rarity별로 분류) ──
   // rarity는 nullable이다(무한레벨형, 마이그레이션 130). 아이템 배지에는 무한레벨형이 없지만
   // 타입은 열려 있으므로 아래 루프에서 명시적으로 걸러낸다 — 조용히 common으로 떨어뜨리지 않는다.
   type CandidateBadgeRow = { id: string; rarity: BadgeRarity | null; valid_from: string | null; valid_until: string | null }
@@ -202,6 +204,7 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
         .select('id, rarity, valid_from, valid_until')
         .eq('type', 'item')
         .is('deleted_at', null)
+        .eq('drop_excluded', false)
         .not('item_book_id', 'is', null)
       if (effectiveCollectionIds.length > 0) q = q.in('item_book_id', effectiveCollectionIds)
       // 「전체」 설정은 effectiveCollectionIds가 비어 있어도 노출 중 컬렉션의 배지로만 좁힌다
