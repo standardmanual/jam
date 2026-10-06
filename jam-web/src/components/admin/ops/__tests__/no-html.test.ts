@@ -92,26 +92,30 @@ describe('받은 기획함 화면 소스 계약', () => {
   it('`style` 속성은 색 견본 한 곳과 숫자로 계산한 위치 두 곳(미션 막대 열, 타임라인 격자)뿐이고, 색 견본은 `HEX_COLOR_PATTERN`을 통과한 값만 넣는다', () => {
     const withStyle = sourceFiles.filter((file) => /\bstyle=\{/.test(stripComments(readFileSync(file, 'utf8'))))
     expect(withStyle.map(rel)).toEqual([
+      'components/admin/ops/OpsCardPreview.tsx',
       'components/admin/ops/OpsItemDetail.tsx',
       'components/admin/ops/OpsScheduleTimeline.tsx',
       'app/admin/ops-schedule/WeeklyCalendar.tsx',
     ])
 
-    const code = stripComments(readFileSync(withStyle[0], 'utf8'))
-    expect(code).toMatch(/import\s*\{\s*HEX_COLOR_PATTERN\s*\}\s*from\s*'@\/components\/admin\/BackgroundColorField'/)
-    // 견본을 그리는 분기 조건이 정규식 검사다
-    expect(code).toMatch(/const\s+isHex\s*=\s*HEX_COLOR_PATTERN\.test\(/)
-    expect(code).toMatch(/\{isHex\s*&&\s*\(/)
-    // style에는 검사를 통과한 값(text)만 들어가고 다른 속성은 없다
-    expect(code.match(/style=\{\{[^}]*\}\}/g)).toEqual(['style={{ backgroundColor: text }}'])
+    // 색 견본을 그리는 두 곳(상세의 색 줄, 카드 미리보기의 견본 칩)이 같은 규칙을 지킨다
+    for (const swatchFile of [withStyle[0], withStyle[1]]) {
+      const code = stripComments(readFileSync(swatchFile, 'utf8'))
+      expect(code).toMatch(/import\s*\{\s*HEX_COLOR_PATTERN\s*\}\s*from\s*'@\/components\/admin\/BackgroundColorField'/)
+      // 견본을 그리는 분기 조건이 정규식 검사다
+      expect(code).toMatch(/const\s+isHex\s*=\s*HEX_COLOR_PATTERN\.test\(/)
+      expect(code).toMatch(/\{isHex\s*&&\s*\(/)
+      // style에는 검사를 통과한 값(text)만 들어가고 다른 속성은 없다
+      expect(code.match(/style=\{\{[^}]*\}\}/g)).toEqual(['style={{ backgroundColor: text }}'])
+    }
 
     // 주간 캘린더의 `style`은 막대가 걸치는 열(숫자 `startCol`·`endCol`에서 계산한 `grid-column`) 하나뿐이다. 제출 문자열은 거기에 닿지 않는다.
-    const calendar = stripComments(readFileSync(withStyle[2], 'utf8'))
+    const calendar = stripComments(readFileSync(withStyle[3], 'utf8'))
     expect(calendar.match(/\bstyle=\{/g)).toHaveLength(1)
     expect(calendar).toContain('style={{ gridColumn: `${bar.startCol + 1} / ${bar.endCol + 2}` }}')
 
     // 타임라인의 `style`은 숫자 열·줄 번호로 만든 격자 위치(`placement(…)`)와 오늘 선의 `left` 비율 하나뿐이다. 제목 같은 제출 문자열은 거기에 닿지 않는다.
-    const timeline = stripComments(readFileSync(withStyle[1], 'utf8'))
+    const timeline = stripComments(readFileSync(withStyle[2], 'utf8'))
     const usages = timeline.match(/\bstyle=\{.{0,28}/g) ?? []
     expect(usages.length).toBeGreaterThan(0)
     for (const usage of usages) {

@@ -15,6 +15,7 @@ import type { ScheduleItemDetail } from '@/lib/admin/opsSchedule/itemDetail'
 import { describeBundleItem } from '@/lib/admin/opsSignals/composition'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import type { OpsItemDraft, OpsWorkspaceContext } from './OpsBundleWorkspace'
+import { OpsCardPreview } from './OpsCardPreview'
 import { OpsDrawerFrame } from './OpsDrawerFrame'
 import { OpsItemDetail } from './OpsItemDetail'
 import { OpsItemEditForm } from './OpsItemEditForm'
@@ -201,6 +202,7 @@ export function ReadyItemBody({ detail, item, includeSample, onRefresh, onOpenIt
         <OpsStatusBadge type="item" status={item.status} />
         {detail.isSample && <OpsStatusBadge type="sample" />}
       </div>
+      <OpsCardPreview item={item} draft={draft?.itemId === item.id ? draft.values : undefined} />
       <OpsItemDetail
         item={item}
         items={detail.items}

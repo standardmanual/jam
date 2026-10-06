@@ -5,9 +5,10 @@
  * 바꾼다), 나머지는 글자 그대로다. 바뀐 칸 계산은 서버와 같은 `computeEditDiff`를 쓰되 **칸마다 따로** 불러서, 한 칸이 틀려도
  * 다른 칸의 차이는 보이게 하고 틀린 칸에 문장을 붙인다.
  */
-import type { ViewableItem } from '@/lib/admin/opsInbox/itemView'
-import { OpsEditError, computeEditDiff, splitEditPath, type OpsEditDiffEntry } from '@/lib/admin/opsInbox/edit'
+import { asRecord, itemField, type ViewableItem } from '@/lib/admin/opsInbox/itemView'
+import { OpsEditError, computeEditDiff, isTimePath, splitEditPath, type OpsEditDiffEntry } from '@/lib/admin/opsInbox/edit'
 import { validateEditedColor } from '@/lib/admin/opsInbox/validate'
+import type { Json } from '@/types/database.generated'
 
 const KST_LOCAL_INPUT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
 
@@ -46,6 +47,26 @@ export function computeDraftDiff(item: ViewableItem, values: Record<string, unkn
     if (message) errors[entry.path] = message
   }
   return { diff, errors }
+}
+
+/**
+ * 저장 전 초안 값을 덮어쓴 항목(미리보기용, 티켓 20261006_1802). 저장하지 않고 화면에서만 쓴다.
+ * `copy.<키>`·`colors.<키>`는 지금 값 위에 키 단위로 덮고, 시각은 비어 있지 않은 값만 덮는다(시각 비우기는 받지 않는 칸이다).
+ * 문자열이 아닌 값과 그 밖의 경로는 무시한다. 입력 항목은 바꾸지 않는다.
+ */
+export function applyDraftToItem(item: ViewableItem, values: Readonly<Record<string, unknown>>): ViewableItem {
+  const next: Record<string, unknown> = { ...(asRecord(item.edited) ?? {}) }
+  for (const [path, value] of Object.entries(values)) {
+    if (typeof value !== 'string') continue
+    const parts = splitEditPath(path)
+    if (parts) {
+      const base = asRecord(next[parts.root]) ?? asRecord(itemField(item, parts.root)) ?? {}
+      next[parts.root] = { ...base, [parts.key]: value }
+    } else if (isTimePath(path) && value !== '') {
+      next[path] = value
+    }
+  }
+  return { original: item.original, edited: Object.keys(next).length === 0 ? null : (next as Json) }
 }
 
 /** 서버로 보낼 값: 바뀐 칸만 경로 → 새 값이다(시각은 UTC ISO 문자열). */

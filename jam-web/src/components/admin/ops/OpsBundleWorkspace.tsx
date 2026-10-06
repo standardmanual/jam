@@ -55,6 +55,7 @@ import {
   type OpsBundleBalance,
 } from '@/lib/admin/opsInbox/balance/view'
 import { OpsBalanceBundleNotice } from './OpsBalanceWarnings'
+import { OpsCardPreview } from './OpsCardPreview'
 import { OpsDrawerFrame } from './OpsDrawerFrame'
 import { OpsFormatErrorSummary } from './OpsFormatErrors'
 import { OpsItemDetail } from './OpsItemDetail'
@@ -296,7 +297,7 @@ export function OpsBundleWorkspace({
           </Tabs>
         </div>
 
-        {/* 미리보기 빈 틀(내용은 티켓 20260930_1501). 1열일 때 상세 다음에 온다. */}
+        {/* 카드 미리보기(티켓 20261006_1802). 1열일 때 상세 다음에 온다. */}
         <aside
           aria-label="미리보기"
           className={cn(
@@ -306,9 +307,11 @@ export function OpsBundleWorkspace({
         >
           <Card className="p-4">
             <h2 className="mb-3 text-sm font-semibold">미리보기</h2>
-            <div className="flex aspect-[9/16] w-full max-w-[14rem] items-start rounded-lg border-2 border-dashed border-muted-foreground/50 p-4 text-sm text-muted-foreground">
-              미리보기는 곧 열려요
-            </div>
+            {selectedItem ? (
+              <OpsCardPreview item={selectedItem} draft={draft?.itemId === selectedItem.id ? draft.values : undefined} />
+            ) : (
+              <p className="text-sm text-muted-foreground">항목을 고르면 미리보기가 보여요</p>
+            )}
           </Card>
         </aside>
 
