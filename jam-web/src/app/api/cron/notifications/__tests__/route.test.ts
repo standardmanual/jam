@@ -67,6 +67,20 @@ describe('GET /api/cron/notifications', () => {
     expect(runNotificationBatch).not.toHaveBeenCalled()
   })
 
+  it('CRON_SECRET이 비어 있으면 「Bearer undefined」를 보내도 401이고 배치를 돌리지 않는다 (P1 20260929_1636)', async () => {
+    delete process.env.CRON_SECRET
+    const res = await GET(requestWith('Bearer undefined'))
+    expect(res.status).toBe(401)
+    expect(runNotificationBatch).not.toHaveBeenCalled()
+  })
+
+  it('CRON_SECRET이 빈 문자열이어도 「Bearer 」를 보내면 401이다', async () => {
+    process.env.CRON_SECRET = ''
+    const res = await GET(requestWith('Bearer '))
+    expect(res.status).toBe(401)
+    expect(runNotificationBatch).not.toHaveBeenCalled()
+  })
+
   it('전 단계가 성공하면 200', async () => {
     runNotificationBatch.mockResolvedValue(result([step({}), step({ step: 'drop-spot', created: 0, drafts: 0 })]))
     const res = await GET(requestWith(`Bearer ${SECRET}`))

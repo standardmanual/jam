@@ -92,6 +92,22 @@ describe('인증', () => {
     expect(mocks.runDue).not.toHaveBeenCalled()
     expect(mocks.runBatch).not.toHaveBeenCalled()
   })
+
+  it('CRON_SECRET이 비어 있으면 「Bearer undefined」를 보내도 401이고 아무것도 처리하지 않는다 (P1 20260929_1636)', async () => {
+    delete process.env.CRON_SECRET
+    const res = await route.GET(request('Bearer undefined'))
+    expect(res.status).toBe(401)
+    expect(mocks.order).toEqual([])
+    expect(mocks.runDue).not.toHaveBeenCalled()
+    expect(mocks.runBatch).not.toHaveBeenCalled()
+  })
+
+  it('CRON_SECRET이 빈 문자열이어도 「Bearer 」를 보내면 401이다', async () => {
+    process.env.CRON_SECRET = ''
+    const res = await route.GET(request('Bearer '))
+    expect(res.status).toBe(401)
+    expect(mocks.order).toEqual([])
+  })
 })
 
 describe('날짜 예약 처리는 매일 배포 조건과 무관하다', () => {
