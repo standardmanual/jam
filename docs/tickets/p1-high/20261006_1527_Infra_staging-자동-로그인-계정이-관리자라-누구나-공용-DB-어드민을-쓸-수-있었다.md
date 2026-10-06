@@ -12,7 +12,7 @@ closed:
 ## 핵심 요약
 
 - 요구사항: stage.j-a-m.app의 자동 로그인 계정이 다시 관리자가 되지 못하게 코드로 막고, staging 어드민 확인에 기대던 문서·절차를 현재 상태로 고친다. 응급 조치(dev-tester `is_admin = false`)는 2026-10-06 15:12 KST에 했다.
-- 구현 계획: 착수 때 정한다. 후보: `hasAdminAccess()`가 `STAGING_MODE`에서 dev-login 계정(`DEV_USER_EMAIL`)을 관리자로 보지 않게 한다. staging 배포 보호(Vercel)를 켤지는 사용자 결정.
+- 구현 계획: 아래 「구현 계획」(파일 단위). 유형 `bug`. Vercel 배포 보호는 이번 범위가 아니다(사용자 결정 사항으로 남김).
 - 관련 파일: `jam-web/src/lib/admin/auth.ts`(`hasAdminAccess`), `jam-web/src/app/api/dev-login/route.ts`(`DEV_USER_EMAIL` 19행), `jam-web/src/proxy.ts`(89–91행 자동 로그인), `jam-web/supabase/migrations/seed_dev_tester_not_admin.sql`, `docs/specs/DEV_PROCESS_GUARDRAILS.md` 패턴 13
 
 ## 배경 / 문제 정의
@@ -20,6 +20,18 @@ closed:
 2026-10-06 `/jam-ship`(origin/main daf6db727 → 565c3067b) 5단계 병렬 점검(민지 모드 ② 3번 [보안/참고])에서 짚었고 카리나가 확인했다. 확인한 사실: dev-tester가 `users.is_admin = true`였다. jam-stage에는 Vercel 접근 보호가 없어 쿠키 없는 요청이 `/` → `/api/dev-login`(307)으로 가고 dev-tester의 Supabase 세션 쿠키를 받았다. 그 상태에서 `/admin` 대시보드가 열렸다. jam-stage에는 `ADMIN_EMAILS`가 없다. DB는 staging·프로덕션 공용이다.
 
 사용자 승인으로 15:12 KST에 `is_admin = false`로 바꿨고(seed 파일에 기록), 그 뒤 staging `/admin`은 `/forbidden`(「접근 권한 없음」)이다. 9월 중순부터 staging 어드민 미리보기(예: 온보딩 퀘스트 미리보기, 티켓 20260927_2123)가 이 자동 로그인에 기대어 왔으므로 그 확인 경로는 이제 쓸 수 없다.
+
+## 구현 계획
+
+> 2026-10-06 카리나 규모 사전 판정: 코드 2~3·테스트 1·문서 1파일, 약 100줄. 아래 표에 파일·함수·줄 위치가 있어 첫 호출부터 계획 반환 면제로 진행한다.
+
+| 경로 | 위치 | 변경 |
+|---|---|---|
+| `jam-web/src/lib/env/test-accounts.ts` | `TEST_ACCOUNT_USER_IDS` 25–34 | dev-login 계정의 user id(`00000000-0000-0000-0000-000000000001`)와 이메일(`dev-tester@jam.local`)을 이름 붙은 상수로 내보내고, 배열은 그 상수를 쓴다 |
+| `jam-web/src/app/api/dev-login/route.ts` | `DEV_USER_EMAIL` 19 | 위 공용 상수를 쓴다(하드코딩 위치 하나로) |
+| `jam-web/src/lib/admin/auth.ts` | `hasAdminAccess` 33–42 | 맨 앞에서 `STAGING_MODE === 'true'`이고 대상이 dev-login 계정(id 또는 이메일)이면 `false`. `ADMIN_EMAILS`·`users.is_admin`보다 먼저 본다. 로컬 개발(`NODE_ENV=development`, `STAGING_MODE` 없음)은 지금처럼 `ADMIN_EMAILS` 셸 변수로 관리자가 될 수 있다(패턴 13 유지). `isAdminAccount`(유저 일괄 처리의 자동 제외용)는 바꾸지 않는다 |
+| 새 `jam-web/src/lib/admin/__tests__/auth.test.ts` | — | staging + dev-login 계정 → `is_admin`이 참이거나 화이트리스트에 있어도 false(DB 조회 없이), 로컬(스테이징 아님) + 화이트리스트 → true, staging + 다른 관리자 → 기존 판정대로 true |
+| `docs/specs/DEV_PROCESS_GUARDRAILS.md` | 패턴 13 「반드시 지킬 것」 | 「staging에서는 자동 로그인 계정이 관리자가 될 수 없다(코드 차단, 티켓 20261006_1527)」 한 줄 |
 
 ## 완료 조건
 
