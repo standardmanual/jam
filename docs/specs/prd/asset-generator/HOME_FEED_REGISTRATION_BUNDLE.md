@@ -130,12 +130,12 @@ code:
 `title`·`template_type`·`starts_at`·`ends_at`)에 어드민 폼의 필수 검사(노출 조건 태그 1개 이상, `TodayCardForm.tsx`의 `collectMissing`)를
 더한 것이다. 어드민 생성 API(`api/admin/today/route.ts` POST)는 본문을 검증 없이 insert하므로 **API에는 재사용할 검증 함수가 없다.**
 규칙의 원천은 폼·`lib/admin/today-sections.ts` 상수·DB CHECK 제약이고, 허용값 목록은 그 상수에서 뽑는다(테스트가 DB CHECK
-마이그레이션 158·183과 대조한다). 이 규칙을 코드로 옮긴 원본은 `jam-web/src/lib/admin/registerChecks/homeFeedFields.ts`다(`bundleRules.ts`의 보조 함수를 쓴다).
+마이그레이션 158(노출 형태)·183(컨텐츠 유형)·217(템플릿)과 대조한다). 이 규칙을 코드로 옮긴 원본은 `jam-web/src/lib/admin/registerChecks/homeFeedFields.ts`다(`bundleRules.ts`의 보조 함수를 쓴다).
 
 | 필드 | 필수 | 형식 | 검증 규칙·기본값 |
 |---|---|---|---|
 | `title` | 필수 | 문자열 | 공백뿐이면 거절. 줄바꿈·제어 문자가 있으면 거절(`author`와 같은 이유). 앞뒤 공백은 잘라서 저장한다 |
-| `template_type` | 필수 | 문자열 | `badge_spotlight`·`progress_nudge`·`mission_spotlight`·`itembook_milestone`·`location_trend`·`drop_alert`·`editorial_article`·`ranking_board` 중 하나(`TODAY_TEMPLATE_OPTIONS`, DB CHECK) |
+| `template_type` | 필수 | 문자열 | `badge_spotlight`·`progress_nudge`·`mission_spotlight`·`itembook_milestone`·`location_trend`·`drop_alert`·`editorial_article`·`ranking_board`·`recipe_reveal` 중 하나(`TODAY_TEMPLATE_OPTIONS`, DB CHECK) |
 | `starts_at` | 필수 | ISO 8601 | 시간대가 붙어야 한다. 저장할 때 UTC ISO로 바꾼다(폼과 같다) |
 | `ends_at` | 필수 | ISO 8601 | 시간대가 붙어야 하고 `starts_at`보다 뒤여야 한다 |
 | `exposure_tags` | 필수 | 문자열 배열 | 1개 이상(항상 노출하려면 `["all"]`). `TODAY_EXPOSURE_TAG_OPTIONS`의 값만, 중복 없이 |
@@ -146,6 +146,7 @@ code:
 | `mission_id` | 선택 | UUID | `missions`에 있는지 DB를 읽어 확인한다 |
 | `item_book_id` | 선택 | UUID | `item_books`에 있는지 DB를 읽어 확인한다 |
 | `ranking_mode_id` | 선택 | UUID | `ranking_modes`에 있는지 DB를 읽어 확인한다 |
+| `recipe_id` | 선택 | UUID | `recipe_reveal`만 쓴다. `combination_recipes`에 있는지 DB를 읽어 확인한다(공개 전 레시피도 가리킬 수 있다. 마이그레이션 217, 티켓 20261006_1218) |
 | `region_label` | 선택 | 문자열 | 한 줄(예: `성수동`). 줄바꿈·제어 문자 거절 |
 | `body_markdown` | 선택 | 문자열 | 에디토리얼 기사 본문. 줄바꿈·탭은 허용하고 다른 제어 문자는 거절한다 |
 | `content_type_id` | 선택 | 문자열 | `T01`~`T17` 중 하나(`TODAY_CONTENT_TYPE_OPTIONS`, DB CHECK — 마이그레이션 183). 템플릿과 무관하게 붙일 수 있다 |
@@ -166,6 +167,7 @@ code:
 | `drop_alert` | 없음(이동 경로는 `/drops`로 고정) |
 | `editorial_article` | `body_markdown`, `mission_id`, `item_book_id`, `target_href`(본문 끝 CTA 버튼의 목적지) |
 | `ranking_board` | `ranking_mode_id`, `target_href` |
+| `recipe_reveal` | `recipe_id`, `target_href`(비우면 기본 `/combine`) |
 
 **꼭 있어야 하는 참조.** 어드민 폼은 참조를 강제하지 않지만, 자동 경로는 사람이 화면을 보며 채우지 않으므로 빈 카드가 실수로 등록되지
 않게 이 스크립트가 아래 규칙을 더했다(**스크립트 자체 규칙**이며 폼·DB에는 없다). 목록 중 하나 이상이 채워져 있어야 한다.
@@ -179,6 +181,7 @@ code:
 | `location_trend` | `region_label` |
 | `editorial_article` | `body_markdown` |
 | `ranking_board` | `ranking_mode_id` |
+| `recipe_reveal` | 없음(레시피 칸이 비어 있어도 카드가 그려진다 — 레시피 줄 없이) |
 | `drop_alert` | 없음 |
 
 스크립트가 정하는 값(묶음에서 받지 않는다): `id`, `cover_image_url`(`?v=` 캐시 무효화 쿼리 포함 — 홈피드의 대표 이미지 컬럼은 `image_url`이
@@ -217,7 +220,7 @@ code:
 | 제목(image.text) 줄바꿈·글자 수 초과 | `image.text: 제목은 줄바꿈 없이 한 줄이어야 해요(홈피드 프리셋 글자 수 가이드, asset-generator/PRD.md §8).` · `image.text: 홈피드 프리셋 글자 수 가이드를 넘어요 — 제목은 공백 포함 11자 이하여야 해요(받은 글자 수: 12, asset-generator/PRD.md §8).` |
 | 요약(image.subtext) 글자 수 초과·3줄 이상 | `image.subtext: 홈피드 프리셋 글자 수 가이드를 넘어요 — 1줄이면 공백 포함 22자 이하여야 해요(받은 글자 수: 23, asset-generator/PRD.md §8).` · `image.subtext: 홈피드 프리셋 글자 수 가이드를 넘어요 — 2줄이면 줄마다 공백 포함 15자 이하여야 해요(받은 줄 글자 수: 16 · 15, asset-generator/PRD.md §8).` · `image.subtext: 3줄 이상은 쓸 수 없어요(가능하면 1줄, 부득이할 때만 2줄로 나눠 주세요, asset-generator/PRD.md §8).` |
 | 제목·시작 일시 중복(DB 읽기) | `제목·시작 일시 중복: 같은 제목·같은 시작 일시의 카드가 이미 있어요(id: …). 기존 카드 갱신은 이 스크립트 범위 밖이라 중복으로 거절해요.` |
-| 참조 행 없음(DB 읽기) | `미션 존재: mission_id에 해당하는 미션이 없어요: <id>` (`컬렉션 존재`·`배지 존재`·`랭킹 모드 존재`도 같은 모양) |
+| 참조 행 없음(DB 읽기) | `미션 존재: mission_id에 해당하는 미션이 없어요: <id>` (`컬렉션 존재`·`배지 존재`·`랭킹 모드 존재`·`레시피 존재`도 같은 모양) |
 
 ## 5. 예시
 
@@ -316,7 +319,7 @@ node scripts/asset-generator/contrast.mjs --bg "#8a5a2e" --end "#3d2812"   # 흰
 텍스트·WebP 변환 결과), DB 읽기 검사, 등록 예정 내용, 되돌림 SQL 미리보기. 종료 코드는 통과 0, 실패 1이다.
 
 - **쓰기를 하지 않는다.** 업로드·insert·삭제·기록 파일 생성 없이 메모리에서 WebP 변환만 해 본다.
-- **DB 읽기 검사**(제목·시작 일시 중복, 그리고 묶음이 채운 참조에 한해 미션·컬렉션·배지·랭킹 모드 존재)는 서비스 키가 있을 때만
+- **DB 읽기 검사**(제목·시작 일시 중복, 그리고 묶음이 채운 참조에 한해 미션·컬렉션·배지·랭킹 모드·레시피 존재)는 서비스 키가 있을 때만
   읽기 전용으로 돌리고, 키가 없으면 «건너뜀»으로 표시한다. 그래서 키가 없는 환경(격리 워크트리 등)에서도 로컬 검증만으로 통과·실패가
   나온다. 참조가 없는 항목은 «해당 없음»이다.
   건너뜀이 있으면 요약 첫 줄이 `결과: 통과 (DB 읽기 검사는 건너뜀 — 서비스 키 없음)`으로 나오고 바로 아래에 «컨펌 근거로 쓰지 말고 키가 있는 환경(메인 폴더)에서 다시 돌리라»는 안내가 붙는다(배지 등록과 같다).

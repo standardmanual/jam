@@ -321,16 +321,17 @@ describe('runHomeFeedDbChecks', () => {
     item_book_id: ID_B,
     badge_ids: [ID_A],
     ranking_mode_id: ID_B,
+    recipe_id: ID_A,
   }
 
-  it('통과: 다섯 검사를 이 순서로 읽는다(제목·시작 일시는 둘 다 eq로 건다)', async () => {
+  it('통과: 여섯 검사를 이 순서로 읽는다(제목·시작 일시는 둘 다 eq로 건다)', async () => {
     const { client, entries } = createStub((e) => {
       if (e.table === 'badges') return { data: [{ id: ID_A }] }
       return allPresent(e)
     })
     const result = await runHomeFeedDbChecks({ supabase: client, payload })
-    expect(statuses(result)).toEqual(['통과', '통과', '통과', '통과', '통과'])
-    expect(entries.map((e) => e.table)).toEqual(['today_cards', 'missions', 'item_books', 'badges', 'ranking_modes'])
+    expect(statuses(result)).toEqual(['통과', '통과', '통과', '통과', '통과', '통과'])
+    expect(entries.map((e) => e.table)).toEqual(['today_cards', 'missions', 'item_books', 'badges', 'ranking_modes', 'combination_recipes'])
     expect(entries[0].filters).toEqual([
       ['eq', 'title', '카드'],
       ['eq', 'starts_at', '2026-10-02T00:00:00.000Z'],
@@ -354,8 +355,22 @@ describe('runHomeFeedDbChecks', () => {
       `item_book_id에 해당하는 컬렉션이 없어요: ${ID_B}`,
       `badge_ids에 해당하는 배지가 없거나 삭제됐어요: ${ID_A}`,
       `ranking_mode_id에 해당하는 랭킹 모드가 없어요: ${ID_B}`,
+      `recipe_id에 해당하는 레시피가 없어요: ${ID_A}`,
     ])
-    expect(missing.errors).toHaveLength(4)
+    expect(missing.errors).toHaveLength(5)
+  })
+
+  it('레시피 존재는 recipe_id가 있을 때만 읽고, 공개 전 레시피여도 있으면 통과한다(공개 순서를 보지 않는다)', async () => {
+    const withoutRecipe = createStub(allPresent)
+    const noRecipe = await runHomeFeedDbChecks({ supabase: withoutRecipe.client, payload: { title: '카드', starts_at: 's', badge_ids: [] } })
+    expect(noRecipe.checks.at(-1)).toMatchObject({ label: '레시피 존재', status: '해당 없음' })
+    expect(withoutRecipe.entries.map((e) => e.table)).toEqual(['today_cards'])
+
+    const withRecipe = createStub(allPresent)
+    const result = await runHomeFeedDbChecks({ supabase: withRecipe.client, payload: { title: '카드', starts_at: 's', badge_ids: [], recipe_id: ID_A } })
+    expect(result.checks.at(-1)).toMatchObject({ label: '레시피 존재', status: '통과' })
+    expect(withRecipe.entries.at(-1)).toMatchObject({ table: 'combination_recipes', columns: 'id' })
+    expect(withRecipe.entries.at(-1)?.filters).toEqual([['eq', 'id', ID_A]])
   })
 
   it('조회 오류: 던져진 예외를 «DB 조회에 실패했어요»로 기록한다', async () => {

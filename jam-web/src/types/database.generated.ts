@@ -2302,6 +2302,7 @@ export type Database = {
           mission_id: string | null
           pattern_no: string | null
           ranking_mode_id: string | null
+          recipe_id: string | null
           region_label: string | null
           shape: string | null
           sort_order: number
@@ -2330,6 +2331,7 @@ export type Database = {
           mission_id?: string | null
           pattern_no?: string | null
           ranking_mode_id?: string | null
+          recipe_id?: string | null
           region_label?: string | null
           shape?: string | null
           sort_order?: number
@@ -2358,6 +2360,7 @@ export type Database = {
           mission_id?: string | null
           pattern_no?: string | null
           ranking_mode_id?: string | null
+          recipe_id?: string | null
           region_label?: string | null
           shape?: string | null
           sort_order?: number
@@ -2395,6 +2398,13 @@ export type Database = {
             columns: ["ranking_mode_id"]
             isOneToOne: false
             referencedRelation: "ranking_modes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "today_cards_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "combination_recipes"
             referencedColumns: ["id"]
           },
         ]

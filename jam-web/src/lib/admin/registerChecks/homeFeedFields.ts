@@ -55,6 +55,7 @@ export const CARD_OPTIONAL_FIELDS = [
   'region_label',
   'body_markdown',
   'ranking_mode_id',
+  'recipe_id',
   'content_type_id',
   'target_href',
   'sort_order',
@@ -80,6 +81,7 @@ export const TEMPLATE_FIELD_KEY = {
   body_markdown: 'body',
   description: 'description',
   ranking_mode_id: 'rankingMode',
+  recipe_id: 'recipe',
   target_href: 'targetHref',
 } satisfies Record<string, keyof TodayTemplateFields>
 
@@ -97,7 +99,7 @@ export const REQUIRED_REFERENCE_FIELDS: Record<TodayCardTemplateType, string[]> 
   drop_alert: [],
   editorial_article: ['body_markdown'],
   ranking_board: ['ranking_mode_id'],
-  // 필수 참조 없음 — 레시피 칸(`recipe_id`)이 비어 있어도 카드가 그려진다(레시피 줄 없이). 칸 자체는 ⑫-b(티켓 20261006_1218)가 만든다.
+  // 필수 참조 없음 — 레시피 칸(`recipe_id`)이 비어 있어도 카드가 그려진다(레시피 줄 없이, 티켓 20261006_1218).
   recipe_reveal: [],
 }
 
@@ -213,7 +215,7 @@ export function validateCard(errors: string[], input: unknown): void {
       errors.push('card.badge_ids: 같은 배지를 두 번 넣을 수 없어요.')
     }
   }
-  for (const key of ['mission_id', 'item_book_id', 'ranking_mode_id']) checkUuidField(errors, key, card[key])
+  for (const key of ['mission_id', 'item_book_id', 'ranking_mode_id', 'recipe_id']) checkUuidField(errors, key, card[key])
 
   if (isPresent(card.body_markdown)) {
     if (!isNonEmptyString(card.body_markdown)) errors.push('card.body_markdown: 비어 있지 않은 문자열이어야 해요.')
@@ -276,6 +278,7 @@ export interface HomeFeedCardInput {
   region_label?: string | null
   body_markdown?: string | null
   ranking_mode_id?: string | null
+  recipe_id?: string | null
   content_type_id?: string | null
   target_href?: string | null
   exposure_tags: string[]
@@ -331,6 +334,7 @@ export function buildTodayCardInsertPayload(
     region_label: card.region_label?.trim() || null,
     body_markdown: card.body_markdown || null,
     ranking_mode_id: card.ranking_mode_id ?? null,
+    recipe_id: card.recipe_id ?? null,
     content_type_id: card.content_type_id ?? null,
     target_href: card.target_href ?? null,
     exposure_tags: card.exposure_tags,

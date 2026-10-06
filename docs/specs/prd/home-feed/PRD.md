@@ -174,7 +174,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | `drop_alert` | 드랍 유도 (drop_alert) | 바로가기형 — 이미지 없는 짧은 CTA | 설명문 |
 | `editorial_article` | 에디토리얼 기사 (editorial_article) | 큰 썸네일형 — 커버 이미지 크게 | 본문·미션·컬렉션·이동경로(target_href) |
 | `ranking_board` | 랭킹보드 (ranking_board) | 순위 리스트형 — 랭킹보드 목록(포디엄 없음) | 설명문·랭킹모드·이동경로(target_href) |
-| `recipe_reveal` | 레시피 공개 (recipe_reveal) | 배지목록형 — 배지 갤러리/리스트 | 설명문 |
+| `recipe_reveal` | 레시피 공개 (recipe_reveal) | 배지목록형 — 배지 갤러리/리스트 | 설명문·레시피·이동경로(target_href) |
 <!-- END generated: templates -->
 
 컨텐츠 유형 카탈로그(`TODAY_CONTENT_TYPE_OPTIONS`, PRD `content-automation/PRD.md` §6과 같은 값):

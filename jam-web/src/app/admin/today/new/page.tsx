@@ -3,6 +3,7 @@ import Link from 'next/link'
 import TodayCardForm from '../TodayCardForm'
 import { normalizeDateParam } from '@/lib/admin/today-calendar'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
+import { TODAY_RECIPE_OPTION_COLUMNS, toTodayRecipeOptions, type TodayRecipeOptionRow } from '@/lib/admin/todayRecipeOptions'
 
 interface NewTodayCardPageProps {
   searchParams: Promise<{ date?: SearchParamValue }>
@@ -18,14 +19,16 @@ interface NewTodayCardPageProps {
 export default async function NewTodayCardPage({ searchParams }: NewTodayCardPageProps) {
   const date = normalizeDateParam(singleQueryParam((await searchParams).date))
   const supabase = createServiceClient()
-  const [{ data: missionsRaw }, { data: booksRaw }, { data: rankingModesRaw }] = await Promise.all([
+  const [{ data: missionsRaw }, { data: booksRaw }, { data: rankingModesRaw }, { data: recipesRaw }] = await Promise.all([
     supabase.from('missions').select('id, title').order('created_at', { ascending: false }),
     supabase.from('item_books').select('id, name').order('name'),
     supabase.from('ranking_modes').select('id, title').order('title'),
+    supabase.from('combination_recipes').select(TODAY_RECIPE_OPTION_COLUMNS).order('created_at', { ascending: false }),
   ])
   const missions = (missionsRaw ?? []) as { id: string; title: string }[]
   const itemBooks = (booksRaw ?? []) as { id: string; name: string }[]
   const rankingModes = (rankingModesRaw ?? []) as { id: string; title: string }[]
+  const recipes = toTodayRecipeOptions((recipesRaw ?? []) as TodayRecipeOptionRow[])
 
   return (
     <div className="p-4 md:p-8">
@@ -34,6 +37,7 @@ export default async function NewTodayCardPage({ searchParams }: NewTodayCardPag
         missions={missions}
         itemBooks={itemBooks}
         rankingModes={rankingModes}
+        recipes={recipes}
         badgeLabels={[]}
         initialDate={date}
         returnDate={date}

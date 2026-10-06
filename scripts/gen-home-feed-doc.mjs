@@ -93,6 +93,7 @@ const FIELD_LABELS = {
   body: '본문',
   description: '설명문',
   rankingMode: '랭킹모드',
+  recipe: '레시피',
   targetHref: '이동경로(target_href)',
 }
 
