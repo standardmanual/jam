@@ -1647,7 +1647,7 @@ stateDiagram-v2
 입력 읽기는 `jam-web/src/lib/admin/itemPaths/load.ts`(`loadItemPathInputs`), 라우트(`jam-web/src/app/api/admin/item-paths/route.ts`)는 인증·쿼리·쪽 나누기·응답만 맡는다. ⑬ 화면(S6)과 에이전트가 쓴다.
 `compute.ts`는 서버 전용 모듈(`lib/missions/checker.ts`)을 값으로 가져오므로 서버(라우트·서버 컴포넌트)에서만 부르고, 클라이언트 컴포넌트가 값으로 가져오지 않는다.
 
-- **인증:** 관리자 세션 또는 어드민 읽기 토큰(`requireAdminRead`, GET 전용). **쓰기 메서드는 두지 않는다**(토큰으로 POST하면 세션 검사로 넘어가 403이다).
+- **인증:** 관리자 세션 또는 어드민 읽기 토큰(`requireAdminRead`, GET 전용). **쓰기 메서드는 두지 않는다**(라우트는 `GET`만 내보낸다).
 - **읽는 범위** (`load.ts`):
   - 컬렉션(`item_books`): **공개된 것 전부**다 — 활성이고 시작 시각이 지난 것(`applyLaunchedItemBookFilter`). **기간이 끝난 컬렉션도 싣는다**(막힘을 찾는 것이 목적이다). 비활성·공개 전 컬렉션은 읽지 않는다.
   - 아이템 배지(`badges`, `type = 'item'`): 위 컬렉션에 속하고 소프트 삭제되지 않은 것. 3,600개가 넘어 1,000행 쪽 읽기(`fetchAllRows`)로 끝까지 읽는다.
