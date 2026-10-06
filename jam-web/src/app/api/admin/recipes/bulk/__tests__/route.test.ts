@@ -13,8 +13,8 @@ const RECIPE_A = '00000000-0000-4000-8000-000000000001'
 const RECIPE_B = '00000000-0000-4000-8000-000000000002'
 
 const state = vi.hoisted(() => ({
-  /** 이름 조회에서 존재하는 레시피 — `noticeTotal`은 그 레시피를 가리키는 홈 카드 수 */
-  candidates: [] as { id: string; name: string | null; total: number; noticeTotal: number }[],
+  /** 이름 조회에서 존재하는 레시피 — `noticeTotal`은 그 레시피를 가리키는 홈 카드 수(전체를 한 번에 센 경우는 null) */
+  candidates: [] as { id: string; name: string | null; total: number; noticeTotal: number | null }[],
   /** 막힌 레시피가 없을 때 전체를 한 번에 센 홈 카드 수(막힌 레시피가 있으면 null) */
   allNoticeTotal: null as number | null,
   /** 값이 있으면 후보 조회가 이 오류를 돌려준다 */
@@ -85,8 +85,8 @@ function post(body: unknown): NextRequest {
 
 beforeEach(() => {
   state.candidates = [
-    { id: RECIPE_A, name: '믹스 A', total: 0, noticeTotal: 0 },
-    { id: RECIPE_B, name: '믹스 B', total: 0, noticeTotal: 0 },
+    { id: RECIPE_A, name: '믹스 A', total: 0, noticeTotal: null },
+    { id: RECIPE_B, name: '믹스 B', total: 0, noticeTotal: null },
   ]
   state.allNoticeTotal = 0
   state.lookupError = null
@@ -193,6 +193,22 @@ describe('삭제 미리보기(dry_run) — impact.cardCount', () => {
 
   it('참조를 읽지 못하면 500으로 막는다(카드 0장이라 오판하지 않는다)', async () => {
     state.lookupError = 'connection reset'
+
+    const res = await POST(post({ ids: [RECIPE_A, RECIPE_B], action: 'delete', dry_run: true }))
+
+    expect(res.status).toBe(500)
+    const data = await res.json()
+    expect(data.error).toContain('이력 조회 중 오류가 발생했어요')
+    expect(data.impact).toBeUndefined()
+    expect(state.deleteCalls).toBe(0)
+  })
+
+  it('전체를 세지 않았는데 삭제 대상의 후보별 카드 수가 null이면 0장으로 더하지 않고 500으로 막는다(티켓 20261006_1427)', async () => {
+    state.candidates = [
+      { id: RECIPE_A, name: '믹스 A', total: 0, noticeTotal: null },
+      { id: RECIPE_B, name: '믹스 B', total: 1, noticeTotal: 5 },
+    ]
+    state.allNoticeTotal = null
 
     const res = await POST(post({ ids: [RECIPE_A, RECIPE_B], action: 'delete', dry_run: true }))
 
