@@ -95,74 +95,91 @@ const SIGNAL_LEVEL_CHIPS: Record<OpsSignalLevel, { tone: Tone; Icon: OpsIcon }> 
   info: { tone: 'neutral', Icon: IconInfoCircle },
 }
 
-export function Chip({ tone, Icon, className, children }: { tone: Tone; Icon: OpsIcon; className?: string; children: string }) {
+/**
+ * 칩 하나. `iconOnly`면 아이콘만 보이고 글자는 `sr-only`로 남긴다(좁은 월간 칸·타임라인 막대, 티켓 20261006_1538 ③-c — 뜻은 범례 `OpsStatusLegend`가 알려 준다).
+ * 글자가 화면 읽기에서 빠지지 않으므로 아이콘만 보여도 색·모양에만 기대지 않는다.
+ */
+export function Chip({
+  tone,
+  Icon,
+  className,
+  iconOnly = false,
+  children,
+}: {
+  tone: Tone
+  Icon: OpsIcon
+  className?: string
+  iconOnly?: boolean
+  children: string
+}) {
   return (
-    <span className={cn(CHIP, TONE[tone], className)}>
+    <span className={cn(CHIP, TONE[tone], iconOnly && 'gap-0 px-1.5 py-1', className)}>
       <Icon className="size-3.5 shrink-0" aria-hidden="true" />
-      {children}
+      {iconOnly ? <span className="sr-only">{children}</span> : children}
     </span>
   )
 }
 
-export function OpsStatusBadge(props: OpsStatusBadgeProps & { className?: string }) {
-  const { className } = props
+/** `iconOnly`는 모든 종류에 쓴다: 아이콘만 그리고 글자는 화면 읽기용으로 남긴다. */
+export function OpsStatusBadge(props: OpsStatusBadgeProps & { className?: string; iconOnly?: boolean }) {
+  const { className, iconOnly } = props
   switch (props.type) {
     case 'item': {
       if (!KNOWN_STATUSES.has(props.status)) {
         return (
-          <Chip tone="muted" Icon={IconAlertTriangle} className={className}>
+          <Chip tone="muted" Icon={IconAlertTriangle} className={className} iconOnly={iconOnly}>
             상태 확인 필요
           </Chip>
         )
       }
       const status = props.status as OpsItemStatus
       return (
-        <Chip tone={ITEM_STATUS_TONES[status]} Icon={OPS_ITEM_STATUS_ICONS[status]} className={className}>
+        <Chip tone={ITEM_STATUS_TONES[status]} Icon={OPS_ITEM_STATUS_ICONS[status]} className={className} iconOnly={iconOnly}>
           {OPS_ITEM_STATUS_LABELS[status]}
         </Chip>
       )
     }
     case 'stage':
       return (
-        <Chip tone={BUNDLE_STAGE_TONES[props.stage]} Icon={OPS_BUNDLE_STAGE_ICONS[props.stage]} className={className}>
+        <Chip tone={BUNDLE_STAGE_TONES[props.stage]} Icon={OPS_BUNDLE_STAGE_ICONS[props.stage]} className={className} iconOnly={iconOnly}>
           {OPS_BUNDLE_STAGE_LABELS[props.stage]}
         </Chip>
       )
     case 'partial-failure':
       return (
-        <Chip tone="destructive" Icon={IconAlertTriangle} className={className}>
+        <Chip tone="destructive" Icon={IconAlertTriangle} className={className} iconOnly={iconOnly}>
           일부 실패
         </Chip>
       )
     case 'format-errors':
       return (
-        <Chip tone="warning" Icon={IconAlertTriangle} className={className}>
+        <Chip tone="warning" Icon={IconAlertTriangle} className={className} iconOnly={iconOnly}>
           {props.short ? `${props.count}건` : `형식 오류 ${props.count}`}
         </Chip>
       )
     case 'sample':
       return (
-        <Chip tone="neutral" Icon={IconFlask2} className={className}>
+        <Chip tone="neutral" Icon={IconFlask2} className={className} iconOnly={iconOnly}>
           시험
         </Chip>
       )
     case 'balance':
       return (
-        <Chip tone={props.level === 'warn' ? 'warning' : 'neutral'} Icon={IconScale} className={className}>
+        <Chip tone={props.level === 'warn' ? 'warning' : 'neutral'} Icon={IconScale} className={className} iconOnly={iconOnly}>
           {balanceRowChipLabel(props.level, props.count)}
         </Chip>
       )
     case 'signal': {
       const chip = SIGNAL_LEVEL_CHIPS[props.level]
       return (
-        <Chip tone={chip.tone} Icon={chip.Icon} className={className}>
+        <Chip tone={chip.tone} Icon={chip.Icon} className={className} iconOnly={iconOnly}>
           {OPS_SIGNAL_LEVEL_LABELS[props.level]}
         </Chip>
       )
     }
     case 'signal-unchecked':
       return (
-        <Chip tone="muted" Icon={IconQuestionMark} className={cn('border-dashed', className)}>
+        <Chip tone="muted" Icon={IconQuestionMark} className={cn('border-dashed', className)} iconOnly={iconOnly}>
           {OPS_SIGNAL_UNCHECKED_TEXT[props.reason].label}
         </Chip>
       )

@@ -7,6 +7,7 @@
  * - 출처마다 격리: 카드·미션·날짜 구성·신호·노출 수 중 하나가 실패해도 나머지는 그대로 그리고 실패는 `sourceErrors`에 남는다
  * - 카드를 못 읽으면 「없다」가 아니라 읽지 못한 것이다(주간 보기에 실제 카드·장기 카드 줄이 비고 운영 항목은 그대로)
  * - 노출·열람 수는 오늘 이전(포함)에 시작하는 주에서만 읽는다
+ * - 월간(티켓 20261006_1538 ③-c): 달력 기간 전체를 같은 방식으로 읽고, 출처마다 격리하며, 노출·열람 수는 읽지 않는다
  */
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 
@@ -123,7 +124,7 @@ vi.mock('@/lib/admin/weeklyCardMetrics', async (importOriginal) => ({
   fetchFirstEventKstDate: vi.fn(async () => (h.state.firstEvent ? h.state.firstEvent() : '2026-09-01')),
 }))
 
-import { loadScheduleWeek } from '@/lib/admin/opsSchedule/load'
+import { loadScheduleMonth, loadScheduleWeek } from '@/lib/admin/opsSchedule/load'
 import { buildDayCompositions } from '@/lib/admin/opsSignals/composition'
 import { makeBundle, makeCard, makeItem, kst } from '@/lib/admin/opsSignals/__tests__/fixtures'
 import { shiftDateStr } from '@/lib/admin/today-calendar'
@@ -318,5 +319,72 @@ describe('loadScheduleWeek — 카드 노출·열람 수', () => {
     const { week, sourceErrors } = await loadScheduleWeek({ weekStart: WEEK_START, includeSample: false, now: NOW })
     expect(sourceErrors.metrics).toBeDefined()
     expect(week.days[1].items.map((item) => [item.drawerKey, item.note])).toEqual([['item-x', null], ['card:short-1', null]])
+  })
+})
+
+describe('loadScheduleMonth — 월간 달력 읽기(티켓 20261006_1538 ③-c)', () => {
+  const MONTH_DATE = '2026-10-15'
+  const MONTH_DATES = Array.from({ length: 35 }, (_, index) => shiftDateStr('2026-09-28', index))
+
+  function monthComposed(bundles = [makeBundle([makeItem({ id: 'item-m', startsAt: kst('2026-10-14', '09:00') })])]) {
+    return {
+      bundles,
+      compositions: buildDayCompositions({ cards: [], missions: [], bundles }, MONTH_DATES),
+      sourceErrors: {} as Record<string, string>,
+    }
+  }
+
+  beforeEach(() => {
+    h.state.compositions = () => monthComposed()
+  })
+
+  it('select 계열만 부르고 달력 기간(9/28~11/1) 전체를 읽는다', async () => {
+    const { loadDayCompositions } = await import('@/lib/admin/opsSignals/load')
+    const { month, sourceErrors } = await loadScheduleMonth({ date: MONTH_DATE, includeSample: true, now: NOW })
+    expect(h.state.calls.length).toBeGreaterThan(0)
+    expect(h.state.calls.filter((call) => /\.(insert|update|upsert|delete)$/.test(call))).toEqual([])
+    expect(loadDayCompositions).toHaveBeenLastCalledWith({ from: '2026-09-28', to: '2026-11-01', includeSample: true })
+    const cards = h.state.selects.find((entry) => entry.table === 'today_cards')!
+    expect(cards.filters).toContain(`gte:ends_at:${new Date('2026-09-27T15:00:00.000Z').toISOString()}`)
+    expect(cards.filters).toContain(`lte:starts_at:${new Date('2026-11-01T14:59:59.999Z').toISOString()}`)
+    expect(month.days).toHaveLength(35)
+    expect(sourceErrors).toEqual({})
+  })
+
+  it('운영 항목은 시작일 칸에 한 번만 나오고 시험 포함 여부를 신호 읽기에 그대로 넘긴다', async () => {
+    const { loadOpsSignals } = await import('@/lib/admin/opsSignals/load')
+    const { month } = await loadScheduleMonth({ date: MONTH_DATE, includeSample: false, now: NOW })
+    expect(month.days.flatMap((day) => day.items).map((item) => [item.drawerKey, item.time])).toEqual([['item-m', '09:00']])
+    expect(loadOpsSignals).toHaveBeenLastCalledWith(expect.objectContaining({ includeSample: false }))
+  })
+
+  it('카드 노출·열람 수는 읽지 않는다(한 줄 칸에는 보이지 않는다)', async () => {
+    h.state.tables.today_cards = [card('short-1', kst('2026-10-06', '09:00'), kst('2026-10-06', '21:00'))]
+    await loadScheduleMonth({ date: MONTH_DATE, includeSample: false, now: NOW })
+    expect(h.state.metricCalls).toEqual([])
+  })
+
+  it('카드를 못 읽으면 사유가 남고 운영 항목은 그대로 나온다(없다고 단정하지 않는다)', async () => {
+    h.state.errors.today_cards = '카드 조회 실패(시험)'
+    const { month, sourceErrors } = await loadScheduleMonth({ date: MONTH_DATE, includeSample: false, now: NOW })
+    expect(sourceErrors.cards).toContain('카드 조회 실패(시험)')
+    expect(sourceErrors.missions).toBeUndefined()
+    expect(month.days.flatMap((day) => day.items).map((item) => item.drawerKey)).toEqual(['item-m'])
+  })
+
+  it('날짜 구성이 읽다 실패한 재료도 같은 이름으로 남고, 신호 계산이 던지면 칸 신호가 null이다', async () => {
+    h.state.compositions = () => ({ ...monthComposed([]), bundles: null, sourceErrors: { bundles: '묶음 조회 실패(시험)' } })
+    h.state.signals = null
+    const { month, sourceErrors } = await loadScheduleMonth({ date: MONTH_DATE, includeSample: false, now: NOW })
+    expect(sourceErrors.bundles).toContain('묶음 조회 실패(시험)')
+    expect(sourceErrors.signals).toBeDefined()
+    expect(month.days.every((day) => day.signals === null)).toBe(true)
+  })
+
+  it('신호는 달력 날짜마다 붙는다(확인 기간 안은 checked)', async () => {
+    h.state.signals = () => ({ ...signals(), scanDates: ['2026-10-07'], signals: [] })
+    const { month } = await loadScheduleMonth({ date: MONTH_DATE, includeSample: false, now: NOW })
+    expect(month.days.find((day) => day.date === '2026-10-07')!.signals).toMatchObject({ checked: true, count: 0 })
+    expect(month.days.find((day) => day.date === '2026-10-20')!.signals).toMatchObject({ checked: false, count: 0 })
   })
 })

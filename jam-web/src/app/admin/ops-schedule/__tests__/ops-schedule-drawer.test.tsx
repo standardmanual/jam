@@ -14,7 +14,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { Suspense, isValidElement, type ReactElement, type ReactNode } from 'react'
+import { Suspense, isValidElement, type ComponentProps, type ReactElement, type ReactNode } from 'react'
 
 const hoisted = vi.hoisted(() => ({ search: '' }))
 
@@ -95,9 +95,9 @@ function week(): ScheduleWeek {
   return { weekStart: WEEK_START, weekEnd: '2026-10-11', days, missionBars: [], openEndedMissionCount: 0, contentCount: 2 }
 }
 
-function board(search: string): string {
+function board(search: string, sourceErrors: ComponentProps<typeof OpsScheduleBoard>['sourceErrors'] = {}): string {
   hoisted.search = search
-  return renderToStaticMarkup(<OpsScheduleBoard week={week()} sourceErrors={{}} />)
+  return renderToStaticMarkup(<OpsScheduleBoard week={week()} sourceErrors={sourceErrors} />)
 }
 
 const WIDE_GRID = '@[68rem]:grid-cols-[minmax(0,1fr)_28rem]'
@@ -168,6 +168,32 @@ describe('날짜 서랍(?drawer=day&date=)', () => {
     const markup = out()
     expect(markup).toContain('서랍 닫기')
     expect(markup).toContain('항목 2개')
+  })
+})
+
+describe('날짜 서랍 — 항목이 0개일 때 못 읽은 재료를 「없다」고 하지 않는다(③-b에서 넘어온 조건, 티켓 20261006_1538)', () => {
+  const empty = (sourceErrors: ComponentProps<typeof OpsScheduleBoard>['sourceErrors']) => board('view=week&date=2026-10-08&drawer=day', sourceErrors)
+
+  it('모두 읽었으면 「이 날짜에는 올라온 항목이 없어요」이다', () => {
+    const markup = empty({})
+    expect(markup).toContain('이 날짜에는 올라온 항목이 없어요')
+    expect(markup).not.toContain('일부 항목을 읽지 못해')
+  })
+
+  it('카드·미션·묶음 중 하나라도 못 읽었으면 「일부 항목을 읽지 못해 빠져 있을 수 있어요」만 보이고 「없어요」 단정은 없다', () => {
+    for (const source of ['cards', 'missions', 'bundles'] as const) {
+      const markup = empty({ [source]: '읽기 실패' })
+      expect(markup, source).toContain('일부 항목을 읽지 못해 빠져 있을 수 있어요')
+      expect(markup, source).not.toContain('올라온 항목이 없어요')
+      expect(markup, source).not.toContain('항목 0개')
+    }
+  })
+
+  it('항목이 있는 날짜는 못 읽은 재료가 있어도 항목 목록과 안내가 함께 보인다', () => {
+    const markup = board('view=week&date=2026-10-06&drawer=day', { cards: '읽기 실패' })
+    expect(markup).toContain('항목 2개')
+    expect(markup).toContain('일부 항목을 읽지 못해 빠져 있을 수 있어요')
+    expect(markup).toContain('운영 카드')
   })
 })
 

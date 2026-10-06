@@ -6,16 +6,24 @@ import { Card } from '@/components/admin/ui/card'
 import { OpsSectionNotice } from '@/components/admin/ops/OpsSectionNotice'
 import { scheduleHref } from '@/lib/admin/opsHome/links'
 import { periodOf, type ScheduleParams } from '@/lib/admin/opsSchedule/params'
-import { loadScheduleWeek, type LoadedScheduleWeek, type ScheduleWeekSource } from '@/lib/admin/opsSchedule/load'
+import {
+  loadScheduleMonth,
+  loadScheduleWeek,
+  type LoadedScheduleMonth,
+  type LoadedScheduleWeek,
+  type ScheduleSource,
+  type ScheduleSourceErrors,
+} from '@/lib/admin/opsSchedule/load'
+import { loadScheduleTimeline, type LoadedScheduleTimeline } from '@/lib/admin/opsSchedule/timelineLoad'
 import { todayKstDateString } from '@/lib/admin/today-calendar'
 import { OpsScheduleBoard } from './OpsScheduleBoard'
 
 /**
- * 일정표의 본문 (티켓 20261006_1536 ③-a, 상위 20260930_1502 「채원 S1·S4 사전 판정」 S4 「상태」). 보기별로 읽어 그린다 — ③-a는 주간 보기뿐이다.
+ * 일정표의 본문 (티켓 20261006_1536 ③-a, 상위 20260930_1502 「채원 S1·S4 사전 판정」 S4 「상태」). 보기별로 읽어 그린다 — 주간(③-a)·월간·타임라인(티켓 20261006_1538 ③-c).
  *
- * 재료(카드·미션·운영 항목·신호·카드 노출 수)는 출처마다 격리해 읽는다. 일부만 못 읽으면 달력은 그대로 그리고 위에 「…를 읽지 못해 빠져 있어요」를 알린다 —
+ * 재료(카드·미션·운영 항목·신호·카드 노출 수, 타임라인은 드랍 일정·컬렉션·준비 기간 규칙도)는 출처마다 격리해 읽는다. 일부만 못 읽으면 달력은 그대로 그리고 위에 「…를 읽지 못해 빠져 있어요」를 알린다 —
  * 못 읽은 것을 「없다」·「미편성」으로 단정하지 않는다. 카드·미션·운영 항목을 **모두** 못 읽으면 본문은 안내 카드 하나다.
- * 기간에 올라온 항목이 하나도 없고 못 읽은 재료도 없을 때만 「이 기간에는 올라온 항목이 없어요」를 알린다(달력은 그대로 보인다 — 자동 실행 줄이 있다).
+ * 기간에 올라온 항목이 하나도 없고 못 읽은 재료도 없을 때만 「이 기간에는 올라온 항목이 없어요」를 알린다(달력은 그대로 보인다 — 주간은 자동 실행 줄이, 월간·타임라인은 칸 틀이 있다).
  *
  * 읽기는 `try/catch`로 감싸고 JSX는 그 밖에서 만든다(`react-hooks/error-boundaries`가 `try` 안의 JSX를 막는다).
  *
@@ -29,22 +37,79 @@ export const SCHEDULE_EMPTY_TITLE = '이 기간에는 올라온 항목이 없어
 export const SCHEDULE_TO_TODAY_LABEL = '오늘로 이동'
 
 /** 못 읽은 재료마다의 안내 문장. 카드를 못 읽었을 때 「미편성」으로 단정하지 않는다. */
-export const SCHEDULE_SOURCE_NOTICES: Record<ScheduleWeekSource, string> = {
+export const SCHEDULE_SOURCE_NOTICES: Record<ScheduleSource, string> = {
   cards: '홈피드 카드를 읽지 못해 빠져 있어요',
   missions: '미션을 읽지 못해 빠져 있어요',
   bundles: '운영툴로 받은 항목을 읽지 못해 빠져 있어요',
   signals: '신호를 읽지 못해 칸에 표시하지 못했어요. 신호가 없다는 뜻은 아니에요',
   metrics: '카드의 노출·열람 수를 읽지 못해 빠져 있어요',
+  dropSchedules: '드랍 일정을 읽지 못해 빠져 있어요',
+  itemBooks: '컬렉션을 읽지 못해 빠져 있어요',
+  rules: '컬렉션 준비 기간 기준을 읽지 못해 28일로 그렸어요',
 }
 
-const NOTICE_ORDER: readonly ScheduleWeekSource[] = ['cards', 'missions', 'bundles', 'signals', 'metrics']
+const NOTICE_ORDER: readonly ScheduleSource[] = ['cards', 'missions', 'bundles', 'signals', 'metrics', 'dropSchedules', 'itemBooks', 'rules']
 
 /** 카드·미션·운영 항목을 모두 못 읽었는가(달력에 그릴 내용이 없다). 신호·노출 수는 내용이 아니다. */
-export function allContentFailed(sourceErrors: LoadedScheduleWeek['sourceErrors']): boolean {
+export function allContentFailed(sourceErrors: ScheduleSourceErrors): boolean {
   return Boolean(sourceErrors.cards && sourceErrors.missions && sourceErrors.bundles)
 }
 
-export async function ScheduleBody({ params }: { params: ScheduleParams }) {
+/** 카드·미션·운영 항목 중 하나라도 못 읽었는가(기간이 비어 있어도 「없다」고 단정할 수 없다). */
+function anyContentFailed(sourceErrors: ScheduleSourceErrors): boolean {
+  return Boolean(sourceErrors.cards || sourceErrors.missions || sourceErrors.bundles)
+}
+
+/** 못 읽은 재료 안내(경고). 읽지 못한 것이 없으면 아무것도 그리지 않는다. */
+function SourceNotices({ sourceErrors }: { sourceErrors: ScheduleSourceErrors }) {
+  const failedNotices = NOTICE_ORDER.filter((source) => sourceErrors[source])
+  if (failedNotices.length === 0) return null
+  return (
+    <Alert variant="warning">
+      <IconAlertTriangle className="size-4" aria-hidden="true" />
+      <AlertTitle>{SCHEDULE_PARTIAL_FAILED_TITLE}</AlertTitle>
+      <AlertDescription>
+        <ul className="list-disc space-y-0.5 pl-5">
+          {failedNotices.map((source) => (
+            <li key={source}>{SCHEDULE_SOURCE_NOTICES[source]}</li>
+          ))}
+        </ul>
+        <p className="mt-2">{SCHEDULE_PARTIAL_FAILED_DESCRIPTION}</p>
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+/** 기간이 비었다는 안내 + (오늘이 이 기간에 없으면) [오늘로 이동]. 같은 보기·같은 거르기로 오늘 날짜를 연다. */
+function EmptyPeriod({ params, showsToday }: { params: ScheduleParams; showsToday: boolean }) {
+  return (
+    <Card className="flex flex-col items-start gap-2 p-5">
+      <IconCalendarOff className="size-5 text-muted-foreground" aria-hidden="true" />
+      <p className="font-medium">{SCHEDULE_EMPTY_TITLE}</p>
+      {!showsToday && (
+        <Button asChild variant="outline" size="sm">
+          <Link
+            href={scheduleHref(
+              { view: params.view, date: todayKstDateString(), kinds: params.kinds, tribes: params.tribes, patterns: params.patterns },
+              { includeSample: params.includeSample }
+            )}
+          >
+            {SCHEDULE_TO_TODAY_LABEL}
+          </Link>
+        </Button>
+      )}
+    </Card>
+  )
+}
+
+/** 이 기간(주·달력·창)에 오늘이 들어 있는가. */
+function periodShowsToday(view: ScheduleParams['view'], date: string): boolean {
+  const { start, end } = periodOf(view, date)
+  const today = todayKstDateString()
+  return today >= start && today <= end
+}
+
+async function WeekBody({ params }: { params: ScheduleParams }) {
   const weekStart = periodOf('week', params.date).start
   let loaded: LoadedScheduleWeek
   try {
@@ -59,47 +124,75 @@ export async function ScheduleBody({ params }: { params: ScheduleParams }) {
     return <OpsSectionNotice icon="week" title={SCHEDULE_LOAD_FAILED_TITLE} />
   }
 
-  const failedNotices = NOTICE_ORDER.filter((source) => sourceErrors[source])
-  const anyContentFailed = Boolean(sourceErrors.cards || sourceErrors.missions || sourceErrors.bundles)
   const today = todayKstDateString()
   const showsToday = week.days.some((day) => day.date === today)
-  const isEmpty = week.contentCount === 0 && !anyContentFailed
+  const isEmpty = week.contentCount === 0 && !anyContentFailed(sourceErrors)
 
   return (
     <div className="space-y-4">
-      {failedNotices.length > 0 && (
-        <Alert variant="warning">
-          <IconAlertTriangle className="size-4" aria-hidden="true" />
-          <AlertTitle>{SCHEDULE_PARTIAL_FAILED_TITLE}</AlertTitle>
-          <AlertDescription>
-            <ul className="list-disc space-y-0.5 pl-5">
-              {failedNotices.map((source) => (
-                <li key={source}>{SCHEDULE_SOURCE_NOTICES[source]}</li>
-              ))}
-            </ul>
-            <p className="mt-2">{SCHEDULE_PARTIAL_FAILED_DESCRIPTION}</p>
-          </AlertDescription>
-        </Alert>
-      )}
-      {isEmpty && (
-        <Card className="flex flex-col items-start gap-2 p-5">
-          <IconCalendarOff className="size-5 text-muted-foreground" aria-hidden="true" />
-          <p className="font-medium">{SCHEDULE_EMPTY_TITLE}</p>
-          {!showsToday && (
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={scheduleHref(
-                  { view: 'week', date: today, kinds: params.kinds, tribes: params.tribes, patterns: params.patterns },
-                  { includeSample: params.includeSample }
-                )}
-              >
-                {SCHEDULE_TO_TODAY_LABEL}
-              </Link>
-            </Button>
-          )}
-        </Card>
-      )}
+      <SourceNotices sourceErrors={sourceErrors} />
+      {isEmpty && <EmptyPeriod params={params} showsToday={showsToday} />}
       <OpsScheduleBoard week={week} sourceErrors={sourceErrors} />
     </div>
   )
+}
+
+async function MonthBody({ params }: { params: ScheduleParams }) {
+  let loaded: LoadedScheduleMonth
+  try {
+    loaded = await loadScheduleMonth({ date: params.date, includeSample: params.includeSample })
+  } catch (error) {
+    console.error('[admin/ops-schedule] 월간 일정 구역 오류:', error)
+    return <OpsSectionNotice icon="week" title={SCHEDULE_LOAD_FAILED_TITLE} />
+  }
+
+  const { month, sourceErrors } = loaded
+  if (allContentFailed(sourceErrors)) {
+    return <OpsSectionNotice icon="week" title={SCHEDULE_LOAD_FAILED_TITLE} />
+  }
+
+  const isEmpty = month.contentCount === 0 && !anyContentFailed(sourceErrors)
+  return (
+    <div className="space-y-4">
+      <SourceNotices sourceErrors={sourceErrors} />
+      {isEmpty && <EmptyPeriod params={params} showsToday={periodShowsToday('month', params.date)} />}
+      <OpsScheduleBoard month={month} sourceErrors={sourceErrors} />
+    </div>
+  )
+}
+
+async function TimelineBody({ params }: { params: ScheduleParams }) {
+  let loaded: LoadedScheduleTimeline
+  try {
+    loaded = await loadScheduleTimeline({ date: params.date, includeSample: params.includeSample })
+  } catch (error) {
+    console.error('[admin/ops-schedule] 타임라인 구역 오류:', error)
+    return <OpsSectionNotice icon="week" title={SCHEDULE_LOAD_FAILED_TITLE} />
+  }
+
+  const { timeline, sourceErrors } = loaded
+  if (allContentFailed(sourceErrors)) {
+    return <OpsSectionNotice icon="week" title={SCHEDULE_LOAD_FAILED_TITLE} />
+  }
+
+  // 드랍 일정·컬렉션은 타임라인에만 있는 재료라, 못 읽었으면 이 보기도 「없다」고 단정할 수 없다.
+  const timelineContentFailed = anyContentFailed(sourceErrors) || Boolean(sourceErrors.dropSchedules || sourceErrors.itemBooks)
+  const isEmpty = timeline.contentCount === 0 && !timelineContentFailed
+  return (
+    <div className="space-y-4">
+      <SourceNotices sourceErrors={sourceErrors} />
+      {isEmpty && <EmptyPeriod params={params} showsToday={timeline.todayCol !== null} />}
+      <OpsScheduleBoard timeline={timeline} sourceErrors={sourceErrors} />
+    </div>
+  )
+}
+
+/**
+ * 보기에 맞는 본문을 읽어 돌려준다. 보기별 본문은 비동기 서버 함수라 **요소가 아니라 호출 결과**를 돌려준다(`await ScheduleBody(…)`가 곧 그려질 요소를 준다 —
+ * 정적 렌더 테스트가 같은 방식으로 부른다).
+ */
+export async function ScheduleBody({ params }: { params: ScheduleParams }) {
+  if (params.view === 'month') return MonthBody({ params })
+  if (params.view === 'timeline') return TimelineBody({ params })
+  return WeekBody({ params })
 }

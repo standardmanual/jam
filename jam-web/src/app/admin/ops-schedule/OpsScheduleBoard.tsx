@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { OpsScheduleDayDrawer } from '@/components/admin/ops/OpsScheduleDayDrawer'
 import { OpsScheduleDrawer } from '@/components/admin/ops/OpsScheduleDrawer'
+import { OpsScheduleMonth } from '@/components/admin/ops/OpsScheduleMonth'
+import { OpsScheduleTimeline } from '@/components/admin/ops/OpsScheduleTimeline'
 import { useStatusFlash } from '@/components/admin/ops/useStatusFlash'
 import {
   closeDrawerQuery,
@@ -13,16 +15,26 @@ import {
   openDrawerQuery,
   type ScheduleDrawerTarget,
 } from '@/lib/admin/opsSchedule/drawerParams'
-import { statusByDrawerKey, type ScheduleSourceErrors } from '@/lib/admin/opsSchedule/drawerView'
+import { statusByDrawerKey, type ScheduleDrawerSource, type ScheduleSourceErrors } from '@/lib/admin/opsSchedule/drawerView'
+import type { ScheduleMonth } from '@/lib/admin/opsSchedule/monthView'
 import { formatPeriodLabel, parseScheduleParams } from '@/lib/admin/opsSchedule/params'
+import type { ScheduleTimeline } from '@/lib/admin/opsSchedule/timeline'
 import type { ScheduleDay, ScheduleItem, ScheduleMissionBar, ScheduleWeek } from '@/lib/admin/opsSchedule/weekView'
-import WeeklyCalendar, { type CalendarCellItem, type CalendarColumn, type CalendarMissionBar } from '../WeeklyCalendar'
+import WeeklyCalendar, {
+  type CalendarCellItem,
+  type CalendarColumn,
+  type CalendarDrawerControl,
+  type CalendarMissionBar,
+} from '../WeeklyCalendar'
 
 /**
  * 일정표의 보기 래퍼 (티켓 20261006_1536 ③-a, 서랍은 티켓 20261006_1537 ③-b, 상위 20260930_1502 「채원 S1·S4 사전 판정」 S4 주간·서랍).
  *
  * 서버가 읽어 계산한 한 주(`ScheduleWeek`, 일반 객체)를 받아 `WeeklyCalendar`에 얹고, 칸 머리·항목·미션 막대를 눌러 여는 서랍을 달력 옆에 둔다.
  * 이동은 도구줄(`ScheduleToolbar`)이 하므로 달력 머리의 이전·다음 주는 그리지 않고(`nav={false}`), 달력 폭에 맞춰 7열↔날짜별 가로 줄이 바뀐다(`adaptive`).
+ *
+ * 월간(`month`, `OpsScheduleMonth`)·타임라인(`timeline`, `OpsScheduleTimeline`)도 같은 틀에서 같은 서랍을 연다(티켓 20261006_1538 ③-c). 셋 중 **하나만** 준다.
+ * 서랍이 찾아보는 칸은 `drawerSource`다: 주간은 한 주, 월간은 달력 전체, 타임라인은 창 전체(날짜 서랍·옛 미션 요약). 월간·타임라인은 미션 막대가 없다.
  *
  * ## 서랍
  * - 상태는 주소(`?drawer=item&item=`·`?drawer=day&date=`)가 전부다 — 새로고침해도 유지된다. 열고 닫을 때 `history.replaceState`로 주소만 바꾼다(서버를 다시 부르지 않는다, S3와 같다).
@@ -98,14 +110,36 @@ function replaceSearch(compute: (search: string) => string): void {
   window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`)
 }
 
-export function OpsScheduleBoard({ week, sourceErrors }: { week: ScheduleWeek; sourceErrors: ScheduleSourceErrors }) {
+/** 보기 하나의 데이터. 주간·월간·타임라인 중 하나만 준다. */
+type OpsScheduleBoardProps = { sourceErrors: ScheduleSourceErrors } & (
+  | { week: ScheduleWeek; month?: undefined; timeline?: undefined }
+  | { week?: undefined; month: ScheduleMonth; timeline?: undefined }
+  | { week?: undefined; month?: undefined; timeline: ScheduleTimeline }
+)
+
+/** 서랍·잔상이 읽는 칸 데이터와, 상태가 바뀔 때 잔상을 남길 키(칸 항목 + 타임라인의 운영 항목 막대). */
+function drawerSourceOf({ week, month, timeline }: { week?: ScheduleWeek; month?: ScheduleMonth; timeline?: ScheduleTimeline }): {
+  source: ScheduleDrawerSource
+  statuses: Record<string, string>
+} {
+  if (week) return { source: week, statuses: statusByDrawerKey(week) }
+  const days = month?.days ?? timeline?.days ?? []
+  const source: ScheduleDrawerSource = { days, missionBars: [] }
+  const statuses = statusByDrawerKey(source)
+  for (const row of timeline?.rows ?? []) for (const bar of row.bars) if (bar.drawerKey !== null) statuses[bar.drawerKey] = bar.status
+  return { source, statuses }
+}
+
+export function OpsScheduleBoard(props: OpsScheduleBoardProps) {
+  const { sourceErrors } = props
   const searchParams = useSearchParams()
   const params = useMemo(() => parseScheduleParams(searchParams), [searchParams])
   const target = drawerTargetOf(params)
 
-  // 결정으로 상태가 바뀐 칸은 1.2초 동안 잔상을 남긴다.
-  const statusByKey = useMemo(() => statusByDrawerKey(week), [week])
-  const flashingKeys = useStatusFlash(statusByKey)
+  // 결정으로 상태가 바뀐 칸은 1.2초 동안 잔상을 남긴다. 서버가 새 데이터를 주기 전에는 같은 객체를 쓴다(`useStatusFlash`가 같은 객체면 비교하지 않는다).
+  const { week, month, timeline } = props
+  const { source, statuses } = useMemo(() => drawerSourceOf({ week, month, timeline }), [week, month, timeline])
+  const flashingKeys = useStatusFlash(statuses)
 
   /** 서랍을 연 칸. 닫을 때 포커스를 돌려줄 자리다(날짜 서랍 안에서 항목 서랍으로 옮겨도 처음 누른 칸을 유지한다). */
   const triggerRef = useRef<HTMLElement | null>(null)
@@ -127,27 +161,32 @@ export function OpsScheduleBoard({ week, sourceErrors }: { week: ScheduleWeek; s
   }, [target])
 
   const openItem = useCallback((key: string) => openDrawer({ kind: 'item', key }), [openDrawer])
+  const drawerControl: CalendarDrawerControl = { onOpen: openDrawer, selected: target, flashingKeys }
 
   return (
     <div className="@container">
       <div className={cn('grid grid-cols-1 gap-4', target && '@[68rem]:grid-cols-[minmax(0,1fr)_28rem]')}>
         <div className="min-w-0">
-          <WeeklyCalendar
-            weekStart={week.weekStart}
-            weekRangeLabel={formatPeriodLabel('week', week.weekStart)}
-            columns={week.days.map(toColumn)}
-            missionBars={week.missionBars.length > 0 ? week.missionBars.map(toBar) : undefined}
-            openEndedMissionCount={week.openEndedMissionCount ?? undefined}
-            nav={false}
-            adaptive
-            drawer={{ onOpen: openDrawer, selected: target, flashingKeys }}
-          />
+          {week && (
+            <WeeklyCalendar
+              weekStart={week.weekStart}
+              weekRangeLabel={formatPeriodLabel('week', week.weekStart)}
+              columns={week.days.map(toColumn)}
+              missionBars={week.missionBars.length > 0 ? week.missionBars.map(toBar) : undefined}
+              openEndedMissionCount={week.openEndedMissionCount ?? undefined}
+              nav={false}
+              adaptive
+              drawer={drawerControl}
+            />
+          )}
+          {month && <OpsScheduleMonth month={month} drawer={drawerControl} />}
+          {timeline && <OpsScheduleTimeline timeline={timeline} drawer={drawerControl} sourceErrors={sourceErrors} />}
         </div>
         {target?.kind === 'item' && (
           <OpsScheduleDrawer
             key={`item:${target.key}`}
             itemKey={target.key}
-            week={week}
+            week={source}
             includeSample={params.includeSample}
             onClose={closeDrawer}
             onOpenItem={openItem}
@@ -158,7 +197,7 @@ export function OpsScheduleBoard({ week, sourceErrors }: { week: ScheduleWeek; s
           <OpsScheduleDayDrawer
             key={`day:${target.date}`}
             date={target.date}
-            days={week.days}
+            days={source.days}
             sourceErrors={sourceErrors}
             includeSample={params.includeSample}
             onClose={closeDrawer}

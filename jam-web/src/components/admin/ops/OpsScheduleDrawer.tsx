@@ -10,9 +10,8 @@ import { buildBalanceView, itemBalanceInfoOf } from '@/lib/admin/opsInbox/balanc
 import { kindLabel } from '@/lib/admin/opsInbox/labels'
 import { opsTargetHref } from '@/lib/admin/opsHome/links'
 import { splitItemKey } from '@/lib/admin/opsSchedule/drawerParams'
-import { legacyEntryOf, type LegacyDrawerEntry } from '@/lib/admin/opsSchedule/drawerView'
+import { legacyEntryOf, type LegacyDrawerEntry, type ScheduleDrawerSource } from '@/lib/admin/opsSchedule/drawerView'
 import type { ScheduleItemDetail } from '@/lib/admin/opsSchedule/itemDetail'
-import type { ScheduleWeek } from '@/lib/admin/opsSchedule/weekView'
 import { describeBundleItem } from '@/lib/admin/opsSignals/composition'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import type { OpsItemDraft, OpsWorkspaceContext } from './OpsBundleWorkspace'
@@ -42,8 +41,8 @@ import { fetchScheduleItem, type ScheduleItemOutcome } from './scheduleItemClien
 interface OpsScheduleDrawerProps {
   /** 주소의 서랍 키: 운영 항목 ID, `card:<ID>`, `mission:<ID>`. */
   itemKey: string
-  /** 지금 보는 주. 옛 카드·미션 요약을 여기서 찾는다. */
-  week: ScheduleWeek
+  /** 지금 보는 칸들(주간 한 주·월간 달력·타임라인 창). 옛 카드·미션 요약을 여기서 찾는다. */
+  week: ScheduleDrawerSource
   /** 시험 묶음 포함 여부. 기획 상세 링크에 이어 붙인다. */
   includeSample: boolean
   onClose: () => void

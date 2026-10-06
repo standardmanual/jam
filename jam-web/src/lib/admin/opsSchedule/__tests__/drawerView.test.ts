@@ -4,11 +4,13 @@
  * 지키는 것:
  * - 날짜 서랍 신호 안내(가정 5): 못 읽음 / 검사 범위 밖(「이상 없음」 금지, 줄이 있어도 안내) / 범위 안에서 뜬 것 없음 / 줄만 보임
  * - 대표 카드·항목 목록 안내는 못 읽은 재료를 「없다」고 하지 않는다
+ * - 날짜 서랍 항목 구역(티켓 20261006_1538 ③-c): 항목이 0개이고 못 읽은 재료가 있으면 「올라온 항목이 없어요」 대신 「일부 항목을 읽지 못해 빠져 있을 수 있어요」만 보인다
  * - 옛 카드·미션 요약: 칸 항목·미션 막대에서 찾고(대소문자 무시), 운영 항목 키이거나 이 주에 없으면 null이다. 경로가 없으면 키로 만든다
  * - 서랍 키를 출처별로 나눈다
  */
 import { describe, expect, it } from 'vitest'
 import {
+  DAY_EMPTY_TEXT,
   DAY_ITEMS_PARTIAL_TEXT,
   DAY_REPRESENTATIVE_NONE_TEXT,
   DAY_REPRESENTATIVE_UNREAD_TEXT,
@@ -16,6 +18,7 @@ import {
   DAY_SIGNAL_UNCHECKED_TEXT,
   DAY_SIGNAL_UNREAD_TEXT,
   dayItemsNotice,
+  dayItemsSection,
   daySignalNotice,
   dayRepresentativeNotice,
   formatDayTitle,
@@ -121,6 +124,31 @@ describe('대표 카드·항목 목록 안내', () => {
   it('항목 목록은 카드·미션·운영 항목 중 하나라도 못 읽었으면 빠졌을 수 있다고 알린다', () => {
     expect(dayItemsNotice({})).toBeNull()
     for (const source of ['cards', 'missions', 'bundles'] as const) expect(dayItemsNotice({ [source]: '실패' })).toBe(DAY_ITEMS_PARTIAL_TEXT)
+  })
+})
+
+describe('dayItemsSection — 날짜 서랍 항목 구역(③-b에서 넘어온 조건)', () => {
+  it('항목이 있으면 개수가 머리 글자이고 빈 글자는 없다', () => {
+    expect(dayItemsSection(3, {})).toEqual({ title: '항목 3개', notice: null, emptyText: null })
+  })
+
+  it('항목이 있는데 못 읽은 재료가 있으면 목록 위에 안내가 붙는다', () => {
+    expect(dayItemsSection(2, { missions: '실패' })).toEqual({ title: '항목 2개', notice: DAY_ITEMS_PARTIAL_TEXT, emptyText: null })
+  })
+
+  it('항목이 0개이고 모두 읽었으면 「올라온 항목이 없어요」이다', () => {
+    expect(dayItemsSection(0, {})).toEqual({ title: '항목 0개', notice: null, emptyText: DAY_EMPTY_TEXT })
+    // 신호·노출 수를 못 읽은 것은 항목 목록과 상관없다
+    expect(dayItemsSection(0, { signals: '실패', metrics: '실패' }).emptyText).toBe(DAY_EMPTY_TEXT)
+  })
+
+  it('항목이 0개이고 카드·미션·묶음 중 하나라도 못 읽었으면 「없어요」 단정 없이 안내만 보인다(개수도 말하지 않는다)', () => {
+    for (const source of ['cards', 'missions', 'bundles'] as const) {
+      const section = dayItemsSection(0, { [source]: '실패' })
+      expect(section, source).toEqual({ title: '항목', notice: DAY_ITEMS_PARTIAL_TEXT, emptyText: null })
+      expect(JSON.stringify(section)).not.toContain('올라온 항목이 없어요')
+      expect(JSON.stringify(section)).not.toContain('0개')
+    }
   })
 })
 
