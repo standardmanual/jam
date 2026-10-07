@@ -688,6 +688,13 @@ describe('image_spec 경고 (티켓 20261007_1030)', () => {
     expect(result.warnings).toEqual([])
   })
 
+  it('프리셋만 있고 bg·end가 없으면 오류 없이 경고만 낸다', () => {
+    const result = validateOpsBundle(makeBundle({ items: [makeItem({ image_spec: { preset_id: 'p1' } })] }))
+    expect(result.errors).toEqual([])
+    expect(result.items[0].format_errors).toEqual([])
+    expect(result.warnings).toEqual([expect.stringContaining('image_spec.bg·end: 없어요')])
+  })
+
   it('모양이 틀린 image_spec은 오류가 아니라 경고다', () => {
     const result = validateOpsBundle(makeBundle({ items: [makeItem({ image_spec: { preset_id: 1, values: 'x' } })] }))
     expect(result.errors).toEqual([])

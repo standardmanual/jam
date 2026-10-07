@@ -77,10 +77,20 @@ describe('imageSpecWarnings', () => {
         expect.stringContaining('image_spec.values.a: 문자열이어야 해요'),
       ])
     )
-    expect(imageSpecWarnings({ preset_id: 'p', values: 'x' }, PATH)).toEqual([expect.stringContaining('image_spec.values: 문자열 값을 가진 객체')])
+    expect(imageSpecWarnings({ preset_id: 'p', bg: '#111111', end: '#222222', values: 'x' }, PATH)).toEqual([
+      expect.stringContaining('image_spec.values: 문자열 값을 가진 객체'),
+    ])
   })
 
   it('preset_id만 빠져도 경고한다', () => {
     expect(imageSpecWarnings({ bg: '#111111' }, PATH)).toEqual([expect.stringContaining('image_spec.preset_id: 없어요')])
+  })
+
+  it('프리셋이 있는데 bg·end가 없으면 없는 칸을 짚어 경고한다(오류 아님)', () => {
+    expect(imageSpecWarnings({ preset_id: 'p' }, PATH)).toEqual([
+      expect.stringMatching(/^items\[0\]\.image_spec\.bg·end: 없어요\. 색이 없으면 이미지가 만들어지지 않아요\./),
+    ])
+    expect(imageSpecWarnings({ preset_id: 'p', bg: '#111111' }, PATH)).toEqual([expect.stringContaining('image_spec.end: 없어요')])
+    expect(imageSpecWarnings({ preset_id: 'p', end: '#222222', bg: null }, PATH)).toEqual([expect.stringContaining('image_spec.bg: 없어요')])
   })
 })

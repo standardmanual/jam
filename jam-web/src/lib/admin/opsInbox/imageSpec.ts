@@ -86,6 +86,12 @@ export function imageSpecWarnings(spec: unknown, path: string): string[] {
   }
   if (record.preset_id === undefined || record.preset_id === null) {
     warnings.push(`${label}.preset_id: 없어요. 프리셋을 정하지 않으면 이미지를 자동으로 만들지 않아요.`)
+  } else if (typeof record.preset_id === 'string' && record.preset_id.trim() !== '') {
+    // 프리셋은 있는데 색이 없으면 렌더가 실패한다(티켓 20261007_1032). 호출부가 기본 색을 정하지 않고 제출 때 알린다.
+    const missing = (['bg', 'end'] as const).filter((key) => record[key] === undefined || record[key] === null)
+    if (missing.length > 0) {
+      warnings.push(`${label}.${missing.join('·')}: 없어요. 색이 없으면 이미지가 만들어지지 않아요. 시작 색(bg)과 끝 색(end)을 함께 적어 주세요.`)
+    }
   }
   return warnings
 }
