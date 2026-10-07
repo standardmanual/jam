@@ -2,7 +2,7 @@
 id: "20260926_1830"
 category: Admin
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-26
 ---
 
@@ -33,3 +33,5 @@ created: 2026-09-26
 
 ### 잔여 이슈
 -
+
+- 2026-10-07 ⑥-C 20261007_1602로 처리했다(staging 머지 083da2620). 프리셋 저장 API(POST)가 오버레이 색을 `#rrggbb` 6자리로, 이미지 주소를 이 프로젝트 저장소 호스트(`NEXT_PUBLIC_SUPABASE_URL`)의 https로 제한하고 오버레이를 켰는데 색이 없는 저장을 거절한다. 운영 DB 기존 프리셋 2개는 통과하는 테스트로 고정했다.
