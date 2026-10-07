@@ -33,9 +33,11 @@ import { fetchPresetFromAdminApi, normalizePreset, pickPresetSource, resolveEnv 
  * — `layers`는 값을 지정한 번호와 프리셋에 저장된 값을 쓴 번호 목록이다.
  * 어떤 오류든 한국어 메시지의 Error를 던진다(기본 글꼴로 조용히 대체하지 않는다).
  */
-export async function renderCardPng(args) {
+export async function renderCardPng(args, deps = {}) {
+  // `deps`는 테스트용 주입점이다(`fetchImpl`·`createClient`·`env`). 생략하면 실제 구현을 쓴다.
   // `.env.local`과 `process.env`를 합친다(process.env 우선) — 예약 환경은 process.env로만 값을 준다.
-  const env = resolveEnv(loadEnv(), process.env)
+  const env = deps.env ?? resolveEnv(loadEnv(), process.env)
+  const makeClient = deps.createClient ?? createClient
   const picked = pickPresetSource(env)
 
   let preset
@@ -44,9 +46,10 @@ export async function renderCardPng(args) {
       baseUrl: picked.baseUrl,
       token: picked.token,
       presetId: args.preset,
+      ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
     })
   } else {
-    const supabase = createClient(picked.supabaseUrl, picked.serviceKey)
+    const supabase = makeClient(picked.supabaseUrl, picked.serviceKey)
     const { data, error } = await supabase
       .from('asset_presets')
       .select('id, name, target_type, stage_ratio, layers, created_by, created_at, updated_at')
@@ -110,12 +113,13 @@ export async function renderCardPng(args) {
     }
   }
 
-  // 이미지 레이어 원본을 assetUrl별로 한 번씩 불러온다(브라우저 imageAssets 캐시와 같은 정책).
+  // 이미지 레이어 원본을 레이어 번호별로 불러온다. 캐시 키를 assetUrl로 쓰면 `--img01` 원본과 저장된 assetUrl이
+  // 같은 문자열인 다른 이미지 레이어가 한쪽 원본으로 합쳐지므로 번호(img01 …)를 키로 쓴다(티켓 20260927_0124).
   // `--img01`로 값을 지정한 레이어는 절대 경로 파일 또는 URL을 검증해 읽고(loadLayerImage), 나머지는 저장된 URL을 그대로 쓴다.
   const imageAssets = {}
   for (const [index, layer] of overlayLayers.entries()) {
-    if (layer.type === 'image' && !imageAssets[layer.assetUrl]) {
-      imageAssets[layer.assetUrl] = applied.includes(layerKeys[index])
+    if (layer.type === 'image') {
+      imageAssets[layerKeys[index]] = applied.includes(layerKeys[index])
         ? await serverImageLoader(await loadLayerImage(layer.assetUrl))
         : await serverImageLoader({ url: layer.assetUrl }).catch((e) => {
             throw new Error(`프리셋 이미지 레이어 원본을 불러오지 못했어요(${e instanceof Error ? e.message : String(e)}): ${layer.assetUrl} — 예약 실행 환경이면 이 호스트가 네트워크 허용 목록에 있는지 확인해 주세요`)
@@ -128,7 +132,7 @@ export async function renderCardPng(args) {
     const layer = overlayLayers[i]
     if (layer.type === 'image') {
       drawImageLayer(ctx, {
-        image: imageAssets[layer.assetUrl],
+        image: imageAssets[layerKeys[i]],
         xPct: layer.xPct,
         yPct: layer.yPct,
         widthPct: layer.widthPct,

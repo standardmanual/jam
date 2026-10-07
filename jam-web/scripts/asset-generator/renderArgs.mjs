@@ -11,6 +11,7 @@ import path from 'node:path'
 import { LEGACY_TEXT_FLAGS_MESSAGE, buildLayerValues, isLayerFlagKey } from './applyLayerValues.mjs'
 
 const REQUIRED_FLAGS = ['preset', 'bg', 'end', 'out']
+const VALUE_FLAGS = new Set([...REQUIRED_FLAGS, 'seed'])
 
 /**
  * `--key value` 쌍으로 된 인자 배열을 `{ flags, layerEntries }`로 나눈다(순서 무관).
@@ -26,12 +27,12 @@ function parseFlags(argv) {
     const key = token.slice(2)
     if (key === 'text' || key === 'subtext') throw new Error(LEGACY_TEXT_FLAGS_MESSAGE)
     const value = argv[i + 1]
-    if (isLayerFlagKey(key)) {
-      if (value === undefined) throw new Error(`--${key} 값이 필요해요.`)
-      layerEntries.push([key, value])
-    } else {
-      flags[key] = value
-    }
+    const isLayer = isLayerFlagKey(key)
+    if (!isLayer && !VALUE_FLAGS.has(key)) throw new Error(`알 수 없는 인자예요: --${key}`)
+    // 값 자리에 다른 인자가 오면 삼키지 않고 멈춘다(`--text01 --text02 설명`). 빈 문자열 값도 거절한다(validatePlan과 같은 규칙).
+    if (value === undefined || value === '' || value.startsWith('--')) throw new Error(`--${key} 값이 필요해요.`)
+    if (isLayer) layerEntries.push([key, value])
+    else flags[key] = value
     i++
   }
   return { flags, layerEntries }

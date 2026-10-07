@@ -70,4 +70,43 @@ describe('parseRenderArgs', () => {
   it('--seed가 정수가 아니면 오류를 던진다', () => {
     expect(() => parseRenderArgs([...BASE, '--seed', 'abc'])).toThrow('정수');
   });
+
+  it('값 자리에 다른 인자가 오면 다음 인자를 삼키지 않고 오류로 멈춘다', () => {
+    expect(() => parseRenderArgs([...BASE, '--text01', '--text02', '설명'])).toThrow('--text01 값이 필요해요');
+    expect(() => parseRenderArgs([...BASE, '--img01', '--text01', '제목'])).toThrow('--img01 값이 필요해요');
+    expect(() => parseRenderArgs(['--preset', '--bg', '#ff0000', '--end', '#00ff00', '--out', OUT])).toThrow('--preset 값이 필요해요');
+    expect(() => parseRenderArgs([...BASE, '--seed', '--text01'])).toThrow('--seed 값이 필요해요');
+  });
+
+  it('마지막 인자의 값이 없으면 오류다(필수 인자 포함)', () => {
+    expect(() => parseRenderArgs([...BASE, '--seed'])).toThrow('--seed 값이 필요해요');
+    expect(() => parseRenderArgs(['--preset', 'p1', '--bg', '#ff0000', '--end', '#00ff00', '--out'])).toThrow('--out 값이 필요해요');
+  });
+
+  it('알 수 없는 인자(오타)는 오류로 멈춘다', () => {
+    expect(() => parseRenderArgs([...BASE, '--image01', '/abs/a.png'])).toThrow('알 수 없는 인자예요: --image01');
+    expect(() => parseRenderArgs([...BASE, '--txt01', '제목'])).toThrow('알 수 없는 인자예요: --txt01');
+    expect(() => parseRenderArgs([...BASE, '--dry-run', 'x'])).toThrow('알 수 없는 인자예요: --dry-run');
+  });
+
+  it('빈 문자열 값은 레이어·일반 인자 모두 거절한다', () => {
+    expect(() => parseRenderArgs([...BASE, '--text01', ''])).toThrow('--text01 값이 필요해요');
+    expect(() => parseRenderArgs([...BASE, '--img01', ''])).toThrow('--img01 값이 필요해요');
+    expect(() => parseRenderArgs(['--preset', '', '--bg', '#ff0000', '--end', '#00ff00', '--out', OUT])).toThrow('--preset 값이 필요해요');
+    expect(() => parseRenderArgs([...BASE, '--seed', ''])).toThrow('--seed 값이 필요해요');
+  });
+
+  it('윤진 루틴이 쓰는 인자 조합(jam-marketer.md 3단계)은 그대로 동작한다', () => {
+    const preset = '51aa4673-f723-4929-ac20-a302202b7aa7';
+    const out = '/abs/jam-doc/assets/home-feed-bundles/2026-10-07-w1/image.png';
+    // 제목만, 순서가 달라도, 설명 추가, 시드 추가
+    expect(parseRenderArgs(['--preset', preset, '--bg', '#1a2b3c', '--end', '#ffcc00', '--text01', '이번 주 미션', '--out', out])).toEqual({
+      preset, bg: '#1a2b3c', end: '#ffcc00', values: { text01: '이번 주 미션' }, out, seed: undefined,
+    });
+    expect(
+      parseRenderArgs(['--preset', preset, '--bg', '#1a2b3c', '--end', '#ffcc00', '--text01', '이번 주 미션', '--text02', '지금 도전해 보세요', '--out', out, '--seed', '42'])
+    ).toEqual({ preset, bg: '#1a2b3c', end: '#ffcc00', values: { text01: '이번 주 미션', text02: '지금 도전해 보세요' }, out, seed: 42 });
+    // 공백·쉼표·# 시작·대시로 시작하는 한 글자 값(단일 대시)·숫자 값
+    expect(parseRenderArgs([...BASE, '--text01', '- 핵심 요약', '--text02', '3']).values).toEqual({ text01: '- 핵심 요약', text02: '3' });
+  });
 });
