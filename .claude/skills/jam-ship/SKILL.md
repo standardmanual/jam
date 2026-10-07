@@ -13,9 +13,13 @@ description: JAM! staging 검증 후 프로덕션(main) 배포. staging 미반�
 ```bash
 git -C "<repo>" status --short          # 미커밋 변경이 있으면 먼저 처리
 git -C "<repo>" fetch origin
-git -C "<repo>" log --oneline origin/main..origin/staging   # 승격될 커밋 목록
+git -C "<repo>" rev-parse origin/staging                  # 승격 대상 끝 커밋 SHIP_SHA — 여기서 고정한다
+git -C "<repo>" log --oneline origin/main..<SHIP_SHA>     # 승격될 커밋 목록
 ```
 
+- **승격 대상은 여기서 고정한 `SHIP_SHA`까지다.** 이후 단계(3단계 게이트·`verify.sh`, 5단계 병렬
+  점검, 7단계 병합)는 모두 `origin/main..<SHIP_SHA>`를 쓴다. 점검 중 다른 세션이 staging에
+  push한 커밋이 점검·승인 없이 함께 승격되는 일을 막기 위해서다(티켓 20261007_1812).
 - **미커밋 변경이 있으면**: 커밋할지 물어본다. 임의로 커밋하지 않는다.
 - **승격될 커밋이 없으면**: "이미 최신입니다"라고 보고하고 종료한다.
 - **승격될 커밋 목록을 사용자에게 먼저 보여준다** — 무엇이 프로덕션에 나가는지 알 수 있게.
@@ -40,11 +44,12 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
 - [ ] `scripts/verify.sh` 통과 — main push는 `.githooks/pre-push`가 `JAM_SHIP=1` 여부만 보고
   lint·typecheck·test를 다시 돌리지 않는다(staging push는 lint와 기준 방어만, 리뷰 브랜치 push는
   전체 verify와 CI를 돈다. staging과 main에는 CI가 없다). 이 단계가 승격 전 유일한 재검증이다.
+  로컬 `staging`을 `SHIP_SHA`에 맞춘 뒤(`git merge --ff-only <SHIP_SHA>`, `git rev-parse HEAD`로 확인) 돌린다.
 
 ### 보안
 - [ ] 비밀값 미노출·새 API 라우트 인증·마이그레이션 되돌림 SQL(아래 「인프라」·4단계가 같은 결과를
-  쓴다) — `node scripts/deploy-gate.mjs check`. `git fetch origin` 뒤에 실행한다. 범위 기본값은
-  `origin/main` → `origin/staging`이고 두 팁의 트리 비교라 얕은 복제에서도 돈다. 종료 코드가 0이
+  쓴다) — `node scripts/deploy-gate.mjs check --head <SHIP_SHA>`. `git fetch origin` 뒤에 실행한다.
+  범위는 `origin/main` → `SHIP_SHA`이고 두 팁의 트리 비교라 얕은 복제에서도 돈다. 종료 코드가 0이
   아니면(1 차단 · 2 게이트 실행 오류) 승격을 멈춘다.
   - 비밀값: jam-web에서 추가된 줄의 실제 비밀 형태만 잡는다. 걸리면 실제 값이 커밋된 것이니
     승격을 멈추고, 출력이 알려 주는 파일·줄에서 값을 폐기·교체한다.
@@ -134,17 +139,17 @@ NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-
 
 4단계 롤백 계획 뒤, 6단계 완료 기준 전에 돈다. 카리나가 민지(`jam-reviewer`)를 **한 턴에 모드
 ②(배포 전 보안 점검)·③(배포 전 테스트 공백 점검)으로 동시에** 호출한다(순차 호출 금지 — 원본
-`ship.toml`의 제약). 커밋 범위는 1단계에서 이미 확인한 `origin/main..origin/staging`을 그대로
+`ship.toml`의 제약). 커밋 범위는 1단계에서 고정한 `origin/main..<SHIP_SHA>`를 해시로 적어
 넘긴다.
 
 민지는 Agent 도구에 `isolation: "worktree"`를 주어 부르고, 프롬프트에 「지금 폴더는 너만의 격리
-워크트리다」라고 밝힌 뒤 **첫 명령으로** `git fetch origin staging && git checkout --detach origin/staging`을
+워크트리다」라고 밝힌 뒤 **첫 명령으로** `git fetch origin staging && git checkout --detach <SHIP_SHA>`를
 실행하라고 지시한다. 민지 정의는 이 두 가지가 프롬프트에 함께 있을 때만 HEAD 이동을 허용한다. 격리
 워크트리는 기본 브랜치(main) 기준으로 만들어져 staging에만 있는 변경이 보이지 않기 때문이다.
 공유 작업 폴더에서 민지가 HEAD를 옮기는 사고(티켓 20261002_1905)를 막으려는 것이다.
 
 ### 생략 조건
-`git diff --numstat origin/main origin/staging -- jam-web`의 추가+삭제 합계가 0줄이면(문서만
+`git diff --numstat origin/main <SHIP_SHA> -- jam-web`의 추가+삭제 합계가 0줄이면(문서만
 바뀐 배포) 병렬 점검을 건너뛰고 10단계 보고에 "해당 없음(jam-web 변경 0줄)"이라고 적는다. 그
 밖의 유인 배포는 항상 돌린다 — 원본의 "2파일 이하·50줄 미만" 같은 규모 기준은 쓰지 않는다(인증
 관련 변경은 한 줄이어도 위험할 수 있다).
@@ -183,9 +188,15 @@ git -C "<repo>" merge-base --is-ancestor main origin/main`이 실패하면(공�
 티켓 20260921_1208에서 겪은 상태) 승격 명령을 실행하지 말고, 옛 `main`을 이름만 바꿔 보존한 뒤 원격에 맞춘다:
 `git branch -m main main-backup-<날짜> && git branch main origin/main`. 그 뒤 아래를 진행한다.
 
+1단계 뒤 staging에 새 커밋이 올라왔는지도 확인한다: `git -C "<repo>" log --oneline <SHIP_SHA>..origin/staging`이
+비어 있지 않으면 승격하지 말고 늘어난 커밋을 사용자에게 보여 준 뒤 고르게 한다. ① `SHIP_SHA`까지만
+승격한다(늘어난 커밋은 다음 배포로). ② 늘어난 커밋까지 포함한다 — `SHIP_SHA`를 새 끝으로 바꾸고 3단계
+점검과 5단계 병렬 점검을 늘어난 범위에 다시 돈 뒤 승인을 다시 받는다. 2026-10-07에 점검 중 올라온
+커밋 4개가 함께 승격된 사고에서 생긴 규칙이다(티켓 20261007_1812).
+
 ```bash
 git -C "<repo>" checkout main
-git -C "<repo>" merge --ff-only origin/staging   # ff 불가 시 상태를 보고하고 판단을 구한다
+git -C "<repo>" merge --ff-only <SHIP_SHA>       # 1단계에서 고정한 커밋. ff 불가 시 상태를 보고하고 판단을 구한다
 JAM_SHIP=1 git -C "<repo>" push origin main      # pre-push 훅 통과용 환경변수
 git -C "<repo>" checkout staging                 # 작업 브랜치로 복귀
 ```

@@ -2,7 +2,7 @@
 id: "20261007_1812"
 category: Infra
 priority: P1
-status: OPEN
+status: IN_PROGRESS
 created: 2026-10-07
 closed:
 parent: "20260918_1101"
@@ -63,6 +63,12 @@ parent: "20260918_1101"
 | 합계 |  |  |  |  |  |
 
 ### 주요 의사결정 / 핵심 메모
+- 2026-10-07 사용자 승인(「승인」)으로 `/jam-ship` 쪽을 고쳤다. 1단계에서 `git rev-parse origin/staging`으로 `SHIP_SHA`를 고정하고, 3단계 `deploy-gate.mjs check --head <SHIP_SHA>`·`verify.sh`(로컬 staging을 `SHIP_SHA`에 맞춘 뒤),
+  5단계 민지 범위·첫 명령(`git checkout --detach <SHIP_SHA>`)·생략 조건, 7단계 병합(`git merge --ff-only <SHIP_SHA>`)이 모두 그 커밋을 쓴다. 7단계 직전에 `<SHIP_SHA>..origin/staging`이 비어 있지 않으면
+  멈추고 사용자가 ① `SHIP_SHA`까지만 승격 ② 늘어난 커밋까지 포함(점검·승인 다시) 중에서 고른다.
+- 무인 경로에도 같은 문제가 있다: 확인 루틴(목 15:00)이 보여 준 목록과 실행 루틴(목 23:59)이 병합하는 `origin/staging` 사이에 시간 차가 있다. 실행 루틴(`trig_01JRRY1cXt6uWGin8xbtS1Sk`)의
+  저장 프롬프트를 `RemoteTrigger get`으로 읽어(읽기 전용, 2026-10-07) `git merge --ff-only origin/staging`이 그대로 들어 있고 「문서와 충돌하면 이 지시가 우선한다」고 적힌 것을 확인했다.
+  그래서 `scheduled-jobs.md`만 고치면 문서와 실제 동작이 어긋난다. 무인 경로는 두 루틴의 저장 프롬프트 교체가 필요하고, 이는 사용자 승인 뒤에 한다(이 티켓의 남은 범위).
 
 ### 잔여 이슈
 -
