@@ -370,7 +370,7 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 | source | `'user'` 또는 `'system'`. 유저 드랍/앰비언트(시스템) 드랍을 구분한다. 2026-08-25~26에 앰비언트가 한 차례 제거됐다가([20260825_004](../../tickets/p1-high/20260825_004_Feature_앰비언트-드랍-기능-제거.md)) 재도입됐다([20260826_009](../../tickets/p1-high/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)) — 그 사이엔 전 행이 `'user'`였다 |
 | inventory_item_id | **신규(2026-08-29, 티켓 20260829_2101)** — 이 드랍이 가리키는 실제 개체(`inventory_items`). `source` 무관하게 항상 **이미 발급된** row를 참조한다(픽업은 소유권 이전일 뿐 재발급이 아니다). 마이그레이션 이전에 완료된(픽업 종료) 과거 드랍은 소급 연결되지 않아 NULL일 수 있다 |
 | badge_id | 조인 편의용 파생 컬럼 — 항상 `inventory_item_id`가 가리키는 개체의 `badge_id`와 일치(드리프트 없음). 정본은 `inventory_items.badge_id` |
-| expires_at | **2026-08-29부터 유저 드랍도 NULL(무기한 대기, 회수·만료 없음)** — 과거엔 30일 만료였으나 의도(유저 드랍은 기한 개념 없음)와 어긋나 바로잡았다. system 드랍도 여전히 NULL(만료 없음 — 상시 존재 전제, 한시 노출은 `badges.valid_from/valid_until`로 대체) |
+| expires_at | **유저 드랍·system 드랍 모두 값을 넣지 않는다(NULL).** 컬럼 기본값이 없고 `create_user_drop()`·`mint_and_place_ambient_drop()` 둘 다 비워 둔다. 유저 드랍은 회수·만료 없이 픽업될 때까지 대기하고, system 드랍은 상시 존재가 전제다(한시 노출은 `badges.valid_from/valid_until`로 대체). 값이 남아 있는 행은 마이그레이션 108(2026-08-29) 이전에 30일 기본값으로 만들어져 그 시점에 이미 비활성이던 유저 드랍뿐이다. `expire_stale_poi_drops()`는 활성 드랍만 고르므로 이 행들은 정리 대상이 아니다 |
 | dropper_user_id | 유저 드랍만 값 존재, system 드랍은 NULL. FK는 `ON DELETE SET NULL`(2026-08-29 이전엔 `CASCADE`였다 — 드랍한 사람이 탈퇴해도 무기한 대기 중인 드랍 row 자체가 사라지지 않도록 전환) |
 
 픽업은 `pickup_drop()` RPC로 원자 트랜잭션 처리 — 2026-08-29부터 신규 `inventory_items` row를

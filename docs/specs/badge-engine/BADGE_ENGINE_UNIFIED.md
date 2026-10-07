@@ -1628,7 +1628,8 @@ POST /api/admin/badges/reevaluate-all
   (`destroyed_at IS NULL` 조건)에서 재사용 가능한 풀로 돌아간다. 같은 번호가 시간이 지나
   다른 개체에 재부여될 수 있으나, `custody_events`(아래 §3.5-1) 이력으로 항상 구분 가능하다.
 - 유저 드랍은 기한 개념이 없다 — 회수 액션도, 만료도 없이 픽업될 때까지 무기한 대기한다
-  (`poi_drops.expires_at`은 유저 드랍이든 시스템 드랍이든 항상 NULL).
+  (유저 드랍이든 시스템 드랍이든 `poi_drops.expires_at`을 채우지 않는다. 컬럼 정의는
+  `docs/specs/prd/02_DATA_MODEL.md`의 `poi_drops` 표).
 - **믹스(`Consume`) 판정은 슬롯 기반 OR 매칭이다** (2026-09-17, 티켓 20260917_1427이
   2026-09-10 티켓 20260910_1408의 "정확 집합 일치" 구조를 대체 — 상세 정책은
   `jam-doc/planning/content/COMBINE_RECIPES.md`가 단일 출처):
