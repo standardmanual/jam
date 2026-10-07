@@ -112,7 +112,7 @@ status: active
 - [01 미식.md](../../jam-doc/planning/business-plan/tribe-rethink/01%20미식.md) — 구상 단계 미식 트라이브 '한입만 연구회'의 시놉시스, 인물, 장소, 아이템. 서비스에 반영하지 않는다.
 - [02 사진.md](../../jam-doc/planning/business-plan/tribe-rethink/02%20사진.md) — 구상 단계 사진 트라이브 '찰칵단'의 시놉시스, 인물, 장소, 아이템. 서비스에 반영하지 않는다.
 - [03 음악.md](../../jam-doc/planning/business-plan/tribe-rethink/03%20음악.md) — 구상 단계 음악 트라이브 '비사이드 레코즈'의 시놉시스, 인물, 장소, 아이템. 서비스에 반영하지 않는다.
-- [04 물건 덕후.md](../../jam-doc/planning/business-plan/tribe-rethink/04%20물건%20덕후.md) — 구상 단계 물건 덕후·맥시멀리스트 트라이브 문서. 아직 작성 전이며 들어오는 단서와 기존 컬렉션 후보만 담았다.
+- [04 물건 덕후.md](../../jam-doc/planning/business-plan/tribe-rethink/04%20물건%20덕후.md) — 구상 단계 물건 덕후·맥시멀리스트 트라이브 '소나무 잡화점'의 시놉시스, 인물, 장소, 아이템. 서비스에 반영하지 않는다.
 - [05 내향인.md](../../jam-doc/planning/business-plan/tribe-rethink/05%20내향인.md) — 구상 단계 내향인 트라이브 문서. 아직 작성 전이며 들어오는 단서와 이어받을 기존 컬렉션 후보만 담았다.
 - [README.md](../../jam-doc/planning/business-plan/tribe-rethink/README.md) — 구상 단계 트라이브 다섯 개의 문서 안내. 트라이브 목록, 서로 이어지는 단서, 공통 작성 규칙과 문서 형식을 둔다.
 
