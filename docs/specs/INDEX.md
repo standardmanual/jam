@@ -122,7 +122,7 @@ status: active
 
 - [ACTIVITY_BADGES.md](../../jam-doc/planning/content/ACTIVITY_BADGES.md) — v5 액티비티배지의 조건·설명과 설계 원칙, 시딩하지 않은 항목, 발급되지 않는 항목을 정리한 목록이다(정본은 DB).
 - [COMBINE_RECIPES.md](../../jam-doc/planning/content/COMBINE_RECIPES.md) — 믹스 결과의 두 갈래, 레시피 슬롯 구조, 실패 처리, 등록 레시피 현황과 레시피 결과물의 범위를 정리한 정책 문서다.
-- [OPS_PATTERNS.md](../../jam-doc/planning/content/OPS_PATTERNS.md) — 라이브 운영 에이전트가 매주 새 운영을 기획할 때 쓰는 운영 패턴 18개의 원고다. 06 플랜의 채택 아이디어 63개를 작동 원리로 묶었다. 운영툴 입력 전까지만 이 문서가 원천이다.
+- [OPS_PATTERNS.md](../../jam-doc/planning/content/OPS_PATTERNS.md) — 라이브 운영 에이전트가 매주 새 운영을 기획할 때 쓰는 운영 패턴 18개의 원고다. 06 플랜의 채택 아이디어 63개를 작동 원리로 묶었다. 2026-10-07 운영툴(DB)에 입력했고, 지금은 입력일 기준 사본이다.
 - [POI.md](../../jam-doc/planning/content/POI.md) — 지점(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
 - [SPECIAL_DAYS.md](../../jam-doc/planning/content/SPECIAL_DAYS.md) — 특일정보 API가 조회하는 2026년 공휴일·24절기·기념일·잡절 전체 목록과, 어떤 날에 어떤 노출 태그를 켤지 사용자가 고르는 선택표다.
 - [TRIBES.md](../../jam-doc/planning/content/TRIBES.md) — 세계관 트라이브의 캐치프레이즈·컬렉션·아이템배지, 인접 그래프, 소재·시간대·POI 유형 매핑, 데이터 소스를 정리한 목록이다.

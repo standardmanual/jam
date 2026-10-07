@@ -1,20 +1,22 @@
 ---
 type: catalog
-status: draft
-description: "라이브 운영 에이전트가 매주 새 운영을 기획할 때 쓰는 운영 패턴 18개의 원고다. 06 플랜의 채택 아이디어 63개를 작동 원리로 묶었다. 운영툴 입력 전까지만 이 문서가 원천이다."
+status: active
+description: "라이브 운영 에이전트가 매주 새 운영을 기획할 때 쓰는 운영 패턴 18개의 원고다. 06 플랜의 채택 아이디어 63개를 작동 원리로 묶었다. 2026-10-07 운영툴(DB)에 입력했고, 지금은 입력일 기준 사본이다."
 tags: [미션, 드랍, 믹스, 배지, 피드, 리텐션]
 related:
   - "20260930_1454"
   - "20260930_1503"
-source_of_truth: doc
+source_of_truth: db
+snapshot: "2026-10-07"
 source:
   - "jam-doc/planning/business-plan/06 JAM! 라이브 운영 플랜.md"
 ---
 
 # 운영 패턴 사전 (원고)
 
-> 티켓 20260930_1454의 원고다. 패턴 사전의 원천과 문서 표기 규칙은 `docs/specs/prd/ops-tool/PRD.md` §10.1을 따른다. 운영툴에 입력한 뒤에는
-> 머리말을 `source_of_truth: db`와 입력일 `snapshot`으로 바꾸고, 이 문서는 그 시점의 사본이 된다.
+> 티켓 20260930_1454의 원고다. **원천은 운영툴(DB)이고, 이 문서는 2026-10-07 입력일 기준 사본이다**(티켓 20261007_1633, 시드
+> `jam-web/supabase/migrations/212_ops_patterns_seed.sql`). 패턴 사전의 원천과 문서 표기 규칙은 `docs/specs/prd/ops-tool/PRD.md` §10.1을 따른다.
+> 지금 패턴을 고치거나 더하는 곳은 이 문서가 아니라 운영툴이다. 이 문서를 고쳐도 툴에는 반영되지 않는다.
 
 ## 1. 읽는 법
 
