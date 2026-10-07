@@ -13,6 +13,8 @@ closed:
 
 - 요구사항: `cd jam-web && npm audit --omit=dev`가 high 1건을 낸다. `sharp` 0.35.4(직접 의존성, `package.json` `^0.35.3`)가 쓰는 librsvg의 취약점(CVE-2026-96889, `<0.35.5`)이고 0.35.5에서 고쳐졌다. lock 파일을 갱신해 0.35.5 이상으로 올리고 high 0건을 만든다.
 - 구현 계획: `npm update sharp --package-lock-only`로 lock만 갱신한다(워크트리의 `node_modules`는 메인 폴더 링크이므로 메인 설치를 건드리지 않는다). `package.json` 범위(`^0.35.3`)가 0.35.5를 허용하므로 범위는 그대로 둔다. `@img/sharp-*` 플랫폼 바이너리·libvips 항목이 함께 바뀌는 것은 정상이고, sharp와 무관한 패키지가 바뀌면 멈추고 보고한다. `scripts/verify.sh`를 확인한다.
+- 실측(2026-10-07 아현 1차 호출, plan_only로 반환): `npm update sharp --package-lock-only` 결과 lock 1파일 +118/−118(236줄), 바뀌는 키 27개가 전부 `node_modules/sharp`·`node_modules/@img/sharp-*`(sharp 계열 17곳 0.35.4→0.35.5, libvips 10곳 1.3.3→1.3.4), 갱신 후 `npm audit --omit=dev` 0건.
+- 실행 방법(숨김 lock 보호): 워크트리의 `jam-web/node_modules`는 메인 폴더 링크라 그대로 `npm update`를 돌리면 메인 폴더의 `node_modules/.package-lock.json`이 바뀐다(1차 호출에서 실제로 바뀌었고 아현이 복구함). 실행 전에 워크트리의 `jam-web/node_modules` **링크만** 지우고(`rm jam-web/node_modules`, 메인 폴더 원본은 그대로) `--package-lock-only`로 갱신한 뒤, `scripts/workspace-setup.sh link "$(pwd)"`로 링크를 되살려 `verify.sh`를 돌린다. 끝나면 메인 폴더 `node_modules/.package-lock.json`의 `node_modules/sharp` 버전이 0.35.4 그대로인지 확인한다.
 - 관련 파일: `jam-web/package-lock.json`(11182행 `node_modules/sharp`, 1108–1640행 `node_modules/@img/sharp-*`). 호출부는 바꾸지 않는다: `jam-web/src/lib/avatarImage.ts` 18행 `sanitizeAvatarImage`(21행 `sharp(input).metadata()`), `jam-web/src/lib/imageAverageColor.ts`, `jam-web/src/lib/admin/badgeImageWebp.ts`
 
 ## 배경 / 문제 정의
@@ -65,6 +67,7 @@ closed:
 
 ### 주요 의사결정 / 핵심 메모
 > 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
+- 2026-10-07 카리나 규모 사전 판정이 빗나갔다: lock 파일 1개라 기준 안으로 봤으나 플랫폼별 바이너리 항목 27개가 함께 바뀌어 236줄이었다(아현 plan_only). 파일이 하나라 쪼갤 수 없어 실측을 「구현 계획」에 적고 사용자 승인으로 계획 반환 면제를 부여했다.
 
 ### 잔여 이슈
 -
