@@ -8,6 +8,7 @@
  * - 패턴 번호는 숫자 순서(P09 < P10 < P100)다
  * - 취향 신호는 보관한 패턴 것까지 싣고, 공통(`patternNo: null`)이 먼저, 그다음 패턴 번호 순서, 같은 패턴 안에서는 `sort_order`다
  * - 한 패턴의 취향 신호만 읽을 수 있고, 테이블이 비면 빈 목록이며, 조회 오류는 던진다
+ * - 번호 전체(`loadOpsPatternNos`, 티켓 20261007_1745)는 상태로 거르지 않아 보관 패턴 번호도 싣고, 번호 칸만 읽으며, 조회 오류는 던진다
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
@@ -19,6 +20,7 @@ import {
   listOpsCommonRules,
   listOpsPatterns,
   listOpsTasteSignals,
+  loadOpsPatternNos,
   toCommonRuleRecord,
   toPatternRecord,
   toTasteSignalRecord,
@@ -230,6 +232,36 @@ describe('listOpsPatterns', () => {
   it('조회 오류는 던진다', async () => {
     db.error = 'relation missing'
     await expect(listOpsPatterns(service, { includeArchived: false })).rejects.toThrow('패턴 조회 실패')
+  })
+})
+
+describe('loadOpsPatternNos (티켓 20261007_1745)', () => {
+  it('사용 중·쉬는 중·보관 패턴의 번호를 모두 싣는다(상태로 거르지 않는다)', async () => {
+    db.tables.ops_patterns = [
+      patternRow('P02'),
+      patternRow('P03', { status: 'paused', pause_reason: '대기' }),
+      patternRow('P04', { status: 'archived' }),
+    ]
+    const nos = await loadOpsPatternNos(service)
+    expect([...nos].sort()).toEqual(['P02', 'P03', 'P04'])
+    expect(nos.has('P04')).toBe(true)
+    expect(db.filters).toEqual([])
+  })
+
+  it('번호 칸만 읽는다(다른 칸·관리자 ID를 부르지 않는다)', async () => {
+    db.tables.ops_patterns = [patternRow('P01')]
+    await loadOpsPatternNos(service)
+    expect(db.selects).toEqual([{ table: 'ops_patterns', columns: 'pattern_no' }])
+  })
+
+  it('테이블이 비어 있으면 빈 집합이다', async () => {
+    db.tables.ops_patterns = []
+    expect((await loadOpsPatternNos(service)).size).toBe(0)
+  })
+
+  it('조회 오류는 던진다', async () => {
+    db.error = 'boom'
+    await expect(loadOpsPatternNos(service)).rejects.toThrow('패턴 번호 조회 실패')
   })
 })
 

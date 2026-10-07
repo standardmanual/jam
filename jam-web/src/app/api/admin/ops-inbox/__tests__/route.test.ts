@@ -9,6 +9,8 @@
  * - 슬랙: 응답 뒤에 게시하고, 실패하거나 환경변수가 없어도 제출은 성공이며 결과가 결정 기록에 남는다
  * - 카드 칸(티켓 20261001_1152): 옛 형식 묶음도 201(오류 문장 포함, 원본 보존), 뺀 항목 사유 없음은 묶음 오류만,
  *   없는 tribe_id는 항목 오류, 트라이브 조회가 실패하면 500이고 아무것도 저장하지 않는다
+ * - 패턴 번호·지점 카테고리(티켓 20261007_1745): 형식이 틀린 번호는 열을 비워 저장하고 사전에 없는 번호는 열에 남기며 둘 다 201이다,
+ *   없는 카테고리 slug는 항목 오류, 패턴 번호·카테고리 조회가 실패하면 500이고 아무것도 저장하지 않는다
  */
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 
@@ -17,10 +19,20 @@ const h = vi.hoisted(() => {
   type Result = { data?: unknown; count?: number | null; error: { code?: string; message: string } | null }
 
   const state = {
-    tables: { ops_bundles: [], ops_bundle_items: [], ops_decisions: [], users: [], tribes: [] } as Record<string, Row[]>,
+    tables: {
+      ops_bundles: [],
+      ops_bundle_items: [],
+      ops_decisions: [],
+      users: [],
+      tribes: [],
+      ops_patterns: [],
+      poi_categories: [],
+    } as Record<string, Row[]>,
     failInsert: new Set<string>(),
     failCount: false,
     failTribes: false,
+    failPatterns: false,
+    failCategories: false,
     hideExistingOnce: false,
     seq: 0,
     afterCallbacks: [] as Array<() => unknown>,
@@ -119,6 +131,8 @@ const h = vi.hoisted(() => {
       }
 
       if (this.table === 'tribes' && state.failTribes) return { data: null, error: { message: 'tribes boom secret detail' } }
+      if (this.table === 'ops_patterns' && state.failPatterns) return { data: null, error: { message: 'patterns boom secret detail' } }
+      if (this.table === 'poi_categories' && state.failCategories) return { data: null, error: { message: 'categories boom secret detail' } }
       if (this.countMode) {
         if (state.failCount) return { count: null, error: { message: 'count failed' } }
         return { count: matches().length, error: null }
@@ -169,7 +183,7 @@ function makeItem(overrides: Record<string, unknown> = {}) {
     kind: 'home_feed_card',
     shape: 'hero',
     exposure_tags: ['all'],
-    pattern_no: 'P-07',
+    pattern_no: 'P07',
     starts_at: '2026-10-05T09:00:00+09:00',
     ends_at: '2026-10-06T09:00:00+09:00',
     user_experience: '월요일 아침에 이번 주 미션을 한눈에 볼 수 있어요',
@@ -232,10 +246,20 @@ describe('POST /api/admin/ops-inbox', () => {
     for (const key of ENV_KEYS) saved[key] = process.env[key]
     process.env.ADMIN_API_READ_TOKEN = TOKEN
     process.env.ADMIN_EMAILS = 'admin@example.com'
-    h.state.tables = { ops_bundles: [], ops_bundle_items: [], ops_decisions: [], users: [], tribes: [{ id: TRIBE_ID }] }
+    h.state.tables = {
+      ops_bundles: [],
+      ops_bundle_items: [],
+      ops_decisions: [],
+      users: [],
+      tribes: [{ id: TRIBE_ID }],
+      ops_patterns: [{ pattern_no: 'P07' }, { pattern_no: 'P20' }],
+      poi_categories: [{ slug: 'cafe' }, { slug: 'park' }],
+    }
     h.state.failInsert.clear()
     h.state.failCount = false
     h.state.failTribes = false
+    h.state.failPatterns = false
+    h.state.failCategories = false
     h.state.hideExistingOnce = false
     h.state.seq = 0
     h.state.afterCallbacks = []
@@ -291,7 +315,7 @@ describe('POST /api/admin/ops-inbox', () => {
       ])
       expect(items[0]).toMatchObject({
         bundle_id: json.id,
-        pattern_no: 'P-07',
+        pattern_no: 'P07',
         starts_at: '2026-10-05T00:00:00.000Z',
         ends_at: '2026-10-06T00:00:00.000Z',
         original: body.items[0],
@@ -661,6 +685,107 @@ describe('POST /api/admin/ops-inbox', () => {
       expect(h.state.afterCallbacks).toHaveLength(0)
 
       h.state.failTribes = false
+      expect((await submit(makeBundle())).status).toBe(201)
+    })
+  })
+
+  describe('패턴 번호·지점 카테고리 (티켓 20261007_1745)', () => {
+    it('형식이 틀린 번호(P-07·7·p07)는 201이고 항목 형식 오류로 남으며 열은 NULL, 원본에는 그대로 있다', async () => {
+      const body = makeBundle({
+        items: [
+          makeItem({ item_key: 'a', pattern_no: 'P-07' }),
+          makeItem({ item_key: 'b', pattern_no: 7 }),
+          makeItem({ item_key: 'c', pattern_no: 'p07' }),
+        ],
+      })
+      const res = await submit(body)
+
+      expect(res.status).toBe(201)
+      const json = await res.json()
+      expect(json.format_errors).toHaveLength(3)
+      json.format_errors.forEach((line: string, index: number) => {
+        expect(line).toMatch(new RegExp(`^items\\[${index}\\]\\.pattern_no: 패턴 번호는 P01처럼`))
+      })
+      const stored = h.state.tables.ops_bundle_items
+      expect(stored.map((row) => row.pattern_no)).toEqual([null, null, null])
+      expect(stored.map((row) => (row.original as Record<string, unknown>).pattern_no)).toEqual(['P-07', 7, 'p07'])
+      expect(stored[0].format_errors).toEqual([json.format_errors[0]])
+    })
+
+    it('사전에 없는 번호(P99)는 201이고 항목 형식 오류로 남으며 열에는 값 그대로 저장된다', async () => {
+      const res = await submit(makeBundle({ items: [makeItem({ pattern_no: 'P99' })] }))
+
+      expect(res.status).toBe(201)
+      const json = await res.json()
+      expect(json.format_errors).toHaveLength(1)
+      expect(json.format_errors[0]).toMatch(/^items\[0\]\.pattern_no: 패턴 사전에 없는 번호예요/)
+      expect(h.state.tables.ops_bundle_items[0].pattern_no).toBe('P99')
+      expect(h.state.tables.ops_bundle_items[0].format_errors).toEqual(json.format_errors)
+    })
+
+    it('사전에 있는 번호는 오류가 없고 번호 앞뒤 공백은 떼어 저장한다', async () => {
+      const res = await submit(makeBundle({ items: [makeItem({ pattern_no: ' P20 ' })] }))
+
+      expect(res.status).toBe(201)
+      expect((await res.json()).format_errors).toEqual([])
+      expect(h.state.tables.ops_bundle_items[0].pattern_no).toBe('P20')
+    })
+
+    it('pattern_no가 없으면 오류 없이 저장한다(필수 아님)', async () => {
+      const item = makeItem()
+      delete (item as Record<string, unknown>).pattern_no
+      const res = await submit(makeBundle({ items: [item] }))
+
+      expect(res.status).toBe(201)
+      expect((await res.json()).format_errors).toEqual([])
+      expect(h.state.tables.ops_bundle_items[0].pattern_no).toBeNull()
+    })
+
+    it('없는 지점 카테고리 slug는 201이고 항목 형식 오류이며, 있는 slug와 빈 배열은 오류가 없다', async () => {
+      const res = await submit(
+        makeBundle({
+          items: [
+            makeItem({ item_key: 'a', knobs: { place_category: ['cafe', 'park'] } }),
+            makeItem({ item_key: 'b', knobs: { place_category: [] } }),
+            makeItem({ item_key: 'c', knobs: { place_category: ['cafe', 'zoo'] } }),
+          ],
+        })
+      )
+
+      expect(res.status).toBe(201)
+      const json = await res.json()
+      expect(json.format_errors).toHaveLength(1)
+      expect(json.format_errors[0]).toMatch(/^items\[2\]\.knobs\.place_category: 없는 지점 카테고리예요 — "zoo"/)
+      expect(h.state.tables.ops_bundle_items.map((row) => (row.format_errors as string[]).length)).toEqual([0, 0, 1])
+    })
+
+    it('패턴 번호 목록을 읽지 못하면 500이고 아무것도 저장하지 않으며 슬랙 글도 없다(같은 본문을 다시 내면 받는다)', async () => {
+      h.state.failPatterns = true
+      const res = await submit(makeBundle())
+
+      expect(res.status).toBe(500)
+      expect(JSON.stringify(await res.json())).not.toContain('secret detail')
+      expect(h.state.tables.ops_bundles).toHaveLength(0)
+      expect(h.state.tables.ops_bundle_items).toHaveLength(0)
+      expect(h.state.tables.ops_decisions).toHaveLength(0)
+      expect(h.state.afterCallbacks).toHaveLength(0)
+
+      h.state.failPatterns = false
+      expect((await submit(makeBundle())).status).toBe(201)
+    })
+
+    it('지점 카테고리 목록을 읽지 못하면 500이고 아무것도 저장하지 않으며 슬랙 글도 없다(같은 본문을 다시 내면 받는다)', async () => {
+      h.state.failCategories = true
+      const res = await submit(makeBundle())
+
+      expect(res.status).toBe(500)
+      expect(JSON.stringify(await res.json())).not.toContain('secret detail')
+      expect(h.state.tables.ops_bundles).toHaveLength(0)
+      expect(h.state.tables.ops_bundle_items).toHaveLength(0)
+      expect(h.state.tables.ops_decisions).toHaveLength(0)
+      expect(h.state.afterCallbacks).toHaveLength(0)
+
+      h.state.failCategories = false
       expect((await submit(makeBundle())).status).toBe(201)
     })
   })
