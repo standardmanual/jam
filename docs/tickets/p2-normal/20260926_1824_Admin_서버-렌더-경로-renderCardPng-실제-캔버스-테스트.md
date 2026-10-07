@@ -2,7 +2,7 @@
 id: "20260926_1824"
 category: Admin
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-26
 ---
 
@@ -33,3 +33,5 @@ created: 2026-09-26
 
 ### 잔여 이슈
 -
+
+- 2026-10-07 ⑥-A 20261007_1600으로 처리했다(staging 머지 4c94d5b7b). `renderCard.test.ts`가 실제 `@napi-rs/canvas` 픽셀로 투명 PNG 오버레이 알파 유지·원본 비율·`overlayColor` 적용·미적용·같은 시드의 바이트 동일·반환 계약을 확인한다. `textOverflow.test.ts`도 실제 캔버스로 넘침 검사를 확인한다.

@@ -2,9 +2,9 @@
 id: "20260926_1341"
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-09-26
-closed:
+closed: 2026-10-07
 related:
   - "20260926_1204"
   - "20260926_1208"
@@ -52,3 +52,5 @@ related:
 
 ### 잔여 이슈
 -
+
+- 2026-10-07 ⑥-A 20261007_1600으로 처리했다(staging 머지 4c94d5b7b). `renderCardPng(args, deps = {})`에 `env`·`fetchImpl`·`createClient` 주입점을 더하고 `renderCard.test.ts`가 admin-api·service-role 두 프리셋 조회 경로의 배선과 오류·우선순위·환경변수 누락을 스텁으로 고정했다. 티켓의 `render.mjs` 줄 번호는 어긋나 있었고 대상은 `renderCard.mjs`의 `renderCardPng`였다.
