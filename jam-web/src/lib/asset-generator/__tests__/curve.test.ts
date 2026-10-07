@@ -69,6 +69,23 @@ describe('asset-generator/curve — buildPath 결정성', () => {
     const b = buildPath(SEED + 1, 35, W, H);
     expect(Array.from(a.xs)).not.toEqual(Array.from(b.xs));
   });
+
+  // 옛 시드 경계(티켓 20261007_1602, PRD §11): 곡선 알고리즘이 바뀐 뒤에는 옛 시드로 같은 그림이
+  // 나오지 않는다. 같은 시드라도 스테이지 크기가 다르면 후보 평가가 달라져 다른 곡선이 나온다는 점으로
+  // "시드만으로는 그림이 고정되지 않는다"를 고정한다.
+  it('같은 시드라도 스테이지 크기가 다르면 다른 곡선을 낸다', () => {
+    const square = buildPath(SEED, 35, W, H);
+    const wide = buildPath(SEED, 35, 1280, 720);
+    expect(Array.from(square.ys)).not.toEqual(Array.from(wide.ys));
+  });
+
+  it('불규칙성 슬라이더 값이 달라도 시드가 같으면 같은 입력에서 같은 결과를 낸다(NaN 없음)', () => {
+    for (const irreg of [0, 100]) {
+      const path = buildPath(SEED, irreg, W, H);
+      expect(Array.from(path.xs).every(Number.isFinite)).toBe(true);
+      expect(Array.from(path.ys).every(Number.isFinite)).toBe(true);
+    }
+  });
 });
 
 describe.each([0, 100])('불규칙성 슬라이더 %i%%', (irreg) => {

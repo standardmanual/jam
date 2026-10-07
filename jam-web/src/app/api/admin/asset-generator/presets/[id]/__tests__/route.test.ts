@@ -173,6 +173,29 @@ describe('GET', () => {
     expect(res.status).toBe(200)
     expect(body.preset.layers[0].content).toBe('')
   })
+
+  it('옛 프리셋의 heightPct는 응답에서 빠지고 overlayEnabled는 꺼짐으로 채워진다(티켓 20261007_1602)', async () => {
+    presetsBuilder = makeQueryBuilder({
+      data: {
+        id: 'p1',
+        name: '옛 프리셋',
+        target_type: 'badge',
+        stage_ratio: '1:1',
+        layers: [{ type: 'image', id: 'i1', assetUrl: 'https://x.test/a.png', xPct: 50, yPct: 50, widthPct: 30, heightPct: 20, rotationDeg: 0, opacityPct: 100 }],
+        created_by: 'admin-id',
+        created_at: 't1',
+        updated_at: 't1',
+      },
+      error: null,
+    })
+    fromMock.mockImplementation(() => presetsBuilder)
+
+    const res = await GET(req(), params(P1))
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect('heightPct' in body.preset.layers[0]).toBe(false)
+    expect(body.preset.layers[0]).toMatchObject({ widthPct: 30, overlayEnabled: false })
+  })
 })
 
 describe('DELETE', () => {

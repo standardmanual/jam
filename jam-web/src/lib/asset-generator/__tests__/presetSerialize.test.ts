@@ -116,6 +116,23 @@ describe('deserializePresetLayers 하위 호환 (티켓 20260926_1741)', () => {
   });
 });
 
+describe('deserializePresetLayers 경계 (티켓 20261007_1602)', () => {
+  it('overlayEnabled가 true인데 색이 없어도 읽을 때는 그대로 돌려준다(렌더가 조용히 끈다)', () => {
+    const layer: ImageLayerConfig = { ...makeImageLayer('i1', 'https://cdn.example.com/i1.png'), overlayEnabled: true };
+    const [result] = deserializePresetLayers([layer]) as ImageLayerConfig[];
+    expect(result.overlayEnabled).toBe(true);
+    expect(result.overlayColor).toBeUndefined();
+  });
+
+  it('극단 비율·NaN 값도 읽기 단계에서 던지지 않고 그대로 둔다', () => {
+    const layer: ImageLayerConfig = { ...makeImageLayer('i1', 'https://cdn.example.com/i1.png'), widthPct: Number.NaN, opacityPct: 0, xPct: -1e9 };
+    const [result] = deserializePresetLayers([layer]) as ImageLayerConfig[];
+    expect(Number.isNaN(result.widthPct)).toBe(true);
+    expect(result.opacityPct).toBe(0);
+    expect(result.xPct).toBe(-1e9);
+  });
+});
+
 describe('isPresetTargetType', () => {
   it.each(['badge', 'mission', 'collection', 'home_feed'])('%s는 유효한 대상 유형이다', (value) => {
     expect(isPresetTargetType(value)).toBe(true);

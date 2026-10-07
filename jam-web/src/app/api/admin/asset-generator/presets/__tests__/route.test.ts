@@ -34,7 +34,7 @@ let presetsBuilder = makeQueryBuilder({ data: null, error: null })
 const fromMock = vi.fn(() => presetsBuilder)
 
 const uploadMock = vi.fn(async () => ({ error: null as { message: string } | null }))
-const getPublicUrlMock = vi.fn((path: string) => ({ data: { publicUrl: `https://cdn.test.jam.app/images/${path}` } }))
+const getPublicUrlMock = vi.fn((path: string) => ({ data: { publicUrl: `https://ceehnkzdbecxwzxrhhns.supabase.co/images/${path}` } }))
 const storageFromMock = vi.fn(() => ({ upload: uploadMock, getPublicUrl: getPublicUrlMock }))
 
 // 세션은 createClient의 getUser로 흉내 낸다 — 읽기 토큰 경로(requireAdminRead)가 auth.ts 내부의
@@ -92,11 +92,13 @@ function getReq(query = '', headers: Record<string, string> = {}): NextRequest {
 beforeEach(() => {
   vi.stubEnv('ADMIN_EMAILS', 'admin@jam.app')
   vi.stubEnv('ADMIN_API_READ_TOKEN', READ_TOKEN)
+  // 저장 검증이 이미지 주소 호스트를 이 값에서 읽는다(티켓 20261007_1602). vitest.setup.ts가 기본으로 지운다.
+  vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://ceehnkzdbecxwzxrhhns.supabase.co')
   sessionUser = { id: ADMIN_ID, email: 'admin@jam.app' }
   presetsBuilder = makeQueryBuilder({ data: null, error: null })
   fromMock.mockReset().mockImplementation(() => presetsBuilder)
   uploadMock.mockReset().mockResolvedValue({ error: null })
-  getPublicUrlMock.mockReset().mockImplementation((path: string) => ({ data: { publicUrl: `https://cdn.test.jam.app/images/${path}` } }))
+  getPublicUrlMock.mockReset().mockImplementation((path: string) => ({ data: { publicUrl: `https://ceehnkzdbecxwzxrhhns.supabase.co/images/${path}` } }))
 })
 
 afterEach(() => {
@@ -254,7 +256,7 @@ describe('POST — 신규 저장', () => {
     expect(insertPayload.target_type).toBe('badge')
     expect(insertPayload.created_by).toBe(ADMIN_ID)
     expect(insertPayload.layers[0]).toMatchObject({ type: 'text', content: '배지 이름' })
-    expect(insertPayload.layers[1].assetUrl).toBe(`https://cdn.test.jam.app/images/${uploadPath}`)
+    expect(insertPayload.layers[1].assetUrl).toBe(`https://ceehnkzdbecxwzxrhhns.supabase.co/images/${uploadPath}`)
   })
 
   it('대상 유형이 mission이면 이미지 레이어 + 텍스트 레이어를 함께 저장한다(티켓 20260925_1406)', async () => {
@@ -283,7 +285,7 @@ describe('POST — 신규 저장', () => {
     expect(insertPayload.layers).toHaveLength(2)
     expect(insertPayload.layers[0]).toMatchObject({ type: 'text', content: '미션 이름' })
     expect(insertPayload.layers[1].type).toBe('image')
-    expect(insertPayload.layers[1].assetUrl).toMatch(/^https:\/\/cdn\.test\.jam\.app\//)
+    expect(insertPayload.layers[1].assetUrl).toMatch(/^https:\/\/ceehnkzdbecxwzxrhhns\.supabase\.co\//)
   })
 
   it('이미 저장소 URL(http)인 이미지 레이어는 다시 업로드하지 않는다', async () => {
@@ -293,7 +295,7 @@ describe('POST — 신규 저장', () => {
     })
     fromMock.mockImplementation(() => presetsBuilder)
 
-    const layers = [makeImageLayer('i1', 'https://cdn.test.jam.app/images/existing.png')]
+    const layers = [makeImageLayer('i1', 'https://ceehnkzdbecxwzxrhhns.supabase.co/images/existing.png')]
     const form = new FormData()
     form.append('name', '프리셋 A')
     form.append('stageRatio', '1:1')
@@ -304,7 +306,7 @@ describe('POST — 신규 저장', () => {
     expect(res.status).toBe(200)
     expect(uploadMock).not.toHaveBeenCalled()
     const insertPayload = presetsBuilder.insertPayload as { layers: Array<{ assetUrl?: string }> }
-    expect(insertPayload.layers[0].assetUrl).toBe('https://cdn.test.jam.app/images/existing.png')
+    expect(insertPayload.layers[0].assetUrl).toBe('https://ceehnkzdbecxwzxrhhns.supabase.co/images/existing.png')
   })
 
   it('target_type=home_feed로 이미지+텍스트 레이어를 저장한다(티켓 20260925_1410)', async () => {
@@ -349,7 +351,7 @@ describe('POST — 신규 저장', () => {
     })
     fromMock.mockImplementation(() => presetsBuilder)
 
-    const layers = [makeTextLayer('t1', '컬렉션 이름'), makeImageLayer('i1', 'https://cdn.test.jam.app/images/existing.png')]
+    const layers = [makeTextLayer('t1', '컬렉션 이름'), makeImageLayer('i1', 'https://ceehnkzdbecxwzxrhhns.supabase.co/images/existing.png')]
     const form = new FormData()
     form.append('name', '컬렉션 프리셋')
     form.append('stageRatio', '1:1')
@@ -365,7 +367,7 @@ describe('POST — 신규 저장', () => {
     }
     expect(insertPayload.target_type).toBe('collection')
     expect(insertPayload.layers[0]).toMatchObject({ type: 'text', content: '컬렉션 이름' })
-    expect(insertPayload.layers[1].assetUrl).toBe('https://cdn.test.jam.app/images/existing.png')
+    expect(insertPayload.layers[1].assetUrl).toBe('https://ceehnkzdbecxwzxrhhns.supabase.co/images/existing.png')
   })
 })
 
@@ -673,5 +675,107 @@ describe('DB·스토리지 오류 원문 미노출(티켓 20260926_1602)', () =>
     const form = saveForm()
     form.append('id', 'existing-id')
     await expectFixedError(await POST(postReq(form)), 'update boom')
+  })
+})
+
+describe('POST — 프리셋 저장 검증(티켓 20261007_1602)', () => {
+  const STORAGE_HOST = 'ceehnkzdbecxwzxrhhns.supabase.co'
+
+  beforeEach(() => {
+    presetsBuilder = makeQueryBuilder({
+      data: { id: 'new-preset-id', name: '프리셋', stage_ratio: '1:1', created_at: 't1', updated_at: 't1' },
+      error: null,
+    })
+    fromMock.mockImplementation(() => presetsBuilder)
+  })
+
+  function formWith(layers: unknown[], targetType = 'badge') {
+    const form = new FormData()
+    form.append('name', '프리셋')
+    form.append('stageRatio', '1:1')
+    form.append('targetType', targetType)
+    form.append('layers', JSON.stringify(layers))
+    return form
+  }
+
+  async function expectRejected(layers: unknown[], messagePart: string) {
+    presetsBuilder.insert.mockClear()
+    const res = await POST(postReq(formWith(layers)))
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toContain(messagePart)
+    expect(body.error).toMatch(/요\.$/)
+    expect(presetsBuilder.insert).not.toHaveBeenCalled()
+    expect(uploadMock).not.toHaveBeenCalled()
+  }
+
+  // 운영 DB 기존 프리셋 2개의 실제 모양(홈피드: 오버레이 켬, 미션: 오버레이 끔, 색 #ffffff, 같은 호스트)
+  it('운영 기존 프리셋 홈피드 모양(overlayEnabled true·#ffffff·저장소 호스트)은 통과한다', async () => {
+    const layers = [
+      {
+        ...makeImageLayer('i1', `https://${STORAGE_HOST}/storage/v1/object/public/images/asset-generator/presets/p1/i1.png`),
+        overlayEnabled: true,
+        overlayColor: '#ffffff',
+      },
+      makeTextLayer('t1', '홈피드'),
+    ]
+    const res = await POST(postReq(formWith(layers, 'home_feed')))
+    expect(res.status).toBe(200)
+    expect(uploadMock).not.toHaveBeenCalled()
+  })
+
+  it('운영 기존 프리셋 미션 모양(overlayEnabled false·#ffffff·저장소 호스트)은 통과한다', async () => {
+    const layers = [
+      {
+        ...makeImageLayer('i1', `https://${STORAGE_HOST}/storage/v1/object/public/images/asset-generator/presets/p2/i1.png`),
+        overlayEnabled: false,
+        overlayColor: '#ffffff',
+      },
+    ]
+    const res = await POST(postReq(formWith(layers, 'mission')))
+    expect(res.status).toBe(200)
+  })
+
+  it('overlayColor가 #rrggbb가 아니면 400이다', async () => {
+    for (const color of ['#fff', 'red', '#ggghhh', '#ffffff00', 'ffffff', 123]) {
+      await expectRejected(
+        [{ ...makeImageLayer('i1', `https://${STORAGE_HOST}/a.png`), overlayEnabled: true, overlayColor: color }],
+        '오버레이 색'
+      )
+    }
+  })
+
+  it('overlayEnabled true인데 색이 없으면 400이다', async () => {
+    await expectRejected([{ ...makeImageLayer('i1', `https://${STORAGE_HOST}/a.png`), overlayEnabled: true }], '색이 비어 있어요')
+  })
+
+  it('overlayEnabled false에 색이 없으면 통과한다', async () => {
+    const res = await POST(postReq(formWith([{ ...makeImageLayer('i1', `https://${STORAGE_HOST}/a.png`), overlayEnabled: false }])))
+    expect(res.status).toBe(200)
+  })
+
+  it('저장소 호스트가 아닌 이미지 주소는 400이다(다른 호스트·http·서브도메인 위장)', async () => {
+    for (const url of [
+      'https://evil.example.com/a.png',
+      `http://${STORAGE_HOST}/a.png`,
+      `https://${STORAGE_HOST}.evil.com/a.png`,
+      `https://evil.com/${STORAGE_HOST}/a.png`,
+      'https://',
+    ]) {
+      await expectRejected([makeImageLayer('i1', url)], '이미지 주소')
+    }
+  })
+
+  it('NEXT_PUBLIC_SUPABASE_URL이 없으면 저장된 주소를 모두 거절한다', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '')
+    await expectRejected([makeImageLayer('i1', `https://${STORAGE_HOST}/a.png`)], '이미지 주소')
+  })
+
+  it('blob URL은 호스트 검사 대상이 아니라 업로드 경로로 간다', async () => {
+    const form = formWith([makeImageLayer('i1', 'blob:http://localhost/abc')])
+    form.append('image_i1', new File(['x'], 'i1.png', { type: 'image/png' }))
+    const res = await POST(postReq(form))
+    expect(res.status).toBe(200)
+    expect(uploadMock).toHaveBeenCalledTimes(1)
   })
 })

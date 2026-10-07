@@ -12,6 +12,7 @@ import {
   type PresetTargetType,
   type StageRatio,
 } from '@/lib/asset-generator'
+import { isStoredAssetUrl, validatePresetLayers } from '@/lib/asset-generator/presetValidate'
 import type { Json } from '@/types/database.generated'
 
 /**
@@ -119,6 +120,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '레이어 데이터가 올바르지 않습니다.' }, { status: 400 })
   }
 
+  // 오버레이 색 형식·이미지 주소 호스트·오버레이 켜짐+색 없음은 저장 전에 거절한다(티켓 20261007_1602).
+  const layerError = validatePresetLayers(layers)
+  if (layerError) return NextResponse.json({ error: layerError }, { status: 400 })
+
   // 이미지 레이어의 id도 경로에 들어간다. 업로드 전에 전부 검사해 일부만 올라가는 일을 막는다.
   if (layers.some((layer) => layer.type === 'image' && !isSafePresetPathSegment(layer.id))) {
     return NextResponse.json({ error: '레이어 ID 형식이 올바르지 않습니다.' }, { status: 400 })
@@ -141,7 +146,7 @@ export async function POST(req: NextRequest) {
   const assetUrlByLayerId: Record<string, string> = {}
   for (const overlayLayer of layers) {
     if (overlayLayer.type !== 'image') continue
-    if (/^https?:\/\//.test(overlayLayer.assetUrl)) continue // 이미 저장소 URL, 다시 올리지 않는다
+    if (isStoredAssetUrl(overlayLayer.assetUrl)) continue // 이미 저장소 URL, 다시 올리지 않는다
 
     const file = form.get(`image_${overlayLayer.id}`)
     if (!(file instanceof File) || file.size === 0) {

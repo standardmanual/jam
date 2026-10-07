@@ -243,6 +243,35 @@ describe('drawImageLayer (PRD §4.2)', () => {
       drawImageLayer(ctx, { ...base, overlayColor: '#ff0000' });
       expect(calls.drawImage[0][0]).toBe(image);
     });
+
+    // 티켓 20261007_1602: 저장은 엄격하게 막아도 렌더는 관대하다. 오버레이를 켰는데 색이 비어 있는
+    // 프리셋(옛 데이터)은 renderPreset이 overlayColor를 undefined로 넘기므로 원본 이미지를 그린다.
+    it('overlayColor가 빈 문자열이어도 색을 입히지 않고 원본 이미지를 그린다', () => {
+      const { ctx, calls } = createMockContext();
+      const { factory, created } = createTintFactory();
+      drawImageLayer(ctx, { ...base, overlayColor: '' }, factory);
+      expect(created).toHaveLength(0);
+      expect(calls.drawImage[0][0]).toBe(image);
+    });
+
+    it('극단 비율 이미지도 유한한 크기로 그린다', () => {
+      for (const [w, h] of [
+        [1, 10000],
+        [10000, 1],
+      ]) {
+        const { ctx, calls } = createMockContext();
+        drawImageLayer(ctx, { ...base, image: { width: w, height: h } as unknown as ImageSourceLike });
+        const [, , , dw, dh] = calls.drawImage[0] as [unknown, number, number, number, number];
+        expect(Number.isFinite(dw)).toBe(true);
+        expect(Number.isFinite(dh)).toBe(true);
+      }
+    });
+
+    it('크기가 NaN인 이미지는 아무것도 그리지 않는다', () => {
+      const { ctx, calls } = createMockContext();
+      drawImageLayer(ctx, { ...base, image: { width: Number.NaN, height: 100 } as unknown as ImageSourceLike });
+      expect(calls.drawImage).toHaveLength(0);
+    });
   });
 });
 
