@@ -66,6 +66,78 @@ describe('loadLayerImage', () => {
   });
 });
 
+describe('loadLayerImage URL 보호', () => {
+  const stream = (chunks: Buffer[]) =>
+    new ReadableStream<Uint8Array>({
+      start(c) {
+        chunks.forEach((b) => c.enqueue(new Uint8Array(b)));
+        c.close();
+      },
+    });
+  const LIMIT = 5 * 1024 * 1024;
+
+  it('https가 아니면 요청하지 않고 거절한다', async () => {
+    let called = false;
+    const fetchImpl = async () => {
+      called = true;
+      return new Response(PNG);
+    };
+    await expect(loadLayerImage('http://cdn.test/a.png', { fetchImpl })).rejects.toThrow('https만');
+    expect(called).toBe(false);
+  });
+
+  it('정상 https 이미지는 스트리밍으로 읽어 통과한다', async () => {
+    const fetchImpl = async () => new Response(stream([PNG.subarray(0, 4), PNG.subarray(4)]), { status: 200 });
+    const r = await loadLayerImage('https://cdn.test/a.png', { fetchImpl });
+    expect(r.mimeType).toBe('image/png');
+    expect(r.data.equals(PNG)).toBe(true);
+  });
+
+  it('시간이 초과되면 중단한다', async () => {
+    const fetchImpl = (_u: string, init: { signal: AbortSignal }) =>
+      new Promise<Response>((_res, rej) => init.signal.addEventListener('abort', () => rej(new Error('aborted'))));
+    await expect(loadLayerImage('https://cdn.test/a.png', { fetchImpl, timeoutMs: 20 })).rejects.toThrow('시간이 너무 오래');
+  });
+
+  it('Content-Length가 5MB를 넘으면 본문을 읽기 전에 거절한다', async () => {
+    let read = false;
+    const fetchImpl = async () => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-length': String(LIMIT + 1) }),
+      arrayBuffer: async () => {
+        read = true;
+        return new ArrayBuffer(0);
+      },
+    });
+    await expect(loadLayerImage('https://cdn.test/a.png', { fetchImpl })).rejects.toThrow('이미지가 너무 커요');
+    expect(read).toBe(false);
+  });
+
+  it('헤더가 없거나 거짓이어도 스트리밍이 5MB를 넘으면 중단한다', async () => {
+    const big = Buffer.alloc(1024 * 1024);
+    const fetchImpl = async () => new Response(stream([PNG, big, big, big, big, big]), { status: 200 });
+    await expect(loadLayerImage('https://cdn.test/a.png', { fetchImpl })).rejects.toThrow('이미지가 너무 커요');
+  });
+
+  it('오류 문구에 주소의 쿼리·해시가 없다', async () => {
+    const url = 'https://cdn.test/a.png?token=SECRET#frag';
+    const notFound = async () => new Response('', { status: 404 });
+    const broken = async () => {
+      throw new Error('연결 실패');
+    };
+    const notImage = async () => new Response('hello', { status: 200 });
+    for (const fetchImpl of [notFound, broken, notImage]) {
+      const err = await loadLayerImage(url, { fetchImpl }).then(() => new Error('통과하면 안 돼요'), (e) => e as Error);
+      expect(err.message).toContain('https://cdn.test/a.png');
+      expect(err.message).not.toContain('SECRET');
+      expect(err.message).not.toContain('frag');
+    }
+    const insecure = await loadLayerImage('http://cdn.test/a.png?token=SECRET').then(() => new Error('통과하면 안 돼요'), (e) => e as Error);
+    expect(insecure.message).not.toContain('SECRET');
+  });
+});
+
 describe('detectImageMimeType', () => {
   it('내용으로 형식을 판별하고 모르면 null이다', () => {
     expect(detectImageMimeType(PNG)).toBe('image/png');
