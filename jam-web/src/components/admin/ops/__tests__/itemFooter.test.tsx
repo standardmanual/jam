@@ -52,6 +52,7 @@ const handlers: OpsItemResultHandlers = {
   handleCancelled: vi.fn(),
   handleEnded: vi.fn(),
   handleItemEnded: vi.fn(),
+  startItemImage: vi.fn(),
 }
 
 function footer(item: OpsItemRecord, extra: Partial<Parameters<typeof OpsItemFooter>[0]> = {}) {

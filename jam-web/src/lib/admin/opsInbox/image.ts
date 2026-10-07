@@ -11,6 +11,7 @@ import type { Json } from '@/types/database.generated'
 import { APPLY_GENERATED_IMAGE_BUCKET } from '@/lib/admin/applyGeneratedImageConstants'
 import { RESOURCE_KEY_BY_KIND, isExecutableKind, type ExecuteServiceClient } from './execute/handlers'
 import { asRecord, itemField } from './itemView'
+import { imageKeyOfKind, type OpsImageKey } from './imageTarget'
 
 type ServiceClient = ExecuteServiceClient
 
@@ -18,22 +19,17 @@ const LOG = '[ops-inbox/image]'
 
 /** 이미지 칸이 있는 종류 네 개. 종류마다 항목 `resource`의 키·자원 표·저장 경로 접두사가 정해져 있다. */
 const IMAGE_KIND_CONFIG = {
-  home_feed_card: { key: 'cover_image_url', table: 'today_cards', prefix: 'today_cards' },
-  mission: { key: 'image_url', table: 'missions', prefix: 'missions' },
-  jam_badge: { key: 'image_url', table: 'badges', prefix: 'badges' },
-  collection_launch: { key: 'image_url', table: 'item_books', prefix: 'item_books' },
+  home_feed_card: { table: 'today_cards', prefix: 'today_cards' },
+  mission: { table: 'missions', prefix: 'missions' },
+  jam_badge: { table: 'badges', prefix: 'badges' },
+  collection_launch: { table: 'item_books', prefix: 'item_books' },
 } as const
 
 type ImageKind = keyof typeof IMAGE_KIND_CONFIG
-export type OpsImageKey = (typeof IMAGE_KIND_CONFIG)[ImageKind]['key']
+export { imageKeyOfKind, type OpsImageKey }
 
 function isImageKind(kind: string | null | undefined): kind is ImageKind {
   return typeof kind === 'string' && Object.prototype.hasOwnProperty.call(IMAGE_KIND_CONFIG, kind)
-}
-
-/** 항목 `resource`의 이미지 칸 이름. 카드는 `cover_image_url`, 미션·배지·컬렉션은 `image_url`, 그 밖의 종류는 이미지가 없어 null이다. */
-export function imageKeyOfKind(kind: string | null | undefined): OpsImageKey | null {
-  return isImageKind(kind) ? IMAGE_KIND_CONFIG[kind].key : null
 }
 
 /** 저장소 경로 두 개(원본 PNG, 표시용 WebP). 이미지 칸이 없는 종류면 null이다. */

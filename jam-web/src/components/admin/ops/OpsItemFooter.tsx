@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { canEndItem, cancelToast, endToast } from '@/lib/admin/opsInbox/executeView'
@@ -8,6 +8,8 @@ import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import type { OpsWorkspaceContext } from './OpsBundleWorkspace'
 import { OpsCancelItem } from './OpsCancelItem'
 import { postDecision } from './decisionClient'
+import { postItemImage } from './imageClient'
+import { makeItemImage } from './itemImageFlow'
 import { OpsEndItem } from './OpsEndItem'
 import { OpsItemActions } from './OpsItemActions'
 
@@ -39,11 +41,54 @@ export interface OpsItemResultHandlers {
   handleCancelled: (data: Record<string, unknown>) => void
   handleEnded: (data: Record<string, unknown>) => void
   handleItemEnded: (message: string) => void
+  /**
+   * 승인이 끝난 항목의 이미지를 만들어 올린다(티켓 20261007_0947, PRD §8.8). 던지지 않고 결과를 토스트로 알린다.
+   * 실패해도 승인은 유지된다. 일괄 승인에는 연결하지 않는다.
+   */
+  startItemImage: (item: OpsItemRecord, isSample: boolean) => void
 }
 
 export function useOpsItemResultHandlers({ bundleId, onRefresh }: OpsItemResultOptions): OpsItemResultHandlers {
   const router = useRouter()
   const refresh = () => (onRefresh ? onRefresh() : router.refresh())
+
+  // 제작 중인 이미지 수. 0보다 크면 탭을 닫을 때 브라우저가 경고한다(업로드가 끊기면 이미지가 붙지 않는다).
+  const [makingCount, setMakingCount] = useState(0)
+  useEffect(() => {
+    if (makingCount === 0) return
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [makingCount])
+
+  const startItemImage = (item: OpsItemRecord, isSample: boolean) => {
+    const toastId = `ops-item-image-${item.id}`
+    setMakingCount((n) => n + 1)
+    toast.loading('이미지를 만들고 있어요. 탭을 닫지 말고 기다려 주세요', { id: toastId })
+    void makeItemImage({
+      bundleId,
+      itemId: item.id,
+      kind: item.kind,
+      isSample,
+      item,
+      render: async (args) => (await import('@/lib/admin/opsInbox/imageRender.client')).renderPresetToPngBlob(args),
+      post: postItemImage,
+    })
+      .then((result) => {
+        if (result.status === 'done') {
+          toast.success('이미지를 만들어 붙였어요', { id: toastId })
+          refresh()
+        } else if (result.status === 'skipped') {
+          toast.info(result.message, { id: toastId })
+        } else {
+          toast.error(`승인은 그대로예요. ${result.message}`, { id: toastId })
+        }
+      })
+      .finally(() => setMakingCount((n) => n - 1))
+  }
 
   const revert = async (itemId: string) => {
     const result = await postDecision(bundleId, { action: 'revert', itemId })
@@ -92,7 +137,7 @@ export function useOpsItemResultHandlers({ bundleId, onRefresh }: OpsItemResultO
     refresh()
   }
 
-  return { refresh, revert, handleSaved, handleDecided, handleCancelled, handleEnded, handleItemEnded }
+  return { refresh, revert, handleSaved, handleDecided, handleCancelled, handleEnded, handleItemEnded, startItemImage }
 }
 
 interface OpsItemFooterProps {
@@ -140,7 +185,10 @@ export function OpsItemFooter({ bundleId, item, ctx, isSample, handlers, onDecid
       bundleId={bundleId}
       item={item}
       ctx={ctx}
-      onDecided={(kind, itemId) => handlers.handleDecided(kind, () => onDecided?.(kind, itemId))}
+      onDecided={(kind, itemId) => {
+        handlers.handleDecided(kind, () => onDecided?.(kind, itemId))
+        if (kind === 'approve') handlers.startItemImage(item, isSample)
+      }}
       onConflict={handlers.refresh}
     />
   )
