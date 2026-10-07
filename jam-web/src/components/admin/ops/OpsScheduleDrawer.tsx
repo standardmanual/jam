@@ -20,6 +20,7 @@ import { OpsDrawerFrame } from './OpsDrawerFrame'
 import { OpsItemDetail } from './OpsItemDetail'
 import { OpsItemEditForm } from './OpsItemEditForm'
 import { OpsItemFooter, useOpsItemResultHandlers } from './OpsItemFooter'
+import { useItemImageProduction } from './useItemImageProduction'
 import { OpsKindIcon, type OpsIcon } from './opsIcons'
 import { Chip, OpsStatusBadge } from './OpsStatusBadge'
 import { fetchScheduleItem, type ScheduleItemOutcome } from './scheduleItemClient'
@@ -179,6 +180,7 @@ export interface ReadyItemBodyProps {
 export function ReadyItemBody({ detail, item, includeSample, onRefresh, onOpenItem }: ReadyItemBodyProps) {
   const [draft, setDraft] = useState<OpsItemDraft | null>(null)
   const handlers = useOpsItemResultHandlers({ bundleId: detail.bundleId, onRefresh })
+  const imageProduction = useItemImageProduction({ bundleId: detail.bundleId, isSample: detail.isSample, onDone: handlers.refresh })
   const balanceView = useMemo(() => buildBalanceView(detail.balance), [detail.balance])
   const ctx: OpsWorkspaceContext = {
     bundleId: detail.bundleId,
@@ -221,6 +223,7 @@ export function ReadyItemBody({ detail, item, includeSample, onRefresh, onOpenIt
             ctx={ctx}
             isSample={detail.isSample}
             handlers={handlers}
+            imageProduction={imageProduction}
             statusNotice={statusNotice}
           />
         )}

@@ -10,6 +10,7 @@ import { OpsCancelItem } from './OpsCancelItem'
 import { postDecision } from './decisionClient'
 import { OpsEndItem } from './OpsEndItem'
 import { OpsItemActions } from './OpsItemActions'
+import type { ItemImageProduction } from './useItemImageProduction'
 
 /**
  * 항목 하나의 결정 줄과 결과 처리 (티켓 20261006_1537 ③-b, 상위 20260930_1502 「채원 S1·S4 사전 판정」 「결합 주의」 — `OpsDecisionWorkspace`의 푸터 분기를 빼서 S3와 일정표 서랍이 같이 쓴다).
@@ -103,11 +104,13 @@ interface OpsItemFooterProps {
   handlers: OpsItemResultHandlers
   /** 승인·반려가 끝난 뒤 토스트 다음에 할 일. S3는 다음 결정 전 항목을 고른다. */
   onDecided?: (kind: 'approve' | 'reject', itemId: string) => void
+  /** 승인이 끝나면 이 항목의 이미지를 만든다(티켓 20261007_1031). 일괄 승인은 이 줄을 거치지 않아 만들지 않는다. */
+  imageProduction?: ItemImageProduction
   /** 글을 돌려주는 상태는 결정 줄 대신 그 글을 그린다. 없거나 null이면 아래 분기가 그린다. */
   statusNotice?: (item: OpsItemRecord) => ReactNode | null
 }
 
-export function OpsItemFooter({ bundleId, item, ctx, isSample, handlers, onDecided, statusNotice }: OpsItemFooterProps) {
+export function OpsItemFooter({ bundleId, item, ctx, isSample, handlers, onDecided, imageProduction, statusNotice }: OpsItemFooterProps) {
   const notice = statusNotice?.(item) ?? null
   if (notice !== null) return <>{notice}</>
 
@@ -140,7 +143,10 @@ export function OpsItemFooter({ bundleId, item, ctx, isSample, handlers, onDecid
       bundleId={bundleId}
       item={item}
       ctx={ctx}
-      onDecided={(kind, itemId) => handlers.handleDecided(kind, () => onDecided?.(kind, itemId))}
+      onDecided={(kind, itemId) => {
+        if (kind === 'approve') void imageProduction?.start(itemId, ctx.items)
+        handlers.handleDecided(kind, () => onDecided?.(kind, itemId))
+      }}
       onConflict={handlers.refresh}
     />
   )

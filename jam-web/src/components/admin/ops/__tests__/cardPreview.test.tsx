@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { ReactElement } from 'react'
-import { OpsCardPreview, PREVIEW_IMAGE_PENDING_TEXT, PREVIEW_NOT_CARD_TEXT } from '../OpsCardPreview'
+import { OpsCardPreview, PREVIEW_IMAGE_NEEDED_TEXT, PREVIEW_IMAGE_PENDING_TEXT, PREVIEW_NOT_CARD_TEXT } from '../OpsCardPreview'
 
 const html = (node: ReactElement) => renderToStaticMarkup(node).replace(/<!-- -->/g, '')
 
@@ -50,5 +50,19 @@ describe('OpsCardPreview', () => {
     const noImage = { ...BASE, resource: { template_type: 'editorial_article' } }
     expect(html(<OpsCardPreview item={item(noImage)} />)).toContain(PREVIEW_IMAGE_PENDING_TEXT)
     expect(html(<OpsCardPreview item={item(BASE)} />)).not.toContain(PREVIEW_IMAGE_PENDING_TEXT)
+  })
+
+  it('승인됨·준비중이면 「이미지 제작 필요」, 도착·검토중이면 승인 뒤 안내를 보인다', () => {
+    const noImage = { ...BASE, resource: { template_type: 'editorial_article' } }
+    for (const status of ['approved', 'preparing']) {
+      const out = html(<OpsCardPreview item={{ ...item(noImage), status }} />)
+      expect(out).toContain(PREVIEW_IMAGE_NEEDED_TEXT)
+      expect(out).not.toContain(PREVIEW_IMAGE_PENDING_TEXT)
+    }
+    for (const status of ['arrived', 'reviewing']) {
+      const out = html(<OpsCardPreview item={{ ...item(noImage), status }} />)
+      expect(out).toContain(PREVIEW_IMAGE_PENDING_TEXT)
+      expect(out).not.toContain(PREVIEW_IMAGE_NEEDED_TEXT)
+    }
   })
 })

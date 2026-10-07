@@ -12,14 +12,16 @@ import { applyDraftToItem } from '@/lib/admin/opsInbox/editDraft'
 import { entriesOf, itemField } from '@/lib/admin/opsInbox/itemView'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
+import { OPS_IMAGE_PRODUCTION_STATUSES } from '@/lib/admin/opsSignals/composition'
 import { isImageShape } from '@/lib/today/shape'
 
 export const PREVIEW_NOT_CARD_TEXT = '이 종류의 미리보기는 곧 열려요'
 export const PREVIEW_IMAGE_PENDING_TEXT = '이미지는 승인 뒤 만들어요'
+export const PREVIEW_IMAGE_NEEDED_TEXT = '이미지 제작 필요'
 export const PREVIEW_COLOR_LABEL = '색 견본'
 
 export interface OpsCardPreviewProps {
-  item: Pick<OpsItemRecord, 'id' | 'kind' | 'original' | 'edited'>
+  item: Pick<OpsItemRecord, 'id' | 'kind' | 'original' | 'edited'> & { status?: string }
   /** 저장 전 초안 값(경로 → 새 값). 이 항목의 초안일 때만 넘긴다. */
   draft?: Record<string, unknown>
 }
@@ -35,7 +37,11 @@ export function OpsCardPreview({ item, draft }: OpsCardPreviewProps) {
   return (
     <div className="space-y-2">
       <TodayCardPreview views={[view]} />
-      {imageMissing && <p className="text-xs text-muted-foreground">{PREVIEW_IMAGE_PENDING_TEXT}</p>}
+      {imageMissing && (
+        <p className="text-xs text-muted-foreground">
+          {item.status && OPS_IMAGE_PRODUCTION_STATUSES.includes(item.status) ? PREVIEW_IMAGE_NEEDED_TEXT : PREVIEW_IMAGE_PENDING_TEXT}
+        </p>
+      )}
       {colors.some(({ text }) => HEX_COLOR_PATTERN.test(text)) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground" aria-label={PREVIEW_COLOR_LABEL}>
           <span>{PREVIEW_COLOR_LABEL}</span>

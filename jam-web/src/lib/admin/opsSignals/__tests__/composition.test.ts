@@ -213,8 +213,8 @@ describe('pickRepresentative — 대표 카드(가정 16, A9)', () => {
 describe('needsImageProduction — 「이미지 제작 필요」(A8)', () => {
   const noImage = (shape: string) => cardOriginal({ shape, resource: {} })
 
-  it('승인 전(도착·검토중·승인됨·준비중) 이미지 모양 항목에 이미지가 없으면 참이다', () => {
-    for (const status of ['arrived', 'reviewing', 'approved', 'preparing']) {
+  it('승인됨·준비중 이미지 모양 항목에 이미지가 없으면 참이다', () => {
+    for (const status of ['approved', 'preparing']) {
       for (const shape of ['hero', 'poster', 'square']) {
         expect(needsImageProduction({ status, original: noImage(shape), edited: null }), `${status}/${shape}`).toBe(true)
       }
@@ -222,36 +222,36 @@ describe('needsImageProduction — 「이미지 제작 필요」(A8)', () => {
   })
 
   it('이미지가 있으면 거짓이다', () => {
-    expect(needsImageProduction({ status: 'arrived', original: cardOriginal(), edited: null })).toBe(false)
+    expect(needsImageProduction({ status: 'approved', original: cardOriginal(), edited: null })).toBe(false)
     expect(
-      needsImageProduction({ status: 'arrived', original: cardOriginal({ resource: { cover_image_url: '   ' } }), edited: null })
+      needsImageProduction({ status: 'approved', original: cardOriginal({ resource: { cover_image_url: '   ' } }), edited: null })
     ).toBe(true)
   })
 
   it('이미지가 없는 모양(brief·list)은 거짓이다', () => {
     for (const shape of ['brief', 'list']) {
-      expect(needsImageProduction({ status: 'arrived', original: noImage(shape), edited: null })).toBe(false)
+      expect(needsImageProduction({ status: 'approved', original: noImage(shape), edited: null })).toBe(false)
     }
   })
 
-  it('승인 뒤 상태(예약·게재·종료)와 멈춘 상태는 표시하지 않는다', () => {
-    for (const status of ['scheduled', 'live', 'ended', 'rejected', 'cancelled', 'failed']) {
+  it('도착·검토중, 승인 뒤 상태(예약·게재·종료)와 멈춘 상태는 표시하지 않는다', () => {
+    for (const status of ['arrived', 'reviewing', 'scheduled', 'live', 'ended', 'rejected', 'cancelled', 'failed']) {
       expect(needsImageProduction({ status, original: noImage('hero'), edited: null }), status).toBe(false)
     }
   })
 
   it('모양을 읽을 수 없으면(칸이 없거나 틀림) 거짓이다', () => {
-    expect(needsImageProduction({ status: 'arrived', original: { resource: {} }, edited: null })).toBe(false)
-    expect(needsImageProduction({ status: 'arrived', original: { shape: 'large_thumbnail' }, edited: null })).toBe(false)
+    expect(needsImageProduction({ status: 'approved', original: { resource: {} }, edited: null })).toBe(false)
+    expect(needsImageProduction({ status: 'approved', original: { shape: 'large_thumbnail' }, edited: null })).toBe(false)
   })
 
   it('수정본의 모양이 제출 원본보다 먼저다', () => {
-    expect(needsImageProduction({ status: 'arrived', original: noImage('brief'), edited: { shape: 'hero' } })).toBe(true)
-    expect(needsImageProduction({ status: 'arrived', original: noImage('hero'), edited: { shape: 'list' } })).toBe(false)
+    expect(needsImageProduction({ status: 'approved', original: noImage('brief'), edited: { shape: 'hero' } })).toBe(true)
+    expect(needsImageProduction({ status: 'approved', original: noImage('hero'), edited: { shape: 'list' } })).toBe(false)
   })
 
   it('구성의 운영 묶음 카드에도 같은 값이 실린다', () => {
-    const item = makeItem({ status: 'reviewing', original: noImage('poster') })
+    const item = makeItem({ status: 'approved', original: noImage('poster') })
     const [day] = compose({ bundles: [makeBundle([item])] })
     expect(day.cards[0].needsImageProduction).toBe(true)
     expect(day.cards[0].imageMissing).toBe(false)

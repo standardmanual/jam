@@ -103,6 +103,9 @@ export const OPS_STOPPED_ITEM_STATUSES: readonly string[] = ['rejected', 'cancel
 /** 승인 전 상태: 도착·검토중·승인됨·준비중(A8). */
 export const OPS_PRE_APPROVAL_STATUSES: readonly string[] = ['arrived', 'reviewing', 'approved', 'preparing']
 
+/** 「이미지 제작 필요」를 보이는 상태: 승인됨·준비중. 도착·검토중은 아직 만들 때가 아니다(티켓 20261007_1031). */
+export const OPS_IMAGE_PRODUCTION_STATUSES: readonly string[] = ['approved', 'preparing']
+
 /** 날짜 구성이 세는 항목 상태인가(10개 안의 값이고 반려·취소·실패가 아니다). */
 export function isCountedItemStatus(status: string): boolean {
   return KNOWN_STATUSES.has(status) && !OPS_STOPPED_ITEM_STATUSES.includes(status)
@@ -133,11 +136,11 @@ export function hasItemImage(item: ViewableItem): boolean {
 }
 
 /**
- * 「이미지 제작 필요」 표시(A8, 신호가 아니라 표시만 한다). 승인 전(도착·검토중·승인됨·준비중) 항목의 모양이 이미지가 있는
+ * 「이미지 제작 필요」 표시(A8, 신호가 아니라 표시만 한다). 승인됨·준비중 항목(승인 직후 자동 제작이 끝나지 않았거나 실패한 것)의 모양이 이미지가 있는
  * 모양(`hero`·`poster`·`square`)인데 이미지가 없으면 참이다. 모양을 읽을 수 없으면(「모름」) 거짓이다.
  */
 export function needsImageProduction(item: ViewableItem & { status: string }): boolean {
-  if (!OPS_PRE_APPROVAL_STATUSES.includes(item.status)) return false
+  if (!OPS_IMAGE_PRODUCTION_STATUSES.includes(item.status)) return false
   return isImageShape(readOpsItemShape(item)) && !hasItemImage(item)
 }
 

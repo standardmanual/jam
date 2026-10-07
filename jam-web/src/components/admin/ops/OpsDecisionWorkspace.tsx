@@ -22,6 +22,7 @@ import { OpsBundleWorkspace, type OpsBundleWorkspaceProps, type OpsWorkspaceCont
 import { OpsExecuteBundle } from './OpsExecuteBundle'
 import { OpsItemEditForm } from './OpsItemEditForm'
 import { OpsItemFooter, useOpsItemResultHandlers } from './OpsItemFooter'
+import { useItemImageProduction } from './useItemImageProduction'
 
 /**
  * 결정 슬롯을 채운 기획 상세 (티켓 20260930_1818). 기획 상세(S3) 페이지가 셸(`OpsBundleWorkspace`) 대신 이 래퍼를 그린다.
@@ -82,6 +83,7 @@ export function OpsDecisionWorkspace({
 
   const handlers = useOpsItemResultHandlers({ bundleId })
   const { refresh } = handlers
+  const imageProduction = useItemImageProduction({ bundleId, isSample: isSample ?? false, onDone: refresh })
 
   const handleBulkApproved = (ctx: OpsWorkspaceContext, result: { approved: number; skipped: number }) => {
     const message = bulkResultMessage(result.approved, result.skipped)
@@ -187,6 +189,7 @@ export function OpsDecisionWorkspace({
           ctx={ctx}
           isSample={isSample ?? false}
           handlers={handlers}
+          imageProduction={imageProduction}
           onDecided={(_kind, itemId) => {
             const next = nextDecidableItemId(items, itemId)
             if (next) ctx.selectItem(next)
