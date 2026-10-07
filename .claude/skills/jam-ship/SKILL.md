@@ -243,8 +243,9 @@ node scripts/deploy-gate.mjs served
   `tribe_constant_missing`·`drop_state_last_activity_mismatch`)가 급증했는지 확인한다.
 - `strava_sync_failures` 테이블에서 배포 시각 이후 건수를 확인한다.
 
-이후의 지속 관찰(Strava 동기화 실패율, 핵심 플로우 일일 점검)은 카즈하의 「① 실행 점검」
-(`jam-ops.md`)이 매일·주 1회 종합으로 이미 돈다 — 여기서 새 루틴을 만들지 않는다.
+이후의 지속 관찰(Strava 동기화 실패율, 핵심 플로우 일일 점검)을 맡던 카즈하의 「① 실행 점검」
+(`jam-ops.md`) 예약 실행은 2026-10-07 예약 루틴 삭제로 지금 돌지 않는다(`scheduled-jobs.md` 머리말).
+여기서 새 루틴을 만들지 않는다.
 
 > 이식 출처: `shipping-and-launch` skill §Post-Launch Verification.
 
@@ -260,6 +261,9 @@ node scripts/deploy-gate.mjs served
   ("해당 없음(jam-web 변경 0줄)"), 범위 밖 발견물로 만든 티켓 경로
 
 ## 주간 무인 배포와의 관계
+
+> 2026-10-07 예약 루틴이 모두 삭제되어 목요일 무인 배포는 지금 돌지 않는다(`scheduled-jobs.md` 머리말).
+> 아래 표는 루틴을 다시 만들 때의 대응이다.
 
 목요일 23:59 KST 무인 배포는 이 스킬의 일부만 수행한다. 범위·사유·절차의 단일 원천은
 `.claude/skills/jam-work/references/scheduled-jobs.md` 「주간 배포 승인」 절(「무인 경로에 적용하는

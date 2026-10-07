@@ -208,16 +208,17 @@ tags: [워크플로]
 
 ## 6. 예약 자동화 루틴
 
-**클라우드 예약 작업**(claude.ai/code/routines)에서 돈다. PC 상태와 무관하다. 원문 스펙은
-`.claude/skills/jam-work/references/scheduled-jobs.md`에 있다.
+**클라우드 예약 작업**(claude.ai/code/routines)에서 돌도록 설계됐다. PC 상태와 무관하다. 원문 스펙은
+`.claude/skills/jam-work/references/scheduled-jobs.md`에 있다. **2026-10-07 사용자가 루틴을 모두 삭제해 지금은
+하나도 돌지 않는다**(확인 방법·후속 정리는 그 문서 머리말).
 
 | 루틴 | 주기 (KST) | 담당 | 산출물 | 상태 |
 |---|---|---|---|---|
-| 주간 브리핑 | 화 09:00 | 카즈하 → 윤진 | `jam-doc/operations/reports/weekly/YYYY-Www.md` | 켜짐 |
-| 선별 (무인 적격 판정) | 매일 06:00 | 카즈하 | `jam-doc/operations/reports/triage/YYYY-MM-DD.md` | 켜짐(2026-09-22 등록) |
-| 주간 배포 확인 | 목 15:00 | 무인 카리나 | Slack 리마인더 게시 | 켜짐 |
-| 주간 배포 실행 | 목 23:59 | 무인 카리나 | 프로덕션 배포 | 켜짐 |
-| 월간 트렌드·문서 점검 | 매월 1일 09:00 | 윈터·윤진 → 하니 | `jam-doc/operations/reports/monthly/YYYY-MM.md` | 켜짐 |
+| 주간 브리핑 | 화 09:00 | 카즈하 → 윤진 | `jam-doc/operations/reports/weekly/YYYY-Www.md` | 삭제됨(2026-10-07) |
+| 선별 (무인 적격 판정) | 매일 06:00 | 카즈하 | `jam-doc/operations/reports/triage/YYYY-MM-DD.md` | 삭제됨(2026-10-07) |
+| 주간 배포 확인 | 목 15:00 | 무인 카리나 | Slack 리마인더 게시 | 삭제됨(2026-10-07) |
+| 주간 배포 실행 | 목 23:59 | 무인 카리나 | 프로덕션 배포 | 삭제됨(2026-10-07) |
+| 월간 트렌드·문서 점검 | 매월 1일 09:00 | 윈터·윤진 → 하니 | `jam-doc/operations/reports/monthly/YYYY-MM.md` | 삭제됨(2026-10-07) |
 
 ### 무인 실행에 거는 제약
 

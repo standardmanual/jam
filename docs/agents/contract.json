@@ -253,6 +253,14 @@
       {
         "text": "automation-list.md` \"Slack 채널\" 절이다",
         "reason": "채널 ID의 단일 원천은 automation-list.md가 아니라 scheduled-jobs.md 「Slack 알림」이다 (티켓 20260930_1819)"
+      },
+      {
+        "text": "두 작업 모두 켜짐",
+        "reason": "2026-10-07 사용자가 예약 루틴을 모두 삭제했다(RemoteTrigger list로 cron 루틴 0개 확인). 현재 상태는 scheduled-jobs.md 머리말이 단일 원천이다 (티켓 20261007_1956)"
+      },
+      {
+        "text": "매일·주 1회 종합으로 이미 돈다",
+        "reason": "카즈하의 예약 점검은 2026-10-07 예약 루틴 삭제로 돌지 않는다. scheduled-jobs.md 머리말 참고 (티켓 20261007_1956)"
       }
     ]
   },
