@@ -21,6 +21,7 @@ import { OpsBulkApprove, bulkResultMessage } from './OpsBulkApprove'
 import { OpsBundleWorkspace, type OpsBundleWorkspaceProps, type OpsWorkspaceContext } from './OpsBundleWorkspace'
 import { OpsExecuteBundle } from './OpsExecuteBundle'
 import { OpsItemEditForm } from './OpsItemEditForm'
+import { OpsImageProduction } from './OpsImageProduction'
 import { OpsItemFooter, useOpsItemResultHandlers } from './OpsItemFooter'
 import { useItemImageProduction } from './useItemImageProduction'
 
@@ -123,6 +124,10 @@ export function OpsDecisionWorkspace({
       decisions={decisions}
       balance={balance}
       isSample={isSample}
+      makingItemIds={imageProduction.making}
+      previewAction={(item) => (
+        <OpsImageProduction item={item} items={items} isSample={isSample ?? false} production={imageProduction} />
+      )}
       barAction={(ctx) => {
         const bulkApprove =
           decidable.length > 0 ? (

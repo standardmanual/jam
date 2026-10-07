@@ -75,7 +75,7 @@ related:
 | 항목 | `links` | 배열. 각 값은 같은 묶음 다른 항목의 `item_key`여야 한다(자기 자신과 없는 키는 오류) |
 | 항목 | `world_review`(필수) | 객체 `{ world_related, winter_reviewed, reason }`. 셋 다 필수, 앞의 둘은 불리언, `reason`은 한 줄 문자열, `world_related`가 참이면 `winter_reviewed`도 참이어야 한다. 규칙은 홈피드 등록 묶음의 `world_review`와 같다(`registerHomeFeedBundle.mjs`, 테스트가 같은 입력으로 대조) |
 | 항목 | `shape`·`exposure_tags`·`tribe_id`·`color_pending`, 묶음 `excluded_items` | 아래 「카드 칸과 뺀 항목」 표가 정한다 |
-| 항목 | `image_spec`(선택) | 이미지 지시 칸. 객체이고 `preset_id`·`bg`·`end`는 비어 있지 않은 문자열, `values`는 문자열 값을 가진 객체이며 넷 모두 선택이다. 이미지 칸이 있는 종류(`home_feed_card`·`mission`·`jam_badge`·`collection_launch`)에서 비어 있거나 `preset_id`가 없으면, 또는 값이 있는데 모양이 틀리면 **경고만** 낸다. 오류로 만들지 않고 제출은 그대로 받으며, 경고는 제출 응답의 `warnings`에만 싣고 DB에는 저장하지 않는다(`image_spec`은 항목 원본에 그대로 저장한다). 규칙은 `lib/admin/opsInbox/imageSpec.ts` |
+| 항목 | `image_spec`(선택) | 이미지 지시 칸. 객체이고 `preset_id`·`bg`·`end`는 비어 있지 않은 문자열, `values`는 문자열 값을 가진 객체이며 넷 모두 선택이다. 이미지 칸이 있는 종류(`home_feed_card`·`mission`·`jam_badge`·`collection_launch`)에서 비어 있거나 `preset_id`가 없으면, `preset_id`는 있는데 `bg`·`end`가 없으면(렌더가 실패한다), 또는 값이 있는데 모양이 틀리면 **경고만** 낸다. 오류로 만들지 않고 제출은 그대로 받으며, 경고는 제출 응답의 `warnings`에만 싣고 DB에는 저장하지 않는다(`image_spec`은 항목 원본에 그대로 저장한다). 규칙은 `lib/admin/opsInbox/imageSpec.ts` |
 | 항목 | `knobs`·`segment`·`balance_check`·`copy`·`colors`·`resource` | 검사하지 않고 항목 원본(`original`)에 그대로 저장한다. 종류별 세부 검증은 예약 등록 때 등록 전 검증(§8.4)이 한다. `segment`는 옛 칸이라 신호가 읽지 않는다(대상은 `exposure_tags`) |
 
 - 형식에 이미지 파일 경로(`image.path`)와 `seed`는 없다. 이미지는 제출 뒤 운영툴이 만들므로 `image_spec`(이미지 지시)을 받는다(§8.8, 티켓 1501). 이 두 키가 들어와도 거절하지 않고 검사 없이 항목 원본(`original`)에 그대로 저장한다. `image_spec`은 위 표대로 모양만 보고 경고한다.
@@ -1350,6 +1350,9 @@ stateDiagram-v2
   **일괄 승인은 자동 제작에서 제외한다**(`OpsBulkApprove`는 이 경로를 거치지 않는다). **시험 묶음은 렌더도 저장도 하지 않는다.** `image_spec`이 없거나 `preset_id`가 없으면 건너뛴다.
   제작이 실패하거나 건너뛰어도 승인은 유지되고 「이미지 제작 필요」가 남는다(항목 데이터로 계산하므로 새로 고쳐도 유지). 게재중·예약됨 항목에는 표시하지 않는다.
   실제 캔버스 렌더(글꼴·이미지·`toBlob`)는 머지 뒤 로컬 브라우저에서 확인한다.
+- **[이미지 만들기]·다시 만들기(티켓 20261007_1032).** 서랍과 기획 상세의 카드 미리보기 바로 아래(`OpsImageProduction`)에 승인됨·준비중 항목의 버튼이 있다. 이미지가 없으면 [이미지 만들기], 있으면 [이미지 다시 만들기]이고
+  눌러서 같은 훅(`useItemImageProduction`)이 새 시드로 만든다. 만드는 중에는 버튼이 잠기고 미리보기의 「이미지 제작 필요」 자리가 「이미지를 만드는 중이에요」로 바뀐다.
+  시험 묶음·게재중·예약됨·검토중 항목과 `image_spec.preset_id`가 없는 항목에는 버튼과 표시를 그리지 않는다. `bg`·`end`가 없으면 호출부가 기본 색을 정하지 않고 제출 경고(`imageSpecWarnings`)로 알린다.
 - **브라우저 렌더 모듈(티켓 20261007_0945).** 서랍이 부르는 `renderPresetToPngBlob({ presetId, bg, end, values, seed })`(`lib/admin/opsInbox/imageRender.client.ts`)가 프리셋을 읽어 PNG Blob 한 장을 만들고,
   `postItemImage(bundleId, itemId, blob)`(`components/admin/ops/imageClient.ts`)가 §11.12에 올린다(던지지 않고 `{ ok, url } | { ok: false, status, message }`). 입력은 서버 CLI(`renderCard.mjs`)와 1:1이고 조립은 `lib/asset-generator/renderPreset.ts`다(같은 순서·같은 값).
   시드는 호출부가 정한다. 글꼴·이미지 로드는 시간 제한이 있고 실패하면 던진다(폴백 글꼴로 그리지 않는다). 클라이언트 모듈은 서버 전용 코드(`opsInbox/image.ts`·`scripts/asset-generator/*`·`serverCanvas.ts`)를 가져오지 않는다.

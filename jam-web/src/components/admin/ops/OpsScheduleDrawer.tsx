@@ -17,6 +17,7 @@ import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import type { OpsItemDraft, OpsWorkspaceContext } from './OpsBundleWorkspace'
 import { OpsCardPreview } from './OpsCardPreview'
 import { OpsDrawerFrame } from './OpsDrawerFrame'
+import { OpsImageProduction } from './OpsImageProduction'
 import { OpsItemDetail } from './OpsItemDetail'
 import { OpsItemEditForm } from './OpsItemEditForm'
 import { OpsItemFooter, useOpsItemResultHandlers } from './OpsItemFooter'
@@ -204,7 +205,8 @@ export function ReadyItemBody({ detail, item, includeSample, onRefresh, onOpenIt
         <OpsStatusBadge type="item" status={item.status} />
         {detail.isSample && <OpsStatusBadge type="sample" />}
       </div>
-      <OpsCardPreview item={item} draft={draft?.itemId === item.id ? draft.values : undefined} />
+      <OpsCardPreview item={item} draft={draft?.itemId === item.id ? draft.values : undefined} making={imageProduction.making.has(item.id)} />
+      <OpsImageProduction item={item} items={detail.items} isSample={detail.isSample} production={imageProduction} />
       <OpsItemDetail
         item={item}
         items={detail.items}

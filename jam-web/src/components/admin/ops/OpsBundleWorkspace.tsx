@@ -101,6 +101,10 @@ export interface OpsBundleWorkspaceProps {
   detailFooter?: (item: OpsItemRecord, ctx: OpsWorkspaceContext) => ReactNode
   detailEdit?: (item: OpsItemRecord, ctx: OpsWorkspaceContext) => ReactNode
   detailHistoryAction?: (item: OpsItemRecord, ctx: OpsWorkspaceContext) => ReactNode
+  /** 카드 미리보기 바로 아래 칸(이미지 만들기 버튼). 결정 줄 분기에 가려지지 않는다(티켓 20261007_1032). */
+  previewAction?: (item: OpsItemRecord, ctx: OpsWorkspaceContext) => ReactNode
+  /** 이미지를 만드는 중인 항목 ID. 미리보기의 이미지 자리 안내를 「만드는 중」으로 바꾼다. */
+  makingItemIds?: ReadonlySet<string>
 }
 
 export const OPS_TRANSITION_FAILED_MESSAGE =
@@ -128,6 +132,8 @@ export function OpsBundleWorkspace({
   detailFooter,
   detailEdit,
   detailHistoryAction,
+  previewAction,
+  makingItemIds,
 }: OpsBundleWorkspaceProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -308,7 +314,14 @@ export function OpsBundleWorkspace({
           <Card className="p-4">
             <h2 className="mb-3 text-sm font-semibold">미리보기</h2>
             {selectedItem ? (
-              <OpsCardPreview item={selectedItem} draft={draft?.itemId === selectedItem.id ? draft.values : undefined} />
+              <div className="space-y-3">
+                <OpsCardPreview
+                  item={selectedItem}
+                  draft={draft?.itemId === selectedItem.id ? draft.values : undefined}
+                  making={makingItemIds?.has(selectedItem.id) ?? false}
+                />
+                {previewAction?.(selectedItem, ctx)}
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">항목을 고르면 미리보기가 보여요</p>
             )}

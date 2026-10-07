@@ -18,15 +18,18 @@ import { isImageShape } from '@/lib/today/shape'
 export const PREVIEW_NOT_CARD_TEXT = '이 종류의 미리보기는 곧 열려요'
 export const PREVIEW_IMAGE_PENDING_TEXT = '이미지는 승인 뒤 만들어요'
 export const PREVIEW_IMAGE_NEEDED_TEXT = '이미지 제작 필요'
+export const PREVIEW_IMAGE_MAKING_TEXT = '이미지를 만드는 중이에요'
 export const PREVIEW_COLOR_LABEL = '색 견본'
 
 export interface OpsCardPreviewProps {
   item: Pick<OpsItemRecord, 'id' | 'kind' | 'original' | 'edited'> & { status?: string }
   /** 저장 전 초안 값(경로 → 새 값). 이 항목의 초안일 때만 넘긴다. */
   draft?: Record<string, unknown>
+  /** 이 항목의 이미지를 지금 만드는 중이면 이미지 자리의 안내를 「만드는 중」으로 바꾼다(티켓 20261007_1032). */
+  making?: boolean
 }
 
-export function OpsCardPreview({ item, draft }: OpsCardPreviewProps) {
+export function OpsCardPreview({ item, draft, making = false }: OpsCardPreviewProps) {
   const view = previewViewOf(item, draft)
   if (!view) return <p className="text-sm text-muted-foreground">{PREVIEW_NOT_CARD_TEXT}</p>
 
@@ -39,7 +42,11 @@ export function OpsCardPreview({ item, draft }: OpsCardPreviewProps) {
       <TodayCardPreview views={[view]} />
       {imageMissing && (
         <p className="text-xs text-muted-foreground">
-          {item.status && OPS_IMAGE_PRODUCTION_STATUSES.includes(item.status) ? PREVIEW_IMAGE_NEEDED_TEXT : PREVIEW_IMAGE_PENDING_TEXT}
+          {item.status && OPS_IMAGE_PRODUCTION_STATUSES.includes(item.status)
+            ? making
+              ? PREVIEW_IMAGE_MAKING_TEXT
+              : PREVIEW_IMAGE_NEEDED_TEXT
+            : PREVIEW_IMAGE_PENDING_TEXT}
         </p>
       )}
       {colors.some(({ text }) => HEX_COLOR_PATTERN.test(text)) && (

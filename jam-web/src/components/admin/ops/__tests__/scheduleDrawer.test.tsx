@@ -185,6 +185,16 @@ describe('항목 서랍 — 운영 항목', () => {
     expect(out).not.toContain('반려하기')
   })
 
+  it('승인됨·이미지 없음·image_spec이 있으면 푸터 밖에 [이미지 만들기]가 있고, 시험 묶음이면 없다(티켓 1032)', () => {
+    const original = { ...(makeItem().original as Record<string, unknown>), image_spec: { preset_id: 'p1', bg: '#111111', end: '#222222' } }
+    const out = itemView(ok({ status: 'approved', original }))
+    expect(out).toContain('이미지 만들기')
+    expect(out).toContain(SCHEDULE_APPROVED_NOTICE)
+    expect(out.indexOf('이미지 만들기')).toBeLessThan(out.indexOf('유저가 겪는 것'))
+    expect(itemView(ok({ status: 'approved', original }, { isSample: true }))).not.toContain('이미지 만들기')
+    expect(itemView(ok({ status: 'reviewing', original }))).not.toContain('이미지 만들기')
+  })
+
   it('기획 상세 링크는 시험 묶음 포함을 잃지 않는다', () => {
     const out = itemView(ok({ status: 'approved' }), { includeSample: true })
     expect(out).toContain(`href="/admin/ops-inbox/${BUNDLE_ID}?item=${ITEM_ID}&amp;sample=1"`)
