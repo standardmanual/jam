@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import BackgroundColorField from '@/components/admin/BackgroundColorField'
-import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
+import BackgroundColorField, { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { Button } from '@/components/admin/ui/button'
 import { OPS_FIELD_UNKNOWN, readOpsItemColorPending, readOpsItemTribeId } from '@/lib/admin/opsInbox/fields'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'

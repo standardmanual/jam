@@ -23,7 +23,7 @@ import { OpsExecuteBundle } from './OpsExecuteBundle'
 import { OpsItemEditForm } from './OpsItemEditForm'
 import { OpsImageProduction } from './OpsImageProduction'
 import { OpsColorPairPicker } from './OpsColorPairPicker'
-import { OpsItemFooter,useOpsItemResultHandlers } from './OpsItemFooter'
+import { OpsItemFooter, useOpsItemResultHandlers } from './OpsItemFooter'
 import { useItemImageProduction } from './useItemImageProduction'
 
 /**
