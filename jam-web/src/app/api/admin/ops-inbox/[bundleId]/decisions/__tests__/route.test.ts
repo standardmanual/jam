@@ -22,6 +22,7 @@ const h = vi.hoisted(() => {
     bulkApprove: vi.fn(),
     editItem: vi.fn(),
     revertLastEdit: vi.fn(),
+    fillColor: vi.fn(),
   }
 
   // 결정 기록에 slack_result를 채우는 update(...).eq(...)만 흉내 낸다.
@@ -66,6 +67,7 @@ vi.mock('@/lib/admin/opsInbox/decide', async (importOriginal) => {
     bulkApprove: h.state.bulkApprove,
     editItem: h.state.editItem,
     revertLastEdit: h.state.revertLastEdit,
+    fillColor: h.state.fillColor,
   }
 })
 
@@ -103,7 +105,7 @@ beforeEach(() => {
   h.state.admin = { id: 'admin-1', email: 'a@example.com' }
   h.state.afterCallbacks = []
   h.state.decisionUpdates = []
-  for (const key of ['postOpsSlack', 'approveItem', 'rejectItem', 'bulkApprove', 'editItem', 'revertLastEdit'] as const) {
+  for (const key of ['postOpsSlack', 'approveItem', 'rejectItem', 'bulkApprove', 'editItem', 'revertLastEdit', 'fillColor'] as const) {
     h.state[key].mockReset()
   }
   h.state.approveItem.mockResolvedValue(ok())
@@ -111,10 +113,11 @@ beforeEach(() => {
   h.state.bulkApprove.mockResolvedValue(ok({ body: { ok: true, approved: 2, skipped: 0, excluded: 0 } }))
   h.state.editItem.mockResolvedValue(ok({ body: { ok: true, updatedAt: 'now', changed: ['copy.title'] } }))
   h.state.revertLastEdit.mockResolvedValue(ok())
+  h.state.fillColor.mockResolvedValue(ok({ body: { ok: true, updatedAt: 'now', changed: ['color_pending'] } }))
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
-const processors = () => [h.state.approveItem, h.state.rejectItem, h.state.bulkApprove, h.state.editItem, h.state.revertLastEdit]
+const processors = () => [h.state.approveItem, h.state.rejectItem, h.state.bulkApprove, h.state.editItem, h.state.revertLastEdit, h.state.fillColor]
 
 describe('인증과 입력', () => {
   it('로그인하지 않았거나 관리자가 아니면 403이고 아무것도 처리하지 않는다', async () => {
@@ -146,7 +149,7 @@ describe('인증과 입력', () => {
   })
 
   it('항목 하나를 다루는 action은 UUID인 itemId가 있어야 한다(일괄 승인은 itemIds)', async () => {
-    for (const action of ['approve', 'reject', 'edit', 'revert']) {
+    for (const action of ['approve', 'reject', 'edit', 'revert', 'fill_color']) {
       expect((await call({ action })).status, action).toBe(400)
       expect((await call({ action, itemId: 'nope' })).status, action).toBe(400)
       expect((await call({ action, itemId: 5 })).status, action).toBe(400)
@@ -189,6 +192,20 @@ describe('action별 처리', () => {
       actor: 'admin-1',
       values: { 'copy.title': '새 제목' },
       reason: '오타',
+      expectedUpdatedAt: 'T0',
+    })
+  })
+
+  it('fill_color: 시작색·끝색·화면이 본 수정 시각을 넘긴다', async () => {
+    const res = await call({ action: 'fill_color', itemId: I, bg: '#8a5a2e', end: '#3d2812', expectedUpdatedAt: 'T0' })
+    expect(res.status).toBe(200)
+    expect((await res.json()).changed).toEqual(['color_pending'])
+    expect(h.state.fillColor).toHaveBeenCalledWith(expect.anything(), {
+      bundleId: B,
+      itemId: I,
+      actor: 'admin-1',
+      bg: '#8a5a2e',
+      end: '#3d2812',
       expectedUpdatedAt: 'T0',
     })
   })

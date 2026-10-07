@@ -261,6 +261,14 @@ const ROWS: Row[] = [
   },
   {
     key: 'empty_content',
+    condition: '「색 대기」 카드 — 색 채우기가 수정본으로 color_pending을 false로 덮으면 해제된다(티켓 20261007_1145)',
+    raised: () => ({ input: { bundles: [makeBundle([homeItem('2026-10-02', { color_pending: true })])] } }),
+    clear: () => ({
+      input: { bundles: [makeBundle([homeItem('2026-10-02', { color_pending: true }, { edited: { color_pending: false, image_spec: { bg: '#b83618', end: '#5c1a0c' } } })])] },
+    }),
+  },
+  {
+    key: 'empty_content',
     condition: '문안이 빈 운영 묶음 카드(copy에 글자가 없다)',
     raised: () => ({ input: { bundles: [makeBundle([homeItem('2026-10-02', { copy: { title: ' ', body: '' } })])] } }),
     clear: () => ({ input: { bundles: [makeBundle([homeItem('2026-10-02', { copy: { title: '문안' } })])] } }),

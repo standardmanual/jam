@@ -265,6 +265,9 @@ describe('직접 수정 이름표 (티켓 20260930_1818)', () => {
     expect(editPathLabel('ends_at')).toBe('종료 시각')
     expect(editPathLabel('segment')).toBe('대상')
     expect(editPathLabel('user_experience')).toBe('유저가 겪는 것')
+    expect(editPathLabel('color_pending')).toBe('색 대기')
+    expect(editPathLabel('image_spec.bg')).toBe('이미지 시작색')
+    expect(editPathLabel('image_spec.end')).toBe('이미지 끝색')
     expect(editPathLabel('unknown.path')).toBe('unknown.path')
   })
 

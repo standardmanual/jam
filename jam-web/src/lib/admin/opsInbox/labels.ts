@@ -245,6 +245,9 @@ const EDIT_PATH_LABELS: Record<string, string> = {
   ends_at: '종료 시각',
   segment: '대상',
   user_experience: '유저가 겪는 것',
+  color_pending: '색 대기',
+  'image_spec.bg': '이미지 시작색',
+  'image_spec.end': '이미지 끝색',
 }
 
 /** 고친 칸의 이름표. `copy.body` → 「문안 · body」, `colors.background` → 「색 · background」. 모르는 경로는 그대로 둔다. */

@@ -75,10 +75,12 @@ export type DecisionMessageInput =
   | { action: 'reject'; isSample: boolean; itemLabel: string; reason: string }
   | { action: 'bulk_approve'; isSample: boolean; approved: number; excluded: number; skipped: number }
   | { action: 'edit' | 'revert'; isSample: boolean; itemLabel: string; changedLabels: readonly string[] }
+  | { action: 'fill_color'; isSample: boolean; itemLabel: string; pairLabel: string }
 
 /**
  * 결정 글. 시험 묶음이면 맨 앞에 「[시험]」을 붙인다. 모든 제출 문자열은 `escapeSlackText`를 거친다.
- * 예: `[시험] 승인했어요 · 홈피드 카드 · 10/5(월) 09:00`, `[시험] 일괄 승인했어요 · 11개 승인, 1개 제외`
+ * 색 채우기 글의 `pairLabel`은 승인 쌍 이름 또는 「직접 입력」이다(색 값은 싣지 않는다).
+ * 예: `[시험] 승인했어요 · 홈피드 카드 · 10/5(월) 09:00`,`[시험] 일괄 승인했어요 · 11개 승인, 1개 제외`
  */
 export function formatDecisionMessage(input: DecisionMessageInput): string {
   let text: string
@@ -94,6 +96,9 @@ export function formatDecisionMessage(input: DecisionMessageInput): string {
       text = `일괄 승인했어요 · ${input.approved}개 승인, ${input.excluded}개 제외${skipped}`
       break
     }
+    case 'fill_color':
+      text = `색을 채웠어요 · ${safeField(input.itemLabel)} · ${safeField(input.pairLabel)}`
+      break
     case 'edit':
     case 'revert': {
       const shown = input.changedLabels.slice(0, SLACK_CHANGED_LABELS_MAX).map((label) => safeField(label))

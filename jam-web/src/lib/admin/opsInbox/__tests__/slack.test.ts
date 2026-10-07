@@ -119,6 +119,11 @@ describe('formatDecisionMessage (티켓 20260930_1818)', () => {
     expect(revert).toBe('수정했어요(되돌림) · 홈피드 카드 · 10/5(월) 09:00 · 바뀐 칸: 공개 시각')
   })
 
+  it('색 채우기: 쌍 이름만 싣고 색 값은 싣지 않는다', () => {
+    const text = formatDecisionMessage({ action: 'fill_color', isSample: true, itemLabel: label, pairLabel: '주말 초록' })
+    expect(text).toBe('[시험] 색을 채웠어요 · 홈피드 카드 · 10/5(월) 09:00 · 주말 초록')
+  })
+
   it('바뀐 칸이 많으면 「외 N칸」으로 줄인다', () => {
     const many = Array.from({ length: 12 }, (_, i) => `문안 · k${i}`)
     const text = formatDecisionMessage({ action: 'edit', isSample: false, itemLabel: label, changedLabels: many })

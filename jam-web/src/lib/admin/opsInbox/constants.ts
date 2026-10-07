@@ -71,6 +71,8 @@ export const OPS_DECISION_ACTION_APPROVE = 'approve'
 export const OPS_DECISION_ACTION_REJECT = 'reject'
 export const OPS_DECISION_ACTION_EDIT = 'edit'
 export const OPS_DECISION_ACTION_REVERT = 'revert'
+/** 색 채우기(티켓 20261007_1145). 검토중 카드의 「색 대기」를 풀며 `image_spec.bg`·`end`와 `colors.*`를 채운다. 되돌리기 대상이 아니다. */
+export const OPS_DECISION_ACTION_FILL_COLOR = 'fill_color'
 export const OPS_DECISION_ACTION_EXECUTE = 'execute'
 export const OPS_DECISION_ACTION_FAIL = 'fail'
 export const OPS_DECISION_ACTION_CANCEL = 'cancel'

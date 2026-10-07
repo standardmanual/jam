@@ -1545,6 +1545,7 @@ stateDiagram-v2
   | `bulk_approve` | `{ action, itemIds }` — 이 묶음의 항목 ID 1~60개 |
   | `edit` | `{ action, itemId, values, reason?, expectedUpdatedAt }` — `values`는 바뀐 칸만 경로 → 새 값(예: `{ "copy.body": "…", "starts_at": "2026-10-05T00:00:00.000Z" }`), `expectedUpdatedAt`은 화면이 본 항목의 `updated_at` |
   | `revert` | `{ action, itemId }` |
+  | `fill_color` | `{ action, itemId, bg, end, expectedUpdatedAt }` — 검토중 항목만. `bg`·`end`는 `#rrggbb`(대소문자 무관, 서버가 소문자로 저장). 수정본에 `color_pending: false`, `image_spec.bg`·`end`, `colors.bg`·`end`를 같은 값으로 함께 쓴다. 결정 기록 `fill_color`의 사유는 승인 쌍 이름(`tribePalettes.ts`, 정본은 `jam-doc/planning/content/TRIBES.md` 「승인 색 쌍」) 또는 「직접 입력」이다. 되돌리기 대상이 아니다. 형식이 틀리면 400 `{ error, fieldErrors: { bg?, end? } }`, 검토중이 아니거나 수정 시각이 어긋나면 409 |
 - **응답:**
 
   | 상태 | 언제 | 본문 |

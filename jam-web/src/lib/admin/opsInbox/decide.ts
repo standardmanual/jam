@@ -21,6 +21,7 @@ import {
   MAX_ITEMS,
   OPS_DECISION_ACTION_APPROVE,
   OPS_DECISION_ACTION_EDIT,
+  OPS_DECISION_ACTION_FILL_COLOR,
   OPS_DECISION_ACTION_REJECT,
   OPS_DECISION_ACTION_REVERT,
 } from '@/lib/admin/opsInbox/constants'
@@ -37,6 +38,9 @@ import {
   splitEditPath,
   type OpsEditDiffEntry,
 } from '@/lib/admin/opsInbox/edit'
+import { OPS_FIELD_UNKNOWN, readOpsItemColorPending, readOpsItemTribeId } from '@/lib/admin/opsInbox/fields'
+import { asRecord, itemField } from '@/lib/admin/opsInbox/itemView'
+import { findApprovedPair } from '@/lib/admin/opsInbox/tribePalettes'
 import { editPathLabel, formatKstDayTime, kindLabel, splitFormatError } from '@/lib/admin/opsInbox/labels'
 import { formatDecisionMessage, postOpsSlack, type DecisionMessageInput } from '@/lib/admin/opsInbox/slack'
 import { loadTribeIds } from '@/lib/admin/opsInbox/tribes'
@@ -555,6 +559,104 @@ export async function editItem(
       isSample: bundle.is_sample,
       itemLabel: itemLabelOf({ kind: item.kind, starts_at: validated.starts_at }),
       changedLabels: diff.map((entry) => editPathLabel(entry.path)),
+    },
+  }
+}
+
+const FILL_COLOR_FAILED = '색을 채우지 못했어요. 잠시 뒤 다시 눌러 주세요.'
+const FILL_COLOR_MANUAL_LABEL = '직접 입력'
+
+/**
+ * 색 채우기(티켓 20261007_1145). 검토중 카드의 「색 대기」를 풀고 `image_spec.bg`·`end`와 `colors.bg`·`end`를 같은 값으로 함께 채운다
+ * (이미지 제작은 `image_spec`을, 미리보기 칩은 `colors`를 읽는다). 승인 색 쌍(`tribePalettes.ts`)을 고르든 직접 입력하든 서버는
+ * 형식(`#rrggbb`)만 본다. 결정 기록 사유에는 승인 쌍 이름(아니면 「직접 입력」)을 남긴다. 검토중이 아니면 409, 형식이 틀리면 400이다.
+ * 되돌리기 대상이 아니다(다른 쌍을 다시 고르면 된다). 제출 원본은 바꾸지 않는다.
+ */
+export async function fillColor(
+  service: ServiceClient,
+  input: { bundleId: string; itemId: string; actor: string; bg: unknown; end: unknown; expectedUpdatedAt: unknown }
+): Promise<DecisionOutcome> {
+  const { bundleId, itemId, actor } = input
+  if (typeof input.bg !== 'string' || typeof input.end !== 'string') return fail(400, '시작색과 끝색을 보내 주세요.')
+  if (typeof input.expectedUpdatedAt !== 'string' || input.expectedUpdatedAt === '') {
+    return fail(400, '항목 수정 시각을 보내 주세요.')
+  }
+  const colorErrors: Record<string, string> = {}
+  const bgError = validateEditedColor(input.bg)
+  if (bgError) colorErrors.bg = bgError
+  const endError = validateEditedColor(input.end)
+  if (endError) colorErrors.end = endError
+  if (Object.keys(colorErrors).length > 0) {
+    return fail(400, '색을 채우지 못했어요. 표시된 칸을 확인해 주세요.', { fieldErrors: colorErrors })
+  }
+  const bg = input.bg.toLowerCase()
+  const end = input.end.toLowerCase()
+
+  const bundle = await loadBundle(service, bundleId, FILL_COLOR_FAILED)
+  if (isFailure(bundle)) return bundle
+  const item = await loadItem(service, bundleId, itemId, FILL_COLOR_FAILED)
+  if (isFailure(item)) return item
+  if (item.status !== 'reviewing') return fail(409, CONFLICT_MESSAGE)
+
+  const current = { original: item.original, edited: item.edited }
+  const spec = asRecord(itemField(current, 'image_spec')) ?? {}
+  const colors = asRecord(itemField(current, 'colors')) ?? {}
+  const wasPending = readOpsItemColorPending(current) !== false
+  const diff: OpsEditDiffEntry[] = []
+  const pushIfChanged = (path: string, before: unknown, after: string) => {
+    const beforeText = typeof before === 'string' ? before : null
+    if (beforeText !== after) diff.push({ path, before: beforeText, after })
+  }
+  if (wasPending) diff.push({ path: 'color_pending', before: 'true', after: 'false' })
+  pushIfChanged('image_spec.bg', spec.bg, bg)
+  pushIfChanged('image_spec.end', spec.end, end)
+  pushIfChanged('colors.bg', colors.bg, bg)
+  pushIfChanged('colors.end', colors.end, end)
+  if (diff.length === 0) return fail(400, '바뀐 내용이 없어요.')
+
+  const nextEdited: Record<string, Json> = { ...(asRecord(item.edited) as Record<string, Json> | null) }
+  nextEdited.color_pending = false
+  nextEdited.image_spec = { ...(spec as Record<string, Json>), bg, end }
+  nextEdited.colors = { ...(colors as Record<string, Json>), bg, end }
+
+  const keys = await loadBundleItemKeys(service, bundleId, FILL_COLOR_FAILED)
+  if (isFailure(keys)) return keys
+  const ctx = await loadTribeContext(service, FILL_COLOR_FAILED)
+  if (isFailure(ctx)) return ctx
+  const validated = revalidateOpsItem(mergeItemForValidation(item.original, nextEdited), item.position, keys, ctx)
+  const fieldErrors = blockingFieldErrors(validated, new Set(['color_pending', 'image_spec', 'colors']))
+  if (Object.keys(fieldErrors).length > 0) {
+    return fail(400, '색을 채우지 못했어요. 표시된 칸을 확인해 주세요.', { fieldErrors })
+  }
+
+  const tribeId = readOpsItemTribeId(current)
+  const pair = tribeId === OPS_FIELD_UNKNOWN ? null : findApprovedPair(tribeId, bg, end)
+  const pairLabel = pair ? pair.name : FILL_COLOR_MANUAL_LABEL
+
+  const saved = await saveEditedItem(service, {
+    bundle,
+    item,
+    newEdited: nextEdited,
+    validated,
+    expectedUpdatedAt: input.expectedUpdatedAt,
+    action: OPS_DECISION_ACTION_FILL_COLOR,
+    diff,
+    reason: pairLabel,
+    actor,
+    failMessage: FILL_COLOR_FAILED,
+  })
+  if (!saved.ok) return saved
+
+  return {
+    ok: true,
+    body: { ok: true, updatedAt: saved.updatedAt, changed: diff.map((entry) => entry.path) },
+    decisionIds: [saved.decisionId],
+    batchId: null,
+    slack: {
+      action: 'fill_color',
+      isSample: bundle.is_sample,
+      itemLabel: itemLabelOf({ kind: item.kind, starts_at: validated.starts_at }),
+      pairLabel,
     },
   }
 }

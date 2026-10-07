@@ -1,7 +1,7 @@
 /**
  * POST /api/admin/ops-inbox/[bundleId]/decisions — 결정하기 (티켓 20260930_1818)
  *
- * 승인·반려·일괄 승인·직접 수정·수정 되돌리기를 한 경로로 받는다. 본문 `{ action, itemId?, itemIds?, reason?, values?, expectedUpdatedAt? }`.
+ * 승인·반려·일괄 승인·직접 수정·수정 되돌리기·색 채우기(`fill_color`, 본문 `bg`·`end`)를 한 경로로 받는다. 본문 `{ action, itemId?, itemIds?, reason?, values?, bg?, end?, expectedUpdatedAt? }`.
  * 처리와 규칙(조건부 update, 결정 기록 추가만, 되돌림)은 `opsInbox/decide.ts`가 한다. 이 라우트는 인증·입력 확인·응답 뒤 슬랙 글만 맡는다.
  *
  * - 관리자 로그인 세션만 통과한다. 읽기 토큰으로는 이 경로에 닿기 전에 proxy가 로그인으로 돌려보낸다(토큰 쓰기 예외는 제출 경로 하나뿐이다).
@@ -15,6 +15,7 @@ import {
   approveItem,
   bulkApprove,
   editItem,
+  fillColor,
   notifyDecision,
   rejectItem,
   revertLastEdit,
@@ -24,7 +25,7 @@ import {
 /** 본문 상한(바이트). 수정 값이 문안 몇 줄 수준이라 넉넉하게 잡은 값이다. */
 const MAX_BODY_BYTES = 262_144
 
-const ACTIONS = ['approve', 'reject', 'bulk_approve', 'edit', 'revert'] as const
+const ACTIONS = ['approve', 'reject', 'bulk_approve', 'edit', 'revert', 'fill_color'] as const
 type DecisionAction = (typeof ACTIONS)[number]
 
 function badRequest(error: string) {
@@ -88,6 +89,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ bundleI
       break
     case 'revert':
       outcome = await revertLastEdit(service, { bundleId, itemId, actor })
+      break
+    case 'fill_color':
+      outcome = await fillColor(service, {
+        bundleId,
+        itemId,
+        actor,
+        bg: input.bg,
+        end: input.end,
+        expectedUpdatedAt: input.expectedUpdatedAt,
+      })
       break
   }
 

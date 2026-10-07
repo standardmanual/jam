@@ -144,11 +144,14 @@ vi.mock('@/lib/admin/opsInbox/slack', async (importOriginal) => {
 })
 
 import { validateOpsBundle } from '../validate'
+import { readOpsItemColorPending } from '../fields'
+import { readImageSpec } from '../imageSpec'
 import {
   approveItem,
   bulkApprove,
   deleteSampleBundle,
   editItem,
+  fillColor,
   notifyDecision,
   rejectItem,
   revertLastEdit,
@@ -704,6 +707,116 @@ describe('수정 되돌리기', () => {
     h.state.failOn.add('ops_decisions.insert')
     expect(failure(await revert()).status).toBe(500)
     expect(JSON.stringify(item(I1).edited)).toBe(edited)
+  })
+})
+
+describe('색 채우기 (티켓 20261007_1145)', () => {
+  const FOREST = '73f0f601-2382-900c-8ca2-5cc7c93ed95d'
+  const pending = (extra: Record<string, unknown> = {}) =>
+    makeItem(I1, 0, {
+      original: makeOriginal({ color_pending: true, image_spec: { preset_id: 'editorial', values: { title: '제목' } }, ...extra }),
+    })
+  const fill = (bg: unknown, end: unknown, extra: Record<string, unknown> = {}) =>
+    fillColor(service, { bundleId: B, itemId: I1, actor: 'admin-1', bg, end, expectedUpdatedAt: T0, ...extra })
+
+  it('image_spec.bg·end와 colors.bg·end를 같은 값으로 채우고 색 대기를 푼다(원본 불변)', async () => {
+    seed([pending()])
+    const snapshot = JSON.stringify(item(I1).original)
+    const out = success(await fill('#B83618', '#5c1a0c'))
+    expect(out.ok).toBe(true)
+    expect(JSON.stringify(item(I1).original)).toBe(snapshot)
+    expect(item(I1).edited).toEqual({
+      color_pending: false,
+      image_spec: { preset_id: 'editorial', values: { title: '제목' }, bg: '#b83618', end: '#5c1a0c' },
+      colors: { background: '#1a2b3c', bg: '#b83618', end: '#5c1a0c' },
+    })
+    expect(item(I1).status).toBe('reviewing')
+    expect(out.body).toMatchObject({ ok: true, changed: ['color_pending', 'image_spec.bg', 'image_spec.end', 'colors.bg', 'colors.end'] })
+  })
+
+  it('채운 뒤에는 색 대기 신호의 근거(color_pending)가 false이고 image_spec에 bg·end가 있다', async () => {
+    seed([pending()])
+    await fill('#b83618', '#5c1a0c')
+    const view = { original: item(I1).original as never, edited: item(I1).edited as never }
+    expect(readOpsItemColorPending(view)).toBe(false)
+    expect(readImageSpec(view)).toMatchObject({ bg: '#b83618', end: '#5c1a0c' })
+  })
+
+  it('결정 기록에 누가·어떤 쌍으로·전후 차이가 남는다(승인 쌍은 이름, 아니면 「직접 입력」)', async () => {
+    seed([pending({ tribe_id: FOREST })])
+    h.state.tables.tribes.push({ id: FOREST })
+    await fill('#8a5a2e', '#2a1a0d')
+    expect(decisions('fill_color')).toHaveLength(1)
+    expect(decisions('fill_color')[0]).toMatchObject({
+      bundle_id: B,
+      item_id: I1,
+      actor: 'admin-1',
+      reason: '그루터기 살롱',
+      diff: expect.arrayContaining([{ path: 'color_pending', before: 'true', after: 'false' }, { path: 'image_spec.bg', before: null, after: '#8a5a2e' }]),
+    })
+
+    seed([pending({ tribe_id: FOREST })])
+    h.state.tables.tribes.push({ id: FOREST })
+    await fill('#b83618', '#5c1a0c')
+    expect(decisions('fill_color')[0].reason).toBe('직접 입력')
+  })
+
+  it('트라이브가 없는 카드는 공통 쌍 이름으로 남기고 슬랙 글 재료에도 쌍 이름을 싣는다', async () => {
+    seed([pending()])
+    const out = success(await fill('#037a49', '#052e1c'))
+    expect(decisions('fill_color')[0].reason).toBe('주말 초록')
+    expect(out.slack).toMatchObject({ action: 'fill_color', pairLabel: '주말 초록' })
+  })
+
+  it('검토중이 아니면 409이고 아무것도 바꾸지 않는다', async () => {
+    seed([makeItem(I1, 0, { status: 'approved', original: makeOriginal({ color_pending: true }) })])
+    const out = failure(await fill('#b83618', '#5c1a0c'))
+    expect(out.status).toBe(409)
+    expect(item(I1).edited).toBeNull()
+    expect(decisions('fill_color')).toHaveLength(0)
+  })
+
+  it('형식이 틀린 색은 400이고 칸별 문장을 준다', async () => {
+    seed([pending()])
+    const out = failure(await fill('red', '#5c1a0c'))
+    expect(out.status).toBe(400)
+    expect(out.extra).toMatchObject({ fieldErrors: { bg: expect.any(String) } })
+    expect(failure(await fill('#b83618', 5)).status).toBe(400)
+    expect(item(I1).edited).toBeNull()
+  })
+
+  it('화면이 본 수정 시각이 어긋나면 409다', async () => {
+    seed([pending()])
+    expect(failure(await fill('#b83618', '#5c1a0c', { expectedUpdatedAt: '2026-09-01T00:00:00.000Z' })).status).toBe(409)
+    expect(item(I1).edited).toBeNull()
+  })
+
+  it('이미 같은 값으로 채워져 있으면 바뀐 내용이 없어 400이다', async () => {
+    seed([pending()])
+    await fill('#b83618', '#5c1a0c')
+    const again = failure(await fill('#b83618', '#5c1a0c', { expectedUpdatedAt: item(I1).updated_at }))
+    expect(again.status).toBe(400)
+    expect(decisions('fill_color')).toHaveLength(1)
+  })
+
+  it('다른 쌍을 다시 고르면 값만 바뀐다(색 대기는 이미 풀려 있다)', async () => {
+    seed([pending()])
+    await fill('#b83618', '#5c1a0c')
+    const out = success(await fill('#158293', '#0a3d47', { expectedUpdatedAt: item(I1).updated_at }))
+    expect(out.body).toMatchObject({ changed: ['image_spec.bg', 'image_spec.end', 'colors.bg', 'colors.end'] })
+  })
+
+  it('결정 기록 저장이 실패하면 항목을 원래대로 돌리고 500이다', async () => {
+    seed([pending()])
+    h.state.failOn.add('ops_decisions.insert')
+    expect(failure(await fill('#b83618', '#5c1a0c')).status).toBe(500)
+    expect(item(I1).edited).toBeNull()
+  })
+
+  it('수정 되돌리기는 색 채우기를 되돌리지 않는다', async () => {
+    seed([pending()])
+    await fill('#b83618', '#5c1a0c')
+    expect(failure(await revertLastEdit(service, { bundleId: B, itemId: I1, actor: 'a' })).status).toBe(409)
   })
 })
 
