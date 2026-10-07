@@ -137,6 +137,17 @@ describe('parseMakeCardArgs', () => {
     expect(() => parseMakeCardArgs([...REQUIRED, '--subtext', '설명'])).toThrow('없어졌어요');
   });
 
+  it('번호 경계: 0·음수·소수 번호는 형식 오류 또는 알 수 없는 인자다', () => {
+    for (const flag of ['--text0', '--text00', '--img0']) {
+      expect(() => parseMakeCardArgs([...REQUIRED, flag, 'x'])).toThrow('번호 형식이 올바르지 않아요(예: text01)');
+    }
+    for (const flag of ['--text-1', '--text1.5', '--img-01']) {
+      expect(() => parseMakeCardArgs([...REQUIRED, flag, 'x'])).toThrow('알 수 없는 인자예요');
+    }
+    // 두 자리를 넘는 번호는 형식은 맞다(프리셋 범위는 렌더가 검사한다)
+    expect(parseMakeCardArgs([...REQUIRED, '--text100', 'x']).values).toEqual({ text100: 'x' });
+  });
+
   it('형식이 틀린 번호와 같은 번호 중복 지정은 오류다', () => {
     expect(() => parseMakeCardArgs([...REQUIRED, '--text1', 'x'])).toThrow('번호 형식이 올바르지 않아요(예: text01)');
     expect(() => parseMakeCardArgs([...REQUIRED, '--text01', '또']))

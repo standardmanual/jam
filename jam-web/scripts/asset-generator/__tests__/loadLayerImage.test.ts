@@ -19,6 +19,15 @@ afterEach(() => {
 });
 
 describe('loadLayerImage', () => {
+  it('이미지 경계: 5MB 이하 파일은 통과하고 1바이트라도 넘으면 거절한다', async () => {
+    const limit = 5 * 1024 * 1024;
+    const at = Buffer.concat([PNG, Buffer.alloc(limit - PNG.length)]);
+    fs.writeFileSync(path.join(dir, 'at.png'), at);
+    expect((await loadLayerImage(path.join(dir, 'at.png'))).data.length).toBe(limit);
+    fs.writeFileSync(path.join(dir, 'over.png'), Buffer.concat([at, Buffer.from([0])]));
+    await expect(loadLayerImage(path.join(dir, 'over.png'))).rejects.toThrow('이미지가 너무 커요');
+  });
+
   it('PNG·SVG 파일을 읽어 형식과 함께 돌려준다', async () => {
     fs.writeFileSync(path.join(dir, 'a.png'), PNG);
     fs.writeFileSync(path.join(dir, 'b.svg'), SVG);

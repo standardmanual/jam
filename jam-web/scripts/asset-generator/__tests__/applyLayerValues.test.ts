@@ -62,6 +62,29 @@ describe('applyLayerValues', () => {
     expect(() => applyLayerValues(layers, { [key]: 'x' })).toThrow('번호 형식이 올바르지 않아요(예: text01)');
   });
 
+  it.each(['text0', 'text00', 'text-1', 'text1.5', 'text01.5', 'img-01', 'img0', 'text 01', ' text01', 'text01 '])(
+    '번호 경계: %s는 형식 오류다(0·음수·소수·공백)',
+    (key) => {
+      expect(() => applyLayerValues(layers, { [key]: 'x' })).toThrow('번호 형식이 올바르지 않아요(예: text01)');
+    }
+  );
+
+  it('번호 경계: 형식은 맞아도 프리셋 범위를 넘으면(text04·text99·text100·img02) 없는 번호 오류다', () => {
+    for (const key of ['text04', 'text99', 'text100']) {
+      expect(() => applyLayerValues(layers, { [key]: 'x' })).toThrow(`이 프리셋에 없는 번호예요: ${key}`);
+    }
+    expect(() => applyLayerValues(layers, { img02: '/abs/a.png' })).toThrow('이 프리셋에 없는 번호예요: img02');
+  });
+
+  it('번호 경계: 마지막 번호(text03)와 첫 번호(text01)는 범위 안이다', () => {
+    const result = applyLayerValues(layers, { text01: 'a', text03: 'c' });
+    expect(result.applied).toEqual(['text01', 'text03']);
+  });
+
+  it('값이 문자열이 아니면 오류다', () => {
+    expect(() => applyLayerValues(layers, { text01: 5 as unknown as string })).toThrow('text01의 값은 문자열이어야 해요');
+  });
+
   it('이미지 값이 절대 경로도 URL도 아니면 오류다', () => {
     expect(() => applyLayerValues(layers, { img01: 'relative/a.png' })).toThrow('절대 경로 또는 http(s) URL');
     expect(() => applyLayerValues(layers, { img01: 'ftp://x.test/a.png' })).toThrow('절대 경로 또는 http(s) URL');

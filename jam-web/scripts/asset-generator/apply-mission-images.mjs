@@ -25,14 +25,12 @@
  */
 import { createClient } from '@supabase/supabase-js'
 
-import { drawTextLayer } from '../../src/lib/asset-generator/render'
-import { generateRandomSeed, isSystemDefaultFont, resolveStageSize } from '../../src/app/admin/asset-generator/assetGeneratorHelpers'
+import { generateRandomSeed } from '../../src/app/admin/asset-generator/assetGeneratorHelpers'
 
-import { createServerFontLoader } from './fonts.mjs'
-import { applyLayerValues } from './applyLayerValues.mjs'
 import { loadEnv } from '../lib/loadEnv.mjs'
 import { normalizePreset } from './presetSource.mjs'
 import { serverCanvasFactory, getServerContext, loadImageAsCanvas } from './serverCanvas'
+import { createTextOverflowDetector } from './textOverflow.mjs'
 
 /** `@/` 별칭이 안 풀리면(cwd가 jam-web이 아니면) 원인을 알려 주는 Error로 바꾼다. */
 async function importWithAliasHint(load) {
@@ -49,9 +47,6 @@ async function importWithAliasHint(load) {
   }
 }
 
-/** 텍스트 오른쪽 여백 검사 폭(가로 비율) — 이 안에 글자가 닿으면 넘친 것으로 본다(티켓 20260926_2346). */
-const RIGHT_MARGIN_RATIO = 0.03
-
 /** 서비스 롤 클라이언트로 프리셋을 읽는다. */
 function createPresetLoader(supabase) {
   return async (presetId) => {
@@ -63,48 +58,6 @@ function createPresetLoader(supabase) {
     if (error) throw new Error(`프리셋 조회에 실패했어요: ${error.message}`)
     if (!data) throw new Error(`프리셋을 찾을 수 없어요: ${presetId}`)
     return normalizePreset(data)
-  }
-}
-
-/**
- * 텍스트 레이어만 빈 캔버스에 그려 오른쪽 여백(가로 3%)에 불투명 픽셀이 닿는지 본다.
- * 리본·이미지 레이어는 그리지 않아 글자 위치만 알파로 남는다.
- */
-function createTextOverflowDetector(loadPreset) {
-  const loadFont = createServerFontLoader()
-  return async ({ presetId, values }) => {
-    const preset = await loadPreset(presetId)
-    const { width, height } = resolveStageSize(preset.stageRatio)
-    const canvas = serverCanvasFactory(width, height)
-    const ctx = getServerContext(canvas)
-    const layers = applyLayerValues(preset.layers, values).layers.filter((layer) => layer.type === 'text')
-    for (const layer of layers) {
-      if (!isSystemDefaultFont(layer.font)) await loadFont(layer.font)
-    }
-    for (let i = layers.length - 1; i >= 0; i--) {
-      const layer = layers[i]
-      drawTextLayer(ctx, {
-        content: layer.content,
-        font: layer.font,
-        sizePct: layer.sizePct,
-        letterSpacing: layer.letterSpacing,
-        lineHeight: layer.lineHeight,
-        align: layer.align,
-        color: layer.color,
-        xPct: layer.xPct,
-        yPct: layer.yPct,
-        rotationDeg: layer.rotationDeg,
-        opacityPct: layer.opacityPct,
-        stageWidth: width,
-        stageHeight: height,
-      })
-    }
-    const marginStart = Math.floor(width * (1 - RIGHT_MARGIN_RATIO))
-    const data = ctx.getImageData(marginStart, 0, width - marginStart, height).data
-    for (let i = 3; i < data.length; i += 4) {
-      if (data[i] > 8) return true
-    }
-    return false
   }
 }
 

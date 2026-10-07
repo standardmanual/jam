@@ -244,6 +244,19 @@ describe('validatePlan', () => {
     expect(text).toContain('values.img01는 이미지 파일의 절대 경로 또는 http(s) URL');
   });
 
+  it('번호 경계: 0·음수·소수 번호 키는 형식 오류로 잡힌다', () => {
+    const base = { bg: '#FFFFFF', end: '#000000', expectCount: 1 };
+    const { errors, plan } = validatePlan({
+      preset: PRESET_ID,
+      items: [{ ...base, match: { title: '가' }, values: { text0: '값', 'text-1': '값', 'text1.5': '값', text00: '값' } }],
+    });
+    expect(plan).toBeNull();
+    const text = errors.join('\n');
+    for (const key of ['text0', 'text-1', 'text1.5', 'text00']) {
+      expect(text).toContain(`번호 형식이 올바르지 않아요(예: text01): ${key}`);
+    }
+  });
+
   it('옛 형식(title·condition)은 match.title 누락으로 잡힌다', () => {
     const { errors } = validatePlan({ preset: PRESET_ID, items: [{ title: '가', condition: '문구', bg: '#FFFFFF', end: '#000000', expectCount: 1 }] });
     expect(errors.join('\n')).toContain('match.title이 비어 있어요');
