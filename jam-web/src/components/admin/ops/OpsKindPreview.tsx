@@ -47,6 +47,8 @@ export function OpsKindPreview({ preview }: { preview: KindPreview }) {
   if (preview.type === 'recipe') {
     return (
       <div className="space-y-2">
+        {/* 보상 줄은 좁은 칸에서 이름을 말줄임으로 자르므로, 이름은 전체가 보이게 따로 한 줄 둔다. */}
+        <h3 className="m-0 break-words text-base font-bold leading-tight">{preview.name}</h3>
         <RecipeRewardRow
           title={preview.name}
           slotCount={preview.slots.length}
