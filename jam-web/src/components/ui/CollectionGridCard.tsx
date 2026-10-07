@@ -20,6 +20,8 @@ export interface CollectionGridCardProps {
   completed?: boolean
   /** 최초 등록 아이템배지 기준 컬렉션 등급 */
   rarity?: BadgeRarity
+  /** 진행 바와 「수집/전체」 숫자를 숨긴다. 전체 슬롯 수를 아직 모르는 운영툴 미리보기용이다. 기본은 끔. */
+  hideProgress?: boolean
   href?: string
   onClick?: () => void
   className?: string
@@ -35,6 +37,7 @@ export default function CollectionGridCard({
   total,
   completed = false,
   rarity,
+  hideProgress = false,
   href,
   onClick,
   className = '',
@@ -75,12 +78,14 @@ export default function CollectionGridCard({
       <p className="text-[15px] font-bold text-text leading-[18px] truncate">{name}</p>
 
       {/* 진행 바 + 카운트 한 행 */}
-      <div className="flex items-center gap-[var(--spacing-8)]">
-        <ProgressBar percent={pct} height={6} />
-        <span className="text-[length:var(--text-caption)] text-[color:var(--color-primary)] font-bold leading-none tabular-nums shrink-0">
-          {collected}/{total}
-        </span>
-      </div>
+      {!hideProgress && (
+        <div className="flex items-center gap-[var(--spacing-8)]">
+          <ProgressBar percent={pct} height={6} />
+          <span className="text-[length:var(--text-caption)] text-[color:var(--color-primary)] font-bold leading-none tabular-nums shrink-0">
+            {collected}/{total}
+          </span>
+        </div>
+      )}
 
       {children}
     </>

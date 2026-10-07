@@ -53,7 +53,7 @@ export function OpsKindPreview({ preview }: { preview: KindPreview }) {
     return (
       <div className="space-y-2">
         <div className="w-32">
-          <CollectionGridCard name={preview.name} imageUrl={preview.imageUrl} collected={0} total={0} />
+          <CollectionGridCard name={preview.name} imageUrl={preview.imageUrl} collected={0} total={0} hideProgress />
         </div>
         <Summary lines={[preview.description, preview.storyText, reward, periodText(preview.startsAt, preview.endsAt)]} />
       </div>
