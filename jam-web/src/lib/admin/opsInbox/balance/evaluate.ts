@@ -14,6 +14,7 @@
 import { JAM_ACTION_CONDITION_KEYS } from '@/lib/badge-engine/jamActionBadges'
 import { isItemBookDroppable, type ItemBookVisibilityFields } from '@/lib/itembook/visibility'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
+import { OPS_POST_APPROVAL_ITEM_STATUSES } from '@/lib/admin/opsInbox/constants'
 import { asRecord, itemField, linksOf, type ViewableItem } from '@/lib/admin/opsInbox/itemView'
 import { isIsoDateTime } from '@/lib/admin/opsInbox/validate'
 import {
@@ -44,7 +45,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const ROLLING_DAYS = 28
 
 /** 승인 이후 상태. R4의 기준 시각이 지금이 아니라 승인 시각이 된다. */
-const APPROVED_STATUSES: readonly string[] = ['approved', 'preparing', 'scheduled', 'live', 'ended']
+const APPROVED_STATUSES: readonly string[] = OPS_POST_APPROVAL_ITEM_STATUSES
 
 // ── 입력·출력 ───────────────────────────────────────────────────────────────────────────────────
 

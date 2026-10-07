@@ -58,6 +58,9 @@ export const OPS_ITEM_STATUSES = [
 
 export type OpsItemStatus = (typeof OPS_ITEM_STATUSES)[number]
 
+/** 승인 이후 상태 5개(승인됨·준비중·예약됨·게재중·종료). 밸런스 R4의 기준 시각과 조합 뽑기(티켓 20261007_2221)가 같은 목록을 쓴다. */
+export const OPS_POST_APPROVAL_ITEM_STATUSES: readonly OpsItemStatus[] = ['approved', 'preparing', 'scheduled', 'live', 'ended']
+
 /** 새로 저장하는 항목의 상태. */
 export const OPS_ITEM_INITIAL_STATUS: OpsItemStatus = 'arrived'
 
