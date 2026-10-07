@@ -2,9 +2,9 @@
 id: "20261007_0942"
 category: Infra
 priority: P1
-status: OPEN
+status: CLOSED
 created: 2026-10-07
-closed:
+closed: 2026-10-07
 ---
 
 # [Infra] sharp high 취약점(GHSA-wq5f-xc86-pv6w, librsvg)을 0.35.5로 올린다
@@ -32,27 +32,28 @@ closed:
 
 ### 구현 내용 요약
 
+- `npm update sharp --package-lock-only`로 lock만 갱신했다(sharp·`@img/sharp-*` 17곳 0.35.4→0.35.5, libvips 10곳 1.3.3→1.3.4, 그 밖의 패키지 0건). `package.json` 범위(`^0.35.3`)와 호출부는 그대로다.
+- 숨김 lock 보호: 워크트리의 `jam-web/node_modules` 링크만 지우고 갱신한 뒤 링크를 되살렸다. 메인 폴더 `node_modules/.package-lock.json`의 sharp는 0.35.4 그대로다.
+
 ### 변경된 파일
 ```
--
+jam-web/package-lock.json (+118/−118. 리뷰 브랜치 claude/jamwork-20261007_0942-sharp-0-35-5, 범위 d4f45ee99..c9849b651, staging 머지 af499601e)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] 아현: `scripts/verify.sh` 14단계 통과(설치본은 링크된 0.35.4), `npm audit --omit=dev` 0건, lock 전후 JSON 비교로 변경 키 27개가 모두 sharp 계열임을 확인. scratchpad에 0.35.5를 따로 설치해 PNG metadata·resize+webp·stats·SVG metadata 동작 확인.
+- [x] CI `verify` run 37554278177(c9849b651) success — 이 lock으로 새로 설치한 0.35.5 기준. 민지: **PASS**(`npm audit --omit=dev --package-lock-only` 0건 직접 재확인, 변경 키 직접 대조).
+- [x] 카리나(머지 뒤): `npm audit --omit=dev --package-lock-only` 0건.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
 
-- [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
-- [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)
-- [ ] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
-- [ ] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
-- [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
+- [x] 해당 없음(사용자 노출 문구 없음)
 
 ### 배포 정보
-- 배포일: 
-- 환경: production
-- 커밋: 
+- 배포일: 2026-10-07 `/jam-ship`에 포함(프로덕션 반영 결과는 그 배포 보고)
+- 환경: staging → production
+- 커밋: 머지 af499601e
 
 ### 실행 지표
 > Workflow 완료 알림 `<usage>`(전체 토큰·소요·에이전트 수·도구 호출)와 결과의 `tokenUsage`
@@ -62,12 +63,16 @@ closed:
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1 | 아현(plan_only) | 37,966 | 29,031 / 0 | 2분 16초 | 22 |
+| 2 | 아현·민지 | 71,276 | 33,904 / 8,137 | 12분 54초 | 49 |
+| 합계 | 3 | 109,242 | 62,935 / 8,137 | 15분 10초 | 71 |
 
 ### 주요 의사결정 / 핵심 메모
 > 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
 - 2026-10-07 카리나 규모 사전 판정이 빗나갔다: lock 파일 1개라 기준 안으로 봤으나 플랫폼별 바이너리 항목 27개가 함께 바뀌어 236줄이었다(아현 plan_only). 파일이 하나라 쪼갤 수 없어 실측을 「구현 계획」에 적고 사용자 승인으로 계획 반환 면제를 부여했다.
+
+- 1차 호출의 부작용: 아현이 링크를 통해 메인 폴더 `node_modules/.package-lock.json`의 sharp 계열 4개 항목을 0.35.5로 바꿨다가 직접 복구했다(설치본은 그대로). 2차는 링크를 지우고 실행해 같은 일이 없었다. lock만 갱신하는 티켓은 이 실행 방법을 계획에 적는다.
+- 민지 범위 밖 [참고]: 전체 `npm audit`(dev 포함) 13건은 기존 P3 20261006_1659가 다룬다. 메인 폴더 로컬 `node_modules`의 sharp는 0.35.4로 남아 있어 반영하려면 `npm ci`가 필요하다(병렬 세션과 공유하는 폴더라 별도로 처리).
 
 ### 잔여 이슈
 -
