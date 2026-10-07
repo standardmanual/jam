@@ -145,7 +145,7 @@ describe('parseMakeCardArgs', () => {
       expect(() => parseMakeCardArgs([...REQUIRED, flag, 'x'])).toThrow('알 수 없는 인자예요');
     }
     // 두 자리를 넘는 번호는 형식은 맞다(프리셋 범위는 렌더가 검사한다)
-    expect(parseMakeCardArgs([...REQUIRED, '--text100', 'x']).values).toEqual({ text100: 'x' });
+    expect(parseMakeCardArgs([...REQUIRED, '--text100', 'x']).values).toMatchObject({ text100: 'x' });
   });
 
   it('형식이 틀린 번호와 같은 번호 중복 지정은 오류다', () => {

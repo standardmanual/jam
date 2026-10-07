@@ -9,9 +9,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { createCanvas } from '@napi-rs/canvas';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { getServerContext, loadImageAsCanvas } from '../serverCanvas';
+import { loadImageAsCanvas } from '../serverCanvas';
 
-const loadFontStub = vi.hoisted(() => vi.fn(async (_font?: unknown) => undefined));
+const loadFontStub = vi.hoisted(() => vi.fn<(font: unknown) => Promise<undefined>>(async () => undefined));
 vi.mock('../fonts.mjs', () => ({ createServerFontLoader: () => loadFontStub }));
 
 import { renderCardPng } from '../renderCard.mjs';
@@ -45,14 +45,14 @@ const apiPreset = (layers: unknown[], stageRatio = '1:1') => ({
 });
 
 function adminDeps(layers: unknown[], stageRatio = '1:1') {
-  const fetchImpl = vi.fn(async (_url: string, _init?: unknown) => ({ ok: true, status: 200, json: async () => ({ preset: apiPreset(layers, stageRatio) }) }));
+  const fetchImpl = vi.fn<(url: string, init?: unknown) => Promise<unknown>>(async () => ({ ok: true, status: 200, json: async () => ({ preset: apiPreset(layers, stageRatio) }) }));
   return { env: ADMIN_ENV, fetchImpl };
 }
 
 type Pixel = [number, number, number, number];
 async function pixelAt(png: Buffer, x: number, y: number): Promise<Pixel> {
   const canvas = await loadImageAsCanvas(png);
-  const d = getServerContext(canvas as never).getImageData(x, y, 1, 1).data;
+  const d = canvas.getContext('2d').getImageData(x, y, 1, 1).data;
   return [d[0], d[1], d[2], d[3]];
 }
 
