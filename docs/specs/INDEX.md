@@ -116,7 +116,7 @@ status: active
 - [05 내향인.md](../../jam-doc/planning/business-plan/tribe-rethink/05%20내향인.md) — 구상 단계 내향인 트라이브 '혼자들'의 시놉시스, 인물, 장소, 아이템. 서비스에 반영하지 않는다.
 - [README.md](../../jam-doc/planning/business-plan/tribe-rethink/README.md) — 구상 단계 트라이브 다섯 개의 문서 안내. 트라이브 목록, 서로 이어지는 단서, 공통 작성 규칙과 문서 형식을 둔다.
 - [적용 전 검토 노트.md](../../jam-doc/planning/business-plan/tribe-rethink/적용%20전%20검토%20노트.md) — 다섯 트라이브 서사를 서비스에 적용하기 전에 고려할 이슈, 적용 단계, 결정 질문을 정리한 검토 기록. 서비스에 반영하지 않는다.
-- [컨텐츠 분석 노트.md](../../jam-doc/planning/business-plan/tribe-rethink/컨텐츠%20분석%20노트.md) — 다섯 트라이브 서사를 컨텐츠로 평가한 기록. 트라이브별 강점과 보강점, 유저가 설 자리, 소문을 푸는 방식, 보강 목록과 결정 질문을 담는다.
+- [컨텐츠 분석 노트.md](../../jam-doc/planning/business-plan/tribe-rethink/컨텐츠%20분석%20노트.md) — 다섯 트라이브 서사를 트라이브를 설정하는 컨텐츠로 평가한 기록. 트라이브별 강점과 보강점, 공통 평가, 보강 목록과 반영 상태를 담는다.
 
 ## jam-doc/planning/content/
 
