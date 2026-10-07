@@ -1344,6 +1344,9 @@ stateDiagram-v2
 - **이미지는 항목 먼저, 예약 뒤 자원에도 쓴다.** 이미지는 오른쪽 서랍(1501)에서 만든다. 항목의 `edited.resource`(카드 `cover_image_url`, 미션·배지·컬렉션 `image_url`)에 먼저 쓰고,
   예약된 뒤(`created_resource`에 자원 ID가 있고 `sample`이 아님)에는 그 자원 행의 이미지 칸에도 함께 쓴다(§11.12).
 - **파일은 새 자원 전용 경로에 올린다.** `ops-inbox/{접두사}/{항목 ID}.webp`·`.png`(항목 ID 기준이라 기존 이미지를 덮어쓰지 않는다). 예약 등록 실패·공개 전 취소·되돌림 때 이 두 파일만 지운다.
+- **브라우저 렌더 모듈(티켓 20261007_0945).** 서랍이 부르는 `renderPresetToPngBlob({ presetId, bg, end, values, seed })`(`lib/admin/opsInbox/imageRender.client.ts`)가 프리셋을 읽어 PNG Blob 한 장을 만들고,
+  `postItemImage(bundleId, itemId, blob)`(`components/admin/ops/imageClient.ts`)가 §11.12에 올린다(던지지 않고 `{ ok, url } | { ok: false, status, message }`). 입력은 서버 CLI(`renderCard.mjs`)와 1:1이고 조립은 `lib/asset-generator/renderPreset.ts`다(같은 순서·같은 값).
+  시드는 호출부가 정한다. 글꼴·이미지 로드는 시간 제한이 있고 실패하면 던진다(폴백 글꼴로 그리지 않는다). 클라이언트 모듈은 서버 전용 코드(`opsInbox/image.ts`·`scripts/asset-generator/*`·`serverCanvas.ts`)를 가져오지 않는다.
   삭제가 실패해도 취소·되돌림은 막지 않고 서버 로그에만 남긴다.
 
 ## 9. 슬랙 이력 알림 (07 4.6)
