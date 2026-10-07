@@ -11,6 +11,8 @@ import TodayCardPreview from '@/app/admin/today/TodayCardPreview'
 import { previewOf } from '@/lib/admin/opsInbox/cardPreview'
 import { applyDraftToItem } from '@/lib/admin/opsInbox/editDraft'
 import { entriesOf, itemField } from '@/lib/admin/opsInbox/itemView'
+import { bundleBadgeNamesOf } from '@/lib/admin/opsInbox/cardPreview'
+import type { OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { OPS_IMAGE_PRODUCTION_STATUSES } from '@/lib/admin/opsSignals/composition'
@@ -23,15 +25,22 @@ export const PREVIEW_IMAGE_MAKING_TEXT = '이미지를 만드는 중이에요'
 export const PREVIEW_COLOR_LABEL = '색 견본'
 
 export interface OpsCardPreviewProps {
-  item: Pick<OpsItemRecord, 'id' | 'kind' | 'original' | 'edited'> & { status?: string }
+  item: Pick<OpsItemRecord, 'id' | 'kind' | 'original' | 'edited'> & { status?: string; itemKey?: string | null }
   /** 저장 전 초안 값(경로 → 새 값). 이 항목의 초안일 때만 넘긴다. */
   draft?: Record<string, unknown>
   /** 이 항목의 이미지를 지금 만드는 중이면 이미지 자리의 안내를 「만드는 중」으로 바꾼다(티켓 20261007_1032). */
   making?: boolean
+  /** 레시피·드랍이 가리키는 배지·지점·컬렉션 이름(서버가 읽어 내린다, 티켓 20261007_1401). 없으면 폴백 문구로 그린다. */
+  previewNames?: OpsPreviewNames
+  /** 같은 묶음의 항목 전부. 레시피에서 「이 묶음의 배지」를 찾는 데 쓴다. */
+  bundleItems?: readonly (Pick<OpsItemRecord, 'kind' | 'original' | 'edited'> & { itemKey?: string | null })[]
 }
 
-export function OpsCardPreview({ item, draft, making = false }: OpsCardPreviewProps) {
-  const preview = previewOf(item, draft)
+export function OpsCardPreview({ item, draft, making = false, previewNames, bundleItems }: OpsCardPreviewProps) {
+  const preview = previewOf(item, draft, {
+    names: previewNames,
+    bundleBadgeNames: item.kind === 'recipe' ? bundleBadgeNamesOf(item.itemKey, bundleItems ?? []) : [],
+  })
   if (!preview) return <p className="text-sm text-muted-foreground">{PREVIEW_NOT_CARD_TEXT}</p>
 
   const merged = draft ? applyDraftToItem(item, draft) : item
@@ -39,7 +48,9 @@ export function OpsCardPreview({ item, draft, making = false }: OpsCardPreviewPr
   const imageMissing =
     preview.type === 'card'
       ? isImageShape(preview.view.shape) && 'imageUrl' in preview.view && !preview.view.imageUrl
-      : !preview.imageUrl
+      : preview.type === 'recipe' || preview.type === 'drop'
+        ? false
+        : !preview.imageUrl
 
   return (
     <div className="space-y-2">

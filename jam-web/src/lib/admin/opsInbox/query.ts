@@ -42,6 +42,7 @@ import type { OpsBundleBalance } from '@/lib/admin/opsInbox/balance/view'
 import type { ExecuteHandlerRegistry, ExecuteItem } from '@/lib/admin/opsInbox/execute/handlers'
 import { precheckBundle } from '@/lib/admin/opsInbox/execute/precheck'
 import { EXECUTE_HANDLERS } from '@/lib/admin/opsInbox/execute/registry'
+import { readOpsPreviewNames, type OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
 
 const FETCH_PAGE_SIZE = 1000
 const ERROR_LABEL = 'ops-inbox'
@@ -307,6 +308,8 @@ export interface OpsBundleDetail {
   balance: OpsBundleBalance
   /** 예약 등록 요약(티켓 20261002_1648). */
   execution: OpsBundleExecution
+  /** 레시피·드랍 미리보기가 쓰는 배지·지점·컬렉션 이름(티켓 20261007_1401). 읽지 못하면 빈 맵이다. */
+  previewNames: OpsPreviewNames
 }
 
 const BUNDLE_DETAIL_COLUMNS = 'id, bundle_id, week, hypothesis, author, is_sample, format_errors, received_at'
@@ -471,5 +474,6 @@ export async function getOpsBundleDetail(id: string): Promise<OpsBundleDetail | 
       itemRows.map((row) => ({ ...row, bundle_id: bundle.id })),
       new Date()
     ),
+    previewNames: await readOpsPreviewNames(supabase, items),
   }
 }

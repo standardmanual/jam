@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { applyDraftToItem } from '@/lib/admin/opsInbox/editDraft'
-import { PREVIEW_TITLE_PLACEHOLDER, itemToPreviewCard, previewOf, previewViewOf, type PreviewItem } from '@/lib/admin/opsInbox/cardPreview'
+import { PREVIEW_NAME_UNKNOWN, type OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
+import { PREVIEW_TITLE_PLACEHOLDER, bundleBadgeNamesOf, itemToPreviewCard, previewOf, previewViewOf, type PreviewItem } from '@/lib/admin/opsInbox/cardPreview'
 
 const NOW = new Date('2026-10-06T00:00:00.000Z')
 
@@ -132,7 +133,109 @@ describe('previewOf', () => {
   })
 
   it('알 수 없는 종류는 null이다', () => {
-    expect(previewOf(card(badge, null, 'recipe'))).toBeNull()
+    expect(previewOf(card(badge, null, 'unknown_kind'))).toBeNull()
     expect(previewOf(card(badge, null, null))).toBeNull()
+  })
+})
+
+const B1 = '11111111-1111-4111-8111-111111111111'
+const B2 = '22222222-2222-4222-8222-222222222222'
+const B3 = '33333333-3333-4333-8333-333333333333'
+const NAMES: OpsPreviewNames = {
+  badges: {
+    [B1]: { id: B1, name: '비 맞은 러너', imageUrl: 'https://example.com/b1.png', rarity: 'rare' },
+    [B2]: { id: B2, name: '우산 수집가', imageUrl: null, rarity: null },
+  },
+  pois: { 'p-1': '한강공원', 'p-2': '서울숲' },
+  collections: { 'c-1': '비 컬렉션' },
+  categories: { cafe: '카페' },
+}
+
+describe('previewOf — 레시피 (티켓 20261007_1401)', () => {
+  const recipe = {
+    starts_at: '2026-10-10T00:00:00.000Z',
+    ends_at: '2026-10-20T00:00:00.000Z',
+    copy: { name: '비 오는 날 레시피' },
+    resource: {
+      slots: [
+        { badge_type: 'item', allowed_badge_ids: [B1, B2] },
+        { badge_type: 'activity', allowed_badge_ids: [B3] },
+      ],
+      reward_points: 30,
+      reward_badge_ids: [B1],
+    },
+  }
+
+  it('이름·슬롯·후보·보상·기간을 읽고 이름 맵으로 배지 이름을 채운다', () => {
+    const view = previewOf(card(recipe, null, 'recipe'), undefined, { names: NAMES })
+    expect(view).toMatchObject({
+      type: 'recipe',
+      name: '비 오는 날 레시피',
+      rewardPoints: 30,
+      startsAt: '2026-10-10T00:00:00.000Z',
+      endsAt: '2026-10-20T00:00:00.000Z',
+    })
+    if (view?.type !== 'recipe') throw new Error('레시피가 아니에요')
+    expect(view.slots.map((slot) => [slot.typeLabel, slot.candidates.map((b) => b.name)])).toEqual([
+      ['아이템', ['비 맞은 러너', '우산 수집가']],
+      ['액티비티', [PREVIEW_NAME_UNKNOWN]],
+    ])
+    expect(view.rewardBadges).toEqual([NAMES.badges[B1]])
+  })
+
+  it('이름 맵이 없으면 폴백 문구, 이름이 비면 자리표시, 같은 묶음의 배지 이름을 싣는다', () => {
+    const view = previewOf(card({ resource: recipe.resource }, null, 'recipe'), undefined, { bundleBadgeNames: ['새 배지'] })
+    if (view?.type !== 'recipe') throw new Error('레시피가 아니에요')
+    expect(view.name).toBe(PREVIEW_TITLE_PLACEHOLDER)
+    expect(view.rewardBadges.map((b) => b.name)).toEqual([PREVIEW_NAME_UNKNOWN])
+    expect(view.bundleBadgeNames).toEqual(['새 배지'])
+  })
+
+  it('초안으로 바뀐 ID가 맵에 없으면 폴백이고 슬롯이 없어도 죽지 않는다', () => {
+    const view = previewOf(card({ resource: {} }, null, 'recipe'), undefined, { names: NAMES })
+    expect(view).toMatchObject({ type: 'recipe', slots: [], rewardBadges: [], rewardPoints: null })
+  })
+})
+
+describe('previewOf — 드랍 (티켓 20261007_1401)', () => {
+  it('지점 직접은 이름·지점당 개수, 배지는 이름 두 개와 외 N개로 요약한다', () => {
+    const view = previewOf(
+      card(
+        { starts_at: '2026-10-10T00:00:00.000Z', copy: { title: '한강 드랍' }, resource: { poi_ids: ['p-1', 'p-2', 'p-3'], per_poi_count: 2, badge_ids: [B1, B2, B3] } },
+        null,
+        'drop_schedule'
+      ),
+      undefined,
+      { names: NAMES }
+    )
+    expect(view).toEqual({
+      type: 'drop',
+      title: '한강 드랍',
+      scheduledAtText: '2026.10.10 09:00',
+      poiLine: '한강공원, 서울숲 외 1곳 × 지점당 2개',
+      itemLine: '비 맞은 러너, 우산 수집가 외 1개',
+    })
+  })
+
+  it('종류+개수는 종류 라벨(없으면 전체 종류)과 총 개수, 컬렉션은 「컬렉션 …」이다', () => {
+    const byCategory = previewOf(
+      card({ resource: { poi_category: 'cafe', total_count: 5, collection_ids: ['c-1', 'c-9'] } }, null, 'drop_schedule'),
+      undefined,
+      { names: NAMES }
+    )
+    expect(byCategory).toMatchObject({ poiLine: '카페 × 총 5개', itemLine: `컬렉션 비 컬렉션, ${PREVIEW_NAME_UNKNOWN}`, title: PREVIEW_TITLE_PLACEHOLDER, scheduledAtText: null })
+    expect(previewOf(card({ resource: { total_count: 3 } }, null, 'drop_schedule'))).toMatchObject({ poiLine: '전체 종류 × 총 3개' })
+  })
+})
+
+describe('bundleBadgeNamesOf', () => {
+  it('이 레시피를 links로 가리키는 같은 묶음의 jam_badge 이름만 돌려준다', () => {
+    const items = [
+      { kind: 'jam_badge', itemKey: 'b-1', original: { links: ['recipe-1'], copy: { name: '첫 성공 배지' } } as never, edited: null },
+      { kind: 'jam_badge', itemKey: 'b-2', original: { links: ['other'], copy: { name: '다른 배지' } } as never, edited: null },
+      { kind: 'mission', itemKey: 'm-1', original: { links: ['recipe-1'] } as never, edited: null },
+    ]
+    expect(bundleBadgeNamesOf('recipe-1', items)).toEqual(['첫 성공 배지'])
+    expect(bundleBadgeNamesOf(null, items)).toEqual([])
   })
 })

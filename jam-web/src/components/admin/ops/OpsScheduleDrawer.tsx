@@ -16,6 +16,7 @@ import { describeBundleItem } from '@/lib/admin/opsSignals/composition'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import type { OpsItemDraft, OpsWorkspaceContext } from './OpsBundleWorkspace'
 import { OpsCardPreview } from './OpsCardPreview'
+import { OpsMixTrialNotice } from './OpsMixTrialNotice'
 import { OpsColorPairPicker, withColorPick, type OpsColorPick } from './OpsColorPairPicker'
 import { OpsDrawerFrame } from './OpsDrawerFrame'
 import { OpsImageProduction } from './OpsImageProduction'
@@ -209,7 +210,14 @@ export function ReadyItemBody({ detail, item, includeSample, onRefresh, onOpenIt
         <OpsStatusBadge type="item" status={item.status} />
         {detail.isSample && <OpsStatusBadge type="sample" />}
       </div>
-      <OpsCardPreview item={item} draft={withColorPick(item.id, draft, colorPick)} making={imageProduction.making.has(item.id)} />
+      <OpsCardPreview
+        item={item}
+        draft={withColorPick(item.id, draft, colorPick)}
+        making={imageProduction.making.has(item.id)}
+        previewNames={detail.previewNames}
+        bundleItems={detail.items}
+      />
+      <OpsMixTrialNotice item={item} />
       <OpsColorPairPicker bundleId={detail.bundleId} item={item} ctx={ctx} onFilled={handlers.handleColorFilled} onConflict={handlers.refresh} />
       <OpsImageProduction item={item} items={detail.items} isSample={detail.isSample} production={imageProduction} />
       <OpsItemDetail

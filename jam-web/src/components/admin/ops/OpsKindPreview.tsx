@@ -2,9 +2,10 @@
  * 배지·컬렉션·미션 미리보기 (티켓 20261007_1400, 상위 20261006_1805 ⑤-a).
  *
  * 배지·컬렉션은 서비스 그리드 카드를 `href` 없이 그대로 쓰고, 미션은 서비스 목록 카드(`MissionsListClient`)와 같은 모양
- * (썸네일·제목·설명 2줄·보상 줄)으로 그린다. 카드 아래 한 줄 요약에 설명·조건·기간을 덧붙인다. 항목 안의 값만 쓰고 링크·계측이 없다.
+ * (썸네일·제목·설명 2줄·보상 줄)으로 그린다. 레시피(티켓 20261007_1401)는 보상 행(`RecipeRewardRow`)을 표시 전용으로 쓰고 슬롯 칸은 새로 그리며, 드랍은 요약 카드다. 카드 아래 한 줄 요약에 설명·조건·기간을 덧붙인다. 항목 안의 값만 쓰고 링크·계측이 없다.
  * 인라인 `style`은 쓰지 않는다(`no-html.test.ts`가 파일 수를 고정한다).
  */
+import RecipeRewardRow from '@/app/(main)/combine/RecipeRewardRow'
 import SafeImage from '@/components/SafeImage'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
@@ -35,7 +36,54 @@ function Summary({ lines }: { lines: string[] }) {
   )
 }
 
+/** 슬롯 후보 이름. 세 개까지 보이고 나머지는 「외 N개」다. */
+function candidateText(names: string[]): string {
+  if (names.length === 0) return '후보 없음'
+  const shown = names.slice(0, 3).join(', ')
+  return names.length > 3 ? `${shown} 외 ${names.length - 3}개` : shown
+}
+
 export function OpsKindPreview({ preview }: { preview: KindPreview }) {
+  if (preview.type === 'recipe') {
+    return (
+      <div className="space-y-2">
+        <RecipeRewardRow
+          title={preview.name}
+          slotCount={preview.slots.length}
+          badges={preview.rewardBadges.map((badge) => ({ id: badge.id, name: badge.name, image_url: badge.imageUrl, rarity: badge.rarity }))}
+          points={preview.rewardPoints ?? 0}
+        />
+        <ol className="flex flex-wrap gap-2" aria-label="슬롯">
+          {preview.slots.map((slot, i) => (
+            <li key={i} className="min-w-0 max-w-full rounded-lg border border-border px-3 py-2 text-xs">
+              <p className="m-0 font-semibold">
+                {slot.typeLabel} · 후보 {slot.candidates.length}개
+              </p>
+              <p className="m-0 mt-0.5 break-words text-muted-foreground">{candidateText(slot.candidates.map((badge) => badge.name))}</p>
+            </li>
+          ))}
+        </ol>
+        <Summary
+          lines={[
+            preview.bundleBadgeNames.length > 0 ? `이 묶음의 배지: ${preview.bundleBadgeNames.join(', ')}` : '',
+            periodText(preview.startsAt, preview.endsAt),
+          ]}
+        />
+      </div>
+    )
+  }
+
+  if (preview.type === 'drop') {
+    return (
+      <div className="space-y-1 rounded-lg border border-border p-3">
+        <h3 className="m-0 text-base font-bold leading-tight">{preview.title}</h3>
+        <Summary
+          lines={[preview.scheduledAtText ? `공개 ${preview.scheduledAtText}` : '', `지점: ${preview.poiLine}`, `놓을 것: ${preview.itemLine}`]}
+        />
+      </div>
+    )
+  }
+
   if (preview.type === 'badge') {
     const reward = preview.pointReward ? `보상 ${preview.pointReward.toLocaleString('ko-KR')} 포인트` : ''
     return (

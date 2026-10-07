@@ -11,6 +11,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { throwOnQueryError } from '@/lib/admin/queryError'
 import { isUuid } from '@/lib/admin/uuid'
 import type { OpsBundleBalance } from '@/lib/admin/opsInbox/balance/view'
+import type { OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
 import { getOpsBundleDetail, type OpsDecisionRecord, type OpsItemRecord } from '@/lib/admin/opsInbox/query'
 
 const ERROR_LABEL = 'ops-schedule'
@@ -27,6 +28,8 @@ export interface ScheduleItemDetail {
   /** 그 묶음의 결정 기록(최신순). */
   decisions: OpsDecisionRecord[]
   balance: OpsBundleBalance
+  /** 레시피·드랍 미리보기가 쓰는 이름(티켓 20261007_1401). */
+  previewNames: OpsPreviewNames
 }
 
 export async function getScheduleItemDetail(rawItemId: string): Promise<ScheduleItemDetail | null> {
@@ -48,5 +51,6 @@ export async function getScheduleItemDetail(rawItemId: string): Promise<Schedule
     items: detail.items,
     decisions: detail.decisions,
     balance: detail.balance,
+    previewNames: detail.previewNames,
   }
 }

@@ -429,6 +429,12 @@ describe('getOpsBundleDetail', () => {
     expect(detail!.decisions[1].slackResult).toEqual({ channel: 'report', ok: false, error: 'not_configured' })
   })
 
+  it('레시피·드랍 항목이 없으면 이름을 읽지 않고 빈 이름 맵을 싣는다(티켓 20261007_1401)', async () => {
+    seedDetail()
+    const detail = await getOpsBundleDetail(ID)
+    expect(detail!.previewNames).toEqual({ badges: {}, pois: {}, collections: {}, categories: {} })
+  })
+
   it('묶음 제출 원본(raw)은 가져오지 않는다', async () => {
     seedDetail()
     await getOpsBundleDetail(ID)

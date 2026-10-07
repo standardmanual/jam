@@ -103,6 +103,7 @@ function makeDetail(over: Partial<OpsItemRecord> = {}, detailOver: Partial<Sched
     items: [item],
     decisions: [SUBMIT],
     balance: { status: 'ok', openCollectionsNow: null, warnings: [], unreadable: [], checkedRuleCountByItem: {} },
+    previewNames: { badges: {}, pois: {}, collections: {}, categories: {} },
     ...detailOver,
   }
 }

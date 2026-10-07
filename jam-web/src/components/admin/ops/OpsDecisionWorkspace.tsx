@@ -23,6 +23,7 @@ import { OpsExecuteBundle } from './OpsExecuteBundle'
 import { OpsItemEditForm } from './OpsItemEditForm'
 import { OpsImageProduction } from './OpsImageProduction'
 import { OpsColorPairPicker } from './OpsColorPairPicker'
+import { OpsMixTrialNotice } from './OpsMixTrialNotice'
 import { OpsItemFooter, useOpsItemResultHandlers } from './OpsItemFooter'
 import { useItemImageProduction } from './useItemImageProduction'
 
@@ -44,7 +45,7 @@ import { useItemImageProduction } from './useItemImageProduction'
 
 type OpsDecisionWorkspaceProps = Pick<
   OpsBundleWorkspaceProps,
-  'bundleId' | 'bundleFormatErrors' | 'items' | 'decisions' | 'balance' | 'isSample'
+  'bundleId' | 'bundleFormatErrors' | 'items' | 'decisions' | 'balance' | 'isSample' | 'previewNames'
 > & {
   /** 서버 로더가 센 예약 등록 요약(승인됨 수·예약할 항목 수). 레지스트리를 화면으로 끌어오지 않으려고 계산은 서버가 한다. */
   execution: OpsBundleExecution
@@ -78,6 +79,7 @@ export function OpsDecisionWorkspace({
   balance,
   isSample,
   execution,
+  previewNames,
 }: OpsDecisionWorkspaceProps) {
   const [overrides, setOverrides] = useState<CheckOverrides>({})
   const { decidable, checked, excluded } = useMemo(() => splitByChecked(items, overrides), [items, overrides])
@@ -126,8 +128,10 @@ export function OpsDecisionWorkspace({
       balance={balance}
       isSample={isSample}
       makingItemIds={imageProduction.making}
+      previewNames={previewNames}
       previewAction={(item, ctx) => (
         <>
+          <OpsMixTrialNotice item={item} />
           <OpsColorPairPicker bundleId={bundleId} item={item} ctx={ctx} onFilled={handlers.handleColorFilled} onConflict={refresh} />
           <OpsImageProduction item={item} items={items} isSample={isSample ?? false} production={imageProduction} />
         </>

@@ -31,7 +31,7 @@ export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPag
   const detail = await getOpsBundleDetail(bundleId)
   if (!detail) notFound()
 
-  const { bundle, items, decisions, balance, execution } = detail
+  const { bundle, items, decisions, balance, execution, previewNames } = detail
   const range = formatWeekRange(bundle.week)
 
   return (
@@ -67,6 +67,7 @@ export default async function OpsBundleDetailPage({ params }: OpsBundleDetailPag
           balance={balance}
           isSample={bundle.isSample}
           execution={execution}
+          previewNames={previewNames}
         />
       </Suspense>
     </div>

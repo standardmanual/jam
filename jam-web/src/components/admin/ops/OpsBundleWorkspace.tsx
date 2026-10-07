@@ -56,6 +56,7 @@ import {
 } from '@/lib/admin/opsInbox/balance/view'
 import { OpsBalanceBundleNotice } from './OpsBalanceWarnings'
 import { OpsCardPreview } from './OpsCardPreview'
+import type { OpsPreviewNames } from '@/lib/admin/opsInbox/previewNames'
 import { withColorPick, type OpsColorPick } from './OpsColorPairPicker'
 import { OpsDrawerFrame } from './OpsDrawerFrame'
 import { OpsFormatErrorSummary } from './OpsFormatErrors'
@@ -109,6 +110,8 @@ export interface OpsBundleWorkspaceProps {
   previewAction?: (item: OpsItemRecord, ctx: OpsWorkspaceContext) => ReactNode
   /** 이미지를 만드는 중인 항목 ID. 미리보기의 이미지 자리 안내를 「만드는 중」으로 바꾼다. */
   makingItemIds?: ReadonlySet<string>
+  /** 레시피·드랍 미리보기가 쓰는 배지·지점·컬렉션 이름(서버가 읽어 내린다, 티켓 20261007_1401). */
+  previewNames?: OpsPreviewNames
 }
 
 export const OPS_TRANSITION_FAILED_MESSAGE =
@@ -138,6 +141,7 @@ export function OpsBundleWorkspace({
   detailHistoryAction,
   previewAction,
   makingItemIds,
+  previewNames,
 }: OpsBundleWorkspaceProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -324,6 +328,8 @@ export function OpsBundleWorkspace({
                   item={selectedItem}
                   draft={withColorPick(selectedItem.id, draft, colorPick)}
                   making={makingItemIds?.has(selectedItem.id) ?? false}
+                  previewNames={previewNames}
+                  bundleItems={items}
                 />
                 {previewAction?.(selectedItem, ctx)}
               </div>
