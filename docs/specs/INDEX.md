@@ -108,6 +108,11 @@ status: active
 - [08 JAM! 액티비티 배지 재구상 노트.md](../../jam-doc/planning/business-plan/08%20JAM!%20액티비티%20배지%20재구상%20노트.md) — 종목·거리 중심의 액티비티 배지를 활성에너지·원정·트라이브 관계 중심의 루프로 다시 구상한 대화 기록과 트라이브 재검토 브리프다. 구상 단계이며 서비스에 반영하지 않는다.
 - [09 JAM! 서비스 재설계 진행 노트.md](../../jam-doc/planning/business-plan/09%20JAM!%20서비스%20재설계%20진행%20노트.md) — 액티비티 배지·트라이브 재구상을 새 서비스 정책으로 옮기는 진행 계획과 결정 기록. 새 세션은 이 문서에서 시작한다. 서비스에 반영하지 않는다.
 
+## jam-doc/planning/business-plan/service-redesign/
+
+- [01 공통 용어.md](../../jam-doc/planning/business-plan/service-redesign/01%20공통%20용어.md) — 서비스 재설계 주제 1 정책 초안. 트라이브와 상관없이 함께 쓰는 기능 이름(에너지, 틴케이스, 잠긴 아이템 배지, 레벨)과 쓰지 않는 말을 정한다.
+- [README.md](../../jam-doc/planning/business-plan/service-redesign/README.md) — 서비스 재설계 2단계(정책 다시 세우기)의 주제별 정책 초안 안내. 폴더 규칙, 주제 목록, 사용자 확인 상태를 둔다.
+
 ## jam-doc/planning/business-plan/tribe-rethink/
 
 - [01 미식.md](../../jam-doc/planning/business-plan/tribe-rethink/01%20미식.md) — 구상 단계 미식 트라이브 '한입만 연구회'의 시놉시스, 인물, 장소, 아이템. 서비스에 반영하지 않는다.
