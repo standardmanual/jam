@@ -18,13 +18,15 @@ interface BackgroundColorFieldProps {
   label?: string
   /** 입력값 아래 안내 문구. 사용처마다 문구가 달라(자동 프리필 여부 등) 필수로 받는다. */
   helperText: string
+  /** 좁은 칸(서랍·왼쪽 칸)용. 색 선택기와 겹치는 점선 견본을 숨기고 간격을 줄여 입력칸 폭을 확보한다. 기본은 끔. */
+  compact?: boolean
 }
 
-export default function BackgroundColorField({ value, onChange, label = '배경색', helperText }: BackgroundColorFieldProps) {
+export default function BackgroundColorField({ value, onChange, label = '배경색', helperText, compact = false }: BackgroundColorFieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-sm text-foreground">{label}</span>
-      <div className="flex items-center gap-3">
+      <div className={compact ? 'flex items-center gap-2' : 'flex items-center gap-3'}>
         <input
           type="color"
           value={HEX_COLOR_PATTERN.test(value) ? value : '#1a1a1a'}
@@ -32,11 +34,13 @@ export default function BackgroundColorField({ value, onChange, label = '배경�
           aria-label={`${label} 색상 피커`}
           className="w-11 h-11 shrink-0 rounded-xl border border-border bg-white p-1 cursor-pointer"
         />
-        <div
-          aria-hidden="true"
-          className="w-11 h-11 shrink-0 rounded-xl border border-dashed border-border"
-          style={{ backgroundColor: value || 'transparent' }}
-        />
+        {!compact && (
+          <div
+            aria-hidden="true"
+            className="w-11 h-11 shrink-0 rounded-xl border border-dashed border-border"
+            style={{ backgroundColor: value || 'transparent' }}
+          />
+        )}
         <input
           type="text"
           value={value}

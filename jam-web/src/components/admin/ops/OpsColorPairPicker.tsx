@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import BackgroundColorField, { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
+import BackgroundColorField from '@/components/admin/BackgroundColorField'
+import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { Button } from '@/components/admin/ui/button'
 import { OPS_FIELD_UNKNOWN, readOpsItemColorPending, readOpsItemTribeId } from '@/lib/admin/opsInbox/fields'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
@@ -135,9 +136,11 @@ export function OpsColorPairPicker({ bundleId, item, ctx, onFilled, onConflict }
                 >
                   <Swatch text={pair.bg} />
                   <Swatch text={pair.end} />
-                  <span className="min-w-0 flex-1 break-words font-medium text-foreground">{pair.name}</span>
-                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                    {pair.bg} → {pair.end}
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="break-words font-medium text-foreground">{pair.name}</span>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {pair.bg} → {pair.end}
+                    </span>
                   </span>
                 </button>
               </li>
@@ -155,6 +158,7 @@ export function OpsColorPairPicker({ bundleId, item, ctx, onFilled, onConflict }
             value={bg}
             onChange={(next) => setPick({ bg: next, end })}
             helperText="#rrggbb 형식으로 적어 주세요. 예: #1a2b3c"
+            compact
           />
           {bgError && (
             <p role="alert" className="break-words text-xs font-medium text-destructive">
@@ -168,6 +172,7 @@ export function OpsColorPairPicker({ bundleId, item, ctx, onFilled, onConflict }
             value={end}
             onChange={(next) => setPick({ bg, end: next })}
             helperText="#rrggbb 형식으로 적어 주세요. 예: #1a2b3c"
+            compact
           />
           {endError && (
             <p role="alert" className="break-words text-xs font-medium text-destructive">
