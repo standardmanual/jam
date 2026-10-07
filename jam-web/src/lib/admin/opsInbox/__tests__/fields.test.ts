@@ -5,7 +5,9 @@
  * - 칸마다 정상·없음·형식 틀림 값(`shape`·`exposure_tags`: 없어도 틀려도 「모름」, `tribe_id`: 없으면 null, `color_pending`: 없으면 false,
  *   `excluded_items`: 없으면 [])
  * - 수정본이 있으면 수정본을 먼저 읽는다(`color_pending: false` 덮어쓰기 포함)
- * - 칸이 없는 기존 시험 묶음(항목 3개, `segment`만 있음)은 모양·대상 「모름」, 트라이브 null, 색 대기 false, 뺀 항목 []
+ * - 칸이 없는 기존 시험 묶음(항목 3개, `segment`만 있음)은 모양·대상 「모름」, 트라이브 null, 색 대기 false, 뺀 항목 [],
+ *   패턴 번호 `P-07`은 「모름」(티켓 20261007_1745), 지점 카테고리 null
+ * - 패턴 번호(없으면 null, 형식이 틀리면 「모름」)·지점 카테고리(`knobs`나 키가 없으면 null, 문자열 배열이 아니면 「모름」, 티켓 20261007_1745)
  * - 계약: 검증(`validate.ts`)이 오류를 내지 않는 값과 읽기 함수가 「모름」이 아닌 값이 일치한다
  */
 import { describe, it, expect } from 'vitest'
@@ -17,11 +19,13 @@ import {
   readExcludedItems,
   readOpsItemColorPending,
   readOpsItemExposureTags,
+  readOpsItemPatternNo,
+  readOpsItemPlaceCategories,
   readOpsItemShape,
   readOpsItemTribeId,
 } from '../fields'
 import { OPS_ITEM_KINDS } from '../constants'
-import { validateExcludedItems, validateExposureTags, validateOpsBundle } from '../validate'
+import { validateExcludedItems, validateExposureTags, validateOpsBundle, validateOpsPlaceCategory } from '../validate'
 
 const TRIBE = '3f2c9a10-5b7e-4d21-8a64-0c1e7b9d2f55'
 const REVIEW = { world_related: false, winter_reviewed: false, reason: '운영성 카드예요' }
@@ -136,6 +140,73 @@ describe('readOpsItemColorPending', () => {
   })
 })
 
+describe('readOpsItemPatternNo (티켓 20261007_1745)', () => {
+  it('P01 형식이면 번호를 읽고 앞뒤 공백은 뗀다', () => {
+    expect(readOpsItemPatternNo(item({ pattern_no: 'P07' }))).toBe('P07')
+    expect(readOpsItemPatternNo(item({ pattern_no: ' P107 ' }))).toBe('P107')
+  })
+
+  it.each([
+    ['없음', {}],
+    ['null', { pattern_no: null }],
+  ])('%s이면 null이다', (_label, original) => {
+    expect(readOpsItemPatternNo(item(original))).toBeNull()
+  })
+
+  it.each([
+    ['하이픈', { pattern_no: 'P-07' }],
+    ['소문자', { pattern_no: 'p07' }],
+    ['한 자리', { pattern_no: 'P7' }],
+    ['숫자', { pattern_no: 7 }],
+    ['빈 문자열', { pattern_no: '' }],
+    ['배열', { pattern_no: ['P07'] }],
+  ])('%s이면 「모름」이다', (_label, original) => {
+    expect(readOpsItemPatternNo(item(original))).toBe(OPS_FIELD_UNKNOWN)
+  })
+
+  it('수정본이 있으면 수정본을 먼저 읽는다', () => {
+    expect(readOpsItemPatternNo(item({ pattern_no: 'P-07' }, { pattern_no: 'P07' }))).toBe('P07')
+    expect(readOpsItemPatternNo(item({ pattern_no: 'P07' }, { pattern_no: null }))).toBe('P07')
+  })
+})
+
+describe('readOpsItemPlaceCategories (티켓 20261007_1745)', () => {
+  it('문자열 배열이면 그대로(빈 배열 포함) 읽는다', () => {
+    expect(readOpsItemPlaceCategories(item({ knobs: { place_category: ['cafe', 'park'] } }))).toEqual(['cafe', 'park'])
+    expect(readOpsItemPlaceCategories(item({ knobs: { place_category: [] } }))).toEqual([])
+  })
+
+  it.each([
+    ['knobs 없음', {}],
+    ['knobs null', { knobs: null }],
+    ['knobs가 객체가 아님', { knobs: 'text' }],
+    ['knobs가 배열', { knobs: ['cafe'] }],
+    ['키 없음', { knobs: { time: 5 } }],
+    ['키가 null', { knobs: { place_category: null } }],
+  ])('%s이면 null이다', (_label, original) => {
+    expect(readOpsItemPlaceCategories(item(original))).toBeNull()
+  })
+
+  it.each([
+    ['문자열', { knobs: { place_category: 'cafe' } }],
+    ['숫자', { knobs: { place_category: 3 } }],
+    ['원소가 숫자', { knobs: { place_category: ['cafe', 3] } }],
+    ['빈 문자열 원소', { knobs: { place_category: [''] } }],
+  ])('%s이면 「모름」이다', (_label, original) => {
+    expect(readOpsItemPlaceCategories(item(original))).toBe(OPS_FIELD_UNKNOWN)
+  })
+
+  it('실제 카테고리가 있는지는 보지 않는다(없는 slug도 읽는다)', () => {
+    expect(readOpsItemPlaceCategories(item({ knobs: { place_category: ['no-such-category'] } }))).toEqual(['no-such-category'])
+  })
+
+  it('수정본의 knobs가 있으면 수정본을 먼저 읽는다', () => {
+    expect(
+      readOpsItemPlaceCategories(item({ knobs: { place_category: ['cafe'] } }, { knobs: { place_category: ['park'] } }))
+    ).toEqual(['park'])
+  })
+})
+
 describe('readExcludedItems · readBundleExcludedItems', () => {
   it('정상 원소는 사유의 앞뒤 공백을 떼고 선택 칸은 null로 채운다', () => {
     expect(
@@ -190,17 +261,19 @@ describe('readExcludedItems · readBundleExcludedItems', () => {
 describe('기존 시험 묶음 고정 사례 (항목 3개, segment만 있음)', () => {
   // 2026-10-01 DB 조회로 확인한 기존 시험 묶음의 모양: 새 칸이 없고 옛 대상 칸 `segment`만 있다. 다시 검사하지 않고 읽을 때 「모름」이다.
   const legacyItems = [
-    item({ item_key: 'card-1', kind: 'home_feed_card', segment: 'new_user', user_experience: '첫 카드', world_review: REVIEW }),
-    item({ item_key: 'card-2', kind: 'home_feed_card', segment: 'all', user_experience: '둘째 카드', world_review: REVIEW }),
-    item({ item_key: 'mission-1', kind: 'mission', segment: { tier: 'vip' }, user_experience: '미션', world_review: REVIEW }),
+    item({ item_key: 'card-1', kind: 'home_feed_card', pattern_no: 'P-07', segment: 'new_user', user_experience: '첫 카드', world_review: REVIEW }),
+    item({ item_key: 'card-2', kind: 'home_feed_card', pattern_no: 'P-07', segment: 'all', user_experience: '둘째 카드', world_review: REVIEW }),
+    item({ item_key: 'mission-1', kind: 'mission', pattern_no: 'P-07', segment: { tier: 'vip' }, user_experience: '미션', world_review: REVIEW }),
   ]
   const legacyBundleRaw: Json = { bundle_id: 'sample-legacy', author: '윤진', items: legacyItems.map((i) => i.original) }
 
-  it('모양·대상은 「모름」, 트라이브는 없음, 색 대기는 아님이다', () => {
+  it('모양·대상·패턴 번호(P-07)는 「모름」, 트라이브·지점 카테고리는 없음, 색 대기는 아님이다', () => {
     for (const legacy of legacyItems) {
       expect(readOpsItemShape(legacy)).toBe(OPS_FIELD_UNKNOWN)
       expect(readOpsItemExposureTags(legacy)).toBe(OPS_FIELD_UNKNOWN)
+      expect(readOpsItemPatternNo(legacy)).toBe(OPS_FIELD_UNKNOWN)
       expect(readOpsItemTribeId(legacy)).toBeNull()
+      expect(readOpsItemPlaceCategories(legacy)).toBeNull()
       expect(readOpsItemColorPending(legacy)).toBe(false)
     }
   })
@@ -256,6 +329,20 @@ describe('계약: 검증이 오류를 내지 않는 값 = 읽기 함수가 「�
   it.each(tribeValues.map((value) => [JSON.stringify(value), value]))('tribe_id %s', (_label, value) => {
     const valid = validationErrors('tribe_id', value).length === 0
     expect(readOpsItemTribeId(item({ tribe_id: value })) !== OPS_FIELD_UNKNOWN).toBe(valid)
+  })
+
+  const patternValues: unknown[] = ['P01', 'P07', 'P100', ' P07 ', 'P-07', 'p07', 'P7', 'T01', '7', 7, '', ['P07'], {}, true]
+  it.each(patternValues.map((value) => [JSON.stringify(value), value]))('pattern_no %s', (_label, value) => {
+    // 사전 실재는 읽기 함수가 보지 않으므로 ctx 없이 낸 검증과 견준다
+    const valid = validationErrors('pattern_no', value).length === 0
+    expect(readOpsItemPatternNo(item({ pattern_no: value })) !== OPS_FIELD_UNKNOWN).toBe(valid)
+  })
+
+  const placeValues: unknown[] = [['cafe'], ['cafe', 'park'], [], 'cafe', 3, ['cafe', 3], [''], [null], {}, true]
+  it.each(placeValues.map((value) => [JSON.stringify(value), value]))('knobs.place_category %s', (_label, value) => {
+    const valid = validationErrors('knobs', { place_category: value }).length === 0
+    expect(readOpsItemPlaceCategories(item({ knobs: { place_category: value } })) !== OPS_FIELD_UNKNOWN).toBe(valid)
+    expect(validateOpsPlaceCategory({ place_category: value }, 'x').length === 0).toBe(valid)
   })
 
   const pendingValues: unknown[] = [true, false, 'yes', 1, 0, [true], {}]

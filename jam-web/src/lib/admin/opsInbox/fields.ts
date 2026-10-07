@@ -9,6 +9,8 @@
  * - `shape`·`exposure_tags`: 없어도 틀려도 「모름」(필수 칸이라 없는 것도 정보가 없는 것이다)
  * - `tribe_id`: 없으면 `null`, 틀리면 「모름」
  * - `color_pending`: 없으면 `false`, 틀리면 「모름」
+ * - `pattern_no`: 없으면 `null`, 형식(`P01`)이 틀리면 「모름」(티켓 20261007_1745. 사전에 있는 번호인지는 여기서 보지 않는다)
+ * - `knobs.place_category`: `knobs`나 그 키가 없으면 `null`, 문자열 배열이 아니면 「모름」(카테고리가 실제로 있는지는 여기서 보지 않는다)
  * - `excluded_items`(묶음): 없으면 `[]`, 배열이 아니거나 원소 하나라도 틀리면 목록 전체가 「모름」
  * 형식 판정은 `validate.ts`와 같은 원천을 쓴다(오류 없는 값만 읽는다). 트라이브가 실제로 있는지는 여기서 보지 않는다 — 제출·수정 때
  * `tribes` 조회(`tribes.ts`)로 이미 확인했다.
@@ -18,7 +20,12 @@
 import type { Json } from '@/types/database.generated'
 import { OPS_HOME_FEED_CARD_KIND, type OpsExcludedItemStage, type OpsItemKind } from '@/lib/admin/opsInbox/constants'
 import { asRecord, itemField, type ViewableItem } from '@/lib/admin/opsInbox/itemView'
-import { validateExcludedItems, validateExposureTags } from '@/lib/admin/opsInbox/validate'
+import {
+  normalizeOpsPatternNo,
+  validateExcludedItems,
+  validateExposureTags,
+  validateOpsPlaceCategory,
+} from '@/lib/admin/opsInbox/validate'
 import { isUuid } from '@/lib/admin/uuid'
 import { isCardShape, type CardShape } from '@/lib/today/shape'
 
@@ -64,6 +71,24 @@ export function readOpsItemColorPending(item: ViewableItem): boolean | OpsFieldU
   const value = itemField(item, 'color_pending')
   if (value === undefined || value === null) return false
   return typeof value === 'boolean' ? value : OPS_FIELD_UNKNOWN
+}
+
+/** 패턴 번호. 없으면 `null`, `P01` 형식이 아니면(숫자·`P-07` 포함) 「모름」. 앞뒤 공백은 뗀다. */
+export function readOpsItemPatternNo(item: ViewableItem): string | null | OpsFieldUnknown {
+  const value = itemField(item, 'pattern_no')
+  if (value === undefined || value === null) return null
+  return normalizeOpsPatternNo(value) ?? OPS_FIELD_UNKNOWN
+}
+
+/**
+ * 지점 카테고리(`knobs.place_category`). `knobs`가 객체가 아니거나 키가 없으면 `null`, 문자열 배열이 아니면 「모름」이다. 카테고리가
+ * 실제로 있는지는 DB를 불러야 알 수 있어 여기서 보지 않는다(순수 함수).
+ */
+export function readOpsItemPlaceCategories(item: ViewableItem): string[] | null | OpsFieldUnknown {
+  const knobs = asRecord(itemField(item, 'knobs'))
+  const value = knobs?.place_category
+  if (value === undefined || value === null) return null
+  return validateOpsPlaceCategory(knobs, 'knobs').length === 0 ? [...(value as string[])] : OPS_FIELD_UNKNOWN
 }
 
 /** 뺀 항목 목록 값 하나를 읽는다. 없으면 `[]`, 배열이 아니거나 원소 하나라도 틀리면 「모름」. */

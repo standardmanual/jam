@@ -69,14 +69,15 @@ related:
 | 묶음 | `hypothesis`·`color_rationale_link`·`routine_run` | 있으면 형식만 본다(문자열·문자열·객체). `created_at`은 원본(`raw`)에만 남고 검사하지 않는다 |
 | 항목 | `item_key`(필수) | 비어 있지 않은 문자열이고 묶음 안에서 겹치지 않는다(겹치면 뒤에 나온 항목이 오류) |
 | 항목 | `kind`(필수) | `home_feed_card`·`mission`·`drop_schedule`·`recipe`·`jam_badge`·`collection_launch`·`pattern_proposal` 중 하나 |
-| 항목 | `pattern_no` | 문자열 또는 숫자 |
+| 항목 | `pattern_no`(선택) | 문자열이고 앞뒤 공백을 뗀 값이 `P01`처럼 `^P[0-9]{2,}$`에 맞아야 한다(숫자·`P-07`·`p07`은 형식 오류). 형식이 맞으면 패턴 사전(`ops_patterns`)에 있는 번호여야 한다 — 보관(`archived`) 패턴의 번호도 사전에 있는 번호다. 형식이 틀리면 항목의 `pattern_no` 열을 비워(NULL) 저장하고(제출 원본 `original`에는 그대로 남는다), 형식은 맞지만 사전에 없는 번호는 열에 그대로 저장한다. 어느 쪽이든 형식 오류만 남기고 저장·승인은 막지 않는다. 사전 조회가 실패하면 저장하지 않고 500이다 |
 | 항목 | `starts_at`·`ends_at` | 시간대가 붙은 ISO 8601(예: `2026-10-05T09:00:00+09:00`). 둘 다 있으면 `ends_at`이 더 늦어야 한다. 없어도 오류가 아니다 |
 | 항목 | `user_experience`(필수) | 비어 있지 않은 문자열: 「유저가 겪는 것」 쉬운 한 문장(§4) |
 | 항목 | `links` | 배열. 각 값은 같은 묶음 다른 항목의 `item_key`여야 한다(자기 자신과 없는 키는 오류) |
 | 항목 | `world_review`(필수) | 객체 `{ world_related, winter_reviewed, reason }`. 셋 다 필수, 앞의 둘은 불리언, `reason`은 한 줄 문자열, `world_related`가 참이면 `winter_reviewed`도 참이어야 한다. 규칙은 홈피드 등록 묶음의 `world_review`와 같다(`registerHomeFeedBundle.mjs`, 테스트가 같은 입력으로 대조) |
 | 항목 | `shape`·`exposure_tags`·`tribe_id`·`color_pending`, 묶음 `excluded_items` | 아래 「카드 칸과 뺀 항목」 표가 정한다 |
 | 항목 | `image_spec`(선택) | 이미지 지시 칸. 객체이고 `preset_id`·`bg`·`end`는 비어 있지 않은 문자열, `values`는 문자열 값을 가진 객체이며 넷 모두 선택이다. 이미지 칸이 있는 종류(`home_feed_card`·`mission`·`jam_badge`·`collection_launch`)에서 비어 있거나 `preset_id`가 없으면, `preset_id`는 있는데 `bg`·`end`가 없으면(렌더가 실패한다), 또는 값이 있는데 모양이 틀리면 **경고만** 낸다. 오류로 만들지 않고 제출은 그대로 받으며, 경고는 제출 응답의 `warnings`에만 싣고 DB에는 저장하지 않는다(`image_spec`은 항목 원본에 그대로 저장한다). 규칙은 `lib/admin/opsInbox/imageSpec.ts` |
-| 항목 | `knobs`·`segment`·`balance_check`·`copy`·`colors`·`resource` | 검사하지 않고 항목 원본(`original`)에 그대로 저장한다. 종류별 세부 검증은 예약 등록 때 등록 전 검증(§8.4)이 한다. `segment`는 옛 칸이라 신호가 읽지 않는다(대상은 `exposure_tags`) |
+| 항목 | `knobs.place_category`(선택) | `knobs`가 객체이고 이 키에 값이 있으면 `poi_categories.slug`의 문자열 배열이어야 한다(빈 배열은 허용). 없는 slug는 모아서 형식 오류 한 줄로 남기고 저장·승인은 막지 않는다. 카테고리 목록 조회가 실패하면 저장하지 않고 500이다. `knobs`가 없거나 객체가 아니거나 이 키가 없으면 검사하지 않는다 |
+| 항목 | `knobs`의 나머지·`segment`·`balance_check`·`copy`·`colors`·`resource` | 검사하지 않고 항목 원본(`original`)에 그대로 저장한다. 종류별 세부 검증은 예약 등록 때 등록 전 검증(§8.4)이 한다. `segment`는 옛 칸이라 신호가 읽지 않는다(대상은 `exposure_tags`) |
 
 - 형식에 이미지 파일 경로(`image.path`)와 `seed`는 없다. 이미지는 제출 뒤 운영툴이 만들므로 `image_spec`(이미지 지시)을 받는다(§8.8, 티켓 1501). 이 두 키가 들어와도 거절하지 않고 검사 없이 항목 원본(`original`)에 그대로 저장한다. `image_spec`은 위 표대로 모양만 보고 경고한다.
 - 항목 배열의 순서는 `position`(0부터)으로 저장한다.
@@ -105,14 +106,18 @@ related:
 | 항목 | `shape` | 문자열 | `hero`·`poster`·`square`·`brief`·`list`(`lib/today/shape.ts`의 `CARD_SHAPES`). 이미지가 있는 모양은 `hero`·`poster`·`square` | `kind`가 `home_feed_card`면 필수. 다른 종류는 값이 있을 때만 검사 | 모름 | 모름 |
 | 항목 | `exposure_tags` | 문자열 배열(1개 이상, 중복 없음) | `jam-web/src/lib/admin/today-sections.ts`의 `TODAY_EXPOSURE_TAG_OPTIONS`(전원 `all`, 신규 `new_user` 등). 오류 문장은 홈피드 등록 묶음 검사와 같다 | `home_feed_card`면 필수. 다른 종류는 값이 있을 때만 검사 | 모름 | 모름 |
 | 항목 | `tribe_id` | UUID 문자열(null은 없음) | `tribes.id`. 형식 검사에 더해 제출·수정 때 `tribes` 목록에 있는지 본다 | 선택 | 없음(`null`) | 모름 |
+| 항목 | `pattern_no` | 문자열 | `^P[0-9]{2,}$`(`ops_patterns.pattern_no` CHECK와 같다). 제출·수정 때 패턴 사전에 있는지도 본다(보관 패턴 포함) | 선택 | 없음(`null`) | 모름 |
+| 항목 | `knobs.place_category` | 문자열 배열(빈 배열 허용) | `poi_categories.slug`. 제출·수정 때 목록에 있는지도 본다. 읽기 함수(`readOpsItemPlaceCategories`)는 DB를 부르지 않아 있는지는 보지 않는다 | 선택 | 없음(`null`, `knobs`나 키가 없거나 `knobs`가 객체가 아닐 때) | 모름 |
 | 항목 | `color_pending` | 불리언 | `true`면 「색 대기」 | 선택 | `false` | 모름 |
 | 묶음(`raw`) | `excluded_items` | 객체 배열 | 원소마다 `reason`(필수, 비어 있지 않은 한 줄 — `world_review.reason`과 같은 규칙), `item_key`(선택, 문자열), `kind`(선택, 7종 중 하나), `stage`(선택, `world_review`·`balance_check`) | 선택 | 빈 목록(`[]`) | 모름(배열이 아니거나 원소 하나라도 틀리면 목록 전체) |
 
 - 필수 칸이 없거나 값이 틀리면 「형식 오류」다. 받아서 저장하고 승인을 막지 않는다. `excluded_items` 오류는 묶음 오류에만 담고 어느 항목의
   `format_errors`에도 넣지 않는다.
 - **옛 형식 묶음.** 칸이 없는 항목(옛 `segment`만 있는 항목)도 400 없이 받고 새 칸 오류만 붙으며 `segment`는 `original`에 그대로 남는다. 이미 저장된
-  묶음(2026-10-01 DB 조회로 확인한 시험 묶음 1개·항목 3개, 실제 묶음은 없음)은 다시 검사하지 않고 읽을 때 모름으로 처리한다(모양·대상 모름, 트라이브
-  없음, 색 대기 아님, 뺀 항목 없음). 그런 항목을 직접 고치면(§7.3) 새 규칙으로 다시 검사해 오류를 붙이되 저장은 막지 않는다.
+  묶음(2026-10-01 DB 조회로 확인한 시험 묶음 1개·항목 3개, 실제 묶음은 없음)은 다시 검사하지 않고 읽을 때 모름으로 처리한다(모양·대상 모름, 패턴 번호
+  `P-07`은 모름, 트라이브·지점 카테고리 없음, 색 대기 아님, 뺀 항목 없음). 그런 항목을 직접 고치면(§7.3) 새 규칙으로 다시 검사해 오류를 붙이되 저장은 막지 않는다.
+- **조회 재료.** 제출과 직접 수정 세 경로(수정·색 채우기·되돌리기)는 같은 함수(`lib/admin/opsInbox/validationContext.ts`)로 트라이브·패턴 번호·지점 카테고리 목록을
+  한 번에 읽는다. 하나라도 읽지 못하면 저장하지 않고 500이다. 직접 수정은 항목의 `pattern_no` 열을 갱신하지 않는다(새 오류는 항목·묶음의 형식 오류 목록에만 반영한다).
 - **트라이브 존재 확인.** 제출(§11.1)과 직접 수정·되돌리기(§7.3)는 `tribes` 테이블의 ID 목록을 조회해(`jam-web/src/lib/admin/opsInbox/tribes.ts`의
   `loadTribeIds`) `tribe_id`가 그 안에 있는지 본다. 같은 목록·같은 규칙이라 두 경로의 판정이 같다. 조회가 실패하면 저장하지 않고 500이다. 읽기 함수는
   형식만 보고 존재는 다시 보지 않는다.
@@ -905,7 +910,7 @@ stateDiagram-v2
   `precheck.ts`의 `differsFromLinkedRecipe`는 가리키는 쪽이 JAM! 배지(`jam_badge`)일 때만 견준다.
 - 같은 기획 안에서 기간이 겹치는 같은 제목의 미션이 둘 이상이면 뒤 항목이 못 하는 항목이다(사용자 결정 2026-10-02, 구현됨: ⑥). 이미 있는 미션과의 겹침은 실행 때 등록 전 검증이 본다(§8.1).
 - 글자 수 상한(1453 확정 설계: `hero` 22·`poster` 18·`square` 22·`brief` 28·`list` 22자, 홈피드 PRD §6)은 경고만 한다(G15).
-- `pattern_no`가 사전 번호 형식(`^P[0-9]{2,}$`)이 아니면 카드의 `pattern_no` 칸을 비우고 경고한다(G11). 제출 때 거르는 일은 영향 티켓 20261001_2057이 한다.
+- `pattern_no`가 사전 번호 형식(`^P[0-9]{2,}$`)이 아니면 카드의 `pattern_no` 칸을 비우고 경고한다(G11). 제출 때도 같은 형식을 보고 형식 오류로 남긴다(§3.1, 티켓 20261007_1745).
 - 표에 없는 `copy`·`resource` 키와 툴이 정하는 칸에 들어온 값은 경고만 한다(§8.4).
 
 **요약창.** 공개 시각 순 목록, 함께 예약되는 연결 묶음(한 덩어리로 보인다), 기다리는 항목과 못 하는 항목의 이유, 실패로 닫을 항목, 경고가 있다. 예약할 JAM! 배지가 있으면

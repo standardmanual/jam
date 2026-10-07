@@ -6,6 +6,7 @@
  * - 승인·반려: 조건부 update(같은 항목을 두 번 승인하면 두 번째는 409, 결정 기록 1행), 반려 사유 필수, 결정 기록 insert 실패 시 상태 되돌림
  * - 일괄 승인: 같은 batch_id, skipped·excluded, 하나도 안 바뀌면 409
  * - 수정: 제출 원본 불변, 고친 칸 오류는 400·나머지는 형식 오류 갱신, updated_at 어긋남 409, 되돌림 스택
+ * - 패턴 번호·지점 카테고리 다시 검사(티켓 20261007_1745): 새 오류가 생겨도 직접 수정은 저장되고 열은 건드리지 않는다, 두 목록 조회가 실패하면 3경로 모두 500
  * - 결정 기록은 insert만 하고 slack_result 열만 update한다
  * - 시험 묶음만 지운다
  */
@@ -16,7 +17,14 @@ const h = vi.hoisted(() => {
   type Result = { data?: unknown; error: { message: string } | null }
 
   const state = {
-    tables: { ops_bundles: [], ops_bundle_items: [], ops_decisions: [], tribes: [] } as Record<string, Row[]>,
+    tables: {
+      ops_bundles: [],
+      ops_bundle_items: [],
+      ops_decisions: [],
+      tribes: [],
+      ops_patterns: [],
+      poi_categories: [],
+    } as Record<string, Row[]>,
     failOn: new Set<string>(),
     seq: 0,
     clock: 0,
@@ -216,6 +224,8 @@ function seed(items = [makeItem(I1, 0), makeItem(I2, 1), makeItem(I3, 2, { statu
     ops_bundles: [{ id: B, is_sample: true, format_errors: [], ...bundle }, { id: OTHER_B, is_sample: false, format_errors: [] }],
     ops_bundle_items: items.map((item) => ({ ...item })),
     tribes: [{ id: TRIBE_A }],
+    ops_patterns: [{ pattern_no: 'P07' }],
+    poi_categories: [{ slug: 'cafe' }],
     ops_decisions: [{ id: 'd-submit', bundle_id: B, item_id: null, action: 'submit', actor: 'token:윤진', batch_id: null, diff: null, reason: null, slack_result: null, created_at: T0 }],
   }
 }
@@ -638,6 +648,87 @@ describe('직접 수정', () => {
       expect(failed).toMatchObject({ status: 500, error: '되돌리지 못했어요. 잠시 뒤 다시 눌러 주세요.' })
       expect(JSON.stringify(item(I1).edited)).toBe(edited)
     })
+  })
+})
+
+describe('패턴 번호·지점 카테고리 다시 검사 (티켓 20261007_1745)', () => {
+  const PATTERN_ERROR = 'items[0].pattern_no: 패턴 사전에 없는 번호예요(받은 값: "P99"). 패턴 번호를 확인해 주세요.'
+  const CATEGORY_ERROR = 'items[0].knobs.place_category: 없는 지점 카테고리예요 — "zoo". 카테고리 slug를 확인해 주세요.'
+  const edit = () =>
+    editItem(service, { bundleId: B, itemId: I1, actor: 'admin-1', values: { 'copy.title': '새 제목' }, expectedUpdatedAt: item(I1).updated_at })
+  const seedWith = (original: Record<string, unknown>, columns: Record<string, unknown> = {}) =>
+    seed([makeItem(I1, 0, { original, ...columns }), makeItem(I2, 1)])
+
+  it('사전에 없는 번호를 가진 항목을 고치면 제출 때와 같은 오류가 붙고 저장은 막지 않으며 pattern_no 열은 그대로다', async () => {
+    seedWith(makeOriginal({ pattern_no: 'P99' }), { pattern_no: 'P99' })
+
+    const out = await edit()
+    expect(out.ok).toBe(true)
+    expect(item(I1).format_errors).toEqual([PATTERN_ERROR])
+    expect(item(I1).pattern_no).toBe('P99')
+    expect(decisions('edit')).toHaveLength(1)
+
+    const submitted = validateOpsBundle(
+      { bundle_id: 'b', author: 'a', items: [makeOriginal({ pattern_no: 'P99' })] },
+      { patternNos: new Set(['P07']) }
+    )
+    expect(item(I1).format_errors).toEqual(submitted.items[0].format_errors)
+  })
+
+  it('형식이 틀린 번호(P-07)도 고치기를 막지 않고 열은 NULL 그대로다', async () => {
+    seedWith(makeOriginal({ pattern_no: 'P-07' }))
+
+    expect((await edit()).ok).toBe(true)
+    expect(item(I1).format_errors).toHaveLength(1)
+    expect(item(I1).format_errors[0]).toMatch(/^items\[0\]\.pattern_no: 패턴 번호는 P01처럼/)
+    expect(item(I1).pattern_no).toBeNull()
+  })
+
+  it('없는 지점 카테고리 slug를 가진 항목을 고쳐도 저장되고 오류만 붙는다', async () => {
+    seedWith(makeOriginal({ knobs: { place_category: ['cafe', 'zoo'] } }))
+
+    expect((await edit()).ok).toBe(true)
+    expect(item(I1).format_errors).toEqual([CATEGORY_ERROR])
+  })
+
+  it('사전에 있는 번호와 있는 카테고리면 오류가 없다', async () => {
+    seedWith(makeOriginal({ pattern_no: 'P07', knobs: { place_category: ['cafe'] } }))
+
+    expect((await edit()).ok).toBe(true)
+    expect(item(I1).format_errors).toEqual([])
+  })
+
+  it.each(['ops_patterns.select', 'poi_categories.select'])('%s가 실패하면 직접 수정은 저장하지 않고 500이다(오류 원문은 싣지 않는다)', async (failing) => {
+    h.state.failOn.add(failing)
+    const before = JSON.stringify(item(I1))
+
+    const out = failure(await edit())
+    expect(out).toMatchObject({ status: 500, error: '저장하지 못했어요. 잠시 뒤 다시 눌러 주세요.' })
+    expect(JSON.stringify(out)).not.toContain('boom')
+    expect(JSON.stringify(item(I1))).toBe(before)
+    expect(decisions()).toHaveLength(0)
+  })
+
+  it.each(['ops_patterns.select', 'poi_categories.select'])('%s가 실패하면 되돌리기도 되돌리지 않고 500이다', async (failing) => {
+    expect((await edit()).ok).toBe(true)
+    const edited = JSON.stringify(item(I1).edited)
+    h.state.failOn.add(failing)
+
+    const out = failure(await revertLastEdit(service, { bundleId: B, itemId: I1, actor: 'admin-2' }))
+    expect(out).toMatchObject({ status: 500, error: '되돌리지 못했어요. 잠시 뒤 다시 눌러 주세요.' })
+    expect(JSON.stringify(item(I1).edited)).toBe(edited)
+  })
+
+  it.each(['ops_patterns.select', 'poi_categories.select'])('%s가 실패하면 색 채우기도 저장하지 않고 500이다', async (failing) => {
+    seed([makeItem(I1, 0, { original: makeOriginal({ color_pending: true }) })])
+    h.state.failOn.add(failing)
+
+    const out = failure(
+      await fillColor(service, { bundleId: B, itemId: I1, actor: 'admin-1', bg: '#b83618', end: '#5c1a0c', expectedUpdatedAt: T0 })
+    )
+    expect(out).toMatchObject({ status: 500, error: '색을 채우지 못했어요. 잠시 뒤 다시 눌러 주세요.' })
+    expect(item(I1).edited).toBeNull()
+    expect(decisions('fill_color')).toHaveLength(0)
   })
 })
 

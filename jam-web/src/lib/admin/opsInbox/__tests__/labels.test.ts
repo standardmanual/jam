@@ -158,6 +158,12 @@ describe('formatErrorPathLabel · parseFormatErrorPath', () => {
     expect(parseFormatErrorPath('items[2].shape')).toEqual({ itemPosition: 2, label: '카드 모양' })
   })
 
+  it('패턴 번호·지점 카테고리 이름표(티켓 20261007_1745)', () => {
+    expect(formatErrorPathLabel('items[0].pattern_no')).toBe('패턴 번호')
+    expect(formatErrorPathLabel('items[0].knobs.place_category')).toBe('지점 카테고리')
+    expect(parseFormatErrorPath('items[4].knobs.place_category')).toEqual({ itemPosition: 4, label: '지점 카테고리' })
+  })
+
   it('뺀 항목 이름표: 목록은 「뺀 항목」, excluded_items[n].reason은 「뺀 항목 사유」(「검수 이유」가 아니다), 단계는 「뺀 단계」', () => {
     expect(formatErrorPathLabel('excluded_items')).toBe('뺀 항목')
     expect(formatErrorPathLabel('excluded_items[0]')).toBe('뺀 항목')
@@ -211,12 +217,13 @@ describe('formatErrorPathLabel · parseFormatErrorPath', () => {
           exposure_tags: 'all',
           tribe_id: 'ranger',
           color_pending: 'yes',
+          knobs: { place_category: 'cafe' },
         },
       ],
     })
     expect(result.errors.length).toBeGreaterThan(8)
     expect(result.errors.filter((message) => message.startsWith('excluded_items'))).toHaveLength(5)
-    for (const key of ['shape', 'exposure_tags', 'tribe_id', 'color_pending']) {
+    for (const key of ['shape', 'exposure_tags', 'tribe_id', 'color_pending', 'knobs.place_category']) {
       expect(result.errors.some((message) => message.startsWith(`items[1].${key}:`)), key).toBe(true)
     }
     for (const message of result.errors) {

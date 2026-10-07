@@ -179,6 +179,16 @@ export async function listOpsPatterns(service: ServiceClient, { includeArchived 
   return (data ?? []).map(toPatternRecord).sort((a, b) => comparePatternNo(a.patternNo, b.patternNo))
 }
 
+/**
+ * 사전에 있는 패턴 번호 전체(티켓 20261007_1745). 운영 묶음 항목의 `pattern_no`가 사전에 있는 번호인지 보는 재료다.
+ * 상태로 거르지 않는다 — 보관(`archived`) 패턴도 번호는 지우지 않고 보관만 하므로 사전에 있는 번호다. 조회 오류는 던진다.
+ */
+export async function loadOpsPatternNos(service: ServiceClient): Promise<Set<string>> {
+  const { data, error } = await service.from('ops_patterns').select('pattern_no')
+  if (error) throw new Error(`패턴 번호 조회 실패: ${error.message}`)
+  return new Set((data ?? []).map((row) => row.pattern_no))
+}
+
 /** 패턴 한 건. 보관한 패턴도 번호로 직접 읽으면 돌려준다. 없으면 `null`이다. */
 export async function getOpsPattern(service: ServiceClient, patternNo: string): Promise<OpsPatternRecord | null> {
   const { data, error } = await service.from('ops_patterns').select(OPS_PATTERN_COLUMNS).eq('pattern_no', patternNo).maybeSingle()

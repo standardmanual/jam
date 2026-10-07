@@ -6,6 +6,7 @@
  * - world_review 규칙은 registerHomeFeedBundle.mjs와 같은 입력에 같은 문장을 낸다(대조)
  * - 카드 칸(티켓 20261001_1152): shape·exposure_tags(홈피드 카드는 필수)·tribe_id·color_pending, 묶음의 excluded_items,
  *   옛 형식 항목(segment만)은 fatal 없이 받고 새 칸 오류만 붙는다. exposure_tags는 등록 스크립트와 같은 입력에 같은 문장이다.
+ * - 패턴 번호·지점 카테고리(티켓 20261007_1745): pattern_no 형식(P01)과 사전 실재, knobs.place_category(문자열 배열·실재), 형식이 틀린 번호는 열 NULL
  */
 import { describe, it, expect } from 'vitest'
 // 지금의 등록 스크립트(.mjs)를 대조용으로 불러온다. 스크립트는 고치지 않는다.
@@ -17,8 +18,10 @@ import {
   revalidateOpsItem,
   validateEditedColor,
   validateExcludedItems,
+  normalizeOpsPatternNo,
   validateExposureTags,
   validateOpsBundle,
+  validateOpsPlaceCategory,
   validateWorldReview,
 } from '../validate'
 
@@ -32,7 +35,7 @@ function makeItem(overrides: Record<string, unknown> = {}) {
     kind: 'home_feed_card',
     shape: 'hero',
     exposure_tags: ['all'],
-    pattern_no: 'P-07',
+    pattern_no: 'P07',
     starts_at: '2026-10-05T09:00:00+09:00',
     ends_at: '2026-10-06T09:00:00+09:00',
     user_experience: '월요일 아침에 이번 주 미션을 한눈에 볼 수 있어요',
@@ -70,7 +73,7 @@ describe('validateOpsBundle — 정상 묶음', () => {
       position: 0,
       item_key: 'card-1',
       kind: 'home_feed_card',
-      pattern_no: 'P-07',
+      pattern_no: 'P07',
       starts_at: '2026-10-05T00:00:00.000Z',
       ends_at: '2026-10-06T00:00:00.000Z',
       format_errors: [],
@@ -265,9 +268,25 @@ describe('validateOpsBundle — 저장되는 형식 오류(공통 필드)', () =
     expect(result.items).toHaveLength(3)
   })
 
-  it('pattern_no는 문자열이나 숫자를 받고 그 밖은 오류다', () => {
-    expect(errorsOf({ pattern_no: 7 }).items[0].pattern_no).toBe('7')
-    expect(errorsOf({ pattern_no: { a: 1 } }).errors[0]).toMatch(/^items\[0\]\.pattern_no: 문자열이나 숫자여야 해요/)
+  it('pattern_no는 P01 형식의 문자열만 받고 그 밖은 형식 오류이며 열은 NULL이다(제출 원본에는 그대로 남는다)', () => {
+    expect(errorsOf({ pattern_no: 'P07' }).items[0].pattern_no).toBe('P07')
+    expect(errorsOf({ pattern_no: ' P107 ' }).items[0].pattern_no).toBe('P107')
+    for (const bad of ['P-07', 'p07', 'P7', 'P', '7', 7, '', '  ', { a: 1 }, ['P07'], true]) {
+      const result = errorsOf({ pattern_no: bad })
+      expect(result.errors).toHaveLength(1)
+      expect(result.errors[0]).toMatch(/^items\[0\]\.pattern_no: 패턴 번호는 P01처럼 P 뒤에 숫자 두 자리 이상이어야 해요\(받은 값: /)
+      expect(result.items[0].pattern_no).toBeNull()
+      expect(result.items[0].original).toMatchObject({ pattern_no: bad })
+    }
+    expect(errorsOf({ pattern_no: 'P-07' }).errors[0]).toBe(
+      'items[0].pattern_no: 패턴 번호는 P01처럼 P 뒤에 숫자 두 자리 이상이어야 해요(받은 값: "P-07").'
+    )
+  })
+
+  it('pattern_no가 없거나 null이면 오류가 없다(필수 아님)', () => {
+    expect(errorsOf({ pattern_no: undefined }).errors).toEqual([])
+    expect(errorsOf({ pattern_no: null }).errors).toEqual([])
+    expect(errorsOf({ pattern_no: null }).items[0].pattern_no).toBeNull()
   })
 
   it('week 표기가 YYYY-Www가 아니면 묶음 오류이고 열 값은 null이다', () => {
@@ -662,6 +681,130 @@ describe('revalidateOpsItem — 카드 칸 (티켓 20261001_1152)', () => {
   it('ctx를 넘기지 않으면 형식만 본다', () => {
     expect(revalidateOpsItem(makeItem({ tribe_id: TRIBE_MISSING }), 0, keys).format_errors).toEqual([])
     expect(revalidateOpsItem(makeItem({ tribe_id: TRIBE_MISSING }), 0, keys, ctx).format_errors).toHaveLength(1)
+  })
+})
+
+describe('패턴 번호 — 사전 실재 (티켓 20261007_1745)', () => {
+  const ctx = { patternNos: new Set(['P07', 'P20']) }
+
+  function resultOf(itemOverrides: Record<string, unknown>, withCtx = true) {
+    const result = validateOpsBundle(makeBundle({ items: [makeItem(itemOverrides)] }), withCtx ? ctx : undefined)
+    expect(result.fatal).toEqual([])
+    return result
+  }
+
+  it('사전에 있는 번호는 오류가 없다', () => {
+    expect(resultOf({ pattern_no: 'P07' }).errors).toEqual([])
+    expect(resultOf({ pattern_no: ' P20 ' }).items[0].pattern_no).toBe('P20')
+  })
+
+  it('형식은 맞지만 사전에 없는 번호(P99)는 오류이고 열에는 값이 그대로 남는다', () => {
+    const result = resultOf({ pattern_no: 'P99' })
+    expect(result.errors).toEqual(['items[0].pattern_no: 패턴 사전에 없는 번호예요(받은 값: "P99"). 패턴 번호를 확인해 주세요.'])
+    expect(result.items[0].pattern_no).toBe('P99')
+    expect(result.items[0].format_errors).toEqual(result.errors)
+  })
+
+  it('형식이 틀린 번호는 사전을 보지 않고 형식 오류 한 줄만 낸다(열은 NULL)', () => {
+    const result = resultOf({ pattern_no: 'P-07' })
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0]).toMatch(/패턴 번호는 P01처럼/)
+    expect(result.items[0].pattern_no).toBeNull()
+  })
+
+  it('ctx 없이 부르면 형식만 본다(사전에 없는 번호도 통과)', () => {
+    expect(resultOf({ pattern_no: 'P99' }, false).errors).toEqual([])
+    expect(resultOf({ pattern_no: 'P99' }, false).items[0].pattern_no).toBe('P99')
+    expect(resultOf({ pattern_no: 'P-07' }, false).errors).toHaveLength(1)
+  })
+
+  it('pattern_no가 없으면 사전이 있어도 오류가 없다', () => {
+    expect(resultOf({ pattern_no: undefined }).errors).toEqual([])
+  })
+
+  it('제출 검증과 다시 검사가 같은 문장을 낸다', () => {
+    const raw = makeItem({ pattern_no: 'P99' })
+    const submitted = validateOpsBundle(makeBundle({ items: [raw] }), ctx)
+    const revalidated = revalidateOpsItem(raw, 0, [{ position: 0, itemKey: 'card-1' }], ctx)
+    expect(revalidated.format_errors).toHaveLength(1)
+    expect(revalidated.format_errors).toEqual(submitted.items[0].format_errors)
+    expect(revalidated.pattern_no).toBe('P99')
+  })
+})
+
+describe('normalizeOpsPatternNo (티켓 20261007_1745)', () => {
+  it('P 뒤에 숫자 두 자리 이상인 문자열만 앞뒤 공백을 떼어 돌려준다', () => {
+    expect(normalizeOpsPatternNo('P01')).toBe('P01')
+    expect(normalizeOpsPatternNo(' P100\n')).toBe('P100')
+    for (const bad of ['P1', 'p01', 'P-01', 'T01', 'P01a', '01', '', null, undefined, 1, {}, []]) {
+      expect(normalizeOpsPatternNo(bad)).toBeNull()
+    }
+  })
+})
+
+describe('지점 카테고리 — knobs.place_category (티켓 20261007_1745)', () => {
+  const SLUGS = new Set(['cafe', 'park', 'library'])
+
+  function errorsOf(knobs: unknown, withSlugs = true, removeKnobs = false) {
+    const item: Record<string, unknown> = makeItem({ knobs })
+    if (removeKnobs) delete item.knobs
+    const result = validateOpsBundle(makeBundle({ items: [item] }), withSlugs ? { poiCategorySlugs: SLUGS } : undefined)
+    expect(result.fatal).toEqual([])
+    return result.errors
+  }
+
+  it('있는 slug 배열과 빈 배열은 오류가 없다', () => {
+    expect(errorsOf({ place_category: ['cafe', 'park'] })).toEqual([])
+    expect(errorsOf({ place_category: [] })).toEqual([])
+  })
+
+  it('knobs나 place_category가 없거나 null이면 검사하지 않는다(나머지 knobs도 검사하지 않는다)', () => {
+    expect(errorsOf(undefined, true, true)).toEqual([])
+    expect(errorsOf(null)).toEqual([])
+    expect(errorsOf('text')).toEqual([])
+    expect(errorsOf([1, 2])).toEqual([])
+    expect(errorsOf({})).toEqual([])
+    expect(errorsOf({ place_category: null })).toEqual([])
+    expect(errorsOf({ time: 5, anything: { a: 1 } })).toEqual([])
+  })
+
+  it('문자열 배열이 아니면 형식 오류 한 줄이다(받은 값 표시)', () => {
+    for (const bad of ['cafe', 7, { a: 1 }, ['cafe', 3], [null], [''], ['  ']]) {
+      const errors = errorsOf({ place_category: bad })
+      expect(errors).toHaveLength(1)
+      expect(errors[0]).toMatch(/^items\[0\]\.knobs\.place_category: 지점 카테고리 slug를 문자열로 넣은 배열이어야 해요\(받은 값: /)
+    }
+    expect(errorsOf({ place_category: 'cafe' })).toEqual([
+      'items[0].knobs.place_category: 지점 카테고리 slug를 문자열로 넣은 배열이어야 해요(받은 값: "cafe").',
+    ])
+  })
+
+  it('없는 slug는 모아서 한 줄로 알린다', () => {
+    expect(errorsOf({ place_category: ['cafe', 'zoo', 'mall'] })).toEqual([
+      'items[0].knobs.place_category: 없는 지점 카테고리예요 — "zoo", "mall". 카테고리 slug를 확인해 주세요.',
+    ])
+  })
+
+  it('없는 slug가 많으면 앞의 5개만 늘어놓고 나머지는 개수로 적는다', () => {
+    const many = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+    expect(errorsOf({ place_category: many })).toEqual([
+      'items[0].knobs.place_category: 없는 지점 카테고리예요 — "a", "b", "c", "d", "e" 외 2개. 카테고리 slug를 확인해 주세요.',
+    ])
+  })
+
+  it('slug 목록 없이 부르면 형식만 본다(없는 slug도 통과)', () => {
+    expect(errorsOf({ place_category: ['zoo'] }, false)).toEqual([])
+    expect(errorsOf({ place_category: 'zoo' }, false)).toHaveLength(1)
+  })
+
+  it('항목 위치가 오류 경로에 들어가고 다시 검사도 같은 문장을 낸다', () => {
+    const raw = makeItem({ knobs: { place_category: ['zoo'] } })
+    const ctx = { poiCategorySlugs: SLUGS }
+    const submitted = validateOpsBundle(makeBundle({ items: [raw] }), ctx)
+    const revalidated = revalidateOpsItem(raw, 0, [{ position: 0, itemKey: 'card-1' }], ctx)
+    expect(revalidated.format_errors).toHaveLength(1)
+    expect(revalidated.format_errors).toEqual(submitted.items[0].format_errors)
+    expect(validateOpsPlaceCategory({ place_category: ['zoo'] }, 'items[3]', SLUGS)[0]).toMatch(/^items\[3\]\.knobs\.place_category:/)
   })
 })
 
