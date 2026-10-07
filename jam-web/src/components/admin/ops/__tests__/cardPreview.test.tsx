@@ -40,10 +40,18 @@ describe('OpsCardPreview', () => {
     expect(out).not.toContain('우산 챙겨 달리기')
   })
 
-  it('카드가 아닌 종류는 안내 한 줄만 보인다', () => {
-    const out = html(<OpsCardPreview item={item(BASE, 'mission')} />)
+  it('알 수 없는 종류는 안내 한 줄만 보인다', () => {
+    const out = html(<OpsCardPreview item={item(BASE, 'pattern_proposal')} />)
     expect(out).toContain(PREVIEW_NOT_CARD_TEXT)
     expect(out).not.toContain('기기 폭')
+  })
+
+  it('미션은 안내 문구 없이 목록 카드 모양으로 보이고 색 견본도 보인다', () => {
+    const out = html(<OpsCardPreview item={item(BASE, 'mission')} />)
+    expect(out).not.toContain(PREVIEW_NOT_CARD_TEXT)
+    expect(out).not.toContain('기기 폭')
+    expect(out).toContain('우산 챙겨 달리기')
+    expect(out).toContain('색 견본')
   })
 
   it('이미지형 카드에 이미지가 없으면 「이미지는 승인 뒤 만들어요」를 보인다', () => {

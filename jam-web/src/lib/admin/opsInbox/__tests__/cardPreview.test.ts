@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { applyDraftToItem } from '@/lib/admin/opsInbox/editDraft'
-import { PREVIEW_TITLE_PLACEHOLDER, itemToPreviewCard, previewViewOf, type PreviewItem } from '@/lib/admin/opsInbox/cardPreview'
+import { PREVIEW_TITLE_PLACEHOLDER, itemToPreviewCard, previewOf, previewViewOf, type PreviewItem } from '@/lib/admin/opsInbox/cardPreview'
 
 const NOW = new Date('2026-10-06T00:00:00.000Z')
 
@@ -84,5 +84,55 @@ describe('previewViewOf', () => {
     expect(view.title).toBe('우산 챙겨 달리기')
     expect(view.shape).toBe('hero')
     expect(view.tracking).toBeUndefined()
+  })
+})
+
+describe('previewOf', () => {
+  const badge = {
+    starts_at: '2026-10-07T00:00:00.000Z',
+    ends_at: '2026-10-09T00:00:00.000Z',
+    copy: { name: '비 맞은 러너', description: '비 오는 날 달렸어요' },
+    resource: { rarity: 'rare', level: 2, point_reward: 50, image_url: 'https://example.com/b.png' },
+  }
+
+  it('카드는 기존 표시 데이터를 그대로 돌려준다', () => {
+    expect(previewOf(card(FULL), undefined, { now: NOW })?.type).toBe('card')
+  })
+
+  it('배지는 이름·등급·레벨·보상·이미지·기간을 읽는다', () => {
+    expect(previewOf(card(badge, null, 'jam_badge'))).toMatchObject({
+      type: 'badge',
+      name: '비 맞은 러너',
+      rarity: 'rare',
+      level: 2,
+      pointReward: 50,
+      imageUrl: 'https://example.com/b.png',
+      startsAt: '2026-10-07T00:00:00.000Z',
+    })
+  })
+
+  it('초안이 수정본·원본을 덮고 형식이 틀린 값은 비운다', () => {
+    const edited = { copy: { name: '수정본 이름' }, resource: { rarity: '전설' } }
+    expect(previewOf(card(badge, edited, 'jam_badge'), { 'copy.name': '초안 이름' })).toMatchObject({
+      type: 'badge',
+      name: '초안 이름',
+      rarity: null,
+    })
+  })
+
+  it('컬렉션·미션은 종류별 칸을 읽고 제목이 비면 자리표시를 쓴다', () => {
+    expect(
+      previewOf(card({ copy: { name: '비 컬렉션', story_text: '이야기' }, resource: { reward_points: 100 } }, null, 'collection_launch'))
+    ).toMatchObject({ type: 'collection', name: '비 컬렉션', storyText: '이야기', rewardPoints: 100 })
+    expect(previewOf(card({ copy: { condition_text: '3회 달리기' } }, null, 'mission'))).toMatchObject({
+      type: 'mission',
+      title: PREVIEW_TITLE_PLACEHOLDER,
+      conditionText: '3회 달리기',
+    })
+  })
+
+  it('알 수 없는 종류는 null이다', () => {
+    expect(previewOf(card(badge, null, 'recipe'))).toBeNull()
+    expect(previewOf(card(badge, null, null))).toBeNull()
   })
 })

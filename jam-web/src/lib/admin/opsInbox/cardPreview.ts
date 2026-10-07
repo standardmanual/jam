@@ -11,7 +11,7 @@ import { asRecord, itemField, type ViewableItem } from '@/lib/admin/opsInbox/ite
 import { toCardView, type CardView } from '@/lib/today/cardView'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import { resolveTargetHref } from '@/lib/today/targetHref'
-import type { TodayCardLayoutType, TodayCardRow, TodayCardTemplateType } from '@/types/database'
+import type { BadgeRarity, TodayCardLayoutType, TodayCardRow, TodayCardTemplateType } from '@/types/database'
 
 export const PREVIEW_TITLE_PLACEHOLDER = '(제목 미입력)'
 
@@ -110,4 +110,110 @@ export function previewViewOf(
 ): CardView | null {
   const card = itemToPreviewCard(item, draftValues, options)
   return card ? toCardView(card, { now: options.now }) : null
+}
+
+/** 배지·컬렉션·미션 미리보기 표시 데이터(티켓 20261007_1400). 항목 안의 값만 읽고 연결된 값은 읽지 않는다. */
+export type KindPreview =
+  | {
+      type: 'badge'
+      name: string
+      description: string
+      rarity: BadgeRarity | null
+      level: number | null
+      pointReward: number | null
+      imageUrl: string | null
+      startsAt: string | null
+      endsAt: string | null
+    }
+  | {
+      type: 'collection'
+      name: string
+      description: string
+      storyText: string
+      rewardPoints: number | null
+      imageUrl: string | null
+      startsAt: string | null
+      endsAt: string | null
+    }
+  | {
+      type: 'mission'
+      title: string
+      description: string
+      conditionText: string
+      rewardPoints: number | null
+      imageUrl: string | null
+      startsAt: string | null
+      endsAt: string | null
+    }
+
+export type PreviewOf = { type: 'card'; view: CardView } | KindPreview
+
+const RARITIES: readonly BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
+
+/** 종류별 미리보기 표시 데이터. 카드는 기존 `previewViewOf`, 알 수 없는 종류는 null이다. */
+export function previewOf(
+  item: PreviewItem,
+  draftValues?: Readonly<Record<string, unknown>>,
+  options: PreviewOptions = {}
+): PreviewOf | null {
+  if (isOpsHomeFeedCard(item.kind)) {
+    const view = previewViewOf(item, draftValues, options)
+    return view ? { type: 'card', view } : null
+  }
+  if (item.kind !== 'jam_badge' && item.kind !== 'collection_launch' && item.kind !== 'mission') return null
+
+  const merged = draftValues ? applyDraftToItem(item, draftValues) : item
+  const copy = asRecord(itemField(merged, 'copy')) ?? {}
+  const resource = asRecord(itemField(merged, 'resource')) ?? {}
+  const text = (key: string): string => {
+    for (const group of [copy, resource]) {
+      const value = group[key]
+      if (typeof value === 'string' && value.trim() !== '') return value.trim()
+    }
+    return ''
+  }
+  const num = (key: string): number | null => {
+    const value = resource[key]
+    return typeof value === 'number' && Number.isFinite(value) ? value : null
+  }
+  const when = (key: string): string | null => {
+    const value = itemField(merged, key)
+    return typeof value === 'string' && !Number.isNaN(Date.parse(value)) ? value : null
+  }
+  const imageUrl = text('image_url') || null
+  const period = { startsAt: when('starts_at'), endsAt: when('ends_at') }
+
+  if (item.kind === 'jam_badge') {
+    const rarity = resource.rarity
+    return {
+      type: 'badge',
+      name: text('name') || PREVIEW_TITLE_PLACEHOLDER,
+      description: text('description'),
+      rarity: typeof rarity === 'string' && (RARITIES as readonly string[]).includes(rarity) ? (rarity as BadgeRarity) : null,
+      level: num('level'),
+      pointReward: num('point_reward'),
+      imageUrl,
+      ...period,
+    }
+  }
+  if (item.kind === 'collection_launch') {
+    return {
+      type: 'collection',
+      name: text('name') || PREVIEW_TITLE_PLACEHOLDER,
+      description: text('description'),
+      storyText: text('story_text'),
+      rewardPoints: num('reward_points'),
+      imageUrl,
+      ...period,
+    }
+  }
+  return {
+    type: 'mission',
+    title: text('title') || PREVIEW_TITLE_PLACEHOLDER,
+    description: text('description'),
+    conditionText: text('condition_text'),
+    rewardPoints: num('reward_points'),
+    imageUrl,
+    ...period,
+  }
 }
