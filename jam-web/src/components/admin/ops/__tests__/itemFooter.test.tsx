@@ -48,6 +48,7 @@ const handlers: OpsItemResultHandlers = {
   refresh: vi.fn(),
   revert: vi.fn(async () => {}),
   handleSaved: vi.fn(),
+  handleColorFilled: vi.fn(),
   handleDecided: vi.fn(),
   handleCancelled: vi.fn(),
   handleEnded: vi.fn(),

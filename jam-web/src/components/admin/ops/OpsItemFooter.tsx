@@ -35,6 +35,8 @@ export interface OpsItemResultHandlers {
   /** 되돌리기 요청. 저장 토스트의 [되돌리기]와 「마지막 수정 되돌리기」가 같은 요청을 부른다. */
   revert: (itemId: string) => Promise<void>
   handleSaved: (itemId: string) => void
+  /** 색 채우기가 끝났을 때(티켓 20261007_1146). 토스트를 띄우고 화면을 새로 읽는다. */
+  handleColorFilled: () => void
   /** 승인·반려가 끝났을 때. `afterToast`는 토스트 다음, 새로 읽기 앞에서 부른다(S3는 다음 결정 전 항목을 고른다). */
   handleDecided: (kind: 'approve' | 'reject', afterToast?: () => void) => void
   handleCancelled: (data: Record<string, unknown>) => void
@@ -62,6 +64,11 @@ export function useOpsItemResultHandlers({ bundleId, onRefresh }: OpsItemResultO
       duration: UNDO_TOAST_MS,
       action: { label: '되돌리기', onClick: () => void revert(itemId) },
     })
+    refresh()
+  }
+
+  const handleColorFilled = () => {
+    toast.success('색을 채웠어요')
     refresh()
   }
 
@@ -93,7 +100,7 @@ export function useOpsItemResultHandlers({ bundleId, onRefresh }: OpsItemResultO
     refresh()
   }
 
-  return { refresh, revert, handleSaved, handleDecided, handleCancelled, handleEnded, handleItemEnded }
+  return { refresh, revert, handleSaved, handleColorFilled, handleDecided, handleCancelled, handleEnded, handleItemEnded }
 }
 
 interface OpsItemFooterProps {

@@ -22,7 +22,8 @@ import { OpsBundleWorkspace, type OpsBundleWorkspaceProps, type OpsWorkspaceCont
 import { OpsExecuteBundle } from './OpsExecuteBundle'
 import { OpsItemEditForm } from './OpsItemEditForm'
 import { OpsImageProduction } from './OpsImageProduction'
-import { OpsItemFooter, useOpsItemResultHandlers } from './OpsItemFooter'
+import { OpsColorPairPicker } from './OpsColorPairPicker'
+import { OpsItemFooter,useOpsItemResultHandlers } from './OpsItemFooter'
 import { useItemImageProduction } from './useItemImageProduction'
 
 /**
@@ -125,8 +126,11 @@ export function OpsDecisionWorkspace({
       balance={balance}
       isSample={isSample}
       makingItemIds={imageProduction.making}
-      previewAction={(item) => (
-        <OpsImageProduction item={item} items={items} isSample={isSample ?? false} production={imageProduction} />
+      previewAction={(item, ctx) => (
+        <>
+          <OpsColorPairPicker bundleId={bundleId} item={item} ctx={ctx} onFilled={handlers.handleColorFilled} onConflict={refresh} />
+          <OpsImageProduction item={item} items={items} isSample={isSample ?? false} production={imageProduction} />
+        </>
       )}
       barAction={(ctx) => {
         const bulkApprove =

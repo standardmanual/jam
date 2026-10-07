@@ -80,4 +80,12 @@ describe('postDecision', () => {
       data: {},
     })
   })
+
+  it('fill_color 요청은 bg·end·expectedUpdatedAt를 본문에 싣고, 400의 bg 문장을 돌려준다', async () => {
+    fetchMock.mockReturnValue(respond(400, { error: '색을 채우지 못했어요.', fieldErrors: { bg: '색은 #rrggbb 형식으로 적어 주세요.' } }))
+    const body = { action: 'fill_color', itemId: 'item-1', bg: '#zzzzzz', end: '#0a5c3d', expectedUpdatedAt: '2026-10-01T00:00:00Z' } as const
+    const result = await postDecision('bundle-1', body)
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(body)
+    expect(result).toMatchObject({ ok: false, status: 400, fieldErrors: { bg: '색은 #rrggbb 형식으로 적어 주세요.' } })
+  })
 })

@@ -15,6 +15,7 @@ export type DecisionRequest =
   | { action: 'bulk_approve'; itemIds: string[] }
   | { action: 'edit'; itemId: string; values: Record<string, string>; reason?: string; expectedUpdatedAt: string }
   | { action: 'revert'; itemId: string }
+  | { action: 'fill_color'; itemId: string; bg: string; end: string; expectedUpdatedAt: string }
 
 export type DecisionResponse =
   | { ok: true; data: Record<string, unknown> }

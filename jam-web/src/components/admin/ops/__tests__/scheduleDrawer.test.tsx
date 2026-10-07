@@ -265,7 +265,7 @@ describe('항목 서랍 — S3와 같은 결정 부품·같은 결정 요청·�
   it('결정 줄·편집 양식·결과 처리 모두 항목 자기 묶음의 bundleId(`detail.bundleId`)를 받는다', () => {
     const drawer = code('components/admin/ops/OpsScheduleDrawer.tsx')
     expect(drawer).toMatch(/useOpsItemResultHandlers\(\{\s*bundleId:\s*detail\.bundleId/)
-    expect(drawer.match(/bundleId=\{detail\.bundleId\}/g)).toHaveLength(2) // OpsItemEditForm, OpsItemFooter
+    expect(drawer.match(/bundleId=\{detail\.bundleId\}/g)).toHaveLength(3) // OpsColorPairPicker, OpsItemEditForm, OpsItemFooter
     expect(drawer).toContain('bundleId: detail.bundleId,') // 얇은 컨텍스트
   })
 

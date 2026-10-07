@@ -56,6 +56,7 @@ import {
 } from '@/lib/admin/opsInbox/balance/view'
 import { OpsBalanceBundleNotice } from './OpsBalanceWarnings'
 import { OpsCardPreview } from './OpsCardPreview'
+import { withColorPick, type OpsColorPick } from './OpsColorPairPicker'
 import { OpsDrawerFrame } from './OpsDrawerFrame'
 import { OpsFormatErrorSummary } from './OpsFormatErrors'
 import { OpsItemDetail } from './OpsItemDetail'
@@ -81,6 +82,9 @@ export interface OpsWorkspaceContext {
   selectedItem: OpsItemRecord | null
   draft: OpsItemDraft | null
   setDraft: (draft: OpsItemDraft | null) => void
+  /** 색 대기 카드에서 저장 전에 고른 색 쌍(티켓 20261007_1146). 미리보기가 `withColorPick`으로 덮어 보인다. 쓰지 않는 화면은 비워 둔다. */
+  colorPick?: OpsColorPick | null
+  setColorPick?: (pick: OpsColorPick | null) => void
   selectItem: (id: string) => void
 }
 
@@ -142,6 +146,7 @@ export function OpsBundleWorkspace({
 
   const [filter, setFilter] = useState<OpsItemFilter>('all')
   const [draft, setDraft] = useState<OpsItemDraft | null>(null)
+  const [colorPick, setColorPick] = useState<OpsColorPick | null>(null)
   const [transitionFailed, setTransitionFailed] = useState(false)
 
   // ── 선택 ──────────────────────────────────────────────────────────────────────────────────────
@@ -194,7 +199,7 @@ export function OpsBundleWorkspace({
 
   const closeDrawer = useCallback(() => replaceQuery((params) => params.delete(DRAWER_PARAM)), [replaceQuery])
 
-  const ctx: OpsWorkspaceContext = { bundleId, items, selectedItem, draft, setDraft, selectItem }
+  const ctx: OpsWorkspaceContext = { bundleId, items, selectedItem, draft, setDraft, colorPick, setColorPick, selectItem }
 
   // ── 도착 → 검토중 전환: 화면이 따로 한 번 요청한다 ─────────────────────────────────────────────────
   const hasArrived = items.some((item) => item.status === 'arrived')
@@ -317,7 +322,7 @@ export function OpsBundleWorkspace({
               <div className="space-y-3">
                 <OpsCardPreview
                   item={selectedItem}
-                  draft={draft?.itemId === selectedItem.id ? draft.values : undefined}
+                  draft={withColorPick(selectedItem.id, draft, colorPick)}
                   making={makingItemIds?.has(selectedItem.id) ?? false}
                 />
                 {previewAction?.(selectedItem, ctx)}

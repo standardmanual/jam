@@ -16,6 +16,7 @@ import { describeBundleItem } from '@/lib/admin/opsSignals/composition'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import type { OpsItemDraft, OpsWorkspaceContext } from './OpsBundleWorkspace'
 import { OpsCardPreview } from './OpsCardPreview'
+import { OpsColorPairPicker, withColorPick, type OpsColorPick } from './OpsColorPairPicker'
 import { OpsDrawerFrame } from './OpsDrawerFrame'
 import { OpsImageProduction } from './OpsImageProduction'
 import { OpsItemDetail } from './OpsItemDetail'
@@ -180,6 +181,7 @@ export interface ReadyItemBodyProps {
 /** 데이터를 받은 운영 항목 서랍의 안쪽. 결정 줄과 편집 초안은 기획 상세(S3)와 같은 부품이다. */
 export function ReadyItemBody({ detail, item, includeSample, onRefresh, onOpenItem }: ReadyItemBodyProps) {
   const [draft, setDraft] = useState<OpsItemDraft | null>(null)
+  const [colorPick, setColorPick] = useState<OpsColorPick | null>(null)
   const handlers = useOpsItemResultHandlers({ bundleId: detail.bundleId, onRefresh })
   const imageProduction = useItemImageProduction({ bundleId: detail.bundleId, isSample: detail.isSample, onDone: handlers.refresh })
   const balanceView = useMemo(() => buildBalanceView(detail.balance), [detail.balance])
@@ -189,6 +191,8 @@ export function ReadyItemBody({ detail, item, includeSample, onRefresh, onOpenIt
     selectedItem: item,
     draft,
     setDraft,
+    colorPick,
+    setColorPick,
     selectItem: onOpenItem,
   }
   const planHref = opsTargetHref({ bundleId: detail.bundleId, itemId: item.id }, { includeSample })
@@ -205,7 +209,8 @@ export function ReadyItemBody({ detail, item, includeSample, onRefresh, onOpenIt
         <OpsStatusBadge type="item" status={item.status} />
         {detail.isSample && <OpsStatusBadge type="sample" />}
       </div>
-      <OpsCardPreview item={item} draft={draft?.itemId === item.id ? draft.values : undefined} making={imageProduction.making.has(item.id)} />
+      <OpsCardPreview item={item} draft={withColorPick(item.id, draft, colorPick)} making={imageProduction.making.has(item.id)} />
+      <OpsColorPairPicker bundleId={detail.bundleId} item={item} ctx={ctx} onFilled={handlers.handleColorFilled} onConflict={handlers.refresh} />
       <OpsImageProduction item={item} items={detail.items} isSample={detail.isSample} production={imageProduction} />
       <OpsItemDetail
         item={item}

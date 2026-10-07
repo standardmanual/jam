@@ -93,13 +93,14 @@ describe('받은 기획함 화면 소스 계약', () => {
     const withStyle = sourceFiles.filter((file) => /\bstyle=\{/.test(stripComments(readFileSync(file, 'utf8'))))
     expect(withStyle.map(rel)).toEqual([
       'components/admin/ops/OpsCardPreview.tsx',
+      'components/admin/ops/OpsColorPairPicker.tsx',
       'components/admin/ops/OpsItemDetail.tsx',
       'components/admin/ops/OpsScheduleTimeline.tsx',
       'app/admin/ops-schedule/WeeklyCalendar.tsx',
     ])
 
-    // 색 견본을 그리는 두 곳(상세의 색 줄, 카드 미리보기의 견본 칩)이 같은 규칙을 지킨다
-    for (const swatchFile of [withStyle[0], withStyle[1]]) {
+    // 색 견본을 그리는 세 곳(상세의 색 줄, 카드 미리보기의 견본 칩, 색 쌍 고르기의 쌍 칩)이 같은 규칙을 지킨다
+    for (const swatchFile of [withStyle[0], withStyle[1], withStyle[2]]) {
       const code = stripComments(readFileSync(swatchFile, 'utf8'))
       expect(code).toMatch(/import\s*\{\s*HEX_COLOR_PATTERN\s*\}\s*from\s*'@\/components\/admin\/BackgroundColorField'/)
       // 견본을 그리는 분기 조건이 정규식 검사다
@@ -110,12 +111,12 @@ describe('받은 기획함 화면 소스 계약', () => {
     }
 
     // 주간 캘린더의 `style`은 막대가 걸치는 열(숫자 `startCol`·`endCol`에서 계산한 `grid-column`) 하나뿐이다. 제출 문자열은 거기에 닿지 않는다.
-    const calendar = stripComments(readFileSync(withStyle[3], 'utf8'))
+    const calendar = stripComments(readFileSync(withStyle[4], 'utf8'))
     expect(calendar.match(/\bstyle=\{/g)).toHaveLength(1)
     expect(calendar).toContain('style={{ gridColumn: `${bar.startCol + 1} / ${bar.endCol + 2}` }}')
 
     // 타임라인의 `style`은 숫자 열·줄 번호로 만든 격자 위치(`placement(…)`)와 오늘 선의 `left` 비율 하나뿐이다. 제목 같은 제출 문자열은 거기에 닿지 않는다.
-    const timeline = stripComments(readFileSync(withStyle[2], 'utf8'))
+    const timeline = stripComments(readFileSync(withStyle[3], 'utf8'))
     const usages = timeline.match(/\bstyle=\{.{0,28}/g) ?? []
     expect(usages.length).toBeGreaterThan(0)
     for (const usage of usages) {
