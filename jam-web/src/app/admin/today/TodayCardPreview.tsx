@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/admin/ui/tabs'
 import TodayCard from '@/components/today/TodayCard'
 import type { CardView } from '@/lib/today/cardView'
@@ -30,6 +30,15 @@ export function previewCardWidth(deviceWidth: PreviewDeviceWidth): number {
   return deviceWidth - HOME_SIDE_PADDING_PX * 2
 }
 
+/**
+ * 칸 폭(가용폭)에 카드 폭을 맞추는 축소 비율. 칸이 충분히 넓으면 1(축소 없음)이다.
+ * 측정 전(0 이하)에도 1을 돌려줘 서버 렌더·첫 그림이 기존 모습 그대로다.
+ */
+export function previewScale(availableWidth: number, cardWidth: number): number {
+  if (!(availableWidth > 0) || !(cardWidth > 0)) return 1
+  return Math.min(1, availableWidth / cardWidth)
+}
+
 function isPreviewDeviceWidth(value: number): value is PreviewDeviceWidth {
   return (PREVIEW_DEVICE_WIDTHS as readonly number[]).includes(value)
 }
@@ -43,6 +52,29 @@ export default function TodayCardPreview({
   defaultWidth?: PreviewDeviceWidth
 }) {
   const [deviceWidth, setDeviceWidth] = useState<PreviewDeviceWidth>(defaultWidth)
+  const frameRef = useRef<HTMLDivElement>(null)
+  const boardRef = useRef<HTMLDivElement>(null)
+  const [availableWidth, setAvailableWidth] = useState(0)
+  const [boardHeight, setBoardHeight] = useState(0)
+
+  // 칸 폭과 판의 (축소 전) 높이를 실측한다. transform은 레이아웃 높이를 줄이지 않아 바깥 칸 높이를 따로 맞춰야 한다.
+  useEffect(() => {
+    const frame = frameRef.current
+    const board = boardRef.current
+    if (!frame || !board || typeof ResizeObserver === 'undefined') return
+    const measure = () => {
+      setAvailableWidth(frame.clientWidth)
+      setBoardHeight(board.offsetHeight)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(frame)
+    observer.observe(board)
+    return () => observer.disconnect()
+  }, [])
+
+  const cardWidth = previewCardWidth(deviceWidth)
+  const scale = previewScale(availableWidth, cardWidth)
 
   return (
     <div className="flex flex-col gap-3">
@@ -66,16 +98,29 @@ export default function TodayCardPreview({
       </div>
 
       {/* 홈 화면 실제 캔버스와 동일한 배경(bg-surface, DS v2 다크 그레이) 위에 그려야 카드의 tone="inverse"(흰 카드) 대비가
-          실제 화면과 같게 보인다. 카드 폭은 줄이지 않는다 — 판이 카드 폭보다 좁으면 가로로 넘쳐 스크롤한다. 카드 사이 간격은 홈과 같다. */}
-      <div className="overflow-x-auto rounded-lg bg-surface p-4 text-text">
+          실제 화면과 같게 보인다. 카드 폭은 그대로 두고 칸이 좁으면 판 전체를 칸 폭에 맞춰 축소한다(transform: scale,
+          티켓 20261007_0035). 칸이 충분히 넓으면 scale 1이라 기존 모습 그대로다. 카드 사이 간격은 홈과 같다. */}
+      <div className="rounded-lg bg-surface p-4 text-text">
         <div
-          data-preview-board
-          className="mx-auto flex flex-col gap-[var(--spacing-16)]"
-          style={{ width: previewCardWidth(deviceWidth) }}
+          ref={frameRef}
+          data-preview-frame
+          className="overflow-hidden"
+          style={scale < 1 ? { height: boardHeight * scale } : undefined}
         >
-          {views.map((view, index) => (
-            <TodayCard key={index} view={view} />
-          ))}
+          <div
+            ref={boardRef}
+            data-preview-board
+            data-preview-scale={scale}
+            className="mx-auto flex flex-col gap-[var(--spacing-16)]"
+            style={{
+              width: cardWidth,
+              ...(scale < 1 ? { transform: `scale(${scale})`, transformOrigin: 'top left' } : {}),
+            }}
+          >
+            {views.map((view, index) => (
+              <TodayCard key={index} view={view} />
+            ))}
+          </div>
         </div>
       </div>
     </div>

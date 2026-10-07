@@ -35,6 +35,7 @@ import TodayCardPreview, {
   DEFAULT_PREVIEW_DEVICE_WIDTH,
   PREVIEW_DEVICE_WIDTHS,
   previewCardWidth,
+  previewScale,
 } from '../TodayCardPreview'
 import { toCardView } from '@/lib/today/cardView'
 import type { ResolvedBadge, TodayCardWithHref } from '@/lib/today/cards'
@@ -190,6 +191,22 @@ describe('TodayCardPreview — 기기 폭 전환 (360·430)', () => {
     expect(html).toMatch(/role="tab"[^>]*aria-selected="true"[^>]*>430</)
     expect(html).toContain('width:398px')
     expect(html).not.toContain('width:328px')
+  })
+})
+
+describe('TodayCardPreview — 칸 폭에 맞춘 축소', () => {
+  it('칸이 카드보다 좁으면 칸 폭/카드 폭으로 줄이고, 넉넉하거나 측정 전이면 1이다', () => {
+    expect(previewScale(246 - 32, 328)).toBeCloseTo(214 / 328)
+    expect(previewScale(214, 398)).toBeCloseTo(214 / 398)
+    expect(previewScale(400, 328)).toBe(1)
+    expect(previewScale(0, 328)).toBe(1)
+  })
+
+  it('서버 렌더(측정 전)는 축소 없이 기존 모습이고 가로 스크롤 상자를 쓰지 않는다', () => {
+    const html = renderToStaticMarkup(<TodayCardPreview views={previewViews([LEGACY_CARDS[0].card])} />)
+    expect(html).toContain('data-preview-scale="1"')
+    expect(html).not.toContain('scale(')
+    expect(html).not.toContain('overflow-x-auto')
   })
 })
 
