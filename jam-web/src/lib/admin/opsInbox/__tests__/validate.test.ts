@@ -665,6 +665,37 @@ describe('revalidateOpsItem — 카드 칸 (티켓 20261001_1152)', () => {
   })
 })
 
+describe('image_spec 경고 (티켓 20261007_1030)', () => {
+  const SPEC = { preset_id: 'p1', bg: '#111111', end: '#222222', values: { title: '제목' } }
+
+  it('모양이 맞는 image_spec은 오류도 경고도 없다', () => {
+    const result = validateOpsBundle(makeBundle({ items: [makeItem({ image_spec: SPEC })] }))
+    expect(result.errors).toEqual([])
+    expect(result.warnings).toEqual([])
+    expect(result.items[0].warnings).toEqual([])
+  })
+
+  it('image_spec이 없는 기존 형태는 오류 없이 경고만 낸다', () => {
+    const result = validateOpsBundle(makeBundle({ items: [makeItem()] }))
+    expect(result.errors).toEqual([])
+    expect(result.fatal).toEqual([])
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0]).toMatch(/^items\[0\]\.image_spec: 비어 있어요/)
+  })
+
+  it('이미지 칸이 없는 종류에서 image_spec이 없으면 경고도 없다', () => {
+    const result = validateOpsBundle(makeBundle({ items: [makeItem({ kind: 'recipe' })] }))
+    expect(result.warnings).toEqual([])
+  })
+
+  it('모양이 틀린 image_spec은 오류가 아니라 경고다', () => {
+    const result = validateOpsBundle(makeBundle({ items: [makeItem({ image_spec: { preset_id: 1, values: 'x' } })] }))
+    expect(result.errors).toEqual([])
+    expect(result.items[0].format_errors).toEqual([])
+    expect(result.warnings.length).toBeGreaterThan(0)
+  })
+})
+
 describe('수정 때만 하는 색 검사', () => {
   it('배경색 필드의 HEX_COLOR_PATTERN과 같은 식이다', () => {
     expect(EDIT_HEX_COLOR_PATTERN.source).toBe(HEX_COLOR_PATTERN.source)

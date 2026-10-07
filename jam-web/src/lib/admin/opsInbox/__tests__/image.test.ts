@@ -7,7 +7,8 @@
  */
 import { vi, describe, it, expect, beforeEach, type MockInstance } from 'vitest'
 import { applyItemImage, imageKeyOfKind, removeOpsImageFiles, storagePathOf } from '../image'
-import { FakeDb, type Row } from '../execute/__tests__/fakeDb'
+import { imageKeyOfKind as imageKeyOfKindShared } from '../imageSpec'
+import { FakeDb,type Row } from '../execute/__tests__/fakeDb'
 import { makeItem, type ItemSpec } from '../execute/__tests__/fixtures'
 
 const ITEM = '00000000-0000-4000-8000-000000000001'
@@ -28,6 +29,7 @@ function setup(spec: ItemSpec) {
 
 describe('이미지 칸과 저장 경로', () => {
   it('카드는 cover_image_url, 미션·배지·컬렉션은 image_url, 그 밖의 종류는 없다', () => {
+    expect(imageKeyOfKind).toBe(imageKeyOfKindShared) // image.ts는 공용 모듈 imageSpec.ts의 함수를 다시 내보낸다
     expect(imageKeyOfKind('home_feed_card')).toBe('cover_image_url')
     expect(['mission', 'jam_badge', 'collection_launch'].map(imageKeyOfKind)).toEqual(['image_url', 'image_url', 'image_url'])
     expect([imageKeyOfKind('recipe'), imageKeyOfKind('drop_schedule'), imageKeyOfKind(null), imageKeyOfKind('constructor')]).toEqual([null, null, null, null])

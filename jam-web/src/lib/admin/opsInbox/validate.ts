@@ -20,6 +20,7 @@
  * 여기에 다시 적었으며, 두 구현이 같은 입력에 같은 문장을 내는지 `validate.test.ts`가 대조한다.
  */
 import type { Json } from '@/types/database.generated'
+import { imageSpecWarnings, isImageKind } from './imageSpec'
 import {
   MAX_ITEMS,
   OPS_EXCLUDED_ITEM_STAGES,
@@ -63,6 +64,8 @@ export interface ValidatedOpsItem {
   /** 제출 항목 원본. 객체가 아닌 항목은 `{ value }`로 감싼다(DB의 jsonb NOT NULL이 JSON null을 받지 못한다). */
   original: Json
   format_errors: string[]
+  /** 저장하지 않는 경고(제출 응답에만 싣는다). 오류가 아니라 제출을 막지 않는다. */
+  warnings: string[]
 }
 
 export interface OpsBundleValidation {
@@ -72,6 +75,8 @@ export interface OpsBundleValidation {
   errors: string[]
   bundle: ValidatedOpsBundle | null
   items: ValidatedOpsItem[]
+  /** 항목 경고 전체. 오류와 달리 DB에 저장하지 않는다. */
+  warnings: string[]
 }
 
 // ── world_review 규칙: registerHomeFeedBundle.mjs와 같은 규칙·같은 문장 ─────────────────────────
@@ -274,6 +279,7 @@ function validateItem(
       ends_at: null,
       original: { value: raw as Json },
       format_errors: errors,
+      warnings: [],
     }
   }
 
@@ -361,6 +367,9 @@ function validateItem(
   errors.push(...validateWorldReview(raw.world_review, `${path}.world_review`))
   errors.push(...validateOpsCardFields(raw, path, ctx))
 
+  // image_spec: 선택 칸이다. 이미지 칸이 있는 종류에서 비어 있거나, 값이 있는데 모양이 틀리면 경고만 낸다(오류 아님).
+  const warnings = isImageKind(kind) || isPresent(raw.image_spec) ? imageSpecWarnings(raw.image_spec, path) : []
+
   return {
     position,
     item_key: isNonEmptyString(raw.item_key) ? raw.item_key : null,
@@ -370,6 +379,7 @@ function validateItem(
     ends_at: endsAt,
     original: raw as Json,
     format_errors: errors,
+    warnings,
   }
 }
 
@@ -421,7 +431,7 @@ export function validateOpsBundle(raw: unknown, ctx: OpsValidationContext = {}):
   const fatal: string[] = []
 
   if (!isPlainObject(raw)) {
-    return { fatal: ['본문의 최상위는 객체여야 해요.'], errors: [], bundle: null, items: [] }
+    return { fatal: ['본문의 최상위는 객체여야 해요.'], errors: [], warnings: [], bundle: null, items: [] }
   }
 
   if (!isPresent(raw.bundle_id)) fatal.push('bundle_id: 필수 항목이 없어요.')
@@ -449,7 +459,7 @@ export function validateOpsBundle(raw: unknown, ctx: OpsValidationContext = {}):
   }
 
   if (fatal.length > 0 || !Array.isArray(rawItems)) {
-    return { fatal, errors: [], bundle: null, items: [] }
+    return { fatal, errors: [], warnings: [], bundle: null, items: [] }
   }
 
   const bundleErrors: string[] = []
@@ -509,6 +519,7 @@ export function validateOpsBundle(raw: unknown, ctx: OpsValidationContext = {}):
   return {
     fatal: [],
     errors: [...bundleErrors, ...items.flatMap((item) => item.format_errors)],
+    warnings: items.flatMap((item) => item.warnings),
     bundle: {
       bundle_id: (raw.bundle_id as string).trim(),
       author: (raw.author as string).trim(),

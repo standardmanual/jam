@@ -36,6 +36,7 @@ interface SubmitSummary {
   bundle_id: string
   item_count: number
   format_errors: string[]
+  warnings: string[]
 }
 
 function badRequest(error: string, details?: string[]) {
@@ -108,10 +109,10 @@ export async function POST(req: Request) {
   if (validation.fatal.length > 0 || !validation.bundle) {
     return badRequest('제출 본문의 필수 형식이 맞지 않아요. details를 보고 고쳐서 다시 보내 주세요.', validation.fatal)
   }
-  const { bundle, items, errors } = validation
+  const { bundle, items, errors, warnings } = validation
   const actor = auth.via === 'token' ? `token:${bundle.author}` : auth.adminId
   const rawHash = computeRawHash(parsed)
-  const summary = { bundle_id: bundle.bundle_id, item_count: items.length, format_errors: errors }
+  const summary = { bundle_id: bundle.bundle_id, item_count: items.length, format_errors: errors, warnings }
 
   // ⑤ 최근 1시간 제출 수
   const since = new Date(Date.now() - ONE_HOUR_MS).toISOString()
@@ -227,7 +228,7 @@ export async function POST(req: Request) {
 
   // ⑧ 201
   return NextResponse.json(
-    { status: 'created', id: bundleDbId, bundle_id: bundle.bundle_id, item_count: items.length, format_errors: errors },
+    { status: 'created', id: bundleDbId, bundle_id: bundle.bundle_id, item_count: items.length, format_errors: errors, warnings },
     { status: 201 }
   )
 }

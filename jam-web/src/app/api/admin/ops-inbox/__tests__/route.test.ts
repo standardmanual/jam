@@ -266,6 +266,8 @@ describe('POST /api/admin/ops-inbox', () => {
         bundle_id: 'sample-2026-w41',
         item_count: 2,
         format_errors: [],
+        // 두 항목 모두 image_spec이 없어 경고만 실린다(오류 아님, 티켓 20261007_1030)
+        warnings: [expect.stringMatching(/^items\[0\]\.image_spec: 비어 있어요/), expect.stringMatching(/^items\[1\]\.image_spec: 비어 있어요/)],
       })
 
       const { ops_bundles: bundles, ops_bundle_items: items, ops_decisions: decisions } = h.state.tables
@@ -326,6 +328,25 @@ describe('POST /api/admin/ops-inbox', () => {
       expect(h.state.tables.ops_bundle_items[0].format_errors).toEqual([json.format_errors[1]])
       expect(h.state.tables.ops_bundle_items[1].format_errors).toEqual([json.format_errors[2]])
       expect(h.state.tables.ops_decisions).toHaveLength(1)
+    })
+
+    it('image_spec 모양이 틀리면 201과 warnings만 돌려주고 DB에는 경고를 저장하지 않는다', async () => {
+      const bad = makeItem({ image_spec: { preset_id: 1 } })
+      const res = await submit(makeBundle({ items: [bad] }))
+      expect(res.status).toBe(201)
+      const json = await res.json()
+      expect(json.format_errors).toEqual([])
+      expect(json.warnings).toHaveLength(1)
+      expect(json.warnings[0]).toMatch(/^items\[0\]\.image_spec\.preset_id: /)
+      expect(h.state.tables.ops_bundles[0].format_errors).toEqual([])
+      expect(h.state.tables.ops_bundle_items[0].format_errors).toEqual([])
+    })
+
+    it('모양이 맞는 image_spec은 경고 없이 받는다', async () => {
+      const ok = makeItem({ image_spec: { preset_id: 'p1', bg: '#111111', end: '#222222', values: { title: '제목' } } })
+      const res = await submit(makeBundle({ items: [ok] }))
+      expect(res.status).toBe(201)
+      expect((await res.json()).warnings).toEqual([])
     })
 
     it('항목이 없는 묶음도 받는다(항목 저장 호출 없이 결정 기록만)', async () => {

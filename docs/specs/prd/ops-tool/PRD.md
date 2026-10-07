@@ -75,9 +75,10 @@ related:
 | 항목 | `links` | 배열. 각 값은 같은 묶음 다른 항목의 `item_key`여야 한다(자기 자신과 없는 키는 오류) |
 | 항목 | `world_review`(필수) | 객체 `{ world_related, winter_reviewed, reason }`. 셋 다 필수, 앞의 둘은 불리언, `reason`은 한 줄 문자열, `world_related`가 참이면 `winter_reviewed`도 참이어야 한다. 규칙은 홈피드 등록 묶음의 `world_review`와 같다(`registerHomeFeedBundle.mjs`, 테스트가 같은 입력으로 대조) |
 | 항목 | `shape`·`exposure_tags`·`tribe_id`·`color_pending`, 묶음 `excluded_items` | 아래 「카드 칸과 뺀 항목」 표가 정한다 |
-| 항목 | `knobs`·`segment`·`balance_check`·`copy`·`colors`·`image_spec`·`resource` | 검사하지 않고 항목 원본(`original`)에 그대로 저장한다. 종류별 세부 검증은 예약 등록 때 등록 전 검증(§8.4)이 한다. `segment`는 옛 칸이라 신호가 읽지 않는다(대상은 `exposure_tags`) |
+| 항목 | `image_spec`(선택) | 이미지 지시 칸. 객체이고 `preset_id`·`bg`·`end`는 비어 있지 않은 문자열, `values`는 문자열 값을 가진 객체이며 넷 모두 선택이다. 이미지 칸이 있는 종류(`home_feed_card`·`mission`·`jam_badge`·`collection_launch`)에서 비어 있거나 `preset_id`가 없으면, 또는 값이 있는데 모양이 틀리면 **경고만** 낸다. 오류로 만들지 않고 제출은 그대로 받으며, 경고는 제출 응답의 `warnings`에만 싣고 DB에는 저장하지 않는다(`image_spec`은 항목 원본에 그대로 저장한다). 규칙은 `lib/admin/opsInbox/imageSpec.ts` |
+| 항목 | `knobs`·`segment`·`balance_check`·`copy`·`colors`·`resource` | 검사하지 않고 항목 원본(`original`)에 그대로 저장한다. 종류별 세부 검증은 예약 등록 때 등록 전 검증(§8.4)이 한다. `segment`는 옛 칸이라 신호가 읽지 않는다(대상은 `exposure_tags`) |
 
-- 형식에 이미지 파일 경로(`image.path`)와 `seed`는 없다. 이미지는 제출 뒤 운영툴이 만들므로 `image_spec`(이미지 지시)을 받는다(§8.8, 티켓 1501). 이 두 키가 들어와도 거절하지 않고 검사 없이 항목 원본(`original`)에 그대로 저장한다.
+- 형식에 이미지 파일 경로(`image.path`)와 `seed`는 없다. 이미지는 제출 뒤 운영툴이 만들므로 `image_spec`(이미지 지시)을 받는다(§8.8, 티켓 1501). 이 두 키가 들어와도 거절하지 않고 검사 없이 항목 원본(`original`)에 그대로 저장한다. `image_spec`은 위 표대로 모양만 보고 경고한다.
 - 항목 배열의 순서는 `position`(0부터)으로 저장한다.
 
 **드랍 일정(`drop_schedule`) 종류별 규칙 (구현됨: 티켓 [20261001_2051](../../../tickets/p1-high/20261001_2051_Service_앰비언트-드랍-예약-1-저장소와-실행.md)).**
@@ -1017,7 +1018,7 @@ stateDiagram-v2
   키를 읽는다.
 - **그 밖의 칸은 `resource`에서 읽는다.** 키 이름은 자원 테이블의 칼럼 이름이고(§5.2와 같다), 레시피와 드랍 일정은 서버 함수의 입력 키다.
 - 표에 없는 키는 무시하고 경고한다. 툴이 정하는 값(아래 표의 마지막 열, `id`, `created_at`)은 `resource`에 있어도 무시하고 경고한다. 연결로 채우는 칸은 §8.3을 따른다.
-- `colors`·`image_spec`은 이미지 제작(1501)이 읽고 예약 등록은 읽지 않는다. `knobs`·`segment`·`balance_check`·`world_review`도 읽지 않는다.
+- `colors`·`image_spec`은 이미지 제작(1501)이 읽고 예약 등록은 읽지 않는다(`image_spec`은 제출 때 모양만 확인해 경고하고, 칸 규칙은 §3.1). `knobs`·`segment`·`balance_check`·`world_review`도 읽지 않는다.
 
 | 종류 | 공통 칸 | `copy` | `resource` | 툴이 정하는 값 |
 |---|---|---|---|---|
