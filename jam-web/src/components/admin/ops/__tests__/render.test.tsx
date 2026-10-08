@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { ReactElement } from 'react'
+import type { Json } from '@/types/database.generated'
 import { TooltipProvider } from '@/components/admin/ui/tooltip'
 
 const nav = vi.hoisted(() => ({ search: '' }))
@@ -774,7 +775,7 @@ describe('OpsItemEditForm — 직접 수정 양식', () => {
       user_experience: '오늘 한 운동이 내일 배지의 열쇠가 돼요',
       knobs: { condition: knob, place: knob, time: knob, reward: knob, tribe: { rule: '규칙', example: '예시' } },
     }
-    const proposalForm = (resource: unknown, kind = 'pattern_proposal') => {
+    const proposalForm = (resource: Json | undefined, kind = 'pattern_proposal') => {
       const proposal = makeItem({
         kind,
         original: { kind, user_experience: '제안을 봐요', resource, links: [] },
