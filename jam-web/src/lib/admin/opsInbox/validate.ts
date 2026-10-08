@@ -20,6 +20,10 @@
  * 사전·카테고리에 실제로 있는지는 호출한 쪽이 조회해 `ctx.patternNos`·`ctx.poiCategorySlugs`로 넘길 때만 본다. 어긋나도 저장·승인은 막지 않고
  * 형식 오류만 남긴다. 형식이 틀린 `pattern_no`는 항목의 `pattern_no` 열을 비워(null) 저장한다(제출 원본에는 그대로 남는다).
  *
+ * 패턴 제안 내용 칸(티켓 20261007_1746): `kind`가 `pattern_proposal`인 항목만 `resource.pattern`을 본다(패턴 사전 한 행과 같은 모양, `validateOpsPatternProposal`).
+ * 이름·작동 원리·유저가 겪는 것·손잡이 5종(`knobs`)이 필수이고, 메뉴·샘플·카드 모양·주의점은 선택이다. 정의되지 않은 키는 오류가 아니다(읽기 쪽이 버린다).
+ * 틀려도 저장·승인은 막지 않고 형식 오류만 남긴다. 읽는 쪽은 `fields.ts`의 `readOpsPatternProposal`이다. 사전의 기존 이름과 겹치는지는 보지 않는다.
+ *
  * `world_review` 규칙은 `jam-web/scripts/asset-generator/registerHomeFeedBundle.mjs`의
  * `validateWorldReview`(`WORLD_REVIEW_FIELDS`)와 같다. 그 스크립트는 지금의 등록 절차라 고치지 않고 규칙을
  * 여기에 다시 적었으며, 두 구현이 같은 입력에 같은 문장을 내는지 `validate.test.ts`가 대조한다.
@@ -32,7 +36,13 @@ import {
   OPS_HOME_FEED_CARD_KIND,
   OPS_ITEM_KINDS,
 } from '@/lib/admin/opsInbox/constants'
-import { OPS_PATTERN_NO_PATTERN } from '@/lib/admin/opsPatterns/constants'
+import { OPS_PATTERN_KNOB_LABELS, OPS_PATTERN_KNOB_VALUE_LABELS } from '@/lib/admin/opsInbox/labels'
+import {
+  OPS_PATTERN_KNOB_KEYS,
+  OPS_PATTERN_NO_PATTERN,
+  OPS_PATTERN_SAMPLE_ROLES,
+  type OpsPatternKnobKey,
+} from '@/lib/admin/opsPatterns/constants'
 import { TODAY_EXPOSURE_TAG_OPTIONS } from '@/lib/admin/today-sections'
 import { isUuid } from '@/lib/admin/uuid'
 import { CARD_SHAPES, isCardShape } from '@/lib/today/shape'
@@ -258,6 +268,123 @@ export function validateOpsPlaceCategory(knobs: unknown, path: string, slugs?: R
 }
 
 /**
+ * 손잡이 5종이 각각 가진 칸 두 개. 조건·장소·시간·보상은 `{ open, closed }`, 트라이브는 `{ rule, example }`이다(`ops_patterns.knobs`,
+ * 시드 파서 `scripts/ops-patterns-seed.mjs` 머리 주석의 칸 매핑과 같다).
+ */
+export const OPS_PATTERN_KNOB_VALUE_KEYS: Record<OpsPatternKnobKey, readonly [string, string]> = {
+  condition: ['open', 'closed'],
+  place: ['open', 'closed'],
+  time: ['open', 'closed'],
+  reward: ['open', 'closed'],
+  tribe: ['rule', 'example'],
+}
+
+/** 필수 문자열 칸. 없으면(undefined·null) 「필수 항목이 없어요」, 있는데 빈 값이거나 문자열이 아니면 「비어 있지 않은 문자열」이다. */
+function requiredTextError(value: unknown, at: string, hint: string): string[] {
+  if (!isPresent(value)) return [`${at}: 필수 항목이 없어요(${hint}).`]
+  if (!isNonEmptyString(value)) return [`${at}: 비어 있지 않은 문자열이어야 해요.`]
+  return []
+}
+
+/** 손잡이 5종 검사. 빠진 손잡이와 빠진 값은 각각 한 줄이다. */
+function validatePatternKnobs(knobs: unknown, at: string): string[] {
+  if (!isPresent(knobs)) return [`${at}: 필수 항목이 없어요(손잡이 5종 — ${OPS_PATTERN_KNOB_KEYS.join(', ')} — 을 적어 주세요).`]
+  if (!isPlainObject(knobs)) return [`${at}: 객체여야 해요(받은 값: ${describeShort(knobs)}).`]
+  const errors: string[] = []
+  for (const key of OPS_PATTERN_KNOB_KEYS) {
+    const knobAt = `${at}.${key}`
+    const knob = knobs[key]
+    const [first, second] = OPS_PATTERN_KNOB_VALUE_KEYS[key]
+    if (!isPresent(knob)) {
+      errors.push(`${knobAt}: 필수 항목이 없어요(${OPS_PATTERN_KNOB_LABELS[key]} 손잡이의 ${OPS_PATTERN_KNOB_VALUE_LABELS[first]}·${OPS_PATTERN_KNOB_VALUE_LABELS[second]} 칸을 적어 주세요).`)
+      continue
+    }
+    if (!isPlainObject(knob)) {
+      errors.push(`${knobAt}: ${first}·${second}를 가진 객체여야 해요(받은 값: ${describeShort(knob)}).`)
+      continue
+    }
+    for (const valueKey of [first, second]) {
+      errors.push(
+        ...requiredTextError(knob[valueKey], `${knobAt}.${valueKey}`, `${OPS_PATTERN_KNOB_LABELS[key]} 손잡이의 ${OPS_PATTERN_KNOB_VALUE_LABELS[valueKey]} 칸을 적어 주세요`)
+      )
+    }
+  }
+  return errors
+}
+
+/** 선택 칸 배열의 공통 틀. 없으면 오류가 아니고, 배열이 아니면 한 줄, 배열이면 원소마다 `check`가 낸 오류를 모은다. */
+function validateOptionalArray(value: unknown, at: string, check: (entry: unknown, entryAt: string) => string[]): string[] {
+  if (!isPresent(value)) return []
+  if (!Array.isArray(value)) return [`${at}: 배열이어야 해요(받은 값: ${describeShort(value)}).`]
+  return value.flatMap((entry: unknown, index: number) => check(entry, `${at}[${index}]`))
+}
+
+function validatePatternSample(entry: unknown, at: string): string[] {
+  if (!isPlainObject(entry)) return [`${at}: 객체여야 해요(받은 값: ${describeShort(entry)}).`]
+  const errors: string[] = []
+  if (!isPresent(entry.no)) {
+    errors.push(`${at}.no: 필수 항목이 없어요(샘플 번호를 1 이상의 정수로 적어 주세요).`)
+  } else if (typeof entry.no !== 'number' || !Number.isInteger(entry.no) || entry.no < 1) {
+    errors.push(`${at}.no: 1 이상의 정수여야 해요(받은 값: ${describeShort(entry.no)}).`)
+  }
+  errors.push(...requiredTextError(entry.name, `${at}.name`, '샘플 이름을 적어 주세요'))
+  if (!isPresent(entry.role)) {
+    errors.push(`${at}.role: 필수 항목이 없어요(허용값: ${OPS_PATTERN_SAMPLE_ROLES.join(', ')}).`)
+  } else if (typeof entry.role !== 'string' || !(OPS_PATTERN_SAMPLE_ROLES as readonly string[]).includes(entry.role)) {
+    errors.push(`${at}.role: 허용되지 않는 역할이에요(받은 값: ${describeShort(entry.role)}). 허용값: ${OPS_PATTERN_SAMPLE_ROLES.join(', ')}`)
+  }
+  if (isPresent(entry.impl) && typeof entry.impl !== 'string') {
+    errors.push(`${at}.impl: 문자열이어야 해요(받은 값: ${describeShort(entry.impl)}).`)
+  }
+  return errors
+}
+
+function validatePatternCardShape(entry: unknown, at: string): string[] {
+  if (!isPlainObject(entry)) return [`${at}: 객체여야 해요(받은 값: ${describeShort(entry)}).`]
+  const errors: string[] = []
+  if (!isPresent(entry.shape)) {
+    errors.push(`${at}.shape: 필수 항목이 없어요(허용값: ${CARD_SHAPES.join(', ')}).`)
+  } else if (!isCardShape(entry.shape)) {
+    errors.push(`${at}.shape: 허용되지 않는 카드 모양이에요(받은 값: ${describeShort(entry.shape)}). 허용값: ${CARD_SHAPES.join(', ')}`)
+  }
+  if (isPresent(entry.note) && typeof entry.note !== 'string') {
+    errors.push(`${at}.note: 문자열이어야 해요(받은 값: ${describeShort(entry.note)}).`)
+  }
+  return errors
+}
+
+/**
+ * 패턴 제안 항목(`kind`가 `pattern_proposal`)의 내용 칸 `resource.pattern` 검사 (티켓 20261007_1746). `resource`는 항목의 `resource` 값이고
+ * `path`는 항목 경로(`items[2]`)다. 부르는 쪽이 종류를 먼저 가른다 — 다른 종류의 `resource`는 보지 않는다.
+ *
+ * 칸은 패턴 사전 한 행과 같다. 필수는 `name`·`principle`·`user_experience`(비어 있지 않은 문자열)와 `knobs`(손잡이 5종)다.
+ * 선택은 `menus`(비어 있지 않은 문자열 배열)·`samples`(`{ no, name, role, impl }` 배열)·`card_shapes`(`{ shape, note }` 배열)·`pitfalls`(문자열)이고,
+ * 없으면 오류가 아니다. 원소 오류는 `samples[2].role`처럼 원소마다 알린다. 정의되지 않은 키는 보지 않는다.
+ * `resource`가 객체가 아니거나 `pattern`이 없으면 한 줄이고, `pattern`이 객체가 아니면 그 한 줄로 끝낸다.
+ */
+export function validateOpsPatternProposal(resource: unknown, path: string): string[] {
+  const at = `${path}.resource.pattern`
+  const pattern = isPlainObject(resource) ? resource.pattern : undefined
+  if (!isPresent(pattern)) return [`${at}: 필수 항목이 없어요(제안하는 패턴의 내용을 resource.pattern에 적어 주세요).`]
+  if (!isPlainObject(pattern)) return [`${at}: 객체여야 해요(받은 값: ${describeShort(pattern)}).`]
+
+  return [
+    ...requiredTextError(pattern.name, `${at}.name`, '패턴 이름을 적어 주세요'),
+    ...requiredTextError(pattern.principle, `${at}.principle`, '작동 원리를 적어 주세요'),
+    ...requiredTextError(pattern.user_experience, `${at}.user_experience`, '「유저가 겪는 것」을 쉬운 한 문장으로 적어 주세요'),
+    ...validatePatternKnobs(pattern.knobs, `${at}.knobs`),
+    ...validateOptionalArray(pattern.menus, `${at}.menus`, (entry, entryAt) =>
+      isNonEmptyString(entry) ? [] : [`${entryAt}: 비어 있지 않은 문자열이어야 해요.`]
+    ),
+    ...validateOptionalArray(pattern.samples, `${at}.samples`, validatePatternSample),
+    ...validateOptionalArray(pattern.card_shapes, `${at}.card_shapes`, validatePatternCardShape),
+    ...(isPresent(pattern.pitfalls) && typeof pattern.pitfalls !== 'string'
+      ? [`${at}.pitfalls: 문자열이어야 해요(받은 값: ${describeShort(pattern.pitfalls)}).`]
+      : []),
+  ]
+}
+
+/**
  * 묶음의 뺀 항목(`excluded_items`) 검사. 없으면(undefined·null) 오류가 아니다. 원소마다 `reason`은 필수(`world_review.reason`과
  * 같은 규칙: 비어 있지 않은 한 줄)이고, `item_key`는 문자열, `kind`·`stage`는 허용값이다. 이 오류는 묶음 오류에만 담는다.
  */
@@ -411,6 +538,7 @@ function validateItem(
   errors.push(...validateWorldReview(raw.world_review, `${path}.world_review`))
   errors.push(...validateOpsCardFields(raw, path, ctx))
   errors.push(...validateOpsPlaceCategory(raw.knobs, path, ctx.poiCategorySlugs))
+  if (kind === 'pattern_proposal') errors.push(...validateOpsPatternProposal(raw.resource, path))
 
   // image_spec: 선택 칸이다. 이미지 칸이 있는 종류에서 비어 있거나, 값이 있는데 모양이 틀리면 경고만 낸다(오류 아님).
   const warnings = isImageKind(kind) || isPresent(raw.image_spec) ? imageSpecWarnings(raw.image_spec, path) : []

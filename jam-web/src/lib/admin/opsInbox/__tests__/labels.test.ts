@@ -164,6 +164,90 @@ describe('formatErrorPathLabel · parseFormatErrorPath', () => {
     expect(parseFormatErrorPath('items[4].knobs.place_category')).toEqual({ itemPosition: 4, label: '지점 카테고리' })
   })
 
+  it('제안 패턴 이름표(티켓 20261007_1746): resource.pattern… 경로는 「제안 패턴」을 앞에 붙여 원고 용어로 부른다', () => {
+    const labelOf = (sub: string) => formatErrorPathLabel(`items[1].resource.pattern${sub}`)
+    expect(labelOf('')).toBe('제안 패턴')
+    expect(labelOf('.name')).toBe('제안 패턴 이름')
+    expect(labelOf('.principle')).toBe('제안 패턴 작동 원리')
+    expect(labelOf('.user_experience')).toBe('제안 패턴 유저가 겪는 것')
+    expect(labelOf('.menus')).toBe('제안 패턴 쓰는 메뉴')
+    expect(labelOf('.menus[2]')).toBe('제안 패턴 쓰는 메뉴')
+    expect(labelOf('.samples')).toBe('제안 패턴 샘플')
+    expect(labelOf('.samples[0]')).toBe('제안 패턴 샘플')
+    expect(labelOf('.samples[2].no')).toBe('제안 패턴 샘플 번호')
+    expect(labelOf('.samples[2].name')).toBe('제안 패턴 샘플 이름')
+    expect(labelOf('.samples[2].role')).toBe('제안 패턴 샘플 역할')
+    expect(labelOf('.samples[2].impl')).toBe('제안 패턴 샘플 구현')
+    expect(labelOf('.card_shapes')).toBe('제안 패턴 카드 모양')
+    expect(labelOf('.card_shapes[1].shape')).toBe('제안 패턴 카드 모양')
+    expect(labelOf('.card_shapes[1].note')).toBe('제안 패턴 카드 모양 설명')
+    expect(labelOf('.knobs')).toBe('제안 패턴 손잡이')
+    expect(labelOf('.knobs.place')).toBe('제안 패턴 손잡이(장소)')
+    expect(labelOf('.knobs.condition.open')).toBe('제안 패턴 손잡이(조건) 연 값')
+    expect(labelOf('.knobs.place.closed')).toBe('제안 패턴 손잡이(장소) 닫은 값')
+    expect(labelOf('.knobs.time.closed')).toBe('제안 패턴 손잡이(시간) 닫은 값')
+    expect(labelOf('.knobs.reward.open')).toBe('제안 패턴 손잡이(보상) 연 값')
+    expect(labelOf('.knobs.tribe')).toBe('제안 패턴 손잡이(트라이브)')
+    expect(labelOf('.knobs.tribe.rule')).toBe('제안 패턴 트라이브 규칙')
+    expect(labelOf('.knobs.tribe.example')).toBe('제안 패턴 트라이브 예시')
+    expect(labelOf('.pitfalls')).toBe('제안 패턴 주의점')
+    expect(parseFormatErrorPath('items[3].resource.pattern.samples[2].role')).toEqual({
+      itemPosition: 3,
+      label: '제안 패턴 샘플 역할',
+    })
+  })
+
+  it('제안 패턴 이름표는 항목의 같은 이름 칸(user_experience·kind·name)과 섞이지 않는다', () => {
+    expect(formatErrorPathLabel('items[0].user_experience')).toBe('유저가 겪는 것')
+    expect(formatErrorPathLabel('items[0].resource.pattern.user_experience')).toBe('제안 패턴 유저가 겪는 것')
+    expect(formatErrorPathLabel('items[0].resource.pattern.name')).not.toBe(formatErrorPathLabel('items[0].kind'))
+    // resource.pattern이 아닌 resource 경로는 특례를 타지 않는다
+    expect(formatErrorPathLabel('items[0].resource.other.name')).toBe('resource.other.name')
+    expect(formatErrorPathLabel('items[0].resource.patterns')).toBe('resource.patterns')
+  })
+
+  it('모르는 제안 패턴 하위 경로는 「제안 패턴」 뒤에 경로를 그대로 붙인다', () => {
+    expect(formatErrorPathLabel('items[0].resource.pattern.mystery')).toBe('제안 패턴 mystery')
+    expect(formatErrorPathLabel('items[0].resource.pattern.knobs.place.mystery')).toBe('제안 패턴 knobs.place.mystery')
+    expect(formatErrorPathLabel('items[0].resource.pattern.knobs.constructor')).toBe('제안 패턴 knobs.constructor')
+  })
+
+  it('validate.ts가 패턴 제안에서 실제로 내는 경로는 모두 「제안 패턴」 이름표가 있다', () => {
+    const result = validateOpsBundle({
+      bundle_id: 'b',
+      author: 'a',
+      items: [
+        { item_key: 'p-1', kind: 'pattern_proposal', user_experience: '제안을 봐요', resource: {} },
+        {
+          item_key: 'p-2',
+          kind: 'pattern_proposal',
+          user_experience: '제안을 봐요',
+          resource: {
+            pattern: {
+              name: '',
+              principle: 3,
+              menus: ['', 3],
+              samples: [{ no: 0, name: '', role: 'x', impl: 1 }, 'x'],
+              card_shapes: [{ shape: 'x', note: 1 }, 'x'],
+              pitfalls: 3,
+              knobs: { condition: 'x', place: {}, time: { open: 1, closed: '' }, tribe: { rule: '', example: 1 } },
+            },
+          },
+        },
+        { item_key: 'p-3', kind: 'pattern_proposal', user_experience: '제안을 봐요', resource: { pattern: 'x' } },
+        { item_key: 'p-4', kind: 'pattern_proposal', user_experience: '제안을 봐요', resource: { pattern: { knobs: 3 } } },
+      ],
+    })
+    const proposalErrors = result.errors.filter((message) => message.includes('.resource.pattern'))
+    expect(proposalErrors.length).toBeGreaterThan(20)
+    for (const message of proposalErrors) {
+      const { path } = splitFormatError(message)
+      expect(formatErrorPathLabel(path), `경로 「${path}」`).toMatch(/^제안 패턴( |$)/)
+      expect(formatErrorPathLabel(path), `경로 「${path}」`).not.toContain('resource')
+      expect(formatErrorPathLabel(path), `경로 「${path}」`).not.toContain('knobs')
+    }
+  })
+
   it('뺀 항목 이름표: 목록은 「뺀 항목」, excluded_items[n].reason은 「뺀 항목 사유」(「검수 이유」가 아니다), 단계는 「뺀 단계」', () => {
     expect(formatErrorPathLabel('excluded_items')).toBe('뺀 항목')
     expect(formatErrorPathLabel('excluded_items[0]')).toBe('뺀 항목')
