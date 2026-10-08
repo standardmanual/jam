@@ -109,7 +109,7 @@ docs/agents/contract.json                                 (머지 뒤 카리나)
 - [x] CI verify 성공(run 37730469118), `scripts/deploy-gate.mjs check`·`deploy-gate.test.mjs`·`check-contract.mjs` 통과
 - [x] 민지 게이트 PASS(완료 조건 8개, 점검표 9번 보안 통과), 민지 보안 점검 모드 ② 악용 가능 문제 없음(참고 6건)
 - [x] 카리나 로컬 실측(2026-10-08 14:17경 KST, 머지 결과 워크트리의 `next dev`, 개발용 로그인, curl): 인증 시작 307 → `www.strava.com/oauth/authorize`, state 43자, 인가 URL에 UUID 없음, `Set-Cookie`가 `Path=/api/strava; Max-Age=600; HttpOnly; SameSite=lax`이고 값이 state와 같음 / 받은 state + 가짜 code → `reason=token_exchange`(대조 통과 후 Strava가 code 거부), 쿠키 `Max-Age=0` / 같은 state 재사용 → `state_mismatch` / 새로 시작 후 UUID 모양 위조 state → `state_mismatch` / `error=access_denied%26strava%3Dconnected` → 인코딩된 채 `reason`에 들어감 / 서버 로그는 `콜백 거부: state_mismatch` 두 줄과 토큰 교환 실패 한 줄뿐이고 쿠키·state·code 값 없음
-- [ ] 실제 Strava 계정으로 staging에서 연동 왕복(사용자 확인 권장, 카리나는 Strava 로그인 불가)
+- [x] 실제 Strava 계정으로 staging에서 연동 왕복: 사용자가 2026-10-08 오후(KST) stage.j-a-m.app에서 연동을 확인했다고 알림(/jam-ship 요청 시)
 
 ### 배포 정보
 - 배포일: 
