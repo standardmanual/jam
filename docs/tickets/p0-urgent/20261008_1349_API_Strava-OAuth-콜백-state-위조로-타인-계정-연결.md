@@ -2,8 +2,9 @@
 id: "20261008_1349"
 category: API
 priority: P0
-status: OPEN
+status: CLOSED
 created: 2026-10-08
+closed: 2026-10-08
 specs:
   - docs/specs/SERVICE_OPERATIONS.md
 ---
@@ -86,14 +87,29 @@ specs:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 인증 시작: `state`를 유저 UUID 대신 256비트 무작위 값(`randomBytes(32)`, base64url 43자)으로 바꾸고, 같은 값을 `strava_oauth_state` 쿠키(`httpOnly`, `sameSite=lax`, `path=/api/strava`, `maxAge=600`, `secure`는 production만)로 심는다.
+- 콜백: ① Strava `error` ② 누락 ③ 쿠키·`state` 상수 시간 대조(`state_mismatch`) ④ 세션 유저 확인(`auth_required`) ⑤ 기존 토큰 교환·upsert·동기화 순서로 바꿨다. `user_id`와 동기화 인자는 세션의 `user.id`에서만 온다. 모든 응답이 `redirectAndClearState` 한 곳을 지나며 쿠키를 지운다. 거부 로그에는 값을 남기지 않고, Strava `error` 값은 `encodeURIComponent`로 감쌌다.
+- 공용 도우미 `jam-web/src/lib/strava/oauthState.ts`에 쿠키 이름·수명·속성·생성·비교를 모았다.
+- 머지 뒤 카리나: `docs/agents/contract.json`의 `deploy_gate.public_routes`에서 `strava/callback`을 뺐다(콜백이 이제 세션을 확인하므로 공개 라우트 선언이 사실과 맞지 않음, 민지 범위 밖 발견물).
 
 ### 변경된 파일
 ```
--
+jam-web/src/lib/strava/oauthState.ts                      (신규)
+jam-web/src/app/api/strava/auth/route.ts
+jam-web/src/app/api/strava/callback/route.ts
+jam-web/src/app/api/strava/auth/__tests__/route.test.ts   (신규)
+jam-web/src/app/api/strava/callback/__tests__/route.test.ts (신규)
+docs/specs/SERVICE_OPERATIONS.md                          (§3-1)
+docs/agents/contract.json                                 (머지 뒤 카리나)
 ```
+구현 커밋 `96d509fd6`, staging 머지 `9de1f57c7`, contract 정리 `5ae18c524`.
 
 ### 테스트 결과
-- [ ] 
+- [x] 단위 테스트 22건 통과(callback: 쿠키 없음·빈 값·불일치·길이 차이·세션 없음에서 토큰 교환·upsert·동기화 미호출, 정상 경로는 세션 유저로 저장, 응답 8종 모두 쿠키 삭제, `error` 인코딩, 거부 로그 값 없음 / auth: 401 유지, state ≠ UUID, 쿠키 속성, production secure, 호출마다 다른 값). 대조 조건을 꺼 보면 거부 테스트 5건이 실패함(아현 뮤테이션 확인)
+- [x] CI verify 성공(run 37730469118), `scripts/deploy-gate.mjs check`·`deploy-gate.test.mjs`·`check-contract.mjs` 통과
+- [x] 민지 게이트 PASS(완료 조건 8개, 점검표 9번 보안 통과), 민지 보안 점검 모드 ② 악용 가능 문제 없음(참고 6건)
+- [x] 카리나 로컬 실측(2026-10-08 14:17경 KST, 머지 결과 워크트리의 `next dev`, 개발용 로그인, curl): 인증 시작 307 → `www.strava.com/oauth/authorize`, state 43자, 인가 URL에 UUID 없음, `Set-Cookie`가 `Path=/api/strava; Max-Age=600; HttpOnly; SameSite=lax`이고 값이 state와 같음 / 받은 state + 가짜 code → `reason=token_exchange`(대조 통과 후 Strava가 code 거부), 쿠키 `Max-Age=0` / 같은 state 재사용 → `state_mismatch` / 새로 시작 후 UUID 모양 위조 state → `state_mismatch` / `error=access_denied%26strava%3Dconnected` → 인코딩된 채 `reason`에 들어감 / 서버 로그는 `콜백 거부: state_mismatch` 두 줄과 토큰 교환 실패 한 줄뿐이고 쿠키·state·code 값 없음
+- [ ] 실제 Strava 계정으로 staging에서 연동 왕복(사용자 확인 권장, 카리나는 Strava 로그인 불가)
 
 ### 배포 정보
 - 배포일: 
@@ -108,12 +124,20 @@ specs:
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1 (Workflow wf_dab3a5c1-2b2) | 아현·민지(게이트) | 141,974 | 30,563 / 10,570 | 12분 21초 | 62 |
+| 2 (민지 보안 점검 모드 ②) | 민지 | 72,861 | - / - | 3분 44초 | 18 |
+| 합계 | 3회 호출 | 214,835 | 30,563 / 10,570 | 16분 5초 | 80 |
 
 ### 주요 의사결정 / 핵심 메모
 - 세션 대조만 하는 안과 쿠키 일회용 값만 쓰는 안 중 하나만 고르지 않고 둘 다 적용했다. 세션 대조는 "공격자가 직접 콜백을 여는" 경로를, 쿠키 대조는 "피해자에게 조작한 콜백 링크를 열게 하는" CSRF 경로를 막는다. 서명(HMAC) 방식의 state는 새 비밀값이 필요해서 고르지 않았다(쿠키가 `httpOnly`이고 서버가 직접 심으므로 서명 없이도 충분하다).
-- 1단계 규모 판정: 바뀌는 파일 6개(코드 2·신규 도우미 1·신규 테스트 2·문서 1), 테스트 포함 100줄 이상으로 계획 반환 기준을 넘는다. 보안 수정은 한 번에 들어가야 해서 쪼개지 않고, 파일 단위 구현 계획을 적은 뒤 첫 호출부터 면제를 넘겼다.
+- 1단계 규모 판정: 바뀌는 파일 6개(코드 2·신규 도우미 1·신규 테스트 2·문서 1), 테스트 포함 100줄 이상으로 계획 반환 기준을 넘는다. 보안 수정은 한 번에 들어가야 해서 쪼개지 않고, 파일 단위 구현 계획을 적은 뒤 첫 호출부터 면제를 넘겼다. 실제 변경은 jam-web 540줄·파일 6개였다.
+- 아현 가정 2건(세션 확인을 `try` 맨 앞에 둠, 쿠키 속성을 함수로 둠)은 민지가 스펙 위반이 아니라고 판정했다.
+- 보안 리뷰는 사용자 요청에 따라 게이트 뒤 민지 모드 ②를 티켓 범위(`7089b0c00..96d509fd6`)에 따로 적용했다.
+- 오염 검사(`merge-base --is-ancestor`)는 실패했다. 리뷰 브랜치가 갈라진 뒤 다른 세션이 구상 문서 커밋 4개를 staging에 올렸기 때문이며, 브랜치에만 있는 커밋은 구현 커밋 하나이고 겹치는 파일은 없었다. 사용자에게 알리고 승인받아 머지했다.
+- 위험도 판정에 쓴 조사(유저 UUID 노출 경로, Explore 서브에이전트)는 179,193토큰·7분 26초·도구 62회였다. 실행 지표 표에는 넣지 않았다.
+- 세션 시작 직후 작업 워크트리가 지워져 있었다(P1 20261001_1143 재발, 그 티켓에 기록). 같은 경로에 다시 만들고 잠가서 진행했다.
 
 ### 잔여 이슈
--
+- 정상 사용자가 연동에 실패할 수 있는 경우(민지 보안 점검 findings 3번, 감수하기로 함): 두 탭에서 동시에 연동을 시작하면 먼저 시작한 탭이 실패한다. 배포 순간 이미 Strava 화면에 있던 사용자는 한 번 실패한다. 시작 브라우저와 콜백 브라우저가 다르면 실패한다(수정 전에도 콜백이 로그인 세션을 요구해 대부분 실패했다).
+- 범위 밖 발견물 티켓: P0 20261008_1354(프로필 페이지 데이터 노출), P2 20261008_1355(`user_follows` anon 공개), P3 20261008_1356(`poi_drops` 직접 조회), P3 20261008_1409(Strava 실패 로그), P3 20261008_1413(state 쿠키를 유저에 묶는 추가 강화, `error` 분기 쿠키 삭제, 환경변수 누락 시 500).
+- 민지 보안 점검의 staging 개발용 로그인 관찰은 기존 설계(`jam-web/src/lib/admin/auth.ts` 주석: staging에서 그 계정은 관리자가 될 수 없음)와 P3 20261007_0955(요청 횟수 제한)가 다루고 있어 새 티켓을 만들지 않았다.
