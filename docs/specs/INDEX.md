@@ -111,7 +111,7 @@ status: active
 ## jam-doc/planning/business-plan/service-redesign/
 
 - [01 공통 용어.md](../../jam-doc/planning/business-plan/service-redesign/01%20공통%20용어.md) — 서비스 재설계 주제 1 정책(사용자 확인). 트라이브와 상관없이 함께 쓰는 기능 이름(에너지, 틴케이스, 잠긴 아이템 배지, 챕터, 등급, 퀘스트)과 배지 이름의 띄어쓰기, 쓰지 않는 말을 정한다.
-- [02 활동 평가와 에너지.md](../../jam-doc/planning/business-plan/service-redesign/02%20활동%20평가와%20에너지.md) — 서비스 재설계 주제 2 정책 초안. 어떤 활동을 인정하는지, 종목마다 강도를 어떻게 매기는지, 에너지를 어떻게 계산하고 쌓고 보여 주는지, 어뷰징을 어떻게 거르는지 정한다.
+- [02 활동 평가와 에너지.md](../../jam-doc/planning/business-plan/service-redesign/02%20활동%20평가와%20에너지.md) — 서비스 재설계 주제 2 정책(사용자 확인). 어떤 활동을 인정하는지, 종목마다 강도를 어떻게 매기는지, 에너지를 어떻게 계산하고 쌓고 보여 주는지, 어뷰징을 어떻게 거르는지 정한다.
 - [README.md](../../jam-doc/planning/business-plan/service-redesign/README.md) — 서비스 재설계 2단계(정책 다시 세우기)의 주제별 정책 초안 안내. 폴더 규칙, 주제 목록, 사용자 확인 상태를 둔다.
 
 ## jam-doc/planning/business-plan/tribe-rethink/
