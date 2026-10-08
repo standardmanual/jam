@@ -7,7 +7,7 @@ import { canEndItem, cancelToast, endToast } from '@/lib/admin/opsInbox/executeV
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import type { OpsWorkspaceContext } from './OpsBundleWorkspace'
 import { OpsCancelItem } from './OpsCancelItem'
-import { postDecision } from './decisionClient'
+import { approveToastMessage, postDecision } from './decisionClient'
 import { OpsEndItem } from './OpsEndItem'
 import { OpsItemActions } from './OpsItemActions'
 import type { ItemImageProduction } from './useItemImageProduction'
@@ -37,8 +37,8 @@ export interface OpsItemResultHandlers {
   handleSaved: (itemId: string) => void
   /** 색 채우기가 끝났을 때(티켓 20261007_1146). 토스트를 띄우고 화면을 새로 읽는다. */
   handleColorFilled: () => void
-  /** 승인·반려가 끝났을 때. `afterToast`는 토스트 다음, 새로 읽기 앞에서 부른다(S3는 다음 결정 전 항목을 고른다). */
-  handleDecided: (kind: 'approve' | 'reject', afterToast?: () => void) => void
+  /** 승인·반려가 끝났을 때. `afterToast`는 토스트 다음, 새로 읽기 앞에서 부른다(S3는 다음 결정 전 항목을 고른다). `data`는 결정 응답 본문이고, 승인 토스트 문장이 여기서 갈린다(패턴 제안은 사전에 넣은 번호). */
+  handleDecided: (kind: 'approve' | 'reject', afterToast?: () => void, data?: Record<string, unknown>) => void
   handleCancelled: (data: Record<string, unknown>) => void
   handleEnded: (data: Record<string, unknown>) => void
   handleItemEnded: (message: string) => void
@@ -72,8 +72,8 @@ export function useOpsItemResultHandlers({ bundleId, onRefresh }: OpsItemResultO
     refresh()
   }
 
-  const handleDecided = (kind: 'approve' | 'reject', afterToast?: () => void) => {
-    toast.success(kind === 'approve' ? '승인했어요' : '반려했어요')
+  const handleDecided = (kind: 'approve' | 'reject', afterToast?: () => void, data: Record<string, unknown> = {}) => {
+    toast.success(kind === 'approve' ? approveToastMessage(data) : '반려했어요')
     afterToast?.()
     refresh()
   }
@@ -150,9 +150,9 @@ export function OpsItemFooter({ bundleId, item, ctx, isSample, handlers, onDecid
       bundleId={bundleId}
       item={item}
       ctx={ctx}
-      onDecided={(kind, itemId) => {
+      onDecided={(kind, itemId, data) => {
         if (kind === 'approve') void imageProduction?.start(itemId, ctx.items)
-        handlers.handleDecided(kind, () => onDecided?.(kind, itemId))
+        handlers.handleDecided(kind, () => onDecided?.(kind, itemId), data)
       }}
       onConflict={handlers.refresh}
     />

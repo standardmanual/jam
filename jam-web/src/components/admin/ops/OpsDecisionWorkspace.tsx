@@ -89,8 +89,8 @@ export function OpsDecisionWorkspace({
   const { refresh } = handlers
   const imageProduction = useItemImageProduction({ bundleId, isSample: isSample ?? false, onDone: refresh })
 
-  const handleBulkApproved = (ctx: OpsWorkspaceContext, result: { approved: number; skipped: number }) => {
-    const message = bulkResultMessage(result.approved, result.skipped)
+  const handleBulkApproved = (ctx: OpsWorkspaceContext, result: { approved: number; skipped: number; patternProposals: number }) => {
+    const message = bulkResultMessage(result.approved, result.skipped, result.patternProposals)
     if (result.skipped > 0) toast.warning(message)
     else toast.success(message)
     // 보고 있던 항목이 방금 승인됐으면 남은 결정 전 항목으로 옮긴다.

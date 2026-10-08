@@ -686,6 +686,12 @@ describe('일괄 승인', () => {
     expect(bulkResultMessage(11, 0)).toBe('11개를 승인했어요')
     expect(bulkResultMessage(10, 1)).toBe('10개 승인, 1개는 이미 처리돼 건너뛰었어요')
   })
+
+  it('결과 토스트 문장: 뺀 패턴 제안이 있으면 끝에 하나씩 승인하라고 알린다(티켓 20261008_1845)', () => {
+    expect(bulkResultMessage(3, 0, 2)).toBe('3개를 승인했어요 · 패턴 제안 2개는 하나씩 승인해 주세요')
+    expect(bulkResultMessage(3, 1, 1)).toBe('3개 승인, 1개는 이미 처리돼 건너뛰었어요 · 패턴 제안 1개는 하나씩 승인해 주세요')
+    expect(bulkResultMessage(3, 0, 0)).toBe('3개를 승인했어요')
+  })
 })
 
 describe('OpsItemActions — 항목 결정 줄', () => {
