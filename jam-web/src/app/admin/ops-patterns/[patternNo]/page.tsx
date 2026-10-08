@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { Skeleton } from '@/components/admin/ui/skeleton'
 import { EditorShell } from '@/components/admin/AdminEditorLayout'
 import {
+  OpsPatternDetailActions,
   OpsPatternDetailHeader,
   OpsPatternKnobsSection,
   OpsPatternPitfallsSection,
@@ -25,7 +26,8 @@ import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchPar
 import { createServiceClient } from '@/lib/supabase/server'
 
 /**
- * 패턴 상세 (`/admin/ops-patterns/[patternNo]`, 티켓 20261008_1435 ⑨b, 상위 20260930_1503 「채원 S5·S6 사전 판정」 ⑨ 상세, 운영툴 PRD §6 S5). 읽기만 한다.
+ * 패턴 상세 (`/admin/ops-patterns/[patternNo]`, 티켓 20261008_1435 ⑨b, 상위 20260930_1503 「채원 S5·S6 사전 판정」 ⑨ 상세, 운영툴 PRD §6 S5). 화면은 읽기만 하고,
+ * 머리의 [수정하기]·[상태 바꾸기 ▾]가 쓰기(티켓 20261008_1617 ⑩a-2)로 이어진다.
  *
  * 번호 형식이 `P01`~이 아니거나 사전에 없으면 404다(보관 패턴도 번호로 열린다). 패턴 읽기가 **실패**하면 404가 아니라 안내 카드다.
  * 패턴(머리·요약·손잡이·샘플·주의점) / 취향 신호 / 사용 이력을 **따로 읽고** 뒤의 둘은 `Suspense`로 감싸, 하나가 실패해도 다른 구역은 보인다.
@@ -108,7 +110,7 @@ export default async function OpsPatternDetailPage({
       <div className="max-w-6xl">
         <EditorShell
           railLabel="패턴 정보"
-          header={<OpsPatternDetailHeader pattern={record} />}
+          header={<OpsPatternDetailHeader pattern={record} actions={<OpsPatternDetailActions pattern={record} />} />}
           rail={<OpsPatternRail pattern={record} />}
           main={
             <>

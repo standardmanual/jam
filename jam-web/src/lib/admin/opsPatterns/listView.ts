@@ -54,6 +54,14 @@ export function patternDetailHref(patternNo: string, options: { usagePage?: numb
   return options.usagePage && options.usagePage > 1 ? `${base}?usagePage=${options.usagePage}` : base
 }
 
+/** 패턴 만들기 화면 링크(티켓 20261008_1617). */
+export const PATTERN_NEW_HREF = '/admin/ops-patterns/new'
+
+/** 패턴 고치기 화면 링크(티켓 20261008_1617). */
+export function patternEditHref(patternNo: string): string {
+  return `${patternDetailHref(patternNo)}/edit`
+}
+
 /** 표의 한 줄. `null`은 못 읽었거나 모른다는 뜻이라 0으로 바꾸지 않는다. */
 export interface PatternListRow {
   patternNo: string

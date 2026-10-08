@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/admin/ui/button'
 import { Skeleton } from '@/components/admin/ui/skeleton'
 import { OpsCommonRulesView } from '@/components/admin/ops/OpsCommonRulesView'
 import { OpsPatternList } from '@/components/admin/ops/OpsPatternList'
@@ -8,7 +9,7 @@ import { OpsPatternProposalsStrip } from '@/components/admin/ops/OpsPatternPropo
 import { OpsSectionNotice } from '@/components/admin/ops/OpsSectionNotice'
 import { logQueryError } from '@/lib/admin/queryError'
 import { countOpsPatternUsage, loadDrawUsageRows, type OpsPatternUsageCount } from '@/lib/admin/opsPatterns/draw'
-import { buildPatternRows, parsePatternListParams, patternListHref, type PatternView } from '@/lib/admin/opsPatterns/listView'
+import { PATTERN_NEW_HREF, buildPatternRows, parsePatternListParams, patternListHref, type PatternView } from '@/lib/admin/opsPatterns/listView'
 import {
   countPendingPatternProposals,
   listOpsCommonRules,
@@ -24,7 +25,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 /**
  * 패턴 사전 (`/admin/ops-patterns`, 티켓 20261008_1400 ⑨a, 상위 20260930_1503 「채원 S5·S6 사전 판정」 ⑨ 목록, 운영툴 PRD §6 S5).
  *
- * 머리(제목·부제) → 탭 `[패턴 N] [공통 규칙·취향 신호]`(주소 `view=patterns|common`, 기본 patterns) → 탭 본문. 읽기만 한다 — 만들기·고치기는 ⑩a·⑩b, 행 링크(상세)는 ⑨b가 단다.
+ * 머리(제목·부제) → 탭 `[패턴 N] [공통 규칙·취향 신호]`(주소 `view=patterns|common`, 기본 patterns) → 탭 본문. 읽기 화면이고, 머리 오른쪽 [+ 새 패턴 만들기]가 만들기 화면(⑩a-2)으로 간다. 행 링크(상세)는 ⑨b가 달았다.
  * 사전·사용 기록·승인 대기 제안 건수·공통 규칙·취향 신호를 **따로 읽고** 구역마다 `Suspense`로 감싸, 하나가 실패해도 다른 구역은 보인다. 실패를 0이나 빈 상태로 보이지 않는다.
  * 「최근 4주」·「마지막 사용」은 조합 뽑기와 같은 세기 함수(`countOpsPatternUsage`)로 센다. 이 화면은 캐시하지 않는다(지금 상태를 보는 화면).
  *
@@ -32,6 +33,7 @@ import { createServiceClient } from '@/lib/supabase/server'
  */
 
 const PATTERN_PAGE_TITLE = '패턴 사전'
+const PATTERN_NEW_LABEL = '+ 새 패턴 만들기'
 const PATTERN_PAGE_SUBTITLE = '에이전트가 읽는 패턴과 공통 규칙을 보고 관리해요'
 const PATTERN_LOAD_FAILED_TITLE = '패턴 사전을 불러오지 못했어요'
 
@@ -151,9 +153,14 @@ export default async function OpsPatternsPage({ searchParams }: { searchParams: 
   return (
     <div className="p-8">
       <div className="max-w-6xl">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold">{PATTERN_PAGE_TITLE}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{PATTERN_PAGE_SUBTITLE}</p>
+        <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold">{PATTERN_PAGE_TITLE}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{PATTERN_PAGE_SUBTITLE}</p>
+          </div>
+          <Button asChild>
+            <Link href={PATTERN_NEW_HREF}>{PATTERN_NEW_LABEL}</Link>
+          </Button>
         </header>
         <Suspense fallback={<SectionSkeleton />}>
           <PatternsBody view={params.view} status={params.status} />

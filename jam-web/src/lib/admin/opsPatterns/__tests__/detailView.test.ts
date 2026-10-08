@@ -28,7 +28,7 @@ import {
   usageSummaryText,
 } from '../detailView'
 import { countOpsPatternUsage, type OpsPatternUsageRow } from '../draw'
-import { patternDetailHref } from '../listView'
+import { PATTERN_NEW_HREF, patternDetailHref, patternEditHref } from '../listView'
 import type { OpsTasteSignalRecord } from '../read'
 
 const NOW = new Date('2026-10-08T03:00:00.000Z')
@@ -93,6 +93,11 @@ describe('머리·서식', () => {
     expect(patternDetailHref('P03')).toBe('/admin/ops-patterns/P03')
     expect(patternDetailHref('P03', { usagePage: 1 })).toBe('/admin/ops-patterns/P03')
     expect(patternDetailHref('P03', { usagePage: 3 })).toBe('/admin/ops-patterns/P03?usagePage=3')
+  })
+
+  it('만들기·고치기 링크(⑩a-2): 만들기는 /new, 고치기는 상세 주소 뒤 /edit', () => {
+    expect(PATTERN_NEW_HREF).toBe('/admin/ops-patterns/new')
+    expect(patternEditHref('P03')).toBe('/admin/ops-patterns/P03/edit')
   })
 })
 

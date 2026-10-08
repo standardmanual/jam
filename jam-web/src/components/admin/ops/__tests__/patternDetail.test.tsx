@@ -8,7 +8,7 @@
  * - 요약·손잡이·샘플·주의점: 값이 보이고, 깨진 JSONB는 칸마다 「적지 않았어요」·「역할 모름」·「목록에 없는 모양」으로 화면이 유지된다
  * - 취향 신호: 0건 문구, 추정/확정 칩, 확정일(KST), 근거 반려 기록 글자(링크 없음)
  * - 사용 이력: 요약 줄·줄(시각·종류·이름·상태 칩)·줄이 받은 기획함 항목으로 가는 링크·쪽 이동·빈 상태·실패(요약 「–」 + 안내)
- * - 결과 구역은 글자만(링크 없음), 레일에 목차·마지막 수정·만든 날이 있고 수정한 사람은 없다, 쓰기 버튼이 없다
+ * - 결과 구역은 글자만(링크 없음), 레일에 목차·마지막 수정·만든 날이 있고 수정한 사람은 없다, actions 자리가 없으면 쓰기 버튼이 없고, 있으면 [수정하기](고치기 링크)와 [상태 바꾸기 ▾]가 머리 아래에 놓인다
  */
 import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -21,6 +21,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 import {
+  OpsPatternDetailActions,
   OpsPatternDetailHeader,
   OpsPatternKnobsSection,
   OpsPatternPitfallsSection,
@@ -98,13 +99,33 @@ describe('머리', () => {
     expect(flat(<OpsPatternDetailHeader pattern={pattern({ status: 'archived' })} />)).toContain('보관')
   })
 
-  it('이름은 HTML로 해석되지 않고, 쓰기 버튼은 없다(⑩a가 단다)', () => {
+  it('이름은 HTML로 해석되지 않고, actions 자리를 안 주면 쓰기 버튼은 없다', () => {
     const out = html(<OpsPatternDetailHeader pattern={pattern({ name: '<img src=x onerror=alert(1)>' })} />)
     expect(out).not.toContain('<img')
     expect(out).toContain('&lt;img src=x onerror=alert(1)&gt;')
     expect(out).not.toContain('<button')
     expect(out).not.toContain('수정하기')
     expect(out).not.toContain('상태 바꾸기')
+  })
+})
+
+describe('머리의 쓰기 버튼', () => {
+  it('[수정하기]는 고치기 화면 링크이고 [상태 바꾸기 ▾]가 옆에 놓인다', () => {
+    const record = pattern()
+    const out = flat(<OpsPatternDetailHeader pattern={record} actions={<OpsPatternDetailActions pattern={record} />} />)
+    expect(out).toMatch(/<a[^>]*href="\/admin\/ops-patterns\/P03\/edit"[^>]*>수정하기<\/a>/)
+    expect(out).toContain('상태 바꾸기')
+    expect(out.indexOf('수정하기')).toBeGreaterThan(out.indexOf('출처: 원고 입력'))
+    expect(out.indexOf('상태 바꾸기')).toBeGreaterThan(out.indexOf('수정하기'))
+  })
+
+  it('쉬는 중·보관 패턴에도 같은 두 버튼이 놓인다', () => {
+    for (const status of ['paused', 'archived'] as const) {
+      const record = pattern({ status, pauseReason: status === 'paused' ? '기능 대기' : null })
+      const out = flat(<OpsPatternDetailHeader pattern={record} actions={<OpsPatternDetailActions pattern={record} />} />)
+      expect(out).toContain('수정하기')
+      expect(out).toContain('상태 바꾸기')
+    }
   })
 })
 
