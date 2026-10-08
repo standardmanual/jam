@@ -36,3 +36,18 @@ export type OpsPatternKnobKey = (typeof OPS_PATTERN_KNOB_KEYS)[number]
 /** 샘플이 패턴에서 맡는 역할: 주 · 보조 장치 · 걸침(`ops_patterns.samples[].role`). DB CHECK는 없고 앱이 검사한다. */
 export const OPS_PATTERN_SAMPLE_ROLES = ['main', 'aux', 'related'] as const
 export type OpsPatternSampleRole = (typeof OPS_PATTERN_SAMPLE_ROLES)[number]
+
+/**
+ * 패턴을 쓸 때(만들기·고치기·상태 바꾸기) 지키는 길이 상한(티켓 20261008_1545 D2). 단위는 글자 수이고 앞뒤 공백을 뗀 뒤 센다.
+ * 이름·긴 글 칸·쉬는 이유·메뉴 개수·샘플 개수는 사용자가 정했고, 메뉴 한 개·카드 모양 메모는 카리나 가정이다.
+ */
+export const OPS_PATTERN_LIMITS = {
+  nameMax: 60,
+  /** 작동 원리·유저가 겪는 것·주의점·손잡이 칸 각각. */
+  longTextMax: 2000,
+  menuMax: 30,
+  menusMaxCount: 10,
+  samplesMaxCount: 20,
+  cardShapeNoteMax: 200,
+  pauseReasonMax: 200,
+} as const
