@@ -9,7 +9,7 @@
  * - 상세: 형식이 틀린 번호는 400(읽지 않는다), 없는 번호는 404, 보관 패턴도 번호로 읽으면 200이다. 취향 신호는 그 패턴 것만 싣는다
  * - 응답 본문 어디에도 `updated_by`·`confirmed_by`·`updatedBy`·`confirmedBy`와 그 값(관리자 ID)이 없다
  * - 조회가 실패하면 고정 문장 500이고 원문은 싣지 않는다
- * - 두 라우트 모두 GET만 export한다(쓰기 메서드 없음)
+ * - 쓰기 메서드는 POST(목록)·PATCH(상세)뿐이다(쓰기 검증은 `write-route.test.ts`)
  */
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 
@@ -295,9 +295,9 @@ describe('GET /api/admin/ops-patterns/[patternNo]', () => {
   })
 })
 
-describe('쓰기 메서드를 두지 않는다', () => {
-  it('두 라우트 모두 GET만 export한다', () => {
-    expect(Object.keys(listRoute)).toEqual(['GET'])
-    expect(Object.keys(detailRoute)).toEqual(['GET'])
+describe('내보내는 메서드', () => {
+  it('목록 라우트는 GET·POST, 상세 라우트는 GET·PATCH만 export한다(PUT·DELETE 없음, 쓰기 검증은 write-route.test.ts)', () => {
+    expect(Object.keys(listRoute).sort()).toEqual(['GET', 'POST'])
+    expect(Object.keys(detailRoute).sort()).toEqual(['GET', 'PATCH'])
   })
 })
