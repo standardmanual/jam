@@ -7,6 +7,7 @@
  * - 카드 칸(티켓 20261001_1152): shape·exposure_tags(홈피드 카드는 필수)·tribe_id·color_pending, 묶음의 excluded_items,
  *   옛 형식 항목(segment만)은 fatal 없이 받고 새 칸 오류만 붙는다. exposure_tags는 등록 스크립트와 같은 입력에 같은 문장이다.
  * - 패턴 번호·지점 카테고리(티켓 20261007_1745): pattern_no 형식(P01)과 사전 실재, knobs.place_category(문자열 배열·실재), 형식이 틀린 번호는 열 NULL
+ * - 패턴 제안 내용 칸(티켓 20261007_1746): kind가 pattern_proposal일 때만 resource.pattern을 본다(필수 칸·손잡이 5종·선택 칸 형식), 저장은 막지 않는다
  */
 import { describe, it, expect } from 'vitest'
 // 지금의 등록 스크립트(.mjs)를 대조용으로 불러온다. 스크립트는 고치지 않는다.
@@ -21,6 +22,7 @@ import {
   normalizeOpsPatternNo,
   validateExposureTags,
   validateOpsBundle,
+  validateOpsPatternProposal,
   validateOpsPlaceCategory,
   validateWorldReview,
 } from '../validate'
@@ -103,8 +105,20 @@ describe('validateOpsBundle — 정상 묶음', () => {
 
   it('종류 7개를 모두 받는다', () => {
     expect(OPS_ITEM_KINDS).toHaveLength(7)
+    // 패턴 제안은 내용 칸(resource.pattern)이 필수다(티켓 20261007_1746). 다른 종류는 resource 없이 받는다.
+    const knob = { open: '연 값', closed: '닫은 값' }
+    const resource = {
+      pattern: {
+        name: '패턴',
+        principle: '원리',
+        user_experience: '경험',
+        knobs: { condition: knob, place: knob, time: knob, reward: knob, tribe: { rule: '규칙', example: '예시' } },
+      },
+    }
     for (const kind of OPS_ITEM_KINDS) {
-      const result = validateOpsBundle(makeBundle({ items: [makeItem({ kind })] }))
+      const result = validateOpsBundle(
+        makeBundle({ items: [makeItem(kind === 'pattern_proposal' ? { kind, resource } : { kind })] })
+      )
       expect(result.errors).toEqual([])
     }
   })
@@ -805,6 +819,293 @@ describe('지점 카테고리 — knobs.place_category (티켓 20261007_1745)', 
     expect(revalidated.format_errors).toHaveLength(1)
     expect(revalidated.format_errors).toEqual(submitted.items[0].format_errors)
     expect(validateOpsPlaceCategory({ place_category: ['zoo'] }, 'items[3]', SLUGS)[0]).toMatch(/^items\[3\]\.knobs\.place_category:/)
+  })
+})
+
+describe('패턴 제안 내용 칸 — resource.pattern (티켓 20261007_1746)', () => {
+  const KNOBS = {
+    condition: { open: '오늘 체크인 1회', closed: '상위 기록자만 통과하는 거리' },
+    place: { open: '산·역·공원', closed: '공통 규칙뿐이다' },
+    time: { open: '당일 활동', closed: '심야 시간대' },
+    reward: { open: '믹스 결과 배지', closed: '재료를 빼앗는 방식' },
+    tribe: { rule: '열쇠 행동과 장소의 성격에 맞춘다', example: '아날로그 수집가' },
+  }
+  const PATTERN = {
+    name: '오늘의 열쇠',
+    principle: '오늘 한 일로 자물쇠를 연다',
+    user_experience: '오늘 한 운동이 내일 배지의 열쇠가 돼요',
+    knobs: KNOBS,
+  }
+
+  function proposal(pattern: unknown, extra: Record<string, unknown> = {}) {
+    return makeItem({ kind: 'pattern_proposal', resource: { pattern }, ...extra })
+  }
+  function errorsOf(item: unknown) {
+    const result = validateOpsBundle(makeBundle({ items: [item] }))
+    expect(result.fatal).toEqual([])
+    return result.errors
+  }
+  /** `PATTERN`의 사본에서 경로(`knobs.place.closed`)의 값을 바꾼다. `undefined`는 키를 지운다. */
+  function patternWith(path: string, value: unknown) {
+    const copy = JSON.parse(JSON.stringify(PATTERN)) as Record<string, unknown>
+    const keys = path.split('.')
+    let at = copy
+    for (const key of keys.slice(0, -1)) at = at[key] as Record<string, unknown>
+    if (value === undefined) delete at[keys[keys.length - 1]]
+    else at[keys[keys.length - 1]] = value
+    return copy
+  }
+
+  it('필수 칸만 있는 온전한 제안은 오류가 없다', () => {
+    expect(errorsOf(proposal(PATTERN))).toEqual([])
+  })
+
+  it('선택 칸까지 모두 온전하면 오류가 없고, 모르는 키는 어디에 있어도 오류가 아니다', () => {
+    const full = {
+      ...PATTERN,
+      menus: ['레시피', '드랍'],
+      samples: [
+        { no: 3, name: '현장 도장 레시피', role: 'main', impl: '도장 3개를 모아요', extra: 1 },
+        { no: 9, name: '새벽 한 바퀴', role: 'aux', impl: '' },
+        { no: 30, name: '무명 트럭 목격 제보', role: 'related', impl: '제보로 열려요' },
+      ],
+      card_shapes: [
+        { shape: 'hero', note: '이미지가 큰 카드' },
+        { shape: 'list', note: '' },
+      ],
+      pitfalls: '열쇠 후보가 한 종류뿐이면 초보가 열 수 없어요',
+      knobs: { ...KNOBS, place: { ...KNOBS.place, surprise: true }, bonus: { open: 'x' } },
+      unknown_top: 'x',
+    }
+    expect(errorsOf(proposal(full, { surprise: 1 }))).toEqual([])
+  })
+
+  it('오류가 있어도 항목은 만들어지고 같은 문장이 항목 format_errors에도 들어간다(저장·승인을 막지 않는다)', () => {
+    const result = validateOpsBundle(makeBundle({ items: [proposal(patternWith('name', ''))] }))
+    expect(result.fatal).toEqual([])
+    expect(result.items).toHaveLength(1)
+    expect(result.items[0].format_errors).toEqual(['items[0].resource.pattern.name: 비어 있지 않은 문자열이어야 해요.'])
+    expect(result.errors).toEqual(result.items[0].format_errors)
+  })
+
+  it('resource가 없거나 객체가 아니거나 pattern이 없으면 한 줄이다', () => {
+    const expected = ['items[0].resource.pattern: 필수 항목이 없어요(제안하는 패턴의 내용을 resource.pattern에 적어 주세요).']
+    for (const resource of [undefined, null, 'text', 7, [], {}, { pattern: null }, { other: 1 }]) {
+      const item: Record<string, unknown> = makeItem({ kind: 'pattern_proposal', resource })
+      if (resource === undefined) delete item.resource
+      expect(errorsOf(item)).toEqual(expected)
+    }
+  })
+
+  it('pattern이 객체가 아니면 그 한 줄로 끝내고 안쪽은 보지 않는다', () => {
+    for (const bad of ['text', 7, true, ['name']]) {
+      const errors = errorsOf(proposal(bad))
+      expect(errors).toHaveLength(1)
+      expect(errors[0]).toMatch(/^items\[0\]\.resource\.pattern: 객체여야 해요\(받은 값: /)
+    }
+  })
+
+  it('이름·작동 원리·유저가 겪는 것·손잡이는 필수이고 각각 한 줄이다', () => {
+    const errors = errorsOf(proposal({}))
+    expect(errors).toHaveLength(4)
+    expect(errors[0]).toMatch(/^items\[0\]\.resource\.pattern\.name: 필수 항목이 없어요\(/)
+    expect(errors[1]).toMatch(/^items\[0\]\.resource\.pattern\.principle: 필수 항목이 없어요\(/)
+    expect(errors[2]).toMatch(/^items\[0\]\.resource\.pattern\.user_experience: 필수 항목이 없어요\(/)
+    expect(errors[3]).toMatch(/^items\[0\]\.resource\.pattern\.knobs: 필수 항목이 없어요\(/)
+  })
+
+  it('필수 문자열 칸이 빈 값·공백뿐·문자열 아님이면 한 줄이다', () => {
+    for (const key of ['name', 'principle', 'user_experience']) {
+      for (const bad of ['', '   ', 7, ['a'], {}]) {
+        expect(errorsOf(proposal(patternWith(key, bad)))).toEqual([
+          `items[0].resource.pattern.${key}: 비어 있지 않은 문자열이어야 해요.`,
+        ])
+      }
+      expect(errorsOf(proposal(patternWith(key, null)))).toHaveLength(1)
+      expect(errorsOf(proposal(patternWith(key, null)))[0]).toContain(`pattern.${key}: 필수 항목이 없어요(`)
+    }
+  })
+
+  it('항목의 user_experience 규칙과 제안 패턴의 user_experience 규칙은 따로 본다', () => {
+    const item: Record<string, unknown> = proposal(patternWith('user_experience', ''))
+    delete item.user_experience
+    const errors = errorsOf(item)
+    expect(errors).toHaveLength(2)
+    expect(errors.some((e) => e.startsWith('items[0].user_experience: 필수 항목이 없어요'))).toBe(true)
+    expect(errors).toContain('items[0].resource.pattern.user_experience: 비어 있지 않은 문자열이어야 해요.')
+  })
+
+  it('손잡이가 객체가 아니면 한 줄이다', () => {
+    for (const bad of ['text', 7, [], ['place']]) {
+      const errors = errorsOf(proposal(patternWith('knobs', bad)))
+      expect(errors).toHaveLength(1)
+      expect(errors[0]).toMatch(/^items\[0\]\.resource\.pattern\.knobs: 객체여야 해요\(받은 값: /)
+    }
+  })
+
+  it('빠진 손잡이는 손잡이마다 한 줄이다', () => {
+    const errors = errorsOf(proposal(patternWith('knobs', { condition: KNOBS.condition, tribe: KNOBS.tribe })))
+    expect(errors).toEqual([
+      'items[0].resource.pattern.knobs.place: 필수 항목이 없어요(장소 손잡이의 연 값·닫은 값 칸을 적어 주세요).',
+      'items[0].resource.pattern.knobs.time: 필수 항목이 없어요(시간 손잡이의 연 값·닫은 값 칸을 적어 주세요).',
+      'items[0].resource.pattern.knobs.reward: 필수 항목이 없어요(보상 손잡이의 연 값·닫은 값 칸을 적어 주세요).',
+    ])
+    expect(errorsOf(proposal(patternWith('knobs.tribe', undefined)))).toEqual([
+      'items[0].resource.pattern.knobs.tribe: 필수 항목이 없어요(트라이브 손잡이의 규칙·예시 칸을 적어 주세요).',
+    ])
+  })
+
+  it('손잡이 하나가 객체가 아니면 그 손잡이만 한 줄이다', () => {
+    for (const bad of ['text', 7, ['open', 'closed']]) {
+      const errors = errorsOf(proposal(patternWith('knobs.time', bad)))
+      expect(errors).toHaveLength(1)
+      expect(errors[0]).toMatch(/^items\[0\]\.resource\.pattern\.knobs\.time: open·closed 칸이 있는 객체여야 해요\(받은 값: /)
+    }
+    expect(errorsOf(proposal(patternWith('knobs.tribe', 'text')))[0]).toContain('pattern.knobs.tribe: rule·example 칸이 있는 객체여야 해요')
+  })
+
+  it('손잡이 안쪽 값이 빠지면 값마다 한 줄이다', () => {
+    expect(errorsOf(proposal(patternWith('knobs.place.closed', undefined)))).toEqual([
+      'items[0].resource.pattern.knobs.place.closed: 필수 항목이 없어요(장소 손잡이의 닫은 값 칸을 적어 주세요).',
+    ])
+    expect(errorsOf(proposal(patternWith('knobs.place', {})))).toEqual([
+      'items[0].resource.pattern.knobs.place.open: 필수 항목이 없어요(장소 손잡이의 연 값 칸을 적어 주세요).',
+      'items[0].resource.pattern.knobs.place.closed: 필수 항목이 없어요(장소 손잡이의 닫은 값 칸을 적어 주세요).',
+    ])
+  })
+
+  it('손잡이 값이 빈 값·공백뿐·문자열 아님이면 한 줄이다', () => {
+    for (const bad of ['', '  ', 7, false]) {
+      expect(errorsOf(proposal(patternWith('knobs.reward.open', bad)))).toEqual([
+        'items[0].resource.pattern.knobs.reward.open: 비어 있지 않은 문자열이어야 해요.',
+      ])
+    }
+  })
+
+  it('트라이브는 open·closed가 아니라 rule·example을 본다', () => {
+    expect(errorsOf(proposal(patternWith('knobs.tribe', { open: 'a', closed: 'b' })))).toEqual([
+      'items[0].resource.pattern.knobs.tribe.rule: 필수 항목이 없어요(트라이브 손잡이의 규칙 칸을 적어 주세요).',
+      'items[0].resource.pattern.knobs.tribe.example: 필수 항목이 없어요(트라이브 손잡이의 예시 칸을 적어 주세요).',
+    ])
+    expect(errorsOf(proposal(patternWith('knobs.tribe.example', '')))).toEqual([
+      'items[0].resource.pattern.knobs.tribe.example: 비어 있지 않은 문자열이어야 해요.',
+    ])
+  })
+
+  it('선택 칸은 없거나 null이면 오류가 아니다', () => {
+    for (const key of ['menus', 'samples', 'card_shapes', 'pitfalls']) {
+      expect(errorsOf(proposal({ ...PATTERN, [key]: null }))).toEqual([])
+    }
+  })
+
+  it('menus: 배열이 아니면 한 줄, 원소가 빈 값·문자열 아님이면 원소마다 한 줄이다(빈 배열은 허용)', () => {
+    expect(errorsOf(proposal({ ...PATTERN, menus: [] }))).toEqual([])
+    expect(errorsOf(proposal({ ...PATTERN, menus: '레시피' }))).toEqual([
+      'items[0].resource.pattern.menus: 배열이어야 해요(받은 값: "레시피").',
+    ])
+    expect(errorsOf(proposal({ ...PATTERN, menus: ['레시피', '', 3, '  '] }))).toEqual([
+      'items[0].resource.pattern.menus[1]: 비어 있지 않은 문자열이어야 해요.',
+      'items[0].resource.pattern.menus[2]: 비어 있지 않은 문자열이어야 해요.',
+      'items[0].resource.pattern.menus[3]: 비어 있지 않은 문자열이어야 해요.',
+    ])
+  })
+
+  it('samples: 배열이 아니면 한 줄, 원소가 객체가 아니면 원소마다 한 줄이다', () => {
+    expect(errorsOf(proposal({ ...PATTERN, samples: { no: 1 } }))[0]).toMatch(/^items\[0\]\.resource\.pattern\.samples: 배열이어야 해요/)
+    expect(errorsOf(proposal({ ...PATTERN, samples: ['x', null] }))).toEqual([
+      'items[0].resource.pattern.samples[0]: 객체여야 해요(받은 값: "x").',
+      'items[0].resource.pattern.samples[1]: 객체여야 해요(받은 값: null).',
+    ])
+  })
+
+  it('samples: no는 1 이상의 정수여야 한다(0·소수·음수·문자열은 오류)', () => {
+    const sample = (no: unknown) => ({ no, name: '샘플', role: 'main', impl: '' })
+    expect(errorsOf(proposal({ ...PATTERN, samples: [sample(1), sample(60)] }))).toEqual([])
+    for (const bad of [0, 1.5, -2, '3', true]) {
+      const errors = errorsOf(proposal({ ...PATTERN, samples: [sample(1), sample(bad)] }))
+      expect(errors).toHaveLength(1)
+      expect(errors[0]).toMatch(/^items\[0\]\.resource\.pattern\.samples\[1\]\.no: 1 이상의 정수여야 해요\(받은 값: /)
+    }
+  })
+
+  it('samples: no·name·role이 빠지면 칸마다 한 줄이고 impl은 없어도 된다', () => {
+    const errors = errorsOf(proposal({ ...PATTERN, samples: [{}, { no: 2, name: '샘플', role: 'aux' }] }))
+    expect(errors).toHaveLength(3)
+    expect(errors[0]).toMatch(/^items\[0\]\.resource\.pattern\.samples\[0\]\.no: 필수 항목이 없어요/)
+    expect(errors[1]).toMatch(/^items\[0\]\.resource\.pattern\.samples\[0\]\.name: 필수 항목이 없어요/)
+    expect(errors[2]).toMatch(/^items\[0\]\.resource\.pattern\.samples\[0\]\.role: 필수 항목이 없어요\(허용값: main, aux, related\)/)
+  })
+
+  it('samples: 이름이 빈 값이면 오류, impl은 빈 문자열이 허용되고 문자열이 아니면 오류다', () => {
+    const base = { no: 1, name: '샘플', role: 'main', impl: '' }
+    expect(errorsOf(proposal({ ...PATTERN, samples: [base] }))).toEqual([])
+    expect(errorsOf(proposal({ ...PATTERN, samples: [{ ...base, name: ' ' }] }))).toEqual([
+      'items[0].resource.pattern.samples[0].name: 비어 있지 않은 문자열이어야 해요.',
+    ])
+    expect(errorsOf(proposal({ ...PATTERN, samples: [{ ...base, impl: 5 }] }))).toEqual([
+      'items[0].resource.pattern.samples[0].impl: 문자열이어야 해요(받은 값: 5).',
+    ])
+  })
+
+  it('samples: role은 main·aux·related만 허용한다(대소문자·공백까지 같아야 한다)', () => {
+    for (const role of ['main', 'aux', 'related']) {
+      expect(errorsOf(proposal({ ...PATTERN, samples: [{ no: 1, name: '샘플', role, impl: '' }] }))).toEqual([])
+    }
+    for (const bad of ['Main', ' main', '주', 'sub']) {
+      expect(errorsOf(proposal({ ...PATTERN, samples: [{ no: 1, name: '샘플', role: bad, impl: '' }] }))).toEqual([
+        `items[0].resource.pattern.samples[0].role: 허용되지 않는 역할이에요(받은 값: "${bad}"). 허용값: main, aux, related`,
+      ])
+    }
+    expect(errorsOf(proposal({ ...PATTERN, samples: [{ no: 1, name: '샘플', role: 7, impl: '' }] }))[0]).toContain('받은 값: 7)')
+  })
+
+  it('card_shapes: 배열이 아니면 한 줄, shape는 5개 모양만 허용하고 note는 빈 문자열을 허용한다', () => {
+    expect(errorsOf(proposal({ ...PATTERN, card_shapes: 'hero' }))[0]).toContain('pattern.card_shapes: 배열이어야 해요')
+    for (const shape of ['hero', 'poster', 'square', 'brief', 'list']) {
+      expect(errorsOf(proposal({ ...PATTERN, card_shapes: [{ shape, note: '' }, { shape }] }))).toEqual([])
+    }
+    expect(errorsOf(proposal({ ...PATTERN, card_shapes: [{ shape: 'hero', note: '' }, { shape: 'large_thumbnail', note: 'x' }] }))).toEqual([
+      'items[0].resource.pattern.card_shapes[1].shape: 허용되지 않는 카드 모양이에요(받은 값: "large_thumbnail"). 허용값: hero, poster, square, brief, list',
+    ])
+    expect(errorsOf(proposal({ ...PATTERN, card_shapes: [{ note: 'x' }, 'list', { shape: 'hero', note: 3 }] }))).toEqual([
+      'items[0].resource.pattern.card_shapes[0].shape: 필수 항목이 없어요(허용값: hero, poster, square, brief, list).',
+      'items[0].resource.pattern.card_shapes[1]: 객체여야 해요(받은 값: "list").',
+      'items[0].resource.pattern.card_shapes[2].note: 문자열이어야 해요(받은 값: 3).',
+    ])
+  })
+
+  it('pitfalls: 빈 문자열은 허용하고 문자열이 아니면 한 줄이다', () => {
+    expect(errorsOf(proposal({ ...PATTERN, pitfalls: '' }))).toEqual([])
+    expect(errorsOf(proposal({ ...PATTERN, pitfalls: ['a'] }))).toEqual([
+      'items[0].resource.pattern.pitfalls: 문자열이어야 해요(받은 값: ["a"]).',
+    ])
+  })
+
+  it('다른 종류(와 종류가 틀린 항목)의 resource.pattern은 보지 않는다', () => {
+    for (const kind of [...OPS_ITEM_KINDS.filter((k) => k !== 'pattern_proposal'), 'nope']) {
+      const errors = errorsOf(makeItem({ kind, resource: { pattern: 'text' } }))
+      expect(errors.filter((e) => e.includes('resource'))).toEqual([])
+    }
+  })
+
+  it('항목 위치가 경로에 들어가고, 다시 검사(revalidateOpsItem)도 같은 문장을 낸다', () => {
+    const raw = proposal(patternWith('knobs.place.closed', undefined))
+    const submitted = validateOpsBundle(makeBundle({ items: [makeItem({ item_key: 'other' }), raw] }))
+    expect(submitted.items[1].format_errors).toEqual([
+      'items[1].resource.pattern.knobs.place.closed: 필수 항목이 없어요(장소 손잡이의 닫은 값 칸을 적어 주세요).',
+    ])
+    const revalidated = revalidateOpsItem(raw, 1, [
+      { position: 0, itemKey: 'other' },
+      { position: 1, itemKey: 'card-1' },
+    ])
+    expect(revalidated.format_errors).toEqual(submitted.items[1].format_errors)
+  })
+
+  it('validateOpsPatternProposal을 직접 불러도 같은 문장을 낸다', () => {
+    expect(validateOpsPatternProposal({ pattern: PATTERN }, 'items[4]')).toEqual([])
+    expect(validateOpsPatternProposal(undefined, 'items[4]')).toEqual([
+      'items[4].resource.pattern: 필수 항목이 없어요(제안하는 패턴의 내용을 resource.pattern에 적어 주세요).',
+    ])
   })
 })
 

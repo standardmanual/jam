@@ -8,6 +8,7 @@
  * - 칸이 없는 기존 시험 묶음(항목 3개, `segment`만 있음)은 모양·대상 「모름」, 트라이브 null, 색 대기 false, 뺀 항목 [],
  *   패턴 번호 `P-07`은 「모름」(티켓 20261007_1745), 지점 카테고리 null
  * - 패턴 번호(없으면 null, 형식이 틀리면 「모름」)·지점 카테고리(`knobs`나 키가 없으면 null, 문자열 배열이 아니면 「모름」, 티켓 20261007_1745)
+ * - 패턴 제안 내용 칸(티켓 20261007_1746): 다른 종류는 null, 형식이 틀리면 「모름」, 맞으면 객체(공백 제거·기본값·모르는 키 버림)
  * - 계약: 검증(`validate.ts`)이 오류를 내지 않는 값과 읽기 함수가 「모름」이 아닌 값이 일치한다
  */
 import { describe, it, expect } from 'vitest'
@@ -23,9 +24,16 @@ import {
   readOpsItemPlaceCategories,
   readOpsItemShape,
   readOpsItemTribeId,
+  readOpsPatternProposal,
 } from '../fields'
 import { OPS_ITEM_KINDS } from '../constants'
-import { validateExcludedItems, validateExposureTags, validateOpsBundle, validateOpsPlaceCategory } from '../validate'
+import {
+  validateExcludedItems,
+  validateExposureTags,
+  validateOpsBundle,
+  validateOpsPatternProposal,
+  validateOpsPlaceCategory,
+} from '../validate'
 
 const TRIBE = '3f2c9a10-5b7e-4d21-8a64-0c1e7b9d2f55'
 const REVIEW = { world_related: false, winter_reviewed: false, reason: '운영성 카드예요' }
@@ -280,6 +288,166 @@ describe('기존 시험 묶음 고정 사례 (항목 3개, segment만 있음)', 
 
   it('묶음의 뺀 항목은 빈 목록이다', () => {
     expect(readBundleExcludedItems(legacyBundleRaw)).toEqual([])
+  })
+})
+
+describe('readOpsPatternProposal (티켓 20261007_1746)', () => {
+  const KNOBS = {
+    condition: { open: '오늘 체크인 1회', closed: '상위 기록자만 통과하는 거리' },
+    place: { open: '산·역·공원', closed: '공통 규칙뿐이다' },
+    time: { open: '당일 활동', closed: '심야 시간대' },
+    reward: { open: '믹스 결과 배지', closed: '재료를 빼앗는 방식' },
+    tribe: { rule: '열쇠 행동과 장소의 성격에 맞춘다', example: '아날로그 수집가' },
+  }
+  const PATTERN = {
+    name: '오늘의 열쇠',
+    principle: '오늘 한 일로 자물쇠를 연다',
+    user_experience: '오늘 한 운동이 내일 배지의 열쇠가 돼요',
+    knobs: KNOBS,
+  }
+  const proposal = (pattern: unknown, kind = 'pattern_proposal') => item({ kind, resource: { pattern } })
+
+  it('종류가 pattern_proposal이 아니면 null이다(resource가 틀려도 읽지 않는다)', () => {
+    for (const kind of OPS_ITEM_KINDS.filter((k) => k !== 'pattern_proposal')) {
+      expect(readOpsPatternProposal(proposal(PATTERN, kind))).toBeNull()
+      expect(readOpsPatternProposal(proposal('text', kind))).toBeNull()
+    }
+    expect(readOpsPatternProposal(item({ resource: { pattern: PATTERN } }))).toBeNull()
+    expect(readOpsPatternProposal(item({ kind: 'nope', resource: { pattern: PATTERN } }))).toBeNull()
+  })
+
+  it('형식이 틀리거나 칸이 없으면 「모름」이다', () => {
+    expect(readOpsPatternProposal(item({ kind: 'pattern_proposal' }))).toBe(OPS_FIELD_UNKNOWN)
+    expect(readOpsPatternProposal(proposal(undefined))).toBe(OPS_FIELD_UNKNOWN)
+    expect(readOpsPatternProposal(proposal('text'))).toBe(OPS_FIELD_UNKNOWN)
+    expect(readOpsPatternProposal(proposal({ ...PATTERN, name: '' }))).toBe(OPS_FIELD_UNKNOWN)
+    expect(readOpsPatternProposal(proposal({ ...PATTERN, knobs: { ...KNOBS, tribe: { rule: 'x' } } }))).toBe(OPS_FIELD_UNKNOWN)
+    expect(
+      readOpsPatternProposal(proposal({ ...PATTERN, samples: [{ no: 0, name: '샘플', role: 'main', impl: '' }] }))
+    ).toBe(OPS_FIELD_UNKNOWN)
+    expect(readOpsPatternProposal(proposal({ ...PATTERN, card_shapes: [{ shape: 'banner', note: '' }] }))).toBe(OPS_FIELD_UNKNOWN)
+  })
+
+  it('필수 칸만 있으면 선택 칸은 사전 기본값으로 읽는다', () => {
+    expect(readOpsPatternProposal(proposal(PATTERN))).toEqual({
+      name: '오늘의 열쇠',
+      principle: '오늘 한 일로 자물쇠를 연다',
+      userExperience: '오늘 한 운동이 내일 배지의 열쇠가 돼요',
+      menus: [],
+      samples: [],
+      cardShapes: [],
+      knobs: KNOBS,
+      pitfalls: '',
+    })
+  })
+
+  it('문자열은 앞뒤 공백을 떼고, 모르는 키는 버린다', () => {
+    const padded = {
+      name: '  오늘의 열쇠 ',
+      principle: '\n원리\t',
+      user_experience: ' 경험 ',
+      menus: [' 레시피 ', '드랍'],
+      samples: [
+        { no: 3, name: ' 도장 ', role: 'main', impl: ' 구현 ', extra: 1 },
+        { no: 9, name: '새벽', role: 'related' },
+      ],
+      card_shapes: [{ shape: 'hero', note: ' 큰 카드 ', extra: 1 }, { shape: 'list' }],
+      pitfalls: ' 주의 ',
+      knobs: {
+        condition: { open: ' a ', closed: ' b ', extra: 1 },
+        place: { open: 'c', closed: 'd' },
+        time: { open: 'e', closed: 'f' },
+        reward: { open: 'g', closed: 'h' },
+        tribe: { rule: ' i ', example: ' j ', open: 'k' },
+        extra: { open: 'x' },
+      },
+      unknown_top: 'x',
+    }
+    expect(readOpsPatternProposal(proposal(padded))).toEqual({
+      name: '오늘의 열쇠',
+      principle: '원리',
+      userExperience: '경험',
+      menus: ['레시피', '드랍'],
+      samples: [
+        { no: 3, name: '도장', role: 'main', impl: '구현' },
+        { no: 9, name: '새벽', role: 'related', impl: '' },
+      ],
+      cardShapes: [
+        { shape: 'hero', note: '큰 카드' },
+        { shape: 'list', note: '' },
+      ],
+      knobs: {
+        condition: { open: 'a', closed: 'b' },
+        place: { open: 'c', closed: 'd' },
+        time: { open: 'e', closed: 'f' },
+        reward: { open: 'g', closed: 'h' },
+        tribe: { rule: 'i', example: 'j' },
+      },
+      pitfalls: '주의',
+    })
+  })
+
+  it('수정본에 종류와 resource가 없으면(직접 수정은 둘을 못 고친다) 제출 원본을 읽는다', () => {
+    expect(readOpsPatternProposal(item({ kind: 'pattern_proposal', resource: { pattern: PATTERN } }, { user_experience: '고친 문장' }))).not.toBe(
+      OPS_FIELD_UNKNOWN
+    )
+  })
+
+  it('읽은 객체는 원본과 이어지지 않는다(읽은 뒤 원본을 바꿔도 그대로)', () => {
+    const original = JSON.parse(JSON.stringify({ ...PATTERN, menus: ['레시피'] })) as { menus: string[] }
+    const read = readOpsPatternProposal(proposal(original))
+    if (read === null || read === OPS_FIELD_UNKNOWN) throw new Error('읽혀야 해요')
+    original.menus.push('드랍')
+    expect(read.menus).toEqual(['레시피'])
+  })
+
+  // 계약: 검증 오류 0 ⇔ 「모름」이 아님. 온전한 값에서 한 곳씩 바꾼 변형을 모두 견준다.
+  const variants: Array<[string, unknown]> = [
+    ['온전한 필수 칸', PATTERN],
+    ['name 빈 값', { ...PATTERN, name: '' }],
+    ['name 공백뿐', { ...PATTERN, name: '  ' }],
+    ['name 숫자', { ...PATTERN, name: 7 }],
+    ['principle 없음', { ...PATTERN, principle: undefined }],
+    ['user_experience null', { ...PATTERN, user_experience: null }],
+    ['knobs 없음', { ...PATTERN, knobs: undefined }],
+    ['knobs 배열', { ...PATTERN, knobs: [] }],
+    ['손잡이 하나 없음', { ...PATTERN, knobs: { ...KNOBS, time: undefined } }],
+    ['손잡이 값 하나 없음', { ...PATTERN, knobs: { ...KNOBS, reward: { open: 'x' } } }],
+    ['트라이브 open·closed 모양', { ...PATTERN, knobs: { ...KNOBS, tribe: { open: 'a', closed: 'b' } } }],
+    ['손잡이 값 빈 문자열', { ...PATTERN, knobs: { ...KNOBS, place: { open: '', closed: 'x' } } }],
+    ['menus 정상', { ...PATTERN, menus: ['a', 'b'] }],
+    ['menus 빈 배열', { ...PATTERN, menus: [] }],
+    ['menus 문자열', { ...PATTERN, menus: 'a' }],
+    ['menus 빈 원소', { ...PATTERN, menus: ['a', ''] }],
+    ['samples 정상', { ...PATTERN, samples: [{ no: 1, name: 'a', role: 'aux', impl: '' }] }],
+    ['samples no 소수', { ...PATTERN, samples: [{ no: 1.5, name: 'a', role: 'aux', impl: '' }] }],
+    ['samples no 문자열', { ...PATTERN, samples: [{ no: '1', name: 'a', role: 'aux', impl: '' }] }],
+    ['samples role 틀림', { ...PATTERN, samples: [{ no: 1, name: 'a', role: 'sub', impl: '' }] }],
+    ['samples impl 숫자', { ...PATTERN, samples: [{ no: 1, name: 'a', role: 'main', impl: 3 }] }],
+    ['samples 객체', { ...PATTERN, samples: {} }],
+    ['card_shapes 정상', { ...PATTERN, card_shapes: [{ shape: 'square', note: '' }] }],
+    ['card_shapes shape 틀림', { ...PATTERN, card_shapes: [{ shape: 'Square', note: '' }] }],
+    ['card_shapes note 숫자', { ...PATTERN, card_shapes: [{ shape: 'list', note: 1 }] }],
+    ['card_shapes 문자열 원소', { ...PATTERN, card_shapes: ['list'] }],
+    ['pitfalls 빈 문자열', { ...PATTERN, pitfalls: '' }],
+    ['pitfalls 배열', { ...PATTERN, pitfalls: ['a'] }],
+    ['pattern 없음', undefined],
+    ['pattern 문자열', 'text'],
+    ['pattern 배열', []],
+    ['pattern 빈 객체', {}],
+  ]
+  it.each(variants)('계약: %s', (_label, pattern) => {
+    const errors = validateOpsPatternProposal({ pattern }, 'items[0]')
+    const read = readOpsPatternProposal(proposal(pattern))
+    expect(read !== OPS_FIELD_UNKNOWN).toBe(errors.length === 0)
+    expect(read).not.toBeNull()
+    // 항목 전체 검증(validateOpsBundle)도 같은 판정을 낸다.
+    const bundle = validateOpsBundle({
+      bundle_id: 'contract',
+      author: '윤진',
+      items: [{ item_key: 'p-1', kind: 'pattern_proposal', user_experience: '제안을 봐요', world_review: REVIEW, resource: { pattern } }],
+    })
+    expect(bundle.items[0].format_errors.filter((e) => e.includes('.resource.pattern')).length === 0).toBe(errors.length === 0)
   })
 })
 

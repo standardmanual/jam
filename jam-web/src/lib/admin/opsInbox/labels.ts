@@ -6,6 +6,7 @@
  */
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
 import type { OpsItemStatus } from '@/lib/admin/opsInbox/constants'
+import type { OpsPatternKnobKey } from '@/lib/admin/opsPatterns/constants'
 import type { OpsBundleStage, OpsInboxTab, OpsStage } from '@/lib/admin/opsInbox/bundleStatus'
 
 // ── 종류·상태·단계·탭 이름표 ───────────────────────────────────────────────────────────────────────
@@ -119,6 +120,67 @@ const EXCLUDED_ITEM_FIELD_LABELS: Record<string, string> = {
 }
 const EXCLUDED_ITEM_PATH = /^excluded_items\[\d+\]\.([^.[\]]+)$/
 
+// 패턴 제안의 내용 칸(`resource.pattern…`). 항목의 `user_experience`(「유저가 겪는 것」)·`kind` 같은 이름과 마지막 키가 겹치므로 「제안 패턴」을
+// 앞에 붙여 따로 부른다. 칸 이름은 패턴 원고(`OPS_PATTERNS.md`)의 용어를 따른다.
+const PATTERN_PROPOSAL_PATH = /^resource\.pattern(?:\.(.+))?$/
+const PATTERN_PROPOSAL_LABEL = '제안 패턴'
+const PATTERN_PROPOSAL_FIELD_LABELS: Record<string, string> = {
+  name: '이름',
+  principle: '작동 원리',
+  user_experience: '유저가 겪는 것',
+  menus: '쓰는 메뉴',
+  samples: '샘플',
+  'samples.no': '샘플 번호',
+  'samples.name': '샘플 이름',
+  'samples.role': '샘플 역할',
+  'samples.impl': '샘플 구현',
+  card_shapes: '카드 모양',
+  'card_shapes.shape': '카드 모양',
+  'card_shapes.note': '카드 모양 설명',
+  knobs: '손잡이',
+  pitfalls: '주의점',
+}
+
+/** 손잡이 5종의 이름. 「제안 패턴 손잡이(장소) …」 이름표와 `validate.ts`의 오류 문장이 함께 쓴다. */
+export const OPS_PATTERN_KNOB_LABELS: Record<OpsPatternKnobKey, string> = {
+  condition: '조건',
+  place: '장소',
+  time: '시간',
+  reward: '보상',
+  tribe: '트라이브',
+}
+
+/** 손잡이 안쪽 칸의 이름: 조건·장소·시간·보상은 연 값·닫은 값, 트라이브는 규칙·예시. */
+export const OPS_PATTERN_KNOB_VALUE_LABELS: Record<string, string> = {
+  open: '연 값',
+  closed: '닫은 값',
+  rule: '규칙',
+  example: '예시',
+}
+
+const PATTERN_PROPOSAL_KNOB_PATH = /^knobs\.([^.]+)(?:\.([^.]+))?$/
+
+/** `resource.pattern` 아래 경로(`samples[2].role`·`knobs.place.closed`)를 「제안 패턴 …」 이름표로 바꾼다. 모르는 경로는 그대로 붙인다. */
+function patternProposalLabel(sub: string | undefined): string {
+  if (!sub) return PATTERN_PROPOSAL_LABEL
+  const normalized = sub.replace(/\[\d+\]/g, '')
+  const has = (table: Record<string, string>, key: string) => Object.prototype.hasOwnProperty.call(table, key)
+  if (has(PATTERN_PROPOSAL_FIELD_LABELS, normalized)) return `${PATTERN_PROPOSAL_LABEL} ${PATTERN_PROPOSAL_FIELD_LABELS[normalized]}`
+  const knob = PATTERN_PROPOSAL_KNOB_PATH.exec(normalized)
+  if (knob && has(OPS_PATTERN_KNOB_LABELS, knob[1])) {
+    const knobLabel = OPS_PATTERN_KNOB_LABELS[knob[1] as OpsPatternKnobKey]
+    if (!knob[2]) return `${PATTERN_PROPOSAL_LABEL} 손잡이(${knobLabel})`
+    // 트라이브는 「손잡이」 없이 「트라이브 규칙·예시」로 부른다(원고의 「손잡이: …」 아래 항목 이름).
+    if (has(OPS_PATTERN_KNOB_VALUE_LABELS, knob[2])) {
+      const valueLabel = OPS_PATTERN_KNOB_VALUE_LABELS[knob[2]]
+      return knob[1] === 'tribe'
+        ? `${PATTERN_PROPOSAL_LABEL} ${knobLabel} ${valueLabel}`
+        : `${PATTERN_PROPOSAL_LABEL} 손잡이(${knobLabel}) ${valueLabel}`
+    }
+  }
+  return `${PATTERN_PROPOSAL_LABEL} ${sub}`
+}
+
 const ITEM_PATH_PREFIX = /^items\[(\d+)\]\.?/
 
 /**
@@ -139,6 +201,8 @@ export function parseFormatErrorPath(path: string): { itemPosition: number | nul
   if (excluded && Object.prototype.hasOwnProperty.call(EXCLUDED_ITEM_FIELD_LABELS, excluded[1])) {
     return { itemPosition, label: EXCLUDED_ITEM_FIELD_LABELS[excluded[1]] }
   }
+  const proposal = PATTERN_PROPOSAL_PATH.exec(rest)
+  if (proposal) return { itemPosition, label: patternProposalLabel(proposal[1]) }
   const lastKey = rest.split('.').pop()?.replace(/\[\d+\]$/, '') ?? ''
   if (lastKey && Object.prototype.hasOwnProperty.call(FORMAT_ERROR_PATH_LABELS, lastKey)) {
     return { itemPosition, label: FORMAT_ERROR_PATH_LABELS[lastKey] }

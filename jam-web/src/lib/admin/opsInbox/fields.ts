@@ -12,6 +12,8 @@
  * - `pattern_no`: 없으면 `null`, 형식(`P01`)이 틀리면 「모름」(티켓 20261007_1745. 사전에 있는 번호인지는 여기서 보지 않는다)
  * - `knobs.place_category`: `knobs`나 그 키가 없으면 `null`, 문자열 배열이 아니면 「모름」(카테고리가 실제로 있는지는 여기서 보지 않는다)
  * - `excluded_items`(묶음): 없으면 `[]`, 배열이 아니거나 원소 하나라도 틀리면 목록 전체가 「모름」
+ * - `resource.pattern`(`kind`가 `pattern_proposal`인 항목): 다른 종류는 `null`, 검사 오류가 하나라도 있으면 「모름」, 아니면 패턴 제안 객체
+ *   (티켓 20261007_1746. 정의되지 않은 키는 버리고, 없는 선택 칸은 사전 기본값으로 읽는다)
  * 형식 판정은 `validate.ts`와 같은 원천을 쓴다(오류 없는 값만 읽는다). 트라이브가 실제로 있는지는 여기서 보지 않는다 — 제출·수정 때
  * `tribes` 조회(`tribes.ts`)로 이미 확인했다.
  *
@@ -22,10 +24,17 @@ import { OPS_HOME_FEED_CARD_KIND, type OpsExcludedItemStage, type OpsItemKind } 
 import { asRecord, itemField, type ViewableItem } from '@/lib/admin/opsInbox/itemView'
 import {
   normalizeOpsPatternNo,
+  OPS_PATTERN_KNOB_VALUE_KEYS,
   validateExcludedItems,
   validateExposureTags,
+  validateOpsPatternProposal,
   validateOpsPlaceCategory,
 } from '@/lib/admin/opsInbox/validate'
+import {
+  OPS_PATTERN_KNOB_KEYS,
+  type OpsPatternKnobKey,
+  type OpsPatternSampleRole,
+} from '@/lib/admin/opsPatterns/constants'
 import { isUuid } from '@/lib/admin/uuid'
 import { isCardShape, type CardShape } from '@/lib/today/shape'
 
@@ -40,6 +49,41 @@ export interface OpsExcludedItem {
   itemKey: string | null
   kind: OpsItemKind | null
   stage: OpsExcludedItemStage | null
+}
+
+/** 패턴 제안 항목이 제안하는 패턴의 샘플 하나. 이름은 앞뒤 공백을 뗐고 `impl`은 빈 값일 수 있다. */
+export interface OpsPatternProposalSample {
+  no: number
+  name: string
+  role: OpsPatternSampleRole
+  impl: string
+}
+
+/** 패턴 제안이 쓰는 카드 모양 하나. `note`는 빈 값일 수 있다. */
+export interface OpsPatternProposalCardShape {
+  shape: CardShape
+  note: string
+}
+
+/** 손잡이 5종. 조건·장소·시간·보상은 `{ open, closed }`, 트라이브는 `{ rule, example }`이고 값은 모두 앞뒤 공백을 뗀 비어 있지 않은 문자열이다. */
+export interface OpsPatternProposalKnobs {
+  condition: { open: string; closed: string }
+  place: { open: string; closed: string }
+  time: { open: string; closed: string }
+  reward: { open: string; closed: string }
+  tribe: { rule: string; example: string }
+}
+
+/** 패턴 제안 항목의 내용. 칸 이름은 패턴 사전 레코드(`OpsPatternRecord`)와 같고, 승인 때 사전에 넣을 값이다. */
+export interface OpsPatternProposal {
+  name: string
+  principle: string
+  userExperience: string
+  menus: string[]
+  samples: OpsPatternProposalSample[]
+  cardShapes: OpsPatternProposalCardShape[]
+  knobs: OpsPatternProposalKnobs
+  pitfalls: string
 }
 
 /** 홈피드 카드 종류인지(카드 모양·노출 대상이 필수인 종류). */
@@ -107,4 +151,46 @@ export function readExcludedItems(value: unknown): OpsExcludedItem[] | OpsFieldU
 export function readBundleExcludedItems(raw: Json | null | undefined): OpsExcludedItem[] | OpsFieldUnknown {
   const record = asRecord(raw)
   return record ? readExcludedItems(record.excluded_items) : []
+}
+
+/**
+ * 패턴 제안 항목의 내용(`resource.pattern`). `kind`가 `pattern_proposal`이 아니면 `null`이다. 종류가 맞으면 `validateOpsPatternProposal`을
+ * 그대로 돌려 오류가 하나라도 있으면 「모름」, 없으면 객체다 — 그래서 「검사 통과 = 모름이 아님」이 늘 성립한다. 문자열은 앞뒤 공백을 떼고,
+ * 없는 선택 칸은 사전 기본값(`menus`·`samples`·`cardShapes`는 `[]`, `pitfalls`는 `''`, 샘플 `impl`·카드 모양 `note`는 `''`)으로 읽는다.
+ * 정의되지 않은 키는 버린다.
+ */
+export function readOpsPatternProposal(item: ViewableItem): OpsPatternProposal | null | OpsFieldUnknown {
+  if (itemField(item, 'kind') !== 'pattern_proposal') return null
+  const resource = itemField(item, 'resource')
+  if (validateOpsPatternProposal(resource, 'item').length > 0) return OPS_FIELD_UNKNOWN
+  const pattern = (resource as { pattern: Record<string, unknown> }).pattern
+  const text = (value: unknown) => (value as string).trim()
+  const list = (value: unknown) => (Array.isArray(value) ? (value as Array<Record<string, unknown>>) : [])
+  const knobs = pattern.knobs as Record<OpsPatternKnobKey, Record<string, string>>
+
+  const readKnobs = Object.fromEntries(
+    OPS_PATTERN_KNOB_KEYS.map((key) => {
+      const [first, second] = OPS_PATTERN_KNOB_VALUE_KEYS[key]
+      return [key, { [first]: text(knobs[key][first]), [second]: text(knobs[key][second]) }]
+    })
+  ) as unknown as OpsPatternProposalKnobs
+
+  return {
+    name: text(pattern.name),
+    principle: text(pattern.principle),
+    userExperience: text(pattern.user_experience),
+    menus: Array.isArray(pattern.menus) ? (pattern.menus as string[]).map(text) : [],
+    samples: list(pattern.samples).map((sample) => ({
+      no: sample.no as number,
+      name: text(sample.name),
+      role: sample.role as OpsPatternSampleRole,
+      impl: typeof sample.impl === 'string' ? sample.impl.trim() : '',
+    })),
+    cardShapes: list(pattern.card_shapes).map((entry) => ({
+      shape: entry.shape as CardShape,
+      note: typeof entry.note === 'string' ? entry.note.trim() : '',
+    })),
+    knobs: readKnobs,
+    pitfalls: typeof pattern.pitfalls === 'string' ? pattern.pitfalls.trim() : '',
+  }
 }

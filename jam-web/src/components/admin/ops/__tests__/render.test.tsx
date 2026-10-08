@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { ReactElement } from 'react'
+import type { Json } from '@/types/database.generated'
 import { TooltipProvider } from '@/components/admin/ui/tooltip'
 
 const nav = vi.hoisted(() => ({ search: '' }))
@@ -764,6 +765,60 @@ describe('OpsItemEditForm — 직접 수정 양식', () => {
     expect(out).toContain('고칠 수 없는 것')
     for (const label of ['종류', '연결', '검수·판정']) expect(out).toContain(`${label}:`)
     expect(out).toContain('홈피드 카드')
+  })
+
+  describe('패턴 제안 항목의 「제안 패턴」 줄 (티켓 20261007_1746)', () => {
+    const knob = { open: '연 값', closed: '닫은 값' }
+    const pattern = {
+      name: '오늘의 열쇠',
+      principle: '오늘 한 일로 자물쇠를 연다',
+      user_experience: '오늘 한 운동이 내일 배지의 열쇠가 돼요',
+      knobs: { condition: knob, place: knob, time: knob, reward: knob, tribe: { rule: '규칙', example: '예시' } },
+    }
+    const proposalForm = (resource: Json | undefined, kind = 'pattern_proposal') => {
+      const proposal = makeItem({
+        kind,
+        original: { kind, user_experience: '제안을 봐요', resource, links: [] },
+      })
+      return flat(
+        <OpsItemEditForm
+          bundleId="b"
+          item={proposal}
+          ctx={makeCtx({ draft: { itemId: proposal.id, values: readEditableValues(proposal), baseUpdatedAt: proposal.updatedAt } })}
+          onSaved={vi.fn()}
+          onConflict={vi.fn()}
+        />
+      )
+    }
+
+    it('형식이 맞으면 「고칠 수 없는 것」에 제안 패턴 이름을 보인다(패턴 번호 줄 다음)', () => {
+      const out = proposalForm({ pattern })
+      expect(out).toContain('제안 패턴:')
+      expect(out).toContain('오늘의 열쇠')
+      expect(out.indexOf('패턴 번호:')).toBeLessThan(out.indexOf('제안 패턴:'))
+      expect(out.indexOf('제안 패턴:')).toBeLessThan(out.indexOf('연결:'))
+    })
+
+    it('형식이 틀려 읽을 수 없으면 안내 문장을 보인다', () => {
+      for (const resource of [{ pattern: { ...pattern, name: '' } }, { pattern: 'text' }, {}, undefined]) {
+        const out = proposalForm(resource)
+        expect(out).toContain('제안 패턴:')
+        expect(out).toContain('형식이 틀려 읽을 수 없어요')
+        expect(out).not.toContain('오늘의 열쇠')
+      }
+    })
+
+    it('제안 패턴 내용은 HTML로 해석되지 않는다', () => {
+      const out = proposalForm({ pattern: { ...pattern, name: '<script>alert(1)</script>' } })
+      expect(out).not.toContain('<script>')
+      expect(out).toContain('&lt;script&gt;')
+    })
+
+    it('다른 종류에는 줄이 없다(resource가 있어도)', () => {
+      const out = proposalForm({ pattern }, 'home_feed_card')
+      expect(out).not.toContain('제안 패턴:')
+      expect(out).not.toContain('형식이 틀려 읽을 수 없어요')
+    })
   })
 
   it('손대지 않았으면 「수정됨」 칩이 없고 [저장하기]가 비활성이다', () => {
