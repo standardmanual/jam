@@ -122,7 +122,7 @@ status: active
 - [10 미션.md](../../jam-doc/planning/business-plan/service-redesign/10%20미션.md) — 서비스 재설계 주제 10 정책(사용자 확인). 트라이브 미션과 공통 미션, 참가 범위, 트라이브 제한, 미션의 틀과 조건, 기간과 순위, 보상, 게이트 미션, 그대로 두는 지금 규칙을 정한다.
 - [11 포인트.md](../../jam-doc/planning/business-plan/service-redesign/11%20포인트.md) — 서비스 재설계 주제 11 정책(사용자 확인). 포인트를 주는 곳과 붙이지 않는 곳, 에너지와의 관계, 쓰는 곳(지금은 없음)과 앞으로의 활용처, 돈으로 파는지, 표시와 기록을 정한다.
 - [12 연동 소스.md](../../jam-doc/planning/business-plan/service-redesign/12%20연동%20소스.md) — 서비스 재설계 주제 12 정책(사용자 확인). 연동 소스를 Strava 하나로 두는 원칙, 동기화 방식과 첫 동기화, 같은 Strava 계정을 다른 JAM 계정에 연결할 때의 안내와 처리, Strava 연결 끊기를 정한다.
-- [13 온보딩과 기존 유저·데이터.md](../../jam-doc/planning/business-plan/service-redesign/13%20온보딩과%20기존%20유저·데이터.md) — 서비스 재설계 주제 13 정책 초안. 새 체계로 바꾸는 순서, 온보딩 순서와 트라이브 고르기, 첫 챕터를 주는 퀘스트의 구성과 보상, 계정 삭제 기능과 지운 계정의 기록 처리, 정식 오픈 전 테스트 유저 정리를 정한다.
+- [13 온보딩과 기존 유저·데이터.md](../../jam-doc/planning/business-plan/service-redesign/13%20온보딩과%20기존%20유저·데이터.md) — 서비스 재설계 주제 13 정책(사용자 확인). 새 체계로 바꾸는 순서, 온보딩 순서와 트라이브 고르기, 첫 챕터를 주는 퀘스트의 구성과 보상, 계정 삭제 기능과 지운 계정의 기록 처리, 정식 오픈 전 테스트 유저 정리를 정한다.
 - [README.md](../../jam-doc/planning/business-plan/service-redesign/README.md) — 서비스 재설계 2단계(정책 다시 세우기)의 주제별 정책 초안 안내. 폴더 규칙, 주제 목록, 사용자 확인 상태를 둔다.
 
 ## jam-doc/planning/business-plan/tribe-rethink/
