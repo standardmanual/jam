@@ -114,7 +114,7 @@ status: active
 - [02 활동 평가와 에너지.md](../../jam-doc/planning/business-plan/service-redesign/02%20활동%20평가와%20에너지.md) — 서비스 재설계 주제 2 정책(사용자 확인). 어떤 활동을 인정하는지, 종목마다 강도를 어떻게 매기는지, 에너지를 어떻게 계산하고 쌓고 보여 주는지, 어뷰징을 어떻게 거르는지 정한다.
 - [03 배지 획득 조건.md](../../jam-doc/planning/business-plan/service-redesign/03%20배지%20획득%20조건.md) — 서비스 재설계 주제 3 정책(사용자 확인). 액티비티 배지와 미션에 쓰는 배지 획득 조건(시간대, 날씨, 계절, 종목, 지점, 동네, 운동 속성 등)의 종류와 정의, 운동 속성의 정성적 기준, 쓰는 곳과 쓰지 않는 곳, 판정에 쓰는 데이터를 정한다.
 - [04 트라이브, 출신, 레벨.md](../../jam-doc/planning/business-plan/service-redesign/04%20트라이브,%20출신,%20레벨.md) — 서비스 재설계 주제 4 정책(사용자 확인). 트라이브를 고르는 시점과 화면, 바꿀 수 없다는 원칙과 어드민 변경, 트라이브가 유저에게 주는 것, 챕터(유저의 레벨)의 기본 규칙을 정한다.
-- [05 틴케이스.md](../../jam-doc/planning/business-plan/service-redesign/05%20틴케이스.md) — 서비스 재설계 주제 5 정책 초안. 에너지를 채워 열면 아이템 배지가 나오는 틴케이스의 개수와 자리, 채우는 방법, 채워야 하는 양, 여는 방법과 보상, 표시와 기록을 정한다.
+- [05 틴케이스.md](../../jam-doc/planning/business-plan/service-redesign/05%20틴케이스.md) — 서비스 재설계 주제 5 정책(사용자 확인). 에너지를 채워 열면 아이템 배지가 나오는 틴케이스의 개수와 자리, 채우는 방법, 채워야 하는 양, 여는 방법과 보상, 표시와 기록을 정한다.
 - [README.md](../../jam-doc/planning/business-plan/service-redesign/README.md) — 서비스 재설계 2단계(정책 다시 세우기)의 주제별 정책 초안 안내. 폴더 규칙, 주제 목록, 사용자 확인 상태를 둔다.
 
 ## jam-doc/planning/business-plan/tribe-rethink/
