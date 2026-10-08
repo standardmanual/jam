@@ -633,13 +633,13 @@ describe('13종 조건 표 — 11종은 조건 값에서 뜨고 조건 직전 �
       excluded_items: 'clear',
       overlap: 'clear',
       monotony: 'clear',
-      blocked_collection: 'unchecked',
+      blocked_collection: 'clear',
       action_spike: 'clear',
     })
   })
 })
 
-describe('13종 조건 표 — 밸런스 경고·획득 경로가 막힌 컬렉션 2종은 「아직 확인하지 않아요」다', () => {
+describe('13종 조건 표 — 밸런스 경고는 「아직 확인하지 않아요」다', () => {
   it('어떤 재료를 줘도 계산 규칙 없음(not_built)이고 결과가 없다', () => {
     const scenarios: Scenario[] = [
       {},
@@ -648,12 +648,10 @@ describe('13종 조건 표 — 밸런스 경고·획득 경로가 막힌 컬렉�
       { options: { includeSample: true } },
     ]
     for (const scenario of scenarios) {
-      for (const key of ['balance_warning', 'blocked_collection'] as const) {
-        const result = outcome(scenario, key)
-        expect(result.state).toBe('unchecked')
-        expect(result.uncheckedReason).toBe('not_built')
-        expect(result.results).toEqual([])
-      }
+      const result = outcome(scenario, 'balance_warning')
+      expect(result.state).toBe('unchecked')
+      expect(result.uncheckedReason).toBe('not_built')
+      expect(result.results).toEqual([])
     }
   })
 

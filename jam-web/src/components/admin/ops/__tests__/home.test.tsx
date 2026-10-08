@@ -452,14 +452,14 @@ describe('OpsSignalPanel — 구역과 확인 안 함', () => {
     expect(out).toContain('중단 0 · 주의 0 · 참고 0')
   })
 
-  it('아직 확인하지 않아요: 밸런스 경고·획득 경로가 막힌 컬렉션·루틴 실패 3종이 점선 칩으로 보인다', () => {
+  it('아직 확인하지 않아요: 밸런스 경고·루틴 실패 2종이 점선 칩으로 보인다', () => {
     const { signals } = buildHome(false)
     const out = flat(<OpsSignalPanel signals={signals} />)
     const unchecked = zoneSignals(signals).unchecked
-    expect(unchecked.map((signal) => signal.key).sort()).toEqual(['balance_warning', 'blocked_collection', 'routine_failed'])
-    for (const name of ['밸런스 경고', '획득 경로가 막힌 컬렉션', '루틴 실패']) expect(out).toContain(name)
-    expect(out.match(/아직 확인하지 않아요/g)).toHaveLength(3)
-    expect(out.match(/border-dashed/g)?.length).toBeGreaterThanOrEqual(3)
+    expect(unchecked.map((signal) => signal.key).sort()).toEqual(['balance_warning', 'routine_failed'])
+    for (const name of ['밸런스 경고', '루틴 실패']) expect(out).toContain(name)
+    expect(out.match(/아직 확인하지 않아요/g)).toHaveLength(2)
+    expect(out.match(/border-dashed/g)?.length).toBeGreaterThanOrEqual(2)
     expect(out).toContain('tabler-icon-question-mark')
     // 읽지 못한 신호가 없으면 다시 시도 버튼이 없다
     expect(out).not.toContain('확인하지 못했어요')
@@ -467,7 +467,7 @@ describe('OpsSignalPanel — 구역과 확인 안 함', () => {
   })
 
   it('load_failed는 「확인하지 못했어요」 + [다시 시도]이고 누르면 화면을 새로 읽는다', () => {
-    const computed = computeOpsSignals({ cards: null, missions: null, bundles: null, actions: null }, { now: NOW })
+    const computed = computeOpsSignals({ cards: null, missions: null, bundles: null, actions: null, blockedCollections: null }, { now: NOW })
     expect(zoneSignals(computed.signals).unchecked).toHaveLength(13)
     const out = flat(<OpsSignalPanel signals={computed.signals} />)
     expect(out).toContain('확인하지 못했어요')

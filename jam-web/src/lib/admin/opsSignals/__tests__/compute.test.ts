@@ -12,6 +12,7 @@ import {
   type ComputeOpsSignalsInput,
   type ComputeOpsSignalsOptions,
 } from '@/lib/admin/opsSignals/compute'
+import { evaluateBlockedCollections } from '@/lib/admin/opsSignals/statusRules'
 import {
   HEALTHY_FROM,
   HEALTHY_TO,
@@ -174,7 +175,7 @@ describe('재료를 읽지 못하면 그 재료에 기대는 신호만 「확인
     expect(states(run({ missions: null }))).toEqual(baseline)
   })
 
-  it('모든 재료를 읽지 못해도 계산 규칙이 없는 2종은 그대로 「아직 확인하지 않아요」다', () => {
+  it('모든 재료를 읽지 못해도 계산 규칙이 없는 밸런스 경고는 그대로 「아직 확인하지 않아요」다', () => {
     const result = run({ cards: null, missions: null, bundles: null, actions: null })
     expect(states(result)).toEqual({
       execution_failed: 'unchecked:load_failed',
@@ -188,7 +189,7 @@ describe('재료를 읽지 못하면 그 재료에 기대는 신호만 「확인
       excluded_items: 'unchecked:load_failed',
       overlap: 'unchecked:load_failed',
       monotony: 'unchecked:load_failed',
-      blocked_collection: 'unchecked:not_built',
+      blocked_collection: 'clear',
       action_spike: 'unchecked:load_failed',
     })
   })
@@ -270,5 +271,57 @@ describe('기준값 덮어쓰기와 이름표', () => {
     expect(result.signals.map((signal) => [signal.key, signal.name, signal.level])).toEqual(
       OPS_SIGNAL_CATALOG.map((definition) => [definition.key, definition.name, definition.level])
     )
+  })
+})
+
+describe('획득 경로가 막힌 컬렉션 (티켓 20261008_1301)', () => {
+  const blocked = [
+    { collectionId: 'b-2', name: '여름 컬렉션', blocked: 3, total: 10 },
+    { collectionId: 'a-1', name: '가을 컬렉션', blocked: 1, total: 4 },
+  ]
+
+  it('컬렉션 하나가 결과 한 건이고 문장에 이름과 막힘 수·전체 수가 들어간다', () => {
+    const results = evaluateBlockedCollections(blocked)
+    expect(results.map((result) => result.message)).toEqual([
+      '컬렉션 「가을 컬렉션」의 아이템 1개는 지금 얻을 길이 없어요(전체 4개).',
+      '컬렉션 「여름 컬렉션」의 아이템 3개는 지금 얻을 길이 없어요(전체 10개).',
+    ])
+    for (const result of results) {
+      expect(result).toMatchObject({ date: null, bundleId: null, itemId: null, isSample: false, onsetAt: null })
+    }
+  })
+
+  it('이름이 같으면 컬렉션 ID 순서다', () => {
+    const results = evaluateBlockedCollections([
+      { collectionId: 'z', name: '같은 이름', blocked: 2, total: 2 },
+      { collectionId: 'a', name: '같은 이름', blocked: 1, total: 5 },
+    ])
+    expect(results.map((result) => result.message)).toEqual([
+      '컬렉션 「같은 이름」의 아이템 1개는 지금 얻을 길이 없어요(전체 5개).',
+      '컬렉션 「같은 이름」의 아이템 2개는 지금 얻을 길이 없어요(전체 2개).',
+    ])
+  })
+
+  it('빈 목록이면 결과가 없다', () => {
+    expect(evaluateBlockedCollections([])).toEqual([])
+  })
+
+  it('막힌 컬렉션이 있으면 신호가 뜨고 참고 수준이며 시험 묶음 스위치와 관계없다', () => {
+    const outcome = find(run({ blockedCollections: blocked }, { includeSample: true }), 'blocked_collection')
+    expect(outcome.state).toBe('raised')
+    expect(outcome.results).toHaveLength(2)
+    expect(outcome.results.every((result) => !result.isSample)).toBe(true)
+  })
+
+  it('빈 목록이거나 넘기지 않으면 안 뜬다(not_built가 아니다)', () => {
+    expect(find(run({ blockedCollections: [] }), 'blocked_collection').state).toBe('clear')
+    expect(find(run(), 'blocked_collection').state).toBe('clear')
+  })
+
+  it('읽지 못했으면(null) 이 신호만 「확인하지 못했어요」다', () => {
+    const result = run({ blockedCollections: null })
+    expect(states(result).blocked_collection).toBe('unchecked:load_failed')
+    expect(find(result, 'action_spike').state).toBe('clear')
+    expect(find(result, 'execution_failed').state).toBe('clear')
   })
 })
