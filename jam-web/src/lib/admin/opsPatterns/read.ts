@@ -213,3 +213,30 @@ export async function listOpsCommonRules(service: ServiceClient): Promise<OpsCom
   if (error) throw new Error(`공통 규칙 조회 실패: ${error.message}`)
   return (data ?? []).map(toCommonRuleRecord).sort((a, b) => a.ruleNo - b.ruleNo)
 }
+
+/** 패턴 제안 항목의 종류 값(`ops_bundle_items.kind`). 사전에 넣을 제안이라 조합 뽑기는 세지 않는다. */
+const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
+/** 아직 결정하지 않은 항목 상태: 도착·검토 중. */
+const PENDING_DECISION_STATUSES: readonly string[] = ['arrived', 'reviewing']
+
+/** `count` 읽기에 필요한 select 빌더 메서드만 좁힌 모양(임베드 필터는 생성 타입이 따라오지 못한다). */
+interface CountQuery extends PromiseLike<{ count: number | null; error: { message: string } | null }> {
+  select(columns: string, options: { count: 'exact'; head: true }): CountQuery
+  eq(column: string, value: unknown): CountQuery
+  in(column: string, values: readonly string[]): CountQuery
+}
+
+/**
+ * 승인 대기 제안 건수(티켓 20261008_1400, 패턴 사전 화면의 「승인 대기 제안 N건」). 종류가 `pattern_proposal`이고 상태가 결정 전(도착·검토 중)이며
+ * 시험 묶음이 아닌 항목의 개수다. 조회 오류는 던진다(화면이 이 줄만 「읽지 못했어요」로 바꾼다 — 실패를 0건으로 보이지 않는다).
+ */
+export async function countPendingPatternProposals(service: ServiceClient): Promise<number> {
+  const query = (service as unknown as { from(table: string): CountQuery }).from('ops_bundle_items')
+  const { count, error } = await query
+    .select('id, ops_bundles!inner(is_sample)', { count: 'exact', head: true })
+    .eq('kind', PATTERN_PROPOSAL_KIND)
+    .in('status', PENDING_DECISION_STATUSES)
+    .eq('ops_bundles.is_sample', false)
+  if (error) throw new Error(`승인 대기 제안 조회 실패: ${error.message}`)
+  return count ?? 0
+}

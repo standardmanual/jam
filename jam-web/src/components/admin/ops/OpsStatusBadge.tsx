@@ -1,8 +1,12 @@
 import {
   IconAlertOctagon,
   IconAlertTriangle,
+  IconArchive,
+  IconCheck,
+  IconCircleCheck,
   IconFlask2,
   IconInfoCircle,
+  IconPlayerPause,
   IconQuestionMark,
   IconScale,
 } from '@tabler/icons-react'
@@ -10,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { OPS_ITEM_STATUSES, type OpsItemStatus } from '@/lib/admin/opsInbox/constants'
 import type { OpsBundleStage } from '@/lib/admin/opsInbox/bundleStatus'
 import { OPS_BUNDLE_STAGE_LABELS, OPS_ITEM_STATUS_LABELS } from '@/lib/admin/opsInbox/labels'
+import { OPS_PATTERN_STATUS_LABELS, type OpsPatternStatus, type OpsTasteBasis } from '@/lib/admin/opsPatterns/constants'
 import { balanceRowChipLabel } from '@/lib/admin/opsInbox/balance/messages'
 import {
   OPS_SIGNAL_LEVEL_LABELS,
@@ -70,6 +75,17 @@ const BUNDLE_STAGE_TONES: Record<OpsBundleStage, Tone> = {
 
 const KNOWN_STATUSES: ReadonlySet<string> = new Set(OPS_ITEM_STATUSES)
 
+/** 패턴 상태 칩의 색과 아이콘(붉은색 없음). 사용 중 secondary · 쉬는 중 neutral · 보관 muted. */
+const PATTERN_STATUS_CHIPS: Record<OpsPatternStatus, { tone: Tone; Icon: OpsIcon }> = {
+  active: { tone: 'secondary', Icon: IconCircleCheck },
+  paused: { tone: 'neutral', Icon: IconPlayerPause },
+  archived: { tone: 'muted', Icon: IconArchive },
+}
+
+const PATTERN_STATUSES: ReadonlySet<string> = new Set(Object.keys(PATTERN_STATUS_CHIPS))
+
+const TASTE_BASIS_LABELS: Record<OpsTasteBasis, string> = { estimate: '추정', confirmed: '확정' }
+
 export type OpsStatusBadgeProps =
   /** 항목 상태 10개. 10개 밖 값은 「상태 확인 필요」다. */
   | { type: 'item'; status: string }
@@ -87,6 +103,10 @@ export type OpsStatusBadgeProps =
   | { type: 'signal'; level: OpsSignalLevel }
   /** 확인 안 함 신호. 점선 테두리 + 물음표이고, 글자는 사유마다(「아직 확인하지 않아요」·「확인하지 못했어요」)다. */
   | { type: 'signal-unchecked'; reason: OpsSignalUncheckedReason }
+  /** 패턴 상태(티켓 20261008_1400, 채원 S5 판정). 사용 중·쉬는 중·보관 밖의 값은 「상태 확인 필요」다. */
+  | { type: 'pattern-status'; status: string }
+  /** 취향 신호의 근거 상태(티켓 20261008_1400). 추정은 점선 테두리 + 물음표, 확정은 체크다. */
+  | { type: 'taste-basis'; basis: OpsTasteBasis }
 
 /** 신호 수준 칩의 색과 아이콘. 주의·참고는 밸런스 경고 줄(`OpsBalanceWarnings`의 `LINE_CHIPS`)과 같다. 새로 정한 것은 중단 하나다. */
 const SIGNAL_LEVEL_CHIPS: Record<OpsSignalLevel, { tone: Tone; Icon: OpsIcon }> = {
@@ -181,6 +201,32 @@ export function OpsStatusBadge(props: OpsStatusBadgeProps & { className?: string
       return (
         <Chip tone="muted" Icon={IconQuestionMark} className={cn('border-dashed', className)} iconOnly={iconOnly}>
           {OPS_SIGNAL_UNCHECKED_TEXT[props.reason].label}
+        </Chip>
+      )
+    case 'pattern-status': {
+      if (!PATTERN_STATUSES.has(props.status)) {
+        return (
+          <Chip tone="muted" Icon={IconAlertTriangle} className={className} iconOnly={iconOnly}>
+            상태 확인 필요
+          </Chip>
+        )
+      }
+      const status = props.status as OpsPatternStatus
+      const chip = PATTERN_STATUS_CHIPS[status]
+      return (
+        <Chip tone={chip.tone} Icon={chip.Icon} className={className} iconOnly={iconOnly}>
+          {OPS_PATTERN_STATUS_LABELS[status]}
+        </Chip>
+      )
+    }
+    case 'taste-basis':
+      return props.basis === 'confirmed' ? (
+        <Chip tone="secondary" Icon={IconCheck} className={className} iconOnly={iconOnly}>
+          {TASTE_BASIS_LABELS.confirmed}
+        </Chip>
+      ) : (
+        <Chip tone="muted" Icon={IconQuestionMark} className={cn('border-dashed', className)} iconOnly={iconOnly}>
+          {TASTE_BASIS_LABELS.estimate}
         </Chip>
       )
   }

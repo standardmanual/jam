@@ -32,6 +32,7 @@ import {
   IconInbox,
   IconCalendarWeek,
   IconAdjustmentsHorizontal,
+  IconBooks,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -48,6 +49,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/ops-inbox', label: '받은 기획함', icon: IconInbox },
       { href: '/admin/ops-schedule', label: '일정표', icon: IconCalendarWeek },
+      { href: '/admin/ops-patterns', label: '패턴 사전', icon: IconBooks },
       { href: '/admin/ops-settings', label: '운영 설정', icon: IconAdjustmentsHorizontal },
     ],
   },

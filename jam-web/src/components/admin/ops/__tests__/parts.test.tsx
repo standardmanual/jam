@@ -112,6 +112,42 @@ describe('OpsStatusBadge — 신호 칩 2종', () => {
   })
 })
 
+describe('OpsStatusBadge — 패턴 사전 칩 2종 (티켓 20261008_1400)', () => {
+  it('패턴 상태: 사용 중 secondary·쉬는 중 neutral·보관 muted, 아이콘과 글자', () => {
+    const active = flat(<OpsStatusBadge type="pattern-status" status="active" />)
+    expect(active).toContain('사용 중')
+    expect(active).toContain(TONE.secondary)
+    expect(active).toContain('tabler-icon-circle-check')
+    const paused = flat(<OpsStatusBadge type="pattern-status" status="paused" />)
+    expect(paused).toContain('쉬는 중')
+    expect(paused).toContain(TONE.neutral)
+    expect(paused).toContain('tabler-icon-player-pause')
+    const archived = flat(<OpsStatusBadge type="pattern-status" status="archived" />)
+    expect(archived).toContain('보관')
+    expect(archived).toContain(TONE.muted)
+    expect(archived).toContain('tabler-icon-archive')
+  })
+
+  it('패턴 상태: 세 값 밖은 「상태 확인 필요」다', () => {
+    const unknown = flat(<OpsStatusBadge type="pattern-status" status="weird" />)
+    expect(unknown).toContain('상태 확인 필요')
+    expect(unknown).toContain(TONE.muted)
+  })
+
+  it('취향 신호: 추정은 점선 + 물음표, 확정은 secondary + 체크', () => {
+    const estimate = flat(<OpsStatusBadge type="taste-basis" basis="estimate" />)
+    expect(estimate).toContain('추정')
+    expect(estimate).toContain('border-dashed')
+    expect(estimate).toContain('tabler-icon-question-mark')
+    expect(estimate).toContain(TONE.muted)
+    const confirmed = flat(<OpsStatusBadge type="taste-basis" basis="confirmed" />)
+    expect(confirmed).toContain('확정')
+    expect(confirmed).not.toContain('border-dashed')
+    expect(confirmed).toContain('tabler-icon-check')
+    expect(confirmed).toContain(TONE.secondary)
+  })
+})
+
 describe('ITEM_STATUS_TONES — 일정표 막대가 쓰는 색', () => {
   it('10개 상태마다 색이 있고 모두 TONE 안의 값이다', () => {
     expect(Object.keys(ITEM_STATUS_TONES).sort()).toEqual([...OPS_ITEM_STATUSES].sort())
