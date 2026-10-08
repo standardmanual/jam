@@ -266,11 +266,13 @@ describe('OpsCommonRulesView — 공통 탭', () => {
     expect(signalsFailed).toContain('규칙 1 제목')
   })
 
-  it('읽기만 한다: 고치기·확정하기 버튼이 없고 글은 HTML로 해석되지 않는다', () => {
-    const out = html(<OpsCommonRulesView rules={[rule(1, { title: '<b>굵게</b>' })]} signals={[]} />)
+  it('글은 HTML로 해석되지 않고, 처음에는 펼친 편집 영역이 없다(고치기 버튼만 있다)', () => {
+    const out = html(<OpsCommonRulesView rules={[rule(1, { title: '<b>굵게</b>' })]} signals={[signal('a', null, 'estimate')]} />)
     expect(out).not.toContain('<b>')
     expect(out).toContain('&lt;b&gt;굵게&lt;/b&gt;')
-    expect(out).not.toContain('고치기')
-    expect(out).not.toContain('확정하기')
+    expect(out).toContain('>고치기</button>')
+    expect(out).toContain('>이유 고치고 확정하기</button>')
+    expect(out).not.toContain('<textarea')
+    expect(out).not.toContain('<input')
   })
 })

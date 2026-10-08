@@ -59,7 +59,7 @@ async function SignalsSection({ patternNo }: { patternNo: string }) {
   return (
     <PatternSection id="signals">
       {result.ok ? (
-        <OpsPatternSignals signals={tasteSignalLines(result.value, patternNo)} />
+        <OpsPatternSignals signals={tasteSignalLines(result.value, patternNo)} patternNo={patternNo} />
       ) : (
         <OpsSectionNotice icon="patterns" title={SIGNALS_LOAD_FAILED_TITLE} />
       )}
