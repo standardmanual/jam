@@ -193,6 +193,13 @@ export async function loadOpsPatternNos(service: ServiceClient): Promise<Set<str
   return new Set((data ?? []).map((row) => row.pattern_no))
 }
 
+/** 제안 항목으로 만든 패턴(`origin_item_id`가 그 항목인 행). 없으면 `null`이다. 제안 승인을 다시 했을 때 이미 만든 패턴을 찾는 데 쓴다(티켓 20261008_1845). 조회 오류는 던진다. */
+export async function findOpsPatternByOriginItem(service: ServiceClient, itemId: string): Promise<OpsPatternRecord | null> {
+  const { data, error } = await service.from('ops_patterns').select(OPS_PATTERN_COLUMNS).eq('origin_item_id', itemId).maybeSingle()
+  if (error) throw new Error(`패턴 조회 실패: ${error.message}`)
+  return data ? toPatternRecord(data) : null
+}
+
 /** 패턴 한 건. 보관한 패턴도 번호로 직접 읽으면 돌려준다. 없으면 `null`이다. */
 export async function getOpsPattern(service: ServiceClient, patternNo: string): Promise<OpsPatternRecord | null> {
   const { data, error } = await service.from('ops_patterns').select(OPS_PATTERN_COLUMNS).eq('pattern_no', patternNo).maybeSingle()

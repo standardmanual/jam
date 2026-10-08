@@ -5,6 +5,7 @@
  * 지키는 것:
  * - 승인·반려: 조건부 update(같은 항목을 두 번 승인하면 두 번째는 409, 결정 기록 1행), 반려 사유 필수, 결정 기록 insert 실패 시 상태 되돌림
  * - 일괄 승인: 같은 batch_id, skipped·excluded, 하나도 안 바뀌면 409
+ * - 패턴 제안 승인(티켓 20261008_1845): 사전 입력과 함께 바로 종료, 형식 오류 400, 시험 묶음은 사전 제외, 실패 시 되돌림, 다시 승인해도 패턴 1개, 일괄 승인은 거름
  * - 수정: 제출 원본 불변, 고친 칸 오류는 400·나머지는 형식 오류 갱신, updated_at 어긋남 409, 되돌림 스택
  * - 패턴 번호·지점 카테고리 다시 검사(티켓 20261007_1745): 새 오류가 생겨도 직접 수정은 저장되고 열은 건드리지 않는다, 두 목록 조회가 실패하면 3경로 모두 500
  * - 결정 기록은 insert만 하고 slack_result 열만 update한다
@@ -14,7 +15,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 
 const h = vi.hoisted(() => {
   type Row = Record<string, unknown>
-  type Result = { data?: unknown; error: { message: string } | null }
+  type Result = { data?: unknown; error: { message: string; code?: string; details?: string } | null }
 
   const state = {
     tables: {
@@ -103,6 +104,20 @@ const h = vi.hoisted(() => {
 
       if (this.mode === 'insert') {
         const list = Array.isArray(this.payload) ? this.payload : [this.payload]
+        // 패턴 사전의 유일 제약(번호·값이 있는 출처 항목)을 흉내 낸다.
+        if (this.table === 'ops_patterns') {
+          for (const item of list) {
+            if (rows.some((row) => row.pattern_no === item.pattern_no)) {
+              return { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint "ops_patterns_pkey"' } }
+            }
+            if (typeof item.origin_item_id === 'string' && rows.some((row) => row.origin_item_id === item.origin_item_id)) {
+              return {
+                data: null,
+                error: { code: '23505', message: 'duplicate key value violates unique constraint "ops_patterns_origin_item_id_key"' },
+              }
+            }
+          }
+        }
         const inserted = list.map((item) => {
           const row: Row = {
             id: `id-${++state.seq}`,
@@ -117,6 +132,8 @@ const h = vi.hoisted(() => {
           rows.push(row)
           return row
         })
+        // 패턴 사전 insert는 만든 행 전체를 돌려준다(PostgREST의 `.select(열 목록)`).
+        if (this.table === 'ops_patterns') return { data: this.returning ? inserted.map((row) => ({ ...row })) : null, error: null }
         return { data: this.returning ? inserted.map((row) => ({ id: row.id })) : null, error: null }
       }
       if (this.mode === 'update') {
@@ -408,6 +425,205 @@ describe('일괄 승인', () => {
     expect(item(I1).status).toBe('reviewing')
     expect(item(I2).status).toBe('reviewing')
     expect(item(I3).status).toBe('approved') // 원래 승인된 항목은 그대로
+  })
+})
+
+const P1 = '00000000-0000-4000-8000-0000000000a1'
+const P2 = '00000000-0000-4000-8000-0000000000a2'
+
+const PROPOSAL_PATTERN = {
+  name: '오늘의 열쇠',
+  principle: '오늘 한 일로 자물쇠를 연다',
+  user_experience: '오늘 한 운동이 내일 배지의 열쇠가 돼요',
+  menus: ['미션'],
+  knobs: {
+    condition: { open: '오늘 체크인 1회', closed: '상위 기록자만 통과하는 거리' },
+    place: { open: '산·역·공원', closed: '공통 규칙뿐이다' },
+    time: { open: '당일 활동', closed: '심야 시간대' },
+    reward: { open: '믹스 결과 배지', closed: '재료를 빼앗는 방식' },
+    tribe: { rule: '열쇠 행동과 장소의 성격에 맞춘다', example: '아날로그 수집가' },
+  },
+}
+
+function proposalItem(id: string, position: number, pattern: unknown = PROPOSAL_PATTERN, overrides: Record<string, unknown> = {}) {
+  const original = makeOriginal({ item_key: `proposal-${position + 1}`, kind: 'pattern_proposal', resource: { pattern } })
+  return makeItem(id, position, { kind: 'pattern_proposal', original, ...overrides })
+}
+
+const patterns = () => h.state.tables.ops_patterns
+const createdPatterns = () => patterns().filter((row) => row.origin === 'proposal')
+
+describe('패턴 제안 승인 (티켓 20261008_1845)', () => {
+  beforeEach(() => {
+    seed([proposalItem(P1, 0), makeItem(I1, 1)], { is_sample: false })
+  })
+
+  it('사전에 새 패턴(출처 proposal·originItemId)을 넣고 항목을 바로 종료로 닫고 결정 기록 1행을 남긴다', async () => {
+    const out = success(await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' }))
+    expect(out.body).toEqual({ ok: true, status: 'ended', pattern: { patternNo: 'P08' }, patternSkipped: null })
+    expect(item(P1).status).toBe('ended')
+    expect(createdPatterns()).toHaveLength(1)
+    expect(createdPatterns()[0]).toMatchObject({
+      pattern_no: 'P08',
+      name: '오늘의 열쇠',
+      status: 'active',
+      origin: 'proposal',
+      origin_item_id: P1,
+      updated_by: 'admin-1',
+    })
+    expect(decisions()).toHaveLength(1)
+    expect(decisions()[0]).toMatchObject({ bundle_id: B, item_id: P1, action: 'approve', actor: 'admin-1', reason: null })
+    expect(out.decisionIds).toHaveLength(1)
+    expect(out.slack).toMatchObject({ action: 'approve', isSample: false })
+  })
+
+  it('수정본(edited)이 있으면 그 내용으로 사전에 넣는다', async () => {
+    item(P1).edited = { resource: { pattern: { ...PROPOSAL_PATTERN, name: '고친 이름' } } }
+    await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' })
+    expect(createdPatterns()[0].name).toBe('고친 이름')
+  })
+
+  it('형식이 맞지 않으면 400이고 상태·사전·결정 기록을 건드리지 않는다', async () => {
+    seed([proposalItem(P1, 0, { ...PROPOSAL_PATTERN, name: '' })], { is_sample: false })
+    const out = failure(await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' }))
+    expect(out).toMatchObject({ ok: false, status: 400, error: '제안 내용 형식이 맞지 않아 패턴 사전에 넣을 수 없어요. 반려해 주세요.' })
+    expect(item(P1).status).toBe('reviewing')
+    expect(createdPatterns()).toHaveLength(0)
+    expect(decisions()).toHaveLength(0)
+    expect(h.state.calls.some((call) => call.op === 'update' || call.op === 'insert')).toBe(false)
+  })
+
+  it('시험 묶음이면 승인·종료·결정 기록은 같고 사전에는 넣지 않는다', async () => {
+    seed([proposalItem(P1, 0)], { is_sample: true })
+    const out = success(await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' }))
+    expect(out.body).toEqual({ ok: true, status: 'ended', pattern: null, patternSkipped: 'sample' })
+    expect(item(P1).status).toBe('ended')
+    expect(createdPatterns()).toHaveLength(0)
+    expect(decisions()).toHaveLength(1)
+  })
+
+  it('번호가 겹쳐 사전 입력이 실패하면 상태를 검토중으로 되돌리고 결정 기록 없이 409다', async () => {
+    // 번호를 읽은 뒤 쓰기 전에 다른 곳이 같은 번호(P08)를 먼저 만든 경쟁.
+    const rows = patterns()
+    const realPush = rows.push.bind(rows)
+    let raced = false
+    h.state.tables.ops_patterns = new Proxy(rows, {
+      get(target, prop, receiver) {
+        if (prop === 'some' && !raced) {
+          raced = true
+          realPush({ pattern_no: 'P08' })
+        }
+        return Reflect.get(target, prop, receiver)
+      },
+    })
+    const out = failure(await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' }))
+    expect(out).toMatchObject({ ok: false, status: 409, error: '그사이 다른 패턴이 만들어졌어요. 다시 승인해 주세요.' })
+    expect(item(P1).status).toBe('reviewing')
+    expect(decisions()).toHaveLength(0)
+    expect(createdPatterns()).toHaveLength(0)
+  })
+
+  it('사전 내용 검사에 걸리면 400으로 칸 문장을 한 문장에 담고 상태를 되돌린다', async () => {
+    seed([proposalItem(P1, 0, { ...PROPOSAL_PATTERN, name: '가'.repeat(61) })], { is_sample: false })
+    const out = failure(await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' }))
+    expect(out.status).toBe(400)
+    expect(out.error).toContain('패턴 사전 규칙에 맞지 않아요')
+    expect(out.error).toContain('60자까지')
+    expect(item(P1).status).toBe('reviewing')
+    expect(decisions()).toHaveLength(0)
+  })
+
+  it('사전 저장이 실패하면 500이고 상태를 되돌린다(오류 원문은 싣지 않는다)', async () => {
+    h.state.failOn.add('ops_patterns.insert')
+    const out = failure(await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' }))
+    expect(out.status).toBe(500)
+    expect(out.error).not.toContain('boom')
+    expect(item(P1).status).toBe('reviewing')
+    expect(decisions()).toHaveLength(0)
+  })
+
+  it('결정 기록이 실패하면 상태만 되돌리고 패턴은 남는다 — 다시 승인해도 패턴은 하나다', async () => {
+    h.state.failOn.add('ops_decisions.insert')
+    const first = failure(await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' }))
+    expect(first.status).toBe(500)
+    expect(item(P1).status).toBe('reviewing')
+    expect(createdPatterns()).toHaveLength(1)
+    expect(decisions()).toHaveLength(0)
+
+    h.state.failOn.delete('ops_decisions.insert')
+    const second = success(await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' }))
+    expect(second.body).toEqual({ ok: true, status: 'ended', pattern: { patternNo: 'P08' }, patternSkipped: null })
+    expect(item(P1).status).toBe('ended')
+    expect(createdPatterns()).toHaveLength(1)
+    expect(decisions()).toHaveLength(1)
+  })
+
+  it('두 요청이 동시에 와도 한 번만 반영된다(패턴 1개·결정 기록 1행·나머지 409)', async () => {
+    const results = await Promise.all([
+      approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' }),
+      approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-2' }),
+    ])
+    expect(results.filter((r) => r.ok)).toHaveLength(1)
+    expect(results.filter((r) => !r.ok).map((r) => (r as DecisionFailure).status)).toEqual([409])
+    expect(createdPatterns()).toHaveLength(1)
+    expect(decisions()).toHaveLength(1)
+  })
+
+  it('이미 처리된 제안은 409이고 사전에 넣지 않는다', async () => {
+    item(P1).status = 'rejected'
+    const out = failure(await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' }))
+    expect(out.status).toBe(409)
+    expect(createdPatterns()).toHaveLength(0)
+    expect(decisions()).toHaveLength(0)
+  })
+
+  it('상태 변경이 실패하면 500이고 사전에 넣지 않는다', async () => {
+    h.state.failOn.add('ops_bundle_items.update')
+    const out = failure(await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' }))
+    expect(out.status).toBe(500)
+    expect(createdPatterns()).toHaveLength(0)
+  })
+
+  it('패턴 제안이 아닌 승인은 응답이 그대로다(승인됨, 새 칸 없음, 사전 변화 없음)', async () => {
+    const out = success(await approveItem(service, { bundleId: B, itemId: I1, actor: 'admin-1' }))
+    expect(out.body).toEqual({ ok: true, status: 'approved' })
+    expect(item(I1).status).toBe('approved')
+    expect(patterns()).toHaveLength(1)
+  })
+
+  describe('일괄 승인은 패턴 제안을 빼고 처리한다', () => {
+    beforeEach(() => {
+      seed([proposalItem(P1, 0), proposalItem(P2, 1), makeItem(I1, 2), makeItem(I2, 3)], { is_sample: false })
+    })
+
+    it('나머지만 승인하고 뺀 개수를 patternProposals로 돌려준다(skipped·excluded에 섞지 않는다)', async () => {
+      const out = success(await bulkApprove(service, { bundleId: B, itemIds: [P1, P2, I1], actor: 'admin-1' }))
+      expect(out.body).toEqual({ ok: true, approved: 1, skipped: 0, excluded: 1, patternProposals: 2 })
+      expect(item(I1).status).toBe('approved')
+      expect(item(P1).status).toBe('reviewing')
+      expect(item(P2).status).toBe('reviewing')
+      expect(decisions('approve').map((row) => row.item_id)).toEqual([I1])
+      expect(createdPatterns()).toHaveLength(0)
+    })
+
+    it('패턴 제안이 없으면 응답에 patternProposals 칸이 없다', async () => {
+      const out = success(await bulkApprove(service, { bundleId: B, itemIds: [I1, I2], actor: 'admin-1' }))
+      expect(out.body).toEqual({ ok: true, approved: 2, skipped: 0, excluded: 2 })
+    })
+
+    it('요청이 모두 패턴 제안이면 400이고 아무것도 바꾸지 않는다', async () => {
+      const out = failure(await bulkApprove(service, { bundleId: B, itemIds: [P1, P2], actor: 'admin-1' }))
+      expect(out).toMatchObject({ ok: false, status: 400, error: '패턴 제안은 하나씩 승인해 주세요.' })
+      expect(item(P1).status).toBe('reviewing')
+      expect(decisions()).toHaveLength(0)
+    })
+
+    it('남은 항목이 모두 이미 처리돼 409여도 거른 개수를 함께 돌려준다', async () => {
+      item(I1).status = 'rejected'
+      const out = failure(await bulkApprove(service, { bundleId: B, itemIds: [P1, I1], actor: 'admin-1' }))
+      expect(out.status).toBe(409)
+      expect(out.extra).toEqual({ approved: 0, skipped: 1, excluded: 2, patternProposals: 1 })
+    })
   })
 })
 

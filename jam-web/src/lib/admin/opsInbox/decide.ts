@@ -9,6 +9,8 @@
  *   같은 항목을 동시에 두 번 승인해도 한 번만 반영되고 결정 기록도 1행이다.
  * - 결정 기록은 **insert만** 한다(뒤에 `slack_result` 열만 채운다, `notifyDecision`). 수정·삭제하지 않는다. 결정 기록 insert가
  *   실패하면 방금 바꾼 항목을 되돌리고 500이다(1816 라우트의 되돌림 방식).
+ * - 패턴 제안(`kind = 'pattern_proposal'`) 승인은 같은 요청에서 패턴 사전에 새 패턴을 넣고 항목을 바로 「종료」로 닫는다(티켓 20261008_1845).
+ *   사전 입력이 실패하면 상태를 검토중으로 되돌린다. 일괄 승인은 패턴 제안을 처리하지 않는다.
  * - 제출 원본(`original`)은 어떤 경우에도 건드리지 않는다. 수정은 수정본(`edited`)에만 쓴다.
  * - `actor`는 관리자 ID다(제출 라우트의 관리자 로그인 제출과 같은 규칙).
  * - DB 오류 원문은 응답에 싣지 않고 서버 로그에만 남긴다.
@@ -38,13 +40,15 @@ import {
   splitEditPath,
   type OpsEditDiffEntry,
 } from '@/lib/admin/opsInbox/edit'
-import { OPS_FIELD_UNKNOWN, readOpsItemColorPending, readOpsItemTribeId } from '@/lib/admin/opsInbox/fields'
+import { OPS_FIELD_UNKNOWN, readOpsItemColorPending, readOpsItemTribeId, readOpsPatternProposal } from '@/lib/admin/opsInbox/fields'
 import { asRecord, itemField } from '@/lib/admin/opsInbox/itemView'
 import { findApprovedPair } from '@/lib/admin/opsInbox/tribePalettes'
 import { editPathLabel, formatKstDayTime, kindLabel, splitFormatError } from '@/lib/admin/opsInbox/labels'
 import { formatDecisionMessage, postOpsSlack, type DecisionMessageInput } from '@/lib/admin/opsInbox/slack'
 import { loadOpsValidationContext } from '@/lib/admin/opsInbox/validationContext'
 import { revalidateOpsItem, validateEditedColor, type ValidatedOpsItem } from '@/lib/admin/opsInbox/validate'
+import { findOpsPatternByOriginItem } from '@/lib/admin/opsPatterns/read'
+import { PATTERN_ORIGIN_CONFLICT_MESSAGE, createOpsPattern } from '@/lib/admin/opsPatterns/write'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -172,13 +176,20 @@ interface StatusDecisionInput {
 /** 승인·반려가 함께 쓰는 처리: 검토중 항목을 조건부로 다음 상태로 옮기고 결정 기록을 남긴다. */
 async function decideItemStatus(
   service: ServiceClient,
-  input: StatusDecisionInput & { next: 'approved' | 'rejected'; action: string; reason: string | null; failMessage: string }
+  input: StatusDecisionInput & {
+    next: 'approved' | 'rejected'
+    action: string
+    reason: string | null
+    failMessage: string
+    /** 호출한 쪽이 이미 읽은 묶음·항목. 있으면 다시 읽지 않는다. */
+    loaded?: { bundle: BundleRow; item: ItemRow }
+  }
 ): Promise<DecisionOutcome> {
   const { bundleId, itemId, actor, next, action, reason, failMessage } = input
 
-  const bundle = await loadBundle(service, bundleId, failMessage)
+  const bundle = input.loaded?.bundle ?? (await loadBundle(service, bundleId, failMessage))
   if (isFailure(bundle)) return bundle
-  const item = await loadItem(service, bundleId, itemId, failMessage)
+  const item = input.loaded?.item ?? (await loadItem(service, bundleId, itemId, failMessage))
   if (isFailure(item)) return item
 
   const now = new Date().toISOString()
@@ -220,7 +231,7 @@ async function decideItemStatus(
 }
 
 /** 결정 기록을 남기지 못했을 때 방금 옮긴 항목을 검토중으로 되돌린다. 되돌림이 실패하면 로그만 남긴다. */
-async function restoreStatus(service: ServiceClient, itemIds: string[], bundleId: string, from: 'approved' | 'rejected') {
+async function restoreStatus(service: ServiceClient, itemIds: string[], bundleId: string, from: 'approved' | 'rejected' | 'ended') {
   const restored = await service
     .from('ops_bundle_items')
     .update({ status: 'reviewing', updated_at: new Date().toISOString() })
@@ -230,14 +241,118 @@ async function restoreStatus(service: ServiceClient, itemIds: string[], bundleId
   if (restored.error) logError('되돌림 실패(항목 상태가 어긋나 있을 수 있어요)', restored.error)
 }
 
-/** 항목 승인. 승인은 「승인됨」에서 멈춘다(예약 등록은 단계 표시줄의 버튼이, 공개는 상태 맞추기가 잇는다). 사유는 받지 않는다. */
-export function approveItem(service: ServiceClient, input: StatusDecisionInput): Promise<DecisionOutcome> {
+const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
+const PATTERN_PROPOSAL_FORMAT_MESSAGE = '제안 내용 형식이 맞지 않아 패턴 사전에 넣을 수 없어요. 반려해 주세요.'
+const PATTERN_NO_CONFLICT_MESSAGE = '그사이 다른 패턴이 만들어졌어요. 다시 승인해 주세요.'
+const PATTERN_PROPOSALS_ONLY_MESSAGE = '패턴 제안은 하나씩 승인해 주세요.'
+const PATTERN_FIELD_SUMMARY_LIMIT = 3
+
+/** 패턴 사전의 내용 검사가 돌려준 칸별 문장을 한 문장으로 모은다(앞의 몇 개만 싣는다). */
+function summarizePatternFieldErrors(fieldErrors: Record<string, string> | undefined): string {
+  const messages = Object.values(fieldErrors ?? {})
+  const shown = messages.slice(0, PATTERN_FIELD_SUMMARY_LIMIT).join(' ')
+  const rest = messages.length - PATTERN_FIELD_SUMMARY_LIMIT
+  const detail = shown ? `${shown}${rest > 0 ? ` 외 ${rest}건.` : ''} ` : ''
+  return `제안 내용이 패턴 사전 규칙에 맞지 않아요. ${detail}반려해 주세요.`
+}
+
+/**
+ * 패턴 제안 승인. 검토중 항목을 바로 「종료」로 옮기고(조건부 update) 같은 요청에서 사전에 새 패턴을 넣은 뒤 결정 기록을 남긴다.
+ * 사전 입력이 실패하면 상태를 되돌리고 실패를 돌려준다. 결정 기록이 실패하면 상태만 되돌린다 — 만든 패턴은 남고(번호는 지우지 않는다),
+ * 다시 승인하면 출처 중복으로 그 패턴을 찾아 이어 간다. 시험 묶음은 사전에 넣지 않는다.
+ */
+async function approvePatternProposal(
+  service: ServiceClient,
+  input: StatusDecisionInput,
+  bundle: BundleRow,
+  item: ItemRow
+): Promise<DecisionOutcome> {
+  const { bundleId, itemId, actor } = input
+
+  const proposal = readOpsPatternProposal(item)
+  if (proposal === null || proposal === OPS_FIELD_UNKNOWN) return fail(400, PATTERN_PROPOSAL_FORMAT_MESSAGE)
+
+  const updated = await service
+    .from('ops_bundle_items')
+    .update({ status: 'ended', updated_at: new Date().toISOString() })
+    .eq('id', itemId)
+    .eq('bundle_id', bundleId)
+    .eq('status', 'reviewing')
+    .select('id')
+  if (updated.error) {
+    logError('항목 상태 변경 실패', updated.error)
+    return fail(500, APPROVE_FAILED)
+  }
+  if (!updated.data || updated.data.length === 0) return fail(409, CONFLICT_MESSAGE)
+
+  let patternNo: string | null = null
+  if (!bundle.is_sample) {
+    const created = await createOpsPattern(service, proposal, { actor, origin: 'proposal', originItemId: item.id })
+    if (created.ok) {
+      patternNo = created.pattern.patternNo
+    } else if (created.status === 409 && created.error === PATTERN_ORIGIN_CONFLICT_MESSAGE) {
+      // 결정 기록이 실패한 뒤 다시 승인한 경우: 이미 만든 패턴을 찾아 이어 간다.
+      const existing = await findOpsPatternByOriginItem(service, item.id).catch((error: unknown) => {
+        logError('출처 패턴 조회 실패', error instanceof Error ? error : null)
+        return null
+      })
+      if (!existing) {
+        await restoreStatus(service, [itemId], bundleId, 'ended')
+        return fail(500, APPROVE_FAILED)
+      }
+      patternNo = existing.patternNo
+    } else {
+      await restoreStatus(service, [itemId], bundleId, 'ended')
+      if (created.status === 409) return fail(409, PATTERN_NO_CONFLICT_MESSAGE)
+      if (created.status === 400) return fail(400, summarizePatternFieldErrors(created.fieldErrors))
+      return fail(500, APPROVE_FAILED)
+    }
+  }
+
+  const decision = await service
+    .from('ops_decisions')
+    .insert({ bundle_id: bundleId, item_id: itemId, action: OPS_DECISION_ACTION_APPROVE, actor, reason: null })
+    .select('id')
+    .single()
+  if (decision.error || !decision.data) {
+    logError('결정 기록 저장 실패', decision.error)
+    await restoreStatus(service, [itemId], bundleId, 'ended')
+    return fail(500, APPROVE_FAILED)
+  }
+
+  return {
+    ok: true,
+    body: {
+      ok: true,
+      status: 'ended',
+      pattern: patternNo ? { patternNo } : null,
+      patternSkipped: bundle.is_sample ? 'sample' : null,
+    },
+    decisionIds: [decision.data.id],
+    batchId: null,
+    slack: { action: 'approve', isSample: bundle.is_sample, itemLabel: itemLabelOf(item) },
+  }
+}
+
+/**
+ * 항목 승인. 승인은 「승인됨」에서 멈춘다(예약 등록은 단계 표시줄의 버튼이, 공개는 상태 맞추기가 잇는다). 사유는 받지 않는다.
+ * 패턴 제안은 예외다 — 같은 요청에서 사전에 넣고 바로 「종료」로 닫는다(`approvePatternProposal`).
+ */
+export async function approveItem(service: ServiceClient, input: StatusDecisionInput): Promise<DecisionOutcome> {
+  const bundle = await loadBundle(service, input.bundleId, APPROVE_FAILED)
+  if (isFailure(bundle)) return bundle
+  const item = await loadItem(service, input.bundleId, input.itemId, APPROVE_FAILED)
+  if (isFailure(item)) return item
+
+  if (item.kind === PATTERN_PROPOSAL_KIND) return approvePatternProposal(service, input, bundle, item)
+
   return decideItemStatus(service, {
     ...input,
     next: 'approved',
     action: OPS_DECISION_ACTION_APPROVE,
     reason: null,
     failMessage: APPROVE_FAILED,
+    loaded: { bundle, item },
   })
 }
 
@@ -264,7 +379,7 @@ export async function rejectItem(service: ServiceClient, input: StatusDecisionIn
 /**
  * 그 묶음의 검토중 항목을 한 번에 조건부로 승인하고, 실제로 바뀐 항목마다 결정 기록 1행을 같은 `batch_id`로 남긴다.
  * `skipped`는 요청했지만 그 사이 다른 곳에서 이미 처리한 항목, `excluded`는 요청하지 않은 검토중 항목이다.
- * 하나도 바뀌지 않으면 409다.
+ * 하나도 바뀌지 않으면 409다. 패턴 제안은 처리하지 않고 뺀 개수를 `patternProposals`로 알린다(모두 패턴 제안이면 400).
  */
 export async function bulkApprove(
   service: ServiceClient,
@@ -276,22 +391,29 @@ export async function bulkApprove(
   if (!raw.every((id): id is string => typeof id === 'string' && isUuid(id))) {
     return fail(400, '항목 ID 형식이 올바르지 않아요.')
   }
-  const ids = [...new Set(raw)]
-  if (ids.length > MAX_ITEMS) return fail(400, `한 번에 ${MAX_ITEMS}개까지 승인할 수 있어요.`)
+  const requestedIds = [...new Set(raw)]
+  if (requestedIds.length > MAX_ITEMS) return fail(400, `한 번에 ${MAX_ITEMS}개까지 승인할 수 있어요.`)
 
   const bundle = await loadBundle(service, bundleId, APPROVE_FAILED)
   if (isFailure(bundle)) return bundle
 
-  const listed = await service.from('ops_bundle_items').select('id, status').eq('bundle_id', bundleId)
+  const listed = await service.from('ops_bundle_items').select('id, status, kind').eq('bundle_id', bundleId)
   if (listed.error) {
     logError('항목 조회 실패', listed.error)
     return fail(500, APPROVE_FAILED)
   }
   const items = listed.data ?? []
   const inBundle = new Set(items.map((item) => item.id))
-  if (ids.some((id) => !inBundle.has(id))) return fail(400, '이 기획의 항목이 아니에요.')
+  if (requestedIds.some((id) => !inBundle.has(id))) return fail(400, '이 기획의 항목이 아니에요.')
 
-  const requested = new Set(ids)
+  // 패턴 제안은 사전 입력이 따라붙어 하나씩만 승인한다. 거른 개수만 응답에 알린다(skipped·excluded에 섞지 않는다).
+  const proposalIds = new Set(items.filter((item) => item.kind === PATTERN_PROPOSAL_KIND).map((item) => item.id))
+  const ids = requestedIds.filter((id) => !proposalIds.has(id))
+  const patternProposals = requestedIds.length - ids.length
+  if (ids.length === 0) return fail(400, PATTERN_PROPOSALS_ONLY_MESSAGE)
+  const proposalExtra = patternProposals > 0 ? { patternProposals } : {}
+
+  const requested = new Set(requestedIds)
   const excluded = items.filter((item) => item.status === 'reviewing' && !requested.has(item.id)).length
 
   const updated = await service
@@ -308,7 +430,7 @@ export async function bulkApprove(
   const changedIds = (updated.data ?? []).map((row) => row.id)
   const approved = changedIds.length
   const skipped = ids.length - approved
-  if (approved === 0) return fail(409, CONFLICT_MESSAGE, { approved, skipped, excluded })
+  if (approved === 0) return fail(409, CONFLICT_MESSAGE, { approved, skipped, excluded, ...proposalExtra })
 
   const batchId = crypto.randomUUID()
   const inserted = await service
@@ -331,7 +453,7 @@ export async function bulkApprove(
 
   return {
     ok: true,
-    body: { ok: true, approved, skipped, excluded },
+    body: { ok: true, approved, skipped, excluded, ...proposalExtra },
     decisionIds: inserted.data.map((row) => row.id),
     batchId,
     slack: { action: 'bulk_approve', isSample: bundle.is_sample, approved, excluded, skipped },
