@@ -227,6 +227,12 @@ describe('취향 신호', () => {
   it('0건이면 빈 목록이다', () => {
     expect(tasteSignalLines([], 'P03')).toEqual([])
   })
+
+  it('편집용 칸: 원문 이유(빈 값도 그대로)·updatedAt 원문·근거 결정 ID를 싣는다. 표시용 이유는 빈 값을 「적지 않았어요」로 바꾼다', () => {
+    const updatedAt = '2026-10-08T07:05:00.123456+00:00'
+    const [line] = tasteSignalLines([signal('a', 'P03', { reason: '', updatedAt, evidenceDecisionId: uuid(9) })], 'P03')
+    expect(line).toMatchObject({ reasonRaw: '', reason: '적지 않았어요', updatedAt, evidenceDecisionId: uuid(9) })
+  })
 })
 
 describe('사용 이력 — 무엇이 줄이 되는가', () => {
