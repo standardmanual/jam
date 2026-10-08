@@ -55,9 +55,10 @@ export function buildBulkSummary(checked: readonly OpsItemRecord[], excluded: re
   }
 }
 
-/** 결과 토스트 문장. 그 사이 다른 곳에서 처리된 항목이 있으면 건너뛴 수를 함께 알린다. */
-export function bulkResultMessage(approved: number, skipped: number): string {
-  return skipped > 0 ? `${approved}개 승인, ${skipped}개는 이미 처리돼 건너뛰었어요` : `${approved}개를 승인했어요`
+/** 결과 토스트 문장. 그 사이 다른 곳에서 처리된 항목이 있으면 건너뛴 수를, 패턴 제안을 뺐으면 그 개수를 함께 알린다. */
+export function bulkResultMessage(approved: number, skipped: number, patternProposals = 0): string {
+  const base = skipped > 0 ? `${approved}개 승인, ${skipped}개는 이미 처리돼 건너뛰었어요` : `${approved}개를 승인했어요`
+  return patternProposals > 0 ? `${base} · 패턴 제안 ${patternProposals}개는 하나씩 승인해 주세요` : base
 }
 
 interface OpsBulkApprovePanelProps {
@@ -122,7 +123,7 @@ interface OpsBulkApproveProps {
   checked: readonly OpsItemRecord[]
   /** 체크하지 않은 결정 전(검토중) 항목. */
   excluded: readonly OpsItemRecord[]
-  onApproved: (result: { approved: number; skipped: number }) => void
+  onApproved: (result: { approved: number; skipped: number; patternProposals: number }) => void
   /** 그 사이 다른 곳에서 처리돼 하나도 바뀌지 않았을 때(화면을 새로 읽는다). */
   onConflict: () => void
 }
@@ -140,7 +141,11 @@ export function OpsBulkApprove({ bundleId, checked, excluded, onApproved, onConf
     setPending(false)
     if (result.ok) {
       setOpen(false)
-      onApproved({ approved: Number(result.data.approved) || 0, skipped: Number(result.data.skipped) || 0 })
+      onApproved({
+        approved: Number(result.data.approved) || 0,
+        skipped: Number(result.data.skipped) || 0,
+        patternProposals: Number(result.data.patternProposals) || 0,
+      })
       return
     }
     setError(result.error)

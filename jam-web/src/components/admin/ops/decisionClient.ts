@@ -50,6 +50,17 @@ export function decisionFailureMessage(status: number, error: string): string {
   return status === 409 ? `${error} 화면을 새로 불러왔어요.` : error
 }
 
+/**
+ * 단건 승인이 끝났을 때의 토스트 문장(티켓 20261008_1845). 패턴 제안을 승인하면 응답에 `pattern`(사전에 넣은 번호)이나 `patternSkipped: 'sample'`(시험 묶음이라 안 넣음)이 실려 온다.
+ * 패턴 제안이 아닌 승인은 그 칸이 없어 지금과 같은 「승인했어요」다.
+ */
+export function approveToastMessage(data: Record<string, unknown>): string {
+  const patternNo = asRecord(data.pattern).patternNo
+  if (typeof patternNo === 'string' && patternNo !== '') return `승인했어요. 패턴 사전에 ${patternNo}로 넣었어요`
+  if (data.patternSkipped === 'sample') return '승인했어요. 시험 묶음이라 패턴 사전에는 넣지 않았어요'
+  return '승인했어요'
+}
+
 /** 운영툴 요청의 결과. 네트워크가 끊겨 응답을 받지 못했으면 `status`는 0이다. 실패의 `error`는 화면에 그대로 보일 수 있는 문장이다. */
 export type OpsJsonResponse =
   | { ok: true; data: Record<string, unknown> }

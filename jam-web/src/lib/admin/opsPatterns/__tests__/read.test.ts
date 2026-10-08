@@ -18,6 +18,7 @@ import {
   OPS_TASTE_SIGNAL_COLUMNS,
   comparePatternNo,
   countPendingPatternProposals,
+  findOpsPatternByOriginItem,
   getOpsPattern,
   listOpsCommonRules,
   listOpsPatterns,
@@ -283,6 +284,23 @@ describe('getOpsPattern', () => {
   it('조회 오류는 던진다', async () => {
     db.error = 'boom'
     await expect(getOpsPattern(service, 'P01')).rejects.toThrow('패턴 조회 실패')
+  })
+})
+
+describe('findOpsPatternByOriginItem (티켓 20261008_1845)', () => {
+  it('그 제안 항목으로 만든 패턴을 돌려준다(보관 패턴도)', async () => {
+    db.tables.ops_patterns = [patternRow('P01'), patternRow('P19', { origin: 'proposal', origin_item_id: 'item-1', status: 'archived' })]
+    expect((await findOpsPatternByOriginItem(service, 'item-1'))?.patternNo).toBe('P19')
+  })
+
+  it('만든 패턴이 없으면 null이다', async () => {
+    db.tables.ops_patterns = [patternRow('P01')]
+    expect(await findOpsPatternByOriginItem(service, 'item-1')).toBeNull()
+  })
+
+  it('조회 오류는 던진다', async () => {
+    db.error = 'boom'
+    await expect(findOpsPatternByOriginItem(service, 'item-1')).rejects.toThrow('패턴 조회 실패')
   })
 })
 

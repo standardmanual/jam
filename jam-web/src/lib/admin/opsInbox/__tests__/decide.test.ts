@@ -478,7 +478,7 @@ describe('패턴 제안 승인 (티켓 20261008_1845)', () => {
   })
 
   it('수정본(edited)이 있으면 그 내용으로 사전에 넣는다', async () => {
-    item(P1).edited = { resource: { pattern: { ...PROPOSAL_PATTERN, name: '고친 이름' } } }
+    ;(item(P1) as { edited: unknown }).edited = { resource: { pattern: { ...PROPOSAL_PATTERN, name: '고친 이름' } } }
     await approveItem(service, { bundleId: B, itemId: P1, actor: 'admin-1' })
     expect(createdPatterns()[0].name).toBe('고친 이름')
   })

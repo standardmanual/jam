@@ -131,7 +131,7 @@ interface OpsItemActionsProps {
   item: OpsItemRecord
   ctx: OpsWorkspaceContext
   /** 승인·반려가 끝났다(창은 이미 닫혔다). 토스트·화면 새로 읽기·다음 항목 선택은 호출한 쪽이 한다. */
-  onDecided: (kind: 'approve' | 'reject', itemId: string) => void
+  onDecided: (kind: 'approve' | 'reject', itemId: string, data: Record<string, unknown>) => void
   /** 그 사이 다른 곳에서 처리된 항목이라 409를 받았다(화면을 새로 읽는다). */
   onConflict: () => void
 }
@@ -158,7 +158,7 @@ export function OpsItemActions({ bundleId, item, ctx, onDecided, onConflict }: O
     setPending(false)
     if (result.ok) {
       setDialog(null)
-      onDecided(kind, item.id)
+      onDecided(kind, item.id, result.data)
       return
     }
     setError(result.error)

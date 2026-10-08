@@ -10,7 +10,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NETWORK_ERROR_MESSAGE } from '@/components/admin/data-table/admin-fetch'
-import { postDecision } from '../decisionClient'
+import { approveToastMessage, postDecision } from '../decisionClient'
 
 function respond(status: number, body: unknown) {
   return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
@@ -87,5 +87,26 @@ describe('postDecision', () => {
     const result = await postDecision('bundle-1', body)
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(body)
     expect(result).toMatchObject({ ok: false, status: 400, fieldErrors: { bg: '색은 #rrggbb 형식으로 적어 주세요.' } })
+  })
+})
+
+describe('approveToastMessage (티켓 20261008_1845)', () => {
+  it('패턴 제안을 승인해 사전에 넣었으면 넣은 번호를 알린다', () => {
+    expect(approveToastMessage({ ok: true, status: 'ended', pattern: { patternNo: 'P19' }, patternSkipped: null })).toBe(
+      '승인했어요. 패턴 사전에 P19로 넣었어요'
+    )
+  })
+
+  it('시험 묶음의 패턴 제안이면 사전에 넣지 않았다고 알린다', () => {
+    expect(approveToastMessage({ ok: true, status: 'ended', pattern: null, patternSkipped: 'sample' })).toBe(
+      '승인했어요. 시험 묶음이라 패턴 사전에는 넣지 않았어요'
+    )
+  })
+
+  it('패턴 제안이 아닌 승인(새 칸 없음)이나 알 수 없는 모양은 지금과 같은 문장이다', () => {
+    expect(approveToastMessage({ ok: true, status: 'approved' })).toBe('승인했어요')
+    expect(approveToastMessage({})).toBe('승인했어요')
+    expect(approveToastMessage({ pattern: 'P19', patternSkipped: 'other' })).toBe('승인했어요')
+    expect(approveToastMessage({ pattern: { patternNo: '' } })).toBe('승인했어요')
   })
 })
