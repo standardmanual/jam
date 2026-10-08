@@ -7,7 +7,7 @@
  * - 목록: 상태 필터 개수·링크(보관은 전체에서 빠지고 필터로 보임), 표 머리(`caption`·`scope="col"`), 번호 순서, 쉬는 이유, 「쓴 적 없어요」, 표 아래 안내
  * - 못 읽은 재료는 0이 아니다: 사용 기록 실패는 「–」 + 「사용 기록을 읽지 못했어요」, 샘플이 깨지면 「모름」, 취향 신호 실패는 「–」
  * - 빈 상태: 사전 0건 · 필터 0건 + [전체 보기]
- * - 행에 링크가 없다(상세는 ⑨b), 쓰기 버튼이 없다, 이름·이유는 HTML로 해석되지 않는다
+ * - 행마다 상세 링크가 하나(표·카드 각각, 이름이 링크이고 행 전체가 눌린다), 쓰기 버튼이 없다, 이름·이유는 HTML로 해석되지 않는다
  * - 제안 줄: N건 + 「결정할 것」 탭 링크, 0건은 링크 없는 muted 한 줄, 실패는 0건이 아니라 「읽지 못했어요」
  * - 공통 탭: 규칙 번호·제목·본문, 긴 본문의 [전체 보기], 취향 신호 칩(추정/확정)·이름·이유, 구역별 실패 격리, 빈 상태
  */
@@ -157,15 +157,25 @@ describe('OpsPatternList — 목록', () => {
     expect(flat(<OpsPatternList rows={[row('P20', { status: 'archived' })]} status="all" />)).not.toContain('전체 보기')
   })
 
-  it('행에 링크가 없다(상세는 ⑨b) · 쓰기 버튼이 없다 · 이름은 HTML로 해석되지 않는다', () => {
+  it('행마다 상세 링크가 하나다(표·카드 각각) · 쓰기 버튼이 없다 · 이름은 HTML로 해석되지 않는다', () => {
     const out = html(<OpsPatternList rows={[row('P01', { name: '<img src=x onerror=alert(1)>' })]} status="all" />)
     expect(out).not.toContain('<img')
     expect(out).toContain('&lt;img src=x onerror=alert(1)&gt;')
     const body = out.slice(out.indexOf('<table'))
-    expect(body).not.toContain('<a ')
-    expect(body).not.toContain('<button')
-    expect(out).not.toContain('/admin/ops-patterns/P01')
+    expect(body.match(/<button/g)).toBeNull()
+    expect(body.match(/href="\/admin\/ops-patterns\/P01"/g)?.length).toBe(2) // 표 행 1 + 카드 줄 1
     expect(out).not.toContain('새 패턴 만들기')
+  })
+
+  it('이름이 링크이고 행 전체가 눌린다(행 relative + after:absolute after:inset-0). 보관 패턴도 번호로 연다', () => {
+    const out = html(<OpsPatternList rows={[row('P01'), row('P20', { status: 'archived' })]} status="archived" />)
+    expect(out).toContain('href="/admin/ops-patterns/P20"')
+    expect(out).not.toContain('href="/admin/ops-patterns/P01"')
+    expect(out).toContain('after:absolute after:inset-0')
+    expect(out).toContain('<tr class="relative ')
+    expect(out).toContain('<li class="relative ')
+    // 링크 글자는 이름이고, 번호·숫자 칸은 링크 밖이다.
+    expect(flat(<OpsPatternList rows={[row('P01')]} status="all" />)).toMatch(/<a [^>]*href="\/admin\/ops-patterns\/P01"[^>]*>P01 이름<\/a>/)
   })
 })
 
