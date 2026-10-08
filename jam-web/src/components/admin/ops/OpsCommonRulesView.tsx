@@ -4,11 +4,13 @@ import { useId, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/admin/ui/button'
 import type { OpsCommonRuleRecord, OpsTasteSignalRecord } from '@/lib/admin/opsPatterns/read'
+import { toTasteSignalLine } from '@/lib/admin/opsPatterns/detailView'
+import { OpsCommonRuleItem } from './OpsCommonRuleEditor'
 import { OpsSectionNotice } from './OpsSectionNotice'
-import { OpsStatusBadge } from './OpsStatusBadge'
+import { OpsTasteSignalList } from './OpsTasteSignalEditor'
 
 /**
- * 패턴 사전의 「공통 규칙·취향 신호」 탭 (티켓 20261008_1400, 채원 판정 「⑨ 목록」 공통 탭). 읽기만 한다 — [고치기]·[이유 고치고 확정하기]는 ⑩b가 단다.
+ * 패턴 사전의 「공통 규칙·취향 신호」 탭 (티켓 20261008_1400, 채원 판정 「⑨ 목록」 공통 탭). 읽기 모양에 줄 안 편집을 단다(티켓 20261008_1754 ⑩b-2): 규칙은 `OpsCommonRuleItem`, 취향 신호는 `OpsTasteSignalList`(근거 없이만 확정).
  *
  * - 공통 규칙: 번호·제목·본문(`whitespace-pre-wrap`, 길면 `line-clamp-3` + [전체 보기]). 모든 패턴에 적용되는 규칙이다.
  * - 공통 취향 신호: 어느 패턴에도 묶이지 않은 방향. [추정]/[확정] 칩 · 이름 · 이유.
@@ -64,12 +66,9 @@ function CommonRules({ rules }: { rules: readonly OpsCommonRuleRecord[] | null }
       ) : (
         <ol className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-background">
           {rules.map((rule) => (
-            <li key={rule.ruleNo} className="space-y-1 px-4 py-3">
-              <p className="font-medium break-words">
-                <span className="tabular-nums">{rule.ruleNo}</span>. {rule.title}
-              </p>
+            <OpsCommonRuleItem key={rule.ruleNo} rule={rule}>
               <RuleBody body={rule.body} />
-            </li>
+            </OpsCommonRuleItem>
           ))}
         </ol>
       )}
@@ -90,17 +89,11 @@ function CommonSignals({ signals }: { signals: readonly OpsTasteSignalRecord[] |
       {signals.length === 0 ? (
         <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted-foreground">{COMMON_SIGNALS_EMPTY_TEXT}</p>
       ) : (
-        <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-background">
-          {signals.map((signal) => (
-            <li key={signal.id} className="space-y-1 px-4 py-3">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <OpsStatusBadge type="taste-basis" basis={signal.basis} />
-                <span className="font-medium break-words">{signal.name}</span>
-              </div>
-              <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{signal.reason}</p>
-            </li>
-          ))}
-        </ul>
+        <OpsTasteSignalList
+          signals={signals.map(toTasteSignalLine)}
+          patternNo={null}
+          className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-background"
+        />
       )}
     </section>
   )

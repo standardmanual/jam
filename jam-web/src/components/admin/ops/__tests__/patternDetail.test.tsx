@@ -201,7 +201,7 @@ describe('요약·손잡이·샘플·주의점', () => {
         <OpsPatternSamplesSection samples={pattern().samples} />
         <OpsPatternPitfallsSection pitfalls="x" />
         <PatternSection id="signals">
-          <OpsPatternSignals signals={[]} />
+          <OpsPatternSignals signals={[]} patternNo="P03" />
         </PatternSection>
         <PatternSection id="usage">
           <OpsPatternUsage patternNo="P03" summary={null} lines={[]} page={1} />
@@ -221,7 +221,7 @@ describe('취향 신호', () => {
   }
 
   it('0건이면 안내 한 줄이다', () => {
-    expect(flat(<OpsPatternSignals signals={[]} />)).toContain('이 패턴에 정리된 취향 신호가 없어요')
+    expect(flat(<OpsPatternSignals signals={[]} patternNo="P03" />)).toContain('이 패턴에 정리된 취향 신호가 없어요')
   })
 
   it('추정/확정 칩과 이름·이유를 보이고, 확정이면 확정일(KST)이 붙는다', () => {
@@ -229,7 +229,7 @@ describe('취향 신호', () => {
       [signal('a'), signal('b', { basis: 'confirmed', confirmedAt: '2026-10-07T16:00:00.000Z' }), signal('c', { patternNo: 'P04' }), signal('d', { patternNo: null })],
       'P03'
     )
-    const out = flat(<OpsPatternSignals signals={lines} />)
+    const out = flat(<OpsPatternSignals signals={lines} patternNo="P03" />)
     expect(out).toContain('추정')
     expect(out).toContain('확정')
     expect(out).toContain('2026-10-08(KST)')
@@ -240,16 +240,16 @@ describe('취향 신호', () => {
     expect(out.match(/\(KST\)/g)?.length).toBe(1)
   })
 
-  it('근거 결정이 있으면 「근거 반려 기록 있음」 글자만 보이고 링크는 없다(⑩b)', () => {
+  it('근거 결정이 있으면 「근거 반려 기록 있음」 글자만 보이고 링크는 없다', () => {
     const lines = tasteSignalLines([signal('a', { evidenceDecisionId: '00000000-0000-4000-8000-000000000009' })], 'P03')
-    const out = flat(<OpsPatternSignals signals={lines} />)
+    const out = flat(<OpsPatternSignals signals={lines} patternNo="P03" />)
     expect(out).toContain('근거 반려 기록 있음')
     expect(out).not.toContain('<a ')
-    expect(flat(<OpsPatternSignals signals={tasteSignalLines([signal('b')], 'P03')} />)).not.toContain('근거 반려 기록 있음')
+    expect(flat(<OpsPatternSignals signals={tasteSignalLines([signal('b')], 'P03')} patternNo="P03" />)).not.toContain('근거 반려 기록 있음')
   })
 
   it('이름·이유는 HTML로 해석되지 않는다', () => {
-    const out = html(<OpsPatternSignals signals={tasteSignalLines([signal('a', { reason: '<b>굵게</b>' })], 'P03')} />)
+    const out = html(<OpsPatternSignals signals={tasteSignalLines([signal('a', { reason: '<b>굵게</b>' })], 'P03')} patternNo="P03" />)
     expect(out).not.toContain('<b>')
     expect(out).toContain('&lt;b&gt;굵게&lt;/b&gt;')
   })

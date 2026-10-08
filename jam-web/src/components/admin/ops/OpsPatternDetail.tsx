@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils'
 import { ReadOnlyGrid, ReadOnlyItem, RailCard, SectionCard, SectionNav } from '@/components/admin/AdminEditorLayout'
 import {
   PATTERN_FIELD_MISSING_TEXT,
-  TASTE_EVIDENCE_TEXT,
   TASTE_SIGNAL_EMPTY_TEXT,
   formatKstDate,
   formatKstDateTime,
@@ -21,6 +20,7 @@ import type { OpsPatternRecord } from '@/lib/admin/opsPatterns/read'
 import { Button } from '@/components/admin/ui/button'
 import { OpsPatternStatusMenu } from './OpsPatternStatusMenu'
 import { OpsStatusBadge } from './OpsStatusBadge'
+import { OpsTasteSignalList } from './OpsTasteSignalEditor'
 
 /**
  * 패턴 상세(S5 상세)의 표시 부품 (티켓 20261008_1435, 상위 20260930_1503 ⑨b, 채원 판정 「⑨ 상세」). 훅이 없는 표시 전용 부품이다 — 읽기는 페이지가 맡는다.
@@ -260,24 +260,13 @@ export function OpsPatternPitfallsSection({ pitfalls }: { pitfalls: string }) {
   )
 }
 
-/** 취향 신호 구역의 내용: 이 패턴 것만. 추정/확정 칩 + (확정이면) 확정일 + 이름 + 이유. 근거 결정이 있으면 muted 글자(링크는 ⑩b). */
-export function OpsPatternSignals({ signals }: { signals: readonly TasteSignalLine[] }) {
+/**
+ * 취향 신호 구역의 내용: 이 패턴 것만. 추정/확정 칩 + (확정이면) 확정일 + 이름 + 이유. 근거 결정이 있으면 muted 글자.
+ * 줄마다 [이유 고치고 확정하기]/[이유·근거 고치기]로 줄 안에서 고친다(티켓 20261008_1754 ⑩b-2, `OpsTasteSignalList`).
+ */
+export function OpsPatternSignals({ signals, patternNo }: { signals: readonly TasteSignalLine[]; patternNo: string }) {
   if (signals.length === 0) return <p className={MUTED_CLASS}>{TASTE_SIGNAL_EMPTY_TEXT}</p>
-  return (
-    <ul className="divide-y divide-border rounded-lg border border-border">
-      {signals.map((signal) => (
-        <li key={signal.id} className="space-y-1 px-4 py-3">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <OpsStatusBadge type="taste-basis" basis={signal.basis} />
-            {signal.confirmedDay && <span className="text-xs tabular-nums text-muted-foreground">{signal.confirmedDay}(KST)</span>}
-            <span className="font-medium break-words">{signal.name}</span>
-          </div>
-          <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{signal.reason}</p>
-          {signal.hasEvidence && <p className="text-xs text-muted-foreground">{TASTE_EVIDENCE_TEXT}</p>}
-        </li>
-      ))}
-    </ul>
-  )
+  return <OpsTasteSignalList signals={signals} patternNo={patternNo} className="divide-y divide-border rounded-lg border border-border" />
 }
 
 /** 결과 구역. 링크는 ⑫a가 결과와 기록(S6) 경로를 만든 뒤 단다 — 지금은 글자만이라 404 링크가 남지 않는다. */

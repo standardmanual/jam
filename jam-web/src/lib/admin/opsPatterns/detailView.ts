@@ -171,20 +171,32 @@ export interface TasteSignalLine {
   /** 확정한 날(KST, `YYYY-MM-DD`). 확정이 아니거나 읽을 수 없으면 `null`. */
   confirmedDay: string | null
   hasEvidence: boolean
+  /** 편집 초기값용 원문 이유(표시용 `reason`은 빈 값을 「적지 않았어요」로 바꾸므로 편집 칸에 쓰지 않는다). */
+  reasonRaw: string
+  /** 고치기 요청의 `expectedUpdatedAt`에 **그대로** 돌려보낼 문자열. */
+  updatedAt: string
+  /** 지금 붙은 근거 결정 ID(없으면 `null`). */
+  evidenceDecisionId: string | null
+}
+
+/** 취향 신호 기록 한 건 → 줄 모양. 패턴 상세와 공통 탭이 함께 쓴다. */
+export function toTasteSignalLine(signal: OpsTasteSignalRecord): TasteSignalLine {
+  return {
+    id: signal.id,
+    basis: signal.basis,
+    name: orMissing(signal.name),
+    reason: orMissing(signal.reason),
+    confirmedDay: signal.basis === 'confirmed' ? kstDateKey(signal.confirmedAt) : null,
+    hasEvidence: signal.evidenceDecisionId !== null,
+    reasonRaw: signal.reason,
+    updatedAt: signal.updatedAt,
+    evidenceDecisionId: signal.evidenceDecisionId,
+  }
 }
 
 /** 이 패턴의 취향 신호 줄(입력 순서 그대로 — 읽기 함수가 `sortOrder`로 정렬해 둔다). 공통 신호(`patternNo: null`)와 다른 패턴 것은 뺀다. */
 export function tasteSignalLines(signals: readonly OpsTasteSignalRecord[], patternNo: string): TasteSignalLine[] {
-  return signals
-    .filter((signal) => signal.patternNo === patternNo)
-    .map((signal) => ({
-      id: signal.id,
-      basis: signal.basis,
-      name: orMissing(signal.name),
-      reason: orMissing(signal.reason),
-      confirmedDay: signal.basis === 'confirmed' ? kstDateKey(signal.confirmedAt) : null,
-      hasEvidence: signal.evidenceDecisionId !== null,
-    }))
+  return signals.filter((signal) => signal.patternNo === patternNo).map(toTasteSignalLine)
 }
 
 // ── 사용 이력 ────────────────────────────────────────────────────────────────────────────────────
