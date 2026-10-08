@@ -180,9 +180,9 @@ function iso(ms: number | null): string | null {
 
 /**
  * 세는 항목이면 그 사용 시각(ms), 세지 않는 항목이면 `null`. 시험 묶음·승인 전 상태·`pattern_proposal`·사용 시각을 읽을 수 없는 항목은 세지 않는다.
- * 패턴·트라이브·카테고리 세기가 모두 이 판정 하나를 쓴다.
+ * 패턴·트라이브·카테고리 세기와 패턴 상세의 사용 이력(티켓 20261008_1435)이 모두 이 판정 하나를 쓴다.
  */
-function countableUsedAt(row: OpsDrawUsageRow): number | null {
+export function countableUsedAt(row: Pick<OpsDrawUsageRow, 'status' | 'kind' | 'starts_at' | 'ops_bundles'>): number | null {
   const bundle = embedded(row.ops_bundles)
   if (bundle === null || bundle.is_sample !== false) return null
   if (!POST_APPROVAL_STATUSES.includes(row.status)) return null
@@ -316,6 +316,14 @@ export function rankOpsDraw({ rows, patterns, tribes, placeCategories, now, limi
  */
 export const OPS_DRAW_USAGE_COLUMNS = 'id, kind, status, starts_at, original, edited, ops_bundles!inner(is_sample, received_at)'
 export const OPS_DRAW_TRIBE_COLUMNS = 'id, name, sort_order'
+/** 패턴 상세의 사용 이력이 읽는 칸: 세는 칸 + 줄이 가리킬 항목(`bundle_id`·`item_key`). 이 칸들도 관리자 ID·제출 원본이 아니다. */
+export const OPS_PATTERN_USAGE_COLUMNS = 'id, bundle_id, item_key, kind, status, starts_at, original, edited, ops_bundles!inner(is_sample, received_at)'
+
+/** 패턴 상세의 사용 이력 재료. 세는 칸에 항목이 속한 묶음 ID와 항목 키(이름을 못 정할 때의 대체)가 붙는다. */
+export interface OpsPatternUsageRow extends OpsDrawUsageRow {
+  bundle_id: string
+  item_key: string | null
+}
 
 /** 서비스 클라이언트의 select 빌더 중 이 파일이 쓰는 메서드만 좁힌 모양(임베드·점 경로 필터는 생성 타입이 따라오지 못한다). */
 interface LooseQuery extends PromiseLike<{ data: unknown; error: { message: string } | null }> {
@@ -343,6 +351,22 @@ export async function loadDrawUsageRows(service: ServiceClient): Promise<OpsDraw
         .select(OPS_DRAW_USAGE_COLUMNS)
         .eq('ops_bundles.is_sample', false)
         .in('status', OPS_POST_APPROVAL_ITEM_STATUSES) as unknown as PagedQuery<OpsDrawUsageRow>
+  )
+}
+
+/**
+ * 패턴 상세의 사용 이력 재료(티켓 20261008_1435). `loadDrawUsageRows`와 **같은 조건**(시험 묶음 제외·승인 이후 상태·기간 제한 없음)에 `bundle_id`·`item_key` 칸만 더한다.
+ * 세는 판정은 읽은 뒤 `countableUsedAt`이 한 번 더 건다.
+ */
+export async function loadPatternUsageRows(service: ServiceClient): Promise<OpsPatternUsageRow[]> {
+  return fetchAllRows<OpsPatternUsageRow>(
+    '패턴 사용 이력',
+    'id',
+    () =>
+      itemsTable(service)
+        .select(OPS_PATTERN_USAGE_COLUMNS)
+        .eq('ops_bundles.is_sample', false)
+        .in('status', OPS_POST_APPROVAL_ITEM_STATUSES) as unknown as PagedQuery<OpsPatternUsageRow>
   )
 }
 

@@ -45,6 +45,15 @@ export function patternListHref(params: Partial<PatternListParams> = {}): string
   return text ? `/admin/ops-patterns?${text}` : '/admin/ops-patterns'
 }
 
+/**
+ * 패턴 상세 링크(티켓 20261008_1435). 사용 이력의 쪽(`usagePage`)은 2쪽부터만 주소에 넣는다 — 1쪽은 기본이라 같은 화면은 늘 같은 글자다.
+ * 번호는 호출하는 쪽이 이미 사전에서 읽은 값이라 그대로 붙이되, 주소에 안전하도록 인코딩한다.
+ */
+export function patternDetailHref(patternNo: string, options: { usagePage?: number } = {}): string {
+  const base = `/admin/ops-patterns/${encodeURIComponent(patternNo)}`
+  return options.usagePage && options.usagePage > 1 ? `${base}?usagePage=${options.usagePage}` : base
+}
+
 /** 표의 한 줄. `null`은 못 읽었거나 모른다는 뜻이라 0으로 바꾸지 않는다. */
 export interface PatternListRow {
   patternNo: string
