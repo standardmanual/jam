@@ -6,6 +6,7 @@ import {
   PATTERN_STATUS_FILTER_LABELS,
   countByStatus,
   filterPatternRows,
+  patternDetailHref,
   patternListHref,
   type PatternListRow,
   type PatternStatusFilter,
@@ -16,7 +17,7 @@ import { OpsStatusBadge } from './OpsStatusBadge'
  * 패턴 사전의 목록 (티켓 20261008_1400, 채원 판정 「⑨ 목록」). 훅이 없는 서버 컴포넌트다.
  *
  * 상태 필터 탭(링크, 주소 `status`) → 표(번호·이름·상태·최근 4주·마지막 사용·샘플·취향 신호). 40rem 미만에서는 카드 목록이다. 번호 숫자 순으로 고정이고 정렬·검색은 없다.
- * **행에 링크를 걸지 않는다** — 상세 경로는 ⑨b가 만들고 그때 행 링크를 단다(링크가 404로 남지 않게). 쓰기 버튼도 없다(⑩a·⑩b).
+ * 행(표·카드)마다 상세(`/admin/ops-patterns/[patternNo]`, 티켓 20261008_1435 ⑨b) 링크가 하나 있다 — 이름이 링크이고 `after:absolute after:inset-0`로 행 전체가 눌린다. 쓰기 버튼은 없다(⑩a·⑩b).
  *
  * 못 읽은 재료는 0으로 바꾸지 않는다. 사용 기록을 못 읽으면(`usageFailed`) 숫자 칸이 「–」이고 표 위에 알린다. 샘플이 깨졌으면 「모름」, 취향 신호를 못 읽었으면 「–」다.
  * 이름·쉬는 이유는 사람이 쓴 글이라 텍스트 노드로만 그린다.
@@ -89,11 +90,16 @@ function StatusFilter({ status, counts }: { status: PatternStatusFilter; counts:
   )
 }
 
+const ROW_LINK_CLASS =
+  'font-medium break-words underline-offset-4 after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring'
+
 function NameCell({ row }: { row: PatternListRow }) {
   const reason = pauseReasonText(row)
   return (
     <>
-      <span className="font-medium break-words">{row.name}</span>
+      <Link href={patternDetailHref(row.patternNo)} className={ROW_LINK_CLASS}>
+        {row.name}
+      </Link>
       {reason && <span className="mt-0.5 block text-xs text-muted-foreground break-words">{reason}</span>}
     </>
   )
@@ -116,7 +122,7 @@ function PatternTable({ rows }: { rows: readonly PatternListRow[] }) {
       </thead>
       <tbody className="divide-y divide-border">
         {rows.map((row) => (
-          <tr key={row.patternNo} className="align-top">
+          <tr key={row.patternNo} className="relative align-top hover:bg-muted/50">
             <th scope="row" className="px-3 py-2.5 text-left font-medium tabular-nums">{row.patternNo}</th>
             <td className="px-3 py-2.5">
               <NameCell row={row} />
@@ -139,7 +145,7 @@ function PatternCards({ rows }: { rows: readonly PatternListRow[] }) {
   return (
     <ul className="hidden divide-y divide-border @max-[40rem]:block">
       {rows.map((row) => (
-        <li key={row.patternNo} className="space-y-2 px-3 py-3">
+        <li key={row.patternNo} className="relative space-y-2 px-3 py-3 hover:bg-muted/50">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-medium tabular-nums">{row.patternNo}</span>
             <OpsStatusBadge type="pattern-status" status={row.status} />

@@ -14,12 +14,14 @@ import {
   OPS_DRAW_LIMIT_INVALID_MESSAGE,
   OPS_DRAW_MAX_LIMIT,
   OPS_DRAW_USAGE_COLUMNS,
+  OPS_PATTERN_USAGE_COLUMNS,
   OPS_DRAW_TRIBE_COLUMNS,
   OPS_DRAW_WINDOW_DAYS,
   countOpsPatternUsage,
   drawOpsCombination,
   loadDrawTribes,
   loadDrawUsageRows,
+  loadPatternUsageRows,
   parseDrawLimit,
   rankOpsDraw,
   usageTimeOf,
@@ -524,6 +526,34 @@ describe('loadDrawUsageRows', () => {
   it('조회가 실패하면 던진다', async () => {
     const { service } = fakeService({}, 'ops_bundle_items')
     await expect(loadDrawUsageRows(service)).rejects.toThrow('원문 오류')
+  })
+})
+
+describe('loadPatternUsageRows — 패턴 상세의 사용 이력 재료 (티켓 20261008_1435)', () => {
+  it('세는 칸에 bundle_id·item_key만 더하고, 관리자 ID·제출 원본 칸은 없다', () => {
+    for (const forbidden of ['author', 'raw', 'actor', 'updated_by', 'created_by']) {
+      expect(OPS_PATTERN_USAGE_COLUMNS).not.toContain(forbidden)
+    }
+    expect(OPS_PATTERN_USAGE_COLUMNS).toBe(
+      'id, bundle_id, item_key, kind, status, starts_at, original, edited, ops_bundles!inner(is_sample, received_at)'
+    )
+  })
+
+  it('loadDrawUsageRows와 같은 조건(시험 묶음 제외·승인 이후 상태·기간 제한 없음)을 건다', async () => {
+    const drawn = fakeService({ ops_bundle_items: [] })
+    await loadDrawUsageRows(drawn.service)
+    const { service, calls } = fakeService({ ops_bundle_items: [] })
+    await loadPatternUsageRows(service)
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({ table: 'ops_bundle_items', columns: OPS_PATTERN_USAGE_COLUMNS, orders: ['id'] })
+    expect(calls[0].filters).toEqual(drawn.calls[0].filters)
+    expect(calls[0].filters).toEqual(['eq ops_bundles.is_sample=false', 'in status=approved|preparing|scheduled|live|ended'])
+  })
+
+  it('1000행을 넘어도 모두 읽고, 조회가 실패하면 던진다', async () => {
+    const all = Array.from({ length: 1500 }, (_, i) => ({ id: uuid(i + 1) }))
+    expect(await loadPatternUsageRows(fakeService({ ops_bundle_items: all }).service)).toHaveLength(1500)
+    await expect(loadPatternUsageRows(fakeService({}, 'ops_bundle_items').service)).rejects.toThrow('원문 오류')
   })
 })
 
