@@ -172,7 +172,7 @@ describe('읽는 칸 목록과 변환: 관리자 ID를 싣지 않는다', () => 
   it('취향 신호·공통 규칙 변환도 응답 칸만 싣는다', () => {
     const signal = toTasteSignalRecord(signalRow('s1', null, 1) as unknown as OpsTasteSignalRow)
     expect(Object.keys(signal).sort()).toEqual(
-      ['id', 'patternNo', 'name', 'reason', 'basis', 'evidenceDecisionId', 'confirmedAt', 'sortOrder'].sort()
+      ['id', 'patternNo', 'name', 'reason', 'basis', 'evidenceDecisionId', 'confirmedAt', 'sortOrder', 'updatedAt'].sort()
     )
     expect(JSON.stringify(signal)).not.toMatch(/confirmed_?by|admin-user-id/i)
 
@@ -322,7 +322,8 @@ describe('listOpsTasteSignals', () => {
       signalRow('confirmed', 'P01', 1, { basis: 'confirmed', confirmed_at: '2026-10-01T02:00:00+00:00', evidence_decision_id: 'd-1' }),
     ]
     const [signal] = await listOpsTasteSignals(service)
-    expect(signal).toMatchObject({ basis: 'confirmed', confirmedAt: '2026-10-01T02:00:00+00:00', evidenceDecisionId: 'd-1' })
+    expect(signal).toMatchObject({ basis: 'confirmed', confirmedAt: '2026-10-01T02:00:00+00:00', evidenceDecisionId: 'd-1', updatedAt: '2026-10-01T01:00:00+00:00' })
+    expect(Object.keys(signal)).not.toContain('confirmedBy')
   })
 
   it('테이블이 비어 있으면 빈 목록이고 조회 오류는 던진다', async () => {

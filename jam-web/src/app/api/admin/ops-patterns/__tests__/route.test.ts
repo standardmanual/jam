@@ -112,6 +112,7 @@ function signalRow(id: string, patternNo: string | null, sortOrder: number) {
     confirmed_at: null,
     confirmed_by: ADMIN_ID_VALUE,
     sort_order: sortOrder,
+    updated_at: '2026-10-01T01:00:00+00:00',
   }
 }
 
@@ -246,6 +247,9 @@ describe('GET /api/admin/ops-patterns/[patternNo]', () => {
     expect(Object.keys(body).sort()).toEqual(['pattern', 'tasteSignals'])
     expect(body.pattern).toMatchObject({ patternNo: 'P10', statusLabel: '사용 중' })
     expect(body.tasteSignals.map((s: { id: string }) => s.id)).toEqual(['s-p10-1', 's-p10-2'])
+    // 고치기 요청의 expectedUpdatedAt으로 돌려보낼 수정 시각이 실린다(티켓 20261008_1712). 관리자 ID(confirmed_by)는 계속 싣지 않는다.
+    expect(body.tasteSignals[0].updatedAt).toBe('2026-10-01T01:00:00+00:00')
+    expect(body.tasteSignals[0]).not.toHaveProperty('confirmed_by')
   })
 
   it('보관한 패턴도 번호로 직접 읽으면 200이다', async () => {

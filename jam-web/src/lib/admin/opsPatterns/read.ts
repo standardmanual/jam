@@ -28,7 +28,7 @@ export const OPS_PATTERN_NOT_FOUND_MESSAGE = '찾을 수 없는 패턴이에요.
 /** 읽는 칸 목록. `updated_by`·`confirmed_by`는 일부러 넣지 않는다. */
 export const OPS_PATTERN_COLUMNS =
   'pattern_no, name, principle, user_experience, menus, samples, card_shapes, knobs, pitfalls, status, pause_reason, origin, origin_item_id, created_at, updated_at'
-export const OPS_TASTE_SIGNAL_COLUMNS = 'id, pattern_no, name, reason, basis, evidence_decision_id, confirmed_at, sort_order'
+export const OPS_TASTE_SIGNAL_COLUMNS = 'id, pattern_no, name, reason, basis, evidence_decision_id, confirmed_at, sort_order, updated_at'
 export const OPS_COMMON_RULE_COLUMNS = 'rule_no, title, body, updated_at'
 
 // ── 응답 모양(DB 스네이크 → 카멜). 관리자 ID 칸은 없다 ────────────────────────────────────────────
@@ -64,6 +64,8 @@ export interface OpsTasteSignalRecord {
   evidenceDecisionId: string | null
   confirmedAt: string | null
   sortOrder: number
+  /** 마지막으로 고친 시각. 고치기 요청의 `expectedUpdatedAt`에 그대로 돌려보낸다(티켓 20261008_1712). */
+  updatedAt: string
 }
 
 export interface OpsCommonRuleRecord {
@@ -100,6 +102,7 @@ export interface OpsTasteSignalRow {
   evidence_decision_id: string | null
   confirmed_at: string | null
   sort_order: number
+  updated_at: string
 }
 
 export interface OpsCommonRuleRow {
@@ -142,6 +145,7 @@ export function toTasteSignalRecord(row: OpsTasteSignalRow): OpsTasteSignalRecor
     evidenceDecisionId: row.evidence_decision_id,
     confirmedAt: row.confirmed_at,
     sortOrder: row.sort_order,
+    updatedAt: row.updated_at,
   }
 }
 

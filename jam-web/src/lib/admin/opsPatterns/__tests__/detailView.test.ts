@@ -202,6 +202,7 @@ describe('취향 신호', () => {
       evidenceDecisionId: null,
       confirmedAt: null,
       sortOrder: 1,
+      updatedAt: '2026-10-01T01:00:00+00:00',
       ...overrides,
     }
   }

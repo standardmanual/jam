@@ -208,7 +208,7 @@ function rule(ruleNo: number, overrides: Partial<OpsCommonRuleRecord> = {}): Ops
 }
 
 function signal(id: string, patternNo: string | null, basis: 'estimate' | 'confirmed'): OpsTasteSignalRecord {
-  return { id, patternNo, name: `${id} 이름`, reason: `${id} 이유`, basis, evidenceDecisionId: null, confirmedAt: null, sortOrder: 1 }
+  return { id, patternNo, name: `${id} 이름`, reason: `${id} 이유`, basis, evidenceDecisionId: null, confirmedAt: null, sortOrder: 1, updatedAt: '2026-10-01T01:00:00+00:00' }
 }
 
 describe('OpsCommonRulesView — 공통 탭', () => {

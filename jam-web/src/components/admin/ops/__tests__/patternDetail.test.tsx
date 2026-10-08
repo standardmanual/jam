@@ -217,7 +217,7 @@ describe('요약·손잡이·샘플·주의점', () => {
 
 describe('취향 신호', () => {
   function signal(id: string, overrides: Partial<OpsTasteSignalRecord> = {}): OpsTasteSignalRecord {
-    return { id, patternNo: 'P03', name: `${id} 이름`, reason: `${id} 이유`, basis: 'estimate', evidenceDecisionId: null, confirmedAt: null, sortOrder: 1, ...overrides }
+    return { id, patternNo: 'P03', name: `${id} 이름`, reason: `${id} 이유`, basis: 'estimate', evidenceDecisionId: null, confirmedAt: null, sortOrder: 1, updatedAt: '2026-10-01T01:00:00+00:00', ...overrides }
   }
 
   it('0건이면 안내 한 줄이다', () => {
