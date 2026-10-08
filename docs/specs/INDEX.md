@@ -129,6 +129,8 @@ status: active
 - [19 게이미피케이션 밸런스.md](../../jam-doc/planning/business-plan/service-redesign/19%20게이미피케이션%20밸런스.md) — 서비스 재설계 주제 19 정책(사용자 확인). 기준 유저와 목표 속도에서 거꾸로 계산한 수치를 정한다. 에너지와 캡슐, 잠긴 아이템 배지의 양, 동기화와 캡슐로 받는 아이템 배지의 개수·등급·잠김, 컬렉션 수량과 등급 짝 구조, 챕터 점수, 배지 기준값 규칙, 포인트.
 - [20 어뷰징과 밴.md](../../jam-doc/planning/business-plan/service-redesign/20%20어뷰징과%20밴.md) — 서비스 재설계 주제 20 정책(사용자 확인). 어뷰징을 거르는 필터와 기준값, 제재를 이용 정지 하나로 두는 원칙과 그 순서(알림, 진행 멈춤, 정지, 고객센터 소통), 자동 감지 때의 처리, 여러 계정으로 아이템 배지를 모으는 경우를 정한다.
 - [README.md](../../jam-doc/planning/business-plan/service-redesign/README.md) — 서비스 재설계 2단계(정책 다시 세우기)의 주제별 정책 초안 안내. 폴더 규칙, 주제 목록, 사용자 확인 상태를 둔다.
+- [UX 라이팅 재정비.md](../../jam-doc/planning/business-plan/service-redesign/UX%20라이팅%20재정비.md) — 서비스 재설계에 맞춘 UX 라이팅 가이드라인 재정비 초안. 핵심 철학과 톤, 말투의 두 층, 용어표의 바뀌는 행, 새 기능의 화면 문구 규칙, 액티비티 배지의 조건 표기를 정한다. 5단계에서 docs/specs/UX_WRITING_GUIDELINE.md에 반영한다.
+- [트라이브 보이스.md](../../jam-doc/planning/business-plan/service-redesign/트라이브%20보이스.md) — 서비스 재설계의 서사 문구 규칙 초안. 배지, 아이템 배지, 컬렉션, 미션, 단서 레시피의 이름과 설명, 챕터 이름을 쓰는 공통 규칙, 아이템 배지 4등급 설명 규칙, 트라이브별 보이스 카드의 틀을 정한다.
 
 ## jam-doc/planning/business-plan/tribe-rethink/
 
