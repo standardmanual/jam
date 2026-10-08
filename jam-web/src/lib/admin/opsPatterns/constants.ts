@@ -37,6 +37,30 @@ export type OpsPatternKnobKey = (typeof OPS_PATTERN_KNOB_KEYS)[number]
 export const OPS_PATTERN_SAMPLE_ROLES = ['main', 'aux', 'related'] as const
 export type OpsPatternSampleRole = (typeof OPS_PATTERN_SAMPLE_ROLES)[number]
 
+/** 샘플 역할의 한국어 이름. 상세 화면(`detailView.ts`)과 만들기·고치기 폼이 함께 쓴다. */
+export const OPS_PATTERN_SAMPLE_ROLE_LABELS: Record<OpsPatternSampleRole, string> = {
+  main: '주',
+  aux: '보조',
+  related: '관련',
+}
+
+/** 손잡이 안쪽 칸 키: 조건·장소·시간·보상은 열 수 있는 값·닫은 값, 트라이브는 규칙·예시. */
+export const OPS_PATTERN_KNOB_VALUE_KEYS: Record<OpsPatternKnobKey, readonly [string, string]> = {
+  condition: ['open', 'closed'],
+  place: ['open', 'closed'],
+  time: ['open', 'closed'],
+  reward: ['open', 'closed'],
+  tribe: ['rule', 'example'],
+}
+
+/** 손잡이 안쪽 칸의 한국어 이름(상세 화면·폼 공용). */
+export const OPS_PATTERN_KNOB_VALUE_FIELD_LABELS: Record<string, string> = {
+  open: '열 수 있는 값',
+  closed: '닫은 값',
+  rule: '규칙',
+  example: '예시',
+}
+
 /**
  * 패턴을 쓸 때(만들기·고치기·상태 바꾸기) 지키는 길이 상한(티켓 20261008_1545 D2). 단위는 글자 수이고 앞뒤 공백을 뗀 뒤 센다.
  * 이름·긴 글 칸·쉬는 이유·메뉴 개수·샘플 개수는 사용자가 정했고, 메뉴 한 개·카드 모양 메모는 카리나 가정이다.
