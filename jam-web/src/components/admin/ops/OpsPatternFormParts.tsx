@@ -238,6 +238,8 @@ export function MenuChips({ menus, errors, onChange }: MenuChipsProps) {
           aria-label={MENU_INPUT_LABEL}
           className="min-w-0 flex-1"
           onChange={(event) => setText(event.target.value)}
+          // 적어 두고 Enter를 누르지 않은 채 [저장하기] 등으로 떠나도 글자가 사라지지 않게 칩으로 넣는다(티켓 20261008_1657).
+          onBlur={add}
           onKeyDown={(event) => {
             // 한글 조합 중의 Enter는 글자를 확정하는 키라 칩을 만들지 않는다.
             if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
