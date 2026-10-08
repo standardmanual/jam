@@ -37,7 +37,7 @@ v1.5(2026-06-11)는 개발 착수 시점의 구상 문서였다. 이후 3개월�
 
 ### 이 문서가 다루지 않는 것
 
-- 기능 단위 구현 현황 → `Business/서비스플랜/02 JAM! 서비스 플랜.md`
+- 기능 단위 구현 현황 → `jam-doc/planning/business-plan/02 JAM! 서비스 플랜.md`
 - 스펙·플로우 정의 → `docs/specs/prd/`
 - 배지 발급·드랍 판정 로직 → `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md`
 - 유저 노출 문구 기준 → `docs/specs/UX_WRITING_GUIDELINE.md`
@@ -259,7 +259,7 @@ JAM!의 모든 배지와 컬렉션은 조건 달성 시 제공되는 무미건�
 
 **트라이브 10종** 🟢 — 낭만 미식가 · 아스팔트 레인저 · 숲속의 갱단 · 셔터 마피아 ·
 장비병 환자들 · 비트 마에스트로 · 포션 연금술사 · 아날로그 수집가 · 작심삼일 클럽 ·
-미스터리 헌터. 상세는 `Business/04 JAM! 트라이브.md` 참고.
+미스터리 헌터. 상세는 `jam-doc/planning/business-plan/04 JAM! 트라이브.md` 참고.
 
 ### 서사의 연속성 — 트라이브 모멘텀으로 구현 🟢
 
@@ -521,9 +521,9 @@ JAM!의 소셜은 **경쟁이 아니라 목격**을 지향한다. 순위표로 �
 
 | 문서 | 역할 |
 |---|---|
-| `Business/서비스플랜/02 JAM! 서비스 플랜.md` | 기능 단위 구현 현황 (🟢🟡🔵 태그) |
-| `Business/03 JAM! 배지 철학 및 시스템 구조.md` | 배지 시스템 상세 철학 |
-| `Business/04 JAM! 트라이브.md` | 트라이브 10종 서사 원문 |
+| `jam-doc/planning/business-plan/02 JAM! 서비스 플랜.md` | 기능 단위 구현 현황 (🟢🟡🔵 태그) |
+| `jam-doc/planning/business-plan/03 JAM! 배지 철학 및 시스템 구조.md` | 배지 시스템 상세 철학 |
+| `jam-doc/planning/business-plan/04 JAM! 트라이브.md` | 트라이브 10종 서사 원문 |
 | `docs/specs/prd/01_PRD.md` | 기능·스펙 정의, §6 "안 만드는 것" |
 | `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` | 배지 발급·드랍 판정 로직 |
 | `docs/specs/UX_WRITING_GUIDELINE.md` | 유저 노출 문구 기준·고정 용어 |
