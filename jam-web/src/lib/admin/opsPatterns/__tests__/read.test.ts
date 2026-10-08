@@ -8,6 +8,7 @@
  * - 패턴 번호는 숫자 순서(P09 < P10 < P100)다
  * - 취향 신호는 보관한 패턴 것까지 싣고, 공통(`patternNo: null`)이 먼저, 그다음 패턴 번호 순서, 같은 패턴 안에서는 `sort_order`다
  * - 한 패턴의 취향 신호만 읽을 수 있고, 테이블이 비면 빈 목록이며, 조회 오류는 던진다
+ * - 승인 대기 제안 건수(`countPendingPatternProposals`, 티켓 20261008_1400)는 `pattern_proposal`·도착/검토 중·시험 아님 조건을 걸어 세고, 조회 오류는 던진다(0으로 바꾸지 않는다)
  * - 번호 전체(`loadOpsPatternNos`, 티켓 20261007_1745)는 상태로 거르지 않아 보관 패턴 번호도 싣고, 번호 칸만 읽으며, 조회 오류는 던진다
  */
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -16,6 +17,7 @@ import {
   OPS_PATTERN_COLUMNS,
   OPS_TASTE_SIGNAL_COLUMNS,
   comparePatternNo,
+  countPendingPatternProposals,
   getOpsPattern,
   listOpsCommonRules,
   listOpsPatterns,
@@ -345,5 +347,37 @@ describe('listOpsCommonRules', () => {
     expect(await listOpsCommonRules(service)).toEqual([])
     db.error = 'boom'
     await expect(listOpsCommonRules(service)).rejects.toThrow('공통 규칙 조회 실패')
+  })
+})
+
+describe('countPendingPatternProposals', () => {
+  /** 호출 기록을 남기고 `count`만 돌려주는 가짜. 조건은 기록해 두었다가 검사한다. */
+  function countService(result: { count: number | null; error: { message: string } | null }) {
+    const calls: string[] = []
+    const builder = {
+      select: (columns: string, options: unknown) => (calls.push(`select ${columns} ${JSON.stringify(options)}`), builder),
+      eq: (column: string, value: unknown) => (calls.push(`eq ${column}=${String(value)}`), builder),
+      in: (column: string, values: readonly string[]) => (calls.push(`in ${column}=${values.join('|')}`), builder),
+      then: (resolve: (value: typeof result) => unknown) => Promise.resolve(result).then(resolve),
+    }
+    const service = { from: (table: string) => (calls.push(`from ${table}`), builder) } as unknown as Parameters<typeof countPendingPatternProposals>[0]
+    return { service, calls }
+  }
+
+  it('패턴 제안·도착/검토 중·시험 아님 조건으로 개수만 읽는다', async () => {
+    const { service, calls } = countService({ count: 2, error: null })
+    expect(await countPendingPatternProposals(service)).toBe(2)
+    expect(calls).toEqual([
+      'from ops_bundle_items',
+      'select id, ops_bundles!inner(is_sample) {"count":"exact","head":true}',
+      'eq kind=pattern_proposal',
+      'in status=arrived|reviewing',
+      'eq ops_bundles.is_sample=false',
+    ])
+  })
+
+  it('개수가 비어 있으면 0이고, 조회 오류는 0이 아니라 던진다', async () => {
+    expect(await countPendingPatternProposals(countService({ count: null, error: null }).service)).toBe(0)
+    await expect(countPendingPatternProposals(countService({ count: null, error: { message: 'boom' } }).service)).rejects.toThrow('승인 대기 제안 조회 실패')
   })
 })
