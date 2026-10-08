@@ -120,7 +120,7 @@ describe('상태 코드', () => {
     expect(res.status).toBe(204)
     expect(await res.text()).toBe('')
     expect(insert).toHaveBeenCalledWith({
-      card_id: CARD_ID, content_type_id: 'type-1', card_shape: 'hero', event: 'impression', followup_action: null,
+      card_id: CARD_ID, content_type_id: 'type-1', card_shape: 'hero', pattern_no: null, event: 'impression', followup_action: null,
     })
   })
 
@@ -131,7 +131,18 @@ describe('상태 코드', () => {
     })
     expect((await POST(post(VALID_BODY))).status).toBe(204)
     expect(insert).toHaveBeenCalledWith({
-      card_id: CARD_ID, content_type_id: 'type-1', card_shape: 'poster', event: 'impression', followup_action: null,
+      card_id: CARD_ID, content_type_id: 'type-1', card_shape: 'poster', pattern_no: null, event: 'impression', followup_action: null,
+    })
+  })
+
+  it('패턴 번호가 있는 카드는 그 번호를 pattern_no로 그대로 저장한다(티켓 20261008_1059)', async () => {
+    maybeSingle.mockResolvedValue({
+      data: { is_active: true, starts_at: '2000-01-01', ends_at: '2999-01-01', content_type_id: 'type-1', shape: 'poster', template_type: 'badge_spotlight', layout_type: 'banner', cover_image_url: null, badge_ids: [], pattern_no: 'P12' },
+      error: null,
+    })
+    expect((await POST(post(VALID_BODY))).status).toBe(204)
+    expect(insert).toHaveBeenCalledWith({
+      card_id: CARD_ID, content_type_id: 'type-1', card_shape: 'poster', pattern_no: 'P12', event: 'impression', followup_action: null,
     })
   })
 })

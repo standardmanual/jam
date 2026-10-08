@@ -6,7 +6,7 @@
  * §9 "개인 식별자는 저장하지 않는다", 결정 4-6). content_type_id는 기록 시점 카드의 값을
  * 그대로 복제해 저장한다 — 카드가 나중에 유형을 바꾸거나 삭제돼도 이벤트의 유형 귀속이
  * 흔들리지 않는다(마이그레이션 183 COMMENT). card_shape(그려진 모양, 마이그레이션 206)도 같은 방식으로
- * 기록 시점 값을 복제한다(티켓 20261001_1431).
+ * 기록 시점 값을 복제한다(티켓 20261001_1431). 카드의 패턴 번호(pattern_no, 마이그레이션 211)도 같은 방식이다(티켓 20261008_1059).
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { recipeReleaseState } from '@/lib/combine/visibility'
@@ -62,6 +62,8 @@ export interface ExposableCard {
    * 모양이다. 상수를 끄면 그런 카드는 `null`이다.
    */
   card_shape: CardShape | null
+  /** 카드의 패턴 번호 복사본(마이그레이션 211). NULL이면 패턴이 없는 카드다(직접 만든 카드·옛 카드). 형식은 다시 검사하지 않는다. */
+  pattern_no: string | null
 }
 
 export type CardExposureValidation = { ok: true; card: ExposableCard } | { ok: false; error: string }
@@ -69,7 +71,7 @@ export type CardExposureValidation = { ok: true; card: ExposableCard } | { ok: f
 /**
  * 카드가 존재하고 `is_active`이며 `now`가 `[starts_at, ends_at]`(양끝 포함, 기존 노출 조회와 동일) 안일 때만 통과한다(티켓 20260924_0111).
  * 통과하면 조회한 카드 행을 돌려줘 `recordTodayCardEvent`가 `today_cards`를 다시 조회하지 않게 한다(티켓 20260924_0139).
- * 그려진 모양 판정에 필요한 칸(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)도 같은 조회에서 읽는다(티켓 20261001_1431).
+ * 그려진 모양 판정에 필요한 칸(`shape`·`template_type`·`layout_type`·`cover_image_url`·`badge_ids`)과 패턴 번호(`pattern_no`)도 같은 조회에서 읽는다(티켓 20261001_1431·20261008_1059).
  * 레시피 공개 카드는 타일 수를 레시피의 공개 상태로 정하므로 `recipe_id`도 함께 읽고, 그 카드에 한해 레시피 행을 한 번 더 읽는다(티켓 20261006_1218).
  * 다만 타일 수가 모양 판정에 쓰이는 카드(모양이 `list`로 정해진 타일형)에 한한다 — 모양이 null이거나 `list`가 아니면 레시피를 읽지 않는다(티켓 20261006_1344).
  */
@@ -77,7 +79,7 @@ export async function assertCardExposable(cardId: string, now: Date): Promise<Ca
   const supabase = createServiceClient()
   const { data: card, error } = await supabase
     .from('today_cards')
-    .select('is_active, starts_at, ends_at, content_type_id, shape, template_type, layout_type, cover_image_url, badge_ids, recipe_id')
+    .select('is_active, starts_at, ends_at, content_type_id, shape, template_type, layout_type, cover_image_url, badge_ids, recipe_id, pattern_no')
     .eq('id', cardId)
     .maybeSingle()
 
@@ -94,7 +96,14 @@ export async function assertCardExposable(cardId: string, now: Date): Promise<Ca
   }
   // 생성 타입은 template_type·layout_type을 string으로 읽어 모양 판정 입력 타입으로 좁혀 넘긴다(DB CHECK가 값을 보장한다).
   const shapeInput = card as ShapeCardInput & { recipe_id: string | null }
-  return { ok: true, card: { content_type_id: card.content_type_id, card_shape: await resolveDrawnShape(supabase, shapeInput, now) } }
+  return {
+    ok: true,
+    card: {
+      content_type_id: card.content_type_id,
+      card_shape: await resolveDrawnShape(supabase, shapeInput, now),
+      pattern_no: card.pattern_no ?? null,
+    },
+  }
 }
 
 /**
@@ -182,7 +191,7 @@ export function checkRateLimit(key: string, limit: number, windowMs: number): Ra
 export type RecordTodayCardEventResult = { ok: true } | { ok: false; error: string }
 
 /**
- * `assertCardExposable`이 이미 조회한 카드의 `content_type_id`·그려진 모양(`card_shape`)을 함께 insert한다(카드 재조회 없음).
+ * `assertCardExposable`이 이미 조회한 카드의 `content_type_id`·그려진 모양(`card_shape`)·패턴 번호(`pattern_no`)를 함께 insert한다(카드 재조회 없음).
  * 인자로도, insert 페이로드로도 유저 식별자를 받거나 담지 않는다 — 호출부(API 라우트)는 로그인
  * 여부만 확인하고 유저 ID는 이 함수에 넘기지 않는다.
  */
@@ -196,6 +205,7 @@ export async function recordTodayCardEvent(
     card_id: input.cardId,
     content_type_id: card.content_type_id,
     card_shape: card.card_shape,
+    pattern_no: card.pattern_no,
     event: input.event,
     // followupAction을 받지 않으므로 항상 null이다(2026-09-24 사용자 결정, 티켓 20260924_0810).
     followup_action: null,
@@ -209,6 +219,8 @@ export interface TodayCardEventAggregateRow {
   contentTypeId: string | null
   /** 기록 시점에 그려진 모양. NULL이면 모양 도입 전 기록이거나 전환 전 옛 카드다. */
   cardShape: string | null
+  /** 기록 시점 카드의 패턴 번호. NULL이면 패턴 없는 카드(직접 만든 카드)이거나 패턴 열 도입 전 기록이다(마이그레이션 211). */
+  patternNo: string | null
   event: TodayCardEventType
   count: number
 }
@@ -218,8 +230,9 @@ export interface TodayCardEventAggregateRow {
 const AGGREGATE_PAGE_SIZE = 1000
 
 /**
- * 기간(`from` 이상 `to` 미만, ISO 문자열) 안의 이벤트를 유형 ID×모양×이벤트별 건수로 집계한다. 유형별 합계는 같은 유형 행을
- * 모양에 상관없이 더하면 지금과 같고, 모양별 합계는 같은 모양 행을 유형에 상관없이 더하면 된다(티켓 20261001_1431).
+ * 기간(`from` 이상 `to` 미만, ISO 문자열) 안의 이벤트를 유형 ID×모양×패턴×이벤트별 건수로 집계한다. 유형별 합계는 같은 유형 행을
+ * 모양·패턴에 상관없이 더하면 지금과 같고, 모양별 합계는 같은 모양 행을 유형에 상관없이 더하면 된다(티켓 20261001_1431).
+ * 패턴별 합계는 같은 패턴 번호 행을 더하면 된다(티켓 20261008_1059).
  * `computeKpiWeeklyMetrics`(kpiWeekly.ts)와 같은 방식 — 원본 행을 읽어 서버에서 그룹핑한다.
  * `id` 오름차순으로 `.range()` 페이지를 반복해 1,000행 상한에서 잘리지 않게 한다.
  */
@@ -230,7 +243,7 @@ export async function aggregateTodayCardEvents(from: string, to: string): Promis
   for (let offset = 0; ; offset += AGGREGATE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from('today_card_events')
-      .select('content_type_id, card_shape, event')
+      .select('content_type_id, card_shape, pattern_no, event')
       .gte('occurred_at', from)
       .lt('occurred_at', to)
       .order('id', { ascending: true })
@@ -238,17 +251,18 @@ export async function aggregateTodayCardEvents(from: string, to: string): Promis
 
     if (error) throw error
     for (const row of data ?? []) {
-      const key = `${row.content_type_id ?? ''}\u0000${row.card_shape ?? ''}\u0000${row.event}`
+      const key = `${row.content_type_id ?? ''}\u0000${row.card_shape ?? ''}\u0000${row.pattern_no ?? ''}\u0000${row.event}`
       counts.set(key, (counts.get(key) ?? 0) + 1)
     }
     if (!data || data.length < AGGREGATE_PAGE_SIZE) break
   }
 
   return Array.from(counts.entries()).map(([key, count]) => {
-    const [contentTypeId, cardShape, event] = key.split('\u0000')
+    const [contentTypeId, cardShape, patternNo, event] = key.split('\u0000')
     return {
       contentTypeId: contentTypeId === '' ? null : contentTypeId,
       cardShape: cardShape === '' ? null : cardShape,
+      patternNo: patternNo === '' ? null : patternNo,
       event: event as TodayCardEventType,
       count,
     }
