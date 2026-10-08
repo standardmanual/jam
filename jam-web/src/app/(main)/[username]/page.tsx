@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import type { UserRow, StravaConnectionRow, ActivityFeedRow } from '@/types/database'
-import ProfileClient from '../profile/ProfileClient'
+import type { ActivityFeedRow } from '@/types/database'
+import ProfileClient, { type ProfileClientProfile } from '../profile/ProfileClient'
 import { hydrateFeedBadgeInfo } from '@/lib/activity-feed/hydrate'
 import { getWallet } from '@/lib/points'
 import { d, t } from '@/lib/i18n'
@@ -37,17 +37,20 @@ export default async function UserProfilePage({ params }: Props) {
 
   const service = createServiceClient()
 
-  // URL username으로 대상 유저 조회
+  // URL username으로 대상 유저 조회.
+  // 20261008_1354 — 서비스 클라이언트(RLS 우회)로 읽은 행은 ProfileClient(클라이언트 컴포넌트)로
+  // 넘어가 브라우저에 직렬화된다. `select('*')`로 읽으면 대상 유저의 email·마지막 위치·is_admin이
+  // 로그인한 아무 유저에게 전달되므로, 서버가 쓰는 id·username과 화면이 쓰는 표시 이름·아바타만 고른다.
   const { data: targetRaw, error: targetError } = await service
     .from('users')
-    .select('*')
+    .select('id, username, display_name, avatar_url')
     .eq('username', username.toLowerCase())
     .maybeSingle()
   // 20260901_1848: 조회 실패도 !targetRaw로 걸려 404(notFound)로 위장된다 — 로그로 구분
   if (targetError) console.error('[[username]/page] 대상 유저(users) 조회 실패', targetError)
 
   if (!targetRaw) notFound()
-  const target = targetRaw as UserRow
+  const target: ProfileClientProfile & { id: string } = targetRaw
   const subjectId = target.id
   const isOwnProfile = target.id === user.id
 
@@ -84,16 +87,14 @@ export default async function UserProfilePage({ params }: Props) {
   const followingCount = followingCountResult.count ?? 0
   const isFollowing = !!isFollowingResult.data
 
-  // ─── 프로필 / Strava / 피드 (대상 유저 기준) ──────────────────────────
-  const [stravaResult, feedResult, invResult] = await Promise.all([
-    service.from('strava_connections').select('*').eq('user_id', subjectId).maybeSingle(),
+  // ─── 피드 / 인벤토리 (대상 유저 기준) ──────────────────────────
+  const [feedResult, invResult] = await Promise.all([
     // 20260824_006 — 정렬 기준을 event_at(Strava 활동 시각, 로컬 벽시계 오해석 버그로
     // 미래로 찍힐 수 있었다)에서 created_at(행이 DB에 기록된 시각, 항상 정확)으로 변경.
     service.from('user_activity_feed').select('*').eq('user_id', subjectId).order('created_at', { ascending: false }).limit(150),
     service.from('inventory').select('id').eq('user_id', subjectId).maybeSingle(),
   ])
 
-  if (stravaResult.error) console.error('[[username]/page] strava_connections 조회 실패', stravaResult.error)
   if (feedResult.error) console.error('[[username]/page] user_activity_feed 조회 실패', feedResult.error)
   if (invResult.error) console.error('[[username]/page] inventory 조회 실패', invResult.error)
 
@@ -364,8 +365,7 @@ export default async function UserProfilePage({ params }: Props) {
 
   return (
     <ProfileClient
-      profile={target as UserRow}
-      strava={stravaResult.data as StravaConnectionRow | null}
+      profile={{ username: target.username, display_name: target.display_name, avatar_url: target.avatar_url }}
       feedItems={allItems.slice(0, 200)}
       isOwnProfile={isOwnProfile}
       isFollowing={isFollowing}

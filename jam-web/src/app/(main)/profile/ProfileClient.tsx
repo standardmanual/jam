@@ -24,7 +24,7 @@ import {
   BookIcon,
   ChevronRightIcon,
 } from '@/components/ui/icons'
-import type { UserRow, StravaConnectionRow, ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
+import type { UserRow, ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
 import FeedSection, { DetailSheet, earnCountOf, badgeLevelOf } from '../FeedSection'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { useToast } from '@/components/ui/Toast'
@@ -77,9 +77,15 @@ interface ItemBookItem {
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 
+/**
+ * 서버 컴포넌트가 이 컴포넌트로 넘기는 대상 유저 정보 — 화면이 쓰는 필드만 담는다.
+ * 이 컴포넌트는 클라이언트라 prop 전체가 브라우저로 직렬화된다(20261008_1354). `UserRow`처럼
+ * 넓은 타입으로 되돌리면 email·last_location_*·is_admin이 다시 새는 구조가 된다.
+ */
+export type ProfileClientProfile = Pick<UserRow, 'username' | 'display_name' | 'avatar_url'>
+
 interface Props {
-  profile: UserRow | null
-  strava: StravaConnectionRow | null
+  profile: ProfileClientProfile | null
   feedItems: ActivityFeedRow[]
   isOwnProfile: boolean
   isFollowing: boolean
@@ -101,7 +107,6 @@ interface Props {
 
 export default function ProfileClient({
   profile,
-  strava,
   feedItems,
   isOwnProfile,
   isFollowing,
