@@ -5,7 +5,13 @@
  * 동작은 옮기기 전과 같다 — `write.ts`가 이 파일의 이름을 다시 내보낸다.
  */
 import { CARD_SHAPES, isCardShape, type CardShape } from '@/lib/today/shape'
-import { OPS_PATTERN_LIMITS, OPS_PATTERN_SAMPLE_ROLES, type OpsPatternSampleRole } from './constants'
+import {
+  OPS_PATTERN_LIMITS,
+  OPS_PATTERN_SAMPLE_ROLES,
+  OPS_REJECTION_OFFSET_MAX,
+  OPS_TASTE_LIMITS,
+  type OpsPatternSampleRole,
+} from './constants'
 
 // ── 입력 모양 ───────────────────────────────────────────────────────────────────────────────────
 
@@ -191,3 +197,68 @@ export function validateOpsPatternInput(raw: unknown): { ok: true; value: OpsPat
   return { ok: true, value: { name, principle, userExperience, menus, samples, cardShapes, knobs, pitfalls } }
 }
 
+
+// ── 취향 신호·공통 규칙 (티켓 20261008_1712 ⑩b-1, ⑩b-2 화면이 같은 검사를 쓴다) ─────────────────────────────
+
+export const TASTE_EVIDENCE_INVALID_MESSAGE = '이 패턴의 반려 기록만 근거로 붙일 수 있어요.'
+export const TASTE_BASIS_REVERT_MESSAGE = '확정한 취향 신호는 추정으로 되돌릴 수 없어요.'
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** `ops_pattern_common_rules.rule_no`는 INTEGER다. */
+const INTEGER_MAX = 2_147_483_647
+
+export function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID_PATTERN.test(value)
+}
+
+/** 경로의 공통 규칙 번호(`"3"` → 3). 양의 정수 글자가 아니면 null이다. */
+export function parseCommonRuleNo(raw: string): number | null {
+  if (!/^[1-9][0-9]*$/.test(raw)) return null
+  const value = Number(raw)
+  return value <= INTEGER_MAX ? value : null
+}
+
+/** 근거 후보 읽기의 `offset`: 없으면 0, 0 이상 정수 글자이고 상한 이하여야 한다. 아니면 null이다. */
+export function parseRejectionOffset(raw: string | null): number | null {
+  if (raw === null) return 0
+  if (!/^[0-9]+$/.test(raw)) return null
+  const value = Number(raw)
+  return value <= OPS_REJECTION_OFFSET_MAX ? value : null
+}
+
+export interface OpsTasteSignalInput {
+  /** 앞뒤 공백을 뗀 이유(1~500자). */
+  reason: string
+  /** 근거로 붙일 반려 기록의 ID. `null`이면 근거 없이 확정한다(근거를 비운다). */
+  evidenceDecisionId: string | null
+}
+
+/**
+ * 취향 신호 확정·고치기 입력 검사. 저장하면 항상 확정이라 `basis` 칸은 받지 않는다 — 보내면 `confirmed`만 허용하고 `estimate`(되돌리기)는 400이다.
+ * `evidenceDecisionId`는 `null`·없음(근거 없이) 또는 UUID다. 근거가 이 패턴의 반려 기록인지는 서버가 읽어서 본다(`tasteWrite.ts`).
+ */
+export function validateTasteSignalInput(raw: unknown): { ok: true; value: OpsTasteSignalInput } | { ok: false; fieldErrors: OpsPatternFieldErrors } {
+  if (!isRecord(raw)) return { ok: false, fieldErrors: { reason: '이유를 적어 주세요.' } }
+  const errors: OpsPatternFieldErrors = {}
+  const reason = readRequiredText(raw.reason, 'reason', '이유', OPS_TASTE_LIMITS.reasonMax, errors)
+  if (raw.basis !== undefined && raw.basis !== 'confirmed') errors.basis = TASTE_BASIS_REVERT_MESSAGE
+  const evidence = raw.evidenceDecisionId
+  if (evidence !== undefined && evidence !== null && !isUuid(evidence)) errors.evidenceDecisionId = TASTE_EVIDENCE_INVALID_MESSAGE
+  if (Object.keys(errors).length > 0) return { ok: false, fieldErrors: errors }
+  return { ok: true, value: { reason, evidenceDecisionId: isUuid(evidence) ? evidence : null } }
+}
+
+export interface OpsCommonRuleInput {
+  title: string
+  body: string
+}
+
+/** 공통 규칙 고치기 입력 검사: 제목 1~60자, 본문 1~2,000자(앞뒤 공백을 뗀 뒤). */
+export function validateCommonRuleInput(raw: unknown): { ok: true; value: OpsCommonRuleInput } | { ok: false; fieldErrors: OpsPatternFieldErrors } {
+  if (!isRecord(raw)) return { ok: false, fieldErrors: { title: '제목을 적어 주세요.', body: '본문을 적어 주세요.' } }
+  const errors: OpsPatternFieldErrors = {}
+  const title = readRequiredText(raw.title, 'title', '제목', OPS_TASTE_LIMITS.ruleTitleMax, errors)
+  const body = readRequiredText(raw.body, 'body', '본문', OPS_TASTE_LIMITS.ruleBodyMax, errors)
+  if (Object.keys(errors).length > 0) return { ok: false, fieldErrors: errors }
+  return { ok: true, value: { title, body } }
+}
