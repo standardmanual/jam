@@ -40,7 +40,7 @@ function pattern(patternNo: string, overrides: Partial<OpsPatternRecord> = {}): 
 }
 
 function signal(id: string, patternNo: string | null, basis: 'estimate' | 'confirmed'): OpsTasteSignalRecord {
-  return { id, patternNo, name: id, reason: '', basis, evidenceDecisionId: null, confirmedAt: null, sortOrder: 1 }
+  return { id, patternNo, name: id, reason: '', basis, evidenceDecisionId: null, confirmedAt: null, sortOrder: 1, updatedAt: '2026-10-01T01:00:00+00:00' }
 }
 
 describe('parsePatternListParams / patternListHref', () => {

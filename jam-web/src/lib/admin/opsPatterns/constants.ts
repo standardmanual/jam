@@ -75,3 +75,17 @@ export const OPS_PATTERN_LIMITS = {
   cardShapeNoteMax: 200,
   pauseReasonMax: 200,
 } as const
+
+/**
+ * 취향 신호·공통 규칙을 쓸 때 지키는 길이 상한(티켓 20261008_1712 D1·D3, 사용자 확인 2026-10-08). 단위는 글자 수이고 앞뒤 공백을 뗀 뒤 센다.
+ */
+export const OPS_TASTE_LIMITS = {
+  /** 취향 신호의 이유. */
+  reasonMax: 500,
+  ruleTitleMax: 60,
+  ruleBodyMax: 2000,
+} as const
+
+/** 근거 후보(반려 기록) 읽기: 한 번에 보이는 건수와 `offset` 상한(티켓 20261008_1712 D4, 상한은 카리나 가정). */
+export const OPS_REJECTION_PAGE_SIZE = 10
+export const OPS_REJECTION_OFFSET_MAX = 1000
