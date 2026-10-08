@@ -6,10 +6,11 @@
  *    값과 무관하게 무시(받지 않고 저장하지 않는다, 티켓 20260924_0810)
  * 2. `recordTodayCardEvent` — 카드의 content_type_id를 조회해 함께 insert하고,
  *    insert 페이로드에 유저 식별자 키(user_id 등)가 전혀 없다
- * 3. `aggregateTodayCardEvents` — 유형 ID×모양×이벤트별 건수 집계 형태
+ * 3. `aggregateTodayCardEvents` — 유형 ID×모양×패턴×이벤트별 건수 집계 형태
  * 4. 그려진 모양(`card_shape`, 티켓 20261001_1431) — 모양 판정 칸을 카드 조회 한 번에 읽고, 기록에 복사한다.
  *    레시피 공개 카드는 `recipe_id`로 레시피의 공개 상태를 읽어 타일 수를 정한다(티켓 20261006_1218)
  *    타일 수가 모양 판정에 쓰이지 않는 카드(모양이 null·`list`가 아닌 모양)는 레시피를 읽지 않는다(티켓 20261006_1344)
+ * 5. 패턴 번호(`pattern_no`, 마이그레이션 211, 티켓 20261008_1059) — 카드 조회 한 번에 함께 읽어 기록에 그대로 복사하고, 집계는 패턴별로 가른다
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/events.test.ts
  */
@@ -30,13 +31,14 @@ const fixtures = vi.hoisted(() => ({
       cover_image_url?: string | null
       badge_ids?: string[]
       recipe_id?: string | null
+      pattern_no?: string | null
     } | undefined
   >,
   recipesById: {} as Record<string, { valid_from: string | null; valid_until: string | null } | undefined>,
   recipeQueryCount: 0,
   recipeError: null as { message: string } | null,
   insertedPayloads: [] as Record<string, unknown>[],
-  eventRows: [] as { content_type_id: string | null; event: string; card_shape?: string | null }[],
+  eventRows: [] as { content_type_id: string | null; event: string; card_shape?: string | null; pattern_no?: string | null }[],
   selectedColumns: [] as { table: string; columns: string }[],
   cardQueryCount: 0,
   cardError: null as { message: string } | null,
@@ -146,7 +148,7 @@ describe('recordTodayCardEvent — 카드 유형 ID 동봉 insert, 유저 식별
     fixtures.insertedPayloads.length = 0
     fixtures.cardsById[VALID_UUID] = { content_type_id: 'T05' }
 
-    const result = await recordTodayCardEvent({ cardId: VALID_UUID, event: 'impression' }, { content_type_id: 'T05', card_shape: 'hero' })
+    const result = await recordTodayCardEvent({ cardId: VALID_UUID, event: 'impression' }, { content_type_id: 'T05', card_shape: 'hero', pattern_no: null })
 
     expect(result.ok).toBe(true)
     expect(fixtures.insertedPayloads).toHaveLength(1)
@@ -154,6 +156,7 @@ describe('recordTodayCardEvent — 카드 유형 ID 동봉 insert, 유저 식별
       card_id: VALID_UUID,
       content_type_id: 'T05',
       card_shape: 'hero',
+      pattern_no: null,
       event: 'impression',
       followup_action: null,
     })
@@ -162,16 +165,26 @@ describe('recordTodayCardEvent — 카드 유형 ID 동봉 insert, 유저 식별
   it('그려진 모양이 없는 카드(옛 카드)는 card_shape를 null로 insert한다', async () => {
     fixtures.insertedPayloads.length = 0
 
-    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click' }, { content_type_id: 'T05', card_shape: null })
+    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click' }, { content_type_id: 'T05', card_shape: null, pattern_no: null })
 
     expect(fixtures.insertedPayloads[0]).toMatchObject({ card_shape: null })
+  })
+
+  it('카드의 패턴 번호를 그대로 복사해 insert하고, 없는 카드는 null을 insert한다(티켓 20261008_1059)', async () => {
+    fixtures.insertedPayloads.length = 0
+
+    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'impression' }, { content_type_id: 'T05', card_shape: 'hero', pattern_no: 'P12' })
+    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click' }, { content_type_id: 'T05', card_shape: 'hero', pattern_no: null })
+
+    expect(fixtures.insertedPayloads[0]).toMatchObject({ pattern_no: 'P12' })
+    expect(fixtures.insertedPayloads[1]).toMatchObject({ pattern_no: null })
   })
 
   it('insert 페이로드에 유저 식별자 키가 전혀 없다', async () => {
     fixtures.insertedPayloads.length = 0
     fixtures.cardsById[VALID_UUID] = { content_type_id: 'T05' }
 
-    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click' }, { content_type_id: 'T05', card_shape: 'hero' })
+    await recordTodayCardEvent({ cardId: VALID_UUID, event: 'click' }, { content_type_id: 'T05', card_shape: 'hero', pattern_no: 'P12' })
 
     const keys = Object.keys(fixtures.insertedPayloads[0])
     for (const forbidden of ['user_id', 'userId', 'user', 'email', 'nickname']) {
@@ -180,7 +193,7 @@ describe('recordTodayCardEvent — 카드 유형 ID 동봉 insert, 유저 식별
   })
 })
 
-describe('aggregateTodayCardEvents — 유형 ID×모양×이벤트별 건수 집계', () => {
+describe('aggregateTodayCardEvents — 유형 ID×모양×패턴×이벤트별 건수 집계', () => {
   it('같은 유형·이벤트 행을 건수로 묶는다', async () => {
     fixtures.eventRows = [
       { content_type_id: 'T05', event: 'impression' },
@@ -194,6 +207,8 @@ describe('aggregateTodayCardEvents — 유형 ID×모양×이벤트별 건수 �
     const byKey = new Map(rows.map((r) => [`${r.contentTypeId}::${r.event}`, r.count]))
     // 모양 칸이 없는 기록(모양 도입 전)은 모두 cardShape null로 읽혀 유형×이벤트당 한 행이다
     expect(rows.every((r) => r.cardShape === null)).toBe(true)
+    // 패턴 칸이 없는 기록도 모두 patternNo null로 읽힌다
+    expect(rows.every((r) => r.patternNo === null)).toBe(true)
 
     expect(byKey.get('T05::impression')).toBe(2)
     expect(byKey.get('T05::click')).toBe(1)
@@ -206,7 +221,7 @@ describe('aggregateTodayCardEvents — 유형 ID×모양×이벤트별 건수 �
 
     const rows = await aggregateTodayCardEvents('2026-09-01T00:00:00.000Z', '2026-09-08T00:00:00.000Z')
 
-    expect(rows).toEqual([{ contentTypeId: 'T05', cardShape: null, event: 'impression', count: 1500 }])
+    expect(rows).toEqual([{ contentTypeId: 'T05', cardShape: null, patternNo: null, event: 'impression', count: 1500 }])
   })
 
   it('같은 유형이라도 그려진 모양이 다르면 따로 세고, 모양 칸이 비면 null로 묶는다', async () => {
@@ -238,6 +253,35 @@ describe('aggregateTodayCardEvents — 유형 ID×모양×이벤트별 건수 �
 
     const eventSelect = fixtures.selectedColumns.find((s) => s.table === 'today_card_events')
     expect(eventSelect?.columns).toContain('card_shape')
+    expect(eventSelect?.columns).toContain('pattern_no')
+  })
+
+  it('같은 유형·모양이라도 패턴 번호가 다르면 다른 행으로 세고, 비면 null로 묶는다(티켓 20261008_1059)', async () => {
+    fixtures.eventRows = [
+      { content_type_id: 'T05', card_shape: 'hero', pattern_no: 'P12', event: 'impression' },
+      { content_type_id: 'T05', card_shape: 'hero', pattern_no: 'P12', event: 'impression' },
+      { content_type_id: 'T05', card_shape: 'hero', pattern_no: 'P12', event: 'click' },
+      { content_type_id: 'T05', card_shape: 'hero', pattern_no: 'P03', event: 'impression' },
+      { content_type_id: 'T05', card_shape: 'hero', pattern_no: null, event: 'impression' },
+      { content_type_id: 'T05', card_shape: 'hero', event: 'click' },
+    ]
+
+    const rows = await aggregateTodayCardEvents('2026-09-01T00:00:00.000Z', '2026-09-08T00:00:00.000Z')
+    const byKey = new Map(rows.map((r) => [`${r.contentTypeId}::${r.cardShape}::${r.patternNo}::${r.event}`, r.count]))
+
+    expect(byKey.get('T05::hero::P12::impression')).toBe(2)
+    expect(byKey.get('T05::hero::P12::click')).toBe(1)
+    expect(byKey.get('T05::hero::P03::impression')).toBe(1)
+    expect(byKey.get('T05::hero::null::impression')).toBe(1)
+    expect(byKey.get('T05::hero::null::click')).toBe(1)
+    expect(rows).toHaveLength(5)
+    // 패턴 칸을 더해도 유형·모양별 합계는 그대로다
+    const total = rows.reduce((sum, r) => sum + r.count, 0)
+    expect(total).toBe(fixtures.eventRows.length)
+    // 집계 행에도 유저 식별자 키가 없다
+    for (const row of rows) {
+      expect(Object.keys(row).sort()).toEqual(['cardShape', 'contentTypeId', 'count', 'event', 'patternNo'])
+    }
   })
 })
 
@@ -277,6 +321,59 @@ describe('assertCardExposable — 카드 노출 상태 검증', () => {
     const exposure = await assertCardExposable(ACTIVE_UUID, now)
     if (exposure.ok) await recordTodayCardEvent({ cardId: ACTIVE_UUID, event: 'impression' }, exposure.card)
     expect(fixtures.cardQueryCount).toBe(1)
+  })
+})
+
+describe('assertCardExposable — 패턴 번호(pattern_no) 복사(티켓 20261008_1059)', () => {
+  const PATTERN_UUID = '77777777-7777-4777-8777-777777777777'
+  const now = new Date('2026-09-24T00:00:00Z')
+  const baseCard = {
+    is_active: true,
+    starts_at: '2026-09-01T00:00:00Z',
+    ends_at: '2026-10-01T00:00:00Z',
+    content_type_id: 'T05',
+    shape: 'hero',
+    template_type: 'badge_spotlight',
+    layout_type: 'large_thumbnail',
+    cover_image_url: null,
+    badge_ids: [],
+  }
+
+  it('카드를 한 번 조회하면서 pattern_no를 함께 select한다', async () => {
+    fixtures.cardsById[PATTERN_UUID] = { ...baseCard, pattern_no: 'P12' }
+    fixtures.selectedColumns.length = 0
+    fixtures.cardQueryCount = 0
+
+    await assertCardExposable(PATTERN_UUID, now)
+
+    const cardSelects = fixtures.selectedColumns.filter((s) => s.table === 'today_cards')
+    expect(cardSelects).toHaveLength(1)
+    expect(fixtures.cardQueryCount).toBe(1)
+    expect(cardSelects[0].columns.split(',').map((c) => c.trim())).toContain('pattern_no')
+  })
+
+  it('패턴 번호가 있는 카드는 그 번호를 그대로 돌려준다(형식을 다시 검사하지 않는다)', async () => {
+    fixtures.cardsById[PATTERN_UUID] = { ...baseCard, pattern_no: 'P12' }
+    const result = await assertCardExposable(PATTERN_UUID, now)
+    expect(result.ok && result.card.pattern_no).toBe('P12')
+  })
+
+  it('패턴 번호가 비었거나 칸이 없는 카드는 null이다', async () => {
+    fixtures.cardsById[PATTERN_UUID] = { ...baseCard, pattern_no: null }
+    const empty = await assertCardExposable(PATTERN_UUID, now)
+    expect(empty.ok && empty.card.pattern_no).toBeNull()
+
+    fixtures.cardsById[PATTERN_UUID] = { ...baseCard }
+    const missing = await assertCardExposable(PATTERN_UUID, now)
+    expect(missing.ok && missing.card.pattern_no).toBeNull()
+  })
+
+  it('조회한 카드의 패턴 번호가 insert 페이로드까지 이어진다', async () => {
+    fixtures.cardsById[PATTERN_UUID] = { ...baseCard, pattern_no: 'P12' }
+    fixtures.insertedPayloads.length = 0
+    const exposure = await assertCardExposable(PATTERN_UUID, now)
+    if (exposure.ok) await recordTodayCardEvent({ cardId: PATTERN_UUID, event: 'click' }, exposure.card)
+    expect(fixtures.insertedPayloads[0]).toMatchObject({ card_id: PATTERN_UUID, pattern_no: 'P12' })
   })
 })
 

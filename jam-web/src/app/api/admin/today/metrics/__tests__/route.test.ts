@@ -131,6 +131,71 @@ describe('모양별 집계(byShape)', () => {
   })
 })
 
+describe('패턴별 집계(byPattern, 티켓 20261008_1059)', () => {
+  const bodyOf = async (rows: unknown[]) => {
+    aggregate.mockResolvedValue(rows)
+    return (await call()).json()
+  }
+
+  it('패턴별 노출·열람·후속 건수와 열람률을 돌려준다(유형·모양이 달라도 같은 패턴은 합산, 노출 0이면 열람률 null)', async () => {
+    const { byPattern } = await bodyOf([
+      { contentTypeId: 'T01', cardShape: 'hero', patternNo: 'P12', event: 'impression', count: 4 },
+      { contentTypeId: 'T02', cardShape: 'brief', patternNo: 'P12', event: 'impression', count: 6 },
+      { contentTypeId: 'T02', cardShape: 'brief', patternNo: 'P12', event: 'click', count: 2 },
+      { contentTypeId: 'T02', cardShape: 'brief', patternNo: 'P03', event: 'click', count: 1 },
+    ])
+    expect(byPattern).toEqual([
+      { patternNo: 'P03', impression: 0, click: 1, followup: 0, clickThroughRate: null },
+      { patternNo: 'P12', impression: 10, click: 2, followup: 0, clickThroughRate: 0.2 },
+    ])
+  })
+
+  it('패턴 번호가 null이거나 없는 기록은 patternNo null 한 줄로 묶고(unknown 문자열을 쓰지 않는다) 맨 끝에 둔다', async () => {
+    const { byPattern } = await bodyOf([
+      { contentTypeId: 'T01', cardShape: 'hero', patternNo: null, event: 'impression', count: 2 },
+      { contentTypeId: 'T01', cardShape: 'hero', event: 'impression', count: 3 },
+      { contentTypeId: 'T01', cardShape: 'hero', patternNo: null, event: 'click', count: 1 },
+      { contentTypeId: 'T01', cardShape: 'hero', patternNo: 'P20', event: 'impression', count: 1 },
+    ])
+    expect(byPattern).toEqual([
+      { patternNo: 'P20', impression: 1, click: 0, followup: 0, clickThroughRate: 0 },
+      { patternNo: null, impression: 5, click: 1, followup: 0, clickThroughRate: 0.2 },
+    ])
+  })
+
+  it('패턴 번호의 숫자 순서(P09 < P10 < P100)이고 null 줄은 입력 순서와 무관하게 맨 끝이다', async () => {
+    const order = [null, 'P100', 'P10', 'P09', 'P02']
+    const { byPattern } = await bodyOf(order.map((patternNo) => ({ contentTypeId: 'T01', cardShape: 'hero', patternNo, event: 'impression', count: 1 })))
+    expect(byPattern.map((p: { patternNo: string | null }) => p.patternNo)).toEqual(['P02', 'P09', 'P10', 'P100', null])
+  })
+
+  it('기록이 없으면 빈 배열이다', async () => {
+    expect((await bodyOf([])).byPattern).toEqual([])
+  })
+
+  it('응답 키는 range·types·byShape·byPattern뿐이고, 패턴 칸이 더해져도 types·byShape 값은 그대로다', async () => {
+    const body = await bodyOf([
+      { contentTypeId: 'T02', cardShape: 'hero', patternNo: 'P12', event: 'impression', count: 3 },
+      { contentTypeId: 'T02', cardShape: 'hero', patternNo: null, event: 'impression', count: 1 },
+      { contentTypeId: 'T02', cardShape: 'hero', patternNo: 'P12', event: 'click', count: 1 },
+    ])
+    expect(Object.keys(body).sort()).toEqual(['byPattern', 'byShape', 'range', 'types'])
+    expect(body.range).toEqual(DEFAULT_RANGE)
+    expect(body.types).toEqual([{ contentTypeId: 'T02', impression: 4, click: 1, followup: 0, clickThroughRate: 0.25 }])
+    expect(body.byShape).toEqual([{ shape: 'hero', impression: 4, click: 1, followup: 0, clickThroughRate: 0.25 }])
+  })
+
+  it('패턴 번호가 없는 옛 기록만 있어도 types·byShape는 이전과 같은 값이다', async () => {
+    const body = await bodyOf([
+      { contentTypeId: 'T01', cardShape: null, event: 'impression', count: 2 },
+      { contentTypeId: 'T01', cardShape: null, event: 'click', count: 1 },
+    ])
+    expect(body.types).toEqual([{ contentTypeId: 'T01', impression: 2, click: 1, followup: 0, clickThroughRate: 0.5 }])
+    expect(body.byShape).toEqual([{ shape: 'unknown', impression: 2, click: 1, followup: 0, clickThroughRate: 0.5 }])
+    expect(body.byPattern).toEqual([{ patternNo: null, impression: 2, click: 1, followup: 0, clickThroughRate: 0.5 }])
+  })
+})
+
 it('집계가 실패하면 500과 안내 문구를 돌려준다', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
   aggregate.mockRejectedValue(new Error('db down'))
