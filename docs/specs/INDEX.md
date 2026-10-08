@@ -141,6 +141,14 @@ status: active
 - [적용 전 검토 노트.md](../../jam-doc/planning/business-plan/tribe-rethink/적용%20전%20검토%20노트.md) — [JAM 2.0] 다섯 트라이브 서사를 서비스에 적용하기 전에 고려할 이슈, 적용 단계, 결정 질문을 정리한 검토 기록. 서비스에 반영하지 않는다.
 - [컨텐츠 분석 노트.md](../../jam-doc/planning/business-plan/tribe-rethink/컨텐츠%20분석%20노트.md) — [JAM 2.0] 다섯 트라이브 서사를 트라이브를 설정하는 컨텐츠로 평가한 기록. 트라이브별 강점과 보강점, 공통 평가, 보강 목록과 반영 상태를 담는다.
 
+## jam-doc/planning/business-plan/tribe-rethink/manuscript/
+
+- [01 미식.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/01%20미식.md) — [JAM 2.0] 미식 트라이브 '한입만 연구회'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 아이템 배지와 챕터 이름은 다음 순서에서 더한다. 서비스에 반영하지 않는다.
+- [02 사진.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/02%20사진.md) — [JAM 2.0] 사진 트라이브 '찰칵단'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 아이템 배지와 챕터 이름은 다음 순서에서 더한다. 서비스에 반영하지 않는다.
+- [03 음악.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/03%20음악.md) — [JAM 2.0] 음악 트라이브 '비사이드 레코즈'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 아이템 배지와 챕터 이름은 다음 순서에서 더한다. 서비스에 반영하지 않는다.
+- [04 물건 덕후.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/04%20물건%20덕후.md) — [JAM 2.0] 물건 덕후 트라이브 '소나무 잡화점'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 아이템 배지와 챕터 이름은 다음 순서에서 더한다. 서비스에 반영하지 않는다.
+- [05 내향인.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/05%20내향인.md) — [JAM 2.0] 내향인 트라이브 '혼자들'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 아이템 배지와 챕터 이름은 다음 순서에서 더한다. 서비스에 반영하지 않는다.
+
 ## jam-doc/planning/content/
 
 - [ACTIVITY_BADGES.md](../../jam-doc/planning/content/ACTIVITY_BADGES.md) — v5 액티비티배지의 조건·설명과 설계 원칙, 시딩하지 않은 항목, 발급되지 않는 항목을 정리한 목록이다(정본은 DB).
