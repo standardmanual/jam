@@ -443,7 +443,7 @@ tryItemDrop(userId, activityId):
    inventory.used_slots >= max_slots → 드랍 취소
 
 6. inventory_items INSERT:
-   { badge_id, obtained_by: 'drop', expires_at: now + 30일 }
+   { badge_id, obtained_by: 'drop', expires_at: 7-1 「만료값」 표의 동기화 드랍 행 }
 
 7. inventory.used_slots += 1
 
@@ -468,7 +468,7 @@ tryItemDrop(userId, activityId):
 
 **관련 파일:** `src/lib/drop/pickup.ts`, `src/app/api/drops/`
 
-### 6-1. POI 드랍 이벤트 (drop_events)
+### 6-1. POI 드랍 (poi_drops)
 
 ```
 사용자가 직접 POI에 드랍 (POST /api/drops):
@@ -506,19 +506,6 @@ POST /api/drops/[dropId]/pickup → pickup_drop RPC (DB 원자 트랜잭션):
     자기 드랍이면 판정하지 않는다
 ```
 
-### 6-3. 드랍 이벤트 픽업 (drop_events 기반)
-
-```
-Strava 활동 후 자동 처리:
-  활동 경로(latlng) ↔ 활성 drop_events 교차 검증
-  → isRouteNearPoi: 활동 경로가 POI 반경 내 진입 여부
-  → drop_events.claimed_quantity < total_quantity
-  → drop_claims INSERT (UNIQUE: drop_event_id + user_id → 유저당 1회)
-  → drop_events.claimed_quantity += 1
-  → 소진 시 is_active = false
-  → inventory_items INSERT (obtained_by: 'drop_event', 만료 30일)
-```
-
 ---
 
 ## 7. 인벤토리 · 아이템북
@@ -534,11 +521,29 @@ inventory (유저당 1개, 신규 유저 생성 시 트리거로 자동 생성)
 
 inventory_items (슬롯당 1개)
   badge_id: 아이템 배지 참조
-  obtained_by: 'drop' | 'poi_pickup' | 'drop_event' | 'system_event'
-  expires_at: 획득일 + 30일 (만료)
+  obtained_by: 개체를 처음 발급한 경로. 지금 코드가 넣는 값은 'drop' | 'ambient_drop' | 'system_event'
+               (픽업은 소유자만 옮기므로 이 값을 바꾸지 않는다)
+  expires_at: 발급 경로가 정한다 (아래 「만료값」 표). NULL이면 기한이 없다
   dropped_at: POI 드랍 시 설정
   slotted_in: user_item_book_slots.id 참조 (장착 시)
 ```
+
+**만료값(`inventory_items.expires_at`)**: 개체를 발급할 때 한 번 정하고, 이후 픽업·드랍·장착으로
+바뀌지 않는다. 발급은 `grant_inventory_item()` RPC(마이그레이션 173)가 받은 `p_expires_at`을 그대로
+넣고, 인자를 넘기지 않으면 NULL이다.
+
+| 발급 경로 | obtained_by | expires_at | 코드 |
+|---|---|---|---|
+| 동기화 드랍 (5-2) | `drop` | 그 아이템 배지의 공개 종료일(`badges.valid_until`). 공개 종료일이 없으면 NULL | `jam-web/src/lib/drop-engine/index.ts` `insertDrop()` |
+| 시스템 드랍 (POI에 미리 배치) | `ambient_drop` | NULL | `mint_and_place_ambient_drop()` (마이그레이션 108) |
+| 믹스 보상 (8-1 6-a단계) | `system_event` | 지급 시점 + 30일 | `jam-web/src/lib/combine/index.ts` 보상 지급 |
+| 미션 보상 (9장) | `system_event` | NULL (`p_expires_at`을 넘기지 않는다) | `jam-web/src/lib/missions/rewards.ts` `grantMissionRewards()` |
+| POI 픽업 (6-2) | 바꾸지 않음 | 바꾸지 않음 (소유자와 `obtained_at`만 옮긴다) | `pickup_drop()` (마이그레이션 108) |
+| 어드민 시뮬레이션 (`dryRun`이 아닐 때) | `drop` | 지급 시점 + 30일 | `jam-web/src/app/api/admin/simulate/route.ts` |
+
+만료일이 지나도 개체를 파괴하거나 장착·믹스·드랍을 막는 처리는 없다. 만료값은 화면 표시(획득
+이력의 만료일, 7일 이내면 「곧 만료」 칩)에만 쓰인다. 타입과 획득 이력 화면에 `drop_event` 분기가
+남아 있지만, 이 값으로 발급하는 코드는 없다(`drop_events` 테이블은 마이그레이션 075에서 삭제).
 
 ### 7-2. 아이템북 슬롯 장착
 
@@ -625,7 +630,7 @@ POST /api/combine { recipe_id: string, item_ids: string[] }  (item_ids 1~10개, 
    조건 슬롯의 배지는 보유만 확인하므로 소각하지 않는다.
 
 6-a. 매칭 성공
-   reward_badge_ids를 전부 지급한다(만료는 지급 시점 +30일, 인벤토리에 칸이 없으면 그 배지는 건너뛴다).
+   reward_badge_ids를 전부 지급한다(만료값은 7-1 「만료값」 표의 믹스 보상 행, 인벤토리에 칸이 없으면 그 배지는 건너뛴다).
    reward_points가 0보다 크면 지급한다(사유 combine_recipe_reward).
 6-b. 미매칭(no_recipe_match)
    combine_policy.fail_reward_points가 0보다 크면 지급한다(사유 combine_fail_reward).
