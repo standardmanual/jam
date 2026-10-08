@@ -75,9 +75,10 @@ related:
 | 항목 | `links` | 배열. 각 값은 같은 묶음 다른 항목의 `item_key`여야 한다(자기 자신과 없는 키는 오류) |
 | 항목 | `world_review`(필수) | 객체 `{ world_related, winter_reviewed, reason }`. 셋 다 필수, 앞의 둘은 불리언, `reason`은 한 줄 문자열, `world_related`가 참이면 `winter_reviewed`도 참이어야 한다. 규칙은 홈피드 등록 묶음의 `world_review`와 같다(`registerHomeFeedBundle.mjs`, 테스트가 같은 입력으로 대조) |
 | 항목 | `shape`·`exposure_tags`·`tribe_id`·`color_pending`, 묶음 `excluded_items` | 아래 「카드 칸과 뺀 항목」 표가 정한다 |
+| 항목 | `resource.pattern`(`kind`가 `pattern_proposal`일 때만) | 아래 「패턴 제안 내용 칸」 표가 정한다. 다른 종류의 `resource`는 보지 않는다 |
 | 항목 | `image_spec`(선택) | 이미지 지시 칸. 객체이고 `preset_id`·`bg`·`end`는 비어 있지 않은 문자열, `values`는 문자열 값을 가진 객체이며 넷 모두 선택이다. 이미지 칸이 있는 종류(`home_feed_card`·`mission`·`jam_badge`·`collection_launch`)에서 비어 있거나 `preset_id`가 없으면, `preset_id`는 있는데 `bg`·`end`가 없으면(렌더가 실패한다), 또는 값이 있는데 모양이 틀리면 **경고만** 낸다. 오류로 만들지 않고 제출은 그대로 받으며, 경고는 제출 응답의 `warnings`에만 싣고 DB에는 저장하지 않는다(`image_spec`은 항목 원본에 그대로 저장한다). 규칙은 `lib/admin/opsInbox/imageSpec.ts` |
 | 항목 | `knobs.place_category`(선택) | `knobs`가 객체이고 이 키에 값이 있으면 `poi_categories.slug`의 문자열 배열이어야 한다(빈 배열은 허용). 없는 slug는 모아서 형식 오류 한 줄로 남기고 저장·승인은 막지 않는다. 카테고리 목록 조회가 실패하면 저장하지 않고 500이다. `knobs`가 없거나 객체가 아니거나 이 키가 없으면 검사하지 않는다 |
-| 항목 | `knobs`의 나머지·`segment`·`balance_check`·`copy`·`colors`·`resource` | 검사하지 않고 항목 원본(`original`)에 그대로 저장한다. 종류별 세부 검증은 예약 등록 때 등록 전 검증(§8.4)이 한다. `segment`는 옛 칸이라 신호가 읽지 않는다(대상은 `exposure_tags`) |
+| 항목 | `knobs`의 나머지·`segment`·`balance_check`·`copy`·`colors`·`resource`(`pattern_proposal`의 `resource.pattern`은 위 행이 따로 본다) | 검사하지 않고 항목 원본(`original`)에 그대로 저장한다. 종류별 세부 검증은 예약 등록 때 등록 전 검증(§8.4)이 한다. `segment`는 옛 칸이라 신호가 읽지 않는다(대상은 `exposure_tags`) |
 
 - 형식에 이미지 파일 경로(`image.path`)와 `seed`는 없다. 이미지는 제출 뒤 운영툴이 만들므로 `image_spec`(이미지 지시)을 받는다(§8.8, 티켓 1501). 이 두 키가 들어와도 거절하지 않고 검사 없이 항목 원본(`original`)에 그대로 저장한다. `image_spec`은 위 표대로 모양만 보고 경고한다.
 - 항목 배열의 순서는 `position`(0부터)으로 저장한다.
@@ -122,6 +123,26 @@ related:
   `loadTribeIds`) `tribe_id`가 그 안에 있는지 본다. 같은 목록·같은 규칙이라 두 경로의 판정이 같다. 조회가 실패하면 저장하지 않고 500이다. 읽기 함수는
   형식만 보고 존재는 다시 보지 않는다.
 - 07 3.6 「트라이브 연결은 필수」는 기획 층(에이전트)이 지키는 가드레일이고, 이 칸은 선택이다.
+
+**패턴 제안 내용 칸 (구현됨: 티켓 [20261007_1746](../../../tickets/p2-normal/20261007_1746_API_운영-묶음-제출-형식-b-패턴-제안-내용-칸.md)).**
+`kind`가 `pattern_proposal`인 항목의 `resource.pattern`이다. 칸은 패턴 사전 한 행(마이그레이션 210 `ops_patterns`)과 같고, 승인 때 사전에 넣을 값이다(1503 ⑪). 형식 검사는
+`validate.ts`의 `validateOpsPatternProposal`, 칸 읽기는 `fields.ts`의 `readOpsPatternProposal` 한 곳이다. 읽기 함수는 그 검사를 그대로 돌리므로 「검사 오류 0 ⇔ 모름이 아님」이다.
+`kind`가 `pattern_proposal`이 아니면 `resource.pattern`을 보지 않고 읽기 함수는 `null`을 돌려준다.
+
+| 칸 (`resource.pattern.`) | 형식 | 필수 | 없을 때 읽는 값 | 형식이 틀릴 때 |
+|---|---|---|---|---|
+| `name`·`principle`·`user_experience` | 비어 있지 않은 문자열(앞뒤 공백만이면 빈 값). 읽을 때 앞뒤 공백을 뗀다 | 필수 | 모름 | 모름 |
+| `knobs` | 객체. `condition`·`place`·`time`·`reward`는 `{ open, closed }`, `tribe`는 `{ rule, example }`이고 네 값 모두 비어 있지 않은 문자열이다. 빠진 손잡이와 빠진 값은 각각 한 줄이다 | 필수 | 모름 | 모름 |
+| `menus` | 비어 있지 않은 문자열의 배열(빈 배열 허용) | 선택 | `[]` | 모름 |
+| `samples` | `{ no, name, role, impl }`의 배열. `no`는 1 이상의 정수, `name`은 비어 있지 않은 문자열, `role`은 `main`·`aux`·`related`(`OPS_PATTERN_SAMPLE_ROLES`), `impl`은 문자열(없거나 빈 값 허용) | 선택 | `[]` | 모름 |
+| `card_shapes` | `{ shape, note }`의 배열. `shape`는 `CARD_SHAPES` 5개 중 하나, `note`는 문자열(없거나 빈 값 허용) | 선택 | `[]` | 모름 |
+| `pitfalls` | 문자열(빈 값 허용) | 선택 | `''` | 모름 |
+
+- `resource`가 객체가 아니거나 `pattern`이 없으면 `items[n].resource.pattern: 필수 항목이 없어요(…)` 한 줄이다. `pattern`이 객체가 아니면 그 한 줄로 끝내고 안쪽은 보지 않는다.
+- 원소 오류는 원소마다 경로를 붙여 알린다(`items[1].resource.pattern.samples[2].role: …`). 정의되지 않은 키는 오류가 아니고 읽기 함수가 버린다.
+- 오류는 「경로: 사유」로 항목 `format_errors`에 담고 저장·승인은 막지 않는다. 오류 이름표는 `resource.pattern…`을 「제안 패턴 …」으로 부른다(`labels.ts`, 예: 「제안 패턴 유저가 겪는 것」은 항목의 「유저가 겪는 것」과 따로다).
+- 이 티켓이 하지 않는 것: 사전의 기존 이름과 겹치는지 보지 않는다. 항목 칸 `pattern_no`·`user_experience` 규칙은 그대로다(새 패턴 번호는 ⑪이 승인 때 붙인다).
+- 읽기 함수가 돌려주는 객체(`OpsPatternProposal`)는 `OpsPatternRecord`와 같은 camelCase 칸(`name`·`principle`·`userExperience`·`menus`·`samples`·`cardShapes`·`knobs`·`pitfalls`)이다.
 
 ## 4. 사용성 원칙 (07 4.1)
 
@@ -599,7 +620,7 @@ stateDiagram-v2
 
 - 고칠 수 있는 칸은 여섯 갈래뿐이다(상위 티켓 가정 13): 문안(`copy.<키>`, 제출된 문안 키마다 한 칸), 색(`colors.<키>`, `#rrggbb`), 공개 시각(`starts_at`), 종료 시각(`ends_at`),
   대상(`segment`, 글로 제출된 것만), 「유저가 겪는 것」(`user_experience`). 그 밖의 경로는 400으로 거절한다. 새 키를 더할 수 없다(이미 제출된 키의 값만 바꾼다). 종류·패턴·손잡이·연결·검수·판정은
-  읽기 전용이고 「고칠 수 없어요」 툴팁이 붙는다. 시각은 KST로 보여 주고 서버에는 UTC ISO 문자열로 보낸다. 시각을 비우는 수정은 받지 않는다.
+  읽기 전용이고 「고칠 수 없어요」 툴팁이 붙는다. 패턴 제안 항목의 내용 칸(`resource.pattern…`)도 고칠 수 없는 경로라 400으로 거절하고, 상세 카드의 「고칠 수 없는 것」에는 `제안 패턴` 줄 하나(값은 패턴 이름, 형식이 틀리면 「형식이 틀려 읽을 수 없어요」)만 보인다. 전체 내용은 S5·1503 ⑪ 몫이다. 시각은 KST로 보여 주고 서버에는 UTC ISO 문자열로 보낸다. 시각을 비우는 수정은 받지 않는다.
 - **제출 원본(`original`)은 어떤 경우에도 바뀌지 않는다.** 수정은 수정본(`edited`)에만 쓴다. 수정본은 **최상위 키 덮어쓰기**다: `copy`·`colors`는 합친 객체 전체를 넣고, 값이 원본과 같아지면
   그 키를 뺀다. `starts_at`·`ends_at` 열도 함께 갱신한다.
 - 바뀐 칸이 없으면 [저장하기]가 비활성이고, 서버도 400 「바뀐 내용이 없어요.」다. 수정 전후 차이는 「문안 · body: 전 → 후」 한 줄씩 보인다.
@@ -1481,7 +1502,7 @@ stateDiagram-v2
 - **상태 3값:** 사용 중(조합 뽑기에 나온다) · 쉬는 중(사전과 읽기 응답에는 있고 조합 뽑기에서만 빠진다, 이유 한 줄 필수) · 보관(S5 목록에서 기본 숨김, 읽기 응답
   기본 제외, 조합 뽑기 제외, 번호와 기록은 남는다, 보관한 패턴의 취향 신호는 에이전트가 계속 읽는다). 승인한 제안은 「사용 중」으로 들어간다. 초기 입력은 P14만
   「쉬는 중」(필요한 기능 O12·O14 대기)이다.
-- **패턴 제안 승인 흐름:** 받은 기획함 승인 → 같은 요청에서 사전 입력(실패하면 승인도 되돌린다) → S5에는 「승인 대기 제안 N건」 링크만 둔다(구현은 ⑪).
+- **패턴 제안 승인 흐름:** 받은 기획함 승인 → 같은 요청에서 사전 입력(실패하면 승인도 되돌린다) → S5에는 「승인 대기 제안 N건」 링크만 둔다(구현은 ⑪). 제안 내용은 `readOpsPatternProposal`로 읽는다(형식은 §3.1 「패턴 제안 내용 칸」, 모름이면 사전에 넣지 않는다).
 - **취향 신호의 추정과 확정:** 폐기 43개의 이유는 처음에 「추정」이다. 운영자가 S5에서 이유를 고치고 확정하면 「확정」이 되고, 같은 패턴 항목의 반려 기록 하나를
   근거로 붙일 수 있다(반려 창은 바꾸지 않는다). 읽기 응답은 추정과 확정을 구분해 싣는다.
 - **읽기 응답 규칙:** 관리자 ID(`updated_by`·`confirmed_by`)를 싣지 않는다. 시험 묶음은 읽기 토큰에서 항상 뺀다.
