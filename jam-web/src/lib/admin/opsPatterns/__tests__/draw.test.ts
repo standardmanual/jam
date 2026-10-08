@@ -5,6 +5,7 @@
  * - `usageTimeOf`·`rankOpsDraw`(순수 함수): 승인 이후 상태만 센다·시험 묶음과 `pattern_proposal`은 세지 않는다, 기간 경계(포함)와 앞날 예약,
  *   `lastUsedAt`은 기간과 무관한 최댓값, 정렬(횟수 → 오래된 순, 한 번도 안 쓴 것이 맨 앞 → 마지막 키)·자르기·재현성, 대상 목록(사용 중 패턴·활성
  *   트라이브·제외하지 않은 카테고리), 칸 읽기(수정본 우선·형식이 틀린 값·겹친 slug)
+ * - `countOpsPatternUsage`(S5와 같이 쓰는 세기, 티켓 20261008_1400): 쉬는 중·보관 번호도 센다, 시험·승인 전·`pattern_proposal`·사용 시각 없음은 안 센다, `rankOpsDraw`와 같은 값
  * - 읽기 함수: select 칸(관리자 ID·제출 원본이 없다)과 조건(시험 제외·승인 이후 상태·활성 트라이브), 1000행 넘게 읽기, 조회 실패는 던진다
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
@@ -15,6 +16,7 @@ import {
   OPS_DRAW_USAGE_COLUMNS,
   OPS_DRAW_TRIBE_COLUMNS,
   OPS_DRAW_WINDOW_DAYS,
+  countOpsPatternUsage,
   drawOpsCombination,
   loadDrawTribes,
   loadDrawUsageRows,
@@ -438,6 +440,58 @@ function fakeService(tables: Record<string, Array<Record<string, unknown>>>, fai
   }
   return { service: { from: (table: string) => new Query(table) } as unknown as ServiceClient, calls }
 }
+
+describe('countOpsPatternUsage — 패턴 사전(S5)과 조합 뽑기가 같이 쓰는 세기', () => {
+  it('넘긴 번호는 한 번도 안 썼어도 0회·null로 돌려준다(상태는 보지 않는다)', () => {
+    const counted = countOpsPatternUsage([row(1, { patternNo: 'P02' })], ['P01', 'P02', 'P03'], NOW)
+    expect(counted.get('P01')).toEqual({ uses: 0, lastUsedAt: null })
+    expect(counted.get('P02')).toEqual({ uses: 1, lastUsedAt: '2026-10-01T00:00:00.000Z' })
+    expect([...counted.keys()]).toEqual(['P01', 'P02', 'P03'])
+  })
+
+  it('넘기지 않은 번호는 세지 않는다(쉬는 중·보관 번호도 넘기면 센다)', () => {
+    const rows = [row(1, { patternNo: 'P14' }), row(2, { patternNo: 'P20' })]
+    expect(countOpsPatternUsage(rows, ['P14'], NOW).has('P20')).toBe(false)
+    expect(countOpsPatternUsage(rows, ['P14', 'P20'], NOW).get('P20')?.uses).toBe(1)
+  })
+
+  it('시험 묶음·승인 전 상태·pattern_proposal·사용 시각을 읽을 수 없는 항목은 세지 않는다', () => {
+    const rows = [
+      row(1, { patternNo: 'P01', sample: true }),
+      row(2, { patternNo: 'P01', status: 'reviewing' }),
+      row(3, { patternNo: 'P01', kind: 'pattern_proposal' }),
+      row(4, { patternNo: 'P01', startsAt: null, receivedAt: 'garbage' }),
+      row(5, { patternNo: 'P01' }),
+      row(6, { patternNo: 'not-a-pattern' }), // 센 것은 5번 하나뿐이다
+    ]
+    expect(countOpsPatternUsage(rows, ['P01'], NOW).get('P01')).toEqual({ uses: 1, lastUsedAt: '2026-10-01T00:00:00.000Z' })
+  })
+
+  it('최근 4주 안은 uses에 들어가고, 마지막 사용은 기간과 무관하다', () => {
+    const rows = [
+      row(1, { patternNo: 'P01', startsAt: new Date(SINCE_MS).toISOString() }),
+      row(2, { patternNo: 'P01', startsAt: new Date(SINCE_MS - 1).toISOString() }),
+      row(3, { patternNo: 'P02', startsAt: '2026-01-01T00:00:00.000Z' }),
+    ]
+    const counted = countOpsPatternUsage(rows, ['P01', 'P02'], NOW)
+    expect(counted.get('P01')?.uses).toBe(1)
+    expect(counted.get('P02')).toEqual({ uses: 0, lastUsedAt: '2026-01-01T00:00:00.000Z' })
+  })
+
+  it('같은 입력에서 rankOpsDraw의 uses·lastUsedAt과 같다', () => {
+    const rows = [
+      row(1, { patternNo: 'P01' }),
+      row(2, { patternNo: 'P01', startsAt: '2026-10-05T00:00:00.000Z' }),
+      row(3, { patternNo: 'P02', startsAt: '2026-06-01T00:00:00.000Z' }),
+      row(4, { patternNo: 'P02', sample: true }),
+      row(5, { patternNo: 'P03', status: 'rejected' }),
+    ]
+    const counted = countOpsPatternUsage(rows, PATTERNS.map((p) => p.patternNo), NOW)
+    for (const line of rank({ rows }).patterns) {
+      expect(counted.get(line.patternNo), line.patternNo).toEqual({ uses: line.uses, lastUsedAt: line.lastUsedAt })
+    }
+  })
+})
 
 describe('loadDrawUsageRows', () => {
   it('세는 데 필요한 칸만 읽는다 — 관리자 ID·제출 원본 칸은 select에 없다', () => {

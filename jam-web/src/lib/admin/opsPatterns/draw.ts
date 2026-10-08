@@ -5,6 +5,7 @@
  * 모델의 창의력에 맡기지 않으려는 것이다. 무작위가 없다 — 같은 행과 같은 기준 시각(`now`)이면 결과가 같다.
  *
  * - 계산은 순수 함수 `rankOpsDraw` 하나에 모았다(세기 → 정렬 → 자르기). 읽기는 `drawOpsCombination`이 맡는다.
+ * - 패턴의 세기는 `countOpsPatternUsage`로 떼어 두었다(티켓 20261008_1400). 패턴 사전 화면(S5)의 「최근 4주」·「마지막 사용」이 조합 뽑기와 같은 기준이도록 둘이 같은 함수를 쓴다.
  * - 세는 단위는 항목 1건 = 1회다. 승인 이후 상태(승인됨·준비중·예약됨·게재중·종료)의 실제 항목만 세고 시험 묶음·`pattern_proposal`·
  *   형식이 틀린 값은 세지 않는다. 칸은 `opsInbox/fields.ts` 읽기 함수로 읽어 수정본이 원본보다 우선한다.
  * - 사용 시각은 항목의 공개 시각(`starts_at`), 없으면 묶음의 받은 시각이다. 앞날로 예약된 항목도 센다(이미 예약된 패턴을 또 추천하지 않도록).
@@ -178,6 +179,56 @@ function iso(ms: number | null): string | null {
 }
 
 /**
+ * 세는 항목이면 그 사용 시각(ms), 세지 않는 항목이면 `null`. 시험 묶음·승인 전 상태·`pattern_proposal`·사용 시각을 읽을 수 없는 항목은 세지 않는다.
+ * 패턴·트라이브·카테고리 세기가 모두 이 판정 하나를 쓴다.
+ */
+function countableUsedAt(row: OpsDrawUsageRow): number | null {
+  const bundle = embedded(row.ops_bundles)
+  if (bundle === null || bundle.is_sample !== false) return null
+  if (!POST_APPROVAL_STATUSES.includes(row.status)) return null
+  if (row.kind !== null && OPS_DRAW_UNCOUNTED_KINDS.includes(row.kind)) return null
+  return usageTimeOf(row)
+}
+
+/** 주어진 패턴 번호마다 최근 28일 사용 횟수와 마지막 사용 시각(ms)을 센다. 번호 목록에 없는 패턴은 세지 않는다. */
+function countPatternUsageMs(rows: readonly OpsDrawUsageRow[], patternNos: Iterable<string>, nowMs: number): Map<string, Usage> {
+  const sinceMs = nowMs - OPS_DRAW_WINDOW_DAYS * DAY_MS
+  const usages = new Map<string, Usage>()
+  for (const patternNo of patternNos) usages.set(patternNo, newUsage())
+  for (const row of rows) {
+    const usedAt = countableUsedAt(row)
+    if (usedAt === null) continue
+    const patternNo = readOpsItemPatternNo(row)
+    if (patternNo === null || patternNo === OPS_FIELD_UNKNOWN) continue
+    const usage = usages.get(patternNo)
+    if (usage) record(usage, usedAt, usedAt >= sinceMs)
+  }
+  return usages
+}
+
+export interface OpsPatternUsageCount {
+  /** 기준 시각에서 28일 거슬러 올라간 시각과 같거나 늦은 사용 횟수. */
+  uses: number
+  /** 기간과 무관한 마지막 사용 시각(ISO). 한 번도 안 썼으면 `null`. */
+  lastUsedAt: string | null
+}
+
+/**
+ * 패턴 번호마다의 「최근 4주」 사용 횟수와 「마지막 사용」(순수 함수, 티켓 20261008_1400). 조합 뽑기(`rankOpsDraw`)와 패턴 사전 화면(S5)이 같이 쓴다.
+ *
+ * 세는 규칙은 조합 뽑기와 같다: 시험 묶음·승인 전 상태·`pattern_proposal`은 세지 않고, 사용 시각은 `usageTimeOf`, 마지막 사용은 기간과 무관하다.
+ * 상태(사용 중·쉬는 중·보관)는 보지 않는다 — 어떤 번호를 넘기느냐가 대상이다. 넘긴 번호는 한 번도 안 썼어도 `{ uses: 0, lastUsedAt: null }`로 돌려준다.
+ */
+export function countOpsPatternUsage(
+  rows: readonly OpsDrawUsageRow[],
+  patternNos: Iterable<string>,
+  now: Date
+): Map<string, OpsPatternUsageCount> {
+  const counted = countPatternUsageMs(rows, patternNos, now.getTime())
+  return new Map([...counted].map(([patternNo, usage]) => [patternNo, { uses: usage.uses, lastUsedAt: iso(usage.lastMs) }]))
+}
+
+/**
  * 최근에 덜 쓴 패턴·트라이브·지점 카테고리를 세어 「덜 쓴 순」으로 돌려준다(순수 함수).
  *
  * 정렬은 `uses` 오름차순 → 마지막 사용이 오래된 순(한 번도 안 쓴 것이 맨 앞) → 마지막 키(패턴은 번호의 숫자 순서, 트라이브는 `sort_order`
@@ -188,9 +239,8 @@ export function rankOpsDraw({ rows, patterns, tribes, placeCategories, now, limi
   const nowMs = now.getTime()
   const sinceMs = nowMs - OPS_DRAW_WINDOW_DAYS * DAY_MS
 
-  const patternUsage = new Map<string, Usage>()
   const patternLines = patterns.filter((pattern) => pattern.status === 'active')
-  for (const pattern of patternLines) patternUsage.set(pattern.patternNo, newUsage())
+  const patternUsage = countPatternUsageMs(rows, patternLines.map((pattern) => pattern.patternNo), nowMs)
 
   const tribeUsage = new Map<string, Usage>()
   const tribeByKey = new Map<string, OpsDrawTribe>()
@@ -207,21 +257,11 @@ export function rankOpsDraw({ rows, patterns, tribes, placeCategories, now, limi
 
   let countedItems = 0
   for (const row of rows) {
-    const bundle = embedded(row.ops_bundles)
-    if (bundle === null || bundle.is_sample !== false) continue
-    if (!POST_APPROVAL_STATUSES.includes(row.status)) continue
-    if (row.kind !== null && OPS_DRAW_UNCOUNTED_KINDS.includes(row.kind)) continue
-    const usedAt = usageTimeOf(row)
+    const usedAt = countableUsedAt(row)
     if (usedAt === null) continue
 
     const inWindow = usedAt >= sinceMs
     if (inWindow) countedItems += 1
-
-    const patternNo = readOpsItemPatternNo(row)
-    if (patternNo !== null && patternNo !== OPS_FIELD_UNKNOWN) {
-      const usage = patternUsage.get(patternNo)
-      if (usage) record(usage, usedAt, inWindow)
-    }
 
     const tribeId = readOpsItemTribeId(row)
     if (tribeId !== null && tribeId !== OPS_FIELD_UNKNOWN) {
