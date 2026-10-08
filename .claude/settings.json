@@ -1,6 +1,4 @@
 {
-  "outputStyle": "fluent-korean",
-  "model": "sonnet",
   "permissions": {
     "allow": [
       "Bash(git status*)",
@@ -65,6 +63,7 @@
       "Bash(rm -rf /*)"
     ]
   },
+  "model": "sonnet",
   "hooks": {
     "SessionStart": [
       {
@@ -108,5 +107,6 @@
         "url": "https://github.com/epoko77-ai/im-not-ai.git"
       }
     }
-  }
+  },
+  "outputStyle": "fluent-korean"
 }
