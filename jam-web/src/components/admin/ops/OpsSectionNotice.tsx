@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import {
   IconBell,
+  IconBooks,
   IconCalendarWeek,
   IconChartBar,
   IconChartLine,
@@ -33,6 +34,8 @@ const ICONS = {
   kpi: IconChartBar,
   trend: IconChartLine,
   stats: IconDatabase,
+  // 티켓 20261008_1400: 패턴 사전(S5)의 구역.
+  patterns: IconBooks,
 } as const satisfies Record<string, OpsIcon>
 
 export type OpsSectionNoticeIcon = keyof typeof ICONS
