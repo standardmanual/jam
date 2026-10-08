@@ -9,6 +9,7 @@ import { Textarea } from '@/components/admin/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/admin/ui/tooltip'
 import BackgroundColorField from '@/components/admin/BackgroundColorField'
 import { MAX_DECISION_REASON_CHARS } from '@/lib/admin/opsInbox/constants'
+import { OPS_FIELD_UNKNOWN, readOpsPatternProposal } from '@/lib/admin/opsInbox/fields'
 import { computeDraftDiff, kstLocalInputToIso, splitFieldErrors, valuesFromDiff } from '@/lib/admin/opsInbox/editDraft'
 import { describeValue, entriesOf, itemField, linksOf, worldReviewOf } from '@/lib/admin/opsInbox/itemView'
 import { editPathLabel, kindLabel } from '@/lib/admin/opsInbox/labels'
@@ -23,7 +24,7 @@ import type { OpsWorkspaceContext } from './OpsBundleWorkspace'
  *
  * [수정하기]를 누르면 상세 카드가 그 자리에서 편집 모드가 된다(모달·서랍이 아니다). 칸은 다섯 갈래뿐이다: 문안(제출된 문안 항목마다 한 칸),
  * 색(`BackgroundColorField`), 공개·종료 시각(`datetime-local`, KST), 대상, 유저가 겪는 것. 종류·패턴·손잡이·연결·검수·판정은 읽기 전용이고
- * 「고칠 수 없어요」 툴팁을 단다. 고친 칸에는 「수정됨」 칩, 아래 「바뀌는 내용」에 바뀐 칸만 「문안 · body: 전 → 후」로 보인다.
+ * 「고칠 수 없어요」 툴팁을 단다(패턴 제안 항목은 제안 패턴 이름 줄이 더해진다, 티켓 20261007_1746). 고친 칸에는 「수정됨」 칩, 아래 「바뀌는 내용」에 바뀐 칸만 「문안 · body: 전 → 후」로 보인다.
  * 바뀐 게 없으면 [저장하기]가 비활성이다. 저장은 확인창 없이 바로이고, 400은 칸 아래 인라인이다.
  *
  * 편집 값은 셸의 `draft`에 둔다(티켓 20260930_1501이 미리보기에 물릴 수 있다). 이 양식은 초안이 이 항목의 것일 때만 그려진다.
@@ -81,6 +82,8 @@ interface ReadOnlyRow {
 function readOnlyRows(item: OpsItemRecord, segmentEditable: boolean): ReadOnlyRow[] {
   const rows: ReadOnlyRow[] = [{ label: '종류', value: kindLabel(item.kind) }]
   if (item.patternNo) rows.push({ label: '패턴 번호', value: item.patternNo })
+  const proposal = readOpsPatternProposal(item)
+  if (proposal !== null) rows.push({ label: '제안 패턴', value: proposal === OPS_FIELD_UNKNOWN ? '형식이 틀려 읽을 수 없어요' : proposal.name })
   const knobs = entriesOf(itemField(item, 'knobs'))
   if (knobs && knobs.length > 0) rows.push({ label: '손잡이', value: knobs.map(({ key, text }) => `${key}: ${text}`).join(' · ') })
   if (!segmentEditable) {

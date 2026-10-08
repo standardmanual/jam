@@ -47,6 +47,21 @@ describe('경로', () => {
     }
   })
 
+  it('패턴 제안 내용 칸(resource.pattern…)은 고칠 수 없다(티켓 20261007_1746)', () => {
+    for (const path of [
+      'resource',
+      'resource.pattern',
+      'resource.pattern.name',
+      'resource.pattern.principle',
+      'resource.pattern.user_experience',
+      'resource.pattern.menus',
+      'resource.pattern.knobs.place.closed',
+      'resource.pattern.samples',
+    ]) {
+      expect(isEditablePath(path), path).toBe(false)
+    }
+  })
+
   it('splitEditPath는 첫 점에서 자른다(키에 점이 있어도 그대로)', () => {
     expect(splitEditPath('copy.body')).toEqual({ root: 'copy', key: 'body' })
     expect(splitEditPath('colors.a.b')).toEqual({ root: 'colors', key: 'a.b' })
@@ -107,6 +122,23 @@ describe('computeEditDiff', () => {
       expect(() => computeEditDiff(item(), { [path]: 'x' }), path).toThrow(OpsEditError)
     }
     expect(() => computeEditDiff(item(), { 'copy.title': 3 })).toThrow(OpsEditError)
+  })
+
+  it('패턴 제안의 resource.pattern 경로는 「고칠 수 없는 칸이에요.」로 거절한다(티켓 20261007_1746)', () => {
+    const proposal = item(null, {
+      ...(ORIGINAL as Record<string, unknown>),
+      kind: 'pattern_proposal',
+      resource: { pattern: { name: '오늘의 열쇠' } },
+    } as Json)
+    for (const path of ['resource.pattern.name', 'resource.pattern.knobs.place.closed', 'resource.pattern']) {
+      expect(() => computeEditDiff(proposal, { [path]: '바꾼 값' }), path).toThrow('고칠 수 없는 칸이에요.')
+      try {
+        computeEditDiff(proposal, { [path]: '바꾼 값' })
+      } catch (error) {
+        expect(error).toBeInstanceOf(OpsEditError)
+        expect((error as OpsEditError).path).toBe(path)
+      }
+    }
   })
 
   it('시각은 시간대가 붙은 ISO여야 하고, 있던 시각은 비울 수 없다', () => {
