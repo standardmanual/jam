@@ -12,7 +12,15 @@ import { describeBundleItem } from '@/lib/admin/opsSignals/composition'
 import { OPS_FIELD_UNKNOWN, readOpsItemPatternNo } from '@/lib/admin/opsInbox/fields'
 import { asRecord } from '@/lib/admin/opsInbox/itemView'
 import { OPS_PATTERN_KNOB_LABELS, formatKstClock, kindLabel, kstDateKey } from '@/lib/admin/opsInbox/labels'
-import { OPS_PATTERN_KNOB_KEYS, type OpsPatternKnobKey } from './constants'
+import {
+  OPS_PATTERN_KNOB_KEYS,
+  OPS_PATTERN_KNOB_VALUE_FIELD_LABELS,
+  OPS_PATTERN_KNOB_VALUE_KEYS,
+  OPS_PATTERN_SAMPLE_ROLES,
+  OPS_PATTERN_SAMPLE_ROLE_LABELS,
+  type OpsPatternKnobKey,
+  type OpsPatternSampleRole,
+} from './constants'
 import { countableUsedAt, type OpsPatternUsageCount, type OpsPatternUsageRow } from './draw'
 import type { OpsTasteSignalRecord } from './read'
 
@@ -64,12 +72,6 @@ function orMissing(value: unknown): string {
 
 // ── 샘플 ─────────────────────────────────────────────────────────────────────────────────────────
 
-const SAMPLE_ROLE_LABELS: Record<string, string> = {
-  main: '주',
-  aux: '보조',
-  related: '관련',
-}
-
 export interface SampleLine {
   /** 정렬에 쓰는 번호. 읽을 수 없으면 `null`(맨 뒤). */
   no: number | null
@@ -97,7 +99,7 @@ export function readSampleLines(samples: unknown): SampleLine[] | null {
       no,
       noText: no === null ? PATTERN_DETAIL_MISSING_TEXT : String(no),
       name: orMissing(record?.name),
-      role: Object.prototype.hasOwnProperty.call(SAMPLE_ROLE_LABELS, role) ? SAMPLE_ROLE_LABELS[role] : SAMPLE_ROLE_UNKNOWN_TEXT,
+      role: (OPS_PATTERN_SAMPLE_ROLES as readonly string[]).includes(role) ? OPS_PATTERN_SAMPLE_ROLE_LABELS[role as OpsPatternSampleRole] : SAMPLE_ROLE_UNKNOWN_TEXT,
       impl: orMissing(record?.impl),
     }
   })
@@ -128,22 +130,6 @@ export function readCardShapeLines(cardShapes: unknown): CardShapeLine[] | null 
 
 // ── 손잡이 ───────────────────────────────────────────────────────────────────────────────────────
 
-/** 손잡이 안쪽 칸 이름(상세 화면 전용: 「열 수 있는 값 | 닫은 값」, 트라이브는 「규칙 | 예시」). */
-const KNOB_VALUE_KEYS: Record<OpsPatternKnobKey, readonly [string, string]> = {
-  condition: ['open', 'closed'],
-  place: ['open', 'closed'],
-  time: ['open', 'closed'],
-  reward: ['open', 'closed'],
-  tribe: ['rule', 'example'],
-}
-
-const KNOB_VALUE_LABELS: Record<string, string> = {
-  open: '열 수 있는 값',
-  closed: '닫은 값',
-  rule: '규칙',
-  example: '예시',
-}
-
 export interface KnobCell {
   label: string
   text: string
@@ -160,13 +146,13 @@ export function readKnobLines(knobs: unknown): KnobLine[] {
   const root = asRecord(knobs)
   return OPS_PATTERN_KNOB_KEYS.map((key): KnobLine => {
     const knob = asRecord(root?.[key])
-    const [first, second] = KNOB_VALUE_KEYS[key]
+    const [first, second] = OPS_PATTERN_KNOB_VALUE_KEYS[key]
     return {
       key,
       label: OPS_PATTERN_KNOB_LABELS[key],
       cells: [
-        { label: KNOB_VALUE_LABELS[first], text: orMissing(knob?.[first]) },
-        { label: KNOB_VALUE_LABELS[second], text: orMissing(knob?.[second]) },
+        { label: OPS_PATTERN_KNOB_VALUE_FIELD_LABELS[first], text: orMissing(knob?.[first]) },
+        { label: OPS_PATTERN_KNOB_VALUE_FIELD_LABELS[second], text: orMissing(knob?.[second]) },
       ],
     }
   })

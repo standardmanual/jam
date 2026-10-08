@@ -16,8 +16,10 @@ import {
   readSampleLines,
   type TasteSignalLine,
 } from '@/lib/admin/opsPatterns/detailView'
-import { patternListHref } from '@/lib/admin/opsPatterns/listView'
+import { patternEditHref, patternListHref } from '@/lib/admin/opsPatterns/listView'
 import type { OpsPatternRecord } from '@/lib/admin/opsPatterns/read'
+import { Button } from '@/components/admin/ui/button'
+import { OpsPatternStatusMenu } from './OpsPatternStatusMenu'
 import { OpsStatusBadge } from './OpsStatusBadge'
 
 /**
@@ -25,7 +27,8 @@ import { OpsStatusBadge } from './OpsStatusBadge'
  *
  * 구역 순서 = 목차 순서: 요약 · 손잡이 · 샘플 · 주의점 · 취향 신호 · 사용 이력 · 결과. 사용 이력은 `OpsPatternUsage`가 그린다.
  * JSONB(`samples`·`cardShapes`·`knobs`)가 깨져도 화면이 유지되고 칸마다 「적지 않았어요」·「역할 모름」·「목록에 없는 모양」으로 보인다(해석은 `detailView.ts`).
- * 사람이 쓴 글(이름·원리·이유·메모)은 텍스트 노드로만 그린다. 쓰기 버튼([수정하기]·[상태 바꾸기])은 ⑩a가 단다. 수정한 사람은 어디에도 보이지 않는다.
+ * 사람이 쓴 글(이름·원리·이유·메모)은 텍스트 노드로만 그린다. 쓰기 버튼([수정하기]·[상태 바꾸기 ▾])은 머리의 `actions` 자리에 `OpsPatternDetailActions`가 들어간다(티켓 20261008_1617 ⑩a-2).
+ * 수정한 사람은 어디에도 보이지 않는다.
  */
 
 export const PATTERN_SECTION_NAMESPACE = 'pattern'
@@ -75,7 +78,14 @@ export function PatternBackLink() {
 }
 
 /** 머리: 되돌아가기 → `P03  이름 [상태 칩]` → 출처 글자 → (쉬는 중이면) 쉬는 이유. */
-export function OpsPatternDetailHeader({ pattern }: { pattern: Pick<OpsPatternRecord, 'patternNo' | 'name' | 'status' | 'origin' | 'pauseReason'> }) {
+export function OpsPatternDetailHeader({
+  pattern,
+  actions,
+}: {
+  pattern: Pick<OpsPatternRecord, 'patternNo' | 'name' | 'status' | 'origin' | 'pauseReason'>
+  /** 머리 아래 버튼 줄(`OpsPatternDetailActions`). 없으면 버튼 줄을 그리지 않는다. */
+  actions?: ReactNode
+}) {
   const reason = pauseReasonLine(pattern.status, pattern.pauseReason)
   return (
     <header className="@container space-y-2">
@@ -88,7 +98,22 @@ export function OpsPatternDetailHeader({ pattern }: { pattern: Pick<OpsPatternRe
       </div>
       <p className={MUTED_CLASS}>{originText(pattern.origin)}</p>
       {reason && <p className={cn(MUTED_CLASS, 'break-words')}>{reason}</p>}
+      {actions && <div className="flex flex-wrap items-center gap-2 pt-1">{actions}</div>}
     </header>
+  )
+}
+
+export const PATTERN_EDIT_LABEL = '수정하기'
+
+/** 머리의 쓰기 버튼: [수정하기](고치기 화면 링크) [상태 바꾸기 ▾](상태별 항목과 확인창). */
+export function OpsPatternDetailActions({ pattern }: { pattern: Pick<OpsPatternRecord, 'patternNo' | 'status' | 'pauseReason' | 'updatedAt'> }) {
+  return (
+    <>
+      <Button asChild variant="outline">
+        <Link href={patternEditHref(pattern.patternNo)}>{PATTERN_EDIT_LABEL}</Link>
+      </Button>
+      <OpsPatternStatusMenu patternNo={pattern.patternNo} status={pattern.status} pauseReason={pattern.pauseReason} updatedAt={pattern.updatedAt} />
+    </>
   )
 }
 
