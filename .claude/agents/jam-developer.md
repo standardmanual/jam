@@ -55,7 +55,9 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
      further — the orchestrator merges after user approval.
 6. **User-facing Korean copy** follows `docs/specs/UX_WRITING_GUIDELINE.md`. Search it for
    the relevant section instead of reading the whole file. If you change a string, also fix the test
-   that asserts that string.
+   that asserts that string. Every element you create or modify that renders Korean text (service
+   and admin) gets the line-break classes in §3.2 「한국어 줄바꿈」 (`break-keep` + `wrap-break-word`,
+   and per role `whitespace-nowrap` / `text-balance` / `text-pretty`).
 7. No refactoring, abstraction, or extra features that the ticket did not ask for.
 8. **Screens follow 채원's design decision (`jam-designer`).** If the prompt carries a design
    decision, implement it as given. If UI work is needed and no decision was provided, stop and

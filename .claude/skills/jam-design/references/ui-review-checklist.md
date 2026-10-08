@@ -64,6 +64,8 @@ diff 확인: `git diff <review 브랜치> origin/staging -- jam-web`
 - [ ] 경계값 — 0개, 1개, 아주 많음, 아주 긴 이름
 - [ ] 마감 점검(실제 콘텐츠) — 자리표시 텍스트가 아니라 실제 콘텐츠 길이로 확인했는가
       (줄바꿈·overflow가 드러나는가)
+- [ ] 한국어 줄바꿈 — 새로 만들거나 고친 한국어 텍스트 요소에 `docs/specs/UX_WRITING_GUIDELINE.md`
+      §3.2의 설정(`break-keep`+`wrap-break-word`, 역할별 `whitespace-nowrap`·`text-balance`·`text-pretty`)이 붙었는가
 - [ ] 브레이크포인트 — 320px·768px·1024px·1440px에서 상태 표시가 깨지지 않는가
 - [ ] 상태 전환 — 로딩→완료, 오류→재시도 같은 전환이 튀거나 끊기지 않는가
 
