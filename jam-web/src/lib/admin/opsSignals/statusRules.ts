@@ -7,6 +7,8 @@
  *
  * 아이템이 없는 컬렉션(티켓 20261004_2242)은 날짜 구성이 아니라 항목 상태를 보는 규칙이라 여기 둔다. 신호는 「비어 있는 컨텐츠」(`empty_content`)에
  * 한 건을 더하고(합치기는 `compute.ts`), 검사 날짜와 관계없이 본다 — 날짜 구성은 종료 시각이 없는 컬렉션을 공개한 날 하루에만 걸쳐 먼 미래·이미 공개된 컬렉션을 놓친다.
+ *
+ * 획득 경로가 막힌 컬렉션(티켓 20261008_1301)은 얻을 길 계산(`itemPaths`) 결과를 `load.ts`가 추려 넘긴 목록을 받아 문장으로 바꾼다. 서버 전용 모듈은 가져오지 않는다.
  */
 import { computeBundleStatus, tabOfBundleStage } from '@/lib/admin/opsInbox/bundleStatus'
 import { OPS_FIELD_UNKNOWN, readBundleExcludedItems } from '@/lib/admin/opsInbox/fields'
@@ -252,6 +254,25 @@ export function evaluateEmptyCollections(
     }
   }
   return results
+}
+
+// ── 획득 경로가 막힌 컬렉션 (티켓 20261008_1301) ────────────────────────────────────────────────
+
+/** 얻을 길이 모두 닫힌 아이템이 있는 진행 중 컬렉션 하나. `blocked`·`total`은 얻을 길 계산(`CollectionPathSummary`)의 값이다. */
+export interface BlockedCollectionInput {
+  collectionId: string
+  name: string
+  blocked: number
+  total: number
+}
+
+/** 막힌 컬렉션 하나가 결과 한 건이다. 순서는 이름(ko) 다음 컬렉션 ID다. 실제 컬렉션이라 시험 묶음과 관계없다. */
+export function evaluateBlockedCollections(list: readonly BlockedCollectionInput[]): OpsSignalResult[] {
+  return [...list]
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko') || (a.collectionId < b.collectionId ? -1 : a.collectionId > b.collectionId ? 1 : 0))
+    .map((entry) =>
+      makeSignalResult(`컬렉션 「${entry.name}」의 아이템 ${entry.blocked}개는 지금 얻을 길이 없어요(전체 ${entry.total}개).`)
+    )
 }
 
 // ── 루틴 실패 (A1) ───────────────────────────────────────────────────────────────────────────────

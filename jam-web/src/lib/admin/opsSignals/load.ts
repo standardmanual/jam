@@ -13,6 +13,8 @@
  *   것만, 묶음 몇 개씩 따로 받는다(받은 기획함 목록이 원본을 가져오지 않는 것과 같은 이유).
  * - `badges`: 「예약됨」·「게재중」 컬렉션 항목이 만든 컬렉션의 아이템 배지 수(`item_book_id`만 읽는다, 티켓 20261004_2242). 「비어 있는 컨텐츠」의 「아이템이 없는 컬렉션」 검사에 쓴다.
  *   대상 컬렉션 ID가 없으면 조회하지 않는다. 아이템 배지는 `type = 'item'`이고 삭제되지 않은 것이다(드랍 대상과 같은 기준).
+ * - `item_books`·`badges`·`combination_recipes`·`missions`(얻을 길 계산 입력, 티켓 20261008_1301): 「획득 경로가 막힌 컬렉션」이 쓴다. 읽기와 계산은 `itemPaths`의 함수를 그대로 쓰고(어느 표든 읽지 못하면 던진다),
+ *   기간이 끝나지 않은 컬렉션에 막힌 아이템이 있을 때만 그 컬렉션의 이름을 `item_books`에서 한 번 더 읽는다.
  * - 행동 5종 건수: 최근 7일과 직전 기간의 건수만 센다(`head: true`, 행을 가져오지 않는다). 믹스 시도·유저 드랍·픽업·미션 완료·
  *   컬렉션 완성의 전체 유저 원시 건수다.
  * - `ops_rules`의 신호 행(`overrides.ts`): S7(운영 설정)에서 바꾼 기준값만 있다(티켓 20260930_1459 조각 C). 신호 계산에 얹고, 카드·미션을 읽는 범위
@@ -48,7 +50,9 @@ import {
   type SignalMissionInput,
 } from '@/lib/admin/opsSignals/composition'
 import { loadSignalOverrides } from '@/lib/admin/opsSignals/overrides'
-import { collectionBookIdsToCheck } from '@/lib/admin/opsSignals/statusRules'
+import { collectionBookIdsToCheck, type BlockedCollectionInput } from '@/lib/admin/opsSignals/statusRules'
+import { loadItemPathInputs } from '@/lib/admin/itemPaths/load'
+import { computeItemPaths } from '@/lib/admin/itemPaths/compute'
 import { resolveThresholdValues } from '@/lib/admin/opsSignals/thresholds'
 
 const FETCH_PAGE_SIZE = 1000
@@ -61,8 +65,16 @@ type Supabase = ReturnType<typeof createServiceClient>
 /**
  * 읽지 못한 원천 이름. `bundle_raw`는 묶음은 읽었지만 제출 원본을 읽지 못한 경우다(뺀 항목 목록만 못 읽는다).
  * `collection_items`는 컬렉션별 아이템 배지 수를 읽지 못한 경우다(「비어 있는 컨텐츠」 전체가 확인하지 못한 상태가 된다).
+ * `item_paths`는 아이템 얻을 길을 읽거나 막힌 컬렉션 이름을 읽지 못한 경우다(「획득 경로가 막힌 컬렉션」만 확인하지 못한 상태가 된다).
  */
-export type OpsSignalSource = 'cards' | 'missions' | 'bundles' | 'bundle_raw' | 'collection_items' | 'actions'
+export type OpsSignalSource =
+  | 'cards'
+  | 'missions'
+  | 'bundles'
+  | 'bundle_raw'
+  | 'collection_items'
+  | 'item_paths'
+  | 'actions'
 
 export interface LoadOpsSignalsOptions {
   /** 계산 기준 시각. 기본은 지금이다. */
@@ -426,6 +438,45 @@ export async function loadDayCompositions(options: LoadDayCompositionsOptions): 
   return { bundles, compositions, sourceErrors }
 }
 
+// ── 획득 경로가 막힌 컬렉션 (티켓 20261008_1301) ────────────────────────────────────────────────
+
+const UNKNOWN_COLLECTION_NAME = '이름을 모르는 컬렉션'
+
+/**
+ * 기간이 끝나지 않은 컬렉션(`valid_until`이 없거나 기준 시각 이전이 아닌 것) 가운데 얻을 길이 모두 닫힌 아이템이 있는 컬렉션.
+ * 공개 판정·아이템 상태는 얻을 길 계산(`computeItemPaths`)을 그대로 쓴다. 기간이 끝난 컬렉션과 「드랍 제외」(막힘이 아님)는 세지 않는다.
+ * 이름은 막힌 컬렉션이 있을 때만 읽는다. 어느 읽기든 실패하면 던진다.
+ */
+async function loadBlockedCollections(supabase: Supabase, now: Date): Promise<BlockedCollectionInput[]> {
+  const inputs = await loadItemPathInputs(supabase, now)
+  const { collections } = computeItemPaths({ ...inputs, now })
+  const nowMs = now.getTime()
+  const endedIds = new Set(
+    inputs.collections
+      .filter((collection) => collection.valid_until !== null && new Date(collection.valid_until).getTime() < nowMs)
+      .map((collection) => collection.id)
+  )
+  const blocked = collections.filter((summary) => summary.blocked > 0 && !endedIds.has(summary.collectionId))
+  if (blocked.length === 0) return []
+
+  const names = new Map<string, string>()
+  const ids = blocked.map((summary) => summary.collectionId)
+  for (let i = 0; i < ids.length; i += IN_CHUNK_SIZE) {
+    const { data, error } = await supabase
+      .from('item_books')
+      .select('id, name')
+      .in('id', ids.slice(i, i + IN_CHUNK_SIZE))
+    if (error) throw new Error(error.message)
+    for (const row of (data ?? []) as { id: string; name: string | null }[]) names.set(row.id, row.name ?? UNKNOWN_COLLECTION_NAME)
+  }
+  return blocked.map((summary) => ({
+    collectionId: summary.collectionId,
+    name: names.get(summary.collectionId) ?? UNKNOWN_COLLECTION_NAME,
+    blocked: summary.blocked,
+    total: summary.total,
+  }))
+}
+
 // ── 진입점 ───────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -457,11 +508,12 @@ export async function loadOpsSignals(options: LoadOpsSignalsOptions = {}): Promi
   const rangeStartIso = kstDayBoundsIso(shiftDateStr(today, -(thresholds.monotonyWindowDays - 1))).startIso
   const rangeEndIso = kstDayBoundsIso(shiftDateStr(mondayOfWeek(today), 13)).endIso
 
-  const [cards, missions, bundles, actions] = await Promise.all([
+  const [cards, missions, bundles, actions, blockedCollections] = await Promise.all([
     settle('cards', () => loadCards(supabase, rangeStartIso, rangeEndIso)),
     settle('missions', () => loadMissions(supabase, rangeStartIso, rangeEndIso)),
     settle('bundles', () => loadBundles(supabase, includeSample)),
     settle('actions', () => loadActionCounts(supabase, now, thresholds.actionSpikeBaselineWeeks)),
+    settle('item_paths', () => loadBlockedCollections(supabase, now)),
   ])
 
   if (bundles) {
@@ -472,6 +524,6 @@ export async function loadOpsSignals(options: LoadOpsSignalsOptions = {}): Promi
   // 묶음을 읽어야 대상 컬렉션을 알 수 있다. 묶음을 못 읽었으면 이 데이터도 못 읽은 것이다(그 사유는 `bundles`에 있다).
   const collectionItemCounts = bundles ? await settle('collection_items', () => loadCollectionItemCounts(supabase, bundles)) : null
 
-  const input: ComputeOpsSignalsInput = { cards, missions, bundles, actions, collectionItemCounts }
+  const input: ComputeOpsSignalsInput = { cards, missions, bundles, actions, collectionItemCounts, blockedCollections }
   return { ...computeOpsSignals(input, { now, includeSample, thresholds: overrides }), sourceErrors }
 }

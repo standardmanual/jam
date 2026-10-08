@@ -11,8 +11,8 @@
  *   루틴 실패는 스위치와 관계없이 시험 묶음을 세지 않는다.
  * - 11종(실행 실패·예약 누락·루틴 실패·형식 오류·비어 있는 컨텐츠·새 컨텐츠가 없는 날·승인 마감 임박·에이전트가 뺀 항목·겹침·
  *   단조로운 흐름·행동 횟수 급증)은 규칙까지 만들었다.
- * - 2종(밸런스 경고 → 티켓 20260930_1459, 획득 경로가 막힌 컬렉션 → 티켓 20260930_1503)은 「아직 확인하지 않아요」
- *   (`not_built`)의 자리만 둔다. 계산 규칙은 그 티켓이 채운다.
+ * - 획득 경로가 막힌 컬렉션은 진행 중인 컬렉션만 센다(티켓 20261008_1301). 얻을 길 계산은 서버 전용 모듈이라 `load.ts`가 하고, 여기에는 막힌 컬렉션 목록만 온다.
+ * - 밸런스 경고 1종(티켓 20260930_1459)은 「아직 확인하지 않아요」(`not_built`)의 자리만 둔다. 계산 규칙은 그 티켓이 채운다.
  * - 루틴 실패는 점검 시작 시각(기준값 `routineCheckStartsAt`)이 정해지기 전까지 「아직 확인하지 않아요」(`not_started`)다.
  */
 import {
@@ -36,12 +36,14 @@ import {
 import { evaluateDayRules } from '@/lib/admin/opsSignals/dayRules'
 import {
   evaluateApprovalDeadline,
+  evaluateBlockedCollections,
   evaluateEmptyCollections,
   evaluateExcludedItems,
   evaluateExecutionFailed,
   evaluateFormatError,
   evaluateMissedSchedule,
   evaluateRoutineFailed,
+  type BlockedCollectionInput,
 } from '@/lib/admin/opsSignals/statusRules'
 import { resolveThresholdValues, type OpsSignalThresholdValues } from '@/lib/admin/opsSignals/thresholds'
 import { mondayOfWeek } from '@/lib/admin/cronSchedule'
@@ -58,6 +60,11 @@ export interface ComputeOpsSignalsInput {
    * 없으면(넘기지 않음) 그 검사를 하지 않고, `null`이면 읽지 못한 것이라 「비어 있는 컨텐츠」 전체가 「확인하지 못했어요」다.
    */
   collectionItemCounts?: ReadonlyMap<string, number> | null
+  /**
+   * 얻을 길이 모두 닫힌 아이템이 있는 진행 중 컬렉션(티켓 20261008_1301). 「획득 경로가 막힌 컬렉션」이 쓴다.
+   * 없으면(넘기지 않음) 빈 목록으로 계산해 「안 뜸」이고, `null`이면 읽지 못한 것이라 「확인하지 못했어요」다.
+   */
+  blockedCollections?: readonly BlockedCollectionInput[] | null
 }
 
 export interface ComputeOpsSignalsOptions {
@@ -167,9 +174,16 @@ export function computeOpsSignals(input: ComputeOpsSignalsInput, options: Comput
     input.actions === null ? unchecked('load_failed') : decided(evaluateActionSpike(input.actions, thresholds))
   )
 
-  // 계산 규칙을 아직 만들지 않은 2종(자리만 둔다)
+  // 획득 경로가 막힌 컬렉션: 얻을 길 계산 결과를 읽어야 계산한다.
+  decisions.set(
+    'blocked_collection',
+    input.blockedCollections === null
+      ? unchecked('load_failed')
+      : decided(evaluateBlockedCollections(input.blockedCollections ?? []))
+  )
+
+  // 계산 규칙을 아직 만들지 않은 1종(자리만 둔다)
   decisions.set('balance_warning', unchecked('not_built'))
-  decisions.set('blocked_collection', unchecked('not_built'))
 
   const signals = OPS_SIGNAL_CATALOG.map((definition): OpsSignalOutcome => {
     const decision = decisions.get(definition.key) as Decision

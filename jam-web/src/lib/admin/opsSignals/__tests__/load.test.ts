@@ -8,6 +8,7 @@
  * - 제출 원본(`raw`)은 끝나지 않은 묶음의 것만 따로 받는다
  * - 행동 건수는 행을 가져오지 않고(`head`) 센다
  * - 원천 하나가 실패하면 그 원천에 기대는 신호만 `load_failed`다
+ * - 「획득 경로가 막힌 컬렉션」은 얻을 길 계산 입력(`itemPaths/load`는 가짜)으로 진행 중인 컬렉션만 세고, 읽지 못하면 이 신호만 `load_failed`다(티켓 20261008_1301)
  * - 「예약됨」·「게재중」 컬렉션 항목이 만든 컬렉션의 아이템 배지 수를 `badges`에서 읽는다(티켓 20261004_2242). 대상이 없으면 조회하지 않고, 읽지 못하면 「비어 있는 컨텐츠」가 `load_failed`다
  */
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -150,8 +151,28 @@ const h = vi.hoisted(() => {
     }
   }
 
-  return { state, Query }
+  /** 얻을 길 계산 입력(`loadItemPathInputs`)을 대신하는 가짜. 기본은 빈 입력이다. */
+  const paths = {
+    inputs: { collections: [], items: [], recipes: [], missions: [] } as {
+      collections: unknown[]
+      items: unknown[]
+      recipes: unknown[]
+      missions: unknown[]
+    },
+    error: null as string | null,
+    calls: 0,
+  }
+
+  return { state, Query, paths }
 })
+
+vi.mock('@/lib/admin/itemPaths/load', () => ({
+  loadItemPathInputs: async () => {
+    h.paths.calls += 1
+    if (h.paths.error) throw new Error(h.paths.error)
+    return h.paths.inputs
+  },
+}))
 
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({ from: (table: string) => new h.Query(table) }),
@@ -251,6 +272,9 @@ beforeEach(() => {
   h.state.errorWhen = null
   h.state.calls = []
   h.state.selects = []
+  h.paths.inputs = { collections: [], items: [], recipes: [], missions: [] }
+  h.paths.error = null
+  h.paths.calls = 0
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -639,7 +663,7 @@ describe('loadOpsSignals — 원천 하나가 실패하면 그 원천에 기대�
     }
     expect(byKey.action_spike).toBe('clear')
     expect(byKey.balance_warning).toBe('not_built')
-    expect(byKey.blocked_collection).toBe('not_built')
+    expect(byKey.blocked_collection).toBe('clear')
   })
 
   it('카드 조회가 실패하면 날짜 구성 신호 4종만 load_failed이고 상태 신호는 계산한다', async () => {
@@ -815,6 +839,112 @@ describe('loadOpsSignals — 아이템이 없는 컬렉션 (티켓 20261004_2242
     expect(badgeSelects()).toEqual([])
     expect(result.sourceErrors).toEqual({ bundles: '시간 초과' })
     expect(signal(result, 'empty_content').uncheckedReason).toBe('load_failed')
+  })
+})
+
+describe('loadOpsSignals — 획득 경로가 막힌 컬렉션 (티켓 20261008_1301)', () => {
+  const OPEN_BOOK = 'a0000000-0000-4000-8000-000000000001'
+  const ENDED_BOOK = 'a0000000-0000-4000-8000-000000000002'
+  const EXCLUDED_BOOK = 'a0000000-0000-4000-8000-000000000003'
+  const PAST = '2026-01-01T00:00:00+09:00'
+  const FUTURE = '2027-01-01T00:00:00+09:00'
+  const book = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    is_active: true,
+    valid_from: PAST,
+    valid_until: null,
+    drop_excluded: false,
+    ...over,
+  })
+  const item = (id: string, bookId: string, over: Record<string, unknown> = {}) => ({
+    id,
+    item_book_id: bookId,
+    deleted_at: null,
+    drop_excluded: false,
+    valid_from: null,
+    valid_until: null,
+    ...over,
+  })
+  /** 아이템 유효기간이 지나 드랍 길이 닫힌 아이템(레시피·미션도 없어 막힘). */
+  const blockedItem = (id: string, bookId: string) => item(id, bookId, { valid_until: PAST })
+  const nameSelects = () => h.state.selects.filter((entry) => entry.table === 'item_books')
+
+  beforeEach(() => {
+    h.state.tables.item_books = [
+      { id: OPEN_BOOK, name: '진행 중 컬렉션' },
+      { id: ENDED_BOOK, name: '끝난 컬렉션' },
+      { id: EXCLUDED_BOOK, name: '드랍 제외 컬렉션' },
+    ]
+  })
+
+  it('진행 중인 컬렉션의 막힌 아이템은 컬렉션마다 한 건으로 센다', async () => {
+    h.paths.inputs = {
+      collections: [book(OPEN_BOOK, { valid_until: FUTURE })],
+      items: [blockedItem('i1', OPEN_BOOK), blockedItem('i2', OPEN_BOOK), item('i3', OPEN_BOOK)],
+      recipes: [],
+      missions: [],
+    }
+    const result = await loadOpsSignals({ now: NOW })
+    const outcome = signal(result, 'blocked_collection')
+    expect(outcome.state).toBe('raised')
+    expect(outcome.results.map((entry) => entry.message)).toEqual([
+      '컬렉션 「진행 중 컬렉션」의 아이템 2개는 지금 얻을 길이 없어요(전체 3개).',
+    ])
+    expect(result.sourceErrors).toEqual({})
+  })
+
+  it('기간이 끝난 컬렉션과 드랍 제외 아이템은 세지 않고, 막힌 것이 없으면 이름도 읽지 않는다', async () => {
+    h.paths.inputs = {
+      collections: [book(ENDED_BOOK, { valid_until: PAST }), book(EXCLUDED_BOOK)],
+      items: [item('e1', ENDED_BOOK), item('e2', ENDED_BOOK), item('x1', EXCLUDED_BOOK, { drop_excluded: true })],
+      recipes: [],
+      missions: [],
+    }
+    const result = await loadOpsSignals({ now: NOW })
+    expect(signal(result, 'blocked_collection').state).toBe('clear')
+    expect(nameSelects()).toEqual([])
+  })
+
+  it('막힌 컬렉션이 있을 때만 그 컬렉션의 이름을 한 번 읽는다', async () => {
+    h.paths.inputs = {
+      collections: [book(OPEN_BOOK), book(ENDED_BOOK, { valid_until: PAST })],
+      items: [blockedItem('i1', OPEN_BOOK), item('e1', ENDED_BOOK)],
+      recipes: [],
+      missions: [],
+    }
+    await loadOpsSignals({ now: NOW })
+    const selects = nameSelects()
+    expect(selects).toHaveLength(1)
+    expect(selects[0].columns).toBe('id, name')
+    expect(selects[0].filters).toEqual([`in:id:${OPEN_BOOK}`])
+  })
+
+  it('얻을 길 읽기가 실패하면 이 신호만 load_failed이고 sourceErrors.item_paths가 채워진다', async () => {
+    h.paths.error = '표 읽기 실패'
+    h.state.tables.ops_bundles = [bundleRow('b1')]
+    h.state.tables.ops_bundle_items = [itemRow('i1', 'b1', { status: 'failed' })]
+    const result = await loadOpsSignals({ now: NOW })
+    expect(result.sourceErrors).toEqual({ item_paths: '표 읽기 실패' })
+    const outcome = signal(result, 'blocked_collection')
+    expect(outcome.state).toBe('unchecked')
+    expect(outcome.uncheckedReason).toBe('load_failed')
+    expect(signal(result, 'execution_failed').state).toBe('raised')
+    expect(signal(result, 'action_spike').state).toBe('clear')
+  })
+
+  it('이름 읽기가 실패해도 이 신호만 load_failed다', async () => {
+    h.paths.inputs = { collections: [book(OPEN_BOOK)], items: [blockedItem('i1', OPEN_BOOK)], recipes: [], missions: [] }
+    h.state.errors.item_books = '이름 읽기 실패'
+    const result = await loadOpsSignals({ now: NOW })
+    expect(result.sourceErrors).toEqual({ item_paths: '이름 읽기 실패' })
+    expect(signal(result, 'blocked_collection').uncheckedReason).toBe('load_failed')
+  })
+
+  it('얻을 길 읽기에서도 쓰기 메서드를 부르지 않는다', async () => {
+    h.paths.inputs = { collections: [book(OPEN_BOOK)], items: [blockedItem('i1', OPEN_BOOK)], recipes: [], missions: [] }
+    await loadOpsSignals({ now: NOW })
+    expect(h.paths.calls).toBe(1)
+    expect(h.state.calls.filter((call) => WRITE_CALL.test(call))).toEqual([])
   })
 })
 
