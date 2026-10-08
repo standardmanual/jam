@@ -959,9 +959,9 @@ describe('패턴 제안 내용 칸 — resource.pattern (티켓 20261007_1746)',
     for (const bad of ['text', 7, ['open', 'closed']]) {
       const errors = errorsOf(proposal(patternWith('knobs.time', bad)))
       expect(errors).toHaveLength(1)
-      expect(errors[0]).toMatch(/^items\[0\]\.resource\.pattern\.knobs\.time: open·closed를 가진 객체여야 해요\(받은 값: /)
+      expect(errors[0]).toMatch(/^items\[0\]\.resource\.pattern\.knobs\.time: open·closed 칸이 있는 객체여야 해요\(받은 값: /)
     }
-    expect(errorsOf(proposal(patternWith('knobs.tribe', 'text')))[0]).toContain('pattern.knobs.tribe: rule·example를 가진 객체여야 해요')
+    expect(errorsOf(proposal(patternWith('knobs.tribe', 'text')))[0]).toContain('pattern.knobs.tribe: rule·example 칸이 있는 객체여야 해요')
   })
 
   it('손잡이 안쪽 값이 빠지면 값마다 한 줄이다', () => {

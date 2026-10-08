@@ -300,7 +300,7 @@ function validatePatternKnobs(knobs: unknown, at: string): string[] {
       continue
     }
     if (!isPlainObject(knob)) {
-      errors.push(`${knobAt}: ${first}·${second}를 가진 객체여야 해요(받은 값: ${describeShort(knob)}).`)
+      errors.push(`${knobAt}: ${first}·${second} 칸이 있는 객체여야 해요(받은 값: ${describeShort(knob)}).`)
       continue
     }
     for (const valueKey of [first, second]) {
