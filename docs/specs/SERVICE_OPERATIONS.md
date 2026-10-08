@@ -152,13 +152,15 @@ VALUES (NEW.id, 50, 0);
 ```
 사용자 → GET /api/strava/auth
            ↓
-      state=userId 파라미터 포함
+      무작위 일회용 state 생성 → httpOnly 쿠키로 심고 state 파라미터로 전달
       Strava OAuth 인가 URL로 리다이렉트
       scope: read, activity:read_all
            ↓
 사용자가 Strava에서 승인
            ↓
-GET /api/strava/callback?code=...&state={userId}
+GET /api/strava/callback?code=...&state={무작위 일회용 값}
+           ↓
+쿠키 값과 state 대조 (없거나 다르면 거부) → 로그인 세션 유저 확인 (없으면 거부)
            ↓
 Strava 토큰 교환 (POST strava.com/oauth/token)
            ↓
@@ -170,6 +172,13 @@ strava_connections UPSERT
 즉시 syncStravaActivities(userId) 호출
 ```
 
+- `state`는 유저 ID가 아니다. 인증 시작이 만든 무작위 일회용 값(256비트)이고, 같은 값이
+  `strava_oauth_state` 쿠키(`httpOnly`·`sameSite=lax`·`path=/api/strava`·수명 600초)로 심긴다
+  (`src/lib/strava/oauthState.ts`)
+- 콜백은 쿠키와 `state`를 상수 시간으로 대조해 다르거나 없으면 `reason=state_mismatch`, 세션 유저가
+  없으면 `reason=auth_required`로 거부한다. 거부 시 토큰 교환·DB 저장·동기화를 하나도 실행하지
+  않는다. 연결할 유저는 URL이 아니라 로그인 세션의 유저다
+- 콜백의 모든 응답(성공·실패)이 `state` 쿠키를 지운다(일회용)
 - 토큰은 `encrypt()` 함수로 암호화하여 DB 저장
 - 소급 동기화는 없음: 연동 이후 활동만 처리
 
