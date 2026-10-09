@@ -131,6 +131,17 @@ status: active
 - [트라이브 보이스.md](../../jam-doc/planning/business-plan/service-redesign/트라이브%20보이스.md) — [JAM 2.0] 서비스 재설계의 서사 문구 규칙 초안. 배지, 아이템 배지, 컬렉션, 미션, 단서 레시피의 이름과 설명, 챕터 이름을 쓰는 공통 규칙, 아이템 배지 4등급 설명 규칙, 트라이브별 보이스 카드의 틀을 정한다.
 - [현재 서비스 비교.md](../../jam-doc/planning/business-plan/service-redesign/현재%20서비스%20비교.md) — [JAM 2.0] 서비스 재설계 3단계(현재 서비스와 비교)의 비교표. 확인된 정책을 주제마다 지금 서비스의 유저 화면, 어드민과 견주고 재개발 규모를 적는다. 분류(변경, 재활용, 유지, 추가)는 비교를 마친 뒤 정한다.
 
+## jam-doc/planning/business-plan/service-redesign/current-service-map/
+
+- [01 동기화와 어뷰징.md](../../jam-doc/planning/business-plan/service-redesign/current-service-map/01%20동기화와%20어뷰징.md) — [JAM 2.0] 현재 서비스 기능 지도(2026-10-09 코드와 DB 기준 스냅샷): Strava 연동, 동기화, 활동 저장과 종목 매핑, 교통수단 감지, 차량 속도 필터, GPS 조작 감지, 섀도우밴, 지점 차단, 어뷰징 정책, 날씨와 기온 입력.
+- [02 액티비티 배지와 체크인 배지.md](../../jam-doc/planning/business-plan/service-redesign/current-service-map/02%20액티비티%20배지와%20체크인%20배지.md) — [JAM 2.0] 현재 서비스 기능 지도(2026-10-09 코드와 DB 기준 스냅샷): 배지 종류(등급형, 레벨형, 반복형), 조건 전체, 시간대와 주 단위 판정, 발급 흐름, 배지함과 트리, 체크인 배지와 지점 연결, 어드민 배지 생성과 게이트 미션.
+- [03 아이템 배지 발급과 인벤토리.md](../../jam-doc/planning/business-plan/service-redesign/current-service-map/03%20아이템%20배지%20발급과%20인벤토리.md) — [JAM 2.0] 현재 서비스 기능 지도(2026-10-09 코드와 DB 기준 스냅샷): 드랍 엔진(개수, 등급 추첨, 트라이브와 컬렉션 고르기, 드랍 제외), 일련번호, 기한, 결과 캐러셀, 인벤토리와 가득 참, 섀도우밴 영향, 개체 상태, 아이템 배지의 레벨형 여부.
+- [04 컬렉션, 믹스, 드랍과 픽업, 지점.md](../../jam-doc/planning/business-plan/service-redesign/current-service-map/04%20컬렉션,%20믹스,%20드랍과%20픽업,%20지점.md) — [JAM 2.0] 현재 서비스 기능 지도(2026-10-09 코드와 DB 기준 스냅샷): 컬렉션 장착과 완성 판정, 믹스, 드랍 메뉴와 지점 카드, 드랍과 픽업, 시스템 드랍, 지점 등록(T1, T2)과 카테고리와 검토 큐, 지점과 체크인 배지 연결.
+- [05 미션, 랭킹, 포인트.md](../../jam-doc/planning/business-plan/service-redesign/current-service-map/05%20미션,%20랭킹,%20포인트.md) — [JAM 2.0] 현재 서비스 기능 지도(2026-10-09 코드와 DB 기준 스냅샷): 미션의 틀과 조건 8종, 참가, 선착순, 집계 기간, 순위, 보상, 노출, 게이트 미션, 미션 소식, 랭킹 모드, 포인트 원장과 주는 곳과 쓰는 곳.
+- [06 트라이브, 온보딩, 계정, 소셜.md](../../jam-doc/planning/business-plan/service-redesign/current-service-map/06%20트라이브,%20온보딩,%20계정,%20소셜.md) — [JAM 2.0] 현재 서비스 기능 지도(2026-10-09 코드와 DB 기준 스냅샷): 트라이브와 유저의 트라이브 선택, 로그인과 온보딩, 퀘스트 7단계, 프로필, 탈퇴와 계정 삭제, 어드민 유저 관리, 팔로우, 피드, 검색, 알림, 문의.
+- [07 홈, 운영 자동화, 안전.md](../../jam-doc/planning/business-plan/service-redesign/current-service-map/07%20홈,%20운영%20자동화,%20안전.md) — [JAM 2.0] 현재 서비스 기능 지도(2026-10-09 코드와 DB 기준 스냅샷): 홈과 오늘의 카드, 서비스 소개와 푸터, 확률 안내, 위치 기록, 크론, 운영툴(기획함, 일정표, 패턴 사전, 운영 설정), 운영 자동화 티켓 현황.
+- [README.md](../../jam-doc/planning/business-plan/service-redesign/current-service-map/README.md) — [JAM 2.0] 현재 서비스 기능 지도 안내. 2026-10-09 코드와 DB 기준으로 유저 화면, 어드민에서 바꿀 수 있는 것, 규칙과 실제 값을 영역 7개로 정리한 스냅샷의 읽는 법과 재설계 주제별 찾아보기를 둔다.
+
 ## jam-doc/planning/business-plan/tribe-rethink/
 
 - [01 미식.md](../../jam-doc/planning/business-plan/tribe-rethink/01%20미식.md) — [JAM 2.0] 구상 단계 미식 트라이브 '한입만 연구회'의 시놉시스, 인물, 장소, 아이템. 서비스에 반영하지 않는다.
