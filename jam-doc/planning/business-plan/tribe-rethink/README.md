@@ -143,6 +143,8 @@ frontmatter는 `type: catalog`, `source_of_truth: doc`, `tags: [트라이브, �
 | 비사이드 레코즈 | [03 음악](<manuscript/03 음악.md>) |
 | 소나무 잡화점 | [04 물건 덕후](<manuscript/04 물건 덕후.md>) |
 | 혼자들 | [05 내향인](<manuscript/05 내향인.md>) |
+| 공통(액티비티 배지) | [06 액티비티 배지](<manuscript/06 액티비티 배지.md>) |
+| 공통(단서 레시피) | [07 단서 레시피](<manuscript/07 단서 레시피.md>) |
 
 ## 8. 새 트라이브 문서를 쓸 때
 
