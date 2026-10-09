@@ -143,11 +143,11 @@ status: active
 
 ## jam-doc/planning/business-plan/tribe-rethink/manuscript/
 
-- [01 미식.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/01%20미식.md) — [JAM 2.0] 미식 트라이브 '한입만 연구회'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 순서 5의 아이템 배지와 챕터 이름은 6절과 7절에 쓰는 중이다. 서비스에 반영하지 않는다.
-- [02 사진.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/02%20사진.md) — [JAM 2.0] 사진 트라이브 '찰칵단'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 아이템 배지 이름과 4등급 설명(순서 5, 사용자 확인 전)을 두고, 챕터 이름은 별도 주제로 미뤘다. 서비스에 반영하지 않는다.
-- [03 음악.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/03%20음악.md) — [JAM 2.0] 음악 트라이브 '비사이드 레코즈'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 아이템 배지 이름과 4등급 설명(순서 5, 사용자 확인 전)을 두고, 챕터 이름은 별도 주제로 미뤘다. 서비스에 반영하지 않는다.
-- [04 물건 덕후.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/04%20물건%20덕후.md) — [JAM 2.0] 물건 덕후 트라이브 '소나무 잡화점'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 아이템 배지 이름과 4등급 설명(순서 5, 사용자 확인 전)을 두고, 챕터 이름은 별도 주제로 미뤘다. 서비스에 반영하지 않는다.
-- [05 내향인.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/05%20내향인.md) — [JAM 2.0] 내향인 트라이브 '혼자들'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 아이템 배지 이름과 4등급 설명(순서 5, 사용자 확인 전)을 두고, 챕터 이름은 별도 주제로 미뤘다. 서비스에 반영하지 않는다.
+- [01 미식.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/01%20미식.md) — [JAM 2.0] 미식 트라이브 '한입만 연구회'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 순서 5의 아이템 배지는 6절에 확인을 마쳤고, 챕터 이름은 7절에 후보만 있다. 서비스에 반영하지 않는다.
+- [02 사진.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/02%20사진.md) — [JAM 2.0] 사진 트라이브 '찰칵단'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 아이템 배지 이름과 4등급 설명(순서 5, 사용자 확인함)을 두고, 챕터 이름은 별도 주제로 미뤘다. 서비스에 반영하지 않는다.
+- [03 음악.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/03%20음악.md) — [JAM 2.0] 음악 트라이브 '비사이드 레코즈'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 아이템 배지 이름과 4등급 설명(순서 5, 사용자 확인함)을 두고, 챕터 이름은 별도 주제로 미뤘다. 서비스에 반영하지 않는다.
+- [04 물건 덕후.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/04%20물건%20덕후.md) — [JAM 2.0] 물건 덕후 트라이브 '소나무 잡화점'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 아이템 배지 이름과 4등급 설명(순서 5, 사용자 확인함)을 두고, 챕터 이름은 별도 주제로 미뤘다. 서비스에 반영하지 않는다.
+- [05 내향인.md](../../jam-doc/planning/business-plan/tribe-rethink/manuscript/05%20내향인.md) — [JAM 2.0] 내향인 트라이브 '혼자들'의 컨텐츠 원고. 컬렉션 10개의 자리, 이름, 한 줄 서사를 두고, 아이템 배지 이름과 4등급 설명(순서 5, 사용자 확인함)을 두고, 챕터 이름은 별도 주제로 미뤘다. 서비스에 반영하지 않는다.
 
 ## jam-doc/planning/content/
 
