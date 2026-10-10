@@ -46,7 +46,7 @@ basis:
 | `engine-spec` | JAM | 엔진 판정 로직과 데이터 계약 | 배지엔진 통합 문서, 조건 JSON 명세 | 덮어쓰기 |
 | `agent-profile` | JAM | 에이전트 역할 카드 | `docs/agents/workflow/agents/*` | 덮어쓰기 |
 | `workflow-rule` | JAM | 에이전트 팀이 일하는 방식 | 워크플로 규칙, 절차, 체크리스트, 팀·자동화 목록 | 덮어쓰기 |
-| `service-plan` | JAM | 비전과 서비스 계획 | `jam-doc/planning/business-plan/*` | 덮어쓰기 |
+| `service-plan` | JAM | 비전과 서비스 계획 | `jam-doc/planning/business-plan/*`, 새 버전 기획은 `jam-doc/planning/jam2-redesign/*` | 덮어쓰기 |
 | `campaign` | JAM | 기간이 있는 실행안 | 캠페인, 시즌 운영안, 홈피드 카드 초안 | 신규 생성 |
 
 - **구분**은 개인 지식 묶음으로 방법론을 이식할 때의 범위다. 범용 7개가 키트에 포함되고, JAM 8개는
