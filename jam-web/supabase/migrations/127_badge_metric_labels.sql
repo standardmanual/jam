@@ -10,7 +10,7 @@
 -- day_of_week/season 값(friday, winter 등)으로 이 테이블을 조회해 배지 트리 진행 레일의 축
 -- 라벨·단위를 채운다. 행이 없는 키는 원문 그대로 노출한다 — "라벨이 안 보이는" 게 아니라
 -- "아직 안 채워진 게 눈에 띄게" 만드는 의도적 폴백이다.
--- (참고: jam-doc/assets/prototypes/20260903_badge-tree-rail-prototype.html §08 G, 티켓 20260903_2329)
+-- (참고: docs/assets/prototypes/20260903_badge-tree-rail-prototype.html §08 G, 티켓 20260903_2329)
 --
 -- 시드 데이터 출처:
 --  - MEASURABLE_CONDITION_KEYS(src/lib/badge-engine/condition-schema.ts) 17개 전체 — 이

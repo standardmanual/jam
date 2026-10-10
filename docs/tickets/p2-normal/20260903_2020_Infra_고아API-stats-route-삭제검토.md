@@ -57,7 +57,7 @@ closed: 2026-09-05
 - `docs/tickets/20260903_1949_Service_타인프로필-통계탭-컬렉션수-미슬롯북-제외.md`
   (이 발견물의 출처, "범위 밖 발견물" 절 1번)
 - `docs/tickets/20260824_016_UI_컬렉션-미슬롯시-타인노출차단.md` (슬롯 노출 정책 원본)
-- `docs/specs/prd/01_PRD.md` 컬렉션 행 (정책이 명문화된 위치)
+- `docs/service/prd/01_PRD.md` 컬렉션 행 (정책이 명문화된 위치)
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
@@ -73,7 +73,7 @@ grep에서 실제 호출 흔적은 하나도 없었다. `docs/tickets/`의 언�
 ### 변경된 파일
 ```
 D  jam-web/src/app/api/users/[username]/stats/route.ts
-M  docs/specs/SERVICE_OPERATIONS.md
+M  docs/service/SERVICE_OPERATIONS.md
 ```
 
 ### 테스트 결과

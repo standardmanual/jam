@@ -15,7 +15,7 @@ closed: 2026-09-19
 
 - 요구사항: 새 스키마와 어긋나는 기존 문서를 정리한다. ① `adr` type 폐지에 따라 기존 ADR을 `docs/specs/`로 이동 ② `UX_WRITING_GUIDELINE.md` §1.3 믹스 행 X 목록의 오탈자 수정 ③ 기존 frontmatter 5건을 새 스키마로 이전.
 - 구현 계획: 문서 이동과 링크 수정, 오탈자 수정, frontmatter 5건 수정, 훅 안내 문구 정리를 한 번에 처리한다. 서비스 플랜 3건은 `jam-doc`에서 별도 커밋한다.
-- 관련 파일: `docs/adr/0001-server-error-message-single-source.md`(이동), `docs/specs/UX_WRITING_GUIDELINE.md`(:60 믹스 행, :299·:317 ADR 언급), `docs/specs/PRIVACY_POLICY.md`, `docs/specs/prd/admin-ui/CONDITION_PRECHECK_PRD.md`, `jam-doc/planning/business-plan/00·01·02 *.md`, `.githooks/pre-commit`(안내 문구의 adr 언급)
+- 관련 파일: `docs/adr/0001-server-error-message-single-source.md`(이동), `docs/service/writing/UX_WRITING_GUIDELINE.md`(:60 믹스 행, :299·:317 ADR 언급), `docs/service/legal/PRIVACY_POLICY.md`, `docs/service/prd/admin-ui/CONDITION_PRECHECK_PRD.md`, `docs/plan/vision/00·01·02 *.md`, `.githooks/pre-commit`(안내 문구의 adr 언급)
 
 ## 배경 / 문제 정의
 
@@ -25,7 +25,7 @@ closed: 2026-09-19
 
 ### 서비스/코드베이스 관점
 
-- **ADR 이동**: 파일명은 기존 스펙 관례(대문자 스네이크)에 맞춰 `docs/specs/SERVER_ERROR_MESSAGE_RULE.md`를 제안하며 착수 시 확정한다. frontmatter는 `type: guideline`, `description`, `status: active`. `docs/adr/` 폴더는 비운다. 이 문서를 언급하는 `UX_WRITING_GUIDELINE.md`의 경로(:317)를 새 경로로 고치고, §4.0 제목의 "ADR 0001" 표기(:299)는 "ADR" 명칭이 사라지므로 문구를 정리한다. 이 문서를 언급하는 티켓 3건(20260915_2227, 20260915_2236, 20260918_2105)은 이력이므로 고치지 않는다.
+- **ADR 이동**: 파일명은 기존 스펙 관례(대문자 스네이크)에 맞춰 `docs/service/writing/SERVER_ERROR_MESSAGE_RULE.md`를 제안하며 착수 시 확정한다. frontmatter는 `type: guideline`, `description`, `status: active`. `docs/adr/` 폴더는 비운다. 이 문서를 언급하는 `UX_WRITING_GUIDELINE.md`의 경로(:317)를 새 경로로 고치고, §4.0 제목의 "ADR 0001" 표기(:299)는 "ADR" 명칭이 사라지므로 문구를 정리한다. 이 문서를 언급하는 티켓 3건(20260915_2227, 20260915_2236, 20260918_2105)은 이력이므로 고치지 않는다.
 - **오탈자**: `UX_WRITING_GUIDELINE.md` §1.3 믹스 행의 X 목록 "조합, 합성, 믹스"에서 `믹스`를 제거한다.
 - **기존 frontmatter 5건 이전**:
   - `PRIVACY_POLICY.md`: `last_updated`를 **삭제**한다(사용자 결정). 게시일은 본문 서두의 "2026-09-01 게시 완료(v1.0)"에 남아 있다. `status: published`는 `active`로 바꾸고 `type: guideline`과 `description`을 추가한다.
@@ -48,8 +48,8 @@ closed: 2026-09-19
 
 ## 완료 조건
 
-- `docs/adr/`가 없고 `docs/specs/UX_WRITING_GUIDELINE.md`의 해당 경로가 새 파일을 가리키며 그 파일이 존재한다.
-- `docs/specs/UX_WRITING_GUIDELINE.md` §1.3 믹스 행의 X 목록에 `믹스`가 없다.
+- `docs/adr/`가 없고 `docs/service/writing/UX_WRITING_GUIDELINE.md`의 해당 경로가 새 파일을 가리키며 그 파일이 존재한다.
+- `docs/service/writing/UX_WRITING_GUIDELINE.md` §1.3 믹스 행의 X 목록에 `믹스`가 없다.
 - 적용 대상 문서에서 `last_updated`·`modified`·`Title` 필드와 `status: published`·`status: implemented` 값이 검색되지 않는다.
 - 이전한 5건과 이동한 ADR에 `type`과 `description`이 있다.
 - `.githooks/pre-commit` 안내 문구에 adr 언급이 없다.
@@ -64,7 +64,7 @@ closed: 2026-09-19
 
 ### 구현 내용 요약
 
-- ADR을 `docs/specs/SERVER_ERROR_MESSAGE_RULE.md`로 이동(`git mv`)하고 `type: guideline`·`description`·`status: active`를 추가했다. 코드 주석과 티켓이 부르는 옛 명칭 'ADR 0001'을 알리는 안내를 본문 첫머리에 넣었다. `docs/adr/` 폴더는 없앴다.
+- ADR을 `docs/service/writing/SERVER_ERROR_MESSAGE_RULE.md`로 이동(`git mv`)하고 `type: guideline`·`description`·`status: active`를 추가했다. 코드 주석과 티켓이 부르는 옛 명칭 'ADR 0001'을 알리는 안내를 본문 첫머리에 넣었다. `docs/adr/` 폴더는 없앴다.
 - `UX_WRITING_GUIDELINE.md`: §1.3 믹스 행 X 목록에서 `믹스`를 제거하고, 옛 ADR 경로를 새 경로로 고쳤다.
 - `.githooks/pre-commit` 안내 문구에서 adr 언급을 뺐다.
 - 기존 frontmatter 5건을 이전했다: `PRIVACY_POLICY.md`(`last_updated` 삭제, `published`를 `active`로), `CONDITION_PRECHECK_PRD.md`(`implemented`를 `active`로), 서비스 플랜 `00`·`01`·`02`(`Title`·`modified` 제거, `jam-doc`에서 별도 커밋).
@@ -73,21 +73,21 @@ closed: 2026-09-19
 ### 변경된 파일
 ```
 .githooks/pre-commit
-docs/specs/DOCUMENT_SCHEMA.md
-docs/specs/PRIVACY_POLICY.md
-docs/specs/SERVER_ERROR_MESSAGE_RULE.md (docs/adr/0001-server-error-message-single-source.md에서 이동)
-docs/specs/UX_WRITING_GUIDELINE.md
-docs/specs/prd/admin-ui/CONDITION_PRECHECK_PRD.md
-jam-doc/planning/business-plan/00 JAM! 비즈니스 개념.md
-jam-doc/planning/business-plan/01 JAM! 철학.md
-jam-doc/planning/business-plan/02 JAM! 서비스 플랜.md
+docs/DOCUMENT_SCHEMA.md
+docs/service/legal/PRIVACY_POLICY.md
+docs/service/writing/SERVER_ERROR_MESSAGE_RULE.md (docs/adr/0001-server-error-message-single-source.md에서 이동)
+docs/service/writing/UX_WRITING_GUIDELINE.md
+docs/service/prd/admin-ui/CONDITION_PRECHECK_PRD.md
+docs/plan/vision/00 JAM! 비즈니스 개념.md
+docs/plan/vision/01 JAM! 철학.md
+docs/plan/vision/02 JAM! 서비스 플랜.md
 ```
 
 ### 테스트 결과
 - [x] `docs/adr/` 폴더가 없다.
 - [x] `last_updated`·`modified`·`Title` 필드와 `status: published`·`implemented` 값이 `docs/specs`, `docs/agents`, `jam-doc`의 planning·marketing·operations에서 검색되지 않는다(소문자 `title`은 아래 예외 2건에 남아 있다).
 - [x] 이전한 5건과 이동한 ADR에 `type`과 `description`이 있다.
-- [x] `docs/specs/UX_WRITING_GUIDELINE.md` 믹스 행의 X 목록에 `믹스`가 없고, 옛 경로 언급이 새 파일을 가리키며 그 파일이 존재한다.
+- [x] `docs/service/writing/UX_WRITING_GUIDELINE.md` 믹스 행의 X 목록에 `믹스`가 없고, 옛 경로 언급이 새 파일을 가리키며 그 파일이 존재한다.
 - [x] `node scripts/check-slop.mjs` 통과(48개 패턴).
 - [x] 서비스 플랜 3건이 `jam-doc`에 별도로 커밋·푸시됐고 두 커밋 메시지에 같은 티켓 번호가 있다.
 - 링크 검사기(T1)가 아직 없어 링크 유효성은 새 경로 파일의 존재로 수동 확인했다.

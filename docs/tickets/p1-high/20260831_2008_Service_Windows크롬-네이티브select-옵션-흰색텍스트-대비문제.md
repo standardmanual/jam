@@ -82,7 +82,7 @@ jam-web/src/app/globals.css
       (티켓에도 명시된 제약) — 코드 레벨 원인 규명·값 확인까지가 이번 검증 범위.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 해당 없음 (텍스트 문구 변경 없음, 스타일만 수정)
 

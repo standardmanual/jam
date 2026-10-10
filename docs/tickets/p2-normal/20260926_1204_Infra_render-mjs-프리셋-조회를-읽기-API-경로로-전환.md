@@ -7,7 +7,7 @@ created: 2026-09-26
 closed: 2026-09-26
 parent: "20260926_1202"
 specs:
-  - docs/specs/prd/asset-generator/PRD.md
+  - docs/service/prd/asset-generator/PRD.md
 ---
 
 # [Infra] render.mjs 프리셋 조회를 어드민 읽기 API 경로로 전환한다

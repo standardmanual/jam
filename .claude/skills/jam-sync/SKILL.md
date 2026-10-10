@@ -9,13 +9,18 @@ description: JAM! 프로젝트를 로컬(여러 PC)과 GitHub 사이에 동기�
 시크릿 파일(`.mcp.json`, `.vercel`, `jam-web/.env.local`)만 아이클라우드의 `JAM-secrets` 폴더에
 두고 심볼릭 링크로 연결한 구조다. 이 스킬은 그 구조를 전제로 동작한다.
 
-**저장소는 하나다.** 작업 폴더 자체가 `standardmanual/jam`(브랜치 `staging`)이고, 기획·운영
-문서가 들어 있는 `jam-doc/`도 그 안의 평범한 폴더다. 2026-09-18에 문서를 별도 저장소로
-분리했다가 2026-09-20에 되돌렸다(티켓 20260920_1412). 따라서 커밋도 push도 한 번이면 된다.
+**저장소는 하나다.** 작업 폴더 자체가 `standardmanual/jam`(브랜치 `staging`)이고, 문서가 들어 있는
+`docs/`도 그 안의 평범한 폴더다. 2026-09-18에 기획·운영 문서를 별도 저장소(`jam-doc`)로
+분리했다가 2026-09-20에 되돌렸고(티켓 20260920_1412), 2026-10-10에 옛 `jam-doc/` 루트를 `docs/`로
+합쳤다(티켓 20261010_1214). 따라서 커밋도 push도 한 번이면 된다.
+
+> **2026-10-10 이후 처음 pull하는 PC.** 옛 `jam-doc/`·`docs/specs/` 안의 추적 파일은 새 경로로 옮겨진다.
+> 추적 밖 파일(옵시디언이 만든 `.obsidian/` 등)이 남아 `jam-doc/` 폴더가 그대로 있어도 동작에는 문제가
+> 없다. 옵시디언 볼트를 `jam-doc/`로 열고 있었다면 볼트 경로를 `docs/`(또는 작업 폴더 루트)로 바꾼다.
 
 > **옛 분리 구조가 남아 있는 PC를 처음 여는 경우.** `jam-doc/.git`이 존재하면 그 PC는 아직
-> 분리 시절 상태다. 그대로 pull하면 `jam-doc/` 파일이 충돌하므로 아래 「분리 구조 정리」를
-> 먼저 수행한다.
+> 분리 시절 상태다. 그대로 pull하면 문서 파일이 충돌하므로 아래 「분리 구조 정리」를
+> 먼저 수행한다(이 절차의 `jam-doc/`는 옛 PC에 남은 중첩 저장소 폴더를 가리킨다).
 
 ## 0. 상태 진단 (항상 먼저)
 
@@ -37,7 +42,7 @@ test -d "<repo>/jam-doc/.git" && echo "옛 분리 구조가 남아 있음 — �
 
 ## 분리 구조 정리 (옛 PC를 처음 열 때 1회)
 
-`jam-doc/`이 별도 저장소였던 흔적을 지우고, `jam`이 관리하는 폴더로 되돌린다.
+`jam-doc/`이 별도 저장소였던 흔적을 지우고, 문서를 `jam`이 관리하는 `docs/`로 되돌린다.
 
 ```bash
 cd "<repo>/jam-doc"
@@ -54,8 +59,8 @@ git log --oneline origin/main..HEAD  # ② push하지 않은 커밋이 있는지
 cd "<repo>"
 rm -rf jam-doc                     # ③ 옛 복제본을 통째로 지운다
 git fetch origin staging
-git pull origin staging            # ④ 재통합된 jam-doc/ 이 여기서 새로 내려온다
-ls jam-doc/planning/content/TRIBES.md   # ⑤ 확인
+git pull origin staging            # ④ 문서가 docs/ 아래로 새로 내려온다
+ls docs/service/content/TRIBES.md   # ⑤ 확인
 ```
 
 ③이 불안하면 지우는 대신 `mv jam-doc ../jam-doc-backup`으로 옮겨 둬도 된다. 확인이 끝난 뒤

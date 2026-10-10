@@ -501,7 +501,7 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
     <p class="lt">격리 워크트리 <code>.claude/worktrees/wf_*</code> — 아현·민지·채원 전용</p>
     <div class="box">첫 명령: <code>git fetch origin staging</code> → <code>git checkout --detach origin/staging</code> → <code>workspace-setup.sh link</code></div>
     <div class="box">브랜치 <code>claude/jamwork-{ticket}-{slug}</code>에 커밋 → 리뷰 브랜치로만 push</div>
-    <div class="box dim">jam-web/node_modules → 메인 폴더로 향하는 심볼릭 링크 · 시크릿 없음 · <code>jam-doc/</code>는 실제 폴더로 따라옴</div>
+    <div class="box dim">jam-web/node_modules → 메인 폴더로 향하는 심볼릭 링크 · 시크릿 없음 · <code>docs/</code>는 실제 폴더로 따라옴</div>
   </div>
   <div class="lane remote">
     <p class="lt">GitHub · Vercel</p>
@@ -552,8 +552,8 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
 <tr><td>민지</td><td>지정된 커밋 범위의 diff + 티켓 + 스펙</td><td>없음</td><td>Write·Edit 도구 자체가 없음 · 워크플로 게이트와 <code>/jam-ship</code> 5단계에서 격리 워크트리에 실행(티켓 20261002_1905) · 공유 작업 폴더에서 HEAD·작업 트리를 옮기는 git 명령을 막는 정의 frontmatter 훅은 등록돼 있으나 클라우드 세션의 실제 호출에서 걸리지 않음</td></tr>
 <tr><td>채원</td><td><code>jam-web/design-system/</code>, Storybook, 지정된 diff</td><td>없음</td><td>Write·Edit 도구 자체가 없음 · 사후 리뷰(②)만 워크플로 게이트에서 격리 워크트리에 실행 · 민지와 같은 frontmatter 훅(같은 상태)</td></tr>
 <tr><td>혜린</td><td>티켓·PRD·컨텐츠 문서</td><td>없음</td><td>〃 (Bash도 없음)</td></tr>
-<tr><td>윈터</td><td><code>jam-doc/planning/content/TRIBES.md</code> 중심 + 웹</td><td>없음</td><td>〃</td></tr>
-<tr><td>윤진</td><td><code>jam-doc/marketing/</code>, 리포트 + 웹</td><td>세션: <code>jam-doc/assets/</code>의 묶음 폴더 3곳(<code>badge-bundles/</code>·<code>mission-bundles/</code>·<code>home-feed-bundles/</code>의 <code>&lt;묶음 ID&gt;/</code>, 모드 ⑧ 한정, Bash)</td><td>Bash 도구는 물리적으로 좁혀지지 않는다. <code>render.mjs</code>·<code>list-presets.mjs</code> 실행·묶음 폴더 쓰기·<code>register-*.mjs --dry-run</code>만 허용한다는 것은 정의 문서의 지시(프롬프트 규칙)다. 예약 실행은 이미지를 만들지 않는다(티켓 20260930_1519). 등록(<code>--dry-run</code> 없음·<code>--undo</code>)·프리셋 생성·수정·DB·스토리지 쓰기·git은 금지</td></tr>
+<tr><td>윈터</td><td><code>docs/service/content/TRIBES.md</code> 중심 + 웹</td><td>없음</td><td>〃</td></tr>
+<tr><td>윤진</td><td><code>docs/marketing/</code>, 리포트 + 웹</td><td>세션: <code>docs/assets/</code>의 묶음 폴더 3곳(<code>badge-bundles/</code>·<code>mission-bundles/</code>·<code>home-feed-bundles/</code>의 <code>&lt;묶음 ID&gt;/</code>, 모드 ⑧ 한정, Bash)</td><td>Bash 도구는 물리적으로 좁혀지지 않는다. <code>render.mjs</code>·<code>list-presets.mjs</code> 실행·묶음 폴더 쓰기·<code>register-*.mjs --dry-run</code>만 허용한다는 것은 정의 문서의 지시(프롬프트 규칙)다. 예약 실행은 이미지를 만들지 않는다(티켓 20260930_1519). 등록(<code>--dry-run</code> 없음·<code>--undo</code>)·프리셋 생성·수정·DB·스토리지 쓰기·git은 금지</td></tr>
 <tr><td>카즈하</td><td>리포트·티켓·지표 API</td><td>없음</td><td>〃</td></tr>
 <tr><td>하니</td><td>문서 체계 전반</td><td>없음</td><td>〃 (Bash도 없음)</td></tr>
 </tbody></table></div>
@@ -563,11 +563,11 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
 <h2>7. 예약 자동화 루틴</h2>
 <p class="sub">클라우드 예약 작업에서 돈다. 원문 스펙은 <code>.claude/skills/jam-work/references/scheduled-jobs.md</code>.</p>
 <div class="tw"><table class=""><thead><tr><th>루틴</th><th>주기 (KST)</th><th>담당</th><th>산출물</th><th>상태</th></tr></thead><tbody>
-<tr><td>주간 브리핑</td><td>화 09:00</td><td>카즈하 → 윤진</td><td><code>jam-doc/operations/reports/weekly/YYYY-Www.md</code></td><td>삭제됨(2026-10-07)</td></tr>
-<tr><td>선별 (무인 적격 판정)</td><td>매일 06:00</td><td>카즈하</td><td><code>jam-doc/operations/reports/triage/YYYY-MM-DD.md</code></td><td>삭제됨(2026-10-07)</td></tr>
+<tr><td>주간 브리핑</td><td>화 09:00</td><td>카즈하 → 윤진</td><td><code>docs/operations/reports/weekly/YYYY-Www.md</code></td><td>삭제됨(2026-10-07)</td></tr>
+<tr><td>선별 (무인 적격 판정)</td><td>매일 06:00</td><td>카즈하</td><td><code>docs/operations/reports/triage/YYYY-MM-DD.md</code></td><td>삭제됨(2026-10-07)</td></tr>
 <tr><td>주간 배포 확인</td><td>목 15:00</td><td>무인 카리나</td><td>Slack 리마인더 게시</td><td>삭제됨(2026-10-07)</td></tr>
 <tr><td>주간 배포 실행</td><td>목 23:59</td><td>무인 카리나</td><td>프로덕션 배포</td><td>삭제됨(2026-10-07)</td></tr>
-<tr><td>월간 트렌드·문서 점검</td><td>매월 1일 09:00</td><td>윈터·윤진 → 하니</td><td><code>jam-doc/operations/reports/monthly/YYYY-MM.md</code></td><td>삭제됨(2026-10-07)</td></tr>
+<tr><td>월간 트렌드·문서 점검</td><td>매월 1일 09:00</td><td>윈터·윤진 → 하니</td><td><code>docs/operations/reports/monthly/YYYY-MM.md</code></td><td>삭제됨(2026-10-07)</td></tr>
 </tbody></table></div>
 </section>
 

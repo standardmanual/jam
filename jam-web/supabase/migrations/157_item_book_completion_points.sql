@@ -6,7 +6,7 @@
 -- 배경(요약 — 티켓 문서 참고):
 --   잼 포인트는 지금까지 ①배지 발급(badges.point_reward) ②미션 완료
 --   (missions.reward_points) ③운영자 수동 지급/회수, 세 경로로만 지급됐다
---   (docs/specs/prd/point-system/OBJECT_MODEL.md). 컬렉션(아이템북) 완성은
+--   (docs/service/prd/point-system/OBJECT_MODEL.md). 컬렉션(아이템북) 완성은
 --   지급 트리거 목록에 없었다 — slot_item_into_book() RPC(마이그레이션 111)가
 --   완성 판정 시 user_item_book_completions에 완성 기록만 INSERT할 뿐
 --   award_points() 호출이 없었다.

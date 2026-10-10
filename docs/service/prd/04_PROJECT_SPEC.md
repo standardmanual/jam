@@ -1,0 +1,258 @@
+---
+type: prd
+description: "기술 스택, 프로젝트 구조, 어드민 인증, Cron, 금지 사항, 환경변수, 핵심 비즈니스 규칙을 정리한 프로젝트 스펙이다."
+code:
+  - "jam-web/src/proxy.ts"
+  - "jam-web/vercel.json"
+---
+
+# JAM! 유저 모바일 웹 — 프로젝트 스펙
+
+> AI가 코드를 짤 때 지켜야 할 규칙과 절대 하면 안 되는 것.
+> 이 문서를 AI에게 항상 함께 공유하세요.
+>
+> **2026-08-06 갱신**: 코드베이스(`jam-web/`) 전수 대조로 현재 상태 기준 재작성.
+>
+> **핵심 루프(동기화→배지→드랍→포인트)에 손대는 작업이면 [DEV_PROCESS_GUARDRAILS.md](../../agents/DEV_PROCESS_GUARDRAILS.md)를
+> 먼저 확인하세요** — 과거에 반복된 개발 프로세스 실수 패턴과 의존성 지도가 정리돼 있습니다.
+
+---
+
+## 기술 스택
+
+| 영역 | 선택 | 비고 |
+|------|------|------|
+| 프레임워크 | **Next.js 16.2.10** (App Router), React 19.2.4 | ⚠️ 원안은 Next.js 15로 기재돼 있었으나 실제는 16. Next 16은 브레이킹 체인지가 있어 `node_modules/next/dist/docs/`의 마이그레이션 노트를 먼저 확인할 것 |
+| 미들웨어 | **`src/proxy.ts`** (`proxy()` export + `config.matcher`) | Next 16 컨벤션 변경 — `middleware.ts`가 아님. 인증 리다이렉트·어드민 접근 제어 담당 |
+| DB / 백엔드 | Supabase (PostgreSQL) | `@supabase/supabase-js` ^2.110.1, `@supabase/ssr` ^0.12.0 |
+| 배포 | Vercel | `vercel.json`에 Cron 6건 등록 (아래 참고) |
+| 인증 | Supabase Auth + Google OAuth | 어드민은 이중 구조 — 아래 "어드민 인증" 참고 |
+| 스타일링 | Tailwind CSS 4 | + Radix UI(accordion/checkbox/dialog/select/slot/tabs), `class-variance-authority`, `tailwind-merge`, `lucide-react` |
+| 지도 | **네이버 지도 (NCP Maps.js)** | ⚠️ 원안은 Google Maps JS API였으나 2026-07-22 전환됨. `src/components/map/MapView.tsx` |
+| POI 소스 (T2) | **네이버 지역검색 오픈API** | ⚠️ 원안은 OpenStreetMap Overpass API였으나 2026-07-22 전환됨. 캐시는 `poi_search_cache` 테이블(TTL) |
+| 테스트 | **vitest** v4.1.10 + `@vitejs/plugin-react` | `npm test` (run) / `npm run test:watch` (watch). node:assert 기반 파일(`today`, `missions` __tests__)은 `npx tsx`로 직접 실행 |
+| Strava 연동 | Strava OAuth 2.0 + Activities API | rate limit: 200/15분, 2000/일. `strava_activities` 테이블에 정규화 원본 저장 |
+
+---
+
+## 프로젝트 구조
+
+```
+jam-web/
+├── src/
+│   ├── app/
+│   │   ├── (auth)/login/
+│   │   ├── (main)/             # badges, collections, combine, drops, inventory,
+│   │   │                       # missions, onboarding, points, profile, search,
+│   │   │                       # today, [username] 등
+│   │   ├── admin/               # abusing, ambient-drop, badges, combine-policy,
+│   │   │                       # drop-policy, tribes, itembooks, missions, poi,
+│   │   │                       # points, recipes, simulator, theme, today, users
+│   │   ├── api/                 # admin, combine, cron, drops, follows, inventory,
+│   │   │                       # itembooks, missions, onboarding, poi-badges,
+│   │   │                       # points, profile, strava, username, users
+│   │   └── auth/callback/
+│   ├── proxy.ts                 # 미들웨어 (Next 16 컨벤션)
+│   ├── components/
+│   │   ├── ui/                  # Radix 기반 공통 컴포넌트
+│   │   ├── badge/, map/, strava/ 등
+│   ├── lib/
+│   │   ├── supabase/            # 클라이언트 (server/client 분리)
+│   │   ├── strava/              # Strava API 래퍼
+│   │   ├── badge-engine/        # 액티비티배지 엔진 (+__tests__)
+│   │   ├── drop-engine/         # 드랍엔진 v2 (+__tests__)
+│   │   ├── ambient-drop/        # 앰비언트(시스템) POI 드랍 엔진 (+__tests__)
+│   │   ├── combine/             # 아이템 조합 엔진
+│   │   ├── missions/            # 미션 시스템 (+__tests__)
+│   │   ├── points/              # 포인트 시스템 (+__tests__)
+│   │   ├── poi/                 # POI 검색/매칭
+│   │   ├── abusing/             # 어뷰징 탐지 (섀도우밴 공용)
+│   │   ├── admin/                # 어드민 보조 인증
+│   │   ├── activity-feed/       # 통합 피드
+│   │   ├── engine-log/          # 엔진 판정 로그
+│   │   ├── today/               # 홈 CMS (+__tests__)
+│   │   ├── theme/, i18n/
+│   │   └── utils.ts
+│   └── types/
+├── public/badges/, public/icons/
+├── .env.local                   # 절대 GitHub에 올리지 마세요
+├── .env.example
+└── package.json
+```
+
+> 원안 대비 `combine/`, `missions/`, `points/`, `engine-log/`, `today/`, `abusing/`, `admin/` 등이 신규 도입됨. 이제 `badge-engine`(발급) + `drop-engine`(드랍) 2개 엔진뿐 아니라 조합·미션·포인트가 독립 도메인으로 존재.
+
+---
+
+## 어드민 인증 (삼중 구조)
+
+1. **`proxy.ts` 레벨**: `/admin/*` 요청 시 Supabase Auth 세션 확인 → `ADMIN_EMAILS`(쉼표 구분) 화이트리스트 대조 → 불일치 시 `/forbidden`
+2. **보조 인증**: `ADMIN_SECRET` 비밀번호 기반 쿠키(`admin_token`) — `api/admin/auth`, `api/admin/test/simulate` 등 일부 API가 사용. 시뮬레이터처럼 세션 없이도 호출해야 하는 경로용.
+3. **자동화 읽기 토큰**: `x-admin-read-token` 헤더가 `ADMIN_API_READ_TOKEN`과 일치하면 **GET 요청만** 통과한다. `requireAdminRead(req)`(`src/lib/admin/auth.ts`)를 쓰는 읽기 라우트(missions·badges·users·drop-policy·badge-metric-labels·kpi/weekly)에만 적용되고, `proxy.ts`는 이 조건일 때만 로그인 리다이렉트를 건너뛴다. 쓰기 메서드·다른 라우트는 기존 세션 검사(`requireAdmin()`)만 받는다. 클라우드 예약 작업(`scripts/admin-api-read.mjs`)용이다. **쓰기 예외는 운영 묶음 제출 경로 하나뿐이다**: `POST /api/admin/ops-inbox`(경로가 정확히 같을 때만, 접두사 아님)는 같은 토큰으로 낼 수 있다. `proxy.ts`와 라우트가 같은 판정 함수 `isOpsInboxTokenRequest`(`src/lib/admin/auth.ts`, 상수는 `src/lib/admin/opsInbox/constants.ts`)를 쓰고, 계약 테스트(`src/app/api/admin/__tests__/token-write-contract.test.ts`)가 토큰 쓰기 검사를 부르는 라우트가 그 하나뿐인지 확인한다. 스펙은 [ops-tool/PRD.md](ops-tool/PRD.md) §11.1.
+
+코드 작성 시 어느 인증 경로를 쓰는지 명확히 구분할 것 — 새 어드민 API가 필요하면 기존 라우트가 둘 중 어느 방식을 쓰는지 먼저 확인.
+
+---
+
+## Vercel Cron 작업
+
+> **이 절이 크론의 단일 진실 원천이다.** 다른 문서(`docs/service/SERVICE_OPERATIONS.md` §13 등)는
+> 여기를 가리키기만 한다 — 크론 표를 다른 곳에 복제하지 말 것(사유: 티켓 20260906_1245).
+> 실체는 `jam-web/vercel.json`의 `crons` 배열이므로, 이 표와 어긋나면 그 파일이 옳다.
+
+| 경로 | 스케줄(UTC) | 역할 |
+|------|------------|------|
+| `/api/cron/poi-cleanup` | 매일 00:00 | 삭제된 배지에 연결된 미픽업 드랍 소각(드랍에는 만료가 없다. `poi_drops.expires_at`이 지난 드랍을 소각하는 분기도 남아 있지만 유저·시스템 드랍 모두 이 값을 채우지 않는다), 이어서 3개월 지난 부정 이용 탐지 기록(`abusing_logs`) 삭제 — 개인정보 처리방침 3항 보유기간 ([20260929_1327](../../tickets/p2-normal/20260929_1327_Infra_부정이용-탐지기록-3개월-자동파기.md)) |
+| `/api/cron/notifications` | 매일 09:00 | 알림(소식) T2 배치 생성 — KST 18:00 |
+| `/api/cron/ambient-drop` | 매시 정각 | 앰비언트(시스템) POI 드랍 배치 — 먼저 도래한 날짜 예약 배포(`ambient_drop_schedules`, 티켓 20261001_2051)를 매 호출 처리하고(`auto_enabled`와 무관, 실패해도 매일 배포를 막지 않음), 이어서 매일 배포는 어드민이 정한 시각(`ambient_drop_config.schedule_hour_kst`, KST 정시)에만 실제 배치하고 그 외 시각·`auto_enabled=false`·당일 이미 실행됨은 no-op. cron 표현식이 동적일 수 없어 매시 호출하고 핸들러가 판정한다 ([20260906_1206](../../tickets/p1-high/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)) |
+| `/api/cron/external-inputs` | 매일 21:00 | 날씨(기상청)·특일(공공데이터포털)을 미리 받아 `external_input_daily`에 저장 — KST 06:00. 카드 조회는 저장값만 읽고 외부 API를 부르지 않는다(값이 없으면 날씨·기념일 태그만 빠진다). 한쪽이라도 실패하면 502와 함께 실패 쪽을 응답에 표시 ([20260923_2333](../../tickets/p2-normal/20260923_2333_API_외부입력-호출을-카드조회-경로-밖으로-분리-사전갱신.md)) |
+| `/api/cron/ops-reconcile` | 10분마다 (`*/10 * * * *`) | 운영툴 상태 맞추기 — 「준비중」·「예약됨」·「게재중」 항목을 실제 자원과 견줘 게재중·종료·취소·실패로 맞추고, 밖에서 바뀐 것은 결정 기록(`external_change`)만 남긴다. `CRON_SECRET`이 비면 401, 건너뛴 항목이 있으면 500, 성공이면 공개·종료를 슬랙에 알린다. 어드민 달력에는 「운영 상태 맞추기」가 「10분마다」 한 줄로 보인다. `/api/cron/reconcile`은 예전 Strava 크론 이름이라 쓰지 않는다 ([20261002_1814](../../tickets/p2-normal/20261002_1814_Admin_운영툴-자원-연결-7b-상태-맞추기-크론과-결정-기록-이름표.md), 규칙은 운영툴 PRD §8.6·§11.8) |
+| `/api/cron/ops-stop-signals` | 매시 5분 (`5 * * * *`) | 운영툴 중단 신호 점검 — 먼저 상태 맞추기(`ops-reconcile`과 같은 함수, DB를 쓴다)를 한 번 하고, 신호를 계산해 직전 한 시간 창(정시 + 5분 슬롯 기준)에 새로 걸린 「예약 누락」·「루틴 실패」만 `#jam-alert`에 회차당 한 건 올린다. 신호 계산은 DB를 쓰지 않는다. 실행 실패와 시험 묶음은 알리지 않고, 상태 맞추기가 실패한 회차는 예약 누락 알림만 건너뛴다. `CRON_SECRET`이 비면 401, 맞추기 실패·묶음을 읽지 못함·슬랙 게시 실패는 500, 슬랙 값이 없으면 건너뛰고 200이다. 어드민 달력에는 「운영 중단 신호 점검」이 「매시간」 한 줄로 보인다 ([20261001_1154](../../tickets/p2-normal/20261001_1154_Admin_운영-홈-일정표-신호-4-중단-신호-매시-알림.md), 규칙은 운영툴 PRD §11.9) |
+
+> **2026-07-31 제거**: `/api/cron/sync`(전체 `strava_connections` 유저 순차 동기화, 매일 12:00 UTC = KST 21:00)는 유저 수 증가에 따른 배치 시간·Strava Rate Limit 부담과 "유저가 원치 않는 시점에 활동이 반영되는" 정책 문제로 삭제됐다(커밋 `b9609942`). 이후 Strava 동기화는 **수동 버튼(`POST /api/strava/sync`)과 OAuth 콜백 직후 1회**만 발생한다. 상세: [docs/tickets/20260731_001](../../tickets/p2-normal/20260731_001_Admin_Strava-전체-유저-자동-동기화-크론-api-cron-sync.md).
+
+> **2026-08-10 제거**: `/api/cron/reconcile`(Strava 활동 소급 재점검, 매일 12:00)은 API 호출량 절감을 위해 완전히 삭제됐다. 이 크론이 완충하던 "동기화 실패 시 커서(`last_synced_at`)가 잘못 전진해 이후 재시도까지 과거 활동을 영영 놓치는" 문제는 근본 수정으로 대체했다 — `syncStravaActivities` 처리 중 예외 발생 시 `last_synced_at`을 롤백하고, OAuth 콜백의 즉시 동기화 호출도 fire-and-forget에서 `await`로 변경(서버리스 강제 종료로 처리가 끊기는 것 방지). 상세: [docs/tickets/20260810_002](../../tickets/p1-high/20260810_002_Service_reconcile-크론-제거-및-동기화-커서-롤백.md).
+>
+> **2026-09-22 추가 수정**: 위 롤백은 **실패한** 동기화가 커서를 잘못 전진시키는 경우만 막았다. **성공(0건)한** 동기화가 커서를 밀어내는 별도 경로가 남아 있었다 — 조회 커서가 `last_synced_at`(동기화를 누른 벽시계 시각)이라, 활동 길이 + 업로드 지연이 overlap(15분)보다 길면 해당 활동이 영구 누락됐다. 커서를 `strava_activities` 최신 `start_date`(마지막으로 가져온 활동의 시작 시각) 기준으로 바꿔 해결했다 — `last_synced_at`은 이제 동시 싱크 잠금 키로만 쓴다. 상세: [docs/tickets/20260922_2207](../../tickets/p1-high/20260922_2207_Service_Strava-동기화-커서를-마지막-활동-시작-시각-기준으로-변경.md).
+
+> **2026-08-25 제거 → 2026-08-26 재도입**: `/api/cron/ambient-drop-monitor`(앰비언트 드랍 보충, 매일 18:00)는 앰비언트(시스템) 드랍 기능이 전면 제거되면서 한 차례 삭제됐다. **미완성이라 지운 것이 아니었다** — 정책·어드민 화면까지 갖춰져 있었고, `source='system'` 행이 0건이었던 것은 미들웨어가 `/api/cron/*`를 307로 가로채 cron이 실행되지 않았기 때문이었다([20260825_003](../../tickets/p1-high/20260825_003_bug_미들웨어가-cron-요청을-차단.md)에서 수정). 관측과 무관한 제품 결정이었다(상세: [docs/tickets/20260825_004](../../tickets/p1-high/20260825_004_Feature_앰비언트-드랍-기능-제거.md)). 그 뒤 드랍엔진 v2·컨텐츠·POI 체계가 성숙한 것을 반영해 **옛 커버리지 목표치 모델을 복원하지 않고 카테고리/등급비율/대상컬렉션 3축(명시 또는 무작위) 배치 모델로 재설계해 `/api/cron/ambient-drop`로 재도입**했다. 상세: [docs/tickets/20260826_009](../../tickets/p1-high/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md).
+
+> **2026-08-24 제거**: `/api/cron/wandering`(Mystic 아이템 재배치, 매일 06:00)은 해당 기능 자체가 전면 제거되면서 함께 삭제됐다. 스키마·Cron만 있고 컨텐츠가 한 번도 붙지 않아 프로덕션 실사용이 0건이었다. 상세: [docs/tickets/20260824_017](../../tickets/p2-normal/20260824_017_Infra_떠돌이신화-기능-전면제거.md).
+
+모든 Cron 라우트는 `Authorization: Bearer {CRON_SECRET}` 검증. (과거 Hobby 플랜에서는 일 1회 초과 빈도의 Cron이 배포 시점에 거부됐다 — [20260723_004](../../tickets/p2-normal/20260723_004_Admin_배포가-안-되던-근본-원인Vercel-Hobby-플랜-cron-빈도-제.md). **현재는 Pro 플랜이라 이 제약이 없다** — `/api/cron/ambient-drop`이 2026-09-06부터 매시 정각으로, `/api/cron/ops-reconcile`이 10분마다, `/api/cron/ops-stop-signals`가 매시 5분에 돈다)
+
+---
+
+## 절대 하지 마 (DO NOT)
+
+> AI에게 코드를 시킬 때 이 목록을 반드시 함께 공유하세요.
+
+- **자체 GPS 트래킹 UI 만들지 마** — "운동 시작" 버튼, 실시간 지도, 거리 카운터 전부 금지. JAM! 핵심 철학 위반 (드랍/픽업 지도는 위치 조회용이지 트래킹 UI가 아님 — 혼동 금지)
+- **과거 데이터 소급 분석하지 마** — Strava 연동 시점 이후 활동만 처리 (단, 첫 싱크 자체는 연동 시점까지의 누적 이력을 최신 1건 기준으로 평가하는 것이 정책이므로 별개)
+- **API 키나 비밀번호를 코드에 직접 쓰지 마** — 반드시 `.env.local` 환경변수 사용
+- **Strava access_token을 평문으로 DB에 저장하지 마** — `ENCRYPTION_KEY`로 암호화 필수
+- **기존 DB 스키마를 임의로 변경하지 마** — 마이그레이션 파일 작성 후 리뷰 요청 (번호는 이어서 작성한다. 시작하기 전에 `ls supabase/migrations | tail`로 직접 확인할 것, 045가 두 파일에 중복 부여됐던 전례 있음. 컬럼·함수를 바꾸거나 없애는 변경은 확장→전환→축소의 별도 마이그레이션으로 나누고 모든 마이그레이션에 되돌림 SQL을 동반한다 — 규칙의 단일 원천은 `.claude/skills/jam-work/references/db-migration-rules.md`)
+- **테이블뿐 아니라 함수·트리거도 마이그레이션 파일 없이 운영 DB에서 직접(SQL 에디터·MCP execute_sql 등) 재정의하지 마** — 2026-08-11 `handle_new_user()` 트리거 함수가 마이그레이션 파일 없이 운영 DB에서만 재정의되면서 인벤토리 생성 구문이 누락된 채 방치돼, 신규 유저 3명의 아이템 배지가 조용히 미발급되는 인시던트가 있었음(원인 규명 불가 — 추적 기록 자체가 없었음). `execute_sql`은 조회·데이터 백필(별도 티켓 문서화 전제)에만 쓰고, 함수/트리거/컬럼 등 스키마·로직 정의 변경은 반드시 새 마이그레이션 파일 작성 → `apply_migration`으로 적용 → 커밋까지 한 번에 끝낼 것. 프로젝트 규모상 `supabase_migrations.schema_migrations`에 이력이 다 남지 않는 경우도 있으므로, 의심 시 [BADGE_ENGINE_UNIFIED.md](../badge-engine/BADGE_ENGINE_UNIFIED.md) 같은 핵심 로직 문서보다도 `pg_get_functiondef`로 운영 DB 실물을 먼저 확인할 것 (docs/tickets/20260811_001 참고)
+- **목업/하드코딩 데이터로 완성이라고 하지 마** — 실제 Strava 계정 연동 테스트 필수
+- **package.json 의존성 버전을 임의로 변경하지 마** — 보안 패치 외 버전 고정. 특히 Next.js는 16 메이저 버전 고정 — 임의 업/다운그레이드 금지
+- **Strava rate limit 초과하지 마** — 200/15분, 2000/일 제한. 배치 처리 시 딜레이 추가
+- **인벤토리 슬롯 체크 없이 아이템 추가하지 마** — 50슬롯 초과 방지 로직 항상 포함 (단, `slotted_in`으로 컬렉션에 장착된 아이템은 슬롯 차감에서 제외)
+- **네이버 지역검색 API 캐시 없이 반복 호출하지 마** — `poi_search_cache` TTL 정책 우회 금지 (구 OSM 규칙 "브랜드 조건 AND 체이닝 금지"는 데이터소스 전환으로 더 이상 적용 대상 아님)
+- **poi_drops 테이블에 ON CONFLICT (osm_id) 부분 인덱스로 upsert하지 마** — UNIQUE constraint만 ON CONFLICT 대상 가능 (osm_id는 레거시 컬럼, 신규 로직은 naver_id 기준)
+- **point_wallets.balance를 직접 UPDATE하지 마** — 반드시 `award_points()` RPC 경유. 원장(point_transactions)과의 정합성이 깨지면 어드민 대사 화면에서 즉시 드러남
+- **`inventory/flea-market` 화면에 실거래 로직을 임의로 연결하지 마** — 현재 "coming soon" placeholder 상태. 실제 P2P 거래는 `trades` 테이블 설계부터 재검토 필요
+
+---
+
+## 항상 해 (ALWAYS DO)
+
+- **변경하기 전에 계획을 먼저 보여줘** — 특히 DB 스키마 변경 시
+- **환경변수는 .env.local에 저장** — .env.example에 키 이름만 추가
+- **에러가 발생하면 사용자에게 친절한 한국어 메시지 표시** — "오류가 발생했어요. 잠시 후 다시 시도해주세요."
+- **모바일 우선 반응형 디자인** — 375px(iPhone SE) ~ 430px(iPhone Pro Max) 기준. 어드민은 예외(아래 참고)
+- **Strava API 응답 타입 정의** — any 사용 금지. types/ 폴더에 타입 추가
+- **배지 발급 로직은 서버 사이드에서만** — 클라이언트에서 배지 조건 직접 체크하면 어뷰징 가능
+- **Supabase RLS(Row Level Security) 활성화** — 마이그레이션 전체에서 19건 확인됨. 신규 테이블 추가 시에도 반드시 적용 (누락 시 `engine_decision_log`처럼 사후에 별도 마이그레이션으로 추가해야 했던 사례 있음 — 처음부터 포함할 것)
+- **어드민 화면은 데스크탑 우선(1024px+)** — 유저 화면과 반응형 기준이 다름
+- **핵심 루프(위 DEV_PROCESS_GUARDRAILS.md 의존성 지도 대상)를 건드리는 작업은 시작 전에
+  "어떤 테이블/파일에 영향 주는지"를 평문 한국어로 먼저 보고하고 진행 확인받기** — 비개발자인
+  사용자도 코드를 안 읽고 범위만으로 판단할 수 있게 하기 위함
+- **`users` 테이블 등 DB 컬럼을 참조하는 타입을 새로 쓰거나 의심될 땐 Supabase MCP의
+  `generate_typescript_types`로 최신 타입을 받아 `database.ts`와 대조**(`npm run db:types`는 제거돼 실행 불가) — 손으로 쓴 타입이 실제 스키마와
+  어긋나 있어도 지금 구조에선 자동으로 안 걸러짐(2026-08-11 UserRow 5개 컬럼 누락 사례)
+
+---
+
+## 테스트 방법
+
+```bash
+# 로컬 실행
+npm run dev
+
+# TypeScript 타입 체크
+npx tsc --noEmit
+
+# 빌드 확인 (배포 전 필수)
+npm run build
+
+# 단위 테스트 (vitest)
+npm test            # 전체 1회 실행
+npm run test:watch  # 변경 감지 watch 모드
+
+# node:assert 기반 파일 (today, missions __tests__) — vitest 제외, 직접 실행
+npx tsx src/lib/today/__tests__/today-logic.test.ts
+npx tsx src/lib/missions/__tests__/checker-logic.test.ts
+
+# Supabase 로컬 개발 (선택)
+npx supabase start
+```
+
+---
+
+## 배포 방법
+
+프로덕션 배포는 Claude Code의 `/jam-ship` 스킬로만 진행한다. `vercel --prod`나 main 브랜치 직접
+push로 배포하지 않는다(`.githooks/pre-push`가 `JAM_SHIP=1` 없는 main push를 차단한다).
+
+1. `staging` 브랜치에 push하면 Vercel이 스테이징(`stage.j-a-m.app`)에 배포한다.
+2. 스테이징에서 확인을 마친 뒤 `/jam-ship`을 실행한다. 배포 전 점검표 → 롤백 계획 → 병렬 점검(민지 모드 ②·③) →
+   main 승격 → 배포 검증 → 배포 후 검증 순서로 진행하며, 절차의 단일 원천은 `.claude/skills/jam-ship/SKILL.md`다.
+
+환경변수는 Vercel 대시보드(프로젝트 → Settings → Environment Variables)에서 설정한다.
+
+---
+
+## 환경변수
+
+| 변수명 | 설명 | 비고 |
+|--------|------|------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL | |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 공개 키 | |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase 서버 전용 키 (클라이언트 노출 금지) | |
+| `SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` | Supabase 신규 키 체계 | `src/` 코드 미참조이나 **사용중** (Supabase 인프라/대시보드 레벨) — `.env.local`에 유지 |
+| `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` | Strava 앱 OAuth 키 | |
+| `ENCRYPTION_KEY` | Strava 토큰 암호화 키 (hex) | `openssl rand -hex 32` |
+| `ADMIN_EMAILS` | `/admin/*` 접근 허용 이메일 화이트리스트 (쉼표 구분) | `proxy.ts` |
+| `ADMIN_API_READ_TOKEN` | 어드민 자동화 읽기 토큰 (GET 전용. 쓰기는 `POST /api/admin/ops-inbox` 하나만 예외, 값을 바꾸면 이전 토큰 즉시 차단) | `requireAdminRead`, `isOpsInboxTokenRequest`, `proxy.ts` |
+| `ADMIN_SECRET` | 어드민 보조 인증 비밀번호 (쿠키 토큰 발급용) | 시뮬레이터 등 |
+| `CRON_SECRET` | Vercel Cron 요청 인증 | 6개 Cron 라우트 공통 |
+| `SLACK_BOT_TOKEN` | 슬랙 봇(JAM 봇) 토큰. 운영 묶음 도착 글을 서버가 `chat.postMessage`로 게시한다 | `lib/admin/opsInbox/slack.ts`. 미설정이면 게시를 건너뛰고 결정 기록에 `not_configured`만 남긴다(제출은 성공). Vercel 두 프로젝트에 등록 필요 |
+| `SLACK_CHANNEL_JAM_REPORT` | 슬랙 `#jam-report` 채널 ID (도착·승인·예약·공개 알림) | `lib/admin/opsInbox/slack.ts`. 값의 원천은 `.claude/skills/jam-work/references/scheduled-jobs.md` 「Slack 알림」 |
+| `SLACK_CHANNEL_JAM_ALERT` | 슬랙 `#jam-alert` 채널 ID (실패·되돌림 알림) | `lib/admin/opsInbox/slack.ts`. 예약 등록 실패 글을 이 채널에 게시한다(티켓 20261002_1123). 상태 맞추기의 실패 알림(티켓 20261002_1813)과 매시 중단 신호 점검(티켓 20261001_1154)도 같은 채널에 게시한다 |
+| `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | 네이버 지도 SDK 클라이언트 ID | |
+| `NCP_MAP_CLIENT_SECRET` | 네이버 클라우드 플랫폼 지도 서버 인증 | |
+| `NEXT_PUBLIC_NAVER_MAP_STYLE_ID` | 네이버 지도 커스텀 스타일 ID | |
+| `NAVER_LOCAL_SEARCH_CLIENT_ID` / `NAVER_LOCAL_SEARCH_CLIENT_SECRET` | 네이버 지역검색 오픈API (T2 POI 소스) | |
+| `KMA_API_KEY` | 기상청 API 허브 단기예보 인증키 (오늘 날씨 세그먼트 태그) | `lib/inputs/weather.ts`. 미설정·호출 실패 시 날씨 태그만 빠짐(오류 없음) |
+| `DATA_GO_KR_API_KEY` | 공공데이터포털 특일정보 API 인증키 (공휴일·기념일·24절기 세그먼트 태그) | `lib/inputs/holidays.ts`. 미설정·호출 실패 시 기념일 태그만 빠짐(오류 없음) |
+| `NEXT_PUBLIC_BASE_URL` | 서비스 도메인 URL | **`https://j-a-m.app`** (2026-08-06부로 `jam-rose.app`에서 전환) |
+| `FOREST_SERVICE_KEY` | 산림청 API 키 | `src/` 미참조이나 **사용중** (Edge Function 또는 외부 파이프라인) — `.env.local`에 유지 |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | GA4 측정 ID (`G-7K884Q399P`) | 미설정 시(로컬 등) GA 스크립트 자체 미렌더 |
+| `NEXT_PUBLIC_GA_ENVIRONMENT` | GA4 이벤트 `environment` 파라미터 값 (`production`\|`staging`) | 스트림이 1개뿐이라 jam/jam-stage Vercel 프로젝트별로 값을 다르게 설정해 트래픽을 구분한다 |
+
+> ⚠️ **삭제된 변수**: `STRAVA_REDIRECT_URI`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` — 각각 도메인 전환(2026-08-06), 지도 전환(2026-07-22)으로 더 이상 사용 안 함. 과거 문서에 남아있다면 착오.
+>
+> `.env.local` 파일에 저장. 절대 GitHub에 올리지 마세요. `.gitignore`에 `.env.local` 포함 여부 확인 필수.
+
+---
+
+## JAM! 핵심 비즈니스 규칙 (AI 코드 생성 시 준수)
+
+1. **배지 발급은 서버 사이드에서만**: 클라이언트 단에서 badge 조건 체크 로직 구현 금지
+2. **Strava 토큰은 암호화**: access_token, refresh_token은 반드시 암호화 후 DB 저장
+3. **인벤토리 50슬롯 제한**: 아이템 추가 전 반드시 `used_slots < max_slots` 체크 (슬롯 장착 아이템 제외)
+4. **어뷰징 방지 (섀도우밴)**: 의심 유저 플래그 시 UI는 정상이지만 고가치 드랍률 0% 처리
+5. **배지 양도 불가**: UserActivityBadge는 생성/삭제만 가능, 소유자 변경 API 노출 금지
+6. **실물 패치 구매 조건**: 해당 배지 보유 확인 후 D2C 스토어 URL 활성화 (미보유 시 잠금 상태)
+
+> 드랍/픽업 트랜잭션 처리, 자기 드랍 픽업 허용, T2 POI 드랍 반경, 일련번호 형식 등 **배지·드랍 엔진의 판정 로직·정책**은 [docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md](../badge-engine/BADGE_ENGINE_UNIFIED.md)로 이관됨 (2026-08-06, 4카테고리 문서 체계 재정리).
+
+---
+
+## 의사결정 기록 (2026-08-07 확정)
+
+- [x] **`SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY`, `FOREST_SERVICE_KEY`** — **사용중 유지**. `src/` 코드에서 직접 참조하지 않지만 인프라/Edge Function 레벨에서 사용 중. `.env.local`·Vercel 환경변수에서 제거하지 말 것.
+- [x] **테스트 러너** — **vitest 도입** (2026-08-07). `npm test` / `npm run test:watch` 사용. 8개 파일 103개 테스트 전부 통과 확인. `today`·`missions`의 `node:assert` 기반 파일은 vitest 제외, `npx tsx`로 직접 실행.
+- [x] **`jam-rose.app` Auth redirect URL** — **당분간 유지**. `j-a-m.app`과 병존 상태 유지. 정리 시점은 별도 결정.
+- [x] **PWA 설치 프롬프트** — **제거** (코드 자체가 미구현 상태였음 — 제거할 코드 없음 확인).
+- [x] **공유 카드 이미지 (`@vercel/og`)** — **기능 제거, 관련 리소스 삭제** (2026-08-07). `src/` 코드에서 미사용 상태였으며 `package.json` 의존성(`@vercel/og`) 제거 완료. 기술 스택 항목 삭제 반영.

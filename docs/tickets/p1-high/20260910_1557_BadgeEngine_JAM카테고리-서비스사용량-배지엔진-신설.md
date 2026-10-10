@@ -149,7 +149,7 @@ closed: 2026-09-10
 | `jam-web/supabase/migrations/NNN_condition_json_usage_keys.sql` | CHECK 제약에 3개 키 추가 |
 | `jam-web/src/lib/badge-engine/conditionRegistry.ts` | 조건 필드 3종 등록 (`evaluation: 'external'`) |
 | `jam-web/src/lib/badge-engine/usageBadges.ts` (신규) | 사용량 배지 평가·발급 함수 |
-| `docs/specs/badge-engine/CONDITION_JSON_SPEC.md` | §2.14 신규 섹션 |
+| `docs/service/badge-engine/CONDITION_JSON_SPEC.md` | §2.14 신규 섹션 |
 | `jam-web/src/app/api/follows/route.ts` | POST 성공 후 양쪽 유저 평가 호출 + 응답에 `earnedBadges` 포함 |
 | `jam-web/src/lib/strava/sync.ts` | `synced>0` 시 카운터 UPSERT + 평가 + `earnedBadges` 합류 |
 | `jam-web/src/app/admin/badges/conditionFormFields.ts` | 폼 필드 3종 추가 |
@@ -165,8 +165,8 @@ closed: 2026-09-10
 
 ### 완료 시 갱신할 문서
 
-- `docs/specs/badge-engine/CONDITION_JSON_SPEC.md` — §2.14 "사용량 지표 필드(활동 무관)" 신설
-- `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` — §1 전체 구조 표에 "서비스 사용량 배지" 평가 경로(badge-engine 밖, `usageBadges.ts`) 추가 설명
+- `docs/service/badge-engine/CONDITION_JSON_SPEC.md` — §2.14 "사용량 지표 필드(활동 무관)" 신설
+- `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md` — §1 전체 구조 표에 "서비스 사용량 배지" 평가 경로(badge-engine 밖, `usageBadges.ts`) 추가 설명
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
@@ -213,8 +213,8 @@ jam-web/src/lib/badge-engine/usageBadges.ts (신규)
 jam-web/src/app/admin/badges/conditionFormFields.ts
 jam-web/src/app/api/follows/route.ts
 jam-web/src/lib/strava/sync.ts
-docs/specs/badge-engine/CONDITION_JSON_SPEC.md
-docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
+docs/service/badge-engine/CONDITION_JSON_SPEC.md
+docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md
 jam-web/src/lib/badge-engine/__tests__/usage-badges.test.ts (신규)
 jam-web/src/lib/badge-engine/__tests__/condition-registry.test.ts (55종 반영 + 155 대조)
 jam-web/src/app/admin/badges/__tests__/conditionFormFields.test.ts (표본에 3종 추가)
@@ -243,7 +243,7 @@ jam-web/src/lib/strava/__tests__/sync-usage-badge-hook.test.ts (신규)
       코드 수정 불필요
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 해당 없음 — 이번 티켓은 엔진만 구현하고 실제 배지 콘텐츠(이름·설명·이미지)는 Out of Scope다.
 추가한 텍스트는 어드민 조건 빌더의 내부 라벨·도움말(`conditionRegistry.ts`의 `label`/`help`)

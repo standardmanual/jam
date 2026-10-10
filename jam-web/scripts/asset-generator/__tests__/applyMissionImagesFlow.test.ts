@@ -268,7 +268,7 @@ describe('validatePlan', () => {
   });
 
   it('저장소의 실제 계획 파일은 제목 42종·미션 55건이고 검증을 통과한다', () => {
-    const real = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../../jam-doc/assets/mission-images/20260926_mission-image-plan.json'), 'utf8'));
+    const real = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../../docs/assets/mission-images/20260926_mission-image-plan.json'), 'utf8'));
     const { errors, plan } = validatePlan(real);
     expect(errors).toEqual([]);
     expect(plan?.items).toHaveLength(42);

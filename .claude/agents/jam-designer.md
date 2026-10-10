@@ -113,7 +113,7 @@ where a capture actually decides something.
 Output: 결과표 + 개선 제안 Top 5(각각 텍스트 배치도 포함) + 불일치 목록. Record each cell's audit
 date and result alongside the results so the next audit skips what was already cleared.
 
-## ⑤ 컨텐츠 컬러 방향 (티켓 20260924_2204, 정본 `docs/specs/prd/asset-generator/PRD.md` §6)
+## ⑤ 컨텐츠 컬러 방향 (티켓 20260924_2204, 정본 `docs/service/prd/asset-generator/PRD.md` §6)
 
 배지·미션·홈피드 카드 대표 이미지(에셋 제너레이터)의 컨텐츠별 배경색과 그라데이션 끝색을 다룬다. **컬렉션은 신규 기획이 없어(기존 레코드에
 이미지만 적용) 이 절의 대상이 아니다.** **UI 디자인 토큰과 별개다** — 이 색은 토큰 표에 넣지 않고,

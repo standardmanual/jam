@@ -147,7 +147,7 @@ jam-web/src/types/database.ts
       `/admin/drop-policy`에서 수행
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 추가된 노출 문구는 저장 실패 시 어드민 폼에 표시되는 오류 1건이다.
 

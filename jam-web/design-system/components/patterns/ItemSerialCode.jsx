@@ -7,7 +7,7 @@ import React, { useEffect, useId, useState } from 'react';
  * Figma: https://www.figma.com/design/1mSlxABxlyPQDBAdGNil8l (node 14:14)
  *
  * code의 앞 4자(알파벳 prefix)는 카드 1장씩, 나머지(숫자)는 하나의 넓은 박스로 렌더링한다.
- * 실제 데이터 포맷(docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md §3.13)은 4자리 대문자 prefix +
+ * 실제 데이터 포맷(docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md §3.13)은 4자리 대문자 prefix +
  * 6자리 zero-pad 숫자(예: ABCD000042)다. Figma 원본은 숫자 5자리(플레이스홀더)로 그려져
  * 있었지만, 숫자 박스는 글자 수에 맞춰 너비가 늘어나므로 실제 6자리 값도 그대로 대응한다.
  *

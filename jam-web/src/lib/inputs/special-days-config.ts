@@ -1,6 +1,6 @@
 /**
  * 특일 → 노출 태그 분리 (티켓 20260924_0805)
- * 대상 목록 원본: jam-doc/planning/content/SPECIAL_DAYS.md 「확정 내용」.
+ * 대상 목록 원본: docs/service/content/SPECIAL_DAYS.md 「확정 내용」.
  * 절기·음력 날짜는 해마다 바뀌므로 날짜가 아니라 이름으로 고른다.
  */
 import type { SpecialDay } from './holidays'

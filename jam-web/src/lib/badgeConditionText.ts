@@ -14,7 +14,7 @@
  * 「{라벨} {값}{단위} 이상」이 자동으로 나오므로 **다시는 「관리자 발급」으로 떨어지지 않는다.**
  * (같은 원칙의 선례: `badgeProgressText.ts`가 레지스트리 라벨을 폴백으로 쓴다 — 티켓 0031)
  *
- * ## 표기 규칙 (`jam-doc/assets/content-seed/v5_catalog_writing.json` `_meta.조건문_표기_규칙`)
+ * ## 표기 규칙 (`docs/assets/content-seed/v5_catalog_writing.json` `_meta.조건문_표기_규칙`)
  *
  * - 요소 순서 ①기간 ②맥락 ③지표 ④달성 횟수 → `SECTION_ORDER`
  * - 「이상·이하」만 쓴다 (초과·미만 금지) → `direction`이 그대로 부등호가 된다

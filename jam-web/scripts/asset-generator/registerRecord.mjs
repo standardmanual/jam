@@ -2,7 +2,7 @@
  * JAM! 에셋 제너레이터 배지 등록 — 등록 기록·되돌림 SQL·dry-run 요약 생성 (티켓 20260924_2202)
  *
  * 전부 순수 함수다(파일·DB에 접근하지 않는다). 등록 기록·되돌림 SQL 형식은 홈피드 카드 등록
- * 선례(티켓 20260923_2252, `jam-doc/operations/reports/weekly/2026-W39.md` 「등록 기록」)를
+ * 선례(티켓 20260923_2252, `docs/operations/reports/weekly/2026-W39.md` 「등록 기록」)를
  * 따른다: 무엇을 어느 id로 등록했는지 표로 남기고, 되돌림 SQL을 함께 적는다. 마이그레이션 규칙의
  * 되돌림 표식(`-- 되돌림 SQL`, `.claude/skills/jam-work/references/db-migration-rules.md` §4)을
  * SQL 파일 끝에 그대로 쓴다.

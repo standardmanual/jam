@@ -15,7 +15,7 @@ parent: "20260930_1456"
 ## 핵심 요약
 
 - 요구사항: Q1(기록이 있는 만큼 센다)에 따라, 새 JAM! 배지를 열 때 이미 조건을 채운 기존 유저에게 발급하는 재평가 경로를 만든다. 기본은 dry-run이고 받게 될 유저 수와 포인트 합계를 먼저 보여 준다.
-- 구현 계획: 기존 재평가 배치(`jam-web/src/lib/badge-engine/reevaluateCatalog.ts:51,123`)는 JAM! 경로를 돌지 않는다. 이 배치를 JAM! 지표까지 넓히거나 JAM! 전용 경로를 둔다. 피드·알림 억제와 포인트 정상 지급은 메인 엔진 재평가 선례(`docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md:1166-1209`)를 따른다.
+- 구현 계획: 기존 재평가 배치(`jam-web/src/lib/badge-engine/reevaluateCatalog.ts:51,123`)는 JAM! 경로를 돌지 않는다. 이 배치를 JAM! 지표까지 넓히거나 JAM! 전용 경로를 둔다. 피드·알림 억제와 포인트 정상 지급은 메인 엔진 재평가 선례(`docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md:1166-1209`)를 따른다.
 - 관련 파일: `jam-web/src/lib/badge-engine/reevaluateCatalog.ts`, `jam-web/src/lib/badge-engine/usageBadges.ts`, ①~③의 지표 계산 파일
 
 ## 시작 절차
@@ -61,7 +61,7 @@ parent: "20260930_1456"
    - 다시 실행: 이미 보유한 배지는 다시 발급하지 않는다(발급 0건, 포인트 0).
    - JAM! 판정이 던져도 메인 엔진 결과는 남고 `error`에 `JAM! 지표:`가 남는다.
    - `issueQualifyingBadges`를 옵션 없이 부르면 지금처럼 insert·포인트·피드를 모두 한다(기존 동작 고정). 기존 테스트 파일에 더해도 된다.
-6. `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` — §2.17(1335행~)에 JAM! 지표 포함·응답 새 필드·`triggered_by` 접두·섀도우밴 dry-run 반영을 적고,
+6. `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md` — §2.17(1335행~)에 JAM! 지표 포함·응답 새 필드·`triggered_by` 접두·섀도우밴 dry-run 반영을 적고,
    알려진 한계 두 가지를 더한다: (가) 사용량 지표 6종(팔로워·팔로잉·동기화 횟수·연속 동기화·체크인 카테고리·체크인 목록)은 이 배치에 들어가지 않는다,
    (나) `evaluateJamActionBadges`는 지표 계산 오류를 지표 단위로 삼키므로 그 지표는 dry-run 숫자에서 조용히 빠질 수 있다(로그로만 보인다).
    312행의 「`0634`(재평가 배치)는 … 넘기면 된다」를 실제 호출 지점 설명으로 바꾸고, 호출 지점 표에 재평가 배치 행을 더한다.
@@ -91,7 +91,7 @@ DB 마이그레이션(없음 — `triggered_by`는 CHECK 없는 자유 텍스트
 jam-web/src/lib/badge-engine/{usageBadges,jamActionBadges,reevaluateCatalog}.ts
 jam-web/src/app/api/admin/badges/reevaluate-all/route.ts
 jam-web/src/lib/badge-engine/__tests__/reevaluate-catalog-jam.test.ts (신규, 11건)
-docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
+docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md
 ```
 
 ### 테스트 결과

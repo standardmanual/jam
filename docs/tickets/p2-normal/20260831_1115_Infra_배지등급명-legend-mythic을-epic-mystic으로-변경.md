@@ -228,7 +228,7 @@ mythic 48건 / 3단계 설명의 "전설" 18건).
 ### 잔재 검증 기준 (구 이름이 완전히 소멸하므로 성립)
 
 ```
-rg -i "legendary|mythic" jam-web/src jam-web/design-system "docs/specs" "jam-doc/planning/business-plan"
+rg -i "legendary|mythic" jam-web/src jam-web/design-system "docs/specs" "docs/plan/vision"
 ```
 → **0건**이어야 한다. (`legend`는 `epic`으로 갔으므로 역시 0건. 단 `Tickets/`·`Archive/`·
 `Assets/`·과거 마이그레이션 SQL은 제외 대상)

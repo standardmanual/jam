@@ -139,7 +139,7 @@ export type BadgeProgress =
 
 ## 참고 자료
 
-- 프로토타입: `jam-doc/assets/prototypes/20260903_badge-tree-rail-prototype.html` §05(다섯
+- 프로토타입: `docs/assets/prototypes/20260903_badge-tree-rail-prototype.html` §05(다섯
   유형별 화면 표현 예시 — 천일의 방랑자=누적형, 밤의 보행자=기록형, 이달의
   산책왕=주기형, 산악 라이더=2축형(각각), 야생의 첫발=2축형(동시), 평일의
   성실함=다중카운터), §08 A·B·H
@@ -148,7 +148,7 @@ export type BadgeProgress =
   계약: `jam-web/src/lib/badge-engine/condition-schema.ts`
 - 게이트 타입: `jam-web/src/lib/badgeTree.ts:100`(`BadgeTreeLock`)
 - 라벨 조회: `jam-web/src/lib/badge-engine/metricLabels.ts`(`getMetricLabels`, 2a 산출물)
-- `BADGE_ENGINE_UNIFIED.md`(`docs/specs/badge-engine/`) — 이 티켓이 추가하는
+- `BADGE_ENGINE_UNIFIED.md`(`docs/service/badge-engine/`) — 이 티켓이 추가하는
   순수 계산 계층을 발급 판정 문서와 어떻게 구분해 기술할지 대조(엔진 유형 필수 절차)
 
 ## 구현 계획

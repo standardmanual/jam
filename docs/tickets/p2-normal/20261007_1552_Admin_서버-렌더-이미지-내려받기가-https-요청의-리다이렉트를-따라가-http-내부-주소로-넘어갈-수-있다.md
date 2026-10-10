@@ -17,7 +17,7 @@ parent: "20261006_1806"
 - 요구사항: `jam-web/scripts/asset-generator/loadLayerImage.mjs`의 `downloadImage`(84줄 근처)가 리다이렉트를 따라갈 때도 https만 허용하고 내부 주소(사설 IP·링크 로컬)로 넘어가지 않게 한다.
 - 문제: `fetch`의 기본 동작은 리다이렉트를 따라간다. https 주소로 요청해도 응답이 http나 내부 주소로 리다이렉트하면 ⑥-B의 「https만」 검사를 우회한다. 시간(15초)·크기(5MB) 상한은 리다이렉트 이후에도 적용되므로 피해 범위는 제한된다.
 - 구현 계획: `redirect: 'manual'`로 받아 최대 횟수(예: 3회) 안에서 각 단계의 주소를 같은 규칙(https만, 사설 IP·링크 로컬 거부)으로 검사하거나, 리다이렉트를 허용하지 않고 오류로 멈춘다(정책은 착수 때 사용자에게 묻는다. 서비스 저장소 주소가 리다이렉트하는 일이 없는지 확인한다). 테스트는 `loadLayerImage.test.ts`의 `fetchImpl` 스텁에 리다이렉트 응답을 더한다.
-- 관련 파일: `jam-web/scripts/asset-generator/loadLayerImage.mjs`, `jam-web/scripts/asset-generator/__tests__/loadLayerImage.test.ts`, `docs/specs/prd/asset-generator/PRD.md` §8(URL 보호 규칙).
+- 관련 파일: `jam-web/scripts/asset-generator/loadLayerImage.mjs`, `jam-web/scripts/asset-generator/__tests__/loadLayerImage.test.ts`, `docs/service/prd/asset-generator/PRD.md` §8(URL 보호 규칙).
 
 ## 완료 조건
 

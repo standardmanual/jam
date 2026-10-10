@@ -13,7 +13,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PROBE_REL = `jam-web/slop-probe-${process.pid}.txt`
 const BIN_REL = `jam-web/slop-probe-${process.pid}.bin`
 // 사용자 트렌드 자료 폴더는 원문을 고치지 않으므로 검사에서 빠져야 한다 (티켓 20260930_1518)
-const TREND_REL = `jam-doc/inbox/trends/2099-01-01_slop-probe-${process.pid}.md`
+const TREND_REL = `docs/operations/inbox/trends/2099-01-01_slop-probe-${process.pid}.md`
 const PROBE = join(ROOT, PROBE_REL)
 const BIN = join(ROOT, BIN_REL)
 const TREND = join(ROOT, TREND_REL)

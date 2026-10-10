@@ -22,7 +22,7 @@ closed: 2026-09-19
   `.claude/workflows/jam-work.js:288`, `.claude/workflows/jam-work.test.mjs`,
   `.claude/agents/jam-developer.md`, `.claude/agents/jam-designer.md`, `CLAUDE.md`,
   `.claude/skills/jam-work/SKILL.md`, `.claude/skills/jam-work/references/team-composition.md`,
-  `docs/specs/SLOP_DICTIONARY.md`, `docs/specs/UX_WRITING_GUIDELINE.md`,
+  `docs/service/writing/SLOP_DICTIONARY.md`, `docs/service/writing/UX_WRITING_GUIDELINE.md`,
   `docs/agents/issue-tracker.md`
 
 ## 배경 / 문제 정의
@@ -80,8 +80,8 @@ closed: 2026-09-19
 CLAUDE.md
 .claude/skills/jam-work/SKILL.md
 .claude/skills/jam-work/references/team-composition.md
-docs/specs/SLOP_DICTIONARY.md
-docs/specs/UX_WRITING_GUIDELINE.md
+docs/service/writing/SLOP_DICTIONARY.md
+docs/service/writing/UX_WRITING_GUIDELINE.md
 docs/agents/issue-tracker.md
 ```
 

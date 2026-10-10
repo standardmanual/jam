@@ -12,7 +12,7 @@ parent: "20260921_2207"
 
 ## 핵심 요약
 
-- 요구사항: `docs/agents/workflow/`(구상·결정 기록, 한국어 설계 원본)와 `.claude/agents/`(영어 정의)가 서로 다른 날짜에 따로 수정되고 있다(2207 §2.1: 설계 09-19~20, 정의 09-18~21). README는 이 폴더를 "기록"이라 적었다. `jam-doc/archive/`처럼 pre-commit이 이 폴더의 추가·수정을 차단하고(README.md는 예외), 폴더 상단 배너로 "현재 규칙은 `team-operations.md`·`.claude/agents/`·`/jam-work` SKILL.md"임을 밝힌다.
+- 요구사항: `docs/agents/workflow/`(구상·결정 기록, 한국어 설계 원본)와 `.claude/agents/`(영어 정의)가 서로 다른 날짜에 따로 수정되고 있다(2207 §2.1: 설계 09-19~20, 정의 09-18~21). README는 이 폴더를 "기록"이라 적었다. `docs/archive/`처럼 pre-commit이 이 폴더의 추가·수정을 차단하고(README.md는 예외), 폴더 상단 배너로 "현재 규칙은 `team-operations.md`·`.claude/agents/`·`/jam-work` SKILL.md"임을 밝힌다.
 - 구현 계획: `.githooks/pre-commit`의 ④(archive 읽기 전용) 검사 옆에 ⑨ 항목 추가, 각 파일 상단이 아니라 README 한 곳에 배너, `contract.json` `paths_exist`·검사 선언, `08_인수인계.md`의 "새 세션에서 이 문서부터 읽는다" 문장은 `orchestrator.md`(카리나 카드)로 대체되었음을 README에 적는다.
 - 관련 파일: `.githooks/pre-commit`, `docs/agents/workflow/README.md`, `docs/agents/contract.json`, `docs/agents/team-operations.md` §10(함께 읽을 문서), `scripts/doc-check-hook.test.mjs`(훅 테스트 추가). **A안 결정(아래)으로 추가**: `scripts/check-contract.mjs`(⑭ `checkMirrorDocs` 제거), `scripts/mirror-docs-hook.test.mjs`(삭제), `.claude/skills/jam-work/references/stop-conditions.md`(「참조하는 곳」에서 미러 문서 항목 제거)
 - 상위 티켓: 20260921_2207(#7). 경로: ③ 표준(infra)
@@ -29,7 +29,7 @@ CLAUDE.md 규칙 5는 "같은 사실을 여러 문서에 적지 않는다. 중�
 - 우회: 기존 `JAM_SKIP_DOCLINT=1`과 같은 방식으로만, 사유를 커밋 메시지에 남긴다.
 - 배너(README): 기록 전용 선언, 현재 규칙의 위치 세 곳, 동결 날짜, 이 티켓 번호.
 - 이 티켓 작업 자체는 README 수정만 하므로 훅에 걸리지 않게 순서를 정한다(README 먼저, 훅은 마지막 커밋).
-- `docs/specs/INDEX.md`나 `doc-check` 링크 검사가 이 폴더를 참조하면 그대로 통과해야 한다(읽기는 자유).
+- `docs/INDEX.md`나 `doc-check` 링크 검사가 이 폴더를 참조하면 그대로 통과해야 한다(읽기는 자유).
 
 ### 미러 유지 장치 제거 (2026-09-22 사용자 결정, A안)
 

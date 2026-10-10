@@ -8,9 +8,9 @@
  * `admin/ui`에 전용 컴포넌트가 없어 `input[type=range]`를 shadcn 톤에 맞춰 감싼 `SliderRow`를
  * 공용으로 쓴다.
  *
- * 원본: jam-doc/assets/prototypes/20260924_jam-asset-generator.html 94~135줄(섹션 5개),
+ * 원본: docs/assets/prototypes/20260924_jam-asset-generator.html 94~135줄(섹션 5개),
  * 용어 "무작위"는 프로토타입의 "전체 랜덤"·"다시 뽑기"를
- * `docs/specs/UX_WRITING_GUIDELINE.md`(저작 도구 고정 용어, X: 랜덤·다시 뽑기)에 맞춰 바꿨다
+ * `docs/service/writing/UX_WRITING_GUIDELINE.md`(저작 도구 고정 용어, X: 랜덤·다시 뽑기)에 맞춰 바꿨다
  * (기존 사례: `src/app/admin/badges/BlobAnimationFields.tsx`의 시드 재추첨 버튼).
  *
  * "이미지 · 텍스트 레이어" 섹션(티켓 20260924_2157, 텍스트 통합 재작업 20260924_2158)은

@@ -1,0 +1,44 @@
+{
+  "record_version": 1,
+  "bundle_id": "2026-10-06-progress-nudge-all",
+  "author": "윤진",
+  "bundle_created_at": "2026-09-29T13:02:09+09:00",
+  "registered_at": "2026-09-29T13:58:26+09:00",
+  "summary": "[progress_nudge] 한 걸음 더 · 2026-10-06T00:00:00+09:00 ~ 2026-10-06T23:59:00+09:00 · 노출 태그 all",
+  "card": {
+    "id": "45b8d32a-0516-47db-a58a-1c25367300aa",
+    "title": "한 걸음 더",
+    "template_type": "progress_nudge",
+    "layout_type": "large_thumbnail",
+    "starts_at": "2026-10-05T15:00:00.000Z",
+    "ends_at": "2026-10-06T14:59:00.000Z",
+    "is_active": true,
+    "image_source": "agent-generator"
+  },
+  "world_review": {
+    "world_related": false,
+    "winter_reviewed": false,
+    "reason": "트라이브가 공통인 운영성 카드라 세계관 창작 내용 없음, 윈터 검수 대상 아님"
+  },
+  "storage": {
+    "bucket": "images",
+    "png_path": "today_cards/asset-generator/45b8d32a-0516-47db-a58a-1c25367300aa.png",
+    "webp_path": "today_cards/asset-generator/45b8d32a-0516-47db-a58a-1c25367300aa.webp"
+  },
+  "urls": {
+    "original_png": "https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/today_cards/asset-generator/45b8d32a-0516-47db-a58a-1c25367300aa.png",
+    "cover_image_url": "https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/today_cards/asset-generator/45b8d32a-0516-47db-a58a-1c25367300aa.webp?v=1790657906727"
+  },
+  "image": {
+    "seed": 4239714440,
+    "preset_id": "51aa4673-f723-4929-ac20-a302202b7aa7",
+    "bg_color": "#b83618",
+    "end_color": "#5c1a0c",
+    "text": "한 걸음 더",
+    "subtext": "다음 배지가 가까워요",
+    "source_path": "image.png",
+    "original_bytes": 443818,
+    "webp_bytes": 29150
+  },
+  "color_rationale_link": "docs/operations/reports/weekly/2026-W40.md"
+}

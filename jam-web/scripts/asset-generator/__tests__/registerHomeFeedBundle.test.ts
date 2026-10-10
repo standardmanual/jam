@@ -1,7 +1,7 @@
 /**
  * 홈피드 카드 등록 묶음 — 검증·카드 행 매핑 (티켓 20260925_1413)
  *
- * 검증 규칙의 정본은 docs/specs/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md다. 규칙마다 «어떤 사유 문장이
+ * 검증 규칙의 정본은 docs/service/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md다. 규칙마다 «어떤 사유 문장이
  * 나오는지»까지 확인한다(에이전트가 이 문장을 보고 묶음을 고친다). 배지와 공통인 부품(`readBundleFile`·
  * `findPreviousRecordError`)은 다시 시험하지 않는다.
  */

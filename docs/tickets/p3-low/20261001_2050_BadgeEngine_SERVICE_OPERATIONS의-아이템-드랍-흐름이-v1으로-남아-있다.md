@@ -15,11 +15,11 @@ closed:
 
 - 요구사항: §5-2를 v2 흐름으로 고치고, 상세는 BADGE_ENGINE_UNIFIED §3을 참조만 하게 한다(같은 사실을 두 곳에 적지 않는다, CLAUDE.md 절대 규칙 5).
 - 구현 계획: 착수할 때 관련 파일을 읽고 파일 단위로 적는다.
-- 관련 파일: `docs/specs/SERVICE_OPERATIONS.md` 422~428행, `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` §3
+- 관련 파일: `docs/service/SERVICE_OPERATIONS.md` 422~428행, `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md` §3
 
 ## 배경 / 문제 정의
 
-`docs/specs/SERVICE_OPERATIONS.md` §5-2(422~428행)가 아직 v1 흐름(`rollRarity`, 누적 문턱 0.40/0.65/0.75/0.80, 20% 드랍 없음)을 적고 있다. 현재 엔진은 v2(활동당 1개 확정 + 보너스, `drop_policy` 비율 0.6/0.28/0.09/0.03, 트라이브 → 컬렉션 → 아이템)다.
+`docs/service/SERVICE_OPERATIONS.md` §5-2(422~428행)가 아직 v1 흐름(`rollRarity`, 누적 문턱 0.40/0.65/0.75/0.80, 20% 드랍 없음)을 적고 있다. 현재 엔진은 v2(활동당 1개 확정 + 보너스, `drop_policy` 비율 0.6/0.28/0.09/0.03, 트라이브 → 컬렉션 → 아이템)다.
 
 ## 완료 조건
 
@@ -39,7 +39,7 @@ closed:
 - [ ] 
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
 - [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)

@@ -14,7 +14,7 @@
  * 20260930_1500)이 항목의 `resource`에 같은 키를 쓴다 — 그 키 목록이 `DROP_SCHEDULE_RESOURCE_KEYS`이고,
  * 밸런스 규칙 R8의 키(`ops_rules`의 `economy_keys`)와 겹치지 않아야 한다(`schedule-r8-keys.test.ts`).
  *
- * 로직 문서: docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md §3.12 「날짜 예약 배포」
+ * 로직 문서: docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md §3.12 「날짜 예약 배포」
  */
 import { isUuid } from '@/lib/admin/uuid'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'

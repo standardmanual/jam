@@ -7,7 +7,7 @@
  * `buildMissionInsertPayload`는 얇은 JS 래퍼로 이 함수를 부른다. 이 폴더의 파일은 `node:` 모듈과 `scripts/` 아래
  * 파일을 가져오지 않는다(`__tests__/registerChecks.test.ts`가 원문으로 확인한다).
  *
- * 묶음 형식의 정본은 `docs/specs/prd/asset-generator/MISSION_REGISTRATION_BUNDLE.md`다.
+ * 묶음 형식의 정본은 `docs/service/prd/asset-generator/MISSION_REGISTRATION_BUNDLE.md`다.
  *
  * ## 어드민 미션 생성 API와 같은 규칙 (티켓 20260925_1412)
  * 미션 행 생성 규칙은 어드민 API(`src/app/api/admin/missions/route.ts` POST)와 같아야 한다.

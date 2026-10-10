@@ -1,7 +1,7 @@
 /**
  * JAM! 에셋 제너레이터 배지 등록 묶음 — 읽기·검증·배지 행 매핑 (티켓 20260924_2202)
  *
- * 등록 묶음(`bundle.json`)의 형식 정본은 `docs/specs/prd/asset-generator/REGISTRATION_BUNDLE.md`다.
+ * 등록 묶음(`bundle.json`)의 형식 정본은 `docs/service/prd/asset-generator/REGISTRATION_BUNDLE.md`다.
  * 이 파일은 그 문서의 검증 규칙을 코드로 옮긴 순수 함수 모음이다(파일 읽기는 이미지 존재·PNG
  * 여부 확인에만 쓴다). DB·저장소에는 쓰지 않는다.
  *
@@ -325,9 +325,9 @@ export function validateBundle(raw, { bundleFile }) {
   }
   const link = raw.color_rationale_link
   if (link !== undefined && link !== null) {
-    const linkOk = typeof link === 'string' && (/^https?:\/\/\S+$/.test(link) || /^(docs|jam-doc)\/\S.*$/.test(link))
+    const linkOk = typeof link === 'string' && (/^https?:\/\/\S+$/.test(link) || /^docs\/\S.*$/.test(link))
     if (!linkOk) {
-      errors.push('color_rationale_link: http(s) 주소이거나 저장소 상대 경로(docs/… 또는 jam-doc/…)여야 해요.')
+      errors.push('color_rationale_link: http(s) 주소이거나 저장소 상대 경로(docs/…)여야 해요.')
     }
   }
 

@@ -217,7 +217,7 @@ describe('시드 P01~P18', () => {
         problems: string[]
       }
     }
-    const markdown = readFileSync(new URL('jam-doc/planning/content/OPS_PATTERNS.md', root), 'utf8')
+    const markdown = readFileSync(new URL('docs/service/content/OPS_PATTERNS.md', root), 'utf8')
     const parsed = parser.parseOpsPatterns(markdown)
     expect(parsed.problems).toEqual([])
     expect(parsed.patterns).toHaveLength(18)

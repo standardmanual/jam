@@ -1,5 +1,5 @@
 /**
- * 예약 등록 실행 (티켓 20261002_1123, 상위 20260930_1500 ③-b) — **서버 전용**이다. 규칙의 정본은 `docs/specs/prd/ops-tool/PRD.md` §8.2다.
+ * 예약 등록 실행 (티켓 20261002_1123, 상위 20260930_1500 ③-b) — **서버 전용**이다. 규칙의 정본은 `docs/service/prd/ops-tool/PRD.md` §8.2다.
  *
  * `dryRunExecution`은 사전 점검 결과를 돌려준다(쓰기 없음). `badgePreviewExecution`은 예약할 JAM! 배지의 소급 지급 수를 미리 센다(쓰기 없음, 티켓 20261005_1607 ⑨-b, `badgePreview.ts`). `executeBundle`은 요청한 항목 가운데 지금도 예약할 수 있는 항목을 실행한다:
  * 선점(`approved` → `preparing`) → 그룹마다 등록 전 검증 → 생성(실패하면 이번에 만든 자원을 역순으로 `undo`) → 상태 갱신 → 결정 기록.

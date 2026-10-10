@@ -7,7 +7,7 @@ created: 2026-09-25
 closed: 2026-09-25
 parent: "20260925_1404"
 specs:
-  - "docs/specs/prd/asset-generator/PRD.md"
+  - "docs/service/prd/asset-generator/PRD.md"
 ---
 
 # [Admin] 에셋 제너레이터 프리셋 대상 유형 확장(target_type)

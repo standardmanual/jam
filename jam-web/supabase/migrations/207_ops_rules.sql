@@ -5,7 +5,7 @@
 --    Supabase는 staging·프로덕션 공용 단일 DB라 실행 즉시 프로덕션에 생긴다.
 --
 -- 배경:
---   운영툴은 AI 없이 규칙으로 「밸런스 경고」를 계산한다(docs/specs/prd/ops-tool/PRD.md §5.2).
+--   운영툴은 AI 없이 규칙으로 「밸런스 경고」를 계산한다(docs/service/prd/ops-tool/PRD.md §5.2).
 --   규칙 값은 배포 없이 바꿔야 하므로 코드 상수가 아니라 이 테이블에 둔다. 기획 상세(S3)를 열 때마다
 --   이 테이블을 읽어 그 순간의 값으로 계산하고, 결과는 저장하지 않는다.
 --
@@ -46,7 +46,7 @@ ALTER TABLE public.ops_rules ENABLE ROW LEVEL SECURITY;
 
 COMMENT ON TABLE public.ops_rules IS
   '운영툴의 규칙 값(티켓 20260930_1459). 밸런스 규칙(rule_group=balance)과 신호 기준값(rule_group=signal, 조각 C)을 함께 담는다. 기획 상세를 열 때 읽어 그 순간의 값으로 계산한다. 어드민 API·서버 화면 전용(service_role만 접근).';
-COMMENT ON COLUMN public.ops_rules.rule_key IS '규칙 키(예: open_collections_max). 규칙 목록은 docs/specs/prd/ops-tool/PRD.md §5.2.';
+COMMENT ON COLUMN public.ops_rules.rule_key IS '규칙 키(예: open_collections_max). 규칙 목록은 docs/service/prd/ops-tool/PRD.md §5.2.';
 COMMENT ON COLUMN public.ops_rules.value IS
   '규칙 값(JSONB, 규칙마다 모양이 다르다). provisional=true는 실측 없이 정한 임시값이다.';
 COMMENT ON COLUMN public.ops_rules.level IS 'info(참고) · warn(주의). 툴은 중단을 쓰지 않는다.';

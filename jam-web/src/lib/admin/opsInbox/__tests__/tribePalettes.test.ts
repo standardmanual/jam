@@ -57,7 +57,7 @@ describe('값 형식과 정본 문서', () => {
   })
 
   it('TRIBES.md 「승인 색 쌍」 표의 모든 쌍이 상수와 같은 값이다', () => {
-    const doc = readFileSync(resolve(process.cwd(), '../jam-doc/planning/content/TRIBES.md'), 'utf8')
+    const doc = readFileSync(resolve(process.cwd(), '../docs/service/content/TRIBES.md'), 'utf8')
     const section = doc.slice(doc.indexOf('## 승인 색 쌍'), doc.indexOf('## 데이터 소스'))
     const rows = [...section.matchAll(/^\| [^|]+ \| [^|]+ \| ([^|]+) \| (#[0-9a-f]{6}) \| (#[0-9a-f]{6}) \|/gm)].map((m) => ({
       name: m[1].trim(),

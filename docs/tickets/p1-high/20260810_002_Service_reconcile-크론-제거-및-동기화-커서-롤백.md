@@ -47,7 +47,7 @@ jam-web/src/app/api/cron/reconcile/route.ts    — 삭제
 jam-web/src/lib/strava/reconcile.ts            — 삭제
 jam-web/vercel.json                            — reconcile 크론 등록 제거
 jam-web/src/types/database.ts                  — processed_via 주석 갱신(reconcile은 과거 데이터 전용)
-docs/specs/prd/04_PROJECT_SPEC.md      — Cron 표·DO NOT 목록 갱신
+docs/service/prd/04_PROJECT_SPEC.md      — Cron 표·DO NOT 목록 갱신
 ```
 
 ### 테스트 결과

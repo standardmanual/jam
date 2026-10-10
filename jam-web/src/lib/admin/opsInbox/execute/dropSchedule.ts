@@ -1,5 +1,5 @@
 /**
- * 드랍 예약 핸들러 (티켓 20261002_2306, 상위 20260930_1500 ⑧-b). 규칙의 정본은 `docs/specs/prd/ops-tool/PRD.md` §8.1·§8.2·§8.4·§8.5·§8.6·§8.7이다. 틀은 `recipe.ts`다.
+ * 드랍 예약 핸들러 (티켓 20261002_2306, 상위 20260930_1500 ⑧-b). 규칙의 정본은 `docs/service/prd/ops-tool/PRD.md` §8.1·§8.2·§8.4·§8.5·§8.6·§8.7이다. 틀은 `recipe.ts`다.
  *
  * 승인된 `drop_schedule` 항목을 예약 등록 실행 때 `ambient_drop_schedules` 행(`scheduled`)으로 만든다. 놓는 일은 이 파일이 하지 않는다 — 예정 시각에 드랍 실행기가 놓는다.
  * 변환은 `toDropScheduleRegisterInput`(§8.4)과 `parseAmbientDropScheduleInput`, 만들기·공개 전 취소·상태 읽기는 드랍 서버 함수

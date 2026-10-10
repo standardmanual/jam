@@ -36,11 +36,11 @@ closed: 2026-08-13
 
 ### 컨텐츠 관점
 
-- `jam-doc/planning/content/ACTIVITY_BADGES.md`: 'Legendary' 등급 표기 전수 변경
-- `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md`: 'Legendary' 참조 전수 변경
-- `docs/specs/prd/` 하위 문서: 'Legendary' 참조 전수 변경
+- `docs/service/content/ACTIVITY_BADGES.md`: 'Legendary' 등급 표기 전수 변경
+- `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md`: 'Legendary' 참조 전수 변경
+- `docs/service/prd/` 하위 문서: 'Legendary' 참조 전수 변경
 - `docs/tickets/` 내 기존 티켓: 과거 기록이므로 변경 불필요 (역사적 사실 보존)
-- `jam-doc/planning/business-plan/` 최신 파일: 'Legendary' → 'Legend' 변경
+- `docs/plan/vision/` 최신 파일: 'Legendary' → 'Legend' 변경
 
 ## 구현 계획
 
@@ -117,18 +117,18 @@ jam-web/src/components/admin/badges/BadgeDetail.tsx
 jam-web/src/components/admin/badges/BadgesTable.tsx
 jam-web/src/components/inventory/InventoryGrid.tsx
 jam-web/src/components/ui/Badge.tsx
-jam-doc/planning/content/ACTIVITY_BADGES.md
-docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
-docs/specs/badge-engine/CONDITION_JSON_SPEC.md
-jam-doc/planning/content/COMBINE_RECIPES.md
-jam-doc/planning/content/FACTIONS.md
-docs/specs/prd/02_DATA_MODEL.md
-docs/specs/prd/admin-ui/ADMIN_PRD.md
-docs/specs/prd/admin-ui/DATA_MODEL.md
-docs/specs/prd/admin-ui/PHASES.md
-docs/specs/prd/admin-ui/REDESIGN.md
-docs/specs/UX_WRITING_GUIDELINE.md
-jam-doc/planning/business-plan/02 JAM! 서비스 플랜 v3.4 (2026-08-13).md (신규)
+docs/service/content/ACTIVITY_BADGES.md
+docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md
+docs/service/badge-engine/CONDITION_JSON_SPEC.md
+docs/service/content/COMBINE_RECIPES.md
+docs/service/content/FACTIONS.md
+docs/service/prd/02_DATA_MODEL.md
+docs/service/prd/admin-ui/ADMIN_PRD.md
+docs/service/prd/admin-ui/DATA_MODEL.md
+docs/service/prd/admin-ui/PHASES.md
+docs/service/prd/admin-ui/REDESIGN.md
+docs/service/writing/UX_WRITING_GUIDELINE.md
+docs/plan/vision/02 JAM! 서비스 플랜 v3.4 (2026-08-13).md (신규)
 ```
 
 ### 테스트 결과
@@ -138,7 +138,7 @@ jam-doc/planning/business-plan/02 JAM! 서비스 플랜 v3.4 (2026-08-13).md (�
 - [x] DB 검증: `SELECT enum_range(NULL::badge_rarity)` → `{common,rare,legend,mythic}` 확인
 
 ### UX Writing 검증
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 용어 일관성: 이번 변경으로 UX_WRITING_GUIDELINE.md에 `Common / Rare / Legend / Mythic` 고정 용어 등재 완료
 - [x] 톤앤매너: 배지 등급명은 고유명사(브랜드 시스템 용어)로 해요체·마침표 규칙 적용 대상 아님

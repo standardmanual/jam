@@ -36,7 +36,7 @@ import { isValidFamilyKey } from '@/lib/admin/badge-families'
  * `reward_family_not_gated` 판정에서 제외할 «게이트 미션의 보상 배지 계열» — 설계상
  * 의도적으로 게이트가 없는 계열을 여는 미션들(티켓 20260908_1049).
  *
- * 정본 소스: `jam-doc/assets/content-seed/v5_gate_mapping.json`의
+ * 정본 소스: `docs/assets/content-seed/v5_gate_mapping.json`의
  * `_meta.게이트_없음_의도된_예외`(15건, `v5_gate_build.py`의 `uses_season_count_all()`·
  * 걷기 ladder 태그 부재 검사가 만든 목록). 그 목록은 **"게이트가 없는 계열"**
  * (예: `trail_running:W2`) 자체를 담지만, `reward_family_not_gated`가 보는 값은

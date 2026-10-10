@@ -1,5 +1,5 @@
 /**
- * 레시피 핸들러 (티켓 20261002_2221, 상위 20260930_1500 ⑧-a). 규칙의 정본은 `docs/specs/prd/ops-tool/PRD.md` §8.1·§8.2·§8.4·§8.5다. 틀은 `mission.ts`다.
+ * 레시피 핸들러 (티켓 20261002_2221, 상위 20260930_1500 ⑧-a). 규칙의 정본은 `docs/service/prd/ops-tool/PRD.md` §8.1·§8.2·§8.4·§8.5다. 틀은 `mission.ts`다.
  *
  * 승인된 `recipe` 항목을 예약 등록 실행 때 `combination_recipes` 행(공개 전)과 슬롯으로 만든다. 변환은 `toRecipeRegisterInput`(§8.4)과 `normalizeRecipePayload`,
  * 등록 전 검증은 레시피 서버 함수 `buildRecipeRow`와 `findUnlaunchedCollectionBadges`, 만들기·공개 전 취소는 `createRecipeWithSlots`·`cancelScheduledRecipe`를 감싼다.

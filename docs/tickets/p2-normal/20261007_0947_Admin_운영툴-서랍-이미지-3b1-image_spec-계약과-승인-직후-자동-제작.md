@@ -7,8 +7,8 @@ created: 2026-10-07
 closed: 2026-10-07
 parent: "20261007_0946"
 specs:
-  - "jam-doc/planning/business-plan/07 JAM! 라이브 운영 블루프린트.md"
-  - "docs/specs/prd/ops-tool/PRD.md"
+  - "docs/plan/vision/07 JAM! 라이브 운영 블루프린트.md"
+  - "docs/service/prd/ops-tool/PRD.md"
 ---
 
 # [Admin] 운영툴 서랍 이미지 ③-b1 image_spec 계약과 승인 직후 자동 제작
@@ -41,7 +41,7 @@ specs:
 | `jam-web/src/components/admin/ops/OpsItemFooter.tsx` | `useOpsItemResultHandlers`(38~95줄), `OpsItemFooter` 143줄 `onDecided` | 승인 성공 뒤 이미지 제작 시작(`startItemImage`)·진행 상태·토스트·`beforeunload` 경고·완료 뒤 새로고침. 일괄 승인은 연결하지 않음 | 60/30 |
 | `jam-web/src/components/admin/ops/OpsItemActions.tsx` | `run`(185~196줄) | 변경 없음이 목표(`onDecided`에 항목 ID가 이미 있음). 필요하면 확인창 문구에 「이미지도 만들어요」 한 줄 | 0~8/— |
 | 테스트(신규 2 + 기존 보강) | `imageTarget.test.ts`, `itemImageFlow.test.ts`, `itemFooter.test.tsx` 보강 | 칸 검사·시드 대조(`.mjs`와 같은 값)·건너뜀 사유·실패 시 던지지 않음·승인 유지 | -/(위 표에 포함) |
-| `docs/specs/prd/ops-tool/PRD.md` | §3.1 표 78·80줄, §8.8, §13 D행 | `image_spec` 칸 규칙(세 칸, 형식, 칸 없음 처리, 일괄 승인 제외, 같은 시드) | 문서 30 |
+| `docs/service/prd/ops-tool/PRD.md` | §3.1 표 78·80줄, §8.8, §13 D행 | `image_spec` 칸 규칙(세 칸, 형식, 칸 없음 처리, 일괄 승인 제외, 같은 시드) | 문서 30 |
 
 ## 완료 조건
 
@@ -69,7 +69,7 @@ specs:
 - [ ]
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
 - [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)

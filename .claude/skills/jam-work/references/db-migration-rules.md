@@ -5,7 +5,7 @@
 > 문서를 가리킨다 — 서술을 옮겨 적지 않는다. (아현 정의 Hard rule 3에서 분리, 티켓 20260922_1800)
 >
 > 전제: Supabase는 staging·프로덕션 공용 단일 DB다. 마이그레이션은 카리나가 적용하는 순간
-> 프로덕션에 반영된다(`docs/specs/DEV_PROCESS_GUARDRAILS.md` 패턴 2). 아현은 파일만 쓰고
+> 프로덕션에 반영된다(`docs/agents/DEV_PROCESS_GUARDRAILS.md` 패턴 2). 아현은 파일만 쓰고
 > 절대 실행하지 않는다 — Supabase MCP도, `psql`도 없다.
 
 ## 1. 추가와 제거가 함께 있는 변경은 확장 → 전환 → 축소로 나눈다

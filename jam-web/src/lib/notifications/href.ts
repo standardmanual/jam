@@ -1,6 +1,6 @@
 /**
  * 알림(소식) 착지점 계산 — 티켓 20260824_021
- * 스펙: docs/specs/prd/notification/PRD.md §3(20종 표의 "착지점" 열) · §6-6
+ * 스펙: docs/service/prd/notification/PRD.md §3(20종 표의 "착지점" 열) · §6-6
  *
  * ## 착지점을 저장하지 않는 이유
  *

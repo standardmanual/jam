@@ -1,6 +1,6 @@
 /**
  * 드랍엔진 v2 — 순수 함수 레이어 (DB 비의존, randomFn 주입으로 결정론적 테스트 가능)
- * 로직 문서: docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md §3
+ * 로직 문서: docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md §3
  */
 import type { BadgeRarity } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'

@@ -22,7 +22,7 @@ import {
   resolveThresholdValues,
 } from '@/lib/admin/opsSignals/thresholds'
 
-const PRD_PATH = join(process.cwd(), '..', 'docs', 'specs', 'prd', 'ops-tool', 'PRD.md')
+const PRD_PATH = join(process.cwd(), '..', 'docs', 'service', 'prd', 'ops-tool', 'PRD.md')
 const TABLE_MARKER = '**신호 기준값 표'
 
 interface PrdRow {

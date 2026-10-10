@@ -3,7 +3,7 @@
 // scripts/verify.sh의 scripts-test 단계가 이 파일을 돌린다. 직접 실행도 된다.
 // 실행: node scripts/issue-filter-check.test.mjs
 //
-// 시험 소재 12건: PRD(`docs/specs/prd/content-automation/PRD.md`) §7.3 자동 제외 범주 8종
+// 시험 소재 12건: PRD(`docs/service/prd/content-automation/PRD.md`) §7.3 자동 제외 범주 8종
 // 1건씩(뉴스 소스) + 통과 3건(뉴스 소스) + 사람 스크리닝 필요 1건(밈 소스).
 // 사유 문구는 PRD §7.3 표에서 그대로 옮겨 적어 스크립트 상수와 독립적으로 대조한다.
 

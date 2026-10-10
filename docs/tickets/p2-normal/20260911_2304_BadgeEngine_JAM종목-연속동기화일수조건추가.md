@@ -57,7 +57,7 @@ closed: 2026-09-12
 3. `usageBadges.ts`에 평가 진입점 연결 (동기화 발생 시점)
 4. `BadgeForm.tsx`에 JAM! 전용 입력 필드 추가
 5. CHECK 제약 화이트리스트 확장 마이그레이션 작성(실행은 오케스트레이터)
-6. `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` 갱신
+6. `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md` 갱신
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
@@ -103,8 +103,8 @@ jam-web/src/app/admin/badges/conditionFormFields.ts
 jam-web/src/app/admin/badges/__tests__/conditionFormFields.test.ts
 jam-web/src/types/database.ts
 jam-web/supabase/migrations/161_condition_json_sync_streak_key.sql (신규, 미실행)
-docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
-docs/specs/badge-engine/CONDITION_JSON_SPEC.md
+docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md
+docs/service/badge-engine/CONDITION_JSON_SPEC.md
 ```
 
 ### 테스트 결과
@@ -127,7 +127,7 @@ docs/specs/badge-engine/CONDITION_JSON_SPEC.md
   진행하지 않음 — DB 저장 가능 여부는 스모크 테스트로 이미 확인했으므로 충분하다고 판단)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
 - [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)

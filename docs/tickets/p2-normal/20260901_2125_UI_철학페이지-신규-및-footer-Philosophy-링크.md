@@ -11,7 +11,7 @@ closed: 2026-09-01
 
 ## 배경 / 문제 정의
 
-JAM!의 철학은 그동안 내부 문서(`jam-doc/planning/business-plan/01 JAM! 철학.md`)에만 있었고 유저에게
+JAM!의 철학은 그동안 내부 문서(`docs/plan/vision/01 JAM! 철학.md`)에만 있었고 유저에게
 노출된 적이 없다. 2026-09-01에 그 문서를 현재 서비스 스펙 기준으로 현행화하면서
 (티켓 20260901_2045), 유저 대면 게시 가능한 범위를 A/B/C로 분류했다.
 
@@ -205,7 +205,7 @@ jam-web/design-system/tokens/typography.css    (--leading-reading 신설)
       기존과 동일(히트 영역 확장이 레이아웃을 밀지 않음)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 용어 일관성: 원고 내 `배지`·`앱`·`포인트` 등 고정 용어 그대로 유지
 - [x] 톤앤매너: 에세이 본문 경어체 유지 (해요체 규칙 예외 적용)

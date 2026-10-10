@@ -6,8 +6,8 @@ status: CLOSED
 created: 2026-09-22
 closed: 2026-09-26
 specs:
-  - docs/specs/SERVICE_OPERATIONS.md
-  - docs/specs/prd/04_PROJECT_SPEC.md
+  - docs/service/SERVICE_OPERATIONS.md
+  - docs/service/prd/04_PROJECT_SPEC.md
 ---
 
 # [Service] Strava 동기화 조회 커서를 동기화 시각이 아니라 마지막으로 가져온 활동의 시작 시각 기준으로 변경
@@ -29,8 +29,8 @@ specs:
     Strava가 활동 **시작 시각** 기준으로 거른다
   - 테스트: `jam-web/src/lib/strava/__tests__/` (모킹 패턴은 `sync-empty-batch-badge-eval.test.ts`
     참고)
-  - 스펙: `docs/specs/SERVICE_OPERATIONS.md` 「동기화 절차」 3번·11번,
-    `docs/specs/prd/04_PROJECT_SPEC.md` 111행 각주(20260810_002 링크 옆에 이 티켓 연결)
+  - 스펙: `docs/service/SERVICE_OPERATIONS.md` 「동기화 절차」 3번·11번,
+    `docs/service/prd/04_PROJECT_SPEC.md` 111행 각주(20260810_002 링크 옆에 이 티켓 연결)
 
 ## 배경 / 문제 정의
 
@@ -101,9 +101,9 @@ Strava `GET /athlete/activities?after=`는 활동 **시작 시각** 기준으로
    - 직전 동기화가 0건이어도 다음 호출의 `after`가 `max(start_date) − 900초`다
    - `strava_activities` 행이 없으면 `after`가 `undefined`다
    - `last_synced_at`이 이미 바뀐 두 번째 요청은 `synced: 0`으로 조기 종료한다(기존 동작 유지)
-4. 문서: `docs/specs/SERVICE_OPERATIONS.md` 「동기화 절차」 3번("last_synced_at 이후 활동 조회")을
+4. 문서: `docs/service/SERVICE_OPERATIONS.md` 「동기화 절차」 3번("last_synced_at 이후 활동 조회")을
    "마지막으로 가져온 활동 시작 시각 − 15분 이후 조회"로, 11번을 "잠금 키 갱신"으로 고친다.
-   `docs/specs/prd/04_PROJECT_SPEC.md` 111행 각주에 이 티켓을 연결한다.
+   `docs/service/prd/04_PROJECT_SPEC.md` 111행 각주에 이 티켓을 연결한다.
 
 검토했으나 채택하지 않은 대안:
 - `strava_connections`에 `last_activity_start_at` 컬럼 신설: 마이그레이션이 필요하고(공용 단일 DB),
@@ -164,8 +164,8 @@ Strava `GET /athlete/activities?after=`는 활동 **시작 시각** 기준으로
 ```
 - jam-web/src/lib/strava/sync.ts
 - jam-web/src/lib/strava/__tests__/sync-cursor-last-activity.test.ts (신규)
-- docs/specs/SERVICE_OPERATIONS.md
-- docs/specs/prd/04_PROJECT_SPEC.md
+- docs/service/SERVICE_OPERATIONS.md
+- docs/service/prd/04_PROJECT_SPEC.md
 ```
 
 ### 테스트 결과

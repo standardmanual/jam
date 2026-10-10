@@ -17,7 +17,7 @@ parent: "20261006_1803"
 - 요구사항: 운영 묶음 제출 경로가 받는 `image_spec.values`(레이어 번호별 값)에 외부 `https://` 이미지 주소가 들어와도, 관리자가 [이미지 만들기]를 눌렀을 때 브라우저가 임의 외부 주소를 불러오지 않게 한다.
 - 문제: 제출 경로는 관리자 세션뿐 아니라 쓰기 토큰도 받는다. 브라우저 쪽 `applyLayerValues`(`jam-web/src/lib/asset-generator/renderPreset.ts` 88~104·159~166줄)는 절대 경로나 http(s) 주소 형식(`isImageSourceFormat`)만 검사하고, 관리자 브라우저가 `new Image()`(`crossOrigin='anonymous'`, `jam-web/src/lib/admin/opsInbox/imageRender.client.ts` 56~64줄)로 불러온다. 효과는 관리자 IP와 접속 시각이 외부 서버에 노출되는 것이다(토큰 보유자가 만든 항목을 관리자가 검토하다가 제작을 누르는 경우). 스크립트 실행은 없고 실패하면 캔버스가 오염되지 않고 오류가 난다.
 - 구현 계획: 제출 검사(`jam-web/src/lib/admin/opsInbox/imageSpec.ts` `imageSpecWarnings`·`validate.ts`)에서 `values`의 이미지 주소를 이 프로젝트 저장소 호스트(`NEXT_PUBLIC_SUPABASE_URL`)의 https로 제한하는 경고 또는 오류를 더하고, 브라우저 렌더 입력 변환(`imageSpecToRenderArgs`)에서도 같은 호스트가 아니면 건너뛰거나 거절한다. 프리셋 저장 검증(`jam-web/src/lib/asset-generator/presetValidate.ts`)의 호스트 비교 함수를 공용으로 쓴다. 정책(경고만 vs 거절)은 착수 때 사용자에게 묻는다.
-- 관련 파일: 위 경로, `docs/specs/prd/ops-tool/PRD.md` §3.1(`image_spec` 규칙).
+- 관련 파일: 위 경로, `docs/service/prd/ops-tool/PRD.md` §3.1(`image_spec` 규칙).
 
 ## 완료 조건
 

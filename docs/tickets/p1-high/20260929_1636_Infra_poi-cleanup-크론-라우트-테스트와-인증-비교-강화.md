@@ -66,7 +66,7 @@ jam-web/src/app/api/cron/{ambient-drop,notifications,external-inputs,poi-cleanup
   PRD 동반을 요구해 `JAM_SKIP_DOCLINT=1`로 우회했고(인증 서술 없음, 사유는 커밋 메시지), 민지가 타당하다고 판정했다.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 사용자 노출 문구 신규·변경 없음(해당 없음)
 

@@ -7,7 +7,7 @@ created: 2026-09-25
 closed: 2026-09-26
 parent: "20260924_2154"
 specs:
-  - "docs/specs/prd/asset-generator/PRD.md"
+  - "docs/service/prd/asset-generator/PRD.md"
 ---
 
 # [Infra] `/jam-img` 등록 스크립트가 `badges.image_source = 'jam-img'`를 함께 기록하게 한다

@@ -4,7 +4,7 @@
  * 생성 층이 컨텐츠 유형 ID(T01~T17)를 주면 그 유형에 필요한 발췌만 돌려준다.
  * 트라이브 10·컬렉션 100·아이템배지 900의 설명 코퍼스 전체를 프롬프트에 통째로
  * 넣지 않는다는 PRD §4 규칙 4를 지키는 진입점이다 — 자세한 배경은
- * `docs/specs/prd/content-automation/PRD.md` §4·§6 참고.
+ * `docs/service/prd/content-automation/PRD.md` §4·§6 참고.
  */
 
 export const CONTENT_CORPUS_TYPE_IDS = [

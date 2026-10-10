@@ -3,7 +3,7 @@
 -- 좌표는 구글맵 검색 결과(단일 매치)에서 추출. 1스타 '무니'는 이름 검색으로는 다른
 -- 업체와 계속 혼동돼 사용자가 준 구글맵 place 링크(청담동 도산대로70길 26)로 확정.
 -- 일반 어드민 수동 등록과 동일한 정책으로 is_active=false, pending_review=true로 넣는다
--- (jam-doc/planning/content/POI.md "신규 등록 정책") — /admin/poi/review에서 승인 필요.
+-- (docs/service/content/POI.md "신규 등록 정책") — /admin/poi/review에서 승인 필요.
 insert into poi (name, latitude, longitude, category, is_active, pending_review) values
   ('밍글스', 37.5253386, 127.0441452, 'michelin', false, true),
   ('권숙수', 37.5243775, 127.0435589, 'michelin', false, true),

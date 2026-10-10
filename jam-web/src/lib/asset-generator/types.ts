@@ -1,7 +1,7 @@
 /**
  * JAM! 에셋 제너레이터 — 설정값·레이어·프리셋 타입
  *
- * 정본: docs/specs/prd/asset-generator/PRD.md §4(레이어)·§5(프리셋).
+ * 정본: docs/service/prd/asset-generator/PRD.md §4(레이어)·§5(프리셋).
  * 이미지 레이어는 20260924_2155에서 타입을 선언하고 20260924_2157에서 render.ts의
  * `drawImageLayer`로 그리기를 확정했다. 텍스트 레이어는 20260924_2158에서 `drawTextLayer`로
  * 그리기까지 확정했다.

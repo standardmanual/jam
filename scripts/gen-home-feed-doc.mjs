@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// gen-home-feed-doc — docs/specs/prd/home-feed/PRD.md의 생성 구간(노출 태그·템플릿·컨텐츠
+// gen-home-feed-doc — docs/service/prd/home-feed/PRD.md의 생성 구간(노출 태그·템플릿·컨텐츠
 // 유형·레이아웃·카드 모양 목록·옛 값 → 새 모양 대응표·이동 목적지 표)을 코드 상수·순수 함수에서 만든다 (티켓 20260927_2036, 20261001_2244).
 //
 // 배경: 홈피드 기능 정의가 여러 문서에 흩어져 있고 코드가 바뀌어도 문서가 따라오지 않아
@@ -28,7 +28,7 @@ import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-export const DOC_PATH = 'docs/specs/prd/home-feed/PRD.md'
+export const DOC_PATH = 'docs/service/prd/home-feed/PRD.md'
 export const TODAY_SECTIONS_PATH = 'jam-web/src/lib/admin/today-sections.ts'
 export const TARGET_HREF_PATH = 'jam-web/src/lib/today/targetHref.ts'
 export const SHAPE_PATH = 'jam-web/src/lib/today/shape.ts'

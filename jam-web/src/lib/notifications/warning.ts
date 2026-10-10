@@ -1,6 +1,6 @@
 /**
  * ⑧ 계정·시스템 소식의 경고 스타일 — **동적 재평가** (티켓 20260824_021)
- * 스펙: docs/specs/prd/notification/PRD.md §6-2 / DATA_MODEL.md §2-3(T3)
+ * 스펙: docs/service/prd/notification/PRD.md §6-2 / DATA_MODEL.md §2-3(T3)
  *
  * ## 왜 저장하지 않는가
  *

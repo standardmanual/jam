@@ -18,7 +18,7 @@ closed:
 - 요구사항: 앱의 모든 쓰기가 service 클라이언트라면(E4 조사에서 `item_books`는 그렇다), 쓰기를 받지 않는 테이블에서 `anon`·`authenticated`의 INSERT·UPDATE·DELETE·TRUNCATE를 회수해 이중 방어를 둘지 검토한다.
   RLS를 실수로 끄거나 넓은 쓰기 정책을 추가해도 바로 열리지 않게 하는 목적이다.
 - 주의: 사용자 세션으로 쓰는 테이블(유저 소유 행 등)은 회수하면 안 된다. Supabase 기본 권한·새 테이블의 기본 권한(`ALTER DEFAULT PRIVILEGES`)과의 관계, 대시보드·Realtime 영향을 확인한다. DB 변경이므로 마이그레이션 파일·되돌림 SQL·사용자 승인 절차를 따른다.
-- 관련 파일: `jam-web/supabase/migrations/`(권한을 다룬 기존 마이그레이션 유무), `docs/specs/prd/02_DATA_MODEL.md`.
+- 관련 파일: `jam-web/supabase/migrations/`(권한을 다룬 기존 마이그레이션 유무), `docs/service/prd/02_DATA_MODEL.md`.
 
 ## 완료 조건
 

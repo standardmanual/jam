@@ -105,7 +105,7 @@ related:
 7. 위 4개 라우트의 테스트(기존 테스트 파일이 있으면 거기에 추가, 없으면 신규): 이미지 변경 시
    update 페이로드에 `image_source: null`이 포함되고, 다른 필드만 바꿀 때는 포함되지 않음을
    고정한다. 저장 라우트가 `bulk`류 라우트에서 이미지 컬럼을 바꾸는지도 확인해 결과를 보고한다.
-8. `docs/specs/prd/asset-generator/PRD.md` §10(제작 경로) 정의에 「적용 탭·등록 스크립트 밖에서
+8. `docs/service/prd/asset-generator/PRD.md` §10(제작 경로) 정의에 「적용 탭·등록 스크립트 밖에서
    이미지가 바뀌면 제작 경로는 NULL(미상)로 돌아간다」를 반영한다.
 
 ## 완료 조건
@@ -136,7 +136,7 @@ related:
 - 배지 PUT·컬렉션 PUT은 이미 기존 행을 조회하므로 update 객체에 `...imageSourceReset(...)`만
   추가했다. 미션 PATCH·홈피드 PATCH는 본문에 이미지 필드가 있을 때만 기존 행을 조회해
   `.update({ ...body, ...patch })`로 저장한다(이미지 필드가 없는 요청은 추가 조회 없이 기존 동작).
-- `docs/specs/prd/asset-generator/PRD.md` §10에 「적용 탭·등록 스크립트 밖에서 이미지가 바뀌면 제작
+- `docs/service/prd/asset-generator/PRD.md` §10에 「적용 탭·등록 스크립트 밖에서 이미지가 바뀌면 제작
   경로는 NULL(미상)로 돌아간다」를 반영했다.
 - 4개 유형의 bulk 라우트(badges·missions·itembooks·today)는 이미지 컬럼을 바꾸지 않음을 확인했다.
   `apply-background`는 `background_*` 컬럼만, `activity-badge-image/generate`는 `jam-img` 경로라 범위
@@ -148,7 +148,7 @@ related:
      jam-web/src/lib/admin/__tests__/imageSourceReset.test.ts,
      jam-web/src/app/api/admin/__tests__/image-source-reset.test.ts
 수정: jam-web/src/app/api/admin/{badges,itembooks,missions,today}/[id]/route.ts,
-     docs/specs/prd/asset-generator/PRD.md
+     docs/service/prd/asset-generator/PRD.md
 ```
 
 ### 테스트 결과

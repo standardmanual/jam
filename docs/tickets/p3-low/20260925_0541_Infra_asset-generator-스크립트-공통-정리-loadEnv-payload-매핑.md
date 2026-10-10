@@ -7,7 +7,7 @@ created: 2026-09-25
 closed: 2026-09-26
 parent: "20260924_2154"
 specs:
-  - "docs/specs/prd/asset-generator/REGISTRATION_BUNDLE.md"
+  - "docs/service/prd/asset-generator/REGISTRATION_BUNDLE.md"
 ---
 
 # [Infra] 에셋 제너레이터 스크립트의 `loadEnv` 복제와 배지 insert 페이로드 복제를 공용 모듈로 모은다
@@ -97,5 +97,5 @@ jam-web/scripts/asset-generator/__tests__/registerBundle.test.ts ((b) 키 목록
 
 ### 남은 한계 (민지 참고 사항)
 - `registerBundle.test.ts:443`의 「키 목록 대조」가 소스 문자열 `return {\n    name,`과 들여쓰기 정규식에 의존한다. 순수 함수 반환 객체의 서식을 바꾸면 매핑과 무관하게 실패할 수 있다(값 단위 테스트가 실질 방어를 한다).
-- `docs/specs/prd/asset-generator/PRD.md:375`의 「어드민 API의 insertPayload 키 목록과 어긋나면 테스트가 실패한다」는 시점별 이력 문장이라 틀리지는 않지만 (b) 결과(매핑이 공용 순수 함수 한 곳)를 적는 항목은 없다. 새 티켓은 만들지 않았다.
+- `docs/service/prd/asset-generator/PRD.md:375`의 「어드민 API의 insertPayload 키 목록과 어긋나면 테스트가 실패한다」는 시점별 이력 문장이라 틀리지는 않지만 (b) 결과(매핑이 공용 순수 함수 한 곳)를 적는 항목은 없다. 새 티켓은 만들지 않았다.
 - `scripts/` 아래 다른 디렉터리의 `loadEnv` 복제는 그대로다(티켓 지시: 건드릴 때 하나씩).

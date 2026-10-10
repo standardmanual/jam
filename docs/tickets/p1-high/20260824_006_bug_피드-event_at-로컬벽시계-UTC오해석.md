@@ -204,7 +204,7 @@ jam-web/supabase/migrations/094_backfill_feed_event_at_approx.sql   (신규, 미
 - [ ] STEP 1 진단 쿼리(매칭 규모·거리 분포) 미실행 — DB 조회 도구 없음(위 구현 내용 요약 C 참고)
 
 ### UX Writing 검증
-- [x] 시각 표기 규칙 (`docs/specs/UX_WRITING_GUIDELINE.md`) — 노출 문구 변경 없음.
+- [x] 시각 표기 규칙 (`docs/service/writing/UX_WRITING_GUIDELINE.md`) — 노출 문구 변경 없음.
       `formatFullDate`/`formatRelativeTime`/`LocalDate` 등 기존 포맷 함수는 그대로이고,
       이 함수들에 넘기는 **데이터 소스**(어느 컬럼 값을 넘기는지)만 바뀌었다.
 

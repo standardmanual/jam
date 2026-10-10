@@ -89,7 +89,7 @@ related:
 ### 변경된 파일
 ```
 수정: jam-web/src/app/api/admin/missions/route.ts, jam-web/src/app/api/admin/today/route.ts,
-     jam-web/src/app/api/admin/__tests__/image-source-reset.test.ts, docs/specs/prd/asset-generator/PRD.md(§10·§15)
+     jam-web/src/app/api/admin/__tests__/image-source-reset.test.ts, docs/service/prd/asset-generator/PRD.md(§10·§15)
 ```
 
 ### 테스트 결과

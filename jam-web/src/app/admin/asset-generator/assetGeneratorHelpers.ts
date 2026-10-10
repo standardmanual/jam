@@ -5,7 +5,7 @@
  * 그대로 쓴다. 여기는 그 모듈을 어드민 화면에 붙이는 데 필요한, 캔버스에 의존하지 않는 순수
  * 계산·상수만 둔다 — 테스트는 `__tests__/assetGeneratorHelpers.test.ts`.
  *
- * 원본: jam-doc/assets/prototypes/20260924_jam-asset-generator.html
+ * 원본: docs/assets/prototypes/20260924_jam-asset-generator.html
  * (state 초깃값 161~167줄, applyAspect 302줄, readSeconds 515줄, fileName 503줄,
  * MUXER_URL·MUXER_SRI 492~493줄).
  */

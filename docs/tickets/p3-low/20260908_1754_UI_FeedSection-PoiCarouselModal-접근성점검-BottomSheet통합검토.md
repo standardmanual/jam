@@ -101,7 +101,7 @@ jam-web/src/lib/i18n/ko.ts
 - [ ] 실브라우저 포커스 트랩/Escape 수동 확인 — 미실시(정적 코드 검증만 완료)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 용어 일관성: 신규 문구(`poiCarouselAriaLabel`)는 화면에 노출되지 않는 스크린리더
       전용 aria-label이라 시각 카피가 아니지만, 기존 고정 용어("드랍"·"픽업")만 사용했다.

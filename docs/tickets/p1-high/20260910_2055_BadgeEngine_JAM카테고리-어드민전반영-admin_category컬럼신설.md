@@ -184,7 +184,7 @@ enum을 건드리지 않고 `type='activity'`로 저장했다. 이 판단 자체
 
 ### 완료 시 갱신할 문서
 
-- `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` — `admin_category` 컬럼과 어드민 분류 체계 설명 추가(기존 `category`/지점카테고리와의 차이 명시)
+- `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md` — `admin_category` 컬럼과 어드민 분류 체계 설명 추가(기존 `category`/지점카테고리와의 차이 명시)
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
@@ -235,7 +235,7 @@ jam-web/src/app/admin/gate-missions/page.tsx
 jam-web/src/app/admin/gate-missions/GateMissionManager.tsx
 jam-web/src/components/admin/BadgeSearchSelect.tsx
 jam-web/src/lib/badge-engine/index.ts
-docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
+docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md
 + 신규·확장 테스트 10개 파일(badge-labels.test.ts·admin-category-candidates-contract.test.ts·
   gate-family-options-contract.test.ts·badges/search/route-contract.test.ts 등)
 ```
@@ -252,7 +252,7 @@ docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
       별도 확인 필요**(아래 "잔여 이슈")
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 `BadgeForm.tsx`의 "어드민 카테고리" 입력 필드 라벨은 어드민 내부 전용 문구라 유저 노출 대상이
 아니다. 아이템북 검색 결과의 "[JAM!]" 구분 표시도 어드민 화면 전용.

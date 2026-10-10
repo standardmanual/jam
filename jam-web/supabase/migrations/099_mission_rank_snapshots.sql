@@ -1,5 +1,5 @@
 -- 미션 순위 스냅샷 — 티켓 20260825_002 (알림 소식 T2 배치)
--- 스펙: docs/specs/prd/notification/PRD.md §3 ④ (#23 순위 상승)
+-- 스펙: docs/service/prd/notification/PRD.md §3 ④ (#23 순위 상승)
 --
 -- ## 왜 필요한가
 --

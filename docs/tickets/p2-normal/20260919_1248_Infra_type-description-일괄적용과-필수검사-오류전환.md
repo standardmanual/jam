@@ -15,7 +15,7 @@ closed: 2026-09-19
 
 - 요구사항: 비티켓 문서(혜린 집계 약 70건)에 `type`과 `description`을 붙이고, `catalog`·`research-note`에 태그를 붙인다. 적용이 끝나면 필수 필드 검사를 경고에서 오류로 올린다.
 - 구현 계획: 대상 목록 확정 → 폴더별 세 묶음(`docs/specs`, `docs/agents`, `jam-doc`)으로 하니가 type 배정표와 description 초안 작성 → 사용자 검수 → 카리나 반영 → 검사기 오류 전환.
-- 관련 파일: `docs/specs/`, `docs/agents/`, `jam-doc/planning/`, `jam-doc/marketing/`, `docs/specs/DOCUMENT_SCHEMA.md`(§3 type, §4 필드, §6 태그), T1의 검사기 설정 파일
+- 관련 파일: `docs/specs/`, `docs/agents/`, `jam-doc/planning/`, `docs/marketing/`, `docs/DOCUMENT_SCHEMA.md`(§3 type, §4 필드, §6 태그), T1의 검사기 설정 파일
 
 ## 배경 / 문제 정의
 
@@ -71,15 +71,15 @@ closed: 2026-09-19
 - **적용 62건**: `docs/specs` 26건, `docs/agents` 23건, `jam-doc` 12건에 `type`·`description`(필요 시 `status`·`tags`·`basis`·`agent`·`code`·`source_of_truth`·`source`·`snapshot`·`title`)을 붙였고, 검사기가 새로 잡은 `docs/tickets/README.md`를 `index`로 배정했다.
 - **작성 방식**: 하니 3명이 묶음별로 초안을 만들고(specs·jam-doc은 Sonnet, agents는 기본 모델), 카리나가 낡는 숫자 제거·경계 사례·`status` 판단을 손질했다. 트라이브 문서 3건은 윈터가 확인했다. 적용 뒤 검사기 파서로 61건의 값이 초안과 일치하는지 전수 대조해 불일치 0건을 확인했다.
 - **태그 어휘 26개에서 31개로 확장**(사용자 결정): 주제 그룹에 `마케팅`·`시즌`·`디자인시스템`·`계측`·`워크플로`를 추가하고 스키마 §6.1에 "개체·종목 태그는 가이드라인 표에서, 주제 태그는 필요할 때 직접 추가"를 반영했다. `워크플로`는 `docs/agents` 문서 23건에 일괄 부여했다.
-- **삭제 2건**(사용자 결정): `docs/specs/prd/admin-ui/DATA_MODEL.md`, `PROJECT_SPEC.md`. `admin-ui/README.md`가 폐기로 밝힌 문서이며 이 문서들을 링크하는 문서가 없음을 검사기로 확인했다. 이력은 git에 있다.
-- **필수 검사를 오류 등급으로 전환**: `scripts/doc-check.config.json`의 `severity.field`를 `error`로 올렸다. 함께 `fieldSeverity`가 미지의 type·필드도 오류로 만들던 점을 스키마 §7.3에 맞게 경고로 고쳤다(4줄, 테스트 1줄 추가). `jam-doc/operations/reports/`는 검사 범위에서 제외했다.
+- **삭제 2건**(사용자 결정): `docs/service/prd/admin-ui/DATA_MODEL.md`, `PROJECT_SPEC.md`. `admin-ui/README.md`가 폐기로 밝힌 문서이며 이 문서들을 링크하는 문서가 없음을 검사기로 확인했다. 이력은 git에 있다.
+- **필수 검사를 오류 등급으로 전환**: `scripts/doc-check.config.json`의 `severity.field`를 `error`로 올렸다. 함께 `fieldSeverity`가 미지의 type·필드도 오류로 만들던 점을 스키마 §7.3에 맞게 경고로 고쳤다(4줄, 테스트 1줄 추가). `docs/operations/reports/`는 검사 범위에서 제외했다.
 
 ### 변경된 파일
 ```
 jam:
-docs/specs/ 26건 (frontmatter 추가), docs/specs/prd/admin-ui/DATA_MODEL.md·PROJECT_SPEC.md (삭제)
+docs/specs/ 26건 (frontmatter 추가), docs/service/prd/admin-ui/DATA_MODEL.md·PROJECT_SPEC.md (삭제)
 docs/agents/ 23건 (frontmatter 추가), docs/tickets/README.md (frontmatter 추가)
-docs/specs/DOCUMENT_SCHEMA.md (§6 어휘)
+docs/DOCUMENT_SCHEMA.md (§6 어휘)
 scripts/doc-check.mjs, scripts/doc-check.test.mjs, scripts/doc-check.config.json
 jam-doc:
 marketing 3건, planning/business-plan 3건, planning/content 6건 (frontmatter 추가)
@@ -96,9 +96,9 @@ marketing 3건, planning/business-plan 3건, planning/content 6건 (frontmatter 
 - 종료 승인: 사용자가 2026-09-19에 완료 기록을 확인하고 표본 밖 description의 개별 검수 없이 T4 종료와 staging 푸시를 승인했다.
 
 **제외 목록**
-- `jam-doc/operations/reports/README.md`, `monthly/2026-09.md`, `weekly/2026-W38.md` (무인 예약 루틴이 커밋)
+- `docs/operations/reports/README.md`, `monthly/2026-09.md`, `weekly/2026-W38.md` (무인 예약 루틴이 커밋)
 - 옛 형식 티켓 `docs/tickets/modular/`, `docs/tickets/_TEMPLATE.md`, 티켓 본문(경로로 type 판정, `type`·`description` 면제)
-- `jam-doc/archive/`, `jam-doc/assets/`, 컨텐츠 폴더의 산출물(`.json`·`.py`·`.mjs`·`.xlsx`)
+- `docs/archive/`, `docs/assets/`, 컨텐츠 폴더의 산출물(`.json`·`.py`·`.mjs`·`.xlsx`)
 - `CLAUDE.md`, `AGENTS.md`, `.claude/` 아래 도구 형식 파일, `jam-web/` 안의 문서
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*

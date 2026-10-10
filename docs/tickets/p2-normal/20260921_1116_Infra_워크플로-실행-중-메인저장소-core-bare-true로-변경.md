@@ -42,7 +42,7 @@ scripts/doc-check.test.mjs
 scripts/doc-check-hook.test.mjs
 scripts/verify.sh
 scripts/test-env-isolation.test.mjs (신규)
-docs/specs/DEV_PROCESS_GUARDRAILS.md (패턴 15)
+docs/agents/DEV_PROCESS_GUARDRAILS.md (패턴 15)
 ```
 
 ### 테스트 결과

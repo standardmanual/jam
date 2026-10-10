@@ -69,7 +69,7 @@ function checkPathsAbsent(c) {
   }
 }
 
-// ── ③ .gitignore가 jam-doc을 다시 무시하지 않는가 ─────────────────────────────
+// ── ③ .gitignore가 문서 폴더(옛 jam-doc 포함)를 다시 무시하지 않는가 ─────────────────────────────
 function checkGitignore(c) {
   const spec = c.gitignore_absent
   if (!spec) return

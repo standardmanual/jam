@@ -155,7 +155,7 @@ jam-web/src/lib/combine/__tests__/combine-engine.test.ts
   검증이 필요하다(아래 alerts 참고).
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 해당 없음 — 유저 노출 문구 변경 없음
 

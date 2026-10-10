@@ -1,5 +1,5 @@
 /**
- * JAM! 배지 핸들러 (티켓 20261004_1756, 상위 20260930_1500 ⑨-a). 규칙의 정본은 `docs/specs/prd/ops-tool/PRD.md` §8.1·§8.2·§8.4다. 틀은 `mission.ts`·`recipe.ts`다.
+ * JAM! 배지 핸들러 (티켓 20261004_1756, 상위 20260930_1500 ⑨-a). 규칙의 정본은 `docs/service/prd/ops-tool/PRD.md` §8.1·§8.2·§8.4다. 틀은 `mission.ts`·`recipe.ts`다.
  *
  * 승인된 `jam_badge` 항목을 예약 등록 실행 때 `badges` 행(공개 전, `type = 'activity'`, `admin_category = 'jam'`)으로 만든다. 변환은 `toJamBadgeRegisterInput`(§8.4)과
  * 어드민 배지 생성 API의 변환(`buildBadgeInsertPayload`), 등록 전 DB 검사는 `runBadgeDbChecks`, 되돌림 전 참조 확인은 `findBadgeUndoReferences`를 감싼다.

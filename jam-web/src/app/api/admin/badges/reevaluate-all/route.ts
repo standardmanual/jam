@@ -3,7 +3,7 @@
  *
  * ## 실행 시점 — 「카탈로그 시딩과 항상 짝지어 실행하는 절차」
  * 자동 트리거가 아니다. 카탈로그에 배지를 새로 시딩할 때마다 오케스트레이터/운영자가
- * **매번 직접 호출**한다. 절차·근거는 `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` §2.17.
+ * **매번 직접 호출**한다. 절차·근거는 `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md` §2.17.
  *
  * ## dry-run이 기본값이다
  * 대량 발급은 되돌리기 어렵다(포인트 지급까지 딸려 온다). `dryRun`을 명시적으로

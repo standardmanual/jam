@@ -1,5 +1,5 @@
 /**
- * 미션 핸들러 (티켓 20261002_1944, 상위 20260930_1500 ⑥). 규칙의 정본은 `docs/specs/prd/ops-tool/PRD.md` §8.1·§8.2·§8.4다. 틀은 `homeFeedCard.ts`다.
+ * 미션 핸들러 (티켓 20261002_1944, 상위 20260930_1500 ⑥). 규칙의 정본은 `docs/service/prd/ops-tool/PRD.md` §8.1·§8.2·§8.4다. 틀은 `homeFeedCard.ts`다.
  *
  * 승인된 `mission` 항목을 예약 등록 실행 때 `missions` 행(공개 전)으로 만든다. 변환은 `toMissionRegisterInput`(§8.4),
  * 등록 전 DB 검사는 `runMissionDbChecks`, 되돌림 전 참조 확인은 `findMissionUndoReferences`를 감싼다.

@@ -407,7 +407,7 @@ async function runSingleTicket({ ticketPath, userRequest, workType, reuseDecisio
     `파일도 읽기 전에, **첫 명령으로** \`git fetch origin staging && git checkout --detach ` +
     `origin/staging && scripts/workspace-setup.sh link "$(pwd)"\`를 실행하라(마지막 명령은 ` +
     `기존 워크트리의 jam-web/node_modules를 심볼릭 링크로 연결한다 — npm install을 다시 돌리지 ` +
-    `않는다). 기획·운영 문서 jam-doc/ 은 같은 저장소의 폴더라 워크트리에 그대로 따라오므로 ` +
+    `않는다). 문서 폴더 docs/ 는 같은 저장소의 폴더라 워크트리에 그대로 따라오므로 ` +
     `필요하면 직접 고쳐 커밋한다. 그 전에 본 파일 내용은 무효다. 브랜치는 그 뒤 정의의 5번 규칙대로 만든다.\n` +
     `${designDecisionText ? `\n채원 사전 판정(이대로 따를 것):\n${designDecisionText}\n` : ''}` +
     `${retryBranch ? `\n재시도다. 새 브랜치를 만들지 말고 기존 review 브랜치를 이어서 쓴다: ` +
@@ -445,7 +445,7 @@ async function runSingleTicket({ ticketPath, userRequest, workType, reuseDecisio
   //    이전에는 게이트가 hasKoreanCopy/koreanCopyText만 뽑아 별도 humanize-korean
   //    플러그인에게 넘겼으나(제안형, 판정에 영향 없음), 그 결과가 실효성이 낮았고
   //    파이프라인만 5단계로 복잡해졌다. 문맥 판단이 필요한 AI-tell 패턴(대명사 지시
-  //    모호성·리듬 균일성·완곡 중첩 등, docs/specs/SLOP_DICTIONARY.md §4 참고)을 민지의
+  //    모호성·리듬 균일성·완곡 중첩 등, docs/service/writing/SLOP_DICTIONARY.md §4 참고)을 민지의
   //    체크리스트 12번으로 흡수해 판정에 실질적으로 반영되게 했다(티켓 20260918_1033).
   //    패턴 매칭 가능한 금칙어·금지 문장은 여전히 scripts/check-slop.mjs가 기계적으로
   //    먼저 거른다(verify.sh 단계, 이 워크플로 밖). 실제 프롬프트·병렬 실행 로직은

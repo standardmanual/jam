@@ -59,7 +59,7 @@ closed: 2026-08-07
 
 | 파일 | 변경 내용 |
 |------|-----------|
-| `docs/specs/prd/02_DATA_MODEL.md` | NEEDS CLARIFICATION 1, 3번 조사 결과 반영 |
+| `docs/service/prd/02_DATA_MODEL.md` | NEEDS CLARIFICATION 1, 3번 조사 결과 반영 |
 
 ---
 

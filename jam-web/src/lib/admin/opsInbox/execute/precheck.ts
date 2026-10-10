@@ -1,5 +1,5 @@
 /**
- * 예약 등록 사전 점검 (티켓 20261002_1122, 상위 20260930_1500 ③-a). 규칙의 정본은 `docs/specs/prd/ops-tool/PRD.md` §8.2다.
+ * 예약 등록 사전 점검 (티켓 20261002_1122, 상위 20260930_1500 ③-a). 규칙의 정본은 `docs/service/prd/ops-tool/PRD.md` §8.2다.
  *
  * `precheckBundle(items, { now, handlers })`는 묶음의 「승인됨」 항목을 넷으로 나눈다: 예약할 항목(`ready`) · 기다리는 중(`waiting`) ·
  * 못 하는 항목(`blocked`) · 실패로 닫을 항목(`failClose`). 쓰기 없는 순수 함수라 실행 API와 요약창([N개 예약 등록하기]의 N)이 같은 결과를 쓴다.

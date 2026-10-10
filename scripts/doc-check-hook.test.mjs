@@ -358,10 +358,10 @@ test('dashboard-format.md만 바뀐 커밋에도 경고가 없다', () => {
 test('INDEX.md가 낡아 차단될 때 병합 충돌 재생성 안내가 나온다', () => {
   const dir = makeRepo()
   copyFileSync(join(ROOT, 'scripts/gen-doc-index.mjs'), join(dir, 'scripts/gen-doc-index.mjs'))
-  write(dir, 'docs/specs/INDEX.md', '<<<<<<< HEAD\n충돌 표시\n=======\n>>>>>>> other\n')
+  write(dir, 'docs/INDEX.md', '<<<<<<< HEAD\n충돌 표시\n=======\n>>>>>>> other\n')
   const r = commit(dir)
   assert.notEqual(r.status, 0, r.stderr)
-  assert.match(r.stderr, /병합 충돌로 docs\/specs\/INDEX\.md에 충돌 표시가 남았다면/)
+  assert.match(r.stderr, /병합 충돌로 docs\/INDEX\.md에 충돌 표시가 남았다면/)
   assert.match(r.stderr, /node scripts\/gen-doc-index\.mjs/)
 })
 

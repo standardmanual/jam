@@ -3,7 +3,7 @@
 /**
  * JAM! 에셋 제너레이터 — PNG·영상 저장 (티켓 20260924_2156)
  *
- * 원본: jam-doc/assets/prototypes/20260924_jam-asset-generator.html
+ * 원본: docs/assets/prototypes/20260924_jam-asset-generator.html
  * (pngBtn 클릭 처리 523줄, loadMuxer 533줄, pickCodec 544줄, exportPrecise 558줄,
  * exportRealtime 602줄, videoBtn 클릭 처리 631줄, readSeconds 515줄).
  *

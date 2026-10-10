@@ -1,7 +1,7 @@
 /**
  * 운영 패턴 사전의 고정 값 (티켓 20261001_2056, 상위 20260930_1503 ①, 순수 상수).
  *
- * 값의 정본은 `docs/specs/prd/ops-tool/PRD.md` §10.1이고, 테이블은 마이그레이션 `210_ops_patterns.sql`이다.
+ * 값의 정본은 `docs/service/prd/ops-tool/PRD.md` §10.1이고, 테이블은 마이그레이션 `210_ops_patterns.sql`이다.
  * DB CHECK와 이 상수가 어긋나면 `__tests__/migration.test.ts`가 실패한다.
  *
  * 화면(클라이언트 부품)이 이름표를 읽을 수 있도록 **서버 전용 모듈을 끌어오지 않는다.**

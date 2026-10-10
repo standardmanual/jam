@@ -123,11 +123,12 @@ SQL 편집기 실행을 넘기기 전에 막힌 사유를 먼저 보고한다(�
   터미널에서 먼저 커밋하는 새 클론에서만 `git config core.hooksPath .githooks`를 손으로 실행한다.
   값이 정상이 아니면 `scripts/verify.sh`의 계약 검사가 잡아낸다 (`CLAUDE.md` 규칙 4에서 이관, 티켓
   20260921_2310)
-- **기획·운영 문서 `jam-doc/`도 이 저장소 안에 있다** (2026-09-20 재통합, 티켓 20260920_1412).
-  `git status` 한 번에 함께 나오고, 격리 워크트리에도 그대로 따라간다. 2026-09-18부터
-  2026-09-20까지는 별도 저장소였으므로, 그 기간에 쓰인 문서에 남아 있는 `git -C jam-doc ...`
-  안내는 더 이상 유효하지 않다
-- **옵시디언 볼트는 저장소 루트(작업 폴더)다.** `docs/`와 `jam-doc/`가 서로를 참조하므로 한 볼트로
+- **문서는 모두 이 저장소의 `docs/` 하나에 있다** (2026-09-20 재통합, 티켓 20260920_1412. 2026-10-10에
+  옛 `docs/`·`jam-doc/` 두 루트를 `docs/` 하나로 합침, 티켓 20261010_1214). `git status` 한 번에 함께
+  나오고, 격리 워크트리에도 그대로 따라간다. 2026-09-18부터 2026-09-20까지 기획·운영 문서는 별도
+  저장소(`jam-doc`)였으므로, 그 기간에 쓰인 문서에 남아 있는 `git -C jam-doc ...` 안내는 더 이상
+  유효하지 않다
+- **옵시디언 볼트는 저장소 루트(작업 폴더)다.** `docs/`의 문서와 `jam-web/`·`scripts/`의 코드가 서로를 참조하므로 한 볼트로
   묶어야 링크와 그래프가 이어진다. 새 PC에서는 옵시디언의 "폴더를 볼트로 열기"로 작업 폴더를 한 번
   열면 된다. 공용 설정은 `.obsidian/app.json`(링크를 상대경로 마크다운 형식으로 쓰고 `jam-web/`·
   `scripts/`를 검색·그래프에서 뺀다)에 있고, 탭 배치 같은 PC별 상태 파일은 `.obsidian/.gitignore`가
@@ -173,8 +174,8 @@ SQL 편집기 실행을 넘기기 전에 막힌 사유를 먼저 보고한다(�
 아래 문서에 이미 정리되어 있다:
 
 1. `docs/tickets/`의 관련 최신 티켓 (유사 작업·의사결정 확인)
-2. `docs/specs/INDEX.md` (전체 문서 목록. 자동 생성이라 손으로 고치지 않는다)
-3. `docs/specs/prd/01_PRD.md` (필요 시 `02_DATA_MODEL.md`, `docs/specs/prd/{주제}/`)
-4. `jam-doc/planning/content/` (배지·아이템·트라이브·POI)
-5. `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` (배지·드랍 로직)
+2. `docs/INDEX.md` (전체 문서 목록. 자동 생성이라 손으로 고치지 않는다)
+3. `docs/service/prd/01_PRD.md` (필요 시 `02_DATA_MODEL.md`, `docs/service/prd/{주제}/`)
+4. `docs/service/content/` (배지·아이템·트라이브·POI)
+5. `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md` (배지·드랍 로직)
 6. 위에서 찾지 못한 경우에만 코드(`jam-web/src/`) 탐색

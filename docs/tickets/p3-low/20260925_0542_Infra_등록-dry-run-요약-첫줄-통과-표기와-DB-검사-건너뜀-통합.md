@@ -7,7 +7,7 @@ created: 2026-09-25
 closed: 2026-09-26
 parent: "20260924_2154"
 specs:
-  - "docs/specs/prd/asset-generator/REGISTRATION_BUNDLE.md"
+  - "docs/service/prd/asset-generator/REGISTRATION_BUNDLE.md"
 ---
 
 # [Infra] 등록 dry-run 요약이 DB 검사를 건너뛰었어도 첫 줄에 '통과'만 찍는 문제를 고친다
@@ -18,7 +18,7 @@ specs:
 
 - 요구사항: `register-badge.mjs --dry-run`은 서비스 키가 없으면 DB 읽기 검사(이름 중복·tribe_id·item_book_id 존재)를 건너뛰는데도 첫 줄에 `결과: 통과`만 찍고 "건너뜀"은 `[DB 읽기 검사]` 절에만 나온다. 컨펌 자료(dry-run 요약)를 훑는 사람이 중복 검사까지 끝난 것으로 읽을 수 있다. 실제로 카리나가 격리 환경에서 예시 묶음을 돌렸을 때 첫 줄이 `결과: 통과`였다.
 - 구현 계획: 첫 줄을 `결과: 통과 (DB 읽기 검사는 건너뜀 — 서비스 키 없음)`처럼 건너뜀이 있으면 함께 적는다. 건너뜀이 있는 dry-run 요약은 컨펌 근거로 쓰지 말고 키가 있는 환경(메인 폴더)에서 다시 돌리라는 안내를 넣는다.
-- 관련 파일: `jam-web/scripts/asset-generator/registerRecord.mjs`(`formatDryRunSummary`), `docs/specs/prd/asset-generator/REGISTRATION_BUNDLE.md`(절차 절), 테스트 `__tests__/registerRecord.test.ts`
+- 관련 파일: `jam-web/scripts/asset-generator/registerRecord.mjs`(`formatDryRunSummary`), `docs/service/prd/asset-generator/REGISTRATION_BUNDLE.md`(절차 절), 테스트 `__tests__/registerRecord.test.ts`
 
 ## 완료 조건
 - 키가 없을 때 dry-run 첫 줄에 건너뜀이 표기되고, 키가 있을 때는 기존과 같다(테스트).
@@ -29,13 +29,13 @@ specs:
 
 ### 구현 내용 요약
 - `formatDryRunSummary`가 `dbChecks`에 `건너뜀`이 있으면 첫 줄을 `결과: 통과 (DB 읽기 검사는 건너뜀 — 서비스 키 없음)`으로 적고, 바로 아래에 `※ DB 읽기 검사(...)가 빠진 요약이에요. 컨펌 근거로 쓰지 말고, 서비스 키가 있는 환경(메인 폴더)에서 다시 돌려요.` 안내 줄을 넣는다. 건너뜀이 없으면 출력은 기존과 같다.
-- `docs/specs/prd/asset-generator/REGISTRATION_BUNDLE.md` §6 `--dry-run` 절에 같은 동작을 적었다.
+- `docs/service/prd/asset-generator/REGISTRATION_BUNDLE.md` §6 `--dry-run` 절에 같은 동작을 적었다.
 
 ### 변경된 파일
 ```
 jam-web/scripts/asset-generator/registerRecord.mjs
 jam-web/scripts/asset-generator/__tests__/registerRecord.test.ts
-docs/specs/prd/asset-generator/REGISTRATION_BUNDLE.md
+docs/service/prd/asset-generator/REGISTRATION_BUNDLE.md
 ```
 
 ### 테스트 결과

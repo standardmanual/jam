@@ -35,17 +35,19 @@ A script finds most of these. You supply judgement and a fix proposal for what i
 
 | 폴더 | 쓰기 방식 |
 |---|---|
-| `docs/specs/`, `jam-doc/planning/`, `jam-doc/marketing/` | 덮어쓰기. 지금 사실만 담고 변경 이력을 본문에 쌓지 않는다. 서비스플랜은 버전 사본을 만들지 않는다 |
+| `docs/service/`, `docs/plan/`, `docs/marketing/` | 덮어쓰기. 지금 사실만 담고 변경 이력을 본문에 쌓지 않는다. 서비스플랜은 버전 사본을 만들지 않는다 |
 | `docs/tickets/` | 신규 생성. 완료 후에도 지식베이스로 남는다 |
-| `jam-doc/operations/reports/` | 신규 생성. 쌓기만 하고 덮어쓰지 않는다 |
-| `jam-doc/archive/` | 읽기 전용. 신규 파일 추가·기존 파일 수정 금지. 지난 기획을 버전별 폴더로 묶는 정리 이동만 사용자 승인 후 허용 |
-| `jam-doc/assets/` | 생성 산출물. 문서 검색 대상 아님 |
+| `docs/operations/reports/` | 신규 생성. 쌓기만 하고 덮어쓰지 않는다 |
+| `docs/archive/` | 읽기 전용. 신규 파일 추가·기존 파일 수정 금지. 지난 기획을 버전별 폴더로 묶는 정리 이동만 사용자 승인 후 허용 |
+| `docs/assets/` | 생성 산출물. 문서 검색 대상 아님 |
 
-Documents live in one repository (`standardmanual/jam`): `docs/` holds what must change in the same
-commit as deployed code, and `jam-doc/` (merged back 2026-09-20, ticket 20260920_1412) holds
-planning, marketing and operations material. Folder names are lowercase English; paths are always
-written relative to the JAM! workspace root. A document in the wrong folder is a lifecycle
-violation: it belongs in `docs/` only if it must change in the same commit as deployed code.
+Documents live in one repository (`standardmanual/jam`), all under `docs/` (merged into a single root
+2026-10-10, ticket 20261010_1214; folder map in `docs/README.md`): `service/` (current service),
+`plan/` (`vision/` and `jam2/`), `marketing/`, `operations/`, `tickets/`, `agents/`, `assets/` and
+`archive/`. Folder names are lowercase English; paths are always written relative to the JAM!
+workspace root. A document in the wrong folder is a lifecycle violation: the folder tells how the
+document is written (overwrite, append-only, read-only), so check the document against its folder's
+rule.
 
 버전 사본(`v3.1`, `_20260827`)은 만들지 않는다 — 이력은 git이 보관한다.
 

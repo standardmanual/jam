@@ -105,7 +105,7 @@ function makeFakeRepo(scheduleMarkdown) {
     join(repoRoot, '.claude', 'skills', 'jam-work', 'references', 'scheduled-jobs.md'),
     scheduleMarkdown
   )
-  mkdirSync(join(repoRoot, 'jam-doc'), { recursive: true })
+  mkdirSync(join(repoRoot, 'docs', 'operations'), { recursive: true })
   return repoRoot
 }
 
@@ -127,8 +127,8 @@ function testCheckMissingReportsSilentWhenReportExists() {
   const repoRoot = makeFakeRepo(SAMPLE_ENABLED)
   try {
     const tuesday = new Date(Date.UTC(2026, 8, 22, 3, 0))
-    const weeklyDir = join(repoRoot, 'jam-doc', 'operations', 'reports', 'weekly')
-    const monthlyDir = join(repoRoot, 'jam-doc', 'operations', 'reports', 'monthly')
+    const weeklyDir = join(repoRoot, 'docs', 'operations', 'reports', 'weekly')
+    const monthlyDir = join(repoRoot, 'docs', 'operations', 'reports', 'monthly')
     mkdirSync(weeklyDir, { recursive: true })
     mkdirSync(monthlyDir, { recursive: true })
     writeFileSync(join(weeklyDir, `${isoWeekLabel(tuesday)}.md`), '# 리포트')
@@ -152,14 +152,14 @@ function testCheckMissingReportsSilentWhenDisabled() {
   }
 }
 
-function testCheckMissingReportsOnlyAsksCloneWhenJamDocAbsent() {
+function testCheckMissingReportsOnlyAsksFolderWhenOperationsAbsent() {
   const repoRoot = makeFakeRepo(SAMPLE_ENABLED)
   try {
-    rmSync(join(repoRoot, 'jam-doc'), { recursive: true, force: true })
+    rmSync(join(repoRoot, 'docs', 'operations'), { recursive: true, force: true })
     const tuesday = new Date(Date.UTC(2026, 8, 22, 3, 0))
     const warnings = checkMissingReports(repoRoot, tuesday)
-    assert.equal(warnings.length, 1, 'jam-doc이 없으면 리포트 누락 대신 복제 안내 한 줄만 나와야 한다')
-    assert.match(warnings[0], /jam-doc 저장소가 복제되어 있지 않아/)
+    assert.equal(warnings.length, 1, 'docs/operations가 없으면 리포트 누락 대신 폴더 안내 한 줄만 나와야 한다')
+    assert.match(warnings[0], /docs\/operations 폴더가 없어/)
   } finally {
     rmSync(repoRoot, { recursive: true, force: true })
   }
@@ -194,7 +194,7 @@ function main() {
   testCheckMissingReportsWarnsWhenReportAbsentAndDeadlinePassed()
   testCheckMissingReportsSilentWhenReportExists()
   testCheckMissingReportsSilentWhenDisabled()
-  testCheckMissingReportsOnlyAsksCloneWhenJamDocAbsent()
+  testCheckMissingReportsOnlyAsksFolderWhenOperationsAbsent()
   console.log('ticket-dashboard.test.mjs 통과')
 }
 

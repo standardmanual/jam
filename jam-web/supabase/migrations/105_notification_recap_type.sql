@@ -1,5 +1,5 @@
 -- 알림 소식 전면 개편 — `notification_type`에 활동 결산 타입 추가 (티켓 20260827_014)
--- 스펙: docs/specs/prd/notification/RECAP_CASEBOOK.md (① 보상 획득 6종 → 결산 1종)
+-- 스펙: docs/service/prd/notification/RECAP_CASEBOOK.md (① 보상 획득 6종 → 결산 1종)
 --
 -- ⚠️ 이 파일은 /jam-work 규칙에 따라 **작성만** 하고 실행하지 않았다.
 --    실행은 사용자 승인 후 오케스트레이터가 처리한다.

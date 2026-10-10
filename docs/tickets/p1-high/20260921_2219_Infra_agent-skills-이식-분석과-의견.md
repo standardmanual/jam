@@ -14,7 +14,7 @@ parent: "20260918_1101"
 
 - 요구사항: `addyosmani/agent-skills`(Spec→Ship 수명주기 스킬 팩)를 JAM! 워크플로의 근본 뿌리로 이식하고 싶다. 에이전트 한글 이름과 역할은 유지한다. 분석과 의견을 달라(사용자 요청, 2026-09-21). `research` 유형이라 카리나가 직접 조사했고 코드는 바꾸지 않았다.
 - 결론(카리나 의견): **뿌리(누가·언제·어떤 관문)는 JAM 것을 유지하고, agent-skills는 각 단계의 방법층(어떻게)으로 이식한다.** 뿌리를 통째로 바꾸면 JAM의 전제 세 가지(사용자는 디자이너라 직접 오케스트레이션하지 않는다 · 토큰 최적화가 핵심 요구 · 사고에서 태어난 훅 규칙)와 정면충돌한다. 방법층으로는 25종 중 약 3분의 2가 바로 쓸 수 있거나 다듬어 쓸 수 있다.
-- 관련 파일: `.claude/workflows/jam-work.js`, `.claude/agents/*.md`, `.claude/skills/jam-plan/SKILL.md`, `.claude/skills/jam-ship/SKILL.md`, `docs/agents/contract.json`, `docs/specs/DEV_PROCESS_GUARDRAILS.md`
+- 관련 파일: `.claude/workflows/jam-work.js`, `.claude/agents/*.md`, `.claude/skills/jam-plan/SKILL.md`, `.claude/skills/jam-ship/SKILL.md`, `docs/agents/contract.json`, `docs/agents/DEV_PROCESS_GUARDRAILS.md`
 - 상위 티켓: 20260918_1101(에이전트 팀 운영 정비). 함께 볼 티켓: 20260921_2207(운영 전반 점검 — 개선점 12건)
 
 ## 1. 확인한 사실
@@ -47,7 +47,7 @@ parent: "20260918_1101"
 
 | 단계 | agent-skills | JAM 현행 | 겹침 |
 |---|---|---|---|
-| DEFINE | interview-me · idea-refine · spec-driven-development(가정 목록 공개, 6영역 스펙, 능력 지도) | `/jam-plan` 혜린 1단계 문답(질문 5개 이내) → 반쪽 요약 → 2단계 기획서, PRD(`docs/specs/prd/`) | 높음. JAM에 없는 것: 가정 목록 명시, 스펙 살아 있게 유지하는 규칙 |
+| DEFINE | interview-me · idea-refine · spec-driven-development(가정 목록 공개, 6영역 스펙, 능력 지도) | `/jam-plan` 혜린 1단계 문답(질문 5개 이내) → 반쪽 요약 → 2단계 기획서, PRD(`docs/service/prd/`) | 높음. JAM에 없는 것: 가정 목록 명시, 스펙 살아 있게 유지하는 규칙 |
 | PLAN | planning-and-task-breakdown(의존 그래프, 수직 슬라이스, 완료 조건 있는 작업, 체크포인트) | 혜린 작업 분해 → 카리나 티켓 생성(완료 조건 필수), 상위·하위 티켓, `plan_only` 정지(파일 5개·100줄 초과) | 중간. JAM에 없는 것: 의존 그래프·수직 슬라이스 지침 |
 | BUILD | incremental-implementation · TDD · context-engineering · source-driven · doubt-driven · frontend-ui · api-design | 아현(티켓 범위 엄수, verify, 로직 변경 시 테스트, 토큰 절약), 채원① 사전 판정, MODULAR 재사용 | 중간. JAM에 없는 것: RED→GREEN 명시 사이클, 고위험 결정의 반대 심문(doubt), 안전 기본값 |
 | VERIFY | browser-testing-with-devtools · debugging-and-error-recovery | `verify.sh`(77.7초), pre-push, 실렌더 규칙(가드레일 패턴 13), 민지의 직접 재현 | 중간. JAM에 없는 것: 재현→국소화→수정→방지 순서의 디버깅 절차 |

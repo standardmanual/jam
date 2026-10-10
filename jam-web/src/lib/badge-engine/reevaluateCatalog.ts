@@ -12,7 +12,7 @@
  * 정기 크론(C안)은 비용 문제로 채택하지 않았다(Vercel 크론 3종 대비 형평 논거는 티켓
  * 20260906_1142). 대신 **카탈로그 시딩과 항상 짝지어 실행하는 수동 배치**로 구현한다 —
  * `POST /api/admin/badges/reevaluate-all`을 시딩 직후 오케스트레이터/운영자가 반드시
- * 호출한다(자동 트리거 아님). 실행 절차는 `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` §2.17.
+ * 호출한다(자동 트리거 아님). 실행 절차는 `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md` §2.17.
  *
  * ## 부수효과 정책 (이 티켓에서 확정)
  * - **피드·알림은 억제한다** — `evaluateBadgesDetailed`의 `silent: true`를 그대로 쓴다.

@@ -3,7 +3,7 @@
  * JAM! 배지는 티켓 20261004_1756 ⑨-a, 컬렉션은 티켓 20261004_2039 ⑩-a).
  *
  * 승인된 운영 항목(`ops_bundle_items`, 수정본 우선)의 `home_feed_card`·`mission`을 `today_cards`·`missions` insert 값으로 바꾼다.
- * 읽는 규칙은 `docs/specs/prd/ops-tool/PRD.md` §8.4이고, 검사는 등록 스크립트가 쓰는 `registerChecks/homeFeedFields.ts`의
+ * 읽는 규칙은 `docs/service/prd/ops-tool/PRD.md` §8.4이고, 검사는 등록 스크립트가 쓰는 `registerChecks/homeFeedFields.ts`의
  * `validateCard`와 `registerChecks/missionFields.ts`의 `validateMission`을 그대로 부른다. DB에 접근하지 않는다(쓰기는 ③·④·⑥).
  * `recipe`는 행이 아니라 레시피 서버 함수(`lib/admin/recipe-write.ts`)의 입력(`RecipePayloadInput`)으로 바꾼다. 형식 검사는 그 입력을 받는
  * `normalizeRecipePayload`가 현재 시각과 함께 하므로 변환은 칸 읽기까지만 한다(핸들러의 `prepare`가 이어서 부른다).

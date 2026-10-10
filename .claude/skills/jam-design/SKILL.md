@@ -63,7 +63,7 @@ MODULAR 변경 → 컴포넌트 반영 → Story 작성/수정 → Storybook 확
   함께 변경되지 않으면 `.githooks/pre-commit`이 경고한다.
 - 새 컴포넌트는 `.d.ts` 타입 정의와 Story를 함께 제공한다.
 - 토큰을 새로 추가했으면 `tokens/`와 `guidelines/`에 반영한다.
-- 사용자 노출 문구가 있으면 `docs/specs/UX_WRITING_GUIDELINE.md`를 확인한다.
+- 사용자 노출 문구가 있으면 `docs/service/writing/UX_WRITING_GUIDELINE.md`를 확인한다.
 
 ## 4. 선순환
 

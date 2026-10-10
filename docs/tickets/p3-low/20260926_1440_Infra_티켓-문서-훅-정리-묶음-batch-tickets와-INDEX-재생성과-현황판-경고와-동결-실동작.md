@@ -18,7 +18,7 @@ related:
 
 ## 핵심 요약
 
-- 요구사항: (1) `scripts/batch-tickets.mjs`의 `DB_CLUE_RE`에 결합 패턴을 더해 「column」만 있는 DB 성격 Infra 티켓이 `infra`로 새는 오판을 막는다(1209). (2) `docs/specs/INDEX.md` 병합 충돌 시 손으로 풀지 않고 `node scripts/gen-doc-index.mjs`로 재생성한다는 안내를 `pre-commit` 차단 메시지와 `handling-rules.md`에 남긴다(1412). (3) `ticket-dashboard.mjs`만 바뀌고 `dashboard-format.md`가 안 바뀐 커밋에 경고를 띄운다(1251, 차단 아님). (4) `checkWorkflowFreeze`가 훅 문자열 존재만 보는 한계를 고쳐, ⑨ 블록을 주석 처리한 훅을 위반으로 잡는다(1401).
+- 요구사항: (1) `scripts/batch-tickets.mjs`의 `DB_CLUE_RE`에 결합 패턴을 더해 「column」만 있는 DB 성격 Infra 티켓이 `infra`로 새는 오판을 막는다(1209). (2) `docs/INDEX.md` 병합 충돌 시 손으로 풀지 않고 `node scripts/gen-doc-index.mjs`로 재생성한다는 안내를 `pre-commit` 차단 메시지와 `handling-rules.md`에 남긴다(1412). (3) `ticket-dashboard.mjs`만 바뀌고 `dashboard-format.md`가 안 바뀐 커밋에 경고를 띄운다(1251, 차단 아님). (4) `checkWorkflowFreeze`가 훅 문자열 존재만 보는 한계를 고쳐, ⑨ 블록을 주석 처리한 훅을 위반으로 잡는다(1401).
 - 관련 파일: `scripts/batch-tickets.mjs`(+`.test.mjs`), `.githooks/pre-commit`(⑧ 블록 메시지, 경고 블록 신규), `.claude/skills/jam-work/references/handling-rules.md`, `scripts/check-contract.mjs`(`checkWorkflowFreeze`), `scripts/doc-check-hook.test.mjs`, `docs/agents/contract.json`(`workflow_freeze`).
 
 ## 구현 계획

@@ -4,7 +4,7 @@
 --    106_users_is_admin.sql(이미 실행 완료)과 번호가 겹쳐 **107로 조정**했다.
 --    같은 번호의 마이그레이션이 두 개 생기면 실행 이력 추적이 무너진다.
 -- 스펙: Service Plan/History/Migration/Ticket/20260827_018_Service_프로필피드-활동참조컬럼-동일활동이벤트-묶음렌더.md
---       docs/specs/prd/notification/RECAP_CASEBOOK.md (R6 착지 규칙)
+--       docs/service/prd/notification/RECAP_CASEBOOK.md (R6 착지 규칙)
 --
 -- ⚠️ 이 파일은 /jam-work 규칙에 따라 **작성만** 하고 실행하지 않았다.
 --    실행은 사용자 승인 후 오케스트레이터가 처리한다.

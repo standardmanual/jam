@@ -124,7 +124,7 @@ Epic30→Mystic100 = 3.33배)를 참고해 Epic→Mystic 약 3.3~3.5배를 적�
 
 ### 변경된 파일
 ```
-jam-doc/planning/content/ACTIVITY_BADGES.md
+docs/service/content/ACTIVITY_BADGES.md
 jam-web/supabase/migrations/seed_gate_mission_rest_axis_mystic_badges.sql (신규)
 ```
 
@@ -149,7 +149,7 @@ jam-web/supabase/migrations/seed_gate_mission_rest_axis_mystic_badges.sql (신�
   코드 변경이 없어 lint 대상 파일이 없음.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 용어 일관성: 배지 이름은 기존 계열명을 그대로 유지(신규 이름 없음), 설명문에 신규
   용어 도입 없음
@@ -182,7 +182,7 @@ jam-web/supabase/migrations/seed_gate_mission_rest_axis_mystic_badges.sql (신�
   트레일러) 3계열은 여전히 Epic까지만 있고 Mystic이 없다. 위 "주요 의사결정"에서 설명한
   대로 이번 게이트 문제 해결에는 지장이 없지만, 세 계열 다 게이트 없는 "무관문 배지"로
   남는 상태이므로 컨텐츠 정책상 X2도 Mystic까지 채울지 별도 검토가 필요할 수 있다.
-- `jam-doc/planning/content/v5_seed_build.py`(정본 스크립트)에는 이번에 추가한 3종의
+- `docs/service/content/v5_seed_build.py`(정본 스크립트)에는 이번에 추가한 3종의
   Mystic 사다리 값이 반영되지 않았다 — 티켓이 `ACTIVITY_BADGES.md` 직접 수정만 지시해
   범위 밖으로 남겼다. 향후 누군가 `v5_seed_build.py`를 재실행해 문서를 재생성하면 이번에
   손으로 추가한 Mystic 3행이 스크립트 산출물과 어긋나(드리프트) 문서에서 사라질 수 있다 —

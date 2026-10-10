@@ -316,7 +316,7 @@ test('codeSpanIgnore에 걸리는 백틱 경로는 검사하지 않는다', () =
 
 test('실제 설정의 자리표시자 패턴은 파일명 위치에서만 일치한다', () => {
   const cfg = JSON.parse(readFileSync(new URL('./doc-check.config.json', import.meta.url), 'utf8'))
-  assert.equal(isCodeSpanIgnored('jam-doc/operations/reports/weekly/YYYY-Www.md', cfg), true)
+  assert.equal(isCodeSpanIgnored('docs/operations/reports/weekly/YYYY-Www.md', cfg), true)
   assert.equal(isCodeSpanIgnored('jam-web/supabase/migrations/0XX_설명.sql', cfg), true)
   assert.equal(isCodeSpanIgnored('docs/YYYYtypo/real.md', cfg), false)
   assert.equal(isCodeSpanIgnored('docs/0XX_dir/real.md', cfg), false)

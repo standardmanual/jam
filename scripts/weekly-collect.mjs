@@ -190,7 +190,7 @@ export function summarizeGitLog(stdout) {
 
 // 선별 리포트(YYYY-MM-DD.md) 중 since 이후 파일의 체크 줄 수와 판정 건수를 센다.
 export function summarizeTriage(repoRoot, since) {
-  const dir = join(repoRoot, 'jam-doc', 'operations', 'reports', 'triage')
+  const dir = join(repoRoot, 'docs', 'operations', 'reports', 'triage')
   if (!existsSync(dir)) return '- 대상 없음 (선별 리포트 폴더 없음)'
   const files = readdirSync(dir)
     .filter((f) => /^\d{4}-\d{2}-\d{2}\.md$/.test(f) && f.slice(0, 10) >= since)

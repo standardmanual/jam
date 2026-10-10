@@ -7,7 +7,7 @@ created: 2026-10-01
 closed: 2026-10-01
 parent: "20260930_1453"
 specs:
-  - "docs/specs/prd/home-feed/PRD.md"
+  - "docs/service/prd/home-feed/PRD.md"
 ---
 
 # [UI] MODULAR `LabelChip`과 카드 눌림 토큰을 만든다 (1453-b0)

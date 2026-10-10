@@ -12,7 +12,7 @@ closed: 2026-09-06
 ## 배경 / 문제 정의
 > 왜 이 작업이 필요한가. 현재 상태와 기대 상태의 차이.
 
-`jam-doc/planning/content/v5_doc_build.mjs` 상단의 경로 상수 `R`이 특정 PC의 절대경로
+`docs/service/content/v5_doc_build.mjs` 상단의 경로 상수 `R`이 특정 PC의 절대경로
 (`/Volumes/뚝섬하드/시현/JAM!/jam-doc/planning/content/`)로 하드코딩되어 있었다.
 
 CLAUDE.md 규칙에 따르면 이 프로젝트는 PC마다 작업 폴더 절대경로가 다르다
@@ -53,12 +53,12 @@ CLAUDE.md 규칙에 따르면 이 프로젝트는 PC마다 작업 폴더 절대�
 
 ### 변경된 파일
 ```
-jam-doc/planning/content/v5_doc_build.mjs
+docs/service/content/v5_doc_build.mjs
 docs/tickets/20260906_1813_Infra_v5_doc_build_경로_하드코딩_제거.md (본 티켓)
 ```
 
 ### 테스트 결과
-- [x] `node "jam-doc/planning/content/v5_doc_build.mjs"` 실행 → 정상 종료
+- [x] `node "docs/service/content/v5_doc_build.mjs"` 실행 → 정상 종료
       (`생성: 1207 줄 · 194 계열 · 630 종`)
 - [x] 산출물을 수정 전 커밋 상태의 `ACTIVITY_BADGES.md`와 diff — 수정 전 하드코딩 경로
       스크립트를 그대로(무수정) 실행했을 때와 **바이트 단위로 동일한 결과**임을 확인.

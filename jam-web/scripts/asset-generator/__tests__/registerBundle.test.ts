@@ -1,7 +1,7 @@
 /**
  * 배지 등록 묶음 — 검증·배지 행 매핑 (티켓 20260924_2202)
  *
- * 검증 규칙의 정본은 docs/specs/prd/asset-generator/REGISTRATION_BUNDLE.md다. 여기서는 규칙마다
+ * 검증 규칙의 정본은 docs/service/prd/asset-generator/REGISTRATION_BUNDLE.md다. 여기서는 규칙마다
  * «어떤 사유 문장이 나오는지»까지 확인한다(에이전트가 이 문장을 보고 묶음을 고친다).
  */
 import fs from 'node:fs';

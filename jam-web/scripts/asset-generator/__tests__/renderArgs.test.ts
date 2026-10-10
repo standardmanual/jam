@@ -98,7 +98,7 @@ describe('parseRenderArgs', () => {
 
   it('윤진 루틴이 쓰는 인자 조합(jam-marketer.md 3단계)은 그대로 동작한다', () => {
     const preset = '51aa4673-f723-4929-ac20-a302202b7aa7';
-    const out = '/abs/jam-doc/assets/home-feed-bundles/2026-10-07-w1/image.png';
+    const out = '/abs/docs/assets/home-feed-bundles/2026-10-07-w1/image.png';
     // 제목만, 순서가 달라도, 설명 추가, 시드 추가
     expect(parseRenderArgs(['--preset', preset, '--bg', '#1a2b3c', '--end', '#ffcc00', '--text01', '이번 주 미션', '--out', out])).toEqual({
       preset, bg: '#1a2b3c', end: '#ffcc00', values: { text01: '이번 주 미션' }, out, seed: undefined,

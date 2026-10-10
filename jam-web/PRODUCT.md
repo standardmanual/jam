@@ -41,12 +41,12 @@ Tracker-less(자체 GPS 트래킹 없음, 기존 Strava 데이터 활용) + 배�
   `ListRowCard`(리스트/아코디언), 이 외 `CollectionGridCard` 등. 한 컴포넌트의 시각 변경은
   배지 컬렉션·인벤토리·컬렉션 슬롯·프로필 피드·믹스·미션 상세 등 여러 화면에 동시 반영됨
 - 플리마켓(P2P 거래), D2C 실물 패치 구매 플로우, 푸시 알림: 미구현
-- 사용자 노출 텍스트는 `docs/specs/UX_WRITING_GUIDELINE.md` 톤·용어 규칙을 따름
+- 사용자 노출 텍스트는 `docs/service/writing/UX_WRITING_GUIDELINE.md` 톤·용어 규칙을 따름
 
 ## Evidence on Hand
 
-- 최신 PRD: `docs/specs/prd/01_PRD.md` (2026-08-06 갱신, 라우트 전체 대조 기준)
-- 문서 체계 갱신 규칙·화면 구성·성공 기준 전체가 위 PRD와 `docs/`·`jam-doc/`(문서 저장소) 문서에 기재됨
+- 최신 PRD: `docs/service/prd/01_PRD.md` (2026-08-06 갱신, 라우트 전체 대조 기준)
+- 문서 체계 갱신 규칙·화면 구성·성공 기준 전체가 위 PRD와 `docs/`(문서 폴더) 문서에 기재됨
 
 ## Product Principles
 
@@ -55,5 +55,5 @@ Tracker-less(자체 GPS 트래킹 없음, 기존 Strava 데이터 활용) + 배�
 - 공유 카드 컴포넌트의 변경은 항상 다중 화면 파급을 전제로 검토한다
 - 어드민은 MODULAR 적용 대상이 아니며 서비스 화면과 분리해 판단한다
 
-<!-- 이 파일은 `docs/specs/prd/01_PRD.md`에서 도출했습니다. 인터뷰 라운드 없이
+<!-- 이 파일은 `docs/service/prd/01_PRD.md`에서 도출했습니다. 인터뷰 라운드 없이
      기존 PRD를 근거로 작성했음을 밝힙니다 — 필요시 사실을 정정해 주세요. -->

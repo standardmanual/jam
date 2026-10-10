@@ -44,7 +44,7 @@ export const DEMO_INVENTORY_ITEM: InventoryGridItem = {
  * 실제 카탈로그의 아이템배지 「잃어버린 결혼반지」(숲속의 갱단 03-09, id
  * `708d9af4-3753-4fd0-b7e4-b4efbeda3faf`, Common) 값을 글자 단위로 복사했다(사용자
  * 2026-09-28 확정, 황금빛 도토리 관례). 근거: `jam-web/supabase/migrations/019_seed_worldview.sql:392`,
- * `jam-doc/assets/image-production/02-style-groups/03 숲속의 갱단/briefs/03-09 그루터기 살롱의 VIP/
+ * `docs/assets/image-production/02-style-groups/03 숲속의 갱단/briefs/03-09 그루터기 살롱의 VIP/
  * seed_03-09_badge_images.sql:5`.
  */
 const LOST_WEDDING_RING_ID = '708d9af4-3753-4fd0-b7e4-b4efbeda3faf'

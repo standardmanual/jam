@@ -34,7 +34,7 @@ function sampleBundle(): SampleBundle {
     bundle_id: '2026-10-05-weekly-mission-card',
     author: '윤진',
     created_at: '2026-09-25T10:30:00+09:00',
-    color_rationale_link: 'jam-doc/planning/content/TRIBES.md',
+    color_rationale_link: 'docs/service/content/TRIBES.md',
     world_review: { world_related: true, winter_reviewed: true, reason: "트라이브 표현이 있어 윈터가 검수했습니다. 'OK'" },
     card: {
       title: "이번 주 롱런's 챌린지",

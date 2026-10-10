@@ -7,7 +7,7 @@ created: 2026-09-30
 closed: 2026-10-01
 parent: "20260930_1450"
 specs:
-  - "jam-doc/planning/business-plan/07 JAM! 라이브 운영 블루프린트.md"
+  - "docs/plan/vision/07 JAM! 라이브 운영 블루프린트.md"
 ---
 
 # [BadgeEngine] JAM! 카테고리 행동 지표 추가 (O5)
@@ -20,7 +20,7 @@ specs:
   미션 완료, 컬렉션 완성, 가입 경과일, 주간 활동일, 같은 지점 방문일(06 6.2 O5, 07 5.2).
 - 구현 계획: 부풀릴 수 없게 센다. 같은 아이템을 다시 주운 것은 한 번만, 상대가 있는 지표는 서로 다른 유저 수로, 주간 활동일은 동기화나
   체크인을 한 날만 센다(06 6.2 「O5 계산 방식」). 자원 연결(1500)에서 JAM! 배지를 쓰려면 먼저 필요하다.
-- 관련 파일: `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md`, `jam-web/src/lib/badge-engine/`, 드랍·픽업 API `jam-web/src/app/api/drops/`,
+- 관련 파일: `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md`, `jam-web/src/lib/badge-engine/`, 드랍·픽업 API `jam-web/src/app/api/drops/`,
   06 플랜 6.1(지금 지표 6종).
 
 ## 시작 절차

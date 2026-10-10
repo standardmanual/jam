@@ -7,7 +7,7 @@ created: 2026-09-26
 closed: 2026-09-26
 parent: "20260926_1202"
 specs:
-  - docs/specs/prd/asset-generator/PRD.md
+  - docs/service/prd/asset-generator/PRD.md
 ---
 
 # [Infra] 프리셋 목록 스크립트(list-presets.mjs)를 만들고 에셋 제너레이터 PRD §8 실행 환경을 갱신한다
@@ -18,7 +18,7 @@ specs:
 
 - 요구사항: 윤진이 「대상 유형이 `home_feed`이고 이름이 `홈피드`」인 프리셋의 id를 찾을 수 있도록, 프리셋 목록을 한 줄씩 출력하는 CLI를 만든다. PRD §8의 실행 환경 서술도 새 경로(읽기 API 또는 서비스 키)로 맞춘다.
 - 구현 계획: `jam-web/scripts/asset-generator/list-presets.mjs --target-type <badge|mission|collection|home_feed>`가 `id · 이름 · 비율`을 출력한다. 환경변수는 `.env.local`과 `process.env`를 합쳐 읽고(1204와 같은 방식), API 환경변수가 없으면 어느 값이 없는지 한국어로 알리고 종료 코드 1이다.
-- 관련 파일(3개): 신규 `jam-web/scripts/asset-generator/list-presets.mjs`, 신규 테스트 `jam-web/scripts/asset-generator/__tests__/listPresets.test.ts`, `docs/specs/prd/asset-generator/PRD.md` §8 실행 환경(서비스 롤 키 필요 서술). 재사용: `jam-web/scripts/asset-generator/presetSource.mjs`(1204), 대상 유형 값 `jam-web/src/lib/asset-generator/presetSerialize.ts`(`PRESET_TARGET_TYPES` 57행)
+- 관련 파일(3개): 신규 `jam-web/scripts/asset-generator/list-presets.mjs`, 신규 테스트 `jam-web/scripts/asset-generator/__tests__/listPresets.test.ts`, `docs/service/prd/asset-generator/PRD.md` §8 실행 환경(서비스 롤 키 필요 서술). 재사용: `jam-web/scripts/asset-generator/presetSource.mjs`(1204), 대상 유형 값 `jam-web/src/lib/asset-generator/presetSerialize.ts`(`PRESET_TARGET_TYPES` 57행)
 
 ## 상세 요구사항
 
@@ -53,7 +53,7 @@ specs:
 ```
 신규: jam-web/scripts/asset-generator/list-presets.mjs
 신규: jam-web/scripts/asset-generator/__tests__/listPresets.test.ts
-수정: docs/specs/prd/asset-generator/PRD.md §8
+수정: docs/service/prd/asset-generator/PRD.md §8
 ```
 
 ### 테스트 결과

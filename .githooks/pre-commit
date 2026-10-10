@@ -32,14 +32,14 @@ esac
 #
 # 배경: 카즈하 모드 ③(선별 루틴)은 리포트·상태 파일만 쓰도록 설계됐지만, 프롬프트 지시만으로는
 # 지켜진다는 보장이 없다. 이번에 만드는 커밋의 작성자(현재 예약 작업 커밋의 실제 작성자,
-# git log로 확인: Claude <noreply@anthropic.com>)가 이 이메일과 같으면 jam-doc/operations/reports/
+# git log로 확인: Claude <noreply@anthropic.com>)가 이 이메일과 같으면 docs/operations/reports/
 # 밖 파일을 건드리는 것을 여기서 막는다. `git var GIT_AUTHOR_IDENT`는 -c user.email=…, 환경변수,
 # 저장소 설정을 모두 반영해 이번 커밋이 실제로 쓸 작성자를 알려준다.
 #
 # 우회 변수는 두지 않는다 — 무인 실행이 스스로 우회 변수를 켜는 것은 이 방어를 무력화하는
 # 것과 같기 때문이다.
 ROUTINE_AUTHOR_EMAIL="noreply@anthropic.com"
-ROUTINE_ALLOWED_PREFIX="jam-doc/operations/reports/"
+ROUTINE_ALLOWED_PREFIX="docs/operations/reports/"
 routine_author=$(git var GIT_AUTHOR_IDENT 2>/dev/null | sed -n 's/.*<\([^>]*\)>.*/\1/p')
 if [ "$routine_author" = "$ROUTINE_AUTHOR_EMAIL" ]; then
   routine_blocked=0
@@ -130,28 +130,28 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
       fi
     fi
 
-    # ③ 옛 문서 경로가 되살아나는 것을 막는다 (티켓 20260918_2105).
-    #   코드 쪽 문서는 docs/(tickets·specs·agents)에, 기획·마케팅·운영 자료와 제작 자산은
-    #   jam-doc/ 폴더에 둔다. 옛 경로(Service Plan/·Asset/)가 다시 생기면 대개 경로를 갱신하지
-    #   못한 자동화나 스킬이다.
+    # ③ 옛 문서 경로가 되살아나는 것을 막는다 (티켓 20260918_2105, 20261010_1214).
+    #   문서는 docs/ 하나에 목적별 폴더(service·plan·marketing·operations·tickets·agents·assets·
+    #   archive)로 둔다. 옛 경로(Service Plan/·Asset/·jam-doc/·docs/specs/)가 다시 생기면 대개
+    #   경로를 갱신하지 못한 자동화나 스킬이다.
     #
-    #   아래 ④⑤⑥은 원래 jam-doc이 별도 저장소였을 때 그쪽 pre-commit이 맡던 규칙이다.
-    #   저장소를 재통합하면서 경로 앞에 jam-doc/ 을 붙여 이리로 옮겨 왔다 (티켓 20260920_1412).
+    #   아래 ④⑤⑥은 원래 jam-doc이 별도 저장소였을 때 그쪽 pre-commit이 맡던 규칙이다
+    #   (티켓 20260920_1412로 이리로 옮겨 왔고, 20261010_1214로 경로를 docs/ 아래로 바꿨다).
     case "$f" in
-      "Service Plan/"*|"Asset/"*)
+      "Service Plan/"*|"Asset/"*|"jam-doc/"*|"docs/specs/"*)
         if [ "$st" = "A" ]; then
           echo "차단(pre-commit): 옛 문서 경로에 파일을 추가하려 합니다." >&2
           echo "  파일: $f" >&2
-          echo "  코드 쪽 문서는 docs/(tickets·specs·agents)에, 기획·마케팅·운영 자료는" >&2
-          echo "  jam-doc/ 폴더에 둡니다. 경로를 참조하는 자동화·스킬이 옛 경로를 쓰고 있지 않은지 확인하세요." >&2
+          echo "  문서는 docs/ 아래 목적별 폴더(service·plan·marketing·operations·tickets·agents·assets)에" >&2
+          echo "  둡니다(docs/README.md 폴더 지도 참조). 경로를 참조하는 자동화·스킬이 옛 경로를 쓰고 있지 않은지 확인하세요." >&2
           doclint=1
         fi
         ;;
 
-      # ④ jam-doc/archive/ 는 읽기 전용 — 신규 파일 생성만 막는다 (git mv 이동은 R이라 통과한다)
-      "jam-doc/archive/"*)
+      # ④ docs/archive/ 는 읽기 전용 — 신규 파일 생성만 막는다 (git mv 이동은 R이라 통과한다)
+      "docs/archive/"*)
         if [ "$st" = "A" ]; then
-          echo "차단(pre-commit): jam-doc/archive/ 는 읽기 전용입니다 — 신규 파일을 만들 수 없습니다." >&2
+          echo "차단(pre-commit): docs/archive/ 는 읽기 전용입니다 — 신규 파일을 만들 수 없습니다." >&2
           echo "  파일: $f" >&2
           echo "  기존 문서를 보관하려면 git mv 로 '이동'하세요 (이동은 통과합니다)." >&2
           doclint=1
@@ -159,11 +159,11 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
         ;;
 
       # ⑤ 서비스플랜 버전 사본 차단 — 단일 파일을 직접 고치고, 이력은 git이 보관한다
-      "jam-doc/planning/business-plan/"*)
+      "docs/plan/vision/"*)
         if [ "$st" = "A" ] && basename "$f" | grep -qE 'v[0-9]+\.[0-9]+'; then
           echo "차단(pre-commit): 서비스플랜은 버전 사본을 만들지 않습니다." >&2
           echo "  파일: $f" >&2
-          echo "  'jam-doc/planning/business-plan/02 JAM! 서비스 플랜.md' 를 직접 수정하세요." >&2
+          echo "  'docs/plan/vision/02 JAM! 서비스 플랜.md' 를 직접 수정하세요." >&2
           doclint=1
         fi
         ;;
@@ -171,14 +171,14 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
       # ⑥ 세계관 기준 문서(TRIBES) 버전 사본 차단 — 이력 폴더는 예외로 둔다.
       #   인접 그래프가 드랍 확률에 쓰이므로 설정 변경 전 스냅샷은 남길 수 있게 하되,
       #   판단 근거는 항상 현재본(TRIBES.md)이어야 한다 (티켓 20260918_0423).
-      "jam-doc/planning/content/tribes-history/"*)
+      "docs/service/content/tribes-history/"*)
         ;;
-      "jam-doc/planning/content/TRIBES"*)
+      "docs/service/content/TRIBES"*)
         if [ "$st" = "A" ] && basename "$f" | grep -qE '(_[0-9]{8}|_?v[0-9]+\.[0-9]+)\.md$'; then
           echo "차단(pre-commit): 세계관 기준 문서(TRIBES)는 버전 사본을 만들지 않습니다." >&2
           echo "  파일: $f" >&2
-          echo "  현재본은 'jam-doc/planning/content/TRIBES.md' 하나로 유지하고," >&2
-          echo "  버전 이력이 필요하면 'jam-doc/planning/content/tribes-history/' 에 두세요." >&2
+          echo "  현재본은 'docs/service/content/TRIBES.md' 하나로 유지하고," >&2
+          echo "  버전 이력이 필요하면 'docs/service/content/tribes-history/' 에 두세요." >&2
           doclint=1
         fi
         ;;
@@ -208,13 +208,13 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
       # ⑩ 사용자 트렌드 자료 파일명 — 루틴은 YYYY-MM-DD_로 시작하는 파일만 「최근 파일」로 고르므로,
       #   이름이 어긋나면 조용히 읽히지 않는다 (티켓 20260930_1518). 신규 추가에만 적용하고 안내 파일
       #   README.md는 대상이 아니다. 하위 폴더는 만들지 않는다.
-      "jam-doc/inbox/trends/"*)
-        if [ "$st" = "A" ] && [ "$f" != "jam-doc/inbox/trends/README.md" ]; then
-          rel="${f#jam-doc/inbox/trends/}"
+      "docs/operations/inbox/trends/"*)
+        if [ "$st" = "A" ] && [ "$f" != "docs/operations/inbox/trends/README.md" ]; then
+          rel="${f#docs/operations/inbox/trends/}"
           if ! printf '%s' "$rel" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}_[^/]+\.md$'; then
             echo "차단(pre-commit): 트렌드 자료 파일명이 규칙에 맞지 않습니다." >&2
             echo "  파일: $f" >&2
-            echo "  형식: jam-doc/inbox/trends/YYYY-MM-DD_제목.md  (날짜 = 올린 날 KST, 하위 폴더 없음)" >&2
+            echo "  형식: docs/operations/inbox/trends/YYYY-MM-DD_제목.md  (날짜 = 올린 날 KST, 하위 폴더 없음)" >&2
             doclint=1
           fi
         fi
@@ -222,7 +222,7 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
     esac
   done <<< "$staged"
 
-  # ⑦ 문서 링크·참조 검사 (티켓 20260919_1245, docs/specs/DOCUMENT_SCHEMA.md §5).
+  # ⑦ 문서 링크·참조 검사 (티켓 20260919_1245, docs/DOCUMENT_SCHEMA.md §5).
   #    커밋에서 추가된 줄의 링크와, 삭제·이동된 파일을 가리키는 모든 문서를 검사한다.
   #    새로 깨지는 링크(마크다운 링크)는 차단하고, 백틱 경로·frontmatter는 경고만 한다.
   #    기존에 깨진 링크는 건드리지 않는다(추가된 줄만 보므로 기준선 목록이 없다).
@@ -264,13 +264,13 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
     if [ -f scripts/gen-doc-index.mjs ] && ! node scripts/gen-doc-index.mjs --check >&2; then
       # INDEX.md는 여러 브랜치의 문서 변경을 한 파일에 모으는 생성물이라 병합 충돌이 날 수 있다
       # (티켓 20260921_1412). 충돌 표시를 손으로 풀지 않고 재생성한다.
-      echo "  병합 충돌로 docs/specs/INDEX.md에 충돌 표시가 남았다면 손으로 풀지 말고 'node scripts/gen-doc-index.mjs'로 재생성한 뒤 스테이지하세요." >&2
+      echo "  병합 충돌로 docs/INDEX.md에 충돌 표시가 남았다면 손으로 풀지 말고 'node scripts/gen-doc-index.mjs'로 재생성한 뒤 스테이지하세요." >&2
       doclint=1
     fi
     if [ -f scripts/gen-scheduled-jobs.mjs ] && ! node scripts/gen-scheduled-jobs.mjs --check >&2; then
       doclint=1
     fi
-    # 홈피드 기능 정의 문서(docs/specs/prd/home-feed/PRD.md)가 today-sections.ts·targetHref.ts와
+    # 홈피드 기능 정의 문서(docs/service/prd/home-feed/PRD.md)가 today-sections.ts·targetHref.ts와
     # 같은 최신본인지, 스테이지된 홈피드 코드에 이 문서가 함께 스테이지됐는지 검사한다
     # (티켓 20260927_2036).
     if [ -f scripts/gen-home-feed-doc.mjs ] && ! node scripts/gen-home-feed-doc.mjs --check >&2; then

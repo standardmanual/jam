@@ -207,7 +207,7 @@ jam-web/src/lib/i18n/ko.ts                             selectItemTitle 키 삭�
       실패 후 목록이 최신으로 갱신되는지)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 용어 일관성: 신규 문구 없음. 안내문의 «장착»은 기존 고정 용어 그대로
 - [x] 톤앤매너: 선택을 돕는 안내문 — 해요체 유지

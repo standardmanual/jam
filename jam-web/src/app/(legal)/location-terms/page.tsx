@@ -7,7 +7,7 @@ import LegalTopNav from '../LegalTopNav'
  * TopNav + 단일 컬럼 서버 컴포넌트, 본문은 --text-body + --leading-reading, 조 간격
  * --spacing-48, 항 간격 --spacing-32, 상단 여백 --spacing-64.
  *
- * 원고 출처는 `docs/specs/LOCATION_TERMS.md`의 제1조 ~ 부칙이다. 문구는 원고 그대로 옮긴다.
+ * 원고 출처는 `docs/service/legal/LOCATION_TERMS.md`의 제1조 ~ 부칙이다. 문구는 원고 그대로 옮긴다.
  * "남은 확인 필요 사항"(내부 메모)과 머리말의 "이 문서의 성격" 인용문은 옮기지 않는다.
  * 원고의 마크다운 표(제5조·제6조)와 제14조·제15조 사업자 정보는 앱 컬럼(398px)에서 가로
  * 스크롤 없이 읽히도록 dt/dd 카드형 레이아웃으로 재구성했다(가로 스크롤 표 금지).

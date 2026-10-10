@@ -7,7 +7,7 @@
  * 실제 그리기(스탬프 생성·곡선 생성·리본 레이어 합성)는 `jam-web/src/lib/asset-generator/`
  * (티켓 20260924_2155)를 그대로 쓴다 — 화면 안에 중복 구현하지 않는다.
  *
- * 원본: jam-doc/assets/prototypes/20260924_jam-asset-generator.html
+ * 원본: docs/assets/prototypes/20260924_jam-asset-generator.html
  * (LETTERS 154~159줄, setBaseFromCanvas 177줄, normalizeSvg 205줄, loadBlob 226줄,
  * applyAspect 302줄, frame 476줄). `AssetGeneratorExport`가 정밀 인코딩 중 프레임을
  * 하나씩 그리기 위해 `drawAtHead`·`setExporting` 등을 ref로 끌어올려 쓴다.
@@ -108,7 +108,7 @@ interface AssetGeneratorViewportProps {
   onPlayChange: (play: boolean) => void
 }
 
-// 브랜드 글자 원본: jam-doc/assets/brand/{j,a,m}.svg. 프로토타입(154~159줄)과 같은 path 데이터 —
+// 브랜드 글자 원본: docs/assets/brand/{j,a,m}.svg. 프로토타입(154~159줄)과 같은 path 데이터 —
 // file://로 여는 프로토타입과 달리 이 화면은 실제 서버에서 뜨지만, 값이 자주 바뀌지 않고
 // 이 화면에서만 쓰므로 프로토타입과 같은 방식으로 그대로 둔다.
 const BRAND_LETTERS: Record<'J' | 'A' | 'M', { w: number; h: number; d: string }> = {

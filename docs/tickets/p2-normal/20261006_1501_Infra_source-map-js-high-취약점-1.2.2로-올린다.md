@@ -45,7 +45,7 @@ jam-web/package-lock.json (+3/−3. 리뷰 브랜치 claude/jamwork-20261006_150
 - [x] 카리나: 1540과 합친 상태(240977c47)에서 `npm audit --omit=dev` 0건, `scripts/verify.sh` 전 단계 통과. 메인 폴더 `node_modules`는 아직 1.2.1이라 다음 `npm install`에서 맞춰진다.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 사용자 노출 문구 신규·변경 없음(해당 없음)
 

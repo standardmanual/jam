@@ -13,7 +13,7 @@ closed: 2026-10-06
 
 - 요구사항: stage.j-a-m.app의 자동 로그인 계정이 다시 관리자가 되지 못하게 코드로 막고, staging 어드민 확인에 기대던 문서·절차를 현재 상태로 고친다. 응급 조치(dev-tester `is_admin = false`)는 2026-10-06 15:12 KST에 했다.
 - 구현 계획: 아래 「구현 계획」(파일 단위). 유형 `bug`. Vercel 배포 보호는 이번 범위가 아니다(사용자 결정 사항으로 남김).
-- 관련 파일: `jam-web/src/lib/admin/auth.ts`(`hasAdminAccess`), `jam-web/src/app/api/dev-login/route.ts`(`DEV_USER_EMAIL` 19행), `jam-web/src/proxy.ts`(89–91행 자동 로그인), `jam-web/supabase/migrations/seed_dev_tester_not_admin.sql`, `docs/specs/DEV_PROCESS_GUARDRAILS.md` 패턴 13
+- 관련 파일: `jam-web/src/lib/admin/auth.ts`(`hasAdminAccess`), `jam-web/src/app/api/dev-login/route.ts`(`DEV_USER_EMAIL` 19행), `jam-web/src/proxy.ts`(89–91행 자동 로그인), `jam-web/supabase/migrations/seed_dev_tester_not_admin.sql`, `docs/agents/DEV_PROCESS_GUARDRAILS.md` 패턴 13
 
 ## 배경 / 문제 정의
 
@@ -31,7 +31,7 @@ closed: 2026-10-06
 | `jam-web/src/app/api/dev-login/route.ts` | `DEV_USER_EMAIL` 19 | 위 공용 상수를 쓴다(하드코딩 위치 하나로) |
 | `jam-web/src/lib/admin/auth.ts` | `hasAdminAccess` 33–42 | 맨 앞에서 `STAGING_MODE === 'true'`이고 대상이 dev-login 계정(id 또는 이메일)이면 `false`. `ADMIN_EMAILS`·`users.is_admin`보다 먼저 본다. 로컬 개발(`NODE_ENV=development`, `STAGING_MODE` 없음)은 지금처럼 `ADMIN_EMAILS` 셸 변수로 관리자가 될 수 있다(패턴 13 유지). `isAdminAccount`(유저 일괄 처리의 자동 제외용)는 바꾸지 않는다 |
 | 새 `jam-web/src/lib/admin/__tests__/auth.test.ts` | — | staging + dev-login 계정 → `is_admin`이 참이거나 화이트리스트에 있어도 false(DB 조회 없이), 로컬(스테이징 아님) + 화이트리스트 → true, staging + 다른 관리자 → 기존 판정대로 true |
-| `docs/specs/DEV_PROCESS_GUARDRAILS.md` | 패턴 13 「반드시 지킬 것」 | 「staging에서는 자동 로그인 계정이 관리자가 될 수 없다(코드 차단, 티켓 20261006_1527)」 한 줄 |
+| `docs/agents/DEV_PROCESS_GUARDRAILS.md` | 패턴 13 「반드시 지킬 것」 | 「staging에서는 자동 로그인 계정이 관리자가 될 수 없다(코드 차단, 티켓 20261006_1527)」 한 줄 |
 
 ## 완료 조건
 
@@ -51,7 +51,7 @@ closed: 2026-10-06
 ### 변경된 파일
 ```
 jam-web/src/lib/admin/auth.ts, jam-web/src/lib/env/test-accounts.ts, jam-web/src/app/api/dev-login/route.ts, jam-web/src/lib/admin/__tests__/auth.test.ts(신규 11건),
-docs/specs/DEV_PROCESS_GUARDRAILS.md(패턴 13), .claude/skills/jam-work/references/handling-rules.md(70행, 카리나 머지 때), jam-web/supabase/migrations/seed_dev_tester_not_admin.sql(응급 조치 기록)
+docs/agents/DEV_PROCESS_GUARDRAILS.md(패턴 13), .claude/skills/jam-work/references/handling-rules.md(70행, 카리나 머지 때), jam-web/supabase/migrations/seed_dev_tester_not_admin.sql(응급 조치 기록)
 (코드 5파일, jam-web 178줄. 리뷰 브랜치 claude/jamwork-20261006_1527-staging-dev-login-admin-block, 범위 e273c4035..699300c18, staging 머지 6ca80e960)
 ```
 
@@ -62,7 +62,7 @@ docs/specs/DEV_PROCESS_GUARDRAILS.md(패턴 13), .claude/skills/jam-work/referen
 - [x] 카리나: 1502 ③-a와 합친 상태(6ca80e960)로 `scripts/verify.sh` 전 단계 통과.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 사용자 노출 문구 신규·변경 없음(해당 없음)
 

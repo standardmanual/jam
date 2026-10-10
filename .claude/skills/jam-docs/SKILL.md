@@ -11,21 +11,23 @@ CLAUDE.md에는 "어느 카테고리에 해당하는지" 판단 기준만 있다
 
 카테고리 5종과 위치는 루트 `CLAUDE.md` 「문서 체계 개요」 표가 단일 원천이다(같은 표를 여기에
 다시 적지 않는다 — 두 벌이 어긋났던 적이 있다, 티켓 20260928_2340). 수정 방식은 같은 파일의
-「폴더 = 수명주기」 표를 따른다: ② 티켓·`jam-doc/operations/reports/`·`jam-doc/inbox/trends/`만 신규 생성,
+「폴더 = 수명주기」 표를 따른다: ② 티켓·`docs/operations/reports/`·`docs/operations/inbox/trends/`만 신규 생성,
 나머지는 기존 파일을 직접 고친다.
 
 하나의 변경이 여러 카테고리에 걸치면 **각 카테고리 문서를 모두** 갱신한다.
 
-**저장소는 하나다.** ①②④는 `docs/` 아래에, ③⑤는 `jam-doc/` 아래에 있지만 둘 다 같은 저장소
-(`standardmanual/jam`)에 속한다. 한 작업이 양쪽을 건드려도 커밋 하나·push 하나로 끝난다
-(2026-09-20 재통합, 티켓 20260920_1412). 경로는 항상 작업 폴더 기준으로 적는다
-(`docs/specs/prd/01_PRD.md`, `jam-doc/planning/content/TRIBES.md`). 폴더명은 영문 소문자다.
+**문서 루트는 `docs/` 하나다.** 다섯 카테고리 문서 모두 `docs/` 아래 목적별 폴더(`service`·`plan`·
+`marketing`·`operations`·`tickets`·`agents`·`assets`·`archive`)에 있고 같은 저장소(`standardmanual/jam`)에
+속한다. 한 작업이 여러 폴더를 건드려도 커밋 하나·push 하나로 끝난다(2026-09-20 재통합, 티켓
+20260920_1412, 2026-10-10 루트 통합, 티켓 20261010_1214). 폴더 지도는 `docs/README.md`, 주제로 찾는 길은
+`docs/INDEX.md`의 주제 지도다. 경로는 항상 작업 폴더 기준으로 적는다
+(`docs/service/prd/01_PRD.md`, `docs/service/content/TRIBES.md`). 폴더명은 영문 소문자다.
 
 ---
 
 ## 문서 스키마: 모든 문서 공통 (2026-09-19, 티켓 20260919_1223)
 
-문서를 새로 만들거나 고칠 때 `docs/specs/DOCUMENT_SCHEMA.md`를 따른다. 커밋할 때
+문서를 새로 만들거나 고칠 때 `docs/DOCUMENT_SCHEMA.md`를 따른다. 커밋할 때
 `.githooks/pre-commit`이 `scripts/doc-check.mjs`로 검사하고 위반이면 차단한다.
 
 - **새 문서(티켓 제외)에는 frontmatter의 `type`과 `description`(한 줄, 100자 이내)을 붙인다.**
@@ -41,8 +43,11 @@ CLAUDE.md에는 "어느 카테고리에 해당하는지" 판단 기준만 있다
   우회하고 사유를 커밋 메시지에 남긴다. 이동·삭제 뒤 티켓 본문의 백틱 경로 경고가 수백 건 나오는
   것은 정상이며 커밋은 진행된다.
 - 전체 현황은 `node scripts/doc-check.mjs --all --summary`로 본다.
-- `jam-doc/` 문서도 같은 저장소의 같은 훅·같은 설정으로 검사받는다(2026-09-20 재통합 전에 있던
+- 모든 문서가 같은 저장소의 같은 훅·같은 설정으로 검사받는다(2026-09-20 재통합 전에 있던
   `jam-doc` 전용 훅·엔진 복사본은 없어졌다, 티켓 20260920_1412).
+- 새 문서는 어느 폴더에 두는지부터 정한다: 지금 서비스 기준이면 `docs/service/`, JAM 2.0 기획이면
+  `docs/plan/jam2/`, 비전이면 `docs/plan/vision/`. 주제 태그를 달면 `docs/INDEX.md` 주제 지도에 잡힌다
+  (`node scripts/gen-doc-index.mjs`).
 
 ---
 
@@ -166,12 +171,12 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 **대상 변경**: 신규 기능 페이지 추가 / `jam-web/src/app/api/` 라우트 추가·변경·삭제 / 기존 기능의 정책·플로우 변경
 
 **절차**:
-1. `docs/specs/prd/` 하위 관련 문서 확인 (`01_PRD.md`, `02_DATA_MODEL.md`, `03_PHASES.md`, `04_PROJECT_SPEC.md`, 주제별 폴더 `docs/specs/prd/{주제}/`)
-2. 새 기능 영역이면 `docs/specs/prd/{주제}/` 하위 폴더 신설 (예: `docs/specs/prd/admin-ui/`, 영문 소문자 케밥 표기). 파일명에 날짜·Phase 접두어를 붙이지 않고 폴더로 구분
+1. `docs/service/prd/` 하위 관련 문서 확인 (`01_PRD.md`, `02_DATA_MODEL.md`, `03_PHASES.md`, `04_PROJECT_SPEC.md`, 주제별 폴더 `docs/service/prd/{주제}/`)
+2. 새 기능 영역이면 `docs/service/prd/{주제}/` 하위 폴더 신설 (예: `docs/service/prd/admin-ui/`, 영문 소문자 케밥 표기). 파일명에 날짜·Phase 접두어를 붙이지 않고 폴더로 구분
 3. **기존 파일 직접 수정** — PRD는 "현재 기준 최신 스펙"이 원칙
 4. 문서 간 상호 링크를 경로 변경 시 함께 갱신
 
-**홈피드(홈 「투데이」) 기능 정의**: 정본은 `docs/specs/prd/home-feed/PRD.md`다. 그 문서 frontmatter `code:`의
+**홈피드(홈 「투데이」) 기능 정의**: 정본은 `docs/service/prd/home-feed/PRD.md`다. 그 문서 frontmatter `code:`의
 경로를 바꾸는 커밋은 같은 커밋에서 이 문서도 바꿔야 pre-commit을 통과한다(테스트 파일만 바뀐 커밋은 제외).
 표(템플릿·레이아웃·노출 태그·목적지)는 생성 구간이라 손으로 고치지 않고 `node scripts/gen-home-feed-doc.mjs`로
 다시 만든다. 동작이 바뀌지 않은 변경은 `JAM_SKIP_DOCLINT=1`로 우회하고 사유를 커밋 메시지에 남긴다(티켓 20260927_2036).
@@ -184,17 +189,17 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 
 | 문서 | 대상 |
 |---|---|
-| `jam-doc/planning/content/ACTIVITY_BADGES.md` | 액티비티배지 전체 목록·조건·설명 |
-| `jam-doc/planning/content/ITEMBOOKS.xlsx` | 아이템북 + 아이템배지 목록, 트라이브 인접 그래프 |
-| `jam-doc/planning/content/COMBINE_RECIPES.md` | 조합 레시피 |
-| `jam-doc/planning/content/TRIBES.md` | 트라이브(tribe) |
-| `jam-doc/planning/content/POI.md` | 장소(POI) |
-| `jam-doc/planning/content/OPS_PATTERNS.md` | 운영 패턴 사전 원고. 운영툴에 입력한 뒤에는 DB가 원천이고 이 문서는 사본이다(운영툴 PRD §10.1) |
+| `docs/service/content/ACTIVITY_BADGES.md` | 액티비티배지 전체 목록·조건·설명 |
+| `docs/service/content/ITEMBOOKS.xlsx` | 아이템북 + 아이템배지 목록, 트라이브 인접 그래프 |
+| `docs/service/content/COMBINE_RECIPES.md` | 조합 레시피 |
+| `docs/service/content/TRIBES.md` | 트라이브(tribe) |
+| `docs/service/content/POI.md` | 장소(POI) |
+| `docs/service/content/OPS_PATTERNS.md` | 운영 패턴 사전 원고. 운영툴에 입력한 뒤에는 DB가 원천이고 이 문서는 사본이다(운영툴 PRD §10.1) |
 
 **기존 파일 직접 수정** — 컨텐츠는 "현재 상태"가 원칙, 버전 이력은 티켓에 남긴다.
 
 > **예외 (2026-09-18, 티켓 20260918_0423):** `TRIBES.md`는 인접 그래프가 드랍 확률에
-> 쓰이는 세계관 기준 문서라, 큰 설정 변경 전에는 `jam-doc/planning/content/tribes-history/`에 변경 전
+> 쓰이는 세계관 기준 문서라, 큰 설정 변경 전에는 `docs/service/content/tribes-history/`에 변경 전
 > 스냅샷을 남길 수 있다. 이 폴더는 `.githooks/pre-commit`의 버전 사본 차단에서 예외다. 현재본은 항상
 > `TRIBES.md` 하나이고 판단 근거는 언제나 그 현재본이다.
 
@@ -204,7 +209,7 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 
 **대상 변경**: `jam-web/src/lib/badge-engine/`·`drop-engine/` 로직 변경 / 새 조건 타입 구현 / 정책 변경(홍수방지·성장티어·첫싱크게이트·pity) / 드랍 확률·파라미터 변경
 
-**위치**: `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` — 단일 진실 원천, 자립 문서로 유지. 기존 파일 직접 수정. 컨텐츠 목록(③)과는 분리 관리.
+**위치**: `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md` — 단일 진실 원천, 자립 문서로 유지. 기존 파일 직접 수정. 컨텐츠 목록(③)과는 분리 관리.
 
 ---
 
@@ -212,7 +217,7 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 
 **대상 변경**: 기능 레벨의 추가·변경·삭제 (①에 해당하는 수준). 사소한 버그 수정·경미한 UI 조정은 대상 아님.
 
-**위치**: `jam-doc/planning/business-plan/` (같은 저장소의 폴더 — 코드와 함께 커밋하고 `git push origin staging`)
+**위치**: `docs/plan/vision/` (같은 저장소의 폴더 — 코드와 함께 커밋하고 `git push origin staging`)
 
 **갱신 방식** — ①에 해당하는 수준의 변경이 발생한 작업에서 함께 갱신한다:
 1. 폴더 내 단일 현행 파일 `02 JAM! 서비스 플랜.md`를 연다
@@ -229,5 +234,5 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 ## 폐기된 규칙
 
 `SERVICE_OPERATIONS_YYYYMMDD_HHMM.md` 타임스탬프 파일 생성 방식은 티켓 시스템으로 대체됐다.
-더 이상 생성하지 않으며, 기존 파일은 `jam-doc/archive/operations/`에 읽기 전용으로 보관한다.
-현행 운영 로직 문서는 `docs/specs/SERVICE_OPERATIONS.md`다 (2026-08-27 승격).
+더 이상 생성하지 않으며, 기존 파일은 `docs/archive/operations/`에 읽기 전용으로 보관한다.
+현행 운영 로직 문서는 `docs/service/SERVICE_OPERATIONS.md`다 (2026-08-27 승격).

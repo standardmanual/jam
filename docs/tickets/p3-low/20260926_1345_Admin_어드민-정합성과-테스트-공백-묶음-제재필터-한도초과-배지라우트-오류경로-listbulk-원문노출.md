@@ -26,7 +26,7 @@ related:
 
 - (1) `fetchActiveBanUserIds`는 읽은 행 수가 한도(1,000)와 같거나 크면 "제재 기록이 한도(1,000건)를 넘어 제재 필터를 신뢰할 수 없습니다" 취지의 한국어 문장으로 오류를 던진다(기존 조회 오류 처리와 같은 방식으로 화면이 오류를 보이게). 잘림을 부정하던 옛 주석은 사실대로 고친다.
 - (2) 각 라우트 테스트의 `fakeClient`에 오류 주입 옵션을 추가한다: 단건 PATCH의 조회 오류(`readError`)가 500과 한국어 안내를 돌려줄 것, `list-bulk` deactivate의 사전 조회(`fetchBadgeDeactivationCandidates`) 오류 500·`READ_CHUNK_SIZE` 경계(묶음이 둘 이상)·빈 `ids` 입력, `export`의 정상 경로와 `CHUNK_SIZE` 경계.
-- (3) `list-bulk/route.ts`의 51·67·119·224행 부근 오류 응답을 고정 한국어 문장으로 바꾸고 `console.error`로 원문을 남긴다. 같은 파일에서 이미 바꾼 export·ids·PATCH의 문장 스타일(`docs/specs/UX_WRITING_GUIDELINE.md` "현상 → 원인 → 해결책")을 따르고, DB 원문이 응답에 없음을 테스트로 확인한다.
+- (3) `list-bulk/route.ts`의 51·67·119·224행 부근 오류 응답을 고정 한국어 문장으로 바꾸고 `console.error`로 원문을 남긴다. 같은 파일에서 이미 바꾼 export·ids·PATCH의 문장 스타일(`docs/service/writing/UX_WRITING_GUIDELINE.md` "현상 → 원인 → 해결책")을 따르고, DB 원문이 응답에 없음을 테스트로 확인한다.
 
 ## 구현 계획
 

@@ -146,11 +146,11 @@ tags: [워크플로]
 
 | 항목 | 상태 |
 |---|---|
-| 저장소 추적 파일 전체 (`jam-web/`, `docs/`, **`jam-doc/`**, `scripts/`, `.claude/`) | 실제 파일로 체크아웃됨 |
+| 저장소 추적 파일 전체 (`jam-web/`, **`docs/`**, `scripts/`, `.claude/`) | 실제 파일로 체크아웃됨 |
 | `jam-web/node_modules` | 메인 작업 폴더로 향하는 **심볼릭 링크** (`scripts/workspace-setup.sh link`) |
 | 시크릿 파일 (`.env.local` 등) | 없음 |
 
-> **2026-09-20 이전과 달라진 점.** `jam-doc/`은 별도 저장소여서 워크트리에 아예 따라오지
+> **2026-09-20 이전과 달라진 점.** 기획·운영 문서(`jam-doc/`)는 별도 저장소여서 워크트리에 아예 따라오지
 > 않았다. 아현은 기획·운영 문서를 **읽지도 못한 채** 그 문서의 수정안을 써야 했고, 이것이
 > 「문서 갱신안」 우회 절차가 반복해서 어긋난 근본 원인이었다. 저장소를 재통합하면서
 > (티켓 20260920_1412) 이제 워크트리에 실제 폴더로 따라오며, 아현이 직접 고쳐 커밋한다.
@@ -184,8 +184,8 @@ tags: [워크플로]
 | 민지 | 지정된 커밋 범위의 diff + 티켓 + 스펙 | 없음 | Write·Edit 도구 자체가 없음 · 워크플로 게이트와 `/jam-ship` 5단계에서 격리 워크트리에 실행(티켓 20261002_1905) · 공유 작업 폴더에서 HEAD·작업 트리를 옮기는 git 명령을 막는 정의 frontmatter 훅은 등록돼 있으나 클라우드 세션의 실제 호출에서 걸리지 않음 |
 | 채원 | `jam-web/design-system/`, Storybook, 지정된 diff | 없음 | Write·Edit 도구 자체가 없음 · 사후 리뷰(②)만 워크플로 게이트에서 격리 워크트리에 실행 · 민지와 같은 frontmatter 훅(같은 상태) |
 | 혜린 | 티켓·PRD·컨텐츠 문서 | 없음 | 〃 (Bash도 없음) |
-| 윈터 | `jam-doc/planning/content/TRIBES.md` 중심 + 웹 | 없음 | 〃 |
-| 윤진 | `jam-doc/marketing/`, 리포트 + 웹 | 세션: `jam-doc/assets/`의 묶음 폴더 3곳(`badge-bundles/`·`mission-bundles/`·`home-feed-bundles/`의 `<묶음 ID>/`, 모드 ⑧ 한정, Bash) | Bash 도구는 물리적으로 좁혀지지 않는다. `render.mjs`·`list-presets.mjs` 실행·묶음 폴더 쓰기·`register-*.mjs --dry-run`만 허용한다는 것은 정의 문서의 지시(프롬프트 규칙)다. 예약 실행은 이미지를 만들지 않는다(티켓 20260930_1519). 등록(`--dry-run` 없음·`--undo`)·프리셋 생성·수정·DB·스토리지 쓰기·git은 금지 |
+| 윈터 | `docs/service/content/TRIBES.md` 중심 + 웹 | 없음 | 〃 |
+| 윤진 | `docs/marketing/`, 리포트 + 웹 | 세션: `docs/assets/`의 묶음 폴더 3곳(`badge-bundles/`·`mission-bundles/`·`home-feed-bundles/`의 `<묶음 ID>/`, 모드 ⑧ 한정, Bash) | Bash 도구는 물리적으로 좁혀지지 않는다. `render.mjs`·`list-presets.mjs` 실행·묶음 폴더 쓰기·`register-*.mjs --dry-run`만 허용한다는 것은 정의 문서의 지시(프롬프트 규칙)다. 예약 실행은 이미지를 만들지 않는다(티켓 20260930_1519). 등록(`--dry-run` 없음·`--undo`)·프리셋 생성·수정·DB·스토리지 쓰기·git은 금지 |
 | 카즈하 | 리포트·티켓·지표 API | 없음 | 〃 |
 | 하니 | 문서 체계 전반 | 없음 | 〃 (Bash도 없음) |
 
@@ -201,8 +201,8 @@ tags: [워크플로]
 
 | 검사기 | 범위 | 제외 |
 |---|---|---|
-| `doc-check` (링크·frontmatter) | `docs/specs/`, `docs/agents/`, `docs/tickets/`, `jam-doc/planning/`, `jam-doc/marketing/`, `jam-doc/operations/`, `jam-doc/inbox/` | `jam-doc/archive/`, `jam-doc/assets/`, `operations/reports/` |
-| `check-slop` (한국어 슬롭) | `jam-web/`, `docs/`, `jam-doc/` | `docs/tickets/`, `jam-doc/archive/`, `jam-doc/assets/`, `jam-doc/inbox/trends/` |
+| `doc-check` (링크·frontmatter) | `docs/` 전체 | `docs/archive/`, `docs/assets/`, `docs/operations/reports/`, `docs/tickets/modular/` |
+| `check-slop` (한국어 슬롭) | `jam-web/`, `docs/` | `docs/tickets/`, `docs/archive/`, `docs/assets/`, `docs/operations/inbox/trends/` |
 
 ---
 
@@ -214,11 +214,11 @@ tags: [워크플로]
 
 | 루틴 | 주기 (KST) | 담당 | 산출물 | 상태 |
 |---|---|---|---|---|
-| 주간 브리핑 | 화 09:00 | 카즈하 → 윤진 | `jam-doc/operations/reports/weekly/YYYY-Www.md` | 삭제됨(2026-10-07) |
-| 선별 (무인 적격 판정) | 매일 06:00 | 카즈하 | `jam-doc/operations/reports/triage/YYYY-MM-DD.md` | 삭제됨(2026-10-07) |
+| 주간 브리핑 | 화 09:00 | 카즈하 → 윤진 | `docs/operations/reports/weekly/YYYY-Www.md` | 삭제됨(2026-10-07) |
+| 선별 (무인 적격 판정) | 매일 06:00 | 카즈하 | `docs/operations/reports/triage/YYYY-MM-DD.md` | 삭제됨(2026-10-07) |
 | 주간 배포 확인 | 목 15:00 | 무인 카리나 | Slack 리마인더 게시 | 삭제됨(2026-10-07) |
 | 주간 배포 실행 | 목 23:59 | 무인 카리나 | 프로덕션 배포 | 삭제됨(2026-10-07) |
-| 월간 트렌드·문서 점검 | 매월 1일 09:00 | 윈터·윤진 → 하니 | `jam-doc/operations/reports/monthly/YYYY-MM.md` | 삭제됨(2026-10-07) |
+| 월간 트렌드·문서 점검 | 매월 1일 09:00 | 윈터·윤진 → 하니 | `docs/operations/reports/monthly/YYYY-MM.md` | 삭제됨(2026-10-07) |
 
 ### 무인 실행에 거는 제약
 
@@ -412,5 +412,5 @@ pre-push가 (a) 폴더 이름이 `wf_`로 시작하는 링크드 워크트리, (
 | `.claude/skills/jam-work/SKILL.md` | 경로 판정 분기표, 파이프라인 단계별 상세 |
 | `.claude/skills/jam-work/references/scheduled-jobs.md` | 예약 루틴 전체 스펙 |
 | `.claude/skills/jam-work/references/handling-rules.md` | 상황별 처리 규칙표 |
-| `docs/specs/DEV_PROCESS_GUARDRAILS.md` | 반복된 실패 패턴과 방지책 |
+| `docs/agents/DEV_PROCESS_GUARDRAILS.md` | 반복된 실패 패턴과 방지책 |
 | `docs/agents/workflow/README.md` | 도입 구상·결정 배경의 동결된 기록(2026-09-22 이후 수정 불가, 참고용) — 현재 규칙 아님 |

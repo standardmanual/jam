@@ -2,7 +2,7 @@
 -- 티켓 20260929_1250 후속. 등록은 사용자 승인 뒤 메인 세션이 실행한다(공용 단일 DB, CLAUDE.md 절대 규칙 6).
 -- 선택 근거(사용자 승인, 리포트 「최종 선택」): 7일 모두 후보 A.
 -- 월·화·목·금·토·일 카드 6장(이미지 포함)은 이 파일이 아니라 등록 묶음 스크립트(register-home-feed-card.mjs)로
--- 등록한다(묶음: jam-doc/operations/reports/weekly/2026-W40-images/). 이 기간에 이미 등록된 카드는 없다(9/29 조회).
+-- 등록한다(묶음: docs/operations/reports/weekly/2026-W40-images/). 이 기간에 이미 등록된 카드는 없다(9/29 조회).
 -- 미션 카드 규칙(content-automation PRD §8): mission_spotlight는 large_thumbnail, 커버는 미션 대표 이미지 URL 그대로.
 
 BEGIN;

@@ -110,16 +110,16 @@ a one-word reason; do not silently omit it.
      minimized
    - `admin`: the `ADMIN_EMAILS`/`ADMIN_SECRET` check path is present
 10. Error handling matches the spec's expected behaviour
-11. Documentation — did 아현 update every document the change actually affects. `jam-doc/` edits
+11. Documentation — did 아현 update every document the change actually affects. `docs/` edits
     appear in the review diff like any other file. Judge the diff itself, and check `문서 갱신안`
     against it
 12. **Korean naturalness** (`copy`·`ui`·`content` types only, when the diff has new/changed
     user-facing Korean text). Two sources, both context-dependent — pattern matching already
     caught the rest at `verify.sh` time (`scripts/check-slop.mjs`):
-    - `docs/specs/UX_WRITING_GUIDELINE.md` §7 (Anti-slop 판단 기준) — JAM-specific
+    - `docs/service/writing/UX_WRITING_GUIDELINE.md` §7 (Anti-slop 판단 기준) — JAM-specific
       translationese/cliché/structure patterns (e.g. "~에 대해" overuse, "~하시기 바랍니다"
       formality clash, service-voice clichés, mixed sentence endings).
-    - `docs/specs/SLOP_DICTIONARY.md` §4 — general context-dependent AI-tell patterns
+    - `docs/service/writing/SLOP_DICTIONARY.md` §4 — general context-dependent AI-tell patterns
       (pronoun reference ambiguity, mechanically uniform sentence endings, stacked hedging,
       register drift within one document, awkward 형식명사/당위 constructions, anthropomorphised
       abstract subjects, dense repetition of connectives or 결산 lexicon).

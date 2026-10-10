@@ -102,7 +102,7 @@ jam-web/src/app/api/admin/itembooks/[id]/route.ts
       권한이 이 서브에이전트에 위임되지 않음 — 절대 규칙 3, 5). 로컬 테스트 방법은 요약 참조.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 용어 일관성: 신규 문구는 404 에러 메시지 `아이템북을 찾을 수 없습니다.` 하나뿐이며, 기존
       GET 계열 라우트(예: 트라이브 PUT의 `트라이브을 찾을 수 없습니다.`)와 동일한 어투·구조를 따랐다.

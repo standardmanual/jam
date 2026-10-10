@@ -9,7 +9,7 @@
  * 실행 때 대상을 다시 판정한다(fail-closed) — 등록 뒤에 컬렉션이 내려가거나 아이템이 지워졌으면 그 대상은 놓지
  * 않고 사유를 결과에 남긴다. 결과는 `engine_decision_log`(`ambient_batch_result`, `trigger: 'scheduled'`)에도 남는다.
  *
- * 로직 문서: docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md §3.12 「날짜 예약 배포」
+ * 로직 문서: docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md §3.12 「날짜 예약 배포」
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAmbientDropConfig } from './config'

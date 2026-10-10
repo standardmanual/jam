@@ -5,7 +5,7 @@ priority: P3
 status: OPEN
 created: 2026-09-29
 specs:
-  - docs/specs/PRIVACY_POLICY.md
+  - docs/service/legal/PRIVACY_POLICY.md
 ---
 
 # [Infra] 부정 이용 탐지 기록 자동 파기가 실패하면 알림을 보낸다

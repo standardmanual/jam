@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// 슬롭 검사 — docs/specs/SLOP_DICTIONARY.md의 금칙 단어·금지 문장을
+// 슬롭 검사 — docs/service/writing/SLOP_DICTIONARY.md의 금칙 단어·금지 문장을
 // origin/staging 대비 diff의 추가된 라인(커밋 전 워킹트리 포함)에서 찾는다 (티켓 20260918_0951, 20260924_0037).
 //
-// 검사 대상: jam-web/**, docs/** (단 docs/tickets/**는 제외 — 티켓 본문은 작업 이력이라
-// 검사 대상이 아니다), 그리고 중첩 저장소 jam-doc/의 미푸시 커밋(origin/main 대비 — 세계관·
-// 마케팅 문서도 사용자에게 닿는 글이다). 전체 파일이 아니라 diff의 추가 라인만 보는 이유는
+// 검사 대상: jam-web/**, docs/** (단 docs/tickets/**·docs/archive/**·docs/assets/**는 제외 —
+// 티켓 본문은 작업 이력이고 보관·생성 산출물은 새로 쓰는 글이 아니다. 세계관·마케팅 문서도
+// docs/ 아래에 있어 검사 대상이다). 전체 파일이 아니라 diff의 추가 라인만 보는 이유는
 // 이미 승인된 기존 텍스트까지 매번 걸리면 게이트가 무의미해지기 때문이다.
 //
 // "안티 슬롭 구조 원칙"(서론 없는 본론 진입 등)과 "이모지 남발"은 문자열 매칭으로
@@ -12,7 +12,7 @@
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 
-const DICT_PATH = 'docs/specs/SLOP_DICTIONARY.md'
+const DICT_PATH = 'docs/service/writing/SLOP_DICTIONARY.md'
 
 function extractQuoted(text) {
   return [...text.matchAll(/"([^"]+)"/g)].map((m) => m[1].replace(/~$/, '').trim())
@@ -93,12 +93,12 @@ function collectAddedLines() {
   const inScope = (f) =>
     f &&
     (only.length === 0 || only.includes(f)) &&
-    (f.startsWith('jam-web/') || f.startsWith('docs/') || f.startsWith('jam-doc/')) &&
+    (f.startsWith('jam-web/') || f.startsWith('docs/')) &&
     !f.startsWith('docs/tickets/') &&
-    !f.startsWith('jam-doc/archive/') &&
-    !f.startsWith('jam-doc/assets/') &&
+    !f.startsWith('docs/archive/') &&
+    !f.startsWith('docs/assets/') &&
     // 사용자가 넣은 트렌드 자료 원문은 고치지 않으므로 금칙어 검사에서 뺀다 (티켓 20260930_1518)
-    !f.startsWith('jam-doc/inbox/trends/')
+    !f.startsWith('docs/operations/inbox/trends/')
   // 워킹트리 기준으로 비교한다 — 커밋 전(verify.sh를 커밋 전에 돌리는 경우)의 수정·스테이징 줄과
   // 추적되지 않는 새 파일도 잡는다. `origin/staging...HEAD`만 보면 커밋 전 줄이 빠져 CI와 결과가 갈렸다.
   const base = execSync('git merge-base origin/staging HEAD', opts).trim()
@@ -133,7 +133,7 @@ if (findings.length > 0) {
     console.error(`  ${f.file}:${f.line} — "${f.pattern}"`)
   }
   if (findings.length > 20) console.error(`  ...외 ${findings.length - 20}건`)
-  console.error('docs/specs/SLOP_DICTIONARY.md의 대체 표현을 참고해 고치세요.')
+  console.error('docs/service/writing/SLOP_DICTIONARY.md의 대체 표현을 참고해 고치세요.')
   process.exit(1)
 }
 

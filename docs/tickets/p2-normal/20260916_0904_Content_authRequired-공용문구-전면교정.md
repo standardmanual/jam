@@ -83,7 +83,7 @@ jam-web/src/lib/i18n/ko.ts
   기존 경고 — design-system stories·ProfileClient.tsx 등, 이번 변경과 무관)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 용어 일관성: "인증" 금지어 제거 — "로그인"으로 교체
 - [x] 톤앤매너: 오류 상황에 맞는 담백한 안내

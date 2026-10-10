@@ -35,8 +35,8 @@ parent: "20260921_2219"
 8. **관련 문서 전수 갱신** (사용자 추가 지시, 2026-09-21 착수 직후): 구현이 게이트를 통과하면 `docs/`와 `jam-doc/` 안에서 배포 절차·롤백·DB 마이그레이션 규칙을 서술하는 현재 상태 문서를 새 내용에 맞춘다.
    - 담당: 카리나(`docs` 유형으로 직접 처리). 시점은 review 브랜치를 staging에 머지한 뒤, push하기 전이다. 아현의 구현 범위(1~7번)에는 넣지 않는다.
    - 방식: 같은 사실을 옮겨 적지 않는다. 절차의 단일 원천은 `/jam-ship` SKILL.md와 `jam-developer.md`로 두고, 다른 문서는 낡은 서술을 고치거나 단일 원천을 가리키게 바꾼다(`CLAUDE.md` 규칙 5).
-   - 확인 후보(2026-09-21 `grep`으로 추린 목록): `docs/agents/team-operations.md`, `docs/agents/orchestrator.md`, `docs/agents/issue-tracker.md`, `docs/specs/DEV_PROCESS_GUARDRAILS.md`, `docs/specs/SERVICE_OPERATIONS.md`, `docs/specs/prd/04_PROJECT_SPEC.md`, `docs/specs/prd/02_DATA_MODEL.md`, `docs/specs/prd/README.md`, `jam-doc/planning/business-plan/02 JAM! 서비스 플랜.md`, `CLAUDE.md`, `.claude/skills/jam-work/references/`의 `handling-rules.md`·`scheduled-jobs.md`·`team-composition.md`·`forms/weekly-briefing-format.md`·`forms/implementation-summary-format.md`.
-   - 제외: `docs/tickets/`(작업 이력), `jam-doc/archive/`(읽기 전용), `jam-doc/operations/reports/`(시점별 기록), `docs/agents/workflow/`(티켓 20260921_2311에서 기록으로 동결할 예정인 설계 원본).
+   - 확인 후보(2026-09-21 `grep`으로 추린 목록): `docs/agents/team-operations.md`, `docs/agents/orchestrator.md`, `docs/agents/issue-tracker.md`, `docs/agents/DEV_PROCESS_GUARDRAILS.md`, `docs/service/SERVICE_OPERATIONS.md`, `docs/service/prd/04_PROJECT_SPEC.md`, `docs/service/prd/02_DATA_MODEL.md`, `docs/service/prd/README.md`, `docs/plan/vision/02 JAM! 서비스 플랜.md`, `CLAUDE.md`, `.claude/skills/jam-work/references/`의 `handling-rules.md`·`scheduled-jobs.md`·`team-composition.md`·`forms/weekly-briefing-format.md`·`forms/implementation-summary-format.md`.
+   - 제외: `docs/tickets/`(작업 이력), `docs/archive/`(읽기 전용), `docs/operations/reports/`(시점별 기록), `docs/agents/workflow/`(티켓 20260921_2311에서 기록으로 동결할 예정인 설계 원본).
 
 ## 구현 계획
 
@@ -94,15 +94,15 @@ parent: "20260921_2219"
 
 고친 문서:
 - `.claude/skills/jam-work/references/scheduled-jobs.md`: 무인 배포가 `/jam-ship` 단계를 번호가 아니라 이름으로 가리키게 했고, 새 관문이 무인 경로에 아직 적용되지 않음을 명시했다.
-- `docs/specs/prd/04_PROJECT_SPEC.md`: 「배포 방법」의 `vercel --prod` 안내를 `/jam-ship` 절차로 교체했다. DB 규칙의 낡은 번호(080)를 지우고 확장→전환→축소 규칙을 연결했다.
+- `docs/service/prd/04_PROJECT_SPEC.md`: 「배포 방법」의 `vercel --prod` 안내를 `/jam-ship` 절차로 교체했다. DB 규칙의 낡은 번호(080)를 지우고 확장→전환→축소 규칙을 연결했다.
 - `docs/agents/orchestrator.md`: DB 실행 전에 되돌림 SQL을 확인하는 항목을 넣고, 배포 확인 절차를 `/jam-ship` 7·8단계로 연결했다.
-- `docs/specs/DEV_PROCESS_GUARDRAILS.md`: 패턴 2·14에서 `jam-developer.md` Hard rule 3으로 연결했다.
+- `docs/agents/DEV_PROCESS_GUARDRAILS.md`: 패턴 2·14에서 `jam-developer.md` Hard rule 3으로 연결했다.
 - `CLAUDE.md`: 규칙 3의 배포 절차 요약을 갱신하고, 규칙 6에 DB 안전 절차를 가리키는 한 줄을 넣었다.
 - `.claude/agents/jam-reviewer.md`: 점검표 8번이 되돌림 SQL 동반과 확장→전환→축소 분리를 확인한다.
 - `docs/agents/team-operations.md`: 알려진 빈틈 ⑥(배포 안전 관문이 사람이 있는 경로에만 적용)을 추가했다. §3 「머지와 배포의 경계」 표는 권한 경계만 다루므로 고치지 않았다(아현·민지 판단 일치).
 
 고칠 필요가 없던 문서(민지 2차 게이트가 대조 확인):
-- `docs/agents/issue-tracker.md`(`/jam-ship`을 이름으로만 가리킨다), `docs/specs/SERVICE_OPERATIONS.md`(기능별 롤백 서술뿐이다), `docs/specs/prd/02_DATA_MODEL.md`(테이블별 마이그레이션 번호 기록뿐이다), `docs/specs/prd/README.md`(해당 서술 없음), `jam-doc/planning/business-plan/02 JAM! 서비스 플랜.md`(서비스 이력 서술뿐이다), `.claude/skills/jam-work/references/`의 `handling-rules.md`(스테이징 주소가 이미 정확하다)·`team-composition.md`(스킬 이름 목록뿐이다)·`forms/weekly-briefing-format.md`(지표 서술뿐이다)·`forms/implementation-summary-format.md`(해당 서술 없음).
+- `docs/agents/issue-tracker.md`(`/jam-ship`을 이름으로만 가리킨다), `docs/service/SERVICE_OPERATIONS.md`(기능별 롤백 서술뿐이다), `docs/service/prd/02_DATA_MODEL.md`(테이블별 마이그레이션 번호 기록뿐이다), `docs/service/prd/README.md`(해당 서술 없음), `docs/plan/vision/02 JAM! 서비스 플랜.md`(서비스 이력 서술뿐이다), `.claude/skills/jam-work/references/`의 `handling-rules.md`(스테이징 주소가 이미 정확하다)·`team-composition.md`(스킬 이름 목록뿐이다)·`forms/weekly-briefing-format.md`(지표 서술뿐이다)·`forms/implementation-summary-format.md`(해당 서술 없음).
 
 ### 변경된 파일
 ```
@@ -118,8 +118,8 @@ CLAUDE.md
 docs/agents/contract.json
 docs/agents/orchestrator.md
 docs/agents/team-operations.md
-docs/specs/DEV_PROCESS_GUARDRAILS.md
-docs/specs/prd/04_PROJECT_SPEC.md
+docs/agents/DEV_PROCESS_GUARDRAILS.md
+docs/service/prd/04_PROJECT_SPEC.md
 docs/tickets/ (후속 티켓 3건: 20260922_0001·0002·0003)
 ```
 

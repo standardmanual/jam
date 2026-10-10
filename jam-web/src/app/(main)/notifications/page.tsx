@@ -8,7 +8,7 @@ export const metadata = { title: `${d.notifications.title} — JAM!` }
 
 /**
  * 알림(소식)함 — 티켓 20260824_021
- * 스펙: docs/specs/prd/notification/PRD.md §6-1
+ * 스펙: docs/service/prd/notification/PRD.md §6-1
  *
  * ## 읽음 처리와 "새 소식" 구분선
  *

@@ -11,8 +11,8 @@ closed: 2026-08-26
 
 ## 배경 / 문제 정의
 
-전체 배경·원칙은 `docs/specs/prd/admin-ui/REDESIGN.md`(4절 "데이터 테이블") 참조.
-실행 순서·완료 기준은 `docs/specs/prd/admin-ui/PHASES.md`의 "Phase 3 — Data Table
+전체 배경·원칙은 `docs/service/prd/admin-ui/REDESIGN.md`(4절 "데이터 테이블") 참조.
+실행 순서·완료 기준은 `docs/service/prd/admin-ui/PHASES.md`의 "Phase 3 — Data Table
 전면 도입" 절 참조.
 
 **3단계는 두 티켓으로 나눈다** — 1·2단계 모두 게이트 리뷰 후 실브라우저 검증에서 추가 버그가

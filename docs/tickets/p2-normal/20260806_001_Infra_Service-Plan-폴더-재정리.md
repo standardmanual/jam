@@ -39,11 +39,11 @@ closed: 2026-08-06
 
 ### 변경된 파일
 ```
-jam-doc/planning/business-plan/          ← 철학·사업모델 6개 문서 이동
+docs/plan/vision/          ← 철학·사업모델 6개 문서 이동
 docs/specs/             ← 최신 PRD, badge/, SERVICE_OPERATIONS
 docs/specs/badge/       ← 배지 관련 명세
 Service Plan/History/           ← Phase7~17, DesignRenewal
-jam-doc/archive/operations/ ← 과거 SERVICE_OPERATIONS 54개
+docs/archive/operations/ ← 과거 SERVICE_OPERATIONS 54개
 ```
 
 ### 테스트 결과

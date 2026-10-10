@@ -1,5 +1,5 @@
 /**
- * 컬렉션 틀 핸들러 (티켓 20261004_2039, 상위 20260930_1500 ⑩-a). 규칙의 정본은 `docs/specs/prd/ops-tool/PRD.md` §8.1·§8.2·§8.4다. 틀은 `jamBadge.ts`·`homeFeedCard.ts`다.
+ * 컬렉션 틀 핸들러 (티켓 20261004_2039, 상위 20260930_1500 ⑩-a). 규칙의 정본은 `docs/service/prd/ops-tool/PRD.md` §8.1·§8.2·§8.4다. 틀은 `jamBadge.ts`·`homeFeedCard.ts`다.
  *
  * 승인된 `collection_launch` 항목을 예약 등록 실행 때 `item_books` 행(공개 전, 틀만: 이름·설명·이야기·대표 이미지·보상 포인트·보상 배지·트라이브·공개/종료 시각)으로 만든다.
  * 컬렉션의 아이템 배지는 기존 어드민에서 공개 전에 채운다(Q4)라 예약 등록 때 새 컬렉션은 늘 비어 있다. 변환은 `toCollectionLaunchRegisterInput`(§8.4),

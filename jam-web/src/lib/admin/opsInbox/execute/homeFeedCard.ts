@@ -1,5 +1,5 @@
 /**
- * 홈피드 카드 핸들러 (티켓 20261002_1255, 상위 20260930_1500 ④-a). 규칙의 정본은 `docs/specs/prd/ops-tool/PRD.md` §8.1·§8.2·§8.4다.
+ * 홈피드 카드 핸들러 (티켓 20261002_1255, 상위 20260930_1500 ④-a). 규칙의 정본은 `docs/service/prd/ops-tool/PRD.md` §8.1·§8.2·§8.4다.
  *
  * 승인된 `home_feed_card` 항목을 예약 등록 실행 때 `today_cards` 행(공개 전)으로 만든다. 변환은 `toTodayCardRegisterInput`(§8.4),
  * 등록 전 DB 검사는 `runHomeFeedDbChecks`, 되돌림 전 참조 확인은 `findHomeFeedUndoReferences`를 감싼다.

@@ -40,7 +40,7 @@ closed: 2026-09-21
 1. 177을 프로덕션에 적용하고 `information_schema.columns`로 컬럼이 사라졌는지 확인한다.
 2. 생성 타입에서 제거한다: `src/types/database.generated.ts`(257·292·327행 컬럼, 360행 외래키 관계)는 MCP `generate_typescript_types`로 재생성해 대조한다. 수기 `src/types/database.ts` 183행도 지운다.
 3. 테스트 목 5개(`shadow-ban-gate`·`usage-badges`·`first-sync-options-contract`·`walking-badges-v4`·`badge-engine-v5`)의 `deactivated_by_item_book_id: null` 줄을 지운다.
-4. 주석·문서를 정리한다: `src/app/api/admin/badges/[id]/route.ts` 238행 주석, `docs/specs/prd/02_DATA_MODEL.md` 126행 컬럼 행, `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` 569·573행의 캐스케이드 서술.
+4. 주석·문서를 정리한다: `src/app/api/admin/badges/[id]/route.ts` 238행 주석, `docs/service/prd/02_DATA_MODEL.md` 126행 컬럼 행, `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md` 569·573행의 캐스케이드 서술.
 5. `scripts/verify.sh` 통과를 확인하고 이 티켓을 CLOSED 처리한다.
 
 코드는 이 컬럼을 읽거나 쓰지 않아서(주석과 테스트 목에만 남아 있음) 적용 순서에 제약은 없다.
@@ -58,8 +58,8 @@ jam-web/src/types/database.ts
 jam-web/src/types/database.generated.ts
 jam-web/src/app/api/admin/badges/[id]/route.ts (주석)
 jam-web/src/lib/badge-engine/__tests__/ (5개 파일의 테스트 목)
-docs/specs/prd/02_DATA_MODEL.md
-docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
+docs/service/prd/02_DATA_MODEL.md
+docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md
 ```
 
 ### 테스트 결과

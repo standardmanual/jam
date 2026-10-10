@@ -35,10 +35,10 @@ run_step lint npm run lint:ci
 run_step typecheck npm run typecheck
 run_step test npm test
 run_step ds npm run ds:check
-# 프로토타입 번들(jam-doc/assets/prototypes/*.core.js)이 TS 원본과 어긋나면 실패한다 (티켓 20260924_2237).
+# 프로토타입 번들(docs/assets/prototypes/*.core.js)이 TS 원본과 어긋나면 실패한다 (티켓 20260924_2237).
 run_step asset-bundle node scripts/asset-generator/build-prototype.mjs --check
 
-# 슬롭/금칙어 검사: docs/specs/SLOP_DICTIONARY.md의 금칙 단어·금지 문장을
+# 슬롭/금칙어 검사: docs/service/writing/SLOP_DICTIONARY.md의 금칙 단어·금지 문장을
 # origin/staging 대비 diff의 추가 라인에서 찾는다 (티켓 20260918_0951).
 if ! ( cd "$REPO_ROOT" && node scripts/check-slop.mjs ) >"$LOG_PREFIX.slop" 2>&1; then
   FAILED+=("slop")
@@ -98,7 +98,7 @@ else
   rm -f "$LOG_PREFIX.scheduled-jobs"
 fi
 
-# docs/specs/prd/home-feed/PRD.md의 생성 구간(노출 태그·템플릿·레이아웃·이동 목적지 표)이
+# docs/service/prd/home-feed/PRD.md의 생성 구간(노출 태그·템플릿·레이아웃·이동 목적지 표)이
 # today-sections.ts·targetHref.ts에서 생성된 최신본인지 확인한다 (티켓 20260927_2036). 스테이지
 # 상태 기준인 동기화 검사(--staged)는 커밋 시점에만 의미가 있어 여기에는 넣지 않는다.
 if ! ( cd "$REPO_ROOT" && node scripts/gen-home-feed-doc.mjs --check ) >"$LOG_PREFIX.home-feed-doc" 2>&1; then

@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JAM! 에셋 제너레이터</title>
+<style>
+  :root {
+    --bg: #f4f4f2; --panel: #ffffff; --text: #1a1a1a; --sub: #6b6b6b; --line: #e2e2de; --accent: #1a1a1a; --accent-text: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161616; --panel: #212121; --text: #f0f0ee; --sub: #9a9a96; --line: #343432; --accent: #f0f0ee; --accent-text: #161616; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, "Apple SD Gothic Neo", "Pretendard", sans-serif; }
+  .wrap { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; padding: 16px; max-width: 1500px; margin: 0 auto; }
+  @media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } }
+  .stage { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  canvas { display: block; width: auto; height: auto; max-width: 100%; max-height: calc(100vh - 100px); border-radius: 6px; }
+  .meta { font-size: 12px; color: var(--sub); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; align-self: start; overflow-y: auto; overscroll-behavior: contain; }
+  [hidden] { display: none !important; }
+  h1 { font-size: 15px; margin: 0; }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  button { font: inherit; padding: 6px 10px; border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 8px; cursor: pointer; }
+  button:hover { background: var(--bg); }
+  button svg { width: 12px; height: 12px; fill: currentColor; flex: none; }
+  button.primary { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; white-space: nowrap; }
+  button.primary:hover { background: var(--accent); opacity: .85; }
+  button.mini { padding: 3px 8px; font-size: 12px; white-space: nowrap; }
+  /* 상단 도구 줄: 전체 랜덤 · PNG 저장 · 영상 저장 · 길이(초) */
+  .tools { display: grid; grid-template-columns: 1.15fr 1fr 1fr auto; gap: 6px; align-items: center; }
+  .tools button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 4px; font-size: 13px; white-space: nowrap; }
+  .tools .strong { font-weight: 600; }
+  .dur { display: flex; align-items: center; gap: 3px; font-size: 12px; color: var(--sub); }
+  .dur input { width: 42px; font: inherit; font-size: 13px; color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 5px 4px; text-align: right; }
+  .status { font-size: 12px; color: var(--sub); min-height: 16px; line-height: 16px; margin: 6px 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status.err { color: #d33; white-space: normal; }
+  /* 접고 펼 수 있는 섹션 */
+  .sec { border-top: 1px solid var(--line); padding: 2px 0 4px; }
+  .sec > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--sub); letter-spacing: .02em; padding: 5px 0; user-select: none; }
+  .sec > summary::-webkit-details-marker { display: none; }
+  .sec > summary::before { content: ''; width: 0; height: 0; border-left: 5px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform .15s; }
+  .sec[open] > summary::before { transform: rotate(90deg); }
+  .sec > summary b { font-weight: 500; margin-left: auto; font-variant-numeric: tabular-nums; }
+  /* 한 줄 행: 레이블 · 조절 요소 · 값 */
+  .row { display: grid; grid-template-columns: 60px minmax(0, 1fr) 54px; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 13px; }
+  .row > label { white-space: nowrap; }
+  .row > b { font-weight: 500; font-size: 12px; color: var(--sub); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .row.wide { grid-template-columns: 60px minmax(0, 1fr); }
+  .row.bg { grid-template-columns: 60px minmax(0, 1fr) 40px; }
+  .row.colors { grid-template-columns: 60px 40px 40px minmax(0, 1fr); }
+  .row.reseed { grid-template-columns: 60px minmax(0, 1fr) 54px auto; }
+  input[type=range] { width: 100%; margin: 0; accent-color: var(--accent); }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; border-radius: 0; padding: 5px 4px; font-size: 12px; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--accent); color: var(--accent-text); }
+  .seg.glyph button { padding: 6px 4px; }
+  .seg.glyph button svg { width: auto; height: 16px; display: block; margin: 0 auto; }
+  input[type=color] { width: 100%; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; }
+  input[type=color]:disabled { cursor: not-allowed; }
+  .drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 4px 8px; text-align: center; color: var(--sub); cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .drop.over { border-color: var(--accent); color: var(--text); }
+  .drop.on { border-style: solid; border-color: var(--accent); color: var(--text); }
+  .check { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--sub); margin: 0 0 4px; cursor: pointer; white-space: nowrap; }
+  .check input { margin: 0; }
+  #err { color: #d33; font-size: 13px; display: none; }
+  .panel[inert] { opacity: .6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stage">
+    <canvas id="cv" width="1280" height="1280"></canvas>
+    <div class="meta" id="meta"></div>
+    <div id="err"></div>
+  </div>
+
+  <div class="panel">
+    <div class="head">
+      <h1>JAM! 에셋 제너레이터</h1>
+      <button id="playBtn" class="primary" type="button" aria-pressed="true"></button>
+    </div>
+    <div class="tools">
+      <button id="randomBtn" class="strong" type="button"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 0h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2zm1.2 2.2a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm5.6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM6 5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM3.2 7.8a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm5.6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>전체 랜덤</button>
+      <button id="pngBtn" type="button">PNG 저장</button>
+      <button id="videoBtn" type="button">영상 저장</button>
+      <label class="dur" title="영상 길이(초)"><input type="number" id="dur" min="1" max="60" step="1" value="5" inputmode="numeric" aria-label="영상 길이(초)">초</label>
+    </div>
+    <div class="status" id="saveStatus"></div>
+    <div class="row" id="progRow" hidden><label for="prog">머리 위치</label><input type="range" id="prog" min="0" max="100" step="0.1" value="0"><b id="v_prog"></b></div>
+
+    <details class="sec" open>
+      <summary>원천 그래픽</summary>
+      <div class="row wide"><label>글자</label><div class="seg glyph" id="letter"></div></div>
+      <div class="row wide"><label>업로드</label><div class="drop" id="drop">PNG / SVG 파일 선택 (끌어다 놓기 가능)</div></div>
+      <input type="file" id="file" accept="image/png,image/svg+xml,image/*" hidden>
+    </details>
+
+    <details class="sec" open>
+      <summary>스테이지 <b id="v_res"></b></summary>
+      <div class="row bg"><label>비율</label>
+        <div class="seg" id="aspect"><button data-v="1:1" class="on">1:1</button><button data-v="4:5">4:5</button><button data-v="9:16">9:16</button></div>
+        <input type="color" id="bg" value="#ff1a00" title="배경색" aria-label="배경색">
+      </div>
+    </details>
+
+    <details class="sec" open>
+      <summary>이미지</summary>
+      <div class="row"><label for="size">크기</label><input type="range" id="size" min="5" max="100" step="1" value="22"><b id="v_size"></b></div>
+      <div class="row"><label for="blur">블러</label><input type="range" id="blur" min="0" max="100" step="1" value="0"><b id="v_blur"></b></div>
+      <div class="row"><label for="rot" id="rotName">회전</label><input type="range" id="rot" min="-180" max="180" step="1" value="0"><b id="v_rot"></b></div>
+      <label class="check"><input type="checkbox" id="follow">곡선 진행 방향으로 회전 (회전값을 더함)</label>
+    </details>
+
+    <details class="sec" open>
+      <summary>그라데이션 (이미지 표면)</summary>
+      <div class="row wide"><label>방향</label>
+        <div class="seg" id="dir"><button data-v="h" class="on">좌 → 우</button><button data-v="v">상 → 하</button><button data-v="r">중심 → 바깥</button></div>
+      </div>
+      <div class="row colors"><label>색</label>
+        <input type="color" id="cA" value="#ff1a00" title="시작 색" aria-label="시작 색">
+        <input type="color" id="cB" value="#ff4dff" title="끝 색" aria-label="끝 색">
+        <label class="check" style="margin:0"><input type="checkbox" id="link" checked>시작 색 = 배경색</label>
+      </div>
+    </details>
+
+    <details class="sec" open>
+      <summary>이동 곡선</summary>
+      <div class="row reseed"><label for="irreg">불규칙성</label><input type="range" id="irreg" min="0" max="100" step="1" value="35"><b id="v_irreg"></b><button id="reseed" class="mini" type="button" title="곡선을 새로 뽑습니다">다시 뽑기</button></div>
+      <div class="row"><label for="speed">속도</label><input type="range" id="speed" min="1000" max="2000" step="10" value="1500"><b id="v_speed"></b></div>
+      <div class="row"><label for="gap">복사 간격</label><input type="range" id="gap" min="2" max="120" step="1" value="14"><b id="v_gap"></b></div>
+      <div class="row"><label for="count">복사 수</label><input type="range" id="count" min="200" max="800" step="5" value="260"><b id="v_count"></b></div>
+    </details>
+  </div>
+</div>
+
+<!-- 자동 생성 파일. 손으로 고치지 않는다 -- 재생성: node jam-web/scripts/asset-generator/build-prototype.mjs -->
+<script src="./20260924_jam-asset-generator.core.js"></script>
+<script>
+(function () {
+  var MAX_LONG = 1280;
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var errEl = document.getElementById('err');
+  function $(id) { return document.getElementById(id); }
+  function fail(msg) { errEl.style.display = 'block'; errEl.textContent = msg; }
+  function clearErr() { errEl.style.display = 'none'; }
+  function makeCanvas(w, h) { var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; }
+
+  // 브랜드 글자 원본: docs/assets/brand/{j,a,m}.svg 에서 복사했다.
+  // file:// 로 열면 옆 파일을 읽을 수 없으므로 이 파일 안에 넣어 둔다. 원본이 바뀌면 여기도 함께 갱신한다
+  var LETTERS = {
+    J: { w: 136, h: 205, d: 'M135.948 3.43323e-05L0 0V57.7583L59.9254 57.6304V97.4358C59.9254 107.218 51.9984 115.146 42.2176 115.146H0V204.628H59.9126C101.9 204.628 135.948 170.589 135.948 128.585V3.43323e-05Z' },
+    A: { w: 177, h: 205, d: 'M94.6635 152.087L101.67 204.628H176.311L143.504 0H32.8075L0 204.628H74.6415L81.6479 152.087H94.6763H94.6635ZM88.1557 98.9574C68.7602 98.9574 53.0468 89.7381 53.0468 78.3578C53.0468 66.9775 68.773 57.7582 88.1557 57.7582C107.551 57.7582 123.265 66.9775 123.265 78.3578C123.265 89.7381 107.538 98.9574 88.1557 98.9574Z' },
+    M: { w: 256, h: 205, d: 'M191.552 0C156.289 0 127.701 17.4924 127.701 52.7713C127.701 17.5052 99.1129 0 63.8506 0C28.5883 0 0 28.5914 0 63.8575V204.628H76.4826V99.2899H89.4726V204.628H165.955V99.2899H178.945V204.628H255.428V63.8575C255.428 28.5914 226.839 0 191.577 0H191.552Z' }
+  };
+  var LETTER_KEYS = ['J', 'A', 'M'];
+
+  var state = {
+    source: 'J',  // 'J' | 'A' | 'M' | 'upload'
+    aspect: '1:1', bg: '#ff1a00', size: 22, blur: 0, rot: 0, follow: false,
+    dir: 'h', cA: '#ff1a00', cB: '#ff4dff', link: true,
+    irreg: 35, seed: 7, speed: 1500, gap: 14, count: 260,
+    play: true, head: 0
+  };
+  var W = 1280, H = 1280;
+
+  // 블러 처리(ctx.filter 미지원 환경 대응 포함)는 AssetGeneratorCore.buildStamp(render.ts) 안에 있다
+
+  // ---------- 원천 이미지 -> 알파 bbox로 자른 base ----------
+  var base = null;      // 잘라낸 원천(알파만 의미 있음)
+  var stamp = null;     // 그라데이션 + 블러 적용본 (패딩 포함)
+  var loadToken = 0;    // 늦게 끝난 이전 로드가 최신 선택을 덮어쓰지 않도록 구분한다
+
+  function setBaseFromCanvas(c) {
+    var w = c.width, h = c.height;
+    var d;
+    try { d = c.getContext('2d').getImageData(0, 0, w, h).data; }
+    catch (e) {
+      // 브라우저 보안 정책으로 픽셀을 읽을 수 없으면 투명 여백 자르기만 건너뛴다
+      base = c; clearErr(); buildStamp(); return true;
+    }
+    var x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        if (d[(y * w + x) * 4 + 3] > 8) {
+          if (x < x0) x0 = x; if (x > x1) x1 = x;
+          if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+      }
+    }
+    if (x1 < 0) { fail('불투명한 픽셀이 없는 이미지입니다. 투명 배경 위에 그림이 있는 PNG/SVG를 올려 주세요.'); return false; }
+    var bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+    var b = makeCanvas(bw, bh);
+    b.getContext('2d').drawImage(c, x0, y0, bw, bh, 0, 0, bw, bh);
+    base = b;
+    clearErr();
+    buildStamp();
+    return true;
+  }
+
+  // xmlns가 없는 SVG는 <img>로 읽히지 않고, 크기 속성이 없으면 비율이 틀어지므로 보정한다
+  function normalizeSvg(text) {
+    if (!/<svg[^>]*\sxmlns\s*=/i.test(text)) text = text.replace(/<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+    if (/xlink:/i.test(text) && !/xmlns:xlink\s*=/i.test(text)) text = text.replace(/<svg\b/i, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+    try {
+      var doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+      var root = doc.documentElement;
+      if (root && root.nodeName.toLowerCase() === 'svg' && !doc.getElementsByTagName('parsererror').length) {
+        var wa = root.getAttribute('width') || '', ha = root.getAttribute('height') || '';
+        var w = parseFloat(wa), h = parseFloat(ha);
+        var vb = (root.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+        if ((!(w > 0) || !(h > 0) || /%/.test(wa + ha)) && vb.length === 4 && vb[2] > 0 && vb[3] > 0) {
+          var s = 512 / Math.max(vb[2], vb[3]);
+          root.setAttribute('width', String(vb[2] * s));
+          root.setAttribute('height', String(vb[3] * s));
+        }
+        text = new XMLSerializer().serializeToString(doc);
+      }
+    } catch (e) { /* 파싱에 실패하면 원문 그대로 시도한다 */ }
+    return text;
+  }
+
+  function loadBlob(blob, name, isSvg, onOk) {
+    var token = ++loadToken;
+    var url = URL.createObjectURL(blob);
+    var img = new Image();
+    img.onload = function () {
+      URL.revokeObjectURL(url);
+      if (token !== loadToken) return;
+      var iw = img.naturalWidth, ih = img.naturalHeight;
+      if (!iw || !ih) { iw = 512; ih = 512; }
+      var long = Math.max(iw, ih);
+      var target = isSvg ? 512 : Math.min(512, long);
+      var sc = target / long;
+      var c = makeCanvas(iw * sc, ih * sc);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      if (setBaseFromCanvas(c) && onOk) onOk();
+    };
+    img.onerror = function () {
+      URL.revokeObjectURL(url);
+      if (token !== loadToken) return;
+      fail('"' + name + '"을(를) 이미지로 읽지 못했습니다. PNG 또는 SVG 파일인지 확인해 주세요.');
+    };
+    img.src = url;
+  }
+
+  function letterSvg(key, fill) {
+    var L = LETTERS[key];
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + L.w + '" height="' + L.h + '" viewBox="0 0 ' + L.w + ' ' + L.h + '"><path d="' + L.d + '" fill="' + fill + '"/></svg>';
+  }
+
+  function loadLetter(key) {
+    state.source = key;
+    syncSource();
+    loadBlob(new Blob([letterSvg(key, '#000')], { type: 'image/svg+xml' }), key + '.svg', true);
+  }
+
+  function loadFile(file) {
+    if (!file) return;
+    var isSvg = /svg/i.test(file.type) || /\.svg$/i.test(file.name);
+    function ok() { state.source = 'upload'; syncSource(file.name); }
+    if (!isSvg) { loadBlob(file, file.name, false, ok); return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      loadBlob(new Blob([normalizeSvg(String(reader.result))], { type: 'image/svg+xml' }), file.name, true, ok);
+    };
+    reader.onerror = function () { fail('"' + file.name + '" 파일을 읽지 못했습니다.'); };
+    reader.readAsText(file);
+  }
+
+  // ---------- 스탬프 생성: AssetGeneratorCore(render.ts)에 위임 ----------
+  // 모양만 블러 처리한 뒤 그라데이션을 입히는 이유는 render.ts의 buildStamp 주석을 본다
+  function buildStamp() {
+    if (!base) return;
+    stamp = AssetGeneratorCore.buildStamp(makeCanvas, {
+      base: base,
+      blurPct: state.blur,
+      direction: state.dir,
+      startColor: state.link ? state.bg : state.cA,
+      endColor: state.cB
+    });
+  }
+
+  // ---------- 이동 곡선: AssetGeneratorCore(curve.ts)에 위임 ----------
+  // 시드 기반 폐곡선 생성·평가·선택·샘플링 로직은 jam-web/src/lib/asset-generator/curve.ts 를 본다
+  var path = null; // { xs, ys, tx, ty, cum, total, N }
+
+  function buildPath() {
+    path = AssetGeneratorCore.buildPath(state.seed, state.irreg, W, H);
+  }
+
+  function rebuildPathKeepPhase() {
+    var f = path ? state.head / path.total : 0;
+    buildPath();
+    state.head = f * path.total;
+  }
+
+  // ---------- 스테이지 ----------
+  function applyAspect() {
+    var a = state.aspect;
+    if (a === '1:1') { W = MAX_LONG; H = MAX_LONG; }
+    else if (a === '4:5') { W = MAX_LONG * 4 / 5; H = MAX_LONG; }
+    else { W = Math.round(MAX_LONG * 9 / 16); H = MAX_LONG; }
+    cv.width = W; cv.height = H;
+    $('v_res').textContent = W + ' × ' + H;
+    $('meta').textContent = '출력 ' + W + ' × ' + H + ' px (긴 변 최대 ' + MAX_LONG + 'px)';
+    rebuildPathKeepPhase();
+  }
+
+  // ---------- 컨트롤 바인딩 ----------
+  var ranges = {}; // 슬라이더 id -> { key, fmt } (전체 랜덤 뒤 화면 값을 다시 맞출 때 쓴다)
+  function bindRange(id, key, fmt, onChange) {
+    var el = $(id), out = $('v_' + id);
+    ranges[id] = { key: key, fmt: fmt };
+    function upd() { state[key] = parseFloat(el.value); out.textContent = fmt(state[key]); if (onChange) onChange(); }
+    el.addEventListener('input', upd);
+    out.textContent = fmt(state[key]);
+  }
+  function markSeg(id, value) {
+    Array.prototype.forEach.call($(id).children, function (c) { c.classList.toggle('on', c.getAttribute('data-v') === value); });
+  }
+  function bindSeg(id, key, onChange) {
+    $(id).addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      state[key] = b.getAttribute('data-v');
+      markSeg(id, state[key]);
+      onChange();
+    });
+  }
+
+  function syncColors() {
+    // 연결을 켜면 시작 색은 배경색을 그대로 따르고 직접 고를 수 없다
+    if (state.link) state.cA = state.bg;
+    $('bg').value = state.bg;
+    $('cA').value = state.cA;
+    $('cB').value = state.cB;
+    $('cA').disabled = state.link;
+    $('cA').title = state.link ? '시작 색 (배경색과 연결됨)' : '시작 색';
+    $('link').checked = state.link;
+  }
+  function syncRotLabel() {
+    // 진행 방향 회전을 켜면 슬라이더는 진행 방향에 더해지는 추가 각도가 된다
+    $('rotName').title = state.follow ? '진행 방향에 이 각도를 더합니다' : '';
+  }
+  function syncSource(fileName) {
+    markSeg('letter', state.source);
+    var drop = $('drop');
+    drop.classList.toggle('on', state.source === 'upload');
+    drop.textContent = state.source === 'upload' && fileName
+      ? '불러옴: ' + fileName
+      : 'PNG / SVG 파일 선택 (끌어다 놓기 가능)';
+  }
+  function syncAll() {
+    Object.keys(ranges).forEach(function (id) {
+      var r = ranges[id];
+      $(id).value = state[r.key];
+      $('v_' + id).textContent = r.fmt(state[r.key]);
+    });
+    markSeg('aspect', state.aspect);
+    markSeg('dir', state.dir);
+    $('follow').checked = state.follow;
+    syncRotLabel();
+    syncColors();
+  }
+
+  // 글자 선택 버튼: 버튼 안에 글자 모양을 그대로 보여 준다
+  LETTER_KEYS.forEach(function (k) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('data-v', k);
+    b.setAttribute('aria-label', k);
+    b.innerHTML = letterSvg(k, 'currentColor');
+    $('letter').appendChild(b);
+  });
+  $('letter').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    loadLetter(b.getAttribute('data-v'));
+    $('file').value = '';
+  });
+
+  bindRange('size', 'size', function (v) { return v + '%'; });
+  bindRange('blur', 'blur', function (v) { return v + '%'; }, buildStamp);
+  bindRange('rot', 'rot', function (v) { return v + '°'; });
+  $('follow').addEventListener('change', function () { state.follow = this.checked; syncRotLabel(); });
+  bindRange('irreg', 'irreg', function (v) { return v + '%'; }, rebuildPathKeepPhase);
+  bindRange('speed', 'speed', function (v) { return v + 'px/s'; });
+  bindRange('gap', 'gap', function (v) { return v + 'px'; });
+  bindRange('count', 'count', function (v) { return v + '개'; });
+  bindSeg('aspect', 'aspect', applyAspect);
+  bindSeg('dir', 'dir', buildStamp);
+  $('bg').addEventListener('input', function () { state.bg = this.value; syncColors(); buildStamp(); });
+  $('cA').addEventListener('input', function () { state.cA = this.value; buildStamp(); });
+  $('cB').addEventListener('input', function () { state.cB = this.value; buildStamp(); });
+  $('link').addEventListener('change', function () { state.link = this.checked; syncColors(); buildStamp(); });
+  $('reseed').addEventListener('click', function () {
+    state.seed = Math.floor(Math.random() * 1e9);
+    rebuildPathKeepPhase();
+  });
+
+  // ---------- 전체 랜덤: AssetGeneratorCore(random.ts)에 위임 ----------
+  $('randomBtn').addEventListener('click', function () {
+    // 스테이지 비율은 출력 규격이므로 랜덤에서 제외하고 사용자가 고른 값을 유지한다
+    var r = AssetGeneratorCore.randomizeRibbonConfig();
+    state.bg = r.backgroundColor; state.cB = r.endColor;
+    state.link = r.linkStartToBackground;
+    state.size = r.sizePct;
+    state.blur = r.blurPct;
+    state.rot = r.rotationDeg;
+    state.follow = r.followPath;
+    state.dir = r.direction;
+    state.irreg = r.irregularityPct;
+    state.seed = r.seed;
+    state.speed = r.speed;
+    state.gap = r.gap;
+    state.count = r.count;
+    syncAll();
+    applyAspect();
+    // 업로드한 이미지를 쓰는 중이면 유지하고, 브랜드 글자를 쓰는 중이면 글자도 새로 고른다
+    if (state.source !== 'upload') loadLetter(AssetGeneratorCore.choice(LETTER_KEYS));
+    else buildStamp();
+  });
+
+  // ---------- 재생 ----------
+  var playBtn = $('playBtn'), progEl = $('prog'), vProg = $('v_prog');
+  var ICON_PAUSE = '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="1" width="3.2" height="10" rx="0.8"/><rect x="7.3" y="1" width="3.2" height="10" rx="0.8"/></svg>';
+  var ICON_PLAY = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.2v9.6a.6.6 0 0 0 .9.5l7.6-4.8a.6.6 0 0 0 0-1L3.4.7a.6.6 0 0 0-.9.5z"/></svg>';
+  function renderPlayBtn() {
+    // 재생 중에는 정지 버튼을, 정지 중에는 재생 버튼을 보여 준다
+    playBtn.innerHTML = state.play ? ICON_PAUSE + '정지' : ICON_PLAY + '재생';
+    playBtn.setAttribute('aria-pressed', state.play ? 'true' : 'false');
+    $('progRow').hidden = state.play;
+  }
+  playBtn.addEventListener('click', function () { state.play = !state.play; renderPlayBtn(); });
+  renderPlayBtn();
+  progEl.addEventListener('input', function () {
+    state.head = parseFloat(progEl.value) / 100 * path.total;
+    vProg.textContent = progEl.value + '%';
+  });
+
+  // ---------- 업로드 ----------
+  var drop = $('drop'), fileIn = $('file');
+  drop.addEventListener('click', function () { fileIn.click(); });
+  fileIn.addEventListener('change', function () { loadFile(fileIn.files[0]); });
+  ['dragenter', 'dragover'].forEach(function (ev) { document.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function (ev) { document.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
+  document.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+
+  // ---------- 렌더: 배경·리본 레이어는 AssetGeneratorCore(render.ts)에 위임 ----------
+  // 현재 state.head 위치의 장면 한 장을 그린다. 재생 루프와 영상 저장이 함께 쓴다.
+  // 레이어 합성 훅: 후속 티켓에서 이미지·텍스트 레이어를 fillBackground 다음, 순서에 맞춰 이어 그린다
+  function drawScene() {
+    AssetGeneratorCore.fillBackground(ctx, W, H, state.bg);
+    if (stamp && base) {
+      AssetGeneratorCore.drawRibbonLayer(ctx, {
+        stamp: stamp,
+        baseWidth: base.width,
+        baseHeight: base.height,
+        sizePct: state.size,
+        rotationDeg: state.rot,
+        followPath: state.follow,
+        path: path,
+        head: state.head,
+        gap: state.gap,
+        count: state.count,
+        stageWidth: W,
+        stageHeight: H
+      });
+    }
+  }
+
+  var last = performance.now();
+  var exporting = false; // 정밀 인코딩 중에는 저장 코드가 프레임을 직접 그리므로 재생 루프는 쉰다
+  function frame(now) {
+    var dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (!exporting) {
+      if (state.play) state.head = (state.head + state.speed * dt) % path.total;
+      drawScene();
+      if (state.play) {
+        var pct = (state.head / path.total * 100).toFixed(1);
+        progEl.value = pct; vProg.textContent = pct + '%';
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- 저장 (PNG / 영상) ----------
+  var FPS = 60;
+  // 영상을 MP4 파일로 묶는 라이브러리(MIT). 영상 저장을 처음 누를 때만 불러오며, 버전과 무결성 해시를 고정한다
+  var MUXER_URL = 'https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.js';
+  var MUXER_SRI = 'sha384-wr0AQH9RBAKio/g7bHM5245MBCU5B/b0Y9u42cTxRYQQJXKEijZvWEJKL9JG26hs';
+  var panel = document.querySelector('.panel');
+  var saveBusy = false;
+
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function setStatus(text, isErr) {
+    var el = $('saveStatus');
+    el.textContent = text || '';
+    el.classList.toggle('err', !!isErr);
+  }
+  function fileName(ext) {
+    var d = new Date();
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    return 'jam-asset_' + state.aspect.replace(':', 'x') + '_' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) +
+      '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + '.' + ext;
+  }
+  function download(blob, name) {
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+  }
+  function readSeconds() {
+    var v = parseFloat($('dur').value);
+    if (!(v > 0)) v = 5;
+    v = Math.min(60, Math.max(1, Math.round(v)));
+    $('dur').value = v;
+    return v;
+  }
+
+  $('pngBtn').addEventListener('click', function () {
+    if (saveBusy) return;
+    drawScene(); // 지금 보이는 프레임을 그대로 다시 그린 뒤 저장한다
+    cv.toBlob(function (blob) {
+      if (!blob) { setStatus('PNG를 만들지 못했습니다.', true); return; }
+      download(blob, fileName('png'));
+      setStatus('PNG를 저장했습니다 (' + W + ' × ' + H + ' px).');
+    }, 'image/png');
+  });
+
+  function loadMuxer() {
+    if (window.Mp4Muxer) return Promise.resolve();
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = MUXER_URL; s.integrity = MUXER_SRI; s.crossOrigin = 'anonymous';
+      s.onload = function () { window.Mp4Muxer ? resolve() : reject(new Error('MP4 라이브러리를 불러오지 못했습니다')); };
+      s.onerror = function () { reject(new Error('MP4 라이브러리를 불러오지 못했습니다 (인터넷 연결 확인)')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function pickCodec() {
+    // H.264 High → Main → Baseline 순으로, 현재 해상도에서 쓸 수 있는 설정을 찾는다
+    var list = ['avc1.64002A', 'avc1.4D002A', 'avc1.42002A'];
+    for (var i = 0; i < list.length; i++) {
+      try {
+        var r = await VideoEncoder.isConfigSupported({ codec: list[i], width: W, height: H, bitrate: 12e6, framerate: FPS });
+        if (r && r.supported) return list[i];
+      } catch (e) { /* 다음 후보를 시도한다 */ }
+    }
+    return null;
+  }
+
+  // 정밀 인코딩: 지금 위치부터 1/60초씩 정확히 이동한 프레임을 한 장씩 그려 H.264로 인코딩한다.
+  // 컴퓨터가 느려도 프레임이 빠지지 않고, 결과 영상의 길이와 움직임 속도가 입력값과 정확히 같다
+  async function exportPrecise(seconds, onProgress) {
+    await loadMuxer();
+    var codec = await pickCodec();
+    if (!codec) throw new Error('이 브라우저에서 H.264 인코딩을 쓸 수 없습니다');
+    var muxer = new Mp4Muxer.Muxer({
+      target: new Mp4Muxer.ArrayBufferTarget(),
+      video: { codec: 'avc', width: W, height: H, frameRate: FPS },
+      fastStart: 'in-memory',
+      firstTimestampBehavior: 'offset'
+    });
+    var encError = null;
+    var enc = new VideoEncoder({
+      output: function (chunk, meta) { muxer.addVideoChunk(chunk, meta); },
+      error: function (e) { encError = e; }
+    });
+    enc.configure({ codec: codec, width: W, height: H, bitrate: 12e6, framerate: FPS });
+    var total = Math.round(seconds * FPS), head0 = state.head;
+    exporting = true;
+    try {
+      for (var i = 0; i < total; i++) {
+        if (encError) throw encError;
+        state.head = (head0 + state.speed * i / FPS) % path.total;
+        drawScene();
+        var vf = new VideoFrame(cv, { timestamp: Math.round(i * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
+        enc.encode(vf, { keyFrame: i % (FPS * 2) === 0 });
+        vf.close();
+        // 인코더 대기열이 쌓이면 잠시 기다려 메모리 사용을 억제하고, 주기적으로 진행률을 화면에 반영한다
+        while (enc.encodeQueueSize > 8) await wait(4);
+        if (i % 6 === 0) { onProgress(i / total); await wait(0); }
+      }
+      await enc.flush();
+      if (encError) throw encError;
+      muxer.finalize();
+    } finally {
+      try { enc.close(); } catch (e) { /* 이미 닫혔으면 무시한다 */ }
+      exporting = false;
+      state.head = head0; // 저장이 끝나면 저장을 시작한 위치로 돌아간다
+      last = performance.now();
+    }
+    return { blob: new Blob([muxer.target.buffer], { type: 'video/mp4' }), ext: 'mp4', how: '정밀 인코딩, H.264' };
+  }
+
+  // 대체 경로(실시간 녹화): 정밀 인코딩을 쓸 수 없을 때 화면에 재생되는 모습을 그대로 녹화한다.
+  // 컴퓨터가 느리면 프레임이 빠질 수 있다
+  function exportRealtime(seconds, onProgress) {
+    return new Promise(function (resolve, reject) {
+      if (!window.MediaRecorder || !cv.captureStream) { reject(new Error('이 브라우저는 영상 녹화를 지원하지 않습니다')); return; }
+      var types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+      var type = null;
+      for (var i = 0; i < types.length; i++) if (MediaRecorder.isTypeSupported(types[i])) { type = types[i]; break; }
+      if (!type) { reject(new Error('녹화할 수 있는 영상 형식이 없습니다')); return; }
+      var stream = cv.captureStream(FPS), chunks = [];
+      var rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 12e6 });
+      var wasPlaying = state.play;
+      rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+      rec.onerror = function (e) { reject(e.error || new Error('녹화 중 오류가 발생했습니다')); };
+      rec.onstop = function () {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        state.play = wasPlaying; renderPlayBtn();
+        var isMp4 = type.indexOf('mp4') >= 0;
+        resolve({ blob: new Blob(chunks, { type: isMp4 ? 'video/mp4' : 'video/webm' }), ext: isMp4 ? 'mp4' : 'webm', how: '실시간 녹화' });
+      };
+      state.play = true; renderPlayBtn();
+      rec.start(100);
+      var t0 = performance.now();
+      (function tick() {
+        var p = (performance.now() - t0) / (seconds * 1000);
+        onProgress(Math.min(1, p));
+        if (p >= 1) rec.stop(); else setTimeout(tick, 100);
+      })();
+    });
+  }
+
+  $('videoBtn').addEventListener('click', async function () {
+    if (saveBusy) return;
+    var seconds = readSeconds(), btn = $('videoBtn'), label = btn.textContent;
+    saveBusy = true;
+    panel.inert = true; // 만드는 동안 설정이 바뀌어 영상이 섞이지 않도록 패널 조작을 막는다
+    function progress(p) { btn.textContent = '만드는 중 ' + Math.round(p * 100) + '%'; }
+    setStatus(seconds + '초 영상을 만드는 중입니다…');
+    try {
+      var result = null, note = '';
+      if (window.VideoEncoder && window.VideoFrame) {
+        try { result = await exportPrecise(seconds, progress); }
+        catch (e) { note = ' (정밀 인코딩 실패: ' + e.message + ')'; }
+      }
+      if (!result) {
+        setStatus('실시간 녹화로 저장합니다' + note + '…');
+        result = await exportRealtime(seconds, progress);
+      }
+      download(result.blob, fileName(result.ext));
+      setStatus(seconds + '초 영상을 저장했습니다 (' + W + ' × ' + H + ' px, ' + FPS + 'fps, ' + result.how + ')' + note + '.');
+    } catch (e) {
+      setStatus('영상을 만들지 못했습니다: ' + (e && e.message ? e.message : e), true);
+    } finally {
+      btn.textContent = label;
+      panel.inert = false;
+      saveBusy = false;
+    }
+  });
+
+  // 설정 패널이 스테이지(캔버스 영역)보다 세로로 커지지 않도록 높이를 묶는다. 넘치면 패널 안에서 스크롤한다.
+  // 한 열 배치(좁은 화면)에서는 제한을 풀어 자연스럽게 아래로 이어지게 한다
+  var stageEl = document.querySelector('.stage'), twoCol = window.matchMedia('(min-width: 861px)');
+  function fitPanel() { panel.style.maxHeight = twoCol.matches ? stageEl.offsetHeight + 'px' : ''; }
+  new ResizeObserver(fitPanel).observe(stageEl);
+  twoCol.addEventListener('change', fitPanel);
+
+  syncAll();
+  applyAspect();
+  loadLetter('J');
+  fitPanel();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

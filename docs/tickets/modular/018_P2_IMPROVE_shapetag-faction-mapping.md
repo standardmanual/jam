@@ -24,7 +24,7 @@ const TAG_COLORS = [
 ```
 
 ## Reference
-`jam-doc/planning/content/FACTIONS.md`에 트라이브 정의가 있으나 현재 스텁 상태. faction 데이터 모델이 확정되면 이 티켓을 본격적으로 진행한다.
+`docs/service/content/FACTIONS.md`에 트라이브 정의가 있으나 현재 스텁 상태. faction 데이터 모델이 확정되면 이 티켓을 본격적으로 진행한다.
 
 ## Recommendation
 `faction` prop을 추가하고 내부 매핑 테이블을 DS에 포함한다.

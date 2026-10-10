@@ -6,7 +6,7 @@ status: CLOSED
 created: 2026-10-08
 closed: 2026-10-08
 specs:
-  - docs/specs/SERVICE_OPERATIONS.md
+  - docs/service/SERVICE_OPERATIONS.md
 ---
 
 # [API] Strava OAuth 콜백이 URL의 state를 유저 번호로 믿어 다른 유저 계정에 Strava를 연결할 수 있다
@@ -19,7 +19,7 @@ specs:
   - `jam-web/src/app/api/strava/callback/route.ts` `GET()` L17-102 — L20 `const userId = searchParams.get('state')`, L26-32 오류·누락 리다이렉트, L67-78 `createServiceClient` upsert(`user_id: userId`, `onConflict: 'strava_athlete_id'`), L90 `syncStravaActivities(userId)`
   - `jam-web/src/lib/strava/oauthState.ts` — 신규
   - `jam-web/src/app/api/strava/auth/__tests__/route.test.ts`, `jam-web/src/app/api/strava/callback/__tests__/route.test.ts` — 신규(모킹 관례는 `jam-web/src/app/api/combine/__tests__/route.test.ts` 참고)
-  - `docs/specs/SERVICE_OPERATIONS.md` §3-1 「OAuth 연동 흐름」 L150-173
+  - `docs/service/SERVICE_OPERATIONS.md` §3-1 「OAuth 연동 흐름」 L150-173
   - 참고만(고치지 않음): `jam-web/src/proxy.ts` L59-69 `publicPaths`(콜백은 공개 경로가 아니라 로그인 세션이 있어야 도달), `jam-web/src/lib/admin/auth.ts` L79-88 `timingSafeEqual`(비공개 함수, 같은 방식 참고용), `jam-web/src/lib/strava/sync.ts` L1172-1183(유저당 연결 행을 `.single()`로 읽음)
 
 ## 배경 / 문제 정의
@@ -71,7 +71,7 @@ specs:
 4. 테스트(신규):
    - `callback/__tests__/route.test.ts`: (a) 쿠키 없음 → `state_mismatch`, 토큰 교환 `fetch`·upsert·동기화 미호출 (b) 쿠키와 `state` 불일치 → 같음 (c) 쿠키 일치·세션 없음 → `auth_required`, 같음 (d) 정상 → upsert의 `user_id`와 동기화 인자가 **세션 유저 ID**이고, `state`에 다른 UUID를 넣어도 세션 유저로 저장된다 (e) 위 모든 경우와 Strava `error` 경우에 응답이 state 쿠키를 지운다(`maxAge` 0 또는 만료) (f) `error` 값이 인코딩되어 리다이렉트 URL에 들어간다.
    - `auth/__tests__/route.test.ts`: (a) 비로그인 401은 그대로 (b) 리다이렉트 URL의 `state`가 유저 UUID가 아니고 쿠키 값과 같다 (c) 쿠키 속성이 `httpOnly`·`sameSite=lax`·`path=/api/strava`·`maxAge=600`이다 (d) 호출할 때마다 값이 다르다.
-5. `docs/specs/SERVICE_OPERATIONS.md` §3-1: `state=userId`를 "무작위 일회용 값 + `httpOnly` 쿠키, 콜백에서 쿠키 대조 후 세션 유저로 저장"으로 고치고, 콜백 URL 표기 `state={userId}`도 고친다.
+5. `docs/service/SERVICE_OPERATIONS.md` §3-1: `state=userId`를 "무작위 일회용 값 + `httpOnly` 쿠키, 콜백에서 쿠키 대조 후 세션 유저로 저장"으로 고치고, 콜백 URL 표기 `state={userId}`도 고친다.
 
 ## 완료 조건
 - `GET /api/strava/auth`가 만든 Strava 인가 URL의 `state`는 유저 UUID가 아니며, 같은 응답이 그 값을 `httpOnly`·`sameSite=lax`·`path=/api/strava`·`maxAge=600` 쿠키로 심는다(auth 테스트 b·c·d).
@@ -80,7 +80,7 @@ specs:
 - 정상 경로에서 upsert의 `user_id`와 동기화 인자는 세션 유저 ID다. `state`에 다른 유저의 UUID 모양 값을 넣어도 결과가 같다(callback 테스트 d).
 - 콜백의 모든 응답(Strava `error`, 누락, 불일치, 미로그인, 토큰 교환 실패, DB 오류, 성공)이 state 쿠키를 지운다(callback 테스트 e).
 - 거부 로그에 쿠키 값·`state`·`code`가 들어가지 않는다(코드 확인).
-- `docs/specs/SERVICE_OPERATIONS.md` §3-1에 `state=userId` 서술이 남아 있지 않다.
+- `docs/service/SERVICE_OPERATIONS.md` §3-1에 `state=userId` 서술이 남아 있지 않다.
 - `scripts/verify.sh`가 통과한다.
 
 ---
@@ -99,7 +99,7 @@ jam-web/src/app/api/strava/auth/route.ts
 jam-web/src/app/api/strava/callback/route.ts
 jam-web/src/app/api/strava/auth/__tests__/route.test.ts   (신규)
 jam-web/src/app/api/strava/callback/__tests__/route.test.ts (신규)
-docs/specs/SERVICE_OPERATIONS.md                          (§3-1)
+docs/service/SERVICE_OPERATIONS.md                          (§3-1)
 docs/agents/contract.json                                 (머지 뒤 카리나)
 ```
 구현 커밋 `96d509fd6`, staging 머지 `9de1f57c7`, contract 정리 `5ae18c524`.

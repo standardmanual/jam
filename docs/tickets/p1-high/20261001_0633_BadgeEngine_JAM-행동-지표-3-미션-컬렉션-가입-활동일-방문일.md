@@ -64,7 +64,7 @@ parent: "20260930_1456"
 | `weekly_active_days` | 정수 1~7 | 월~일(KST) 한 주 안의 활동한 날 수. 역대 최고 주의 값 | A12, Q2, R1, R2 |
 | `same_spot_checkin_days` | 정수 ≥1 | 지점(`poi_id`)별 체크인한 서로 다른 날(KST) 수의 최댓값. 합이 아니다 | A13, R1, R5 |
 
-- 키 이름에 「checkin」을 쓰는 이유: `docs/specs/UX_WRITING_GUIDELINE.md:70`이 「방문」을 금지어로 두고 「체크인」을 고정 용어로 정한다. 어드민·유저 문구도 전부 「체크인」이다.
+- 키 이름에 「checkin」을 쓰는 이유: `docs/service/writing/UX_WRITING_GUIDELINE.md:70`이 「방문」을 금지어로 두고 「체크인」을 고정 용어로 정한다. 어드민·유저 문구도 전부 「체크인」이다.
 - 6개 모두 `role: 'meta'`, `evaluation: 'external'`이다. 보조 키는 `pairedWith: ['days_since_signup']`이고 **`USAGE_METRIC_CONDITION_KEYS`(`conditionRegistry.ts:2065-2067`)에서 뺀다**(`mission_reward`처럼).
   그래야 0712의 「한 배지에 사용량 지표 하나」 가드가 `days_since_signup` + 보조 키 조합을 막지 않는다.
 - 기존 키 재사용 검토(혜린): 재사용할 키가 없다. `active_days_count`(560줄)는 누적이고 메인 엔진이 평가해 체크인을 합칠 수 없다. `weekly_count`(690줄)는 활동 횟수를 세고 `getMondayKey`를 쓴다.
@@ -224,11 +224,11 @@ parent: "20260930_1456"
       `conditionFormFields.test.ts`(6키 왕복), `jam-web/src/lib/admin/__tests__/badge-validation.test.ts`(주 키 5개 단독 통과·`repeat_count`와 함께면 거부, `days_since_signup` + 보조 키 통과, 보조 키 단독 거부, `days_since_signup` + 보조 키 + 다른 사용량 지표 거부),
       `badgeConditionText.test.ts`(6문구, 조합 문장 예시, 금지어). 동기화 테스트 9개(`processFetchedActivities`를 직접 부르는 파일)에 `vi.mock('@/lib/badge-engine/jamActionBadges', …)` 한 줄씩.
 11. **문서**(현재 상태 덮어쓰기)
-    - `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md`: 머리말과 ③ JAM! 서두에 6키, 드랍·픽업 절 뒤에 새 절(키 표, 「활동한 날」 정의와 R1·R2·R5, 보조 키 R3, KST 주 계산과 `getMondayKey`를 쓰지 않는 이유,
+    - `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md`: 머리말과 ③ JAM! 서두에 6키, 드랍·픽업 절 뒤에 새 절(키 표, 「활동한 날」 정의와 R1·R2·R5, 보조 키 R3, KST 주 계산과 `getMondayKey`를 쓰지 않는 이유,
       호출 지점 표(동기화 끝·빈 동기화·장착 `after()`), 체크인과 미션 완료가 동기화 안에서만 일어난다는 사실, 순환 방지, 알려진 한계(수동 입력)), 동기화 경로 문단, 트리거·조건·평가·원천 표(「행동 8종」 → 「13종」),
       0634가 `JAM_ACTION_CONDITION_KEYS` 전체를 넘기면 된다는 한 줄. 머리말의 「마이그레이션 199~202 실행 전」 표기를 실행됨으로 정정한다.
-    - `docs/specs/badge-engine/CONDITION_JSON_SPEC.md`: §3 표 6행, 드랍·픽업 단락 뒤 단락(보조 키 짝 규칙 포함), §4 「사용량 지표 14종」 → 「19종」(보조 키는 사용량 지표가 아님을 명시).
-    - `docs/specs/prd/02_DATA_MODEL.md`: `users`·`strava_activities`·`user_checkin_badge_earns`·`user_item_book_completions`·`user_mission_completions` 절에 「JAM! 행동 지표의 원천」 한 줄씩.
+    - `docs/service/badge-engine/CONDITION_JSON_SPEC.md`: §3 표 6행, 드랍·픽업 단락 뒤 단락(보조 키 짝 규칙 포함), §4 「사용량 지표 14종」 → 「19종」(보조 키는 사용량 지표가 아님을 명시).
+    - `docs/service/prd/02_DATA_MODEL.md`: `users`·`strava_activities`·`user_checkin_badge_earns`·`user_item_book_completions`·`user_mission_completions` 절에 「JAM! 행동 지표의 원천」 한 줄씩.
 
 ### 커밋 단계
 게이트가 단계별로 볼 수 있게 ① 선언·마이그레이션 ② 계산(페이징 이동·정책 함수 포함) ③ 판정 틀·연결(동기화·장착) ④ 문서로 나눠 커밋한다.
@@ -296,7 +296,7 @@ jam-web/src/lib/strava/sync.ts, jam-web/src/app/api/itembooks/[id]/slot/route.ts
 jam-web/src/types/database.ts, jam-web/src/app/admin/badges/conditionFormFields.ts, jam-web/src/lib/badgeConditionText.ts
 테스트 신규 7: jam-action-{completion-metrics,day-metrics,progress-badges,progress-triggers}, sync-jam-action-hook, slot route, effective-vehicle-speed-filter
 테스트 수정 13: condition-registry, conditionFormFields, badge-validation, badgeConditionText, 동기화 테스트 9개(JAM! 판정 모킹 한 줄)
-docs/specs/badge-engine/{BADGE_ENGINE_UNIFIED,CONDITION_JSON_SPEC}.md, docs/specs/prd/02_DATA_MODEL.md
+docs/service/badge-engine/{BADGE_ENGINE_UNIFIED,CONDITION_JSON_SPEC}.md, docs/service/prd/02_DATA_MODEL.md
 ```
 
 ### 테스트 결과
@@ -308,7 +308,7 @@ docs/specs/badge-engine/{BADGE_ENGINE_UNIFIED,CONDITION_JSON_SPEC}.md, docs/spec
   미래 날짜 활동은 0건이라 민지가 지적한 코드(미래 날짜 제외)와 203 주석 SQL(포함)의 차이는 지금 값에 영향이 없다. 실데이터에서 코드 계산을 돌린 대조는 ④(0634) dry-run이 맡는다.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 용어 일관성: 유저 조건 문구 「완료한 미션 N개 이상」·「완성한 컬렉션 N개 이상」·「가입 후 N일 이상」·「최근 30일 동안 N일 이상 활동」·「한 주(월~일)에 N일 이상 활동」·「같은 지점에 N일 이상 체크인」.
   고정 용어 「체크인」을 쓰고 금지어(방문·POI·충족·달성·놓 등)가 없다(테스트).

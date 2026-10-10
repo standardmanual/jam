@@ -3,7 +3,7 @@
 /**
  * JAM! 에셋 제너레이터 — 어드민 "디자인" 화면 (티켓 20260924_2156)
  *
- * 프로토타입(jam-doc/assets/prototypes/20260924_jam-asset-generator.html)의 기본 기능을
+ * 프로토타입(docs/assets/prototypes/20260924_jam-asset-generator.html)의 기본 기능을
  * 어드민 화면으로 옮긴다. 그리기 자체는 `jam-web/src/lib/asset-generator/`(티켓 20260924_2155)를
  * 그대로 쓰고, 이 화면은 상태 보관·레이아웃·"전체 무작위" 처리만 맡는다. 레이아웃·속성 패널·
  * 내보내기 패널 구조는 `src/app/admin/shader-lab/`을 참고했다(파일은 수정하지 않았다).

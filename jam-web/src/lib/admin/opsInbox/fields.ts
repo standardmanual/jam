@@ -5,7 +5,7 @@
  * 읽는 **유일한 곳**이다. 제출 원본(`original`)은 자기 신고 JSON이라 모양을 믿지 않으므로, 값이 틀리면 `OPS_FIELD_UNKNOWN`
  * (「모름」)으로 돌려준다. 수정본(`edited`)이 있으면 그 값을 먼저 읽는다(`itemView.itemField`).
  *
- * 값이 없을 때와 형식이 틀릴 때 읽는 값은 칸마다 정해져 있다(`docs/specs/prd/ops-tool/PRD.md` §3.1).
+ * 값이 없을 때와 형식이 틀릴 때 읽는 값은 칸마다 정해져 있다(`docs/service/prd/ops-tool/PRD.md` §3.1).
  * - `shape`·`exposure_tags`: 없어도 틀려도 「모름」(필수 칸이라 없는 것도 정보가 없는 것이다)
  * - `tribe_id`: 없으면 `null`, 틀리면 「모름」
  * - `color_pending`: 없으면 `false`, 틀리면 「모름」

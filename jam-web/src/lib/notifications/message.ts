@@ -1,6 +1,6 @@
 /**
  * 알림(소식) 문구 렌더러 — 티켓 20260824_021
- * 스펙: docs/specs/prd/notification/PRD.md §3(20종 표) · §5(강조 규칙)
+ * 스펙: docs/service/prd/notification/PRD.md §3(20종 표) · §5(강조 규칙)
  *
  * ## 규칙 하나로 20종을 일관되게
  *

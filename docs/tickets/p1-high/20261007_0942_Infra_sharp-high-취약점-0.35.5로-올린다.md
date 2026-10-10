@@ -46,7 +46,7 @@ jam-web/package-lock.json (+118/−118. 리뷰 브랜치 claude/jamwork-20261007
 - [x] 카리나(머지 뒤): `npm audit --omit=dev --package-lock-only` 0건.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 해당 없음(사용자 노출 문구 없음)
 

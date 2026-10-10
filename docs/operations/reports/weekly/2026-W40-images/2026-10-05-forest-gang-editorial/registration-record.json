@@ -1,0 +1,44 @@
+{
+  "record_version": 1,
+  "bundle_id": "2026-10-05-forest-gang-editorial",
+  "author": "윤진",
+  "bundle_created_at": "2026-09-29T13:22:56+09:00",
+  "registered_at": "2026-09-29T13:58:24+09:00",
+  "summary": "[editorial_article] 가을의 그림자 · 2026-10-05T00:00:00+09:00 ~ 2026-10-05T23:59:00+09:00 · 노출 태그 all",
+  "card": {
+    "id": "11ffdd57-8a3f-4fe9-bbc4-534e33fc5a2d",
+    "title": "가을의 그림자",
+    "template_type": "editorial_article",
+    "layout_type": "large_thumbnail",
+    "starts_at": "2026-10-04T15:00:00.000Z",
+    "ends_at": "2026-10-05T14:59:00.000Z",
+    "is_active": true,
+    "image_source": "agent-generator"
+  },
+  "world_review": {
+    "world_related": true,
+    "winter_reviewed": true,
+    "reason": "2026-09-29 재검수: 인용 4건 원문 일치, 인용 밖 2곳 윈터 대체안 반영"
+  },
+  "storage": {
+    "bucket": "images",
+    "png_path": "today_cards/asset-generator/11ffdd57-8a3f-4fe9-bbc4-534e33fc5a2d.png",
+    "webp_path": "today_cards/asset-generator/11ffdd57-8a3f-4fe9-bbc4-534e33fc5a2d.webp"
+  },
+  "urls": {
+    "original_png": "https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/today_cards/asset-generator/11ffdd57-8a3f-4fe9-bbc4-534e33fc5a2d.png",
+    "cover_image_url": "https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/today_cards/asset-generator/11ffdd57-8a3f-4fe9-bbc4-534e33fc5a2d.webp?v=1790657904816"
+  },
+  "image": {
+    "seed": 2935976411,
+    "preset_id": "51aa4673-f723-4929-ac20-a302202b7aa7",
+    "bg_color": "#8a5a2e",
+    "end_color": "#2a1a0d",
+    "text": "가을의 그림자",
+    "subtext": "가을은 숲속의 갱단 차례예요",
+    "source_path": "image.png",
+    "original_bytes": 771856,
+    "webp_bytes": 23494
+  },
+  "color_rationale_link": "docs/operations/reports/weekly/2026-W40.md"
+}

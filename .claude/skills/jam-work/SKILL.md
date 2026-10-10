@@ -119,7 +119,7 @@ BUILD부터 시작한다(티켓이 있고 완료 조건이 채워져 있음) —
 | 유형 | 대상 | 절차 | 티켓 카테고리 |
 |---|---|---|---|
 | `docs` | 문서 정리·체계 갱신 | `/jam-docs` 규칙 적용 | 해당 영역 카테고리 |
-| `research` | 조사·감사·보고서 (코드 무변경) | 조사 후 티켓에 결과 기록. 다시 쓸 결론은 티켓에만 두지 않고 `docs/specs/`·`jam-doc/planning/`의 해당 문서로 환류한다 | 해당 영역 카테고리 |
+| `research` | 조사·감사·보고서 (코드 무변경) | 조사 후 티켓에 결과 기록. 다시 쓸 결론은 티켓에만 두지 않고 `docs/service/`·`docs/plan/`의 해당 문서로 환류한다 | 해당 영역 카테고리 |
 
 > 유형은 **파이프라인 라우팅 키**, 티켓 카테고리는 **문서 분류 키**로 축이 다르다.
 > 카테고리 8종(Admin·Service·Feature·Content·BadgeEngine·Infra·UI·API)은 `/jam-docs` 참조.
@@ -334,7 +334,7 @@ Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다.
    - **CI 상태도 함께 확인한다**: `gh run list --branch claude/jamwork-{ticket-id}-{slug} --limit 1`로 최근 실행을,
      `gh run view <run-id>` 또는 `gh api repos/{owner}/{repo}/commits/{sha}/check-runs`로 결과를
      본다. 상태가 없거나 실패면 머지를 멈추고 원인을 먼저 본다 — 민지 점검표 1번과 같은 기준이다.
-2. 아현이 브랜치에서 직접 고친 문서를 확인한다. `docs/`와 `jam-doc/`이 한 저장소에 있으므로
+2. 아현이 브랜치에서 직접 고친 문서를 확인한다. 문서가 모두 `docs/`에 있어 코드와 같은 저장소이므로
    1번의 머지에 문서 변경까지 함께 들어온다. 카리나가 따로 반영하거나 별도로 커밋할 일은 없다
    - 민지가 점검표 11번에서 문서 누락을 지적했거나 아현이 빠뜨린 문서가 보이면, 이 시점에
      `/jam-docs` 규칙에 맞게 직접 보완한다
@@ -381,7 +381,7 @@ Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다.
 - 이 스킬 호출 자체가 Workflow 툴 사용에 대한 명시적 opt-in이다.
 - `copy`·`ui`·`content` 유형의 한국어 문구는 **구현 단계**에서 아현이
   `.claude/output-styles/fluent-korean.md` 지침을 따라 쓰고, **게이트 리뷰**에서 민지가
-  체크리스트 12번으로 자연스러움을 판정한다(판정에 실질적으로 영향, `docs/specs/SLOP_DICTIONARY.md`
+  체크리스트 12번으로 자연스러움을 판정한다(판정에 실질적으로 영향, `docs/service/writing/SLOP_DICTIONARY.md`
   §4 기준). 패턴 매칭 가능한 금칙어·금지 문장은 `scripts/check-slop.mjs`가 `verify.sh` 단계에서
   먼저 기계적으로 거른다.
 - 민지의 점검표 12개 항목 중 유형에 해당하지 않는 항목은 `해당없음`으로 처리한다 — 표는

@@ -414,7 +414,7 @@ function worktreeHtml(d) {
     <p class="lt">격리 워크트리 <code>.claude/worktrees/wf_*</code> — ${esc(isolatedNames.join('·') || '(없음)')} 전용</p>
     ${d.firstCommand ? `<div class="box">첫 명령: <code>git fetch origin staging</code> → <code>git checkout --detach origin/staging</code> → <code>workspace-setup.sh link</code></div>` : ''}
     <div class="box">브랜치 <code>claude/jamwork-{ticket}-{slug}</code>에 커밋 → 리뷰 브랜치로만 push</div>
-    <div class="box dim">jam-web/node_modules → 메인 폴더로 향하는 심볼릭 링크 · 시크릿 없음 · <code>jam-doc/</code>는 실제 폴더로 따라옴</div>
+    <div class="box dim">jam-web/node_modules → 메인 폴더로 향하는 심볼릭 링크 · 시크릿 없음 · <code>docs/</code>는 실제 폴더로 따라옴</div>
   </div>
   <div class="lane remote">
     <p class="lt">GitHub · Vercel</p>

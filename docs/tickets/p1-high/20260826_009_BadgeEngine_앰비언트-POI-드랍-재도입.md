@@ -176,13 +176,13 @@ jam-web/src/types/database.ts
 jam-web/src/types/database.generated.ts
 
 [문서]
-docs/specs/prd/01_PRD.md
-docs/specs/prd/02_DATA_MODEL.md
-docs/specs/prd/03_PHASES.md
-docs/specs/prd/04_PROJECT_SPEC.md
-docs/specs/prd/README.md
-docs/specs/prd/notification/PRD.md
-docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
+docs/service/prd/01_PRD.md
+docs/service/prd/02_DATA_MODEL.md
+docs/service/prd/03_PHASES.md
+docs/service/prd/04_PROJECT_SPEC.md
+docs/service/prd/README.md
+docs/service/prd/notification/PRD.md
+docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md
 ```
 
 ### 테스트 결과
@@ -198,7 +198,7 @@ docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
       "지금 배포" 1회 실행 + `poi_drops` 실측 확인이 필요하다.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 이 화면은 `/admin/` 어드민 전용(MODULAR·소비자 화면 아님) — 대상 독자가 앱 유저가 아니라
 운영자다. 기존 어드민 화면(`DropPolicyForm`·`ItemBookForm` 등)도 "POI" 등 내부 용어를 그대로

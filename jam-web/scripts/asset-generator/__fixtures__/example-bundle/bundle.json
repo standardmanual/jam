@@ -2,7 +2,7 @@
   "bundle_id": "example-badge",
   "author": "윤진",
   "created_at": "2026-09-25T10:30:00+09:00",
-  "color_rationale_link": "jam-doc/planning/content/TRIBES.md",
+  "color_rationale_link": "docs/service/content/TRIBES.md",
   "badge": {
     "name": "[TEST] 예시 산책 배지",
     "description": "묶음 형식을 확인하려고 만든 예시 배지입니다. 실제로 등록하지 않습니다.",

@@ -8,8 +8,8 @@
 // 이 스크립트가 그 서술을 실제로 만든다. 세션을 열 때마다 돌며, 문제가 있을 때만 말한다.
 //
 // 판정 기준 (scheduled-jobs.md):
-//   주간 — 화요일 09:00 KST · jam-doc/operations/reports/weekly/YYYY-Www.md
-//   월간 — 매월 1일 09:00 KST · jam-doc/operations/reports/monthly/YYYY-MM.md
+//   주간 — 화요일 09:00 KST · docs/operations/reports/weekly/YYYY-Www.md
+//   월간 — 매월 1일 09:00 KST · docs/operations/reports/monthly/YYYY-MM.md
 //
 // 종료 코드는 항상 0이다. 세션 시작을 막지 않고 알리기만 한다.
 
@@ -51,7 +51,7 @@ function isoWeek(d) {
 const weeklyDue = DOW === 0 ? true : DOW > 2 || (DOW === 2 && H >= 9)
 if (weeklyDue) {
   const { year, week } = isoWeek(now)
-  const file = `jam-doc/operations/reports/weekly/${year}-W${pad(week)}.md`
+  const file = `docs/operations/reports/weekly/${year}-W${pad(week)}.md`
   if (!existsSync(path.join(REPO, file))) {
     warnings.push(`주간 리포트가 없습니다 — ${file}`)
   }
@@ -60,7 +60,7 @@ if (weeklyDue) {
 // ── 월간: 이번 달 1일 09:00이 지났는가 ────────────────────────────────────────
 const monthlyDue = D > 1 || (D === 1 && H >= 9)
 if (monthlyDue) {
-  const file = `jam-doc/operations/reports/monthly/${Y}-${pad(M)}.md`
+  const file = `docs/operations/reports/monthly/${Y}-${pad(M)}.md`
   if (!existsSync(path.join(REPO, file))) {
     warnings.push(`월간 리포트가 없습니다 — ${file}`)
   }

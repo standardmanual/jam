@@ -147,7 +147,7 @@ closed: 2026-08-31
 - `docs/tickets/20260831_1118_Service_어드민-드랍정책-저장-조용한실패-upsert에러삼킴.md`
 - `docs/tickets/20260831_1115_Infra_배지등급명-legend-mythic을-epic-mystic으로-변경.md`
 - `jam-web/supabase/migrations/115_rename_rarity_epic_mystic.sql` (4·5절)
-- `docs/specs/DEV_PROCESS_GUARDRAILS.md` 패턴 9
+- `docs/agents/DEV_PROCESS_GUARDRAILS.md` 패턴 9
 
 ---
 ## 완료 기록
@@ -184,8 +184,8 @@ jam-web/src/lib/abusing/policy.ts
 jam-web/src/app/api/admin/abusing/policy/route.ts
 jam-web/src/app/admin/abusing/AbusingClient.tsx
 jam-web/src/lib/abusing/__tests__/policy-save.test.ts  (신규)
-docs/specs/DEV_PROCESS_GUARDRAILS.md            (문서)
-docs/specs/SERVICE_OPERATIONS.md                (문서)
+docs/agents/DEV_PROCESS_GUARDRAILS.md            (문서)
+docs/service/SERVICE_OPERATIONS.md                (문서)
 ```
 
 ### 테스트 결과
@@ -210,7 +210,7 @@ docs/specs/SERVICE_OPERATIONS.md                (문서)
       `/admin/abusing`에서 수행
 
 ### UX Writing 검증
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 추가된 노출 문구 5종 (400 비숫자 / 400 범위 / 500 DB 거부 / 클라이언트 상태코드 폴백 / 네트워크 실패).
 대표 문구:

@@ -7,7 +7,7 @@ created: 2026-09-25
 closed: 2026-09-26
 parent: "20260924_2154"
 specs:
-  - "docs/specs/prd/asset-generator/PRD.md"
+  - "docs/service/prd/asset-generator/PRD.md"
 ---
 
 # [Infra] 에셋 제너레이터 `AssetPreset` 타입과 API 응답 행 타입을 하나로 합친다

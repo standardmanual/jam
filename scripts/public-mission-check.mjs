@@ -1,6 +1,6 @@
 // 주간 점검용 공개 미션 점검 — 순수 함수 (티켓 20260924_1502)
 //
-// 규칙 원천은 docs/specs/SERVICE_OPERATIONS.md §9-5다. 노출 판정은
+// 규칙 원천은 docs/service/SERVICE_OPERATIONS.md §9-5다. 노출 판정은
 // jam-web/src/lib/missions/visibility.ts의 isMissionExposed와 같은 규칙을 따른다.
 // 반환은 집계 건수만이며 미션 제목·유저 정보는 넣지 않는다.
 

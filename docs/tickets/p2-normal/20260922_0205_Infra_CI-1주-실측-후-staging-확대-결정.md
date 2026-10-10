@@ -13,7 +13,7 @@ parent: "20260921_2304"
 
 - 요구사항: 리뷰 브랜치(`claude/**`)에만 켠 GitHub Actions `verify`의 1주 사용량을 집계하고, 무료 한도 안에서 staging push까지 넓힐 여유가 있는지 사용자에게 보고해 결정받는다.
 - 구현 계획: 2026-09-29 이후에 `gh run list --workflow verify.yml --created '>=2026-09-21T15:00:00Z' --json databaseId,conclusion,createdAt,startedAt,updatedAt,headBranch --limit 500`으로 실행 횟수·실행별 시간·경로(전체·가벼운 검사)를 집계한다. 월 환산 사용량과 staging을 추가했을 때의 예상치를 함께 보고한다.
-- 관련 파일: `.github/workflows/verify.yml`, `docs/agents/team-operations.md` §3, `jam-doc/planning/business-plan/02 JAM! 서비스 플랜.md` §8.2 16번
+- 관련 파일: `.github/workflows/verify.yml`, `docs/agents/team-operations.md` §3, `docs/plan/vision/02 JAM! 서비스 플랜.md` §8.2 16번
 - 상위 티켓: 20260921_2304(2026-09-22 사용자 결정: "1주 실측 후 여유가 있으면 staging을 추가한다"). 경로: 카리나 직접(research). staging 추가를 결정하면 별도 infra 티켓으로 구현한다.
 
 ## 배경 / 문제 정의

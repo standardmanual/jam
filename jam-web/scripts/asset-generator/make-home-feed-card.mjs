@@ -4,7 +4,7 @@
  *
  * 카드 한 장을 만드는 「렌더 → bundle.json 작성 → --dry-run 검증」을 명령 하나로 한다. 지금까지는 `render.mjs`로
  * 이미지를 만들고, bundle.json을 손으로 쓰고, `register-home-feed-card.mjs --dry-run`을 따로 돌렸다.
- * 묶음 형식·검증 규칙의 정본은 `docs/specs/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md`다.
+ * 묶음 형식·검증 규칙의 정본은 `docs/service/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md`다.
  *
  * ## 실행 (cwd는 반드시 jam-web — `register-home-feed-card.mjs`와 같은 `@/` 별칭 이유)
  * ```
@@ -12,7 +12,7 @@
  * npx tsx scripts/asset-generator/make-home-feed-card.mjs \
  *   --preset <프리셋 id> --bg "#8a5a2e" --end "#3d2812" --text01 "제목" [--text02 "짧은 설명"] \
  *   --card '{"title":"…","template_type":"…","exposure_tags":["all"],"starts_at":"…","ends_at":"…"}' \
- *   --meta '{"color_rationale_link":"jam-doc/…","world_review":{"world_related":false,"winter_reviewed":false,"reason":"…"}}' \
+ *   --meta '{"color_rationale_link":"docs/…","world_review":{"world_related":false,"winter_reviewed":false,"reason":"…"}}' \
  *   --out-dir /절대경로/<묶음 ID> [--seed 123]
  * ```
  * 프리셋 레이어는 `--text01`·`--text02`처럼 어드민 화면과 같은 번호로 지정한다(안 준 번호는 프리셋에 저장된 값). 옛 `--text`·`--subtext`는 없어졌다.

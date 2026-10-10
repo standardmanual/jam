@@ -32,7 +32,7 @@ function sampleBundle(): SampleBundle {
     bundle_id: '2026-09-25-dawn-runner',
     author: '윤진',
     created_at: '2026-09-25T10:30:00+09:00',
-    color_rationale_link: 'jam-doc/planning/content/TRIBES.md',
+    color_rationale_link: 'docs/service/content/TRIBES.md',
     badge: {
       name: "새벽 러너's",
       description: '이른 아침을 달린 사람에게 남는 표식입니다.',
@@ -159,7 +159,7 @@ describe('buildRegistrationRecord', () => {
         original_bytes: 2048,
         webp_bytes: 900,
       },
-      color_rationale_link: 'jam-doc/planning/content/TRIBES.md',
+      color_rationale_link: 'docs/service/content/TRIBES.md',
     });
   });
 

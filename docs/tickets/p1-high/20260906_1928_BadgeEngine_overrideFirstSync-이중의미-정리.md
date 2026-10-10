@@ -103,8 +103,8 @@ jam-web/src/lib/badge-engine/reevaluateCatalog.ts
 jam-web/src/app/api/admin/simulate/route.ts
 jam-web/src/app/api/admin/users/[id]/badge-diagnosis/route.ts (주석만)
 jam-web/src/lib/badge-engine/__tests__/first-sync-options-contract.test.ts (신규)
-docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md
-docs/specs/SERVICE_OPERATIONS.md
+docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md
+docs/service/SERVICE_OPERATIONS.md
 ```
 
 ### 테스트 결과

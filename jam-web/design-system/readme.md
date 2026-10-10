@@ -4,7 +4,7 @@ JAM!을 위한 시각적 디자인 시스템입니다.
 
 ## 출처 (Sources)
 
-* GitHub: [standardmanual/jam](https://github.com/standardmanual/jam) — JAM! 앱 콘텐츠, 화면 구조, 카피/용어, UX 작성 규칙(`docs/specs/UX_WRITING_GUIDELINE.md`)을 확인하기 위해 참조했습니다.
+* GitHub: [standardmanual/jam](https://github.com/standardmanual/jam) — JAM! 앱 콘텐츠, 화면 구조, 카피/용어, UX 작성 규칙(`docs/service/writing/UX_WRITING_GUIDELINE.md`)을 확인하기 위해 참조했습니다.
 
 더 심도 있는 재구성을 위해 이것들을 더 살펴보세요 — GitHub 리포지토리에는 전체 앱(미션, 드랍, 조합, 관리자)이 포함되어 있습니다.
 

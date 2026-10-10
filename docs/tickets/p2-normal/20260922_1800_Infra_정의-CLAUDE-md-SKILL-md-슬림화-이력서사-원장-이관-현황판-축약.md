@@ -59,8 +59,8 @@ parent: "20260922_1749"
 CLAUDE.md
 docs/agents/orchestrator.md
 docs/agents/team-operations.md
-docs/specs/DEV_PROCESS_GUARDRAILS.md
-docs/specs/prd/04_PROJECT_SPEC.md
+docs/agents/DEV_PROCESS_GUARDRAILS.md
+docs/service/prd/04_PROJECT_SPEC.md
 scripts/ticket-dashboard.mjs
 scripts/ticket-dashboard.test.mjs
 .claude/agents/jam-developer.md

@@ -53,7 +53,7 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
      another ticket's unapproved commits into your ancestry.
    - Commit locally with a Korean message, then `git push -u origin claude/jamwork-{...}`. Nothing
      further — the orchestrator merges after user approval.
-6. **User-facing Korean copy** follows `docs/specs/UX_WRITING_GUIDELINE.md`. Search it for
+6. **User-facing Korean copy** follows `docs/service/writing/UX_WRITING_GUIDELINE.md`. Search it for
    the relevant section instead of reading the whole file. If you change a string, also fix the test
    that asserts that string. Every element you create or modify that renders Korean text (service
    and admin) gets the line-break classes in §3.2 「한국어 줄바꿈」 (`break-keep` + `wrap-break-word`,
@@ -64,14 +64,15 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
    return `needs_design` — do not pick components yourself. When you change
    `design-system/components/**`, the matching `*.stories.*` must change with it (pre-commit checks).
    Exception: `jam-web/src/app/admin/` is outside MODULAR and outside 채원's scope.
-9. **`jam-doc/` is part of this repository — edit it directly.** Planning, content, marketing and
-   operations documents live in `jam-doc/` and are checked out in your worktree like any other
-   folder. Edit them in your branch and commit them with the code; never hand documentation changes
-   back as a patch block — the `문서 갱신안` field lists what you changed directly.
-   - Folder write rules are in `CLAUDE.md` ("폴더 = 수명주기"). `jam-doc/archive/` is read-only,
+9. **`docs/` holds every document — edit them directly.** Service specs, planning, content,
+   marketing and operations documents all live under `docs/` (folder map: `docs/README.md`) and are
+   checked out in your worktree like any other folder. Edit them in your branch and commit them with
+   the code; never hand documentation changes back as a patch block — the `문서 갱신안` field lists
+   what you changed directly.
+   - Folder write rules are in `CLAUDE.md` ("폴더 = 수명주기"). `docs/archive/` is read-only,
      and `.githooks/pre-commit` blocks new files there as well as version copies of the service
      plan and TRIBES. Overwrite the current document instead of adding a dated copy.
-   - Content seed generators (`jam-doc/assets/content-seed/v5_*.py`) may be run from the worktree
+   - Content seed generators (`docs/assets/content-seed/v5_*.py`) may be run from the worktree
      root: they resolve paths relative to their own location and write into your worktree's
      `jam-web/supabase/migrations/`.
 10. **Do not claim "Google login blocks verification."** `stage.j-a-m.app`
@@ -85,7 +86,7 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
    up to the rendered screen and the selection state only, and do not press the write button.
    If the write result must be checked, use a user-approved dummy record named with a `[TEST]`
    prefix, or call the API route directly and check only the response shape and status code
-   (`docs/specs/DEV_PROCESS_GUARDRAILS.md` pattern 13).
+   (`docs/agents/DEV_PROCESS_GUARDRAILS.md` pattern 13).
    In your isolated worktree `next dev` does not start (its `jam-web/node_modules` is a link to
    the main folder), so do not try to render admin screens there: cover the logic with unit tests
    and leave screen-only checks to the orchestrator (pattern 13, ticket 20260924_1016).
@@ -173,7 +174,7 @@ Return a **`StructuredOutput`** — the orchestrator branches on `status`, `bran
                    함께 적는다(통과 못한 항목만 나열, 전부 통과면 "전항목 통과")
 - 추가한 테스트:   (없으면 사유)
 - 문서 갱신안:     직접 고친 문서의 경로 / 섹션 / 바꾼 내용 / 근거 (없으면 "없음").
-                   `docs/`와 `jam-doc/` 모두 브랜치에서 직접 고치고 코드와 함께 커밋한다
+                   `docs/` 아래 모든 문서를 브랜치에서 직접 고치고 코드와 함께 커밋한다
 - DB 마이그레이션: SQL 파일 경로 또는 "없음"
 - assumptions:     해석이 들어간 가정 (없으면 "없음")
 - 확신도:          높음 / 보통 / 낮음

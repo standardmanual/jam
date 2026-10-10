@@ -1,5 +1,5 @@
 /**
- * 예약 등록의 종류별 핸들러 계약 (티켓 20261002_1122, 상위 20260930_1500 ③-a). 규칙의 정본은 `docs/specs/prd/ops-tool/PRD.md` §8이다.
+ * 예약 등록의 종류별 핸들러 계약 (티켓 20261002_1122, 상위 20260930_1500 ③-a). 규칙의 정본은 `docs/service/prd/ops-tool/PRD.md` §8이다.
  *
  * 이 파일은 타입과 공용 도우미만 둔다. DB를 부르지 않고, Supabase는 타입으로만 가져온다(값 import 없음). 실제 핸들러는
  * 종류마다 파일을 따로 두고(④ 카드는 `homeFeedCard.ts`) `registry.ts`의 `EXECUTE_HANDLERS`에 붙인다. 이 파일은 핸들러를 가져오지 않는다(순환 import 방지).

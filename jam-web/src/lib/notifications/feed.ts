@@ -1,6 +1,6 @@
 /**
  * 알림(소식)함 조회 — 서버 사이드 전용 (티켓 20260824_021)
- * 스펙: docs/specs/prd/notification/PRD.md §6-1 / DATA_MODEL.md §3
+ * 스펙: docs/service/prd/notification/PRD.md §6-1 / DATA_MODEL.md §3
  *
  * 화면(`/notifications`)과 API(`/api/notifications`)가 **같은 함수**를 쓴다. 첫 페이지는
  * 서버 컴포넌트가 그리고, "더 불러오기"만 API를 탄다 — 두 경로에서 조인·경고 판정이

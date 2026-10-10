@@ -46,7 +46,7 @@ try {
 
   // ① 리포트 폴더 안 — 통과
   setAuthor(ROUTINE_EMAIL, 'Claude')
-  stage(['jam-doc/operations/reports/triage/2026-09-22.md'])
+  stage(['docs/operations/reports/triage/2026-09-22.md'])
   let r = runHook()
   assert.equal(r.status, 0, `리포트 폴더 안 커밋은 통과해야 한다:\n${r.stderr}`)
   git(['reset', '-q'], base)
@@ -60,7 +60,7 @@ try {
   git(['reset', '-q'], base)
 
   // ③ 혼합(안+밖) — 차단
-  stage(['jam-doc/operations/reports/triage/2026-09-23.md', 'docs/tickets/foo.md'])
+  stage(['docs/operations/reports/triage/2026-09-23.md', 'docs/tickets/foo.md'])
   r = runHook()
   assert.equal(r.status, 1, `리포트 폴더 안팎이 섞이면 차단되어야 한다:\n${r.stderr}`)
   git(['reset', '-q'], base)

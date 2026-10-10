@@ -179,10 +179,11 @@ export function checkMissingReports(repoRoot, kstDate = nowKST()) {
     return warnings // 문서가 없으면 조용히 건너뛴다 (이 hook 자체의 부가 기능이라 필수 아님)
   }
 
-  // 리포트는 중첩 저장소 jam-doc에 있다. 복제 전이면 "리포트 없음" 오경보 대신 복제 안내만 낸다.
-  const reportsDir = join(repoRoot, 'jam-doc', 'operations', 'reports')
-  if (!existsSync(join(repoRoot, 'jam-doc'))) {
-    warnings.push('[경고] jam-doc 저장소가 복제되어 있지 않아 리포트 누락 점검을 건너뜁니다. /jam-sync로 복제하세요.')
+  // 리포트는 docs/operations/reports에 있다. docs/operations 폴더 자체가 없으면(체크아웃이 덜 된 경우)
+  // "리포트 없음" 오경보 대신 폴더가 없다는 안내만 낸다.
+  const reportsDir = join(repoRoot, 'docs', 'operations', 'reports')
+  if (!existsSync(join(repoRoot, 'docs', 'operations'))) {
+    warnings.push('[경고] docs/operations 폴더가 없어 리포트 누락 점검을 건너뜁니다. /jam-sync로 작업 폴더 상태를 확인하세요.')
     return warnings
   }
 
@@ -192,7 +193,7 @@ export function checkMissingReports(repoRoot, kstDate = nowKST()) {
     const reportPath = join(reportsDir, 'weekly', `${label}.md`)
     if (!existsSync(reportPath)) {
       warnings.push(
-        `[경고] 이번 주 예약 시각이 지났는데 주간 리포트(jam-doc/operations/reports/weekly/${label}.md)가 없습니다.`
+        `[경고] 이번 주 예약 시각이 지났는데 주간 리포트(docs/operations/reports/weekly/${label}.md)가 없습니다.`
       )
     }
   }
@@ -203,7 +204,7 @@ export function checkMissingReports(repoRoot, kstDate = nowKST()) {
     const reportPath = join(reportsDir, 'monthly', `${label}.md`)
     if (!existsSync(reportPath)) {
       warnings.push(
-        `[경고] 이번 달 예약 시각이 지났는데 월간 리포트(jam-doc/operations/reports/monthly/${label}.md)가 없습니다.`
+        `[경고] 이번 달 예약 시각이 지났는데 월간 리포트(docs/operations/reports/monthly/${label}.md)가 없습니다.`
       )
     }
   }

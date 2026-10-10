@@ -27,7 +27,7 @@ mystic `{month:[6,7], monthly_km:80, repeat_count:2}`. 이 조합을 쓰는 배�
 ## 상세 요구사항
 
 `repeatOccurrences.ts`에 `month`+`monthly_km` 조합을 위한 "기간 단위 회차" 계산을 추가한다.
-`jam-doc/planning/content/ACTIVITY_BADGES.md`의 walking:W4 조건문("6~7월 중 한 달에
+`docs/service/content/ACTIVITY_BADGES.md`의 walking:W4 조건문("6~7월 중 한 달에
 80km")과 등급별 설명("비가 그치기를 기다린 달은 한 번도 없습니다" — mystic)으로
 "month 배열 중 해당 조건(monthly_km)을 채운 연-월 각각이 사건 하나"라는 해석을 확인했다
 (epic repeat_count 1·mystic repeat_count 2가 정확히 [6,7] 두 달 중 한 달/두 달을 채우는

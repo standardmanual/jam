@@ -2,7 +2,7 @@
 --
 -- 이 파일은 생성 파일이다. 손으로 고치지 않는다. 원고를 고쳤으면 아래 명령으로 다시 만든다.
 --   생성 명령: node scripts/ops-patterns-seed.mjs        (같은 원고인지 확인: node scripts/ops-patterns-seed.mjs --check)
---   원고: jam-doc/planning/content/OPS_PATTERNS.md
+--   원고: docs/service/content/OPS_PATTERNS.md
 --   생성 때 개수: 패턴 18 · 샘플 63(주+보조) · 취향 신호 43(패턴별 40 + 공통 3) · 공통 규칙 7
 --   칸 매핑 규칙은 scripts/ops-patterns-seed.mjs 머리 주석에 있다.
 --

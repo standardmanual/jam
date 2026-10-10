@@ -117,7 +117,7 @@ jam-web/src/app/globals.css  (@import "tw-animate-css" 추가)
       - 검증 스크립트는 스크래치 산출물이라 커밋하지 않음(기존 관례)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [x] 해당 없음 — 사용자 노출 텍스트 변경이 전혀 없는 순수 CSS/의존성 변경
 

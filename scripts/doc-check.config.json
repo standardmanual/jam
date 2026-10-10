@@ -2,18 +2,18 @@
   "schemaVersion": "1",
   "strict": false,
   "scope": {
-    "include": ["docs/specs/", "docs/agents/", "docs/tickets/", "jam-doc/planning/", "jam-doc/marketing/", "jam-doc/operations/", "jam-doc/inbox/"],
-    "exclude": ["docs/tickets/modular/", "docs/tickets/_TEMPLATE.md", "jam-doc/archive/",
-      "jam-doc/operations/reports/", "jam-doc/assets/", "**/CLAUDE.md", "**/AGENTS.md"]
+    "include": ["docs/"],
+    "exclude": ["docs/tickets/modular/", "docs/tickets/_TEMPLATE.md", "docs/archive/",
+      "docs/operations/reports/", "docs/assets/", "**/CLAUDE.md", "**/AGENTS.md"]
   },
   "externalPrefixes": [],
-  "codeSpanRoots": ["docs/", "jam-doc/", "jam-web/", "scripts/", ".claude/", ".githooks/"],
+  "codeSpanRoots": ["docs/", "jam-web/", "scripts/", ".claude/", ".githooks/"],
   "codeSpanIgnore": [
     "^jam-web/\\.env",
     "^jam-web/node_modules",
     "/[^/]*YYYY[^/]*$",
     "/0XX_[^/]*$",
-    "^jam-doc/inbox/",
+    "^docs/operations/inbox/",
     "^docs/adr/"
   ],
   "codespanWarnPaths": ["docs/tickets/"],
@@ -101,6 +101,6 @@
   },
   "orphans": {
     "excludeTypes": ["ticket"],
-    "excludeSources": ["docs/specs/INDEX.md"]
+    "excludeSources": ["docs/INDEX.md"]
   }
 }

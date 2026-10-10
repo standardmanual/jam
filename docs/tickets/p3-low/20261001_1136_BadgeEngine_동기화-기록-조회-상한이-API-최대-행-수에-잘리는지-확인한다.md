@@ -18,7 +18,7 @@ parent: "20261001_1022"
   1,000일이 넘는 기록은 잘려서 연속 일수와 하루 최대 횟수가 실제보다 작게 나온다. 지금은 기록 기간이 짧아 영향이 없다.
 - 구현 계획: 프로젝트의 최대 행 수 설정을 확인한다. 1,000이면 상한을 그 값에 맞추고 근거를 적거나, 필요한 값만 서버에서 계산하는 방식(예: RPC)을 검토한다.
 - 관련 파일: `jam-web/src/lib/badge-engine/dailySyncStreak.ts:86`(`fetchCurrentSyncStreakDays`, 자연 발급),
-  `jam-web/src/lib/badge-engine/usageBadges.ts:574`(`reevaluateUsageMetricBadges`의 동기화 기록 조회, 재평가), `docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md` §2.17
+  `jam-web/src/lib/badge-engine/usageBadges.ts:574`(`reevaluateUsageMetricBadges`의 동기화 기록 조회, 재평가), `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md` §2.17
 
 ## 완료 조건
 
@@ -39,7 +39,7 @@ parent: "20261001_1022"
 - [ ] 
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 - [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
 - [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)

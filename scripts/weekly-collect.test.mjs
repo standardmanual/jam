@@ -166,7 +166,7 @@ function testSummarizeTriage() {
   try {
     assert.equal(summarizeTriage(root, '2026-09-21'), '- 대상 없음 (선별 리포트 폴더 없음)')
 
-    const dir = join(root, 'jam-doc', 'operations', 'reports', 'triage')
+    const dir = join(root, 'docs', 'operations', 'reports', 'triage')
     mkdirSync(dir, { recursive: true })
     writeFileSync(
       join(dir, '2026-09-20.md'),

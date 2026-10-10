@@ -5,7 +5,7 @@
  *
  * `AssetGeneratorPanel` 안에 있던 로컬 컴포넌트를 이미지 레이어 속성 패널(`ImageLayerFields`,
  * 티켓 20260924_2157)에서도 그대로 쓰기 위해 공용 파일로 옮겼다 — 중복 정의하지 않는다.
- * 원본: jam-doc/assets/prototypes/20260924_jam-asset-generator.html의 .row 그리드.
+ * 원본: docs/assets/prototypes/20260924_jam-asset-generator.html의 .row 그리드.
  */
 import { cn } from '@/lib/utils'
 

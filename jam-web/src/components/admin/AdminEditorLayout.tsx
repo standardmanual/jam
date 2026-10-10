@@ -13,7 +13,7 @@
  * 이미 검증된 배지 화면 3개 파일(BadgeForm·BadgeConditionSection·BadgeDetail)은 이름 그대로
  * 계속 그 파일에서 import하며, 이번 티켓에서 건드리지 않는다.
  *
- * 설계 원본은 `jam-doc/assets/prototypes/20260911_badge-form-renewal-prototype.html`이지만, 색·서체는
+ * 설계 원본은 `docs/assets/prototypes/20260911_badge-form-renewal-prototype.html`이지만, 색·서체는
  * 목업이 아니라 어드민 shadcn 컴포넌트·테마 토큰을 쓴다(어드민은 MODULAR 적용 대상이 아니다).
  */
 import type { ReactNode } from 'react'

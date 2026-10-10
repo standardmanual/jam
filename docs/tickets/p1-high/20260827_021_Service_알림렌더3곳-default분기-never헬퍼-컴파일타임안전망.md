@@ -133,7 +133,7 @@ jam-web/src/lib/notifications/types.ts               (헬퍼 + 중복 억제 Set
 jam-web/src/lib/notifications/message.ts             (default에 헬퍼 호출 + import)
 jam-web/src/lib/notifications/href.ts                (default에 헬퍼 호출 + import)
 jam-web/src/app/(main)/notifications/NotificationsClient.tsx  (default에 헬퍼 호출 + import)
-docs/specs/prd/notification/DATA_MODEL.md    (§2에 전수 처리 계약 명시)
+docs/service/prd/notification/DATA_MODEL.md    (§2에 전수 처리 계약 명시)
 docs/tickets/20260827_021_Service_알림렌더3곳-default분기-never헬퍼-컴파일타임안전망.md
 ```
 

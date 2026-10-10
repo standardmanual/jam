@@ -1,7 +1,7 @@
 /**
  * JAM! 에셋 제너레이터 — 그리기 모듈 (캔버스 추상화)
  *
- * 원본: jam-doc/assets/prototypes/20260924_jam-asset-generator.html
+ * 원본: docs/assets/prototypes/20260924_jam-asset-generator.html
  * (buildStamp 297줄, drawScene 676줄). 캔버스 생성·이미지 로드는 주입받는다 —
  * 브라우저에서는 DOM 캔버스를 그대로 넘기고, 서버(하위 티켓 2201)에서는 캔버스 라이브러리
  * (예: @napi-rs/canvas)의 구현체를 넘긴다. 이 티켓에서는 새 의존성을 추가하지 않으므로

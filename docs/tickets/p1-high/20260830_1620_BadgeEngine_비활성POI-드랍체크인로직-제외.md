@@ -103,7 +103,7 @@ jam-web/src/lib/ambient-drop/index.ts
 jam-web/src/app/(main)/drops/page.tsx
 jam-web/src/app/(main)/badges/[id]/page.tsx
 jam-web/src/types/database.ts (PoiRow.is_active 주석 갱신)
-docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md (§3.17 신설)
+docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md (§3.17 신설)
 ```
 
 ### 테스트 결과

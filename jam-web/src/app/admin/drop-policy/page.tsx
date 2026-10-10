@@ -11,7 +11,7 @@ export default async function AdminDropPolicyPage() {
         <h1 className="text-2xl font-bold">드랍 정책</h1>
         <p className="text-muted-foreground text-sm mt-1">
           아이템배지 드랍엔진 v2 파라미터. 저장 즉시 다음 드랍부터 적용됩니다. 로직:
-          docs/specs/badge-engine/BADGE_ENGINE_UNIFIED.md §3
+          docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md §3
         </p>
         <p className="text-sm mt-2">
           특정 아이템배지·컬렉션을 드랍 후보에서 빼려면{' '}

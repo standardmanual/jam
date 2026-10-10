@@ -15,7 +15,7 @@ closed:
 
 - 요구사항: `COMBINE_RECIPES.md`와 `TRIBES.md`가 같은 사실을 다르게 적은 곳이 있다. DB를 읽기 전용으로 조회해 어느 쪽이 낡았는지 확인하고 문서를 고친다.
 - 구현 계획: DB 조회(SELECT만) → 두 문서와 대조표 작성 → 낡은 쪽 문서 갱신 → `TRIBES.md`의 `source_of_truth`(현재 `doc`)를 재판정한다.
-- 관련 파일: `jam-doc/planning/content/COMBINE_RECIPES.md`(§4, §5), `jam-doc/planning/content/TRIBES.md`(서두 원천 소스, '채워야 할 내용'), `jam-doc/planning/content/ITEMBOOKS.xlsx`
+- 관련 파일: `docs/service/content/COMBINE_RECIPES.md`(§4, §5), `docs/service/content/TRIBES.md`(서두 원천 소스, '채워야 할 내용'), `docs/service/content/ITEMBOOKS.xlsx`
 
 ## 배경 / 문제 정의
 

@@ -17,10 +17,10 @@
       "docs/agents/issue-tracker.md",
       "docs/agents/domain.md",
       "docs/agents/team-operations.md",
-      "docs/specs/DEV_PROCESS_GUARDRAILS.md",
-      "docs/specs/DOCUMENT_SCHEMA.md",
-      "docs/specs/UX_WRITING_GUIDELINE.md",
-      "docs/specs/SLOP_DICTIONARY.md",
+      "docs/agents/DEV_PROCESS_GUARDRAILS.md",
+      "docs/DOCUMENT_SCHEMA.md",
+      "docs/service/writing/UX_WRITING_GUIDELINE.md",
+      "docs/service/writing/SLOP_DICTIONARY.md",
       "docs/tickets/_TEMPLATE.md",
       "scripts/verify.sh",
       "scripts/doc-check.mjs",
@@ -33,10 +33,10 @@
       "docs/agents/team-map.html",
       "scripts/gen-doc-index.mjs",
       "scripts/gen-doc-index.test.mjs",
-      "docs/specs/INDEX.md",
+      "docs/INDEX.md",
       "scripts/gen-home-feed-doc.mjs",
       "scripts/gen-home-feed-doc.test.mjs",
-      "docs/specs/prd/home-feed/PRD.md",
+      "docs/service/prd/home-feed/PRD.md",
       "scripts/check-routine-reports.mjs",
       "scripts/ticket-dashboard.mjs",
       "scripts/workspace-setup.sh",
@@ -73,11 +73,11 @@
       ".claude/skills/jam-work/references/forms/review-verdict-format.md",
       ".obsidian/app.json",
       ".obsidian/.gitignore",
-      "jam-doc/README.md",
-      "jam-doc/planning/content/TRIBES.md",
-      "jam-doc/assets/content-seed/v5_seed_build.py",
-      "jam-doc/operations/reports",
-      "jam-doc/inbox/trends/README.md",
+      "docs/README.md",
+      "docs/service/content/TRIBES.md",
+      "docs/assets/content-seed/v5_seed_build.py",
+      "docs/operations/reports",
+      "docs/operations/inbox/trends/README.md",
       "docs/agents/workflow/README.md",
       "jam-web/supabase/migrations/198_ops_inbox.sql",
       "jam-web/supabase/migrations/207_ops_rules.sql",
@@ -129,14 +129,20 @@
   },
 
   "paths_absent": {
-    "_why": "재통합으로 사라진 것들(티켓 20260920_1412). 다시 생기면 분리 구조가 되살아난 것이다. scripts/deploy-gate-wrapper.mjs(티켓 20260924_1614)는 무인 배포 루틴이 scripts/deploy-gate.mjs 파일 하나만 /tmp로 꺼내 실행하므로 옆 파일을 불러오면 ERR_MODULE_NOT_FOUND로 죽는다 — 판정 코드는 deploy-gate.mjs 안에 둔다. jam-doc/planning/content/v5_seed_build.py(티켓 20261001_0945)는 v5 시드 생성기 묶음이 jam-doc/assets/content-seed/로 옮겨 간 옛 자리다 — planning/content/는 현재 상태 문서 자리라 실행 스크립트를 두지 않는다.",
+    "_why": "재통합으로 사라진 것들(티켓 20260920_1412). 다시 생기면 분리 구조가 되살아난 것이다. scripts/deploy-gate-wrapper.mjs(티켓 20260924_1614)는 무인 배포 루틴이 scripts/deploy-gate.mjs 파일 하나만 /tmp로 꺼내 실행하므로 옆 파일을 불러오면 ERR_MODULE_NOT_FOUND로 죽는다 — 판정 코드는 deploy-gate.mjs 안에 둔다. docs/service/content/v5_seed_build.py(티켓 20261001_0945)는 v5 시드 생성기 묶음이 docs/assets/content-seed/로 옮겨 간 옛 자리다 — service/content/는 현재 상태 문서 자리라 실행 스크립트를 두지 않는다. jam-doc/README.md·jam-doc/planning/…·jam-doc/archive/…와 docs/specs/… 줄은 문서 루트를 docs/ 하나로 합친 뒤(티켓 20261010_1214) 옛 루트가 되살아나지 않게 하는 검사다. 폴더 자체가 아니라 옛 루트에 있던 추적 파일을 지정한 것은, 옵시디언이 만드는 .obsidian 같은 추적 밖 흔적이 옛 폴더에 남은 PC에서 모든 커밋이 막히지 않게 하기 위해서다.",
     "paths": [
       "jam-doc/.git",
       "jam-doc/.githooks",
       "jam-doc/scripts/doc-check.mjs",
       "jam-doc/scripts/doc-check.config.json",
+      "jam-doc/README.md",
+      "jam-doc/planning/content/TRIBES.md",
+      "jam-doc/archive/PHASES_ROADMAP_ARCHIVE.md",
+      "docs/specs/INDEX.md",
+      "docs/specs/DOCUMENT_SCHEMA.md",
+      "docs/specs/prd/01_PRD.md",
       "scripts/deploy-gate-wrapper.mjs",
-      "jam-doc/planning/content/v5_seed_build.py"
+      "docs/service/content/v5_seed_build.py"
     ]
   },
 
@@ -171,8 +177,8 @@
   "worktree_contains": {
     "_why": "아현이 격리 워크트리에서 읽을 수 있어야 하는 경로. 여기가 비면 아현은 원문을 못 본 채 수정안을 쓰게 된다 — 티켓 20260920_1412에서 실제로 벌어진 일이다.",
     "tracked_paths": [
-      "jam-doc/planning/content/TRIBES.md",
-      "docs/specs/prd/01_PRD.md",
+      "docs/service/content/TRIBES.md",
+      "docs/service/prd/01_PRD.md",
       "CLAUDE.md"
     ]
   },
@@ -204,9 +210,9 @@
 
   "stale_phrases": {
     "_why": "환경이 바뀌면서 거짓이 된 문구. 어딘가에 다시 나타나면 낡은 서술이 되살아난 것이다.",
-    "scope": ["CLAUDE.md", "docs/", ".claude/", "scripts/", ".githooks/", "jam-doc/README.md"],
-    "exclude": ["docs/tickets/", "jam-doc/archive/", "jam-doc/operations/reports/", "docs/agents/workflow/"],
-    "_exclude_why": "docs/agents/workflow/는 2026-09-22 동결된 기록이라 고칠 수 없다 (티켓 20260921_2311). jam-doc/archive/와 같은 취급이다.",
+    "scope": ["CLAUDE.md", "docs/", ".claude/", "scripts/", ".githooks/", "docs/README.md"],
+    "exclude": ["docs/tickets/", "docs/archive/", "docs/operations/reports/", "docs/agents/workflow/"],
+    "_exclude_why": "docs/agents/workflow/는 2026-09-22 동결된 기록이라 고칠 수 없다 (티켓 20260921_2311). docs/archive/와 같은 취급이다.",
     "phrases": [
       { "text": "8.4KB", "reason": "CLAUDE.md의 크기 수치는 문서에 적지 않는다. 파일이 바뀌면 곧 거짓이 된다 (티켓 20260921_2310)" },
       { "text": "git -C jam-doc push", "reason": "jam-doc은 2026-09-20 재통합 이후 같은 저장소다 (티켓 20260920_1412)",
@@ -293,10 +299,10 @@
   },
 
   "env_vars": {
-    "_why": "환경변수 표(docs/specs/prd/04_PROJECT_SPEC.md)가 적은 이름을 코드가 실제로 읽는지 대조한다 (티켓 20260930_1816). entries의 names 각각이 doc과 code 두 파일에 글자 그대로 있어야 한다. 이름이 표에서 빠지거나 코드에서 바뀌면 표가 거짓이 된다. 표 전체를 대조하는 것이 아니라 새로 적는 환경 주장(CLAUDE.md 규칙 5)을 등록하는 자리다.",
+    "_why": "환경변수 표(docs/service/prd/04_PROJECT_SPEC.md)가 적은 이름을 코드가 실제로 읽는지 대조한다 (티켓 20260930_1816). entries의 names 각각이 doc과 code 두 파일에 글자 그대로 있어야 한다. 이름이 표에서 빠지거나 코드에서 바뀌면 표가 거짓이 된다. 표 전체를 대조하는 것이 아니라 새로 적는 환경 주장(CLAUDE.md 규칙 5)을 등록하는 자리다.",
     "entries": [
       {
-        "doc": "docs/specs/prd/04_PROJECT_SPEC.md",
+        "doc": "docs/service/prd/04_PROJECT_SPEC.md",
         "code": "jam-web/src/lib/admin/opsInbox/slack.ts",
         "names": ["SLACK_BOT_TOKEN", "SLACK_CHANNEL_JAM_REPORT", "SLACK_CHANNEL_JAM_ALERT"]
       }
@@ -312,6 +318,6 @@
   "routine_commit_restriction": {
     "_why": "카즈하 선별 루틴을 비롯한 무인 예약 커밋이 리포트 폴더 밖을 건드리지 못하게 .githooks/pre-commit이 막는 근거다 (티켓 20260921_2306). author_email은 예약 작업 커밋의 실제 작성자 이메일이고(`git log --format=%ae --grep=\"예약 작업\" --author=Claude`로 확인), allowed_prefix는 그 작성자가 유일하게 쓸 수 있는 경로다. 우회 변수는 없다.",
     "author_email": "noreply@anthropic.com",
-    "allowed_prefix": "jam-doc/operations/reports/"
+    "allowed_prefix": "docs/operations/reports/"
   }
 }

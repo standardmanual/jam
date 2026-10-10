@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 운영 패턴 사전 원고 파서와 시드 SQL 생성기 (티켓 20261007_1633, 상위 20260930_1503 ③).
 //
-// 원고 `jam-doc/planning/content/OPS_PATTERNS.md`를 읽어 패턴 사전 3테이블(마이그레이션 210)에 넣을 초기 데이터
+// 원고 `docs/service/content/OPS_PATTERNS.md`를 읽어 패턴 사전 3테이블(마이그레이션 210)에 넣을 초기 데이터
 // `jam-web/supabase/migrations/212_ops_patterns_seed.sql`을 만든다. 이 스크립트는 SQL을 실행하지 않는다.
 //
 // 사용:
@@ -33,7 +33,7 @@ import { fileURLToPath } from 'node:url'
 import { findSections } from './doc-section.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-export const SOURCE_PATH = 'jam-doc/planning/content/OPS_PATTERNS.md'
+export const SOURCE_PATH = 'docs/service/content/OPS_PATTERNS.md'
 export const SEED_PATH = 'jam-web/supabase/migrations/212_ops_patterns_seed.sql'
 
 /** 카드 모양 허용 목록. `jam-web/src/lib/today/shape.ts`의 `CARD_SHAPES`와 같아야 한다(테스트가 비교한다). */

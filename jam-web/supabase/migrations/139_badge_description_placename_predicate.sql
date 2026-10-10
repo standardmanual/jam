@@ -10,7 +10,7 @@
 --
 -- 무엇: 위 문제에 해당하는 17행만 다시 쓴다. **전면 재작성이 아니다** — 나머지 419행은
 --       138에서 이미 옳게 갱신됐으므로 손대지 않는다.
---       정본: jam-doc/planning/content/v5_catalog_writing.json 의 「등급별설명」
+--       정본: docs/service/content/v5_catalog_writing.json 의 「등급별설명」
 --             (_meta.지명_술어_다듬기에 이 티켓의 변경 요약이 있다)
 --
 -- ⚠️ UPDATE만 한다. DELETE·재시딩을 하지 않는다.

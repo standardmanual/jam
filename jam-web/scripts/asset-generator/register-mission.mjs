@@ -5,7 +5,7 @@
  * 윤진이 준비한 등록 묶음(`bundle.json` + 이미지)을 읽어 미션 행과 이미지를 함께 등록한다.
  * **실행 주체는 메인 세션(카리나)이고, 사용자가 `--dry-run` 요약을 컨펌한 뒤에만 `--dry-run` 없이
  * 실행한다**(CLAUDE.md 규칙 6 — Supabase는 staging·프로덕션 공용 단일 DB라 즉시 프로덕션에 반영된다).
- * 묶음 형식·검증 규칙·절차의 정본: `docs/specs/prd/asset-generator/MISSION_REGISTRATION_BUNDLE.md`.
+ * 묶음 형식·검증 규칙·절차의 정본: `docs/service/prd/asset-generator/MISSION_REGISTRATION_BUNDLE.md`.
  * 배지판(`register-badge.mjs`)은 고치지 않고, 인자 파싱(`registerArgs.mjs`)만 가져다 쓴다.
  *
  * ## 실행 (cwd는 반드시 jam-web — 아래 «별칭» 참고)

@@ -6,7 +6,7 @@ status: CLOSED
 created: 2026-09-25
 closed: 2026-09-26
 specs:
-  - "docs/specs/prd/asset-generator/PRD.md"
+  - "docs/service/prd/asset-generator/PRD.md"
 related:
   - "20260925_1405"
   - "20260925_1408"
@@ -16,11 +16,11 @@ related:
 
 ## 핵심 요약
 
-- 요구사항: `docs/specs/prd/asset-generator/PRD.md` §12(데이터)가 아직 "`asset_presets.target_type`
+- 요구사항: `docs/service/prd/asset-generator/PRD.md` §12(데이터)가 아직 "`asset_presets.target_type`
   (text, CHECK `badge` 하나만)"이라고 서술하고 있다 — 실제로는 티켓 20260925_1405로 CHECK가
   `badge`·`mission`·`collection`·`home_feed` 4종으로 확장되고 마이그레이션 187이 2026-09-25
   프로덕션에 적용됐다. §12 서술을 실제 상태로 정정한다.
-- 관련 파일: `docs/specs/prd/asset-generator/PRD.md:233`
+- 관련 파일: `docs/service/prd/asset-generator/PRD.md:233`
 
 ## 배경 / 문제 정의
 
@@ -36,13 +36,13 @@ related:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
-- `docs/specs/prd/asset-generator/PRD.md` §12(약 273~275줄)의 `asset_presets` 서술을 정정했다. `target_type` CHECK를
+- `docs/service/prd/asset-generator/PRD.md` §12(약 273~275줄)의 `asset_presets` 서술을 정정했다. `target_type` CHECK를
   `badge`·`mission`·`collection`·`home_feed` 4종으로 적고, 확장 마이그레이션 `187_asset_presets_target_type_expand.sql`과
   2026-09-25 jam-prod 적용 사실(출처: 티켓 20260925_1405 완료 기록)을 덧붙였다.
 
 ### 변경된 파일
 ```
-docs/specs/prd/asset-generator/PRD.md
+docs/service/prd/asset-generator/PRD.md
 ```
 
 ### 테스트 결과

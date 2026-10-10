@@ -1,7 +1,7 @@
 /**
  * 미션 등록 묶음 — 검증·미션 행 매핑 (티켓 20260925_1412)
  *
- * 검증 규칙의 정본은 docs/specs/prd/asset-generator/MISSION_REGISTRATION_BUNDLE.md다. 여기서는 규칙마다
+ * 검증 규칙의 정본은 docs/service/prd/asset-generator/MISSION_REGISTRATION_BUNDLE.md다. 여기서는 규칙마다
  * «어떤 사유 문장이 나오는지»까지 확인한다(에이전트가 이 문장을 보고 묶음을 고친다). 배지와 공통인 부품
  * (`readBundleFile`·`findPreviousRecordError`)은 다시 시험하지 않는다.
  */

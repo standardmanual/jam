@@ -1,0 +1,44 @@
+{
+  "record_version": 1,
+  "bundle_id": "2026-10-10-weekend-walk-all",
+  "author": "윤진",
+  "bundle_created_at": "2026-09-29T13:02:16+09:00",
+  "registered_at": "2026-09-29T13:58:32+09:00",
+  "summary": "[location_trend] 주말 산책 코스 · 2026-10-10T00:00:00+09:00 ~ 2026-10-10T23:59:00+09:00 · 노출 태그 all",
+  "card": {
+    "id": "51578929-9ad6-4fe2-9b93-9075e8bfc74f",
+    "title": "주말 산책 코스",
+    "template_type": "location_trend",
+    "layout_type": "large_thumbnail",
+    "starts_at": "2026-10-09T15:00:00.000Z",
+    "ends_at": "2026-10-10T14:59:00.000Z",
+    "is_active": true,
+    "image_source": "agent-generator"
+  },
+  "world_review": {
+    "world_related": false,
+    "winter_reviewed": false,
+    "reason": "트라이브가 공통인 운영성 카드라 세계관 창작 내용 없음, 윈터 검수 대상 아님"
+  },
+  "storage": {
+    "bucket": "images",
+    "png_path": "today_cards/asset-generator/51578929-9ad6-4fe2-9b93-9075e8bfc74f.png",
+    "webp_path": "today_cards/asset-generator/51578929-9ad6-4fe2-9b93-9075e8bfc74f.webp"
+  },
+  "urls": {
+    "original_png": "https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/today_cards/asset-generator/51578929-9ad6-4fe2-9b93-9075e8bfc74f.png",
+    "cover_image_url": "https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/today_cards/asset-generator/51578929-9ad6-4fe2-9b93-9075e8bfc74f.webp?v=1790657912634"
+  },
+  "image": {
+    "seed": 2954677297,
+    "preset_id": "51aa4673-f723-4929-ac20-a302202b7aa7",
+    "bg_color": "#037a49",
+    "end_color": "#052e1c",
+    "text": "주말 산책 코스",
+    "subtext": "근처 명소를 둘러보세요",
+    "source_path": "image.png",
+    "original_bytes": 355263,
+    "webp_bytes": 21150
+  },
+  "color_rationale_link": "docs/operations/reports/weekly/2026-W40.md"
+}

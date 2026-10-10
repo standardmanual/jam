@@ -8,7 +8,7 @@
 -- 무엇: 2행 이상인 v5 액티비티 계열 131개 · 436행의 description을 등급/레벨별 문장으로
 --       바꾼다. **최저 등급(또는 Lv1) 행은 건드리지 않는다** — 현행 문장이
 --       라이팅 가이드 §07의 Common 정본이다.
---       정본: jam-doc/planning/content/v5_catalog_writing.json 의 「등급별설명」
+--       정본: docs/service/content/v5_catalog_writing.json 의 「등급별설명」
 --       (이 파일은 v5_seed_build.py가 낸 rows.json과 같은 데이터에서 생성했다)
 --
 -- ⚠️ UPDATE만 한다. DELETE·재시딩을 하지 않는다 —

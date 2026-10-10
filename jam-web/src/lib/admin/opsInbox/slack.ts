@@ -9,7 +9,7 @@
  *   돌려준다. 슬랙 게시 실패가 제출 요청을 실패시키면 안 된다(상위 티켓 가정 16). 오류에는 종류(이름)만 담고
  *   토큰 값·응답 본문은 담지 않는다.
  * - 환경변수: `SLACK_BOT_TOKEN`, `SLACK_CHANNEL_JAM_REPORT`, `SLACK_CHANNEL_JAM_ALERT`
- *   (`docs/specs/prd/04_PROJECT_SPEC.md` 환경변수 표). 값이 없으면 게시를 건너뛴다.
+ *   (`docs/service/prd/04_PROJECT_SPEC.md` 환경변수 표). 값이 없으면 게시를 건너뛴다.
  * - 제출 문자열(에이전트 이름 등)은 슬랙 특수문자(`&`·`<`·`>`)를 이스케이프해서 넣는다. 멘션(`<!channel>`)이나
  *   링크(`<https://…|글>`)로 해석되지 않게 하려는 것이다.
  */

@@ -1,7 +1,7 @@
 /**
  * JAM! 에셋 제너레이터 — 시드 난수·전체 랜덤 규칙·랜덤 팔레트
  *
- * 원본: jam-doc/assets/prototypes/20260924_jam-asset-generator.html
+ * 원본: docs/assets/prototypes/20260924_jam-asset-generator.html
  * (mulberry32 320줄, rand/randInt/choice/hslHex/hexRgb 595~608줄, randomPalette 610줄,
  * randomBtn 클릭 처리 626줄). 캔버스에 의존하지 않는 순수 계산만 담는다.
  */

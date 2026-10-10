@@ -7,7 +7,7 @@ created: 2026-09-25
 closed:
 parent: "20260924_2154"
 specs:
-  - "docs/specs/prd/asset-generator/PRD.md"
+  - "docs/service/prd/asset-generator/PRD.md"
 ---
 
 # [API] 어드민 API 오류 응답이 Supabase 오류 메시지를 그대로 노출하는 관례를 정리한다

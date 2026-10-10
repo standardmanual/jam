@@ -1,7 +1,7 @@
 /**
  * JAM! 에셋 제너레이터 — 이동 곡선: 시드 기반 폐곡선 + 호 길이 테이블
  *
- * 원본: jam-doc/assets/prototypes/20260924_jam-asset-generator.html
+ * 원본: docs/assets/prototypes/20260924_jam-asset-generator.html
  * (makeCandidate 345줄, unitCurve 367줄, sampleFitted 384줄, candidateStats 411줄,
  * buildPath 437줄, posAt 474줄). 캔버스에 의존하지 않는 순수 계산만 담는다 —
  * 같은 시드·같은 스테이지 크기·같은 불규칙성이면 완전히 같은 좌표를 낸다(PRD §11).

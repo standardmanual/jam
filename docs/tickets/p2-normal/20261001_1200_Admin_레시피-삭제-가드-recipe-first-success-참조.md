@@ -26,7 +26,7 @@ parent: "20260930_1450"
   - `jam-web/src/app/api/admin/recipes/bulk/route.ts:35-45`(일괄 삭제)
   - `jam-web/src/lib/admin/badge-validation.ts:87-113`(`recipe_first_success` 형식 검증, 키 모양 참고)
   - `jam-web/src/lib/badge-engine/jamActionBadges.ts:115-120,237`(조건 읽기 참고)
-  - 문서 `docs/specs/prd/02_DATA_MODEL.md`(레시피 삭제 가드 서술)
+  - 문서 `docs/service/prd/02_DATA_MODEL.md`(레시피 삭제 가드 서술)
 
 ## 완료 조건
 
@@ -54,7 +54,7 @@ jam-web/src/app/api/admin/recipes/[id]/route.ts
 jam-web/src/lib/admin/__tests__/recipe-references.test.ts (신규)
 jam-web/src/lib/admin/__tests__/recipe-list.test.ts
 jam-web/src/app/api/admin/recipes/[id]/__tests__/route.test.ts (신규)
-docs/specs/prd/02_DATA_MODEL.md
+docs/service/prd/02_DATA_MODEL.md
 ```
 
 ### 테스트 결과
@@ -65,7 +65,7 @@ docs/specs/prd/02_DATA_MODEL.md
   supabase-js 조회가 72건을 돌려줘 SQL 집계 72건과 같았다. `recipe_first_success` 배지가 라이브에 0개라 그 키로는 확인하지 못했다(잔여 이슈).
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `docs/specs/UX_WRITING_GUIDELINE.md` 참조
+**가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
 
 해당없음: 어드민 화면 문구라 가이드 §4.0의 적용 대상이 아니다. 거부 문구는 해요체로 맞췄다.
 

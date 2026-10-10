@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // 이슈 소재 자동 제외 필터 — 소재 카드 파일(마크다운 표 또는 JSON 배열)을 읽어
-// PRD(`docs/specs/prd/content-automation/PRD.md`) §7.3 범주·금지어 기준으로 「필터 판정」·
+// PRD(`docs/service/prd/content-automation/PRD.md`) §7.3 범주·금지어 기준으로 「필터 판정」·
 // 「제외 사유」를 채운다. (티켓 20260923_2255)
 //
-// 표준 소재 카드 표 헤더(글자 단위로 일치해야 읽는다, `jam-doc/marketing/트렌드_노트.md` 형식):
+// 표준 소재 카드 표 헤더(글자 단위로 일치해야 읽는다, `docs/marketing/트렌드_노트.md` 형식):
 //   | 제목(관찰) | 범주 | 출처 | 관찰일 | 유효 기간 | 지역 | 트라이브 후보 | 활용 경로 |
 //   필터 판정 | 제외 사유 | 상태 | 수명(등록일 기준) |
 //
@@ -40,7 +40,7 @@ export const CARD_FIELDS = [
 
 export const NEWS_SOURCE_MARKER = '빅카인즈'
 
-// PRD `docs/specs/prd/content-automation/PRD.md` §7.3 표와 글자 단위로 같은 상수.
+// PRD `docs/service/prd/content-automation/PRD.md` §7.3 표와 글자 단위로 같은 상수.
 // 마지막 행(세계관 미배정 소재)은 윤진이 최종 확정하지 못한 소재를 윈터가 추가한 범주다.
 export const EXCLUSION_CATEGORIES = [
   {

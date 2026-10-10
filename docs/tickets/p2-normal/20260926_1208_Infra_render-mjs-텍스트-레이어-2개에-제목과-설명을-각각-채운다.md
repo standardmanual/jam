@@ -7,8 +7,8 @@ created: 2026-09-26
 closed: 2026-09-26
 parent: "20260926_1202"
 specs:
-  - docs/specs/prd/asset-generator/PRD.md
-  - docs/specs/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md
+  - docs/service/prd/asset-generator/PRD.md
+  - docs/service/prd/asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md
 ---
 
 # [Infra] render.mjs가 프리셋의 텍스트 레이어 2개에 제목과 짧은 설명을 각각 채운다
@@ -19,7 +19,7 @@ specs:
 
 - 요구사항: 홈피드 프리셋(`홈피드`, id `51aa4673-f723-4929-ac20-a302202b7aa7`)의 텍스트 레이어 `피드 제목`에 카드 제목을, `간단한 설명`에 짧은 요약을 넣을 수 있어야 한다. 지금은 CLI 인자가 `--text` 하나뿐이라 두 레이어에 같은 문구가 들어간다.
 - 구현 계획: `--subtext` 인자를 추가한다. 프리셋의 텍스트 레이어를 배열 순서로 보아 첫 번째 ← `--text`(제목), 두 번째 ← `--subtext`(설명)로 채운다. 텍스트 레이어가 1개인 프리셋(배지·미션)은 지금처럼 `--text`만 쓴다. 등록 묶음에는 선택 필드 `image.subtext`를 추가해 재현 정보를 남긴다.
-- 관련 파일: `jam-web/scripts/asset-generator/renderArgs.mjs`(`REQUIRED_FLAGS`·`parseRenderArgs`), `render.mjs`(텍스트 채우기 99~102행 `layer.type === 'text' ? { ...layer, content: args.text }`), `registerHomeFeedBundle.mjs`(`IMAGE_OPTIONAL_FIELDS` 58행, 357행 검증), `registerBundle.mjs`·`registerMissionBundle.mjs`(같은 필드 목록이 있으면 함께 확인), PRD `docs/specs/prd/asset-generator/PRD.md` §8·`HOME_FEED_REGISTRATION_BUNDLE.md` §3.4, 테스트 `__tests__/`
+- 관련 파일: `jam-web/scripts/asset-generator/renderArgs.mjs`(`REQUIRED_FLAGS`·`parseRenderArgs`), `render.mjs`(텍스트 채우기 99~102행 `layer.type === 'text' ? { ...layer, content: args.text }`), `registerHomeFeedBundle.mjs`(`IMAGE_OPTIONAL_FIELDS` 58행, 357행 검증), `registerBundle.mjs`·`registerMissionBundle.mjs`(같은 필드 목록이 있으면 함께 확인), PRD `docs/service/prd/asset-generator/PRD.md` §8·`HOME_FEED_REGISTRATION_BUNDLE.md` §3.4, 테스트 `__tests__/`
 
 ## 배경 / 문제 정의
 
@@ -45,7 +45,7 @@ specs:
 2. `render.mjs`: 텍스트 레이어 채우기를 순서 규칙으로 교체하고 위 오류 처리 구현. 채우기 로직은 `fillTextLayers(layers, { text, subtext })` 순수 함수로 분리해 테스트한다.
 3. 홈피드 등록 묶음 필드 `image.subtext` 추가·검증·테스트, `HOME_FEED_REGISTRATION_BUNDLE.md` §3.4 갱신.
 4. 실제 `홈피드` 프리셋으로 렌더 실측(제목 짧음·김, 설명 1줄·2줄) 후 글자 수 가이드를 PRD에 기록.
-5. `docs/specs/prd/asset-generator/PRD.md` §8 CLI 사용법에 `--subtext` 추가.
+5. `docs/service/prd/asset-generator/PRD.md` §8 CLI 사용법에 `--subtext` 추가.
 
 ## 완료 조건
 
@@ -73,7 +73,7 @@ specs:
 신규: jam-web/scripts/asset-generator/fillTextLayers.mjs
 수정: jam-web/scripts/asset-generator/renderArgs.mjs, render.mjs, registerHomeFeedBundle.mjs, registerHomeFeedRecord.mjs
 테스트: __tests__/fillTextLayers.test.ts(신규), renderArgs·registerHomeFeedBundle·registerHomeFeedRecord 테스트 갱신
-문서: docs/specs/prd/asset-generator/PRD.md §8, HOME_FEED_REGISTRATION_BUNDLE.md §3.4, .claude/agents/jam-marketer.md ⑧ 명령 예시
+문서: docs/service/prd/asset-generator/PRD.md §8, HOME_FEED_REGISTRATION_BUNDLE.md §3.4, .claude/agents/jam-marketer.md ⑧ 명령 예시
 ```
 
 ### 테스트 결과

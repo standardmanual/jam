@@ -2,7 +2,7 @@
 // 20260925_1125 — 브랜드 로고 SVG에서 앱에 적용하는 이미지 7개를 다시 만든다.
 //   node jam-web/scripts/gen-brand-assets.mjs          # 7개 파일을 쓴다
 //   node jam-web/scripts/gen-brand-assets.mjs --check  # 쓰지 않고 SVG와 맞는지만 검사한다
-// 원본: jam-doc/assets/brand/jam_logo.svg(검정 로고), j.svg(흰색 J). 로고가 바뀌면 이 스크립트를 다시 돌린다.
+// 원본: docs/assets/brand/jam_logo.svg(검정 로고), j.svg(흰색 J). 로고가 바뀌면 이 스크립트를 다시 돌린다.
 // ICO는 새 패키지 없이 PNG 내장 방식으로 직접 조립한다.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -12,8 +12,8 @@ import sharp from 'sharp';
 const WEB_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPO_ROOT = path.resolve(WEB_ROOT, '..');
 
-export const LOGO_SVG = path.join(REPO_ROOT, 'jam-doc/assets/brand/jam_logo.svg');
-export const J_SVG = path.join(REPO_ROOT, 'jam-doc/assets/brand/j.svg');
+export const LOGO_SVG = path.join(REPO_ROOT, 'docs/assets/brand/jam_logo.svg');
+export const J_SVG = path.join(REPO_ROOT, 'docs/assets/brand/j.svg');
 
 // 기존 규격 유지 — TopNav의 width={2610} height={925}가 그대로 유효해야 한다.
 export const LOGO_W = 2610;
