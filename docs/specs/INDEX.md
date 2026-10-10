@@ -128,7 +128,7 @@ status: active
 - [20 어뷰징과 밴.md](../../jam-doc/planning/business-plan/service-redesign/20%20어뷰징과%20밴.md) — [JAM 2.0] 서비스 재설계 주제 20 정책(사용자 확인). 어뷰징을 거르는 필터와 기준값, 제재를 이용 정지 하나로 두는 원칙과 그 순서(알림, 진행 멈춤, 정지, 고객센터 소통), 자동 감지 때의 처리, 여러 계정으로 아이템 배지를 모으는 경우를 정한다.
 - [README.md](../../jam-doc/planning/business-plan/service-redesign/README.md) — [JAM 2.0] 서비스 재설계 2단계(정책 다시 세우기)의 주제별 정책 초안 안내. 폴더 규칙, 주제 목록, 사용자 확인 상태를 둔다.
 - [UX 라이팅 재정비.md](../../jam-doc/planning/business-plan/service-redesign/UX%20라이팅%20재정비.md) — [JAM 2.0] 서비스 재설계에 맞춘 UX 라이팅 가이드라인 재정비 초안. 핵심 철학과 톤, 말투의 두 층, 용어표의 바뀌는 행, 새 기능의 화면 문구 규칙, 액티비티 배지의 조건 표기를 정한다. 5단계에서 docs/specs/UX_WRITING_GUIDELINE.md에 반영한다.
-- [액티비티 배지 재활용 후보.md](../../jam-doc/planning/business-plan/service-redesign/액티비티%20배지%20재활용%20후보.md) — [JAM 2.0] 3단계 비교의 부록. 새 액티비티 배지 58개 계열과 지금 액티비티 배지 634개를 대조해 그대로 재활용, 고쳐서 재활용, 새로 만듦과 폐기 대상을 나눈 후보(2026-10-10 DB SELECT 기준). 사용자 확정 전이다.
+- [액티비티 배지 재활용 후보.md](../../jam-doc/planning/business-plan/service-redesign/액티비티%20배지%20재활용%20후보.md) — [JAM 2.0] 3단계 비교의 부록. 새 액티비티 배지 58개 계열과 지금 액티비티 배지 634개를 대조해 그대로 재활용, 고쳐서 재활용, 새로 만듦과 폐기 대상을 나눈 후보(2026-10-10 DB SELECT 기준). 사용자가 확정했다(2026-10-10).
 - [트라이브 보이스.md](../../jam-doc/planning/business-plan/service-redesign/트라이브%20보이스.md) — [JAM 2.0] 서비스 재설계의 서사 문구 규칙 초안. 배지, 아이템 배지, 컬렉션, 미션, 단서 레시피의 이름과 설명, 챕터 이름을 쓰는 공통 규칙, 아이템 배지 4등급 설명 규칙, 트라이브별 보이스 카드의 틀을 정한다.
 - [현재 서비스 비교.md](../../jam-doc/planning/business-plan/service-redesign/현재%20서비스%20비교.md) — [JAM 2.0] 서비스 재설계 3단계(현재 서비스와 비교)의 비교표. 확인된 정책을 주제마다 지금 서비스의 유저 화면, 어드민과 견주고 재개발 규모를 적는다. 분류(변경, 재활용, 유지, 추가)는 비교를 마친 뒤 정한다.
 
