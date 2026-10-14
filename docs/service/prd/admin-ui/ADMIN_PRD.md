@@ -258,6 +258,8 @@ GPX 파일:  hangang_ride.gpx
   「확인하지 못했어요」다. 구역 전체가 던지면 안내 카드다.
 - **서비스 점검**: Strava 동기화 실패 건수·유효 제재 수·차단 POI 수·미션 공백을 한 줄 4칸(1024px 이상 4열, 좁으면 2열)으로 둔다(`ServiceCheckRow`, `DashboardSignals.tsx`).
   앞의 세 칸은 각각 `/admin/strava-backfill`·`/admin/abusing`·`/admin/abusing`로 이동하는 링크를 붙이고, 미션 공백은 `/admin/missions`로 간다. 조회에 실패한 카드도 링크는 유지한다.
+  Strava 칸의 동기화 실패 건수에는 `failure_type = 'drop_attempt_failed'`(드랍 시도 실패) 행을 세지 않는다. 그 건수는 `/api/admin/kpi/weekly` 응답의 `dropAttemptFailures`(`{ value, definition }`)로 따로
+  반환하며, 이 화면은 그 값을 쓰지 않는다.
   유효 제재 수는 만료 시각이 지나지 않은 제재와 만료 시각이 없는 영구 제재를 센다(`lib/abusing/shadow-ban.ts`의 만료 판정과 같은 기준). 차단 POI 수는 차단 기간(`blocked_until`)이 끝나지 않은
   POI만 센다. 값이 0보다 크거나 지난주보다 늘었으면 강조색으로 표시하고, 빨간 카드의 글자색은 `text-red-700`이다. 네 출처(이번 주 집계·유효 제재 수·차단 POI 수·미션 공백)는 서로 독립적으로
   조회해 하나가 실패하면 그 칸만 오류 카드이고, 제재·차단 POI·미션 공백을 모두 못 읽으면 줄이 안내 카드다.
