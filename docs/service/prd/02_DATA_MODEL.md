@@ -113,7 +113,7 @@ RLS는 켜고 본인 행 SELECT만 허용, INSERT·UPDATE·DELETE 정책은 없�
 원안과 거의 동일. `access_token`/`refresh_token` 암호화 저장, `backfill_completed` 유지.
 
 ### strava_sync_failures
-Strava 동기화 실패 기록(마이그레이션 176). `failure_type`(`token_refresh_failed`·`rate_limited`·`strava_api_error`), `error_message`, `occurred_at`. `syncStravaActivities()`의 실패 경로가 남기며, 기록이 실패해도 동기화 자체는 막지 않는다. 어드민 주간 집계(`/api/admin/kpi/weekly`의 `stravaSyncFailures`)의 원천이다. RLS를 켜고 정책을 두지 않아 service_role만 접근한다. `user_id`는 원인 추적용이고 집계 응답에는 넣지 않는다.
+Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure_type`(`token_refresh_failed`·`rate_limited`·`strava_api_error`·`drop_attempt_failed`), `error_message`, `occurred_at`. `syncStravaActivities()`의 실패 경로가 남기며, 기록이 실패해도 동기화 자체는 막지 않는다. `drop_attempt_failed`는 동기화 중 드랍 시도(`tryItemDrop`)가 던진 오류를 활동 단위로 남기는 값이다 — 동기화 자체는 성공하고 그 활동만 드랍 기회가 복구되지 않으므로, `error_message`에 `stravaId=<값>: <메시지>`를 적는다. 어드민 주간 집계(`/api/admin/kpi/weekly`의 `stravaSyncFailures`)의 원천이다. RLS를 켜고 정책을 두지 않아 service_role만 접근한다. `user_id`는 원인 추적용이고 집계 응답에는 넣지 않는다.
 
 ### strava_activities (신규)
 동기화 원본 활동 기록. `strava_id`, `jam_activity_type`, `distance_km`, `normalized`(정규화된 활동 JSON), `processed_via`(sync/reconcile/manual_backfill). UNIQUE(user_id, strava_id)로 중복 동기화 방지 — 이기종 데이터 중복 이슈의 실제 해결책.
