@@ -521,7 +521,7 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
 </tbody></table></div>
 <h3>머지와 배포의 경계</h3>
 <div class="tw"><table class=""><thead><tr><th>대상</th><th>누가</th><th>막는 장치</th></tr></thead><tbody>
-<tr><td>review 브랜치 (<code>claude/jamwork-*</code>)</td><td>아현이 push</td><td>pre-push가 기준 방어는 항상 실행하고, <code>verify.sh</code>는 메인 트리·<code>wf_</code>가 아닌 워크트리에서만 실행한다(<code>wf_*</code> 링크드 워크트리는 CI에 맡긴다, 티켓 20260922_1755). CI(GitHub Actions <code>verify</code>)가 같은 검사를 돌려 결과를 커밋 상태로 남긴다</td></tr>
+<tr><td>review 브랜치 (<code>claude/jamwork-*</code>)</td><td>아현이 push</td><td>pre-push가 기준 방어는 항상 실행하고, <code>verify.sh</code>는 메인 트리·<code>wf_</code>가 아닌 워크트리에서만 실행한다(<code>wf_*</code> 링크드 워크트리는 CI에 맡긴다, 티켓 20260922_1755). 브랜치 삭제 push는 검증할 코드가 없어 <code>verify.sh</code>를 건너뛴다(티켓 20261014_1442). CI(GitHub Actions <code>verify</code>)가 같은 검사를 돌려 결과를 커밋 상태로 남긴다</td></tr>
 <tr><td><code>staging</code></td><td>카리나가 사용자 승인 후 머지·push</td><td>pre-push가 <code>jam-web</code> lint와 기준 방어 실행. 에이전트 작업 공간(<code>wf_*</code>)과 리뷰 브랜치(<code>claude/jamwork-*</code>)에서 오는 push는 <strong>차단</strong>. CI는 돌지 않는다</td></tr>
 <tr><td><code>main</code> (프로덕션)</td><td>카리나가 <code>/jam-ship</code>으로만</td><td>pre-push가 직접 push를 <strong>차단</strong>, <code>JAM_SHIP=1</code>이 유일한 통로</td></tr>
 <tr><td>DB</td><td>카리나만 실행</td><td>아현에게 DB 도구를 주지 않음</td></tr>

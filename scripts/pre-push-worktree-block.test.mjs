@@ -35,12 +35,12 @@ const runHook = (cwd, localRef, localSha) =>
     input: `${localRef} ${localSha} refs/heads/staging ${ZERO}\n`,
   })
 // 리뷰 브랜치(claude/jamwork-*) push — verify 게이트 검사용 (티켓 20260922_1755)
-const runReviewHook = (cwd, branchRef, localSha) =>
+const runReviewHook = (cwd, branchRef, localSha, remoteSha = ZERO) =>
   spawnSync('bash', [HOOK], {
     cwd,
     encoding: 'utf8',
     env: env({ JAM_SKIP_LINT: '1' }),
-    input: `refs/heads/${branchRef} ${localSha} refs/heads/${branchRef} ${ZERO}\n`,
+    input: `refs/heads/${branchRef} ${localSha} refs/heads/${branchRef} ${remoteSha}\n`,
   })
 
 const root = mkdtempSync(join(tmpdir(), 'pre-push-worktree-block-'))
@@ -117,7 +117,20 @@ try {
     'wf_가 아닌 워크트리는 verify.sh를 실행해야 한다',
   )
 
-  console.log('통과: pre-push 워크트리 차단·리뷰 브랜치 verify 게이트 검사')
+  // (h) 브랜치 삭제 push(local_sha가 전부 0)는 wf_가 아닌 워크트리에서도 verify.sh를 실행하지
+  // 않고 종료 0 (티켓 20261014_1442). (g)와 같은 조건에서 local_sha만 0으로 바꾼 사례다.
+  const deleteVerifyWorktree = join(root, 'delete-verify-worktree')
+  git(['worktree', 'add', '-q', '-b', 'claude/jamwork-h-test', deleteVerifyWorktree, 'HEAD'], main)
+  r = runReviewHook(deleteVerifyWorktree, 'claude/jamwork-h-test', ZERO, verifyHeadSha)
+  assert.equal(r.status, 0, `삭제 push는 verify 없이 통과해야 한다:\n${r.stderr}`)
+  assert.match(r.stderr, /브랜치 삭제 push/)
+  assert.equal(
+    existsSync(join(deleteVerifyWorktree, 'VERIFY_RAN')),
+    false,
+    '삭제 push는 verify.sh를 실행하지 않아야 한다',
+  )
+
+  console.log('통과: pre-push 워크트리 차단·리뷰 브랜치 verify 게이트·삭제 push 건너뜀 검사')
 } finally {
   rmSync(root, { recursive: true, force: true })
 }
