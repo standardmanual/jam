@@ -521,6 +521,10 @@ status: active
 
 - [07 JAM! 라이브 운영 블루프린트.md](plan/vision/07%20JAM!%20라이브%20운영%20블루프린트.md) — [JAM 2.0] 에이전트가 정기 루틴으로 운영을 기획하고 사용자가 어드민 운영툴에서 결정·실행하는 라이브 운영 체계의 설계도. 승인 뒤 우선순위를 정해 개발한다
 
+**운영 (operations)**
+
+- [daily-meeting.md](operations/daily-meeting.md) — JAM 2.0 기간에 에이전트들이 매일 여는 데일리 미팅의 참석·안건·진행 방식·산출물·피드백 규칙을 정의한다.
+
 **에이전트 (agents)**
 
 - [domain.md](agents/domain.md) — 서비스 전체를 파악할 때 어떤 문서를 어떤 순서로 읽는지 에이전트에게 안내한다.
@@ -677,6 +681,10 @@ status: active
 - [브랜드_보이스_가이드.md](marketing/브랜드_보이스_가이드.md) — 마케팅 채널(뉴스레터, 홈피드, 캠페인)의 목소리 원칙, 상황별 톤, 금칙 사항을 정리한 초안이다.
 - [콘텐츠_기획_레퍼런스.md](marketing/콘텐츠_기획_레퍼런스.md) — 외부 마케팅 글에서 뽑은 콘텐츠 기획 원칙을 JAM!에 대입한 표다. 윤진이 캠페인·카피·시즌·홈피드 작업 전에 읽는다.
 - [트렌드_노트.md](marketing/트렌드_노트.md) — 액티비티 씬의 유행과 밈, 시즌 소재, 수집·게임화 사례를 월별로 모아 소재 카드와 관찰, 분기 회고로 쌓는 문서다.
+
+### docs/operations/
+
+- [daily-meeting.md](operations/daily-meeting.md) — JAM 2.0 기간에 에이전트들이 매일 여는 데일리 미팅의 참석·안건·진행 방식·산출물·피드백 규칙을 정의한다.
 
 ### docs/operations/inbox/trends/
 
