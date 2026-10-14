@@ -2,9 +2,9 @@
 id: "20261014_1623"
 category: Infra
 priority: P0
-status: OPEN
+status: CLOSED
 created: 2026-10-14
-closed:
+closed: 2026-10-14
 ---
 
 # [Infra] users 본인 행 수정에 열 제한이 없어 로그인 유저가 is_admin을 직접 켤 수 있다
@@ -63,10 +63,25 @@ closed:
 
 ### 구현 내용 요약
 
+`public.users`에 `BEFORE INSERT OR UPDATE OF is_admin` 트리거(`trg_users_block_client_is_admin_write`)를 걸어, `current_user`가 `authenticated`·`anon`인 호출이 `is_admin`을 true로 만들거나 바꾸면 `42501`로 거부한다. 서비스 롤과 `postgres`는 그대로 쓸 수 있다. 권한 회수 방식은 쓰지 않았다.
+
+2026-10-14 16:28:55(KST, 적용 이력 version 20261014072855) 사용자 승인 뒤 `apply_migration`으로 프로덕션 DB(공용)에 실행했다. 적용 이력 이름은 `219_users_block_client_is_admin_write`다.
+
 ### 변경된 파일
 ```
--
+jam-web/supabase/migrations/219_users_block_client_is_admin_write.sql (신규, 되돌림 SQL 포함)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] 실행 뒤 트리거 조회: 존재하고 활성(`tgenabled = O`), 정의가 파일과 일치
+- [x] 클라이언트 역할(`authenticated`)의 본인 행 `is_admin = true` UPDATE와 `is_admin = true` INSERT가 모두 거부됨(실패 시 예외로 전체가 롤백되는 검사)
+- [x] 서비스 롤의 `is_admin` 변경은 허용됨(하위 트랜잭션을 되돌려 데이터를 남기지 않음)
+- [x] 실행 전후 데이터 불변: 사용자 8명, `is_admin` 2명, 자동 로그인 계정 `dev-tester`는 false
+- [x] `deploy-gate check` 통과(되돌림 SQL 표식 확인)
+- [x] 사용자가 어드민 2명이 의도한 계정임을 확인(2026-10-14)
+
+### 잔여 이슈
+
+- 「후속 검토」 목록(다른 민감 열의 클라이언트 쓰기, `strava_connections` 본인 행 쓰기, `is_admin` 변경 감사 로그)은 이 티켓에서 처리하지 않았다. 티켓 20261014_1625에서 이어서 판단한다.
+- 마이그레이션 파일은 승격(2026-10-14 16:29 KST) 뒤에 staging에 올렸다. DB 실행이 파일 반영보다 먼저다.
+- 실제 악용을 시도하지 않았으므로 연쇄 가능성(staging 자동 로그인 토큰 경유)은 추론으로만 남는다. 트리거로 그 경로의 마지막 단계(`is_admin` 쓰기)는 막혔다.
