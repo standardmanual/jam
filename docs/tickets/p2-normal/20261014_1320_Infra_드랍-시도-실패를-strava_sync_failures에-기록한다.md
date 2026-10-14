@@ -22,8 +22,7 @@ closed:
   - `jam-web/supabase/migrations/218_strava_sync_failures_drop_attempt_type.sql` (신규. 기존 제약 정의는 `176_strava_sync_failures.sql`의 `strava_sync_failures_type_check`)
   - `jam-web/src/lib/strava/syncFailures.ts`: 타입 `StravaSyncFailureType`(15줄), `recordStravaSyncFailure`(36~54줄)
   - `jam-web/src/lib/strava/sync.ts`: `processFetchedActivities`의 드랍 시도 루프와 catch(1006~1019줄). 호출에 쓸 `supabase`·`userId`는 이 함수의 인자다.
-  - `jam-web/src/lib/strava/__tests__/syncFailures.test.ts`: 기록 함수 테스트(36~70줄)
-  - `jam-web/src/lib/strava/__tests__/`의 동기화 테스트 중 드랍 시도 실패를 다루는 파일이 있으면 그 파일에 추가한다. 없으면 새 파일을 만들기보다 `syncFailures.test.ts`에 함께 둔다.
+  - `jam-web/src/lib/strava/__tests__/sync-drop-order.test.ts`: `processFetchedActivities`와 `tryItemDrop` 모킹 일체가 이미 있다. 가짜 supabase의 `insert`가 `strava_sync_failures` 호출을 기록하도록 고치고 테스트 2건을 더한다. `syncFailures.test.ts`에는 두지 않는다(그 파일에 `sync.ts` 모킹을 넣으면 `vi.mock('@/lib/strava/api')`가 `StravaApiError`를 가려 기존 테스트가 깨진다).
   - 문서: `docs/service/prd/02_DATA_MODEL.md`(`### strava_sync_failures` 절, 115줄 부근)
 
 ## 배경 / 문제 정의
@@ -50,6 +49,21 @@ closed:
 - 되돌림 SQL은 새 유형의 행을 먼저 지운 뒤 제약을 3개 값으로 복원하는 순서여야 한다. 행이 남은 채 복원하면 제약이 실패한다.
 - 아현은 SQL 파일만 쓴다. 실행은 사용자 승인 뒤 카리나가 한다. Supabase는 staging·프로덕션 공용 단일 DB이므로 실행 즉시 프로덕션에 반영된다.
 - 코드가 SQL보다 먼저 배포돼도 insert가 CHECK에 걸려 기록만 실패하고 `recordStravaSyncFailure`가 흡수하므로 서비스 장애는 없다. 그래도 순서는 SQL 실행 → 코드 배포로 한다.
+
+## 구현 계획
+
+파일 단위 계획이다(아현의 `plan_only` 반환을 사용자가 검토해 확정했다).
+
+1. `jam-web/supabase/migrations/218_strava_sync_failures_drop_attempt_type.sql` 신규(약 30~40줄): `BEGIN`, 제약 `strava_sync_failures_type_check`를 `DROP ... IF EXISTS`한 뒤 4개 값으로 `ADD`, `COMMIT`, 검증 쿼리(`pg_get_constraintdef`), 파일 끝 `-- 되돌림 SQL` 블록(새 유형 행 `DELETE` → 제약 `DROP` → 3개 값 `ADD` 순서).
+2. `jam-web/src/lib/strava/syncFailures.ts` 15줄 유니온에 `'drop_attempt_failed'`를 더한다(약 2줄).
+3. `jam-web/src/lib/strava/sync.ts` 1011~1018줄 catch에 `await recordStravaSyncFailure(supabase, userId, 'drop_attempt_failed', ...)`를 더한다(약 8~10줄). 메시지는 `stravaId=<값>: <오류 메시지>` 형식이다. import는 29줄에 이미 있고 `supabase`·`userId`는 함수 인자다. 기존 `console.error`는 유지한다.
+4. `jam-web/src/lib/strava/__tests__/sync-drop-order.test.ts`에 테스트 2건(약 60~75줄): (a) `tryItemDrop`이 던지면 `drop_attempt_failed`·userId·`stravaId=…` 메시지로 기록을 시도한다, (b) 기록 `insert`가 오류·예외여도 다음 활동의 `tryItemDrop`이 이어진다.
+5. `docs/service/prd/02_DATA_MODEL.md` 116줄 `failure_type` 값 목록에 값을 더한다(약 2줄).
+
+## 주요 의사결정
+
+- 2026-10-14 규모 사전 판정에서 파일 수(5개)만 세고 테스트 줄 수를 빠뜨려 줄 수 기준(100줄 이상)에 걸렸다. 아현이 `plan_only`로 반환했고, 사용자가 위 계획을 검토해 계획 반환 면제를 승인했다.
+- 면제 근거: 계획이 파일 단위로 확정됐고, 서비스 로직 변경은 `sync.ts` 10줄 안팎이며 줄 수의 대부분은 SQL과 테스트다.
 
 ## 완료 조건
 
