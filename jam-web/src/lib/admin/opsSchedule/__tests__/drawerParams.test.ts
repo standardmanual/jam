@@ -8,7 +8,7 @@
  * - 새로고침해도 유지된다: 만든 쿼리를 `parseScheduleParams`가 같은 서랍으로 읽는다(옛 카드·미션 키 포함)
  * - 포커스 복귀 선택자: 서랍을 연 칸의 `data-drawer-trigger` 값과 한 글자도 어긋나지 않고, 따옴표로 선택자를 깨뜨릴 수 없다
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { parseScheduleParams, periodOf } from '../params'
 import { shiftDateStr } from '@/lib/admin/today-calendar'
 import {
@@ -54,7 +54,14 @@ describe('openDrawerQuery', () => {
   })
 
   it('쿼리가 비어 있어도 연다', () => {
-    expect(openDrawerQuery('', { kind: 'day', date: '2026-10-07' })).toBe('drawer=day&date=2026-10-07')
+    // 빈 쿼리는 오늘이 보이는 기간이 된다. 시계를 대상 날짜와 같은 기간으로 고정해 실행 날짜에 기대지 않는다(티켓 20261014_1330).
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-07T03:00:00Z'))
+    try {
+      expect(openDrawerQuery('', { kind: 'day', date: '2026-10-07' })).toBe('drawer=day&date=2026-10-07')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 
