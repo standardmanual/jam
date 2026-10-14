@@ -21,7 +21,11 @@
  * 3. Strava 동기화 실패 건수 — `strava_sync_failures.occurred_at`이 기간 안에 있는 행의
  *    개수(티켓 20260918_1307). `syncStravaActivities()`가 토큰 갱신 실패·Strava API 오류·
  *    레이트리밋으로 실패할 때마다 이 테이블에 기록한다. 응답에는 개수만 담고 user_id는
- *    버린다(상위 티켓 §4-6).
+ *    버린다(상위 티켓 §4-6). `failure_type='drop_attempt_failed'`(동기화는 끝났지만 드랍
+ *    시도가 실패한 행)는 이 건수에서 뺀다 — 동기화 실패로 보이지 않게 한다(티켓 20261014_1319).
+ * 3-1. 드랍 시도 실패 건수 — 같은 테이블에서 `failure_type='drop_attempt_failed'`인 행의
+ *    개수(티켓 20261014_1319). 같은 `occurred_at` 기간 조건이고 user_id는 버린다. 이 유형의
+ *    행이 아직 없으면 0이다.
  * 4. 앰비언트 드랍 만료 건수 — **원천 데이터 없음, null 반환**. 앰비언트(시스템) 드랍은
  *    설계상 만료가 없다 — `poi_drops.source='system'`인 행은 `expires_at`이 항상 NULL로
  *    강제된다(`ambient-drop/index.ts` 주석 "만료 없음 (poi_drops.expires_at = NULL,
@@ -81,6 +85,7 @@ export interface KpiWeeklyMetrics {
     duplicate: { value: null; reason: string }
   }
   stravaSyncFailures: { value: number; definition: string }
+  dropAttemptFailures: { value: number; definition: string }
   ambientDropExpired: { value: null; reason: string }
   combinePoints: {
     fail: { count: number; totalPoints: number; definition: string }
@@ -95,6 +100,9 @@ export interface KpiWeeklyMetrics {
 
 const LEDGER_PAGE_SIZE = 1000
 
+/** 동기화 중 드랍 시도가 실패한 행의 `strava_sync_failures.failure_type` 값 — 동기화 실패 건수에서 빼고 따로 센다. */
+const DROP_ATTEMPT_FAILED = 'drop_attempt_failed'
+
 const DEFINITIONS = {
   missionAchievers:
     'user_mission_completions.completed_at이 기간 안인 행의 user_id distinct 개수',
@@ -102,7 +110,9 @@ const DEFINITIONS = {
   badgeDuplicateReason:
     "원천 데이터 없음 — user_activity_badges는 UNIQUE(user_id, badge_id)로 재발급이 구조적으로 불가능하고, 반복 획득(earn_count 증가)은 '발급'이 아니다(마이그레이션 132).",
   stravaSyncFailures:
-    'strava_sync_failures.occurred_at이 기간 안인 행 개수(토큰 갱신 실패·Strava API 오류·레이트리밋 합산)',
+    'strava_sync_failures.occurred_at이 기간 안인 행 개수(토큰 갱신 실패·Strava API 오류·레이트리밋 합산, 드랍 시도 실패는 제외)',
+  dropAttemptFailures:
+    "strava_sync_failures.occurred_at이 기간 안이고 failure_type='drop_attempt_failed'인 행 개수(동기화 중 드랍 시도가 실패한 건수, 동기화 실패 건수에는 세지 않음)",
   ambientDropExpiredReason:
     "원천 데이터 없음 — source='system' 드랍은 설계상 expires_at이 항상 NULL이라(만료 없음) 만료 집계 대상 행 자체가 없다.",
   combinePointsFail:
@@ -169,7 +179,14 @@ async function countRecipesWithInvalidRewardBadges(
 export async function computeKpiWeeklyMetrics(range: KpiWeeklyRange): Promise<KpiWeeklyMetrics> {
   const supabase = createServiceClient()
 
-  const [missionRows, badgeCount, stravaSyncFailureCount, ledgerRows, recipeRewardBadges] = await Promise.all([
+  const [
+    missionRows,
+    badgeCount,
+    stravaSyncFailureCount,
+    dropAttemptFailureCount,
+    ledgerRows,
+    recipeRewardBadges,
+  ] = await Promise.all([
     supabase
       .from('user_mission_completions')
       .select('user_id')
@@ -184,7 +201,14 @@ export async function computeKpiWeeklyMetrics(range: KpiWeeklyRange): Promise<Kp
       .from('strava_sync_failures')
       .select('id', { count: 'exact', head: true })
       .gte('occurred_at', range.startIso)
-      .lt('occurred_at', range.endIso),
+      .lt('occurred_at', range.endIso)
+      .neq('failure_type', DROP_ATTEMPT_FAILED),
+    supabase
+      .from('strava_sync_failures')
+      .select('id', { count: 'exact', head: true })
+      .gte('occurred_at', range.startIso)
+      .lt('occurred_at', range.endIso)
+      .eq('failure_type', DROP_ATTEMPT_FAILED),
     fetchCombineLedgerRows(supabase, range),
     countRecipesWithInvalidRewardBadges(supabase),
   ])
@@ -192,6 +216,7 @@ export async function computeKpiWeeklyMetrics(range: KpiWeeklyRange): Promise<Kp
   if (missionRows.error) throw missionRows.error
   if (badgeCount.error) throw badgeCount.error
   if (stravaSyncFailureCount.error) throw stravaSyncFailureCount.error
+  if (dropAttemptFailureCount.error) throw dropAttemptFailureCount.error
 
   const sumByReason = (reason: string) => {
     const matched = ledgerRows.filter((r) => r.reason === reason)
@@ -210,6 +235,10 @@ export async function computeKpiWeeklyMetrics(range: KpiWeeklyRange): Promise<Kp
     stravaSyncFailures: {
       value: stravaSyncFailureCount.count ?? 0,
       definition: DEFINITIONS.stravaSyncFailures,
+    },
+    dropAttemptFailures: {
+      value: dropAttemptFailureCount.count ?? 0,
+      definition: DEFINITIONS.dropAttemptFailures,
     },
     ambientDropExpired: { value: null, reason: DEFINITIONS.ambientDropExpiredReason },
     combinePoints: {
