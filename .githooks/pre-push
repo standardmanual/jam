@@ -270,11 +270,16 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   # node_modules가 없는 워크트리(막 만든 직후 등)에서는 건너뛴다 —
   # scripts/workspace-setup.sh link로 연결한 뒤 다시 push하면 게이트가 걸린다.
   #
+  # 브랜치 삭제 push(local_sha가 전부 0)는 검증할 코드가 없으므로 이 게이트를 건너뛴다
+  # (티켓 20261014_1442) — 삭제 ref마다 전체 검증이 돌아 병합된 리뷰 브랜치 정리가 불가능했다.
+  #
   # 우회(예: verify와 무관한 긴급 push): JAM_SKIP_VERIFY=1 git push origin claude/...
   case "$branch" in
     claude/jamwork-*)
       repo_root="$(git rev-parse --show-toplevel)"
-      if [ "${JAM_SKIP_VERIFY:-}" = "1" ]; then
+      if [ "$local_sha" = "$zero_sha" ]; then
+        echo "pre-push: 브랜치 삭제 push — 검증할 코드가 없어 verify 게이트를 건너뜁니다." >&2
+      elif [ "${JAM_SKIP_VERIFY:-}" = "1" ]; then
         echo "pre-push: JAM_SKIP_VERIFY=1 — verify 게이트를 건너뜁니다." >&2
       elif [ "$is_wf_worktree" = "1" ]; then
         echo "pre-push: Workflow 에이전트 워크트리($worktree_name) — CI(verify 워크플로)가 검증합니다." >&2
