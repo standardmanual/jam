@@ -2,8 +2,9 @@
  * Strava 동기화 실패 기록 (티켓 20260918_1307)
  *
  * `/api/strava/sync`(syncStravaActivities)가 실패할 때 시각·유형을 strava_sync_failures에
- * 남긴다. 주간 집계 API(`/api/admin/kpi/weekly`)의 stravaSyncFailures 지표가 이 테이블을
- * COUNT한다. 여기서 남긴 user_id는 원인 추적용일 뿐 집계 응답에는 절대 포함하지 않는다
+ * 남긴다. 주간 집계 API(`/api/admin/kpi/weekly`)의 stravaSyncFailures 지표는 이 테이블에서
+ * drop_attempt_failed를 뺀 행을 COUNT하고, 그 유형은 dropAttemptFailures 지표가 따로 COUNT한다
+ * (티켓 20261014_1319). 여기서 남긴 user_id는 원인 추적용일 뿐 집계 응답에는 절대 포함하지 않는다
  * (상위 티켓 §4-6, kpiWeekly.ts 참고).
  *
  * 기록 자체가 실패해도 동기화를 막지 않는다 — 완료 조건("동기화 성공 흐름과 응답은

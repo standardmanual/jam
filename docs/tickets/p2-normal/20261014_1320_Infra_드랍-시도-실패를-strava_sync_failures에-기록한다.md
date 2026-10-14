@@ -2,9 +2,9 @@
 id: "20261014_1320"
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-10-14
-closed:
+closed: 2026-10-14
 ---
 
 # [Infra] 드랍 시도 실패를 strava_sync_failures에 기록한다
@@ -85,16 +85,44 @@ closed:
 
 ### 구현 내용 요약
 
+동기화 중 `tryItemDrop`이 던진 오류를 콘솔 로그에 더해 `strava_sync_failures`에 `failure_type = 'drop_attempt_failed'`, `error_message = 'stravaId=<값>: <메시지>'`, 해당 userId로 기록한다. 기존 `recordStravaSyncFailure`를 `await`로 호출하며, 반환값·성공 응답·콘솔 로그는 바뀌지 않는다. 마이그레이션 218이 CHECK 제약 `strava_sync_failures_type_check`의 허용 값을 4개로 넓혔다.
+
+게이트: 민지 WARN(재작업 없음). 사유는 둘이었다.
+
+1. 브랜치의 CI가 기존 시한성 테스트 1건(`drawerParams.test.ts`)으로 빨갛게 보였다. 이 테스트는 티켓 20261014_1330에서 이미 고쳐 staging에 있었고, 머지 뒤 전체 테스트로 해소를 확인했다.
+2. 머지 순서가 1319 → 1320이어야 했다. 이 순서를 지켰다.
+
 ### 변경된 파일
 ```
--
+jam-web/supabase/migrations/218_strava_sync_failures_drop_attempt_type.sql (신규)
+jam-web/src/lib/strava/syncFailures.ts
+jam-web/src/lib/strava/sync.ts (+9)
+jam-web/src/lib/strava/__tests__/sync-drop-order.test.ts (+98)
+docs/service/prd/02_DATA_MODEL.md
 ```
 
+머지 뒤 카리나가 추가로 고친 곳은 `syncFailures.ts`의 헤더 주석과 `02_DATA_MODEL.md`의 `stravaSyncFailures` 서술이다. 민지가 짚은 문서 소유 공백(두 티켓 모두 맡지 않은 부분)이었다.
+
 ### 테스트 결과
-- [ ] 
+- [x] 새 테스트 3건 통과. `sync.ts`를 되돌리면 실패함을 민지가 확인했다.
+- [x] 머지 뒤 전체 vitest 483파일 10,924건 통과, 타입 검사 통과 (2026-10-14)
+- [x] `deploy-gate check` 통과 (되돌림 SQL 있음)
+
+### DB 실행 기록 (후속 범위)
+
+- 2026-10-14 13:46(KST), 사용자 승인 후 `apply_migration`으로 실행했다. 적용 이력 이름은 `218_strava_sync_failures_drop_attempt_type`이다.
+- 실행 전: 제약 허용 값 3개, 테이블 0행. 실행 후: 허용 값 4개, `convalidated = true`.
+- 생성 타입: `failure_type`이 `string`이라 CHECK 제약 변경은 `database.generated.ts`에 영향이 없다(grep으로 확인했고 재생성은 생략했다).
 
 ### 실행 지표
 
-| 실행 | 에이전트 수 | 전체 토큰 | 소요 시간 | 결과 |
-|---|---|---|---|---|
-| | | | | |
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1차 (계획 반환) | 1 | 53,212 | 21,436 / - | 1분 47초 | 24 |
+| 2차 (면제 후 구현) | 2 | 141,408 | 42,772 / 28,996 | 16분 18초 | 84 |
+| 합계 | 3 | 194,620 | 64,208 / 28,996 | 18분 5초 | 108 |
+
+### 잔여 이슈
+
+- `sync-drop-order.test.ts`의 「반환값은 그대로다」 테스트가 `toBeDefined()`만 단언해 반환값 불변을 약하게 고정한다. 판정에는 영향이 없어 고치지 않았다.
+- JAM 2.0 현황 스냅샷(`docs/plan/jam2/service-redesign/current-service-map/01 동기화와 어뷰징.md`)의 실패 유형 3개 서술은 기준일이 명시된 스냅샷이라 고치지 않았다.
