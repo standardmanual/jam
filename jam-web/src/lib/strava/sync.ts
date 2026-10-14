@@ -1015,6 +1015,15 @@ export async function processFetchedActivities(
         `[processFetchedActivities] tryItemDrop 실패 — userId: ${userId}, stravaId: ${activity.stravaId}:`,
         err
       )
+      // 이 활동은 아래에서 처리 완료로 표시되어 다음 동기화에서 다시 처리되지 않으므로, 누락을
+      // 운영자가 볼 수 있게 실패 기록 테이블에 남긴다(티켓 20261014_1320). 기록 함수가 자체적으로
+      // 예외를 흡수하므로 여기서 try/catch를 더하지 않는다. 드랍 시도는 순차 처리라 await 한다.
+      await recordStravaSyncFailure(
+        supabase,
+        userId,
+        'drop_attempt_failed',
+        `stravaId=${activity.stravaId}: ${err instanceof Error ? err.message : String(err)}`
+      )
     }
   }
 
