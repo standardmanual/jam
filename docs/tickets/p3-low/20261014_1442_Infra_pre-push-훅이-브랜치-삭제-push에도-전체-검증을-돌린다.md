@@ -2,9 +2,9 @@
 id: "20261014_1442"
 category: Infra
 priority: P3
-status: OPEN
+status: CLOSED
 created: 2026-10-14
-closed:
+closed: 2026-10-14
 ---
 
 # [Infra] pre-push 훅이 브랜치 삭제 push에도 전체 검증을 돌린다
@@ -43,10 +43,31 @@ closed:
 
 ### 구현 내용 요약
 
+리뷰 브랜치 verify 게이트(`case "$branch" in claude/jamwork-*)`)의 if 체인 맨 앞에 `local_sha`가 전부 0이면 안내 한 줄을 출력하고 건너뛰는 분기를 더했다. `JAM_SKIP_VERIFY=1` 우회, wf 워크트리 건너뜀, node_modules 없음 건너뜀, verify 실행 분기는 바꾸지 않았다. 티켓 구현 계획의 「case 앞에 조건」은 case 안쪽 if 체인의 첫 분기로 구현했고 동작은 같다.
+
+게이트: 민지 PASS(재작업 없음). 변경 전 훅으로 되돌리면 새 사례가 실제로 실패함을 확인했다.
+
 ### 변경된 파일
 ```
--
+.githooks/pre-push (+6/-1)
+scripts/pre-push-worktree-block.test.mjs (+16/-3, 사례 (h) 추가)
+docs/agents/team-operations.md (+1/-1, 「머지와 배포의 경계」 review 브랜치 행)
+docs/agents/team-map.html (+1/-1, 위 문서에서 재생성)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] CI verify 성공 (run 38521491905)
+- [x] 머지된 상태에서 `scripts/pre-push-worktree-block.test.mjs` 통과 (워크트리 차단·리뷰 브랜치 verify 게이트·삭제 push 건너뜀)
+- [x] 기존 사례 (f)(g)가 변경 후 훅에서 그대로 통과
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1차 (구현·게이트) | 2 | 103,516 | 22,779 / 9,653 | 18분 13초 | 67 |
+| 합계 | 2 | 103,516 | 22,779 / 9,653 | 18분 13초 | 67 |
+
+### 잔여 이슈
+
+- `scripts/gen-team-map.mjs` 211행의 팀 지도 훅 목록 줄(`how: ...`)에는 삭제 push 건너뜀이 빠져 있다. 같은 지도의 「머지와 배포의 경계」 표에는 반영됐다. 거짓 서술이 아니라 누락이며 동작에는 영향이 없다.
+- 훅은 push하는 쪽 로컬 `.githooks`에서 적용된다. 이 머지 뒤부터 삭제 push에 효력이 있고, 이전 시점의 클론에서는 기존 훅이 돈다.
