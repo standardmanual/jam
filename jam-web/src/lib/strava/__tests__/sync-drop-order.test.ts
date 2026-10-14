@@ -11,7 +11,7 @@
  *
  * 실행: cd jam-web && npx vitest run src/lib/strava/__tests__/sync-drop-order.test.ts
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { StravaSummaryActivity } from '@/types/strava'
 
@@ -21,6 +21,13 @@ import type { StravaSummaryActivity } from '@/types/strava'
 // processFetchedActivities가 tryItemDrop을 넘기는 "순서"가 최종 저장 결과에
 // 미치는 영향을 검증한다.
 const dropState = vi.hoisted(() => ({ current: null as string | null }))
+
+// 20261014_1320 — strava_sync_failures에 들어간 insert 페이로드를 기록한다. mode로 기록 insert가
+// 오류를 돌려주거나 예외를 던지는 상황을 재현한다(기록이 실패해도 다음 활동의 드랍이 이어져야 한다).
+const failureInserts = vi.hoisted(() => ({
+  rows: [] as Array<Record<string, unknown>>,
+  mode: 'ok' as 'ok' | 'error' | 'throw',
+}))
 
 // 20260831_1327 — processFetchedActivities가 내부에서 호출하는 findCompletableItemBooks 등이
 // 모킹 없이 createServiceClient()로 실제 Supabase에 접속해 상시 실패(자격증명 없는 환경)·
@@ -69,6 +76,7 @@ vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) })
 
 import { processFetchedActivities } from '../sync'
 import { logEngineDecision } from '@/lib/engine-log'
+import { tryItemDrop } from '@/lib/drop-engine/index'
 
 // ── 픽스처 ──────────────────────────────────────────────────────────────
 
@@ -171,7 +179,14 @@ function makeFakeSupabase(): SupabaseClient {
         return { data: null, error: null }
       },
       upsert: async () => ({ error: null }),
-      insert: async () => ({ error: null }),
+      insert: async (payload?: Record<string, unknown>) => {
+        if (table === 'strava_sync_failures') {
+          failureInserts.rows.push(payload ?? {})
+          if (failureInserts.mode === 'error') return { error: { message: '기록 insert 오류' } }
+          if (failureInserts.mode === 'throw') throw new Error('기록 insert 예외')
+        }
+        return { error: null }
+      },
     }
     return builder
   }
@@ -248,4 +263,83 @@ describe('processFetchedActivities — 드랍 처리 순서와 last_activity_at 
 
     expect(dropState.current).toBe(newer.start_date)
   })
+})
+
+describe('processFetchedActivities — 드랍 시도 실패 기록 (티켓 20261014_1320)', () => {
+  let errorSpy: MockInstance
+
+  beforeEach(() => {
+    dropState.current = null
+    failureInserts.rows = []
+    failureInserts.mode = 'ok'
+    vi.clearAllMocks()
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    errorSpy.mockRestore()
+  })
+
+  it('tryItemDrop이 던지면 drop_attempt_failed·userId·stravaId 메시지로 기록을 시도하고 반환값은 그대로다', async () => {
+    vi.mocked(tryItemDrop).mockRejectedValueOnce(new Error('드랍 상태 저장 실패'))
+
+    const result = await processFetchedActivities(
+      makeFakeSupabase(),
+      'user-fail',
+      'fake-access-token',
+      [makeRawActivity({ id: 4242, start_date: '2026-08-10T00:00:00Z', start_date_local: '2026-08-10T09:00:00' })],
+      false,
+      'sync'
+    )
+
+    expect(failureInserts.rows).toEqual([
+      {
+        user_id: 'user-fail',
+        failure_type: 'drop_attempt_failed',
+        error_message: 'stravaId=4242: 드랍 상태 저장 실패',
+      },
+    ])
+    // 기존 콘솔 로그는 그대로 남고, 동기화 흐름은 오류를 밖으로 던지지 않는다.
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('tryItemDrop 실패'),
+      expect.any(Error)
+    )
+    expect(result).toBeDefined()
+  })
+
+  it.each(['error', 'throw'] as const)(
+    '기록 insert가 %s여도 같은 배치의 다음 활동 드랍 시도가 이어진다',
+    async (mode) => {
+      failureInserts.mode = mode
+      const older = makeRawActivity({
+        id: 30,
+        start_date: '2026-08-05T00:00:00Z',
+        start_date_local: '2026-08-05T09:00:00',
+      })
+      const newer = makeRawActivity({
+        id: 31,
+        start_date: '2026-08-09T00:00:00Z',
+        start_date_local: '2026-08-09T09:00:00',
+      })
+      // 드랍은 오래된 순서로 처리되므로 첫 호출(older)이 던지고 두 번째 호출(newer)이 이어져야 한다.
+      vi.mocked(tryItemDrop).mockRejectedValueOnce(new Error('드랍 실패'))
+
+      await processFetchedActivities(
+        makeFakeSupabase(),
+        'user-chain',
+        'fake-access-token',
+        [newer, older],
+        false,
+        'sync'
+      )
+
+      expect(failureInserts.rows).toHaveLength(1)
+      expect(failureInserts.rows[0]).toMatchObject({
+        failure_type: 'drop_attempt_failed',
+        error_message: 'stravaId=30: 드랍 실패',
+      })
+      expect(vi.mocked(tryItemDrop)).toHaveBeenCalledTimes(2)
+      expect(dropState.current).toBe(newer.start_date)
+    }
+  )
 })

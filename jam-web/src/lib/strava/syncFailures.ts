@@ -12,7 +12,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { StravaApiError } from '@/lib/strava/api'
 
-export type StravaSyncFailureType = 'token_refresh_failed' | 'rate_limited' | 'strava_api_error'
+// 'drop_attempt_failed'(티켓 20261014_1320)는 호출부(sync.ts의 드랍 시도 catch)가 직접 넘기며
+// classifyStravaSyncFailure()의 분류 대상이 아니다.
+export type StravaSyncFailureType =
+  | 'token_refresh_failed'
+  | 'rate_limited'
+  | 'strava_api_error'
+  | 'drop_attempt_failed'
 
 /**
  * syncStravaActivities()가 던진 오류를 실패 유형으로 분류한다.
