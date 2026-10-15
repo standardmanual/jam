@@ -164,8 +164,8 @@ export async function ensureBadgeImageFonts(): Promise<void> {
 export function readRarityColors(rarity: BadgeRarity): { bg: string; text: string } | null {
   if (typeof window === 'undefined') return null
   const style = getComputedStyle(document.documentElement)
-  const bg = style.getPropertyValue(`--color-rarity-${rarity}`).trim()
-  const text = style.getPropertyValue(`--color-rarity-${rarity}-text`).trim()
+  const bg = style.getPropertyValue(`--rarity-${rarity}`).trim()
+  const text = style.getPropertyValue(`--rarity-${rarity}-foreground`).trim()
   if (!bg || !text) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('[composeActivityBadgeImage] 등급 색상 토큰을 읽지 못해 칩을 그리지 않았어요:', rarity)

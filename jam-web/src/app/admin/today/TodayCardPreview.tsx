@@ -97,10 +97,11 @@ export default function TodayCardPreview({
         </Tabs>
       </div>
 
-      {/* 홈 화면 실제 캔버스와 동일한 배경(bg-surface, DS v2 다크 그레이) 위에 그려야 카드의 tone="inverse"(흰 카드) 대비가
-          실제 화면과 같게 보인다. 카드 폭은 그대로 두고 칸이 좁으면 판 전체를 칸 폭에 맞춰 축소한다(transform: scale,
+      {/* 홈 화면 실제 캔버스와 동일한 배경(bg-background) 위에 그려야 카드 대비가 실제 화면과 같게 보인다.
+          data-service-theme로 서비스 토큰 값을 되찾는다(어드민 스코프가 같은 이름을 덮는다).
+          카드 폭은 그대로 두고 칸이 좁으면 판 전체를 칸 폭에 맞춰 축소한다(transform: scale,
           티켓 20261007_0035). 칸이 충분히 넓으면 scale 1이라 기존 모습 그대로다. 카드 사이 간격은 홈과 같다. */}
-      <div className="rounded-lg bg-surface p-4 text-text">
+      <div data-service-theme="" className="rounded-lg bg-background p-4 text-foreground">
         <div
           ref={frameRef}
           data-preview-frame
@@ -111,7 +112,7 @@ export default function TodayCardPreview({
             ref={boardRef}
             data-preview-board
             data-preview-scale={scale}
-            className="mx-auto flex flex-col gap-[var(--spacing-16)]"
+            className="mx-auto flex flex-col gap-4"
             style={{
               width: cardWidth,
               ...(scale < 1 ? { transform: `scale(${scale})`, transformOrigin: 'top left' } : {}),

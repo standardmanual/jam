@@ -40,7 +40,8 @@ interface ItemBookDetailPreviewFrameProps {
  * 유저별 동적 데이터가 필요한 영역은 프리뷰용 고정값(0/0)으로 채운다.
  *
  * 실제 화면의 스택 구조를 그대로 재현한다:
- *   1) 프레임 바닥 = bg-surface (앱 컬럼 기본 배경)
+ *   1) 프레임 바닥 = bg-background (앱 컬럼 기본 배경). data-service-theme로 서비스 토큰 값을 되찾는다 —
+ *      어드민 스코프([data-admin-theme])가 같은 이름(--background·--foreground·--muted 등)을 덮기 때문이다
  *   2) 배경 레이어 = 실제의 position:fixed 고정 레이어 대응(스크롤에 끌려가지 않도록 본문 스크롤
  *      컨테이너 바깥에 형제로 배치)
  *   3) 본문 = z-10 스크롤 컨테이너. TopNav·본문은 배경이 있으면 투명해 레이어가 비쳐 보인다.
@@ -57,7 +58,8 @@ export default function ItemBookDetailPreviewFrame({
 }: ItemBookDetailPreviewFrameProps) {
   return (
     <div
-      className="relative overflow-hidden rounded-2xl border border-[#e5e7eb] bg-surface text-text"
+      data-service-theme=""
+      className="relative overflow-hidden rounded-2xl border border-[#e5e7eb] bg-background text-foreground"
       style={{ width: SERVICE_WIDTH, height: PREVIEW_HEIGHT }}
     >
       {/* 배경 레이어 — 실제 화면의 고정 배경 레이어와 동일 역할(z-0, 클릭 통과) */}
@@ -87,7 +89,7 @@ export default function ItemBookDetailPreviewFrame({
         <div className="pointer-events-none">
           <TopNav
             title={d.common.back}
-            headerStyle={{ background: themed ? 'transparent' : 'var(--color-surface)', color: '#FFFFFF' }}
+            headerStyle={{ background: themed ? 'transparent' : 'var(--background)', color: '#FFFFFF' }}
           />
         </div>
 
