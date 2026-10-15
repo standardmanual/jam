@@ -1,9 +1,9 @@
-/* JAM! DS v2 — spacing tokens.
+/* JAM! DS v3 — spacing tokens.
  * 4px base unit scale.
  *
- * v2 changes:
- *   - Layout semantic tokens added (card padding, section/element gaps)
- *   - --spacing-safe-bottom added for iOS home indicator clearance
+ * 티켓 20261015_2131: 클래스 문자열은 Tailwind 기본 유틸리티(p-4·gap-2 …)를 쓰고, 이 눈금은
+ * 인라인 style·CSS·calc() 안처럼 클래스가 아닌 곳이 참조한다. 이름은 px 값이다(--spacing-16 = 16px).
+ * Tailwind 단계 번호(p-4 = 16px)와 다르다. 클래스 안에서는 이 변수를 쓰지 않는다.
  */
 :root {
   --spacing-4: 4px;
@@ -12,8 +12,10 @@
   --spacing-16: 16px;
   --spacing-24: 24px;
   --spacing-32: 32px;
+  --spacing-40: 40px;
   --spacing-48: 48px;
   --spacing-64: 64px;
+  --spacing-96: 96px;
 
   /* Layout semantic tokens — change these to adjust spacing globally */
   --layout-card-padding: var(--spacing-24);

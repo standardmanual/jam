@@ -1,28 +1,24 @@
-/* JAM! DS v2 — border-radius scale.
- * Monotonic 4-step scale: xs < sm < card < pill.
+/* JAM! DS v3 — border-radius scale.
  *
- * v2 changes:
- *   - --radius-card: 10px → 16px  (was non-monotonic: card < md)
- *   - --radius-md removed          (caused card < md confusion)
- *   - --radius-button alias removed (was unused, mismatched actual button value)
- *   - Backward-compat aliases kept: --radius-subtle, --radius-input
+ * 티켓 20261015_2131: 카드·pill·입력창 같은 옛 역할 이름의 반경 토큰을 지웠다.
+ * 클래스 문자열은 Tailwind 기본 유틸리티(rounded-2xl·rounded-full …)를 쓰고, 클래스가 아닌 곳은
+ * 피그마 `dimensions/radius`와 같은 값의 이 눈금을 var()로 참조한다.
+ *
+ * 옛 → 새(값 기준): 4px → --radius-sm, 8px → --radius-lg, 카드 16px → --radius-2xl,
+ * pill 9999px → --radius-full. 이름이 같고 값이 달라진 항목이 있다(옛 sm 8px → 새 sm 4px).
+ * 입력창은 field/radius 100(캡슐)이다.
  */
 :root {
-  --radius-xs: 4px;       /* hairline — dividers, inner thumbnails */
-  --radius-sm: 8px;       /* inputs, small chips */
-  --radius-card: 16px;    /* card surfaces — v2: raised from 10px for monotonic scale */
-  --radius-pill: 9999px;  /* buttons, tags — full capsule */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+  --radius-4xl: 32px;
+  --radius-full: 9999px;
 
-  /* Backward-compat aliases — existing names kept for gradual migration */
-  --radius-subtle: var(--radius-xs);
-  --radius-input: var(--radius-sm);
-
-  /* Service-layer aliases — globals.css @theme에서 Tailwind 유틸리티로 노출되며,
-     컴포넌트에서 var()로 직접 참조. DS 토큰과 동기화 목적으로 여기에도 기록. */
-  --radius-cards: var(--radius-card);       /* rounded-[var(--radius-cards)] */
-  --radius-tags: var(--radius-pill);        /* ShapeTag, RarityBadge chip */
-  --radius-inputs: var(--radius-sm);        /* input field */
-  --radius-buttons: var(--radius-pill);     /* primary/secondary button */
-  --radius-nav-buttons: var(--radius-pill); /* TabBar nav pill */
-  --radius-pill-buttons: var(--radius-pill);/* slot/unslot pill button */
+  /* 입력창 (피그마 field/radius) */
+  --field-radius: 100px;
 }
