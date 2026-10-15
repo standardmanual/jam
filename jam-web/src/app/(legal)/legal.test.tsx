@@ -32,7 +32,7 @@ describe('LegalTopNav', () => {
 })
 
 describe('LegalLayout', () => {
-  it('(main)과 같은 그라데이션 상수를 배경으로 쓰고 430px 컬럼으로 감싼다', () => {
+  it('(main)과 같은 배경 상수(--background 단색)를 쓰고 430px 컬럼으로 감싼다', () => {
     const html = renderToStaticMarkup(
       <LegalLayout>
         <p>본문</p>
@@ -40,9 +40,12 @@ describe('LegalLayout', () => {
     )
     expect(html).toContain('본문')
     expect(html).toContain('max-w-[430px]')
-    expect(html).toContain('#3d3d3d')
+    // 라이트 전환 뒤 마지막 정지점 #3d3d3d가 남아 하단이 어두워진 결함(채원② 중대 2)의 회귀 방지
+    expect(html).toContain('background:var(--background)')
+    expect(html).not.toContain('#3d3d3d')
+    expect(html).not.toContain('gradient')
     expect(PAGE_GRADIENT_BACKGROUND.backgroundAttachment).toBe('fixed')
-    expect(String(PAGE_GRADIENT_BACKGROUND.background)).toContain('#3d3d3d')
+    expect(PAGE_GRADIENT_BACKGROUND.background).toBe('var(--background)')
   })
 
   it('탭 바·Footer를 렌더하지 않는다', () => {

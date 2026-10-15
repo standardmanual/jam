@@ -64,7 +64,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
           {questPreview && <QuestPreviewBanner value={questPreview} />}
 
           {/* 메인 컨텐츠 — 각 페이지가 자체 원색 풀블리드 배경과 상단 브랜딩을 지정.
-              배경은 피그마 디자인(티켓 20260917_2105)의 세로 그라데이션이며, 값은
+              배경은 `--background` 단색이며(라이트 그라데이션 재설계는 티켓 20261015_2133), 값은
               `@/lib/pageBackground`에 있다((legal) 레이아웃과 공용, 티켓 20260929_1400). */}
           <main
             className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))]"

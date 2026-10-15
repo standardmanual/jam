@@ -7,7 +7,7 @@ import { PAGE_GRADIENT_BACKGROUND } from '@/lib/pageBackground'
  * 있어야 하기 때문이다(개인정보 보호법 제30조제2항). ToastProvider·TopNavDataProvider·
  * TabBar·Footer·StravaConnectReveal도 두지 않는다. 로그인 여부와 무관하게 같은 최소 화면이다.
  *
- * 배경은 `(main)`과 같은 그라데이션을 공용 상수로 함께 쓴다(사용자 결정, 2026-09-29).
+ * 배경은 `(main)`과 같은 값을 공용 상수(`--background` 단색)로 함께 쓴다(사용자 결정, 2026-09-29).
  * `main`의 overflow 스크롤 컨테이너가 없어 문서 스크롤이며, 하단은 안전영역만 확보한다.
  */
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
