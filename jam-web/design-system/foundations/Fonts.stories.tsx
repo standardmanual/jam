@@ -41,9 +41,8 @@ function FontsPage() {
           </code>
         </div>
         <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
-          <strong style={{ color: 'var(--foreground)' }}>MODULAR 원본</strong>: <code>Noto Sans KR</code> (typography.css에서 정의)<br />
-          <strong style={{ color: 'var(--foreground)' }}>서비스 override</strong>: <code>globals.css</code>에서 <code>Pretendard Variable</code>로 재정의<br />
-          폰트 로드: globals.css의 CDN import (<code>orioncactus/pretendard@v1.3.9</code>)
+          <strong style={{ color: 'var(--foreground)' }}>서체</strong>: <code>Noto Sans KR</code> (typography.css에서 정의)<br />
+          폰트 로드: <code>globals.css</code> 1행의 Google Fonts CDN (400~800, <code>display=swap</code>)
         </div>
       </div>
 
@@ -52,12 +51,11 @@ function FontsPage() {
         <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 16 }}>
           Weight Palette
         </h2>
-        <WeightRow weight={300} label="Light — Display" />
         <WeightRow weight={400} label="Regular — Body, Small, Caption" />
         <WeightRow weight={500} label="Medium — H3, H4" />
         <WeightRow weight={600} label="SemiBold — H1, H2" />
         <WeightRow weight={700} label="Bold — 강조" />
-        <WeightRow weight={900} label="Black — Bold Display, Bold LG" />
+        <WeightRow weight={800} label="ExtraBold — 정의만 있고 서비스는 쓰지 않는다" />
       </div>
 
       {/* 한국어 문자 테스트 */}
@@ -85,7 +83,7 @@ function FontsPage() {
         </h2>
         <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.8 }}>
           <p>• 폰트 패밀리는 항상 <code style={{ color: 'var(--link)' }}>var(--font-family-base)</code>를 통해 참조한다.</p>
-          <p>• 굵기는 400·500·600·700 중에서 쓴다(<code style={{ color: 'var(--link)' }}>font-normal</code>·<code style={{ color: 'var(--link)' }}>font-medium</code>·<code style={{ color: 'var(--link)' }}>font-semibold</code>·<code style={{ color: 'var(--link)' }}>font-bold</code>).</p>
+          <p>• 굵기는 400·500·600·700 중에서 쓴다(<code style={{ color: 'var(--link)' }}>font-normal</code>·<code style={{ color: 'var(--link)' }}>font-medium</code>·<code style={{ color: 'var(--link)' }}>font-semibold</code>·<code style={{ color: 'var(--link)' }}>font-bold</code>). 800은 정의만 있고 서비스는 쓰지 않는다.</p>
           <p>• MODULAR 컴포넌트 내에서 <code style={{ color: 'var(--link)' }}>font-family</code> 명시 불필요 — body에서 상속됨.</p>
         </div>
       </div>

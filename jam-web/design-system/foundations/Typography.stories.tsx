@@ -77,7 +77,7 @@ function TypographyPage() {
         자간은 모두 0이고 굵기는 400·500·600·700을 쓴다.
       </p>
       <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 40 }}>
-        ⚠️ MODULAR 원본 폰트: Noto Sans KR. 서비스에서는 globals.css가 <code style={{ color: 'var(--link)' }}>--font-family-base</code>를 Pretendard로 재정의.
+        폰트: Noto Sans KR. <code style={{ color: 'var(--link)' }}>--font-family-base</code>의 첫 값이며 서비스는 globals.css 1행의 Google Fonts CDN으로 불러온다.
         현재 적용 폰트: <code style={{ color: 'var(--link)' }}>{useTokenValue('--font-family-base').slice(0, 30)}…</code>
       </p>
 
