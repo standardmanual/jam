@@ -25,7 +25,7 @@ export default function TodayCardStack({
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-3xl">{d.today.cardStackTitle}</h2>
-        <span className="text-xs text-snow/40">{d.today.cardStackSubtitle}</span>
+        <span className="text-xs text-muted">{d.today.cardStackSubtitle}</span>
       </div>
 
       <div className="flex flex-col gap-4">
