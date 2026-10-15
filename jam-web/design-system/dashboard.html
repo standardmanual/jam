@@ -185,10 +185,10 @@
       <table class="token-table">
         <thead><tr><th>File</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td class="token-name">tokens/colors.css</td><td>색상 토큰 (base · semantic · rarity · tag)</td></tr>
-          <tr><td class="token-name">tokens/typography.css</td><td>타입 스케일, 웨이트, 자간, 행간</td></tr>
+          <tr><td class="token-name">tokens/colors.css</td><td>색상 토큰 (base · semantic · accent-content · rarity · progress · tabbar)</td></tr>
+          <tr><td class="token-name">tokens/typography.css</td><td>타입 스케일(글자 크기·행간 쌍)</td></tr>
           <tr><td class="token-name">tokens/spacing.css</td><td>간격 토큰 (4px 배수)</td></tr>
-          <tr><td class="token-name">tokens/radius.css</td><td>반경 스케일 (xs·sm·md·card·pill)</td></tr>
+          <tr><td class="token-name">tokens/radius.css</td><td>반경 스케일 (xs~4xl·full)</td></tr>
           <tr><td class="token-name">tokens/motion.css</td><td>duration · easing (transitions.dev 1:1 복사)</td></tr>
           <tr><td class="token-name">tokens/fonts.css</td><td>Noto Sans KR Google Fonts import</td></tr>
         </tbody>
@@ -218,17 +218,17 @@
 
     <!-- ── 컬러: Primary ── -->
     <section id="colors-primary" class="section">
-      <h2>Primary &amp; Secondary</h2>
-      <p class="section-subtitle">One dominant red-orange accent + brown secondary</p>
+      <h2>Accent &amp; Link</h2>
+      <p class="section-subtitle">One dominant green accent for fills + a darker green for text, icons and lines</p>
       <div class="comp-preview"><iframe src="guidelines/colors-primary.html" height="140"></iframe></div>
 
       <h3>Tokens</h3>
       <table class="token-table">
         <thead><tr><th>Token</th><th>Value</th><th>Usage</th></tr></thead>
         <tbody>
-          <tr><td class="token-name">--color-primary</td><td class="token-value"><span class="color-dot" style="background:#e8461f"></span> #e8461f</td><td>주 액센트 — CTA 버튼, 활성 상태, 강조</td></tr>
-          <tr><td class="token-name">--color-secondary</td><td class="token-value"><span class="color-dot" style="background:#8a5a2e"></span> #8a5a2e</td><td>보조 액센트 — 아이템북, 세컨더리 레이블</td></tr>
-          <tr><td class="token-name">--accent-foreground</td><td class="token-value">#ffffff</td><td>Primary 위 텍스트</td></tr>
+          <tr><td class="token-name">--accent</td><td class="token-value"><span class="color-dot" style="background:#19b551"></span> #19b551</td><td>주 액센트 — 버튼 같은 면 채우기 전용</td></tr>
+          <tr><td class="token-name">--link</td><td class="token-value"><span class="color-dot" style="background:#0e7a38"></span> #0e7a38</td><td>강조 글자·아이콘·선·포커스 링</td></tr>
+          <tr><td class="token-name">--accent-foreground</td><td class="token-value"><span class="color-dot" style="background:#171717"></span> #171717</td><td>accent 면 위 텍스트</td></tr>
         </tbody>
       </table>
     </section>
@@ -243,7 +243,7 @@
       <table class="token-table">
         <thead><tr><th>Token</th><th>Value</th><th>Tier</th></tr></thead>
         <tbody>
-          <tr><td class="token-name">--rarity-common</td><td class="token-value"><span class="color-dot" style="background:#6b6b6b"></span> #6b6b6b</td><td>Common</td></tr>
+          <tr><td class="token-name">--rarity-common</td><td class="token-value"><span class="color-dot" style="background:#666666"></span> #666666</td><td>Common</td></tr>
           <tr><td class="token-name">--rarity-rare</td><td class="token-value"><span class="color-dot" style="background:#00cc7a"></span> #00cc7a</td><td>Rare</td></tr>
           <tr><td class="token-name">--rarity-epic</td><td class="token-value"><span class="color-dot" style="background:#f5a300"></span> #f5a300</td><td>Epic</td></tr>
           <tr><td class="token-name">--rarity-mystic</td><td class="token-value"><span class="color-dot" style="background:#ff2d87"></span> #ff2d87</td><td>Mystic</td></tr>
@@ -261,15 +261,15 @@
       <table class="token-table">
         <thead><tr><th>Token</th><th>Value</th><th>Role</th></tr></thead>
         <tbody>
-          <tr><td class="token-name">--foreground</td><td class="token-value"><span class="color-dot" style="background:#ffffff"></span> #ffffff</td><td>기본 텍스트</td></tr>
-          <tr><td class="token-name">--muted</td><td class="token-value"><span class="color-dot" style="background:#9a9a9a"></span> #9a9a9a</td><td>보조·뮤트 텍스트</td></tr>
-          <tr><td class="token-name">--snow</td><td class="token-value"><span class="color-dot" style="background:#000000;border-color:#555"></span> #000000</td><td>반전 배경 위 텍스트</td></tr>
-          <tr><td class="token-name">--tabbar-icon</td><td class="token-value"><span class="color-dot" style="background:#2a2a2a"></span> #2a2a2a</td><td>비활성 아이콘 (DS-024)</td></tr>
-          <tr><td class="token-name">--border</td><td class="token-value"><span class="color-dot" style="background:#2a2a2a"></span> #2a2a2a</td><td>테두리, 구분선</td></tr>
-          <tr><td class="token-name">--background</td><td class="token-value"><span class="color-dot" style="background:#1a1a1a"></span> #1a1a1a</td><td>카드·레이즈드 서피스</td></tr>
-          <tr><td class="token-name">--background</td><td class="token-value"><span class="color-dot" style="background:#000000;border-color:#555"></span> #000000</td><td>전체 배경</td></tr>
-          <tr><td class="token-name">--background-inverse</td><td class="token-value"><span class="color-dot" style="background:#f8fafc"></span> #f8fafc</td><td>반전 배경 (WanderingEyesLoader 흰자 등)</td></tr>
-          <tr><td class="token-name">--backdrop</td><td class="token-value">rgba(0,0,0,0.6)</td><td>모달·바텀시트 배경 딤 (DS-025)</td></tr>
+          <tr><td class="token-name">--foreground</td><td class="token-value"><span class="color-dot" style="background:#171717"></span> #171717</td><td>기본 텍스트</td></tr>
+          <tr><td class="token-name">--muted</td><td class="token-value"><span class="color-dot" style="background:#666666"></span> #666666</td><td>보조·뮤트 텍스트</td></tr>
+          <tr><td class="token-name">--snow</td><td class="token-value"><span class="color-dot" style="background:#fcfcfc;border-color:#cfc9b4"></span> #fcfcfc</td><td>반전 배경 위 텍스트</td></tr>
+          <tr><td class="token-name">--tabbar-icon</td><td class="token-value"><span class="color-dot" style="background:#171717"></span> #171717</td><td>탭바 비활성 아이콘</td></tr>
+          <tr><td class="token-name">--border</td><td class="token-value"><span class="color-dot" style="background:#cfc9b4"></span> #cfc9b4</td><td>카드·구분선 테두리</td></tr>
+          <tr><td class="token-name">--surface</td><td class="token-value"><span class="color-dot" style="background:#ffffff;border-color:#cfc9b4"></span> #ffffff</td><td>카드 면</td></tr>
+          <tr><td class="token-name">--background</td><td class="token-value"><span class="color-dot" style="background:#fafaf0;border-color:#cfc9b4"></span> #fafaf0</td><td>전체 배경</td></tr>
+          <tr><td class="token-name">--background-inverse</td><td class="token-value"><span class="color-dot" style="background:#171717"></span> #171717</td><td>반전 배경 (WanderingEyesLoader 흰자 등)</td></tr>
+          <tr><td class="token-name">--backdrop</td><td class="token-value">rgba(0,0,0,0.5)</td><td>모달·바텀시트 배경 딤</td></tr>
         </tbody>
       </table>
 
@@ -277,14 +277,12 @@
       <table class="token-table">
         <thead><tr><th>Token</th><th>Value</th></tr></thead>
         <tbody>
-          <tr><td class="token-name">--color-tag-1</td><td class="token-value"><span class="color-dot" style="background:#e8461f"></span> #e8461f (Primary)</td></tr>
-          <tr><td class="token-name">--color-tag-2</td><td class="token-value"><span class="color-dot" style="background:#8a5a2e"></span> #8a5a2e (Secondary)</td></tr>
-          <tr><td class="token-name">--color-tag-3</td><td class="token-value"><span class="color-dot" style="background:#f5a300"></span> #f5a300</td></tr>
-          <tr><td class="token-name">--color-tag-4</td><td class="token-value"><span class="color-dot" style="background:#00cc7a"></span> #00cc7a</td></tr>
-          <tr><td class="token-name">--color-tag-5</td><td class="token-value"><span class="color-dot" style="background:#ff2d87"></span> #ff2d87</td></tr>
-          <tr><td class="token-name">--color-tag-6</td><td class="token-value"><span class="color-dot" style="background:#d6f24a"></span> #d6f24a</td></tr>
-          <tr><td class="token-name">--color-tag-7</td><td class="token-value"><span class="color-dot" style="background:#4a4a4a"></span> #4a4a4a</td></tr>
-          <tr><td class="token-name">--color-tag-8</td><td class="token-value"><span class="color-dot" style="background:#c9663f"></span> #c9663f</td></tr>
+          <tr><td class="token-name">--accent-content-lightblue</td><td class="token-value"><span class="color-dot" style="background:#4bfcf9"></span> #4bfcf9</td></tr>
+          <tr><td class="token-name">--accent-content-green</td><td class="token-value"><span class="color-dot" style="background:#4cff56"></span> #4cff56</td></tr>
+          <tr><td class="token-name">--accent-content-yellow</td><td class="token-value"><span class="color-dot" style="background:#fff002"></span> #fff002</td></tr>
+          <tr><td class="token-name">--accent-content-red</td><td class="token-value"><span class="color-dot" style="background:#ff4400"></span> #ff4400</td></tr>
+          <tr><td class="token-name">--accent-content-pink</td><td class="token-value"><span class="color-dot" style="background:#ff7bfd"></span> #ff7bfd</td></tr>
+          <tr><td class="token-name">--accent-content-blue</td><td class="token-value"><span class="color-dot" style="background:#48a4fc"></span> #48a4fc</td></tr>
         </tbody>
       </table>
     </section>
@@ -364,7 +362,7 @@
     <!-- ── 반경 ── -->
     <section id="radius" class="section">
       <h2>Border Radius</h2>
-      <p class="section-subtitle">Cards &amp; inputs use moderate scale / buttons &amp; tags use full pill (9999px) only</p>
+      <p class="section-subtitle">Cards use the 16px step / buttons, tags and inputs use the full capsule</p>
       <div class="comp-preview"><iframe src="guidelines/radius-scale.html" height="160"></iframe></div>
       <h3>Tokens</h3>
       <table class="token-table">
@@ -372,9 +370,9 @@
         <tbody>
           <tr><td class="token-name">--radius-sm</td><td class="token-value">4px</td><td>헤어라인 라운드, 분리선, 내부 썸네일</td></tr>
           <tr><td class="token-name">--radius-lg</td><td class="token-value">8px</td><td>인풋, 소형 칩</td></tr>
-          <tr><td class="token-name">--radius-2xl</td><td class="token-value">10px</td><td>표준 카드 서피스</td></tr>
-          <tr><td class="token-name">--radius-md</td><td class="token-value">12px</td><td>중간 서피스, 내부 카드</td></tr>
+          <tr><td class="token-name">--radius-2xl</td><td class="token-value">16px</td><td>표준 카드 서피스</td></tr>
           <tr><td class="token-name">--radius-full</td><td class="token-value">9999px</td><td>버튼, 태그 — 완전 캡슐</td></tr>
+          <tr><td class="token-name">--field-radius</td><td class="token-value">100px</td><td>입력창 — 캡슐</td></tr>
         </tbody>
       </table>
     </section>
@@ -389,7 +387,7 @@
           <div class="comp-name">BadgeFrame</div>
           <div class="comp-desc">shape: circle · ticket-v · ticket-h · scallop · corner-cut · tab-notch · dumbbell. 배지 이미지/아이콘을 children으로 전달.</div>
         </div>
-        <div class="comp-code">&lt;BadgeFrame shape="scallop" width={200} height={200} color="var(--link)"&gt;
+        <div class="comp-code">&lt;BadgeFrame shape="scallop" width={200} height={200} color="var(--accent)"&gt;
   &lt;img src="/badge.png" /&gt;
 &lt;/BadgeFrame&gt;</div>
       </div>

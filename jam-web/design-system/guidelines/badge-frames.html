@@ -43,7 +43,7 @@ function makePath(shape, w, h) {
   }
 }
 
-function BadgeFrame({ shape='circle', width=200, height=200, color='var(--link)', children }) {
+function BadgeFrame({ shape='circle', width=200, height=200, color='var(--accent)', children }) {
   const isCircle = shape === 'circle';
   const pathD = isCircle ? null : makePath(shape, width, height);
   return (
@@ -66,9 +66,9 @@ const shapes = [
   ['dumbbell','dumbbell',180,180],
 ];
 const COLORS = [
-  'var(--link)','var(--color-secondary)',
+  'var(--accent)','var(--accent-content-blue)',
   'var(--rarity-rare)','var(--rarity-epic)',
-  'var(--rarity-mystic)','var(--color-tag-3)','var(--color-tag-5)',
+  'var(--rarity-mystic)','var(--accent-content-yellow)','var(--accent-content-pink)',
 ];
 
 function Demo() {

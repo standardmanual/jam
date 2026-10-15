@@ -89,7 +89,7 @@ function EaseRow({ token, desc }: { token: string; desc: string }) {
             top: 0,
             width: 32,
             height: 32,
-            background: 'var(--color-secondary)',
+            background: 'var(--accent-content-blue)',
             borderRadius: 'var(--radius-lg)',
             transition: playing ? `left 400ms var(${token})` : 'none',
           }}
@@ -191,7 +191,6 @@ const meta: Meta = {
   title: 'MODULAR/Foundations/Motion',
   parameters: {
     layout: 'fullscreen',
-    backgrounds: { default: 'dark' },
     docs: { canvas: { sourceState: 'none' } },
   },
 };

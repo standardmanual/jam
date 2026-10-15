@@ -85,7 +85,7 @@ function FontsPage() {
         </h2>
         <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.8 }}>
           <p>• 폰트 패밀리는 항상 <code style={{ color: 'var(--link)' }}>var(--font-family-base)</code>를 통해 참조한다.</p>
-          <p>• 굵기는 <code style={{ color: 'var(--link)' }}>var(--weight-*)</code> 토큰을 사용한다 (숫자 직접 입력 금지).</p>
+          <p>• 굵기는 400·500·600·700 중에서 쓴다(<code style={{ color: 'var(--link)' }}>font-normal</code>·<code style={{ color: 'var(--link)' }}>font-medium</code>·<code style={{ color: 'var(--link)' }}>font-semibold</code>·<code style={{ color: 'var(--link)' }}>font-bold</code>).</p>
           <p>• MODULAR 컴포넌트 내에서 <code style={{ color: 'var(--link)' }}>font-family</code> 명시 불필요 — body에서 상속됨.</p>
         </div>
       </div>
@@ -97,7 +97,6 @@ const meta: Meta = {
   title: 'MODULAR/Foundations/Fonts',
   parameters: {
     layout: 'fullscreen',
-    backgrounds: { default: 'dark' },
     docs: { canvas: { sourceState: 'none' } },
   },
 };

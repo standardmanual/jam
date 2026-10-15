@@ -17,7 +17,7 @@
  *   - namespace/startingPoints/templates/themes — 업로드 계약에 속한 값이라 보존한다.
  *
  * 기존 항목의 `kind` 분류는 **보존**한다. 새로 추가되는 토큰만 파일명으로 kind 를 추정한다
- * (기존 분류에는 `--color-text` 를 font 로 두는 등 손으로 정한 예외가 섞여 있어, 규칙으로
+ * (기존 분류에는 `--foreground` 를 font 로 두는 등 손으로 정한 예외가 섞여 있어, 규칙으로
  * 일괄 재생성하면 그 의도가 지워진다).
  *
  * 사용법:
@@ -38,7 +38,7 @@ const changes = [];
 
 // ── 토큰 ────────────────────────────────────────────────────────────────────
 const KIND_BY_FILE = {
-  'colors.css': 'color', 'colors.light.css': 'color', 'typography.css': 'font',
+  'colors.css': 'color', 'typography.css': 'font',
   'fonts.css': 'font', 'spacing.css': 'spacing', 'radius.css': 'radius',
   'motion.css': 'other', 'materials.css': 'other',
 };
@@ -53,8 +53,7 @@ function readTokenFiles() {
     for (const m of src.matchAll(/(--[\w-]+)\s*:\s*([^;}]+)[;}]/g)) {
       const name = m[1];
       const value = m[2].replace(/\s+/g, ' ').trim();
-      // 먼저 정의된 파일을 정본으로 본다 (colors.light.css 의 라이트 테마 재정의가
-      // 기본 팔레트를 덮어쓰지 않도록).
+      // 먼저 정의된 파일을 정본으로 본다.
       if (!found.has(name)) found.set(name, { value, definedIn: `tokens/${f}` });
     }
   }

@@ -18,7 +18,7 @@ function SpacingRow({ token, desc, semantic }: { token: string; desc?: string; s
             height: 20,
             width: `var(${token})`,
             maxWidth: '100%',
-            background: semantic ? 'var(--color-secondary)' : 'var(--accent)',
+            background: semantic ? 'var(--accent-content-blue)' : 'var(--accent)',
             borderRadius: 2,
             opacity: 0.85,
           }}
@@ -121,7 +121,6 @@ const meta: Meta = {
   title: 'MODULAR/Foundations/Spacing',
   parameters: {
     layout: 'fullscreen',
-    backgrounds: { default: 'dark' },
     docs: { canvas: { sourceState: 'none' } },
   },
 };

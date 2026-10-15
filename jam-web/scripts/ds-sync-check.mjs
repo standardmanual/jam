@@ -117,7 +117,7 @@ function normalizeValue(prop, raw) {
   // 색상 소문자화 + #abc → #aabbcc
   if (/^#[0-9a-f]{3}$/i.test(v)) v = '#' + v.slice(1).split('').map((c) => c + c).join('');
   if (/^#[0-9a-f]{6,8}$/i.test(v)) v = v.toLowerCase();
-  // 9999px 이상의 반경은 pill 로 동치 처리 (rounded-full ↔ var(--radius-pill))
+  // 9999px 이상의 반경은 pill 로 동치 처리 (rounded-full ↔ var(--radius-full))
   if (prop === 'borderRadius' && /^\d+px$/.test(v) && parseInt(v) >= 999) v = 'PILL';
   return v;
 }
@@ -191,9 +191,11 @@ function parseStyleBody(body) {
 
 // ── Tailwind 유틸리티 추출 (서비스 .tsx) ────────────────────────────────────
 const TW_SCALE = (n) => `${parseFloat(n) * 4}px`;
+// Tailwind 4 기본 단계다(v3와 이름이 한 칸씩 다르다: v3 sm 2px → v4 xs, v3 기본 4px → v4 sm).
+// 서비스는 globals.css에서 이 단계를 덮지 않는다(티켓 20261015_2131).
 const TW_RADIUS = {
-  none: '0', sm: '2px', '': '4px', md: '6px', lg: '8px',
-  xl: '12px', '2xl': '16px', '3xl': '24px', full: 'PILL',
+  none: '0', xs: '2px', sm: '4px', '': '4px', md: '6px', lg: '8px',
+  xl: '12px', '2xl': '16px', '3xl': '24px', '4xl': '32px', full: 'PILL',
 };
 /** 값이 없거나 구조·상태에만 관여해 기하 비교 대상이 아닌 클래스들. */
 const TW_IGNORE = /^(fixed|absolute|relative|sticky|static|flex|inline-flex|grid|block|inline|hidden|contents|isolate|items-|justify-|content-|self-|place-|text-(left|center|right|justify)$|font-|leading-|tracking-|uppercase|lowercase|capitalize|truncate|whitespace-|break-|overflow-|overscrow-|overscroll-|object-|cursor-|pointer-events-|select-|resize|appearance-|outline-|ring-|shadow|border(-|$)|divide-|backdrop-|filter|blur|transition|duration-|delay-|ease-|animate-|will-change-|transform|origin-|scale-|rotate-|skew-|translate-|grow|shrink|basis-|order-|col-|row-|auto-|flex-|gap-x-|gap-y-|antialiased|sr-only|not-sr-only|list-|align-|table-|float-|clear-|box-|aspect-|columns-|touch-|scroll-|snap-|caret-|accent-|fill-|stroke-|mix-|bg-(gradient|clip|origin|repeat|position|size|center|cover|contain|no-repeat)|from-|via-|to-)/;
@@ -625,7 +627,7 @@ function checkUndefinedTokens() {
 
 /** 가이드라인 카드가 라벨로 적어둔 hex 가 그 칸이 실제로 칠하는 토큰 값과 같은지 본다.
  *
- * colors-neutral.html 은 `background:var(--color-text-secondary) … Secondary<br>#9a9a9a`
+ * colors-neutral.html 은 `background:var(--muted) … Secondary<br>#666666`
  * 처럼 토큰과 값을 나란히 보여준다. v2 가 접근성 때문에 #9a9a9a → #b2b2b2 로 올렸는데
  * 라벨은 그대로여서, 색 견본 카드가 자기가 칠한 색과 다른 값을 적고 있었다.
  * 디자이너가 이 카드를 보고 값을 가져다 쓰면 그대로 틀린다. */
