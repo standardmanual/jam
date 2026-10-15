@@ -14,6 +14,11 @@ import React from 'react';
  *   - deprecated tint·white 토큰 → 역할 토큰(--background, --background-inverse)
  *   - size prop added (20260824_010) — 'sm'은 44px 터치 타겟 규칙의 명시적 예외(내비게이션
  *     바처럼 세로 공간이 44px로 고정된 컨텍스트에서만 사용할 것)
+ *
+ * v3 changes (티켓 20261015_2131 재작업):
+ *   - surface="dark"의 secondary·ghost 글자색을 --background-inverse → --snow로 바꿨다.
+ *     dark는 --background-inverse 면 위에 놓이므로 이전 값은 배경과 같은 색(1.00~1.63:1)이었다.
+ *     밝은 면(--background·--surface) 위에서는 surface="light"를 쓴다.
  */
 
 /* DS-010: @keyframes ds-spin lives in styles.css — no per-instance <style> injection. */
@@ -77,8 +82,8 @@ export function Button({
     },
     dark: {
       primary:   { background: 'var(--background-inverse)', color: 'var(--snow)' },
-      secondary: { background: 'rgba(255,255,255,0.16)',  color: 'var(--background-inverse)' },
-      ghost:     { background: 'transparent',             color: 'var(--background-inverse)', padding: '12px 4px' },
+      secondary: { background: 'rgba(255,255,255,0.16)',  color: 'var(--snow)' },
+      ghost:     { background: 'transparent',             color: 'var(--snow)', padding: '12px 4px' },
     },
   };
 

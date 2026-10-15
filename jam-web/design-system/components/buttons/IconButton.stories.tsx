@@ -44,8 +44,19 @@ export const Disabled: Story = {
   args: { icon: 'share', label: '공유', disabled: true, onClick: () => alert('disabled여도 onClick은 호출됩니다 — 팝오버 안내 등에 사용') },
 };
 
+export const LightSurface: Story = {
+  name: 'Light Surface (밝은 면 위, 아이콘 --foreground)',
+  render: () => (
+    <div style={{ background: 'var(--background)', padding: 16, borderRadius: 12, display: 'flex', gap: 8 }}>
+      <IconButton icon="chevron-left" label="뒤로" surface="light" />
+      <IconButton icon="close" label="닫기" surface="light" />
+      <IconButton icon="menu" label="메뉴" surface="light" />
+    </div>
+  ),
+};
+
 export const DarkSurface: Story = {
-  name: 'Dark Surface',
+  name: 'Dark Surface (--background-inverse 위, 아이콘 --snow)',
   render: () => (
     <div style={{ background: 'var(--background-inverse)', padding: 16, borderRadius: 12, display: 'flex', gap: 8 }}>
       <IconButton icon="chevron-left" label="뒤로" surface="dark" />

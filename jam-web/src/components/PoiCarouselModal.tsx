@@ -815,7 +815,7 @@ function PoiCard({
           <p className="text-base font-bold text-foreground truncate">{poi.name}</p>
           <p className="text-xs text-foreground/50 mt-0.5">{poi.distance_meters}m</p>
         </div>
-        <IconButton icon="close" label={d.common.close} onClick={onClose} surface="dark" className="shrink-0 -mt-2 -mr-2" />
+        <IconButton icon="close" label={d.common.close} onClick={onClose} surface="light" className="shrink-0 -mt-2 -mr-2" />
       </div>
 
       {/* 본문 — peek(비활성) 카드는 POI 기본 정보만 노출하고 본문 자체를

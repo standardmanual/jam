@@ -398,7 +398,7 @@ export default function BadgeShareButton({
             <div className="flex gap-2">
               <div className="flex-1">
                 <Button
-                  surface="dark"
+                  surface="light"
                   fullWidth
                   onClick={() => handleAction(activeItemState.blob, FILENAME_SUFFIX[activeKind])}
                 >
@@ -407,7 +407,7 @@ export default function BadgeShareButton({
               </div>
               <div className="flex-1">
                 <Button
-                  surface="dark"
+                  surface="light"
                   variant="secondary"
                   fullWidth
                   onClick={() => handleSave(activeItemState.blob, FILENAME_SUFFIX[activeKind])}

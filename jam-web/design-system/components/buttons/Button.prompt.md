@@ -6,7 +6,7 @@ Pill-shaped button in three variants — all borderless (no stroke buttons in th
 <Button variant="ghost">더보기 →</Button>
 ```
 
-Use `surface="dark"` when placed on a `--background-inverse` (black) section. `fullWidth` stretches to container width. Minimum touch target 44px per iOS HIG.
+Use `surface="dark"` only when placed on a `--background-inverse` (black) section — secondary·ghost text is `--snow` there. On a light surface (`--background`, `--surface`) keep the default `surface="light"`; `dark` there makes the text near-white and unreadable. `fullWidth` stretches to container width. Minimum touch target 44px per iOS HIG.
 
 `size="sm"` (`44px * var(--scale-compact)`, ≈31px — token in `tokens/motion.css`) is an explicit exception to the 44px rule — use it only inside a fixed-height dense context (e.g. a navigation bar) where a full 44px control would overflow the bar. Default is `size="md"` (44px).
 
