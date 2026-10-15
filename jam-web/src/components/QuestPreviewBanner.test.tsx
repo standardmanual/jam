@@ -49,4 +49,11 @@ describe('QuestPreviewBanner 초기 렌더', () => {
     const html = renderToStaticMarkup(<QuestPreviewBanner value="sync" />)
     expect(html).toContain(d.onboardingQuest.preview.finishButton)
   })
+
+  it('--warning 면 위 글자는 --foreground다(--snow는 2.02:1이라 읽기 어렵다, 채원② 중대 3)', () => {
+    const html = renderToStaticMarkup(<QuestPreviewBanner value="pickup" />)
+    expect(html).toContain('background:var(--warning)')
+    expect(html).toContain('color:var(--foreground)')
+    expect(html).not.toContain('color:var(--snow)')
+  })
 })

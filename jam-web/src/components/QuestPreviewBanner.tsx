@@ -72,7 +72,8 @@ export default function QuestPreviewBanner({ value }: { value: QuestPreviewValue
       className="flex items-center justify-between gap-3 shrink-0"
       style={{
         background: 'var(--warning)',
-        color: 'var(--snow)',
+        // --warning(#f5a300) 면 위 글자는 --foreground(8.64:1). --snow는 2.02:1이라 읽기 어렵다.
+        color: 'var(--foreground)',
         borderRadius: 0,
         paddingLeft: 'var(--spacing-16)',
         paddingRight: 'var(--spacing-16)',
