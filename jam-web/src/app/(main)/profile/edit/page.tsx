@@ -210,8 +210,8 @@ export default function ProfileEditPage() {
   // 바이너리 컬러 원칙상 에러를 색으로 표현하지 않는다 — 보더 두께로만 상태를 구분하고 실제 안내는 메시지 텍스트로 전달
   const hasError = checkStatus === 'invalid' || checkStatus === 'taken'
   const inputBorderClass = hasError
-    ? 'shadow-[inset_0_0_0_2px_var(--color-border)]'
-    : 'shadow-[inset_0_0_0_1px_var(--color-border)]'
+    ? 'shadow-[inset_0_0_0_2px_var(--border)]'
+    : 'shadow-[inset_0_0_0_1px_var(--border)]'
 
   // 중복확인 상태 메시지 — 즉시 전환 대신 Text states swap (04)
   const { ref: messageRef, initialText: initialMessage } = useTextSwap<HTMLParagraphElement>(checkMessage)
@@ -221,19 +221,19 @@ export default function ProfileEditPage() {
 
   if (loading) {
     return (
-      <div className="min-h-full text-text flex items-center justify-center">
+      <div className="min-h-full text-foreground flex items-center justify-center">
         <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-full text-text flex flex-col">
+    <div className="min-h-full text-foreground flex flex-col">
       <TopNav title={d.profile.title} />
 
-      <div className="flex-1 flex flex-col px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] gap-[var(--spacing-32)]">
+      <div className="flex-1 flex flex-col px-4 pt-6 pb-8 gap-8">
         {/* 프로필 사진 */}
-        <div className="flex flex-col items-center gap-[var(--spacing-16)]">
+        <div className="flex flex-col items-center gap-4">
           <button
             onClick={() => fileInputRef.current?.click()}
             className="relative active:scale-95 transition-transform duration-100"
@@ -241,21 +241,21 @@ export default function ProfileEditPage() {
             aria-label={d.profileEdit.changePhotoAlt}
           >
             {avatarUrl ? (
-              <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover" />
+              <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-2xl object-cover" />
             ) : (
-              <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated flex items-center justify-center">
-                <UserIcon className="w-10 h-10 text-text/50" />
+              <div className="w-24 h-24 rounded-2xl bg-surface flex items-center justify-center">
+                <UserIcon className="w-10 h-10 text-foreground/50" />
               </div>
             )}
             {uploading && (
-              <div className="absolute inset-0 rounded-[var(--radius-cards)] bg-surface/70 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-2xl bg-background/70 flex items-center justify-center">
                 <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
               </div>
             )}
           </button>
-          <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.profileEdit.changePhoto}</p>
+          <p className="text-foreground/60 text-base">{d.profileEdit.changePhoto}</p>
           {uploadError && (
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">{uploadError}</p>
+            <p className="text-base text-center">{uploadError}</p>
           )}
           <input
             ref={fileInputRef}
@@ -268,12 +268,12 @@ export default function ProfileEditPage() {
 
         {/* 아이디 편집 */}
         <div className={`t-input-wrap flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
-          <label className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/70">{d.profileEdit.usernameLabel}</label>
+          <label className="text-base text-foreground/70">{d.profileEdit.usernameLabel}</label>
           <div
             ref={inputShakeRef}
-            className={`t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
+            className={`t-input flex items-center w-full min-h-11 rounded-full px-4 transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
           >
-            <span className="text-text/60 mr-1">@</span>
+            <span className="text-foreground/60 mr-1">@</span>
             <input
               type="text"
               value={usernameInput}
@@ -283,7 +283,7 @@ export default function ProfileEditPage() {
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              className="flex-1 bg-transparent placeholder:text-text/30 focus:outline-none"
+              className="flex-1 bg-transparent placeholder:text-foreground/30 focus:outline-none"
             />
             {checkStatus === 'checking' && (
               <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
@@ -294,7 +294,7 @@ export default function ProfileEditPage() {
           <p
             ref={messageRef}
             aria-live="polite"
-            className="t-text-swap min-h-6 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-1 text-text/70"
+            className="t-text-swap min-h-6 text-base px-1 text-foreground/70"
           >
             {initialMessage}
           </p>
@@ -304,34 +304,34 @@ export default function ProfileEditPage() {
             (한 화면 안에서 입력 스타일이 갈라지지 않도록 — MODULAR Input 신규 도입 없음).
             필수값이 아니고 중복확인·형식 에러가 없어 상태머신 없이 단순 controlled input이다. */}
         <div className="t-input-wrap flex flex-col gap-2">
-          <label className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/70">{d.profileEdit.nameLabel}</label>
-          <div className="t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] transition-shadow shadow-[inset_0_0_0_1px_var(--color-border)]">
+          <label className="text-base text-foreground/70">{d.profileEdit.nameLabel}</label>
+          <div className="t-input flex items-center w-full min-h-11 rounded-full px-4 transition-shadow shadow-[inset_0_0_0_1px_var(--border)]">
             <input
               type="text"
               value={nameInput}
               onChange={handleNameChange}
               placeholder={currentDisplayName ?? d.profileEdit.namePlaceholder}
               maxLength={30}
-              className="flex-1 bg-transparent placeholder:text-text/30 focus:outline-none"
+              className="flex-1 bg-transparent placeholder:text-foreground/30 focus:outline-none"
             />
           </div>
         </div>
 
         {/* 저장 버튼 */}
-        <div className="flex flex-col gap-[var(--spacing-16)] mt-auto">
+        <div className="flex flex-col gap-4 mt-auto">
           {saveError && (
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">{saveError}</p>
+            <p className="text-base text-center">{saveError}</p>
           )}
           <button
             onClick={handleSave}
             disabled={!canSave}
-            className="w-full min-h-11 bg-surface-inverse text-text-inverse py-[14px] rounded-[var(--radius-pill-buttons)] active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-[length:var(--text-body)] leading-[var(--leading-body)]"
+            className="w-full min-h-11 bg-background-inverse text-snow py-[14px] rounded-full active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-base"
           >
             {saving ? d.profileEdit.saving : d.profileEdit.saveButton}
           </button>
           <button
             onClick={() => router.back()}
-            className="w-full min-h-11 text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:opacity-70 transition-opacity"
+            className="w-full min-h-11 text-foreground/60 text-base active:opacity-70 transition-opacity"
           >
             {d.profileEdit.cancelButton}
           </button>
@@ -342,10 +342,10 @@ export default function ProfileEditPage() {
             href="mailto:sihyunrr@gmail.com?subject=JAM!%20탈퇴%20신청"
             className="w-full min-h-11 flex flex-col items-center justify-center gap-1 text-center active:opacity-70 transition-opacity"
           >
-            <span className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+            <span className="text-foreground/60 text-base">
               {d.profileEdit.withdrawLink}
             </span>
-            <span className="text-text/40 text-[length:var(--text-caption)] leading-[var(--leading-caption)]">
+            <span className="text-foreground/40 text-xs">
               {d.profileEdit.withdrawCaption}
             </span>
           </a>

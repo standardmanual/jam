@@ -38,11 +38,11 @@ export interface SlidingTabsProps<K extends string = string> {
   variant?: 'onSurface' | 'onCard'
   /** 탭 높이. md=30px(원본) / lg=44px(터치영역) / xl=콘텐츠 높이(2줄 라벨) */
   size?: 'md' | 'lg' | 'xl'
-  /** 모서리. pill=48px(원본) / card=--radius-cards */
+  /** 모서리. pill=48px(원본) / card=--radius-2xl */
   shape?: 'pill' | 'card'
   /** true면 컨테이너 전체 폭을 균등 분할합니다. */
   block?: boolean
-  /** true면 반투명 바 배경 대신 --color-surface-elevated 채움을 사용 (20260816_012 — 보더 제거) */
+  /** true면 반투명 바 배경 대신 --surface 채움을 사용 (20260816_012 — 보더 제거) */
   outlined?: boolean
   className?: string
   tabClassName?: string
@@ -53,17 +53,17 @@ const PALETTE: Record<'onSurface' | 'onCard', CSSProperties> = {
   // DS v2: 다크(검정) 배경 위 — 활성 pill은 흰색, 활성 라벨은 검정
   onSurface: {
     '--tabs-bar-bg': 'rgba(255, 255, 255, 0.1)',
-    '--tabs-pill-bg': 'var(--color-surface-inverse)',
+    '--tabs-pill-bg': 'var(--background-inverse)',
     '--tabs-text-muted': 'rgba(255, 255, 255, 0.45)',
-    '--tabs-text-active': 'var(--color-text-inverse)',
+    '--tabs-text-active': 'var(--snow)',
     '--tabs-text-hover': 'rgba(255, 255, 255, 0.85)',
   } as CSSProperties,
   // DS v2: 라이트 카드(surface-inverse = white) 위 — 활성 pill은 primary(레드), 활성 라벨은 white
   onCard: {
     '--tabs-bar-bg': 'rgba(0, 0, 0, 0.06)',
-    '--tabs-pill-bg': 'var(--color-primary)',
+    '--tabs-pill-bg': 'var(--accent)',
     '--tabs-text-muted': 'rgba(0, 0, 0, 0.4)',
-    '--tabs-text-active': 'var(--color-text-on-primary)',
+    '--tabs-text-active': 'var(--accent-foreground)',
     '--tabs-text-hover': 'rgba(0, 0, 0, 0.7)',
   } as CSSProperties,
 }
@@ -253,7 +253,7 @@ export default function SlidingTabs<K extends string = string>({
           }}
           className={[
             't-tab',
-            'text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] whitespace-nowrap',
+            'text-base whitespace-nowrap',
             tabClassName ?? '',
           ]
             .filter(Boolean)

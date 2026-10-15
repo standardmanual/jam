@@ -63,7 +63,7 @@ export interface BadgeGridCardProps {
 }
 
 const BASE =
-  'flex flex-col items-center bg-surface rounded-[var(--radius-card)] p-[var(--spacing-12)] overflow-hidden'
+  'flex flex-col items-center bg-background rounded-2xl p-3 overflow-hidden'
 
 export default function BadgeGridCard({
   name,
@@ -88,9 +88,9 @@ export default function BadgeGridCard({
     BASE,
     isInteractive && 'active:scale-95 transition-transform duration-100',
     // 20260816_012: selected 표시를 2px 보더 대신 배경톤 채움으로 대체 (기능적 의미 유지)
-    selected && 'bg-[var(--color-primary)]/15',
+    selected && 'bg-[var(--accent)]/15',
     // 컬렉션 슬롯 장착 모드 하이라이트 — 그리드에서 한 칸을 찾아내야 하므로 배경톤만으로는 약하다
-    highlighted && 'shadow-[inset_0_0_0_2px_var(--color-primary)]',
+    highlighted && 'shadow-[inset_0_0_0_2px_var(--link)]',
     className,
   ]
     .filter(Boolean)
@@ -99,7 +99,7 @@ export default function BadgeGridCard({
   const thumbDimmed = !earned || undiscovered
 
   const thumbnailCls = [
-    'w-full aspect-square rounded-[var(--radius-card)] overflow-hidden',
+    'w-full aspect-square rounded-2xl overflow-hidden',
     'flex items-center justify-center',
     thumbDimmed && 'grayscale opacity-40',
   ]
@@ -125,22 +125,22 @@ export default function BadgeGridCard({
             width={90}
             height={90}
             className="w-full h-full object-contain p-1"
-            fallback={<MedalIcon className="w-10 h-10 text-text/30" />}
+            fallback={<MedalIcon className="w-10 h-10 text-foreground/30" />}
           />
         </div>
         {showCount && (
           // 피드 카드의 카운터 필과 같은 시각 문법(20260905_0038 B). 횟수는 아래 이름 줄이
           // 아니라 썸네일에 붙어야 「이 배지를」 몇 번인지가 한눈에 붙는다.
           <span
-            className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-[var(--radius-pill)] bg-surface-elevated border border-[color:var(--color-border)] text-[length:var(--text-caption)] leading-none font-bold text-text/80 flex items-center justify-center"
+            className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-surface border border-[color:var(--border)] text-xs leading-none font-bold text-foreground/80 flex items-center justify-center"
             aria-hidden="true"
           >
             ×{count}
           </span>
         )}
       </div>
-      <div className="flex flex-col items-center gap-[var(--spacing-4)] pt-[var(--spacing-8)] w-full">
-        <p className="text-[length:var(--text-small)] font-bold text-text text-center line-clamp-2 w-full leading-tight">
+      <div className="flex flex-col items-center gap-1 pt-2 w-full">
+        <p className="text-sm font-bold text-foreground text-center line-clamp-2 w-full leading-tight">
           {undiscovered ? '???' : name}
         </p>
         {/* ×N은 aria-hidden이라 보조기술에는 이 문장만이 횟수를 전달한다 */}
@@ -149,7 +149,7 @@ export default function BadgeGridCard({
         )}
         {!undiscovered && (level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={rarity ?? undefined} size="md" />)}
       </div>
-      {children && <div className="w-full mt-[var(--spacing-4)]">{children}</div>}
+      {children && <div className="w-full mt-1">{children}</div>}
     </>
   )
 

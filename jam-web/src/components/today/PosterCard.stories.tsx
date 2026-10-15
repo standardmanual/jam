@@ -10,10 +10,10 @@ import TodayCard from './TodayCard'
  *
  * - 카드 폭은 뷰포트 에뮬레이션이 아니라 고정 폭 래퍼다: 360 기기 = 328px, 430 기기 = 398px, 320 기기 = 288px(최악 조합만).
  *   4:5 카드의 높이는 328px 폭에서 410px, 398px에서 497.5px, 288px에서 360px이다(막이 `absolute`라 글자 수가 높이를 바꾸지 않는다).
- * - 막(글자 블록 뒤 그라디언트)은 `var(--color-overlay)`(0.6)에서 시작해 위 32px가 램프다. 칩 줄 윗변은 늘 램프가 끝난 뒤에서 시작한다.
+ * - 막(글자 블록 뒤 그라디언트)은 `var(--backdrop)`(0.6)에서 시작해 위 32px가 램프다. 칩 줄 윗변은 늘 램프가 끝난 뒤에서 시작한다.
  *   막이 카드에서 차지하는 높이는 글자 수에 따라 다르다 — 328px 폭 실측은 「막 높이 실측」 Story의 캡션에 있다.
- * - 캔버스는 기본 검정이다. 이미지 칸의 판(`--color-surface`)과 막은 검정 위에서 실제 모습이 나온다.
- * - 이미지 로딩 중 모습(`--color-surface` 단색 판 + 막·글자는 그대로)은 Story로 만들기 어렵다(로컬·data 이미지는 즉시 뜬다). 칸의 클래스(`aspect-[4/5] bg-surface`)가
+ * - 캔버스는 기본 검정이다. 이미지 칸의 판(`--background`)과 막은 검정 위에서 실제 모습이 나온다.
+ * - 이미지 로딩 중 모습(`--background` 단색 판 + 막·글자는 그대로)은 Story로 만들기 어렵다(로컬·data 이미지는 즉시 뜬다). 칸의 클래스(`aspect-[4/5] bg-background`)가
  *   이미지와 무관하게 늘 있다는 것은 `__tests__/PosterCard.test.tsx`·`CardImageSlot.test.tsx`가 보증한다.
  * - Storybook은 `design-system/styles.css`를 import하므로 전역 `*:focus-visible` 윤곽선이 서비스에 없어도 보인다. 그래서 Story에서
  *   윤곽선이 보인다는 것은 서비스 증거가 아니다 — 클래스 단언(`__tests__/CardFrame.test.tsx`)이 보증한다. 아래 `play`는 높이·가로 넘침 같은
@@ -120,10 +120,10 @@ const DROP = poster({
 // ─── 배치 도우미 ───────────────────────────────────────────────────────────
 
 const STACK_STYLE: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }
-const CAPTION_STYLE: CSSProperties = { margin: '0 0 var(--spacing-4)', fontSize: 'var(--text-caption)', color: 'rgba(255,255,255,0.6)' }
+const CAPTION_STYLE: CSSProperties = { margin: '0 0 var(--spacing-4)', fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.6)' }
 const ROW_STYLE: CSSProperties = { display: 'flex', gap: 'var(--spacing-32)', flexWrap: 'wrap', alignItems: 'flex-start' }
 
-/** 고정 폭 열. 카드 사이 간격은 `TodayCardStack`의 `gap-[var(--spacing-16)]`과 같다 */
+/** 고정 폭 열. 카드 사이 간격은 `TodayCardStack`의 `gap-4`과 같다 */
 function Column({ width, children }: { width: number; children: ReactNode }) {
   return <div style={{ ...STACK_STYLE, width }}>{children}</div>
 }
@@ -193,7 +193,7 @@ const meta: Meta<typeof TodayCard> = {
         component:
           '홈 「투데이」의 포스터 모양(`poster`) — 티켓 20261001_2013(상위 20260930_1453 조각 b4). 4:5 이미지가 카드 전체이고 아래쪽에만 어두운 막이 올라온다: ' +
           '막 위에 칩 줄(흰 알약 라벨 · 흰 글자 지역 핀 · 희귀도 칩) · 제목 24px 흰색(2줄 말줄임) · 필수 정보 14px 흰색(최대 2줄, 말줄임 없이 줄바꿈). 요약·설명문·끝 줄은 없다. ' +
-          '막은 `--color-overlay`(0.6)에서 시작하는 선형 그라디언트이고 위 32px가 램프다 — 글자 블록 첫 줄도 막 진하기 60% 이상에서 시작한다. ' +
+          '막은 `--backdrop`(0.6)에서 시작하는 선형 그라디언트이고 위 32px가 램프다 — 글자 블록 첫 줄도 막 진하기 60% 이상에서 시작한다. ' +
           '이미지가 없거나 깨져도 같은 4:5 칸에 자원 아이콘 판을 위쪽 60%에 그리고 막과 글자는 그대로다. ' +
           '서비스 전용 컴포넌트라 MODULAR이 아니다(`TodayCard`가 모양을 고르고 `CardFrame`이 링크·계측·눌림·포커스를 맡는다).',
       },
@@ -280,7 +280,7 @@ export const RecipeTeaser: Story = {
 
 /**
  * 순백에 가까운 이미지 위에서 막 첫 줄(칩 줄)의 대비를 본다. 막이 없다면 흰 글자가 읽히지 않는 최악의 바탕이다.
- * `play`가 세 가지를 계산해 단언한다: (a) `--color-overlay` 알파 0.6 이상 (b) 칩 줄 윗변이 막 윗변보다 32px 이상 아래(램프가 끝난 뒤에 첫 줄이 시작)
+ * `play`가 세 가지를 계산해 단언한다: (a) `--backdrop` 알파 0.6 이상 (b) 칩 줄 윗변이 막 윗변보다 32px 이상 아래(램프가 끝난 뒤에 첫 줄이 시작)
  * (c) 순백 이미지 위 막 합성색과 흰 글자의 대비 4.5:1 이상.
  */
 export const BrightImage: Story = {
@@ -293,7 +293,7 @@ export const BrightImage: Story = {
   ),
   play: async ({ canvasElement }) => {
     // (a) 토큰 알파 — 값이 0.6 아래로 바뀌면 막 설계가 깨진다
-    const overlay = getComputedStyle(document.documentElement).getPropertyValue('--color-overlay')
+    const overlay = getComputedStyle(document.documentElement).getPropertyValue('--backdrop')
     const alpha = Number(overlay.match(/rgba?\([^)]*,\s*([0-9.]+)\s*\)/)?.[1])
     expect(alpha).toBeGreaterThanOrEqual(0.6)
 
@@ -524,7 +524,7 @@ const sendBeaconOff: NonNullable<Story['beforeEach']> = () => {
   }
 }
 
-/** 계측 정보와 `href`가 있으면 링크가 블록 요소이고 눌림(`.jam-press`)·키보드 포커스 윤곽선(2px·오프셋 2px·`--color-primary`)을 가진다. 윤곽선은 이미지 모서리에 잘리지 않는다. */
+/** 계측 정보와 `href`가 있으면 링크가 블록 요소이고 눌림(`.jam-press`)·키보드 포커스 윤곽선(2px·오프셋 2px·`--link`)을 가진다. 윤곽선은 이미지 모서리에 잘리지 않는다. */
 export const Tracked: Story = {
   name: '계측 있음 — 링크 · 눌림 · 포커스(Tab 키로 확인)',
   beforeEach: sendBeaconOff,
@@ -543,9 +543,9 @@ export const Tracked: Story = {
     const style = getComputedStyle(link)
     expect(style.outlineWidth).toBe('2px')
     expect(style.outlineOffset).toBe('2px')
-    // 윤곽선 색은 DS 토큰 --color-primary와 같다
+    // 윤곽선 색은 DS 토큰 --link와 같다
     const probe = document.createElement('span')
-    probe.style.color = 'var(--color-primary)'
+    probe.style.color = 'var(--link)'
     canvasElement.appendChild(probe)
     expect(style.outlineColor).toBe(getComputedStyle(probe).color)
     probe.remove()

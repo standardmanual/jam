@@ -85,17 +85,17 @@ export default function ItemCandidateRow({
       disabled={muted}
       // ListRowCard에는 선택 상태 시각이 없어(active:scale만 있다) 탭 즉시 반응이 사라진다 —
       // 프라이머리 링으로 «지금 이 행»을 표시한다. 배경톤 대신 inset 링을 쓰는 이유: 카드
-      // 기본 배경(bg-surface-elevated)과 배경 유틸리티가 경합하지 않아 결과가 규칙 순서에
+      // 기본 배경(bg-surface)과 배경 유틸리티가 경합하지 않아 결과가 규칙 순서에
       // 좌우되지 않는다.
       className={[
-        selected ? 'shadow-[inset_0_0_0_2px_var(--color-primary)]' : '',
+        selected ? 'shadow-[inset_0_0_0_2px_var(--link)]' : '',
         muted ? 'opacity-40 pointer-events-none' : '',
       ]
         .filter(Boolean)
         .join(' ')}
       trailing={trailing}
     >
-      <div className="flex flex-col items-start gap-[var(--spacing-4)]">
+      <div className="flex flex-col items-start gap-1">
         <RarityBadge rarity={rarity ?? undefined} />
         <ItemSerialCode
           code={formatSerial(candidate)}
@@ -105,7 +105,7 @@ export default function ItemCandidateRow({
           animate={false}
         />
         {expiring && candidate.expires_at && (
-          <p className="text-[length:var(--text-caption)] font-bold leading-none px-1.5 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)] text-text/70">
+          <p className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-foreground/70">
             <LocalDate
               iso={candidate.expires_at}
               options={{ month: 'numeric', day: 'numeric' }}

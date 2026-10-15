@@ -29,11 +29,11 @@ function Cell({ label, children }: { label: string; children: React.ReactNode })
     <div
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        padding: 12, borderRadius: 12, background: '#1a1a1a', color: 'var(--color-text, #fff)',
+        padding: 12, borderRadius: 12, background: '#1a1a1a', color: 'var(--foreground, #fff)',
       }}
     >
       <span style={{ display: 'flex' }}>{children}</span>
-      <span style={{ fontSize: 11, color: 'var(--color-text-secondary, #999)' }}>{label}</span>
+      <span style={{ fontSize: 11, color: 'var(--muted, #999)' }}>{label}</span>
     </div>
   );
 }
@@ -71,13 +71,13 @@ export const ColorInherits: Story = {
   name: '색은 부모 color를 따른다',
   render: () => (
     <div style={{ display: 'flex', gap: 16, alignItems: 'center', padding: 16, background: '#1a1a1a', borderRadius: 12 }}>
-      <span style={{ color: 'var(--status-done-solid, #d6f24a)', display: 'flex' }}>
+      <span style={{ color: 'var(--progress-done, #d6f24a)', display: 'flex' }}>
         <CheckGlyph size={24} />
       </span>
-      <span style={{ color: 'var(--color-primary, #e8461f)', display: 'flex' }}>
+      <span style={{ color: 'var(--link, #e8461f)', display: 'flex' }}>
         <LockGlyph size={24} />
       </span>
-      <span style={{ color: 'var(--color-text-secondary, #999)', display: 'flex' }}>
+      <span style={{ color: 'var(--muted, #999)', display: 'flex' }}>
         <StarGlyph size={24} />
       </span>
     </div>

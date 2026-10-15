@@ -65,12 +65,12 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
           setError(null)
           setOpen(true)
         }}
-        className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] w-full text-left active:opacity-70 transition-opacity"
+        className="flex justify-between items-center px-4 py-4 w-full text-left active:opacity-70 transition-opacity"
       >
-        <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/50">{d.inventory.obtainMethod}</span>
-        <span className="flex items-center gap-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+        <span className="text-base text-foreground/50">{d.inventory.obtainMethod}</span>
+        <span className="flex items-center gap-1 text-base">
           {obtainLabel}
-          <ChevronRightIcon className="w-4 h-4 text-text/40" />
+          <ChevronRightIcon className="w-4 h-4 text-foreground/40" />
         </span>
       </button>
 
@@ -79,9 +79,9 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
         onClose={() => setOpen(false)}
         title={d.inventory.historyTitle}
       >
-        <div className="px-[var(--spacing-24)] py-[var(--spacing-16)]">
+        <div className="px-6 py-4">
           {error ? (
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center py-[var(--spacing-32)]">{error}</p>
+            <p className="text-base text-center py-8">{error}</p>
           ) : (
             <div
               ref={skelRef}
@@ -92,9 +92,9 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
             >
               <div className="t-skel-skeleton is-pulsing" aria-hidden="true">
                 {[0, 1, 2].map((i) => (
-                  <div key={i} className="flex flex-col gap-1 mb-[var(--spacing-16)]">
-                    <div className="h-3 w-28 rounded-[var(--radius-inputs)] bg-text/15" />
-                    <div className="h-4 w-3/5 rounded-[var(--radius-inputs)] bg-text/15" />
+                  <div key={i} className="flex flex-col gap-1 mb-4">
+                    <div className="h-3 w-28 rounded-full bg-foreground/15" />
+                    <div className="h-4 w-3/5 rounded-full bg-foreground/15" />
                   </div>
                 ))}
               </div>
@@ -109,15 +109,15 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
                 )}
 
                 {events && events.length > 0 && (
-                  <ol className="flex flex-col gap-[var(--spacing-16)]">
+                  <ol className="flex flex-col gap-4">
                     {events.map((ev, i) => (
                       <li key={i} className="flex flex-col gap-0.5">
-                        <span className="text-[length:var(--text-caption)] text-text/40 font-mono">{formatKoreanDateTime(ev.timestamp, { year: true, time: true })}</span>
-                        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+                        <span className="text-xs text-foreground/40 font-mono">{formatKoreanDateTime(ev.timestamp, { year: true, time: true })}</span>
+                        <p className="text-base">
                           {ev.username ?? d.inventory.historyUnknownUser} · {eventLabel(ev)}
                         </p>
                         {ev.poi_name && (
-                          <p className="text-[length:var(--text-caption)] text-text/50 inline-flex items-center gap-1">
+                          <p className="text-xs text-foreground/50 inline-flex items-center gap-1">
                             <PinIcon className="w-3 h-3" />{ev.poi_name}
                           </p>
                         )}

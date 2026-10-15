@@ -52,11 +52,11 @@ function RequirementIcon({ imageUrl, kind, met = false }) {
   return (
     <span
       style={{
-        width: 36, height: 36, flex: 'none', borderRadius: 'var(--radius-sm)',
-        background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: `inset 0 0 0 ${met ? 2 : 1}px ${met ? 'var(--status-done-solid)' : 'var(--color-border-light)'}`,
+        width: 36, height: 36, flex: 'none', borderRadius: 'var(--radius-lg)',
+        background: 'var(--background)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: `inset 0 0 0 ${met ? 2 : 1}px ${met ? 'var(--progress-done)' : 'var(--field-border)'}`,
         overflow: 'hidden',
-        color: 'var(--color-text)',
+        color: 'var(--foreground)',
       }}
     >
       {imageUrl ? (
@@ -70,7 +70,7 @@ function RequirementIcon({ imageUrl, kind, met = false }) {
           }}
         />
       ) : (
-        <span style={{ width: 16, height: 16, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
+        <span style={{ width: 16, height: 16, borderRadius: 'var(--radius-sm)', background: 'var(--background-inverse)', opacity: 0.2 }} />
       )}
     </span>
   );
@@ -84,22 +84,22 @@ function RequirementRow({ req }) {
       href={req.href}
       style={{
         display: 'flex', gap: 'var(--spacing-12)', alignItems: 'center', padding: 'var(--spacing-12)',
-        borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.055)',
+        borderRadius: 'var(--radius-lg)', background: 'rgba(255,255,255,0.055)',
         boxShadow: met
-          ? 'inset 0 0 0 1px var(--status-done-solid)'
+          ? 'inset 0 0 0 1px var(--progress-done)'
           : 'inset 0 0 0 1px rgba(255,255,255,0.07)',
         textDecoration: 'none', color: 'inherit',
       }}
     >
       <RequirementIcon imageUrl={req.imageUrl} kind={req.kind} met={met} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: 'var(--text-small)', fontWeight: 600, lineHeight: 1.35, overflowWrap: 'anywhere', color: 'var(--color-text)' }}>
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 600, lineHeight: 1.35, overflowWrap: 'anywhere', color: 'var(--foreground)' }}>
           {req.name}
         </p>
         <p
           style={{
-            margin: '3px 0 0', fontSize: 'var(--text-caption)',
-            color: met ? 'var(--status-done-solid)' : 'var(--color-text-secondary)',
+            margin: '3px 0 0', fontSize: 'var(--text-xs)',
+            color: met ? 'var(--progress-done)' : 'var(--muted)',
             display: 'flex', alignItems: 'center', gap: 4,
           }}
         >
@@ -110,7 +110,7 @@ function RequirementRow({ req }) {
           {met ? '이미 받았어요' : (req.note ?? (req.kind === 'mission' ? '미션' : '배지'))}
         </p>
       </div>
-      <span style={{ color: 'var(--color-text-secondary)', flex: 'none', display: 'flex' }}>
+      <span style={{ color: 'var(--muted)', flex: 'none', display: 'flex' }}>
         <ChevronRightGlyph size={16} />
       </span>
     </a>
@@ -120,10 +120,10 @@ function RequirementRow({ req }) {
 /** 구분선 — 항목 사이(또는 그룹 사이)의 결합 관계를 한 단어로 */
 function RelationDivider({ label }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0', fontSize: 'var(--text-caption)', fontWeight: 700, color: 'var(--color-text-secondary)', letterSpacing: '0.06em' }}>
-      <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0', fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--muted)', letterSpacing: '0.06em' }}>
+      <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
       {label}
-      <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
+      <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
     </div>
   );
 }
@@ -172,10 +172,10 @@ export function UnlockConditionSheetContent({
       <div style={{ display: 'flex', gap: 'var(--spacing-12)', alignItems: 'center' }}>
         <span
           style={{
-            width: 56, height: 56, flex: 'none', borderRadius: 'var(--radius-sm)',
-            background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: `inset 0 0 0 2px ${conditionMet ? 'var(--status-done-solid)' : 'var(--color-border-light)'}`,
-            color: 'var(--color-text)',
+            width: 56, height: 56, flex: 'none', borderRadius: 'var(--radius-lg)',
+            background: 'var(--background)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: `inset 0 0 0 2px ${conditionMet ? 'var(--progress-done)' : 'var(--field-border)'}`,
+            color: 'var(--foreground)',
           }}
         >
           {imageUrl ? (
@@ -185,15 +185,15 @@ export function UnlockConditionSheetContent({
               alt={badgeName}
               style={{
                 width: '100%', height: '100%', objectFit: 'contain', padding: 4,
-                borderRadius: 'var(--radius-sm)', filter: 'grayscale(1)',
+                borderRadius: 'var(--radius-lg)', filter: 'grayscale(1)',
               }}
             />
           ) : (
-            <span style={{ width: 32, height: 32, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
+            <span style={{ width: 32, height: 32, borderRadius: 'var(--radius-sm)', background: 'var(--background-inverse)', opacity: 0.2 }} />
           )}
         </span>
         <div style={{ minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 'var(--text-body)', fontWeight: 600, lineHeight: 1.3, overflowWrap: 'anywhere', color: 'var(--color-text)' }}>
+          <p style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 600, lineHeight: 1.3, overflowWrap: 'anywhere', color: 'var(--foreground)' }}>
             {badgeName}
           </p>
           <div style={{ marginTop: 2 }}>
@@ -203,7 +203,7 @@ export function UnlockConditionSheetContent({
       </div>
 
       {conditionMet && (
-        <div style={{ marginTop: 'var(--spacing-16)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-small)', fontWeight: 600, color: 'var(--status-done-solid)' }}>
+        <div style={{ marginTop: 'var(--spacing-16)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--progress-done)' }}>
           <CheckGlyph size={16} />
           조건을 다 채웠어요
         </div>
@@ -212,7 +212,7 @@ export function UnlockConditionSheetContent({
       <h3
         style={{
           margin: `${conditionMet ? 'var(--spacing-16)' : 'var(--spacing-24)'} 0 var(--spacing-8)`,
-          fontSize: 'var(--text-caption)', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--color-text-secondary)',
+          fontSize: 'var(--text-xs)', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--muted)',
         }}
       >
         받는 방법
@@ -229,7 +229,7 @@ export function UnlockConditionSheetContent({
                 {gi > 0 && <RelationDivider label="그리고" />}
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {(group.title || group.note || groupMet) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 6px', fontSize: 'var(--text-caption)', color: groupMet ? 'var(--status-done-solid)' : 'var(--color-text-secondary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 6px', fontSize: 'var(--text-xs)', color: groupMet ? 'var(--progress-done)' : 'var(--muted)' }}>
                       {groupMet && <CheckGlyph size={12} />}
                       <span style={{ fontWeight: 600 }}>{group.title ?? (groupMet ? '통과' : '대기')}</span>
                       {group.note && <span>· {group.note}</span>}

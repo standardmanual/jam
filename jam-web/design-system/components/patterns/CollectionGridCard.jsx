@@ -7,7 +7,7 @@ const TAG_STYLE = {
   display: 'inline-flex',
   alignItems: 'center',
   padding: '4px 9px',
-  borderRadius: 'var(--radius-pill)',
+  borderRadius: 'var(--radius-full)',
   fontSize: '8px',
   fontWeight: 700,
   textTransform: 'uppercase',
@@ -66,7 +66,7 @@ export function CollectionGridCard({
         position: 'relative',
         width: '100%',
         aspectRatio: '1',
-        borderRadius: 'var(--radius-card)',
+        borderRadius: 'var(--radius-2xl)',
         overflow: 'hidden',
         display: 'flex',
         alignItems: 'center',
@@ -79,7 +79,7 @@ export function CollectionGridCard({
             style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 6 }}
           />
         ) : (
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--color-text)', opacity: 0.2 }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--foreground)', opacity: 0.2 }}>
             <rect x="3" y="3" width="18" height="18" rx="2" />
             <path d="M3 9h18M9 21V9" />
           </svg>
@@ -89,7 +89,7 @@ export function CollectionGridCard({
           <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
             {showRarity && <RarityBadge rarity={rarity} />}
             {completed && (
-              <span style={{ ...TAG_STYLE, background: 'var(--color-primary)', color: '#fff' }}>
+              <span style={{ ...TAG_STYLE, background: 'var(--accent)', color: '#fff' }}>
                 완성
               </span>
             )}
@@ -101,7 +101,7 @@ export function CollectionGridCard({
       <p style={{
         fontSize: 15,
         fontWeight: 700,
-        color: 'var(--color-text)',
+        color: 'var(--foreground)',
         lineHeight: '18px',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
@@ -114,20 +114,20 @@ export function CollectionGridCard({
 
       {/* 진행 바 + 카운트 한 행 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)' }}>
-        <div style={{ flex: 1, height: 6, borderRadius: 'var(--radius-pill)', background: 'rgba(255,255,255,0.20)', overflow: 'hidden' }}>
+        <div style={{ flex: 1, height: 6, borderRadius: 'var(--radius-full)', background: 'rgba(255,255,255,0.20)', overflow: 'hidden' }}>
           <div style={{
             height: '100%',
             width: '100%',
-            borderRadius: 'var(--radius-pill)',
-            background: 'var(--color-primary)',
+            borderRadius: 'var(--radius-full)',
+            background: 'var(--accent)',
             transform: `scaleX(${pct / 100})`,
             transformOrigin: 'left',
             transition: 'transform 500ms ease',
           }} />
         </div>
         <span style={{
-          fontSize: 'var(--text-caption)',
-          color: 'var(--color-primary)',
+          fontSize: 'var(--text-xs)',
+          color: 'var(--link)',
           fontWeight: 700,
           lineHeight: 1,
           fontVariantNumeric: 'tabular-nums',

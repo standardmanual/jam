@@ -17,10 +17,10 @@
 
 - `status`가 `ready`/`locked`면 우상단에 자물쇠 마커, `earned`면 체크 마커가 **링 바깥**에
   뜬다(같은 원 둘레에 얹으면 진행 아크와 부딪힌다). `not-reached`는 마커가 없다.
-- **링은 상태색 하나로만 채운다** — 앰버(`--status-short-solid`, 채우는 중) /
-  라임(`--status-done-solid`, `earned`이거나 `fraction>=1`). **등급색을 링에 올리지 않는다** —
+- **링은 상태색 하나로만 채운다** — 앰버(`--progress-short`, 채우는 중) /
+  라임(`--progress-done`, `earned`이거나 `fraction>=1`). **등급색을 링에 올리지 않는다** —
   등급은 이름 아래 `RarityBadge` 칩(`common`은 칩을 그리지 않는 기존 관례 그대로)에 남는다.
-- `muted:true`(§08 H, 진행 미지원)면 링이 앰버/라임 대신 중립색(`--color-text-secondary`)
+- `muted:true`(§08 H, 진행 미지원)면 링이 앰버/라임 대신 중립색(`--muted`)
   전체 트랙으로 그려진다 — `fraction`을 쓰지 않는다.
 - **캡션은 항상 남는다.** 원형 진행은 작은 값(2%)과 0%가 눈으로 구분되지 않아 링은
   "대략 어디쯤"의 앰비언트 신호일 뿐이고, 정확한 값은 `captionText` 한 줄이 말한다.

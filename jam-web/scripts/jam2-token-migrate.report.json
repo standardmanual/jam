@@ -1,0 +1,1435 @@
+{
+  "dryRun": false,
+  "scannedFiles": 1304,
+  "changedFiles": 231,
+  "totals": {
+    "primary→accent": 48,
+    "primary→link": 124,
+    "var": 1387,
+    "style:letterSpacing(삭제)": 3,
+    "style:fontWeight": 2,
+    "class:text": 307,
+    "class:leading(쌍 합침)": 187,
+    "css:letter-spacing(삭제)": 7,
+    "css:font-weight": 7,
+    "class:spacing": 482,
+    "class:radius": 168,
+    "util:color": 541,
+    "class:weight": 7,
+    "class:tracking(삭제)": 7,
+    "util:primary→link": 4,
+    "util:radius": 1,
+    "class:leading(짝 불일치)": 1
+  },
+  "perFile": {
+    "design-system/components/buttons/Button.jsx": {
+      "primary→accent": 1,
+      "primary→link": 1,
+      "var": 15
+    },
+    "design-system/components/buttons/Button.prompt.md": {
+      "var": 1
+    },
+    "design-system/components/buttons/IconButton.jsx": {
+      "var": 4
+    },
+    "design-system/components/buttons/IconButton.stories.tsx": {
+      "var": 2
+    },
+    "design-system/components/cards/BadgeFrame.d.ts": {
+      "primary→link": 1
+    },
+    "design-system/components/cards/BadgeFrame.jsx": {
+      "primary→link": 1
+    },
+    "design-system/components/cards/BadgeFrame.stories.tsx": {
+      "var": 6
+    },
+    "design-system/components/cards/BadgeLevelChip.jsx": {
+      "var": 3
+    },
+    "design-system/components/cards/Card.jsx": {
+      "var": 12
+    },
+    "design-system/components/cards/Card.stories.tsx": {
+      "primary→link": 1,
+      "var": 18
+    },
+    "design-system/components/cards/LabelChip.d.ts": {
+      "var": 8
+    },
+    "design-system/components/cards/LabelChip.jsx": {
+      "var": 11
+    },
+    "design-system/components/cards/LabelChip.prompt.md": {
+      "var": 3
+    },
+    "design-system/components/cards/LabelChip.stories.tsx": {
+      "primary→link": 1,
+      "var": 6
+    },
+    "design-system/components/cards/MissionCard.jsx": {
+      "primary→link": 1,
+      "var": 15
+    },
+    "design-system/components/cards/RarityBadge.jsx": {
+      "var": 12
+    },
+    "design-system/components/cards/RarityBadge.stories.tsx": {
+      "var": 13
+    },
+    "design-system/components/cards/ShapeTag.jsx": {
+      "style:letterSpacing(삭제)": 1,
+      "var": 5
+    },
+    "design-system/components/feedback/EmptyState.jsx": {
+      "style:letterSpacing(삭제)": 1,
+      "style:fontWeight": 1,
+      "var": 7
+    },
+    "design-system/components/feedback/ModalToast.jsx": {
+      "primary→accent": 2,
+      "var": 11
+    },
+    "design-system/components/feedback/ModalToast.stories.tsx": {
+      "primary→link": 1,
+      "var": 1
+    },
+    "design-system/components/feedback/ProgressBar.d.ts": {
+      "primary→link": 1,
+      "var": 4
+    },
+    "design-system/components/feedback/ProgressBar.jsx": {
+      "primary→link": 3,
+      "var": 9
+    },
+    "design-system/components/feedback/ProgressBar.prompt.md": {
+      "var": 2
+    },
+    "design-system/components/feedback/ProgressBar.stories.tsx": {
+      "var": 20
+    },
+    "design-system/components/feedback/Skeleton.d.ts": {
+      "var": 2
+    },
+    "design-system/components/feedback/Skeleton.jsx": {
+      "var": 5
+    },
+    "design-system/components/feedback/Skeleton.stories.tsx": {
+      "var": 3
+    },
+    "design-system/components/feedback/Toast.jsx": {
+      "var": 6
+    },
+    "design-system/components/feedback/Toast.stories.tsx": {
+      "var": 1
+    },
+    "design-system/components/feedback/WanderingEyesLoader.d.ts": {
+      "var": 2
+    },
+    "design-system/components/feedback/WanderingEyesLoader.jsx": {
+      "var": 4
+    },
+    "design-system/components/feedback/WanderingEyesLoader.stories.tsx": {
+      "primary→link": 1,
+      "var": 1
+    },
+    "design-system/components/forms/Checkbox.jsx": {
+      "primary→accent": 1,
+      "var": 8
+    },
+    "design-system/components/forms/Checkbox.stories.tsx": {
+      "var": 1
+    },
+    "design-system/components/forms/Input.jsx": {
+      "var": 11
+    },
+    "design-system/components/forms/Input.stories.tsx": {
+      "var": 13
+    },
+    "design-system/components/forms/Select.jsx": {
+      "var": 11
+    },
+    "design-system/components/forms/Select.stories.tsx": {
+      "primary→link": 1,
+      "var": 2
+    },
+    "design-system/components/forms/Textarea.jsx": {
+      "var": 8
+    },
+    "design-system/components/forms/Textarea.stories.tsx": {
+      "var": 5
+    },
+    "design-system/components/icons/BadgeStatusGlyphs.jsx": {
+      "primary→link": 2
+    },
+    "design-system/components/icons/BadgeStatusGlyphs.stories.tsx": {
+      "primary→link": 1,
+      "var": 4
+    },
+    "design-system/components/icons/IconCatalog.jsx": {
+      "var": 6
+    },
+    "design-system/components/icons/IconCatalog.stories.tsx": {
+      "primary→link": 1,
+      "var": 3
+    },
+    "design-system/components/navigation/Accordion.jsx": {
+      "primary→accent": 1,
+      "var": 12
+    },
+    "design-system/components/navigation/Accordion.stories.tsx": {
+      "primary→link": 1,
+      "var": 12
+    },
+    "design-system/components/navigation/BottomSheet.jsx": {
+      "class:text": 1,
+      "class:leading(쌍 합침)": 1,
+      "var": 11
+    },
+    "design-system/components/navigation/BottomSheet.stories.tsx": {
+      "var": 18
+    },
+    "design-system/components/navigation/Carousel.stories.tsx": {
+      "var": 10
+    },
+    "design-system/components/navigation/SlidingTabs.d.ts": {
+      "var": 1
+    },
+    "design-system/components/navigation/SlidingTabs.jsx": {
+      "primary→accent": 1,
+      "var": 8
+    },
+    "design-system/components/navigation/SlidingTabs.stories.tsx": {
+      "primary→link": 1,
+      "var": 5
+    },
+    "design-system/components/navigation/TabBar.jsx": {
+      "primary→link": 2,
+      "var": 12
+    },
+    "design-system/components/navigation/TabBar.stories.tsx": {
+      "primary→accent": 1,
+      "primary→link": 1,
+      "var": 14
+    },
+    "design-system/components/navigation/TopNav.jsx": {
+      "style:fontWeight": 1,
+      "var": 8
+    },
+    "design-system/components/navigation/TopNav.prompt.md": {
+      "var": 1
+    },
+    "design-system/components/navigation/TopNav.stories.tsx": {
+      "var": 7
+    },
+    "design-system/components/patterns/BadgeFamilyCardHeader.jsx": {
+      "var": 15
+    },
+    "design-system/components/patterns/BadgeFamilyCardHeader.stories.tsx": {
+      "var": 13
+    },
+    "design-system/components/patterns/BadgeGridCard.jsx": {
+      "primary→link": 1,
+      "var": 12
+    },
+    "design-system/components/patterns/BadgeGridCard.stories.tsx": {
+      "primary→accent": 1,
+      "var": 5
+    },
+    "design-system/components/patterns/BadgeLevelGauge.jsx": {
+      "var": 18
+    },
+    "design-system/components/patterns/BadgeLevelGauge.prompt.md": {
+      "var": 6
+    },
+    "design-system/components/patterns/BadgeLevelGauge.stories.tsx": {
+      "var": 11
+    },
+    "design-system/components/patterns/BadgeProgressRingCard.jsx": {
+      "var": 25
+    },
+    "design-system/components/patterns/BadgeProgressRingCard.prompt.md": {
+      "var": 3
+    },
+    "design-system/components/patterns/BadgeProgressRingCard.stories.tsx": {
+      "var": 7
+    },
+    "design-system/components/patterns/BadgeRevealCarousel.jsx": {
+      "primary→accent": 2,
+      "var": 20
+    },
+    "design-system/components/patterns/BadgeRevealCarousel.stories.tsx": {
+      "primary→accent": 1,
+      "var": 3
+    },
+    "design-system/components/patterns/BadgeStageRail.jsx": {
+      "var": 39
+    },
+    "design-system/components/patterns/BadgeStageRail.prompt.md": {
+      "var": 1
+    },
+    "design-system/components/patterns/BadgeStageRail.stories.tsx": {
+      "var": 9
+    },
+    "design-system/components/patterns/BadgeStampRow.jsx": {
+      "var": 18
+    },
+    "design-system/components/patterns/BadgeStatusSection.jsx": {
+      "var": 9
+    },
+    "design-system/components/patterns/BadgeStatusSection.stories.tsx": {
+      "var": 1
+    },
+    "design-system/components/patterns/BadgeTreeSummaryHeader.jsx": {
+      "var": 26
+    },
+    "design-system/components/patterns/BadgeTreeSummaryHeader.prompt.md": {
+      "var": 1
+    },
+    "design-system/components/patterns/BadgeTreeSummaryHeader.stories.tsx": {
+      "var": 4
+    },
+    "design-system/components/patterns/CollectionGridCard.jsx": {
+      "primary→accent": 2,
+      "primary→link": 1,
+      "var": 7
+    },
+    "design-system/components/patterns/DualAxisGauge.jsx": {
+      "var": 21
+    },
+    "design-system/components/patterns/DualAxisGauge.stories.tsx": {
+      "var": 1
+    },
+    "design-system/components/patterns/ItemSerialCode.jsx": {
+      "var": 4
+    },
+    "design-system/components/patterns/ItemSerialCode.stories.tsx": {
+      "var": 4
+    },
+    "design-system/components/patterns/ListRowCard.jsx": {
+      "var": 9
+    },
+    "design-system/components/patterns/ListRowCard.stories.tsx": {
+      "primary→accent": 1,
+      "primary→link": 3,
+      "var": 28
+    },
+    "design-system/components/patterns/MixerSlot.jsx": {
+      "var": 15
+    },
+    "design-system/components/patterns/RecentSyncBanner.jsx": {
+      "var": 8
+    },
+    "design-system/components/patterns/RecentSyncBanner.prompt.md": {
+      "var": 1
+    },
+    "design-system/components/patterns/RecentSyncBanner.stories.tsx": {
+      "var": 1
+    },
+    "design-system/components/patterns/UnlockConditionSheetContent.jsx": {
+      "var": 36
+    },
+    "design-system/dashboard.html": {
+      "primary→link": 5,
+      "var": 39
+    },
+    "design-system/foundations/Colors.stories.tsx": {
+      "primary→link": 5,
+      "var": 42
+    },
+    "design-system/foundations/Fonts.stories.tsx": {
+      "primary→link": 4,
+      "var": 21
+    },
+    "design-system/foundations/Motion.stories.tsx": {
+      "primary→accent": 2,
+      "primary→link": 4,
+      "var": 24
+    },
+    "design-system/foundations/Radius.stories.tsx": {
+      "primary→link": 4,
+      "var": 27
+    },
+    "design-system/foundations/Spacing.stories.tsx": {
+      "primary→accent": 1,
+      "primary→link": 5,
+      "var": 11
+    },
+    "design-system/foundations/Typography.stories.tsx": {
+      "primary→link": 8,
+      "style:letterSpacing(삭제)": 1,
+      "var": 26
+    },
+    "design-system/guidelines/badge-frames.html": {
+      "primary→link": 2,
+      "var": 5
+    },
+    "design-system/guidelines/colors-neutral.html": {
+      "var": 8
+    },
+    "design-system/guidelines/colors-primary.html": {
+      "primary→accent": 1
+    },
+    "design-system/guidelines/colors-rarity.html": {
+      "var": 4
+    },
+    "design-system/guidelines/dos-donts.html": {
+      "var": 6
+    },
+    "design-system/guidelines/loader.html": {
+      "primary→link": 2,
+      "var": 15
+    },
+    "design-system/guidelines/radius-scale.html": {
+      "primary→accent": 4,
+      "var": 8
+    },
+    "design-system/guidelines/spacing-scale.html": {
+      "primary→accent": 8,
+      "primary→link": 2,
+      "var": 10
+    },
+    "design-system/guidelines/type-body.html": {
+      "var": 11
+    },
+    "design-system/guidelines/type-bold.html": {
+      "primary→link": 1,
+      "css:letter-spacing(삭제)": 2,
+      "css:font-weight": 2,
+      "var": 2
+    },
+    "design-system/guidelines/type-headings.html": {
+      "css:letter-spacing(삭제)": 5,
+      "css:font-weight": 5,
+      "var": 4
+    },
+    "design-system/styles.css": {
+      "primary→link": 3,
+      "var": 4
+    },
+    "design-system/thumbnail.html": {
+      "primary→accent": 2
+    },
+    "src/app/(auth)/login/page.tsx": {
+      "class:spacing": 9,
+      "class:text": 4,
+      "class:leading(쌍 합침)": 4,
+      "class:radius": 3,
+      "util:color": 11
+    },
+    "src/app/(legal)/layout.tsx": {
+      "util:color": 1
+    },
+    "src/app/(legal)/location-terms/page.tsx": {
+      "class:spacing": 14,
+      "class:text": 7,
+      "class:leading(쌍 합침)": 4,
+      "class:weight": 2,
+      "class:tracking(삭제)": 2,
+      "class:radius": 1,
+      "util:color": 7,
+      "var": 1
+    },
+    "src/app/(legal)/privacy/page.tsx": {
+      "class:spacing": 26,
+      "class:text": 8,
+      "class:leading(쌍 합침)": 6,
+      "class:weight": 2,
+      "class:tracking(삭제)": 2,
+      "class:radius": 1,
+      "util:color": 8,
+      "var": 1
+    },
+    "src/app/(main)/FeedSection.tsx": {
+      "class:text": 16,
+      "class:radius": 11,
+      "class:spacing": 19,
+      "class:leading(쌍 합침)": 13,
+      "util:color": 28,
+      "var": 1
+    },
+    "src/app/(main)/OnboardingQuestCard.test.tsx": {
+      "class:radius": 1
+    },
+    "src/app/(main)/OnboardingQuestCard.tsx": {
+      "primary→link": 1,
+      "class:spacing": 7,
+      "class:radius": 1,
+      "class:text": 3,
+      "class:leading(쌍 합침)": 1,
+      "util:color": 2,
+      "util:primary→link": 1,
+      "util:radius": 1,
+      "var": 3
+    },
+    "src/app/(main)/OnboardingQuestSkipSheet.tsx": {
+      "class:text": 2,
+      "class:spacing": 3,
+      "class:leading(쌍 합침)": 1,
+      "util:color": 2
+    },
+    "src/app/(main)/OnboardingSyncButton.tsx": {
+      "primary→accent": 1,
+      "var": 1
+    },
+    "src/app/(main)/TodayCardStack.test.tsx": {
+      "primary→link": 2,
+      "class:radius": 2,
+      "class:spacing": 2,
+      "util:color": 4,
+      "var": 5
+    },
+    "src/app/(main)/TodayCardStack.tsx": {
+      "class:spacing": 2,
+      "class:text": 2,
+      "class:leading(쌍 합침)": 1,
+      "util:color": 1
+    },
+    "src/app/(main)/TodayStatusStrip.tsx": {
+      "class:spacing": 4,
+      "class:text": 5,
+      "class:leading(쌍 합침)": 5,
+      "util:color": 2
+    },
+    "src/app/(main)/UserSearchBar.tsx": {
+      "class:radius": 1,
+      "class:spacing": 2,
+      "class:text": 1,
+      "class:leading(쌍 합침)": 1,
+      "util:color": 4
+    },
+    "src/app/(main)/[username]/FollowButton.tsx": {
+      "var": 3
+    },
+    "src/app/(main)/[username]/FollowUserList.tsx": {
+      "class:spacing": 1,
+      "class:text": 1,
+      "class:leading(쌍 합침)": 1,
+      "util:color": 1
+    },
+    "src/app/(main)/[username]/collections/page.tsx": {
+      "primary→link": 1,
+      "class:spacing": 4,
+      "class:radius": 2,
+      "class:text": 4,
+      "class:leading(쌍 합침)": 1,
+      "util:color": 5
+    },
+    "src/app/(main)/[username]/followers/page.tsx": {
+      "class:spacing": 3,
+      "util:color": 1
+    },
+    "src/app/(main)/[username]/following/page.tsx": {
+      "class:spacing": 3,
+      "util:color": 1
+    },
+    "src/app/(main)/badges/BadgesClient.tsx": {
+      "primary→link": 2,
+      "class:text": 7,
+      "class:spacing": 17,
+      "class:leading(쌍 합침)": 6,
+      "class:radius": 5,
+      "util:color": 6
+    },
+    "src/app/(main)/badges/[id]/BadgeConditionCard.tsx": {
+      "class:radius": 1,
+      "class:text": 3,
+      "util:color": 3,
+      "var": 1
+    },
+    "src/app/(main)/badges/[id]/BadgeHeroSection.tsx": {
+      "class:radius": 1,
+      "class:text": 2,
+      "class:leading(쌍 합침)": 2,
+      "util:color": 4,
+      "var": 1
+    },
+    "src/app/(main)/badges/[id]/BadgeShareButton.tsx": {
+      "class:radius": 2,
+      "class:text": 4,
+      "class:spacing": 3,
+      "var": 5
+    },
+    "src/app/(main)/badges/[id]/ItemEarnHistory.tsx": {
+      "class:radius": 1,
+      "class:text": 1,
+      "class:leading(쌍 합침)": 1,
+      "util:color": 5,
+      "var": 4
+    },
+    "src/app/(main)/badges/[id]/PoiEarnHistory.tsx": {
+      "class:radius": 1,
+      "class:text": 1,
+      "class:leading(쌍 합침)": 1,
+      "util:color": 7,
+      "var": 6
+    },
+    "src/app/(main)/badges/[id]/PoiMapButton.tsx": {
+      "class:text": 1,
+      "class:leading(쌍 합침)": 1,
+      "class:radius": 1,
+      "class:spacing": 1,
+      "util:color": 2
+    },
+    "src/app/(main)/badges/[id]/page.tsx": {
+      "class:spacing": 7,
+      "class:radius": 8,
+      "class:text": 22,
+      "class:leading(쌍 합침)": 1,
+      "util:color": 22,
+      "var": 15
+    },
+    "src/app/(main)/badges/tree/BadgeTreeClient.tsx": {
+      "class:radius": 1,
+      "class:spacing": 14,
+      "class:text": 1,
+      "util:color": 2,
+      "var": 1
+    },
+    "src/app/(main)/collections/[id]/ItemBookHeroSection.tsx": {
+      "primary→link": 1,
+      "class:radius": 1,
+      "class:text": 2,
+      "class:leading(쌍 합침)": 2,
+      "class:spacing": 2,
+      "util:color": 1,
+      "var": 2
+    },
+    "src/app/(main)/collections/[id]/SlotGrid.tsx": {
+      "primary→accent": 2,
+      "class:radius": 4,
+      "class:spacing": 1,
+      "class:text": 4,
+      "class:leading(쌍 합침)": 4,
+      "util:color": 2,
+      "var": 5
+    },
+    "src/app/(main)/combine/CombineClient.test.tsx": {
+      "class:text": 1,
+      "util:color": 1,
+      "var": 2
+    },
+    "src/app/(main)/combine/CombineClient.tsx": {
+      "class:spacing": 24,
+      "class:radius": 4,
+      "class:text": 6,
+      "class:leading(쌍 합침)": 1,
+      "util:color": 15
+    },
+    "src/app/(main)/combine/RecipeRewardRow.tsx": {
+      "class:radius": 3,
+      "class:spacing": 4,
+      "class:text": 4,
+      "class:leading(쌍 합침)": 3,
+      "util:color": 7,
+      "var": 2
+    },
+    "src/app/(main)/drops/BadgeDetailSheet.tsx": {
+      "class:spacing": 7,
+      "class:text": 5,
+      "class:leading(쌍 합침)": 3,
+      "class:radius": 1,
+      "util:color": 7
+    },
+    "src/app/(main)/drops/DropsClient.tsx": {
+      "class:spacing": 8,
+      "class:text": 5,
+      "class:leading(쌍 합침)": 4,
+      "class:radius": 3,
+      "util:color": 15
+    },
+    "src/app/(main)/drops/QuestPickupScene.tsx": {
+      "primary→accent": 1,
+      "class:text": 1,
+      "class:radius": 1,
+      "util:color": 2
+    },
+    "src/app/(main)/feed/page.tsx": {
+      "class:spacing": 6,
+      "util:color": 2
+    },
+    "src/app/(main)/inventory/QuestBagGrid.tsx": {
+      "class:spacing": 1,
+      "class:text": 1,
+      "util:color": 1
+    },
+    "src/app/(main)/inventory/[itemId]/InventoryItemHistorySheet.tsx": {
+      "class:spacing": 7,
+      "class:text": 6,
+      "class:leading(쌍 합침)": 4,
+      "class:radius": 2,
+      "util:color": 6
+    },
+    "src/app/(main)/inventory/page.tsx": {
+      "class:spacing": 11,
+      "class:text": 5,
+      "class:leading(쌍 합침)": 4,
+      "class:radius": 3,
+      "util:color": 5,
+      "var": 1
+    },
+    "src/app/(main)/missions/MissionsListClient.tsx": {
+      "class:spacing": 10,
+      "class:text": 3,
+      "class:leading(쌍 합침)": 3,
+      "class:radius": 2,
+      "util:color": 4,
+      "var": 6
+    },
+    "src/app/(main)/missions/[id]/MissionDetailClient.tsx": {
+      "primary→link": 3,
+      "primary→accent": 2,
+      "class:radius": 12,
+      "class:text": 6,
+      "class:leading(쌍 합침)": 1,
+      "util:color": 32,
+      "var": 8
+    },
+    "src/app/(main)/missions/[id]/status/MissionStatusClient.tsx": {
+      "primary→link": 8,
+      "primary→accent": 1,
+      "class:text": 9,
+      "class:radius": 7,
+      "class:leading(짝 불일치)": 1,
+      "class:leading(쌍 합침)": 3,
+      "class:spacing": 9,
+      "util:color": 19,
+      "var": 22
+    },
+    "src/app/(main)/notifications/NotificationsClient.tsx": {
+      "class:radius": 5,
+      "class:text": 6,
+      "class:leading(쌍 합침)": 3,
+      "class:spacing": 9,
+      "util:color": 9,
+      "var": 4
+    },
+    "src/app/(main)/onboarding/page.tsx": {
+      "class:spacing": 20,
+      "class:text": 17,
+      "class:leading(쌍 합침)": 17,
+      "class:radius": 13,
+      "util:color": 23,
+      "var": 9
+    },
+    "src/app/(main)/page.tsx": {
+      "class:spacing": 5,
+      "class:text": 1,
+      "class:leading(쌍 합침)": 1,
+      "class:radius": 2,
+      "util:color": 3
+    },
+    "src/app/(main)/philosophy/page.tsx": {
+      "primary→accent": 1,
+      "class:text": 6,
+      "class:leading(쌍 합침)": 3,
+      "class:weight": 2,
+      "class:tracking(삭제)": 2,
+      "class:spacing": 13,
+      "class:radius": 2,
+      "util:color": 3,
+      "var": 5
+    },
+    "src/app/(main)/points/page.tsx": {
+      "primary→link": 2,
+      "class:spacing": 11,
+      "class:text": 10,
+      "class:leading(쌍 합침)": 6,
+      "class:radius": 2,
+      "util:color": 12
+    },
+    "src/app/(main)/profile/ProfileClient.tsx": {
+      "primary→link": 3,
+      "class:spacing": 12,
+      "class:text": 7,
+      "class:leading(쌍 합침)": 4,
+      "class:radius": 2,
+      "util:color": 6,
+      "var": 3
+    },
+    "src/app/(main)/profile/edit/page.tsx": {
+      "class:spacing": 8,
+      "class:radius": 6,
+      "class:text": 10,
+      "class:leading(쌍 합침)": 10,
+      "util:color": 17,
+      "var": 3
+    },
+    "src/app/(main)/search/page.tsx": {
+      "class:spacing": 5,
+      "class:text": 1,
+      "util:color": 4
+    },
+    "src/app/(main)/voc/VocPagination.tsx": {
+      "class:spacing": 2,
+      "class:text": 4,
+      "class:leading(쌍 합침)": 4,
+      "class:radius": 3,
+      "util:color": 6
+    },
+    "src/app/(main)/voc/page.tsx": {
+      "primary→link": 1,
+      "class:text": 8,
+      "class:radius": 2,
+      "class:leading(쌍 합침)": 4,
+      "class:spacing": 14,
+      "util:color": 10,
+      "var": 5
+    },
+    "src/app/dev-sample/item-badge-serial/page.tsx": {
+      "class:radius": 2,
+      "util:color": 6,
+      "var": 5
+    },
+    "src/app/error.tsx": {
+      "util:color": 2
+    },
+    "src/app/spike/badge-reveal/BadgeRevealSpikeClient.tsx": {
+      "var": 11
+    },
+    "src/components/BadgeRevealOverlay.tsx": {
+      "var": 5
+    },
+    "src/components/LabelChip.test.tsx": {
+      "class:text": 1,
+      "class:radius": 1,
+      "util:color": 2,
+      "var": 12
+    },
+    "src/components/NavigationLoader.tsx": {
+      "util:color": 1
+    },
+    "src/components/PoiCarouselModal.tsx": {
+      "class:spacing": 10,
+      "class:text": 5,
+      "class:leading(쌍 합침)": 3,
+      "class:radius": 7,
+      "util:color": 10,
+      "var": 4
+    },
+    "src/components/QuestPreviewBanner.tsx": {
+      "class:spacing": 1,
+      "var": 4
+    },
+    "src/components/StravaLink.tsx": {
+      "class:text": 1,
+      "class:leading(쌍 합침)": 1,
+      "class:radius": 1
+    },
+    "src/components/SyncButton.tsx": {
+      "primary→accent": 1,
+      "var": 1
+    },
+    "src/components/badges/BadgeTrophyGridCard.tsx": {
+      "class:radius": 2,
+      "class:spacing": 4,
+      "util:color": 4,
+      "var": 5
+    },
+    "src/components/badges/BadgeUnlockSheet.tsx": {
+      "class:spacing": 3
+    },
+    "src/components/inventory/InventoryGrid.tsx": {
+      "class:spacing": 4,
+      "class:text": 1,
+      "class:radius": 3,
+      "util:color": 4,
+      "var": 3
+    },
+    "src/components/inventory/ItemCandidateRow.tsx": {
+      "primary→link": 1,
+      "class:spacing": 1,
+      "class:text": 1,
+      "class:radius": 1,
+      "util:color": 2,
+      "var": 1
+    },
+    "src/components/inventory/ItemCandidateSheet.tsx": {
+      "class:spacing": 8,
+      "class:text": 3,
+      "class:leading(쌍 합침)": 3,
+      "class:weight": 1,
+      "class:tracking(삭제)": 1,
+      "class:radius": 2,
+      "util:color": 2,
+      "var": 4
+    },
+    "src/components/map/MapView.tsx": {
+      "primary→accent": 3
+    },
+    "src/components/ranking/RankingListRow.tsx": {
+      "primary→link": 3,
+      "var": 8
+    },
+    "src/components/today/ArticleView.stories.tsx": {
+      "var": 3
+    },
+    "src/components/today/ArticleView.tsx": {
+      "class:text": 5,
+      "class:leading(쌍 합침)": 4,
+      "class:radius": 1,
+      "class:spacing": 10,
+      "util:color": 7,
+      "var": 1
+    },
+    "src/components/today/BriefCard.stories.tsx": {
+      "primary→link": 3,
+      "class:spacing": 2,
+      "var": 1
+    },
+    "src/components/today/BriefCard.tsx": {
+      "class:spacing": 3,
+      "class:text": 2,
+      "class:leading(쌍 합침)": 2,
+      "util:color": 4,
+      "var": 2
+    },
+    "src/components/today/CardBody.tsx": {
+      "class:spacing": 3,
+      "class:text": 5,
+      "class:leading(쌍 합침)": 4,
+      "util:color": 6,
+      "var": 2
+    },
+    "src/components/today/CardChipRow.tsx": {
+      "class:spacing": 2,
+      "class:text": 2,
+      "util:color": 2
+    },
+    "src/components/today/CardFrame.tsx": {
+      "primary→link": 2,
+      "class:radius": 1,
+      "util:primary→link": 1,
+      "var": 1
+    },
+    "src/components/today/CardImageSlot.tsx": {
+      "class:spacing": 2,
+      "class:text": 1,
+      "util:color": 6,
+      "var": 2
+    },
+    "src/components/today/CardThumb.tsx": {
+      "class:radius": 1,
+      "util:color": 1
+    },
+    "src/components/today/HeroCard.stories.tsx": {
+      "primary→link": 3,
+      "class:spacing": 1,
+      "util:color": 1,
+      "var": 2
+    },
+    "src/components/today/HeroCard.tsx": {
+      "util:color": 1,
+      "var": 2
+    },
+    "src/components/today/ImageShapes.stories.tsx": {
+      "var": 2
+    },
+    "src/components/today/ListCard.stories.tsx": {
+      "primary→link": 1,
+      "class:spacing": 1,
+      "util:color": 1,
+      "var": 3
+    },
+    "src/components/today/ListCard.tsx": {
+      "class:spacing": 6,
+      "class:text": 2,
+      "class:leading(쌍 합침)": 2,
+      "util:color": 2
+    },
+    "src/components/today/PosterCard.stories.tsx": {
+      "primary→link": 3,
+      "class:spacing": 1,
+      "util:color": 1,
+      "var": 7
+    },
+    "src/components/today/PosterCard.tsx": {
+      "class:spacing": 4,
+      "class:text": 2,
+      "class:leading(쌍 합침)": 2,
+      "util:color": 1,
+      "var": 4
+    },
+    "src/components/today/SquareCard.stories.tsx": {
+      "primary→link": 3,
+      "class:spacing": 1,
+      "util:color": 1,
+      "var": 4
+    },
+    "src/components/today/SquareCard.tsx": {
+      "util:color": 2,
+      "var": 2
+    },
+    "src/components/today/__tests__/ArticleView.test.tsx": {
+      "class:spacing": 14,
+      "class:text": 6,
+      "class:leading(쌍 합침)": 4,
+      "class:radius": 2,
+      "util:color": 10,
+      "var": 5
+    },
+    "src/components/today/__tests__/BriefCard.test.tsx": {
+      "class:spacing": 6,
+      "class:text": 2,
+      "class:leading(쌍 합침)": 1,
+      "class:radius": 1,
+      "util:color": 8,
+      "var": 12
+    },
+    "src/components/today/__tests__/CardBody.test.tsx": {
+      "class:spacing": 3,
+      "class:text": 5,
+      "class:leading(쌍 합침)": 4,
+      "util:color": 6,
+      "var": 2
+    },
+    "src/components/today/__tests__/CardChipRow.test.tsx": {
+      "class:spacing": 4,
+      "class:text": 4,
+      "util:color": 5,
+      "var": 9
+    },
+    "src/components/today/__tests__/CardFrame.test.tsx": {
+      "primary→link": 1,
+      "class:radius": 1,
+      "util:primary→link": 2
+    },
+    "src/components/today/__tests__/CardImageSlot.test.tsx": {
+      "class:spacing": 2,
+      "class:text": 1,
+      "util:color": 11
+    },
+    "src/components/today/__tests__/CardThumb.test.tsx": {
+      "class:radius": 1,
+      "util:color": 2,
+      "var": 1
+    },
+    "src/components/today/__tests__/HeroCard.test.tsx": {
+      "class:spacing": 10,
+      "class:text": 6,
+      "class:leading(쌍 합침)": 4,
+      "util:color": 17,
+      "var": 4
+    },
+    "src/components/today/__tests__/ListCard.test.tsx": {
+      "primary→link": 1,
+      "class:spacing": 10,
+      "class:text": 6,
+      "class:leading(쌍 합침)": 5,
+      "class:radius": 1,
+      "util:color": 8,
+      "var": 5
+    },
+    "src/components/today/__tests__/PosterCard.test.tsx": {
+      "class:spacing": 5,
+      "class:text": 4,
+      "class:leading(쌍 합침)": 2,
+      "util:color": 5,
+      "var": 12
+    },
+    "src/components/today/__tests__/RecipeRevealCard.test.tsx": {
+      "class:spacing": 2,
+      "util:color": 3,
+      "var": 1
+    },
+    "src/components/today/__tests__/SquareCard.test.tsx": {
+      "class:spacing": 8,
+      "class:text": 5,
+      "class:leading(쌍 합침)": 3,
+      "util:color": 11,
+      "var": 5
+    },
+    "src/components/today/__tests__/TodayCard.test.tsx": {
+      "class:spacing": 1,
+      "util:color": 3
+    },
+    "src/components/today/__tests__/autoCardIcon.test.tsx": {
+      "util:color": 2
+    },
+    "src/components/today/__tests__/resourceIcon.test.tsx": {
+      "util:color": 2
+    },
+    "src/components/transitions.css": {
+      "primary→link": 4,
+      "util:color": 3,
+      "var": 15
+    },
+    "src/components/ui/BadgeGridCard.tsx": {
+      "primary→accent": 1,
+      "primary→link": 1,
+      "class:radius": 3,
+      "class:spacing": 4,
+      "class:text": 2,
+      "util:color": 5,
+      "var": 1
+    },
+    "src/components/ui/BottomSheet.tsx": {
+      "class:radius": 1,
+      "class:spacing": 4,
+      "class:text": 1,
+      "class:leading(쌍 합침)": 1,
+      "util:color": 3,
+      "var": 2
+    },
+    "src/components/ui/Button.tsx": {
+      "class:text": 4,
+      "class:leading(쌍 합침)": 3,
+      "class:radius": 3,
+      "class:spacing": 5,
+      "util:color": 6,
+      "var": 6
+    },
+    "src/components/ui/CollectionGridCard.tsx": {
+      "primary→accent": 1,
+      "primary→link": 1,
+      "class:spacing": 2,
+      "class:radius": 1,
+      "class:text": 2,
+      "util:color": 2
+    },
+    "src/components/ui/Footer.tsx": {
+      "class:spacing": 3,
+      "util:color": 6
+    },
+    "src/components/ui/ListRowCard.tsx": {
+      "class:spacing": 2,
+      "class:radius": 1,
+      "class:text": 2,
+      "class:leading(쌍 합침)": 2,
+      "util:color": 4,
+      "var": 1
+    },
+    "src/components/ui/LoadingSpinner.tsx": {
+      "util:color": 1
+    },
+    "src/components/ui/NotificationBell.tsx": {
+      "class:radius": 3,
+      "util:color": 1,
+      "var": 5
+    },
+    "src/components/ui/SlidingTabs.tsx": {
+      "primary→accent": 1,
+      "class:text": 1,
+      "class:leading(쌍 합침)": 1,
+      "var": 5
+    },
+    "src/components/ui/TabBar.tsx": {
+      "primary→link": 1,
+      "util:color": 1,
+      "var": 5
+    },
+    "src/components/ui/Toast.tsx": {
+      "class:text": 1,
+      "class:leading(쌍 합침)": 1,
+      "class:radius": 1,
+      "util:color": 3
+    },
+    "src/components/ui/TopNav.tsx": {
+      "primary→accent": 1,
+      "class:radius": 3,
+      "util:color": 2,
+      "var": 5
+    },
+    "src/components/ui/icons.tsx": {
+      "var": 1
+    },
+    "src/lib/__tests__/blobAnimation.test.ts": {
+      "var": 1
+    },
+    "src/lib/badgeBackgroundTheme.ts": {
+      "util:color": 1,
+      "var": 2
+    },
+    "src/lib/blobAnimation.ts": {
+      "var": 2
+    },
+    "src/lib/pageBackground.ts": {
+      "var": 3
+    }
+  },
+  "manual": [
+    {
+      "file": "design-system/components/cards/BadgeFrame.d.ts",
+      "line": 12,
+      "kind": "primary-comment",
+      "text": "/** Background fill — CSS color or token (default var(--color-primary)) */"
+    },
+    {
+      "file": "design-system/components/feedback/ProgressBar.d.ts",
+      "line": 26,
+      "kind": "primary-comment",
+      "text": "/** 필 색상. 기본 var(--color-primary). 그라데이션 문자열도 허용(순위별 그라데이션 등) */"
+    },
+    {
+      "file": "design-system/components/feedback/ProgressBar.jsx",
+      "line": 11,
+      "kind": "primary-comment",
+      "text": "*   - 필: var(--color-primary) 기본값 (color prop으로 오버라이드 — 순위 그라데이션 등 예외 대응)"
+    },
+    {
+      "file": "design-system/components/feedback/ProgressBar.prompt.md",
+      "line": 2,
+      "kind": "primary-unknown",
+      "text": ":: 트랙은 `var(--color-border)`, 필은 `var(--color-primary)`(prop으로 오버라이드 가능 — 순위별"
+    },
+    {
+      "file": "design-system/components/icons/BadgeStatusGlyphs.jsx",
+      "line": 22,
+      "kind": "primary-comment",
+      "text": "/** 잠김 — 미획득 눈금 마커·게이트 버튼. 미션 게이트는 부모가 `--color-primary`를 준다 */"
+    },
+    {
+      "file": "design-system/components/icons/BadgeStatusGlyphs.jsx",
+      "line": 41,
+      "kind": "primary-comment",
+      "text": "* 교차 게이트(다른 계열의 선행 배지) 표식. 미션 게이트(자물쇠 + `--color-primary`)와"
+    },
+    {
+      "file": "design-system/components/navigation/Accordion.jsx",
+      "line": 11,
+      "kind": "primary-unknown",
+      "text": "::    셰브런, 열림 상태는 --color-primary 배경 위 --color-text-on-primary 셰브런으로 상태를"
+    },
+    {
+      "file": "design-system/components/navigation/Accordion.stories.tsx",
+      "line": 9,
+      "kind": "primary-comment",
+      "text": "* 열림: --color-primary)를 함께 확인할 수 있다."
+    },
+    {
+      "file": "design-system/components/navigation/TabBar.jsx",
+      "line": 39,
+      "kind": "primary-comment",
+      "text": "*   - Removed misleading \"purple active\" comment (active color is --color-primary = red)"
+    },
+    {
+      "file": "design-system/components/navigation/TabBar.jsx",
+      "line": 163,
+      "kind": "calc-spacing",
+      "text": "bottom: 'max(10px, calc(var(--spacing-16) + var(--spacing-safe-bottom) - 32px))',"
+    },
+    {
+      "file": "design-system/components/patterns/BadgeStageRail.prompt.md",
+      "line": 45,
+      "kind": "primary-unknown",
+      "text": "key:kind :: - `stop.gates: [{kind:'mission'|'cross'}]` — 미션은 자물쇠(`--color-primary`),"
+    },
+    {
+      "file": "design-system/components/patterns/ListRowCard.stories.tsx",
+      "line": 175,
+      "kind": "primary-unknown",
+      "text": "key:transparent ::                 style={{ padding: '4px 12px', fontSize: 'var(--text-small)', background: following.has(u.id) ? 'transparent' : 'var(--color-primary)', color: following.has(u.id) ? '"
+    },
+    {
+      "file": "design-system/dashboard.html",
+      "line": 229,
+      "kind": "primary-unknown",
+      "text": "key:class ::           <tr><td class=\"token-name\">--color-primary</td><td class=\"token-value\"><span class=\"color-dot\" style=\"background:#e8461f\"></span> #e8461f</td><td>주 액센트 — CTA 버튼, 활성 상태, 강조</td><"
+    },
+    {
+      "file": "design-system/foundations/Colors.stories.tsx",
+      "line": 120,
+      "kind": "primary-unknown",
+      "text": "key:token ::         <Swatch token=\"--color-primary\" desc=\"레드-오렌지 — 버튼·활성 강조\" />"
+    },
+    {
+      "file": "design-system/guidelines/dos-donts.html",
+      "line": 8,
+      "kind": "primary-unknown",
+      "text": ":: <li>레드-오렌지 Primary(<code>--color-primary</code>)를 단 하나의 지배적 액센트로 사용할 것. 브라운은 Secondary 보조 역할만 한다.</li>"
+    },
+    {
+      "file": "src/app/(main)/OnboardingQuestCard.tsx",
+      "line": 54,
+      "kind": "primary-comment",
+      "text": "// color: var(--color-primary))을 그대로 복제한 클래스 — 새 토큰이 아니라 배치만 칩 줄로 옮긴다."
+    },
+    {
+      "file": "src/app/(main)/TodayCardStack.test.tsx",
+      "line": 256,
+      "kind": "primary-comment",
+      "text": "// 내 순위 행의 순위 번호·값만 24px(--text-h4) 레드(--color-primary)다"
+    },
+    {
+      "file": "src/app/(main)/collections/[id]/SlotGrid.tsx",
+      "line": 390,
+      "kind": "primary-unknown",
+      "text": "::                   같은 톤(--color-primary)을 쓴다 — 완료 기록의 판단 근거 참고. 후보가 없어"
+    },
+    {
+      "file": "src/app/(main)/inventory/[itemId]/InventoryItemHistorySheet.tsx",
+      "line": 96,
+      "kind": "radius-input-capsule",
+      "text": "rounded-[var(--radius-inputs)]"
+    },
+    {
+      "file": "src/app/(main)/inventory/[itemId]/InventoryItemHistorySheet.tsx",
+      "line": 97,
+      "kind": "radius-input-capsule",
+      "text": "rounded-[var(--radius-inputs)]"
+    },
+    {
+      "file": "src/app/(main)/missions/[id]/MissionDetailClient.tsx",
+      "line": 315,
+      "kind": "primary-unknown",
+      "text": "key:fff ::                           color:       done  ? '#fff' : today ? 'var(--color-primary)' : 'var(--color-text-secondary)',"
+    },
+    {
+      "file": "src/app/(main)/missions/[id]/status/MissionStatusClient.tsx",
+      "line": 60,
+      "kind": "primary-comment",
+      "text": "// --color-primary(레드) 하나로 통일. 1위만 강조, 2·3위는 중립톤으로 낮춰"
+    },
+    {
+      "file": "src/app/(main)/missions/[id]/status/MissionStatusClient.tsx",
+      "line": 69,
+      "kind": "primary-comment",
+      "text": "// --color-primary(#e8461f)를 상단, 그 40% 알파 톤을 하단에 둔 세로 그라디언트."
+    },
+    {
+      "file": "src/app/(main)/missions/[id]/status/MissionStatusClient.tsx",
+      "line": 326,
+      "kind": "leading-mismatch",
+      "text": "text-[length:var(--text-small)] + leading-[var(--leading-body-sm)]"
+    },
+    {
+      "file": "src/app/(main)/onboarding/page.tsx",
+      "line": 372,
+      "kind": "radius-input-capsule",
+      "text": "rounded-[var(--radius-inputs)]"
+    },
+    {
+      "file": "src/app/(main)/onboarding/page.tsx",
+      "line": 401,
+      "kind": "radius-input-capsule",
+      "text": "rounded-[var(--radius-inputs)]"
+    },
+    {
+      "file": "src/app/(main)/profile/ProfileClient.tsx",
+      "line": 534,
+      "kind": "primary-comment",
+      "text": "// 숫자 색은 위 포인트 표시와 같은 강조색(--color-primary, \"jam-stat-number\" 클래스)을"
+    },
+    {
+      "file": "src/app/(main)/profile/edit/page.tsx",
+      "line": 274,
+      "kind": "radius-input-capsule",
+      "text": "rounded-[var(--radius-inputs)]"
+    },
+    {
+      "file": "src/app/(main)/profile/edit/page.tsx",
+      "line": 308,
+      "kind": "radius-input-capsule",
+      "text": "rounded-[var(--radius-inputs)]"
+    },
+    {
+      "file": "src/components/QuestPreviewBanner.tsx",
+      "line": 81,
+      "kind": "calc-spacing",
+      "text": "paddingTop: 'calc(var(--spacing-8) + env(safe-area-inset-top))',"
+    },
+    {
+      "file": "src/components/ranking/RankingListRow.tsx",
+      "line": 56,
+      "kind": "primary-unknown",
+      "text": "key:gap ::           {/* 순위 번호 — 내 순위는 --color-primary(레드)로 강조 */}"
+    },
+    {
+      "file": "src/components/today/BriefCard.stories.tsx",
+      "line": 480,
+      "kind": "primary-comment",
+      "text": "/** 계측 정보와 `href`가 있으면 링크가 블록 요소이고 눌림(`.jam-press`)·키보드 포커스 윤곽선(2px·오프셋 2px·`--color-primary`)을 가진다. */"
+    },
+    {
+      "file": "src/components/today/BriefCard.stories.tsx",
+      "line": 499,
+      "kind": "primary-comment",
+      "text": "// 윤곽선 색은 DS 토큰 --color-primary와 같다"
+    },
+    {
+      "file": "src/components/today/CardFrame.tsx",
+      "line": 19,
+      "kind": "primary-comment",
+      "text": "* 윤곽선 값(2px·오프셋 2px·`--color-primary`)은 `design-system/styles.css`의 전역 `*:focus-visible`과 같다 — 서비스는 그 파일을"
+    },
+    {
+      "file": "src/components/today/HeroCard.stories.tsx",
+      "line": 429,
+      "kind": "primary-comment",
+      "text": "/** 계측 정보와 `href`가 있으면 링크가 블록 요소이고 눌림(`.jam-press`)·키보드 포커스 윤곽선(2px·오프셋 2px·`--color-primary`)을 가진다. 윤곽선은 이미지 모서리에 잘리지 않는다. */"
+    },
+    {
+      "file": "src/components/today/HeroCard.stories.tsx",
+      "line": 448,
+      "kind": "primary-comment",
+      "text": "// 윤곽선 색은 DS 토큰 --color-primary와 같다"
+    },
+    {
+      "file": "src/components/today/ListCard.stories.tsx",
+      "line": 744,
+      "kind": "primary-comment",
+      "text": "/** 타일형은 카드 전체가 링크 하나다. 눌림(`.jam-press`)·키보드 포커스 윤곽선(2px·오프셋 2px·`--color-primary`)을 가진다. */"
+    },
+    {
+      "file": "src/components/today/PosterCard.stories.tsx",
+      "line": 527,
+      "kind": "primary-comment",
+      "text": "/** 계측 정보와 `href`가 있으면 링크가 블록 요소이고 눌림(`.jam-press`)·키보드 포커스 윤곽선(2px·오프셋 2px·`--color-primary`)을 가진다. 윤곽선은 이미지 모서리에 잘리지 않는다. */"
+    },
+    {
+      "file": "src/components/today/PosterCard.stories.tsx",
+      "line": 546,
+      "kind": "primary-comment",
+      "text": "// 윤곽선 색은 DS 토큰 --color-primary와 같다"
+    },
+    {
+      "file": "src/components/today/SquareCard.stories.tsx",
+      "line": 456,
+      "kind": "primary-comment",
+      "text": "/** 계측 정보와 `href`가 있으면 링크가 블록 요소이고 눌림(`.jam-press`)·키보드 포커스 윤곽선(2px·오프셋 2px·`--color-primary`)을 가진다. 윤곽선은 이미지 모서리에 잘리지 않는다. */"
+    },
+    {
+      "file": "src/components/today/SquareCard.stories.tsx",
+      "line": 475,
+      "kind": "primary-comment",
+      "text": "// 윤곽선 색은 DS 토큰 --color-primary와 같다"
+    },
+    {
+      "file": "src/components/today/__tests__/CardFrame.test.tsx",
+      "line": 89,
+      "kind": "primary-unknown",
+      "text": "::   it('링크는 블록 요소이고 둥근 윤곽·눌림·focus-visible 윤곽선(2px·오프셋 2px·--color-primary) 클래스를 가진다', () => {"
+    },
+    {
+      "file": "src/components/transitions.css",
+      "line": 494,
+      "kind": "primary-comment",
+      "text": "/* 프로필 통계탭 전용 (20260901) — 숫자는 항상 포인트 강조색(--color-primary), pill(같은"
+    },
+    {
+      "file": "src/components/transitions.css",
+      "line": 583,
+      "kind": "primary-unknown",
+      "text": "::    번지며 사라지는 반복 애니메이션. 색은 리터럴 rgba 대신 color-mix로 --color-primary를 직접"
+    },
+    {
+      "file": "src/components/transitions.css",
+      "line": 584,
+      "kind": "primary-unknown",
+      "text": "::    참조한다(L438 부근 .t-panel-backdrop 재질화가 이미 쓰는 패턴과 동일) — --color-primary가"
+    },
+    {
+      "file": "src/components/ui/Button.tsx",
+      "line": 79,
+      "kind": "primary-unknown",
+      "text": "key:sub ::   sub:  'var(--color-primary)',          // 라이트 배경 위 primary = 레드 pill"
+    },
+    {
+      "file": "src/components/ui/TabBar.tsx",
+      "line": 285,
+      "kind": "primary-unknown",
+      "text": "key:v2 ::             {/* DS v2: 활성=--color-primary(레드), 비활성=--color-icon-inactive(다크 그레이) */}"
+    }
+  ]
+}

@@ -13,7 +13,7 @@ const meta: Meta<typeof RecentSyncBanner> = {
           '직전 동기화 배너. 1차 범위는 boolean 이벤트만 표시(20260903_2329). ' +
           '3b(20260904_1425)에서 `comparisonMessage` prop을 얹어 user_family_progress 기반 ' +
           '"직전 상태값과의 비교" 문구를 표시한다 — 없으면 기본 `message`로 폴백. ' +
-          '색은 --status-latest-solid(시안) 전용.',
+          '색은 --progress-latest(시안) 전용.',
       },
     },
   },

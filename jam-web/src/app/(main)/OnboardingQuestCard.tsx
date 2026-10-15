@@ -40,21 +40,21 @@ const SCREEN_PATH_MAP: Record<OnboardingQuestScreen, string> = {
   missions: '/missions',
 }
 
-const CARD_CLASS = 'flex flex-col gap-[var(--spacing-16)]'
+const CARD_CLASS = 'flex flex-col gap-4'
 // CTA 줄 — flex-col 카드의 기본 stretch가 버튼을 카드 폭으로 늘리지 않도록 가로 줄로 감싼다
 const CTA_ROW_CLASS = 'flex'
 // 「지금 눌러야 할 곳」 펄스 전용 변형(티켓 20260928_1752) — ①·② CTA 줄에만 쓴다.
 // CTA_ROW_CLASS 자체를 고치면 ③·④(Strava 동기화하기·첫 활동 대기)에도 펄스가 번지므로
-// 별도 상수로 분리한다. rounded-pill은 버튼의 --radius-buttons(=--radius-pill)와 래퍼 반경을
+// 별도 상수로 분리한다. rounded-full은 버튼의 --radius-full(=--radius-full)와 래퍼 반경을
 // 맞춰 펄스 링이 버튼 실루엣과 어긋나지 않게 한다(채원 사전 판정). self-start가 없으면 이 줄 자체가
 // 카드 폭으로 늘어나 펄스 링이 카드 폭 전체에 그려진다(티켓 20260928_2137).
-const CTA_ROW_PULSE_CLASS = `${CTA_ROW_CLASS} self-start rounded-[var(--radius-pill)] jam-quest-pulse`
+const CTA_ROW_PULSE_CLASS = `${CTA_ROW_CLASS} self-start rounded-full jam-quest-pulse`
 const CHIP_ROW_CLASS = 'flex items-center justify-between'
-// ProgressBar.jsx의 fraction 라벨 인라인 스타일(fontSize: var(--text-small); fontWeight:700;
-// color: var(--color-primary))을 그대로 복제한 클래스 — 새 토큰이 아니라 배치만 칩 줄로 옮긴다.
-const PROGRESS_LABEL_CLASS = 'text-[length:var(--text-small)] font-bold text-primary [font-variant-numeric:tabular-nums]'
-const TITLE_CLASS = 'text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold break-words [overflow-wrap:anywhere]'
-const DESC_CLASS = 'text-[length:var(--text-small)] text-text-secondary break-words [overflow-wrap:anywhere]'
+// ProgressBar.jsx의 fraction 라벨 인라인 스타일(fontSize: var(--text-sm); fontWeight:700;
+// color: var(--link))을 그대로 복제한 클래스 — 새 토큰이 아니라 배치만 칩 줄로 옮긴다.
+const PROGRESS_LABEL_CLASS = 'text-sm font-bold text-link [font-variant-numeric:tabular-nums]'
+const TITLE_CLASS = 'text-base font-bold break-words [overflow-wrap:anywhere]'
+const DESC_CLASS = 'text-sm text-muted break-words [overflow-wrap:anywhere]'
 
 function Chip() {
   return <LabelChip className="self-start">{d.onboardingQuest.chipLabel}</LabelChip>
@@ -84,7 +84,7 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
           </span>
         </div>
         <ProgressBar current={state.done} total={state.total} labelType="none" />
-        <div className="flex flex-col gap-[var(--spacing-8)]">
+        <div className="flex flex-col gap-2">
           <p className={TITLE_CLASS}>{step.title}</p>
           <p className={DESC_CLASS}>{step.description}</p>
         </div>
@@ -104,7 +104,7 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
     // 2026-09-28). 표시 방식만 다른 같은 컴포넌트를 재사용한다.
     if (state.nextStep === 'sync') {
       return (
-        <div className="flex flex-col gap-[var(--spacing-8)]">
+        <div className="flex flex-col gap-2">
           {startTracker}
           <Card tone="inverse" className={CARD_CLASS}>
             {body}
@@ -119,7 +119,7 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
 
     const screen = STEP_SCREEN_MAP[state.nextStep]
     return (
-      <div className="flex flex-col gap-[var(--spacing-8)]">
+      <div className="flex flex-col gap-2">
         <Card tone="inverse" className={CARD_CLASS}>
           {body}
           <div className={CTA_ROW_PULSE_CLASS}>
@@ -154,7 +154,7 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
           total={ONBOARDING_QUEST_STEPS.length}
           labelType="none"
         />
-        <div className="flex flex-col gap-[var(--spacing-8)]">
+        <div className="flex flex-col gap-2">
           <p className={TITLE_CLASS}>{d.onboardingQuest.lastStep.title}</p>
           <p className={DESC_CLASS}>{d.onboardingQuest.lastStep.description}</p>
         </div>
@@ -179,11 +179,11 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
   return (
     <Card tone="inverse" className={CARD_CLASS}>
       <Chip />
-      <div className="flex items-start gap-[var(--spacing-8)]">
-        <span className="text-text-inverse/60 shrink-0">
+      <div className="flex items-start gap-2">
+        <span className="text-snow/60 shrink-0">
           <HourglassIcon className="w-6 h-6" />
         </span>
-        <div className="flex flex-col gap-[var(--spacing-8)]">
+        <div className="flex flex-col gap-2">
           <p className={TITLE_CLASS}>{copy.title}</p>
           <p className={DESC_CLASS}>{copy.description}</p>
         </div>

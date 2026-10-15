@@ -7,7 +7,7 @@ export type ProgressBarLabelPosition = 'inline' | 'top';
  */
 export type ProgressBarFillMode = 'solid' | 'track-gradient';
 
-/** 트랙 기준 그라데이션 기본값 — `--status-short-solid`(채우는 중) → `--status-done-solid`(다 채움) */
+/** 트랙 기준 그라데이션 기본값 — `--progress-short`(채우는 중) → `--progress-done`(다 채움) */
 export const PROGRESS_TRACK_GRADIENT: string;
 
 export interface ProgressBarProps {
@@ -23,11 +23,11 @@ export interface ProgressBarProps {
   labelPosition?: ProgressBarLabelPosition;
   /** 바 높이(px 또는 CSS 단위 문자열). 기본 8 */
   height?: number | string;
-  /** 필 색상. 기본 var(--color-primary). 그라데이션 문자열도 허용(순위별 그라데이션 등) */
+  /** 필 색상. 기본 var(--link). 그라데이션 문자열도 허용(순위별 그라데이션 등) */
   color?: string;
-  /** 트랙(배경) 색상. 기본 var(--color-border) */
+  /** 트랙(배경) 색상. 기본 var(--border) */
   trackColor?: string;
-  /** 바/트랙 모서리 radius(CSS 단위 문자열). 기본 var(--radius-pill) */
+  /** 바/트랙 모서리 radius(CSS 단위 문자열). 기본 var(--radius-full) */
   radius?: string;
   /** 필 그리기 방식. 기본 'solid'(기존 동작). 'track-gradient'면 `color`는 무시된다 */
   fillMode?: ProgressBarFillMode;

@@ -51,12 +51,12 @@ function ListTiles({ view }: { view: ListCardView }) {
 
       {/* 타일 0개는 `toCardView`가 `brief`로 바꿔 여기까지 오지 않는다. 직접 만든 표시 데이터가 0개로 오면 타일 줄만 그리지 않는다 */}
       {view.tiles.length > 0 && (
-        <div className="-mx-[var(--spacing-24)] overflow-x-auto px-[var(--spacing-24)]">
-          <ul className="flex w-max gap-[var(--spacing-8)]">
+        <div className="-mx-6 overflow-x-auto px-6">
+          <ul className="flex w-max gap-2">
             {view.tiles.map((tile, index) => (
               <li key={index} className="w-16 shrink-0">
                 <CardThumb view={view} src={tile.imageUrl} dimmed={tile.earned === false} />
-                <p className="mt-[var(--spacing-4)] text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-text-inverse/60 text-center line-clamp-2 break-keep break-words">
+                <p className="mt-1 text-xs text-snow/60 text-center line-clamp-2 break-keep break-words">
                   {tile.name}
                 </p>
               </li>
@@ -80,7 +80,7 @@ function RankingRows({ ranking, live, currentUserId }: { ranking: RankingBoardRe
     })
 
   return (
-    <div className="flex flex-col gap-[var(--spacing-8)]">
+    <div className="flex flex-col gap-2">
       {ranking.entries.map((entry) => (
         <RankingListRow
           key={entry.userId}
@@ -100,7 +100,7 @@ function ListRanking({ view, currentUserId }: { view: ListCardView; currentUserI
   const titleHref = live && ranking?.metricType === 'mission_progress' ? href : undefined
   // 제목 영역 안쪽도 그룹 간격(12px)이 이어져야 해서 링크 안에 같은 세로 flex 칸을 둔다
   const head = (
-    <div className="flex flex-col gap-[var(--spacing-12)]">
+    <div className="flex flex-col gap-3">
       <ListHead view={view} />
     </div>
   )
@@ -113,7 +113,7 @@ function ListRanking({ view, currentUserId }: { view: ListCardView; currentUserI
         <RankingRows ranking={ranking} live={live} currentUserId={currentUserId} />
       ) : (
         // 순위를 못 읽은 경우와 아직 없는 경우를 구분하지 않는다. 그림·아이콘 없이 왼쪽 정렬 글자뿐이다
-        <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse/60">{d.todayCard.rankingEmpty}</p>
+        <p className="text-base text-snow/60">{d.todayCard.rankingEmpty}</p>
       )}
     </CardBody>
   )

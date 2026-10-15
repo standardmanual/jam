@@ -8,7 +8,7 @@ import React from 'react';
  * v2 changes:
  *   - CDN icon replaced with inline SVG (no network dependency)
  *   - label default '' removed — label is now required to prevent empty aria-label
- *   - deprecated --color-white → --color-bg-inverse
+ *   - deprecated --color-white → --background-inverse
  *   - press feedback via global CSS button:active (styles.css), JS handlers removed
  *
  * v3 changes (20260821_004):
@@ -46,7 +46,7 @@ export function IconButton({ icon = 'chevron-left', label, onClick, surface = 'l
     console.warn('[DS] IconButton: `label` prop이 없습니다. 스크린리더 사용자가 이 버튼의 역할을 알 수 없습니다.');
   }
 
-  const color = surface === 'dark' ? 'var(--color-bg-inverse)' : 'var(--color-text)';
+  const color = surface === 'dark' ? 'var(--background-inverse)' : 'var(--foreground)';
   const path = ICON_PATHS[icon] ?? ICON_PATHS['chevron-left'];
 
   return (
@@ -56,7 +56,7 @@ export function IconButton({ icon = 'chevron-left', label, onClick, surface = 'l
       onClick={onClick}
       style={{
         width: 44, height: 44,
-        borderRadius: 'var(--radius-pill)',
+        borderRadius: 'var(--radius-full)',
         border: 'none', background: 'transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         cursor: disabled ? 'not-allowed' : 'pointer', color,

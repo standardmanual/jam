@@ -93,10 +93,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const results = hasQuery ? await searchUsers(query) : []
 
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       <TopNav title={d.common.back} />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
+      <div className="px-4 pt-6 pb-8 flex flex-col gap-6">
         {/* 재검색 */}
         <UserSearchBar defaultValue={q ?? ''} size="compact" />
 
@@ -114,8 +114,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             description={d.search.emptyBody}
           />
         ) : (
-          <section className="flex flex-col gap-[var(--spacing-8)]">
-            <p className="text-text/50 text-[length:var(--text-caption)] px-1">{t(d.search.resultCount, { count: results.length })}</p>
+          <section className="flex flex-col gap-2">
+            <p className="text-foreground/50 text-xs px-1">{t(d.search.resultCount, { count: results.length })}</p>
             {results.map((u) => {
               const displayName = getDisplayName(u)
               return (
@@ -127,12 +127,12 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                       <Image src={u.avatar_url} alt={displayName} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center">
-                        <UserIcon className="w-5 h-5 text-text/50" />
+                        <UserIcon className="w-5 h-5 text-foreground/50" />
                       </div>
                     )
                   }
                   title={displayName}
-                  trailing={<ChevronRightIcon className="w-4 h-4 text-text/40" />}
+                  trailing={<ChevronRightIcon className="w-4 h-4 text-foreground/40" />}
                 />
               )
             })}

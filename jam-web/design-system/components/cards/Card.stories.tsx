@@ -44,16 +44,16 @@ export const AllTones: Story = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 320 }}>
       <Card tone="default">
-        <p style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>default</p>
-        <p style={{ margin: '4px 0 0', color: 'var(--color-text)' }}>배경: --color-surface-elevated (20260816_012 — 보더 제거로 대체)</p>
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>default</p>
+        <p style={{ margin: '4px 0 0', color: 'var(--foreground)' }}>배경: --surface (20260816_012 — 보더 제거로 대체)</p>
       </Card>
       <Card tone="tint">
-        <p style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>tint</p>
-        <p style={{ margin: '4px 0 0', color: 'var(--color-text)' }}>배경: --color-bg-tint</p>
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>tint</p>
+        <p style={{ margin: '4px 0 0', color: 'var(--foreground)' }}>배경: --background-secondary</p>
       </Card>
       <Card tone="inverse">
-        <p style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>inverse</p>
-        <p style={{ margin: '4px 0 0', color: 'var(--color-text-inverse)' }}>배경: --color-surface-inverse</p>
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>inverse</p>
+        <p style={{ margin: '4px 0 0', color: 'var(--snow)' }}>배경: --background-inverse</p>
       </Card>
     </div>
   ),
@@ -65,13 +65,13 @@ export const WithContent: Story = {
     <div style={{ width: 320 }}>
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <p style={{ margin: 0, fontSize: 'var(--text-h4)', fontWeight: 700, color: 'var(--color-text)' }}>
+          <p style={{ margin: 0, fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--foreground)' }}>
             오늘의 미션
           </p>
-          <p style={{ margin: 0, fontSize: 'var(--text-body)', color: 'var(--color-text-secondary)', lineHeight: 'var(--leading-body)' }}>
+          <p style={{ margin: 0, fontSize: 'var(--text-base)', color: 'var(--muted)', lineHeight: 'var(--text-base--line-height)' }}>
             5km 달리기를 완료하면 배지를 획득해요.
           </p>
-          <p style={{ margin: 0, fontSize: 'var(--text-caption)', color: 'var(--color-primary)' }}>진행 중 • 3.2 / 5.0 km</p>
+          <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--link)' }}>진행 중 • 3.2 / 5.0 km</p>
         </div>
       </Card>
     </div>

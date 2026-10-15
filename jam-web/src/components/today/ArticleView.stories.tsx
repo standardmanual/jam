@@ -45,14 +45,14 @@ const FULL: ArticleViewData = {
 }
 
 const STACK_STYLE: CSSProperties = { display: 'flex', gap: 'var(--spacing-32)', flexWrap: 'wrap', alignItems: 'flex-start' }
-const CAPTION_STYLE: CSSProperties = { margin: '0 0 var(--spacing-8)', fontSize: 'var(--text-caption)', color: 'rgba(255,255,255,0.6)' }
+const CAPTION_STYLE: CSSProperties = { margin: '0 0 var(--spacing-8)', fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.6)' }
 
-/** 화면 전체 폭 프레임. 앱 화면처럼 폭이 고정되고 배경은 앱 배경(`--color-bg`)이다. */
+/** 화면 전체 폭 프레임. 앱 화면처럼 폭이 고정되고 배경은 앱 배경(`--background`)이다. */
 function Frame({ width, caption, children }: { width: number; caption?: string; children: ReactNode }) {
   return (
     <div style={{ width }}>
       {caption && <p style={CAPTION_STYLE}>{caption}</p>}
-      <div data-frame style={{ width, background: 'var(--color-bg)' }}>
+      <div data-frame style={{ width, background: 'var(--background)' }}>
         {children}
       </div>
     </div>

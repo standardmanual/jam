@@ -14,15 +14,15 @@ import ListCard from '../ListCard'
 import SquareCard from '../SquareCard'
 import type { CardResource, ImageCardView, ListCardView } from '@/lib/today/cardView'
 
-const BODY_OPEN = '<div class="flex flex-col gap-[var(--spacing-12)] p-[var(--spacing-24)]">'
+const BODY_OPEN = '<div class="flex flex-col gap-3 p-6">'
 const H3_CLASS =
-  'text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text-inverse line-clamp-2 break-keep break-words'
+  'text-2xl text-snow line-clamp-2 break-keep break-words'
 const SUBTITLE_CLASS =
-  'mt-[var(--spacing-4)] text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse/60 line-clamp-2 break-keep break-words'
+  'mt-1 text-base text-snow/60 line-clamp-2 break-keep break-words'
 const FACT_CLASS =
-  'text-[length:var(--text-small)] leading-[var(--leading-small)] font-bold text-text-inverse break-keep break-words'
+  'text-sm font-bold text-snow break-keep break-words'
 const DESCRIPTION_CLASS =
-  'text-[length:var(--text-small)] leading-[var(--leading-small)] text-text-inverse/60 line-clamp-2 break-keep break-words'
+  'text-sm text-snow/60 line-clamp-2 break-keep break-words'
 
 describe('CardBody — 본문 칸', () => {
   it('안쪽 여백 24px, 그룹 사이 간격 12px의 세로 flex 칸이다', () => {
@@ -31,7 +31,7 @@ describe('CardBody — 본문 칸', () => {
 })
 
 describe('CardTitleGroup — 제목과 요약', () => {
-  it('제목은 h3, 24px(--text-subheading)·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
+  it('제목은 h3, 24px(--text-2xl)·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
     const html = renderToStaticMarkup(<CardTitleGroup title="한강 러닝 챌린지" />)
     expect(html).toBe(`<div><h3 class="${H3_CLASS}">한강 러닝 챌린지</h3></div>`)
     expect(html).not.toMatch(/font-(bold|semibold|medium)/)
@@ -51,7 +51,7 @@ describe('CardTitleGroup — 제목과 요약', () => {
 })
 
 describe('CardFacts — 필수 정보', () => {
-  it('한 줄에 하나씩 14px(--text-small) 굵게 text-text-inverse이고 말줄임 없이 줄바꿈한다', () => {
+  it('한 줄에 하나씩 14px(--text-sm) 굵게 text-snow이고 말줄임 없이 줄바꿈한다', () => {
     const html = renderToStaticMarkup(<CardFacts facts={['기간 상시', '보상 300 포인트']} />)
     expect(html).toBe(`<div><p class="${FACT_CLASS}">기간 상시</p><p class="${FACT_CLASS}">보상 300 포인트</p></div>`)
     for (const needle of ['/60', 'line-clamp', 'truncate', 'body-sm']) expect(html).not.toContain(needle)
@@ -79,7 +79,7 @@ describe('CardDescription — 설명문', () => {
 describe('CardEndLine — 끝 줄', () => {
   it('라벨은 호출부가 주고 12px·/60이며 화살표는 aria-hidden이다', () => {
     expect(renderToStaticMarkup(<CardEndLine label="전체 보기" />)).toBe(
-      '<p class="text-[length:var(--text-caption)] text-text-inverse/60">전체 보기 <span aria-hidden="true">→</span></p>',
+      '<p class="text-xs text-snow/60">전체 보기 <span aria-hidden="true">→</span></p>',
     )
   })
 })

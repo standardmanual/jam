@@ -14,8 +14,8 @@ import CardImageSlot from './CardImageSlot'
  * - 안쪽 여백은 `Card`가 인라인 `style`(`padding: var(--layout-card-padding)`)로 주기 때문에 클래스(`p-*`)로는 덮이지 않는다. 이미지가 카드 모서리까지
  *   닿아야 해서 같은 인라인 `style`로 0을 주고, 본문 24px은 본문 칸이 가진다. 이미지 모서리는 `Card`의 `overflow-hidden`이 자른다.
  * - 눌림·hover를 안쪽에 더하지 않는다(`CardFrame`의 링크가 가진 `.jam-press` 하나뿐이다). `overflow-hidden`은 `Card`에만 걸어 포커스 윤곽선이 잘리지 않게 한다.
- * - `--text-body-sm`은 서비스에서 14px이 아니라 16px이다. 필수 정보·설명문 14px은 `--text-small`이다.
- * - 옅은 글자는 `text-text-inverse/60` 한 단계로 통일한다(흰 면 위 AA 이상). `/30`·`/40`은 쓰지 않는다.
+ * - `--text-base`은 서비스에서 14px이 아니라 16px이다. 필수 정보·설명문 14px은 `--text-sm`이다.
+ * - 옅은 글자는 `text-snow/60` 한 단계로 통일한다(흰 면 위 AA 이상). `/30`·`/40`은 쓰지 않는다.
  * - 이미지 위에는 아무것도 얹지 않는다(칩·그림자·어두운 막 없음). 칩 줄은 이미지 아래 흰 본문의 첫 줄이다.
  * - 본문 칸·제목 그룹·필수 정보·설명문·끝 줄은 `SquareCard`·`ListCard`와 공용 조각이다(`CardBody.tsx`, 티켓 20261001_2104 — 셋째 소비자가 생겨 공용으로 뺐다).
  *   `titleInImage`로 제목 그룹을 빼는 판단은 이 파일에 둔다(이미지 모양만의 규칙이다).

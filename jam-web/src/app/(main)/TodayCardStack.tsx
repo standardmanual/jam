@@ -23,12 +23,12 @@ export default function TodayCardStack({
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-[var(--spacing-16)]">
-        <h2 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">{d.today.cardStackTitle}</h2>
-        <span className="text-[length:var(--text-caption)] text-text-inverse/40">{d.today.cardStackSubtitle}</span>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-3xl">{d.today.cardStackTitle}</h2>
+        <span className="text-xs text-snow/40">{d.today.cardStackSubtitle}</span>
       </div>
 
-      <div className="flex flex-col gap-[var(--spacing-16)]">
+      <div className="flex flex-col gap-4">
         {cards.map((card) => (
           <TodayCard key={card.id} view={toCardView(card, { tracking: true })} currentUserId={currentUserId} />
         ))}

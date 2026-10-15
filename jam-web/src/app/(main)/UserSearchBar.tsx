@@ -32,18 +32,18 @@ export default function UserSearchBar({ defaultValue = '', size = 'default' }: U
   return (
     <form
       onSubmit={handleSubmit}
-      className={`flex items-center gap-2 rounded-[var(--radius-cards)] bg-surface-inverse ${
-        isCompact ? 'p-[var(--spacing-4)]' : 'p-[var(--spacing-8)]'
+      className={`flex items-center gap-2 rounded-2xl bg-background-inverse ${
+        isCompact ? 'p-1' : 'p-2'
       }`}
     >
-      <SearchIcon className="w-5 h-5 shrink-0 ml-2 text-text-inverse/40" />
+      <SearchIcon className="w-5 h-5 shrink-0 ml-2 text-snow/40" />
       <input
         type="text"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder={d.today.searchPlaceholder}
         aria-label={d.today.searchAriaLabel}
-        className={`flex-1 min-w-0 bg-transparent px-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse placeholder:text-text-inverse/40 focus:outline-none ${
+        className={`flex-1 min-w-0 bg-transparent px-1 text-base text-snow placeholder:text-snow/40 focus:outline-none ${
           isCompact ? 'py-1' : 'py-2'
         }`}
       />

@@ -54,7 +54,7 @@ const render = (view: BriefCardView, link?: boolean) =>
   )
 
 const LINK_CLASS_ATTR =
-  'class="block rounded-[var(--radius-cards)] jam-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)]"'
+  'class="block rounded-2xl jam-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--link)]"'
 
 describe('CardFrame — 계측 정보(tracking)가 없으면 안쪽만 그린다(미리보기)', () => {
   it('href가 있어도 트래커·링크·눌림·포커스 윤곽선이 모두 없다', () => {
@@ -94,8 +94,8 @@ describe('CardFrame — tracking과 href가 모두 있으면 트래커 안에 �
     expect(html.match(/jam-press/g)).toHaveLength(1)
   })
 
-  it('홈에서 색이 비는 Tailwind outline-primary를 쓰지 않고, 링크에 aria-label을 달지 않는다', () => {
-    expect(html).not.toContain('outline-primary')
+  it('홈에서 색이 비는 Tailwind outline-link를 쓰지 않고, 링크에 aria-label을 달지 않는다', () => {
+    expect(html).not.toContain('outline-link')
     expect(html).not.toContain('aria-label')
   })
 })

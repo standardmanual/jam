@@ -27,13 +27,13 @@ const meta: Meta<typeof BadgeLevelGauge> = {
           '배지 이름이 지표를 말하고(“걸어온 거리”) 값 행이 조건을 말한다. 값 행 그리드 ' +
           '`[5ch][auto][1fr][auto]`의 요점은 **현재값 5ch 우측 정렬** — 자릿수가 달라도 `/` ' +
           '구분자가 세로로 정렬된다. 진행 바는 `ProgressBar fillMode="track-gradient"`. ' +
-          '20260906_1436: 진행 중(미완료) 현재값 색이 옐로우(--status-short-solid)에서 ' +
-          '화이트(--color-text)로 바뀌었다 — 진행 바 채움색은 그대로 옐로우다. ' +
+          '20260906_1436: 진행 중(미완료) 현재값 색이 옐로우(--progress-short)에서 ' +
+          '화이트(--foreground)로 바뀌었다 — 진행 바 채움색은 그대로 옐로우다. ' +
           '20260906_2140(v2): 헤더를 공유 부품 `BadgeFamilyCardHeader`로 올렸다 — 예전에는 ' +
           '이름이 썸네일(44)+갭(12)+칩(52) 뒤 **88px**에서 시작해 레일 카드(32px)와 어긋나 ' +
           '있었다. 이제 이름은 **카드 왼쪽 패딩 엣지**에서 시작하고, 레벨은 헤더 우측 진행률 ' +
           '본문 `BadgeLevelChip`(size="md")이 레벨을 말하고 헤더 우측은 퍼센트 숫자만 둔다. 본문은 ' +
-          '`[52px 썸네일][값 행 + 10px 바]`, 현재값 --text-body-l, 이미지는 여백 없이 프레임을 ' +
+          '`[52px 썸네일][값 행 + 10px 바]`, 현재값 --text-xl, 이미지는 여백 없이 프레임을 ' +
           '꽉 채운다(objectFit: cover).',
       },
     },
@@ -168,9 +168,9 @@ export const SlashAlignment: Story = {
 };
 
 /**
- * 회귀 고정(20260906_1436 §3) — 진행 중(미완료)인 현재값은 화이트(--color-text)다.
- * 예전엔 옐로우(--status-short-solid)였는데 눈에 거슬린다는 지적으로 텍스트 색만 바꿨다.
- * 진행 바 채움색(ProgressBar의 --status-short-solid → --status-done-solid 그라데이션)은
+ * 회귀 고정(20260906_1436 §3) — 진행 중(미완료)인 현재값은 화이트(--foreground)다.
+ * 예전엔 옐로우(--progress-short)였는데 눈에 거슬린다는 지적으로 텍스트 색만 바꿨다.
+ * 진행 바 채움색(ProgressBar의 --progress-short → --progress-done 그라데이션)은
  * 그대로다 — 이 스토리에서는 값 텍스트 색만 검증한다.
  */
 export const InProgressValueIsWhite: Story = {
@@ -186,13 +186,13 @@ export const InProgressValueIsWhite: Story = {
     const gauge = canvasElement.querySelector('[data-testid="gauge"]')!;
     const current = Array.from(gauge.querySelectorAll('span')).find((el) => el.textContent === '52.4') as HTMLElement;
     expect(current).toBeTruthy();
-    // --color-text(#ffffff) → rgb(255, 255, 255). 옐로우(#f2cb00)가 아니어야 한다.
+    // --foreground(#ffffff) → rgb(255, 255, 255). 옐로우(#f2cb00)가 아니어야 한다.
     expect(getComputedStyle(current).color).toBe('rgb(255, 255, 255)');
   },
 };
 
 export const Complete: Story = {
-  name: '다 채움 — 현재값이 라임(--status-done-solid)으로 바뀐다',
+  name: '다 채움 — 현재값이 라임(--progress-done)으로 바뀐다',
   render: () => (
     <Frame>
       <BadgeLevelGauge name="걸은 날들" level={4} current="40" next="40일" left="달성" fraction={1} />
@@ -305,7 +305,7 @@ export const GrayscaleNextLevel: Story = {
  */
 export const LevelChipAlwaysLeads: Story = {
   render: () => (
-    <div style={{ background: 'var(--color-surface)', padding: 'var(--spacing-16)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>
+    <div style={{ background: 'var(--background)', padding: 'var(--spacing-16)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>
       {/* 아직 아무것도 못 받음 — nextLevel로 폴백 */}
       <BadgeLevelGauge name="걸어온 거리" level={null} nextLevel={1} current="0.0" next="5km" left="5km 남음" fraction={0} metaText="다음 Lv.1" />
       {/* 받은 게 있음 — 현재 레벨 */}
@@ -330,7 +330,7 @@ export const LevelChipAlwaysLeads: Story = {
  */
 export const ValueRowMatchesStampRowRhythm: Story = {
   render: () => (
-    <div style={{ background: 'var(--color-surface)', padding: 'var(--spacing-16)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>
+    <div style={{ background: 'var(--background)', padding: 'var(--spacing-16)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>
       <BadgeLevelGauge name="자기 초월" level={null} nextLevel={1} current={0} next="1회" left="1회 남음" fraction={0} metaText="다음 Lv.1" imageUrl={WALK_ICON} />
       <BadgeLevelGauge name="걸어온 거리" level={7} nextLevel={8} current="120" next="150km" left="30km 남음" fraction={0.8} metaText="다음 Lv.8" imageUrl={WALK_ICON} />
     </div>

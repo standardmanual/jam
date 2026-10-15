@@ -46,7 +46,7 @@ export interface RankingListRowProps {
 export default function RankingListRow({ entry, maxValue, isMe, formatValue }: RankingListRowProps) {
   const fillRatio = maxValue > 0 ? Math.min(1, entry.value / maxValue) : 0
   // 내 순위 행만 h4 토큰(24px)으로 확대 강조, 그 외에는 small 토큰(14px) 그대로
-  const emphasisFontSize = isMe ? 'var(--text-h4)' : 'var(--text-small)'
+  const emphasisFontSize = isMe ? 'var(--text-2xl)' : 'var(--text-sm)'
 
   return (
     <ListRowCard
@@ -58,7 +58,7 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue }: R
             style={{
               fontSize: emphasisFontSize,
               fontWeight: 'bold',
-              color: isMe ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+              color: isMe ? 'var(--link)' : 'var(--muted)',
               width: 20,
               textAlign: 'center',
             }}
@@ -71,7 +71,7 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue }: R
               width: 36,
               height: 36,
               borderRadius: '50%',
-              backgroundColor: 'var(--color-border)',
+              backgroundColor: 'var(--border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -88,7 +88,7 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue }: R
         </div>
       }
       trailing={
-        <span style={{ fontSize: emphasisFontSize, fontWeight: 'bold', color: isMe ? 'var(--color-primary)' : 'var(--color-text)' }}>
+        <span style={{ fontSize: emphasisFontSize, fontWeight: 'bold', color: isMe ? 'var(--link)' : 'var(--foreground)' }}>
           {formatValue(entry.value)}
         </span>
       }
@@ -96,7 +96,7 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue }: R
       <div className="flex flex-col gap-2">
         <p
           className="m-0 truncate"
-          style={{ fontSize: 'var(--text-small)', fontWeight: isMe ? 'bold' : 'normal', color: 'var(--color-text)' }}
+          style={{ fontSize: 'var(--text-sm)', fontWeight: isMe ? 'bold' : 'normal', color: 'var(--foreground)' }}
         >
           {entry.displayName}
         </p>
@@ -104,8 +104,8 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue }: R
           percent={fillRatio * 100}
           labelType="none"
           height={6}
-          color="var(--color-primary)"
-          trackColor="var(--color-border)"
+          color="var(--link)"
+          trackColor="var(--border)"
           radius="3px"
         />
       </div>

@@ -22,7 +22,7 @@ import React from 'react';
  */
 const SIZES = {
   sm: { fontSize: '8px', padding: '4px 0' },
-  md: { fontSize: 'var(--text-micro)', padding: '5px 0' },
+  md: { fontSize: 'var(--text-xs)', padding: '5px 0' },
 };
 
 export function BadgeLevelChip({ level, size = 'sm', width = 52, className = '', style = {} }) {
@@ -33,10 +33,10 @@ export function BadgeLevelChip({ level, size = 'sm', width = 52, className = '',
       className={className}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        width, padding: s.padding, borderRadius: 'var(--radius-pill)',
+        width, padding: s.padding, borderRadius: 'var(--radius-full)',
         fontSize: s.fontSize, lineHeight: 1, fontWeight: 700,
         letterSpacing: '0.3px', fontVariantNumeric: 'tabular-nums',
-        color: 'var(--color-text-on-primary)', background: 'var(--color-secondary)',
+        color: 'var(--accent-foreground)', background: 'var(--color-secondary)',
         ...style,
       }}
     >

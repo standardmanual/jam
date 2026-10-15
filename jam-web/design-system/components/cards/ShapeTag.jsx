@@ -1,8 +1,8 @@
 import React from 'react';
 
 const SHAPES = {
-  rect:     { clipPath: 'none', borderRadius: 'var(--radius-input)' },
-  pill:     { clipPath: 'none', borderRadius: 'var(--radius-pill)' },
+  rect:     { clipPath: 'none', borderRadius: 'var(--field-radius)' },
+  pill:     { clipPath: 'none', borderRadius: 'var(--radius-full)' },
   circle:   { clipPath: 'none', borderRadius: '50%' },
   dome:     { clipPath: 'none', borderRadius: '50% 50% 0 0' },
   triangle: { clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)', borderRadius: 0 },
@@ -35,7 +35,7 @@ export function ShapeTag({
 }) {
   const s = SHAPES[shape] ?? SHAPES.rect;
   const bg = color ?? TAG_COLORS[colorIndex % TAG_COLORS.length];
-  const textColor = surface === 'dark' ? 'var(--color-text)' : 'var(--color-text-inverse)';
+  const textColor = surface === 'dark' ? 'var(--foreground)' : 'var(--snow)';
 
   return (
     <div
@@ -43,9 +43,8 @@ export function ShapeTag({
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         background: bg, color: textColor,
-        fontSize: 'var(--text-caption)', fontWeight: 700,
+        fontSize: 'var(--text-xs)', fontWeight: 700,
         textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.15,
-        letterSpacing: 'var(--tracking-label)',
         padding: shape === 'triangle'
           ? '18px 10px 6px'
           : (shape === 'flag' || shape === 'hex') ? '10px 20px' : '10px 16px',

@@ -18,7 +18,7 @@ import TodayCard from './TodayCard'
  *   12개든 같다), 328px 폭 행형 값이 가득 찬 카드(요약·설명문·순위 3행) 407.2px(순위 행 하나당 76px = 행 68px + 간격 8px, 1행 255.2px · 5행 559.2px · 10행 939.2px).
  *   최악 조합(긴 제목·요약·필수 정보·설명문)은 타일형 288px 폭 466px · 328px 폭 446px · 398px 폭 426px, 행형 10행 288px 폭 1086.5px · 328px 폭 1066.4px · 398px 폭 1046.4px.
  *   나머지 값은 각 Story 캡션에 적었다. 같은 폭에서 타일형과 행형 모두 높이가 타일 수·링크 유무와 무관하다.
- * - 캔버스는 기본 검정이다. 흰 카드는 검정 위에서만 실제 모습이 나온다. 순위 행은 어두운 면(`bg-surface-elevated`)이라 흰 카드 위에서 검정 캔버스와 같은 계열로 보인다.
+ * - 캔버스는 기본 검정이다. 흰 카드는 검정 위에서만 실제 모습이 나온다. 순위 행은 어두운 면(`bg-surface`)이라 흰 카드 위에서 검정 캔버스와 같은 계열로 보인다.
  * - Storybook은 `design-system/styles.css`를 import하므로 전역 `*:focus-visible` 윤곽선이 서비스에 없어도 보인다. 그래서 Story에서 윤곽선이 보인다는 것은 서비스 증거가 아니다 —
  *   클래스 단언(`__tests__/CardFrame.test.tsx`)이 보증한다. 아래 `play`는 높이·가로 넘침·링크 수 같은 계산 스타일을 눈으로 확인할 때 쓰는 보조 단언이고 CI에서 실행되지 않는다
  *   (vitest의 addon-vitest 연동 제거, `vitest.config.ts` 머리말).
@@ -118,10 +118,10 @@ const live = (view: ListCardView): ListCardView => ({ ...view, tracking: view.re
 // ─── 배치 도우미 ───────────────────────────────────────────────────────────
 
 const STACK_STYLE: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }
-const CAPTION_STYLE: CSSProperties = { margin: '0 0 var(--spacing-4)', fontSize: 'var(--text-caption)', color: 'rgba(255,255,255,0.6)' }
+const CAPTION_STYLE: CSSProperties = { margin: '0 0 var(--spacing-4)', fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.6)' }
 const ROW_STYLE: CSSProperties = { display: 'flex', gap: 'var(--spacing-32)', flexWrap: 'wrap', alignItems: 'flex-start' }
 
-/** 고정 폭 열. 카드 사이 간격은 `TodayCardStack`의 `gap-[var(--spacing-16)]`과 같다 */
+/** 고정 폭 열. 카드 사이 간격은 `TodayCardStack`의 `gap-4`과 같다 */
 function Column({ width, children }: { width: number; children: ReactNode }) {
   return <div style={{ ...STACK_STYLE, width }}>{children}</div>
 }
@@ -632,7 +632,7 @@ export const RankingMe: Story = {
   ),
   play: async ({ canvasElement }) => {
     const emphasized = (card: HTMLElement) =>
-      Array.from(card.querySelectorAll<HTMLElement>('span')).filter((span) => span.style.fontSize === 'var(--text-h4)')
+      Array.from(card.querySelectorAll<HTMLElement>('span')).filter((span) => span.style.fontSize === 'var(--text-2xl)')
     const [first, middle, last, absent] = cardsOf(canvasElement)
     for (const card of [first, middle, last]) expect(emphasized(card)).toHaveLength(2)
     expect(emphasized(first).map((s) => s.textContent)).toContain('1')
@@ -741,7 +741,7 @@ export const RankingEmpty: Story = {
 
 // ─── 5. 계측 있음 · 없음 ───────────────────────────────────────────────────
 
-/** 타일형은 카드 전체가 링크 하나다. 눌림(`.jam-press`)·키보드 포커스 윤곽선(2px·오프셋 2px·`--color-primary`)을 가진다. */
+/** 타일형은 카드 전체가 링크 하나다. 눌림(`.jam-press`)·키보드 포커스 윤곽선(2px·오프셋 2px·`--link`)을 가진다. */
 export const TilesTracked: Story = {
   name: '타일형 계측 있음 — 카드 전체가 링크 하나 · 눌림 · 포커스(Tab 키로 확인)',
   beforeEach: sendBeaconOff,
@@ -787,7 +787,7 @@ export const Untracked: Story = {
     const [tilesCard, rankingCardEl] = cardsOf(canvasElement)
     expect(scrolls(tilesCard)).toBe(true)
     expect(tilesCard.textContent).toContain(d.today.cardViewAll)
-    for (const span of Array.from(rankingCardEl.querySelectorAll<HTMLElement>('span'))) expect(span.style.fontSize).not.toBe('var(--text-h4)')
+    for (const span of Array.from(rankingCardEl.querySelectorAll<HTMLElement>('span'))) expect(span.style.fontSize).not.toBe('var(--text-2xl)')
     expect(rankingCardEl.textContent).not.toContain(d.today.cardViewAll)
   },
 }

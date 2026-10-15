@@ -137,11 +137,11 @@ export const WithChildren: Story = {
         style={{
           marginTop: 'var(--spacing-8)',
           padding: '4px 12px',
-          fontSize: 'var(--text-small)',
-          background: 'var(--color-primary)',
-          color: 'var(--color-text-inverse)',
+          fontSize: 'var(--text-sm)',
+          background: 'var(--accent)',
+          color: 'var(--snow)',
           border: 'none',
-          borderRadius: 'var(--radius-pill)',
+          borderRadius: 'var(--radius-full)',
           cursor: 'pointer',
         }}
       >
@@ -183,7 +183,7 @@ export const Interactive: Story = {
     const [selected, setSelected] = useState<number | null>(null);
     return (
       <div>
-        <p style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-12)', textAlign: 'center' }}>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', marginBottom: 'var(--spacing-12)', textAlign: 'center' }}>
           {selected != null ? `"${items.find(i => i.id === selected)?.name}" 선택됨` : '배지를 선택해 보세요'}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 120px)', gap: 'var(--spacing-8)' }}>

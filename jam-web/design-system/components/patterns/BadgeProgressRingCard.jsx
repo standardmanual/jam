@@ -16,7 +16,7 @@ import { progressRampColor } from './BadgeFamilyCardHeader.jsx';
  *
  * ## 설계 제약 (모두 사용자 확정)
  *
- * 1. **테두리는 진행 채널 하나로만 채운다** — `--status-progress-near` → `--status-progress-done`
+ * 1. **테두리는 진행 채널 하나로만 채운다** — `--progress-short` → `--progress-done`
  *    스윕. **등급색은 올리지 않는다.** 등급은 이름 아래 `RarityBadge` 칩에 남긴다
  *    (같은 물체 위에서 등급색과 진행색이 섞이면 "초록이 등급인지 완료인지" 구분이 없어진다).
  * 2. **수치 캡션을 남긴다.** 도형 진행은 작은 값(2%)과 0%가 눈으로 구분되지 않는다 —
@@ -27,12 +27,12 @@ import { progressRampColor } from './BadgeFamilyCardHeader.jsx';
  *
  * ## v2 — 원형에서 라운드 사각으로 (티켓 20260906_2140)
  *
- * 같은 화면의 레일·레벨·반복 카드가 모두 `--radius-sm` 라운드 사각 썸네일인데 이 셀만
- * 원형이라 «같은 배지»가 두 가지 모양으로 보였다. 바깥은 `--radius-card`(16px), 안쪽은
- * 동심값 `calc(var(--radius-card) - 4px)`(테두리 두께만큼 뺀 12px)다 — 두 radius가 동심이
+ * 같은 화면의 레일·레벨·반복 카드가 모두 `--radius-lg` 라운드 사각 썸네일인데 이 셀만
+ * 원형이라 «같은 배지»가 두 가지 모양으로 보였다. 바깥은 `--radius-2xl`(16px), 안쪽은
+ * 동심값 `calc(var(--radius-2xl) - 4px)`(테두리 두께만큼 뺀 12px)다 — 두 radius가 동심이
  * 아니면 모서리에서 테두리 두께가 눈에 띄게 들쭉날쭉해진다.
  *
- * 이름은 `--text-caption`→`--text-small`로 올리고 **2줄 높이를 상시 예약**한다(이름 길이가
+ * 이름은 `--text-xs`→`--text-sm`로 올리고 **2줄 높이를 상시 예약**한다(이름 길이가
  * 그리드 행 높이를 흔들지 못하게). 배지 이미지는 여백 없이 프레임을 꽉 채운다
  * (`objectFit: cover` + 안쪽 프레임 `overflow: hidden`).
  *
@@ -47,7 +47,7 @@ const RING_SIZE = 72;
 const RING_THICKNESS = 4;
 const INNER_SIZE = RING_SIZE - RING_THICKNESS * 2;
 /** 안쪽 radius는 바깥과 **동심**이어야 한다 — 두께만큼 뺀다. */
-const INNER_RADIUS = `calc(var(--radius-card) - ${RING_THICKNESS}px)`;
+const INNER_RADIUS = `calc(var(--radius-2xl) - ${RING_THICKNESS}px)`;
 
 /**
  * 이름 자리에 **높이를 예약하지 않는다**(티켓 20260906_2344 2차).
@@ -68,7 +68,7 @@ const STATIC_CSS = `
 `;
 
 /**
- * 진행 테두리 — 두 겹 트릭. 바깥 사각(`RING_SIZE`, `--radius-card`)을 conic-gradient로 채우고,
+ * 진행 테두리 — 두 겹 트릭. 바깥 사각(`RING_SIZE`, `--radius-2xl`)을 conic-gradient로 채우고,
  * 그보다 작은 안쪽 사각(`INNER_SIZE`, 동심 radius)을 위에 겹쳐 두께(`RING_THICKNESS`)만큼만
  * 보이게 한다. 채움은 `near → done` 스윕이라 「어디까지 초록으로 넘어갔나」가 곧 진행도다.
  */
@@ -83,15 +83,15 @@ function ProgressBorder({ imageUrl, alt, angleDeg, trackColor, dimmed }) {
       <span
         aria-hidden="true"
         style={{
-          position: 'absolute', inset: 0, borderRadius: 'var(--radius-card)',
-          background: `conic-gradient(in oklab, var(--status-progress-near) 0deg, var(--status-progress-done) ${angleDeg}deg, ${trackColor} ${angleDeg}deg 360deg)`,
+          position: 'absolute', inset: 0, borderRadius: 'var(--radius-2xl)',
+          background: `conic-gradient(in oklab, var(--progress-short) 0deg, var(--progress-done) ${angleDeg}deg, ${trackColor} ${angleDeg}deg 360deg)`,
         }}
       />
       <span
         style={{
           position: 'relative', width: INNER_SIZE, height: INNER_SIZE, borderRadius: INNER_RADIUS,
-          background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          overflow: 'hidden', color: 'var(--color-text)',
+          background: 'var(--background)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden', color: 'var(--foreground)',
         }}
       >
         {imageUrl ? (
@@ -105,7 +105,7 @@ function ProgressBorder({ imageUrl, alt, angleDeg, trackColor, dimmed }) {
             }}
           />
         ) : (
-          <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
+          <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-sm)', background: 'var(--background-inverse)', opacity: 0.2 }} />
         )}
       </span>
     </span>
@@ -144,7 +144,7 @@ export function BadgeProgressRingCard({
   const earned = status === 'earned';
   const angleDeg = earned ? 360 : muted ? 0 : clamped * 360;
   const showMarker = status === 'earned' || status === 'ready' || status === 'locked';
-  const captionColor = muted ? 'var(--status-progress-idle)' : progressRampColor(clamped, earned);
+  const captionColor = muted ? 'var(--muted)' : progressRampColor(clamped, earned);
 
   const containerStyle = {
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-8)',
@@ -157,16 +157,16 @@ export function BadgeProgressRingCard({
   const content = (
     <>
       <span style={{ position: 'relative' }} className="ds-ring-enter">
-        <ProgressBorder imageUrl={imageUrl} alt={name} angleDeg={angleDeg} trackColor="var(--status-idle-track)" dimmed={!earned} />
+        <ProgressBorder imageUrl={imageUrl} alt={name} angleDeg={angleDeg} trackColor="var(--progress-track)" dimmed={!earned} />
         {showMarker && (
           <span
             aria-hidden="true"
             style={{
               position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '2px solid var(--color-surface-elevated)',
-              background: earned ? 'var(--status-progress-done)' : 'var(--color-base-grey-700)',
-              color: earned ? '#000' : 'var(--color-text-secondary)',
+              border: '2px solid var(--surface)',
+              background: earned ? 'var(--progress-done)' : 'var(--base-neutral-700)',
+              color: earned ? '#000' : 'var(--muted)',
             }}
           >
             {earned ? <CheckGlyph size={10} /> : <LockGlyph size={10} />}
@@ -178,8 +178,8 @@ export function BadgeProgressRingCard({
           8px 간격으로 고르게 이어져 한 덩어리로 읽힌다. */}
       <span
         style={{
-          fontSize: 'var(--text-small)', fontWeight: 700, lineHeight: 1.3,
-          color: 'var(--color-text)', width: '100%',
+          fontSize: 'var(--text-sm)', fontWeight: 700, lineHeight: 1.3,
+          color: 'var(--foreground)', width: '100%',
           wordBreak: 'keep-all', overflowWrap: 'anywhere',
         }}
       >
@@ -191,7 +191,7 @@ export function BadgeProgressRingCard({
       {captionText != null && (
         <span
           style={{
-            fontSize: 'var(--text-caption)', lineHeight: 1.3, color: captionColor,
+            fontSize: 'var(--text-xs)', lineHeight: 1.3, color: captionColor,
             fontStyle: pending ? 'italic' : 'normal', fontVariantNumeric: 'tabular-nums',
             wordBreak: 'keep-all', overflowWrap: 'anywhere',
           }}

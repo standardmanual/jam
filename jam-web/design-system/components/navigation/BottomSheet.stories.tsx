@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { BottomSheet } from './BottomSheet';
 import { Button } from '../buttons/Button';
 
-// 20260816_012: 패널 상단 1px 보더 제거 — --color-surface-elevated 배경으로 대체 (드래그 핸들은 기존부터 채움 방식)
+// 20260816_012: 패널 상단 1px 보더 제거 — --surface 배경으로 대체 (드래그 핸들은 기존부터 채움 방식)
 // 20260901_1926: props API를 서비스 기준(onClose/detent/footer/topGapPx/footerBottomInset/
 // contentScrollable)으로 재정렬. 드래그투클로즈는 서비스 전용 기능이라 여전히 미구현.
 const meta: Meta<typeof BottomSheet> = {
@@ -22,7 +22,7 @@ export const Open: Story = {
     title: '바텀 시트 제목',
     children: (
       <div>
-        <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px', lineHeight: 'var(--leading-body)' }}>
+        <p style={{ color: 'var(--muted)', margin: '0 0 16px', lineHeight: 'var(--text-base--line-height)' }}>
           바텀 시트 본문 내용입니다.
         </p>
         <Button variant="primary">닫기</Button>
@@ -36,7 +36,7 @@ export const NoTitle: Story = {
   args: {
     open: true,
     children: (
-      <p style={{ color: 'var(--color-text)', margin: 0 }}>제목 없는 바텀 시트입니다.</p>
+      <p style={{ color: 'var(--foreground)', margin: 0 }}>제목 없는 바텀 시트입니다.</p>
     ),
   },
 };
@@ -48,7 +48,7 @@ export const WithActions: Story = {
     title: '정말 삭제할까요?',
     children: (
       <div>
-        <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 20px', lineHeight: 'var(--leading-body)' }}>
+        <p style={{ color: 'var(--muted)', margin: '0 0 20px', lineHeight: 'var(--text-base--line-height)' }}>
           이 작업은 되돌릴 수 없어요.
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -66,12 +66,12 @@ export const Interactive: Story = {
     const [open, setOpen] = useState(false);
     return (
       <div style={{
-        padding: 24, background: 'var(--color-bg)',
+        padding: 24, background: 'var(--background)',
         minHeight: 400, display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <Button variant="primary" onClick={() => setOpen(true)}>바텀 시트 열기</Button>
         <BottomSheet open={open} onClose={() => setOpen(false)} title="확인이 필요해요">
-          <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 20px', lineHeight: 'var(--leading-body)' }}>
+          <p style={{ color: 'var(--muted)', margin: '0 0 20px', lineHeight: 'var(--text-base--line-height)' }}>
             배경을 누르거나 Escape 키를 누르면 닫혀요.
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -92,9 +92,9 @@ export const LongContent: Story = {
     children: (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {Array.from({ length: 5 }, (_, i) => (
-          <div key={i} style={{ padding: 12, background: 'var(--color-bg-tint)', borderRadius: 'var(--radius-sm)' }}>
-            <p style={{ margin: 0, color: 'var(--color-text)', fontSize: 'var(--text-body)' }}>항목 {i + 1}</p>
-            <p style={{ margin: '4px 0 0', color: 'var(--color-text-secondary)', fontSize: 'var(--text-small)' }}>상세 설명 텍스트입니다.</p>
+          <div key={i} style={{ padding: 12, background: 'var(--background-secondary)', borderRadius: 'var(--radius-lg)' }}>
+            <p style={{ margin: 0, color: 'var(--foreground)', fontSize: 'var(--text-base)' }}>항목 {i + 1}</p>
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>상세 설명 텍스트입니다.</p>
           </div>
         ))}
       </div>
@@ -120,7 +120,7 @@ export const WithFooter: Story = {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {Array.from({ length: 10 }, (_, i) => (
-            <p key={i} style={{ margin: 0, color: 'var(--color-text-secondary)' }}>스크롤 콘텐츠 {i + 1}</p>
+            <p key={i} style={{ margin: 0, color: 'var(--muted)' }}>스크롤 콘텐츠 {i + 1}</p>
           ))}
         </div>
       </BottomSheet>
@@ -135,7 +135,7 @@ export const FullDetent: Story = {
     title: '전체 디텐트',
     detent: 'full',
     children: (
-      <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>
+      <p style={{ color: 'var(--muted)', margin: 0 }}>
         detent=&quot;full&quot;일 때 시트가 화면 대부분(92dvh)을 채웁니다.
       </p>
     ),
@@ -149,7 +149,7 @@ export const NotScrollable: Story = {
     title: '스크롤 잠금',
     contentScrollable: false,
     children: (
-      <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>
+      <p style={{ color: 'var(--muted)', margin: 0 }}>
         이미지 한 장짜리 미리보기처럼 스크롤할 내용이 없을 때 사용합니다.
       </p>
     ),

@@ -21,7 +21,7 @@ export interface SlidingTabsProps {
   variant?: 'onSurface' | 'onCard';
   /** 탭 높이. md=30px / lg=44px(터치영역) / xl=콘텐츠 높이(2줄 라벨) */
   size?: 'md' | 'lg' | 'xl';
-  /** 모서리. pill=완전 라운드 / card=--radius-cards */
+  /** 모서리. pill=완전 라운드 / card=--radius-2xl */
   shape?: 'pill' | 'card';
   /** true면 컨테이너 전체 폭을 균등 분할합니다. */
   block?: boolean;

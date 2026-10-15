@@ -12,5 +12,5 @@
   `src/lib/badgeProgressText.ts`의 `pickSyncComparisonCandidate()` + `formatSyncComparisonText()`가
   조립한 "직전 동기화보다 {라벨} {델타}{단위} 가까워졌어요" 문장이다 — 비교할 진전이
   없으면(최초 싱크 전·변화 없음) 그 함수들이 null을 반환해 자동으로 기본 문구가 뜬다.
-- 색은 `--status-latest-solid`(시안) 하나뿐 — 모자란 것(옐로우)·다 채운 것(라임)과 겹치지
+- 색은 `--progress-latest`(시안) 하나뿐 — 모자란 것(옐로우)·다 채운 것(라임)과 겹치지
   않는 "방금 들어온 것" 전용 채널. 다른 곳에 이 색을 쓰지 않는다.

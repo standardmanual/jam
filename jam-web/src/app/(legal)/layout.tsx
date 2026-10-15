@@ -13,7 +13,7 @@ import { PAGE_GRADIENT_BACKGROUND } from '@/lib/pageBackground'
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="min-h-dvh w-full max-w-[430px] mx-auto text-text pb-[env(safe-area-inset-bottom)]"
+      className="min-h-dvh w-full max-w-[430px] mx-auto text-foreground pb-[env(safe-area-inset-bottom)]"
       style={PAGE_GRADIENT_BACKGROUND}
     >
       {children}

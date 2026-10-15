@@ -33,12 +33,12 @@ const render = (overrides: Partial<ImageCardView> = {}) => renderToStaticMarkup(
 const iconMarkup = (view: Pick<ImageCardView, 'resource' | 'template'>, className: string) =>
   renderToStaticMarkup(resourceIconOf(view, { className }))
 
-const IMAGE_BOX = 'relative aspect-video overflow-hidden bg-surface'
+const IMAGE_BOX = 'relative aspect-video overflow-hidden bg-background'
 
 describe('HeroCard — 면(표면)', () => {
   it('흰 카드(inverse)이고 모서리를 자르는 overflow-hidden을 가지며 안쪽 여백은 인라인 0이다', () => {
     const html = render()
-    expect(html).toMatch(/^<div class="overflow-hidden" style="[^"]*background:var\(--color-surface-inverse\)[^"]*">/)
+    expect(html).toMatch(/^<div class="overflow-hidden" style="[^"]*background:var\(--background-inverse\)[^"]*">/)
     // Card가 주는 24px 기본 여백은 클래스(p-0)로는 덮이지 않아 같은 인라인 style로 덮는다
     expect(html).toMatch(/^<div[^>]*style="[^"]*padding:0[;"]/)
     expect(html).not.toContain('--layout-card-padding')
@@ -55,11 +55,11 @@ describe('HeroCard — 면(표면)', () => {
   it('overflow-hidden은 카드(Card)에만 걸려 있다 — 이미지 칸 하나가 더 있을 뿐 본문에는 없다', () => {
     const html = render()
     expect(html.match(/overflow-hidden/g)).toHaveLength(2)
-    expect(html.slice(html.indexOf('flex flex-col gap-[var(--spacing-12)]'))).not.toContain('overflow-hidden')
+    expect(html.slice(html.indexOf('flex flex-col gap-3'))).not.toContain('overflow-hidden')
   })
 
   it('본문은 안쪽 여백 24px이고 그룹 사이 간격은 12px이다', () => {
-    expect(render()).toContain('<div class="flex flex-col gap-[var(--spacing-12)] p-[var(--spacing-24)]">')
+    expect(render()).toContain('<div class="flex flex-col gap-3 p-6">')
   })
 })
 
@@ -72,7 +72,7 @@ describe('HeroCard — 이미지 칸', () => {
     const html = render(overrides)
     expect(html).toContain(`<div class="${IMAGE_BOX}">`)
     // 칸은 본문보다 앞에 있다
-    expect(html.indexOf(IMAGE_BOX)).toBeLessThan(html.indexOf('gap-[var(--spacing-12)]'))
+    expect(html.indexOf(IMAGE_BOX)).toBeLessThan(html.indexOf('gap-3'))
   })
 
   it('칸 안의 이미지는 칸을 채우고 object-cover이며 컬러다', () => {
@@ -90,7 +90,7 @@ describe('HeroCard — 이미지 칸', () => {
 
   it('이미지 위에는 아무것도 얹지 않는다(어두운 막·그림자·칩이 이미지 칸 안에 없다)', () => {
     const html = render({ label: '미션', rarity: 'epic' })
-    const box = html.slice(html.indexOf(IMAGE_BOX), html.indexOf('flex flex-col gap-[var(--spacing-12)]'))
+    const box = html.slice(html.indexOf(IMAGE_BOX), html.indexOf('flex flex-col gap-3'))
     expect(box).not.toContain('bg-black')
     expect(box).not.toContain('gradient')
     expect(box).not.toContain('shadow')
@@ -113,7 +113,7 @@ describe('HeroCard — 이미지 없음 자리 표시', () => {
     const html = render({ imageUrl: null })
     expect(html).not.toContain('<img')
     expect(html).toContain(
-      'class="absolute inset-0 flex flex-col items-center justify-center gap-[var(--spacing-8)] px-[var(--spacing-24)] bg-surface text-center"',
+      'class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 bg-background text-center"',
     )
     expect(html).not.toContain('gradient')
     expect(html).not.toContain('이미지 없음')
@@ -121,13 +121,13 @@ describe('HeroCard — 이미지 없음 자리 표시', () => {
 
   it.each(CARD_RESOURCES.map((resource) => [resource]))('%s는 그 자원의 아이콘을 장식(aria-hidden)으로 그린다', (resource) => {
     const html = render({ resource, imageUrl: null })
-    expect(html).toContain(iconMarkup({ resource }, 'w-8 h-8 text-text/60'))
-    expect(iconMarkup({ resource }, 'w-8 h-8 text-text/60')).toContain('aria-hidden="true"')
+    expect(html).toContain(iconMarkup({ resource }, 'w-8 h-8 text-foreground/60'))
+    expect(iconMarkup({ resource }, 'w-8 h-8 text-foreground/60')).toContain('aria-hidden="true"')
   })
 
   it('자동 카드는 BriefCard와 같은 규칙으로 템플릿이 지역 트렌드면 핀, 진행 알림이면 모래시계다(지역 값과 무관)', () => {
-    const pin = iconMarkup({ resource: 'auto', template: 'location_trend' }, 'w-8 h-8 text-text/60')
-    const hourglass = iconMarkup({ resource: 'auto', template: 'progress_nudge' }, 'w-8 h-8 text-text/60')
+    const pin = iconMarkup({ resource: 'auto', template: 'location_trend' }, 'w-8 h-8 text-foreground/60')
+    const hourglass = iconMarkup({ resource: 'auto', template: 'progress_nudge' }, 'w-8 h-8 text-foreground/60')
     expect(pin).not.toBe(hourglass)
 
     const trend = render({ resource: 'auto', template: 'location_trend', regionLabel: '성수동', imageUrl: null })
@@ -149,17 +149,17 @@ describe('HeroCard — 이미지 없음 자리 표시', () => {
   it('titleInImage 카드는 판 위에 제목을 그린다(16px bold·3줄 말줄임) — 본문에는 제목·요약이 없다', () => {
     const html = render({ imageUrl: null, titleInImage: true })
     expect(html).toContain(
-      '<p class="text-[length:var(--text-body)] font-bold text-text line-clamp-3 break-keep break-words">한강 러닝 챌린지</p>',
+      '<p class="text-base font-bold text-foreground line-clamp-3 break-keep break-words">한강 러닝 챌린지</p>',
     )
     expect(html.match(/한강 러닝 챌린지/g)).toHaveLength(1)
     expect(html).not.toContain('<h3')
     expect(html).not.toContain('이번 주말 같이 달려요')
   })
 
-  it('판은 제목을 읽을 수 있도록 어두운 글자 색(text-text)을 쓰고 옅은 글자는 /60이다', () => {
+  it('판은 제목을 읽을 수 있도록 어두운 글자 색(text-foreground)을 쓰고 옅은 글자는 /60이다', () => {
     const html = render({ imageUrl: null, titleInImage: true })
-    expect(html).toContain('text-text/60')
-    for (const level of ['/30', '/40', '/50']) expect(html).not.toContain(`text-text${level}`)
+    expect(html).toContain('text-foreground/60')
+    for (const level of ['/30', '/40', '/50']) expect(html).not.toContain(`text-foreground${level}`)
   })
 })
 
@@ -175,7 +175,7 @@ describe('HeroCard — titleInImage', () => {
     expect(chipRow).toBeGreaterThan(-1)
     expect(chipRow).toBeLessThan(fact)
     // 칩 줄과 필수 정보 사이에 제목 그룹의 빈 칸이 없다
-    expect(html.slice(chipRow, fact)).not.toContain('mt-[var(--spacing-4)]')
+    expect(html.slice(chipRow, fact)).not.toContain('mt-1')
   })
 
   it('숨김 제목(sr-only h3)을 따로 두지 않는다(alt와 중복 읽힘)', () => {
@@ -200,32 +200,32 @@ describe('HeroCard — 본문 글자 배치', () => {
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
   })
 
-  it('제목은 h3, 24px(--text-subheading)·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
+  it('제목은 h3, 24px(--text-2xl)·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
     const html = render()
     expect(html).toContain(
-      '<h3 class="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text-inverse line-clamp-2 break-keep break-words">한강 러닝 챌린지</h3>',
+      '<h3 class="text-2xl text-snow line-clamp-2 break-keep break-words">한강 러닝 챌린지</h3>',
     )
     expect(html).not.toMatch(/<h3[^>]*font-(bold|semibold|medium)/)
   })
 
   it('요약은 제목 아래 4px, 16px·/60·2줄 말줄임이다', () => {
     expect(render()).toContain(
-      '<p class="mt-[var(--spacing-4)] text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse/60 line-clamp-2 break-keep break-words">이번 주말 같이 달려요</p>',
+      '<p class="mt-1 text-base text-snow/60 line-clamp-2 break-keep break-words">이번 주말 같이 달려요</p>',
     )
   })
 
-  it('필수 정보는 14px(--text-small) 굵게 검정 100%이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
+  it('필수 정보는 14px(--text-sm) 굵게 검정 100%이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
     const html = render()
     const lines = [...html.matchAll(/<p class="([^"]*font-bold[^"]*)">([^<]*)<\/p>/g)]
     expect(lines.map((m) => m[2])).toEqual(['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'])
     for (const [, className] of lines) {
       expect(className).toBe(
-        'text-[length:var(--text-small)] leading-[var(--leading-small)] font-bold text-text-inverse break-keep break-words',
+        'text-sm font-bold text-snow break-keep break-words',
       )
       expect(className).not.toContain('/60')
       expect(className).not.toContain('line-clamp')
       expect(className).not.toContain('truncate')
-      // 서비스에서 --text-body-sm은 16px이라 14px 자리에 쓰면 크기가 틀린다
+      // 서비스에서 --text-base은 16px이라 14px 자리에 쓰면 크기가 틀린다
       expect(className).not.toContain('body-sm')
     }
   })
@@ -245,14 +245,14 @@ describe('HeroCard — 본문 글자 배치', () => {
   it('설명문은 14px·/60·보통 굵기·2줄 말줄임이다(필수 정보를 이기지 않는다)', () => {
     const html = render()
     expect(html).toContain(
-      '<p class="text-[length:var(--text-small)] leading-[var(--leading-small)] text-text-inverse/60 line-clamp-2 break-keep break-words">한강공원 코스를 달리면 보상을 드려요</p>',
+      '<p class="text-sm text-snow/60 line-clamp-2 break-keep break-words">한강공원 코스를 달리면 보상을 드려요</p>',
     )
   })
 
   it('값이 없는 그룹은 사라진다(요약·필수 정보·설명문 없음)', () => {
     const html = render({ subtitle: undefined, facts: undefined, description: undefined })
     expect(html).toContain('<h3')
-    expect(html).not.toContain('mt-[var(--spacing-4)]')
+    expect(html).not.toContain('mt-1')
     expect(html).not.toContain('font-bold')
     expect(html).not.toContain('line-clamp-2 break-keep break-words">한강공원')
     expect(html.match(/<p /g)).toHaveLength(1) // 끝 줄 하나
@@ -262,7 +262,7 @@ describe('HeroCard — 본문 글자 배치', () => {
 describe('HeroCard — 끝 줄', () => {
   it('href가 있으면 「자세히 보기 →」(12px·/60)이고 화살표는 aria-hidden이다', () => {
     expect(render()).toContain(
-      '<p class="text-[length:var(--text-caption)] text-text-inverse/60">자세히 보기 <span aria-hidden="true">→</span></p>',
+      '<p class="text-xs text-snow/60">자세히 보기 <span aria-hidden="true">→</span></p>',
     )
   })
 
@@ -306,8 +306,8 @@ describe('HeroCard — 칩 줄', () => {
 describe('HeroCard — 옅은 글자', () => {
   it('옅은 글자는 /60 한 단계뿐이다(/30·/40·/50 없음)', () => {
     const html = render({ resource: 'badge', regionLabel: '성수동', rarity: 'rare', publishedAt: '2026-10-05T03:00:00.000Z' })
-    expect(html).toContain('text-text-inverse/60')
-    for (const level of ['/30', '/40', '/50', '/70']) expect(html).not.toContain(`text-text-inverse${level}`)
+    expect(html).toContain('text-snow/60')
+    for (const level of ['/30', '/40', '/50', '/70']) expect(html).not.toContain(`text-snow${level}`)
     expect(html).not.toContain('/40')
     expect(html).not.toContain('/30')
   })

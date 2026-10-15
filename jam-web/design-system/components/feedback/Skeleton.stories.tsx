@@ -22,13 +22,13 @@ export const Avatar: Story = {
 
 export const ButtonShape: Story = {
   name: '버튼 형태',
-  args: { width: 120, height: 44, borderRadius: 'var(--radius-pill)' },
+  args: { width: 120, height: 44, borderRadius: 'var(--radius-full)' },
 };
 
 export const CardLoading: Story = {
   name: '카드 로딩 (복합 레이아웃)',
   render: () => (
-    <div style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 12, padding: 16, background: 'var(--color-bg-tint)', borderRadius: 'var(--radius-card)' }}>
+    <div style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 12, padding: 16, background: 'var(--background-secondary)', borderRadius: 'var(--radius-2xl)' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
         <Skeleton width={40} height={40} borderRadius="50%" />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>

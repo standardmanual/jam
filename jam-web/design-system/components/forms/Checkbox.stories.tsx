@@ -86,7 +86,7 @@ export const Group: Story = {
           label="전체 동의"
           checked={checks.all}
           onChange={() => toggle('all')}
-          style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 8, marginBottom: 4 }}
+          style={{ borderBottom: '1px solid var(--border)', paddingBottom: 8, marginBottom: 4 }}
         />
         <Checkbox id="cb-service" label="서비스 이용약관 (필수)" checked={checks.service} onChange={() => toggle('service')} />
         <Checkbox id="cb-privacy" label="개인정보 처리방침 (필수)" checked={checks.privacy} onChange={() => toggle('privacy')} />

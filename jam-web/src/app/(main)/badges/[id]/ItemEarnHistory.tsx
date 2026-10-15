@@ -18,14 +18,14 @@ function ItemCardContent({ entry }: { entry: ItemEarnEntry }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-between items-center">
-        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.obtainedAt}</span>
-        <span className="text-[14px] text-text">
+        <span className="text-[14px] text-[var(--muted)]">{d.inventory.obtainedAt}</span>
+        <span className="text-[14px] text-foreground">
           <LocalDate iso={entry.obtained_at} korean={{ year: true }} />
         </span>
       </div>
       <div className="flex justify-between items-center">
-        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.expiresAt}</span>
-        <span className="text-[14px] text-text">
+        <span className="text-[14px] text-[var(--muted)]">{d.inventory.expiresAt}</span>
+        <span className="text-[14px] text-foreground">
           {entry.expires_at
             ? <LocalDate iso={entry.expires_at} korean={{ year: true }} />
             : d.inventory.expiresNone}
@@ -62,12 +62,12 @@ export default function ItemEarnHistory({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between">
-        <p className="text-[15px] font-bold text-text">{d.badges.earnHistoryTitle}</p>
-        <span className="text-[13px] text-[var(--color-text-secondary)]">{t(d.badges.earnHistoryCount, { count: items.length })}</span>
+        <p className="text-[15px] font-bold text-foreground">{d.badges.earnHistoryTitle}</p>
+        <span className="text-[13px] text-[var(--muted)]">{t(d.badges.earnHistoryCount, { count: items.length })}</span>
       </div>
 
       {/* 히어로에 일련번호가 표시된 개체의 이력 — 카드 형식 */}
-      <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
+      <div className="bg-surface rounded-2xl p-6">
         <ItemCardContent entry={first} />
       </div>
 
@@ -77,9 +77,9 @@ export default function ItemEarnHistory({
         <ListRowCard
           key={entry.id}
           onClick={() => setOpenId(entry.id)}
-          trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />}
+          trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--muted)]" />}
         >
-          <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text">
+          <p className="text-base text-foreground">
             <LocalDate iso={entry.obtained_at} korean={{ year: true }} />
           </p>
         </ListRowCard>

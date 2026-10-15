@@ -8,7 +8,7 @@ import React from 'react';
  * @keyframes ds-shimmer lives in styles.css — no per-instance injection.
  *
  * width/height accept any CSS length value (px, %, rem, etc.).
- * borderRadius defaults to var(--radius-sm); pass 'var(--radius-pill)' for text lines
+ * borderRadius defaults to var(--radius-lg); pass 'var(--radius-full)' for text lines
  * or '50%' for avatar placeholders.
  */
 export function Skeleton({
@@ -25,8 +25,8 @@ export function Skeleton({
       style={{
         width,
         height,
-        borderRadius: borderRadius ?? 'var(--radius-sm)',
-        background: 'var(--color-surface)',
+        borderRadius: borderRadius ?? 'var(--radius-lg)',
+        background: 'var(--background)',
         overflow: 'hidden',
         position: 'relative',
         ...style,
@@ -39,7 +39,7 @@ export function Skeleton({
           top: 0, bottom: 0,
           left: '-100%',
           width: '100%',
-          background: 'linear-gradient(90deg, transparent 0%, var(--color-border) 50%, transparent 100%)',
+          background: 'linear-gradient(90deg, transparent 0%, var(--border) 50%, transparent 100%)',
           animation: 'ds-shimmer 1.4s var(--ease-linear) infinite',
         }}
       />

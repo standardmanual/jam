@@ -25,7 +25,7 @@ import { toCardView } from '@/lib/today/cardView'
 import type { ResolvedBadge, ResolvedRecipe, TodayCardWithHref } from '@/lib/today/cards'
 
 const NOW = new Date('2026-10-05T03:00:00Z')
-const ICON_CLASS = 'w-6 h-6 text-text-inverse/60'
+const ICON_CLASS = 'w-6 h-6 text-snow/60'
 const flask = renderToStaticMarkup(<FlaskIcon className={ICON_CLASS} />)
 
 function makeCard(overrides: Partial<TodayCardWithHref> = {}): TodayCardWithHref {
@@ -97,7 +97,7 @@ describe('공개 전 — brief (재료 수와 공개일만)', () => {
     expect(html).toContain(flask)
     expect(html).toContain('레시피 공개')
     expect(html).toContain('>새 레시피가 열려요</h3>')
-    expect(factTexts(html, 'text-text-inverse/60')).toEqual(['재료 4개', '공개 10월 12일'])
+    expect(factTexts(html, 'text-snow/60')).toEqual(['재료 4개', '공개 10월 12일'])
     expect(html).toContain('›')
     // 카드 전체가 믹스 화면으로 가는 링크 하나다
     expect(html).toContain('href="/combine"')
@@ -122,7 +122,7 @@ describe('공개 전 — 운영자가 poster를 고른 경우', () => {
 
   it('커버가 없으면 자리 표시 판에 플라스크 아이콘이다', () => {
     const html = draw(makeCard({ shape: 'poster', resolved_recipe: scheduled }))
-    expect(html).toContain(renderToStaticMarkup(<FlaskIcon className="w-8 h-8 text-text/60" />))
+    expect(html).toContain(renderToStaticMarkup(<FlaskIcon className="w-8 h-8 text-foreground/60" />))
   })
 })
 
@@ -182,8 +182,8 @@ describe('레시피 줄이 없는 카드', () => {
     expect(html).toContain('>새 레시피가 열려요</h3>')
     expect(html).not.toContain('<ul')
     expect(html).not.toContain('재료')
-    // 정보 줄 묶음(`mt-[var(--spacing-4)]` 아래 `<p>`)이 없다
-    expect(html).not.toMatch(/<p class="[^"]*text-\[length:var\(--text-small\)\]/)
+    // 정보 줄 묶음(`mt-1` 아래 `<p>`)이 없다
+    expect(html).not.toMatch(/<p class="[^"]*text-\[length:var\(--text-sm\)\]/)
   })
 })
 
@@ -203,6 +203,6 @@ describe('처음 보는 템플릿 값 (안전망)', () => {
     const html = draw(unknown('brief'))
     expect(html).toContain('w-16 h-16 shrink-0')
     expect(html).not.toContain('<svg')
-    expect(html).not.toContain('mb-[var(--spacing-8)]')
+    expect(html).not.toContain('mb-2')
   })
 })

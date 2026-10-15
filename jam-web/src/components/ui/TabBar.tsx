@@ -240,8 +240,8 @@ export default function TabBar({ username }: TabBarProps) {
   return (
     <nav
       ref={navRef}
-      // 20260823_003: 재질(반투명 흰 필) — bg-surface-inverse(불투명) → jam-tabbar-chrome
-      // (transitions.css, --color-chrome-bg-inverse/--blur-chrome 참조 — DS TabBar.jsx와 값 공유)
+      // 20260823_003: 재질(반투명 흰 필) — bg-background-inverse(불투명) → jam-tabbar-chrome
+      // (transitions.css, --tabbar-background/--tabbar-blur 참조 — DS TabBar.jsx와 값 공유)
       // 높이 49px·가로 388px·좌우 패딩 4px(px-1)은 Figma 실측값(위 상수 주석 참고).
       // rounded-full은 nav 자기 높이의 절반(24.5px)으로 clamp되고, 필은 자기 높이의
       // 절반(20.5px)으로 clamp돼 두 호가 4px 간격의 동심원이 된다 — 의도된 동작이다.
@@ -257,7 +257,7 @@ export default function TabBar({ username }: TabBarProps) {
           원이 아니라 "양옆은 완전히 둥글고 위아래는 직선"인 캡슐(스타디움) 모양 — 높이보다
           폭을 넓게 잡고 rounded-full(반경이 짧은 변인 높이에 의해 자연히 클램프됨)을 적용하면
           만들어진다. 색은 흰색이 아니라 반투명 그레이(rgba(0,0,0,0.08)) — 흰 필
-          (--color-chrome-bg-inverse) 위에 살짝 어두운 톤을 얹어 구분한다. */}
+          (--tabbar-background) 위에 살짝 어두운 톤을 얹어 구분한다. */}
       <span
         aria-hidden="true"
         ref={pillRef}
@@ -282,8 +282,8 @@ export default function TabBar({ username }: TabBarProps) {
             }}
             className="relative flex-1 flex items-center justify-center h-full min-w-11 transition-transform duration-100 active:scale-90"
           >
-            {/* DS v2: 활성=--color-primary(레드), 비활성=--color-icon-inactive(다크 그레이) */}
-            <span className="relative" style={{ color: active ? 'var(--color-primary)' : 'var(--color-icon-inactive)' }}>
+            {/* DS v2: 활성=--color-primary(레드), 비활성=--tabbar-icon(다크 그레이) */}
+            <span className="relative" style={{ color: active ? 'var(--link)' : 'var(--tabbar-icon)' }}>
               {active ? tab.iconFill : tab.iconLine}
             </span>
           </Link>

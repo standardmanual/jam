@@ -58,14 +58,14 @@ export function BadgeGridCard({
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    background: selected ? 'rgba(232, 70, 31, 0.15)' : 'var(--color-surface)',
-    borderRadius: 'var(--radius-card)',
+    background: selected ? 'rgba(232, 70, 31, 0.15)' : 'var(--background)',
+    borderRadius: 'var(--radius-2xl)',
     padding: 'var(--spacing-12)',
     overflow: 'hidden',
     // 20260816_012: selected 표시를 2px 보더 대신 배경톤 채움으로 대체 (기능적 의미 유지)
     // highlighted: 컬렉션 슬롯 장착 모드 하이라이트 — 그리드에서 한 칸을 찾아내야 하므로
     // 배경톤만으로는 약해 별도로 inset 링을 준다(서비스와 동일).
-    boxShadow: highlighted ? 'inset 0 0 0 2px var(--color-primary)' : undefined,
+    boxShadow: highlighted ? 'inset 0 0 0 2px var(--link)' : undefined,
     cursor: interactive ? 'pointer' : undefined,
     transition: interactive ? 'transform 100ms' : undefined,
     textDecoration: 'none',
@@ -76,13 +76,13 @@ export function BadgeGridCard({
   const thumbnailStyle = {
     width: 90,
     height: 90,
-    borderRadius: 'var(--radius-card)',
+    borderRadius: 'var(--radius-2xl)',
     overflow: 'hidden',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     background: 'transparent',
-    color: 'var(--color-text)',
+    color: 'var(--foreground)',
     flexShrink: 0,
   };
 
@@ -103,7 +103,7 @@ export function BadgeGridCard({
               }}
             />
           ) : (
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--color-text)', opacity: 0.3 }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--foreground)', opacity: 0.3 }}>
               <circle cx="12" cy="8" r="5" />
               <path d="M3 20c0-4 4-7 9-7s9 3 9 7" />
             </svg>
@@ -115,11 +115,11 @@ export function BadgeGridCard({
             style={{
               position: 'absolute', bottom: -4, right: -4,
               minWidth: 18, height: 18, padding: '0 4px',
-              borderRadius: 'var(--radius-pill)',
-              background: 'var(--color-surface-elevated)',
-              border: '1px solid var(--color-border)',
-              fontSize: 'var(--text-caption)', lineHeight: 1, fontWeight: 700,
-              color: 'var(--color-text)', opacity: 0.8,
+              borderRadius: 'var(--radius-full)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              fontSize: 'var(--text-xs)', lineHeight: 1, fontWeight: 700,
+              color: 'var(--foreground)', opacity: 0.8,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontFamily: 'var(--font-family-base)',
             }}
@@ -130,7 +130,7 @@ export function BadgeGridCard({
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-4)', paddingTop: 'var(--spacing-8)', width: '100%' }}>
         <p style={{
-          fontSize: 'var(--text-small)', fontWeight: 700, color: 'var(--color-text)',
+          fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--foreground)',
           textAlign: 'center', width: '100%', lineHeight: 1.3,
           fontFamily: 'var(--font-family-base)',
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',

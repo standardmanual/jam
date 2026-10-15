@@ -42,16 +42,16 @@ export function Toast({ message, type = 'info', open = true, onDismiss }) {
       aria-live="polite"
       style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 12px 10px 20px', borderRadius: 'var(--radius-pill)',
-        background: 'var(--color-bg-inverse)', color: 'var(--color-text-inverse)',
-        fontSize: 'var(--text-small)',
+        padding: '10px 12px 10px 20px', borderRadius: 'var(--radius-full)',
+        background: 'var(--background-inverse)', color: 'var(--snow)',
+        fontSize: 'var(--text-sm)',
         // 20260816_012: 보더 제거 — 흰 토스트가 다크 배경 위에서 대비만으로 충분히 구분됨
         transform: visible ? 'translateY(0)' : 'translateY(8px)',
         opacity: visible ? 1 : 0,
         transition: 'transform var(--duration-fast) var(--ease-smooth-out), opacity var(--duration-fast) ease',
       }}
     >
-      <span style={{ color: 'var(--color-text-inverse)', flexShrink: 0 }}>
+      <span style={{ color: 'var(--snow)', flexShrink: 0 }}>
         {ICONS[type]}
       </span>
       <span style={{ flex: 1 }}>{message}</span>
@@ -63,7 +63,7 @@ export function Toast({ message, type = 'info', open = true, onDismiss }) {
             flexShrink: 0,
             width: 28, height: 28,
             borderRadius: '50%', border: 'none',
-            background: 'transparent', color: 'var(--color-text-inverse)',
+            background: 'transparent', color: 'var(--snow)',
             cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: 0,

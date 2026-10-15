@@ -61,9 +61,9 @@ export function BadgeStampRow({
     <div
       className={className}
       style={{
-        borderRadius: 'var(--radius-card)',
+        borderRadius: 'var(--radius-2xl)',
         padding: 'var(--spacing-16)',
-        background: 'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--color-surface-elevated)',
+        background: 'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--surface)',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)',
         ...style,
       }}
@@ -86,11 +86,11 @@ export function BadgeStampRow({
         <span
           style={{
             width: THUMB_SIZE, height: THUMB_SIZE, flex: 'none',
-            borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
+            borderRadius: 'var(--radius-lg)', background: 'var(--background)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden',
-            boxShadow: `inset 0 0 0 ${earned ? 2 : 1}px ${earned ? 'var(--status-progress-done)' : 'var(--color-border-light)'}`,
-            color: 'var(--color-text)',
+            boxShadow: `inset 0 0 0 ${earned ? 2 : 1}px ${earned ? 'var(--progress-done)' : 'var(--field-border)'}`,
+            color: 'var(--foreground)',
           }}
         >
           {imageUrl ? (
@@ -104,7 +104,7 @@ export function BadgeStampRow({
               }}
             />
           ) : (
-            <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
+            <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-sm)', background: 'var(--background-inverse)', opacity: 0.2 }} />
           )}
         </span>
 
@@ -118,11 +118,11 @@ export function BadgeStampRow({
                 aria-label={`누적 ${count}회`}
                 style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none',
-                  padding: '4px 10px', borderRadius: 'var(--radius-pill)',
-                  fontSize: 'var(--text-small)', lineHeight: 1.2, fontWeight: 700,
+                  padding: '4px 10px', borderRadius: 'var(--radius-full)',
+                  fontSize: 'var(--text-sm)', lineHeight: 1.2, fontWeight: 700,
                   fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-                  background: 'var(--status-idle-track)',
-                  color: earned ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                  background: 'var(--progress-track)',
+                  color: earned ? 'var(--foreground)' : 'var(--muted)',
                 }}
               >
                 ×{count}
@@ -131,8 +131,8 @@ export function BadgeStampRow({
             {caption && (
               <span
                 style={{
-                  fontSize: 'var(--text-caption)', lineHeight: 1.4, minWidth: 0,
-                  color: clamped == null ? 'var(--color-text-secondary)' : progressRampColor(clamped),
+                  fontSize: 'var(--text-xs)', lineHeight: 1.4, minWidth: 0,
+                  color: clamped == null ? 'var(--muted)' : progressRampColor(clamped),
                   wordBreak: 'keep-all', overflowWrap: 'anywhere',
                   fontVariantNumeric: 'tabular-nums',
                 }}
@@ -147,9 +147,9 @@ export function BadgeStampRow({
               <ProgressBar
                 percent={clamped * 100}
                 fillMode="track-gradient"
-                trackColor="var(--status-idle-track)"
+                trackColor="var(--progress-track)"
                 height={10}
-                radius="var(--radius-xs)"
+                radius="var(--radius-sm)"
               />
             </div>
           )}

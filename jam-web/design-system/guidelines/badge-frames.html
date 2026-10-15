@@ -3,7 +3,7 @@
 <script src="../_vendor/react.production.min.js"></script>
 <script src="../_vendor/react-dom.production.min.js"></script>
 <script src="../_vendor/babel.min.js"></script>
-<div id="root" style="padding:20px;background:var(--color-bg,#000)"></div>
+<div id="root" style="padding:20px;background:var(--background,#000)"></div>
 <script type="text/babel">
 
 
@@ -43,7 +43,7 @@ function makePath(shape, w, h) {
   }
 }
 
-function BadgeFrame({ shape='circle', width=200, height=200, color='var(--color-primary)', children }) {
+function BadgeFrame({ shape='circle', width=200, height=200, color='var(--link)', children }) {
   const isCircle = shape === 'circle';
   const pathD = isCircle ? null : makePath(shape, width, height);
   return (
@@ -66,9 +66,9 @@ const shapes = [
   ['dumbbell','dumbbell',180,180],
 ];
 const COLORS = [
-  'var(--color-primary)','var(--color-secondary)',
-  'var(--color-rarity-rare)','var(--color-rarity-epic)',
-  'var(--color-rarity-mystic)','var(--color-tag-3)','var(--color-tag-5)',
+  'var(--link)','var(--color-secondary)',
+  'var(--rarity-rare)','var(--rarity-epic)',
+  'var(--rarity-mystic)','var(--color-tag-3)','var(--color-tag-5)',
 ];
 
 function Demo() {
@@ -79,7 +79,7 @@ function Demo() {
           <BadgeFrame shape={shape} width={w} height={h} color={COLORS[i]}>
             <span style={{ fontSize:Math.min(w,h)*0.28, opacity:0.35 }}>🏅</span>
           </BadgeFrame>
-          <div style={{ fontSize:10, color:'var(--color-text-secondary)', textAlign:'center', marginTop:6, fontFamily:'var(--font-family-base)' }}>{label}</div>
+          <div style={{ fontSize:10, color:'var(--muted)', textAlign:'center', marginTop:6, fontFamily:'var(--font-family-base)' }}>{label}</div>
         </div>
       ))}
     </div>

@@ -10,7 +10,7 @@ import FaqAccordion from './FaqAccordion'
  * 서버 컴포넌트로 두고 원고는 파일 내 상수로 관리한다. 라벨과 달리 장문 원고는
  * i18n(ko.ts)에 넣지 않는다: ko.ts는 짧은 UI 라벨 사전이라 성격이 무너진다.
  *
- * 타이포는 미니멀·장문 읽기용으로 --text-body + --leading-reading(1.75)을 쓴다. --leading-loose
+ * 타이포는 미니멀·장문 읽기용으로 --text-base + --leading-reading(1.75)을 쓴다. --leading-loose
  * (1.6)는 토큰 정의부 주석이 "condition/description blocks" 용도로 못박고 있어 10문단 에세이에는
  * 맞지 않았다(20260901_2125 인터랙션 리뷰). 행간을 올린 만큼 문단 간격도 --spacing-32로 올려
  * "문단 사이 > 한 줄" 비율을 유지한다.
@@ -29,7 +29,7 @@ import FaqAccordion from './FaqAccordion'
  *
  * 20260902 티켓 20260902_1347: 원고를 Google Docs("260902_JAM! Philosophy") 전문으로 교체.
  * 신규 원고는 문서 아웃라인상 3개 소제목으로 섹션이 나뉘어 있어, 기존 flat한 `PARAGRAPHS: string[]`
- * 구조를 `SECTIONS: { heading?, paragraphs }[]`로 바꿔 소제목(`<h2>`, --text-h4 토큰)을
+ * 구조를 `SECTIONS: { heading?, paragraphs }[]`로 바꿔 소제목(`<h2>`, --text-2xl 토큰)을
  * 렌더링할 수 있게 했다. 소제목 전용 신규 토큰은 추가하지 않고 기존 h4 스케일을 그대로 썼다.
  *
  * 20260907 티켓 20260907_0934: tomo.ai/about(Philosophy → FAQ → Contact) 구성을 참고해
@@ -42,9 +42,9 @@ import FaqAccordion from './FaqAccordion'
 
 const PAGE_TITLE = 'Philosophy'
 const SECTION_HEADING_CLASS =
-  'text-[length:var(--text-h4)] leading-[var(--leading-h4)] font-[number:var(--weight-h4)] tracking-[var(--tracking-h4)] [word-break:keep-all]'
+  'text-2xl font-medium [word-break:keep-all]'
 const FAQ_ANSWER_CLASS =
-  'text-[length:var(--text-body)] leading-[var(--leading-reading)] text-text-secondary [word-break:keep-all] break-words'
+  'text-base leading-[var(--leading-reading)] text-muted [word-break:keep-all] break-words'
 
 /** 확정 원고. 임의 수정·윤문 금지 (Google Docs 원문 그대로, 티켓 20260902_1347). */
 const SECTIONS: { heading?: string; paragraphs: string[] }[] = [
@@ -213,23 +213,23 @@ const FAQ_ITEMS: { title: string; content: ReactNode }[] = [
 
 export default function PhilosophyPage() {
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       <TopNav title={PAGE_TITLE} />
 
-      <article className="px-[var(--spacing-16)] pt-[var(--spacing-64)] pb-[var(--spacing-64)] flex flex-col gap-[var(--spacing-64)]">
+      <article className="px-4 pt-16 pb-16 flex flex-col gap-16">
         {/* Philosophy — 확정 원고(티켓 20260902_1347), 임의 수정·윤문 금지 */}
         <section>
-          <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] font-[number:var(--weight-h3)] tracking-[var(--tracking-h3)]">
+          <h1 className="text-3xl font-medium">
             {PAGE_TITLE}
           </h1>
 
-          <div className="mt-[var(--spacing-48)] flex flex-col gap-[var(--spacing-64)]">
+          <div className="mt-12 flex flex-col gap-16">
             {SECTIONS.map((section, i) => (
-              <section key={i} className="flex flex-col gap-[var(--spacing-16)]">
+              <section key={i} className="flex flex-col gap-4">
                 {section.heading && (
                   <h2 className={SECTION_HEADING_CLASS}>{section.heading}</h2>
                 )}
-                <div className="flex flex-col gap-[var(--spacing-32)]">
+                <div className="flex flex-col gap-8">
                   {section.paragraphs.map((paragraph, j) => (
                     // word-break: keep-all — CSS 기본값에서 한글은 음절 단위로 아무 데서나 끊긴다.
                     // 앱 컬럼이 좁아(한 줄 약 24자) 지정하지 않으면 문단마다 어절이 쪼개진다.
@@ -237,7 +237,7 @@ export default function PhilosophyPage() {
                     // (NotificationsClient·BadgeRevealCarousel의 선례와 같은 조합)
                     <p
                       key={j}
-                      className="text-[length:var(--text-body)] leading-[var(--leading-reading)] text-text/90 [word-break:keep-all] break-words"
+                      className="text-base leading-[var(--leading-reading)] text-foreground/90 [word-break:keep-all] break-words"
                     >
                       {paragraph}
                     </p>
@@ -249,22 +249,22 @@ export default function PhilosophyPage() {
         </section>
 
         {/* FAQ — MODULAR Accordion(DS-021) 서비스 최초 도입, 호출부는 이 화면 1곳 */}
-        <section className="flex flex-col gap-[var(--spacing-24)]">
+        <section className="flex flex-col gap-6">
           <h2 className={SECTION_HEADING_CLASS}>자주 묻는 질문</h2>
           <FaqAccordion items={FAQ_ITEMS} />
         </section>
 
         {/* Contact — 강조색 카드 + mailto 필 버튼 */}
-        <section className="flex flex-col gap-[var(--spacing-24)]">
+        <section className="flex flex-col gap-6">
           <h2 className={SECTION_HEADING_CLASS}>문의하기</h2>
-          <div className="flex flex-col gap-[var(--spacing-16)] p-[var(--spacing-24)] rounded-[var(--radius-card)] bg-[var(--color-primary)]">
-            <p className="text-[length:var(--text-body)] leading-[var(--leading-reading)] text-[color:var(--color-text-on-primary)] [word-break:keep-all] break-words">
+          <div className="flex flex-col gap-4 p-6 rounded-2xl bg-[var(--accent)]">
+            <p className="text-base leading-[var(--leading-reading)] text-[color:var(--accent-foreground)] [word-break:keep-all] break-words">
               여기서 답을 찾지 못했다면 이메일로 바로 물어보세요. 확인하는 대로 답장
               드릴게요.
             </p>
             <a
               href="mailto:sihyunrr@gmail.com"
-              className="self-start inline-flex items-center justify-center min-h-11 px-[var(--spacing-32)] py-[14px] rounded-[var(--radius-pill-buttons)] bg-[var(--color-surface-inverse)] text-[color:var(--color-text-inverse)] text-[length:var(--text-body)] leading-[var(--leading-body)] active:scale-95 transition-transform duration-100"
+              className="self-start inline-flex items-center justify-center min-h-11 px-8 py-[14px] rounded-full bg-[var(--background-inverse)] text-[color:var(--snow)] text-base active:scale-95 transition-transform duration-100"
             >
               이메일 보내기
             </a>

@@ -28,7 +28,7 @@ export interface CollectionGridCardProps {
   children?: ReactNode
 }
 
-const BASE = 'flex flex-col gap-[var(--spacing-8)]'
+const BASE = 'flex flex-col gap-2'
 
 export default function CollectionGridCard({
   name,
@@ -53,20 +53,20 @@ export default function CollectionGridCard({
           컬렉션 이미지는 어드민 자유 입력이 가능했던 필드라 SafeImage로 렌더한다. next/image에
           직접 넘기면 카드 한 장 때문에 그리드가 있는 화면 전체가 500이 된다 (20260824_005).
           폴백은 이미지가 없을 때와 같은 BookIcon — 카드 골격과 진행도는 그대로 남는다. */}
-      <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
+      <div className="relative w-full aspect-square rounded-2xl overflow-hidden flex items-center justify-center">
         <SafeImage
           src={imageUrl}
           alt={name}
           className="object-contain p-1.5"
           sizes="50vw"
-          fallback={<BookIcon className="w-10 h-10 text-text/20" />}
+          fallback={<BookIcon className="w-10 h-10 text-foreground/20" />}
         />
         {/* 태그 행: 등급(선택) + 완성 */}
         {(rarity || completed) && (
           <div className="absolute top-2 left-2 flex items-center gap-1">
             {rarity && <RarityBadge rarity={rarity} />}
             {completed && (
-              <span className="bg-[color:var(--color-primary)] text-white text-[length:var(--text-caption)] leading-none px-2 py-0.5 rounded-full font-bold">
+              <span className="bg-[color:var(--accent)] text-white text-xs leading-none px-2 py-0.5 rounded-full font-bold">
                 {d.itembooks.completed}
               </span>
             )}
@@ -75,13 +75,13 @@ export default function CollectionGridCard({
       </div>
 
       {/* 타이틀 */}
-      <p className="text-[15px] font-bold text-text leading-[18px] truncate">{name}</p>
+      <p className="text-[15px] font-bold text-foreground leading-[18px] truncate">{name}</p>
 
       {/* 진행 바 + 카운트 한 행 */}
       {!hideProgress && (
-        <div className="flex items-center gap-[var(--spacing-8)]">
+        <div className="flex items-center gap-2">
           <ProgressBar percent={pct} height={6} />
-          <span className="text-[length:var(--text-caption)] text-[color:var(--color-primary)] font-bold leading-none tabular-nums shrink-0">
+          <span className="text-xs text-[color:var(--link)] font-bold leading-none tabular-nums shrink-0">
             {collected}/{total}
           </span>
         </div>

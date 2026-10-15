@@ -17,7 +17,7 @@ export default function LoadingSpinner({ size = 'md', className = '' }: LoadingS
       role="status"
       aria-label={d.common.loading}
       className={[
-        'inline-block rounded-full border-text border-t-transparent animate-spin',
+        'inline-block rounded-full border-foreground border-t-transparent animate-spin',
         sizeClasses[size],
         className,
       ]

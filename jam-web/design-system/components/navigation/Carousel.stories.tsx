@@ -41,18 +41,18 @@ function DemoCard({ name, badges, isActive }: { name: string; badges: number; is
         transition: 'transform var(--duration-medium) var(--ease-smooth-out), opacity var(--duration-medium) var(--ease-smooth-out)',
       }}
     >
-      <p style={{ margin: 0, fontWeight: 700, color: 'var(--color-text)' }}>{name}</p>
+      <p style={{ margin: 0, fontWeight: 700, color: 'var(--foreground)' }}>{name}</p>
       {badges > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {Array.from({ length: badges }, (_, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 'var(--radius-card)', background: 'var(--color-bg-tint)' }} />
+              <div style={{ width: 32, height: 32, borderRadius: 'var(--radius-2xl)', background: 'var(--background-secondary)' }} />
               <RarityBadge rarity={i % 2 === 0 ? 'rare' : 'common'} />
             </div>
           ))}
         </div>
       ) : (
-        <p style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>드랍된 아이템이 없어요</p>
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>드랍된 아이템이 없어요</p>
       )}
     </Card>
   );
@@ -66,8 +66,8 @@ export const CenterFocusInfiniteLoop: Story = {
   render: () => {
     const [activeIndex, setActiveIndex] = useState(0);
     return (
-      <div style={{ background: 'var(--color-bg)', padding: '48px 0', minHeight: 420 }}>
-        <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', marginBottom: 16 }}>
+      <div style={{ background: 'var(--background)', padding: '48px 0', minHeight: 420 }}>
+        <p style={{ textAlign: 'center', color: 'var(--muted)', marginBottom: 16 }}>
           선택: {DEMO_ITEMS[activeIndex].name} ({activeIndex + 1}/{DEMO_ITEMS.length})
         </p>
         <Carousel
@@ -91,7 +91,7 @@ export const SingleItem: Story = {
     const [activeIndex, setActiveIndex] = useState(0);
     const items = [DEMO_ITEMS[0]];
     return (
-      <div style={{ background: 'var(--color-bg)', padding: '48px 0', minHeight: 320 }}>
+      <div style={{ background: 'var(--background)', padding: '48px 0', minHeight: 320 }}>
         <Carousel
           items={items}
           activeIndex={activeIndex}
@@ -121,8 +121,8 @@ export const ProgressiveWindowing: Story = {
     };
 
     return (
-      <div style={{ background: 'var(--color-bg)', padding: '48px 0', minHeight: 420 }}>
-        <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', marginBottom: 16 }}>
+      <div style={{ background: 'var(--background)', padding: '48px 0', minHeight: 420 }}>
+        <p style={{ textAlign: 'center', color: 'var(--muted)', marginBottom: 16 }}>
           공개된 카드 {visibleCount} / {DEMO_ITEMS.length}
         </p>
         <Carousel

@@ -21,13 +21,13 @@ const meta: Meta<typeof BadgeProgressRingCard> = {
           '눈금 1개인데, 연결선을 그리는 `BadgeStageRail`을 쓰면 연결선 없이 카드 한 장을 통째로 ' +
           '쓰는 낭비가 생긴다. 이 카드는 63계열을 그리드로 촘촘히 묶기 위한 압축 셀이고, 진행은 ' +
           '선형 막대 대신 **배지 이미지 보더를 따라 도는 테두리**로 보여준다. **테두리는 진행 ' +
-          '채널 하나로만 채운다**(`--status-progress-near` → `--status-progress-done` 스윕) — ' +
+          '채널 하나로만 채운다**(`--progress-short` → `--progress-done` 스윕) — ' +
           '등급색은 절대 테두리에 올리지 않고 이름 아래 `RarityBadge` 칩에 남긴다. 도형 진행은 ' +
           '작은 값과 0%가 구분되지 않아 **수치 캡션을 항상 함께 그린다.** ' +
           '20260906_2140(v2): **원형에서 라운드 사각으로** 바꿨다 — 같은 화면의 레일·레벨·반복 ' +
-          '카드가 모두 `--radius-sm` 라운드 사각 썸네일인데 이 셀만 원형이라 같은 배지가 두 가지 ' +
-          '모양으로 보였다. 바깥 `--radius-card`(16px), 안쪽은 동심값 ' +
-          '`calc(var(--radius-card) - 4px)`다. 이름은 --text-small로 올리고 **2줄 높이를 상시 ' +
+          '카드가 모두 `--radius-lg` 라운드 사각 썸네일인데 이 셀만 원형이라 같은 배지가 두 가지 ' +
+          '모양으로 보였다. 바깥 `--radius-2xl`(16px), 안쪽은 동심값 ' +
+          '`calc(var(--radius-2xl) - 4px)`다. 이름은 --text-sm로 올리고 **2줄 높이를 상시 ' +
           '예약**하며(이름 길이가 그리드 행 높이를 흔들지 못하게), 이미지는 여백 없이 프레임을 ' +
           '꽉 채운다(objectFit: cover). 등급칩은 size="md".',
       },
@@ -275,7 +275,7 @@ export const GridOf3Columns: Story = {
  */
 export const NameToChipGapIsUniform: Story = {
   render: () => (
-    <div style={{ background: 'var(--color-surface)', padding: 'var(--spacing-16)' }}>
+    <div style={{ background: 'var(--background)', padding: 'var(--spacing-16)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', columnGap: 8, rowGap: 16 }}>
         <BadgeProgressRingCard name="백 번" rarity="rare" status="not-reached" fraction={0.46} captionText="46/100회" ariaLabel="백 번, 46/100회" />
         <BadgeProgressRingCard name="분실물 센터 999" rarity="epic" status="not-reached" fraction={0.1} captionText="0/999" ariaLabel="분실물 센터 999, 0/999" />

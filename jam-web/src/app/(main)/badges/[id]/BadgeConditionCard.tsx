@@ -32,16 +32,16 @@ interface BadgeConditionCardProps {
 
 export default function BadgeConditionCard({ text, spec }: BadgeConditionCardProps) {
   return (
-    <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
-      <p className="text-[length:var(--text-body)] font-bold text-text">{d.badges.conditionTitle}</p>
+    <div className="bg-surface rounded-2xl p-6 flex flex-col gap-2">
+      <p className="text-base font-bold text-foreground">{d.badges.conditionTitle}</p>
       {spec ? (
         /* 카드에 이 줄뿐이라 굵기를 주지 않는다 — 대비할 문장이 없으면 볼드가 근거를 잃는다.
            길어지면 줄바꿈한다. 조건이 잘리면 안 되므로 말줄임(truncate)을 쓰지 않는다. */
-        <p className="text-[length:var(--text-small)] text-text leading-[var(--leading-loose)] tabular-nums [word-break:keep-all] break-words">
+        <p className="text-sm text-foreground leading-[var(--leading-loose)] tabular-nums [word-break:keep-all] break-words">
           {spec}
         </p>
       ) : (
-        <p className="text-[length:var(--text-small)] text-[var(--color-text-secondary)] leading-[var(--leading-loose)]">{text}</p>
+        <p className="text-sm text-[var(--muted)] leading-[var(--leading-loose)]">{text}</p>
       )}
     </div>
   )

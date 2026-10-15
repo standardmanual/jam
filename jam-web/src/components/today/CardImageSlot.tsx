@@ -8,10 +8,10 @@ import { resourceIconOf } from './resourceIcon'
  *
  * 세 모양이 같은 규칙을 한 곳에서 지킨다:
  * - 칸은 이미지와 무관하게 늘 있다 — `SafeImage`는 주소가 없거나 실패하면 컨테이너까지 없애고 fallback만 그려서, 칸을 거기에 맡기면 카드 높이가 흔들린다
- *   (그래서 `containerClassName`을 쓰지 않고 칸을 직접 그린다). 로딩 중에는 `--color-surface` 단색 판이다(스켈레톤·모션 없음).
+ *   (그래서 `containerClassName`을 쓰지 않고 칸을 직접 그린다). 로딩 중에는 `--background` 단색 판이다(스켈레톤·모션 없음).
  * - `alt`: 제목이 화면 글자로 보이면 비우고(본문 h3가 말한다), 이미지에만 있으면(`titleInImage`) 제목이다. 이미지가 실패하면 판 위 제목 글자가 링크 이름을 맡는다.
  * - `sizes`: 앱 열이 최대 430px이고 카드 좌우 여백이 16px씩이라 카드는 최대 398px이다. 세 모양 모두 카드 폭이 같다. 주지 않으면 100vw로 가정해 과대 다운로드한다.
- * - 자리 표시: `--color-surface` 단색 판 + 자원 아이콘뿐이다(그라디언트·문구 없음). 제목은 이미지에 제목이 들어 있는 카드(`titleInImage`)에서만 판 위에 그린다.
+ * - 자리 표시: `--background` 단색 판 + 자원 아이콘뿐이다(그라디언트·문구 없음). 제목은 이미지에 제목이 들어 있는 카드(`titleInImage`)에서만 판 위에 그린다.
  *   일반 카드는 바로 아래 본문(또는 막)이 같은 제목을 24px로 보여 주므로 아이콘만 둬 같은 제목이 한 카드에 두 번 보이지 않게 한다.
  *   가운데 정렬은 이 판에만 쓴다. 아이콘은 장식이라 숨기고(`aria-hidden`, 아이콘 세트 기본값) 판은 흑백 처리하지 않는다.
  *
@@ -25,21 +25,21 @@ export type CardImageRatio = 'video' | 'poster' | 'square'
 
 const IMAGE_SIZES = '(min-width: 430px) 398px, calc(100vw - 32px)'
 
-const PLACEHOLDER_CONTENT = 'flex flex-col items-center justify-center gap-[var(--spacing-8)] px-[var(--spacing-24)] bg-surface text-center'
+const PLACEHOLDER_CONTENT = 'flex flex-col items-center justify-center gap-2 px-6 bg-background text-center'
 
 const SLOT: Record<CardImageRatio, { box: string; image: string; placeholder: string }> = {
   video: {
-    box: 'relative aspect-video overflow-hidden bg-surface',
+    box: 'relative aspect-video overflow-hidden bg-background',
     image: 'object-cover',
     placeholder: `absolute inset-0 ${PLACEHOLDER_CONTENT}`,
   },
   poster: {
-    box: 'relative aspect-[4/5] overflow-hidden bg-surface',
+    box: 'relative aspect-[4/5] overflow-hidden bg-background',
     image: 'object-cover',
     placeholder: `absolute inset-x-0 top-0 h-[60%] ${PLACEHOLDER_CONTENT}`,
   },
   square: {
-    box: 'relative aspect-square overflow-hidden bg-surface',
+    box: 'relative aspect-square overflow-hidden bg-background',
     image: 'object-contain',
     placeholder: `absolute inset-0 ${PLACEHOLDER_CONTENT}`,
   },
@@ -49,9 +49,9 @@ const SLOT: Record<CardImageRatio, { box: string; image: string; placeholder: st
 function ImagePlaceholder({ view, className }: { view: ImageCardView; className: string }) {
   return (
     <div className={className}>
-      {resourceIconOf(view, { className: 'w-8 h-8 text-text/60' })}
+      {resourceIconOf(view, { className: 'w-8 h-8 text-foreground/60' })}
       {view.titleInImage && (
-        <p className="text-[length:var(--text-body)] font-bold text-text line-clamp-3 break-keep break-words">{view.title}</p>
+        <p className="text-base font-bold text-foreground line-clamp-3 break-keep break-words">{view.title}</p>
       )}
     </div>
   )

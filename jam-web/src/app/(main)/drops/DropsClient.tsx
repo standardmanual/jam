@@ -220,7 +220,7 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
   // 로딩이 끝나지 않는다.
   if (questStep === 'pickup' || questStep === 'drop') {
     return (
-      <div className="fixed inset-0 bg-surface overflow-hidden" style={{ maxWidth: 430, margin: '0 auto' }}>
+      <div className="fixed inset-0 bg-background overflow-hidden" style={{ maxWidth: 430, margin: '0 auto' }}>
         <TopNav logo />
         <QuestPickupScene mode={questStep} />
       </div>
@@ -230,10 +230,10 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
   if (locError) {
     return (
       <div
-        className="fixed inset-0 flex flex-col items-center justify-center gap-[var(--spacing-16)] px-[var(--spacing-24)] text-center bg-surface text-text"
+        className="fixed inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center bg-background text-foreground"
         style={{ maxWidth: 430, margin: '0 auto' }}
       >
-        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/70">{locError}</p>
+        <p className="text-base text-foreground/70">{locError}</p>
         <Button variant="outline" onClick={() => window.location.reload()}>
           {d.drops.retry}
         </Button>
@@ -244,11 +244,11 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
   if (userLat === null || userLng === null) {
     return (
       <div
-        className="fixed inset-0 flex flex-col items-center justify-center gap-[var(--spacing-16)] bg-surface text-text"
+        className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-background text-foreground"
         style={{ maxWidth: 430, margin: '0 auto' }}
       >
         <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
-        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.drops.locating}</p>
+        <p className="text-base text-foreground/60">{d.drops.locating}</p>
       </div>
     )
   }
@@ -264,7 +264,7 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
   }))
 
   return (
-    <div className="fixed inset-0 bg-surface overflow-hidden" style={{ maxWidth: 430, margin: '0 auto' }}>
+    <div className="fixed inset-0 bg-background overflow-hidden" style={{ maxWidth: 430, margin: '0 auto' }}>
       {/* 20260831_2106: 탭 최상위 공통 TopNav 추가 — 노치까지 채우는 풀블리드 지도를 위해
           의도적으로 뺐던 결정을 뒤집었다(트레이드오프로 지도 상단 일부가 가려짐, 완료 기록 참고).
           TopNav(position: sticky, z-index: 30, design-system/components/navigation/TopNav.jsx)는
@@ -290,19 +290,19 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
       {poisLoading && (
         // TopNav 실측 높이(env(safe-area-inset-top) + 56px, TopNav.jsx height:56 고정값) 아래로
         // 이동 — 기존 top 값(safe-area-inset-top+1rem) 그대로면 TopNav 뒤에 가려진다.
-        <div className="absolute top-[calc(env(safe-area-inset-top)+56px+1rem)] left-1/2 -translate-x-1/2 z-10 bg-surface-inverse rounded-[var(--radius-nav-buttons)] px-[var(--spacing-16)] py-2 flex items-center gap-2">
-          <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin text-text-inverse" />
-          <span className="text-[length:var(--text-caption)] text-text-inverse">{d.drops.exploring}</span>
+        <div className="absolute top-[calc(env(safe-area-inset-top)+56px+1rem)] left-1/2 -translate-x-1/2 z-10 bg-background-inverse rounded-full px-4 py-2 flex items-center gap-2">
+          <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin text-snow" />
+          <span className="text-xs text-snow">{d.drops.exploring}</span>
         </div>
       )}
 
       {!poisLoading && pois.length === 0 && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-surface-inverse rounded-[var(--radius-cards)] px-[var(--spacing-16)] py-[var(--spacing-16)] text-text-inverse/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center whitespace-nowrap">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-background-inverse rounded-2xl px-4 py-4 text-snow/70 text-base text-center whitespace-nowrap">
           {t(d.drops.noNearbyPlaces, { m: DROP_RADIUS_METERS })}
         </div>
       )}
       {!poisLoading && pois.length > 0 && !pois.some((p) => p.in_drop_range) && !carouselPoiId && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-surface-inverse rounded-[var(--radius-cards)] px-[var(--spacing-16)] py-[var(--spacing-16)] text-text-inverse/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center whitespace-nowrap">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-background-inverse rounded-2xl px-4 py-4 text-snow/70 text-base text-center whitespace-nowrap">
           {t(d.drops.moveCloser, { m: DROP_RADIUS_METERS })}
         </div>
       )}

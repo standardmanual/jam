@@ -40,7 +40,7 @@ interface ItemBookHeroSectionProps {
  * 자동 줄바꿈(`splitDescriptionSentences`)을 그대로 적용한다. 진행도 바는 이 카드의 대상이
  * 아니다(사용자 명시 지시) — 카드 밖, 부모(`page.tsx`)의 별도 렌더링으로 유지한다.
  *
- * [20260917_1303-보완] 카드 배경 테두리(`border border-[var(--color-border)]`, 20260915_2006
+ * [20260917_1303-보완] 카드 배경 테두리(`border border-[var(--border)]`, 20260915_2006
  * 컨트라스트 보정용)는 사용자 확인 결과 배지 상세와 다르게 도드라져 보여 제거했다 — 두 상세화면의
  * 시각적 일치를 우선한다. 페이지 컨테이너 좌우 padding 차이(컬렉션 px-4=16px vs 배지
  * BadgeHeroSection 자체 px-6=24px)로 카드 폭도 달라 보였던 문제는 이 컴포넌트의 카드에
@@ -70,8 +70,8 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
           // `w-full`은 부모 폭의 100%로 고정되므로 여기에 `mx-2`를 더하면 박스가 총
           // 100%+16px가 되어 오른쪽으로 넘쳐 좌우 여백이 달라 보였다(사용자 확인). 너비 자체를
           // `calc(100%-16px)`로 줄여야 마진을 더해도 부모 폭 안에 대칭으로 들어간다.
-          'relative overflow-hidden w-[calc(100%-16px)] aspect-square rounded-[var(--radius-cards)] flex flex-col items-center p-6 mx-2',
-          backgroundAnimation ? 'bg-transparent' : 'bg-surface-elevated',
+          'relative overflow-hidden w-[calc(100%-16px)] aspect-square rounded-2xl flex flex-col items-center p-6 mx-2',
+          backgroundAnimation ? 'bg-transparent' : 'bg-surface',
         ].join(' ')}
         style={backgroundAnimation ? { backgroundColor: backgroundAnimation.bgColor } : undefined}
       >
@@ -98,7 +98,7 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
         >
           <div className="flex-shrink-0 flex flex-col items-center gap-1">
             <h1
-              className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] font-bold text-center"
+              className="text-3xl font-bold text-center"
               style={{ color: '#FFFFFF' }}
             >
               {book.name}
@@ -111,7 +111,7 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
               {splitDescriptionSentences(book.description).map((sentence, index) => (
                 <p
                   key={index}
-                  className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)]"
+                  className="text-base text-[var(--muted)] text-center"
                 >
                   {sentence}
                 </p>
@@ -124,12 +124,12 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
       {/* 진행도 바 + 카운트 인라인 — 카드 밖에 유지(사용자 명시 지시). 카드~진행도 바 세로 간격을
           20px로 맞춘다 — 부모(page.tsx)의 `flex flex-col gap-3`(12px)를 직접 바꾸면 진행도 바
           다음에 오는 다른 형제 섹션과의 간격도 함께 바뀌므로, 이 래퍼에 보정 마진
-          `mt-[var(--spacing-8)]`(8px)을 더해 12+8=20px를 만든다. [20260917_1303] */}
+          `mt-2`(8px)을 더해 12+8=20px를 만든다. [20260917_1303] */}
       {/* mx-2 — 위 카드에 추가한 mx-2와 좌우 폭을 맞춰, 카드보다 진행도 바가 더 넓어 보이는
           어긋남을 막는다. */}
-      <div className="flex items-center gap-3 mt-[var(--spacing-8)] mx-2">
+      <div className="flex items-center gap-3 mt-2 mx-2">
         <ProgressBar percent={pct} />
-        <span style={{ color: 'var(--color-primary)', fontSize: '13px', lineHeight: '1', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ color: 'var(--link)', fontSize: '13px', lineHeight: '1', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
           {slottedCount}/{totalBadgeCount}
         </span>
       </div>

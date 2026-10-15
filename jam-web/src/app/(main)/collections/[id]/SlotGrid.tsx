@@ -354,12 +354,12 @@ export default function SlotGrid({
   return (
     <div ref={gridRef}>
       {error && (
-        <div className="mb-3 rounded-[var(--radius-cards)] bg-surface-elevated px-3 py-2 text-xs text-text/70">
+        <div className="mb-3 rounded-2xl bg-surface px-3 py-2 text-xs text-foreground/70">
           {error}
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+      <div className="grid grid-cols-3 gap-2">
         {badgeSlots.map((badgeSlot) => {
           const { badge, candidates, slot } = badgeSlot
           const isSlotted = slot != null
@@ -396,7 +396,7 @@ export default function SlotGrid({
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSwapButton(badgeSlot) }}
                     disabled={pending}
-                    className="block mx-auto px-3 py-1 text-[length:var(--text-micro)] leading-[var(--leading-micro)] rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-primary)] text-[color:var(--color-text-on-primary)] transition-all disabled:opacity-40"
+                    className="block mx-auto px-3 py-1 text-xs rounded-full bg-[color:var(--accent)] text-[color:var(--accent-foreground)] transition-all disabled:opacity-40"
                   >
                     {pending ? '…' : d.itembooks.swapButton}
                   </button>
@@ -405,7 +405,7 @@ export default function SlotGrid({
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(badge.id, slot!.id) }}
                     disabled={pending}
-                    className="block mx-auto px-3 py-1 text-[length:var(--text-micro)] leading-[var(--leading-micro)] rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-base-grey-600)] text-[color:var(--color-text-on-primary)] transition-all disabled:opacity-40"
+                    className="block mx-auto px-3 py-1 text-xs rounded-full bg-[color:var(--base-neutral-600)] text-[color:var(--accent-foreground)] transition-all disabled:opacity-40"
                   >
                     {pending ? '…' : d.itembooks.unslotButton}
                   </button>
@@ -418,7 +418,7 @@ export default function SlotGrid({
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSlotButton(badgeSlot) }}
                   disabled={pending}
-                  className="block mx-auto px-3 py-1 text-[length:var(--text-micro)] leading-[var(--leading-micro)] rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-primary)] text-[color:var(--color-text-on-primary)] transition-all disabled:opacity-40"
+                  className="block mx-auto px-3 py-1 text-xs rounded-full bg-[color:var(--accent)] text-[color:var(--accent-foreground)] transition-all disabled:opacity-40"
                 >
                   {pending ? '…' : d.itembooks.slotButton}
                 </button>
@@ -458,7 +458,7 @@ export default function SlotGrid({
         // 진행 표시 — 왜 지금 다른 행이 눌리지 않고 시트도 닫히지 않는지를 설명한다.
         renderTrailing={(candidate) =>
           selectedCandidateId === candidate.id && sheetBusy ? (
-            <span className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
+            <span className="text-xs text-[var(--muted)]">
               {d.itembooks.processing}
             </span>
           ) : undefined

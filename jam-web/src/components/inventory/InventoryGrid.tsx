@@ -47,7 +47,7 @@ interface InventoryGridProps {
     /**
      * 「지금 눌러야 할 곳」 공용 펄스(`.jam-quest-pulse`, 티켓 20260928_1752)를 선두 셀에
      * 씌운다 — 20260928_1753. `BadgeGridCard`의 기존 `className` prop에 그대로 병합되므로
-     * 셀 모서리(`--radius-card`)를 벗어나지 않는다.
+     * 셀 모서리(`--radius-2xl`)를 벗어나지 않는다.
      */
     pulse?: boolean
   }
@@ -72,7 +72,7 @@ export default function InventoryGrid({
   leadingItem,
 }: InventoryGridProps) {
   return (
-    <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+    <div className="grid grid-cols-3 gap-2">
       {leadingItem && (
         <BadgeGridCard
           key={leadingItem.item.id}
@@ -86,7 +86,7 @@ export default function InventoryGrid({
       {items.map((item) => {
         const expiring = isExpiringSoon(item.expiresAt)
         const expiryNode = expiring && item.expiresAt ? (
-          <p className="text-[length:var(--text-caption)] font-bold leading-none px-1.5 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)] text-text/70 text-center">
+          <p className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-foreground/70 text-center">
             <LocalDate iso={item.expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
           </p>
         ) : null
@@ -127,13 +127,13 @@ export default function InventoryGrid({
       {Array.from({ length: emptySlots }).map((_, i) => (
         <div
           key={`empty-${i}`}
-          className="flex flex-col items-center bg-surface rounded-[var(--radius-card)] p-[var(--spacing-12)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)] opacity-30"
+          className="flex flex-col items-center bg-background rounded-2xl p-3 overflow-hidden shadow-[inset_0_0_0_1px_var(--border)] opacity-30"
         >
-          <div className="w-[90px] h-[90px] rounded-[var(--radius-card)] flex items-center justify-center bg-white/10">
-            <span className="text-text text-xl">+</span>
+          <div className="w-[90px] h-[90px] rounded-2xl flex items-center justify-center bg-white/10">
+            <span className="text-foreground text-xl">+</span>
           </div>
-          <div className="flex flex-col items-center gap-[var(--spacing-4)] pt-[var(--spacing-8)] w-full">
-            <p className="text-[11px] font-bold text-text text-center truncate w-full leading-tight">&nbsp;</p>
+          <div className="flex flex-col items-center gap-1 pt-2 w-full">
+            <p className="text-[11px] font-bold text-foreground text-center truncate w-full leading-tight">&nbsp;</p>
             <div className="h-6" />
           </div>
         </div>

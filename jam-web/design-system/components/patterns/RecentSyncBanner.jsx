@@ -14,7 +14,7 @@ import React from 'react';
  * 문장을 넘긴다 — 비교할 진전이 없으면(최초 싱크 전·변화 없음) null을 넘겨 아래 `message`
  * 기본 문구로 자동 폴백한다.
  *
- * 색은 --status-latest-solid(시안) 하나뿐 — 모자란 것(옐로우)·다 채운 것(라임)과 겹치지
+ * 색은 --progress-latest(시안) 하나뿐 — 모자란 것(옐로우)·다 채운 것(라임)과 겹치지
  * 않는 "방금 들어온 것" 전용 채널이라, 유저가 색만 보고도 이 배너를 학습할 수 있다.
  */
 export function RecentSyncBanner({
@@ -40,9 +40,9 @@ export function RecentSyncBanner({
       className={className}
       style={{
         display: 'flex', alignItems: 'center', gap: 'var(--spacing-12)',
-        padding: '12px var(--spacing-16)', borderRadius: 'var(--radius-card)',
-        background: 'linear-gradient(160deg, rgba(255,255,255,.085) 0%, rgba(255,255,255,.02) 58%), var(--color-surface-elevated)',
-        boxShadow: 'inset 0 0 0 1px var(--status-latest-soft), inset 0 1px 0 rgba(255,255,255,.06)',
+        padding: '12px var(--spacing-16)', borderRadius: 'var(--radius-2xl)',
+        background: 'linear-gradient(160deg, rgba(255,255,255,.085) 0%, rgba(255,255,255,.02) 58%), var(--surface)',
+        boxShadow: 'inset 0 0 0 1px var(--progress-latest-soft), inset 0 1px 0 rgba(255,255,255,.06)',
         ...style,
       }}
     >
@@ -50,12 +50,12 @@ export function RecentSyncBanner({
         aria-hidden="true"
         style={{
           width: 8, height: 8, borderRadius: '50%', flex: 'none',
-          background: 'var(--status-latest-solid)', boxShadow: '0 0 0 4px var(--status-latest-soft)',
+          background: 'var(--progress-latest)', boxShadow: '0 0 0 4px var(--progress-latest-soft)',
         }}
       />
       <p
         style={{
-          margin: 0, fontSize: 'var(--text-small)', fontWeight: 600, lineHeight: 1.35, color: 'var(--color-text)',
+          margin: 0, fontSize: 'var(--text-sm)', fontWeight: 600, lineHeight: 1.35, color: 'var(--foreground)',
           // keep-all + tabular-nums: comparisonMessage는 "1.3km" 같은 수치+단위를 담는다 —
           // BadgeStageRail.jsx와 동일 원칙(줄바꿈 시 숫자와 단위가 쪼개지는 것을 막고, 폭 흔들림을 없앤다).
           wordBreak: comparisonMessage ? 'keep-all' : 'normal',

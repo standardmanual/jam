@@ -61,20 +61,20 @@ export default async function InventoryPage() {
   }))
 
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
       <TopNav logo />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-24)]">
+      <div className="px-4 pt-6 pb-6">
       {/* 헤더 */}
-      <div className="mb-[var(--spacing-24)]">
-        <div className="flex items-start justify-between mb-[var(--spacing-16)]">
+      <div className="mb-6">
+        <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.inventory.title}</h1>
+            <h1 className="text-5xl">{d.inventory.title}</h1>
           </div>
           <Link
             href="/combine"
-            className="mt-1 inline-flex items-center justify-center min-h-11 rounded-[var(--radius-nav-buttons)] px-[var(--spacing-16)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface-elevated active:scale-95 transition-transform duration-100"
+            className="mt-1 inline-flex items-center justify-center min-h-11 rounded-full px-4 text-base bg-surface active:scale-95 transition-transform duration-100"
           >
             {d.inventory.combineButton}
           </Link>
@@ -85,21 +85,21 @@ export default async function InventoryPage() {
           height={6}
           labelType="none"
         />
-        <p className="mt-1 text-[length:var(--text-small)] text-[var(--color-text-secondary)]">
+        <p className="mt-1 text-sm text-[var(--muted)]">
           {t(d.inventory.slotsDetail, { used: usedSlots, max: maxSlots, remaining: remainingSlots })}
         </p>
 
         {/* 20260912_1940: 슬롯 포화 상시 안내 — 가득 찼을 때만 노출, 카드형 인셋(edge-to-edge 금지) */}
         {remainingSlots === 0 && (
           <div
-            className="mt-[var(--spacing-12)] rounded-[var(--radius-card)] px-[var(--spacing-16)] py-[var(--spacing-12)] bg-surface-elevated"
+            className="mt-3 rounded-2xl px-4 py-3 bg-surface"
           >
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text">
+            <p className="text-base text-foreground">
               {t(d.inventory.fullNoticeBody, { max: maxSlots })}
             </p>
             <Link
               href="/drops"
-              className="mt-[var(--spacing-12)] inline-flex items-center justify-center min-h-11 rounded-[var(--radius-nav-buttons)] px-[var(--spacing-16)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface active:scale-95 transition-transform duration-100"
+              className="mt-3 inline-flex items-center justify-center min-h-11 rounded-full px-4 text-base bg-background active:scale-95 transition-transform duration-100"
             >
               {d.inventory.fullNoticeCta}
             </Link>

@@ -16,8 +16,8 @@ import type { TodayLeftStatus, TodayRightStatus } from '@/lib/today/status'
  */
 
 const CELL_CLASS =
-  'h-full min-h-[92px] flex flex-col gap-[var(--spacing-8)] jam-press'
-const CELL_BODY_CLASS = 'flex-1 flex flex-col justify-center gap-[var(--spacing-8)]'
+  'h-full min-h-[92px] flex flex-col gap-2 jam-press'
+const CELL_BODY_CLASS = 'flex-1 flex flex-col justify-center gap-2'
 
 /**
  * 카드 좌측 상단 타이틀 레이블 (티켓 20260830_2121). 칩 모양은 MODULAR `LabelChip`
@@ -35,7 +35,7 @@ function LeftCell({ status }: { status: TodayLeftStatus }) {
         <Card tone="inverse" className={CELL_CLASS}>
           <CellLabel>{d.todayStatus.myProgressLabel}</CellLabel>
           <div className={CELL_BODY_CLASS}>
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
+            <p className="text-base font-bold">
               {d.todayStatus.stravaCta}
             </p>
           </div>
@@ -55,7 +55,7 @@ function LeftCell({ status }: { status: TodayLeftStatus }) {
         <Card tone="inverse" className={CELL_CLASS}>
           <CellLabel>{d.todayStatus.myProgressLabel}</CellLabel>
           <div className={CELL_BODY_CLASS}>
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
+            <p className="text-base font-bold">
               <span className="break-words [overflow-wrap:anywhere]">{status.name}</span>{' '}
               <span className="whitespace-nowrap tabular-nums">
                 {current}/{total}
@@ -74,10 +74,10 @@ function LeftCell({ status }: { status: TodayLeftStatus }) {
       <Card tone="inverse" className={CELL_CLASS}>
         <CellLabel>{d.todayStatus.myProgressLabel}</CellLabel>
         <div className={CELL_BODY_CLASS}>
-          <span className="text-text-inverse/60 opacity-50">
+          <span className="text-snow/60 opacity-50">
             <Icon className="w-6 h-6" />
           </span>
-          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
+          <p className="text-base font-bold">
             {status.text}
           </p>
         </div>
@@ -93,10 +93,10 @@ function RightCell({ status }: { status: Exclude<TodayRightStatus, { kind: 'none
         <Card tone="inverse" className={CELL_CLASS}>
           <CellLabel>{d.todayStatus.friendActivityLabel}</CellLabel>
           <div className={CELL_BODY_CLASS}>
-            <span className="text-text-inverse/60 opacity-50">
+            <span className="text-snow/60 opacity-50">
               <UsersIcon className="w-6 h-6" />
             </span>
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
+            <p className="text-base font-bold">
               {d.todayStatus.noFollowing}
             </p>
           </div>
@@ -115,7 +115,7 @@ function RightCell({ status }: { status: Exclude<TodayRightStatus, { kind: 'none
       <Card tone="inverse" className={CELL_CLASS}>
         <CellLabel>{d.todayStatus.friendActivityLabel}</CellLabel>
         <div className={CELL_BODY_CLASS}>
-          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
+          <p className="text-base font-bold">
             {message}
           </p>
         </div>
@@ -133,14 +133,14 @@ export default function TodayStatusStrip({ left, right }: Props) {
   // 팔로잉은 있으나 오늘 활동이 없으면 빈 콘텐츠로 자리를 차지하지 않는다 — 좌측 카드만 표시.
   if (right.kind === 'none') {
     return (
-      <div className="grid grid-cols-1 gap-[var(--spacing-16)]">
+      <div className="grid grid-cols-1 gap-4">
         <LeftCell status={left} />
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
+    <div className="grid grid-cols-2 gap-4">
       <LeftCell status={left} />
       <RightCell status={right} />
     </div>

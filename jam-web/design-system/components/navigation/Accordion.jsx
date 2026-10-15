@@ -7,8 +7,8 @@ import React, { useState } from 'react';
    20260907 (티켓 20260907_0934): 토글을 평문 셰브런에서 원형 배지 버튼으로 교체.
    tomo.ai/about의 "원형 배경 + 회전 아이콘" 인터랙션 패턴만 차용했다 — tomo의 실제 아이콘
    (도트 패턴 화살표, 브랜드 고유 자산)은 복제하지 않고 JAM 아이콘 세트의 단순 셰브런을
-   그대로 원 안에 넣는 식으로 재해석했다. 닫힘 상태는 --color-bg-tint 배경 위 보조 텍스트색
-   셰브런, 열림 상태는 --color-primary 배경 위 --color-text-on-primary 셰브런으로 상태를
+   그대로 원 안에 넣는 식으로 재해석했다. 닫힘 상태는 --background-secondary 배경 위 보조 텍스트색
+   셰브런, 열림 상태는 --color-primary 배경 위 --accent-foreground 셰브런으로 상태를
    구분하고, 180도 회전은 기존 트랜지션(--duration-fast/--ease-smooth-out)을 그대로 썼다.
    이 티켓이 Accordion을 서비스에 처음 도입한다 (`/philosophy` FAQ 섹션 1곳).
 
@@ -42,12 +42,12 @@ function ToggleBadge({ isOpen }) {
         marginLeft: 12,
         width: 28,
         height: 28,
-        borderRadius: 'var(--radius-pill)',
+        borderRadius: 'var(--radius-full)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: isOpen ? 'var(--color-primary)' : 'var(--color-bg-tint)',
-        color: isOpen ? 'var(--color-text-on-primary)' : 'var(--color-text-secondary)',
+        background: isOpen ? 'var(--accent)' : 'var(--background-secondary)',
+        color: isOpen ? 'var(--accent-foreground)' : 'var(--muted)',
         transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
       }}
     >
@@ -60,7 +60,7 @@ function AccordionItem({ item, index, isOpen, onToggle, headerId, panelId }) {
   /* grid-template-rows: 0fr → 1fr avoids layout thrash from maxHeight animation.
      Inner div needs min-height:0 to collapse properly in the 0fr state. */
   return (
-    <div style={{ borderBottom: '1px solid var(--color-border)' }}>
+    <div style={{ borderBottom: '1px solid var(--border)' }}>
       <button
         id={headerId}
         aria-expanded={isOpen}
@@ -71,7 +71,7 @@ function AccordionItem({ item, index, isOpen, onToggle, headerId, panelId }) {
           width: '100%', display: 'flex', justifyContent: 'space-between',
           alignItems: 'center', padding: 'var(--layout-element-gap)',
           background: 'none', border: 'none', cursor: 'pointer',
-          fontSize: 'var(--text-body)', color: 'var(--color-text)',
+          fontSize: 'var(--text-base)', color: 'var(--foreground)',
           fontFamily: 'var(--font-family-base)', textAlign: 'left',
           minHeight: 44,
         }}
@@ -119,11 +119,11 @@ export function Accordion({ items = [], style = {}, className = '' }) {
     <div
       className={className}
       style={{
-        border: '1px solid var(--color-border)',
+        border: '1px solid var(--border)',
         borderBottom: 'none',
-        borderRadius: 'var(--radius-card)',
+        borderRadius: 'var(--radius-2xl)',
         overflow: 'hidden',
-        background: 'var(--color-surface)',
+        background: 'var(--background)',
         ...style,
       }}
     >

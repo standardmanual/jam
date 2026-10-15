@@ -61,7 +61,7 @@ describe('ArticleView — 커버', () => {
     const html = renderToStaticMarkup(<ArticleView view={without('coverUrl')} />)
     expect(html).not.toContain('aspect-video')
     expect(html).not.toContain('<img')
-    expect(html).toContain('<article class="px-[var(--spacing-16)] pt-[var(--spacing-24)]">')
+    expect(html).toContain('<article class="px-4 pt-6">')
   })
 })
 
@@ -85,37 +85,37 @@ describe('ArticleView — 머리 영역', () => {
 
   it('칩은 MODULAR LabelChip 반전 색조(검정 바탕 위 흰 칩)이고 flex 칸으로 한 번 감쌌다', () => {
     const html = render()
-    expect(html).toMatch(/<div class="flex"><span class="" style="[^"]*background:var\(--color-surface-inverse\);color:var\(--color-text-inverse\)[^"]*">기사<\/span><\/div>/)
-    // LabelChip 규격(padding 6px 10px·lineHeight 1) — 옛 직접 마크업(bg-surface-inverse 클래스)이 아니다
+    expect(html).toMatch(/<div class="flex"><span class="" style="[^"]*background:var\(--background-inverse\);color:var\(--snow\)[^"]*">기사<\/span><\/div>/)
+    // LabelChip 규격(padding 6px 10px·lineHeight 1) — 옛 직접 마크업(bg-background-inverse 클래스)이 아니다
     expect(html).toContain('padding:6px 10px')
-    expect(html).not.toContain('bg-surface-inverse')
+    expect(html).not.toContain('bg-background-inverse')
   })
 
   it('제목은 h1이고 말줄임 없이 줄바꿈된다(line-clamp·truncate 없음)', () => {
     const html = render({ title: '아주 아주 긴 제목이라서 두 줄이든 세 줄이든 끝까지 보여야 하는 기사 제목입니다 마지막 글자까지' })
-    expect(html).toMatch(/<h1 class="text-\[length:var\(--text-heading-sm\)\] leading-\[var\(--leading-heading-sm\)\] mt-\[var\(--spacing-16\)\]">아주/)
+    expect(html).toMatch(/<h1 class="text-\[length:var\(--text-3xl\)\] leading-\[var\(--text-3xl--line-height\)\] mt-\[var\(--spacing-16\)\]">아주/)
     expect(html).not.toContain('line-clamp')
     expect(html).not.toContain('truncate')
   })
 
   it('부제는 16px·/60이고 제목 아래 8px이다', () => {
     expect(render()).toContain(
-      '<p class="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text/60 mt-[var(--spacing-8)]">러너가 직접 걸어 본 코스</p>',
+      '<p class="text-base text-foreground/60 mt-2">러너가 직접 걸어 본 코스</p>',
     )
   })
 
   it('부제가 없으면 그리지 않는다', () => {
-    expect(renderToStaticMarkup(<ArticleView view={without('subtitle')} />)).not.toContain('mt-[var(--spacing-8)]')
+    expect(renderToStaticMarkup(<ArticleView view={without('subtitle')} />)).not.toContain('mt-2')
   })
 
   it('게재일은 「2026년 10월 5일」(연도 유지)이고 12px·/60이다 — /40이 아니다', () => {
     const html = render()
-    expect(html).toContain('<p class="text-[length:var(--text-caption)] text-text/60 mt-[var(--spacing-16)]">2026년 10월 5일</p>')
+    expect(html).toContain('<p class="text-xs text-foreground/60 mt-4">2026년 10월 5일</p>')
   })
 
   it('게재일이 없으면 그리지 않는다', () => {
     const html = renderToStaticMarkup(<ArticleView view={without('publishedAt')} />)
-    expect(html).not.toContain('text-[length:var(--text-caption)]')
+    expect(html).not.toContain('text-xs')
   })
 })
 
@@ -123,13 +123,13 @@ describe('ArticleView — 본문', () => {
   it('문단마다 <p>이고 16px·/90이며 문단 안 줄바꿈을 보존한다(whitespace-pre-line)', () => {
     const html = render({ paragraphs: ['한 줄\n두 줄', '다음 문단'] })
     expect(html).toContain(
-      '<p class="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text/90 whitespace-pre-line">한 줄\n두 줄</p>',
+      '<p class="text-base text-foreground/90 whitespace-pre-line">한 줄\n두 줄</p>',
     )
     expect(html).toContain('>다음 문단</p>')
   })
 
   it('문단 위 간격 24px, 문단 사이 간격 16px이다', () => {
-    expect(render()).toContain('<div class="mt-[var(--spacing-24)] flex flex-col gap-[var(--spacing-16)]">')
+    expect(render()).toContain('<div class="mt-6 flex flex-col gap-4">')
   })
 
   it('마크다운은 렌더하지 않는다 — 문법이 글자 그대로 나온다', () => {
@@ -140,7 +140,7 @@ describe('ArticleView — 본문', () => {
 
   it('본문이 없으면 「본문이 없어요」를 /60으로 보인다 — /40이 아니다', () => {
     const html = render({ paragraphs: [] })
-    expect(html).toContain('<p class="text-text/60">본문이 없어요</p>')
+    expect(html).toContain('<p class="text-foreground/60">본문이 없어요</p>')
     expect(html).not.toContain('whitespace-pre-line')
   })
 
@@ -157,14 +157,14 @@ describe('ArticleView — CTA', () => {
     const html = render()
     expect(html).toMatch(/<a class="[^"]*" style="[^"]*" href="\/missions\/m1">/)
     expect(html).toContain(
-      'class="inline-flex items-center justify-center gap-2 min-h-11 w-full font-normal transition-transform duration-100 active:scale-95 rounded-[var(--radius-pill-buttons)] px-[var(--spacing-32)] py-[14px] text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse"',
+      'class="inline-flex items-center justify-center gap-2 min-h-11 w-full font-normal transition-transform duration-100 active:scale-95 rounded-full px-8 py-[14px] text-base text-snow"',
     )
-    expect(html).toContain('background-color:var(--color-surface-inverse)')
+    expect(html).toContain('background-color:var(--background-inverse)')
     expect(html).toContain('>미션 보기</a>')
   })
 
   it('CTA 위 간격은 24px이다', () => {
-    expect(render()).toContain('<div class="mt-[var(--spacing-24)]"><a ')
+    expect(render()).toContain('<div class="mt-6"><a ')
   })
 
   it('href가 없으면 같은 모양의 정적 필이다 — 링크도 눌림·transition도 없다', () => {
@@ -173,7 +173,7 @@ describe('ArticleView — CTA', () => {
     expect(html).not.toContain('active:scale-95')
     expect(html).not.toContain('transition-transform')
     expect(html).toContain(
-      '<div class="inline-flex items-center justify-center gap-2 min-h-11 w-full font-normal rounded-[var(--radius-pill-buttons)] px-[var(--spacing-32)] py-[14px] text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse"',
+      '<div class="inline-flex items-center justify-center gap-2 min-h-11 w-full font-normal rounded-full px-8 py-[14px] text-base text-snow"',
     )
     expect(html).toContain('>미션 보기</div>')
   })
@@ -187,19 +187,19 @@ describe('ArticleView — CTA', () => {
   it('cta가 없으면 블록이 없다(링크 없음과는 다른 상태)', () => {
     const html = renderToStaticMarkup(<ArticleView view={without('cta')} />)
     expect(html).not.toContain('min-h-11')
-    expect(html).not.toContain('mt-[var(--spacing-24)]"><')
+    expect(html).not.toContain('mt-6"><')
   })
 })
 
 describe('ArticleView — 바깥 틀', () => {
   it('아래 여백 40px을 루트가 가진다(미리보기에서도 같은 여백)', () => {
     // 커버가 있으면 우선 로드 <link>가 앞에 붙으므로 루트 div를 찾아 본다
-    expect(render()).toContain('<div class="text-text pb-[var(--spacing-40)]"><div class="relative w-full aspect-video')
-    expect(renderToStaticMarkup(<ArticleView view={without('coverUrl')} />)).toMatch(/^<div class="text-text pb-\[var\(--spacing-40\)\]">/)
+    expect(render()).toContain('<div class="text-foreground pb-10"><div class="relative w-full aspect-video')
+    expect(renderToStaticMarkup(<ArticleView view={without('coverUrl')} />)).toMatch(/^<div class="text-foreground pb-\[var\(--spacing-40\)\]">/)
   })
 
   it('본문 안쪽 여백은 좌우 16px·위 24px이다', () => {
-    expect(render()).toContain('<article class="px-[var(--spacing-16)] pt-[var(--spacing-24)]">')
+    expect(render()).toContain('<article class="px-4 pt-6">')
   })
 
   it('표시 데이터만 받는다 — 카드 행·getPublishedArticleCard·DB 모듈을 import하지 않는다', () => {

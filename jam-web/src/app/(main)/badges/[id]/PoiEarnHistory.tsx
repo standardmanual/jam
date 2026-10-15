@@ -21,27 +21,27 @@ function EarnCardContent({ e }: { e: PoiEarnItem }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-between items-center">
-        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.earnedAt}</span>
-        <span className="text-[14px] text-text">
+        <span className="text-[14px] text-[var(--muted)]">{d.badges.earnedAt}</span>
+        <span className="text-[14px] text-foreground">
           <LocalDate iso={e.earned_at} korean={{ year: true, time: true }} />
         </span>
       </div>
       {e.triggered_by_activity_name && (
         <div className="flex justify-between items-center">
-          <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerActivity}</span>
-          <span className="text-[14px] text-text truncate max-w-[180px] text-right">{e.triggered_by_activity_name}</span>
+          <span className="text-[14px] text-[var(--muted)]">{d.badges.triggerActivity}</span>
+          <span className="text-[14px] text-foreground truncate max-w-[180px] text-right">{e.triggered_by_activity_name}</span>
         </div>
       )}
       {e.triggered_by_distance_km && (
         <div className="flex justify-between items-center">
-          <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerDistance}</span>
-          <span className="text-[14px] text-text">{t(d.badges.triggerDistanceValue, { km: e.triggered_by_distance_km })}</span>
+          <span className="text-[14px] text-[var(--muted)]">{d.badges.triggerDistance}</span>
+          <span className="text-[14px] text-foreground">{t(d.badges.triggerDistanceValue, { km: e.triggered_by_distance_km })}</span>
         </div>
       )}
       {e.triggered_by_activity_date && (
         <div className="flex justify-between items-center">
-          <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerDate}</span>
-          <span className="text-[14px] text-text">
+          <span className="text-[14px] text-[var(--muted)]">{d.badges.triggerDate}</span>
+          <span className="text-[14px] text-foreground">
             <LocalDate iso={e.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
           </span>
         </div>
@@ -65,12 +65,12 @@ export default function PoiEarnHistory({ poiEarns }: { poiEarns: PoiEarnItem[] }
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between">
-        <p className="text-[15px] font-bold text-text">{d.badges.earnHistoryTitle}</p>
-        <span className="text-[13px] text-[var(--color-text-secondary)]">{t(d.badges.earnHistoryCount, { count: poiEarns.length })}</span>
+        <p className="text-[15px] font-bold text-foreground">{d.badges.earnHistoryTitle}</p>
+        <span className="text-[13px] text-[var(--muted)]">{t(d.badges.earnHistoryCount, { count: poiEarns.length })}</span>
       </div>
 
       {/* 최신(첫 번째) 이력 — 카드 형식 */}
-      <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
+      <div className="bg-surface rounded-2xl p-6">
         <EarnCardContent e={first} />
       </div>
 
@@ -79,9 +79,9 @@ export default function PoiEarnHistory({ poiEarns }: { poiEarns: PoiEarnItem[] }
         <ListRowCard
           key={e.id}
           onClick={() => setOpenIdx(i + 1)}
-          trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />}
+          trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--muted)]" />}
         >
-          <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text">
+          <p className="text-base text-foreground">
             <LocalDate iso={e.earned_at} korean={{ year: true, time: true }} />
           </p>
         </ListRowCard>

@@ -25,7 +25,7 @@ const meta: Meta<typeof DualAxisGauge> = {
           '20260906_2140(v2): 자기 배경·자기 패딩을 가진 **두 번째 카드**였던 것을 걷어내고 ' +
           '1px 구분선 + 소제목만 두른 **구획**으로 바꿨다 — 한 계열이 카드 두 장을 쓰니 세로 ' +
           '스캔에서 「계열 하나 = 카드 하나」 규칙이 깨졌다. 축 바 8→10px, 채움은 ' +
-          '`--status-progress-sweep`(ProgressBar `fillMode="track-gradient"`), 썸네일 64→52px, ' +
+          '`--progress-sweep`(ProgressBar `fillMode="track-gradient"`), 썸네일 64→52px, ' +
           '이미지는 여백 없이 프레임을 꽉 채운다(objectFit: cover).',
       },
     },

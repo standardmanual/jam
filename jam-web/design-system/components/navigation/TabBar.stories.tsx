@@ -25,31 +25,31 @@ type Story = StoryObj<typeof TabBar>;
 export const Today: Story = {
   name: '투데이 활성',
   args: { active: 'today' },
-  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--color-bg)', position: 'relative' }}><Story /></div>],
+  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--background)', position: 'relative' }}><Story /></div>],
 };
 
 export const Badges: Story = {
   name: '배지 활성',
   args: { active: 'badges' },
-  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--color-bg)', position: 'relative' }}><Story /></div>],
+  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--background)', position: 'relative' }}><Story /></div>],
 };
 
 export const Drops: Story = {
   name: '드랍 활성',
   args: { active: 'drops' },
-  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--color-bg)', position: 'relative' }}><Story /></div>],
+  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--background)', position: 'relative' }}><Story /></div>],
 };
 
 export const Missions: Story = {
   name: '미션 활성',
   args: { active: 'missions' },
-  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--color-bg)', position: 'relative' }}><Story /></div>],
+  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--background)', position: 'relative' }}><Story /></div>],
 };
 
 export const Inventory: Story = {
   name: '인벤토리 활성',
   args: { active: 'inventory' },
-  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--color-bg)', position: 'relative' }}><Story /></div>],
+  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--background)', position: 'relative' }}><Story /></div>],
 };
 
 export const Material: Story = {
@@ -57,15 +57,15 @@ export const Material: Story = {
   args: { active: 'badges' },
   decorators: [
     (Story) => (
-      <div style={{ minHeight: 260, position: 'relative', background: 'var(--color-bg)' }}>
+      <div style={{ minHeight: 260, position: 'relative', background: 'var(--background)' }}>
         {/* TabBar 아래로 스크롤되어 지나가는 콘텐츠 — backdrop-filter가 실제로 blur하는
             대상이 있어야 재질 효과가 Storybook 프리뷰에서도 보인다. */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(135deg, var(--color-primary), var(--color-rarity-epic), var(--color-rarity-rare))',
+          background: 'linear-gradient(135deg, var(--accent), var(--rarity-epic), var(--rarity-rare))',
           padding: 24,
-          color: 'var(--color-text)',
-          fontSize: 'var(--text-h2)',
+          color: 'var(--foreground)',
+          fontSize: 'var(--text-5xl)',
           fontWeight: 700,
         }}>
           Material Test<br />Material Test<br />Material Test
@@ -79,7 +79,7 @@ export const Material: Story = {
 export const WithUsername: Story = {
   name: '로그인 유저 (username 전달)',
   args: { active: 'badges', username: 'jam_user' },
-  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--color-bg)', position: 'relative' }}><Story /></div>],
+  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--background)', position: 'relative' }}><Story /></div>],
 };
 
 export const Interactive: Story = {
@@ -87,14 +87,14 @@ export const Interactive: Story = {
   render: () => {
     const [active, setActive] = useState<TabKey>('today');
     return (
-      <div style={{ minHeight: 200, background: 'var(--color-bg)', position: 'relative' }}>
+      <div style={{ minHeight: 200, background: 'var(--background)', position: 'relative' }}>
         <TabBar active={active} onChange={setActive} />
         <p style={{
           textAlign: 'center', paddingTop: 16,
-          color: 'var(--color-text-secondary)',
-          fontSize: 'var(--text-small)',
+          color: 'var(--muted)',
+          fontSize: 'var(--text-sm)',
         }}>
-          현재 탭: <strong style={{ color: 'var(--color-primary)' }}>{active}</strong>
+          현재 탭: <strong style={{ color: 'var(--link)' }}>{active}</strong>
         </p>
       </div>
     );

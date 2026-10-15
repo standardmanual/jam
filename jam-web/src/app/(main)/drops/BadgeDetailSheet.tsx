@@ -134,7 +134,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
     <BottomSheet open onClose={onCancel} detent="full">
       <div
         ref={setContentEl}
-        className="px-[var(--spacing-16)] pt-[var(--spacing-8)] flex flex-col gap-[var(--spacing-24)] min-h-full"
+        className="px-4 pt-2 flex flex-col gap-6 min-h-full"
         /* footer를 따로 분리하지 않고 한 페이지(스크롤 영역)로 구성.
            맨 아래 버튼까지 탭바(safe-area+16px+64px) 높이만큼 여백을 둬서,
            화면이 작아 다 안 보이면 스크롤해서 버튼을 볼 수 있게 한다. */
@@ -143,36 +143,36 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
         {/* 닫기 */}
         <button
           onClick={onCancel}
-          className="self-start inline-flex items-center min-h-11 -ml-2 px-2 text-text/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
+          className="self-start inline-flex items-center min-h-11 -ml-2 px-2 text-foreground/70 text-base active:scale-95 transition-transform duration-100"
         >
           &larr; {d.common.back}
         </button>
 
         {/* 배지 이미지 (대형) */}
-        <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
-          <div className="w-44 h-44 rounded-[var(--radius-cards)] bg-black/[0.04] flex items-center justify-center overflow-hidden">
+        <div className="flex flex-col items-center gap-4 py-4">
+          <div className="w-44 h-44 rounded-2xl bg-black/[0.04] flex items-center justify-center overflow-hidden">
             <SafeImage
               src={drop.badge_image_url}
               alt={drop.badge_name}
               width={176}
               height={176}
-              className="w-full h-full object-contain p-[var(--spacing-16)]"
-              fallback={<MedalIcon className="w-16 h-16 text-text/40" />}
+              className="w-full h-full object-contain p-4"
+              fallback={<MedalIcon className="w-16 h-16 text-foreground/40" />}
             />
           </div>
           <div className="text-center">
-            <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-2 text-text">{drop.badge_name}</h1>
+            <h1 className="text-3xl mb-2 text-foreground">{drop.badge_name}</h1>
             <RarityBadge rarity={rarity} />
           </div>
         </div>
 
         {/* 드랍 컨텍스트 */}
         <Card>
-          <h2 className="text-[length:var(--text-caption)] uppercase text-text/40 mb-2">{d.badges.connectedLocationTitle}</h2>
-          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/80">
+          <h2 className="text-xs uppercase text-foreground/40 mb-2">{d.badges.connectedLocationTitle}</h2>
+          <p className="text-base text-foreground/80">
             {poiName}
           </p>
-          <p className="text-[length:var(--text-caption)] text-text/50 mt-1">
+          <p className="text-xs text-foreground/50 mt-1">
             {t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
           </p>
           {/* 20260829_2101 — 픽업은 소유권 이전일 뿐 재발급이 아니라서 드랍 상태에서도
@@ -180,7 +180,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
               없이 컴포넌트만 배치, 다른 두 화면과 동일 원칙). 이 시트는 좁은 카드라 배지 상세
               페이지(height=50)보다 작게, 컴포넌트가 지원하는 최소값(height=40)을 쓴다. */}
           {drop.serial && (
-            <div className="flex justify-center mt-3 pt-3 border-t border-text/10">
+            <div className="flex justify-center mt-3 pt-3 border-t border-foreground/10">
               <ItemSerialCode code={drop.serial} height={40} />
             </div>
           )}
@@ -189,7 +189,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
         {/* 액션 버튼 — 콘텐츠와 같은 스크롤 영역 안, 페이지 맨 끝에 위치.
             부모의 padding-bottom(탭바 높이만큼)이 이미 확보돼 있어
             스크롤 끝까지 내리면 탭바 위에서 항상 보이고 눌린다. */}
-        <div ref={setActionsEl} className="mt-auto flex gap-[var(--spacing-16)]">
+        <div ref={setActionsEl} className="mt-auto flex gap-4">
           <Button fullWidth variant="outline" surface="main" onClick={onCancel} disabled={pickingUp}>
             {d.drops.cancel}
           </Button>

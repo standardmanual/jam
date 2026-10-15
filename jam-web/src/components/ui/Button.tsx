@@ -4,13 +4,13 @@ import { ButtonHTMLAttributes, forwardRef, type CSSProperties } from 'react'
  * SuperHi Plus Button
  *
  * variant
- * - `primary` : pill 72px(--radius-pill-buttons), 채움 버튼
- * - `outline` : pill 50px(--radius-nav-buttons), 보더 없는 저강조 채움 버튼(20260816_012)
+ * - `primary` : pill 72px(--radius-full), 채움 버튼
+ * - `outline` : pill 50px(--radius-full), 보더 없는 저강조 채움 버튼(20260816_012)
  * - `arrow`   : 화살표(→) 접두 텍스트 버튼. 배경/보더 없음, radius 16px, padding 24px
  *
  * surface = "이 버튼이 놓인 배경"
  * - `main`(기본, 다크 배경 위): primary는 흰색 채움 + 검정 텍스트,
- *   outline은 --color-surface-elevated 채움 + 흰 텍스트(20260816_012 — 보더 대신 배경톤)
+ *   outline은 --surface 채움 + 흰 텍스트(20260816_012 — 보더 대신 배경톤)
  * - `sub`(라이트 배경 위): primary는 레드 채움 + 흰 텍스트,
  *   outline은 4% 블랙 틴트 채움 + 검정 텍스트(20260816_012 — 보더 대신 배경톤)
  *
@@ -58,39 +58,39 @@ const legacyVariantMap: Record<string, ResolvedVariant> = {
 
 /**
  * DS v2 surface별 색상 클래스 (20260816_012: outline 보더 제거 → 배경톤 채움으로 대체).
- * - main (다크 배경 위): primary=흰 채움/검정 텍스트, outline=--color-surface-elevated 채움/흰 텍스트
+ * - main (다크 배경 위): primary=흰 채움/검정 텍스트, outline=--surface 채움/흰 텍스트
  * - sub (라이트 surface 위): primary=레드 채움/흰 텍스트, outline=4% 블랙 틴트 채움/검정 텍스트
  */
 const colorClasses: Record<ButtonSurface, Record<ResolvedVariant, string>> = {
   main: {
-    primary: 'text-text-inverse',      // bg는 inline style(흰색)로 주입
-    outline: 'text-text bg-surface-elevated',
-    arrow: 'text-text',
+    primary: 'text-snow',      // bg는 inline style(흰색)로 주입
+    outline: 'text-foreground bg-surface',
+    arrow: 'text-foreground',
   },
   sub: {
     primary: 'text-white',             // bg는 inline style(레드)로 주입
-    outline: 'text-text-inverse bg-black/[0.04]',
-    arrow: 'text-text-inverse',
+    outline: 'text-snow bg-black/[0.04]',
+    arrow: 'text-snow',
   },
 }
 
 const primaryBgMap: Record<ButtonSurface, string> = {
-  main: 'var(--color-surface-inverse)',  // 다크 배경 위 primary = 흰 pill
+  main: 'var(--background-inverse)',  // 다크 배경 위 primary = 흰 pill
   sub:  'var(--color-primary)',          // 라이트 배경 위 primary = 레드 pill
 }
 
 const shapeClasses: Record<ResolvedVariant, string> = {
   primary:
-    'rounded-[var(--radius-pill-buttons)] px-[var(--spacing-32)] py-[14px] text-[length:var(--text-body)] leading-[var(--leading-body)]',
+    'rounded-full px-8 py-[14px] text-base',
   outline:
-    'rounded-[var(--radius-nav-buttons)] px-[var(--spacing-24)] py-[14px] text-[length:var(--text-body)] leading-[var(--leading-body)]',
+    'rounded-full px-6 py-[14px] text-base',
   arrow:
-    'rounded-[var(--radius-buttons)] px-[var(--spacing-24)] py-[var(--spacing-24)] text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]',
+    'rounded-full px-6 py-6 text-2xl',
 }
 
 const sizePadding: Record<ButtonSize, string> = {
   xs: '',
-  sm: 'px-[var(--spacing-16)] py-[10px] text-[length:var(--text-body-sm)]',
+  sm: 'px-4 py-[10px] text-base',
   md: '',
   lg: 'py-[18px]',
 }
@@ -105,7 +105,7 @@ const xsStyle: CSSProperties = {
   paddingBottom: 'calc(12px * var(--scale-compact))',
   paddingLeft: 'calc(24px * var(--scale-compact))',
   paddingRight: 'calc(24px * var(--scale-compact))',
-  fontSize: 'var(--text-caption)',
+  fontSize: 'var(--text-xs)',
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(

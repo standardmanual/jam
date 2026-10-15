@@ -8,7 +8,7 @@ import { formatKstMonthDay, type CardView } from '@/lib/today/cardView'
  * `BriefCard`가 혼자 쓰던 칩 줄을 `HeroCard`가 두 번째 소비자가 되면서 공용으로 뺐다.
  *
  * **바탕에 따라 색조가 둘이다**(`on`, 티켓 20261001_2013 b4). 기본 `'white'`는 흰 면(`Card tone="inverse"`) 위다: 라벨 칩은 기본 색조(짙은 회색 칩),
- * 옅은 글자는 `text-text-inverse/60`이다. `'scrim'`은 이미지 위 어두운 막(`poster`) 위다: 라벨 칩은 `tone="inverse"`(흰 알약·어두운 글자),
+ * 옅은 글자는 `text-snow/60`이다. `'scrim'`은 이미지 위 어두운 막(`poster`) 위다: 라벨 칩은 `tone="inverse"`(흰 알약·어두운 글자),
  * 지역 핀·게재일 글자는 순백(`text-white`)이다 — 막 위 순백 이미지에서 흰 글자 대비가 AA를 지키는 것은 순백뿐이라 옅은 단계를 두지 않는다.
  * 이름을 `tone`으로 하지 않은 것은 `Card tone="inverse"`(흰 면)와 `LabelChip tone="inverse"`(어두운 면 위)가 반대 뜻이라 섞이기 때문이다.
  * 막 전용 칩 줄을 따로 만들지 않는 것은 아래 규칙(줄바꿈 금지·핀만 줄어듦·드랍은 핀 생략)이 두 곳으로 갈라지기 때문이다.
@@ -38,19 +38,19 @@ export default function CardChipRow({
   on?: CardChipRowOn
 }) {
   const scrim = on === 'scrim'
-  const mutedText = scrim ? 'text-white' : 'text-text-inverse/60'
+  const mutedText = scrim ? 'text-white' : 'text-snow/60'
   const showRegionPin = Boolean(view.regionLabel) && view.resource !== 'drop'
   const publishedDay = view.publishedAt ? formatKstMonthDay(view.publishedAt) : null
 
   if (!view.label && !showRegionPin && !view.rarity && !publishedDay) return null
 
   return (
-    <div className={className ? `flex items-center gap-[var(--spacing-8)] ${className}` : 'flex items-center gap-[var(--spacing-8)]'}>
+    <div className={className ? `flex items-center gap-2 ${className}` : 'flex items-center gap-2'}>
       <LabelChip tone={scrim ? 'inverse' : 'default'} className="shrink-0">
         {view.label}
       </LabelChip>
       {showRegionPin && (
-        <span className={`inline-flex items-center gap-1 min-w-0 text-[length:var(--text-caption)] ${mutedText}`}>
+        <span className={`inline-flex items-center gap-1 min-w-0 text-xs ${mutedText}`}>
           <PinIcon className="w-3 h-3 shrink-0" />
           <span className="truncate">{view.regionLabel}</span>
         </span>
@@ -58,7 +58,7 @@ export default function CardChipRow({
       {/* Common·등급 없음(null)·미지 값은 컴포넌트가 스스로 아무것도 그리지 않는다. 희귀도는 배지 자체의 정보라 흑백으로 만들지 않는다 */}
       <RarityBadge rarity={view.rarity as Rarity | null | undefined} size="md" className="shrink-0" />
       {publishedDay && (
-        <time dateTime={view.publishedAt} className={`ml-auto shrink-0 whitespace-nowrap text-[length:var(--text-caption)] ${mutedText}`}>
+        <time dateTime={view.publishedAt} className={`ml-auto shrink-0 whitespace-nowrap text-xs ${mutedText}`}>
           {publishedDay}
         </time>
       )}

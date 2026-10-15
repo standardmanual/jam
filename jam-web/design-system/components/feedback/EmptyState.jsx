@@ -50,7 +50,7 @@ export function EmptyState({
     >
       {showIcon && (
         <div style={{
-          color: 'var(--color-text-secondary)',
+          color: 'var(--muted)',
           opacity: 0.5,
           display: 'flex',
           alignItems: 'center',
@@ -65,11 +65,10 @@ export function EmptyState({
           {title && (
             <p style={{
               margin: 0,
-              fontSize: 'var(--text-h4)',
-              fontWeight: 'var(--weight-h4)',
-              lineHeight: 'var(--leading-h4)',
-              letterSpacing: 'var(--tracking-h4)',
-              color: 'var(--color-text)',
+              fontSize: 'var(--text-2xl)',
+              fontWeight: 500,
+              lineHeight: 'var(--text-2xl--line-height)',
+              color: 'var(--foreground)',
             }}>
               {title}
             </p>
@@ -77,9 +76,9 @@ export function EmptyState({
           {description && (
             <p style={{
               margin: 0,
-              fontSize: 'var(--text-body)',
-              lineHeight: 'var(--leading-body)',
-              color: 'var(--color-text-secondary)',
+              fontSize: 'var(--text-base)',
+              lineHeight: 'var(--text-base--line-height)',
+              color: 'var(--muted)',
             }}>
               {description}
             </p>

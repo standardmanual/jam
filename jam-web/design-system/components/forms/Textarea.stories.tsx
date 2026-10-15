@@ -54,7 +54,7 @@ export const WithLabel: Story = {
   name: 'label 연결 패턴 (htmlFor + id)',
   render: () => (
     <div style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label htmlFor="activity-memo" style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>
+      <label htmlFor="activity-memo" style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
         활동 소감
       </label>
       <Textarea id="activity-memo" placeholder="오늘의 활동을 기록해 보세요" aria-label="활동 소감" />
@@ -76,7 +76,7 @@ export const Interactive: Story = {
           state={value.length > MAX ? 'error' : 'default'}
           aria-label="활동 소감"
         />
-        <p style={{ margin: 0, fontSize: 'var(--text-small)', color: value.length > MAX ? 'var(--color-rarity-mystic)' : 'var(--color-text-secondary)', textAlign: 'right' }}>
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: value.length > MAX ? 'var(--rarity-mystic)' : 'var(--muted)', textAlign: 'right' }}>
           {value.length} / {MAX}
         </p>
       </div>

@@ -56,13 +56,13 @@ function ToastRow({
         't-toast',
         isOpen ? 'is-open' : '',
         // 20260816_012: 보더 제거 — 흰 토스트가 다크 배경 위에서 대비만으로 충분히 구분됨
-        'flex items-center gap-2 px-4 py-3 rounded-[var(--radius-buttons)] bg-surface-inverse text-text-inverse text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] pointer-events-auto',
+        'flex items-center gap-2 px-4 py-3 rounded-full bg-background-inverse text-snow text-base pointer-events-auto',
       ]
         .filter(Boolean)
         .join(' ')}
       onClick={onDismiss}
     >
-      <span className="shrink-0 text-text-inverse/60">{icon}</span>
+      <span className="shrink-0 text-snow/60">{icon}</span>
       <span>{item.message}</span>
     </div>
   )

@@ -7,7 +7,7 @@ import React from 'react';
  * 상태 3가지:
  *   empty  — 채울 수 있는(후보를 하나 이상 보유한) 슬롯. 중앙에 흰색 화살표 아이콘(추가
  *            가능함을 나타냄, 티켓 20260917_2028 후속 조정)을 표시하고, 테두리를 밝은
- *            그레이(--color-text-secondary) 3px로 굵게 표현해 잠긴 슬롯과 구분한다(티켓
+ *            그레이(--muted) 3px로 굵게 표현해 잠긴 슬롯과 구분한다(티켓
  *            20260917_1828). 탭하면 채울 수 있다.
  *   locked — 후보 배지를 하나도 보유하지 못한 슬롯. '+' 텍스트를 흐리게 표시하고, 사선
  *            패턴 없이 불투명도만으로 empty와 구분한다(티켓 20260917_1828 — 사선 패턴
@@ -47,7 +47,7 @@ export function MixerSlot({
     position: 'relative',
     aspectRatio: '1 / 1',
     width: '100%',
-    borderRadius: 'var(--radius-card)',
+    borderRadius: 'var(--radius-2xl)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -58,10 +58,10 @@ export function MixerSlot({
     border: filled
       ? 'none'
       : fillable
-        ? '3px solid var(--color-text-secondary)'
-        : '1px dashed var(--color-border)',
-    background: filled ? 'var(--color-surface-elevated)' : 'var(--color-surface)',
-    color: 'var(--color-text)',
+        ? '3px solid var(--muted)'
+        : '1px dashed var(--border)',
+    background: filled ? 'var(--surface)' : 'var(--background)',
+    color: 'var(--foreground)',
     opacity: locked ? 0.5 : 1,
     cursor: onClick ? 'pointer' : undefined,
     ...style,
@@ -84,9 +84,9 @@ export function MixerSlot({
           </div>
           <p
             style={{
-              fontSize: 'var(--text-caption)',
-              lineHeight: 'var(--leading-caption)',
-              color: 'var(--color-text)',
+              fontSize: 'var(--text-xs)',
+              lineHeight: 'var(--text-xs--line-height)',
+              color: 'var(--foreground)',
               width: '100%',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -118,9 +118,9 @@ export function MixerSlot({
                 right: -4,
                 width: 16,
                 height: 16,
-                borderRadius: 'var(--radius-pill)',
-                background: 'var(--color-base-black)',
-                color: 'var(--color-base-white)',
+                borderRadius: 'var(--radius-full)',
+                background: 'var(--base-black)',
+                color: 'var(--base-white)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -139,12 +139,12 @@ export function MixerSlot({
           width="24"
           height="24"
           viewBox="0 -960 960 960"
-          fill="var(--color-base-white)"
+          fill="var(--base-white)"
         >
           <path d="M480-240 240-480l56-56 144 144v-368h80v368l144-144 56 56-240 240Z" />
         </svg>
       ) : (
-        <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, opacity: 0.4, color: 'var(--color-text)' }}>
+        <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, opacity: 0.4, color: 'var(--foreground)' }}>
           +
         </span>
       )}

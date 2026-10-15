@@ -340,9 +340,9 @@ export default function BottomSheet({
     >
       {/* Backdrop — 20260823_003: 재질(가벼운 blur) + prefers-reduced-transparency 가드는
           .t-panel-backdrop(transitions.css)에 공용으로 정의(FeedSection·PoiCarouselModal과
-          공유). 시트 본체(아래 bg-[var(--color-surface)])는 계속 불투명 유지.
+          공유). 시트 본체(아래 bg-[var(--background)])는 계속 불투명 유지.
           pointer-events는 같은 파일의 .t-panel-backdrop[data-open]이 담당(20260908_0040). */}
-      <div className="absolute inset-0 bg-surface/60 t-panel-backdrop" data-open={shown} onClick={onClose} />
+      <div className="absolute inset-0 bg-background/60 t-panel-backdrop" data-open={shown} onClick={onClose} />
 
       {/*
         Panel reveal 래퍼.
@@ -365,8 +365,8 @@ export default function BottomSheet({
         aria-labelledby={hasHeader ? titleId : undefined}
         tabIndex={-1}
         className={[
-          'relative rounded-t-[var(--radius-cards)] flex flex-col',
-          'bg-[var(--color-surface)] text-text',
+          'relative rounded-t-2xl flex flex-col',
+          'bg-[var(--background)] text-foreground',
           /* dvh(동적 뷰포트 높이) 사용 — iOS Safari는 vh를 주소창이 숨겨진
              상태의 레이아웃 뷰포트 기준으로 계산해서, 주소창이 보이는 상태로
              열리면 시트 하단과 실제 화면 하단 사이에 틈이 생겨 그 틈으로
@@ -394,10 +394,10 @@ export default function BottomSheet({
         </div>
 
         {hasHeader && (
-          <div className={headerClassName ?? 'px-[var(--spacing-24)] pb-[var(--spacing-16)] shrink-0'}>
+          <div className={headerClassName ?? 'px-6 pb-4 shrink-0'}>
             <h2
               id={titleId}
-              className={titleClassName ?? 'text-[length:var(--text-body)] leading-[var(--leading-body)]'}
+              className={titleClassName ?? 'text-base'}
             >
               {title}
             </h2>
@@ -419,7 +419,7 @@ export default function BottomSheet({
           <div
             ref={footerRef}
             // 20260816_012: 상단 1px 구분선(hr 대체) 제거 → 스크롤 영역과 다른 배경톤으로 구분
-            className="shrink-0 px-[var(--spacing-16)] pt-[var(--spacing-16)] bg-surface-elevated"
+            className="shrink-0 px-4 pt-4 bg-surface"
             style={{
               paddingBottom: `calc(env(safe-area-inset-bottom) + ${
                 footerBottomInset === 'safe-area' ? FOOTER_PAD_SAFE_AREA_PX : FOOTER_PAD_TABBAR_PX

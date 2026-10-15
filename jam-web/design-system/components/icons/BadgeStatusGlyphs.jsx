@@ -19,7 +19,7 @@ import React from 'react';
  * ⚠️ 이모지(🔒 등)를 도입하지 않는다. 플랫폼마다 다른 그림이 그려지고 색을 못 맞춘다.
  */
 
-/** 잠김 — 미획득 눈금 마커·게이트 버튼. 미션 게이트는 부모가 `--color-primary`를 준다 */
+/** 잠김 — 미획득 눈금 마커·게이트 버튼. 미션 게이트는 부모가 `--link`를 준다 */
 export function LockGlyph({ size = 11 }) {
   return (
     <svg viewBox="0 -960 960 960" width={size} height={size} fill="currentColor" aria-hidden="true">
@@ -38,7 +38,7 @@ export function CheckGlyph({ size = 11 }) {
 }
 
 /**
- * 교차 게이트(다른 계열의 선행 배지) 표식. 미션 게이트(자물쇠 + `--color-primary`)와
+ * 교차 게이트(다른 계열의 선행 배지) 표식. 미션 게이트(자물쇠 + `--link`)와
  * **형태로도** 갈라 둔다 — 미션 자물쇠의 대비가 4.18:1로 텍스트 기준에는 못 미쳐(비텍스트
  * 기준 3:1은 통과) 색 하나에만 의존하면 구분이 위태롭다.
  */

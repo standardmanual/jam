@@ -34,10 +34,10 @@ export interface ListRowCardProps {
   'aria-controls'?: string
 }
 
-// 20260816_012: 보더 제거 — 페이지 캔버스도 bg-surface라 구분이 사라지므로
-// 한 단계 밝은 bg-surface-elevated로 대체한다.
+// 20260816_012: 보더 제거 — 페이지 캔버스도 bg-background라 구분이 사라지므로
+// 한 단계 밝은 bg-surface로 대체한다.
 const BASE =
-  'flex items-center gap-[var(--spacing-16)] bg-surface-elevated rounded-[var(--radius-cards)] p-[var(--spacing-16)]'
+  'flex items-center gap-4 bg-surface rounded-2xl p-4'
 
 export default function ListRowCard({
   icon,
@@ -72,13 +72,13 @@ export default function ListRowCard({
         {children ?? (
           <>
             {title !== undefined && (
-              <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text truncate">
+              <p className="text-base text-foreground truncate">
                 {title}
               </p>
             )}
             {subtitle !== undefined &&
               (typeof subtitle === 'string' ? (
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-[var(--color-text-secondary)] truncate mt-0.5">
+                <p className="text-base text-[var(--muted)] truncate mt-0.5">
                   {subtitle}
                 </p>
               ) : (

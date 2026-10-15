@@ -3,15 +3,15 @@
 <script src="../_vendor/react.production.min.js"></script>
 <script src="../_vendor/react-dom.production.min.js"></script>
 <script src="../_vendor/babel.min.js"></script>
-<div id="root" style="padding:24px;background:var(--color-bg,#000)"></div>
+<div id="root" style="padding:24px;background:var(--background,#000)"></div>
 <script type="text/babel">
 const { useMemo, useState } = React;
 
-const STATIC_CSS = `.wandering-eyes{display:flex;align-items:center;justify-content:center;gap:12px}.wandering-eyes-eye{position:relative;width:48px;height:48px;border-radius:9999px;background-color:var(--eye-color,var(--color-bg-inverse));overflow:hidden;flex-shrink:0;animation:wandering-eyes-blink var(--duration,2s) ease-in-out infinite}.wandering-eyes-eye:nth-child(2){animation-delay:-60ms}.wandering-eyes-pupil{position:absolute;inset:0;margin:auto;width:68%;height:68%;border-radius:9999px;background-color:var(--pupil-color,var(--color-text-inverse));animation:wandering-eyes-move var(--duration,2s) ease-in-out infinite}@keyframes wandering-eyes-blink{0%,90%,100%{transform:scaleY(1)}94%{transform:scaleY(0.06)}97%{transform:scaleY(1)}}@media(prefers-reduced-motion:reduce){.wandering-eyes-eye,.wandering-eyes-pupil{animation:none}}`;
+const STATIC_CSS = `.wandering-eyes{display:flex;align-items:center;justify-content:center;gap:12px}.wandering-eyes-eye{position:relative;width:48px;height:48px;border-radius:9999px;background-color:var(--eye-color,var(--background-inverse));overflow:hidden;flex-shrink:0;animation:wandering-eyes-blink var(--duration,2s) ease-in-out infinite}.wandering-eyes-eye:nth-child(2){animation-delay:-60ms}.wandering-eyes-pupil{position:absolute;inset:0;margin:auto;width:68%;height:68%;border-radius:9999px;background-color:var(--pupil-color,var(--snow));animation:wandering-eyes-move var(--duration,2s) ease-in-out infinite}@keyframes wandering-eyes-blink{0%,90%,100%{transform:scaleY(1)}94%{transform:scaleY(0.06)}97%{transform:scaleY(1)}}@media(prefers-reduced-motion:reduce){.wandering-eyes-eye,.wandering-eyes-pupil{animation:none}}`;
 const MOVE_STOPS = [15,30,45,60,75,88];
 function randomOffset(m){const a=Math.random()*Math.PI*2,r=m*(0.55+Math.random()*0.45);return{x:Math.round(Math.cos(a)*r*100)/100,y:Math.round(Math.sin(a)*r*100)/100}}
 let _uid=0;
-function WanderingEyesLoader({duration='2s',eyeColor='var(--color-bg-inverse)',pupilColor='var(--color-text-inverse)',style={}}){
+function WanderingEyesLoader({duration='2s',eyeColor='var(--background-inverse)',pupilColor='var(--snow)',style={}}){
   const animName=useMemo(()=>`wem-${++_uid}`,[]);
   const css=useMemo(()=>{const s=randomOffset(34),stops=MOVE_STOPS.map(stop=>({stop,...randomOffset(38)})),body=stops.map(({stop,x,y})=>`${stop}%{transform:translate(${x}%,${y}%)}`).join(' ');return `@keyframes ${animName}{0%,100%{transform:translate(${s.x}%,${s.y}%)} ${body}}`},[animName]);
   return <div className="wandering-eyes" style={{'--duration':duration,'--eye-color':eyeColor,'--pupil-color':pupilColor,...style}} role="status" aria-label="로딩 중"><style>{STATIC_CSS+css}</style><span className="wandering-eyes-eye"><span className="wandering-eyes-pupil" style={{animationName:animName}}/></span><span className="wandering-eyes-eye"><span className="wandering-eyes-pupil" style={{animationName:animName}}/></span></div>;
@@ -32,33 +32,33 @@ function Demo(){
       <div style={{display:'flex',gap:32,alignItems:'center'}}>
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
           <WanderingEyesLoader eyeColor="#f8fafc" pupilColor="#111111" />
-          <span style={{fontSize:10,color:'var(--color-text-secondary)',fontFamily:'var(--font-family-base)'}}>라이트 (기본)</span>
+          <span style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-family-base)'}}>라이트 (기본)</span>
         </div>
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
-          <WanderingEyesLoader eyeColor="var(--color-primary)" pupilColor="#ffffff" />
-          <span style={{fontSize:10,color:'var(--color-text-secondary)',fontFamily:'var(--font-family-base)'}}>Primary accent</span>
+          <WanderingEyesLoader eyeColor="var(--link)" pupilColor="#ffffff" />
+          <span style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-family-base)'}}>Primary accent</span>
         </div>
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
-          <WanderingEyesLoader eyeColor="var(--color-rarity-mystic)" pupilColor="#ffffff" duration="1.2s" />
-          <span style={{fontSize:10,color:'var(--color-text-secondary)',fontFamily:'var(--font-family-base)'}}>Fast (1.2s)</span>
+          <WanderingEyesLoader eyeColor="var(--rarity-mystic)" pupilColor="#ffffff" duration="1.2s" />
+          <span style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-family-base)'}}>Fast (1.2s)</span>
         </div>
       </div>
       <div>
-        <div style={{fontSize:11,fontWeight:600,color:'var(--color-text-secondary)',fontFamily:'var(--font-family-base)',marginBottom:8}}>NavigationLoader 시간 정책 — jam-web/src/components/NavigationLoader.tsx</div>
+        <div style={{fontSize:11,fontWeight:600,color:'var(--muted)',fontFamily:'var(--font-family-base)',marginBottom:8}}>NavigationLoader 시간 정책 — jam-web/src/components/NavigationLoader.tsx</div>
         <table style={{width:'100%',borderCollapse:'collapse',fontFamily:'var(--font-family-base)',fontSize:12}}>
           <thead>
             <tr style={{borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
-              <th style={{textAlign:'left',padding:'4px 12px 4px 0',color:'var(--color-text-secondary)',fontWeight:600,width:120}}>상수</th>
-              <th style={{textAlign:'left',padding:'4px 12px',color:'var(--color-text-secondary)',fontWeight:600,width:80}}>값</th>
-              <th style={{textAlign:'left',padding:'4px 0',color:'var(--color-text-secondary)',fontWeight:600}}>역할</th>
+              <th style={{textAlign:'left',padding:'4px 12px 4px 0',color:'var(--muted)',fontWeight:600,width:120}}>상수</th>
+              <th style={{textAlign:'left',padding:'4px 12px',color:'var(--muted)',fontWeight:600,width:80}}>값</th>
+              <th style={{textAlign:'left',padding:'4px 0',color:'var(--muted)',fontWeight:600}}>역할</th>
             </tr>
           </thead>
           <tbody>
             {POLICY.map(([k,v,desc])=>(
               <tr key={k} style={{borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
-                <td style={{padding:'6px 12px 6px 0',fontFamily:'monospace',color:'var(--color-primary)',fontSize:11}}>{k}</td>
-                <td style={{padding:'6px 12px',color:'var(--color-text)',fontWeight:600}}>{v}</td>
-                <td style={{padding:'6px 0',color:'var(--color-text-secondary)'}}>{desc}</td>
+                <td style={{padding:'6px 12px 6px 0',fontFamily:'monospace',color:'var(--link)',fontSize:11}}>{k}</td>
+                <td style={{padding:'6px 12px',color:'var(--foreground)',fontWeight:600}}>{v}</td>
+                <td style={{padding:'6px 0',color:'var(--muted)'}}>{desc}</td>
               </tr>
             ))}
           </tbody>

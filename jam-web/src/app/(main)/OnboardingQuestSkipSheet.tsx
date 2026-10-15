@@ -52,7 +52,7 @@ export default function OnboardingQuestSkipSheet({ step }: OnboardingQuestSkipSh
     <>
       <button
         type="button"
-        className="self-start min-h-11 flex items-center text-[length:var(--text-caption)] text-text-secondary active:opacity-60"
+        className="self-start min-h-11 flex items-center text-xs text-muted active:opacity-60"
         onClick={() => setOpen(true)}
       >
         {d.onboardingQuest.skip.entryLabel}
@@ -63,7 +63,7 @@ export default function OnboardingQuestSkipSheet({ step }: OnboardingQuestSkipSh
         onClose={() => setOpen(false)}
         detent="compact"
         footer={
-          <div className="flex gap-[var(--spacing-16)]">
+          <div className="flex gap-4">
             <Button fullWidth variant="outline" surface="main" onClick={() => setOpen(false)} disabled={loading}>
               {d.onboardingQuest.skip.keepGoingButton}
             </Button>
@@ -73,7 +73,7 @@ export default function OnboardingQuestSkipSheet({ step }: OnboardingQuestSkipSh
           </div>
         }
       >
-        <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text px-[var(--spacing-16)] py-[var(--spacing-24)]">
+        <p className="text-center text-base text-foreground px-4 py-6">
           {d.onboardingQuest.skip.confirmBody}
         </p>
       </BottomSheet>

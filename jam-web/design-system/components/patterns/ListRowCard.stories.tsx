@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React, { useState } from 'react';
 import { ListRowCard } from './ListRowCard';
 
-// 20260816_012: 1px 인셋 보더 제거 — 배경을 --color-surface-elevated로 올려 구분
+// 20260816_012: 1px 인셋 보더 제거 — 배경을 --surface로 올려 구분
 const meta: Meta<typeof ListRowCard> = {
   title: 'MODULAR/Patterns/ListRowCard',
   component: ListRowCard,
@@ -25,16 +25,16 @@ const ChevronIcon = () => (
   </svg>
 );
 
-const IconSlot = ({ color = 'var(--color-rarity-common)' }: { color?: string }) => (
+const IconSlot = ({ color = 'var(--rarity-common)' }: { color?: string }) => (
   <div style={{
     width: 40,
     height: 40,
-    borderRadius: 'var(--radius-sm)',
+    borderRadius: 'var(--radius-lg)',
     background: color,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: 'var(--color-text-inverse)',
+    color: 'var(--snow)',
     flexShrink: 0,
   }}>
     <MedalIcon />
@@ -55,7 +55,7 @@ export const Default: Story = {
 export const Static: Story = {
   name: '정적 (클릭 없음)',
   args: {
-    icon: <IconSlot color="var(--color-rarity-rare)" />,
+    icon: <IconSlot color="var(--rarity-rare)" />,
     title: '한강 러너',
     subtitle: '2026-08-15 획득',
   },
@@ -65,11 +65,11 @@ export const Static: Story = {
 export const WithSubtitleNode: Story = {
   name: '부제 ReactNode',
   args: {
-    icon: <IconSlot color="var(--color-rarity-epic)" />,
+    icon: <IconSlot color="var(--rarity-epic)" />,
     title: '한강 마스터',
     subtitle: (
-      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-small)', color: 'var(--color-rarity-epic)' }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-rarity-epic)', display: 'inline-block' }} />
+      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm)', color: 'var(--rarity-epic)' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--rarity-epic)', display: 'inline-block' }} />
         Epic
       </span>
     ),
@@ -94,14 +94,14 @@ export const UserRow: Story = {
     <div style={{ width: 320 }}>
       <ListRowCard
         icon={
-          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--color-surface-tint, var(--color-bg-tint))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--color-surface-tint, var(--background-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
             👟
           </div>
         }
         title="러너_유저"
         subtitle="배지 23개"
         trailing={
-          <button style={{ padding: '4px 12px', fontSize: 'var(--text-small)', background: 'var(--color-primary)', color: 'var(--color-text-inverse)', border: 'none', borderRadius: 'var(--radius-pill)', cursor: 'pointer' }}>
+          <button style={{ padding: '4px 12px', fontSize: 'var(--text-sm)', background: 'var(--accent)', color: 'var(--snow)', border: 'none', borderRadius: 'var(--radius-full)', cursor: 'pointer' }}>
             팔로우
           </button>
         }
@@ -116,7 +116,7 @@ export const MissionRow: Story = {
   render: () => (
     <div style={{ width: 320 }}>
       <ListRowCard
-        icon={<IconSlot color="var(--color-primary)" />}
+        icon={<IconSlot color="var(--link)" />}
         title="10km 달리기"
         subtitle="5km 완료 · 50% 달성"
         trailing={<ChevronIcon />}
@@ -129,12 +129,12 @@ export const MissionRow: Story = {
 export const CustomContent: Story = {
   name: 'children 커스텀 영역',
   args: {
-    icon: <IconSlot color="var(--color-rarity-mystic)" />,
+    icon: <IconSlot color="var(--rarity-mystic)" />,
     trailing: <ChevronIcon />,
     children: (
       <div>
-        <p style={{ margin: 0, fontSize: 'var(--text-body)', color: 'var(--color-text)', fontWeight: 600 }}>Mystic 배지 발견!</p>
-        <p style={{ margin: '2px 0 0', fontSize: 'var(--text-small)', color: 'var(--color-rarity-mystic)' }}>Mystic 등급 · 드랍 위치: 광화문</p>
+        <p style={{ margin: 0, fontSize: 'var(--text-base)', color: 'var(--foreground)', fontWeight: 600 }}>Mystic 배지 발견!</p>
+        <p style={{ margin: '2px 0 0', fontSize: 'var(--text-sm)', color: 'var(--rarity-mystic)' }}>Mystic 등급 · 드랍 위치: 광화문</p>
       </div>
     ),
   },
@@ -151,11 +151,11 @@ export const List: Story = {
       return next;
     });
     const users = [
-      { id: 1, name: '러너_한강', badges: 42, color: 'var(--color-rarity-mystic)' },
-      { id: 2, name: '자전거_도시', badges: 28, color: 'var(--color-rarity-epic)' },
-      { id: 3, name: '수영장_마스터', badges: 15, color: 'var(--color-rarity-rare)' },
-      { id: 4, name: '하이커_산', badges: 9, color: 'var(--color-rarity-common)' },
-      { id: 5, name: '트레일_러너', badges: 7, color: 'var(--color-primary)' },
+      { id: 1, name: '러너_한강', badges: 42, color: 'var(--rarity-mystic)' },
+      { id: 2, name: '자전거_도시', badges: 28, color: 'var(--rarity-epic)' },
+      { id: 3, name: '수영장_마스터', badges: 15, color: 'var(--rarity-rare)' },
+      { id: 4, name: '하이커_산', badges: 9, color: 'var(--rarity-common)' },
+      { id: 5, name: '트레일_러너', badges: 7, color: 'var(--link)' },
     ];
     return (
       <div style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-8)' }}>
@@ -163,7 +163,7 @@ export const List: Story = {
           <ListRowCard
             key={u.id}
             icon={
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: u.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-inverse)', fontSize: 18, flexShrink: 0 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: u.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--snow)', fontSize: 18, flexShrink: 0 }}>
                 🏃
               </div>
             }
@@ -172,7 +172,7 @@ export const List: Story = {
             trailing={
               <button
                 onClick={(e) => { e.stopPropagation(); toggle(u.id); }}
-                style={{ padding: '4px 12px', fontSize: 'var(--text-small)', background: following.has(u.id) ? 'transparent' : 'var(--color-primary)', color: following.has(u.id) ? 'var(--color-text-secondary)' : 'var(--color-text-inverse)', border: `1px solid ${following.has(u.id) ? 'var(--color-border)' : 'var(--color-primary)'}`, borderRadius: 'var(--radius-pill)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                style={{ padding: '4px 12px', fontSize: 'var(--text-sm)', background: following.has(u.id) ? 'transparent' : 'var(--color-primary)', color: following.has(u.id) ? 'var(--muted)' : 'var(--snow)', border: `1px solid ${following.has(u.id) ? 'var(--border)' : 'var(--link)'}`, borderRadius: 'var(--radius-full)', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >
                 {following.has(u.id) ? '팔로잉' : '팔로우'}
               </button>

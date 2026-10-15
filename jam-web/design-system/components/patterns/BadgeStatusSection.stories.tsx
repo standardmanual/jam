@@ -88,7 +88,7 @@ export const LazyBodyOnExpand: Story = {
       <Frame>
         <div data-testid="section">
           <BadgeStatusSection title="다음 목표" count={7} onOpenChange={(o) => setOpened((prev) => [...prev, o])}>
-            <p data-testid="body" style={{ margin: 0, color: 'var(--color-text)' }}>진행 계산 결과</p>
+            <p data-testid="body" style={{ margin: 0, color: 'var(--foreground)' }}>진행 계산 결과</p>
           </BadgeStatusSection>
         </div>
         <p data-testid="log" style={{ fontSize: 12, color: '#b2b2b2' }}>{opened.join(',')}</p>

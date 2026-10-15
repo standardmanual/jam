@@ -30,19 +30,19 @@ export function SlidingTabs({
 
   const palette = variant === 'onCard'
     ? {
-      barBg: outlined ? 'var(--color-surface-elevated)' : 'rgba(0, 0, 0, 0.06)',
-      pillBg: 'var(--color-primary)',
+      barBg: outlined ? 'var(--surface)' : 'rgba(0, 0, 0, 0.06)',
+      pillBg: 'var(--accent)',
       textMuted: 'rgba(0, 0, 0, 0.4)',
-      textActive: 'var(--color-text-on-primary)',
+      textActive: 'var(--accent-foreground)',
     }
     : {
-      barBg: outlined ? 'var(--color-surface-elevated)' : 'rgba(255, 255, 255, 0.1)',
-      pillBg: 'var(--color-surface-inverse)',
+      barBg: outlined ? 'var(--surface)' : 'rgba(255, 255, 255, 0.1)',
+      pillBg: 'var(--background-inverse)',
       textMuted: 'rgba(255, 255, 255, 0.45)',
-      textActive: 'var(--color-text-inverse)',
+      textActive: 'var(--snow)',
     };
 
-  const borderRadius = shape === 'card' ? 'var(--radius-cards)' : 'var(--radius-pill)';
+  const borderRadius = shape === 'card' ? 'var(--radius-2xl)' : 'var(--radius-full)';
   const minHeight = SIZE_MIN_HEIGHT[size];
 
   /* Keyboard navigation: ArrowLeft / ArrowRight move focus through tabs */
@@ -96,7 +96,7 @@ export function SlidingTabs({
               border: 'none',
               background: isActive ? palette.pillBg : 'transparent',
               color: isActive ? palette.textActive : palette.textMuted,
-              fontSize: 'var(--text-small)',
+              fontSize: 'var(--text-sm)',
               fontWeight: isActive ? 700 : 500,
               fontFamily: 'var(--font-family-base)',
               cursor: 'pointer',

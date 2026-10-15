@@ -70,13 +70,13 @@ const render = (cards: TodayCardWithHref[], currentUserId?: string) =>
 
 // 모양은 틀의 마크업으로 알아본다
 const BRIEF_FRAME = 'min-h-[88px]'
-const HERO_FRAME = 'relative aspect-video overflow-hidden bg-surface'
-const POSTER_FRAME = 'relative aspect-[4/5] overflow-hidden bg-surface'
-const SQUARE_FRAME = 'relative aspect-square overflow-hidden bg-surface'
+const HERO_FRAME = 'relative aspect-video overflow-hidden bg-background'
+const POSTER_FRAME = 'relative aspect-[4/5] overflow-hidden bg-background'
+const SQUARE_FRAME = 'relative aspect-square overflow-hidden bg-background'
 const TILE_LIST = 'w-16 shrink-0'
 const FRAMES = [BRIEF_FRAME, HERO_FRAME, POSTER_FRAME, SQUARE_FRAME, TILE_LIST]
 /** 카드 전체 링크(`CardFrame`)의 클래스 */
-const CARD_LINK = 'block rounded-[var(--radius-cards)] jam-press'
+const CARD_LINK = 'block rounded-2xl jam-press'
 
 const badge = (id: string) => ({ id, name: `배지 ${id}`, image_url: null, rarity: 'rare', earned: true })
 const entry = (rank: number, userId: string, username: string | null) => ({
@@ -253,14 +253,14 @@ describe('TodayCardStack — 랭킹 행형만 카드 전체 링크가 없다', (
 describe('TodayCardStack — 홈에서 보는 사람(currentUserId)', () => {
   it('랭킹 행형은 currentUserId를 받아 내 순위 행만 강조한다', () => {
     const html = render([rankingCard()], 'u2')
-    // 내 순위 행의 순위 번호·값만 24px(--text-h4) 레드(--color-primary)다
-    expect(html.match(/font-size:var\(--text-h4\)/g)).toHaveLength(2)
-    expect(html.match(/font-size:var\(--text-h4\);font-weight:bold;color:var\(--color-primary\)/g)).toHaveLength(2)
+    // 내 순위 행의 순위 번호·값만 24px(--text-2xl) 레드(--link)다
+    expect(html.match(/font-size:var\(--text-2xl\)/g)).toHaveLength(2)
+    expect(html.match(/font-size:var\(--text-2xl\);font-weight:bold;color:var\(--link\)/g)).toHaveLength(2)
   })
 
   it('currentUserId가 없거나 목록에 없으면 강조가 없다', () => {
-    expect(render([rankingCard()])).not.toContain('--text-h4')
-    expect(render([rankingCard()], 'someone-else')).not.toContain('--text-h4')
+    expect(render([rankingCard()])).not.toContain('--text-2xl')
+    expect(render([rankingCard()], 'someone-else')).not.toContain('--text-2xl')
   })
 })
 
@@ -284,7 +284,7 @@ describe('TodayCardStack — 섹션 머리와 카드 0장', () => {
     expect(html.indexOf('카드 가')).toBeLessThan(html.indexOf('카드 나'))
     expect(html.indexOf('카드 나')).toBeLessThan(html.indexOf('카드 다'))
     expect(html.match(/min-h-\[88px\]/g)).toHaveLength(1)
-    expect(html.match(/relative aspect-video overflow-hidden bg-surface/g)).toHaveLength(1)
+    expect(html.match(/relative aspect-video overflow-hidden bg-background/g)).toHaveLength(1)
     expect(html.match(/w-16 shrink-0/g)).toHaveLength(1)
   })
 })
@@ -312,10 +312,10 @@ describe('TodayCardStack — 옛 렌더러의 클래스·마크업이 남지 않
     for (const card of all) {
       const html = render([card])
       // 옛 `BadgeGalleryCard`의 타일 줄
-      expect(html).not.toContain('flex gap-[var(--spacing-16)] mt-[var(--spacing-16)] overflow-x-auto pb-1')
+      expect(html).not.toContain('flex gap-4 mt-4 overflow-x-auto pb-1')
       // 옛 `BannerCard`의 퍼센트 정지점 막과 4:5 틀
       expect(html).not.toContain('from-black/70')
-      expect(html).not.toContain('relative rounded-[var(--radius-cards)] overflow-hidden aspect-[4/5] jam-press')
+      expect(html).not.toContain('relative rounded-2xl overflow-hidden aspect-[4/5] jam-press')
       // 옛 큰 썸네일 틀과 옛 칩 클래스
       expect(html).not.toContain('aspect-[16/9]')
       expect(html).not.toContain('px-2.5 py-1.5')

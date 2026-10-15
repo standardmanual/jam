@@ -66,7 +66,7 @@ export function BottomSheet({
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0,
-        background: 'var(--color-overlay)',
+        background: 'var(--backdrop)',
         zIndex: 50,
         display: 'flex', alignItems: 'flex-end',
       }}
@@ -83,9 +83,9 @@ export function BottomSheet({
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
-          // 20260816_012: 보더 제거 — 오버레이 위에서도 구분되도록 --color-surface-elevated 사용
-          background: 'var(--color-surface-elevated)',
-          borderRadius: 'var(--radius-card) var(--radius-card) 0 0',
+          // 20260816_012: 보더 제거 — 오버레이 위에서도 구분되도록 --surface 사용
+          background: 'var(--surface)',
+          borderRadius: 'var(--radius-2xl) var(--radius-2xl) 0 0',
           boxSizing: 'border-box',
           animation: 'ds-bottomsheet-in var(--duration-medium) var(--ease-bounce) both',
           outline: 'none',
@@ -97,8 +97,8 @@ export function BottomSheet({
         {/* Drag handle — decorative (swipe-to-dismiss 자체는 미구현) */}
         <div style={{
           width: 36, height: 4,
-          borderRadius: 'var(--radius-pill)',
-          background: 'var(--color-border)',
+          borderRadius: 'var(--radius-full)',
+          background: 'var(--border)',
           margin: 'var(--layout-card-padding) auto 0',
           flexShrink: 0,
         }} aria-hidden="true" />
@@ -115,11 +115,11 @@ export function BottomSheet({
               style={{
                 margin: 'var(--spacing-16) 0',
                 // 서비스(src/components/ui/BottomSheet.tsx)의 <h2> 가 기준이다:
-                // text-[length:var(--text-body)] leading-[var(--leading-body)]
-                fontSize: 'var(--text-body)',
-                lineHeight: 'var(--leading-body)',
+                // text-base
+                fontSize: 'var(--text-base)',
+                lineHeight: 'var(--text-base--line-height)',
                 fontWeight: 700,
-                color: 'var(--color-text)',
+                color: 'var(--foreground)',
               }}
             >
               {title}
@@ -134,7 +134,7 @@ export function BottomSheet({
               flexShrink: 0,
               padding: 'var(--spacing-16)',
               paddingBottom: `calc(${footerPaddingBottomPx}px + var(--spacing-safe-bottom))`,
-              background: 'var(--color-surface-elevated)',
+              background: 'var(--surface)',
             }}
           >
             {footer}

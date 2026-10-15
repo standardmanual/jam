@@ -33,8 +33,8 @@ export const Interactive: Story = {
     return (
       <div style={{ width: 360 }}>
         <SlidingTabs items={ACTIVITY_TABS} value={value} onChange={setValue} />
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-small)', marginTop: 12 }}>
-          선택: <strong style={{ color: 'var(--color-primary)' }}>{value}</strong>
+        <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', marginTop: 12 }}>
+          선택: <strong style={{ color: 'var(--link)' }}>{value}</strong>
         </p>
       </div>
     );
@@ -46,7 +46,7 @@ export const OnCardVariant: Story = {
   render: () => {
     const [value, setValue] = useState('all');
     return (
-      <div style={{ width: 360, background: 'var(--color-surface-inverse)', padding: 16, borderRadius: 12 }}>
+      <div style={{ width: 360, background: 'var(--background-inverse)', padding: 16, borderRadius: 12 }}>
         <SlidingTabs items={ACTIVITY_TABS} value={value} onChange={setValue} variant="onCard" />
       </div>
     );
@@ -89,7 +89,7 @@ export const WithTabPanel: Story = {
             id={`panel-${t.key}`}
             role="tabpanel"
             hidden={value !== t.key}
-            style={{ padding: '16px 4px', color: 'var(--color-text-secondary)', fontSize: 'var(--text-small)' }}
+            style={{ padding: '16px 4px', color: 'var(--muted)', fontSize: 'var(--text-sm)' }}
           >
             {CONTENT[t.key]}
           </div>

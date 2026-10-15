@@ -77,10 +77,10 @@ export default async function FollowersPage({ params }: Props) {
     .filter((u) => u.id)
 
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       <TopNav title={getDisplayName(target)} backHref={`/${username}`} />
 
-      <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-16)]">
+      <div className="px-4 pt-0 pb-8 flex flex-col gap-4">
         {followerList.length === 0 ? (
           <EmptyState
             icon={<UsersIcon className="w-8 h-8" />}

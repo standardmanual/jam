@@ -66,7 +66,7 @@ Sticky top bar for sub-pages (badges detail, drops, inventory item). Root screen
   20260901_1926에서 구 prop명 `style`을 `headerStyle`로 정리했다.
 
   ```jsx
-  <TopNav title="아이템북" showBack headerStyle={{ background: 'var(--color-surface)' }} />
+  <TopNav title="아이템북" showBack headerStyle={{ background: 'var(--background)' }} />
   ```
 - 실제 서비스 값 주입(로그인 유저 avatar_url/username, 스트라바 연동 상태)은 DS가 아니라
   서비스 래퍼 `src/components/ui/TopNav.tsx`가 컨텍스트(`src/lib/topNavData.tsx`)로 담당한다.

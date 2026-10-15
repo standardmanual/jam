@@ -32,7 +32,7 @@ export const AllIcons: Story = {
       {ICONS.map(icon => (
         <div key={icon} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <IconButton icon={icon} label={icon} />
-          <span style={{ fontSize: 10, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>{icon}</span>
+          <span style={{ fontSize: 10, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{icon}</span>
         </div>
       ))}
     </div>
@@ -47,7 +47,7 @@ export const Disabled: Story = {
 export const DarkSurface: Story = {
   name: 'Dark Surface',
   render: () => (
-    <div style={{ background: 'var(--color-bg-inverse)', padding: 16, borderRadius: 12, display: 'flex', gap: 8 }}>
+    <div style={{ background: 'var(--background-inverse)', padding: 16, borderRadius: 12, display: 'flex', gap: 8 }}>
       <IconButton icon="chevron-left" label="뒤로" surface="dark" />
       <IconButton icon="close" label="닫기" surface="dark" />
       <IconButton icon="menu" label="메뉴" surface="dark" />

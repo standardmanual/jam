@@ -61,13 +61,13 @@ export const NEAR_THRESHOLD = 0.8;
  * @param {boolean} [done] 획득 등 «fraction과 무관하게 다 채운» 상태
  */
 export function progressRampColor(fraction, done = false) {
-  if (done) return 'var(--status-progress-done)';
-  if (fraction == null) return 'var(--status-progress-idle)';
+  if (done) return 'var(--progress-done)';
+  if (fraction == null) return 'var(--muted)';
   const f = Math.min(1, Math.max(0, fraction));
-  if (f >= 1) return 'var(--status-progress-done)';
-  if (f >= NEAR_THRESHOLD) return 'var(--status-progress-near)';
-  if (f > 0) return 'var(--status-progress-active)';
-  return 'var(--status-progress-idle)';
+  if (f >= 1) return 'var(--progress-done)';
+  if (f >= NEAR_THRESHOLD) return 'var(--progress-short)';
+  if (f > 0) return 'var(--foreground)';
+  return 'var(--muted)';
 }
 
 /**
@@ -135,8 +135,8 @@ export function BadgeFamilyCardHeader({
 
       <span
         style={{
-          fontSize: 'var(--text-body)', fontWeight: 600, lineHeight: 1.3,
-          letterSpacing: '-0.01em', color: 'var(--color-text)', minWidth: 0,
+          fontSize: 'var(--text-base)', fontWeight: 600, lineHeight: 1.3,
+          letterSpacing: '-0.01em', color: 'var(--foreground)', minWidth: 0,
           // 말줄임 금지(§5). keep-all로 한글은 어절 단위로만 끊고, anywhere를 함께 둬
           // 공백 없는 긴 토큰만 강제로 분리한다(20260906_1424 ③).
           wordBreak: 'keep-all', overflowWrap: 'anywhere',
@@ -154,7 +154,7 @@ export function BadgeFamilyCardHeader({
         {pctText && (
           <span
             style={{
-              fontSize: 'var(--text-body)', fontWeight: 600, lineHeight: 1.3,
+              fontSize: 'var(--text-base)', fontWeight: 600, lineHeight: 1.3,
               fontVariantNumeric: 'tabular-nums', color: rampColor,
             }}
           >
@@ -164,9 +164,9 @@ export function BadgeFamilyCardHeader({
         {pctLabel && (
           <span
             style={{
-              fontSize: 'var(--text-micro)', fontWeight: 700, lineHeight: 1.3,
+              fontSize: 'var(--text-xs)', fontWeight: 700, lineHeight: 1.3,
               letterSpacing: '0.3px', textTransform: 'uppercase',
-              color: 'var(--status-progress-idle)',
+              color: 'var(--muted)',
             }}
           >
             {pctLabel}
@@ -178,8 +178,8 @@ export function BadgeFamilyCardHeader({
         <>
           <span
             style={{
-              fontSize: 'var(--text-small)', lineHeight: 1.4,
-              color: 'var(--color-text-secondary)', minWidth: 0,
+              fontSize: 'var(--text-sm)', lineHeight: 1.4,
+              color: 'var(--muted)', minWidth: 0,
               wordBreak: 'keep-all', overflowWrap: 'anywhere',
             }}
           >
@@ -193,7 +193,7 @@ export function BadgeFamilyCardHeader({
                 onClick={onToggleExpand}
                 aria-expanded={expanded}
                 aria-label={`${toggleAriaPrefix ?? name} 자세히`}
-                style={{ fontSize: 'var(--text-caption)', fontWeight: 600, color: 'var(--color-text-secondary)' }}
+                style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--muted)' }}
               >
                 자세히
                 <span

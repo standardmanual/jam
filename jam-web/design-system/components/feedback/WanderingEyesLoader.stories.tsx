@@ -32,8 +32,8 @@ export const Fast: Story = {
 export const CustomColors: Story = {
   name: '커스텀 색상 (Primary)',
   args: {
-    eyeColor: 'var(--color-primary)',
-    pupilColor: 'var(--color-text-on-primary)',
+    eyeColor: 'var(--link)',
+    pupilColor: 'var(--accent-foreground)',
   },
 };
 

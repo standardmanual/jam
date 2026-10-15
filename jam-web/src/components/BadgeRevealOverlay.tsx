@@ -137,7 +137,7 @@ export default function BadgeRevealOverlay({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'var(--color-overlay)',
+            background: 'var(--backdrop)',
           }}
         >
           <WanderingEyesLoader duration="2s" eyeColor="#f8fafc" pupilColor="#0f172a" />
@@ -160,14 +160,14 @@ export default function BadgeRevealOverlay({
             justifyContent: 'center',
             gap: 'var(--spacing-24)',
             padding: 'var(--spacing-24)',
-            background: 'var(--color-overlay)',
+            background: 'var(--backdrop)',
           }}
         >
           <p
             style={{
-              color: 'var(--color-base-white)',
-              fontSize: 'var(--text-body)',
-              lineHeight: 'var(--leading-body)',
+              color: 'var(--base-white)',
+              fontSize: 'var(--text-base)',
+              lineHeight: 'var(--text-base--line-height)',
               textAlign: 'center',
             }}
           >

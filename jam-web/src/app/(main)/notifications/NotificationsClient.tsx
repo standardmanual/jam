@@ -86,14 +86,14 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
 /** 40×40 아이콘 영역 — 아바타 / 경고 / 종류별 아이콘 */
 function RowIcon({ view }: { view: NotificationView }) {
   if (view.warning) {
-    // 경고는 아이콘 + --color-warning으로만 표시한다. 본문 텍스트에는 컬러를 쓰지 않는다(PRD §5).
+    // 경고는 아이콘 + --warning으로만 표시한다. 본문 텍스트에는 컬러를 쓰지 않는다(PRD §5).
     return (
       <div
         role="img"
         aria-label={d.notifications.warningLabel}
-        className="w-10 h-10 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center"
+        className="w-10 h-10 rounded-2xl bg-white/8 flex items-center justify-center"
       >
-        <AlertTriangleIcon className="w-5 h-5" style={{ color: 'var(--color-warning)' }} />
+        <AlertTriangleIcon className="w-5 h-5" style={{ color: 'var(--warning)' }} />
       </div>
     )
   }
@@ -105,18 +105,18 @@ function RowIcon({ view }: { view: NotificationView }) {
         alt={d.profile.avatarAlt}
         width={40}
         height={40}
-        className="w-10 h-10 rounded-[var(--radius-pill)] object-cover"
+        className="w-10 h-10 rounded-full object-cover"
       />
     ) : (
-      <span className="w-10 h-10 rounded-[var(--radius-pill)] bg-white/8 text-text flex items-center justify-center">
+      <span className="w-10 h-10 rounded-full bg-white/8 text-foreground flex items-center justify-center">
         <UserIcon className="w-5 h-5" />
       </span>
     )
   }
 
   return (
-    <div className="w-10 h-10 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center">
-      <TypeIcon type={view.type} className="w-5 h-5 text-text" />
+    <div className="w-10 h-10 rounded-2xl bg-white/8 flex items-center justify-center">
+      <TypeIcon type={view.type} className="w-5 h-5 text-foreground" />
     </div>
   )
 }
@@ -136,7 +136,7 @@ function NotificationBody({ view }: { view: NotificationView }) {
   //    공백 없는 긴 닉네임이 밖으로 삐져나오는 것을 막는 최후 수단이다.
   //    (anywhere는 이 목적에 과해서 일반 문장까지 끊는다 — 20260825 되돌림)
   return (
-    <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text [word-break:keep-all] break-words">
+    <p className="text-base text-foreground [word-break:keep-all] break-words">
       {tokens.map((token, i) =>
         token.bold ? (
           <strong key={i} className="font-bold">
@@ -153,7 +153,7 @@ function NotificationBody({ view }: { view: NotificationView }) {
 function NotificationRow({ view }: { view: NotificationView }) {
   const { href, avatarHref } = notificationTarget(view)
   const trailing = (
-    <span className="text-[length:var(--text-caption)] text-text/40">
+    <span className="text-xs text-foreground/40">
       {formatRelativeTime(view.updatedAt)}
     </span>
   )
@@ -198,7 +198,7 @@ function NotificationRow({ view }: { view: NotificationView }) {
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <h2 className="text-[length:var(--text-caption)] uppercase text-text/40 px-1 pt-[var(--spacing-8)]">
+    <h2 className="text-xs uppercase text-foreground/40 px-1 pt-2">
       {label}
     </h2>
   )
@@ -214,12 +214,12 @@ function SectionHeader({ label }: { label: string }) {
  */
 function NewDivider({ count }: { count: number }) {
   return (
-    <div className="flex items-center gap-[var(--spacing-8)] py-[var(--spacing-8)]">
-      <span className="h-px flex-1 bg-[color:var(--color-border)]" />
-      <span className="text-[length:var(--text-caption)] text-text/60 shrink-0">
+    <div className="flex items-center gap-2 py-2">
+      <span className="h-px flex-1 bg-[color:var(--border)]" />
+      <span className="text-xs text-foreground/60 shrink-0">
         {t(d.notifications.newDivider, { count })}
       </span>
-      <span className="h-px flex-1 bg-[color:var(--color-border)]" />
+      <span className="h-px flex-1 bg-[color:var(--border)]" />
     </div>
   )
 }
@@ -313,10 +313,10 @@ export default function NotificationsClient({
   )
 
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       <TopNav title={d.notifications.title} />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-8)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-8)]">
+      <div className="px-4 pt-2 pb-10 flex flex-col gap-2">
         {initialFailed ? (
           // 조회 실패를 빈 상태로 보여주면 유저는 "내 소식이 사라졌다"로 읽는다.
           <EmptyState
@@ -349,7 +349,7 @@ export default function NotificationsClient({
         )}
 
         {error && (
-          <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 py-[var(--spacing-16)]">
+          <p className="text-center text-base text-foreground/60 py-4">
             {d.notifications.loadError}
           </p>
         )}
@@ -359,7 +359,7 @@ export default function NotificationsClient({
             type="button"
             onClick={loadMore}
             disabled={loadingMore}
-            className="mx-auto mt-1 min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-nav-buttons)] bg-surface-elevated text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100 disabled:opacity-50"
+            className="mx-auto mt-1 min-h-11 px-6 rounded-full bg-surface text-base active:scale-95 transition-transform duration-100 disabled:opacity-50"
           >
             {loadingMore
               ? d.notifications.loadingMore

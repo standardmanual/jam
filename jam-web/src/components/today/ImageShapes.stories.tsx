@@ -93,8 +93,8 @@ const badgeAs = (shape: Shape): ImageCardView => ({
 
 const GROUP_STYLE: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 'var(--spacing-24)' }
 const ROW_STYLE: CSSProperties = { display: 'flex', gap: 'var(--spacing-32)', alignItems: 'flex-start' }
-const HEADING_STYLE: CSSProperties = { margin: '0 0 var(--spacing-8)', fontSize: 'var(--text-body)', color: 'rgba(255,255,255,0.9)' }
-const CAPTION_STYLE: CSSProperties = { margin: '0 0 var(--spacing-4)', fontSize: 'var(--text-caption)', color: 'rgba(255,255,255,0.6)' }
+const HEADING_STYLE: CSSProperties = { margin: '0 0 var(--spacing-8)', fontSize: 'var(--text-base)', color: 'rgba(255,255,255,0.9)' }
+const CAPTION_STYLE: CSSProperties = { margin: '0 0 var(--spacing-4)', fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.6)' }
 
 /** 캡션 + 카드. `data-card`가 비율·잘림 측정 대상이고 `data-shape`·`data-row`가 어느 모양·줄인지 알려 준다. */
 function Case({ shape, row, width, caption, view }: { shape: Shape; row: string; width: number; caption: string; view: CardView }) {

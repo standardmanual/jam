@@ -49,8 +49,8 @@ const NEW_MISSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 7일 이내 생성 = �
 // Figma mission-item-1 색상 토큰
 const C_THUMBNAIL_BG = '#1A1A1A'
 const C_THUMBNAIL_RADIUS = '12px'
-// 20260816_012: 보더 제거 — 페이지 캔버스(bg-surface)와 같은 색이라 배경톤을 한 단계 올림
-const C_STATUS_BADGE_BG = 'var(--color-surface-elevated)'
+// 20260816_012: 보더 제거 — 페이지 캔버스(bg-background)와 같은 색이라 배경톤을 한 단계 올림
+const C_STATUS_BADGE_BG = 'var(--surface)'
 // 20260825_028: 잠김 칩 전용 배경. 기본 칩 배경(#1f1f1f)은 캔버스(#1a1a1a) 대비 1.06:1이라
 // 칩 형태가 거의 보이지 않는다 — 잠김 칩만 상세 화면 완료 칩과 같은 톤으로 올린다.
 const C_LOCKED_BADGE_BG = 'rgba(255,255,255,0.08)'
@@ -287,17 +287,17 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
     d.missions.emptyEndedBody
 
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
       <TopNav logo />
 
       {/* 헤더 — 배지 메뉴와 동일한 구조 */}
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)]">
-        <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.missions.title}</h1>
+      <div className="px-4 pt-6">
+        <h1 className="text-5xl">{d.missions.title}</h1>
       </div>
 
       {/* 탭 헤더 — 배지 메뉴와 동일한 구조 */}
-      <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
+      <div className="px-4 py-4">
         <SlidingTabs
           items={TABS}
           value={tab}
@@ -307,13 +307,13 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
         />
       </div>
 
-      <div className="px-[var(--spacing-16)] pb-[var(--spacing-32)]">
+      <div className="px-4 pb-8">
       {/* 필터 드롭다운 — 배지 탭과 동일한 스타일 */}
-      <div className="flex gap-2 mb-[var(--spacing-16)]">
+      <div className="flex gap-2 mb-4">
         <select
           value={sortKey}
           onChange={(e) => setSortKey(e.target.value as SortKey)}
-          className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
+          className="flex-1 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground"
         >
           {SORT_OPTIONS.map((s) => (
             <option key={s.key} value={s.key}>{s.label}</option>
@@ -322,7 +322,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
         <select
           value={activityFilter}
           onChange={(e) => setActivityFilter(e.target.value as ActivityType | 'all')}
-          className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
+          className="flex-1 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground"
         >
           <option value="all">{d.missions.activityTypeAll}</option>
           {ACTIVITY_TYPES.map((tp) => (
@@ -338,7 +338,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
           description={emptyBody}
         />
       ) : (
-        <div className="flex flex-col gap-[var(--spacing-8)]">
+        <div className="flex flex-col gap-2">
           {list.map((m) => {
             const started = new Date(m.starts_at) <= new Date()
             const newMission = isNewMission(m.created_at)
@@ -454,14 +454,14 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                         없으면(v5 게이트 미션 등) lockedHintText()의 범용 안내 문구를 칩 없이
                         그대로 남긴다 — 잠긴 이유를 알려주는 유일한 정보라 생략하면 안 된다. */}
                     {m.locked && (
-                      <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-micro)', color: 'var(--color-text-secondary)', lineHeight: 'var(--leading-micro)' }}>
+                      <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-xs)', color: 'var(--muted)', lineHeight: 'var(--text-xs--line-height)' }}>
                         <span style={{ marginRight: 'var(--spacing-4)' }}>{d.missions.cardConditionLabel}</span>
                         {m.requiredBadge ? conditionBadgeNode(m.requiredBadge) : lockedHintText(m)}
                       </span>
                     )}
 
                     {/* reward — 칩(등급/레벨)과 텍스트(포인트)를 한 줄로 조합 (20260907_0014) */}
-                    <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-micro)', color: C_REWARD, lineHeight: 'var(--leading-micro)' }}>
+                    <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-xs)', color: C_REWARD, lineHeight: 'var(--text-xs--line-height)' }}>
                       {reward}
                     </span>
                   </div>
