@@ -10,7 +10,6 @@ const meta: Meta<typeof ShapeTag> = {
   parameters: { layout: 'centered' },
   argTypes: {
     shape: { control: 'select', options: SHAPES },
-    surface: { control: 'radio', options: ['light', 'dark'] },
     colorIndex: { control: { type: 'number', min: 0, max: 5 } },
   },
 };
@@ -50,12 +49,13 @@ export const ColorPalette: Story = {
   ),
 };
 
-export const LightSurface: Story = {
-  name: 'Light Surface (텍스트 반전)',
+export const TextOnPalette: Story = {
+  name: '글자색 — accent-content 6색 위에서 항상 --foreground',
   render: () => (
-    <div style={{ display: 'flex', gap: 8 }}>
-      <ShapeTag shape="pill" colorIndex={0} surface="light">light</ShapeTag>
-      <ShapeTag shape="pill" colorIndex={1} surface="dark">dark</ShapeTag>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      {Array.from({ length: 6 }, (_, i) => (
+        <ShapeTag key={i} shape="pill" colorIndex={i}>TAG {i}</ShapeTag>
+      ))}
     </div>
   ),
 };

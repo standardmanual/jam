@@ -19,24 +19,28 @@ const TAG_COLORS = [
 /**
  * ShapeTag — colored shape container for text labels or badge thumbnails.
  * shape: 'rect' | 'pill' | 'circle' | 'dome' | 'triangle' | 'flag' | 'hex'
- * surface: 'light' | 'dark' — text color context (matches Button/IconButton API)
+ *
+ * 글자색은 항상 --foreground다. 태그 색(accent-content 6색)이 모두 밝은 팔레트라 --snow 글자는
+ * 1.16~3.37:1로 읽히지 않는다(티켓 20261015_2131 재작업). 태그가 놓이는 면과 무관하므로
+ * `surface` prop은 받지 않는다(넘겨도 무시된다).
  *
  * v2 changes:
  *   - dark: boolean → surface: 'light' | 'dark'  (API unified with Button/IconButton)
  *   - JAM 2.0: 자간 없음(새 시스템 자간 0), 색은 accent-content 6색 순환
+ * v3 changes (티켓 20261015_2131 재작업):
+ *   - surface 분기 제거 — 글자색 --foreground 고정
  */
 export function ShapeTag({
   shape = 'rect',
   colorIndex = 0,
   color,
-  surface = 'dark',
   children,
   style = {},
   className = '',
 }) {
   const s = SHAPES[shape] ?? SHAPES.rect;
   const bg = color ?? TAG_COLORS[colorIndex % TAG_COLORS.length];
-  const textColor = surface === 'dark' ? 'var(--foreground)' : 'var(--snow)';
+  const textColor = 'var(--foreground)';
 
   return (
     <div
