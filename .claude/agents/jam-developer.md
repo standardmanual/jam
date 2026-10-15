@@ -69,7 +69,7 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
    checked out in your worktree like any other folder. Edit them in your branch and commit them with
    the code; never hand documentation changes back as a patch block — the `문서 갱신안` field lists
    what you changed directly.
-   - Folder write rules are in `CLAUDE.md` ("폴더 = 수명주기"). `docs/archive/` is read-only,
+   - Folder write rules are in `docs/README.md` ("폴더 지도와 쓰기 규칙"). `docs/archive/` is read-only,
      and `.githooks/pre-commit` blocks new files there as well as version copies of the service
      plan and TRIBES. Overwrite the current document instead of adding a dated copy.
    - Content seed generators (`docs/assets/content-seed/v5_*.py`) may be run from the worktree

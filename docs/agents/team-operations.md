@@ -404,7 +404,7 @@ pre-push가 (a) 폴더 이름이 `wf_`로 시작하는 링크드 워크트리, (
 
 | 문서 | 담는 것 |
 |---|---|
-| `CLAUDE.md` | 절대 규칙, 문서 체계, 폴더별 수명주기 |
+| `CLAUDE.md` | 절대 규칙, 문서 체계, 문서를 읽을 때 지킬 폴더 규칙 (폴더별 쓰기 방식 표는 `docs/README.md`) |
 | `docs/agents/team-map.html` | 이 문서의 시각화 — 팀 카드·콜사인·호출 관계도·파이프라인·워크트리 구조를 한 화면에 (자동 생성, 브라우저로 연다) |
 | `docs/agents/orchestrator.md` | 카리나의 운영 규칙, PC별 경로, DB 실행 절차 |
 | `docs/agents/issue-tracker.md` | 티켓 체계 |

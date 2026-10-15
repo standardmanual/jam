@@ -283,7 +283,7 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
 
   if [ "$doclint" -eq 1 ]; then
     echo "" >&2
-    echo "  문서 체계 규칙: CLAUDE.md '폴더 = 수명주기' 절 참조" >&2
+    echo "  문서 체계 규칙: docs/README.md '폴더 지도와 쓰기 규칙' 절 참조" >&2
     echo "  정당한 예외라면 JAM_SKIP_DOCLINT=1 git commit ... 로 우회하고 사유를 남기세요." >&2
     exit 1
   fi

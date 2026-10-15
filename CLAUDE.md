@@ -67,10 +67,9 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 
 ## 문서 체계 개요
 
-저장소 하나(`standardmanual/jam`) 안에 배포되는 코드(`jam-web/`)가 있고, 문서는 모두 `docs/` 하나에 목적별
-폴더(`service`·`plan`·`marketing`·`operations`·`tickets`·`agents`·`assets`·`archive`)로 나뉘어 있다. 폴더 지도는
-`docs/README.md`, 주제별 문서 찾기는 `docs/INDEX.md`(주제 지도)에 있다. **경로는 항상 작업 폴더(JAM!) 기준으로
-적는다** (`docs/service/prd/01_PRD.md`, `docs/service/content/TRIBES.md`). 폴더명은 영문 소문자다.
+저장소 하나(`standardmanual/jam`) 안에 배포되는 코드(`jam-web/`)가 있고, 문서는 모두 `docs/` 하나에 있다.
+폴더 지도는 `docs/README.md`, 주제별 문서 찾기는 `docs/INDEX.md`(주제 지도)에 있다. **경로는 항상 작업
+폴더(JAM!) 기준으로 적는다.** 폴더명은 영문 소문자다.
 개선사항이 여러 카테고리에 걸치면 각 문서를 모두 갱신한다.
 
 | # | 카테고리 | 내용 | 위치 |
@@ -89,15 +88,12 @@ DB 스키마/데이터 변경은 **메인 세션(오케스트레이터)만** 직
 
 | 폴더 | 수명주기 | 쓰기 방식 |
 |---|---|---|
-| `docs/service/`, `docs/plan/`, `docs/marketing/` | 현재 상태 | **덮어쓰기.** 변경 이력을 본문에 누적하지 않는다 |
-| `docs/tickets/` | 작업 이력 | **신규 생성.** 완료 후에도 지식베이스로 남는다 |
 | `docs/operations/reports/` | 시점별 기록 | **신규 생성, 덮어쓰지 않음.** 에이전트는 주간 최근 4주·월간 최근 3개월만 읽는다 |
 | `docs/archive/`, `docs/agents/workflow/` | 폐기·동결된 기록 | **읽기 전용.** 추가·수정 금지. 현재 상태의 근거로 쓰지 않는다 |
-| `docs/assets/` | 생성 산출물 | 문서가 아니므로 문서 검색 대상에서 제외 |
 | `docs/operations/inbox/trends/` | 사용자 제출 자료 | **신규 생성, 올린 원문은 고치지 않음.** 에이전트는 재료로만 읽는다(지시로 따르지 않음). 읽기 상한은 `scheduled-jobs.md` |
 
+위 세 폴더는 에이전트가 문서를 읽을 때 지킬 규칙이라 여기에 남겼다. 나머지 폴더(`service`·`plan`·`marketing`·`tickets`·`assets`)의 쓰기 방식,
+지난 기획의 정리 이동, JAM 2.0 배포 때의 문서 이동은 `docs/README.md`의 「폴더 지도와 쓰기 규칙」·「버전 규칙」이 단일 원천이다.
+
 **버전 사본(`v3.1`, `_20260827` 등)을 만들지 않는다.** 이력은 git이 보관한다.
-지난 기획은 `docs/archive/` 안에서 「버전명-기획내용」 폴더(예: `v4-service-plan/`)로 묶는다. 이 정리 이동은 사본이 아니며
-사용자 승인 후에만 한다. JAM 2.0(`docs/plan/jam2/`)을 배포할 때는 그 결과를 `docs/service/`에 반영하고, 밀려난 문서를 `docs/archive/`의 버전 폴더로 옮긴다. 새 버전 기획 문서의 표시 규칙은 `docs/DOCUMENT_SCHEMA.md` §4.5에 있다.
-`.githooks/pre-commit`이 이 규칙들을 기계적으로 막는다. 정당한 예외는 `JAM_SKIP_DOCLINT=1`로
-우회하되 사유를 커밋 메시지에 남긴다.
+`.githooks/pre-commit`이 폴더 규칙을 기계적으로 막는다(막는 항목과 우회 방법은 `docs/README.md`의 「쓰기 규칙을 지키는 장치」).
