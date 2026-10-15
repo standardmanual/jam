@@ -1,4 +1,4 @@
-Small uppercase pill showing a badge's rarity tier. `rarity="common"` renders nothing (common is the default tier, not called out). Fixed 3-color mapping for rare/epic/mystic — rare=green `#00cc7a`, epic=gold `#f5a300`, mystic=pink `#ff2d87`. Colors come from `--color-rarity-*` tokens; never re-map these, users have learned the color language.
+Small uppercase pill showing a badge's rarity tier. `rarity="common"` renders nothing (common is the default tier, not called out). Fixed 3-color mapping for rare/epic/mystic — rare=green `#00cc7a`, epic=gold `#f5a300`, mystic=pink `#ff2d87`. Colors come from `--rarity-*` tokens; never re-map these, users have learned the color language.
 
 Naming history: tiers 3 and 4 were renamed on 2026-08-31 (ticket 20260831_1115). Only the names changed — each color stayed on the same rank. See `docs/service/writing/UX_WRITING_GUIDELINE.md` for the old→new mapping.
 
@@ -17,6 +17,6 @@ Naming history: tiers 3 and 4 were renamed on 2026-08-31 (ticket 20260831_1115).
 ⚠️ **레벨형에는 이 컴포넌트를 쓰지 마라.** v5 레벨형은 `rarity`가 NULL이다 —
 `BadgeLevelChip`이 그 자리를 맡는다. `RarityBadge`는 «등급»만 그린다.
 
-⚠️ 등급 색 `--color-rarity-*`는 **값을 바꾸지 않는다.** `--color-tag-3/4/5`와
-폼 입력 에러 색(`forms/{Input,Checkbox,Select,Textarea}.jsx`)이 이 토큰을 참조하고 있어
+⚠️ 등급 색 `--rarity-*`는 **값을 바꾸지 않는다.** 폼 입력 에러 색
+(`forms/{Input,Checkbox,Select,Textarea}.jsx`)이 이 토큰을 참조하고 있어
 값을 건드리면 폼 에러 표시가 함께 깨진다.

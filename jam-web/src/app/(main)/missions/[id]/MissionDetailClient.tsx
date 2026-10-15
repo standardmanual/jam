@@ -312,7 +312,7 @@ export default function MissionDetailClient({
                         style={{
                           background:  done ? 'var(--accent)' : today ? 'transparent' : 'var(--border)',
                           borderColor: today ? 'var(--link)' : undefined,
-                          color:       done  ? '#fff' : today ? 'var(--color-primary)' : 'var(--muted)',
+                          color:       done  ? '#fff' : today ? 'var(--link)' : 'var(--muted)',
                         }}
                       >
                         {i + 1}

@@ -26,13 +26,13 @@ afterEach(() => {
 describe('CardChipRow — 줄', () => {
   it('한 줄 가로 배치이고 줄바꿈하지 않는다(flex-wrap 없음)', () => {
     const html = render()
-    expect(html).toMatch(/^<div class="flex items-center gap-\[var\(--spacing-8\)\]">/)
+    expect(html).toMatch(/^<div class="flex items-center gap-2">/)
     expect(html).not.toContain('flex-wrap')
   })
 
   it('className은 줄 클래스 뒤에 붙는다(간격은 호출부 몫)', () => {
     expect(render({}, 'mb-2')).toMatch(
-      /^<div class="flex items-center gap-\[var\(--spacing-8\)\] mb-\[var\(--spacing-8\)\]">/,
+      /^<div class="flex items-center gap-2 mb-2">/,
     )
   })
 
@@ -112,12 +112,12 @@ describe('CardChipRow — 희귀도 칩', () => {
   it.each([['common'], [null], [undefined]])('Common·등급 없음(%s)은 칩이 없다', (rarity) => {
     const html = render({ resource: 'badge', rarity })
     expect(html).not.toContain('Common')
-    expect(html).not.toContain('--text-xs')
+    expect(html).not.toContain('--rarity-')
   })
 
   it('알 수 없는 값도 칩을 그리지 않는다', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
-    expect(render({ resource: 'badge', rarity: 'legendary' })).not.toContain('--text-xs')
+    expect(render({ resource: 'badge', rarity: 'legendary' })).not.toContain('--rarity-')
   })
 })
 
@@ -200,7 +200,7 @@ describe('CardChipRow — 막 위(on="scrim", 티켓 20261001_2013 b4)', () => {
 
   it('줄바꿈 금지·핀만 줄어듦·희귀도 칩은 바탕과 상관없이 같다', () => {
     const html = render(FULL, undefined, 'scrim')
-    expect(html).toMatch(/^<div class="flex items-center gap-\[var\(--spacing-8\)\]">/)
+    expect(html).toMatch(/^<div class="flex items-center gap-2">/)
     expect(html).not.toContain('flex-wrap')
     expect(html).toContain('<span class="truncate">성수동</span>')
     expect(html).toMatch(/<span class="shrink-0" style="[^"]*font-size:var\(--text-xs\)[^"]*">Epic<\/span>/)

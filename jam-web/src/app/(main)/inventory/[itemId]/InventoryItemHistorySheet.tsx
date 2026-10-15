@@ -93,8 +93,8 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
               <div className="t-skel-skeleton is-pulsing" aria-hidden="true">
                 {[0, 1, 2].map((i) => (
                   <div key={i} className="flex flex-col gap-1 mb-4">
-                    <div className="h-3 w-28 rounded-full bg-foreground/15" />
-                    <div className="h-4 w-3/5 rounded-full bg-foreground/15" />
+                    <div className="h-3 w-28 rounded-lg bg-foreground/15" />
+                    <div className="h-4 w-3/5 rounded-lg bg-foreground/15" />
                   </div>
                 ))}
               </div>

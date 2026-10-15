@@ -11,7 +11,7 @@ import { ButtonHTMLAttributes, forwardRef, type CSSProperties } from 'react'
  * surface = "이 버튼이 놓인 배경"
  * - `main`(기본, 다크 배경 위): primary는 흰색 채움 + 검정 텍스트,
  *   outline은 --surface 채움 + 흰 텍스트(20260816_012 — 보더 대신 배경톤)
- * - `sub`(라이트 배경 위): primary는 레드 채움 + 흰 텍스트,
+ * - `sub`(라이트 배경 위): primary는 accent 채움 + 흰 텍스트,
  *   outline은 4% 블랙 틴트 채움 + 검정 텍스트(20260816_012 — 보더 대신 배경톤)
  *
  * 규칙: weight 400 단일, 최소 44×44pt 터치 영역, active: 스케일 축소 피드백,
@@ -59,7 +59,7 @@ const legacyVariantMap: Record<string, ResolvedVariant> = {
 /**
  * DS v2 surface별 색상 클래스 (20260816_012: outline 보더 제거 → 배경톤 채움으로 대체).
  * - main (다크 배경 위): primary=흰 채움/검정 텍스트, outline=--surface 채움/흰 텍스트
- * - sub (라이트 surface 위): primary=레드 채움/흰 텍스트, outline=4% 블랙 틴트 채움/검정 텍스트
+ * - sub (라이트 surface 위): primary=accent 채움/흰 텍스트, outline=4% 블랙 틴트 채움/검정 텍스트
  */
 const colorClasses: Record<ButtonSurface, Record<ResolvedVariant, string>> = {
   main: {
@@ -68,7 +68,7 @@ const colorClasses: Record<ButtonSurface, Record<ResolvedVariant, string>> = {
     arrow: 'text-foreground',
   },
   sub: {
-    primary: 'text-white',             // bg는 inline style(레드)로 주입
+    primary: 'text-white',             // bg는 inline style(accent)로 주입
     outline: 'text-snow bg-black/[0.04]',
     arrow: 'text-snow',
   },
@@ -76,7 +76,7 @@ const colorClasses: Record<ButtonSurface, Record<ResolvedVariant, string>> = {
 
 const primaryBgMap: Record<ButtonSurface, string> = {
   main: 'var(--background-inverse)',  // 다크 배경 위 primary = 흰 pill
-  sub:  'var(--color-primary)',          // 라이트 배경 위 primary = 레드 pill
+  sub:  'var(--accent)',                 // 라이트 배경 위 primary = accent pill
 }
 
 const shapeClasses: Record<ResolvedVariant, string> = {

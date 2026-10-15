@@ -111,7 +111,7 @@ export const Progress100Percent: Story = {
     const bg = getComputedStyle(ring).backgroundImage;
     expect(bg).toContain('conic-gradient');
     // 다 채웠으면 idle 트랙 구간이 없다 — 360deg 전체가 near→done 스윕이다.
-    expect(bg).not.toContain('rgba(255, 255, 255, 0.11)');
+    expect(bg).not.toContain('rgb(242, 242, 242)');
     // 20260906_2140 — 원형이 아니라 라운드 사각이다(같은 화면의 다른 썸네일과 같은 모양).
     expect(getComputedStyle(ring).borderTopLeftRadius).not.toBe('50%');
   },

@@ -9,7 +9,6 @@ const meta: Meta<typeof TabBar> = {
   component: TabBar,
   parameters: {
     layout: 'fullscreen',
-    backgrounds: { default: 'dark' },
   },
   argTypes: {
     active: {

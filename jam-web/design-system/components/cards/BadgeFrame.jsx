@@ -49,7 +49,7 @@ function makePath(shape, w, h) {
   }
 }
 
-export function BadgeFrame({ shape = 'circle', width = 200, height = 200, color = 'var(--link)', children, style = {} }) {
+export function BadgeFrame({ shape = 'circle', width = 200, height = 200, color = 'var(--accent)', children, style = {} }) {
   const isCircle = shape === 'circle';
   const pathD = isCircle ? null : makePath(shape, width, height);
   return (

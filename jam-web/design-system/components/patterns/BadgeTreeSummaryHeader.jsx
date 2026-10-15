@@ -30,7 +30,7 @@ import { getRarityLabel } from '../cards/RarityBadge.jsx';
 const RARITY_ORDER = ['common', 'rare', 'epic', 'mystic'];
 // 등급 라벨은 RarityBadge.jsx의 config가 MODULAR 단일 소스다 — 여기서 다시 선언하지 않는다
 // (티켓 20260905_0027).
-// 도트 색은 등급 토큰을 그대로 가리킨다. **값을 바꾸지 않는다** — `--color-rarity-*`는
+// 도트 색은 등급 토큰을 그대로 가리킨다. **값을 바꾸지 않는다** — `--rarity-*`는
 // 폼 입력 에러색으로도 새어 있다(RarityBadge.jsx 주석).
 const RARITY_DOT = {
   common: 'var(--rarity-common)',
@@ -148,7 +148,7 @@ export function BadgeTreeSummaryHeader({
         {noRarity && (
           // 레벨은 등급과 **다른 축**이라 2열 전체를 쓴다 — 5칸을 2열에 넣으면 마지막
           // 하나가 혼자 남아 「등급 하나가 빠진 것」처럼 읽힌다.
-          <BucketCell label="레벨" dotColor="var(--color-secondary)" stat={noRarity} fullWidth />
+          <BucketCell label="레벨" dotColor="var(--muted)" stat={noRarity} fullWidth />
         )}
       </div>
     </div>

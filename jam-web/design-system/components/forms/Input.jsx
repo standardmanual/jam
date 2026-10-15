@@ -6,7 +6,7 @@ import React from 'react';
  *   - id, name, aria-label, aria-describedby props added (WCAG 1.3.1, 4.1.2)
  *   - state: 'default' | 'error' | 'success' — visual validation feedback
  *   - ...rest spread allows any HTML input attribute to pass through
- *   - background changed from --color-white (deprecated) to --background-secondary
+ *   - background changed from the deprecated white token to --background-secondary
  *   - focus-visible handled globally by styles.css
  */
 export function Input({

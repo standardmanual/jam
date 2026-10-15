@@ -320,14 +320,14 @@ export const FrontierProgressCaptionRamp: Story = {
     const rail = canvasElement.querySelector('[data-testid="rail"]')!;
     const active = Array.from(rail.querySelectorAll('span')).find((el) => el.textContent === '42.0/100km') as HTMLElement;
     expect(active).toBeTruthy();
-    // 진행 중(<80%)은 화이트 — 20260906_1436 §3의 결정이 이 구간에서 그대로 유지된다.
-    expect(getComputedStyle(active).color).toBe('rgb(255, 255, 255)');
+    // 진행 중(<80%)은 기본 글자색(--foreground) — 20260906_1436 §3의 결정이 이 구간에서 그대로 유지된다.
+    expect(getComputedStyle(active).color).toBe('rgb(23, 23, 23)');
 
     const nearRail = canvasElement.querySelector('[data-testid="rail-near"]')!;
     const near = Array.from(nearRail.querySelectorAll('span')).find((el) => el.textContent === '87.3/100km') as HTMLElement;
     expect(near).toBeTruthy();
-    // 거의 다(>=80%)는 앰버(#f2cb00) — 화이트와 갈라야 「한 발 남았다」가 읽힌다.
-    expect(getComputedStyle(near).color).toBe('rgb(242, 203, 0)');
+    // 거의 다(>=80%)는 앰버(--progress-short, #f5a300) — 기본 글자색과 갈라야 「한 발 남았다」가 읽힌다.
+    expect(getComputedStyle(near).color).toBe('rgb(245, 163, 0)');
   },
 };
 

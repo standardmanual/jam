@@ -73,7 +73,7 @@ export function Checkbox({
           style={{
             position: 'absolute',
             inset: 0,
-            borderRadius: 'var(--field-radius)',
+            borderRadius: 'var(--radius-lg)',
             border: borderByState[state] ?? borderByState.default,
             background: checked ? 'var(--accent)' : 'var(--background-secondary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',

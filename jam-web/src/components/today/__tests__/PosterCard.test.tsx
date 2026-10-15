@@ -79,16 +79,19 @@ describe('PosterCard — 면(표면)', () => {
 })
 
 describe('PosterCard — 막', () => {
-  it('막은 var(--backdrop)에서 시작하는 단일 선형 그라디언트이고 정지점은 고정 길이 var(--spacing-32)다', () => {
+  it('막은 검정 60%에서 끝나는 단일 선형 그라디언트이고 정지점은 고정 길이 var(--spacing-32)다', () => {
     const scrim = scrimClassOf(render())
-    expect(scrim).toContain('bg-[linear-gradient(to_bottom,transparent,var(--backdrop)_var(--spacing-32))]')
+    expect(scrim).toContain('bg-[linear-gradient(to_bottom,transparent,color-mix(in_srgb,var(--base-black)_60%,transparent)_var(--spacing-32))]')
+    // --backdrop은 JAM 2.0에서 검정 50%(모달 배경 전용)라 막의 하한 0.6보다 옅다 — 막은 쓰지 않는다
+    expect(scrim).not.toContain('--backdrop')
     expect(scrim.match(/linear-gradient/g)).toHaveLength(1)
   })
 
   it('퍼센트 정지점·옛 BannerCard의 from-black·via-black을 쓰지 않는다(글자 수에 따라 첫 줄 진하기가 변하는 문제)', () => {
     const scrim = scrimClassOf(render())
     const gradient = scrim.match(/bg-\[linear-gradient\(([^\]]*)\)\]/)![1]
-    expect(gradient).not.toContain('%')
+    // 알파(color-mix의 60%)만 퍼센트다. 정지점에는 퍼센트가 없다
+    expect(gradient.replace(/color-mix\(in_srgb,var\(--base-black\)_\d+%,transparent\)/, 'SCRIM')).not.toContain('%')
     for (const needle of ['from-black', 'via-black', 'to-transparent', 'black/', 'rgba', '#']) expect(scrim).not.toContain(needle)
   })
 
@@ -118,11 +121,11 @@ describe('PosterCard — 막', () => {
   })
 })
 
-describe('PosterCard — 막 토큰 안전장치 (--backdrop)', () => {
+describe('PosterCard — 막 알파 안전장치', () => {
   const alphaOf = (): number => {
-    const match = tokenFile('colors.css').match(/--backdrop:\s*rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*([0-9.]+)\s*\)/)
+    const match = scrimClassOf(render()).match(/color-mix\(in_srgb,var\(--base-black\)_(\d+)%,transparent\)/)
     expect(match).not.toBeNull()
-    return Number(match![1])
+    return Number(match![1]) / 100
   }
 
   /** WCAG 상대 휘도 (0~255 채널 동일 값의 회색) */
@@ -132,8 +135,8 @@ describe('PosterCard — 막 토큰 안전장치 (--backdrop)', () => {
     return linear
   }
 
-  it('--backdrop의 알파는 0.6 이상이다(확정 설계 1절 「글자 블록 첫 줄에서도 진하기 60% 이상」의 하한)', () => {
-    // 이 토큰은 원래 모달·시트 백드롭용이라 값이 따로 바뀔 수 있다. 0.6 아래로 내려가면 막 설계가 깨지므로 여기서 잡는다
+  it('막의 알파는 0.6 이상이다(확정 설계 1절 「글자 블록 첫 줄에서도 진하기 60% 이상」의 하한)', () => {
+    // 0.6 아래로 내려가면 막 설계가 깨지므로 여기서 잡는다
     expect(alphaOf()).toBeGreaterThanOrEqual(0.6)
   })
 

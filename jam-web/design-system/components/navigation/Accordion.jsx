@@ -8,7 +8,7 @@ import React, { useState } from 'react';
    tomo.ai/about의 "원형 배경 + 회전 아이콘" 인터랙션 패턴만 차용했다 — tomo의 실제 아이콘
    (도트 패턴 화살표, 브랜드 고유 자산)은 복제하지 않고 JAM 아이콘 세트의 단순 셰브런을
    그대로 원 안에 넣는 식으로 재해석했다. 닫힘 상태는 --background-secondary 배경 위 보조 텍스트색
-   셰브런, 열림 상태는 --color-primary 배경 위 --accent-foreground 셰브런으로 상태를
+   셰브런, 열림 상태는 --accent 배경 위 --accent-foreground 셰브런으로 상태를
    구분하고, 180도 회전은 기존 트랜지션(--duration-fast/--ease-smooth-out)을 그대로 썼다.
    이 티켓이 Accordion을 서비스에 처음 도입한다 (`/philosophy` FAQ 섹션 1곳).
 

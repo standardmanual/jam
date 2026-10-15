@@ -86,7 +86,7 @@ describe('CardFrame — tracking과 href가 모두 있으면 트래커 안에 �
     expect(html).toMatch(/<a [^>]*href="\/drops"[^>]*><p>안쪽 모양<\/p><\/a>/)
   })
 
-  it('링크는 블록 요소이고 둥근 윤곽·눌림·focus-visible 윤곽선(2px·오프셋 2px·--color-primary) 클래스를 가진다', () => {
+  it('링크는 블록 요소이고 둥근 윤곽·눌림·focus-visible 윤곽선(2px·오프셋 2px·--link) 클래스를 가진다', () => {
     expect(html).toContain(LINK_CLASS_ATTR)
   })
 
@@ -94,8 +94,8 @@ describe('CardFrame — tracking과 href가 모두 있으면 트래커 안에 �
     expect(html.match(/jam-press/g)).toHaveLength(1)
   })
 
-  it('홈에서 색이 비는 Tailwind outline-link를 쓰지 않고, 링크에 aria-label을 달지 않는다', () => {
-    expect(html).not.toContain('outline-link')
+  it('홈에서 색이 비는 Tailwind outline-primary를 쓰지 않고, 링크에 aria-label을 달지 않는다', () => {
+    expect(html).not.toContain('outline-primary')
     expect(html).not.toContain('aria-label')
   })
 })

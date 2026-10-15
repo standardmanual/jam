@@ -292,9 +292,9 @@ export const BrightImage: Story = {
     </Column>
   ),
   play: async ({ canvasElement }) => {
-    // (a) 토큰 알파 — 값이 0.6 아래로 바뀌면 막 설계가 깨진다
-    const overlay = getComputedStyle(document.documentElement).getPropertyValue('--backdrop')
-    const alpha = Number(overlay.match(/rgba?\([^)]*,\s*([0-9.]+)\s*\)/)?.[1])
+    // (a) 막 알파 — 값이 0.6 아래로 바뀌면 막 설계가 깨진다(--backdrop은 검정 50%라 막은 쓰지 않는다)
+    const firstScrim = scrimOf(cardsOf(canvasElement)[0])
+    const alpha = Number(firstScrim.className.match(/color-mix\(in_srgb,var\(--base-black\)_(\d+)%,transparent\)/)?.[1]) / 100
     expect(alpha).toBeGreaterThanOrEqual(0.6)
 
     for (const card of cardsOf(canvasElement)) {

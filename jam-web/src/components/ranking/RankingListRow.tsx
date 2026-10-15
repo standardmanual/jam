@@ -53,7 +53,7 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue }: R
       href={entry.username ? `/${entry.username}` : undefined}
       icon={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* 순위 번호 — 내 순위는 --color-primary(레드)로 강조 */}
+          {/* 순위 번호 — 내 순위는 --link로 강조 */}
           <span
             style={{
               fontSize: emphasisFontSize,
@@ -104,7 +104,7 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue }: R
           percent={fillRatio * 100}
           labelType="none"
           height={6}
-          color="var(--link)"
+          color="var(--accent)"
           trackColor="var(--border)"
           radius="3px"
         />

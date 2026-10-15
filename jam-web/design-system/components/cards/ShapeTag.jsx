@@ -1,7 +1,7 @@
 import React from 'react';
 
 const SHAPES = {
-  rect:     { clipPath: 'none', borderRadius: 'var(--field-radius)' },
+  rect:     { clipPath: 'none', borderRadius: 'var(--radius-lg)' },
   pill:     { clipPath: 'none', borderRadius: 'var(--radius-full)' },
   circle:   { clipPath: 'none', borderRadius: '50%' },
   dome:     { clipPath: 'none', borderRadius: '50% 50% 0 0' },
@@ -10,9 +10,10 @@ const SHAPES = {
   hex:      { clipPath: 'polygon(6% 0, 94% 0, 100% 50%, 94% 100%, 6% 100%, 0% 50%)', borderRadius: 0 },
 };
 
+// accent-content 6색 순환(JAM 2.0, 티켓 20261015_2131). 옛 8색 중 7·8번째 색은 새 시스템에 없다.
 const TAG_COLORS = [
-  'var(--color-tag-1)', 'var(--color-tag-2)', 'var(--color-tag-3)', 'var(--color-tag-4)',
-  'var(--color-tag-5)', 'var(--color-tag-6)', 'var(--color-tag-7)', 'var(--color-tag-8)',
+  'var(--accent-content-lightblue)', 'var(--accent-content-green)', 'var(--accent-content-yellow)',
+  'var(--accent-content-red)', 'var(--accent-content-pink)', 'var(--accent-content-blue)',
 ];
 
 /**
@@ -22,7 +23,7 @@ const TAG_COLORS = [
  *
  * v2 changes:
  *   - dark: boolean → surface: 'light' | 'dark'  (API unified with Button/IconButton)
- *   - letterSpacing: --tracking-label applied for uppercase label legibility
+ *   - JAM 2.0: 자간 없음(새 시스템 자간 0), 색은 accent-content 6색 순환
  */
 export function ShapeTag({
   shape = 'rect',

@@ -187,7 +187,7 @@ export const InProgressValueIsWhite: Story = {
     const current = Array.from(gauge.querySelectorAll('span')).find((el) => el.textContent === '52.4') as HTMLElement;
     expect(current).toBeTruthy();
     // --foreground(#ffffff) → rgb(255, 255, 255). 옐로우(#f2cb00)가 아니어야 한다.
-    expect(getComputedStyle(current).color).toBe('rgb(255, 255, 255)');
+    expect(getComputedStyle(current).color).toBe('rgb(23, 23, 23)');
   },
 };
 

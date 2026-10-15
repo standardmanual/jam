@@ -23,7 +23,7 @@ export interface ProgressBarProps {
   labelPosition?: ProgressBarLabelPosition;
   /** 바 높이(px 또는 CSS 단위 문자열). 기본 8 */
   height?: number | string;
-  /** 필 색상. 기본 var(--link). 그라데이션 문자열도 허용(순위별 그라데이션 등) */
+  /** 필 색상. 기본 var(--accent). 그라데이션 문자열도 허용(순위별 그라데이션 등) */
   color?: string;
   /** 트랙(배경) 색상. 기본 var(--border) */
   trackColor?: string;

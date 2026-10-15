@@ -42,7 +42,7 @@ import { ChevronDownGlyph } from '../icons/BadgeStatusGlyphs.jsx';
  *
  * 밝기가 「지금 얼마나 신경 쓸 곳인가」를 맡는다. lime(H 118.6°)과 amber(H 94.9°)가
  * 23.7°밖에 안 떨어져 있어 색만으로는 3단계를 못 가른다 — 가운데 단계(진행 중)에서 색을
- * 빼고 밝기를 최대로 올린다. 토큰은 `colors.css`의 `--status-progress-*`.
+ * 빼고 밝기를 최대로 올린다. 토큰은 `colors.css`의 `--progress-*`.
  *
  * 문구 조립은 하지 않는다 — 완성 문자열만 받는다(기존 DS 원칙 유지).
  */

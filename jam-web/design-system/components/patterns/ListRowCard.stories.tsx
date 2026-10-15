@@ -94,14 +94,14 @@ export const UserRow: Story = {
     <div style={{ width: 320 }}>
       <ListRowCard
         icon={
-          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--color-surface-tint, var(--background-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--background-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
             👟
           </div>
         }
         title="러너_유저"
         subtitle="배지 23개"
         trailing={
-          <button style={{ padding: '4px 12px', fontSize: 'var(--text-sm)', background: 'var(--accent)', color: 'var(--snow)', border: 'none', borderRadius: 'var(--radius-full)', cursor: 'pointer' }}>
+          <button style={{ padding: '4px 12px', fontSize: 'var(--text-sm)', background: 'var(--accent)', color: 'var(--accent-foreground)', border: 'none', borderRadius: 'var(--radius-full)', cursor: 'pointer' }}>
             팔로우
           </button>
         }
@@ -172,7 +172,7 @@ export const List: Story = {
             trailing={
               <button
                 onClick={(e) => { e.stopPropagation(); toggle(u.id); }}
-                style={{ padding: '4px 12px', fontSize: 'var(--text-sm)', background: following.has(u.id) ? 'transparent' : 'var(--color-primary)', color: following.has(u.id) ? 'var(--muted)' : 'var(--snow)', border: `1px solid ${following.has(u.id) ? 'var(--border)' : 'var(--link)'}`, borderRadius: 'var(--radius-full)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                style={{ padding: '4px 12px', fontSize: 'var(--text-sm)', background: following.has(u.id) ? 'transparent' : 'var(--accent)', color: following.has(u.id) ? 'var(--muted)' : 'var(--accent-foreground)', border: `1px solid ${following.has(u.id) ? 'var(--border)' : 'var(--link)'}`, borderRadius: 'var(--radius-full)', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >
                 {following.has(u.id) ? '팔로잉' : '팔로우'}
               </button>

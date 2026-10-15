@@ -63,7 +63,7 @@ describe('BriefCard — 면(표면)', () => {
   it('제목은 h3, 16px·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
     const html = render({ title: '제목이 아주 길어서 두 줄을 넘겨도 말줄임으로 끝나야 하는 한강 러닝 챌린지 이벤트 안내' })
     expect(html).toMatch(
-      /<h3 class="text-\[length:var\(--text-base\)\] leading-\[var\(--text-base--line-height\)\] text-snow line-clamp-2 break-keep break-words">제목이 아주/,
+      /<h3 class="text-base text-snow line-clamp-2 break-keep break-words">제목이 아주/,
     )
     expect(html).not.toMatch(/<h3[^>]*font-(bold|semibold|medium)/)
   })
@@ -164,23 +164,23 @@ describe('BriefCard — 희귀도 칩 (JAM! 배지 1개 카드)', () => {
   it('Common은 칩이 없다', () => {
     const html = badgeView('common')
     expect(html).not.toContain('Common')
-    expect(html).not.toContain('--text-xs')
+    expect(html).not.toContain('--rarity-')
   })
 
   it('등급 없음(null, 무한레벨형)은 이름만 보이고 칩이 없다', () => {
     const html = badgeView(null)
-    expect(html).not.toContain('--text-xs')
+    expect(html).not.toContain('--rarity-')
     expect(html).toContain('한강 러너')
   })
 
   it('희귀도 값이 없는 카드(JAM! 배지가 아닌 자원)에는 칩이 없다', () => {
-    expect(render()).not.toContain('--text-xs')
+    expect(render()).not.toContain('--rarity-')
   })
 
   it('알 수 없는 희귀도 값은 칩을 그리지 않는다(Common으로 떨어뜨리지 않는다)', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     const html = badgeView('legendary')
-    expect(html).not.toContain('--text-xs')
+    expect(html).not.toContain('--rarity-')
     expect(html).not.toContain('Common')
   })
 

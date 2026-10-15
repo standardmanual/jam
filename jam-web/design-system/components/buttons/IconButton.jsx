@@ -8,7 +8,7 @@ import React from 'react';
  * v2 changes:
  *   - CDN icon replaced with inline SVG (no network dependency)
  *   - label default '' removed — label is now required to prevent empty aria-label
- *   - deprecated --color-white → --background-inverse
+ *   - deprecated white 토큰 → --background-inverse
  *   - press feedback via global CSS button:active (styles.css), JS handlers removed
  *
  * v3 changes (20260821_004):

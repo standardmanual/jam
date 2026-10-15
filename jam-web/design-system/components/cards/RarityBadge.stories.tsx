@@ -135,7 +135,7 @@ export const UnknownRarity: Story = {
 
 /**
  * 20260906_2140 — `size` 프롭. **`sm`(기본)이 기존 값 그대로**라 `size`를 넘기지 않는
- * 서비스 9개 호출부는 렌더가 1px도 달라지지 않는다. `md`(11px 라벨 · 5/10 패딩)는 배지
+ * 서비스 9개 호출부는 렌더가 1px도 달라지지 않는다. `md`(12px 라벨 · 5/10 패딩, JAM 2.0에서 11px → 12px)는 배지
  * 트리 전용이다 — 8px 라벨이 판독 불가라는 실측에서 나왔다(등급이 그 화면의 핵심 정보다).
  */
 export const Sizes: Story = {
@@ -161,8 +161,8 @@ export const Sizes: Story = {
     expect(getComputedStyle(sm).fontSize).toBe('8px');
     expect(getComputedStyle(sm).paddingTop).toBe('4px');
     expect(getComputedStyle(sm).paddingLeft).toBe('9px');
-    // md는 --text-xs(11px) · 5/10 패딩.
-    expect(getComputedStyle(md).fontSize).toBe('11px');
+    // md는 --text-xs(12px) · 5/10 패딩.
+    expect(getComputedStyle(md).fontSize).toBe('12px');
     expect(getComputedStyle(md).paddingTop).toBe('5px');
     expect(getComputedStyle(md).paddingLeft).toBe('10px');
   },

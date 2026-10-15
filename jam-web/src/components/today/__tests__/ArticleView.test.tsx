@@ -93,7 +93,7 @@ describe('ArticleView — 머리 영역', () => {
 
   it('제목은 h1이고 말줄임 없이 줄바꿈된다(line-clamp·truncate 없음)', () => {
     const html = render({ title: '아주 아주 긴 제목이라서 두 줄이든 세 줄이든 끝까지 보여야 하는 기사 제목입니다 마지막 글자까지' })
-    expect(html).toMatch(/<h1 class="text-\[length:var\(--text-3xl\)\] leading-\[var\(--text-3xl--line-height\)\] mt-\[var\(--spacing-16\)\]">아주/)
+    expect(html).toMatch(/<h1 class="text-3xl mt-4">아주/)
     expect(html).not.toContain('line-clamp')
     expect(html).not.toContain('truncate')
   })
@@ -115,7 +115,8 @@ describe('ArticleView — 머리 영역', () => {
 
   it('게재일이 없으면 그리지 않는다', () => {
     const html = renderToStaticMarkup(<ArticleView view={without('publishedAt')} />)
-    expect(html).not.toContain('text-xs')
+    // 라벨 칩의 인라인 style(font-size:var(--text-xs))이 아니라 게재일 문단의 클래스를 본다
+    expect(html).not.toMatch(/class="[^"]*\btext-xs\b/)
   })
 })
 
@@ -195,7 +196,7 @@ describe('ArticleView — 바깥 틀', () => {
   it('아래 여백 40px을 루트가 가진다(미리보기에서도 같은 여백)', () => {
     // 커버가 있으면 우선 로드 <link>가 앞에 붙으므로 루트 div를 찾아 본다
     expect(render()).toContain('<div class="text-foreground pb-10"><div class="relative w-full aspect-video')
-    expect(renderToStaticMarkup(<ArticleView view={without('coverUrl')} />)).toMatch(/^<div class="text-foreground pb-\[var\(--spacing-40\)\]">/)
+    expect(renderToStaticMarkup(<ArticleView view={without('coverUrl')} />)).toMatch(/^<div class="text-foreground pb-10">/)
   })
 
   it('본문 안쪽 여백은 좌우 16px·위 24px이다', () => {

@@ -8,7 +8,7 @@ import React from 'react';
  * 트랙/필/radius 값이 파편화돼 있었다(하드코딩 vs 토큰 혼재). MissionDetailClient만 토큰을
  * 올바르게 참조하고 있어 이를 캐노니컬 스펙으로 삼는다:
  *   - 트랙: var(--border)
- *   - 필: var(--link) 기본값 (color prop으로 오버라이드 — 순위 그라데이션 등 예외 대응)
+ *   - 필: var(--accent) 기본값 — 면 채우기라 accent다 (color prop으로 오버라이드 — 순위 그라데이션 등 예외 대응)
  *   - radius: var(--radius-full) 기본값 (radius prop으로 오버라이드 — MissionStatusClient의
  *     3px 임의값 등 예외 대응. [20260820_006])
  *   - height: 기본 8px (실사용 최빈값 — MissionDetailClient/ItemBookHeroSection 등 6곳 중 4곳)
@@ -34,7 +34,7 @@ export function ProgressBar({
   labelType = 'none',
   labelPosition = 'inline',
   height = 8,
-  color = 'var(--link)',
+  color = 'var(--accent)',
   trackColor = 'var(--border)',
   radius = 'var(--radius-full)',
   fillMode = 'solid',

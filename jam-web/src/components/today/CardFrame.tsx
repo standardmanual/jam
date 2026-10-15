@@ -17,7 +17,7 @@ import type { CardView } from '@/lib/today/cardView'
  * `Link`에 `aria-label`을 달지 않는다. 안쪽 글자(제목)가 곧 접근 가능한 이름이다.
  * `Link`의 둥근 모서리(`--radius-2xl`)는 키보드 포커스 윤곽선이 둥근 카드 밖에서 직각으로 그려지지 않게 하려는 것이고,
  * 윤곽선 값(2px·오프셋 2px·`--link`)은 `design-system/styles.css`의 전역 `*:focus-visible`과 같다 — 서비스는 그 파일을
- * import하지 않아 같은 규칙을 클래스로 다시 적는다. Tailwind `outline-link`는 홈에서 `--primary`가 비어 색이 비므로
+ * import하지 않아 같은 규칙을 클래스로 다시 적는다. Tailwind `outline-primary`는 홈에서 `--primary`가 비어 색이 비므로
  * DS 토큰을 직접 가리킨다. 부모에 `overflow-hidden`이 생기면 카드 밖으로 나가는 윤곽선이 잘린다.
  *
  * 이 클래스 상수는 `CardLink`로만 내보낸다 — 행형 제목 링크가 같은 윤곽선·눌림을 쓰되 값을 두 곳에 적지 않는다.

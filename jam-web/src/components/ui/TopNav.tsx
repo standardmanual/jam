@@ -146,7 +146,7 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
         variant="outline"
         surface="sub"
         size="xs"
-        style={{ backgroundColor: 'var(--accent)', color: 'var(--base-white)' }}
+        style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
         onClick={() => {
           window.location.href = '/api/strava/auth'
         }}

@@ -11,7 +11,7 @@ import React from 'react';
  * v2 changes:
  *   - onMouseDown/Up/Leave JS handlers removed — press feedback via CSS button:active in styles.css
  *   - loading prop added — shows inline spinner, auto-disables interaction
- *   - deprecated --color-surface-tint → --background, --color-white → --background-inverse
+ *   - deprecated tint·white 토큰 → 역할 토큰(--background, --background-inverse)
  *   - size prop added (20260824_010) — 'sm'은 44px 터치 타겟 규칙의 명시적 예외(내비게이션
  *     바처럼 세로 공간이 44px로 고정된 컨텍스트에서만 사용할 것)
  */

@@ -11,7 +11,7 @@ const meta: Meta<typeof ShapeTag> = {
   argTypes: {
     shape: { control: 'select', options: SHAPES },
     surface: { control: 'radio', options: ['light', 'dark'] },
-    colorIndex: { control: { type: 'number', min: 0, max: 7 } },
+    colorIndex: { control: { type: 'number', min: 0, max: 5 } },
   },
 };
 
@@ -40,10 +40,10 @@ export const AllShapes: Story = {
 };
 
 export const ColorPalette: Story = {
-  name: '색상 팔레트 (colorIndex 0~7)',
+  name: '색상 팔레트 (colorIndex 0~5, accent-content 6색 순환)',
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      {Array.from({ length: 8 }, (_, i) => (
+      {Array.from({ length: 6 }, (_, i) => (
         <ShapeTag key={i} shape="pill" colorIndex={i}>{i}</ShapeTag>
       ))}
     </div>

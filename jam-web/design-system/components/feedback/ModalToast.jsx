@@ -27,7 +27,7 @@ const ICONS = {
  *   - Escape key dismisses
  *   - width: 240 hardcoded → min/max-width responsive
  *   - CDN icon replaced with inline SVG
- *   - deprecated --color-surface-card → --background
+ *   - deprecated surface-card 토큰 → --background
  */
 /**
  * iconSlot — optional ReactNode that replaces the default type icon circle.

@@ -288,7 +288,7 @@ function MyRankCard({
           percent={fillRatio * 100}
           labelType="none"
           height={6}
-          color="var(--link)"
+          color="var(--accent)"
           trackColor="rgba(232,70,31,0.2)"
           radius="3px"
         />

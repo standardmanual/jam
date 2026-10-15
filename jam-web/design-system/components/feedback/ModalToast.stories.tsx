@@ -45,7 +45,7 @@ export const WithBadgeFrame: Story = {
     open: true,
     message: '새로운 배지를 획득했어요!\n전설의 러너',
     iconSlot: (
-      <BadgeFrame shape="circle" width={96} height={96} color="var(--link)">
+      <BadgeFrame shape="circle" width={96} height={96} color="var(--accent)">
         <StarIcon />
       </BadgeFrame>
     ),
