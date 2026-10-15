@@ -457,7 +457,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | 코퍼스(세계관·컬렉션·배지 원문) 조회 API와 자동 선택 | [content-automation/PRD.md](../content-automation/PRD.md) §4 |
 | 이미지가 필요한 카드의 등록 묶음·검사(미션 카드 레이아웃, 이미지 글자 수) | [asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md](../asset-generator/HOME_FEED_REGISTRATION_BUNDLE.md) |
 | 어드민 주간 달력의 카드 편성 표시 | [admin-ui/ADMIN_PRD.md](../admin-ui/ADMIN_PRD.md) |
-| 윤진의 주간 편성 루틴 | `.claude/agents/jam-marketer.md` ⑥·⑧, `.claude/skills/jam-work/references/scheduled-jobs.md` 「주간」 |
+| 윤진의 주간 편성 루틴 | `.claude/skills/jam-story/references/marketer-home-feed.md`·`marketer-assets.md`(윤진 ⑥·⑧), `.claude/skills/jam-work/references/scheduled-jobs.md` 「주간」 |
 
 ## 12. 이 문서를 최신으로 유지하는 방법
 
