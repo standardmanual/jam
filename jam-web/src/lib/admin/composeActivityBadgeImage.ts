@@ -116,12 +116,18 @@ const GLASS_STROKE_OPACITY = 0.48
 const GLASS_STROKE_WIDTH = 1
 
 /**
- * 서비스 `--font-family-base`와 동일한 폰트 스택. 실제 로드되는 패밀리는 static Pretendard다
- * (globals.css가 CDN static 번들을 import한다).
+ * 구워 낸 이미지의 글꼴 스택. 서비스 서체(Noto Sans KR, 티켓 20261015_2132)와 달리 이 생성기는
+ * 피그마 원본의 Pretendard로 굽는다 — 산출 이미지를 바꾸지 않기 위한 결정이다(사용자 승인
+ * 2026-10-16). 서비스 globals.css가 Pretendard를 더는 불러오지 않으므로 `ensureBadgeImageFonts()`가
+ * 필요할 때 직접 불러온다.
  */
 const FONT_FAMILY = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif"
 /** `document.fonts.load`에 넘길 때 쓰는 실제 패밀리명 — 스택 전체를 넘기면 매칭되지 않는다. */
 const FONT_LOAD_FAMILY = 'Pretendard'
+/** 생성기 전용 Pretendard static 번들(굵기별 단일 woff2, unicode-range 분할 없음). */
+const BADGE_IMAGE_FONT_STYLESHEET_URL =
+  'https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css'
+const BADGE_IMAGE_FONT_STYLESHEET_ID = 'jam-badge-image-font-pretendard'
 
 const RARITY_LABELS: Record<BadgeRarity, string> = {
   common: 'Common',
@@ -134,13 +140,42 @@ const RARITY_LABELS: Record<BadgeRarity, string> = {
 // 폰트 / 색상 토큰
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** 모듈 안에서 `<link>`를 한 번만 넣고, 이후 호출은 같은 대기를 공유한다. */
+let fontStylesheetPending: Promise<void> | null = null
+
+/**
+ * Pretendard 스타일시트를 생성기가 처음 필요로 할 때 한 번만 `<head>`에 넣고 load를 기다린다.
+ * 실패(CDN 차단·네트워크 오류)해도 reject하지 않는다 — 폴백 폰트로 계속 굽는 것이 그리지 않는
+ * 것보다 낫고, 다음 호출에서 다시 시도하도록 대기를 비운다.
+ */
+function loadFontStylesheet(): Promise<void> {
+  if (fontStylesheetPending) return fontStylesheetPending
+  fontStylesheetPending = new Promise<void>((resolve) => {
+    const link = document.createElement('link')
+    link.id = BADGE_IMAGE_FONT_STYLESHEET_ID
+    link.rel = 'stylesheet'
+    link.href = BADGE_IMAGE_FONT_STYLESHEET_URL
+    link.onload = () => resolve()
+    link.onerror = () => {
+      link.remove()
+      fontStylesheetPending = null
+      resolve()
+    }
+    document.head.appendChild(link)
+  })
+  return fontStylesheetPending
+}
+
 /**
  * 웹폰트 로딩을 기다린다. 기다리지 않으면 폴백 폰트로 구워진다
  * (`buildBadgeShareBlob.ts`의 `waitForFonts`와 같은 이유·같은 방식).
+ * 스타일시트 삽입 → load 대기 → `document.fonts.load` 순서다. 스타일시트가 먼저 와야
+ * `@font-face`가 등록돼 `document.fonts.load`가 실제 파일을 요청한다.
  */
 export async function ensureBadgeImageFonts(): Promise<void> {
   if (typeof document === 'undefined' || !document.fonts) return
   try {
+    await loadFontStylesheet()
     await Promise.all([
       document.fonts.load(`700 ${NAME_FONT_SIZE}px ${FONT_LOAD_FAMILY}`),
       document.fonts.load(`700 ${CONDITION_FONT_SIZE}px ${FONT_LOAD_FAMILY}`),

@@ -8,11 +8,10 @@ import { SidebarInset, SidebarProvider } from '@/components/admin/ui/sidebar'
 import { Toaster } from '@/components/admin/ui/sonner'
 import { hasAdminAccess } from '@/lib/admin/auth'
 
-// 어드민 전용 서체 — Pretendard (globals.css 최상단에 CDN import로 전역 로드됨,
-// 서비스 본체·어드민 공용). shadcn 프리셋(b5Jgcv00m) 기본 폰트값(Inter)보다
-// 이 값이 우선한다 (20260826_012).
-const ADMIN_FONT_FAMILY =
-  "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif"
+// 어드민 서체 — 서비스와 같은 `--font-family-base`(Noto Sans KR, globals.css 최상단의
+// Google Fonts CDN import로 전역 로드됨; 티켓 20261015_2132). shadcn 프리셋(b5Jgcv00m)
+// 기본 폰트값(Inter)보다 이 값이 우선한다 (20260826_012).
+const ADMIN_FONT_FAMILY = 'var(--font-family-base)'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   let userEmail: string | null = null

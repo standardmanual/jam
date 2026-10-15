@@ -276,7 +276,7 @@
   "tokens": [
     {
       "name": "--font-family-base",
-      "value": "\"Pretendard Variable\", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif",
+      "value": "\"Noto Sans KR\", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif",
       "kind": "font",
       "definedIn": "tokens/typography.css"
     },
@@ -1029,7 +1029,7 @@
   "fonts": [],
   "brandFonts": [
     {
-      "family": "Pretendard Variable",
+      "family": "Noto Sans KR",
       "status": "ok",
       "tokens": [
         "--font-family-base"

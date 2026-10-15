@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 // 1. MODULAR 토큰 (colors / typography / spacing / radius / motion + base body styles)
 import '../design-system/styles.css'
 
-// 2. 서비스 globals (Pretendard CDN + Tailwind v4 + 서비스 토큰 + 어드민 스코프)
+// 2. 서비스 globals (Noto Sans KR Google Fonts CDN + Tailwind v4 + 서비스 토큰 + 어드민 스코프)
 //    design-system/styles.css 위에 덮어쓰므로 반드시 뒤에 import
 import '../src/app/globals.css'
 

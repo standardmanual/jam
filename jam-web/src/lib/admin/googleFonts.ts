@@ -65,8 +65,8 @@ export function ensureGoogleFontLoaded(family: string): void {
 }
 
 /**
- * 슬롯의 CSS 커스텀 프로퍼티를 이 구글 폰트로 런타임에 덮어쓴다 — `layout.tsx`가 Pretendard
- * Variable에 쓰는 정적 하이재킹과 같은 원리의 동적 버전.
+ * 슬롯의 CSS 커스텀 프로퍼티를 이 구글 폰트로 런타임에 덮어쓴다 — `globals.css`가 서비스 서체
+ * (`--font-family-base`)를 정적으로 정하는 것과 같은 원리의 동적 버전.
  */
 export function applyGoogleFontToSlot(cssVariable: string, family: string): void {
   if (typeof document === 'undefined') return
