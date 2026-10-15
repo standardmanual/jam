@@ -9,10 +9,10 @@ import { ButtonHTMLAttributes, forwardRef, type CSSProperties } from 'react'
  * - `arrow`   : 화살표(→) 접두 텍스트 버튼. 배경/보더 없음, radius 16px, padding 24px
  *
  * surface = "이 버튼이 놓인 배경"
- * - `main`(기본, 다크 배경 위): primary는 흰색 채움 + 검정 텍스트,
- *   outline은 --surface 채움 + 흰 텍스트(20260816_012 — 보더 대신 배경톤)
- * - `sub`(라이트 배경 위): primary는 accent 채움 + 흰 텍스트,
- *   outline은 4% 블랙 틴트 채움 + 검정 텍스트(20260816_012 — 보더 대신 배경톤)
+ * - `main`(기본): primary는 --background-inverse 채움 + --snow 글자,
+ *   outline은 --surface 채움 + --foreground 글자(20260816_012 — 보더 대신 배경톤)
+ * - `sub`(밝은 배경 위): primary는 accent 채움 + --accent-foreground 글자,
+ *   outline은 4% 블랙 틴트 채움 + --foreground 글자(20260816_012 — 보더 대신 배경톤)
  *
  * 규칙: weight 400 단일, 최소 44×44pt 터치 영역, active: 스케일 축소 피드백,
  * 드롭섀도/그라데이션 금지. 보더는 명시적 요구가 있는 경우를 제외하고 사용하지 않는다
@@ -58,8 +58,9 @@ const legacyVariantMap: Record<string, ResolvedVariant> = {
 
 /**
  * DS v2 surface별 색상 클래스 (20260816_012: outline 보더 제거 → 배경톤 채움으로 대체).
- * - main (다크 배경 위): primary=흰 채움/검정 텍스트, outline=--surface 채움/흰 텍스트
- * - sub (라이트 surface 위): primary=accent 채움/흰 텍스트, outline=4% 블랙 틴트 채움/검정 텍스트
+ * - main: primary=--background-inverse 채움/--snow 글자, outline=--surface 채움/--foreground 글자
+ * - sub (밝은 surface 위): primary=accent 채움/--accent-foreground 글자(MODULAR Button.jsx light primary와 같은 쌍),
+ *   outline=4% 블랙 틴트 채움/--foreground 글자
  */
 const colorClasses: Record<ButtonSurface, Record<ResolvedVariant, string>> = {
   main: {
@@ -68,15 +69,15 @@ const colorClasses: Record<ButtonSurface, Record<ResolvedVariant, string>> = {
     arrow: 'text-foreground',
   },
   sub: {
-    primary: 'text-white',             // bg는 inline style(accent)로 주입
-    outline: 'text-snow bg-black/[0.04]',
-    arrow: 'text-snow',
+    primary: 'text-accent-foreground', // bg는 inline style(accent)로 주입
+    outline: 'text-foreground bg-black/[0.04]',
+    arrow: 'text-foreground',
   },
 }
 
 const primaryBgMap: Record<ButtonSurface, string> = {
-  main: 'var(--background-inverse)',  // 다크 배경 위 primary = 흰 pill
-  sub:  'var(--accent)',                 // 라이트 배경 위 primary = accent pill
+  main: 'var(--background-inverse)',  // main primary = 반전색(--background-inverse) pill
+  sub:  'var(--accent)',                 // 밝은 배경 위 primary = accent pill
 }
 
 const shapeClasses: Record<ResolvedVariant, string> = {
