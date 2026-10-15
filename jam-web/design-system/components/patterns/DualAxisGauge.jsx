@@ -115,7 +115,7 @@ export function DualAxisGauge({
       <p
         style={{
           margin: '0 0 var(--spacing-12)', fontSize: 'var(--text-xs)', fontWeight: 700,
-          letterSpacing: '0.3px', color: 'var(--muted)',
+          color: 'var(--muted)',
         }}
       >
         {title}
