@@ -655,8 +655,11 @@ export default function ProfileClient({
 
         {/* 통계 바 — Tabs sliding (16-tabs-sliding.md).
             기본뷰(해시 없음)에서는 선택된 탭이 없어야 하므로 value에 빈 값을 넘겨
-            pill을 숨긴다. */}
-        <Card tone="inverse" className="overflow-hidden" style={{ padding: 0 }}>
+            pill을 숨긴다.
+            onCard 팔레트(rgba(0,0,0,…) 글자)는 밝은 카드 전제라 tone="default"(--surface)를 쓴다.
+            어두운 inverse 면 위에서는 비활성 라벨이 1.08:1로 사라졌다(티켓 20261015_2131 재작업).
+            크림 바탕과 구분되도록 1px --border를 이 카드에만 직접 건다 — 카드 공통 구분은 2133 범위. */}
+        <Card tone="default" className="overflow-hidden border border-border" style={{ padding: 0 }}>
           <SlidingTabs
             items={statTabs}
             value={isTabView ? activeTab : ('' as TabKey)}
