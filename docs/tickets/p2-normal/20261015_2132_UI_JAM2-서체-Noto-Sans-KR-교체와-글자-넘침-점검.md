@@ -231,5 +231,16 @@ html (className=Geist 변수 2개, 본문에는 안 쓰임)
 - 393px 폭 스크린샷에서 배지 카드·인벤토리 슬롯·작은 카드 안 버튼(micro 12px)에 글자 잘림·겹침이 없다.
 - 위 점검에서 한글 +6.5%·혼합 +10%·'1' 연속 숫자 +26%를 후보 기준으로 쓴다.
 
+### 아현 계획 반환 결과 (2026-10-16, 사용자 승인으로 면제 부여)
+
+규모 사전 판정이 빗나갔다. 서체 로딩만 보고 파일 5개 이내로 봤으나 자간을 걷을 DS 컴포넌트 7종과 짝 스토리·문서가 더해져 22~30개 파일, 약 110줄이다. 변경 대부분은 한 줄 기계적 치환이다. 서체 로딩 변경과 배지 이미지 생성기 변경은 같은 머지 단위여야 한다(CDN을 걷으면 생성기가 조용히 폴백 글꼴로 이미지를 굽는다).
+
+- 로딩·토큰: `jam-web/src/app/globals.css`(1행), `design-system/tokens/typography.css`(12행, 9행 주석), `tokens/fonts.css`(주석 재작성), `_ds_manifest.json`(`node scripts/ds-manifest-sync.mjs --write`로 생성)
+- 주석·어드민: `.storybook/preview.tsx:7`, `src/app/admin/layout.tsx:11,15`, `src/lib/admin/googleFonts.ts:68`, `src/lib/admin/composeActivityBadgeImage.ts`(`ensureBadgeImageFonts()`로 로딩 방식 변경 + 신규 테스트 1개: link 삽입 1회·load 대기)
+- 자간 걷기 DS 7종(각각 짝 `.stories.tsx` 동반): `BadgeLevelChip.jsx:38`, `RarityBadge.jsx:89`, `BadgeFamilyCardHeader.jsx:139,168`, `BadgeTreeSummaryHeader.jsx:112`, `DualAxisGauge.jsx:118`, `UnlockConditionSheetContent.jsx:215`, `CollectionGridCard.jsx:14`
+- 서비스 2곳: `src/app/(main)/collections/[id]/page.tsx:391`, `src/app/(main)/missions/[id]/MissionDetailClient.tsx:224`
+- 스토리·문서: `Fonts.stories.tsx`, `Typography.stories.tsx`, `TopNav.stories.tsx:77`, `docs/service/prd/2026-08-15 DESIGN_RENEWAL_SPEC.md` 73·499행, `design-system/readme.md`
+- 확인: 완료 조건 3의 `grep`은 대소문자를 구분하면 `globals.css` 1행(URL의 소문자 `pretendard`)을 못 잡으므로 `-i`로 검사한다.
+
 ### 잔여 이슈
 -
