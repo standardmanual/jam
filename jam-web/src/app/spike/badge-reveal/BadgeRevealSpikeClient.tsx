@@ -166,11 +166,11 @@ export default function BadgeRevealSpikeClient({
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 430, margin: '0 auto', color: 'var(--color-text)' }}>
-      <h1 style={{ fontSize: 'var(--text-h4)', fontWeight: 700, margin: '0 0 8px' }}>
+    <div style={{ padding: 24, maxWidth: 430, margin: '0 auto', color: 'var(--foreground)' }}>
+      <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, margin: '0 0 8px' }}>
         배지 획득 캐러셀 스파이크
       </h1>
-      <p style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)', margin: '0 0 24px', lineHeight: 1.5 }}>
+      <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', margin: '0 0 24px', lineHeight: 1.5 }}>
         배지를 발급하지 않아요. 배지 조회 데이터로 연출만 확인하는 검증용 화면이에요.
         {usingSample ? ' 지금은 조회 결과가 없어 예시 데이터로 표시하고 있어요.' : ''}
       </p>
@@ -187,7 +187,7 @@ export default function BadgeRevealSpikeClient({
             </Button>
           ))}
         </div>
-        <p style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)', margin: '8px 0 0', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', margin: '8px 0 0', lineHeight: 1.5 }}>
           지연 동안 아래 버튼의 스피너가 돌아요. 결과가 도착하는 그 시점에 캐러셀이 열려요.
         </p>
       </Section>
@@ -227,10 +227,10 @@ export default function BadgeRevealSpikeClient({
           style={{
             marginTop: 24,
             padding: 12,
-            borderRadius: 'var(--radius-card)',
-            background: 'var(--color-surface)',
-            fontSize: 'var(--text-caption)',
-            color: 'var(--color-text-secondary)',
+            borderRadius: 'var(--radius-2xl)',
+            background: 'var(--background)',
+            fontSize: 'var(--text-xs)',
+            color: 'var(--muted)',
             lineHeight: 1.6,
             wordBreak: 'keep-all',
           }}
@@ -257,7 +257,7 @@ export default function BadgeRevealSpikeClient({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section style={{ marginBottom: 24 }}>
-      <h2 style={{ fontSize: 'var(--text-small)', fontWeight: 700, margin: '0 0 8px' }}>{title}</h2>
+      <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 700, margin: '0 0 8px' }}>{title}</h2>
       {children}
     </section>
   )

@@ -13,9 +13,9 @@ import { resourceIconOf, type ResourceIconView } from './resourceIcon'
  * 칸 바탕 `bg-black/[0.04]`는 흰 카드 위 옅은 면이다(보더 미사용 원칙, 티켓 20260816_012).
  */
 export default function CardThumb({ view, src, dimmed = false }: { view: ResourceIconView; src?: string | null; dimmed?: boolean }) {
-  const icon = resourceIconOf(view, { className: 'w-6 h-6 text-text-inverse/60' })
+  const icon = resourceIconOf(view, { className: 'w-6 h-6 text-snow/60' })
   return (
-    <div className="w-16 h-16 shrink-0 rounded-[var(--radius-cards)] bg-black/[0.04] overflow-hidden flex items-center justify-center">
+    <div className="w-16 h-16 shrink-0 rounded-2xl bg-black/[0.04] overflow-hidden flex items-center justify-center">
       {src ? (
         <SafeImage
           src={src}

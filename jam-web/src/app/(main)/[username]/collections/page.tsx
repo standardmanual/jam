@@ -161,10 +161,10 @@ export default async function UserItemBooksPage({ params }: Props) {
   }
 
   return (
-    <div className="flex flex-col min-h-full text-text">
+    <div className="flex flex-col min-h-full text-foreground">
       <TopNav title={`${d.itembooks.title} · ${getDisplayName(target)}`} backHref={`/${username}`} />
 
-      <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)]">
+      <div className="px-4 pt-0 pb-8">
         {cards.length === 0 ? (
           <EmptyState
             icon={<BookIcon className="w-8 h-8" />}
@@ -172,13 +172,13 @@ export default async function UserItemBooksPage({ params }: Props) {
             description={d.itembooks.emptyBody}
           />
         ) : (
-          <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
+          <div className="grid grid-cols-2 gap-4">
             {cards.map(({ book, totalBadgeCount, slottedCount, isCompleted }) => {
               const pct = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
               return (
                 <Link key={book.id} href={`/collections/${book.id}`}>
-                  <Card tone="inverse" className="flex flex-col gap-[var(--spacing-8)] jam-press">
-                    <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center bg-black/[0.04]">
+                  <Card tone="inverse" className="flex flex-col gap-2 jam-press">
+                    <div className="relative w-full aspect-square rounded-2xl overflow-hidden flex items-center justify-center bg-black/[0.04]">
                       {/* 컬렉션 이미지는 어드민 자유 입력이 가능했던 필드라 SafeImage로 렌더한다.
                           next/image에 직접 넘기면 카드 한 장이 이 목록 화면 전체를 500으로 만든다
                           (20260824_005). 폴백은 이미지가 없을 때와 같은 BookIcon. */}
@@ -187,23 +187,23 @@ export default async function UserItemBooksPage({ params }: Props) {
                         alt={book.name}
                         className="object-contain p-1.5"
                         sizes="50vw"
-                        fallback={<BookIcon className="w-8 h-8 text-text-inverse/40" />}
+                        fallback={<BookIcon className="w-8 h-8 text-snow/40" />}
                       />
                       {isCompleted && (
-                        <span className="absolute top-1.5 right-1.5 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
+                        <span className="absolute top-1.5 right-1.5 text-xs leading-none px-2 py-1 rounded-full bg-background text-foreground">
                           {d.itembooks.completed}
                         </span>
                       )}
                     </div>
                     <div className="min-w-0">
-                      <h2 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] line-clamp-2">{book.name}</h2>
+                      <h2 className="text-base line-clamp-2">{book.name}</h2>
                       {book.tribe && (
-                        <p className="text-[length:var(--text-caption)] text-text-inverse/50 mt-0.5 truncate">{book.tribe.name}</p>
+                        <p className="text-xs text-snow/50 mt-0.5 truncate">{book.tribe.name}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <ProgressBar percent={pct} height={6} />
-                      <span className="text-[length:var(--text-caption)] text-[color:var(--color-primary)] font-bold tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>
+                      <span className="text-xs text-[color:var(--link)] font-bold tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>
                     </div>
                   </Card>
                 </Link>

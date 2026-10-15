@@ -117,9 +117,9 @@ const RECIPE = brief({
 // ─── 배치 도우미 ───────────────────────────────────────────────────────────
 
 const STACK_STYLE: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }
-const CAPTION_STYLE: CSSProperties = { margin: '0 0 var(--spacing-4)', fontSize: 'var(--text-caption)', color: 'rgba(255,255,255,0.6)' }
+const CAPTION_STYLE: CSSProperties = { margin: '0 0 var(--spacing-4)', fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.6)' }
 
-/** 고정 폭 열. 카드 사이 간격은 `TodayCardStack`의 `gap-[var(--spacing-16)]`과 같다 */
+/** 고정 폭 열. 카드 사이 간격은 `TodayCardStack`의 `gap-4`과 같다 */
 function Column({ width, children }: { width: number; children: ReactNode }) {
   return <div style={{ ...STACK_STYLE, width }}>{children}</div>
 }
@@ -477,7 +477,7 @@ const sendBeaconOff: NonNullable<Story['beforeEach']> = () => {
   }
 }
 
-/** 계측 정보와 `href`가 있으면 링크가 블록 요소이고 눌림(`.jam-press`)·키보드 포커스 윤곽선(2px·오프셋 2px·`--color-primary`)을 가진다. */
+/** 계측 정보와 `href`가 있으면 링크가 블록 요소이고 눌림(`.jam-press`)·키보드 포커스 윤곽선(2px·오프셋 2px·`--link`)을 가진다. */
 export const Tracked: Story = {
   name: '계측 있음 — 링크 · 눌림 · 포커스(Tab 키로 확인)',
   beforeEach: sendBeaconOff,
@@ -496,9 +496,9 @@ export const Tracked: Story = {
     const style = getComputedStyle(link)
     expect(style.outlineWidth).toBe('2px')
     expect(style.outlineOffset).toBe('2px')
-    // 윤곽선 색은 DS 토큰 --color-primary와 같다
+    // 윤곽선 색은 DS 토큰 --link와 같다
     const probe = document.createElement('span')
-    probe.style.color = 'var(--color-primary)'
+    probe.style.color = 'var(--link)'
     canvasElement.appendChild(probe)
     expect(style.outlineColor).toBe(getComputedStyle(probe).color)
     probe.remove()
@@ -531,7 +531,7 @@ export const Untracked: Story = {
 
 const STACK: CardView[] = [MISSION, { ...BADGE, rarity: 'rare', thumbnailUrl: SAMPLE.rare }, DROP]
 
-/** 카드 3장을 `gap-[var(--spacing-16)]`로 쌓은 맥락. 간격 리듬 확인용이고 360·430 스크린숏의 소스다. */
+/** 카드 3장을 `gap-4`로 쌓은 맥락. 간격 리듬 확인용이고 360·430 스크린숏의 소스다. */
 export const StackedAt360: Story = {
   name: '쌓은 맥락 — 360 기기 (카드 328px)',
   render: () => (

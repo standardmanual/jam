@@ -66,7 +66,7 @@ export default async function HomePage() {
   const todayCards = await getTodayCards(userId, userProfile?.created_at)
 
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       <HomeViewTracker />
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) — 기존 자체
           로고 헤더 블록을 대체한다. sync 차례(온보딩 퀘스트 T2c)면 중앙 슬롯을 연출
@@ -77,20 +77,20 @@ export default async function HomePage() {
         <TopNav logo />
       )}
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
+      <div className="px-4 pt-6 pb-8 flex flex-col gap-6">
       {/* 압축 인사말 + 검색 아이콘화 (티켓 20260830_2030) — 기존 큰 인사말(h1)·상시 노출
           전체 폭 검색바를 대체한다. 검색 폼 자체는 UserSearchBar가 그대로 유지하고
           `/search` 페이지에서 계속 쓰인다. */}
-      <div className="flex items-center justify-between gap-[var(--spacing-16)]">
-        <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold truncate">
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-base font-bold truncate">
           {t(d.todayStatus.greeting, { name: displayName })}
         </p>
         <Link
           href="/search"
           aria-label={d.today.searchAriaLabel}
-          className="w-11 h-11 -mr-1 rounded-[var(--radius-pill)] flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
+          className="w-11 h-11 -mr-1 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
         >
-          <span className="w-9 h-9 rounded-[var(--radius-pill)] bg-surface-elevated text-text flex items-center justify-center">
+          <span className="w-9 h-9 rounded-full bg-surface text-foreground flex items-center justify-center">
             <SearchIcon className="w-4 h-4" />
           </span>
         </Link>

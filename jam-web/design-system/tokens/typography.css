@@ -1,59 +1,32 @@
 /*
- * JAM! DS v2 — typography tokens.
- * Pretendard Variable — 서비스(globals.css) 정본 값과 실연결 (20260820_003).
+ * JAM! DS v3 — typography tokens.
  *
- * v2 changes:
- *   - 20260820_003: --font-family-base — Noto Sans KR → Pretendard Variable.
- *     서비스가 실제 사용 중인 값을 정본으로 채택 (모듈러가 서비스를 따라감).
- *   - --leading-bold-display: 0.95 → 1.0 (was clipping Korean descenders)
- *   - --weight-bold-lg: 900 added (was missing, completing the bold set)
- *   - DS-014: tracking unified to per-scale tokens only — --tracking-heading removed
- *     (it was unused and conflicted with --tracking-h3/h4). Use each scale's own
- *     --tracking-* token. Exception: --tracking-label stays (role-based, size-independent).
+ * 티켓 20261015_2131: body·caption·h4 같은 옛 역할 이름의 글자·행간 토큰과 자간·굵기 토큰을
+ * 지웠다. 클래스 문자열은 Tailwind 기본 유틸리티(text-xs·text-base …)를 쓴다. 인라인 style·CSS처럼
+ * 클래스가 아닌 곳이 참조하도록 피그마 `dimensions/font`·`dimensions/leading`과 같은 값의 평문
+ * 눈금만 남긴다. 자간은 새 시스템에서 모두 0이다.
+ *
+ * 서체(--font-family-base)는 하위 티켓 20261015_2132에서 Noto Sans KR로 바꾼다.
  */
 :root {
-  /* 20260820_003: 서비스(globals.css) 값을 정본으로 통일 — Pretendard Variable.
-     이전 값(Noto Sans KR)은 서비스와 충돌해 실연결(@import) 시 값이 덮어써졌음. */
   --font-family-base: "Pretendard Variable", Pretendard, -apple-system,
     BlinkMacSystemFont, system-ui, Roboto, sans-serif;
 
-  /* Display — hero moments only */
-  --text-display: 96px;    --leading-display: 1.08;   --tracking-display: -2.4px;  --weight-display: 300;
+  /* 글자 크기와 행간 쌍 (피그마 dimensions/font·leading, Tailwind 기본 단계와 같다).
+     이름과 값 표기를 Tailwind 4 기본 테마와 같게 둔다(rem, 행간은 글자 크기 대비 비율).
+     text-N 유틸리티와 인라인 style이 같은 변수를 읽고, 어드민의 text-sm 등도 달라지지 않는다.
+     행간 px 값: xs 16 · sm 20 · base 24 · lg 28 · xl 28 · 2xl 32 · 3xl 36 · 4xl 40 · 5xl 48 */
+  --text-xs: 0.75rem;    --text-xs--line-height: calc(1 / 0.75);
+  --text-sm: 0.875rem;   --text-sm--line-height: calc(1.25 / 0.875);
+  --text-base: 1rem;     --text-base--line-height: calc(1.5 / 1);
+  --text-lg: 1.125rem;   --text-lg--line-height: calc(1.75 / 1.125);
+  --text-xl: 1.25rem;    --text-xl--line-height: calc(1.75 / 1.25);
+  --text-2xl: 1.5rem;    --text-2xl--line-height: calc(2 / 1.5);
+  --text-3xl: 1.875rem;  --text-3xl--line-height: calc(2.25 / 1.875);
+  --text-4xl: 2.25rem;   --text-4xl--line-height: calc(2.5 / 2.25);
+  --text-5xl: 3rem;      --text-5xl--line-height: 1;
 
-  /* Heading scale */
-  --text-h1: 56px;  --leading-h1: 1.08;  --tracking-h1: -1.4px;   --weight-h1: 600;
-  --text-h2: 44px;  --leading-h2: 1.1;   --tracking-h2: -1.1px;   --weight-h2: 600;
-  --text-h3: 28px;  --leading-h3: 1.2;   --tracking-h3: -0.28px;  --weight-h3: 500;
-  --text-h4: 24px;  --leading-h4: 1.3;   --tracking-h4: -0.24px;  --weight-h4: 500;
-
-  /* Body scale */
-  --text-body-l: 20px;   --leading-body-l: 1.4;  --weight-body-l: 400;
-  --text-body: 16px;     --leading-body: 1.5;    --weight-body: 400;
-  --text-small: 14px;    --leading-small: 1.43;  --weight-small: 400;
-  --text-caption: 12px;  --leading-caption: 1.4; --weight-caption: 400;
-
-  /* Bold display — hero stats, big callouts */
-  /* v2: leading changed from 0.95 → 1.0 to prevent Korean descender clipping */
-  --text-bold-display: 72px;  --leading-bold-display: 1.0;  --weight-bold-display: 900;  --tracking-bold-display: -2px;
-  --text-bold-lg: 40px;       --leading-bold-lg: 1.05;      --weight-bold-lg: 900;        --tracking-bold-lg: -1px;
-
-  /* Tracking: use each scale's own --tracking-hN / --tracking-bold-* token.
-     --tracking-label is the only role-based exception (uppercase, size-independent). */
-  --tracking-label: 0.4px;      /* uppercase labels, badge text (ShapeTag, RarityBadge) */
-
-  /* Service-layer aliases — component code uses these names (mapped to canonical scale above).
-     Added to keep globals.css and DS tokens in sync. */
-  --text-heading-sm: var(--text-h3);         /* 28px — card/section headings */
-  --leading-heading-sm: var(--leading-h3);   /* 1.2 */
-
-  /* Extended scale: sizes not covered by the canonical h1–h4 / body / small / caption ladder */
-  --text-micro: 11px;      /* pill button labels inside compact grid cards */
-  --leading-micro: 1;      /* matches leading-none — tight capsule button */
-
-  /* Extended leading: for long-form reading text wider than body copy */
-  --leading-loose: 1.6;    /* condition / description blocks with multi-line content */
-  --leading-reading: 1.75; /* multi-paragraph prose pages (essay / policy documents) —
-                              Korean long-form reading convention is 1.7–1.8. Distinct from
-                              --leading-loose, which is scoped to single description blocks.
-                              Added 20260901_2125 for /philosophy. */
+  /* 긴 글 행간: 새 시스템에 없어서 남긴다. */
+  --leading-loose: 1.6;    /* 조건·설명 블록 */
+  --leading-reading: 1.75; /* 여러 문단 산문(/philosophy, 정책 문서). 한국어 장문 관례는 1.7~1.8 */
 }

@@ -66,11 +66,11 @@ export const ReelVsStatic: Story = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'flex-start' }}>
       <div>
-        <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 8 }}>animate 기본값(true) — 마운트 시 스핀</p>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>animate 기본값(true) — 마운트 시 스핀</p>
         <ItemSerialCode code="MMBT829356" height={40} />
       </div>
       <div>
-        <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 8 }}>animate=false — 즉시 최종 값</p>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>animate=false — 즉시 최종 값</p>
         <ItemSerialCode code="MMBT829356" height={40} animate={false} />
       </div>
     </div>
@@ -97,11 +97,11 @@ export const SideBySideDigitCounts: Story = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'flex-start' }}>
       <div>
-        <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 8 }}>Figma 원본 (5자리): WWWW99999</p>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>Figma 원본 (5자리): WWWW99999</p>
         <ItemSerialCode code="WWWW99999" height={120} />
       </div>
       <div>
-        <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 8 }}>실제 스펙 (6자리): ABCD000042</p>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>실제 스펙 (6자리): ABCD000042</p>
         <ItemSerialCode code="ABCD000042" height={120} />
       </div>
     </div>

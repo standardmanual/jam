@@ -45,7 +45,7 @@ export const RadiusOverride: Story = {
     labelType: 'none',
     height: 6,
     color: 'linear-gradient(90deg, #00CC66, #33E580)',
-    trackColor: 'var(--color-surface-elevated)',
+    trackColor: 'var(--surface)',
     radius: '3px',
   },
   render: (args) => <div style={{ width: 280 }}><ProgressBar {...args} /></div>,
@@ -67,12 +67,12 @@ export const RealServiceContext: Story = {
   render: () => (
     <div style={{
       display: 'flex', flexDirection: 'column', gap: 20, width: 320,
-      padding: 'var(--layout-card-padding)', background: 'var(--color-surface)',
-      borderRadius: 'var(--radius-card)',
+      padding: 'var(--layout-card-padding)', background: 'var(--background)',
+      borderRadius: 'var(--radius-2xl)',
     }}>
       {/* MissionDetailClient — streak 미션 8일 중 5일, 60% */}
       <div>
-        <p style={{ margin: '0 0 8px', fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>
+        <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
           8일 중 5일
         </p>
         <ProgressBar current={5} total={8} percent={60} labelType="percent" labelPosition="top" />
@@ -85,7 +85,7 @@ export const RealServiceContext: Story = {
         labelType="none"
         height={6}
         color="linear-gradient(90deg, #00CC66, #33E580)"
-        trackColor="var(--color-surface-elevated)"
+        trackColor="var(--surface)"
         radius="3px"
       />
     </div>
@@ -110,15 +110,15 @@ export const TrackGradient: Story = {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: 320 }}>
       {[20, 55, 90].map((pct) => (
         <div key={pct} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)' }}>{pct}%</span>
-          <ProgressBar percent={pct} fillMode="track-gradient" trackColor="var(--status-idle-track)" height={6} radius="var(--radius-xs)" />
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>{pct}%</span>
+          <ProgressBar percent={pct} fillMode="track-gradient" trackColor="var(--progress-track)" height={6} radius="var(--radius-sm)" />
           {/* 비교용 — fill 안에서 압축되는 예전 방식 */}
           <ProgressBar
             percent={pct}
-            color="linear-gradient(to right, var(--status-short-solid), var(--status-done-solid))"
-            trackColor="var(--status-idle-track)"
+            color="linear-gradient(to right, var(--progress-short), var(--progress-done))"
+            trackColor="var(--progress-track)"
             height={6}
-            radius="var(--radius-xs)"
+            radius="var(--radius-sm)"
           />
         </div>
       ))}
@@ -128,7 +128,7 @@ export const TrackGradient: Story = {
 
 /**
  * 20260906_2140 — `PROGRESS_TRACK_GRADIENT`가 **CSS 토큰
- * `--status-progress-sweep`을 가리킨다.** 그라데이션 정의가 `colors.css` 한 군데에만 남는다.
+ * `--progress-sweep`을 가리킨다.** 그라데이션 정의가 `colors.css` 한 군데에만 남는다.
  *
  * 왜 옮겼나: 배지 트리의 레일 연결선·진행 테두리는 JSX가 아니라 CSS 문자열 안에서 채움을
  * 그려 이 JS 상수를 import할 수 없었고, 그래서 한 화면에서 진행 표현이 셋으로 갈라져 있었다.
@@ -138,16 +138,16 @@ export const TrackGradient: Story = {
  * 반영되는** 변경이다.
  */
 export const TrackGradientToken: Story = {
-  name: '20260906_2140 — 채움 스윕은 --status-progress-sweep 토큰 하나',
+  name: '20260906_2140 — 채움 스윕은 --progress-sweep 토큰 하나',
   render: () => (
     <div data-testid="bars" style={{ width: 280, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <ProgressBar percent={20} fillMode="track-gradient" trackColor="var(--status-idle-track)" height={10} />
-      <ProgressBar percent={60} fillMode="track-gradient" trackColor="var(--status-idle-track)" height={10} />
-      <ProgressBar percent={100} fillMode="track-gradient" trackColor="var(--status-idle-track)" height={10} />
+      <ProgressBar percent={20} fillMode="track-gradient" trackColor="var(--progress-track)" height={10} />
+      <ProgressBar percent={60} fillMode="track-gradient" trackColor="var(--progress-track)" height={10} />
+      <ProgressBar percent={100} fillMode="track-gradient" trackColor="var(--progress-track)" height={10} />
     </div>
   ),
   play: async () => {
     // 상수는 토큰만 가리킨다 — 색값을 여기서 다시 적지 않는다.
-    expect(PROGRESS_TRACK_GRADIENT).toBe('var(--status-progress-sweep)');
+    expect(PROGRESS_TRACK_GRADIENT).toBe('var(--progress-sweep)');
   },
 };

@@ -21,7 +21,7 @@ function Swatch({
   const isTransparent = value.startsWith('rgba') || value === 'transparent';
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
       {/* 시각적 프리뷰 */}
       <div
         style={{
@@ -30,7 +30,7 @@ function Swatch({
           borderRadius: 8,
           background: `var(${token})`,
           flexShrink: 0,
-          border: '1px solid rgba(255,255,255,0.1)',
+          border: '1px solid var(--border)',
           backgroundImage: isTransparent
             ? 'repeating-conic-gradient(#888 0% 25%, transparent 0% 50%) 0 0 / 12px 12px'
             : undefined,
@@ -38,9 +38,9 @@ function Swatch({
       />
       {/* 토큰 정보 */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <code style={{ fontSize: 12, color: 'var(--color-primary)', display: 'block' }}>{token}</code>
-        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'block', marginTop: 2 }}>{value || '—'}</span>
-        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'block' }}>{desc}</span>
+        <code style={{ fontSize: 12, color: 'var(--link)', display: 'block' }}>{token}</code>
+        <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginTop: 2 }}>{value || '—'}</span>
+        <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block' }}>{desc}</span>
       </div>
     </div>
   );
@@ -51,7 +51,7 @@ function RarityPair({ bg, fg, label }: { bg: string; fg: string; label: string }
   const bgVal = useTokenValue(bg);
   const fgVal = useTokenValue(fg);
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
       <div
         style={{
           width: 80,
@@ -64,24 +64,24 @@ function RarityPair({ bg, fg, label }: { bg: string; fg: string; label: string }
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: 11, fontWeight: 600, color: `var(${fg})`, letterSpacing: '0.4px' }}>{label}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: `var(${fg})`, }}>{label}</span>
       </div>
       <div>
-        <code style={{ fontSize: 11, color: 'var(--color-primary)', display: 'block' }}>{bg} → {bgVal || '—'}</code>
-        <code style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'block' }}>{fg} → {fgVal || '—'}</code>
+        <code style={{ fontSize: 11, color: 'var(--link)', display: 'block' }}>{bg} → {bgVal || '—'}</code>
+        <code style={{ fontSize: 11, color: 'var(--muted)', display: 'block' }}>{fg} → {fgVal || '—'}</code>
       </div>
     </div>
   );
 }
 
-// 태그 칩
+// 색 칩 (accent-content 등)
 function TagChip({ token }: { token: string }) {
   const value = useTokenValue(token);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-      <div style={{ width: 32, height: 16, borderRadius: 9999, background: `var(${token})`, border: '1px solid rgba(255,255,255,0.1)' }} />
-      <code style={{ fontSize: 11, color: 'var(--color-primary)' }}>{token}</code>
-      <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{value}</span>
+      <div style={{ width: 32, height: 16, borderRadius: 9999, background: `var(${token})`, border: '1px solid var(--border)' }} />
+      <code style={{ fontSize: 11, color: 'var(--link)' }}>{token}</code>
+      <span style={{ fontSize: 11, color: 'var(--muted)' }}>{value}</span>
     </div>
   );
 }
@@ -89,7 +89,7 @@ function TagChip({ token }: { token: string }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 40 }}>
-      <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 12, margin: '0 0 12px' }}>
+      <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 12, margin: '0 0 12px' }}>
         {title}
       </h2>
       {children}
@@ -99,80 +99,99 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function ColorsPage() {
   return (
-    <div style={{ padding: 32, background: 'var(--color-bg)', minHeight: '100vh', color: 'var(--color-text)', fontFamily: 'var(--font-family-base)' }}>
+    <div style={{ padding: 32, background: 'var(--background)', minHeight: '100vh', color: 'var(--foreground)', fontFamily: 'var(--font-family-base)' }}>
       <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 8 }}>Color Tokens</h1>
-      <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 40 }}>
-        MODULAR 컬러 시스템. 컴포넌트에서는 <code style={{ color: 'var(--color-primary)' }}>--color-base-*</code>를 직접 참조하지 않고
-        시맨틱 토큰(<code style={{ color: 'var(--color-primary)' }}>--color-*</code>)만 사용한다.
+      <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 40 }}>
+        JAM 2.0 컬러 시스템(라이트 전용). 컴포넌트에서는 <code style={{ color: 'var(--link)' }}>--base-*</code>를 직접 참조하지 않고
+        역할 토큰(<code style={{ color: 'var(--link)' }}>--background</code>, <code style={{ color: 'var(--link)' }}>--foreground</code>,
+        <code style={{ color: 'var(--link)' }}>--accent</code> 등)만 사용한다.
         실제 값은 CSS 변수에서 동적으로 읽어옴.
       </p>
 
       <Section title="Semantic — Background">
-        <Swatch token="--color-bg" desc="기본 배경 (다크 캔버스)" />
-        <Swatch token="--color-bg-tint" desc="미세하게 올라온 배경 — tint Card 등" />
-        <Swatch token="--color-bg-inverse" desc="반전 배경 (라이트 surface)" />
-        <Swatch token="--color-surface" desc="카드·raised surface" />
-        <Swatch token="--color-surface-elevated" desc="20260816_012 — 보더 제거 카드/버튼 배경(--color-surface보다 한 단계 밝음)" />
-        <Swatch token="--color-surface-inverse" desc="반전 카드 surface" />
-      </Section>
-
-      <Section title="Semantic — Brand">
-        <Swatch token="--color-primary" desc="레드-오렌지 — 버튼·활성 강조" />
-        <Swatch token="--color-secondary" desc="브라운 — 보조 브랜드" />
+        <Swatch token="--background" desc="페이지 바탕" />
+        <Swatch token="--background-secondary" desc="한 단계 어두운 배경 — tint Card 등" />
+        <Swatch token="--background-inverse" desc="반전 배경 (검정 계열)" />
+        <Swatch token="--surface" desc="카드. 크림 바탕 위에서 1px --border와 함께 쓴다(그림자 없음)" />
+        <Swatch token="--surface-transparent" desc="완전 투명한 바탕색" />
       </Section>
 
       <Section title="Semantic — Text">
-        <Swatch token="--color-text" desc="기본 텍스트 (다크 배경 위)" />
-        <Swatch token="--color-text-secondary" desc="보조 텍스트 — WCAG AA 4.6:1" />
-        <Swatch token="--color-text-on-primary" desc="primary 버튼 위 텍스트" />
-        <Swatch token="--color-text-inverse" desc="라이트 surface 위 텍스트" />
+        <Swatch token="--foreground" desc="기본 텍스트" />
+        <Swatch token="--muted" desc="보조 텍스트" />
+        <Swatch token="--link" desc="강조 글자·아이콘·선·포커스 링 (크림 바탕 5.18:1)" />
+        <Swatch token="--snow" desc="반전 면 위 텍스트" />
+        <Swatch token="--accent-foreground" desc="accent 면 위 텍스트 (6.63:1)" />
+      </Section>
+
+      <Section title="Semantic — Accent">
+        <Swatch token="--accent" desc="주 강조색 — 버튼 같은 면 채우기 전용 (크림 바탕 글자 대비 2.57:1)" />
+        <Swatch token="--accent-soft" desc="accent 15%" />
+        <Swatch token="--accent-soft-hover" desc="#149347 20%" />
+      </Section>
+
+      <Section title="Accent Content (면 채우기 전용 · ShapeTag colorIndex 순환)">
+        <TagChip token="--accent-content-lightblue" />
+        <TagChip token="--accent-content-green" />
+        <TagChip token="--accent-content-yellow" />
+        <TagChip token="--accent-content-red" />
+        <TagChip token="--accent-content-pink" />
+        <TagChip token="--accent-content-blue" />
       </Section>
 
       <Section title="Semantic — Border & Overlay">
-        <Swatch token="--color-border" desc="구분선 (다크 배경 위)" />
-        <Swatch token="--color-icon-inactive" desc="TabBar 비활성 아이콘 (#2a2a2a)" />
-        <Swatch token="--color-overlay" desc="모달·시트 백드롭" />
+        <Swatch token="--border" desc="카드·구분선 테두리" />
+        <Swatch token="--field-border" desc="입력창 테두리" />
+        <Swatch token="--separator" desc="구분선 (하나로 통합)" />
+        <Swatch token="--backdrop" desc="모달·시트 백드롭 (검정 50%)" />
       </Section>
 
-      <Section title="Semantic — Status (20260824_021)">
-        <Swatch token="--color-notification-dot" desc="안 읽은 소식 있음 — TopNav 알림 종의 빨간 버블" />
-        <Swatch token="--color-warning" desc="경고 상태 — 계정·동기화·인벤토리 소식. 소식 dot과 의미가 달라 색을 가른다" />
+      <Section title="Semantic — Status">
+        <Swatch token="--success" desc="성공·다 채움 (가는 선·점·링)" />
+        <Swatch token="--warning" desc="경고·모자람 — 계정·동기화·인벤토리 소식(가는 선·점·링)" />
+        <Swatch token="--danger" desc="위험 — 안 읽은 소식 점" />
+        <Swatch token="--default" desc="중립 면 — 진행 트랙" />
+        <Swatch token="--default-soft" desc="중립 칩 배경" />
       </Section>
 
       <Section title="Badge Rarity (배경 + 텍스트 쌍)">
-        <RarityPair bg="--color-rarity-common" fg="--color-rarity-common-text" label="COMMON" />
-        <RarityPair bg="--color-rarity-rare" fg="--color-rarity-rare-text" label="RARE" />
-        <RarityPair bg="--color-rarity-epic" fg="--color-rarity-epic-text" label="EPIC" />
-        <RarityPair bg="--color-rarity-mystic" fg="--color-rarity-mystic-text" label="MYSTIC" />
+        <RarityPair bg="--rarity-common" fg="--rarity-common-foreground" label="COMMON" />
+        <RarityPair bg="--rarity-rare" fg="--rarity-rare-foreground" label="RARE" />
+        <RarityPair bg="--rarity-epic" fg="--rarity-epic-foreground" label="EPIC" />
+        <RarityPair bg="--rarity-mystic" fg="--rarity-mystic-foreground" label="MYSTIC" />
       </Section>
 
-      <Section title="Tag Palette (ShapeTag colorIndex 순환)">
-        <TagChip token="--color-tag-1" />
-        <TagChip token="--color-tag-2" />
-        <TagChip token="--color-tag-3" />
-        <TagChip token="--color-tag-4" />
-        <TagChip token="--color-tag-5" />
-        <TagChip token="--color-tag-6" />
-        <TagChip token="--color-tag-7" />
-        <TagChip token="--color-tag-8" />
+      <Section title="Progress (진행 상태)">
+        <Swatch token="--progress-short" desc="모자람(채우는 중) — 선·점·링" />
+        <Swatch token="--progress-done" desc="다 채움·획득 — 선·점·링" />
+        <Swatch token="--progress-latest" desc="방금 들어옴" />
+        <Swatch token="--progress-latest-soft" desc="방금 들어옴 — 점의 후광" />
+        <Swatch token="--progress-track" desc="아직 손대지 않은 자리(트랙)" />
+      </Section>
+
+      <Section title="TabBar">
+        <Swatch token="--tabbar-background" desc="탭바 필 (흰색 72%)" />
+        <Swatch token="--tabbar-selection" desc="선택된 탭의 필 (검정 8%)" />
+        <Swatch token="--tabbar-icon" desc="비활성 아이콘" />
+        <Swatch token="--tabbar-icon-active" desc="활성 아이콘" />
       </Section>
 
       <Section title="Base Palette (컴포넌트 직접 참조 금지)">
         {[
-          ['--color-base-white', '순수 흰색'],
-          ['--color-base-black', '순수 검정'],
-          ['--color-base-red', '레드-오렌지 원본'],
-          ['--color-base-brown', '브라운 원본'],
-          ['--color-base-grey-200', 'Grey 200 — 라이트 surface'],
-          ['--color-base-grey-500', 'Grey 500 — WCAG AA on black'],
-          ['--color-base-grey-600', 'Grey 600'],
-          ['--color-base-grey-700', 'Grey 700 — border default'],
-          ['--color-base-grey-750', 'Grey 750 — tint elevation'],
-          ['--color-base-grey-800', 'Grey 800 — card surface'],
-          ['--color-base-amber', '앰버 — epic rarity 원본'],
-          ['--color-base-lime', '라임 — tag-6'],
-          ['--color-base-charcoal', '차콜 — tag-7'],
-          ['--color-base-sienna', '시에나 — tag-8'],
+          ['--base-white', '순수 흰색'],
+          ['--base-snow', 'Snow'],
+          ['--base-black', '순수 검정'],
+          ['--base-neutral-50', 'Neutral 50'],
+          ['--base-neutral-100', 'Neutral 100'],
+          ['--base-neutral-200', 'Neutral 200'],
+          ['--base-neutral-300', 'Neutral 300'],
+          ['--base-neutral-400', 'Neutral 400'],
+          ['--base-neutral-500', 'Neutral 500'],
+          ['--base-neutral-600', 'Neutral 600'],
+          ['--base-neutral-700', 'Neutral 700'],
+          ['--base-neutral-800', 'Neutral 800'],
+          ['--base-neutral-900', 'Neutral 900 — 글자·반전 배경이 가리키는 검정'],
+          ['--base-neutral-950', 'Neutral 950 — 역할 토큰은 가리키지 않음'],
         ].map(([t, d]) => (
           <Swatch key={t} token={t} desc={d} />
         ))}
@@ -185,7 +204,6 @@ const meta: Meta = {
   title: 'MODULAR/Foundations/Colors',
   parameters: {
     layout: 'fullscreen',
-    backgrounds: { default: 'dark' },
     docs: { canvas: { sourceState: 'none' } },
   },
 };

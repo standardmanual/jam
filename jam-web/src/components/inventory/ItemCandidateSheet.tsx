@@ -67,23 +67,23 @@ export default function ItemCandidateSheet({
       open={open}
       onClose={onClose}
       title={badgeName}
-      // 배지 이름이 이 시트의 유일한 정체 정보라 존재감을 키운다(--text-h4, 사용자 지시).
+      // 배지 이름이 이 시트의 유일한 정체 정보라 존재감을 키운다(--text-2xl, 사용자 지시).
       // 헤더 좌우 패딩(24)을 본문 컨테이너의 좌우 패딩과 맞춰 제목·본문 시작 위치를 맞춘다.
       // 상단 여백(pt-8)은 핸들과 제목 사이 간격을 확보하고, 하단 여백(pb-8, 기본 16보다 좁힘)
       // 은 제목과 본문 사이 간격을 줄인다.
-      headerClassName="px-[var(--spacing-24)] pt-[var(--spacing-8)] pb-[var(--spacing-8)] shrink-0"
-      titleClassName="text-[length:var(--text-h4)] leading-[var(--leading-h4)] font-[number:var(--weight-h4)] tracking-[var(--tracking-h4)]"
+      headerClassName="px-6 pt-2 pb-2 shrink-0"
+      titleClassName="text-2xl font-medium"
     >
-      <div className="px-[var(--spacing-24)] pb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-8)]">
-        <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
+      <div className="px-6 pb-4 flex flex-col gap-2">
+        <p className="text-xs text-[var(--muted)]">
           {bodyText}
         </p>
         {error && (
-          <div className="rounded-[var(--radius-cards)] bg-surface-elevated px-3 py-2 text-xs text-text/70">
+          <div className="rounded-2xl bg-surface px-3 py-2 text-xs text-foreground/70">
             {error}
           </div>
         )}
-        <div className="flex flex-col gap-[var(--spacing-8)]" aria-busy={busy}>
+        <div className="flex flex-col gap-2" aria-busy={busy}>
           {candidates.map((candidate) => (
             <ItemCandidateRow
               key={candidate.id}
@@ -101,7 +101,7 @@ export default function ItemCandidateSheet({
             type="button"
             onClick={secondaryAction.onClick}
             disabled={secondaryAction.disabled}
-            className="mt-[var(--spacing-8)] w-full py-2 rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-base-grey-600)] text-[color:var(--color-text-on-primary)] text-[length:var(--text-caption)] leading-[var(--leading-caption)] transition-all disabled:opacity-40"
+            className="mt-2 w-full py-2 rounded-full bg-[color:var(--base-neutral-600)] text-[color:var(--snow)] text-xs transition-all disabled:opacity-40"
           >
             {secondaryAction.label}
           </button>

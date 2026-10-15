@@ -19,9 +19,9 @@ const meta: Meta<typeof LabelChip> = {
         component:
           '카드 좌상단 «라벨 필» — 티켓 20261001_1204(상위 20260930_1453 b0). 홈 화면 세 곳에 같은 ' +
           'Tailwind 클래스 문자열로 복제돼 있던 칩을 합쳤고, 인라인 style은 그 클래스의 **계산값 그대로**다 ' +
-          '(12px bold 대문자 · 안쪽 여백 6px 10px · `--radius-tags` · `--color-surface` 채움 · ' +
-          '`--color-text` 글자). 변형은 `tone`(`default` | `inverse`) 하나뿐이다 — `inverse`는 검정 바탕 위(기사 화면)용으로 ' +
-          '`--color-surface-inverse` 채움 + `--color-text-inverse` 글자이고 나머지 모양은 같다(티켓 20261001_1737, 1248). ' +
+          '(12px bold 대문자 · 안쪽 여백 6px 10px · `--radius-full` · `--background` 채움 · ' +
+          '`--foreground` 글자). 변형은 `tone`(`default` | `inverse`) 하나뿐이다 — `inverse`는 검정 바탕 위(기사 화면)용으로 ' +
+          '`--background-inverse` 채움 + `--snow` 글자이고 나머지 모양은 같다(티켓 20261001_1737, 1248). ' +
           '`size` 변형은 없고 `self-start` 같은 배치는 호출부 `className`으로 넘긴다. `children`이 비어 있으면 아무것도 그리지 않는다. ' +
           '`ShapeTag`(minHeight 44px·padding 10/16·태그 팔레트)·`RarityBadge`(등급 전용)·' +
           '`BadgeLevelChip`(Lv.N 전용)으로는 같은 픽셀이 나오지 않아 따로 뒀다.',
@@ -69,9 +69,9 @@ export const ChipRow: Story = {
         <LabelChip>퀘스트</LabelChip>
         <span
           style={{
-            fontSize: 'var(--text-small)',
+            fontSize: 'var(--text-sm)',
             fontWeight: 700,
-            color: 'var(--color-primary)',
+            color: 'var(--link)',
             fontVariantNumeric: 'tabular-nums',
           }}
         >

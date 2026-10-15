@@ -118,10 +118,10 @@ export default function QuestPickupScene({ mode }: QuestPickupSceneProps) {
           alt=""
           containerClassName="absolute inset-0"
           className="object-cover"
-          fallback={<div className="absolute inset-0 bg-surface-elevated" aria-hidden="true" />}
+          fallback={<div className="absolute inset-0 bg-surface" aria-hidden="true" />}
         />
       ) : (
-        <div className="absolute inset-0 bg-surface-elevated" aria-hidden="true" />
+        <div className="absolute inset-0 bg-surface" aria-hidden="true" />
       )}
 
       {/* 정지 마커 — 좌 33%/상 67%(이미지 좌하단 1/3, 사용자 결정 4). 모달이 닫혀 있는 동안만
@@ -136,7 +136,7 @@ export default function QuestPickupScene({ mode }: QuestPickupSceneProps) {
       >
         <span
           className={`flex items-center justify-center rounded-full border-2 border-white shrink-0${carouselOpen ? '' : ' jam-quest-pulse'}`}
-          style={{ width: MARKER_SIZE, height: MARKER_SIZE, background: 'var(--color-primary)' }}
+          style={{ width: MARKER_SIZE, height: MARKER_SIZE, background: 'var(--accent)' }}
         >
           <svg
             viewBox="0 0 24 24"
@@ -147,7 +147,7 @@ export default function QuestPickupScene({ mode }: QuestPickupSceneProps) {
             dangerouslySetInnerHTML={{ __html: BADGE_FILL_PATH }}
           />
         </span>
-        <span className="px-2 py-1 rounded-[var(--radius-tags)] bg-black/70 text-white text-[length:var(--text-body)] font-bold whitespace-nowrap">
+        <span className="px-2 py-1 rounded-full bg-black/70 text-white text-base font-bold whitespace-nowrap">
           {d.onboardingQuest.pickupMarkerLabel}
         </span>
       </button>

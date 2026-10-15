@@ -16,11 +16,11 @@ const IMAGE = 'https://cdn.example/cover.png'
 const INTERNAL_IMAGE = '/badges/sample/s142.png'
 
 // 칸을 공용으로 빼기 전 HeroCard의 문자열(티켓 20261001_1737)
-const OLD_HERO_BOX = 'relative aspect-video overflow-hidden bg-surface'
+const OLD_HERO_BOX = 'relative aspect-video overflow-hidden bg-background'
 const OLD_HERO_PLACEHOLDER =
-  'absolute inset-0 flex flex-col items-center justify-center gap-[var(--spacing-8)] px-[var(--spacing-24)] bg-surface text-center'
+  'absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 bg-background text-center'
 const OLD_HERO_TITLE =
-  '<p class="text-[length:var(--text-body)] font-bold text-text line-clamp-3 break-keep break-words">한강 러닝 챌린지</p>'
+  '<p class="text-base font-bold text-foreground line-clamp-3 break-keep break-words">한강 러닝 챌린지</p>'
 
 function makeView(overrides: Partial<ImageCardView> = {}): ImageCardView {
   return { shape: 'hero', resource: 'mission', title: '한강 러닝 챌린지', imageUrl: IMAGE, ...overrides }
@@ -30,7 +30,7 @@ const render = (ratio: CardImageRatio, overrides: Partial<ImageCardView> = {}) =
   renderToStaticMarkup(<CardImageSlot view={makeView(overrides)} ratio={ratio} />)
 
 const iconMarkup = (view: Pick<ImageCardView, 'resource' | 'template'>) =>
-  renderToStaticMarkup(resourceIconOf(view, { className: 'w-8 h-8 text-text/60' }))
+  renderToStaticMarkup(resourceIconOf(view, { className: 'w-8 h-8 text-foreground/60' }))
 
 describe('CardImageSlot — video(hero)는 옛 HeroCard 출력과 같다', () => {
   it('이미지가 있을 때: 16:9 칸 안에 이미지 하나뿐이다', () => {
@@ -65,9 +65,9 @@ describe('CardImageSlot — video(hero)는 옛 HeroCard 출력과 같다', () =>
 
 describe('CardImageSlot — 비율별 칸', () => {
   it.each([
-    ['video', 'relative aspect-video overflow-hidden bg-surface'],
-    ['poster', 'relative aspect-[4/5] overflow-hidden bg-surface'],
-    ['square', 'relative aspect-square overflow-hidden bg-surface'],
+    ['video', 'relative aspect-video overflow-hidden bg-background'],
+    ['poster', 'relative aspect-[4/5] overflow-hidden bg-background'],
+    ['square', 'relative aspect-square overflow-hidden bg-background'],
   ] as const)('%s: 칸 클래스는 %s다', (ratio, box) => {
     expect(render(ratio)).toMatch(new RegExp(`^<div class="${box.replace(/[[\]/]/g, '\\$&')}">`))
   })
@@ -106,7 +106,7 @@ describe('CardImageSlot — 자리 표시', () => {
   it.each([['video'], ['poster'], ['square']] as const)('%s: 판은 단색 + 아이콘뿐이다(그라디언트·문구 없음)', (ratio) => {
     const html = render(ratio, { imageUrl: null })
     expect(html).not.toContain('<img')
-    expect(html).toContain('bg-surface text-center')
+    expect(html).toContain('bg-background text-center')
     expect(html).not.toContain('gradient')
     expect(html).not.toContain('이미지 없음')
   })
@@ -132,11 +132,11 @@ describe('CardImageSlot — 자리 표시', () => {
     }
   })
 
-  it('판 글자는 어두운 글자 색(text-text)이고 옅은 글자는 /60 한 단계뿐이다', () => {
+  it('판 글자는 어두운 글자 색(text-foreground)이고 옅은 글자는 /60 한 단계뿐이다', () => {
     for (const ratio of ['video', 'poster', 'square'] as const) {
       const html = render(ratio, { imageUrl: null, titleInImage: true })
-      expect(html).toContain('text-text/60')
-      for (const level of ['/30', '/40', '/50']) expect(html).not.toContain(`text-text${level}`)
+      expect(html).toContain('text-foreground/60')
+      for (const level of ['/30', '/40', '/50']) expect(html).not.toContain(`text-foreground${level}`)
     }
   })
 

@@ -6,7 +6,10 @@ export interface ShapeTagProps {
   shape?: ShapeTagShape;
   colorIndex?: number;
   color?: string;
-  /** v2: dark: boolean replaced by surface for API consistency with Button/IconButton */
+  /**
+   * @deprecated 글자색은 surface와 무관하게 항상 --foreground다(태그 색이 밝은 팔레트라서).
+   * 넘겨도 무시된다. v2에서 dark: boolean을 대체했던 prop이다.
+   */
   surface?: 'light' | 'dark';
   children?: ReactNode;
   style?: CSSProperties;

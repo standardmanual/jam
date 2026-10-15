@@ -280,7 +280,7 @@ export function BellIcon(props: IconProps) {
 /**
  * 경고(삼각형) — 알림함 ⑧ 계정·시스템 소식 (20260824_021)
  *
- * 세트에 경고 아이콘이 없어 추가한다. 색은 부모가 `--color-warning`으로 지정하며,
+ * 세트에 경고 아이콘이 없어 추가한다. 색은 부모가 `--warning`으로 지정하며,
  * 경고 여부는 저장값이 아니라 **렌더 시점의 현재 상태**로 판정한다(PRD §6-2).
  */
 export function AlertTriangleIcon(props: IconProps) {

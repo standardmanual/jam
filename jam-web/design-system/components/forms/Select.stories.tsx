@@ -66,8 +66,8 @@ export const Interactive: Story = {
           state={value ? 'success' : 'default'}
         />
         {value && (
-          <p style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>
-            선택된 활동: <strong style={{ color: 'var(--color-primary)' }}>
+          <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
+            선택된 활동: <strong style={{ color: 'var(--link)' }}>
               {ACTIVITY_OPTIONS.find(o => o.value === value)?.label}
             </strong>
           </p>

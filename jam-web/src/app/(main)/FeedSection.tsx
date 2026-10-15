@@ -91,7 +91,7 @@ function EventIcon({ type, className }: { type: ActivityFeedEventType; className
 function EarnCountBadge({ count }: { count: number }) {
   return (
     <span
-      className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-[var(--radius-pill)] bg-surface-elevated border border-[color:var(--color-border)] text-[length:var(--text-caption)] leading-none font-bold text-text/80 flex items-center justify-center"
+      className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-surface border border-[color:var(--border)] text-xs leading-none font-bold text-foreground/80 flex items-center justify-center"
       aria-hidden="true"
     >
       ×{count}
@@ -190,7 +190,7 @@ function eventLabel(item: ActivityFeedRow): ReactNode {
     return (
       <>
         {prefix}
-        <strong className="font-bold text-text">{checkin.visitCount}</strong>
+        <strong className="font-bold text-foreground">{checkin.visitCount}</strong>
         {suffix}
       </>
     )
@@ -204,7 +204,7 @@ function eventLabel(item: ActivityFeedRow): ReactNode {
       return (
         <>
           {prefix}
-          <strong className="font-bold text-text">{earnCount}</strong>
+          <strong className="font-bold text-foreground">{earnCount}</strong>
           {suffix}
         </>
       )
@@ -216,9 +216,9 @@ function eventLabel(item: ActivityFeedRow): ReactNode {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-[var(--spacing-8)]">
-      <span className="shrink-0 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{label}</span>
-      <span className="whitespace-nowrap text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text text-right">{value}</span>
+    <div className="flex items-center justify-between gap-4 py-2">
+      <span className="shrink-0 text-base text-foreground/60">{label}</span>
+      <span className="whitespace-nowrap text-base text-foreground text-right">{value}</span>
     </div>
   )
 }
@@ -327,7 +327,7 @@ export function DetailSheet({
 
   return (
     <>
-      <div className="fixed inset-0 bg-surface/60 z-40 t-panel-backdrop" data-open={shown} onClick={onClose} />
+      <div className="fixed inset-0 bg-background/60 z-40 t-panel-backdrop" data-open={shown} onClick={onClose} />
       {/*
         Panel reveal 래퍼. 시트 본체가 `-translate-x-1/2`로 가운데 정렬돼 있으면
         `.t-panel-slide`의 transform과 충돌하므로, 가운데 정렬은 flex 래퍼가
@@ -340,21 +340,21 @@ export function DetailSheet({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="t-panel-slide relative w-full max-w-[430px] bg-surface text-text rounded-t-[var(--radius-cards)] px-[var(--spacing-24)] pt-[var(--spacing-16)] pb-[calc(env(safe-area-inset-bottom)+var(--spacing-32))]"
+        className="t-panel-slide relative w-full max-w-[430px] bg-background text-foreground rounded-t-2xl px-6 pt-4 pb-[calc(env(safe-area-inset-bottom)+var(--spacing-32))]"
         data-open={shown}
         style={{ '--panel-translate-y': '100%' } as CSSProperties}
       >
-        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-[var(--spacing-24)]" />
-        <div className="flex justify-center mb-[var(--spacing-16)]">
+        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-6" />
+        <div className="flex justify-center mb-4">
           <div className="relative">
             <SafeImage
               src={badgeImage}
               alt={title}
               width={112}
               height={112}
-              className="w-28 h-28 rounded-[var(--radius-cards)] object-cover"
+              className="w-28 h-28 rounded-2xl object-cover"
               fallback={
-                <div className="w-28 h-28 rounded-[var(--radius-cards)] bg-surface-elevated text-text flex items-center justify-center">
+                <div className="w-28 h-28 rounded-2xl bg-surface text-foreground flex items-center justify-center">
                   <EventIcon type={item.event_type} className="w-12 h-12" />
                 </div>
               }
@@ -362,16 +362,16 @@ export function DetailSheet({
             {earnCount != null && <EarnCountBadge count={earnCount} />}
           </div>
         </div>
-        <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 mb-1 line-clamp-2">{eventLabel(item)}</p>
-        <h2 id={titleId} className="text-center text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text mb-[var(--spacing-16)]">{title}</h2>
+        <p className="text-center text-base text-foreground/60 mb-1 line-clamp-2">{eventLabel(item)}</p>
+        <h2 id={titleId} className="text-center text-2xl text-foreground mb-4">{title}</h2>
         {/* 레벨형은 등급이 없어 Lv.N 칩으로 갈라진다. 등급형 common은 기존대로 칩을 그리지 않는다. */}
         {(level != null || (rarity && rarity !== 'common')) && (
-          <div className="flex justify-center mb-[var(--spacing-16)]">
+          <div className="flex justify-center mb-4">
             <BadgeChip item={item} />
           </div>
         )}
         {/* 20260816_012: 보더 제거 — 티켓 20260820_012: 다크 시트 전환으로 4% 화이트 틴트로 구분 */}
-        <div className="rounded-[var(--radius-cards)] bg-white/[0.04] px-[var(--spacing-16)] py-[var(--spacing-8)] mb-[var(--spacing-24)]">
+        <div className="rounded-2xl bg-white/[0.04] px-4 py-2 mb-6">
           {(item.event_type === 'item_dropped' || item.event_type === 'item_picked_up') && meta.poi_name && (
             <Row label={d.feed.rowPlace} value={String(meta.poi_name)} />
           )}
@@ -446,10 +446,10 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
             alt={title}
             width={40}
             height={40}
-            className="w-10 h-10 rounded-[var(--radius-cards)] object-cover"
+            className="w-10 h-10 rounded-2xl object-cover"
             fallback={
-              <div className="w-10 h-10 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center">
-                <EventIcon type={item.event_type} className="w-5 h-5 text-text" />
+              <div className="w-10 h-10 rounded-2xl bg-white/8 flex items-center justify-center">
+                <EventIcon type={item.event_type} className="w-5 h-5 text-foreground" />
               </div>
             }
           />
@@ -457,17 +457,17 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
         </div>
       }
       trailing={
-        <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{formatRelativeTime(item.created_at)}</span>
+        <span className="text-base text-foreground/60">{formatRelativeTime(item.created_at)}</span>
       }
     >
-      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 line-clamp-2">{eventLabel(item)}</p>
-      <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text truncate">{title}</p>
-      {sub && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 truncate">{sub}</p>}
+      <p className="text-base text-foreground/60 line-clamp-2">{eventLabel(item)}</p>
+      <p className="text-base text-foreground truncate">{title}</p>
+      {sub && <p className="text-base text-foreground/60 truncate">{sub}</p>}
       {(badgeChip || isLastPiece) && (
-        <span className="inline-flex items-center gap-[var(--spacing-8)] mt-1">
+        <span className="inline-flex items-center gap-2 mt-1">
           {badgeChip}
           {isLastPiece && (
-            <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
+            <span className="inline-flex items-center gap-1 text-xs leading-none px-2 py-1 rounded-full bg-background text-foreground">
               <PuzzleIcon className="w-3 h-3" />
               {d.feed.lastPiece}
             </span>
@@ -658,25 +658,25 @@ function ActivityGroupCard({
         aria-expanded={open}
         aria-controls={panelId}
         icon={
-          <div className="w-10 h-10 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center">
-            <ActivityIcon className="w-5 h-5 text-text" />
+          <div className="w-10 h-10 rounded-2xl bg-white/8 flex items-center justify-center">
+            <ActivityIcon className="w-5 h-5 text-foreground" />
           </div>
         }
         trailing={
-          <span className="inline-flex items-center gap-[var(--spacing-8)]">
-            <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">
+          <span className="inline-flex items-center gap-2">
+            <span className="text-base text-foreground/60">
               {formatRelativeTime(items[0].created_at)}
             </span>
-            <ChevronRightIcon className="t-acc-chevron t-acc-chevron-right w-4 h-4 text-text/60" />
+            <ChevronRightIcon className="t-acc-chevron t-acc-chevron-right w-4 h-4 text-foreground/60" />
           </span>
         }
       >
         {activityName && (
-          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 truncate">
+          <p className="text-base text-foreground/60 truncate">
             {activityName}
           </p>
         )}
-        <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text truncate">{headline}</p>
+        <p className="text-base text-foreground truncate">{headline}</p>
         {shownThumbs.length > 0 && (
           <span className="inline-flex items-center gap-1 mt-1" aria-hidden="true">
             {shownThumbs.map((src, i) => (
@@ -686,12 +686,12 @@ function ActivityGroupCard({
                 alt=""
                 width={24}
                 height={24}
-                className="w-6 h-6 rounded-[var(--radius-tags)] object-cover"
-                fallback={<span className="w-6 h-6 rounded-[var(--radius-tags)] bg-white/8" />}
+                className="w-6 h-6 rounded-full object-cover"
+                fallback={<span className="w-6 h-6 rounded-full bg-white/8" />}
               />
             ))}
             {restCount > 0 && (
-              <span className="text-[length:var(--text-caption)] leading-none text-text/60">
+              <span className="text-xs leading-none text-foreground/60">
                 {t(d.feed.groupMoreCount, { count: restCount })}
               </span>
             )}
@@ -702,7 +702,7 @@ function ActivityGroupCard({
         {/* 접힌 동안에도 DOM에 남아야 높이 트랜지션이 성립한다. 대신 inert로
             키보드 포커스·보조기술 노출에서 완전히 빼 유령 포커스를 막는다. */}
         <div className="t-acc-panel-inner" inert={!open}>
-          <div className="flex flex-col gap-[var(--spacing-8)] pt-[var(--spacing-8)] pl-[var(--spacing-16)]">
+          <div className="flex flex-col gap-2 pt-2 pl-4">
             {items.map((item) => (
               <FeedCard key={item.id} item={item} onClick={() => onItemClick(item)} />
             ))}
@@ -760,14 +760,14 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-[var(--spacing-16)]">
-        <h2 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text">{title}</h2>
-        <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl text-foreground">{title}</h2>
+        <span className="text-base text-foreground/60">
           {t(d.common.countItems, { count: filtered.length })}
         </span>
       </div>
       {/* 필터 탭 — Tabs sliding (16-tabs-sliding.md) */}
-      <div className="mb-[var(--spacing-16)]">
+      <div className="mb-4">
         <SlidingTabs
           items={FILTER_TABS}
           value={activeFilter}
@@ -784,7 +784,7 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
         />
       ) : (
         <>
-          <div className="flex flex-col gap-[var(--spacing-8)]">
+          <div className="flex flex-col gap-2">
             {visible.map(entry => (
               entry.kind === 'group' ? (
                 <ActivityGroupCard
@@ -803,7 +803,7 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
               variant="outline"
               surface="main"
               fullWidth
-              className="mt-[var(--spacing-16)]"
+              className="mt-4"
               onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
             >
               {d.common.loadMore}

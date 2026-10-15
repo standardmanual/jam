@@ -20,15 +20,15 @@ function LoginContent() {
   }
 
   return (
-    <main className="min-h-dvh flex flex-col items-center justify-center bg-surface text-text px-[var(--spacing-24)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+    <main className="min-h-dvh flex flex-col items-center justify-center bg-background text-foreground px-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {/* 로고 */}
-      <div className="text-center mb-[var(--spacing-40)]">
+      <div className="text-center mb-10">
         <Image src="/jam-logo-white.png" alt={d.auth.wordmark} width={2610} height={925} className="h-[48px] w-auto mx-auto" priority />
       </div>
 
       {/* 에러 메시지 */}
       {error && (
-        <div className="w-full max-w-sm mb-[var(--spacing-24)] rounded-[var(--radius-cards)] bg-surface-inverse text-text-inverse px-[var(--spacing-16)] py-[var(--spacing-16)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">
+        <div className="w-full max-w-sm mb-6 rounded-2xl bg-background-inverse text-snow px-4 py-4 text-base text-center">
           {error === 'auth_failed' ? d.auth.errorFailed : d.auth.errorGeneric}
         </div>
       )}
@@ -37,7 +37,7 @@ function LoginContent() {
       <div className="w-full max-w-sm">
         <button
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 bg-surface-inverse text-text-inverse rounded-[var(--radius-pill-buttons)] min-h-11 py-[14px] px-[var(--spacing-24)] text-[length:var(--text-body)] leading-[var(--leading-body)] active:scale-95 transition-transform duration-100"
+          className="w-full flex items-center justify-center gap-3 bg-background-inverse text-snow rounded-full min-h-11 py-[14px] px-6 text-base active:scale-95 transition-transform duration-100"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -66,14 +66,14 @@ function LoginContent() {
             onClick={() => {
               window.location.href = '/api/dev-login'
             }}
-            className="w-full mt-[var(--spacing-16)] flex items-center justify-center gap-3 border border-text/30 text-text rounded-[var(--radius-pill-buttons)] min-h-11 py-[14px] px-[var(--spacing-24)] text-[length:var(--text-body)] leading-[var(--leading-body)] active:scale-95 transition-transform duration-100"
+            className="w-full mt-4 flex items-center justify-center gap-3 border border-foreground/30 text-foreground rounded-full min-h-11 py-[14px] px-6 text-base active:scale-95 transition-transform duration-100"
           >
             {d.auth.devLogin}
           </button>
         )}
       </div>
 
-      <p className="mt-[var(--spacing-32)] text-text/60 text-[11px] text-center">
+      <p className="mt-8 text-foreground/60 text-[11px] text-center">
         {d.auth.terms}
       </p>
     </main>
@@ -84,8 +84,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-dvh flex items-center justify-center bg-surface text-text">
-          <div className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">{d.auth.wordmark}</div>
+        <main className="min-h-dvh flex items-center justify-center bg-background text-foreground">
+          <div className="text-3xl">{d.auth.wordmark}</div>
         </main>
       }
     >

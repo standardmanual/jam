@@ -99,7 +99,7 @@ const FALLBACK_ICON = (
   <svg
     width="72" height="72" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="1.5"
-    style={{ color: 'var(--color-text)', opacity: 0.3 }}
+    style={{ color: 'var(--foreground)', opacity: 0.3 }}
     aria-hidden="true"
   >
     <circle cx="12" cy="8" r="5" />
@@ -355,8 +355,8 @@ export function BadgeRevealCarousel({
     marginTop: -height / 2,
     marginLeft: -cardWidth / 2,
     boxSizing: 'border-box',
-    background: 'var(--color-surface-elevated)',
-    borderRadius: 'var(--radius-card)',
+    background: 'var(--surface)',
+    borderRadius: 'var(--radius-2xl)',
     overflow: 'hidden',
     transformStyle: 'preserve-3d',
     backfaceVisibility: 'hidden',
@@ -373,7 +373,7 @@ export function BadgeRevealCarousel({
         position: 'fixed',
         inset: 0,
         zIndex: 60,
-        background: 'var(--color-overlay)',
+        background: 'var(--backdrop)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -580,11 +580,11 @@ function BadgeCard({ item, foldedCount = 1, cardWidth }) {
             style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               minWidth: 18, height: 18, padding: '0 4px',
-              borderRadius: 'var(--radius-pill)',
-              background: 'var(--color-surface-elevated)',
-              border: '1px solid var(--color-border)',
-              fontSize: 'var(--text-caption)', lineHeight: 1, fontWeight: 700,
-              color: 'var(--color-text)', opacity: 0.8,
+              borderRadius: 'var(--radius-full)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              fontSize: 'var(--text-xs)', lineHeight: 1, fontWeight: 700,
+              color: 'var(--foreground)', opacity: 0.8,
             }}
           >
             ×{earnCount}
@@ -598,10 +598,10 @@ function BadgeCard({ item, foldedCount = 1, cardWidth }) {
           width: '100%',
           flexShrink: 0,
           textAlign: 'center',
-          fontSize: 'var(--text-h4)',
+          fontSize: 'var(--text-2xl)',
           fontWeight: 700,
           lineHeight: 1.25,
-          color: 'var(--color-text)',
+          color: 'var(--foreground)',
           display: '-webkit-box',
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
@@ -618,9 +618,9 @@ function BadgeCard({ item, foldedCount = 1, cardWidth }) {
           width: '100%',
           flexShrink: 0,
           textAlign: 'center',
-          fontSize: 'var(--text-small)',
-          lineHeight: 'var(--leading-small)',
-          color: 'var(--color-text-secondary)',
+          fontSize: 'var(--text-sm)',
+          lineHeight: 'var(--text-sm--line-height)',
+          color: 'var(--muted)',
           display: '-webkit-box',
           WebkitLineClamp: 3,
           WebkitBoxOrient: 'vertical',
@@ -664,8 +664,8 @@ function MoreCard({ count, label, message, onClick }) {
           width: 56,
           height: 56,
           borderRadius: '50%',
-          background: 'var(--color-primary)',
-          color: 'var(--color-text-on-primary)',
+          background: 'var(--accent)',
+          color: 'var(--accent-foreground)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -682,7 +682,7 @@ function MoreCard({ count, label, message, onClick }) {
       </div>
 
       {/* 문구는 캐러셀의 라이브 리전이 읽는다(중복 낭독 방지). 버튼은 그대로 접근 대상이다. */}
-      <p aria-hidden="true" style={{ margin: 0, fontSize: 'var(--text-body)', color: 'var(--color-text)' }}>
+      <p aria-hidden="true" style={{ margin: 0, fontSize: 'var(--text-base)', color: 'var(--foreground)' }}>
         {text}
       </p>
 
@@ -691,11 +691,11 @@ function MoreCard({ count, label, message, onClick }) {
         onClick={onClick}
         style={{
           padding: '10px 24px',
-          borderRadius: 'var(--radius-pill)',
+          borderRadius: 'var(--radius-full)',
           border: 'none',
-          background: 'var(--color-primary)',
-          color: 'var(--color-text-on-primary)',
-          fontSize: 'var(--text-small)',
+          background: 'var(--accent)',
+          color: 'var(--accent-foreground)',
+          fontSize: 'var(--text-sm)',
           fontWeight: 600,
           fontFamily: 'var(--font-family-base)',
           cursor: 'pointer',

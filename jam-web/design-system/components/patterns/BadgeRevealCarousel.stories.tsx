@@ -210,12 +210,12 @@ function ReopenResetHarness() {
             }}
             style={{
               padding: '10px 16px',
-              borderRadius: 'var(--radius-pill)',
+              borderRadius: 'var(--radius-full)',
               border: 'none',
-              background: 'var(--color-primary)',
-              color: 'var(--color-text-on-primary)',
+              background: 'var(--accent)',
+              color: 'var(--accent-foreground)',
               fontFamily: 'var(--font-family-base)',
-              fontSize: 'var(--text-small)',
+              fontSize: 'var(--text-sm)',
               fontWeight: 600,
               cursor: 'pointer',
             }}

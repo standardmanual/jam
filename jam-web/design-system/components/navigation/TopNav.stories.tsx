@@ -67,14 +67,14 @@ export const HeaderStyleOverride: Story = {
   args: {
     title: '아이템북',
     showBack: true,
-    headerStyle: { background: 'var(--color-surface)' },
+    headerStyle: { background: 'var(--background)' },
   },
 };
 
 // 20260824_010: 3분할 확장 — 로고/동기화/우측(아바타 포함) 슬롯
 function DemoLogo() {
   return (
-    <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--color-text)' }}>
+    <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--foreground)' }}>
       JAM!
     </span>
   );
@@ -84,9 +84,9 @@ function DemoSyncButton() {
   return (
     <button
       style={{
-        minHeight: 44, padding: '10px 16px', borderRadius: 'var(--radius-nav-buttons)',
-        border: 'none', background: 'rgba(0,0,0,0.04)', color: 'var(--color-text)',
-        fontSize: 'var(--text-body-sm)', cursor: 'pointer',
+        minHeight: 44, padding: '10px 16px', borderRadius: 'var(--radius-full)',
+        border: 'none', background: 'rgba(0,0,0,0.04)', color: 'var(--foreground)',
+        fontSize: 'var(--text-base)', cursor: 'pointer',
       }}
     >
       동기화
@@ -104,9 +104,9 @@ function DemoAvatar() {
       }}
     >
       <span style={{
-        width: 36, height: 36, borderRadius: '50%', background: 'var(--color-surface-elevated)',
+        width: 36, height: 36, borderRadius: '50%', background: 'var(--surface)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: 'var(--color-text)', fontSize: 14,
+        color: 'var(--foreground)', fontSize: 14,
       }}>
         JM
       </span>

@@ -38,18 +38,18 @@ function formatDateTime(iso: string): string {
 }
 
 const CHIP_BASE_CLASS =
-  'inline-flex items-center gap-1 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)]'
-const CHIP_CLASS = `${CHIP_BASE_CLASS} bg-surface text-text`
+  'inline-flex items-center gap-1 text-xs leading-none px-2 py-1 rounded-full'
+const CHIP_CLASS = `${CHIP_BASE_CLASS} bg-background text-foreground`
 /** 유형(카테고리) 칩 — 밝은 그레이 */
-const CATEGORY_CHIP_CLASS = `${CHIP_BASE_CLASS} bg-[color:var(--color-base-grey-200)] text-[color:var(--color-base-grey-800)]`
+const CATEGORY_CHIP_CLASS = `${CHIP_BASE_CLASS} bg-[color:var(--base-neutral-200)] text-[color:var(--base-neutral-800)]`
 /**
  * 상태 칩 색상 — 문의중=밝은 레드, 확인중=밝은 블루, 답변완료=밝은 그린(기존
- * `--color-rarity-rare` 토큰 재사용, contrast-safe text 페어 포함).
+ * `--rarity-rare` 토큰 재사용, contrast-safe text 페어 포함).
  */
 const STATUS_CHIP_CLASS: Record<string, string> = {
   문의중: `${CHIP_BASE_CLASS} bg-[#ff6b6b] text-[#1a1a1a]`,
   확인중: `${CHIP_BASE_CLASS} bg-[#4dabf7] text-[#1a1a1a]`,
-  답변완료: `${CHIP_BASE_CLASS} bg-[color:var(--color-rarity-rare)] text-[color:var(--color-rarity-rare-text)]`,
+  답변완료: `${CHIP_BASE_CLASS} bg-[color:var(--rarity-rare)] text-[color:var(--rarity-rare-foreground)]`,
 }
 
 // "심각도 {severity}/5" 템플릿에서 숫자 부분만 볼드+포인트 컬러로 강조한다
@@ -59,22 +59,22 @@ const [SEVERITY_PREFIX, SEVERITY_SUFFIX] = d.voc.severityLabel.split('{severity}
 function VocCard({ item }: { item: VocItem }) {
   return (
     <ListRowCard
-      icon={<span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">#{item.number}</span>}
+      icon={<span className="text-base text-foreground/60">#{item.number}</span>}
     >
       {/* 상태값, 날짜 — 유형(카테고리)은 별도 줄로 분리 */}
-      <div className="flex flex-wrap items-center gap-[var(--spacing-8)] mb-[var(--spacing-8)]">
+      <div className="flex flex-wrap items-center gap-2 mb-2">
         <span className={STATUS_CHIP_CLASS[item.status] ?? CHIP_CLASS}>{item.status}</span>
         <span className={CHIP_CLASS}>
           {SEVERITY_PREFIX}
-          <strong className="font-bold text-[color:var(--color-primary)]">{item.severity}</strong>
+          <strong className="font-bold text-[color:var(--link)]">{item.severity}</strong>
           {SEVERITY_SUFFIX}
         </span>
-        <span className="text-[length:var(--text-caption)] leading-none text-text/60">{formatDateTime(item.submittedAt)}</span>
+        <span className="text-xs leading-none text-foreground/60">{formatDateTime(item.submittedAt)}</span>
       </div>
 
       {/* 유형(카테고리) — 줄바꿈해서 별도 행으로 표시 */}
       {item.categories.length > 0 && (
-        <div className="flex flex-wrap items-center gap-[var(--spacing-8)] mb-[var(--spacing-8)]">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
           {item.categories.map((category) => (
             <span key={category} className={CATEGORY_CHIP_CLASS}>{category}</span>
           ))}
@@ -82,21 +82,21 @@ function VocCard({ item }: { item: VocItem }) {
       )}
 
       {/* 상세 내용 */}
-      <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text whitespace-pre-wrap">
+      <p className="text-base text-foreground whitespace-pre-wrap">
         {item.text}
       </p>
 
       {/* 답변 — 상태=답변완료일 때만. 답변자는 실명 대신 고정된 JAM 로고로만 표시 */}
       {item.answer && (
-        <div className="mt-[var(--spacing-16)] rounded-[var(--radius-cards)] bg-white/[0.04] p-[var(--spacing-16)] flex flex-col gap-[var(--spacing-8)]">
-          <div className="flex items-center gap-[var(--spacing-8)]">
+        <div className="mt-4 rounded-2xl bg-white/[0.04] p-4 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
             <Image src="/jam-logo-white.png" alt="JAM!" width={2610} height={925} className="h-4 w-auto" />
-            <span className="text-[length:var(--text-caption)] leading-none text-text/60">{d.voc.answerLabel}</span>
+            <span className="text-xs leading-none text-foreground/60">{d.voc.answerLabel}</span>
             {item.answeredAt && (
-              <span className="text-[length:var(--text-caption)] leading-none text-text/40">· {formatDateTime(item.answeredAt)}</span>
+              <span className="text-xs leading-none text-foreground/40">· {formatDateTime(item.answeredAt)}</span>
             )}
           </div>
-          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text whitespace-pre-wrap">
+          <p className="text-base text-foreground whitespace-pre-wrap">
             {item.answer}
           </p>
         </div>
@@ -154,10 +154,10 @@ export default function VocPage() {
   }
 
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       <TopNav title={d.voc.pageTitle} />
 
-      <div className="px-[var(--spacing-16)] pt-[50px] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
+      <div className="px-4 pt-[50px] pb-10 flex flex-col gap-6">
         <Button
           surface="main"
           variant="primary"
@@ -170,12 +170,12 @@ export default function VocPage() {
         </Button>
 
         <section>
-          <div className="mb-[var(--spacing-16)]">
+          <div className="mb-4">
             <SlidingTabs items={SORT_TABS} value={sort} onChange={handleSortChange} outlined={false} aria-label={d.voc.sortAriaLabel} />
           </div>
 
           {loading && (
-            <div className="py-[var(--spacing-40)] text-center text-text/40 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+            <div className="py-10 text-center text-foreground/40 text-base">
               {d.voc.loading}
             </div>
           )}
@@ -194,7 +194,7 @@ export default function VocPage() {
 
           {!loading && !error && data && data.items.length > 0 && (
             <>
-              <div className="flex flex-col gap-[var(--spacing-8)]">
+              <div className="flex flex-col gap-2">
                 {data.items.map((item) => (
                   <VocCard key={item.number} item={item} />
                 ))}

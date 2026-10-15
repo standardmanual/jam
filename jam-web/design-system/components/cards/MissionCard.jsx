@@ -51,8 +51,8 @@ export function MissionCard({
           width: 90,
           height: 90,
           minWidth: 90,
-          background: 'var(--color-surface)',
-          borderRadius: 'var(--radius-card)',
+          background: 'var(--background)',
+          borderRadius: 'var(--radius-2xl)',
           overflow: 'hidden',
           display: 'flex',
           alignItems: 'center',
@@ -78,8 +78,8 @@ export function MissionCard({
               display: 'block',
               width: 32,
               height: 32,
-              background: 'var(--color-bg-inverse)',
-              borderRadius: 'var(--radius-xs)',
+              background: 'var(--background-inverse)',
+              borderRadius: 'var(--radius-sm)',
               opacity: 0.2,
             }}
           />
@@ -92,7 +92,7 @@ export function MissionCard({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--color-bg-inverse)',
+              color: 'var(--background-inverse)',
             }}
           >
             <LockIcon width={24} height={24} />
@@ -110,12 +110,12 @@ export function MissionCard({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 3,
-                  background: 'var(--color-surface-elevated)',
-                  color: 'var(--color-text-secondary)',
+                  background: 'var(--surface)',
+                  color: 'var(--muted)',
                   fontSize: 10,
                   lineHeight: 1,
                   padding: '3px 6px',
-                  borderRadius: 'var(--radius-pill)',
+                  borderRadius: 'var(--radius-full)',
                 }}
               >
                 {locked && <LockIcon width={10} height={10} strokeWidth={2.5} />}
@@ -123,7 +123,7 @@ export function MissionCard({
               </span>
             )}
             {periodText && (
-              <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', lineHeight: 1 }}>
+              <span style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1 }}>
                 {periodText}
               </span>
             )}
@@ -133,9 +133,9 @@ export function MissionCard({
         <h3
           style={{
             margin: 0,
-            fontSize: 'var(--text-body)',
+            fontSize: 'var(--text-base)',
             fontWeight: 700,
-            color: 'var(--color-text)',
+            color: 'var(--foreground)',
             lineHeight: 1.25,
           }}
         >
@@ -146,9 +146,9 @@ export function MissionCard({
           <p
             style={{
               margin: 0,
-              fontSize: 'var(--text-small)',
-              lineHeight: 'var(--leading-small)',
-              color: 'var(--color-text-secondary)',
+              fontSize: 'var(--text-sm)',
+              lineHeight: 'var(--text-sm--line-height)',
+              color: 'var(--muted)',
               overflow: 'hidden',
               display: '-webkit-box',
               WebkitLineClamp: 2,
@@ -163,7 +163,7 @@ export function MissionCard({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {rarity && <RarityBadge rarity={rarity} />}
             {rewardText && (
-              <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-primary)', lineHeight: 1 }}>
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--link)', lineHeight: 1 }}>
                 {rewardText}
               </span>
             )}

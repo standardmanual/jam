@@ -301,8 +301,8 @@ function OnboardingContent() {
   // 바이너리 컬러 원칙상 에러를 색으로 표현하지 않는다 — 보더 두께로만 상태를 구분하고 실제 안내는 메시지 텍스트로 전달
   const hasError = status === 'invalid' || status === 'taken'
   const inputBorderClass = hasError
-    ? 'shadow-[inset_0_0_0_2px_var(--color-border-inverse)]'
-    : 'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'
+    ? 'shadow-[inset_0_0_0_2px_var(--separator)]'
+    : 'shadow-[inset_0_0_0_1px_var(--separator)]'
 
   // 중복확인 상태 메시지 — 즉시 전환 대신 Text states swap (04)
   const { ref: messageRef, initialText: initialMessage } = useTextSwap<HTMLParagraphElement>(message)
@@ -311,7 +311,7 @@ function OnboardingContent() {
 
   if (!loaded) {
     return (
-      <div className="min-h-full text-text flex items-center justify-center">
+      <div className="min-h-full text-foreground flex items-center justify-center">
         <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -319,10 +319,10 @@ function OnboardingContent() {
 
   if (step === 'account') {
     return (
-      <div className="min-h-full text-text flex flex-col items-center justify-start px-[var(--spacing-24)] py-[var(--spacing-48)]">
-        <div className="w-full max-w-sm flex flex-col items-center gap-[var(--spacing-32)]">
+      <div className="min-h-full text-foreground flex flex-col items-center justify-start px-6 py-12">
+        <div className="w-full max-w-sm flex flex-col items-center gap-8">
 
-          <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center whitespace-pre-line">
+          <h1 className="text-3xl text-center whitespace-pre-line">
             {d.onboarding.step1Title}
           </h1>
 
@@ -335,21 +335,21 @@ function OnboardingContent() {
               aria-label={d.profileEdit.changePhotoAlt}
             >
               {avatarUrl ? (
-                <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover" />
+                <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-2xl object-cover" />
               ) : (
-                <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated flex items-center justify-center">
-                  <UserIcon className="w-10 h-10 text-text/50" />
+                <div className="w-24 h-24 rounded-2xl bg-surface flex items-center justify-center">
+                  <UserIcon className="w-10 h-10 text-foreground/50" />
                 </div>
               )}
               {uploading && (
-                <div className="absolute inset-0 rounded-[var(--radius-cards)] bg-surface/70 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-2xl bg-background/70 flex items-center justify-center">
                   <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
             </button>
             <span
               aria-hidden="true"
-              className="absolute -top-2 -right-2 w-[22px] h-[22px] rounded-[var(--radius-pill)] bg-surface-elevated shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center pointer-events-none"
+              className="absolute -top-2 -right-2 w-[22px] h-[22px] rounded-full bg-surface shadow-[inset_0_0_0_1px_var(--separator)] flex items-center justify-center pointer-events-none"
             >
               <PencilIcon className="w-2.5 h-2.5" />
             </span>
@@ -362,16 +362,16 @@ function OnboardingContent() {
             />
           </div>
           {uploadError && (
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">{uploadError}</p>
+            <p className="text-base text-center">{uploadError}</p>
           )}
 
           {/* 아이디 입력 — 가로 70%로 축소 */}
           <div className={`t-input-wrap w-[70%] flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
             <div
               ref={inputShakeRef}
-              className={`t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] bg-surface-elevated transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
+              className={`t-input flex items-center w-full min-h-11 rounded-full px-4 bg-surface transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
             >
-              <span className="text-text/60 mr-1">@</span>
+              <span className="text-foreground/60 mr-1">@</span>
               <input
                 type="text"
                 value={input}
@@ -381,7 +381,7 @@ function OnboardingContent() {
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                className="flex-1 bg-transparent placeholder:text-text/30 focus:outline-none"
+                className="flex-1 bg-transparent placeholder:text-foreground/30 focus:outline-none"
               />
               {status === 'checking' && (
                 <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
@@ -390,7 +390,7 @@ function OnboardingContent() {
             <p
               ref={messageRef}
               aria-live="polite"
-              className="t-text-swap min-h-6 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-1 text-text/70"
+              className="t-text-swap min-h-6 text-base px-1 text-foreground/70"
             >
               {initialMessage}
             </p>
@@ -398,29 +398,29 @@ function OnboardingContent() {
 
           {/* 이름(display_name) 입력 — 티켓 20260909_2119: 온보딩에서는 필수값. 가로 70%로 축소 */}
           <div className="w-[70%] flex flex-col gap-2">
-            <div className="t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] bg-surface-elevated shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
+            <div className="t-input flex items-center w-full min-h-11 rounded-full px-4 bg-surface shadow-[inset_0_0_0_1px_var(--separator)]">
               <input
                 type="text"
                 value={nameInput}
                 onChange={handleNameChange}
                 placeholder={d.profileEdit.namePlaceholder}
                 maxLength={30}
-                className="flex-1 bg-transparent placeholder:text-text/30 focus:outline-none"
+                className="flex-1 bg-transparent placeholder:text-foreground/30 focus:outline-none"
               />
             </div>
-            <p className="text-right text-[length:var(--text-caption)] leading-[var(--leading-caption)] px-1 text-text/40">
+            <p className="text-right text-xs px-1 text-foreground/40">
               {t(d.onboarding.nameCounter, { count: nameInput.length })}
             </p>
           </div>
 
           {/* 만 14세 이상 자기확인 — 이미 아이디가 있던 유저(1단계 재진입 아님)는 생략 */}
           {currentUsername === null && (
-            <label className="w-[70%] flex items-center gap-[var(--spacing-12)] min-h-11 cursor-pointer">
+            <label className="w-[70%] flex items-center gap-3 min-h-11 cursor-pointer">
               <span
-                className={`relative shrink-0 w-5 h-5 rounded-[var(--radius-xs)] flex items-center justify-center transition-shadow ${
+                className={`relative shrink-0 w-5 h-5 rounded-sm flex items-center justify-center transition-shadow ${
                   ageConfirmed
-                    ? 'shadow-[inset_0_0_0_2px_var(--color-border-inverse)]'
-                    : 'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'
+                    ? 'shadow-[inset_0_0_0_2px_var(--separator)]'
+                    : 'shadow-[inset_0_0_0_1px_var(--separator)]'
                 }`}
               >
                 <input
@@ -432,11 +432,11 @@ function OnboardingContent() {
                 />
                 {ageConfirmed && (
                   <svg viewBox="0 0 16 16" className="w-3 h-3 pointer-events-none" fill="none" aria-hidden="true">
-                    <path d="M3 8.5L6.5 12L13 4.5" stroke="var(--color-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M3 8.5L6.5 12L13 4.5" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
               </span>
-              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/90">
+              <span className="text-base text-foreground/90">
                 {d.onboarding.ageConfirmLabel}
               </span>
             </label>
@@ -445,7 +445,7 @@ function OnboardingContent() {
           <button
             onClick={handleStep1Next}
             disabled={!canProceedStep1}
-            className="w-[70%] min-h-11 bg-surface-inverse text-text-inverse py-[14px] rounded-[var(--radius-pill-buttons)] active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-[length:var(--text-body)] leading-[var(--leading-body)]"
+            className="w-[70%] min-h-11 bg-background-inverse text-snow py-[14px] rounded-full active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-base"
           >
             {submittingStep1 ? d.onboarding.step1Saving : d.onboarding.step1NextButton}
           </button>
@@ -456,34 +456,34 @@ function OnboardingContent() {
 
   // ── 2단계: 트라이브 선택 + 프로필이미지 ──────────────────────────────────
   return (
-    <div className="min-h-full text-text flex flex-col items-center px-[var(--spacing-24)] py-[var(--spacing-48)]">
-      <div className="w-full max-w-sm flex flex-col items-center gap-[var(--spacing-32)]">
+    <div className="min-h-full text-foreground flex flex-col items-center px-6 py-12">
+      <div className="w-full max-w-sm flex flex-col items-center gap-8">
 
-        <div className="flex flex-col items-center gap-[var(--spacing-16)]">
+        <div className="flex flex-col items-center gap-4">
           {/* 프로필 이미지 변경 UI는 1단계로 이동(티켓 20260909_2119 추가 수정) */}
-          <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center whitespace-pre-line">
+          <h1 className="text-3xl text-center whitespace-pre-line">
             {d.onboarding.step2Title}
           </h1>
-          <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">
+          <p className="text-foreground/60 text-base text-center">
             {d.onboarding.step2Subtitle}
           </p>
         </div>
 
         {/* 트라이브 카드 그리드 */}
         {tribesState.kind === 'loading' && (
-          <div className="w-full flex items-center justify-center py-[var(--spacing-32)]">
+          <div className="w-full flex items-center justify-center py-8">
             <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
         {tribesState.kind === 'error' && (
-          <div className="w-full flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center text-text/70">
+          <div className="w-full flex flex-col items-center gap-4 py-4">
+            <p className="text-base text-center text-foreground/70">
               {d.onboarding.tribesLoadError}
             </p>
             <button
               onClick={loadTribes}
-              className="min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-pill-buttons)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
+              className="min-h-11 px-6 rounded-full shadow-[inset_0_0_0_1px_var(--separator)] text-base active:scale-95 transition-transform duration-100"
             >
               {d.onboarding.retryButton}
             </button>
@@ -491,13 +491,13 @@ function OnboardingContent() {
         )}
 
         {tribesState.kind === 'ready' && tribesState.tribes.length === 0 && (
-          <div className="w-full flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center text-text/70">
+          <div className="w-full flex flex-col items-center gap-4 py-4">
+            <p className="text-base text-center text-foreground/70">
               {d.onboarding.tribesEmptyError}
             </p>
             <button
               onClick={loadTribes}
-              className="min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-pill-buttons)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
+              className="min-h-11 px-6 rounded-full shadow-[inset_0_0_0_1px_var(--separator)] text-base active:scale-95 transition-transform duration-100"
             >
               {d.onboarding.retryButton}
             </button>
@@ -505,7 +505,7 @@ function OnboardingContent() {
         )}
 
         {tribesState.kind === 'ready' && tribesState.tribes.length > 0 && (
-          <div className="w-full grid grid-cols-2 gap-[var(--spacing-8)]">
+          <div className="w-full grid grid-cols-2 gap-2">
             {tribesState.tribes.map((tribe) => {
               const selected = selectedTribeId === tribe.id
               return (
@@ -513,7 +513,7 @@ function OnboardingContent() {
                   key={tribe.id}
                   tone={selected ? 'inverse' : 'default'}
                   onClick={() => setSelectedTribeId(tribe.id)}
-                  className="flex flex-col items-center text-center gap-[var(--spacing-8)]"
+                  className="flex flex-col items-center text-center gap-2"
                   style={{ minHeight: 140 }}
                 >
                   <SafeImage
@@ -521,18 +521,18 @@ function OnboardingContent() {
                     alt=""
                     width={48}
                     height={48}
-                    className="w-12 h-12 rounded-[var(--radius-cards)] object-cover"
+                    className="w-12 h-12 rounded-2xl object-cover"
                     fallback={
-                      <div className="w-12 h-12 rounded-[var(--radius-cards)] bg-black/10 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-2xl bg-black/10 flex items-center justify-center">
                         <UserIcon className="w-6 h-6 opacity-40" />
                       </div>
                     }
                   />
-                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
+                  <span className="text-base font-bold">
                     {tribe.name}
                   </span>
                   {tribe.tagline && (
-                    <span className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] opacity-60">
+                    <span className="text-xs opacity-60">
                       {tribe.tagline}
                     </span>
                   )}
@@ -543,21 +543,21 @@ function OnboardingContent() {
         )}
 
         {step2Error && (
-          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">{step2Error}</p>
+          <p className="text-base text-center">{step2Error}</p>
         )}
 
-        <div className="w-full flex flex-col gap-[var(--spacing-12)]">
+        <div className="w-full flex flex-col gap-3">
           <button
             onClick={handleFinish}
             disabled={!selectedTribeId || submittingStep2}
-            className="w-full min-h-11 bg-surface-inverse text-text-inverse py-[14px] rounded-[var(--radius-pill-buttons)] active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-[length:var(--text-body)] leading-[var(--leading-body)]"
+            className="w-full min-h-11 bg-background-inverse text-snow py-[14px] rounded-full active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-base"
           >
             {submittingStep2 ? d.onboarding.finishing : d.onboarding.finishButton}
           </button>
           {/* 1단계(아이디·이름)로 돌아가 값을 다시 확인·수정할 수 있게 한다. */}
           <button
             onClick={() => setStep('account')}
-            className="w-full min-h-11 text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:opacity-70 transition-opacity"
+            className="w-full min-h-11 text-foreground/60 text-base active:opacity-70 transition-opacity"
           >
             {d.common.back}
           </button>

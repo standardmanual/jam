@@ -113,7 +113,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // [20260819_011] 배경은 아래 고정 배경 레이어 한 곳에서만 그린다. TopNav에 배경을 한 번 더
   // 주입하면(20260818_003 동작) 헤더 박스와 레이어 박스의 비율이 달라 같은 이미지가 서로 다른
   // 배율로 잘려 경계에 이음매가 보였다. 배경이 있는 배지에서는 TopNav를 투명하게 두어 아래
-  // 고정 레이어가 그대로 비쳐 보이게 하고, 배경이 없으면 기존과 동일하게 --color-surface를
+  // 고정 레이어가 그대로 비쳐 보이게 하고, 배경이 없으면 기존과 동일하게 --background를
   // 유지한다(회귀 방지).
   const themedBackground = hasBadgeBackgroundTheme(badgeRow)
   // [20260901_1944] 이미지 카드 "안"에서 실행하는 블롭 애니메이션. 전체 배경 레이어와 렌더링
@@ -123,7 +123,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   const topNavStyle: React.CSSProperties = { background: themedBackground ? 'transparent' : undefined }
 
   // 뷰포트 전체(헤더 아래~본문~푸터)를 덮는 고정 배경 레이어 — [20260818_002 스코프 수정]
-  // (main)/layout.tsx의 main(비-positioned, bg-surface 불투명)보다 위, TopNav(sticky, z-30)보다는
+  // (main)/layout.tsx의 main(비-positioned, bg-background 불투명)보다 위, TopNav(sticky, z-30)보다는
   // 아래 z-index로 배치해 배경이 자동으로 비쳐 보이게 한다.
   // [20260819_011] 배경을 실제로 그리는 유일한 지점이다 — TopNav와 Hero 카드는 배경을 그리지
   // 않고 투명 처리만 하므로, 같은 이미지가 서로 다른 배율로 여러 번 잘려 이음매가 생기지 않는다.
@@ -339,7 +339,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     const showSerial = isOwnBadge && representativeSerial !== null
 
     return (
-      <div className="min-h-full text-text" style={themedTextStyle}>
+      <div className="min-h-full text-foreground" style={themedTextStyle}>
         {badgeBackgroundLayer}
         <TopNav
           title={d.common.back}
@@ -377,7 +377,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {(isOwnBadge || !hasEarned) && (
           <div
             className={[
-              'relative z-10 flex flex-col gap-4 px-6 pb-[var(--spacing-12)]',
+              'relative z-10 flex flex-col gap-4 px-6 pb-3',
               showSerial ? '' : 'pt-[32px]',
             ].join(' ')}
           >
@@ -397,9 +397,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             )}
 
             {!hasEarned && (
-              <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 text-center">
-                <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
-                <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
+              <div className="bg-surface rounded-2xl p-6 text-center">
+                <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
+                <p className="text-xs text-[var(--muted)]/60 mt-1">{d.badges.notEarnedBody}</p>
               </div>
             )}
           </div>
@@ -407,7 +407,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* desc-section — 컬렉션 링크 또는 만료 임박 안내가 있을 때만 렌더링 */}
         {(itemBook || expiring) && (
-          <div className="relative z-10 flex flex-col gap-4 px-6 pt-[var(--spacing-12)] pb-[40px]">
+          <div className="relative z-10 flex flex-col gap-4 px-6 pt-3 pb-[40px]">
             {/* 속한 컬렉션 링크 */}
             {itemBook && (
               <ListRowCard
@@ -423,24 +423,24 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                     width={44}
                     height={44}
                     className="w-full h-full object-contain p-1"
-                    containerClassName="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shrink-0"
+                    containerClassName="w-11 h-11 rounded-2xl overflow-hidden shrink-0"
                     fallback={
-                      <div className="w-11 h-11 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center shrink-0">
-                        <BookIcon className="w-5 h-5 text-[var(--color-text-secondary)]" />
+                      <div className="w-11 h-11 rounded-2xl bg-white/8 flex items-center justify-center shrink-0">
+                        <BookIcon className="w-5 h-5 text-[var(--muted)]" />
                       </div>
                     }
                   />
                 }
                 title={itemBook.name}
-                trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />}
+                trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--muted)]" />}
               />
             )}
 
             {/* 만료 임박 안내 */}
             {expiring && (
-              <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
-                <p className="text-[length:var(--text-body)] text-text">{d.inventory.expiringSoonTitle}</p>
-                <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)] mt-0.5">{d.inventory.expiringSoonBody}</p>
+              <div className="bg-surface rounded-2xl p-6">
+                <p className="text-base text-foreground">{d.inventory.expiringSoonTitle}</p>
+                <p className="text-xs text-[var(--muted)] mt-0.5">{d.inventory.expiringSoonBody}</p>
               </div>
             )}
           </div>
@@ -452,7 +452,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // ========== 변형 3: 체크인 배지 ==========
   if (badgeRow.type === 'checkin') {
     return (
-      <div className="min-h-full text-text" style={themedTextStyle}>
+      <div className="min-h-full text-foreground" style={themedTextStyle}>
         {badgeBackgroundLayer}
         <TopNav
           title={d.common.back}
@@ -479,7 +479,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
 
         {/* info-section */}
-        <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[var(--spacing-12)]">
+        <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-3">
           {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
           {/* 획득 조건 문구는 ko.ts의 conditionCheckinBody 한 곳에서 관리한다(20260826_004) —
               이전에는 이 하드코딩과 i18n 키가 서로 다른 내용으로 갈라져 있었다. */}
@@ -495,26 +495,26 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         </div>
 
         {/* action-section */}
-        <div className="relative z-10 flex flex-col gap-4 pt-[var(--spacing-12)] px-6 pb-[40px]">
+        <div className="relative z-10 flex flex-col gap-4 pt-3 px-6 pb-[40px]">
           {badgeRow.patch_available && (
             <a
               href="#"
               target="_blank"
               rel="noopener noreferrer"
-              className="h-14 w-full rounded-full bg-surface-elevated text-[length:var(--text-body)] text-text inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
+              className="h-14 w-full rounded-full bg-surface text-base text-foreground inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
             >
               {d.badges.physicalPatchButton} ↗
             </a>
           )}
 
           {!hasEarned && (
-            <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 text-center">
-              <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
-              <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
+            <div className="bg-surface rounded-2xl p-6 text-center">
+              <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
+              <p className="text-xs text-[var(--muted)]/60 mt-1">{d.badges.notEarnedBody}</p>
             </div>
           )}
 
-          <p className="text-center text-[length:var(--text-body)] text-[var(--color-text-secondary)] leading-[var(--leading-body)] px-4">
+          <p className="text-center text-base text-[var(--muted)] px-4">
             {t(d.badges.checkinSafetyNotice, { radius: String(poi?.radius_meters ?? 50) })}
           </p>
         </div>
@@ -524,7 +524,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
   // ========== 변형 1: 액티비티 배지 (catch-all) ==========
   return (
-    <div className="min-h-full text-text" style={themedTextStyle}>
+    <div className="min-h-full text-foreground" style={themedTextStyle}>
       {badgeBackgroundLayer}
       <TopNav
         title={d.common.back}
@@ -552,7 +552,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
 
       {/* info-section */}
-      <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[var(--spacing-12)]">
+      <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-3">
         {/* 획득 조건 다크 카드 */}
         <BadgeConditionCard
           text={formatBadgeConditionText(badgeRow.condition_json, badgeRow.name)}
@@ -562,8 +562,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {/* 선행 배지 조건 */}
         {prereqStatus.length > 0 && (
           <div className="flex flex-col gap-3">
-            <p className="text-[length:var(--text-body)] font-bold text-text">{d.badges.prerequisiteTitle}</p>
-            <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+            <p className="text-base font-bold text-foreground">{d.badges.prerequisiteTitle}</p>
+            <div className="grid grid-cols-3 gap-2">
               {prereqStatus.map((p) => (
                 <BadgeGridCard
                   key={p.id}
@@ -580,8 +580,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* 포인트 보상 */}
         {badgeRow.point_reward > 0 && (
-          <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
-            <p className="text-[length:var(--text-body)] text-text">
+          <div className="bg-surface rounded-2xl p-6">
+            <p className="text-base text-foreground">
               {hasEarned
                 ? t(d.badges.pointRewardEarned, { points: badgeRow.point_reward.toLocaleString('ko-KR') })
                 : t(d.badges.pointRewardPending, { points: badgeRow.point_reward.toLocaleString('ko-KR') })}
@@ -591,14 +591,14 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       </div>
 
       {/* action-section */}
-      <div className="relative z-10 flex flex-col gap-4 pt-[var(--spacing-12)] px-6 pb-[40px]">
+      <div className="relative z-10 flex flex-col gap-4 pt-3 px-6 pb-[40px]">
         {/* 실물 패치 버튼 */}
         {badgeRow.patch_available && (
           <a
             href="#"
             target="_blank"
             rel="noopener noreferrer"
-            className="h-14 w-full rounded-full bg-surface-elevated text-[length:var(--text-body)] text-text inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
+            className="h-14 w-full rounded-full bg-surface text-base text-foreground inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
           >
             {d.badges.physicalPatchButton} ↗
           </a>
@@ -606,31 +606,31 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* 획득 정보 (획득한 경우) */}
         {earned && (
-          <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
-            <p className="text-[length:var(--text-body)] font-bold text-text mb-4">{d.badges.earnInfoTitle}</p>
+          <div className="bg-surface rounded-2xl p-6">
+            <p className="text-base font-bold text-foreground mb-4">{d.badges.earnInfoTitle}</p>
             <div className="flex flex-col gap-3">
               <div className="flex justify-between items-center">
-                <span className="text-[length:var(--text-small)] text-[var(--color-text-secondary)]">{d.badges.earnedAt}</span>
-                <span className="text-[length:var(--text-small)] text-text">
+                <span className="text-sm text-[var(--muted)]">{d.badges.earnedAt}</span>
+                <span className="text-sm text-foreground">
                   <LocalDate iso={earned.earned_at} korean={{ year: true, time: true }} />
                 </span>
               </div>
               {earned.triggered_by_activity_name && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[length:var(--text-small)] text-[var(--color-text-secondary)]">{d.badges.triggerActivity}</span>
-                  <span className="text-[length:var(--text-small)] text-text truncate max-w-[180px] text-right">{earned.triggered_by_activity_name}</span>
+                  <span className="text-sm text-[var(--muted)]">{d.badges.triggerActivity}</span>
+                  <span className="text-sm text-foreground truncate max-w-[180px] text-right">{earned.triggered_by_activity_name}</span>
                 </div>
               )}
               {earned.triggered_by_distance_km && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[length:var(--text-small)] text-[var(--color-text-secondary)]">{d.badges.triggerDistance}</span>
-                  <span className="text-[length:var(--text-small)] text-text">{t(d.badges.triggerDistanceValue, { km: earned.triggered_by_distance_km })}</span>
+                  <span className="text-sm text-[var(--muted)]">{d.badges.triggerDistance}</span>
+                  <span className="text-sm text-foreground">{t(d.badges.triggerDistanceValue, { km: earned.triggered_by_distance_km })}</span>
                 </div>
               )}
               {earned.triggered_by_activity_date && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[length:var(--text-small)] text-[var(--color-text-secondary)]">{d.badges.triggerDate}</span>
-                  <span className="text-[length:var(--text-small)] text-text">
+                  <span className="text-sm text-[var(--muted)]">{d.badges.triggerDate}</span>
+                  <span className="text-sm text-foreground">
                     <LocalDate iso={earned.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
                   </span>
                 </div>
@@ -646,9 +646,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* 미획득 안내 */}
         {!hasEarned && (
-          <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 text-center">
-            <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
-            <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
+          <div className="bg-surface rounded-2xl p-6 text-center">
+            <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
+            <p className="text-xs text-[var(--muted)]/60 mt-1">{d.badges.notEarnedBody}</p>
           </div>
         )}
       </div>

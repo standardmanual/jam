@@ -302,9 +302,9 @@ describe('RecipeRewardRow — 공개 예정 줄 (티켓 20261001_1159)', () => {
     const html = renderToStaticMarkup(<RecipeRewardRow {...baseProps} releaseAt={RELEASE_AT} />)
     expect(html).toContain(`${d.combine.releaseScheduled} ·`)
     expect(html).toContain(RELEASE_LABEL)
-    // 두 조각 모두 줄바꿈 없이 통째로 움직이고, 색은 --color-warning 토큰이다(색을 hex로 직접 쓰지 않는다)
+    // 두 조각 모두 줄바꿈 없이 통째로 움직이고, 색은 --warning 토큰이다(색을 hex로 직접 쓰지 않는다)
     expect(html.match(/whitespace-nowrap/g)).toHaveLength(2)
-    expect(html).toContain('var(--color-warning)')
+    expect(html).toContain('var(--warning)')
     expect(html).not.toMatch(/#[0-9a-fA-F]{6}/)
   })
 
@@ -385,7 +385,7 @@ describe('CombineClient — 믹서 화면과 시험 믹스 결과 안내 (티켓
     expect(captions).toHaveLength(1)
     // burnNotice와 같은 모양(크기·색·정렬)에 두 줄 줄바꿈 보정(break-keep·text-balance)만 더한다
     expect(captions[0].props.className).toBe(
-      'text-[length:var(--text-caption)] text-text-secondary text-center break-keep text-balance',
+      'text-xs text-muted text-center break-keep text-balance',
     )
   })
 

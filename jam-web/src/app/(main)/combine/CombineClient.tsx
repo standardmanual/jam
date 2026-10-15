@@ -502,7 +502,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
   })
 
   return (
-    <div className="flex flex-col min-h-full text-text">
+    <div className="flex flex-col min-h-full text-foreground">
       {/*
         티켓 20260917_1655: /combine은 인벤토리 하위 화면이라 points와 동일한 뒤로가기형 TopNav를
         쓴다. 믹서 화면에서는 뒤로가기가 라우트를 벗어나지 않고 먼저 레시피 탐색으로
@@ -516,27 +516,27 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
       {!selectedRecipe ? (
         <>
           {/* 검색 */}
-          <div className="px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[var(--spacing-16)]">
-            <div className="flex items-center gap-[var(--spacing-8)] px-[var(--spacing-16)] py-[var(--spacing-12)] rounded-[var(--radius-pill-buttons)] bg-surface-elevated">
-              <SearchIcon className="w-4 h-4 text-text/40 shrink-0" />
+          <div className="px-4 pt-4 pb-4">
+            <div className="flex items-center gap-2 px-4 py-3 rounded-full bg-surface">
+              <SearchIcon className="w-4 h-4 text-foreground/40 shrink-0" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={d.combine.searchPlaceholder}
-                className="flex-1 bg-transparent outline-none text-[length:var(--text-body-sm)] text-text placeholder:text-text/40"
+                className="flex-1 bg-transparent outline-none text-base text-foreground placeholder:text-foreground/40"
               />
             </div>
           </div>
 
           {/* 레시피 탐색 목록 */}
-          <div className="flex-1 px-[var(--spacing-16)] pb-[var(--spacing-24)]">
+          <div className="flex-1 px-4 pb-6">
             {publicRecipes.length === 0 ? (
               <EmptyState icon={<PackageIcon className="w-8 h-8" />} title={d.combine.noRecipes} />
             ) : filteredRecipes.length === 0 ? (
               <EmptyState icon={<SearchIcon className="w-8 h-8" />} title={d.combine.searchNoResult} />
             ) : (
-              <div className="flex flex-col gap-[var(--spacing-8)]">
+              <div className="flex flex-col gap-2">
                 {filteredRecipes.map((r) => renderRecipeRow(r, selectRecipe))}
               </div>
             )}
@@ -549,7 +549,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
             링크 자리에는 조건별 보상 블록(레시피 탐색 목록 행과 동일 컴포넌트 공유)을 보여준다.
             레시피 전환은 TopNav 뒤로가기가 담당한다(closeMixer → 탐색 화면 → 다시 뒤로가기 시 라우트 이탈).
           */}
-          <div className="px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[var(--spacing-16)]">
+          <div className="px-4 pt-4 pb-4">
             <RecipeRewardRow
               title={recipeDisplayName(selectedRecipe)}
               slotCount={selectedRecipe.slots.length}
@@ -560,8 +560,8 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
           </div>
 
           {/* 믹서 슬롯 그리드 */}
-          <div className="flex-1 px-[var(--spacing-16)] pb-[var(--spacing-24)]">
-            <div className="grid grid-cols-4 gap-[var(--spacing-8)]">
+          <div className="flex-1 px-4 pb-6">
+            <div className="grid grid-cols-4 gap-2">
               {selectedRecipe.slots.map((slot) => {
                 const fill = fills[slot.id]
                 const hasOwnedCandidate =
@@ -588,28 +588,28 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
           </div>
 
           {/* CTA — 화면 전체 폭을 채우지 않는다(티켓 20260917_1828, 요구사항 8) */}
-          <div className="px-[var(--spacing-16)] pb-[var(--spacing-24)] flex flex-col items-center gap-[var(--spacing-8)]">
+          <div className="px-4 pb-6 flex flex-col items-center gap-2">
             <button
               onClick={handleCombine}
               disabled={loading || !canSubmit}
               className={[
-                'w-full max-w-[220px] py-4 rounded-[var(--radius-pill-buttons)] bg-text text-surface text-[length:var(--text-body)] active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2',
+                'w-full max-w-[220px] py-4 rounded-full bg-foreground text-background text-base active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2',
                 pulseTarget?.type === 'submit' ? 'jam-quest-pulse' : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
             >
-              {loading && <span className="w-4 h-4 border-2 border-surface border-t-transparent rounded-full animate-spin" />}
+              {loading && <span className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />}
               {loading ? d.combine.combineButtonLoading : d.combine.combineButton}
             </button>
             {/* 재료 소각 안내 — 아이템 슬롯이 있는 레시피에서만, 버튼 아래 상시 노출(티켓 20260924_0813) */}
             {hasItemSlot && (
-              <p className="text-[length:var(--text-caption)] text-text-secondary text-center">{d.combine.burnNotice}</p>
+              <p className="text-xs text-muted text-center">{d.combine.burnNotice}</p>
             )}
             {/* 시험 믹스 사전 안내 — 공개 전 레시피(운영자)에만. 조건형 문구라 화면이 낡아 공개 시각이 지나도 거짓이 되지 않는다(티켓 20261001_1159).
                 360px에서 두 줄로 넘어가 마지막 글자 하나만 떨어지므로 단어 단위로 끊고 두 줄 길이를 맞춘다(break-keep·text-balance) */}
             {selectedRecipe.releaseAt && (
-              <p className="text-[length:var(--text-caption)] text-text-secondary text-center break-keep text-balance">{d.combine.testMixPreNotice}</p>
+              <p className="text-xs text-muted text-center break-keep text-balance">{d.combine.testMixPreNotice}</p>
             )}
           </div>
 
@@ -623,11 +623,11 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
               여백은 앱 내 다른 BottomSheet 사용처(예: BadgeUnlockSheet)와 동일하게 맞춘다
               (티켓 20260917_1828, 요구사항 4) — 이 시트만 좌우 패딩이 빠져 있었다.
             */}
-            <div className="px-[var(--spacing-16)] pt-[var(--spacing-8)] pb-[var(--spacing-24)]">
+            <div className="px-4 pt-2 pb-6">
               {bagRows.length === 0 ? (
                 <EmptyState icon={<PackageIcon className="w-8 h-8" />} title={d.combine.bagEmpty} />
               ) : (
-                <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+                <div className="grid grid-cols-3 gap-2">
                   {bagRows.map((row) => {
                     const active = row.state === 'active'
                     // 미보유 후보(needed)는 그레이스케일로만 표현한다(인벤토리·컬렉션 화면의
@@ -642,7 +642,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
                         disabled={!active}
                         onClick={() => bagSlot && active && fillSlot(bagSlot.id, row)}
                         className={[
-                          'flex flex-col items-center gap-[var(--spacing-4)] p-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-surface',
+                          'flex flex-col items-center gap-1 p-2 rounded-2xl bg-background',
                           active ? 'active:scale-95' : 'opacity-40',
                           pulseRow ? 'jam-quest-pulse' : '',
                         ]
@@ -651,7 +651,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
                       >
                         <div
                           className={[
-                            'w-16 h-16 rounded-[var(--radius-card)] bg-surface-elevated flex items-center justify-center overflow-hidden',
+                            'w-16 h-16 rounded-2xl bg-surface flex items-center justify-center overflow-hidden',
                             needed ? 'grayscale opacity-40' : '',
                           ].join(' ')}
                         >
@@ -661,14 +661,14 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
                             width={64}
                             height={64}
                             className="object-contain w-full h-full"
-                            fallback={<PackageIcon className="w-6 h-6 text-text/40" />}
+                            fallback={<PackageIcon className="w-6 h-6 text-foreground/40" />}
                           />
                         </div>
-                        <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-text text-center line-clamp-2">
+                        <p className="text-xs text-foreground text-center line-clamp-2">
                           {row.name}
                         </p>
                         {row.state === 'used' && (
-                          <span className="text-[length:var(--text-caption)] text-text/40">{d.combine.bagUsedLabel}</span>
+                          <span className="text-xs text-foreground/40">{d.combine.bagUsedLabel}</span>
                         )}
                       </button>
                     )

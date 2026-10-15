@@ -5,10 +5,6 @@ import "./globals.css";
 import { NavigationLoader } from "@/components/NavigationLoader";
 import { d } from "@/lib/i18n";
 
-// 어드민 테마 컬러 기능 완전 제거(티켓 20260908_1806)로 DB 조회 대신 고정값을 쓴다.
-// 제거 시점 활성 프리셋 색상과 동일(코발트/아이스).
-const THEME_COLORS = { mainColor: "#0033e5", subColor: "#f0f7ff" };
-
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -29,8 +25,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#000000",
-  colorScheme: "dark",
+  themeColor: "#fafaf0",
+  colorScheme: "light",
 };
 
 export default function RootLayout({
@@ -38,7 +34,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { mainColor, subColor } = THEME_COLORS;
   const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
   return (
@@ -46,10 +41,6 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        {/* 고정 테마 컬러 — globals.css의 기본값을 명시적으로 덮어씀 */}
-        <style>{`:root { --color-main: ${mainColor}; --color-sub: ${subColor}; }`}</style>
-      </head>
       <body className="min-h-full flex flex-col">
         <NavigationLoader />
         {children}

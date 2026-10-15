@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * TopNav — sticky top bar with back button, title, optional right slot.
  * v2 changes:
- *   - h1 font-size: --text-body (16px) → --text-h4 (24px) — semantic/visual alignment
+ *   - h1 font-size: --text-base (16px) → --text-2xl (24px) — semantic/visual alignment
  *   - CDN icon replaced with inline SVG chevron-left
  *   - Uses IconButton-compatible inline SVG approach (no import needed here)
  *   - elevation: 보더/드롭섀도 없음(20260816_012) — 헤더와 본문 배경톤 차이만으로 구분
@@ -50,7 +50,7 @@ export function TopNav({
   return (
     <header style={{
       position: 'sticky', top: 0,
-      background: 'var(--color-bg)',
+      background: 'var(--background)',
       // 서비스 래퍼가 `--topnav-safe-top`을 0px로 덮어쓰면 이 안전영역 패딩을 지지 않는다
       // (퀘스트 미리보기 띠가 있을 때 — 그 띠가 이미 안전영역을 지고 있어 이중 여백을
       // 막는다, 티켓 20260928_0138 재작업). 기본 동작(변수 미지정)은 기존과 동일하다.
@@ -73,7 +73,7 @@ export function TopNav({
                     style={{
                       width: 44, height: 44, border: 'none', background: 'transparent',
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: 'var(--color-text)', flexShrink: 0,
+                      color: 'var(--foreground)', flexShrink: 0,
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={24} height={24} aria-hidden="true">
@@ -87,7 +87,7 @@ export function TopNav({
                     style={{
                       width: 44, height: 44, border: 'none', background: 'transparent',
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: 'var(--color-text)', flexShrink: 0,
+                      color: 'var(--foreground)', flexShrink: 0,
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={24} height={24} aria-hidden="true">
@@ -98,12 +98,12 @@ export function TopNav({
               )}
               <h1 style={{
                 margin: 0,
-                fontSize: 'var(--text-body)',
-                lineHeight: 'var(--leading-body)',
-                fontWeight: 'var(--weight-body)',
+                fontSize: 'var(--text-base)',
+                lineHeight: 'var(--text-base--line-height)',
+                fontWeight: 400,
                 letterSpacing: 'normal',
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                color: 'var(--color-text)',
+                color: 'var(--foreground)',
               }}>
                 {title}
               </h1>

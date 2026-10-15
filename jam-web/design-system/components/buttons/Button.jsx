@@ -11,9 +11,14 @@ import React from 'react';
  * v2 changes:
  *   - onMouseDown/Up/Leave JS handlers removed — press feedback via CSS button:active in styles.css
  *   - loading prop added — shows inline spinner, auto-disables interaction
- *   - deprecated --color-surface-tint → --color-surface, --color-white → --color-bg-inverse
+ *   - deprecated tint·white 토큰 → 역할 토큰(--background, --background-inverse)
  *   - size prop added (20260824_010) — 'sm'은 44px 터치 타겟 규칙의 명시적 예외(내비게이션
  *     바처럼 세로 공간이 44px로 고정된 컨텍스트에서만 사용할 것)
+ *
+ * v3 changes (티켓 20261015_2131 재작업):
+ *   - surface="dark"의 secondary·ghost 글자색을 --background-inverse → --snow로 바꿨다.
+ *     dark는 --background-inverse 면 위에 놓이므로 이전 값은 배경과 같은 색(1.00~1.63:1)이었다.
+ *     밝은 면(--background·--surface) 위에서는 surface="light"를 쓴다.
  */
 
 /* DS-010: @keyframes ds-spin lives in styles.css — no per-instance <style> injection. */
@@ -45,14 +50,14 @@ export function Button({
   const isDisabled = disabled || loading;
 
   // 'sm'은 --scale-compact(0.7, motion.css) 배율로 'md' 치수에서 도출한다 — 매직 넘버 대신
-  // 토큰 기반 계산(20260824_010). 타이포는 스케일 곱셈이 아니라 기존 --text-caption 토큰을
+  // 토큰 기반 계산(20260824_010). 타이포는 스케일 곱셈이 아니라 기존 --text-xs 토큰을
   // 그대로 쓴다(임의 폰트 크기를 새로 만들지 않기 위함).
   const sizes = {
-    md: { minHeight: 44, fontSize: 'var(--text-body)', lineHeight: 'var(--leading-body)', padding: '12px 24px' },
+    md: { minHeight: 44, fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)', padding: '12px 24px' },
     sm: {
       minHeight: 'calc(44px * var(--scale-compact))',
-      fontSize: 'var(--text-caption)',
-      lineHeight: 'var(--leading-caption)',
+      fontSize: 'var(--text-xs)',
+      lineHeight: 'var(--text-xs--line-height)',
       padding: 'calc(12px * var(--scale-compact)) calc(24px * var(--scale-compact))',
     },
   };
@@ -60,7 +65,7 @@ export function Button({
   const base = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
     fontFamily: 'var(--font-family-base)', fontWeight: 600,
-    borderRadius: 'var(--radius-pill)',
+    borderRadius: 'var(--radius-full)',
     cursor: isDisabled ? 'not-allowed' : 'pointer',
     border: '2px solid transparent',
     transition: `transform var(--duration-micro) var(--ease-out), opacity 150ms ease`,
@@ -71,14 +76,14 @@ export function Button({
 
   const variants = {
     light: {
-      primary:   { background: 'var(--color-primary)',    color: 'var(--color-text-on-primary)' },
-      secondary: { background: 'var(--color-surface)',    color: 'var(--color-text)' },
-      ghost:     { background: 'transparent',             color: 'var(--color-primary)', padding: '12px 4px' },
+      primary:   { background: 'var(--accent)',    color: 'var(--accent-foreground)' },
+      secondary: { background: 'var(--background)',    color: 'var(--foreground)' },
+      ghost:     { background: 'transparent',             color: 'var(--link)', padding: '12px 4px' },
     },
     dark: {
-      primary:   { background: 'var(--color-bg-inverse)', color: 'var(--color-text-inverse)' },
-      secondary: { background: 'rgba(255,255,255,0.16)',  color: 'var(--color-bg-inverse)' },
-      ghost:     { background: 'transparent',             color: 'var(--color-bg-inverse)', padding: '12px 4px' },
+      primary:   { background: 'var(--background-inverse)', color: 'var(--snow)' },
+      secondary: { background: 'rgba(255,255,255,0.16)',  color: 'var(--snow)' },
+      ghost:     { background: 'transparent',             color: 'var(--snow)', padding: '12px 4px' },
     },
   };
 

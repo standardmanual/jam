@@ -1,20 +1,20 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
 /*
- * 20260823_003: 재질(반투명 흰 필) — 기존 불투명 흰 필(--color-bg-inverse)의 색은
- * 그대로 두고 알파+blur만 추가한다(--color-chrome-bg-inverse). TopNav는 이번 범위에서
+ * 20260823_003: 재질(반투명 흰 필) — 기존 불투명 흰 필의 색은 그대로 두고 알파+blur만
+ * 추가한다(--tabbar-background). 투명도 줄이기 설정에서는 불투명 흰 면(--surface)이다. TopNav는 이번 범위에서
  * 제외(기존 불투명 크롬 유지). 서비스 `src/components/ui/TabBar.tsx`(별도 Tailwind
- * 구현, 미연결)는 여기와 동일한 토큰(--blur-chrome, --color-chrome-bg-inverse)을
+ * 구현, 미연결)는 여기와 동일한 토큰(--tabbar-blur, --tabbar-background)을
  * 참조하는 `.jam-tabbar-chrome` 클래스를 transitions.css에 별도로 두어 값이 갈리지
  * 않게 맞췄다 — 두 파일을 함께 봐야 함.
- * 비활성 아이콘 대비 재보정(--color-icon-inactive)은 tokens/colors.css 참조.
+ * 비활성 아이콘 대비 재보정(--tabbar-icon)은 tokens/colors.css 참조.
  *
  * 20260901_1521: 활성 배경 필 슬라이딩 트랜지션 — 서비스 SlidingTabs.tsx(16-tabs-sliding.md)의
  * JS 포지셔닝 패턴(transform/opacity를 JS가 쓰고 트윈은 CSS가 소유)만 차용한다. duration/
  * easing은 서비스 --tabs-dur(300ms)/--tabs-ease와 동일한 값을 이 DS 토큰(--ease-smooth-out)으로
  * 맞췄다.
  */
-const STATIC_CSS = `.ds-tabbar-chrome{background:var(--color-chrome-bg-inverse);backdrop-filter:blur(var(--blur-chrome)) saturate(180%);-webkit-backdrop-filter:blur(var(--blur-chrome)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--color-bg-inverse)}}.ds-tabbar-pill{transition:transform 300ms var(--ease-smooth-out),opacity 300ms var(--ease-smooth-out);will-change:transform,opacity}@media(prefers-reduced-motion:reduce){.ds-tabbar-pill{transition:none!important}}`;
+const STATIC_CSS = `.ds-tabbar-chrome{background:var(--tabbar-background);backdrop-filter:blur(var(--tabbar-blur)) saturate(180%);-webkit-backdrop-filter:blur(var(--tabbar-blur)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}}.ds-tabbar-pill{transition:transform 300ms var(--ease-smooth-out),opacity 300ms var(--ease-smooth-out);will-change:transform,opacity}@media(prefers-reduced-motion:reduce){.ds-tabbar-pill{transition:none!important}}`;
 
 /*
  * 탭바 기하값은 Figma 원본(file UXcBEgFagmO5ARwH5F0mMW, node 11:218 "Tab Bar Buttons")
@@ -36,7 +36,7 @@ const PILL_HEIGHT = 41;
  *
  * v2 changes:
  *   - bottom offset now respects env(safe-area-inset-bottom) — iPhone home indicator clearance
- *   - Removed misleading "purple active" comment (active color is --color-primary = red)
+ *   - Removed misleading "purple active" comment (active color is --link = red)
  *
  * 20260901_1521: 활성 점 제거, 배경 필에 슬라이딩 모션 추가(단일 pill +
  * offsetLeft/offsetWidth 측정 — 서비스 `src/components/ui/TabBar.tsx`도 함께 수정했다).
@@ -165,7 +165,7 @@ export function TabBar({ active = 'today', onChange, username }) {
       width: 'calc(100% - 42px)', maxWidth: 388, height: 49,
       // 완전 라운드 — nav는 자기 높이의 절반(24.5px), 필은 자기 높이의 절반(20.5px)으로
       // clamp돼 두 호가 4px 간격의 동심원이 된다(의도된 동작).
-      borderRadius: 'var(--radius-pill)',
+      borderRadius: 'var(--radius-full)',
       // 20260816_012: 보더 제거 — 재질(반투명 크롬)이 다크 배경 위에서 blur로 구분됨
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 4px', zIndex: 40,
@@ -182,8 +182,8 @@ export function TabBar({ active = 'today', onChange, username }) {
         style={{
           position: 'absolute', top: '50%', left: 0,
           // 폭은 moveTo가 활성 탭 슬롯 실측값으로 매번 지정한다(위 상수 주석 참고).
-          height: PILL_HEIGHT, borderRadius: 'var(--radius-pill)',
-          background: 'rgba(0,0,0,0.08)',
+          height: PILL_HEIGHT, borderRadius: 'var(--radius-full)',
+          background: 'var(--tabbar-selection)',
           opacity: 0, transform: 'translate(0px, -50%)',
         }}
       />
@@ -207,7 +207,7 @@ export function TabBar({ active = 'today', onChange, username }) {
               cursor: 'pointer',
             }}
           >
-            <span style={{ position: 'relative', color: isActive ? 'var(--color-primary)' : 'var(--color-icon-inactive)' }}>
+            <span style={{ position: 'relative', color: isActive ? 'var(--tabbar-icon-active)' : 'var(--tabbar-icon)' }}>
               {/* 20260901: today도 Material Symbols 좌표계로 교체돼 5개 탭 전부 동일
                   viewBox를 쓴다(20260827_026 당시엔 today만 예외였으나 두께 불일치로 정리). */}
               <svg viewBox="0 -960 960 960" fill="none" width={24} height={24}>

@@ -112,7 +112,7 @@ function ReelColumn({ digit, index, colWidth, cellHeight, marginRight, fontSize,
               fontWeight: 700,
               fontSize,
               lineHeight: 1,
-              color: 'var(--color-text)',
+              color: 'var(--snow)',
             }}
           >
             {d}
@@ -238,7 +238,7 @@ function TileShell({ width, height, children }) {
         clipPath: `path('${tilePath(width, height)}')`,
         background: [
           'radial-gradient(120% 90% at 22% 12%, rgba(255,255,255,0.19), rgba(255,255,255,0) 55%)',
-          'linear-gradient(160deg, var(--color-base-grey-600) 0%, var(--color-base-grey-800) 100%)',
+          'linear-gradient(160deg, var(--base-neutral-600) 0%, var(--base-neutral-800) 100%)',
         ].join(', '),
         display: 'flex',
         alignItems: 'center',
@@ -261,7 +261,7 @@ function Tile({ text, width, height }) {
           fontSize,
           lineHeight: 1,
           letterSpacing: fontSize * trackingRatioFor(fontSize),
-          color: 'var(--color-text)',
+          color: 'var(--snow)',
           whiteSpace: 'nowrap',
         }}
       >

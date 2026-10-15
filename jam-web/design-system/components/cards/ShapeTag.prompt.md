@@ -1,4 +1,4 @@
-Colored shape container — category tag chip OR a badge/thumbnail box (put an icon/image in as children). 7 shapes (rect, pill, circle, dome, triangle, flag, hex) × 8-color tag palette, cycled by `colorIndex`.
+Colored shape container — category tag chip OR a badge/thumbnail box (put an icon/image in as children). 7 shapes (rect, pill, circle, dome, triangle, flag, hex) × 6-color accent-content palette, cycled by `colorIndex`. Text is always `--foreground` (the palette is bright; there is no `surface` switch).
 
 ```jsx
 <ShapeTag shape="hex" colorIndex={3}>SPA AT HOME</ShapeTag>

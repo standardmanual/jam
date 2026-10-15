@@ -88,12 +88,12 @@ export const RampSteps: Story = {
     </div>
   ),
   play: async () => {
-    await expect(progressRampColor(0)).toBe('var(--status-progress-idle)');
-    await expect(progressRampColor(0.42)).toBe('var(--status-progress-active)');
-    await expect(progressRampColor(NEAR_THRESHOLD)).toBe('var(--status-progress-near)');
-    await expect(progressRampColor(1)).toBe('var(--status-progress-done)');
-    await expect(progressRampColor(null)).toBe('var(--status-progress-idle)');
-    await expect(progressRampColor(0.1, true)).toBe('var(--status-progress-done)');
+    await expect(progressRampColor(0)).toBe('var(--muted)');
+    await expect(progressRampColor(0.42)).toBe('var(--foreground)');
+    await expect(progressRampColor(NEAR_THRESHOLD)).toBe('var(--progress-short)');
+    await expect(progressRampColor(1)).toBe('var(--progress-done)');
+    await expect(progressRampColor(null)).toBe('var(--muted)');
+    await expect(progressRampColor(0.1, true)).toBe('var(--progress-done)');
   },
 };
 
@@ -211,7 +211,7 @@ export const PercentRightEdgeIsUniform: Story = {
   render: () => (
     <div
       style={{
-        background: 'var(--color-surface)',
+        background: 'var(--background)',
         padding: 'var(--spacing-16)',
         display: 'flex',
         flexDirection: 'column',
@@ -219,7 +219,7 @@ export const PercentRightEdgeIsUniform: Story = {
       }}
     >
       {/* 토글 있음 — 「자세히 ⌄」가 컬럼 폭을 정한다 */}
-      <div style={{ borderRadius: 'var(--radius-card)', padding: 'var(--spacing-16)', background: 'var(--color-surface-elevated)' }}>
+      <div style={{ borderRadius: 'var(--radius-2xl)', padding: 'var(--spacing-16)', background: 'var(--surface)' }}>
         <BadgeFamilyCardHeader
           name="오늘의 한 걸음"
           fraction={0.42}
@@ -228,11 +228,11 @@ export const PercentRightEdgeIsUniform: Story = {
         />
       </div>
       {/* 토글 없음 — 진행률 블록만 있다 */}
-      <div style={{ borderRadius: 'var(--radius-card)', padding: 'var(--spacing-16)', background: 'var(--color-surface-elevated)' }}>
+      <div style={{ borderRadius: 'var(--radius-2xl)', padding: 'var(--spacing-16)', background: 'var(--surface)' }}>
         <BadgeFamilyCardHeader name="걸어온 거리" fraction={0.8} metaText="다음 Lv.8까지 30km" />
       </div>
       {/* 2행 자체가 없는 카드 */}
-      <div style={{ borderRadius: 'var(--radius-card)', padding: 'var(--spacing-16)', background: 'var(--color-surface-elevated)' }}>
+      <div style={{ borderRadius: 'var(--radius-2xl)', padding: 'var(--spacing-16)', background: 'var(--surface)' }}>
         <BadgeFamilyCardHeader name="메타 줄 없는 계열" fraction={0} />
       </div>
     </div>

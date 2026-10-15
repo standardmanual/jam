@@ -12,8 +12,8 @@ import CardThumb from './CardThumb'
  *
  * - 안쪽 여백은 `Card`가 인라인 `style`(`padding: var(--layout-card-padding)` = 24px)로 주기 때문에 클래스(`p-*`)로는 덮이지 않는다.
  *   그래서 같은 인라인 `style`로 덮는다. 칸 64 + 위아래 12×2 = 최소 높이 88px와 맞아떨어진다.
- * - `--text-body-sm`은 서비스에서 14px이 아니라 16px이다. 필수 정보 14px은 `--text-small`이다.
- * - 옅은 글자는 `text-text-inverse/60` 한 단계로 통일한다(흰 면 위 AA 이상). `/30`·`/40`은 쓰지 않는다.
+ * - `--text-base`은 서비스에서 14px이 아니라 16px이다. 필수 정보 14px은 `--text-sm`이다.
+ * - 옅은 글자는 `text-snow/60` 한 단계로 통일한다(흰 면 위 AA 이상). `/30`·`/40`은 쓰지 않는다.
  */
 
 export default function BriefCard({ view }: { view: BriefCardView }) {
@@ -22,7 +22,7 @@ export default function BriefCard({ view }: { view: BriefCardView }) {
   return (
     <Card
       tone="inverse"
-      className="min-h-[88px] flex items-center gap-[var(--spacing-12)]"
+      className="min-h-[88px] flex items-center gap-3"
       style={{ padding: 'var(--spacing-12) var(--spacing-16)' }}
     >
       <CardThumb view={view} src={view.thumbnailUrl} dimmed={view.thumbnailDimmed} />
@@ -31,20 +31,20 @@ export default function BriefCard({ view }: { view: BriefCardView }) {
         {/* 칩 줄은 `hero`와 공용이다(`CardChipRow`: 좁아지면 줄어드는 것은 지역 핀뿐, 드랍은 핀 생략). brief에는 게재일 칸이 없어 `publishedAt`을 넘기지 않는다 */}
         <CardChipRow
           view={{ resource: view.resource, label: view.label, regionLabel: view.regionLabel, rarity: view.rarity }}
-          className="mb-[var(--spacing-8)]"
+          className="mb-2"
         />
 
-        <h3 className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse line-clamp-2 break-keep break-words">
+        <h3 className="text-base text-snow line-clamp-2 break-keep break-words">
           {view.title}
         </h3>
 
         {/* 필수 정보 — 아이콘 없이 글자로, 한 줄에 하나씩. 자르지 않고 줄바꿈한다(말줄임 없음). 값이 없으면 줄이 없다 */}
         {facts.length > 0 && (
-          <div className="mt-[var(--spacing-4)]">
+          <div className="mt-1">
             {facts.map((line, index) => (
               <p
                 key={index}
-                className="text-[length:var(--text-small)] leading-[var(--leading-small)] text-text-inverse/60 break-keep break-words"
+                className="text-sm text-snow/60 break-keep break-words"
               >
                 {line}
               </p>
@@ -55,7 +55,7 @@ export default function BriefCard({ view }: { view: BriefCardView }) {
 
       {/* 이동한다는 암시 — 링크가 없는 카드(`href` 없음)에는 그리지 않는다. 미리보기도 링크만 없을 뿐 `href`가 있으면 보인다 */}
       {view.href && (
-        <span className="shrink-0 text-text-inverse/60" aria-hidden="true">
+        <span className="shrink-0 text-snow/60" aria-hidden="true">
           &rsaquo;
         </span>
       )}

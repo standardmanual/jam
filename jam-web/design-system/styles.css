@@ -1,28 +1,27 @@
 @import "tokens/fonts.css";
 @import "tokens/colors.css";
-@import "tokens/colors.light.css";
 @import "tokens/typography.css";
 @import "tokens/spacing.css";
 @import "tokens/radius.css";
 @import "tokens/motion.css";
 @import "tokens/materials.css";
 
-html { background: var(--color-bg); }
+html { background: var(--background); color-scheme: light; }
 body {
   margin: 0;
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: var(--background);
+  color: var(--foreground);
   font-family: var(--font-family-base);
   font-weight: 400;
   -webkit-tap-highlight-color: transparent;
 }
-a { color: var(--color-primary); }
-a:hover { color: color-mix(in srgb, var(--color-primary) 80%, black); }
+a { color: var(--link); }
+a:hover { color: color-mix(in srgb, var(--link) 80%, black); }
 
 /* v2: Global focus-visible — keyboard & screen reader navigation.
    WCAG 2.1 SC 2.4.7 (Level AA). Each component may override outline-offset. */
 *:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--link);
   outline-offset: 2px;
 }
 
@@ -47,7 +46,7 @@ button:active:not(:disabled),
 /* DS-008: Placeholder color — WCAG AA on dark background.
    opacity:1 overrides Firefox's default 0.54 multiplier. */
 ::placeholder {
-  color: var(--color-text-secondary);
+  color: var(--muted);
   opacity: 1;
 }
 

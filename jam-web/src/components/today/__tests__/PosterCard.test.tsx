@@ -2,7 +2,7 @@
  * 포스터(`poster`) 모양 렌더 테스트 (티켓 20261001_2013, 상위 20260930_1453 조각 b4)
  *
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) `renderToStaticMarkup`으로 클래스·태그 문자열을 단언한다.
- * 막의 진하기는 계산 스타일이라 정적 렌더로 픽셀을 볼 수 없다 — 그래서 (1) 막 클래스가 고정 길이 정지점인지 (2) 막이 쓰는 토큰 `--color-overlay`의 알파가
+ * 막의 진하기는 계산 스타일이라 정적 렌더로 픽셀을 볼 수 없다 — 그래서 (1) 막 클래스가 고정 길이 정지점인지 (2) 막이 쓰는 토큰 `--backdrop`의 알파가
  * 0.6 이상인지(토큰 파일을 읽는다) (3) 그 알파 아래 순백 이미지에서 흰 글자 대비가 AA인지를 여기서 보증하고, 실측(칩 줄 윗변 − 막 윗변 ≥ 32px)은
  * Story의 `play`(`PosterCard.stories.tsx`)가 본다. 이미지 로드 실패는 `CardImageSlot.test.tsx`와 같은 사정으로 「주소 없음」 경로로 검증한다.
  */
@@ -48,12 +48,12 @@ function scrimInnerOf(html: string): string {
   return html.slice(html.indexOf(open[0]) + open[0].length)
 }
 
-const CHIP_ROW_OPEN = '<div class="flex items-center gap-[var(--spacing-8)]">'
+const CHIP_ROW_OPEN = '<div class="flex items-center gap-2">'
 
 describe('PosterCard — 면(표면)', () => {
   it('카드(default 색조)는 relative·overflow-hidden이고 안쪽 여백은 인라인 0이다(이미지가 카드 모서리까지 닿는다)', () => {
     const html = render()
-    expect(html).toMatch(/^<div class="relative overflow-hidden" style="[^"]*background:var\(--color-surface-elevated\)[^"]*">/)
+    expect(html).toMatch(/^<div class="relative overflow-hidden" style="[^"]*background:var\(--surface\)[^"]*">/)
     expect(html).toMatch(/^<div[^>]*style="[^"]*padding:0[;"]/)
     expect(html).not.toContain('--layout-card-padding')
     expect(html).not.toContain('p-0')
@@ -66,7 +66,7 @@ describe('PosterCard — 면(표면)', () => {
 
   it('이미지 칸이 카드의 첫 자식이고 4:5가 카드 높이를 정한다(막은 absolute라 글자 수가 높이를 바꾸지 않는다)', () => {
     const html = render()
-    expect(html).toContain('<div class="relative aspect-[4/5] overflow-hidden bg-surface">')
+    expect(html).toContain('<div class="relative aspect-[4/5] overflow-hidden bg-background">')
     expect(html.indexOf('aspect-[4/5]')).toBeLessThan(html.indexOf('absolute inset-x-0 bottom-0'))
     expect(scrimClassOf(html)).toContain('absolute')
   })
@@ -79,22 +79,25 @@ describe('PosterCard — 면(표면)', () => {
 })
 
 describe('PosterCard — 막', () => {
-  it('막은 var(--color-overlay)에서 시작하는 단일 선형 그라디언트이고 정지점은 고정 길이 var(--spacing-32)다', () => {
+  it('막은 검정 60%에서 끝나는 단일 선형 그라디언트이고 정지점은 고정 길이 var(--spacing-32)다', () => {
     const scrim = scrimClassOf(render())
-    expect(scrim).toContain('bg-[linear-gradient(to_bottom,transparent,var(--color-overlay)_var(--spacing-32))]')
+    expect(scrim).toContain('bg-[linear-gradient(to_bottom,transparent,color-mix(in_srgb,var(--base-black)_60%,transparent)_var(--spacing-32))]')
+    // --backdrop은 JAM 2.0에서 검정 50%(모달 배경 전용)라 막의 하한 0.6보다 옅다 — 막은 쓰지 않는다
+    expect(scrim).not.toContain('--backdrop')
     expect(scrim.match(/linear-gradient/g)).toHaveLength(1)
   })
 
   it('퍼센트 정지점·옛 BannerCard의 from-black·via-black을 쓰지 않는다(글자 수에 따라 첫 줄 진하기가 변하는 문제)', () => {
     const scrim = scrimClassOf(render())
     const gradient = scrim.match(/bg-\[linear-gradient\(([^\]]*)\)\]/)![1]
-    expect(gradient).not.toContain('%')
+    // 알파(color-mix의 60%)만 퍼센트다. 정지점에는 퍼센트가 없다
+    expect(gradient.replace(/color-mix\(in_srgb,var\(--base-black\)_\d+%,transparent\)/, 'SCRIM')).not.toContain('%')
     for (const needle of ['from-black', 'via-black', 'to-transparent', 'black/', 'rgba', '#']) expect(scrim).not.toContain(needle)
   })
 
   it('막의 위 여백(pt-32)이 램프 길이와 같다 — 칩 줄 윗변은 램프가 끝난 뒤에서 시작한다', () => {
     const scrim = scrimClassOf(render())
-    expect(scrim).toContain('pt-[var(--spacing-32)]')
+    expect(scrim).toContain('pt-8')
     expect(scrim).toContain('var(--spacing-32))]')
     // 그라디언트 정지점과 위 여백이 같은 토큰이고 값은 32px이다
     expect(tokenFile('spacing.css')).toMatch(/--spacing-32:\s*32px/)
@@ -102,7 +105,7 @@ describe('PosterCard — 막', () => {
 
   it('막 좌우·아래 여백은 24px, 그룹 사이 간격은 12px이다(hero 본문과 같다)', () => {
     const scrim = scrimClassOf(render())
-    for (const cls of ['px-[var(--spacing-24)]', 'pb-[var(--spacing-24)]', 'gap-[var(--spacing-12)]', 'flex flex-col']) {
+    for (const cls of ['px-6', 'pb-6', 'gap-3', 'flex flex-col']) {
       expect(scrim).toContain(cls)
     }
   })
@@ -118,11 +121,11 @@ describe('PosterCard — 막', () => {
   })
 })
 
-describe('PosterCard — 막 토큰 안전장치 (--color-overlay)', () => {
+describe('PosterCard — 막 알파 안전장치', () => {
   const alphaOf = (): number => {
-    const match = tokenFile('colors.css').match(/--color-overlay:\s*rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*([0-9.]+)\s*\)/)
+    const match = scrimClassOf(render()).match(/color-mix\(in_srgb,var\(--base-black\)_(\d+)%,transparent\)/)
     expect(match).not.toBeNull()
-    return Number(match![1])
+    return Number(match![1]) / 100
   }
 
   /** WCAG 상대 휘도 (0~255 채널 동일 값의 회색) */
@@ -132,8 +135,8 @@ describe('PosterCard — 막 토큰 안전장치 (--color-overlay)', () => {
     return linear
   }
 
-  it('--color-overlay의 알파는 0.6 이상이다(확정 설계 1절 「글자 블록 첫 줄에서도 진하기 60% 이상」의 하한)', () => {
-    // 이 토큰은 원래 모달·시트 백드롭용이라 값이 따로 바뀔 수 있다. 0.6 아래로 내려가면 막 설계가 깨지므로 여기서 잡는다
+  it('막의 알파는 0.6 이상이다(확정 설계 1절 「글자 블록 첫 줄에서도 진하기 60% 이상」의 하한)', () => {
+    // 0.6 아래로 내려가면 막 설계가 깨지므로 여기서 잡는다
     expect(alphaOf()).toBeGreaterThanOrEqual(0.6)
   })
 
@@ -177,28 +180,28 @@ describe('PosterCard — 막 위 글자 배치', () => {
 
   it('칩 줄은 막 위 색조다 — 라벨 칩은 흰 알약(surface-inverse), 지역 핀 글자는 text-white', () => {
     const html = render({ regionLabel: '성수동' })
-    expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--color-surface-inverse\);color:var\(--color-text-inverse\)[^"]*">컬렉션<\/span>/)
-    expect(html).toContain('min-w-0 text-[length:var(--text-caption)] text-white">')
+    expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--background-inverse\);color:var\(--snow\)[^"]*">컬렉션<\/span>/)
+    expect(html).toContain('min-w-0 text-xs text-white">')
   })
 
-  it('제목은 h3, 24px(--text-subheading)·흰색·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
+  it('제목은 h3, 24px(--text-2xl)·흰색·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
     const html = render()
     expect(html).toContain(
-      '<h3 class="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-white line-clamp-2 break-keep break-words">새 아이템이 열렸어요</h3>',
+      '<h3 class="text-2xl text-white line-clamp-2 break-keep break-words">새 아이템이 열렸어요</h3>',
     )
     expect(html).not.toMatch(/<h3[^>]*font-(bold|semibold|medium)/)
   })
 
-  it('필수 정보는 14px(--text-small) 흰색·보통 굵기이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
+  it('필수 정보는 14px(--text-sm) 흰색·보통 굵기이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
     const html = render()
     const lines = [...scrimInnerOf(html).matchAll(/<p class="([^"]*)">([^<]*)<\/p>/g)]
     expect(lines.map((m) => m[2])).toEqual(['한강 컬렉션', '아이템 12개'])
     for (const [, className] of lines) {
-      expect(className).toBe('text-[length:var(--text-small)] leading-[var(--leading-small)] text-white break-keep break-words')
+      expect(className).toBe('text-sm text-white break-keep break-words')
       expect(className).not.toContain('font-bold')
       expect(className).not.toContain('line-clamp')
       expect(className).not.toContain('truncate')
-      // 서비스에서 --text-body-sm은 16px이라 14px 자리에 쓰면 크기가 틀린다
+      // 서비스에서 --text-base은 16px이라 14px 자리에 쓰면 크기가 틀린다
       expect(className).not.toContain('body-sm')
     }
   })
@@ -226,10 +229,10 @@ describe('PosterCard — 막 위 글자 배치', () => {
     expect(html).not.toContain('10월 5일')
   })
 
-  it('막 위 글자는 전부 text-white다 — 옅은 단계(/80·/60·/40)와 text-text 계열이 없다', () => {
+  it('막 위 글자는 전부 text-white다 — 옅은 단계(/80·/60·/40)와 text-foreground 계열이 없다', () => {
     const inner = scrimInnerOf(render({ regionLabel: '성수동', resource: 'badge', rarity: 'epic' }))
     expect(inner).toContain('text-white')
-    for (const needle of ['text-white/', 'text-text', '/80', '/60', '/40', '/30']) expect(inner).not.toContain(needle)
+    for (const needle of ['text-white/', 'text-foreground', '/80', '/60', '/40', '/30']) expect(inner).not.toContain(needle)
   })
 
   it('글자는 전부 왼쪽 정렬이다(막에 가운데 정렬이 없다) — 가운데 정렬은 자리 표시 판에만 있다', () => {
@@ -264,7 +267,7 @@ describe('PosterCard — 이미지 칸', () => {
     ['주소가 공백뿐일 때', { imageUrl: '   ' }],
   ])('%s도 4:5 칸과 막이 늘 있다(카드 높이가 흔들리지 않는다)', (_label, overrides) => {
     const html = render(overrides)
-    expect(html).toContain('<div class="relative aspect-[4/5] overflow-hidden bg-surface">')
+    expect(html).toContain('<div class="relative aspect-[4/5] overflow-hidden bg-background">')
     expect(html).toContain('absolute inset-x-0 bottom-0')
     expect(html).toContain('<h3')
     expect(html.indexOf('aspect-[4/5]')).toBeLessThan(html.indexOf('absolute inset-x-0 bottom-0'))
@@ -339,7 +342,7 @@ describe('PosterCard — 이미지 없음 자리 표시', () => {
   it('titleInImage 카드는 판 위(위쪽 60%)에 제목을 그린다 — 막에는 제목이 없다', () => {
     const html = render({ imageUrl: null, titleInImage: true })
     expect(html).toContain(
-      '<p class="text-[length:var(--text-body)] font-bold text-text line-clamp-3 break-keep break-words">새 아이템이 열렸어요</p>',
+      '<p class="text-base font-bold text-foreground line-clamp-3 break-keep break-words">새 아이템이 열렸어요</p>',
     )
     expect(html.match(/새 아이템이 열렸어요/g)).toHaveLength(1)
     expect(html).not.toContain('<h3')

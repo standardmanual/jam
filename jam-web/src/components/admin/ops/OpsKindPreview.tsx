@@ -4,6 +4,8 @@
  * 배지·컬렉션은 서비스 그리드 카드를 `href` 없이 그대로 쓰고, 미션은 서비스 목록 카드(`MissionsListClient`)와 같은 모양
  * (썸네일·제목·설명 2줄·보상 줄)으로 그린다. 레시피(티켓 20261007_1401)는 보상 행(`RecipeRewardRow`)을 표시 전용으로 쓰고 슬롯 칸은 새로 그리며, 드랍은 요약 카드다. 카드 아래 한 줄 요약에 설명·조건·기간을 덧붙인다. 항목 안의 값만 쓰고 링크·계측이 없다.
  * 인라인 `style`은 쓰지 않는다(`no-html.test.ts`가 파일 수를 고정한다).
+ * 서비스 컴포넌트를 그리는 래퍼에는 `data-service-theme`를 걸어, 어드민 스코프가 덮는 이름(--background·--foreground·
+ * --muted 등)의 서비스 값을 되찾는다(티켓 20261015_2131). 미션 썸네일 칸은 서비스 목록과 같은 고정색(#1A1A1A)이다.
  */
 import RecipeRewardRow from '@/app/(main)/combine/RecipeRewardRow'
 import SafeImage from '@/components/SafeImage'
@@ -49,12 +51,14 @@ export function OpsKindPreview({ preview }: { preview: KindPreview }) {
       <div className="space-y-2">
         {/* 보상 줄은 좁은 칸에서 이름을 말줄임으로 자르므로, 이름은 전체가 보이게 따로 한 줄 둔다. */}
         <h3 className="m-0 break-words text-base font-bold leading-tight">{preview.name}</h3>
-        <RecipeRewardRow
-          title={preview.name}
-          slotCount={preview.slots.length}
-          badges={preview.rewardBadges.map((badge) => ({ id: badge.id, name: badge.name, image_url: badge.imageUrl, rarity: badge.rarity }))}
-          points={preview.rewardPoints ?? 0}
-        />
+        <div data-service-theme="">
+          <RecipeRewardRow
+            title={preview.name}
+            slotCount={preview.slots.length}
+            badges={preview.rewardBadges.map((badge) => ({ id: badge.id, name: badge.name, image_url: badge.imageUrl, rarity: badge.rarity }))}
+            points={preview.rewardPoints ?? 0}
+          />
+        </div>
         <ol className="flex flex-wrap gap-2" aria-label="슬롯">
           {preview.slots.map((slot, i) => (
             <li key={i} className="min-w-0 max-w-full rounded-lg border border-border px-3 py-2 text-xs">
@@ -90,7 +94,7 @@ export function OpsKindPreview({ preview }: { preview: KindPreview }) {
     const reward = preview.pointReward ? `보상 ${preview.pointReward.toLocaleString('ko-KR')} 포인트` : ''
     return (
       <div className="space-y-2">
-        <div className="w-32">
+        <div data-service-theme="" className="w-32">
           <BadgeGridCard name={preview.name} imageUrl={preview.imageUrl} rarity={preview.rarity} level={preview.level} earned />
         </div>
         <Summary lines={[preview.description, reward, periodText(preview.startsAt, preview.endsAt)]} />
@@ -102,7 +106,7 @@ export function OpsKindPreview({ preview }: { preview: KindPreview }) {
     const reward = preview.rewardPoints ? `보상 ${preview.rewardPoints.toLocaleString('ko-KR')} 포인트` : ''
     return (
       <div className="space-y-2">
-        <div className="w-32">
+        <div data-service-theme="" className="w-32">
           <CollectionGridCard name={preview.name} imageUrl={preview.imageUrl} collected={0} total={0} hideProgress />
         </div>
         <Summary lines={[preview.description, preview.storyText, reward, periodText(preview.startsAt, preview.endsAt)]} />
@@ -114,14 +118,14 @@ export function OpsKindPreview({ preview }: { preview: KindPreview }) {
   return (
     <div className="space-y-2">
       <div className="flex flex-row items-start gap-4 py-3">
-        <div className="flex size-[90px] min-w-[90px] items-center justify-center overflow-hidden rounded-lg bg-surface">
+        <div className="flex size-[90px] min-w-[90px] items-center justify-center overflow-hidden rounded-lg bg-[#1a1a1a]">
           <SafeImage
             src={preview.imageUrl}
             alt={preview.title}
             width={90}
             height={90}
             className="h-full w-full object-contain"
-            fallback={<PackageIcon className="h-8 w-8 text-text/30" />}
+            fallback={<PackageIcon className="h-8 w-8 text-white/30" />}
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-2">

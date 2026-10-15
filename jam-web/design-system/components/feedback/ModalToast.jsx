@@ -27,7 +27,7 @@ const ICONS = {
  *   - Escape key dismisses
  *   - width: 240 hardcoded → min/max-width responsive
  *   - CDN icon replaced with inline SVG
- *   - deprecated --color-surface-card → --color-surface
+ *   - deprecated surface-card 토큰 → --background
  */
 /**
  * iconSlot — optional ReactNode that replaces the default type icon circle.
@@ -67,7 +67,7 @@ export function ModalToast({ message, type = 'success', open = true, onDismiss, 
       onClick={onDismiss}
       style={{
         position: 'fixed', inset: 0,
-        background: 'var(--color-overlay)',
+        background: 'var(--backdrop)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 60,
       }}
@@ -78,9 +78,9 @@ export function ModalToast({ message, type = 'success', open = true, onDismiss, 
         aria-labelledby={labelId}
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-card)',
+          background: 'var(--background)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-2xl)',
           padding: 'var(--layout-card-padding)',
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
           minWidth: 240, maxWidth: 'min(340px, 90vw)',
@@ -92,15 +92,15 @@ export function ModalToast({ message, type = 'success', open = true, onDismiss, 
           : (
             <div style={{
               width: 56, height: 56, borderRadius: '50%',
-              background: 'var(--color-primary)',
-              color: 'var(--color-text-on-primary)',
+              background: 'var(--accent)',
+              color: 'var(--accent-foreground)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               {ICONS[type]}
             </div>
           )
         }
-        <p id={labelId} style={{ margin: 0, fontSize: 'var(--text-body)', color: 'var(--color-text)' }}>
+        <p id={labelId} style={{ margin: 0, fontSize: 'var(--text-base)', color: 'var(--foreground)' }}>
           {message}
         </p>
         <button
@@ -108,9 +108,9 @@ export function ModalToast({ message, type = 'success', open = true, onDismiss, 
           onClick={onDismiss}
           style={{
             marginTop: 4, padding: '10px 24px',
-            borderRadius: 'var(--radius-pill)', border: 'none',
-            background: 'var(--color-primary)', color: 'var(--color-text-on-primary)',
-            fontSize: 'var(--text-small)', fontWeight: 600, cursor: 'pointer',
+            borderRadius: 'var(--radius-full)', border: 'none',
+            background: 'var(--accent)', color: 'var(--accent-foreground)',
+            fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer',
             fontFamily: 'var(--font-family-base)',
           }}
         >

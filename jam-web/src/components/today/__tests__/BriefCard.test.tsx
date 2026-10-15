@@ -39,7 +39,7 @@ function factParagraphs(html: string): { className: string; text: string }[] {
   return [...html.matchAll(/<p class="([^"]*)">([^<]*)<\/p>/g)].map((m) => ({ className: m[1], text: m[2] }))
 }
 
-const SLOT_ICON_CLASS = 'w-6 h-6 text-text-inverse/60'
+const SLOT_ICON_CLASS = 'w-6 h-6 text-snow/60'
 const slotIcon = (Icon: typeof TargetIcon) => renderToStaticMarkup(<Icon className={SLOT_ICON_CLASS} />)
 
 afterEach(() => {
@@ -49,8 +49,8 @@ afterEach(() => {
 describe('BriefCard — 면(표면)', () => {
   it('흰 카드(inverse)이고 최소 높이 88px·가운데 정렬 가로 배치이며, 안쪽 여백은 위아래 12·좌우 16이다', () => {
     const html = render()
-    expect(html).toContain('min-h-[88px] flex items-center gap-[var(--spacing-12)]')
-    expect(html).toContain('background:var(--color-surface-inverse)')
+    expect(html).toContain('min-h-[88px] flex items-center gap-3')
+    expect(html).toContain('background:var(--background-inverse)')
     // Card가 주는 24px 기본 여백(--layout-card-padding)을 같은 인라인 style로 덮었다 — 클래스로는 덮이지 않는다
     expect(html).toContain('padding:var(--spacing-12) var(--spacing-16)')
     expect(html).not.toContain('--layout-card-padding')
@@ -63,7 +63,7 @@ describe('BriefCard — 면(표면)', () => {
   it('제목은 h3, 16px·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
     const html = render({ title: '제목이 아주 길어서 두 줄을 넘겨도 말줄임으로 끝나야 하는 한강 러닝 챌린지 이벤트 안내' })
     expect(html).toMatch(
-      /<h3 class="text-\[length:var\(--text-body\)\] leading-\[var\(--leading-body\)\] text-text-inverse line-clamp-2 break-keep break-words">제목이 아주/,
+      /<h3 class="text-base text-snow line-clamp-2 break-keep break-words">제목이 아주/,
     )
     expect(html).not.toMatch(/<h3[^>]*font-(bold|semibold|medium)/)
   })
@@ -71,7 +71,7 @@ describe('BriefCard — 면(표면)', () => {
   it('필수 정보가 없으면 제목 아래에 아무 줄도 만들지 않는다', () => {
     const html = render({ facts: undefined })
     expect(factParagraphs(html)).toHaveLength(0)
-    expect(html).not.toContain('mt-[var(--spacing-4)]')
+    expect(html).not.toContain('mt-1')
     expect(render({ facts: [] })).toBe(html)
   })
 })
@@ -83,35 +83,35 @@ describe('BriefCard — 필수 정보', () => {
     expect(lines.map((l) => l.text)).toEqual(facts)
   })
 
-  it('14px(--text-small)·옅은 글자 /60이고 말줄임 없이 줄바꿈한다(line-clamp·truncate 없음)', () => {
+  it('14px(--text-sm)·옅은 글자 /60이고 말줄임 없이 줄바꿈한다(line-clamp·truncate 없음)', () => {
     const lines = factParagraphs(render())
     expect(lines).toHaveLength(2)
     for (const line of lines) {
       expect(line.className).toBe(
-        'text-[length:var(--text-small)] leading-[var(--leading-small)] text-text-inverse/60 break-keep break-words',
+        'text-sm text-snow/60 break-keep break-words',
       )
       expect(line.className).not.toContain('line-clamp')
       expect(line.className).not.toContain('truncate')
-      // 서비스에서 --text-body-sm은 16px이라 14px 자리에 쓰면 크기가 틀린다
+      // 서비스에서 --text-base은 16px이라 14px 자리에 쓰면 크기가 틀린다
       expect(line.className).not.toContain('body-sm')
     }
   })
 
   it('필수 정보 앞에 아이콘을 붙이지 않는다', () => {
     const html = render({ thumbnailUrl: undefined })
-    const factsBlock = html.slice(html.indexOf('mt-[var(--spacing-4)]'))
+    const factsBlock = html.slice(html.indexOf('mt-1'))
     expect(factsBlock).not.toContain('<svg')
   })
 
   it('필수 정보 위 간격은 --spacing-4다', () => {
-    expect(render()).toContain('<div class="mt-[var(--spacing-4)]"><p')
+    expect(render()).toContain('<div class="mt-1"><p')
   })
 })
 
 describe('BriefCard — 칩 줄', () => {
   it('왼쪽부터 라벨 칩 · 지역 핀 · 희귀도 칩 순서이고 칩 줄 아래 간격은 --spacing-8이다', () => {
     const html = render({ resource: 'badge', regionLabel: '성수동', rarity: 'epic', label: '배지 소개' })
-    expect(html).toContain('flex items-center gap-[var(--spacing-8)] mb-[var(--spacing-8)]')
+    expect(html).toContain('flex items-center gap-2 mb-2')
     const label = html.indexOf('배지 소개</span>')
     const pin = html.indexOf('성수동')
     const rarity = html.indexOf('Epic')
@@ -131,7 +131,7 @@ describe('BriefCard — 칩 줄', () => {
   it('지역 핀: 옛 마크업(caption·/60·핀 w-3 h-3)에 min-w-0과 글자 말줄임을 더했다', () => {
     const html = render({ regionLabel: '성수동 서울숲 근처' })
     expect(html).toContain(
-      '<span class="inline-flex items-center gap-1 min-w-0 text-[length:var(--text-caption)] text-text-inverse/60">',
+      '<span class="inline-flex items-center gap-1 min-w-0 text-xs text-snow/60">',
     )
     expect(html).toContain('<span class="truncate">성수동 서울숲 근처</span>')
     expect(html).toContain(renderToStaticMarkup(<PinIcon className="w-3 h-3 shrink-0" />))
@@ -156,31 +156,31 @@ describe('BriefCard — 칩 줄', () => {
 describe('BriefCard — 희귀도 칩 (JAM! 배지 1개 카드)', () => {
   const badgeView = (rarity: BriefCardView['rarity']) => render({ resource: 'badge', label: '배지 소개', facts: ['한강 러너'], rarity })
 
-  it.each([['rare', 'Rare'], ['epic', 'Epic'], ['mystic', 'Mystic']])('%s는 %s 칩이고 md 크기(--text-micro)·줄어들지 않는다', (rarity, text) => {
+  it.each([['rare', 'Rare'], ['epic', 'Epic'], ['mystic', 'Mystic']])('%s는 %s 칩이고 md 크기(--text-xs)·줄어들지 않는다', (rarity, text) => {
     const html = badgeView(rarity)
-    expect(html).toMatch(new RegExp(`<span class="shrink-0" style="[^"]*font-size:var\\(--text-micro\\)[^"]*">${text}</span>`))
+    expect(html).toMatch(new RegExp(`<span class="shrink-0" style="[^"]*font-size:var\\(--text-xs\\)[^"]*">${text}</span>`))
   })
 
   it('Common은 칩이 없다', () => {
     const html = badgeView('common')
     expect(html).not.toContain('Common')
-    expect(html).not.toContain('--text-micro')
+    expect(html).not.toContain('--rarity-')
   })
 
   it('등급 없음(null, 무한레벨형)은 이름만 보이고 칩이 없다', () => {
     const html = badgeView(null)
-    expect(html).not.toContain('--text-micro')
+    expect(html).not.toContain('--rarity-')
     expect(html).toContain('한강 러너')
   })
 
   it('희귀도 값이 없는 카드(JAM! 배지가 아닌 자원)에는 칩이 없다', () => {
-    expect(render()).not.toContain('--text-micro')
+    expect(render()).not.toContain('--rarity-')
   })
 
   it('알 수 없는 희귀도 값은 칩을 그리지 않는다(Common으로 떨어뜨리지 않는다)', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     const html = badgeView('legendary')
-    expect(html).not.toContain('--text-micro')
+    expect(html).not.toContain('--rarity-')
     expect(html).not.toContain('Common')
   })
 
@@ -193,7 +193,7 @@ describe('BriefCard — 희귀도 칩 (JAM! 배지 1개 카드)', () => {
 
 describe('BriefCard — 끝 ›', () => {
   it('href가 있으면 aria-hidden으로 그린다(장식, 줄어들지 않고 /60)', () => {
-    expect(render()).toContain('<span class="shrink-0 text-text-inverse/60" aria-hidden="true">›</span>')
+    expect(render()).toContain('<span class="shrink-0 text-snow/60" aria-hidden="true">›</span>')
   })
 
   it('href가 없으면 이동한다는 암시를 주지 않으려고 그리지 않는다', () => {
@@ -209,8 +209,8 @@ describe('BriefCard — 옅은 글자', () => {
       rarity: 'rare',
       thumbnailUrl: 'https://cdn.example/a.png',
     })
-    expect(html).toContain('text-text-inverse/60')
-    for (const level of ['/30', '/40', '/50', '/70']) expect(html).not.toContain(`text-text-inverse${level}`)
+    expect(html).toContain('text-snow/60')
+    for (const level of ['/30', '/40', '/50', '/70']) expect(html).not.toContain(`text-snow${level}`)
     expect(html).not.toContain('/30')
     expect(html).not.toContain('/40')
   })
@@ -225,10 +225,10 @@ describe('BriefCard — 옅은 글자', () => {
 })
 
 describe('BriefCard — 64px 칸', () => {
-  it('칸은 64px 정사각·--radius-cards·4% 검정 판이고 왼쪽에 줄어들지 않게 고정된다', () => {
+  it('칸은 64px 정사각·--radius-2xl·4% 검정 판이고 왼쪽에 줄어들지 않게 고정된다', () => {
     const html = render()
     expect(html).toContain(
-      'w-16 h-16 shrink-0 rounded-[var(--radius-cards)] bg-black/[0.04] overflow-hidden flex items-center justify-center',
+      'w-16 h-16 shrink-0 rounded-2xl bg-black/[0.04] overflow-hidden flex items-center justify-center',
     )
     // 칸은 글자 열보다 앞에 있다
     expect(html.indexOf('w-16 h-16')).toBeLessThan(html.indexOf('flex-1 min-w-0'))
@@ -310,7 +310,7 @@ describe('BriefCard — 자원 → 아이콘 (아이콘 모양으로만 구분, 
     expect(render({ resource: 'mission', regionLabel: '성수동', facts: undefined })).toContain(slotIcon(TargetIcon))
   })
 
-  it('아이콘에 색을 입히지 않는다(text-text-inverse/60 하나뿐, 제3의 컬러 없음)', () => {
+  it('아이콘에 색을 입히지 않는다(text-snow/60 하나뿐, 제3의 컬러 없음)', () => {
     for (const resource of CARD_RESOURCES) {
       const html = render({ resource })
       expect(html).not.toMatch(/text-(primary|red|green|blue|amber|yellow|orange|purple|pink)/)

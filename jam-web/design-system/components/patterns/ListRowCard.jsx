@@ -32,9 +32,9 @@ export function ListRowCard({
     display: 'flex',
     alignItems: 'center',
     gap: 'var(--spacing-16)',
-    // 20260816_012: 보더 제거 — 페이지 캔버스도 --color-surface라 구분이 사라지므로 한 단계 밝은 톤으로 대체
-    background: 'var(--color-surface-elevated)',
-    borderRadius: 'var(--radius-card)',
+    // 20260816_012: 보더 제거 — 페이지 캔버스도 --background라 구분이 사라지므로 한 단계 밝은 톤으로 대체
+    background: 'var(--surface)',
+    borderRadius: 'var(--radius-2xl)',
     padding: 'var(--spacing-16)',
     cursor: interactive ? 'pointer' : undefined,
     transition: interactive ? 'transform 100ms' : undefined,
@@ -54,9 +54,9 @@ export function ListRowCard({
           <>
             {title !== undefined && (
               <p style={{
-                fontSize: 'var(--text-body)',
-                lineHeight: 'var(--leading-body)',
-                color: 'var(--color-text)',
+                fontSize: 'var(--text-base)',
+                lineHeight: 'var(--text-base--line-height)',
+                color: 'var(--foreground)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -69,9 +69,9 @@ export function ListRowCard({
             {subtitle !== undefined && (
               typeof subtitle === 'string' ? (
                 <p style={{
-                  fontSize: 'var(--text-small)',
-                  lineHeight: 'var(--leading-small)',
-                  color: 'var(--color-text-secondary)',
+                  fontSize: 'var(--text-sm)',
+                  lineHeight: 'var(--text-sm--line-height)',
+                  color: 'var(--muted)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',

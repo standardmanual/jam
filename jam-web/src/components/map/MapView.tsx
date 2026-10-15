@@ -159,7 +159,7 @@ const BADGE_LINE_PATH =
  */
 function dropMarkerIconHtml(opts: { hasDrops: boolean; inRange: boolean; size: number }): string {
   const { hasDrops, inRange, size } = opts
-  const bg = hasDrops ? 'var(--color-primary)' : inRange ? '#888888' : '#444444'
+  const bg = hasDrops ? 'var(--accent)' : inRange ? '#888888' : '#444444'
   const opacity = inRange ? 1 : 0.5
   const icon = size * 0.6
   const path = hasDrops ? BADGE_FILL_PATH : BADGE_LINE_PATH
@@ -236,7 +236,7 @@ function badgeMarkerIconHtml(imageUrl: string | null, earned: boolean, name: str
 function clusterMarkerIconHtml(count: number): string {
   const size = (count >= 100 ? 44 : count >= 10 ? 38 : 32) * 3
   const label = count > 999 ? '999+' : String(count)
-  const gradient = `radial-gradient(circle, color-mix(in srgb, var(--color-primary) 80%, transparent) 0%, color-mix(in srgb, var(--color-primary) 50%, transparent) 100%)`
+  const gradient = `radial-gradient(circle, color-mix(in srgb, var(--accent) 80%, transparent) 0%, color-mix(in srgb, var(--accent) 50%, transparent) 100%)`
   return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${gradient};display:flex;align-items:center;justify-content:center;box-sizing:border-box;color:#ffffff;font-size:24px;font-weight:600;line-height:1;">${label}</div>`
 }
 

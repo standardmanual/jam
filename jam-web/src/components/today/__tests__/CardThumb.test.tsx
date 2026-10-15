@@ -10,12 +10,12 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import CardThumb from '../CardThumb'
 import { BookIcon, FlaskIcon, MedalIcon, TargetIcon } from '@/components/ui/icons'
 
-const BOX = 'w-16 h-16 shrink-0 rounded-[var(--radius-cards)] bg-black/[0.04] overflow-hidden flex items-center justify-center'
-const ICON_CLASS = 'w-6 h-6 text-text-inverse/60'
+const BOX = 'w-16 h-16 shrink-0 rounded-2xl bg-black/[0.04] overflow-hidden flex items-center justify-center'
+const ICON_CLASS = 'w-6 h-6 text-snow/60'
 const icon = (Icon: typeof MedalIcon) => renderToStaticMarkup(<Icon className={ICON_CLASS} />)
 
 describe('CardThumb — 64px 칸', () => {
-  it('칸은 64px 정사각이고 줄지 않으며 옅은 면(bg-black/[0.04])·모서리 --radius-cards다', () => {
+  it('칸은 64px 정사각이고 줄지 않으며 옅은 면(bg-black/[0.04])·모서리 --radius-2xl다', () => {
     const html = renderToStaticMarkup(<CardThumb view={{ resource: 'badge' }} src="https://cdn.example/b.png" />)
     expect(html.startsWith(`<div class="${BOX}">`)).toBe(true)
   })
@@ -50,7 +50,7 @@ describe('CardThumb — 64px 칸', () => {
 
   it('아이콘 색은 /60 한 단계다(/40 없음)', () => {
     const html = renderToStaticMarkup(<CardThumb view={{ resource: 'badge' }} />)
-    expect(html).toContain('text-text-inverse/60')
+    expect(html).toContain('text-snow/60')
     expect(html).not.toContain('/40')
   })
 

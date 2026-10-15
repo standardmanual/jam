@@ -14,7 +14,7 @@ import TodayCard from './TodayCard'
  *   배지 카드(제목 2줄·요약·필수 정보 1줄) 328px 폭 534.4px, 드랍 카드 503.2px, titleInImage 카드(제목·요약 없음, 필수 정보 2줄) 452px.
  *   최악 조합(긴 제목·요약·필수 정보) 288px 폭 558.4px · 328px 폭 578.4px · 398px 폭 648.4px.
  * - 캔버스는 기본 검정이다. 흰 카드는 검정 위에서만 실제 모습이 나온다.
- * - 이미지 로딩 중 모습(`--color-surface` 단색 판)은 Story로 만들기 어렵다(로컬·data 이미지는 즉시 뜬다). 칸의 클래스(`aspect-square bg-surface`)가
+ * - 이미지 로딩 중 모습(`--background` 단색 판)은 Story로 만들기 어렵다(로컬·data 이미지는 즉시 뜬다). 칸의 클래스(`aspect-square bg-background`)가
  *   이미지와 무관하게 늘 있다는 것은 `__tests__/SquareCard.test.tsx`·`CardImageSlot.test.tsx`가 보증한다.
  * - Storybook은 `design-system/styles.css`를 import하므로 전역 `*:focus-visible` 윤곽선이 서비스에 없어도 보인다. 그래서 Story에서
  *   윤곽선이 보인다는 것은 서비스 증거가 아니다 — 클래스 단언(`__tests__/CardFrame.test.tsx`)이 보증한다. 아래 `play`는 높이·가로 넘침 같은
@@ -106,10 +106,10 @@ const DROP = square({
 // ─── 배치 도우미 ───────────────────────────────────────────────────────────
 
 const STACK_STYLE: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }
-const CAPTION_STYLE: CSSProperties = { margin: '0 0 var(--spacing-4)', fontSize: 'var(--text-caption)', color: 'rgba(255,255,255,0.6)' }
+const CAPTION_STYLE: CSSProperties = { margin: '0 0 var(--spacing-4)', fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.6)' }
 const ROW_STYLE: CSSProperties = { display: 'flex', gap: 'var(--spacing-32)', flexWrap: 'wrap', alignItems: 'flex-start' }
 
-/** 고정 폭 열. 카드 사이 간격은 `TodayCardStack`의 `gap-[var(--spacing-16)]`과 같다 */
+/** 고정 폭 열. 카드 사이 간격은 `TodayCardStack`의 `gap-4`과 같다 */
 function Column({ width, children }: { width: number; children: ReactNode }) {
   return <div style={{ ...STACK_STYLE, width }}>{children}</div>
 }
@@ -230,9 +230,9 @@ export const TransparentBadge: Story = {
     for (const card of cardsOf(canvasElement)) {
       const img = imageBoxOf(card).querySelector<HTMLImageElement>('img')!
       expect(getComputedStyle(img).objectFit).toBe('contain')
-      // 이미지 칸의 바탕은 어두운 판(--color-surface)이다
+      // 이미지 칸의 바탕은 어두운 판(--background)이다
       const probe = document.createElement('span')
-      probe.style.color = 'var(--color-surface)'
+      probe.style.color = 'var(--background)'
       canvasElement.appendChild(probe)
       expect(getComputedStyle(imageBoxOf(card)).backgroundColor).toBe(getComputedStyle(probe).color)
       probe.remove()
@@ -453,7 +453,7 @@ const sendBeaconOff: NonNullable<Story['beforeEach']> = () => {
   }
 }
 
-/** 계측 정보와 `href`가 있으면 링크가 블록 요소이고 눌림(`.jam-press`)·키보드 포커스 윤곽선(2px·오프셋 2px·`--color-primary`)을 가진다. 윤곽선은 이미지 모서리에 잘리지 않는다. */
+/** 계측 정보와 `href`가 있으면 링크가 블록 요소이고 눌림(`.jam-press`)·키보드 포커스 윤곽선(2px·오프셋 2px·`--link`)을 가진다. 윤곽선은 이미지 모서리에 잘리지 않는다. */
 export const Tracked: Story = {
   name: '계측 있음 — 링크 · 눌림 · 포커스(Tab 키로 확인)',
   beforeEach: sendBeaconOff,
@@ -472,9 +472,9 @@ export const Tracked: Story = {
     const style = getComputedStyle(link)
     expect(style.outlineWidth).toBe('2px')
     expect(style.outlineOffset).toBe('2px')
-    // 윤곽선 색은 DS 토큰 --color-primary와 같다
+    // 윤곽선 색은 DS 토큰 --link와 같다
     const probe = document.createElement('span')
-    probe.style.color = 'var(--color-primary)'
+    probe.style.color = 'var(--link)'
     canvasElement.appendChild(probe)
     expect(style.outlineColor).toBe(getComputedStyle(probe).color)
     probe.remove()

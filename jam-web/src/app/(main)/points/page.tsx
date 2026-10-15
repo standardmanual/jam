@@ -72,15 +72,15 @@ export default function PointsPage() {
   }, [])
 
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       <TopNav title={d.common.back} />
 
-      <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
+      <div className="px-4 pt-0 pb-10 flex flex-col gap-6">
         {/* 잔액 카드 */}
-        <Card tone="inverse" className="text-center py-[var(--spacing-32)]">
-          <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50 mb-2">{d.points.balanceLabel}</p>
+        <Card tone="inverse" className="text-center py-8">
+          <p className="text-xs uppercase text-snow/50 mb-2">{d.points.balanceLabel}</p>
           <p
-            className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] font-bold text-[color:var(--color-primary)]"
+            className="text-5xl font-bold text-[color:var(--link)]"
             aria-label={balanceDigits === null ? undefined : t(d.points.balanceAria, { amount: balanceDigits })}
           >
             {/* 자릿수 span은 훅이 명령형으로 생성한다 — 스크린리더에는 위 aria-label로 전달 */}
@@ -92,19 +92,19 @@ export default function PointsPage() {
         </Card>
 
         {/* 내역 */}
-        <div className="flex flex-col gap-[var(--spacing-16)]">
-          <h2 className="text-[length:var(--text-caption)] uppercase text-text/40 px-1">{d.points.historyTitle}</h2>
+        <div className="flex flex-col gap-4">
+          <h2 className="text-xs uppercase text-foreground/40 px-1">{d.points.historyTitle}</h2>
 
           {loading && (
-            <div className="py-[var(--spacing-40)] text-center text-text/40 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.points.loading}</div>
+            <div className="py-10 text-center text-foreground/40 text-base">{d.points.loading}</div>
           )}
 
           {!loading && error && (
-            <Card tone="inverse" className="text-center py-[var(--spacing-32)]">
-              <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70 mb-[var(--spacing-16)]">{d.points.loadError}</p>
+            <Card tone="inverse" className="text-center py-8">
+              <p className="text-base text-snow/70 mb-4">{d.points.loadError}</p>
               <button
                 onClick={() => load(null, false)}
-                className="inline-flex items-center justify-center min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-surface text-text text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
+                className="inline-flex items-center justify-center min-h-11 px-4 rounded-full bg-background text-foreground text-base active:scale-95 transition-transform duration-100"
               >
                 {d.points.retry}
               </button>
@@ -120,7 +120,7 @@ export default function PointsPage() {
           )}
 
           {!loading && !error && items.length > 0 && (
-            <div className="flex flex-col gap-[var(--spacing-8)]">
+            <div className="flex flex-col gap-2">
               {items.map((it) => {
                 const positive = it.amount > 0
                 return (
@@ -129,18 +129,18 @@ export default function PointsPage() {
                     href={it.href ?? undefined}
                     icon={
                       <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center shrink-0">
-                        <CoinIcon className="w-5 h-5 text-text/60" />
+                        <CoinIcon className="w-5 h-5 text-foreground/60" />
                       </div>
                     }
                     title={it.title}
                     subtitle={
                       <div className="flex flex-col">
-                        {it.note && <span className="text-[length:var(--text-caption)] text-text/50 truncate">{it.note}</span>}
-                        <span className="text-[length:var(--text-caption)] text-text/40">{formatKoreanDateTime(it.created_at, { year: true, time: true })}</span>
+                        {it.note && <span className="text-xs text-foreground/50 truncate">{it.note}</span>}
+                        <span className="text-xs text-foreground/40">{formatKoreanDateTime(it.created_at, { year: true, time: true })}</span>
                       </div>
                     }
                     trailing={
-                      <span className={`text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold ${positive ? 'text-[color:var(--color-primary)]' : 'text-text/50'}`}>
+                      <span className={`text-base font-bold ${positive ? 'text-[color:var(--link)]' : 'text-foreground/50'}`}>
                         {formatAmount(it.amount)}
                       </span>
                     }
@@ -154,7 +154,7 @@ export default function PointsPage() {
             <button
               onClick={() => load(cursor, true)}
               disabled={loadingMore}
-              className="mx-auto mt-1 min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-nav-buttons)] bg-surface-elevated text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100 disabled:opacity-50"
+              className="mx-auto mt-1 min-h-11 px-6 rounded-full bg-surface text-base active:scale-95 transition-transform duration-100 disabled:opacity-50"
             >
               {loadingMore ? d.points.loadingMore : d.points.loadMore}
             </button>

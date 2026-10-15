@@ -64,7 +64,7 @@ function makeCard(overrides: Partial<TodayCardWithHref>): TodayCardWithHref {
 }
 
 /** `brief`의 64px 칸이 그리는 아이콘 마크업(`CardThumb`의 크기·색) */
-const THUMB_CLASS = 'w-6 h-6 text-text-inverse/60'
+const THUMB_CLASS = 'w-6 h-6 text-snow/60'
 const thumbIcon = (template: 'progress_nudge' | 'location_trend') =>
   renderToStaticMarkup(resourceIconOf({ resource: 'auto', template }, { className: THUMB_CLASS }))
 
@@ -108,7 +108,7 @@ describe('자동 카드 아이콘 — 지역 트렌드는 핀, 진행 알림은 
   })
 
   it('이미지가 없는 이미지 모양의 자리 표시도 같은 규칙이다(hero로 저장된 진행 알림은 지역 값이 있어도 모래시계)', () => {
-    const slotClass = 'w-8 h-8 text-text/60'
+    const slotClass = 'w-8 h-8 text-foreground/60'
     const hourglass = renderToStaticMarkup(resourceIconOf({ resource: 'auto', template: 'progress_nudge' }, { className: slotClass }))
     const pin = renderToStaticMarkup(resourceIconOf({ resource: 'auto', template: 'location_trend' }, { className: slotClass }))
     const html = renderToStaticMarkup(

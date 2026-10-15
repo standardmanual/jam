@@ -37,9 +37,9 @@ export function Select({
   ...rest
 }) {
   const borderByState = {
-    default: '1px solid var(--color-border)',
-    error: '2px solid var(--color-rarity-mystic)',
-    success: '2px solid var(--color-rarity-rare)',
+    default: '1px solid var(--border)',
+    error: '2px solid var(--rarity-mystic)',
+    success: '2px solid var(--rarity-rare)',
   };
 
   return (
@@ -56,14 +56,14 @@ export function Select({
         style={{
           width: '100%',
           height: 44,
-          borderRadius: 'var(--radius-input)',
+          borderRadius: 'var(--field-radius)',
           border: borderByState[state] ?? borderByState.default,
           padding: '0 44px 0 20px',
-          fontSize: 'var(--text-body)',
-          lineHeight: 'var(--leading-body)',
+          fontSize: 'var(--text-base)',
+          lineHeight: 'var(--text-base--line-height)',
           fontFamily: 'var(--font-family-base)',
-          color: value ? 'var(--color-text)' : 'var(--color-text-secondary)',
-          background: 'var(--color-bg-tint)',
+          color: value ? 'var(--foreground)' : 'var(--muted)',
+          background: 'var(--background-secondary)',
           boxSizing: 'border-box',
           appearance: 'none',
           WebkitAppearance: 'none',
@@ -83,7 +83,7 @@ export function Select({
       <span
         style={{
           position: 'absolute', right: 16,
-          color: disabled ? 'var(--color-text-secondary)' : 'var(--color-text)',
+          color: disabled ? 'var(--muted)' : 'var(--foreground)',
           pointerEvents: 'none',
           display: 'flex', alignItems: 'center',
         }}

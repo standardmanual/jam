@@ -54,7 +54,7 @@ export const WithLabel: Story = {
   name: 'label 연결 패턴 (htmlFor + id)',
   render: () => (
     <div style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label htmlFor="nickname-input" style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>
+      <label htmlFor="nickname-input" style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
         닉네임
       </label>
       <Input id="nickname-input" placeholder="닉네임을 입력하세요" />
@@ -66,7 +66,7 @@ export const WithLabelAndError: Story = {
   name: 'label + 오류 메시지 연결 (aria-describedby)',
   render: () => (
     <div style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label htmlFor="email-input" style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>
+      <label htmlFor="email-input" style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
         이메일
       </label>
       <Input
@@ -76,7 +76,7 @@ export const WithLabelAndError: Story = {
         aria-describedby="email-error"
         onChange={() => {}}
       />
-      <p id="email-error" role="alert" style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-rarity-mystic)' }}>
+      <p id="email-error" role="alert" style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--rarity-mystic)' }}>
         올바른 이메일 형식이 아니에요.
       </p>
     </div>
@@ -86,7 +86,7 @@ export const WithLabelAndError: Story = {
 export const InverseSurface: Story = {
   name: 'inverse surface (검색바)',
   render: () => (
-    <div style={{ padding: 20, background: 'var(--color-bg)', borderRadius: 'var(--radius-card)' }}>
+    <div style={{ padding: 20, background: 'var(--background)', borderRadius: 'var(--radius-2xl)' }}>
       <div style={{ width: 320 }}>
         <Input
           surface="inverse"
@@ -118,8 +118,8 @@ export const Interactive: Story = {
           state={state}
           aria-label="인터랙티브 입력"
         />
-        <p style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>
-          state: <strong style={{ color: state === 'error' ? 'var(--color-rarity-mystic)' : state === 'success' ? 'var(--color-rarity-rare)' : 'var(--color-text)' }}>{state}</strong>
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
+          state: <strong style={{ color: state === 'error' ? 'var(--rarity-mystic)' : state === 'success' ? 'var(--rarity-rare)' : 'var(--foreground)' }}>{state}</strong>
         </p>
       </div>
     );

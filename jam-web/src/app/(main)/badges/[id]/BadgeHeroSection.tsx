@@ -56,7 +56,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
   // 한 번 더 그리면(기존 동작) 카드 박스와 레이어 박스의 비율이 달라 같은 이미지가 서로 다른
   // 배율로 두 번 잘려 이음매가 보였다. 그래서 여기서는 배경을 그리지 않고, 배경이 있을 때는
   // 카드를 투명하게 비워 아래 레이어가 그대로 비쳐 보이게 한다.
-  // 배경이 없는 배지는 기존과 동일하게 bg-surface-elevated 카드로 남는다(회귀 방지).
+  // 배경이 없는 배지는 기존과 동일하게 bg-surface 카드로 남는다(회귀 방지).
   const themed = themedBackground ?? hasBadgeBackgroundTheme(badge)
 
   // [20260901_1944] 애니메이션 모드에서는 `themed`가 false다(전체 배경 레이어를 비우므로) —
@@ -77,15 +77,15 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
     <div className="relative z-10 px-6 pt-0 pb-[32px]">
       {/* [20260901_1944] 애니메이션 배경은 이 카드 안에만 그린다 — overflow-hidden으로 라운드 안에
           가두고, 캔버스는 절대배치 최하단(z-0)에 두어 이미지·이름은 그 위(z-10)에 그대로 남는다.
-          애니메이션이 카드 배경 자체가 되므로 bg-surface-elevated는 깔지 않는다.
+          애니메이션이 카드 배경 자체가 되므로 bg-surface는 깔지 않는다.
           [20260917_1211] 카드 전체(이미지+등급칩+이름+설명)를 1:1 비율로 묶는다 — 이전에는
           이미지 서브블록만 aspect-square였고 설명은 카드 밖에 별도 문단으로 있었다. 이미지
           200×200은 최우선으로 유지하고(flex-shrink-0), 공간이 부족하면 이미지가 아니라
           요소 사이 간격(gap/pt)부터 줄인다. */}
       <div
         className={[
-          'relative overflow-hidden w-full aspect-square rounded-[var(--radius-cards)] flex flex-col items-center p-6',
-          backgroundAnimation || themed ? 'bg-transparent' : 'bg-surface-elevated',
+          'relative overflow-hidden w-full aspect-square rounded-2xl flex flex-col items-center p-6',
+          backgroundAnimation || themed ? 'bg-transparent' : 'bg-surface',
         ].join(' ')}
         // 애니메이션 모드의 첫 페인트 폴백 — 캔버스는 클라이언트에서 컨텍스트를 얻은 뒤에야
         // 그려지고, `getContext('2d')`가 null이면 영영 비어 있다. 파라미터가 이미 서버 컴포넌트에
@@ -126,7 +126,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
                 사라진다** — 상세 화면에서 등급/레벨을 알 수 없게 된다.
                 `BadgeTrophyGridCard.tsx:119`가 같은 분기를 쓴다(티켓 20260905_0037). */}
             {badge.level != null ? <BadgeLevelChip level={badge.level} size="md" /> : <RarityBadge rarity={badge.rarity ?? undefined} size="md" />}
-            <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badge.name}</h1>
+            <h1 className="text-3xl font-bold text-foreground text-center">{badge.name}</h1>
           </div>
           {badge.description && (
             // [20260917_1211] 설명을 카드 안으로 통합. 마침표(문장 종결) 기준으로 나눠 각 문장을
@@ -136,7 +136,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
               {splitDescriptionSentences(badge.description).map((sentence, index) => (
                 <p
                   key={index}
-                  className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)]"
+                  className="text-base text-[var(--muted)] text-center"
                 >
                   {sentence}
                 </p>

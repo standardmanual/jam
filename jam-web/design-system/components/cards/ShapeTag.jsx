@@ -1,8 +1,8 @@
 import React from 'react';
 
 const SHAPES = {
-  rect:     { clipPath: 'none', borderRadius: 'var(--radius-input)' },
-  pill:     { clipPath: 'none', borderRadius: 'var(--radius-pill)' },
+  rect:     { clipPath: 'none', borderRadius: 'var(--radius-lg)' },
+  pill:     { clipPath: 'none', borderRadius: 'var(--radius-full)' },
   circle:   { clipPath: 'none', borderRadius: '50%' },
   dome:     { clipPath: 'none', borderRadius: '50% 50% 0 0' },
   triangle: { clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)', borderRadius: 0 },
@@ -10,32 +10,37 @@ const SHAPES = {
   hex:      { clipPath: 'polygon(6% 0, 94% 0, 100% 50%, 94% 100%, 6% 100%, 0% 50%)', borderRadius: 0 },
 };
 
+// accent-content 6색 순환(JAM 2.0, 티켓 20261015_2131). 옛 8색 중 7·8번째 색은 새 시스템에 없다.
 const TAG_COLORS = [
-  'var(--color-tag-1)', 'var(--color-tag-2)', 'var(--color-tag-3)', 'var(--color-tag-4)',
-  'var(--color-tag-5)', 'var(--color-tag-6)', 'var(--color-tag-7)', 'var(--color-tag-8)',
+  'var(--accent-content-lightblue)', 'var(--accent-content-green)', 'var(--accent-content-yellow)',
+  'var(--accent-content-red)', 'var(--accent-content-pink)', 'var(--accent-content-blue)',
 ];
 
 /**
  * ShapeTag — colored shape container for text labels or badge thumbnails.
  * shape: 'rect' | 'pill' | 'circle' | 'dome' | 'triangle' | 'flag' | 'hex'
- * surface: 'light' | 'dark' — text color context (matches Button/IconButton API)
+ *
+ * 글자색은 항상 --foreground다. 태그 색(accent-content 6색)이 모두 밝은 팔레트라 --snow 글자는
+ * 1.16~3.37:1로 읽히지 않는다(티켓 20261015_2131 재작업). 태그가 놓이는 면과 무관하므로
+ * `surface` prop은 받지 않는다(넘겨도 무시된다).
  *
  * v2 changes:
  *   - dark: boolean → surface: 'light' | 'dark'  (API unified with Button/IconButton)
- *   - letterSpacing: --tracking-label applied for uppercase label legibility
+ *   - JAM 2.0: 자간 없음(새 시스템 자간 0), 색은 accent-content 6색 순환
+ * v3 changes (티켓 20261015_2131 재작업):
+ *   - surface 분기 제거 — 글자색 --foreground 고정
  */
 export function ShapeTag({
   shape = 'rect',
   colorIndex = 0,
   color,
-  surface = 'dark',
   children,
   style = {},
   className = '',
 }) {
   const s = SHAPES[shape] ?? SHAPES.rect;
   const bg = color ?? TAG_COLORS[colorIndex % TAG_COLORS.length];
-  const textColor = surface === 'dark' ? 'var(--color-text)' : 'var(--color-text-inverse)';
+  const textColor = 'var(--foreground)';
 
   return (
     <div
@@ -43,9 +48,8 @@ export function ShapeTag({
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         background: bg, color: textColor,
-        fontSize: 'var(--text-caption)', fontWeight: 700,
+        fontSize: 'var(--text-xs)', fontWeight: 700,
         textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.15,
-        letterSpacing: 'var(--tracking-label)',
         padding: shape === 'triangle'
           ? '18px 10px 6px'
           : (shape === 'flag' || shape === 'hex') ? '10px 20px' : '10px 16px',

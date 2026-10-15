@@ -44,7 +44,7 @@ export const LabelHelperParity: Story = {
   render: () => (
     <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
       {(['common', 'rare', 'epic', 'mystic'] as const).map((r) => (
-        <li key={r} data-testid={`label-${r}`} style={{ fontFamily: 'var(--font-family-base)', fontSize: 'var(--text-small)' }}>
+        <li key={r} data-testid={`label-${r}`} style={{ fontFamily: 'var(--font-family-base)', fontSize: 'var(--text-sm)' }}>
           {r} → {getRarityLabel(r)}
         </li>
       ))}
@@ -64,14 +64,14 @@ export const OnCard: Story = {
   render: () => (
     <div style={{
       padding: 'var(--layout-card-padding)',
-      background: 'var(--color-surface)',
-      borderRadius: 'var(--radius-card)',
-      border: '1px solid var(--color-border)',
+      background: 'var(--background)',
+      borderRadius: 'var(--radius-2xl)',
+      border: '1px solid var(--border)',
       display: 'flex', flexDirection: 'column', gap: 12, width: 240,
     }}>
       <RarityBadge rarity="mystic" />
-      <p style={{ margin: 0, fontSize: 'var(--text-h4)', fontWeight: 700, color: 'var(--color-text)' }}>Epic 배지</p>
-      <p style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>100km 완주 달성</p>
+      <p style={{ margin: 0, fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--foreground)' }}>Epic 배지</p>
+      <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>100km 완주 달성</p>
     </div>
   ),
 };
@@ -88,7 +88,7 @@ export const OnCard: Story = {
 export const NoRarity: Story = {
   name: '등급 없음(null) — 칩도 라벨도 만들지 않는다',
   render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--font-family-base)', fontSize: 'var(--text-small)', color: 'var(--color-text)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--font-family-base)', fontSize: 'var(--text-sm)', color: 'var(--foreground)' }}>
       <div data-testid="chip-null" style={{ minHeight: 20 }}>
         <RarityBadge rarity={null} />
       </div>
@@ -119,7 +119,7 @@ export const NoRarity: Story = {
 export const UnknownRarity: Story = {
   name: '미지 값 — Common으로 폴백하지 않는다',
   render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--font-family-base)', fontSize: 'var(--text-small)', color: 'var(--color-text)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--font-family-base)', fontSize: 'var(--text-sm)', color: 'var(--foreground)' }}>
       <div data-testid="chip-unknown" style={{ minHeight: 20 }}>
         <RarityBadge rarity={'legendary' as never} />
       </div>
@@ -135,7 +135,7 @@ export const UnknownRarity: Story = {
 
 /**
  * 20260906_2140 — `size` 프롭. **`sm`(기본)이 기존 값 그대로**라 `size`를 넘기지 않는
- * 서비스 9개 호출부는 렌더가 1px도 달라지지 않는다. `md`(11px 라벨 · 5/10 패딩)는 배지
+ * 서비스 9개 호출부는 렌더가 1px도 달라지지 않는다. `md`(12px 라벨 · 5/10 패딩, JAM 2.0에서 11px → 12px)는 배지
  * 트리 전용이다 — 8px 라벨이 판독 불가라는 실측에서 나왔다(등급이 그 화면의 핵심 정보다).
  */
 export const Sizes: Story = {
@@ -161,8 +161,8 @@ export const Sizes: Story = {
     expect(getComputedStyle(sm).fontSize).toBe('8px');
     expect(getComputedStyle(sm).paddingTop).toBe('4px');
     expect(getComputedStyle(sm).paddingLeft).toBe('9px');
-    // md는 --text-micro(11px) · 5/10 패딩.
-    expect(getComputedStyle(md).fontSize).toBe('11px');
+    // md는 --text-xs(12px) · 5/10 패딩.
+    expect(getComputedStyle(md).fontSize).toBe('12px');
     expect(getComputedStyle(md).paddingTop).toBe('5px');
     expect(getComputedStyle(md).paddingLeft).toBe('10px');
   },

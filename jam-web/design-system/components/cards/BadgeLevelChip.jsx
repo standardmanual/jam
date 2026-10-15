@@ -9,8 +9,8 @@ import React from 'react';
  * 합치면 "등급 칩인데 등급이 없는 상태"라는 모순이 API에 남는다. `RarityBadge`는 서비스
  * 9곳이 쓰므로 비파괴로만 두고, 레벨은 여기서 따로 그린다.
  *
- * 색: `--color-secondary` 채움 + 흰 텍스트 = **5.86:1** (계열 카드 표면 위 실측, WCAG AA
- * 통과). 이번 리뉴얼에서 새로 만든 색은 없다 — 기존 토큰만 쓴다.
+ * 색: 중립 칩 — `--default-soft` 채움 + `--foreground` 글자(JAM 2.0, 티켓 20261015_2131 승인).
+ * 새로 만든 색은 없다 — 새 시스템 토큰만 쓴다.
  *
  * 폭: 계열 카드 1행 그리드가 `[52px 칩][1fr 이름][auto 카운터]`라 칩 폭이 고정이어야
  * 이름 시작 x가 모든 계열에서 같아진다. 그래서 `width` 기본값 52px + 가운데 정렬이고,
@@ -22,7 +22,7 @@ import React from 'react';
  */
 const SIZES = {
   sm: { fontSize: '8px', padding: '4px 0' },
-  md: { fontSize: 'var(--text-micro)', padding: '5px 0' },
+  md: { fontSize: 'var(--text-xs)', padding: '5px 0' },
 };
 
 export function BadgeLevelChip({ level, size = 'sm', width = 52, className = '', style = {} }) {
@@ -33,10 +33,10 @@ export function BadgeLevelChip({ level, size = 'sm', width = 52, className = '',
       className={className}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        width, padding: s.padding, borderRadius: 'var(--radius-pill)',
+        width, padding: s.padding, borderRadius: 'var(--radius-full)',
         fontSize: s.fontSize, lineHeight: 1, fontWeight: 700,
         letterSpacing: '0.3px', fontVariantNumeric: 'tabular-nums',
-        color: 'var(--color-text-on-primary)', background: 'var(--color-secondary)',
+        color: 'var(--foreground)', background: 'var(--default-soft)',
         ...style,
       }}
     >

@@ -39,19 +39,19 @@ export default function VocPagination({ page, totalPages, onChange }: VocPaginat
   return (
     <nav
       aria-label={d.voc.paginationAriaLabel}
-      className="flex items-center justify-center gap-[var(--spacing-8)] mt-[var(--spacing-24)]"
+      className="flex items-center justify-center gap-2 mt-6"
     >
       <button
         type="button"
         onClick={() => onChange(Math.max(1, page - 1))}
         disabled={page === 1}
-        className="min-h-11 px-3 rounded-[var(--radius-tags)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text disabled:opacity-30 disabled:cursor-not-allowed"
+        className="min-h-11 px-3 rounded-full text-base text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
       >
         {d.voc.paginationPrev}
       </button>
       {pageList.map((p, i) =>
         p === 'ellipsis' ? (
-          <span key={`e${i}`} className="px-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/40">
+          <span key={`e${i}`} className="px-1 text-base text-foreground/40">
             …
           </span>
         ) : (
@@ -60,8 +60,8 @@ export default function VocPagination({ page, totalPages, onChange }: VocPaginat
             type="button"
             onClick={() => onChange(p)}
             aria-current={p === page ? 'page' : undefined}
-            className={`min-w-11 min-h-11 px-2 rounded-[var(--radius-tags)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] ${
-              p === page ? 'bg-surface-elevated text-text font-bold' : 'text-text/60'
+            className={`min-w-11 min-h-11 px-2 rounded-full text-base ${
+              p === page ? 'bg-surface text-foreground font-bold' : 'text-foreground/60'
             }`}
           >
             {p}
@@ -72,7 +72,7 @@ export default function VocPagination({ page, totalPages, onChange }: VocPaginat
         type="button"
         onClick={() => onChange(Math.min(totalPages, page + 1))}
         disabled={page === totalPages}
-        className="min-h-11 px-3 rounded-[var(--radius-tags)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text disabled:opacity-30 disabled:cursor-not-allowed"
+        className="min-h-11 px-3 rounded-full text-base text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
       >
         {d.voc.paginationNext}
       </button>

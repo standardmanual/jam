@@ -48,8 +48,8 @@ describe('resourceIconOf', () => {
   })
 
   it('props(className)를 아이콘에 그대로 넘긴다 — 크기·색은 호출부 몫이다', () => {
-    const html = renderToStaticMarkup(resourceIconOf({ resource: 'mission' }, { className: 'w-8 h-8 text-text/60' }))
-    expect(html).toContain('class="w-8 h-8 text-text/60"')
+    const html = renderToStaticMarkup(resourceIconOf({ resource: 'mission' }, { className: 'w-8 h-8 text-foreground/60' }))
+    expect(html).toContain('class="w-8 h-8 text-foreground/60"')
     expect(html).toContain('aria-hidden="true"')
   })
 

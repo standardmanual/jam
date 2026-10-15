@@ -68,15 +68,15 @@ export default function FollowUserList({
             ) : undefined
           }
         >
-          <Link href={`/${u.username}`} className="flex items-center gap-[var(--spacing-16)] flex-1 min-w-0 active:opacity-70 transition-opacity">
+          <Link href={`/${u.username}`} className="flex items-center gap-4 flex-1 min-w-0 active:opacity-70 transition-opacity">
             {u.avatar_url ? (
               <Image src={u.avatar_url} alt={getDisplayName(u)} width={40} height={40} className="w-10 h-10 rounded-full object-cover shrink-0" />
             ) : (
               <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center shrink-0">
-                <UserIcon className="w-4 h-4 text-text/50" />
+                <UserIcon className="w-4 h-4 text-foreground/50" />
               </div>
             )}
-            <span className="text-[length:var(--text-body)] leading-[var(--leading-body)] truncate">{getDisplayName(u)}</span>
+            <span className="text-base truncate">{getDisplayName(u)}</span>
           </Link>
         </ListRowCard>
       ))}

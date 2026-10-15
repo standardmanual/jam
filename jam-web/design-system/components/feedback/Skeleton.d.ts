@@ -5,7 +5,7 @@ export interface SkeletonProps {
   width?: string | number;
   /** Any CSS length value. Defaults to 16. */
   height?: string | number;
-  /** Defaults to var(--radius-sm). Pass '50%' for avatar, var(--radius-pill) for text lines. */
+  /** Defaults to var(--radius-lg). Pass '50%' for avatar, var(--radius-full) for text lines. */
   borderRadius?: string;
   className?: string;
   style?: CSSProperties;

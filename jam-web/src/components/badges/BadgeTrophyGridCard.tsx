@@ -28,13 +28,13 @@ export interface BadgeTrophyGridCardProps {
 }
 
 const BASE =
-  'flex flex-col items-center h-full rounded-[var(--radius-card)] p-[var(--spacing-12)] overflow-hidden active:scale-95 transition-transform duration-100'
+  'flex flex-col items-center h-full rounded-2xl p-3 overflow-hidden active:scale-95 transition-transform duration-100'
 
-/** BadgeStageRail.jsx 카드 배경과 동일한 레시피 — 페이지 캔버스(bg-surface)와 같은 색이면
+/** BadgeStageRail.jsx 카드 배경과 동일한 레시피 — 페이지 캔버스(bg-background)와 같은 색이면
  * 카드 경계가 안 보인다(인터랙션 리뷰 지적, 티켓 20260903_2329). */
 const CARD_STYLE = {
   background:
-    'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--color-surface-elevated)',
+    'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--surface)',
   boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)',
 }
 
@@ -61,7 +61,7 @@ const CARD_STYLE = {
  */
 export default function BadgeTrophyGridCard({ name, imageUrl, rarity, level = null, href, earned, progress = null }: BadgeTrophyGridCardProps) {
   const thumbnailCls = [
-    'w-[90px] h-[90px] rounded-[var(--radius-card)] overflow-hidden',
+    'w-[90px] h-[90px] rounded-2xl overflow-hidden',
     'flex items-center justify-center',
     !earned && 'grayscale opacity-40',
   ]
@@ -70,10 +70,10 @@ export default function BadgeTrophyGridCard({ name, imageUrl, rarity, level = nu
 
   // §06 색 시스템: 다 채운 것(획득)=라임, 채우는 중=앰버, §08 H(진행 미지원)=중립.
   const barColor = progress?.muted
-    ? 'var(--color-border)'
+    ? 'var(--border)'
     : progress && progress.fraction >= 1
-      ? 'var(--status-done-solid)'
-      : 'var(--status-short-solid)'
+      ? 'var(--progress-done)'
+      : 'var(--progress-short)'
 
   return (
     <Link href={href} className={BASE} style={CARD_STYLE}>
@@ -84,20 +84,20 @@ export default function BadgeTrophyGridCard({ name, imageUrl, rarity, level = nu
           width={90}
           height={90}
           className="w-full h-full object-contain p-1"
-          fallback={<MedalIcon className="w-10 h-10 text-text/30" />}
+          fallback={<MedalIcon className="w-10 h-10 text-foreground/30" />}
         />
       </div>
-      <p className="text-[13px] font-bold text-text text-center w-full leading-tight pt-[var(--spacing-8)] [overflow-wrap:anywhere]">
+      <p className="text-[13px] font-bold text-foreground text-center w-full leading-tight pt-2 [overflow-wrap:anywhere]">
         {name}
       </p>
       {/* mt-auto로 카드 하단에 고정 — 이름이 1~2줄을 오가도 같은 행의 칩 위치가
        * 흔들리지 않는다(인터랙션 리뷰 지적, 티켓 20260903_2329). BASE의 h-full +
        * 그리드의 기본 align-items:stretch로 카드가 행 높이만큼 늘어나는 것에 의존한다. */}
-      <div className="mt-auto pt-[var(--spacing-4)] w-full flex flex-col items-center gap-[var(--spacing-4)]">
+      <div className="mt-auto pt-1 w-full flex flex-col items-center gap-1">
         {progress && (
           <>
             <p
-              className="text-[11px] leading-none tabular-nums [overflow-wrap:anywhere] text-center text-text-secondary"
+              className="text-[11px] leading-none tabular-nums [overflow-wrap:anywhere] text-center text-muted"
               style={{ fontStyle: progress.muted ? 'italic' : 'normal' }}
             >
               {progress.text}
@@ -106,7 +106,7 @@ export default function BadgeTrophyGridCard({ name, imageUrl, rarity, level = nu
               percent={progress.fraction * 100}
               height={6}
               color={barColor}
-              trackColor="var(--status-idle-track)"
+              trackColor="var(--progress-track)"
               className="w-full"
             />
           </>

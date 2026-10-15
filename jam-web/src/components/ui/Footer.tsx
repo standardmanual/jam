@@ -33,11 +33,11 @@ export default function Footer() {
     // 20260818_002/003)가 뷰포트 전체를 덮을 때 전역 Footer가 그 아래로 가려지지 않도록 승격.
     //
     // 20260909_2319 Figma 반영 초안은 배경을 #2f2f2f로 하드코딩했으나, 실기기 확인 후
-    // 페이지 배경(부모 <main>의 bg-surface)과 다른 톤으로 튀어 보인다는 피드백으로
+    // 페이지 배경(부모 <main>의 bg-background)과 다른 톤으로 튀어 보인다는 피드백으로
     // bg-transparent로 되돌렸다 — 이러면 Footer가 항상 부모 배경(화면마다 다를 수 있는
     // "원색 풀블리드 배경")을 그대로 물려받아 이질감이 없다(원래 방식으로 복귀).
-    <footer className="relative z-10 flex flex-col items-start justify-center gap-[var(--spacing-24)] py-[var(--spacing-24)] px-[var(--spacing-16)] bg-transparent">
-      <span className="text-[15px] leading-[28px] font-normal text-text whitespace-pre-line">{d.common.footerSlogan}</span>
+    <footer className="relative z-10 flex flex-col items-start justify-center gap-6 py-6 px-4 bg-transparent">
+      <span className="text-[15px] leading-[28px] font-normal text-foreground whitespace-pre-line">{d.common.footerSlogan}</span>
       {/* 20260901_2125: 슬로건 아래 → 저작권 줄 위. 캡션 톤을 그대로 따르고
           밑줄만 붙여 링크임을 알린다(과한 강조 금지).
           globals.css가 -webkit-tap-highlight-color를 전역으로 껐으므로 active 피드백을
@@ -55,25 +55,25 @@ export default function Footer() {
       <div className="flex flex-col items-start gap-0">
         <Link
           href="/philosophy"
-          className="text-[15px] leading-[28px] font-normal text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+          className="text-[15px] leading-[28px] font-normal text-foreground underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerPhilosophy}
         </Link>
         <Link
           href="/privacy"
-          className="text-[15px] leading-[28px] font-normal text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+          className="text-[15px] leading-[28px] font-normal text-foreground underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerPrivacy}
         </Link>
         <Link
           href="/location-terms"
-          className="text-[15px] leading-[28px] font-normal text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+          className="text-[15px] leading-[28px] font-normal text-foreground underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerLocationTerms}
         </Link>
       </div>
       {/* 20260909_2319: 로고 이미지 제거, 저작권 텍스트만 남긴다(Figma 사양). */}
-      <span className="text-[15px] leading-[28px] font-normal text-text">{d.common.footerCopyright}</span>
+      <span className="text-[15px] leading-[28px] font-normal text-foreground">{d.common.footerCopyright}</span>
     </footer>
   )
 }

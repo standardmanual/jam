@@ -37,7 +37,7 @@ export default function RootError({
     error.message?.includes('SUPABASE')
 
   return (
-    <div className="min-h-dvh bg-surface text-text flex items-center justify-center">
+    <div className="min-h-dvh bg-background text-foreground flex items-center justify-center">
       <div className="w-full max-w-md px-6">
         <EmptyState
           icon={<WarningIcon />}

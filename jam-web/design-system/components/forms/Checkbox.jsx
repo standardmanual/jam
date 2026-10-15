@@ -31,9 +31,9 @@ export function Checkbox({
   ...rest
 }) {
   const borderByState = {
-    default: checked ? 'none' : '1.5px solid var(--color-border)',
-    error: '2px solid var(--color-rarity-mystic)',
-    success: checked ? 'none' : '2px solid var(--color-rarity-rare)',
+    default: checked ? 'none' : '1.5px solid var(--border)',
+    error: '2px solid var(--rarity-mystic)',
+    success: checked ? 'none' : '2px solid var(--rarity-rare)',
   };
 
   return (
@@ -73,11 +73,11 @@ export function Checkbox({
           style={{
             position: 'absolute',
             inset: 0,
-            borderRadius: 'var(--radius-input)',
+            borderRadius: 'var(--radius-lg)',
             border: borderByState[state] ?? borderByState.default,
-            background: checked ? 'var(--color-primary)' : 'var(--color-bg-tint)',
+            background: checked ? 'var(--accent)' : 'var(--background-secondary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--color-text-on-primary)',
+            color: 'var(--accent-foreground)',
             transition: 'background var(--duration-quick) var(--ease-smooth-out)',
             boxSizing: 'border-box',
           }}
@@ -86,7 +86,7 @@ export function Checkbox({
         </span>
       </span>
       {label && (
-        <span style={{ fontSize: 'var(--text-body)', color: 'var(--color-text)' }}>
+        <span style={{ fontSize: 'var(--text-base)', color: 'var(--foreground)' }}>
           {label}
         </span>
       )}

@@ -10,7 +10,7 @@ function SpacingRow({ token, desc, semantic }: { token: string; desc?: string; s
   const value = useTokenValue(token);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0', borderBottom: '1px solid var(--color-border)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
       {/* 시각적 바 */}
       <div style={{ width: 200, flexShrink: 0 }}>
         <div
@@ -18,7 +18,7 @@ function SpacingRow({ token, desc, semantic }: { token: string; desc?: string; s
             height: 20,
             width: `var(${token})`,
             maxWidth: '100%',
-            background: semantic ? 'var(--color-secondary)' : 'var(--color-primary)',
+            background: semantic ? 'var(--accent-content-blue)' : 'var(--accent)',
             borderRadius: 2,
             opacity: 0.85,
           }}
@@ -26,8 +26,8 @@ function SpacingRow({ token, desc, semantic }: { token: string; desc?: string; s
       </div>
       {/* 토큰 정보 */}
       <div>
-        <code style={{ fontSize: 12, color: 'var(--color-primary)', display: 'block' }}>{token}</code>
-        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+        <code style={{ fontSize: 12, color: 'var(--link)', display: 'block' }}>{token}</code>
+        <span style={{ fontSize: 11, color: 'var(--muted)' }}>
           {value || '—'}{desc ? ` — ${desc}` : ''}
         </span>
       </div>
@@ -38,7 +38,7 @@ function SpacingRow({ token, desc, semantic }: { token: string; desc?: string; s
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 40 }}>
-      <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 12px' }}>
+      <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 12px' }}>
         {title}
       </h2>
       {children}
@@ -48,9 +48,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function SpacingPage() {
   return (
-    <div style={{ padding: 32, background: 'var(--color-bg)', minHeight: '100vh', color: 'var(--color-text)', fontFamily: 'var(--font-family-base)' }}>
+    <div style={{ padding: 32, background: 'var(--background)', minHeight: '100vh', color: 'var(--foreground)', fontFamily: 'var(--font-family-base)' }}>
       <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 8 }}>Spacing Tokens</h1>
-      <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 40 }}>
+      <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 40 }}>
         4px 기반 스케일. 레이아웃 semantic 토큰은 스케일 변수를 참조해 전역 조정이 가능하다.
       </p>
 
@@ -72,15 +72,15 @@ function SpacingPage() {
       </Section>
 
       <Section title="Special">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0', borderBottom: '1px solid var(--color-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
           <div style={{ width: 200, flexShrink: 0 }}>
-            <div style={{ width: 44, height: 44, border: '2px dashed var(--color-primary)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: 10, color: 'var(--color-primary)' }}>44px</span>
+            <div style={{ width: 44, height: 44, border: '2px dashed var(--link)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 10, color: 'var(--link)' }}>44px</span>
             </div>
           </div>
           <div>
-            <code style={{ fontSize: 12, color: 'var(--color-primary)', display: 'block' }}>--touch-target-min</code>
-            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+            <code style={{ fontSize: 12, color: 'var(--link)', display: 'block' }}>--touch-target-min</code>
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>
               {useTokenValue('--touch-target-min')} — iOS HIG 최소 터치 영역
             </span>
           </div>
@@ -99,14 +99,14 @@ function SpacingPage() {
             <div
               key={token}
               style={{
-                border: '1px dashed var(--color-border)',
-                borderRadius: 'var(--radius-card)',
+                border: '1px dashed var(--border)',
+                borderRadius: 'var(--radius-2xl)',
                 padding: `var(${token})`,
               }}
             >
-              <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                 {label}<br />
-                <code style={{ color: 'var(--color-primary)' }}>{token}</code><br />
+                <code style={{ color: 'var(--link)' }}>{token}</code><br />
                 = {useTokenValue(token)}
               </span>
             </div>
@@ -121,7 +121,6 @@ const meta: Meta = {
   title: 'MODULAR/Foundations/Spacing',
   parameters: {
     layout: 'fullscreen',
-    backgrounds: { default: 'dark' },
     docs: { canvas: { sourceState: 'none' } },
   },
 };

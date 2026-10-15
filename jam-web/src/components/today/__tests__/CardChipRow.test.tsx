@@ -26,18 +26,18 @@ afterEach(() => {
 describe('CardChipRow — 줄', () => {
   it('한 줄 가로 배치이고 줄바꿈하지 않는다(flex-wrap 없음)', () => {
     const html = render()
-    expect(html).toMatch(/^<div class="flex items-center gap-\[var\(--spacing-8\)\]">/)
+    expect(html).toMatch(/^<div class="flex items-center gap-2">/)
     expect(html).not.toContain('flex-wrap')
   })
 
   it('className은 줄 클래스 뒤에 붙는다(간격은 호출부 몫)', () => {
-    expect(render({}, 'mb-[var(--spacing-8)]')).toMatch(
-      /^<div class="flex items-center gap-\[var\(--spacing-8\)\] mb-\[var\(--spacing-8\)\]">/,
+    expect(render({}, 'mb-2')).toMatch(
+      /^<div class="flex items-center gap-2 mb-2">/,
     )
   })
 
   it('className을 안 주면 클래스 끝에 공백이 남지 않는다', () => {
-    expect(render()).not.toContain('gap-[var(--spacing-8)] "')
+    expect(render()).not.toContain('gap-2 "')
   })
 
   it('왼쪽부터 라벨 → 지역 핀 → 희귀도 → 게재일 순서다', () => {
@@ -62,8 +62,8 @@ describe('CardChipRow — 줄', () => {
   })
 
   it('그릴 것이 하나도 없으면 줄 자체를 그리지 않는다 — 호출부가 준 아래 마진만 남지 않는다(처음 보는 템플릿 값의 카드, 티켓 20261006_1217)', () => {
-    expect(render({ label: undefined }, 'mb-[var(--spacing-8)]')).toBe('')
-    expect(render({ label: '' }, 'mb-[var(--spacing-8)]')).toBe('')
+    expect(render({ label: undefined }, 'mb-2')).toBe('')
+    expect(render({ label: '' }, 'mb-2')).toBe('')
     // 드랍은 지역 핀을 그리지 않으므로 라벨도 없으면 비어 있다
     expect(render({ resource: 'drop', label: undefined, regionLabel: '한강공원' })).toBe('')
   })
@@ -79,7 +79,7 @@ describe('CardChipRow — 지역 핀', () => {
   it('핀은 줄어드는 유일한 항목이다 — min-w-0이고 글자만 말줄임, 12px 아이콘은 shrink-0', () => {
     const html = render({ regionLabel: '성수동 서울숲 근처' })
     expect(html).toContain(
-      '<span class="inline-flex items-center gap-1 min-w-0 text-[length:var(--text-caption)] text-text-inverse/60">',
+      '<span class="inline-flex items-center gap-1 min-w-0 text-xs text-snow/60">',
     )
     expect(html).toContain('<span class="truncate">성수동 서울숲 근처</span>')
     expect(html).toContain(renderToStaticMarkup(<PinIcon className="w-3 h-3 shrink-0" />))
@@ -105,19 +105,19 @@ describe('CardChipRow — 지역 핀', () => {
 describe('CardChipRow — 희귀도 칩', () => {
   it.each([['rare', 'Rare'], ['epic', 'Epic'], ['mystic', 'Mystic']])('%s는 %s 칩이고 줄어들지 않는다', (rarity, text) => {
     expect(render({ resource: 'badge', rarity })).toMatch(
-      new RegExp(`<span class="shrink-0" style="[^"]*font-size:var\\(--text-micro\\)[^"]*">${text}</span>`),
+      new RegExp(`<span class="shrink-0" style="[^"]*font-size:var\\(--text-xs\\)[^"]*">${text}</span>`),
     )
   })
 
   it.each([['common'], [null], [undefined]])('Common·등급 없음(%s)은 칩이 없다', (rarity) => {
     const html = render({ resource: 'badge', rarity })
     expect(html).not.toContain('Common')
-    expect(html).not.toContain('--text-micro')
+    expect(html).not.toContain('--rarity-')
   })
 
   it('알 수 없는 값도 칩을 그리지 않는다', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
-    expect(render({ resource: 'badge', rarity: 'legendary' })).not.toContain('--text-micro')
+    expect(render({ resource: 'badge', rarity: 'legendary' })).not.toContain('--rarity-')
   })
 })
 
@@ -125,7 +125,7 @@ describe('CardChipRow — 게재일', () => {
   it('「10월 5일」(KST, 연도 없음)로 줄 끝에 그린다 — ml-auto·shrink-0·줄바꿈 없음·caption·/60', () => {
     const html = render({ resource: 'article', label: '기사', publishedAt: '2026-10-05T03:00:00.000Z' })
     expect(html).toContain(
-      '<time dateTime="2026-10-05T03:00:00.000Z" class="ml-auto shrink-0 whitespace-nowrap text-[length:var(--text-caption)] text-text-inverse/60">10월 5일</time>',
+      '<time dateTime="2026-10-05T03:00:00.000Z" class="ml-auto shrink-0 whitespace-nowrap text-xs text-snow/60">10월 5일</time>',
     )
     expect(html).not.toContain('2026년')
   })
@@ -159,8 +159,8 @@ describe('CardChipRow — 옅은 글자', () => {
       rarity: 'rare',
       publishedAt: '2026-10-05T03:00:00.000Z',
     })
-    expect(html).toContain('text-text-inverse/60')
-    for (const level of ['/30', '/40', '/50', '/70']) expect(html).not.toContain(`text-text-inverse${level}`)
+    expect(html).toContain('text-snow/60')
+    for (const level of ['/30', '/40', '/50', '/70']) expect(html).not.toContain(`text-snow${level}`)
   })
 })
 
@@ -176,34 +176,34 @@ describe('CardChipRow — 막 위(on="scrim", 티켓 20261001_2013 b4)', () => {
   it('on을 주지 않거나 white면 변경 전과 글자 단위로 같다(라벨 칩 기본 색조, 옅은 글자 /60)', () => {
     const base = render(FULL)
     expect(render(FULL, undefined, 'white')).toBe(base)
-    expect(base).toContain('background:var(--color-surface);color:var(--color-text)')
+    expect(base).toContain('background:var(--background);color:var(--foreground)')
     expect(base).not.toContain('text-white')
   })
 
   it('라벨 칩이 surface-inverse 색조(흰 알약·어두운 글자)다 — 기본 색조(짙은 알약)는 검정 막 위에서 묻힌다', () => {
     const html = render(FULL, undefined, 'scrim')
-    expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--color-surface-inverse\);color:var\(--color-text-inverse\)[^"]*">배지 소개<\/span>/)
-    expect(html).not.toContain('background:var(--color-surface);')
+    expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--background-inverse\);color:var\(--snow\)[^"]*">배지 소개<\/span>/)
+    expect(html).not.toContain('background:var(--background);')
   })
 
   it('지역 핀·게재일 글자는 text-white이고 옅은 단계(/60)가 없다', () => {
     const html = render(FULL, undefined, 'scrim')
     expect(html).toContain(
-      '<span class="inline-flex items-center gap-1 min-w-0 text-[length:var(--text-caption)] text-white">',
+      '<span class="inline-flex items-center gap-1 min-w-0 text-xs text-white">',
     )
     expect(html).toContain(
-      'class="ml-auto shrink-0 whitespace-nowrap text-[length:var(--text-caption)] text-white">10월 5일</time>',
+      'class="ml-auto shrink-0 whitespace-nowrap text-xs text-white">10월 5일</time>',
     )
-    expect(html).not.toContain('text-text-inverse')
+    expect(html).not.toContain('text-snow')
     expect(html).not.toContain('/60')
   })
 
   it('줄바꿈 금지·핀만 줄어듦·희귀도 칩은 바탕과 상관없이 같다', () => {
     const html = render(FULL, undefined, 'scrim')
-    expect(html).toMatch(/^<div class="flex items-center gap-\[var\(--spacing-8\)\]">/)
+    expect(html).toMatch(/^<div class="flex items-center gap-2">/)
     expect(html).not.toContain('flex-wrap')
     expect(html).toContain('<span class="truncate">성수동</span>')
-    expect(html).toMatch(/<span class="shrink-0" style="[^"]*font-size:var\(--text-micro\)[^"]*">Epic<\/span>/)
+    expect(html).toMatch(/<span class="shrink-0" style="[^"]*font-size:var\(--text-xs\)[^"]*">Epic<\/span>/)
     expect(html).toContain(renderToStaticMarkup(<PinIcon className="w-3 h-3 shrink-0" />))
   })
 

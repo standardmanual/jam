@@ -80,7 +80,7 @@ function tabLabel(label: string, count: number) {
   return (
     <span className="inline-flex items-center gap-1.5">
       {label}
-      {count > 0 && <span className="text-[length:var(--text-body-sm)] tabular-nums font-bold text-[color:var(--color-primary)]">{count}</span>}
+      {count > 0 && <span className="text-base tabular-nums font-bold text-[color:var(--link)]">{count}</span>}
     </span>
   )
 }
@@ -188,23 +188,23 @@ export default function BadgesClient({
   })
 
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
       <TopNav logo />
 
       {/* 헤더 — 인벤토리/미션과 동일한 크기의 타이틀. 우측 끝에 배지 트리 진입 버튼(요구사항 9) */}
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] flex justify-between items-center gap-[var(--spacing-12)]">
-        <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.badges.title}</h1>
+      <div className="px-4 pt-6 flex justify-between items-center gap-3">
+        <h1 className="text-5xl">{d.badges.title}</h1>
         <Link
           href="/badges/tree"
-          className="inline-flex items-center justify-center shrink-0 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text active:scale-95 transition-transform duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+          className="inline-flex items-center justify-center shrink-0 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground active:scale-95 transition-transform duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]"
         >
           {d.badges.treeButton}
         </Link>
       </div>
 
       {/* 탭 헤더 — Tabs sliding (16-tabs-sliding.md) */}
-      <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
+      <div className="px-4 py-4">
         <SlidingTabs
           items={tabs}
           value={activeTab}
@@ -214,17 +214,17 @@ export default function BadgesClient({
         />
       </div>
 
-      <div className="px-[var(--spacing-16)] pb-[var(--spacing-32)]">
+      <div className="px-4 pb-8">
         {/* 액티비티 배지 탭 */}
         {activeTab === 'activity' && (
           badges.length > 0 ? (
             <>
               {/* 필터 드롭다운 */}
-              <div className="flex gap-2 mb-[var(--spacing-16)]">
+              <div className="flex gap-2 mb-4">
                 <select
                   value={activityFilter}
                   onChange={(e) => setActivityFilter(e.target.value as ActivityFilterValue | 'all')}
-                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
+                  className="flex-1 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground"
                 >
                   <option value="all">{d.badges.filterActivityAll}</option>
                   {ACTIVITY_TYPE_ORDER.map((tp) => (
@@ -234,7 +234,7 @@ export default function BadgesClient({
                 <select
                   value={rarityFilter}
                   onChange={(e) => setRarityFilter(e.target.value as BadgeRarity | 'all')}
-                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
+                  className="flex-1 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground"
                 >
                   <option value="all">{d.badges.filterRarityAll}</option>
                   {RARITY_ORDER.map((r) => (
@@ -244,7 +244,7 @@ export default function BadgesClient({
               </div>
 
               {filteredActivityBadges.length > 0 ? (
-                <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+                <div className="grid grid-cols-3 gap-2">
                   {filteredActivityBadges.map(({ badge, earned }) => (
                     <BadgeGridCard
                       key={badge.id}
@@ -271,11 +271,11 @@ export default function BadgesClient({
           earnedCheckinBadges.length > 0 ? (
             <>
               {/* 필터 드롭다운 — 액티비티 탭과 동일한 패턴 */}
-              <div className="flex gap-2 mb-[var(--spacing-16)]">
+              <div className="flex gap-2 mb-4">
                 <select
                   value={checkinCategoryFilter}
                   onChange={(e) => setCheckinCategoryFilter(e.target.value)}
-                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
+                  className="flex-1 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground"
                 >
                   <option value="all">{d.badges.filterCheckinCategoryAll}</option>
                   {checkinCategoryOptions.map(([slug, label]) => (
@@ -285,7 +285,7 @@ export default function BadgesClient({
                 <select
                   value={checkinSortOrder}
                   onChange={(e) => setCheckinSortOrder(e.target.value as CheckinSortOrder)}
-                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
+                  className="flex-1 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground"
                 >
                   <option value="latest">{d.badges.sortCheckinLatest}</option>
                   <option value="name">{d.badges.sortCheckinName}</option>
@@ -293,7 +293,7 @@ export default function BadgesClient({
               </div>
 
               {filteredCheckinBadges.length > 0 ? (
-                <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+                <div className="grid grid-cols-3 gap-2">
                   {filteredCheckinBadges.map(({ badge }) => (
                     <BadgeGridCard
                       key={badge.id}
@@ -317,7 +317,7 @@ export default function BadgesClient({
         {/* 컬렉션 탭 */}
         {activeTab === 'collection' && (
           itemBooks.length > 0 ? (
-            <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
+            <div className="grid grid-cols-2 gap-4">
               {itemBooks.map((book) => {
                 const progress = progressMap.get(book.id) ?? { owned: 0, total: 1, completed: false, rarity: 'common' as BadgeRarity }
                 return (

@@ -17,5 +17,5 @@ export interface BadgeLevelChipProps {
   style?: CSSProperties;
 }
 
-/** 무한레벨형 배지의 «Lv.N» 칩. `--color-secondary` 채움 + 흰 텍스트(5.86:1). */
+/** 무한레벨형 배지의 «Lv.N» 칩. 중립 칩 — `--default-soft` 채움 + `--foreground` 글자. */
 export function BadgeLevelChip(props: BadgeLevelChipProps): JSX.Element | null;

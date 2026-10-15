@@ -57,23 +57,23 @@ interface Props {
 
 // ────────────────────────────────────────────────────────────────
 // 포디엄 설정값 (1위, 2위, 3위) — 20260825 리뉴얼: 앱 전역의 유일한 강조색인
-// --color-primary(레드) 하나로 통일. 1위만 강조, 2·3위는 중립톤으로 낮춰
+// --link·--accent(초록 계열) 하나로 통일. 1위만 강조, 2·3위는 중립톤으로 낮춰
 // "강조색은 하나만 쓴다"는 다른 화면들의 원칙을 그대로 따른다.
-// 폰트 크기는 모듈러 타이포 토큰 스케일(--text-h3:28 / --text-h4:24 /
-// --text-caption:12 / --text-micro:11)에 맞춘 값이다.
+// 폰트 크기는 모듈러 타이포 토큰 스케일(--text-3xl:28 / --text-2xl:24 /
+// --text-xs:12 / --text-xs:11)에 맞춘 값이다.
 // ────────────────────────────────────────────────────────────────
 const PODIUM_CONFIG = [
   {
     rank: 1,
     barHeight: 130,
-    // --color-primary(#e8461f)를 상단, 그 40% 알파 톤을 하단에 둔 세로 그라디언트.
-    // 다른 화면의 rgba(232,70,31,…) 틴트 패턴(StatusChip 등)과 동일한 베이스 컬러.
-    barGradient: 'linear-gradient(180deg, var(--color-primary), rgba(232,70,31,0.45))',
+    // --accent(#19b551)를 상단, 같은 색 45% 알파 톤(color-mix)을 하단에 둔 세로 그라디언트.
+    // 아래 avatarBg와 2·3위의 rgba(232,70,31,…)는 옛 빨강 리터럴이며 하위 티켓 2134에서 바꾼다.
+    barGradient: 'linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 45%, transparent))',
     avatarSize: 60,
     avatarBg: 'rgba(232,70,31,0.15)',
-    avatarBorder: 'var(--color-primary)',
-    barNumFontSize: 'var(--text-h3)', // 28px — 가장 가까운 토큰
-    usernameFontSize: 'var(--text-caption)', // 12px
+    avatarBorder: 'var(--link)',
+    barNumFontSize: 'var(--text-3xl)', // 28px — 가장 가까운 토큰
+    usernameFontSize: 'var(--text-xs)', // 12px
     usernameBold: true,
   },
   {
@@ -81,10 +81,10 @@ const PODIUM_CONFIG = [
     barHeight: 90,
     barGradient: 'linear-gradient(180deg, rgba(232,70,31,0.55), rgba(232,70,31,0.25))',
     avatarSize: 48,
-    avatarBg: 'var(--color-border)',
+    avatarBg: 'var(--border)',
     avatarBorder: null,
-    barNumFontSize: 'var(--text-h4)', // 24px
-    usernameFontSize: 'var(--text-micro)', // 11px
+    barNumFontSize: 'var(--text-2xl)', // 24px
+    usernameFontSize: 'var(--text-xs)', // 11px
     usernameBold: false,
   },
   {
@@ -92,10 +92,10 @@ const PODIUM_CONFIG = [
     barHeight: 60,
     barGradient: 'linear-gradient(180deg, rgba(232,70,31,0.4), rgba(232,70,31,0.18))',
     avatarSize: 48,
-    avatarBg: 'var(--color-border)',
+    avatarBg: 'var(--border)',
     avatarBorder: null,
-    barNumFontSize: 'var(--text-h4)',
-    usernameFontSize: 'var(--text-micro)',
+    barNumFontSize: 'var(--text-2xl)',
+    usernameFontSize: 'var(--text-xs)',
     usernameBold: false,
   },
 ] as const
@@ -193,7 +193,7 @@ function PodiumColumn({
             <span style={{ fontSize: cfg.barNumFontSize, fontWeight: 'bold', color: '#fff' }}>
               {cfg.rank}
             </span>
-            <span style={{ fontSize: 'var(--text-caption)', fontWeight: 'bold', color: '#fff' }}>
+            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: '#fff' }}>
               {formatMissionProgress(entry.progressValue, missionType)}
             </span>
           </>
@@ -223,14 +223,14 @@ function MyRankCard({
   return (
     <div style={{
       backgroundColor: 'rgba(232,70,31,0.12)',
-      borderRadius: 'var(--radius-card)',
+      borderRadius: 'var(--radius-2xl)',
       padding: 16,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{
-          fontSize: 'var(--text-h4)',
+          fontSize: 'var(--text-2xl)',
           fontWeight: 'bold',
-          color: 'var(--color-primary)',
+          color: 'var(--link)',
           width: 20,
           textAlign: 'center',
           flexShrink: 0,
@@ -253,30 +253,30 @@ function MyRankCard({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={me.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <UserIcon className="w-[18px] h-[18px]" style={{ color: 'var(--color-primary)' }} />
+            <UserIcon className="w-[18px] h-[18px]" style={{ color: 'var(--link)' }} />
           )}
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            fontSize: 'var(--text-small)',
+            fontSize: 'var(--text-sm)',
             fontWeight: 'bold',
-            color: 'var(--color-text)',
+            color: 'var(--foreground)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}>
             {me.displayName}
           </div>
-          <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-secondary)', marginTop: 1 }}>
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', marginTop: 1 }}>
             {formatMissionProgress(me.progressValue, missionType)} {d.missions.achieved}
           </div>
         </div>
 
         <span style={{
-          fontSize: 'var(--text-h4)',
+          fontSize: 'var(--text-2xl)',
           fontWeight: 'bold',
-          color: 'var(--color-primary)',
+          color: 'var(--link)',
           flexShrink: 0,
         }}>
           {formatMissionProgress(me.progressValue, missionType)}
@@ -288,7 +288,7 @@ function MyRankCard({
           percent={fillRatio * 100}
           labelType="none"
           height={6}
-          color="var(--color-primary)"
+          color="var(--accent)"
           trackColor="rgba(232,70,31,0.2)"
           radius="3px"
         />
@@ -308,23 +308,23 @@ function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: bool
       href={e.username ? `/${e.username}` : undefined}
       // 프로그래스바가 없어 한 줄짜리 행이라 기본 p-16(위아래 32px 간격)은 헐렁해 보인다 —
       // 위아래 패딩만 좁혀 목록 간격을 줄인다.
-      className="!py-[var(--spacing-8)]"
+      className="!py-2"
       icon={<SimpleAvatar url={e.avatarUrl} />}
       trailing={
         e.achieved ? (
-          <span className="text-[length:var(--text-micro)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-white/10 text-text">
+          <span className="text-xs leading-none px-2 py-1 rounded-full bg-white/10 text-foreground">
             {d.missions.achieved}
           </span>
         ) : (
-          <span className="text-[length:var(--text-micro)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-border text-text-secondary">
+          <span className="text-xs leading-none px-2 py-1 rounded-full bg-border text-muted">
             {d.missions.notAchieved}
           </span>
         )
       }
     >
       <p
-        className="text-[length:var(--text-small)] leading-[var(--leading-body-sm)] truncate"
-        style={{ color: highlight ? 'var(--color-primary)' : 'var(--color-text)', fontWeight: highlight ? 'bold' : 'normal' }}
+        className="text-sm leading-[var(--text-base--line-height)] truncate"
+        style={{ color: highlight ? 'var(--link)' : 'var(--foreground)', fontWeight: highlight ? 'bold' : 'normal' }}
       >
         {e.displayName}{highlight ? d.missions.statusMeSuffix : ''}
       </p>
@@ -339,7 +339,7 @@ function SimpleAvatar({ url }: { url: string | null }) {
     return <img src={url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
   }
   return (
-    <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--color-border)' }}>
+    <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--border)' }}>
       <UserIcon className="w-[18px] h-[18px] text-[#666]" />
     </div>
   )
@@ -382,7 +382,7 @@ export default function MissionStatusClient({
     data?.type !== 'individual' && data?.me?.userId === userId
 
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       <TopNav title={d.missions.backToDetail} />
 
       {/* 로딩 — 다른 화면(배지 획득 연출·공유 카드 등)과 동일한 눈모양 로더.
@@ -394,7 +394,7 @@ export default function MissionStatusClient({
         </div>
       )}
       {error && (
-        <p className="px-4 pt-0 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">
+        <p className="px-4 pt-0 text-base text-foreground/60">
           {error}
         </p>
       )}
@@ -416,11 +416,11 @@ export default function MissionStatusClient({
         const meOutsideList = me !== null && !entries.some(e => e.userId === me.userId)
 
         return (
-          <div className="flex flex-col gap-[var(--spacing-16)] px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)]">
-            {/* TOP 3 포디엄 — InfoCard(bg-surface-elevated, radius-cards, p-6)로 다른 화면과 동일하게 카드화.
+          <div className="flex flex-col gap-4 px-4 pt-0 pb-8">
+            {/* TOP 3 포디엄 — InfoCard(bg-surface, radius-cards, p-6)로 다른 화면과 동일하게 카드화.
                 3명 미만이면 빈 슬롯 "—" 처리 */}
             {entries.length > 0 && (
-              <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
+              <div className="bg-surface rounded-2xl p-6">
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
                   {top3.map(({ cfg, entry }) => (
                     <PodiumColumn key={cfg.rank} cfg={cfg} entry={entry} missionType={missionType} />
@@ -431,10 +431,10 @@ export default function MissionStatusClient({
 
             {/* 전체 순위 목록 (4위~) — InfoCard + 섹션 라벨(다른 화면의 SectionLabel과 동일 톤) */}
             {rest.length > 0 && (
-              <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
+              <div className="bg-surface rounded-2xl p-6">
                 <div className="flex items-baseline justify-between mb-2">
-                  <p className="m-0 text-[15px] font-bold text-text">{d.missions.statusAllRanks}</p>
-                  <span className="text-[length:var(--text-caption)] text-text-secondary">
+                  <p className="m-0 text-[15px] font-bold text-foreground">{d.missions.statusAllRanks}</p>
+                  <span className="text-xs text-muted">
                     {t(d.missions.statusParticipants, { count: data.totalParticipants })}
                   </span>
                 </div>
@@ -475,15 +475,15 @@ export default function MissionStatusClient({
         )
       })()}
 
-      {/* ── 달성형 타입 — 랭킹형과 동일하게 InfoCard(bg-surface-elevated / radius-cards / p-6)로
+      {/* ── 달성형 타입 — 랭킹형과 동일하게 InfoCard(bg-surface / radius-cards / p-6)로
            섹션을 감싸고, 섹션 라벨 옆에 참가자 수를 병기한다 ── */}
       {data?.type === 'achievement' && (
-        <div className="flex flex-col gap-[var(--spacing-16)] px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)]">
+        <div className="flex flex-col gap-4 px-4 pt-0 pb-8">
           {data.entries.length > 0 && (
-            <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
+            <div className="bg-surface rounded-2xl p-6">
               <div className="flex items-baseline justify-between mb-2">
-                <p className="m-0 text-[15px] font-bold text-text">{d.missions.statusAchievementLabel}</p>
-                <span className="text-[length:var(--text-caption)] text-text-secondary">
+                <p className="m-0 text-[15px] font-bold text-foreground">{d.missions.statusAchievementLabel}</p>
+                <span className="text-xs text-muted">
                   {t(d.missions.statusParticipants, { count: data.totalParticipants })}
                 </span>
               </div>
@@ -493,7 +493,7 @@ export default function MissionStatusClient({
                 ))}
                 {data.me && !data.entries.some(e => e.userId === data.me!.userId) && (
                   <>
-                    <p className="text-[length:var(--text-micro)] text-text-secondary text-center my-1">{d.missions.statusMeAchievement}</p>
+                    <p className="text-xs text-muted text-center my-1">{d.missions.statusMeAchievement}</p>
                     <AchievementRow e={data.me} highlight />
                   </>
                 )}
@@ -513,19 +513,19 @@ export default function MissionStatusClient({
 
       {/* ── 개인형 타입 — 동일한 InfoCard 섹션 어휘. 참가자 수가 없어 라벨만 노출 ── */}
       {data?.type === 'individual' && (
-        <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)]">
-          <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
-            <p className="m-0 mb-[var(--spacing-16)] text-[15px] font-bold text-text">{d.missions.statusIndividualLabel}</p>
+        <div className="px-4 pt-0 pb-8">
+          <div className="bg-surface rounded-2xl p-6">
+            <p className="m-0 mb-4 text-[15px] font-bold text-foreground">{d.missions.statusIndividualLabel}</p>
             <div className="flex items-center justify-between">
-              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-secondary">
+              <span className="text-base text-muted">
                 {d.missions.myProgressTitle}
               </span>
               {data.me.achieved ? (
-                <span className="text-[14px] font-bold px-3 py-1 rounded-[var(--radius-pill)] bg-white/10 text-text shrink-0">
+                <span className="text-[14px] font-bold px-3 py-1 rounded-full bg-white/10 text-foreground shrink-0">
                   {d.missions.achieved}
                 </span>
               ) : (
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text shrink-0">
+                <span className="text-base text-foreground shrink-0">
                   {formatMissionProgress(data.me.progressValue, missionType)}
                 </span>
               )}

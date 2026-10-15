@@ -45,7 +45,7 @@ export const WithBadgeFrame: Story = {
     open: true,
     message: '새로운 배지를 획득했어요!\n전설의 러너',
     iconSlot: (
-      <BadgeFrame shape="circle" width={96} height={96} color="var(--color-primary)">
+      <BadgeFrame shape="circle" width={96} height={96} color="var(--accent)">
         <StarIcon />
       </BadgeFrame>
     ),
@@ -58,7 +58,7 @@ export const WithMysticBadge: Story = {
     open: true,
     message: 'Mystic 등급 배지를 획득했어요!\n100km 완주',
     iconSlot: (
-      <BadgeFrame shape="scallop" width={96} height={96} color="var(--color-rarity-mystic)">
+      <BadgeFrame shape="scallop" width={96} height={96} color="var(--rarity-mystic)">
         <StarIcon />
       </BadgeFrame>
     ),

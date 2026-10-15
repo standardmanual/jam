@@ -63,25 +63,25 @@ export default function RecipeRewardRow({
 
   const icon =
     hasBadges && primary ? (
-      <div className="relative w-10 h-10 rounded-[var(--radius-pill)] bg-surface flex items-center justify-center overflow-hidden">
+      <div className="relative w-10 h-10 rounded-full bg-background flex items-center justify-center overflow-hidden">
         <SafeImage
           src={primary.image_url}
           alt={primary.name}
           width={40}
           height={40}
           className="object-contain w-full h-full"
-          fallback={<PackageIcon className="w-5 h-5 text-text/40" />}
+          fallback={<PackageIcon className="w-5 h-5 text-foreground/40" />}
         />
       </div>
     ) : (
-      <div className="w-10 h-10 rounded-[var(--radius-pill)] bg-surface flex items-center justify-center">
-        <CoinIcon className="w-5 h-5 text-text/60" />
+      <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center">
+        <CoinIcon className="w-5 h-5 text-foreground/60" />
       </div>
     )
 
   const subtitle =
     hasBadges && primary ? (
-      <div className="flex items-center gap-[var(--spacing-4)] min-w-0">
+      <div className="flex items-center gap-1 min-w-0">
         <RarityBadge rarity={primary.rarity} />
         <span className="truncate">
           {primary.name}
@@ -91,18 +91,18 @@ export default function RecipeRewardRow({
     ) : undefined
 
   const trailing = hasPoints ? (
-    <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text">
+    <span className="text-base text-foreground">
       {points.toLocaleString()}
     </span>
   ) : undefined
 
   return (
     <ListRowCard icon={icon} trailing={trailing} onClick={onClick} className={className}>
-      <p className="flex items-center gap-[var(--spacing-4)] min-w-0">
-        <span className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text truncate">
+      <p className="flex items-center gap-1 min-w-0">
+        <span className="text-base text-foreground truncate">
           {title}
         </span>
-        <span className="shrink-0 w-5 h-5 flex items-center justify-center text-[length:var(--text-caption)] leading-none text-[var(--color-text-secondary)] bg-surface rounded-[var(--radius-pill)]">
+        <span className="shrink-0 w-5 h-5 flex items-center justify-center text-xs leading-none text-[var(--muted)] bg-background rounded-full">
           {slotCount}
         </span>
       </p>
@@ -110,7 +110,7 @@ export default function RecipeRewardRow({
       {releaseAt && (
         // 말줄임(truncate)을 쓰지 않는다 — 날짜가 정보라서다. 폭이 모자라면 두 조각 중 날짜 조각이
         // 통째로 다음 줄로 내려간다(조각 안에서는 끊기지 않는다).
-        <p className="mt-[var(--spacing-4)] flex flex-wrap gap-x-[var(--spacing-4)] text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[color:var(--color-warning)]">
+        <p className="mt-1 flex flex-wrap gap-x-1 text-xs text-[color:var(--warning)]">
           <span className="whitespace-nowrap">{d.combine.releaseScheduled} ·</span>
           <span className="whitespace-nowrap">{formatKoreanDateTime(releaseAt, { time: true })}</span>
         </p>

@@ -84,14 +84,14 @@ export function BadgeStatusSection({
 
   const titleContent = (
     <>
-      <span style={{ fontSize: 'var(--text-small)', fontWeight: 700, color: 'var(--color-text)' }}>
+      <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--foreground)' }}>
         {title}
       </span>
       {count != null && (
         <span
           style={{
-            fontSize: 'var(--text-caption)', fontWeight: 600, lineHeight: 1,
-            color: 'var(--color-text-secondary)', fontVariantNumeric: 'tabular-nums',
+            fontSize: 'var(--text-xs)', fontWeight: 600, lineHeight: 1,
+            color: 'var(--muted)', fontVariantNumeric: 'tabular-nums',
           }}
         >
           {count}
@@ -100,7 +100,7 @@ export function BadgeStatusSection({
       {/* 스페이서는 항상 둔다 — note가 있든 없든 chevron·note가 오른쪽 끝에 붙는다 */}
       <span style={{ flex: 1 }} />
       {note && (
-        <span style={{ fontSize: 'var(--text-caption)', lineHeight: 1, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 'var(--text-xs)', lineHeight: 1, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
           {note}
         </span>
       )}
@@ -111,7 +111,7 @@ export function BadgeStatusSection({
     children
   ) : (
     emptyText && (
-      <p style={{ margin: 0, padding: 'var(--spacing-12) 0', fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)' }}>
+      <p style={{ margin: 0, padding: 'var(--spacing-12) 0', fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
         {emptyText}
       </p>
     )
@@ -149,7 +149,7 @@ export function BadgeStatusSection({
         {titleContent}
         <span
           className="ds-status-section-chevron"
-          style={{ display: 'flex', color: 'var(--color-text-secondary)', transform: isOpen ? 'rotate(180deg)' : 'none' }}
+          style={{ display: 'flex', color: 'var(--muted)', transform: isOpen ? 'rotate(180deg)' : 'none' }}
         >
           <ChevronDownGlyph size={20} />
         </span>

@@ -32,7 +32,7 @@ function hexToRgb(hex: string) {
   }
 }
 
-/** 흰 텍스트(`--color-text` = #ffffff)와 주어진 면색의 명도대비 */
+/** 흰 텍스트(`--foreground` = #ffffff)와 주어진 면색의 명도대비 */
 function contrastWithWhite(rgb: { r: number; g: number; b: number }): number {
   return 1.05 / (relativeLuminance(rgb) + 0.05)
 }

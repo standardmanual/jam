@@ -19,7 +19,7 @@ export const AllIcons: Story = {
 export const SingleIcon: Story = {
   name: '단일 아이콘 예시',
   render: () => (
-    <div style={{ display: 'flex', gap: 24, color: 'var(--color-text)' }}>
+    <div style={{ display: 'flex', gap: 24, color: 'var(--foreground)' }}>
       <MedalIcon width={32} height={32} />
       <LockIcon width={32} height={32} />
     </div>
@@ -30,9 +30,9 @@ export const ColorInheritance: Story = {
   name: '색상 상속 (currentColor)',
   render: () => (
     <div style={{ display: 'flex', gap: 24 }}>
-      <span style={{ color: 'var(--color-primary)' }}><MedalIcon width={28} height={28} /></span>
-      <span style={{ color: 'var(--color-text-secondary)' }}><MedalIcon width={28} height={28} /></span>
-      <span style={{ color: 'var(--color-rarity-epic)' }}><MedalIcon width={28} height={28} /></span>
+      <span style={{ color: 'var(--link)' }}><MedalIcon width={28} height={28} /></span>
+      <span style={{ color: 'var(--muted)' }}><MedalIcon width={28} height={28} /></span>
+      <span style={{ color: 'var(--rarity-epic)' }}><MedalIcon width={28} height={28} /></span>
     </div>
   ),
 };

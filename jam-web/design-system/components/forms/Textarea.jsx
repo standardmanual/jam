@@ -20,9 +20,9 @@ export function Textarea({
   ...rest
 }) {
   const borderByState = {
-    default: '1px solid var(--color-border)',
-    error: '2px solid var(--color-rarity-mystic)',
-    success: '2px solid var(--color-rarity-rare)',
+    default: '1px solid var(--border)',
+    error: '2px solid var(--rarity-mystic)',
+    success: '2px solid var(--rarity-rare)',
   };
 
   return (
@@ -40,14 +40,14 @@ export function Textarea({
       style={{
         width: '100%',
         minHeight: 88,
-        borderRadius: 'var(--radius-input)',
+        borderRadius: 'var(--field-radius)',
         border: borderByState[state] ?? borderByState.default,
         padding: '12px 20px',
-        fontSize: 'var(--text-body)',
-        lineHeight: 'var(--leading-body)',
+        fontSize: 'var(--text-base)',
+        lineHeight: 'var(--text-base--line-height)',
         fontFamily: 'var(--font-family-base)',
-        color: 'var(--color-text)',
-        background: 'var(--color-bg-tint)',
+        color: 'var(--foreground)',
+        background: 'var(--background-secondary)',
         boxSizing: 'border-box',
         resize: 'vertical',
         opacity: disabled ? 0.4 : 1,

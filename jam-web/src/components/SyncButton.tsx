@@ -110,7 +110,7 @@ export default function SyncButton({
         variant={appearance === 'card' ? 'primary' : 'outline'}
         surface="sub"
         size="xs"
-        style={appearance === 'card' ? undefined : { backgroundColor: 'var(--color-primary)', color: 'var(--color-base-white)' }}
+        style={appearance === 'card' ? undefined : { backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
         onClick={handleSync}
         disabled={loading}
         loading={showLoading}

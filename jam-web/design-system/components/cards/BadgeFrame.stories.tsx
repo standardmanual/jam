@@ -66,7 +66,7 @@ export const AllFrames: Story = {
           <BadgeFrame shape={shape} width={80} height={80}>
             <StarIcon />
           </BadgeFrame>
-          <div style={{ fontSize: 10, color: 'var(--color-text-secondary)', marginTop: 6, maxWidth: 80, wordBreak: 'break-word' }}>
+          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 6, maxWidth: 80, wordBreak: 'break-word' }}>
             {shape}
           </div>
         </div>
@@ -80,16 +80,16 @@ export const RarityColors: Story = {
   render: () => (
     <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
       {[
-        { color: 'var(--color-rarity-common)', label: 'Common' },
-        { color: 'var(--color-rarity-rare)', label: 'Rare' },
-        { color: 'var(--color-rarity-epic)', label: 'Epic' },
-        { color: 'var(--color-rarity-mystic)', label: 'Mystic' },
+        { color: 'var(--rarity-common)', label: 'Common' },
+        { color: 'var(--rarity-rare)', label: 'Rare' },
+        { color: 'var(--rarity-epic)', label: 'Epic' },
+        { color: 'var(--rarity-mystic)', label: 'Mystic' },
       ].map(({ color, label }) => (
         <div key={label} style={{ textAlign: 'center' }}>
           <BadgeFrame shape="circle" width={72} height={72} color={color}>
             <StarIcon />
           </BadgeFrame>
-          <div style={{ fontSize: 10, color: 'var(--color-text-secondary)', marginTop: 6 }}>{label}</div>
+          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 6 }}>{label}</div>
         </div>
       ))}
     </div>

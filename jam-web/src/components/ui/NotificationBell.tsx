@@ -48,21 +48,20 @@ export default function NotificationBell() {
       // DS TopNav는 헤더 바깥 gap:8, 우측 영역 안쪽도 gap:8인데 44px 터치박스 안의
       // 36px 서클이 양옆 4px 여백을 만들어, 좌측은 8+4=12px인데 우측은 4+8+4=16px이 된다.
       // 안쪽 gap을 4px 상쇄해 균일하게 맞춘다(DS 수정 없이 서비스 쪽에서 해결).
-      className="w-11 h-11 -mr-1 rounded-[var(--radius-pill)] flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
+      className="w-11 h-11 -mr-1 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
     >
       {/* 프로필 아바타와 동일한 형태 — 44×44 터치영역 안에 36px 서클, 그 안에 16px 아이콘.
           .t-badge의 기준 박스는 서클 자신이다(44px 터치영역을 기준으로 잡으면 점이
           모서리로 밀려나 종에서 떨어져 보인다). */}
-      {/* 배경은 공용 --color-surface-elevated(#1f1f1f)보다 한 단계 밝은
-          --color-base-grey-700(#2a2a2a, --color-border와 동일 값)을 쓴다 — 종 버튼만
-          더 눈에 띄게 하려는 요청이라, 다른 곳에서도 쓰는 surface-elevated 토큰 자체를
+      {/* 배경은 공용 --surface보다 한 단계 도드라지는 --border를 쓴다 — 종 버튼만
+          더 눈에 띄게 하려는 요청이라, 다른 곳에서도 쓰는 surface 토큰 자체를
           바꾸지 않고 이 버튼 범위로 좁혔다. */}
-      <span className="relative w-9 h-9 rounded-[var(--radius-pill)] bg-[var(--color-base-grey-700)] text-text flex items-center justify-center">
+      <span className="relative w-9 h-9 rounded-full bg-border text-foreground flex items-center justify-center">
         <BellIcon className="w-4 h-4" />
         <span className="t-badge jam-bell-dot" data-open={hasUnreadNotifications} aria-hidden="true">
           <span
-            className="t-badge-dot w-2 h-2 rounded-[var(--radius-pill)]"
-            style={{ background: 'var(--color-notification-dot)' }}
+            className="t-badge-dot w-2 h-2 rounded-full"
+            style={{ background: 'var(--danger)' }}
           />
         </span>
       </span>

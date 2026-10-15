@@ -74,7 +74,7 @@ export function getBadgeBackgroundStyle(badge: BackgroundThemeSource): CSSProper
 /**
  * 배경 테마(배경 이미지 또는 배경색)가 지정된 배지인지 판정한다. — [20260819_011]
  * 배경이 있으면 상세화면의 TopNav·Hero 카드는 고정 배경 레이어를 가리지 않도록 투명해지고,
- * 없으면 기존 그대로(--color-surface / bg-surface-elevated) 유지된다.
+ * 없으면 기존 그대로(--background / bg-surface) 유지된다.
  *
  * [20260819_012] 영상 배경(background_video_url)도 배경 테마로 친다. 저장 시 poster용
  * background_image_url이 항상 함께 채워지므로 실무상 판정 결과가 달라지지는 않지만, 방어적으로
@@ -83,7 +83,7 @@ export function getBadgeBackgroundStyle(badge: BackgroundThemeSource): CSSProper
 export function hasBadgeBackgroundTheme(badge: BackgroundThemeSource): boolean {
   // [20260901_1944] 이 판정의 의미는 "고정 배경 레이어에 무언가 그려지는가"다. 애니메이션 모드는
   // 그 레이어를 비우고(getBadgeBackgroundStyle 참조) 이미지 카드 안에만 그리므로, TopNav·본문은
-  // 배경이 없을 때와 동일하게(--color-surface / PAGE_BG) 남아야 한다 → false.
+  // 배경이 없을 때와 동일하게(--background / PAGE_BG) 남아야 한다 → false.
   if (parseBlobAnimation(badge.background_animation)) return false
   return Boolean(badge.background_image_url || badge.background_video_url || badge.background_color)
 }

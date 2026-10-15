@@ -40,7 +40,7 @@ import { CheckGlyph } from '../icons/BadgeStatusGlyphs.jsx';
  * 카드 껍데기를 벗고 1px 구분선 + 소제목만 두른 구획이 되어, 호출부가
  * `BadgeStageRail`의 `secondarySection`으로 **레일 카드 안에** 넣는다.
  *
- * 축 바는 8→10px, 채움은 `--status-progress-sweep`(`ProgressBar fillMode="track-gradient"`)이다
+ * 축 바는 8→10px, 채움은 `--progress-sweep`(`ProgressBar fillMode="track-gradient"`)이다
  * — 같은 화면 안에서 진행 채움이 여러 문법으로 갈라지지 않게 한다.
  *
  * 체크 글리프는 `icons/BadgeStatusGlyphs.jsx`(단일 소스)에서 가져온다.
@@ -49,12 +49,12 @@ import { CheckGlyph } from '../icons/BadgeStatusGlyphs.jsx';
 const THUMBNAIL_SIZE = 52;
 
 function AxisRow({ label, rangeText, fraction, met }) {
-  const color = met ? 'var(--status-progress-done)' : 'var(--status-progress-active)';
+  const color = met ? 'var(--progress-done)' : 'var(--foreground)';
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 'var(--spacing-8)', alignItems: 'center' }}>
       <span
         style={{
-          fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)', flex: 'none',
+          fontSize: 'var(--text-xs)', color: 'var(--muted)', flex: 'none',
           // break-word: 지금 라벨(한글 2~4자)엔 영향 없지만, 라틴 문자 섞인 라벨이 나중에
           // 추가돼도 단어 경계를 먼저 시도해 anywhere보다 방어적이다(인터랙션 리뷰 지적,
           // 티켓 20260904_1058).
@@ -66,14 +66,14 @@ function AxisRow({ label, rangeText, fraction, met }) {
       <ProgressBar
         percent={fraction * 100}
         fillMode="track-gradient"
-        trackColor="var(--status-idle-track)"
+        trackColor="var(--progress-track)"
         height={10}
-        radius="var(--radius-xs)"
+        radius="var(--radius-sm)"
       />
       <span
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 4, flex: 'none',
-          fontSize: 'var(--text-caption)', fontWeight: 600, color,
+          fontSize: 'var(--text-xs)', fontWeight: 600, color,
           fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
         }}
       >
@@ -108,14 +108,14 @@ export function DualAxisGauge({
         // 카드가 아니라 «구획»이다 — 배경·그림자를 갖지 않고 1px 구분선으로만 갈린다.
         marginTop: 'var(--spacing-16)',
         paddingTop: 'var(--spacing-16)',
-        borderTop: '1px solid var(--color-border-light)',
+        borderTop: '1px solid var(--field-border)',
         ...style,
       }}
     >
       <p
         style={{
-          margin: '0 0 var(--spacing-12)', fontSize: 'var(--text-micro)', fontWeight: 700,
-          letterSpacing: '0.3px', color: 'var(--status-progress-idle)',
+          margin: '0 0 var(--spacing-12)', fontSize: 'var(--text-xs)', fontWeight: 700,
+          letterSpacing: '0.3px', color: 'var(--muted)',
         }}
       >
         {title}
@@ -125,13 +125,13 @@ export function DualAxisGauge({
         <span
           style={{
             width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE, flex: 'none',
-            borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
+            borderRadius: 'var(--radius-lg)', background: 'var(--background)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
             // 레일의 StopThumbnail(44px)이 미획득 눈금에 항상 그리는 중성 얇은 링과 같은
             // 문법 — 이 컴포넌트의 64px 사본만 프레임 없이 떠 있으면 같은 배지가 화면에서
             // 두 가지로 보인다(인터랙션 리뷰 지적, 티켓 20260904_1058).
-            boxShadow: 'inset 0 0 0 1px var(--color-border-light)',
-            color: 'var(--color-text)',
+            boxShadow: 'inset 0 0 0 1px var(--field-border)',
+            color: 'var(--foreground)',
           }}
         >
           {imageUrl ? (
@@ -147,7 +147,7 @@ export function DualAxisGauge({
               }}
             />
           ) : (
-            <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
+            <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-sm)', background: 'var(--background-inverse)', opacity: 0.2 }} />
           )}
         </span>
 
@@ -163,11 +163,11 @@ export function DualAxisGauge({
         </div>
       </div>
 
-      <p style={{ margin: 'var(--spacing-12) 0 0', fontSize: 'var(--text-caption)', lineHeight: 1.4, color: 'var(--color-text-secondary)' }}>
+      <p style={{ margin: 'var(--spacing-12) 0 0', fontSize: 'var(--text-xs)', lineHeight: 1.4, color: 'var(--muted)' }}>
         {ruleText}
       </p>
       {bottleneckNote && (
-        <p style={{ margin: 'var(--spacing-4) 0 0', fontSize: 'var(--text-caption)', lineHeight: 1.4, color: 'var(--status-progress-done)' }}>
+        <p style={{ margin: 'var(--spacing-4) 0 0', fontSize: 'var(--text-xs)', lineHeight: 1.4, color: 'var(--progress-done)' }}>
           {bottleneckNote}
         </p>
       )}

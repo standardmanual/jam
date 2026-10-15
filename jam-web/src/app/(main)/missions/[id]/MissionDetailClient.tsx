@@ -69,7 +69,7 @@ function timeLeft(endsAt: string | null): string {
 /* ── 섹션 레이블 — 배지 상세 '획득 조건'과 동일한 토큰 ── */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[15px] font-bold text-text">
+    <p className="text-[15px] font-bold text-foreground">
       {children}
     </p>
   )
@@ -78,7 +78,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 /* ── 다크 인포 카드 (20260816_012: 보더 제거, 페이지 캔버스보다 밝은 엘리베이션 배경으로 구분) ── */
 function InfoCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-surface-elevated rounded-[var(--radius-cards)] p-6 flex flex-col gap-4 ${className}`}>
+    <div className={`bg-surface rounded-2xl p-6 flex flex-col gap-4 ${className}`}>
       {children}
     </div>
   )
@@ -97,10 +97,10 @@ function ConditionRow({
 }) {
   const muted = tone === 'muted'
   return (
-    <div className={`flex items-start gap-2 text-[14px] leading-[1.43] ${muted ? 'text-text-secondary' : 'text-text'}`}>
+    <div className={`flex items-start gap-2 text-[14px] leading-[1.43] ${muted ? 'text-muted' : 'text-foreground'}`}>
       <span
         aria-hidden="true"
-        className={`text-base leading-[1.2] flex-shrink-0 mt-px ${muted ? 'opacity-50' : 'text-[var(--color-primary)]'}`}
+        className={`text-base leading-[1.2] flex-shrink-0 mt-px ${muted ? 'opacity-50' : 'text-[var(--link)]'}`}
       >
         •
       </span>
@@ -115,8 +115,8 @@ function StatusChip({ isCompleted, participating, locked }: { isCompleted: boole
   // 가서야 상태를 알게 된다. 목록 잠금 카드와 같은 자물쇠 글리프를 첫 화면에 노출한다.
   if (locked) {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-pill)] text-[11px] font-bold leading-none"
-        style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--color-text-secondary)' }}>
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold leading-none"
+        style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--muted)' }}>
         {/* 12px 렌더라 기본 strokeWidth 1.5(=24px 전제)로는 실효 0.75px로 뭉개진다 — 호출부 보정 */}
         <LockIcon className="w-3 h-3 shrink-0" strokeWidth={2.2} />
         {d.missions.tagLocked}
@@ -125,16 +125,16 @@ function StatusChip({ isCompleted, participating, locked }: { isCompleted: boole
   }
   if (isCompleted) {
     return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-[var(--radius-pill)] text-[11px] font-bold leading-none"
-        style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--color-text-secondary)' }}>
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold leading-none"
+        style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--muted)' }}>
         {d.missions.tagDone}
       </span>
     )
   }
   if (participating) {
     return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-[var(--radius-pill)] text-[11px] font-bold leading-none"
-        style={{ background: 'rgba(232,70,31,0.15)', color: 'var(--color-primary)' }}>
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold leading-none"
+        style={{ background: 'rgba(232,70,31,0.15)', color: 'var(--link)' }}>
         {d.missions.tagJoined}
       </span>
     )
@@ -189,7 +189,7 @@ export default function MissionDetailClient({
   }
 
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       <TopNav title={d.missions.backToDetail} backHref="/missions" />
 
       <div className="flex flex-col px-6 pt-0 pb-10 gap-6">
@@ -197,20 +197,20 @@ export default function MissionDetailClient({
         {/* 대표 이미지 — 1:1 정사각형.
             image_url은 어드민 자유 입력이 가능했던 필드라 SafeImage로 렌더한다. next/image에
             직접 넘기면 미등록 호스트 하나로 미션 상세 화면 전체가 500이 된다 (20260824_005).
-            폴백은 이미지가 아예 없을 때와 동일한 자리표시 문구 — 카드 배경(bg-surface-elevated)이
+            폴백은 이미지가 아예 없을 때와 동일한 자리표시 문구 — 카드 배경(bg-surface)이
             남아 레이아웃이 무너지지 않는다. */}
         {/* 20260825_028: 잠김이면 목록 잠금 카드와 같은 grayscale — 목록↔상세 시각 언어를 맞춘다.
             필터는 컨테이너가 아니라 **이미지에만** 건다(BadgeHeroSection.tsx:46과 동일한 하우스 패턴).
-            컨테이너에 걸면 카드 표면(bg-surface-elevated)까지 흐려져 캔버스와의 경계가 사라지고,
+            컨테이너에 걸면 카드 표면(bg-surface)까지 흐려져 캔버스와의 경계가 사라지고,
             SafeImage의 폴백 문구도 함께 딤돼 대비가 8.2:1 → 3.3:1로 떨어진다. */}
-        <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden bg-surface-elevated flex items-center justify-center">
+        <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-surface flex items-center justify-center">
           <SafeImage
             src={mission.image_url}
             alt={t(d.missions.thumbnailAlt, { title: mission.title })}
             className={locked ? 'object-cover grayscale opacity-50' : 'object-cover'}
             sizes="(max-width: 640px) 100vw, 640px"
             priority
-            fallback={<span className="text-[length:var(--text-body-sm)] text-text-secondary">{d.missions.imagePlaceholder}</span>}
+            fallback={<span className="text-base text-muted">{d.missions.imagePlaceholder}</span>}
           />
         </div>
 
@@ -221,17 +221,17 @@ export default function MissionDetailClient({
 
           {/* 제목 + 설명 */}
           <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-[36px] font-bold leading-[1.2] tracking-[-0.5px] text-text text-balance">
+            <h1 className="text-[36px] font-bold leading-[1.2] tracking-[-0.5px] text-foreground text-balance">
               {mission.title}
             </h1>
             {mission.description && (
-              <p className="text-[15px] leading-[1.47] text-text-secondary whitespace-pre-line">{mission.description}</p>
+              <p className="text-[15px] leading-[1.47] text-muted whitespace-pre-line">{mission.description}</p>
             )}
           </div>
 
           {/* 기간 표시 — 참가 전에만. 잠김이면 숨긴다(참가가 불가한데 참가를 재촉하는 잘못된 유도) */}
           {!locked && !isCompleted && !participating && (
-            <span className="text-[length:var(--text-caption)] text-text-secondary">
+            <span className="text-xs text-muted">
               {timeLeft(mission.ends_at)}
             </span>
           )}
@@ -241,7 +241,7 @@ export default function MissionDetailClient({
         {locked && (
           <InfoCard>
             <SectionLabel>{d.missions.lockedTitle}</SectionLabel>
-            <p className="text-[14px] leading-[1.43] text-text-secondary">
+            <p className="text-[14px] leading-[1.43] text-muted">
               {requiredBadge
                 ? t(d.missions.lockedBody, {
                     badge: requiredBadge.name,
@@ -277,14 +277,14 @@ export default function MissionDetailClient({
 
             {mission.mission_type === 'engine_condition' ? (
               /* 복합 조건 — 조건은 위 카드가 보여 주므로 상태만 한 문장으로 알린다 (20260927_0119) */
-              <p className={`text-[14px] leading-[1.43] ${achieved ? 'text-text' : 'text-text-secondary'}`}>
+              <p className={`text-[14px] leading-[1.43] ${achieved ? 'text-foreground' : 'text-muted'}`}>
                 {achieved ? d.missions.engineConditionAchieved : d.missions.engineConditionNotAchieved}
               </p>
             ) : isAchievementType ? (
               /* 달성형 */
               <div className="flex items-center justify-between">
-                <p className="text-[14px] leading-[1.43] text-text-secondary">{goal.label}</p>
-                <span className={`text-[14px] font-bold px-3 py-1 rounded-[var(--radius-pill)] ${achieved ? 'bg-white/10 text-text' : 'bg-border text-text-secondary'}`}>
+                <p className="text-[14px] leading-[1.43] text-muted">{goal.label}</p>
+                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-white/10 text-foreground' : 'bg-border text-muted'}`}>
                   {achieved ? d.missions.achieved : d.missions.notAchieved}
                 </span>
               </div>
@@ -292,10 +292,10 @@ export default function MissionDetailClient({
               /* streak_days — 프로그레스 바 + 일수 도트 */
               <div className="flex flex-col gap-3">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[14px] leading-[1.43] text-text-secondary">
+                  <span className="text-[14px] leading-[1.43] text-muted">
                     {goal.target}일 중 {isCompleted ? goal.target : Math.floor(progressValue)}일
                   </span>
-                  <span className="text-[14px] font-bold text-text tabular-nums">
+                  <span className="text-[14px] font-bold text-foreground tabular-nums">
                     {isCompleted ? '100' : Math.round(progressPct)}%
                   </span>
                 </div>
@@ -310,9 +310,9 @@ export default function MissionDetailClient({
                         // 20260816_012: "오늘" 링만 기능적 하이라이트로 보더 유지, 나머지는 배경톤 채움
                         className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${today ? 'border' : ''}`}
                         style={{
-                          background:  done ? 'var(--color-primary)' : today ? 'transparent' : 'var(--color-border)',
-                          borderColor: today ? 'var(--color-primary)' : undefined,
-                          color:       done  ? '#fff' : today ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                          background:  done ? 'var(--accent)' : today ? 'transparent' : 'var(--border)',
+                          borderColor: today ? 'var(--link)' : undefined,
+                          color:       done  ? 'var(--accent-foreground)' : today ? 'var(--link)' : 'var(--muted)',
                         }}
                       >
                         {i + 1}
@@ -325,12 +325,12 @@ export default function MissionDetailClient({
               /* 수치 + 프로그레스 바 */
               <div className="flex flex-col gap-3">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[22px] font-bold text-text tabular-nums leading-none">
+                  <span className="text-[22px] font-bold text-foreground tabular-nums leading-none">
                     {isCompleted ? goal.target : formatMissionProgress(progressValue, mission.mission_type)}{goal.unit}
-                    <span className="text-[16px] font-normal text-text-secondary mx-1">/</span>
+                    <span className="text-[16px] font-normal text-muted mx-1">/</span>
                     {goal.target}{goal.unit}
                   </span>
-                  <span className="text-[14px] font-bold text-text tabular-nums">
+                  <span className="text-[14px] font-bold text-foreground tabular-nums">
                     {isCompleted ? '100' : Math.round(progressPct)}%
                   </span>
                 </div>
@@ -350,7 +350,7 @@ export default function MissionDetailClient({
                 <Link key={badge.id} href={`/badges/${badge.id}`} className="active:opacity-70 transition-opacity duration-100">
                   {/* 배지 보상 행: 카드형 이미지 + MODULAR RarityBadge + 텍스트 */}
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-border flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <div className="w-16 h-16 rounded-2xl bg-border flex items-center justify-center flex-shrink-0 overflow-hidden">
                       <SafeImage
                         src={badge.image_url}
                         alt={badge.name}
@@ -362,8 +362,8 @@ export default function MissionDetailClient({
                     </div>
                     <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
                       <RarityBadge rarity={badge.rarity} />
-                      <p className="text-[16px] font-bold leading-[1.2] text-text truncate">{badge.name}</p>
-                      <p className="text-[13px] leading-[1.3] text-text-secondary">{d.missions.rewardBadgeCaption}</p>
+                      <p className="text-[16px] font-bold leading-[1.2] text-foreground truncate">{badge.name}</p>
+                      <p className="text-[13px] leading-[1.3] text-muted">{d.missions.rewardBadgeCaption}</p>
                     </div>
                   </div>
                 </Link>
@@ -374,8 +374,8 @@ export default function MissionDetailClient({
                 <ListRowCard
                   icon={
                     <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'var(--color-primary)' }}>
-                      <CoinIcon className="w-5 h-5" style={{ color: '#fff' }} />
+                      style={{ background: 'var(--accent)' }}>
+                      <CoinIcon className="w-5 h-5" style={{ color: 'var(--accent-foreground)' }} />
                     </div>
                   }
                   title={t(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}
@@ -385,7 +385,7 @@ export default function MissionDetailClient({
             </div>
 
             {mission.max_completions && (
-              <p className="text-[length:var(--text-caption)] text-text-secondary">
+              <p className="text-xs text-muted">
                 {t(d.missions.limitedSlots, { count: mission.max_completions.toLocaleString() })}
               </p>
             )}
@@ -395,7 +395,7 @@ export default function MissionDetailClient({
         {/* 미션 상황 보기 — 참가자만 */}
         {(participating || isCompleted) && (
           <Link href={`/missions/${mission.id}/status`}>
-            <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-4 text-center text-[length:var(--text-body-sm)] text-text-secondary jam-press">
+            <div className="bg-surface rounded-2xl p-4 text-center text-base text-muted jam-press">
               {d.missions.statusViewButton}
             </div>
           </Link>
@@ -407,8 +407,8 @@ export default function MissionDetailClient({
           /* 완료 → 종료 (disabled) */
           <button
             disabled
-            className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] cursor-default"
-            style={{ background: 'var(--color-surface-elevated)', color: 'var(--color-text-secondary)' }}
+            className="w-full min-h-[56px] rounded-full text-[16px] font-bold leading-[1.5] cursor-default"
+            style={{ background: 'var(--surface)', color: 'var(--muted)' }}
           >
             {d.missions.ctaEnded}
           </button>
@@ -416,8 +416,8 @@ export default function MissionDetailClient({
           /* 참가 중 (disabled) */
           <button
             disabled
-            className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] cursor-default"
-            style={{ background: 'var(--color-surface-elevated)', color: 'var(--color-text-secondary)' }}
+            className="w-full min-h-[56px] rounded-full text-[16px] font-bold leading-[1.5] cursor-default"
+            style={{ background: 'var(--surface)', color: 'var(--muted)' }}
           >
             {d.missions.tagJoined}
           </button>
@@ -430,12 +430,12 @@ export default function MissionDetailClient({
               data-open="false"
               style={{ ['--panel-translate-y' as string]: '32px' }}
             >
-              <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-secondary text-center mb-4">
+              <div className="bg-surface rounded-2xl p-6">
+                <p className="text-base text-muted text-center mb-4">
                   {d.missions.joinConfirmBody}
                 </p>
                 <div className="flex gap-2">
-                  {/* 20260816_012: 부모가 이미 bg-surface-elevated라 outline 기본 채움과 겹침 — 살짝 더 밝은 톤으로 오버라이드 */}
+                  {/* 20260816_012: 부모가 이미 bg-surface라 outline 기본 채움과 겹침 — 살짝 더 밝은 톤으로 오버라이드 */}
                   <Button
                     fullWidth
                     variant="outline"
@@ -456,12 +456,12 @@ export default function MissionDetailClient({
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => setConfirming(true)}
-                className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] cursor-pointer active:scale-95 transition-transform duration-100"
+                className="w-full min-h-[56px] rounded-full text-[16px] font-bold leading-[1.5] cursor-pointer active:scale-95 transition-transform duration-100"
                 style={{ background: '#fff', color: '#000' }}
               >
                 {d.missions.joinButton}
               </button>
-              <p className="text-[length:var(--text-caption)] text-text-secondary text-center">{d.missions.joinNote}</p>
+              <p className="text-xs text-muted text-center">{d.missions.joinNote}</p>
             </div>
           )
         ) : null}

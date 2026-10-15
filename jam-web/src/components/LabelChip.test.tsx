@@ -7,8 +7,8 @@
  * 「교체 전 Tailwind 클래스와 계산값이 같다」는 보증을 여기서 한다.
  *
  * 교체 전 클래스(`TodayStatusStrip` CellLabel · `OnboardingQuestCard` CHIP_CLASS 공통, `self-start`
- * 제외): `inline-flex items-center text-[length:var(--text-caption)] leading-none font-bold
- * uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text`.
+ * 제외): `inline-flex items-center text-xs leading-none font-bold
+ * uppercase px-2.5 py-1.5 rounded-full bg-background text-foreground`.
  * 계산값은 Tailwind v4로 컴파일해 확인했다 — `px-2.5`=`calc(var(--spacing) * 2.5)`·`py-1.5`=
  * `calc(var(--spacing) * 1.5)`이고 `--spacing: 0.25rem`(globals.css에 재정의 없음, root 16px)이라
  * 10px·6px, `leading-none`=`line-height: 1`, `font-bold`=700.
@@ -41,14 +41,14 @@ describe('LabelChip — 교체 전 Tailwind 클래스와 같은 계산 스타일
     expect(style).toEqual({
       display: 'inline-flex',
       'align-items': 'center',
-      'font-size': 'var(--text-caption)',
+      'font-size': 'var(--text-xs)',
       'line-height': '1',
       'font-weight': '700',
       'text-transform': 'uppercase',
       padding: '6px 10px',
-      'border-radius': 'var(--radius-tags)',
-      background: 'var(--color-surface)',
-      color: 'var(--color-text)',
+      'border-radius': 'var(--radius-full)',
+      background: 'var(--background)',
+      color: 'var(--foreground)',
     })
   })
 
@@ -76,14 +76,14 @@ describe('LabelChip — tone (티켓 20261001_1737, 1248)', () => {
   const DEFAULT_STYLE = {
     display: 'inline-flex',
     'align-items': 'center',
-    'font-size': 'var(--text-caption)',
+    'font-size': 'var(--text-xs)',
     'line-height': '1',
     'font-weight': '700',
     'text-transform': 'uppercase',
     padding: '6px 10px',
-    'border-radius': 'var(--radius-tags)',
-    background: 'var(--color-surface)',
-    color: 'var(--color-text)',
+    'border-radius': 'var(--radius-full)',
+    background: 'var(--background)',
+    color: 'var(--foreground)',
   }
 
   it('tone을 주지 않거나 default를 주면 기본 열 개 값과 출력이 같다(기존 호출부 4곳은 그대로)', () => {
@@ -96,8 +96,8 @@ describe('LabelChip — tone (티켓 20261001_1737, 1248)', () => {
     const style = readStyle(renderToStaticMarkup(<LabelChip tone="inverse">기사</LabelChip>))
     expect(style).toEqual({
       ...DEFAULT_STYLE,
-      background: 'var(--color-surface-inverse)',
-      color: 'var(--color-text-inverse)',
+      background: 'var(--background-inverse)',
+      color: 'var(--snow)',
     })
   })
 
@@ -114,7 +114,7 @@ describe('LabelChip — tone (티켓 20261001_1737, 1248)', () => {
   it('inverse에서 style prop은 색조 위에 덮어쓴다', () => {
     const style = readStyle(renderToStaticMarkup(<LabelChip tone="inverse" style={{ color: 'red' }}>기사</LabelChip>))
     expect(style.color).toBe('red')
-    expect(style.background).toBe('var(--color-surface-inverse)')
+    expect(style.background).toBe('var(--background-inverse)')
   })
 })
 
@@ -132,7 +132,7 @@ describe('LabelChip — props', () => {
   it('style prop은 기본 스타일 위에 덮어쓴다', () => {
     const style = readStyle(renderToStaticMarkup(<LabelChip style={{ padding: '2px 4px' }}>x</LabelChip>))
     expect(style.padding).toBe('2px 4px')
-    expect(style['font-size']).toBe('var(--text-caption)')
+    expect(style['font-size']).toBe('var(--text-xs)')
   })
 
   it('data-*·aria-* 속성을 통과시킨다', () => {

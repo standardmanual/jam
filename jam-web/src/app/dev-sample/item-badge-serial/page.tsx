@@ -39,7 +39,7 @@ const mockItemBook = {
 
 export default function ItemBadgeSerialSamplePage() {
   return (
-    <div className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative bg-surface text-text">
+    <div className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative bg-background text-foreground">
       <TopNav title={d.common.back} />
 
       <BadgeHeroSection badge={mockBadge} hasEarned={true} />
@@ -53,20 +53,20 @@ export default function ItemBadgeSerialSamplePage() {
       <div className="relative z-10 flex flex-col gap-4 px-6 pb-[32px]">
         <div className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between">
-            <p className="text-[15px] font-bold text-text">{d.badges.earnHistoryTitle}</p>
-            <span className="text-[13px] text-[var(--color-text-secondary)]">{t(d.badges.earnHistoryCount, { count: 1 })}</span>
+            <p className="text-[15px] font-bold text-foreground">{d.badges.earnHistoryTitle}</p>
+            <span className="text-[13px] text-[var(--muted)]">{t(d.badges.earnHistoryCount, { count: 1 })}</span>
           </div>
-          <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
+          <div className="bg-surface rounded-2xl p-6">
             <div className="flex flex-col gap-3">
               <div className="flex justify-between items-center">
-                <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.obtainedAt}</span>
-                <span className="text-[14px] text-text">
+                <span className="text-[14px] text-[var(--muted)]">{d.inventory.obtainedAt}</span>
+                <span className="text-[14px] text-foreground">
                   <LocalDate iso={mockItem.obtained_at} korean={{ year: true }} />
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.expiresAt}</span>
-                <span className="text-[14px] text-text">{d.inventory.expiresNone}</span>
+                <span className="text-[14px] text-[var(--muted)]">{d.inventory.expiresAt}</span>
+                <span className="text-[14px] text-foreground">{d.inventory.expiresNone}</span>
               </div>
             </div>
           </div>
@@ -78,12 +78,12 @@ export default function ItemBadgeSerialSamplePage() {
         <ListRowCard
           href="#"
           icon={
-            <div className="w-11 h-11 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center shrink-0">
-              <BookIcon className="w-5 h-5 text-[var(--color-text-secondary)]" />
+            <div className="w-11 h-11 rounded-2xl bg-white/8 flex items-center justify-center shrink-0">
+              <BookIcon className="w-5 h-5 text-[var(--muted)]" />
             </div>
           }
           title={mockItemBook.name}
-          trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />}
+          trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--muted)]" />}
         />
       </div>
     </div>

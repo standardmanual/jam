@@ -131,7 +131,7 @@
   align-items: center;
   gap: 3px;
   padding: 3px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-full);
   background: var(--tabs-bar-bg);
 }
 .t-tab {
@@ -143,7 +143,7 @@
   padding: 4px 12px;
   color: var(--tabs-text-muted);
   cursor: pointer;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-full);
   z-index: 1;
   transition: color var(--tabs-dur) var(--tabs-ease);
   /* block(균등분할) 모드에서 라벨이 좁아진 flex 칸보다 길면(예: 5탭 중 "트레일러닝")
@@ -168,7 +168,7 @@
   height: 30px;
   width: 0;
   background: var(--tabs-pill-bg);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-full);
   transform: translateX(0);
   transition:
     transform var(--tabs-dur) var(--tabs-ease),
@@ -433,13 +433,9 @@
   .t-panel-backdrop { transition: none !important; }
 }
 
-/* 20260823_003: 재질(반투명 크롬) — 모달 백드롭(스크림)에 가벼운 blur 추가.
- * 시트/패널 본체는 계속 불투명 유지, 백드롭(bg-surface/60 등)만 재질화한다.
- * TopNav/TabBar의 무거운 --blur-chrome과 달리 대비 목적이라 --blur-scrim(가벼운 값) 사용. */
-.t-panel-backdrop {
-  backdrop-filter: blur(var(--blur-scrim));
-  -webkit-backdrop-filter: blur(var(--blur-scrim));
-}
+/* 모달 백드롭(스크림)에는 blur를 두지 않는다(티켓 20261015_2131, 상위 티켓 결정 6 — 새 시스템의
+ * blur 0). backdrop-filter 속성 자체를 쓰지 않아 불필요한 합성 레이어가 생기지 않는다.
+ * 재질 blur는 탭바(--tabbar-blur)에만 남는다. */
 
 /* 20260908_0040: 백드롭은 열려 있을 때만 탭을 받는다 — 기본값(pointer-events 미지정, 즉 auto)
  * 상태로 두면 opacity가 0으로 떨어진 뒤에도(닫힘 트랜지션 --panel-close-dur, prefers-reduced-motion
@@ -455,9 +451,9 @@
   .t-panel-backdrop {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    /* Tailwind bg-surface/60·70 유틸리티(color-mix 알파)를 불투명으로 승격.
+    /* Tailwind bg-background/60·70 유틸리티(color-mix 알파)를 불투명으로 승격.
        @layer 밖 일반 규칙이라 소스 순서와 무관하게 Tailwind utilities 레이어를 이긴다. */
-    background-color: var(--color-surface);
+    background-color: var(--background);
   }
 }
 
@@ -480,24 +476,24 @@
   padding: 12px 8px;
 }
 .t-tabs[data-size="xl"] .t-tabs-pill { height: calc(100% - 6px); }
-/* 모서리 — pill(48px, 기본) / card(--radius-cards) */
+/* 모서리 — pill(48px, 기본) / card(--radius-2xl) */
 .t-tabs[data-shape="card"],
 .t-tabs[data-shape="card"] .t-tab,
 .t-tabs[data-shape="card"] .t-tabs-pill {
-  border-radius: var(--radius-cards);
+  border-radius: var(--radius-2xl);
 }
 /* 반투명 바 배경 대신 엘리베이션 배경톤을 쓰는 변형 (20260816_012 — 보더 제거) */
 .t-tabs.jam-tabs-outlined {
-  background: var(--color-surface-elevated);
+  background: var(--surface);
 }
 
-/* 프로필 통계탭 전용 (20260901) — 숫자는 항상 포인트 강조색(--color-primary), pill(같은
+/* 프로필 통계탭 전용 (20260901) — 숫자는 항상 포인트 강조색(--link), pill(같은
    레드) 배경이 실제로 그 숫자 위를 지나가는 순간(data-pill-over, SlidingTabs.tsx 실측 겹침
    추적)이나 도착해 머문 순간(aria-selected)만 흰색으로 바꿔 대비를 지킨다 — 20260831_2201
    "레드온레드" 버그를 회피 로직(회색으로 대체) 없이 근본적으로 해결한다. 다른 SlidingTabs
    사용처는 이 클래스가 없어 영향받지 않는다. */
 .jam-stat-tabs .t-tab .jam-stat-number {
-  color: var(--color-primary);
+  color: var(--link);
   transition: color var(--tabs-dur) var(--tabs-ease);
 }
 .jam-stat-tabs .t-tab[aria-selected="true"] .jam-stat-number,
@@ -523,27 +519,27 @@
 /* TopNav 알림 종 버블 — 36px 서클의 우상단에 앵커 (20260824_021, 20260825 조정).
    기준 박스는 종을 감싼 서클(36×36)이다. 원형이라 바운딩 박스의 우상단 "모서리"는
    이미 원 바깥이므로, 아주 살짝만 내밀면 아바타 배지처럼 테두리에 걸쳐 읽힌다.
-   서클에 배경색(--color-surface-elevated)이 있어 종 글리프와 겹칠 일도 없다. */
+   서클에 배경색(--surface)이 있어 종 글리프와 겹칠 일도 없다. */
 .t-badge.jam-bell-dot {
   top: -2px;
   right: -2px;
 }
 
 /* 20260823_003: 재질(반투명 흰 필) — TabBar 배경. 캐노니컬 스펙
- * (design-system/components/navigation/TabBar.jsx)과 동일한 토큰(--blur-chrome,
- * --color-chrome-bg-inverse)을 참조 — 서비스 TabBar.tsx는 별도 Tailwind 구현이라 값이
- * 갈리지 않도록 여기서 직접 맞춘다. 기존 흰 필(bg-surface-inverse)의 색은 그대로 두고
- * 알파+blur만 추가한 것 — TopNav는 이번 범위에서 제외(기존 불투명 크롬 유지). */
+ * (design-system/components/navigation/TabBar.jsx)과 동일한 토큰(--tabbar-blur,
+ * --tabbar-background)을 참조 — 서비스 TabBar.tsx는 별도 Tailwind 구현이라 값이
+ * 갈리지 않도록 여기서 직접 맞춘다. 기존 흰 필의 색은 그대로 두고 알파+blur만 추가한 것 —
+ * TopNav는 이번 범위에서 제외(기존 불투명 크롬 유지). 투명도 줄이기 설정에서는 불투명 흰 면(--surface)이다. */
 .jam-tabbar-chrome {
-  background: var(--color-chrome-bg-inverse);
-  backdrop-filter: blur(var(--blur-chrome)) saturate(180%);
-  -webkit-backdrop-filter: blur(var(--blur-chrome)) saturate(180%);
+  background: var(--tabbar-background);
+  backdrop-filter: blur(var(--tabbar-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--tabbar-blur)) saturate(180%);
 }
 @media (prefers-reduced-transparency: reduce) {
   .jam-tabbar-chrome {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    background: var(--color-bg-inverse);
+    background: var(--surface);
   }
 }
 
@@ -579,18 +575,17 @@
 }
 
 /* 온보딩 퀘스트 「지금 눌러야 할 곳」 펄스(티켓 20260928_1752, 상위 20260927_2123 Q1) — 진행
-   중인 퀘스트 카드에서 지금 눌러야 할 CTA pill 둘레에 브랜드 프라이머리 box-shadow가 0 → 10px로
-   번지며 사라지는 반복 애니메이션. 색은 리터럴 rgba 대신 color-mix로 --color-primary를 직접
-   참조한다(L438 부근 .t-panel-backdrop 재질화가 이미 쓰는 패턴과 동일) — --color-primary가
-   바뀌면 자동 반영된다. 1단계(홈 카드 ①·②)에서 시작해, 결정 7(단계별 대상 하나에만)에 따라
+   중인 퀘스트 카드에서 지금 눌러야 할 CTA pill 둘레에 브랜드 강조색 box-shadow가 0 → 10px로
+   번지며 사라지는 반복 애니메이션. 색은 리터럴 rgba 대신 color-mix로 --link를 직접
+   참조한다 — --link가 바뀌면 자동 반영된다. 1단계(홈 카드 ①·②)에서 시작해, 결정 7(단계별 대상 하나에만)에 따라
    Q2~Q4(티켓 20260928_1753~1755)가 각 단계의 「지금 눌러야 할 곳」 한 칸에 재사용한다.
    TopNav 동기화 버튼·하단 탭 아이콘·퀘스트 이후 카드(③·④)에는 붙이지 않는다. */
 @keyframes jam-quest-pulse {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 55%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--link) 55%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-primary) 0%, transparent);
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--link) 0%, transparent);
   }
 }
 .jam-quest-pulse {

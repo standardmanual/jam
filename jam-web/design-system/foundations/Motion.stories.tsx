@@ -13,7 +13,7 @@ function DurationRow({ token, desc, ease = '--ease-smooth-out' }: { token: strin
   const easeValue = useTokenValue(ease);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--color-border)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
       {/* 애니메이션 데모 박스 */}
       <div style={{ width: 120, height: 32, position: 'relative', flexShrink: 0 }}>
         <div
@@ -23,8 +23,8 @@ function DurationRow({ token, desc, ease = '--ease-smooth-out' }: { token: strin
             top: 0,
             width: 32,
             height: 32,
-            background: 'var(--color-primary)',
-            borderRadius: 'var(--radius-sm)',
+            background: 'var(--accent)',
+            borderRadius: 'var(--radius-lg)',
             transition: `left var(${token}) var(${ease})`,
           }}
         />
@@ -34,16 +34,16 @@ function DurationRow({ token, desc, ease = '--ease-smooth-out' }: { token: strin
         onClick={() => { setActive(a => !a); }}
         style={{
           padding: '4px 10px', fontSize: 11, cursor: 'pointer',
-          background: 'var(--color-surface)', color: 'var(--color-text)',
-          border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+          background: 'var(--background)', color: 'var(--foreground)',
+          border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
         }}
       >
         ▶ 토글
       </button>
       {/* 토큰 정보 */}
       <div>
-        <code style={{ fontSize: 12, color: 'var(--color-primary)', display: 'block' }}>{token}</code>
-        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{duration || '—'} — {desc}</span>
+        <code style={{ fontSize: 12, color: 'var(--link)', display: 'block' }}>{token}</code>
+        <span style={{ fontSize: 11, color: 'var(--muted)' }}>{duration || '—'} — {desc}</span>
       </div>
     </div>
   );
@@ -80,7 +80,7 @@ function EaseRow({ token, desc }: { token: string; desc: string }) {
   }, [playing]);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--color-border)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
       <div style={{ width: 120, height: 32, position: 'relative', flexShrink: 0 }}>
         <div
           style={{
@@ -89,8 +89,8 @@ function EaseRow({ token, desc }: { token: string; desc: string }) {
             top: 0,
             width: 32,
             height: 32,
-            background: 'var(--color-secondary)',
-            borderRadius: 'var(--radius-sm)',
+            background: 'var(--accent-content-blue)',
+            borderRadius: 'var(--radius-lg)',
             transition: playing ? `left 400ms var(${token})` : 'none',
           }}
         />
@@ -99,15 +99,15 @@ function EaseRow({ token, desc }: { token: string; desc: string }) {
         onClick={play}
         style={{
           padding: '4px 10px', fontSize: 11, cursor: 'pointer',
-          background: 'var(--color-surface)', color: 'var(--color-text)',
-          border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+          background: 'var(--background)', color: 'var(--foreground)',
+          border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
         }}
       >
         ▶ 재생
       </button>
       <div>
-        <code style={{ fontSize: 12, color: 'var(--color-primary)', display: 'block' }}>{token}</code>
-        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{value || '—'} — {desc}</span>
+        <code style={{ fontSize: 12, color: 'var(--link)', display: 'block' }}>{token}</code>
+        <span style={{ fontSize: 11, color: 'var(--muted)' }}>{value || '—'} — {desc}</span>
       </div>
     </div>
   );
@@ -117,15 +117,15 @@ function ScaleRow({ token, desc }: { token: string; desc: string }) {
   const [pressed, setPressed] = useState(false);
   const value = useTokenValue(token);
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--color-border)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
       <div
         onMouseDown={() => setPressed(true)}
         onMouseUp={() => setPressed(false)}
         onMouseLeave={() => setPressed(false)}
         style={{
           width: 72, height: 40,
-          background: 'var(--color-primary)',
-          borderRadius: 'var(--radius-pill)',
+          background: 'var(--accent)',
+          borderRadius: 'var(--radius-full)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', flexShrink: 0,
           transform: pressed ? `scale(var(${token}))` : 'scale(1)',
@@ -136,8 +136,8 @@ function ScaleRow({ token, desc }: { token: string; desc: string }) {
         눌러봐
       </div>
       <div>
-        <code style={{ fontSize: 12, color: 'var(--color-primary)', display: 'block' }}>{token}</code>
-        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{value || '—'} — {desc}</span>
+        <code style={{ fontSize: 12, color: 'var(--link)', display: 'block' }}>{token}</code>
+        <span style={{ fontSize: 11, color: 'var(--muted)' }}>{value || '—'} — {desc}</span>
       </div>
     </div>
   );
@@ -145,17 +145,17 @@ function ScaleRow({ token, desc }: { token: string; desc: string }) {
 
 function MotionPage() {
   return (
-    <div style={{ padding: 32, background: 'var(--color-bg)', minHeight: '100vh', color: 'var(--color-text)', fontFamily: 'var(--font-family-base)' }}>
+    <div style={{ padding: 32, background: 'var(--background)', minHeight: '100vh', color: 'var(--foreground)', fontFamily: 'var(--font-family-base)' }}>
       <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 8 }}>Motion Tokens</h1>
-      <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+      <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 8 }}>
         MODULAR 모션 시스템. <strong>▶ 토글 / 재생</strong> 버튼으로 실제 애니메이션을 확인할 수 있다.
       </p>
-      <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 40 }}>
-        ⚠️ <code style={{ color: 'var(--color-primary)' }}>prefers-reduced-motion</code>이 활성화된 경우 globals.css에 의해 모든 애니메이션이 0.01ms로 단축된다.
+      <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 40 }}>
+        ⚠️ <code style={{ color: 'var(--link)' }}>prefers-reduced-motion</code>이 활성화된 경우 globals.css에 의해 모든 애니메이션이 0.01ms로 단축된다.
       </p>
 
       <div style={{ marginBottom: 40 }}>
-        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 12px' }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 12px' }}>
           Duration
         </h2>
         <DurationRow token="--duration-micro" desc="즉각 피드백 — 버튼 press, 즉시 열기/닫기" />
@@ -166,7 +166,7 @@ function MotionPage() {
       </div>
 
       <div style={{ marginBottom: 40 }}>
-        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 12px' }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 12px' }}>
           Easing
         </h2>
         <EaseRow token="--ease-linear" desc="선형 — 스피너, 시머, 연속 루프" />
@@ -176,7 +176,7 @@ function MotionPage() {
       </div>
 
       <div style={{ marginBottom: 40 }}>
-        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 12px' }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 12px' }}>
           Scale (press / modal)
         </h2>
         <ScaleRow token="--scale-press" desc="버튼 눌림 — button:active CSS 피드백" />
@@ -191,7 +191,6 @@ const meta: Meta = {
   title: 'MODULAR/Foundations/Motion',
   parameters: {
     layout: 'fullscreen',
-    backgrounds: { default: 'dark' },
     docs: { canvas: { sourceState: 'none' } },
   },
 };

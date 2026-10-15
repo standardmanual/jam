@@ -28,7 +28,7 @@ import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
  * 더 쓰지 않는다(칩과 등급 텍스트가 한 카드에 섞이지 않게. 칩 자체는 다른 화면 6곳이 계속 쓴다).
  *
  * 진행 바는 `ProgressBar fillMode="track-gradient"` — 트랙 기준 그라데이션이라 fill 안에서
- * 그림이 압축되지 않는다. 채움색은 `--status-progress-sweep` 토큰 하나에서 온다.
+ * 그림이 압축되지 않는다. 채움색은 `--progress-sweep` 토큰 하나에서 온다.
  *
  * 썸네일: 다음 레벨 배지는 정의상 아직 미획득이라 **grayscale(1) 원본**으로 그린다
  * (2026-09-06 사용자 확정 — 어떤 배지인지 알아볼 수 있어야 한다). 이미지는 여백 없이
@@ -74,9 +74,9 @@ export function BadgeLevelGauge({
     <div
       className={className}
       style={{
-        borderRadius: 'var(--radius-card)',
+        borderRadius: 'var(--radius-2xl)',
         padding: 'var(--spacing-16)',
-        background: 'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--color-surface-elevated)',
+        background: 'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--surface)',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)',
         ...style,
       }}
@@ -98,11 +98,11 @@ export function BadgeLevelGauge({
         <span
           style={{
             width: THUMB_SIZE, height: THUMB_SIZE, flex: 'none',
-            borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
+            borderRadius: 'var(--radius-lg)', background: 'var(--background)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden',
-            boxShadow: 'inset 0 0 0 1px var(--color-border-light)',
-            color: 'var(--color-text)',
+            boxShadow: 'inset 0 0 0 1px var(--field-border)',
+            color: 'var(--foreground)',
           }}
         >
           {imageUrl ? (
@@ -116,7 +116,7 @@ export function BadgeLevelGauge({
               }}
             />
           ) : (
-            <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
+            <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-sm)', background: 'var(--background-inverse)', opacity: 0.2 }} />
           )}
         </span>
 
@@ -135,16 +135,16 @@ export function BadgeLevelGauge({
             <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, fontVariantNumeric: 'tabular-nums' }}>
               {current != null && (
                 <>
-                  <span style={{ fontSize: 'var(--text-body-l)', fontWeight: 700, lineHeight: 1.2, color: valueColor }}>
+                  <span style={{ fontSize: 'var(--text-xl)', fontWeight: 700, lineHeight: 1.2, color: valueColor }}>
                     {current}
                   </span>
-                  <span style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>/</span>
+                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>/</span>
                 </>
               )}
-              <span style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>{next}</span>
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>{next}</span>
             </span>
             {left != null && (
-              <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)', wordBreak: 'keep-all' }}>
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', wordBreak: 'keep-all' }}>
                 · {left}
               </span>
             )}
@@ -154,9 +154,9 @@ export function BadgeLevelGauge({
             <ProgressBar
               percent={clamped * 100}
               fillMode="track-gradient"
-              trackColor="var(--status-idle-track)"
+              trackColor="var(--progress-track)"
               height={10}
-              radius="var(--radius-xs)"
+              radius="var(--radius-sm)"
             />
           </div>
         </div>

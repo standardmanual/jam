@@ -129,7 +129,7 @@ describe('TodayCard — 모양으로 모양 컴포넌트를 고른다', () => {
 
   it('hero는 큰 이미지 모양으로 그린다(16:9 이미지 칸 + 흰 본문)', () => {
     const html = renderToStaticMarkup(<TodayCard view={heroView()} />)
-    expect(html).toContain('relative aspect-video overflow-hidden bg-surface')
+    expect(html).toContain('relative aspect-video overflow-hidden bg-background')
     expect(html).toContain('<h3')
     expect(html).toContain('한강 러닝 챌린지')
     expect(html).not.toContain('min-h-[88px]')
@@ -137,7 +137,7 @@ describe('TodayCard — 모양으로 모양 컴포넌트를 고른다', () => {
 
   it('poster는 포스터 모양으로 그린다(4:5 이미지 칸 + 아래 막 위 글자)', () => {
     const html = renderToStaticMarkup(<TodayCard view={posterView()} />)
-    expect(html).toContain('relative aspect-[4/5] overflow-hidden bg-surface')
+    expect(html).toContain('relative aspect-[4/5] overflow-hidden bg-background')
     expect(html).toContain('absolute inset-x-0 bottom-0')
     expect(html).toContain('<h3')
     expect(html).toContain('새 아이템이 열렸어요')
@@ -147,7 +147,7 @@ describe('TodayCard — 모양으로 모양 컴포넌트를 고른다', () => {
 
   it('square는 정사각 큰 카드 모양으로 그린다(1:1 이미지 칸 + 흰 본문, 이미지는 자르지 않는다)', () => {
     const html = renderToStaticMarkup(<TodayCard view={squareView({ imageUrl: 'https://cdn.example/c.png' })} />)
-    expect(html).toContain('relative aspect-square overflow-hidden bg-surface')
+    expect(html).toContain('relative aspect-square overflow-hidden bg-background')
     expect(html).toContain('object-contain')
     expect(html).not.toContain('object-cover')
     expect(html).toContain('<h3')
@@ -158,7 +158,7 @@ describe('TodayCard — 모양으로 모양 컴포넌트를 고른다', () => {
 
   it('list는 목록 모양으로 그린다(타일형: 타일 줄 + 전체 보기 끝 줄)', () => {
     const html = renderToStaticMarkup(<TodayCard view={listView({ href: '/badges' })} />)
-    expect(html).toContain('<ul class="flex w-max gap-[var(--spacing-8)]">')
+    expect(html).toContain('<ul class="flex w-max gap-2">')
     expect(html).toContain('<h3')
     expect(html).toContain('성수동 배지 모음')
     expect(html).toContain('전체 보기')

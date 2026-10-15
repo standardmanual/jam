@@ -54,7 +54,7 @@ const render = (view: BriefCardView, link?: boolean) =>
   )
 
 const LINK_CLASS_ATTR =
-  'class="block rounded-[var(--radius-cards)] jam-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)]"'
+  'class="block rounded-2xl jam-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--link)]"'
 
 describe('CardFrame — 계측 정보(tracking)가 없으면 안쪽만 그린다(미리보기)', () => {
   it('href가 있어도 트래커·링크·눌림·포커스 윤곽선이 모두 없다', () => {
@@ -86,7 +86,7 @@ describe('CardFrame — tracking과 href가 모두 있으면 트래커 안에 �
     expect(html).toMatch(/<a [^>]*href="\/drops"[^>]*><p>안쪽 모양<\/p><\/a>/)
   })
 
-  it('링크는 블록 요소이고 둥근 윤곽·눌림·focus-visible 윤곽선(2px·오프셋 2px·--color-primary) 클래스를 가진다', () => {
+  it('링크는 블록 요소이고 둥근 윤곽·눌림·focus-visible 윤곽선(2px·오프셋 2px·--link) 클래스를 가진다', () => {
     expect(html).toContain(LINK_CLASS_ATTR)
   })
 

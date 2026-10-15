@@ -619,7 +619,7 @@ export default function PoiCarouselModal({
       style={{ maxWidth: 430, margin: '0 auto' }}
     >
       {/* 배경 오버레이 — 탭하면 닫힘 */}
-      <div ref={backdropRef} className="absolute inset-0 bg-surface/70 t-panel-backdrop" data-open="false" onClick={onClose} />
+      <div ref={backdropRef} className="absolute inset-0 bg-background/70 t-panel-backdrop" data-open="false" onClick={onClose} />
 
       {/*
         20260820_022: 화면 세로 중앙(justify-center) → TabBar 바로 위 고정(justify-end)으로
@@ -810,12 +810,12 @@ function PoiCard({
     >
       {/* 헤더 — 닫기 버튼을 카드 안쪽 우측 상단에 배치(20260820_023, 사용자 요청).
           모든 카드가 동일한 onClose를 받아 어느 카드에서 눌러도 전체 모달이 닫힌다. */}
-      <div className="flex items-start justify-between gap-[var(--spacing-8)]">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold text-text truncate">{poi.name}</p>
-          <p className="text-[length:var(--text-caption)] text-text/50 mt-0.5">{poi.distance_meters}m</p>
+          <p className="text-base font-bold text-foreground truncate">{poi.name}</p>
+          <p className="text-xs text-foreground/50 mt-0.5">{poi.distance_meters}m</p>
         </div>
-        <IconButton icon="close" label={d.common.close} onClick={onClose} surface="dark" className="shrink-0 -mt-2 -mr-2" />
+        <IconButton icon="close" label={d.common.close} onClick={onClose} surface="light" className="shrink-0 -mt-2 -mr-2" />
       </div>
 
       {/* 본문 — peek(비활성) 카드는 POI 기본 정보만 노출하고 본문 자체를
@@ -826,24 +826,24 @@ function PoiCard({
           TopNav)까지 밀고 올라가던 문제를 막기 위함. 이 캐러셀에는 반경 내
           (in_drop_range) POI만 들어오므로 반경 밖 안내는 없다. */}
       {!isActive ? null : loading || drops === undefined ? (
-        <div className="flex justify-center py-[var(--spacing-24)]">
+        <div className="flex justify-center py-6">
           <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
         </div>
       ) : showInventory ? (
         /* ===== 드랍: 인벤토리 그리드(활성 카드에서만 열림) ===== */
         pendingDropItem ? (
-          <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
-            <div className="w-20 h-20 rounded-[var(--radius-cards)] bg-white/[0.04] overflow-hidden flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div className="w-20 h-20 rounded-2xl bg-white/[0.04] overflow-hidden flex items-center justify-center">
               <SafeImage
                 src={pendingDropItem.badgeImageUrl}
                 alt={pendingDropItem.badgeName}
                 width={80}
                 height={80}
                 className="w-full h-full object-contain p-1"
-                fallback={<MedalIcon className="w-8 h-8 text-text/40" />}
+                fallback={<MedalIcon className="w-8 h-8 text-foreground/40" />}
               />
             </div>
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center whitespace-pre-line">
+            <p className="text-base text-center whitespace-pre-line">
               {t(d.drops.confirmDrop, { name: pendingDropItem.badgeName })}
             </p>
             <div className="flex gap-2 w-full">
@@ -851,10 +851,10 @@ function PoiCard({
                 {d.drops.cancel}
               </Button>
               {/* 확인 버튼만 pill 래퍼로 펄스(티켓 20260928_1754) — 취소 버튼에는 붙이지
-                  않는다. Button 자체는 --radius-pill-buttons(=--radius-pill)라 래퍼 반경이
+                  않는다. Button 자체는 --radius-full(=--radius-full)라 래퍼 반경이
                   실제 버튼 반경과 일치한다. */}
               {questPulseStep === 'drop' ? (
-                <div className="w-full rounded-[var(--radius-pill)] jam-quest-pulse">
+                <div className="w-full rounded-full jam-quest-pulse">
                   <Button fullWidth surface="main" loading={dropping} onClick={onConfirmDrop}>
                     {d.drops.dropButton}
                   </Button>
@@ -867,7 +867,7 @@ function PoiCard({
             </div>
           </div>
         ) : inventoryLoading ? (
-          <div className="flex justify-center py-[var(--spacing-24)]">
+          <div className="flex justify-center py-6">
             <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
           </div>
         ) : dropGridItems.length === 0 ? (
@@ -901,7 +901,7 @@ function PoiCard({
         /* ===== 드랍된 배지 목록(있으면) + [여기에 드랍] 액션(항상 함께 노출) — 20260829_2101
            "No broken objects" 위반 수정: 픽업 가능 목록 유무와 드랍 액션 노출 여부를
            독립적인 축으로 분리했다. 목록·버튼 레이블·문구는 기존 것을 그대로 재사용. */
-        <div className="flex flex-col gap-[var(--spacing-16)]">
+        <div className="flex flex-col gap-4">
           {drops.length > 0 ? (
             // 20260908_0223: 픽업 목록도 개체 flat 배열이 아니라 badge_id별 그룹으로
             // 묶는다(같은 배지를 여러 명이 드랍해도 행 하나 + 개수 서클). 그룹 클릭 시
@@ -933,7 +933,7 @@ function PoiCard({
           )}
           {isActive && !hideDropAction && (
             questPulseStep === 'drop' ? (
-              <div className="w-full rounded-[var(--radius-pill)] jam-quest-pulse">
+              <div className="w-full rounded-full jam-quest-pulse">
                 <Button fullWidth surface="main" onClick={onOpenInventory}>
                   {d.drops.dropHereButton}
                 </Button>
@@ -975,7 +975,7 @@ interface ItemRowProps {
   expiresAt?: string | null
   /**
    * 온보딩 퀘스트 3·6단계 「지금 눌러야 할 곳」 펄스(티켓 20260928_1754) — true면 기존
-   * `rounded-[var(--radius-cards)]` 버튼 className에 `.jam-quest-pulse`를 병합한다(별도
+   * `rounded-2xl` 버튼 className에 `.jam-quest-pulse`를 병합한다(별도
    * 래퍼 없음, 반경 불일치 없음). 평소 픽업·드랍 목록에서는 전달되지 않는다.
    */
   pulse?: boolean
@@ -998,31 +998,31 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-white/[0.04]${disabled ? '' : ' jam-press'} text-left disabled:cursor-default${pulse ? ' jam-quest-pulse' : ''}`}
+      className={`w-full flex items-center gap-4 px-4 py-2 rounded-2xl bg-white/[0.04]${disabled ? '' : ' jam-press'} text-left disabled:cursor-default${pulse ? ' jam-quest-pulse' : ''}`}
     >
       {/* 카운터 서클의 기준점 — BadgeGridCard의 카운터 필과 같은 이유로 relative를
           overflow-hidden 밖(아이콘 wrapper)에 둔다: 아이콘 자체에 relative를 걸면
           overflow-hidden이 모서리에 걸치는 서클을 잘라낸다. */}
       <div className="relative flex-shrink-0">
-        <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden bg-white/[0.06] flex items-center justify-center">
+        <div className="w-11 h-11 rounded-2xl overflow-hidden bg-white/[0.06] flex items-center justify-center">
           <SafeImage
             src={imageUrl}
             alt={name}
             width={44}
             height={44}
             className="w-full h-full object-contain p-0.5"
-            fallback={<MedalIcon className="w-5 h-5 text-text/40" />}
+            fallback={<MedalIcon className="w-5 h-5 text-foreground/40" />}
           />
         </div>
         {showCount && (
-          // BadgeGridCard의 ×N 카운터 필과 같은 색 토큰(bg-surface-elevated + border)이지만
+          // BadgeGridCard의 ×N 카운터 필과 같은 색 토큰(bg-surface + border)이지만
           // 모양은 완전한 원(rounded-full)이고 접두어 없이 숫자만, 위치도 반대 코너
           // (우측 상단)다 — 사용자 결정(20260908_0217).
           // w-5 h-5로 폭·높이를 고정한다(min-w+px-1이 아님) — 두 자리 수(최대 보유 슬롯
           // 50개라 실제로 나온다)에서 폭만 늘어나 알약 모양이 되는 걸 막는다. 인터랙션
           // 리뷰가 렌더 확인으로 잡아낸 회귀(2026-09-08).
           <span
-            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-surface-elevated border border-[color:var(--color-border)] text-[10px] leading-none font-bold text-text/80 flex items-center justify-center"
+            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-surface border border-[color:var(--border)] text-[10px] leading-none font-bold text-foreground/80 flex items-center justify-center"
             aria-hidden="true"
           >
             {count}
@@ -1034,11 +1034,11 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
         {showCount && countAriaText && <span className="sr-only">{countAriaText}</span>}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{name}</p>
+        <p className="text-base truncate">{name}</p>
         {expiring && expiresAt ? (
-          <div className="flex items-center gap-[var(--spacing-8)] mt-1">
+          <div className="flex items-center gap-2 mt-1">
             <RarityBadge rarity={rarityValue} />
-            <p className="text-[length:var(--text-caption)] font-bold leading-none px-1.5 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)] text-text/70">
+            <p className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-foreground/70">
               <LocalDate iso={expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
             </p>
           </div>
@@ -1046,7 +1046,7 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
           <RarityBadge rarity={rarityValue} className="mt-1" />
         )}
       </div>
-      <ChevronRightIcon className="w-5 h-5 text-text/40 shrink-0" />
+      <ChevronRightIcon className="w-5 h-5 text-foreground/40 shrink-0" />
     </button>
   )
 }

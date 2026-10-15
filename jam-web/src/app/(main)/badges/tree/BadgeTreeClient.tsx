@@ -290,12 +290,12 @@ export default function BadgeTreeClient({
       <section
         key="grid"
         aria-label={d.badges.treeOneShotSectionTitle}
-        className="rounded-[var(--radius-card)] bg-[var(--color-surface-elevated)] p-[var(--spacing-16)]"
+        className="rounded-2xl bg-[var(--surface)] p-4"
       >
-        <h3 className="mb-[var(--spacing-16)] text-[length:var(--text-small)] font-bold text-text">
+        <h3 className="mb-4 text-sm font-bold text-foreground">
           {d.badges.treeOneShotSectionTitle}
         </h3>
-        <div className="grid grid-cols-3 gap-x-[var(--spacing-8)] gap-y-[var(--spacing-16)]">
+        <div className="grid grid-cols-3 gap-x-2 gap-y-4">
         {gridGoals.map(({ family, progressBadgeId }) => (
           <BadgeProgressGridCell
             key={family.key}
@@ -333,7 +333,7 @@ export default function BadgeTreeClient({
       : [...railCards.slice(0, gridInsertIndex), gridSection, ...railCards.slice(gridInsertIndex)]
 
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       {/* TopNav title은 "어디로 돌아가는가"를 뜻하는 back-label (UX_WRITING_GUIDELINE.md §6) */}
       <TopNav
         title={d.badges.title}
@@ -345,7 +345,7 @@ export default function BadgeTreeClient({
           제목 한 줄이 첫 화면에서 카드 한 장 분량의 세로를 먹고 있었다. 대신 TopNav와
           탭 사이에 --spacing-24를 확보해 숨을 준다. */}
       {trees.length === 0 || !activeTree ? (
-        <div className="px-[var(--spacing-16)] pt-[var(--spacing-32)]">
+        <div className="px-4 pt-8">
           <EmptyState
             icon={<MedalIcon className="w-8 h-8" />}
             title={d.badges.emptyActivityTitle}
@@ -354,7 +354,7 @@ export default function BadgeTreeClient({
         </div>
       ) : (
         <>
-          <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-16)]">
+          <div className="px-4 pt-6 pb-4">
             <SlidingTabs
               items={tabs}
               value={activeActivity}
@@ -364,7 +364,7 @@ export default function BadgeTreeClient({
             />
           </div>
 
-          <div className="px-[var(--spacing-16)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-16)]">
+          <div className="px-4 pb-8 flex flex-col gap-4">
             <BadgeTreeSummaryHeader
               earnedCount={summary.earnedCount}
               totalCount={summary.totalCount}
@@ -384,7 +384,7 @@ export default function BadgeTreeClient({
             >
               {/* 빈 배열이 아니라 null을 넘긴다 — 그래야 emptyText가 뜬다 */}
               {nextGoals.length > 0 ? (
-                <div className="flex flex-col gap-[var(--spacing-16)] pb-[var(--spacing-8)]">
+                <div className="flex flex-col gap-4 pb-2">
                   {goalCards}
                 </div>
               ) : null}

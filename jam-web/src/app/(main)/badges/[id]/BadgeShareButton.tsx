@@ -374,12 +374,12 @@ export default function BadgeShareButton({
         {popoverOpen && disabledReason && (
           <div
             role="tooltip"
-            className="absolute right-0 top-[calc(100%+4px)] z-50 w-[220px] rounded-[var(--radius-cards)] bg-[var(--color-bg-inverse)] p-3 text-left shadow-lg"
+            className="absolute right-0 top-[calc(100%+4px)] z-50 w-[220px] rounded-2xl bg-[var(--background-inverse)] p-3 text-left shadow-lg"
           >
-            <p className="text-[length:var(--text-small)] font-bold text-[var(--color-text-inverse)]">
+            <p className="text-sm font-bold text-[var(--snow)]">
               {disabledReasonCopy(disabledReason).title}
             </p>
-            <p className="mt-1 text-[length:var(--text-caption)] text-[var(--color-text-inverse)]/70">
+            <p className="mt-1 text-xs text-[var(--snow)]/70">
               {disabledReasonCopy(disabledReason).body}
             </p>
           </div>
@@ -395,10 +395,10 @@ export default function BadgeShareButton({
         footerBottomInset="safe-area"
         footer={
           activeItemState.kind === 'ready' ? (
-            <div className="flex gap-[var(--spacing-8)]">
+            <div className="flex gap-2">
               <div className="flex-1">
                 <Button
-                  surface="dark"
+                  surface="light"
                   fullWidth
                   onClick={() => handleAction(activeItemState.blob, FILENAME_SUFFIX[activeKind])}
                 >
@@ -407,7 +407,7 @@ export default function BadgeShareButton({
               </div>
               <div className="flex-1">
                 <Button
-                  surface="dark"
+                  surface="light"
                   variant="secondary"
                   fullWidth
                   onClick={() => handleSave(activeItemState.blob, FILENAME_SUFFIX[activeKind])}
@@ -419,7 +419,7 @@ export default function BadgeShareButton({
           ) : undefined
         }
       >
-        <div className="h-full flex flex-col min-h-0 px-[var(--spacing-16)]">
+        <div className="h-full flex flex-col min-h-0 px-4">
           {/*
             "기존 이미지(공유 카드)"·"배지 이미지" 2항목 캐러셀 (티켓 20260911_1102).
             MODULAR Carousel(센터 포커스, 좌우 peek)을 그대로 재사용 — 슬라이드 전환 시
@@ -444,7 +444,7 @@ export default function BadgeShareButton({
                   <div
                     role="group"
                     aria-label={kind === 'card' ? d.badges.shareCardGroupLabel : d.badges.shareBadgeGroupLabel}
-                    className="relative w-full h-full rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center"
+                    className="relative w-full h-full rounded-2xl overflow-hidden flex items-center justify-center"
                     style={{
                       backgroundImage:
                         'repeating-conic-gradient(rgba(255,255,255,0.06) 0% 25%, rgba(255,255,255,0.02) 0% 50%)',
@@ -474,11 +474,11 @@ export default function BadgeShareButton({
                       // 실제 알림은 프레임 바깥의 sr-only 블록(aria-live="polite")이 전담한다 —
                       // 같은 문구가 여기 시각 텍스트에도 있어 aria-hidden 없이 두면 스크린 리더가
                       // 두 번 읽는다(인터페이스 리뷰 지적, 티켓 20260911_1156).
-                      <div className="px-[var(--spacing-24)] text-center" aria-hidden="true">
-                        <p className="whitespace-pre-line text-[length:var(--text-body)] text-[var(--color-text-inverse)]">
+                      <div className="px-6 text-center" aria-hidden="true">
+                        <p className="whitespace-pre-line text-base text-[var(--foreground)]">
                           {errorCopy(itemState).title}
                         </p>
-                        <p className="mt-1 whitespace-pre-line text-[length:var(--text-caption)] text-[var(--color-text-inverse)]/70">
+                        <p className="mt-1 whitespace-pre-line text-xs text-[var(--foreground)]/70">
                           {errorCopy(itemState).body}
                         </p>
                       </div>

@@ -11,7 +11,7 @@ import SquareCard from '../SquareCard'
 import { CARD_RESOURCES, type ImageCardView } from '@/lib/today/cardView'
 
 const IMAGE = 'https://cdn.example/cover.png'
-const SQUARE_BOX = 'relative aspect-square overflow-hidden bg-surface'
+const SQUARE_BOX = 'relative aspect-square overflow-hidden bg-background'
 
 function makeView(overrides: Partial<ImageCardView> = {}): ImageCardView {
   return {
@@ -31,13 +31,13 @@ function makeView(overrides: Partial<ImageCardView> = {}): ImageCardView {
 
 const render = (overrides: Partial<ImageCardView> = {}) => renderToStaticMarkup(<SquareCard view={makeView(overrides)} />)
 
-const BODY_OPEN = '<div class="flex flex-col gap-[var(--spacing-12)] p-[var(--spacing-24)]">'
+const BODY_OPEN = '<div class="flex flex-col gap-3 p-6">'
 const bodyOf = (html: string) => html.slice(html.indexOf(BODY_OPEN) + BODY_OPEN.length)
 
 describe('SquareCard — 면(표면)', () => {
   it('흰 카드(inverse)이고 모서리를 자르는 overflow-hidden을 가지며 안쪽 여백은 인라인 0이다', () => {
     const html = render()
-    expect(html).toMatch(/^<div class="overflow-hidden" style="[^"]*background:var\(--color-surface-inverse\)[^"]*">/)
+    expect(html).toMatch(/^<div class="overflow-hidden" style="[^"]*background:var\(--background-inverse\)[^"]*">/)
     expect(html).toMatch(/^<div[^>]*style="[^"]*padding:0[;"]/)
     expect(html).not.toContain('--layout-card-padding')
     expect(html).not.toContain('p-0')
@@ -92,11 +92,11 @@ describe('SquareCard — 이미지 칸', () => {
     for (const needle of ['bg-black', 'gradient', 'shadow', 'padding:6px 10px', 'text-white']) expect(box).not.toContain(needle)
   })
 
-  it('레터박스 판은 어두운 bg-surface다(흰 판·이미지 모서리 둥글림 없음)', () => {
+  it('레터박스 판은 어두운 bg-background다(흰 판·이미지 모서리 둥글림 없음)', () => {
     const html = render()
     expect(html).toContain(SQUARE_BOX)
     const box = html.slice(html.indexOf(SQUARE_BOX), html.indexOf(BODY_OPEN))
-    for (const needle of ['bg-white', 'bg-surface-inverse', 'rounded']) expect(box).not.toContain(needle)
+    for (const needle of ['bg-white', 'bg-background-inverse', 'rounded']) expect(box).not.toContain(needle)
   })
 })
 
@@ -119,7 +119,7 @@ describe('SquareCard — 이미지 alt와 titleInImage', () => {
     expect(chipRow).toBeGreaterThan(-1)
     expect(chipRow).toBeLessThan(fact)
     // 칩 줄과 필수 정보 사이에 제목 그룹의 빈 칸이 없다
-    expect(html.slice(chipRow, fact)).not.toContain('mt-[var(--spacing-4)]')
+    expect(html.slice(chipRow, fact)).not.toContain('mt-1')
   })
 
   it('숨김 제목(sr-only h3)을 따로 두지 않는다(alt와 중복 읽힘)', () => {
@@ -132,7 +132,7 @@ describe('SquareCard — 이미지 없음 자리 표시', () => {
     const html = render({ imageUrl: null })
     expect(html).not.toContain('<img')
     expect(html).toContain(
-      'class="absolute inset-0 flex flex-col items-center justify-center gap-[var(--spacing-8)] px-[var(--spacing-24)] bg-surface text-center"',
+      'class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 bg-background text-center"',
     )
     expect(html).not.toContain('gradient')
   })
@@ -151,7 +151,7 @@ describe('SquareCard — 이미지 없음 자리 표시', () => {
   it('titleInImage 카드는 판 위에 제목을 그린다(16px bold·3줄 말줄임) — 본문에는 제목·요약이 없다', () => {
     const html = render({ imageUrl: null, titleInImage: true })
     expect(html).toContain(
-      '<p class="text-[length:var(--text-body)] font-bold text-text line-clamp-3 break-keep break-words">한강 러닝 챌린지</p>',
+      '<p class="text-base font-bold text-foreground line-clamp-3 break-keep break-words">한강 러닝 챌린지</p>',
     )
     expect(html.match(/한강 러닝 챌린지/g)).toHaveLength(1)
     expect(html).not.toContain('<h3')
@@ -186,45 +186,45 @@ describe('SquareCard — 본문 글자 배치', () => {
 
   it('칩 줄은 흰 면 위 색조다(기본 on) — 라벨 칩은 기본 색조, 핀 글자는 /60', () => {
     const html = render({ regionLabel: '성수동' })
-    expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--color-surface\);color:var\(--color-text\)[^"]*">미션<\/span>/)
-    expect(html).toContain('min-w-0 text-[length:var(--text-caption)] text-text-inverse/60">')
+    expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--background\);color:var\(--foreground\)[^"]*">미션<\/span>/)
+    expect(html).toContain('min-w-0 text-xs text-snow/60">')
     expect(html).not.toContain('text-white')
   })
 
   it('칩 줄은 본문 첫 줄이다(이미지 칸 다음, 제목 앞)', () => {
     const html = render()
-    expect(bodyOf(html).startsWith('<div class="flex items-center gap-[var(--spacing-8)]">')).toBe(true)
+    expect(bodyOf(html).startsWith('<div class="flex items-center gap-2">')).toBe(true)
     expect(html.indexOf('padding:6px 10px')).toBeGreaterThan(html.indexOf(SQUARE_BOX))
     expect(html.indexOf('padding:6px 10px')).toBeLessThan(html.indexOf('<h3'))
   })
 
-  it('제목은 h3, 24px(--text-subheading)·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
+  it('제목은 h3, 24px(--text-2xl)·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
     const html = render()
     expect(html).toContain(
-      '<h3 class="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text-inverse line-clamp-2 break-keep break-words">한강 러닝 챌린지</h3>',
+      '<h3 class="text-2xl text-snow line-clamp-2 break-keep break-words">한강 러닝 챌린지</h3>',
     )
     expect(html).not.toMatch(/<h3[^>]*font-(bold|semibold|medium)/)
   })
 
   it('요약은 제목 아래 4px, 16px·/60·2줄 말줄임이다', () => {
     expect(render()).toContain(
-      '<p class="mt-[var(--spacing-4)] text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse/60 line-clamp-2 break-keep break-words">이번 주말 같이 달려요</p>',
+      '<p class="mt-1 text-base text-snow/60 line-clamp-2 break-keep break-words">이번 주말 같이 달려요</p>',
     )
   })
 
   it('요약이 없으면 제목만 남고 빈 칸이 없다', () => {
     const html = render({ subtitle: undefined })
     expect(html).toContain('<h3')
-    expect(html).not.toContain('mt-[var(--spacing-4)]')
+    expect(html).not.toContain('mt-1')
   })
 
-  it('필수 정보는 14px(--text-small) 굵게 검정 100%이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
+  it('필수 정보는 14px(--text-sm) 굵게 검정 100%이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
     const html = render()
     const lines = [...html.matchAll(/<p class="([^"]*font-bold[^"]*)">([^<]*)<\/p>/g)]
     expect(lines.map((m) => m[2])).toEqual(['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'])
     for (const [, className] of lines) {
       expect(className).toBe(
-        'text-[length:var(--text-small)] leading-[var(--leading-small)] font-bold text-text-inverse break-keep break-words',
+        'text-sm font-bold text-snow break-keep break-words',
       )
       expect(className).not.toContain('/60')
       expect(className).not.toContain('line-clamp')
@@ -241,8 +241,8 @@ describe('SquareCard — 본문 글자 배치', () => {
 
   it('옅은 글자는 /60 한 단계뿐이다(/30·/40·/50 없음)', () => {
     const html = render({ resource: 'badge', regionLabel: '성수동', rarity: 'rare' })
-    expect(html).toContain('text-text-inverse/60')
-    for (const level of ['/30', '/40', '/50', '/70']) expect(html).not.toContain(`text-text-inverse${level}`)
+    expect(html).toContain('text-snow/60')
+    for (const level of ['/30', '/40', '/50', '/70']) expect(html).not.toContain(`text-snow${level}`)
   })
 
   it('글자는 전부 왼쪽 정렬이다(본문에 가운데 정렬이 없다)', () => {

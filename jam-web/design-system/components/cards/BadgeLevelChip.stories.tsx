@@ -16,8 +16,8 @@ const meta: Meta<typeof BadgeLevelChip> = {
           '별도 컴포넌트로 뺐다: `RarityBadge`는 «등급»(Common~Mystic)을 그리는 컴포넌트이고, ' +
           'v5 무한레벨형 193종은 `rarity`가 **NULL**이고 `level`만 있다. 서로 다른 축이라 한 ' +
           '컴포넌트에 합치면 "등급 칩인데 등급이 없다"는 모순이 API에 남는다(게다가 ' +
-          '`RarityBadge`는 서비스 9곳이 쓴다 — 비파괴로만 둔다). 색은 `--color-secondary` 채움 + ' +
-          '흰 텍스트로 카드 `#1a1a1a` 위에서 **5.86:1**(AA 통과). 폭은 52px 고정 — 계열 카드 ' +
+          '`RarityBadge`는 서비스 9곳이 쓴다 — 비파괴로만 둔다). 색은 중립 칩 — `--default-soft` 채움 + ' +
+          '`--foreground` 글자. 폭은 52px 고정 — 계열 카드 ' +
           '1행 그리드 `[52px 칩][1fr 이름][auto 카운터]`에서 이름 시작 x를 모든 계열에 맞추기 위해서다.',
       },
     },
@@ -90,7 +90,7 @@ export const Sizes: Story = {
     const md = canvasElement.querySelector('[data-testid="md"] span') as HTMLElement;
     expect(getComputedStyle(sm).fontSize).toBe('8px');
     expect(getComputedStyle(sm).paddingTop).toBe('4px');
-    expect(getComputedStyle(md).fontSize).toBe('11px');
+    expect(getComputedStyle(md).fontSize).toBe('12px');
     expect(getComputedStyle(md).paddingTop).toBe('5px');
   },
 };

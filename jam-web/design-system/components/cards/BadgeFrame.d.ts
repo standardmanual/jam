@@ -9,7 +9,7 @@ export interface BadgeFrameProps {
   width?: number;
   /** Container height in px (default 200) */
   height?: number;
-  /** Background fill — CSS color or token (default var(--color-primary)) */
+  /** Background fill — CSS color or token (default var(--accent)) */
   color?: string;
   children?: ReactNode;
   style?: CSSProperties;

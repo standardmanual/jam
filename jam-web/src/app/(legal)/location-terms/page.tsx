@@ -4,7 +4,7 @@ import LegalTopNav from '../LegalTopNav'
  * 위치기반서비스 이용약관 페이지 (티켓 20260929_1359).
  *
  * `(legal)/privacy/page.tsx`(20260901_2217, 티켓 20260929_1400에서 `(legal)`로 이동)의 레이아웃·타이포 패턴을 그대로 따른다 —
- * TopNav + 단일 컬럼 서버 컴포넌트, 본문은 --text-body + --leading-reading, 조 간격
+ * TopNav + 단일 컬럼 서버 컴포넌트, 본문은 --text-base + --leading-reading, 조 간격
  * --spacing-48, 항 간격 --spacing-32, 상단 여백 --spacing-64.
  *
  * 원고 출처는 `docs/service/legal/LOCATION_TERMS.md`의 제1조 ~ 부칙이다. 문구는 원고 그대로 옮긴다.
@@ -25,18 +25,18 @@ const EFFECTIVE_DATE = '2026년 10월 1일'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-[var(--spacing-16)]">
-      <h2 className="text-[length:var(--text-h4)] leading-[var(--leading-h4)] font-[number:var(--weight-h4)] tracking-[var(--tracking-h4)]">
+    <section className="flex flex-col gap-4">
+      <h2 className="text-2xl font-medium">
         {title}
       </h2>
-      <div className="flex flex-col gap-[var(--spacing-32)]">{children}</div>
+      <div className="flex flex-col gap-8">{children}</div>
     </section>
   )
 }
 
 function P({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[length:var(--text-body)] leading-[var(--leading-reading)] text-text/90 [word-break:keep-all] break-words">
+    <p className="text-base leading-[var(--leading-reading)] text-foreground/90 [word-break:keep-all] break-words">
       {children}
     </p>
   )
@@ -44,9 +44,9 @@ function P({ children }: { children: React.ReactNode }) {
 
 function OrderedList({ items }: { items: React.ReactNode[] }) {
   return (
-    <ol className="flex flex-col gap-[var(--spacing-8)] list-decimal pl-[var(--spacing-24)]">
+    <ol className="flex flex-col gap-2 list-decimal pl-6">
       {items.map((item, i) => (
-        <li key={i} className="text-[length:var(--text-body)] leading-[var(--leading-reading)] text-text/90 [word-break:keep-all] break-words">
+        <li key={i} className="text-base leading-[var(--leading-reading)] text-foreground/90 [word-break:keep-all] break-words">
           {item}
         </li>
       ))}
@@ -56,9 +56,9 @@ function OrderedList({ items }: { items: React.ReactNode[] }) {
 
 function BulletList({ items }: { items: React.ReactNode[] }) {
   return (
-    <ul className="flex flex-col gap-[var(--spacing-8)] list-disc pl-[var(--spacing-24)]">
+    <ul className="flex flex-col gap-2 list-disc pl-6">
       {items.map((item, i) => (
-        <li key={i} className="text-[length:var(--text-body)] leading-[var(--leading-reading)] text-text/90 [word-break:keep-all] break-words">
+        <li key={i} className="text-base leading-[var(--leading-reading)] text-foreground/90 [word-break:keep-all] break-words">
           {item}
         </li>
       ))}
@@ -69,11 +69,11 @@ function BulletList({ items }: { items: React.ReactNode[] }) {
 /** 마크다운 표 → 세로형 정의 카드. 앱 컬럼 폭에서 가로 스크롤 표를 만들지 않기 위함. */
 function DefCard({ fields }: { fields: Array<{ label: string; value: React.ReactNode }> }) {
   return (
-    <dl className="rounded-[var(--radius-cards)] bg-surface-elevated p-[var(--spacing-16)] flex flex-col gap-[var(--spacing-12)]">
+    <dl className="rounded-2xl bg-surface p-4 flex flex-col gap-3">
       {fields.map(({ label, value }, i) => (
-        <div key={i} className="flex flex-col gap-[var(--spacing-4)]">
-          <dt className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-text/50">{label}</dt>
-          <dd className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/90 [word-break:keep-all] break-words">
+        <div key={i} className="flex flex-col gap-1">
+          <dt className="text-xs text-foreground/50">{label}</dt>
+          <dd className="text-base text-foreground/90 [word-break:keep-all] break-words">
             {value}
           </dd>
         </div>
@@ -84,12 +84,12 @@ function DefCard({ fields }: { fields: Array<{ label: string; value: React.React
 
 export default function LocationTermsPage() {
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       <LegalTopNav title={PAGE_TITLE} />
 
-      <article className="px-[var(--spacing-16)] pt-[var(--spacing-64)] pb-[var(--spacing-64)] flex flex-col gap-[var(--spacing-48)]">
-        <div className="flex flex-col gap-[var(--spacing-16)]">
-          <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] font-[number:var(--weight-h3)] tracking-[var(--tracking-h3)]">
+      <article className="px-4 pt-16 pb-16 flex flex-col gap-12">
+        <div className="flex flex-col gap-4">
+          <h1 className="text-3xl font-medium">
             {PAGE_TITLE}
           </h1>
         </div>

@@ -324,7 +324,7 @@ export function IconCatalog({ className = '', style = {} }) {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
         gap: 'var(--spacing-16)',
-        color: 'var(--color-text)',
+        color: 'var(--foreground)',
         ...style,
       }}
     >
@@ -338,16 +338,16 @@ export function IconCatalog({ className = '', style = {} }) {
             justifyContent: 'center',
             gap: 'var(--spacing-8)',
             padding: 'var(--spacing-12)',
-            borderRadius: 'var(--radius-card)',
-            background: 'var(--color-surface)',
+            borderRadius: 'var(--radius-2xl)',
+            background: 'var(--background)',
           }}
         >
           <Icon width={24} height={24} />
           <span
             style={{
-              fontSize: 'var(--text-caption)',
-              lineHeight: 'var(--leading-caption)',
-              color: 'var(--color-text-secondary)',
+              fontSize: 'var(--text-xs)',
+              lineHeight: 'var(--text-xs--line-height)',
+              color: 'var(--muted)',
               textAlign: 'center',
               wordBreak: 'break-word',
             }}

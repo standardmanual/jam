@@ -26,8 +26,8 @@ import { d } from '@/lib/i18n'
  * 앵커 시맨틱은 사라지고 button 기반 프로그래매틱 이동으로 바뀐다(뒤로가기 버튼이라
  * 실사용 영향은 낮다고 판단 — 완료 기록 참고).
  *
- * - 배경: 기본값 --color-bg. 페이지 캔버스가 --color-surface인 화면은 `headerStyle`로
- *   덮어써 맞춘다(예: headerStyle={{ background: 'var(--color-surface)' }}) / 텍스트: --color-text
+ * - 배경: 기본값 --background. 페이지 캔버스가 --background인 화면은 `headerStyle`로
+ *   덮어써 맞춘다(예: headerStyle={{ background: 'var(--background)' }}) / 텍스트: --foreground
  * - elevation: 보더/드롭섀도 없음(20260816_012) — 헤더와 본문 배경톤 차이만으로 구분
  * - 뒤로가기: backHref가 있으면 router.push(backHref), 없으면 onBack ?? router.back()
  * - 터치 영역: chevron / rightSlot 모두 최소 44×44pt
@@ -93,12 +93,12 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
     <Link
       href={profileHref}
       aria-label={d.profile.title}
-      className="w-11 h-11 rounded-[var(--radius-pill)] flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
+      className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
     >
       {avatarUrl ? (
-        <Image src={avatarUrl} alt={d.profile.avatarAlt} width={36} height={36} className="w-9 h-9 rounded-[var(--radius-pill)] object-cover" />
+        <Image src={avatarUrl} alt={d.profile.avatarAlt} width={36} height={36} className="w-9 h-9 rounded-full object-cover" />
       ) : (
-        <span className="w-9 h-9 rounded-[var(--radius-pill)] bg-surface-elevated text-text flex items-center justify-center">
+        <span className="w-9 h-9 rounded-full bg-surface text-foreground flex items-center justify-center">
           <UserIcon className="w-4 h-4" />
         </span>
       )}
@@ -146,7 +146,7 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
         variant="outline"
         surface="sub"
         size="xs"
-        style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-base-white)' }}
+        style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
         onClick={() => {
           window.location.href = '/api/strava/auth'
         }}

@@ -45,8 +45,8 @@ import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeade
  * 3. **캡션 자리 2줄 높이를 상시 예약**한다(같은 레일 안에서 눈금 열 높이가 86/101/115px로
  *    어긋나던 문제). 등급칩 자리도 마찬가지로 항상 예약한다.
  *
- * 함께 바뀐 값: 썸네일 44→52px, 연결선 6→8px, 캡션 `--text-micro`→`--text-caption`
- * (진행 앵커 캡션만 `--text-small`/700), 등급칩 `size="md"`, 배지 이미지는 여백 없이
+ * 함께 바뀐 값: 썸네일 44→52px, 연결선 6→8px, 캡션 `--text-xs`→`--text-xs`
+ * (진행 앵커 캡션만 `--text-sm`/700), 등급칩 `size="md"`, 배지 이미지는 여백 없이
  * 프레임을 꽉 채운다(`objectFit: cover` + 프레임 `overflow: hidden`).
  *
  * 인터랙션: 눈금 하나는 상태에 따라 링크(embedded 이동, earned/not-reached) 또는
@@ -115,7 +115,7 @@ const RARITY_CHIP_SLOT_HEIGHT = 22;
 
 /**
  * 캡션 자리의 예약 높이 — **2줄 상시 예약**(티켓 20260906_2140).
- * 진행 앵커 캡션이 `--text-small`(14px)/line-height 1.3이라 2줄이 36.4px다. 캡션 글자 수에
+ * 진행 앵커 캡션이 `--text-sm`(14px)/line-height 1.3이라 2줄이 36.4px다. 캡션 글자 수에
  * 따라 눈금 열 높이가 86/101/115px로 어긋나던 문제를 이 상수 하나로 없앤다.
  */
 const CAPTION_SLOT_HEIGHT = 37;
@@ -140,7 +140,7 @@ button.ds-rail-stop{background:none;border:none;padding:0;font:inherit;cursor:po
  */
 function StopThumbnail({ imageUrl, alt, status, rarity, showRarityChip = false }) {
   const earned = status === 'earned';
-  const ringColor = status === 'earned' || status === 'ready' ? 'var(--status-progress-done)' : 'var(--color-border-light)';
+  const ringColor = status === 'earned' || status === 'ready' ? 'var(--progress-done)' : 'var(--field-border)';
   const ringWidth = status === 'earned' || status === 'ready' ? 2 : 1;
   const showMarker = status === 'earned' || status === 'ready' || status === 'locked';
 
@@ -149,12 +149,12 @@ function StopThumbnail({ imageUrl, alt, status, rarity, showRarityChip = false }
       <span
         style={{
           position: 'relative', width: THUMB_SIZE, height: THUMB_SIZE, flex: 'none',
-          borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
+          borderRadius: 'var(--radius-lg)', background: 'var(--background)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           // 이미지를 꽉 채우므로 자르는 일은 프레임이 전담한다.
           overflow: 'hidden',
           boxShadow: `inset 0 0 0 ${ringWidth}px ${ringColor}`,
-          color: 'var(--color-text)',
+          color: 'var(--foreground)',
         }}
       >
         {imageUrl ? (
@@ -171,7 +171,7 @@ function StopThumbnail({ imageUrl, alt, status, rarity, showRarityChip = false }
             }}
           />
         ) : (
-          <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
+          <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-sm)', background: 'var(--background-inverse)', opacity: 0.2 }} />
         )}
         {showMarker && (
           <span
@@ -179,9 +179,9 @@ function StopThumbnail({ imageUrl, alt, status, rarity, showRarityChip = false }
             style={{
               position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '2px solid var(--color-surface-elevated)',
-              background: status === 'earned' ? 'var(--status-progress-done)' : 'var(--color-base-grey-700)',
-              color: status === 'earned' ? '#000' : 'var(--color-text-secondary)',
+              border: '2px solid var(--surface)',
+              background: status === 'earned' ? 'var(--progress-done)' : 'var(--progress-track)',
+              color: status === 'earned' ? '#000' : 'var(--muted)',
             }}
           >
             {status === 'earned' ? <CheckGlyph size={10} /> : <LockGlyph size={10} />}
@@ -325,8 +325,8 @@ export function BadgeStageRail({
     <div
       className={`ds-rail ${className}`}
       style={{
-        position: 'relative', borderRadius: 'var(--radius-card)', padding: 'var(--spacing-16)',
-        background: 'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--color-surface-elevated)',
+        position: 'relative', borderRadius: 'var(--radius-2xl)', padding: 'var(--spacing-16)',
+        background: 'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--surface)',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)',
         ...style,
       }}
@@ -344,10 +344,10 @@ export function BadgeStageRail({
                 aria-label={`누적 ${earnCount}회`}
                 style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '3px 8px', borderRadius: 'var(--radius-pill)',
-                  fontSize: 'var(--text-micro)', lineHeight: 1, fontWeight: 700,
+                  padding: '3px 8px', borderRadius: 'var(--radius-full)',
+                  fontSize: 'var(--text-xs)', lineHeight: 1, fontWeight: 700,
                   fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-                  background: 'var(--status-idle-track)', color: 'var(--color-text)',
+                  background: 'var(--progress-track)', color: 'var(--foreground)',
                 }}
               >
                 ×{earnCount}
@@ -379,12 +379,12 @@ export function BadgeStageRail({
                 width: LINK_WIDTH,
                 top: THUMB_SIZE / 2 - CONNECTOR_HEIGHT / 2,
                 height: CONNECTOR_HEIGHT,
-                borderRadius: 'var(--radius-xs)',
+                borderRadius: 'var(--radius-sm)',
                 background: c.isGateBefore
                   ? undefined
                   : c.allEarnedBefore
-                    ? 'var(--status-progress-done)'
-                    : 'var(--status-idle-track)',
+                    ? 'var(--progress-done)'
+                    : 'var(--progress-track)',
                 overflow: c.isGateBefore ? 'visible' : 'hidden',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
@@ -395,8 +395,8 @@ export function BadgeStageRail({
                 <span
                   aria-hidden="true"
                   style={{
-                    position: 'absolute', inset: 0, borderRadius: 'var(--radius-xs)',
-                    background: 'var(--status-progress-sweep)',
+                    position: 'absolute', inset: 0, borderRadius: 'var(--radius-sm)',
+                    background: 'var(--progress-sweep)',
                     clipPath: `inset(0 ${100 - c.pct}% 0 0)`,
                   }}
                 />
@@ -445,11 +445,11 @@ export function BadgeStageRail({
             // 눈금은 획득/조건 완료면 done, 그 외는 idle이다.
             const captionColor = showProgress
               ? frontierProgress.muted
-                ? 'var(--status-progress-idle)'
+                ? 'var(--muted)'
                 : progressRampColor(frontierProgress.fraction)
               : stop.status === 'earned' || stop.status === 'ready'
-                ? 'var(--status-progress-done)'
-                : 'var(--status-progress-idle)';
+                ? 'var(--progress-done)'
+                : 'var(--muted)';
 
             return (
               // 셀 폭은 PITCH(마지막만 THUMB_SIZE)이고 눈금은 **셀 왼쪽 끝에 붙는다** —
@@ -476,7 +476,7 @@ export function BadgeStageRail({
                       style={{
                         display: 'block', minHeight: CAPTION_SLOT_HEIGHT, width: PITCH,
                         // 진행 앵커 캡션만 한 단계 크고 굵다 — 「지금 내 차례」를 한 곳에만 준다.
-                        fontSize: showProgress ? 'var(--text-small)' : 'var(--text-caption)',
+                        fontSize: showProgress ? 'var(--text-sm)' : 'var(--text-xs)',
                         fontWeight: showProgress ? 700 : 400,
                         lineHeight: 1.3,
                         // keep-all: "3일" 같은 수치+단위가 "3"/"일"로 쪼개지지 않게 한다.
@@ -504,8 +504,8 @@ export function BadgeStageRail({
       {regretLine && (
         <p
           style={{
-            margin: 'var(--spacing-12) 0 0', fontSize: 'var(--text-caption)', lineHeight: 1.4,
-            color: 'var(--status-progress-near)',
+            margin: 'var(--spacing-12) 0 0', fontSize: 'var(--text-xs)', lineHeight: 1.4,
+            color: 'var(--progress-short)',
           }}
         >
           {regretLine}
@@ -535,7 +535,7 @@ export function BadgeStageRail({
                         className="ds-rail-lock-btn"
                         onClick={() => onLockClick?.(stop.id)}
                         aria-label={[rarityLabel, '받는 방법 보기'].filter(Boolean).join(' ')}
-                        style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--color-text-secondary)' }}
+                        style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--muted)' }}
                       >
                         <LockGlyph size={14} />
                       </button>
@@ -543,8 +543,8 @@ export function BadgeStageRail({
                   </div>
                   <p
                     style={{
-                      margin: '4px 0 0', fontSize: 'var(--text-small)', fontWeight: 600, lineHeight: 1.4,
-                      color: stop.status === 'earned' || stop.status === 'ready' ? 'var(--status-progress-done)' : 'var(--status-progress-idle)',
+                      margin: '4px 0 0', fontSize: 'var(--text-sm)', fontWeight: 600, lineHeight: 1.4,
+                      color: stop.status === 'earned' || stop.status === 'ready' ? 'var(--progress-done)' : 'var(--muted)',
                     }}
                   >
                     {expandedStatusText}
@@ -552,8 +552,8 @@ export function BadgeStageRail({
                   {stop.description && (
                     <p
                       style={{
-                        margin: '4px 0 0', fontSize: 'var(--text-caption)', lineHeight: 1.5,
-                        color: 'var(--color-text-secondary)', whiteSpace: 'pre-line',
+                        margin: '4px 0 0', fontSize: 'var(--text-xs)', lineHeight: 1.5,
+                        color: 'var(--muted)', whiteSpace: 'pre-line',
                       }}
                     >
                       {stop.description}

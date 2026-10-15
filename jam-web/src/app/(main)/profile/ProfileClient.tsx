@@ -404,7 +404,7 @@ export default function ProfileClient({
         )
       }
       return (
-        <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+        <div className="grid grid-cols-3 gap-2">
           {badgeItems.map(({ item, count, level }) => {
             const meta = item.metadata as Record<string, string>
             return (
@@ -435,7 +435,7 @@ export default function ProfileClient({
         )
       }
       return (
-        <div className="grid grid-cols-2 gap-[var(--spacing-8)]">
+        <div className="grid grid-cols-2 gap-2">
           {itembooksData.map(book => (
             <CollectionGridCard
               key={book.id}
@@ -472,7 +472,7 @@ export default function ProfileClient({
       )
     }
     return (
-      <div className="flex flex-col gap-[var(--spacing-8)]">
+      <div className="flex flex-col gap-2">
         {listData.map(u => (
           <ListRowCard
             key={u.id}
@@ -490,7 +490,7 @@ export default function ProfileClient({
                 <Image src={u.avatar_url} alt={getDisplayName(u)} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center">
-                  <UserIcon className="w-5 h-5 text-text/60" />
+                  <UserIcon className="w-5 h-5 text-foreground/60" />
                 </div>
               )
             }
@@ -501,10 +501,10 @@ export default function ProfileClient({
                   surface="sub"
                   variant={listFollowStates[u.id] ? 'outline' : 'primary'}
                   onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleListFollow(u.id) }}
-                  className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
-                  // ListRowCard(--color-surface-elevated) 위라 outline 기본 채움(라이트 전용 4% 블랙 틴트)이
+                  className="shrink-0 px-4 py-2 text-base"
+                  // ListRowCard(--surface) 위라 outline 기본 채움(라이트 전용 4% 블랙 틴트)이
                   // 안 보임 — 다크 카드에서도 항상 구분되는 그레이 토큰으로 오버라이드 (2026-08-17)
-                  style={listFollowStates[u.id] ? { backgroundColor: 'var(--color-chip-gray)', color: 'var(--color-text)' } : undefined}
+                  style={listFollowStates[u.id] ? { backgroundColor: 'var(--default-soft)', color: 'var(--foreground)' } : undefined}
                 >
                   {/* Text states swap (04-text-states-swap.md) */}
                   <SwapText value={listFollowStates[u.id] ? d.profile.followingButton : d.profile.followButton} />
@@ -531,7 +531,7 @@ export default function ProfileClient({
 
   // 통계바 = 슬라이딩 탭. 라벨은 "숫자 + 이름" 2줄 구성이라 ReactNode로 넘긴다.
   // 팔로워 수는 팔로우/언팔로우 즉시 바뀌므로 Number pop-in(02-number-pop-in.md)을 건다.
-  // 숫자 색은 위 포인트 표시와 같은 강조색(--color-primary, "jam-stat-number" 클래스)을
+  // 숫자 색은 위 포인트 표시와 같은 강조색(--link, "jam-stat-number" 클래스)을
   // 항상 쓴다 — 활성/pill-경유 상태에만 흰색으로 바뀌는 나머지 로직은 CSS
   // (transitions.css `.jam-stat-tabs`)가 aria-selected·data-pill-over 속성을 보고 처리한다
   // (data-pill-over는 SlidingTabs.tsx가 pill 애니메이션 중 실시간 겹침을 측정해 붙인다).
@@ -544,21 +544,21 @@ export default function ProfileClient({
       ariaLabel: tab.label,
       label: (
         <span className="flex flex-col items-center justify-center gap-1">
-          <span className="jam-stat-number text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] font-bold tabular-nums">
+          <span className="jam-stat-number text-2xl font-bold tabular-nums">
             {tab.key === 'followers' ? (
               <PopInNumber value={statCounts.followers} />
             ) : (
               statCounts[tab.key]
             )}
           </span>
-          <span className="text-[length:var(--text-caption)] leading-none font-bold opacity-70">{tab.label}</span>
+          <span className="text-xs leading-none font-bold opacity-70">{tab.label}</span>
         </span>
       ),
     }
   })
 
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       {/* 20260824_021: 본인 프로필에도 TopNav를 둔다(로고 모드) — 탭바로 직접 오는 루트
           화면이라 알림 종이 필요하다. 타인 프로필은 back+닉네임이라 종이 붙지 않는다.
           TopNav가 safe-area-inset-top을 이미 처리하므로 본문 상단 여백도 함께 줄인다. */}
@@ -569,13 +569,13 @@ export default function ProfileClient({
       )}
 
       <div
-        className={`px-[var(--spacing-16)] pb-[var(--spacing-40)] pt-[var(--spacing-24)] flex flex-col gap-[var(--spacing-24)]`}
+        className={`px-4 pb-10 pt-6 flex flex-col gap-6`}
       >
         {/* 프로필 헤더 — Card 배경 제거, 컨텐츠는 페이지 패딩 폭까지 확장 (20260820_019).
             아바타 확대·편집 버튼 축소·아이디 전체노출·포인트를 아이디 아래로 이동 (20260820_021).
             티켓 20260909_2119: 아바타 모서리의 편집 버튼을 없애고, 포인트 표시 행 우측 끝에
             "편집" 버튼을 새로 두어 그걸로 /profile/edit에 진입한다. */}
-        <div className="flex items-center gap-[var(--spacing-16)]">
+        <div className="flex items-center gap-4">
           <div className="relative shrink-0">
             <Link href={`/${username}`} onClick={clearProfileHash}>
               {profile?.avatar_url ? (
@@ -587,7 +587,7 @@ export default function ProfileClient({
                   className="w-24 h-24 rounded-full object-cover"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-full bg-surface-elevated text-text flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full bg-surface text-foreground flex items-center justify-center">
                   <UserIcon className="w-10 h-10" />
                 </div>
               )}
@@ -599,7 +599,7 @@ export default function ProfileClient({
             <Link
               href={`/${username}`}
               onClick={clearProfileHash}
-              className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] break-words"
+              className="text-2xl break-words"
             >
               {(profile && getDisplayName(profile)) || d.profile.anonymous}
             </Link>
@@ -608,20 +608,20 @@ export default function ProfileClient({
                 포인트 버튼은 /points로, 편집 버튼은 /profile/edit로 이동한다. 서로의 터치
                 타겟을 침범하지 않도록 justify-between으로 간격을 둔다. */}
             {isOwnProfile && (
-              <div className="flex items-center justify-between gap-[var(--spacing-8)]">
+              <div className="flex items-center justify-between gap-2">
                 {pointBalance !== null ? (
                   <button
                     onClick={() => router.push('/points')}
                     aria-label={d.profile.pointsAriaLabel}
-                    className="self-start -ml-2 px-2 inline-flex items-center gap-1 min-h-11 rounded-[var(--radius-nav-buttons)] active:scale-95 transition-transform duration-100 cursor-pointer"
+                    className="self-start -ml-2 px-2 inline-flex items-center gap-1 min-h-11 rounded-full active:scale-95 transition-transform duration-100 cursor-pointer"
                   >
-                    <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] font-bold text-[color:var(--color-primary)] tabular-nums">
+                    <span className="text-2xl font-bold text-[color:var(--link)] tabular-nums">
                       {pointBalance.toLocaleString('ko-KR')}
                     </span>
-                    <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] font-bold text-[color:var(--color-primary)]">
+                    <span className="text-2xl font-bold text-[color:var(--link)]">
                       {d.profile.pointBadgeLabel}
                     </span>
-                    <ChevronRightIcon className="w-4 h-4 text-text/40" />
+                    <ChevronRightIcon className="w-4 h-4 text-foreground/40" />
                   </button>
                 ) : (
                   <span />
@@ -645,7 +645,7 @@ export default function ProfileClient({
               variant={following ? 'outline' : 'primary'}
               onClick={handleFollow}
               disabled={followLoading}
-              className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
+              className="shrink-0 px-4 py-2 text-base"
             >
               {/* Text states swap (04-text-states-swap.md) */}
               <SwapText value={following ? d.profile.followingButton : d.profile.followButton} />
@@ -655,8 +655,11 @@ export default function ProfileClient({
 
         {/* 통계 바 — Tabs sliding (16-tabs-sliding.md).
             기본뷰(해시 없음)에서는 선택된 탭이 없어야 하므로 value에 빈 값을 넘겨
-            pill을 숨긴다. */}
-        <Card tone="inverse" className="overflow-hidden" style={{ padding: 0 }}>
+            pill을 숨긴다.
+            onCard 팔레트(rgba(0,0,0,…) 글자)는 밝은 카드 전제라 tone="default"(--surface)를 쓴다.
+            어두운 inverse 면 위에서는 비활성 라벨이 1.08:1로 사라졌다(티켓 20261015_2131 재작업).
+            크림 바탕과 구분되도록 1px --border를 이 카드에만 직접 건다 — 카드 공통 구분은 2133 범위. */}
+        <Card tone="default" className="overflow-hidden border border-border" style={{ padding: 0 }}>
           <SlidingTabs
             items={statTabs}
             value={isTabView ? activeTab : ('' as TabKey)}
@@ -681,13 +684,13 @@ export default function ProfileClient({
               style={{ '--jam-skel-min-h': '280px' } as CSSProperties}
             >
               <div
-                className="t-skel-skeleton is-pulsing grid grid-cols-3 gap-[var(--spacing-8)] content-start"
+                className="t-skel-skeleton is-pulsing grid grid-cols-3 gap-2 content-start"
                 aria-hidden="true"
               >
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-[136px] rounded-[var(--radius-cards)] bg-surface-inverse/15"
+                    className="h-[136px] rounded-2xl bg-background-inverse/15"
                   />
                 ))}
               </div>

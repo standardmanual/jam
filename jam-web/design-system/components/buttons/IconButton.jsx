@@ -8,7 +8,7 @@ import React from 'react';
  * v2 changes:
  *   - CDN icon replaced with inline SVG (no network dependency)
  *   - label default '' removed — label is now required to prevent empty aria-label
- *   - deprecated --color-white → --color-bg-inverse
+ *   - deprecated white 토큰 → --background-inverse
  *   - press feedback via global CSS button:active (styles.css), JS handlers removed
  *
  * v3 changes (20260821_004):
@@ -20,6 +20,11 @@ import React from 'react';
  *     cannot receive click/focus events at all, which would make that pattern impossible.
  *     If a consumer needs a hard, non-interactive disabled button, pass native `disabled`
  *     via `...rest` is intentionally NOT supported here; use `disabled` for the soft variant.
+ *
+ * v4 changes (티켓 20261015_2131 재작업):
+ *   - surface="dark" 아이콘 색을 --background-inverse → --snow로 바꿨다. dark는
+ *     --background-inverse 면 위에 놓이므로 이전 값은 배경과 같은 색(1.00:1)이었다.
+ *     밝은 면(--background·--surface) 위에서는 surface="light"를 쓴다.
  */
 
 const ICON_PATHS = {
@@ -46,7 +51,7 @@ export function IconButton({ icon = 'chevron-left', label, onClick, surface = 'l
     console.warn('[DS] IconButton: `label` prop이 없습니다. 스크린리더 사용자가 이 버튼의 역할을 알 수 없습니다.');
   }
 
-  const color = surface === 'dark' ? 'var(--color-bg-inverse)' : 'var(--color-text)';
+  const color = surface === 'dark' ? 'var(--snow)' : 'var(--foreground)';
   const path = ICON_PATHS[icon] ?? ICON_PATHS['chevron-left'];
 
   return (
@@ -56,7 +61,7 @@ export function IconButton({ icon = 'chevron-left', label, onClick, surface = 'l
       onClick={onClick}
       style={{
         width: 44, height: 44,
-        borderRadius: 'var(--radius-pill)',
+        borderRadius: 'var(--radius-full)',
         border: 'none', background: 'transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         cursor: disabled ? 'not-allowed' : 'pointer', color,

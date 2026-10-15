@@ -7,9 +7,9 @@ import React from 'react';
  * itembooks/page, MissionDetailClient, inventory/page, MissionStatusClient) 전수조사 결과,
  * 트랙/필/radius 값이 파편화돼 있었다(하드코딩 vs 토큰 혼재). MissionDetailClient만 토큰을
  * 올바르게 참조하고 있어 이를 캐노니컬 스펙으로 삼는다:
- *   - 트랙: var(--color-border)
- *   - 필: var(--color-primary) 기본값 (color prop으로 오버라이드 — 순위 그라데이션 등 예외 대응)
- *   - radius: var(--radius-pill) 기본값 (radius prop으로 오버라이드 — MissionStatusClient의
+ *   - 트랙: var(--border)
+ *   - 필: var(--accent) 기본값 — 면 채우기라 accent다 (color prop으로 오버라이드 — 순위 그라데이션 등 예외 대응)
+ *   - radius: var(--radius-full) 기본값 (radius prop으로 오버라이드 — MissionStatusClient의
  *     3px 임의값 등 예외 대응. [20260820_006])
  *   - height: 기본 8px (실사용 최빈값 — MissionDetailClient/ItemBookHeroSection 등 6곳 중 4곳)
  *
@@ -17,7 +17,7 @@ import React from 'react';
  * 서비스 8곳 + `DualAxisGauge`가 이 컴포넌트를 쓰므로 새 표현은 새 prop으로만 켠다.
  */
 /**
- * [20260906_2140] 그라데이션 정의를 `--status-progress-sweep` 토큰 하나로 모았다.
+ * [20260906_2140] 그라데이션 정의를 `--progress-sweep` 토큰 하나로 모았다.
  * 레일 연결선·진행 링은 JSX가 아닌 CSS 문자열 안에서 채움을 그려 이 JS 상수를 import할 수
  * 없었고, 그래서 한 화면에서 진행 표현이 셋으로 갈라져 있었다. 토큰을 가리키게 바꾸면
  * 정의가 한 군데(colors.css)에만 남는다.
@@ -25,7 +25,7 @@ import React from 'react';
  * 시각 변화는 미미하지만, 이 파일을 쓰는 서비스 8곳 + DualAxisGauge에 실제로 반영되는
  * **이번 티켓의 유일한 기존 화면 영향**이다.
  */
-export const PROGRESS_TRACK_GRADIENT = 'var(--status-progress-sweep)';
+export const PROGRESS_TRACK_GRADIENT = 'var(--progress-sweep)';
 
 export function ProgressBar({
   current,
@@ -34,9 +34,9 @@ export function ProgressBar({
   labelType = 'none',
   labelPosition = 'inline',
   height = 8,
-  color = 'var(--color-primary)',
-  trackColor = 'var(--color-border)',
-  radius = 'var(--radius-pill)',
+  color = 'var(--accent)',
+  trackColor = 'var(--border)',
+  radius = 'var(--radius-full)',
   fillMode = 'solid',
   gradient = PROGRESS_TRACK_GRADIENT,
   className = '',
@@ -53,9 +53,9 @@ export function ProgressBar({
     labelType === 'percent' ? (
       <span
         style={{
-          fontSize: 'var(--text-small)',
+          fontSize: 'var(--text-sm)',
           fontWeight: 700,
-          color: 'var(--color-text)',
+          color: 'var(--foreground)',
           fontVariantNumeric: 'tabular-nums',
           whiteSpace: 'nowrap',
         }}
@@ -65,9 +65,9 @@ export function ProgressBar({
     ) : labelType === 'fraction' && current != null && total != null ? (
       <span
         style={{
-          fontSize: 'var(--text-small)',
+          fontSize: 'var(--text-sm)',
           fontWeight: 700,
-          color: 'var(--color-primary)',
+          color: 'var(--link)',
           fontVariantNumeric: 'tabular-nums',
           whiteSpace: 'nowrap',
         }}

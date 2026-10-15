@@ -5,23 +5,22 @@ import React from 'react';
  * rarity: 'common' | 'rare' | 'epic' | 'mystic'
  *
  * v2 changes:
- *   - Text color changed from '#fff' hardcoded to --color-rarity-*-text tokens
+ *   - Text color changed from '#fff' hardcoded to --rarity-*-foreground tokens
  *     (rare/epic use black text for better contrast on their light backgrounds)
- *   - letterSpacing: --tracking-label applied (uppercase label legibility)
- * v3: chip shrunk to ~65% (8px text, 4px/9px padding) — literal px, not --text-caption
+ *   - letterSpacing applied (uppercase label legibility)
+ * v3: chip shrunk to ~65% (8px text, 4px/9px padding) — literal px, not --text-xs
  *     (there's no type-scale token below caption; common no longer renders one at all)
  * v4 (티켓 20260905_0036): 미지 등급 값의 «조용한 Common 폴백»을 걷어냈다. 아래 resolveRarity 참고.
  *
- * 등급 색 `--color-rarity-*`는 **값을 바꾸지 않는다.** 이 토큰들은 등급 밖으로도 새어 있어서
- * (`--color-tag-3/4/5`가 epic/rare/mystic을 참조하고, **폼 입력 에러 색이
- * `--color-rarity-mystic`**이다 — `forms/{Input,Checkbox,Select,Textarea}.jsx`) 값을 건드리면
- * 폼 에러 표시가 함께 깨진다.
+ * 등급 색 `--rarity-*`는 **값을 바꾸지 않는다.** 이 토큰들은 등급 밖으로도 새어 있어서
+ * (**폼 입력 에러 색이 `--rarity-mystic`**이다 — `forms/{Input,Checkbox,Select,Textarea}.jsx`)
+ * 값을 건드리면 폼 에러 표시가 함께 깨진다.
  */
 const config = {
-  common: { label: 'Common', bg: 'var(--color-rarity-common)', text: 'var(--color-rarity-common-text)' },
-  rare:   { label: 'Rare',   bg: 'var(--color-rarity-rare)',   text: 'var(--color-rarity-rare-text)' },
-  epic:   { label: 'Epic',   bg: 'var(--color-rarity-epic)',   text: 'var(--color-rarity-epic-text)' },
-  mystic: { label: 'Mystic', bg: 'var(--color-rarity-mystic)', text: 'var(--color-rarity-mystic-text)' },
+  common: { label: 'Common', bg: 'var(--rarity-common)', text: 'var(--rarity-common-foreground)' },
+  rare:   { label: 'Rare',   bg: 'var(--rarity-rare)',   text: 'var(--rarity-rare-foreground)' },
+  epic:   { label: 'Epic',   bg: 'var(--rarity-epic)',   text: 'var(--rarity-epic-foreground)' },
+  mystic: { label: 'Mystic', bg: 'var(--rarity-mystic)', text: 'var(--rarity-mystic-foreground)' },
 };
 
 /**
@@ -68,7 +67,7 @@ export function getRarityLabel(rarity = 'common') {
  */
 const SIZES = {
   sm: { fontSize: '8px', padding: '4px 9px' },
-  md: { fontSize: 'var(--text-micro)', padding: '5px 10px' },
+  md: { fontSize: 'var(--text-xs)', padding: '5px 10px' },
 };
 
 export function RarityBadge({ rarity = 'common', size = 'sm', className = '' }) {
@@ -85,7 +84,7 @@ export function RarityBadge({ rarity = 'common', size = 'sm', className = '' }) 
       className={className}
       style={{
         display: 'inline-flex', alignItems: 'center',
-        padding: s.padding, borderRadius: 'var(--radius-pill)',
+        padding: s.padding, borderRadius: 'var(--radius-full)',
         fontSize: s.fontSize, lineHeight: 1, fontWeight: 700,
         textTransform: 'uppercase', letterSpacing: '0.3px',
         color: c.text, background: c.bg,

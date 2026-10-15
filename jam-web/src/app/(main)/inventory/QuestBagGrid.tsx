@@ -53,14 +53,14 @@ export default function QuestBagGrid({ gridItems, emptySlots }: QuestBagGridProp
   }
 
   return (
-    <div className="flex flex-col gap-[var(--spacing-16)]">
+    <div className="flex flex-col gap-4">
       <InventoryGrid
         items={gridItems}
         mode="navigate"
         emptySlots={emptySlots}
         leadingItem={{ item: DEMO_INVENTORY_ITEM, onSelect: handleSelect, disabled: pending, pulse: true }}
       />
-      <p className="text-[length:var(--text-caption)] text-text-secondary text-left">
+      <p className="text-xs text-muted text-left">
         {d.onboardingQuest.demoBadgeNotice}
       </p>
     </div>

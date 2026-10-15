@@ -69,10 +69,11 @@ export default function QuestPreviewBanner({ value }: { value: QuestPreviewValue
 
   return (
     <div
-      className="flex items-center justify-between gap-[var(--spacing-12)] shrink-0"
+      className="flex items-center justify-between gap-3 shrink-0"
       style={{
-        background: 'var(--color-warning)',
-        color: 'var(--color-text-inverse)',
+        background: 'var(--warning)',
+        // --warning(#f5a300) 면 위 글자는 --foreground(8.64:1). --snow는 2.02:1이라 읽기 어렵다.
+        color: 'var(--foreground)',
         borderRadius: 0,
         paddingLeft: 'var(--spacing-16)',
         paddingRight: 'var(--spacing-16)',
@@ -82,7 +83,7 @@ export default function QuestPreviewBanner({ value }: { value: QuestPreviewValue
         paddingBottom: 'var(--spacing-8)',
       }}
     >
-      <span style={{ fontSize: 'var(--text-caption)', lineHeight: 'var(--leading-caption)' }}>{label}</span>
+      <span style={{ fontSize: 'var(--text-xs)', lineHeight: 'var(--text-xs--line-height)' }}>{label}</span>
       {/* xs 버튼 실측 높이(약 30.8px = 44px * --scale-compact)만으로는 40px에 못 미친다.
           -m/p 래퍼는 onClick이 안쪽 버튼에만 있어 늘어난 영역이 반응하지 않았다(실측) —
           버튼 자신의 히트 영역을 ::before 의사요소로 사방 6px씩 넓힌다(시각 크기는 그대로,

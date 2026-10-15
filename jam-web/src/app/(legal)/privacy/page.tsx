@@ -4,7 +4,7 @@ import LegalTopNav from '../LegalTopNav'
  * 개인정보 처리방침 페이지 (티켓 20260901_2217).
  *
  * `(main)/philosophy/page.tsx`(20260901_2125)의 레이아웃·타이포 패턴을 그대로 따른다 —
- * TopNav + 단일 컬럼 서버 컴포넌트, 본문은 --text-body + --leading-reading(정책 문서용,
+ * TopNav + 단일 컬럼 서버 컴포넌트, 본문은 --text-base + --leading-reading(정책 문서용,
  * typography.css 정의), 문단 간격 --spacing-32, 상단 여백 --spacing-64. 커버 이미지·태그 없음.
  * (문단 간격은 항 단위 컨테이너 사이에 적용하고, 소제목-표 묶음처럼 밀접한 요소끼리는
  * --spacing-8로 더 좁게 묶어 서열을 준다.)
@@ -34,18 +34,18 @@ const PREVIOUS_EFFECTIVE_DATE = '2026. 9. 1.'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-[var(--spacing-16)]">
-      <h2 className="text-[length:var(--text-h4)] leading-[var(--leading-h4)] font-[number:var(--weight-h4)] tracking-[var(--tracking-h4)]">
+    <section className="flex flex-col gap-4">
+      <h2 className="text-2xl font-medium">
         {title}
       </h2>
-      <div className="flex flex-col gap-[var(--spacing-32)]">{children}</div>
+      <div className="flex flex-col gap-8">{children}</div>
     </section>
   )
 }
 
 function P({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[length:var(--text-body)] leading-[var(--leading-reading)] text-text/90 [word-break:keep-all] break-words">
+    <p className="text-base leading-[var(--leading-reading)] text-foreground/90 [word-break:keep-all] break-words">
       {children}
     </p>
   )
@@ -53,7 +53,7 @@ function P({ children }: { children: React.ReactNode }) {
 
 function Note({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 [word-break:keep-all] break-words border-l-2 border-border pl-[var(--spacing-12)]">
+    <p className="text-base text-foreground/60 [word-break:keep-all] break-words border-l-2 border-border pl-3">
       {children}
     </p>
   )
@@ -61,7 +61,7 @@ function Note({ children }: { children: React.ReactNode }) {
 
 function H3({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-[length:var(--text-body-l)] leading-[var(--leading-body-l)] font-medium text-text/90 [word-break:keep-all] break-words">
+    <h3 className="text-xl font-medium text-foreground/90 [word-break:keep-all] break-words">
       {children}
     </h3>
   )
@@ -69,9 +69,9 @@ function H3({ children }: { children: React.ReactNode }) {
 
 function OrderedList({ items }: { items: React.ReactNode[] }) {
   return (
-    <ol className="flex flex-col gap-[var(--spacing-8)] list-decimal pl-[var(--spacing-24)]">
+    <ol className="flex flex-col gap-2 list-decimal pl-6">
       {items.map((item, i) => (
-        <li key={i} className="text-[length:var(--text-body)] leading-[var(--leading-reading)] text-text/90 [word-break:keep-all] break-words">
+        <li key={i} className="text-base leading-[var(--leading-reading)] text-foreground/90 [word-break:keep-all] break-words">
           {item}
         </li>
       ))}
@@ -82,11 +82,11 @@ function OrderedList({ items }: { items: React.ReactNode[] }) {
 /** 마크다운 표 → 세로형 정의 카드. 앱 컬럼 폭에서 가로 스크롤 표를 만들지 않기 위함. */
 function DefCard({ fields }: { fields: Array<{ label: string; value: React.ReactNode }> }) {
   return (
-    <dl className="rounded-[var(--radius-cards)] bg-surface-elevated p-[var(--spacing-16)] flex flex-col gap-[var(--spacing-12)]">
+    <dl className="rounded-2xl bg-surface p-4 flex flex-col gap-3">
       {fields.map(({ label, value }, i) => (
-        <div key={i} className="flex flex-col gap-[var(--spacing-4)]">
-          <dt className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-text/50">{label}</dt>
-          <dd className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/90 [word-break:keep-all] break-words">
+        <div key={i} className="flex flex-col gap-1">
+          <dt className="text-xs text-foreground/50">{label}</dt>
+          <dd className="text-base text-foreground/90 [word-break:keep-all] break-words">
             {value}
           </dd>
         </div>
@@ -97,12 +97,12 @@ function DefCard({ fields }: { fields: Array<{ label: string; value: React.React
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-full text-text">
+    <div className="min-h-full text-foreground">
       <LegalTopNav title={PAGE_TITLE} />
 
-      <article className="px-[var(--spacing-16)] pt-[var(--spacing-64)] pb-[var(--spacing-64)] flex flex-col gap-[var(--spacing-48)]">
-        <div className="flex flex-col gap-[var(--spacing-16)]">
-          <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] font-[number:var(--weight-h3)] tracking-[var(--tracking-h3)]">
+      <article className="px-4 pt-16 pb-16 flex flex-col gap-12">
+        <div className="flex flex-col gap-4">
+          <h1 className="text-3xl font-medium">
             {PAGE_TITLE}
           </h1>
           <P>
@@ -160,7 +160,7 @@ export default function PrivacyPage() {
         <Section title="2. 처리하는 개인정보의 항목">
           <P>JAM!은(는) 다음과 같은 법적 근거로 정보주체의 개인정보를 수집 및 이용합니다.</P>
 
-          <div className="flex flex-col gap-[var(--spacing-8)]">
+          <div className="flex flex-col gap-2">
             <H3>(1) 회원 가입 시 — 구글로부터 제공받는 항목</H3>
             <DefCard
               fields={[
@@ -171,7 +171,7 @@ export default function PrivacyPage() {
             />
           </div>
 
-          <div className="flex flex-col gap-[var(--spacing-8)]">
+          <div className="flex flex-col gap-2">
             <H3>(2) 서비스 이용 과정에서 이용자가 직접 입력하는 항목</H3>
             <DefCard
               fields={[
@@ -185,7 +185,7 @@ export default function PrivacyPage() {
             />
           </div>
 
-          <div className="flex flex-col gap-[var(--spacing-8)]">
+          <div className="flex flex-col gap-2">
             <H3>(3) 위치정보</H3>
             <DefCard
               fields={[
@@ -203,7 +203,7 @@ export default function PrivacyPage() {
                 {
                   label: '보관하는 위치 관련 정보',
                   value: (
-                    <ul className="flex flex-col gap-[var(--spacing-4)] list-disc pl-[var(--spacing-16)]">
+                    <ul className="flex flex-col gap-1 list-disc pl-4">
                       <li>직전 픽업 좌표와 시각, 당일 누적 이동거리: 위치 조작을 탐지하기 위해 다음 픽업 좌표와 비교하며, 픽업할 때마다 새 값으로 갱신합니다.</li>
                       <li>부정 이용 탐지 기록: 비정상적인 이동 속도나 이동거리가 탐지되면 탐지 시점의 좌표·속도·이동거리를 기록합니다.</li>
                       <li>스트라바 활동의 시작·종료 좌표: 연동한 활동을 중복 없이 관리하고 배지 판정을 다시 확인하는 데 씁니다.</li>
@@ -224,7 +224,7 @@ export default function PrivacyPage() {
             </P>
           </div>
 
-          <div className="flex flex-col gap-[var(--spacing-8)]">
+          <div className="flex flex-col gap-2">
             <H3>(4) 스트라바(Strava) 연동 시 — 스트라바로부터 제공받는 항목</H3>
             <DefCard
               fields={[
@@ -243,7 +243,7 @@ export default function PrivacyPage() {
             </P>
           </div>
 
-          <div className="flex flex-col gap-[var(--spacing-8)]">
+          <div className="flex flex-col gap-2">
             <H3>(5) 문의(VOC) 접수 시</H3>
             <DefCard
               fields={[
@@ -253,7 +253,7 @@ export default function PrivacyPage() {
             />
           </div>
 
-          <div className="flex flex-col gap-[var(--spacing-8)]">
+          <div className="flex flex-col gap-2">
             <H3>(6) 서비스 이용 과정에서 자동으로 생성·수집되는 정보</H3>
             <DefCard
               fields={[
@@ -263,7 +263,7 @@ export default function PrivacyPage() {
             />
           </div>
 
-          <div className="flex flex-col gap-[var(--spacing-8)]">
+          <div className="flex flex-col gap-2">
             <H3>(7) 서비스 이용 통계 분석(구글 애널리틱스)</H3>
             <DefCard
               fields={[
@@ -295,7 +295,7 @@ export default function PrivacyPage() {
             시 동의받은 개인정보 보유·이용 기간 내에서 개인정보를 처리·보유합니다.
           </P>
           <P>② 각각의 개인정보 처리 및 보유 기간은 다음과 같습니다.</P>
-          <div className="flex flex-col gap-[var(--spacing-8)]">
+          <div className="flex flex-col gap-2">
             <DefCard fields={[{ label: '회원 가입 및 관리', value: '회원 탈퇴 시까지' }]} />
             <DefCard fields={[{ label: '스트라바 연동 정보(토큰)', value: '연동 해제 또는 회원 탈퇴 시 즉시 파기' }]} />
             <DefCard
@@ -363,7 +363,7 @@ export default function PrivacyPage() {
             위탁업무 수행 목적 외 개인정보 처리 금지, 기술적·관리적 보호조치, 재위탁 제한,
             수탁자에 대한 관리·감독, 손해배상 등 책임에 관한 사항을 명시하고 있습니다.
           </P>
-          <div className="flex flex-col gap-[var(--spacing-8)]">
+          <div className="flex flex-col gap-2">
             <DefCard
               fields={[
                 { label: '수탁자', value: 'Supabase Inc.' },
@@ -408,7 +408,7 @@ export default function PrivacyPage() {
             탈퇴를 통해 이전을 거부할 수 있으나, 이 경우 해당 기능(구글 로그인, 스트라바 연동
             등) 이용이 제한됩니다.
           </P>
-          <div className="flex flex-col gap-[var(--spacing-8)]">
+          <div className="flex flex-col gap-2">
             <DefCard
               fields={[
                 { label: '이전받는 자', value: 'Google LLC' },
@@ -601,7 +601,7 @@ export default function PrivacyPage() {
             ② 법령·정책 또는 보안기술의 변경에 따라 내용의 추가·삭제 및 변경이 있을 시에는
             지체없이 본 페이지를 통하여 고지합니다.
           </P>
-          <div className="flex flex-col gap-[var(--spacing-8)]">
+          <div className="flex flex-col gap-2">
             <DefCard
               fields={[
                 {

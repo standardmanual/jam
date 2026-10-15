@@ -6,7 +6,7 @@ import React from 'react';
  *   - id, name, aria-label, aria-describedby props added (WCAG 1.3.1, 4.1.2)
  *   - state: 'default' | 'error' | 'success' — visual validation feedback
  *   - ...rest spread allows any HTML input attribute to pass through
- *   - background changed from --color-white (deprecated) to --color-bg-tint
+ *   - background changed from the deprecated white token to --background-secondary
  *   - focus-visible handled globally by styles.css
  */
 export function Input({
@@ -26,9 +26,9 @@ export function Input({
   const isInverse = surface === 'inverse';
 
   const borderByState = {
-    default: `1px solid ${isInverse ? 'rgba(255,255,255,0.2)' : 'var(--color-border)'}`,
-    error: '2px solid var(--color-rarity-mystic)',
-    success: '2px solid var(--color-rarity-rare)',
+    default: `1px solid ${isInverse ? 'rgba(255,255,255,0.2)' : 'var(--border)'}`,
+    error: '2px solid var(--rarity-mystic)',
+    success: '2px solid var(--rarity-rare)',
   };
 
   return (
@@ -46,14 +46,14 @@ export function Input({
       style={{
         width: '100%',
         height: 44,
-        borderRadius: 'var(--radius-input)',
+        borderRadius: 'var(--field-radius)',
         border: borderByState[state] ?? borderByState.default,
         padding: '0 20px',
-        fontSize: 'var(--text-body)',
-        lineHeight: 'var(--leading-body)',
+        fontSize: 'var(--text-base)',
+        lineHeight: 'var(--text-base--line-height)',
         fontFamily: 'var(--font-family-base)',
-        color: isInverse ? 'var(--color-bg)' : 'var(--color-text)',
-        background: isInverse ? 'var(--color-bg-inverse)' : 'var(--color-bg-tint)',
+        color: isInverse ? 'var(--background)' : 'var(--foreground)',
+        background: isInverse ? 'var(--background-inverse)' : 'var(--background-secondary)',
         boxSizing: 'border-box',
         opacity: disabled ? 0.4 : 1,
         cursor: disabled ? 'not-allowed' : 'text',

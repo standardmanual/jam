@@ -48,3 +48,13 @@ export const Small: Story = {
     children: '동기화',
   },
 };
+
+export const DarkSurface: Story = {
+  name: 'Dark Surface (--background-inverse 위, 글자 --snow)',
+  render: () => (
+    <div style={{ background: 'var(--background-inverse)', padding: 16, borderRadius: 12, display: 'flex', gap: 8 }}>
+      <Button surface="dark" variant="secondary">보조</Button>
+      <Button surface="dark" variant="ghost">더보기</Button>
+    </div>
+  ),
+};
