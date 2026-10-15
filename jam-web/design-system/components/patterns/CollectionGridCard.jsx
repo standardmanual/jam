@@ -89,7 +89,7 @@ export function CollectionGridCard({
           <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
             {showRarity && <RarityBadge rarity={rarity} />}
             {completed && (
-              <span style={{ ...TAG_STYLE, background: 'var(--accent)', color: '#fff' }}>
+              <span style={{ ...TAG_STYLE, background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
                 완성
               </span>
             )}

@@ -53,11 +53,10 @@ export default function NotificationBell() {
       {/* 프로필 아바타와 동일한 형태 — 44×44 터치영역 안에 36px 서클, 그 안에 16px 아이콘.
           .t-badge의 기준 박스는 서클 자신이다(44px 터치영역을 기준으로 잡으면 점이
           모서리로 밀려나 종에서 떨어져 보인다). */}
-      {/* 배경은 공용 --surface(#1f1f1f)보다 한 단계 밝은
-          --base-neutral-700(#2a2a2a, --border와 동일 값)을 쓴다 — 종 버튼만
-          더 눈에 띄게 하려는 요청이라, 다른 곳에서도 쓰는 surface-elevated 토큰 자체를
+      {/* 배경은 공용 --surface보다 한 단계 도드라지는 --border를 쓴다 — 종 버튼만
+          더 눈에 띄게 하려는 요청이라, 다른 곳에서도 쓰는 surface 토큰 자체를
           바꾸지 않고 이 버튼 범위로 좁혔다. */}
-      <span className="relative w-9 h-9 rounded-full bg-[var(--base-neutral-700)] text-foreground flex items-center justify-center">
+      <span className="relative w-9 h-9 rounded-full bg-border text-foreground flex items-center justify-center">
         <BellIcon className="w-4 h-4" />
         <span className="t-badge jam-bell-dot" data-open={hasUnreadNotifications} aria-hidden="true">
           <span

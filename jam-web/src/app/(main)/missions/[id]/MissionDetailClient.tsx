@@ -312,7 +312,7 @@ export default function MissionDetailClient({
                         style={{
                           background:  done ? 'var(--accent)' : today ? 'transparent' : 'var(--border)',
                           borderColor: today ? 'var(--link)' : undefined,
-                          color:       done  ? '#fff' : today ? 'var(--link)' : 'var(--muted)',
+                          color:       done  ? 'var(--accent-foreground)' : today ? 'var(--link)' : 'var(--muted)',
                         }}
                       >
                         {i + 1}
@@ -375,7 +375,7 @@ export default function MissionDetailClient({
                   icon={
                     <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                       style={{ background: 'var(--accent)' }}>
-                      <CoinIcon className="w-5 h-5" style={{ color: '#fff' }} />
+                      <CoinIcon className="w-5 h-5" style={{ color: 'var(--accent-foreground)' }} />
                     </div>
                   }
                   title={t(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}

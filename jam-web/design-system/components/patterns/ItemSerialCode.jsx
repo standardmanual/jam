@@ -112,7 +112,7 @@ function ReelColumn({ digit, index, colWidth, cellHeight, marginRight, fontSize,
               fontWeight: 700,
               fontSize,
               lineHeight: 1,
-              color: 'var(--foreground)',
+              color: 'var(--snow)',
             }}
           >
             {d}
@@ -261,7 +261,7 @@ function Tile({ text, width, height }) {
           fontSize,
           lineHeight: 1,
           letterSpacing: fontSize * trackingRatioFor(fontSize),
-          color: 'var(--foreground)',
+          color: 'var(--snow)',
           whiteSpace: 'nowrap',
         }}
       >

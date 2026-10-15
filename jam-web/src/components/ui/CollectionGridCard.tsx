@@ -66,7 +66,7 @@ export default function CollectionGridCard({
           <div className="absolute top-2 left-2 flex items-center gap-1">
             {rarity && <RarityBadge rarity={rarity} />}
             {completed && (
-              <span className="bg-[color:var(--accent)] text-white text-xs leading-none px-2 py-0.5 rounded-full font-bold">
+              <span className="bg-[color:var(--accent)] text-[color:var(--accent-foreground)] text-xs leading-none px-2 py-0.5 rounded-full font-bold">
                 {d.itembooks.completed}
               </span>
             )}

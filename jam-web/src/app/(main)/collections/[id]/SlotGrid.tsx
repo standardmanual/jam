@@ -405,7 +405,7 @@ export default function SlotGrid({
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(badge.id, slot!.id) }}
                     disabled={pending}
-                    className="block mx-auto px-3 py-1 text-xs rounded-full bg-[color:var(--base-neutral-600)] text-[color:var(--accent-foreground)] transition-all disabled:opacity-40"
+                    className="block mx-auto px-3 py-1 text-xs rounded-full bg-[color:var(--base-neutral-600)] text-[color:var(--snow)] transition-all disabled:opacity-40"
                   >
                     {pending ? '…' : d.itembooks.unslotButton}
                   </button>

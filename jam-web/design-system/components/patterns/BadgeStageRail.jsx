@@ -180,7 +180,7 @@ function StopThumbnail({ imageUrl, alt, status, rarity, showRarityChip = false }
               position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: '2px solid var(--surface)',
-              background: status === 'earned' ? 'var(--progress-done)' : 'var(--base-neutral-700)',
+              background: status === 'earned' ? 'var(--progress-done)' : 'var(--progress-track)',
               color: status === 'earned' ? '#000' : 'var(--muted)',
             }}
           >

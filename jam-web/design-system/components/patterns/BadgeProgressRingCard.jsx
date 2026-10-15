@@ -165,7 +165,7 @@ export function BadgeProgressRingCard({
               position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: '2px solid var(--surface)',
-              background: earned ? 'var(--progress-done)' : 'var(--base-neutral-700)',
+              background: earned ? 'var(--progress-done)' : 'var(--progress-track)',
               color: earned ? '#000' : 'var(--muted)',
             }}
           >

@@ -101,7 +101,7 @@ export default function ItemCandidateSheet({
             type="button"
             onClick={secondaryAction.onClick}
             disabled={secondaryAction.disabled}
-            className="mt-2 w-full py-2 rounded-full bg-[color:var(--base-neutral-600)] text-[color:var(--accent-foreground)] text-xs transition-all disabled:opacity-40"
+            className="mt-2 w-full py-2 rounded-full bg-[color:var(--base-neutral-600)] text-[color:var(--snow)] text-xs transition-all disabled:opacity-40"
           >
             {secondaryAction.label}
           </button>

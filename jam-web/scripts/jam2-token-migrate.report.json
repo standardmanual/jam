@@ -1431,5 +1431,156 @@
       "kind": "primary-unknown",
       "text": "key:v2 ::             {/* DS v2: 활성=--color-primary(레드), 비활성=--color-icon-inactive(다크 그레이) */}"
     }
-  ]
+  ],
+  "handwritten": {
+    "설명": "스크립트 실행 뒤 사람이 판단해 고친 곳과 알려진 임시 결함이다. perFile·manual은 스크립트가 쓴 값이고 이 항목만 손으로 적었다(티켓 20261015_2131).",
+    "scope네부류": {
+      "토큰": "design-system/tokens/{colors,typography,spacing,radius,materials}.css 재작성, colors.light.css 삭제. 서비스에 즉시 반영",
+      "연결된컴포넌트21종": "호출부 class 문자열·인라인 style 치환으로 서비스 화면에 즉시 반영",
+      "병존8종": "TabBar·BottomSheet·Toast·SlidingTabs·BadgeGridCard·CollectionGridCard·ListRowCard·Skeleton — design-system/components/**/*.jsx와 src/components/ui/*.tsx 양쪽 모두 수정(Skeleton은 서비스 쪽 .tsx가 없어 .jsx만)",
+      "미도입7종": "서비스 영향 없음, 치환 대상에는 포함"
+    },
+    "손으로고친곳": [
+      {
+        "파일": "src/app/layout.tsx",
+        "내용": "viewport themeColor #fafaf0, colorScheme light, THEME_COLORS·<style> 주입(--color-main/--color-sub) 삭제"
+      },
+      {
+        "파일": "src/app/globals.css",
+        "내용": "@theme inline 새 이름 매핑, --radius-md~4xl calc 제거, [data-admin-theme]에서 반경을 이전 값으로 재정의, html·body·select option을 새 이름·light로"
+      },
+      {
+        "파일": "design-system/tokens/colors.css·radius.css",
+        "내용": ":root와 [data-service-theme] 양쪽에 선언(어드민 안 서비스 미리보기가 서비스 값을 되찾는다)"
+      },
+      {
+        "파일": "src/components/ui/TabBar.tsx·design-system/.../TabBar.jsx·src/components/transitions.css",
+        "내용": "선택 필 --tabbar-selection, 활성 아이콘 --tabbar-icon-active, 투명도 줄이기 대체 면 --surface(옛 --color-bg-inverse는 흰색이었지만 새 --background-inverse는 검정이라 기계 치환하면 아이콘이 사라짐)"
+      },
+      {
+        "파일": "design-system/components/cards/BadgeLevelChip.jsx",
+        "내용": "레벨 칩을 --default-soft 채움 + --foreground 글자(사용자 승인 3번)"
+      },
+      {
+        "파일": "design-system/components/patterns/BadgeTreeSummaryHeader.jsx",
+        "내용": "레벨 범례 점을 --muted로(승인은 --default-soft였으나 점은 글자가 없고 흰 카드 위 1.1:1이라 안 보임 — 판단 필요)"
+      },
+      {
+        "파일": "design-system/components/cards/ShapeTag.jsx",
+        "내용": "accent-content 6색 순환, rect 반경 8px(--radius-lg) 유지"
+      },
+      {
+        "파일": "design-system/components/forms/Checkbox.jsx",
+        "내용": "반경 8px(--radius-lg) 유지(입력창 캡슐 대상이 아님)"
+      },
+      {
+        "파일": "design-system/components/cards/BadgeFrame.jsx·feedback/ProgressBar.jsx·src/components/ranking/RankingListRow.tsx·src/app/(main)/missions/[id]/status/MissionStatusClient.tsx",
+        "내용": "면 채우기 기본값·prop은 --accent(--color-primary 규칙의 문맥 예외: 키가 color여도 background로 쓰이는 값)"
+      },
+      {
+        "파일": "src/components/SyncButton.tsx·OnboardingSyncButton.tsx·ui/TopNav.tsx·ui/CollectionGridCard.tsx·design-system/.../CollectionGridCard.jsx·MissionDetailClient.tsx(2곳)·ListRowCard.stories.tsx(2곳)",
+        "내용": "accent 면 위 글자를 흰색 대신 --accent-foreground(문서 5.3절)"
+      },
+      {
+        "파일": "src/components/today/PosterCard.tsx",
+        "내용": "막은 --backdrop(검정 50%)이 아니라 --base-black 60% 직접 혼합 — 막 설계 하한 0.6과 흰 글자 AA 대비를 지킴"
+      },
+      {
+        "파일": "src/components/ui/NotificationBell.tsx",
+        "내용": "종 버튼 배경 --base-neutral-700 → --border(옛 주석이 --border와 같은 값이라 적었음). 어두운 회색 위 --foreground 글자는 안 보임"
+      },
+      {
+        "파일": "design-system/components/patterns/BadgeStageRail.jsx·BadgeProgressRingCard.jsx",
+        "내용": "미획득 마커 배경을 --progress-track으로(옛 어두운 회색 위 --muted 아이콘은 대비 1.7:1)"
+      },
+      {
+        "파일": "design-system/components/patterns/ItemSerialCode.jsx",
+        "내용": "타일은 Base 회색 그라디언트(어두움)라 글자를 --foreground 대신 --snow로"
+      },
+      {
+        "파일": "src/app/(main)/collections/[id]/SlotGrid.tsx·src/components/inventory/ItemCandidateSheet.tsx",
+        "내용": "회색(--base-neutral-600) 칩 위 글자를 --snow로(--accent-foreground는 짝이 아님)"
+      },
+      {
+        "파일": "src/app/(main)/inventory/[itemId]/InventoryItemHistorySheet.tsx",
+        "내용": "스켈레톤 줄 반경 8px 유지(rounded-lg) — 입력창이 아니라 캡슐 대상 아님"
+      },
+      {
+        "파일": "src/components/transitions.css",
+        "내용": ".t-panel-backdrop의 backdrop-filter 속성 삭제(--blur-scrim 제거, blur(0)을 남기지 않음)"
+      },
+      {
+        "파일": "src/lib/admin/composeActivityBadgeImage.ts",
+        "내용": "런타임에 읽는 등급 색 변수 이름을 --rarity-{등급}·--rarity-{등급}-foreground로(동적 조립 이름이라 스크립트가 못 잡음)"
+      },
+      {
+        "파일": "src/app/admin/{badges/BadgeDetailPreviewFrame,itembooks/ItemBookDetailPreviewFrame,today/TodayCardPreview}.tsx",
+        "내용": "서비스 콘텐츠 래퍼에 data-service-theme, bg-background·text-foreground, 옛 --color-surface·--spacing-16 참조 교체(사용자 승인 4번)"
+      },
+      {
+        "파일": "src/components/admin/ops/OpsKindPreview.tsx",
+        "내용": "티켓 목록에 없던 4번째 지점. 서비스 카드(RecipeRewardRow·BadgeGridCard·CollectionGridCard) 래퍼에 data-service-theme, 미션 썸네일 칸은 서비스 목록과 같은 고정색 #1a1a1a"
+      },
+      {
+        "파일": "scripts/ds-sync-check.mjs",
+        "내용": "TW_RADIUS를 Tailwind 4 단계로(xs 2px·sm 4px 추가)"
+      },
+      {
+        "파일": "design-system/_ds_manifest.json·_adherence.oxlintrc.json",
+        "내용": "ds:manifest로 토큰 항목 재생성, adherence의 tokens·tokenKinds를 manifest 기준으로 재생성, 카드 이름·부제 갱신"
+      },
+      {
+        "파일": "design-system/foundations/*.stories.tsx·guidelines/*.html·dashboard.html·thumbnail.html·.storybook/preview.tsx",
+        "내용": "이름·값 최소 수정, hex 라벨 교정, 라이트/다크 전환과 dark 배경 지정 삭제, 기본 배경 #fafaf0"
+      }
+    ],
+    "수동검토목록": {
+      "짝이안맞는행간": [
+        "src/app/(main)/missions/[id]/status/MissionStatusClient.tsx:326 text-small(14px) + leading-body-sm(1.5) → text-sm + leading-[var(--text-base--line-height)]"
+      ],
+      "calc안간격": [
+        "src/app/(main)/FeedSection.tsx:343",
+        "src/components/QuestPreviewBanner.tsx:81",
+        "design-system/components/navigation/TabBar.jsx:163 — 평문 눈금 --spacing-N이 남아 있어 값은 그대로 유효"
+      ],
+      "입력창캡슐": [
+        "src/app/(main)/onboarding/page.tsx:372·401",
+        "src/app/(main)/profile/edit/page.tsx:274·308 — 모두 한 줄 입력창",
+        "design-system/components/forms/Textarea.jsx는 --field-radius(캡슐)를 받는다. 여러 줄 입력창이므로 rounded-2xl(--radius-2xl)로 두는 안을 올린다"
+      ],
+      "status선면판단": [
+        "--status-* 10종은 전부 --progress-*(선·점·링: warning/success 계열)로 옮겼다. 면 채우기 후보(accent-content 계열)로 바꿀 곳은 없었다 — 막대(BadgeStageRail 연결선, BadgeTreeSummaryHeader 분포 막대)는 6~10px 가는 막대라 선으로 봤다"
+      ],
+      "color-primary예외": [
+        "ProgressBar 기본 fill·BadgeFrame 기본 fill·ProgressBar color prop 2곳은 키가 color지만 면 채우기라 --accent",
+        "ListRowCard.stories.tsx:175 같은 판별 불가 문맥은 손으로 --accent"
+      ],
+      "이전에는반경이없던곳": [
+        "src/app/(main)/collections/[id]/page.tsx:361·365·406 rounded-2xl",
+        "src/app/error.tsx:52 rounded-xl",
+        "src/app/forbidden/page.tsx:24 rounded-xl",
+        "src/components/strava/StravaStatusCard.tsx:13·23·32 — 옛 @theme inline이 calc(var(--radius) * k)로 덮어 서비스에서는 --radius가 비어 직각이었는데, Tailwind 기본 단계로 돌아가 둥글어진다"
+      ],
+      "글자11에서12": [
+        "--text-micro 11px 사용처는 text-xs(12px)로 합쳐졌다(티켓 실측 16곳). 작은 카드 안 버튼이 먼저 넘칠 수 있다"
+      ],
+      "컨테이너없는어드민포털": [
+        "src/app/admin/strava-backfill/StravaBackfillClient.tsx:261 AlertDialogContent는 container가 없어 body 아래에 그려진다. bg-muted·border-border가 서비스 값(#666666·#cfc9b4)을 받는다. 이 티켓은 어드민 코드를 건드리지 않았다"
+      ]
+    },
+    "알려진임시결함_다음티켓몫": {
+      "불투명도단계": "text-foreground/N 122곳(36파일), text-snow/N 57곳(24파일) — 옛 흰 글자 기준 위계. --muted로 바꿀 후보는 2134로",
+      "직접쓴색": "text-white 34곳, bg-black 14곳, rgba(255,255,255,…) 46곳 — 토큰이 아니어서 따라 바뀌지 않음",
+      "옛빨강하드코딩": "rgba(232,70,31,…) 13곳, #e8461f 6곳 — 새 강조색(초록)과 어긋남",
+      "자간리터럴": "letterSpacing·tracking-[Npx] 숫자 직접 지정 12곳 — 토큰이 아니라 그대로 둠(새 시스템 자간 0)",
+      "흰로고": "/jam-logo-white.png: login/page.tsx·voc/page.tsx·ui/TopNav.tsx — 크림 바탕 위에서 안 보임",
+      "반전면": "Today 카드(SquareCard·BriefCard·HeroCard·ListCard·CardBody)·UserSearchBar·Button 기본 변형이 --background-inverse(#171717)라 어두운 카드·바가 됨(결정 7과 어긋나는 임시 상태)",
+      "SlidingTabs팔레트": "onSurface 팔레트의 rgba(255,255,255,…) 글자·바 배경은 크림 위에서 안 보임"
+    },
+    "grep예외": [
+      "src/lib/dotmatrix-core.tsx:30-31 --color-dot-on — 원래 정의가 없는 이름(solid-theme 프리셋, 호출처 0건)이라 치환 대상이 아님",
+      "src/app/globals.css의 @theme inline --color-<이름>: Tailwind 유틸리티 이름 정의(--color-surface: var(--surface) 등)와 shadcn 매핑 — 옛 토큰 참조가 아님",
+      "src/components/today/CardFrame.tsx:20·__tests__/CardFrame.test.tsx:97-98 outline-primary — \"홈에서 --primary가 비어 이 유틸리티를 쓰지 않는다\"는 부정 단언이라 이름이 남아야 의미가 있음"
+    ]
+  }
 }
