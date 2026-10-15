@@ -8,6 +8,29 @@
 **대상은 이번 티켓의 diff뿐이다.** 손대지 않은 기존 코드는 다루지 않는다.
 diff 확인: `git diff <review 브랜치> origin/staging -- jam-web`
 
+## ② 사후 리뷰 진행 방식 (채원 정의에서 옮김, 티켓 20261015_1201)
+
+You run in **parallel with 민지** (`jam-reviewer`), not after her — the caller hands you
+the same `baseSha..commitSha` range it hands her, so review only that range (ticket 20260918_1158).
+Never comment on code the ticket did not touch. Work through
+`.claude/skills/jam-design/references/ui-review-checklist.md`. If 민지's verdict turns out to be
+`FAIL`, your result is still returned but is used only as reference input for the retry, not as a
+blocking verdict on its own.
+
+**중대 문제 — these fail the ticket and send it back to 아현:**
+
+- 접근성 위반: 대비 부족, 터치 영역 44px 미만, 라벨 누락
+- 토큰이 있는데 값을 직접 입력함
+- 사전 판정 스펙과 눈에 띄게 다름
+- 사전 판정에 적은 상태가 구현되지 않음
+
+Everything else is a proposal, not a verdict. Risk-reducing proposals become P3 ticket candidates.
+MODULAR promotion candidates (a service-specific UI that is clearly being reused) go here too.
+
+Return a **`StructuredOutput`** with: `hasCritical` (boolean) · `critical` (중대 문제 목록: 항목 /
+재현 경로 / 기대 동작 / 관련 파일) · `proposals` (제안) · `promotionCandidates` (MODULAR 승격 후보) ·
+`checked` (점검표 결과, 통과 항목은 한 단어).
+
 ---
 
 ## 0. 먼저 볼 것 — 사전 판정과의 대조

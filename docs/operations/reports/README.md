@@ -32,8 +32,8 @@ reports/
 
 ## 선별 형식 (티켓 20260921_2306)
 
-카즈하 모드 ③이 매일 남기는 것. 판정 기준·증분 실행 기준은 `.claude/agents/jam-ops.md`
-모드 ③ 절이 단일 원천이고, 여기는 형식 예시만 둔다.
+카즈하 모드 ③이 매일 남기는 것. 판정 기준·증분 실행 기준은 `.claude/skills/jam-work/references/ops-triage.md`가
+단일 원천이고, 여기는 형식 예시만 둔다.
 
 `triage/YYYY-MM-DD.md` (티켓당 한 줄, 대상이 없으면 파일을 만들지 않거나 "변경 없음" 한 줄만):
 
