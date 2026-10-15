@@ -57,7 +57,7 @@ interface Props {
 
 // ────────────────────────────────────────────────────────────────
 // 포디엄 설정값 (1위, 2위, 3위) — 20260825 리뉴얼: 앱 전역의 유일한 강조색인
-// --link(레드) 하나로 통일. 1위만 강조, 2·3위는 중립톤으로 낮춰
+// --link·--accent(초록 계열) 하나로 통일. 1위만 강조, 2·3위는 중립톤으로 낮춰
 // "강조색은 하나만 쓴다"는 다른 화면들의 원칙을 그대로 따른다.
 // 폰트 크기는 모듈러 타이포 토큰 스케일(--text-3xl:28 / --text-2xl:24 /
 // --text-xs:12 / --text-xs:11)에 맞춘 값이다.
@@ -66,9 +66,9 @@ const PODIUM_CONFIG = [
   {
     rank: 1,
     barHeight: 130,
-    // --link(#e8461f)를 상단, 그 40% 알파 톤을 하단에 둔 세로 그라디언트.
-    // 다른 화면의 rgba(232,70,31,…) 틴트 패턴(StatusChip 등)과 동일한 베이스 컬러.
-    barGradient: 'linear-gradient(180deg, var(--accent), rgba(232,70,31,0.45))',
+    // --accent(#19b551)를 상단, 같은 색 45% 알파 톤(color-mix)을 하단에 둔 세로 그라디언트.
+    // 아래 avatarBg와 2·3위의 rgba(232,70,31,…)는 옛 빨강 리터럴이며 하위 티켓 2134에서 바꾼다.
+    barGradient: 'linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 45%, transparent))',
     avatarSize: 60,
     avatarBg: 'rgba(232,70,31,0.15)',
     avatarBorder: 'var(--link)',
@@ -308,7 +308,7 @@ function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: bool
       href={e.username ? `/${e.username}` : undefined}
       // 프로그래스바가 없어 한 줄짜리 행이라 기본 p-16(위아래 32px 간격)은 헐렁해 보인다 —
       // 위아래 패딩만 좁혀 목록 간격을 줄인다.
-      className="!py-[var(--spacing-8)]"
+      className="!py-2"
       icon={<SimpleAvatar url={e.avatarUrl} />}
       trailing={
         e.achieved ? (
