@@ -36,7 +36,7 @@ const PILL_HEIGHT = 41;
  *
  * v2 changes:
  *   - bottom offset now respects env(safe-area-inset-bottom) — iPhone home indicator clearance
- *   - Removed misleading "purple active" comment (active color is --link = red)
+ *   - Removed misleading "purple active" comment (active icon color is --tabbar-icon-active, which is --accent)
  *
  * 20260901_1521: 활성 점 제거, 배경 필에 슬라이딩 모션 추가(단일 pill +
  * offsetLeft/offsetWidth 측정 — 서비스 `src/components/ui/TabBar.tsx`도 함께 수정했다).
@@ -166,7 +166,8 @@ export function TabBar({ active = 'today', onChange, username }) {
       // 완전 라운드 — nav는 자기 높이의 절반(24.5px), 필은 자기 높이의 절반(20.5px)으로
       // clamp돼 두 호가 4px 간격의 동심원이 된다(의도된 동작).
       borderRadius: 'var(--radius-full)',
-      // 20260816_012: 보더 제거 — 재질(반투명 크롬)이 다크 배경 위에서 blur로 구분됨
+      // 20260816_012: 보더 제거 — 반투명 흰 크롬 + blur로 구분한다. 크림 바탕 위에서는 경계가 약하다:
+      // 모양을 그대로 두고 렌더를 본 뒤 외곽선 여부를 정한다(티켓 20261015_2133, 사용자 결정 9).
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 4px', zIndex: 40,
     }}>

@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { TabBar } from './TabBar';
 import type { TabKey } from './TabBar';
 
-// 20260816_012: 흰 필 보더 제거 — 다크 배경 위 색 대비만으로 구분됨
+// 20260816_012: 흰 필 보더 제거. 지금은 크림 바탕 위의 흰 72% 반투명 크롬이라 경계가 약하다 —
+// 모양을 그대로 두고 렌더를 본 뒤 외곽선 여부를 정한다(티켓 20261015_2133, 사용자 결정 9).
 const meta: Meta<typeof TabBar> = {
   title: 'MODULAR/Navigation/TabBar',
   component: TabBar,

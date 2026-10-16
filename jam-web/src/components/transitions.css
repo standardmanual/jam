@@ -488,10 +488,11 @@
   background: var(--surface);
 }
 
-/* 프로필 통계탭 전용 (20260901) — 숫자는 항상 포인트 강조색(--link), pill(같은
-   레드) 배경이 실제로 그 숫자 위를 지나가는 순간(data-pill-over, SlidingTabs.tsx 실측 겹침
-   추적)이나 도착해 머문 순간(aria-selected)만 흰색으로 바꿔 대비를 지킨다 — 20260831_2201
-   "레드온레드" 버그를 회피 로직(회색으로 대체) 없이 근본적으로 해결한다. 다른 SlidingTabs
+/* 프로필 통계탭 전용 (20260901) — 숫자는 항상 포인트 강조색(--link), 선택 pill(onCard 팔레트에서는
+   --accent 면) 배경이 실제로 그 숫자 위를 지나가는 순간(data-pill-over, SlidingTabs.tsx 실측 겹침
+   추적)이나 도착해 머문 순간(aria-selected)만 pill 위 글자색(--tabs-text-active, onCard에서는
+   --accent-foreground)으로 바꿔 대비를 지킨다 — 20260831_2201 당시 pill과 숫자가 같은 색(레드)이던
+   버그를 회피 로직(회색으로 대체) 없이 근본적으로 해결한다. 다른 SlidingTabs
    사용처는 이 클래스가 없어 영향받지 않는다. */
 .jam-stat-tabs .t-tab .jam-stat-number {
   color: var(--link);
