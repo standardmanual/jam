@@ -317,7 +317,7 @@ export default function BadgesClient({
         {/* 컬렉션 탭 */}
         {activeTab === 'collection' && (
           itemBooks.length > 0 ? (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2">
               {itemBooks.map((book) => {
                 const progress = progressMap.get(book.id) ?? { owned: 0, total: 1, completed: false, rarity: 'common' as BadgeRarity }
                 return (
