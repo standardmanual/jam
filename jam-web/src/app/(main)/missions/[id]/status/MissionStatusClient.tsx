@@ -304,8 +304,8 @@ function MyRankCard({
 
 /** 달성형 행 */
 /**
- * 달성형 행 — 20260825 리뉴얼: 랭킹형 `RankingListRow`와 같은 어휘(ListRowCard, 다크 아바타,
- * 내 행만 레드 강조)로 통일. 옛 Card 행은 더 이상 쓰지 않는다.
+ * 달성형 행 — 20260825 리뉴얼: 랭킹형 `RankingListRow`와 같은 어휘(ListRowCard, `--border` 면 아바타,
+ * 내 행만 `--link` 굵은 글씨 강조)로 통일. 옛 Card 행은 더 이상 쓰지 않는다.
  */
 function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
   return (
@@ -339,7 +339,7 @@ function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: bool
   )
 }
 
-/** 소형 아바타 (달성형·개인형용) — 랭킹형 RankingListRow 아바타와 동일한 다크 톤 */
+/** 소형 아바타 (달성형·개인형용) — 랭킹형 RankingListRow 아바타와 같은 `--border` 면 */
 function SimpleAvatar({ url }: { url: string | null }) {
   if (url) {
     // eslint-disable-next-line @next/next/no-img-element
