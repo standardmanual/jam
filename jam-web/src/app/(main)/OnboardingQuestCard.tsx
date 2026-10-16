@@ -109,7 +109,7 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
           <Card className={CARD_CLASS}>
             {body}
             <div className={CTA_ROW_PULSE_CLASS}>
-              <OnboardingSyncButton appearance="card" />
+              <OnboardingSyncButton />
             </div>
           </Card>
           {skipTrigger}
@@ -189,7 +189,7 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
         </div>
       </div>
       <div className={CTA_ROW_CLASS}>
-        <SyncButton username={username} appearance="card" />
+        <SyncButton username={username} />
       </div>
     </Card>
   )

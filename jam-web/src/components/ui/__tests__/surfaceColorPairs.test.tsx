@@ -5,8 +5,9 @@
  * 이 짝이 어긋나면 글자가 배경과 같은 색이 되어 사라진다(실측: 1.00~3.37:1).
  *
  * 확인하는 것: ① 서비스 Button `sub`의 글자가 accent 면 위 --accent-foreground, 밝은 면 위 --foreground다
- * ② MODULAR Button·IconButton `surface="dark"`(반전 면 위)의 글자·아이콘이 --snow다
+ * ② MODULAR Button·IconButton `surface="dark"`(반전 면 위)의 글자·아이콘이 --snow다(primary는 --snow 면이라 글자 --foreground)
  * ③ MODULAR ShapeTag 글자가 surface와 무관하게 --foreground다.
+ * 변형별 면·글자·테두리 토큰 전체와 서비스·MODULAR 일치는 `buttonVariantPairs.test.tsx`가 맡는다(티켓 20261015_2133).
  *
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 서버 렌더(`renderToStaticMarkup`)로 확인한다.
  */
@@ -24,13 +25,13 @@ describe('서비스 Button — sub 면의 글자색 쌍', () => {
       <ServiceButton surface="sub" variant="primary">확인</ServiceButton>
     )
     expect(html).toContain('text-accent-foreground')
-    expect(html).toContain('background-color:var(--accent)')
+    expect(html).toContain('bg-accent')
     expect(html).not.toContain('text-white')
     expect(html).not.toContain('text-snow')
   })
 
-  it('outline·arrow는 밝은 면 위에 foreground 글자다(snow 아님)', () => {
-    for (const variant of ['outline', 'arrow'] as const) {
+  it('secondary·danger·outline·arrow는 밝은 면 위에 foreground 글자다(snow 아님)', () => {
+    for (const variant of ['secondary', 'danger', 'outline', 'arrow'] as const) {
       const html = renderToStaticMarkup(
         <ServiceButton surface="sub" variant={variant}>확인</ServiceButton>
       )
@@ -41,6 +42,13 @@ describe('서비스 Button — sub 면의 글자색 쌍', () => {
 })
 
 describe('MODULAR Button·IconButton — surface="dark"는 반전 면 위 --snow', () => {
+  it('Button dark의 primary는 --snow 면 위 --foreground 글자다(반전 면 위 알약 윤곽)', () => {
+    const html = renderToStaticMarkup(<DsButton surface="dark" variant="primary">확인</DsButton>)
+    expect(html).toContain('background:var(--snow)')
+    expect(html).toContain('color:var(--foreground)')
+    expect(html).not.toContain('background:var(--background-inverse)')
+  })
+
   it('Button dark의 secondary·ghost 글자가 --snow다', () => {
     for (const variant of ['secondary', 'ghost'] as const) {
       const html = renderToStaticMarkup(

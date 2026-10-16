@@ -6,8 +6,8 @@
  * (`renderToStaticMarkup`)로 초기 상태만 고정한다: 「동기화」 버튼이 보이고, 오버레이는
  * 닫혀 있어 연출 배지 이름이 아직 노출되지 않는다.
  *
- * `appearance="card"`(티켓 20260928_1537) — 표시 방식만 바뀌고 라벨·동작은 동일하다는 것을
- * 같은 방식으로 고정한다.
+ * 버튼 모양(티켓 20261015_2133) — 놓인 자리와 상관없이 primary(`--accent` 면 + `--accent-foreground` 글자)이고
+ * 호출부가 색을 인라인으로 덮어쓰지 않는다는 것을 같은 방식으로 고정한다.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -38,14 +38,16 @@ describe('OnboardingSyncButton 초기 렌더', () => {
   })
 })
 
-describe('OnboardingSyncButton appearance="card"(티켓 20260928_1537)', () => {
-  it('「동기화」 버튼 라벨이 nav와 동일하게 보인다', () => {
-    const html = renderToStaticMarkup(<OnboardingSyncButton appearance="card" />)
-    expect(html).toContain(d.today.syncButton)
+describe('OnboardingSyncButton 버튼 모양(티켓 20261015_2133)', () => {
+  it('accent 면 위 accent-foreground 글자인 primary다', () => {
+    const html = renderToStaticMarkup(<OnboardingSyncButton />)
+    expect(html).toContain('bg-accent')
+    expect(html).toContain('text-accent-foreground')
   })
 
-  it('오버레이가 닫혀 있어 연출 배지 이름이 아직 보이지 않는다', () => {
-    const html = renderToStaticMarkup(<OnboardingSyncButton appearance="card" />)
-    expect(html).not.toContain(DEMO_SYNC_REVEAL_BADGE.name)
+  it('색을 인라인 style로 덮어쓰지 않는다(옛 outline + accent 덮어쓰기 땜질)', () => {
+    const html = renderToStaticMarkup(<OnboardingSyncButton />)
+    expect(html).not.toContain('background-color:var(--accent)')
+    expect(html).not.toContain('color:var(--accent-foreground)')
   })
 })

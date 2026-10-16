@@ -234,7 +234,7 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
         style={{ maxWidth: 430, margin: '0 auto' }}
       >
         <p className="text-base text-foreground/70">{locError}</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
+        <Button variant="secondary" onClick={() => window.location.reload()}>
           {d.drops.retry}
         </Button>
       </div>

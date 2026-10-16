@@ -847,7 +847,7 @@ function PoiCard({
               {t(d.drops.confirmDrop, { name: pendingDropItem.badgeName })}
             </p>
             <div className="flex gap-2 w-full">
-              <Button fullWidth variant="outline" surface="main" onClick={onCancelPending} disabled={dropping}>
+              <Button fullWidth variant="secondary" surface="main" onClick={onCancelPending} disabled={dropping}>
                 {d.drops.cancel}
               </Button>
               {/* 확인 버튼만 pill 래퍼로 펄스(티켓 20260928_1754) — 취소 버튼에는 붙이지

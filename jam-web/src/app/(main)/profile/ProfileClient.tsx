@@ -499,12 +499,9 @@ export default function ProfileClient({
               u.id !== currentUserId ? (
                 <Button
                   surface="sub"
-                  variant={listFollowStates[u.id] ? 'outline' : 'primary'}
+                  variant={listFollowStates[u.id] ? 'secondary' : 'primary'}
                   onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleListFollow(u.id) }}
                   className="shrink-0 px-4 py-2 text-base"
-                  // ListRowCard(--surface) 위라 outline 기본 채움(라이트 전용 4% 블랙 틴트)이
-                  // 안 보임 — 다크 카드에서도 항상 구분되는 그레이 토큰으로 오버라이드 (2026-08-17)
-                  style={listFollowStates[u.id] ? { backgroundColor: 'var(--default-soft)', color: 'var(--foreground)' } : undefined}
                 >
                   {/* Text states swap (04-text-states-swap.md) */}
                   <SwapText value={listFollowStates[u.id] ? d.profile.followingButton : d.profile.followButton} />
@@ -628,7 +625,7 @@ export default function ProfileClient({
                 )}
                 <Button
                   surface="main"
-                  variant="outline"
+                  variant="secondary"
                   size="xs"
                   onClick={() => router.push('/profile/edit')}
                   className="shrink-0"
@@ -642,7 +639,7 @@ export default function ProfileClient({
           {!isOwnProfile && (
             <Button
               surface="sub"
-              variant={following ? 'outline' : 'primary'}
+              variant={following ? 'secondary' : 'primary'}
               onClick={handleFollow}
               disabled={followLoading}
               className="shrink-0 px-4 py-2 text-base"
@@ -708,7 +705,7 @@ export default function ProfileClient({
 
         {/* 로그아웃 — 본인만 */}
         {isOwnProfile && (
-          <Button variant="outline" surface="main" fullWidth onClick={handleLogout}>
+          <Button variant="secondary" surface="main" fullWidth onClick={handleLogout}>
             {d.profile.logoutButton}
           </Button>
         )}

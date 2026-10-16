@@ -190,7 +190,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
             부모의 padding-bottom(탭바 높이만큼)이 이미 확보돼 있어
             스크롤 끝까지 내리면 탭바 위에서 항상 보이고 눌린다. */}
         <div ref={setActionsEl} className="mt-auto flex gap-4">
-          <Button fullWidth variant="outline" surface="main" onClick={onCancel} disabled={pickingUp}>
+          <Button fullWidth variant="secondary" surface="main" onClick={onCancel} disabled={pickingUp}>
             {d.drops.cancel}
           </Button>
           <Button fullWidth surface="main" loading={pickingUp} onClick={onPickup}>

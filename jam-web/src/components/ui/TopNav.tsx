@@ -129,7 +129,7 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
       <Link href="/" aria-label="홈으로 이동" className="shrink-0">
         <Image src="/jam-logo-white.png" alt="JAM!" width={2610} height={925} className="h-[26px] w-auto" priority />
       </Link>
-      <Button variant="outline" surface="main" size="xs" onClick={() => router.push('/voc')}>
+      <Button variant="secondary" surface="main" size="xs" onClick={() => router.push('/voc')}>
         {d.voc.inquiryButton}
       </Button>
     </>
@@ -143,10 +143,9 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
       <SyncButton username={username} />
     ) : (
       <Button
-        variant="outline"
+        variant="primary"
         surface="sub"
         size="xs"
-        style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
         onClick={() => {
           window.location.href = '/api/strava/auth'
         }}

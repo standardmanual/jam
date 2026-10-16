@@ -65,7 +65,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 
 | 상태 | 조건 | 표시·이동 |
 |---|---|---|
-| 진행 중 · sync 차례 | `skipped_at` 없음, 다음 단계가 `sync` | 진행도(n/7)·단계 타이틀/설명·[동기화] 버튼(상단 바 연출 동기화 버튼과 동일 동작 — 스피너 → 연출 배지 1장 → `sync` 단계 기록), CTA에 펄스 강조(퀘스트 진행 중에만). 상단 바(`TopNav`) 중앙 슬롯은 Strava 연동 여부와 무관하게 연출 동기화 버튼으로 고정되고(연동 유도 버튼은 가림), 두 버튼은 같은 컴포넌트(`OnboardingSyncButton`)의 표시 방식만 다르다 |
+| 진행 중 · sync 차례 | `skipped_at` 없음, 다음 단계가 `sync` | 진행도(n/7)·단계 타이틀/설명·[동기화] 버튼(상단 바 연출 동기화 버튼과 동일 동작 — 스피너 → 연출 배지 1장 → `sync` 단계 기록), CTA에 펄스 강조(퀘스트 진행 중에만). 상단 바(`TopNav`) 중앙 슬롯은 Strava 연동 여부와 무관하게 연출 동기화 버튼으로 고정되고(연동 유도 버튼은 가림), 두 버튼은 같은 컴포넌트(`OnboardingSyncButton`)이고 모양도 같다(accent 알약, 놓인 자리로 갈리지 않는다) |
 | 진행 중 · 그 외 차례 | `skipped_at` 없음, 다음 단계가 `bag`\|`pickup`\|`drop`\|`mix_fail`\|`mix_success`\|`browse` | 진행도(n/7)·다음 단계 타이틀/설명·[시작하기/다음 단계] 버튼 → 그 단계가 속한 실제 화면(`/inventory`·`/drops`·`/combine`·`/missions`, `STEP_SCREEN_MAP` 기준), CTA에 펄스 강조(퀘스트 진행 중에만). 카드 전체는 더 이상 링크가 아니다 — 버튼만 인터랙티브하다(중첩 인터랙티브 요소 회피) |
 | Strava 미동기화 | 7단계 완료 또는 건너뜀, Strava 미연동 | 7/7·마지막 단계 안내·[Strava 동기화하기] 버튼 → `/api/strava/auth`. 카드 전체는 더 이상 링크가 아니다 |
 | 첫 활동 대기 | 7단계 완료 또는 건너뜀, Strava 연동됐지만 활동 0건 | 칩만(진행 바·n/7 없음)·안내 문구(건너뛴 유저에게는 완료 배지를 언급하지 않는 문구)·[동기화] 버튼(실제 `SyncButton` — `POST /api/strava/sync` + 배지 연출/완료 토스트, TopNav 실 동기화 버튼과 동일 동작) |
@@ -77,7 +77,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 "Strava 미동기화"/"첫 활동 대기" 행으로 전환된다. "Strava 미동기화"·"첫 활동 대기" 행에는
 진입점이 없다.
 
-근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/OnboardingQuestCard.tsx`, `jam-web/src/app/(main)/OnboardingQuestSkipSheet.tsx`, `jam-web/src/app/(main)/OnboardingSyncButton.tsx`(`appearance` prop), `jam-web/src/components/SyncButton.tsx`(`appearance` prop), `jam-web/src/components/ui/TopNav.tsx`(`centerSlotOverride`), `jam-web/src/lib/onboarding-quest/status.ts`, `jam-web/src/lib/onboarding-quest/config.ts`, `jam-web/src/lib/onboarding-quest/screen-gate.ts`(`STEP_SCREEN_MAP`), `jam-web/src/lib/onboarding-quest/progress.ts`(`validateSkip`), `jam-web/src/app/api/onboarding-quest/skip/route.ts`, 펄스 `jam-web/src/components/transitions.css`(`.jam-quest-pulse`), `jam-web/design-system/tokens/motion.css`(`--duration-quest-pulse`·`--ease-quest-pulse`), 문구 `jam-web/src/lib/i18n/ko.ts`(`onboardingQuest`)
+근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/OnboardingQuestCard.tsx`, `jam-web/src/app/(main)/OnboardingQuestSkipSheet.tsx`, `jam-web/src/app/(main)/OnboardingSyncButton.tsx`, `jam-web/src/components/SyncButton.tsx`, `jam-web/src/components/ui/TopNav.tsx`(`centerSlotOverride`), `jam-web/src/lib/onboarding-quest/status.ts`, `jam-web/src/lib/onboarding-quest/config.ts`, `jam-web/src/lib/onboarding-quest/screen-gate.ts`(`STEP_SCREEN_MAP`), `jam-web/src/lib/onboarding-quest/progress.ts`(`validateSkip`), `jam-web/src/app/api/onboarding-quest/skip/route.ts`, 펄스 `jam-web/src/components/transitions.css`(`.jam-quest-pulse`), `jam-web/design-system/tokens/motion.css`(`--duration-quest-pulse`·`--ease-quest-pulse`), 문구 `jam-web/src/lib/i18n/ko.ts`(`onboardingQuest`)
 
 **오늘의 현황 스트립**은 큐레이션을 하지 않는다(카드 CMS와 역할이 겹치지 않게). 
 
