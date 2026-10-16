@@ -26,9 +26,10 @@ import { d } from '@/lib/i18n'
  * 앵커 시맨틱은 사라지고 button 기반 프로그래매틱 이동으로 바뀐다(뒤로가기 버튼이라
  * 실사용 영향은 낮다고 판단 — 완료 기록 참고).
  *
- * - 배경: 기본값 --background. 페이지 캔버스가 --background인 화면은 `headerStyle`로
- *   덮어써 맞춘다(예: headerStyle={{ background: 'var(--background)' }}) / 텍스트: --foreground
- * - elevation: 보더/드롭섀도 없음(20260816_012) — 헤더와 본문 배경톤 차이만으로 구분
+ * - 배경: DS TopNav가 불투명 --background로 렌더하고 이 래퍼는 그대로 둔다(`headerStyle`을 넘기지 않으면
+ *   변경 없음). 페이지 캔버스도 --background라 헤더와 본문은 같은 면이다. 배경을 바꿔야 하는 화면만
+ *   `headerStyle`을 쓴다(예: 배지 상세의 테마 배경) / 텍스트: --foreground
+ * - elevation: 보더/드롭섀도 없음(20260816_012) — 헤더와 본문이 같은 크림 면이라 구분선도 없다
  * - 뒤로가기: backHref가 있으면 router.push(backHref), 없으면 onBack ?? router.back()
  * - 터치 영역: chevron / rightSlot 모두 최소 44×44pt
  *
@@ -98,7 +99,7 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
       {avatarUrl ? (
         <Image src={avatarUrl} alt={d.profile.avatarAlt} width={36} height={36} className="w-9 h-9 rounded-full object-cover" />
       ) : (
-        <span className="w-9 h-9 rounded-full bg-surface text-foreground flex items-center justify-center">
+        <span className="w-9 h-9 rounded-full bg-surface border border-border text-foreground flex items-center justify-center">
           <UserIcon className="w-4 h-4" />
         </span>
       )}
@@ -127,7 +128,9 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
   const logoNode = logo ? (
     <>
       <Link href="/" aria-label="홈으로 이동" className="shrink-0">
-        <Image src="/jam-logo-white.png" alt="JAM!" width={2610} height={925} className="h-[26px] w-auto" priority />
+        {/* 로고 PNG는 흰색 한 색이라 크림 위 1.05:1이다 — 알파만 마스크로 쓰고 색은 --foreground(17.07:1)로 칠한다.
+            접근 가능한 이름은 바깥 Link의 aria-label이 맡는다. */}
+        <span aria-hidden="true" className="jam-logo-mark block h-[26px]" />
       </Link>
       <Button variant="secondary" surface="main" size="xs" onClick={() => router.push('/voc')}>
         {d.voc.inquiryButton}

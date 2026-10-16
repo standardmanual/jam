@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Image from 'next/image'
 import TopNav from '@/components/ui/TopNav'
 import Button from '@/components/ui/Button'
 import ListRowCard from '@/components/ui/ListRowCard'
@@ -90,7 +89,8 @@ function VocCard({ item }: { item: VocItem }) {
       {item.answer && (
         <div className="mt-4 rounded-2xl bg-white/[0.04] p-4 flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <Image src="/jam-logo-white.png" alt="JAM!" width={2610} height={925} className="h-4 w-auto" />
+            {/* 흰색 로고 PNG를 마스크로 쓰고 색은 --foreground로 칠한다(흰 카드 위 흰 로고는 사라진다). */}
+            <span role="img" aria-label="JAM!" className="jam-logo-mark block shrink-0 h-4" />
             <span className="text-xs leading-none text-foreground/60">{d.voc.answerLabel}</span>
             {item.answeredAt && (
               <span className="text-xs leading-none text-foreground/40">· {formatDateTime(item.answeredAt)}</span>

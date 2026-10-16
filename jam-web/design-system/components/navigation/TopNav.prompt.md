@@ -57,6 +57,11 @@ Sticky top bar for sub-pages (badges detail, drops, inventory item). Root screen
 
 - `logo`가 있으면 back+title 블록 전체를 대체한다(showBack/title은 무시됨). 20260901_1926에서
   구 prop명 `logoSlot`을 `logo`로 정리했다.
+- 로고: 흰색 PNG(`jam-logo-white.png`)를 `<img>`로 그대로 넣으면 크림 바탕(`--background`) 위 1.05:1이라 사라진다.
+  알파만 마스크로 쓰고 색을 `--foreground`(17.07:1)로 칠한다(서비스 `.jam-logo-mark`, `globals.css`).
+  `filter: invert()`·`brightness(0)`으로 검게 만들지 않는다(순수 #000이 되어 토큰과 어긋난다).
+- 헤더 면은 불투명 `--background`이고 구분선·그림자가 없다 — 크림 바탕 페이지와 같은 면이다.
+  사진이 없는 폴백 아바타는 카드 면 레시피(`--surface` + 1px `--border`)다(크림 위 흰 원은 1.05:1).
 - `centerSlot`은 좌/우 사이 고정폭 영역 — 없으면 렌더링되지 않아 기존 2분할과 동일하다.
   **서비스 `TopNavProps`에는 노출되지 않는 내부 전용 슬롯**이다 — 서비스 래퍼가 스트라바
   동기화 버튼을 내부적으로만 채운다.

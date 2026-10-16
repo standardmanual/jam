@@ -461,6 +461,26 @@ select option {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────────
+ * JAM! 로고 마크 (티켓 20261015_2133, 2회)
+ *
+ * public/jam-logo-white.png는 흰색 한 색이라 크림 바탕(--background) 위에서 1.05:1로 사라진다.
+ * 알파 채널만 마스크로 쓰고 색은 --foreground 토큰으로 칠한다(마스크 + 토큰 색).
+ * `filter: invert()`·`brightness(0)`으로 검게 만들면 순수 #000이 되어 --foreground(#171717)와 어긋나고
+ * 상태마다 깨지므로 쓰지 않는다. 크기는 호출부가 높이만 정한다(가로세로비 2610:925).
+ *
+ * `@layer components`에 두는 이유: 레이어 밖에 두면 Tailwind 유틸리티(`block`·`inline-block`·`h-*`)보다
+ * 우선해 호출부가 display를 못 바꾼다.
+ * ────────────────────────────────────────────────────────────────────────────── */
+@layer components {
+  .jam-logo-mark {
+    aspect-ratio: 2610 / 925;
+    background-color: var(--foreground);
+    -webkit-mask: url('/jam-logo-white.png') center / contain no-repeat;
+    mask: url('/jam-logo-white.png') center / contain no-repeat;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────────
  * 이미지 카드 안 블롭 애니메이션 배경 캔버스 (20260901_1944)
  *
  * 캔버스는 첫 프레임을 그리기 전까지 투명하다(하드컷 방지). 첫 프레임을 그리면
