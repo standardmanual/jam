@@ -10,12 +10,12 @@ import { resourceIconOf, type ResourceIconView } from './resourceIcon'
  *
  * `alt`가 비어 있는 이유: 이름이 바로 옆·아래 글자로 보인다(확정 설계 3절의 alt 규칙).
  * 흑백(`dimmed`)은 그림에만 건다 — 색 외에 글자 단서가 없는 기존 규칙이다(티켓 20260905_0038 B). 값이 없으면(유저 정보가 없는 미리보기) 컬러다.
- * 칸 바탕 `bg-black/[0.04]`는 흰 카드 위 옅은 면이다(보더 미사용 원칙, 티켓 20260816_012).
+ * 칸 바탕 `bg-background-secondary`는 흰 카드 위 구획 면이다(카드 경계는 카드 공통 1px 테두리가 맡는다, 티켓 20261015_2133).
  */
 export default function CardThumb({ view, src, dimmed = false }: { view: ResourceIconView; src?: string | null; dimmed?: boolean }) {
-  const icon = resourceIconOf(view, { className: 'w-6 h-6 text-snow/60' })
+  const icon = resourceIconOf(view, { className: 'w-6 h-6 text-muted' })
   return (
-    <div className="w-16 h-16 shrink-0 rounded-2xl bg-black/[0.04] overflow-hidden flex items-center justify-center">
+    <div className="w-16 h-16 shrink-0 rounded-2xl bg-background-secondary overflow-hidden flex items-center justify-center">
       {src ? (
         <SafeImage
           src={src}

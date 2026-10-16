@@ -79,7 +79,7 @@ describe('CardChipRow — 지역 핀', () => {
   it('핀은 줄어드는 유일한 항목이다 — min-w-0이고 글자만 말줄임, 12px 아이콘은 shrink-0', () => {
     const html = render({ regionLabel: '성수동 서울숲 근처' })
     expect(html).toContain(
-      '<span class="inline-flex items-center gap-1 min-w-0 text-xs text-snow/60">',
+      '<span class="inline-flex items-center gap-1 min-w-0 text-xs text-muted">',
     )
     expect(html).toContain('<span class="truncate">성수동 서울숲 근처</span>')
     expect(html).toContain(renderToStaticMarkup(<PinIcon className="w-3 h-3 shrink-0" />))
@@ -122,10 +122,10 @@ describe('CardChipRow — 희귀도 칩', () => {
 })
 
 describe('CardChipRow — 게재일', () => {
-  it('「10월 5일」(KST, 연도 없음)로 줄 끝에 그린다 — ml-auto·shrink-0·줄바꿈 없음·caption·/60', () => {
+  it('「10월 5일」(KST, 연도 없음)로 줄 끝에 그린다 — ml-auto·shrink-0·줄바꿈 없음·caption·text-muted', () => {
     const html = render({ resource: 'article', label: '기사', publishedAt: '2026-10-05T03:00:00.000Z' })
     expect(html).toContain(
-      '<time dateTime="2026-10-05T03:00:00.000Z" class="ml-auto shrink-0 whitespace-nowrap text-xs text-snow/60">10월 5일</time>',
+      '<time dateTime="2026-10-05T03:00:00.000Z" class="ml-auto shrink-0 whitespace-nowrap text-xs text-muted">10월 5일</time>',
     )
     expect(html).not.toContain('2026년')
   })
@@ -152,15 +152,16 @@ describe('CardChipRow — 게재일', () => {
 })
 
 describe('CardChipRow — 옅은 글자', () => {
-  it('옅은 글자는 /60 한 단계뿐이다(/30·/40·/50 없음)', () => {
+  it('옅은 글자는 text-muted 한 단계뿐이다(불투명도로 만든 글자색 없음, 흰 면 위 5.74:1)', () => {
     const html = render({
       resource: 'badge',
       regionLabel: '성수동',
       rarity: 'rare',
       publishedAt: '2026-10-05T03:00:00.000Z',
     })
-    expect(html).toContain('text-snow/60')
-    for (const level of ['/30', '/40', '/50', '/70']) expect(html).not.toContain(`text-snow${level}`)
+    expect(html).toContain('text-muted')
+    expect(html).not.toContain('text-snow')
+    expect(html).not.toMatch(/text-(?:muted|foreground)\/\d/)
   })
 })
 
@@ -173,20 +174,20 @@ describe('CardChipRow — 막 위(on="scrim", 티켓 20261001_2013 b4)', () => {
     publishedAt: '2026-10-05T03:00:00.000Z',
   } as const
 
-  it('on을 주지 않거나 white면 변경 전과 글자 단위로 같다(라벨 칩 기본 색조, 옅은 글자 /60)', () => {
+  it('on을 주지 않거나 white면 같다(라벨 칩 기본 색조 --background-secondary, 옅은 글자 text-muted)', () => {
     const base = render(FULL)
     expect(render(FULL, undefined, 'white')).toBe(base)
-    expect(base).toContain('background:var(--background);color:var(--foreground)')
+    expect(base).toContain('background:var(--background-secondary);color:var(--foreground)')
     expect(base).not.toContain('text-white')
   })
 
-  it('라벨 칩이 surface-inverse 색조(흰 알약·어두운 글자)다 — 기본 색조(짙은 알약)는 검정 막 위에서 묻힌다', () => {
+  it('막 위에서도 라벨 칩은 기본 색조(밝은 알약 + 어두운 글자)다 — 어두운 막과 면이 갈린다', () => {
     const html = render(FULL, undefined, 'scrim')
-    expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--background-inverse\);color:var\(--snow\)[^"]*">배지 소개<\/span>/)
-    expect(html).not.toContain('background:var(--background);')
+    expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--background-secondary\);color:var\(--foreground\)[^"]*">배지 소개<\/span>/)
+    expect(html).not.toContain('background:var(--background-inverse)')
   })
 
-  it('지역 핀·게재일 글자는 text-white이고 옅은 단계(/60)가 없다', () => {
+  it('지역 핀·게재일 글자는 text-white이고 옅은 단계(text-muted)가 없다', () => {
     const html = render(FULL, undefined, 'scrim')
     expect(html).toContain(
       '<span class="inline-flex items-center gap-1 min-w-0 text-xs text-white">',
@@ -195,7 +196,7 @@ describe('CardChipRow — 막 위(on="scrim", 티켓 20261001_2013 b4)', () => {
       'class="ml-auto shrink-0 whitespace-nowrap text-xs text-white">10월 5일</time>',
     )
     expect(html).not.toContain('text-snow')
-    expect(html).not.toContain('/60')
+    expect(html).not.toContain('text-muted')
   })
 
   it('줄바꿈 금지·핀만 줄어듦·희귀도 칩은 바탕과 상관없이 같다', () => {

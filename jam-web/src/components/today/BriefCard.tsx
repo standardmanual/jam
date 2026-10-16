@@ -13,7 +13,7 @@ import CardThumb from './CardThumb'
  * - 안쪽 여백은 `Card`가 인라인 `style`(`padding: var(--layout-card-padding)` = 24px)로 주기 때문에 클래스(`p-*`)로는 덮이지 않는다.
  *   그래서 같은 인라인 `style`로 덮는다. 칸 64 + 위아래 12×2 = 최소 높이 88px와 맞아떨어진다.
  * - `--text-base`은 서비스에서 14px이 아니라 16px이다. 필수 정보 14px은 `--text-sm`이다.
- * - 옅은 글자는 `text-snow/60` 한 단계로 통일한다(흰 면 위 AA 이상). `/30`·`/40`은 쓰지 않는다.
+ * - 옅은 글자는 `text-muted` 한 단계로 통일한다(흰 면 위 5.74:1). 불투명도로 글자색을 만들지 않는다(티켓 20261015_2133).
  */
 
 export default function BriefCard({ view }: { view: BriefCardView }) {
@@ -21,7 +21,6 @@ export default function BriefCard({ view }: { view: BriefCardView }) {
 
   return (
     <Card
-      tone="inverse"
       className="min-h-[88px] flex items-center gap-3"
       style={{ padding: 'var(--spacing-12) var(--spacing-16)' }}
     >
@@ -34,7 +33,7 @@ export default function BriefCard({ view }: { view: BriefCardView }) {
           className="mb-2"
         />
 
-        <h3 className="text-base text-snow line-clamp-2 break-keep break-words">
+        <h3 className="text-base text-foreground line-clamp-2 break-keep break-words">
           {view.title}
         </h3>
 
@@ -44,7 +43,7 @@ export default function BriefCard({ view }: { view: BriefCardView }) {
             {facts.map((line, index) => (
               <p
                 key={index}
-                className="text-sm text-snow/60 break-keep break-words"
+                className="text-sm text-muted break-keep break-words"
               >
                 {line}
               </p>
@@ -55,7 +54,7 @@ export default function BriefCard({ view }: { view: BriefCardView }) {
 
       {/* 이동한다는 암시 — 링크가 없는 카드(`href` 없음)에는 그리지 않는다. 미리보기도 링크만 없을 뿐 `href`가 있으면 보인다 */}
       {view.href && (
-        <span className="shrink-0 text-snow/60" aria-hidden="true">
+        <span className="shrink-0 text-muted" aria-hidden="true">
           &rsaquo;
         </span>
       )}

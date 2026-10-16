@@ -15,8 +15,33 @@ export default meta;
 type Story = StoryObj<typeof Card>;
 
 export const Default: Story = {
-  args: { tone: 'default', children: '카드 기본 컨텐츠입니다.' },
+  args: { tone: 'default', children: '카드 기본 컨텐츠입니다. 흰 면 + 1px 테두리, 그림자 없음.' },
   decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
+};
+
+/**
+ * 크림 캔버스(--background) 위의 경계 확인용.
+ * 흰 면(--surface)과 크림 바탕은 1.05:1이라 1px --border가 없으면 카드가 보이지 않는다.
+ * tint는 테두리가 없으므로 흰 카드 안 구획으로만 쓴다.
+ */
+export const OnCreamCanvas: Story = {
+  name: '크림 캔버스 위 경계',
+  parameters: { layout: 'fullscreen' },
+  render: () => (
+    <div style={{ background: 'var(--background)', padding: 16, width: 393, boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Card>
+          <p style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 700 }}>기본 카드</p>
+          <p style={{ margin: '4px 0 12px', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
+            --surface + 1px --border, 그림자 없음
+          </p>
+          <Card tone="tint">
+            <p style={{ margin: 0, fontSize: 'var(--text-sm)' }}>tint — 카드 안 구획 (--background-secondary)</p>
+          </Card>
+        </Card>
+      </div>
+    </div>
+  ),
 };
 
 export const Tint: Story = {
@@ -25,7 +50,7 @@ export const Tint: Story = {
 };
 
 export const Inverse: Story = {
-  args: { tone: 'inverse', children: 'Inverse 배경 (흰 배경 + 어두운 텍스트)' },
+  args: { tone: 'inverse', children: 'Inverse 배경 (어두운 반전 면 + --snow 글자)' },
   decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
 };
 
@@ -45,15 +70,15 @@ export const AllTones: Story = {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 320 }}>
       <Card tone="default">
         <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>default</p>
-        <p style={{ margin: '4px 0 0', color: 'var(--foreground)' }}>배경: --surface (20260816_012 — 보더 제거로 대체)</p>
+        <p style={{ margin: '4px 0 0', color: 'var(--foreground)' }}>배경: --surface + 1px --border (그림자 없음)</p>
       </Card>
       <Card tone="tint">
         <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>tint</p>
         <p style={{ margin: '4px 0 0', color: 'var(--foreground)' }}>배경: --background-secondary</p>
       </Card>
       <Card tone="inverse">
-        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>inverse</p>
-        <p style={{ margin: '4px 0 0', color: 'var(--snow)' }}>배경: --background-inverse</p>
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--snow)' }}>inverse</p>
+        <p style={{ margin: '4px 0 0', color: 'var(--snow)' }}>배경: --background-inverse (어두운 반전 면)</p>
       </Card>
     </div>
   ),

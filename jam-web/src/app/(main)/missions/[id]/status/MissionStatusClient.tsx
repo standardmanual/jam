@@ -300,7 +300,7 @@ function MyRankCard({
 /** 달성형 행 */
 /**
  * 달성형 행 — 20260825 리뉴얼: 랭킹형 `RankingListRow`와 같은 어휘(ListRowCard, 다크 아바타,
- * 내 행만 레드 강조)로 통일. 흰 카드(Card tone="inverse")는 더 이상 쓰지 않는다.
+ * 내 행만 레드 강조)로 통일. 옛 Card 행은 더 이상 쓰지 않는다.
  */
 function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
   return (

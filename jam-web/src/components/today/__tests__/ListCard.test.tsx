@@ -35,7 +35,7 @@ const BODY_OPEN = '<div class="flex flex-col gap-3 p-6">'
 const TRACKING = { cardId: 'card-1', contentTypeId: 'T03', templateType: 'badge_spotlight', shape: 'list' } as const
 const RANKING_TRACKING = { cardId: 'card-2', contentTypeId: 'T08', templateType: 'ranking_board', shape: 'list' } as const
 const IMG = 'https://cdn.example/b.png'
-const ICON_CLASS = 'w-6 h-6 text-snow/60'
+const ICON_CLASS = 'w-6 h-6 text-muted'
 const icon = (Icon: typeof MedalIcon) => renderToStaticMarkup(<Icon className={ICON_CLASS} />)
 
 const tile = (name: string, overrides: Partial<CardViewTile> = {}): CardViewTile => ({ name, imageUrl: IMG, earned: true, ...overrides })
@@ -116,9 +116,10 @@ const expectOrdered = (positions: number[]) => {
 }
 
 describe('ListCard 타일형 — 면(표면)과 본문', () => {
-  it('흰 카드(inverse)이고 안쪽 여백은 인라인 0이다(본문 24px은 본문 칸이 가진다)', () => {
+  it('흰 카드(기본 톤, 흰 면 + 1px 테두리)이고 안쪽 여백은 인라인 0이다(본문 24px은 본문 칸이 가진다)', () => {
     const html = render(tilesView())
-    expect(html).toMatch(/^<div[^>]*style="[^"]*background:var\(--background-inverse\)[^"]*">/)
+    expect(html).toMatch(/^<div[^>]*style="[^"]*background:var\(--surface\)[^"]*border:1px solid var\(--border\)[^"]*">/)
+    expect(html).not.toContain('--background-inverse')
     expect(html).toMatch(/^<div[^>]*style="[^"]*padding:0[;"]/)
     expect(html).not.toContain('--layout-card-padding')
     expect(html).toContain(BODY_OPEN)
@@ -137,12 +138,12 @@ describe('ListCard 타일형 — 면(표면)과 본문', () => {
     )
   })
 
-  it('제목은 24px·요약은 16px /60이고 필수 정보는 14px 굵게, 설명문은 14px /60이다(셋 다 공용 조각)', () => {
+  it('제목은 24px·요약은 16px text-muted이고 필수 정보는 14px 굵게, 설명문은 14px text-muted이다(셋 다 공용 조각)', () => {
     const html = render(tilesView())
-    expect(html).toContain('<h3 class="text-2xl text-snow line-clamp-2')
-    expect(html).toContain('mt-1 text-base text-snow/60 line-clamp-2')
+    expect(html).toContain('<h3 class="text-2xl text-foreground line-clamp-2')
+    expect(html).toContain('mt-1 text-base text-muted line-clamp-2')
     expect(html.match(/font-bold/g)).toHaveLength(2)
-    expect(html).toContain('text-sm text-snow/60 line-clamp-2')
+    expect(html).toContain('text-sm text-muted line-clamp-2')
   })
 
   it('값이 없는 그룹은 그 그룹만 사라진다(칩 줄 + 제목 + 타일 줄만 남는다)', () => {
@@ -162,10 +163,11 @@ describe('ListCard 타일형 — 면(표면)과 본문', () => {
     expect(html).toContain('성수동 골목을 걸으면')
   })
 
-  it('옅은 글자는 /60 한 단계뿐이고 날 값(leading-tight·#666·/30·/40·/50·/70)이 없다', () => {
+  it('옅은 글자는 text-muted 한 단계뿐이고 날 값(leading-tight·#666·불투명도 글자색)이 없다', () => {
     const html = render(tilesView({ tiles: [tile('이름'), tile('그림 없음', { imageUrl: null })] }))
-    expect(html).toContain('text-snow/60')
-    for (const level of ['/30', '/40', '/50', '/70']) expect(html).not.toContain(`text-snow${level}`)
+    expect(html).toContain('text-muted')
+    expect(html).not.toContain('text-snow')
+    expect(html).not.toMatch(/text-(?:muted|foreground)\/\d/)
     for (const needle of ['leading-tight', '#666', 'body-sm']) expect(html).not.toContain(needle)
   })
 
@@ -195,17 +197,17 @@ describe('ListCard 타일형 — 타일 줄', () => {
     for (const needle of ['snap', 'gradient', 'fade', '+3', '+8']) expect(html).not.toContain(needle)
   })
 
-  it('타일 이름은 12px(--text-xs) /60, 가운데, 2줄 말줄임이고 칸보다 넓히지 않는다', () => {
+  it('타일 이름은 12px(--text-xs) text-muted, 가운데, 2줄 말줄임이고 칸보다 넓히지 않는다', () => {
     const html = render(tilesView({ tiles: [tile('성수동 탐험가')] }))
     expect(html).toContain(
-      '<p class="mt-1 text-xs text-snow/60 text-center line-clamp-2 break-keep break-words">성수동 탐험가</p>',
+      '<p class="mt-1 text-xs text-muted text-center line-clamp-2 break-keep break-words">성수동 탐험가</p>',
     )
   })
 
-  it('타일은 그림 칸(64px 정사각, 옅은 면) 아래에 이름이 온다', () => {
+  it('타일은 그림 칸(64px 정사각, 구획 면) 아래에 이름이 온다', () => {
     const html = render(tilesView({ tiles: [tile('성수동 탐험가')] }))
-    expect(html).toContain('<li class="w-16 shrink-0"><div class="w-16 h-16 shrink-0 rounded-2xl bg-black/[0.04]')
-    expect(html.indexOf('bg-black/[0.04]')).toBeLessThan(html.indexOf('성수동 탐험가'))
+    expect(html).toContain('<li class="w-16 shrink-0"><div class="w-16 h-16 shrink-0 rounded-2xl bg-background-secondary')
+    expect(html.indexOf('bg-background-secondary')).toBeLessThan(html.indexOf('성수동 탐험가'))
   })
 
   it('그림 alt는 늘 빈 값이다(이름이 바로 아래 글자로 보인다)', () => {
@@ -428,10 +430,10 @@ describe('ListCard 행형 — 빈 상태', () => {
     ['행이 0개', ranking({ entries: [] })],
   ]
 
-  it.each(cases)('%s이면 순위 행 자리에 「아직 랭킹이 없어요」를 16px /60 왼쪽 정렬로 그린다', (_label, value) => {
+  it.each(cases)('%s이면 순위 행 자리에 「아직 랭킹이 없어요」를 16px text-muted 왼쪽 정렬로 그린다', (_label, value) => {
     const html = render(live(rankingView({ ranking: value })))
     expect(html).toContain(
-      '<p class="text-base text-snow/60">아직 랭킹이 없어요</p>',
+      '<p class="text-base text-muted">아직 랭킹이 없어요</p>',
     )
     expect(html).not.toContain('flex flex-col gap-2')
     expect(html).not.toContain('text-center')

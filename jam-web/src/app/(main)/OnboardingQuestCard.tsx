@@ -18,8 +18,8 @@ import QuestStartTracker from './QuestStartTracker'
  * 온보딩 퀘스트 홈 카드 (티켓 20260927_2133, 상위 20260927_2123 T1b · 경로 변경 20260928_0136 ·
  * 보상 문구 제거·CTA 버튼화 20260928_1537).
  *
- * 채원 사전 판정 — 재사용. 신규 토큰 없이 Card(tone="inverse")·ProgressBar·icons.tsx·서비스
- * Button만으로 조립한다. 칩은 MODULAR `LabelChip`(티켓 20261001_1204)을 쓴다 — 세 번째로
+ * 채원 사전 판정 — 재사용. 신규 토큰 없이 Card(기본 톤: 흰 면 + 1px 테두리)·ProgressBar·icons.tsx·서비스
+ * Button만으로 조립한다. 어두운 반전 면이 아니라서 글자는 `text-foreground`(Card가 깔아 상속)·`text-muted`·`text-link`다(티켓 20261015_2133). 칩은 MODULAR `LabelChip`(티켓 20261001_1204)을 쓴다 — 세 번째로
  * 복제하던 인라인 클래스를 공용 컴포넌트로 합쳤다.
  *
  * ②·③ 상태는 카드 전체가 더 이상 `<Link>`가 아니다 — CTA 버튼만 인터랙티브다. `<a>` 안에
@@ -106,7 +106,7 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
       return (
         <div className="flex flex-col gap-2">
           {startTracker}
-          <Card tone="inverse" className={CARD_CLASS}>
+          <Card className={CARD_CLASS}>
             {body}
             <div className={CTA_ROW_PULSE_CLASS}>
               <OnboardingSyncButton appearance="card" />
@@ -120,7 +120,7 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
     const screen = STEP_SCREEN_MAP[state.nextStep]
     return (
       <div className="flex flex-col gap-2">
-        <Card tone="inverse" className={CARD_CLASS}>
+        <Card className={CARD_CLASS}>
           {body}
           <div className={CTA_ROW_PULSE_CLASS}>
             <Button
@@ -142,7 +142,7 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
   // kind === 'awaiting_sync'
   if (!state.stravaConnected) {
     return (
-      <Card tone="inverse" className={CARD_CLASS}>
+      <Card className={CARD_CLASS}>
         <div className={CHIP_ROW_CLASS}>
           <Chip />
           <span className={PROGRESS_LABEL_CLASS}>
@@ -177,10 +177,10 @@ export default function OnboardingQuestCard({ state, username = null }: Props) {
   // Strava 동기화됨 · 첫 활동 대기 — 카드 자체는 비클릭, 실 동기화 버튼만 액션이다
   const copy = state.skipped ? d.onboardingQuest.awaitingActivitySkipped : d.onboardingQuest.awaitingActivity
   return (
-    <Card tone="inverse" className={CARD_CLASS}>
+    <Card className={CARD_CLASS}>
       <Chip />
       <div className="flex items-start gap-2">
-        <span className="text-snow/60 shrink-0">
+        <span className="text-muted shrink-0">
           <HourglassIcon className="w-6 h-6" />
         </span>
         <div className="flex flex-col gap-2">
