@@ -89,7 +89,7 @@ export default function QuestPreviewBanner({ value }: { value: QuestPreviewValue
           버튼 자신의 히트 영역을 ::before 의사요소로 사방 6px씩 넓힌다(시각 크기는 그대로,
           30.8px + 12px = 42.8px 이상 확보, 채원 판정 device_notes). */}
       <Button
-        variant="outline"
+        variant="secondary"
         surface="sub"
         size="xs"
         loading={loading}

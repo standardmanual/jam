@@ -437,11 +437,10 @@ export default function MissionDetailClient({
                   {d.missions.joinConfirmBody}
                 </p>
                 <div className="flex gap-2">
-                  {/* 20260816_012: 부모가 이미 bg-surface라 outline 기본 채움과 겹침 — 살짝 더 밝은 톤으로 오버라이드 */}
+                  {/* 흰 Card 위 취소는 secondary(--default #f2f2f2), 확인은 primary다. 인라인 색 덮어쓰기는 없다 */}
                   <Button
                     fullWidth
-                    variant="outline"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+                    variant="secondary"
                     onClick={() => setConfirming(false)}
                     disabled={loading}
                   >

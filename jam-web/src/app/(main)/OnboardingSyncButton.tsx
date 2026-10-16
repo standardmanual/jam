@@ -25,15 +25,11 @@ const SYNC_ANIMATION_MS = 1000
  * 함께 삭제됐기 때문). 기록 실패(res.ok === false) 시 저장 실패 토스트를, 그 외 예외
  * (네트워크 오류)면 공통 네트워크 오류 토스트를 보여준다.
  *
- * `appearance`(티켓 20260928_1537, 채원 사전 판정): 'nav'(기본)는 TopNav 중앙 슬롯 모양
- * 그대로. 'card'는 온보딩 퀘스트 홈 카드(①) CTA 모양 — variant/surface/size만 바뀌고
- * 동작(연출·단계 기록·토스트·GA4)은 완전히 같다.
+ * 모양: 놓인 자리(TopNav 중앙 슬롯·온보딩 퀘스트 홈 카드)와 상관없이 primary(`--accent` 알약)다.
+ * 한때 `appearance`(티켓 20260928_1537)로 nav·card를 갈랐지만 Button에 secondary·danger·outline이
+ * 생겨 「outline + accent 인라인 덮어쓰기」가 필요 없어지면서 둘이 같아져 prop을 걷었다(티켓 20261015_2133).
  */
-interface OnboardingSyncButtonProps {
-  appearance?: 'nav' | 'card'
-}
-
-export default function OnboardingSyncButton({ appearance = 'nav' }: OnboardingSyncButtonProps) {
+export default function OnboardingSyncButton() {
   const [loading, setLoading] = useState(false)
   const [revealOpen, setRevealOpen] = useState(false)
   const { toast } = useToast()
@@ -71,10 +67,9 @@ export default function OnboardingSyncButton({ appearance = 'nav' }: OnboardingS
   return (
     <>
       <Button
-        variant={appearance === 'card' ? 'primary' : 'outline'}
+        variant="primary"
         surface="sub"
         size="xs"
-        style={appearance === 'card' ? undefined : { backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
         onClick={handleSync}
         disabled={loading}
         loading={loading}

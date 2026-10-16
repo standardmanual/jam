@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
 import { TopNav } from './TopNav';
 import { IconButton } from '../buttons/IconButton';
+import { Button } from '../buttons/Button';
 
 // 20260901_1926: props API를 서비스 `src/components/ui/TopNav.tsx` 기준으로 재정렬
 // (logoSlot→logo, style→headerStyle, avatarSlot 제거·rightSlot 합성, 타이포 오버라이드
@@ -81,17 +82,7 @@ function DemoLogo() {
 }
 
 function DemoSyncButton() {
-  return (
-    <button
-      style={{
-        minHeight: 44, padding: '10px 16px', borderRadius: 'var(--radius-full)',
-        border: 'none', background: 'rgba(0,0,0,0.04)', color: 'var(--foreground)',
-        fontSize: 'var(--text-base)', cursor: 'pointer',
-      }}
-    >
-      동기화
-    </button>
-  );
+  return <Button variant="secondary" size="sm">동기화</Button>;
 }
 
 function DemoAvatar() {
@@ -103,8 +94,10 @@ function DemoAvatar() {
         alignItems: 'center', justifyContent: 'center',
       }}
     >
+      {/* 사진이 없는 폴백 아바타: 카드 면 레시피(--surface + 1px --border). 크림 위 흰 원은 1.05:1이라 테두리가 필요하다. */}
       <span style={{
         width: 36, height: 36, borderRadius: '50%', background: 'var(--surface)',
+        border: '1px solid var(--border)', boxSizing: 'border-box',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: 'var(--foreground)', fontSize: 14,
       }}>

@@ -6,7 +6,8 @@ import React from 'react';
  *   - h1 font-size: --text-base (16px) → --text-2xl (24px) — semantic/visual alignment
  *   - CDN icon replaced with inline SVG chevron-left
  *   - Uses IconButton-compatible inline SVG approach (no import needed here)
- *   - elevation: 보더/드롭섀도 없음(20260816_012) — 헤더와 본문 배경톤 차이만으로 구분
+ *   - elevation: 보더/드롭섀도 없음(20260816_012). 면은 불투명 --background라 크림 바탕 페이지와 같은 면이고
+ *     구분선도 없다 — 헤더와 본문이 하나로 이어진다(티켓 20261015_2133에서 옛 「배경톤 차이로 구분」 설명을 바로잡음)
  *
  * 20260820_009: 서비스 실연결 — 서비스 `TopNav.tsx`를 캐노니컬 스펙으로 값 정렬(padding
  * 12px→16px, outer gap 4→8, chevron 22px/strokeWidth 2 → 24px/1.5), safe-area-inset-top

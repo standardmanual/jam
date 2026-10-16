@@ -51,6 +51,35 @@ export const Disabled: Story = {
   decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
 };
 
+export const StateGrid: Story = {
+  name: '상태 격자 (크림 바탕 | 흰 Card 위)',
+  parameters: { layout: 'padded' },
+  render: () => (
+    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      {[
+        { title: '크림 바탕 (--background)', background: 'var(--background)', card: false },
+        { title: '흰 Card (--surface + 1px --border)', background: 'var(--surface)', card: true },
+      ].map(({ title, background, card }) => (
+        <div
+          key={title}
+          style={{
+            width: 360, padding: 16, display: 'flex', flexDirection: 'column', gap: 12,
+            background, borderRadius: 'var(--radius-2xl)',
+            border: card ? '1px solid var(--border)' : 'none',
+          }}
+        >
+          <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--foreground)' }}>{title}</strong>
+          <Select options={ACTIVITY_OPTIONS} placeholder="미선택 (--muted)" aria-label="미선택" />
+          <Select options={ACTIVITY_OPTIONS} value="running" aria-label="선택됨" onChange={() => {}} />
+          <Select options={ACTIVITY_OPTIONS} value="running" state="error" aria-label="오류" onChange={() => {}} />
+          <Select options={ACTIVITY_OPTIONS} value="cycling" state="success" aria-label="성공" onChange={() => {}} />
+          <Select options={ACTIVITY_OPTIONS} value="running" disabled aria-label="비활성" onChange={() => {}} />
+        </div>
+      ))}
+    </div>
+  ),
+};
+
 export const Interactive: Story = {
   name: '인터랙티브 (선택 반응)',
   render: () => {

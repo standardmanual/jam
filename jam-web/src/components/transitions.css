@@ -451,9 +451,10 @@
   .t-panel-backdrop {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    /* Tailwind bg-background/60·70 유틸리티(color-mix 알파)를 불투명으로 승격.
+    /* Tailwind bg-backdrop 유틸리티(--backdrop, 검정 50%)를 불투명으로 승격한다. 반전 면(--background-inverse)
+       으로 올리는 이유: 크림(--background)으로 올리면 크림 패널과 같은 색이 되어 시트 경계가 사라진다.
        @layer 밖 일반 규칙이라 소스 순서와 무관하게 Tailwind utilities 레이어를 이긴다. */
-    background-color: var(--background);
+    background-color: var(--background-inverse);
   }
 }
 
@@ -487,10 +488,11 @@
   background: var(--surface);
 }
 
-/* 프로필 통계탭 전용 (20260901) — 숫자는 항상 포인트 강조색(--link), pill(같은
-   레드) 배경이 실제로 그 숫자 위를 지나가는 순간(data-pill-over, SlidingTabs.tsx 실측 겹침
-   추적)이나 도착해 머문 순간(aria-selected)만 흰색으로 바꿔 대비를 지킨다 — 20260831_2201
-   "레드온레드" 버그를 회피 로직(회색으로 대체) 없이 근본적으로 해결한다. 다른 SlidingTabs
+/* 프로필 통계탭 전용 (20260901) — 숫자는 항상 포인트 강조색(--link), 선택 pill(onCard 팔레트에서는
+   --accent 면) 배경이 실제로 그 숫자 위를 지나가는 순간(data-pill-over, SlidingTabs.tsx 실측 겹침
+   추적)이나 도착해 머문 순간(aria-selected)만 pill 위 글자색(--tabs-text-active, onCard에서는
+   --accent-foreground)으로 바꿔 대비를 지킨다 — 20260831_2201 당시 pill과 숫자가 같은 색(레드)이던
+   버그를 회피 로직(회색으로 대체) 없이 근본적으로 해결한다. 다른 SlidingTabs
    사용처는 이 클래스가 없어 영향받지 않는다. */
 .jam-stat-tabs .t-tab .jam-stat-number {
   color: var(--link);

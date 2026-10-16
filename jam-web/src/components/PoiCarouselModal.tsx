@@ -619,7 +619,7 @@ export default function PoiCarouselModal({
       style={{ maxWidth: 430, margin: '0 auto' }}
     >
       {/* 배경 오버레이 — 탭하면 닫힘 */}
-      <div ref={backdropRef} className="absolute inset-0 bg-background/70 t-panel-backdrop" data-open="false" onClick={onClose} />
+      <div ref={backdropRef} className="absolute inset-0 bg-backdrop t-panel-backdrop" data-open="false" onClick={onClose} />
 
       {/*
         20260820_022: 화면 세로 중앙(justify-center) → TabBar 바로 위 고정(justify-end)으로
@@ -847,7 +847,7 @@ function PoiCard({
               {t(d.drops.confirmDrop, { name: pendingDropItem.badgeName })}
             </p>
             <div className="flex gap-2 w-full">
-              <Button fullWidth variant="outline" surface="main" onClick={onCancelPending} disabled={dropping}>
+              <Button fullWidth variant="secondary" surface="main" onClick={onCancelPending} disabled={dropping}>
                 {d.drops.cancel}
               </Button>
               {/* 확인 버튼만 pill 래퍼로 펄스(티켓 20260928_1754) — 취소 버튼에는 붙이지

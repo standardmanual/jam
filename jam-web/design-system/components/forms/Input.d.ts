@@ -9,11 +9,9 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   name?: string;
   'aria-label'?: string;
   'aria-describedby'?: string;
-  /** Visual validation state */
+  /** Visual validation state. 오류 --danger, 성공 --success (1px 테두리 + 같은 색 inset 링 1px로 시각 2px). */
   state?: 'default' | 'error' | 'success';
   disabled?: boolean;
-  /** Surface context. 'inverse'는 흰 배경(검색바 등 어두운 배경 위 밝은 입력 필드)에 사용 */
-  surface?: 'default' | 'inverse';
 }
 
 export function Input(props: InputProps): JSX.Element;

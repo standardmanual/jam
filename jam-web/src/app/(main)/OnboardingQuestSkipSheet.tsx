@@ -64,7 +64,7 @@ export default function OnboardingQuestSkipSheet({ step }: OnboardingQuestSkipSh
         detent="compact"
         footer={
           <div className="flex gap-4">
-            <Button fullWidth variant="outline" surface="main" onClick={() => setOpen(false)} disabled={loading}>
+            <Button fullWidth variant="secondary" surface="main" onClick={() => setOpen(false)} disabled={loading}>
               {d.onboardingQuest.skip.keepGoingButton}
             </Button>
             <Button fullWidth surface="main" loading={loading} onClick={handleSkip}>

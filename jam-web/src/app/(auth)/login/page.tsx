@@ -1,7 +1,6 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Suspense } from 'react'
 import { d } from '@/lib/i18n'
@@ -23,7 +22,8 @@ function LoginContent() {
     <main className="min-h-dvh flex flex-col items-center justify-center bg-background text-foreground px-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {/* 로고 */}
       <div className="text-center mb-10">
-        <Image src="/jam-logo-white.png" alt={d.auth.wordmark} width={2610} height={925} className="h-[48px] w-auto mx-auto" priority />
+        {/* 흰색 로고 PNG를 마스크로 쓰고 색은 --foreground로 칠한다(크림 위 흰 로고는 1.05:1). 이름은 role="img"가 맡는다. */}
+        <span role="img" aria-label={d.auth.wordmark} className="jam-logo-mark inline-block align-bottom h-[48px]" />
       </div>
 
       {/* 에러 메시지 */}

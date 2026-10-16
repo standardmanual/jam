@@ -103,7 +103,7 @@ export default function PointsPage() {
           {!loading && error && (
             <Card className="text-center py-8">
               <p className="text-base text-muted mb-4">{d.points.loadError}</p>
-              <Button variant="outline" surface="sub" onClick={() => load(null, false)}>
+              <Button variant="secondary" surface="sub" onClick={() => load(null, false)}>
                 {d.points.retry}
               </Button>
             </Card>

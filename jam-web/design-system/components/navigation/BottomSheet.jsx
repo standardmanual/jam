@@ -11,6 +11,9 @@ import React, { useEffect, useRef } from 'react';
  * event complexity — the service component has its own richer drag-based
  * close gesture that isn't ported here (20260901_1926, jam-ds §3 — "단순
  * 스왑 금지").
+ *
+ * 면(티켓 20261015_2133): 스크림 --backdrop(검정 50%) / 패널 --background(크림) / 푸터 --surface(흰) /
+ * 핸들 --border. 서비스 `src/components/ui/BottomSheet.tsx`와 같은 값이다. 푸터 구분선은 두지 않는다.
  */
 export function BottomSheet({
   open,
@@ -83,8 +86,9 @@ export function BottomSheet({
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
-          // 20260816_012: 보더 제거 — 오버레이 위에서도 구분되도록 --surface 사용
-          background: 'var(--surface)',
+          // 패널은 크림(--background), 푸터는 흰 면(--surface) — 서비스 BottomSheet.tsx와 같은 쌍이다
+          // (티켓 20261015_2133). 스크림(--backdrop 검정 50%) 위에서 패널 경계는 3.94:1로 보인다.
+          background: 'var(--background)',
           borderRadius: 'var(--radius-2xl) var(--radius-2xl) 0 0',
           boxSizing: 'border-box',
           animation: 'ds-bottomsheet-in var(--duration-medium) var(--ease-bounce) both',

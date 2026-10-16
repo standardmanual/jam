@@ -327,7 +327,7 @@ export function DetailSheet({
 
   return (
     <>
-      <div className="fixed inset-0 bg-background/60 z-40 t-panel-backdrop" data-open={shown} onClick={onClose} />
+      <div className="fixed inset-0 bg-backdrop z-40 t-panel-backdrop" data-open={shown} onClick={onClose} />
       {/*
         Panel reveal 래퍼. 시트 본체가 `-translate-x-1/2`로 가운데 정렬돼 있으면
         `.t-panel-slide`의 transform과 충돌하므로, 가운데 정렬은 flex 래퍼가
@@ -344,7 +344,7 @@ export function DetailSheet({
         data-open={shown}
         style={{ '--panel-translate-y': '100%' } as CSSProperties}
       >
-        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-6" />
+        <div className="w-10 h-1 bg-border rounded-full mx-auto mb-6" />
         <div className="flex justify-center mb-4">
           <div className="relative">
             <SafeImage
@@ -800,7 +800,7 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
           </div>
           {hasMore && (
             <Button
-              variant="outline"
+              variant="secondary"
               surface="main"
               fullWidth
               className="mt-4"

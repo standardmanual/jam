@@ -8,6 +8,8 @@
  *
  * 저장소에 jsdom·testing-library가 없어 서버 렌더(`renderToStaticMarkup`)로 고정한다.
  */
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 
@@ -29,5 +31,63 @@ describe('TopNav centerSlotOverride', () => {
     const html = renderToStaticMarkup(<TopNav logo centerSlotOverride={<span>연출 동기화 버튼</span>} />)
     expect(html).toContain('연출 동기화 버튼')
     expect(html).not.toContain('>동기화<')
+  })
+})
+
+/**
+ * 라이트 정비 (티켓 20261015_2133, 2회) — 로고·헤더 면·버튼·아바타 폴백
+ *
+ * 흰색 로고 PNG는 크림 바탕 위 1.05:1이라 사라진다. TopNav·로그인·문의 3곳이 같은 PNG를 알파 마스크로 쓰고
+ * 색은 `--foreground` 토큰으로 칠한다. 헤더 면은 DS TopNav의 불투명 `--background` 그대로다.
+ */
+const read = (relative: string) => readFileSync(path.resolve(__dirname, '../../../', relative), 'utf8')
+
+describe('TopNav 로고 — 마스크 + --foreground', () => {
+  it('logo 모드는 <img> 대신 마스크 로고 마크를 그린다(이름은 바깥 링크의 aria-label이 맡는다)', () => {
+    const html = renderToStaticMarkup(<TopNav logo />)
+    expect(html).toContain('jam-logo-mark')
+    expect(html).toContain('aria-label="홈으로 이동"')
+    expect(html).not.toContain('jam-logo-white.png')
+  })
+
+  it('로고 마크 CSS는 알파 마스크 + --foreground 색이고 filter 꼼수를 쓰지 않는다', () => {
+    const css = read('app/globals.css')
+    const block = /\.jam-logo-mark\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(block).toContain('mask:')
+    expect(block).toContain("url('/jam-logo-white.png')")
+    expect(block).toContain('background-color: var(--foreground)')
+    expect(block).not.toMatch(/invert|brightness/)
+  })
+
+  it('TopNav·로그인·문의 3곳이 모두 마스크 로고를 쓰고 흰 PNG를 <Image>로 직접 그리지 않는다', () => {
+    for (const file of ['components/ui/TopNav.tsx', 'app/(auth)/login/page.tsx', 'app/(main)/voc/page.tsx']) {
+      const source = read(file)
+      expect(source, file).toContain('jam-logo-mark')
+      expect(source, file).not.toContain('jam-logo-white.png')
+    }
+  })
+})
+
+describe('TopNav 헤더 면과 버튼', () => {
+  it('헤더 배경은 불투명 --background이고 호출부가 덮어쓰지 않으면 그대로다', () => {
+    const html = renderToStaticMarkup(<TopNav logo />)
+    expect(html).toContain('background:var(--background)')
+    expect(html).not.toContain('backdrop-filter')
+  })
+
+  it('문의 버튼은 secondary(--default 면)이고 동기화 유도 버튼은 인라인 덮어쓰기 없는 primary다', () => {
+    const html = renderToStaticMarkup(<TopNav logo />)
+    const inquiry = /<button[^>]*>문의<\/button>/.exec(html)?.[0] ?? ''
+    expect(inquiry).toContain('bg-default')
+    expect(inquiry).not.toContain('border-field-border')
+    const sync = /<button[^>]*>동기화<\/button>/.exec(html)?.[0] ?? ''
+    expect(sync).toContain('bg-accent')
+    expect(sync).toContain('text-accent-foreground')
+    expect(sync).not.toContain('style="background-color')
+  })
+
+  it('사진 없는 아바타 폴백은 카드 면 레시피(--surface + 1px --border)다', () => {
+    const html = renderToStaticMarkup(<TopNav logo />)
+    expect(html).toContain('bg-surface border border-border')
   })
 })

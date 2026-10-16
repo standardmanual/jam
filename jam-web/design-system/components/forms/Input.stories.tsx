@@ -76,25 +76,63 @@ export const WithLabelAndError: Story = {
         aria-describedby="email-error"
         onChange={() => {}}
       />
-      <p id="email-error" role="alert" style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--rarity-mystic)' }}>
+      {/* 오류 문구는 --foreground다. --danger 글자는 흰 면 위 3.57:1이라 4.5:1에 못 미친다. 오류는 테두리가 맡는다. */}
+      <p id="email-error" role="alert" style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--foreground)' }}>
         올바른 이메일 형식이 아니에요.
       </p>
     </div>
   ),
 };
 
-export const InverseSurface: Story = {
-  name: 'inverse surface (검색바)',
+export const SearchBar: Story = {
+  name: '검색바 (서비스 UserSearchBar와 같은 면)',
   render: () => (
     <div style={{ padding: 20, background: 'var(--background)', borderRadius: 'var(--radius-2xl)' }}>
       <div style={{ width: 320 }}>
         <Input
-          surface="inverse"
           placeholder="사용자 이름 검색"
           aria-label="사용자 검색"
           type="search"
         />
       </div>
+    </div>
+  ),
+};
+
+const GRID_STATES: Array<{ label: string; props: Partial<React.ComponentProps<typeof Input>> }> = [
+  { label: '기본 (placeholder)', props: { placeholder: '닉네임을 입력하세요' } },
+  { label: '값 입력됨', props: { value: 'runner42', onChange: () => {} } },
+  { label: '오류 (--danger)', props: { value: 'invalid@', state: 'error', onChange: () => {} } },
+  { label: '성공 (--success)', props: { value: 'runner42', state: 'success', onChange: () => {} } },
+  { label: '비활성', props: { value: '비활성 입력', disabled: true, onChange: () => {} } },
+];
+
+export const StateGrid: Story = {
+  name: '상태 격자 (크림 바탕 | 흰 Card 위)',
+  parameters: { layout: 'padded' },
+  render: () => (
+    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      {[
+        { title: '크림 바탕 (--background)', background: 'var(--background)', card: false },
+        { title: '흰 Card (--surface + 1px --border)', background: 'var(--surface)', card: true },
+      ].map(({ title, background, card }) => (
+        <div
+          key={title}
+          style={{
+            width: 360, padding: 16, display: 'flex', flexDirection: 'column', gap: 12,
+            background, borderRadius: 'var(--radius-2xl)',
+            border: card ? '1px solid var(--border)' : 'none',
+          }}
+        >
+          <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--foreground)' }}>{title}</strong>
+          {GRID_STATES.map(({ label, props }) => (
+            <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>{label}</span>
+              <Input aria-label={label} {...props} />
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   ),
 };
@@ -119,7 +157,7 @@ export const Interactive: Story = {
           aria-label="인터랙티브 입력"
         />
         <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
-          state: <strong style={{ color: state === 'error' ? 'var(--rarity-mystic)' : state === 'success' ? 'var(--rarity-rare)' : 'var(--foreground)' }}>{state}</strong>
+          state: <strong style={{ color: 'var(--foreground)' }}>{state}</strong>
         </p>
       </div>
     );

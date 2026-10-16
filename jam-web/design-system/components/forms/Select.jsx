@@ -21,6 +21,10 @@ const ChevronDown = () => (
  *
  * options: [{ value: string, label: string }]
  * state: 'default' | 'error' | 'success'
+ *
+ * 티켓 20261015_2133(2회): Input과 같은 면(--surface) + 1px --field-border + 캡슐(--field-radius). 오류 --danger,
+ * 성공 --success는 border 1px 위에 같은 색 inset 링 1px를 더해 시각 2px로 만든다(두께가 변하면 글자가 움직인다).
+ * 미선택 글자 --muted(흰 면 위 5.74:1), 선택됨 --foreground.
  */
 export function Select({
   value,
@@ -36,10 +40,15 @@ export function Select({
   style = {},
   ...rest
 }) {
-  const borderByState = {
-    default: '1px solid var(--border)',
-    error: '2px solid var(--rarity-mystic)',
-    success: '2px solid var(--rarity-rare)',
+  const borderColorByState = {
+    default: 'var(--field-border)',
+    error: 'var(--danger)',
+    success: 'var(--success)',
+  };
+  const ringByState = {
+    default: 'none',
+    error: 'inset 0 0 0 1px var(--danger)',
+    success: 'inset 0 0 0 1px var(--success)',
   };
 
   return (
@@ -57,13 +66,14 @@ export function Select({
           width: '100%',
           height: 44,
           borderRadius: 'var(--field-radius)',
-          border: borderByState[state] ?? borderByState.default,
+          border: `1px solid ${borderColorByState[state] ?? borderColorByState.default}`,
+          boxShadow: ringByState[state] ?? ringByState.default,
           padding: '0 44px 0 20px',
           fontSize: 'var(--text-base)',
           lineHeight: 'var(--text-base--line-height)',
           fontFamily: 'var(--font-family-base)',
           color: value ? 'var(--foreground)' : 'var(--muted)',
-          background: 'var(--background-secondary)',
+          background: 'var(--surface)',
           boxSizing: 'border-box',
           appearance: 'none',
           WebkitAppearance: 'none',
