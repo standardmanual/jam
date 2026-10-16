@@ -20,7 +20,6 @@ function SpacingRow({ token, desc, semantic }: { token: string; desc?: string; s
             maxWidth: '100%',
             background: semantic ? 'var(--accent-content-blue)' : 'var(--accent)',
             borderRadius: 2,
-            opacity: 0.85,
           }}
         />
       </div>
@@ -38,7 +37,7 @@ function SpacingRow({ token, desc, semantic }: { token: string; desc?: string; s
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 40 }}>
-      <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.4px', margin: '0 0 12px' }}>
+      <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', margin: '0 0 12px' }}>
         {title}
       </h2>
       {children}
@@ -51,7 +50,9 @@ function SpacingPage() {
     <div style={{ padding: 32, background: 'var(--background)', minHeight: '100vh', color: 'var(--foreground)', fontFamily: 'var(--font-family-base)' }}>
       <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 8 }}>Spacing Tokens</h1>
       <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 40 }}>
-        4px 기반 스케일. 레이아웃 semantic 토큰은 스케일 변수를 참조해 전역 조정이 가능하다.
+        4px 기반 눈금. 인라인 style·CSS·calc() 안에서 참조하는 변수이고, 이름은 값을 따른다.
+        클래스에서는 Tailwind 기본 유틸리티(<code style={{ color: 'var(--link)' }}>p-4</code>·<code style={{ color: 'var(--link)' }}>gap-2</code> …)를 쓰며 그 단계 번호는 이 이름과 다르다.
+        레이아웃 semantic 토큰은 눈금 변수를 참조해 전역 조정이 가능하다.
       </p>
 
       <Section title="Base Scale (4px 배수)">
@@ -61,8 +62,10 @@ function SpacingPage() {
         <SpacingRow token="--spacing-16" desc="기본 — 카드 내부 요소 간격" />
         <SpacingRow token="--spacing-24" desc="중형 — 카드 패딩, 섹션 내 간격" />
         <SpacingRow token="--spacing-32" desc="대형 — 주요 섹션 구분" />
+        <SpacingRow token="--spacing-40" desc="대형 — 구획 사이 간격" />
         <SpacingRow token="--spacing-48" desc="섹션 간 — 페이지 레벨 구분" />
-        <SpacingRow token="--spacing-64" desc="최대 — hero 영역, 페이지 상단 여백" />
+        <SpacingRow token="--spacing-64" desc="특대 — hero 영역, 페이지 상단 여백" />
+        <SpacingRow token="--spacing-96" desc="최대 — 큰 여백" />
       </Section>
 
       <Section title="Layout Semantic (전역 조정 가능)">
@@ -74,8 +77,8 @@ function SpacingPage() {
       <Section title="Special">
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
           <div style={{ width: 200, flexShrink: 0 }}>
-            <div style={{ width: 44, height: 44, border: '2px dashed var(--link)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: 10, color: 'var(--link)' }}>44px</span>
+            <div style={{ width: 'var(--touch-target-min)', height: 'var(--touch-target-min)', border: '2px dashed var(--link)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 10, color: 'var(--link)' }}>{useTokenValue('--touch-target-min')}</span>
             </div>
           </div>
           <div>

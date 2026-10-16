@@ -46,6 +46,36 @@ function TypeRow({
   );
 }
 
+// 긴 글 행간 한 행 — 글자 크기와 짝이 아니라 문단에 곱하는 단일 값(--leading-*)
+function LeadingRow({
+  token,
+  sample = '조건과 설명이 여러 줄로 이어지는 문단이에요. 행간이 넉넉하면 한 줄씩 끊어 읽기 편해요.',
+}: {
+  token: string;
+  sample?: string;
+}) {
+  const value = useTokenValue(token);
+
+  return (
+    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 20, marginBottom: 20 }}>
+      <div
+        style={{
+          fontSize: 'var(--text-base)',
+          lineHeight: `var(${token})`,
+          color: 'var(--foreground)',
+          maxWidth: 420,
+          marginBottom: 8,
+          wordBreak: 'keep-all',
+          overflowWrap: 'break-word',
+        }}
+      >
+        {sample}
+      </div>
+      <TokenBadge label="행간" token={token} value={value} />
+    </div>
+  );
+}
+
 function TokenBadge({ label, token, value }: { label: string; token: string; value: string }) {
   return (
     <div style={{ fontSize: 11 }}>
@@ -83,6 +113,7 @@ function TypographyPage() {
 
       <Section title="Headings">
         <TypeRow step="5xl" weight={600} sample="섹션 제목" />
+        <TypeRow step="4xl" weight={600} sample="큰 제목" />
         <TypeRow step="3xl" weight={500} sample="카드 제목" />
         <TypeRow step="2xl" weight={500} sample="서브 카드 제목" />
       </Section>
@@ -93,6 +124,19 @@ function TypographyPage() {
         <TypeRow step="base" sample="기본 본문 텍스트. 최소 읽기 편한 크기." />
         <TypeRow step="sm" sample="보조 설명, 메타 정보" />
         <TypeRow step="xs" sample="캡션, 타임스탬프, 힌트" />
+      </Section>
+
+      <Section title="Bold (큰 숫자·콜아웃)">
+        <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 20px' }}>
+          히어로 숫자와 큰 콜아웃 용도.
+        </p>
+        <TypeRow step="5xl" weight={700} sample="128" />
+        <TypeRow step="3xl" weight={700} sample="배지 획득" />
+      </Section>
+
+      <Section title="Leading (긴 글 행간)">
+        <LeadingRow token="--leading-loose" />
+        <LeadingRow token="--leading-reading" sample="여러 문단으로 이어지는 산문에 쓰는 행간이에요. 철학 페이지와 정책 문서처럼 길게 읽는 글에서 줄 사이를 넉넉하게 둬요." />
       </Section>
 
       <Section title="Weight">
