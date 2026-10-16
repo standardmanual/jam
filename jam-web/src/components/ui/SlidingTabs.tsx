@@ -33,7 +33,7 @@ export interface SlidingTabsProps<K extends string = string> {
   /**
    * 팔레트(JAM 2.0 라이트, 티켓 20261015_2133). 비활성 라벨은 두 팔레트 모두 `--muted`, hover는 `--foreground`다.
    * - `onSurface`(기본): 크림 바탕 위 — 트랙은 `--default`, 활성 pill은 `--background-inverse`, 활성 라벨은 `--snow`
-   * - `onCard`: 흰 카드 위 — 트랙은 검정 6%, 활성 pill은 `--accent`, 활성 라벨은 `--accent-foreground`
+   * - `onCard`: 흰 카드 위 — 트랙은 `--background-secondary`, 활성 pill은 `--accent`, 활성 라벨은 `--accent-foreground`
    */
   variant?: 'onSurface' | 'onCard'
   /** 탭 높이. md=30px(원본) / lg=44px(터치영역) / xl=콘텐츠 높이(2줄 라벨) */
@@ -42,7 +42,7 @@ export interface SlidingTabsProps<K extends string = string> {
   shape?: 'pill' | 'card'
   /** true면 컨테이너 전체 폭을 균등 분할합니다. */
   block?: boolean
-  /** true면 반투명 바 배경 대신 --surface 채움을 사용 (20260816_012 — 보더 제거) */
+  /** true(기본)면 트랙을 팔레트 색 대신 --surface 채움으로 칠한다. false면 위 팔레트의 트랙 색 (20260816_012 — 보더 제거) */
   outlined?: boolean
   className?: string
   tabClassName?: string
@@ -97,9 +97,9 @@ export default function SlidingTabs<K extends string = string>({
   // pill이 300ms 슬라이드하며 경유하는 탭 버튼에 data-pill-over="true"를 붙인다.
   // 이 저장소 어디에도 이 속성을 읽는 CSS가 기본으로 없으므로(각 사용처가 필요할 때만
   // 자기 스코프에 `[data-pill-over]` 규칙을 추가) 다른 SlidingTabs 사용처는 영향이 없다.
-  // 프로필 통계탭은 이 속성으로 "지금 이 순간 pill(레드) 배경 위에 있는 숫자만 흰색,
-  // 나머지는 항상 포인트 강조색(레드)"을 구현한다(20260831_2201 레드온레드 버그의
-  // 근본 원인인 "pill 경유 중에도 항상 레드"를 실측 겹침 여부로 대체 — 재발 없이 해결).
+  // 프로필 통계탭은 이 속성으로 "지금 이 순간 pill(`--accent` 면) 위에 있는 숫자만 pill 위 글자색,
+  // 나머지는 항상 포인트 강조색(`--link`)"을 구현한다(20260831_2201 pill과 숫자가 같은 색이던
+  // 버그의 근본 원인인 "pill 경유 중에도 항상 포인트색"을 실측 겹침 여부로 대체 — 재발 없이 해결).
   const overlapRafRef = useRef<number | null>(null)
   const overlapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
