@@ -319,7 +319,7 @@ function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: bool
             {d.missions.achieved}
           </span>
         ) : (
-          <span className="text-xs leading-none px-2 py-1 rounded-full bg-border text-muted">
+          <span className="text-xs leading-none px-2 py-1 rounded-full bg-border text-foreground">
             {d.missions.notAchieved}
           </span>
         )

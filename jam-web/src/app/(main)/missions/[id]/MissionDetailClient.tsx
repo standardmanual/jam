@@ -285,7 +285,7 @@ export default function MissionDetailClient({
               /* 달성형 */
               <div className="flex items-center justify-between">
                 <p className="text-[14px] leading-[1.43] text-muted">{goal.label}</p>
-                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-white/10 text-foreground' : 'bg-border text-muted'}`}>
+                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-white/10 text-foreground' : 'bg-border text-foreground'}`}>
                   {achieved ? d.missions.achieved : d.missions.notAchieved}
                 </span>
               </div>
