@@ -800,7 +800,7 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
           </div>
           {hasMore && (
             <Button
-              variant="secondary"
+              variant="outline"
               surface="main"
               fullWidth
               className="mt-4"

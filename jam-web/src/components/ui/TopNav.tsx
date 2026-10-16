@@ -132,7 +132,7 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
             접근 가능한 이름은 바깥 Link의 aria-label이 맡는다. */}
         <span aria-hidden="true" className="jam-logo-mark block h-[26px]" />
       </Link>
-      <Button variant="secondary" surface="main" size="xs" onClick={() => router.push('/voc')}>
+      <Button variant="outline" surface="main" size="xs" onClick={() => router.push('/voc')}>
         {d.voc.inquiryButton}
       </Button>
     </>

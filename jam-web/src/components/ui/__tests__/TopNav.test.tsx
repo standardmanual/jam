@@ -75,11 +75,12 @@ describe('TopNav 헤더 면과 버튼', () => {
     expect(html).not.toContain('backdrop-filter')
   })
 
-  it('문의 버튼은 secondary(--default 면)이고 동기화 유도 버튼은 인라인 덮어쓰기 없는 primary다', () => {
+  it('문의 버튼은 outline(투명 면 + 1px --field-border)이고 동기화 유도 버튼은 인라인 덮어쓰기 없는 primary다', () => {
     const html = renderToStaticMarkup(<TopNav logo />)
     const inquiry = /<button[^>]*>문의<\/button>/.exec(html)?.[0] ?? ''
-    expect(inquiry).toContain('bg-default')
-    expect(inquiry).not.toContain('border-field-border')
+    expect(inquiry).toContain('bg-transparent')
+    expect(inquiry).toContain('border-field-border')
+    expect(inquiry).not.toContain('bg-default')
     const sync = /<button[^>]*>동기화<\/button>/.exec(html)?.[0] ?? ''
     expect(sync).toContain('bg-accent')
     expect(sync).toContain('text-accent-foreground')
