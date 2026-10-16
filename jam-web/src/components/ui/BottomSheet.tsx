@@ -338,11 +338,12 @@ export default function BottomSheet({
       className="fixed inset-0 z-50 flex flex-col justify-end pointer-events-none"
       style={{ maxWidth: 430, margin: '0 auto' }}
     >
-      {/* Backdrop — 20260823_003: 재질(가벼운 blur) + prefers-reduced-transparency 가드는
+      {/* Backdrop — 스크림은 --backdrop(검정 50%)이다. 크림(--background) 반투명은 크림 바탕 위에서
+          가려지는 느낌이 거의 없었다(티켓 20261015_2133). prefers-reduced-transparency 가드는
           .t-panel-backdrop(transitions.css)에 공용으로 정의(FeedSection·PoiCarouselModal과
-          공유). 시트 본체(아래 bg-[var(--background)])는 계속 불투명 유지.
+          공유)하고 blur는 두지 않는다. 시트 본체(아래 bg-[var(--background)])는 불투명 유지.
           pointer-events는 같은 파일의 .t-panel-backdrop[data-open]이 담당(20260908_0040). */}
-      <div className="absolute inset-0 bg-background/60 t-panel-backdrop" data-open={shown} onClick={onClose} />
+      <div className="absolute inset-0 bg-backdrop t-panel-backdrop" data-open={shown} onClick={onClose} />
 
       {/*
         Panel reveal 래퍼.
@@ -389,8 +390,8 @@ export default function BottomSheet({
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
         >
-          {/* 20260816_012: 보더로 그린 속 빈 핸들 → 실제 채워진 바로 교체 */}
-          <div className="w-10 h-1 rounded-full bg-white/20" />
+          {/* 20260816_012: 보더로 그린 속 빈 핸들 → 실제 채워진 바로 교체. 색은 --border(크림 위 흰색 반투명은 안 보인다) */}
+          <div className="w-10 h-1 rounded-full bg-border" />
         </div>
 
         {hasHeader && (

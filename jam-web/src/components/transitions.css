@@ -451,9 +451,10 @@
   .t-panel-backdrop {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    /* Tailwind bg-background/60·70 유틸리티(color-mix 알파)를 불투명으로 승격.
+    /* Tailwind bg-backdrop 유틸리티(--backdrop, 검정 50%)를 불투명으로 승격한다. 반전 면(--background-inverse)
+       으로 올리는 이유: 크림(--background)으로 올리면 크림 패널과 같은 색이 되어 시트 경계가 사라진다.
        @layer 밖 일반 규칙이라 소스 순서와 무관하게 Tailwind utilities 레이어를 이긴다. */
-    background-color: var(--background);
+    background-color: var(--background-inverse);
   }
 }
 

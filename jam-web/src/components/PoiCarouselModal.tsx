@@ -619,7 +619,7 @@ export default function PoiCarouselModal({
       style={{ maxWidth: 430, margin: '0 auto' }}
     >
       {/* 배경 오버레이 — 탭하면 닫힘 */}
-      <div ref={backdropRef} className="absolute inset-0 bg-background/70 t-panel-backdrop" data-open="false" onClick={onClose} />
+      <div ref={backdropRef} className="absolute inset-0 bg-backdrop t-panel-backdrop" data-open="false" onClick={onClose} />
 
       {/*
         20260820_022: 화면 세로 중앙(justify-center) → TabBar 바로 위 고정(justify-end)으로

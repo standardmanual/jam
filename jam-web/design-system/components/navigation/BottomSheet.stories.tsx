@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { BottomSheet } from './BottomSheet';
 import { Button } from '../buttons/Button';
 
-// 20260816_012: 패널 상단 1px 보더 제거 — --surface 배경으로 대체 (드래그 핸들은 기존부터 채움 방식)
+// 면(티켓 20261015_2133): 스크림 --backdrop(검정 50%) / 패널 --background(크림) / 푸터 --surface(흰) /
+// 핸들 --border. 서비스 BottomSheet.tsx와 같은 값이다. 본문 카드는 흰 면 + 1px --border다.
 // 20260901_1926: props API를 서비스 기준(onClose/detent/footer/topGapPx/footerBottomInset/
 // contentScrollable)으로 재정렬. 드래그투클로즈는 서비스 전용 기능이라 여전히 미구현.
 const meta: Meta<typeof BottomSheet> = {
@@ -113,8 +114,8 @@ export const WithFooter: Story = {
         title="긴 콘텐츠 + 고정 footer"
         footer={
           <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="ghost" onClick={() => setOpen(false)}>취소</Button>
-            <Button variant="primary" onClick={() => setOpen(false)}>확인</Button>
+            <div style={{ flex: 1 }}><Button variant="secondary" fullWidth onClick={() => setOpen(false)}>취소</Button></div>
+            <div style={{ flex: 1 }}><Button variant="primary" fullWidth onClick={() => setOpen(false)}>확인</Button></div>
           </div>
         }
       >
@@ -126,6 +127,35 @@ export const WithFooter: Story = {
       </BottomSheet>
     );
   },
+};
+
+export const WithCardBody: Story = {
+  name: '본문 Card(흰 면 + 1px 테두리) + 푸터(흰 면)',
+  render: () => (
+    <BottomSheet
+      open
+      onClose={() => {}}
+      title="배지 공유"
+      footer={
+        <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ flex: 1 }}><Button variant="primary" fullWidth>공유</Button></div>
+          <div style={{ flex: 1 }}><Button variant="secondary" fullWidth>저장</Button></div>
+        </div>
+      }
+    >
+      <div
+        style={{
+          padding: 16, background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-2xl)', color: 'var(--foreground)',
+        }}
+      >
+        <p style={{ margin: 0, fontSize: 'var(--text-base)' }}>크림 패널 위 흰 카드예요.</p>
+        <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
+          카드 경계는 그림자 없이 1px 테두리가 맡아요.
+        </p>
+      </div>
+    </BottomSheet>
+  ),
 };
 
 export const FullDetent: Story = {
