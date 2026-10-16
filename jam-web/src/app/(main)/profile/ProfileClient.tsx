@@ -625,7 +625,7 @@ export default function ProfileClient({
                 )}
                 <Button
                   surface="main"
-                  variant="secondary"
+                  variant="outline"
                   size="xs"
                   onClick={() => router.push('/profile/edit')}
                   className="shrink-0"
@@ -705,7 +705,7 @@ export default function ProfileClient({
 
         {/* 로그아웃 — 본인만 */}
         {isOwnProfile && (
-          <Button variant="secondary" surface="main" fullWidth onClick={handleLogout}>
+          <Button variant="outline" surface="main" fullWidth onClick={handleLogout}>
             {d.profile.logoutButton}
           </Button>
         )}

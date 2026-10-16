@@ -181,6 +181,19 @@ describe('1px 테두리와 세로 패딩 — 높이가 그대로다', () => {
     expect(xs).toContain('padding-bottom:calc(12px * var(--scale-compact) - 1px)')
   })
 
+  it('서비스 outline은 크기별 높이 클래스·인라인 패딩이 secondary와 같다(보조 버튼을 outline으로 바꿔도 높이 불변)', () => {
+    const heightClasses = (html: string) =>
+      classesOf(html)
+        .filter((c) => /^(min-h|py|px)-/.test(c))
+        .sort()
+    for (const size of ['xs', 'sm', 'md', 'lg'] as const) {
+      const secondary = renderService('secondary', { size })
+      const outline = renderService('outline', { size })
+      expect(heightClasses(outline), size).toEqual(heightClasses(secondary))
+      expect(outline.match(/style="[^"]*"/)?.[0], size).toBe(secondary.match(/style="[^"]*"/)?.[0])
+    }
+  })
+
   it('서비스 arrow: 세로 패딩 23px(py-5.75, 스케일 유틸리티) + 테두리 1px(옛 py-6 = 24px)', () => {
     const html = renderToStaticMarkup(<ServiceButton variant="arrow">확인</ServiceButton>)
     expect(classesOf(html)).toContain('py-5.75')
