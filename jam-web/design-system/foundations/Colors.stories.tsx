@@ -12,10 +12,12 @@ function Swatch({
   token,
   desc,
   onDark = true,
+  bar = false,
 }: {
   token: string;
   desc: string;
   onDark?: boolean;
+  bar?: boolean; // 그라디언트 토큰은 정사각 칸이 아니라 가로 막대로 보여 준다
 }) {
   const value = useTokenValue(token);
   const isTransparent = value.startsWith('rgba') || value === 'transparent';
@@ -25,9 +27,9 @@ function Swatch({
       {/* 시각적 프리뷰 */}
       <div
         style={{
-          width: 48,
-          height: 48,
-          borderRadius: 8,
+          width: bar ? 120 : 48,
+          height: bar ? 12 : 48,
+          borderRadius: bar ? 9999 : 8,
           background: `var(${token})`,
           flexShrink: 0,
           border: '1px solid var(--border)',
@@ -112,22 +114,22 @@ function ColorsPage() {
         <Swatch token="--background" desc="페이지 바탕" />
         <Swatch token="--background-secondary" desc="한 단계 어두운 배경 — tint Card 등" />
         <Swatch token="--background-inverse" desc="반전 배경 (검정 계열)" />
-        <Swatch token="--surface" desc="카드. 크림 바탕 위에서 1px --border와 함께 쓴다(그림자 없음)" />
+        <Swatch token="--surface" desc="카드. 크림 바탕 위에서는 --border 테두리와 함께 쓴다(그림자 없음)" />
         <Swatch token="--surface-transparent" desc="완전 투명한 바탕색" />
       </Section>
 
       <Section title="Semantic — Text">
         <Swatch token="--foreground" desc="기본 텍스트" />
         <Swatch token="--muted" desc="보조 텍스트" />
-        <Swatch token="--link" desc="강조 글자·아이콘·선·포커스 링 (크림 바탕 5.18:1)" />
+        <Swatch token="--link" desc="강조 글자·아이콘·선·포커스 링" />
         <Swatch token="--snow" desc="반전 면 위 텍스트" />
-        <Swatch token="--accent-foreground" desc="accent 면 위 텍스트 (6.63:1)" />
+        <Swatch token="--accent-foreground" desc="accent 면 위 텍스트" />
       </Section>
 
       <Section title="Semantic — Accent">
-        <Swatch token="--accent" desc="주 강조색 — 버튼 같은 면 채우기 전용 (크림 바탕 글자 대비 2.57:1)" />
-        <Swatch token="--accent-soft" desc="accent 15%" />
-        <Swatch token="--accent-soft-hover" desc="#149347 20%" />
+        <Swatch token="--accent" desc="주 강조색 — 버튼 같은 면 채우기 전용. 강조 글자는 --link" />
+        <Swatch token="--accent-soft" desc="accent의 옅은 면" />
+        <Swatch token="--accent-soft-hover" desc="accent-soft의 hover 면" />
       </Section>
 
       <Section title="Accent Content (면 채우기 전용 · ShapeTag colorIndex 순환)">
@@ -143,7 +145,7 @@ function ColorsPage() {
         <Swatch token="--border" desc="카드·구분선 테두리" />
         <Swatch token="--field-border" desc="입력창 테두리" />
         <Swatch token="--separator" desc="구분선 (하나로 통합)" />
-        <Swatch token="--backdrop" desc="모달·시트 백드롭 (검정 50%)" />
+        <Swatch token="--backdrop" desc="모달·시트 백드롭" />
       </Section>
 
       <Section title="Semantic — Status">
@@ -167,11 +169,12 @@ function ColorsPage() {
         <Swatch token="--progress-latest" desc="방금 들어옴" />
         <Swatch token="--progress-latest-soft" desc="방금 들어옴 — 점의 후광" />
         <Swatch token="--progress-track" desc="아직 손대지 않은 자리(트랙)" />
+        <Swatch token="--progress-sweep" desc="채움 스윕 — 트랙 전체에 깔고 잘라 써서 어디까지 넘어갔나가 곧 진행도가 된다" bar />
       </Section>
 
       <Section title="TabBar">
-        <Swatch token="--tabbar-background" desc="탭바 필 (흰색 72%)" />
-        <Swatch token="--tabbar-selection" desc="선택된 탭의 필 (검정 8%)" />
+        <Swatch token="--tabbar-background" desc="탭바 필 — 항상 흰 필" />
+        <Swatch token="--tabbar-selection" desc="선택된 탭의 필" />
         <Swatch token="--tabbar-icon" desc="비활성 아이콘" />
         <Swatch token="--tabbar-icon-active" desc="활성 아이콘" />
       </Section>
