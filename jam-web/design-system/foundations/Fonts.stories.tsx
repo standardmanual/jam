@@ -31,7 +31,7 @@ function FontsPage() {
 
       {/* --font-family-base 정보 */}
       <div style={{ marginBottom: 40 }}>
-        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 16 }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 16 }}>
           Font Stack
         </h2>
         <div style={{ padding: 20, background: 'var(--background)', borderRadius: 'var(--radius-2xl)', marginBottom: 12 }}>
@@ -48,19 +48,19 @@ function FontsPage() {
 
       {/* 굵기 팔레트 */}
       <div style={{ marginBottom: 40 }}>
-        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 16 }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 16 }}>
           Weight Palette
         </h2>
-        <WeightRow weight={400} label="Regular — Body, Small, Caption" />
-        <WeightRow weight={500} label="Medium — H3, H4" />
-        <WeightRow weight={600} label="SemiBold — H1, H2" />
-        <WeightRow weight={700} label="Bold — 강조" />
-        <WeightRow weight={800} label="ExtraBold — 정의만 있고 서비스는 쓰지 않는다" />
+        <WeightRow weight={400} label="font-normal" />
+        <WeightRow weight={500} label="font-medium" />
+        <WeightRow weight={600} label="font-semibold" />
+        <WeightRow weight={700} label="font-bold" />
+        <WeightRow weight={800} label="font-extrabold — 정의만 있고 서비스는 쓰지 않는다" />
       </div>
 
       {/* 한국어 문자 테스트 */}
       <div style={{ marginBottom: 40 }}>
-        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 16 }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 16 }}>
           한국어 렌더링 테스트
         </h2>
         <div style={{ padding: 20, background: 'var(--background)', borderRadius: 'var(--radius-2xl)', lineHeight: 1.6 }}>
@@ -78,7 +78,7 @@ function FontsPage() {
 
       {/* 사용 가이드 */}
       <div>
-        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 16 }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 16 }}>
           사용 가이드
         </h2>
         <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.8 }}>

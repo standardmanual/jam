@@ -21,7 +21,7 @@ MODULAR은 JAM!의 디자인 시스템 단일 진실 원천(`jam-web/design-syst
 | 5 | Storybook 웹 (`npm run storybook`, :6006) | **사람이 눈으로 확인할 때만** |
 
 컴포넌트 분류: `buttons` · `cards` · `feedback` · `forms` · `navigation` · `patterns`
-파운데이션: `tokens/`(colors·typography·spacing·radius·motion·fonts) · `guidelines/`
+파운데이션: `tokens/`(colors·typography·spacing·radius·motion·materials·fonts) · 스토리북 `foundations/`(Colors·Fonts·Motion·Radius·Spacing·Typography)
 
 ## 2. 판단 — 재사용 / 확장 / 서비스 전용
 
@@ -62,7 +62,7 @@ MODULAR 변경 → 컴포넌트 반영 → Story 작성/수정 → Storybook 확
 - **Story는 선택이 아니라 의무다.** `design-system/components/**` 변경 시 대응 `*.stories.*`가
   함께 변경되지 않으면 `.githooks/pre-commit`이 경고한다.
 - 새 컴포넌트는 `.d.ts` 타입 정의와 Story를 함께 제공한다.
-- 토큰을 새로 추가했으면 `tokens/`와 `guidelines/`에 반영한다.
+- 토큰을 새로 추가했으면 `tokens/`와 `foundations/` 스토리에 반영한다.
 - 사용자 노출 문구가 있으면 `docs/service/writing/UX_WRITING_GUIDELINE.md`를 확인한다.
 
 ## 4. 선순환

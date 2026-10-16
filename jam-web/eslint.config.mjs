@@ -21,8 +21,9 @@ const eslintConfig = defineConfig([
     // 성립하면 회귀 방지 장치로 쓸 수 없으므로 명시적으로 제외한다(20260827_022).
     "storybook-static/**",
     "public/storybook/**",
-    // 서드파티 번들: guidelines/loader.html·badge-frames.html이 <script src>로 읽는
-    // React·ReactDOM·Babel standalone 미니파이 파일. 우리가 고칠 수 없는 코드다.
+    // 서드파티 번들: React·ReactDOM·Babel standalone 미니파이 파일. 우리가 고칠 수 없는 코드다.
+    // guidelines/*.html이 <script src>로 읽던 파일이라 만들어졌고, 그 HTML을 지운 뒤(20261015_2135)에는
+    // 읽는 곳이 없다. 폴더 삭제 여부는 별도 결정이라 그때까지 린트 대상에서만 뺀다.
     "design-system/_vendor/**",
     // 빌드 생성물: 1행에 "GENERATED from dc-runtime/src/*.ts — do not edit"가 명시돼 있어
     // 파일에 예외 주석을 넣어도 재생성 시 사라진다.

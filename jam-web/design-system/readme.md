@@ -14,14 +14,16 @@ JAM!의 톤앤매너 (`UX_WRITING_GUIDELINE.md`에서 가져옴): 시스템이 �
 
 ## 비주얼 기반 (Visual foundations)
 
-* **팔레트(Palette)**: JAM 2.0 라이트 전용. 크림 바탕(`#fafaf0`), 어두운 글자(`#171717`), 카드는 흰 면(`#ffffff`) + 1px 테두리(`#cfc9b4`), 하나의 주도적인 초록 액센트(`#19b551`, 면 채우기 전용)와 강조 글자·선용 짙은 초록(`#0e7a38`). 값의 원천은 `tokens/colors.css`다.
-* **타이포그래피(Type)**: Noto Sans KR. 서비스가 쓰는 굵기는 400·500·600·700이고(800은 정의만 있다), 히어로 모먼트를 위한 큰 디스플레이 크기를 갖는다. 자간(letter-spacing)은 모든 단계에서 0이다.
-* **모서리 반경(Radius)**: 일관되게 라운드 처리됨 — 4px 미세함, 8–10px 인풋/버튼, 16px 카드, 히어로 스케일 카드는 최대 48px, 버튼 및 태그용 완전한 알약형/필(9999px).
-* **엘리베이션(Elevation)**: 은은한 틴트 그림자(3개 레벨)
-* **간격(Spacing)**: 10px 기본 단위 및 배수(8/10/12/16/24/40/80/128).
+값은 이 문서에 적지 않는다. 원천은 `tokens/*.css`이고, 결정 이력과 화면 규칙은 `docs/plan/jam2/11 JAM 2.0 디자인 시스템.md`다. 요약은 `jam-web/DESIGN.md`에 있다.
+
+* **팔레트(Palette)**: JAM 2.0 라이트 전용이다. 크림 바탕(`--background`) 위에 흰 카드(`--surface`)와 테두리(`--border`), 면 채우기 전용 초록 강조색(`--accent`), 강조 글자·선용 짙은 초록(`--link`). 원천은 `tokens/colors.css`다.
+* **타이포그래피(Type)**: Noto Sans KR. 서비스가 쓰는 굵기는 `font-normal`·`font-medium`·`font-semibold`·`font-bold`이고 자간은 모든 단계에서 0이다. 크기 눈금은 `tokens/typography.css`다.
+* **모서리 반경(Radius)**: Tailwind 기본 눈금이다(`tokens/radius.css`). 카드는 `rounded-2xl`, 버튼과 태그는 `rounded-full`, 입력창은 캡슐(`--field-radius`)이다.
+* **엘리베이션(Elevation)**: 그림자가 없다. 카드는 흰 면과 테두리로 구분한다(입력창 그림자만 예외, 문서 11의 5.7절).
+* **간격(Spacing)**: `tokens/spacing.css`의 눈금과 레이아웃 시맨틱 토큰이다.
 * **배경(Backgrounds)**: 플랫 컬러, 그라데이션 없음.
-* **호버/프레스(Hover/press)**: 버튼을 누를 때 0.96 크기로 축소됨; 색상이 어두워지는 호버 시스템은 추출되지 않았으며 최소한으로 유지됨.
-* **테두리(Borders)**: 명시적 요구가 있는 경우를 제외하고 절대 사용하지 않음. 그림자 시스템과 조합됨.
+* **호버/프레스(Hover/press)**: 버튼을 누르면 `--scale-press`만큼 줄어든다(`tokens/motion.css`). 색상이 어두워지는 호버 시스템은 추출되지 않았으며 최소한으로 유지됨.
+* **테두리(Borders)**: 카드와 외곽선 버튼에 쓴다. 규칙은 문서 11의 5.1·5.4절이다.
 
 
 ## 의도적인 추가 사항 (Intentional additions)
@@ -30,7 +32,7 @@ JAM!의 톤앤매너 (`UX_WRITING_GUIDELINE.md`에서 가져옴): 시스템이 �
 
 ## 소스로부터 1:1 재현 (Recreated 1:1 from source)
 
-* **TabBar** — 플로팅 필 형태의 하단 내비게이션(아이콘 전용, 활성 점 표시기, 채우기/선 아이콘 전환)은 `jam-web/src/components/ui/TabBar.tsx`의 마크업 및 SVG 아이콘 경로에서 직접 복사되었으며, 색상만 수정되었습니다 (기존 코발트/아이스 대신 퍼플 활성 상태).
+* **TabBar** — 플로팅 필 형태의 하단 내비게이션(아이콘 전용, 활성 점 표시기, 채우기/선 아이콘 전환)은 `jam-web/src/components/ui/TabBar.tsx`의 마크업 및 SVG 아이콘 경로에서 직접 복사되었으며, 색상은 `tokens/`의 탭바 토큰(`--tabbar-*`)으로 바뀌었습니다.
 * **모바일 뷰포트** — UI 키트 프레임은 430×932로, 코드베이스 자체의 `max-w-[430px] mx-auto` 모바일 컨테이너(`jam-web/src/app/(main)/layout.tsx`)와 일치합니다. 데스크톱에서는 동일한 방식으로 배경 중앙에 렌더링됩니다.
 * **모션** — `tokens/motion.css`의 지속 시간/이징(durations/easings)은 JAM!의 프로덕션 `globals.css`에서 실행되는 동일한 마이크로 인터랙션 시스템인 [transitions.dev](https://transitions.dev/detail.html?doc=installation)에서 1:1로 복사되었습니다.
 
@@ -89,12 +91,14 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
 
 **1순위 — Storybook** (로컬: `http://localhost:6006`): 인터랙티브 controls, 접근성 검사, 핫 리로딩을 제공하며 가장 최신 컴포넌트 목록을 반영한다. 컴포넌트를 확인하거나 스토리를 작성할 때는 항상 Storybook을 기준으로 삼는다.
 
-**레거시 — `dashboard.html`**: Storybook 도입 전 사용하던 뷰어. 현재는 `guidelines/` 가이드라인 섹션(색상·타이포·스페이싱·로고·Do's & Don'ts 등 브랜드 참조 문서)을 확인하는 용도로만 유효하다. 컴포넌트 목록은 최신 상태가 아니므로 컴포넌트 탐색에는 사용하지 않는다.
+**파운데이션 — Storybook `MODULAR/Foundations`**: 색상·글꼴·모션·반경·간격·타이포 여섯 페이지가 토큰 값을 CSS 변수에서 읽어 보여 준다. 예전 `guidelines/*.html` 카드 12개는 이 페이지들과 `BadgeFrame`·`WanderingEyesLoader` 스토리로 대체하고 지웠다.
+
+**레거시 — `dashboard.html`**: Storybook 도입 전 사용하던 뷰어. 지금은 개요 한 쪽만 남았고 Storybook과 토큰 파일을 가리킨다. 컴포넌트 탐색에는 사용하지 않는다.
 
 ## 색인 (Index)
 
 * `styles.css` — 루트 스타일시트, `tokens/`의 모든 항목을 가져옴(import)
-* `tokens/` — 색상, 타이포그래피, 간격, 반경, 엘리베이션, 폰트
+* `tokens/` — 색상, 타이포그래피, 간격, 반경, 모션, 재질(materials), 폰트
 * `assets/logo/` — JAM! 워드마크, 블랙 + 화이트
 * `components/buttons/` — Button, IconButton
 * `components/cards/` — Card, RarityBadge, BadgeLevelChip(무한레벨형 Lv.N 칩), MissionCard, ShapeTag, BadgeFrame, LabelChip(카드 좌상단 라벨 필, tone default·inverse)
@@ -108,7 +112,7 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
   소스로 쓴다, 20260828_2043), **BadgeStatusGlyphs**(배지 화면의 자물쇠·체크·별·chevron 단일
   소스. TabBar와 같은 Material Symbols 채움 스타일 — `icons.tsx`의 stroke `LockIcon`과 다른
   물건이다. 배지 화면에서는 이모지를 쓰지 않는다, 20260906_2140)
-* `guidelines/` — 파운데이션 스펙 카드 (색상, 타이포그래피, 간격, 반경, 엘리베이션, 로고, 아이콘) — 브랜드 참조용으로 유지
-* `dashboard.html` — **레거시** 뷰어. 가이드라인 섹션 전용. 컴포넌트 탐색은 Storybook 사용
+* `foundations/` — Storybook 파운데이션 페이지 6개 (Colors·Fonts·Motion·Radius·Spacing·Typography)
+* `dashboard.html` — **레거시** 개요 한 쪽. 컴포넌트 탐색은 Storybook 사용
 * `ui_kits/jam-app/` — 인터랙티브 5개 화면 클릭스루: Today / Badges / Drops / Inventory / Profile
 * `SKILL.md` — Claude Code / 기타 에이전트용 포터블 스킬 파일

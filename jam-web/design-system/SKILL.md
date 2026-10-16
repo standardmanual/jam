@@ -1,6 +1,6 @@
 ---
 name: jam-design
-description: Use this skill to generate well-branded interfaces and assets for JAM! (a Korean physical-gamification running app), styled with a Shopify-inspired light/purple visual language, either for production or throwaway prototypes/mocks/etc. Contains essential design guidelines, colors, type, fonts, assets, and UI kit components for prototyping.
+description: Use this skill to generate well-branded interfaces and assets for JAM! (a Korean physical-gamification running app), styled with the JAM 2.0 light visual language (cream background, white bordered cards, green accent), either for production or throwaway prototypes/mocks/etc. Contains essential design guidelines, colors, type, fonts, assets, and UI kit components for prototyping.
 user-invocable: true
 ---
 

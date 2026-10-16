@@ -6,8 +6,10 @@ function useTokenValue(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-function RadiusCard({ token, desc, usage }: { token: string; desc: string; usage: string }) {
+// --radius-N 눈금은 Tailwind 기본 유틸리티 rounded-N과 이름이 같다. --field-radius는 클래스가 없다.
+function RadiusCard({ token, desc, usage }: { token: string; desc: string; usage?: string }) {
   const value = useTokenValue(token);
+  const utility = token.startsWith('--radius-') ? `rounded-${token.slice('--radius-'.length)}` : undefined;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '16px 0', borderBottom: '1px solid var(--border)' }}>
       {/* 시각적 프리뷰 */}
@@ -25,11 +27,25 @@ function RadiusCard({ token, desc, usage }: { token: string; desc: string; usage
       <div style={{ flex: 1 }}>
         <code style={{ fontSize: 13, color: 'var(--link)', display: 'block', marginBottom: 2 }}>{token}</code>
         <span style={{ fontSize: 12, color: 'var(--foreground)', display: 'block' }}>{value || '—'} — {desc}</span>
-        <span style={{ fontSize: 11, color: 'var(--muted)' }}>사용처: {usage}</span>
+        {utility && <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block' }}>클래스 <code style={{ color: 'var(--link)' }}>{utility}</code></span>}
+        {usage && <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block' }}>사용처: {usage}</span>}
       </div>
     </div>
   );
 }
+
+const RADIUS_STEPS: { token: string; desc: string; usage?: string }[] = [
+  { token: '--radius-xs', desc: '가장 작은 둥글기' },
+  { token: '--radius-sm', desc: '아주 미세한 둥글기', usage: '구분선 끝, 내부 썸네일' },
+  { token: '--radius-md', desc: '작은 둥글기' },
+  { token: '--radius-lg', desc: '소형 컴포넌트', usage: '소형 칩, 체크박스' },
+  { token: '--radius-xl', desc: '중간 둥글기' },
+  { token: '--radius-2xl', desc: '카드 surface', usage: 'Card 컴포넌트' },
+  { token: '--radius-3xl', desc: '큰 둥글기' },
+  { token: '--radius-4xl', desc: '가장 큰 단계' },
+  { token: '--radius-full', desc: '완전한 캡슐', usage: '버튼, ShapeTag, 탭바' },
+  { token: '--field-radius', desc: '입력창 캡슐 (피그마 field/radius)', usage: 'Input, Select, Textarea' },
+];
 
 function RadiusPage() {
   return (
@@ -38,14 +54,12 @@ function RadiusPage() {
       <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 40 }}>
         피그마 <code style={{ color: 'var(--link)' }}>dimensions/radius</code>와 같은 눈금(Tailwind 기본 단계).
         클래스에서는 <code style={{ color: 'var(--link)' }}>rounded-2xl</code>·<code style={{ color: 'var(--link)' }}>rounded-full</code>을 쓰고,
-        인라인 style·CSS에서는 아래 변수를 참조한다. 이름이 같고 값이 달라진 단계가 있다(옛 sm 8px → 새 sm 4px).
+        인라인 style·CSS에서는 아래 변수를 참조한다.
       </p>
 
-      <RadiusCard token="--radius-sm" desc="4px — 아주 미세한 둥글기" usage="구분선 끝, 내부 썸네일 (옛 xs)" />
-      <RadiusCard token="--radius-lg" desc="8px — 소형 컴포넌트" usage="소형 칩, 체크박스 (옛 sm)" />
-      <RadiusCard token="--radius-2xl" desc="16px — 카드 surface" usage="Card 컴포넌트 (옛 card)" />
-      <RadiusCard token="--radius-full" desc="9999px — 완전한 캡슐" usage="버튼, ShapeTag, 탭바 (옛 pill)" />
-      <RadiusCard token="--field-radius" desc="100px — 입력창 캡슐 (피그마 field/radius)" usage="Input, Select, Textarea" />
+      {RADIUS_STEPS.map(({ token, desc, usage }) => (
+        <RadiusCard key={token} token={token} desc={desc} usage={usage} />
+      ))}
 
       {/* 시각적 비교 */}
       <div style={{ marginTop: 40 }}>
@@ -53,7 +67,7 @@ function RadiusPage() {
           비교 미리보기
         </h2>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          {['--radius-sm', '--radius-lg', '--radius-2xl', '--radius-full', '--field-radius'].map(token => (
+          {RADIUS_STEPS.map(({ token }) => (
             <div key={token} style={{ textAlign: 'center' }}>
               <div style={{
                 width: 80, height: 80,
