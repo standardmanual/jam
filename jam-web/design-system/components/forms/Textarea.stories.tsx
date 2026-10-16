@@ -62,6 +62,35 @@ export const WithLabel: Story = {
   ),
 };
 
+export const StateGrid: Story = {
+  name: '상태 격자 (크림 바탕 | 흰 Card 위, 반경 16)',
+  parameters: { layout: 'padded' },
+  render: () => (
+    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      {[
+        { title: '크림 바탕 (--background)', background: 'var(--background)', card: false },
+        { title: '흰 Card (--surface + 1px --border)', background: 'var(--surface)', card: true },
+      ].map(({ title, background, card }) => (
+        <div
+          key={title}
+          style={{
+            width: 360, padding: 16, display: 'flex', flexDirection: 'column', gap: 12,
+            background, borderRadius: 'var(--radius-2xl)',
+            border: card ? '1px solid var(--border)' : 'none',
+          }}
+        >
+          <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--foreground)' }}>{title}</strong>
+          <Textarea placeholder="내용을 입력하세요 (placeholder --muted)" aria-label="기본" />
+          <Textarea value="값 입력됨" aria-label="값 입력됨" onChange={() => {}} />
+          <Textarea value="오류 상태" state="error" aria-label="오류" onChange={() => {}} />
+          <Textarea value="성공 상태" state="success" aria-label="성공" onChange={() => {}} />
+          <Textarea value="비활성" disabled aria-label="비활성" onChange={() => {}} />
+        </div>
+      ))}
+    </div>
+  ),
+};
+
 export const Interactive: Story = {
   name: '인터랙티브 (글자 수 표시)',
   render: () => {
@@ -76,7 +105,7 @@ export const Interactive: Story = {
           state={value.length > MAX ? 'error' : 'default'}
           aria-label="활동 소감"
         />
-        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: value.length > MAX ? 'var(--rarity-mystic)' : 'var(--muted)', textAlign: 'right' }}>
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: value.length > MAX ? 'var(--foreground)' : 'var(--muted)', textAlign: 'right' }}>
           {value.length} / {MAX}
         </p>
       </div>
