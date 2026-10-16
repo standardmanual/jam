@@ -40,32 +40,35 @@ import { ChevronDownGlyph } from '../icons/BadgeStatusGlyphs.jsx';
  *
  * ## 상태 램프
  *
- * 밝기가 「지금 얼마나 신경 쓸 곳인가」를 맡는다. lime(H 118.6°)과 amber(H 94.9°)가
- * 23.7°밖에 안 떨어져 있어 색만으로는 3단계를 못 가른다 — 가운데 단계(진행 중)에서 색을
- * 빼고 밝기를 최대로 올린다. 토큰은 `colors.css`의 `--progress-*`.
+ * 글자는 세 색만 쓴다 — 다 채움 `--link`, 진행 중·거의 다 `--foreground`, 0%·계산 불가
+ * `--muted`. `--progress-*`는 선·링·점·막대 면 전용이라 글자에 쓰지 않는다(흰 면 위
+ * 2.07~2.19:1). 「거의 다」의 구분은 글자색이 아니라 문구 숫자와 바·링의 `--warning`에서
+ * `--success`로 가는 스윕이 맡는다.
  *
  * 문구 조립은 하지 않는다 — 완성 문자열만 받는다(기존 DS 원칙 유지).
  */
 
 /**
  * 「거의 다」로 넘어가는 임계값. **정책 숫자라 색 토큰이 아니다** — CSS에 두면 JS가 읽을 수
- * 없고, 두 곳에 적으면 색과 문구가 서로 다른 기준을 쓰게 된다. 서비스 계층은
- * `src/lib/badgeProgressText.ts`가 이 값을 그대로 재수출해서 쓴다(단일 출처).
+ * 없고, 두 곳에 적으면 문구 기준이 갈라진다. 서비스 계층은 `src/lib/badgeProgressText.ts`가
+ * 이 값을 그대로 재수출해서 문구 조립에 쓴다(단일 출처). **글자색은 이 값으로 가르지 않는다**
+ * — 거의 다와 진행 중은 같은 `--foreground`다(`progressRampColor`, 티켓 20261015_2134).
  */
 export const NEAR_THRESHOLD = 0.8;
 
 /**
- * 진행률 → 상태 램프 색 토큰. 배지 트리의 모든 패턴이 이 함수 하나만 본다.
+ * 진행률 → 상태 램프 **글자색** 토큰. 배지 트리의 모든 패턴이 이 함수 하나만 본다.
+ * 다 채움(`done` 또는 1 이상) `--link`, 0 초과 1 미만(거의 다 포함) `--foreground`,
+ * 0·null `--muted`. 선·링·점·막대 면의 `--progress-*`는 이 함수가 돌려주지 않는다.
  *
  * @param {number | null | undefined} fraction 0~1. null이면 「진행 계산 불가」
  * @param {boolean} [done] 획득 등 «fraction과 무관하게 다 채운» 상태
  */
 export function progressRampColor(fraction, done = false) {
-  if (done) return 'var(--progress-done)';
+  if (done) return 'var(--link)';
   if (fraction == null) return 'var(--muted)';
   const f = Math.min(1, Math.max(0, fraction));
-  if (f >= 1) return 'var(--progress-done)';
-  if (f >= NEAR_THRESHOLD) return 'var(--progress-short)';
+  if (f >= 1) return 'var(--link)';
   if (f > 0) return 'var(--foreground)';
   return 'var(--muted)';
 }

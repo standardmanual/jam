@@ -30,5 +30,5 @@ export function BadgeFamilyCardHeader(props: BadgeFamilyCardHeaderProps): JSX.El
 /** 「거의 다」 임계값(0.8). 색 토큰이 아니라 정책 숫자다 */
 export const NEAR_THRESHOLD: number;
 
-/** 진행률 → `--progress-*`·`--muted`·`--foreground` 램프 색 토큰 문자열 */
+/** 진행률 → 글자색 토큰 문자열: 다 채움 `--link`, 진행 중·거의 다 `--foreground`, 0·null `--muted` */
 export function progressRampColor(fraction: number | null | undefined, done?: boolean): string;

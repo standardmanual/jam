@@ -71,13 +71,13 @@ export const ColorInherits: Story = {
   name: '색은 부모 color를 따른다',
   render: () => (
     <div style={{ display: 'flex', gap: 16, alignItems: 'center', padding: 16, background: 'var(--background)', borderRadius: 12 }}>
-      <span style={{ color: 'var(--progress-done, #d6f24a)', display: 'flex' }}>
+      <span style={{ color: 'var(--link)', display: 'flex' }}>
         <CheckGlyph size={24} />
       </span>
-      <span style={{ color: 'var(--link, #e8461f)', display: 'flex' }}>
+      <span style={{ color: 'var(--link)', display: 'flex' }}>
         <LockGlyph size={24} />
       </span>
-      <span style={{ color: 'var(--muted, #999)', display: 'flex' }}>
+      <span style={{ color: 'var(--muted)', display: 'flex' }}>
         <StarGlyph size={24} />
       </span>
     </div>

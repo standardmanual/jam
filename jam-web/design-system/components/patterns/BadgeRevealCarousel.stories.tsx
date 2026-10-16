@@ -28,7 +28,8 @@ type Story = StoryObj<typeof BadgeRevealCarousel>;
 
 // staticDirs 매핑(`design-system/assets` → `/ds-assets`)에 실제로 존재하는 경로를 쓴다.
 // (기존 patterns 스토리들이 참조하는 `/ds-assets/uploads/...`는 매핑 밖이라 깨진 경로다)
-const SAMPLE_IMAGE = '/ds-assets/logo/jam-logo-white.png';
+// 샘플은 흰 카드 위에 놓이므로 검정 로고를 쓴다(흰 로고는 흰 면 위에서 보이지 않는다).
+const SAMPLE_IMAGE = '/ds-assets/logo/jam-logo-black.png';
 
 const RARITIES: BadgeRevealItem['rarity'][] = ['common', 'rare', 'epic', 'mystic'];
 

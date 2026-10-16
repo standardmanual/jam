@@ -91,7 +91,7 @@ export const LazyBodyOnExpand: Story = {
             <p data-testid="body" style={{ margin: 0, color: 'var(--foreground)' }}>진행 계산 결과</p>
           </BadgeStatusSection>
         </div>
-        <p data-testid="log" style={{ fontSize: 12, color: '#b2b2b2' }}>{opened.join(',')}</p>
+        <p data-testid="log" style={{ fontSize: 12, color: 'var(--muted)' }}>{opened.join(',')}</p>
       </Frame>
     );
   },

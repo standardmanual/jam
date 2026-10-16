@@ -32,7 +32,7 @@ export function SlidingTabs({
   // 비활성 라벨은 두 팔레트 모두 --muted(흰 면·트랙 위 4.5:1 이상)다.
   const palette = variant === 'onCard'
     ? {
-      barBg: outlined ? 'var(--surface)' : 'rgba(0, 0, 0, 0.06)',
+      barBg: outlined ? 'var(--surface)' : 'var(--background-secondary)',
       pillBg: 'var(--accent)',
       textMuted: 'var(--muted)',
       textActive: 'var(--accent-foreground)',

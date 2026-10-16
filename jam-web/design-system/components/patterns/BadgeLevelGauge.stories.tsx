@@ -6,7 +6,7 @@ import { BadgeLevelGauge } from './BadgeLevelGauge';
 const WALK_ICON =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path fill="%23e8461f" d="M400-40 320-160l40-320-80 40-40 160-80-20 60-240 200-80 60 100 120 40v100l-100-20-40 140 80 300h-100Z"/></svg>'
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path fill="%2319b551" d="M400-40 320-160l40-320-80 40-40 160-80-20 60-240 200-80 60 100 120 40v100l-100-20-40 140 80 300h-100Z"/></svg>'
   );
 
 const meta: Meta<typeof BadgeLevelGauge> = {
@@ -27,8 +27,9 @@ const meta: Meta<typeof BadgeLevelGauge> = {
           '배지 이름이 지표를 말하고(“걸어온 거리”) 값 행이 조건을 말한다. 값 행 그리드 ' +
           '`[5ch][auto][1fr][auto]`의 요점은 **현재값 5ch 우측 정렬** — 자릿수가 달라도 `/` ' +
           '구분자가 세로로 정렬된다. 진행 바는 `ProgressBar fillMode="track-gradient"`. ' +
-          '20260906_1436: 진행 중(미완료) 현재값 색이 옐로우(--progress-short)에서 ' +
-          '화이트(--foreground)로 바뀌었다 — 진행 바 채움색은 그대로 옐로우다. ' +
+          '20260906_1436: 진행 중(미완료) 현재값 색은 --foreground다 — 진행 바 채움색은 ' +
+          '--progress-short → --progress-done 스윕이다. 20261015_2134: 다 채운 현재값은 ' +
+          '--link이고 --progress-*는 글자에 쓰지 않는다(막대 면 전용). ' +
           '20260906_2140(v2): 헤더를 공유 부품 `BadgeFamilyCardHeader`로 올렸다 — 예전에는 ' +
           '이름이 썸네일(44)+갭(12)+칩(52) 뒤 **88px**에서 시작해 레일 카드(32px)와 어긋나 ' +
           '있었다. 이제 이름은 **카드 왼쪽 패딩 엣지**에서 시작하고, 레벨은 헤더 우측 진행률 ' +
@@ -169,12 +170,11 @@ export const SlashAlignment: Story = {
 
 /**
  * 회귀 고정(20260906_1436 §3) — 진행 중(미완료)인 현재값은 --foreground(본문 글자색)다.
- * 예전엔 옐로우(--progress-short)였는데 눈에 거슬린다는 지적으로 텍스트 색만 바꿨다.
- * 진행 바 채움색(ProgressBar의 --progress-short → --progress-done 그라데이션)은
- * 그대로다 — 이 스토리에서는 값 텍스트 색만 검증한다.
+ * 진행 바 채움색(ProgressBar의 --progress-short → --progress-done 스윕)은 막대 면이라
+ * 글자와 별개다 — 이 스토리에서는 값 텍스트 색만 검증한다.
  */
 export const InProgressValueIsWhite: Story = {
-  name: '20260906_1436 — 진행 중 값은 화이트(막대는 옐로우 유지)',
+  name: '20260906_1436 — 진행 중 값은 foreground(막대는 스윕 유지)',
   render: () => (
     <Frame>
       <div data-testid="gauge">
@@ -186,18 +186,27 @@ export const InProgressValueIsWhite: Story = {
     const gauge = canvasElement.querySelector('[data-testid="gauge"]')!;
     const current = Array.from(gauge.querySelectorAll('span')).find((el) => el.textContent === '52.4') as HTMLElement;
     expect(current).toBeTruthy();
-    // --foreground(#171717) → rgb(23, 23, 23). 옐로우(--progress-short)가 아니어야 한다.
+    // --foreground(#171717) → rgb(23, 23, 23). --progress-short(앰버)가 아니어야 한다.
     expect(getComputedStyle(current).color).toBe('rgb(23, 23, 23)');
   },
 };
 
 export const Complete: Story = {
-  name: '다 채움 — 현재값이 라임(--progress-done)으로 바뀐다',
+  name: '다 채움 — 현재값이 link(--link)로 바뀐다',
   render: () => (
     <Frame>
-      <BadgeLevelGauge name="걸은 날들" level={4} current="40" next="40일" left="달성" fraction={1} />
+      <div data-testid="gauge">
+        <BadgeLevelGauge name="걸은 날들" level={4} current="40" next="40일" left="달성" fraction={1} />
+      </div>
     </Frame>
   ),
+  play: async ({ canvasElement }) => {
+    const gauge = canvasElement.querySelector('[data-testid="gauge"]')!;
+    const current = Array.from(gauge.querySelectorAll('span')).find((el) => el.textContent === '40') as HTMLElement;
+    expect(current).toBeTruthy();
+    // 다 채움은 --link(#0e7a38) → rgb(14, 122, 56). 라임(--progress-done)은 흰 면 위 2.19:1이라 글자에 쓰지 않는다.
+    expect(getComputedStyle(current).color).toBe('rgb(14, 122, 56)');
+  },
 };
 
 /**

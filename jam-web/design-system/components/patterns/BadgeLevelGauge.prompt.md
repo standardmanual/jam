@@ -29,13 +29,13 @@ Lv.1이든 Lv.128이든 같은 높이다.
 
 ## 색
 
-진행 바 채움색은 `--progress-short`(채우는 중, 11.04:1) → `--progress-done`
-(다 채움, 13.81:1) 그라데이션 — 예전과 동일하다.
+진행 바 채움색은 `--progress-short`(채우는 중) → `--progress-done`(다 채움) 그라데이션이다.
+막대 면이라 글자 대비 기준의 대상이 아니다(문서 5.2절 «진행 트랙 대비» 열린 항목).
 
-현재값(`current`) 텍스트 색은 다 채웠으면 `--progress-done`(라임), 진행 중이면
-`--foreground`(화이트, 20260906_1436 — 예전엔 `--progress-short` 옐로우였다. 눈에
-거슬린다는 지적으로 텍스트 색만 바꿨고 진행 바 채움색은 그대로다).
-지표·목표는 `--muted`(8.21:1). `DualAxisGauge.AxisRow`와 **같은 값**이다.
+현재값(`current`) 텍스트 색은 `progressRampColor`가 정한다 — 다 채웠으면 `--link`(흰 면 위
+5.44:1), 진행 중이면 `--foreground`(17.93:1), 0%는 `--muted`(5.74:1). `--progress-*`는
+선·링·점·막대 면 전용이라 글자에 쓰지 않는다(흰 면 위 2.07~2.19:1). 지표·목표는 `--muted`
+(5.74:1). `DualAxisGauge.AxisRow`와 **같은 값**이다.
 
 진행 바는 `ProgressBar`의 `fillMode="track-gradient"`를 쓴다 — 트랙 기준으로 깔고 잘라야
 진행률에 따라 색이 실제로 이동한다.

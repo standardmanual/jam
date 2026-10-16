@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
+import { expect } from 'storybook/test';
 import { MissionCard } from './MissionCard';
 
 const meta: Meta<typeof MissionCard> = {
@@ -92,6 +93,21 @@ export const Locked: Story = {
     onAction: () => {},
   },
   decorators: [(Story) => <div style={{ width: 360 }}><Story /></div>],
+  play: async ({ canvasElement }) => {
+    const title = canvasElement.querySelector('h3') as HTMLElement;
+    expect(title).toBeTruthy();
+    // 카드 전체에 불투명도를 걸지 않는다 — 딤은 썸네일 이미지에만 있다(제목·설명 글자 대비 보존).
+    for (let el: HTMLElement | null = title; el && el !== canvasElement; el = el.parentElement) {
+      expect(getComputedStyle(el).opacity).toBe('1');
+    }
+    // 잠김 칩은 승인된 상태 칩 매핑대로 --border 면(#cfc9b4) + --foreground(#171717) 글자(10.81:1)다.
+    const chip = Array.from(canvasElement.querySelectorAll('span')).find(
+      (el) => el.textContent?.includes('잠김') && getComputedStyle(el).display === 'inline-flex',
+    ) as HTMLElement;
+    expect(chip).toBeTruthy();
+    expect(getComputedStyle(chip).backgroundColor).toBe('rgb(207, 201, 180)');
+    expect(getComputedStyle(chip).color).toBe('rgb(23, 23, 23)');
+  },
 };
 
 export const NoAction: Story = {

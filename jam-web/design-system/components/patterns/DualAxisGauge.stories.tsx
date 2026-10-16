@@ -39,13 +39,13 @@ type Story = StoryObj<typeof DualAxisGauge>;
 const CYCLE_ICON =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path fill="%23e8461f" d="M200-120q-83 0-141.5-58.5T0-320q0-83 58.5-141.5T200-520q29 0 55 7t49 21l-52 87q-11-5-25-10t-27-5q-50 0-85 35t-35 85q0 50 35 85t85 35q50 0 85-35t35-85h100q0 92-64 156t-156 64Zm268-40-84-140H244l120-200h-64l-40-80h176l84 140h132l-72 120h100l60 100H468Z"/></svg>'
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path fill="%2319b551" d="M200-120q-83 0-141.5-58.5T0-320q0-83 58.5-141.5T200-520q29 0 55 7t49 21l-52 87q-11-5-25-10t-27-5q-50 0-85 35t-35 85q0 50 35 85t85 35q50 0 85-35t35-85h100q0 92-64 156t-156 64Zm268-40-84-140H244l120-200h-64l-40-80h176l84 140h132l-72 120h100l60 100H468Z"/></svg>'
   );
 
 const TRAIL_ICON =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path fill="%23e8461f" d="M400-40 320-160l40-320-80 40-40 160-80-20 60-240 200-80 60 100 120 40v100l-100-20-40 140 80 300h-100Z"/></svg>'
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path fill="%2319b551" d="M400-40 320-160l40-320-80 40-40 160-80-20 60-240 200-80 60 100 120 40v100l-100-20-40 140 80 300h-100Z"/></svg>'
   );
 
 function Frame({ children }: { children: React.ReactNode }) {
@@ -58,19 +58,35 @@ export const IndependentAxes: Story = {
   name: 'sameActivity:false — 각각 다른 활동 (산악 라이더, 속도는 이미 채움)',
   render: () => (
     <Frame>
-      <DualAxisGauge
-        imageUrl={CYCLE_ICON}
-        alt="산악 라이더 Rare"
-        rarity="rare"
-        axes={[
-          { key: 'min_speed_kmh', label: '속도', rangeText: '21.4/20.0km/h', fraction: 1, met: true },
-          { key: 'elevation_gain_m', label: '고도', rangeText: '1180/1500m', fraction: 1180 / 1500, met: false },
-        ]}
-        ruleText="두 조건은 각각 다른 활동에서 채워도 돼요."
-        bottleneckNote="속도 조건은 이미 채웠어요."
-      />
+      <div data-testid="gauge">
+        <DualAxisGauge
+          imageUrl={CYCLE_ICON}
+          alt="산악 라이더 Rare"
+          rarity="rare"
+          axes={[
+            { key: 'min_speed_kmh', label: '속도', rangeText: '21.4/20.0km/h', fraction: 1, met: true },
+            { key: 'elevation_gain_m', label: '고도', rangeText: '1180/1500m', fraction: 1180 / 1500, met: false },
+          ]}
+          ruleText="두 조건은 각각 다른 활동에서 채워도 돼요."
+          bottleneckNote="속도 조건은 이미 채웠어요."
+        />
+      </div>
     </Frame>
   ),
+  play: async ({ canvasElement }) => {
+    const gauge = canvasElement.querySelector('[data-testid="gauge"]')!;
+    const spans = Array.from(gauge.querySelectorAll('span'));
+    const met = spans.find((el) => el.textContent === '21.4/20.0km/h') as HTMLElement;
+    const notMet = spans.find((el) => el.textContent === '1180/1500m') as HTMLElement;
+    expect(met).toBeTruthy();
+    expect(notMet).toBeTruthy();
+    // 채운 축의 범위 글자와 병목 안내는 --link(#0e7a38), 못 채운 축은 --foreground. --progress-done은 글자에 쓰지 않는다.
+    expect(getComputedStyle(met).color).toBe('rgb(14, 122, 56)');
+    expect(getComputedStyle(notMet).color).toBe('rgb(23, 23, 23)');
+    const note = Array.from(gauge.querySelectorAll('p')).find((el) => el.textContent === '속도 조건은 이미 채웠어요.') as HTMLElement;
+    expect(note).toBeTruthy();
+    expect(getComputedStyle(note).color).toBe('rgb(14, 122, 56)');
+  },
 };
 
 // ── sameActivity:true — "한 번의 활동에서 동시에" (야생의 첫발: 거리 × 고도) ──

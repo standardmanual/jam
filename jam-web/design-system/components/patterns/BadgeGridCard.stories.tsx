@@ -145,6 +145,13 @@ export const NoImage: Story = {
     rarity: 'common',
     earned: true,
   },
+  play: async ({ canvasElement }) => {
+    const icon = canvasElement.querySelector('svg[width="40"]') as SVGElement;
+    expect(icon).toBeTruthy();
+    // 자리 표시 아이콘은 --muted(#666666)이고 불투명도로 약하게 만들지 않는다(accent-soft 위에서도 3:1 이상).
+    expect(getComputedStyle(icon).color).toBe('rgb(102, 102, 102)');
+    expect(getComputedStyle(icon).opacity).toBe('1');
+  },
 };
 
 export const WithChildren: Story = {
@@ -307,5 +314,10 @@ export const RepeatCount: Story = {
     expect(cards.children[0].textContent).not.toContain('×');
     expect(cards.children[1].textContent).toContain('×3');
     expect(cards.children[2].textContent).toContain('×15');
+    // 개수 필은 --foreground 글자 그대로다 — 불투명도(.8)로 글자색을 만들지 않는다.
+    const pill = Array.from(cards.children[1].querySelectorAll('span')).find((el) => el.textContent === '×3') as HTMLElement;
+    expect(pill).toBeTruthy();
+    expect(getComputedStyle(pill).opacity).toBe('1');
+    expect(getComputedStyle(pill).color).toBe('rgb(23, 23, 23)');
   },
 };

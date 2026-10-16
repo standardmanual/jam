@@ -9,7 +9,7 @@ import { LockIcon } from '../icons/IconCatalog.jsx';
  *
  * 20260828_2043: 서비스 `src/app/(main)/missions/MissionsListClient.tsx`의 인라인 마크업
  * (Figma mission-item-1)을 참고해 Card + RarityBadge + Button 조합으로 구성했다. 원본의
- * 하드코딩 색상(#1A1A1A, #B2B2B2, #E8461F, #FFFFFF 등)을 전부 컬러 토큰으로 교체했다.
+ * 하드코딩 색상을 전부 컬러 토큰으로 교체했다.
  * 이번 티켓 범위는 컴포넌트 신설까지다 — MissionsListClient.tsx를 이 컴포넌트로 교체하는
  * 연결 작업은 포함하지 않는다.
  *
@@ -18,7 +18,8 @@ import { LockIcon } from '../icons/IconCatalog.jsx';
  * 카드 면은 `Card` 기본 톤(--surface + 1px --border, 그림자 없음)이다.
  *
  * locked=true면 썸네일에 grayscale+딤 처리와 자물쇠 오버레이가 붙고, 액션 버튼이
- * 비활성화된다 (서비스의 잠금 미션 카드 패턴, 20260825_028 참고).
+ * 비활성화된다 (서비스의 잠금 미션 카드 패턴, 20260825_028 참고). 딤은 썸네일 이미지에만
+ * 걸고 카드 전체에는 걸지 않는다 — 카드 전체 불투명도는 제목·설명 글자 대비를 무너뜨린다.
  */
 export function MissionCard({
   imageUrl,
@@ -42,7 +43,6 @@ export function MissionCard({
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 'var(--spacing-16)',
-        opacity: locked ? 0.6 : 1,
         ...style,
       }}
     >
@@ -112,9 +112,10 @@ export function MissionCard({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 3,
-                  // 상태 칩 면 — 카드 면(--surface)과 같은 색이면 알약 윤곽이 사라지므로 한 단계 낮춘 --background-secondary다(티켓 20261015_2133)
-                  background: 'var(--background-secondary)',
-                  color: 'var(--muted)',
+                  // 상태 칩 면 — 카드 면(--surface)과 같은 색이면 알약 윤곽이 사라지므로 한 단계 낮춘 --background-secondary다(티켓 20261015_2133).
+                  // 잠김은 승인된 상태 칩 매핑대로 --border + --foreground다(10.81:1, 티켓 20261015_2134). --muted 글자는 --border 면 위 3.46:1이라 쓰지 않는다.
+                  background: locked ? 'var(--border)' : 'var(--background-secondary)',
+                  color: locked ? 'var(--foreground)' : 'var(--muted)',
                   fontSize: 10,
                   lineHeight: 1,
                   padding: '3px 6px',

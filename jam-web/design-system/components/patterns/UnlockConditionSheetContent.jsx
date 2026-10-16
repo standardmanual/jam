@@ -98,7 +98,7 @@ function RequirementRow({ req }) {
         <p
           style={{
             margin: '3px 0 0', fontSize: 'var(--text-xs)',
-            color: met ? 'var(--progress-done)' : 'var(--muted)',
+            color: met ? 'var(--link)' : 'var(--muted)',
             display: 'flex', alignItems: 'center', gap: 4,
           }}
         >
@@ -202,7 +202,7 @@ export function UnlockConditionSheetContent({
       </div>
 
       {conditionMet && (
-        <div style={{ marginTop: 'var(--spacing-16)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--progress-done)' }}>
+        <div style={{ marginTop: 'var(--spacing-16)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--link)' }}>
           <CheckGlyph size={16} />
           조건을 다 채웠어요
         </div>
@@ -228,7 +228,7 @@ export function UnlockConditionSheetContent({
                 {gi > 0 && <RelationDivider label="그리고" />}
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {(group.title || group.note || groupMet) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 6px', fontSize: 'var(--text-xs)', color: groupMet ? 'var(--progress-done)' : 'var(--muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 6px', fontSize: 'var(--text-xs)', color: groupMet ? 'var(--link)' : 'var(--muted)' }}>
                       {groupMet && <CheckGlyph size={12} />}
                       <span style={{ fontWeight: 600 }}>{group.title ?? (groupMet ? '통과' : '대기')}</span>
                       {group.note && <span>· {group.note}</span>}
