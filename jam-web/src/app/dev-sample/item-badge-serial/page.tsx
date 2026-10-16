@@ -1,5 +1,6 @@
 import TopNav from '@/components/ui/TopNav'
 import ListRowCard from '@/components/ui/ListRowCard'
+import { Card } from '@ds/components/cards/Card'
 import LocalDate from '@/components/LocalDate'
 import { BookIcon, ChevronRightIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
@@ -56,7 +57,7 @@ export default function ItemBadgeSerialSamplePage() {
             <p className="text-[15px] font-bold text-foreground">{d.badges.earnHistoryTitle}</p>
             <span className="text-[13px] text-[var(--muted)]">{t(d.badges.earnHistoryCount, { count: 1 })}</span>
           </div>
-          <div className="bg-surface rounded-2xl p-6">
+          <Card>
             <div className="flex flex-col gap-3">
               <div className="flex justify-between items-center">
                 <span className="text-[14px] text-[var(--muted)]">{d.inventory.obtainedAt}</span>
@@ -69,7 +70,7 @@ export default function ItemBadgeSerialSamplePage() {
                 <span className="text-[14px] text-foreground">{d.inventory.expiresNone}</span>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
 

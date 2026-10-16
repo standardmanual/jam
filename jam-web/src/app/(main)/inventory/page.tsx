@@ -92,7 +92,7 @@ export default async function InventoryPage() {
         {/* 20260912_1940: 슬롯 포화 상시 안내 — 가득 찼을 때만 노출, 카드형 인셋(edge-to-edge 금지) */}
         {remainingSlots === 0 && (
           <div
-            className="mt-3 rounded-2xl px-4 py-3 bg-surface"
+            className="mt-3 rounded-2xl px-4 py-3 bg-surface border border-border"
           >
             <p className="text-base text-foreground">
               {t(d.inventory.fullNoticeBody, { max: maxSlots })}

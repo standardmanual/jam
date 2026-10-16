@@ -85,7 +85,8 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
       <div
         className={[
           'relative overflow-hidden w-full aspect-square rounded-2xl flex flex-col items-center p-6',
-          backgroundAnimation || themed ? 'bg-transparent' : 'bg-surface',
+          // 테마·애니메이션 배경이 없을 때만 흰 면 + 1px 테두리다(크림 바탕과 흰 면은 1.05:1이라 테두리가 경계를 맡는다, 티켓 20261015_2133)
+          backgroundAnimation || themed ? 'bg-transparent' : 'bg-surface border border-border',
         ].join(' ')}
         // 애니메이션 모드의 첫 페인트 폴백 — 캔버스는 클라이언트에서 컨텍스트를 얻은 뒤에야
         // 그려지고, `getContext('2d')`가 null이면 영영 비어 있다. 파라미터가 이미 서버 컴포넌트에

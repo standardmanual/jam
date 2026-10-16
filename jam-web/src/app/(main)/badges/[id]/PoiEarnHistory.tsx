@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import BottomSheet from '@/components/ui/BottomSheet'
 import ListRowCard from '@/components/ui/ListRowCard'
+import { Card } from '@ds/components/cards/Card'
 import StravaLink from '@/components/StravaLink'
 import LocalDate from '@/components/LocalDate'
 import { ChevronRightIcon } from '@/components/ui/icons'
@@ -70,9 +71,9 @@ export default function PoiEarnHistory({ poiEarns }: { poiEarns: PoiEarnItem[] }
       </div>
 
       {/* 최신(첫 번째) 이력 — 카드 형식 */}
-      <div className="bg-surface rounded-2xl p-6">
+      <Card>
         <EarnCardContent e={first} />
-      </div>
+      </Card>
 
       {/* 2번째부터 — ListRowCard (이미지 없음) */}
       {rest.map((e, i) => (

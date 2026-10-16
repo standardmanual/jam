@@ -6,6 +6,7 @@ import { BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserC
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import TopNav from '@/components/ui/TopNav'
 import ListRowCard from '@/components/ui/ListRowCard'
+import { Card } from '@ds/components/cards/Card'
 import { BookIcon, ChevronRightIcon } from '@/components/ui/icons'
 import PoiMapButton from './PoiMapButton'
 import PoiEarnHistory from './PoiEarnHistory'
@@ -397,10 +398,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             )}
 
             {!hasEarned && (
-              <div className="bg-surface rounded-2xl p-6 text-center">
+              <Card className="text-center">
                 <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
                 <p className="text-xs text-[var(--muted)]/60 mt-1">{d.badges.notEarnedBody}</p>
-              </div>
+              </Card>
             )}
           </div>
         )}
@@ -438,10 +439,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
             {/* 만료 임박 안내 */}
             {expiring && (
-              <div className="bg-surface rounded-2xl p-6">
+              <Card>
                 <p className="text-base text-foreground">{d.inventory.expiringSoonTitle}</p>
                 <p className="text-xs text-[var(--muted)] mt-0.5">{d.inventory.expiringSoonBody}</p>
-              </div>
+              </Card>
             )}
           </div>
         )}
@@ -508,10 +509,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           )}
 
           {!hasEarned && (
-            <div className="bg-surface rounded-2xl p-6 text-center">
+            <Card className="text-center">
               <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
               <p className="text-xs text-[var(--muted)]/60 mt-1">{d.badges.notEarnedBody}</p>
-            </div>
+            </Card>
           )}
 
           <p className="text-center text-base text-[var(--muted)] px-4">
@@ -580,13 +581,13 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* 포인트 보상 */}
         {badgeRow.point_reward > 0 && (
-          <div className="bg-surface rounded-2xl p-6">
+          <Card>
             <p className="text-base text-foreground">
               {hasEarned
                 ? t(d.badges.pointRewardEarned, { points: badgeRow.point_reward.toLocaleString('ko-KR') })
                 : t(d.badges.pointRewardPending, { points: badgeRow.point_reward.toLocaleString('ko-KR') })}
             </p>
-          </div>
+          </Card>
         )}
       </div>
 
@@ -606,7 +607,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* 획득 정보 (획득한 경우) */}
         {earned && (
-          <div className="bg-surface rounded-2xl p-6">
+          <Card>
             <p className="text-base font-bold text-foreground mb-4">{d.badges.earnInfoTitle}</p>
             <div className="flex flex-col gap-3">
               <div className="flex justify-between items-center">
@@ -641,15 +642,15 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                 </div>
               )}
             </div>
-          </div>
+          </Card>
         )}
 
         {/* 미획득 안내 */}
         {!hasEarned && (
-          <div className="bg-surface rounded-2xl p-6 text-center">
+          <Card className="text-center">
             <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
             <p className="text-xs text-[var(--muted)]/60 mt-1">{d.badges.notEarnedBody}</p>
-          </div>
+          </Card>
         )}
       </div>
     </div>

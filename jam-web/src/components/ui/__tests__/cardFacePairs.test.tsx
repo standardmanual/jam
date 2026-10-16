@@ -40,6 +40,7 @@ import { RecentSyncBanner } from '@ds/components/patterns/RecentSyncBanner'
 import BadgeTrophyGridCard from '@/components/badges/BadgeTrophyGridCard'
 import RankingListRow from '@/components/ranking/RankingListRow'
 import UserSearchBar from '@/app/(main)/UserSearchBar'
+import BadgeConditionCard from '@/app/(main)/badges/[id]/BadgeConditionCard'
 
 const SURFACE = 'background:var(--surface)'
 const BORDER = 'border:1px solid var(--border)'
@@ -298,5 +299,17 @@ describe('RankingListRow — 카드 안 행이라 tint 면(테두리 없음)', (
     expect(html).toContain('bg-background-secondary')
     expect(html).not.toContain('border-border')
     expect(html).not.toContain('bg-surface')
+  })
+})
+
+describe('직접 만들던 흰 카드 면은 공통 Card와 같은 값이다', () => {
+  it('BadgeConditionCard — 흰 면 + 1px 테두리, 그림자 없음(옛 bg-surface rounded-2xl p-6 div를 Card로 교체)', () => {
+    const html = renderToStaticMarkup(<BadgeConditionCard text="조건 문장" spec="누적 10회 이상" />)
+    expect(html).toContain(SURFACE)
+    expect(html).toContain(BORDER)
+    expect(html).toContain('padding:var(--layout-card-padding)')
+    expect(html).toContain('flex flex-col gap-2')
+    expect(html).not.toContain('bg-surface')
+    expect(html).not.toContain('box-shadow')
   })
 })
