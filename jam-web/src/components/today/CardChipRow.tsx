@@ -8,8 +8,8 @@ import { formatKstMonthDay, type CardView } from '@/lib/today/cardView'
  * `BriefCard`가 혼자 쓰던 칩 줄을 `HeroCard`가 두 번째 소비자가 되면서 공용으로 뺐다.
  *
  * **바탕에 따라 글자색이 둘이다**(`on`, 티켓 20261001_2013 b4). 기본 `'white'`는 기본 `Card`(흰 면) 위다: 옅은 글자는 `text-muted`(흰 면 위 5.74:1)다.
- * `'scrim'`은 이미지 위 어두운 막(`poster`) 위다: 지역 핀·게재일 글자는 순백(`text-white`)이다 — 막 위 순백 이미지에서 흰 글자 대비가 AA를 지키는 것은
- * 순백뿐이라 옅은 단계를 두지 않는다.
+ * `'scrim'`은 이미지 위 어두운 막(`poster`) 위다: 지역 핀·게재일 글자는 `text-snow`다 — 막 위 순백 이미지에서 밝은 글자 대비가 AA(snow 5.60:1)를 지키는 것은
+ * 가장 밝은 글자뿐이라 옅은 단계를 두지 않는다.
  * 라벨 칩은 두 바탕 모두 기본 색조(`--background-secondary` 알약 + `--foreground` 글자)다(티켓 20261015_2133): 막 위에서도 밝은 알약이라 어두운 막과 갈린다.
  * 이름을 `tone`으로 하지 않은 것은 `Card`의 `tone`(면 톤)과 `LabelChip`의 `tone`(알약 색조)이 서로 다른 축이라 섞이기 때문이다.
  * 막 전용 칩 줄을 따로 만들지 않는 것은 아래 규칙(줄바꿈 금지·핀만 줄어듦·드랍은 핀 생략)이 두 곳으로 갈라지기 때문이다.
@@ -39,7 +39,7 @@ export default function CardChipRow({
   on?: CardChipRowOn
 }) {
   const scrim = on === 'scrim'
-  const mutedText = scrim ? 'text-white' : 'text-muted'
+  const mutedText = scrim ? 'text-snow' : 'text-muted'
   const showRegionPin = Boolean(view.regionLabel) && view.resource !== 'drop'
   const publishedDay = view.publishedAt ? formatKstMonthDay(view.publishedAt) : null
 

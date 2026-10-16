@@ -67,10 +67,10 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
         }}
         className="flex justify-between items-center px-4 py-4 w-full text-left active:opacity-70 transition-opacity"
       >
-        <span className="text-base text-foreground/50">{d.inventory.obtainMethod}</span>
+        <span className="text-base text-muted">{d.inventory.obtainMethod}</span>
         <span className="flex items-center gap-1 text-base">
           {obtainLabel}
-          <ChevronRightIcon className="w-4 h-4 text-foreground/40" />
+          <ChevronRightIcon className="w-4 h-4 text-muted" />
         </span>
       </button>
 
@@ -112,12 +112,12 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
                   <ol className="flex flex-col gap-4">
                     {events.map((ev, i) => (
                       <li key={i} className="flex flex-col gap-0.5">
-                        <span className="text-xs text-foreground/40 font-mono">{formatKoreanDateTime(ev.timestamp, { year: true, time: true })}</span>
+                        <span className="text-xs text-muted font-mono">{formatKoreanDateTime(ev.timestamp, { year: true, time: true })}</span>
                         <p className="text-base">
                           {ev.username ?? d.inventory.historyUnknownUser} · {eventLabel(ev)}
                         </p>
                         {ev.poi_name && (
-                          <p className="text-xs text-foreground/50 inline-flex items-center gap-1">
+                          <p className="text-xs text-muted inline-flex items-center gap-1">
                             <PinIcon className="w-3 h-3" />{ev.poi_name}
                           </p>
                         )}

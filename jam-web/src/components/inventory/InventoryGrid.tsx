@@ -86,7 +86,7 @@ export default function InventoryGrid({
       {items.map((item) => {
         const expiring = isExpiringSoon(item.expiresAt)
         const expiryNode = expiring && item.expiresAt ? (
-          <p className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-foreground/70 text-center">
+          <p className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-muted text-center">
             <LocalDate iso={item.expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
           </p>
         ) : null
@@ -129,7 +129,7 @@ export default function InventoryGrid({
           key={`empty-${i}`}
           className="flex flex-col items-center bg-surface border border-border rounded-2xl p-3 overflow-hidden opacity-30"
         >
-          <div className="w-[90px] h-[90px] rounded-2xl flex items-center justify-center bg-white/10">
+          <div className="w-[90px] h-[90px] rounded-2xl flex items-center justify-center bg-background-secondary">
             <span className="text-foreground text-xl">+</span>
           </div>
           <div className="flex flex-col items-center gap-1 pt-2 w-full">

@@ -79,7 +79,7 @@ export default function ItemCandidateSheet({
           {bodyText}
         </p>
         {error && (
-          <div className="rounded-2xl bg-surface border border-border px-3 py-2 text-xs text-foreground/70">
+          <div className="rounded-2xl bg-surface border border-border px-3 py-2 text-xs text-muted">
             {error}
           </div>
         )}
@@ -101,7 +101,7 @@ export default function ItemCandidateSheet({
             type="button"
             onClick={secondaryAction.onClick}
             disabled={secondaryAction.disabled}
-            className="mt-2 w-full py-2 rounded-full bg-[color:var(--base-neutral-600)] text-[color:var(--snow)] text-xs transition-all disabled:opacity-40"
+            className="mt-2 w-full py-2 rounded-full bg-[var(--background-inverse)] text-[var(--snow)] text-xs transition-all disabled:opacity-40"
           >
             {secondaryAction.label}
           </button>

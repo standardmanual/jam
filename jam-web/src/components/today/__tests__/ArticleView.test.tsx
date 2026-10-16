@@ -98,9 +98,9 @@ describe('ArticleView — 머리 영역', () => {
     expect(html).not.toContain('truncate')
   })
 
-  it('부제는 16px·/60이고 제목 아래 8px이다', () => {
+  it('부제는 16px·text-muted이고 제목 아래 8px이다', () => {
     expect(render()).toContain(
-      '<p class="text-base text-foreground/60 mt-2">러너가 직접 걸어 본 코스</p>',
+      '<p class="text-base text-muted mt-2">러너가 직접 걸어 본 코스</p>',
     )
   })
 
@@ -108,9 +108,9 @@ describe('ArticleView — 머리 영역', () => {
     expect(renderToStaticMarkup(<ArticleView view={without('subtitle')} />)).not.toContain('mt-2')
   })
 
-  it('게재일은 「2026년 10월 5일」(연도 유지)이고 12px·/60이다 — /40이 아니다', () => {
+  it('게재일은 「2026년 10월 5일」(연도 유지)이고 12px·text-muted다 — 불투명도 글자가 아니다', () => {
     const html = render()
-    expect(html).toContain('<p class="text-xs text-foreground/60 mt-4">2026년 10월 5일</p>')
+    expect(html).toContain('<p class="text-xs text-muted mt-4">2026년 10월 5일</p>')
   })
 
   it('게재일이 없으면 그리지 않는다', () => {
@@ -121,10 +121,10 @@ describe('ArticleView — 머리 영역', () => {
 })
 
 describe('ArticleView — 본문', () => {
-  it('문단마다 <p>이고 16px·/90이며 문단 안 줄바꿈을 보존한다(whitespace-pre-line)', () => {
+  it('문단마다 <p>이고 16px·text-foreground이며 문단 안 줄바꿈을 보존한다(whitespace-pre-line)', () => {
     const html = render({ paragraphs: ['한 줄\n두 줄', '다음 문단'] })
     expect(html).toContain(
-      '<p class="text-base text-foreground/90 whitespace-pre-line">한 줄\n두 줄</p>',
+      '<p class="text-base text-foreground whitespace-pre-line">한 줄\n두 줄</p>',
     )
     expect(html).toContain('>다음 문단</p>')
   })
@@ -139,9 +139,9 @@ describe('ArticleView — 본문', () => {
     expect(html).not.toContain('<strong')
   })
 
-  it('본문이 없으면 「본문이 없어요」를 /60으로 보인다 — /40이 아니다', () => {
+  it('본문이 없으면 「본문이 없어요」를 text-muted로 보인다 — 불투명도 글자가 아니다', () => {
     const html = render({ paragraphs: [] })
-    expect(html).toContain('<p class="text-foreground/60">본문이 없어요</p>')
+    expect(html).toContain('<p class="text-muted">본문이 없어요</p>')
     expect(html).not.toContain('whitespace-pre-line')
   })
 

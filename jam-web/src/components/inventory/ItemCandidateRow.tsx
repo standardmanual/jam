@@ -105,7 +105,7 @@ export default function ItemCandidateRow({
           animate={false}
         />
         {expiring && candidate.expires_at && (
-          <p className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-foreground/70">
+          <p className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-muted">
             <LocalDate
               iso={candidate.expires_at}
               options={{ month: 'numeric', day: 'numeric' }}

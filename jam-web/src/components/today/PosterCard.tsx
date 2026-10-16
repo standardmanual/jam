@@ -16,7 +16,7 @@ import CardImageSlot from './CardImageSlot'
  *   0.6은 확정 설계 1절 「첫 줄에서도 60% 이상」의 하한이다. JAM 2.0의 `--backdrop`은 검정 50%(모달 배경 전용)라 하한 아래이므로 쓰지 않고,
  *   `--base-black`을 60%로 섞은 값을 막이 직접 가진다(티켓 20261015_2131). `__tests__/PosterCard.test.tsx`가 클래스에서 알파를 읽어 0.6 이상임을 단언한다.
  *   막은 검정 알파 하나뿐이다(blur·그림자·테두리 광택 없음).
- * - 막 위 글자는 전부 `text-white`다(옅은 단계 없음). 막 0.6 아래 순백 이미지에서 흰 글자 대비는 5.74:1이고 `/80`은 4.37:1, `/60`은 3.22:1이라 AA(4.5)에 못 미친다.
+ * - 막 위 글자는 전부 `text-snow`다(옅은 단계 없음). 막 0.6 아래 순백 이미지에서 `--snow` 글자 대비는 5.60:1이고, 옅은 단계는 순백 글자 기준 `/80`이 4.37:1, `/60`이 3.22:1이라 AA(4.5)에 못 미친다.
  *   `text-foreground`를 쓰지 않는 것은 막이 늘 검정이라서다(라이트 전용 시스템에서 `--foreground`는 어두운 글자다).
  * - 칩 줄은 막의 첫 줄이다(`CardChipRow on="scrim"`). 이미지 위(막 밖)에 칩을 흩뿌리지 않는다. `publishedAt`은 넘기지 않는다(`brief`와 같다, 기사는 `hero`로만 간다).
  * - 안쪽 여백은 `Card`가 인라인 `style`로 주기 때문에 클래스로는 덮이지 않아 `HeroCard`와 같은 인라인 `style`로 0을 준다. 바탕 색조는 이미지 판이 덮으므로 `default`다.
@@ -43,7 +43,7 @@ export default function PosterCard({ view }: { view: ImageCardView }) {
         />
 
         {!view.titleInImage && (
-          <h3 className="text-2xl text-white line-clamp-2 break-keep break-words">
+          <h3 className="text-2xl text-snow line-clamp-2 break-keep break-words">
             {view.title}
           </h3>
         )}
@@ -54,7 +54,7 @@ export default function PosterCard({ view }: { view: ImageCardView }) {
             {facts.map((line, index) => (
               <p
                 key={index}
-                className="text-sm text-white break-keep break-words"
+                className="text-sm text-snow break-keep break-words"
               >
                 {line}
               </p>

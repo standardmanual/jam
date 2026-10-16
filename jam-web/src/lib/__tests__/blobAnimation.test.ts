@@ -32,9 +32,10 @@ function hexToRgb(hex: string) {
   }
 }
 
-/** 흰 텍스트(`--foreground` = #ffffff)와 주어진 면색의 명도대비 */
-function contrastWithWhite(rgb: { r: number; g: number; b: number }): number {
-  return 1.05 / (relativeLuminance(rgb) + 0.05)
+/** 블롭 배경 위 글자 `--snow`(#fcfcfc)와 주어진 면색의 명도대비 (티켓 20261015_2134) */
+const SNOW_LUMINANCE = relativeLuminance({ r: 0xfc, g: 0xfc, b: 0xfc })
+function contrastWithSnow(rgb: { r: number; g: number; b: number }): number {
+  return (SNOW_LUMINANCE + 0.05) / (relativeLuminance(rgb) + 0.05)
 }
 
 describe('애니메이션 없음으로 판정되는 값', () => {
@@ -111,15 +112,15 @@ describe('블롭이 덮지 않은 면(= bgColor)의 기본 대비', () => {
    * 가독성은 `getBadgeThemedTextStyle`의 텍스트 그림자가 지탱한다(이 모듈의 책임이 아니다).
    * 여기서 막는 회귀는 "기본 배경색이 흰색이라 블롭 사이 여백에서 배지명이 통째로 사라지던 것"이다.
    */
-  it('기본 배경색은 카드 안 흰 텍스트와 WCAG AA(4.5:1)를 넘는 대비를 갖는다', () => {
-    expect(contrastWithWhite(hexToRgb(DEFAULT_BLOB_ANIMATION.bgColor))).toBeGreaterThan(4.5)
+  it('기본 배경색은 카드 안 --snow 글자와 WCAG AA(4.5:1)를 넘는 대비를 갖는다', () => {
+    expect(contrastWithSnow(hexToRgb(DEFAULT_BLOB_ANIMATION.bgColor))).toBeGreaterThan(4.5)
   })
 })
 
 describe('prefers-reduced-transparency 경로의 블롭 면색', () => {
   /**
-   * 예전에는 이 신호에서 알파만 0.7 → 1.0으로 올렸고, 그러면 밝은 팔레트 색이 더 밝아져 흰
-   * 텍스트 대비가 오히려 악화됐다(접근성 역행). 지금은 색을 배경색 쪽으로 미리 섞어 결과 색이
+   * 예전에는 이 신호에서 알파만 0.7 → 1.0으로 올렸고, 그러면 밝은 팔레트 색이 더 밝아져 --snow
+   * 글자 대비가 오히려 악화됐다(접근성 역행). 지금은 색을 배경색 쪽으로 미리 섞어 결과 색이
    * "일반 경로에서 블롭 한 장이 배경 위에 놓인 합성색"과 같아지도록 한다.
    */
   const { bgColor } = DEFAULT_BLOB_ANIMATION
@@ -136,17 +137,17 @@ describe('prefers-reduced-transparency 경로의 블롭 면색', () => {
   })
 
   it.each(DEFAULT_BLOB_ANIMATION.colors)(
-    '%s — 흰 텍스트 대비가 알파만 올리던 예전 방식보다 나아진다',
+    '%s — --snow 글자 대비가 알파만 올리던 예전 방식보다 나아진다',
     (hex) => {
       // 예전 방식 = 팔레트 색 그대로 알파 1.0
-      const before = contrastWithWhite(hexToRgb(hex))
-      const after = contrastWithWhite(opaqueBlobFill(hex, bgColor))
+      const before = contrastWithSnow(hexToRgb(hex))
+      const after = contrastWithSnow(opaqueBlobFill(hex, bgColor))
       expect(after).toBeGreaterThanOrEqual(before)
     }
   )
 
   it.each(DEFAULT_BLOB_ANIMATION.colors)(
-    '%s — 흰 텍스트 대비가 일반 경로(알파 0.7 1겹)보다 나빠지지 않는다',
+    '%s — --snow 글자 대비가 일반 경로(알파 0.7 1겹)보다 나빠지지 않는다',
     (hex) => {
       const fg = hexToRgb(hex)
       const bg = hexToRgb(bgColor)
@@ -156,8 +157,8 @@ describe('prefers-reduced-transparency 경로의 블롭 면색', () => {
         b: bg.b + (fg.b - bg.b) * 0.7,
       }
       // 반올림 오차(채널당 최대 0.5)만 허용한다.
-      expect(contrastWithWhite(opaqueBlobFill(hex, bgColor))).toBeGreaterThan(
-        contrastWithWhite(normalPath) - 0.01
+      expect(contrastWithSnow(opaqueBlobFill(hex, bgColor))).toBeGreaterThan(
+        contrastWithSnow(normalPath) - 0.01
       )
     }
   )

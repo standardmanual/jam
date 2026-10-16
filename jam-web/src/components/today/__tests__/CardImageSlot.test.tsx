@@ -30,7 +30,7 @@ const render = (ratio: CardImageRatio, overrides: Partial<ImageCardView> = {}) =
   renderToStaticMarkup(<CardImageSlot view={makeView(overrides)} ratio={ratio} />)
 
 const iconMarkup = (view: Pick<ImageCardView, 'resource' | 'template'>) =>
-  renderToStaticMarkup(resourceIconOf(view, { className: 'w-8 h-8 text-foreground/60' }))
+  renderToStaticMarkup(resourceIconOf(view, { className: 'w-8 h-8 text-muted' }))
 
 describe('CardImageSlot — video(hero)는 옛 HeroCard 출력과 같다', () => {
   it('이미지가 있을 때: 16:9 칸 안에 이미지 하나뿐이다', () => {
@@ -132,11 +132,11 @@ describe('CardImageSlot — 자리 표시', () => {
     }
   })
 
-  it('판 글자는 어두운 글자 색(text-foreground)이고 옅은 글자는 /60 한 단계뿐이다', () => {
+  it('판 글자는 어두운 글자 색(text-foreground)이고 옅은 글자는 text-muted 한 단계뿐이다', () => {
     for (const ratio of ['video', 'poster', 'square'] as const) {
       const html = render(ratio, { imageUrl: null, titleInImage: true })
-      expect(html).toContain('text-foreground/60')
-      for (const level of ['/30', '/40', '/50']) expect(html).not.toContain(`text-foreground${level}`)
+      expect(html).toContain('text-muted')
+      for (const level of ['/30', '/40', '/50', '/60']) expect(html).not.toContain(`text-foreground${level}`)
     }
   })
 

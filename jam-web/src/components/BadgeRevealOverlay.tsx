@@ -140,7 +140,7 @@ export default function BadgeRevealOverlay({
             background: 'var(--backdrop)',
           }}
         >
-          <WanderingEyesLoader duration="2s" eyeColor="#f8fafc" pupilColor="#0f172a" />
+          <WanderingEyesLoader duration="2s" eyeColor="var(--snow)" pupilColor="var(--background-inverse)" />
           <span className="sr-only">{d.badgeReveal.loading}</span>
         </div>
       )}

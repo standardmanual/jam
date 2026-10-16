@@ -178,26 +178,26 @@ describe('PosterCard — 막 위 글자 배치', () => {
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
   })
 
-  it('칩 줄은 막 위 색조다 — 라벨 칩은 기본 색조(밝은 알약 --background-secondary), 지역 핀 글자는 text-white', () => {
+  it('칩 줄은 막 위 색조다 — 라벨 칩은 기본 색조(밝은 알약 --background-secondary), 지역 핀 글자는 text-snow', () => {
     const html = render({ regionLabel: '성수동' })
     expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--background-secondary\);color:var\(--foreground\)[^"]*">컬렉션<\/span>/)
-    expect(html).toContain('min-w-0 text-xs text-white">')
+    expect(html).toContain('min-w-0 text-xs text-snow">')
   })
 
-  it('제목은 h3, 24px(--text-2xl)·흰색·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
+  it('제목은 h3, 24px(--text-2xl)·snow·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
     const html = render()
     expect(html).toContain(
-      '<h3 class="text-2xl text-white line-clamp-2 break-keep break-words">새 아이템이 열렸어요</h3>',
+      '<h3 class="text-2xl text-snow line-clamp-2 break-keep break-words">새 아이템이 열렸어요</h3>',
     )
     expect(html).not.toMatch(/<h3[^>]*font-(bold|semibold|medium)/)
   })
 
-  it('필수 정보는 14px(--text-sm) 흰색·보통 굵기이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
+  it('필수 정보는 14px(--text-sm) snow·보통 굵기이고 한 줄에 하나씩, 말줄임 없이 줄바꿈한다', () => {
     const html = render()
     const lines = [...scrimInnerOf(html).matchAll(/<p class="([^"]*)">([^<]*)<\/p>/g)]
     expect(lines.map((m) => m[2])).toEqual(['한강 컬렉션', '아이템 12개'])
     for (const [, className] of lines) {
-      expect(className).toBe('text-sm text-white break-keep break-words')
+      expect(className).toBe('text-sm text-snow break-keep break-words')
       expect(className).not.toContain('font-bold')
       expect(className).not.toContain('line-clamp')
       expect(className).not.toContain('truncate')
@@ -229,10 +229,10 @@ describe('PosterCard — 막 위 글자 배치', () => {
     expect(html).not.toContain('10월 5일')
   })
 
-  it('막 위 글자는 전부 text-white다 — 옅은 단계(/80·/60·/40)와 text-foreground 계열이 없다', () => {
+  it('막 위 글자는 전부 text-snow다 — 옅은 단계(/80·/60·/40)와 리터럴 흰색·text-foreground 계열이 없다', () => {
     const inner = scrimInnerOf(render({ regionLabel: '성수동', resource: 'badge', rarity: 'epic' }))
-    expect(inner).toContain('text-white')
-    for (const needle of ['text-white/', 'text-foreground', '/80', '/60', '/40', '/30']) expect(inner).not.toContain(needle)
+    expect(inner).toContain('text-snow')
+    for (const needle of ['text-snow/', 'text-white', 'text-foreground', '/80', '/60', '/40', '/30']) expect(inner).not.toContain(needle)
   })
 
   it('글자는 전부 왼쪽 정렬이다(막에 가운데 정렬이 없다) — 가운데 정렬은 자리 표시 판에만 있다', () => {

@@ -322,10 +322,10 @@
   /* Tabs sliding */
   --tabs-dur: 300ms;
   --tabs-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --tabs-text-muted: rgba(255, 255, 255, 0.45);
-  --tabs-text-active: #000000;
-  --tabs-bar-bg: rgba(255, 255, 255, 0.1);
-  --tabs-pill-bg: #ffffff;
+  --tabs-text-muted: var(--muted);
+  --tabs-text-active: var(--snow);
+  --tabs-bar-bg: var(--default);
+  --tabs-pill-bg: var(--background-inverse);
   /* Tooltip open/close */
   --tt-in-dur: 150ms;
   --tt-out-dur: 50ms;
@@ -333,8 +333,8 @@
   --tt-delay: 80ms;
   --tt-in-ease: ease-out;
   --tt-out-ease: ease-out;
-  --tt-bg: #1a1a1a;
-  --tt-fg: #ffffff;
+  --tt-bg: var(--background-inverse);
+  --tt-fg: var(--snow);
   /* Texts reveal */
   --stagger-dur: 500ms;
   --stagger-distance: 12px;

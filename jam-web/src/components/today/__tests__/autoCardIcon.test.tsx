@@ -108,7 +108,7 @@ describe('자동 카드 아이콘 — 지역 트렌드는 핀, 진행 알림은 
   })
 
   it('이미지가 없는 이미지 모양의 자리 표시도 같은 규칙이다(hero로 저장된 진행 알림은 지역 값이 있어도 모래시계)', () => {
-    const slotClass = 'w-8 h-8 text-foreground/60'
+    const slotClass = 'w-8 h-8 text-muted'
     const hourglass = renderToStaticMarkup(resourceIconOf({ resource: 'auto', template: 'progress_nudge' }, { className: slotClass }))
     const pin = renderToStaticMarkup(resourceIconOf({ resource: 'auto', template: 'location_trend' }, { className: slotClass }))
     const html = renderToStaticMarkup(

@@ -133,7 +133,7 @@ function loadMapsScript(): Promise<void> {
 
 /** 현재 위치 등 단순 색상 원 마커 */
 function dotIconHtml(color: string, size: number, opacity: number): string {
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:${opacity};border:2px solid #ffffff;box-shadow:0 0 0 1px rgba(0,0,0,0.2);"></div>`
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:${opacity};border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);"></div>`
 }
 
 /**
@@ -142,7 +142,7 @@ function dotIconHtml(color: string, size: number, opacity: number): string {
  */
 const DROP_MARKER_SCALE = 1.2
 
-// 배지 아이콘(흰색) — badge-fill.svg / badge-line.svg 그대로 사용
+// 배지 아이콘 — badge-fill.svg / badge-line.svg 그대로 사용
 // 티켓 20260927_2126: 온보딩 퀘스트 3단계 연출(QuestPickupScene.tsx)의 정지 마커가
 // 실제 드랍 마커와 같은 실루엣을 쓰도록 export한다 — 새 아이콘을 그리지 않는다.
 export const BADGE_FILL_PATH =
@@ -152,20 +152,22 @@ const BADGE_LINE_PATH =
   '<path fill-rule="evenodd" clip-rule="evenodd" d="M13.0006 2.17806C12.3815 1.82037 11.6185 1.82037 10.9994 2.17806L3.99945 6.22251C3.38096 6.57986 3 7.23993 3 7.95424V16.0457C3 16.76 3.38095 17.4201 3.99944 17.7774L10.9994 21.8219C11.6185 22.1796 12.3815 22.1796 13.0006 21.8219L20.0006 17.7774C20.619 17.4201 21 16.76 21 16.0457V7.95424C21 7.23993 20.619 6.57986 20.0006 6.22251L13.0006 2.17806ZM19.2501 7.5213L12.2501 3.47686C12.0954 3.38743 11.9046 3.38743 11.7499 3.47686L4.74986 7.5213C4.59524 7.61064 4.5 7.77566 4.5 7.95424V16.0457C4.5 16.2243 4.59524 16.3893 4.74986 16.4786L11.7499 20.5231C11.9046 20.6125 12.0954 20.6125 12.2501 20.5231L19.2501 16.4786C19.4048 16.3893 19.5 16.2243 19.5 16.0457V7.95424C19.5 7.77566 19.4048 7.61064 19.2501 7.5213Z"/>'
 
 /**
- * 드랍/픽업 POI 마커 — 서클 + 내부 흰색 배지 아이콘.
- * 픽업 가능한 드랍 있음 = 메인 포인트 컬러 배경 + badge-fill 아이콘,
- * 없음 = 그레이 배경 + badge-line 아이콘. 드랍 범위 밖은 기존과 동일하게
- * 진회색 + 반투명으로 표현한다.
+ * 드랍/픽업 POI 마커 — 서클 + 내부 배지 아이콘.
+ * 픽업 가능한 드랍 있음 = 메인 포인트 컬러 배경 + badge-fill 아이콘(--accent-foreground),
+ * 없음 = --muted 배경 + badge-line 아이콘(--snow). 드랍 범위 밖은 같은 --muted 배경에
+ * 반투명(0.5)으로 표현한다. 직접 적은 회색·흰색 대신 역할 토큰을 쓴다(티켓 20261015_2134).
  */
 function dropMarkerIconHtml(opts: { hasDrops: boolean; inRange: boolean; size: number }): string {
   const { hasDrops, inRange, size } = opts
-  const bg = hasDrops ? 'var(--accent)' : inRange ? '#888888' : '#444444'
+  const bg = hasDrops ? 'var(--accent)' : 'var(--muted)'
   const opacity = inRange ? 1 : 0.5
   const icon = size * 0.6
   const path = hasDrops ? BADGE_FILL_PATH : BADGE_LINE_PATH
+  // accent 면 위는 --accent-foreground(6.63:1), --muted 면 위는 --snow(5.60:1)
+  const glyph = hasDrops ? 'var(--accent-foreground)' : 'var(--snow)'
 
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${bg};opacity:${opacity};border:2px solid #ffffff;box-shadow:0 0 0 1px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;box-sizing:border-box;">` +
-    `<svg viewBox="0 0 24 24" width="${icon}" height="${icon}" fill="#ffffff" aria-hidden="true">${path}</svg></div>`
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${bg};opacity:${opacity};border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);display:flex;align-items:center;justify-content:center;box-sizing:border-box;">` +
+    `<svg viewBox="0 0 24 24" width="${icon}" height="${icon}" fill="${glyph}" aria-hidden="true">${path}</svg></div>`
 }
 
 /** 개별 체크인 배지 마커의 기준 지름(px) — 드랍/픽업 지점 서클(기본 24px)과 동일하게 맞춘다 */
@@ -223,11 +225,11 @@ function badgeMarkerIconHtml(imageUrl: string | null, earned: boolean, name: str
   const safeName = escapeHtml(name)
   const inner = imageUrl
     ? `<img src="${escapeHtml(imageUrl)}" alt="${safeName}" style="width:100%;height:100%;object-fit:contain;" />`
-    : `<span style="font-size:13px;line-height:1;color:#666;">?</span>`
+    : `<span style="font-size:13px;line-height:1;color:var(--muted);">?</span>`
 
   const badge = `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;filter:${filter};opacity:${opacity};">${inner}</div>`
   // 라벨 텍스트 — 줌 배율과 무관하게 고정 크기(14px, 70%)로 유지. 말줄임 없이 전체 텍스트 표시
-  const label = `<div style="margin-top:2px;max-width:100%;padding:2px 6px;border-radius:8px;background:rgba(0,0,0,0.65);color:#ffffff;font-size:14px;line-height:18px;white-space:nowrap;overflow:visible;text-align:center;box-sizing:border-box;opacity:${opacity};">${safeName}</div>`
+  const label = `<div style="margin-top:2px;max-width:100%;padding:2px 6px;border-radius:8px;background:color-mix(in srgb, var(--base-black) 65%, transparent);color:var(--snow);font-size:14px;line-height:18px;white-space:nowrap;overflow:visible;text-align:center;box-sizing:border-box;opacity:${opacity};">${safeName}</div>`
 
   return `<div style="width:${BADGE_MARKER_CONTENT_WIDTH}px;display:flex;flex-direction:column;align-items:center;">${badge}${label}</div>`
 }
@@ -237,7 +239,7 @@ function clusterMarkerIconHtml(count: number): string {
   const size = (count >= 100 ? 44 : count >= 10 ? 38 : 32) * 3
   const label = count > 999 ? '999+' : String(count)
   const gradient = `radial-gradient(circle, color-mix(in srgb, var(--accent) 80%, transparent) 0%, color-mix(in srgb, var(--accent) 50%, transparent) 100%)`
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${gradient};display:flex;align-items:center;justify-content:center;box-sizing:border-box;color:#ffffff;font-size:24px;font-weight:600;line-height:1;">${label}</div>`
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${gradient};display:flex;align-items:center;justify-content:center;box-sizing:border-box;color:var(--accent-foreground);font-size:24px;font-weight:600;line-height:1;">${label}</div>`
 }
 
 function escapeHtml(value: string): string {
@@ -553,16 +555,16 @@ export default function MapView({
         onClick={handleLocateClick}
         aria-label={d.map.myLocationButtonAriaLabel}
         disabled={locating}
-        className="absolute right-4 z-10 w-11 h-11 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25)] flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
+        className="absolute right-4 z-10 w-11 h-11 rounded-full bg-surface border border-border flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
         style={{ bottom: 'calc(env(safe-area-inset-bottom) + 96px)' }}
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="12" cy="12" r="7" stroke="#555555" strokeWidth="2" />
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="text-muted">
+          <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="2" />
           <circle cx="12" cy="12" r="2" fill="#4285F4" />
-          <line x1="12" y1="1" x2="12" y2="4" stroke="#555555" strokeWidth="2" strokeLinecap="round" />
-          <line x1="12" y1="20" x2="12" y2="23" stroke="#555555" strokeWidth="2" strokeLinecap="round" />
-          <line x1="1" y1="12" x2="4" y2="12" stroke="#555555" strokeWidth="2" strokeLinecap="round" />
-          <line x1="20" y1="12" x2="23" y2="12" stroke="#555555" strokeWidth="2" strokeLinecap="round" />
+          <line x1="12" y1="1" x2="12" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <line x1="12" y1="20" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <line x1="1" y1="12" x2="4" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <line x1="20" y1="12" x2="23" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
       </button>
     </div>

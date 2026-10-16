@@ -49,7 +49,7 @@ const SLOT: Record<CardImageRatio, { box: string; image: string; placeholder: st
 function ImagePlaceholder({ view, className }: { view: ImageCardView; className: string }) {
   return (
     <div className={className}>
-      {resourceIconOf(view, { className: 'w-8 h-8 text-foreground/60' })}
+      {resourceIconOf(view, { className: 'w-8 h-8 text-muted' })}
       {view.titleInImage && (
         <p className="text-base font-bold text-foreground line-clamp-3 break-keep break-words">{view.title}</p>
       )}

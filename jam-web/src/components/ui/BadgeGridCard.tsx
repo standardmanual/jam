@@ -128,14 +128,14 @@ export default function BadgeGridCard({
             width={90}
             height={90}
             className="w-full h-full object-contain p-1"
-            fallback={<MedalIcon className="w-10 h-10 text-foreground/30" />}
+            fallback={<MedalIcon className="w-10 h-10 text-muted" />}
           />
         </div>
         {showCount && (
           // 피드 카드의 카운터 필과 같은 시각 문법(20260905_0038 B). 횟수는 아래 이름 줄이
           // 아니라 썸네일에 붙어야 「이 배지를」 몇 번인지가 한눈에 붙는다.
           <span
-            className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-surface border border-[color:var(--border)] text-xs leading-none font-bold text-foreground/80 flex items-center justify-center"
+            className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-surface border border-[color:var(--border)] text-xs leading-none font-bold text-foreground flex items-center justify-center"
             aria-hidden="true"
           >
             ×{count}

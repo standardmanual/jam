@@ -813,7 +813,7 @@ function PoiCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-base font-bold text-foreground truncate">{poi.name}</p>
-          <p className="text-xs text-foreground/50 mt-0.5">{poi.distance_meters}m</p>
+          <p className="text-xs text-muted mt-0.5">{poi.distance_meters}m</p>
         </div>
         <IconButton icon="close" label={d.common.close} onClick={onClose} surface="light" className="shrink-0 -mt-2 -mr-2" />
       </div>
@@ -833,14 +833,14 @@ function PoiCard({
         /* ===== 드랍: 인벤토리 그리드(활성 카드에서만 열림) ===== */
         pendingDropItem ? (
           <div className="flex flex-col items-center gap-4 py-4">
-            <div className="w-20 h-20 rounded-2xl bg-white/[0.04] overflow-hidden flex items-center justify-center">
+            <div className="w-20 h-20 rounded-2xl bg-background-secondary overflow-hidden flex items-center justify-center">
               <SafeImage
                 src={pendingDropItem.badgeImageUrl}
                 alt={pendingDropItem.badgeName}
                 width={80}
                 height={80}
                 className="w-full h-full object-contain p-1"
-                fallback={<MedalIcon className="w-8 h-8 text-foreground/40" />}
+                fallback={<MedalIcon className="w-8 h-8 text-muted" />}
               />
             </div>
             <p className="text-base text-center whitespace-pre-line">
@@ -998,20 +998,20 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`w-full flex items-center gap-4 px-4 py-2 rounded-2xl bg-white/[0.04]${disabled ? '' : ' jam-press'} text-left disabled:cursor-default${pulse ? ' jam-quest-pulse' : ''}`}
+      className={`w-full flex items-center gap-4 px-4 py-2 rounded-2xl bg-background-secondary${disabled ? '' : ' jam-press'} text-left disabled:cursor-default${pulse ? ' jam-quest-pulse' : ''}`}
     >
       {/* 카운터 서클의 기준점 — BadgeGridCard의 카운터 필과 같은 이유로 relative를
           overflow-hidden 밖(아이콘 wrapper)에 둔다: 아이콘 자체에 relative를 걸면
           overflow-hidden이 모서리에 걸치는 서클을 잘라낸다. */}
       <div className="relative flex-shrink-0">
-        <div className="w-11 h-11 rounded-2xl overflow-hidden bg-white/[0.06] flex items-center justify-center">
+        <div className="w-11 h-11 rounded-2xl overflow-hidden bg-surface flex items-center justify-center">
           <SafeImage
             src={imageUrl}
             alt={name}
             width={44}
             height={44}
             className="w-full h-full object-contain p-0.5"
-            fallback={<MedalIcon className="w-5 h-5 text-foreground/40" />}
+            fallback={<MedalIcon className="w-5 h-5 text-muted" />}
           />
         </div>
         {showCount && (
@@ -1022,7 +1022,7 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
           // 50개라 실제로 나온다)에서 폭만 늘어나 알약 모양이 되는 걸 막는다. 인터랙션
           // 리뷰가 렌더 확인으로 잡아낸 회귀(2026-09-08).
           <span
-            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-surface border border-[color:var(--border)] text-[10px] leading-none font-bold text-foreground/80 flex items-center justify-center"
+            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-surface border border-[color:var(--border)] text-[10px] leading-none font-bold text-foreground flex items-center justify-center"
             aria-hidden="true"
           >
             {count}
@@ -1038,7 +1038,7 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
         {expiring && expiresAt ? (
           <div className="flex items-center gap-2 mt-1">
             <RarityBadge rarity={rarityValue} />
-            <p className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-foreground/70">
+            <p className="text-xs font-bold leading-none px-1.5 py-1 rounded-full shadow-[inset_0_0_0_1px_var(--border)] text-muted">
               <LocalDate iso={expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
             </p>
           </div>
@@ -1046,7 +1046,7 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
           <RarityBadge rarity={rarityValue} className="mt-1" />
         )}
       </div>
-      <ChevronRightIcon className="w-5 h-5 text-foreground/40 shrink-0" />
+      <ChevronRightIcon className="w-5 h-5 text-muted shrink-0" />
     </button>
   )
 }

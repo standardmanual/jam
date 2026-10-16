@@ -122,13 +122,13 @@ describe('HeroCard — 이미지 없음 자리 표시', () => {
 
   it.each(CARD_RESOURCES.map((resource) => [resource]))('%s는 그 자원의 아이콘을 장식(aria-hidden)으로 그린다', (resource) => {
     const html = render({ resource, imageUrl: null })
-    expect(html).toContain(iconMarkup({ resource }, 'w-8 h-8 text-foreground/60'))
-    expect(iconMarkup({ resource }, 'w-8 h-8 text-foreground/60')).toContain('aria-hidden="true"')
+    expect(html).toContain(iconMarkup({ resource }, 'w-8 h-8 text-muted'))
+    expect(iconMarkup({ resource }, 'w-8 h-8 text-muted')).toContain('aria-hidden="true"')
   })
 
   it('자동 카드는 BriefCard와 같은 규칙으로 템플릿이 지역 트렌드면 핀, 진행 알림이면 모래시계다(지역 값과 무관)', () => {
-    const pin = iconMarkup({ resource: 'auto', template: 'location_trend' }, 'w-8 h-8 text-foreground/60')
-    const hourglass = iconMarkup({ resource: 'auto', template: 'progress_nudge' }, 'w-8 h-8 text-foreground/60')
+    const pin = iconMarkup({ resource: 'auto', template: 'location_trend' }, 'w-8 h-8 text-muted')
+    const hourglass = iconMarkup({ resource: 'auto', template: 'progress_nudge' }, 'w-8 h-8 text-muted')
     expect(pin).not.toBe(hourglass)
 
     const trend = render({ resource: 'auto', template: 'location_trend', regionLabel: '성수동', imageUrl: null })
@@ -157,10 +157,10 @@ describe('HeroCard — 이미지 없음 자리 표시', () => {
     expect(html).not.toContain('이번 주말 같이 달려요')
   })
 
-  it('판은 제목을 읽을 수 있도록 어두운 글자 색(text-foreground)을 쓰고 옅은 글자는 /60이다', () => {
+  it('판은 제목을 읽을 수 있도록 어두운 글자 색(text-foreground)을 쓰고 옅은 글자는 text-muted다', () => {
     const html = render({ imageUrl: null, titleInImage: true })
-    expect(html).toContain('text-foreground/60')
-    for (const level of ['/30', '/40', '/50']) expect(html).not.toContain(`text-foreground${level}`)
+    expect(html).toContain('text-muted')
+    for (const level of ['/30', '/40', '/50', '/60']) expect(html).not.toContain(`text-foreground${level}`)
   })
 })
 

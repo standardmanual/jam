@@ -354,7 +354,7 @@ export default function SlotGrid({
   return (
     <div ref={gridRef}>
       {error && (
-        <div className="mb-3 rounded-2xl bg-surface border border-border px-3 py-2 text-xs text-foreground/70">
+        <div className="mb-3 rounded-2xl bg-surface border border-border px-3 py-2 text-xs text-muted">
           {error}
         </div>
       )}
@@ -405,7 +405,7 @@ export default function SlotGrid({
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(badge.id, slot!.id) }}
                     disabled={pending}
-                    className="block mx-auto px-3 py-1 text-xs rounded-full bg-[color:var(--base-neutral-600)] text-[color:var(--snow)] transition-all disabled:opacity-40"
+                    className="block mx-auto px-3 py-1 text-xs rounded-full bg-[var(--background-inverse)] text-[var(--snow)] transition-all disabled:opacity-40"
                   >
                     {pending ? '…' : d.itembooks.unslotButton}
                   </button>
