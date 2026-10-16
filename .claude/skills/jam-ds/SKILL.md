@@ -127,7 +127,7 @@ projectId: fd735d58-25c2-4347-95ed-d15ee2b36124   (.design-sync/state.json)
 1. `list_files`로 원격 파일 목록을 받아 로컬과 **구조 차이**를 만든다
 2. 업로드 **제외** 대상 (`.design-sync/NOTES.md` 근거):
    - `*.stories.tsx` — 로컬 Storybook 전용
-   - `Canvas.dc.html`·`dashboard.html`·`thumbnail.html`·`support.js`·`_adherence.oxlintrc.json`
+   - `Canvas.dc.html`·`thumbnail.html`·`support.js`·`_adherence.oxlintrc.json`
    - `uploads/` — 리서치 참고자료
    - iCloud 중복 파일 (`! -regex '.* [0-9]\.[a-zA-Z]*$'`)
 3. `finalize_plan`으로 쓰기·삭제 경로를 확정 (사용자가 경로 목록을 직접 본다)
@@ -135,8 +135,8 @@ projectId: fd735d58-25c2-4347-95ed-d15ee2b36124   (.design-sync/state.json)
 5. 성공하면 `.design-sync/state.json`의 `lastUploadCommit`을 현재 HEAD로,
    `lastUploadAt`을 오늘 날짜로 갱신한다. **이걸 빠뜨리면 다음 진단이 계속 stale로 뜬다**
 
-새 `.card.html`을 만들었다면 CDN이 아니라 `_vendor/`를 참조해야 한다
-(claude.ai/design 런타임이 외부 스크립트를 차단한다 — `.design-sync/NOTES.md` 참조).
+`.card.html` 미리보기 카드는 JAM 2.0 정리(티켓 20261015_2135)로 모두 없어졌다. 새로 만든다면 claude.ai/design 런타임이 외부 스크립트를
+차단하므로 CDN을 쓰지 말고 React 번들을 함께 올려야 한다(`.design-sync/NOTES.md` 참조).
 
 ## 6. 마무리
 

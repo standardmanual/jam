@@ -93,8 +93,6 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
 
 **파운데이션 — Storybook `MODULAR/Foundations`**: 색상·글꼴·모션·반경·간격·타이포 여섯 페이지가 토큰 값을 CSS 변수에서 읽어 보여 준다. 예전 `guidelines/*.html` 카드 12개는 이 페이지들과 `BadgeFrame`·`WanderingEyesLoader` 스토리로 대체하고 지웠다.
 
-**레거시 — `dashboard.html`**: Storybook 도입 전 사용하던 뷰어. 지금은 개요 한 쪽만 남았고 Storybook과 토큰 파일을 가리킨다. 컴포넌트 탐색에는 사용하지 않는다.
-
 ## 색인 (Index)
 
 * `styles.css` — 루트 스타일시트, `tokens/`의 모든 항목을 가져옴(import)
@@ -113,6 +111,4 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
   소스. TabBar와 같은 Material Symbols 채움 스타일 — `icons.tsx`의 stroke `LockIcon`과 다른
   물건이다. 배지 화면에서는 이모지를 쓰지 않는다, 20260906_2140)
 * `foundations/` — Storybook 파운데이션 페이지 6개 (Colors·Fonts·Motion·Radius·Spacing·Typography)
-* `dashboard.html` — **레거시** 개요 한 쪽. 컴포넌트 탐색은 Storybook 사용
-* `ui_kits/jam-app/` — 인터랙티브 5개 화면 클릭스루: Today / Badges / Drops / Inventory / Profile
 * `SKILL.md` — Claude Code / 기타 에이전트용 포터블 스킬 파일

@@ -15,7 +15,7 @@
   이 저장소 구조와 맞지 않아 별도 조사가 필요했고, 이미 완성된 산출물이라 우선순위가 낮다고
   판단).
 - 업로드에서 **제외**한 것들: `*.stories.tsx`(로컬 Storybook 전용, 앱이 소비하지 않음),
-  `Canvas.dc.html`/`dashboard.html`/`thumbnail.html`/`support.js`/`_adherence.oxlintrc.json`
+  `Canvas.dc.html`/`thumbnail.html`/`support.js`/`_adherence.oxlintrc.json`(`dashboard.html`은 2026-10-16에 삭제)
   (별도의 "디자인 캔버스"(.dc.html) 기능 산출물로 보이며 design-system 업로드 계약과 무관),
   `uploads/`(Shopify 리서치 참고자료·스크린샷), iCloud 동기화가 만든 " 2"/" 3" 등 중복 파일.
 - `_ds_sync.json`(검증 앵커)은 쓰지 않았다 — 정식 grading을 거치지 않은 수동 업로드이므로
@@ -46,8 +46,8 @@
 
 - **원격에 남은 파일**: claude.ai/design의 `MODULAR` 프로젝트에는 `guidelines/*.html` 12개가 아직 있다. 다음 재업로드의
   `list_files` 차이에서 삭제 경로로 잡히며, `finalize_plan` 때 사용자가 그 삭제 목록을 확인한다.
-- **`_vendor/`**: 읽는 파일이 없어졌지만 폴더는 그대로 두었다. 삭제는 사용자 결정을 기다린다.
-- **`dashboard.html`**: 개요 한 쪽으로 줄였다. 업로드 제외 대상은 그대로다.
+- **`_vendor/`(약 3MB)와 `dashboard.html`**: 같은 날 사용자 결정으로 삭제했다. 원격 `MODULAR` 프로젝트에는 두 항목이 아직 남아 있어
+  다음 재업로드의 삭제 경로 목록에 `guidelines/*.html`·`_vendor/`와 함께 잡힌다(`dashboard.html`은 업로드 제외 대상이었으므로 원격에는 없을 수 있다).
 
 ## Re-sync risks (다음 실행이 주의해야 할 것)
 

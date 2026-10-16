@@ -13,7 +13,8 @@ function TypeRow({
   sample = '가나다라 ABCDef 123',
 }: {
   step: string;
-  weight?: number;
+  /** 굵기. null이면 규정이 없는 단계라 굵기를 정하지 않고 「규정 없음」으로 표시한다. */
+  weight?: number | null;
   sample?: string;
 }) {
   const textToken = `--text-${step}`;
@@ -28,7 +29,7 @@ function TypeRow({
         style={{
           fontSize: `var(${textToken})`,
           lineHeight: `var(${leadingToken})`,
-          fontWeight: weight,
+          fontWeight: weight ?? undefined,
           color: 'var(--foreground)',
           marginBottom: 8,
           wordBreak: 'break-word',
@@ -40,7 +41,7 @@ function TypeRow({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 6 }}>
         <TokenBadge label="크기" token={textToken} value={size} />
         <TokenBadge label="행간" token={leadingToken} value={leading} />
-        <TokenBadge label="유틸리티" token={step === 'base' ? 'text-base' : `text-${step}`} value={`font-weight ${weight}`} />
+        <TokenBadge label="유틸리티" token={step === 'base' ? 'text-base' : `text-${step}`} value={weight === null ? '굵기 규정 없음' : `font-weight ${weight}`} />
       </div>
     </div>
   );
@@ -113,7 +114,7 @@ function TypographyPage() {
 
       <Section title="Headings">
         <TypeRow step="5xl" weight={600} sample="섹션 제목" />
-        <TypeRow step="4xl" weight={600} sample="큰 제목" />
+        <TypeRow step="4xl" weight={null} sample="큰 제목" />
         <TypeRow step="3xl" weight={500} sample="카드 제목" />
         <TypeRow step="2xl" weight={500} sample="서브 카드 제목" />
       </Section>
