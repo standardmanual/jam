@@ -39,6 +39,16 @@
 참조**해야 한다 (예: `components/<group>/`에서는 `../../_vendor/react.production.min.js`,
 `guidelines/`에서는 `../_vendor/react.production.min.js`).
 
+## 2026-10-16 — guidelines/*.html 12개 삭제 (티켓 20261015_2135 1회)
+
+위 기록의 `guidelines/` 카드는 모두 지웠다. 스토리북 `MODULAR/Foundations` 페이지 6개와 `BadgeFrame`·
+`WanderingEyesLoader` 스토리가 대신하고, `_ds_manifest.json`의 `cards`는 비웠다.
+
+- **원격에 남은 파일**: claude.ai/design의 `MODULAR` 프로젝트에는 `guidelines/*.html` 12개가 아직 있다. 다음 재업로드의
+  `list_files` 차이에서 삭제 경로로 잡히며, `finalize_plan` 때 사용자가 그 삭제 목록을 확인한다.
+- **`_vendor/`**: 읽는 파일이 없어졌지만 폴더는 그대로 두었다. 삭제는 사용자 결정을 기다린다.
+- **`dashboard.html`**: 개요 한 쪽으로 줄였다. 업로드 제외 대상은 그대로다.
+
 ## Re-sync risks (다음 실행이 주의해야 할 것)
 
 - 위 CDN→`_vendor/` 전환을 다음 정식 storybook 컨버터 재동기화가 덮어쓰지 않도록 주의.

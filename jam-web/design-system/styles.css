@@ -43,7 +43,7 @@ button:active:not(:disabled),
   }
 }
 
-/* DS-008: Placeholder color — WCAG AA on dark background.
+/* DS-008: Placeholder color — 보조 글자색(--muted).
    opacity:1 overrides Firefox's default 0.54 multiplier. */
 ::placeholder {
   color: var(--muted);
