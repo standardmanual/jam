@@ -52,6 +52,14 @@ function occurrencesForJob(job: ScheduledJobDef, weekStart: string): RoutineOccu
         },
       ]
 
+    case 'weekdays':
+      return schedule.weekdays.map((weekday) => ({
+        date: shiftDateStr(weekStart, offsetFromMonday(weekday)),
+        time: formatTime(schedule.hour, schedule.minute),
+        label: job.name,
+        enabled: job.enabled,
+      }))
+
     case 'weekly-labeled': {
       const date = shiftDateStr(weekStart, offsetFromMonday(schedule.weekday))
       return schedule.labels.map((sub) => ({

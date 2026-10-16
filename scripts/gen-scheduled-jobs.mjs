@@ -8,12 +8,13 @@
 //
 // md의 `## ` 절 가운데 `| 상태 |` 행이 있는 절만 루틴으로 읽는다 — `## 공통 원칙`처럼
 // `| 상태 |` 행이 없는 절은 루틴이 아니다. 절 제목은 `<이름> — <일정 표기>` 형식(구분자는
-// 스페이스+EM DASH(U+2014)+스페이스)이며, 일정 표기는 4종류만 해석한다.
+// 스페이스+EM DASH(U+2014)+스페이스)이며, 일정 표기는 5종류만 해석한다.
 //   1. 매일 HH:MM KST
 //   2. <요일>요일 HH:MM KST
 //   3. 매주 <요일>요일, <라벨>(HH:MM) → <라벨>(HH:MM) KST  (화살표는 U+2192, 하루 2회)
 //   4. 매월 N일 HH:MM KST
-// 루틴 절인데(= `| 상태 |` 행이 있는데) 위 4종류 중 어느 것으로도 해석할 수 없으면 표기가
+//   5. 매주 <요일>·<요일>[·<요일>...] HH:MM KST  (요일은 한 글자, 가운뎃점 U+00B7로 잇는다. 예: 매주 월·수·금 20:00 KST)
+// 루틴 절인데(= `| 상태 |` 행이 있는데) 위 5종류 중 어느 것으로도 해석할 수 없으면 표기가
 // 바뀐 것이므로 종료 코드 1로 실패한다 — 생성기가 조용히 낡은 값을 만들지 않기 위해서다.
 // 상태는 `| 상태 |` 칸 내용의 첫 단어가 정확히 "켜짐"이면 켜진 것으로 본다(그 밖은 꺼짐).
 //
@@ -40,13 +41,20 @@ function q(str) {
 }
 
 /**
- * 제목의 ' — ' 뒤쪽(일정 표기)을 스케줄 객체로 바꾼다. 4종류 중 어느 것과도 맞지 않으면 null.
+ * 제목의 ' — ' 뒤쪽(일정 표기)을 스케줄 객체로 바꾼다. 5종류 중 어느 것과도 맞지 않으면 null.
  */
 export function parseSchedule(text) {
   let m
 
   m = text.match(/^매월 (\d{1,2})일 (\d{2}):(\d{2}) KST$/)
   if (m) return { type: 'monthly', day: Number(m[1]), hour: Number(m[2]), minute: Number(m[3]) }
+
+  m = text.match(new RegExp(`^매주 (${WEEKDAY_CLASS}(?:·${WEEKDAY_CLASS})+) (\\d{2}):(\\d{2}) KST$`))
+  if (m) {
+    const weekdays = m[1].split('·').map((name) => WEEKDAY_NAMES[name])
+    if (new Set(weekdays).size !== weekdays.length) return null // 같은 요일을 두 번 적은 표기는 오타로 본다
+    return { type: 'weekdays', weekdays, hour: Number(m[2]), minute: Number(m[3]) }
+  }
 
   m = text.match(new RegExp(`^매주 (${WEEKDAY_CLASS})요일, (.+?)\\((\\d{2}):(\\d{2})\\) ${ARROW} (.+?)\\((\\d{2}):(\\d{2})\\) KST$`))
   if (m) {
@@ -125,6 +133,8 @@ function renderSchedule(schedule) {
       return `{ type: 'daily', hour: ${schedule.hour}, minute: ${schedule.minute} }`
     case 'weekly':
       return `{ type: 'weekly', weekday: ${schedule.weekday}, hour: ${schedule.hour}, minute: ${schedule.minute} }`
+    case 'weekdays':
+      return `{ type: 'weekdays', weekdays: [${schedule.weekdays.join(', ')}], hour: ${schedule.hour}, minute: ${schedule.minute} }`
     case 'monthly':
       return `{ type: 'monthly', day: ${schedule.day}, hour: ${schedule.hour}, minute: ${schedule.minute} }`
     case 'weekly-labeled':
@@ -151,6 +161,7 @@ export function renderGenerated(jobs) {
 export type ScheduledJobSchedule =
   | { type: 'daily'; hour: number; minute: number }
   | { type: 'weekly'; weekday: number; hour: number; minute: number }
+  | { type: 'weekdays'; weekdays: number[]; hour: number; minute: number }
   | { type: 'weekly-labeled'; weekday: number; labels: { label: string; hour: number; minute: number }[] }
   | { type: 'monthly'; day: number; hour: number; minute: number }
 
@@ -180,8 +191,8 @@ if (isMain) {
     console.error('gen-scheduled-jobs: 루틴 절의 일정 표기를 해석하지 못했습니다.')
     for (const e of errors) console.error(`  - ${e}`)
     console.error('')
-    console.error('  scheduled-jobs.md 제목은 "<이름> — <일정 표기>" 형식이고, 일정 표기는 4종류만')
-    console.error('  지원합니다: 매일 HH:MM / <요일>요일 HH:MM / 매주 <요일>요일, <라벨>(HH:MM) → <라벨>(HH:MM) / 매월 N일 HH:MM (모두 뒤에 "KST").')
+    console.error('  scheduled-jobs.md 제목은 "<이름> — <일정 표기>" 형식이고, 일정 표기는 5종류만')
+    console.error('  지원합니다: 매일 HH:MM / <요일>요일 HH:MM / 매주 <요일>·<요일> HH:MM / 매주 <요일>요일, <라벨>(HH:MM) → <라벨>(HH:MM) / 매월 N일 HH:MM (모두 뒤에 "KST").')
     process.exit(1)
   }
 

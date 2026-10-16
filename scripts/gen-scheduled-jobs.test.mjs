@@ -14,7 +14,7 @@ for (const k of Object.keys(process.env)) if (k.startsWith('GIT_')) delete proce
 
 const GEN = join(dirname(fileURLToPath(import.meta.url)), 'gen-scheduled-jobs.mjs')
 
-// ── 일정 표기 4종 파싱 ─────────────────────────────────────────────────────────
+// ── 일정 표기 5종 파싱 ─────────────────────────────────────────────────────────
 assert.deepEqual(parseSchedule('화요일 09:00 KST'), { type: 'weekly', weekday: 2, hour: 9, minute: 0 })
 assert.deepEqual(parseSchedule('매일 06:00 KST'), { type: 'daily', hour: 6, minute: 0 })
 assert.deepEqual(parseSchedule('매월 1일 09:00 KST'), { type: 'monthly', day: 1, hour: 9, minute: 0 })
@@ -26,7 +26,13 @@ assert.deepEqual(parseSchedule('매주 목요일, 확인(15:00) → 실행(23:59
     { label: '실행', hour: 23, minute: 59 },
   ],
 })
+// 여러 요일 (가운뎃점으로 이은 한 글자 요일)
+assert.deepEqual(parseSchedule('매주 월·수·금 20:00 KST'), { type: 'weekdays', weekdays: [1, 3, 5], hour: 20, minute: 0 })
+assert.deepEqual(parseSchedule('매주 화·목 09:30 KST'), { type: 'weekdays', weekdays: [2, 4], hour: 9, minute: 30 })
 // 해석할 수 없는 표기는 null
+assert.equal(parseSchedule('매주 월·월 20:00 KST'), null) // 같은 요일 중복
+assert.equal(parseSchedule('매주 월·수·금 8시 KST'), null)
+assert.equal(parseSchedule('매주 월 20:00 KST'), null) // 한 요일은 '<요일>요일 HH:MM' 표기를 쓴다
 assert.equal(parseSchedule('화요일 오전 9시 KST'), null)
 assert.equal(parseSchedule('매주 목요일 15:00 KST'), null)
 assert.equal(parseSchedule(''), null)
@@ -75,6 +81,24 @@ const sampleMd = [
   assert.equal(jobs[1].enabled, false) // 첫 단어가 '꺼짐'
   assert.equal(jobs[2].name, '월간')
   assert.equal(jobs[2].enabled, true) // '켜짐' 뒤 괄호 설명은 무시하고 첫 단어만 본다
+}
+
+// 여러 요일 루틴 절과 생성 결과 (기존 4종류의 결과는 달라지지 않는다)
+{
+  const md = [
+    '## 데일리 미팅 — 매주 월·수·금 20:00 KST',
+    '',
+    '| 상태 | 켜짐 (2026-10-14 등록) |',
+    '',
+  ].join('\n')
+  const { jobs, errors } = parseScheduledJobsMd(md)
+  assert.deepEqual(errors, [])
+  assert.deepEqual(jobs, [
+    { name: '데일리 미팅', enabled: true, schedule: { type: 'weekdays', weekdays: [1, 3, 5], hour: 20, minute: 0 } },
+  ])
+  const out = renderGenerated(jobs)
+  assert.ok(out.includes("schedule: { type: 'weekdays', weekdays: [1, 3, 5], hour: 20, minute: 0 }"))
+  assert.ok(out.includes("| { type: 'weekdays'; weekdays: number[]; hour: number; minute: number }"))
 }
 
 // ── 파싱 실패 시 오류 ─────────────────────────────────────────────────────────
