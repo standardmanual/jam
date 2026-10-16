@@ -1,4 +1,7 @@
 # MODULAR Legacy → Storybook 마이그레이션 플랜
+
+> 2026-10-16: `design-system/guidelines/`·`dashboard.html` 삭제(티켓 20261015_2135). 아래 KEEP 표기는 작성 시점 기록이다.
+
 > 2026-08-16 · Storybook 안정화 후 역할 재정의
 
 ---

@@ -27,7 +27,7 @@ description: 운동 보상 게이미피케이션 모바일 웹 — 크림 바탕
 
 ## Colors
 
-컴포넌트는 Base 팔레트(`--base-white` 같은 이름)를 직접 참조하지 않고 아래 역할 토큰만 쓴다. 예외는 이미지·지도 위 막이 `--base-black`을 섞는 곳(`PosterCard`, 지도 라벨)과 `ItemSerialCode` 인장 면 재질뿐이다(`docs/plan/jam2/11 JAM 2.0 디자인 시스템.md` 5.7절).
+컴포넌트는 Base 팔레트(`--base-white` 같은 이름)를 직접 참조하지 않고 아래 역할 토큰만 쓴다. 예외는 세 범주뿐이다: 이미지·지도 위 막이 `--base-black`을 섞는 곳, 그 막 위 오버레이 글자(`--base-white`), 시리얼 인장 면 재질(`--base-neutral-*`). 막과 오버레이 글자의 근거는 `docs/plan/jam2/11 JAM 2.0 디자인 시스템.md` 5.7절이다. 현재 목록은 `grep -rn "var(--base-" jam-web/src jam-web/design-system/components`로 확인한다.
 
 - **바탕과 면:** `--background`(페이지 바탕), `--surface`(카드), `--background-secondary`(카드 안 구획),
   `--background-inverse`(반전 면), `--surface-transparent`(완전 투명)

@@ -27,7 +27,7 @@ Tracker-less(자체 GPS 트래킹 없음, 기존 Strava 데이터 활용) + 배�
 
 ## Operating Context
 
-- 배지: 활동/아이템/POI 3개 축, 희귀도(common/rare/legend/mythic) 4단계, 미획득 배지 흐림 처리
+- 배지: 활동/아이템/POI 3개 축, 희귀도(common/rare/epic/mystic) 4단계, 미획득 배지 흐림 처리
 - 인벤토리(50슬롯 그리드), 컬렉션(트라이브별 슬롯), 믹스(재료 2~10개), 미션, JAM 포인트
 - 드랍/픽업: 네이버 지도, 유저 드랍(30일 만료) + 시스템 앰비언트 드랍
 - 어드민(`/admin`)은 데스크탑 우선, MODULAR 디자인 시스템 적용 대상 아님(서비스 전용 구현)
@@ -35,8 +35,9 @@ Tracker-less(자체 GPS 트래킹 없음, 기존 Strava 데이터 활용) + 배�
 
 ## Capabilities and Constraints
 
-- 희귀도 색상 매핑은 고정(common=black, rare=green, legend=purple, mythic=amber) — 유저가 이미
-  학습한 색 언어이므로 재매핑 금지 (`design-system/components/cards/RarityBadge.prompt.md`)
+- 희귀도 이름은 common·rare·epic·mystic이다. 색은 `design-system/tokens/colors.css`의 `--rarity-*`와
+  `docs/plan/jam2/11 JAM 2.0 디자인 시스템.md` 4.2절이 원천이고, 유저가 이미 학습한 색 언어이므로
+  임의 재매핑 금지 (`design-system/components/cards/RarityBadge.prompt.md`)
 - 배지/아이템 카드가 여러 화면에서 공유 컴포넌트로 재사용됨: `BadgeGridCard`(그리드),
   `ListRowCard`(리스트/아코디언), 이 외 `CollectionGridCard` 등. 한 컴포넌트의 시각 변경은
   배지 컬렉션·인벤토리·컬렉션 슬롯·프로필 피드·믹스·미션 상세 등 여러 화면에 동시 반영됨

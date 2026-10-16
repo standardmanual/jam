@@ -26,8 +26,7 @@ const meta: Meta<typeof DualAxisGauge> = {
           '1px 구분선 + 소제목만 두른 **구획**으로 바꿨다 — 한 계열이 카드 두 장을 쓰니 세로 ' +
           '스캔에서 「계열 하나 = 카드 하나」 규칙이 깨졌다. 축 바 8→10px, 채움은 ' +
           '`--progress-sweep`(ProgressBar `fillMode="track-gradient"`), 썸네일 64→52px, ' +
-          '이미지는 여백 없이 프레임을 꽉 채운다(objectFit: cover). ' +
-          '자간은 지정하지 않는다 — JAM 2.0은 모든 글자 크기에서 자간이 0이다(티켓 20261015_2132).',
+          '이미지는 여백 없이 프레임을 꽉 채운다(objectFit: cover).',
       },
     },
   },

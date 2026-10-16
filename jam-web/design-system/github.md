@@ -2,6 +2,8 @@ repo: standardmanual/jam
 branch: main
 path: jam-web
 
+> 2026-10-16: 아래 Shopify 추출 팔레트·cobalt/ice 서술은 폐기됐다. 색·서체의 원천은 피그마 `JAM-Modulor-V2`와 `docs/plan/jam2/11 JAM 2.0 디자인 시스템.md`다(티켓 20261015_2135). 아래는 2026-08-13 동기화 시점 기록이다.
+
 ## Last sync
 date: 2026-08-13T08:05:16Z
 
@@ -14,9 +16,4 @@ date: 2026-08-13T08:05:16Z
 ## Screen map
 | Design system screen | Repo source |
 |---|---|
-| ui_kits/jam-app (Today) | jam-web/src/app/(main)/page.tsx, TodayCardStack.tsx |
-| ui_kits/jam-app (Badges) | jam-web/src/components/ui/Badge.tsx |
-| ui_kits/jam-app (Drops) | jam-web/src/lib/drop-engine/ (content reference only) |
-| ui_kits/jam-app (Inventory) | jam-web/src/components/inventory/InventoryGrid.tsx |
-| ui_kits/jam-app (Profile) | jam-web/src/app/(main)/layout.tsx, TabBar.tsx |
 | Navigation components | jam-web/src/components/ui/TopNav.tsx, TabBar.tsx |

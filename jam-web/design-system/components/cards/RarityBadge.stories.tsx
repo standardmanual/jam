@@ -10,7 +10,7 @@ const meta: Meta<typeof RarityBadge> = {
     layout: 'centered',
     docs: {
       description: {
-        component: '등급(Common~Mystic) 라벨 칩. 자간은 지정하지 않는다 — JAM 2.0은 모든 글자 크기에서 자간이 0이다(티켓 20261015_2132).',
+        component: '등급(Common~Mystic) 라벨 칩.',
       },
     },
   },

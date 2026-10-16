@@ -17,6 +17,6 @@ Naming history: tiers 3 and 4 were renamed on 2026-08-31 (ticket 20260831_1115).
 ⚠️ **레벨형에는 이 컴포넌트를 쓰지 마라.** v5 레벨형은 `rarity`가 NULL이다 —
 `BadgeLevelChip`이 그 자리를 맡는다. `RarityBadge`는 «등급»만 그린다.
 
-⚠️ 등급 색 `--rarity-*`는 **값을 바꾸지 않는다.** 폼 입력 에러 색
-(`forms/{Input,Checkbox,Select,Textarea}.jsx`)이 이 토큰을 참조하고 있어
-값을 건드리면 폼 에러 표시가 함께 깨진다.
+⚠️ 등급 색 `--rarity-*`는 **값을 바꾸지 않는다.** 등급이 아닌 용도로 `--rarity-mystic`을 쓰는
+컴포넌트는 `forms/Checkbox.jsx`의 오류 테두리 하나다(Input·Select·Textarea는 `--danger`).
+값을 건드리면 그 표시가 함께 바뀐다.

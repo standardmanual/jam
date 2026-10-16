@@ -1,5 +1,7 @@
 # Component Candidates — 서비스 전용 UI 분류
 
+> 2026-10-16: `Input surface="inverse"` 평가(SearchBar·UserSearchBar 항목)는 티켓 20261015_2133 2회에서 `inverse`를 삭제해 전제가 사라졌다. 아래는 작성 시점 기록이다.
+
 > 기준 문서: `jam-web/docs/storybook/01-modular-audit.md` §5, §10
 > 작성일: 2026-08-16
 > 목적: 서비스(jam-web/src/)에만 존재하는 UI가 MODULAR 편입 대상인지 평가

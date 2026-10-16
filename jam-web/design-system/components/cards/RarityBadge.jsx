@@ -7,15 +7,14 @@ import React from 'react';
  * v2 changes:
  *   - Text color changed from '#fff' hardcoded to --rarity-*-foreground tokens
  *     (rare/epic use black text for better contrast on their light backgrounds)
- *   - letterSpacing applied (uppercase label legibility)
- * v6 (티켓 20261015_2132): letterSpacing 제거 — JAM 2.0은 자간이 모두 0이다.
  * v3: chip shrunk to ~65% (8px text, 4px/9px padding) — literal px, not --text-xs
  *     (there's no type-scale token below caption; common no longer renders one at all)
  * v4 (티켓 20260905_0036): 미지 등급 값의 «조용한 Common 폴백»을 걷어냈다. 아래 resolveRarity 참고.
+ * v6 (티켓 20261015_2132): letterSpacing 제거 — JAM 2.0은 자간이 모두 0이다.
  *
- * 등급 색 `--rarity-*`는 **값을 바꾸지 않는다.** 이 토큰들은 등급 밖으로도 새어 있어서
- * (**폼 입력 에러 색이 `--rarity-mystic`**이다 — `forms/{Input,Checkbox,Select,Textarea}.jsx`)
- * 값을 건드리면 폼 에러 표시가 함께 깨진다.
+ * 등급 색 `--rarity-*`는 **값을 바꾸지 않는다.** 등급이 아닌 용도로 `--rarity-mystic`을 쓰는
+ * 컴포넌트는 `forms/Checkbox.jsx`의 오류 테두리 하나다(Input·Select·Textarea는 `--danger`).
+ * 값을 건드리면 그 표시가 함께 바뀐다.
  */
 const config = {
   common: { label: 'Common', bg: 'var(--rarity-common)', text: 'var(--rarity-common-foreground)' },

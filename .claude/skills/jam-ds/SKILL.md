@@ -84,8 +84,15 @@ cd jam-web && npm run ds:manifest -- --write
 ```
 
 `_ds_manifest.json`의 `tokens`·`brandFonts`·`components`·`globalCssPaths`를 실제 파일에서
-재생성한다. 기존 항목의 `kind` 분류는 보존한다 — 손으로 정한 예외(`--color-text`를 font로
-두는 등)가 섞여 있어 규칙으로 일괄 재생성하면 그 의도가 지워진다.
+재생성한다. 기존 항목의 `kind` 분류는 토큰 **이름 기준으로** 보존한다 — 손으로 정한 예외가
+섞여 있어 규칙으로 일괄 재생성하면 그 의도가 지워진다. 그래서 토큰 이름을 바꾸면 예외가
+이어지지 않으니, 이름 교체 뒤에는 바뀐 토큰의 `kind`를 다시 확인한다.
+
+`_adherence.oxlintrc.json`은 `ds:manifest`가 만들지 않는 수동 산출물이다. `rules`는 컴포넌트
+`.d.ts`의 허용 props와 값 목록을, `x-omelette.tokens`·`tokenKinds`는 `_ds_manifest.json`의 토큰
+이름과 `kind`를 비춘다. props나 변형이 바뀌면 `rules`를 `.d.ts`에서 손으로 맞춘다. 이 파일을
+실행하는 곳은 저장소에 없고(`git grep -n "_adherence"`로 확인) 업로드에서도 제외되어(5절) 어긋나도
+막히는 것이 없다. 그래서 컴포넌트 `.d.ts`를 고친 티켓에서 함께 맞춘다.
 
 아래 둘은 아직 수동이다:
 - `readme.md` §색인 — 실제 컴포넌트 목록 기준
