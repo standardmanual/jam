@@ -15,6 +15,8 @@ import { LockIcon } from '../icons/IconCatalog.jsx';
  *
  * 레이아웃 (좌→우): 90×90 썸네일 → 텍스트 영역(상태 칩·기간, 제목, 설명, 등급+보상) → 액션 버튼
  *
+ * 카드 면은 `Card` 기본 톤(--surface + 1px --border, 그림자 없음)이다.
+ *
  * locked=true면 썸네일에 grayscale+딤 처리와 자물쇠 오버레이가 붙고, 액션 버튼이
  * 비활성화된다 (서비스의 잠금 미션 카드 패턴, 20260825_028 참고).
  */
@@ -110,7 +112,8 @@ export function MissionCard({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 3,
-                  background: 'var(--surface)',
+                  // 상태 칩 면 — 카드 면(--surface)과 같은 색이면 알약 윤곽이 사라지므로 한 단계 낮춘 --background-secondary다(티켓 20261015_2133)
+                  background: 'var(--background-secondary)',
                   color: 'var(--muted)',
                   fontSize: 10,
                   lineHeight: 1,

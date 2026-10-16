@@ -22,6 +22,26 @@ type Story = StoryObj<typeof CollectionGridCard>;
 
 const SAMPLE_IMAGE = '/ds-assets/uploads/jam_logo.png';
 
+/**
+ * 크림 캔버스 위 카드 면(JAM 2.0 라이트, 티켓 20261015_2133) — BadgeGridCard와 같은 면(흰 면 + 1px --border + 안쪽 여백 12).
+ * 진행 바 트랙은 ProgressBar 기본 트랙(--border)이라 크림 위에서도 보인다.
+ */
+export const OnCreamCanvas: Story = {
+  name: '크림 캔버스 위 — 카드 면과 진행 바',
+  parameters: { layout: 'fullscreen' },
+  render: () => (
+    <div
+      style={{
+        width: 393, boxSizing: 'border-box', background: 'var(--background)', padding: 16,
+        display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8,
+      }}
+    >
+      <CollectionGridCard name="한강 러너 컬렉션" imageUrl={SAMPLE_IMAGE} collected={5} total={10} rarity="rare" />
+      <CollectionGridCard name="이미지 없는 컬렉션" collected={0} total={10} />
+    </div>
+  ),
+};
+
 export const InProgress: Story = {
   name: '수집 중 (5/10) — Rare',
   args: {

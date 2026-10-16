@@ -127,7 +127,7 @@ export default function InventoryGrid({
       {Array.from({ length: emptySlots }).map((_, i) => (
         <div
           key={`empty-${i}`}
-          className="flex flex-col items-center bg-background rounded-2xl p-3 overflow-hidden shadow-[inset_0_0_0_1px_var(--border)] opacity-30"
+          className="flex flex-col items-center bg-surface border border-border rounded-2xl p-3 overflow-hidden opacity-30"
         >
           <div className="w-[90px] h-[90px] rounded-2xl flex items-center justify-center bg-white/10">
             <span className="text-foreground text-xl">+</span>

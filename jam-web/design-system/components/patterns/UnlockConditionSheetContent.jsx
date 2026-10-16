@@ -84,10 +84,9 @@ function RequirementRow({ req }) {
       href={req.href}
       style={{
         display: 'flex', gap: 'var(--spacing-12)', alignItems: 'center', padding: 'var(--spacing-12)',
-        borderRadius: 'var(--radius-lg)', background: 'rgba(255,255,255,0.055)',
-        boxShadow: met
-          ? 'inset 0 0 0 1px var(--progress-done)'
-          : 'inset 0 0 0 1px rgba(255,255,255,0.07)',
+        // 면 --background-secondary(시트 패널 --surface 위 구획). 링은 «이미 통과»(met)일 때만 --progress-done이다(티켓 20261015_2133)
+        borderRadius: 'var(--radius-lg)', background: 'var(--background-secondary)',
+        boxShadow: met ? 'inset 0 0 0 1px var(--progress-done)' : undefined,
         textDecoration: 'none', color: 'inherit',
       }}
     >

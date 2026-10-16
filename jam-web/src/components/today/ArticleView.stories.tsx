@@ -9,7 +9,7 @@ import ArticleView from './ArticleView'
  *
  * - 화면 폭 프레임이다: 360 기기 = 360px, 430 기기 = 430px(앱 열 최대폭). 카드와 달리 기사는 화면 전체 폭을 쓴다.
  * - 상단 TopNav는 페이지가 그리므로(`app/(main)/today/[cardId]/page.tsx`) 이 컴포넌트에는 없다. 커버는 TopNav 바로 아래에 붙는다.
- * - 캔버스는 기본 검정이다(기사 화면 배경과 같다). 칩은 검정 바탕 위 흰 칩(`LabelChip tone="inverse"`)이다.
+ * - 캔버스는 크림이다(기사 화면 배경과 같다). 칩은 크림 바탕 위 어두운 칩(`LabelChip tone="inverse"`)이다.
  * - 아래 `play`는 높이·가로 넘침 같은 계산 스타일을 눈으로 확인할 때 쓰는 보조 단언이고 CI에서 실행되지 않는다(vitest의 addon-vitest 연동 제거,
  *   `vitest.config.ts` 머리말). 클래스 단언은 `__tests__/ArticleView.test.tsx`가 보증한다.
  * - 커버는 외부 요청 없이 뜨도록 `data:` SVG 가짜 이미지를 쓴다. 로드 실패는 정적 렌더로 재현되지 않아 깨진 경로 Story가 맡는다.

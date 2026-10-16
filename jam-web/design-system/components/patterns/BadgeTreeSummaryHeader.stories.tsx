@@ -34,7 +34,7 @@ type Story = StoryObj<typeof BadgeTreeSummaryHeader>;
 
 function Frame({ children, ...rest }: { children: React.ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div style={{ width: 375, background: '#1a1a1a', padding: 16, borderRadius: 16 }} {...rest}>
+    <div style={{ width: 375, background: 'var(--background)', padding: 16, borderRadius: 16 }} {...rest}>
       {children}
     </div>
   );

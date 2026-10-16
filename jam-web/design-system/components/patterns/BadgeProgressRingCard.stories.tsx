@@ -42,7 +42,7 @@ function Grid({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        width: 343, background: '#1a1a1a', padding: 16, borderRadius: 16,
+        width: 343, background: 'var(--background)', padding: 16, borderRadius: 16,
         display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12,
       }}
     >

@@ -35,7 +35,7 @@ type Story = StoryObj<typeof UnlockConditionSheetContent>;
 
 function Sheet({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ width: 375, background: '#1f1f1f', padding: '20px 16px', borderRadius: '20px 20px 0 0' }}>
+    <div style={{ width: 375, background: 'var(--surface)', padding: '20px 16px', borderRadius: '20px 20px 0 0' }}>
       {children}
     </div>
   );

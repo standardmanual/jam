@@ -27,16 +27,10 @@ export interface BadgeTrophyGridCardProps {
   progress?: FrontierCaption | null
 }
 
+/** 카드 면 — `BadgeGridCard`·`BadgeStageRail.jsx`와 같은 레시피: 흰 면(--surface) + 1px --border, 그림자·흰 그라디언트 없음.
+ * 페이지 캔버스(bg-background)와 흰 면은 1.05:1이라 테두리가 경계를 맡는다(티켓 20260903_2329 인터랙션 리뷰 지적, 티켓 20261015_2133). */
 const BASE =
-  'flex flex-col items-center h-full rounded-2xl p-3 overflow-hidden active:scale-95 transition-transform duration-100'
-
-/** BadgeStageRail.jsx 카드 배경과 동일한 레시피 — 페이지 캔버스(bg-background)와 같은 색이면
- * 카드 경계가 안 보인다(인터랙션 리뷰 지적, 티켓 20260903_2329). */
-const CARD_STYLE = {
-  background:
-    'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--surface)',
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)',
-}
+  'flex flex-col items-center h-full bg-surface border border-border rounded-2xl p-3 overflow-hidden active:scale-95 transition-transform duration-100'
 
 /**
  * BadgeTrophyGridCard — 배지 트리(/badges/tree) 트로피 그리드(독립 배지) 전용 셀.
@@ -76,7 +70,7 @@ export default function BadgeTrophyGridCard({ name, imageUrl, rarity, level = nu
       : 'var(--progress-short)'
 
   return (
-    <Link href={href} className={BASE} style={CARD_STYLE}>
+    <Link href={href} className={BASE}>
       <div className={thumbnailCls}>
         <SafeImage
           src={imageUrl}

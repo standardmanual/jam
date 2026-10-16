@@ -1,5 +1,6 @@
 import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
+import { ProgressBar } from '../feedback/ProgressBar.jsx';
 
 // RarityBadge와 같은 축소 스케일(패딩 4px/9px, 폰트 8px) — "완성" 태그가 등급 태그 옆에
 // 나란히 붙으므로 크기를 맞춘다.
@@ -20,6 +21,9 @@ const TAG_STYLE = {
  *
  * 레이아웃: 썸네일(투명 배경) → 타이틀 → [프로그레스 바 | 카운트]
  * 썸네일 좌상단: 등급 태그(선택) + 완성 태그(선택)
+ *
+ * 면 (티켓 20261015_2133): BadgeGridCard와 같은 면 — --surface(흰) + 1px --border + 반경 --radius-2xl + 안쪽 여백 12, 그림자 없음.
+ * 진행 바는 직접 그리지 않고 ProgressBar(트랙 --border, 필 --accent)를 쓴다 — 서비스 `src/components/ui/CollectionGridCard.tsx`와 같은 트랙이다.
  *
  * Props:
  *   rarity     — 최초 등록 아이템배지 기준 컬렉션 등급 (선택)
@@ -51,6 +55,11 @@ export function CollectionGridCard({
     display: 'flex',
     flexDirection: 'column',
     gap: 'var(--spacing-8)',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    boxSizing: 'border-box',
+    borderRadius: 'var(--radius-2xl)',
+    padding: 'var(--spacing-12)',
     textDecoration: 'none',
     color: 'inherit',
     cursor: interactive ? 'pointer' : undefined,
@@ -78,10 +87,13 @@ export function CollectionGridCard({
             style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 6 }}
           />
         ) : (
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--foreground)', opacity: 0.2 }}>
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <path d="M3 9h18M9 21V9" />
-          </svg>
+          // 이미지가 없을 때의 자리 표시 — 서비스의 BookIcon(w-10 h-10, text-muted)과 같은 40px 상자·--muted 색이다
+          <span style={{ display: 'inline-flex', width: 40, height: 40, color: 'var(--muted)' }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18M9 21V9" />
+            </svg>
+          </span>
         )}
         {/* 태그 행: 등급(선택) + 완성(선택) */}
         {(showRarity || completed) && (
@@ -113,17 +125,7 @@ export function CollectionGridCard({
 
       {/* 진행 바 + 카운트 한 행 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)' }}>
-        <div style={{ flex: 1, height: 6, borderRadius: 'var(--radius-full)', background: 'rgba(255,255,255,0.20)', overflow: 'hidden' }}>
-          <div style={{
-            height: '100%',
-            width: '100%',
-            borderRadius: 'var(--radius-full)',
-            background: 'var(--accent)',
-            transform: `scaleX(${pct / 100})`,
-            transformOrigin: 'left',
-            transition: 'transform 500ms ease',
-          }} />
-        </div>
+        <ProgressBar percent={pct} height={6} />
         <span style={{
           fontSize: 'var(--text-xs)',
           color: 'var(--link)',

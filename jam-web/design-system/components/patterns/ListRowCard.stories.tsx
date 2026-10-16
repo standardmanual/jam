@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React, { useState } from 'react';
 import { ListRowCard } from './ListRowCard';
 
-// 20260816_012: 1px 인셋 보더 제거 — 배경을 --surface로 올려 구분
+// JAM 2.0 라이트(티켓 20261015_2133): 면 --surface + 1px --border. 카드 안 행은 tone="tint"
 const meta: Meta<typeof ListRowCard> = {
   title: 'MODULAR/Patterns/ListRowCard',
   component: ListRowCard,
@@ -122,6 +122,20 @@ export const MissionRow: Story = {
         trailing={<ChevronIcon />}
         href="#"
       />
+    </div>
+  ),
+};
+
+/**
+ * 카드 안 행 — 이중 테두리를 막으려고 tone="tint"(--background-secondary, 테두리 없음)를 쓴다.
+ * 바깥 카드는 기본 면(--surface + 1px --border)이다.
+ */
+export const TintInCard: Story = {
+  name: '카드 안 행 (tone="tint")',
+  render: () => (
+    <div style={{ width: 320, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-2xl)', padding: 'var(--spacing-16)', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-8)' }}>
+      <ListRowCard tone="tint" icon={<IconSlot color="var(--rarity-rare)" />} title="한강 러너" subtitle="1위 · 42.1km" />
+      <ListRowCard tone="tint" icon={<IconSlot color="var(--rarity-epic)" />} title="자전거_도시" subtitle="2위 · 38.4km" />
     </div>
   ),
 };

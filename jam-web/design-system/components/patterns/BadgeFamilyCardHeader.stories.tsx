@@ -27,14 +27,14 @@ const meta: Meta<typeof BadgeFamilyCardHeader> = {
 export default meta;
 type Story = StoryObj<typeof BadgeFamilyCardHeader>;
 
-/** 실제 계열 카드와 같은 표면·패딩(375px 화면에서 좌우 16px 여백을 뺀 343px) */
+/** 실제 계열 카드와 같은 표면(--surface + 1px --border)·패딩(375px 화면에서 좌우 16px 여백을 뺀 343px). 캔버스는 크림이다 */
 function Card({ children }: { children: React.ReactNode }) {
   return (
     <div
       data-testid="card"
       style={{
-        width: 343, padding: 16, borderRadius: 16, background: '#1f1f1f',
-        color: '#fff', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)',
+        width: 343, padding: 16, borderRadius: 16, boxSizing: 'border-box',
+        background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--foreground)',
       }}
     >
       {children}

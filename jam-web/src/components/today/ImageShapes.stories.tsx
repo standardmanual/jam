@@ -15,7 +15,7 @@ import TodayCard from './TodayCard'
  * - B줄 — 같은 1:1 배지 그림 한 장을 세 모양에 넣는다. hero는 위아래가 잘리고, poster는 좌우가 잘리고, square는 전체가 보인다.
  *   1737에서 넘어온 사용자 확인 항목(hero에서 1:1 배지 그림이 크게 잘리는 것)을 이 줄이 바로 보여 준다.
  *
- * 카드 폭은 뷰포트 에뮬레이션이 아니라 고정 폭 래퍼다. 캔버스는 기본 검정이다. 개별 모양의 상태 행렬은 각 모양의 Story(`HeroCard`·`PosterCard`·`SquareCard`)에 있다.
+ * 카드 폭은 뷰포트 에뮬레이션이 아니라 고정 폭 래퍼다. 캔버스는 크림(`--background`)이다. 개별 모양의 상태 행렬은 각 모양의 Story(`HeroCard`·`PosterCard`·`SquareCard`)에 있다.
  * 아래 `play`는 비율·잘림 같은 계산 스타일을 눈으로 확인할 때 쓰는 보조 단언이고 CI에서 실행되지 않는다(vitest의 addon-vitest 연동 제거, `vitest.config.ts` 머리말).
  * 이미지는 외부 요청 없이 뜨도록 `data:` SVG 가짜 커버와 `public/badges/sample`의 배지 그림만 쓴다.
  */

@@ -29,21 +29,23 @@ export default function UserSearchBar({ defaultValue = '', size = 'default' }: U
     router.push(`/search?q=${encodeURIComponent(trimmed)}`)
   }
 
+  // 면 --surface + 1px --field-border(반경은 그대로 rounded-2xl), 글자 --foreground, placeholder·아이콘 --muted(흰 면 위 5.74:1).
+  // input의 포커스 윤곽은 없애고 바 전체에 focus-within 표시(--link 2px)를 둔다(티켓 20261015_2133).
   return (
     <form
       onSubmit={handleSubmit}
-      className={`flex items-center gap-2 rounded-2xl bg-background-inverse ${
+      className={`flex items-center gap-2 rounded-2xl bg-surface border border-field-border focus-within:border-link focus-within:shadow-[inset_0_0_0_1px_var(--link)] ${
         isCompact ? 'p-1' : 'p-2'
       }`}
     >
-      <SearchIcon className="w-5 h-5 shrink-0 ml-2 text-snow/40" />
+      <SearchIcon className="w-5 h-5 shrink-0 ml-2 text-muted" />
       <input
         type="text"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder={d.today.searchPlaceholder}
         aria-label={d.today.searchAriaLabel}
-        className={`flex-1 min-w-0 bg-transparent px-1 text-base text-snow placeholder:text-snow/40 focus:outline-none ${
+        className={`flex-1 min-w-0 bg-transparent px-1 text-base text-foreground placeholder:text-muted focus:outline-none ${
           isCompact ? 'py-1' : 'py-2'
         }`}
       />

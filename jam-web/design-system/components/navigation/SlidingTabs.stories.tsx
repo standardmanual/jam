@@ -41,13 +41,31 @@ export const Interactive: Story = {
   },
 };
 
-export const OnCardVariant: Story = {
-  name: 'onCard 팔레트 (라이트 카드 위)',
+/**
+ * onSurface 기본 팔레트(JAM 2.0 라이트, 티켓 20261015_2133) — 크림 캔버스 위에서 트랙 `--default`,
+ * 비활성 라벨 `--muted`, 활성 pill `--background-inverse` + `--snow`다. `outlined={false}`가 서비스 호출부(배지·미션·피드 탭)의 값이다.
+ */
+export const OnCreamTrack: Story = {
+  name: 'onSurface 팔레트 (크림 캔버스 위, 트랙 --default)',
   render: () => {
     const [value, setValue] = useState('all');
     return (
-      <div style={{ width: 360, background: 'var(--background-inverse)', padding: 16, borderRadius: 12 }}>
-        <SlidingTabs items={ACTIVITY_TABS} value={value} onChange={setValue} variant="onCard" />
+      <div style={{ width: 360, background: 'var(--background)', padding: 16 }}>
+        <SlidingTabs items={ACTIVITY_TABS} value={value} onChange={setValue} outlined={false} />
+      </div>
+    );
+  },
+};
+
+export const OnCardVariant: Story = {
+  name: 'onCard 팔레트 (흰 카드 위)',
+  render: () => {
+    const [value, setValue] = useState('all');
+    return (
+      <div style={{ width: 360, background: 'var(--background)', padding: 16 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: 16, borderRadius: 'var(--radius-2xl)', boxSizing: 'border-box' }}>
+          <SlidingTabs items={ACTIVITY_TABS} value={value} onChange={setValue} variant="onCard" outlined={false} />
+        </div>
       </div>
     );
   },

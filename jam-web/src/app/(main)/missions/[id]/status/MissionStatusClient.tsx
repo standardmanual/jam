@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import TopNav from '@/components/ui/TopNav'
 import ListRowCard from '@/components/ui/ListRowCard'
+import { Card } from '@ds/components/cards/Card'
 import RankingListRow from '@/components/ranking/RankingListRow'
 import { UserIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
@@ -305,7 +306,9 @@ function MyRankCard({
 function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
   return (
     <ListRowCard
+      tone="tint"
       href={e.username ? `/${e.username}` : undefined}
+      // 이 행은 늘 순위 카드(흰 면 + 테두리) 안이라 면은 tint다 — 카드 속 카드의 이중 테두리를 막는다(티켓 20261015_2133).
       // 프로그래스바가 없어 한 줄짜리 행이라 기본 p-16(위아래 32px 간격)은 헐렁해 보인다 —
       // 위아래 패딩만 좁혀 목록 간격을 줄인다.
       className="!py-2"
@@ -420,18 +423,18 @@ export default function MissionStatusClient({
             {/* TOP 3 포디엄 — InfoCard(bg-surface, radius-cards, p-6)로 다른 화면과 동일하게 카드화.
                 3명 미만이면 빈 슬롯 "—" 처리 */}
             {entries.length > 0 && (
-              <div className="bg-surface rounded-2xl p-6">
+              <Card>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
                   {top3.map(({ cfg, entry }) => (
                     <PodiumColumn key={cfg.rank} cfg={cfg} entry={entry} missionType={missionType} />
                   ))}
                 </div>
-              </div>
+              </Card>
             )}
 
             {/* 전체 순위 목록 (4위~) — InfoCard + 섹션 라벨(다른 화면의 SectionLabel과 동일 톤) */}
             {rest.length > 0 && (
-              <div className="bg-surface rounded-2xl p-6">
+              <Card>
                 <div className="flex items-baseline justify-between mb-2">
                   <p className="m-0 text-[15px] font-bold text-foreground">{d.missions.statusAllRanks}</p>
                   <span className="text-xs text-muted">
@@ -439,23 +442,26 @@ export default function MissionStatusClient({
                   </span>
                 </div>
 
-                {rest.map(entry => (
-                  <RankingListRow
-                    key={entry.userId}
-                    entry={{
-                      userId: entry.userId,
-                      displayName: entry.displayName,
-                      username: entry.username,
-                      avatarUrl: entry.avatarUrl,
-                      value: entry.progressValue,
-                      rank: entry.rank,
-                    }}
-                    maxValue={maxProgress}
-                    isMe={isMeInEntries(entry.userId)}
-                    formatValue={(v) => formatMissionProgress(v, missionType)}
-                  />
-                ))}
-              </div>
+                {/* 행 면이 tint(테두리 없음)라 행 사이 간격(8px)이 있어야 행이 하나로 붙어 보이지 않는다 — 홈 ListCard 행형과 같다 */}
+                <div className="flex flex-col gap-2">
+                  {rest.map(entry => (
+                    <RankingListRow
+                      key={entry.userId}
+                      entry={{
+                        userId: entry.userId,
+                        displayName: entry.displayName,
+                        username: entry.username,
+                        avatarUrl: entry.avatarUrl,
+                        value: entry.progressValue,
+                        rank: entry.rank,
+                      }}
+                      maxValue={maxProgress}
+                      isMe={isMeInEntries(entry.userId)}
+                      formatValue={(v) => formatMissionProgress(v, missionType)}
+                    />
+                  ))}
+                </div>
+              </Card>
             )}
 
             {/* 나의 순위 카드 — 목록 밖일 때만 예외적으로 노출 */}
@@ -480,14 +486,14 @@ export default function MissionStatusClient({
       {data?.type === 'achievement' && (
         <div className="flex flex-col gap-4 px-4 pt-0 pb-8">
           {data.entries.length > 0 && (
-            <div className="bg-surface rounded-2xl p-6">
+            <Card>
               <div className="flex items-baseline justify-between mb-2">
                 <p className="m-0 text-[15px] font-bold text-foreground">{d.missions.statusAchievementLabel}</p>
                 <span className="text-xs text-muted">
                   {t(d.missions.statusParticipants, { count: data.totalParticipants })}
                 </span>
               </div>
-              <div>
+              <div className="flex flex-col gap-2">
                 {data.entries.map(e => (
                   <AchievementRow key={e.userId} e={e} highlight={isMeInEntries(e.userId)} />
                 ))}
@@ -498,7 +504,7 @@ export default function MissionStatusClient({
                   </>
                 )}
               </div>
-            </div>
+            </Card>
           )}
 
           {data.entries.length === 0 && !data.me && (
@@ -514,7 +520,7 @@ export default function MissionStatusClient({
       {/* ── 개인형 타입 — 동일한 InfoCard 섹션 어휘. 참가자 수가 없어 라벨만 노출 ── */}
       {data?.type === 'individual' && (
         <div className="px-4 pt-0 pb-8">
-          <div className="bg-surface rounded-2xl p-6">
+          <Card>
             <p className="m-0 mb-4 text-[15px] font-bold text-foreground">{d.missions.statusIndividualLabel}</p>
             <div className="flex items-center justify-between">
               <span className="text-base text-muted">
@@ -530,7 +536,7 @@ export default function MissionStatusClient({
                 </span>
               )}
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

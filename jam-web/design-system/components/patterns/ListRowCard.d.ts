@@ -1,6 +1,11 @@
 import type { ReactNode, CSSProperties } from 'react';
 
 export interface ListRowCardProps {
+  /**
+   * 행 면 톤. `default`는 흰 면(`--surface`) + 1px `--border`(크림 바탕 위 행),
+   * `tint`는 `--background-secondary` 테두리 없음(이미 카드 안에 들어간 행 전용).
+   */
+  tone?: 'default' | 'tint';
   /** 좌측 40×40 아이콘 영역 — 크기·형태·배경 모두 호출부에서 결정. */
   icon?: ReactNode;
   title?: string;

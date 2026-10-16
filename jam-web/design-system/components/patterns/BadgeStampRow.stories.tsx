@@ -39,7 +39,7 @@ export default meta;
 type Story = StoryObj<typeof BadgeStampRow>;
 
 function Frame({ children }: { children: React.ReactNode }) {
-  return <div style={{ width: 375, background: '#1a1a1a', padding: 16, borderRadius: 16 }}>{children}</div>;
+  return <div style={{ width: 375, background: 'var(--background)', padding: 16, borderRadius: 16 }}>{children}</div>;
 }
 
 // v5 실데이터 — walking "이번 주의 약속"(한 주에 3회 / 1·8·26·52회), "스물넷의 산책"

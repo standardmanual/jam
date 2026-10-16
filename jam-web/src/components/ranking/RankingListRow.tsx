@@ -42,7 +42,11 @@ export interface RankingListRowProps {
   formatValue: (value: number) => string
 }
 
-/** 순위 목록의 행 하나 — 순위 번호·아바타·이름·진행 바·값을 그린다(1·2·3위 강조 포디엄 없음) */
+/**
+ * 순위 목록의 행 하나 — 순위 번호·아바타·이름·진행 바·값을 그린다(1·2·3위 강조 포디엄 없음).
+ * 이 행은 늘 흰 카드(홈 `ListCard`, 미션 현황의 순위 카드) 안에 들어가므로 면은 `tone="tint"`(--background-secondary, 테두리 없음)다 —
+ * 카드 속 카드의 이중 테두리를 막는다(티켓 20261015_2133). 행 사이에는 호출부가 간격(gap 8)을 둔다.
+ */
 export default function RankingListRow({ entry, maxValue, isMe, formatValue }: RankingListRowProps) {
   const fillRatio = maxValue > 0 ? Math.min(1, entry.value / maxValue) : 0
   // 내 순위 행만 h4 토큰(24px)으로 확대 강조, 그 외에는 small 토큰(14px) 그대로
@@ -50,6 +54,7 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue }: R
 
   return (
     <ListRowCard
+      tone="tint"
       href={entry.username ? `/${entry.username}` : undefined}
       icon={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

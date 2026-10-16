@@ -12,7 +12,7 @@ import TodayCard from './TodayCard'
  *   이미지 칸은 16:9라 328px 폭에서 약 184px, 398px에서 약 224px, 288px에서 162px이다.
  * - 카드 높이 실측(Chromium, 2026-10-01 — 확정 설계의 추정치 대신 이 값을 쓴다): 값이 가득 찬 미션 카드(요약·필수 정보 2줄·설명문·끝 줄) 328px 폭 441.7px ·
  *   398px 폭 481.1px, 기사 카드 328px 폭 409.7px, 드랍 카드 389.7px. 최악 조합(긴 제목·요약·필수 정보·설명문) 288px 폭 514.5px · 328px 폭 516.9px · 398px 폭 556.3px.
- * - 캔버스는 기본 검정이다. 흰 카드는 검정 위에서만 실제 모습이 나온다.
+ * - 캔버스는 크림(`--background`, #fafaf0)이다. 흰 카드의 경계는 1px `--border`가 맡고 그림자는 없다.
  * - 이미지 로딩 중 모습(`--background` 단색 판)은 Story로 만들기 어렵다(로컬·data 이미지는 즉시 뜬다). 칸의 클래스(`aspect-video bg-background`)가
  *   이미지와 무관하게 늘 있다는 것은 `__tests__/HeroCard.test.tsx`가 보증한다.
  * - Storybook은 `design-system/styles.css`를 import하므로 전역 `*:focus-visible` 윤곽선이 서비스에 없어도 보인다. 그래서 Story에서
@@ -126,7 +126,7 @@ function Column({ width, children }: { width: number; children: ReactNode }) {
   return <div style={{ ...STACK_STYLE, width }}>{children}</div>
 }
 
-/** 캡션(검정 캔버스 위 설명 글자) + 카드. `data-card`가 높이·가로 넘침 측정 대상이다 */
+/** 캡션(크림 캔버스 위 설명 글자) + 카드. `data-card`가 높이·가로 넘침 측정 대상이다 */
 function Case({ caption, view, width }: { caption: string; view: CardView; width?: number }) {
   return (
     <div style={width ? { width } : undefined}>

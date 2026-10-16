@@ -18,7 +18,7 @@ import TodayCard from './TodayCard'
  *   12개든 같다), 328px 폭 행형 값이 가득 찬 카드(요약·설명문·순위 3행) 407.2px(순위 행 하나당 76px = 행 68px + 간격 8px, 1행 255.2px · 5행 559.2px · 10행 939.2px).
  *   최악 조합(긴 제목·요약·필수 정보·설명문)은 타일형 288px 폭 466px · 328px 폭 446px · 398px 폭 426px, 행형 10행 288px 폭 1086.5px · 328px 폭 1066.4px · 398px 폭 1046.4px.
  *   나머지 값은 각 Story 캡션에 적었다. 같은 폭에서 타일형과 행형 모두 높이가 타일 수·링크 유무와 무관하다.
- * - 캔버스는 기본 검정이다. 흰 카드는 검정 위에서만 실제 모습이 나온다. 순위 행은 어두운 면(`bg-surface`)이라 흰 카드 위에서 검정 캔버스와 같은 계열로 보인다.
+ * - 캔버스는 크림(`--background`, #fafaf0)이다. 흰 카드의 경계는 1px `--border`가 맡는다. 순위 행은 tint 면(`--background-secondary`, 테두리 없음)이라 흰 카드 안에서 구획으로 보인다.
  * - Storybook은 `design-system/styles.css`를 import하므로 전역 `*:focus-visible` 윤곽선이 서비스에 없어도 보인다. 그래서 Story에서 윤곽선이 보인다는 것은 서비스 증거가 아니다 —
  *   클래스 단언(`__tests__/CardFrame.test.tsx`)이 보증한다. 아래 `play`는 높이·가로 넘침·링크 수 같은 계산 스타일을 눈으로 확인할 때 쓰는 보조 단언이고 CI에서 실행되지 않는다
  *   (vitest의 addon-vitest 연동 제거, `vitest.config.ts` 머리말).
@@ -126,7 +126,7 @@ function Column({ width, children }: { width: number; children: ReactNode }) {
   return <div style={{ ...STACK_STYLE, width }}>{children}</div>
 }
 
-/** 캡션(검정 캔버스 위 설명 글자) + 카드. `data-card`가 높이·가로 넘침·링크 수 측정 대상이다 */
+/** 캡션(크림 캔버스 위 설명 글자) + 카드. `data-card`가 높이·가로 넘침·링크 수 측정 대상이다 */
 function Case({ caption, view, width, currentUserId }: { caption: string; view: ListCardView; width?: number; currentUserId?: string }) {
   return (
     <div style={width ? { width } : undefined}>

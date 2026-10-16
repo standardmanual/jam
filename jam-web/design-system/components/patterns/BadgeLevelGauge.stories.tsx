@@ -44,7 +44,7 @@ export default meta;
 type Story = StoryObj<typeof BadgeLevelGauge>;
 
 function Frame({ children }: { children: React.ReactNode }) {
-  return <div style={{ width: 375, background: '#1a1a1a', padding: 16, borderRadius: 16 }}>{children}</div>;
+  return <div style={{ width: 375, background: 'var(--background)', padding: 16, borderRadius: 16 }}>{children}</div>;
 }
 
 // v5 실데이터 — walking:L1 "걸어온 거리"(누적 거리 5/15/40/75…km), walking:L2 "걸은 날들"
@@ -168,7 +168,7 @@ export const SlashAlignment: Story = {
 };
 
 /**
- * 회귀 고정(20260906_1436 §3) — 진행 중(미완료)인 현재값은 화이트(--foreground)다.
+ * 회귀 고정(20260906_1436 §3) — 진행 중(미완료)인 현재값은 --foreground(본문 글자색)다.
  * 예전엔 옐로우(--progress-short)였는데 눈에 거슬린다는 지적으로 텍스트 색만 바꿨다.
  * 진행 바 채움색(ProgressBar의 --progress-short → --progress-done 그라데이션)은
  * 그대로다 — 이 스토리에서는 값 텍스트 색만 검증한다.
@@ -186,7 +186,7 @@ export const InProgressValueIsWhite: Story = {
     const gauge = canvasElement.querySelector('[data-testid="gauge"]')!;
     const current = Array.from(gauge.querySelectorAll('span')).find((el) => el.textContent === '52.4') as HTMLElement;
     expect(current).toBeTruthy();
-    // --foreground(#ffffff) → rgb(255, 255, 255). 옐로우(#f2cb00)가 아니어야 한다.
+    // --foreground(#171717) → rgb(23, 23, 23). 옐로우(--progress-short)가 아니어야 한다.
     expect(getComputedStyle(current).color).toBe('rgb(23, 23, 23)');
   },
 };

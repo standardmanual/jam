@@ -29,7 +29,7 @@ function Cell({ label, children }: { label: string; children: React.ReactNode })
     <div
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        padding: 12, borderRadius: 12, background: '#1a1a1a', color: 'var(--foreground, #fff)',
+        padding: 12, borderRadius: 12, background: 'var(--background)', color: 'var(--foreground)',
       }}
     >
       <span style={{ display: 'flex' }}>{children}</span>
@@ -70,7 +70,7 @@ export const All: Story = {
 export const ColorInherits: Story = {
   name: '색은 부모 color를 따른다',
   render: () => (
-    <div style={{ display: 'flex', gap: 16, alignItems: 'center', padding: 16, background: '#1a1a1a', borderRadius: 12 }}>
+    <div style={{ display: 'flex', gap: 16, alignItems: 'center', padding: 16, background: 'var(--background)', borderRadius: 12 }}>
       <span style={{ color: 'var(--progress-done, #d6f24a)', display: 'flex' }}>
         <CheckGlyph size={24} />
       </span>

@@ -28,7 +28,8 @@ export interface CollectionGridCardProps {
   children?: ReactNode
 }
 
-const BASE = 'flex flex-col gap-2'
+// 카드 면 레시피(티켓 20261015_2133): BadgeGridCard와 같은 면 — 흰 면(--surface) + 1px --border + 반경 16 + 안쪽 여백 12, 그림자 없음.
+const BASE = 'flex flex-col gap-2 bg-surface border border-border rounded-2xl p-3'
 
 export default function CollectionGridCard({
   name,
@@ -59,14 +60,14 @@ export default function CollectionGridCard({
           alt={name}
           className="object-contain p-1.5"
           sizes="50vw"
-          fallback={<BookIcon className="w-10 h-10 text-foreground/20" />}
+          fallback={<BookIcon className="w-10 h-10 text-muted" />}
         />
         {/* 태그 행: 등급(선택) + 완성 */}
         {(rarity || completed) && (
           <div className="absolute top-2 left-2 flex items-center gap-1">
             {rarity && <RarityBadge rarity={rarity} />}
             {completed && (
-              <span className="bg-[color:var(--accent)] text-[color:var(--accent-foreground)] text-xs leading-none px-2 py-0.5 rounded-full font-bold">
+              <span className="bg-accent text-accent-foreground text-xs leading-none px-2 py-0.5 rounded-full font-bold">
                 {d.itembooks.completed}
               </span>
             )}
