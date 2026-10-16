@@ -6,6 +6,7 @@ import TopNav from '@/components/ui/TopNav'
 import { Card } from '@ds/components/cards/Card'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import ListRowCard from '@/components/ui/ListRowCard'
+import Button from '@/components/ui/Button'
 import { CoinIcon } from '@/components/ui/icons'
 import { useDigitPopIn } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
@@ -77,8 +78,8 @@ export default function PointsPage() {
 
       <div className="px-4 pt-0 pb-10 flex flex-col gap-6">
         {/* 잔액 카드 */}
-        <Card tone="inverse" className="text-center py-8">
-          <p className="text-xs uppercase text-snow/50 mb-2">{d.points.balanceLabel}</p>
+        <Card className="text-center py-8">
+          <p className="text-xs uppercase text-muted mb-2">{d.points.balanceLabel}</p>
           <p
             className="text-5xl font-bold text-[color:var(--link)]"
             aria-label={balanceDigits === null ? undefined : t(d.points.balanceAria, { amount: balanceDigits })}
@@ -100,14 +101,11 @@ export default function PointsPage() {
           )}
 
           {!loading && error && (
-            <Card tone="inverse" className="text-center py-8">
-              <p className="text-base text-snow/70 mb-4">{d.points.loadError}</p>
-              <button
-                onClick={() => load(null, false)}
-                className="inline-flex items-center justify-center min-h-11 px-4 rounded-full bg-background text-foreground text-base active:scale-95 transition-transform duration-100"
-              >
+            <Card className="text-center py-8">
+              <p className="text-base text-muted mb-4">{d.points.loadError}</p>
+              <Button variant="outline" surface="sub" onClick={() => load(null, false)}>
                 {d.points.retry}
-              </button>
+              </Button>
             </Card>
           )}
 

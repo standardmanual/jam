@@ -10,8 +10,8 @@ import type { TodayLeftStatus, TodayRightStatus } from '@/lib/today/status'
 /**
  * 투데이 홈 "오늘의 현황" 스트립 (티켓 20260830_2030) — 좌: 내 진행도 / 우: 친구 활동.
  *
- * MODULAR 재사용 판정(오케스트레이터 결정) — 신규 컴포넌트 없이 기존 Card(tone="inverse")·
- * ProgressBar·icons.tsx만으로 구성한다. EmptyState는 셀에 직접 넣지 않고(카드 여백·타이포
+ * MODULAR 재사용 판정(오케스트레이터 결정) — 신규 컴포넌트 없이 기존 Card(기본 톤: 흰 면 + 1px 테두리)·
+ * ProgressBar·icons.tsx만으로 구성한다(티켓 20261015_2133: 어두운 반전 면을 걷고 글자는 `text-muted`로 맞췄다). EmptyState는 셀에 직접 넣지 않고(카드 여백·타이포
  * 규격 불일치) "아이콘 opacity 0.5 + 뮤트 톤" 시각 관례만 인라인으로 차용한다.
  */
 
@@ -32,7 +32,7 @@ function LeftCell({ status }: { status: TodayLeftStatus }) {
   if (status.kind === 'strava_disconnected') {
     return (
       <Link href={status.href} className="block h-full">
-        <Card tone="inverse" className={CELL_CLASS}>
+        <Card className={CELL_CLASS}>
           <CellLabel>{d.todayStatus.myProgressLabel}</CellLabel>
           <div className={CELL_BODY_CLASS}>
             <p className="text-base font-bold">
@@ -52,7 +52,7 @@ function LeftCell({ status }: { status: TodayLeftStatus }) {
     const total = formatMissionProgress(status.total, status.missionType ?? '')
     return (
       <Link href={status.href} className="block h-full">
-        <Card tone="inverse" className={CELL_CLASS}>
+        <Card className={CELL_CLASS}>
           <CellLabel>{d.todayStatus.myProgressLabel}</CellLabel>
           <div className={CELL_BODY_CLASS}>
             <p className="text-base font-bold">
@@ -71,10 +71,10 @@ function LeftCell({ status }: { status: TodayLeftStatus }) {
   const Icon = status.category === 'missions' ? TargetIcon : PackageIcon
   return (
     <Link href={status.href} className="block h-full">
-      <Card tone="inverse" className={CELL_CLASS}>
+      <Card className={CELL_CLASS}>
         <CellLabel>{d.todayStatus.myProgressLabel}</CellLabel>
         <div className={CELL_BODY_CLASS}>
-          <span className="text-snow/60 opacity-50">
+          <span className="text-muted opacity-50">
             <Icon className="w-6 h-6" />
           </span>
           <p className="text-base font-bold">
@@ -90,10 +90,10 @@ function RightCell({ status }: { status: Exclude<TodayRightStatus, { kind: 'none
   if (status.kind === 'no_following') {
     return (
       <Link href={status.href} className="block h-full">
-        <Card tone="inverse" className={CELL_CLASS}>
+        <Card className={CELL_CLASS}>
           <CellLabel>{d.todayStatus.friendActivityLabel}</CellLabel>
           <div className={CELL_BODY_CLASS}>
-            <span className="text-snow/60 opacity-50">
+            <span className="text-muted opacity-50">
               <UsersIcon className="w-6 h-6" />
             </span>
             <p className="text-base font-bold">
@@ -112,7 +112,7 @@ function RightCell({ status }: { status: Exclude<TodayRightStatus, { kind: 'none
 
   return (
     <Link href={status.href} className="block h-full">
-      <Card tone="inverse" className={CELL_CLASS}>
+      <Card className={CELL_CLASS}>
         <CellLabel>{d.todayStatus.friendActivityLabel}</CellLabel>
         <div className={CELL_BODY_CLASS}>
           <p className="text-base font-bold">

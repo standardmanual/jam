@@ -10,6 +10,7 @@ import TopNav from '@/components/ui/TopNav'
 import { LockIcon, CoinIcon } from '@/components/ui/icons'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import ListRowCard from '@/components/ui/ListRowCard'
+import { Card } from '@ds/components/cards/Card'
 import type { MissionRow, MissionCondition, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { RARITY_LABEL } from '@/lib/rarity'
@@ -78,9 +79,9 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 /* ── 다크 인포 카드 (20260816_012: 보더 제거, 페이지 캔버스보다 밝은 엘리베이션 배경으로 구분) ── */
 function InfoCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-surface rounded-2xl p-6 flex flex-col gap-4 ${className}`}>
+    <Card className={`flex flex-col gap-4 ${className}`}>
       {children}
-    </div>
+    </Card>
   )
 }
 
@@ -203,7 +204,7 @@ export default function MissionDetailClient({
             필터는 컨테이너가 아니라 **이미지에만** 건다(BadgeHeroSection.tsx:46과 동일한 하우스 패턴).
             컨테이너에 걸면 카드 표면(bg-surface)까지 흐려져 캔버스와의 경계가 사라지고,
             SafeImage의 폴백 문구도 함께 딤돼 대비가 8.2:1 → 3.3:1로 떨어진다. */}
-        <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-surface flex items-center justify-center">
+        <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-surface border border-border flex items-center justify-center">
           <SafeImage
             src={mission.image_url}
             alt={t(d.missions.thumbnailAlt, { title: mission.title })}
@@ -284,7 +285,7 @@ export default function MissionDetailClient({
               /* 달성형 */
               <div className="flex items-center justify-between">
                 <p className="text-[14px] leading-[1.43] text-muted">{goal.label}</p>
-                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-white/10 text-foreground' : 'bg-border text-muted'}`}>
+                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-white/10 text-foreground' : 'bg-border text-foreground'}`}>
                   {achieved ? d.missions.achieved : d.missions.notAchieved}
                 </span>
               </div>
@@ -395,7 +396,7 @@ export default function MissionDetailClient({
         {/* 미션 상황 보기 — 참가자만 */}
         {(participating || isCompleted) && (
           <Link href={`/missions/${mission.id}/status`}>
-            <div className="bg-surface rounded-2xl p-4 text-center text-base text-muted jam-press">
+            <div className="bg-surface border border-border rounded-2xl p-4 text-center text-base text-muted jam-press">
               {d.missions.statusViewButton}
             </div>
           </Link>
@@ -430,7 +431,7 @@ export default function MissionDetailClient({
               data-open="false"
               style={{ ['--panel-translate-y' as string]: '32px' }}
             >
-              <div className="bg-surface rounded-2xl p-6">
+              <Card>
                 <p className="text-base text-muted text-center mb-4">
                   {d.missions.joinConfirmBody}
                 </p>
@@ -450,7 +451,7 @@ export default function MissionDetailClient({
                     {loading ? d.missions.joinButtonPending : d.missions.joinConfirmButton}
                   </Button>
                 </div>
-              </div>
+              </Card>
             </div>
           ) : (
             <div className="flex flex-col gap-2">

@@ -15,7 +15,7 @@ import CardImageSlot from './CardImageSlot'
  *   닿아야 해서 같은 인라인 `style`로 0을 주고, 본문 24px은 본문 칸이 가진다. 이미지 모서리는 `Card`의 `overflow-hidden`이 자른다.
  * - 눌림·hover를 안쪽에 더하지 않는다(`CardFrame`의 링크가 가진 `.jam-press` 하나뿐이다). `overflow-hidden`은 `Card`에만 걸어 포커스 윤곽선이 잘리지 않게 한다.
  * - `--text-base`은 서비스에서 14px이 아니라 16px이다. 필수 정보·설명문 14px은 `--text-sm`이다.
- * - 옅은 글자는 `text-snow/60` 한 단계로 통일한다(흰 면 위 AA 이상). `/30`·`/40`은 쓰지 않는다.
+ * - 옅은 글자는 `text-muted` 한 단계로 통일한다(흰 면 위 5.74:1). 불투명도로 글자색을 만들지 않는다(티켓 20261015_2133).
  * - 이미지 위에는 아무것도 얹지 않는다(칩·그림자·어두운 막 없음). 칩 줄은 이미지 아래 흰 본문의 첫 줄이다.
  * - 본문 칸·제목 그룹·필수 정보·설명문·끝 줄은 `SquareCard`·`ListCard`와 공용 조각이다(`CardBody.tsx`, 티켓 20261001_2104 — 셋째 소비자가 생겨 공용으로 뺐다).
  *   `titleInImage`로 제목 그룹을 빼는 판단은 이 파일에 둔다(이미지 모양만의 규칙이다).
@@ -25,7 +25,7 @@ export default function HeroCard({ view }: { view: ImageCardView }) {
   const hasTitleGroup = !view.titleInImage
 
   return (
-    <Card tone="inverse" className="overflow-hidden" style={{ padding: 0 }}>
+    <Card className="overflow-hidden" style={{ padding: 0 }}>
       {/* 16:9 이미지 칸·자리 표시·alt·sizes는 `poster`·`square`와 공용이다(`CardImageSlot`) */}
       <CardImageSlot view={view} ratio="video" />
 

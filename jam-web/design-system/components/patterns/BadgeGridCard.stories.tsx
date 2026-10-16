@@ -29,6 +29,28 @@ const SAMPLE_IMAGES = {
   mystic: '/badges/sample/s019.png', // 야생의 주자 레벨업 Ultra
 } as const;
 
+/**
+ * 크림 캔버스 위 카드 면(JAM 2.0 라이트, 티켓 20261015_2133) — 기본은 흰 면 + 1px --border, 선택은 --accent-soft 면(테두리 유지),
+ * 강조(highlighted)는 inset 2px --link 링이다. 그림자는 없다.
+ */
+export const OnCreamCanvas: Story = {
+  name: '크림 캔버스 위 — 기본 · 선택 · 강조 · 미획득',
+  parameters: { layout: 'fullscreen' },
+  render: () => (
+    <div
+      style={{
+        width: 393, boxSizing: 'border-box', background: 'var(--background)', padding: 16,
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
+      }}
+    >
+      <BadgeGridCard name="첫 러닝" imageUrl={SAMPLE_IMAGES.common} rarity="common" />
+      <BadgeGridCard name="선택된 배지" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" selected />
+      <BadgeGridCard name="강조된 칸" imageUrl={SAMPLE_IMAGES.epic} rarity="epic" highlighted />
+      <BadgeGridCard name="미획득 배지" imageUrl={SAMPLE_IMAGES.mystic} rarity="mystic" earned={false} />
+    </div>
+  ),
+};
+
 export const EarnedCommon: Story = {
   name: '획득됨 — Common',
   args: {

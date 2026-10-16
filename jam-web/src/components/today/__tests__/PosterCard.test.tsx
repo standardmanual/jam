@@ -178,9 +178,9 @@ describe('PosterCard — 막 위 글자 배치', () => {
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
   })
 
-  it('칩 줄은 막 위 색조다 — 라벨 칩은 흰 알약(surface-inverse), 지역 핀 글자는 text-white', () => {
+  it('칩 줄은 막 위 색조다 — 라벨 칩은 기본 색조(밝은 알약 --background-secondary), 지역 핀 글자는 text-white', () => {
     const html = render({ regionLabel: '성수동' })
-    expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--background-inverse\);color:var\(--snow\)[^"]*">컬렉션<\/span>/)
+    expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--background-secondary\);color:var\(--foreground\)[^"]*">컬렉션<\/span>/)
     expect(html).toContain('min-w-0 text-xs text-white">')
   })
 

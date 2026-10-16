@@ -62,8 +62,10 @@ export interface BadgeGridCardProps {
   children?: ReactNode
 }
 
+// 카드 면 레시피(티켓 20261015_2133): 흰 면(--surface) + 1px --border + 반경 16, 그림자 없음.
+// 크림 바탕과 흰 면은 1.05:1이라 테두리가 경계를 맡는다. 면은 선택 여부로 한쪽만 고른다(아래 `containerCls`).
 const BASE =
-  'flex flex-col items-center bg-background rounded-2xl p-3 overflow-hidden'
+  'flex flex-col items-center border border-border rounded-2xl p-3 overflow-hidden'
 
 export default function BadgeGridCard({
   name,
@@ -86,9 +88,10 @@ export default function BadgeGridCard({
 
   const containerCls = [
     BASE,
+    // 선택 면은 기본 면과 겹쳐 쓰지 않고 한쪽만 고른다 — 두 배경 유틸리티가 쌓이면 어느 쪽이 이기는지 CSS 순서에 좌우된다
+    // (`ItemCandidateRow.tsx`의 선택 링 주석과 같은 이유). 선택 위 글자는 --foreground(--accent-soft 위 약 4.7:1 이상)다.
+    selected ? 'bg-accent-soft' : 'bg-surface',
     isInteractive && 'active:scale-95 transition-transform duration-100',
-    // 20260816_012: selected 표시를 2px 보더 대신 배경톤 채움으로 대체 (기능적 의미 유지)
-    selected && 'bg-[var(--accent)]/15',
     // 컬렉션 슬롯 장착 모드 하이라이트 — 그리드에서 한 칸을 찾아내야 하므로 배경톤만으로는 약하다
     highlighted && 'shadow-[inset_0_0_0_2px_var(--link)]',
     className,

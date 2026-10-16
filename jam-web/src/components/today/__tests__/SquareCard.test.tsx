@@ -35,9 +35,10 @@ const BODY_OPEN = '<div class="flex flex-col gap-3 p-6">'
 const bodyOf = (html: string) => html.slice(html.indexOf(BODY_OPEN) + BODY_OPEN.length)
 
 describe('SquareCard — 면(표면)', () => {
-  it('흰 카드(inverse)이고 모서리를 자르는 overflow-hidden을 가지며 안쪽 여백은 인라인 0이다', () => {
+  it('흰 카드(기본 톤, 흰 면 + 1px 테두리)이고 모서리를 자르는 overflow-hidden을 가지며 안쪽 여백은 인라인 0이다', () => {
     const html = render()
-    expect(html).toMatch(/^<div class="overflow-hidden" style="[^"]*background:var\(--background-inverse\)[^"]*">/)
+    expect(html).toMatch(/^<div class="overflow-hidden" style="[^"]*background:var\(--surface\)[^"]*border:1px solid var\(--border\)[^"]*">/)
+    expect(html).not.toContain('--background-inverse')
     expect(html).toMatch(/^<div[^>]*style="[^"]*padding:0[;"]/)
     expect(html).not.toContain('--layout-card-padding')
     expect(html).not.toContain('p-0')
@@ -184,10 +185,10 @@ describe('SquareCard — 본문 글자 배치', () => {
     expect(html).not.toContain('10월 5일')
   })
 
-  it('칩 줄은 흰 면 위 색조다(기본 on) — 라벨 칩은 기본 색조, 핀 글자는 /60', () => {
+  it('칩 줄은 흰 면 위 색조다(기본 on) — 라벨 칩은 기본 색조(--background-secondary), 핀 글자는 text-muted', () => {
     const html = render({ regionLabel: '성수동' })
-    expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--background\);color:var\(--foreground\)[^"]*">미션<\/span>/)
-    expect(html).toContain('min-w-0 text-xs text-snow/60">')
+    expect(html).toMatch(/<span class="shrink-0" style="[^"]*background:var\(--background-secondary\);color:var\(--foreground\)[^"]*">미션<\/span>/)
+    expect(html).toContain('min-w-0 text-xs text-muted">')
     expect(html).not.toContain('text-white')
   })
 
@@ -201,14 +202,14 @@ describe('SquareCard — 본문 글자 배치', () => {
   it('제목은 h3, 24px(--text-2xl)·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
     const html = render()
     expect(html).toContain(
-      '<h3 class="text-2xl text-snow line-clamp-2 break-keep break-words">한강 러닝 챌린지</h3>',
+      '<h3 class="text-2xl text-foreground line-clamp-2 break-keep break-words">한강 러닝 챌린지</h3>',
     )
     expect(html).not.toMatch(/<h3[^>]*font-(bold|semibold|medium)/)
   })
 
-  it('요약은 제목 아래 4px, 16px·/60·2줄 말줄임이다', () => {
+  it('요약은 제목 아래 4px, 16px·text-muted·2줄 말줄임이다', () => {
     expect(render()).toContain(
-      '<p class="mt-1 text-base text-snow/60 line-clamp-2 break-keep break-words">이번 주말 같이 달려요</p>',
+      '<p class="mt-1 text-base text-muted line-clamp-2 break-keep break-words">이번 주말 같이 달려요</p>',
     )
   })
 
@@ -224,9 +225,9 @@ describe('SquareCard — 본문 글자 배치', () => {
     expect(lines.map((m) => m[2])).toEqual(['기간 10월 12일~11월 8일', '보상 300 포인트 · 배지 1개'])
     for (const [, className] of lines) {
       expect(className).toBe(
-        'text-sm font-bold text-snow break-keep break-words',
+        'text-sm font-bold text-foreground break-keep break-words',
       )
-      expect(className).not.toContain('/60')
+      expect(className).not.toContain('text-muted')
       expect(className).not.toContain('line-clamp')
       expect(className).not.toContain('truncate')
       expect(className).not.toContain('body-sm')
@@ -239,10 +240,11 @@ describe('SquareCard — 본문 글자 배치', () => {
     expect(html.match(/font-bold/g)?.length ?? 0).toBe(count)
   })
 
-  it('옅은 글자는 /60 한 단계뿐이다(/30·/40·/50 없음)', () => {
+  it('옅은 글자는 text-muted 한 단계뿐이다(불투명도 글자색 없음)', () => {
     const html = render({ resource: 'badge', regionLabel: '성수동', rarity: 'rare' })
-    expect(html).toContain('text-snow/60')
-    for (const level of ['/30', '/40', '/50', '/70']) expect(html).not.toContain(`text-snow${level}`)
+    expect(html).toContain('text-muted')
+    expect(html).not.toContain('text-snow')
+    expect(html).not.toMatch(/text-(?:muted|foreground)\/\d/)
   })
 
   it('글자는 전부 왼쪽 정렬이다(본문에 가운데 정렬이 없다)', () => {

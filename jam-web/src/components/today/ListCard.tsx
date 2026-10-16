@@ -56,7 +56,7 @@ function ListTiles({ view }: { view: ListCardView }) {
             {view.tiles.map((tile, index) => (
               <li key={index} className="w-16 shrink-0">
                 <CardThumb view={view} src={tile.imageUrl} dimmed={tile.earned === false} />
-                <p className="mt-1 text-xs text-snow/60 text-center line-clamp-2 break-keep break-words">
+                <p className="mt-1 text-xs text-muted text-center line-clamp-2 break-keep break-words">
                   {tile.name}
                 </p>
               </li>
@@ -113,7 +113,7 @@ function ListRanking({ view, currentUserId }: { view: ListCardView; currentUserI
         <RankingRows ranking={ranking} live={live} currentUserId={currentUserId} />
       ) : (
         // 순위를 못 읽은 경우와 아직 없는 경우를 구분하지 않는다. 그림·아이콘 없이 왼쪽 정렬 글자뿐이다
-        <p className="text-base text-snow/60">{d.todayCard.rankingEmpty}</p>
+        <p className="text-base text-muted">{d.todayCard.rankingEmpty}</p>
       )}
     </CardBody>
   )
@@ -121,7 +121,7 @@ function ListRanking({ view, currentUserId }: { view: ListCardView; currentUserI
 
 export default function ListCard({ view, currentUserId }: { view: ListCardView; currentUserId?: string }) {
   return (
-    <Card tone="inverse" style={{ padding: 0 }}>
+    <Card style={{ padding: 0 }}>
       {isRankingRows(view.resource) ? <ListRanking view={view} currentUserId={currentUserId} /> : <ListTiles view={view} />}
     </Card>
   )

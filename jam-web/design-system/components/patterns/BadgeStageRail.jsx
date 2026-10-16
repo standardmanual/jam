@@ -126,7 +126,7 @@ const STATIC_CSS = `
 button.ds-rail-stop{background:none;border:none;padding:0;font:inherit;cursor:pointer}
 .ds-rail-lock-btn{background:none;border:none;padding:0;color:inherit;font:inherit;cursor:pointer;position:relative;pointer-events:auto}
 .ds-rail-lock-btn::after{content:"";position:absolute;inset:-13px}
-.ds-rail-gate-link{background:repeating-linear-gradient(90deg, rgba(255,255,255,.26) 0 4px, transparent 4px 8px)}
+.ds-rail-gate-link{background:repeating-linear-gradient(90deg, var(--border) 0 4px, transparent 4px 8px)}
 @media (prefers-reduced-motion: reduce){.ds-rail-stop{transition:none!important}}
 `;
 
@@ -326,8 +326,10 @@ export function BadgeStageRail({
       className={`ds-rail ${className}`}
       style={{
         position: 'relative', borderRadius: 'var(--radius-2xl)', padding: 'var(--spacing-16)',
-        background: 'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--surface)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)',
+        // 카드 면: --surface + 1px --border, 그림자·흰 그라디언트 없음(티켓 20261015_2133 — 흰 면 위 흰 그라디언트는 효과가 없다)
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        boxSizing: 'border-box',
         ...style,
       }}
     >

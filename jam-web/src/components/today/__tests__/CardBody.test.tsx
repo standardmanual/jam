@@ -16,13 +16,13 @@ import type { CardResource, ImageCardView, ListCardView } from '@/lib/today/card
 
 const BODY_OPEN = '<div class="flex flex-col gap-3 p-6">'
 const H3_CLASS =
-  'text-2xl text-snow line-clamp-2 break-keep break-words'
+  'text-2xl text-foreground line-clamp-2 break-keep break-words'
 const SUBTITLE_CLASS =
-  'mt-1 text-base text-snow/60 line-clamp-2 break-keep break-words'
+  'mt-1 text-base text-muted line-clamp-2 break-keep break-words'
 const FACT_CLASS =
-  'text-sm font-bold text-snow break-keep break-words'
+  'text-sm font-bold text-foreground break-keep break-words'
 const DESCRIPTION_CLASS =
-  'text-sm text-snow/60 line-clamp-2 break-keep break-words'
+  'text-sm text-muted line-clamp-2 break-keep break-words'
 
 describe('CardBody — 본문 칸', () => {
   it('안쪽 여백 24px, 그룹 사이 간격 12px의 세로 flex 칸이다', () => {
@@ -37,7 +37,7 @@ describe('CardTitleGroup — 제목과 요약', () => {
     expect(html).not.toMatch(/font-(bold|semibold|medium)/)
   })
 
-  it('요약은 제목 아래 4px, 16px·/60·2줄 말줄임이다', () => {
+  it('요약은 제목 아래 4px, 16px·text-muted·2줄 말줄임이다', () => {
     const html = renderToStaticMarkup(<CardTitleGroup title="제목" subtitle="이번 주말 같이 달려요" />)
     expect(html).toBe(`<div><h3 class="${H3_CLASS}">제목</h3><p class="${SUBTITLE_CLASS}">이번 주말 같이 달려요</p></div>`)
   })
@@ -51,10 +51,10 @@ describe('CardTitleGroup — 제목과 요약', () => {
 })
 
 describe('CardFacts — 필수 정보', () => {
-  it('한 줄에 하나씩 14px(--text-sm) 굵게 text-snow이고 말줄임 없이 줄바꿈한다', () => {
+  it('한 줄에 하나씩 14px(--text-sm) 굵게 text-foreground이고 말줄임 없이 줄바꿈한다', () => {
     const html = renderToStaticMarkup(<CardFacts facts={['기간 상시', '보상 300 포인트']} />)
     expect(html).toBe(`<div><p class="${FACT_CLASS}">기간 상시</p><p class="${FACT_CLASS}">보상 300 포인트</p></div>`)
-    for (const needle of ['/60', 'line-clamp', 'truncate', 'body-sm']) expect(html).not.toContain(needle)
+    for (const needle of ['text-muted', 'line-clamp', 'truncate', 'body-sm']) expect(html).not.toContain(needle)
   })
 
   it('값이 없으면(undefined·빈 배열) 아무것도 그리지 않는다', () => {
@@ -64,7 +64,7 @@ describe('CardFacts — 필수 정보', () => {
 })
 
 describe('CardDescription — 설명문', () => {
-  it('14px·/60·보통 굵기·2줄 말줄임이다', () => {
+  it('14px·text-muted·보통 굵기·2줄 말줄임이다', () => {
     const html = renderToStaticMarkup(<CardDescription description="설명문입니다" />)
     expect(html).toBe(`<p class="${DESCRIPTION_CLASS}">설명문입니다</p>`)
     expect(html).not.toContain('font-bold')
@@ -77,9 +77,9 @@ describe('CardDescription — 설명문', () => {
 })
 
 describe('CardEndLine — 끝 줄', () => {
-  it('라벨은 호출부가 주고 12px·/60이며 화살표는 aria-hidden이다', () => {
+  it('라벨은 호출부가 주고 12px·text-muted이며 화살표는 aria-hidden이다', () => {
     expect(renderToStaticMarkup(<CardEndLine label="전체 보기" />)).toBe(
-      '<p class="text-xs text-snow/60">전체 보기 <span aria-hidden="true">→</span></p>',
+      '<p class="text-xs text-muted">전체 보기 <span aria-hidden="true">→</span></p>',
     )
   })
 })

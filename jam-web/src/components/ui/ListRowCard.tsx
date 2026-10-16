@@ -3,7 +3,17 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
+/**
+ * 행 면 톤 (티켓 20261015_2133).
+ * - `default`: 흰 면(`--surface`) + 1px `--border`. 크림 페이지 바탕 위에 직접 놓는 행.
+ * - `tint`: `--background-secondary`, 테두리 없음. **이미 카드(흰 면 + 테두리) 안에 들어간 행** 전용 — 카드 속 카드의 이중 테두리를 막는다.
+ *   크림 바탕 위 단독 행으로 쓰지 않는다(경계가 보이지 않는다).
+ */
+export type ListRowCardTone = 'default' | 'tint'
+
 export interface ListRowCardProps {
+  /** 행 면 톤. 기본 `default`(흰 면 + 1px 테두리) */
+  tone?: ListRowCardTone
   /** 40×40 아이콘 영역 — 크기·형태·배경 모두 호출부에서 결정 */
   icon?: ReactNode
   title?: string
@@ -34,12 +44,16 @@ export interface ListRowCardProps {
   'aria-controls'?: string
 }
 
-// 20260816_012: 보더 제거 — 페이지 캔버스도 bg-background라 구분이 사라지므로
-// 한 단계 밝은 bg-surface로 대체한다.
-const BASE =
-  'flex items-center gap-4 bg-surface rounded-2xl p-4'
+// JAM 2.0 라이트(티켓 20261015_2133): 흰 면(bg-surface)과 크림 바탕은 1.05:1이라
+// 1px 테두리(border-border)가 경계를 맡는다. 그림자는 쓰지 않는다.
+const BASE = 'flex items-center gap-4 rounded-2xl p-4'
+const TONE_CLASS: Record<ListRowCardTone, string> = {
+  default: 'bg-surface border border-border',
+  tint: 'bg-background-secondary',
+}
 
 export default function ListRowCard({
+  tone = 'default',
   icon,
   title,
   subtitle,
@@ -58,6 +72,7 @@ export default function ListRowCard({
   const pressable = interactive && (href ? true : !disabled)
   const cls = [
     BASE,
+    TONE_CLASS[tone] ?? TONE_CLASS.default,
     interactive && 'cursor-pointer',
     pressable && 'jam-press',
     className,

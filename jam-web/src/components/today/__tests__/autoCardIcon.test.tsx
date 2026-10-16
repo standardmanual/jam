@@ -64,7 +64,7 @@ function makeCard(overrides: Partial<TodayCardWithHref>): TodayCardWithHref {
 }
 
 /** `brief`의 64px 칸이 그리는 아이콘 마크업(`CardThumb`의 크기·색) */
-const THUMB_CLASS = 'w-6 h-6 text-snow/60'
+const THUMB_CLASS = 'w-6 h-6 text-muted'
 const thumbIcon = (template: 'progress_nudge' | 'location_trend') =>
   renderToStaticMarkup(resourceIconOf({ resource: 'auto', template }, { className: THUMB_CLASS }))
 

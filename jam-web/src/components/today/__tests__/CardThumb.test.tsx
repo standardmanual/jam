@@ -10,12 +10,12 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import CardThumb from '../CardThumb'
 import { BookIcon, FlaskIcon, MedalIcon, TargetIcon } from '@/components/ui/icons'
 
-const BOX = 'w-16 h-16 shrink-0 rounded-2xl bg-black/[0.04] overflow-hidden flex items-center justify-center'
-const ICON_CLASS = 'w-6 h-6 text-snow/60'
+const BOX = 'w-16 h-16 shrink-0 rounded-2xl bg-background-secondary overflow-hidden flex items-center justify-center'
+const ICON_CLASS = 'w-6 h-6 text-muted'
 const icon = (Icon: typeof MedalIcon) => renderToStaticMarkup(<Icon className={ICON_CLASS} />)
 
 describe('CardThumb — 64px 칸', () => {
-  it('칸은 64px 정사각이고 줄지 않으며 옅은 면(bg-black/[0.04])·모서리 --radius-2xl다', () => {
+  it('칸은 64px 정사각이고 줄지 않으며 구획 면(bg-background-secondary)·모서리 --radius-2xl다', () => {
     const html = renderToStaticMarkup(<CardThumb view={{ resource: 'badge' }} src="https://cdn.example/b.png" />)
     expect(html.startsWith(`<div class="${BOX}">`)).toBe(true)
   })
@@ -48,9 +48,9 @@ describe('CardThumb — 64px 칸', () => {
     expect(renderToStaticMarkup(<CardThumb view={{ resource: 'recipe' }} />)).not.toContain(icon(MedalIcon))
   })
 
-  it('아이콘 색은 /60 한 단계다(/40 없음)', () => {
+  it('아이콘 색은 text-muted 한 단계다(불투명도 없음)', () => {
     const html = renderToStaticMarkup(<CardThumb view={{ resource: 'badge' }} />)
-    expect(html).toContain('text-snow/60')
+    expect(html).toContain('text-muted')
     expect(html).not.toContain('/40')
   })
 

@@ -82,7 +82,7 @@ function OrderedList({ items }: { items: React.ReactNode[] }) {
 /** 마크다운 표 → 세로형 정의 카드. 앱 컬럼 폭에서 가로 스크롤 표를 만들지 않기 위함. */
 function DefCard({ fields }: { fields: Array<{ label: string; value: React.ReactNode }> }) {
   return (
-    <dl className="rounded-2xl bg-surface p-4 flex flex-col gap-3">
+    <dl className="rounded-2xl bg-surface border border-border p-4 flex flex-col gap-3">
       {fields.map(({ label, value }, i) => (
         <div key={i} className="flex flex-col gap-1">
           <dt className="text-xs text-foreground/50">{label}</dt>

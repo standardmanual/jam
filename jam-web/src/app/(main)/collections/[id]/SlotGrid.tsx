@@ -354,7 +354,7 @@ export default function SlotGrid({
   return (
     <div ref={gridRef}>
       {error && (
-        <div className="mb-3 rounded-2xl bg-surface px-3 py-2 text-xs text-foreground/70">
+        <div className="mb-3 rounded-2xl bg-surface border border-border px-3 py-2 text-xs text-foreground/70">
           {error}
         </div>
       )}

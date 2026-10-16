@@ -28,17 +28,19 @@ export function SlidingTabs({
 }) {
   const listRef = useRef(null);
 
+  // 팔레트(JAM 2.0 라이트, 티켓 20261015_2133) — 서비스 `src/components/ui/SlidingTabs.tsx`의 PALETTE와 같은 값이다.
+  // 비활성 라벨은 두 팔레트 모두 --muted(흰 면·트랙 위 4.5:1 이상)다.
   const palette = variant === 'onCard'
     ? {
       barBg: outlined ? 'var(--surface)' : 'rgba(0, 0, 0, 0.06)',
       pillBg: 'var(--accent)',
-      textMuted: 'rgba(0, 0, 0, 0.4)',
+      textMuted: 'var(--muted)',
       textActive: 'var(--accent-foreground)',
     }
     : {
-      barBg: outlined ? 'var(--surface)' : 'rgba(255, 255, 255, 0.1)',
+      barBg: outlined ? 'var(--surface)' : 'var(--default)',
       pillBg: 'var(--background-inverse)',
-      textMuted: 'rgba(255, 255, 255, 0.45)',
+      textMuted: 'var(--muted)',
       textActive: 'var(--snow)',
     };
 

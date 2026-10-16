@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import BottomSheet from '@/components/ui/BottomSheet'
 import ListRowCard from '@/components/ui/ListRowCard'
+import { Card } from '@ds/components/cards/Card'
 import LocalDate from '@/components/LocalDate'
 import { ChevronRightIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
@@ -67,9 +68,9 @@ export default function ItemEarnHistory({
       </div>
 
       {/* 히어로에 일련번호가 표시된 개체의 이력 — 카드 형식 */}
-      <div className="bg-surface rounded-2xl p-6">
+      <Card>
         <ItemCardContent entry={first} />
-      </div>
+      </Card>
 
       {/* 2번째부터 — ListRowCard. 대표 serial은 위 ItemSerialCode가 이미 보여주므로,
           이 줄은 개체 구분용으로 획득일을 보여준다(PoiEarnHistory의 같은 자리 관례 재사용). */}

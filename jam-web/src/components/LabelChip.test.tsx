@@ -8,7 +8,8 @@
  *
  * 교체 전 클래스(`TodayStatusStrip` CellLabel · `OnboardingQuestCard` CHIP_CLASS 공통, `self-start`
  * 제외): `inline-flex items-center text-xs leading-none font-bold
- * uppercase px-2.5 py-1.5 rounded-full bg-background text-foreground`.
+ * uppercase px-2.5 py-1.5 rounded-full bg-background text-foreground`. 모양(여백·글자)은 지금도 같고,
+ * 면만 티켓 20261015_2133에서 `--background-secondary`로 올렸다(흰 카드 위 윤곽).
  * 계산값은 Tailwind v4로 컴파일해 확인했다 — `px-2.5`=`calc(var(--spacing) * 2.5)`·`py-1.5`=
  * `calc(var(--spacing) * 1.5)`이고 `--spacing: 0.25rem`(globals.css에 재정의 없음, root 16px)이라
  * 10px·6px, `leading-none`=`line-height: 1`, `font-bold`=700.
@@ -47,7 +48,7 @@ describe('LabelChip — 교체 전 Tailwind 클래스와 같은 계산 스타일
       'text-transform': 'uppercase',
       padding: '6px 10px',
       'border-radius': 'var(--radius-full)',
-      background: 'var(--background)',
+      background: 'var(--background-secondary)',
       color: 'var(--foreground)',
     })
   })
@@ -82,7 +83,7 @@ describe('LabelChip — tone (티켓 20261001_1737, 1248)', () => {
     'text-transform': 'uppercase',
     padding: '6px 10px',
     'border-radius': 'var(--radius-full)',
-    background: 'var(--background)',
+    background: 'var(--background-secondary)',
     color: 'var(--foreground)',
   }
 

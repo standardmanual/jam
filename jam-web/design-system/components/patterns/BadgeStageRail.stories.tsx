@@ -56,7 +56,7 @@ const WALK_ICON =
   );
 
 function Frame({ children }: { children: React.ReactNode }) {
-  return <div style={{ width: 375, background: '#1a1a1a', padding: 16, borderRadius: 16 }}>{children}</div>;
+  return <div style={{ width: 375, background: 'var(--background)', padding: 16, borderRadius: 16 }}>{children}</div>;
 }
 
 export const GateAheadReady: Story = {

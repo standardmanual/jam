@@ -29,6 +29,29 @@ export const Ongoing: Story = {
   decorators: [(Story) => <div style={{ width: 360 }}><Story /></div>],
 };
 
+/**
+ * 크림 캔버스 위 카드 경계(JAM 2.0 라이트, 티켓 20261015_2133) — 카드 면은 `Card` 기본 톤(흰 면 + 1px 테두리, 그림자 없음)이고
+ * 상태 칩 면은 카드와 구분되도록 `--background-secondary`다.
+ */
+export const OnCreamCanvas: Story = {
+  name: '크림 캔버스 위 — 카드 경계와 상태 칩 면',
+  parameters: { layout: 'fullscreen' },
+  render: () => (
+    <div style={{ background: 'var(--background)', padding: 16, width: 393, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <MissionCard
+        title="한강 5km 러닝 챌린지"
+        description="한강공원에서 5km를 달리면 배지를 획득해요."
+        statusLabel="참가중"
+        periodText="3일 12시간 남음"
+        rarity="rare"
+        rewardText="한강러너 배지 + 100P"
+        actionLabel="자세히 보기"
+        onAction={() => {}}
+      />
+    </div>
+  ),
+};
+
 export const NotJoined: Story = {
   name: '미참가',
   args: {

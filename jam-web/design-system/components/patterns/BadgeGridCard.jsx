@@ -13,10 +13,13 @@ import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
  *   - `count` — 반복 획득 횟수. 2 이상일 때만 썸네일 모서리에 «×N»을 붙인다.
  *     서비스 피드 카드의 카운터 필과 같은 시각 문법이다(새 표현을 만들지 않는다).
  *
+ * 면 (티켓 20261015_2133): --surface(흰) + 1px --border + 반경 --radius-2xl, 그림자 없음.
+ *   크림 바탕과 흰 면은 1.05:1이라 테두리가 경계를 맡는다. 서비스 `src/components/ui/BadgeGridCard.tsx`와 같은 값이다.
+ *
  * 상태:
  *   earned: false  → 썸네일을 원본 + grayscale(1)로 (미획득)
  *   undiscovered   → ??? 표시 + grayscale(1) (아이템북 미발견)
- *   selected       → 강조 링 (선택 모드)
+ *   selected       → 면을 --accent-soft로 채움 (선택 모드, 기본 면과 겹치지 않고 한쪽만)
  *
  * 미획득/미발견 썸네일은 **원본 이미지 + `filter: grayscale(1)`** 이다.
  * 20260905_0036이 한때 실루엣(공통 SVG)으로 바꿨다 — grayscale은 그려진 뒤 걸리는 CSS
@@ -58,11 +61,13 @@ export function BadgeGridCard({
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    background: selected ? 'rgba(232, 70, 31, 0.15)' : 'var(--background)',
+    background: selected ? 'var(--accent-soft)' : 'var(--surface)',
+    border: '1px solid var(--border)',
+    boxSizing: 'border-box',
     borderRadius: 'var(--radius-2xl)',
     padding: 'var(--spacing-12)',
     overflow: 'hidden',
-    // 20260816_012: selected 표시를 2px 보더 대신 배경톤 채움으로 대체 (기능적 의미 유지)
+    // selected는 2px 보더가 아니라 면 채움(--accent-soft)으로 나타낸다 (기능적 의미 유지)
     // highlighted: 컬렉션 슬롯 장착 모드 하이라이트 — 그리드에서 한 칸을 찾아내야 하므로
     // 배경톤만으로는 약해 별도로 inset 링을 준다(서비스와 동일).
     boxShadow: highlighted ? 'inset 0 0 0 2px var(--link)' : undefined,

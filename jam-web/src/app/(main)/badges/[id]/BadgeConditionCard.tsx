@@ -1,3 +1,4 @@
+import { Card } from '@ds/components/cards/Card'
 import { d } from '@/lib/i18n'
 
 /**
@@ -32,7 +33,7 @@ interface BadgeConditionCardProps {
 
 export default function BadgeConditionCard({ text, spec }: BadgeConditionCardProps) {
   return (
-    <div className="bg-surface rounded-2xl p-6 flex flex-col gap-2">
+    <Card className="flex flex-col gap-2">
       <p className="text-base font-bold text-foreground">{d.badges.conditionTitle}</p>
       {spec ? (
         /* 카드에 이 줄뿐이라 굵기를 주지 않는다 — 대비할 문장이 없으면 볼드가 근거를 잃는다.
@@ -43,6 +44,6 @@ export default function BadgeConditionCard({ text, spec }: BadgeConditionCardPro
       ) : (
         <p className="text-sm text-[var(--muted)] leading-[var(--leading-loose)]">{text}</p>
       )}
-    </div>
+    </Card>
   )
 }

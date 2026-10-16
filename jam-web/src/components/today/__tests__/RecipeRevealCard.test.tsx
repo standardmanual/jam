@@ -25,7 +25,7 @@ import { toCardView } from '@/lib/today/cardView'
 import type { ResolvedBadge, ResolvedRecipe, TodayCardWithHref } from '@/lib/today/cards'
 
 const NOW = new Date('2026-10-05T03:00:00Z')
-const ICON_CLASS = 'w-6 h-6 text-snow/60'
+const ICON_CLASS = 'w-6 h-6 text-muted'
 const flask = renderToStaticMarkup(<FlaskIcon className={ICON_CLASS} />)
 
 function makeCard(overrides: Partial<TodayCardWithHref> = {}): TodayCardWithHref {
@@ -97,7 +97,7 @@ describe('공개 전 — brief (재료 수와 공개일만)', () => {
     expect(html).toContain(flask)
     expect(html).toContain('레시피 공개')
     expect(html).toContain('>새 레시피가 열려요</h3>')
-    expect(factTexts(html, 'text-snow/60')).toEqual(['재료 4개', '공개 10월 12일'])
+    expect(factTexts(html, 'text-muted')).toEqual(['재료 4개', '공개 10월 12일'])
     expect(html).toContain('›')
     // 카드 전체가 믹스 화면으로 가는 링크 하나다
     expect(html).toContain('href="/combine"')

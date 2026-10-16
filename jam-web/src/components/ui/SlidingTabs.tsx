@@ -31,9 +31,9 @@ export interface SlidingTabsProps<K extends string = string> {
   value: K
   onChange: (key: K) => void
   /**
-   * 팔레트.
-   * - `onSurface`(기본): 코발트 배경 위 — pill은 아이스, 활성 라벨은 코발트
-   * - `onCard`: 아이스 카드 위 — pill은 코발트, 활성 라벨은 아이스
+   * 팔레트(JAM 2.0 라이트, 티켓 20261015_2133). 비활성 라벨은 두 팔레트 모두 `--muted`, hover는 `--foreground`다.
+   * - `onSurface`(기본): 크림 바탕 위 — 트랙은 `--default`, 활성 pill은 `--background-inverse`, 활성 라벨은 `--snow`
+   * - `onCard`: 흰 카드 위 — 트랙은 검정 6%, 활성 pill은 `--accent`, 활성 라벨은 `--accent-foreground`
    */
   variant?: 'onSurface' | 'onCard'
   /** 탭 높이. md=30px(원본) / lg=44px(터치영역) / xl=콘텐츠 높이(2줄 라벨) */
@@ -50,21 +50,21 @@ export interface SlidingTabsProps<K extends string = string> {
 }
 
 const PALETTE: Record<'onSurface' | 'onCard', CSSProperties> = {
-  // DS v2: 다크(검정) 배경 위 — 활성 pill은 흰색, 활성 라벨은 검정
+  // 크림 바탕 위 — 트랙 --default(#f2f2f2), 비활성 라벨 --muted(트랙 위 약 5.1:1), 활성 pill은 반전 면 + --snow 글자
   onSurface: {
-    '--tabs-bar-bg': 'rgba(255, 255, 255, 0.1)',
+    '--tabs-bar-bg': 'var(--default)',
     '--tabs-pill-bg': 'var(--background-inverse)',
-    '--tabs-text-muted': 'rgba(255, 255, 255, 0.45)',
+    '--tabs-text-muted': 'var(--muted)',
     '--tabs-text-active': 'var(--snow)',
-    '--tabs-text-hover': 'rgba(255, 255, 255, 0.85)',
+    '--tabs-text-hover': 'var(--foreground)',
   } as CSSProperties,
-  // DS v2: 라이트 카드(surface-inverse = white) 위 — 활성 pill은 primary(레드), 활성 라벨은 white
+  // 흰 카드(--surface) 위 — 비활성 라벨 --muted(흰 면 위 5.74:1), 활성 pill은 accent 면 + --accent-foreground 글자
   onCard: {
     '--tabs-bar-bg': 'rgba(0, 0, 0, 0.06)',
     '--tabs-pill-bg': 'var(--accent)',
-    '--tabs-text-muted': 'rgba(0, 0, 0, 0.4)',
+    '--tabs-text-muted': 'var(--muted)',
     '--tabs-text-active': 'var(--accent-foreground)',
-    '--tabs-text-hover': 'rgba(0, 0, 0, 0.7)',
+    '--tabs-text-hover': 'var(--foreground)',
   } as CSSProperties,
 }
 

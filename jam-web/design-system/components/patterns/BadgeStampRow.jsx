@@ -63,8 +63,10 @@ export function BadgeStampRow({
       style={{
         borderRadius: 'var(--radius-2xl)',
         padding: 'var(--spacing-16)',
-        background: 'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--surface)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)',
+        // 카드 면: --surface + 1px --border, 그림자·흰 그라디언트 없음(티켓 20261015_2133 — 흰 면 위 흰 그라디언트는 효과가 없다)
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        boxSizing: 'border-box',
         ...style,
       }}
     >

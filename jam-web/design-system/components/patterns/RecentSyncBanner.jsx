@@ -41,8 +41,10 @@ export function RecentSyncBanner({
       style={{
         display: 'flex', alignItems: 'center', gap: 'var(--spacing-12)',
         padding: '12px var(--spacing-16)', borderRadius: 'var(--radius-2xl)',
-        background: 'linear-gradient(160deg, rgba(255,255,255,.085) 0%, rgba(255,255,255,.02) 58%), var(--surface)',
-        boxShadow: 'inset 0 0 0 1px var(--progress-latest-soft), inset 0 1px 0 rgba(255,255,255,.06)',
+        // 카드 면: --surface + 1px --border. 상태 신호(최신 동기화)는 아래 8px 점이 맡는다(티켓 20261015_2133)
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        boxSizing: 'border-box',
         ...style,
       }}
     >

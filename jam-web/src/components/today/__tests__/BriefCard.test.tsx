@@ -39,7 +39,7 @@ function factParagraphs(html: string): { className: string; text: string }[] {
   return [...html.matchAll(/<p class="([^"]*)">([^<]*)<\/p>/g)].map((m) => ({ className: m[1], text: m[2] }))
 }
 
-const SLOT_ICON_CLASS = 'w-6 h-6 text-snow/60'
+const SLOT_ICON_CLASS = 'w-6 h-6 text-muted'
 const slotIcon = (Icon: typeof TargetIcon) => renderToStaticMarkup(<Icon className={SLOT_ICON_CLASS} />)
 
 afterEach(() => {
@@ -47,10 +47,12 @@ afterEach(() => {
 })
 
 describe('BriefCard — 면(표면)', () => {
-  it('흰 카드(inverse)이고 최소 높이 88px·가운데 정렬 가로 배치이며, 안쪽 여백은 위아래 12·좌우 16이다', () => {
+  it('흰 카드(기본 톤, 흰 면 + 1px 테두리)이고 최소 높이 88px·가운데 정렬 가로 배치이며, 안쪽 여백은 위아래 12·좌우 16이다', () => {
     const html = render()
     expect(html).toContain('min-h-[88px] flex items-center gap-3')
-    expect(html).toContain('background:var(--background-inverse)')
+    expect(html).toContain('background:var(--surface)')
+    expect(html).toContain('border:1px solid var(--border)')
+    expect(html).not.toContain('--background-inverse')
     // Card가 주는 24px 기본 여백(--layout-card-padding)을 같은 인라인 style로 덮었다 — 클래스로는 덮이지 않는다
     expect(html).toContain('padding:var(--spacing-12) var(--spacing-16)')
     expect(html).not.toContain('--layout-card-padding')
@@ -63,7 +65,7 @@ describe('BriefCard — 면(표면)', () => {
   it('제목은 h3, 16px·2줄 말줄임·어절 단위 줄바꿈이고 굵게 하지 않는다', () => {
     const html = render({ title: '제목이 아주 길어서 두 줄을 넘겨도 말줄임으로 끝나야 하는 한강 러닝 챌린지 이벤트 안내' })
     expect(html).toMatch(
-      /<h3 class="text-base text-snow line-clamp-2 break-keep break-words">제목이 아주/,
+      /<h3 class="text-base text-foreground line-clamp-2 break-keep break-words">제목이 아주/,
     )
     expect(html).not.toMatch(/<h3[^>]*font-(bold|semibold|medium)/)
   })
@@ -83,12 +85,12 @@ describe('BriefCard — 필수 정보', () => {
     expect(lines.map((l) => l.text)).toEqual(facts)
   })
 
-  it('14px(--text-sm)·옅은 글자 /60이고 말줄임 없이 줄바꿈한다(line-clamp·truncate 없음)', () => {
+  it('14px(--text-sm)·옅은 글자 text-muted이고 말줄임 없이 줄바꿈한다(line-clamp·truncate 없음)', () => {
     const lines = factParagraphs(render())
     expect(lines).toHaveLength(2)
     for (const line of lines) {
       expect(line.className).toBe(
-        'text-sm text-snow/60 break-keep break-words',
+        'text-sm text-muted break-keep break-words',
       )
       expect(line.className).not.toContain('line-clamp')
       expect(line.className).not.toContain('truncate')
@@ -128,10 +130,10 @@ describe('BriefCard — 칩 줄', () => {
     expect(render({ label: undefined })).not.toContain('padding:6px 10px')
   })
 
-  it('지역 핀: 옛 마크업(caption·/60·핀 w-3 h-3)에 min-w-0과 글자 말줄임을 더했다', () => {
+  it('지역 핀: 옛 마크업(caption·text-muted·핀 w-3 h-3)에 min-w-0과 글자 말줄임을 더했다', () => {
     const html = render({ regionLabel: '성수동 서울숲 근처' })
     expect(html).toContain(
-      '<span class="inline-flex items-center gap-1 min-w-0 text-xs text-snow/60">',
+      '<span class="inline-flex items-center gap-1 min-w-0 text-xs text-muted">',
     )
     expect(html).toContain('<span class="truncate">성수동 서울숲 근처</span>')
     expect(html).toContain(renderToStaticMarkup(<PinIcon className="w-3 h-3 shrink-0" />))
@@ -192,8 +194,8 @@ describe('BriefCard — 희귀도 칩 (JAM! 배지 1개 카드)', () => {
 })
 
 describe('BriefCard — 끝 ›', () => {
-  it('href가 있으면 aria-hidden으로 그린다(장식, 줄어들지 않고 /60)', () => {
-    expect(render()).toContain('<span class="shrink-0 text-snow/60" aria-hidden="true">›</span>')
+  it('href가 있으면 aria-hidden으로 그린다(장식, 줄어들지 않고 text-muted)', () => {
+    expect(render()).toContain('<span class="shrink-0 text-muted" aria-hidden="true">›</span>')
   })
 
   it('href가 없으면 이동한다는 암시를 주지 않으려고 그리지 않는다', () => {
@@ -202,15 +204,16 @@ describe('BriefCard — 끝 ›', () => {
 })
 
 describe('BriefCard — 옅은 글자', () => {
-  it('옅은 글자는 /60 한 단계뿐이다(/30·/40·/50·/70 없음)', () => {
+  it('옅은 글자는 text-muted 한 단계뿐이다(불투명도 글자색 없음)', () => {
     const html = render({
       resource: 'badge',
       regionLabel: '성수동',
       rarity: 'rare',
       thumbnailUrl: 'https://cdn.example/a.png',
     })
-    expect(html).toContain('text-snow/60')
-    for (const level of ['/30', '/40', '/50', '/70']) expect(html).not.toContain(`text-snow${level}`)
+    expect(html).toContain('text-muted')
+    expect(html).not.toContain('text-snow')
+    expect(html).not.toMatch(/text-(?:muted|foreground)\/\d/)
     expect(html).not.toContain('/30')
     expect(html).not.toContain('/40')
   })
@@ -225,10 +228,10 @@ describe('BriefCard — 옅은 글자', () => {
 })
 
 describe('BriefCard — 64px 칸', () => {
-  it('칸은 64px 정사각·--radius-2xl·4% 검정 판이고 왼쪽에 줄어들지 않게 고정된다', () => {
+  it('칸은 64px 정사각·--radius-2xl·--background-secondary 면이고 왼쪽에 줄어들지 않게 고정된다', () => {
     const html = render()
     expect(html).toContain(
-      'w-16 h-16 shrink-0 rounded-2xl bg-black/[0.04] overflow-hidden flex items-center justify-center',
+      'w-16 h-16 shrink-0 rounded-2xl bg-background-secondary overflow-hidden flex items-center justify-center',
     )
     // 칸은 글자 열보다 앞에 있다
     expect(html.indexOf('w-16 h-16')).toBeLessThan(html.indexOf('flex-1 min-w-0'))
@@ -310,7 +313,7 @@ describe('BriefCard — 자원 → 아이콘 (아이콘 모양으로만 구분, 
     expect(render({ resource: 'mission', regionLabel: '성수동', facts: undefined })).toContain(slotIcon(TargetIcon))
   })
 
-  it('아이콘에 색을 입히지 않는다(text-snow/60 하나뿐, 제3의 컬러 없음)', () => {
+  it('아이콘에 색을 입히지 않는다(text-muted 하나뿐, 제3의 컬러 없음)', () => {
     for (const resource of CARD_RESOURCES) {
       const html = render({ resource })
       expect(html).not.toMatch(/text-(primary|red|green|blue|amber|yellow|orange|purple|pink)/)
