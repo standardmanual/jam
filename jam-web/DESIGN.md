@@ -11,6 +11,10 @@ description: 운동 보상 게이미피케이션 모바일 웹 — 크림 바탕
 
 ## Overview
 
+**Creative North Star: "The Field Notebook"** — 활동 기록과 모은 배지를 정리해 둔 수첩 같은 화면. 크림 종이(`--background`) 위에
+흰 카드(`--surface`)를 붙이고 그림자 없이 얇은 테두리(`--border`)로 구분한다. 초록 강조색(`--accent`)은 수첩에 찍는 도장처럼
+눌러야 하는 곳에만 좁게 쓴다. 희귀도 4색은 꾸밈이 아니라 기록된 데이터다. (2026-10-16 사용자가 정했다. 옛 이름은 "The Night Vitrine".)
+
 크림 바탕(`--background`) 위에 흰 카드(`--surface`)를 테두리(`--border`)로 구분해 올리는 화면이다.
 라이트 전용이고 다크 테마는 없다. 초록 강조색(`--accent`)은 버튼 같은 면 채우기에만 좁게 쓴다.
 희귀도 4색(common·rare·epic·mystic)은 사용자가 이미 학습한 고정 신호 체계라 재매핑하지 않는다.
