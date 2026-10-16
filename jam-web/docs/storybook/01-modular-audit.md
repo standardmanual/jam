@@ -1,6 +1,6 @@
 # MODULAR Storybook Audit
 
-> 2026-10-16: `design-system/guidelines/`·`dashboard.html` 삭제(티켓 20261015_2135). 아래 KEEP 표기는 작성 시점 기록이다.
+> 2026-10-16: `design-system/guidelines/`·`dashboard.html` 삭제(티켓 20261015_2135). 아래 KEEP 표기는 작성 시점 기록이다. §7.1의 `_adherence` 불일치(INCONSISTENT) 표기는 같은 날 티켓 20261015_2135 2회에서 `.d.ts`에 맞춰 정리됐다.
 
 > **기준일:** 2026-08-16  
 > **분석 경로:** `jam-web/design-system/` (MODULAR) + `jam-web/src/` (서비스)  

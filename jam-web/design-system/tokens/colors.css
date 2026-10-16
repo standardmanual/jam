@@ -5,7 +5,7 @@
  *
  * 이름 규칙 (피그마 `그룹/그룹-변형` → CSS `--그룹-변형`):
  *   --base-*                    팔레트 원값(Base 컬렉션). 컴포넌트는 역할 토큰을 쓰고 직접 참조하지 않는다.
- *                               예외는 세 범주뿐이다: 이미지·지도 위 막이 --base-black을 섞는 곳, 그 막 위 오버레이 글자(--base-white),
+ *                               예외는 세 범주뿐이다: 이미지·지도 위 막이 --base-black을 섞는 곳, --backdrop 위 오버레이 글자(--base-white),
  *                               시리얼 인장 면 재질(--base-neutral-*). 막과 오버레이 글자의 근거는 문서 11 5.7절이다.
  *                               현재 목록은 grep -rn "var(--base-" jam-web/src jam-web/design-system/components 로 확인한다.
  *   --background, --foreground, --accent …   역할 토큰(Theme 컬렉션)
