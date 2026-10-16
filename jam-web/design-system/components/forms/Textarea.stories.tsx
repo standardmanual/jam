@@ -28,7 +28,7 @@ export const WithValue: Story = {
 
 export const ErrorState: Story = {
   name: '오류 상태',
-  args: { value: '', state: 'error', placeholder: '내용을 입력하세요', 'aria-label': '내용' },
+  args: { value: '', state: 'error', placeholder: '내용을 입력하세요', 'aria-label': '내용', onChange: () => {} },
   decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
 };
 
