@@ -38,7 +38,7 @@ cd jam-web && npm run storybook   # http://localhost:6006
   (JAM 2.0부터 `colors.light.css`는 없다 — 서비스는 라이트 전용이라 다크 오버라이드를 두지 않는다.
   티켓 20261015_2131)
 
-- **연결된 컴포넌트 21종 — 서비스에 즉시 반영.** *(2026-09-14 실측 기준)*
+- **연결된 컴포넌트 24종 — 서비스에 즉시 반영.** *(2026-09-14 실측 기준)*
   서비스 45개 파일이 `@ds/components/*`를 **86건** import한다. 실사용 목록:
   `Button` · `IconButton` · `Card` · `RarityBadge` · `BadgeLevelChip` · `EmptyState` ·
   `ProgressBar` · `WanderingEyesLoader` · `Accordion` · `Carousel` · `TopNav` ·
