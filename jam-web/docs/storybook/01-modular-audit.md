@@ -1,5 +1,7 @@
 # MODULAR Storybook Audit
 
+> 2026-10-16: `design-system/guidelines/`·`dashboard.html` 삭제(티켓 20261015_2135). 아래 KEEP 표기는 작성 시점 기록이다.
+
 > **기준일:** 2026-08-16  
 > **분석 경로:** `jam-web/design-system/` (MODULAR) + `jam-web/src/` (서비스)  
 > **iCloud 중복 제외:** `파일명 2.*`, `파일명 3.*` 형태 파일 전체 분석 제외  

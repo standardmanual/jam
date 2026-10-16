@@ -1,5 +1,7 @@
 # Storybook Information Architecture
 
+> 2026-10-16: `design-system/guidelines/`·`dashboard.html` 삭제(티켓 20261015_2135). 아래 KEEP 표기는 작성 시점 기록이다.
+
 > **기준일:** 2026-08-16  
 > **근거 문서:** `docs/storybook/01-modular-audit.md`  
 > **코드 수정 없음** — 구조 설계 전용
