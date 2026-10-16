@@ -120,7 +120,7 @@ function RequirementRow({ req }) {
 /** 구분선 — 항목 사이(또는 그룹 사이)의 결합 관계를 한 단어로 */
 function RelationDivider({ label }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0', fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--muted)', letterSpacing: '0.06em' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0', fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--muted)' }}>
       <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
       {label}
       <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
@@ -212,7 +212,7 @@ export function UnlockConditionSheetContent({
       <h3
         style={{
           margin: `${conditionMet ? 'var(--spacing-16)' : 'var(--spacing-24)'} 0 var(--spacing-8)`,
-          fontSize: 'var(--text-xs)', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--muted)',
+          fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--muted)',
         }}
       >
         받는 방법

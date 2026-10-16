@@ -1,17 +1,11 @@
 /*
- * JAM! DS v2 — font loading.
+ * JAM! DS v3 — font loading.
  *
- * v2 change: Google Fonts CDN removed.
- *   - CDN @latest introduces FOUT, network dependency, and CSP risks.
- *   - In Next.js (App Router): use next/font/google — handles self-hosting automatically.
- *   - Otherwise: self-host woff2 files via @font-face with font-display: swap.
+ * 서비스는 src/app/globals.css 1행에서 Google Fonts CDN(Noto Sans KR 400~800,
+ * display=swap)으로 서체를 불러온다. 이 파일은 로딩 선언을 갖지 않는다 — globals.css와
+ * 이중 선언이 되기 때문이다.
  *
- * The font stack in --font-family-base (typography.css) falls back to system-ui
- * so the design system renders without Noto Sans KR in environments where
- * the font hasn't been loaded by the consuming app.
- *
- * Example next/font usage (in layout.tsx):
- *   import { Noto_Sans_KR } from 'next/font/google'
- *   const noto = Noto_Sans_KR({ subsets: ['latin'], weight: ['300','400','500','700','900'] })
- *   <html className={noto.className}>
+ * 단독 소비자(스토리북 등)는 직접 불러와야 한다. 폴백 스택은 typography.css의
+ * --font-family-base에 있고 system-ui를 포함하므로, 서체가 아직 오지 않은 환경에서도
+ * 글자는 깨지지 않는다.
  */

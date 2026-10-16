@@ -109,7 +109,7 @@ export function BadgeTreeSummaryHeader({
         </span>
         <span
           style={{
-            fontSize: 'var(--text-3xl)', fontWeight: 700, lineHeight: 1.2, letterSpacing: '-0.28px',
+            fontSize: 'var(--text-3xl)', fontWeight: 700, lineHeight: 1.2,
             color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums',
           }}
         >

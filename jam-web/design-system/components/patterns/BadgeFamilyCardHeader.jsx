@@ -136,7 +136,7 @@ export function BadgeFamilyCardHeader({
       <span
         style={{
           fontSize: 'var(--text-base)', fontWeight: 600, lineHeight: 1.3,
-          letterSpacing: '-0.01em', color: 'var(--foreground)', minWidth: 0,
+          color: 'var(--foreground)', minWidth: 0,
           // 말줄임 금지(§5). keep-all로 한글은 어절 단위로만 끊고, anywhere를 함께 둬
           // 공백 없는 긴 토큰만 강제로 분리한다(20260906_1424 ③).
           wordBreak: 'keep-all', overflowWrap: 'anywhere',
@@ -165,7 +165,7 @@ export function BadgeFamilyCardHeader({
           <span
             style={{
               fontSize: 'var(--text-xs)', fontWeight: 700, lineHeight: 1.3,
-              letterSpacing: '0.3px', textTransform: 'uppercase',
+              textTransform: 'uppercase',
               color: 'var(--muted)',
             }}
           >

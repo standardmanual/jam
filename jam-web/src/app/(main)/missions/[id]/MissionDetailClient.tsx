@@ -221,7 +221,7 @@ export default function MissionDetailClient({
 
           {/* 제목 + 설명 */}
           <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-[36px] font-bold leading-[1.2] tracking-[-0.5px] text-foreground text-balance">
+            <h1 className="text-[36px] font-bold leading-[1.2] text-foreground text-balance">
               {mission.title}
             </h1>
             {mission.description && (

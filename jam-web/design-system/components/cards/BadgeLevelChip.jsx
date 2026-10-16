@@ -35,7 +35,7 @@ export function BadgeLevelChip({ level, size = 'sm', width = 52, className = '',
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         width, padding: s.padding, borderRadius: 'var(--radius-full)',
         fontSize: s.fontSize, lineHeight: 1, fontWeight: 700,
-        letterSpacing: '0.3px', fontVariantNumeric: 'tabular-nums',
+        fontVariantNumeric: 'tabular-nums',
         color: 'var(--foreground)', background: 'var(--default-soft)',
         ...style,
       }}

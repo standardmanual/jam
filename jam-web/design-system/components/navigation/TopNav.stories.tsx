@@ -74,7 +74,7 @@ export const HeaderStyleOverride: Story = {
 // 20260824_010: 3분할 확장 — 로고/동기화/우측(아바타 포함) 슬롯
 function DemoLogo() {
   return (
-    <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--foreground)' }}>
+    <span style={{ fontSize: 18, fontWeight: 900, color: 'var(--foreground)' }}>
       JAM!
     </span>
   );

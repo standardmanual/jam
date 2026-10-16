@@ -8,6 +8,7 @@ import React from 'react';
  *   - Text color changed from '#fff' hardcoded to --rarity-*-foreground tokens
  *     (rare/epic use black text for better contrast on their light backgrounds)
  *   - letterSpacing applied (uppercase label legibility)
+ * v6 (티켓 20261015_2132): letterSpacing 제거 — JAM 2.0은 자간이 모두 0이다.
  * v3: chip shrunk to ~65% (8px text, 4px/9px padding) — literal px, not --text-xs
  *     (there's no type-scale token below caption; common no longer renders one at all)
  * v4 (티켓 20260905_0036): 미지 등급 값의 «조용한 Common 폴백»을 걷어냈다. 아래 resolveRarity 참고.
@@ -86,7 +87,7 @@ export function RarityBadge({ rarity = 'common', size = 'sm', className = '' }) 
         display: 'inline-flex', alignItems: 'center',
         padding: s.padding, borderRadius: 'var(--radius-full)',
         fontSize: s.fontSize, lineHeight: 1, fontWeight: 700,
-        textTransform: 'uppercase', letterSpacing: '0.3px',
+        textTransform: 'uppercase',
         color: c.text, background: c.bg,
       }}
     >

@@ -15,7 +15,7 @@ JAM!의 톤앤매너 (`UX_WRITING_GUIDELINE.md`에서 가져옴): 시스템이 �
 ## 비주얼 기반 (Visual foundations)
 
 * **팔레트(Palette)**: JAM 2.0 라이트 전용. 크림 바탕(`#fafaf0`), 어두운 글자(`#171717`), 카드는 흰 면(`#ffffff`) + 1px 테두리(`#cfc9b4`), 하나의 주도적인 초록 액센트(`#19b551`, 면 채우기 전용)와 강조 글자·선용 짙은 초록(`#0e7a38`). 값의 원천은 `tokens/colors.css`다.
-* **타이포그래피(Type)**: Noto Sans KR. 헤딩은 라이트 웨이트(300–400), 히어로 모먼트를 위한 큰 디스플레이 크기, H1/H2의 좁은 음수 자간(negative letter-spacing).
+* **타이포그래피(Type)**: Noto Sans KR. 서비스가 쓰는 굵기는 400·500·600·700이고(800은 정의만 있다), 히어로 모먼트를 위한 큰 디스플레이 크기를 갖는다. 자간(letter-spacing)은 모든 단계에서 0이다.
 * **모서리 반경(Radius)**: 일관되게 라운드 처리됨 — 4px 미세함, 8–10px 인풋/버튼, 16px 카드, 히어로 스케일 카드는 최대 48px, 버튼 및 태그용 완전한 알약형/필(9999px).
 * **엘리베이션(Elevation)**: 은은한 틴트 그림자(3개 레벨)
 * **간격(Spacing)**: 10px 기본 단위 및 배수(8/10/12/16/24/40/80/128).
@@ -36,7 +36,7 @@ JAM!의 톤앤매너 (`UX_WRITING_GUIDELINE.md`에서 가져옴): 시스템이 �
 
 ## 폰트 설정 (Font Setup)
 
-DS v2는 Noto Sans KR을 기본 서체로 사용한다. CDN `@import` 대신 환경에 맞는 방식으로 로드해야 한다.
+DS는 Noto Sans KR을 기본 서체로 사용한다. 서비스(`jam-web`)는 `src/app/globals.css` 1행의 Google Fonts CDN `@import`(`wght@400..800`, `display=swap`)로 불러온다. 단독으로 쓰는 환경은 아래 중 맞는 방식으로 직접 로드해야 한다. `tokens/fonts.css`에는 로딩 선언이 없다.
 
 ### Next.js (권장)
 
@@ -46,7 +46,7 @@ import { Noto_Sans_KR } from 'next/font/google'
 
 const notoSansKR = Noto_Sans_KR({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '900'],
+  weight: ['400', '500', '600', '700', '800'],
   variable: '--font-noto-sans-kr',
 })
 
@@ -59,7 +59,7 @@ export default function RootLayout({ children }) {
 }
 ```
 
-`tokens/fonts.css`의 `--font-family-base: 'Noto Sans KR', sans-serif`가 자동으로 연결된다.
+`tokens/typography.css`의 `--font-family-base`(`"Noto Sans KR"`가 첫 값이고 시스템 글꼴 폴백이 이어진다)가 이 패밀리명을 그대로 쓴다.
 
 ### Vite / CRA
 
@@ -67,7 +67,7 @@ export default function RootLayout({ children }) {
 <!-- index.html <head> -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400..800&display=swap" rel="stylesheet">
 ```
 
 ### 자체 호스팅 (Self-hosting)
@@ -77,13 +77,13 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
 ```css
 @font-face {
   font-family: 'Noto Sans KR';
-  font-weight: 300 900;
+  font-weight: 400 800;
   font-display: swap;
   src: url('/fonts/NotoSansKR-Variable.woff2') format('woff2');
 }
 ```
 
-> 모든 환경에서 weight 300/400/500/600/900이 포함되어야 `--font-weight-*` 토큰이 올바르게 렌더링된다.
+> 모든 환경에서 weight 400~800이 포함되어야 Tailwind의 `font-normal`·`font-medium`·`font-semibold`·`font-bold`가 올바르게 렌더링된다(`--font-weight-*` 토큰은 2131에서 삭제했다).
 
 ## 컴포넌트 탐색 (Component Browser)
 

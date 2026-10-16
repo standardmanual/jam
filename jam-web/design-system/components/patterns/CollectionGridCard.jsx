@@ -11,7 +11,6 @@ const TAG_STYLE = {
   fontSize: '8px',
   fontWeight: 700,
   textTransform: 'uppercase',
-  letterSpacing: '0.3px',
   lineHeight: 1,
   fontFamily: 'var(--font-family-base)',
 };

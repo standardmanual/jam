@@ -22,7 +22,8 @@ const meta: Meta<typeof BadgeTreeSummaryHeader> = {
           '⚠️ **1층에는 전체 진행 막대를 넣지 않는다** — 20260906_1436의 결정을 유지한다 ' +
           '(2026-09-06 재확인). 분포 막대는 등급색이 아니라 상태 채널(--progress-done)로 ' +
           '채운다 — 이 막대가 말하는 건 「그 등급 중 몇 개를 채웠나」이지 등급 자체가 아니다. ' +
-          '등급 라벨은 RarityBadge.jsx의 getRarityLabel()을 재사용한다(MODULAR 단일 소스, 20260905_0027).',
+          '등급 라벨은 RarityBadge.jsx의 getRarityLabel()을 재사용한다(MODULAR 단일 소스, 20260905_0027). ' +
+          '자간은 지정하지 않는다 — JAM 2.0은 모든 글자 크기에서 자간이 0이다(티켓 20261015_2132).',
       },
     },
   },

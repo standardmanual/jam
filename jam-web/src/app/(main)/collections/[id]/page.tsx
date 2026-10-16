@@ -388,7 +388,6 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
                         background: earned ? '#00CC7A' : '#333333',
                         color: earned ? '#000000' : '#999999',
                         fontSize: '10px',
-                        letterSpacing: '0.02em',
                       }}
                     >
                       {earned ? d.itembooks.checkinEarned : d.itembooks.checkinNotEarned}

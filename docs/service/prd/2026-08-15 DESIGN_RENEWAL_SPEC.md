@@ -70,7 +70,7 @@ code:
 아래 내용구성에 피그마의 요소가 없는 경우 추가 필수
 ### Typography
 
-**폰트:** Pretendard Variable (CDN 유지, 변경 금지)
+**폰트:** Noto Sans KR (JAM 2.0에서 Pretendard Variable을 교체, 티켓 20261015_2132)
 
 **타이포그래피 스케일 -모듈러 기준**
 
@@ -496,7 +496,7 @@ JAM!은 **모바일 전용 앱**이다.
 - 탭 구조 (배지도감 3탭, 미션 3탭) 유지
 
 ### 기술
-- Pretendard Variable 폰트 유지
+- 폰트: JAM 2.0에서 Pretendard Variable을 Noto Sans KR로 교체 (티켓 20261015_2132)
 - 모듈러 토큰 체계 (`globals.css`) 유지
 - transitions.dev 모션 토큰 체계 유지
 - Next.js App Router 라우팅 구조 유지

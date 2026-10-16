@@ -6,11 +6,11 @@
  * 클래스가 아닌 곳이 참조하도록 피그마 `dimensions/font`·`dimensions/leading`과 같은 값의 평문
  * 눈금만 남긴다. 자간은 새 시스템에서 모두 0이다.
  *
- * 서체(--font-family-base)는 하위 티켓 20261015_2132에서 Noto Sans KR로 바꾼다.
+ * 서체(--font-family-base)는 티켓 20261015_2132에서 Noto Sans KR로 교체했다.
  */
 :root {
-  --font-family-base: "Pretendard Variable", Pretendard, -apple-system,
-    BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  --font-family-base: "Noto Sans KR", -apple-system, BlinkMacSystemFont,
+    system-ui, Roboto, sans-serif;
 
   /* 글자 크기와 행간 쌍 (피그마 dimensions/font·leading, Tailwind 기본 단계와 같다).
      이름과 값 표기를 Tailwind 4 기본 테마와 같게 둔다(rem, 행간은 글자 크기 대비 비율).
