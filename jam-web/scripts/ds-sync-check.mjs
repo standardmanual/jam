@@ -588,16 +588,16 @@ function checkRawTokens() {
 
 /** 코드가 참조하는데 tokens/ 에 정의가 없는 var(--x) 를 잡는다.
  *
- * Story 와 guidelines/*.html 도 대상이다. 처음엔 컴포넌트 소스만 봤는데, DS v2 가
+ * Story 와 foundations 페이지도 대상이다. 처음엔 컴포넌트 소스만 봤는데, DS v2 가
  * --radius-md·--radius-button 을 폐기했을 때 그 토큰을 아직 쓰던 Story 3곳과
- * radius-scale.html 을 통째로 놓쳤다 — 하필 radius 스케일을 보여주는 카드가
- * 각진 사각형으로 렌더되고 있었다. 카탈로그가 깨지면 재사용 판단이 오염된다. */
+ * 반경 스케일 카드(guidelines/radius-scale.html)를 통째로 놓쳤다 — 하필 radius 스케일을
+ * 보여주는 카드가 각진 사각형으로 렌더되고 있었다. 카탈로그가 깨지면 재사용 판단이
+ * 오염된다. (guidelines/*.html 은 티켓 20261015_2135 에서 지웠고 foundations 가 대신한다.) */
 function checkUndefinedTokens() {
   const targets = [
     ...walk(path.join(DS, 'components'), (f) => f.endsWith('.jsx') && !/ \d\.jsx$/.test(f)),
     ...walk(path.join(DS, 'components'), (f) => f.endsWith('.stories.tsx')),
     ...walk(path.join(DS, 'foundations'), (f) => f.endsWith('.tsx')),
-    ...walk(path.join(DS, 'guidelines'), (f) => f.endsWith('.html')),
     ...walk(SERVICE_UI, (f) => f.endsWith('.tsx')),
   ];
   const globalsSrc = existsSync(path.join(WEB_ROOT, 'src/app/globals.css'))
@@ -621,36 +621,6 @@ function checkUndefinedTokens() {
       report('TOKEN_UNDEFINED', 'ERROR', path.basename(f, path.extname(f)),
         `정의되지 않은 토큰을 참조합니다 (${missing.size}개). 값이 비어 렌더가 깨집니다.`,
         { 미정의: [...missing], 파일: path.relative(REPO_ROOT, f) });
-    }
-  }
-}
-
-/** 가이드라인 카드가 라벨로 적어둔 hex 가 그 칸이 실제로 칠하는 토큰 값과 같은지 본다.
- *
- * colors-neutral.html 은 `background:var(--muted) … Secondary<br>#666666`
- * 처럼 토큰과 값을 나란히 보여준다. v2 가 접근성 때문에 #9a9a9a → #b2b2b2 로 올렸는데
- * 라벨은 그대로여서, 색 견본 카드가 자기가 칠한 색과 다른 값을 적고 있었다.
- * 디자이너가 이 카드를 보고 값을 가져다 쓰면 그대로 틀린다. */
-function checkGuidelineLabels() {
-  for (const f of walk(path.join(DS, 'guidelines'), (x) => x.endsWith('.html'))) {
-    const lines = readFileSync(f, 'utf8').split('\n');
-    const wrong = [];
-    lines.forEach((line) => {
-      const tokenM = line.match(/var\((--[\w-]+)\)/);
-      const hexM = line.match(/#([0-9a-fA-F]{6})\b(?![0-9a-fA-F])/g);
-      if (!tokenM || !hexM) return;
-      const actual = resolveVars(`var(${tokenM[1]})`).toLowerCase();
-      if (!/^#[0-9a-f]{6}$/.test(actual)) return;   // 토큰이 색으로 안 풀리면 판정 불가
-      // 같은 줄의 hex 중 어느 것도 실제 값과 맞지 않으면 라벨이 낡은 것으로 본다.
-      const labels = hexM.map((h) => h.toLowerCase()).filter((h) => h !== '#000000' && h !== '#ffffff');
-      if (labels.length && !labels.includes(actual)) {
-        wrong.push(`${tokenM[1]}: 라벨 "${labels.join(', ')}" ≠ 실제 "${actual}"`);
-      }
-    });
-    if (wrong.length) {
-      report('GUIDELINE_LABEL', 'ERROR', path.basename(f, '.html'),
-        `카드 라벨의 색값이 실제 토큰 값과 다릅니다 (${wrong.length}개). 보고 가져다 쓰면 틀립니다.`,
-        { 어긋남: wrong, 파일: path.relative(REPO_ROOT, f) });
     }
   }
 }
@@ -696,7 +666,6 @@ checkManifest();
 checkManifestTokens();
 checkRawTokens();
 checkUndefinedTokens();
-checkGuidelineLabels();
 checkUploadState();
 
 const counts = {
