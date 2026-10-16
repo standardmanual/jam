@@ -58,9 +58,9 @@ const PALETTE: Record<'onSurface' | 'onCard', CSSProperties> = {
     '--tabs-text-active': 'var(--snow)',
     '--tabs-text-hover': 'var(--foreground)',
   } as CSSProperties,
-  // 흰 카드(--surface) 위 — 비활성 라벨 --muted(흰 면 위 5.74:1), 활성 pill은 accent 면 + --accent-foreground 글자
+  // 흰 카드(--surface) 위 — 트랙 --background-secondary(#f2f2f2), 비활성 라벨 --muted(트랙 위 5.13:1), 활성 pill은 accent 면 + --accent-foreground 글자
   onCard: {
-    '--tabs-bar-bg': 'rgba(0, 0, 0, 0.06)',
+    '--tabs-bar-bg': 'var(--background-secondary)',
     '--tabs-pill-bg': 'var(--accent)',
     '--tabs-text-muted': 'var(--muted)',
     '--tabs-text-active': 'var(--accent-foreground)',

@@ -113,16 +113,16 @@ describe('공개 전 — brief (재료 수와 공개일만)', () => {
 })
 
 describe('공개 전 — 운영자가 poster를 고른 경우', () => {
-  it('같은 두 줄이 막 위 흰 글자로 보이고 타일은 없다', () => {
+  it('같은 두 줄이 막 위 snow 글자로 보이고 타일은 없다', () => {
     const html = draw(makeCard({ shape: 'poster', cover_image_url: 'https://cdn.example/teaser.png', resolved_recipe: scheduled }))
-    expect(factTexts(html, 'text-white')).toEqual(['재료 4개', '공개 10월 12일'])
+    expect(factTexts(html, 'text-snow')).toEqual(['재료 4개', '공개 10월 12일'])
     expect(html).toContain('레시피 공개')
     expect(html).not.toContain('<ul')
   })
 
   it('커버가 없으면 자리 표시 판에 플라스크 아이콘이다', () => {
     const html = draw(makeCard({ shape: 'poster', resolved_recipe: scheduled }))
-    expect(html).toContain(renderToStaticMarkup(<FlaskIcon className="w-8 h-8 text-foreground/60" />))
+    expect(html).toContain(renderToStaticMarkup(<FlaskIcon className="w-8 h-8 text-muted" />))
   })
 })
 

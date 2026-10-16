@@ -237,7 +237,7 @@ export default function PhilosophyPage() {
                     // (NotificationsClient·BadgeRevealCarousel의 선례와 같은 조합)
                     <p
                       key={j}
-                      className="text-base leading-[var(--leading-reading)] text-foreground/90 [word-break:keep-all] break-words"
+                      className="text-base leading-[var(--leading-reading)] text-foreground [word-break:keep-all] break-words"
                     >
                       {paragraph}
                     </p>

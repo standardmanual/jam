@@ -233,7 +233,7 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
         className="fixed inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center bg-background text-foreground"
         style={{ maxWidth: 430, margin: '0 auto' }}
       >
-        <p className="text-base text-foreground/70">{locError}</p>
+        <p className="text-base text-muted">{locError}</p>
         <Button variant="secondary" onClick={() => window.location.reload()}>
           {d.drops.retry}
         </Button>
@@ -248,7 +248,7 @@ export default function DropsClient({ focusPoi = null, questStep = null }: Drops
         style={{ maxWidth: 430, margin: '0 auto' }}
       >
         <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
-        <p className="text-base text-foreground/60">{d.drops.locating}</p>
+        <p className="text-base text-muted">{d.drops.locating}</p>
       </div>
     )
   }

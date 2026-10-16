@@ -51,7 +51,7 @@ export default function VocPagination({ page, totalPages, onChange }: VocPaginat
       </button>
       {pageList.map((p, i) =>
         p === 'ellipsis' ? (
-          <span key={`e${i}`} className="px-1 text-base text-foreground/40">
+          <span key={`e${i}`} className="px-1 text-base text-muted">
             …
           </span>
         ) : (
@@ -61,7 +61,7 @@ export default function VocPagination({ page, totalPages, onChange }: VocPaginat
             onClick={() => onChange(p)}
             aria-current={p === page ? 'page' : undefined}
             className={`min-w-11 min-h-11 px-2 rounded-full text-base ${
-              p === page ? 'bg-surface text-foreground font-bold' : 'text-foreground/60'
+              p === page ? 'bg-surface text-foreground font-bold' : 'text-muted'
             }`}
           >
             {p}

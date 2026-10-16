@@ -13,7 +13,7 @@ import type { ArticleView as ArticleViewData } from '@/lib/today/articleView'
  *
  * - 커버가 없으면(`coverUrl` 없음) 16:9 칸을 만들지 않고 TopNav 바로 아래 `pt-24`부터 칩이 시작한다. 커버 주소가 있는데 로드에 실패하면
  *   `SafeImage` 기본 동작대로 칸이 사라진다. 커버 `alt`는 빈 값이다 — 바로 아래 제목(h1)이 글자로 보이기 때문이다.
- * - 옅은 글자(부제·게재일·「본문이 없어요」)는 `text-foreground/60`이다(크림 바탕 위 약 4.6:1, AA). `/40`은 쓰지 않는다.
+ * - 옅은 글자(부제·게재일·「본문이 없어요」)는 `text-muted`다(크림 바탕 위 5.47:1, AA). 불투명도로 글자색을 만들지 않는다.
  * - CTA 알약은 어두운 반전 면(`--background-inverse`) 위 `text-snow`다 — 면이 어두운 곳이라 글자가 `--snow`인 것이 맞는 짝이다(티켓 20261015_2133).
  * - CTA는 `cta.href`가 있으면 링크, 없으면 같은 모양의 정적 필(링크·눌림·transition 없음)이다. `cta` 자체가 없으면 블록이 없다 — 둘은 다른 상태다.
  */
@@ -52,10 +52,10 @@ export default function ArticleView({ view }: { view: ArticleViewData }) {
 
         <h1 className="text-3xl mt-4">{view.title}</h1>
         {view.subtitle && (
-          <p className="text-base text-foreground/60 mt-2">{view.subtitle}</p>
+          <p className="text-base text-muted mt-2">{view.subtitle}</p>
         )}
         {view.publishedAt && (
-          <p className="text-xs text-foreground/60 mt-4">
+          <p className="text-xs text-muted mt-4">
             <LocalDate iso={view.publishedAt} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
           </p>
         )}
@@ -63,12 +63,12 @@ export default function ArticleView({ view }: { view: ArticleViewData }) {
         <div className="mt-6 flex flex-col gap-4">
           {view.paragraphs.length > 0 ? (
             view.paragraphs.map((paragraph, index) => (
-              <p key={index} className="text-base text-foreground/90 whitespace-pre-line">
+              <p key={index} className="text-base text-foreground whitespace-pre-line">
                 {paragraph}
               </p>
             ))
           ) : (
-            <p className="text-foreground/60">{d.todayCard.noBody}</p>
+            <p className="text-muted">{d.todayCard.noBody}</p>
           )}
         </div>
 

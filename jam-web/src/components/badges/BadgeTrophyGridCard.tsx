@@ -78,7 +78,7 @@ export default function BadgeTrophyGridCard({ name, imageUrl, rarity, level = nu
           width={90}
           height={90}
           className="w-full h-full object-contain p-1"
-          fallback={<MedalIcon className="w-10 h-10 text-foreground/30" />}
+          fallback={<MedalIcon className="w-10 h-10 text-muted" />}
         />
       </div>
       <p className="text-[13px] font-bold text-foreground text-center w-full leading-tight pt-2 [overflow-wrap:anywhere]">

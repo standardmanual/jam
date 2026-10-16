@@ -178,7 +178,7 @@ describe('CardChipRow — 막 위(on="scrim", 티켓 20261001_2013 b4)', () => {
     const base = render(FULL)
     expect(render(FULL, undefined, 'white')).toBe(base)
     expect(base).toContain('background:var(--background-secondary);color:var(--foreground)')
-    expect(base).not.toContain('text-white')
+    expect(base).not.toContain('text-snow')
   })
 
   it('막 위에서도 라벨 칩은 기본 색조(밝은 알약 + 어두운 글자)다 — 어두운 막과 면이 갈린다', () => {
@@ -187,15 +187,15 @@ describe('CardChipRow — 막 위(on="scrim", 티켓 20261001_2013 b4)', () => {
     expect(html).not.toContain('background:var(--background-inverse)')
   })
 
-  it('지역 핀·게재일 글자는 text-white이고 옅은 단계(text-muted)가 없다', () => {
+  it('지역 핀·게재일 글자는 text-snow이고 옅은 단계(text-muted)·리터럴 흰색이 없다', () => {
     const html = render(FULL, undefined, 'scrim')
     expect(html).toContain(
-      '<span class="inline-flex items-center gap-1 min-w-0 text-xs text-white">',
+      '<span class="inline-flex items-center gap-1 min-w-0 text-xs text-snow">',
     )
     expect(html).toContain(
-      'class="ml-auto shrink-0 whitespace-nowrap text-xs text-white">10월 5일</time>',
+      'class="ml-auto shrink-0 whitespace-nowrap text-xs text-snow">10월 5일</time>',
     )
-    expect(html).not.toContain('text-snow')
+    expect(html).not.toContain('text-white')
     expect(html).not.toContain('text-muted')
   })
 

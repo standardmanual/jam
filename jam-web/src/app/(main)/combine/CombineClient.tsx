@@ -518,13 +518,13 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
           {/* 검색 */}
           <div className="px-4 pt-4 pb-4">
             <div className="flex items-center gap-2 px-4 py-3 rounded-full bg-surface">
-              <SearchIcon className="w-4 h-4 text-foreground/40 shrink-0" />
+              <SearchIcon className="w-4 h-4 text-muted shrink-0" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={d.combine.searchPlaceholder}
-                className="flex-1 bg-transparent outline-none text-base text-foreground placeholder:text-foreground/40"
+                className="flex-1 bg-transparent outline-none text-base text-foreground placeholder:text-muted"
               />
             </div>
           </div>
@@ -661,14 +661,14 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
                             width={64}
                             height={64}
                             className="object-contain w-full h-full"
-                            fallback={<PackageIcon className="w-6 h-6 text-foreground/40" />}
+                            fallback={<PackageIcon className="w-6 h-6 text-muted" />}
                           />
                         </div>
                         <p className="text-xs text-foreground text-center line-clamp-2">
                           {row.name}
                         </p>
                         {row.state === 'used' && (
-                          <span className="text-xs text-foreground/40">{d.combine.bagUsedLabel}</span>
+                          <span className="text-xs text-muted">{d.combine.bagUsedLabel}</span>
                         )}
                       </button>
                     )

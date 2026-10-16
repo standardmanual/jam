@@ -73,7 +73,7 @@ function LoginContent() {
         )}
       </div>
 
-      <p className="mt-8 text-foreground/60 text-[11px] text-center">
+      <p className="mt-8 text-muted text-[11px] text-center">
         {d.auth.terms}
       </p>
     </main>
