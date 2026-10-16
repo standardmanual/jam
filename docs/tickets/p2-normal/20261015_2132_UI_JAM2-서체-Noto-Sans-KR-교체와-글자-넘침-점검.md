@@ -2,8 +2,9 @@
 id: "20261015_2132"
 category: UI
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-10-15
+closed: 2026-10-16
 parent: "20261015_2130"
 workType: ds
 specs:
@@ -57,13 +58,34 @@ specs:
 
 ### 구현 내용 요약
 
+서비스 서체를 Pretendard에서 Noto Sans KR로 바꾸고 자간을 0으로 걷었다.
+
+- **로딩**: `globals.css` 1행을 Google Fonts CDN `wght@400..800&display=swap`(범위형, 결정 2의 400~800 전부 사용 가능, CSS 475,730B → 95,642B, 글꼴 파일 124개는 동일)으로 바꿨다. `typography.css`의 `--font-family-base` 첫 값이 `"Noto Sans KR"`이고 `_ds_manifest.json`은 `ds-manifest-sync --write`로 다시 만들었다. `fonts.css`는 주석만 고쳤다.
+- **자간 걷기**: DS 컴포넌트 7종(`BadgeLevelChip`·`RarityBadge`·`BadgeFamilyCardHeader`·`BadgeTreeSummaryHeader`·`DualAxisGauge`·`UnlockConditionSheetContent`·`CollectionGridCard`)과 짝 스토리, 서비스 2곳(`collections/[id]/page.tsx`, `MissionDetailClient.tsx`)에서 `letterSpacing`·`tracking-`을 걷었다. `UnlockConditionSheetContent.jsx:123`(0.06em)은 판정 목록 밖이지만 완료 조건 4(0건)에 묶여 함께 걷었다.
+- **배지 이미지 생성기(승인 항목)**: 산출 이미지를 지금과 같게 두려고 `ensureBadgeImageFonts()`가 Pretendard 스타일시트 `<link>`를 한 번만 삽입하고 load를 기다린 뒤 글꼴을 요청한다. 실패 시 reject 없이 폴백하고 다음 호출에서 재시도한다. 어드민 `ADMIN_FONT_FAMILY`는 `var(--font-family-base)`다.
+- **연결 범위(`ds`)**: 신규 컴포넌트·토큰 없음. 토큰 값 1개(`--font-family-base`)만 바뀌었다.
+- **자간 0 원칙의 의도된 예외**: `ItemSerialCode.jsx:263`의 `letterSpacing`은 알파벳 타일 `<span>`의 실제 CSS 자간이고, 같은 `trackingRatioFor`가 숫자 릴 간격(178행)·타일 폭 계산(294행)에 쓰여 걷으면 폭이 어긋난다. 서체 교체의 영향은 대문자 영문 -1.6~-2.7%, 숫자 -4%로 좁아지는 쪽이다.
+
 ### 변경된 파일
 ```
--
+jam-web 30개 파일(+218 / -64줄). 핵심만 적는다.
+jam-web/src/app/globals.css                         (1행 Google Fonts CDN)
+jam-web/design-system/tokens/typography.css, fonts.css, _ds_manifest.json
+jam-web/src/lib/admin/composeActivityBadgeImage.ts  (ensureBadgeImageFonts: Pretendard 분리 로딩)
+jam-web/src/lib/admin/googleFonts.ts, jam-web/src/app/admin/layout.tsx (ADMIN_FONT_FAMILY)
+jam-web/src/lib/admin/__tests__/composeActivityBadgeImage-fonts.test.ts (신규 4건)
+jam-web/design-system/components/{cards,patterns}/*.jsx 7종 + 짝 *.stories.tsx 7개 (자간 걷기)
+jam-web/src/app/(main)/collections/[id]/page.tsx, missions/[id]/MissionDetailClient.tsx
+jam-web/design-system/foundations/{Fonts,Typography}.stories.tsx, design-system/readme.md
+docs/service/prd/2026-08-15 DESIGN_RENEWAL_SPEC.md  (73·499행), docs/service/prd/admin-ui/{REDESIGN,PHASES}.md (갱신 표기)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `scripts/verify.sh` 전항목 통과: CI verify 실행 38815479464, head acadaa296 (vitest 10,934건, 신규 4건, `ds:check` 오류 0)
+- [x] 로컬 `next dev`(메인 트리): 계산된 `font-family` 첫 값 `"Noto Sans KR"`, 로드된 폰트 `Noto Sans KR 400~800`, 네트워크 요청 중 Pretendard·jsDelivr 0건(`fonts.googleapis.com` 1건만)
+- [x] 393px 폭 5개 화면(홈·배지·인벤토리·미션·프로필): 잘림(`overflow`)·말줄임·화면 밖 요소 0건, 문서 가로 스크롤 없음(`scrollWidth` 393). 미션·프로필은 실데이터가 있는 테스트 계정이다.
+- [x] 스토리북에서 칩·카드 패턴 59개 스토리를 393px iframe으로 스캔: 49개 이상 이상 없음. 지적된 것은 `ItemSerialCode` 10개뿐이다. 숫자 릴 창(`clientWidth` 1)의 의도된 잘림과 Figma 원본 크기(175px)·나란히 보기 스토리의 넓은 배치라 글꼴과 무관하다(옛 서체와의 대조는 하지 않았다).
+- [ ] 미확인: 스크린샷은 남기지 않았다(계산 값·스캔 결과로 대체). 배지 레벨 칩의 두 자리 수 Lv와 고정 폭 52px 안의 실제 데이터 렌더, 시리얼 코드 스탬프(`BadgeDetailSheet`) 실화면은 데이터가 없어 확인하지 못했다.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `docs/service/writing/UX_WRITING_GUIDELINE.md` 참조
@@ -75,9 +97,9 @@ specs:
 - [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
 
 ### 배포 정보
-- 배포일: 
-- 환경: production
-- 커밋: 
+- 배포일: 2026-10-16 (staging, 프로덕션 배포는 JAM 2.0 출시 전까지 중지)
+- 환경: staging
+- 커밋: e610f7dc2 (머지), review 브랜치 `claude/jamwork-20261015_2132-noto-sans-kr` head acadaa296
 
 ### 실행 지표
 > Workflow 완료 알림 `<usage>`(전체 토큰·소요·에이전트 수·도구 호출)와 결과의 `tokenUsage`
@@ -87,8 +109,10 @@ specs:
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1차 (채원① 판정, 승인 항목 반환) | 1 | 119,899 | - / - | 7분 41초 | 49 |
+| 2차 (아현 plan_only 반환) | 1 | 56,214 | 11,534 / - | 1분 37초 | 20 |
+| 3차 (면제 후 구현 + 게이트 + 채원②) | 3 | 335,656 | 45,742 / 46,347 | 16분 53초 | 145 |
+| 합계 | 5 | 511,769 | 57,276 / 46,347 | 26분 12초 | 214 |
 
 ### 주요 의사결정 / 핵심 메모
 > 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
@@ -242,5 +266,14 @@ html (className=Geist 변수 2개, 본문에는 안 쓰임)
 - 스토리·문서: `Fonts.stories.tsx`, `Typography.stories.tsx`, `TopNav.stories.tsx:77`, `docs/service/prd/2026-08-15 DESIGN_RENEWAL_SPEC.md` 73·499행, `design-system/readme.md`
 - 확인: 완료 조건 3의 `grep`은 대소문자를 구분하면 `globals.css` 1행(URL의 소문자 `pretendard`)을 못 잡으므로 `-i`로 검사한다.
 
+**진행 경위와 결과 (2026-10-16)**
+
+- 규모 사전 판정이 빗나갔다. 서체 로딩만 보고 파일 5개 이내로 봤으나 자간을 걷을 DS 컴포넌트 7종과 짝 스토리·문서를 놓쳐 22~30개 파일이 되었고, 아현이 `plan_only`로 돌아와 한 번 더 호출했다(2차 실행, 약 5.7만 토큰). 다음에는 「남은 `letterSpacing`·`tracking-` 참조를 같이 걷는다」 같은 문장이 계획에 있으면 그 참조 수를 먼저 `grep`으로 센 뒤 규모를 판정한다.
+- 시작 전 결정 3건이 모두 추천안이 아니었다(Google Fonts CDN, 400~800, 요소 폭 늘림). 그 결과 `@import`가 렌더를 막아 Google Fonts CDN이 응답하지 않으면 첫 그림이 늦어진다. 이는 알려진 위험이다.
+- 채원① 승인 1건(추천안): 배지 이미지 생성기는 생성기 안에서만 Pretendard를 불러온다. 그래서 구워진 배지 이미지 속 글자(Pretendard)와 화면 UI 글자(Noto Sans KR)가 한 화면에 나란히 보이는 곳이 생긴다. 생성기까지 Noto Sans KR로 맞출지는 사용자 판단이며, 맞춘다면 한글 조각(124개) 때문에 `document.fonts.load`에 실제 문구를 넘겨야 한다.
+- 게이트 WARN 사유는 어드민 PRD(`admin-ui/REDESIGN.md`·`PHASES.md`)의 서체 서술이 낡은 것이었고, 머지 때 이력 표기를 달아 보완했다. 채원② 중대 0건.
+- 글자 넘침 수정은 하지 않았다. 5개 화면과 59개 스토리 스캔에서 수정할 곳이 나오지 않았다. 결정 3(요소 폭을 늘린다)은 적용할 대상이 없었다.
+- 범위 밖 발견물: 신규 티켓 `20261016_0718`(Geist Sans 미사용 로딩·`font-mono`), `20261016_0719`(생성기 스타일시트 타임아웃). 나머지(`DESIGN.md` 전체, 파운데이션 스토리 소제목 자간, 반복 안내 문장)는 2135 인계 절로 옮겼다.
+
 ### 잔여 이슈
--
+- 배지 레벨 칩 두 자리 수·시리얼 코드 스탬프의 실화면 렌더는 데이터가 있는 환경에서 확인이 필요하다. 렌더로 확인하지 못한 항목은 테스트 결과의 마지막 줄에 있다.

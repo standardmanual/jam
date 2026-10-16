@@ -80,6 +80,7 @@ npx shadcn@latest apply b5Jgcv00m --only theme,font
   있어(서비스 본체·어드민 공용, 2026-08-24 확인) 추가 설치 없이 `font-family: 'Pretendard', ...`
   참조만 있으면 된다. 어드민은 지금 `admin/layout.tsx`에서 `next/font/google`로 Inter를
   별도 로드 중(`--font-admin-inter`) — 이 부분을 제거하고 Pretendard 참조로 교체.
+  > 2026-10-16 갱신(티켓 20261015_2132): JAM 2.0에서 서비스·어드민 서체가 Noto Sans KR로 바뀌었다. 어드민은 `var(--font-family-base)`를 쓰고 `globals.css` 1행은 Google Fonts CDN이다. 위 서술은 2026-08 당시 기록이다(배지 이미지 생성기만 Pretendard를 따로 불러온다).
 - `npx shadcn@latest preset decode b5Jgcv00m`로 언제든 프리셋 값 재확인 가능.
 
 ### 충돌 위험 없음 (실측 확인, 2026-08-26)

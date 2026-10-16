@@ -23,7 +23,7 @@ Phase가 전부 끝났다.
 
 | Phase | 범위 | 의존성 | 티켓 유형 | 상태 |
 |---|---|---|---|---|
-| 1. 기반 | shadcn 폴더 분리 + 프리셋 테마 + Pretendard + tabler | 없음 | `admin` | 완료 |
+| 1. 기반 | shadcn 폴더 분리 + 프리셋 테마 + Pretendard(2026-10-16 JAM 2.0에서 Noto Sans KR로 교체, 티켓 20261015_2132) + tabler | 없음 | `admin` | 완료 |
 | 2. 레이아웃 셸 | Sidebar/Nav/Header → shadcn 공식 Sidebar 블록 | 1단계 완료 | `admin` | 완료 |
 | 3. Data Table | 전체 목록 화면 행선택+일괄액션+공식 Toolbar 필터 | 1단계 완료 (2단계와 순서 무관, 2단계 이후 권장) | `admin` | 완료 |
 | 4. 하드코딩 제거 | 전체 어드민 화면 hex → shadcn 시맨틱 토큰 (a/b/c/d 4개 하위 티켓) | 1~3단계 완료 | `admin` | 완료 (2026-08-27) |
