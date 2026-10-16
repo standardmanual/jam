@@ -184,6 +184,33 @@ function testPartitionRowsCollapsesLowPriorityOpenOnly() {
   assert.deepEqual(all.collapsed, {})
 }
 
+// 월간 절 뒤에 켜진 루틴 절(데일리 미팅)을 두어도 월간의 꺼짐 판정이 그 상태 칸으로 새지 않는다(티켓 20261007_1956).
+function testDisabledMonthlyIsNotAffectedByTrailingEnabledSection() {
+  const md = `
+## 주간 — 화요일 09:00 KST
+
+| 상태 | 꺼짐 (2026-10-07 삭제, JAM 2.0 완료 전까지 중단) |
+
+## 월간 — 매월 1일 09:00 KST
+
+| 상태 | 꺼짐 (2026-10-07 삭제, JAM 2.0 완료 전까지 중단) |
+
+## 데일리 미팅 — 매주 월·수·금 20:00 KST
+
+| 상태 | 켜짐 (2026-10-14 등록) |
+`
+  assert.equal(parseWeeklySchedule(md).enabled, false)
+  assert.equal(parseMonthlySchedule(md).enabled, false)
+
+  const repoRoot = makeFakeRepo(md)
+  try {
+    const wednesday = new Date(Date.UTC(2026, 9, 14, 3, 0))
+    assert.deepEqual(checkMissingReports(repoRoot, wednesday), [], '꺼진 루틴은 리포트 누락 경고를 내지 않는다')
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true })
+  }
+}
+
 function main() {
   testPartitionRowsCollapsesLowPriorityOpenOnly()
   testParseWeeklyScheduleReadsHeadingAndStatus()
@@ -195,6 +222,7 @@ function main() {
   testCheckMissingReportsSilentWhenReportExists()
   testCheckMissingReportsSilentWhenDisabled()
   testCheckMissingReportsOnlyAsksFolderWhenOperationsAbsent()
+  testDisabledMonthlyIsNotAffectedByTrailingEnabledSection()
   console.log('ticket-dashboard.test.mjs 통과')
 }
 
