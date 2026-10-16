@@ -181,9 +181,9 @@ describe('1px 테두리와 세로 패딩 — 높이가 그대로다', () => {
     expect(xs).toContain('padding-bottom:calc(12px * var(--scale-compact) - 1px)')
   })
 
-  it('서비스 arrow: 세로 패딩 23px + 테두리 1px(옛 24px)', () => {
+  it('서비스 arrow: 세로 패딩 23px(py-5.75, 스케일 유틸리티) + 테두리 1px(옛 py-6 = 24px)', () => {
     const html = renderToStaticMarkup(<ServiceButton variant="arrow">확인</ServiceButton>)
-    expect(classesOf(html)).toContain('py-[23px]')
+    expect(classesOf(html)).toContain('py-5.75')
     expect(classesOf(html)).toContain('border-transparent')
   })
 

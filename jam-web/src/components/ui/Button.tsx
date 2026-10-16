@@ -61,6 +61,8 @@ const primaryColorClasses: Record<ButtonSurface, string> = {
 }
 
 // 세로 패딩은 1px 테두리 두께를 뺀 값이다 — 14→13(md 52px 유지), arrow 24→23.
+// arrow의 `py-5.75`(= 23px)는 임의값 `py-[23px]`가 아니라 스케일 유틸리티다: 임의값끼리는 값이 큰 쪽이 CSS에서
+// 나중에 와서 이기는데, 옛 `py-6`처럼 스케일 유틸리티여야 sm·lg의 `py-[…]`가 이전처럼 arrow를 이긴다(높이 불변).
 const pillShape = 'rounded-full px-6 py-[13px] text-base'
 
 const shapeClasses: Record<ButtonVariant, string> = {
@@ -69,7 +71,7 @@ const shapeClasses: Record<ButtonVariant, string> = {
   danger: pillShape,
   outline: pillShape,
   ghost: pillShape,
-  arrow: 'rounded-full px-6 py-[23px] text-2xl',
+  arrow: 'rounded-full px-6 py-5.75 text-2xl',
 }
 
 const sizePadding: Record<ButtonSize, string> = {
