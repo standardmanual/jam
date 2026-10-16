@@ -26,8 +26,8 @@ const meta: Meta<typeof BadgeStageRail> = {
           '바꿨다(펼친 목록은 이미 옆에 칩이 있어 그대로 없음). 펼친 목록의 not-reached 상태 줄도 ' +
           '조건값을 보여준다(접힌 레일과 동일 규칙). 게이트 자리 연결선도 다른 연결선과 같은 ' +
           'flex-grow를 갖도록 맞춰 레일 전체가 한쪽으로 쏠려 보이던 것을 고쳤다. 진행 중(조건 ' +
-          '미충족)인 캡션 색은 옐로우(--progress-short)에서 화이트(--foreground)로 바뀌었다 — ' +
-          '채움색(막대·연결선)은 그대로다. ' +
+          '미충족)인 캡션 색은 --foreground다. 20261015_2134: 캡션·문구 글자는 link(다 채움) / ' +
+          'foreground(진행 중·거의 다) / muted 3색이고, 링·연결선·점은 --progress-* 면 색이다. ' +
           '20260906_2140(v5): 헤더를 직접 그리지 않고 공유 부품 `BadgeFamilyCardHeader`를 쓴다 — ' +
           '계열명 시작 x가 패턴마다 32/88/16px로 갈라져 있었다. 눈금 기하는 **고정 상수**다 — ' +
           '썸네일 52px · 연결선 16px을 못박고 **왼쪽부터** 나열하며 남는 오른쪽은 여백으로 둔다. ' +
@@ -40,7 +40,7 @@ const meta: Meta<typeof BadgeStageRail> = {
           '썸네일 44→52px, 연결선 6→8px(두께), ' +
           '캡션 --text-xs→--text-xs(진행 앵커만 --text-sm/700), 등급칩 size="md", ' +
           '배지 이미지는 여백 없이 프레임을 꽉 채운다(objectFit: cover). 캡션 색은 상태 램프 ' +
-          '(idle / active / near / done)를 따른다.',
+          '(idle / active / near / done)를 따르되 글자색은 muted / foreground / foreground / link다.',
       },
     },
   },
@@ -52,7 +52,7 @@ type Story = StoryObj<typeof BadgeStageRail>;
 const WALK_ICON =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path fill="%23e8461f" d="M400-40 320-160l40-320-80 40-40 160-80-20 60-240 200-80 60 100 120 40v100l-100-20-40 140 80 300h-100Z"/></svg>'
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path fill="%2319b551" d="M400-40 320-160l40-320-80 40-40 160-80-20 60-240 200-80 60 100 120 40v100l-100-20-40 140 80 300h-100Z"/></svg>'
   );
 
 function Frame({ children }: { children: React.ReactNode }) {
@@ -60,7 +60,7 @@ function Frame({ children }: { children: React.ReactNode }) {
 }
 
 export const GateAheadReady: Story = {
-  name: '게이트 앞 — 조건을 다 채웠어요 (라임)',
+  name: '게이트 앞 — 조건을 다 채웠어요 (링은 라임, 글자는 link)',
   render: () => (
     <Frame>
       <BadgeStageRail
@@ -271,15 +271,17 @@ export const ExpandedNotReachedShowsCondition: Story = {
 };
 
 /**
- * 20260906_2140 A — 진행 캡션 색은 **상태 램프**를 따른다.
- * `0 < f < 0.8`이면 화이트(`--foreground`, 「지금 내 차례」), `0.8 <= f < 1`이면
- * 앰버(`--progress-short`, 「거의 다」), `f >= 1`이면 라임(`--progress-done`)이다.
+ * 20260906_2140 A — 진행 캡션 색은 **상태 램프**를 따른다(글자는 세 색만 쓴다).
+ * `0 < f < 1`이면 `--foreground`(진행 중·거의 다 모두), `f >= 1`이면 `--link`(다 채움)다.
+ * `--progress-*`(앰버·라임)는 선·링·점·막대 면 전용이라 캡션 글자에 쓰지 않는다 —
+ * 흰 면 위 2.07~2.19:1이다(티켓 20261015_2134). 「거의 다」의 구분은 글자색이 아니라
+ * 캡션 문구 숫자와 연결선·링의 앰버에서 라임으로 가는 스윕이 맡는다.
  *
  * 20260906_1436 §3의 「진행 중 캡션은 화이트」는 **유지된다** — 그 티켓이 문제 삼은 구간
- * (조건을 한참 못 채운 상태)이 곧 `active`이기 때문이다. 앰버는 80%를 넘긴 뒤에만 나온다.
+ * (조건을 한참 못 채운 상태)이 곧 진행 중이기 때문이다.
  */
 export const FrontierProgressCaptionRamp: Story = {
-  name: '20260906_2140 — 진행 캡션 상태 램프(진행 중 화이트 / 거의 다 앰버)',
+  name: '20260906_2140 — 진행 캡션 상태 램프(진행 중·거의 다 foreground / 다 채움 link)',
   render: () => (
     <Frame>
       <div data-testid="rail">
@@ -314,6 +316,20 @@ export const FrontierProgressCaptionRamp: Story = {
           onLockClick={() => {}}
         />
       </div>
+      <div data-testid="rail-done" style={{ marginTop: 12 }}>
+        <BadgeStageRail
+          familyName="다 채운 산책러"
+          nextRarityLabel="Epic"
+          stops={[
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'ready', href: '/badges/2' },
+          ]}
+          frontierProgress={{ text: '100.0/100km', fraction: 1 }}
+          progressStopId={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
     </Frame>
   ),
   play: async ({ canvasElement }) => {
@@ -326,8 +342,14 @@ export const FrontierProgressCaptionRamp: Story = {
     const nearRail = canvasElement.querySelector('[data-testid="rail-near"]')!;
     const near = Array.from(nearRail.querySelectorAll('span')).find((el) => el.textContent === '87.3/100km') as HTMLElement;
     expect(near).toBeTruthy();
-    // 거의 다(>=80%)는 앰버(--progress-short, #f5a300) — 기본 글자색과 갈라야 「한 발 남았다」가 읽힌다.
-    expect(getComputedStyle(near).color).toBe('rgb(245, 163, 0)');
+    // 거의 다(>=80%)도 진행 중과 같은 --foreground다 — 앰버(--progress-short)는 글자에 쓰지 않는다.
+    expect(getComputedStyle(near).color).toBe('rgb(23, 23, 23)');
+
+    const doneRail = canvasElement.querySelector('[data-testid="rail-done"]')!;
+    const done = Array.from(doneRail.querySelectorAll('span')).find((el) => el.textContent === '100.0/100km') as HTMLElement;
+    expect(done).toBeTruthy();
+    // 다 채움(f>=1)은 --link(#0e7a38). 라임(--progress-done)은 흰 면 위 2.19:1이라 글자에 쓰지 않는다.
+    expect(getComputedStyle(done).color).toBe('rgb(14, 122, 56)');
   },
 };
 
@@ -547,7 +569,7 @@ export const FrontierProgressBehindGate: Story = {
 };
 
 export const FrontierProgressReadyComplete: Story = {
-  name: '프런티어 진행 — 조건을 다 채움(fraction=1) + 게이트만 대기, 라임으로 표시',
+  name: '프런티어 진행 — 조건을 다 채움(fraction=1) + 게이트만 대기, 글자는 link로 표시',
   render: () => (
     <Frame>
       <BadgeStageRail

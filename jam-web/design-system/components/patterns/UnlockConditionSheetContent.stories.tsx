@@ -6,7 +6,7 @@ import { UnlockConditionSheetContent } from './UnlockConditionSheetContent';
 const WALK_ICON =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path fill="%23e8461f" d="M400-40 320-160l40-320-80 40-40 160-80-20 60-240 200-80 60 100 120 40v100l-100-20-40 140 80 300h-100Z"/></svg>'
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path fill="%2319b551" d="M400-40 320-160l40-320-80 40-40 160-80-20 60-240 200-80 60 100 120 40v100l-100-20-40 140 80 300h-100Z"/></svg>'
   );
 
 const meta: Meta<typeof UnlockConditionSheetContent> = {
@@ -45,15 +45,25 @@ export const MissionGateConditionMet: Story = {
   name: '미션 게이트 — 조건은 이미 채움',
   render: () => (
     <Sheet>
-      <UnlockConditionSheetContent
-        badgeName="동네 산책러"
-        rarity="rare"
-        imageUrl={null}
-        conditionMet
-        requirements={[{ kind: 'mission', name: '동네 산책러 레벨업', href: '/missions/1', imageUrl: null }]}
-      />
+      <div data-testid="sheet">
+        <UnlockConditionSheetContent
+          badgeName="동네 산책러"
+          rarity="rare"
+          imageUrl={null}
+          conditionMet
+          requirements={[{ kind: 'mission', name: '동네 산책러 레벨업', href: '/missions/1', imageUrl: null }]}
+        />
+      </div>
     </Sheet>
   ),
+  play: async ({ canvasElement }) => {
+    const banner = Array.from(canvasElement.querySelectorAll('[data-testid="sheet"] div')).find((el) =>
+      el.textContent?.trim() === '조건을 다 채웠어요',
+    ) as HTMLElement;
+    expect(banner).toBeTruthy();
+    // 조건 충족 줄은 --link(#0e7a38) → rgb(14, 122, 56). --progress-done은 글자에 쓰지 않는다(흰 면 위 2.19:1).
+    expect(getComputedStyle(banner).color).toBe('rgb(14, 122, 56)');
+  },
 };
 
 export const MissionGateConditionNotMet: Story = {
@@ -219,6 +229,13 @@ export const MultiStageGate: Story = {
     // 「1단 통과, 2단 대기」
     expect(text).toContain('통과');
     expect(text).toContain('대기');
+    // met 항목 부제(「이미 받았어요」)와 통과한 그룹 머리글은 --link, 대기 그룹 머리글은 --muted다.
+    const sheet = canvasElement.querySelector('[data-testid="sheet"]')!;
+    const labelOf = (label: string) =>
+      Array.from(sheet.querySelectorAll('p, span')).find((el) => el.textContent?.trim() === label) as HTMLElement;
+    expect(getComputedStyle(labelOf('이미 받았어요')).color).toBe('rgb(14, 122, 56)');
+    expect(getComputedStyle(labelOf('통과')).color).toBe('rgb(14, 122, 56)');
+    expect(getComputedStyle(labelOf('대기')).color).toBe('rgb(102, 102, 102)');
     // 기본 부제는 「배지」다 — 예전 기본값(「배지 · 어느 등급이든 1개」)은 등급 없는 계열에서 거짓이 된다.
     expect(text).not.toContain('어느 등급이든 1개');
   },

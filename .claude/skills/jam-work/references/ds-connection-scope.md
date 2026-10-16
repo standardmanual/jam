@@ -44,8 +44,12 @@ cd jam-web && npm run storybook   # http://localhost:6006
   `ProgressBar` · `WanderingEyesLoader` · `Accordion` · `Carousel` · `TopNav` ·
   `BadgeFamilyCardHeader` · `BadgeLevelGauge` · `BadgeProgressRingCard` ·
   `BadgeRevealCarousel` · `BadgeStageRail` · `BadgeStampRow` · `BadgeStatusSection` ·
-  `BadgeTreeSummaryHeader` · `DualAxisGauge` · `ItemSerialCode` · `UnlockConditionSheetContent`
-  (`Accordion`은 이전 조사에서 "미도입"으로 분류됐으나 이후 연결됨을 확인해 이동했다.)
+  `BadgeTreeSummaryHeader` · `DualAxisGauge` · `ItemSerialCode` · `UnlockConditionSheetContent` ·
+  `Select` · `MixerSlot`
+  (`Accordion`은 이전 조사에서 "미도입"으로 분류됐으나 이후 연결됨을 확인해 이동했다. `Select`와
+  `MixerSlot`은 2026-10-16 티켓 20261015_2134 3회 실측으로 추가했다 — `Select`는 `BadgesClient`·
+  `MissionsListClient`, `MixerSlot`은 `CombineClient`가 import한다. 위 수치 21종·86건은 2026-09-14
+  기준이라 그 밖의 항목은 아래 실측 명령으로 다시 세어야 한다.)
 
 - **병존 구현 9종 — 스토리북에만 반영. ⚠️ 양쪽을 함께 고쳐야 한다.**
   `Button` · `TabBar` · `BottomSheet` · `Toast` · `SlidingTabs` · `BadgeGridCard` ·
@@ -55,8 +59,8 @@ cd jam-web && npm run storybook   # http://localhost:6006
   DS만 고치면 서비스는 따라오지 않는다. 서비스 구현이 DS보다 기능이 많은 경우도 있으므로
   (`BottomSheet`의 드래그-투-클로즈, `Skeleton`의 cross-fade reveal) 단순 스왑도 위험하다.
 
-- **미도입 7종 — 스토리북 전용.** *(2026-09-14 실측 기준, `Accordion` 연결 확인으로 8→7)*
-  `Checkbox` · `Input` · `Select` · `Textarea` · `ModalToast` · `ShapeTag` · `BadgeFrame`
+- **미도입 6종 — 스토리북 전용.** *(2026-09-14 실측 기준, `Accordion` 연결 확인으로 8→7, `Select` 연결 확인으로 7→6)*
+  `Checkbox` · `Input` · `Textarea` · `ModalToast` · `ShapeTag` · `BadgeFrame`
   → 서비스에 대응 개념이 없다. 티켓 20260820_010에서 "유지/보류"로 확정됐으므로 **새로
   도입하려면 별도 판단이 필요하다** (임의로 서비스에 끌어다 쓰지 말 것).
 

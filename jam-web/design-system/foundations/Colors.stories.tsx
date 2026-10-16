@@ -162,8 +162,8 @@ function ColorsPage() {
       </Section>
 
       <Section title="Progress (진행 상태)">
-        <Swatch token="--progress-short" desc="모자람(채우는 중) — 선·점·링" />
-        <Swatch token="--progress-done" desc="다 채움·획득 — 선·점·링" />
+        <Swatch token="--progress-short" desc="모자람(채우는 중) — 선·점·링. 글자로 쓰지 않는다" />
+        <Swatch token="--progress-done" desc="다 채움·획득 — 선·점·링. 글자로 쓰지 않는다(다 채움 글자는 --link)" />
         <Swatch token="--progress-latest" desc="방금 들어옴" />
         <Swatch token="--progress-latest-soft" desc="방금 들어옴 — 점의 후광" />
         <Swatch token="--progress-track" desc="아직 손대지 않은 자리(트랙)" />

@@ -50,7 +50,7 @@ export const Hidden: Story = {
   name: '최근 동기화 없음 (렌더 안 함)',
   render: () => (
     <Frame>
-      <p style={{ color: '#929292', fontSize: 13 }}>visible=false면 아무것도 렌더하지 않습니다.</p>
+      <p style={{ color: 'var(--muted)', fontSize: 13 }}>visible=false면 아무것도 렌더하지 않습니다.</p>
       <RecentSyncBanner visible={false} comparisonMessage={null} />
     </Frame>
   ),
@@ -69,7 +69,7 @@ export const ComparisonFallback: Story = {
   name: '비교 문구 없음 → 기본 메시지로 폴백',
   render: () => (
     <Frame>
-      <p style={{ color: '#929292', fontSize: 13 }}>
+      <p style={{ color: 'var(--muted)', fontSize: 13 }}>
         comparisonMessage가 null(비교할 진전 없음)이면 message 기본값으로 자동 폴백합니다.
       </p>
       <RecentSyncBanner visible comparisonMessage={null} />

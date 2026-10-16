@@ -49,7 +49,7 @@ import { CheckGlyph } from '../icons/BadgeStatusGlyphs.jsx';
 const THUMBNAIL_SIZE = 52;
 
 function AxisRow({ label, rangeText, fraction, met }) {
-  const color = met ? 'var(--progress-done)' : 'var(--foreground)';
+  const color = met ? 'var(--link)' : 'var(--foreground)';
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 'var(--spacing-8)', alignItems: 'center' }}>
       <span
@@ -167,7 +167,7 @@ export function DualAxisGauge({
         {ruleText}
       </p>
       {bottleneckNote && (
-        <p style={{ margin: 'var(--spacing-4) 0 0', fontSize: 'var(--text-xs)', lineHeight: 1.4, color: 'var(--progress-done)' }}>
+        <p style={{ margin: 'var(--spacing-4) 0 0', fontSize: 'var(--text-xs)', lineHeight: 1.4, color: 'var(--link)' }}>
           {bottleneckNote}
         </p>
       )}

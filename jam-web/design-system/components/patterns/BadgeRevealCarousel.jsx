@@ -99,7 +99,7 @@ const FALLBACK_ICON = (
   <svg
     width="72" height="72" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="1.5"
-    style={{ color: 'var(--foreground)', opacity: 0.3 }}
+    style={{ color: 'var(--muted)' }}
     aria-hidden="true"
   >
     <circle cx="12" cy="8" r="5" />
@@ -584,7 +584,7 @@ function BadgeCard({ item, foldedCount = 1, cardWidth }) {
               background: 'var(--surface)',
               border: '1px solid var(--border)',
               fontSize: 'var(--text-xs)', lineHeight: 1, fontWeight: 700,
-              color: 'var(--foreground)', opacity: 0.8,
+              color: 'var(--foreground)',
             }}
           >
             ×{earnCount}

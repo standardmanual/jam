@@ -108,7 +108,7 @@ export function BadgeGridCard({
               }}
             />
           ) : (
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--foreground)', opacity: 0.3 }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--muted)' }}>
               <circle cx="12" cy="8" r="5" />
               <path d="M3 20c0-4 4-7 9-7s9 3 9 7" />
             </svg>
@@ -124,7 +124,7 @@ export function BadgeGridCard({
               background: 'var(--surface)',
               border: '1px solid var(--border)',
               fontSize: 'var(--text-xs)', lineHeight: 1, fontWeight: 700,
-              color: 'var(--foreground)', opacity: 0.8,
+              color: 'var(--foreground)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontFamily: 'var(--font-family-base)',
             }}

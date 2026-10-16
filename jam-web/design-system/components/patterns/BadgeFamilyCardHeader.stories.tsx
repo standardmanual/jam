@@ -71,7 +71,7 @@ export const Default: Story = {
 };
 
 export const RampSteps: Story = {
-  name: '상태 램프 4단계',
+  name: '상태 램프 — 글자는 muted / foreground / link 3색',
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <Card>
@@ -91,10 +91,12 @@ export const RampSteps: Story = {
   play: async () => {
     await expect(progressRampColor(0)).toBe('var(--muted)');
     await expect(progressRampColor(0.42)).toBe('var(--foreground)');
-    await expect(progressRampColor(NEAR_THRESHOLD)).toBe('var(--progress-short)');
-    await expect(progressRampColor(1)).toBe('var(--progress-done)');
+    // 거의 다(>=80%)는 진행 중과 같은 foreground다 — 글자색으로 단계를 가르지 않는다.
+    await expect(progressRampColor(NEAR_THRESHOLD)).toBe('var(--foreground)');
+    await expect(progressRampColor(0.99)).toBe('var(--foreground)');
+    await expect(progressRampColor(1)).toBe('var(--link)');
     await expect(progressRampColor(null)).toBe('var(--muted)');
-    await expect(progressRampColor(0.1, true)).toBe('var(--progress-done)');
+    await expect(progressRampColor(0.1, true)).toBe('var(--link)');
   },
 };
 

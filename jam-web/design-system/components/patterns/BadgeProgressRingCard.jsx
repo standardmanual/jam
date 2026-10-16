@@ -166,7 +166,7 @@ export function BadgeProgressRingCard({
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: '2px solid var(--surface)',
               background: earned ? 'var(--progress-done)' : 'var(--progress-track)',
-              color: earned ? '#000' : 'var(--muted)',
+              color: earned ? 'var(--foreground)' : 'var(--muted)',
             }}
           >
             {earned ? <CheckGlyph size={10} /> : <LockGlyph size={10} />}

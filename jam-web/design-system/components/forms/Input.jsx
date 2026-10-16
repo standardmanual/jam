@@ -16,7 +16,7 @@ import React from 'react';
  *     1px 움직인다.
  *   - `surface="inverse"` 삭제: 어두운 면 + 흰색 반투명 테두리라 라이트 전용 시스템과 맞지 않고
  *     서비스 사용처도 없었다. 검색바는 기본 모양이 UserSearchBar와 같다.
- *   - --field-border(#cfc9b4)는 흰 면 위 1.66:1이라 UI 경계 3:1에 못 미친다. 값 재검토는 사용자 판단으로 열려 있다.
+ *   - --field-border는 흰 면 위 1.66:1이라 UI 경계 3:1에 못 미친다. 값 재검토는 사용자 판단으로 열려 있다.
  */
 export function Input({
   placeholder = '',

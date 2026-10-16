@@ -181,7 +181,7 @@ function StopThumbnail({ imageUrl, alt, status, rarity, showRarityChip = false }
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: '2px solid var(--surface)',
               background: status === 'earned' ? 'var(--progress-done)' : 'var(--progress-track)',
-              color: status === 'earned' ? '#000' : 'var(--muted)',
+              color: status === 'earned' ? 'var(--foreground)' : 'var(--muted)',
             }}
           >
             {status === 'earned' ? <CheckGlyph size={10} /> : <LockGlyph size={10} />}
@@ -444,13 +444,14 @@ export function BadgeStageRail({
                 ? stop.conditionText
                 : STATUS_LABEL[stop.status];
             // 상태 램프(티켓 20260906_2140 A) — 진행 앵커는 진행률이 색을 정하고, 나머지
-            // 눈금은 획득/조건 완료면 done, 그 외는 idle이다.
+            // 눈금은 획득/조건 완료면 `--link`, 그 외는 `--muted`다. 글자에는 `--progress-*`를
+            // 쓰지 않는다(선·링·점 전용).
             const captionColor = showProgress
               ? frontierProgress.muted
                 ? 'var(--muted)'
                 : progressRampColor(frontierProgress.fraction)
               : stop.status === 'earned' || stop.status === 'ready'
-                ? 'var(--progress-done)'
+                ? 'var(--link)'
                 : 'var(--muted)';
 
             return (
@@ -507,7 +508,7 @@ export function BadgeStageRail({
         <p
           style={{
             margin: 'var(--spacing-12) 0 0', fontSize: 'var(--text-xs)', lineHeight: 1.4,
-            color: 'var(--progress-short)',
+            color: 'var(--foreground)',
           }}
         >
           {regretLine}
@@ -546,7 +547,7 @@ export function BadgeStageRail({
                   <p
                     style={{
                       margin: '4px 0 0', fontSize: 'var(--text-sm)', fontWeight: 600, lineHeight: 1.4,
-                      color: stop.status === 'earned' || stop.status === 'ready' ? 'var(--progress-done)' : 'var(--muted)',
+                      color: stop.status === 'earned' || stop.status === 'ready' ? 'var(--link)' : 'var(--muted)',
                     }}
                   >
                     {expandedStatusText}

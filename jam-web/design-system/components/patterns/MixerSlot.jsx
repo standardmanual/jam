@@ -5,10 +5,11 @@ import React from 'react';
  * 시각적으로 동일하게 그리는 슬롯 UI (티켓 20260917_1655, 폴리시 수정 티켓 20260917_1828).
  *
  * 상태 3가지:
- *   empty  — 채울 수 있는(후보를 하나 이상 보유한) 슬롯. 중앙에 흰색 화살표 아이콘(추가
- *            가능함을 나타냄, 티켓 20260917_2028 후속 조정)을 표시하고, 테두리를 밝은
+ *   empty  — 채울 수 있는(후보를 하나 이상 보유한) 슬롯. 중앙에 --foreground 화살표 아이콘
+ *            (추가 가능함을 나타냄, 티켓 20260917_2028 후속 조정)을 표시하고, 테두리를
  *            그레이(--muted) 3px로 굵게 표현해 잠긴 슬롯과 구분한다(티켓
- *            20260917_1828). 탭하면 채울 수 있다.
+ *            20260917_1828). 탭하면 채울 수 있다. 면이 크림(--background)이라 화살표를
+ *            흰색으로 두면 보이지 않는다(1.05:1) — 글자색 --foreground(17.07:1)를 쓴다.
  *   locked — 후보 배지를 하나도 보유하지 못한 슬롯. '+' 텍스트를 흐리게 표시하고, 사선
  *            패턴 없이 불투명도만으로 empty와 구분한다(티켓 20260917_1828 — 사선 패턴
  *            제거). 탭해도 채울 배지가 없다는 뜻이라 상호작용은 호출부가 막는다(이
@@ -119,8 +120,8 @@ export function MixerSlot({
                 width: 16,
                 height: 16,
                 borderRadius: 'var(--radius-full)',
-                background: 'var(--base-black)',
-                color: 'var(--base-white)',
+                background: 'var(--background-inverse)',
+                color: 'var(--snow)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -139,7 +140,7 @@ export function MixerSlot({
           width="24"
           height="24"
           viewBox="0 -960 960 960"
-          fill="var(--base-white)"
+          fill="var(--foreground)"
         >
           <path d="M480-240 240-480l56-56 144 144v-368h80v368l144-144 56 56-240 240Z" />
         </svg>
