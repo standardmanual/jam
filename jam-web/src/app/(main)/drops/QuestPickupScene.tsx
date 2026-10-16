@@ -135,19 +135,19 @@ export default function QuestPickupScene({ mode }: QuestPickupSceneProps) {
         style={{ left: '33%', top: '67%', transform: 'translate(-50%, -50%)', minWidth: 44, minHeight: 44 }}
       >
         <span
-          className={`flex items-center justify-center rounded-full border-2 border-white shrink-0${carouselOpen ? '' : ' jam-quest-pulse'}`}
+          className={`flex items-center justify-center rounded-full border-2 border-snow shrink-0${carouselOpen ? '' : ' jam-quest-pulse'}`}
           style={{ width: MARKER_SIZE, height: MARKER_SIZE, background: 'var(--accent)' }}
         >
           <svg
             viewBox="0 0 24 24"
             width={MARKER_ICON_SIZE}
             height={MARKER_ICON_SIZE}
-            fill="#ffffff"
+            style={{ fill: 'var(--accent-foreground)' }}
             aria-hidden="true"
             dangerouslySetInnerHTML={{ __html: BADGE_FILL_PATH }}
           />
         </span>
-        <span className="px-2 py-1 rounded-full bg-black/70 text-white text-base font-bold whitespace-nowrap">
+        <span className="px-2 py-1 rounded-full bg-background-inverse text-snow text-base font-bold whitespace-nowrap">
           {d.onboardingQuest.pickupMarkerLabel}
         </span>
       </button>

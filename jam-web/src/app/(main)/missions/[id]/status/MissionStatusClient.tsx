@@ -68,11 +68,13 @@ const PODIUM_CONFIG = [
     rank: 1,
     barHeight: 130,
     // --accent(#19b551)를 상단, 같은 색 45% 알파 톤(color-mix)을 하단에 둔 세로 그라디언트.
-    // 아래 avatarBg와 2·3위의 rgba(232,70,31,…)는 옛 빨강 리터럴이며 하위 티켓 2134에서 바꾼다.
+    // 2·3위도 같은 accent의 알파 단계다(55→25%, 40→18%). 한 화면에 빨강·초록을 섞지 않는다(티켓 20261015_2134).
     barGradient: 'linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 45%, transparent))',
     avatarSize: 60,
-    avatarBg: 'rgba(232,70,31,0.15)',
+    avatarBg: 'var(--accent-soft)',
     avatarBorder: 'var(--link)',
+    // 막대 위 순위·값 글자: 1위는 accent 면이라 --accent-foreground(6.63:1), 2·3위는 옅은 accent 알파 면이라 --foreground
+    barTextColor: 'var(--accent-foreground)',
     barNumFontSize: 'var(--text-3xl)', // 28px — 가장 가까운 토큰
     usernameFontSize: 'var(--text-xs)', // 12px
     usernameBold: true,
@@ -80,10 +82,11 @@ const PODIUM_CONFIG = [
   {
     rank: 2,
     barHeight: 90,
-    barGradient: 'linear-gradient(180deg, rgba(232,70,31,0.55), rgba(232,70,31,0.25))',
+    barGradient: 'linear-gradient(180deg, color-mix(in srgb, var(--accent) 55%, transparent), color-mix(in srgb, var(--accent) 25%, transparent))',
     avatarSize: 48,
     avatarBg: 'var(--border)',
     avatarBorder: null,
+    barTextColor: 'var(--foreground)',
     barNumFontSize: 'var(--text-2xl)', // 24px
     usernameFontSize: 'var(--text-xs)', // 11px
     usernameBold: false,
@@ -91,10 +94,11 @@ const PODIUM_CONFIG = [
   {
     rank: 3,
     barHeight: 60,
-    barGradient: 'linear-gradient(180deg, rgba(232,70,31,0.4), rgba(232,70,31,0.18))',
+    barGradient: 'linear-gradient(180deg, color-mix(in srgb, var(--accent) 40%, transparent), color-mix(in srgb, var(--accent) 18%, transparent))',
     avatarSize: 48,
     avatarBg: 'var(--border)',
     avatarBorder: null,
+    barTextColor: 'var(--foreground)',
     barNumFontSize: 'var(--text-2xl)',
     usernameFontSize: 'var(--text-xs)',
     usernameBold: false,
@@ -138,7 +142,7 @@ function PodiumAvatar({
   const iconSize = Math.round(size * 0.4)
   return (
     <div style={baseStyle}>
-      <UserIcon className="text-[#666]" style={{ width: iconSize, height: iconSize }} />
+      <UserIcon className="text-muted" style={{ width: iconSize, height: iconSize }} />
     </div>
   )
 }
@@ -167,7 +171,7 @@ function PodiumColumn({
       <span style={{
         fontSize: cfg.usernameFontSize,
         fontWeight: cfg.usernameBold ? 'bold' : 'normal',
-        color: '#FFF',
+        color: 'var(--foreground)',
         textAlign: 'center',
         maxWidth: 80,
         overflow: 'hidden',
@@ -191,10 +195,10 @@ function PodiumColumn({
       }}>
         {entry && (
           <>
-            <span style={{ fontSize: cfg.barNumFontSize, fontWeight: 'bold', color: '#fff' }}>
+            <span style={{ fontSize: cfg.barNumFontSize, fontWeight: 'bold', color: cfg.barTextColor }}>
               {cfg.rank}
             </span>
-            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: '#fff' }}>
+            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: cfg.barTextColor }}>
               {formatMissionProgress(entry.progressValue, missionType)}
             </span>
           </>
@@ -208,7 +212,7 @@ function PodiumColumn({
  * 나의 순위 카드 — 20260825 리뉴얼: 목록에 항상 중복 노출하던 것에서,
  * 내 순위가 공개 목록(visible_rank_count) 밖일 때만 예외적으로 보여주는 방식으로 변경.
  * 목록 안에 있을 때는 RankingListRow의 isMe 강조만으로 충분하다.
- * 색상은 MissionDetailClient의 "참가중" 칩과 동일한 레드 틴트 어휘(rgba(232,70,31,…))를 재사용.
+ * 색상은 MissionDetailClient의 "참가중" 칩과 같은 accent 계열 어휘(--accent-soft·--accent-soft-hover)를 재사용.
  */
 function MyRankCard({
   me,
@@ -223,7 +227,7 @@ function MyRankCard({
 
   return (
     <div style={{
-      backgroundColor: 'rgba(232,70,31,0.12)',
+      backgroundColor: 'var(--accent-soft)',
       borderRadius: 'var(--radius-2xl)',
       padding: 16,
     }}>
@@ -243,7 +247,7 @@ function MyRankCard({
           width: 36,
           height: 36,
           borderRadius: '50%',
-          backgroundColor: 'rgba(232,70,31,0.2)',
+          backgroundColor: 'var(--accent-soft-hover)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -290,7 +294,7 @@ function MyRankCard({
           labelType="none"
           height={6}
           color="var(--accent)"
-          trackColor="rgba(232,70,31,0.2)"
+          trackColor="var(--accent-soft-hover)"
           radius="3px"
         />
       </div>
@@ -315,7 +319,7 @@ function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: bool
       icon={<SimpleAvatar url={e.avatarUrl} />}
       trailing={
         e.achieved ? (
-          <span className="text-xs leading-none px-2 py-1 rounded-full bg-white/10 text-foreground">
+          <span className="text-xs leading-none px-2 py-1 rounded-full bg-[var(--accent-content-green)] text-foreground">
             {d.missions.achieved}
           </span>
         ) : (
@@ -343,7 +347,7 @@ function SimpleAvatar({ url }: { url: string | null }) {
   }
   return (
     <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--border)' }}>
-      <UserIcon className="w-[18px] h-[18px] text-[#666]" />
+      <UserIcon className="w-[18px] h-[18px] text-muted" />
     </div>
   )
 }
@@ -397,7 +401,7 @@ export default function MissionStatusClient({
         </div>
       )}
       {error && (
-        <p className="px-4 pt-0 text-base text-foreground/60">
+        <p className="px-4 pt-0 text-base text-muted">
           {error}
         </p>
       )}
@@ -527,7 +531,7 @@ export default function MissionStatusClient({
                 {d.missions.myProgressTitle}
               </span>
               {data.me.achieved ? (
-                <span className="text-[14px] font-bold px-3 py-1 rounded-full bg-white/10 text-foreground shrink-0">
+                <span className="text-[14px] font-bold px-3 py-1 rounded-full bg-[var(--accent-content-green)] text-foreground shrink-0">
                   {d.missions.achieved}
                 </span>
               ) : (

@@ -10,6 +10,7 @@ import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
 import { MedalIcon, PinIcon, BookIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { Select } from '@ds/components/forms/Select'
 import { d } from '@/lib/i18n'
 import { RARITY_LABEL } from '@/lib/rarity'
 
@@ -197,7 +198,7 @@ export default function BadgesClient({
         <h1 className="text-5xl">{d.badges.title}</h1>
         <Link
           href="/badges/tree"
-          className="inline-flex items-center justify-center shrink-0 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground active:scale-95 transition-transform duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]"
+          className="inline-flex items-center justify-center shrink-0 min-h-11 px-4 rounded-full bg-default border border-transparent text-base text-foreground active:scale-95 transition-transform duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]"
         >
           {d.badges.treeButton}
         </Link>
@@ -221,26 +222,26 @@ export default function BadgesClient({
             <>
               {/* 필터 드롭다운 */}
               <div className="flex gap-2 mb-4">
-                <select
-                  value={activityFilter}
-                  onChange={(e) => setActivityFilter(e.target.value as ActivityFilterValue | 'all')}
-                  className="flex-1 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground"
-                >
-                  <option value="all">{d.badges.filterActivityAll}</option>
-                  {ACTIVITY_TYPE_ORDER.map((tp) => (
-                    <option key={tp} value={tp}>{BADGE_ACTIVITY_FILTER_LABELS[tp] ?? tp}</option>
-                  ))}
-                </select>
-                <select
-                  value={rarityFilter}
-                  onChange={(e) => setRarityFilter(e.target.value as BadgeRarity | 'all')}
-                  className="flex-1 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground"
-                >
-                  <option value="all">{d.badges.filterRarityAll}</option>
-                  {RARITY_ORDER.map((r) => (
-                    <option key={r} value={r}>{RARITY_LABEL[r]}</option>
-                  ))}
-                </select>
+                <div className="flex-1 min-w-0">
+                  <Select
+                    value={activityFilter}
+                    onChange={(e) => setActivityFilter(e.target.value as ActivityFilterValue | 'all')}
+                    options={[
+                      { value: 'all', label: d.badges.filterActivityAll },
+                      ...ACTIVITY_TYPE_ORDER.map((tp) => ({ value: tp, label: BADGE_ACTIVITY_FILTER_LABELS[tp] ?? tp })),
+                    ]}
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Select
+                    value={rarityFilter}
+                    onChange={(e) => setRarityFilter(e.target.value as BadgeRarity | 'all')}
+                    options={[
+                      { value: 'all', label: d.badges.filterRarityAll },
+                      ...RARITY_ORDER.map((r) => ({ value: r, label: RARITY_LABEL[r] })),
+                    ]}
+                  />
+                </div>
               </div>
 
               {filteredActivityBadges.length > 0 ? (
@@ -272,24 +273,26 @@ export default function BadgesClient({
             <>
               {/* 필터 드롭다운 — 액티비티 탭과 동일한 패턴 */}
               <div className="flex gap-2 mb-4">
-                <select
-                  value={checkinCategoryFilter}
-                  onChange={(e) => setCheckinCategoryFilter(e.target.value)}
-                  className="flex-1 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground"
-                >
-                  <option value="all">{d.badges.filterCheckinCategoryAll}</option>
-                  {checkinCategoryOptions.map(([slug, label]) => (
-                    <option key={slug} value={slug}>{label}</option>
-                  ))}
-                </select>
-                <select
-                  value={checkinSortOrder}
-                  onChange={(e) => setCheckinSortOrder(e.target.value as CheckinSortOrder)}
-                  className="flex-1 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground"
-                >
-                  <option value="latest">{d.badges.sortCheckinLatest}</option>
-                  <option value="name">{d.badges.sortCheckinName}</option>
-                </select>
+                <div className="flex-1 min-w-0">
+                  <Select
+                    value={checkinCategoryFilter}
+                    onChange={(e) => setCheckinCategoryFilter(e.target.value)}
+                    options={[
+                      { value: 'all', label: d.badges.filterCheckinCategoryAll },
+                      ...checkinCategoryOptions.map(([slug, label]) => ({ value: slug, label })),
+                    ]}
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Select
+                    value={checkinSortOrder}
+                    onChange={(e) => setCheckinSortOrder(e.target.value as CheckinSortOrder)}
+                    options={[
+                      { value: 'latest', label: d.badges.sortCheckinLatest },
+                      { value: 'name', label: d.badges.sortCheckinName },
+                    ]}
+                  />
+                </div>
               </div>
 
               {filteredCheckinBadges.length > 0 ? (

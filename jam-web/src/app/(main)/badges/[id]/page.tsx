@@ -400,7 +400,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             {!hasEarned && (
               <Card className="text-center">
                 <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
-                <p className="text-xs text-[var(--muted)]/60 mt-1">{d.badges.notEarnedBody}</p>
+                <p className="text-xs text-muted mt-1">{d.badges.notEarnedBody}</p>
               </Card>
             )}
           </div>
@@ -426,7 +426,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                     className="w-full h-full object-contain p-1"
                     containerClassName="w-11 h-11 rounded-2xl overflow-hidden shrink-0"
                     fallback={
-                      <div className="w-11 h-11 rounded-2xl bg-white/8 flex items-center justify-center shrink-0">
+                      <div className="w-11 h-11 rounded-2xl bg-background-secondary flex items-center justify-center shrink-0">
                         <BookIcon className="w-5 h-5 text-[var(--muted)]" />
                       </div>
                     }
@@ -511,7 +511,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           {!hasEarned && (
             <Card className="text-center">
               <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
-              <p className="text-xs text-[var(--muted)]/60 mt-1">{d.badges.notEarnedBody}</p>
+              <p className="text-xs text-muted mt-1">{d.badges.notEarnedBody}</p>
             </Card>
           )}
 
@@ -649,7 +649,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {!hasEarned && (
           <Card className="text-center">
             <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
-            <p className="text-xs text-[var(--muted)]/60 mt-1">{d.badges.notEarnedBody}</p>
+            <p className="text-xs text-muted mt-1">{d.badges.notEarnedBody}</p>
           </Card>
         )}
       </div>

@@ -91,7 +91,7 @@ function EventIcon({ type, className }: { type: ActivityFeedEventType; className
 function EarnCountBadge({ count }: { count: number }) {
   return (
     <span
-      className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-surface border border-[color:var(--border)] text-xs leading-none font-bold text-foreground/80 flex items-center justify-center"
+      className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-surface border border-[color:var(--border)] text-xs leading-none font-bold text-foreground flex items-center justify-center"
       aria-hidden="true"
     >
       ×{count}
@@ -217,7 +217,7 @@ function eventLabel(item: ActivityFeedRow): ReactNode {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 py-2">
-      <span className="shrink-0 text-base text-foreground/60">{label}</span>
+      <span className="shrink-0 text-base text-muted">{label}</span>
       <span className="whitespace-nowrap text-base text-foreground text-right">{value}</span>
     </div>
   )
@@ -362,7 +362,7 @@ export function DetailSheet({
             {earnCount != null && <EarnCountBadge count={earnCount} />}
           </div>
         </div>
-        <p className="text-center text-base text-foreground/60 mb-1 line-clamp-2">{eventLabel(item)}</p>
+        <p className="text-center text-base text-muted mb-1 line-clamp-2">{eventLabel(item)}</p>
         <h2 id={titleId} className="text-center text-2xl text-foreground mb-4">{title}</h2>
         {/* 레벨형은 등급이 없어 Lv.N 칩으로 갈라진다. 등급형 common은 기존대로 칩을 그리지 않는다. */}
         {(level != null || (rarity && rarity !== 'common')) && (
@@ -370,8 +370,8 @@ export function DetailSheet({
             <BadgeChip item={item} />
           </div>
         )}
-        {/* 20260816_012: 보더 제거 — 티켓 20260820_012: 다크 시트 전환으로 4% 화이트 틴트로 구분 */}
-        <div className="rounded-2xl bg-white/[0.04] px-4 py-2 mb-6">
+        {/* 크림 시트 위 행 묶음은 흰 면 + 1px border로 구분한다(티켓 20261015_2134). */}
+        <div className="rounded-2xl bg-surface border border-border px-4 py-2 mb-6">
           {(item.event_type === 'item_dropped' || item.event_type === 'item_picked_up') && meta.poi_name && (
             <Row label={d.feed.rowPlace} value={String(meta.poi_name)} />
           )}
@@ -448,7 +448,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
             height={40}
             className="w-10 h-10 rounded-2xl object-cover"
             fallback={
-              <div className="w-10 h-10 rounded-2xl bg-white/8 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-2xl bg-background-secondary flex items-center justify-center">
                 <EventIcon type={item.event_type} className="w-5 h-5 text-foreground" />
               </div>
             }
@@ -457,12 +457,12 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
         </div>
       }
       trailing={
-        <span className="text-base text-foreground/60">{formatRelativeTime(item.created_at)}</span>
+        <span className="text-base text-muted">{formatRelativeTime(item.created_at)}</span>
       }
     >
-      <p className="text-base text-foreground/60 line-clamp-2">{eventLabel(item)}</p>
+      <p className="text-base text-muted line-clamp-2">{eventLabel(item)}</p>
       <p className="text-base text-foreground truncate">{title}</p>
-      {sub && <p className="text-base text-foreground/60 truncate">{sub}</p>}
+      {sub && <p className="text-base text-muted truncate">{sub}</p>}
       {(badgeChip || isLastPiece) && (
         <span className="inline-flex items-center gap-2 mt-1">
           {badgeChip}
@@ -658,21 +658,21 @@ function ActivityGroupCard({
         aria-expanded={open}
         aria-controls={panelId}
         icon={
-          <div className="w-10 h-10 rounded-2xl bg-white/8 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-2xl bg-background-secondary flex items-center justify-center">
             <ActivityIcon className="w-5 h-5 text-foreground" />
           </div>
         }
         trailing={
           <span className="inline-flex items-center gap-2">
-            <span className="text-base text-foreground/60">
+            <span className="text-base text-muted">
               {formatRelativeTime(items[0].created_at)}
             </span>
-            <ChevronRightIcon className="t-acc-chevron t-acc-chevron-right w-4 h-4 text-foreground/60" />
+            <ChevronRightIcon className="t-acc-chevron t-acc-chevron-right w-4 h-4 text-muted" />
           </span>
         }
       >
         {activityName && (
-          <p className="text-base text-foreground/60 truncate">
+          <p className="text-base text-muted truncate">
             {activityName}
           </p>
         )}
@@ -687,11 +687,11 @@ function ActivityGroupCard({
                 width={24}
                 height={24}
                 className="w-6 h-6 rounded-full object-cover"
-                fallback={<span className="w-6 h-6 rounded-full bg-white/8" />}
+                fallback={<span className="w-6 h-6 rounded-full bg-background-secondary" />}
               />
             ))}
             {restCount > 0 && (
-              <span className="text-xs leading-none text-foreground/60">
+              <span className="text-xs leading-none text-muted">
                 {t(d.feed.groupMoreCount, { count: restCount })}
               </span>
             )}
@@ -762,7 +762,7 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl text-foreground">{title}</h2>
-        <span className="text-base text-foreground/60">
+        <span className="text-base text-muted">
           {t(d.common.countItems, { count: filtered.length })}
         </span>
       </div>

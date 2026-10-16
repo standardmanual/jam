@@ -338,7 +338,7 @@ function OnboardingContent() {
                 <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-2xl object-cover" />
               ) : (
                 <div className="w-24 h-24 rounded-2xl bg-surface flex items-center justify-center">
-                  <UserIcon className="w-10 h-10 text-foreground/50" />
+                  <UserIcon className="w-10 h-10 text-muted" />
                 </div>
               )}
               {uploading && (
@@ -371,7 +371,7 @@ function OnboardingContent() {
               ref={inputShakeRef}
               className={`t-input flex items-center w-full min-h-11 rounded-full px-4 bg-surface transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
             >
-              <span className="text-foreground/60 mr-1">@</span>
+              <span className="text-muted mr-1">@</span>
               <input
                 type="text"
                 value={input}
@@ -381,7 +381,7 @@ function OnboardingContent() {
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                className="flex-1 bg-transparent placeholder:text-foreground/30 focus:outline-none"
+                className="flex-1 bg-transparent placeholder:text-muted focus:outline-none"
               />
               {status === 'checking' && (
                 <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
@@ -390,7 +390,7 @@ function OnboardingContent() {
             <p
               ref={messageRef}
               aria-live="polite"
-              className="t-text-swap min-h-6 text-base px-1 text-foreground/70"
+              className="t-text-swap min-h-6 text-base px-1 text-muted"
             >
               {initialMessage}
             </p>
@@ -405,10 +405,10 @@ function OnboardingContent() {
                 onChange={handleNameChange}
                 placeholder={d.profileEdit.namePlaceholder}
                 maxLength={30}
-                className="flex-1 bg-transparent placeholder:text-foreground/30 focus:outline-none"
+                className="flex-1 bg-transparent placeholder:text-muted focus:outline-none"
               />
             </div>
-            <p className="text-right text-xs px-1 text-foreground/40">
+            <p className="text-right text-xs px-1 text-muted">
               {t(d.onboarding.nameCounter, { count: nameInput.length })}
             </p>
           </div>
@@ -436,7 +436,7 @@ function OnboardingContent() {
                   </svg>
                 )}
               </span>
-              <span className="text-base text-foreground/90">
+              <span className="text-base text-foreground">
                 {d.onboarding.ageConfirmLabel}
               </span>
             </label>
@@ -464,7 +464,7 @@ function OnboardingContent() {
           <h1 className="text-3xl text-center whitespace-pre-line">
             {d.onboarding.step2Title}
           </h1>
-          <p className="text-foreground/60 text-base text-center">
+          <p className="text-muted text-base text-center">
             {d.onboarding.step2Subtitle}
           </p>
         </div>
@@ -478,7 +478,7 @@ function OnboardingContent() {
 
         {tribesState.kind === 'error' && (
           <div className="w-full flex flex-col items-center gap-4 py-4">
-            <p className="text-base text-center text-foreground/70">
+            <p className="text-base text-center text-muted">
               {d.onboarding.tribesLoadError}
             </p>
             <button
@@ -492,7 +492,7 @@ function OnboardingContent() {
 
         {tribesState.kind === 'ready' && tribesState.tribes.length === 0 && (
           <div className="w-full flex flex-col items-center gap-4 py-4">
-            <p className="text-base text-center text-foreground/70">
+            <p className="text-base text-center text-muted">
               {d.onboarding.tribesEmptyError}
             </p>
             <button
@@ -557,7 +557,7 @@ function OnboardingContent() {
           {/* 1단계(아이디·이름)로 돌아가 값을 다시 확인·수정할 수 있게 한다. */}
           <button
             onClick={() => setStep('account')}
-            className="w-full min-h-11 text-foreground/60 text-base active:opacity-70 transition-opacity"
+            className="w-full min-h-11 text-muted text-base active:opacity-70 transition-opacity"
           >
             {d.common.back}
           </button>

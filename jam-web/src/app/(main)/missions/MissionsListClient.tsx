@@ -9,6 +9,7 @@ import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
 import { LockIcon, TargetIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { Select } from '@ds/components/forms/Select'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { useToast } from '@/components/ui/Toast'
@@ -46,21 +47,28 @@ type SortKey = 'newest' | 'oldest' | 'ending_soon'
 
 const NEW_MISSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 7일 이내 생성 = 신규
 
-// Figma mission-item-1 색상 토큰
-const C_THUMBNAIL_BG = '#1A1A1A'
+// 색상 토큰 — JAM 2.0 라이트(티켓 20261015_2134). 미션 목록 행은 크림 바탕 위 맨 행이다.
+// 썸네일은 흰 면 + 1px --border다(크림과 흰 면은 1.05:1이라 테두리가 경계를 맡는다).
+const C_THUMBNAIL_BG = 'var(--surface)'
+const C_THUMBNAIL_BORDER = '1px solid var(--border)'
 const C_THUMBNAIL_RADIUS = '12px'
-// 20260816_012: 보더 제거 — 페이지 캔버스(bg-background)와 같은 색이라 배경톤을 한 단계 올림
-const C_STATUS_BADGE_BG = 'var(--surface)'
-// 20260825_028: 잠김 칩 전용 배경. 기본 칩 배경(#1f1f1f)은 캔버스(#1a1a1a) 대비 1.06:1이라
-// 칩 형태가 거의 보이지 않는다 — 잠김 칩만 상세 화면 완료 칩과 같은 톤으로 올린다.
-const C_LOCKED_BADGE_BG = 'rgba(255,255,255,0.08)'
-// 썸네일 자물쇠 오버레이 전용 색. 배경이 배지 아트라 밝기가 유동적이므로 흰색으로 고정한다.
-const C_LOCK_GLYPH = '#FFFFFF'
-const C_STATUS_BADGE_TEXT = '#B2B2B2'
-const C_NEW_BADGE_BG = '#E8461F'
-const C_TITLE = '#FFFFFF'
-const C_META_TEXT = '#B2B2B2'
-const C_REWARD = '#E8461F'
+// 중립 상태 칩(시작 전·기간·완료): --background-secondary + --muted(5.13:1)
+const C_STATUS_BADGE_BG = 'var(--background-secondary)'
+const C_STATUS_BADGE_TEXT = 'var(--muted)'
+// 잠김 칩: --border + --foreground(10.81:1). --muted는 --border 면 위 3.46:1이라 쓰지 않는다.
+const C_LOCKED_BADGE_BG = 'var(--border)'
+const C_LOCKED_BADGE_TEXT = 'var(--foreground)'
+// 썸네일 자물쇠 오버레이 전용 색. 썸네일 면이 흰색이라 --foreground다(40% 딤 아트 위 최악 6.29:1).
+const C_LOCK_GLYPH = 'var(--foreground)'
+// NEW·참가중 칩: --accent 면 + --accent-foreground(6.63:1)
+const C_NEW_BADGE_BG = 'var(--accent)'
+const C_NEW_BADGE_TEXT = 'var(--accent-foreground)'
+const C_JOINED_BADGE_BG = 'var(--accent)'
+const C_JOINED_BADGE_TEXT = 'var(--accent-foreground)'
+const C_TITLE = 'var(--foreground)'
+const C_META_TEXT = 'var(--muted)'
+// 보상 줄 글자: 옛 빨강 대신 --link(크림 5.18:1)
+const C_REWARD = 'var(--link)'
 
 const ACTIVITY_TYPES: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
 
@@ -116,7 +124,7 @@ function NewBadge() {
     <span
       style={{
         background: C_NEW_BADGE_BG,
-        color: '#FFFFFF',
+        color: C_NEW_BADGE_TEXT,
         fontSize: '10px',
         fontWeight: 700,
         lineHeight: 1,
@@ -139,7 +147,7 @@ function StatusBadge({ children, locked = false }: { children: React.ReactNode; 
         alignItems: 'center',
         gap: '3px',
         background: locked ? C_LOCKED_BADGE_BG : C_STATUS_BADGE_BG,
-        color: C_STATUS_BADGE_TEXT,
+        color: locked ? C_LOCKED_BADGE_TEXT : C_STATUS_BADGE_TEXT,
         fontSize: '10px',
         lineHeight: 1,
         padding: '3px 6px',
@@ -160,8 +168,8 @@ function JoinedBadge() {
   return (
     <span
       style={{
-        background: C_REWARD,
-        color: '#FFFFFF',
+        background: C_JOINED_BADGE_BG,
+        color: C_JOINED_BADGE_TEXT,
         fontSize: '10px',
         fontWeight: 700,
         lineHeight: 1,
@@ -310,25 +318,23 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
       <div className="px-4 pb-8">
       {/* 필터 드롭다운 — 배지 탭과 동일한 스타일 */}
       <div className="flex gap-2 mb-4">
-        <select
-          value={sortKey}
-          onChange={(e) => setSortKey(e.target.value as SortKey)}
-          className="flex-1 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground"
-        >
-          {SORT_OPTIONS.map((s) => (
-            <option key={s.key} value={s.key}>{s.label}</option>
-          ))}
-        </select>
-        <select
-          value={activityFilter}
-          onChange={(e) => setActivityFilter(e.target.value as ActivityType | 'all')}
-          className="flex-1 min-h-11 px-4 rounded-full bg-white/10 text-base text-foreground"
-        >
-          <option value="all">{d.missions.activityTypeAll}</option>
-          {ACTIVITY_TYPES.map((tp) => (
-            <option key={tp} value={tp}>{ACTIVITY_TYPE_LABELS[tp] ?? tp}</option>
-          ))}
-        </select>
+        <div className="flex-1 min-w-0">
+          <Select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            options={SORT_OPTIONS.map((s) => ({ value: s.key, label: s.label }))}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <Select
+            value={activityFilter}
+            onChange={(e) => setActivityFilter(e.target.value as ActivityType | 'all')}
+            options={[
+              { value: 'all', label: d.missions.activityTypeAll },
+              ...ACTIVITY_TYPES.map((tp) => ({ value: tp, label: ACTIVITY_TYPE_LABELS[tp] ?? tp })),
+            ]}
+          />
+        </div>
       </div>
 
       {list.length === 0 ? (
@@ -358,7 +364,6 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                     alignItems: 'flex-start',
                     padding: '12px 0',
                     gap: '16px',
-                    opacity: !started && !m.locked ? 0.6 : 1,
                   }}
                 >
                   {/* thumbnail — 잠김이면 grayscale + 딤 + 자물쇠 오버레이 */}
@@ -369,6 +374,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                       height: '90px',
                       minWidth: '90px',
                       background: C_THUMBNAIL_BG,
+                      border: C_THUMBNAIL_BORDER,
                       borderRadius: C_THUMBNAIL_RADIUS,
                       overflow: 'hidden',
                       display: 'flex',
@@ -384,7 +390,8 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                         alignItems: 'center',
                         justifyContent: 'center',
                         filter: m.locked ? 'grayscale(1)' : undefined,
-                        opacity: m.locked ? 0.4 : 1,
+                        // 시작 전 딤(0.6)은 글자에 걸면 --muted가 2.46:1로 떨어지므로 썸네일에만 건다
+                        opacity: m.locked ? 0.4 : !started ? 0.6 : 1,
                       }}
                     >
                       {m.image_url ? (
@@ -395,7 +402,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                           style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                         />
                       ) : (
-                        <span style={{ display: 'block', width: '32px', height: '32px', background: '#FFFFFF', borderRadius: '4px', opacity: 0.2 }} />
+                        <span style={{ display: 'block', width: '32px', height: '32px', background: 'var(--border)', borderRadius: '4px' }} />
                       )}
                     </div>
                     {m.locked && (
@@ -407,8 +414,8 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                           alignItems: 'center',
                           justifyContent: 'center',
                           // 오버레이 배경은 배지 아트를 0.4로 합성한 값이라 이미지마다 밝기가 다르다.
-                          // #B2B2B2로 두면 밝은 아트 위에서 2.17:1까지 떨어져 WCAG 1.4.11(의미 전달
-                          // 그래픽 3:1)에 미달한다 — 흰색이면 최악 배경(#767676)에서도 4.6:1이다.
+                          // 썸네일 면이 흰색이라 --foreground로 둔다. 40% 딤 아트 위 최악 배경에서도
+                          // 6.29:1이라 WCAG 1.4.11(의미 전달 그래픽 3:1)을 지킨다.
                           color: C_LOCK_GLYPH,
                         }}
                       >

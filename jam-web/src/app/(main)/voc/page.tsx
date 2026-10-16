@@ -39,16 +39,16 @@ function formatDateTime(iso: string): string {
 const CHIP_BASE_CLASS =
   'inline-flex items-center gap-1 text-xs leading-none px-2 py-1 rounded-full'
 const CHIP_CLASS = `${CHIP_BASE_CLASS} bg-background text-foreground`
-/** 유형(카테고리) 칩 — 밝은 그레이 */
-const CATEGORY_CHIP_CLASS = `${CHIP_BASE_CLASS} bg-[color:var(--base-neutral-200)] text-[color:var(--base-neutral-800)]`
+/** 유형(카테고리) 칩 — 중립 면(흰 카드 안 구획 색) */
+const CATEGORY_CHIP_CLASS = `${CHIP_BASE_CLASS} bg-background-secondary text-foreground`
 /**
- * 상태 칩 색상 — 문의중=밝은 레드, 확인중=밝은 블루, 답변완료=밝은 그린(기존
- * `--rarity-rare` 토큰 재사용, contrast-safe text 페어 포함).
+ * 상태 칩 색상 — 문의중=--danger, 확인중=--accent-content-blue, 답변완료=--accent-content-green.
+ * 글자는 모두 --foreground다(각각 5.02·6.82·13.44:1). 티켓 20261015_2134.
  */
 const STATUS_CHIP_CLASS: Record<string, string> = {
-  문의중: `${CHIP_BASE_CLASS} bg-[#ff6b6b] text-[#1a1a1a]`,
-  확인중: `${CHIP_BASE_CLASS} bg-[#4dabf7] text-[#1a1a1a]`,
-  답변완료: `${CHIP_BASE_CLASS} bg-[color:var(--rarity-rare)] text-[color:var(--rarity-rare-foreground)]`,
+  문의중: `${CHIP_BASE_CLASS} bg-danger text-foreground`,
+  확인중: `${CHIP_BASE_CLASS} bg-[color:var(--accent-content-blue)] text-foreground`,
+  답변완료: `${CHIP_BASE_CLASS} bg-[color:var(--accent-content-green)] text-foreground`,
 }
 
 // "심각도 {severity}/5" 템플릿에서 숫자 부분만 볼드+포인트 컬러로 강조한다
@@ -58,7 +58,7 @@ const [SEVERITY_PREFIX, SEVERITY_SUFFIX] = d.voc.severityLabel.split('{severity}
 function VocCard({ item }: { item: VocItem }) {
   return (
     <ListRowCard
-      icon={<span className="text-base text-foreground/60">#{item.number}</span>}
+      icon={<span className="text-base text-muted">#{item.number}</span>}
     >
       {/* 상태값, 날짜 — 유형(카테고리)은 별도 줄로 분리 */}
       <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -68,7 +68,7 @@ function VocCard({ item }: { item: VocItem }) {
           <strong className="font-bold text-[color:var(--link)]">{item.severity}</strong>
           {SEVERITY_SUFFIX}
         </span>
-        <span className="text-xs leading-none text-foreground/60">{formatDateTime(item.submittedAt)}</span>
+        <span className="text-xs leading-none text-muted">{formatDateTime(item.submittedAt)}</span>
       </div>
 
       {/* 유형(카테고리) — 줄바꿈해서 별도 행으로 표시 */}
@@ -87,13 +87,13 @@ function VocCard({ item }: { item: VocItem }) {
 
       {/* 답변 — 상태=답변완료일 때만. 답변자는 실명 대신 고정된 JAM 로고로만 표시 */}
       {item.answer && (
-        <div className="mt-4 rounded-2xl bg-white/[0.04] p-4 flex flex-col gap-2">
+        <div className="mt-4 rounded-2xl bg-background-secondary p-4 flex flex-col gap-2">
           <div className="flex items-center gap-2">
             {/* 흰색 로고 PNG를 마스크로 쓰고 색은 --foreground로 칠한다(흰 카드 위 흰 로고는 사라진다). */}
             <span role="img" aria-label="JAM!" className="jam-logo-mark block shrink-0 h-4" />
-            <span className="text-xs leading-none text-foreground/60">{d.voc.answerLabel}</span>
+            <span className="text-xs leading-none text-muted">{d.voc.answerLabel}</span>
             {item.answeredAt && (
-              <span className="text-xs leading-none text-foreground/40">· {formatDateTime(item.answeredAt)}</span>
+              <span className="text-xs leading-none text-muted">· {formatDateTime(item.answeredAt)}</span>
             )}
           </div>
           <p className="text-base text-foreground whitespace-pre-wrap">
@@ -175,7 +175,7 @@ export default function VocPage() {
           </div>
 
           {loading && (
-            <div className="py-10 text-center text-foreground/40 text-base">
+            <div className="py-10 text-center text-muted text-base">
               {d.voc.loading}
             </div>
           )}

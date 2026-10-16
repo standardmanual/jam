@@ -54,6 +54,10 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
   // 보정을 되살려 이미지·영상 배경 모드와 가독성 조건을 맞춘다.
   const cardTextStyle = backgroundAnimation ? getBadgeThemedTextStyle(true) : undefined
 
+  // 블롭 배경이 깔린 카드는 어두운 면 위 글자라 --snow, 배경이 없는 흰 카드는 새 글자색이다.
+  // 배지 상세(BadgeHeroSection)와 같은 규칙이다(티켓 20261015_2134).
+  const onMedia = Boolean(backgroundAnimation)
+
   return (
     <>
       {/* 대표 이미지+이름+설명 카드 — 배지 상세화면(BadgeHeroSection)과 동일 구조 [20260917_1303].
@@ -88,7 +92,7 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
               />
             </div>
           ) : (
-            <BookIcon className="w-28 h-28" style={{ color: '#AAAAAA' }} />
+            <BookIcon className="w-28 h-28" style={{ color: onMedia ? 'var(--snow)' : 'var(--muted)' }} />
           )}
         </div>
         {/* 이름+설명을 하나의 flex-1 그룹으로 묶어 카드 하단 쪽에 함께 붙인다 —
@@ -100,7 +104,7 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
           <div className="flex-shrink-0 flex flex-col items-center gap-1">
             <h1
               className="text-3xl font-bold text-center"
-              style={{ color: '#FFFFFF' }}
+              style={{ color: onMedia ? 'var(--snow)' : 'var(--foreground)' }}
             >
               {book.name}
             </h1>
@@ -112,7 +116,7 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
               {splitDescriptionSentences(book.description).map((sentence, index) => (
                 <p
                   key={index}
-                  className="text-base text-[var(--muted)] text-center"
+                  className={`text-base text-center ${onMedia ? 'text-snow' : 'text-muted'}`}
                 >
                   {sentence}
                 </p>

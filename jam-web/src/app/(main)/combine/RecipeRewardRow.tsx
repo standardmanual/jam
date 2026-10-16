@@ -70,12 +70,12 @@ export default function RecipeRewardRow({
           width={40}
           height={40}
           className="object-contain w-full h-full"
-          fallback={<PackageIcon className="w-5 h-5 text-foreground/40" />}
+          fallback={<PackageIcon className="w-5 h-5 text-muted" />}
         />
       </div>
     ) : (
       <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center">
-        <CoinIcon className="w-5 h-5 text-foreground/60" />
+        <CoinIcon className="w-5 h-5 text-muted" />
       </div>
     )
 
@@ -110,7 +110,7 @@ export default function RecipeRewardRow({
       {releaseAt && (
         // 말줄임(truncate)을 쓰지 않는다 — 날짜가 정보라서다. 폭이 모자라면 두 조각 중 날짜 조각이
         // 통째로 다음 줄로 내려간다(조각 안에서는 끊기지 않는다).
-        <p className="mt-1 flex flex-wrap gap-x-1 text-xs text-[color:var(--warning)]">
+        <p className="mt-1 flex flex-wrap gap-x-1 text-xs text-muted">
           <span className="whitespace-nowrap">{d.combine.releaseScheduled} ·</span>
           <span className="whitespace-nowrap">{formatKoreanDateTime(releaseAt, { time: true })}</span>
         </p>

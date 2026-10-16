@@ -69,6 +69,11 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
   // (apple-design §15). 가독성은 그림자만으로 확보한다.
   const cardTextStyle = backgroundAnimation ? getBadgeThemedTextStyle(true) : undefined
 
+  // 배경(블롭·테마)이 깔린 카드는 글자가 어두운 면 위에 놓이므로 --snow, 배경이 없는 흰 카드는
+  // 새 글자색(--foreground·--muted)이다. 설명에는 muted 단계가 없어 배경 위에서는 둘 다 --snow다
+  // (티켓 20261015_2134).
+  const onMedia = Boolean(backgroundAnimation || themed)
+
   return (
     // relative z-10 — 배지 상세화면의 고정 배경 레이어(z-index:0, 20260818_002/003)보다 항상
     // 위에서 그려지도록 승격. 승격하지 않으면 non-positioned 콘텐츠가 positioned 배경 레이어보다
@@ -127,7 +132,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
                 사라진다** — 상세 화면에서 등급/레벨을 알 수 없게 된다.
                 `BadgeTrophyGridCard.tsx:119`가 같은 분기를 쓴다(티켓 20260905_0037). */}
             {badge.level != null ? <BadgeLevelChip level={badge.level} size="md" /> : <RarityBadge rarity={badge.rarity ?? undefined} size="md" />}
-            <h1 className="text-3xl font-bold text-foreground text-center">{badge.name}</h1>
+            <h1 className={`text-3xl font-bold text-center ${onMedia ? 'text-snow' : 'text-foreground'}`}>{badge.name}</h1>
           </div>
           {badge.description && (
             // [20260917_1211] 설명을 카드 안으로 통합. 마침표(문장 종결) 기준으로 나눠 각 문장을
@@ -137,7 +142,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
               {splitDescriptionSentences(badge.description).map((sentence, index) => (
                 <p
                   key={index}
-                  className="text-base text-[var(--muted)] text-center"
+                  className={`text-base text-center ${onMedia ? 'text-snow' : 'text-muted'}`}
                 >
                   {sentence}
                 </p>

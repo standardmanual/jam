@@ -86,14 +86,15 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
 /** 40×40 아이콘 영역 — 아바타 / 경고 / 종류별 아이콘 */
 function RowIcon({ view }: { view: NotificationView }) {
   if (view.warning) {
-    // 경고는 아이콘 + --warning으로만 표시한다. 본문 텍스트에는 컬러를 쓰지 않는다(PRD §5).
+    // 경고는 아이콘 칸의 --warning 면으로 표시하고 아이콘은 --foreground다(8.64:1). --warning 자체를
+    // 흰 카드 위 아이콘·글자 색으로 쓰면 2.07:1이라 쓰지 않는다. 본문 텍스트에는 컬러를 쓰지 않는다(PRD §5).
     return (
       <div
         role="img"
         aria-label={d.notifications.warningLabel}
-        className="w-10 h-10 rounded-2xl bg-white/8 flex items-center justify-center"
+        className="w-10 h-10 rounded-2xl bg-warning flex items-center justify-center"
       >
-        <AlertTriangleIcon className="w-5 h-5" style={{ color: 'var(--warning)' }} />
+        <AlertTriangleIcon className="w-5 h-5" style={{ color: 'var(--foreground)' }} />
       </div>
     )
   }
@@ -108,14 +109,14 @@ function RowIcon({ view }: { view: NotificationView }) {
         className="w-10 h-10 rounded-full object-cover"
       />
     ) : (
-      <span className="w-10 h-10 rounded-full bg-white/8 text-foreground flex items-center justify-center">
+      <span className="w-10 h-10 rounded-full bg-background-secondary text-foreground flex items-center justify-center">
         <UserIcon className="w-5 h-5" />
       </span>
     )
   }
 
   return (
-    <div className="w-10 h-10 rounded-2xl bg-white/8 flex items-center justify-center">
+    <div className="w-10 h-10 rounded-2xl bg-background-secondary flex items-center justify-center">
       <TypeIcon type={view.type} className="w-5 h-5 text-foreground" />
     </div>
   )
@@ -153,7 +154,7 @@ function NotificationBody({ view }: { view: NotificationView }) {
 function NotificationRow({ view }: { view: NotificationView }) {
   const { href, avatarHref } = notificationTarget(view)
   const trailing = (
-    <span className="text-xs text-foreground/40">
+    <span className="text-xs text-muted">
       {formatRelativeTime(view.updatedAt)}
     </span>
   )
@@ -198,7 +199,7 @@ function NotificationRow({ view }: { view: NotificationView }) {
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <h2 className="text-xs uppercase text-foreground/40 px-1 pt-2">
+    <h2 className="text-xs uppercase text-muted px-1 pt-2">
       {label}
     </h2>
   )
@@ -216,7 +217,7 @@ function NewDivider({ count }: { count: number }) {
   return (
     <div className="flex items-center gap-2 py-2">
       <span className="h-px flex-1 bg-[color:var(--border)]" />
-      <span className="text-xs text-foreground/60 shrink-0">
+      <span className="text-xs text-muted shrink-0">
         {t(d.notifications.newDivider, { count })}
       </span>
       <span className="h-px flex-1 bg-[color:var(--border)]" />
@@ -349,7 +350,7 @@ export default function NotificationsClient({
         )}
 
         {error && (
-          <p className="text-center text-base text-foreground/60 py-4">
+          <p className="text-center text-base text-muted py-4">
             {d.notifications.loadError}
           </p>
         )}

@@ -244,7 +244,7 @@ export default function ProfileEditPage() {
               <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-2xl object-cover" />
             ) : (
               <div className="w-24 h-24 rounded-2xl bg-surface flex items-center justify-center">
-                <UserIcon className="w-10 h-10 text-foreground/50" />
+                <UserIcon className="w-10 h-10 text-muted" />
               </div>
             )}
             {uploading && (
@@ -253,7 +253,7 @@ export default function ProfileEditPage() {
               </div>
             )}
           </button>
-          <p className="text-foreground/60 text-base">{d.profileEdit.changePhoto}</p>
+          <p className="text-muted text-base">{d.profileEdit.changePhoto}</p>
           {uploadError && (
             <p className="text-base text-center">{uploadError}</p>
           )}
@@ -268,12 +268,12 @@ export default function ProfileEditPage() {
 
         {/* 아이디 편집 */}
         <div className={`t-input-wrap flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
-          <label className="text-base text-foreground/70">{d.profileEdit.usernameLabel}</label>
+          <label className="text-base text-muted">{d.profileEdit.usernameLabel}</label>
           <div
             ref={inputShakeRef}
             className={`t-input flex items-center w-full min-h-11 rounded-full px-4 transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
           >
-            <span className="text-foreground/60 mr-1">@</span>
+            <span className="text-muted mr-1">@</span>
             <input
               type="text"
               value={usernameInput}
@@ -283,7 +283,7 @@ export default function ProfileEditPage() {
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              className="flex-1 bg-transparent placeholder:text-foreground/30 focus:outline-none"
+              className="flex-1 bg-transparent placeholder:text-muted focus:outline-none"
             />
             {checkStatus === 'checking' && (
               <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
@@ -294,7 +294,7 @@ export default function ProfileEditPage() {
           <p
             ref={messageRef}
             aria-live="polite"
-            className="t-text-swap min-h-6 text-base px-1 text-foreground/70"
+            className="t-text-swap min-h-6 text-base px-1 text-muted"
           >
             {initialMessage}
           </p>
@@ -304,7 +304,7 @@ export default function ProfileEditPage() {
             (한 화면 안에서 입력 스타일이 갈라지지 않도록 — MODULAR Input 신규 도입 없음).
             필수값이 아니고 중복확인·형식 에러가 없어 상태머신 없이 단순 controlled input이다. */}
         <div className="t-input-wrap flex flex-col gap-2">
-          <label className="text-base text-foreground/70">{d.profileEdit.nameLabel}</label>
+          <label className="text-base text-muted">{d.profileEdit.nameLabel}</label>
           <div className="t-input flex items-center w-full min-h-11 rounded-full px-4 transition-shadow shadow-[inset_0_0_0_1px_var(--border)]">
             <input
               type="text"
@@ -312,7 +312,7 @@ export default function ProfileEditPage() {
               onChange={handleNameChange}
               placeholder={currentDisplayName ?? d.profileEdit.namePlaceholder}
               maxLength={30}
-              className="flex-1 bg-transparent placeholder:text-foreground/30 focus:outline-none"
+              className="flex-1 bg-transparent placeholder:text-muted focus:outline-none"
             />
           </div>
         </div>
@@ -331,7 +331,7 @@ export default function ProfileEditPage() {
           </button>
           <button
             onClick={() => router.back()}
-            className="w-full min-h-11 text-foreground/60 text-base active:opacity-70 transition-opacity"
+            className="w-full min-h-11 text-muted text-base active:opacity-70 transition-opacity"
           >
             {d.profileEdit.cancelButton}
           </button>
@@ -342,10 +342,10 @@ export default function ProfileEditPage() {
             href="mailto:sihyunrr@gmail.com?subject=JAM!%20탈퇴%20신청"
             className="w-full min-h-11 flex flex-col items-center justify-center gap-1 text-center active:opacity-70 transition-opacity"
           >
-            <span className="text-foreground/60 text-base">
+            <span className="text-muted text-base">
               {d.profileEdit.withdrawLink}
             </span>
-            <span className="text-foreground/40 text-xs">
+            <span className="text-muted text-xs">
               {d.profileEdit.withdrawCaption}
             </span>
           </a>

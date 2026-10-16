@@ -12,6 +12,7 @@ import type {
 import TopNav from '@/components/ui/TopNav'
 import { PinIcon, BookIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { Card } from '@ds/components/cards/Card'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
 import ItemBookHeroSection from './ItemBookHeroSection'
 import { d } from '@/lib/i18n'
@@ -41,9 +42,6 @@ type ItemBookWithTribe = ItemBookRow & { tribe: TribeRow | null }
 // 불투명 배경을 깔면 그 위를 덮어 가려버린다. 테마가 없을 때도 undefined로 둬 상위
 // 그라데이션이 그대로 비치게 한다(테마가 있을 때의 'transparent'와 결과적으로 동일).
 const PAGE_BG = undefined
-const CARD_BG = '#000000'
-const THUMB_BG = '#333333'
-const TEXT_SECONDARY = '#B2B2B2'
 
 export default async function ItemBookDetailPage({ params, searchParams }: Props) {
   const { id } = await params
@@ -255,7 +253,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   // 별개의 렌더링 지점이다(우선순위 판단은 badgeBackgroundTheme.ts 한 곳).
   const bookCardAnimation = getBadgeBackgroundAnimation(book)
   const pageBg = themedBackground ? 'transparent' : PAGE_BG
-  const topNavStyle: React.CSSProperties = { background: pageBg, color: '#FFFFFF' }
+  const topNavStyle: React.CSSProperties = { background: pageBg, color: 'var(--foreground)' }
   const themedTextStyle: React.CSSProperties = getBadgeThemedTextStyle(themedBackground)
   const backgroundVideoUrl = getBadgeBackgroundVideoUrl(book)
   const backgroundLayer = (
@@ -285,7 +283,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   )
 
   return (
-    <div className="flex flex-col min-h-full" style={{ background: pageBg, color: '#FFFFFF', ...themedTextStyle }}>
+    <div className="flex flex-col min-h-full" style={{ background: pageBg, color: 'var(--foreground)', ...themedTextStyle }}>
       {backgroundLayer}
       <TopNav
         title={book.name}
@@ -307,7 +305,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         {book.story_text && (
           <p
             style={{
-              color: '#666666',
+              color: 'var(--muted)',
               fontSize: '12px',
               lineHeight: '1.6',
               fontStyle: 'italic',
@@ -345,11 +343,11 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
           <div className={badges.length > 0 ? 'mt-4 flex flex-col gap-3' : 'flex flex-col gap-3'}>
             <p
               className="font-bold"
-              style={{ color: '#FFFFFF', fontSize: '16px', lineHeight: '1.2' }}
+              style={{ color: 'var(--foreground)', fontSize: '16px', lineHeight: '1.2' }}
             >
               {d.itembooks.checkinSectionTitle}
             </p>
-            <p style={{ color: '#666666', fontSize: '12px', textAlign: 'center' }}>
+            <p style={{ color: 'var(--muted)', fontSize: '12px', textAlign: 'center' }}>
               {d.itembooks.checkinHint}
             </p>
             <div className="grid grid-cols-3 gap-2">
@@ -358,35 +356,34 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
                 return (
                   <div
                     key={checkinBadge.id}
-                    className={`flex flex-col items-center p-3 rounded-2xl gap-2 ${earned ? '' : 'opacity-40'}`}
-                    style={{ background: CARD_BG }}
+                    className="flex flex-col items-center p-3 rounded-2xl gap-2 bg-surface border border-border"
                   >
                     <div
                       className="w-[90px] h-[90px] rounded-2xl overflow-hidden flex items-center justify-center"
-                      style={{ background: THUMB_BG }}
+                      style={{ background: 'var(--background-secondary)' }}
                     >
                       {checkinBadge.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={checkinBadge.image_url}
                           alt={checkinBadge.name}
-                          className={`w-full h-full object-contain ${earned ? '' : 'grayscale'}`}
+                          className={`w-full h-full object-contain ${earned ? '' : 'grayscale opacity-40'}`}
                         />
                       ) : (
-                        <PinIcon className="w-8 h-8" style={{ color: '#555555' }} />
+                        <PinIcon className="w-8 h-8" style={{ color: 'var(--muted)' }} />
                       )}
                     </div>
                     <p
                       className="text-center line-clamp-2 w-full"
-                      style={{ color: '#FFFFFF', fontSize: '12px', lineHeight: '1.3' }}
+                      style={{ color: earned ? 'var(--foreground)' : 'var(--muted)', fontSize: '12px', lineHeight: '1.3' }}
                     >
                       {checkinBadge.name}
                     </p>
                     <span
                       className="inline-flex items-center px-2 py-1 rounded-full font-bold uppercase"
                       style={{
-                        background: earned ? '#00CC7A' : '#333333',
-                        color: earned ? '#000000' : '#999999',
+                        background: earned ? 'var(--accent-content-green)' : 'var(--background-secondary)',
+                        color: earned ? 'var(--foreground)' : 'var(--muted)',
                         fontSize: '10px',
                       }}
                     >
@@ -401,20 +398,17 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
 
         {/* 완성 배너 */}
         {isCompleted && (
-          <div
-            className="mt-4 rounded-2xl p-6 text-center"
-            style={{ background: CARD_BG }}
-          >
+          <Card className="mt-4 text-center">
             <p
               className="font-bold mb-2"
-              style={{ color: '#FFFFFF', fontSize: '18px' }}
+              style={{ color: 'var(--foreground)', fontSize: '18px' }}
             >
               {d.itembooks.completedTitle}
             </p>
-            <p style={{ color: TEXT_SECONDARY, fontSize: '14px' }}>
+            <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
               {d.itembooks.completedBody}
             </p>
-          </div>
+          </Card>
         )}
       </div>
     </div>

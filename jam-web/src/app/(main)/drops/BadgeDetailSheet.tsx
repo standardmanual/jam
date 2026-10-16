@@ -143,21 +143,21 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
         {/* 닫기 */}
         <button
           onClick={onCancel}
-          className="self-start inline-flex items-center min-h-11 -ml-2 px-2 text-foreground/70 text-base active:scale-95 transition-transform duration-100"
+          className="self-start inline-flex items-center min-h-11 -ml-2 px-2 text-muted text-base active:scale-95 transition-transform duration-100"
         >
           &larr; {d.common.back}
         </button>
 
         {/* 배지 이미지 (대형) */}
         <div className="flex flex-col items-center gap-4 py-4">
-          <div className="w-44 h-44 rounded-2xl bg-black/[0.04] flex items-center justify-center overflow-hidden">
+          <div className="w-44 h-44 rounded-2xl bg-background-secondary flex items-center justify-center overflow-hidden">
             <SafeImage
               src={drop.badge_image_url}
               alt={drop.badge_name}
               width={176}
               height={176}
               className="w-full h-full object-contain p-4"
-              fallback={<MedalIcon className="w-16 h-16 text-foreground/40" />}
+              fallback={<MedalIcon className="w-16 h-16 text-muted" />}
             />
           </div>
           <div className="text-center">
@@ -168,11 +168,11 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
 
         {/* 드랍 컨텍스트 */}
         <Card>
-          <h2 className="text-xs uppercase text-foreground/40 mb-2">{d.badges.connectedLocationTitle}</h2>
-          <p className="text-base text-foreground/80">
+          <h2 className="text-xs uppercase text-muted mb-2">{d.badges.connectedLocationTitle}</h2>
+          <p className="text-base text-foreground">
             {poiName}
           </p>
-          <p className="text-xs text-foreground/50 mt-1">
+          <p className="text-xs text-muted mt-1">
             {t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
           </p>
           {/* 20260829_2101 — 픽업은 소유권 이전일 뿐 재발급이 아니라서 드랍 상태에서도
