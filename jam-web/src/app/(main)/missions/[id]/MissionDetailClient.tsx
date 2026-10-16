@@ -117,7 +117,7 @@ function StatusChip({ isCompleted, participating, locked }: { isCompleted: boole
   if (locked) {
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold leading-none"
-        style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--muted)' }}>
+        style={{ background: 'var(--border)', color: 'var(--foreground)' }}>
         {/* 12px 렌더라 기본 strokeWidth 1.5(=24px 전제)로는 실효 0.75px로 뭉개진다 — 호출부 보정 */}
         <LockIcon className="w-3 h-3 shrink-0" strokeWidth={2.2} />
         {d.missions.tagLocked}
@@ -127,7 +127,7 @@ function StatusChip({ isCompleted, participating, locked }: { isCompleted: boole
   if (isCompleted) {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold leading-none"
-        style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--muted)' }}>
+        style={{ background: 'var(--background-secondary)', color: 'var(--muted)' }}>
         {d.missions.tagDone}
       </span>
     )
@@ -135,7 +135,7 @@ function StatusChip({ isCompleted, participating, locked }: { isCompleted: boole
   if (participating) {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold leading-none"
-        style={{ background: 'rgba(232,70,31,0.15)', color: 'var(--link)' }}>
+        style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
         {d.missions.tagJoined}
       </span>
     )
@@ -285,7 +285,7 @@ export default function MissionDetailClient({
               /* 달성형 */
               <div className="flex items-center justify-between">
                 <p className="text-[14px] leading-[1.43] text-muted">{goal.label}</p>
-                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-white/10 text-foreground' : 'bg-border text-foreground'}`}>
+                <span className={`text-[14px] font-bold px-3 py-1 rounded-full ${achieved ? 'bg-[var(--accent-content-green)] text-foreground' : 'bg-border text-foreground'}`}>
                   {achieved ? d.missions.achieved : d.missions.notAchieved}
                 </span>
               </div>
@@ -311,7 +311,7 @@ export default function MissionDetailClient({
                         // 20260816_012: "오늘" 링만 기능적 하이라이트로 보더 유지, 나머지는 배경톤 채움
                         className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${today ? 'border' : ''}`}
                         style={{
-                          background:  done ? 'var(--accent)' : today ? 'transparent' : 'var(--border)',
+                          background:  done ? 'var(--accent)' : today ? 'transparent' : 'var(--background-secondary)',
                           borderColor: today ? 'var(--link)' : undefined,
                           color:       done  ? 'var(--accent-foreground)' : today ? 'var(--link)' : 'var(--muted)',
                         }}
@@ -455,13 +455,9 @@ export default function MissionDetailClient({
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              <button
-                onClick={() => setConfirming(true)}
-                className="w-full min-h-[56px] rounded-full text-[16px] font-bold leading-[1.5] cursor-pointer active:scale-95 transition-transform duration-100"
-                style={{ background: '#fff', color: '#000' }}
-              >
+              <Button variant="primary" surface="main" fullWidth size="lg" onClick={() => setConfirming(true)}>
                 {d.missions.joinButton}
-              </button>
+              </Button>
               <p className="text-xs text-muted text-center">{d.missions.joinNote}</p>
             </div>
           )

@@ -489,8 +489,8 @@ export default function ProfileClient({
               u.avatar_url ? (
                 <Image src={u.avatar_url} alt={getDisplayName(u)} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center">
-                  <UserIcon className="w-5 h-5 text-foreground/60" />
+                <div className="w-10 h-10 rounded-full bg-background-secondary flex items-center justify-center">
+                  <UserIcon className="w-5 h-5 text-muted" />
                 </div>
               )
             }
@@ -618,7 +618,7 @@ export default function ProfileClient({
                     <span className="text-2xl font-bold text-[color:var(--link)]">
                       {d.profile.pointBadgeLabel}
                     </span>
-                    <ChevronRightIcon className="w-4 h-4 text-foreground/40" />
+                    <ChevronRightIcon className="w-4 h-4 text-muted" />
                   </button>
                 ) : (
                   <span />

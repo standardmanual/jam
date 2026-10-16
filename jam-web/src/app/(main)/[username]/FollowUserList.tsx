@@ -72,8 +72,8 @@ export default function FollowUserList({
             {u.avatar_url ? (
               <Image src={u.avatar_url} alt={getDisplayName(u)} width={40} height={40} className="w-10 h-10 rounded-full object-cover shrink-0" />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center shrink-0">
-                <UserIcon className="w-4 h-4 text-foreground/50" />
+              <div className="w-10 h-10 rounded-full bg-background-secondary flex items-center justify-center shrink-0">
+                <UserIcon className="w-4 h-4 text-muted" />
               </div>
             )}
             <span className="text-base truncate">{getDisplayName(u)}</span>

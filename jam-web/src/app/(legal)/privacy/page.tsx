@@ -45,7 +45,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function P({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-base leading-[var(--leading-reading)] text-foreground/90 [word-break:keep-all] break-words">
+    <p className="text-base leading-[var(--leading-reading)] text-foreground [word-break:keep-all] break-words">
       {children}
     </p>
   )
@@ -53,7 +53,7 @@ function P({ children }: { children: React.ReactNode }) {
 
 function Note({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-base text-foreground/60 [word-break:keep-all] break-words border-l-2 border-border pl-3">
+    <p className="text-base text-muted [word-break:keep-all] break-words border-l-2 border-border pl-3">
       {children}
     </p>
   )
@@ -61,7 +61,7 @@ function Note({ children }: { children: React.ReactNode }) {
 
 function H3({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-xl font-medium text-foreground/90 [word-break:keep-all] break-words">
+    <h3 className="text-xl font-medium text-foreground [word-break:keep-all] break-words">
       {children}
     </h3>
   )
@@ -71,7 +71,7 @@ function OrderedList({ items }: { items: React.ReactNode[] }) {
   return (
     <ol className="flex flex-col gap-2 list-decimal pl-6">
       {items.map((item, i) => (
-        <li key={i} className="text-base leading-[var(--leading-reading)] text-foreground/90 [word-break:keep-all] break-words">
+        <li key={i} className="text-base leading-[var(--leading-reading)] text-foreground [word-break:keep-all] break-words">
           {item}
         </li>
       ))}
@@ -85,8 +85,8 @@ function DefCard({ fields }: { fields: Array<{ label: string; value: React.React
     <dl className="rounded-2xl bg-surface border border-border p-4 flex flex-col gap-3">
       {fields.map(({ label, value }, i) => (
         <div key={i} className="flex flex-col gap-1">
-          <dt className="text-xs text-foreground/50">{label}</dt>
-          <dd className="text-base text-foreground/90 [word-break:keep-all] break-words">
+          <dt className="text-xs text-muted">{label}</dt>
+          <dd className="text-base text-foreground [word-break:keep-all] break-words">
             {value}
           </dd>
         </div>

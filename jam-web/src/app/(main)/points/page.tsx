@@ -94,10 +94,10 @@ export default function PointsPage() {
 
         {/* 내역 */}
         <div className="flex flex-col gap-4">
-          <h2 className="text-xs uppercase text-foreground/40 px-1">{d.points.historyTitle}</h2>
+          <h2 className="text-xs uppercase text-muted px-1">{d.points.historyTitle}</h2>
 
           {loading && (
-            <div className="py-10 text-center text-foreground/40 text-base">{d.points.loading}</div>
+            <div className="py-10 text-center text-muted text-base">{d.points.loading}</div>
           )}
 
           {!loading && error && (
@@ -126,19 +126,19 @@ export default function PointsPage() {
                     key={it.id}
                     href={it.href ?? undefined}
                     icon={
-                      <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center shrink-0">
-                        <CoinIcon className="w-5 h-5 text-foreground/60" />
+                      <div className="w-10 h-10 rounded-full bg-background-secondary flex items-center justify-center shrink-0">
+                        <CoinIcon className="w-5 h-5 text-muted" />
                       </div>
                     }
                     title={it.title}
                     subtitle={
                       <div className="flex flex-col">
-                        {it.note && <span className="text-xs text-foreground/50 truncate">{it.note}</span>}
-                        <span className="text-xs text-foreground/40">{formatKoreanDateTime(it.created_at, { year: true, time: true })}</span>
+                        {it.note && <span className="text-xs text-muted truncate">{it.note}</span>}
+                        <span className="text-xs text-muted">{formatKoreanDateTime(it.created_at, { year: true, time: true })}</span>
                       </div>
                     }
                     trailing={
-                      <span className={`text-base font-bold ${positive ? 'text-[color:var(--link)]' : 'text-foreground/50'}`}>
+                      <span className={`text-base font-bold ${positive ? 'text-[color:var(--link)]' : 'text-foreground'}`}>
                         {formatAmount(it.amount)}
                       </span>
                     }

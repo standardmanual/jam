@@ -374,7 +374,7 @@ export default function BadgeShareButton({
         {popoverOpen && disabledReason && (
           <div
             role="tooltip"
-            className="absolute right-0 top-[calc(100%+4px)] z-50 w-[220px] rounded-2xl bg-[var(--background-inverse)] p-3 text-left shadow-lg"
+            className="absolute right-0 top-[calc(100%+4px)] z-50 w-[220px] rounded-2xl bg-[var(--background-inverse)] p-3 text-left"
           >
             <p className="text-sm font-bold text-[var(--snow)]">
               {disabledReasonCopy(disabledReason).title}
@@ -447,7 +447,7 @@ export default function BadgeShareButton({
                     className="relative w-full h-full rounded-2xl overflow-hidden flex items-center justify-center"
                     style={{
                       backgroundImage:
-                        'repeating-conic-gradient(rgba(255,255,255,0.06) 0% 25%, rgba(255,255,255,0.02) 0% 50%)',
+                        'repeating-conic-gradient(color-mix(in srgb, var(--foreground) 8%, transparent) 0% 25%, transparent 0% 50%)',
                       backgroundSize: '20px 20px',
                     }}
                   >
@@ -478,7 +478,7 @@ export default function BadgeShareButton({
                         <p className="whitespace-pre-line text-base text-[var(--foreground)]">
                           {errorCopy(itemState).title}
                         </p>
-                        <p className="mt-1 whitespace-pre-line text-xs text-[var(--foreground)]/70">
+                        <p className="mt-1 whitespace-pre-line text-xs text-muted">
                           {errorCopy(itemState).body}
                         </p>
                       </div>

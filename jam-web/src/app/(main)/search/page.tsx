@@ -115,7 +115,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           />
         ) : (
           <section className="flex flex-col gap-2">
-            <p className="text-foreground/50 text-xs px-1">{t(d.search.resultCount, { count: results.length })}</p>
+            <p className="text-muted text-xs px-1">{t(d.search.resultCount, { count: results.length })}</p>
             {results.map((u) => {
               const displayName = getDisplayName(u)
               return (
@@ -126,13 +126,13 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                     u.avatar_url ? (
                       <Image src={u.avatar_url} alt={displayName} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center">
-                        <UserIcon className="w-5 h-5 text-foreground/50" />
+                      <div className="w-10 h-10 rounded-full bg-background-secondary flex items-center justify-center">
+                        <UserIcon className="w-5 h-5 text-muted" />
                       </div>
                     )
                   }
                   title={displayName}
-                  trailing={<ChevronRightIcon className="w-4 h-4 text-foreground/40" />}
+                  trailing={<ChevronRightIcon className="w-4 h-4 text-muted" />}
                 />
               )
             })}

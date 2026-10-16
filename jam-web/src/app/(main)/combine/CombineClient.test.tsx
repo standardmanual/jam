@@ -302,9 +302,12 @@ describe('RecipeRewardRow — 공개 예정 줄 (티켓 20261001_1159)', () => {
     const html = renderToStaticMarkup(<RecipeRewardRow {...baseProps} releaseAt={RELEASE_AT} />)
     expect(html).toContain(`${d.combine.releaseScheduled} ·`)
     expect(html).toContain(RELEASE_LABEL)
-    // 두 조각 모두 줄바꿈 없이 통째로 움직이고, 색은 --warning 토큰이다(색을 hex로 직접 쓰지 않는다)
+    // 두 조각 모두 줄바꿈 없이 통째로 움직이고, 글자색은 --muted 토큰(text-muted)이다.
+    // --warning은 가는 선·점·면에만 쓰는 색이라 글자로 쓰면 흰 카드 위 2.07:1이다(티켓 20261015_2134).
+    // 색을 hex로 직접 쓰지 않는다.
     expect(html.match(/whitespace-nowrap/g)).toHaveLength(2)
-    expect(html).toContain('var(--warning)')
+    expect(html).toMatch(/<p class="[^"]*text-muted[^"]*"><span class="whitespace-nowrap">/)
+    expect(html).not.toContain('var(--warning)')
     expect(html).not.toMatch(/#[0-9a-fA-F]{6}/)
   })
 
