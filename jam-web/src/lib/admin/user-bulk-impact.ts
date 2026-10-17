@@ -91,6 +91,9 @@ export async function computeUserBulkImpact(
   let balanceTotal = 0
   for (const id of eligible) balanceTotal += balances.get(id) ?? 0
   impact.pointBalanceTotal = balanceTotal
-  impact.stravaConnectionCount = sumCounts(await countRowsByKey(countClient, 'strava_connections', 'user_id', eligible))
+  // 이미 끊긴 연결(disconnected_at)은 «끊기는 연결»에 세지 않는다(티켓 20261017_1422)
+  impact.stravaConnectionCount = sumCounts(
+    await countRowsByKey(countClient, 'strava_connections', 'user_id', eligible, (q) => q.is('disconnected_at', null))
+  )
   return impact
 }

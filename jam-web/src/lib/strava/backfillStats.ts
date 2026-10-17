@@ -256,6 +256,8 @@ export async function loadBackfillOverview(supabase: SupabaseClient): Promise<Ba
   const { data: connectionData, error: connectionError } = await supabase
     .from('strava_connections')
     .select('user_id')
+    // 끊김 행은 토큰이 비어 백필할 수 없다 — 대상에서 뺀다(티켓 20261017_1422)
+    .is('disconnected_at', null)
   if (connectionError) throw new Error(`strava_connections 조회 실패: ${connectionError.message}`)
   const connections = (connectionData ?? []) as { user_id: string }[]
 

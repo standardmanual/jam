@@ -17,6 +17,7 @@ const USER_ID = 'user-1'
 /** 삭제 대상 테이블과 `user_id` 필터를 기록하는 최소 체인. `failTables`의 삭제는 오류를 돌려준다 */
 function makeSupabase(failTables: string[] = []) {
   const deletes: { table: string; filter: [string, unknown] | null }[] = []
+  const isNullFilters: { table: string; column: string }[] = []
   const from = (table: string) => {
     let op: 'select' | 'delete' | 'update' = 'select'
     let filter: [string, unknown] | null = null
@@ -35,6 +36,10 @@ function makeSupabase(failTables: string[] = []) {
       filter = [col, val]
       return builder
     }
+    builder.is = (column: string, val: unknown) => {
+      if (val === null) isNullFilters.push({ table, column })
+      return builder
+    }
     builder.maybeSingle = async () =>
       table === 'users' ? { data: { id: USER_ID, initial_sync_done: true }, error: null } : { data: null, error: null }
     builder.then = (resolve: (v: unknown) => void) => {
@@ -44,7 +49,7 @@ function makeSupabase(failTables: string[] = []) {
     }
     return builder
   }
-  return { client: { from } as unknown as ServiceClient, deletes }
+  return { client: { from } as unknown as ServiceClient, deletes, isNullFilters }
 }
 
 describe('resetUserData — 믹스 이력 삭제', () => {
@@ -72,5 +77,15 @@ describe('resetUserData — 믹스 이력 삭제', () => {
     const result = await resetUserData(client, USER_ID, 'admin@example.com')
 
     expect(result).toEqual({ ok: false, status: 500, error: 'user_combine_fail_logs 삭제 실패' })
+  })
+})
+
+describe('resetUserData — 끊김 연결', () => {
+  it('Strava 연결 초기화는 끊김 행(disconnected_at이 있는 행)을 건너뛴다', async () => {
+    const { client, isNullFilters } = makeSupabase()
+
+    await resetUserData(client, USER_ID, 'admin@example.com')
+
+    expect(isNullFilters).toContainEqual({ table: 'strava_connections', column: 'disconnected_at' })
   })
 })

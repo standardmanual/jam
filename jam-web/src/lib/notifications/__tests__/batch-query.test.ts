@@ -434,4 +434,23 @@ describe('BatchStepResult 지표', () => {
     const empty = createStubClient({ ...fixtures(), strava_connections: [] })
     expect((await buildSyncStalledDrafts(ctxOf(empty.client))).scanned).toBe(0)
   })
+
+  it('끊김 행(disconnected_at)은 건너뛴다 — 끊긴 연결에 «동기화가 멈췄어요»를 보내지 않는다', async () => {
+    const base = fixtures()
+    const disconnected = createStubClient({
+      ...base,
+      strava_connections: [
+        {
+          id: 'sc2',
+          user_id: 'u2',
+          last_synced_at: null,
+          created_at: new Date(BATCH_AT.getTime() - 10 * DAY_MS).toISOString(),
+          disconnected_at: new Date(BATCH_AT.getTime() - DAY_MS).toISOString(),
+        },
+      ],
+    })
+    const out = await buildSyncStalledDrafts(ctxOf(disconnected.client))
+    expect(out.scanned).toBe(0)
+    expect(out.drafts).toHaveLength(0)
+  })
 })

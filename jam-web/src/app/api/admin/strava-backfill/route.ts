@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   // 대상이 0명이면 조용히 아무 일도 안 하고 끝나는데, 화면에서는 그게 «성공»으로 보인다.
   const { data: connection, error: connectionError } = await supabase
     .from('strava_connections')
-    .select('user_id')
+    .select('user_id, disconnected_at')
     .eq('user_id', userId)
     .maybeSingle()
   if (connectionError) {
@@ -64,6 +64,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: '이 유저의 Strava 동기화 정보를 찾을 수 없습니다.' },
       { status: 404 }
+    )
+  }
+
+  // 끊김 행은 토큰이 비어 있어 복호화할 수 없다 — Strava를 부르지 않고 알린다(티켓 20261017_1422)
+  if (connection.disconnected_at) {
+    return NextResponse.json(
+      { error: '이 유저는 Strava 동기화가 끊겨 있어 백필할 수 없습니다.' },
+      { status: 409 }
     )
   }
 

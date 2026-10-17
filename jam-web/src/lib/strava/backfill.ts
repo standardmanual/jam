@@ -210,6 +210,13 @@ export async function backfillUserExtendedFields(
     truncated: false,
   }
 
+  // 끊김 행은 토큰이 빈 문자열이라 복호화할 수 없다 — Strava를 부르지 않고 건너뛴다
+  // (티켓 20261017_1422 서버 보정 d). 기록·배지는 그대로 남아 있어 백필 대상에서만 빠진다.
+  if (connection.disconnected_at) {
+    result.error = '연결이 끊긴 유저라 건너뜀'
+    return result
+  }
+
   let accessToken: string
   try {
     accessToken = await resolveAccessToken(supabase, connection)
@@ -303,7 +310,8 @@ export async function backfillExtendedFields(
   }
   const { data, error } = await query
   if (error) throw new Error(`strava_connections 조회 실패: ${error.message}`)
-  const connections = (data ?? []) as StravaConnectionRow[]
+  // 끊김 행(disconnected_at)은 처리 대상에서 뺀다 — 토큰이 비어 있어 복호화가 실패한다
+  const connections = ((data ?? []) as StravaConnectionRow[]).filter((c) => !c.disconnected_at)
 
   log(`[backfill] 대상 유저 ${connections.length}명 · ${apply ? '실제 적용' : '미리보기'}`)
 

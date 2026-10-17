@@ -148,7 +148,11 @@ export async function resetUserData(
   const usersUpdateQuery = usersQuery.update({ initial_sync_done: false }).eq('id', userId)
   await usersUpdateQuery
   const stravaConnectionsQuery = supabase.from('strava_connections')
-  const stravaUpdateQuery = stravaConnectionsQuery.update({ last_synced_at: null, backfill_completed: false }).eq('user_id', userId)
+  // 끊김 행(disconnected_at)은 건너뛴다 — 동기화가 멈춘 연결이라 초기화할 커서가 없다(티켓 20261017_1422)
+  const stravaUpdateQuery = stravaConnectionsQuery
+    .update({ last_synced_at: null, backfill_completed: false })
+    .eq('user_id', userId)
+    .is('disconnected_at', null)
   const { error: stravaError } = await stravaUpdateQuery
   if (stravaError) return { ok: false, status: 500, error: stravaError.message }
 

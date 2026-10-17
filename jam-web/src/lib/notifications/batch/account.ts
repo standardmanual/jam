@@ -126,11 +126,17 @@ export function selectInventoryFullDrafts(input: InventoryFullInput): Notificati
 /** `scanned`는 **스트라바 연결 수**다. 연결이 있는데 초안이 0이면 경과일 계산이 깨진 것 */
 export async function buildSyncStalledDrafts(ctx: BatchContext): Promise<StepOutput> {
   const { supabase, startedAt } = ctx
-  const rows = await fetchAllRows<{ user_id: string; last_synced_at: string | null; created_at: string }>(
-    'strava_connections',
-    'id',
-    () => supabase.from('strava_connections').select('user_id, last_synced_at, created_at')
+  const allRows = await fetchAllRows<{
+    user_id: string
+    last_synced_at: string | null
+    created_at: string
+    disconnected_at: string | null
+  }>('strava_connections', 'id', () =>
+    supabase.from('strava_connections').select('user_id, last_synced_at, created_at, disconnected_at')
   )
+  // 끊김 행은 건너뛴다 — 동기화가 멈춘 이유가 이미 끊김(홈 카드·소식)으로 안내되고, 유저가 직접 끊은
+  // 경우에는 «동기화가 멈췄어요»를 반복하지 않는다(티켓 20261017_1422).
+  const rows = allRows.filter((r) => !r.disconnected_at)
   if (rows.length === 0) return { drafts: [], scanned: 0 }
 
   // #40이 미해소인 유저를 걸러내기 위해 끊김 소식의 최신 생성 시각을 읽는다.
