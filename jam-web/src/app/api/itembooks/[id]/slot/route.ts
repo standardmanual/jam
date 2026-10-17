@@ -27,6 +27,9 @@ const SLOT_ERROR_STATUS_MAP: Record<string, { status: number; message: string }>
   // 컬렉션이 없거나 공개되지 않았다 — RPC 코드가 아니라 아래 POST의 사전 확인이 쓴다(티켓 20260930_1516)
   item_book_not_found: { status: 404, message: d.itembooks.itemBookNotFound },
   wrong_item_book: { status: 400, message: d.itembooks.wrongItemBook },
+  // 등급별 컬렉션(tier_mode) 장착 함수만 돌려주는 코드(티켓 20261016_2340, 마이그레이션 222)
+  tier_mismatch: { status: 409, message: d.itembooks.tierMismatch },
+  tier_mode_off: { status: 409, message: d.itembooks.tierModeOff },
   slot_insert_failed: { status: 500, message: d.itembooks.slotFailed },
 }
 
@@ -50,6 +53,10 @@ const SWAP_ERROR_STATUS_MAP: Record<string, { status: number; message: string }>
   already_slotted: { status: 409, message: d.itembooks.alreadySlotted },
   wrong_badge: { status: 400, message: d.itembooks.wrongBadge },
   same_item: { status: 409, message: d.itembooks.sameItem },
+  // 등급별 컬렉션(tier_mode) 교환 함수만 돌려주는 코드(티켓 20261016_2340, 마이그레이션 222)
+  tier_mismatch: { status: 409, message: d.itembooks.tierMismatch },
+  tier_mode_off: { status: 409, message: d.itembooks.tierModeOff },
+  item_book_not_found: { status: 404, message: d.itembooks.itemBookNotFound },
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -77,14 +84,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // 기간이 끝난 컬렉션은 보유자가 계속 쓸 수 있어 막지 않는다(결정 E1, 판정은 visibility.ts).
   const { data: bookRaw, error: bookError } = await supabase
     .from('item_books')
-    .select('is_active, valid_from, valid_until')
+    .select('is_active, valid_from, valid_until, tier_mode')
     .eq('id', itemBookId)
     .maybeSingle()
   if (bookError) {
     console.error('[itembooks/slot] item_books 조회 오류:', bookError)
     return NextResponse.json({ error: d.itembooks.slotFailed }, { status: 500 })
   }
-  const book = bookRaw as ItemBookVisibilityFields | null
+  const book = bookRaw as (ItemBookVisibilityFields & { tier_mode: boolean | null }) | null
   if (!book || !isItemBookLaunched(book, new Date().toISOString())) {
     const notFound = SLOT_ERROR_STATUS_MAP.item_book_not_found
     return NextResponse.json({ error: notFound.message }, { status: notFound.status })
@@ -95,19 +102,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     p_item_book_id: itemBookId,
     p_inventory_item_id: inventory_item_id,
   }
-  const { data: rpcResult, error: rpcError } = await supabase.rpc('slot_item_into_book', rpcArgs)
+  // 등급별 구조(tier_mode)가 켜진 컬렉션만 새 함수를 부른다. 꺼진 컬렉션은 이전과 같은 함수·인자다
+  // (프로덕션 옛 코드도 같은 함수를 부르므로 옛 함수는 바꾸지 않는다, 티켓 20261016_2340).
+  const rpcName = book.tier_mode ? 'slot_item_into_book_tiered' : 'slot_item_into_book'
+  const { data: rpcResult, error: rpcError } = await supabase.rpc(rpcName, rpcArgs)
 
   if (rpcError) {
-    console.error('[itembooks/slot] slot_item_into_book RPC 오류:', rpcError)
+    console.error(`[itembooks/slot] ${rpcName} RPC 오류:`, rpcError)
     return NextResponse.json({ error: d.itembooks.slotFailed }, { status: 500 })
   }
 
-  const result = rpcResult as { ok: boolean; error?: string; slot?: unknown }
+  const result = rpcResult as { ok: boolean; error?: string; slot?: unknown; completed_tier?: string | null }
 
   if (!result.ok) {
     const mapped = SLOT_ERROR_STATUS_MAP[result.error ?? '']
     if (!mapped) {
-      console.error('[itembooks/slot] slot_item_into_book 알 수 없는 에러 코드:', result.error)
+      console.error(`[itembooks/slot] ${rpcName} 알 수 없는 에러 코드:`, result.error)
       return NextResponse.json({ error: d.itembooks.slotFailed }, { status: 500 })
     }
     return NextResponse.json({ error: mapped.message }, { status: mapped.status })
@@ -120,8 +130,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // 2) JAM! 행동 지표(완성한 컬렉션 수)(티켓 20261001_0633) — 장착 RPC가 완성 여부를 돌려주지 않아 장착이
   //    성공할 때마다 판정하지만, 완성이 아닌 장착이면 값이 그대로라 잘못 발급되지 않는다.
   // 순서: 보상 배지를 먼저 발급해 두 결과를 따로 알린다(한 장착이 둘 다 내면 결산이 두 행일 수 있다 — 드문 경우라 합치지 않는다).
+  // 등급별 컬렉션은 이번 장착으로 새로 완성한 등급(`completed_tier`)을 돌려준다. 그 등급을 세 번째 인자로 넘겨 등급
+  // 보상 배지를 발급하고, 새로 완성한 등급이 없으면 발급할 것이 없어 부르지 않는다. 옛 컬렉션은 인자 없이 이전과 같이 부른다.
+  const tierMode = Boolean(book.tier_mode)
+  const completedTier = result.completed_tier ?? null
   after(async () => {
-    await runSlotRewardIssue(user.id, itemBookId)
+    if (!tierMode) await runSlotRewardIssue(user.id, itemBookId)
+    else if (completedTier) await runSlotRewardIssue(user.id, itemBookId, completedTier)
     await runJamActionEvaluation(user.id, jamTriggersForSlot())
   })
 
@@ -187,16 +202,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: d.itembooks.swapMissingParams }, { status: 400 })
   }
 
+  // 등급별 구조(tier_mode)가 켜진 컬렉션은 같은 등급끼리만 바꾸는 새 함수를 부른다(티켓 20261016_2340).
+  // 컬렉션이 없으면 옛 함수로 보내 이전과 같은 응답을 받는다(교환은 공개 여부를 보지 않는다).
+  const { data: tierBookRaw, error: tierBookError } = await supabase
+    .from('item_books')
+    .select('tier_mode')
+    .eq('id', itemBookId)
+    .maybeSingle()
+  if (tierBookError) {
+    console.error('[itembooks/slot] item_books 조회 오류:', tierBookError)
+    return NextResponse.json({ error: d.itembooks.swapFailed }, { status: 500 })
+  }
+  const swapRpcName = (tierBookRaw as { tier_mode: boolean | null } | null)?.tier_mode
+    ? 'swap_item_in_book_tiered'
+    : 'swap_item_in_book'
+
   const rpcArgs = {
     p_user_id: user.id,
     p_item_book_id: itemBookId,
     p_slot_id: slot_id,
     p_new_inventory_item_id: new_inventory_item_id,
   }
-  const { data: rpcResult, error: rpcError } = await supabase.rpc('swap_item_in_book', rpcArgs)
+  const { data: rpcResult, error: rpcError } = await supabase.rpc(swapRpcName, rpcArgs)
 
   if (rpcError) {
-    console.error('[itembooks/slot] swap_item_in_book RPC 오류:', rpcError)
+    console.error(`[itembooks/slot] ${swapRpcName} RPC 오류:`, rpcError)
     return NextResponse.json({ error: d.itembooks.swapFailed }, { status: 500 })
   }
 
@@ -205,7 +235,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!result.ok) {
     const mapped = SWAP_ERROR_STATUS_MAP[result.error ?? '']
     if (!mapped) {
-      console.error('[itembooks/slot] swap_item_in_book 알 수 없는 에러 코드:', result.error)
+      console.error(`[itembooks/slot] ${swapRpcName} 알 수 없는 에러 코드:`, result.error)
       return NextResponse.json({ error: d.itembooks.swapFailed }, { status: 500 })
     }
     return NextResponse.json({ error: mapped.message }, { status: mapped.status })

@@ -8,6 +8,9 @@
  *  - 401·400·RPC 오류·`ok: false` 실패 분기에서는 예약하지 않는다
  *  - 해제(DELETE)·교체(PATCH)에서는 예약하지 않는다
  *  - 응답 본문·상태 코드·에러 문구는 변경 전과 같다. 판정이 거부돼도 응답은 그대로다
+ *  - 등급별 구조(`tier_mode`)가 꺼진 컬렉션은 이전과 같은 RPC·인자로 부르고 보상 발급도 인자 두 개 그대로다(회귀).
+ *    켜진 컬렉션은 `slot_item_into_book_tiered`·`swap_item_in_book_tiered`를 부르고 `completed_tier`를 보상 발급의 세 번째
+ *    인자로 넘기며 `tier_mismatch`·`tier_mode_off`를 응답으로 바꾼다(티켓 20261016_2340)
  *  - 공개되지 않은 컬렉션(없음·비활성·시작 전)에는 404이고 장착 RPC를 부르지 않는다(티켓 20260930_1516).
  *    기간이 끝난 컬렉션은 보유자가 계속 쓸 수 있어 막지 않는다(결정 E1)
  *
@@ -31,12 +34,12 @@ const state = vi.hoisted(() => ({
   rpcCalls: [] as { name: string; args: unknown }[],
   afterCallbacks: [] as (() => unknown)[],
   /** `item_books`에서 읽히는 행. null이면 컬렉션이 없다 */
-  book: null as { is_active: boolean; valid_from: string | null; valid_until: string | null } | null,
+  book: null as { is_active: boolean; valid_from: string | null; valid_until: string | null; tier_mode?: boolean } | null,
   bookError: null as { message: string } | null,
 }))
 
 const runJamActionMock = vi.hoisted(() => vi.fn<(userId: string, triggers: readonly string[]) => Promise<void>>())
-const runSlotRewardMock = vi.hoisted(() => vi.fn<(userId: string, itemBookId: string) => Promise<void>>())
+const runSlotRewardMock = vi.hoisted(() => vi.fn<(userId: string, itemBookId: string, completedTier?: string | null) => Promise<void>>())
 /** `after` 콜백 안에서 두 함수가 불린 순서 */
 const callOrder = vi.hoisted(() => [] as string[])
 
@@ -67,7 +70,7 @@ vi.mock('@/lib/badge-engine/jamActionRoute', () => ({
   runJamActionEvaluation: (userId: string, triggers: readonly string[]) => runJamActionMock(userId, triggers),
 }))
 vi.mock('@/lib/itembook/slotReward', () => ({
-  runSlotRewardIssue: (userId: string, itemBookId: string) => runSlotRewardMock(userId, itemBookId),
+  runSlotRewardIssue: (...args: [string, string, (string | null)?]) => runSlotRewardMock(...args),
 }))
 vi.mock('next/server', async (importOriginal) => {
   const actual = await importOriginal<typeof import('next/server')>()
@@ -320,5 +323,142 @@ describe('DELETE(해제)·PATCH(교체)에서는 판정·보상 배지 발급을
     expect(res.status).toBe(409)
     expect(await res.json()).toEqual({ error: d.itembooks.sameItem })
     expect(state.afterCallbacks).toHaveLength(0)
+  })
+})
+
+describe('등급별 구조(tier_mode) — 꺼진 컬렉션은 이전과 같고 켜진 컬렉션은 새 함수를 부른다(티켓 20261016_2340)', () => {
+  const TIER_SLOT = { ...SLOT, id: 'slot-tier' }
+  const ARGS = { p_user_id: USER_ID, p_item_book_id: ITEM_BOOK_ID, p_inventory_item_id: 'item-1' }
+  const SWAP_ARGS = {
+    p_user_id: USER_ID,
+    p_item_book_id: ITEM_BOOK_ID,
+    p_slot_id: 'slot-1',
+    p_new_inventory_item_id: 'item-2',
+  }
+
+  it('꺼진 컬렉션(tier_mode: false) 장착은 옛 RPC·옛 인자이고 보상 발급은 인자 두 개다(회귀)', async () => {
+    state.book = { is_active: true, valid_from: null, valid_until: null, tier_mode: false }
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(201)
+    expect(state.rpcCalls).toEqual([{ name: 'slot_item_into_book', args: ARGS }])
+    await flushAfter()
+    expect(runSlotRewardMock.mock.calls).toEqual([[USER_ID, ITEM_BOOK_ID]])
+  })
+
+  it('꺼진 컬렉션은 RPC가 completed_tier를 돌려줘도 무시하고 인자 두 개로 부른다', async () => {
+    state.rpc.slot_item_into_book = { data: { ok: true, slot: SLOT, completed_tier: 'common' }, error: null }
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+    expect(runSlotRewardMock.mock.calls).toEqual([[USER_ID, ITEM_BOOK_ID]])
+  })
+
+  it('켜진 컬렉션 장착은 slot_item_into_book_tiered를 같은 인자로 부른다', async () => {
+    state.book = { is_active: true, valid_from: null, valid_until: null, tier_mode: true }
+    state.rpc.slot_item_into_book_tiered = { data: { ok: true, slot: TIER_SLOT, tier: 'rare', completed_tier: null }, error: null }
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(201)
+    expect(await res.json()).toEqual({ slot: TIER_SLOT })
+    expect(state.rpcCalls).toEqual([{ name: 'slot_item_into_book_tiered', args: ARGS }])
+  })
+
+  it('켜진 컬렉션이 등급을 새로 완성하면 completed_tier를 보상 발급의 세 번째 인자로 넘긴 뒤 JAM! 판정을 부른다', async () => {
+    state.book = { is_active: true, valid_from: null, valid_until: null, tier_mode: true }
+    state.rpc.slot_item_into_book_tiered = { data: { ok: true, slot: TIER_SLOT, tier: 'epic', completed_tier: 'epic' }, error: null }
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(state.afterCallbacks).toHaveLength(1)
+    await flushAfter()
+    expect(runSlotRewardMock.mock.calls).toEqual([[USER_ID, ITEM_BOOK_ID, 'epic']])
+    expect(callOrder).toEqual(['runSlotRewardIssue', 'runJamActionEvaluation'])
+  })
+
+  it('켜진 컬렉션이 새로 완성한 등급이 없으면 보상 발급은 부르지 않고 JAM! 판정은 부른다', async () => {
+    state.book = { is_active: true, valid_from: null, valid_until: null, tier_mode: true }
+    state.rpc.slot_item_into_book_tiered = { data: { ok: true, slot: TIER_SLOT, tier: 'epic', completed_tier: null }, error: null }
+    await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    await flushAfter()
+
+    expect(runSlotRewardMock).not.toHaveBeenCalled()
+    expect(runJamActionMock).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ['tier_mismatch', 409, d.itembooks.tierMismatch],
+    ['tier_mode_off', 409, d.itembooks.tierModeOff],
+    ['item_book_not_found', 404, d.itembooks.itemBookNotFound],
+    ['already_slotted', 409, d.itembooks.alreadySlotted],
+  ])('켜진 컬렉션 장착 ok:false(%s) → %i이고 후속 작업을 예약하지 않는다', async (code, status, message) => {
+    state.book = { is_active: true, valid_from: null, valid_until: null, tier_mode: true }
+    state.rpc.slot_item_into_book_tiered = { data: { ok: false, error: code }, error: null }
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(status)
+    expect(await res.json()).toEqual({ error: message })
+    expect(state.afterCallbacks).toHaveLength(0)
+  })
+
+  it('꺼진 컬렉션의 옛 RPC가 tier_mismatch를 돌려줘도(발생하지 않는 코드) 같은 표로 응답한다', async () => {
+    state.rpc.slot_item_into_book = { data: { ok: false, error: 'tier_mismatch' }, error: null }
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ error: d.itembooks.tierMismatch })
+  })
+
+  it('꺼진 컬렉션 교체는 swap_item_in_book을 이전과 같은 인자로 부른다(회귀)', async () => {
+    state.book = { is_active: true, valid_from: null, valid_until: null, tier_mode: false }
+    const res = await PATCH(request('PATCH', { slot_id: 'slot-1', new_inventory_item_id: 'item-2' }), PARAMS)
+
+    expect(res.status).toBe(200)
+    expect(state.rpcCalls).toEqual([{ name: 'swap_item_in_book', args: SWAP_ARGS }])
+  })
+
+  it('컬렉션 행이 없으면 교체는 옛 RPC로 보낸다(이전과 같은 응답)', async () => {
+    state.book = null
+    await PATCH(request('PATCH', { slot_id: 'slot-1', new_inventory_item_id: 'item-2' }), PARAMS)
+    expect(state.rpcCalls.map((c) => c.name)).toEqual(['swap_item_in_book'])
+  })
+
+  it('켜진 컬렉션 교체는 swap_item_in_book_tiered를 같은 인자로 부른다', async () => {
+    state.book = { is_active: true, valid_from: null, valid_until: null, tier_mode: true }
+    state.rpc.swap_item_in_book_tiered = { data: { ok: true, slot: TIER_SLOT }, error: null }
+    const res = await PATCH(request('PATCH', { slot_id: 'slot-1', new_inventory_item_id: 'item-2' }), PARAMS)
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ slot: TIER_SLOT })
+    expect(state.rpcCalls).toEqual([{ name: 'swap_item_in_book_tiered', args: SWAP_ARGS }])
+    expect(state.afterCallbacks).toHaveLength(0)
+  })
+
+  it.each([
+    ['tier_mismatch', 409, d.itembooks.tierMismatch],
+    ['tier_mode_off', 409, d.itembooks.tierModeOff],
+    ['item_book_not_found', 404, d.itembooks.itemBookNotFound],
+    ['wrong_badge', 400, d.itembooks.wrongBadge],
+  ])('켜진 컬렉션 교체 ok:false(%s) → %i', async (code, status, message) => {
+    state.book = { is_active: true, valid_from: null, valid_until: null, tier_mode: true }
+    state.rpc.swap_item_in_book_tiered = { data: { ok: false, error: code }, error: null }
+    const res = await PATCH(request('PATCH', { slot_id: 'slot-1', new_inventory_item_id: 'item-2' }), PARAMS)
+
+    expect(res.status).toBe(status)
+    expect(await res.json()).toEqual({ error: message })
+  })
+
+  it('교체 중 컬렉션 조회가 실패하면 500이고 RPC를 부르지 않는다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.bookError = { message: 'db 장애' }
+    const res = await PATCH(request('PATCH', { slot_id: 'slot-1', new_inventory_item_id: 'item-2' }), PARAMS)
+
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: d.itembooks.swapFailed })
+    expect(state.rpcCalls).toHaveLength(0)
+    consoleError.mockRestore()
+  })
+
+  it('해제(DELETE)는 컬렉션 설정과 관계없이 unslot_item_from_book을 부른다', async () => {
+    state.book = { is_active: true, valid_from: null, valid_until: null, tier_mode: true }
+    await DELETE(request('DELETE', { slot_id: 'slot-1' }), PARAMS)
+    expect(state.rpcCalls.map((c) => c.name)).toEqual(['unslot_item_from_book'])
   })
 })
