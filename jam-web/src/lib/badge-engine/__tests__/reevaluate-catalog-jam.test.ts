@@ -3,7 +3,7 @@
  *
  * 검증 대상:
  *  ① dry-run: 대상 유저 수·JAM! 영향 유저 수·JAM! 포인트 합계를 돌려주고, insert·포인트·피드를 한 번도 쓰지 않는다
- *     (섀도우밴 차단은 dry-run에도 반영된다)
+ *     (섀도우밴은 읽지 않는다 — 티켓 20261017_1426)
  *  ② 실제 실행: 조건을 채운 유저에게만 발급하고 포인트는 지급하며 피드는 만들지 않는다. `triggered_by`에
  *     `catalog_reevaluation:` 접두가 붙는다
  *  ③ 다시 실행: 이미 보유한 배지는 다시 발급하지 않는다(발급 0건, 포인트 0)
@@ -273,7 +273,7 @@ describe('재평가 dry-run — JAM! 지표', () => {
     )
   })
 
-  it('섀도우밴 차단은 dry-run 숫자에도 반영된다', async () => {
+  it('섀도우밴을 읽지 않는다: hard 밴이 남아 있어도 mystic 등급형이 dry-run 숫자에 들어간다', async () => {
     getUserBanLevelMock.mockResolvedValue('hard')
     state.tables.badges = [
       makeBadge({ id: 'jam-mystic', name: '신화 믹서', rarity: 'mystic', point_reward: 500, condition_json: { combine_success_count: 1 } }),
@@ -282,11 +282,12 @@ describe('재평가 dry-run — JAM! 지표', () => {
 
     const result = await reevaluateUsersForCatalog(mockSupabase(), { dryRun: true, userIds: [U_QUALIFIED] })
 
-    // mystic 등급형은 hard 밴에서 차단되므로 «받게 될 배지»에 들어가지 않는다 — common JAM_MIXER만 남는다
+    // 밴 등급을 보지 않으므로 mystic 등급형도 «받게 될 배지»에 들어간다
     const qualified = result.users[0]
     expect(qualified.earnedBadgeIds).toContain(JAM_MIXER.id)
-    expect(qualified.earnedBadgeIds).not.toContain('jam-mystic')
-    expect(result.totalJamActionPointsAwarded).toBe(50)
+    expect(qualified.earnedBadgeIds).toContain('jam-mystic')
+    expect(result.totalJamActionPointsAwarded).toBe(550)
+    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 
   it('JAM! 지표 키를 둘 가진 배지는 dry-run에서도 한 번만 센다(실제 실행과 같은 숫자)', async () => {
@@ -534,12 +535,12 @@ describe('열릴 예정 배지 미리보기', () => {
     expect(only.totalPoints).toBe(160)
   })
 
-  it('⑥ 이미 보유한 유저와 섀도우밴 유저는 뺀다', async () => {
+  it('⑥ 이미 보유한 유저는 뺀다. 섀도우밴은 읽지 않는다', async () => {
     state.tables.user_activity_badges.push({ user_id: U_OWNER, badge_id: UPCOMING.id })
     const owned = await previewUpcomingJamBadges(mockSupabase(), { userIds: ALL_USERS })
     expect(owned.badges).toEqual([{ badgeId: 'jam-upcoming', name: '예정 믹서', validFrom: FUTURE, userCount: 1, points: 80 }])
 
-    // hard 밴은 mystic 등급형 발급을 막는다 — 미리보기 숫자에도 반영된다
+    // hard 밴이 남아 있어도 mystic 등급형 미리보기 숫자는 그대로다(밴을 읽지 않는다)
     getUserBanLevelMock.mockResolvedValue('hard')
     const mystic = makeBadge({
       id: 'jam-mystic-upcoming',
@@ -551,8 +552,11 @@ describe('열릴 예정 배지 미리보기', () => {
     })
     state.tables.badges.push(mystic as unknown as Row)
     const banned = await previewUpcomingJamBadges(mockSupabase(), { userIds: [U_QUALIFIED], badgeIds: [mystic.id] })
-    expect(banned.badges).toEqual([])
-    expect(banned.affectedUserCount).toBe(0)
+    expect(banned.badges).toEqual([
+      { badgeId: 'jam-mystic-upcoming', name: '신화 예정', validFrom: FUTURE, userCount: 1, points: 500 },
+    ])
+    expect(banned.affectedUserCount).toBe(1)
+    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 
   it('⑦ includeUpcoming·extraCandidates를 dryRun 없이 켜면 던진다', async () => {

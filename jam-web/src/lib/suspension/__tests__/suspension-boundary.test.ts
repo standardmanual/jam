@@ -1,0 +1,164 @@
+/**
+ * 이용 정지 — 클라이언트·서버 경계와 섀도우밴 비읽기 (티켓 20261017_1426)
+ *
+ * ① `suspension-contract.ts`는 import가 없는 순수 파일이다. 클라이언트가 이 파일을 가져와도 서버 모듈이 번들에 끌려오지 않는다.
+ *    클라이언트 진입점(동기화 버튼·보류 고르기)의 import 사슬에도 서버 전용 `suspension.ts`가 없다. 타입 검사·CI가 통과해도
+ *    실제 번들에서만 경계 위반이 드러난 적이 있어(`project_nextjs_client_server_boundary_build_only`) 정적·동적 import를 끝까지 따라간다.
+ * ② 새 동기화·드랍·배지 코드는 옛 섀도우밴(`user_shadow_bans`, `getUserBanLevel`, `shouldAllowDrop`)을 읽지 않는다.
+ *    옛 어드민·옛 API·픽업·`applyShadowBanCap` 함수·`drop-engine/preview.ts`는 그대로 남아 있으므로 검사 대상이 아니다.
+ *
+ * 실행: cd jam-web && npx vitest run src/lib/suspension/__tests__/suspension-boundary.test.ts
+ */
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { describe, it, expect } from 'vitest'
+
+const srcRoot = fileURLToPath(new URL('../../../', import.meta.url))
+const dsRoot = join(srcRoot, '../design-system')
+
+const EXTENSIONS = ['', '.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js', '/index.jsx']
+
+function resolveLocal(from: string, spec: string): string | null {
+  let base: string
+  if (spec.startsWith('@/')) base = join(srcRoot, spec.slice(2))
+  else if (spec.startsWith('@ds/')) base = join(dsRoot, spec.slice(4))
+  else if (spec.startsWith('.')) base = join(dirname(from), spec)
+  else return null
+  for (const ext of EXTENSIONS) {
+    const candidate = base + ext
+    if (existsSync(candidate) && statSync(candidate).isFile()) return candidate
+  }
+  return null
+}
+
+/** 정적 import·export from·동적 import()·require() 지정자 */
+function specifiersOf(source: string): string[] {
+  const out: string[] = []
+  const pattern = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*)['"]([^'"]+)['"]/g
+  for (const match of source.matchAll(pattern)) out.push(match[1])
+  return out
+}
+
+function crawl(entry: string): { files: Set<string>; packages: Set<string> } {
+  const files = new Set<string>()
+  const packages = new Set<string>()
+  const queue = [entry]
+  while (queue.length > 0) {
+    const file = queue.pop() as string
+    if (files.has(file)) continue
+    files.add(file)
+    for (const spec of specifiersOf(readFileSync(file, 'utf8'))) {
+      const resolved = resolveLocal(file, spec)
+      if (resolved) queue.push(resolved)
+      else if (!spec.startsWith('.') && !spec.startsWith('@/') && !spec.startsWith('@ds/')) packages.add(spec)
+    }
+  }
+  return { files, packages }
+}
+
+const rel = (file: string) => file.replace(srcRoot, 'src/').replace(dsRoot, 'design-system')
+
+const CONTRACT = 'lib/suspension/suspension-contract.ts'
+
+describe('suspension-contract.ts는 import가 없는 순수 파일이다', () => {
+  it('어떤 import·require·동적 import도 없다', () => {
+    const source = readFileSync(join(srcRoot, CONTRACT), 'utf8')
+    expect(specifiersOf(source)).toEqual([])
+  })
+
+  it("'use client'·'server-only' 지시어나 서버 API 이름이 없다", () => {
+    // 주석에는 서버 모듈 이름이 설명으로 나올 수 있어 코드 부분만 본다
+    const code = readFileSync(join(srcRoot, CONTRACT), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+    expect(code).not.toMatch(/['"]use client['"]/)
+    expect(code).not.toMatch(/server-only|next\/headers|createServiceClient|supabase/)
+  })
+
+  it('사슬이 자기 자신 하나뿐이고 외부 패키지가 없다', () => {
+    const { files, packages } = crawl(join(srcRoot, CONTRACT))
+    expect([...files].map(rel)).toEqual([`src/${CONTRACT}`])
+    expect([...packages]).toEqual([])
+  })
+})
+
+describe('서버 전용 suspension.ts는 서버 쪽에서만 가져온다', () => {
+  // 클라이언트 컴포넌트가 가져오는 진입점들 — 보류 고르기 화면과 동기화 버튼의 사슬
+  const CLIENT_ENTRIES = [
+    'components/strava/PendingItemsPickerProvider.tsx',
+    'components/strava/PendingItemsPickOverlay.tsx',
+    'components/SyncButton.tsx',
+    'lib/strava/pending-pick.ts',
+    'lib/strava/sync-flow.ts',
+    CONTRACT,
+  ]
+
+  it.each(CLIENT_ENTRIES)('%s의 import 사슬에 서버 전용 모듈이 없다', (entry) => {
+    const { files, packages } = crawl(join(srcRoot, entry))
+    const reached = [...files].map(rel)
+
+    expect(reached.filter((f) => f.endsWith('lib/suspension/suspension.ts')), `${entry}가 suspension.ts를 끌어온다`).toEqual([])
+    expect(reached.filter((f) => f.endsWith('lib/supabase/server.ts')), `${entry}가 lib/supabase/server.ts를 끌어온다`).toEqual([])
+    expect([...packages].filter((p) => p === 'next/headers' || p === 'server-only'), `${entry}가 서버 전용 패키지를 끌어온다`).toEqual([])
+  })
+
+  it('suspension.ts는 계약 파일의 타입만 가져온다(런타임 의존이 없다)', () => {
+    const source = readFileSync(join(srcRoot, 'lib/suspension/suspension.ts'), 'utf8')
+    expect(specifiersOf(source).sort()).toEqual(['./suspension-contract', '@supabase/supabase-js'])
+    expect(source).toMatch(/import type \{ SupabaseClient \} from '@supabase\/supabase-js'/)
+    expect(source).toMatch(/import type \{ SuspensionPeriod \} from '\.\/suspension-contract'/)
+  })
+})
+
+/** 하위 폴더까지 포함해 시험·스토리·목업 파일을 뺀 소스 파일 목록 */
+function sourceFilesUnder(dir: string): string[] {
+  const out: string[] = []
+  for (const name of readdirSync(dir)) {
+    if (name === '__tests__' || name === '__mocks__') continue
+    const full = join(dir, name)
+    if (statSync(full).isDirectory()) out.push(...sourceFilesUnder(full))
+    else if (/\.(ts|tsx)$/.test(name) && !/\.(test|spec|stories)\./.test(name)) out.push(full)
+  }
+  return out
+}
+
+// 옛 섀도우밴을 읽는 식별자들 — 새 동기화·드랍·배지 코드에 있으면 안 된다
+const SHADOW_BAN_READS = /user_shadow_bans|getUserBanLevel|shouldAllowDrop|abusing\/shadow-ban/
+
+describe('새 동기화·드랍·배지 코드는 user_shadow_bans를 읽지 않는다', () => {
+  // 드랍 엔진 중 index.ts(applyShadowBanCap 함수 정의를 보존)와 preview.ts(어드민 미리보기)는 아래에서 따로 본다
+  const DIRS = ['lib/strava', 'lib/badge-engine', 'lib/jam', 'lib/drop-engine'] as const
+  const EXCLUDED = new Set(['lib/drop-engine/index.ts', 'lib/drop-engine/preview.ts'])
+
+  const targets = DIRS.flatMap((dir) => sourceFilesUnder(join(srcRoot, dir)))
+    .map((file) => file.replace(srcRoot, ''))
+    .filter((file) => !EXCLUDED.has(file))
+
+  it('검사 대상에 핵심 파일이 들어 있다(찾지 못해 통과하는 일을 막는다)', () => {
+    for (const must of [
+      'lib/strava/sync.ts',
+      'lib/badge-engine/index.ts',
+      'lib/badge-engine/usageBadges.ts',
+      'lib/drop-engine/syncIssueRun.ts',
+    ]) {
+      expect(targets, `${must}가 검사 대상에 없다`).toContain(must)
+    }
+  })
+
+  it.each(targets)('%s', (file) => {
+    const source = readFileSync(join(srcRoot, file), 'utf8')
+    expect(source).not.toMatch(SHADOW_BAN_READS)
+  })
+
+  it('drop-engine/index.ts는 applyShadowBanCap 함수만 남기고 호출하지 않는다', () => {
+    const source = readFileSync(join(srcRoot, 'lib/drop-engine/index.ts'), 'utf8')
+    const lines = source.split('\n')
+
+    const definitions = lines.filter((line) => /^export async function applyShadowBanCap\(/.test(line))
+    const calls = lines.filter((line) => /\bapplyShadowBanCap\(/.test(line) && !/^export async function applyShadowBanCap\(/.test(line))
+
+    expect(definitions).toHaveLength(1) // 어드민 미리보기(preview.ts)가 쓰므로 지우지 않는다
+    expect(calls).toEqual([])
+  })
+})

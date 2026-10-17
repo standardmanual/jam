@@ -30,8 +30,6 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
 import { recordFeedEvent } from '@/lib/activity-feed'
-import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
-import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { kstDateString } from '@/lib/notifications/kst'
 import { isLeveledBadge, familyKeyOf } from './badgeKind'
 import { rarityTier } from '@/lib/rarity'
@@ -53,7 +51,7 @@ export interface UsageBadgeEarned {
  * 돌릴 때 쓴다(티켓 20261001_0634). 전부 생략하면 자연 발급과 똑같이 동작한다.
  */
 export interface IssueBadgeOptions {
-  /** true면 섀도우밴 판정까지 하고 통과한 배지를 `earned`에 담기만 한다 — 어떤 쓰기(insert·포인트·피드)도 하지 않는다 */
+  /** true면 받게 될 배지를 `earned`에 담기만 한다 — 어떤 쓰기(insert·포인트·피드)도 하지 않는다 */
   dryRun?: boolean
   /** true면 `badge_earned` 피드 이벤트만 건너뛴다 — insert와 포인트 지급은 그대로 한다 */
   silent?: boolean
@@ -211,23 +209,11 @@ export async function issueQualifyingBadges(
 
   if (toIssue.length === 0) return []
 
-  // 섀도우밴 — rarity가 있는(등급형) 후보만 고가치 발급을 차단한다. 레벨형(rarity NULL)은
-  // 등급 서열이 없어 이 게이트의 대상이 아니다(Acceptance Criteria 10의 "(rarity)" 한정).
-  // toIssue가 비어 있으면(대부분의 호출) 여기 도달하지 않으므로 밴 조회 비용이 들지 않는다.
-  const banLevel = await getUserBanLevel(userId)
-  const policy = banLevel !== 'none' ? await getAbusingPolicy() : null
+  // 섀도우밴 게이트는 없앴다(티켓 20261017_1426) — JAM 2.0의 제재는 이용 정지 하나이고, 정지 중인 유저는 동기화 입구에서 막힌다.
 
   const earned: UsageBadgeEarned[] = []
   for (const badge of toIssue) {
-    if (badge.rarity && policy && !shouldAllowDrop(badge.rarity, banLevel, policy)) {
-      console.info(
-        `[issueQualifyingBadges] 섀도우밴으로 발급 차단 — userId: ${userId}, badge: ${badge.name}, rarity: ${badge.rarity}`
-      )
-      continue
-    }
-
-    // dry-run — 섀도우밴을 통과한 «받게 될 배지»만 담고 쓰기는 하나도 하지 않는다
-    // (메인 엔진도 섀도우밴 게이트 뒤에서 dryRun을 가른다 — 같은 순서)
+    // dry-run — «받게 될 배지»만 담고 쓰기는 하나도 하지 않는다
     if (options?.dryRun) {
       earned.push({ id: badge.id, name: badge.name })
       continue

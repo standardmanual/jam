@@ -3,7 +3,7 @@
  *
  * 검증 대상:
  *  ① dry-run: 대상 유저 수·사용량 영향 유저 수·사용량 포인트 합계를 돌려주고, insert·포인트·피드를 한 번도 쓰지 않는다
- *     (섀도우밴 차단은 dry-run에도 반영된다)
+ *     (섀도우밴은 읽지 않는다 — 티켓 20261017_1426)
  *  ② 실제 실행: 조건을 채운 유저에게만 한 번씩 발급하고 포인트는 지급하며 피드는 만들지 않는다. `triggered_by`에
  *     `catalog_reevaluation:` 접두가 붙는다
  *  ③ 다시 실행: 이미 보유한 배지는 다시 발급하지 않는다
@@ -289,7 +289,7 @@ describe('재평가 dry-run — 사용량 지표', () => {
     expect(recordFeedEventMock).not.toHaveBeenCalled()
   })
 
-  it('섀도우밴 차단은 dry-run 숫자에도 반영된다', async () => {
+  it('섀도우밴을 읽지 않는다: hard 밴이 남아 있어도 mystic 등급형이 dry-run 숫자에 들어간다', async () => {
     getUserBanLevelMock.mockResolvedValue('hard')
     state.tables.badges = [
       makeBadge({ id: 'u-mystic', name: '신화 인기쟁이', rarity: 'mystic', point_reward: 500, condition_json: { follower_count: 1 } }),
@@ -298,10 +298,11 @@ describe('재평가 dry-run — 사용량 지표', () => {
 
     const result = await reevaluateUsersForCatalog(mockSupabase(), { dryRun: true, userIds: [U_ALL] })
 
-    // mystic 등급형은 hard 밴에서 차단되므로 «받게 될 배지»에 들어가지 않는다 — common FOLLOWERS만 남는다
+    // 밴 등급을 보지 않으므로 mystic 등급형도 «받게 될 배지»에 들어간다
     const user = result.users[0]
-    expect(user.earnedBadgeIds).toEqual([FOLLOWERS.id])
-    expect(result.totalUsageMetricPointsAwarded).toBe(30)
+    expect([...user.earnedBadgeIds].sort()).toEqual([FOLLOWERS.id, 'u-mystic'].sort())
+    expect(result.totalUsageMetricPointsAwarded).toBe(530)
+    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 })
 

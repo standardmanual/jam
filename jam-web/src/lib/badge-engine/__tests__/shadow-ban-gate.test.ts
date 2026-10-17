@@ -1,17 +1,11 @@
 /**
- * 액티비티 배지 발급 경로 — 섀도우밴 게이트 회귀 테스트 (티켓 20260910_1719)
+ * 액티비티 배지 발급 경로 — 섀도우밴을 읽지 않는다 (티켓 20261017_1426, 옛 티켓 20260910_1719의 게이트를 대신한다)
  *
- * BADGE_ENGINE_UNIFIED.md §1 "공통 정책(두 엔진 공유)"이 명시한 섀도우밴이 이 경로
- * (`evaluateBadgesDetailed`)에는 전혀 연결돼 있지 않았다 — drop-engine(아이템배지)·
- * usageBadges.ts(서비스 사용량 배지)에만 있었다. 이 파일은 usageBadges.ts가 세운 판정
- * (rarity가 있는 배지만 대상, `shouldAllowDrop` 재사용)을 그대로 재사용해 연결한 뒤,
- * ① 밴 유저는 고가치 등급 액티비티 배지를 받지 못하고 ② 정상 유저·카운터 증가 경로는
- * 기존 그대로 동작함을 고정한다.
+ * JAM 2.0의 제재는 이용 정지 하나다. `evaluateBadgesDetailed`는 예전에 발급 후보가 있으면 `getUserBanLevel`을 읽어 고가치 등급
+ * 발급을 막았지만(missed 사유 «섀도우밴 — 고가치 등급 발급 차단») 이제는 읽지 않는다. 옛 테이블에 hard 밴이 남아 있어도 발급은
+ * 평소대로다. 정지 중인 유저는 동기화 입구에서 막혀 이 함수에 오지 않는다.
  *
- * 모킹은 badge-engine-v5.test.ts(쿼리 빌더·반복형 RPC)와 usage-badges.test.ts
- * (getUserBanLevel만 모킹하고 shouldAllowDrop·DEFAULT_POLICY는 실제 구현을 쓴다 — rate
- * 테이블이 결정론적이라 Math.random()에 기대지 않고도 차단/허용을 고정할 수 있다)의
- * 관례를 그대로 따른다.
+ * `getUserBanLevel` 모킹은 «불리지 않음»을 고정하려고 남겼다. 쿼리 빌더·반복형 RPC 모킹은 badge-engine-v5.test.ts의 관례를 따른다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/badge-engine/__tests__/shadow-ban-gate.test.ts
  */
@@ -270,50 +264,21 @@ beforeEach(() => {
 
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('섀도우밴 게이트 — 밴 없음(none)은 기존 발급 흐름에 영향이 없다', () => {
-  it('mystic 등급형도 정상 발급된다 (회귀 방지)', async () => {
-    state.badges = [makeGradedBadge('G-mystic', 'mystic')]
-    oneRun()
-
-    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
-
-    expect(earned.map((b) => b.id)).toEqual(['G-mystic'])
-    expect(state.inserts.map((p) => p.badge_id)).toEqual(['G-mystic'])
-    // 발급 후보가 있어도 밴이 없으면 정책 조회까지 갈 필요는 없다(shouldAllowDrop 진입 전
-    // banLevel==='none' 분기에서 끝난다) — getUserBanLevel 자체는 호출된다.
-    expect(getUserBanLevelMock).toHaveBeenCalledWith(USER_ID)
-  })
-})
-
-describe('섀도우밴 게이트 — hard 밴은 고가치 등급형 발급을 차단한다', () => {
-  it('mystic 등급형이 차단된다 (hard_mystic_rate=0.0) — missed에 사유가 남는다', async () => {
+describe('섀도우밴을 읽지 않는다 — hard 밴이 남아 있어도 평소대로 발급한다', () => {
+  it('mystic 등급형이 정상 발급되고 밴 조회를 하지 않는다', async () => {
     getUserBanLevelMock.mockResolvedValue('hard')
     state.badges = [makeGradedBadge('G-mystic', 'mystic')]
     oneRun()
 
     const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
 
-    expect(earned).toEqual([])
-    expect(state.inserts).toEqual([])
-    const m = missed.find((x) => x.id === 'G-mystic')
-    expect(m?.reason).toBe('섀도우밴 — 고가치 등급 발급 차단')
-    expect(m?.actual).toBe('mystic')
+    expect(earned.map((b) => b.id)).toEqual(['G-mystic'])
+    expect(state.inserts.map((p) => p.badge_id)).toEqual(['G-mystic'])
+    expect(missed.find((x) => x.id === 'G-mystic')).toBeUndefined()
+    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 
-  it('common 등급형은 차단되지 않는다 (hard_common_rate=1.0)', async () => {
-    getUserBanLevelMock.mockResolvedValue('hard')
-    state.badges = [makeGradedBadge('G-common', 'common')]
-    oneRun()
-
-    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
-
-    expect(earned.map((b) => b.id)).toEqual(['G-common'])
-    expect(state.inserts.map((p) => p.badge_id)).toEqual(['G-common'])
-  })
-})
-
-describe('섀도우밴 게이트 — soft 밴은 mystic만 차단한다', () => {
-  it('mystic은 차단되고 rare·common은 정상 발급된다 (soft_mystic_rate=0.0, 나머지=1.0)', async () => {
+  it('soft 밴이어도 mystic·rare·common이 모두 발급된다', async () => {
     getUserBanLevelMock.mockResolvedValue('soft')
     // 서로 다른 이름으로 둬 성장 티어(동명 그룹 최상위 1개) 병합에 걸리지 않게 한다.
     state.badges = [
@@ -325,12 +290,11 @@ describe('섀도우밴 게이트 — soft 밴은 mystic만 차단한다', () => 
 
     const { earned } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
 
-    expect(earned.map((b) => b.id).sort()).toEqual(['S-common', 'S-rare'])
+    expect(earned.map((b) => b.id).sort()).toEqual(['S-common', 'S-mystic', 'S-rare'])
+    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
-})
 
-describe('섀도우밴 게이트 — 레벨형(rarity NULL)은 대상이 아니다', () => {
-  it('hard 밴이어도 레벨형은 정상 발급된다', async () => {
+  it('레벨형(rarity NULL)도 정상 발급된다', async () => {
     getUserBanLevelMock.mockResolvedValue('hard')
     state.badges = [makeLevelBadge(1, 'run:infinite')]
     oneRun()
@@ -339,26 +303,21 @@ describe('섀도우밴 게이트 — 레벨형(rarity NULL)은 대상이 아니�
 
     expect(earned.map((b) => b.id)).toEqual(['run:infinite-lv1'])
   })
-})
 
-describe('섀도우밴 게이트 — 반복형은 rarity 유무로 판정한다', () => {
-  it('hard 밴 — 반복형 최초 발급(action=issue)도 rarity 기준으로 차단된다', async () => {
+  it('반복형 최초 발급(action=issue)도 정상 발급된다', async () => {
     getUserBanLevelMock.mockResolvedValue('hard')
     state.badges = [makeRepeatBadge('REP-rare', 'rare', 1)]
     state.storedActivities = [
       { normalized: makeLongRun(101, '2026-04-10T05:00:00Z'), start_date: '2026-04-10T05:00:00Z' },
     ]
 
-    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
 
-    expect(earned).toEqual([])
-    expect(state.inserts).toEqual([])
-    expect(missed.find((x) => x.id === 'REP-rare')?.reason).toBe('섀도우밴 — 고가치 등급 발급 차단')
+    expect(earned.map((b) => b.id)).toEqual(['REP-rare'])
+    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 
-  it('hard 밴 — 이미 보유한 반복형의 카운터 증가(action=increment)는 섀도우밴과 무관하게 정상 동작한다', async () => {
-    // hard_rare_rate=0.0이라 "신규 발급"이었다면 막혔을 등급이지만, 카운터 증가는 새 행을
-    // 만들지 않으므로 이 게이트의 대상이 아니다 — 막히면 기존 반복형 회귀다.
+  it('이미 보유한 반복형의 카운터 증가(action=increment)도 평소대로 동작한다', async () => {
     getUserBanLevelMock.mockResolvedValue('hard')
     state.badges = [makeRepeatBadge('REP-rare', 'rare', 1)]
     state.ownedBadgeIds = ['REP-rare']
@@ -378,19 +337,6 @@ describe('섀도우밴 게이트 — 반복형은 rarity 유무로 판정한다'
 
     expect(earned).toEqual([]) // 카운터 증가는 발급이 아니다 — earned에 담기지 않는다
     expect(counted.map((c) => c.id)).toEqual(['REP-rare'])
-    expect(state.rpcCalls.map((c) => c.badgeId)).toEqual(['REP-rare'])
     expect(state.earnState['REP-rare'].earn_count).toBe(2)
-  })
-})
-
-describe('섀도우밴 게이트 — 조회 비용 최적화', () => {
-  it('발급 후보가 없으면 getUserBanLevel을 호출하지 않는다', async () => {
-    // 조건 미충족이라 애초에 발급 후보가 없는 상황 — total_count:5인데 활동이 0건.
-    state.badges = [makeGradedBadge('G-unreached', 'rare')]
-    state.badges[0].condition_json = { activity_type: 'running', total_count: 5 }
-
-    await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
-
-    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 })

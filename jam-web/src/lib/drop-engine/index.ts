@@ -636,13 +636,9 @@ export async function tryItemDrop(
       dailyDropCount: state.daily_drop_count,
     }
     const rolled = rollRarityV2(policy, ctx, rand)
-    const capped = await applyShadowBanCap(userId, rolled)
-    if (!capped) {
-      await logEngineDecision('drop', 'drop_attempt', userId, {
-        attempt: i, outcome: 'shadow_ban_blocked', rolledRarity: rolled,
-      })
-      continue
-    }
+    // 섀도우밴 상한은 더 이상 읽지 않는다(티켓 20261017_1426) — 유저 모르게 등급을 낮추는 방식은 JAM 2.0 새 경로에서 쓰지 않는다.
+    // 이용 정지 중인 유저는 동기화 입구에서 막혀 이 함수에 오지 않는다. 로그 필드(cappedRarity)는 그대로 두려고 이름을 남긴다.
+    const capped = rolled
 
     // 맥락 오버라이드 발동 판정 — 복귀는 항상, 그 외는 context_override_rate 확률
     const contextActive =
