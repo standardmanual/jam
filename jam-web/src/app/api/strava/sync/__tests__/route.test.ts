@@ -1,0 +1,86 @@
+/**
+ * POST /api/strava/sync — 끊김 응답 테스트 (티켓 20261017_1422)
+ *
+ * 검증 대상:
+ *  - 비로그인은 401
+ *  - 정상 동기화는 결과를 그대로 200으로 돌려준다
+ *  - 연결이 끊긴 상태(StravaDisconnectedError)는 500이 아니라 409와 구분 값(`code`, `connectionState`)이다
+ *  - 그 밖의 오류는 지금처럼 500이다
+ *
+ * 실행: cd jam-web && npx vitest run src/app/api/strava/sync/__tests__/route.test.ts
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { d } from '@/lib/i18n'
+import { StravaDisconnectedError } from '@/lib/strava/connection-state'
+
+const USER_ID = '11111111-1111-4111-8111-111111111111'
+const state = vi.hoisted(() => ({ authenticated: true }))
+const syncMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: async () => ({
+    auth: {
+      getUser: async () =>
+        state.authenticated
+          ? { data: { user: { id: USER_ID } }, error: null }
+          : { data: { user: null }, error: { message: 'no session' } },
+    },
+  }),
+  createServiceClient: () => {
+    throw new Error('createServiceClient가 호출됨')
+  },
+}))
+vi.mock('@/lib/strava/sync', () => ({
+  syncStravaActivities: (userId: string) => syncMock(userId),
+}))
+
+import { POST } from '../route'
+
+describe('POST /api/strava/sync', () => {
+  beforeEach(() => {
+    state.authenticated = true
+    syncMock.mockReset()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  it('비로그인이면 401이고 동기화하지 않는다', async () => {
+    state.authenticated = false
+
+    const res = await POST()
+
+    expect(res.status).toBe(401)
+    expect(syncMock).not.toHaveBeenCalled()
+  })
+
+  it('정상 동기화는 결과를 200으로 돌려준다', async () => {
+    syncMock.mockResolvedValue({ synced: 2, badges: 1 })
+
+    const res = await POST()
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual({ synced: 2, badges: 1 })
+    expect(syncMock).toHaveBeenCalledWith(USER_ID)
+  })
+
+  it('연결이 끊긴 상태는 409와 구분 값으로 알린다', async () => {
+    syncMock.mockRejectedValue(new StravaDisconnectedError('token_refresh_failed'))
+
+    const res = await POST()
+
+    expect(res.status).toBe(409)
+    await expect(res.json()).resolves.toEqual({
+      error: d.auth.stravaSyncError,
+      code: 'strava_disconnected',
+      connectionState: 'disconnected',
+    })
+  })
+
+  it('그 밖의 오류는 500이다', async () => {
+    syncMock.mockRejectedValue(new Error('boom'))
+
+    const res = await POST()
+
+    expect(res.status).toBe(500)
+    await expect(res.json()).resolves.toEqual({ error: d.auth.stravaSyncError })
+  })
+})
