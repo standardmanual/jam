@@ -32,7 +32,9 @@ code:
 
 [컬렉션]        item_books ──tribe_id──> tribes
                  ├─1:N─ user_item_book_slots        (슬롯별 장착 현황)
-                 └─1:N─ user_item_book_completions   (완성 기록)
+                 ├─1:N─ user_item_book_completions   (완성 기록, 옛 구조)
+                 ├─1:N─ user_item_book_tier_completions (등급별 완성 기록, 4등급 구조 — 마이그레이션 222)
+                 └─1:N─ item_book_tier_rewards       (컬렉션·등급별 보상) ── tier ──> item_book_tier_default_rewards (등급별 기본 보상)
 
 [트라이브]        tribes ─N:M(인접)─ tribes (tribe_adjacency, 드랍 모멘텀용)
 
@@ -296,6 +298,28 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 - `user_item_book_completions`: 완성 기록 (PK user_id+item_book_id)
   - **JAM! 행동 지표의 원천**: 완성한 컬렉션 수(`collection_complete_count`)가 `user_id`로 거른 행 수를 센다.
     PK라 행 수가 서로 다른 컬렉션 수이고, 장착 해제·교체는 이 기록을 지우지 않는다(티켓 20261001_0633).
+
+### 4-2. 컬렉션 4등급 구조 (JAM 2.0) — 마이그레이션 222, 티켓 20261016_2340
+운영 로직 8.3절이 근거다. 2026-10-17 기준 SQL 파일만 작성됨(적용 전). 옛 객체(`slot_item_into_book`, `swap_item_in_book`, `unslot_item_from_book`, `user_item_book_completions`, `item_books.reward_points`·`reward_badge_id`)는 바꾸지 않고 새 객체를 덧붙인다. 옛 것을 지우는 축소는 묶음 6이다.
+
+**구조 규칙**
+- **한 칸 묶기**: 같은 컬렉션(`badges.item_book_id`) 안에서 이름(`badges.name`)이 같은 아이템 배지 4장(`badges.rarity` = common·rare·epic·mystic)을 한 칸으로 본다. 묶음용 새 테이블은 없다. 어드민은 지금처럼 배지를 컬렉션에 넣기만 한다.
+- **컬렉션 등급은 저장하지 않는다**: 그 유저가 그 컬렉션에 지금 꽂아 둔 배지의 등급이 곧 컬렉션 등급이다. 다 빼면 풀린다.
+- **켜는 칸**: `item_books.tier_mode`(BOOLEAN NOT NULL, 기본 false). true인 컬렉션만 새 규칙을 쓰고 false인 컬렉션은 옛 규칙·옛 함수 그대로다. 어드민에서 하나씩 켠다(화면은 묶음 7).
+- **완성**: 그 등급의 이름 칸을 모두 채우면 그 등급이 완성된다. 분모는 그 컬렉션에서 그 등급 배지가 있는 이름 수이고, 옛 규칙(179)처럼 드랍 제외(`drop_excluded`)·소프트 삭제 배지를 빼며 그 등급이 전부 드랍 제외이면 제외 없이 센다. 등급마다 한 번만 기록하고 보상도 한 번만 나간다. 장착을 풀어도 기록은 남고 다시 채워도 같은 등급 보상은 나가지 않는다.
+
+**테이블**
+- `user_item_book_tier_completions`: 등급별 완성 기록. `(user_id, item_book_id, tier)` 복합 PK, `completed_at`. 본인만 SELECT, 쓰기 정책 없음.
+- `item_book_tier_rewards`: 컬렉션·등급별 보상. `(item_book_id, tier)` 복합 PK, `reward_points`(NULL이면 기본값, `>= 0`), `reward_badge_id`(→ `badges.id`, 삭제 시 NULL, NULL이면 보상 배지 없음). RLS 활성·정책 없음(서버 전용).
+- `item_book_tier_default_rewards`: 등급별 기본 보상 포인트. `tier` PK, `reward_points`(`>= 0`). 초기값 common 100 / rare 200 / epic 400 / mystic 800(운영 로직 8.6절). 값 변경에 마이그레이션이 필요 없다. RLS 활성·정책 없음(서버 전용).
+- `tier` 열의 형은 `badge_rarity`다.
+
+**함수** (둘 다 SECURITY DEFINER, `service_role`만 실행)
+- `slot_item_into_book_tiered(p_user_id, p_item_book_id, p_inventory_item_id)`: 179의 검사(인벤토리·소유·드랍됨·이미 꽂힘·다른 컬렉션 배지)에 `item_book_not_found`·`tier_mode_off`(꺼진 컬렉션)·`tier_mismatch`(이미 꽂힌 배지와 등급이 다름)를 더했다. 완성이면 `award_points`(사유 `item_book_completion_point_reward`)로 포인트를 준다. 포인트는 `item_book_tier_rewards.reward_points`, 없으면 기본값이다. 반환: `ok`, `slot`, `tier`, `completed_tier`(이번 장착으로 새로 완성한 등급, 아니면 null). **보상 배지는 SQL이 주지 않는다** — 옛 함수처럼 앱 코드가 완성 기록을 보고 지급한다(회차 3).
+- `swap_item_in_book_tiered(p_user_id, p_item_book_id, p_slot_id, p_new_inventory_item_id)`: 151의 검사에 `tier_mode_off`·`tier_mismatch`(등급이 다름)를 더했다. 같은 배지의 다른 개체로만 바꾸므로 완성에는 영향이 없다.
+- 장착 해제는 옛 `unslot_item_from_book`을 그대로 쓴다.
+
+> 챕터 점수 연결(`chapter_add_score`)은 묶음 5, 컬렉션 화면 표시·잠금·등급 올리기 레시피는 묶음 3이다. 완성 판정을 `src/lib/itembook/` 한 모듈로 모으는 일은 회차 2다.
 
 ---
 
