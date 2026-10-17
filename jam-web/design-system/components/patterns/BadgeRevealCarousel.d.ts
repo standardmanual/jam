@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { Rarity } from '../cards/RarityBadge';
 
 /** 캐러셀 카드 1장이 그리는 배지 데이터 */
@@ -72,6 +72,35 @@ export interface BadgeRevealCarouselProps {
    * "열렸다 + 몇 개 획득" 안내는 호출부가 별도 라이브 리전으로 처리한다.
    */
   ariaLabel?: string;
+  /**
+   * 선택 모드 — 중앙 카드 하단에 토글 버튼(`aria-pressed`)이 생기고, 선택된 카드는 안쪽 링 + 체크 칩으로 구분한다.
+   * 카드 아래쪽 72px를 토글 자리로 비운다. 기본 false(이전 화면 그대로).
+   * 선택 상태와 개수 제한은 호출부가 소유한다(`selectedIds`·`onToggleSelect`·`selectionFull`).
+   */
+  selectable?: boolean;
+  /** 선택된 항목 id 목록(제어). `selectable`일 때만 쓴다 */
+  selectedIds?: string[];
+  /** 토글 클릭 — 눌린 항목의 `id`를 넘긴다. 선택·해제 판단은 호출부가 한다 */
+  onToggleSelect?: (id: string) => void;
+  /** 선택 전 토글 라벨. 기본 '고르기' */
+  selectLabel?: string;
+  /** 선택 후 토글 라벨. 기본 '골랐어요' */
+  selectedLabel?: string;
+  /**
+   * 더 고를 수 없는 상태(정한 개수를 다 채움). 안 고른 카드의 토글은 `aria-disabled`가 되어 눌러도 반응하지 않고,
+   * 이미 고른 카드는 해제할 수 있다.
+   */
+  selectionFull?: boolean;
+  /**
+   * 오버레이 위쪽 슬롯. `header`·`footer` 중 하나라도 있으면 «헤더 / 스테이지 / 푸터» 세로 배치가 되고
+   * 스테이지는 남는 가운데 영역에서 세로 중앙에 놓인다. 다이얼로그의 자식이라 포커스 트랩이 슬롯 안 버튼까지 돈다.
+   * 안전영역 여백·배경은 슬롯 내용(호출부)이 책임진다.
+   */
+  header?: ReactNode;
+  /** 오버레이 아래쪽 슬롯. `header`와 같은 규칙 */
+  footer?: ReactNode;
+  /** true면 닫기 버튼(soft disabled)과 Escape를 함께 막는다. 제출 중처럼 닫으면 안 되는 동안 쓴다 */
+  closeDisabled?: boolean;
   className?: string;
   style?: CSSProperties;
 }

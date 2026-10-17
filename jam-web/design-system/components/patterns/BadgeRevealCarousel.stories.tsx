@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import { BadgeRevealCarousel } from './BadgeRevealCarousel';
+import { Button } from '../buttons/Button';
 import type { BadgeRevealItem } from './BadgeRevealCarousel';
 
 const meta: Meta<typeof BadgeRevealCarousel> = {
@@ -389,6 +390,175 @@ export const RepeatFoldedIntoOneCard: Story = {
 
     await step('접힌 수가 ×3으로 나온다', async () => {
       expect(canvasElement.textContent).toContain('×3');
+    });
+  },
+};
+
+/* ───────────────── 선택 모드·슬롯·closeDisabled (티켓 20261017_1425 2회) ───────────────── */
+
+/**
+ * 선택 모드 하네스 — 선택 상태·개수 제한은 호출부가 소유하므로 스토리도 상태를 직접 쥔다.
+ * header·footer는 서비스 «고르기» 화면의 모양을 흉내 낸 샘플 슬롯이다(문구는 샘플이며 서비스는 i18n 사전에서 주입한다).
+ */
+function SelectModeHarness({
+  total,
+  need,
+  initialSelected = [],
+  submitting = false,
+  names,
+}: {
+  total: number;
+  need: number;
+  initialSelected?: string[];
+  submitting?: boolean;
+  names?: string[];
+}) {
+  const items = useMemo(
+    () =>
+      makeItems(total).map((item, i) =>
+        names?.[i] ? { ...item, name: names[i], description: '' } : { ...item, description: '' }
+      ),
+    [total, names]
+  );
+  const [selected, setSelected] = useState<string[]>(initialSelected);
+  const full = selected.length >= need;
+
+  return (
+    <BadgeRevealCarousel
+      open
+      items={items}
+      selectable
+      selectedIds={selected}
+      selectionFull={full}
+      closeDisabled={submitting}
+      closeLabel="나중에"
+      ariaLabel="인벤토리에 담을 아이템 배지 고르기"
+      onClose={() => {}}
+      onToggleSelect={(id) =>
+        setSelected((prev) =>
+          prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= need ? prev : [...prev, id]
+        )
+      }
+      style={{ maxWidth: 430, marginLeft: 'auto', marginRight: 'auto' }}
+      header={
+        <div style={{ padding: 'max(var(--spacing-16), env(safe-area-inset-top)) var(--spacing-24) var(--spacing-16)' }}>
+          <p style={{ margin: 0, color: 'var(--base-white)', fontSize: 'var(--text-lg)', fontWeight: 700 }}>
+            {`인벤토리에 담을 ${need}개를 골라 주세요`}
+          </p>
+          <p style={{ margin: 0, color: 'var(--base-white)', fontSize: 'var(--text-sm)' }}>{`이번에 ${total}개가 나왔어요`}</p>
+        </div>
+      }
+      footer={
+        <div
+          style={{
+            background: 'var(--surface)',
+            borderRadius: 'var(--radius-2xl) var(--radius-2xl) 0 0',
+            padding: 'var(--spacing-16) var(--spacing-24) max(var(--spacing-16), env(safe-area-inset-bottom))',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--spacing-8)',
+          }}
+        >
+          <p aria-live="polite" style={{ margin: 0, color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 700 }}>
+            {`${selected.length}/${need}개 골랐어요`}
+          </p>
+          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>
+            {`고르지 않은 ${total - need}개는 받을 수 없어요`}
+          </p>
+          <Button fullWidth disabled={selected.length !== need || submitting} loading={submitting}>
+            {submitting ? '담는 중' : `${need}개 담기`}
+          </Button>
+        </div>
+      }
+    />
+  );
+}
+
+const LONG_NAMES = [
+  '한강 자전거길 전 구간 완주 기념 특별 배지 시즌 2',
+  '한강 자전거길 전 구간 완주 기념 특별 배지 시즌 3',
+  '한강 자전거길 전 구간 완주 기념 특별 배지 시즌 4',
+];
+
+const toggleButtons = (root: HTMLElement) =>
+  Array.from(root.querySelectorAll<HTMLButtonElement>('[data-select-toggle]'));
+const centerToggle = (root: HTMLElement) =>
+  root.querySelector<HTMLButtonElement>('[aria-hidden="false"] [data-select-toggle]');
+
+/** 3장 중 선택 — 중앙 카드 토글이 aria-pressed로 선택을 알리고, 안쪽 링과 체크 칩이 나타난다. */
+export const SelectMode: Story = {
+  name: '선택 모드 — 3장 중 1장 고름',
+  args: { open: true, items: [] },
+  render: () => <SelectModeHarness total={3} need={2} initialSelected={['badge-2']} />,
+  play: async ({ canvasElement, step }) => {
+    await step('토글은 카드 DOM 안·BadgeCard 밖에 있고 aria-pressed가 있다', async () => {
+      await waitFor(() => expect(centerToggle(canvasElement)).toBeTruthy());
+      const toggle = centerToggle(canvasElement)!;
+      expect(toggle.getAttribute('aria-pressed')).toBe('false');
+      // BadgeCard(aria-hidden="true") 안이 아니다
+      expect(toggle.closest('[aria-hidden="true"]')).toBeNull();
+    });
+
+    await step('고르기를 누르면 골랐어요로 바뀐다', async () => {
+      await userEvent.click(centerToggle(canvasElement)!);
+      await waitFor(() => expect(centerToggle(canvasElement)!.getAttribute('aria-pressed')).toBe('true'));
+      expect(centerToggle(canvasElement)!.textContent).toBe('골랐어요');
+    });
+  },
+};
+
+/** 빈칸을 다 채운 상태 — 안 고른 카드의 토글은 aria-disabled, 고른 카드는 해제할 수 있다. */
+export const SelectModeFull: Story = {
+  name: '선택 모드 — 빈칸을 다 채움(안 고른 카드 토글 비활성)',
+  args: { open: true, items: [] },
+  render: () => <SelectModeHarness total={3} need={2} initialSelected={['badge-1', 'badge-2']} />,
+  play: async ({ canvasElement, step }) => {
+    await step('고른 카드(1번)는 해제할 수 있다', async () => {
+      await waitFor(() => expect(centerToggle(canvasElement)).toBeTruthy());
+      expect(centerToggle(canvasElement)!.getAttribute('aria-disabled')).toBeNull();
+    });
+
+    await step('안 고른 카드(3번)로 넘기면 토글이 aria-disabled이고 눌러도 선택되지 않는다', async () => {
+      await userEvent.keyboard('{ArrowLeft}');
+      await waitFor(() => expect(centerToggle(canvasElement)!.getAttribute('aria-disabled')).toBe('true'));
+      await userEvent.click(centerToggle(canvasElement)!);
+      expect(centerToggle(canvasElement)!.getAttribute('aria-pressed')).toBe('false');
+      expect(toggleButtons(canvasElement).filter((b) => b.getAttribute('aria-pressed') === 'true')).toHaveLength(2);
+    });
+  },
+};
+
+/** 제출 중 — closeDisabled가 닫기 버튼과 Escape를 함께 막는다. */
+export const SelectModeSubmitting: Story = {
+  name: '선택 모드 — 제출 중(closeDisabled)',
+  args: { open: true, items: [] },
+  render: () => <SelectModeHarness total={3} need={2} initialSelected={['badge-1', 'badge-2']} submitting />,
+  play: async ({ canvasElement, step }) => {
+    await step('닫기 버튼이 soft disabled다', async () => {
+      await waitFor(() => expect(canvasElement.querySelector('[role="dialog"]')).toBeTruthy());
+      const close = canvasElement.querySelector<HTMLButtonElement>('button[aria-label="나중에"]');
+      expect(close?.getAttribute('aria-disabled')).toBe('true');
+    });
+
+    await step('Escape로 닫히지 않는다', async () => {
+      await userEvent.keyboard('{Escape}');
+      expect(canvasElement.querySelector('[role="dialog"]')).toBeTruthy();
+    });
+  },
+};
+
+/** 이름 2줄 — 카드 아래 72px를 비워 토글과 이름 둘째 줄이 겹치지 않는다. */
+export const SelectModeLongName: Story = {
+  name: '선택 모드 — 이름 2줄(토글과 겹침 없음)',
+  args: { open: true, items: [] },
+  render: () => <SelectModeHarness total={3} need={2} names={LONG_NAMES} />,
+  play: async ({ canvasElement, step }) => {
+    await step('이름 아래 끝이 토글 위 끝보다 위에 있다', async () => {
+      await waitFor(() => expect(centerToggle(canvasElement)).toBeTruthy());
+      const toggle = centerToggle(canvasElement)!;
+      const name = canvasElement.querySelector<HTMLElement>('[aria-hidden="false"] p');
+      expect(name).toBeTruthy();
+      expect(name!.getBoundingClientRect().bottom).toBeLessThanOrEqual(toggle.getBoundingClientRect().top);
     });
   },
 };

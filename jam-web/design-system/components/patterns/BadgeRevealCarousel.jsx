@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RarityBadge, getRarityLabel } from '../cards/RarityBadge.jsx';
 import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
 import { IconButton } from '../buttons/IconButton.jsx';
+import { Button } from '../buttons/Button.jsx';
 
 /**
  * BadgeRevealCarousel — 배지 획득 연출용 3D 코버플로우 캐러셀 (오버레이 포함 패턴).
@@ -38,6 +39,23 @@ import { IconButton } from '../buttons/IconButton.jsx';
  *   - 중앙 카드 탭으로 넘기는 동작은 **없다**(닫기 버튼 오조작 방지).
  *   - 배경(오버레이) 탭으로 닫는 동작도 **없다**. 닫기는 닫기 버튼과 Escape 두 경로뿐이다
  *     — 카드 밖 영역이 화면 대부분이라 스와이프 중 의도치 않게 닫히는 사고를 막는다.
+ *
+ * 선택 모드 (`selectable`, 티켓 20261017_1425 2회)
+ *   «여러 장 중 몇 장만 고르는» 화면(받을 수 있는 수보다 많이 나왔을 때)을 같은 캐러셀 위에서 만든다.
+ *   중앙 카드 하단에 토글 버튼(`selectLabel` / `selectedLabel`)이 생기고, 선택된 카드는 안쪽 링 + 체크 칩으로
+ *   구분한다(색만으로 구분하지 않는다). 토글은 카드 DOM 안이되 `BadgeCard`(aria-hidden) **밖**에 두고 `aria-pressed`를 단다.
+ *   선택 상태·개수 제한은 호출부가 소유한다 — `selectedIds`와 `onToggleSelect(id)`로 제어하고, 더 고를 수 없으면
+ *   `selectionFull`을 켠다(안 고른 카드의 토글은 `aria-disabled`, 이미 고른 카드는 해제할 수 있다).
+ *   선택 모드에서는 카드 아래쪽 72px를 토글 자리로 비우고 이미지를 조금 줄여 이름 2줄과 겹치지 않게 한다.
+ *   기본값(`selectable` false)에서는 카드 DOM·화면이 이전과 같다.
+ *
+ * 슬롯 (`header`, `footer`)
+ *   오버레이 위·아래에 호출부가 넣는 영역. 하나라도 있으면 «헤더 / 스테이지 / 푸터»의 세로 배치가 되고 스테이지는
+ *   남는 가운데 영역에서 세로 중앙에 놓인다. 둘 다 다이얼로그의 자식이라 포커스 트랩이 슬롯 안 버튼까지 돈다.
+ *   기본값(없음)에서는 스테이지가 오버레이 정중앙에 놓이는 이전 배치 그대로다.
+ *
+ * `closeDisabled`
+ *   제출 중처럼 닫으면 안 되는 동안 닫기 버튼(소프트 disabled)과 Escape를 함께 막는다.
  *
  * 접근성
  *   role="dialog" / aria-modal / Escape 닫기 / 포커스 트랩(BottomSheet·ModalToast와 동일 패턴).
@@ -151,10 +169,26 @@ export function BadgeRevealCarousel({
    */
   earnCountMessage = (n) => `${n}번 획득했어요`,
   ariaLabel = '획득한 배지',
+  /** 선택 모드 — 중앙 카드 하단에 토글을 둔다 */
+  selectable = false,
+  /** 선택된 항목 id 목록(제어) */
+  selectedIds = [],
+  /** 토글 클릭 — 항목 id를 넘긴다 */
+  onToggleSelect,
+  selectLabel = '고르기',
+  selectedLabel = '골랐어요',
+  /** 더 고를 수 없는 상태 — 안 고른 카드의 토글이 aria-disabled가 된다 */
+  selectionFull = false,
+  /** 오버레이 위·아래 슬롯 */
+  header = null,
+  footer = null,
+  /** 닫기 버튼과 Escape를 함께 막는다 */
+  closeDisabled = false,
   className = '',
   style = {},
 }) {
   const reduced = useReducedMotion();
+  const rootRef = useRef(null);
   const stageRef = useRef(null);
   const closeSlotRef = useRef(null);
   const dragStartRef = useRef(0);
@@ -162,10 +196,14 @@ export function BadgeRevealCarousel({
   const velocitySamplesRef = useRef([]);
   /** document 레벨 화살표 핸들러가 참조하는 최신 핸들러 (아래 Escape 이펙트에서 사용) */
   const arrowHandlerRef = useRef(null);
+  /** document 레벨 Escape 핸들러가 참조하는 최신 closeDisabled */
+  const closeDisabledRef = useRef(closeDisabled);
 
   const [dragX, setDragX] = useState(0);
 
   const height = cardHeight ?? Math.round(cardWidth * 1.34);
+  const hasSlots = header != null || footer != null;
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   /**
    * 렌더할 카드 목록 — 배지 N장 + (잔여가 있으면) 전체 보기 카드 1장.
@@ -235,7 +273,7 @@ export function BadgeRevealCarousel({
 
     const onKeyDown = (e) => {
       if (e.key === 'Escape') {
-        onClose?.();
+        if (!closeDisabledRef.current) onClose?.();
         return;
       }
       // 20260823_007: 화살표 전환은 스테이지가 아니라 document에서 받는다. 오버레이가 열리면
@@ -247,10 +285,13 @@ export function BadgeRevealCarousel({
         return;
       }
       if (e.key !== 'Tab') return;
-      const focusable = stageRef.current?.parentElement?.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      if (!focusable || focusable.length === 0) {
+      // aria-hidden 카드(이웃 카드) 안의 버튼은 포커스 대상이 아니다 — 선택 모드의 토글이 카드마다 있어 걸러야 한다.
+      const focusable = Array.from(
+        rootRef.current?.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        ) ?? []
+      ).filter((el) => !el.closest('[aria-hidden="true"]'));
+      if (focusable.length === 0) {
         e.preventDefault();
         return;
       }
@@ -340,7 +381,18 @@ export function BadgeRevealCarousel({
      (handleKeyDown 선언 이후에 두어야 no-use-before-declare에 걸리지 않는다) */
   useEffect(() => {
     arrowHandlerRef.current = handleKeyDown;
+    closeDisabledRef.current = closeDisabled;
   });
+
+  /* 선택 모드에서 토글에 포커스가 있는 채로 카드를 넘기면 포커스가 aria-hidden 카드에 남는다 —
+     새 중앙 카드의 토글로 옮긴다. 토글에 포커스가 없었다면 건드리지 않는다. */
+  useEffect(() => {
+    if (!selectable) return;
+    const focused = document.activeElement;
+    if (!focused || !focused.hasAttribute?.('data-select-toggle')) return;
+    if (!focused.closest('[aria-hidden="true"]')) return;
+    stageRef.current?.querySelector('[aria-hidden="false"] [data-select-toggle]')?.focus();
+  }, [active, selectable]);
 
   if (!open) return null;
   // 배지 0개 — 캐러셀을 노출하지 않는다.
@@ -365,6 +417,7 @@ export function BadgeRevealCarousel({
 
   return (
     <div
+      ref={rootRef}
       className={['ds-badge-reveal', className].filter(Boolean).join(' ')}
       role="dialog"
       aria-modal="true"
@@ -377,6 +430,8 @@ export function BadgeRevealCarousel({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        // 슬롯이 있으면 헤더 / 스테이지 / 푸터를 세로로 쌓는다(없으면 이전 배치 그대로 정중앙).
+        ...(hasSlots ? { flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start' } : null),
         overflow: 'hidden',
         fontFamily: 'var(--font-family-base)',
         ...style,
@@ -414,6 +469,12 @@ export function BadgeRevealCarousel({
         {center?.kind === 'more' && resolveMoreMessage(moreMessage, moreCount)}
       </div>
 
+      {header != null && (
+        <div style={{ position: 'relative', zIndex: 30, flex: '0 0 auto', width: '100%' }}>{header}</div>
+      )}
+
+      {/* 슬롯이 있을 때만 스테이지를 감싸는 가운데 영역 — 남는 세로 공간에서 스테이지를 중앙에 둔다. */}
+      <MiddleRegion enabled={hasSlots}>
       {/* 스테이지 — 3D 원근의 기준. 카드는 이 안에서만 변환된다. */}
       <div
         ref={stageRef}
@@ -471,7 +532,18 @@ export function BadgeRevealCarousel({
               }}
             >
               {kind === 'badge' && (
-                <BadgeCard item={item} foldedCount={foldedCount} cardWidth={cardWidth} />
+                <BadgeCard item={item} foldedCount={foldedCount} cardWidth={cardWidth} selectable={selectable} />
+              )}
+              {kind === 'badge' && selectable && (
+                <SelectionLayer
+                  selected={selectedSet.has(item?.id)}
+                  isCenter={isCenter}
+                  full={selectionFull}
+                  reduced={reduced}
+                  selectLabel={selectLabel}
+                  selectedLabel={selectedLabel}
+                  onToggle={() => onToggleSelect?.(item?.id)}
+                />
               )}
               {kind === 'more' && (
                 <MoreCard count={moreCount} label={moreLabel} message={moreMessage} onClick={onMoreClick} />
@@ -490,9 +562,20 @@ export function BadgeRevealCarousel({
             zIndex: 20,
           }}
         >
-          <IconButton icon="close" label={closeLabel} surface="light" onClick={onClose} />
+          <IconButton
+            icon="close"
+            label={closeLabel}
+            surface="light"
+            disabled={closeDisabled}
+            onClick={closeDisabled ? undefined : onClose}
+          />
         </div>
       </div>
+      </MiddleRegion>
+
+      {footer != null && (
+        <div style={{ position: 'relative', zIndex: 30, flex: '0 0 auto', width: '100%' }}>{footer}</div>
+      )}
 
       <style>{`
         @keyframes ds-badge-reveal-in {
@@ -513,11 +596,16 @@ export function BadgeRevealCarousel({
  * 블록이 작아지고 카드 상하로 여백이 고르게 분산되도록 한다.
  */
 const IMAGE_SIZE_RATIO = 0.58;
+/** 선택 모드의 이미지 비율 — 토글 자리(SELECT_RESERVE_PX)를 비운 만큼 줄인다 */
+const SELECT_IMAGE_SIZE_RATIO = 0.5;
+/** 선택 모드에서 카드 아래쪽에 비우는 높이(px) — 토글(44px) + 위아래 여백 */
+const SELECT_RESERVE_PX = 72;
 
 /** 배지 카드 — 이미지 → 칩 줄(등급 또는 Lv.N, ×N) → 이름 → 설명(3줄) */
-function BadgeCard({ item, foldedCount = 1, cardWidth }) {
+function BadgeCard({ item, foldedCount = 1, cardWidth, selectable = false }) {
   const imageUrl = item?.imageUrl;
-  const imageSize = Math.round(cardWidth * IMAGE_SIZE_RATIO);
+  // 선택 모드는 아래 72px를 토글 자리로 비우므로 이미지를 줄여 이름 2줄까지 들어가게 한다.
+  const imageSize = Math.round(cardWidth * (selectable ? SELECT_IMAGE_SIZE_RATIO : IMAGE_SIZE_RATIO));
   const level = item?.level ?? null;
   // 기록된 회차와 접힌 장수 중 큰 쪽이 사실이다(회차는 카드 장수보다 많을 수 있다).
   const earnCount = Math.max(item?.earnCount ?? 1, foldedCount);
@@ -530,6 +618,8 @@ function BadgeCard({ item, foldedCount = 1, cardWidth }) {
         height: '100%',
         boxSizing: 'border-box',
         padding: 'var(--spacing-24)',
+        // 선택 모드: 카드 아래쪽 72px는 토글 자리다(SelectionLayer)
+        paddingBottom: selectable ? `calc(var(--spacing-24) + ${SELECT_RESERVE_PX}px)` : undefined,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -704,5 +794,106 @@ function MoreCard({ count, label, message, onClick }) {
         {label}
       </button>
     </div>
+  );
+}
+
+/** 슬롯이 있을 때만 스테이지를 감싸는 가운데 영역. 없으면 스테이지가 오버레이의 직계 자식이다(이전 DOM 그대로). */
+function MiddleRegion({ enabled, children }) {
+  if (!enabled) return children;
+  return (
+    <div
+      style={{
+        flex: '1 1 auto',
+        minHeight: 0,
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** 선택 표시(링 + 체크 칩)가 나타나고 사라지는 시간 — 모션 토큰 --duration-quick(150ms)과 같다 */
+const SELECT_MARK_TRANSITION = 'opacity var(--duration-quick) var(--ease-out), transform var(--duration-quick) var(--ease-out)';
+
+/**
+ * 선택 모드의 카드 위 요소 — 안쪽 링, 체크 칩, (중앙 카드만) 토글 버튼.
+ * `BadgeCard`는 aria-hidden이라 토글을 그 안에 두면 보조기술이 못 찾는다 — 그래서 카드 DOM 안이되 BadgeCard 밖에 둔다.
+ * 링·체크 칩은 장식이라 aria-hidden이고, 선택 여부는 토글의 `aria-pressed`가 알린다.
+ * 링은 `--link`(글자·선에 쓰는 색), 체크 칩 면은 `--accent`, 체크는 `--accent-foreground`다.
+ */
+function SelectionLayer({ selected, isCenter, full, reduced, selectLabel, selectedLabel, onToggle }) {
+  const blocked = full && !selected;
+  const markTransform = (on) => (reduced ? 'none' : `scale(${on ? 1 : 0.9})`);
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          borderRadius: 'inherit',
+          boxShadow: 'inset 0 0 0 2px var(--link)',
+          opacity: selected ? 1 : 0,
+          transform: markTransform(selected),
+          transition: SELECT_MARK_TRANSITION,
+          pointerEvents: 'none',
+        }}
+      />
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: 12,
+          left: 12,
+          width: 28,
+          height: 28,
+          borderRadius: '50%',
+          background: 'var(--accent)',
+          color: 'var(--accent-foreground)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: selected ? 1 : 0,
+          transform: markTransform(selected),
+          transition: SELECT_MARK_TRANSITION,
+          pointerEvents: 'none',
+        }}
+      >
+        <svg
+          viewBox="0 0 24 24" width={16} height={16} fill="none"
+          stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"
+        >
+          <polyline points="5 12.5 10 17.5 19 7" />
+        </svg>
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          left: 'var(--spacing-24)',
+          right: 'var(--spacing-24)',
+          bottom: 'var(--spacing-16)',
+          // 더 고를 수 없는 카드는 흐리게 — Button의 native disabled는 쓰지 않는다(aria-disabled + 클릭 무시)
+          opacity: blocked ? 0.4 : 1,
+        }}
+      >
+        <Button
+          variant={selected ? 'outline' : 'secondary'}
+          fullWidth
+          aria-pressed={selected}
+          aria-disabled={blocked || undefined}
+          data-select-toggle=""
+          tabIndex={isCenter ? 0 : -1}
+          onClick={() => {
+            if (!isCenter || blocked) return;
+            onToggle();
+          }}
+        >
+          {selected ? selectedLabel : selectLabel}
+        </Button>
+      </div>
+    </>
   );
 }
