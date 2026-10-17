@@ -425,7 +425,7 @@ function SelectModeHarness({
           return {
             ...item,
             name: '잠긴 아이템 배지',
-            description: '여는 데 잼 60이 필요해요',
+            description: '여는 데 잼 60만큼 채워야 해요',
             imageUrl: null,
             locked: true,
           };
@@ -589,7 +589,7 @@ export const SelectModeLocked: Story = {
       await waitFor(() => expect(centerToggle(canvasElement)!.getAttribute('aria-pressed')).toBe('true'));
       const card = canvasElement.querySelector<HTMLElement>('[aria-hidden="false"]');
       expect(card?.textContent).toContain('잠긴 아이템 배지');
-      expect(card?.textContent).toContain('여는 데 잼 60이 필요해요');
+      expect(card?.textContent).toContain('여는 데 잼 60만큼 채워야 해요');
       expect(card?.querySelector('img')).toBeNull();
       expect(card?.querySelector('svg')).toBeTruthy();
     });
