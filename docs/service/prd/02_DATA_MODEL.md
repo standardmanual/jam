@@ -617,14 +617,14 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 유저당 1개(첫 지급·차감 때 생성). `balance`=지금 가진 양(`CHECK >= 0`), `total_earned`=활동 정산으로 모은 총량. 본인만 SELECT, 쓰기 정책 없음.
 
 #### jam_daily_earned
-`(user_id, earned_on)` 복합 PK. `earned_on`은 정산 시각의 KST 날짜, `amount`는 그날 모은 양. 활동 정산 때만 늘어나며 이번 주·이번 달 등 기간별 모은 양은 합산해 읽는다. 본인만 SELECT.
+`(user_id, earned_on)` 복합 PK. `earned_on`은 활동한 날(KST, 호출부가 `p_earned_on`으로 넘기고 비우면 정산 시각의 KST 날짜), `amount`는 그날 모은 양. 활동 정산 때만 늘어나며 이번 주·이번 달 등 기간별 모은 양은 합산해 읽는다. 본인만 SELECT.
 
 #### jam_transactions
 append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5개:
 `activity_settlement`(+) / `capsule_fill`(-) / `locked_item_badge_fill`(-) / `admin_grant`(+) / `admin_deduct`(-). 사유별 부호와 필수 칸은 CHECK로 건다.
 `source_activity_id`는 `strava_activities.id` 값을 담지만 FK는 없다(활동이 지워져도 원장은 남아야 함). `reason='activity_settlement'`인 줄에 한해 부분 유일 인덱스가 걸려 같은 활동은 한 번만 정산된다. 운영자 지급·회수는 `admin_user_id`(FK 없음)·`admin_reason_label`(필수)·`admin_reason_note`(선택)를 담는다. 유저 삭제 시 함께 삭제(`ON DELETE CASCADE`).
 
-> 가진 양 변경은 전부 `jam_apply(p_user_id, p_amount, p_reason, p_source_activity_id, p_admin_user_id, p_admin_reason_label, p_admin_reason_note)` RPC(SECURITY DEFINER, service_role 전용)로만 원자 처리한다. 가진 양을 넘는 차감과 사유별 허용 부호 위반은 거절하고, 이미 정산된 활동의 재정산은 오류 없이 기존 원장 줄을 돌려준다.
+> 가진 양 변경은 전부 `jam_apply(p_user_id, p_amount, p_reason, p_source_activity_id, p_admin_user_id, p_admin_reason_label, p_admin_reason_note, p_earned_on)` RPC(SECURITY DEFINER, service_role 전용)로만 원자 처리한다. 가진 양을 넘는 차감과 사유별 허용 부호 위반은 거절하고, 이미 정산된 활동의 재정산은 오류 없이 기존 원장 줄을 돌려준다.
 > 「모은 양」(`total_earned`, `jam_daily_earned`)은 활동 정산만 늘린다. 운영자 지급·회수와 채움은 가진 양만 바꾼다(운영 로직 4.5절).
 
 ---

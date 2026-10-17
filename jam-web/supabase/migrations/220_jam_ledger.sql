@@ -13,7 +13,8 @@
 --     기존 원장 줄을 그대로 돌려준다(동기화가 안전하게 다시 호출될 수 있어야 하므로).
 --   - 활동 식별자(source_activity_id)는 strava_activities.id 값을 담지만 외래키로 묶지 않는다.
 --     원장은 지워지지 않는 기록이라 활동 행이 지워져도 남아야 한다.
---   - 날짜별 모은 양의 날짜는 정산 시각의 KST 날짜다.
+--   - 날짜별 모은 양의 날짜는 활동한 날(KST)이다. 호출부가 p_earned_on으로 넘기고, 비우면 정산 시각의 KST 날짜를 쓴다
+--     (2026-10-17 사용자 결정: 늦게 동기화한 활동의 잼이 동기화한 날의 주간 양에 잡히지 않게 한다).
 --   - 이용 정지 중 동작 차단은 이 파일의 범위가 아니다(묶음 2 어뷰징·제재).
 
 -- ----------------------------------------------------------------
@@ -128,7 +129,8 @@ CREATE OR REPLACE FUNCTION public.jam_apply(
   p_source_activity_id UUID DEFAULT NULL,
   p_admin_user_id UUID DEFAULT NULL,
   p_admin_reason_label TEXT DEFAULT NULL,
-  p_admin_reason_note TEXT DEFAULT NULL
+  p_admin_reason_note TEXT DEFAULT NULL,
+  p_earned_on DATE DEFAULT NULL         -- 활동한 날(KST). 활동 정산에서만 쓴다. 비우면 정산 시각의 KST 날짜
 ) RETURNS public.jam_transactions
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public
@@ -136,6 +138,8 @@ AS $$
 DECLARE
   v_tx public.jam_transactions;
   v_balance BIGINT;
+  v_today_kst DATE := (now() AT TIME ZONE 'Asia/Seoul')::date;
+  v_earned_on DATE;
 BEGIN
   IF p_amount IS NULL OR p_amount = 0 THEN
     RAISE EXCEPTION 'jam_apply: amount는 0이 아니어야 합니다' USING ERRCODE = 'check_violation';
@@ -152,6 +156,15 @@ BEGIN
     END IF;
   ELSE
     RAISE EXCEPTION 'jam_apply: 알 수 없는 사유 %', p_reason USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- 활동한 날: 활동 정산에서만 받고, 미래 날짜는 거절한다. 비우면 정산 시각의 KST 날짜.
+  IF p_earned_on IS NOT NULL AND p_reason <> 'activity_settlement' THEN
+    RAISE EXCEPTION 'jam_apply: p_earned_on은 activity_settlement에서만 쓸 수 있습니다' USING ERRCODE = 'check_violation';
+  END IF;
+  v_earned_on := COALESCE(p_earned_on, v_today_kst);
+  IF v_earned_on > v_today_kst THEN
+    RAISE EXCEPTION 'jam_apply: 활동한 날이 미래입니다 (%)', v_earned_on USING ERRCODE = 'check_violation';
   END IF;
 
   -- 지갑 행 확보 후 잠금(같은 유저의 동시 호출을 직렬화한다).
@@ -192,7 +205,7 @@ BEGIN
 
   IF p_reason = 'activity_settlement' THEN
     INSERT INTO public.jam_daily_earned (user_id, earned_on, amount)
-    VALUES (p_user_id, (now() AT TIME ZONE 'Asia/Seoul')::date, p_amount)
+    VALUES (p_user_id, v_earned_on, p_amount)
     ON CONFLICT (user_id, earned_on) DO UPDATE
       SET amount = public.jam_daily_earned.amount + EXCLUDED.amount;
   END IF;
@@ -202,16 +215,16 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.jam_apply IS
-  '잼 가진 양 변경의 유일한 경로. 원장 삽입 + 지갑 갱신(+활동 정산이면 모은 양 집계)을 원자 처리. 가진 양을 넘는 차감 거절, 사유별 부호 검사, 같은 활동 재정산은 기존 줄 반환. 서버(service role)에서만 호출.';
+  '잼 가진 양 변경의 유일한 경로. 원장 삽입 + 지갑 갱신(+활동 정산이면 모은 양 집계, 날짜는 p_earned_on 또는 정산일)을 원자 처리. 가진 양을 넘는 차감 거절, 사유별 부호 검사, 같은 활동 재정산은 기존 줄 반환. 서버(service role)에서만 호출.';
 
 -- 클라이언트(anon/authenticated)가 RPC로 잔액을 조작하지 못하도록 실행 권한 회수. service_role만 호출 가능.
-REVOKE ALL ON FUNCTION public.jam_apply(UUID, INTEGER, TEXT, UUID, UUID, TEXT, TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.jam_apply(UUID, INTEGER, TEXT, UUID, UUID, TEXT, TEXT) FROM anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.jam_apply(UUID, INTEGER, TEXT, UUID, UUID, TEXT, TEXT) TO service_role;
+REVOKE ALL ON FUNCTION public.jam_apply(UUID, INTEGER, TEXT, UUID, UUID, TEXT, TEXT, DATE) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.jam_apply(UUID, INTEGER, TEXT, UUID, UUID, TEXT, TEXT, DATE) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.jam_apply(UUID, INTEGER, TEXT, UUID, UUID, TEXT, TEXT, DATE) TO service_role;
 
 -- 되돌림 SQL
 -- 새로 만든 객체만 지운다. 원장에 쌓인 잼 기록이 함께 사라지므로, 운영 데이터가 생긴 뒤에는 백업 후 실행한다.
--- DROP FUNCTION IF EXISTS public.jam_apply(UUID, INTEGER, TEXT, UUID, UUID, TEXT, TEXT);
+-- DROP FUNCTION IF EXISTS public.jam_apply(UUID, INTEGER, TEXT, UUID, UUID, TEXT, TEXT, DATE);
 -- DROP TABLE IF EXISTS public.jam_transactions;
 -- DROP TABLE IF EXISTS public.jam_daily_earned;
 -- DROP TABLE IF EXISTS public.jam_wallets;
