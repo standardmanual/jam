@@ -19,6 +19,14 @@ export interface PendingItemView {
   name: string
   imageUrl: string | null
   rarity: 'common' | 'rare' | 'epic' | 'mystic'
+  /**
+   * 잠긴 채 배정된 개체(티켓 20261018_0051, 운영 로직 7.3절). `true`이면 서버가 어떤 아이템 배지인지 알 수 있는 값을 내리지 않는다:
+   * `badgeId`는 빈 문자열, `name`은 빈 문자열, `imageUrl`은 null이고 등급(`rarity`)과 `unlockRequired`만 의미가 있다.
+   * 열린 개체에는 이 키가 없다(옛 응답 모양과 같다). 화면의 가림(2회)은 이 값을 보고 정한다.
+   */
+  locked?: boolean
+  /** 잠긴 개체를 여는 데 필요한 양. 열린 개체에는 키가 없다 */
+  unlockRequired?: number
 }
 
 /** `GET /api/strava/pending-items` 응답 */

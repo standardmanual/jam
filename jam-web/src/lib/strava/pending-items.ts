@@ -46,6 +46,9 @@ interface PendingRow {
   id: string
   badge_id: string
   rarity: PendingItemView['rarity']
+  /** 보류 때 정한 잠김. 읽지 못한 행(옛 응답)은 열린 것으로 본다 */
+  locked?: boolean | null
+  unlock_required?: number | null
 }
 
 interface BadgeRow {
@@ -54,11 +57,27 @@ interface BadgeRow {
   image_url: string | null
 }
 
+/**
+ * 잠긴 보류를 고르기 화면에 내리는 모양 — 배지 id·이름·그림을 싣지 않고 `locked`·등급·필요한 양만 싣는다.
+ * `badgeId`를 남기면 클라이언트가 그 id로 배지를 찾아 이름·그림을 알 수 있으므로 빈 문자열로 둔다(고르기는 보류 `id`로만 한다).
+ */
+function toLockedView(row: PendingRow): PendingItemView {
+  return {
+    id: row.id,
+    badgeId: '',
+    name: '',
+    imageUrl: null,
+    rarity: row.rarity,
+    locked: true,
+    unlockRequired: row.unlock_required ?? 0,
+  }
+}
+
 /** 대기 중 보류 목록과 빈칸 수, 골라야 할 개수. 보류가 없으면 `pendingCount` 0과 빈 목록이다. 읽지 못하면 던진다. */
 export async function getPendingItems(supabase: SupabaseClient, userId: string): Promise<PendingItemsPayload> {
   const { data: rows, error } = await supabase
     .from('sync_pending_items')
-    .select('id, badge_id, rarity')
+    .select('id, badge_id, rarity, locked, unlock_required')
     .eq('user_id', userId)
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
@@ -67,10 +86,14 @@ export async function getPendingItems(supabase: SupabaseClient, userId: string):
   const pending = (rows ?? []) as PendingRow[]
   if (pending.length === 0) return { pendingCount: 0, freeSlots: 0, chooseCount: 0, items: [] }
 
-  const badgeIds = [...new Set(pending.map((r) => r.badge_id))]
-  const { data: badgeRows, error: badgeError } = await supabase.from('badges').select('id, name, image_url').in('id', badgeIds)
-  if (badgeError) throw new Error(`보류 배지 조회 실패: ${badgeError.message}`)
-  const badgeById = new Map(((badgeRows ?? []) as BadgeRow[]).map((b) => [b.id, b]))
+  // 잠긴 개체는 어떤 아이템 배지인지 알려 주지 않으므로 이름·그림을 읽지도 않는다(운영 로직 7.3절)
+  const badgeIds = [...new Set(pending.filter((r) => r.locked !== true).map((r) => r.badge_id))]
+  let badgeById = new Map<string, BadgeRow>()
+  if (badgeIds.length > 0) {
+    const { data: badgeRows, error: badgeError } = await supabase.from('badges').select('id, name, image_url').in('id', badgeIds)
+    if (badgeError) throw new Error(`보류 배지 조회 실패: ${badgeError.message}`)
+    badgeById = new Map(((badgeRows ?? []) as BadgeRow[]).map((b) => [b.id, b]))
+  }
 
   const { data: inventoryRow, error: inventoryError } = await supabase
     .from('inventory')
@@ -85,7 +108,8 @@ export async function getPendingItems(supabase: SupabaseClient, userId: string):
     pendingCount: pending.length,
     freeSlots,
     chooseCount: Math.min(freeSlots, pending.length),
-    items: pending.map((r) => {
+    items: pending.map((r): PendingItemView => {
+      if (r.locked === true) return toLockedView(r)
       const badge = badgeById.get(r.badge_id)
       return { id: r.id, badgeId: r.badge_id, name: badge?.name ?? '', imageUrl: badge?.image_url ?? null, rarity: r.rarity }
     }),

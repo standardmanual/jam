@@ -4,7 +4,7 @@
  * 고정하는 것:
  * - `countPendingItems`: 이 유저의 pending만 센다. 읽기 실패는 던진다.
  * - `getPendingItems`: 오래된 보류부터, 배지 이름·이미지·등급을 붙이고 빈칸 수와 골라야 할 개수(`min(빈칸, 보류 수)`)를 계산한다.
- *   보류가 없으면 빈 결과다.
+ *   보류가 없으면 빈 결과다. 잠긴 보류(티켓 20261018_0051)는 이름·그림·배지 id를 내리지 않고 `locked`·등급·필요한 양만 내린다(배지 조회에서도 뺀다).
  * - `resolvePendingItems`: RPC에 세션 유저와 고른 id를 넘기고, DB 함수의 거절 코드(`no_pending`·`invalid_selection`·`wrong_count`·
  *   `inventory_not_found`)를 값으로 돌려준다. RPC 오류·해석 불가 응답은 던진다.
  *
@@ -24,7 +24,7 @@ import { countPendingItems, getPendingItems, resolvePendingItems, SyncPendingIte
 const USER_ID = 'user-1'
 
 interface FakeWorld {
-  pendingRows?: { id: string; badge_id: string; rarity: string }[]
+  pendingRows?: { id: string; badge_id: string; rarity: string; locked?: boolean; unlock_required?: number | null }[]
   pendingError?: { message: string }
   badges?: { id: string; name: string; image_url: string | null }[]
   badgeError?: { message: string }
@@ -136,6 +136,42 @@ describe('getPendingItems', () => {
     ])
     expect(calls.orders).toEqual(['created_at', 'id'])
     expect(calls.eqs[0]).toEqual({ table: 'sync_pending_items', user_id: USER_ID, status: 'pending' })
+  })
+
+  it('잠긴 보류는 배지 id·이름·그림을 내리지 않고 locked·등급·필요한 양만 내린다', async () => {
+    const { supabase } = makeFake({
+      pendingRows: [
+        { id: 'p1', badge_id: 'b-secret', rarity: 'epic', locked: true, unlock_required: 120 },
+        { id: 'p2', badge_id: 'b1', rarity: 'common', locked: false },
+      ],
+      badges: [
+        { id: 'b-secret', name: '숨은 배지', image_url: 'https://img/secret.png' },
+        { id: 'b1', name: '첫 숨결', image_url: null },
+      ],
+      inventory: { used_slots: 0, max_slots: 5 },
+    })
+
+    const payload = await getPendingItems(supabase, USER_ID)
+
+    expect(payload.items).toEqual([
+      { id: 'p1', badgeId: '', name: '', imageUrl: null, rarity: 'epic', locked: true, unlockRequired: 120 },
+      { id: 'p2', badgeId: 'b1', name: '첫 숨결', imageUrl: null, rarity: 'common' },
+    ])
+    expect(JSON.stringify(payload)).not.toContain('b-secret')
+    expect(JSON.stringify(payload)).not.toContain('숨은 배지')
+    expect(JSON.stringify(payload)).not.toContain('secret.png')
+  })
+
+  it('전부 잠긴 보류면 배지 테이블을 읽지 않는다', async () => {
+    const { supabase, calls } = makeFake({
+      pendingRows: [{ id: 'p1', badge_id: 'b-secret', rarity: 'rare', locked: true, unlock_required: 60 }],
+      inventory: { used_slots: 0, max_slots: 5 },
+    })
+
+    const payload = await getPendingItems(supabase, USER_ID)
+
+    expect(payload.items).toHaveLength(1)
+    expect(calls.eqs.map((c) => c.table)).not.toContain('badges')
   })
 
   it('골라야 할 개수는 빈칸과 보류 수 중 작은 값이다', async () => {
