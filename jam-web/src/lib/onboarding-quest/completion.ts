@@ -201,6 +201,7 @@ export async function recordOnboardingQuestCompletion(
       .from('strava_activities')
       .select('id')
       .eq('user_id', userId)
+      .is('filter_reason', null) // 걸러진 활동은 «실제 첫 활동»이 아니다(티켓 20261017_1421)
       .limit(1)
       .maybeSingle()
 

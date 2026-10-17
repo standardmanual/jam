@@ -9,7 +9,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { decrypt, encrypt } from '@/lib/utils'
-import { getActivities, getActivityStreams, refreshStravaToken } from '@/lib/strava/api'
+import { getAllActivities, getActivityStreams, refreshStravaToken } from '@/lib/strava/api'
+import { qualifyActivity, type FilterReason, type SourceMeta } from '@/lib/strava/qualification'
 import { detectAndExcludeTransitSegments } from '@/lib/strava/transitSegment'
 import { evaluateBadges } from '@/lib/badge-engine/index'
 import { tryItemDrop } from '@/lib/drop-engine/index'
@@ -61,6 +62,8 @@ import type {
 const MAX_DROP_ACTIVITIES_PER_SYNC = 3
 /** 싱크 1회당 POI 매칭(Streams API)을 수행할 최대 활동 수 (최신순). Strava rate limit·타임아웃 방지 */
 const MAX_POI_MATCH_ACTIVITIES_PER_SYNC = 10
+/** strava_activities에 한 번에 올리는 행 수 상한 — 걸러진 이력이 많은 첫 동기화용 */
+const RECORD_UPSERT_CHUNK_SIZE = 200
 /**
  * 커서 overlap — Strava/Garmin 쪽 색인 지연으로 활동이 마지막으로 가져온 활동의 시작
  * 시각 시점엔 목록에 안 잡혔다가 뒤늦게 나타나는 경우를 대비해, 매번 이만큼 앞선
@@ -342,7 +345,11 @@ export function normalizeActivity(activity: StravaSummaryActivity): NormalizedAc
   }
 }
 
-/** 이미 처리된(strava_activities에 기록된) strava_id 집합 조회 */
+/**
+ * 이미 처리된(strava_activities에 기록된) strava_id 집합 조회.
+ * **걸러진 행(`filter_reason`이 있는 행)도 포함한다** — 같은 활동을 다시 가져와 다시 거르거나 다시
+ * 정산하지 않기 위해서다(티켓 20261017_1421). 이력 조회(`getActivityHistory`)와 정반대로 둔다.
+ */
 export async function getProcessedStravaIds(
   supabase: SupabaseClient,
   userId: string,
@@ -364,15 +371,24 @@ export async function getProcessedStravaIds(
   return new Set((data as { strava_id: number }[]).map((r) => r.strava_id))
 }
 
-/** 처리 완료된 활동들을 strava_activities에 기록 (멱등 처리 기준 데이터) */
+/** strava_activities에 기록할 활동 1건 — 인정(`filterReason` null)과 걸러짐을 한 모양으로 담는다 */
+interface ProcessedActivityRecord {
+  activity: NormalizedActivity
+  /** NULL이면 인정. 값이 있으면 걸러진 사유 */
+  filterReason: FilterReason | null
+  /** 인정 판정에 쓴 원본 값의 유무·모양 요약 (경로 요약 본문·좌표는 담지 않는다) */
+  sourceMeta: SourceMeta
+}
+
+/** 처리 완료된 활동들을 strava_activities에 기록 (멱등 처리 기준 데이터). 걸러진 활동도 사유와 함께 기록한다 */
 async function recordProcessedActivities(
   supabase: SupabaseClient,
   userId: string,
-  activities: NormalizedActivity[],
+  records: ProcessedActivityRecord[],
   processedVia: StravaActivityRow['processed_via']
 ): Promise<void> {
-  if (activities.length === 0) return
-  const rows = activities.map((a) => ({
+  if (records.length === 0) return
+  const rows = records.map(({ activity: a, filterReason, sourceMeta }) => ({
     user_id: userId,
     strava_id: a.stravaId,
     start_date: a.startDate,
@@ -380,12 +396,17 @@ async function recordProcessedActivities(
     distance_km: a.distanceKm,
     normalized: a,
     processed_via: processedVia,
+    filter_reason: filterReason,
+    source_meta: sourceMeta,
   }))
-  const { error } = await supabase
-    .from('strava_activities')
-    .upsert(rows, { onConflict: 'user_id,strava_id' })
-  if (error) {
-    console.error('[recordProcessedActivities] 기록 오류:', error)
+  // 첫 동기화는 걸러진 이력이 수백 건일 수 있어 한 번에 올리지 않고 나눠 올린다
+  for (let i = 0; i < rows.length; i += RECORD_UPSERT_CHUNK_SIZE) {
+    const { error } = await supabase
+      .from('strava_activities')
+      .upsert(rows.slice(i, i + RECORD_UPSERT_CHUNK_SIZE), { onConflict: 'user_id,strava_id' })
+    if (error) {
+      console.error('[recordProcessedActivities] 기록 오류:', error)
+    }
   }
 }
 
@@ -650,8 +671,68 @@ async function updateFamilyProgressSnapshots(
   }
 }
 
+/** processFetchedActivities의 반환 모양 */
+interface ProcessFetchedResult {
+  badges: number
+  itemBooksCompleted: number
+  missionsCompleted: number
+  /** 이번 처리에서 발급된 배지 id — 획득 순서(체크인 → 아이템 드랍 → 액티비티 → 컬렉션·미션 보상 → 사용량 → JAM! 행동 지표) */
+  earnedBadgeIds: string[]
+  /** 이번 처리에서 새로 완료된 미션 id — GA4 mission_complete 계측용 (20260903_1034) */
+  completedMissionIds: string[]
+  /** 이번에 정산한 «인정 활동» 수 — 걸러진 활동과 첫 동기화에서 정산하지 않은 활동은 세지 않는다 */
+  settledCount: number
+}
+
 /**
- * 이번에 새로 확인된 활동들을 배지·드랍·미션 엔진에 넣고, 처리 완료 후 strava_activities에 기록한다.
+ * 정산할 활동이 0건일 때의 평가 — 배지 평가와 JAM! 가입 경과일 판정만 돈다.
+ *
+ * 티켓 20260906_1430 — 새 활동이 0건이어도 배지 평가만은 항상 실행한다.
+ *
+ * 이 이른 반환이 함수 전체(POI 매칭·아이템 드랍·아이템북 완성 체크·미션·배지 평가)를
+ * 통째로 건너뛰게 만들어, 아래 §"일반 배지 엔진 호출" 지점의 게이트를 배지 평가에서만
+ * 벗겨도 실제로는 여기서 이미 막혀 있었다 — 카탈로그가 늘어난 뒤 유저의 다음 실제
+ * 활동까지 배지 엔진이 단 한 번도 돌지 않는 사고(jamfather 22일 미발급, 티켓
+ * 20260906_1426 실측)의 원인이 바로 이 이른 반환이다.
+ *
+ * 드랍(tryItemDrop)·미션(checkMissions)·아이템북 완성 체크는 "활동 1건마다 시도"가
+ * 전제라 이 이른 반환을 그대로 유지해 건너뛴다 — 배지 평가와 그 직접 부수효과(결산
+ * 소식)만 벗긴다. evaluateBadges는 내부에서 이력 전체를 다시 읽으므로 빈 배열을
+ * 넘겨도 이미 조건을 채운 배지를 잡아낼 수 있다.
+ *
+ * 첫 동기화에서 인정 활동이 하나도 없으면 첫 동기화를 마친 것으로 보지 않는다(운영 로직 3.4절,
+ * 티켓 20261017_1421) — `users.initial_sync_done`을 true로 바꾸지 않고 다음 동기화에서 다시 찾는다.
+ */
+async function evaluateWithoutNewActivities(
+  supabase: SupabaseClient,
+  userId: string,
+  isFirstSync: boolean
+): Promise<ProcessFetchedResult> {
+  const activityBadgeIds = isFirstSync
+    ? await evaluateBadges(userId, [], { skipInitialSyncFlagUpdate: true })
+    : await evaluateBadges(userId, [])
+  // JAM! 행동 지표 중 가입 경과일만 판정한다 — 날짜가 지나면 값이 바뀌는 지표는 이것뿐이라, 새 활동이 없는
+  // 동기화에서도 따라잡는다(티켓 20261001_0633, R4). 오래 쉰 계정은 배지의 보조 키(최근 30일 활동일)가 막는다.
+  // 획득은 결산과 earnedBadgeIds에 합치되, 반환의 `badges` 수에는 넣지 않는다(사용량 배지와 같다).
+  const jamBadgeIds = (await evaluateJamActionSafely(supabase, userId, JAM_EMPTY_SYNC_TRIGGERS)).map((b) => b.id)
+  await notifyActivityBadgesEarned(supabase, userId, [...activityBadgeIds, ...jamBadgeIds], [])
+  return {
+    badges: activityBadgeIds.length,
+    itemBooksCompleted: 0,
+    missionsCompleted: 0,
+    earnedBadgeIds: [...activityBadgeIds, ...jamBadgeIds],
+    completedMissionIds: [],
+    settledCount: 0,
+  }
+}
+
+/**
+ * 이번에 새로 확인된 활동들을 인정 판정으로 거른 뒤, 인정된 활동만 배지·드랍·미션 엔진에 넣고
+ * strava_activities에 기록한다. 걸러진 활동은 사유와 함께 기록만 한다.
+ *
+ * 처리 순서(운영 로직 3.4절, 티켓 20261017_1421): ① 인정 기준으로 거르기 → ② 어뷰징 필터(교통수단
+ * 구간 재산정, 차량 속도) → ③ 정산(체크인, 아이템 배지 드랍, 배지, 아이템북, 미션, 계열 진행).
+ * 체크인은 ②를 지난 활동에만 돈다.
  */
 export async function processFetchedActivities(
   supabase: SupabaseClient,
@@ -660,57 +741,60 @@ export async function processFetchedActivities(
   rawActivities: StravaSummaryActivity[],
   isFirstSync: boolean,
   processedVia: StravaActivityRow['processed_via'] = 'sync'
-): Promise<{
-  badges: number
-  itemBooksCompleted: number
-  missionsCompleted: number
-  /** 이번 처리에서 발급된 배지 id — 획득 순서(체크인 → 아이템 드랍 → 액티비티 → 컬렉션·미션 보상 → 사용량 → JAM! 행동 지표) */
-  earnedBadgeIds: string[]
-  /** 이번 처리에서 새로 완료된 미션 id — GA4 mission_complete 계측용 (20260903_1034) */
-  completedMissionIds: string[]
-}> {
+): Promise<ProcessFetchedResult> {
   if (rawActivities.length === 0) {
-    // 티켓 20260906_1430 — 새 활동이 0건이어도 배지 평가만은 항상 실행한다.
-    //
-    // 이 이른 반환이 함수 전체(POI 매칭·아이템 드랍·아이템북 완성 체크·미션·배지 평가)를
-    // 통째로 건너뛰게 만들어, 아래 §"일반 배지 엔진 호출" 지점의 게이트를 배지 평가에서만
-    // 벗겨도 실제로는 여기서 이미 막혀 있었다 — 카탈로그가 늘어난 뒤 유저의 다음 실제
-    // 활동까지 배지 엔진이 단 한 번도 돌지 않는 사고(jamfather 22일 미발급, 티켓
-    // 20260906_1426 실측)의 진짜 진원지가 이쪽이다.
-    //
-    // 드랍(tryItemDrop)·미션(checkMissions)·아이템북 완성 체크는 "활동 1건마다 시도"가
-    // 전제라 이 이른 반환을 그대로 유지해 건너뛴다 — 배지 평가와 그 직접 부수효과(결산
-    // 소식)만 벗긴다. evaluateBadges는 내부에서 이력 전체를 다시 읽으므로 빈 배열을
-    // 넘겨도 이미 조건을 채운 배지를 잡아낼 수 있다.
-    const activityBadgeIds = await evaluateBadges(userId, [])
-    // JAM! 행동 지표 중 가입 경과일만 판정한다 — 날짜가 지나면 값이 바뀌는 지표는 이것뿐이라, 새 활동이 없는
-    // 동기화에서도 따라잡는다(티켓 20261001_0633, R4). 오래 쉰 계정은 배지의 보조 키(최근 30일 활동일)가 막는다.
-    // 획득은 결산과 earnedBadgeIds에 합치되, 반환의 `badges` 수에는 넣지 않는다(사용량 배지와 같다).
-    const jamBadgeIds = (await evaluateJamActionSafely(supabase, userId, JAM_EMPTY_SYNC_TRIGGERS)).map((b) => b.id)
-    await notifyActivityBadgesEarned(supabase, userId, [...activityBadgeIds, ...jamBadgeIds], [])
-    return {
-      badges: activityBadgeIds.length,
-      itemBooksCompleted: 0,
-      missionsCompleted: 0,
-      earnedBadgeIds: [...activityBadgeIds, ...jamBadgeIds],
-      completedMissionIds: [],
+    return evaluateWithoutNewActivities(supabase, userId, isFirstSync)
+  }
+
+  // ① 인정 판정 — 다섯 기준을 갖춘 활동만 정산 대상이 된다. 걸러진 활동은 아래에서 사유와 함께 기록만 한다.
+  const qualifiedEntries: { raw: StravaSummaryActivity; sourceMeta: SourceMeta }[] = []
+  const rejectedRecords: ProcessedActivityRecord[] = []
+  for (const raw of rawActivities) {
+    const result = qualifyActivity(raw)
+    if (result.qualified) {
+      qualifiedEntries.push({ raw, sourceMeta: result.sourceMeta })
+    } else {
+      rejectedRecords.push({
+        activity: normalizeActivity(raw),
+        filterReason: result.filterReason,
+        sourceMeta: result.sourceMeta,
+      })
     }
   }
+
+  // 첫 동기화(신규 연동)는 과거 이력 전체를 소급 정산하지 않고, **인정 활동 가운데 가장 최근 1건**만
+  // 반영한다. 가장 최근 활동이 인정되지 않으면 그 전 활동을 본다. (배지 평가가 과거 이력 전체를 한 번에
+  // 넣으면 온보딩 순간 여러 등급이 동시에 터져 나오는 등 성장 경험이 왜곡되는 문제가 있었음 — 드랍엔진은
+  // 이미 1건 제한 중)
+  const settledEntries =
+    isFirstSync && qualifiedEntries.length > 1
+      ? [...qualifiedEntries]
+          .sort((a, b) => new Date(b.raw.start_date).getTime() - new Date(a.raw.start_date).getTime())
+          .slice(0, 1)
+      : qualifiedEntries
+
+  if (settledEntries.length === 0) {
+    // 인정 활동이 없다 — 걸러진 활동만 기록하고 빈 배치와 같게 처리한다(첫 동기화는 마친 것으로 보지 않는다)
+    await recordProcessedActivities(supabase, userId, rejectedRecords, processedVia)
+    return evaluateWithoutNewActivities(supabase, userId, isFirstSync)
+  }
+  const settledRaw = settledEntries.map((e) => e.raw)
+  const settledMeta = settledEntries.map((e) => e.sourceMeta)
 
   // 획득 연출용 — 발급된 배지 id를 발급 순서대로 모은다 (엔진 내부 로직은 건드리지 않고
   // 각 경로가 돌려주는 id만 이어 붙인다).
   const earnedBadgeIds: string[] = []
 
-  const activities: NormalizedActivity[] = rawActivities.map(normalizeActivity)
+  const activities: NormalizedActivity[] = settledRaw.map(normalizeActivity)
 
-  // 어뷰징 정책 — 정식 로더로 한 번만 읽어 아래 교통수단 구간 감지(즉시)와 Phase 18 차량속도
-  // 필터(뒤쪽)가 같은 스냅샷을 공유한다. 주입된 supabase 클라이언트를 그대로 넘겨 클라이언트
+  // 어뷰징 정책 — 정식 로더로 한 번만 읽어 아래 교통수단 구간 감지와 Phase 18 차량속도
+  // 필터가 같은 스냅샷을 공유한다. 주입된 supabase 클라이언트를 그대로 넘겨 클라이언트
   // 주입 사슬을 유지한다(20260831_1300).
   const abusingPolicy = await getAbusingPolicy(supabase)
 
   // POI 매칭·교통수단 구간 감지 — 각 활동의 GPS 경로·속도·시간을 Streams API로 조회.
   //   백필 시 Strava API 폭주 방지: 최신 활동 N개만 조회.
-  const poiMatchTargets = [...rawActivities]
+  const poiMatchTargets = [...settledRaw]
     .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
     .slice(0, MAX_POI_MATCH_ACTIVITIES_PER_SYNC)
   const streamsByActivity = await Promise.all(
@@ -738,6 +822,37 @@ export async function processFetchedActivities(
     )
   }
 
+  // ② 어뷰징 필터 — 차량 속도 (Phase 18). 체크인보다 **먼저** 돈다(티켓 20261017_1421): 예전엔 체크인이
+  // 이 필터보다 앞서 돌아 차량 속도로 걸러질 활동도 체크인 배지를 받았다. 어뷰징 정책의 정식 로더로 임계값을 읽는다.
+  // 20260831_1300 — 이전에는 여기서 abusing_policy를 직접 select해 정식 경로(getAbusingPolicy)의
+  // NUMERIC 정규화·조회 실패 로그·키 누락 관측·`id = 1` 조건을 전부 건너뛰었고, truthy 검사
+  // 때문에 임계값 0이 조용히 60으로 둔갑했다.
+  // (abusingPolicy는 위쪽 교통수단 구간 감지에서 이미 조회해 뒀다 — 20260909_1012, 같은 배치
+  // 안에서 두 번 조회하지 않도록 재사용한다)
+  // 비정상 값 해석(유한·양수가 아니면 기본값)은 effectiveVehicleSpeedFilterKmh 한 곳에 있다 —
+  // JAM! 행동 지표의 「활동한 날」 판정(jamActionDayMetrics.ts)이 같은 규칙을 쓴다(티켓 20261001_0633).
+  const configuredVehicleSpeedFilterKmh = abusingPolicy.vehicle_speed_filter_kmh
+  const vehicleSpeedFilterKmh = effectiveVehicleSpeedFilterKmh(abusingPolicy)
+  if (vehicleSpeedFilterKmh !== configuredVehicleSpeedFilterKmh) {
+    // 페일세이프 — 필터식이 `평균속도 <= 임계값`이라 임계값이 0 이하면 사실상 모든 활동이
+    // 탈락하고, activitiesFiltered는 배지뿐 아니라 아이템 드랍·미션까지 흘러가므로 핵심
+    // 보상 루프 전체가 멈춘다. 그래서 폴백 방향을 **핵심 루프를 살리는 쪽**(기본 임계값)으로
+    // 고르되, 무음으로 넘기지 않고 로그를 남긴다 (DEV_PROCESS_GUARDRAILS 패턴 9 규칙 1·6).
+    // 하한(MIN_VEHICLE_SPEED_FILTER_KMH)은 여기서 재검사하지 않는다 — 정책 검증은 저장
+    // 경로(어드민 정책 라우트)가 소유한다. 운영자가 의도적으로 넣은 값을 소비 지점이 조용히
+    // 덮어쓰면 "저장한 값과 실제 동작이 다른" 같은 종류의 불일치가 재발한다.
+    console.error(
+      `[processFetchedActivities] vehicle_speed_filter_kmh 값이 비정상(${configuredVehicleSpeedFilterKmh}) — ` +
+        `기본값 ${DEFAULT_POLICY.vehicle_speed_filter_kmh}km/h로 폴백, userId: ${userId}`
+    )
+  }
+  const activitiesFiltered = activities.filter((a) => a.averageSpeedKmh <= vehicleSpeedFilterKmh)
+  // 걸러진 활동은 `vehicle_speed` 사유로 저장만 한다 — 체크인·드랍·배지·미션·계열 진행에 넣지 않는다.
+  const vehicleFilteredIds = new Set(
+    activities.filter((a) => a.averageSpeedKmh > vehicleSpeedFilterKmh).map((a) => a.stravaId)
+  )
+  const settledIds = new Set(activitiesFiltered.map((a) => a.stravaId))
+
   let poiBadgesEarned = 0
 
   /**
@@ -754,6 +869,8 @@ export async function processFetchedActivities(
   const poiMatchResults: { rawActivity: StravaSummaryActivity; matchedPois: PoiRow[] }[] = []
   for (const { rawActivity, route } of routesByActivity) {
     if (!route) continue // 실내 활동 또는 경로 데이터 없음 — 건너뜀
+    // 차량 속도로 걸러진 활동은 체크인하지 않는다 — 체크인은 어뷰징 필터 뒤에 돈다(티켓 20261017_1421)
+    if (!settledIds.has(rawActivity.id)) continue
     const matchedPois = await matchPoisForActivity(route, supabase)
     if (matchedPois.length > 0) poiMatchResults.push({ rawActivity, matchedPois })
   }
@@ -956,31 +1073,6 @@ export async function processFetchedActivities(
     })
   }
 
-  // Phase 18: 차량 속도 필터 적용 — 어뷰징 정책의 정식 로더로 임계값을 읽는다.
-  // 20260831_1300 — 이전에는 여기서 abusing_policy를 직접 select해 정식 경로(getAbusingPolicy)의
-  // NUMERIC 정규화·조회 실패 로그·키 누락 관측·`id = 1` 조건을 전부 건너뛰었고, truthy 검사
-  // 때문에 임계값 0이 조용히 60으로 둔갑했다.
-  // (abusingPolicy는 위쪽 교통수단 구간 감지에서 이미 조회해 뒀다 — 20260909_1012, 같은 배치
-  // 안에서 두 번 조회하지 않도록 재사용한다)
-  // 비정상 값 해석(유한·양수가 아니면 기본값)은 effectiveVehicleSpeedFilterKmh 한 곳에 있다 —
-  // JAM! 행동 지표의 「활동한 날」 판정(jamActionDayMetrics.ts)이 같은 규칙을 쓴다(티켓 20261001_0633).
-  const configuredVehicleSpeedFilterKmh = abusingPolicy.vehicle_speed_filter_kmh
-  const vehicleSpeedFilterKmh = effectiveVehicleSpeedFilterKmh(abusingPolicy)
-  if (vehicleSpeedFilterKmh !== configuredVehicleSpeedFilterKmh) {
-    // 페일세이프 — 필터식이 `평균속도 <= 임계값`이라 임계값이 0 이하면 사실상 모든 활동이
-    // 탈락하고, activitiesFiltered는 배지뿐 아니라 아이템 드랍·미션까지 흘러가므로 핵심
-    // 보상 루프 전체가 멈춘다. 그래서 폴백 방향을 **핵심 루프를 살리는 쪽**(기본 임계값)으로
-    // 고르되, 무음으로 넘기지 않고 로그를 남긴다 (DEV_PROCESS_GUARDRAILS 패턴 9 규칙 1·6).
-    // 하한(MIN_VEHICLE_SPEED_FILTER_KMH)은 여기서 재검사하지 않는다 — 정책 검증은 저장
-    // 경로(어드민 정책 라우트)가 소유한다. 운영자가 의도적으로 넣은 값을 소비 지점이 조용히
-    // 덮어쓰면 "저장한 값과 실제 동작이 다른" 같은 종류의 불일치가 재발한다.
-    console.error(
-      `[processFetchedActivities] vehicle_speed_filter_kmh 값이 비정상(${configuredVehicleSpeedFilterKmh}) — ` +
-        `기본값 ${DEFAULT_POLICY.vehicle_speed_filter_kmh}km/h로 폴백, userId: ${userId}`
-    )
-  }
-  const activitiesFiltered = activities.filter((a) => a.averageSpeedKmh <= vehicleSpeedFilterKmh)
-
   // 활동별 아이템 드랍 시도
   //   - 첫 싱크(백필): "10초 첫 보상" — 최신 활동 1건만 드랍
   //   - 일반 싱크: 최신 활동 최대 3건까지 드랍
@@ -1100,19 +1192,36 @@ export async function processFetchedActivities(
     console.info(`[processFetchedActivities] 미션 달성 — userId: ${userId}, 수: ${completedMissionIds.length}`)
   }
 
-  // 멱등 처리 기준 데이터 기록 — 이번에 "새로" 확인된 활동 전체(가져온 원본 기준)를 처리 완료로 표시.
+  // 멱등 처리 기준 데이터 기록 — 이번에 "새로" 확인된 활동을 처리 완료로 표시.
   // 성공적으로 여기까지 도달한 경우에만 기록하므로, 중간에 실패하면 다음 시도에서 자연스럽게 재처리된다.
-  await recordProcessedActivities(supabase, userId, activities, processedVia)
+  // 인정 판정에서 걸러진 활동과 차량 속도로 걸러진 활동도 사유와 함께 기록한다(이력에는 들어가지 않는다).
+  // `activities[i]`와 `settledMeta[i]`는 같은 순서다(둘 다 settledRaw에서 만들었다).
+  await recordProcessedActivities(
+    supabase,
+    userId,
+    [
+      ...activities.map((activity, i) => ({
+        activity,
+        filterReason: vehicleFilteredIds.has(activity.stravaId) ? ('vehicle_speed' as const) : null,
+        sourceMeta: settledMeta[i],
+      })),
+      ...rejectedRecords,
+    ],
+    processedVia
+  )
 
   // 계열 진행 스냅샷 갱신 — 티켓 20260904_1156(배지트리 리뉴얼 3차 1단계). 위 호출로 이번
   // 배치가 이미 strava_activities에 기록된 직후라 getActivityHistory() 한 번으로 이번 배치까지
   // 포함한 전체 이력을 얻을 수 있다. 실패해도 이미 끝난 배지 발급·미션 판정 결과에는 영향을
   // 주지 않는다 — 함수 내부에서 전부 try/catch로 흡수한다.
-  await updateFamilyProgressSnapshots(supabase, userId, activities)
+  // 정산 대상(어뷰징 필터를 지난 활동)이 하나도 없으면 최신 활동 기준이 없어 건너뛴다 — 이력이 바뀌지 않았다.
+  if (activitiesFiltered.length > 0) {
+    await updateFamilyProgressSnapshots(supabase, userId, activitiesFiltered)
+  }
 
   // JAM! 카테고리 — 서비스 사용량 배지: 하루 동기화 횟수 (티켓 20260910_1557).
   //
-  // 이 지점은 함수 최상단의 `rawActivities.length === 0` 이른 반환을 지난 뒤라 —
+  // 이 지점은 정산할 활동이 0건일 때의 이른 반환(`evaluateWithoutNewActivities`)을 지난 뒤라 —
   // "synced > 0"(= 이번 배치로 새 활동을 실제로 받아온 경우)일 때만 도달한다. 카운터
   // 증가·판정 로직은 recordDailySyncAndEvaluate() 한 곳(usageBadges.ts)에 있다 — 실패해도
   // 동기화 자체(위에서 이미 끝난 활동 배지·아이템 드랍·미션 등)는 계속 진행돼야 하므로
@@ -1143,7 +1252,7 @@ export async function processFetchedActivities(
     supabase,
     userId,
     [...activityBadgeIds, ...usageEarned.map((b) => b.id), ...jamEarned.map((b) => b.id)],
-    activities.map((a) => a.stravaId)
+    activitiesFiltered.map((a) => a.stravaId)
   )
 
   return {
@@ -1152,6 +1261,7 @@ export async function processFetchedActivities(
     missionsCompleted: completedMissionIds.length,
     earnedBadgeIds,
     completedMissionIds,
+    settledCount: settledRaw.length,
   }
 }
 
@@ -1301,28 +1411,22 @@ export async function syncStravaActivities(
   // 상태로 남아, 다음 재시도부터 그보다 오래된 활동(가입 전 이력 등)을 영영 조회
   // 대상에서 놓치게 된다 (2026-08-10 신규 유저 미발급 인시던트의 원인).
   try {
-    const fetchedActivities = await getActivities(accessToken, afterTimestamp)
+    // 한 페이지 상한(200건)을 넘으면 끝까지 페이지를 넘겨 가져온다 — 처리 건수에 상한을 두지 않는다(운영 로직 6.2절)
+    const fetchedActivities = await getAllActivities(accessToken, afterTimestamp)
 
     // 5. 멱등 처리 — overlap으로 다시 잡힌 것 중 이미 처리된 활동은 제외
     const processedIds = await getProcessedStravaIds(supabase, userId, fetchedActivities.map((a) => a.id))
-    let rawActivities = fetchedActivities.filter((a) => !processedIds.has(a.id))
-
-    // 첫 싱크(신규 연동)는 과거 이력 전체를 소급 처리하지 않고 최신 활동 1건만 반영한다.
-    // (배지 평가가 과거 이력 전체를 한 번에 넣으면 온보딩 순간 여러 등급이 동시에
-    //  터져 나오는 등 성장 경험이 왜곡되는 문제가 있었음 — 드랍엔진은 이미 1건 제한 중)
-    if (isFirstSync && rawActivities.length > 1) {
-      rawActivities = [...rawActivities]
-        .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
-        .slice(0, 1)
-    }
+    // 걸러진 활동도 «처리한 것»에 포함돼(getProcessedStravaIds) 다시 거르지 않는다.
+    // 첫 동기화의 «인정 활동 가운데 최근 1건» 제한은 인정 판정 뒤에 해야 하므로 processFetchedActivities가 한다.
+    const rawActivities = fetchedActivities.filter((a) => !processedIds.has(a.id))
 
     console.info(
       `[syncStravaActivities] userId: ${userId}, afterTimestamp: ${afterTimestamp ?? 'none'}, ` +
       `Strava 반환: ${fetchedActivities.length}건, 신규(미처리): ${rawActivities.length}건` +
-      `${isFirstSync ? ' (첫 싱크 — 최신 1건 제한)' : ''}`
+      `${isFirstSync ? ' (첫 싱크 — 인정 활동 최근 1건 제한)' : ''}`
     )
 
-    const { badges, itemBooksCompleted, missionsCompleted, earnedBadgeIds, completedMissionIds } = await processFetchedActivities(
+    const { badges, itemBooksCompleted, missionsCompleted, earnedBadgeIds, completedMissionIds, settledCount } = await processFetchedActivities(
       supabase,
       userId,
       accessToken,
@@ -1331,11 +1435,11 @@ export async function syncStravaActivities(
       'sync'
     )
 
-    // 온보딩 퀘스트 완료 판정(T6) — 처리된 실제 활동이 1건 이상일 때만 시도한다.
+    // 온보딩 퀘스트 완료 판정(T6) — 정산한 인정 활동이 1건 이상일 때만 시도한다.
     // 0건이면 호출하지 않는다(불필요한 조회 생략). 절대 throw하지 않으므로 동기화 흐름에
     // 영향을 주지 않는다. 지급된 완료 배지(T7b)가 있으면 기존 배지 획득 카드에 함께 실리도록
     // earnedBadgeIds에 합류시킨다(사용자 결정 2) — 중복 제거는 already-includes 체크로 충분하다.
-    if (rawActivities.length >= 1) {
+    if (settledCount >= 1) {
       const grantedBadgeId = await recordOnboardingQuestCompletion(supabase, userId)
       if (grantedBadgeId && !earnedBadgeIds.includes(grantedBadgeId)) {
         earnedBadgeIds.push(grantedBadgeId)
@@ -1352,7 +1456,7 @@ export async function syncStravaActivities(
     // 처리 중 업로드된 활동이 다음 싱크에서 누락되는 갭이 생기므로 하지 않는다)
 
     return {
-      synced: rawActivities.length,
+      synced: settledCount,
       badges,
       itemBooksCompleted,
       missionsCompleted,

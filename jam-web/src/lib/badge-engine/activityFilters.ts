@@ -24,6 +24,11 @@ import { kmhToPaceSecPerKm } from '@/types/strava'
 // 걷기(activity_type='walking') 활동이 이 네 값을 모두 통과해야 어떤 걷기 배지
 // 조건 평가에도 포함된다. 미통과 시 그 활동은 걷기 배지 평가에서 완전 배제.
 // 다른 종목에는 영향 없음. 값은 튜닝 대상이라 상수로 분리해 한 곳에 모아둔다.
+//
+// 입구 필터(`strava/qualification.ts`, 티켓 20261017_1421)와의 겹침: 움직인 시간 10분 미만은 이제 입구에서
+// 모든 종목이 걸러져 이 게이트의 `WALKING_GATE_MIN_DURATION_MIN`은 새 활동에 대해 중복이다. 하지만 이
+// 게이트는 이미 저장된 옛 활동(입구 필터 도입 전 행)과 배지 조건의 의미를 지키므로 **그대로 둔다** —
+// 거리·속도 기준은 입구에 없는 걷기 전용 기준이다. 정리(중복 제거)는 옛 행을 소급 판정하는 일과 함께 정한다.
 export const WALKING_GATE_MIN_DISTANCE_KM = 0.5
 export const WALKING_GATE_MIN_DURATION_MIN = 10
 export const WALKING_GATE_MIN_SPEED_KMH = 2.0

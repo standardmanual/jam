@@ -262,6 +262,7 @@ export async function fetchActivityDayKeys(
         .from('strava_activities')
         .select('start_date, normalized')
         .eq('user_id', userId)
+        .is('filter_reason', null) // 걸러진 활동은 «활동한 날»에 넣지 않는다(티켓 20261017_1421)
         .gte('start_date', sinceIso)
         .order('id')
         .range(from, to)

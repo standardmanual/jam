@@ -61,6 +61,15 @@ export async function getSignupAnchorDate(
   return (data as { created_at?: string | null } | null)?.created_at ?? undefined
 }
 
+/**
+ * 인정된 활동만 읽는다 — `filter_reason IS NULL`인 행(티켓 20261017_1421).
+ * 걸러진 활동(가상·수동·경로 없음·차량 속도 등)은 저장은 되지만 어떤 판정의 이력에도 들어가지 않는다.
+ * 배지 엔진·미션·계열 진행·랭킹·배지 트리·조건 시뮬레이션이 모두 이 함수로 이력을 읽으므로
+ * 걸러짐 조건은 여기 한 곳에만 둔다. (옛 행은 칸이 NULL이라 그대로 인정으로 읽힌다)
+ *
+ * «이미 처리한 활동 id» 조회(`getProcessedStravaIds`)는 반대로 걸러진 행도 **포함**한다 —
+ * 같은 활동을 다시 거르거나 다시 정산하지 않기 위해서다.
+ */
 export async function getActivityHistory(
   supabase: SupabaseClient,
   userId: string,
@@ -70,6 +79,7 @@ export async function getActivityHistory(
     .from('strava_activities')
     .select('normalized, start_date')
     .eq('user_id', userId)
+    .is('filter_reason', null)
 
   if (sinceDate) {
     query = query.gte('start_date', sinceDate)

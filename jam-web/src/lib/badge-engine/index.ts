@@ -1626,12 +1626,19 @@ export async function evaluateBadgesDetailed(
  */
 export async function evaluateBadges(
   userId: string,
-  activities: NormalizedActivity[]
+  activities: NormalizedActivity[],
+  /**
+   * `skipInitialSyncFlagUpdate: true` — 인정 활동이 하나도 없는 첫 동기화에서 `users.initial_sync_done`을
+   * true로 바꾸지 않는다(티켓 20261017_1421, 운영 로직 3.4절). 옛 칸의 뜻은 바꾸지 않고, 호출부가
+   * «인정 활동이 하나도 없었다»고 알릴 때만 갱신을 건너뛴다. 생략하면 기존과 같다.
+   */
+  options?: { skipInitialSyncFlagUpdate?: boolean }
 ): Promise<string[]> {
   const { earned } = await evaluateBadgesDetailed(userId, activities, {
     dryRun: false,
     triggeredBy: 'strava_sync',
     silent: false,
+    ...(options?.skipInitialSyncFlagUpdate ? { skipInitialSyncFlagUpdate: true } : {}),
   })
   return earned.map((b) => b.id)
 }

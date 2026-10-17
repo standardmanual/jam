@@ -114,7 +114,7 @@ function makeRawActivity(id: number): StravaSummaryActivity {
     comment_count: 0,
     athlete_count: 1,
     photo_count: 0,
-    map: { id: `m${id}`, summary_polyline: null, resource_state: 2 },
+    map: { id: `m${id}`, summary_polyline: 'encoded-polyline', resource_state: 2 },
     trainer: false,
     commute: false,
     manual: false,
@@ -122,7 +122,7 @@ function makeRawActivity(id: number): StravaSummaryActivity {
     visibility: 'everyone',
     flagged: false,
     gear_id: null,
-    start_latlng: [],
+    start_latlng: [37.5, 127.0],
     end_latlng: [],
     average_speed: 2.7,
     max_speed: 3.5,
@@ -159,6 +159,7 @@ describe('processFetchedActivities — 새 활동 0건이어도 배지 평가는
       missionsCompleted: 0,
       earnedBadgeIds: [],
       completedMissionIds: [],
+      settledCount: 0,
     })
   })
 

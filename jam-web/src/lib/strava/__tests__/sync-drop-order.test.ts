@@ -103,7 +103,7 @@ function makeRawActivity(overrides: Partial<StravaSummaryActivity> = {}): Strava
     comment_count: 0,
     athlete_count: 1,
     photo_count: 0,
-    map: { id: 'm1', summary_polyline: null, resource_state: 2 },
+    map: { id: 'm1', summary_polyline: 'encoded-polyline', resource_state: 2 },
     trainer: false,
     commute: false,
     manual: false,
@@ -111,7 +111,7 @@ function makeRawActivity(overrides: Partial<StravaSummaryActivity> = {}): Strava
     visibility: 'everyone',
     flagged: false,
     gear_id: null,
-    start_latlng: [],
+    start_latlng: [37.5, 127.0],
     end_latlng: [],
     average_speed: 2.7, // ≈ 9.7km/h — 차량 속도 필터(기본 60km/h) 통과
     max_speed: 3.5,

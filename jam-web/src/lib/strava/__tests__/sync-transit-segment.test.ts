@@ -103,7 +103,7 @@ function makeWalkActivity(): StravaSummaryActivity {
     comment_count: 0,
     athlete_count: 1,
     photo_count: 0,
-    map: { id: 'm9001', summary_polyline: null, resource_state: 2 },
+    map: { id: 'm9001', summary_polyline: 'encoded-polyline', resource_state: 2 },
     trainer: false,
     commute: false,
     manual: false,
@@ -111,7 +111,7 @@ function makeWalkActivity(): StravaSummaryActivity {
     visibility: 'everyone',
     flagged: false,
     gear_id: null,
-    start_latlng: [],
+    start_latlng: [37.5, 127.0],
     end_latlng: [],
     average_speed: 2500 / 1800, // m/s — distance/moving_time과 일치
     max_speed: kmhToMps(119.5),

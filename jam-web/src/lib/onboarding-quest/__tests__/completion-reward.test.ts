@@ -109,8 +109,11 @@ function makeFakeSupabase(opts: {
       return {
         select: () => ({
           eq: () => ({
-            limit: () => ({
-              maybeSingle: async () => ({ data: opts.hasActivity ? { id: 1 } : null, error: null }),
+            // 걸러진 활동은 «실제 첫 활동»이 아니다 — `filter_reason IS NULL` 조건이 붙는다(티켓 20261017_1421)
+            is: () => ({
+              limit: () => ({
+                maybeSingle: async () => ({ data: opts.hasActivity ? { id: 1 } : null, error: null }),
+              }),
             }),
           }),
         }),

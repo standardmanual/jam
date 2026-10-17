@@ -32,7 +32,7 @@ vi.mock('@/lib/utils', () => ({
   encrypt: vi.fn(async (v: string) => v),
 }))
 vi.mock('@/lib/strava/api', () => ({
-  getActivities: getActivitiesMock,
+  getAllActivities: getActivitiesMock,
   getActivityStreams: vi.fn(async () => null),
   refreshStravaToken: vi.fn(),
 }))

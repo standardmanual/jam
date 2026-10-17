@@ -29,6 +29,7 @@ const state = vi.hoisted(() => ({
     cols: string
     eqs: [string, unknown][]
     nots: [string, string, unknown][]
+    iss: [string, unknown][]
     gtes: [string, unknown][]
     ordered: string | null
     range: [number, number] | null
@@ -45,16 +46,19 @@ function mockSupabase(): SupabaseClient {
     let cols = ''
     const eqs: [string, unknown][] = []
     const nots: [string, string, unknown][] = []
+    const iss: [string, unknown][] = []
     const gtes: [string, unknown][] = []
     let ordered: string | null = null
     let range: [number, number] | null = null
     const builder: Record<string, unknown> = {}
     const run = (single: boolean) => {
-      state.queries.push({ table, cols, eqs, nots, gtes, ordered, range })
+      state.queries.push({ table, cols, eqs, nots, iss, gtes, ordered, range })
       if (state.error) return { data: null, error: state.error }
       let rows = (state.tables[table] ?? []).filter(
         (r) =>
           eqs.every(([c, v]) => r[c] === v) &&
+          // `.is(col, null)` — 칸이 없는 옛 행(undefined)도 NULL로 본다
+          iss.every(([c, v]) => (r[c] ?? null) === v) &&
           nots.every(([c, op, v]) => (op === 'is' && v === null ? r[c] !== null && r[c] !== undefined : true)) &&
           gtes.every(([c, v]) => Date.parse(String(r[c])) >= Date.parse(String(v)))
       )
@@ -73,6 +77,10 @@ function mockSupabase(): SupabaseClient {
     }
     builder.eq = (col: string, val: unknown) => {
       eqs.push([col, val])
+      return builder
+    }
+    builder.is = (col: string, val: unknown) => {
+      iss.push([col, val])
       return builder
     }
     builder.not = (col: string, op: string, val: unknown) => {
@@ -664,6 +672,8 @@ describe('조회 — 읽는 열·필터 고정', () => {
     expect(q).toBeDefined()
     expect(q!.cols).toBe('start_date, normalized')
     expect(q!.eqs).toEqual([['user_id', ME]])
+    // 걸러진 활동(`filter_reason`이 있는 행)은 «활동한 날»에 넣지 않는다 (티켓 20261017_1421)
+    expect(q!.iss).toEqual([['filter_reason', null]])
     // 가입한 날(2026-09-16 KST) 0시 = 2026-09-15T15:00:00Z
     expect(q!.gtes).toEqual([['start_date', '2026-09-15T15:00:00.000Z']])
     expect(q!.ordered).toBe('id')
@@ -755,7 +765,7 @@ describe('조회 — 페이징·오류', () => {
     const failingFrom = (table: string) => {
       if (table === 'strava_activities') {
         const failing: Record<string, unknown> = {}
-        for (const m of ['select', 'eq', 'gte', 'order', 'range']) failing[m] = () => failing
+        for (const m of ['select', 'eq', 'is', 'gte', 'order', 'range']) failing[m] = () => failing
         failing.then = (resolve: (v: unknown) => void) =>
           Promise.resolve({ data: null, error: { message: 'DB 장애' } }).then(resolve)
         return failing
