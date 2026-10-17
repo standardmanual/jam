@@ -391,6 +391,8 @@ describe('buildBadgeInsertPayload', () => {
       background_image_url: null,
       background_video_url: null,
       background_animation: null,
+      always_locked: false,
+      unlock_required: null,
     });
   });
 

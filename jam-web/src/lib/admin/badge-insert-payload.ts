@@ -86,6 +86,8 @@ export function buildBadgeInsertPayload(body: BadgeInsertBody): BadgeInsert {
     unlock_required,
   } = body
 
+  const lock = normalizeLockFields(type, always_locked, unlock_required)
+
   return {
     name,
     description,
@@ -138,6 +140,7 @@ export function buildBadgeInsertPayload(body: BadgeInsertBody): BadgeInsert {
     // lib/badgeBackgroundTheme.ts 한 곳에 있다.
     background_animation: background_animation ?? null,
     // 잠금 칸 두 개는 아이템 배지에만 저장한다. 검증(최소값 미만 거부)은 라우트가 먼저 끝낸다(티켓 20261018_0051 2회).
-    ...normalizeLockFields(type, always_locked, unlock_required),
+    always_locked: lock.always_locked,
+    unlock_required: lock.unlock_required,
   }
 }
