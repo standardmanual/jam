@@ -92,6 +92,15 @@ code:
 | patch_available | 토글 | O |
 | patch_price_krw | 숫자 입력 (patch_available=true 시 활성) | X |
 | condition_json | **조건 빌더** (아래 별도 설명) | X (item 타입은 불필요) |
+| always_locked | 체크박스 «잠긴 채로 받아요» (**item 타입에만 표시**) | X |
+| unlock_required | 숫자 입력, 단위 «잼» (**item 타입에만 표시**) | X (비우면 등급 최소값) |
+
+**잠금 칸(아이템 배지, 티켓 20261018_0051 2회, 운영 로직 7.4절)**
+- «잠긴 채로 받아요»를 켜면 이 배지로 받은 개체는 늘 잠긴 채다. 끄면 동기화·캡슐이 설정 확률(`jam_policy.locked_roll_probability`)로 잠글 수 있다.
+- «여는 데 필요한 양»을 비우면 저장은 null이고 발급 때 그 등급의 최소값(`jam_policy.locked_min_*`, 기본 Common 30·Rare 60·Epic 120·Mystic 240)을 쓴다. 값이 있으면 1 이상의 정수여야 하고
+  **등급 최소값보다 적으면 저장 API가 400으로 거부한다**(양식도 같은 함수·문구로 저장 전에 막는다, `lib/admin/badge-lock-guard.ts`). 수정 때는 병합한 값(등급 변경 포함)으로 다시 판정한다.
+- item 타입이 아니면 입력을 보이지 않고, 요청에 값이 실려 와도 저장하지 않는다(`always_locked` false, `unlock_required` null). 개체에 고정된 필요한 양은 나중에 바꿔도 이미 받은 개체에 영향이 없다.
+- 아이템 배지 현황의 배지별 개체 목록(`/admin/item-badges/[badgeId]`)에 «잠김» 열이 있어 개체의 상태(잠김 채운 양/필요한 양잼, 열림, 연 개체)를 읽기로 보여 준다.
 
 **유효기간(valid_from·valid_until)**
 - 기간은 KST 날짜·시각(`datetime-local`)으로 입력하고, 바꾸지 않은 칸은 원래 값을 그대로 저장한다
