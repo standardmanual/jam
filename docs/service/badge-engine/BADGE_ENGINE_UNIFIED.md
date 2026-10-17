@@ -385,7 +385,7 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
 **공통 정책 (①·② 두 엔진 공유 — ③은 아래 중 섀도우밴·피드 이벤트만 같은 방식으로 따른다):**
 - 첫 싱크 게이트: `users.initial_sync_done=false`인 첫 싱크는 고가치 발급 제한 (액티비티=계열의 첫 칸만 — 등급형은 Common 외 차단·무한레벨형은 Lv.1 외 차단, 아이템=첫 드랍 확정이되 rarity 정책 적용)
 - **가입 시점 앵커**(티켓 20260905_0030 §5): 누적 조건이 보는 이력은 `users.created_at` 이후로 잘린다. `getActivityHistory(supabase, userId, sinceDate)`의 3번째 인자를 호출처 4곳(`badge-engine/index.ts` · `missions/checker.ts` · `strava/sync.ts`의 진행 스냅샷 · `badges/tree/page.tsx`)이 전부 넘긴다 — 한 곳이라도 빠지면 화면·미션·발급이 서로 다른 창을 본다. **이번 싱크 배치는 앵커를 거치지 않는다**(첫 싱크의 «마지막 활동 1건 정산»이 성립해야 하므로). 앵커로 `strava_connections.created_at`을 쓰지 않은 이유는 `activity-history.ts`의 `getSignupAnchorDate` 주석 참조
-- 섀도우밴: 밴 레벨에 따라 고가치(rarity) 발급 차단 — `src/lib/abusing/`
+- 섀도우밴: **없앴다**(티켓 20261017_1426). 새 발급 경로(액티비티·사용량·체크인·POI 배지, 아이템 배지 드랍)는 `user_shadow_bans`를 읽지 않는다. JAM 2.0의 제재는 이용 정지 하나이고, 정지 중인 유저는 동기화 입구에서 막혀 발급 경로에 오지 않는다(`user_suspensions`, `lib/suspension/`). 아래 Step 4.9 등 옛 서술은 이력으로 남긴다
 - 피드 이벤트: 발급 시 `recordFeedEvent` ('badge_earned' / 'item_dropped')
 - **새 활동 0건 동기화에서도 ① 배지 평가는 항상 실행된다** *(2026-09-06, 티켓 20260906_1430)*:
   유저가 "동기화" 버튼을 눌러도 새로 받아올 활동이 없으면 `evaluateBadges(userId, [])`를
@@ -534,7 +534,7 @@ Step 4. [진행 트랙 중복 제거] 단일 조건 배지는 activity_type:조�
   ※ 무한레벨형·반복형은 트랙 병합 대상이 아니다(progressionKey=null) — 걸리면 발급분이 1개로 접힌다
 Step 4.8. [첫 싱크 게이트] 첫 싱크면 계열의 첫 칸(등급형=Common / 레벨형=Lv.1) 외 전부 missed
           ※ action='increment'는 발급이 아니므로 이 게이트의 대상이 아니다
-Step 4.9. [섀도우밴 게이트] (2026-09-10, 티켓 20260910_1719) rarity가 있는 배지(등급형·
+Step 4.9. [섀도우밴 게이트 — 2026-10-17 티켓 20261017_1426에서 없앴다, 아래는 이력] (2026-09-10, 티켓 20260910_1719) rarity가 있는 배지(등급형·
           반복형)만 대상 — getUserBanLevel()·shouldAllowDrop() 재사용, usageBadges.ts와
           같은 판정. 차단되면 missed(사유: '섀도우밴 — 고가치 등급 발급 차단'). 레벨형(rarity
           NULL)은 대상이 아니다. action='increment'도 새 행을 만들지 않으므로 대상이 아니다

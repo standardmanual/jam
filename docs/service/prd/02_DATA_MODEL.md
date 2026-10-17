@@ -68,7 +68,8 @@ code:
 [소셜]          users ─N:M(팔로우)─ users (user_follows)
                 user_activity_feed (배지/드랍/미션 이벤트 통합 피드)
 
-[어뷰징]        abusing_policy(싱글톤) / user_shadow_bans / poi_blocks / abusing_logs
+[어뷰징]        abusing_policy(싱글톤) / user_shadow_bans(옛 방식, 새 코드는 읽지 않음) / poi_blocks / abusing_logs
+                users ─1:N─ user_suspensions (이용 정지 상태와 이력, JAM 2.0)
 
 [CMS/기타]      today_cards (홈 에디토리얼) / theme_presets (어드민 컬러 테마)
                 engine_decision_log (배지·드랍 엔진 판정 로그)
@@ -150,7 +151,7 @@ Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure
 동기화 원본 활동 기록. `strava_id`, `jam_activity_type`, `distance_km`, `normalized`(정규화된 활동 JSON), `processed_via`(sync/reconcile/manual_backfill). UNIQUE(user_id, strava_id)로 중복 동기화 방지 — 이기종 데이터 중복 이슈의 실제 해결책.
 
 **걸러짐 표시 두 칸**(마이그레이션 223, 티켓 20261017_1421):
-- `filter_reason` (text, NULL 허용): NULL이면 인정 활동, 값이 있으면 걸러진 사유(`virtual`·`unsupported_sport`·`manual_entry`·`file_upload`·`no_gps`·`too_short`·`vehicle_speed`; `too_short`는 교통수단 구간을 뺀 뒤 10분 미만일 때도 붙는다). 걸러진 활동도 저장하지만 이력 조회(`getActivityHistory`)는 `filter_reason IS NULL`인 행만 읽는다. 「이미 처리한 활동」 조회는 걸러진 행도 포함한다. 옛 행은 NULL이라 인정으로 읽히며 소급하지 않는다. 판정 기준은 `BADGE_ENGINE_UNIFIED.md` §1 「인정 활동 입구」.
+- `filter_reason` (text, NULL 허용): NULL이면 인정 활동, 값이 있으면 걸러진 사유(`virtual`·`unsupported_sport`·`manual_entry`·`file_upload`·`no_gps`·`too_short`·`vehicle_speed`·`suspended`; `suspended`는 이용 정지 구간 `[suspended_at, lifted_at)`에 시작한 활동에 동기화가 붙이고(정산하지 않고 행만 남김, 티켓 20261017_1426) `too_short`는 교통수단 구간을 뺀 뒤 10분 미만일 때도 붙는다). 걸러진 활동도 저장하지만 이력 조회(`getActivityHistory`)는 `filter_reason IS NULL`인 행만 읽는다. 「이미 처리한 활동」 조회는 걸러진 행도 포함한다. 옛 행은 NULL이라 인정으로 읽히며 소급하지 않는다. 판정 기준은 `BADGE_ENGINE_UNIFIED.md` §1 「인정 활동 입구」.
 - `source_meta` (jsonb, NULL 허용): 인정 판정에 쓴 원본 값의 유무·모양 요약(종목 이름, `manual`, 업로드 번호 유무, 외부 ID 모양(없음/파일 이름/그 밖), 시작 좌표 유무, 경로 요약 유무, 종목 불일치로 걷기로 바꿨을 때만 원래 종목 `typeMismatchFrom`). 경로 요약 본문·좌표·외부 ID 원문은 담지 않는다. 파일 업로드 판정이 추정 기준이라, 나중에 실제 데이터로 기준을 검증하고 고치기 위한 근거다.
 
 `normalized`의 구조는 `NormalizedActivity`(`src/types/strava.ts`)다. 2026-09-05부터 v5 확장
@@ -829,9 +830,31 @@ FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기
 | 테이블 | 역할 |
 |---|---|
 | abusing_policy | 싱글톤. 섀도우밴 등급별 드랍률 배율, GPS 최대 속도, POI 재방문 차단시간, 차량 탑승 속도 필터, 교통수단 구간 기준, 종목 불일치 기준값(마이그레이션 224: `mismatch_run_min_speed_kmh` 기본 6, `mismatch_cycling_min_speed_kmh` 기본 10 — 평균 속도가 이 값보다 느린 러닝·자전거는 걷기로 계산, 어뷰징 정책 화면에서 수정, 티켓 20261017_1421) |
-| user_shadow_bans | soft/hard 밴 등급 + 만료시각 |
+| user_shadow_bans | soft/hard 밴 등급 + 만료시각. **옛 방식이다**: JAM 2.0의 제재는 이용 정지 하나라 새 동기화·드랍·배지 코드는 읽지 않는다(티켓 20261017_1426). 옛 어드민 «제재» 탭, 옛 API, 픽업 GPS 감지(쓰기), `drop-engine/preview.ts`가 아직 쓰므로 표와 함수는 그대로 두고 삭제는 묶음 6 전환 단계에서 한다 |
+| user_suspensions | JAM 2.0 이용 정지의 상태와 이력(마이그레이션 230, 티켓 20261017_1426). 아래 «user_suspensions» 절 |
 | poi_blocks | 유저×POI 단위 72시간 재방문 차단 |
 | abusing_logs | GPS 조작 감지 등 이벤트 로그 |
+
+#### user_suspensions — 마이그레이션 230, 티켓 20261017_1426
+운영 로직 16.1·16.4·16.7절. 정지는 운영자만 걸고 푼다. 정지를 걸 때마다 한 줄이 생기고 풀면 그 줄의 `lifted_at`을 채운다(줄은 지우지 않는 이력). RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
+
+| 칸 | 뜻 |
+|---|---|
+| `user_id` | 정지된 유저. 유저 삭제 시 함께 삭제(`ON DELETE CASCADE`) |
+| `reason` | 정지 까닭(필수, 공백만은 CHECK로 거부). 유저에게 안내로 보여 준다 |
+| `suspended_at` / `suspended_by` | 건 시각 / 건 운영자(TEXT, 어드민 이메일 등) |
+| `lifted_at` / `lifted_by` / `lift_note` | 푼 시각(NULL이면 진행 중, 끝나는 날 없음) / 푼 운영자 / 풀 때 남기는 상담 결과 메모(선택). `lifted_at >= suspended_at`을 CHECK로 지킨다 |
+
+인덱스: 유저당 진행 중 정지(`lifted_at IS NULL`)를 하나로 묶는 부분 유니크 `uq_user_suspensions_active`, 이력 읽기용 `(user_id, suspended_at DESC)`. 다시 걸려면 먼저 풀어야 한다.
+
+**규칙(앱 코드가 판정):**
+- 정지 구간은 반열린 `[suspended_at, lifted_at)`이고 `lifted_at`이 NULL이면 끝없음이다. 판정 함수는 `lib/suspension/suspension-contract.ts`의 `isDuringSuspension`(순수 파일, 클라이언트도 가져올 수 있다)이고 서버 조회는 `lib/suspension/suspension.ts`(`getActiveSuspension`·`getSuspensionPeriods`·`assertNotSuspended`)다.
+- **정지 중 동기화는 막는다**: `syncStravaActivities`가 끊김 확인 뒤·보류 확인 앞에서 `assertNotSuspended`를 부른다. `/api/strava/sync`는 403(`code: 'user_suspended'`)으로, 콜백 직후 동기화는 건너뛰고 연결 저장과 로그인은 그대로 진행한다. 가진 잼·아이템 배지·배지·포인트는 그대로 둔다.
+- **정지 기간 활동은 정산하지 않는다**: `processFetchedActivities`가 정지 구간을 한 번 읽어 활동 `start_date`가 구간 안이면 `filter_reason = 'suspended'`로 기록만 한다(풀린 뒤 동기화해도 같다).
+- **보류 받기(`POST /api/strava/pending-items`)도 막는다**(403). 보류 조회(GET)와 내 기록 보기는 막지 않는다.
+- 조회가 실패하면 «정지 아님»으로 보지 않고 던진다(동기화·받기를 하지 않는다).
+- 캡슐·믹스·드랍·픽업·미션 참가는 각 묶음이 같은 `assertNotSuspended`를 연결한다. 정지 유저를 미션 순위에서 빼는 일은 묶음 5가 한다.
+- 어드민 «제재» 탭, 유저 목록의 제재 표시, 홈 상단 배너(정지 사실·까닭·문의 방법)는 이 티켓 2회다.
 
 ---
 
