@@ -18,6 +18,8 @@ import {
 } from '@/lib/strava/connection-state'
 import { markStravaDisconnected } from '@/lib/strava/connection-write'
 import { countPendingItems, SyncPendingItemsError } from '@/lib/strava/pending-items'
+import { assertNotSuspended, getSuspensionPeriods } from '@/lib/suspension/suspension'
+import { isDuringSuspension } from '@/lib/suspension/suspension-contract'
 import { qualifyActivity, MIN_QUALIFIED_MOVING_TIME_SEC, type FilterReason, type SourceMeta } from '@/lib/strava/qualification'
 import { detectAndExcludeTransitSegments, needsTransitStreams } from '@/lib/strava/transitSegment'
 import { applyTypeMismatch } from '@/lib/strava/typeMismatch'
@@ -33,7 +35,6 @@ import { recordActivityRecap } from '@/lib/notifications/recap'
 import { selectCompletableDrafts } from '@/lib/notifications/batch/collections'
 import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
 import { getAbusingPolicy, DEFAULT_POLICY, effectiveVehicleSpeedFilterKmh } from '@/lib/abusing/policy'
-import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 import { classifyStravaSyncFailure, recordStravaSyncFailure } from '@/lib/strava/syncFailures'
 import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
@@ -767,11 +768,24 @@ export async function processFetchedActivities(
     return evaluateWithoutNewActivities(supabase, userId, isFirstSync)
   }
 
+  // 정지 기간 활동 미정산(티켓 20261017_1426, 운영 로직 16.4절) — 정지를 건 시점부터 푼 시점까지 «시작한» 활동은
+  // 풀린 뒤에 동기화해도 정산하지 않는다. 구간은 한 번만 읽는다. 읽지 못하면 던져 동기화하지 않는다.
+  const suspensionPeriods = await getSuspensionPeriods(supabase, userId)
+
   // ① 인정 판정 — 다섯 기준을 갖춘 활동만 정산 대상이 된다. 걸러진 활동은 아래에서 사유와 함께 기록만 한다.
   const qualifiedEntries: { raw: StravaSummaryActivity; sourceMeta: SourceMeta }[] = []
   const rejectedRecords: ProcessedActivityRecord[] = []
   for (const raw of rawActivities) {
     const result = qualifyActivity(raw)
+    if (isDuringSuspension(Date.parse(raw.start_date), suspensionPeriods)) {
+      // 활동 행은 남기고(다시 가져와 처리하지 않도록) 정산은 하지 않는다. 인정 판정 사유보다 먼저 붙는다.
+      rejectedRecords.push({
+        activity: normalizeActivity(raw),
+        filterReason: 'suspended',
+        sourceMeta: result.sourceMeta,
+      })
+      continue
+    }
     if (result.qualified) {
       qualifiedEntries.push({ raw, sourceMeta: result.sourceMeta })
     } else {
@@ -957,24 +971,8 @@ export async function processFetchedActivities(
     }
   }
 
-  // 섀도우밴 게이트 (티켓 20260910_1804) — POI·체크인 배지 발급 경로에도 20260910_1719가
-  // 액티비티 배지(evaluateBadgesDetailed)·usageBadges.ts에 붙인 것과 동일한 정책을 적용한다:
-  // rarity가 있는 배지만 대상, 강등 없이 미발급으로 처리한다.
-  //   - 체크인 반복 획득(2번째 이후 방문 — isFirstEarn === false)은 이미 보유한 배지의
-  //     방문 횟수만 늘리는 카운터 증가와 동등하다(usageBadges.ts·index.ts의 "action==='increment'
-  //     는 대상 아님" 원칙과 동일). 최초 획득(isFirstEarn === true)에만 게이트를 적용한다.
-  //   - 레거시 activity+poi_id 경로는 항상 최초 1회 지급(existing 체크로 중복 차단)이므로
-  //     매번 게이트 대상이다.
-  // 조회 비용은 최초 발급 후보가 실제로 있을 때만 든다(banLevel·policy를 지연 조회 + 캐시).
-  let shadowBanLevel: Awaited<ReturnType<typeof getUserBanLevel>> | null = null
-  let shadowBanPolicy: Awaited<ReturnType<typeof getAbusingPolicy>> | null = null
-  const isBlockedByShadowBan = async (rarity: BadgeRarity | null): Promise<boolean> => {
-    if (!rarity) return false
-    if (shadowBanLevel === null) shadowBanLevel = await getUserBanLevel(userId)
-    if (shadowBanLevel === 'none') return false
-    if (shadowBanPolicy === null) shadowBanPolicy = await getAbusingPolicy()
-    return !shouldAllowDrop(rarity, shadowBanLevel, shadowBanPolicy)
-  }
+  // 섀도우밴 게이트는 없앴다(티켓 20261017_1426) — JAM 2.0의 제재는 이용 정지 하나다.
+  // 정지 중인 유저는 동기화 입구(syncStravaActivities)에서 막히고, 정지 기간 활동은 정산하지 않는다.
 
   // 배지 타입별 발급
   //   - checkin 타입: user_checkin_badge_earns에 매번 새 행(반복 획득). 보유 여부 체크 없음.
@@ -1002,14 +1000,6 @@ export async function processFetchedActivities(
         }
         const visitCount = (priorEarnCount ?? 0) + 1
         const isFirstEarn = visitCount === 1
-
-        // 섀도우밴 게이트 — 최초 획득만 대상(반복 방문은 카운터 증가와 동등, 위 주석 참고).
-        if (isFirstEarn && (await isBlockedByShadowBan(badge.rarity))) {
-          console.info(
-            `[processFetchedActivities] 섀도우밴으로 체크인 배지 발급 차단 — userId: ${userId}, badge: ${badge.name}, rarity: ${badge.rarity}`
-          )
-          continue
-        }
 
         const earnPayload = {
           user_id: userId,
@@ -1081,14 +1071,6 @@ export async function processFetchedActivities(
         .maybeSingle()
 
       if (existing) continue
-
-      // 섀도우밴 게이트 — 레거시 경로는 항상 최초 1회 지급이므로 매번 대상.
-      if (await isBlockedByShadowBan(badge.rarity)) {
-        console.info(
-          `[processFetchedActivities] 섀도우밴으로 POI 배지 발급 차단 — userId: ${userId}, badge: ${badge.name}, rarity: ${badge.rarity}`
-        )
-        continue
-      }
 
       const legacyEarnPayload = {
         user_id: userId,
@@ -1390,6 +1372,10 @@ export async function syncStravaActivities(
   if (connection.disconnected_at) {
     throw new StravaDisconnectedError(connection.disconnect_reason)
   }
+
+  // 이용 정지 중이면 동기화하지 않는다(티켓 20261017_1426, 운영 로직 16.4절). 가진 잼·아이템 배지·배지·포인트는 그대로 둔다.
+  // 정지 여부를 읽지 못하면 던져 동기화하지 않는다. 수동 경로(/api/strava/sync)와 콜백 직후 동기화가 모두 이 함수를 지난다.
+  await assertNotSuspended(supabase, userId)
 
   // 고르지 않은 보류가 있으면 동기화하지 않는다(티켓 20261017_1425, 운영 로직 6.4절). 새 보류가 더 쌓이면 한 번의 고르기가
   // 그것까지 «고르지 않음»으로 닫아 버리므로, 가져오기·정산 전에 막는다. 보류 개수를 읽지 못하면 던져 동기화하지 않는다.

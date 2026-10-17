@@ -55,6 +55,12 @@ vi.mock('@/lib/notifications', () => ({
 vi.mock('@/lib/notifications/recap', () => ({ recordActivityRecap: vi.fn(async () => {}) }))
 vi.mock('@/lib/notifications/batch/collections', () => ({ selectCompletableDrafts: vi.fn(() => []) }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) }))
+// 이용 정지 검사는 sync-suspension.test.ts가 따로 확인한다 — 이 파일의 페이크는 user_suspensions 표를 지원하지 않는다 (티켓 20261017_1426)
+vi.mock('@/lib/suspension/suspension', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/suspension/suspension')>()),
+  assertNotSuspended: vi.fn(async () => {}),
+  getSuspensionPeriods: vi.fn(async () => []),
+}))
 
 import { syncStravaActivities } from '../sync'
 

@@ -4,6 +4,8 @@
  * GET  /api/strava/pending-items          — 로그인한 유저의 대기 중 보류 목록과 골라야 할 개수
  * POST /api/strava/pending-items { chosenIds } — 고르기를 확정한다(고르지 않은 것은 받을 수 없다)
  *
+ * POST(받기)만 이용 정지를 검사한다(403, 티켓 20261017_1426). GET은 정지 중에도 허용한다 — 내 기록 보기는 막지 않는다.
+ *
  * `resolve_sync_pending_items`는 service_role만 실행할 수 있다. 세션으로 유저를 확인한 뒤 서버 클라이언트(service role)로
  * 호출하고, 대상은 세션 유저뿐이다. 입력은 서버가 검증한다(uuid 문자열 배열, 중복 없음, 길이 상한).
  */
@@ -13,6 +15,8 @@ import { d } from '@/lib/i18n'
 import { getPendingItems, resolvePendingItems, type ResolvePendingErrorCode } from '@/lib/strava/pending-items'
 import { runPendingFollowUps } from '@/lib/strava/pending-followups'
 import { PENDING_CHOSEN_IDS_MAX } from '@/lib/strava/pending-items-contract'
+import { assertNotSuspended, UserSuspendedError } from '@/lib/suspension/suspension'
+import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,6 +76,8 @@ export async function POST(request: Request) {
 
   try {
     const service = createServiceClient()
+    // 이용 정지 중이면 받지 않은 보상을 받을 수 없다. 정지 여부를 읽지 못하면 던져 받지 않는다(아래 catch가 500).
+    await assertNotSuspended(service, user.id)
     const result = await resolvePendingItems(service, user.id, chosenIds)
     if (!result.ok) {
       const { status, message } = RESOLVE_ERRORS[result.error]
@@ -88,6 +94,10 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ granted: result.granted, discarded: result.discarded, itemIds: result.itemIds })
   } catch (err) {
+    if (err instanceof UserSuspendedError) {
+      const body: UserSuspendedResponse = { error: d.suspension.pendingBlocked, code: USER_SUSPENDED_CODE }
+      return NextResponse.json(body, { status: 403 })
+    }
     console.error('[/api/strava/pending-items] 고르기 오류:', err)
     return NextResponse.json({ error: d.syncPending.resolveFailed }, { status: 500 })
   }

@@ -8,12 +8,16 @@
  * - 고르기 대상은 세션 유저뿐이다 — 본문의 `userId`는 무시한다. RPC는 서비스 클라이언트로 부른다.
  * - DB 함수의 거절 코드를 상태 코드와 `d.syncPending.*` 문구로 바꾼다(`wrong_count` 400+expected, `invalid_selection` 400, `no_pending` 409,
  *   `inventory_not_found` 404). 그 밖의 오류는 500(`d.syncPending.resolveFailed`).
+ * - POST는 이용 정지 중이면 403(`code: 'user_suspended'`, `d.suspension.pendingBlocked`)이고 RPC를 부르지 않는다. 정지 여부를 읽지 못하면 500이고
+ *   RPC를 부르지 않는다. GET은 정지 중에도 막지 않는다(티켓 20261017_1426).
  *
  * 실행: cd jam-web && npx vitest run src/app/api/strava/pending-items/__tests__/route.test.ts
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { d } from '@/lib/i18n'
 import { PENDING_CHOSEN_IDS_MAX } from '@/lib/strava/pending-items-contract'
+import { UserSuspendedError } from '@/lib/suspension/suspension'
+import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
 
 const USER_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_USER_ID = '99999999-9999-4999-8999-999999999999'
@@ -24,6 +28,7 @@ const state = vi.hoisted(() => ({ authenticated: true }))
 const getPendingMock = vi.hoisted(() => vi.fn())
 const resolveMock = vi.hoisted(() => vi.fn())
 const followUpMock = vi.hoisted(() => vi.fn())
+const assertNotSuspendedMock = vi.hoisted(() => vi.fn())
 const serviceClient = vi.hoisted(() => ({ marker: 'service-role-client' }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -42,6 +47,11 @@ vi.mock('@/lib/strava/pending-items', () => ({
   resolvePendingItems: (...args: unknown[]) => resolveMock(...args),
 }))
 
+vi.mock('@/lib/suspension/suspension', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/suspension/suspension')>()
+  return { ...actual, assertNotSuspended: (...args: unknown[]) => assertNotSuspendedMock(...args) }
+})
+
 vi.mock('@/lib/strava/pending-followups', () => ({
   runPendingFollowUps: (...args: unknown[]) => followUpMock(...args),
 }))
@@ -57,6 +67,8 @@ beforeEach(() => {
   resolveMock.mockReset()
   followUpMock.mockReset()
   followUpMock.mockResolvedValue(undefined)
+  assertNotSuspendedMock.mockReset()
+  assertNotSuspendedMock.mockResolvedValue(undefined)
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -217,5 +229,46 @@ describe('POST /api/strava/pending-items — 고르기', () => {
 
     expect(res.status).toBe(500)
     await expect(res.json()).resolves.toEqual({ error: d.syncPending.resolveFailed })
+  })
+})
+
+describe('POST /api/strava/pending-items — 이용 정지', () => {
+  it('정지 중이면 403과 안내 문구이고 고르기·후속 처리를 부르지 않는다', async () => {
+    assertNotSuspendedMock.mockRejectedValue(new UserSuspendedError({ reason: '어뷰징 의심', suspendedAt: '2026-10-17T00:00:00.000Z' }))
+
+    const res = await post({ chosenIds: [ID_A] })
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: d.suspension.pendingBlocked, code: USER_SUSPENDED_CODE })
+    expect(resolveMock).not.toHaveBeenCalled()
+    expect(followUpMock).not.toHaveBeenCalled()
+  })
+
+  it('세션 유저 id로 서비스 클라이언트를 통해 정지 여부를 확인한다', async () => {
+    resolveMock.mockResolvedValue({ ok: true, granted: 1, discarded: 0, itemIds: [ID_A] })
+
+    await post({ chosenIds: [ID_A] })
+
+    expect(assertNotSuspendedMock).toHaveBeenCalledWith(serviceClient, USER_ID)
+  })
+
+  it('정지 여부를 읽지 못하면 «정지 아님»으로 보지 않고 500이며 고르기를 부르지 않는다', async () => {
+    assertNotSuspendedMock.mockRejectedValue(new Error('user_suspensions 조회 실패: db down'))
+
+    const res = await post({ chosenIds: [ID_A] })
+
+    expect(res.status).toBe(500)
+    await expect(res.json()).resolves.toEqual({ error: d.syncPending.resolveFailed })
+    expect(resolveMock).not.toHaveBeenCalled()
+  })
+
+  it('GET은 정지 중에도 막지 않는다 — 정지 검사를 하지 않는다', async () => {
+    assertNotSuspendedMock.mockRejectedValue(new UserSuspendedError({ reason: 'x', suspendedAt: '2026-10-17T00:00:00.000Z' }))
+    getPendingMock.mockResolvedValue({ pendingCount: 0, freeSlots: 0, chooseCount: 0, items: [] })
+
+    const res = await GET()
+
+    expect(res.status).toBe(200)
+    expect(assertNotSuspendedMock).not.toHaveBeenCalled()
   })
 })

@@ -1,16 +1,11 @@
 /**
- * POI·체크인 배지 발급 경로 — 섀도우밴 게이트 회귀 테스트 (티켓 20260910_1804)
+ * POI·체크인 배지 발급 경로 — 섀도우밴을 읽지 않는다 (티켓 20261017_1426, 옛 티켓 20260910_1804를 대체)
  *
- * `processFetchedActivities`의 POI 매칭 후 지급 블록(`type='checkin'` 반복 획득 경로,
- * 레거시 `type='activity'`+`poi_id` 경로) 양쪽에 섀도우밴 게이트가 전혀 연결돼 있지
- * 않았다 — 참고 티켓 20260910_1719(액티비티 배지 경로)와 동일한 패턴(rarity 있는 배지만
- * 대상, 강등 없이 미발급)으로 연결한다.
+ * JAM 2.0의 제재는 이용 정지 하나다. `processFetchedActivities`의 POI 매칭 후 지급 블록(`type='checkin'` 반복 획득 경로,
+ * 레거시 `type='activity'`+`poi_id` 경로)은 예전에 섀도우밴 등급으로 발급을 막았지만 이제는 `getUserBanLevel`을 부르지 않는다.
+ * 옛 테이블 `user_shadow_bans`에 hard 밴이 남아 있어도 발급은 평소대로다.
  *
- * 체크인 반복 획득(2번째 이후 방문)은 카운터 증가와 동등해 게이트 대상에서 제외하고,
- * 최초 획득에만 적용한다는 정책 결정도 함께 고정한다.
- *
- * 모킹은 shadow-ban-gate.test.ts(getUserBanLevel만 모킹, shouldAllowDrop·DEFAULT_POLICY는
- * 실제 구현 사용)의 관례를 그대로 따른다.
+ * `getUserBanLevel` 모킹은 «불리지 않음»을 고정하려고 남겼다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/strava/__tests__/sync-poi-checkin-shadow-ban.test.ts
  */
@@ -191,8 +186,8 @@ beforeEach(() => {
   matchedPoisFixture = []
 })
 
-describe('POI 체크인 배지 발급 — 섀도우밴 게이트(최초 획득)', () => {
-  it('hard 밴 유저는 mystic 등급 체크인 배지를 받지 못한다', async () => {
+describe('POI 체크인 배지 발급 — 섀도우밴을 읽지 않는다', () => {
+  it('hard 밴이 남아 있어도 mystic 등급 체크인 배지를 정상 획득하고 밴 조회를 하지 않는다', async () => {
     const badge: Badge = { id: 'badge-1', type: 'checkin', name: '체크인 배지', image_url: null, rarity: 'mystic' }
     matchedPoisFixture = [{ id: 'poi-1', name: '북한산', linked_badge_id: badge.id }]
     getUserBanLevelMock.mockResolvedValue('hard')
@@ -201,11 +196,12 @@ describe('POI 체크인 배지 발급 — 섀도우밴 게이트(최초 획득)'
 
     const result = await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
 
-    expect(inserts.some((i) => i.table === 'user_checkin_badge_earns')).toBe(false)
-    expect(result.earnedBadgeIds).not.toContain(badge.id)
+    expect(inserts.some((i) => i.table === 'user_checkin_badge_earns')).toBe(true)
+    expect(result.earnedBadgeIds).toContain(badge.id)
+    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 
-  it('밴 없는 정상 유저는 mystic 등급 체크인 배지를 정상 획득한다', async () => {
+  it('밴 없는 유저도 mystic 등급 체크인 배지를 정상 획득한다', async () => {
     const badge: Badge = { id: 'badge-2', type: 'checkin', name: '체크인 배지2', image_url: null, rarity: 'mystic' }
     matchedPoisFixture = [{ id: 'poi-2', name: '남산', linked_badge_id: badge.id }]
     const inserts: { table: string; payload: Record<string, unknown> }[] = []
@@ -217,7 +213,7 @@ describe('POI 체크인 배지 발급 — 섀도우밴 게이트(최초 획득)'
     expect(result.earnedBadgeIds).toContain(badge.id)
   })
 
-  it('hard 밴 유저라도 반복 방문(2번째 체크인)은 카운터 증가로 취급해 차단하지 않는다', async () => {
+  it('반복 방문(2번째 체크인)도 정상 획득한다', async () => {
     const badge: Badge = { id: 'badge-3', type: 'checkin', name: '체크인 배지3', image_url: null, rarity: 'mystic' }
     matchedPoisFixture = [{ id: 'poi-3', name: '한강', linked_badge_id: badge.id }]
     getUserBanLevelMock.mockResolvedValue('hard')
@@ -234,7 +230,7 @@ describe('POI 체크인 배지 발급 — 섀도우밴 게이트(최초 획득)'
     expect(result.earnedBadgeIds).toContain(badge.id)
   })
 
-  it('rarity가 없는(레벨형) 체크인 배지는 밴과 무관하게 게이트 대상이 아니다', async () => {
+  it('rarity가 없는(레벨형) 체크인 배지도 정상 획득한다', async () => {
     // DB CHECK 제약상 실사용에서는 rarity가 항상 존재하지만, 방어적으로 null 케이스도 통과 확인
     const badge = { id: 'badge-4', type: 'checkin' as const, name: '레벨형', image_url: null, rarity: null as unknown as BadgeRarity }
     matchedPoisFixture = [{ id: 'poi-4', name: '올림픽공원', linked_badge_id: badge.id }]
@@ -249,8 +245,8 @@ describe('POI 체크인 배지 발급 — 섀도우밴 게이트(최초 획득)'
   })
 })
 
-describe('레거시 activity+poi_id 배지 발급 — 섀도우밴 게이트', () => {
-  it('hard 밴 유저는 mystic 등급 레거시 POI 배지를 받지 못한다', async () => {
+describe('레거시 activity+poi_id 배지 발급 — 섀도우밴을 읽지 않는다', () => {
+  it('hard 밴이 남아 있어도 mystic 등급 레거시 POI 배지를 정상 획득하고 밴 조회를 하지 않는다', async () => {
     const badge: Badge = { id: 'badge-5', type: 'activity', name: '레거시 배지', image_url: null, rarity: 'mystic' }
     matchedPoisFixture = [{ id: 'poi-5', name: '경복궁', linked_badge_id: badge.id }]
     getUserBanLevelMock.mockResolvedValue('hard')
@@ -259,11 +255,12 @@ describe('레거시 activity+poi_id 배지 발급 — 섀도우밴 게이트', (
 
     const result = await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
 
-    expect(inserts.some((i) => i.table === 'user_activity_badges')).toBe(false)
-    expect(result.earnedBadgeIds).not.toContain(badge.id)
+    expect(inserts.some((i) => i.table === 'user_activity_badges')).toBe(true)
+    expect(result.earnedBadgeIds).toContain(badge.id)
+    expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 
-  it('밴 없는 정상 유저는 레거시 POI 배지를 정상 획득한다', async () => {
+  it('밴 없는 유저도 레거시 POI 배지를 정상 획득한다', async () => {
     const badge: Badge = { id: 'badge-6', type: 'activity', name: '레거시 배지2', image_url: null, rarity: 'mystic' }
     matchedPoisFixture = [{ id: 'poi-6', name: '광화문', linked_badge_id: badge.id }]
     const inserts: { table: string; payload: Record<string, unknown> }[] = []

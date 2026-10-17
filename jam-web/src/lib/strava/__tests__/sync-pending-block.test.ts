@@ -64,6 +64,10 @@ function makeFake(pending: { count: number | null; error?: { message: string } }
         },
       }
     }
+    if (table === 'user_suspensions') {
+      // 정지 아님 — 이 파일은 보류 차단만 본다(정지 차단은 sync-suspension.test.ts, 티켓 20261017_1426)
+      return { select: () => ({ eq: () => ({ is: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }
+    }
     if (table === 'sync_pending_items') {
       return {
         select: (_cols: string, opts?: { head?: boolean; count?: string }) => {

@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { encrypt } from '@/lib/utils'
 import { syncStravaActivities } from '@/lib/strava/sync'
+import { UserSuspendedError } from '@/lib/suspension/suspension'
 import { STRAVA_DISCONNECT_CLEARED } from '@/lib/strava/connection-state'
 import {
   STRAVA_OAUTH_STATE_COOKIE,
@@ -193,7 +194,12 @@ export async function GET(request: NextRequest) {
     try {
       await syncStravaActivities(userId)
     } catch (err) {
-      console.error('[JAM! Strava] 즉시 동기화 실패 (연동은 성공):', err)
+      if (err instanceof UserSuspendedError) {
+        // 이용 정지 중이면 동기화만 건너뛴다 — 연결 저장과 로그인 흐름은 그대로 진행한다 (티켓 20261017_1426)
+        console.info('[JAM! Strava] 이용 정지 중이라 즉시 동기화를 건너뜀 (연동은 성공)')
+      } else {
+        console.error('[JAM! Strava] 즉시 동기화 실패 (연동은 성공):', err)
+      }
     }
 
     // reveal=1 — 도착 화면에서 최근 획득 배지를 되읽어 획득 연출을 띄우는 플래그.

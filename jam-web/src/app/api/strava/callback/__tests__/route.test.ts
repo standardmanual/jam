@@ -116,6 +116,7 @@ vi.mock('@/lib/strava/sync', () => ({
 }))
 
 import { GET } from '../route'
+import { UserSuspendedError } from '@/lib/suspension/suspension'
 
 interface RequestOptions {
   cookie?: string | null
@@ -297,6 +298,21 @@ describe('GET /api/strava/callback', () => {
       const res = await GET(makeRequest())
 
       expect(location(res)).toBe(`${BASE_URL}/profile?strava=connected&reveal=1`)
+      expectStateCookieCleared(res)
+    })
+
+    it('이용 정지 중이면 즉시 동기화만 건너뛰고 연결 저장과 로그인 흐름은 그대로다 (티켓 20261017_1426)', async () => {
+      syncMock.mockRejectedValue(new UserSuspendedError({ reason: '운영 정책 위반', suspendedAt: '2026-10-10T00:00:00.000Z' }))
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      const res = await GET(makeRequest())
+
+      expect(location(res)).toBe(`${BASE_URL}/profile?strava=connected&reveal=1`)
+      expect(db.rows).toHaveLength(1)
+      expect(db.rows[0]).toMatchObject({ user_id: SESSION_USER_ID, strava_athlete_id: 424242 })
+      expect(syncMock).toHaveBeenCalledWith(SESSION_USER_ID)
+      // 정지는 예상된 상태라 오류 로그를 남기지 않는다
+      expect(errorSpy).not.toHaveBeenCalled()
       expectStateCookieCleared(res)
     })
   })
