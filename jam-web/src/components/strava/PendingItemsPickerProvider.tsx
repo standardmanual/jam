@@ -10,8 +10,9 @@ import { createPickerSession, shouldAutoOpen, type PickResult } from '@/lib/stra
  *
  * 고르기 오버레이(`PendingItemsPickOverlay`)를 한 곳에서 열고 닫는다. 세 경로가 같은 오버레이를 연다.
  *   1. 앱을 열 때 — 첫 마운트에서 `initialPendingCount`가 0보다 크면 자동으로 연다(전체 로드·새로고침·앱 재실행이 «앱을 열 때»다).
- *      클라이언트 이동은 레이아웃이 유지돼 이 프로바이더가 다시 마운트되지 않으므로 페이지를 옮길 때마다 뜨지 않는다
- *      («나중에»로 닫은 뒤에도 같은 세션에서 다시 뜨지 않는다. sessionStorage는 쓰지 않는다). 새로고침하면 다시 뜬다.
+ *      클라이언트 이동은 레이아웃이 유지돼 이 프로바이더가 다시 마운트되지 않으므로 페이지를 옮길 때마다 뜨지 않는다.
+ *      한 번 열었다가 닫으면 수동·자동 경로 구분 없이 같은 세션에서 다시 자동으로 뜨지 않는다(sessionStorage는 쓰지 않는다).
+ *      동기화 버튼은 언제든 다시 열 수 있고, 새로고침하면 다시 뜬다.
  *   2. 동기화 버튼이 409(`sync_pending_items`)를 받았을 때 — `usePendingItemsPicker().openPicker()`.
  *   3. 동기화 응답의 `pendingItems`가 0보다 클 때 — 같은 `openPicker()`.
  *
@@ -54,6 +55,7 @@ export default function PendingItemsPickerProvider({
   const [quiet, setQuiet] = useState(false)
   // 고르기 요청 한 건의 수명(이미 열려 있으면 같은 결과를 기다리게 한다). 한 번 만들고 유지한다.
   const [session] = useState(createPickerSession)
+  // 같은 effect가 렌더 사이에 겹쳐 자동 요청을 두 번 보내지 않게 하는 보조 가드. 세션 전체의 «다시 열지 않음»은 session.hasEngaged()가 정한다.
   const autoRequestedRef = useRef(false)
 
   // 첫 렌더에서 한 번만 읽는다. 화면에 그리는 값이 아니라 자동 재진입 시점만 정하므로 서버·클라이언트 불일치가 생기지 않는다.
@@ -92,9 +94,12 @@ export default function PendingItemsPickerProvider({
     [session]
   )
 
-  // 앱을 열 때 자동 재진입 — 한 번만(닫은 뒤·읽기 실패 뒤에도 같은 세션에서는 다시 시도하지 않는다)
+  // 앱을 열 때 자동 재진입 — 이 세션에서 고르기를 한 번이라도 열었으면(수동·자동 구분 없이) 하지 않는다.
+  // «나중에»로 닫은 뒤 router.refresh로 initialPendingCount가 0에서 N으로 바뀌어도 다시 열리지 않는다.
+  // 열면 오버레이 상태가 바뀌어 다시 렌더되고, 그 렌더에서 engaged가 true라 autoOpen은 false가 된다.
   const autoOpen = shouldAutoOpen({
     pendingCount: initialPendingCount,
+    engaged: session.hasEngaged(),
     revealPending,
     sawRevealOverlay: sawOverlay,
     tabBarHidden,

@@ -8,6 +8,9 @@
  * - `fetchPendingPayload`: 성공은 목록, 실패·타임아웃은 null이다(던지지 않는다).
  * - `createPickerSession`: 이미 열려 있으면 두 번 열지 않고 같은 결과를 기다린다. 끝나면 모두에게 같은 결과를 알린다.
  * - `shouldAutoOpen`: 보류가 없으면 하지 않고, `reveal=1`이면 연출이 끝난 뒤(탭바 숨김 → 다시 보임)나 시간 제한 뒤에 한다.
+ *   이 세션에서 고르기를 한 번이라도 열었으면(수동·자동 구분 없이) 하지 않는다.
+ * - 프로바이더 재진입 흐름: 프로바이더의 effect와 같은 판정(`shouldAutoOpen` + `session.hasEngaged()` + `request`)을 모사해
+ *   첫 마운트 자동 재진입, 닫은 뒤 미재진입, 수동으로 열고 닫은 뒤 count가 0에서 N으로 바뀌어도 미재진입(결함 재현), reveal=1 보류 후 재판단을 고정한다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/strava/__tests__/pending-pick.test.ts
  */
@@ -218,7 +221,7 @@ describe('createPickerSession', () => {
 })
 
 describe('shouldAutoOpen', () => {
-  const base = { pendingCount: 2, revealPending: false, sawRevealOverlay: false, tabBarHidden: false, revealTimedOut: false }
+  const base = { pendingCount: 2, engaged: false, revealPending: false, sawRevealOverlay: false, tabBarHidden: false, revealTimedOut: false }
 
   it('보류가 없으면 하지 않는다', () => {
     expect(shouldAutoOpen({ ...base, pendingCount: 0 })).toBe(false)
@@ -239,5 +242,137 @@ describe('shouldAutoOpen', () => {
 
   it('reveal=1인데 연출이 끝내 뜨지 않으면 시간 제한 뒤에 한다', () => {
     expect(shouldAutoOpen({ ...base, revealPending: true, revealTimedOut: true })).toBe(true)
+  })
+})
+
+describe('shouldAutoOpen — 세션에서 이미 열었으면', () => {
+  const base = { pendingCount: 2, engaged: true, revealPending: false, sawRevealOverlay: false, tabBarHidden: false, revealTimedOut: false }
+
+  it('보류가 있어도 하지 않는다', () => {
+    expect(shouldAutoOpen(base)).toBe(false)
+  })
+
+  it('reveal=1의 연출이 끝났거나 시간 제한이 지나도 하지 않는다', () => {
+    expect(shouldAutoOpen({ ...base, revealPending: true, sawRevealOverlay: true })).toBe(false)
+    expect(shouldAutoOpen({ ...base, revealPending: true, revealTimedOut: true })).toBe(false)
+  })
+})
+
+describe('프로바이더 재진입 흐름 (프로바이더 effect 모사)', () => {
+  type View = { pendingCount: number; revealPending?: boolean; sawRevealOverlay?: boolean; tabBarHidden?: boolean; revealTimedOut?: boolean }
+
+  /** 프로바이더가 렌더·effect마다 하는 일과 같다: 자동 재진입 판정 → 필요하면 'auto'로 요청, 오버레이는 started일 때만 열린다 */
+  function mountProvider() {
+    const session = createPickerSession()
+    const autoOpens: number[] = []
+    return {
+      session,
+      autoOpens,
+      /** 렌더 한 번(레이아웃이 새 값을 내려줌) 뒤 effect 실행 */
+      render(view: View) {
+        const shouldOpen = shouldAutoOpen({
+          pendingCount: view.pendingCount,
+          engaged: session.hasEngaged(),
+          revealPending: view.revealPending ?? false,
+          sawRevealOverlay: view.sawRevealOverlay ?? false,
+          tabBarHidden: view.tabBarHidden ?? false,
+          revealTimedOut: view.revealTimedOut ?? false,
+        })
+        if (shouldOpen && session.request().started) autoOpens.push(view.pendingCount)
+      },
+    }
+  }
+
+  it('첫 마운트에서 count>0이면 자동으로 연다', () => {
+    const p = mountProvider()
+
+    p.render({ pendingCount: 2 })
+
+    expect(p.autoOpens).toEqual([2])
+    expect(p.session.isOpen()).toBe(true)
+  })
+
+  it('첫 마운트에서 count=0이면 열지 않는다', () => {
+    const p = mountProvider()
+
+    p.render({ pendingCount: 0 })
+
+    expect(p.autoOpens).toEqual([])
+    expect(p.session.isOpen()).toBe(false)
+  })
+
+  it('«나중에»(dismissed)로 닫은 뒤에는 다시 렌더돼도 자동으로 열지 않는다', () => {
+    const p = mountProvider()
+    p.render({ pendingCount: 2 })
+    p.session.finish('dismissed')
+
+    p.render({ pendingCount: 2 })
+    p.render({ pendingCount: 3 })
+
+    expect(p.autoOpens).toEqual([2])
+    expect(p.session.isOpen()).toBe(false)
+  })
+
+  it('열려 있는 동안 다시 렌더돼도 두 번 열지 않는다', () => {
+    const p = mountProvider()
+
+    p.render({ pendingCount: 2 })
+    p.render({ pendingCount: 2 })
+
+    expect(p.autoOpens).toEqual([2])
+  })
+
+  it('수동(동기화 버튼·응답)으로 열고 닫은 뒤 count가 0에서 N으로 바뀌어도 자동으로 열지 않는다 — 결함 재현', () => {
+    const p = mountProvider()
+    p.render({ pendingCount: 0 })
+    // 동기화 응답 pendingItems>0 → SyncButton이 openPicker() = request('manual')
+    expect(p.session.request().started).toBe(true)
+    p.session.finish('dismissed')
+
+    // router.refresh()로 레이아웃이 initialPendingCount를 N>0으로 다시 내려줌
+    p.render({ pendingCount: 2 })
+
+    expect(p.autoOpens).toEqual([])
+    expect(p.session.isOpen()).toBe(false)
+  })
+
+  it('자동 재진입 뒤에도 동기화 버튼(수동)은 언제든 다시 열 수 있다', () => {
+    const p = mountProvider()
+    p.render({ pendingCount: 2 })
+    p.session.finish('dismissed')
+
+    expect(p.session.request().started).toBe(true)
+  })
+
+  it('reveal=1이면 연출이 뜨기 전·떠 있는 동안 보류하고, 끝나면 다시 판단해 연다', () => {
+    const p = mountProvider()
+
+    p.render({ pendingCount: 2, revealPending: true })
+    p.render({ pendingCount: 2, revealPending: true, sawRevealOverlay: true, tabBarHidden: true })
+    expect(p.autoOpens).toEqual([])
+
+    p.render({ pendingCount: 2, revealPending: true, sawRevealOverlay: true, tabBarHidden: false })
+
+    expect(p.autoOpens).toEqual([2])
+  })
+
+  it('reveal=1인데 연출이 끝내 뜨지 않으면 시간 제한 뒤에 연다', () => {
+    const p = mountProvider()
+
+    p.render({ pendingCount: 2, revealPending: true })
+    p.render({ pendingCount: 2, revealPending: true, revealTimedOut: true })
+
+    expect(p.autoOpens).toEqual([2])
+  })
+
+  it('reveal=1로 보류하는 동안 수동으로 열었다 닫으면 연출이 끝나도 자동으로 열지 않는다', () => {
+    const p = mountProvider()
+    p.render({ pendingCount: 2, revealPending: true })
+    p.session.request()
+    p.session.finish('resolved')
+
+    p.render({ pendingCount: 2, revealPending: true, sawRevealOverlay: true, tabBarHidden: false })
+
+    expect(p.autoOpens).toEqual([])
   })
 })

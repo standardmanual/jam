@@ -83,10 +83,13 @@ export async function submitChoice(fetcher: typeof fetch, chosenIds: readonly st
 export function createPickerSession() {
   let promise: Promise<PickResult> | null = null
   let resolver: ((result: PickResult) => void) | null = null
+  // 이 세션에서 고르기를 한 번이라도 열었는가(수동·자동 경로 구분 없음). 새로고침 전까지 되돌리지 않는다.
+  let engaged = false
   return {
     /** 새로 열어야 하면 `{ promise, started: true }`, 이미 열려 있으면 `started: false`와 같은 promise를 돌려준다 */
     request(): { promise: Promise<PickResult>; started: boolean } {
       if (promise) return { promise, started: false }
+      engaged = true
       promise = new Promise<PickResult>((resolve) => {
         resolver = resolve
       })
@@ -102,23 +105,30 @@ export function createPickerSession() {
     isOpen(): boolean {
       return promise !== null
     },
+    /** 이 세션에서 고르기를 한 번이라도 열었으면 true. 자동 재진입은 이 값이 true면 하지 않는다. */
+    hasEngaged(): boolean {
+      return engaged
+    },
   }
 }
 
 /**
  * 앱을 열 때의 자동 재진입을 지금 해도 되는가.
  *  - 보류가 없으면 하지 않는다.
- *  - «한 번만»은 호출부가 지킨다(프로바이더가 시도 여부를 ref로 기억해 «나중에»로 닫은 뒤·읽기 실패 뒤에도 같은 세션에서 다시 열지 않는다).
+ *  - 이 세션에서 고르기를 한 번이라도 열었으면(`engaged`, `createPickerSession().hasEngaged()`) 하지 않는다. 수동(동기화 버튼·응답)·
+ *    자동 경로 구분이 없어서, «나중에»로 닫은 뒤 `router.refresh()`로 보류 개수가 0에서 N으로 바뀌어도 새로고침 전까지 다시 열리지 않는다.
  *  - 주소에 `reveal=1`이 있으면(최초 Strava 연동 연출) 그 연출이 끝날 때까지 미룬다. 연출 오버레이가 탭바를 숨겼다가 다시
  *    보이면 끝난 것이고, 연출이 끝내 뜨지 않으면 시간 제한 뒤에 푼다.
  */
 export function shouldAutoOpen(input: {
   pendingCount: number
+  engaged: boolean
   revealPending: boolean
   sawRevealOverlay: boolean
   tabBarHidden: boolean
   revealTimedOut: boolean
 }): boolean {
+  if (input.engaged) return false
   if (input.pendingCount <= 0) return false
   if (!input.revealPending) return true
   return (input.sawRevealOverlay && !input.tabBarHidden) || input.revealTimedOut
