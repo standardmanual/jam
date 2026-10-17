@@ -13,7 +13,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeType } from '@/types/database'
-import { computeBookCompletion } from './completion-basis'
+import { COMPLETION_BADGE_TYPES, computeBookCompletion } from './completion-basis'
 import { buildFilledByBook } from './filled-by-book'
 import { applyDroppableItemBookFilter } from './visibility'
 
@@ -35,7 +35,7 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
   // 판정 원천은 visibility.ts(티켓 20260930_1516).
   const now = new Date().toISOString()
   const { data: booksRaw, error: booksError } = await applyDroppableItemBookFilter(
-    supabase.from('item_books').select('id, name'),
+    supabase.from('item_books').select('id, name, tier_mode'),
     now
   )
 
@@ -43,13 +43,13 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
     console.error('[findCompletableItemBooks] item_books 조회 오류:', booksError)
     return []
   }
-  const books = (booksRaw ?? []) as { id: string; name: string }[]
+  const books = (booksRaw ?? []) as { id: string; name: string; tier_mode: boolean | null }[]
   if (books.length === 0) return []
 
   const bookIds = books.map((b) => b.id)
 
-  // 20260825_025: 완성 기준선(분모)은 소프트 삭제 여부와 무관하게 고정한다.
-  // 삭제된 배지도 그대로 북 소속 배지 집합에 포함한다.
+  // 완성 기준선(분모)은 소프트 삭제 배지를 뺀다(티켓 20261016_2340 2회, 179·222와 같게 통일 —
+  // 20260825_025 정책을 대체). 삭제 여부는 completion-basis.ts가 입구에서 거른다.
   //
   // 티켓 20260825_029: checker.ts와 동일한 이유로(활성 아이템북 전체 × item+poi 타입 —
   // type 필터만으로는 1000행 미만이 구조적으로 보장되지 않음) range로 페이지를 끝까지
@@ -61,14 +61,17 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
     item_book_id: string | null
     type: BadgeType
     drop_excluded: boolean
+    name: string
+    rarity: string | null
+    deleted_at: string | null
   }
   const bookBadges: BookBadgeRow[] = []
   for (let from = 0; ; from += COMPLETABLE_BADGE_PAGE_SIZE) {
     const { data: pageRaw, error: badgesError } = await supabase
       .from('badges')
-      .select('id, item_book_id, type, drop_excluded')
+      .select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at')
       .in('item_book_id', bookIds)
-      .in('type', ['item', 'checkin'])
+      .in('type', [...COMPLETION_BADGE_TYPES])
       .order('id')
       .range(from, from + COMPLETABLE_BADGE_PAGE_SIZE - 1)
 
@@ -161,18 +164,19 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
   }
 
   const completionByBook = computeBookCompletion(bookBadges, new Set<string>(), {
-    types: ['item', 'checkin'],
     filledByBook,
+    tierModeBookIds: new Set(books.filter((b) => b.tier_mode).map((b) => b.id)),
   })
 
   const result: CompletableItemBook[] = []
   for (const book of books) {
-    // 분모 = 소속 배지 − drop_excluded (completion-basis.ts)
-    const badgeIds = completionByBook.get(book.id)?.denomIds ?? []
+    // 분모·분자는 모두 completion-basis.ts의 결과를 그대로 쓴다(티켓 20261016_2340 2회)
+    const completion = completionByBook.get(book.id)
+    const badgeIds = completion?.denomIds ?? []
     if (badgeIds.length === 0) continue // 배지 없는 북은 완성 불가
 
-    const filledInBook = filledByBook.get(book.id)
-    const remaining = badgeIds.filter((id) => !filledInBook?.has(id))
+    const filledIds = new Set(completion?.filledIds)
+    const remaining = badgeIds.filter((id) => !filledIds.has(id))
     // 잔여 칸이 없으면 이미 완성 상태 — #11의 대상이 아니다
     if (remaining.length === 0) continue
 

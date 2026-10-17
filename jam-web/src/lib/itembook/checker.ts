@@ -17,7 +17,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { ItemBookRow, BadgeType } from '@/types/database'
-import { computeBookCompletion } from './completion-basis'
+import { COMPLETION_BADGE_TYPES, computeBookCompletion } from './completion-basis'
 import { buildFilledByBook } from './filled-by-book'
 import { applyDroppableItemBookFilter } from './visibility'
 
@@ -47,7 +47,8 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     now
   )
 
-  const itemBooks = itemBooksRaw as ItemBookRow[] | null
+  // tier_mode는 수기 ItemBookRow에 아직 없다(생성 타입에는 있음) — 이 파일에서만 좁게 덧붙인다
+  const itemBooks = itemBooksRaw as (ItemBookRow & { tier_mode?: boolean | null })[] | null
 
   if (itemBooksError || !itemBooks || itemBooks.length === 0) {
     if (itemBooksError) console.error('[checkItemBookCompletion] item_books 조회 오류:', itemBooksError)
@@ -58,8 +59,9 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
 
   // 2. 북별 전체 소속 배지 수 (item + poi)
   //    Phase 16: poi 타입 배지도 북에 소속 가능. "보유" 판정 방식만 타입별로 다름.
-  //    20260825_025: 완성 기준선(분모)은 소프트 삭제 여부와 무관하게 고정한다.
-  //    삭제된 배지도 그대로 카운트해 분모·분자가 항상 같은 배지 집합을 기준으로 하게 한다.
+  //    완성 기준선(분모)은 소프트 삭제 배지를 뺀다(티켓 20261016_2340 2회 — 완성 기록을 남기는 DB 함수
+  //    179·222와 같게 통일, 20260825_025의 「삭제 배지도 분모에 고정」 정책을 대체).
+  //    삭제 여부는 completion-basis.ts가 입구에서 거르므로 조회에는 deleted_at을 함께 가져온다.
   //
   //    티켓 20260825_029: 활성 아이템북 전체(bookIds)를 대상으로 item+poi 타입을 함께 모으는
   //    쿼리라 type 필터만으로는 PostgREST 기본 응답 상한(1000행) 미만이 구조적으로 보장되지
@@ -68,14 +70,22 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   //    완성되지 않았는데 완성으로 오판·보상 배지가 오발급될 위험이 있다. range로 페이지를
   //    끝까지 넘겨 전량을 가져온다.
   const CHECKER_BADGE_PAGE_SIZE = 1000
-  type BookBadgeRow = { id: string; item_book_id: string; type: BadgeType; drop_excluded: boolean }
+  type BookBadgeRow = {
+    id: string
+    item_book_id: string
+    type: BadgeType
+    drop_excluded: boolean
+    name: string
+    rarity: string | null
+    deleted_at: string | null
+  }
   const bookBadges: BookBadgeRow[] = []
   for (let from = 0; ; from += CHECKER_BADGE_PAGE_SIZE) {
     const { data: pageRaw, error } = await supabase
       .from('badges')
-      .select('id, item_book_id, type, drop_excluded')
+      .select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at')
       .in('item_book_id', bookIds)
-      .in('type', ['item', 'checkin'])
+      .in('type', [...COMPLETION_BADGE_TYPES])
       .order('id')
       .range(from, from + CHECKER_BADGE_PAGE_SIZE - 1)
 
@@ -157,12 +167,16 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   const completedIds: string[] = []
   const completeBooks: ItemBookRow[] = []
 
+  const tierModeBookIds = new Set(itemBooks.filter((b) => b.tier_mode).map((b) => b.id))
   const completionByBook = computeBookCompletion(bookBadges, new Set<string>(), {
-    types: ['item', 'checkin'],
     filledByBook,
+    tierModeBookIds,
   })
 
   for (const book of itemBooks) {
+    // tier_mode 컬렉션은 옛 완성 기록(user_item_book_completions)과 컬렉션 단위 보상 배지 후보에서 뺀다.
+    // 등급별 완성은 slot_item_into_book_tiered가 user_item_book_tier_completions에 기록한다(티켓 20261016_2340).
+    if (tierModeBookIds.has(book.id)) continue
     // 분모가 0인 북(배지 없음)은 complete=false
     if (!completionByBook.get(book.id)?.complete) continue
 
