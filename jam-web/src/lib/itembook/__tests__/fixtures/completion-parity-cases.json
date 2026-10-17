@@ -1,0 +1,304 @@
+{
+  "description": "완성 판정 일치 사례표. completion-basis.ts(코드)와 supabase/tests/222_completion_parity.test.sql(179·222 함수)이 같은 표를 쓴다. sql=false 사례는 코드만 확인한다.",
+  "cases": [
+    {
+      "name": "옛: 둘 중 하나만 꽂으면 미완성",
+      "tierMode": false,
+      "badges": [
+        {"key": "a", "name": "A", "type": "item"},
+        {"key": "b", "name": "B", "type": "item"}
+      ],
+      "slotted": ["a"],
+      "expect": {"tier": null, "total": 2, "filled": 1, "complete": false}
+    },
+    {
+      "name": "옛: 둘 다 꽂으면 완성",
+      "tierMode": false,
+      "badges": [
+        {"key": "a", "name": "A", "type": "item"},
+        {"key": "b", "name": "B", "type": "item"}
+      ],
+      "slotted": ["a", "b"],
+      "expect": {"tier": null, "total": 2, "filled": 2, "complete": true}
+    },
+    {
+      "name": "옛: 아무것도 안 꽂으면 미완성",
+      "tierMode": false,
+      "badges": [
+        {"key": "a", "name": "A", "type": "item"},
+        {"key": "b", "name": "B", "type": "item"}
+      ],
+      "slotted": [],
+      "expect": {"tier": null, "total": 2, "filled": 0, "complete": false}
+    },
+    {
+      "name": "옛: 소프트 삭제 배지는 분모에서 빠진다",
+      "tierMode": false,
+      "badges": [
+        {"key": "a", "name": "A", "type": "item"},
+        {"key": "b", "name": "B", "type": "item"},
+        {"key": "c", "name": "C", "type": "item", "deleted": true}
+      ],
+      "slotted": ["a", "b"],
+      "expect": {"tier": null, "total": 2, "filled": 2, "complete": true}
+    },
+    {
+      "name": "옛: 소프트 삭제 배지를 꽂아도 분자에 들지 않는다",
+      "tierMode": false,
+      "badges": [
+        {"key": "a", "name": "A", "type": "item"},
+        {"key": "b", "name": "B", "type": "item", "deleted": true}
+      ],
+      "slotted": ["a", "b"],
+      "expect": {"tier": null, "total": 1, "filled": 1, "complete": true}
+    },
+    {
+      "name": "옛: 삭제 배지 때문에 분모 0이면 완성이 아니다",
+      "tierMode": false,
+      "badges": [
+        {"key": "a", "name": "A", "type": "item", "deleted": true}
+      ],
+      "slotted": ["a"],
+      "expect": {"tier": null, "total": 0, "filled": 0, "complete": false}
+    },
+    {
+      "name": "옛: 드랍 제외 배지는 분모에서 빠진다",
+      "tierMode": false,
+      "badges": [
+        {"key": "a", "name": "A", "type": "item"},
+        {"key": "b", "name": "B", "type": "item"},
+        {"key": "c", "name": "C", "type": "item", "dropExcluded": true}
+      ],
+      "slotted": ["a", "b"],
+      "expect": {"tier": null, "total": 2, "filled": 2, "complete": true}
+    },
+    {
+      "name": "옛: 드랍 제외 배지를 꽂아도 분자에 들지 않는다",
+      "tierMode": false,
+      "badges": [
+        {"key": "a", "name": "A", "type": "item"},
+        {"key": "b", "name": "B", "type": "item"},
+        {"key": "c", "name": "C", "type": "item", "dropExcluded": true}
+      ],
+      "slotted": ["a", "c"],
+      "expect": {"tier": null, "total": 2, "filled": 1, "complete": false}
+    },
+    {
+      "name": "옛: 전부 드랍 제외이면 제외 없이 센다(일부만 꽂음)",
+      "tierMode": false,
+      "badges": [
+        {"key": "a", "name": "A", "type": "item", "dropExcluded": true},
+        {"key": "b", "name": "B", "type": "item", "dropExcluded": true}
+      ],
+      "slotted": ["a"],
+      "expect": {"tier": null, "total": 2, "filled": 1, "complete": false}
+    },
+    {
+      "name": "옛: 전부 드랍 제외이면 제외 없이 센다(모두 꽂음)",
+      "tierMode": false,
+      "badges": [
+        {"key": "a", "name": "A", "type": "item", "dropExcluded": true},
+        {"key": "b", "name": "B", "type": "item", "dropExcluded": true}
+      ],
+      "slotted": ["a", "b"],
+      "expect": {"tier": null, "total": 2, "filled": 2, "complete": true}
+    },
+    {
+      "name": "옛: 전부 드랍 제외이고 일부가 삭제이면 삭제를 뺀 나머지가 분모다",
+      "tierMode": false,
+      "badges": [
+        {"key": "a", "name": "A", "type": "item", "dropExcluded": true},
+        {"key": "b", "name": "B", "type": "item", "dropExcluded": true, "deleted": true}
+      ],
+      "slotted": ["a"],
+      "expect": {"tier": null, "total": 1, "filled": 1, "complete": true}
+    },
+    {
+      "name": "옛: 같은 이름 배지도 배지 수로 센다",
+      "tierMode": false,
+      "badges": [
+        {"key": "a", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "b", "name": "X", "rarity": "rare", "type": "item"}
+      ],
+      "slotted": ["a"],
+      "expect": {"tier": null, "total": 2, "filled": 1, "complete": false}
+    },
+    {
+      "name": "옛: 체크인 배지도 분모에 든다",
+      "tierMode": false,
+      "sql": false,
+      "note": "DB 장착 함수로는 체크인 배지를 꽂을 수 없어 코드 판정만 확인한다",
+      "badges": [
+        {"key": "a", "name": "A", "type": "item"},
+        {"key": "c", "name": "C", "type": "checkin"}
+      ],
+      "slotted": ["a"],
+      "expect": {"tier": null, "total": 2, "filled": 1, "complete": false}
+    },
+    {
+      "name": "옛: 삭제된 체크인 배지는 분모에서 빠진다",
+      "tierMode": false,
+      "sql": false,
+      "note": "DB 장착 함수로는 체크인 배지를 꽂을 수 없어 코드 판정만 확인한다",
+      "badges": [
+        {"key": "a", "name": "A", "type": "item"},
+        {"key": "c", "name": "C", "type": "checkin", "deleted": true}
+      ],
+      "slotted": ["a"],
+      "expect": {"tier": null, "total": 1, "filled": 1, "complete": true}
+    },
+    {
+      "name": "tier: 첫 등급 일부만 채우면 그 등급이 컬렉션 등급이고 미완성",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"},
+        {"key": "zc", "name": "Z", "rarity": "common", "type": "item"},
+        {"key": "xr", "name": "X", "rarity": "rare", "type": "item"},
+        {"key": "yr", "name": "Y", "rarity": "rare", "type": "item"},
+        {"key": "zr", "name": "Z", "rarity": "rare", "type": "item"}
+      ],
+      "slotted": ["xc", "yc"],
+      "expect": {"tier": "common", "total": 3, "filled": 2, "complete": false, "tiers": {"common": {"total": 3, "filled": 2, "complete": false}, "rare": {"total": 3, "filled": 0, "complete": false}}}
+    },
+    {
+      "name": "tier: 한 등급의 이름 칸을 모두 채우면 그 등급 완성",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"},
+        {"key": "zc", "name": "Z", "rarity": "common", "type": "item"},
+        {"key": "xr", "name": "X", "rarity": "rare", "type": "item"},
+        {"key": "yr", "name": "Y", "rarity": "rare", "type": "item"},
+        {"key": "zr", "name": "Z", "rarity": "rare", "type": "item"}
+      ],
+      "slotted": ["xc", "yc", "zc"],
+      "expect": {"tier": "common", "total": 3, "filled": 3, "complete": true, "tiers": {"common": {"total": 3, "filled": 3, "complete": true}, "rare": {"total": 3, "filled": 0, "complete": false}}}
+    },
+    {
+      "name": "tier: 높은 등급으로 시작해도 그 등급 기준으로 센다",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"},
+        {"key": "xr", "name": "X", "rarity": "rare", "type": "item"},
+        {"key": "yr", "name": "Y", "rarity": "rare", "type": "item"}
+      ],
+      "slotted": ["xr", "yr"],
+      "expect": {"tier": "rare", "total": 2, "filled": 2, "complete": true, "tiers": {"common": {"total": 2, "filled": 0, "complete": false}, "rare": {"total": 2, "filled": 2, "complete": true}}}
+    },
+    {
+      "name": "tier: 아무것도 안 꽂으면 등급은 없고 첫 등급 기준 0칸이다",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"},
+        {"key": "xr", "name": "X", "rarity": "rare", "type": "item"}
+      ],
+      "slotted": [],
+      "expect": {"tier": null, "total": 2, "filled": 0, "complete": false, "tiers": {"common": {"total": 2, "filled": 0, "complete": false}, "rare": {"total": 1, "filled": 0, "complete": false}}}
+    },
+    {
+      "name": "tier: 등급마다 이름 수가 달라도 그 등급의 이름 수가 분모다",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"},
+        {"key": "zc", "name": "Z", "rarity": "common", "type": "item"},
+        {"key": "xr", "name": "X", "rarity": "rare", "type": "item"},
+        {"key": "yr", "name": "Y", "rarity": "rare", "type": "item"}
+      ],
+      "slotted": ["xr", "yr"],
+      "expect": {"tier": "rare", "total": 2, "filled": 2, "complete": true, "tiers": {"common": {"total": 3, "filled": 0, "complete": false}, "rare": {"total": 2, "filled": 2, "complete": true}}}
+    },
+    {
+      "name": "tier: 다른 등급 배지는 분모에 들지 않는다",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"},
+        {"key": "zc", "name": "Z", "rarity": "common", "type": "item"},
+        {"key": "xm", "name": "X", "rarity": "mystic", "type": "item"}
+      ],
+      "slotted": ["xm"],
+      "expect": {"tier": "mystic", "total": 1, "filled": 1, "complete": true, "tiers": {"common": {"total": 3, "filled": 0, "complete": false}, "mystic": {"total": 1, "filled": 1, "complete": true}}}
+    },
+    {
+      "name": "tier: 소프트 삭제 배지는 그 등급 분모에서 빠진다",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"},
+        {"key": "zc", "name": "Z", "rarity": "common", "type": "item", "deleted": true}
+      ],
+      "slotted": ["xc", "yc"],
+      "expect": {"tier": "common", "total": 2, "filled": 2, "complete": true}
+    },
+    {
+      "name": "tier: 드랍 제외 배지는 분모에서 빠진다",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"},
+        {"key": "zc", "name": "Z", "rarity": "common", "type": "item", "dropExcluded": true}
+      ],
+      "slotted": ["xc", "yc"],
+      "expect": {"tier": "common", "total": 2, "filled": 2, "complete": true}
+    },
+    {
+      "name": "tier: 드랍 제외 배지를 꽂아도 분자에 들지 않는다",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"},
+        {"key": "zc", "name": "Z", "rarity": "common", "type": "item", "dropExcluded": true}
+      ],
+      "slotted": ["yc", "zc"],
+      "expect": {"tier": "common", "total": 2, "filled": 1, "complete": false}
+    },
+    {
+      "name": "tier: 그 등급이 전부 드랍 제외이면 제외 없이 센다(일부만 꽂음)",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item", "dropExcluded": true},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item", "dropExcluded": true}
+      ],
+      "slotted": ["xc"],
+      "expect": {"tier": "common", "total": 2, "filled": 1, "complete": false}
+    },
+    {
+      "name": "tier: 그 등급이 전부 드랍 제외이면 제외 없이 센다(모두 꽂음)",
+      "tierMode": true,
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item", "dropExcluded": true},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item", "dropExcluded": true}
+      ],
+      "slotted": ["xc", "yc"],
+      "expect": {"tier": "common", "total": 2, "filled": 2, "complete": true}
+    },
+    {
+      "name": "tier: 한 등급에 같은 이름이 둘이면 이름 하나로 센다",
+      "tierMode": true,
+      "badges": [
+        {"key": "x1", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "x2", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"}
+      ],
+      "slotted": ["x1", "yc"],
+      "expect": {"tier": "common", "total": 2, "filled": 2, "complete": true}
+    },
+    {
+      "name": "tier: 등급이 없는 배지는 어느 등급 칸에도 들지 않는다",
+      "tierMode": true,
+      "sql": false,
+      "note": "등급 없는 아이템 배지는 DB에서 만들 수 없어(기본값 common) 코드 판정만 확인한다",
+      "badges": [
+        {"key": "xc", "name": "X", "rarity": "common", "type": "item"},
+        {"key": "yc", "name": "Y", "rarity": "common", "type": "item"},
+        {"key": "zn", "name": "Z", "type": "item", "rarity": null}
+      ],
+      "slotted": ["xc", "yc"],
+      "expect": {"tier": "common", "total": 2, "filled": 2, "complete": true}
+    }
+  ]
+}
