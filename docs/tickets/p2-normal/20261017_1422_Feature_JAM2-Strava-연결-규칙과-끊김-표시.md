@@ -126,6 +126,8 @@ DB는 225 적용과 생성 타입 반영을 카리나가 끝냈다. 아현은 �
 
 ### 구현 내용 요약
 
+**2회 화면**(아현, 브랜치 `claude/jamwork-20261017_1422-strava-screen`): 오류로 끊긴 유저의 홈에 흰 Card·LabelChip·세 줄·검정 알약 «Strava 다시 동기화하기» 카드를 그리고, 상단 메뉴 가운데를 «다시 동기화»로 바꿨다. 프로필 수정에 «Strava 동기화» 구획(연결 중 «동기화 끊기», 끊김 «Strava 다시 동기화하기», 연결 없음은 구획 없음)과 끊기 확인 시트를 두었다. `?strava=duplicate`로 도착하면 `(main)/layout.tsx`의 중복 안내 시트가 어느 페이지든 열리고 버튼은 «취소» 하나다. 유저가 직접 끊은 경우(`user_disconnected`)는 홈에서 알람 없이 미연동처럼 보인다. 서버 보정 4건(a 일시 실패는 끊김 저장 안 함, b 교체 실패 시 새 행 되돌림, c 이미 끊긴 연결의 끊기 멱등, d 백필의 끊김 행 건너뜀)을 단위 시험으로 고정했다.
+
 ### 변경된 파일
 ```
 -
@@ -149,5 +151,39 @@ DB는 225 적용과 생성 타입 반영을 카리나가 끝냈다. 아현은 �
 
 ### 주요 의사결정 / 핵심 메모
 
+**비교표 4.1절 두 건(3.12절 연동 소스)**: 「다른 Strava 계정을 다시 연결해도 첫 동기화 표시가 그대로」 = **고침**(1회, `first_sync_pending`과 교체 연결). 「토큰 갱신이 실패해도 홈 카드가 연결됨으로 보임」 = **고침**(1회 끊김 저장 + 2회 홈·상단 메뉴·프로필의 판정 교체, 일시 실패는 끊김으로 저장하지 않도록 서버 보정 a).
+
+**«행이 있는가»로 읽던 곳의 검색 결과와 처리**(`grep -rn "strava_connections" jam-web/src`, 줄 번호는 작업 후 기준)
+
+| 위치 | 처리 | 내용 |
+|---|---|---|
+| `(main)/layout.tsx:39` | 교체 | 두 칸만 읽어 `resolveStravaUiState` → 상단 메뉴 상태. 조회 실패는 로그 + 동기화 시작 버튼(none)으로 둠 |
+| `(main)/page.tsx:42` | 교체 | `select('*')` → 두 칸. 판정 결과로 끊김 카드·진행도 CTA·퀘스트 카드 입력을 가름. 조회 실패는 `unknown`(알람·CTA 없음) |
+| `(main)/profile/edit/page.tsx:72` | 신규(판정 사용) | 클라이언트가 `disconnected_at, disconnect_reason, last_synced_at`만 읽음(`select('*')` 없음) |
+| `(main)/badges/[id]/page.tsx:100` | 교체 | `connected`일 때만 공유 버튼 활성 |
+| `api/badges/[id]/share-data/route.ts:154·182` | 교체 | 연결 없음·끊김은 `strava_disconnected` 404(끊김 행은 토큰이 비어 복호화도 못 함). 182는 토큰 갱신 저장이라 해당 없음 |
+| `lib/notifications/feed.ts:191` | 교체 | 경고 판정의 `stravaConnected`가 `connected`를 뜻함(끊김 행은 경고 유지) |
+| `lib/notifications/warning.ts` | 의미 갱신 | 입력 `stravaConnected`의 뜻(주석) |
+| `lib/onboarding-quest/status.ts`·`preview.ts`·`OnboardingQuestCard.tsx` | 해당 없음(입력 의미 갱신) | 테이블을 읽지 않고 호출부가 넘기는 boolean만 쓴다. 홈이 `connected` 또는 `unknown`일 때 true를 넘김 |
+| `lib/today/exposure.ts:251` | 교체 | `strava_stale_14d` 태그에서 `user_disconnected`만 제외(스스로 멈춘 유저에게 «오래 안 했어요» 반복 안 함), 오류 끊김은 그대로 셈 |
+| `lib/notifications/batch/account.ts:135` | 건너뜀 | 동기화 정체 소식 배치가 끊김 행을 제외 |
+| `lib/strava/backfill.ts:156` | 해당 없음 | 갱신 토큰 저장 update(끊김 행은 아래 307에서 이미 제외) |
+| `lib/strava/backfill.ts:307` | 건너뜀 | 서버 `select('*')`(토큰 필요)를 쓰되 끊김 행을 걸러냄 + 유저 단위 함수도 끊김이면 복호화 전에 건너뜀 |
+| `lib/strava/backfillStats.ts:257` | 건너뜀 | 백필 가능 판정에서 끊김 행 제외 |
+| `api/admin/strava-backfill/route.ts:56` | 건너뜀 | 끊김 유저면 409 |
+| `lib/admin/user-actions.ts:150` | 건너뜀 | 초기화의 연결 update가 끊김 행을 건드리지 않음(`is('disconnected_at', null)`) |
+| `lib/admin/user-bulk-impact.ts:94` | 건너뜀 | «끊기는 연결 N건» 집계에서 이미 끊긴 연결 제외 |
+| `app/api/strava/callback/route.ts`, `disconnect/route.ts`, `lib/strava/sync.ts`, `connection-state.ts` | 해당 없음 | 1회가 만든 연결·끊김 저장 경로(판정 이전 단계) |
+| `components/StravaConnectReveal.tsx`, `BadgeShareButton.tsx`, `NotificationsClient.tsx` | 해당 없음 | 테이블을 읽지 않는다(쿼리 파라미터·props·소식 종류만) |
+
+**판단과 해석**
+- `connection-state.ts`가 최상단에서 `@/lib/supabase/server`를 불러오면 프로필 수정(클라이언트)이 이 판정을 가져다 쓸 때 `next/headers`가 브라우저 번들에 들어간다. 서버 클라이언트는 `markStravaDisconnected`가 필요할 때 동적으로 불러오게 바꿨다(시험은 주입 클라이언트를 그대로 씀).
+- `TodayLeftStatus.strava_disconnected`(행 없음을 뜻했음)는 `strava_not_connected`로 이름을 바꿨다.
+- 문구 두 곳을 판정안에서 손봤다: 끊기 확인 시트 셋째 문장의 «연결된 앱 목록»을 «앱 목록»으로(완료 조건 5, Strava에 «연결» 금지). 홈 카드·설정의 «동기화 권한이 해제됐을 수 있어요»는 채원 확정 문구이자 UX 라이팅 가이드 §4 Error 401 예시와 같아 그대로 두었다(시험이 이 구절만 허용).
+- `StravaStatusCard.tsx`와 쓰이지 않게 된 문구 키(`stravaConnectPrompt`·`stravaConnectButton`·`stravaConnectedTitle`·`stravaNoSyncYet`), `commonLiteralColors.test.ts`의 허용 줄을 지웠다. `stravaNotConnectedTitle`은 `/api/strava/disconnect`의 404 본문이 쓰고 있어 남겼다. 티켓 20261016_1503(`StravaStatusCard` 삭제 여부)은 이 삭제로 같은 대상이 정리됐다.
+- 시험 환경에 jsdom이 없어 클릭 동작은 훅 없는 겉모습 컴포넌트의 엘리먼트 트리와 순수 로직(`disconnect-client.ts`)로 고정했다. 브라우저 실렌더(홈 카드 360px, 상단 메뉴 라벨 겹침, 시트 4문장 스크롤)는 staging 병합 후 오케스트레이터 확인이 필요하다.
+
 ### 잔여 이슈
+- 브라우저 실렌더 확인(staging 병합 뒤): 홈 끊김 카드 줄바꿈(360px), 상단 메뉴 «다시 동기화» 겹침, 중복 안내 시트 4문장이 compact 75vh 안에 들어가는지
+- 끊기 확인 시트의 두 버튼 `px-3!`: 360px에서 «동기화 끊는 중» 라벨이 한 줄에 들어가도록 좁혔다. 실렌더로 확인 필요
 -
