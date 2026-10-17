@@ -254,6 +254,12 @@ export const ITEM_BOOK_REFERENCE_SOURCES: ReferenceSource[] = [
     blocks: true, // CASCADE
   },
   {
+    key: 'user_item_book_tier_completions',
+    label: '컬렉션 등급별 완성 기록',
+    location: 'user_item_book_tier_completions.item_book_id',
+    blocks: true, // CASCADE
+  },
+  {
     key: 'user_drop_state',
     label: '유저 드랍 상태(최근 드랍 컬렉션)',
     location: 'user_drop_state.last_drop_book_id',
@@ -299,6 +305,12 @@ export async function collectItemBookReferences(
   )
   if (completions.error) errors.push(`user_item_book_completions: ${completions.error}`)
   tally('user_item_book_completions', completions.rows.map((r) => r.item_book_id))
+
+  const tierCompletions = await fetchAllRows<{ item_book_id: string }>((from, to) =>
+    supabase.from('user_item_book_tier_completions').select('item_book_id').in('item_book_id', itemBookIds).range(from, to)
+  )
+  if (tierCompletions.error) errors.push(`user_item_book_tier_completions: ${tierCompletions.error}`)
+  tally('user_item_book_tier_completions', tierCompletions.rows.map((r) => r.item_book_id))
 
   const dropState = await fetchAllRows<{ last_drop_book_id: string | null }>((from, to) =>
     supabase.from('user_drop_state').select('last_drop_book_id').in('last_drop_book_id', itemBookIds).range(from, to)
