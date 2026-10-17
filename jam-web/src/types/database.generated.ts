@@ -1289,6 +1289,7 @@ export type Database = {
           inventory_item_id: string | null
           locked: boolean
           rarity: Database["public"]["Enums"]["badge_rarity"] | null
+          rolled_rarity: Database["public"]["Enums"]["badge_rarity"] | null
           route: string
           serial_number: number | null
           source_activity_id: string | null
@@ -1301,6 +1302,7 @@ export type Database = {
           inventory_item_id?: string | null
           locked?: boolean
           rarity?: Database["public"]["Enums"]["badge_rarity"] | null
+          rolled_rarity?: Database["public"]["Enums"]["badge_rarity"] | null
           route: string
           serial_number?: number | null
           source_activity_id?: string | null
@@ -1313,6 +1315,7 @@ export type Database = {
           inventory_item_id?: string | null
           locked?: boolean
           rarity?: Database["public"]["Enums"]["badge_rarity"] | null
+          rolled_rarity?: Database["public"]["Enums"]["badge_rarity"] | null
           route?: string
           serial_number?: number | null
           source_activity_id?: string | null
