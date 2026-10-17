@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import BadgeForm from '../../BadgeForm'
 import type { BadgeRow, TribeRow, ItemBookRow, PoiCategoryRow } from '@/types/database'
+import { getJamPolicy } from '@/lib/jam/policy'
+import { lockedMinimumsFrom } from '@/lib/admin/badge-lock-guard'
 
 export default async function EditBadgePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -17,6 +19,8 @@ export default async function EditBadgePage({ params }: { params: Promise<{ id: 
   const tribes = (tribesRaw ?? []) as Pick<TribeRow, 'id' | 'name'>[]
   const itemBooks = (itemBooksRaw ?? []) as Pick<ItemBookRow, 'id' | 'name'>[]
   const poiCategories = (poiCategoriesRaw ?? []) as Pick<PoiCategoryRow, 'slug' | 'label'>[]
+  // 잠긴 아이템 배지의 «여는 데 필요한 양» 등급별 최소값 — 양식의 안내와 저장 전 검사에 쓴다(티켓 20261018_0051)
+  const lockedMinimums = lockedMinimumsFrom(await getJamPolicy(supabase))
 
   return (
     <div className="p-4 md:p-8">
@@ -26,6 +30,7 @@ export default async function EditBadgePage({ params }: { params: Promise<{ id: 
         tribes={tribes}
         itemBooks={itemBooks}
         poiCategories={poiCategories}
+        lockedMinimums={lockedMinimums}
         header={
           <div>
             <Link href={`/admin/badges/${id}`} className="text-muted-foreground hover:text-foreground text-sm transition-colors">

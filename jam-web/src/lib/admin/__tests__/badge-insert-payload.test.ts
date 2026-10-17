@@ -48,6 +48,8 @@ describe('buildBadgeInsertPayload — 기본값', () => {
       background_image_url: null,
       background_video_url: null,
       background_animation: null,
+      always_locked: false,
+      unlock_required: null,
     })
   })
 })
@@ -149,5 +151,33 @@ describe('buildBadgeInsertPayload — 지정한 값', () => {
       background_video_url: 'vid',
       background_animation: { a: 1 },
     })
+  })
+})
+
+describe('buildBadgeInsertPayload — 잠금 칸 (티켓 20261018_0051 2회)', () => {
+  const ITEM = { ...BASE, type: 'item', rarity: 'rare' }
+
+  it('아이템 배지는 잠김 여부와 필요한 양을 저장한다. 비우면 null이다', () => {
+    expect(buildBadgeInsertPayload({ ...ITEM, always_locked: true, unlock_required: 90 })).toMatchObject({
+      always_locked: true,
+      unlock_required: 90,
+    })
+    expect(buildBadgeInsertPayload({ ...ITEM, always_locked: true, unlock_required: '' })).toMatchObject({
+      always_locked: true,
+      unlock_required: null,
+    })
+    expect(buildBadgeInsertPayload({ ...ITEM, unlock_required: ' 120 ' })).toMatchObject({
+      always_locked: false,
+      unlock_required: 120,
+    })
+  })
+
+  it('아이템 배지가 아니면 값이 실려 와도 잠그지 않고 값을 비운다', () => {
+    for (const type of ['activity', 'checkin']) {
+      expect(buildBadgeInsertPayload({ ...BASE, type, always_locked: true, unlock_required: 90 })).toMatchObject({
+        always_locked: false,
+        unlock_required: null,
+      })
+    }
   })
 })

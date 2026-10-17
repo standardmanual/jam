@@ -9,6 +9,8 @@ import {
 } from '@/lib/admin/badge-validation'
 import { isValidFamilyKey } from '@/lib/admin/badge-families'
 import { buildBadgeInsertPayload, normalizeFamilyKey } from '@/lib/admin/badge-insert-payload'
+import { findUnlockRequiredError, lockedMinimumsFrom, parseUnlockRequired } from '@/lib/admin/badge-lock-guard'
+import { getJamPolicy } from '@/lib/jam/policy'
 import type { BadgeRow } from '@/types/database'
 
 export async function GET(req: NextRequest) {
@@ -87,6 +89,18 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServiceClient()
+
+  // 아이템 배지의 «여는 데 필요한 양»은 등급 최소값(jam_policy.locked_min_*)보다 적으면 저장하지 않는다.
+  // 비우면 통과(발급 때 등급 최소값을 쓴다) — 값이 있을 때만 정책을 읽는다(티켓 20261018_0051 2회).
+  if (type === 'item' && parseUnlockRequired(body.unlock_required) !== null) {
+    const lockError = findUnlockRequiredError(
+      type,
+      rarity || null,
+      body.unlock_required,
+      lockedMinimumsFrom(await getJamPolicy(supabase))
+    )
+    if (lockError) return NextResponse.json({ error: lockError }, { status: 400 })
+  }
 
   // 체크인 배지 이름 목록(checkin_badge_count) 검증 — DB 조회가 필요해 별도로 await한다
   // (티켓 20260914_1725, AC5).

@@ -1,4 +1,5 @@
 import type { Database } from '@/types/database.generated'
+import { normalizeLockFields } from './badge-lock-guard'
 
 /**
  * 배지 insert 페이로드 매핑 — 어드민 배지 생성 라우트(POST `/api/admin/badges`)와 에셋 제너레이터
@@ -39,6 +40,10 @@ export interface BadgeInsertBody {
   background_image_url?: BodyField
   background_video_url?: BodyField
   background_animation?: BodyField
+  /** 잠김으로 만든 아이템 배지 — 아이템 배지에만 의미가 있다(티켓 20261018_0051) */
+  always_locked?: BodyField
+  /** 여는 데 필요한 양. 비우면 null(발급 때 등급 최소값을 쓴다) */
+  unlock_required?: BodyField
 }
 
 type BadgeInsert = Database['public']['Tables']['badges']['Insert']
@@ -77,6 +82,8 @@ export function buildBadgeInsertPayload(body: BadgeInsertBody): BadgeInsert {
     background_image_url,
     background_video_url,
     background_animation,
+    always_locked,
+    unlock_required,
   } = body
 
   return {
@@ -130,5 +137,7 @@ export function buildBadgeInsertPayload(body: BadgeInsertBody): BadgeInsert {
     // 상세화면 전체 배경 레이어용인 것과 렌더링 지점이 다르며, 우선순위 판단은
     // lib/badgeBackgroundTheme.ts 한 곳에 있다.
     background_animation: background_animation ?? null,
+    // 잠금 칸 두 개는 아이템 배지에만 저장한다. 검증(최소값 미만 거부)은 라우트가 먼저 끝낸다(티켓 20261018_0051 2회).
+    ...normalizeLockFields(type, always_locked, unlock_required),
   }
 }

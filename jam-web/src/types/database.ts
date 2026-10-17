@@ -212,6 +212,10 @@ export interface BadgeRow {
   valid_until: string | null
   /** 배지 발급 시 함께 지급하는 잼 포인트. 0이면 없음. 발급 시점 값으로 1회 지급(소급 변경 없음). */
   point_reward: number
+  /** 잠김으로 만든 아이템 배지 — 이 배지로 받은 개체는 늘 잠긴 채다(마이그레이션 231, 티켓 20261018_0051). 아이템 배지에만 의미가 있다. 옛 응답에는 키가 없을 수 있다 */
+  always_locked?: boolean
+  /** 여는 데 필요한 잼. NULL이면 그 등급의 최소값(`jam_policy.locked_min_*`)을 쓴다. 아이템 배지에만 의미가 있다 */
+  unlock_required?: number | null
   /** 소프트 삭제 시각. NULL 아니면 신규 발급/드랍/노출 대상에서 제외 — 기존 보유자 이력은 유지됨 */
   deleted_at: string | null
   created_at: string

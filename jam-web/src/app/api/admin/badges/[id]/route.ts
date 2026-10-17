@@ -7,6 +7,13 @@ import {
   findRecipeFirstSuccessNotFoundError,
   findRarityLevelError,
 } from '@/lib/admin/badge-validation'
+import {
+  findUnlockRequiredError,
+  lockedMinimumsFrom,
+  normalizeLockFields,
+  parseUnlockRequired,
+} from '@/lib/admin/badge-lock-guard'
+import { getJamPolicy } from '@/lib/jam/policy'
 import { invalidateUnclaimedDrops } from '@/lib/admin/poi-drops'
 import { BADGE_REFERENCE_SOURCES, collectBadgeReferences } from '@/lib/admin/badge-references'
 import { runBadgeDeactivationSideEffects } from '@/lib/admin/badge-deactivate'
@@ -62,6 +69,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   )
   if (conditionError) {
     return NextResponse.json({ error: conditionError }, { status: 400 })
+  }
+
+  // 잠금 칸은 부분 body 병합 규칙을 따른다 — 없는(undefined) 값은 기존 값을 유지한다. 아이템 배지가 아니면 항상 «잠그지 않음·값 없음»이다.
+  // 병합한 값에 등급 최소값(jam_policy.locked_min_*) 검사를 건다. 값이 있을 때만 정책을 읽는다(티켓 20261018_0051 2회).
+  const mergedAlwaysLocked = body.always_locked !== undefined ? body.always_locked : existing.always_locked
+  const mergedUnlockRequired = body.unlock_required !== undefined ? body.unlock_required : existing.unlock_required
+  if (type === 'item' && parseUnlockRequired(mergedUnlockRequired) !== null) {
+    const lockError = findUnlockRequiredError(
+      type,
+      rarity || null,
+      mergedUnlockRequired,
+      lockedMinimumsFrom(await getJamPolicy(supabase))
+    )
+    if (lockError) return NextResponse.json({ error: lockError }, { status: 400 })
   }
 
   // 체크인 배지 이름 목록(checkin_badge_count) 검증 — DB 조회가 필요해 별도로 await한다
@@ -139,6 +160,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       // 구분해야 "해제"가 저장된다. 아래 병합은 그 구분을 유지한다.
       background_animation:
         body.background_animation !== undefined ? body.background_animation : existing.background_animation,
+      ...normalizeLockFields(type, mergedAlwaysLocked, mergedUnlockRequired),
     })
     .eq('id', id)
     .select()

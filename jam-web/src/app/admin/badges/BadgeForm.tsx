@@ -66,6 +66,7 @@ import { isLeveledBadge } from '@/lib/badge-engine/badgeKind'
 // 저장 API가 쓰는 것과 **같은 판정·같은 문구**. 서버 전용 의존(drop-engine → next/headers)이
 // 없는 파일로 갈라 두었기에 클라이언트 컴포넌트에서 그대로 쓸 수 있다.
 import { findConditionShapeSaveError, findRarityLevelError } from '@/lib/admin/badge-condition-guards'
+import { findUnlockRequiredError, normalizeLockFields, type LockedMinimums } from '@/lib/admin/badge-lock-guard'
 // 배지 트리 화면(BadgeTreeClient 등)의 진행률 분류와 동일한 함수 — 어드민 경고가 화면
 // 렌더링과 다른 판정 로직을 갖지 않도록 재사용한다(제안서 §08 H, 티켓 20260904_1426).
 // `next/headers` 등 서버 전용 의존을 물지 않는 순수 함수라 이 클라이언트 컴포넌트에서
@@ -116,6 +117,8 @@ interface BadgeFormProps {
   /** 체크인 배지 전용 "지점 카테고리" Select 옵션 — poi_categories 재사용(마이그레이션 113).
    *  값을 지정하면 연결된 지점의 카테고리보다 우선 적용된다(티켓 20260830_1522). */
   poiCategories: { slug: string; label: string }[]
+  /** 잠긴 아이템 배지의 «여는 데 필요한 양» 등급별 최소값 — 서버 페이지가 `jam_policy.locked_min_*`에서 읽어 내린다(티켓 20261018_0051). 저장 API가 같은 값으로 최종 검증한다. */
+  lockedMinimums: LockedMinimums
   /** 페이지 제목·뒤로 가기 — 섹션 열 위에 둔다(레일은 페이지 맨 위에서 시작, BadgeEditorShell 주석) */
   header?: ReactNode
 }
@@ -133,7 +136,7 @@ const FOCUS_ID = {
   image: 'badge-image-field',
 } as const
 
-export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, header }: BadgeFormProps) {
+export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, lockedMinimums, header }: BadgeFormProps) {
   const router = useRouter()
   const isEdit = !!badge
 
@@ -195,6 +198,9 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
   const isJamCategory = adminCategory === 'jam'
   const isJamActivity = type === 'activity' && isJamCategory
   const [dropWeight, setDropWeight] = useState<string>(badge?.drop_weight?.toString() ?? '1.0')
+  // 잠긴 아이템 배지(티켓 20261018_0051) — 아이템 배지에만 보인다. 비운 «필요한 양»은 저장 null이고 발급 때 등급 최소값을 쓴다.
+  const [alwaysLocked, setAlwaysLocked] = useState<boolean>(badge?.always_locked ?? false)
+  const [unlockRequired, setUnlockRequired] = useState<string>(badge?.unlock_required?.toString() ?? '')
   // 기간은 KST 날짜·시각(datetime-local)으로 입력하고, 칸을 바꾸지 않았으면 저장된 ISO를 그대로 보낸다(20261004_2043).
   const toPeriodInput = (iso: string | null | undefined) => (iso ? toKstLocalInputValue(iso) : '')
   const [validFrom, setValidFrom] = useState<string>(toPeriodInput(badge?.valid_from))
@@ -437,6 +443,13 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
       return
     }
 
+    // 여는 데 필요한 양: 저장 API와 같은 함수·같은 문구로 먼저 막는다(티켓 20261018_0051). 아이템 배지가 아니면 검사하지 않는다.
+    const unlockRequiredError = findUnlockRequiredError(type, isLeveled ? null : rarity, unlockRequired, lockedMinimums)
+    if (unlockRequiredError) {
+      setError(unlockRequiredError)
+      return
+    }
+
     // 체크인 배지는 활동 조건을 쓰지 않는다 — 조건 빌더 값이 남아 있어도 무시. JAM! 카테고리는
     // 조건 그룹 대부분을 숨기지만 condition_json 저장 방식은 바꾸지 않는다 — 숨긴 입력값도
     // condFields에 그대로 남아 buildConditionJson() 결과가 리뉴얼 전과 같다.
@@ -484,6 +497,8 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
         // 어차피 마커 조회에 쓰지 않으므로 값 그대로 보낸다(티켓 20260912_1053).
         show_on_map: showOnMap,
         drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
+        // 아이템 배지가 아니면 잠그지 않고 값을 비운다(서버도 같은 규칙을 강제한다).
+        ...normalizeLockFields(type, alwaysLocked, unlockRequired),
         valid_from: resolvePeriodInputIso(badge?.valid_from, validFrom),
         valid_until: resolvePeriodInputIso(badge?.valid_until, validUntil),
         point_reward: Math.max(0, parseInt(pointReward, 10) || 0),
@@ -901,6 +916,52 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
                     })()}
                 </FieldMessage>
               </div>
+            )}
+
+            {/* 아이템 배지 전용 — 잠긴 아이템 배지(티켓 20261018_0051, 운영 로직 7.4절). 체크박스는 켜야 이 배지로 받은 개체가 늘 잠긴 채다.
+                필요한 양은 비우면 등급 최소값을 쓰고, 최소값보다 적게는 저장하지 않는다. */}
+            {type === 'item' && (
+              <>
+                <div className={cn('flex min-w-0 flex-col gap-1.5', fieldSpanClass(2))}>
+                  <FieldLabel>잠김</FieldLabel>
+                  <div className="flex items-start gap-2.5">
+                    <Checkbox
+                      id="badge-always-locked"
+                      checked={alwaysLocked}
+                      onCheckedChange={(v) => setAlwaysLocked(v === true)}
+                      aria-describedby="badge-always-locked-help"
+                      className="mt-0.5"
+                    />
+                    <div className="flex flex-col gap-0.5">
+                      <label htmlFor="badge-always-locked" className="cursor-pointer text-sm font-medium text-foreground">
+                        잠긴 채로 받아요
+                      </label>
+                      <FieldMessage id="badge-always-locked-help">
+                        켜면 이 배지로 받은 개체는 늘 잠겨 있어요. 끄면 동기화·캡슐에서 설정한 확률로 잠길 수 있어요.
+                      </FieldMessage>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <FieldLabel htmlFor="badge-unlock-required">여는 데 필요한 양</FieldLabel>
+                  <SuffixInput
+                    id="badge-unlock-required"
+                    type="number"
+                    inputMode="numeric"
+                    min={lockedMinimums[rarity]}
+                    step="1"
+                    value={unlockRequired}
+                    onChange={(e) => setUnlockRequired(e.target.value)}
+                    placeholder={String(lockedMinimums[rarity])}
+                    suffix="잼"
+                    describedBy="badge-unlock-required-help"
+                  />
+                  <FieldMessage id="badge-unlock-required-help">
+                    {`비우면 등급 최소값(${lockedMinimums[rarity]}잼)을 써요. 최소값보다 적게는 저장할 수 없어요. 개체가 만들어질 때 값이 고정돼 나중에 바꿔도 이미 받은 개체는 그대로예요.`}
+                  </FieldMessage>
+                </div>
+              </>
             )}
           </div>
         </div>
