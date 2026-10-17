@@ -27,7 +27,20 @@ export interface AbusingPolicy {
   transit_cycling_max_speed_kmh: number
   /** 교통수단 구간으로 판정하기 위한 최소 연속 지속시간 (초). 20260909_1012 */
   transit_segment_min_duration_sec: number
+  /** 러닝 평균 속도가 이 값(km/h)보다 느리면 걷기(가벼움)로 계산한다. 트레일러닝·등산은 판정하지 않는다. 20261017_1421 */
+  mismatch_run_min_speed_kmh: number
+  /** 자전거 평균 속도가 이 값(km/h)보다 느리면 걷기(가벼움)로 계산한다. 20261017_1421 */
+  mismatch_cycling_min_speed_kmh: number
 }
+
+/**
+ * 종목과 움직임 불일치 기준값 칸 — 양의 정수여야 한다(0·음수·소수는 비정상).
+ * 로더(`getAbusingPolicy`)와 저장 경로(어드민 정책 라우트)가 같은 목록을 쓴다.
+ */
+export const MISMATCH_POLICY_KEYS = [
+  'mismatch_run_min_speed_kmh',
+  'mismatch_cycling_min_speed_kmh',
+] as const satisfies readonly (keyof AbusingPolicy)[]
 
 /**
  * `abusing_policy` id=1 행의 **미러**. "바람직한 값"이 아니라
@@ -66,6 +79,10 @@ export const DEFAULT_POLICY: AbusingPolicy = {
   transit_run_max_speed_kmh: 27,
   transit_cycling_max_speed_kmh: 55,
   transit_segment_min_duration_sec: 30,
+  // 러닝 평균 6km/h 미만(걷는 속도)·자전거 평균 10km/h 미만(끌고 가거나 걷는 속도)은 걷기로 계산한다.
+  // 마이그레이션 224의 기본값과 같아야 한다(티켓 20261017_1421, 운영 로직 16.2절).
+  mismatch_run_min_speed_kmh: 6,
+  mismatch_cycling_min_speed_kmh: 10,
 }
 
 /**
@@ -162,6 +179,12 @@ export async function getAbusingPolicy(client?: SupabaseClient): Promise<Abusing
       const v = row[key]
       const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : NaN
       if (Number.isNaN(n)) {
+        normalized[key] = fallback
+        fellBack.push(key)
+        continue
+      }
+      // 종목 불일치 기준값은 양수여야 한다 — 0 이하이면 판정이 무의미해지므로 기본값으로 대체하고 로그를 남긴다
+      if ((MISMATCH_POLICY_KEYS as readonly string[]).includes(key) && !(n > 0)) {
         normalized[key] = fallback
         fellBack.push(key)
         continue

@@ -45,7 +45,8 @@ export const BAN_RATE_KEY: Record<RateBanLevel, Record<BadgeRarity, keyof Abusin
  * 0~1 비율(밴 레벨별 rarity 드랍 배율) 필드 목록. `BAN_RATE_KEY`에서 파생해 하드코딩 중복을
  * 없앤다. 나머지(gps_max_speed_kmh·poi_block_hours·vehicle_speed_filter_kmh·
  * gps_daily_distance_cap_km·transit_walk_max_speed_kmh·transit_run_max_speed_kmh·
- * transit_cycling_max_speed_kmh·transit_segment_min_duration_sec)는 상한 없는 정수
+ * transit_cycling_max_speed_kmh·transit_segment_min_duration_sec·mismatch_run_min_speed_kmh·
+ * mismatch_cycling_min_speed_kmh)는 상한 없는 정수
  * 임계값이라 검증 범위가 다르므로 여기 없다.
  */
 export const RATE_KEYS: ReadonlySet<keyof AbusingPolicy> = new Set(

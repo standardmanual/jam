@@ -44,6 +44,8 @@ const POST_115_ROW: Record<string, unknown> = {
   transit_run_max_speed_kmh: 27,
   transit_cycling_max_speed_kmh: 55,
   transit_segment_min_duration_sec: 30,
+  mismatch_run_min_speed_kmh: 6,
+  mismatch_cycling_min_speed_kmh: 10,
   updated_at: '2026-08-13T01:28:00.090694+00:00',
 }
 
@@ -160,6 +162,23 @@ describe('getAbusingPolicy — DEFAULT_POLICY 키만 돌려준다', () => {
     expect(policy.soft_epic_rate).toBe(DEFAULT_POLICY.soft_epic_rate)
     expect(spy).toHaveBeenCalled()
     expect(String(spy.mock.calls[0][0])).toContain('soft_epic_rate')
+    spy.mockRestore()
+  })
+
+  it('종목 불일치 기준값은 DB 값을 그대로 읽고, 0 이하·비정상 값은 기본값(6·10)으로 대체하며 로그를 남긴다', async () => {
+    stub.row = { ...POST_115_ROW, mismatch_run_min_speed_kmh: 7, mismatch_cycling_min_speed_kmh: '12' }
+    const ok = await getAbusingPolicy()
+    expect(ok.mismatch_run_min_speed_kmh).toBe(7)
+    expect(ok.mismatch_cycling_min_speed_kmh).toBe(12)
+
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    stub.row = { ...POST_115_ROW, mismatch_run_min_speed_kmh: 0, mismatch_cycling_min_speed_kmh: -3 }
+    const bad = await getAbusingPolicy()
+    expect(bad.mismatch_run_min_speed_kmh).toBe(DEFAULT_POLICY.mismatch_run_min_speed_kmh)
+    expect(bad.mismatch_cycling_min_speed_kmh).toBe(DEFAULT_POLICY.mismatch_cycling_min_speed_kmh)
+    expect(String(spy.mock.calls[0][0])).toContain('mismatch_run_min_speed_kmh')
+    expect(DEFAULT_POLICY.mismatch_run_min_speed_kmh).toBe(6)
+    expect(DEFAULT_POLICY.mismatch_cycling_min_speed_kmh).toBe(10)
     spy.mockRestore()
   })
 
@@ -323,6 +342,23 @@ describe('PUT /api/admin/abusing/policy — 키 화이트리스트', () => {
     const res = await PUT(fakeReq({ vehicle_speed_filter_kmh: MIN_VEHICLE_SPEED_FILTER_KMH }))
     expect(res.status).toBe(200)
     expect(stub.upsertPayloads[0].vehicle_speed_filter_kmh).toBe(MIN_VEHICLE_SPEED_FILTER_KMH)
+  })
+
+  it('종목 불일치 기준값은 상한 없는 양의 정수만 저장한다', async () => {
+    const ok = await PUT(fakeReq({ mismatch_run_min_speed_kmh: 8, mismatch_cycling_min_speed_kmh: 100000 }))
+    expect(ok.status).toBe(200)
+    expect(stub.upsertPayloads[0].mismatch_run_min_speed_kmh).toBe(8)
+    expect(stub.upsertPayloads[0].mismatch_cycling_min_speed_kmh).toBe(100000)
+
+    stub.upsertPayloads = []
+    for (const bad of [0, 5.5]) {
+      const res = await PUT(fakeReq({ mismatch_run_min_speed_kmh: bad }))
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toContain('mismatch_run_min_speed_kmh')
+    }
+    const negative = await PUT(fakeReq({ mismatch_cycling_min_speed_kmh: -1 }))
+    expect(negative.status).toBe(400)
+    expect(stub.upsertPayloads).toHaveLength(0)
   })
 
   it('저장이 실패하면 200이 아니라 500 + 사유를 응답한다', async () => {

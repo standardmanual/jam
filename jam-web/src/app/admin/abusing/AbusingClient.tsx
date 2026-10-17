@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { IconAlertTriangle } from '@tabler/icons-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Alert, AlertTitle, AlertDescription } from '@/components/admin/ui/alert'
+import { Input } from '@/components/admin/ui/input'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import type { AbusingPolicy, AbusingPolicyMismatch } from '@/lib/abusing/policy'
 import type { BanRow, PoiBlockRow } from '@/lib/admin/abusing-list'
@@ -352,6 +353,34 @@ export default function AbusingClient({
                   className="w-28 bg-white border border-border rounded-xl px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
                 />
                 <span className="text-sm text-muted-foreground">초 (기본: 30)</span>
+              </div>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="break-keep wrap-break-word text-xs text-muted-foreground">종목 불일치 — 러닝 최소 평균속도 (km/h) — 러닝으로 기록했는데 평균 속도가 이 값보다 느리면 걷기(가벼움)로 계산 (트레일러닝·등산은 판정하지 않음)</span>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={policy.mismatch_run_min_speed_kmh}
+                  onChange={(e) => policySet('mismatch_run_min_speed_kmh', parseInt(e.target.value) || 6)}
+                  className="w-28 rounded-xl"
+                />
+                <span className="break-keep wrap-break-word text-sm text-muted-foreground">km/h (기본: 6)</span>
+              </div>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="break-keep wrap-break-word text-xs text-muted-foreground">종목 불일치 — 자전거 최소 평균속도 (km/h) — 자전거로 기록했는데 평균 속도가 이 값보다 느리면 걷기(가벼움)로 계산</span>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={policy.mismatch_cycling_min_speed_kmh}
+                  onChange={(e) => policySet('mismatch_cycling_min_speed_kmh', parseInt(e.target.value) || 10)}
+                  className="w-28 rounded-xl"
+                />
+                <span className="break-keep wrap-break-word text-sm text-muted-foreground">km/h (기본: 10)</span>
               </div>
             </label>
             <label className="flex flex-col gap-1">

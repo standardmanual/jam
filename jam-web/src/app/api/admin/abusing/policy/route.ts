@@ -7,6 +7,7 @@ import {
   DEFAULT_POLICY,
   RATE_KEYS,
   MIN_VEHICLE_SPEED_FILTER_KMH,
+  MISMATCH_POLICY_KEYS,
   type AbusingPolicy,
 } from '@/lib/abusing/policy'
 
@@ -58,6 +59,16 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json(
         {
           error: `어뷰징 정책이 저장되지 않았어요. 차량 속도 필터를 ${MIN_VEHICLE_SPEED_FILTER_KMH}km/h 아래로 내리면 자전거·달리기 활동까지 걸러져 배지·아이템 드랍·미션이 모두 멈춰요. ${MIN_VEHICLE_SPEED_FILTER_KMH}km/h 이상으로 올리고 다시 저장해 주세요.`,
+        },
+        { status: 400 }
+      )
+    }
+    // 종목 불일치 기준값은 상한 없는 양의 정수다. 0이면 판정이 꺼진 것처럼 보이지만 실제로는 로더가
+    // 기본값으로 되돌려 저장값과 적용값이 달라지므로 저장 경로에서 막는다 (티켓 20261017_1421).
+    if ((MISMATCH_POLICY_KEYS as readonly string[]).includes(key) && (!Number.isInteger(n) || n < 1)) {
+      return NextResponse.json(
+        {
+          error: `어뷰징 정책이 저장되지 않았어요. ${key} 값은 1 이상의 정수여야 해요. 정수로 고치고 다시 저장해 주세요.`,
         },
         { status: 400 }
       )
