@@ -355,12 +355,12 @@ export async function issueSyncItemBadges(
         }
         outcome.issuedBadgeIds.push(item.badge.id)
         streakToSave = item.streakAfter
-        recapItems.push({
-          inventory_item_id: grant.itemId,
-          badge_id: item.badge.id,
-          name: item.badge.name,
-          rarity: item.rarity,
-        })
+        // 잠긴 채 받은 개체는 결산 알림에 이름·등급을 싣지 않는다(운영 로직 7.3절, 티켓 20261018_0051)
+        recapItems.push(
+          item.lock.locked
+            ? { inventory_item_id: grant.itemId, badge_id: '', name: '', rarity: null, locked: true }
+            : { inventory_item_id: grant.itemId, badge_id: item.badge.id, name: item.badge.name, rarity: item.rarity }
+        )
 
         await recordIssued({
           supabase,

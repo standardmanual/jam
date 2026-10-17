@@ -23,6 +23,8 @@ vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) })
 import { issueSyncItemBadges, type SyncIssueTarget } from '@/lib/drop-engine/syncIssueRun'
 import { DEFAULT_JAM_POLICY } from '@/lib/jam/policy'
 import { awardPoints } from '@/lib/points'
+import { recordFeedEvent } from '@/lib/activity-feed'
+import { recordActivityRecap } from '@/lib/notifications/recap'
 
 const USER_ID = 'user-1'
 const TRIBE = 'tribe-mine'
@@ -30,6 +32,7 @@ const NOW = new Date('2026-10-18T00:00:00Z')
 
 interface Badge {
   id: string
+  name?: string
   rarity: 'common' | 'rare' | 'epic' | 'mystic'
   point_reward?: number | null
   always_locked?: boolean
@@ -69,7 +72,7 @@ function makeFakeSupabase(world: World): SupabaseClient {
         return {
           data: world.badges.map((b) => ({
             id: b.id,
-            name: `배지 ${b.id}`,
+            name: b.name ?? `배지 ${b.id}`,
             image_url: null,
             rarity: b.rarity,
             item_book_id: 'book-mine',
@@ -273,6 +276,32 @@ describe('보류 — 잠김을 함께 저장한다', () => {
     await run(world, [target(1)], policyWith(), () => 0.9)
 
     expect(world.pendingRows[0]).toMatchObject({ locked: false, lock_reason: null, unlock_required: null })
+  })
+})
+
+describe('피드·결산 알림 가림 (운영 로직 7.3절)', () => {
+  it('잠긴 채 받은 개체는 활동 피드에 올리지 않고 결산에 이름·배지·등급 없이 담는다', async () => {
+    const world = makeWorld({ badges: [{ id: 'b-locked', name: '비밀 배지', rarity: 'rare', always_locked: true }] })
+
+    await run(world, [target(1)], policyWith('rare', { locked_roll_probability: 0 }), () => 0.9)
+
+    expect(recordFeedEvent).not.toHaveBeenCalled()
+    expect(recordActivityRecap).toHaveBeenCalledTimes(1)
+    const fragment = vi.mocked(recordActivityRecap).mock.calls[0][1] as { item_badges: Record<string, unknown>[] }
+    expect(fragment.item_badges).toHaveLength(1)
+    expect(fragment.item_badges[0]).toMatchObject({ badge_id: '', name: '', rarity: null, locked: true })
+    expect(JSON.stringify(fragment)).not.toContain('비밀 배지')
+  })
+
+  it('열린 채 받은 개체는 기존처럼 피드와 결산에 이름을 싣는다', async () => {
+    const world = makeWorld({ badges: [{ id: 'b-open', name: '열린 배지', rarity: 'common' }] })
+
+    await run(world, [target(1)], policyWith('common', { locked_roll_probability: 0 }), () => 0.9)
+
+    expect(recordFeedEvent).toHaveBeenCalledTimes(1)
+    const fragment = vi.mocked(recordActivityRecap).mock.calls[0][1] as { item_badges: Record<string, unknown>[] }
+    expect(fragment.item_badges[0]).toMatchObject({ badge_id: 'b-open', name: '열린 배지', rarity: 'common' })
+    expect(fragment.item_badges[0]).not.toHaveProperty('locked')
   })
 })
 

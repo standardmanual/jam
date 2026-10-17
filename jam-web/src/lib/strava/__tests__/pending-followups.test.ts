@@ -223,9 +223,37 @@ describe('runPendingFollowUps — 잠긴 채 받은 개체', () => {
     await runPendingFollowUps(makeFake(world), USER_ID, ['item-1', 'item-2'])
 
     expect(awardPoints).toHaveBeenCalledTimes(1)
-    const lockedFeed = vi.mocked(recordFeedEvent).mock.calls.find((c) => (c[2] as { inventory_item_id: string }).inventory_item_id === 'item-1')
-    expect(lockedFeed?.[2]).not.toHaveProperty('point_reward')
     const openFeed = vi.mocked(recordFeedEvent).mock.calls.find((c) => (c[2] as { inventory_item_id: string }).inventory_item_id === 'item-2')
     expect(openFeed?.[2]).toHaveProperty('point_reward', 30)
+  })
+
+  it('locked 개체는 활동 피드에 올리지 않고 열린 개체만 올린다', async () => {
+    const world = baseWorld()
+    world.claimed = [
+      { source_activity_id: 'act-1', badge_id: 'b-rare', rarity: 'rare', inventory_item_id: 'item-1', locked: true },
+      { source_activity_id: 'act-1', badge_id: 'b-rare', rarity: 'rare', inventory_item_id: 'item-2', locked: false },
+    ]
+
+    await runPendingFollowUps(makeFake(world), USER_ID, ['item-1', 'item-2'])
+
+    const feedItemIds = vi.mocked(recordFeedEvent).mock.calls.map((c) => (c[2] as { inventory_item_id: string }).inventory_item_id)
+    expect(feedItemIds).toEqual(['item-2'])
+  })
+
+  it('결산 알림에는 locked 개체의 이름·배지·등급을 싣지 않는다', async () => {
+    const world = baseWorld()
+    world.claimed = [
+      { source_activity_id: 'act-1', badge_id: 'b-rare', rarity: 'rare', inventory_item_id: 'item-1', locked: true },
+    ]
+
+    await runPendingFollowUps(makeFake(world), USER_ID, ['item-1'])
+
+    expect(recordActivityRecap).toHaveBeenCalledTimes(1)
+    const fragment = vi.mocked(recordActivityRecap).mock.calls[0][1] as { item_badges: unknown[] }
+    expect(fragment.item_badges).toEqual([
+      { inventory_item_id: 'item-1', badge_id: '', name: '', rarity: null, locked: true },
+    ])
+    expect(JSON.stringify(fragment)).not.toContain('바람의 깃')
+    expect(JSON.stringify(fragment)).not.toContain('b-rare')
   })
 })

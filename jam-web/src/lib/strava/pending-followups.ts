@@ -5,8 +5,8 @@
  * 보류에서 고르기로 받은 개체도 같은 처리를 받아야 한다 — 고르기 API(`/api/strava/pending-items` POST)가 성공한 뒤에 부른다.
  *
  * 규칙
- *  - 받은 개체(`itemIds`)마다 `badge.point_reward`가 있으면(잠긴 채 받은 개체는 제외, 티켓 20261018_0051) `awardPoints`, 피드 이벤트(`item_dropped`)를 남긴다(`recordIssuedRewards`, 바로 지급과 공용).
- *  - 결산 알림은 활동 하나당 한 조각이다(`recordActivityRecap`, 바로 지급과 같은 모양). 활동을 모르는 개체는 결산을 만들지 않는다.
+ *  - 받은 개체(`itemIds`)마다 `badge.point_reward`가 있으면 `awardPoints`, 피드 이벤트(`item_dropped`)를 남긴다. 잠긴 채 받은 개체는 둘 다 건너뛴다(티켓 20261018_0051)(`recordIssuedRewards`, 바로 지급과 공용).
+ *  - 결산 알림은 활동 하나당 한 조각이다(`recordActivityRecap`, 바로 지급과 같은 모양). 잠긴 개체는 이름·등급 없이 `locked: true`로만 담는다. 활동을 모르는 개체는 결산을 만들지 않는다.
  *  - 이 함수는 던지지 않는다. 각 후속 처리의 실패는 로그만 남기고 호출부(고르기 응답)를 바꾸지 않는다.
  *
  * 서버 전용이다(service_role 클라이언트로 쓴다). 클라이언트 컴포넌트가 가져오는 모듈에서 이 파일을 가져오지 않는다.
@@ -108,7 +108,12 @@ export async function runPendingFollowUps(
 
       if (activity) {
         const list = recapByStravaId.get(activity.strava_id) ?? []
-        list.push({ inventory_item_id: itemId, badge_id: badge.id, name: badge.name, rarity: row.rarity })
+        // 잠긴 채 받은 개체는 결산 알림에 이름·등급을 싣지 않는다(운영 로직 7.3절, 티켓 20261018_0051)
+        list.push(
+          row.locked === true
+            ? { inventory_item_id: itemId, badge_id: '', name: '', rarity: null, locked: true }
+            : { inventory_item_id: itemId, badge_id: badge.id, name: badge.name, rarity: row.rarity }
+        )
         recapByStravaId.set(activity.strava_id, list)
       }
     }

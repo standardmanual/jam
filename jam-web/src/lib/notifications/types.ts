@@ -68,6 +68,11 @@ export interface RecapItemBadge {
    * 접는 순간 등급 없는 배지가 조용히 Common으로 표시된다 (티켓 20260905_0030).
    */
   rarity: BadgeRarity | null
+  /**
+   * 잠긴 채 받은 개체(티켓 20261018_0051, 운영 로직 7.3절). `true`이면 서버가 `badge_id`·`name`을 빈 문자열, `rarity`를 `null`로 싣는다.
+   * 결산 문구는 이름·그림·등급 없이 «잠긴 아이템 배지를 받았어요»로만 말한다. 열린 개체에는 이 키가 없다(옛 payload 모양과 같다).
+   */
+  locked?: boolean
 }
 
 /**

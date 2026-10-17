@@ -144,6 +144,43 @@ describe('① 활동 결산 — 사다리 A·B / C·D / E / F2', () => {
     expect(notificationTarget(v).href).toBe('/inventory/i1')
   })
 
+  it('잠긴 채 받은 아이템 배지는 이름·등급 없이 말한다 (티켓 20261018_0051, 7.3절)', () => {
+    const lockedItem = (id: string) => ({ inventory_item_id: id, badge_id: '', name: '', rarity: null, locked: true })
+
+    const one = recap({ activity_ids: [1], item_badges: [lockedItem('l1')] })
+    expect(text(one)).toBe('잠긴 아이템 배지를 받았어요')
+    expect(notificationTarget(one).href).toBe('/inventory')
+
+    const many = recap({ activity_ids: [1], item_badges: [lockedItem('l1'), lockedItem('l2'), lockedItem('l3')] })
+    expect(text(many)).toBe('잠긴 아이템 배지 3개를 받았어요')
+
+    // 같은 개체가 두 번 담겨도 한 개로 센다(결산은 계속 자라는 행이라 중복 제거가 흡수한다)
+    expect(text(recap({ activity_ids: [1], item_badges: [lockedItem('l1'), lockedItem('l1')] }))).toBe(
+      '잠긴 아이템 배지를 받았어요'
+    )
+  })
+
+  it('잠긴 개체와 열린 개체가 섞이면 이름을 나열하지 않고 총량으로 말한다', () => {
+    const v = recap({
+      activity_ids: [1],
+      item_badges: [
+        item('i1', '멈춘 초시계'),
+        { inventory_item_id: 'l1', badge_id: '', name: '', rarity: null, locked: true },
+      ],
+    })
+    expect(text(v)).toBe('배지 2개를 획득했어요')
+    expect(text(v)).not.toContain('멈춘 초시계')
+  })
+
+  it('잠긴 개체만 있어도 포인트가 섞이면 총량 문형으로 간다', () => {
+    const v = recap({
+      activity_ids: [1],
+      points: 50,
+      item_badges: [{ inventory_item_id: 'l1', badge_id: '', name: '', rarity: null, locked: true }],
+    })
+    expect(text(v)).toBe('배지 1개와 50 포인트를 획득했어요')
+  })
+
   it('A8·E3 — 첫 배지는 무엇과 섞이든 헤드라인을 가져간다', () => {
     const alone = recap({ first_badge_id: 'fb' })
     expect(text(alone)).toBe('첫 배지가 도착했어요')

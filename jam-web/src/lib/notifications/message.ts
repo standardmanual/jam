@@ -259,7 +259,10 @@ export interface RecapContent {
   activityCount: number
   activityBadges: RecapActivityBadge[]
   checkins: RecapCheckinBadge[]
+  /** 열린 채 받은 아이템 배지. 잠긴 채 받은 개체는 이름·등급이 없어 `lockedCount`로만 센다 */
   items: RecapItemBadge[]
+  /** 잠긴 채 받은 아이템 배지 수(티켓 20261018_0051). 어떤 배지인지 알 수 있는 값은 문구에 쓰지 않는다 */
+  lockedCount: number
   /** epic·mystic 중 최상위 활동배지 (E1·A3의 헤드라인). 등급이 있는 배지만 후보다 */
   rare: RankedActivityBadge | null
   firstBadgeId: string
@@ -302,10 +305,16 @@ export function recapContent(payload: Record<string, unknown>): RecapContent {
 
   const seenItem = new Set<string>()
   const items: RecapItemBadge[] = []
+  let lockedCount = 0
   for (const raw of objList(payload, 'item_badges')) {
     const invId = str(raw, 'inventory_item_id')
     if (!invId || seenItem.has(invId)) continue
     seenItem.add(invId)
+    // 잠긴 채 받은 개체는 이름·등급을 읽지 않는다(서버도 싣지 않는다) — 개수만 센다
+    if (boolField(raw, 'locked', false)) {
+      lockedCount += 1
+      continue
+    }
     items.push({
       inventory_item_id: invId,
       badge_id: str(raw, 'badge_id'),
@@ -325,15 +334,19 @@ export function recapContent(payload: Record<string, unknown>): RecapContent {
     if (!rare || rarityRank(b.rarity) > rarityRank(rare.rarity)) rare = b as RankedActivityBadge
   }
 
-  const totalBadges = activityBadges.length + checkins.length + items.length
+  const totalBadges = activityBadges.length + checkins.length + items.length + lockedCount
   const kinds =
-    (activityBadges.length > 0 ? 1 : 0) + (checkins.length > 0 ? 1 : 0) + (items.length > 0 ? 1 : 0)
+    (activityBadges.length > 0 ? 1 : 0) +
+    (checkins.length > 0 ? 1 : 0) +
+    (items.length > 0 ? 1 : 0) +
+    (lockedCount > 0 ? 1 : 0)
 
   return {
     activityCount: activityIds.size,
     activityBadges,
     checkins,
     items,
+    lockedCount,
     rare,
     firstBadgeId: str(payload, 'first_badge_id'),
     points: num(payload, 'points'),
@@ -423,8 +436,18 @@ function buildRecapMessage(payload: Record<string, unknown>): NotificationMessag
     return { template: n.recapHeadRareMany + tail, vars }
   }
 
+  // ── 3.5 잠긴 채 받은 아이템 배지만 (티켓 20261018_0051, 7.3절 가림 원칙) ──────
+  // 이름·그림·등급을 싣지 않는 문장이다. 포인트가 섞이면 이 문형에 꼬리를 붙일 수 없어 아래 총량 문형(5)으로 간다.
+  if (c.kinds === 1 && c.lockedCount > 0 && !pointsSlot) {
+    if (c.lockedCount === 1) return { template: d.lockedItem.notice.one, vars: {} }
+    return {
+      template: d.lockedItem.notice.many,
+      vars: { lockedItemCount: t(d.lockedItem.notice.countSlot, { count: c.lockedCount }) },
+    }
+  }
+
   // ── 4. 한 종류 (A·B) ────────────────────────────────────────────────────
-  if (c.kinds === 1) {
+  if (c.kinds === 1 && c.lockedCount === 0) {
     if (c.activityBadges.length > 0) {
       const rep = topByRarity(c.activityBadges)
       vars.badgeName = rep?.name ?? ''
