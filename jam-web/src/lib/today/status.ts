@@ -13,7 +13,8 @@ import type { MissionCondition, MissionType } from '@/types/database'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
 import { d } from '@/lib/i18n'
 import { getDisplayName } from '@/lib/utils'
-import { computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
+import { COMPLETION_BADGE_TYPES, computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
+import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 
 // ─── 좌: 내 진행도 ──────────────────────────────────────────────────────
 
@@ -59,11 +60,9 @@ async function collectionCandidates(userId: string): Promise<ProgressCandidate[]
   const slots = (slotsRaw ?? []) as { item_book_id: string; badge_id: string; slotted_at: string }[]
   if (slots.length === 0) return []
 
-  const filledBadgeIds = new Set<string>()
   const startedSet = new Set<string>()
   const lastByBook = new Map<string, number>()
   for (const s of slots) {
-    filledBadgeIds.add(s.badge_id)
     startedSet.add(s.item_book_id)
     const t = new Date(s.slotted_at).getTime()
     lastByBook.set(s.item_book_id, Math.max(lastByBook.get(s.item_book_id) ?? 0, t))
@@ -83,41 +82,65 @@ async function collectionCandidates(userId: string): Promise<ProgressCandidate[]
   const now = new Date().toISOString()
   const { data: booksRaw } = await supabase
     .from('item_books')
-    .select('id, name')
+    .select('id, name, tier_mode')
     .in('id', candidateIds)
     .eq('is_active', true)
     .or(`valid_from.is.null,valid_from.lte.${now}`)
     .or(`valid_until.is.null,valid_until.gte.${now}`)
-  const books = (booksRaw ?? []) as { id: string; name: string }[]
+  const books = (booksRaw ?? []) as { id: string; name: string; tier_mode?: boolean | null }[]
   if (books.length === 0) return []
   const bookIds = books.map((b) => b.id)
 
   const { data: badgesRaw } = await supabase
     .from('badges')
-    .select('id, item_book_id, type, drop_excluded')
+    .select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at')
     .in('item_book_id', bookIds)
-    .eq('type', 'item')
+    .in('type', [...COMPLETION_BADGE_TYPES])
     .is('deleted_at', null)
+  const badges = (badgesRaw ?? []) as CompletionBadgeInput[]
+
+  // 분자는 컬렉션별 집합이다(티켓 20261016_2340 2회-나). 체크인 배지는 획득 이력이 있으면 채운 것으로 본다.
+  const checkinBadgesByBook = new Map<string, string[]>()
+  for (const b of badges) {
+    if (b.type !== 'checkin' || !b.item_book_id) continue
+    const list = checkinBadgesByBook.get(b.item_book_id)
+    if (list) list.push(b.id)
+    else checkinBadgesByBook.set(b.item_book_id, [b.id])
+  }
+  const checkinBadgeIds = badges.filter((b) => b.type === 'checkin').map((b) => b.id)
+  let earnedCheckinBadgeIds = new Set<string>()
+  if (checkinBadgeIds.length > 0) {
+    const { data: earnsRaw } = await supabase
+      .from('user_checkin_badge_earns')
+      .select('badge_id')
+      .eq('user_id', userId)
+      .in('badge_id', checkinBadgeIds)
+    earnedCheckinBadgeIds = new Set(((earnsRaw ?? []) as { badge_id: string }[]).map((e) => e.badge_id))
+  }
+  const filledByBook = buildFilledByBook({ slots, checkinBadgesByBook, earnedCheckinBadgeIds })
 
   return buildCollectionProgress(
     books,
-    (badgesRaw ?? []) as CompletionBadgeInput[],
-    filledBadgeIds,
-    lastByBook
+    badges,
+    filledByBook,
+    lastByBook,
+    new Set(books.filter((b) => b.tier_mode).map((b) => b.id))
   )
 }
 
 /**
  * 진행 중 컬렉션 후보 계산 (순수 함수 — 테스트 대상).
- * 분모는 드랍 제외 배지를 뺀 집합, 분자는 분모와 채운 배지의 교집합이다 (티켓 20260921_1113).
+ * 분모·분자는 완성 판정 모듈이 정한다: 분모는 드랍 제외·소프트 삭제 배지를 뺀 집합, 분자는 그 컬렉션의
+ * 채운 배지(`filledByBook`)와 분모의 교집합이다 (티켓 20260921_1113, 20261016_2340 2회-나).
  */
 export function buildCollectionProgress(
   books: { id: string; name: string }[],
   badges: CompletionBadgeInput[],
-  filledBadgeIds: ReadonlySet<string>,
-  lastByBook: ReadonlyMap<string, number>
+  filledByBook: ReadonlyMap<string, ReadonlySet<string>>,
+  lastByBook: ReadonlyMap<string, number>,
+  tierModeBookIds?: ReadonlySet<string>
 ): ProgressCandidate[] {
-  const completion = computeBookCompletion(badges, filledBadgeIds, { types: ['item'] })
+  const completion = computeBookCompletion(badges, new Set<string>(), { filledByBook, tierModeBookIds })
   const result: ProgressCandidate[] = []
   for (const book of books) {
     const c = completion.get(book.id)

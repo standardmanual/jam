@@ -8,7 +8,8 @@
  * service_role 클라이언트 사용 (RLS 우회, 존재 여부만 LIMIT 1 로 확인).
  */
 import { createServiceClient } from '@/lib/supabase/server'
-import { computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
+import { COMPLETION_BADGE_TYPES, computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
+import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 import { getTodayWeather } from '@/lib/inputs/weather'
 import { getTodaySpecialDays } from '@/lib/inputs/holidays'
 import { specialDayTags } from '@/lib/inputs/special-days-config'
@@ -125,12 +126,9 @@ async function getItemBookProgress(
     .select('item_book_id, badge_id')
     .eq('user_id', userId)
   if (slotsError) console.error('[getItemBookProgress] user_item_book_slots 조회 오류:', slotsError.message)
-  const filledBadgeIds = new Set<string>()
+  const slots = (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]
   const startedSet = new Set<string>()
-  for (const s of (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]) {
-    filledBadgeIds.add(s.badge_id)
-    startedSet.add(s.item_book_id)
-  }
+  for (const s of slots) startedSet.add(s.item_book_id)
   const startedBookIds = [...startedSet]
   if (startedBookIds.length === 0) return none
 
@@ -150,19 +148,48 @@ async function getItemBookProgress(
   const candidateBookIds = startedBookIds.filter((id) => !completedBooks.has(id))
   if (candidateBookIds.length === 0) return none
 
-  // 분모(드랍 제외 배지를 뺀 아이템 배지)와 채운 배지의 교집합을 비교 → 미완성 여부·잔여 슬롯
-  const { data: badgesRaw, error: badgesError } = await supabase
-    .from('badges')
-    .select('id, item_book_id, type, drop_excluded')
-    .in('item_book_id', candidateBookIds)
-    .eq('type', 'item')
-    .is('deleted_at', null)
-  if (badgesError) console.error('[getItemBookProgress] badges 조회 오류:', badgesError.message)
-  const badges = (badgesRaw ?? []) as CompletionBadgeInput[]
+  // 분모(드랍 제외·소프트 삭제 배지를 뺀 배지)와 그 컬렉션의 채운 배지 교집합을 비교 → 미완성 여부·잔여 슬롯
+  // (완성 판정 모듈 한 곳, 티켓 20261016_2340 2회-나)
+  const [badgesResult, tierBooksResult] = await Promise.all([
+    supabase
+      .from('badges')
+      .select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at')
+      .in('item_book_id', candidateBookIds)
+      .in('type', [...COMPLETION_BADGE_TYPES])
+      .is('deleted_at', null),
+    supabase.from('item_books').select('id, tier_mode').in('id', candidateBookIds),
+  ])
+  if (badgesResult.error) console.error('[getItemBookProgress] badges 조회 오류:', badgesResult.error.message)
+  if (tierBooksResult.error) console.error('[getItemBookProgress] item_books 조회 오류:', tierBooksResult.error.message)
+  const badges = (badgesResult.data ?? []) as CompletionBadgeInput[]
+  const tierModeBookIds = new Set(
+    ((tierBooksResult.data ?? []) as { id: string; tier_mode: boolean | null }[]).filter((b) => b.tier_mode).map((b) => b.id)
+  )
+
+  // 체크인 배지는 획득 이력이 있으면 채운 것으로 본다
+  const checkinBadgesByBook = new Map<string, string[]>()
+  for (const b of badges) {
+    if (b.type !== 'checkin' || !b.item_book_id) continue
+    const list = checkinBadgesByBook.get(b.item_book_id)
+    if (list) list.push(b.id)
+    else checkinBadgesByBook.set(b.item_book_id, [b.id])
+  }
+  const checkinBadgeIds = badges.filter((b) => b.type === 'checkin').map((b) => b.id)
+  let earnedCheckinBadgeIds = new Set<string>()
+  if (checkinBadgeIds.length > 0) {
+    const { data: earnsRaw, error: earnsError } = await supabase
+      .from('user_checkin_badge_earns')
+      .select('badge_id')
+      .eq('user_id', userId)
+      .in('badge_id', checkinBadgeIds)
+    if (earnsError) console.error('[getItemBookProgress] user_checkin_badge_earns 조회 오류:', earnsError.message)
+    earnedCheckinBadgeIds = new Set(((earnsRaw ?? []) as { badge_id: string }[]).map((e) => e.badge_id))
+  }
+  const filledByBook = buildFilledByBook({ slots, checkinBadgesByBook, earnedCheckinBadgeIds })
 
   return {
-    hasIncomplete: hasIncompleteBook(candidateBookIds, badges, filledBadgeIds),
-    minRemaining: minRemainingSlots(candidateBookIds, badges, filledBadgeIds),
+    hasIncomplete: hasIncompleteBook(candidateBookIds, badges, filledByBook, tierModeBookIds),
+    minRemaining: minRemainingSlots(candidateBookIds, badges, filledByBook, tierModeBookIds),
   }
 }
 
@@ -170,9 +197,10 @@ async function getItemBookProgress(
 export function hasIncompleteBook(
   candidateBookIds: string[],
   badges: CompletionBadgeInput[],
-  filledBadgeIds: ReadonlySet<string>
+  filledByBook: ReadonlyMap<string, ReadonlySet<string>>,
+  tierModeBookIds?: ReadonlySet<string>
 ): boolean {
-  const completion = computeBookCompletion(badges, filledBadgeIds, { types: ['item'] })
+  const completion = computeBookCompletion(badges, new Set<string>(), { filledByBook, tierModeBookIds })
   return candidateBookIds.some((bookId) => {
     const c = completion.get(bookId)
     return !!c && c.total > 0 && !c.complete
@@ -184,9 +212,10 @@ export function hasIncompleteBook(
 export function minRemainingSlots(
   candidateBookIds: string[],
   badges: CompletionBadgeInput[],
-  filledBadgeIds: ReadonlySet<string>
+  filledByBook: ReadonlyMap<string, ReadonlySet<string>>,
+  tierModeBookIds?: ReadonlySet<string>
 ): number | null {
-  const completion = computeBookCompletion(badges, filledBadgeIds, { types: ['item'] })
+  const completion = computeBookCompletion(badges, new Set<string>(), { filledByBook, tierModeBookIds })
   let min: number | null = null
   for (const bookId of candidateBookIds) {
     const c = completion.get(bookId)

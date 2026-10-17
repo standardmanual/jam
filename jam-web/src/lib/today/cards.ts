@@ -12,7 +12,7 @@ import { computeUserExposureTags } from './exposure'
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
 import { isMissionExposed, resolveMissionVisibility, type MissionVisibilityInput } from '@/lib/missions/visibility'
 import { computeRankingModeResult, type RankingBoardResult } from '@/lib/ranking/rankingDataSource'
-import { computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
+import { COMPLETION_BADGE_TYPES, computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
 import { applyLaunchedItemBookFilter } from '@/lib/itembook/visibility'
 import { recipeReleaseState } from '@/lib/combine/visibility'
 import { resourceOfTemplate } from './cardView'
@@ -323,12 +323,12 @@ export async function fetchCollectionsById(
   if (bookIds.length === 0) return map
 
   const [booksResult, badgesResult] = await Promise.all([
-    applyLaunchedItemBookFilter(supabase.from('item_books').select('id, name').in('id', bookIds), nowIso),
+    applyLaunchedItemBookFilter(supabase.from('item_books').select('id, name, tier_mode').in('id', bookIds), nowIso),
     supabase
       .from('badges')
-      .select('id, item_book_id, type, drop_excluded')
+      .select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at')
       .in('item_book_id', bookIds)
-      .eq('type', 'item')
+      .in('type', [...COMPLETION_BADGE_TYPES])
       .is('deleted_at', null),
   ])
   if (booksResult.error) {
@@ -336,16 +336,18 @@ export async function fetchCollectionsById(
     return map
   }
 
+  const books = (booksResult.data ?? []) as { id: string; name: string; tier_mode?: boolean | null }[]
   let completionByBook: ReturnType<typeof computeBookCompletion> | null = null
   if (badgesResult.error) {
     console.error('[fetchCollectionsById] 컬렉션 아이템 조회 오류:', badgesResult.error.message)
   } else {
+    // 분모만 쓰므로 분자는 비운다. 분모 규칙은 완성 판정 모듈이 정한다(티켓 20261016_2340 2회-나)
     completionByBook = computeBookCompletion((badgesResult.data ?? []) as CompletionBadgeInput[], new Set(), {
-      types: ['item'],
+      tierModeBookIds: new Set(books.filter((b) => b.tier_mode).map((b) => b.id)),
     })
   }
 
-  for (const book of (booksResult.data ?? []) as { id: string; name: string }[]) {
+  for (const book of books) {
     map.set(book.id, {
       name: book.name,
       item_count: completionByBook ? (completionByBook.get(book.id)?.total ?? 0) : null,
