@@ -8,7 +8,7 @@
  * 실행: cd jam-web && npx vitest run src/lib/strava/__tests__/transitSegment.test.ts
  */
 import { describe, it, expect } from 'vitest'
-import { detectAndExcludeTransitSegments, type TransitDetectionPolicy } from '../transitSegment'
+import { detectAndExcludeTransitSegments, needsTransitStreams, type TransitDetectionPolicy } from '../transitSegment'
 import type { NormalizedActivity } from '@/types/strava'
 
 const POLICY: TransitDetectionPolicy = {
@@ -115,13 +115,25 @@ describe('detectAndExcludeTransitSegments', () => {
     expect(result).toBe(activity)
   })
 
-  it('걷기·러닝·자전거가 아닌 활동 타입은 대상이 아니다 (예: hiking)', () => {
+  it('다섯 종목 밖의 종목 값(예: swimming)은 대상이 아니다', () => {
+    const { velocitySmooth, time } = makeUniformStreams([40, 40, 40], 30)
+    const activity = baseActivity({ jamActivityType: 'swimming', maxSpeedKmh: 40 })
+
+    const result = detectAndExcludeTransitSegments(activity, { velocitySmooth, time }, POLICY)
+
+    expect(result).toBe(activity)
+    expect(needsTransitStreams(activity, POLICY)).toBe(false)
+  })
+
+  it('등산(hiking)도 걷기 기준 속도(20km/h)로 구간을 뺀다 (티켓 20261017_1421)', () => {
+    // 등산 40km/h 90초 지속 — 걷기 임계값(20km/h) 초과이므로 재산정 대상
     const { velocitySmooth, time } = makeUniformStreams([40, 40, 40], 30)
     const activity = baseActivity({ jamActivityType: 'hiking', maxSpeedKmh: 40 })
 
     const result = detectAndExcludeTransitSegments(activity, { velocitySmooth, time }, POLICY)
 
-    expect(result).toBe(activity)
+    expect(result.movingTimeSec).toBe(1800 - 90)
+    expect(result.distanceKm).toBeCloseTo(2.5 - 1.0, 3)
   })
 
   it('maxSpeedKmh가 없는 활동은 스트림을 보지 않고 원본을 돌려준다', () => {
@@ -160,5 +172,45 @@ describe('detectAndExcludeTransitSegments', () => {
     const result = detectAndExcludeTransitSegments(trailRunning, { velocitySmooth, time }, POLICY)
 
     expect(result.movingTimeSec).toBe(2400 - 90)
+  })
+})
+
+describe('needsTransitStreams — 최대 속도 사전 거름 (티켓 20261017_1421)', () => {
+  it('최대 속도가 종목 기준을 넘은 활동만 Streams가 필요하다', () => {
+    expect(needsTransitStreams(baseActivity({ maxSpeedKmh: 40 }), POLICY)).toBe(true)
+    expect(needsTransitStreams(baseActivity({ maxSpeedKmh: 20 }), POLICY)).toBe(false) // 기준과 같으면 넘지 않은 것
+    expect(needsTransitStreams(baseActivity({ jamActivityType: 'hiking', maxSpeedKmh: 21 }), POLICY)).toBe(true)
+    expect(needsTransitStreams(baseActivity({ jamActivityType: 'running', maxSpeedKmh: 27 }), POLICY)).toBe(false)
+    expect(needsTransitStreams(baseActivity({ jamActivityType: 'cycling', maxSpeedKmh: 56 }), POLICY)).toBe(true)
+  })
+
+  it('최대 속도가 없거나 정책값이 이상하면 Streams가 필요 없다', () => {
+    expect(needsTransitStreams(baseActivity(), POLICY)).toBe(false)
+    expect(needsTransitStreams(baseActivity({ maxSpeedKmh: 40 }), { ...POLICY, transit_walk_max_speed_kmh: 0 })).toBe(false)
+  })
+
+  it('사전 거름이 false인 활동은 스트림이 무엇이든 판정 결과가 같다(호출만 줄어든다)', () => {
+    // 최대 속도는 기준 이하인데 스트림에는 기준을 넘는 구간이 있는 모순된 입력 — 사전 거름이 막는 경우와
+    // 스트림을 끝까지 훑는 경우의 결과가 같아야 판정이 바뀌지 않는다
+    const fastStreams = makeUniformStreams([40, 40, 40], 30)
+    const cases = [
+      baseActivity({ maxSpeedKmh: 20 }),
+      baseActivity({ jamActivityType: 'hiking', maxSpeedKmh: 20 }),
+      baseActivity({ jamActivityType: 'running', maxSpeedKmh: 27 }),
+      baseActivity({ jamActivityType: 'cycling', maxSpeedKmh: 55 }),
+      baseActivity(),
+    ]
+    for (const activity of cases) {
+      expect(needsTransitStreams(activity, POLICY)).toBe(false)
+      expect(detectAndExcludeTransitSegments(activity, fastStreams, POLICY)).toBe(activity)
+      expect(detectAndExcludeTransitSegments(activity, null, POLICY)).toBe(activity)
+    }
+  })
+
+  it('사전 거름이 true인 활동은 스트림에 따라 구간을 빼거나(재산정) fail-open으로 원본을 둔다', () => {
+    const activity = baseActivity({ maxSpeedKmh: 40 })
+    expect(needsTransitStreams(activity, POLICY)).toBe(true)
+    expect(detectAndExcludeTransitSegments(activity, makeUniformStreams([40, 40, 40], 30), POLICY).movingTimeSec).toBe(1710)
+    expect(detectAndExcludeTransitSegments(activity, null, POLICY)).toBe(activity)
   })
 })

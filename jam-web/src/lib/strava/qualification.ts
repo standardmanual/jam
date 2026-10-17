@@ -47,6 +47,11 @@ export type SourceMeta = {
   externalIdShape: 'none' | 'file_name' | 'other'
   hasStartLatLng: boolean
   hasSummaryPolyline: boolean
+  /**
+   * 종목 불일치로 걷기로 바꿨을 때만 들어가는 원래 종목 (티켓 20261017_1421 2회). 바꾸지 않았으면 키가 없다.
+   * 옛 행·다른 판정 결과의 모양을 바꾸지 않으려고 선택 칸으로 둔다.
+   */
+  typeMismatchFrom?: 'running' | 'cycling'
 }
 
 export type QualificationResult =

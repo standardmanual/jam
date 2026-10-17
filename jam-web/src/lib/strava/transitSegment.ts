@@ -1,5 +1,5 @@
 /**
- * 걷기·러닝·트레일 러닝·자전거 활동에 섞인 교통수단(지하철·버스 등) 구간을 감지해 거리·시간을
+ * 걷기·러닝·트레일 러닝·등산·자전거 활동에 섞인 교통수단(지하철·버스 등) 구간을 감지해 거리·시간을
  * 재산정한다 (티켓 20260909_1012, trail_running 추가는 티켓 20260909_1031).
  *
  * 배경: 걷기 활동 중간에 지하철을 타는 경우처럼, 전체 평균속도(`averageSpeedKmh`)로는 짧은
@@ -32,17 +32,49 @@ export type TransitDetectionPolicy = Pick<
 >
 
 /**
- * jamActivityType → 정책의 임계값 필드 매핑. 걷기·러닝·자전거만 대상이다(티켓 범위).
+ * jamActivityType → 정책의 임계값 필드 매핑. 인정하는 다섯 종목(걷기·러닝·트레일 러닝·등산·자전거)이 대상이다.
  * trail_running은 러닝과 동일한 임계값(transit_run_max_speed_kmh)을 재사용한다 — 별도
  * 임계값 신설이나 어드민 필드 추가 없이 러닝과 같은 정책을 적용하기로 결정했다(티켓 20260909_1031).
+ * hiking(등산)도 걷기 임계값(transit_walk_max_speed_kmh)을 쓴다(티켓 20261017_1421, 운영 로직 16.2절).
  */
 const THRESHOLD_FIELD_BY_ACTIVITY_TYPE: Partial<
   Record<string, keyof TransitDetectionPolicy>
 > = {
   walking: 'transit_walk_max_speed_kmh',
+  hiking: 'transit_walk_max_speed_kmh',
   running: 'transit_run_max_speed_kmh',
   trail_running: 'transit_run_max_speed_kmh',
   cycling: 'transit_cycling_max_speed_kmh',
+}
+
+/**
+ * 구간 검사에 쓸 종목 기준 속도(km/h) — 검사가 필요하면 그 값, 아니면 null.
+ * 기준을 넘는 최대 속도가 있어야만 «기준 속도를 30초 넘게 이어서 넘는 구간»이 있을 수 있으므로,
+ * 최대 속도가 기준 이하(또는 없음)이면 스트림을 훑어도 결과가 같아 null이다(최대 속도 사전 거름).
+ * {@link detectAndExcludeTransitSegments}가 같은 함수를 써서 판정 결과와 호출 조건이 어긋나지 않는다.
+ */
+function transitThresholdKmh(
+  activity: NormalizedActivity,
+  policy: TransitDetectionPolicy
+): number | null {
+  const thresholdField = THRESHOLD_FIELD_BY_ACTIVITY_TYPE[activity.jamActivityType ?? '']
+  if (!thresholdField) return null // 구간 검사 대상 종목이 아님
+
+  const thresholdKmh = policy[thresholdField]
+  if (!Number.isFinite(thresholdKmh) || thresholdKmh <= 0) return null // 정책값 이상 — 페일세이프
+
+  // maxSpeedKmh가 없거나 임계값 이하면 애초에 교통수단 구간이 섞였을 가능성이 낮다 —
+  // 불필요하게 스트림을 훑지 않는다.
+  if (activity.maxSpeedKmh === undefined || activity.maxSpeedKmh <= thresholdKmh) return null
+  return thresholdKmh
+}
+
+/**
+ * 이 활동의 구간 검사에 Streams(속도·시간)가 필요한지 — 호출부가 Strava Streams 조회 여부를 정할 때 쓴다.
+ * false이면 {@link detectAndExcludeTransitSegments}는 스트림과 무관하게 원본을 그대로 돌려준다.
+ */
+export function needsTransitStreams(activity: NormalizedActivity, policy: TransitDetectionPolicy): boolean {
+  return transitThresholdKmh(activity, policy) !== null
 }
 
 /**
@@ -58,15 +90,9 @@ export function detectAndExcludeTransitSegments(
   streams: TransitDetectionStreams | null,
   policy: TransitDetectionPolicy
 ): NormalizedActivity {
-  const thresholdField = THRESHOLD_FIELD_BY_ACTIVITY_TYPE[activity.jamActivityType ?? '']
-  if (!thresholdField) return activity // 걷기·러닝·자전거가 아니면 대상 아님
-
-  const thresholdKmh = policy[thresholdField]
-  if (!Number.isFinite(thresholdKmh) || thresholdKmh <= 0) return activity // 정책값 이상 — 페일세이프
-
-  // maxSpeedKmh가 없거나 임계값 이하면 애초에 교통수단 구간이 섞였을 가능성이 낮다 —
-  // 불필요하게 스트림을 훑지 않는다.
-  if (activity.maxSpeedKmh === undefined || activity.maxSpeedKmh <= thresholdKmh) return activity
+  // 대상 종목이 아니거나 정책값이 이상하거나 최대 속도가 기준 이하면 원본 그대로(최대 속도 사전 거름)
+  const thresholdKmh = transitThresholdKmh(activity, policy)
+  if (thresholdKmh === null) return activity
 
   // fail-open — 스트림 조회 실패·부족 시 기존 averageSpeedKmh 기준 판정으로 되돌아간다.
   if (!streams?.velocitySmooth || !streams.time) return activity
