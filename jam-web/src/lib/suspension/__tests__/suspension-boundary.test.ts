@@ -114,6 +114,28 @@ describe('서버 전용 suspension.ts는 서버 쪽에서만 가져온다', () =
   })
 })
 
+describe('서버 전용 suspension-write.ts·home-banner.ts는 서버 쪽에서만 가져온다 (2회)', () => {
+  it('suspension-write.ts는 supabase-js 타입만 가져온다(런타임 의존이 없다)', () => {
+    const source = readFileSync(join(srcRoot, 'lib/suspension/suspension-write.ts'), 'utf8')
+    expect(specifiersOf(source)).toEqual(['@supabase/supabase-js'])
+    expect(source).toMatch(/import type \{ SupabaseClient \} from '@supabase\/supabase-js'/)
+  })
+
+  // 어드민 클라이언트 컴포넌트는 정지 서버 모듈을 직접 가져오지 않는다(API 라우트로만 부른다)
+  it.each(['app/admin/abusing/AbusingClient.tsx', 'app/admin/abusing/SuspensionTable.tsx'])('%s는 정지 서버 모듈을 직접 가져오지 않는다', (file) => {
+    const specs = specifiersOf(readFileSync(join(srcRoot, file), 'utf8'))
+    expect(specs.filter((spec) => /lib\/suspension\/(suspension|suspension-write|home-banner)$/.test(spec))).toEqual([])
+    expect(specs.filter((spec) => spec === 'next/headers' || spec === 'server-only')).toEqual([])
+  })
+
+  it('홈 page.tsx만 home-banner.ts를 가져온다(서버 컴포넌트)', () => {
+    const page = readFileSync(join(srcRoot, 'app/(main)/page.tsx'), 'utf8')
+    expect(specifiersOf(page)).toContain('@/lib/suspension/home-banner')
+    const banner = readFileSync(join(srcRoot, 'app/(main)/SuspensionBanner.tsx'), 'utf8')
+    expect(specifiersOf(banner).filter((spec) => spec.includes('lib/suspension'))).toEqual([])
+  })
+})
+
 /** 하위 폴더까지 포함해 시험·스토리·목업 파일을 뺀 소스 파일 목록 */
 function sourceFilesUnder(dir: string): string[] {
   const out: string[] = []

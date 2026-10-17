@@ -11,6 +11,7 @@
 import type { createServiceClient } from '@/lib/supabase/server'
 import { sanitizeSearchTerm } from './search-term'
 import { ADMIN_LIST_PAGE_SIZE } from './list-params'
+import { fetchSuspensionActiveCount } from './suspension-list'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -241,20 +242,19 @@ export async function fetchAbusingListIds(
   return { ids: result.rows.map((row) => row.id), total: result.total, error: result.error }
 }
 
-/** 탭 라벨에 붙이는 활성 건수 — 조회에 실패하면 null(라벨에서 숨긴다) */
+/**
+ * 탭 라벨에 붙이는 활성 건수 — 조회에 실패하면 null(라벨에서 숨긴다).
+ * 「이용 정지」 탭은 진행 중인 정지(`lifted_at IS NULL`) 건수다(티켓 20261017_1426). 옛 섀도우밴 건수는 읽지 않는다.
+ */
 export async function fetchAbusingTabCounts(
   supabase: ServiceClient,
   now: Date = new Date()
-): Promise<{ bans: number | null; poiBlocks: number | null }> {
+): Promise<{ suspensions: number | null; poiBlocks: number | null }> {
   const nowIso = now.toISOString()
-  const [bans, poiBlocks] = await Promise.all([
-    supabase
-      .from('user_shadow_bans')
-      .select('id', { count: 'exact', head: true })
-      .or(statusFilterOf('bans', 'active', nowIso) as string),
+  const [suspensions, poiBlocks] = await Promise.all([
+    fetchSuspensionActiveCount(supabase),
     supabase.from('poi_blocks').select('id', { count: 'exact', head: true }).gt('blocked_until', nowIso),
   ])
-  if (bans.error) console.error('[admin/abusing] 제재 활성 건수 조회 오류:', bans.error)
   if (poiBlocks.error) console.error('[admin/abusing] POI 차단 활성 건수 조회 오류:', poiBlocks.error)
-  return { bans: bans.error ? null : (bans.count ?? 0), poiBlocks: poiBlocks.error ? null : (poiBlocks.count ?? 0) }
+  return { suspensions, poiBlocks: poiBlocks.error ? null : (poiBlocks.count ?? 0) }
 }
