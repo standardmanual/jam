@@ -23,6 +23,7 @@ const ID_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 const state = vi.hoisted(() => ({ authenticated: true }))
 const getPendingMock = vi.hoisted(() => vi.fn())
 const resolveMock = vi.hoisted(() => vi.fn())
+const followUpMock = vi.hoisted(() => vi.fn())
 const serviceClient = vi.hoisted(() => ({ marker: 'service-role-client' }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -41,6 +42,10 @@ vi.mock('@/lib/strava/pending-items', () => ({
   resolvePendingItems: (...args: unknown[]) => resolveMock(...args),
 }))
 
+vi.mock('@/lib/strava/pending-followups', () => ({
+  runPendingFollowUps: (...args: unknown[]) => followUpMock(...args),
+}))
+
 import { GET, POST } from '../route'
 
 const post = (body: unknown) =>
@@ -50,6 +55,8 @@ beforeEach(() => {
   state.authenticated = true
   getPendingMock.mockReset()
   resolveMock.mockReset()
+  followUpMock.mockReset()
+  followUpMock.mockResolvedValue(undefined)
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -149,6 +156,36 @@ describe('POST /api/strava/pending-items — 고르기', () => {
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toEqual({ granted: 2, discarded: 1, itemIds: ['i1', 'i2'] })
     expect(resolveMock).toHaveBeenCalledWith(serviceClient, USER_ID, [ID_A, ID_B])
+  })
+
+  it('성공하면 받은 개체(itemIds)로 후속 처리(포인트·피드·결산)를 이어서 부른다', async () => {
+    resolveMock.mockResolvedValue({ ok: true, granted: 2, discarded: 1, itemIds: ['i1', 'i2'] })
+
+    await post({ chosenIds: [ID_A, ID_B] })
+
+    expect(followUpMock).toHaveBeenCalledTimes(1)
+    expect(followUpMock).toHaveBeenCalledWith(serviceClient, USER_ID, ['i1', 'i2'])
+  })
+
+  it('후속 처리가 던져도 응답은 성공 그대로다', async () => {
+    resolveMock.mockResolvedValue({ ok: true, granted: 1, discarded: 0, itemIds: ['i1'] })
+    followUpMock.mockRejectedValue(new Error('points down'))
+
+    const res = await post({ chosenIds: [ID_A] })
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual({ granted: 1, discarded: 0, itemIds: ['i1'] })
+  })
+
+  it.each([
+    ['wrong_count', { ok: false, error: 'wrong_count', expected: 2 }],
+    ['no_pending', { ok: false, error: 'no_pending' }],
+  ])('고르기가 거절되면(%s) 후속 처리를 부르지 않는다', async (_name, result) => {
+    resolveMock.mockResolvedValue(result)
+
+    await post({ chosenIds: [ID_A] })
+
+    expect(followUpMock).not.toHaveBeenCalled()
   })
 
   it('wrong_count는 400과 골라야 할 개수를 돌려준다', async () => {

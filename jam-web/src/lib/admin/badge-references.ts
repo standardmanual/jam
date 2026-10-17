@@ -49,6 +49,7 @@ export type BadgeReferenceKey =
   | 'inventory_items'
   | 'poi_drops'
   | 'item_issue_log'
+  | 'sync_pending_items'
   | 'user_item_book_slots'
   | 'point_transactions'
   | 'poi'
@@ -136,6 +137,17 @@ export const BADGE_REFERENCE_SOURCES: BadgeReferenceSource[] = [
     location: 'item_issue_log.badge_id',
     blocksDelete: false,
     cascades: false,
+    detachable: false,
+  },
+  {
+    // 마이그레이션 229(티켓 20261017_1425): 고르기를 기다리는 보류가 배지와 함께 사라진다(ON DELETE CASCADE). FK 위반으로 삭제가 실패하지는
+    // 않아 blocksDelete는 false다 — 대신 «조용히 사라지는 유저 기록»이라 cascades로 보여 주고 하드 삭제 가드가 막는다.
+    key: 'sync_pending_items',
+    group: 'earn',
+    label: '동기화 보류(고르기 대기·이력)',
+    location: 'sync_pending_items.badge_id',
+    blocksDelete: false,
+    cascades: true,
     detachable: false,
   },
   {
@@ -379,6 +391,11 @@ export async function collectBadgeReferences(
       key: 'item_issue_log',
       run: (chunk) =>
         supabase.from('item_issue_log').select('*', { count: 'exact', head: true }).in('badge_id', chunk),
+    },
+    {
+      key: 'sync_pending_items',
+      run: (chunk) =>
+        supabase.from('sync_pending_items').select('*', { count: 'exact', head: true }).in('badge_id', chunk),
     },
     {
       key: 'user_item_book_slots',

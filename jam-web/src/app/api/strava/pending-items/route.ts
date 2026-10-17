@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
 import { getPendingItems, resolvePendingItems, type ResolvePendingErrorCode } from '@/lib/strava/pending-items'
+import { runPendingFollowUps } from '@/lib/strava/pending-followups'
 import { PENDING_CHOSEN_IDS_MAX } from '@/lib/strava/pending-items-contract'
 
 export const dynamic = 'force-dynamic'
@@ -70,13 +71,20 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await resolvePendingItems(createServiceClient(), user.id, chosenIds)
+    const service = createServiceClient()
+    const result = await resolvePendingItems(service, user.id, chosenIds)
     if (!result.ok) {
       const { status, message } = RESOLVE_ERRORS[result.error]
       return NextResponse.json(
         { error: message, code: result.error, ...(result.expected !== undefined ? { expected: result.expected } : {}) },
         { status }
       )
+    }
+    // 보류에서 받은 개체도 바로 지급과 같이 포인트·피드·결산을 잇는다. 지급은 이미 끝났으므로 실패는 로그만 남기고 응답을 바꾸지 않는다.
+    try {
+      await runPendingFollowUps(service, user.id, result.itemIds)
+    } catch (followUpError) {
+      console.error('[/api/strava/pending-items] 보류 후속 처리 오류:', followUpError)
     }
     return NextResponse.json({ granted: result.granted, discarded: result.discarded, itemIds: result.itemIds })
   } catch (err) {

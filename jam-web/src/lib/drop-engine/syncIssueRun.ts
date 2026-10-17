@@ -21,14 +21,13 @@
  * 옛 드랍 엔진(`index.ts`)의 함수·상수는 호출하지 않는다 — 트라이브를 고르는 규칙·등급 보정 셋·컬렉션 쪽 보정이 거기 있다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { recordFeedEvent } from '@/lib/activity-feed'
 import { fetchAllRows } from '@/lib/db/fetchAllRows'
 import { logEngineDecision } from '@/lib/engine-log'
+import { recordIssuedRewards } from './issueFollowUp'
 import type { GrantInventoryItemResult } from '@/lib/inventory/slots'
 import type { JamPolicy } from '@/lib/jam/policy'
 import { recordActivityRecap } from '@/lib/notifications/recap'
 import type { RecapItemBadge } from '@/lib/notifications/types'
-import { awardPoints } from '@/lib/points'
 import {
   pickWithRarityFallback,
   rollItemCount,
@@ -394,40 +393,21 @@ interface RecordIssuedInput {
 }
 
 /**
- * 지급 뒤의 곁다리 — 잼 연계 포인트, 피드, 발급 기록. 지급은 이미 끝났으므로 여기서 던지지 않는다.
+ * 지급 뒤의 곁다리 — 잼 연계 포인트·피드(`issueFollowUp.ts`, 보류에서 받은 개체와 공용), 발급 기록. 지급은 이미 끝났으므로 여기서 던지지 않는다.
  * 포인트 규칙은 옛 지급과 같다(`badge.point_reward`가 있으면 1회 지급, 14장·묶음 5에서 바뀐다).
  */
 async function recordIssued(input: RecordIssuedInput): Promise<void> {
   const { supabase, userId, target, badge } = input
 
-  const pointReward = badge.point_reward ?? 0
-  try {
-    if (pointReward > 0) await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: badge.id })
-  } catch (e) {
-    console.error(`[syncIssue] 포인트 지급 예외 (badge_id: ${badge.id}):`, e)
-  }
-
-  try {
-    await recordFeedEvent(
-      userId,
-      'item_dropped',
-      {
-        inventory_item_id: input.inventoryItemId,
-        badge_id: badge.id,
-        badge_name: badge.name,
-        badge_image_url: badge.image_url ?? '',
-        rarity: input.rarity,
-        poi_name: '',
-        tribe_name: input.tribeName,
-        is_last_piece: false,
-        ...(pointReward > 0 ? { point_reward: pointReward } : {}),
-      },
-      target.startDate,
-      target.stravaId
-    )
-  } catch (e) {
-    console.error(`[syncIssue] 피드 기록 예외 (badge_id: ${badge.id}):`, e)
-  }
+  await recordIssuedRewards({
+    userId,
+    stravaId: target.stravaId,
+    startDate: target.startDate,
+    tribeName: input.tribeName,
+    inventoryItemId: input.inventoryItemId,
+    badge,
+    rarity: input.rarity,
+  })
 
   // 발급 기록 — 실패해도 지급과 동기화를 막지 않는다
   try {
