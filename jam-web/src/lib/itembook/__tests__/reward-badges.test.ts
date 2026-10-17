@@ -13,6 +13,9 @@
  *  - 장착 직후 발급(`runSlotRewardIssue`): 완성 기록이 있으면 발급하고 `activity_recap` 결산으로 알린다. 완성이 아니거나
  *    이미 보유했거나 보상 배지가 없으면 발급·알림이 없다. 어떤 실패도 던지지 않는다
  *  - 장착 직후 발급 뒤 이어지는 동기화 보정은 같은 배지를 다시 발급하지 않는다
+ *  - 등급별 구조(`tier_mode`) 컬렉션의 동기화 보정(티켓 20261016_2340): 등급 완성 기록이 있는 등급의 등급 보상 배지를 따라잡아
+ *    발급하고 `completedIds`·옛 완성 기록 upsert에는 넣지 않는다. 같은 보정을 두 번 돌려도 한 번만 나가며, 등급 완성 기록이 없는 등급·
+ *    보상 배지가 빈 등급은 주지 않는다. `tier_mode`가 꺼진 컬렉션의 결과는 달라지지 않고 새 테이블을 읽지도 않는다
  *
  * Supabase는 메모리 테이블로 흉내 낸다(필터 `eq`·`in`만 해석, 컬럼 선택은 무시).
  *
@@ -30,6 +33,8 @@ const db = vi.hoisted(() => ({
   tables: {} as Record<string, Row[]>,
   /** user_activity_badges insert 호출 기록 */
   inserts: [] as Row[],
+  /** 읽은 테이블 이름 기록 */
+  reads: [] as string[],
   /** user_item_book_completions upsert 호출 기록 */
   upserts: [] as Row[][],
   /** 설정하면 user_activity_badges insert가 이 오류로 실패한다 */
@@ -53,6 +58,7 @@ interface FakeBuilder extends PromiseLike<{ data: Row[]; error: null }> {
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
     from(table: string): FakeBuilder {
+      db.reads.push(table)
       const filters: ((row: Row) => boolean)[] = []
       let window: [number, number] | null = null
       const run = (): Row[] => {
@@ -129,6 +135,7 @@ beforeEach(() => {
   db.tables = {}
   db.inserts = []
   db.upserts = []
+  db.reads = []
   db.insertError = null
   notifyMock.mockResolvedValue(undefined)
   vi.spyOn(console, 'info').mockImplementation(() => {})
@@ -328,5 +335,123 @@ describe('장착 직후 발급(runSlotRewardIssue)', () => {
 
     expect(catchUp.rewardBadgeIds).toEqual([])
     expect(db.inserts).toHaveLength(1)
+  })
+})
+
+describe('동기화 보정 — 등급별 구조(tier_mode) 컬렉션의 등급 보상 배지 (티켓 20261016_2340)', () => {
+  const COMMON_REWARD = 'tier-reward-common'
+  const EPIC_REWARD = 'tier-reward-epic'
+
+  /** 등급별 컬렉션 1개. 옛 완성 기록과 컬렉션 단위 보상 배지는 두지 않는다(등급 완성은 새 테이블에 기록된다) */
+  function seedTier(opts: { completedTiers?: string[]; rewards?: Row[] } = {}) {
+    const completedTiers = opts.completedTiers ?? ['common']
+    db.tables = {
+      item_books: [{ id: BOOK_ID, name: '등급 컬렉션', reward_badge_id: null, is_active: true, tier_mode: true }],
+      badges: [
+        { id: 'c1', item_book_id: BOOK_ID, type: 'item', drop_excluded: false, name: 'A', rarity: 'common', deleted_at: null },
+        { id: 'e1', item_book_id: BOOK_ID, type: 'item', drop_excluded: false, name: 'A', rarity: 'epic', deleted_at: null },
+        { id: COMMON_REWARD, item_book_id: null, type: 'activity', drop_excluded: false },
+        { id: EPIC_REWARD, item_book_id: null, type: 'activity', drop_excluded: false },
+      ],
+      user_item_book_slots: [{ user_id: USER_ID, item_book_id: BOOK_ID, badge_id: 'c1' }],
+      user_item_book_completions: [],
+      user_item_book_tier_completions: completedTiers.map((tier) => ({ user_id: USER_ID, item_book_id: BOOK_ID, tier })),
+      item_book_tier_rewards: opts.rewards ?? [
+        { item_book_id: BOOK_ID, tier: 'common', reward_badge_id: COMMON_REWARD },
+        { item_book_id: BOOK_ID, tier: 'epic', reward_badge_id: EPIC_REWARD },
+      ],
+      user_activity_badges: [],
+    }
+  }
+
+  it('등급 완성 기록이 있는 등급의 보상 배지만 따라잡아 발급하고 완성 기록 upsert·completedIds에는 넣지 않는다', async () => {
+    seedTier({ completedTiers: ['common'] })
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result).toEqual({ completedIds: [], rewardBadgesIssued: 1, rewardBadgeIds: [COMMON_REWARD] })
+    expect(db.upserts).toEqual([])
+    expect(db.inserts).toEqual([
+      { user_id: USER_ID, badge_id: COMMON_REWARD, triggered_by: `itembook_complete:${BOOK_ID}` },
+    ])
+  })
+
+  it('두 등급을 완성했으면 두 등급의 보상 배지를 모두 발급한다', async () => {
+    seedTier({ completedTiers: ['common', 'epic'] })
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result.rewardBadgeIds).toEqual([COMMON_REWARD, EPIC_REWARD])
+    expect(db.upserts).toEqual([])
+  })
+
+  it('같은 보정을 두 번 돌려도 등급 보상 배지는 한 번만 나간다', async () => {
+    seedTier({ completedTiers: ['common'] })
+
+    const first = await checkItemBookCompletion(USER_ID)
+    const second = await checkItemBookCompletion(USER_ID)
+
+    expect(first.rewardBadgeIds).toEqual([COMMON_REWARD])
+    expect(second.rewardBadgeIds).toEqual([])
+    expect(db.inserts).toHaveLength(1)
+  })
+
+  it('등급 완성 기록이 없으면 보상 배지도 없고 보상 표는 읽지 않는다', async () => {
+    seedTier({ completedTiers: [] })
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result).toEqual({ completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] })
+    expect(db.inserts).toEqual([])
+    expect(db.reads).not.toContain('item_book_tier_rewards')
+  })
+
+  it('완성한 등급의 보상 배지가 비어 있거나 보상 행이 없으면 발급하지 않는다', async () => {
+    seedTier({
+      completedTiers: ['common', 'epic'],
+      rewards: [{ item_book_id: BOOK_ID, tier: 'common', reward_badge_id: null }],
+    })
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result).toEqual({ completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] })
+    expect(db.inserts).toEqual([])
+  })
+
+  it('tier_mode 컬렉션은 옛 규칙으로 완성처럼 보여도 옛 완성 기록을 만들지 않는다', async () => {
+    seedTier({ completedTiers: [] })
+    // 꽂힌 등급의 이름 칸을 모두 채운 상태(옛 컬렉션이었다면 완성 기록 대상)
+    db.tables.badges = db.tables.badges.filter((b) => b.id !== 'e1')
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result.completedIds).toEqual([])
+    expect(db.upserts).toEqual([])
+  })
+
+  it('tier_mode가 꺼진 컬렉션은 결과가 달라지지 않고 등급 테이블을 읽지 않는다(회귀)', async () => {
+    seed({ completionRecorded: true })
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result.rewardBadgeIds).toEqual([REWARD_BADGE_ID])
+    expect(db.reads).not.toContain('user_item_book_tier_completions')
+    expect(db.reads).not.toContain('item_book_tier_rewards')
+  })
+
+  it('꺼진 컬렉션과 켜진 컬렉션이 함께 있어도 옛 컬렉션은 옛 경로로, 켜진 컬렉션은 등급 경로로 발급된다', async () => {
+    seed({ completionRecorded: true })
+    db.tables.item_books = [
+      ...db.tables.item_books,
+      { id: 'book-tier', name: '등급 컬렉션', reward_badge_id: null, is_active: true, tier_mode: true },
+    ]
+    db.tables.user_item_book_tier_completions = [{ user_id: USER_ID, item_book_id: 'book-tier', tier: 'rare' }]
+    db.tables.item_book_tier_rewards = [{ item_book_id: 'book-tier', tier: 'rare', reward_badge_id: 'tier-reward-rare' }]
+    db.tables.badges = [...db.tables.badges, { id: 'tier-reward-rare', item_book_id: null, type: 'activity', drop_excluded: false }]
+
+    const result = await checkItemBookCompletion(USER_ID)
+
+    expect(result.rewardBadgeIds).toEqual([REWARD_BADGE_ID, 'tier-reward-rare'])
+    expect(result.completedIds).toEqual([])
   })
 })

@@ -5,6 +5,7 @@
  * - 완성 분모 = 소속 배지 − drop_excluded 배지, 분자 = 그 북에 장착·획득한 배지 id ∩ 분모 (completion-basis.ts)
  * - 완성 기록: user_item_book_completions (upsert, 최초 1회)
  * - reward_badge_id가 있는 경우 user_activity_badges에 보상 배지 발급
+ * - 등급별(tier_mode) 컬렉션은 등급 완성 기록이 있는 등급의 보상 배지(item_book_tier_rewards)만 보정한다(티켓 20261016_2340)
  *
  * 주의: 슬롯 기반 완성은 /api/itembooks/[id]/slot POST 핸들러에서 실시간으로 처리됨.
  *       이 함수는 Strava sync 등 배치 맥락에서 누락된 완성을 보정하는 catch-up 용도.
@@ -184,7 +185,12 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     if (!alreadyCompletedSet.has(book.id)) completedIds.push(book.id)
   }
 
-  if (completeBooks.length === 0) {
+  // 5-1. 등급별(tier_mode) 컬렉션의 보상 배지 보정 — 등급 완성 기록(user_item_book_tier_completions)이 있는 등급의
+  //      보상 배지를 후보에 넣는다. 장착 라우트의 after()가 한 번 실패하면 등급 보상 배지를 따라잡을 경로가 이것뿐이다
+  //      (옛 구조는 위 completeBooks 경로가 따라잡는다). completedIds와 옛 완성 기록 upsert에는 영향이 없다(티켓 20261016_2340).
+  const tierRewardBooks = await loadTierRewardBooks(supabase, userId, itemBooks.filter((b) => tierModeBookIds.has(b.id)))
+
+  if (completeBooks.length === 0 && tierRewardBooks.length === 0) {
     return { completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] }
   }
 
@@ -197,9 +203,58 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   }
 
   // 7. reward_badge_id 발급 — 새 완성분과 보정분(완성 기록은 있으나 배지가 없는 북)을 함께 넘긴다
-  const rewardBadgeIds = await issueItemBookRewardBadges(supabase, userId, completeBooks)
+  const rewardBadgeIds = await issueItemBookRewardBadges(supabase, userId, [...completeBooks, ...tierRewardBooks])
 
   return { completedIds, rewardBadgesIssued: rewardBadgeIds.length, rewardBadgeIds }
+}
+
+/**
+ * 등급별(tier_mode) 컬렉션에서 유저가 완성한 등급의 보상 배지 후보를 `issueItemBookRewardBadges` 입력 모양으로 만든다.
+ * 등급 완성 기록과 등급 보상 표를 읽어 «완성 기록이 있는 등급 ∩ 보상 배지가 있는 등급»만 돌려준다.
+ * 조회가 실패하면 로그만 남기고 빈 배열이다(다음 보정이 다시 시도한다). tier_mode 컬렉션이 없으면 아무것도 읽지 않는다.
+ */
+async function loadTierRewardBooks(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string,
+  tierBooks: readonly ItemBookRewardFields[]
+): Promise<ItemBookRewardFields[]> {
+  if (tierBooks.length === 0) return []
+  const tierBookIds = tierBooks.map((b) => b.id)
+
+  const { data: completionsRaw, error: completionsError } = await supabase
+    .from('user_item_book_tier_completions')
+    .select('item_book_id, tier')
+    .eq('user_id', userId)
+    .in('item_book_id', tierBookIds)
+  if (completionsError) {
+    console.error('[checkItemBookCompletion] user_item_book_tier_completions 조회 오류:', completionsError)
+    return []
+  }
+  const completions = (completionsRaw ?? []) as { item_book_id: string; tier: string }[]
+  if (completions.length === 0) return []
+
+  const { data: rewardsRaw, error: rewardsError } = await supabase
+    .from('item_book_tier_rewards')
+    .select('item_book_id, tier, reward_badge_id')
+    .in('item_book_id', tierBookIds)
+  if (rewardsError) {
+    console.error('[checkItemBookCompletion] item_book_tier_rewards 조회 오류:', rewardsError)
+    return []
+  }
+  const rewardBadgeByBookTier = new Map<string, string>()
+  for (const r of (rewardsRaw ?? []) as { item_book_id: string; tier: string; reward_badge_id: string | null }[]) {
+    if (r.reward_badge_id) rewardBadgeByBookTier.set(`${r.item_book_id}:${r.tier}`, r.reward_badge_id)
+  }
+
+  const bookById = new Map(tierBooks.map((b) => [b.id, b]))
+  const result: ItemBookRewardFields[] = []
+  for (const c of completions) {
+    const rewardBadgeId = rewardBadgeByBookTier.get(`${c.item_book_id}:${c.tier}`)
+    const book = bookById.get(c.item_book_id)
+    if (!rewardBadgeId || !book) continue
+    result.push({ id: book.id, name: book.name, reward_badge_id: rewardBadgeId })
+  }
+  return result
 }
 
 /** 보상 배지 발급에 필요한 `item_books` 컬럼만 */
