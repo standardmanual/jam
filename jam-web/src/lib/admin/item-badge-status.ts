@@ -105,6 +105,35 @@ export function deriveItemBadgeStatus(input: DeriveItemBadgeStatusInput): ItemBa
   return 'Orphaned'
 }
 
+/** 개체의 잠김 칸(마이그레이션 231, 티켓 20261018_0051) — 목록의 읽기 표시에 쓴다 */
+export interface ItemLockInfo {
+  locked: boolean | null
+  unlockRequired: number | null
+  unlockFilled: number | null
+  unlockedAt: string | null
+}
+
+export interface ItemLockDisplay {
+  /** 잠김: 아직 잠긴 개체, 열림: 처음부터 열린 개체, 연 개체: 잠겼다가 채워서 연 개체 */
+  state: 'locked' | 'open' | 'unlocked'
+  /** 화면에 그릴 문구. 잠긴 개체는 채운 양과 필요한 양을 함께 적는다(예: «잠김 30/60잼») */
+  label: string
+}
+
+/**
+ * 개체의 잠김 상태를 화면 문구로 바꾼다(읽기 전용).
+ * 잠금 칸을 읽지 못한 옛 행(`locked` null)은 열린 개체로 본다 — 231 이전 개체와 옛 지급 경로의 개체가 모두 열린 채다.
+ */
+export function describeItemLock(info: ItemLockInfo): ItemLockDisplay {
+  if (info.locked === true) {
+    const required = info.unlockRequired
+    const filled = info.unlockFilled ?? 0
+    return { state: 'locked', label: required ? `잠김 ${filled}/${required}잼` : '잠김' }
+  }
+  if (info.unlockedAt) return { state: 'unlocked', label: '연 개체' }
+  return { state: 'open', label: '열림' }
+}
+
 export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('ko-KR', {
     year: 'numeric',

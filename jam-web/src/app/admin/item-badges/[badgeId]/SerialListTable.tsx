@@ -20,6 +20,7 @@ import {
   ITEM_BADGE_STATUS_COLOR,
   formatDateTime,
   type ItemBadgeStatus,
+  type ItemLockDisplay,
 } from '@/lib/admin/item-badge-status'
 import { DestroyOrphanedAction } from '../_orphaned-actions/DestroyOrphanedAction'
 import { ReassignOrphanedAction } from '../_orphaned-actions/ReassignOrphanedAction'
@@ -33,6 +34,8 @@ export interface SerialListRow {
   poiId: string | null
   poiName: string | null
   mintedAt: string
+  /** 개체의 잠김 상태(읽기 표시). 열린 개체는 흐리게, 잠긴 개체는 채운 양과 필요한 양을 함께 보인다 */
+  lock: ItemLockDisplay
   isReissued: boolean
   /** 재발급된 번호 중, 이전 개체가 파괴되지 않은 채로 둘 다 살아있는 이상 케이스 */
   reissueAnomaly: boolean
@@ -127,6 +130,18 @@ export function SerialListTable({ rows, badgeId }: SerialListTableProps) {
               {ITEM_BADGE_STATUS_LABEL[row.original.status]}
             </span>
           ),
+        }),
+        columnHelper.accessor((row) => row.lock.label, {
+          id: 'lock',
+          header: '잠김',
+          enableSorting: false,
+          meta: { label: '잠김' },
+          cell: ({ row }) =>
+            row.original.lock.state === 'locked' ? (
+              <span className={`${PILL_CLASS} bg-amber-100 text-amber-800`}>{row.original.lock.label}</span>
+            ) : (
+              <span className="text-xs text-muted-foreground whitespace-nowrap">{row.original.lock.label}</span>
+            ),
         }),
         columnHelper.display({
           id: 'location',

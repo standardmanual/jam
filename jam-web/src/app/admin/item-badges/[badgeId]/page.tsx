@@ -6,6 +6,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRow, InventoryItemRow, InventoryRow, PoiDropSource } from '@/types/database'
 import {
   deriveItemBadgeStatus,
+  describeItemLock,
   RARITY_LABEL,
   RARITY_BADGE_COLOR,
   type ItemBadgeStatus,
@@ -20,7 +21,13 @@ const PAGE_SIZE = 50
 type ListedItem = Pick<
   InventoryItemRow,
   'id' | 'badge_id' | 'serial_number' | 'serial_prefix' | 'obtained_at' | 'destroyed_at' | 'inventory_id' | 'slotted_in'
->
+> & {
+  // 잠김 칸(마이그레이션 231, 티켓 20261018_0051) — 읽기 표시만 한다
+  locked: boolean | null
+  unlock_required: number | null
+  unlock_filled: number | null
+  unlocked_at: string | null
+}
 
 /**
  * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — 같은 키가 두 번 오면(`?page=1&page=2`)
@@ -61,7 +68,9 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
 
   const { data: itemsRaw } = await supabase
     .from('inventory_items')
-    .select('id, badge_id, serial_number, serial_prefix, obtained_at, destroyed_at, inventory_id, slotted_in')
+    .select(
+      'id, badge_id, serial_number, serial_prefix, obtained_at, destroyed_at, inventory_id, slotted_in, locked, unlock_required, unlock_filled, unlocked_at'
+    )
     .eq('badge_id', badgeId)
 
   const items = (itemsRaw ?? []) as ListedItem[]
@@ -213,6 +222,12 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
       poiId,
       poiName,
       mintedAt: mintedAtByItem.get(item.id) ?? item.obtained_at,
+      lock: describeItemLock({
+        locked: item.locked,
+        unlockRequired: item.unlock_required,
+        unlockFilled: item.unlock_filled,
+        unlockedAt: item.unlocked_at,
+      }),
       isReissued,
       reissueAnomaly,
     }
