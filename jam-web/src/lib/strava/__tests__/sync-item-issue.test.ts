@@ -197,7 +197,7 @@ function makeFakeSupabase(world: World): SupabaseClient {
   }
 
   const rpc = async (name: string, args: Record<string, unknown>) => {
-    if (name !== 'grant_inventory_item') return { data: null, error: { message: `알 수 없는 rpc ${name}` } }
+    if (name !== 'grant_inventory_item_locked') return { data: null, error: { message: `알 수 없는 rpc ${name}` } }
     grantCount += 1
     world.rpcCalls.push(args)
     const override = world.grantOverride(grantCount)
@@ -415,7 +415,15 @@ describe('공개 기간·기한', () => {
     await run(world, [target(1)])
 
     expect(world.rpcCalls).toEqual([
-      { p_inventory_id: 'inv-1', p_badge_id: 'b-ok', p_obtained_by: 'drop', p_expires_at: null },
+      {
+        p_inventory_id: 'inv-1',
+        p_badge_id: 'b-ok',
+        p_obtained_by: 'drop',
+        p_expires_at: null,
+        p_locked: false,
+        p_lock_reason: null,
+        p_unlock_required: null,
+      },
     ])
   })
 })

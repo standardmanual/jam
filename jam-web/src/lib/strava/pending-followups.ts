@@ -5,7 +5,7 @@
  * 보류에서 고르기로 받은 개체도 같은 처리를 받아야 한다 — 고르기 API(`/api/strava/pending-items` POST)가 성공한 뒤에 부른다.
  *
  * 규칙
- *  - 받은 개체(`itemIds`)마다 `badge.point_reward`가 있으면 `awardPoints`, 피드 이벤트(`item_dropped`)를 남긴다(`recordIssuedRewards`, 바로 지급과 공용).
+ *  - 받은 개체(`itemIds`)마다 `badge.point_reward`가 있으면(잠긴 채 받은 개체는 제외, 티켓 20261018_0051) `awardPoints`, 피드 이벤트(`item_dropped`)를 남긴다(`recordIssuedRewards`, 바로 지급과 공용).
  *  - 결산 알림은 활동 하나당 한 조각이다(`recordActivityRecap`, 바로 지급과 같은 모양). 활동을 모르는 개체는 결산을 만들지 않는다.
  *  - 이 함수는 던지지 않는다. 각 후속 처리의 실패는 로그만 남기고 호출부(고르기 응답)를 바꾸지 않는다.
  *
@@ -21,6 +21,8 @@ interface ClaimedRow {
   badge_id: string
   rarity: 'common' | 'rare' | 'epic' | 'mystic'
   inventory_item_id: string | null
+  /** 보류 때 정한 잠김. 고르기 RPC가 개체로 옮긴 값과 같다 */
+  locked: boolean
 }
 
 interface BadgeRow {
@@ -46,7 +48,7 @@ export async function runPendingFollowUps(
   try {
     const { data: claimedRaw, error: claimedError } = await supabase
       .from('sync_pending_items')
-      .select('source_activity_id, badge_id, rarity, inventory_item_id')
+      .select('source_activity_id, badge_id, rarity, inventory_item_id, locked')
       .eq('user_id', userId)
       .in('inventory_item_id', [...itemIds])
     if (claimedError) throw new Error(`보류 기록 조회 실패: ${claimedError.message}`)
@@ -101,6 +103,7 @@ export async function runPendingFollowUps(
         inventoryItemId: itemId,
         badge,
         rarity: row.rarity,
+        locked: row.locked === true,
       })
 
       if (activity) {

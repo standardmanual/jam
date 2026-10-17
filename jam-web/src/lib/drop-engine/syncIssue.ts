@@ -126,6 +126,10 @@ export interface IssueBadge {
   valid_from: string | null
   valid_until: string | null
   deleted_at: string | null
+  /** 배지 양식의 «잠김으로 만듦»(`badges.always_locked`, 티켓 20261018_0051). 읽지 않은 행은 열린 배지로 본다 */
+  always_locked?: boolean
+  /** 배지 양식의 «여는 데 필요한 양»(`badges.unlock_required`). 없으면 등급 최소값을 쓴다 */
+  unlock_required?: number | null
 }
 
 /** 공개 기간 안인가 — 시작·종료가 비어 있으면 그쪽은 제한 없음. 종료 시각 정각까지 포함한다(기존 엔진과 같은 경계). */

@@ -4,6 +4,7 @@
  * 고정하는 것:
  * - 받은 개체마다 `badge.point_reward`가 있으면 `awardPoints`(`badge_point_reward`)를, 없으면 부르지 않는다. 피드 `item_dropped`는 개체마다 남기고
  *   바로 지급(`syncIssueRun`)과 같은 메타데이터(`point_reward`는 있을 때만)·활동 귀속(strava id·시작 시각)을 쓴다.
+ * - 잠긴 채 받은 개체(`locked`)는 `point_reward`가 있어도 포인트를 주지 않는다(티켓 20261018_0051). 열린 개체는 그대로 준다.
  * - 결산 알림은 활동 하나당 한 조각(`activity_ids: [stravaId]`, `item_badges`)이고, 활동을 모르는 개체는 결산을 만들지 않는다.
  * - 각 후속 처리의 실패(포인트·피드·결산·조회)는 던지지 않고 다음 단계로 간다 — 고르기 응답을 바꾸지 않는다.
  *
@@ -26,7 +27,7 @@ import { recordActivityRecap } from '@/lib/notifications/recap'
 const USER_ID = 'user-1'
 
 interface World {
-  claimed: { source_activity_id: string | null; badge_id: string; rarity: string; inventory_item_id: string | null }[]
+  claimed: { source_activity_id: string | null; badge_id: string; rarity: string; inventory_item_id: string | null; locked?: boolean }[]
   badges: { id: string; name: string; image_url: string | null; point_reward: number | null }[]
   activities: { id: string; strava_id: number; start_date: string }[]
   claimedError?: { message: string }
@@ -208,5 +209,23 @@ describe('runPendingFollowUps — 실패는 던지지 않는다', () => {
 
     expect(supabase.from).not.toHaveBeenCalled()
     expect(recordFeedEvent).not.toHaveBeenCalled()
+  })
+})
+
+describe('runPendingFollowUps — 잠긴 채 받은 개체', () => {
+  it('locked 개체는 point_reward가 있어도 포인트를 주지 않고 열린 개체는 준다', async () => {
+    const world = baseWorld()
+    world.claimed = [
+      { source_activity_id: 'act-1', badge_id: 'b-rare', rarity: 'rare', inventory_item_id: 'item-1', locked: true },
+      { source_activity_id: 'act-1', badge_id: 'b-rare', rarity: 'rare', inventory_item_id: 'item-2', locked: false },
+    ]
+
+    await runPendingFollowUps(makeFake(world), USER_ID, ['item-1', 'item-2'])
+
+    expect(awardPoints).toHaveBeenCalledTimes(1)
+    const lockedFeed = vi.mocked(recordFeedEvent).mock.calls.find((c) => (c[2] as { inventory_item_id: string }).inventory_item_id === 'item-1')
+    expect(lockedFeed?.[2]).not.toHaveProperty('point_reward')
+    const openFeed = vi.mocked(recordFeedEvent).mock.calls.find((c) => (c[2] as { inventory_item_id: string }).inventory_item_id === 'item-2')
+    expect(openFeed?.[2]).toHaveProperty('point_reward', 30)
   })
 })

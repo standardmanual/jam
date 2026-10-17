@@ -7,14 +7,17 @@
  * 규칙
  *  - 소속 트라이브(`users.tribe_id`)가 없으면 아이템 배지만 건너뛴다(로그). 잼 정산 등 다른 보상은 이 모듈 밖이라 그대로다.
  *  - 계획 → 지급 또는 보류(티켓 20261017_1425, 운영 로직 6.4절). 먼저 정산한 모든 활동의 개수·등급·후보를 굴려 이번 동기화의
- *    발급 목록을 만든다. 목록 전체가 빈칸(`max_slots - used_slots`) 이하이면 기존 `grant_inventory_item` RPC로 바로 지급한다.
+ *    발급 목록을 만든다. 목록 전체가 빈칸(`max_slots - used_slots`) 이하이면 `grant_inventory_item_locked` RPC로 바로 지급한다(잠김 배정은 아래 규칙).
  *    빈칸보다 많으면 **하나도 지급하지 않고 전부** `sync_pending_items`(status pending)에 넣는다. 유저가 빈칸만큼 고른다
  *    (`resolve_sync_pending_items`, `lib/strava/pending-items.ts`). 지급 도중 경합으로 `slot_full`이 나면 그 개체와 남은 개체도 보류한다.
  *  - 동기화로 받은 배지의 기한을 공개 종료일로 두지 않는다(`p_expires_at` null). 공개 기간이 끝난 배지는 후보에서 빠진다.
  *  - `user_drop_state.common_streak`를 갱신한다(없는 행은 만든다). 줄 때 받은 **실제 등급**이 Common이면 +1, 아니면 0이다.
  *    계획 단계에서 굴린 순서대로 이어 센다. 후보가 없어 건너뛴 개체는 세지 않는다. 보류한 개체도 센다(받을 개체가 정해진 것이다).
- *  - 줄 때마다 `item_issue_log`에 한 줄(경로 `sync`, 대상 활동, 배지, 등급, `rolled_rarity`, 잠김 false, 일련번호, 개체 id)을 남긴다.
+ *  - 줄 때마다 `item_issue_log`에 한 줄(경로 `sync`, 대상 활동, 배지, 등급, `rolled_rarity`, 잠김 여부, 일련번호, 개체 id)을 남긴다.
  *    기록 실패는 지급과 동기화를 막지 않는다.
+ *  - 잠김 배정(티켓 20261018_0051, 운영 로직 7.5절): 계획 단계에서 개체마다 `assignLock`(경로 `sync`)으로 잠김·까닭·필요한 양을 정한다.
+ *    지급은 `grant_inventory_item_locked`로 개체에 저장하고, 보류는 `locked`·`lock_reason`·`unlock_required`로 저장해 고르기 RPC가 개체로 옮긴다.
+ *    발급 기록 `item_issue_log.locked`에도 같은 값을 적는다. 잠긴 채 받은 개체는 포인트를 주지 않는다(연 때 주는 것은 3-3).
  *  - 활동 하나의 실패는 그 활동만 건너뛰고 `onActivityError`로 알린다. 던지지 않는다.
  *
  * 서버 전용이다(service_role 클라이언트로 쓴다). 클라이언트 컴포넌트가 가져오는 모듈에서 이 파일을 가져오지 않는다.
@@ -24,6 +27,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchAllRows } from '@/lib/db/fetchAllRows'
 import { logEngineDecision } from '@/lib/engine-log'
 import { recordIssuedRewards } from './issueFollowUp'
+import { assignLock, type LockAssignment, type LockPolicy } from './lockAssignment'
 import type { GrantInventoryItemResult } from '@/lib/inventory/slots'
 import type { JamPolicy } from '@/lib/jam/policy'
 import { recordActivityRecap } from '@/lib/notifications/recap'
@@ -80,6 +84,8 @@ interface PlannedItem {
   rolledRarity: NonNullable<IssueBadge['rarity']>
   /** 이 개체까지 세었을 때의 `common_streak` */
   streakAfter: number
+  /** 계획 단계에서 정한 잠김(티켓 20261018_0051). 지급·보류·발급 기록이 같은 값을 쓴다 */
+  lock: LockAssignment
 }
 
 type SyncIssueBadge = IssueBadge & {
@@ -100,7 +106,8 @@ type SyncPolicy = Pick<
   | 'sync_rarity_epic'
   | 'sync_rarity_mystic'
   | 'common_streak_threshold'
->
+> &
+  LockPolicy
 
 /** 드랍 없이 끝난 이유를 엔진 판정 로그(`drop_attempt`)에 남긴다. 로그 실패는 흐름을 막지 않는다(`logEngineDecision`이 삼킨다). */
 async function logOutcome(userId: string, outcome: string, extra: Record<string, unknown> = {}): Promise<void> {
@@ -168,7 +175,9 @@ export async function issueSyncItemBadges(
         : await fetchAllRows<SyncIssueBadge>('sync-issue:item-badges', 'id', () =>
             supabase
               .from('badges')
-              .select('id, name, image_url, rarity, item_book_id, drop_excluded, valid_from, valid_until, deleted_at, point_reward')
+              .select(
+                'id, name, image_url, rarity, item_book_id, drop_excluded, valid_from, valid_until, deleted_at, point_reward, always_locked, unlock_required'
+              )
               .eq('type', 'item')
               .is('deleted_at', null)
               .in('item_book_id', books.map((b) => b.id))
@@ -224,12 +233,24 @@ export async function issueSyncItemBadges(
       }
       // 받은 실제 등급 기준으로 센다 — 뽑힌 등급이 높아도 Common을 받았다면 Common 연속이다
       commonStreak = pick.rarity === 'common' ? commonStreak + 1 : 0
+      // 잠김은 받은 실제 등급 기준으로 정한다. 동기화 경로라 잠김으로 만든 배지는 늘 잠기고 그 밖에는 설정 확률로 정한다
+      const lock = assignLock(
+        {
+          alwaysLocked: pick.badge.always_locked ?? false,
+          unlockRequired: pick.badge.unlock_required ?? null,
+          rarity: pick.rarity,
+          route: 'sync',
+        },
+        policy,
+        rand
+      )
       planned.push({
         activityIndex: index,
         badge: pick.badge,
         rarity: pick.rarity,
         rolledRarity: pick.rolledRarity,
         streakAfter: commonStreak,
+        lock,
       })
     }
   }
@@ -246,7 +267,9 @@ export async function issueSyncItemBadges(
           badge_id: item.badge.id,
           rarity: item.rarity,
           rolled_rarity: item.rolledRarity,
-          locked: false,
+          locked: item.lock.locked,
+          lock_reason: item.lock.lockReason,
+          unlock_required: item.lock.unlockRequired,
         }))
       )
       if (error) throw new Error(`sync_pending_items 저장 실패: ${error.message}`)
@@ -302,16 +325,20 @@ export async function issueSyncItemBadges(
         }
         if (skipRest) continue
 
-        const { data: rpcResult, error: rpcError } = await supabase.rpc('grant_inventory_item', {
+        // 잠김과 지급을 한 트랜잭션으로 저장한다(마이그레이션 231). 열린 개체(p_locked false)는 옛 지급과 같다
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('grant_inventory_item_locked', {
           p_inventory_id: inventory.id,
           p_badge_id: item.badge.id,
           p_obtained_by: 'drop',
           p_expires_at: null,
+          p_locked: item.lock.locked,
+          p_lock_reason: item.lock.lockReason,
+          p_unlock_required: item.lock.unlockRequired,
         })
         const grant: GrantInventoryItemResult = rpcError
           ? { ok: false, reason: 'inventory_not_found' }
           : (rpcResult as GrantInventoryItemResult)
-        if (rpcError) console.error(`[syncIssue] grant_inventory_item RPC 오류 (badge_id: ${item.badge.id}):`, rpcError)
+        if (rpcError) console.error(`[syncIssue] grant_inventory_item_locked RPC 오류 (badge_id: ${item.badge.id}):`, rpcError)
         if (!grant.ok) {
           if (grant.reason === 'slot_full') {
             slotFull = true
@@ -344,6 +371,7 @@ export async function issueSyncItemBadges(
           badge: item.badge,
           rarity: item.rarity,
           rolledRarity: item.rolledRarity,
+          locked: item.lock.locked,
         })
         await logOutcome(userId, 'issued', {
           attempt: i,
@@ -352,6 +380,7 @@ export async function issueSyncItemBadges(
           rolledRarity: item.rolledRarity,
           tribeId,
           activityId: target.activityId,
+          locked: item.lock.locked,
         })
       }
     } catch (e) {
@@ -390,6 +419,8 @@ interface RecordIssuedInput {
   badge: SyncIssueBadge
   rarity: NonNullable<IssueBadge['rarity']>
   rolledRarity: NonNullable<IssueBadge['rarity']>
+  /** 지급한 개체가 잠긴 채인가 — 발급 기록에 적고, 잠긴 개체는 포인트를 주지 않는다 */
+  locked: boolean
 }
 
 /**
@@ -407,6 +438,7 @@ async function recordIssued(input: RecordIssuedInput): Promise<void> {
     inventoryItemId: input.inventoryItemId,
     badge,
     rarity: input.rarity,
+    locked: input.locked,
   })
 
   // 발급 기록 — 실패해도 지급과 동기화를 막지 않는다
@@ -429,7 +461,7 @@ async function recordIssued(input: RecordIssuedInput): Promise<void> {
       badge_id: badge.id,
       rarity: input.rarity,
       rolled_rarity: input.rolledRarity,
-      locked: false,
+      locked: input.locked,
       serial_number: serial,
     })
     if (logError) console.error(`[syncIssue] 발급 기록 실패 (badge_id: ${badge.id}):`, logError)

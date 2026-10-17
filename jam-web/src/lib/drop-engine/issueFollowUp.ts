@@ -20,13 +20,16 @@ export interface IssuedRewardsInput {
   inventoryItemId: string
   badge: { id: string; name: string; image_url: string | null; point_reward: number | null }
   rarity: 'common' | 'rare' | 'epic' | 'mystic'
+  /** 잠긴 채 받은 개체인가. 잠긴 채 받으면 포인트를 주지 않는다 — 열린 상태가 될 때 한 번 준다(운영 로직 7.2절, 티켓 20261018_0051). 생략하면 열린 개체다. */
+  locked?: boolean
 }
 
-/** `badge.point_reward`가 있으면 포인트를 지급하고, 피드 이벤트(`item_dropped`)를 남긴다. 던지지 않는다. */
+/** `badge.point_reward`가 있으면(잠긴 개체는 제외) 포인트를 지급하고, 피드 이벤트(`item_dropped`)를 남긴다. 던지지 않는다. */
 export async function recordIssuedRewards(input: IssuedRewardsInput): Promise<void> {
   const { userId, badge } = input
 
-  const pointReward = badge.point_reward ?? 0
+  // 잠긴 채 받은 개체는 포인트를 주지 않는다. 연 때 한 번 주는 것은 3-3이 만든다.
+  const pointReward = input.locked ? 0 : (badge.point_reward ?? 0)
   try {
     if (pointReward > 0) await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: badge.id })
   } catch (e) {

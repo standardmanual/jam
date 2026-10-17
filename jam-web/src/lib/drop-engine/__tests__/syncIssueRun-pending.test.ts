@@ -125,7 +125,7 @@ function makeFakeSupabase(world: World): SupabaseClient {
   }
 
   const rpc = async (name: string, args: Record<string, unknown>) => {
-    if (name !== 'grant_inventory_item') return { data: null, error: { message: `알 수 없는 rpc ${name}` } }
+    if (name !== 'grant_inventory_item_locked') return { data: null, error: { message: `알 수 없는 rpc ${name}` } }
     grants += 1
     world.rpcCalls.push(args)
     const inventory = world.inventory
@@ -237,8 +237,26 @@ describe('보류 행', () => {
     await run(world, [target(1), target(2)], policyWith(1, { sync_rarity_common: 0, sync_rarity_mystic: 100 }))
 
     expect(world.pendingRows).toEqual([
-      { user_id: USER_ID, source_activity_id: 'act-1', badge_id: 'b-rare', rarity: 'rare', rolled_rarity: 'mystic', locked: false },
-      { user_id: USER_ID, source_activity_id: 'act-2', badge_id: 'b-rare', rarity: 'rare', rolled_rarity: 'mystic', locked: false },
+      {
+        user_id: USER_ID,
+        source_activity_id: 'act-1',
+        badge_id: 'b-rare',
+        rarity: 'rare',
+        rolled_rarity: 'mystic',
+        locked: false,
+        lock_reason: null,
+        unlock_required: null,
+      },
+      {
+        user_id: USER_ID,
+        source_activity_id: 'act-2',
+        badge_id: 'b-rare',
+        rarity: 'rare',
+        rolled_rarity: 'mystic',
+        locked: false,
+        lock_reason: null,
+        unlock_required: null,
+      },
     ])
     expect(world.pendingRows[0]).not.toHaveProperty('status')
   })
