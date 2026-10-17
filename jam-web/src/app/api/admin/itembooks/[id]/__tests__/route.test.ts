@@ -10,13 +10,15 @@ const state = vi.hoisted(() => ({
   existing: { id: 'ib1', image_url: 'https://cdn.test.jam.app/old.png', reward_points: 10 } as Record<string, unknown>,
   reads: 0,
   updates: [] as Record<string, unknown>[],
+  /** `from(table)`로 접근한 테이블 이름(등급 보상 표를 건드리지 않음을 확인한다) */
+  tablesTouched: [] as string[],
   deletes: 0,
   /** 오류 주입 — 값이 있으면 해당 호출이 이 오류를 돌려준다 */
   updateError: null as { message: string } | null,
   deleteError: null as { message: string } | null,
 }))
 
-const fakeClient = {
+const baseClient = {
   from: () => ({
     select: () => ({
       eq: () => ({
@@ -50,6 +52,13 @@ const fakeClient = {
   }),
 }
 
+const fakeClient = {
+  from: (table: string) => {
+    state.tablesTouched.push(table)
+    return baseClient.from()
+  },
+}
+
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => fakeClient }))
 vi.mock('@/lib/admin/auth', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/admin/auth')>()),
@@ -80,6 +89,7 @@ const put = (body: unknown) =>
 beforeEach(() => {
   state.reads = 0
   state.updates = []
+  state.tablesTouched = []
   state.deletes = 0
   state.updateError = null
   state.deleteError = null
@@ -108,6 +118,24 @@ describe('PUT /api/admin/itembooks/[id] — image_url 형식', () => {
     expect(res.status).toBe(200)
     expect(state.updates[0]).toMatchObject({ name: '새 이름', image_url: 'https://cdn.test.jam.app/old.png' })
     expect(state.updates[0]).not.toHaveProperty('image_source')
+  })
+})
+
+describe('PUT /api/admin/itembooks/[id] — tier_mode 보존(티켓 20261016_2340 3회-나)', () => {
+  // tier_mode는 어드민 화면이 켜는 칸(묶음 7)이 생길 때까지 PUT이 쓰지 않는다. 저장 칸이 명시 목록이라
+  // 본문에 실려 와도 update 페이로드에 들어가지 않고, 등급 보상 표는 이 라우트가 아예 건드리지 않는다.
+  it.each([
+    ['본문에 tier_mode가 없어도', { name: '새 이름' }],
+    ['본문에 tier_mode: false가 실려 와도', { name: '새 이름', tier_mode: false }],
+    ['본문에 tier_mode: true가 실려 와도', { name: '새 이름', tier_mode: true }],
+  ])('%s update 페이로드에 tier_mode가 없다', async (_label, body) => {
+    state.existing = { ...state.existing, tier_mode: true }
+    const res = await put(body)
+    expect(res.status).toBe(200)
+    expect(state.updates).toHaveLength(1)
+    expect(state.updates[0]).not.toHaveProperty('tier_mode')
+    expect(state.tablesTouched).not.toContain('item_book_tier_rewards')
+    delete state.existing.tier_mode
   })
 })
 
