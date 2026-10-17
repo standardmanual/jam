@@ -155,6 +155,7 @@ docs/service/prd/01_PRD.md, 02_DATA_MODEL.md, home-feed/PRD.md
 - DB 공용: 마이그레이션 225 적용(2026-10-17, 즉시 프로덕션 반영, 연결 행 4건 영향 없음)
 - 1회: 코드·문서 staging 머지(push 2a949648d 이후 커밋과 함께)
 - 2회와 경계 수정: 2026-10-17, 로컬 staging 머지, push는 이 기록과 함께
+- 최종 push c98e85db4: Vercel `jam-stage` 빌드 success. staging 확인(2026-10-17): `/?strava=duplicate`가 중복 안내 시트를 «취소» 버튼 하나로 띄우고 `/profile/edit`이 200으로 응답한다.
 - 확인하지 못한 것: 실제 Strava 재인증·실제 토큰 갱신 실패(토큰·실제 유저 데이터를 쓰지 않는 단위 시험까지만 확인했다)
 
 ### 실행 지표
