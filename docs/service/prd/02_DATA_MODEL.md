@@ -65,6 +65,10 @@ code:
                 users ─1:N─ chapter_ups (오른 기록) ──> chapter_definitions (챕터별 필요 점수)
                 tribes ─1:N─ chapter_names (트라이브별 챕터 이름) ──> chapter_definitions
 
+[캡슐]          users ─1:1─ user_capsules (지금 캡슐: 필요량·채운 양)
+                users ─1:N─ capsule_opens (열 때마다 한 줄, append-only)
+                capsule_policy(싱글톤: 개수·확률·보정·퀘스트 전 값) / capsule_chapter_costs (챕터별 채울 양)
+
 [소셜]          users ─N:M(팔로우)─ users (user_follows)
                 user_activity_feed (배지/드랍/미션 이벤트 통합 피드)
 
@@ -811,6 +815,31 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 > - `chapter_start(p_user_id)`: 챕터가 비어 있으면 챕터 1로 만들고 쌓인 점수로 오를 챕터까지 한 번에 올린다. 이미 챕터가 있으면 아무것도 하지 않는다. 같은 모양을 돌려준다(`score_added`=0).
 > - 챕터는 내려가지 않는다. 퀘스트 전 점수는 버리지 않고 쌓았다가 챕터 1 때 함께 계산한다(가정, SQL 실행 승인 전 재확인).
 > - 점수 가산을 부를지 말지(챕터 배지·포인트 조건 배지 제외, 자기 드랍 줍기 제외, 이용 정지 중 차단)는 부르는 쪽 책임이다.
+
+
+### 9-4. 캡슐 (JAM 2.0) — 마이그레이션 232, 티켓 20261018_0052
+운영 로직 5.2·5.4절이 근거다. 2026-10-18 공용 DB에 적용했다(1회: 저장·설정·채우기). 열기(추첨·지급·기록·다음 캡슐 생성)는 2회 마이그레이션이 만든다. 전부 덧붙이기이고 옛 객체의 뜻은 바꾸지 않았다. 새 표는 모두 RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
+
+#### capsule_policy
+한 행 싱글톤(`id = 1`). 칸과 기본값: `guaranteed_count` 1, `bonus_count` 1, `bonus_probability` 0.2, `other_tribe_probability` 0.2, `rarity_common`/`_rare`/`_epic`/`_mystic` 70/22/6/2(합계 100, DB 제약 `capsule_policy_rarity_sum_100`), `pity_epic_threshold` 15(보정 1), `pre_quest_fill_amount` 5, `pre_quest_unlock_required` 5(퀘스트 전 첫 캡슐에서 반드시 나오는 잠긴 아이템 배지를 여는 데 필요한 양). Common 연속 보정(10번)과 잠길 확률은 동기화와 합산하는 값이라 `jam_policy`의 것을 그대로 쓴다. 코드는 `src/lib/capsule/policy.ts`의 `getCapsulePolicy`로 읽고, 조회 실패·비정상 칸은 기본값(`DEFAULT_CAPSULE_POLICY`)으로 대체하고 로그를 남긴다(등급 확률 네 칸은 묶음 단위). 기본값을 바꾸면 이 상수도 같은 티켓에서 함께 바꾼다. 설정 화면은 묶음 7.
+
+#### capsule_chapter_costs
+`chapter_no`(PK)와 `fill_amount`(채울 양). 초기값 챕터 1~10: 90 / 100 / 110 / 120 / 135 / 150 / 165 / 180 / 200 / 220. 챕터가 표의 마지막보다 높으면 마지막 행의 양을 쓴다. 앱은 읽지 않고 `capsule_get_or_create`가 읽는다.
+
+#### user_capsules
+유저당 한 행(`user_id` PK). `required`(필요량, 캡슐이 생길 때 정해 고정), `filled`(채운 양, 0~`required`), `chapter_no`(만들 때의 챕터, NULL이면 퀘스트 전), `created_at`, `updated_at`. 처음 필요할 때 만든다(지연 생성).
+
+#### capsule_opens
+열 때마다 한 줄(append-only): `opened_at`, `chapter_no`, `required`, `filled`, `items`(나온 개체 목록 JSONB). 캡슐 연 횟수는 이 표로 센다. 2회의 열기 함수가 쓴다.
+
+#### user_drop_state.capsule_epic_miss
+새 칸(INTEGER, 기본 0). Epic 이상이 나오지 않은 채 연 횟수(보정 1). `pity_epic_threshold` 이상이면 다음 캡슐은 Epic 이상이고, Epic 이상이 나오면 0이 된다. 2회의 열기 함수가 갱신한다.
+
+> 캡슐 변경은 두 RPC(SECURITY DEFINER, service_role 전용, `authenticated` 실행 권한 없음)로만 처리한다.
+> - `capsule_get_or_create(p_user_id) → user_capsules`: 없으면 그때의 챕터(`user_chapters.chapter_no`)로 필요량을 정해 만든다. 챕터가 없으면 `pre_quest_fill_amount`다. 필요량은 이후 챕터가 올라도 바뀌지 않는다.
+> - `capsule_fill(p_user_id, p_amount DEFAULT NULL) → jsonb`: 이용 정지 중이면 `user_suspended`로 거절하고, 캡슐 행을 잠근 뒤 `already_full`, `invalid_amount`, `exceeds_remaining`, `insufficient_jam` 순으로 검사한다. 기본값은 남은 양이고 가진 잼이 모자라면 가진 만큼 채운다. `jam_apply(capsule_fill, 음수)` 한 줄과 `filled` 갱신이 한 트랜잭션이다. 성공하면 `applied`·`required`·`filled`·`remaining`·`balance`를 돌려준다.
+> - API: `GET /api/capsule`(캡슐 상태, 이용 정지 중에도 허용), `POST /api/capsule/fill { amount? }`(양의 정수만, 이용 정지 중 403 `user_suspended`, 거절 400·409). 응답 모양은 `src/lib/capsule/capsule-contract.ts`다. `openable`은 1회에서 `filled >= required` 여부만이고 인벤토리 빈칸 검사는 2회다.
+> - 채운 잼은 되돌리지 않는다. 마이그레이션을 되돌리면 원장(`jam_transactions`)의 `capsule_fill` 줄은 남지만 그 잼은 지갑으로 돌아오지 않는다.
 
 ---
 
