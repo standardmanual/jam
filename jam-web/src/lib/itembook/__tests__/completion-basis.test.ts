@@ -69,6 +69,66 @@ describe('computeBookCompletion', () => {
     expect(computeBookCompletion([], new Set(['x'])).get('book-a')?.complete ?? false).toBe(false)
   })
 
+  describe('통일 규칙 (티켓 20261016_2340 2회)', () => {
+    it('소프트 삭제 배지는 분모에서 빠지고 꽂혀 있어도 분자에 들지 않는다', () => {
+      const badges = [
+        badge('b0'),
+        badge('b1'),
+        { ...badge('b2'), deleted_at: '2026-10-01T00:00:00Z' },
+      ]
+      const r = computeBookCompletion(badges, new Set(['b0', 'b1', 'b2'])).get('book-a')!
+      expect(r.denomIds).toEqual(['b0', 'b1'])
+      expect(r.filledIds).toEqual(['b0', 'b1'])
+      expect(r.complete).toBe(true)
+    })
+
+    it('types를 주지 않으면 item과 checkin만 분모에 든다', () => {
+      const badges = [badge('i1'), badge('c1', false, 'checkin'), badge('a1', false, 'activity')]
+      const r = computeBookCompletion(badges, new Set(['i1'])).get('book-a')!
+      expect(r.denomIds).toEqual(['i1', 'c1'])
+      expect(r.complete).toBe(false)
+    })
+
+    it('옛 컬렉션 결과에는 등급 정보가 없다', () => {
+      const r = computeBookCompletion([badge('b0')], new Set(['b0'])).get('book-a')!
+      expect(r.tier).toBeNull()
+      expect(r.tiers).toEqual({})
+    })
+
+    it('tier_mode 컬렉션은 꽂힌 등급의 이름 수로 센다', () => {
+      const tierBadge = (id: string, name: string, rarity: string) => ({
+        ...badge(id),
+        name,
+        rarity,
+      })
+      const badges = [
+        tierBadge('xc', 'X', 'common'),
+        tierBadge('yc', 'Y', 'common'),
+        tierBadge('xr', 'X', 'rare'),
+        tierBadge('yr', 'Y', 'rare'),
+      ]
+      const r = computeBookCompletion(badges, new Set(['xr']), {
+        tierModeBookIds: new Set(['book-a']),
+      }).get('book-a')!
+      expect(r.tier).toBe('rare')
+      expect(r.total).toBe(2)
+      expect(r.filled).toBe(1)
+      expect(r.complete).toBe(false)
+      expect(r.tiers.common.filled).toBe(0)
+      expect(r.tiers.rare.filled).toBe(1)
+    })
+
+    it('tierModeBookIds에 없는 컬렉션은 이름·등급이 있어도 배지 수로 센다', () => {
+      const badges = [
+        { ...badge('xc'), name: 'X', rarity: 'common' },
+        { ...badge('xr'), name: 'X', rarity: 'rare' },
+      ]
+      const r = computeBookCompletion(badges, new Set(['xc'])).get('book-a')!
+      expect(r.total).toBe(2)
+      expect(r.complete).toBe(false)
+    })
+  })
+
   describe('filledByBook 옵션 (티켓 20260924_0937)', () => {
     it('배지 X가 A에 장착됐고 X의 컬렉션이 B로 바뀌어도 B의 분자에 X가 들지 않는다', () => {
       // X는 현재 B 소속(분모에 포함)이지만 장착은 A 슬롯에 있다
