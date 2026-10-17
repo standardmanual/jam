@@ -129,8 +129,8 @@ Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure
 동기화 원본 활동 기록. `strava_id`, `jam_activity_type`, `distance_km`, `normalized`(정규화된 활동 JSON), `processed_via`(sync/reconcile/manual_backfill). UNIQUE(user_id, strava_id)로 중복 동기화 방지 — 이기종 데이터 중복 이슈의 실제 해결책.
 
 **걸러짐 표시 두 칸**(마이그레이션 223, 티켓 20261017_1421):
-- `filter_reason` (text, NULL 허용): NULL이면 인정 활동, 값이 있으면 걸러진 사유(`virtual`·`unsupported_sport`·`manual_entry`·`file_upload`·`no_gps`·`too_short`·`vehicle_speed`). 걸러진 활동도 저장하지만 이력 조회(`getActivityHistory`)는 `filter_reason IS NULL`인 행만 읽는다. 「이미 처리한 활동」 조회는 걸러진 행도 포함한다. 옛 행은 NULL이라 인정으로 읽히며 소급하지 않는다. 판정 기준은 `BADGE_ENGINE_UNIFIED.md` §1 「인정 활동 입구」.
-- `source_meta` (jsonb, NULL 허용): 인정 판정에 쓴 원본 값의 유무·모양 요약(종목 이름, `manual`, 업로드 번호 유무, 외부 ID 모양(없음/파일 이름/그 밖), 시작 좌표 유무, 경로 요약 유무). 경로 요약 본문·좌표·외부 ID 원문은 담지 않는다. 파일 업로드 판정이 추정 기준이라, 나중에 실제 데이터로 기준을 검증하고 고치기 위한 근거다.
+- `filter_reason` (text, NULL 허용): NULL이면 인정 활동, 값이 있으면 걸러진 사유(`virtual`·`unsupported_sport`·`manual_entry`·`file_upload`·`no_gps`·`too_short`·`vehicle_speed`; `too_short`는 교통수단 구간을 뺀 뒤 10분 미만일 때도 붙는다). 걸러진 활동도 저장하지만 이력 조회(`getActivityHistory`)는 `filter_reason IS NULL`인 행만 읽는다. 「이미 처리한 활동」 조회는 걸러진 행도 포함한다. 옛 행은 NULL이라 인정으로 읽히며 소급하지 않는다. 판정 기준은 `BADGE_ENGINE_UNIFIED.md` §1 「인정 활동 입구」.
+- `source_meta` (jsonb, NULL 허용): 인정 판정에 쓴 원본 값의 유무·모양 요약(종목 이름, `manual`, 업로드 번호 유무, 외부 ID 모양(없음/파일 이름/그 밖), 시작 좌표 유무, 경로 요약 유무, 종목 불일치로 걷기로 바꿨을 때만 원래 종목 `typeMismatchFrom`). 경로 요약 본문·좌표·외부 ID 원문은 담지 않는다. 파일 업로드 판정이 추정 기준이라, 나중에 실제 데이터로 기준을 검증하고 고치기 위한 근거다.
 
 `normalized`의 구조는 `NormalizedActivity`(`src/types/strava.ts`)다. 2026-09-05부터 v5 확장
 6필드(심박·파워·케이던스·최고속도·최고도달고도·경과시간)가 함께 저장되며, **측정값이 없으면
@@ -747,7 +747,7 @@ FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기
 
 | 테이블 | 역할 |
 |---|---|
-| abusing_policy | 싱글톤. 섀도우밴 등급별 드랍률 배율, GPS 최대 속도, POI 재방문 차단시간, 차량 탑승 속도 필터 |
+| abusing_policy | 싱글톤. 섀도우밴 등급별 드랍률 배율, GPS 최대 속도, POI 재방문 차단시간, 차량 탑승 속도 필터, 교통수단 구간 기준, 종목 불일치 기준값(마이그레이션 224: `mismatch_run_min_speed_kmh` 기본 6, `mismatch_cycling_min_speed_kmh` 기본 10 — 평균 속도가 이 값보다 느린 러닝·자전거는 걷기로 계산, 어뷰징 정책 화면에서 수정, 티켓 20261017_1421) |
 | user_shadow_bans | soft/hard 밴 등급 + 만료시각 |
 | poi_blocks | 유저×POI 단위 72시간 재방문 차단 |
 | abusing_logs | GPS 조작 감지 등 이벤트 로그 |

@@ -330,3 +330,182 @@ describe('processFetchedActivities — 첫 동기화', () => {
     expect(vi.mocked(evaluateBadges).mock.calls).toEqual([['user-1', []]])
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2회 (티켓 20261017_1421): 첫 동기화 선택 순서, 구간 검사의 최대 속도 사전 거름, 종목 불일치
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** getActivityStreams 기본 구현 — 경로는 있고 속도 스트림은 비어 있다(구간 검사는 fail-open) */
+const defaultStreams = async () => ({ route: [[37.5, 127.0]] as Array<[number, number]>, velocitySmooth: [], time: [] })
+
+/** km/h → m/s */
+const mps = (kmh: number) => kmh / 3.6
+
+describe('processFetchedActivities — 첫 동기화의 «최근 1건» 선택은 모든 어뷰징 필터 뒤에 한다', () => {
+  beforeEach(() => {
+    vi.mocked(getActivityStreams).mockImplementation(defaultStreams)
+  })
+
+  it('가장 최근 활동이 속도 필터로 걸러지면 그 전 인정 활동을 정산한다', async () => {
+    const newestCar = makeRaw(5, { average_speed: mps(100) }) // 100km/h > 60km/h
+    const okNewer = makeRaw(4)
+    const okOlder = makeRaw(3)
+    const result = await processFetchedActivities(
+      makeFakeSupabase(captured),
+      'user-1',
+      'token',
+      [okOlder, newestCar, okNewer],
+      true,
+      'sync'
+    )
+
+    expect(result.settledCount).toBe(1)
+    expect(vi.mocked(tryItemDrop).mock.calls.map((c) => (c[1] as NormalizedActivity).stravaId)).toEqual([4])
+    // 정산한 1건과 걸러진 1건만 기록한다 — 정산하지 않은 옛 활동(3)은 기록하지 않는다
+    expect(captured.upsertedRows.map((r) => [r.strava_id, r.filter_reason]).sort()).toEqual([
+      [4, null],
+      [5, 'vehicle_speed'],
+    ])
+    // 평가에 들어간 활동은 정산한 1건뿐이다
+    expect(vi.mocked(evaluateBadges).mock.calls[0][1]).toHaveLength(1)
+  })
+
+  it('통과한 활동이 하나도 없으면 첫 동기화를 마친 것으로 보지 않고(initial_sync_done 불변) 걸러진 활동만 기록한다', async () => {
+    const result = await processFetchedActivities(
+      makeFakeSupabase(captured),
+      'user-1',
+      'token',
+      [makeRaw(1, { average_speed: mps(100) }), makeRaw(2, { average_speed: mps(90) })],
+      true,
+      'sync'
+    )
+
+    expect(result.settledCount).toBe(0)
+    expect(vi.mocked(evaluateBadges).mock.calls).toEqual([['user-1', [], { skipInitialSyncFlagUpdate: true }]])
+    expect(vi.mocked(tryItemDrop)).not.toHaveBeenCalled()
+    expect(matchPoisForActivity).not.toHaveBeenCalled()
+    expect(captured.upsertedRows.map((r) => r.filter_reason)).toEqual(['vehicle_speed', 'vehicle_speed'])
+  })
+
+  it('통과 여부가 정해질 때까지만 검사한다 — 통과한 활동보다 오래된 활동은 Streams를 부르지 않는다', async () => {
+    // 최대 속도가 걷기 기준(20km/h)을 넘어 구간 검사용 Streams가 필요한 걷기 활동 3건
+    const make = (id: number) => makeRaw(id, { type: 'Walk', sport_type: 'Walk', average_speed: mps(5), max_speed: mps(30) })
+    await processFetchedActivities(makeFakeSupabase(captured), 'user-1', 'token', [make(1), make(2), make(3)], true, 'sync')
+
+    // 가장 최근(3)이 통과하므로 2·1은 검사하지 않는다 — 3은 구간 검사와 체크인이 같은 조회를 나눠 쓴다
+    expect(vi.mocked(getActivityStreams).mock.calls.map((c) => c[0])).toEqual([3])
+  })
+
+  it('구간을 빼고 남은 움직인 시간이 10분 미만이면 걸러지고 그 전 활동을 정산한다', async () => {
+    // 활동 5: 36km/h(러닝 기준 27km/h 초과) 구간이 200초 → 700초 - 200초 = 500초 < 600초
+    const slowAfterExclusion = makeRaw(5, { moving_time: 700, max_speed: mps(36) })
+    const ok = makeRaw(4)
+    vi.mocked(getActivityStreams).mockImplementation(async (id: number) =>
+      id === 5
+        ? { route: [[37.5, 127.0]], velocitySmooth: [mps(36), mps(36), mps(36)], time: [0, 100, 200] }
+        : defaultStreams()
+    )
+
+    const result = await processFetchedActivities(
+      makeFakeSupabase(captured),
+      'user-1',
+      'token',
+      [ok, slowAfterExclusion],
+      true,
+      'sync'
+    )
+
+    expect(result.settledCount).toBe(1)
+    expect(captured.upsertedRows.map((r) => [r.strava_id, r.filter_reason]).sort()).toEqual([
+      [4, null],
+      [5, 'too_short'],
+    ])
+    // 걸러진 활동의 저장값에도 뺀 구간이 반영돼 있다
+    const saved = captured.upsertedRows.find((r) => r.strava_id === 5)!.normalized as NormalizedActivity
+    expect(saved.movingTimeSec).toBe(500)
+  })
+})
+
+describe('processFetchedActivities — 구간 검사는 최대 속도 사전 거름으로 호출하고 같은 활동은 한 번만 조회한다', () => {
+  beforeEach(() => {
+    vi.mocked(getActivityStreams).mockImplementation(defaultStreams)
+  })
+
+  it('최대 속도가 종목 기준 이하인 활동은 구간 검사용 Streams를 부르지 않는다(체크인 최신 10건 제한은 그대로)', async () => {
+    const raws = Array.from({ length: 12 }, (_, i) => makeRaw(i + 1)) // 러닝, 최대 12.6km/h < 27km/h
+    await processFetchedActivities(makeFakeSupabase(captured), 'user-1', 'token', raws, false, 'sync')
+
+    const ids = vi.mocked(getActivityStreams).mock.calls.map((c) => c[0])
+    expect(ids).toHaveLength(10)
+    expect(new Set(ids).size).toBe(10)
+    expect(ids).not.toContain(1) // 가장 오래된 두 건(1, 2)은 체크인 대상(최신 10건) 밖이다
+    expect(ids).not.toContain(2)
+  })
+
+  it('기준을 넘은 활동은 구간 검사를 위해 최신 10건 밖이어도 조회하고, 체크인과 겹치면 한 번만 조회한다', async () => {
+    const raws = Array.from({ length: 12 }, (_, i) =>
+      makeRaw(i + 1, i + 1 === 1 || i + 1 === 12 ? { max_speed: mps(40) } : {})
+    )
+    await processFetchedActivities(makeFakeSupabase(captured), 'user-1', 'token', raws, false, 'sync')
+
+    const ids = vi.mocked(getActivityStreams).mock.calls.map((c) => c[0])
+    expect(new Set(ids).size).toBe(ids.length) // 같은 활동을 두 번 부르지 않는다
+    expect([...ids].sort((a, b) => a - b)).toEqual([1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) // 최신 10건 + 기준을 넘은 1
+  })
+
+  it('등산도 구간 검사를 받아 뺀 구간이 저장값에 반영된다', async () => {
+    const hike = makeRaw(1, { type: 'Hike', sport_type: 'Hike', average_speed: mps(4), max_speed: mps(40), moving_time: 3600 })
+    vi.mocked(getActivityStreams).mockImplementation(async () => ({
+      route: [[37.5, 127.0]],
+      velocitySmooth: [mps(40), mps(40), mps(40)],
+      time: [0, 45, 90],
+    }))
+    await processFetchedActivities(makeFakeSupabase(captured), 'user-1', 'token', [hike], false, 'sync')
+
+    const saved = captured.upsertedRows[0].normalized as NormalizedActivity
+    expect(captured.upsertedRows[0]).toMatchObject({ filter_reason: null })
+    expect(saved.jamActivityType).toBe('hiking')
+    expect(saved.movingTimeSec).toBe(3600 - 90)
+  })
+})
+
+describe('processFetchedActivities — 종목과 움직임이 맞지 않으면 걷기로 계산한다', () => {
+  beforeEach(() => {
+    vi.mocked(getActivityStreams).mockImplementation(defaultStreams)
+  })
+
+  async function settleOne(raw: StravaSummaryActivity) {
+    captured.upsertedRows = []
+    vi.mocked(evaluateBadges).mockClear()
+    await processFetchedActivities(makeFakeSupabase(captured), 'user-1', 'token', [raw], false, 'sync')
+    const evaluated = vi.mocked(evaluateBadges).mock.calls[0][1] as NormalizedActivity[]
+    return { evaluated, row: captured.upsertedRows[0] }
+  }
+
+  it('러닝 평균 5km/h는 걷기로 평가하고 원래 종목을 source_meta에 남긴다', async () => {
+    const { evaluated, row } = await settleOne(makeRaw(1, { average_speed: mps(5) }))
+    expect(evaluated[0].jamActivityType).toBe('walking')
+    expect(row).toMatchObject({ filter_reason: null, jam_activity_type: 'walking' })
+    expect((row.source_meta as Record<string, unknown>).typeMismatchFrom).toBe('running')
+  })
+
+  it('자전거 평균 9km/h는 걷기로 평가한다', async () => {
+    const { evaluated, row } = await settleOne(
+      makeRaw(1, { type: 'Ride', sport_type: 'Ride', average_speed: mps(9) })
+    )
+    expect(evaluated[0].jamActivityType).toBe('walking')
+    expect((row.source_meta as Record<string, unknown>).typeMismatchFrom).toBe('cycling')
+  })
+
+  it('트레일러닝과 등산은 느려도 종목을 바꾸지 않고, 기준과 같은 러닝도 그대로다', async () => {
+    const trail = await settleOne(makeRaw(1, { type: 'Run', sport_type: 'TrailRun', average_speed: mps(3) }))
+    expect(trail.evaluated[0].jamActivityType).toBe('trail_running')
+    expect(trail.row.source_meta).not.toHaveProperty('typeMismatchFrom')
+
+    const hike = await settleOne(makeRaw(2, { type: 'Hike', sport_type: 'Hike', average_speed: mps(2) }))
+    expect(hike.evaluated[0].jamActivityType).toBe('hiking')
+
+    const normalRun = await settleOne(makeRaw(3, { average_speed: mps(6) })) // 기준과 같으면 바꾸지 않는다
+    expect(normalRun.evaluated[0].jamActivityType).toBe('running')
+  })
+})
