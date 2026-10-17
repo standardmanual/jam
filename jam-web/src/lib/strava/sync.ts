@@ -37,6 +37,10 @@ import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 import { classifyStravaSyncFailure, recordStravaSyncFailure } from '@/lib/strava/syncFailures'
 import { recordOnboardingQuestCompletion } from '@/lib/onboarding-quest/completion'
+// JAM 2.0 잼 정산과 대량 수령 경보(티켓 20261017_1423) — 서버 전용 모듈. 이 파일에서만 부른다.
+import { getJamPolicy } from '@/lib/jam/policy'
+import { settleActivities, type JamSettlementItem } from '@/lib/jam/settlement'
+import { alertMassEarnIfNeeded, readMassEarnBaseline } from '@/lib/jam/massEarnAlert'
 // JAM! 카테고리 — 서비스 사용량 배지(티켓 20260910_1557). 카운터 증가·판정 로직은
 // recordDailySyncAndEvaluate() 한 곳(usageBadges.ts)에 있다 — 이 파일은 synced>0 게이트만 쥔다.
 import { recordDailySyncAndEvaluate, evaluateCheckinUsageBadges, type UsageBadgeEarned } from '@/lib/badge-engine/usageBadges'
@@ -692,6 +696,10 @@ interface ProcessFetchedResult {
   completedMissionIds: string[]
   /** 이번에 정산한 «인정 활동» 수 — 걸러진 활동과 첫 동기화에서 정산하지 않은 활동은 세지 않는다 */
   settledCount: number
+  /** 이번 동기화로 원장에 기록된 잼의 합계. 정산할 활동이 없는 경로는 0이다(티켓 20261017_1423) */
+  jamEarned: number
+  /** 활동별 잼 정산 결과 — 아이템 배지 발급(2-4)이 개수 계산에 쓸 수 있게 남긴다. 응답에는 싣지 않는다 */
+  jamSettlements: JamSettlementItem[]
 }
 
 /**
@@ -733,6 +741,8 @@ async function evaluateWithoutNewActivities(
     earnedBadgeIds: [...activityBadgeIds, ...jamBadgeIds],
     completedMissionIds: [],
     settledCount: 0,
+    jamEarned: 0,
+    jamSettlements: [],
   }
 }
 
@@ -1241,6 +1251,13 @@ export async function processFetchedActivities(
   // 멱등 처리 기준 데이터 기록 — 이번에 "새로" 확인된 활동을 처리 완료로 표시.
   // 성공적으로 여기까지 도달한 경우에만 기록하므로, 중간에 실패하면 다음 시도에서 자연스럽게 재처리된다.
   // 인정 판정에서 걸러진 활동과 차량 속도로 걸러진 활동도 사유와 함께 기록한다(이력에는 들어가지 않는다).
+  //
+  // 잼 정산(티켓 20261017_1423, 운영 로직 4.2절): 활동 id(`strava_activities.id`)가 원장의 키라 활동을 저장한 **뒤**에
+  // 정산한다. 대량 수령 경보의 기준선(지난 4주 주간 평균)은 이번 정산 행이 섞이지 않게 저장·정산 **전에** 읽는다.
+  // 둘 다 던지지 않는다 — 정산이나 경보가 실패해도 동기화는 계속된다.
+  const jamPolicy = await getJamPolicy(supabase)
+  const massEarnBaseline = await readMassEarnBaseline(supabase, userId, jamPolicy)
+
   await recordProcessedActivities(
     supabase,
     userId,
@@ -1251,6 +1268,23 @@ export async function processFetchedActivities(
     ],
     processedVia
   )
+
+  // 정산 대상은 인정 필터와 어뷰징 필터를 모두 통과한 활동(passedEntries)뿐이다. 첫 동기화는 위에서 이미 최근 1건만
+  // 남겼다. 이용 정지 중 정산 차단은 2-6, 챕터 점수 가산은 묶음 5의 몫이라 여기서 하지 않는다.
+  const jamSettlement = await settleActivities(
+    supabase,
+    userId,
+    passedEntries.map((c) => ({
+      stravaId: c.activity.stravaId,
+      startDate: c.activity.startDate,
+      movingTimeSec: c.activity.movingTimeSec,
+      jamActivityType: c.activity.jamActivityType,
+      sportType: c.sourceMeta.sportType,
+      type: c.sourceMeta.type,
+    })),
+    jamPolicy
+  )
+  await alertMassEarnIfNeeded({ userId, earned: jamSettlement.total, baseline: massEarnBaseline, policy: jamPolicy })
 
   // 계열 진행 스냅샷 갱신 — 티켓 20260904_1156(배지트리 리뉴얼 3차 1단계). 위 호출로 이번
   // 배치가 이미 strava_activities에 기록된 직후라 getActivityHistory() 한 번으로 이번 배치까지
@@ -1304,6 +1338,8 @@ export async function processFetchedActivities(
     earnedBadgeIds,
     completedMissionIds,
     settledCount: passedEntries.length,
+    jamEarned: jamSettlement.total,
+    jamSettlements: jamSettlement.items,
   }
 }
 
@@ -1344,6 +1380,7 @@ async function recordStravaDisconnect(
  *          earnedBadgesMore: 상한을 넘겨 상세를 싣지 못한 잔여 개수,
  *          isFirstBadgeEver: 이번에 받은 배지가 유저의 전체 첫 배지인지 (GA4 first_badge_earned),
  *          completedMissionIds: 이번에 새로 완료된 미션 id (GA4 mission_complete)
+ *          jamEarned: 이번 동기화로 받은 잼의 합계(받은 잼이 없으면 0, 티켓 20261017_1423)
  */
 export async function syncStravaActivities(
   userId: string
@@ -1356,6 +1393,8 @@ export async function syncStravaActivities(
   earnedBadgesMore: number
   isFirstBadgeEver: boolean
   completedMissionIds: string[]
+  /** 이번 동기화로 받은 잼의 합계. 받은 잼이 없으면 0 (티켓 20261017_1423) */
+  jamEarned: number
 }> {
   const supabase = createServiceClient()
 
@@ -1476,7 +1515,7 @@ export async function syncStravaActivities(
   const { data: lockRows, error: lockError } = await lockQuery.select('user_id')
   if (lockError || !lockRows || lockRows.length === 0) {
     console.info(`[syncStravaActivities] 동시 싱크 감지 — 건너뜀 (userId: ${userId})`)
-    return { synced: 0, badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadges: [], earnedBadgesMore: 0, isFirstBadgeEver: false, completedMissionIds: [] }
+    return { synced: 0, badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadges: [], earnedBadgesMore: 0, isFirstBadgeEver: false, completedMissionIds: [], jamEarned: 0 }
   }
 
   // 4-2. 첫 싱크 여부 (초기화 직후·신규 연동) — 드랍 1회 제한에 사용
@@ -1511,7 +1550,7 @@ export async function syncStravaActivities(
       `${isFirstSync ? ' (첫 싱크 — 인정 활동 최근 1건 제한)' : ''}`
     )
 
-    const { badges, itemBooksCompleted, missionsCompleted, earnedBadgeIds, completedMissionIds, settledCount } = await processFetchedActivities(
+    const { badges, itemBooksCompleted, missionsCompleted, earnedBadgeIds, completedMissionIds, settledCount, jamEarned } = await processFetchedActivities(
       supabase,
       userId,
       accessToken,
@@ -1562,6 +1601,7 @@ export async function syncStravaActivities(
       earnedBadgesMore,
       isFirstBadgeEver,
       completedMissionIds,
+      jamEarned,
     }
   } catch (err) {
     console.error(`[syncStravaActivities] 처리 중 오류 — last_synced_at 롤백 (userId: ${userId}):`, err)

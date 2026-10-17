@@ -160,6 +160,8 @@ describe('processFetchedActivities — 새 활동 0건이어도 배지 평가는
       earnedBadgeIds: [],
       completedMissionIds: [],
       settledCount: 0,
+      jamEarned: 0,
+      jamSettlements: [],
     })
   })
 

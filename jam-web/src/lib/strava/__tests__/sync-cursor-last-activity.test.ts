@@ -232,6 +232,7 @@ describe('syncStravaActivities — 조회 커서는 마지막으로 가져온 �
       earnedBadgesMore: 0,
       isFirstBadgeEver: false,
       completedMissionIds: [],
+      jamEarned: 0,
     })
     // 잠금에서 이미 조기 종료했으므로 Strava API 조회까지 가지 않는다
     expect(getActivitiesMock).not.toHaveBeenCalled()
