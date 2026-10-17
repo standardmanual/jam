@@ -1307,6 +1307,39 @@ export type Database = {
           },
         ]
       }
+      jam_policy: {
+        Row: {
+          id: number
+          intensity_hard: number
+          intensity_light: number
+          intensity_normal: number
+          mass_earn_alert_multiplier: number
+          mass_earn_alert_no_history_amount: number
+          mass_earn_alert_weeks: number
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          intensity_hard?: number
+          intensity_light?: number
+          intensity_normal?: number
+          mass_earn_alert_multiplier?: number
+          mass_earn_alert_no_history_amount?: number
+          mass_earn_alert_weeks?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          intensity_hard?: number
+          intensity_light?: number
+          intensity_normal?: number
+          mass_earn_alert_multiplier?: number
+          mass_earn_alert_no_history_amount?: number
+          mass_earn_alert_weeks?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       jam_transactions: {
         Row: {
           admin_reason_label: string | null
