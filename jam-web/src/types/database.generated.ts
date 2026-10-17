@@ -540,6 +540,168 @@ export type Database = {
         }
         Relationships: []
       }
+      chapter_definitions: {
+        Row: {
+          chapter_no: number
+          required_score: number
+          updated_at: string
+        }
+        Insert: {
+          chapter_no: number
+          required_score: number
+          updated_at?: string
+        }
+        Update: {
+          chapter_no?: number
+          required_score?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chapter_names: {
+        Row: {
+          chapter_no: number
+          name: string | null
+          tribe_id: string
+          updated_at: string
+        }
+        Insert: {
+          chapter_no: number
+          name?: string | null
+          tribe_id: string
+          updated_at?: string
+        }
+        Update: {
+          chapter_no?: number
+          name?: string | null
+          tribe_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_names_chapter_no_fkey"
+            columns: ["chapter_no"]
+            isOneToOne: false
+            referencedRelation: "chapter_definitions"
+            referencedColumns: ["chapter_no"]
+          },
+          {
+            foreignKeyName: "chapter_names_tribe_id_fkey"
+            columns: ["tribe_id"]
+            isOneToOne: false
+            referencedRelation: "tribes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chapter_score_events: {
+        Row: {
+          activity_kind: string
+          counted_score: number
+          created_at: string
+          id: string
+          occurred_on: string
+          raw_score: number
+          source_id: string
+          unit_amount: number
+          user_id: string
+        }
+        Insert: {
+          activity_kind: string
+          counted_score: number
+          created_at?: string
+          id?: string
+          occurred_on: string
+          raw_score: number
+          source_id: string
+          unit_amount: number
+          user_id: string
+        }
+        Update: {
+          activity_kind?: string
+          counted_score?: number
+          created_at?: string
+          id?: string
+          occurred_on?: string
+          raw_score?: number
+          source_id?: string
+          unit_amount?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_score_events_activity_kind_fkey"
+            columns: ["activity_kind"]
+            isOneToOne: false
+            referencedRelation: "chapter_score_rules"
+            referencedColumns: ["activity_kind"]
+          },
+          {
+            foreignKeyName: "chapter_score_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chapter_score_rules: {
+        Row: {
+          activity_kind: string
+          over_cap_ratio: number
+          points_per_unit: number
+          updated_at: string
+          weekly_cap: number | null
+        }
+        Insert: {
+          activity_kind: string
+          over_cap_ratio?: number
+          points_per_unit: number
+          updated_at?: string
+          weekly_cap?: number | null
+        }
+        Update: {
+          activity_kind?: string
+          over_cap_ratio?: number
+          points_per_unit?: number
+          updated_at?: string
+          weekly_cap?: number | null
+        }
+        Relationships: []
+      }
+      chapter_ups: {
+        Row: {
+          chapter_no: number
+          reached_at: string
+          user_id: string
+        }
+        Insert: {
+          chapter_no: number
+          reached_at?: string
+          user_id: string
+        }
+        Update: {
+          chapter_no?: number
+          reached_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_ups_chapter_no_fkey"
+            columns: ["chapter_no"]
+            isOneToOne: false
+            referencedRelation: "chapter_definitions"
+            referencedColumns: ["chapter_no"]
+          },
+          {
+            foreignKeyName: "chapter_ups_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       combination_recipes: {
         Row: {
           created_at: string
@@ -2765,6 +2927,42 @@ export type Database = {
           },
         ]
       }
+      user_chapters: {
+        Row: {
+          chapter_no: number | null
+          total_score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chapter_no?: number | null
+          total_score?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chapter_no?: number | null
+          total_score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_chapters_chapter_no_fkey"
+            columns: ["chapter_no"]
+            isOneToOne: false
+            referencedRelation: "chapter_definitions"
+            referencedColumns: ["chapter_no"]
+          },
+          {
+            foreignKeyName: "user_chapters_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_checkin_badge_earns: {
         Row: {
           badge_id: string
@@ -3428,6 +3626,28 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      chapter_add_score: {
+        Args: {
+          p_activity_kind: string
+          p_amount: number
+          p_occurred_on?: string
+          p_source_id: string
+          p_user_id: string
+        }
+        Returns: {
+          current_chapter: number
+          reached_chapters: number[]
+          score_added: number
+        }[]
+      }
+      chapter_start: {
+        Args: { p_user_id: string }
+        Returns: {
+          current_chapter: number
+          reached_chapters: number[]
+          score_added: number
+        }[]
       }
       create_notification: {
         Args: {
