@@ -5,6 +5,7 @@ import { runSlotRewardIssue } from '@/lib/itembook/slotReward'
 import { jamTriggersForSlot } from '@/lib/badge-engine/jamActionProgressTriggers'
 import { isItemBookLaunched, type ItemBookVisibilityFields } from '@/lib/itembook/visibility'
 import { d } from '@/lib/i18n'
+import { findLockedItemIds, isLockedItemTriggerError, LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
 
 // 티켓 20260830_0057: 장착/해제는 각각 원자적 RPC(slot_item_into_book/
 // unslot_item_from_book, SELECT ... FOR UPDATE 기반) 한 번 호출로 처리한다.
@@ -31,6 +32,12 @@ const SLOT_ERROR_STATUS_MAP: Record<string, { status: number; message: string }>
   tier_mismatch: { status: 409, message: d.itembooks.tierMismatch },
   tier_mode_off: { status: 409, message: d.itembooks.tierModeOff },
   slot_insert_failed: { status: 500, message: d.itembooks.slotFailed },
+}
+
+// 잠긴 개체는 장착·교체할 수 없다(티켓 20261018_0051). 서버가 RPC 전에 거르고, 마이그레이션 231 트리거가 마지막 방어선이다.
+// 트리거가 올린 오류(`locked_item_cannot_be_slotted`)도 같은 코드로 내려 클라이언트가 한 가지로만 처리하게 한다.
+function lockedItemResponse() {
+  return NextResponse.json({ error: d.lockedItem.slot, code: LOCKED_ITEM_NOT_ALLOWED_CODE }, { status: 409 })
 }
 
 const UNSLOT_ERROR_STATUS_MAP: Record<string, { status: number; message: string }> = {
@@ -97,6 +104,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: notFound.message }, { status: notFound.status })
   }
 
+  try {
+    if ((await findLockedItemIds(supabase, [inventory_item_id])).length > 0) return lockedItemResponse()
+  } catch (lockCheckError) {
+    console.error('[itembooks/slot] 잠긴 개체 조회 오류:', lockCheckError)
+    return NextResponse.json({ error: d.itembooks.slotFailed }, { status: 500 })
+  }
+
   const rpcArgs = {
     p_user_id: user.id,
     p_item_book_id: itemBookId,
@@ -108,6 +122,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { data: rpcResult, error: rpcError } = await supabase.rpc(rpcName, rpcArgs)
 
   if (rpcError) {
+    if (isLockedItemTriggerError(rpcError)) return lockedItemResponse()
     console.error(`[itembooks/slot] ${rpcName} RPC 오류:`, rpcError)
     return NextResponse.json({ error: d.itembooks.slotFailed }, { status: 500 })
   }
@@ -217,6 +232,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     ? 'swap_item_in_book_tiered'
     : 'swap_item_in_book'
 
+  try {
+    if ((await findLockedItemIds(supabase, [new_inventory_item_id])).length > 0) return lockedItemResponse()
+  } catch (lockCheckError) {
+    console.error('[itembooks/slot] 잠긴 개체 조회 오류:', lockCheckError)
+    return NextResponse.json({ error: d.itembooks.swapFailed }, { status: 500 })
+  }
+
   const rpcArgs = {
     p_user_id: user.id,
     p_item_book_id: itemBookId,
@@ -226,6 +248,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { data: rpcResult, error: rpcError } = await supabase.rpc(swapRpcName, rpcArgs)
 
   if (rpcError) {
+    if (isLockedItemTriggerError(rpcError)) return lockedItemResponse()
     console.error(`[itembooks/slot] ${swapRpcName} RPC 오류:`, rpcError)
     return NextResponse.json({ error: d.itembooks.swapFailed }, { status: 500 })
   }

@@ -9,6 +9,7 @@ import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
 import { classifyNaverCategory } from '@/lib/poi/category-gate'
 import type { PoiRow } from '@/types/database'
 import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
+import { findLockedItemIds, isLockedItemTriggerError, LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { jamTriggersForDrop } from '@/lib/badge-engine/jamActionDropTriggers'
 import { d, t } from '@/lib/i18n'
@@ -347,6 +348,18 @@ export async function POST(req: NextRequest) {
   // 비우기 + custody_events 기록을 전부 create_user_drop() RPC 하나의 트랜잭션으로 처리한다.
   // 기존처럼 inventory_items를 소프트 삭제(dropped_at/drop_id)하지 않는다 — 개체는 그대로
   // 남고 poi_drops.inventory_item_id로 연결될 뿐이다(일련번호 유지).
+  // 잠긴 개체는 드랍할 수 없다 — 잠긴 채 드랍과 가린 모습은 묶음 4가 만든다(티켓 20261018_0051, 운영 로직 7.2절).
+  // 마이그레이션 231 트리거는 `dropped_at` 갱신만 막는데 `create_user_drop`은 `inventory_id`만 비우므로, 이 서버 확인이 실제 방어선이다.
+  // 소유권을 확인하는 RPC보다 앞이라, 남의 개체 id를 보내도 잠김 여부만 알 수 있고 그 외 정보는 새지 않는다.
+  try {
+    if ((await findLockedItemIds(service, [inventory_item_id])).length > 0) {
+      return NextResponse.json({ error: d.lockedItem.drop, code: LOCKED_ITEM_NOT_ALLOWED_CODE }, { status: 409 })
+    }
+  } catch (lockCheckError) {
+    console.error('[drops] 잠긴 개체 조회 오류:', lockCheckError)
+    return NextResponse.json({ error: d.drops.dropFailed }, { status: 500 })
+  }
+
   const rpcArgs = {
     p_dropper_id: user.id,
     p_poi_id: poi_id,
@@ -355,6 +368,9 @@ export async function POST(req: NextRequest) {
   const { data: rpcResult, error: rpcError } = await service.rpc('create_user_drop', rpcArgs)
 
   if (rpcError) {
+    if (isLockedItemTriggerError(rpcError)) {
+      return NextResponse.json({ error: d.lockedItem.drop, code: LOCKED_ITEM_NOT_ALLOWED_CODE }, { status: 409 })
+    }
     console.error('[drops] create_user_drop RPC 오류:', rpcError)
     return NextResponse.json({ error: d.drops.dropFailed }, { status: 500 })
   }

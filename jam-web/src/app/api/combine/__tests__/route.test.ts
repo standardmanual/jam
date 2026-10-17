@@ -7,6 +7,7 @@
  *  - 래퍼가 거부돼도 응답(상태 코드·JSON 키·message)은 래퍼가 정상일 때와 같다
  *  - 응답 JSON 키 집합과 「빈손 성공」 메시지는 변경 전과 같다
  *  - 401·400 입력 오류에서는 믹스도 판정도 하지 않는다
+ *  - 재료에 잠긴 개체가 섞여 엔진이 `locked_item_not_allowed`를 돌려주면 `code`를 더해 409로 내리고 지표는 판정하지 않는다(티켓 20261018_0051)
  *  - 운영자 판정(`hasAdminAccess`)을 `allowUnreleased`로 믹스 엔진에 넘기고, 시험 믹스(`testMix`) 응답은
  *    키만 더해지며 지표 판정을 하지 않는다. 판정이 실패하면 일반 유저처럼 닫는다(티켓 20261001_1159)
  *
@@ -286,5 +287,23 @@ describe('운영자 시험 믹스 (티켓 20261001_1159)', () => {
     await POST(request({ item_ids: ['item-1', 'item-2'] }))
     await POST(request({ recipe_id: 'recipe-1', item_ids: [] }))
     expect(hasAdminAccessMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('잠긴 재료 (티켓 20261018_0051)', () => {
+  it('locked_item_not_allowed는 409와 code·message를 내리고 지표를 판정하지 않는다', async () => {
+    combineMock.mockResolvedValue({ success: false, reason: 'locked_item_not_allowed', pointsAwarded: 0 })
+
+    const res = await POST(request(VALID_BODY))
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({
+      success: false,
+      reason: 'locked_item_not_allowed',
+      code: 'locked_item_not_allowed',
+      pointsAwarded: 0,
+      message: d.lockedItem.combine,
+    })
+    expect(runJamActionMock).toHaveBeenCalledWith(USER_ID, [])
   })
 })

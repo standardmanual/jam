@@ -11,6 +11,8 @@
  *  - 등급별 구조(`tier_mode`)가 꺼진 컬렉션은 이전과 같은 RPC·인자로 부르고 보상 발급도 인자 두 개 그대로다(회귀).
  *    켜진 컬렉션은 `slot_item_into_book_tiered`·`swap_item_in_book_tiered`를 부르고 `completed_tier`를 보상 발급의 세 번째
  *    인자로 넘기며 `tier_mismatch`·`tier_mode_off`를 응답으로 바꾼다(티켓 20261016_2340)
+ *  - 잠긴 개체(티켓 20261018_0051)는 장착(POST)·교체(PATCH) 모두 RPC 전에 409 `locked_item_not_allowed`로 거절하고,
+ *    RPC가 트리거 오류(`locked_item_cannot_be_slotted`)를 올려도 같은 코드로 바꾼다
  *  - 공개되지 않은 컬렉션(없음·비활성·시작 전)에는 404이고 장착 RPC를 부르지 않는다(티켓 20260930_1516).
  *    기간이 끝난 컬렉션은 보유자가 계속 쓸 수 있어 막지 않는다(결정 E1)
  *
@@ -36,6 +38,9 @@ const state = vi.hoisted(() => ({
   /** `item_books`에서 읽히는 행. null이면 컬렉션이 없다 */
   book: null as { is_active: boolean; valid_from: string | null; valid_until: string | null; tier_mode?: boolean } | null,
   bookError: null as { message: string } | null,
+  /** `inventory_items`에서 locked = true로 조회되는 행 */
+  lockedRows: [] as { id: string }[],
+  lockedError: null as { message: string } | null,
 }))
 
 const runJamActionMock = vi.hoisted(() => vi.fn<(userId: string, triggers: readonly string[]) => Promise<void>>())
@@ -56,6 +61,15 @@ vi.mock('@/lib/supabase/server', () => ({
       return state.rpc[name] ?? { data: null, error: { message: `예상하지 못한 RPC: ${name}` } }
     },
     from: (table: string) => {
+      if (table === 'inventory_items') {
+        const lockedBuilder: Record<string, unknown> = {}
+        lockedBuilder.select = () => lockedBuilder
+        lockedBuilder.in = () => lockedBuilder
+        lockedBuilder.eq = () => lockedBuilder
+        lockedBuilder.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
+          Promise.resolve({ data: state.lockedRows, error: state.lockedError }).then(onFulfilled, onRejected)
+        return lockedBuilder
+      }
       if (table !== 'item_books') throw new Error(`예상하지 못한 테이블: ${table}`)
       const builder = {
         select: () => builder,
@@ -109,6 +123,8 @@ beforeEach(() => {
   state.afterCallbacks = []
   state.book = { is_active: true, valid_from: null, valid_until: null }
   state.bookError = null
+  state.lockedRows = []
+  state.lockedError = null
   callOrder.length = 0
   runJamActionMock.mockImplementation(async () => {
     callOrder.push('runJamActionEvaluation')
@@ -460,5 +476,67 @@ describe('등급별 구조(tier_mode) — 꺼진 컬렉션은 이전과 같고 �
     state.book = { is_active: true, valid_from: null, valid_until: null, tier_mode: true }
     await DELETE(request('DELETE', { slot_id: 'slot-1' }), PARAMS)
     expect(state.rpcCalls.map((c) => c.name)).toEqual(['unslot_item_from_book'])
+  })
+})
+
+describe('잠긴 개체는 장착·교체할 수 없다 (티켓 20261018_0051)', () => {
+  const LOCKED_BODY = { error: d.lockedItem.slot, code: 'locked_item_not_allowed' }
+
+  it('장착: 잠긴 개체는 RPC 전에 409로 거절하고 보상·판정을 예약하지 않는다', async () => {
+    state.lockedRows = [{ id: 'item-1' }]
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual(LOCKED_BODY)
+    expect(state.rpcCalls).toEqual([])
+    expect(state.afterCallbacks).toHaveLength(0)
+  })
+
+  it('장착: RPC가 트리거 오류를 올려도 같은 코드로 409를 낸다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.rpc.slot_item_into_book = { data: null, error: { message: 'locked_item_cannot_be_slotted' } }
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual(LOCKED_BODY)
+    expect(state.afterCallbacks).toHaveLength(0)
+    consoleError.mockRestore()
+  })
+
+  it('장착: 잠김 여부를 읽지 못하면 500이고 RPC를 부르지 않는다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.lockedError = { message: 'db down' }
+    const res = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: d.itembooks.slotFailed })
+    expect(state.rpcCalls).toEqual([])
+    consoleError.mockRestore()
+  })
+
+  it('교체: 새 개체가 잠겼으면 RPC 전에 409로 거절한다', async () => {
+    state.lockedRows = [{ id: 'item-2' }]
+    const res = await PATCH(request('PATCH', { slot_id: 'slot-1', new_inventory_item_id: 'item-2' }), PARAMS)
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual(LOCKED_BODY)
+    expect(state.rpcCalls).toEqual([])
+  })
+
+  it('교체: RPC가 트리거 오류를 올려도 같은 코드로 409를 낸다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.rpc.swap_item_in_book = { data: null, error: { message: 'locked_item_cannot_be_slotted' } }
+    const res = await PATCH(request('PATCH', { slot_id: 'slot-1', new_inventory_item_id: 'item-2' }), PARAMS)
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual(LOCKED_BODY)
+    consoleError.mockRestore()
+  })
+
+  it('열린 개체는 그대로 장착·교체한다', async () => {
+    const slotRes = await POST(request('POST', { inventory_item_id: 'item-1' }), PARAMS)
+    expect(slotRes.status).toBe(201)
+    const swapRes = await PATCH(request('PATCH', { slot_id: 'slot-1', new_inventory_item_id: 'item-2' }), PARAMS)
+    expect(swapRes.status).toBe(200)
   })
 })

@@ -58,6 +58,8 @@ const stub = vi.hoisted(() => ({
   grantedBadgeIds: [] as string[],
   destroyedItemIds: [] as string[],
   failRewardPoints: 0,
+  /** 잠긴 개체 id(`inventory_items.locked = true`, 티켓 20261018_0051) */
+  lockedItemIds: [] as string[],
   /** inventory.used_slots — 조합 전 초기값. 소각/지급마다 이 값이 갱신된다(20260912_2101). */
   usedSlots: 5,
   maxSlots: 10,
@@ -163,8 +165,8 @@ function makeBuilder(table: string) {
       case 'inventory_items':
         return {
           data: [
-            { id: ITEM_1, badge_id: BADGE_A },
-            { id: ITEM_2, badge_id: BADGE_B },
+            { id: ITEM_1, badge_id: BADGE_A, locked: stub.lockedItemIds.includes(ITEM_1) },
+            { id: ITEM_2, badge_id: BADGE_B, locked: stub.lockedItemIds.includes(ITEM_2) },
           ],
           error: null,
         }
@@ -253,6 +255,7 @@ beforeEach(() => {
   stub.grantedBadgeIds = []
   stub.destroyedItemIds = []
   stub.failRewardPoints = 0
+  stub.lockedItemIds = []
   stub.usedSlots = 5
   stub.maxSlots = 10
   stub.usedSlotsHistory = []
@@ -549,6 +552,38 @@ describe('선택된 레시피가 존재하지 않음 (티켓 20260917_1427)', ()
     expect(result.success).toBe(false)
     if (!result.success) expect(result.reason).toBe('no_recipe_match')
     expect(awardPointsMock).not.toHaveBeenCalledWith(USER, 999, 'combine_recipe_reward')
+  })
+})
+
+describe('잠긴 재료 (티켓 20261018_0051)', () => {
+  it('재료에 잠긴 개체가 하나라도 있으면 locked_item_not_allowed로 거절하고 소각·포인트·지급·실패 이력을 남기지 않는다', async () => {
+    stub.recipes = [recipe({ reward_points: 120 })]
+    stub.slots = itemSlots()
+    stub.failRewardPoints = 50
+    stub.lockedItemIds = [ITEM_2]
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result).toEqual({ success: false, reason: 'locked_item_not_allowed', pointsAwarded: 0 })
+    expect(stub.destroyedItemIds).toEqual([])
+    expect(stub.grantedBadgeIds).toEqual([])
+    expect(stub.failLogs).toHaveLength(0)
+    expect(awardPointsMock).not.toHaveBeenCalled()
+    expect(stub.usedSlotsHistory).toEqual([])
+  })
+
+  it('잠긴 개체 거절은 JAM! 지표를 다시 판정하지 않는다', () => {
+    expect(jamTriggersForCombineResult({ success: false, reason: 'locked_item_not_allowed', pointsAwarded: 0 })).toEqual([])
+  })
+
+  it('열린 개체만 넣으면 이전처럼 믹스된다', async () => {
+    stub.recipes = [recipe({ reward_points: 120 })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success).toBe(true)
+    expect(stub.destroyedItemIds).toEqual([ITEM_1, ITEM_2])
   })
 })
 

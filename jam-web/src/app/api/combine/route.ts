@@ -10,7 +10,8 @@
  *  - 성공: { success: true, path: 'recipe', resultBadges, pointsAwarded, message? }
  *    (레시피는 매칭됐지만 보상이 전부 비어 재료만 소각된 경우에만 message를 붙인다)
  *  - 실패: { success: false, reason: 'no_recipe_match'|'items_not_found'|'invalid_count'|
- *    'recipe_not_found', pointsAwarded, message }
+ *    'recipe_not_found'|'locked_item_not_allowed', pointsAwarded, message }
+ *    (`locked_item_not_allowed`는 재료에 잠긴 개체가 섞인 경우다. 소각 전에 거절하고 `code` 키를 더해 409로 내린다, 티켓 20261018_0051)
  *  - 시험 믹스(티켓 20261001_1159): 운영자가 공개 전 레시피를 믹스하면 위 응답에 `testMix: true`가
  *    더해진다. 일반 믹스에는 이 키가 없다. 일반 유저가 공개 전 레시피를 보내면 `recipe_not_found`다.
  */
@@ -20,6 +21,7 @@ import { hasAdminAccess } from '@/lib/admin/auth'
 import { combineRecipeAttempt, jamTriggersForCombineResult } from '@/lib/combine/index'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { d, t } from '@/lib/i18n'
+import { LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
 import type { CombineFailReason } from '@/types/database'
 
 const FAIL_REASON_MESSAGE: Record<CombineFailReason, string> = {
@@ -27,6 +29,7 @@ const FAIL_REASON_MESSAGE: Record<CombineFailReason, string> = {
   items_not_found: d.combine.itemsNotFound,
   no_recipe_match: d.combine.recipeFail,
   recipe_not_found: d.combine.recipeNotFound,
+  locked_item_not_allowed: d.lockedItem.combine,
 }
 
 export async function POST(req: NextRequest) {
@@ -72,6 +75,11 @@ export async function POST(req: NextRequest) {
     await runJamActionEvaluation(user.id, jamTriggersForCombineResult(result))
   } catch (jamActionError) {
     console.error('[combine] JAM! 행동 지표 배지 평가 실패:', jamActionError)
+  }
+
+  // 잠긴 개체가 섞인 재료는 소각 전에 거절된다 — 장착·드랍과 같은 코드(`code`)와 409로 알린다(티켓 20261018_0051)
+  if (!result.success && result.reason === LOCKED_ITEM_NOT_ALLOWED_CODE) {
+    return NextResponse.json({ ...result, code: LOCKED_ITEM_NOT_ALLOWED_CODE, message: d.lockedItem.combine }, { status: 409 })
   }
 
   if (!result.success) {

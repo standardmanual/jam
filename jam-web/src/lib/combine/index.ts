@@ -168,16 +168,22 @@ export async function combineRecipeAttempt(
   // 빠져 아래 items.length 불일치로 자연스럽게 items_not_found 처리됨)
   const { data: itemsRaw } = await supabase
     .from('inventory_items')
-    .select('id, badge_id')
+    .select('id, badge_id, locked')
     .eq('inventory_id', inventory.id)
     .in('id', itemIds)
     .is('slotted_in', null)
     .is('dropped_at', null)
 
-  const items = (itemsRaw ?? []) as Pick<InventoryItemRow, 'id' | 'badge_id'>[]
+  const items = (itemsRaw ?? []) as (Pick<InventoryItemRow, 'id' | 'badge_id'> & { locked?: boolean | null })[]
   if (items.length !== itemIds.length) {
     await recordFailure(items.map((i) => i.badge_id), 'items_not_found', 0)
     return withTestMix({ success: false, reason: 'items_not_found', pointsAwarded: 0 })
+  }
+
+  // 잠긴 개체는 재료로 쓸 수 없다(티켓 20261018_0051, 운영 로직 7.2절). 소각보다 앞에서 거절하므로 재료는 그대로 남고,
+  // 소각이 일어나지 않은 거절이라 실패 이력·포인트·JAM! 지표(`jamTriggersForCombineResult`)를 남기지 않는다.
+  if (items.some((i) => i.locked === true)) {
+    return withTestMix({ success: false, reason: 'locked_item_not_allowed', pointsAwarded: 0 })
   }
 
   const badgeIds = items.map((i) => i.badge_id)
@@ -498,7 +504,7 @@ async function recordCombineSuccess(
  * 믹스 결과에 따라 JAM! 행동 지표 중 다시 판정할 것을 고른다 — `/api/combine` 라우트가 결과에 이어 부른다.
  *  - 성공: 시도·성공·레시피 최초 성공
  *  - `no_recipe_match`(재료가 소각된 실패): 시도·실패
- *  - 그 밖의 실패(`invalid_count`·`items_not_found`·`recipe_not_found`)는 재료가 소각되기 전에 끝났으므로 판정하지 않는다
+ *  - 그 밖의 실패(`invalid_count`·`items_not_found`·`recipe_not_found`·`locked_item_not_allowed`)는 재료가 소각되기 전에 끝났으므로 판정하지 않는다
  *  - 시험 믹스(`testMix`)는 성공·실패와 관계없이 판정하지 않는다(티켓 20261001_1159)
  */
 export function jamTriggersForCombineResult(result: CombineResult): JamActionTrigger[] {

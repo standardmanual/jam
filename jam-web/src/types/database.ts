@@ -611,7 +611,13 @@ export interface CombinePolicyRow {
  * `recipe_not_found`는 티켓 20260917_1427(유저 화면 레시피 선택형 전환)에서 추가됐다 —
  * 유저가 선택한 recipe_id가 존재하지 않거나 공개 전인 경우다.
  */
-export type CombineFailReason = 'no_recipe_match' | 'items_not_found' | 'invalid_count' | 'recipe_not_found'
+export type CombineFailReason =
+  | 'no_recipe_match'
+  | 'items_not_found'
+  | 'invalid_count'
+  | 'recipe_not_found'
+  /** 재료에 잠긴 개체가 섞였다(티켓 20261018_0051). 재료가 소각되기 전에 거절하므로 실패 기록(`user_combine_fail_log`)은 남기지 않는다 */
+  | 'locked_item_not_allowed'
 
 export interface UserCombineFailLogRow {
   id: string
