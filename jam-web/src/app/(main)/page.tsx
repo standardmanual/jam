@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { UserRow } from '@/types/database'
 import TopNav from '@/components/ui/TopNav'
@@ -8,6 +8,8 @@ import TodayStatusStrip from './TodayStatusStrip'
 import OnboardingQuestCard from './OnboardingQuestCard'
 import OnboardingSyncButton from './OnboardingSyncButton'
 import StravaDisconnectedCard from '@/components/strava/StravaDisconnectedCard'
+import SuspensionBanner from './SuspensionBanner'
+import { loadHomeSuspensionBanner } from '@/lib/suspension/home-banner'
 import HomeViewTracker from './HomeViewTracker'
 import { getTodayCards } from '@/lib/today/cards'
 import { getTodayLeftStatus, getTodayRightStatus, type TodayLeftStatus } from '@/lib/today/status'
@@ -45,6 +47,9 @@ export default async function HomePage() {
     .maybeSingle()
   const profilePromise = supabase.from('users').select('*').eq('id', userId).single()
   const rightStatusPromise = getTodayRightStatus(userId)
+  // 이용 정지 배너 값(티켓 20261017_1426). 다른 조회와 함께 시작해 홈 응답을 늦추지 않는다.
+  // user_suspensions는 service_role 전용이라 서비스 클라이언트로 읽는다. 조회가 실패하면 배너만 생략한다(던지지 않는다).
+  const suspensionPromise = loadHomeSuspensionBanner(createServiceClient(), userId)
 
   const { data: stravaConn, error: stravaConnError } = await stravaConnPromise
   if (stravaConnError) console.error('[home/page] strava_connections 조회 실패', stravaConnError)
@@ -66,12 +71,14 @@ export default async function HomePage() {
     leftStatus,
     onboardingQuestCard,
     onboardingQuestGate,
+    suspension,
   ] = await Promise.all([
     profilePromise,
     rightStatusPromise,
     leftStatusPromise,
     onboardingQuestPromise,
     onboardingQuestGatePromise,
+    suspensionPromise,
   ])
   if (profileError) console.error('[home/page] users 프로필 조회 실패', profileError)
 
@@ -95,6 +102,10 @@ export default async function HomePage() {
       )}
 
       <div className="px-4 pt-6 pb-8 flex flex-col gap-6">
+      {/* 이용 정지 배너 (티켓 20261017_1426) — 정지 중인 유저에게만 렌더, 아니면 DOM에 없다.
+          정지는 홈의 다른 모든 것보다 먼저 읽혀야 해서 인사말 줄 위, 컨테이너의 첫 자식이다. */}
+      {suspension && <SuspensionBanner reason={suspension.reason} suspendedAt={suspension.suspendedAt} />}
+
       {/* 압축 인사말 + 검색 아이콘화 (티켓 20260830_2030) — 기존 큰 인사말(h1)·상시 노출
           전체 폭 검색바를 대체한다. 검색 폼 자체는 UserSearchBar가 그대로 유지하고
           `/search` 페이지에서 계속 쓰인다. */}

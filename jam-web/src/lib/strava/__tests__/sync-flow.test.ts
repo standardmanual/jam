@@ -15,6 +15,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { runSyncFlow } from '../sync-flow'
 import { SYNC_PENDING_ITEMS_CODE } from '../pending-items-contract'
 import type { PickResult } from '../pending-pick'
+import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
 
 interface Data {
   synced: number
@@ -130,6 +131,37 @@ describe('runSyncFlow — 200 + pendingItems', () => {
     expect(result).toEqual({ kind: 'ok', data: { synced: 2 }, pickedFirst: false })
     expect(t.openPicker).not.toHaveBeenCalled()
     expect(t.log).toEqual(['sync'])
+  })
+})
+
+describe('runSyncFlow — 403 user_suspended (티켓 20261017_1426)', () => {
+  const suspended = () => json(403, { error: 'x', code: USER_SUSPENDED_CODE })
+
+  it('일반 실패가 아니라 suspended로 돌려주고 고르기를 열지 않는다', async () => {
+    const t = setup([suspended()], [])
+
+    await expect(t.run()).resolves.toEqual({ kind: 'suspended' })
+    expect(t.fetchSync).toHaveBeenCalledTimes(1)
+    expect(t.openPicker).not.toHaveBeenCalled()
+  })
+
+  it('고르기를 마친 뒤 다시 요청한 응답이 403 user_suspended여도 suspended다', async () => {
+    const t = setup([blocked(), suspended()], ['resolved'])
+
+    await expect(t.run()).resolves.toEqual({ kind: 'suspended' })
+    expect(t.fetchSync).toHaveBeenCalledTimes(2)
+  })
+
+  it('code가 다른 403은 기존처럼 실패다', async () => {
+    const t = setup([json(403, { error: 'x', code: 'forbidden' })], [])
+
+    await expect(t.run()).resolves.toEqual({ kind: 'failed' })
+  })
+
+  it('본문이 없는 403도 실패다', async () => {
+    const t = setup([new Response('', { status: 403 })], [])
+
+    await expect(t.run()).resolves.toEqual({ kind: 'failed' })
   })
 })
 

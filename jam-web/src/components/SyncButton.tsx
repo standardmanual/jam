@@ -78,6 +78,9 @@ export default function SyncButton({
 
       if (flow.kind === 'blocked') {
         toast(d.syncPending.syncBlocked, 'info')
+      } else if (flow.kind === 'suspended') {
+        // 정지는 고장이 아니라 막힌 상태라 'error'가 아니라 'info'로 낸다(티켓 20261017_1426)
+        toast(d.suspension.syncBlocked, 'info')
       } else if (flow.kind === 'ok') {
         const { data, pickedFirst } = flow
         const badges = data.earnedBadges ?? []

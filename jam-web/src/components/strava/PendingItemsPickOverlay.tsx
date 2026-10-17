@@ -215,6 +215,10 @@ export default function PendingItemsPickOverlay({ open, quiet = false, onFinish 
         // 이미 고르기를 마쳤다(중복 클릭·다른 기기) — 닫고 화면을 새로 읽는다
         finish('resolved')
         nav.refresh()
+      } else if (outcome.kind === 'suspended') {
+        // 정지는 고장이 아니라 막힌 상태다. 'info' 토스트로 이유를 알리고, 오버레이는 닫지 않고 선택을 유지한다
+        showToast(d.suspension.pendingBlocked, 'info')
+        setConfirming(false)
       } else if (outcome.kind === 'error') {
         setErrorText(outcome.message)
         setConfirming(false)

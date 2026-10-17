@@ -9,6 +9,7 @@
  */
 import { d } from '@/lib/i18n'
 import type { PendingItemsPayload } from '@/lib/strava/pending-items-contract'
+import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
 
 /** 고르기가 끝난 결과. 'resolved' = 보류가 닫혔다(받음·받지 않음·이미 닫힘), 'dismissed' = 보류가 남았다 */
 export type PickResult = 'resolved' | 'dismissed'
@@ -41,11 +42,14 @@ export type SubmitOutcome =
   | { kind: 'success'; granted: number }
   /** 409 `no_pending` — 이미 고르기를 마쳤다(중복 클릭·다른 기기) */
   | { kind: 'already_resolved' }
+  /** 403 `user_suspended` — 이용 정지 중이라 받지 못했다. 토스트(info)로 알리고 고르기는 닫지 않는다. */
+  | { kind: 'suspended' }
   /** 인라인 문구로 보여 줄 오류. `reload`가 true면 목록을 다시 읽고 선택을 비운다. */
   | { kind: 'error'; message: string; reload: boolean }
 
 /** 고르기 POST 오류 응답을 화면 처리로 바꾼다. 문구는 `d.syncPending.*`에서만 가져온다. */
 export function interpretSubmitError(status: number, code: string | undefined): SubmitOutcome {
+  if (status === 403 && code === USER_SUSPENDED_CODE) return { kind: 'suspended' }
   if (status === 409 && code === 'no_pending') return { kind: 'already_resolved' }
   if (status === 400 && code === 'wrong_count') return { kind: 'error', message: d.syncPending.wrongCount, reload: false }
   if (status === 400 && code === 'invalid_selection') return { kind: 'error', message: d.syncPending.invalidSelection, reload: true }

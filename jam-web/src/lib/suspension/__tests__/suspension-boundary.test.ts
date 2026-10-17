@@ -91,6 +91,7 @@ describe('서버 전용 suspension.ts는 서버 쪽에서만 가져온다', () =
     'components/SyncButton.tsx',
     'lib/strava/pending-pick.ts',
     'lib/strava/sync-flow.ts',
+    'app/(main)/SuspensionBanner.tsx', // 홈 상단 정지 배너(2회)
     CONTRACT,
   ]
 
@@ -99,6 +100,8 @@ describe('서버 전용 suspension.ts는 서버 쪽에서만 가져온다', () =
     const reached = [...files].map(rel)
 
     expect(reached.filter((f) => f.endsWith('lib/suspension/suspension.ts')), `${entry}가 suspension.ts를 끌어온다`).toEqual([])
+    expect(reached.filter((f) => f.endsWith('lib/suspension/suspension-write.ts')), `${entry}가 suspension-write.ts를 끌어온다`).toEqual([])
+    expect(reached.filter((f) => f.endsWith('lib/suspension/home-banner.ts')), `${entry}가 home-banner.ts를 끌어온다`).toEqual([])
     expect(reached.filter((f) => f.endsWith('lib/supabase/server.ts')), `${entry}가 lib/supabase/server.ts를 끌어온다`).toEqual([])
     expect([...packages].filter((p) => p === 'next/headers' || p === 'server-only'), `${entry}가 서버 전용 패키지를 끌어온다`).toEqual([])
   })

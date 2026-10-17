@@ -135,6 +135,18 @@ describe('submitChoice — 코드별 오류 처리', () => {
     expect(outcome).toEqual({ kind: 'already_resolved' })
   })
 
+  it('403 user_suspended는 일반 오류가 아니라 suspended로 돌려준다(오버레이가 info 토스트로 알리고 닫지 않는다)', async () => {
+    const fetcher = vi.fn(async () => jsonResponse(403, { code: 'user_suspended', error: 'x' }))
+
+    const outcome = await submitChoice(fetcher as unknown as typeof fetch, ['a', 'b'], 2)
+
+    expect(outcome).toEqual({ kind: 'suspended' })
+  })
+
+  it('code가 다른 403은 확정하지 못한 오류다', () => {
+    expect(interpretSubmitError(403, 'forbidden')).toEqual({ kind: 'error', message: d.syncPending.resolveFailed, reload: false })
+  })
+
   it('네트워크 오류도 던지지 않고 재시도할 수 있는 오류로 돌려준다', async () => {
     const fetcher = vi.fn(async () => {
       throw new TypeError('network down')
