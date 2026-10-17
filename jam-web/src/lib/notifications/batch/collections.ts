@@ -6,6 +6,8 @@
  * 판정은 `itembook/completable.ts`(#11)와 같은 채움 규칙을 쓴다.
  *   - `item` 배지: `user_item_book_slots`에 들어가야 채워진다
  *   - `poi` 배지: 1회 이상 획득 이력이 있으면 채워진다 (슬롯팅 개념 없음)
+ * 분모·분자는 `itembook/completion-basis.ts` 한 곳이 정한다(티켓 20261016_2340 2회-나):
+ * 분자는 컬렉션별 집합이라 다른 컬렉션 슬롯은 세지 않는다.
  *
  * ## 한 컬렉션에 하나만 (20260827_014 §C)
  *
@@ -45,6 +47,8 @@ import {
 export interface CollectionBook {
   id: string
   name: string
+  /** 켜진 컬렉션은 등급별 이름 수로 센다. 없으면 false로 본다 */
+  tier_mode?: boolean | null
 }
 
 /** 아이템북에 속한 배지 1개 — R12(부족한 것을 이름으로)를 위해 `name`이 필요하다 */
@@ -53,12 +57,16 @@ export interface CollectionBadge {
   name: string
   /** 드랍 제외 배지는 완성 분모에서 뺀다 (티켓 20260921_1113). 없으면 false로 본다 */
   drop_excluded?: boolean | null
+  /** 배지 종류. 없으면 `item`으로 본다 */
+  type?: string
+  /** `tier_mode` 컬렉션의 등급 칸을 가른다 */
+  rarity?: string | null
 }
 
 /** 유저 1명의 컬렉션 보유 현황 (DB 접근 없이 판정할 수 있는 형태) */
 export interface UserCollectionState {
-  /** 이미 채워진 칸 = 슬롯에 넣은 배지 ∪ 획득 이력이 있는 POI 배지 */
-  filledBadgeIds: Set<string>
+  /** 컬렉션별 이미 채워진 칸 = 그 컬렉션 슬롯에 넣은 배지 ∪ 획득 이력이 있는 POI 배지 */
+  filledByBook: Map<string, Set<string>>
   /** 미장착 보유 아이템 배지 → 가장 최근 획득 시각(ISO). 드랍해서 넘긴 것은 제외 */
   unslottedBadgeObtainedAt: Map<string, string>
 }
@@ -114,15 +122,26 @@ export function selectCompletableDrafts(
 export function selectCollectionDrafts(input: CollectionScanInput): NotificationDraft[] {
   const drafts: NotificationDraft[] = []
 
-  // 분모 = 드랍 제외 배지를 뺀 소속 배지 (공용 함수). 유저와 무관하므로 한 번만 계산한다.
+  // 분모 = 완성 판정 모듈이 정한 소속 배지. 일반 컬렉션은 유저와 무관하므로 한 번만 계산한다.
   const denomBadgesByBook = new Map<string, CollectionBadge[]>()
+  const flatByBook = new Map<string, CompletionBadgeInput[]>()
   const flat: CompletionBadgeInput[] = []
   const badgeById = new Map<string, CollectionBadge>()
   for (const [bookId, list] of input.badgesByBook) {
+    const flatOfBook: CompletionBadgeInput[] = []
     for (const b of list) {
       badgeById.set(b.id, b)
-      flat.push({ id: b.id, item_book_id: bookId, type: 'item', drop_excluded: b.drop_excluded ?? false })
+      flatOfBook.push({
+        id: b.id,
+        item_book_id: bookId,
+        type: b.type ?? 'item',
+        drop_excluded: b.drop_excluded ?? false,
+        name: b.name,
+        rarity: b.rarity ?? null,
+      })
     }
+    flatByBook.set(bookId, flatOfBook)
+    flat.push(...flatOfBook)
   }
   for (const [bookId, c] of computeBookCompletion(flat, new Set())) {
     denomBadgesByBook.set(bookId, c.denomIds.map((id) => badgeById.get(id)!))
@@ -132,10 +151,19 @@ export function selectCollectionDrafts(input: CollectionScanInput): Notification
     const completable: CollectionBook[] = []
 
     for (const book of input.books) {
-      const badges = denomBadgesByBook.get(book.id) ?? []
+      // tier_mode 컬렉션은 분모가 그 유저가 꽂은 등급에 따라 달라 유저별로 센다
+      const badges = book.tier_mode
+        ? (computeBookCompletion(flatByBook.get(book.id) ?? [], new Set(), {
+            filledByBook: state.filledByBook,
+            tierModeBookIds: new Set([book.id]),
+          })
+            .get(book.id)
+            ?.denomIds.map((id) => badgeById.get(id)!) ?? [])
+        : (denomBadgesByBook.get(book.id) ?? [])
       if (badges.length === 0) continue // 배지 없는 북은 완성 개념이 없다
 
-      const remaining = badges.filter((b) => !state.filledBadgeIds.has(b.id))
+      const filledOfBook = state.filledByBook.get(book.id)
+      const remaining = badges.filter((b) => !filledOfBook?.has(b.id))
       if (remaining.length === 0) continue // 이미 완성
 
       const slottable = remaining.filter((b) => state.unslottedBadgeObtainedAt.has(b.id))
@@ -236,6 +264,7 @@ interface BookBadgeRow {
   item_book_id: string | null
   type: string
   drop_excluded: boolean | null
+  rarity: string | null
 }
 
 /**
@@ -252,7 +281,7 @@ export async function buildCollectionDrafts(ctx: BatchContext): Promise<StepOutp
   const books = await fetchAllRows<CollectionBook>('item_books', 'id', () =>
     supabase
       .from('item_books')
-      .select('id, name')
+      .select('id, name, tier_mode')
       .eq('is_active', true)
       .or(`valid_from.is.null,valid_from.lte.${now}`)
       .or(`valid_until.is.null,valid_until.gte.${now}`)
@@ -264,7 +293,7 @@ export async function buildCollectionDrafts(ctx: BatchContext): Promise<StepOutp
   const bookBadges = await fetchAllRowsIn<BookBadgeRow, string>('badges(item_book)', 'id', bookIds, (chunk) =>
     supabase
       .from('badges')
-      .select('id, name, item_book_id, type, drop_excluded')
+      .select('id, name, item_book_id, type, drop_excluded, rarity')
       .in('item_book_id', chunk)
       .in('type', ['item', 'checkin'])
       .is('deleted_at', null)
@@ -273,22 +302,24 @@ export async function buildCollectionDrafts(ctx: BatchContext): Promise<StepOutp
 
   const badgesByBook = new Map<string, CollectionBadge[]>()
   const poiBadgeIds: string[] = []
+  const bookIdByBadge = new Map<string, string>()
   const allBookBadgeIds: string[] = []
   for (const b of bookBadges) {
     if (!b.item_book_id) continue
     const list = badgesByBook.get(b.item_book_id) ?? []
-    list.push({ id: b.id, name: b.name, drop_excluded: b.drop_excluded })
+    list.push({ id: b.id, name: b.name, drop_excluded: b.drop_excluded, type: b.type, rarity: b.rarity })
+    bookIdByBadge.set(b.id, b.item_book_id)
     badgesByBook.set(b.item_book_id, list)
     allBookBadgeIds.push(b.id)
     if (b.type === 'checkin') poiBadgeIds.push(b.id)
   }
 
   const [slots, poiEarns, inventories] = await Promise.all([
-    fetchAllRowsIn<{ user_id: string; badge_id: string }, string>(
+    fetchAllRowsIn<{ user_id: string; item_book_id: string; badge_id: string }, string>(
       'user_item_book_slots',
       'id',
       bookIds,
-      (chunk) => supabase.from('user_item_book_slots').select('user_id, badge_id').in('item_book_id', chunk)
+      (chunk) => supabase.from('user_item_book_slots').select('user_id, item_book_id, badge_id').in('item_book_id', chunk)
     ),
     fetchAllRowsIn<{ user_id: string; badge_id: string }, string>(
       'user_checkin_badge_earns',
@@ -323,14 +354,24 @@ export async function buildCollectionDrafts(ctx: BatchContext): Promise<StepOutp
   const stateOf = (userId: string): UserCollectionState => {
     let s = stateByUser.get(userId)
     if (!s) {
-      s = { filledBadgeIds: new Set(), unslottedBadgeObtainedAt: new Map() }
+      s = { filledByBook: new Map(), unslottedBadgeObtainedAt: new Map() }
       stateByUser.set(userId, s)
     }
     return s
   }
 
-  for (const s of slots) stateOf(s.user_id).filledBadgeIds.add(s.badge_id)
-  for (const e of poiEarns) stateOf(e.user_id).filledBadgeIds.add(e.badge_id)
+  // 분자는 컬렉션별이다 — 슬롯은 그 슬롯의 컬렉션에, 체크인 획득은 그 배지가 속한 컬렉션에만 넣는다
+  const addFilled = (userId: string, bookId: string, badgeId: string) => {
+    const byBook = stateOf(userId).filledByBook
+    const set = byBook.get(bookId)
+    if (set) set.add(badgeId)
+    else byBook.set(bookId, new Set([badgeId]))
+  }
+  for (const s of slots) addFilled(s.user_id, s.item_book_id, s.badge_id)
+  for (const e of poiEarns) {
+    const bookId = bookIdByBadge.get(e.badge_id)
+    if (bookId) addFilled(e.user_id, bookId, e.badge_id)
+  }
   for (const it of invItems) {
     // 주인 없는 개체는 판정 대상이 아니다(기존에도 Map 조회가 빗나가 걸러지던 경로).
     const userId = it.inventory_id ? userByInventory.get(it.inventory_id) : undefined

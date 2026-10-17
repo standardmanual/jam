@@ -94,7 +94,7 @@ describe('#9 collection_slottable / #10 collection_near_complete / #11 collectio
         [
           'u1',
           {
-            filledBadgeIds: new Set(['b1']),
+            filledByBook: new Map([['book-1', new Set(['b1'])]]),
             unslottedBadgeObtainedAt: new Map([
               ['b2', '2026-08-25T01:00:00Z'],
               ['b3', '2026-08-24T01:00:00Z'],
@@ -118,7 +118,7 @@ describe('#9 collection_slottable / #10 collection_near_complete / #11 collectio
       books,
       badgesByBook,
       stateByUser: new Map([
-        ['u1', { filledBadgeIds: new Set(['b1']), unslottedBadgeObtainedAt: new Map() }],
+        ['u1', { filledByBook: new Map([['book-1', new Set(['b1'])]]), unslottedBadgeObtainedAt: new Map() }],
       ]),
     })
     expect(drafts.filter((d) => d.type === 'collection_slottable')).toHaveLength(0)
@@ -129,7 +129,7 @@ describe('#9 collection_slottable / #10 collection_near_complete / #11 collectio
       [
         'u1',
         {
-          filledBadgeIds: new Set(['b1']),
+          filledByBook: new Map([['book-1', new Set(['b1'])]]),
           unslottedBadgeObtainedAt: new Map([['b2', '2026-08-24T16:00:00Z']]),
         },
       ],
@@ -146,7 +146,7 @@ describe('#9 collection_slottable / #10 collection_near_complete / #11 collectio
       books,
       badgesByBook,
       stateByUser: new Map([
-        ['u1', { filledBadgeIds: new Set(['b1', 'b2']), unslottedBadgeObtainedAt: new Map() }],
+        ['u1', { filledByBook: new Map([['book-1', new Set(['b1', 'b2'])]]), unslottedBadgeObtainedAt: new Map() }],
       ]),
     })
     const near = reached.filter((d) => d.type === 'collection_near_complete')
@@ -162,7 +162,7 @@ describe('#9 collection_slottable / #10 collection_near_complete / #11 collectio
       books: [{ id: 'solo', name: '외톨이' }],
       badgesByBook: new Map([['solo', [badge('only', '하나뿐인')]]]),
       stateByUser: new Map([
-        ['u1', { filledBadgeIds: new Set<string>(), unslottedBadgeObtainedAt: new Map() }],
+        ['u1', { filledByBook: new Map<string, Set<string>>(), unslottedBadgeObtainedAt: new Map() }],
       ]),
     })
     expect(untouched.filter((d) => d.type === 'collection_near_complete')).toHaveLength(0)
@@ -176,7 +176,7 @@ describe('#9 collection_slottable / #10 collection_near_complete / #11 collectio
         [
           'u1',
           {
-            filledBadgeIds: new Set(['b1', 'b2']),
+            filledByBook: new Map([['book-1', new Set(['b1', 'b2'])]]),
             // 잔여 1칸 + 그 배지를 미장착 보유 → #10·#9가 아니라 #11만
             unslottedBadgeObtainedAt: new Map([['b3', '2026-08-25T01:00:00Z']]),
           },
@@ -195,7 +195,7 @@ describe('#9 collection_slottable / #10 collection_near_complete / #11 collectio
         ['book-1', [badge('b1', '첫 조각'), badge('b2', '멈춘 초시계'), { ...badge('b3', '녹슨 열쇠'), drop_excluded: true }]],
       ]),
       stateByUser: new Map([
-        ['u1', { filledBadgeIds: new Set(['b1', 'b2']), unslottedBadgeObtainedAt: new Map([['b3', '2026-08-25T01:00:00Z']]) }],
+        ['u1', { filledByBook: new Map([['book-1', new Set(['b1', 'b2'])]]), unslottedBadgeObtainedAt: new Map([['b3', '2026-08-25T01:00:00Z']]) }],
       ]),
     })
     // 분모 {b1,b2}를 모두 채웠으므로 이미 완성 — 제외 배지 b3로 알림이 나가면 안 된다
@@ -209,11 +209,48 @@ describe('#9 collection_slottable / #10 collection_near_complete / #11 collectio
         ['book-1', [badge('b1', '첫 조각'), badge('b2', '멈춘 초시계'), { ...badge('b3', '녹슨 열쇠'), drop_excluded: true }, { ...badge('b4', '빈 병'), drop_excluded: true }]],
       ]),
       stateByUser: new Map([
-        ['u1', { filledBadgeIds: new Set(['b1']), unslottedBadgeObtainedAt: new Map() }],
+        ['u1', { filledByBook: new Map([['book-1', new Set(['b1'])]]), unslottedBadgeObtainedAt: new Map() }],
       ]),
     })
     const near = drafts.filter((d) => d.type === 'collection_near_complete')
     expect(near).toHaveLength(1)
+    expect(near[0].payload).toMatchObject({ badge_name: '멈춘 초시계' })
+  })
+
+  it('분자는 컬렉션별이다 — 다른 컬렉션 슬롯에 든 배지는 이 컬렉션의 채움으로 세지 않는다', () => {
+    const drafts = selectCollectionDrafts({
+      books,
+      badgesByBook,
+      stateByUser: new Map([
+        // b1·b2가 다른 컬렉션(book-9) 슬롯에 있다 — book-1은 한 칸도 못 채운 것이다
+        ['u1', { filledByBook: new Map([['book-9', new Set(['b1', 'b2'])]]), unslottedBadgeObtainedAt: new Map() }],
+      ]),
+    })
+    expect(drafts.filter((d) => d.type === 'collection_near_complete')).toHaveLength(0)
+  })
+
+  it('tier_mode 컬렉션은 꽂은 등급의 이름 칸으로 센다 — 남은 한 칸이 있으면 완성 임박이 나간다', () => {
+    const tierBadge = (id: string, name: string, rarity: string) => ({ ...badge(id, name), rarity })
+    const drafts = selectCollectionDrafts({
+      books: [{ id: 'book-1', name: '오아시스 자판기', tier_mode: true }],
+      badgesByBook: new Map([
+        [
+          'book-1',
+          [
+            tierBadge('c1', '첫 조각', 'common'),
+            tierBadge('c2', '멈춘 초시계', 'common'),
+            tierBadge('r1', '첫 조각', 'rare'),
+            tierBadge('r2', '멈춘 초시계', 'rare'),
+          ],
+        ],
+      ]),
+      stateByUser: new Map([
+        ['u1', { filledByBook: new Map([['book-1', new Set(['r1'])]]), unslottedBadgeObtainedAt: new Map() }],
+      ]),
+    })
+    const near = drafts.filter((d) => d.type === 'collection_near_complete')
+    expect(near).toHaveLength(1)
+    // 레어를 꽂았으므로 남은 칸은 레어 '멈춘 초시계'다
     expect(near[0].payload).toMatchObject({ badge_name: '멈춘 초시계' })
   })
 
@@ -232,7 +269,7 @@ describe('#9 collection_slottable / #10 collection_near_complete / #11 collectio
         [
           'u1',
           {
-            filledBadgeIds: new Set(['b1', 'c1']),
+            filledByBook: new Map([['book-1', new Set(['b1'])], ['book-2', new Set(['c1'])]]),
             unslottedBadgeObtainedAt: new Map([
               ['b2', '2026-08-25T01:00:00Z'],
               ['c2', '2026-08-25T02:00:00Z'],
