@@ -77,9 +77,18 @@ SQL 232는 카리나가 먼저 끝냈다(2026-10-18): 사용자 승인 뒤 롤�
 6. 시험: 정책 기본값(232와 같음)과 칸 단위 폴백, `capsule.ts`(가짜 RPC로 오류 코드 변환, 이용 정지가 RPC 호출 전에 막음), 두 라우트(401, 400, 403, 409, 정상), 클라이언트·서버 경계(`capsule-contract.ts`에 import 없음, 클라이언트 사슬에 서버 모듈 없음).
 7. 문서: `docs/service/prd/02_DATA_MODEL.md`(새 테이블·함수·칸), `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md`(캡슐 채우기 규칙 절, 열기는 2회), 비교표 3.5절 진행 상황.
 
-### 2회: 열기(추첨, 보정, 빈칸 검사, 기록), 열기 API
+### 2회: 열기(추첨, 보정, 빈칸 검사, 기록), 열기 API (파일 단위, `planOnlyWaiver` 대상)
 
-SQL(마이그레이션 233, 1회 뒤에 카리나가 쓴다): 열기 함수 `capsule_open(p_user_id, p_items JSONB, p_guaranteed_locked BOOLEAN ...)`가 캡슐 행을 잠그고 채운 양과 이용 정지를 확인하고, 빈칸이 `p_items` 개수 상한(`guaranteed_count + bonus_count`)보다 적으면 거부하고, 개체마다 `grant_inventory_item_locked`로 지급하고 `item_issue_log`(route `capsule`)와 `capsule_opens`에 쓰고, `user_drop_state`의 `common_streak`·`capsule_epic_miss`를 갱신하고, 다음 캡슐을 만든다. 파일 단위 계획은 1회 뒤에 이 절에 옮겨 쓴다.
+SQL(마이그레이션 `233_capsule_open.sql`)은 카리나가 먼저 승인·롤백 실측·적용하고 생성 타입을 맞춘다. 아현은 SQL을 만들지 않는다. 새 함수 `capsule_open(p_user_id, p_items JSONB)`이 한 트랜잭션으로 ① 이용 정지 확인 ② 캡슐 행 잠금과 가득 참 확인 ③ 인벤토리 행 잠금과 빈칸 확인(빈칸이 `guaranteed_count + bonus_count`보다 적으면 `insufficient_slots`와 지금 빈칸·필요한 빈칸을 돌려줌) ④ 개체 지급(`grant_inventory_item_locked`)과 발급 기록(`item_issue_log`, route `capsule`) ⑤ 열기 기록(`capsule_opens`) ⑥ 보정 카운터(`common_streak`, `capsule_epic_miss`) 갱신 ⑦ 다음 캡슐 생성(그때의 챕터로 필요량 고정)을 한다. `p_items`의 항목은 `{badge_id, rarity, rolled_rarity?, locked, lock_reason, unlock_required}`다. 오류 코드: `user_suspended`, `not_full`, `insufficient_slots`, `invalid_items`, `inventory_not_found`.
+
+1. `jam-web/src/lib/capsule/capsule-contract.ts`: 오류 코드에 `not_full`·`insufficient_slots`·`invalid_items`를 더하고, `CapsuleStatus`의 `notOpenableReason`에 `no_free_slots`(와 `freeSlots`, `neededSlots`)를 더한다. 열기 응답 타입(`CapsuleOpenPayload`: 나온 개체 목록, 열린 개체는 이름·그림·등급·일련번호, 잠긴 개체는 3-1처럼 이름·그림 없이 `locked`·등급·`unlockRequired`, 다음 캡슐 `required`·`filled`)을 더한다. 순수 파일을 유지한다.
+2. `jam-web/src/lib/capsule/capsuleRoll.ts`(새 파일, 난수를 주입받는 순수 로직, 서버 모듈 import 금지): 운영 로직 5.2절의 순서대로 개수(`guaranteed_count` + 확률 `bonus_probability`로 `bonus_count`), 트라이브(개체마다 `other_tribe_probability`로 다른 트라이브, 나머지 넷 가운데 고르게), 등급(`capsule_policy` 확률, 보정 1: `capsule_epic_miss >= pity_epic_threshold`이면 첫 개체를 Epic 이상으로(확률은 epic:mystic 비율), 보정 2: `common_streak >= jam_policy.common_streak_threshold`이면 Rare 이상), 후보(활성이고 공개 기간 안, `lib/drop-engine/syncIssue.ts`의 `listIssueCandidates`·`pickWithRarityFallback` 재사용, 후보가 없으면 한 등급 내림), 잠김(3-1의 `lib/drop-engine/lockAssignment.ts`의 `assignLock`, 경로 `capsule`). 퀘스트 전 캡슐(`chapter_no`가 null)은 첫 개체를 반드시 잠긴 채(`lock_reason: 'rolled'`, `unlock_required: pre_quest_unlock_required`)로 둔다.
+3. `jam-web/src/lib/capsule/open.ts`(서버 전용): `openCapsule(supabase, userId)`. `assertNotSuspended` → 캡슐 상태와 빈칸 사전 확인(안 되면 추첨하지 않고 `CapsuleError`) → 정책·카운터(`user_drop_state`)·소속 트라이브(`users.tribe_id`, 없으면 열 수 없음 `no_tribe`로 거절)·후보 조회 → `capsuleRoll` → RPC `capsule_open` → 응답에 개체 정보를 채운다. 그 뒤 포인트 등 후속 처리(`lib/drop-engine/issueFollowUp.ts`의 `recordIssuedRewards`, 잠긴 개체 제외 규칙 유지)를 부르고 피드·결산 알림은 잠긴 개체 가림 규칙(3-1)을 지킨다. 후속 처리가 실패해도 열기는 되돌리지 않고 로그만 남긴다(1회 동기화와 같은 방식).
+4. `jam-web/src/lib/capsule/capsule.ts`: `getCapsuleStatus`가 인벤토리 빈칸을 읽어 `openable`·`notOpenableReason`(`not_full` 또는 `no_free_slots`)·`freeSlots`·`neededSlots`를 채운다.
+5. `jam-web/src/app/api/capsule/open/route.ts`(POST): 401, 정지 403 `user_suspended`, `not_full` 409, `insufficient_slots` 409(응답에 지금 빈칸 수와 필요한 빈칸 수), `no_tribe` 409, 그 외 500(내부 오류 원문 미노출).
+6. `jam-web/src/lib/i18n/ko.ts`: `d.capsule.open*`(빈칸이 모자라요 안내 «인벤토리 빈칸이 모자라요», 결과 문구 «캡슐을 열었어요. 아이템 배지 N개를 얻었어요»). 부추기는 말, 꽝 표현, 다음 결과를 미리 기대하게 하는 말을 쓰지 않는다. `fluent-korean` 지침.
+7. 시험: `capsuleRoll`(결정적 난수로 개수 1·2, 다른 트라이브 비율 경계 0·1, 등급 경계, 보정 1·2, 후보 없음 한 등급 내림, 퀘스트 전 잠긴 개체 보장, 잠김 배정), `open.ts`(가짜 RPC로 오류 변환, 정지·빈칸 사전 확인이 추첨 전에 막음, 후속 처리 실패 시 열기 유지), 라우트(401·403·409·정상), 클라이언트·서버 경계(`capsule-contract.ts`, `capsuleRoll.ts`에 서버 모듈 없음).
+8. 문서: `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md`(캡슐 열기 순서·보정), `docs/service/prd/02_DATA_MODEL.md`(`capsule_open`), 비교표 3.5절.
 
 ## 완료 조건
 
@@ -101,13 +110,19 @@ SQL(마이그레이션 233, 1회 뒤에 카리나가 쓴다): 열기 함수 `cap
 
 ### 구현 내용 요약
 
+**1회 완료(2026-10-18, 아현, 브랜치 `claude/jamwork-20261018_0052-capsule-fill`, 게이트 PASS, staging 로컬 머지).** SQL(마이그레이션 232)과 생성 타입은 카리나가 먼저 적용했다.
+- `lib/capsule/capsule-contract.ts`(import 없는 순수 파일): `CapsuleStatus`, `CapsuleFillPayload`, 오류 코드 5종, `CAPSULE_AMOUNT_MAX`. `lib/capsule/policy.ts`: `DEFAULT_CAPSULE_POLICY`(232 기본값과 같고 시험이 SQL 파일의 DEFAULT와 대조), `getCapsulePolicy`(칸 단위 폴백, 등급 확률 네 칸은 합계 100이 필요해 묶음 단위 대체). `lib/capsule/capsule.ts`(서버 전용): `getCapsuleStatus`(RPC `capsule_get_or_create`와 지갑 잔액), `fillCapsule`(`assertNotSuspended`가 RPC보다 먼저, DB 거절은 `CapsuleError`).
+- API: `GET /api/capsule`(401, 정지 중에도 허용), `POST /api/capsule/fill`(401, 잘못된 `amount` 400, 정지 403 `user_suspended`, `already_full`·`exceeds_remaining`·`invalid_amount` 400, `insufficient_jam` 409, 그 외 500이고 내부 오류 원문은 싣지 않음). 문구 `d.capsule.*`, `d.suspension.capsuleBlocked`. 1회의 `openable`은 `filled >= required`만 본다(빈칸 검사는 2회).
+- 문서: `02_DATA_MODEL.md`(ERD 캡슐 묶음과 9-4절), `BADGE_ENGINE_UNIFIED.md` 3.0-1절, 비교표 3.5절.
+
 ### 변경된 파일
 ```
 -
 ```
 
 ### 테스트 결과
-- [ ]
+- 1회: `scripts/verify.sh` 전항목 통과, CI verify 성공(커밋 `b543a712c`, run 39080311485은 아현이 in_progress에서 반환했고 민지가 성공을 확인), 격리 워크트리에서 `vitest src/lib/capsule src/app/api/capsule` 5파일 49건 통과. 시험은 정책 기본값(SQL 232와 대조)과 칸 단위 폴백, `capsule.ts`(가짜 RPC로 오류 변환, 호출 순서 [정지 확인, RPC] 고정, 정지 확인을 못 읽으면 RPC를 부르지 않음), 두 라우트(401·400·403·409·500·정상), 클라이언트·서버 경계(계약 파일 import 없음, `'use client'` 사슬에 `capsule.ts`·`policy.ts` 없음).
+- 로컬 실렌더: 하지 않았다. 캡슐 API는 처음 호출할 때 공용 DB에 캡슐 행을 만들므로 시험 계정으로 호출하지 않았다. 화면은 3-4.
 
 ### 배포 정보
 
@@ -119,10 +134,11 @@ SQL(마이그레이션 233, 1회 뒤에 카리나가 쓴다): 열기 함수 `cap
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1회 | 2 | 225,042 | 53,358 / 6,302 | 18분 5초 | 72 |
+| 합계 | 2 | 225,042 | 53,358 / 6,302 | 18분 5초 | 72 |
 
 ### 주요 의사결정 / 핵심 메모
 
 ### 잔여 이슈
--
+- `GET /api/capsule`은 캡슐이 없으면 만드는 지연 생성이라 읽기 요청이 행을 쓴다(티켓이 정한 동작). 이용 정지 중인 유저의 조회도 행을 만든다. 영향은 작다.
+- `capsule_fill`은 `already_full`을 `invalid_amount`보다 먼저 검사한다. 가득 찬 캡슐에 `amount=0`을 보내면 DB는 `already_full`이지만 앱 라우트가 `amount<1`을 먼저 막아 사용자에게 보이는 응답은 `invalid_amount`다.
