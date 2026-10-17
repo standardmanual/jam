@@ -17,7 +17,8 @@ import type { StravaSummaryActivity } from '@/types/strava'
 
 /**
  * 걸러진 이유. NULL(저장 시 `filter_reason`이 비어 있음)이 «인정»이다.
- * `vehicle_speed`는 이 함수가 아니라 어뷰징 필터(차량 속도)가 붙인다 — 값 목록을 한 곳에 두려고
+ * `vehicle_speed`는 이 함수가 아니라 어뷰징 필터(차량 속도)가 붙이고, `suspended`는 동기화가
+ * 이용 정지 구간에 시작한 활동에 붙인다(티켓 20261017_1426) — 값 목록을 한 곳에 두려고
  * 같은 타입에 함께 선언한다.
  */
 export type FilterReason =
@@ -28,6 +29,7 @@ export type FilterReason =
   | 'no_gps'
   | 'too_short'
   | 'vehicle_speed'
+  | 'suspended'
 
 /** 인정에 필요한 움직인 시간 하한(초) — 10분 */
 export const MIN_QUALIFIED_MOVING_TIME_SEC = 10 * 60
