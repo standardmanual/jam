@@ -118,7 +118,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | `time_*` | KST 시각 기준. 05~08 `dawn`, 08~11 `morning`, 11~17 `afternoon`, 17~22 `evening`, 22~05 `night`(자정을 넘는 구간) |
 | `has_participating_mission` | 참가했지만 완료하지 않은 미션이 1개 이상 |
 | `has_ending_soon_mission` | 그중 `ends_at`이 지금부터 3일 안인 미션이 있음 |
-| `has_incomplete_itembook` | 슬롯을 채우기 시작했지만 완성하지 않은 컬렉션이 있음(분모는 드랍 제외 배지를 뺀 아이템 배지) |
+| `has_incomplete_itembook` | 슬롯을 채우기 시작했지만 완성하지 않은 컬렉션이 있음(분모는 소프트 삭제·드랍 제외 배지를 뺀 아이템·체크인 배지이고, 분자는 컬렉션별로 센다. 판정은 `lib/itembook/completion-basis.ts` 하나다) |
 | `itembook_remaining_le3` | 그 미완성 컬렉션들의 남은 슬롯 최솟값이 3 이하(`ITEMBOOK_REMAINING_MAX`) |
 | `strava_stale_14d` | Strava 연결이 있고 마지막 동기화에서 14일 이상 지남(`STRAVA_STALE_DAYS`). 한 번도 동기화하지 않았으면 해당, 연결이 없으면 붙지 않는다 |
 | `new_user` | 가입 7일 이내 |
