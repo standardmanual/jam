@@ -128,6 +128,10 @@ Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure
 ### strava_activities (신규)
 동기화 원본 활동 기록. `strava_id`, `jam_activity_type`, `distance_km`, `normalized`(정규화된 활동 JSON), `processed_via`(sync/reconcile/manual_backfill). UNIQUE(user_id, strava_id)로 중복 동기화 방지 — 이기종 데이터 중복 이슈의 실제 해결책.
 
+**걸러짐 표시 두 칸**(마이그레이션 223, 티켓 20261017_1421):
+- `filter_reason` (text, NULL 허용): NULL이면 인정 활동, 값이 있으면 걸러진 사유(`virtual`·`unsupported_sport`·`manual_entry`·`file_upload`·`no_gps`·`too_short`·`vehicle_speed`). 걸러진 활동도 저장하지만 이력 조회(`getActivityHistory`)는 `filter_reason IS NULL`인 행만 읽는다. 「이미 처리한 활동」 조회는 걸러진 행도 포함한다. 옛 행은 NULL이라 인정으로 읽히며 소급하지 않는다. 판정 기준은 `BADGE_ENGINE_UNIFIED.md` §1 「인정 활동 입구」.
+- `source_meta` (jsonb, NULL 허용): 인정 판정에 쓴 원본 값의 유무·모양 요약(종목 이름, `manual`, 업로드 번호 유무, 외부 ID 모양(없음/파일 이름/그 밖), 시작 좌표 유무, 경로 요약 유무). 경로 요약 본문·좌표·외부 ID 원문은 담지 않는다. 파일 업로드 판정이 추정 기준이라, 나중에 실제 데이터로 기준을 검증하고 고치기 위한 근거다.
+
 `normalized`의 구조는 `NormalizedActivity`(`src/types/strava.ts`)다. 2026-09-05부터 v5 확장
 6필드(심박·파워·케이던스·최고속도·최고도달고도·경과시간)가 함께 저장되며, **측정값이 없으면
 키 자체가 없다**(`null`이 아니다 — 티켓 20260905_0029). 컬럼 변경은 없다(jsonb).
@@ -138,7 +142,7 @@ Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure
 **JAM! 행동 지표의 원천**: 주간 활동일(`weekly_active_days`)과 최근 30일 활동일(`signup_recent_active_days`)의
 「활동한 날」이 이 테이블의 `start_date`(timestamptz — 현지 시각 열은 없다)를 KST 날짜로 옮겨 센다. 가입한 날
 이후 행만 읽고, `normalized`의 `jamActivityType`·`distanceKm`·`movingTimeSec`·`averageSpeedKmh`로 JAM! 종목·걷기
-게이트·차량 속도 필터를 통과한 활동만 센다(티켓 20261001_0633). 수동 입력 활동은 저장된 정보로 가를 수 없다.
+게이트·차량 속도 필터를 통과한 활동만 센다(티켓 20261001_0633). 걸러진 활동(`filter_reason`이 있는 행)은 읽지 않는다(티켓 20261017_1421).
 
 ---
 
