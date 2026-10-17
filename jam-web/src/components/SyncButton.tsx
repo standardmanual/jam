@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useToast } from '@/components/ui/Toast'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
+import { usePendingItemsPicker } from '@/components/strava/PendingItemsPickerProvider'
+import { runSyncFlow } from '@/lib/strava/sync-flow'
 import { d } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
 import { useDebouncedLoading } from '@/hooks/useDebouncedLoading'
@@ -22,6 +24,8 @@ interface SyncResponse {
   isFirstBadgeEver?: boolean
   /** 이번 싱크에서 새로 완료된 미션 id — GA4 mission_complete */
   completedMissionIds?: string[]
+  /** 이번 동기화에서 새로 보류된 아이템 배지 개수(티켓 20261017_1425). 이전 응답에는 없다 */
+  pendingItems?: number
 }
 
 /**
@@ -46,6 +50,8 @@ export default function SyncButton({
   const [earnedBadgesMore, setEarnedBadgesMore] = useState(0)
   const { toast } = useToast()
   const router = useRouter()
+  const picker = usePendingItemsPicker()
+  const busyRef = useRef(false)
 
   // 빠르게 끝나는 동기화 요청에도 버튼 스피너가 스치듯 보이지 않도록 디바운스 적용
   // (NavigationLoader와 동일한 SHOW_DELAY_MS/MIN_VISIBLE_MS/MAX_VISIBLE_MS 정책, 20260908_0544).
@@ -57,11 +63,23 @@ export default function SyncButton({
   const profileHref = username ? `/${username}` : '/profile'
 
   async function handleSync() {
+    // 중복 요청 가드 — 고르기가 떠 있는 동안에는 버튼 스피너(loading)를 꺼 두므로 state가 아니라 ref로 막는다
+    if (busyRef.current) return
+    busyRef.current = true
     setLoading(true)
     try {
-      const res = await fetch('/api/strava/sync', { method: 'POST' })
-      if (res.ok) {
-        const data: SyncResponse = await res.json()
+      // 409(보류가 남음)는 고르기를 먼저 보여 주고 동기화를 한 번만 다시 요청하며, 응답에 새 보류가 있으면 결과 연출보다 먼저 고르기를 보여 준다.
+      // 고르기가 떠 있는 동안에는 버튼 스피너를 끈다(sync-flow가 setLoading을 부른다).
+      const flow = await runSyncFlow<SyncResponse>({
+        fetchSync: () => fetch('/api/strava/sync', { method: 'POST' }),
+        openPicker: picker.openPicker,
+        setLoading,
+      })
+
+      if (flow.kind === 'blocked') {
+        toast(d.syncPending.syncBlocked, 'info')
+      } else if (flow.kind === 'ok') {
+        const { data, pickedFirst } = flow
         const badges = data.earnedBadges ?? []
 
         // GA4 mission_complete — 완료 INSERT 자체가 유니크 제약으로 평생 1회만 성공하므로
@@ -82,6 +100,9 @@ export default function SyncButton({
           setRevealOpen(true)
           // router.refresh()는 오버레이를 닫을 때로 미룬다 —
           // 연출이 떠 있는 동안 뒤 페이지가 리렌더되지 않도록.
+        } else if (pickedFirst) {
+          // 고르기를 이미 보여 줬으므로 완료 토스트 없이 화면만 새로 읽는다.
+          router.refresh()
         } else {
           // 배지 0개면 연출이 없으므로 기존 완료 토스트를 유지한다(무반응 방지).
           toast(d.today.syncDone, 'success')
@@ -93,6 +114,7 @@ export default function SyncButton({
     } catch {
       toast(d.common.networkError, 'error')
     } finally {
+      busyRef.current = false
       setLoading(false)
     }
   }

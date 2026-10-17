@@ -53,6 +53,7 @@ export async function runPendingFollowUps(
     const claimed = ((claimedRaw ?? []) as ClaimedRow[]).filter((r) => r.inventory_item_id)
     if (claimed.length === 0) return
 
+    // 이미 받은 개체의 후속 처리다 — 그 사이 배지가 비활성(deleted_at)이 됐어도 포인트·피드는 남겨야 하므로 deleted_at으로 거르지 않는다.
     const badgeIds = [...new Set(claimed.map((r) => r.badge_id))]
     const { data: badgeRaw, error: badgeError } = await supabase
       .from('badges')
