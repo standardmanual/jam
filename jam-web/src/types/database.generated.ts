@@ -351,6 +351,7 @@ export type Database = {
         Row: {
           activity_types: string[]
           admin_category: string | null
+          always_locked: boolean
           background_animation: Json | null
           background_color: string | null
           background_image_url: string | null
@@ -380,12 +381,14 @@ export type Database = {
           sort_order: number
           tribe_id: string | null
           type: Database["public"]["Enums"]["badge_type"]
+          unlock_required: number | null
           valid_from: string | null
           valid_until: string | null
         }
         Insert: {
           activity_types?: string[]
           admin_category?: string | null
+          always_locked?: boolean
           background_animation?: Json | null
           background_color?: string | null
           background_image_url?: string | null
@@ -415,12 +418,14 @@ export type Database = {
           sort_order?: number
           tribe_id?: string | null
           type: Database["public"]["Enums"]["badge_type"]
+          unlock_required?: number | null
           valid_from?: string | null
           valid_until?: string | null
         }
         Update: {
           activity_types?: string[]
           admin_category?: string | null
+          always_locked?: boolean
           background_animation?: Json | null
           background_color?: string | null
           background_image_url?: string | null
@@ -450,6 +455,7 @@ export type Database = {
           sort_order?: number
           tribe_id?: string | null
           type?: Database["public"]["Enums"]["badge_type"]
+          unlock_required?: number | null
           valid_from?: string | null
           valid_until?: string | null
         }
@@ -1044,11 +1050,16 @@ export type Database = {
           expires_at: string | null
           id: string
           inventory_id: string | null
+          lock_reason: string | null
+          locked: boolean
           obtained_at: string
           obtained_by: string
           serial_number: number
           serial_prefix: string | null
           slotted_in: string | null
+          unlock_filled: number
+          unlock_required: number | null
+          unlocked_at: string | null
         }
         Insert: {
           badge_id: string
@@ -1058,11 +1069,16 @@ export type Database = {
           expires_at?: string | null
           id?: string
           inventory_id?: string | null
+          lock_reason?: string | null
+          locked?: boolean
           obtained_at?: string
           obtained_by?: string
           serial_number: number
           serial_prefix?: string | null
           slotted_in?: string | null
+          unlock_filled?: number
+          unlock_required?: number | null
+          unlocked_at?: string | null
         }
         Update: {
           badge_id?: string
@@ -1072,11 +1088,16 @@ export type Database = {
           expires_at?: string | null
           id?: string
           inventory_id?: string | null
+          lock_reason?: string | null
+          locked?: boolean
           obtained_at?: string
           obtained_by?: string
           serial_number?: number
           serial_prefix?: string | null
           slotted_in?: string | null
+          unlock_filled?: number
+          unlock_required?: number | null
+          unlocked_at?: string | null
         }
         Relationships: [
           {
@@ -1378,6 +1399,11 @@ export type Database = {
           intensity_hard: number
           intensity_light: number
           intensity_normal: number
+          locked_min_common: number
+          locked_min_epic: number
+          locked_min_mystic: number
+          locked_min_rare: number
+          locked_roll_probability: number
           mass_earn_alert_multiplier: number
           mass_earn_alert_no_history_amount: number
           mass_earn_alert_weeks: number
@@ -1398,6 +1424,11 @@ export type Database = {
           intensity_hard?: number
           intensity_light?: number
           intensity_normal?: number
+          locked_min_common?: number
+          locked_min_epic?: number
+          locked_min_mystic?: number
+          locked_min_rare?: number
+          locked_roll_probability?: number
           mass_earn_alert_multiplier?: number
           mass_earn_alert_no_history_amount?: number
           mass_earn_alert_weeks?: number
@@ -1418,6 +1449,11 @@ export type Database = {
           intensity_hard?: number
           intensity_light?: number
           intensity_normal?: number
+          locked_min_common?: number
+          locked_min_epic?: number
+          locked_min_mystic?: number
+          locked_min_rare?: number
+          locked_roll_probability?: number
           mass_earn_alert_multiplier?: number
           mass_earn_alert_no_history_amount?: number
           mass_earn_alert_weeks?: number
@@ -2690,12 +2726,14 @@ export type Database = {
           created_at: string
           id: string
           inventory_item_id: string | null
+          lock_reason: string | null
           locked: boolean
           rarity: Database["public"]["Enums"]["badge_rarity"]
           resolved_at: string | null
           rolled_rarity: Database["public"]["Enums"]["badge_rarity"] | null
           source_activity_id: string | null
           status: string
+          unlock_required: number | null
           user_id: string
         }
         Insert: {
@@ -2703,12 +2741,14 @@ export type Database = {
           created_at?: string
           id?: string
           inventory_item_id?: string | null
+          lock_reason?: string | null
           locked?: boolean
           rarity: Database["public"]["Enums"]["badge_rarity"]
           resolved_at?: string | null
           rolled_rarity?: Database["public"]["Enums"]["badge_rarity"] | null
           source_activity_id?: string | null
           status?: string
+          unlock_required?: number | null
           user_id: string
         }
         Update: {
@@ -2716,12 +2756,14 @@ export type Database = {
           created_at?: string
           id?: string
           inventory_item_id?: string | null
+          lock_reason?: string | null
           locked?: boolean
           rarity?: Database["public"]["Enums"]["badge_rarity"]
           resolved_at?: string | null
           rolled_rarity?: Database["public"]["Enums"]["badge_rarity"] | null
           source_activity_id?: string | null
           status?: string
+          unlock_required?: number | null
           user_id?: string
         }
         Relationships: [
@@ -4044,6 +4086,18 @@ export type Database = {
           p_expires_at?: string | null
           p_inventory_id: string
           p_obtained_by: string
+        }
+        Returns: Json
+      }
+      grant_inventory_item_locked: {
+        Args: {
+          p_badge_id: string
+          p_expires_at?: string | null
+          p_inventory_id: string
+          p_lock_reason?: string | null
+          p_locked?: boolean
+          p_obtained_by: string
+          p_unlock_required?: number | null
         }
         Returns: Json
       }

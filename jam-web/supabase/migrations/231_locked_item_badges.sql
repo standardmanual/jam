@@ -84,10 +84,10 @@ CREATE OR REPLACE FUNCTION public.grant_inventory_item_locked(
   p_inventory_id UUID,
   p_badge_id UUID,
   p_obtained_by TEXT,
-  p_expires_at TIMESTAMPTZ,
-  p_locked BOOLEAN,
-  p_lock_reason TEXT,
-  p_unlock_required INTEGER
+  p_expires_at TIMESTAMPTZ DEFAULT NULL,
+  p_locked BOOLEAN DEFAULT FALSE,
+  p_lock_reason TEXT DEFAULT NULL,
+  p_unlock_required INTEGER DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
