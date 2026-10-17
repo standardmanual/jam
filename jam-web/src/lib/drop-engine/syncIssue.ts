@@ -9,7 +9,8 @@
  *  - 개수: 활동마다 확정 개수(등산은 별도 값) + 보너스 굴림(한 번마다 활동 잼 ÷ 분모, 상한). 확정 0 설정은 드랍 없음.
  *  - 등급: 설정 확률. `common_streak >= 임계값`이면 Rare 이상에서만 뽑고, 상대 비율은 설정 확률 비율을 따른다.
  *  - 후보: 소속 트라이브 컬렉션 · 그 등급 · 활성 · 공개 기간 안 · 드랍 제외 아님 · 삭제 아님. 보정 없이 균등 무작위.
- * 값 근거는 운영 로직 6.7절이다. 지급(`grant_inventory_item`)과 기록은 이 모듈의 일이 아니다(2회, 동기화 연결).
+ * 값 근거는 운영 로직 6.7절이다. 지급(`grant_inventory_item`)과 기록은 이 모듈의 일이 아니다(`syncIssueRun.ts`).
+ *  - 뽑힌 등급에 후보가 없으면 한 등급씩 내려 다시 뽑는다(`pickWithRarityFallback`).
  */
 import type { JamPolicy } from '@/lib/jam/policy'
 import type { BadgeRarity } from '@/types/database'
@@ -140,17 +141,18 @@ function inWindow(from: string | null, until: string | null, nowMs: number): boo
   return true
 }
 
-export interface PickItemBadgeInput {
+export interface PickItemBadgeInput<B extends IssueBadge = IssueBadge> {
   /** 유저의 소속 트라이브 */
   tribeId: string
   rarity: BadgeRarity
   books: readonly IssueBook[]
-  badges: readonly IssueBadge[]
+  /** 판정 칸(`IssueBadge`) 외에 이름·이미지 같은 칸을 더 실어도 그대로 돌려준다 */
+  badges: readonly B[]
   now: Date
 }
 
 /** 발급할 수 있는 후보 전체 — 소속 트라이브 컬렉션, 그 등급, 활성, 공개 기간 안, 드랍 제외 아님, 삭제 아님 */
-export function listIssueCandidates(input: PickItemBadgeInput): IssueBadge[] {
+export function listIssueCandidates<B extends IssueBadge>(input: PickItemBadgeInput<B>): B[] {
   const nowMs = input.now.getTime()
   const bookIds = new Set(
     input.books
@@ -175,9 +177,42 @@ export function listIssueCandidates(input: PickItemBadgeInput): IssueBadge[] {
  * 후보 전체에서 균등 무작위로 하나를 고른다. 후보가 없으면 null이다.
  * 없는 것 먼저 · 컬렉션 비중 · 마지막 조각 몰아주기 보정은 두지 않는다(운영 로직 6.2절).
  */
-export function pickItemBadge(input: PickItemBadgeInput, rand: Rand): IssueBadge | null {
+export function pickItemBadge<B extends IssueBadge>(input: PickItemBadgeInput<B>, rand: Rand): B | null {
   const candidates = listIssueCandidates(input)
   if (candidates.length === 0) return null
   const idx = Math.min(Math.floor(rand() * candidates.length), candidates.length - 1)
   return candidates[idx]
+}
+
+// ────────────────────────────────────────────────────────────
+// 4. 후보 없는 등급은 한 등급씩 내려 다시 뽑는다 (사용자 결정 5번)
+// ────────────────────────────────────────────────────────────
+
+/** 높은 등급부터 낮은 등급 순서 — 한 등급씩 내려갈 때의 경로 */
+const RARITY_DESCENDING: readonly BadgeRarity[] = ['mystic', 'epic', 'rare', 'common']
+
+export interface FallbackPick<B extends IssueBadge = IssueBadge> {
+  /** 처음 뽑힌 등급 — 발급 기록의 `rolled_rarity` */
+  rolledRarity: BadgeRarity
+  /** 실제로 준 등급 — 발급 기록의 `rarity`. 후보가 있어 내려가지 않았다면 `rolledRarity`와 같다 */
+  rarity: BadgeRarity
+  badge: B
+}
+
+/**
+ * 뽑힌 등급에 후보가 없으면 한 등급씩 내려가며 후보가 있는 가장 높은 등급에서 고른다.
+ * 위쪽 등급으로는 올라가지 않는다. 모든 등급에 후보가 없으면 null이다(호출부가 그 개체를 건너뛰고 로그를 남긴다).
+ */
+export function pickWithRarityFallback<B extends IssueBadge>(
+  input: Omit<PickItemBadgeInput<B>, 'rarity'> & { rolledRarity: BadgeRarity },
+  rand: Rand
+): FallbackPick<B> | null {
+  const { rolledRarity, ...rest } = input
+  const start = RARITY_DESCENDING.indexOf(rolledRarity)
+  if (start < 0) return null
+  for (const rarity of RARITY_DESCENDING.slice(start)) {
+    const badge = pickItemBadge<B>({ ...rest, rarity }, rand)
+    if (badge) return { rolledRarity, rarity, badge }
+  }
+  return null
 }

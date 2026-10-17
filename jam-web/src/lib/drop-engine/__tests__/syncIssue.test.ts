@@ -17,6 +17,7 @@ import { DEFAULT_JAM_POLICY } from '@/lib/jam/policy'
 import {
   listIssueCandidates,
   pickItemBadge,
+  pickWithRarityFallback,
   rollItemCount,
   rollRarity,
   type IssueBadge,
@@ -371,6 +372,56 @@ describe('listIssueCandidates / pickItemBadge — 후보', () => {
     const books = [book('b1'), book('b9', { tribe_id: OTHER_TRIBE })]
     const badges = [badge('mine', 'b1'), badge('theirs', 'b9')]
     expect(ids(listIssueCandidates({ ...base, tribeId: OTHER_TRIBE, books, badges }))).toEqual(['theirs'])
+  })
+})
+
+describe('pickWithRarityFallback — 후보 없는 등급은 한 등급씩 내려 다시 뽑는다 (2회)', () => {
+  const books = [book('b1')]
+  const fb = (rolledRarity: BadgeRarity, badges: IssueBadge[], rand: () => number = () => 0) =>
+    pickWithRarityFallback({ tribeId: MY_TRIBE, rolledRarity, books, badges, now: NOW }, rand)
+
+  it('뽑힌 등급에 후보가 있으면 내려가지 않는다 — 뽑힌 등급과 실제 등급이 같다', () => {
+    const result = fb('epic', [badge('e1', 'b1', { rarity: 'epic' }), badge('c1', 'b1')])
+    expect(result).toMatchObject({ rolledRarity: 'epic', rarity: 'epic', badge: { id: 'e1' } })
+  })
+
+  it('후보가 없으면 한 등급씩 내려가 후보가 있는 가장 높은 등급에서 고른다', () => {
+    const badges = [badge('r1', 'b1', { rarity: 'rare' }), badge('c1', 'b1')]
+    // mystic → epic(없음) → rare(있음)
+    expect(fb('mystic', badges)).toMatchObject({ rolledRarity: 'mystic', rarity: 'rare', badge: { id: 'r1' } })
+    // rare 후보가 없으면 common까지
+    expect(fb('mystic', [badge('c1', 'b1')])).toMatchObject({ rolledRarity: 'mystic', rarity: 'common' })
+  })
+
+  it('위쪽 등급으로는 올라가지 않는다 — common을 뽑았는데 common 후보가 없으면 null이다', () => {
+    expect(fb('common', [badge('r1', 'b1', { rarity: 'rare' }), badge('m1', 'b1', { rarity: 'mystic' })])).toBeNull()
+  })
+
+  it('모든 등급에 후보가 없으면 null이다', () => {
+    expect(fb('mystic', [])).toBeNull()
+  })
+
+  it('내려간 등급에서도 다른 트라이브의 배지는 후보에 들지 않는다', () => {
+    const otherBooks = [book('b1'), book('b9', { tribe_id: OTHER_TRIBE })]
+    const result = pickWithRarityFallback(
+      {
+        tribeId: MY_TRIBE,
+        rolledRarity: 'epic',
+        books: otherBooks,
+        badges: [badge('theirs', 'b9', { rarity: 'rare' }), badge('mine', 'b1')],
+        now: NOW,
+      },
+      () => 0
+    )
+    expect(result).toMatchObject({ rarity: 'common', badge: { id: 'mine' } })
+  })
+
+  it('이름·이미지 같은 추가 칸을 실은 배지도 그대로 돌려준다', () => {
+    const result = pickWithRarityFallback(
+      { tribeId: MY_TRIBE, rolledRarity: 'common', books, badges: [{ ...badge('c1', 'b1'), name: '추가 칸' }], now: NOW },
+      () => 0
+    )
+    expect(result?.badge.name).toBe('추가 칸')
   })
 })
 
