@@ -275,6 +275,40 @@ describe('syncStravaActivities — 토큰 갱신 실패는 끊김이다', () => 
     expect(getAllActivitiesMock).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['401(철회)', new StravaApiError('Strava 토큰 갱신 실패 401: Authorization Error', 401)],
+    ['403(권한 해제)', new StravaApiError('Strava 토큰 갱신 실패 403: forbidden', 403)],
+  ])('인증 오류 %s도 끊김으로 저장한다', async (_label, upstream) => {
+    const { supabase, record } = makeFake({ connection: { token_expires_at: PAST } })
+    createServiceClientMock.mockReturnValue(supabase)
+    refreshMock.mockRejectedValue(upstream)
+
+    await expect(syncStravaActivities(USER_ID)).rejects.toBeInstanceOf(StravaDisconnectedError)
+
+    expect(disconnectUpdates(record)).toHaveLength(1)
+  })
+
+  it.each([
+    ['5xx', new StravaApiError('Strava 토큰 갱신 실패 503: unavailable', 503)],
+    ['네트워크 오류', new TypeError('fetch failed')],
+    ['시간 초과', Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' })],
+  ])('일시 실패(%s)는 끊김으로 저장하지 않고 실패 기록·소식은 남기며 원래 오류를 던진다', async (_label, upstream) => {
+    const { supabase, record } = makeFake({ connection: { token_expires_at: PAST } })
+    createServiceClientMock.mockReturnValue(supabase)
+    refreshMock.mockRejectedValue(upstream)
+
+    await expect(syncStravaActivities(USER_ID)).rejects.toBe(upstream)
+
+    expect(disconnectUpdates(record)).toHaveLength(0)
+    expect(record.failureInserts).toEqual([
+      expect.objectContaining({ user_id: USER_ID, failure_type: 'token_refresh_failed' }),
+    ])
+    expect(createNotificationMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: USER_ID, type: 'strava_disconnected' })
+    )
+    expect(getAllActivitiesMock).not.toHaveBeenCalled()
+  })
+
   it('끊김을 저장한 뒤에는 다음 동기화가 갱신을 다시 시도하지 않는다', async () => {
     const { supabase } = makeFake({
       connection: { token_expires_at: PAST, disconnected_at: '2026-10-01T00:00:00.000Z', disconnect_reason: 'token_refresh_failed' },

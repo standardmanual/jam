@@ -29,6 +29,8 @@ export type StravaDisconnectReason =
 /** 연결 상태를 읽는 데 필요한 칸만 — 행 전체를 넘기지 않아도 된다 */
 export interface StravaConnectionStateInput {
   disconnected_at?: string | null
+  /** 끊김 사유. 화면이 «오류로 끊김»과 «유저가 직접 끊음»을 가를 때 쓴다 */
+  disconnect_reason?: string | null
 }
 
 /** 연결 행(없으면 null)으로 상태를 판정한다. 화면·서버가 이 함수 하나를 쓴다 */
@@ -37,6 +39,22 @@ export function resolveStravaConnectionState(
 ): StravaConnectionState {
   if (!row) return 'none'
   return row.disconnected_at ? 'disconnected' : 'connected'
+}
+
+/**
+ * 화면이 쓰는 네 갈래 — `resolveStravaConnectionState`에 끊김 사유를 더한 것(티켓 20261017_1422 2회).
+ * - `connected`           연결 중
+ * - `none`                행이 없다
+ * - `disconnected_error`  토큰 갱신 실패·Strava 철회로 끊겼다 — 홈 알람 카드와 다시 동기화 버튼을 보인다
+ * - `disconnected_user`   유저가 직접 끊었다 — 홈에서는 알람 없이 미연동처럼 보인다(사용자 승인)
+ */
+export type StravaUiState = 'connected' | 'none' | 'disconnected_error' | 'disconnected_user'
+
+export function resolveStravaUiState(row: StravaConnectionStateInput | null | undefined): StravaUiState {
+  const state = resolveStravaConnectionState(row)
+  if (state === 'none') return 'none'
+  if (state === 'connected') return 'connected'
+  return row?.disconnect_reason === 'user_disconnected' ? 'disconnected_user' : 'disconnected_error'
 }
 
 /**
@@ -72,6 +90,17 @@ export function isStravaRevokedError(err: unknown): boolean {
   if (typeof err !== 'object' || err === null) return false
   const e = err as { name?: unknown; status?: unknown }
   return e.name === 'StravaApiError' && e.status === 401
+}
+
+/**
+ * 토큰 갱신 실패가 «인증 오류»(400·401·403 — 철회·만료·권한 해제)인지 본다.
+ * 5xx·네트워크 오류·시간 초과 같은 일시 실패는 false라서 끊김으로 저장하지 않고 다음 동기화에서
+ * 다시 시도한다(티켓 20261017_1422 서버 보정 a).
+ */
+export function isStravaAuthFailureError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false
+  const e = err as { name?: unknown; status?: unknown }
+  return e.name === 'StravaApiError' && (e.status === 400 || e.status === 401 || e.status === 403)
 }
 
 type ServiceClient = ReturnType<typeof createServiceClient>

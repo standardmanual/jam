@@ -12,6 +12,7 @@ import { decrypt, encrypt } from '@/lib/utils'
 import { getAllActivities, getActivityStreams, refreshStravaToken, type ActivityStreams } from '@/lib/strava/api'
 import {
   StravaDisconnectedError,
+  isStravaAuthFailureError,
   isStravaRevokedError,
   markStravaDisconnected,
   type StravaDisconnectReason,
@@ -1394,8 +1395,19 @@ export async function syncStravaActivities(
         'token_refresh_failed',
         err instanceof Error ? err.message : String(err)
       )
-      // 갱신 실패 = 연결 끊김 — 끊김을 저장하고 «끊김» 오류로 던진다(티켓 20261017_1422)
-      throw await recordStravaDisconnect(supabase, userId, 'token_refresh_failed', err)
+      // 인증 오류(400·401·403)의 갱신 실패만 연결 끊김이다 — 끊김을 저장하고 «끊김» 오류로 던진다.
+      // 5xx·네트워크 오류·시간 초과는 일시 실패라 끊김으로 저장하지 않는다. 실패 기록과 소식은
+      // 남기고, 다음 동기화에서 다시 시도한다(티켓 20261017_1422 서버 보정 a).
+      if (isStravaAuthFailureError(err)) {
+        throw await recordStravaDisconnect(supabase, userId, 'token_refresh_failed', err)
+      }
+      await createNotification({
+        userId,
+        type: 'strava_disconnected',
+        groupKey: dailyGroupKey('strava_disconnected'),
+        mode: 'once',
+      })
+      throw err
     }
     accessToken = refreshed.access_token
 
