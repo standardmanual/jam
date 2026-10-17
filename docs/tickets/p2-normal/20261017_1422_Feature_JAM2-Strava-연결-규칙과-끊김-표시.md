@@ -2,8 +2,9 @@
 id: "20261017_1422"
 category: Feature
 priority: P2
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-10-17
+closed: 2026-10-17
 parent: "20261017_1420"
 specs:
   - "docs/plan/jam2/10 JAM 2.0 서비스 운영 로직.md"
@@ -126,17 +127,35 @@ DB는 225 적용과 생성 타입 반영을 카리나가 끝냈다. 아현은 �
 
 ### 구현 내용 요약
 
+**1회(서버)와 2회(화면)를 2026-10-17에 끝내 CLOSED로 닫았다.**
+
+**1회 서버**(아현, 브랜치 `claude/jamwork-20261017_1422-strava-connection-server`, 게이트 PASS): 판정은 `connection-state.ts` 한 곳(`resolveStravaConnectionState`: none·connected·disconnected). 콜백이 `strava_athlete_id`로 기존 연결을 먼저 찾아, 다른 JAM 계정의 연결(끊김 포함)이면 아무것도 저장하지 않고 `/profile?strava=duplicate`로 보내고, 같은 계정이면 토큰만 갱신하고 끊김을 지우며, 다른 계정이면 새 행(`first_sync_pending=true`)을 넣은 뒤 이전 행을 지운다(upsert 제거). 동기화는 끊김 행이면 시작 전에 멈추고(수동 경로 409), 토큰 갱신 실패와 활동 조회 401을 끊김으로 저장하며, `first_sync_pending`이 true이면 `initial_sync_done`과 상관없이 첫 동기화 규칙을 쓰고 커서를 읽지 않는다. 연결 끊기 API(`POST /api/strava/disconnect`)가 Strava 앱 해제를 시도하고 토큰을 지우고 `user_disconnected`로 저장한다.
+
 **2회 화면**(아현, 브랜치 `claude/jamwork-20261017_1422-strava-screen`): 오류로 끊긴 유저의 홈에 흰 Card·LabelChip·세 줄·검정 알약 «Strava 다시 동기화하기» 카드를 그리고, 상단 메뉴 가운데를 «다시 동기화»로 바꿨다. 프로필 수정에 «Strava 동기화» 구획(연결 중 «동기화 끊기», 끊김 «Strava 다시 동기화하기», 연결 없음은 구획 없음)과 끊기 확인 시트를 두었다. `?strava=duplicate`로 도착하면 `(main)/layout.tsx`의 중복 안내 시트가 어느 페이지든 열리고 버튼은 «취소» 하나다. 유저가 직접 끊은 경우(`user_disconnected`)는 홈에서 알람 없이 미연동처럼 보인다. 서버 보정 4건(a 일시 실패는 끊김 저장 안 함, b 교체 실패 시 새 행 되돌림, c 이미 끊긴 연결의 끊기 멱등, d 백필의 끊김 행 건너뜀)을 단위 시험으로 고정했다.
 
 ### 변경된 파일
 ```
--
+(1회 14개 파일 +1,432 -60, 2회 51개 파일 +1,680 -134, 카리나 경계 수정 5개 파일)
+[DB, 카리나] jam-web/supabase/migrations/225_strava_connection_state.sql, jam-web/src/types/database.generated.ts
+[1회] jam-web/src/lib/strava/connection-state.ts (신규), api.ts, sync.ts, jam-web/src/app/api/strava/callback/route.ts, sync/route.ts, disconnect/route.ts (신규), 시험 6개, docs/service/prd/02_DATA_MODEL.md
+[2회] jam-web/src/components/strava/ 신규 4개(StravaDisconnectedCard, StravaSettingsSection, StravaDisconnectSheet, StravaDuplicateSheet)와 시험, lib/strava/disconnect-client.ts·duplicate-param.ts, lib/topNavData.tsx, components/ui/TopNav.tsx, (main)/page.tsx·layout.tsx·profile/edit/page.tsx, lib/i18n/ko.ts(stravaConnection), lib/today/exposure.ts·status.ts, lib/notifications/feed.ts·batch/account.ts, lib/strava/backfill.ts·backfillStats.ts, lib/admin/user-actions.ts·user-bulk-impact.ts, api/admin/strava-backfill/route.ts, 삭제: components/strava/StravaStatusCard.tsx
+[카리나 경계 수정] jam-web/src/lib/strava/connection-write.ts (신규, markStravaDisconnected 이동), connection-state.ts, sync.ts, disconnect/route.ts, __tests__/connection-state.test.ts
+docs/service/prd/01_PRD.md, 02_DATA_MODEL.md, home-feed/PRD.md
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] 1회: 게이트 PASS(민지 1회, 재작업 0). CI `verify` 성공(run 39010959996).
+- [x] 2회: 게이트 WARN(차단 사유 없음, 민지 1회, 재작업 0). 사유는 완료 조건 5의 «해제 금지»와 «동기화 권한이 해제됐을 수 있어요» 문구의 문자 충돌이다. 이 구절은 UX 라이팅 가이드의 401 오류 예시와 같은 문장이라 그대로 두고 문구 정리 티켓으로 분리했다. CI `verify` 성공(run 39013578470). 채원 사후 리뷰 중대 문제 없음(제안 0건).
+- [x] 서버 보정 4건(a 인증 오류만 끊김 저장, b 교체 실패 시 새 행 되돌림, c 끊기 멱등, d 백필의 끊김 행 건너뜀)은 각각 단위 시험이 있고, 연결 상태를 «행이 있는가»로 읽던 곳은 곳마다 처리 내역이 위 표에 있다.
+- [x] **로컬 실렌더(2026-10-17, 카리나, `ADMIN_EMAILS` 로컬 `next dev`)**: ① `/?strava=duplicate`로 도착하면 중복 안내 시트가 승인된 4문장과 «취소» 버튼 하나로 뜨고, 열리자마자 주소의 `strava` 파라미터가 지워지며, «취소»로 닫히고 «그래도 연결하기»는 없다. ② 머지 직후 `/profile/edit`이 500으로 깨졌다(아래 «경계 위반»). 수정 뒤에는 `GET /profile/edit` 200으로 컴파일 오류가 사라졌다.
+- [x] 경계 수정 뒤 `npm run typecheck`와 Strava 관련 시험 33파일 317건 통과. 판정 모듈이 서버 모듈을 가져오지 않음을 고정하는 시험을 더했다.
+- [ ] 끊김 카드, 상단 메뉴 «다시 동기화», 프로필 설정 «Strava 동기화» 구획, 끊기 시트의 실제 화면은 확인하지 못했다(잔여 이슈).
 
 ### 배포 정보
+- DB 공용: 마이그레이션 225 적용(2026-10-17, 즉시 프로덕션 반영, 연결 행 4건 영향 없음)
+- 1회: 코드·문서 staging 머지(push 2a949648d 이후 커밋과 함께)
+- 2회와 경계 수정: 2026-10-17, 로컬 staging 머지, push는 이 기록과 함께
+- 확인하지 못한 것: 실제 Strava 재인증·실제 토큰 갱신 실패(토큰·실제 유저 데이터를 쓰지 않는 단위 시험까지만 확인했다)
 
 ### 실행 지표
 > Workflow 완료 알림 `<usage>`(전체 토큰·소요·에이전트 수·도구 호출)와 결과의 `tokenUsage`
@@ -146,8 +165,10 @@ DB는 225 적용과 생성 타입 반영을 카리나가 끝냈다. 아현은 �
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1회 | 2 | 214,102 | 57,336 / 9,847 | 18분 12초 | 66 |
+| 2회 채원 사전 판정 | 1 | 101,387 | 기록 없음 / 기록 없음 | 3분 38초 | 26 |
+| 2회 | 3 | 506,373 | 113,451 / 20,936 | 37분 0초 | 197 |
+| 합계 | 6 | 821,862 | 170,787 / 30,783 | 58분 50초 | 289 |
 
 ### 주요 의사결정 / 핵심 메모
 
@@ -183,7 +204,11 @@ DB는 225 적용과 생성 타입 반영을 카리나가 끝냈다. 아현은 �
 - `StravaStatusCard.tsx`와 쓰이지 않게 된 문구 키(`stravaConnectPrompt`·`stravaConnectButton`·`stravaConnectedTitle`·`stravaNoSyncYet`), `commonLiteralColors.test.ts`의 허용 줄을 지웠다. `stravaNotConnectedTitle`은 `/api/strava/disconnect`의 404 본문이 쓰고 있어 남겼다. 티켓 20261016_1503(`StravaStatusCard` 삭제 여부)은 이 삭제로 같은 대상이 정리됐다.
 - 시험 환경에 jsdom이 없어 클릭 동작은 훅 없는 겉모습 컴포넌트의 엘리먼트 트리와 순수 로직(`disconnect-client.ts`)로 고정했다. 브라우저 실렌더(홈 카드 360px, 상단 메뉴 라벨 겹침, 시트 4문장 스크롤)는 staging 병합 후 오케스트레이터 확인이 필요하다.
 
+- **경계 위반(2026-10-17, 머지 직후 발견·수정)**: 아현이 `connection-state.ts`(클라이언트 컴포넌트가 가져옴) 안에서 서버 모듈을 동적 `import()`로 불러 번들에 `next/headers`가 들어가지 않게 했다고 보고했으나, 번들러가 동적 import도 따라가서 프로필 설정 화면이 500으로 깨졌다. 타입 검사, lint, 게이트, CI `verify`가 모두 통과했고 로컬 실렌더에서만 드러났다. 카리나가 `markStravaDisconnected`를 서버 전용 파일 `connection-write.ts`로 옮기고 판정 모듈이 서버 모듈을 가져오지 않음을 고정하는 시험을 더했다. 이 수정은 게이트를 다시 거치지 않았다(파일 5개의 기계적 이동이라 직접 패치했고 타입 검사와 시험 317건, 실제 번들링 200 응답으로 확인했다). 같은 사고를 CI가 잡지 못하는 문제는 티켓 20261017_1638로 분리했다.
+- 범위 밖 발견물 티켓 3건: 20261017_1638(경계 검사의 동적 import 누락, P2), 20261017_1639(온보딩 퀘스트 카드와 끊김 카드 안내 중복, P3), 20261017_1640(사용자 문구의 «해제» 표기, P3).
+
 ### 잔여 이슈
-- 브라우저 실렌더 확인(staging 병합 뒤): 홈 끊김 카드 줄바꿈(360px), 상단 메뉴 «다시 동기화» 겹침, 중복 안내 시트 4문장이 compact 75vh 안에 들어가는지
-- 끊기 확인 시트의 두 버튼 `px-3!`: 360px에서 «동기화 끊는 중» 라벨이 한 줄에 들어가도록 좁혔다. 실렌더로 확인 필요
--
+- **화면 눈 확인이 남았다(staging 또는 연결 행이 있는 계정에서)**: 홈 끊김 카드의 360px 줄바꿈, 상단 메뉴 «다시 동기화» 겹침, 프로필 설정 «Strava 동기화» 구획 세 상태, 끊기 시트 두 버튼(`px-3!`)에서 «동기화 끊는 중» 한 줄, 중복 안내 시트 4문장이 75vh 안에 들어가는지. 로컬 시험 계정에는 Strava 연결 행이 없고 공용 DB를 바꾸지 않으려고 임시 행을 만들지 않았다. 사용자가 staging에서 확인하거나, 승인을 받아 시험 계정에 임시 행을 만들고 지우는 방식으로 확인한다.
+- **Strava 재인증이 이미 연결된 다른 JAM 계정의 토큰을 무효화하는지**는 확인하지 못했다(추측). 중복 연결을 감지하면 방금 받은 토큰은 저장하지 않고 버린다. staging 시험 계정으로 확인한다.
+- `first_sync_pending`이 false로 돌아간 뒤에는 커서가 이전 계정 활동까지 포함한 최신 시각이다. 새 계정의 활동이 그보다 늦게 올라오는 경우는 다루지 않았다.
+- 같은 Strava 계정의 «그래도 연결하기»(기존 계정 삭제)와 위치정보 수집 동의의 철회 연결은 묶음 6에서 잇는다.
