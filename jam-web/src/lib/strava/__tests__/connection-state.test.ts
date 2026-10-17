@@ -3,6 +3,8 @@
  *
  * 실행: cd jam-web && npx vitest run src/lib/strava/__tests__/connection-state.test.ts
  */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -16,11 +18,10 @@ import {
   isStravaRevokedError,
   isStravaAuthFailureError,
   resolveStravaUiState,
-  markStravaDisconnected,
   StravaDisconnectedError,
   STRAVA_DISCONNECT_CLEARED,
-  type MarkDisconnectedOptions,
 } from '../connection-state'
+import { markStravaDisconnected, type MarkDisconnectedOptions } from '../connection-write'
 import { StravaApiError } from '../api'
 
 describe('resolveStravaConnectionState', () => {
@@ -158,5 +159,16 @@ describe('isStravaAuthFailureError — 일시 실패는 끊김이 아니다 (서
     expect(isStravaAuthFailureError(Object.assign(new Error('timeout'), { name: 'TimeoutError' }))).toBe(false)
     expect(isStravaAuthFailureError(null)).toBe(false)
     expect(isStravaAuthFailureError('401')).toBe(false)
+  })
+})
+
+describe('connection-state.ts의 클라이언트 번들 경계', () => {
+  it('서버 전용 모듈(`supabase/server`)을 정적으로도 동적으로도 가져오지 않는다', () => {
+    // 클라이언트 컴포넌트(프로필 설정)가 이 파일을 가져온다. 동적 import도 번들러가 따라가서
+    // 브라우저 번들에 next/headers가 들어가 빌드가 깨진다(타입 검사·lint는 이를 잡지 못한다).
+    const source = readFileSync(join(__dirname, '..', 'connection-state.ts'), 'utf-8')
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    expect(code).not.toMatch(/supabase\/server/)
+    expect(code).not.toMatch(/next\/headers/)
   })
 })

@@ -14,7 +14,7 @@ import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { decrypt } from '@/lib/utils'
 import { deauthorizeStrava, refreshStravaToken } from '@/lib/strava/api'
-import { markStravaDisconnected } from '@/lib/strava/connection-state'
+import { markStravaDisconnected } from '@/lib/strava/connection-write'
 import { d } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'

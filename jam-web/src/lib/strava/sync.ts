@@ -14,9 +14,9 @@ import {
   StravaDisconnectedError,
   isStravaAuthFailureError,
   isStravaRevokedError,
-  markStravaDisconnected,
   type StravaDisconnectReason,
 } from '@/lib/strava/connection-state'
+import { markStravaDisconnected } from '@/lib/strava/connection-write'
 import { qualifyActivity, MIN_QUALIFIED_MOVING_TIME_SEC, type FilterReason, type SourceMeta } from '@/lib/strava/qualification'
 import { detectAndExcludeTransitSegments, needsTransitStreams } from '@/lib/strava/transitSegment'
 import { applyTypeMismatch } from '@/lib/strava/typeMismatch'

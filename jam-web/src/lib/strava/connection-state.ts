@@ -13,11 +13,11 @@
  * 옛 칸(`users.initial_sync_done`, `strava_connections`의 기존 칸)의 뜻은 바꾸지 않는다.
  * 토큰 값·시크릿은 로그에 남기지 않는다.
  *
- * 클라이언트 컴포넌트(프로필 설정 등)도 판정 함수를 가져다 쓴다. 그래서 서버 전용 모듈
- * (`@/lib/supabase/server`)은 최상단에서 불러오지 않고 `markStravaDisconnected`가 실제로 필요할 때
- * 동적으로 불러온다 — 최상단에서 불러오면 브라우저 번들에 `next/headers`가 딸려 들어간다.
+ * 클라이언트 컴포넌트(프로필 설정 등)도 판정 함수를 가져다 쓴다. 그래서 이 파일은 서버 전용 모듈
+ * (`@/lib/supabase/server`)을 정적으로도 동적으로도 가져오지 않는다 — 동적 import도 번들러가 따라가서
+ * 브라우저 번들에 `next/headers`가 들어가 빌드가 깨진다. 끊김을 DB에 저장하는 서버 함수
+ * (`markStravaDisconnected`)는 `connection-write.ts`에 있다.
  */
-import type { createServiceClient } from '@/lib/supabase/server'
 
 export type StravaConnectionState = 'none' | 'connected' | 'disconnected'
 
@@ -118,35 +118,4 @@ export function isStravaAuthFailureError(err: unknown): boolean {
   if (typeof err !== 'object' || err === null) return false
   const e = err as { name?: unknown; status?: unknown }
   return e.name === 'StravaApiError' && (e.status === 400 || e.status === 401 || e.status === 403)
-}
-
-type ServiceClient = ReturnType<typeof createServiceClient>
-
-export interface MarkDisconnectedOptions {
-  supabase?: ServiceClient
-  /** true면 저장된 토큰을 지운다(유저가 끊을 때). 토큰 칸은 NOT NULL이라 빈 문자열로 둔다 */
-  clearTokens?: boolean
-}
-
-/**
- * 유저의 연결을 끊김으로 저장한다. 저장에 실패하면 false를 돌려주고 로그만 남긴다
- * (호출부가 원래 오류를 가리지 않게 던지지 않는다).
- */
-export async function markStravaDisconnected(
-  userId: string,
-  reason: StravaDisconnectReason,
-  options: MarkDisconnectedOptions = {}
-): Promise<boolean> {
-  const supabase = options.supabase ?? (await import('@/lib/supabase/server')).createServiceClient()
-  const payload = {
-    disconnected_at: new Date().toISOString(),
-    disconnect_reason: reason,
-    ...(options.clearTokens ? { access_token: '', refresh_token: '' } : {}),
-  }
-  const { error } = await supabase.from('strava_connections').update(payload).eq('user_id', userId)
-  if (error) {
-    console.error(`[JAM! Strava] 끊김 저장 실패 (userId: ${userId}, reason: ${reason}):`, error)
-    return false
-  }
-  return true
 }
