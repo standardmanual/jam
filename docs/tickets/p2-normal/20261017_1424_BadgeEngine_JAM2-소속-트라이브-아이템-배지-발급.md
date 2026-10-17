@@ -137,6 +137,14 @@ DB는 227 적용과 생성 타입 반영을 카리나가 끝냈다. 아현은 �
 - 분포 시험(시드 고정 mulberry32, 표본 200,000): 60분 걷기 평균 1.2±0.01, 37분 러닝 1.37±0.01, 잼 300 이상 1.5±0.01, 활동마다 1~3개와 등산 2~4개, 등급 비율 84/13/2.5/0.5, 임계값 이상이면 Common 0회와 Rare 이상 13:2.5:0.5, Common 연속 최대 10.
 - 계획 밖 수정: 227이 만든 `item_issue_log.badge_id` 외래 키 때문에 이미 깨져 있던 생성 타입 대조 시험을 맞췄다(`registerChecks/references.ts`, `registerFlow.test.ts`, `fakeDb.ts`). 분류는 «연결 해제»이고 DB 동작(SET NULL)과 맞다.
 
+**2회 구현(2026-10-17, 아현, 브랜치 `claude/jamwork-20261017_1424-item-badge-engine-2`).** 동기화 연결과 옛 규칙의 동기화 경로 이탈이다.
+- `lib/drop-engine/syncIssueRun.ts`(신규, 서버 모듈, `issueSyncItemBadges`): 소속 트라이브 없음 건너뜀(로그) → 활동마다 개수(오래된 활동부터) → 등급 → 후보(소속 트라이브 컬렉션) → `grant_inventory_item`(`p_expires_at` null) → 포인트·피드·결산(옛 지급과 같음) → `item_issue_log` 한 줄(경로 `sync`, 대상 활동, 배지, 등급, `rolled_rarity`, 잠김 false, 일련번호, 개체 id). 가득 차면 멈춘다. `common_streak`는 받은 실제 등급이 Common이면 +1 아니면 0으로 활동마다 저장한다(행 없으면 upsert로 생성, 읽기 실패 때는 쓰지 않음). 기록 실패는 지급을 막지 않는다.
+- `lib/drop-engine/syncIssue.ts`: `pickWithRarityFallback`(후보 없는 등급을 한 등급씩 내림, 위로 올라가지 않음, 모두 비면 null)을 더했고 후보 함수를 제네릭으로 넓혔다(이름·이미지 칸을 실은 배지 허용).
+- `lib/strava/sync.ts`: `tryItemDrop` 호출 단계와 `MAX_DROP_ACTIVITIES_PER_SYNC`(3건 상한), 그 호출에 묶인 `last_activity_at` 불일치 가드를 지우고, **잼 정산 뒤** 정산한 모든 활동(`jamSettlements`)에 발급한다. 개수가 잼에 비례하고 기록이 `strava_activities.id`를 쓰기 때문이다. 응답 `earnedBadgeIds` 순서(체크인 → 아이템 배지 → 액티비티 …)는 발급 자리를 기억해 두었다가 끼워 넣어 지킨다. 활동 단위 실패와 단계 전체 실패 모두 `drop_attempt_failed`로 기록하고 동기화는 계속된다.
+- `lib/admin/badge-references.ts`: `item_issue_log.badge_id`를 «삭제를 막지 않는» 참조(`blocksDelete: false`, 유저 획득·보유 이력 묶음)로 더해 어드민 삭제 화면이 참조 수를 센다.
+- 시험: `sync-item-issue.test.ts`(신규 37건, 가짜 클라이언트), `syncIssue.test.ts`(폴백 6건 추가), `sync-drop-order.test.ts`(발급 위치·대상·순서·실패 기록으로 재작성), 나머지 `sync-*` 시험은 모킹 대상만 `syncIssueRun`으로 바꿨다(`sync-qualification`은 정산 가짜 응답을 더해 발급 대상 활동을 확인).
+- 문서: `BADGE_ENGINE_UNIFIED.md` §3.0(새 발급 규칙·없어진 규칙·처리 순서)과 §3 머리말, `02_DATA_MODEL.md`(`jam_policy` 연결 설명, `item_issue_log`의 `rolled_rarity`·쓰는 코드).
+
 ### 변경된 파일
 ```
 -
@@ -160,6 +168,28 @@ DB는 227 적용과 생성 타입 반영을 카리나가 끝냈다. 아현은 �
 | 합계 |  |  |  |  |  |
 
 ### 주요 의사결정 / 핵심 메모
+
+**옛 드랍 엔진 호출처 검색(2026-10-17, 2회, 이름마다 `jam-web/src` 전체를 단어 경계로 grep).** 결론: **동기화 경로 전용이라 지울 수 있는 함수·상수는 없었다.** 옛 규칙 코드의 다른 호출처는 어드민 테스트 시뮬레이터(`app/api/admin/test/simulate/route.ts`가 `tryItemDrop` 호출), 어드민 미리보기(`preview.ts`가 `selectBadge`·`rollRarityV2` 등을 그대로 따라감), 앰비언트 드랍(`fetchDropStructure`), 시험이다. 그래서 «삭제»는 `sync.ts` 안의 것뿐이고 나머지는 «동기화 경로에서만 안 씀» 또는 «유지»다. 동기화 경로(`sync.ts`·`syncIssueRun.ts`·`syncIssue.ts`)가 옛 규칙 모듈을 가져오지 않음은 `sync-item-issue.test.ts`가 소스를 읽어 고정한다.
+
+| 대상 | 호출처(동기화 경로 밖) | 처리 |
+|---|---|---|
+| `sync.ts`의 `MAX_DROP_ACTIVITIES_PER_SYNC`, `tryItemDrop` import, `last_activity_at` 불일치 가드, `logEngineDecision` import | 없음(동기화 전용) | **삭제** |
+| `index.ts` `tryItemDrop` | `app/api/admin/test/simulate/route.ts`(어드민 테스트 시뮬레이터), `preview.ts`(판정 순서를 그대로 따라가는 주석 계약) | 동기화 경로에서만 안 씀 · 유지 |
+| `index.ts` `selectBadge`, `updateLastPiecePity`, `getDropState`, `getActivityDropWeight` | `preview.ts`(어드민 미리보기 `/api/admin/simulate`), `preview.test.ts` | 동기화 경로에서만 안 씀 · 유지 |
+| `index.ts` `fetchDropStructure`, `isDroppableForActivity`, `buildBadgeIdsOfBook` | 앰비언트 드랍(`ambient-drop/index.ts`·`scheduleTargets.ts`), 어드민 `itemPaths/compute.ts`, 컬렉션 완성 기준(`itembook/completion-basis.ts`), 시험 | 유지 |
+| `index.ts` `applyShadowBanCap` | `preview.ts` | 동기화 경로에서만 안 씀 · 유지(2-6에서 이용 정지와 함께 정리) |
+| `index.ts` `insertDrop`(`expires_at` = 공개 종료일), `saveDropState`, `validateTribeConstants`, `completionOfBook`, `missingOfBook`, `weightedPick` | `index.ts` 안(`tryItemDrop` 경유)뿐 | `tryItemDrop`이 남으므로 유지. 동기화 발급은 `expires_at`를 쓰지 않는다 |
+| `layers.ts` `rollRarityV2`, `rollBonusDrop`, `isIntenseActivity`, `isComebackActivity`, `isWeeklyFirstActivity`, `rarityFallbackOrder`, `pickTribe`, `pickBook` | `index.ts`, `preview.ts`, `layers.test.ts`, `preview.test.ts` | 동기화 경로에서만 안 씀 · 유지 |
+| `context.ts` `matchContextTribes`, `CONTEXT_TRIBE_IDS` | `index.ts`, `preview.ts`, `context.test.ts` | 동기화 경로에서만 안 씀 · 유지 |
+| `constants.ts` `MYSTERY_TRIBE_ID`, `RESOLUTION_TRIBE_ID` | `context.ts`, `index.ts`(재수출), 시험 | 유지 |
+| `constants.ts` `ONBOARDING_TRIBE_BY_ACTIVITY`, `ONBOARDING_DROP_COUNT`, `ACTIVITY_TYPE_DROP_WEIGHT`, `DEFAULT_ACTIVITY_DROP_WEIGHT` | `index.ts`(`tryItemDrop`·`selectBadge`)뿐 | `tryItemDrop`이 남으므로 유지 |
+| `policy.ts` `getDropPolicy`, `DEFAULT_DROP_POLICY`, `updateDropPolicy` | 어드민 `/admin/drop-policy`(페이지·API), `lib/combine/policy.ts`, 시험 | 유지 |
+| 옛 `drop_policy` 행, `user_drop_state`의 옛 칸 | 옛 프로덕션 코드가 같은 DB에서 읽고 쓴다 | 뜻을 바꾸지 않음 |
+
+후속 정리 후보(이 티켓 범위 밖): 어드민 시뮬레이터가 옛 규칙을 따르는 문제(`previewItemDrop`·테스트 시뮬레이터)를 새 규칙으로 옮기면 위 «유지» 가운데 `tryItemDrop` 계열이 지워진다. 그 판단은 어드민 시뮬레이터 개편 때 한다.
+
+**판단한 것(스펙에 없던 선택)**: ① 발급을 정산 **뒤**로 옮겼다(계획표의 «드랍 단계 부근»을 정산 의존 때문에 조정). 아이템북 완성 체크(`itembook/checker.ts`는 `user_item_book_slots` 기반)와 배지 평가는 새 개체에 의존하지 않는다. 그러나 아이템 수집 미션(`missions/checker.ts`의 `loadOwnership`)은 인벤토리 보유 현황을 읽으므로, **미션 판정(`checkMissions`)을 발급 뒤로 옮겼다**(거리·활동 수 미션은 `mergeActivityHistory`가 `strava_id`로 중복을 걸러 활동 저장 뒤에 돌아도 같은 결과다). 응답의 획득 순서(… 액티비티 → 컬렉션 보상 → 미션 보상 → 사용량)는 그대로다. ② `common_streak`는 뽑힌 등급이 아니라 받은 실제 등급으로 센다. ③ `user_drop_state.last_activity_at`은 동기화가 더 이상 쓰지 않는다(옛 복귀 판정 규칙이 사라졌고, 불일치 가드는 `tryItemDrop` 전용이었다).
+
 
 ### 잔여 이슈
 -

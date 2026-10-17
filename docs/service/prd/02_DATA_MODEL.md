@@ -718,7 +718,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `sync_rarity_common` / `_rare` / `_epic` / `_mystic` | 84 / 13 / 2.5 / 0.5 | 동기화 등급 확률(퍼센트). 네 칸 합계는 100이고 DB 제약(`jam_policy_sync_rarity_sum_100`)이 지킨다 |
 | `common_streak_threshold` | 10 | Common이 이 횟수만큼 연속이면 다음은 Rare 이상(`user_drop_state.common_streak`, 동기화와 캡슐 합산) |
 
-**아이템 발급 정책의 대체 규칙**(`getJamPolicy`): 위 10칸 가운데 하나라도 비정상이거나 등급 확률 합계가 100이 아니면(오차 0.001 미만은 허용) **10칸 전체**를 기본값으로 대체하고 로그를 한 번 남긴다. 한 칸만 바꾸면 합계가 어긋나기 때문이다. 강도·경보 칸은 이 대체와 상관없이 칸 단위로 대체한다. 판정은 순수 함수 `src/lib/drop-engine/syncIssue.ts`(개수 `rollItemCount`, 등급 `rollRarity`, 후보 `pickItemBadge`)이고 정책을 인자로 받는다. 동기화 연결은 2회가 한다.
+**아이템 발급 정책의 대체 규칙**(`getJamPolicy`): 위 10칸 가운데 하나라도 비정상이거나 등급 확률 합계가 100이 아니면(오차 0.001 미만은 허용) **10칸 전체**를 기본값으로 대체하고 로그를 한 번 남긴다. 한 칸만 바꾸면 합계가 어긋나기 때문이다. 강도·경보 칸은 이 대체와 상관없이 칸 단위로 대체한다. 판정은 순수 함수 `src/lib/drop-engine/syncIssue.ts`(개수 `rollItemCount`, 등급 `rollRarity`, 후보 `pickItemBadge`, 후보 없는 등급을 한 등급씩 내리는 `pickWithRarityFallback`)이고 정책을 인자로 받는다. 동기화는 잼 정산 뒤 `src/lib/drop-engine/syncIssueRun.ts`의 `issueSyncItemBadges`로 이 값들을 읽어 발급한다(규칙은 `BADGE_ENGINE_UNIFIED.md` §3.0). 소속 트라이브(`users.tribe_id`)가 없으면 아이템 배지만 건너뛴다.
 
 **잼 정산 규칙**(운영 로직 4.2~4.5절, 16.3절. 코드 `src/lib/jam/`, 호출 `src/lib/strava/sync.ts`):
 - 계산: 잼 = 강도 배율 × 교통수단 구간을 뺀 움직인 시간(분, 내림). 하루 상한은 없다. 전기자전거(`EBikeRide`·`EMountainBikeRide`)는 `jam_activity_type`이 자전거 값이라 원본 종목(`strava_activities.source_meta.sportType`)으로 가벼움을 가린다. 종목 불일치로 걷기가 된 활동(`jam_activity_type='walking'`)은 가벼움이다. 걷기 30분 30, 러닝 30분 90, 자전거 30분 60, 전기자전거 30분 30.
@@ -730,7 +730,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - 이 티켓이 하지 않는 것: 이용 정지 중 정산 차단(2-6), 챕터 점수 가산(묶음 5), 아이템 배지 개수에 잼 쓰기(2-4). 활동별 잼 값은 정산 단계 결과(`jamSettlements`)로만 남겨 2-4가 쓸 수 있게 한다.
 
 #### item_issue_log — 마이그레이션 227, 티켓 20261017_1424
-아이템 배지를 줄 때마다 한 줄 남기는 발급 기록(append-only, 운영 로직 6.6절). RLS만 켜고 정책이 없어 service_role만 읽고 쓴다. 쓰는 코드는 동기화 연결(2회)이 더한다 — 지금은 0행이다.
+아이템 배지를 줄 때마다 한 줄 남기는 발급 기록(append-only, 운영 로직 6.6절). RLS만 켜고 정책이 없어 service_role만 읽고 쓴다. 동기화(`syncIssueRun.ts`)가 아이템 배지를 줄 때마다 한 줄을 쓴다(경로 `sync`). 기록 실패는 지급과 동기화를 막지 않는다. `rolled_rarity`는 마이그레이션 228이 더한 칸이다.
 
 | 칸 | 뜻 |
 |---|---|
@@ -739,6 +739,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `route` | 경로(예: `sync`). 값의 목록은 코드가 정하고 CHECK 제약은 없다(캡슐·미션·믹스가 이어서 쓴다) |
 | `source_activity_id` | 동기화 경로의 대상 활동(`strava_activities.id` 값, FK 없음) |
 | `badge_id` / `rarity` | 준 배지와 등급. 배지가 지워지면 `badge_id`는 NULL |
+| `rolled_rarity` | 처음 뽑힌 등급(마이그레이션 228, NULL 허용). 뽑힌 등급에 후보가 없어 한 등급씩 내려 준 경우 `rarity`와 달라지며, 운영이 컨텐츠 채움 상태를 보는 근거다 |
 | `locked` | 잠긴 채 배정했는가. 잠김 구조는 묶음 3이라 지금은 항상 false |
 | `serial_number` | 개체의 일련번호 |
 
