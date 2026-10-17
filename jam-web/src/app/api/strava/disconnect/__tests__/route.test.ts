@@ -4,6 +4,7 @@
  * 검증 대상:
  *  - 비로그인은 401이고 아무것도 호출하지 않는다 / 연결이 없으면 404이고 쓰기가 없다
  *  - Strava 앱 해제를 부르고, 저장된 토큰을 지우며 user_disconnected로 끊김을 저장한다
+ *  - 이미 끊긴 연결에 다시 부르면 앱 해제·갱신을 부르지 않고 200이며 끊김 시각·사유를 덮어쓰지 않는다(멱등)
  *  - 앱 해제가 실패해도(이미 무효한 토큰) 끊김 저장은 진행한다
  *  - 만료 직전 토큰은 갱신한 뒤 해제한다 (갱신이 실패해도 끊김 저장은 진행한다)
  *  - strava_connections 한 행의 끊김 칸·토큰만 바꾸고 다른 테이블(활동 기록·배지·잼·포인트)은 건드리지 않는다
@@ -131,6 +132,23 @@ describe('POST /api/strava/disconnect', () => {
       refresh_token: '',
     })
     expect(typeof state.updates[0].payload.disconnected_at).toBe('string')
+  })
+
+  it('이미 끊긴 연결이면 앱 해제를 부르지 않고 200으로 돌려주며 끊김 칸을 덮어쓰지 않는다', async () => {
+    state.connection = {
+      access_token: '',
+      refresh_token: '',
+      token_expires_at: PAST,
+      disconnected_at: '2026-10-10T00:00:00.000Z',
+    }
+
+    const res = await POST()
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({ connectionState: 'disconnected', deauthorized: false })
+    expect(deauthorizeMock).not.toHaveBeenCalled()
+    expect(refreshMock).not.toHaveBeenCalled()
+    expect(state.updates).toHaveLength(0)
   })
 
   it('앱 해제가 실패해도 끊김 저장은 진행한다', async () => {
