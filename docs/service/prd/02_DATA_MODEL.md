@@ -319,7 +319,15 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 - `swap_item_in_book_tiered(p_user_id, p_item_book_id, p_slot_id, p_new_inventory_item_id)`: 151의 검사에 `tier_mode_off`·`tier_mismatch`(등급이 다름)를 더했다. 같은 배지의 다른 개체로만 바꾸므로 완성에는 영향이 없다.
 - 장착 해제는 옛 `unslot_item_from_book`을 그대로 쓴다.
 
-> 챕터 점수 연결(`chapter_add_score`)은 묶음 5, 컬렉션 화면 표시·잠금·등급 올리기 레시피는 묶음 3이다. 완성 판정을 `src/lib/itembook/` 한 모듈로 모으는 일은 회차 2다.
+**완성 판정 규칙 (코드, 2026-10-17 통일 — 티켓 20261016_2340 2회)**
+`jam-web/src/lib/itembook/completion-basis.ts`의 `computeBookCompletion` 한 곳이 컬렉션의 분모·분자를 정한다. 장착 뒤 보정(`checker.ts`), 완성 가능 소식, 컬렉션 화면·목록 API, 투데이, 알림 배치가 모두 이 함수를 부른다. 기준은 완성 기록을 남기는 DB 함수(179·222)다.
+- **분모**: 소속 배지 중 소프트 삭제가 아닌 `item`+`checkin` 배지에서 드랍 제외(`drop_excluded`)를 뺀 집합이다. 전부 제외이면 등록 배지 전체를 센다.
+- **분자**: 컬렉션별이다. 그 컬렉션의 슬롯과 그 컬렉션 소속 체크인 배지의 획득 이력만 센다(다른 컬렉션 슬롯은 세지 않는다).
+- **`tier_mode` 컬렉션**: 등급마다 따로, 분모·분자 모두 그 등급의 이름 수로 센다. 컬렉션 등급은 채운 배지의 등급에서 읽는다. `tier_mode` 컬렉션의 등급별 완성은 새 함수가 `user_item_book_tier_completions`에 기록하므로 보정 함수는 옛 완성 기록 `user_item_book_completions`를 쓰지 않는다.
+- **표시**: 화면·API의 완성 여부는 `user_item_book_completions` 기록이 있거나 계산상 완성이면 완성이다(`isBookCompleted`).
+- 자세한 규칙·근거·영향 실측은 `BADGE_ENGINE_UNIFIED.md` §3.16이다.
+
+> 챕터 점수 연결(`chapter_add_score`)은 묶음 5, 컬렉션 화면 표시·잠금·등급 올리기 레시피는 묶음 3이다. 완성 판정을 `src/lib/itembook/` 한 모듈로 모으는 일은 회차 2에서 끝났다(2회-가: 모듈과 일치 시험, 2회-나: 소비처 교체).
 
 ---
 

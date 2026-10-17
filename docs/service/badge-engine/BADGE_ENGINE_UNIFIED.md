@@ -1590,7 +1590,7 @@ POST /api/admin/badges/reevaluate-all
 컬렉션 가중치 = drop_weight × (1 − completion × 0.7) × (직전 드랍과 같은 북이면 0.5)
   completion = 유저의 해당 컬렉션 수집률 (0.0~1.0)
   완성(100%) 북은 ×0.3으로 풀 잔류 — 중복 드랍 허용
-  완성 분모 = 소속 배지 − 드랍 제외(`drop_excluded`) 배지. 등록 배지가 전부 제외이면 등록 배지 전체 (§3.16)
+  완성 분모 = 소속 배지(`item`+`checkin`, 소프트 삭제 제외) − 드랍 제외(`drop_excluded`) 배지. 등록 배지가 전부 제외이면 등록 배지 전체 (§3.16)
 ```
 
 - 0% 북 100% / 50% 북 65% / 마지막 1개 남은 북 ~38% → 새 북 진입은 쉽게, 막바지는 귀하게.
@@ -2130,32 +2130,34 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 - `activityWeight` 기본값 1.0으로 기존 호출부(걷기 외 종목) 하위호환 유지.
 - **DB 스키마 변경 수반**: `user_drop_state.common_streak`(rare+ pity 카운터, §3.6)가 걷기 활동으로 인해 0.4 같은 소수 단위로 증가하게 되어, 기존 INTEGER 컬럼에서는 매 upsert마다 반올림(0.4→0)되어 걷기의 pity 기여가 사라지는 문제가 있었다. `076_walking_badges_v4.sql`과 별도로 `077_common_streak_numeric.sql`에서 `NUMERIC(8,2)`로 확장(TS 타입 `number`는 변경 불필요).
 
-### 3.16 아이템북 완성 판정 — 완성 기준선(분모)은 소프트 삭제와 무관하게 고정 (2026-08-25, 티켓 20260825_025)
+### 3.16 아이템북 완성 판정 — 하나의 규칙 (2026-08-25 티켓 20260825_025, 2026-10-17 통일 티켓 20261016_2340 2회)
 
-> 20260825_024(조사) → 025(결정·구현). 사용자 승인 방향 (a) 채택.
+> 20260825_025의 「삭제 배지도 분모에 고정」 정책은 2026-10-17 통일(티켓 20261016_2340 2회, 사용자 승인)로 **뒤집혔다.**
+> 통일 기준은 실제로 완성 기록을 남기는 DB 함수(`slot_item_into_book` 179, `slot_item_into_book_tiered` 222)다.
 
-- **정책**: 아이템북 완성 판정의 **분모(북 소속 배지 수)는 소속 배지의 소프트 삭제(`deleted_at`) 여부와
-  무관하게 고정된다.** `jam-web/src/lib/itembook/checker.ts`(`badgeCountByBook`)와
-  `completable.ts`(`badgeIdsByBook`/`poiBadgeIds`)는 북 소속 배지를 조회할 때 `deleted_at` 필터를
-  적용하지 않는다 — `item_book_id` in + `type in ('item','poi')`만으로 집계한다.
-- **의미**: 완성 기준선(threshold)은 관리자의 배지 삭제 행위와 무관하게 불변이다. 그 결과 북 소속
-  배지 중 일부가 삭제되고 그 배지를 아직 갖지 못한 유저는 해당 북을 **영구히 완성할 수 없다**
-  (신규 발급이 막힌 배지이므로) — 이는 이 정책이 감수하는 의도된 트레이드오프다.
-- **§2.8/§3.7.1의 "이력 유지" 원칙(20260823_004)과는 구분되는 별도 정책**이다. 004는 유저 개별
-  이력(이미 보유한 것)을 삭제 필터로 재해석해 유실시키지 않는다는 원칙이고, 이번 정책은 유저별
-  이력이 아니라 **컬렉션 완성 기준선 자체**를 고정하는 것이다.
-- **드랍 제외 배지는 분모에서 뺀다**: 완성 분모는 컬렉션 소속 배지에서 `drop_excluded = true`를 뺀 id
-  집합이다(`lib/itembook/completion-basis.ts`의 `computeBookCompletion`이 `buildBadgeIdsOfBook`을
-  재사용). 분자는 장착(`user_item_book_slots.badge_id`)했거나 획득한 배지 id와 분모의 **교집합 크기**다 —
-  슬롯 개수를 그대로 쓰지 않아 제외 배지를 장착한 유저가 조기 완성되지 않는다. 제외 배지를 갖지 않은 채
-  나머지를 모두 채운 유저는 재계산으로 즉시 완성 처리된다(의도된 동작). `checker.ts`(완성 판정·보상)와
-  `completable.ts`(완성 가능 소식)가 이 함수를 쓴다.
-- **예외 — 등록 배지가 전부 드랍 제외**: 제외를 뺀 분모가 0이 되는 컬렉션(등록 배지는 1개 이상)은 등록 배지
-  전체(소프트 삭제 제외)를 분모로 세고, 분자는 그 집합과 채운 배지의 교집합이다. 등록 배지가 0개인
-  컬렉션은 완성이 아니다. 슬롯 RPC `slot_item_into_book`(179)과 `computeBookCompletion`이 같은 규칙을 쓴다.
-  드랍엔진의 후보 계산(`buildBadgeIdsOfBook`)은 제외 배지를 그대로 뺀다. 앰비언트 드랍(§3.12)도 같은 조건으로 뺀다.
-- **분자·분모 집합 일치**: 분자는 분모와의 교집합이므로 항상 같은 배지 집합을 기준으로 계산된다.
-  삭제 배지를 분모에 포함하는 위 정책은 그대로다.
+**통일 규칙** — 판정은 `jam-web/src/lib/itembook/completion-basis.ts`의 `computeBookCompletion` 한 곳이 정한다.
+
+- **분모 배지**: 컬렉션 소속 배지 중 **소프트 삭제(`deleted_at`)가 아닌** 배지, 종류는 `item`+`checkin`(`COMPLETION_BADGE_TYPES`)이다.
+  삭제된 배지는 분모와 분자 어디에도 들지 않는다. 그 배지를 갖지 못한 유저가 컬렉션을 영구히 완성하지 못하는 일이 없어진다.
+- **드랍 제외 배지는 분모에서 뺀다**: 소속 배지에서 `drop_excluded = true`를 뺀 id 집합이다(`buildBadgeIdsOfBook` 재사용 —
+  드랍 엔진은 이 분모 함수만 공유하고 드랍 선정 로직은 따로다). 제외 배지를 장착해도 분자에 세지 않아 조기 완성되지 않는다.
+- **예외 — 등록 배지가 전부 드랍 제외**: 제외를 뺀 분모가 0이 되는 컬렉션(등록 배지는 1개 이상)은 등록 배지 전체(소프트 삭제 제외)를
+  분모로 센다. 등록 배지가 0개인 컬렉션은 완성이 아니다.
+- **분자는 컬렉션별**이다: 그 컬렉션의 슬롯(`user_item_book_slots`)과 그 컬렉션 소속 체크인 배지의 획득 이력만 센다. 배지의 컬렉션이 장착 뒤에
+  바뀌어도 다른 컬렉션 분자에 들지 않는다. 집합은 `buildFilledByBook`이 만들고 `filledByBook` 옵션으로 넘긴다. 분자는 분모와의 교집합 크기다.
+- **`tier_mode` 컬렉션**(`item_books.tier_mode`)은 등급(`rarity`)마다 따로 센다: 분모는 그 등급의 «이름 수», 분자는 그 등급에서 채운 «이름 수»이고
+  그 등급이 전부 드랍 제외이면 제외 없이 센다(222와 같음). 컬렉션 등급은 저장하지 않고 채운 배지의 등급에서 읽는다.
+- **완성 표시**(화면·API): 옛 완성 기록(`user_item_book_completions`)이 있거나 계산상 완성이면 완성이다(`isBookCompleted`). 장착을 풀어도
+  기록이 남으므로 기록이 있으면 완성으로 본다.
+- **소비처**: 보정(`checker.ts`), 완성 가능 소식(`completable.ts`), 화면 3곳(`badges/page.tsx`, `collections/[id]/page.tsx`,
+  `[username]/collections/page.tsx`), API 2곳(`api/itembooks/route.ts`, `api/users/[username]/itembooks/route.ts`),
+  투데이(`today/status.ts`·`exposure.ts`·`cards.ts`), 알림 배치(`notifications/batch/collections.ts`)가 모두 이 함수를 부른다.
+  모듈 밖에서 분모·분자를 직접 세지 않음은 `__tests__/completion-single-source.test.ts`가 검색으로 고정하고, 코드와 DB 함수의 결과 일치는
+  같은 사례표(`__tests__/fixtures/completion-parity-cases.json`, `supabase/tests/222_completion_parity.test.sql`)로 고정한다.
+- **이력 유지 원칙(§2.8/§3.7.1, 20260823_004)과의 구분**: 004는 유저 개별 이력(이미 보유한 것)을 삭제 필터로 재해석해 유실시키지 않는다는
+  원칙이고, 이 절은 컬렉션 완성 기준선의 규칙이다. 이미 남은 완성 기록은 지우지 않는다.
+- **영향 실측(2026-10-17, 공용 DB 읽기 전용)**: 이 규칙으로 바꿔도 완성 여부가 달라지는 유저는 없었다(기존 장착 96건 중 분모를 다 채운 곳은 이미
+  완성 기록이 있는 2곳뿐, 컬렉션에 속한 체크인 배지 0개).
 
 #### 3.16-1 완성 판정 두 경로의 분모·분자 기준 비교 (2026-09-26, 티켓 20260924_0937)
 
@@ -2165,20 +2167,17 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 
 | 항목 | 장착 RPC (mig/179) | 보정 함수 (`checker.ts`) |
 |---|---|---|
-| 분모 | `item_book_id = 대상 북`, 소프트 삭제 제외, `drop_excluded = false` (0개면 제외 무관 전체) | 북 소속 `item`·`checkin` 배지, 소프트 삭제 포함, `drop_excluded` 제외 (0개면 등록 배지 전체) |
+| 분모 | `item_book_id = 대상 북`, 소프트 삭제 제외, `drop_excluded = false` (0개면 제외 무관 전체) | 북 소속 `item`·`checkin` 배지, 소프트 삭제 제외, `drop_excluded` 제외 (0개면 등록 배지 전체) — 2026-10-17 통일 |
 | 분자 | `s.item_book_id = 대상 북` 슬롯 중 `b.item_book_id = 대상 북`인 배지 (중복 제거) | 북별 채운 집합(`filledByBook`)과 분모의 교집합. 슬롯은 `s.item_book_id`의 북에만, checkin 획득 이력은 배지가 속한 북에만 넣는다 |
 | 배지 컬렉션이 A→B로 바뀐 뒤 | A에 장착된 X는 B 분자에 들지 않는다 | 같음 (이 티켓 이전에는 X가 B 분자에 들어 B가 잘못 완성될 수 있었다) |
 | checkin 배지 | 슬롯 대상 아님 | 획득 이력이 1회 이상이면 채움 |
 | 완성 기록 | 최초 삽입 때만 잼 포인트 지급. 보상 배지는 주지 않는다(장착 라우트가 응답 뒤 `runSlotRewardIssue`로 발급) | 새 완성은 기록만 upsert하고, 완성 기록이 이미 있는 컬렉션도 보상 배지가 없으면 `issueItemBookRewardBadges`로 따라잡아 발급한다. 잼 포인트는 주지 않는다 |
-| 소프트 삭제 배지 | 분모·분자에서 제외 (통일은 티켓 20260921_1114) | 분모·분자에 포함 (§3.16) |
+| 소프트 삭제 배지 | 분모·분자에서 제외 | 분모·분자에서 제외 (2026-10-17 통일, 티켓 20261016_2340 2회가 티켓 20260921_1114를 닫는다) |
 
 `computeBookCompletion`의 `filledByBook` 옵션이 북별 분자 계산을 맡는다. 북별 집합은 순수 함수 `buildFilledByBook`
-(`lib/itembook/filled-by-book.ts`)이 만들고, 보정 함수(`checker.ts`)와 `completable.ts`가 같은 함수를 쓴다(티켓
-20260926_1344). `completable.ts`의 잔여 칸 계산(`remaining`)도 그 북의 집합을 기준으로 한다. 옵션이 없으면
-`filledBadgeIds` 하나를 모든 북에 공통으로 쓰는데, 2026-09-26 기준 `filledByBook`을 넘기는 곳은 이 두 파일뿐이고 나머지 호출부
-(`badges/page.tsx`, `collections/[id]/page.tsx`, `[username]/collections/page.tsx`, `api/itembooks/route.ts`,
-`api/users/[username]/itembooks/route.ts`, `today/exposure.ts`·`status.ts`, `notifications/batch/collections.ts`)는 이 방식이다.
-그 호출부의 기준 정리는 티켓 20260921_1114·1129와 20260926_1356 소관이다.
+(`lib/itembook/filled-by-book.ts`)이 만든다(티켓 20260926_1344). 2026-10-17 통일(티켓 20261016_2340 2회-나)로 화면·API·투데이·알림 배치의
+호출부도 모두 `filledByBook`을 넘기고, `filledBadgeIds` 하나를 모든 북에 공통으로 쓰는 방식은 호출부에서 없앴다(옵션이 없을 때의 기본 동작만 남아 있다).
+`completable.ts`의 잔여 칸 계산(`remaining`)도 그 북의 집합을 기준으로 한다.
 
 ### 3.17 POI 활성화 상태(`poi.is_active`)와 판정 로직 연동 (2026-08-30, 티켓 20260830_1620)
 
