@@ -2474,6 +2474,9 @@ export type Database = {
           access_token: string
           backfill_completed: boolean
           created_at: string
+          disconnect_reason: string | null
+          disconnected_at: string | null
+          first_sync_pending: boolean
           id: string
           last_synced_at: string | null
           refresh_token: string
@@ -2486,6 +2489,9 @@ export type Database = {
           access_token: string
           backfill_completed?: boolean
           created_at?: string
+          disconnect_reason?: string | null
+          disconnected_at?: string | null
+          first_sync_pending?: boolean
           id?: string
           last_synced_at?: string | null
           refresh_token: string
@@ -2498,6 +2504,9 @@ export type Database = {
           access_token?: string
           backfill_completed?: boolean
           created_at?: string
+          disconnect_reason?: string | null
+          disconnected_at?: string | null
+          first_sync_pending?: boolean
           id?: string
           last_synced_at?: string | null
           refresh_token?: string

@@ -2,7 +2,7 @@
 id: "20261017_1422"
 category: Feature
 priority: P2
-status: OPEN
+status: IN_PROGRESS
 created: 2026-10-17
 parent: "20261017_1420"
 specs:
@@ -16,7 +16,7 @@ specs:
 ## 핵심 요약
 
 - 요구사항: 운영 로직 3.2·3.4절의 연결 규칙을 만든다. (1) 다른 Strava 계정을 연결하면 첫 동기화 규칙을 쓴다. (2) 토큰 갱신이 실패하면 연결이 끊긴 것으로 보고 홈과 프로필에 끊김과 다시 연결 버튼을 보여 준다. (3) 프로필 설정에서 연결을 끊을 수 있다. (4) 이미 다른 JAM 계정에 연결된 Strava 계정을 연결하려 하면 안내 화면을 보여 주고 취소만 가능하게 한다(사용자 결정, 2026-10-17). 비교표 4.1절의 «다른 계정 재연결 시 첫 동기화 표시가 그대로»와 «토큰 실패 시 홈이 연결됨으로 보임» 두 건을 고친다.
-- 구현 계획: 한 번에 돌린다. 화면이 있으므로 시작 전에 채원의 사전 판정을 받는다. DB는 새 칸 추가만 한다.
+- 구현 계획: 2회로 나눠 돌린다. 1회는 서버(콜백의 연결 교체와 중복 감지, 동기화의 끊김 표시와 첫 동기화 판정, 연결 끊기 API, 연결 상태 판정 한 곳), 2회는 화면(홈 끊김 카드와 다시 연결 버튼, 프로필 연결 끊기, 중복 연결 안내 화면, 연결 상태를 읽는 곳 정리)이다. 2회는 시작 전에 채원의 사전 판정을 받는다. DB는 새 칸 추가만 한다.
 - 관련 파일(2026-10-17 조사, 시작 때 아현이 줄 위치를 다시 확인한다):
   - `jam-web/src/app/api/strava/callback/route.ts`: `strava_connections.upsert(..., { onConflict: 'strava_athlete_id' })`(102-115, `last_synced_at: null`, `backfill_completed: true`), 연동 직후 동기화 호출(127). 이미 다른 JAM 유저에 연결된 athlete를 감지하는 검사가 없다.
   - `jam-web/src/app/api/strava/auth/route.ts`: state 쿠키를 심고 OAuth로 보내기만 한다.
@@ -42,6 +42,15 @@ specs:
 3. **연결 끊기의 처리**: 행을 지울지(토큰 폐기), 끊김 표시만 남길지. 지금까지의 기록, 배지, 잼, 포인트는 남아야 한다(3.2절).
 4. **한 JAM 계정에 Strava 연결이 둘 생기는 경우 처리**: 새 연결이 기존 연결을 대체하게 할지(추천), 막을지.
 
+## 사용자 결정 (2026-10-17, 질문창, 모두 추천안)
+
+1. **«첫 동기화 대기»는 연결 단위로 둔다.** `strava_connections.first_sync_pending`(기본 false)을 더한다. 다른 Strava 계정을 연결해 새 연결 행이 생기면 콜백이 true로 두고, 이 값이 true이면 `users.initial_sync_done`과 상관없이 첫 동기화 규칙을 쓴다. 인정 활동을 정산한 동기화가 끝나면 false로 되돌린다. 기본 false라서 이미 동기화한 기존 연결은 그대로이고 소급 갱신이 필요 없다. 옛 `initial_sync_done`은 건드리지 않는다.
+2. **끊김은 연결 행에 저장한다.** `disconnected_at`(NULL이면 연결 중)과 `disconnect_reason`을 더한다. 토큰 갱신 실패, Strava 쪽 철회(401), 유저가 끊은 경우가 모두 같은 «끊김»이다.
+3. **연결 끊기는 Strava 쪽 앱 연결도 함께 해제한다.** Strava의 앱 해제(`deauthorize`)를 부르고 저장된 토큰을 지운다. 지금까지의 기록, 배지, 잼, 포인트는 남는다(위치정보 수집 동의를 거두는 수단, 운영 로직 3.2절).
+4. **한 JAM 계정에 다른 Strava 계정을 연결하면 새 연결이 기존 연결 행을 대체한다**(한 번에 하나만 연결, 3.2절). 새 행은 `first_sync_pending=true`다. 같은 Strava 계정을 다시 연결하면 끊김을 지우고 마지막 동기화 뒤부터 이어서 가져온다.
+
+**DB 실행 기록(2026-10-17)**: 사용자 승인 뒤 마이그레이션 225(`225_strava_connection_state.sql`)를 공용 DB에서 롤백 실측(연결 행 4건 그대로, 새 칸 3개, 롤백 뒤 0개)하고 적용했다. 적용 뒤 확인: `first_sync_pending`은 `boolean NOT NULL DEFAULT false`, `disconnected_at`·`disconnect_reason`은 NULL 허용이고 표시된 행이 0건이다. 생성 타입에 같은 모양으로 반영했고 `npm run typecheck`를 통과했다. 되돌림 SQL은 파일 끝 주석에 있다.
+
 ## 상세 요구사항
 
 ### 서비스/코드베이스 관점
@@ -59,7 +68,40 @@ specs:
 
 ## 구현 계획 (회차)
 
-한 번에 돌리되, 파일 수(코드 6~8곳, 시험, 문서)가 5개를 넘을 가능성이 높으므로 시작 때 파일 단위 계획을 이 절에 옮겨 쓰고 `planOnlyWaiver`를 넘긴다. 화면이 있어 `workType`은 `ui`로 돌린다. 요약은 2,500자 이내.
+#### 2-2 구현 계획 (2026-10-17, 카리나, 파일 단위)
+
+DB는 225 적용과 생성 타입 반영을 카리나가 끝냈다. 아현은 코드·시험·문서만 한다. 줄 위치는 2026-10-17 `staging` 기준이며 시작 때 아현이 다시 확인한다. 각 회차는 파일이 5개를 넘어 `planOnlyWaiver`를 첫 호출부터 넘긴다.
+
+##### 1회: 서버 (연결 교체와 중복 감지, 끊김 표시, 첫 동기화 판정, 연결 끊기 API)
+
+| 파일 | 위치 | 바꿀 내용 |
+|---|---|---|
+| `jam-web/src/app/api/strava/callback/route.ts` | 60-140 (토큰 교환 뒤 `strava_connections.upsert` 102-115, 연동 직후 동기화 127) | 토큰 교환 뒤 `strava_athlete_id`로 기존 연결을 찾는다. 다른 JAM 계정의 연결이 있으면(끊김 상태 포함) 저장하지 않고 중복 연결 안내(`/profile?strava=duplicate`)로 보낸다. 같은 유저의 같은 athlete이면 토큰을 갱신하고 `disconnected_at`·`disconnect_reason`을 지운다(`first_sync_pending`은 그대로). 같은 유저가 다른 athlete로 연결하면 이 유저의 기존 연결 행을 지우고 새 행을 `first_sync_pending=true`로 만든다. 기존 `upsert`의 `onConflict: strava_athlete_id`가 다른 유저의 `user_id`를 덮어쓰지 않게 한다 |
+| `jam-web/src/lib/strava/connection-state.ts` | 신규 | 연결 상태를 판정하는 한 곳: `none`(행 없음), `connected`(`disconnected_at` NULL), `disconnected`. 화면과 서버가 같은 판정을 쓴다. 끊김을 저장하는 함수(`markStravaDisconnected(userId, reason)`)와 다시 연결 때 지우는 함수를 함께 둔다 |
+| `jam-web/src/lib/strava/sync.ts` | 1200-1246 (토큰 갱신, 실패 시 `strava_disconnected` 알림과 `strava_sync_failures` 기록 후 예외), 1255-1270 (커서), 1291-1296과 1406 (`isFirstSync`), 429 부근 응답 | 토큰 갱신이 실패하거나 Strava가 401로 철회를 알리면 기존 알림·기록은 그대로 두고 `markStravaDisconnected`로 끊김을 저장한다. `disconnected_at`이 있으면 동기화하지 않고 «끊김» 결과를 돌려준다(수동 경로 응답 409 계열). `isFirstSync`를 `!users.initial_sync_done`이거나 연결의 `first_sync_pending`이면 true로 한다. `first_sync_pending`이 true이면 커서를 이전 계정의 활동 이력에서 읽지 않고(새 계정의 오래된 활동이 조회에서 빠지지 않게), 인정 활동을 정산한 동기화가 끝나면 false로 되돌린다 |
+| `jam-web/src/lib/strava/api.ts` | 139 (`refreshStravaToken`) 부근 | Strava 앱 해제를 부르는 함수(`POST https://www.strava.com/oauth/deauthorize`)를 더한다. 401(철회)을 구분해 던질 수 있게 한다 |
+| `jam-web/src/app/api/strava/disconnect/route.ts` | 신규 | 로그인한 유저의 연결을 끊는다. Strava 앱 해제를 시도하고(이미 무효한 토큰이면 실패해도 계속) 저장된 토큰을 지운 뒤 `markStravaDisconnected(userId, 'user_disconnected')`를 저장한다. 기록, 배지, 잼, 포인트는 건드리지 않는다. 연결이 없으면 404 |
+| `jam-web/src/app/api/strava/sync/route.ts` | POST | 끊김 결과를 응답으로 알린다(500이 아니라 구분되는 상태) |
+| 시험 | `callback`, `connection-state`, `sync` 첫 동기화·끊김, `disconnect` 시험(신규 포함) | 다른 JAM 계정 연결 중복(덮어쓰지 않음), 같은 athlete 재연결(끊김 지움), 다른 athlete 교체(`first_sync_pending=true`, 이전 행 삭제), 토큰 실패 시 끊김 저장과 동기화 차단, `first_sync_pending`일 때 커서 무시와 정산 뒤 false, 끊기 API(앱 해제 실패해도 진행, 토큰 삭제, 기록 불변) |
+| 문서 | `docs/service/prd/02_DATA_MODEL.md` | `strava_connections` 새 칸 3개와 연결 상태 규칙 |
+
+##### 2회: 화면 (채원 사전 판정 필요, `workType: ui`)
+
+| 파일 | 위치 | 바꿀 내용 |
+|---|---|---|
+| 홈 끊김 카드와 다시 연결 버튼 | `jam-web/src/app/(main)/page.tsx` 33-43, `TodayStatusStrip.tsx` 32, `lib/notifications/warning.ts` 62-66, 미사용 `components/strava/StravaStatusCard.tsx` | 판정을 «행이 있는가»에서 `connection-state.ts`로 바꾸고, 끊김이면 끊김 카드와 다시 연결 버튼(`/api/strava/auth`)을 보여 준다 |
+| 상단 메뉴·레이아웃 | `app/(main)/layout.tsx` 35·48 (`stravaConnected = Boolean(row)`), `components/ui/TopNav.tsx` 145, `lib/topNavData.tsx` | 끊김이면 동기화 버튼 대신 다시 연결을 보여 준다 |
+| 프로필 설정의 연결 끊기 | `app/(main)/profile/` 설정 화면(위치는 채원 판정으로 정한다) | 연결 끊기 버튼과 확인 단계(끊으면 동기화가 멈추고 기록은 남는다는 안내). 연결이 끊긴 상태에서는 다시 연결 버튼 |
+| 중복 연결 안내 화면 | `/profile?strava=duplicate` 처리(`ProfileClient.tsx` 또는 신규) | 세 가지 안내(이미 다른 JAM 계정에 연결됨, 연결하면 기존 계정은 삭제되고 복구되지 않음, 그래도 새로 연결하면 처음부터 다시 시작)를 보여 주고 «취소»만 동작한다. «그래도 연결하기»는 만들지 않는다(묶음 6). 문구는 채원 판정으로 정한다 |
+| 연결 상태를 읽는 나머지 곳 | `OnboardingQuestCard.tsx`, `lib/onboarding-quest/status.ts`·`preview.ts`, `badges/[id]/page.tsx`, `BadgeShareButton.tsx`, `api/badges/[id]/share-data/route.ts`, `notifications/NotificationsClient.tsx`, `lib/notifications/batch/account.ts`, `components/StravaConnectReveal.tsx`, `lib/admin/user-actions.ts`·`user-bulk-impact.ts`, `api/admin/strava-backfill/route.ts` | `strava_connections` 행의 존재를 «연결됨»으로 읽는 곳을 모두 찾아 한 판정으로 바꾸거나(화면), 끊김 행을 건너뛰게 한다(백필·배치). 검색 결과를 완료 기록에 싣는다 |
+| 문구와 시험 | `lib/i18n/ko.ts`(`d.*`), 각 컴포넌트 시험 | 끊김 카드, 끊기 확인, 중복 안내 문구(UX 라이팅 가이드, 해요체, 고정 용어). 상태별 렌더 시험 |
+| 문서 | `docs/service/prd/` 해당 문서 | 연결 규칙(다른 계정, 끊김, 끊기, 중복 안내) |
+
+**주의(코드 판독)**: Strava에서 같은 계정을 다시 인증하면 이미 연결된 다른 JAM 계정의 토큰이 무효화될지는 확인하지 못했다(추측). 그래서 중복 연결을 감지하면 방금 받은 토큰은 저장하지 않고 버린다. 이 영향은 잔여 이슈로 남겨 staging에서 시험 계정으로 확인한다.
+
+**이 티켓에서 하지 않는 것**: «그래도 연결하기»(기존 계정 삭제, 묶음 6), 이용 정지 중 동기화 차단(2-6), 위치정보 수집 동의의 철회 연결(묶음 6).
+
+각 회차 요약은 2,500자 이내다. 1회는 `workType`을 `api`, 2회는 `ui`로 돌린다.
 
 ## 완료 조건
 
