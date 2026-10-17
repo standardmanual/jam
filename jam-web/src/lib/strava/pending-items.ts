@@ -9,7 +9,7 @@
  * 클라이언트가 쓸 타입·상수는 `pending-items-contract.ts`에 있다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { PendingItemsPayload, PendingItemView, ResolvePendingPayload } from './pending-items-contract'
+import type { LockedPendingItemView, PendingItemsPayload, PendingItemView, ResolvePendingPayload } from './pending-items-contract'
 
 /** 보류가 있어 동기화를 시작하지 않을 때 던진다. `/api/strava/sync`가 409(`code: 'sync_pending_items'`)로 바꾼다. */
 export class SyncPendingItemsError extends Error {
@@ -61,7 +61,7 @@ interface BadgeRow {
  * 잠긴 보류를 고르기 화면에 내리는 모양 — 배지 id·이름·그림을 싣지 않고 `locked`·등급·필요한 양만 싣는다.
  * `badgeId`를 남기면 클라이언트가 그 id로 배지를 찾아 이름·그림을 알 수 있으므로 빈 문자열로 둔다(고르기는 보류 `id`로만 한다).
  */
-function toLockedView(row: PendingRow): PendingItemView {
+function toLockedView(row: PendingRow): LockedPendingItemView {
   return {
     id: row.id,
     badgeId: '',

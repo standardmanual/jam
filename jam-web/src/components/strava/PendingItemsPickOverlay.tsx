@@ -340,14 +340,29 @@ export function PendingItemsPickView({
 
   const items = useMemo(
     () =>
-      (payload?.items ?? []).map((p) => ({
-        // 보류 개체는 각자 다른 id라 같은 배지여도 별개 카드다(캐러셀이 같은 id만 한 장으로 접는다)
-        id: p.id,
-        name: p.name,
-        description: '',
-        imageUrl: p.imageUrl,
-        rarity: p.rarity,
-      })),
+      (payload?.items ?? []).map((p) => {
+        // 잠긴 개체는 서버가 이름·그림을 내리지 않는다. 가린 이름과 필요한 양만 보이고 그림 자리에는 잠금 타일이 그려진다(채원 판정 2026-10-18).
+        // 필요한 양이 없는 비정상 응답이면 설명 줄을 생략하고 이름만 보인다.
+        if (p.locked === true) {
+          const hasRequired = Number.isFinite(p.unlockRequired) && p.unlockRequired > 0
+          return {
+            id: p.id,
+            name: d.lockedItem.card.name,
+            description: hasRequired ? t(d.lockedItem.card.description, { n: p.unlockRequired }) : '',
+            imageUrl: null,
+            rarity: p.rarity,
+            locked: true,
+          }
+        }
+        return {
+          // 보류 개체는 각자 다른 id라 같은 배지여도 별개 카드다(캐러셀이 같은 id만 한 장으로 접는다)
+          id: p.id,
+          name: p.name,
+          description: '',
+          imageUrl: p.imageUrl,
+          rarity: p.rarity,
+        }
+      }),
     [payload]
   )
 

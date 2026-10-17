@@ -3,6 +3,7 @@ import { RarityBadge, getRarityLabel } from '../cards/RarityBadge.jsx';
 import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
 import { IconButton } from '../buttons/IconButton.jsx';
 import { Button } from '../buttons/Button.jsx';
+import { LockIcon } from '../icons/IconCatalog.jsx';
 
 /**
  * BadgeRevealCarousel — 배지 획득 연출용 3D 코버플로우 캐러셀 (오버레이 포함 패턴).
@@ -600,10 +601,16 @@ const IMAGE_SIZE_RATIO = 0.58;
 const SELECT_IMAGE_SIZE_RATIO = 0.5;
 /** 선택 모드에서 카드 아래쪽에 비우는 높이(px) — 토글(44px) + 위아래 여백 */
 const SELECT_RESERVE_PX = 72;
+/** 잠금 타일 크기 — 이미지 영역(imageSize) 대비 비율. 선택 모드에서 0.5 × 0.8 = 카드 폭의 0.4 */
+const LOCK_TILE_RATIO = 0.8;
+/** 잠금 타일 안 자물쇠 크기 — 타일 대비 비율 */
+const LOCK_ICON_RATIO = 0.45;
 
 /** 배지 카드 — 이미지 → 칩 줄(등급 또는 Lv.N, ×N) → 이름 → 설명(3줄) */
 function BadgeCard({ item, foldedCount = 1, cardWidth, selectable = false }) {
-  const imageUrl = item?.imageUrl;
+  const locked = item?.locked === true;
+  // 잠긴 개체는 어떤 배지인지 알 수 있는 그림을 아예 그리지 않는다(서버도 값을 내리지 않는다).
+  const imageUrl = locked ? null : item?.imageUrl;
   // 선택 모드는 아래 72px를 토글 자리로 비우므로 이미지를 줄여 이름 2줄까지 들어가게 한다.
   const imageSize = Math.round(cardWidth * (selectable ? SELECT_IMAGE_SIZE_RATIO : IMAGE_SIZE_RATIO));
   const level = item?.level ?? null;
@@ -649,7 +656,29 @@ function BadgeCard({ item, foldedCount = 1, cardWidth, selectable = false }) {
           justifyContent: 'center',
         }}
       >
-        {imageUrl ? (
+        {locked ? (
+          /* 잠금 타일 — 차분한 중립 타일. 등급 색·그라데이션·글로우를 더하지 않는다(등급은 칩 하나로만 전달).
+             자물쇠는 장식이라 카드 전체의 aria-hidden에 맡기고 라이브 리전이 읽는다. */
+          <div
+            style={{
+              width: Math.round(imageSize * LOCK_TILE_RATIO),
+              height: Math.round(imageSize * LOCK_TILE_RATIO),
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 'var(--radius-2xl)',
+              background: 'var(--background)',
+              border: '1px solid var(--border)',
+              color: 'var(--muted)',
+            }}
+          >
+            <LockIcon
+              width={Math.round(imageSize * LOCK_TILE_RATIO * LOCK_ICON_RATIO)}
+              height={Math.round(imageSize * LOCK_TILE_RATIO * LOCK_ICON_RATIO)}
+            />
+          </div>
+        ) : imageUrl ? (
           <img
             src={imageUrl}
             alt={item?.name ?? ''}

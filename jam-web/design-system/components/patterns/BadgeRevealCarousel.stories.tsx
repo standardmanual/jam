@@ -396,6 +396,8 @@ export const RepeatFoldedIntoOneCard: Story = {
 
 /* ───────────────── 선택 모드·슬롯·closeDisabled (티켓 20261017_1425 2회) ───────────────── */
 
+const NO_LOCKED_IDS: string[] = [];
+
 /**
  * 선택 모드 하네스 — 선택 상태·개수 제한은 호출부가 소유하므로 스토리도 상태를 직접 쥔다.
  * header·footer는 서비스 «고르기» 화면의 모양을 흉내 낸 샘플 슬롯이다(문구는 샘플이며 서비스는 i18n 사전에서 주입한다).
@@ -406,19 +408,31 @@ function SelectModeHarness({
   initialSelected = [],
   submitting = false,
   names,
+  lockedIds = NO_LOCKED_IDS,
 }: {
   total: number;
   need: number;
   initialSelected?: string[];
   submitting?: boolean;
   names?: string[];
+  /** 잠긴 카드로 그릴 항목 id — 이름·설명은 호출부가 가린 문구로 넘기고 그림은 없다 */
+  lockedIds?: string[];
 }) {
   const items = useMemo(
     () =>
-      makeItems(total).map((item, i) =>
-        names?.[i] ? { ...item, name: names[i], description: '' } : { ...item, description: '' }
-      ),
-    [total, names]
+      makeItems(total).map((item, i): BadgeRevealItem => {
+        if (lockedIds.includes(item.id)) {
+          return {
+            ...item,
+            name: '잠긴 아이템 배지',
+            description: '여는 데 잼 60이 필요해요',
+            imageUrl: null,
+            locked: true,
+          };
+        }
+        return names?.[i] ? { ...item, name: names[i], description: '' } : { ...item, description: '' };
+      }),
+    [total, names, lockedIds]
   );
   const [selected, setSelected] = useState<string[]>(initialSelected);
   const full = selected.length >= need;
@@ -559,6 +573,30 @@ export const SelectModeLongName: Story = {
       const name = canvasElement.querySelector<HTMLElement>('[aria-hidden="false"] p');
       expect(name).toBeTruthy();
       expect(name!.getBoundingClientRect().bottom).toBeLessThanOrEqual(toggle.getBoundingClientRect().top);
+    });
+  },
+};
+
+/** 잠긴 카드 — 그림 대신 중립 잠금 타일, 등급 칩(Rare), 가린 이름·필요한 양. 선택·해제는 열린 카드와 같다. */
+export const SelectModeLocked: Story = {
+  name: '선택 모드 — 잠긴 카드(잠금 타일)',
+  args: { open: true, items: [] },
+  render: () => <SelectModeHarness total={3} need={2} lockedIds={['badge-2']} initialSelected={['badge-2']} />,
+  play: async ({ canvasElement, step }) => {
+    await step('1번(열린 카드)에서 2번(잠긴 카드)으로 넘기면 그림 없이 잠금 타일이 보인다', async () => {
+      await waitFor(() => expect(centerToggle(canvasElement)).toBeTruthy());
+      await userEvent.keyboard('{ArrowRight}');
+      await waitFor(() => expect(centerToggle(canvasElement)!.getAttribute('aria-pressed')).toBe('true'));
+      const card = canvasElement.querySelector<HTMLElement>('[aria-hidden="false"]');
+      expect(card?.textContent).toContain('잠긴 아이템 배지');
+      expect(card?.textContent).toContain('여는 데 잼 60이 필요해요');
+      expect(card?.querySelector('img')).toBeNull();
+      expect(card?.querySelector('svg')).toBeTruthy();
+    });
+
+    await step('잠긴 카드도 해제할 수 있다', async () => {
+      await userEvent.click(centerToggle(canvasElement)!);
+      await waitFor(() => expect(centerToggle(canvasElement)!.getAttribute('aria-pressed')).toBe('false'));
     });
   },
 };

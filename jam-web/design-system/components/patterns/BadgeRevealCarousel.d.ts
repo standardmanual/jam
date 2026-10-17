@@ -24,6 +24,12 @@ export interface BadgeRevealItem {
    * 「카드 장수」가 아니라 이 값이 회차의 출처다.
    */
   earnCount?: number;
+  /**
+   * 잠긴 아이템 배지 — `true`이면 `imageUrl`을 무시하고 그림 자리에 중립 «잠금 타일»(자물쇠)을 그린다.
+   * 사람 모양 폴백 아이콘은 쓰지 않는다. `name`·`description`은 호출부가 가린 문구(예: «잠긴 아이템 배지», «여는 데 잼 60이 필요해요»)로 넘긴다.
+   * 생략하면 지금과 똑같이 그린다.
+   */
+  locked?: boolean;
 }
 
 export interface BadgeRevealCarouselProps {

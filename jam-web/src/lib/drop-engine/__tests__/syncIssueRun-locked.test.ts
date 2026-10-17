@@ -287,9 +287,10 @@ describe('피드·결산 알림 가림 (운영 로직 7.3절)', () => {
 
     expect(recordFeedEvent).not.toHaveBeenCalled()
     expect(recordActivityRecap).toHaveBeenCalledTimes(1)
-    const fragment = vi.mocked(recordActivityRecap).mock.calls[0][1] as { item_badges: Record<string, unknown>[] }
-    expect(fragment.item_badges).toHaveLength(1)
-    expect(fragment.item_badges[0]).toMatchObject({ badge_id: '', name: '', rarity: null, locked: true })
+    const fragment = vi.mocked(recordActivityRecap).mock.calls[0][1]
+    const itemBadges = fragment.item_badges ?? []
+    expect(itemBadges).toHaveLength(1)
+    expect(itemBadges[0]).toMatchObject({ badge_id: '', name: '', rarity: null, locked: true })
     expect(JSON.stringify(fragment)).not.toContain('비밀 배지')
   })
 
@@ -299,9 +300,9 @@ describe('피드·결산 알림 가림 (운영 로직 7.3절)', () => {
     await run(world, [target(1)], policyWith('common', { locked_roll_probability: 0 }), () => 0.9)
 
     expect(recordFeedEvent).toHaveBeenCalledTimes(1)
-    const fragment = vi.mocked(recordActivityRecap).mock.calls[0][1] as { item_badges: Record<string, unknown>[] }
-    expect(fragment.item_badges[0]).toMatchObject({ badge_id: 'b-open', name: '열린 배지', rarity: 'common' })
-    expect(fragment.item_badges[0]).not.toHaveProperty('locked')
+    const itemBadges = vi.mocked(recordActivityRecap).mock.calls[0][1].item_badges ?? []
+    expect(itemBadges[0]).toMatchObject({ badge_id: 'b-open', name: '열린 배지', rarity: 'common' })
+    expect(itemBadges[0]).not.toHaveProperty('locked')
   })
 })
 
