@@ -1,0 +1,106 @@
+/**
+ * Strava 연결 상태 판정 — 한 곳 (티켓 20261017_1422, 운영 로직 3.2·3.4절)
+ *
+ * `strava_connections` 행이 있다는 사실만으로 «연결됨»으로 읽지 않는다. 토큰 갱신이 실패했거나
+ * 유저가 끊은 행은 `disconnected_at`이 채워지고, 그때는 «끊김»이다. 서버와 화면(2회)이 같은
+ * 판정을 쓰도록 판정과 끊김 저장을 이 파일에 모은다.
+ *
+ * 상태 규칙:
+ * - `none`          행이 없다 (한 번도 연결하지 않았거나 다른 계정 연결로 교체되어 사라졌다)
+ * - `connected`     행이 있고 `disconnected_at`이 NULL이다
+ * - `disconnected`  행이 있고 `disconnected_at`이 있다 — 동기화는 멈추고 기록·배지·잼·포인트는 남는다
+ *
+ * 옛 칸(`users.initial_sync_done`, `strava_connections`의 기존 칸)의 뜻은 바꾸지 않는다.
+ * 토큰 값·시크릿은 로그에 남기지 않는다.
+ */
+import { createServiceClient } from '@/lib/supabase/server'
+
+export type StravaConnectionState = 'none' | 'connected' | 'disconnected'
+
+/** `strava_connections.disconnect_reason`에 저장하는 값 */
+export type StravaDisconnectReason =
+  /** 토큰 갱신이 실패했다 */
+  | 'token_refresh_failed'
+  /** Strava가 401로 연결 철회를 알렸다 (유저가 Strava 쪽에서 해제한 경우 포함) */
+  | 'token_revoked'
+  /** 유저가 프로필에서 직접 끊었다 */
+  | 'user_disconnected'
+
+/** 연결 상태를 읽는 데 필요한 칸만 — 행 전체를 넘기지 않아도 된다 */
+export interface StravaConnectionStateInput {
+  disconnected_at?: string | null
+}
+
+/** 연결 행(없으면 null)으로 상태를 판정한다. 화면·서버가 이 함수 하나를 쓴다 */
+export function resolveStravaConnectionState(
+  row: StravaConnectionStateInput | null | undefined
+): StravaConnectionState {
+  if (!row) return 'none'
+  return row.disconnected_at ? 'disconnected' : 'connected'
+}
+
+/**
+ * 같은 Strava 계정을 다시 연결할 때 끊김 표시를 지우는 칸 값.
+ * 콜백이 토큰 갱신과 한 번의 update로 함께 쓴다(두 번에 나누면 중간 상태가 생긴다).
+ * `first_sync_pending`은 건드리지 않는다 — 마지막 동기화 뒤부터 이어서 가져온다.
+ */
+export const STRAVA_DISCONNECT_CLEARED = {
+  disconnected_at: null,
+  disconnect_reason: null,
+} as const
+
+/**
+ * 동기화가 끊김 상태라 진행하지 못했음을 알리는 오류.
+ * 수동 동기화 API가 500이 아니라 구분되는 상태(409)로 응답하는 근거다.
+ */
+export class StravaDisconnectedError extends Error {
+  constructor(
+    public readonly reason: StravaDisconnectReason | string | null,
+    options?: { cause?: unknown }
+  ) {
+    super(`[Strava] 연결이 끊긴 상태예요${reason ? ` (reason: ${reason})` : ''}`, options)
+    this.name = 'StravaDisconnectedError'
+  }
+}
+
+/**
+ * Strava가 401로 연결 철회를 알린 오류인지 본다.
+ * `api.ts`의 `StravaApiError`를 직접 import하지 않고 모양(이름·status)으로 판정한다 —
+ * 동기화 시험이 api 모듈을 부분 모의하는 경우에도 이 판정이 깨지지 않게 한다.
+ */
+export function isStravaRevokedError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false
+  const e = err as { name?: unknown; status?: unknown }
+  return e.name === 'StravaApiError' && e.status === 401
+}
+
+type ServiceClient = ReturnType<typeof createServiceClient>
+
+export interface MarkDisconnectedOptions {
+  supabase?: ServiceClient
+  /** true면 저장된 토큰을 지운다(유저가 끊을 때). 토큰 칸은 NOT NULL이라 빈 문자열로 둔다 */
+  clearTokens?: boolean
+}
+
+/**
+ * 유저의 연결을 끊김으로 저장한다. 저장에 실패하면 false를 돌려주고 로그만 남긴다
+ * (호출부가 원래 오류를 가리지 않게 던지지 않는다).
+ */
+export async function markStravaDisconnected(
+  userId: string,
+  reason: StravaDisconnectReason,
+  options: MarkDisconnectedOptions = {}
+): Promise<boolean> {
+  const supabase = options.supabase ?? createServiceClient()
+  const payload = {
+    disconnected_at: new Date().toISOString(),
+    disconnect_reason: reason,
+    ...(options.clearTokens ? { access_token: '', refresh_token: '' } : {}),
+  }
+  const { error } = await supabase.from('strava_connections').update(payload).eq('user_id', userId)
+  if (error) {
+    console.error(`[JAM! Strava] 끊김 저장 실패 (userId: ${userId}, reason: ${reason}):`, error)
+    return false
+  }
+  return true
+}

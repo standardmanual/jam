@@ -11,6 +11,7 @@ import type {
 
 const STRAVA_API_BASE = 'https://www.strava.com/api/v3'
 const STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token'
+const STRAVA_DEAUTHORIZE_URL = 'https://www.strava.com/oauth/deauthorize'
 
 /** Strava가 응답 없이 지연될 때 요청이 무한 대기하지 않도록 하는 타임아웃 (ms) */
 const STRAVA_FETCH_TIMEOUT_MS = 8_000
@@ -180,7 +181,8 @@ export async function refreshStravaToken(
 
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`Strava 토큰 갱신 실패 ${res.status}: ${body}`)
+    // 상태 코드를 들고 던진다 — 호출부가 401(철회) 등을 문구가 아니라 코드로 구분한다(티켓 20261017_1422)
+    throw new StravaApiError(`Strava 토큰 갱신 실패 ${res.status}: ${body}`, res.status)
   }
 
   const data = (await res.json()) as StravaRefreshResponse
@@ -188,6 +190,26 @@ export async function refreshStravaToken(
     access_token: data.access_token,
     refresh_token: data.refresh_token,
     expires_at: data.expires_at,
+  }
+}
+
+// =========================================
+// 앱 연결 해제
+// =========================================
+/**
+ * Strava 쪽의 앱 연결을 해제한다 — `POST /oauth/deauthorize` (티켓 20261017_1422).
+ * 해제되면 이 access_token과 연결된 refresh_token이 모두 무효가 된다. 이미 무효한 토큰이면
+ * 401 `StravaApiError`를 던진다 — 호출부(연결 끊기 API)는 실패해도 계속 진행한다.
+ * 토큰 값은 오류 메시지에 싣지 않는다.
+ */
+export async function deauthorizeStrava(accessToken: string): Promise<void> {
+  const res = await fetch(STRAVA_DEAUTHORIZE_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(STRAVA_FETCH_TIMEOUT_MS),
+  })
+  if (!res.ok) {
+    throw new StravaApiError(`Strava 앱 해제 실패 ${res.status}`, res.status)
   }
 }
 

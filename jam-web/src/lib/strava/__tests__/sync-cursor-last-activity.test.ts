@@ -71,6 +71,9 @@ function baseConnection(lastSyncedAt: string | null): StravaConnectionRow {
     token_expires_at: FAR_FUTURE_TOKEN_EXPIRY,
     last_synced_at: lastSyncedAt,
     backfill_completed: true,
+    first_sync_pending: false,
+    disconnected_at: null,
+    disconnect_reason: null,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
   }

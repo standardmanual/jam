@@ -135,6 +135,12 @@ export interface StravaConnectionRow {
   token_expires_at: string
   last_synced_at: string | null
   backfill_completed: boolean
+  /** 다른 Strava 계정 연결로 새로 생긴 행이면 true — 첫 동기화 규칙을 쓰고 정산 뒤 false로 돌린다 (마이그레이션 225) */
+  first_sync_pending: boolean
+  /** 끊김 시각. NULL이면 연결 중이다 (마이그레이션 225) */
+  disconnected_at: string | null
+  /** 끊김 사유: `token_refresh_failed` | `token_revoked` | `user_disconnected` (마이그레이션 225) */
+  disconnect_reason: string | null
   created_at: string
   updated_at: string
 }
