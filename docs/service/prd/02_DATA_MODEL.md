@@ -300,7 +300,7 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
     PK라 행 수가 서로 다른 컬렉션 수이고, 장착 해제·교체는 이 기록을 지우지 않는다(티켓 20261001_0633).
 
 ### 4-2. 컬렉션 4등급 구조 (JAM 2.0) — 마이그레이션 222, 티켓 20261016_2340
-운영 로직 8.3절이 근거다. 2026-10-17 기준 SQL 파일만 작성됨(적용 전). 옛 객체(`slot_item_into_book`, `swap_item_in_book`, `unslot_item_from_book`, `user_item_book_completions`, `item_books.reward_points`·`reward_badge_id`)는 바꾸지 않고 새 객체를 덧붙인다. 옛 것을 지우는 축소는 묶음 6이다.
+운영 로직 8.3절이 근거다. 마이그레이션 222는 2026-10-17에 적용됐고 `tier_mode`가 켜진 컬렉션은 아직 없다. 옛 객체(`slot_item_into_book`, `swap_item_in_book`, `unslot_item_from_book`, `user_item_book_completions`, `item_books.reward_points`·`reward_badge_id`)는 바꾸지 않고 새 객체를 덧붙인다. 옛 것을 지우는 축소는 묶음 6이다.
 
 **구조 규칙**
 - **한 칸 묶기**: 같은 컬렉션(`badges.item_book_id`) 안에서 이름(`badges.name`)이 같은 아이템 배지 4장(`badges.rarity` = common·rare·epic·mystic)을 한 칸으로 본다. 묶음용 새 테이블은 없다. 어드민은 지금처럼 배지를 컬렉션에 넣기만 한다.
@@ -315,9 +315,23 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 - `tier` 열의 형은 `badge_rarity`다.
 
 **함수** (둘 다 SECURITY DEFINER, `service_role`만 실행)
-- `slot_item_into_book_tiered(p_user_id, p_item_book_id, p_inventory_item_id)`: 179의 검사(인벤토리·소유·드랍됨·이미 꽂힘·다른 컬렉션 배지)에 `item_book_not_found`·`tier_mode_off`(꺼진 컬렉션)·`tier_mismatch`(이미 꽂힌 배지와 등급이 다름)를 더했다. 완성이면 `award_points`(사유 `item_book_completion_point_reward`)로 포인트를 준다. 포인트는 `item_book_tier_rewards.reward_points`, 없으면 기본값이다. 반환: `ok`, `slot`, `tier`, `completed_tier`(이번 장착으로 새로 완성한 등급, 아니면 null). **보상 배지는 SQL이 주지 않는다** — 옛 함수처럼 앱 코드가 완성 기록을 보고 지급한다(회차 3).
+- `slot_item_into_book_tiered(p_user_id, p_item_book_id, p_inventory_item_id)`: 179의 검사(인벤토리·소유·드랍됨·이미 꽂힘·다른 컬렉션 배지)에 `item_book_not_found`·`tier_mode_off`(꺼진 컬렉션)·`tier_mismatch`(이미 꽂힌 배지와 등급이 다름)를 더했다. 완성이면 `award_points`(사유 `item_book_completion_point_reward`)로 포인트를 준다. 포인트는 `item_book_tier_rewards.reward_points`, 없으면 기본값이다. 반환: `ok`, `slot`, `tier`, `completed_tier`(이번 장착으로 새로 완성한 등급, 아니면 null). **보상 배지는 SQL이 주지 않는다** — 옛 함수처럼 앱 코드가 지급한다. 장착 API가 `completed_tier`의 등급 보상 배지(`item_book_tier_rewards.reward_badge_id`)를 주고, 동기화 뒤 보정(`checker.ts`)이 등급별 완성 기록을 보고 못 받은 등급 보상 배지를 따라잡는다.
 - `swap_item_in_book_tiered(p_user_id, p_item_book_id, p_slot_id, p_new_inventory_item_id)`: 151의 검사에 `tier_mode_off`·`tier_mismatch`(등급이 다름)를 더했다. 같은 배지의 다른 개체로만 바꾸므로 완성에는 영향이 없다.
 - 장착 해제는 옛 `unslot_item_from_book`을 그대로 쓴다.
+
+**장착 API 분기** (`jam-web/src/app/api/itembooks/[id]/slot/route.ts`)
+- POST(장착)·PATCH(교환)가 컬렉션의 `item_books.tier_mode`를 읽어 켜진 컬렉션은 `slot_item_into_book_tiered`·`swap_item_in_book_tiered`를, 꺼진 컬렉션은 옛 함수를 이전과 같은 인자로 부른다. DELETE(해제)는 `tier_mode`와 무관하게 옛 함수다.
+- 새 함수의 오류 `tier_mismatch`·`tier_mode_off`는 409, 교환의 `item_book_not_found`는 404로 응답한다.
+
+**조회 응답 필드** (`GET /api/itembooks`, `GET /api/users/[username]/itembooks`)
+- 기존 필드(`totalBadgeCount`·`slottedCount`·`isCompleted` 등)의 이름과 값은 그대로이고 `tierMode`·`tier`·`tiers`를 더했다.
+- `tierMode`는 `item_books.tier_mode`다. `tier`는 지금 꽂힌 배지의 등급이고 아무것도 꽂지 않았거나 옛 컬렉션이면 `null`이다.
+- `tiers`는 등급을 키로 `total`·`filled`(그 등급의 이름 수 기준, 판정은 아래 「완성 판정 규칙」)·`complete`(지금 계산상 완성)·`recorded`(그 등급의 `user_item_book_tier_completions` 행 유무)를 담는다. 옛 컬렉션은 `{}`다.
+- `isCompleted`: `tier_mode` 컬렉션은 등급별 완성 기록이 하나라도 있거나 지금 계산상 완성이면 true다(등급별 상세는 `tiers`). 옛 컬렉션은 옛 완성 기록이 있거나 계산상 완성이면 true로 이전과 같다.
+- 응답 필드는 `tierMode`를 쓰고 `tier_mode`는 DB 열 이름이다. 컬렉션 화면은 아직 이 필드를 읽지 않는다(묶음 3).
+
+**삭제 가드** (`jam-web/src/lib/admin/reference-guards.ts` `ITEM_BOOK_REFERENCE_SOURCES`)
+- `user_item_book_tier_completions`는 컬렉션 삭제 시 CASCADE라, 옛 `user_item_book_slots`·`user_item_book_completions`와 같이 삭제를 막는 참조로 센다. 등급별 완성 기록이 있는 컬렉션은 하드 삭제 대신 비활성화를 안내한다.
 
 **완성 판정 규칙 (코드, 2026-10-17 통일 — 티켓 20261016_2340 2회)**
 `jam-web/src/lib/itembook/completion-basis.ts`의 `computeBookCompletion` 한 곳이 컬렉션의 분모·분자를 정한다. 장착 뒤 보정(`checker.ts`), 완성 가능 소식, 컬렉션 화면·목록 API, 투데이, 알림 배치가 모두 이 함수를 부른다. 기준은 완성 기록을 남기는 DB 함수(179·222)다.
