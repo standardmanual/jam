@@ -56,7 +56,8 @@ code:
 
 [잼]            users ─1:1─ jam_wallets ─1:N─ jam_transactions (append-only 원장)
                 users ─1:N─ jam_daily_earned (KST 날짜별 모은 양)
-                jam_policy(싱글톤: 강도 배율·대량 수령 경보 기준)
+                jam_policy(싱글톤: 강도 배율·대량 수령 경보 기준·동기화 아이템 배지 발급 값)
+                users ─1:N─ item_issue_log (아이템 배지 발급 기록, append-only)
 
 [챕터]          users ─1:1─ user_chapters (지금 챕터·누적 점수)
                 users ─1:N─ chapter_score_events (점수 기록) ──> chapter_score_rules (활동별 점수 규칙)
@@ -710,6 +711,14 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `mass_earn_alert_multiplier` | 3 | 한 번의 동기화로 받은 잼이 지난 N주 주간 평균의 이 배수를 넘으면 경보 |
 | `mass_earn_alert_weeks` | 4 | 경보 비교에 쓰는 지난 기간(주) |
 | `mass_earn_alert_no_history_amount` | 1200 | 지난 기록이 없는 유저의 경보 기준 잼(보통 강도 10시간) |
+| `sync_item_guaranteed` / `sync_item_guaranteed_hiking` | 1 / 2 | 동기화 활동마다 확정으로 주는 아이템 배지 개수(일반 / 등산). 0 이상 정수, **0이면 드랍 없음** (마이그레이션 227, 티켓 20261017_1424) |
+| `sync_item_bonus_rolls` | 2 | 보너스 개수를 굴리는 횟수. 0 이상 정수 |
+| `sync_item_bonus_jam_divisor` | 600 | 보너스 한 번마다 확률 = 그 활동의 잼 ÷ 이 값. 1 이상 정수 |
+| `sync_item_bonus_max_probability` | 0.25 | 보너스 한 번마다 확률의 상한(0~1) |
+| `sync_rarity_common` / `_rare` / `_epic` / `_mystic` | 84 / 13 / 2.5 / 0.5 | 동기화 등급 확률(퍼센트). 네 칸 합계는 100이고 DB 제약(`jam_policy_sync_rarity_sum_100`)이 지킨다 |
+| `common_streak_threshold` | 10 | Common이 이 횟수만큼 연속이면 다음은 Rare 이상(`user_drop_state.common_streak`, 동기화와 캡슐 합산) |
+
+**아이템 발급 정책의 대체 규칙**(`getJamPolicy`): 위 10칸 가운데 하나라도 비정상이거나 등급 확률 합계가 100이 아니면(오차 0.001 미만은 허용) **10칸 전체**를 기본값으로 대체하고 로그를 한 번 남긴다. 한 칸만 바꾸면 합계가 어긋나기 때문이다. 강도·경보 칸은 이 대체와 상관없이 칸 단위로 대체한다. 판정은 순수 함수 `src/lib/drop-engine/syncIssue.ts`(개수 `rollItemCount`, 등급 `rollRarity`, 후보 `pickItemBadge`)이고 정책을 인자로 받는다. 동기화 연결은 2회가 한다.
 
 **잼 정산 규칙**(운영 로직 4.2~4.5절, 16.3절. 코드 `src/lib/jam/`, 호출 `src/lib/strava/sync.ts`):
 - 계산: 잼 = 강도 배율 × 교통수단 구간을 뺀 움직인 시간(분, 내림). 하루 상한은 없다. 전기자전거(`EBikeRide`·`EMountainBikeRide`)는 `jam_activity_type`이 자전거 값이라 원본 종목(`strava_activities.source_meta.sportType`)으로 가벼움을 가린다. 종목 불일치로 걷기가 된 활동(`jam_activity_type='walking'`)은 가벼움이다. 걷기 30분 30, 러닝 30분 90, 자전거 30분 60, 전기자전거 30분 30.
@@ -719,6 +728,21 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 - 실패 격리: 정산 실패는 로그만 남기고 동기화를 막지 않는다. 동기화 응답(`POST /api/strava/sync`)에는 이번 동기화로 받은 잼 합계 `jamEarned`(없으면 0)만 더하고 활동별 잼은 돌려주지 않는다. 화면 표시는 2-5·묶음 3의 몫이다.
 - 대량 수령 경보: 이번 동기화의 잼 합계가 지난 `mass_earn_alert_weeks`주(오늘 KST 포함 7×N일) `jam_daily_earned` 합계의 주간 평균 × `mass_earn_alert_multiplier`를 **넘으면**(같으면 아니다) `#jam-alert`에 중단 신호 글 형식으로 알린다. 지난 기록이 없으면 `mass_earn_alert_no_history_amount`를 넘을 때 알린다. 이번 동기화의 정산 행이 평균에 섞이지 않도록 기준선은 활동 저장·정산 전에 읽는다. 기준선을 읽지 못하면 경보를 건너뛴다. 발송 실패는 동기화 응답을 바꾸지 않는다. 자동 제재는 하지 않는다.
 - 이 티켓이 하지 않는 것: 이용 정지 중 정산 차단(2-6), 챕터 점수 가산(묶음 5), 아이템 배지 개수에 잼 쓰기(2-4). 활동별 잼 값은 정산 단계 결과(`jamSettlements`)로만 남겨 2-4가 쓸 수 있게 한다.
+
+#### item_issue_log — 마이그레이션 227, 티켓 20261017_1424
+아이템 배지를 줄 때마다 한 줄 남기는 발급 기록(append-only, 운영 로직 6.6절). RLS만 켜고 정책이 없어 service_role만 읽고 쓴다. 쓰는 코드는 동기화 연결(2회)이 더한다 — 지금은 0행이다.
+
+| 칸 | 뜻 |
+|---|---|
+| `user_id` | 받은 유저. 유저 삭제 시 함께 삭제(`ON DELETE CASCADE`) |
+| `inventory_item_id` | 만들어진 개체(`inventory_items`). 개체가 지워져도 기록은 남도록 `ON DELETE SET NULL` |
+| `route` | 경로(예: `sync`). 값의 목록은 코드가 정하고 CHECK 제약은 없다(캡슐·미션·믹스가 이어서 쓴다) |
+| `source_activity_id` | 동기화 경로의 대상 활동(`strava_activities.id` 값, FK 없음) |
+| `badge_id` / `rarity` | 준 배지와 등급. 배지가 지워지면 `badge_id`는 NULL |
+| `locked` | 잠긴 채 배정했는가. 잠김 구조는 묶음 3이라 지금은 항상 false |
+| `serial_number` | 개체의 일련번호 |
+
+인덱스: `(user_id, created_at DESC)`, 대상 활동(`source_activity_id`, NULL 제외).
 
 ### 9-3. 챕터 (JAM 2.0) — 마이그레이션 221, 티켓 20261016_2339
 운영 로직 12장 "챕터"가 근거다. 2026-10-17 공용 DB에 적용했다. 점수를 주는 연결·연출·소식·챕터 배지·프로필 표시는 묶음 5.
