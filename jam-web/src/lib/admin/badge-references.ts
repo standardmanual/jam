@@ -48,6 +48,7 @@ export type BadgeReferenceKey =
   | 'user_checkin_badge_earns'
   | 'inventory_items'
   | 'poi_drops'
+  | 'item_issue_log'
   | 'user_item_book_slots'
   | 'point_transactions'
   | 'poi'
@@ -124,6 +125,16 @@ export const BADGE_REFERENCE_SOURCES: BadgeReferenceSource[] = [
     label: '월드 드랍',
     location: 'poi_drops.badge_id',
     blocksDelete: true,
+    cascades: false,
+    detachable: false,
+  },
+  {
+    // 마이그레이션 227(티켓 20261017_1424): 삭제하면 이 칸만 NULL이 되고 기록은 남는다(ON DELETE SET NULL) — 삭제를 막지 않는다.
+    key: 'item_issue_log',
+    group: 'earn',
+    label: '아이템 배지 발급 기록',
+    location: 'item_issue_log.badge_id',
+    blocksDelete: false,
     cascades: false,
     detachable: false,
   },
@@ -363,6 +374,11 @@ export async function collectBadgeReferences(
     {
       key: 'poi_drops',
       run: (chunk) => supabase.from('poi_drops').select('*', { count: 'exact', head: true }).in('badge_id', chunk),
+    },
+    {
+      key: 'item_issue_log',
+      run: (chunk) =>
+        supabase.from('item_issue_log').select('*', { count: 'exact', head: true }).in('badge_id', chunk),
     },
     {
       key: 'user_item_book_slots',
