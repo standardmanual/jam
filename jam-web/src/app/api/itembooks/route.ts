@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
-import { computeBookCompletion } from '@/lib/itembook/completion-basis'
+import { COMPLETION_BADGE_TYPES, computeBookCompletion, isBookCompleted } from '@/lib/itembook/completion-basis'
+import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 import { applyLaunchedItemBookFilter } from '@/lib/itembook/visibility'
 import type {
   InventoryRow,
@@ -70,7 +71,7 @@ export async function GET() {
   // 5) 전체 아이템 배지 수 + 슬롯 카운트 + 완성 여부 병렬 조회 — 걸러진 컬렉션 id로만 조회한다
   const [{ data: allBadgesRaw }, { data: slotsRaw }, { data: compRaw }] =
     await Promise.all([
-      supabase.from('badges').select('id, item_book_id, type, drop_excluded').in('item_book_id', bookIds).eq('type', 'item').is('deleted_at', null),
+      supabase.from('badges').select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at').in('item_book_id', bookIds).in('type', [...COMPLETION_BADGE_TYPES]).is('deleted_at', null),
       supabase
         .from('user_item_book_slots')
         .select('item_book_id, badge_id')
@@ -83,15 +84,42 @@ export async function GET() {
         .in('item_book_id', bookIds),
     ])
 
-  // 북별 분모(드랍 제외 배지를 뺀 수)·분자 — 공용 함수 (티켓 20260921_1112)
-  const filledBadgeIds = new Set(
-    ((slotsRaw ?? []) as Pick<UserItemBookSlotRow, 'badge_id'>[]).map((s) => s.badge_id)
-  )
-  const completionMap = computeBookCompletion(
-    (allBadgesRaw ?? []) as { id: string; item_book_id: string | null; type: string; drop_excluded: boolean | null }[],
-    filledBadgeIds,
-    { types: ['item'] }
-  )
+  // 북별 분모·분자 — 완성 판정 단일 모듈(티켓 20261016_2340 2회-나). 분자는 컬렉션별 집합으로 센다.
+  const allBadges = (allBadgesRaw ?? []) as {
+    id: string
+    item_book_id: string | null
+    type: string
+    drop_excluded: boolean | null
+    name: string
+    rarity: string | null
+    deleted_at: string | null
+  }[]
+  const checkinBadgesByBook = new Map<string, string[]>()
+  for (const b of allBadges) {
+    if (b.type !== 'checkin' || !b.item_book_id) continue
+    const list = checkinBadgesByBook.get(b.item_book_id)
+    if (list) list.push(b.id)
+    else checkinBadgesByBook.set(b.item_book_id, [b.id])
+  }
+  const checkinBadgeIds = allBadges.filter((b) => b.type === 'checkin').map((b) => b.id)
+  let earnedCheckinRows: { badge_id: string }[] = []
+  if (checkinBadgeIds.length > 0) {
+    const { data: earnsRaw } = await supabase
+      .from('user_checkin_badge_earns')
+      .select('badge_id')
+      .eq('user_id', user.id)
+      .in('badge_id', checkinBadgeIds)
+    earnedCheckinRows = (earnsRaw ?? []) as { badge_id: string }[]
+  }
+  const filledByBook = buildFilledByBook({
+    slots: (slotsRaw ?? []) as Pick<UserItemBookSlotRow, 'item_book_id' | 'badge_id'>[],
+    checkinBadgesByBook,
+    earnedCheckinBadgeIds: new Set(earnedCheckinRows.map((e) => e.badge_id)),
+  })
+  const completionMap = computeBookCompletion(allBadges, new Set<string>(), {
+    filledByBook,
+    tierModeBookIds: new Set(books.filter((b) => (b as { tier_mode?: boolean | null }).tier_mode).map((b) => b.id)),
+  })
 
   // 완성된 북 Set
   const completedSet = new Set(
@@ -126,7 +154,7 @@ export async function GET() {
       totalBadgeCount: completionMap.get(book.id)?.total ?? 0,
       discoveredBadgeCount: discoveredMap.get(book.id)?.size ?? 0,
       slottedCount: completionMap.get(book.id)?.filled ?? 0,
-      isCompleted: completedSet.has(book.id) || (completionMap.get(book.id)?.complete ?? false),
+      isCompleted: isBookCompleted(completedSet, book.id, completionMap.get(book.id)),
     }
   })
 

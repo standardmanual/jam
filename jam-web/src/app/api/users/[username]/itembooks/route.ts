@@ -4,7 +4,8 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRarity } from '@/types/database'
-import { computeBookCompletion } from '@/lib/itembook/completion-basis'
+import { COMPLETION_BADGE_TYPES, computeBookCompletion, isBookCompleted } from '@/lib/itembook/completion-basis'
+import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 
 export async function GET(
   _request: Request,
@@ -73,12 +74,12 @@ export async function GET(
   ] = await Promise.all([
       service
       .from('item_books')
-      .select('id, name, image_url, tribe:tribes(name)')
+      .select('id, name, image_url, tier_mode, tribe:tribes(name)')
       .in('id', bookIds)
       .eq('is_active', true)
       .or(`valid_from.is.null,valid_from.lte.${now}`)
       .or(`valid_until.is.null,valid_until.gte.${now}`),
-      service.from('badges').select('id, item_book_id, type, drop_excluded, rarity, created_at').in('item_book_id', bookIds).eq('type', 'item').is('deleted_at', null).order('created_at', { ascending: true }),
+      service.from('badges').select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at, created_at').in('item_book_id', bookIds).in('type', [...COMPLETION_BADGE_TYPES]).is('deleted_at', null).order('created_at', { ascending: true }),
       service.from('user_item_book_slots').select('item_book_id, badge_id').eq('user_id', userId).in('item_book_id', bookIds),
       service.from('user_item_book_completions').select('item_book_id').eq('user_id', userId).in('item_book_id', bookIds),
   ])
@@ -88,20 +89,47 @@ export async function GET(
   if (completionsError) console.error('[api/users/[username]/itembooks] user_item_book_completions 조회 실패', completionsError)
 
   const rarityByBook = new Map<string, BadgeRarity>()
-  const bookBadges = (bookBadgesRaw ?? []) as { id: string; item_book_id: string; type: string; drop_excluded: boolean | null; rarity: BadgeRarity; created_at: string }[]
+  const bookBadges = (bookBadgesRaw ?? []) as { id: string; item_book_id: string; type: string; drop_excluded: boolean | null; name: string; rarity: BadgeRarity; deleted_at: string | null; created_at: string }[]
   for (const b of bookBadges) {
+    if (b.type !== 'item') continue
     // created_at ASC 정렬이므로 처음 만나는 항목이 최초 등록 배지
     if (!rarityByBook.has(b.item_book_id)) rarityByBook.set(b.item_book_id, b.rarity)
   }
-  // 분모(드랍 제외 배지를 뺀 수)·분자 — 공용 함수 (티켓 20260921_1112)
-  const filledBadgeIds = new Set(((slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]).map(s => s.badge_id))
-  const completionByBook = computeBookCompletion(bookBadges, filledBadgeIds, { types: ['item'] })
+  // 분모·분자 — 완성 판정 단일 모듈(티켓 20261016_2340 2회-나). 분자는 컬렉션별 집합으로 센다.
+  const checkinBadgesByBook = new Map<string, string[]>()
+  for (const b of bookBadges) {
+    if (b.type !== 'checkin') continue
+    const list = checkinBadgesByBook.get(b.item_book_id)
+    if (list) list.push(b.id)
+    else checkinBadgesByBook.set(b.item_book_id, [b.id])
+  }
+  const checkinBadgeIds = bookBadges.filter((b) => b.type === 'checkin').map((b) => b.id)
+  let earnedCheckinRows: { badge_id: string }[] = []
+  if (checkinBadgeIds.length > 0) {
+    const { data: earnsRaw, error: earnsError } = await service
+      .from('user_checkin_badge_earns')
+      .select('badge_id')
+      .eq('user_id', userId)
+      .in('badge_id', checkinBadgeIds)
+    if (earnsError) console.error('[api/users/[username]/itembooks] user_checkin_badge_earns 조회 실패', earnsError)
+    earnedCheckinRows = (earnsRaw ?? []) as { badge_id: string }[]
+  }
+  const filledByBook = buildFilledByBook({
+    slots: (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[],
+    checkinBadgesByBook,
+    earnedCheckinBadgeIds: new Set(earnedCheckinRows.map((e) => e.badge_id)),
+  })
+  type BookRaw = { id: string; name: string; image_url: string | null; tier_mode?: boolean | null; tribe: { name: string } | null }
+  const bookRows = (booksRaw ?? []) as unknown as BookRaw[]
+  const completionByBook = computeBookCompletion(bookBadges, new Set<string>(), {
+    filledByBook,
+    tierModeBookIds: new Set(bookRows.filter((b) => b.tier_mode).map((b) => b.id)),
+  })
   const completedSet = new Set(((completionsRaw ?? []) as { item_book_id: string }[]).map(c => c.item_book_id))
 
   const isOwnList = currentUser?.id === userId
 
-  type BookRaw = { id: string; name: string; image_url: string | null; tribe: { name: string } | null }
-  const books = ((booksRaw ?? []) as unknown as BookRaw[])
+  const books = bookRows
     .map(book => ({
       id: book.id,
       name: book.name,
@@ -109,7 +137,7 @@ export async function GET(
       tribe: book.tribe,
       totalBadgeCount: completionByBook.get(book.id)?.total ?? 0,
       slottedCount: completionByBook.get(book.id)?.filled ?? 0,
-      isCompleted: completedSet.has(book.id) || (completionByBook.get(book.id)?.complete ?? false),
+      isCompleted: isBookCompleted(completedSet, book.id, completionByBook.get(book.id)),
       rarity: rarityByBook.get(book.id) ?? 'common',
     }))
     // 타인이 볼 때는 아이템배지 슬롯이 0개인 컬렉션을 숨긴다(20260824_016).

@@ -1,4 +1,5 @@
-import { computeBookCompletion } from '@/lib/itembook/completion-basis'
+import { COMPLETION_BADGE_TYPES, computeBookCompletion, isBookCompleted } from '@/lib/itembook/completion-basis'
+import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 import { applyLaunchedItemBookFilter } from '@/lib/itembook/visibility'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
@@ -135,7 +136,7 @@ export default async function BadgesPage({ searchParams }: Props) {
         { data: slotsRaw, error: slotsError },
         { data: completionsRaw, error: completionsError },
       ] = await Promise.all([
-        supabase.from('badges').select('id, item_book_id, type, drop_excluded, rarity, created_at').in('item_book_id', launchedBookIds).eq('type', 'item').is('deleted_at', null).order('created_at', { ascending: true }),
+        supabase.from('badges').select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at, created_at').in('item_book_id', launchedBookIds).in('type', [...COMPLETION_BADGE_TYPES]).is('deleted_at', null).order('created_at', { ascending: true }),
         supabase.from('user_item_book_slots').select('item_book_id, badge_id').eq('user_id', user.id).in('item_book_id', launchedBookIds),
         supabase.from('user_item_book_completions').select('item_book_id').eq('user_id', user.id).in('item_book_id', launchedBookIds),
       ])
@@ -144,21 +145,36 @@ export default async function BadgesPage({ searchParams }: Props) {
       if (completionsError) console.error('[badges/page] user_item_book_completions 조회 실패', completionsError)
 
       const rarityByBook = new Map<string, BadgeRarity>()
-      const bookBadges = (bookBadgesRaw ?? []) as { id: string; item_book_id: string; type: string; drop_excluded: boolean | null; rarity: BadgeRarity; created_at: string }[]
+      const bookBadges = (bookBadgesRaw ?? []) as { id: string; item_book_id: string; type: string; drop_excluded: boolean | null; name: string; rarity: BadgeRarity; deleted_at: string | null; created_at: string }[]
       for (const b of bookBadges) {
-        if (!b.item_book_id) continue
+        if (!b.item_book_id || b.type !== 'item') continue
         // created_at ASC 정렬이므로 처음 만나는 항목이 최초 등록 배지
         if (!rarityByBook.has(b.item_book_id)) rarityByBook.set(b.item_book_id, b.rarity)
       }
-      // 분모(드랍 제외 배지를 뺀 수)·분자 — 공용 함수 (티켓 20260921_1112)
-      const filledBadgeIds = new Set(((slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]).map((s) => s.badge_id))
-      const completionByBook = computeBookCompletion(bookBadges, filledBadgeIds, { types: ['item'] })
+      // 분모·분자 — 완성 판정 단일 모듈(티켓 20261016_2340 2회-나). 분자는 컬렉션별 집합으로 센다.
+      const checkinBadgesByBook = new Map<string, string[]>()
+      for (const b of bookBadges) {
+        if (b.type !== 'checkin' || !b.item_book_id) continue
+        const list = checkinBadgesByBook.get(b.item_book_id)
+        if (list) list.push(b.id)
+        else checkinBadgesByBook.set(b.item_book_id, [b.id])
+      }
+      const filledByBook = buildFilledByBook({
+        slots: (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[],
+        checkinBadgesByBook,
+        earnedCheckinBadgeIds: new Set(((checkinEarns ?? []) as { badge_id: string }[]).map((e) => e.badge_id)),
+      })
+      const completionByBook = computeBookCompletion(bookBadges, new Set<string>(), {
+        filledByBook,
+        tierModeBookIds: new Set(books.filter((b) => (b as { tier_mode?: boolean | null }).tier_mode).map((b) => b.id)),
+      })
       const completedSet = new Set(((completionsRaw ?? []) as { item_book_id: string }[]).map((c) => c.item_book_id))
 
       itemBookProgress = books.map((book) => {
-        const total = completionByBook.get(book.id)?.total ?? 0
-        const owned = completionByBook.get(book.id)?.filled ?? 0
-        const completed = completedSet.has(book.id) || (completionByBook.get(book.id)?.complete ?? false)
+        const completion = completionByBook.get(book.id)
+        const total = completion?.total ?? 0
+        const owned = completion?.filled ?? 0
+        const completed = isBookCompleted(completedSet, book.id, completion)
         return { bookId: book.id, owned, total, completed, rarity: rarityByBook.get(book.id) ?? 'common' }
       })
     }

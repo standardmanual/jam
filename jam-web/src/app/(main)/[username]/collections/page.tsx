@@ -1,4 +1,5 @@
-import { computeBookCompletion } from '@/lib/itembook/completion-basis'
+import { COMPLETION_BADGE_TYPES, computeBookCompletion, isBookCompleted } from '@/lib/itembook/completion-basis'
+import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import SafeImage from '@/components/SafeImage'
@@ -105,9 +106,9 @@ export default async function UserItemBooksPage({ params }: Props) {
           .or(`valid_until.is.null,valid_until.gte.${now}`),
         service
           .from('badges')
-          .select('id, item_book_id, type, drop_excluded')
+          .select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at')
           .in('item_book_id', bookIds)
-          .eq('type', 'item')
+          .in('type', [...COMPLETION_BADGE_TYPES])
           .is('deleted_at', null),
         service
           .from('user_item_book_slots')
@@ -127,15 +128,43 @@ export default async function UserItemBooksPage({ params }: Props) {
 
       const books = (booksRaw ?? []) as unknown as ItemBookWithTribe[]
 
-      // 분모(드랍 제외 배지를 뺀 수)·분자 — 공용 함수 (티켓 20260921_1112)
-      const filledBadgeIds = new Set(
-        ((slotsRaw ?? []) as { item_book_id: string; badge_id: string }[]).map((s) => s.badge_id)
-      )
-      const completionByBook = computeBookCompletion(
-        (bookBadgesRaw ?? []) as { id: string; item_book_id: string | null; type: string; drop_excluded: boolean | null }[],
-        filledBadgeIds,
-        { types: ['item'] }
-      )
+      // 분모·분자 — 완성 판정 단일 모듈(티켓 20261016_2340 2회-나). 분자는 컬렉션별 집합으로 센다.
+      const bookBadges = (bookBadgesRaw ?? []) as {
+        id: string
+        item_book_id: string | null
+        type: string
+        drop_excluded: boolean | null
+        name: string
+        rarity: string | null
+        deleted_at: string | null
+      }[]
+      const checkinBadgesByBook = new Map<string, string[]>()
+      for (const b of bookBadges) {
+        if (b.type !== 'checkin' || !b.item_book_id) continue
+        const list = checkinBadgesByBook.get(b.item_book_id)
+        if (list) list.push(b.id)
+        else checkinBadgesByBook.set(b.item_book_id, [b.id])
+      }
+      const checkinBadgeIds = bookBadges.filter((b) => b.type === 'checkin').map((b) => b.id)
+      let earnedCheckinRows: { badge_id: string }[] = []
+      if (checkinBadgeIds.length > 0) {
+        const { data: earnsRaw, error: earnsError } = await service
+          .from('user_checkin_badge_earns')
+          .select('badge_id')
+          .eq('user_id', target.id)
+          .in('badge_id', checkinBadgeIds)
+        if (earnsError) console.error('[[username]/collections/page] user_checkin_badge_earns 조회 실패', earnsError)
+        earnedCheckinRows = (earnsRaw ?? []) as { badge_id: string }[]
+      }
+      const filledByBook = buildFilledByBook({
+        slots: (slotsRaw ?? []) as { item_book_id: string; badge_id: string }[],
+        checkinBadgesByBook,
+        earnedCheckinBadgeIds: new Set(earnedCheckinRows.map((e) => e.badge_id)),
+      })
+      const completionByBook = computeBookCompletion(bookBadges, new Set<string>(), {
+        filledByBook,
+        tierModeBookIds: new Set(books.filter((b) => (b as { tier_mode?: boolean | null }).tier_mode).map((b) => b.id)),
+      })
 
       const completedSet = new Set(
         ((completionsRaw ?? []) as { item_book_id: string }[]).map((c) => c.item_book_id)
@@ -148,7 +177,7 @@ export default async function UserItemBooksPage({ params }: Props) {
           book,
           totalBadgeCount: completionByBook.get(book.id)?.total ?? 0,
           slottedCount: completionByBook.get(book.id)?.filled ?? 0,
-          isCompleted: completedSet.has(book.id) || (completionByBook.get(book.id)?.complete ?? false),
+          isCompleted: isBookCompleted(completedSet, book.id, completionByBook.get(book.id)),
         }))
         // 타인이 볼 때는 아이템배지 슬롯이 0개인 컬렉션을 숨긴다(20260824_016).
         // 본인 열람(isOwnList)은 예외 없이 항상 노출.
