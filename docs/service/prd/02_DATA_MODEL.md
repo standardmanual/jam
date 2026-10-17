@@ -56,7 +56,7 @@ code:
 
 [잼]            users ─1:1─ jam_wallets ─1:N─ jam_transactions (append-only 원장)
                 users ─1:N─ jam_daily_earned (KST 날짜별 모은 양)
-                jam_policy(싱글톤: 강도 배율·대량 수령 경보 기준·동기화 아이템 배지 발급 값)
+                jam_policy(싱글톤: 강도 배율·대량 수령 경보 기준·동기화 아이템 배지 발급 값·잠긴 아이템 배지 최소값과 잠길 확률)
                 users ─1:N─ item_issue_log (아이템 배지 발급 기록, append-only)
                 users ─1:N─ sync_pending_items (동기화 중 가득 차 보류한 아이템 배지)
 
@@ -182,7 +182,9 @@ Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure
 | item_book_id | 소속 컬렉션 (구조 역전 — 컬렉션이 배지 목록을 갖는 게 아니라 배지가 소속 컬렉션을 가짐) |
 | drop_weight / drop_condition_json | 드랍엔진 판정용 |
 | valid_from / valid_until | 노출 기간 |
-| point_reward | 발급 시 지급 포인트 |
+| point_reward | 발급 시 지급 포인트. 잠긴 채 받은 아이템 배지는 주지 않는다(열린 상태가 될 때 한 번 준다, 연 때 주는 것은 3-3) |
+| always_locked | **잠김으로 만든 아이템 배지**(boolean, 기본 false, 마이그레이션 231). true면 어느 경로로 얻어도 늘 잠긴 채 나온다(`lock_reason = badge_locked`). 어드민 양식 입력은 2회 |
+| unlock_required | 여는 데 필요한 잼의 양(integer, nullable, 양수, 마이그레이션 231). NULL이면 그 등급의 최소값(`jam_policy.locked_min_*`)을 쓴다. 최소값보다 적게는 저장하지 않는다(앱 코드가 막는다, 2회). 개체에는 배정될 때 이 값이 고정된다 |
 | deleted_at | 소프트 삭제 |
 | background_color | 배지 상세화면 배경 테마 컬러(nullable). `background_image_url`이 없을 때만 렌더링에 쓰임. 어드민에서 이미지 업로드 시 평균 컬러 자동 프리필 + 수동 오버라이드 가능(20260818_003). TopNav·히어로카드·고정 배경 레이어에 실제 렌더링됨 |
 | background_shader_id | 배지 상세화면 배경 쉐이더 식별자(nullable). 어드민에 선택 UI는 있으나(20260818_003, placeholder 목록) **렌더링에는 미연결** — 값이 있어도 무시됨. `background_image_url` 도입(20260819_008) 이후 이 컬럼을 통한 실시간 쉐이더 렌더링 경로는 채택되지 않음 — 사실상 레거시 |
@@ -265,6 +267,23 @@ badges / item_books / tribes 세 테이블이 같은 배경 컬럼 세트를 갖
 - `destroyed_at`: **신규(2026-08-29)** — 개체 파괴(조합 소모/미픽업 만료) 소프트 삭제 시점.
   `assign_random_serial()`의 유니크 체크가 `destroyed_at IS NULL` 조건으로 좁혀져, 파괴된
   개체의 번호만 재사용 가능한 풀로 돌아간다.
+- **잠김 칸 5개 (JAM 2.0, 마이그레이션 231, 티켓 20261018_0051, 운영 로직 7.2·7.4·7.5절)** — 잠긴 아이템 배지는 따로 된 기능이 아니라 개체의 상태다.
+  전부 덧붙이기이고 기본값이 «열림»이라 옛 프로덕션 코드와 이미 있는 개체(적용 당시 1,343행, 잠긴 개체 0행)는 그대로다.
+  - `locked`(boolean, 기본 false): 잠긴 개체인가. 한 번 열면 false가 되고 다시 잠기지 않는다.
+  - `unlock_required`(integer, nullable): 여는 데 필요한 잼의 양. **배정될 때 고정**하고 이후 어드민이 배지 값을 바꿔도 바뀌지 않는다. 열린 채 받은 개체는 NULL.
+  - `unlock_filled`(integer, 기본 0): 지금까지 채운 양. 채우기는 3-3이 만든다.
+  - `lock_reason`(`badge_locked` 잠김으로 만든 배지 / `rolled` 잠긴 채 배정됨 / `designated` 운영자가 지정함): 연 뒤에도 이력으로 남는다.
+  - `unlocked_at`(timestamptz, nullable): 연 시각.
+  - CHECK `inventory_items_lock_consistent`: 잠긴 개체는 `unlock_required`·`lock_reason`이 있고 `unlock_filled <= unlock_required`, `unlocked_at`이 비어 있다.
+  - **지급 함수** `grant_inventory_item_locked(p_inventory_id, p_badge_id, p_obtained_by, p_expires_at, p_locked, p_lock_reason, p_unlock_required)`
+    (`SECURITY DEFINER`, `service_role`만 실행, 뒤 네 인자는 선택): 옛 `grant_inventory_item`을 그대로 부른 뒤 같은 트랜잭션에서 잠김 칸을 채운다.
+    `p_locked`가 true인데 까닭이나 필요한 양이 없으면 `{ok: false, reason: 'invalid_lock_args'}`다. 옛 지급 경로(믹스·미션 보상·픽업·퀘스트)는
+    옛 함수를 그대로 부르고 그 개체는 열린 채다. 동기화 발급(`syncIssueRun.ts`)과 보류 고르기(`resolve_sync_pending_items`)만 새 함수를 쓴다.
+  - **트리거** `trg_inventory_items_reject_locked`: 잠긴 개체의 `slotted_in`(컬렉션 꽂기)·`dropped_at` 갱신을 `locked_item_cannot_be_slotted`·
+    `locked_item_cannot_be_dropped` 오류로 거부한다. 장착·교체의 마지막 방어선이다. **유저 드랍(`create_user_drop`)은 `dropped_at`을 쓰지 않고
+    `inventory_id`만 비우므로 이 트리거가 막지 못한다** — 드랍은 `/api/drops`가 호출 전에 잠김을 확인해 거절한다(묶음 4가 잠긴 채 드랍을 열 때 함께 고친다).
+  - **잠긴 동안의 제한**(서버가 거절, 코드 `locked_item_not_allowed`): 컬렉션 장착·교체(`/api/itembooks/[id]/slot`), 믹스 재료(`combineRecipeAttempt`, 소각 전에 거절),
+    드랍(`/api/drops`, 묶음 4 전까지). 트리거 오류 메시지도 같은 코드로 바꿔 응답한다. 화면의 안내는 3-6이다.
 
 ### custody_events (신규, 2026-08-29 — 티켓 20260829_2101)
 `InventoryItem` 한 개체의 점유(custody) 변화 이력(append-only). `Minted`/`UserDrop`/
@@ -719,8 +738,10 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `sync_item_bonus_max_probability` | 0.25 | 보너스 한 번마다 확률의 상한(0~1) |
 | `sync_rarity_common` / `_rare` / `_epic` / `_mystic` | 84 / 13 / 2.5 / 0.5 | 동기화 등급 확률(퍼센트). 네 칸 합계는 100이고 DB 제약(`jam_policy_sync_rarity_sum_100`)이 지킨다 |
 | `common_streak_threshold` | 10 | Common이 이 횟수만큼 연속이면 다음은 Rare 이상(`user_drop_state.common_streak`, 동기화와 캡슐 합산) |
+| `locked_min_common` / `_rare` / `_epic` / `_mystic` | 30 / 60 / 120 / 240 | 잠긴 아이템 배지를 여는 데 필요한 양의 등급별 최소값. 배지에 값이 없을 때 이 값을 쓴다. 1 이상 정수 (마이그레이션 231, 티켓 20261018_0051, 운영 로직 7.4절) |
+| `locked_roll_probability` | 0.25 | 동기화·캡슐에서 나온 아이템 배지가 잠긴 채 배정될 확률(0~1). 0이면 무작위로는 절대 잠기지 않고 1이면 늘 잠긴다 |
 
-**아이템 발급 정책의 대체 규칙**(`getJamPolicy`): 위 10칸 가운데 하나라도 비정상이거나 등급 확률 합계가 100이 아니면(오차 0.001 미만은 허용) **10칸 전체**를 기본값으로 대체하고 로그를 한 번 남긴다. 한 칸만 바꾸면 합계가 어긋나기 때문이다. 강도·경보 칸은 이 대체와 상관없이 칸 단위로 대체한다. 판정은 순수 함수 `src/lib/drop-engine/syncIssue.ts`(개수 `rollItemCount`, 등급 `rollRarity`, 후보 `pickItemBadge`, 후보 없는 등급을 한 등급씩 내리는 `pickWithRarityFallback`)이고 정책을 인자로 받는다. 동기화는 잼 정산 뒤 `src/lib/drop-engine/syncIssueRun.ts`의 `issueSyncItemBadges`로 이 값들을 읽어 발급한다(규칙은 `BADGE_ENGINE_UNIFIED.md` §3.0). 소속 트라이브(`users.tribe_id`)가 없으면 아이템 배지만 건너뛴다.
+**아이템 발급 정책의 대체 규칙**(`getJamPolicy`): 위 10칸 가운데 하나라도 비정상이거나 등급 확률 합계가 100이 아니면(오차 0.001 미만은 허용) **10칸 전체**를 기본값으로 대체하고 로그를 한 번 남긴다. 한 칸만 바꾸면 합계가 어긋나기 때문이다. 강도·경보 칸과 잠김 칸 5개(`locked_*`)는 이 대체와 상관없이 칸 단위로 대체한다. 판정은 순수 함수 `src/lib/drop-engine/syncIssue.ts`(개수 `rollItemCount`, 등급 `rollRarity`, 후보 `pickItemBadge`, 후보 없는 등급을 한 등급씩 내리는 `pickWithRarityFallback`)이고 정책을 인자로 받는다. 동기화는 잼 정산 뒤 `src/lib/drop-engine/syncIssueRun.ts`의 `issueSyncItemBadges`로 이 값들을 읽어 발급한다(규칙은 `BADGE_ENGINE_UNIFIED.md` §3.0). 소속 트라이브(`users.tribe_id`)가 없으면 아이템 배지만 건너뛴다.
 
 **잼 정산 규칙**(운영 로직 4.2~4.5절, 16.3절. 코드 `src/lib/jam/`, 호출 `src/lib/strava/sync.ts`):
 - 계산: 잼 = 강도 배율 × 교통수단 구간을 뺀 움직인 시간(분, 내림). 하루 상한은 없다. 전기자전거(`EBikeRide`·`EMountainBikeRide`)는 `jam_activity_type`이 자전거 값이라 원본 종목(`strava_activities.source_meta.sportType`)으로 가벼움을 가린다. 종목 불일치로 걷기가 된 활동(`jam_activity_type='walking'`)은 가벼움이다. 걷기 30분 30, 러닝 30분 90, 자전거 30분 60, 전기자전거 30분 30.
@@ -742,7 +763,7 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `source_activity_id` | 동기화 경로의 대상 활동(`strava_activities.id` 값, FK 없음) |
 | `badge_id` / `rarity` | 준 배지와 등급. 배지가 지워지면 `badge_id`는 NULL |
 | `rolled_rarity` | 처음 뽑힌 등급(마이그레이션 228, NULL 허용). 뽑힌 등급에 후보가 없어 한 등급씩 내려 준 경우 `rarity`와 달라지며, 운영이 컨텐츠 채움 상태를 보는 근거다 |
-| `locked` | 잠긴 채 배정했는가. 잠김 구조는 묶음 3이라 지금은 항상 false |
+| `locked` | 잠긴 채 배정했는가. 동기화 발급이 개체를 지급할 때 정한 값(`assignLock`)과 같다(보류에서 받은 개체는 `resolve_sync_pending_items`가 보류의 값을 옮긴다). 티켓 20261018_0051 전의 기록은 모두 false |
 | `serial_number` | 개체의 일련번호 |
 
 인덱스: `(user_id, created_at DESC)`, 대상 활동(`source_activity_id`, NULL 제외).
@@ -755,14 +776,14 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `user_id` | 보류의 주인. 유저 삭제 시 함께 삭제(`ON DELETE CASCADE`) |
 | `source_activity_id` | 대상 활동(`strava_activities.id` 값, FK 없음) |
 | `badge_id` / `rarity` / `rolled_rarity` | 받을 배지와 등급, 처음 뽑힌 등급(`item_issue_log`와 같은 뜻) |
-| `locked` | 잠긴 채 배정했는가(지금은 항상 false) |
+| `locked` / `lock_reason` / `unlock_required` | 잠긴 채 배정했는가와 그 까닭, 여는 데 필요한 양(마이그레이션 231, 티켓 20261018_0051). 동기화 발급이 계획 단계에서 정한 값이고, 고르기로 받을 때 개체(`inventory_items`)로 그대로 옮긴다. 열린 보류는 `false`·NULL·NULL |
 | `status` | `pending`(고르기 대기) · `claimed`(고르기로 받음) · `discarded`(고르지 않아 받지 못함, 다시 받을 수 없음). CHECK로 세 값만 허용 |
 | `inventory_item_id` | 받았을 때 만들어진 개체(`inventory_items`). 개체가 지워지면 `ON DELETE SET NULL` |
 | `created_at` / `resolved_at` | 보류가 생긴 때 / 받거나 고르지 않기로 닫힌 때(`pending`이면 NULL) |
 
 인덱스: `(user_id, created_at)`, `status = 'pending'`인 행만.
 
-**`resolve_sync_pending_items(p_user_id uuid, p_chosen_ids uuid[]) → jsonb`** (`SECURITY DEFINER`, `service_role`만 실행): 인벤토리 행을 잠그고 → 고른 개수가 `LEAST(빈칸, 보류 수)`와 정확히 같은지 확인하고 → 고른 것을 `grant_inventory_item`으로 지급(`claimed`)하고 → 나머지 보류를 `discarded`로 닫고 → 지급마다 `item_issue_log`에 한 줄(경로 `sync`)을 남긴다. 한 단계라도 실패하면 전체가 되돌려진다. 성공은 `{ok: true, granted, discarded, itemIds}`, 거절은 `{ok: false, error}`(`inventory_not_found`·`no_pending`·`invalid_selection`·`wrong_count`+`expected`)다. 앱은 `lib/strava/pending-items.ts`가 호출하고 `/api/strava/pending-items`가 세션 유저에게만 연다.
+**`resolve_sync_pending_items(p_user_id uuid, p_chosen_ids uuid[]) → jsonb`** (`SECURITY DEFINER`, `service_role`만 실행): 인벤토리 행을 잠그고 → 고른 개수가 `LEAST(빈칸, 보류 수)`와 정확히 같은지 확인하고 → 고른 것을 `grant_inventory_item_locked`로 지급하며 보류의 잠김을 개체로 옮기고(`claimed`, 마이그레이션 231 이후. 229는 `grant_inventory_item`을 직접 불렀다) → 나머지 보류를 `discarded`로 닫고 → 지급마다 `item_issue_log`에 한 줄(경로 `sync`, `locked`는 보류의 값)을 남긴다. 한 단계라도 실패하면 전체가 되돌려진다. 성공은 `{ok: true, granted, discarded, itemIds}`, 거절은 `{ok: false, error}`(`inventory_not_found`·`no_pending`·`invalid_selection`·`wrong_count`+`expected`)다. 앱은 `lib/strava/pending-items.ts`가 호출하고 `/api/strava/pending-items`가 세션 유저에게만 연다.
 
 ### 9-3. 챕터 (JAM 2.0) — 마이그레이션 221, 티켓 20261016_2339
 운영 로직 12장 "챕터"가 근거다. 2026-10-17 공용 DB에 적용했다. 점수를 주는 연결·연출·소식·챕터 배지·프로필 표시는 묶음 5.
