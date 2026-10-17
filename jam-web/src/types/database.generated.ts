@@ -1053,6 +1053,105 @@ export type Database = {
           },
         ]
       }
+      jam_daily_earned: {
+        Row: {
+          amount: number
+          earned_on: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          earned_on: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          earned_on?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jam_daily_earned_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jam_transactions: {
+        Row: {
+          admin_reason_label: string | null
+          admin_reason_note: string | null
+          admin_user_id: string | null
+          amount: number
+          created_at: string
+          id: string
+          reason: string
+          source_activity_id: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_reason_label?: string | null
+          admin_reason_note?: string | null
+          admin_user_id?: string | null
+          amount: number
+          created_at?: string
+          id?: string
+          reason: string
+          source_activity_id?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_reason_label?: string | null
+          admin_reason_note?: string | null
+          admin_user_id?: string | null
+          amount?: number
+          created_at?: string
+          id?: string
+          reason?: string
+          source_activity_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jam_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jam_wallets: {
+        Row: {
+          balance: number
+          total_earned: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          total_earned?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          total_earned?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jam_wallets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_rank_snapshots: {
         Row: {
           captured_at: string
@@ -3391,6 +3490,35 @@ export type Database = {
       increment_daily_sync_count: {
         Args: { p_sync_date: string; p_user_id: string }
         Returns: number
+      }
+      jam_apply: {
+        Args: {
+          p_admin_reason_label?: string
+          p_admin_reason_note?: string
+          p_admin_user_id?: string
+          p_amount: number
+          p_earned_on?: string
+          p_reason: string
+          p_source_activity_id?: string
+          p_user_id: string
+        }
+        Returns: {
+          admin_reason_label: string | null
+          admin_reason_note: string | null
+          admin_user_id: string | null
+          amount: number
+          created_at: string
+          id: string
+          reason: string
+          source_activity_id: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "jam_transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       jsonb_as_array: { Args: { p_value: Json }; Returns: Json }
       jsonb_merge_sum: {
