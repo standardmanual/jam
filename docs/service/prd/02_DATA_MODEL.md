@@ -122,6 +122,20 @@ RLS는 켜고 본인 행 SELECT만 허용, INSERT·UPDATE·DELETE 정책은 없�
 ### strava_connections
 원안과 거의 동일. `access_token`/`refresh_token` 암호화 저장, `backfill_completed` 유지.
 
+**연결 상태 세 칸**(마이그레이션 225, 티켓 20261017_1422). 모두 덧붙인 칸이라 옛 칸의 뜻은 그대로고, 옛 `users.initial_sync_done`도 바꾸지 않는다.
+- `first_sync_pending` (boolean, NOT NULL, 기본 false): true인 연결은 `users.initial_sync_done`과 상관없이 첫 동기화 규칙(인정 활동 가운데 최근 1건)을 쓰고, 동기화 조회 커서를 `strava_activities`의 최신 시각에서 읽지 않는다(이전 계정의 활동 이력에 끌려가지 않게). 인정 활동을 정산한 동기화가 끝나면 false로 돌아간다. 정산이 0건이면 true로 남는다. 다른 Strava 계정을 연결해 새 행이 생길 때만 콜백이 true로 만든다.
+- `disconnected_at` (timestamptz, NULL 허용): NULL이면 연결 중이고 값이 있으면 끊김이다.
+- `disconnect_reason` (text, NULL 허용): `token_refresh_failed`(토큰 갱신 실패) · `token_revoked`(Strava가 401로 철회를 알림) · `user_disconnected`(유저가 직접 끊음).
+
+**연결 상태 규칙**(`src/lib/strava/connection-state.ts`가 판정 한 곳이다): 행이 없으면 `none`, 행이 있고 `disconnected_at`이 NULL이면 `connected`, 값이 있으면 `disconnected`. 끊김 행은 동기화하지 않는다 — 수동 동기화 API(`POST /api/strava/sync`)는 500이 아니라 409(`code: strava_disconnected`, `connectionState: disconnected`)로 알린다. 토큰 갱신 실패와 활동 조회의 401은 끊김으로 저장하고 `strava_disconnected` 소식을 하루 한 번 보낸다. 끊긴 행의 기록·배지·잼·포인트는 다른 테이블에 있어 그대로 남는다.
+
+**연결 규칙**(`GET /api/strava/callback`): 한 JAM 계정에는 연결이 하나뿐이다. 토큰 교환 뒤 `strava_athlete_id`로 기존 연결을 먼저 찾는다.
+- 다른 JAM 계정에 이미 연결된 Strava 계정(끊김 포함)이면 방금 받은 토큰을 저장하지 않고 `/profile?strava=duplicate`로 보낸다. 기존 행의 `user_id`는 덮어쓰이지 않는다(옛 upsert는 덮어썼다).
+- 같은 유저의 같은 Strava 계정이면 토큰만 갱신하고 끊김 칸을 지운다. `first_sync_pending`과 `last_synced_at`은 그대로라 마지막 동기화 뒤부터 이어서 가져온다.
+- 같은 유저가 다른 Strava 계정을 연결하면 새 행을 `first_sync_pending=true`로 만들고 이 유저의 이전 연결 행을 지운다.
+
+**연결 끊기**(`POST /api/strava/disconnect`): Strava 앱 연결을 해제(`POST /oauth/deauthorize`)하고 — 실패해도 계속한다 — 저장된 토큰을 지운 뒤 `user_disconnected`로 끊김을 저장한다. 행은 지우지 않는다. 연결 행이 없으면 404.
+
 ### strava_sync_failures
 Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure_type`(`token_refresh_failed`·`rate_limited`·`strava_api_error`·`drop_attempt_failed`), `error_message`, `occurred_at`. `syncStravaActivities()`의 실패 경로가 남기며, 기록이 실패해도 동기화 자체는 막지 않는다. `drop_attempt_failed`는 동기화 중 드랍 시도(`tryItemDrop`)가 던진 오류를 활동 단위로 남기는 값이다 — 동기화 자체는 성공하고 그 활동만 드랍 기회가 복구되지 않으므로, `error_message`에 `stravaId=<값>: <메시지>`를 적는다. 어드민 주간 집계(`/api/admin/kpi/weekly`)의 원천이다. `stravaSyncFailures`는 `drop_attempt_failed`를 제외한 건수이고, 그 유형의 건수는 `dropAttemptFailures`가 따로 센다. RLS를 켜고 정책을 두지 않아 service_role만 접근한다. `user_id`는 원인 추적용이고 집계 응답에는 넣지 않는다.
 
