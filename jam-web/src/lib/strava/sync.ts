@@ -10,6 +10,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { decrypt, encrypt } from '@/lib/utils'
 import { getAllActivities, getActivityStreams, refreshStravaToken, type ActivityStreams } from '@/lib/strava/api'
+import {
+  StravaDisconnectedError,
+  isStravaRevokedError,
+  markStravaDisconnected,
+  type StravaDisconnectReason,
+} from '@/lib/strava/connection-state'
 import { qualifyActivity, MIN_QUALIFIED_MOVING_TIME_SEC, type FilterReason, type SourceMeta } from '@/lib/strava/qualification'
 import { detectAndExcludeTransitSegments, needsTransitStreams } from '@/lib/strava/transitSegment'
 import { applyTypeMismatch } from '@/lib/strava/typeMismatch'
@@ -1301,6 +1307,35 @@ export async function processFetchedActivities(
 }
 
 /**
+ * 연결이 끊겼음을 알리고 저장한 뒤, 호출부가 던질 `StravaDisconnectedError`를 돌려준다
+ * (토큰 갱신 실패·Strava 401 철회 공통, 티켓 20261017_1422).
+ *
+ * 소식 #40(Strava 끊김) — 티켓 20260824_019
+ * 갱신 실패는 사실상 서비스 중단(배지 발급이 완전히 멈춘다)인데 현재 유저가
+ * 알 방법이 없다. 이 기능 도입의 가장 실용적인 명분이다.
+ *
+ * group_key를 KST 하루 단위로 둔다: 스펙상 #40은 "묶지 않는 소식"이지만,
+ * 연결이 끊긴 상태에서는 동기화를 누를 때마다 이 지점을 지나 같은 소식이
+ * 무한히 쌓인다. 하루 1건이면 "개별 소식"의 성격은 유지하면서 폭주만 막는다.
+ * (끊김 저장 뒤에는 동기화가 시작 전에 멈추므로 이 지점을 다시 지나지 않는다.)
+ */
+async function recordStravaDisconnect(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string,
+  reason: StravaDisconnectReason,
+  cause: unknown
+): Promise<StravaDisconnectedError> {
+  await createNotification({
+    userId,
+    type: 'strava_disconnected',
+    groupKey: dailyGroupKey('strava_disconnected'),
+    mode: 'once',
+  })
+  await markStravaDisconnected(userId, reason, { supabase })
+  return new StravaDisconnectedError(reason, { cause })
+}
+
+/**
  * 특정 유저의 Strava 활동을 동기화하고 배지를 평가합니다.
  * @returns synced: 동기화된 활동 수, badges: 신규 발급된 배지 수,
  *          earnedBadges: 이번에 획득한 배지 상세(획득 순서. 최대 EARNED_BADGE_DETAIL_LIMIT건.
@@ -1336,6 +1371,12 @@ export async function syncStravaActivities(
     throw new Error(`[syncStravaActivities] Strava 연동 정보 없음 — userId: ${userId}`)
   }
 
+  // 끊긴 연결은 동기화하지 않는다 — 토큰 갱신 실패·철회·유저가 끊은 경우 모두 같은 «끊김»이다
+  // (티켓 20261017_1422). 수동 경로(/api/strava/sync)가 이 오류를 409로 알린다.
+  if (connection.disconnected_at) {
+    throw new StravaDisconnectedError(connection.disconnect_reason)
+  }
+
   // 2. 토큰 복호화
   let accessToken = await decrypt(connection.access_token)
   const refreshToken = await decrypt(connection.refresh_token)
@@ -1347,26 +1388,14 @@ export async function syncStravaActivities(
     try {
       refreshed = await refreshStravaToken(refreshToken)
     } catch (err) {
-      // 소식 #40(Strava 끊김) — 티켓 20260824_019
-      // 갱신 실패는 사실상 서비스 중단(배지 발급이 완전히 멈춘다)인데 현재 유저가
-      // 알 방법이 없다. 이 기능 도입의 가장 실용적인 명분이다.
-      //
-      // group_key를 KST 하루 단위로 둔다: 스펙상 #40은 "묶지 않는 소식"이지만,
-      // 연결이 끊긴 상태에서는 동기화를 누를 때마다 이 지점을 지나 같은 소식이
-      // 무한히 쌓인다. 하루 1건이면 "개별 소식"의 성격은 유지하면서 폭주만 막는다.
-      await createNotification({
-        userId,
-        type: 'strava_disconnected',
-        groupKey: dailyGroupKey('strava_disconnected'),
-        mode: 'once',
-      })
       await recordStravaSyncFailure(
         supabase,
         userId,
         'token_refresh_failed',
         err instanceof Error ? err.message : String(err)
       )
-      throw err
+      // 갱신 실패 = 연결 끊김 — 끊김을 저장하고 «끊김» 오류로 던진다(티켓 20261017_1422)
+      throw await recordStravaDisconnect(supabase, userId, 'token_refresh_failed', err)
     }
     accessToken = refreshed.access_token
 
@@ -1397,13 +1426,19 @@ export async function syncStravaActivities(
   //    overlap보다 길 때" 성공(0건) 동기화가 커서를 활동 시작 시각보다 앞으로 밀어내
   //    그 활동을 영구 누락시킨다 (티켓 20260922_2207 실측). 행이 없는 유저(연동만 하고
   //    활동 없음·어드민 초기화 직후)는 지금처럼 after 없이 최신 페이지 1회 조회한다.
-  const { data: latestActivity, error: latestActivityError } = await supabase
-    .from('strava_activities')
-    .select('start_date')
-    .eq('user_id', userId)
-    .order('start_date', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  // 첫 동기화 대기 중(다른 Strava 계정으로 새로 연결한 행)이면 커서를 읽지 않는다 — 이 유저의
+  // strava_activities에는 이전 계정의 활동이 남아 있어, 그 최신 시각을 커서로 쓰면 새 계정의
+  // 오래된 활동이 조회에서 빠진다(티켓 20261017_1422).
+  const firstSyncPending = connection.first_sync_pending === true
+  const { data: latestActivity, error: latestActivityError } = firstSyncPending
+    ? { data: null, error: null }
+    : await supabase
+        .from('strava_activities')
+        .select('start_date')
+        .eq('user_id', userId)
+        .order('start_date', { ascending: false })
+        .limit(1)
+        .maybeSingle()
   if (latestActivityError) {
     console.error(
       `[syncStravaActivities] 커서 조회 실패 — userId: ${userId}:`,
@@ -1438,7 +1473,10 @@ export async function syncStravaActivities(
     .select('initial_sync_done')
     .eq('id', userId)
     .maybeSingle()
-  const isFirstSync = !(userRow as { initial_sync_done?: boolean } | null)?.initial_sync_done
+  // 연결의 first_sync_pending이 true면 users.initial_sync_done과 상관없이 첫 동기화 규칙을 쓴다
+  // (다른 Strava 계정 연결, 티켓 20261017_1422). 옛 initial_sync_done의 뜻은 바꾸지 않는다.
+  const isFirstSync =
+    firstSyncPending || !(userRow as { initial_sync_done?: boolean } | null)?.initial_sync_done
 
   // 4-3. 실제 조회·처리는 여기서부터 — 잠금은 이미 선점됐으므로, 이 구간에서
   // 예외가 나면(Strava API 오류, 서버리스 강제 종료 등) last_synced_at을 잠금 이전
@@ -1469,6 +1507,19 @@ export async function syncStravaActivities(
       isFirstSync,
       'sync'
     )
+
+    // 인정 활동을 정산한 동기화가 끝나면 첫 동기화 대기를 푼다. 정산이 0건이면 그대로 두고
+    // 다음 동기화에서 다시 찾는다(운영 로직 3.4절). 실패해도 동기화 결과는 그대로 돌려준다.
+    if (firstSyncPending && settledCount >= 1) {
+      const { error: pendingError } = await supabase
+        .from('strava_connections')
+        .update({ first_sync_pending: false })
+        .eq('user_id', userId)
+        .eq('strava_athlete_id', connection.strava_athlete_id)
+      if (pendingError) {
+        console.error(`[syncStravaActivities] first_sync_pending 해제 실패 (userId: ${userId}):`, pendingError)
+      }
+    }
 
     // 온보딩 퀘스트 완료 판정(T6) — 정산한 인정 활동이 1건 이상일 때만 시도한다.
     // 0건이면 호출하지 않는다(불필요한 조회 생략). 절대 throw하지 않으므로 동기화 흐름에
@@ -1515,6 +1566,10 @@ export async function syncStravaActivities(
       .eq('last_synced_at', lockNow) // 그 사이 다른 요청이 갱신했다면 덮어쓰지 않음
     if (rollbackError) {
       console.error(`[syncStravaActivities] 롤백 실패 (userId: ${userId}):`, rollbackError)
+    }
+    // Strava가 401로 철회를 알리면 토큰 갱신 실패와 같은 «끊김»이다(티켓 20261017_1422)
+    if (isStravaRevokedError(err)) {
+      throw await recordStravaDisconnect(supabase, userId, 'token_revoked', err)
     }
     throw err
   }
