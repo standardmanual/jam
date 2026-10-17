@@ -55,6 +55,11 @@ code:
 [잼]            users ─1:1─ jam_wallets ─1:N─ jam_transactions (append-only 원장)
                 users ─1:N─ jam_daily_earned (KST 날짜별 모은 양)
 
+[챕터]          users ─1:1─ user_chapters (지금 챕터·누적 점수)
+                users ─1:N─ chapter_score_events (점수 기록) ──> chapter_score_rules (활동별 점수 규칙)
+                users ─1:N─ chapter_ups (오른 기록) ──> chapter_definitions (챕터별 필요 점수)
+                tribes ─1:N─ chapter_names (트라이브별 챕터 이름) ──> chapter_definitions
+
 [소셜]          users ─N:M(팔로우)─ users (user_follows)
                 user_activity_feed (배지/드랍/미션 이벤트 통합 피드)
 
@@ -626,6 +631,33 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 
 > 가진 양 변경은 전부 `jam_apply(p_user_id, p_amount, p_reason, p_source_activity_id, p_admin_user_id, p_admin_reason_label, p_admin_reason_note, p_earned_on)` RPC(SECURITY DEFINER, service_role 전용)로만 원자 처리한다. 가진 양을 넘는 차감과 사유별 허용 부호 위반은 거절하고, 이미 정산된 활동의 재정산은 오류 없이 기존 원장 줄을 돌려준다.
 > 「모은 양」(`total_earned`, `jam_daily_earned`)은 활동 정산만 늘린다. 운영자 지급·회수와 채움은 가진 양만 바꾼다(운영 로직 4.5절).
+
+### 9-3. 챕터 (JAM 2.0) — 마이그레이션 221, 티켓 20261016_2339
+운영 로직 12장 "챕터"가 근거다. 2026-10-17 기준 SQL 파일만 작성됨(적용 전). 점수를 주는 연결·연출·소식·챕터 배지·프로필 표시는 묶음 5.
+
+#### chapter_definitions
+`chapter_no`(1부터, PK)와 `required_score`(오르는 데 필요한 누적 점수). 초기값 10개: 챕터 1=0(퀘스트 완료), 2~10=1,000 / 2,300 / 3,800 / 5,700 / 8,500 / 11,500 / 15,000 / 19,000 / 23,000. 챕터는 행을 더해 늘린다. 로그인 유저 모두 SELECT(다음 챕터까지 게이지).
+
+#### chapter_names
+`(tribe_id, chapter_no)` 복합 PK, `name`은 비어도 된다. 트라이브 다섯 개가 등록되지 않아 초기 행이 없다. 로그인 유저 모두 SELECT.
+
+#### chapter_score_rules
+`activity_kind`(PK), `points_per_unit`, `weekly_cap`(NULL=상한 없음), `over_cap_ratio`(기본 0.5). 활동 종류는 이 테이블의 행이라 새 종류는 행을 더하면 된다. 초기값: `jam_earned` 1점/단위(주 300점 상한, 초과분 절반), `capsule_open` 20, `locked_item_badge_open` 10, `badge_receive` 10, `collection_complete_common`/`rare`/`epic`/`mystic` 100/200/400/800, `mix_success` 20, `mission_complete` 50, `drop` 5, `pickup` 5. 클라이언트 정책이 없어 서버만 읽는다.
+
+#### user_chapters
+유저당 1개(첫 점수·시작 때 생성). `chapter_no`(NULL=퀘스트 전), `total_score`. 본인만 SELECT.
+
+#### chapter_score_events
+점수 기록(append-only). `activity_kind`, `source_id`(호출부가 정한 UUID, FK 없음), `occurred_on`(활동한 날 KST), `unit_amount`(호출된 양), `raw_score`(상한 적용 전), `counted_score`(실제로 센 점수). `UNIQUE (activity_kind, source_id)`로 같은 활동은 한 번만 센다. 본인만 SELECT.
+
+#### chapter_ups
+오른 기록. `(user_id, chapter_no)` 복합 PK, `reached_at`. 한 번에 여러 챕터를 넘으면 챕터마다 한 줄. 본인만 SELECT.
+
+> 점수·챕터 변경은 전부 두 RPC(SECURITY DEFINER, service_role 전용)로만 처리한다.
+> - `chapter_add_score(p_user_id, p_activity_kind, p_source_id, p_amount, p_occurred_on)`: 점수 계산(주 월~일은 활동한 날 기준, 상한 안은 그대로·넘는 부분은 `over_cap_ratio`, 소수점 내림) + 점수 기록 + 누적 점수 반영 + 챕터가 있으면 올릴 수 있는 만큼 상승. 같은 `(활동 종류, 원천)`은 오류 없이 이미 센 결과를 돌려주고, 미래 날짜는 거절한다. 반환: `score_added`, `current_chapter`, `reached_chapters`.
+> - `chapter_start(p_user_id)`: 챕터가 비어 있으면 챕터 1로 만들고 쌓인 점수로 오를 챕터까지 한 번에 올린다. 이미 챕터가 있으면 아무것도 하지 않는다. 같은 모양을 돌려준다(`score_added`=0).
+> - 챕터는 내려가지 않는다. 퀘스트 전 점수는 버리지 않고 쌓았다가 챕터 1 때 함께 계산한다(가정, SQL 실행 승인 전 재확인).
+> - 점수 가산을 부를지 말지(챕터 배지·포인트 조건 배지 제외, 자기 드랍 줍기 제외, 이용 정지 중 차단)는 부르는 쪽 책임이다.
 
 ---
 
