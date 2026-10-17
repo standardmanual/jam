@@ -2684,6 +2684,70 @@ export type Database = {
           },
         ]
       }
+      sync_pending_items: {
+        Row: {
+          badge_id: string
+          created_at: string
+          id: string
+          inventory_item_id: string | null
+          locked: boolean
+          rarity: Database["public"]["Enums"]["badge_rarity"]
+          resolved_at: string | null
+          rolled_rarity: Database["public"]["Enums"]["badge_rarity"] | null
+          source_activity_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          locked?: boolean
+          rarity: Database["public"]["Enums"]["badge_rarity"]
+          resolved_at?: string | null
+          rolled_rarity?: Database["public"]["Enums"]["badge_rarity"] | null
+          source_activity_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          locked?: boolean
+          rarity?: Database["public"]["Enums"]["badge_rarity"]
+          resolved_at?: string | null
+          rolled_rarity?: Database["public"]["Enums"]["badge_rarity"] | null
+          source_activity_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_pending_items_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sync_pending_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sync_pending_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       theme_presets: {
         Row: {
           created_at: string
@@ -4014,6 +4078,10 @@ export type Database = {
       }
       release_inventory_slots: {
         Args: { p_count: number; p_inventory_id: string }
+        Returns: Json
+      }
+      resolve_sync_pending_items: {
+        Args: { p_chosen_ids: string[]; p_user_id: string }
         Returns: Json
       }
       set_inventory_max_slots: {
