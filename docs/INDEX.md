@@ -21,6 +21,7 @@ status: active
 - [BADGE_ENGINE_UNIFIED.md](service/badge-engine/BADGE_ENGINE_UNIFIED.md) — 액티비티배지 엔진과 아이템배지 드랍 엔진의 배지 획득·드랍 판정 로직과 두 엔진의 역할 분담을 정의한 통합 문서다.
 - [CONDITION_JSON_SPEC.md](service/badge-engine/CONDITION_JSON_SPEC.md) — 배지 조건(`condition_json`)에 쓸 수 있는 모든 필드의 타입, 의미, 평가 방식을 정의한 단일 출처 문서다.
 - [ACTIVITY_BADGES.md](service/content/ACTIVITY_BADGES.md) — v5 액티비티배지의 조건·설명과 설계 원칙, 시딩하지 않은 항목, 발급되지 않는 항목을 정리한 목록이다(정본은 DB).
+- [ITEMBOOK_TIERS.md](service/content/ITEMBOOK_TIERS.md) — 컬렉션 4등급 구조(tier_mode)를 쓰는 컬렉션의 배지 이름 맞추기 규칙과, tier_mode를 켜기 전에 꽂힌 등급 분포를 점검하는 절차를 컨텐츠 입력자용으로 정리한 문서다.
 - [OPS_PATTERNS.md](service/content/OPS_PATTERNS.md) — 라이브 운영 에이전트가 매주 새 운영을 기획할 때 쓰는 운영 패턴 18개의 원고다. 06 플랜의 채택 아이디어 63개를 작동 원리로 묶었다. 2026-10-07 운영툴(DB)에 입력했고, 지금은 입력일 기준 사본이다.
 - [v5_badge_name_split.md](service/content/v5_badge_name_split.md) — v5 액티비티배지에서 종목마다 계열 이름을 다르게 짓는 이름 분화의 근거, 후보안, 승인 후 검증 결과를 기록한 문서다.
 - [ADMIN_PRD.md](service/prd/admin-ui/ADMIN_PRD.md) — 어드민의 배지·지점(POI)·컬렉션 관리, 시뮬레이터, 유저 조회 기능과 화면 구성, 기술 스펙을 정의한 어드민 PRD다.
@@ -65,6 +66,7 @@ status: active
 **현재 서비스 (service)**
 
 - [ACTIVITY_BADGES.md](service/content/ACTIVITY_BADGES.md) — v5 액티비티배지의 조건·설명과 설계 원칙, 시딩하지 않은 항목, 발급되지 않는 항목을 정리한 목록이다(정본은 DB).
+- [ITEMBOOK_TIERS.md](service/content/ITEMBOOK_TIERS.md) — 컬렉션 4등급 구조(tier_mode)를 쓰는 컬렉션의 배지 이름 맞추기 규칙과, tier_mode를 켜기 전에 꽂힌 등급 분포를 점검하는 절차를 컨텐츠 입력자용으로 정리한 문서다.
 - [v5_badge_name_split.md](service/content/v5_badge_name_split.md) — v5 액티비티배지에서 종목마다 계열 이름을 다르게 짓는 이름 분화의 근거, 후보안, 승인 후 검증 결과를 기록한 문서다.
 
 **JAM 2.0 (plan/jam2)**
@@ -85,6 +87,7 @@ status: active
 
 **현재 서비스 (service)**
 
+- [ITEMBOOK_TIERS.md](service/content/ITEMBOOK_TIERS.md) — 컬렉션 4등급 구조(tier_mode)를 쓰는 컬렉션의 배지 이름 맞추기 규칙과, tier_mode를 켜기 전에 꽂힌 등급 분포를 점검하는 절차를 컨텐츠 입력자용으로 정리한 문서다.
 - [TRIBES.md](service/content/TRIBES.md) — 세계관 트라이브의 캐치프레이즈·컬렉션·아이템배지, 인접 그래프, 소재·시간대·POI 유형 매핑, 데이터 소스를 정리한 목록이다.
 - [PRD.md](service/prd/home-feed/PRD.md) — 홈피드(홈 「투데이」) 화면 구성·카드 노출 규칙·노출 태그·템플릿·카드 모양·레이아웃·이동 목적지·기사 상세·계측을 코드 기준으로 정의하는 정본이다.
 
@@ -784,6 +787,7 @@ status: active
 
 - [ACTIVITY_BADGES.md](service/content/ACTIVITY_BADGES.md) — v5 액티비티배지의 조건·설명과 설계 원칙, 시딩하지 않은 항목, 발급되지 않는 항목을 정리한 목록이다(정본은 DB).
 - [COMBINE_RECIPES.md](service/content/COMBINE_RECIPES.md) — 믹스 결과의 두 갈래, 레시피 슬롯 구조, 실패 처리, 등록 레시피 현황과 레시피 결과물의 범위를 정리한 정책 문서다.
+- [ITEMBOOK_TIERS.md](service/content/ITEMBOOK_TIERS.md) — 컬렉션 4등급 구조(tier_mode)를 쓰는 컬렉션의 배지 이름 맞추기 규칙과, tier_mode를 켜기 전에 꽂힌 등급 분포를 점검하는 절차를 컨텐츠 입력자용으로 정리한 문서다.
 - [OPS_PATTERNS.md](service/content/OPS_PATTERNS.md) — 라이브 운영 에이전트가 매주 새 운영을 기획할 때 쓰는 운영 패턴 18개의 원고다. 06 플랜의 채택 아이디어 63개를 작동 원리로 묶었다. 2026-10-07 운영툴(DB)에 입력했고, 지금은 입력일 기준 사본이다.
 - [POI.md](service/content/POI.md) — 지점(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
 - [SPECIAL_DAYS.md](service/content/SPECIAL_DAYS.md) — 특일정보 API가 조회하는 2026년 공휴일·24절기·기념일·잡절 전체 목록과, 어떤 날에 어떤 노출 태그를 켤지 사용자가 고르는 선택표다.
