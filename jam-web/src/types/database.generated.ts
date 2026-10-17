@@ -1281,6 +1281,67 @@ export type Database = {
           },
         ]
       }
+      item_issue_log: {
+        Row: {
+          badge_id: string | null
+          created_at: string
+          id: string
+          inventory_item_id: string | null
+          locked: boolean
+          rarity: Database["public"]["Enums"]["badge_rarity"] | null
+          route: string
+          serial_number: number | null
+          source_activity_id: string | null
+          user_id: string
+        }
+        Insert: {
+          badge_id?: string | null
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          locked?: boolean
+          rarity?: Database["public"]["Enums"]["badge_rarity"] | null
+          route: string
+          serial_number?: number | null
+          source_activity_id?: string | null
+          user_id: string
+        }
+        Update: {
+          badge_id?: string | null
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          locked?: boolean
+          rarity?: Database["public"]["Enums"]["badge_rarity"] | null
+          route?: string
+          serial_number?: number | null
+          source_activity_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_issue_log_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_issue_log_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_issue_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jam_daily_earned: {
         Row: {
           amount: number
@@ -1309,6 +1370,7 @@ export type Database = {
       }
       jam_policy: {
         Row: {
+          common_streak_threshold: number
           id: number
           intensity_hard: number
           intensity_light: number
@@ -1316,9 +1378,19 @@ export type Database = {
           mass_earn_alert_multiplier: number
           mass_earn_alert_no_history_amount: number
           mass_earn_alert_weeks: number
+          sync_item_bonus_jam_divisor: number
+          sync_item_bonus_max_probability: number
+          sync_item_bonus_rolls: number
+          sync_item_guaranteed: number
+          sync_item_guaranteed_hiking: number
+          sync_rarity_common: number
+          sync_rarity_epic: number
+          sync_rarity_mystic: number
+          sync_rarity_rare: number
           updated_at: string
         }
         Insert: {
+          common_streak_threshold?: number
           id?: number
           intensity_hard?: number
           intensity_light?: number
@@ -1326,9 +1398,19 @@ export type Database = {
           mass_earn_alert_multiplier?: number
           mass_earn_alert_no_history_amount?: number
           mass_earn_alert_weeks?: number
+          sync_item_bonus_jam_divisor?: number
+          sync_item_bonus_max_probability?: number
+          sync_item_bonus_rolls?: number
+          sync_item_guaranteed?: number
+          sync_item_guaranteed_hiking?: number
+          sync_rarity_common?: number
+          sync_rarity_epic?: number
+          sync_rarity_mystic?: number
+          sync_rarity_rare?: number
           updated_at?: string
         }
         Update: {
+          common_streak_threshold?: number
           id?: number
           intensity_hard?: number
           intensity_light?: number
@@ -1336,6 +1418,15 @@ export type Database = {
           mass_earn_alert_multiplier?: number
           mass_earn_alert_no_history_amount?: number
           mass_earn_alert_weeks?: number
+          sync_item_bonus_jam_divisor?: number
+          sync_item_bonus_max_probability?: number
+          sync_item_bonus_rolls?: number
+          sync_item_guaranteed?: number
+          sync_item_guaranteed_hiking?: number
+          sync_rarity_common?: number
+          sync_rarity_epic?: number
+          sync_rarity_mystic?: number
+          sync_rarity_rare?: number
           updated_at?: string
         }
         Relationships: []
