@@ -854,7 +854,9 @@ FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기
 - **보류 받기(`POST /api/strava/pending-items`)도 막는다**(403). 보류 조회(GET)와 내 기록 보기는 막지 않는다.
 - 조회가 실패하면 «정지 아님»으로 보지 않고 던진다(동기화·받기를 하지 않는다).
 - 캡슐·믹스·드랍·픽업·미션 참가는 각 묶음이 같은 `assertNotSuspended`를 연결한다. 정지 유저를 미션 순위에서 빼는 일은 묶음 5가 한다.
-- 어드민 «제재» 탭, 유저 목록의 제재 표시, 홈 상단 배너(정지 사실·까닭·문의 방법)는 이 티켓 2회다.
+- **어드민 «이용 정지» 탭**(`/admin/abusing?tab=suspensions`)이 정지를 걸고 푼다: `lib/suspension/suspension-write.ts`의 `suspendUser`(까닭 앞뒤 공백 제거 뒤 빈 값이면 `reason_required`, 없는 유저 `user_not_found`, 진행 중 정지가 있으면 부분 유니크 위반을 `already_suspended`)와 `liftSuspension`(진행 중 줄의 `lifted_at`·`lifted_by`·`lift_note`를 채움, 이미 풀렸거나 없으면 `not_suspended`). API는 `/api/admin/suspensions`(GET 목록, POST 걸기)·`/api/admin/suspensions/[id]`(PATCH 풀기)이며 어드민만 부를 수 있다(400·404·409). 이력 조회는 `lib/admin/suspension-list.ts`다.
+- **유저 목록의 제재 표시·«제재 중» 필터와 어드민 홈 «유효 제재 수»**는 `user_suspensions`의 진행 중 줄(`lifted_at IS NULL`)을 기준으로 한다. 옛 `user_shadow_bans`는 읽지 않는다.
+- **홈 상단 배너**: 정지 중인 유저의 홈 맨 위(인사말 줄 위)에 사유 전문·정지일·결과 설명·«문의하기»(→ `/voc`)를 그린다(`app/(main)/SuspensionBanner.tsx`, 값은 홈 page.tsx가 `lib/suspension/home-banner.ts`로 읽는다). 조회가 실패하면 홈은 열고 배너만 뺀다. 동기화·보류 받기가 403 `user_suspended`를 받으면 일반 실패가 아니라 `d.suspension.syncBlocked`·`pendingBlocked` 안내 토스트(info)를 낸다. 정지 중에도 로그인, 프로필·배지·인벤토리·컬렉션 보기, 문의는 막지 않는다.
 
 ---
 

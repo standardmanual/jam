@@ -4,9 +4,9 @@ import {
   applyUserListFilters,
   applyUserListSort,
   isEmptyBanFilter,
-  isBanActive,
-  fetchActiveBanUserIds,
-  BAN_FETCH_LIMIT,
+  activeSuspensionOf,
+  fetchSuspendedUserIds,
+  SUSPENSION_FETCH_LIMIT,
   toUserListRow,
   DEFAULT_USER_LIST_SORT,
   type UserListQuery,
@@ -117,77 +117,101 @@ describe('applyUserListSort', () => {
   })
 })
 
-describe('제재 상태 판정', () => {
-  const now = new Date('2026-09-24T00:00:00Z')
+describe('이용 정지 상태 판정', () => {
+  const baseRow = {
+    id: 'u1',
+    email: 'a@x.com',
+    username: null,
+    display_name: null,
+    created_at: '2026-01-01T00:00:00Z',
+    is_admin: false,
+    onboarding_completed_at: null,
+    tribe: [{ name: '로드' }],
+  }
 
-  it('만료 시각이 없거나 아직 지나지 않았으면 제재 중이다', () => {
-    expect(isBanActive({ ban_level: 'hard', expires_at: null }, now)).toBe(true)
-    expect(isBanActive({ ban_level: 'soft', expires_at: '2026-10-01T00:00:00Z' }, now)).toBe(true)
+  it('푼 시각이 없는 줄이 있으면 정지 중이다', () => {
+    expect(activeSuspensionOf([{ suspended_at: '2026-10-01T00:00:00Z', lifted_at: null }])).toEqual({
+      suspended_at: '2026-10-01T00:00:00Z',
+      lifted_at: null,
+    })
   })
 
-  it('만료됐거나 제재가 없으면 제재 중이 아니다', () => {
-    expect(isBanActive({ ban_level: 'soft', expires_at: '2026-09-01T00:00:00Z' }, now)).toBe(false)
-    expect(isBanActive(null, now)).toBe(false)
+  it('이력이 여러 줄이어도 푼 줄은 건너뛰고 진행 중인 줄을 찾는다', () => {
+    const found = activeSuspensionOf([
+      { suspended_at: '2026-08-01T00:00:00Z', lifted_at: '2026-08-05T00:00:00Z' },
+      { suspended_at: '2026-10-01T00:00:00Z', lifted_at: null },
+    ])
+    expect(found?.suspended_at).toBe('2026-10-01T00:00:00Z')
   })
 
-  it('행 변환은 임베드가 배열이어도 첫 값을 읽고 만료된 제재는 비운다', () => {
-    const row = toUserListRow(
-      {
-        id: 'u1',
-        email: 'a@x.com',
-        username: null,
-        display_name: null,
-        created_at: '2026-01-01T00:00:00Z',
-        is_admin: false,
-        onboarding_completed_at: null,
-        tribe: [{ name: '로드' }],
-        ban: [{ ban_level: 'soft', expires_at: '2026-09-01T00:00:00Z' }],
-      },
-      now
-    )
+  it('모두 풀렸거나 이력이 없으면 정지 중이 아니다', () => {
+    expect(activeSuspensionOf([{ suspended_at: '2026-08-01T00:00:00Z', lifted_at: '2026-08-05T00:00:00Z' }])).toBeNull()
+    expect(activeSuspensionOf([])).toBeNull()
+    expect(activeSuspensionOf(null)).toBeNull()
+  })
+
+  it('행 변환은 정지 중이면 정지 여부와 건 시각을 채운다', () => {
+    const row = toUserListRow({ ...baseRow, suspensions: [{ suspended_at: '2026-10-01T00:00:00Z', lifted_at: null }] })
     expect(row.tribeName).toBe('로드')
-    expect(row.banLevel).toBeNull()
+    expect(row.suspended).toBe(true)
+    expect(row.suspendedAt).toBe('2026-10-01T00:00:00Z')
     expect(row.onboarded).toBe(false)
+  })
+
+  it('행 변환은 푼 정지만 있으면 정지 중이 아니다', () => {
+    const row = toUserListRow({ ...baseRow, suspensions: [{ suspended_at: '2026-08-01T00:00:00Z', lifted_at: '2026-08-05T00:00:00Z' }] })
+    expect(row.suspended).toBe(false)
+    expect(row.suspendedAt).toBeNull()
+  })
+
+  it('이력이 없는(null) 유저도 정지 중이 아니다', () => {
+    expect(toUserListRow({ ...baseRow, suspensions: null }).suspended).toBe(false)
   })
 })
 
-describe('fetchActiveBanUserIds', () => {
-  const fakeSupabase = (rows: { user_id: string; expires_at: string | null }[], error: { message: string } | null = null) =>
+describe('fetchSuspendedUserIds', () => {
+  const calls: unknown[][] = []
+  const fakeSupabase = (rows: { user_id: string }[], error: { message: string } | null = null) =>
     ({
-      from: () => ({ select: () => ({ limit: () => Promise.resolve({ data: error ? null : rows, error }) }) }),
-    }) as unknown as Parameters<typeof fetchActiveBanUserIds>[0]
+      from: (table: string) => {
+        calls.push(['from', table])
+        const chain = {
+          select: (cols: string) => (calls.push(['select', cols]), chain),
+          is: (col: string, val: unknown) => (calls.push(['is', col, val]), chain),
+          limit: () => Promise.resolve({ data: error ? null : rows, error }),
+        }
+        return chain
+      },
+    }) as unknown as Parameters<typeof fetchSuspendedUserIds>[0]
 
-  const banRows = (count: number) =>
-    Array.from({ length: count }, (_, i) => ({ user_id: `u${i}`, expires_at: null as string | null }))
+  const rowsOf = (count: number) => Array.from({ length: count }, (_, i) => ({ user_id: `u${i}` }))
 
-  it('한도 미만이면 만료되지 않은 제재의 user_id만 돌려준다', async () => {
-    const rows = [
-      { user_id: 'a', expires_at: null },
-      { user_id: 'b', expires_at: '2000-01-01T00:00:00Z' },
-      ...banRows(BAN_FETCH_LIMIT - 3),
-    ]
-    const ids = await fetchActiveBanUserIds(fakeSupabase(rows))
-    expect(ids).toContain('a')
-    expect(ids).not.toContain('b')
-    expect(ids).toHaveLength(BAN_FETCH_LIMIT - 3 + 1)
+  it('진행 중(lifted_at IS NULL)인 정지만 user_suspensions에서 읽고 옛 섀도우밴 표는 읽지 않는다', async () => {
+    calls.length = 0
+    const ids = await fetchSuspendedUserIds(fakeSupabase([{ user_id: 'a' }, { user_id: 'b' }]))
+
+    expect(ids).toEqual(['a', 'b'])
+    expect(calls).toContainEqual(['from', 'user_suspensions'])
+    expect(calls).toContainEqual(['is', 'lifted_at', null])
+    expect(calls.some((c) => c[0] === 'from' && c[1] === 'user_shadow_bans')).toBe(false)
   })
 
   it('한도 바로 아래(999건)까지는 오류 없이 전부 돌려준다', async () => {
-    const ids = await fetchActiveBanUserIds(fakeSupabase(banRows(BAN_FETCH_LIMIT - 1)))
-    expect(ids).toHaveLength(BAN_FETCH_LIMIT - 1)
+    const ids = await fetchSuspendedUserIds(fakeSupabase(rowsOf(SUSPENSION_FETCH_LIMIT - 1)))
+    expect(ids).toHaveLength(SUSPENSION_FETCH_LIMIT - 1)
   })
 
-  it('제재 기록이 0건이면 빈 배열이다', async () => {
-    expect(await fetchActiveBanUserIds(fakeSupabase([]))).toEqual([])
+  it('정지 기록이 0건이면 빈 배열이다', async () => {
+    expect(await fetchSuspendedUserIds(fakeSupabase([]))).toEqual([])
   })
 
   it('행 수가 한도와 같으면 조용히 잘린 결과 대신 오류를 던진다', async () => {
-    await expect(fetchActiveBanUserIds(fakeSupabase(banRows(BAN_FETCH_LIMIT)))).rejects.toThrow(
+    await expect(fetchSuspendedUserIds(fakeSupabase(rowsOf(SUSPENSION_FETCH_LIMIT)))).rejects.toThrow(
       /한도\(1,000건\)를 넘어 제재 필터를 신뢰할 수 없습니다/
     )
   })
 
-  it('조회 오류는 기존처럼 오류로 던진다', async () => {
-    await expect(fetchActiveBanUserIds(fakeSupabase([], { message: 'boom' }))).rejects.toThrow(/제재 목록 조회 실패/)
+  it('조회 오류는 오류로 던진다', async () => {
+    await expect(fetchSuspendedUserIds(fakeSupabase([], { message: 'boom' }))).rejects.toThrow(/정지 목록 조회 실패/)
   })
 })

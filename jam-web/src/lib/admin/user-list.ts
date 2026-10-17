@@ -6,9 +6,9 @@
  * - 검색은 이름(`username`)·표시 이름(`display_name`)·이메일(`users.email`)이다. 이메일은
  *   가입할 때 `handle_new_user()` 트리거가 auth에서 복사한 값이라(이후 동기화 없음) auth
  *   스키마를 조회하지 않고 이 칸으로 검색한다. 검색어는 {@link sanitizeSearchTerm}을 거친다.
- * - 제재 상태 필터는 제재 중인 user_id를 먼저 모아 `in`/`not.in`으로 건다. 만료된 제재는
- *   제재 중이 아니다(`getUserBanLevel`과 같은 판정). 제재 행은 소수라 URL 한도 안에 들어온다는
- *   전제다(넘으면 PostgREST가 오류를 돌려주므로 조용히 틀린 목록이 나오지는 않는다).
+ * - 제재 상태 필터(`ban=banned|clean`)는 이용 정지 중인 user_id를 먼저 모아 `in`/`not.in`으로 건다.
+ *   «정지 중» = `user_suspensions.lifted_at IS NULL`(티켓 20261017_1426, 옛 섀도우밴 `user_shadow_bans`는 읽지 않는다).
+ *   정지 행은 소수라 URL 한도 안에 들어온다는 전제다(넘으면 PostgREST가 오류를 돌려주므로 조용히 틀린 목록이 나오지는 않는다).
  * - 보유 배지·아이템 수는 {@link countRowsByKey}로 센다(행째 세면 1,000행 상한에 잘린다).
  */
 import type { createServiceClient } from '@/lib/supabase/server'
@@ -25,7 +25,7 @@ export const USER_SELECT_ALL_CAP = 1000
 const READ_CHUNK_SIZE = 200
 
 export const USER_LIST_COLUMNS =
-  'id, email, username, display_name, created_at, is_admin, onboarding_completed_at, tribe:tribe_id(name), ban:user_shadow_bans(ban_level, expires_at)'
+  'id, email, username, display_name, created_at, is_admin, onboarding_completed_at, tribe:tribe_id(name), suspensions:user_suspensions(suspended_at, lifted_at)'
 
 import { DEFAULT_USER_LIST_SORT, USER_LIST_SORT_OPTIONS, type UserListSort } from './user-list-options'
 
@@ -98,7 +98,7 @@ export function applyUserListFilters<T>(
   return next
 }
 
-/** 제재 중 필터인데 제재 중인 유저가 없다 → 결과가 항상 빈 목록 */
+/** 제재(이용 정지) 중 필터인데 정지 중인 유저가 없다 → 결과가 항상 빈 목록 */
 export function isEmptyBanFilter(params: UserListParams, activeBanIds: string[] | null): boolean {
   return params.ban === 'banned' && (activeBanIds?.length ?? 0) === 0
 }
@@ -114,35 +114,38 @@ export function applyUserListSort<T>(query: UserListQuery<T>, sort: UserListSort
   return ordered.order('id', { ascending: true })
 }
 
-export interface UserBanState {
-  ban_level: string
-  expires_at: string | null
+/** 정지 이력 한 줄에서 목록이 읽는 칸 */
+export interface UserSuspensionState {
+  suspended_at: string
+  lifted_at: string | null
 }
 
-/** 지금 유효한 제재인가 — 만료 시각이 지났으면 제재 중이 아니다(`getUserBanLevel`과 같은 판정) */
-export function isBanActive(ban: UserBanState | null | undefined, now: Date = new Date()): boolean {
-  if (!ban) return false
-  return !ban.expires_at || new Date(ban.expires_at) >= now
+/** 진행 중인 정지(`lifted_at IS NULL`) 한 줄을 찾는다. 임베드가 이력 전체를 싣기 때문에 푼 줄은 건너뛴다. */
+export function activeSuspensionOf(suspensions: readonly UserSuspensionState[] | null | undefined): UserSuspensionState | null {
+  return suspensions?.find((row) => row.lifted_at === null) ?? null
 }
 
-/** 제재 기록을 한 번에 읽는 상한 — 이 값에 닿으면 잘렸을 수 있어 결과를 신뢰하지 않는다 */
-export const BAN_FETCH_LIMIT = 1000
+/** 정지 기록을 한 번에 읽는 상한 — 이 값에 닿으면 잘렸을 수 있어 결과를 신뢰하지 않는다 */
+export const SUSPENSION_FETCH_LIMIT = 1000
 
 /**
- * 제재 중인 user_id 전체.
+ * 이용 정지 중인 user_id 전체(`lifted_at IS NULL`).
  *
- * 읽은 행이 `BAN_FETCH_LIMIT`에 닿으면 뒤쪽이 잘렸을 수 있으므로 조용히 틀린 결과 대신 오류를 던진다.
- * 제재 id를 `.in()`·`.not()`에 통째로 넣는 필터 구조는 수백 건에서 요청 주소 길이 한계가 먼저 오므로,
- * 제재 행이 실제로 수백 건에 가까워지면 필터를 서버 쪽 조인·RPC로 다시 설계한다(티켓 20260924_1636).
+ * 읽은 행이 `SUSPENSION_FETCH_LIMIT`에 닿으면 뒤쪽이 잘렸을 수 있으므로 조용히 틀린 결과 대신 오류를 던진다.
+ * id를 `.in()`·`.not()`에 통째로 넣는 필터 구조는 수백 건에서 요청 주소 길이 한계가 먼저 오므로,
+ * 정지 행이 실제로 수백 건에 가까워지면 필터를 서버 쪽 조인·RPC로 다시 설계한다(티켓 20260924_1636).
  */
-export async function fetchActiveBanUserIds(supabase: ServiceClient): Promise<string[]> {
-  const { data, error } = await supabase.from('user_shadow_bans').select('user_id, expires_at').limit(BAN_FETCH_LIMIT)
-  if (error) throw new Error(`[user-list] 제재 목록 조회 실패: ${error.message}`)
-  if ((data?.length ?? 0) >= BAN_FETCH_LIMIT) {
-    throw new Error(`[user-list] 제재 기록이 한도(${BAN_FETCH_LIMIT.toLocaleString('en-US')}건)를 넘어 제재 필터를 신뢰할 수 없습니다`)
+export async function fetchSuspendedUserIds(supabase: ServiceClient): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('user_suspensions')
+    .select('user_id')
+    .is('lifted_at', null)
+    .limit(SUSPENSION_FETCH_LIMIT)
+  if (error) throw new Error(`[user-list] 정지 목록 조회 실패: ${error.message}`)
+  if ((data?.length ?? 0) >= SUSPENSION_FETCH_LIMIT) {
+    throw new Error(`[user-list] 정지 기록이 한도(${SUSPENSION_FETCH_LIMIT.toLocaleString('en-US')}건)를 넘어 제재 필터를 신뢰할 수 없습니다`)
   }
-  const now = new Date()
-  return (data ?? []).filter((row) => isBanActive({ ban_level: '', expires_at: row.expires_at }, now)).map((row) => row.user_id)
+  return (data ?? []).map((row) => row.user_id)
 }
 
 interface RawUserRow {
@@ -154,7 +157,7 @@ interface RawUserRow {
   is_admin: boolean
   onboarding_completed_at: string | null
   tribe: { name: string } | { name: string }[] | null
-  ban: UserBanState | UserBanState[] | null
+  suspensions: UserSuspensionState[] | null
 }
 
 export interface UserListRow {
@@ -167,9 +170,10 @@ export interface UserListRow {
   isAdmin: boolean
   onboarded: boolean
   tribeName: string | null
-  /** 지금 유효한 제재의 등급. 제재가 없거나 만료됐으면 null */
-  banLevel: string | null
-  banExpiresAt: string | null
+  /** 지금 이용 정지 중인가(`user_suspensions.lifted_at IS NULL`인 줄이 있다) */
+  suspended: boolean
+  /** 진행 중인 정지를 건 시각(ISO). 정지 중이 아니면 null */
+  suspendedAt: string | null
   badgeCount: number
   itemCount: number
 }
@@ -180,9 +184,8 @@ function firstOf<T>(value: T | T[] | null): T | null {
 }
 
 /** 조회 행 → 화면 행. 보유 수는 아직 채우지 않는다(0) */
-export function toUserListRow(raw: RawUserRow, now: Date = new Date()): UserListRow {
-  const ban = firstOf(raw.ban)
-  const active = isBanActive(ban, now)
+export function toUserListRow(raw: RawUserRow): UserListRow {
+  const active = activeSuspensionOf(raw.suspensions)
   return {
     id: raw.id,
     email: raw.email,
@@ -192,8 +195,8 @@ export function toUserListRow(raw: RawUserRow, now: Date = new Date()): UserList
     isAdmin: isAdminAccount({ email: raw.email, is_admin: raw.is_admin }),
     onboarded: raw.onboarding_completed_at !== null,
     tribeName: firstOf(raw.tribe)?.name ?? null,
-    banLevel: active ? (ban?.ban_level ?? null) : null,
-    banExpiresAt: active ? (ban?.expires_at ?? null) : null,
+    suspended: active !== null,
+    suspendedAt: active?.suspended_at ?? null,
     badgeCount: 0,
     itemCount: 0,
   }
@@ -243,7 +246,7 @@ type RawQueryClient = {
 }
 
 async function resolveActiveBanIds(supabase: ServiceClient, params: UserListParams): Promise<string[] | null> {
-  return params.ban ? fetchActiveBanUserIds(supabase) : null
+  return params.ban ? fetchSuspendedUserIds(supabase) : null
 }
 
 /** 한 쪽(50건)의 유저 행 + 필터 결과 전체 건수 */
@@ -261,8 +264,7 @@ export async function fetchUserListPage(
   const { data, count, error } = await applyUserListSort(base, params.sort).range(from, to)
   if (error) throw new Error(`[user-list] 목록 조회 실패: ${error.message}`)
 
-  const now = new Date()
-  const rows = (data ?? []).map((raw) => toUserListRow(raw, now))
+  const rows = (data ?? []).map((raw) => toUserListRow(raw))
   const { badgeCountByUser, itemCountByUser } = await fetchUserHoldingCounts(
     supabase,
     rows.map((r) => r.id)
@@ -296,14 +298,13 @@ export async function fetchUserListIds(
 /** 내보내기용 — 선택한 id의 유저 행(보유 수 제외). 200개씩 나눠 읽고 요청한 순서를 유지한다 */
 export async function fetchUserRowsByIds(supabase: ServiceClient, ids: string[]): Promise<UserListRow[]> {
   const byId = new Map<string, UserListRow>()
-  const now = new Date()
   for (let i = 0; i < ids.length; i += READ_CHUNK_SIZE) {
     const { data, error } = await supabase
       .from('users')
       .select(USER_LIST_COLUMNS)
       .in('id', ids.slice(i, i + READ_CHUNK_SIZE))
     if (error) throw new Error(`[user-list] 내보내기 조회 실패: ${error.message}`)
-    for (const raw of (data ?? []) as unknown as RawUserRow[]) byId.set(raw.id, toUserListRow(raw, now))
+    for (const raw of (data ?? []) as unknown as RawUserRow[]) byId.set(raw.id, toUserListRow(raw))
   }
   return ids.map((id) => byId.get(id)).filter((row): row is UserListRow => row !== undefined)
 }

@@ -52,7 +52,8 @@ export interface DashboardSignalMetric {
 
 export interface ServiceCheckProps {
   stravaSyncFailures: DashboardSignalMetric
-  shadowBans: DashboardSignalMetric
+  /** 진행 중인 이용 정지 건수(티켓 20261017_1426) */
+  suspensions: DashboardSignalMetric
   blockedPoi: DashboardSignalMetric
   /** 미션 공백(티켓 20260924_0912, 승인 #16: 판정 그대로 서비스 점검 줄의 넷째 칸). 못 읽었으면 그 칸만 오류 카드다 */
   missionGaps: ContentGapSource<MissionGapResult>
@@ -135,7 +136,7 @@ function KpiCard({ label, icon: Icon, metric }: { label: string; icon: TablerIco
 }
 
 /** 서비스 점검: 한 줄 네 칸(Strava 동기화 실패·유효 제재 수·차단 POI 수·미션 공백). 링크는 옛 이상 신호 카드와 같다. */
-export function ServiceCheckRow({ stravaSyncFailures, shadowBans, blockedPoi, missionGaps }: ServiceCheckProps) {
+export function ServiceCheckRow({ stravaSyncFailures, suspensions, blockedPoi, missionGaps }: ServiceCheckProps) {
   return (
     <section aria-labelledby="ops-service-check-heading" className="space-y-3">
       <h2 id="ops-service-check-heading" className="text-lg font-semibold">
@@ -148,7 +149,7 @@ export function ServiceCheckRow({ stravaSyncFailures, shadowBans, blockedPoi, mi
           icon={IconRun}
           metric={stravaSyncFailures}
         />
-        <AnomalyCard label="유효 제재 수" href="/admin/abusing" icon={IconShieldOff} metric={shadowBans} />
+        <AnomalyCard label="유효 제재 수" href="/admin/abusing" icon={IconShieldOff} metric={suspensions} />
         <AnomalyCard label="차단 POI 수" href="/admin/abusing" icon={IconMapPinOff} metric={blockedPoi} />
         <MissionGapCard source={missionGaps} />
       </div>

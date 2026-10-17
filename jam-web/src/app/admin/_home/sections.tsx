@@ -146,14 +146,14 @@ export function startKpiWeekly(now: Date = new Date()): Promise<KpiWeeklyPair> {
   return Promise.all([settle(thisWeekRange), settle(lastWeekRange)]).then(([thisWeek, lastWeek]) => ({ thisWeek, lastWeek }))
 }
 
-async function readShadowBans(now: Date): Promise<DashboardSignalMetric> {
+/** 진행 중인 이용 정지 건수(`lifted_at IS NULL`). 옛 섀도우밴(`user_shadow_bans`)은 읽지 않는다(티켓 20261017_1426). */
+async function readSuspensions(): Promise<DashboardSignalMetric> {
   try {
     const supabase = createServiceClient()
-    // 만료된 제재는 효력이 없으므로(lib/abusing/shadow-ban.ts의 판정과 같은 기준) 유효한 제재만 센다
     const { count, error } = await supabase
-      .from('user_shadow_bans')
+      .from('user_suspensions')
       .select('id', { count: 'exact', head: true })
-      .or(`expires_at.is.null,expires_at.gt.${now.toISOString()}`)
+      .is('lifted_at', null)
     if (error) throw error
     return { value: count ?? 0, error: null }
   } catch (error) {
@@ -192,14 +192,14 @@ export async function ServiceCheckSection({ kpi }: { kpi: Promise<KpiWeeklyPair>
   let props: ServiceCheckProps
   try {
     const now = new Date()
-    const [{ thisWeek, lastWeek }, shadowBans, blockedPoi, missionGaps] = await Promise.all([
+    const [{ thisWeek, lastWeek }, suspensions, blockedPoi, missionGaps] = await Promise.all([
       kpi,
-      readShadowBans(now),
+      readSuspensions(),
       readBlockedPoi(now),
       readMissionGaps(now),
     ])
-    if (shadowBans.error !== null && blockedPoi.error !== null && missionGaps.result === null) {
-      throw new Error(`서비스 점검의 재료를 모두 읽지 못했어요: ${shadowBans.error}`)
+    if (suspensions.error !== null && blockedPoi.error !== null && missionGaps.result === null) {
+      throw new Error(`서비스 점검의 재료를 모두 읽지 못했어요: ${suspensions.error}`)
     }
     props = {
       stravaSyncFailures: {
@@ -207,7 +207,7 @@ export async function ServiceCheckSection({ kpi }: { kpi: Promise<KpiWeeklyPair>
         previousValue: lastWeek.metrics?.stravaSyncFailures.value ?? null,
         error: thisWeek.error,
       },
-      shadowBans,
+      suspensions,
       blockedPoi,
       missionGaps,
     }

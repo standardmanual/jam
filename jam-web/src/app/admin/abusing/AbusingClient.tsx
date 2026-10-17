@@ -4,13 +4,13 @@ import { Suspense, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { IconAlertTriangle } from '@tabler/icons-react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Alert, AlertTitle, AlertDescription } from '@/components/admin/ui/alert'
 import { Input } from '@/components/admin/ui/input'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
 import type { AbusingPolicy, AbusingPolicyMismatch } from '@/lib/abusing/policy'
-import type { BanRow, PoiBlockRow } from '@/lib/admin/abusing-list'
-import { BanTable } from './BanTable'
+import type { PoiBlockRow } from '@/lib/admin/abusing-list'
+import type { SuspensionRow } from '@/lib/admin/suspension-list'
+import { SuspensionTable } from './SuspensionTable'
 import { PoiBlockTable } from './PoiBlockTable'
 import AbusingFilterBar from './AbusingFilterBar'
 
@@ -20,9 +20,9 @@ interface Props {
   /** URL `?tab=`에서 서버가 읽은 현재 탭 — 탭 이동은 링크(서버 이동)다 */
   tab: Tab
   /** 탭 라벨에 붙이는 활성 건수. 조회에 실패하면 null */
-  counts: { bans: number | null; poiBlocks: number | null }
-  /** 현재 탭이 제재일 때만 채워진다 */
-  bans: BanRow[]
+  counts: { suspensions: number | null; poiBlocks: number | null }
+  /** 현재 탭이 이용 정지일 때만 채워진다 */
+  suspensions: SuspensionRow[]
   /** 현재 탭이 POI 블록일 때만 채워진다 */
   poiBlocks: PoiBlockRow[]
   /** 현재 필터 조건에 맞는 전체 건수·현재 쪽·총 쪽수(목록 탭에서만 쓴다) */
@@ -31,9 +31,16 @@ interface Props {
   totalPages: number
 }
 
-export type Tab = 'policy' | 'bans' | 'poi-blocks'
+export type Tab = 'policy' | 'suspensions' | 'poi-blocks'
 
 const ABUSING_PATH = '/admin/abusing'
+
+/** 이용 정지 이력의 상태 필터 — 정지는 만료가 없고 풀거나 유지한다(운영 로직 16.7절) */
+const SUSPENSION_STATUS_OPTIONS = [
+  { value: 'active', label: '정지 중' },
+  { value: 'lifted', label: '풀림' },
+  { value: 'all', label: '전체' },
+]
 
 function RateInput({
   label, value, onChange,
@@ -62,32 +69,22 @@ export default function AbusingClient({
   policyMismatch: initMismatch,
   tab,
   counts,
-  bans,
+  suspensions,
   poiBlocks,
   listTotal,
   page,
   totalPages,
 }: Props) {
   const router = useRouter()
-  // Select 드롭다운(Radix Portal)은 기본적으로 document.body에 렌더링되는데, shadcn 어드민
-  // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
-  // 지정한다 (4단계a `BadgeForm.tsx`와 동일 패턴, 20260826_018).
-  const [themeContainer] = useState<HTMLElement | null>(() =>
-    typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
-  )
-
   const [policy, setPolicy] = useState(initPolicy)
-  // 등급 전환 확인창의 드랍 배율 문장은 슬라이더로 고치는 중인 값이 아니라 저장된 정책을 기준으로 한다
-  const [savedPolicy, setSavedPolicy] = useState(initPolicy)
   const [policyMismatch, setPolicyMismatch] = useState(initMismatch)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
-  // 새 밴 추가 폼
-  const [banUserId, setBanUserId] = useState('')
-  const [banLevel, setBanLevel] = useState<'soft' | 'hard'>('soft')
-  const [banReason, setBanReason] = useState('')
-  const [banAdding, setBanAdding] = useState(false)
+  // 이용 정지 걸기 폼
+  const [suspendUserId, setSuspendUserId] = useState('')
+  const [suspendReason, setSuspendReason] = useState('')
+  const [suspendAdding, setSuspendAdding] = useState(false)
 
   // 오류 메시지에는 DB 오류 코드가 붙어 3초로는 읽기 어렵다 — 오류는 자동으로 사라지지 않고
   // 닫기 버튼이나 다음 메시지로만 닫힌다. 성공 메시지는 기존대로 3초 뒤 사라진다.
@@ -125,7 +122,6 @@ export default function AbusingClient({
       // 저장 직후 DB에서 다시 읽은 값으로 화면을 맞춘다
       if (json?.policy) {
         setPolicy(json.policy)
-        setSavedPolicy(json.policy)
       }
       setPolicyMismatch(json?.mismatch ?? [])
       flash('ok', '정책이 저장됐어요')
@@ -139,25 +135,30 @@ export default function AbusingClient({
     }
   }
 
-  const addBan = async () => {
-    if (!banUserId.trim() || !banReason.trim()) return
-    setBanAdding(true)
+  const addSuspension = async () => {
+    if (!suspendUserId.trim() || !suspendReason.trim()) return
+    setSuspendAdding(true)
     try {
-      const res = await fetch('/api/admin/abusing/bans', {
+      const res = await fetch('/api/admin/suspensions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: banUserId.trim(), ban_level: banLevel, reason: banReason.trim() }),
+        body: JSON.stringify({ user_id: suspendUserId.trim(), reason: suspendReason.trim() }),
       })
-      if (!res.ok) throw new Error()
-      flash('ok', '섀도우밴 적용 완료')
-      setBanUserId('')
-      setBanReason('')
+      if (!res.ok) {
+        // API가 실패 사유를 실어 보내므로 그대로 노출한다 (어드민 화면 — 원인 특정이 우선)
+        const json = (await res.json().catch(() => null)) as { error?: string } | null
+        flash('err', json?.error ?? `이용 정지가 적용되지 않았어요. 서버가 ${res.status} 오류로 응답했어요. 잠시 후 다시 시도해 주세요.`)
+        return
+      }
+      flash('ok', '이용 정지를 걸었어요')
+      setSuspendUserId('')
+      setSuspendReason('')
       // 서버가 나눠 주는 목록·탭 건수를 다시 읽는다
       router.refresh()
     } catch {
-      flash('err', '밴 적용 실패')
+      flash('err', '이용 정지가 적용되지 않았어요. 서버에 연결하지 못했어요. 네트워크 상태를 확인하고 다시 시도해 주세요.')
     } finally {
-      setBanAdding(false)
+      setSuspendAdding(false)
     }
   }
 
@@ -165,7 +166,7 @@ export default function AbusingClient({
 
   const tabs: { key: Tab; label: string; href: string; count: number | null }[] = [
     { key: 'policy', label: '정책 설정', href: ABUSING_PATH, count: null },
-    { key: 'bans', label: '섀도우밴', href: `${ABUSING_PATH}?tab=bans`, count: counts.bans },
+    { key: 'suspensions', label: '이용 정지', href: `${ABUSING_PATH}?tab=suspensions`, count: counts.suspensions },
     { key: 'poi-blocks', label: 'POI 블록', href: `${ABUSING_PATH}?tab=poi-blocks`, count: counts.poiBlocks },
   ]
 
@@ -407,50 +408,47 @@ export default function AbusingClient({
         </div>
       )}
 
-      {/* 섀도우밴 탭 */}
-      {tab === 'bans' && (
+      {/* 이용 정지 탭 */}
+      {tab === 'suspensions' && (
         <div className="space-y-5">
-          {/* 새 밴 추가 */}
+          {/* 이용 정지 걸기 */}
           <div className="bg-white border border-border rounded-2xl p-5 space-y-3 max-w-3xl">
-            <h3 className="text-sm font-semibold text-foreground">수동 섀도우밴 적용</h3>
+            <h3 className="text-sm font-semibold text-foreground">이용 정지 걸기</h3>
             <input
-              value={banUserId}
-              onChange={(e) => setBanUserId(e.target.value)}
+              value={suspendUserId}
+              onChange={(e) => setSuspendUserId(e.target.value)}
               placeholder="유저 UUID"
+              aria-label="유저 UUID"
               className="w-full bg-white border border-border rounded-xl px-4 py-2.5 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             />
             <div className="flex gap-2">
-              <Select value={banLevel} onValueChange={(v) => setBanLevel(v as 'soft' | 'hard')}>
-                <SelectTrigger className="w-auto min-w-[8rem]" aria-label="밴 레벨">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent container={themeContainer ?? undefined}>
-                  <SelectItem value="soft">Soft-ban</SelectItem>
-                  <SelectItem value="hard">Hard-ban</SelectItem>
-                </SelectContent>
-              </Select>
               <input
-                value={banReason}
-                onChange={(e) => setBanReason(e.target.value)}
-                placeholder="사유 (내부 기록용)"
+                value={suspendReason}
+                onChange={(e) => setSuspendReason(e.target.value)}
+                placeholder="정지 사유 (필수)"
+                aria-label="정지 사유"
+                aria-describedby="suspension-reason-hint"
                 className="flex-1 bg-white border border-border rounded-xl px-4 py-2.5 text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
               />
               <button
-                onClick={addBan}
-                disabled={banAdding || !banUserId.trim() || !banReason.trim()}
+                onClick={addSuspension}
+                disabled={suspendAdding || !suspendUserId.trim() || !suspendReason.trim()}
                 className="bg-red-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-red-700 disabled:opacity-40 transition-colors text-sm"
               >
-                적용
+                정지
               </button>
             </div>
+            <p id="suspension-reason-hint" className="break-keep wrap-break-word text-xs text-muted-foreground">
+              유저에게 그대로 보여요. 홈 화면 맨 위 안내에 이 사유가 전문으로 실려요.
+            </p>
           </div>
 
-          {/* 밴 목록 — 표·필터 바·페이지 이동이 URL(useSearchParams)을 읽어 Suspense로 감싼다 */}
+          {/* 정지 이력 — 표·필터 바·페이지 이동이 URL(useSearchParams)을 읽어 Suspense로 감싼다 */}
           <Suspense>
             <div className="space-y-3">
-              <AbusingFilterBar placeholder="유저 이름, 이메일로 검색..." />
+              <AbusingFilterBar placeholder="유저 이름, 이메일로 검색..." statusOptions={SUSPENSION_STATUS_OPTIONS} />
               <p className="text-sm text-muted-foreground">총 {listTotal}건</p>
-              <BanTable bans={bans} totalCount={listTotal} policy={savedPolicy} />
+              <SuspensionTable suspensions={suspensions} />
               <DataTablePagination page={page} totalPages={totalPages} />
             </div>
           </Suspense>

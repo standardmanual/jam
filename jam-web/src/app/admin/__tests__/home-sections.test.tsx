@@ -42,13 +42,16 @@ const hoisted = vi.hoisted(() => {
   return {
     fail,
     query,
-    counts: { badges: 12, poi: 34, item_books: 5, users: 1234, user_shadow_bans: 2, poi_blocks: 1, ops_bundles: 1 } as Record<string, number>,
+    counts: { badges: 12, poi: 34, item_books: 5, users: 1234, user_suspensions: 2, user_shadow_bans: 99, poi_blocks: 1, ops_bundles: 1 } as Record<string, number>,
     /** `from(table)`이 돌려줄 결과를 상황에 맞게 정한다. */
+    /** 구역이 읽은 표 이름 — 옛 섀도우밴 표를 읽지 않는지 본다 */
+    tablesRead: [] as string[],
     table(name: string) {
+      hoisted.tablesRead.push(name)
       const boom = new Error(`${name} 조회 실패(시험)`)
       if (['badges', 'poi', 'item_books', 'users'].includes(name) && fail.has('stats')) return query(boom, true)
       if (name === 'badges' && fail.has('statsCell')) return query({ count: null, error: { message: '배지 수 조회 실패(시험)' } })
-      if (name === 'user_shadow_bans' && (fail.has('service') || fail.has('shadow'))) return query(boom, true)
+      if (name === 'user_suspensions' && (fail.has('service') || fail.has('shadow'))) return query(boom, true)
       if (name === 'poi_blocks' && fail.has('service')) return query(boom, true)
       if (name === 'ops_bundles' && fail.has('sampleCount')) return query({ count: null, error: { message: '시험 묶음 수 조회 실패(시험)' } })
       if (name in hoisted.counts) return query({ count: hoisted.counts[name], error: null })
@@ -225,6 +228,7 @@ beforeEach(() => {
   hoisted.calls.signals.length = 0
   hoisted.calls.recent.length = 0
   hoisted.calls.kpi = 0
+  hoisted.tablesRead.length = 0
   hoisted.weekLoaded.value = null
   hoisted.signalsValue.value = []
   hoisted.recordsValue.value = []
@@ -297,7 +301,7 @@ describe('구역 안의 일부 출처만 실패하면 구역은 안내 카드가
     const out = await renderAll()
     expect(out.service).toContain('ops-service-check-heading')
     expect(out.service).not.toContain(SECTION_NOTICE_TITLES.service)
-    expect(out.service).toContain('불러오지 못했어요 — user_shadow_bans')
+    expect(out.service).toContain('불러오지 못했어요 — user_suspensions')
     expect(out.service).toContain('차단 POI 수')
     expect(out.service).toContain('미션 공백')
   })
@@ -510,6 +514,13 @@ describe('옛 화면과 같은 링크 (완료 조건)', () => {
     expect(out).toContain('lg:grid-cols-4')
   })
 
+  it('서비스 점검의 제재 집계는 이용 정지(user_suspensions)를 읽고 옛 섀도우밴 표는 읽지 않는다(티켓 20261017_1426)', async () => {
+    const out = (await renderAll()).service
+    expect(hoisted.tablesRead).toContain('user_suspensions')
+    expect(hoisted.tablesRead).not.toContain('user_shadow_bans')
+    expect(out).not.toContain('>99<') // 옛 표의 시험 값(99)이 화면에 나오지 않는다
+  })
+
   it('「카드 편성 공백」 카드는 없다(승인 #15)', async () => {
     const out = await renderAll()
     for (const key of SECTION_KEYS) expect(out[key]).not.toContain('카드 편성 공백')
@@ -554,7 +565,7 @@ describe('빨간 카드 글자색 text-red-700 (승인 #17)', () => {
     const out = flat(
       ServiceCheckRow({
         stravaSyncFailures: { value: 3, previousValue: 1, error: null },
-        shadowBans: { value: null, error: '조회 실패(시험)' },
+        suspensions: { value: null, error: '조회 실패(시험)' },
         blockedPoi: { value: 0, error: null },
         missionGaps: { result: { noIntroMission: true, gapDates: [], endingWithoutSuccessor: [], hasGap: true }, error: null },
       })

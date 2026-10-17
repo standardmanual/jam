@@ -28,7 +28,7 @@ const columnHelper = createColumnHelper<DataTableFeatures, PoiBlockRow>()
 const HEADER_SORTS = ['expires'] as const
 
 /**
- * POI 블록 목록 표(티켓 20260924_0952) — 제재 표(`BanTable`)와 같은 조합이다. 표 안에서 바로 바꿀
+ * POI 블록 목록 표(티켓 20260924_0952) — 옛 제재 표와 같은 조합이다. 표 안에서 바로 바꿀
  * 값은 없고(상위 티켓 §4.4), 일괄 처리는 [해제]·[만료 연장]이다. 행을 누르면 그 유저의 상세로
  * 이동한다.
  */

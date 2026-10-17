@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     { header: '어드민', value: (r) => (r.isAdmin ? '예' : '아니오') },
     {
       header: '제재',
-      value: (r) => (r.banLevel ? `${r.banLevel}${r.banExpiresAt ? `(~${formatKstYmd(r.banExpiresAt)})` : ''}` : '없음'),
+      value: (r) => (r.suspended ? `이용 정지${r.suspendedAt ? `(${formatKstYmd(r.suspendedAt)}부터)` : ''}` : '없음'),
     },
   ])
 

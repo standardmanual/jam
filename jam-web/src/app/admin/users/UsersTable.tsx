@@ -115,26 +115,18 @@ export function UsersTable({ rows, totalCount }: UsersTableProps) {
               <span className="text-gray-400 text-sm">—</span>
             ),
         }),
-        columnHelper.accessor((r) => r.banLevel ?? '', {
+        columnHelper.accessor((r) => (r.suspended ? '정지 중' : ''), {
           id: 'ban',
           header: '제재',
           enableSorting: false,
           meta: { label: '제재' },
           cell: ({ row }) => {
-            const { banLevel, banExpiresAt } = row.original
-            if (!banLevel) return <span className="text-gray-400 text-sm">—</span>
+            const { suspended, suspendedAt } = row.original
+            if (!suspended) return <span className="text-gray-400 text-sm">—</span>
             return (
               <span className="flex flex-col gap-0.5">
-                <span
-                  className={`w-fit text-xs font-bold px-2 py-0.5 rounded-full ${
-                    banLevel === 'hard' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'
-                  }`}
-                >
-                  {banLevel}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {banExpiresAt ? `${formatDate(banExpiresAt)}까지` : '기한 없음'}
-                </span>
+                <span className="w-fit text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">이용 정지</span>
+                {suspendedAt && <span className="text-xs text-muted-foreground">{formatDate(suspendedAt)}부터</span>}
               </span>
             )
           },
