@@ -172,39 +172,52 @@ export type StravaActivityType =
 // JAM! 활동 종류 ↔ Strava 활동 타입(type) 매핑
 // 주의: Strava `type`은 러닝 세분화가 없어 Run은 기본적으로 running(로드 러닝)으로 처리한다.
 //       트레일 러닝 구분은 sport_type을 우선 참조해야 하므로 getJamActivityType()를 사용할 것.
+// 가상 종목(VirtualRide·VirtualRun 등)은 인정 활동이 아니라 두 표에 넣지 않는다(티켓 20261017_1421,
+// 운영 로직 3.3절) — 판정은 getJamActivityType()이 `isVirtualStravaActivity`로 먼저 거른다.
 export const STRAVA_TYPE_TO_JAM: Record<string, string> = {
   Ride: 'cycling',
   EBikeRide: 'cycling',
-  VirtualRide: 'cycling',
   Run: 'running',
-  VirtualRun: 'running',
   Hike: 'hiking',
   Walk: 'walking',
 }
 
 // JAM! 활동 종류 ↔ Strava sport_type 매핑 (더 세분화된 필드, type보다 우선)
+// 전기자전거(EBikeRide)·전기 산악자전거(EMountainBikeRide)는 지금은 자전거 값으로 매핑한다.
+// 자전거와 따로 두고 «가벼움»으로 계산하는 일은 JAM 2.0 잼 강도 티켓(2-3)이 정한다.
 export const STRAVA_SPORT_TYPE_TO_JAM: Record<string, string> = {
   TrailRun: 'trail_running',
   TrailRunning: 'trail_running',
   Run: 'running',
-  VirtualRun: 'running',
   Ride: 'cycling',
   MountainBikeRide: 'cycling',
   GravelRide: 'cycling',
-  VirtualRide: 'cycling',
   EBikeRide: 'cycling',
+  EMountainBikeRide: 'cycling',
   Hike: 'hiking',
   Walk: 'walking',
 }
 
 /**
+ * 가상 활동인지 — `type`이나 `sport_type`이 `Virtual`로 시작하는 종목(VirtualRide, VirtualRun,
+ * VirtualRow 등). 둘 중 하나만 가상이어도 가상 활동으로 본다.
+ */
+export function isVirtualStravaActivity(activity: {
+  type: string
+  sport_type?: string | null
+}): boolean {
+  return (activity.type ?? '').startsWith('Virtual') || (activity.sport_type ?? '').startsWith('Virtual')
+}
+
+/**
  * Strava 활동의 sport_type을 우선 참조하여 JAM! 활동 종류를 결정한다.
- * sport_type이 매핑에 없으면 type 기반 매핑으로 폴백한다.
+ * sport_type이 매핑에 없으면 type 기반 매핑으로 폴백한다. 가상 활동은 항상 null이다.
  */
 export function getJamActivityType(activity: {
   type: string
   sport_type?: string | null
 }): string | null {
+  if (isVirtualStravaActivity(activity)) return null
   if (activity.sport_type && STRAVA_SPORT_TYPE_TO_JAM[activity.sport_type]) {
     return STRAVA_SPORT_TYPE_TO_JAM[activity.sport_type]
   }

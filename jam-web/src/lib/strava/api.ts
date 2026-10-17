@@ -76,8 +76,8 @@ export const ACTIVITIES_PAGE_SIZE = 200
  * @param after Unix timestamp — 이 시각 이후 활동만 조회
  * @param page 1부터 시작하는 페이지 번호. 생략하면 Strava 기본값(1페이지)
  *
- * ⚠️ 싱크 경로는 `page`를 쓰지 않는다(커서 기반이라 1페이지면 충분하다). 전체 이력을 훑어야
- * 하는 백필(`backfillNormalizedFields`)만 페이지를 넘긴다 — 티켓 20260905_0029.
+ * 전체를 훑는 호출부는 페이지를 직접 넘기지 않고 `getAllActivities`를 쓴다(싱크 — 티켓
+ * 20261017_1421). 백필(`backfillNormalizedFields`)은 페이지를 직접 넘긴다 — 티켓 20260905_0029.
  */
 export async function getActivities(
   accessToken: string,
@@ -97,6 +97,33 @@ export async function getActivities(
   return stravaFetch<StravaSummaryActivity[]>(
     `${STRAVA_API_BASE}/athlete/activities?${params.toString()}`,
     accessToken
+  )
+}
+
+/**
+ * 페이지 넘김의 안전 상한 — 응답이 끝나지 않는 비정상 상황에서 무한 반복하지 않으려는 것이다.
+ * 정상 유저는 닿지 않는다(200건 × 100페이지 = 2만 건). 활동 수 자체에는 상한을 두지 않는다.
+ */
+export const ACTIVITIES_MAX_PAGES = 100
+
+/**
+ * `after` 이후의 활동을 **끝까지** 페이지를 넘겨 모두 가져온다 (티켓 20261017_1421, 운영 로직 6.2절).
+ * 한 페이지가 상한(200건)보다 적게 오면 마지막 페이지다. 순차 호출이다(Strava 호출량 보호).
+ * 중간 페이지가 실패하면 그대로 던진다 — 일부만 처리하고 커서가 앞으로 가는 것보다 낫다.
+ */
+export async function getAllActivities(
+  accessToken: string,
+  after?: number,
+  fetchPage: typeof getActivities = getActivities
+): Promise<StravaSummaryActivity[]> {
+  const all: StravaSummaryActivity[] = []
+  for (let page = 1; page <= ACTIVITIES_MAX_PAGES; page++) {
+    const batch = await fetchPage(accessToken, after, page)
+    all.push(...batch)
+    if (batch.length < ACTIVITIES_PAGE_SIZE) return all
+  }
+  throw new Error(
+    `[getAllActivities] ${ACTIVITIES_MAX_PAGES}페이지를 넘겨도 끝나지 않음 — 비정상 응답으로 보고 중단`
   )
 }
 
