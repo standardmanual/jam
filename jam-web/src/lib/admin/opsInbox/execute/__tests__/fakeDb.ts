@@ -236,6 +236,7 @@ export class FakeDb {
     poi_drops: [],
     user_checkin_badge_earns: [],
     user_item_book_slots: [],
+    item_issue_log: [], // 마이그레이션 227(티켓 20261017_1424) — 배지 참조 확인 목록에 들어왔다
     // 컬렉션 핸들러(티켓 20261004_2039): 트라이브 존재 확인과 되돌림·취소 전 컬렉션 참조 확인(`ITEM_BOOK_UNDO_REFERENCES`)이 읽는 표. 나머지(`badges`·`today_cards`·`user_item_book_slots`·`point_transactions`·`ambient_drop_schedules`)는 위에 있다.
     tribes: [],
     user_item_book_completions: [],
