@@ -32,6 +32,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { decrypt, encrypt } from '@/lib/utils'
 import { getActivityById, refreshStravaToken } from '@/lib/strava/api'
 import { d } from '@/lib/i18n'
+import { resolveStravaConnectionState } from '@/lib/strava/connection-state'
 import type { BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserCheckinBadgeEarnRow } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -155,7 +156,9 @@ export async function GET(
     .eq('user_id', subjectId)
     .maybeSingle()
   const connection = connectionRaw as StravaConnectionRow | null
-  if (!connection) {
+  // 연결이 없거나 끊긴 상태(토큰 갱신 실패·철회·유저가 끊음)면 Strava에서 활동을 다시 가져올 수 없다 —
+  // 끊김 행은 토큰이 비어 복호화도 못 하므로 «행이 있는가»가 아니라 연결 상태 판정으로 가른다(티켓 20261017_1422)
+  if (!connection || resolveStravaConnectionState(connection) !== 'connected') {
     return recoverableErrorResponse('strava_disconnected', 404)
   }
 

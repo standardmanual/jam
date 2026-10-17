@@ -12,8 +12,12 @@
  *
  * 옛 칸(`users.initial_sync_done`, `strava_connections`의 기존 칸)의 뜻은 바꾸지 않는다.
  * 토큰 값·시크릿은 로그에 남기지 않는다.
+ *
+ * 클라이언트 컴포넌트(프로필 설정 등)도 판정 함수를 가져다 쓴다. 그래서 서버 전용 모듈
+ * (`@/lib/supabase/server`)은 최상단에서 불러오지 않고 `markStravaDisconnected`가 실제로 필요할 때
+ * 동적으로 불러온다 — 최상단에서 불러오면 브라우저 번들에 `next/headers`가 딸려 들어간다.
  */
-import { createServiceClient } from '@/lib/supabase/server'
+import type { createServiceClient } from '@/lib/supabase/server'
 
 export type StravaConnectionState = 'none' | 'connected' | 'disconnected'
 
@@ -55,6 +59,19 @@ export function resolveStravaUiState(row: StravaConnectionStateInput | null | un
   if (state === 'none') return 'none'
   if (state === 'connected') return 'connected'
   return row?.disconnect_reason === 'user_disconnected' ? 'disconnected_user' : 'disconnected_error'
+}
+
+/** 홈이 보는 상태 — 조회 자체가 실패하면 어느 쪽도 단정하지 않고 `unknown`으로 둔다 */
+export type StravaHomeView = StravaUiState | 'unknown'
+
+/** 홈 끊김 알람 카드는 오류로 끊긴 상태에서만 보인다. 유저가 직접 끊은 경우와 조회 실패는 알람을 그리지 않는다 */
+export function showsStravaDisconnectedCard(view: StravaHomeView): boolean {
+  return view === 'disconnected_error'
+}
+
+/** «Strava 동기화하면 시작해요» CTA는 아직 시작하지 않았거나(none) 유저가 직접 끊은 상태에서만 보인다 */
+export function showsStravaSyncCta(view: StravaHomeView): boolean {
+  return view === 'none' || view === 'disconnected_user'
 }
 
 /**
@@ -120,7 +137,7 @@ export async function markStravaDisconnected(
   reason: StravaDisconnectReason,
   options: MarkDisconnectedOptions = {}
 ): Promise<boolean> {
-  const supabase = options.supabase ?? createServiceClient()
+  const supabase = options.supabase ?? (await import('@/lib/supabase/server')).createServiceClient()
   const payload = {
     disconnected_at: new Date().toISOString(),
     disconnect_reason: reason,

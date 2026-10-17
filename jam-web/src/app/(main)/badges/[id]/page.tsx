@@ -19,6 +19,7 @@ import BadgeConditionCard from './BadgeConditionCard'
 import { formatBadgeConditionText, formatBadgeConditionSpec } from '@/lib/badgeConditionText'
 import BadgeShareButton from './BadgeShareButton'
 import { d, t } from '@/lib/i18n'
+import { resolveStravaConnectionState } from '@/lib/strava/connection-state'
 import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
@@ -96,7 +97,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         service.from('user_activity_badges').select('badge_id').eq('user_id', subjectId),
     // 공유 버튼 사전 비활성화 판정용 — 배지 소유자(subjectId)가 스트라바에 연동돼 있는지
     // 미리 조회한다(20260821_004 재작업: 클릭 후가 아니라 클릭 전에 판별해야 함).
-    service.from('strava_connections').select('user_id').eq('user_id', subjectId).maybeSingle(),
+    service.from('strava_connections').select('disconnected_at, disconnect_reason').eq('user_id', subjectId).maybeSingle(),
   ])
   // 20260901_1848: 이 파일이 티켓 20260824_017에서 "조회 실패가 빈 목록으로 위장된다"고
   // 지적된 원 사례다 — badgeError는 특히 !badge → notFound()(404)로 위장되던 지점.
@@ -104,7 +105,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   if (earnedRowError) console.error('[badges/[id]/page] user_activity_badges(획득 여부) 조회 실패', earnedRowError)
   if (ownedBadgesError) console.error('[badges/[id]/page] user_activity_badges(선행배지 보유판정용) 조회 실패', ownedBadgesError)
   if (stravaConnectionError) console.error('[badges/[id]/page] strava_connections 조회 실패', stravaConnectionError)
-  const stravaConnected = Boolean(stravaConnectionRaw)
+  // 끊긴 연결은 스트라바 데이터를 다시 가져올 수 없다 — «행이 있는가»가 아니라 연결 상태 판정(connected)으로 본다
+  const stravaConnected = resolveStravaConnectionState(stravaConnectionRaw) === 'connected'
 
   if (!badge) notFound()
 

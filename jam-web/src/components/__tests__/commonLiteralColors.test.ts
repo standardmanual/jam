@@ -20,7 +20,10 @@ const FILES = [
   // 티켓 2회 목록
   'components/PoiCarouselModal.tsx',
   'components/map/MapView.tsx',
-  'components/strava/StravaStatusCard.tsx',
+  'components/strava/StravaDisconnectedCard.tsx',
+  'components/strava/StravaDisconnectSheet.tsx',
+  'components/strava/StravaDuplicateSheet.tsx',
+  'components/strava/StravaSettingsSection.tsx',
   'components/StravaLink.tsx',
   'components/NavigationLoader.tsx',
   'components/inventory/InventoryGrid.tsx',

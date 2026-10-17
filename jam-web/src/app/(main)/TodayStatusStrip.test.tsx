@@ -20,7 +20,7 @@ describe('TodayStatusStrip — 칩은 MODULAR LabelChip(티켓 20261001_1204)', 
   it('좌(내 진행도)·우(팔로잉 소식) 셀 모두 self-start LabelChip으로 칩을 그린다', () => {
     const html = renderToStaticMarkup(
       <TodayStatusStrip
-        left={{ kind: 'strava_disconnected', href: '/strava' }}
+        left={{ kind: 'strava_not_connected', href: '/strava' }}
         right={{ kind: 'friend_activity', count: 2, href: '/feed', singleFriendName: null }}
       />
     )
@@ -33,7 +33,7 @@ describe('TodayStatusStrip — 칩은 MODULAR LabelChip(티켓 20261001_1204)', 
   it('셀의 눌림은 jam-press 하나이고 예전 눌림 문자열은 남지 않는다 (티켓 20261001_1458)', () => {
     const html = renderToStaticMarkup(
       <TodayStatusStrip
-        left={{ kind: 'strava_disconnected', href: '/strava' }}
+        left={{ kind: 'strava_not_connected', href: '/strava' }}
         right={{ kind: 'friend_activity', count: 2, href: '/feed', singleFriendName: null }}
       />
     )

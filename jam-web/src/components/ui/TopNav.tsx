@@ -76,7 +76,7 @@ export interface TopNavProps {
    */
   logo?: boolean
   /**
-   * 값이 있으면 중앙 슬롯을 stravaConnected 분기(SyncButton·연동 유도 버튼) 대신 이
+   * 값이 있으면 중앙 슬롯을 stravaState 분기(SyncButton·다시 동기화·동기화 시작 버튼) 대신 이
    * 노드로 교체한다. 온보딩 퀘스트 `sync` 차례 전용(티켓 20260927_2331) — 호출부는
    * 홈(`page.tsx`)만 넘긴다.
    */
@@ -85,7 +85,7 @@ export interface TopNavProps {
 
 export default function TopNav({ title = '', onBack, backHref, rightSlot, showBack = true, headerStyle, logo = false, centerSlotOverride }: TopNavProps) {
   const router = useRouter()
-  const { username, avatarUrl, stravaConnected } = useTopNavData()
+  const { username, avatarUrl, stravaState } = useTopNavData()
 
   const handleBack = backHref ? () => router.push(backHref) : (onBack ?? (() => router.back()))
   const profileHref = username ? `/${username}` : '/profile'
@@ -140,9 +140,12 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
 
   // 미연동 유저도 동기화 버튼을 항상 본다 — 누르면 스트라바 연결 플로우(OAuth 시작 라우트)로
   // 이동한다. 연동 유저는 기존 SyncButton과 동일하게 수동 동기화를 트리거한다(20260824_010).
+  // 오류로 끊긴 유저(disconnected_error)는 같은 자리에 «다시 동기화»를 본다(티켓 20261017_1422).
+  // 유저가 직접 끊은 경우(disconnected_user)와 none은 동기화 시작 버튼이다.
   // centerSlotOverride가 있으면(온보딩 퀘스트 sync 차례) 연동 여부와 무관하게 그 값을 쓴다.
-  const centerSlot = centerSlotOverride ?? (
-    stravaConnected ? (
+  const centerSlot =
+    centerSlotOverride ??
+    (stravaState === 'connected' ? (
       <SyncButton username={username} />
     ) : (
       <Button
@@ -153,10 +156,9 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
           window.location.href = '/api/strava/auth'
         }}
       >
-        {d.today.syncButton}
+        {stravaState === 'disconnected_error' ? d.stravaConnection.topNavReconnect : d.today.syncButton}
       </Button>
-    )
-  )
+    ))
 
   return (
     <DsTopNav

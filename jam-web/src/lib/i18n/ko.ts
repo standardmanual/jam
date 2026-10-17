@@ -306,7 +306,7 @@ export const ko = {
     greeting: '{name}님, 오늘도 좋은 하루예요',
 
     // 좌: 내 진행도
-    /** 좌측 슬롯 카드 타이틀 레이블 — 3분기(strava_disconnected/progress/suggestion) 공통 (티켓 20260830_2121) */
+    /** 좌측 슬롯 카드 타이틀 레이블 — 3분기(strava_not_connected/progress/suggestion) 공통 (티켓 20260830_2121) */
     myProgressLabel: '내 진행도',
     // UX_WRITING_GUIDELINE.md 고정 용어 — "Strava 동기화"(X: Strava 연동). 티켓 원문 문구의
     // "연동"을 가이드 고정 용어로 교정했다.
@@ -876,14 +876,62 @@ export const ko = {
      *  CTA는 이 API를 호출하는 화면(`SyncButton.tsx`)이 별도 토스트(`today.syncFailed`)를
      *  쓰고 이 값을 읽지 않아 실제로 노출되지 않는다 — 잔여 이슈로 기록. */
     stravaSyncError: 'Strava 동기화가 끊겼어요. 동기화 권한이 해제됐거나 Strava 연결이 잠시 불안정했을 수 있어요.',
-    /** `StravaStatusCard` 미연동 상태 — 조사 결과 현재 어디서도 렌더되지 않는 고아 컴포넌트지만
-     *  하드코딩 제거 대상이라 편입한다 (티켓 20260915_2246). 톤 교정은 20260916_0917 */
+    /** `/api/strava/disconnect` 404(연결 없음) 응답 본문 — 톤 교정은 20260916_0917.
+     *  고아 컴포넌트 `StravaStatusCard`와 그 문구 키는 티켓 20261017_1422에서 지웠고 이 키만 API가 쓴다. */
     stravaNotConnectedTitle: '아직 Strava를 동기화하지 않았어요',
-    stravaConnectPrompt: 'Strava를 동기화하면 활동 기록으로 액티비티배지를 획득할 수 있어요',
-    stravaConnectButton: 'Strava 동기화하기',
-    stravaConnectedTitle: 'Strava와 동기화하고 있어요',
     stravaLastSyncedLabel: '마지막 동기화',
-    stravaNoSyncYet: '아직 불러온 활동이 없어요',
+  },
+
+  /**
+   * Strava 동기화 끊김·끊기·중복 안내 — 티켓 20261017_1422 2회 (채원 판정 2026-10-17).
+   * 고정 용어는 «Strava 동기화»다(UX_WRITING_GUIDELINE §1.3). 동작은 «끊기»와 «끊겼어요»를 짝으로 쓴다.
+   */
+  stravaConnection: {
+    /** 홈 끊김 카드 좌상단 라벨 */
+    chipLabel: 'Strava 동기화',
+    /** 홈 끊김 카드 — 사유가 토큰 갱신 실패·Strava 철회일 때만 보인다. 현상, 원인, 해결책 순(§4.1) */
+    card: {
+      title: 'Strava 동기화가 끊겼어요',
+      body: '비밀번호를 바꿨거나 동기화 권한이 해제됐을 수 있어요. 다시 동기화해야 배지를 획득할 수 있어요.',
+      cta: 'Strava 다시 동기화하기',
+    },
+    /** 상단 메뉴 가운데 버튼 — 끊김(오류 사유)일 때. 라벨은 5자로 한정한다 */
+    topNavReconnect: '다시 동기화',
+    /** 프로필 설정 «Strava 동기화» 구획 */
+    settings: {
+      label: 'Strava 동기화',
+      connected: '동기화하고 있어요',
+      disconnectedError: '동기화가 끊겼어요. 비밀번호를 바꿨거나 동기화 권한이 해제됐을 수 있어요.',
+      disconnectedByUser: '동기화를 끊었어요. 지금까지의 기록, 배지, 잼, 포인트는 그대로 남아 있어요.',
+      disconnectButton: '동기화 끊기',
+      reconnectButton: 'Strava 다시 동기화하기',
+    },
+    /** 끊기 확인 시트 */
+    disconnectSheet: {
+      title: 'Strava 동기화를 끊을까요?',
+      body: [
+        '끊으면 새 활동이 배지에 반영되지 않아요.',
+        '지금까지의 활동 기록, 배지, 잼, 포인트는 그대로 남아요.',
+        'Strava의 앱 목록에서도 JAM!이 빠져요. 다시 동기화하면 마지막 동기화 뒤의 활동부터 이어서 가져와요.',
+      ],
+      cancel: '취소',
+      confirm: '동기화 끊기',
+      confirming: '동기화 끊는 중',
+      successToast: 'Strava 동기화를 끊었어요',
+      /** 현상과 해결을 한 문장씩 */
+      errorToast: '동기화를 끊지 못했어요. 잠시 후 다시 시도해 주세요.',
+    },
+    /** 중복 안내 시트(`?strava=duplicate`) — 새로 시작하는 버튼은 없다. 버튼은 «취소» 하나다 */
+    duplicateSheet: {
+      title: '이미 쓰고 있는 Strava 계정이에요',
+      body: [
+        '이 Strava 계정은 이미 다른 JAM! 계정에 동기화돼 있어요.',
+        '이 계정으로 새로 시작하면 기존 JAM! 계정은 삭제되고 복구할 수 없어요.',
+        '새로 시작한 계정은 활동 기록과 배지를 처음부터 다시 쌓아요.',
+        '지금은 새로 시작할 수 없어서 동기화를 저장하지 않았고, 지금 계정은 그대로예요.',
+      ],
+      cancel: '취소',
+    },
   },
 
   /**

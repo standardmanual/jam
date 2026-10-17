@@ -127,14 +127,18 @@ RLS는 켜고 본인 행 SELECT만 허용, INSERT·UPDATE·DELETE 정책은 없�
 - `disconnected_at` (timestamptz, NULL 허용): NULL이면 연결 중이고 값이 있으면 끊김이다.
 - `disconnect_reason` (text, NULL 허용): `token_refresh_failed`(토큰 갱신 실패) · `token_revoked`(Strava가 401로 철회를 알림) · `user_disconnected`(유저가 직접 끊음).
 
-**연결 상태 규칙**(`src/lib/strava/connection-state.ts`가 판정 한 곳이다): 행이 없으면 `none`, 행이 있고 `disconnected_at`이 NULL이면 `connected`, 값이 있으면 `disconnected`. 끊김 행은 동기화하지 않는다 — 수동 동기화 API(`POST /api/strava/sync`)는 500이 아니라 409(`code: strava_disconnected`, `connectionState: disconnected`)로 알린다. 토큰 갱신 실패와 활동 조회의 401은 끊김으로 저장하고 `strava_disconnected` 소식을 하루 한 번 보낸다. 끊긴 행의 기록·배지·잼·포인트는 다른 테이블에 있어 그대로 남는다.
+**연결 상태 규칙**(`src/lib/strava/connection-state.ts`가 판정 한 곳이다): 행이 없으면 `none`, 행이 있고 `disconnected_at`이 NULL이면 `connected`, 값이 있으면 `disconnected`. 화면은 여기에 끊김 사유를 더한 `resolveStravaUiState`(`connected`·`none`·`disconnected_error`·`disconnected_user`)를 쓴다 — `user_disconnected`만 `disconnected_user`이고 나머지 사유(비어 있는 사유 포함)는 `disconnected_error`다. 행의 존재를 «연결됨»으로 읽는 곳은 없다: 홈·상단 메뉴·배지 상세·공유 데이터·소식 경고 판정은 이 판정으로 읽고, 백필·동기화 정체 소식 배치·어드민 초기화·일괄 삭제 영향 집계는 끊김 행을 건너뛴다.
+
+끊김 행은 동기화하지 않는다 — 수동 동기화 API(`POST /api/strava/sync`)는 500이 아니라 409(`code: strava_disconnected`, `connectionState: disconnected`)로 알린다. 토큰 갱신이 **인증 오류**(Strava 응답 400·401·403)로 실패하거나 활동 조회가 401이면 끊김으로 저장하고 `strava_disconnected` 소식을 하루 한 번 보낸다. 5xx·네트워크 오류·시간 초과 같은 **일시 실패**는 끊김으로 저장하지 않는다(실패 기록과 소식만 남기고 다음 동기화에서 다시 시도). 끊긴 행의 기록·배지·잼·포인트는 다른 테이블에 있어 그대로 남는다.
 
 **연결 규칙**(`GET /api/strava/callback`): 한 JAM 계정에는 연결이 하나뿐이다. 토큰 교환 뒤 `strava_athlete_id`로 기존 연결을 먼저 찾는다.
 - 다른 JAM 계정에 이미 연결된 Strava 계정(끊김 포함)이면 방금 받은 토큰을 저장하지 않고 `/profile?strava=duplicate`로 보낸다. 기존 행의 `user_id`는 덮어쓰이지 않는다(옛 upsert는 덮어썼다).
 - 같은 유저의 같은 Strava 계정이면 토큰만 갱신하고 끊김 칸을 지운다. `first_sync_pending`과 `last_synced_at`은 그대로라 마지막 동기화 뒤부터 이어서 가져온다.
-- 같은 유저가 다른 Strava 계정을 연결하면 새 행을 `first_sync_pending=true`로 만들고 이 유저의 이전 연결 행을 지운다.
+- 같은 유저가 다른 Strava 계정을 연결하면 새 행을 `first_sync_pending=true`로 만들고 이 유저의 이전 연결 행을 지운다. 이전 행 삭제가 실패하면 방금 넣은 새 행을 되돌려 같은 `user_id`의 행이 둘 남지 않게 한다.
 
-**연결 끊기**(`POST /api/strava/disconnect`): Strava 앱 연결을 해제(`POST /oauth/deauthorize`)하고 — 실패해도 계속한다 — 저장된 토큰을 지운 뒤 `user_disconnected`로 끊김을 저장한다. 행은 지우지 않는다. 연결 행이 없으면 404.
+**연결 끊기**(`POST /api/strava/disconnect`): Strava 앱 연결을 해제(`POST /oauth/deauthorize`)하고 — 실패해도 계속한다 — 저장된 토큰을 지운 뒤 `user_disconnected`로 끊김을 저장한다. 행은 지우지 않는다. 연결 행이 없으면 404이고, 이미 끊긴 연결에 다시 부르면 앱 해제를 부르지 않고 200으로 돌려주며 `disconnected_at`·`disconnect_reason`을 덮어쓰지 않는다(멱등). 프로필 수정 화면의 «동기화 끊기» 확인 시트가 이 API를 부르고, 200과 404를 모두 성공으로 처리한다.
+
+**화면의 접근 규칙**: 클라이언트(프로필 수정)가 이 테이블을 읽을 때는 `select('*')`를 쓰지 않고 `disconnected_at, disconnect_reason, last_synced_at`만 고른다 — 토큰 칸이 브라우저로 내려가면 안 된다.
 
 ### strava_sync_failures
 Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure_type`(`token_refresh_failed`·`rate_limited`·`strava_api_error`·`drop_attempt_failed`), `error_message`, `occurred_at`. `syncStravaActivities()`의 실패 경로가 남기며, 기록이 실패해도 동기화 자체는 막지 않는다. `drop_attempt_failed`는 동기화 중 드랍 시도(`tryItemDrop`)가 던진 오류를 활동 단위로 남기는 값이다 — 동기화 자체는 성공하고 그 활동만 드랍 기회가 복구되지 않으므로, `error_message`에 `stravaId=<값>: <메시지>`를 적는다. 어드민 주간 집계(`/api/admin/kpi/weekly`)의 원천이다. `stravaSyncFailures`는 `drop_attempt_failed`를 제외한 건수이고, 그 유형의 건수는 `dropAttemptFailures`가 따로 센다. RLS를 켜고 정책을 두지 않아 service_role만 접근한다. `user_id`는 원인 추적용이고 집계 응답에는 넣지 않는다.

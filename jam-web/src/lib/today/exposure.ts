@@ -8,6 +8,7 @@
  * service_role 클라이언트 사용 (RLS 우회, 존재 여부만 LIMIT 1 로 확인).
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { resolveStravaUiState } from '@/lib/strava/connection-state'
 import { COMPLETION_BADGE_TYPES, computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
 import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 import { getTodayWeather } from '@/lib/inputs/weather'
@@ -227,13 +228,16 @@ export function minRemainingSlots(
 }
 
 /** last_synced_at 기준 경과일 (순수 함수 — 테스트 대상, 티켓 20260923_2253).
- *  연결 자체가 없으면 null(태그 대상 아님). 연결은 있지만 한 번도 동기화하지 않았으면
+ *  연결 자체가 없으면 null(태그 대상 아님). 유저가 직접 끊은 연결(`disconnected_user`)도 null이다 —
+ *  스스로 멈춘 유저에게 «오래 안 했어요» 카드를 반복하지 않는다(티켓 20261017_1422). 오류로 끊긴 연결은
+ *  그대로 센다(다시 동기화하라는 카드가 도움이 된다). 연결은 있지만 한 번도 동기화하지 않았으면
  *  Infinity로 취급한다 — "연결했지만 오래 안 한 유저"에 해당한다. */
 export function daysSinceLastSync(
-  connection: { last_synced_at: string | null } | null,
+  connection: { last_synced_at: string | null; disconnected_at?: string | null; disconnect_reason?: string | null } | null,
   now: Date
 ): number | null {
   if (!connection) return null
+  if (resolveStravaUiState(connection) === 'disconnected_user') return null
   if (!connection.last_synced_at) return Infinity
   const last = new Date(connection.last_synced_at).getTime()
   if (Number.isNaN(last)) return Infinity
@@ -245,11 +249,14 @@ async function stravaStaleDays(userId: string, now: Date): Promise<number | null
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('strava_connections')
-    .select('last_synced_at')
+    .select('last_synced_at, disconnected_at, disconnect_reason')
     .eq('user_id', userId)
     .maybeSingle()
   if (error) console.error('[stravaStaleDays] strava_connections 조회 오류:', error.message)
-  return daysSinceLastSync((data ?? null) as { last_synced_at: string | null } | null, now)
+  return daysSinceLastSync(
+    (data ?? null) as { last_synced_at: string | null; disconnected_at: string | null; disconnect_reason: string | null } | null,
+    now
+  )
 }
 
 /**

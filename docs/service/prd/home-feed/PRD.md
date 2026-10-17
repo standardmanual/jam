@@ -45,8 +45,9 @@ code:
 | 1 | 상단 바 | 공통 `TopNav`(로고) |
 | 2 | 인사말 + 검색 | 「{이름}」 인사 한 줄과 검색 아이콘(→ `/search`) |
 | 3 | 온보딩 퀘스트 카드 | `user_onboarding_quests` 행이 있고 `completed_at`이 비어 있는 유저에게만. 아래 표 |
-| 4 | 오늘의 현황 스트립 | 2칸. 왼쪽 「내 진행도」, 오른쪽 「친구 활동」(아래 표) |
-| 5 | 투데이 카드 스택 | 제목 「투데이」·부제 「오늘의 소식」. 노출할 카드가 0장이면 영역 전체를 그리지 않는다 |
+| 4 | Strava 동기화 끊김 카드 | 토큰 갱신 실패·Strava 철회로 끊긴 유저에게만(전체 폭). 정상 연결·미연동·유저가 직접 끊은 경우·조회 실패에는 DOM에 없다. 아래 표 |
+| 5 | 오늘의 현황 스트립 | 2칸. 왼쪽 「내 진행도」, 오른쪽 「친구 활동」(아래 표) |
+| 6 | 투데이 카드 스택 | 제목 「투데이」·부제 「오늘의 소식」. 노출할 카드가 0장이면 영역 전체를 그리지 않는다 |
 
 **온보딩 퀘스트 카드**(티켓 20260927_2133, 상위 20260927_2123)는 신규 유저가 온보딩 2단계를
 마친 뒤 서비스 기능을 순서대로 직접 해 보는 7단계 「퀘스트」의 진행도를 보여 준다. 조건이
@@ -79,11 +80,25 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 
 근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/OnboardingQuestCard.tsx`, `jam-web/src/app/(main)/OnboardingQuestSkipSheet.tsx`, `jam-web/src/app/(main)/OnboardingSyncButton.tsx`, `jam-web/src/components/SyncButton.tsx`, `jam-web/src/components/ui/TopNav.tsx`(`centerSlotOverride`), `jam-web/src/lib/onboarding-quest/status.ts`, `jam-web/src/lib/onboarding-quest/config.ts`, `jam-web/src/lib/onboarding-quest/screen-gate.ts`(`STEP_SCREEN_MAP`), `jam-web/src/lib/onboarding-quest/progress.ts`(`validateSkip`), `jam-web/src/app/api/onboarding-quest/skip/route.ts`, 펄스 `jam-web/src/components/transitions.css`(`.jam-quest-pulse`), `jam-web/design-system/tokens/motion.css`(`--duration-quest-pulse`·`--ease-quest-pulse`), 문구 `jam-web/src/lib/i18n/ko.ts`(`onboardingQuest`)
 
+**Strava 동기화 끊김 카드**(티켓 20261017_1422)는 `strava_connections`의 연결 상태 판정(`resolveStravaUiState`) 결과로 그린다.
+흰 카드에 칩 「Strava 동기화」, 제목(「Strava 동기화가 끊겼어요」), 원인과 해결을 알리는 본문, 검정 알약 버튼
+「Strava 다시 동기화하기」(→ `/api/strava/auth`) 순이다. 심각도는 면 색이 아니라 문구가 전달한다.
+
+| 연결 상태 | 끊김 카드 | 진행도 칸의 「Strava 동기화하면 시작해요」 | 상단 메뉴 가운데 버튼 |
+|---|---|---|---|
+| 연결 중 | 없음 | 없음(진행도·안내를 그린다) | 동기화 버튼(`SyncButton`) |
+| 오류로 끊김(`token_refresh_failed`·`token_revoked`) | 그린다 | 없음 — 카드가 이미 안내한다. 남은 기록으로 계산한 진행도는 그대로 | 「다시 동기화」 |
+| 유저가 직접 끊음(`user_disconnected`) | 없음 — 알람을 반복하지 않는다 | 그린다(미연동과 같다) | 「동기화」 |
+| 연결 없음 | 없음 | 그린다 | 「동기화」 |
+| 조회 실패 | 없음 — 어느 쪽도 단정하지 않고 로그만 남긴다 | 없음 | 「동기화」 |
+
+근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/components/strava/StravaDisconnectedCard.tsx`, `jam-web/src/lib/strava/connection-state.ts`(`resolveStravaUiState`·`showsStravaDisconnectedCard`·`showsStravaSyncCta`), `jam-web/src/components/ui/TopNav.tsx`, `jam-web/src/lib/topNavData.tsx`, 문구 `jam-web/src/lib/i18n/ko.ts`(`stravaConnection`)
+
 **오늘의 현황 스트립**은 큐레이션을 하지 않는다(카드 CMS와 역할이 겹치지 않게). 
 
 | 칸 | 상태 | 표시·이동 |
 |---|---|---|
-| 내 진행도 | Strava 미연동 | 연동 유도 → `/api/strava/auth` |
+| 내 진행도 | Strava 미연동 또는 유저가 직접 끊음 | 「Strava 동기화하면 시작해요」 → `/api/strava/auth`. 오류로 끊긴 경우는 이 문구 대신 위 끊김 카드가 안내하고, 진행도는 남은 기록으로 그린다 |
 | | 진행 중 컬렉션·미션 있음 | 완성도가 가장 높은 1건(동률이면 최근 활동순)의 이름·진행 수 → 그 상세 |
 | | 둘 다 없음 | 코드에 고정된 안내 후보 중 요청마다 무작위 1개(드랍·미션) |
 | 친구 활동 | 팔로잉 없음 | 검색 유도 → `/search` |
@@ -120,7 +135,7 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | `has_ending_soon_mission` | 그중 `ends_at`이 지금부터 3일 안인 미션이 있음 |
 | `has_incomplete_itembook` | 슬롯을 채우기 시작했지만 완성하지 않은 컬렉션이 있음(분모는 소프트 삭제·드랍 제외 배지를 뺀 아이템·체크인 배지이고, 분자는 컬렉션별로 센다. 판정은 `lib/itembook/completion-basis.ts` 하나다) |
 | `itembook_remaining_le3` | 그 미완성 컬렉션들의 남은 슬롯 최솟값이 3 이하(`ITEMBOOK_REMAINING_MAX`) |
-| `strava_stale_14d` | Strava 연결이 있고 마지막 동기화에서 14일 이상 지남(`STRAVA_STALE_DAYS`). 한 번도 동기화하지 않았으면 해당, 연결이 없으면 붙지 않는다 |
+| `strava_stale_14d` | Strava 연결이 있고 마지막 동기화에서 14일 이상 지남(`STRAVA_STALE_DAYS`). 한 번도 동기화하지 않았으면 해당, 연결이 없거나 유저가 직접 끊은 경우(`user_disconnected`)에는 붙지 않는다. 오류로 끊긴 연결은 그대로 센다(다시 동기화하라는 카드가 도움이 된다) |
 | `new_user` | 가입 7일 이내 |
 | `weather_*` | 그날 저장된 날씨 값(아래) |
 | `holiday_today`·`seasonal_today`·`anniversary_today` | 그날 저장된 특일 목록을 **이름**으로 판정(대상 목록 정본 `docs/service/content/SPECIAL_DAYS.md`). 한 날에 여러 개가 켜질 수 있다 |

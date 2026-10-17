@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import type { StravaUiState } from '@/lib/strava/connection-state'
 
 /**
  * TopNav 3분할 확장(20260824_010)에서 서비스 래퍼 `src/components/ui/TopNav.tsx`가
@@ -20,8 +21,12 @@ export interface TopNavData {
   username: string | null
   /** 로그인 유저의 프로필 이미지 URL. 없으면 TopNav가 placeholder 아이콘을 보여준다 */
   avatarUrl: string | null
-  /** 로그인 유저의 스트라바 연동 여부. false면 동기화 버튼이 연결 플로우로 이동한다 */
-  stravaConnected: boolean
+  /**
+   * 로그인 유저의 Strava 동기화 상태(`resolveStravaUiState`, 티켓 20261017_1422). 가운데 버튼이 갈린다:
+   * connected면 `SyncButton`, disconnected_error면 «다시 동기화», 그 외(none·유저가 직접 끊음)는
+   * 동기화 시작 버튼이다. 둘 다 누르면 OAuth 시작 라우트로 이동한다.
+   */
+  stravaState: StravaUiState
   /** `bumps_badge=true`인 안 읽은 소식이 하나라도 있는가 — 알림 종의 빨간 버블 */
   hasUnreadNotifications: boolean
 }
@@ -49,7 +54,7 @@ export interface TopNavContextValue extends TopNavData {
 const defaultValue: TopNavContextValue = {
   username: null,
   avatarUrl: null,
-  stravaConnected: false,
+  stravaState: 'none',
   hasUnreadNotifications: false,
   clearNotificationDot: () => {},
   restoreNotificationDot: () => {},
@@ -78,7 +83,7 @@ export function TopNavDataProvider({ value, children }: { value: TopNavData; chi
     () => ({
       username: value.username,
       avatarUrl: value.avatarUrl,
-      stravaConnected: value.stravaConnected,
+      stravaState: value.stravaState,
       hasUnreadNotifications: dot,
       clearNotificationDot,
       restoreNotificationDot,
@@ -86,7 +91,7 @@ export function TopNavDataProvider({ value, children }: { value: TopNavData; chi
     [
       value.username,
       value.avatarUrl,
-      value.stravaConnected,
+      value.stravaState,
       dot,
       clearNotificationDot,
       restoreNotificationDot,

@@ -14,6 +14,8 @@ vi.mock('@/lib/supabase/server', () => ({
 import {
   resolveStravaConnectionState,
   isStravaRevokedError,
+  isStravaAuthFailureError,
+  resolveStravaUiState,
   markStravaDisconnected,
   StravaDisconnectedError,
   STRAVA_DISCONNECT_CLEARED,
@@ -110,5 +112,51 @@ describe('markStravaDisconnected', () => {
     eqMock.mockResolvedValue({ error: { message: 'db down' } })
 
     await expect(markStravaDisconnected('u1', 'token_revoked', { supabase: client })).resolves.toBe(false)
+  })
+})
+
+describe('resolveStravaUiState — 화면이 쓰는 네 갈래', () => {
+  const AT = '2026-10-17T00:00:00.000Z'
+
+  it('행이 없으면 none, 연결 중이면 connected다', () => {
+    expect(resolveStravaUiState(null)).toBe('none')
+    expect(resolveStravaUiState({ disconnected_at: null, disconnect_reason: null })).toBe('connected')
+  })
+
+  it('토큰 갱신 실패·Strava 철회로 끊기면 disconnected_error다', () => {
+    expect(resolveStravaUiState({ disconnected_at: AT, disconnect_reason: 'token_refresh_failed' })).toBe(
+      'disconnected_error'
+    )
+    expect(resolveStravaUiState({ disconnected_at: AT, disconnect_reason: 'token_revoked' })).toBe(
+      'disconnected_error'
+    )
+  })
+
+  it('유저가 직접 끊었으면 disconnected_user다', () => {
+    expect(resolveStravaUiState({ disconnected_at: AT, disconnect_reason: 'user_disconnected' })).toBe(
+      'disconnected_user'
+    )
+  })
+
+  it('사유가 비어 있는 끊김은 유저가 끊은 것으로 단정하지 않고 오류로 본다', () => {
+    expect(resolveStravaUiState({ disconnected_at: AT, disconnect_reason: null })).toBe('disconnected_error')
+  })
+})
+
+describe('isStravaAuthFailureError — 일시 실패는 끊김이 아니다 (서버 보정 a)', () => {
+  it('400·401·403 StravaApiError만 인증 오류다', () => {
+    for (const status of [400, 401, 403]) {
+      expect(isStravaAuthFailureError(new StravaApiError('x', status))).toBe(true)
+    }
+  })
+
+  it('5xx·429·네트워크 오류·시간 초과·일반 오류는 아니다', () => {
+    for (const status of [429, 500, 502, 503, 504]) {
+      expect(isStravaAuthFailureError(new StravaApiError('x', status))).toBe(false)
+    }
+    expect(isStravaAuthFailureError(new TypeError('fetch failed'))).toBe(false)
+    expect(isStravaAuthFailureError(Object.assign(new Error('timeout'), { name: 'TimeoutError' }))).toBe(false)
+    expect(isStravaAuthFailureError(null)).toBe(false)
+    expect(isStravaAuthFailureError('401')).toBe(false)
   })
 })

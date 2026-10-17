@@ -29,7 +29,7 @@ function CellLabel({ children }: { children: string }) {
 }
 
 function LeftCell({ status }: { status: TodayLeftStatus }) {
-  if (status.kind === 'strava_disconnected') {
+  if (status.kind === 'strava_not_connected') {
     return (
       <Link href={status.href} className="block h-full">
         <Card className={CELL_CLASS}>

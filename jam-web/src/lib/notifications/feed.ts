@@ -20,6 +20,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
 import type { NotificationRow } from '@/types/database'
+import { resolveStravaConnectionState } from '@/lib/strava/connection-state'
 import {
   idList,
   missingMessageSlots,
@@ -188,7 +189,7 @@ export async function hydrateNotifications(
     needsStrava
       ? supabase
           .from('strava_connections')
-          .select('user_id, last_synced_at')
+          .select('user_id, last_synced_at, disconnected_at, disconnect_reason')
           .eq('user_id', userId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -207,8 +208,14 @@ export async function hydrateNotifications(
 
   const warningState: NotificationWarningState = {}
   if (needsStrava) {
-    const conn = stravaRes.data as { user_id: string; last_synced_at: string | null } | null
-    warningState.stravaConnected = Boolean(conn)
+    const conn = stravaRes.data as {
+      user_id: string
+      last_synced_at: string | null
+      disconnected_at: string | null
+      disconnect_reason: string | null
+    } | null
+    // «연결이 살아 있는가»는 행의 유무가 아니라 연결 상태 판정(connected)이다 — 끊김 행은 경고를 유지한다
+    warningState.stravaConnected = resolveStravaConnectionState(conn) === 'connected'
     warningState.lastSyncedAt = conn?.last_synced_at ?? null
   }
   if (needsInventory) {

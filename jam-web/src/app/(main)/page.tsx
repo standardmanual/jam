@@ -1,18 +1,25 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { StravaConnectionRow, UserRow } from '@/types/database'
+import { UserRow } from '@/types/database'
 import TopNav from '@/components/ui/TopNav'
 import TodayCardStack from './TodayCardStack'
 import TodayStatusStrip from './TodayStatusStrip'
 import OnboardingQuestCard from './OnboardingQuestCard'
 import OnboardingSyncButton from './OnboardingSyncButton'
+import StravaDisconnectedCard from '@/components/strava/StravaDisconnectedCard'
 import HomeViewTracker from './HomeViewTracker'
 import { getTodayCards } from '@/lib/today/cards'
 import { getTodayLeftStatus, getTodayRightStatus, type TodayLeftStatus } from '@/lib/today/status'
 import { getOnboardingQuestCard } from '@/lib/onboarding-quest/status'
 import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 import { getDisplayName } from '@/lib/utils'
+import {
+  resolveStravaUiState,
+  showsStravaDisconnectedCard,
+  showsStravaSyncCta,
+  type StravaHomeView,
+} from '@/lib/strava/connection-state'
 import { d, t } from '@/lib/i18n'
 import { SearchIcon } from '@/components/ui/icons'
 
@@ -30,17 +37,27 @@ export default async function HomePage() {
   // 미연동이면 getTodayLeftStatus 자체를 호출하지 않는다 — 미연동 유저에게 bestProgress()의
   // 무의미한 DB 조회 4건이 실행되던 문제를 제거한다(티켓 20260830_2104). 나머지 쿼리는
   // stravaConn과 무관하게 이미 병렬로 실행 중이므로 병렬화 이점은 그대로 유지된다.
-  const stravaConnPromise = supabase.from('strava_connections').select('*').eq('user_id', userId).maybeSingle()
+  // 연결 상태 판정에 필요한 두 칸만 읽는다 — 행 전체를 읽지 않는다(토큰 칸을 가져오지 않는다).
+  const stravaConnPromise = supabase
+    .from('strava_connections')
+    .select('disconnected_at, disconnect_reason')
+    .eq('user_id', userId)
+    .maybeSingle()
   const profilePromise = supabase.from('users').select('*').eq('id', userId).single()
   const rightStatusPromise = getTodayRightStatus(userId)
 
   const { data: stravaConn, error: stravaConnError } = await stravaConnPromise
   if (stravaConnError) console.error('[home/page] strava_connections 조회 실패', stravaConnError)
-  const stravaConnection = stravaConn as StravaConnectionRow | null
-  const leftStatusPromise: Promise<TodayLeftStatus> = stravaConnection
-    ? getTodayLeftStatus(userId)
-    : Promise.resolve({ kind: 'strava_disconnected', href: '/api/strava/auth' })
-  const onboardingQuestPromise = getOnboardingQuestCard(userId, { stravaConnected: Boolean(stravaConnection) })
+  // 판정은 connection-state.ts 한 곳. 조회가 실패하면 연결됨·끊김·미연동 어느 쪽도 단정하지 않는다
+  // (알람 카드와 CTA를 그리지 않고 로그만 남긴다). 예전에는 실패가 null로 접혀 «Strava 동기화하면 시작해요»가
+  // 거짓으로 떴다.
+  const stravaView: StravaHomeView = stravaConnError ? 'unknown' : resolveStravaUiState(stravaConn)
+  const leftStatusPromise: Promise<TodayLeftStatus> = showsStravaSyncCta(stravaView)
+    ? Promise.resolve({ kind: 'strava_not_connected', href: '/api/strava/auth' })
+    : getTodayLeftStatus(userId)
+  const onboardingQuestPromise = getOnboardingQuestCard(userId, {
+    stravaConnected: stravaView === 'connected' || stravaView === 'unknown',
+  })
   const onboardingQuestGatePromise = getOnboardingQuestGate(userId, 'home')
 
   const [
@@ -98,6 +115,10 @@ export default async function HomePage() {
 
       {/* 온보딩 퀘스트 홈 카드 (티켓 20260927_2133) — 대상 유저에게만 렌더, 그 외엔 null */}
       <OnboardingQuestCard state={onboardingQuestCard} username={userProfile?.username ?? null} />
+
+      {/* Strava 동기화 끊김 카드 (티켓 20261017_1422) — 오류로 끊긴 유저에게만 렌더, 그 외엔 DOM에 없다.
+          유저가 직접 끊은 경우는 알람 없이 미연동처럼 보인다(사용자 승인). */}
+      {showsStravaDisconnectedCard(stravaView) && <StravaDisconnectedCard />}
 
       {/* "오늘의 현황" 스트립 (신규) — 좌: 내 진행도 / 우: 친구 활동. 큐레이션 없음(today_cards
           CMS와 역할 분리, 완료 기록 참고). */}

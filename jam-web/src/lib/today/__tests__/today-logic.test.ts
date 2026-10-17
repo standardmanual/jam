@@ -229,6 +229,14 @@ check('minRemainingSlots: 여러 북 중 잔여가 가장 적은 북의 값을 �
 check('daysSinceLastSync: 연결 자체가 없으면 null(태그 대상 아님)', () => {
   assert.equal(daysSinceLastSync(null, new Date('2026-09-23T00:00:00Z')), null)
 })
+check('daysSinceLastSync: 유저가 직접 끊은 연결은 null(태그 대상 아님)', () => {
+  const conn = { last_synced_at: '2026-09-01T00:00:00Z', disconnected_at: '2026-09-02T00:00:00Z', disconnect_reason: 'user_disconnected' }
+  assert.equal(daysSinceLastSync(conn, new Date('2026-09-23T00:00:00Z')), null)
+})
+check('daysSinceLastSync: 오류로 끊긴 연결은 경과일을 그대로 센다', () => {
+  const conn = { last_synced_at: '2026-09-09T00:00:00Z', disconnected_at: '2026-09-10T00:00:00Z', disconnect_reason: 'token_refresh_failed' }
+  assert.equal(daysSinceLastSync(conn, new Date('2026-09-23T00:00:00Z')), 14)
+})
 check('daysSinceLastSync: 연결은 있지만 한 번도 동기화 안 함 → 항상 경과(Infinity)', () => {
   assert.equal(daysSinceLastSync({ last_synced_at: null }, new Date('2026-09-23T00:00:00Z')), Infinity)
 })

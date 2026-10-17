@@ -8,6 +8,9 @@ import TopNav from '@/components/ui/TopNav'
 import { UserIcon } from '@/components/ui/icons'
 import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
+import StravaSettingsSection, { type StravaSettingsState } from '@/components/strava/StravaSettingsSection'
+import StravaDisconnectSheet from '@/components/strava/StravaDisconnectSheet'
+import { resolveStravaUiState } from '@/lib/strava/connection-state'
 import { d } from '@/lib/i18n'
 
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
@@ -46,6 +49,13 @@ export default function ProfileEditPage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
+  // Strava 동기화 구획 — none이거나 조회가 실패하면 null(구획을 그리지 않는다)
+  const [stravaSection, setStravaSection] = useState<{
+    state: StravaSettingsState
+    lastSyncedAt: string | null
+  } | null>(null)
+  const [disconnectSheetOpen, setDisconnectSheetOpen] = useState(false)
+
   // 현재 유저 정보 로드
   useEffect(() => {
     let cancelled = false
@@ -54,13 +64,27 @@ export default function ProfileEditPage() {
         router.replace('/login')
         return
       }
-      supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-        .then(({ data: raw }) => {
+      // 구획만 따로 깜빡이지 않도록 사용자 정보와 같은 시점에 받는다. 토큰 칸이 브라우저로 내려오지 않게
+      // select('*') 대신 필요한 세 칸만 고른다(access_token·refresh_token 제외).
+      Promise.all([
+        supabase.from('users').select('*').eq('id', user.id).single(),
+        supabase
+          .from('strava_connections')
+          .select('disconnected_at, disconnect_reason, last_synced_at')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+      ])
+        .then(([{ data: raw }, { data: stravaRow, error: stravaError }]) => {
           if (cancelled) return
+          // 조회가 실패하면 구획을 숨기고 로그만 남긴다 — 저장 기능을 막지 않는다
+          if (stravaError) {
+            console.error('[profile/edit] strava_connections 조회 실패', stravaError)
+          } else {
+            const stravaState = resolveStravaUiState(stravaRow)
+            setStravaSection(
+              stravaState === 'none' ? null : { state: stravaState, lastSyncedAt: stravaRow?.last_synced_at ?? null }
+            )
+          }
           const data = raw as { username: string | null; display_name: string | null; avatar_url: string | null } | null
           const uname = data?.username ?? null
           setCurrentUsername(uname)
@@ -317,6 +341,15 @@ export default function ProfileEditPage() {
           </div>
         </div>
 
+        {/* Strava 동기화 구획 (티켓 20261017_1422) — none이면 그리지 않는다(홈과 상단 메뉴가 이미 CTA를 갖고 있다) */}
+        {stravaSection && (
+          <StravaSettingsSection
+            state={stravaSection.state}
+            lastSyncedAt={stravaSection.lastSyncedAt}
+            onDisconnect={() => setDisconnectSheetOpen(true)}
+          />
+        )}
+
         {/* 저장 버튼 */}
         <div className="flex flex-col gap-4 mt-auto">
           {saveError && (
@@ -351,6 +384,12 @@ export default function ProfileEditPage() {
           </a>
         </div>
       </div>
+
+      <StravaDisconnectSheet
+        open={disconnectSheetOpen}
+        onClose={() => setDisconnectSheetOpen(false)}
+        onDisconnected={() => setStravaSection((prev) => (prev ? { ...prev, state: 'disconnected_user' } : prev))}
+      />
     </div>
   )
 }

@@ -19,7 +19,9 @@ import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 // ─── 좌: 내 진행도 ──────────────────────────────────────────────────────
 
 export type TodayLeftStatus =
-  | { kind: 'strava_disconnected'; href: string }
+  /** 동기화를 시작하지 않았거나(none) 유저가 직접 끊은(disconnected_user) 상태 — CTA만 보인다.
+   *  이름은 옛 `strava_disconnected`였으나 «행 없음»을 뜻해 끊김과 헷갈려 바꿨다(티켓 20261017_1422). */
+  | { kind: 'strava_not_connected'; href: string }
   | { kind: 'progress'; name: string; current: number; total: number; missionType: MissionType | null; href: string }
   | { kind: 'suggestion'; text: string; category: 'drops' | 'missions'; href: string }
 
@@ -238,7 +240,7 @@ const SUGGESTIONS: { text: string; category: 'drops' | 'missions'; href: string 
 /**
  * 진행 중인 컬렉션/미션 → 없으면 신규 유저 안내를 계산한다.
  * Strava 연동 여부 판단은 이 함수의 책임이 아니다 — 호출부(`page.tsx`)가
- * `strava_connections` 조회로 먼저 확정하고, 미연동이면 이 함수 자체를 호출하지 않는다
+ * `strava_connections` 조회와 `connection-state.ts` 판정으로 먼저 확정하고, CTA만 보일 상태(none·유저가 끊음)면 이 함수 자체를 호출하지 않는다
  * (티켓 20260830_2104 — 미연동 유저에게 무의미한 DB 조회 4건이 실행되던 문제 제거).
  */
 export async function getTodayLeftStatus(userId: string): Promise<TodayLeftStatus> {

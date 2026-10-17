@@ -39,7 +39,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
  * 값이 `undefined`면 "조회하지 않음"이라 판정을 보수적으로(경고 유지) 둔다.
  */
 export interface NotificationWarningState {
-  /** Strava 동기화 연결이 살아 있는가 */
+  /** Strava 동기화가 연결 중인가 — `resolveStravaConnectionState`가 `connected`일 때만 true(행이 있어도 끊김이면 false) */
   stravaConnected?: boolean
   /** 마지막 동기화 시각 (ISO). 연결이 없거나 한 번도 안 했으면 null */
   lastSyncedAt?: string | null
@@ -60,8 +60,8 @@ export function isWarningNotification(
 ): boolean {
   switch (type) {
     case 'strava_disconnected':
-      // 토큰 유효성은 실제 갱신을 시도해야 알 수 있으므로 "연결 자체가 있는가"로 판정한다.
-      // 다시 동기화하면 연결이 생기고 경고가 강등된다 — 이 소식의 목적(재동기화 유도)과 일치.
+      // 토큰 갱신이 실패하면 끊김(`disconnected_at`)으로 저장되므로 «연결 중인가»(connected)로 판정한다.
+      // 다시 동기화하면 끊김이 지워지고 경고가 강등된다 — 이 소식의 목적(재동기화 유도)과 일치.
       return state.stravaConnected === false
     case 'sync_stalled': {
       if (state.stravaConnected === false) return true
