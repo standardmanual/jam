@@ -175,3 +175,139 @@ describe('GET /api/itembooks', () => {
     expect(res.status).toBe(401)
   })
 })
+
+/**
+ * 티켓 20261016_2340 3회-나 — 조회 응답의 등급 필드(`tierMode`·`tier`·`tiers`)
+ * 옛(tier_mode 꺼진) 컬렉션은 기존 필드 이름·값이 그대로이고 새 필드는 `false`·`null`·`{}`다.
+ */
+type TierBook = {
+  id: string
+  name: string
+  description: string | null
+  image_url: string | null
+  tribe: null
+  totalBadgeCount: number
+  discoveredBadgeCount: number
+  slottedCount: number
+  isCompleted: boolean
+  tierMode: boolean
+  tier: string | null
+  tiers: Record<string, { total: number; filled: number; complete: boolean; recorded: boolean }>
+}
+
+function namedBadge(id: string, itemBookId: string, name: string, rarity: string): Row {
+  return { id, item_book_id: itemBookId, type: 'item', drop_excluded: false, deleted_at: null, name, rarity }
+}
+
+async function fetchBooks(): Promise<TierBook[]> {
+  const res = await GET()
+  return ((await res.json()) as { itemBooks: TierBook[] }).itemBooks
+}
+
+describe('GET /api/itembooks — 등급 필드(티켓 20261016_2340 3회-나)', () => {
+  const LEGACY_KEYS = [
+    'id', 'name', 'description', 'image_url', 'tribe',
+    'totalBadgeCount', 'discoveredBadgeCount', 'slottedCount', 'isCompleted',
+  ]
+
+  it('옛 컬렉션은 기존 필드의 이름과 값이 그대로이고 새 필드는 tierMode false·tier null·tiers {}다', async () => {
+    state.tables.inventory_items = [
+      { inventory_id: 'inv-1', badge_id: 'old-a' },
+      { inventory_id: 'inv-1', badge_id: 'old-b' },
+    ]
+    state.tables.badges = [itemBadge('old-a', 'book-old'), itemBadge('old-b', 'book-old')]
+    state.tables.item_books = [book('book-old')]
+    state.tables.user_item_book_slots = [{ user_id: USER_ID, item_book_id: 'book-old', badge_id: 'old-a' }]
+
+    const books = await fetchBooks()
+    expect(books).toEqual([
+      {
+        id: 'book-old',
+        name: '컬렉션 book-old',
+        description: null,
+        image_url: null,
+        tribe: null,
+        totalBadgeCount: 2,
+        discoveredBadgeCount: 2,
+        slottedCount: 1,
+        isCompleted: false,
+        tierMode: false,
+        tier: null,
+        tiers: {},
+      },
+    ])
+    for (const key of LEGACY_KEYS) expect(books[0]).toHaveProperty(key)
+  })
+
+  it('옛 완성 기록이 있는 옛 컬렉션은 장착을 풀어도 isCompleted true이고 새 필드는 그대로다', async () => {
+    state.tables.inventory_items = [{ inventory_id: 'inv-1', badge_id: 'old-a' }]
+    state.tables.badges = [itemBadge('old-a', 'book-old')]
+    state.tables.item_books = [book('book-old')]
+    state.tables.user_item_book_completions = [{ user_id: USER_ID, item_book_id: 'book-old' }]
+
+    const [b] = await fetchBooks()
+    expect(b.isCompleted).toBe(true)
+    expect(b.slottedCount).toBe(0)
+    expect(b).toMatchObject({ tierMode: false, tier: null, tiers: {} })
+  })
+
+  describe('tier_mode 컬렉션', () => {
+    beforeEach(() => {
+      state.tables.inventory_items = [
+        { inventory_id: 'inv-1', badge_id: 'c-a' },
+        { inventory_id: 'inv-1', badge_id: 'r-a' },
+      ]
+      // 이름 두 개(가·나)가 common·rare 두 등급으로 있다
+      state.tables.badges = [
+        namedBadge('c-a', 'book-tier', '가', 'common'),
+        namedBadge('c-b', 'book-tier', '나', 'common'),
+        namedBadge('r-a', 'book-tier', '가', 'rare'),
+        namedBadge('r-b', 'book-tier', '나', 'rare'),
+      ]
+      state.tables.item_books = [book('book-tier', { tier_mode: true })]
+    })
+
+    it('꽂힌 등급을 tier로, 등급별 진행을 tiers로 돌려준다', async () => {
+      state.tables.user_item_book_slots = [{ user_id: USER_ID, item_book_id: 'book-tier', badge_id: 'c-a' }]
+
+      const [b] = await fetchBooks()
+      expect(b.tierMode).toBe(true)
+      expect(b.tier).toBe('common')
+      expect(b.tiers).toEqual({
+        common: { total: 2, filled: 1, complete: false, recorded: false },
+        rare: { total: 2, filled: 0, complete: false, recorded: false },
+      })
+      expect(b.isCompleted).toBe(false)
+    })
+
+    it('등급별 완성 기록이 하나라도 있으면 장착을 풀어도 isCompleted true이고 그 등급만 recorded다', async () => {
+      state.tables.user_item_book_slots = []
+      state.tables.user_item_book_tier_completions = [{ user_id: USER_ID, item_book_id: 'book-tier', tier: 'rare' }]
+
+      const [b] = await fetchBooks()
+      expect(b.isCompleted).toBe(true)
+      expect(b.tier).toBeNull()
+      expect(b.tiers.rare).toMatchObject({ complete: false, recorded: true })
+      expect(b.tiers.common).toMatchObject({ complete: false, recorded: false })
+    })
+
+    it('기록이 없어도 지금 계산상 완성이면 isCompleted true다', async () => {
+      state.tables.user_item_book_slots = [
+        { user_id: USER_ID, item_book_id: 'book-tier', badge_id: 'c-a' },
+        { user_id: USER_ID, item_book_id: 'book-tier', badge_id: 'c-b' },
+      ]
+
+      const [b] = await fetchBooks()
+      expect(b.isCompleted).toBe(true)
+      expect(b.tiers.common).toEqual({ total: 2, filled: 2, complete: true, recorded: false })
+    })
+
+    it('다른 유저의 등급별 완성 기록은 세지 않는다', async () => {
+      state.tables.user_item_book_tier_completions = [{ user_id: 'other', item_book_id: 'book-tier', tier: 'common' }]
+
+      const [b] = await fetchBooks()
+      expect(b.isCompleted).toBe(false)
+      expect(b.tiers.common?.recorded).toBe(false)
+    })
+  })
+})

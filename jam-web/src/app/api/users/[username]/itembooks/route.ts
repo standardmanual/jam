@@ -4,7 +4,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRarity } from '@/types/database'
-import { COMPLETION_BADGE_TYPES, computeBookCompletion, isBookCompleted } from '@/lib/itembook/completion-basis'
+import { COMPLETION_BADGE_TYPES, computeBookCompletion, isBookCompleted, summarizeTiers } from '@/lib/itembook/completion-basis'
 import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 
 export async function GET(
@@ -71,6 +71,7 @@ export async function GET(
     { data: bookBadgesRaw, error: bookBadgesError },
     { data: slotsRaw, error: slotsError },
     { data: completionsRaw, error: completionsError },
+    { data: tierCompletionsRaw, error: tierCompletionsError },
   ] = await Promise.all([
       service
       .from('item_books')
@@ -82,11 +83,14 @@ export async function GET(
       service.from('badges').select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at, created_at').in('item_book_id', bookIds).in('type', [...COMPLETION_BADGE_TYPES]).is('deleted_at', null).order('created_at', { ascending: true }),
       service.from('user_item_book_slots').select('item_book_id, badge_id').eq('user_id', userId).in('item_book_id', bookIds),
       service.from('user_item_book_completions').select('item_book_id').eq('user_id', userId).in('item_book_id', bookIds),
+      // 등급별 완성 기록 — tier_mode 컬렉션만 행이 있다(티켓 20261016_2340 3회-나)
+      service.from('user_item_book_tier_completions').select('item_book_id, tier').eq('user_id', userId).in('item_book_id', bookIds),
   ])
   if (booksError) console.error('[api/users/[username]/itembooks] item_books 조회 실패', booksError)
   if (bookBadgesError) console.error('[api/users/[username]/itembooks] 아이템북 소속 배지 조회 실패', bookBadgesError)
   if (slotsError) console.error('[api/users/[username]/itembooks] user_item_book_slots 조회 실패', slotsError)
   if (completionsError) console.error('[api/users/[username]/itembooks] user_item_book_completions 조회 실패', completionsError)
+  if (tierCompletionsError) console.error('[api/users/[username]/itembooks] user_item_book_tier_completions 조회 실패', tierCompletionsError)
 
   const rarityByBook = new Map<string, BadgeRarity>()
   const bookBadges = (bookBadgesRaw ?? []) as { id: string; item_book_id: string; type: string; drop_excluded: boolean | null; name: string; rarity: BadgeRarity; deleted_at: string | null; created_at: string }[]
@@ -121,11 +125,23 @@ export async function GET(
   })
   type BookRaw = { id: string; name: string; image_url: string | null; tier_mode?: boolean | null; tribe: { name: string } | null }
   const bookRows = (booksRaw ?? []) as unknown as BookRaw[]
+  const tierModeBookIds = new Set(bookRows.filter((b) => b.tier_mode).map((b) => b.id))
   const completionByBook = computeBookCompletion(bookBadges, new Set<string>(), {
     filledByBook,
-    tierModeBookIds: new Set(bookRows.filter((b) => b.tier_mode).map((b) => b.id)),
+    tierModeBookIds,
   })
+  // 등급별 완성 기록: 컬렉션 → 기록된 등급 Set
+  const recordedTiersByBook = new Map<string, Set<string>>()
+  for (const r of (tierCompletionsRaw ?? []) as { item_book_id: string; tier: string }[]) {
+    const set = recordedTiersByBook.get(r.item_book_id)
+    if (set) set.add(r.tier)
+    else recordedTiersByBook.set(r.item_book_id, new Set([r.tier]))
+  }
+  // 옛 완성 기록 + 등급별 완성 기록이 하나라도 있는 tier_mode 컬렉션
   const completedSet = new Set(((completionsRaw ?? []) as { item_book_id: string }[]).map(c => c.item_book_id))
+  for (const id of recordedTiersByBook.keys()) {
+    if (tierModeBookIds.has(id)) completedSet.add(id)
+  }
 
   const isOwnList = currentUser?.id === userId
 
@@ -139,6 +155,10 @@ export async function GET(
       slottedCount: completionByBook.get(book.id)?.filled ?? 0,
       isCompleted: isBookCompleted(completedSet, book.id, completionByBook.get(book.id)),
       rarity: rarityByBook.get(book.id) ?? 'common',
+      // 새 필드(3회-나) — 옛 컬렉션은 tierMode false, tier null, tiers {}
+      tierMode: tierModeBookIds.has(book.id),
+      tier: completionByBook.get(book.id)?.tier ?? null,
+      tiers: summarizeTiers(completionByBook.get(book.id), recordedTiersByBook.get(book.id)),
     }))
     // 타인이 볼 때는 아이템배지 슬롯이 0개인 컬렉션을 숨긴다(20260824_016).
     // 본인 열람(isOwnList)은 예외 없이 항상 노출.
