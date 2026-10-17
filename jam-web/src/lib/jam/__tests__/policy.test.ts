@@ -59,6 +59,15 @@ const itemIssueDefaults = {
   common_streak_threshold: DEFAULT_JAM_POLICY.common_streak_threshold,
 }
 
+/** 잠긴 아이템 배지 5칸의 기본값(티켓 20261018_0051) — 이 칸을 시험하지 않는 행에 끼워 넣는다 */
+const lockedDefaults = {
+  locked_min_common: DEFAULT_JAM_POLICY.locked_min_common,
+  locked_min_rare: DEFAULT_JAM_POLICY.locked_min_rare,
+  locked_min_epic: DEFAULT_JAM_POLICY.locked_min_epic,
+  locked_min_mystic: DEFAULT_JAM_POLICY.locked_min_mystic,
+  locked_roll_probability: DEFAULT_JAM_POLICY.locked_roll_probability,
+}
+
 describe('DEFAULT_JAM_POLICY', () => {
   it('운영 로직 4.4·16.3절 기본값이다', () => {
     expect(DEFAULT_JAM_POLICY).toEqual({
@@ -78,6 +87,11 @@ describe('DEFAULT_JAM_POLICY', () => {
       sync_rarity_epic: 2.5,
       sync_rarity_mystic: 0.5,
       common_streak_threshold: 10,
+      locked_min_common: 30,
+      locked_min_rare: 60,
+      locked_min_epic: 120,
+      locked_min_mystic: 240,
+      locked_roll_probability: 0.25,
     })
   })
 
@@ -109,6 +123,11 @@ describe('getJamPolicy', () => {
           sync_rarity_epic: '8.000',
           sync_rarity_mystic: '2.000',
           common_streak_threshold: 5,
+          locked_min_common: 40,
+          locked_min_rare: '70',
+          locked_min_epic: 130,
+          locked_min_mystic: 250,
+          locked_roll_probability: '0.300',
           updated_at: '2026-10-17T00:00:00Z',
         },
         error: null,
@@ -131,6 +150,11 @@ describe('getJamPolicy', () => {
       sync_rarity_epic: 8,
       sync_rarity_mystic: 2,
       common_streak_threshold: 5,
+      locked_min_common: 40,
+      locked_min_rare: 70,
+      locked_min_epic: 130,
+      locked_min_mystic: 250,
+      locked_roll_probability: 0.3,
     })
     expect(errorSpy).not.toHaveBeenCalled()
   })
@@ -165,12 +189,32 @@ describe('getJamPolicy', () => {
           mass_earn_alert_weeks: 0,
           mass_earn_alert_no_history_amount: 'abc',
           ...itemIssueDefaults,
+          ...lockedDefaults,
         },
         error: null,
       })
     )
     expect(policy).toEqual({ ...DEFAULT_JAM_POLICY, intensity_hard: 5 })
     expect(errorSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('잠김 칸이 비정상이면 그 칸만 기본값으로 대체한다 (최소값 0, 확률 1 초과)', async () => {
+    const policy = await getJamPolicy(
+      fakeClient({
+        data: { ...DEFAULT_JAM_POLICY, locked_min_rare: 0, locked_min_epic: 150, locked_roll_probability: 1.5 },
+        error: null,
+      })
+    )
+    expect(policy).toEqual({ ...DEFAULT_JAM_POLICY, locked_min_epic: 150 })
+    expect(errorSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('잠길 확률 0과 1은 정상 값이다 (잠김 배정을 끄거나 모두 잠글 수 있다)', async () => {
+    const zero = await getJamPolicy(fakeClient({ data: { ...DEFAULT_JAM_POLICY, locked_roll_probability: 0 }, error: null }))
+    const one = await getJamPolicy(fakeClient({ data: { ...DEFAULT_JAM_POLICY, locked_roll_probability: '1.000' }, error: null }))
+    expect(zero.locked_roll_probability).toBe(0)
+    expect(one.locked_roll_probability).toBe(1)
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 
   it('배율 0은 허용한다 (운영자가 해당 강도의 잼을 끌 수 있다)', async () => {
