@@ -1593,7 +1593,7 @@ POST /api/admin/badges/reevaluate-all
 
 > **2026-10-17 (JAM 2.0, 티켓 20261017_1424): 동기화로 받는 아이템 배지는 아래 §3.0의 규칙으로 발급한다.** §3.1~§3.4(트라이브 고르기, 등급 보정 셋, 컬렉션 쪽 보정, 맥락 오버라이드)는 **동기화 경로에서 쓰이지 않는다.** 그 코드(`index.ts`의 `tryItemDrop`·`selectBadge`, `layers.ts`, `context.ts`, `constants.ts`)는 지우지 않았다 — 어드민 시뮬레이터(`previewItemDrop`, 테스트 시뮬레이터의 `tryItemDrop`)와 앰비언트 드랍(`fetchDropStructure`)이 같은 함수를 쓰고, 캡슐(묶음 3)·시스템 드랍(묶음 4)이 재사용한다. 어드민 시뮬레이터의 미리보기는 아직 옛 규칙을 따른다(후속 정리 대상).
 
-### 3.0 JAM 2.0 동기화 발급 규칙 (2026-10-17, 티켓 20261017_1424, 운영 로직 6.1~6.7절)
+### 3.0 JAM 2.0 동기화 발급 규칙 (2026-10-17, 티켓 20261017_1424·20261017_1425, 운영 로직 6.1~6.7절)
 
 동기화(`strava/sync.ts`)가 **잼 정산을 마친 뒤**, 정산한 **모든 활동**에 대해 발급한다. 최근 3건 상한은 없고, 첫 동기화는 정산이 최근 1건이라 발급도 1건이다. 개수·등급·후보 판정은 순수 모듈 `drop-engine/syncIssue.ts`, 조회·지급·기록은 서버 모듈 `drop-engine/syncIssueRun.ts`(`issueSyncItemBadges`)가 한다. 설정 값은 `jam_policy`의 발급 칸(`02_DATA_MODEL.md` §jam_policy)이고 조회 실패나 비정상 값은 운영 로직 6.7절의 기본값으로 대체한다.
 
@@ -1604,12 +1604,16 @@ POST /api/admin/badges/reevaluate-all
 | 등급 | `sync_rarity_*` 확률(기본 Common 84 / Rare 13 / Epic 2.5 / Mystic 0.5 %). 보정은 **하나**: `user_drop_state.common_streak`가 `common_streak_threshold`(기본 10) 이상이면 다음은 Rare 이상(상대 비율은 설정 확률의 비율). 캡슐(묶음 3)이 같은 칸을 합산해 쓴다 |
 | 후보 | 소속 트라이브 컬렉션 · 그 등급 · 컬렉션과 배지가 활성이고 공개 기간 안 · 드랍 제외 아님 · 삭제되지 않음. **후보 전체에서 균등 무작위**(없는 것 먼저·컬렉션 비중·마지막 조각 보정 없음). 공개 기간이 끝난 배지는 발급하지 않는다 |
 | 후보 없음 | 뽑힌 등급에 후보가 없으면 **한 등급씩 내려** 다시 뽑는다(후보가 있는 가장 높은 등급까지, 위로는 올라가지 않는다). 모든 등급이 비면 그 개체를 건너뛴다(`outcome='no_candidate'` 로그) |
-| 지급 | 기존 `grant_inventory_item` RPC 그대로(`p_obtained_by='drop'`). 동기화로 받은 배지의 기한은 **공개 종료일로 두지 않는다**(`p_expires_at` null). 인벤토리가 가득 차면 멈춘다(`outcome='slot_full'` 로그, 보류는 2-5). 잼 연계 포인트(`badge.point_reward`)·피드(`item_dropped`)·활동 결산(`item_badges`)은 옛 지급과 같다 |
-| 보정 카운터 | 줄 때 받은 **실제 등급**이 Common이면 `common_streak` +1, 아니면 0으로 저장한다(행이 없으면 만든다). 개체를 못 줬으면 값은 그대로다. 값을 읽지 못하면 이번 동기화에서는 쓰지 않는다 |
-| 발급 기록 | 줄 때마다 `item_issue_log`에 한 줄: 경로 `sync`, 대상 활동(`strava_activities.id`), 배지, 등급(`rarity`), **처음 뽑힌 등급(`rolled_rarity`, 폴백을 운영이 보는 칸)**, 잠김 false, 일련번호, 개체 id. 기록 실패는 지급과 동기화를 막지 않는다 |
+| 계획 | 먼저 정산한 모든 활동의 개수·등급·후보를 굴려 **이번 동기화의 발급 목록 전체**를 만든다(후보 없는 개체는 목록에 넣지 않는다). 그 뒤 목록 전체와 빈칸(`max_slots - used_slots`)을 비교해 지급하거나 보류한다 |
+| 지급 | 목록 전체가 빈칸 **이하**이면 기존 `grant_inventory_item` RPC 그대로(`p_obtained_by='drop'`) 바로 지급한다. 동기화로 받은 배지의 기한은 **공개 종료일로 두지 않는다**(`p_expires_at` null). 잼 연계 포인트(`badge.point_reward`)·피드(`item_dropped`)·활동 결산(`item_badges`)은 옛 지급과 같다 |
+| 보류 | 목록 전체가 빈칸보다 **많으면 하나도 지급하지 않고 전부** `sync_pending_items`(status `pending`)에 넣는다(대상 활동·배지·실제 등급·뽑힌 등급·잠김 false, `outcome='pending'` 로그). 활동 하나가 빈칸 이하여도 합이 넘으면 전부 보류한다. 지급 도중 경합으로 `slot_full`이 나면 그 개체와 남은 개체(뒤 활동 포함)를 보류하고 이미 준 것은 그대로 둔다. 보류한 개체에는 포인트·피드·결산이 아직 없다 |
+| 고르기 | 유저는 보류 가운데 **빈칸 수만큼 정확히**(`min(빈칸, 보류 수)`) 고른다. 덜 고르면 받을 수 있는 것을 잃고 더 고르면 칸이 모자라기 때문이다. 고른 것은 지급(`claimed`)하고 **고르지 않은 것은 받지 못하며 다시 받을 수 없다**(`discarded`, 되돌릴 수 없음). `resolve_sync_pending_items` 함수 한 번의 호출이 인벤토리 행을 잠그고 검증·지급·고르지 않음 처리·`item_issue_log` 기록을 한 트랜잭션으로 한다(같은 보류를 두 번 지급하지 않는다). API는 `GET·POST /api/strava/pending-items`다(`POST`의 `chosenIds`는 uuid 문자열의 중복 없는 배열, 길이 상한 500, 대상은 세션 유저뿐). 거절은 `wrong_count` 400, `invalid_selection` 400, `no_pending` 409, `inventory_not_found` 404다. 공개 기간이 끝나도 보류에서 받을 수 있다(운영 로직 6.5절). 이용 정지 중 받기 차단은 2-6이 이 API에 건다 |
+| 보류 중 동기화 | 고르지 않은 보류가 있는 동안 동기화는 **가져오기·정산 없이** 막힌다. `POST /api/strava/sync`는 409(`code: 'sync_pending_items'`, `pendingCount`)로 알린다. 보류 개수를 읽지 못해도 동기화하지 않는다(새 보류가 쌓이면 한 번의 고르기가 그것까지 닫아 버린다). 정상 응답에는 기존 필드 그대로 이번에 새로 보류된 개수 `pendingItems`(없으면 0)가 더해진다 |
+| 보정 카운터 | 목록 순서대로 받은 **실제 등급**이 Common이면 `common_streak` +1, 아니면 0으로 이어 센다(행이 없으면 만든다). 보류한 개체도 센다(받을 개체가 정해진 것이다). 후보가 없어 건너뛴 개체는 세지 않는다. 값을 읽지 못하면 이번 동기화에서는 쓰지 않는다 |
+| 발급 기록 | 줄 때마다(바로 지급하는 경우 발급기가, 보류에서 받는 경우 `resolve_sync_pending_items`가) `item_issue_log`에 한 줄: 경로 `sync`, 대상 활동(`strava_activities.id`), 배지, 등급(`rarity`), **처음 뽑힌 등급(`rolled_rarity`, 폴백을 운영이 보는 칸)**, 잠김 false, 일련번호, 개체 id. 기록 실패는 지급과 동기화를 막지 않는다 |
 | 실패 | 활동 하나의 실패는 그 활동만 건너뛰고 `strava_sync_failures`에 `drop_attempt_failed`로 남긴다. 발급 단계 전체가 던져도 동기화는 계속된다 |
 
-**처리 순서**: 활동 저장 → 잼 정산 → 아이템 배지 발급(오래된 활동부터, 순차) → 미션 판정(아이템 수집 미션이 이번에 받은 개체를 보도록 발급 뒤에 돈다). 응답 `earnedBadgeIds`의 획득 순서(체크인 → 아이템 배지 → 액티비티 …)는 그대로이고 발급한 배지 id를 아이템 배지 자리에 끼워 넣는다. 발급은 `user_drop_state.last_activity_at`·`last_drop_tribe_id`·`daily_drop_count`를 더 이상 쓰지 않는다(옛 코드도 같은 행을 쓰므로 staging에서 섞일 수 있다).
+**처리 순서**: (보류 확인) → 활동 저장 → 잼 정산 → 아이템 배지 발급(계획 → 지급 또는 보류, 오래된 활동부터, 순차) → 미션 판정(아이템 수집 미션이 이번에 받은 개체를 보도록 발급 뒤에 돈다). 응답 `earnedBadgeIds`의 획득 순서(체크인 → 아이템 배지 → 액티비티 …)는 그대로이고 발급한 배지 id를 아이템 배지 자리에 끼워 넣는다. 발급은 `user_drop_state.last_activity_at`·`last_drop_tribe_id`·`daily_drop_count`를 더 이상 쓰지 않는다(옛 코드도 같은 행을 쓰므로 staging에서 섞일 수 있다).
 
 **동기화 경로에서 없어진 규칙** (코드는 다른 호출처가 있어 남아 있다):
 - 트라이브를 고르는 규칙 전부 — 온보딩 첫 3드랍 제한, 맥락 규칙(복귀·날씨·시간대·고도), 직전·이웃·탐험 규칙, 특수 트라이브(미스터리 헌터, 작심삼일 클럽)와 코드에 고정된 트라이브 UUID. 이미 가진 유저의 기록은 지우지 않는다

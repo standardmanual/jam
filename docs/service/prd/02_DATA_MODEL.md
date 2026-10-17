@@ -58,6 +58,7 @@ code:
                 users ─1:N─ jam_daily_earned (KST 날짜별 모은 양)
                 jam_policy(싱글톤: 강도 배율·대량 수령 경보 기준·동기화 아이템 배지 발급 값)
                 users ─1:N─ item_issue_log (아이템 배지 발급 기록, append-only)
+                users ─1:N─ sync_pending_items (동기화 중 가득 차 보류한 아이템 배지)
 
 [챕터]          users ─1:1─ user_chapters (지금 챕터·누적 점수)
                 users ─1:N─ chapter_score_events (점수 기록) ──> chapter_score_rules (활동별 점수 규칙)
@@ -744,6 +745,23 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `serial_number` | 개체의 일련번호 |
 
 인덱스: `(user_id, created_at DESC)`, 대상 활동(`source_activity_id`, NULL 제외).
+
+#### sync_pending_items — 마이그레이션 229, 티켓 20261017_1425
+동기화로 받을 아이템 배지 전체가 인벤토리 빈칸보다 많을 때 지급하지 않고 모두 담아 두는 보류 목록(운영 로직 6.4절). RLS만 켜고 정책이 없어 service_role만 읽고 쓴다. 동기화(`syncIssueRun.ts`)가 쓰고, 고르기(`resolve_sync_pending_items`)가 닫는다. 동기화 보류만 위한 작은 테이블이며 미션 보상·프로모션·믹스 결과의 «받지 않은 보상»은 그 기능을 만드는 묶음 3·5에서 같은 패턴으로 잇는다.
+
+| 칸 | 뜻 |
+|---|---|
+| `user_id` | 보류의 주인. 유저 삭제 시 함께 삭제(`ON DELETE CASCADE`) |
+| `source_activity_id` | 대상 활동(`strava_activities.id` 값, FK 없음) |
+| `badge_id` / `rarity` / `rolled_rarity` | 받을 배지와 등급, 처음 뽑힌 등급(`item_issue_log`와 같은 뜻) |
+| `locked` | 잠긴 채 배정했는가(지금은 항상 false) |
+| `status` | `pending`(고르기 대기) · `claimed`(고르기로 받음) · `discarded`(고르지 않아 받지 못함, 다시 받을 수 없음). CHECK로 세 값만 허용 |
+| `inventory_item_id` | 받았을 때 만들어진 개체(`inventory_items`). 개체가 지워지면 `ON DELETE SET NULL` |
+| `created_at` / `resolved_at` | 보류가 생긴 때 / 받거나 고르지 않기로 닫힌 때(`pending`이면 NULL) |
+
+인덱스: `(user_id, created_at)`, `status = 'pending'`인 행만.
+
+**`resolve_sync_pending_items(p_user_id uuid, p_chosen_ids uuid[]) → jsonb`** (`SECURITY DEFINER`, `service_role`만 실행): 인벤토리 행을 잠그고 → 고른 개수가 `LEAST(빈칸, 보류 수)`와 정확히 같은지 확인하고 → 고른 것을 `grant_inventory_item`으로 지급(`claimed`)하고 → 나머지 보류를 `discarded`로 닫고 → 지급마다 `item_issue_log`에 한 줄(경로 `sync`)을 남긴다. 한 단계라도 실패하면 전체가 되돌려진다. 성공은 `{ok: true, granted, discarded, itemIds}`, 거절은 `{ok: false, error}`(`inventory_not_found`·`no_pending`·`invalid_selection`·`wrong_count`+`expected`)다. 앱은 `lib/strava/pending-items.ts`가 호출하고 `/api/strava/pending-items`가 세션 유저에게만 연다.
 
 ### 9-3. 챕터 (JAM 2.0) — 마이그레이션 221, 티켓 20261016_2339
 운영 로직 12장 "챕터"가 근거다. 2026-10-17 공용 DB에 적용했다. 점수를 주는 연결·연출·소식·챕터 배지·프로필 표시는 묶음 5.
