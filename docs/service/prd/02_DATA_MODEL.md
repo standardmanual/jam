@@ -56,6 +56,7 @@ code:
 
 [잼]            users ─1:1─ jam_wallets ─1:N─ jam_transactions (append-only 원장)
                 users ─1:N─ jam_daily_earned (KST 날짜별 모은 양)
+                jam_policy(싱글톤: 강도 배율·대량 수령 경보 기준)
 
 [챕터]          users ─1:1─ user_chapters (지금 챕터·누적 점수)
                 users ─1:N─ chapter_score_events (점수 기록) ──> chapter_score_rules (활동별 점수 규칙)
@@ -699,6 +700,25 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 
 > 가진 양 변경은 전부 `jam_apply(p_user_id, p_amount, p_reason, p_source_activity_id, p_admin_user_id, p_admin_reason_label, p_admin_reason_note, p_earned_on)` RPC(SECURITY DEFINER, service_role 전용)로만 원자 처리한다. 가진 양을 넘는 차감과 사유별 허용 부호 위반은 거절하고, 이미 정산된 활동의 재정산은 오류 없이 기존 원장 줄을 돌려준다.
 > 「모은 양」(`total_earned`, `jam_daily_earned`)은 활동 정산만 늘린다. 운영자 지급·회수와 채움은 가진 양만 바꾼다(운영 로직 4.5절).
+
+#### jam_policy — 마이그레이션 226, 티켓 20261017_1423
+잼 정산의 조정 값을 담는 한 행 싱글톤(`id = 1` 고정). `abusing_policy`·`drop_policy`·`inventory_policy`와 같은 패턴으로 RLS만 켜고 정책은 없어 service_role만 읽는다. 어드민 화면은 묶음 7이고 그 전에는 SQL로 고친다. 코드는 `src/lib/jam/policy.ts`의 `getJamPolicy`로만 읽으며, 조회 실패·비정상 값은 기본값(`DEFAULT_JAM_POLICY`)으로 대체하고 로그를 남긴다. 기본값을 바꾸면 이 상수도 같은 티켓에서 함께 바꾼다.
+
+| 칸 | 기본값 | 뜻 |
+|---|---|---|
+| `intensity_light` / `intensity_normal` / `intensity_hard` | 1 / 2 / 3 | 강도 배율. 가벼움(걷기·전기자전거), 보통(등산·자전거), 격함(러닝·트레일러닝). 0 이상 정수 |
+| `mass_earn_alert_multiplier` | 3 | 한 번의 동기화로 받은 잼이 지난 N주 주간 평균의 이 배수를 넘으면 경보 |
+| `mass_earn_alert_weeks` | 4 | 경보 비교에 쓰는 지난 기간(주) |
+| `mass_earn_alert_no_history_amount` | 1200 | 지난 기록이 없는 유저의 경보 기준 잼(보통 강도 10시간) |
+
+**잼 정산 규칙**(운영 로직 4.2~4.5절, 16.3절. 코드 `src/lib/jam/`, 호출 `src/lib/strava/sync.ts`):
+- 계산: 잼 = 강도 배율 × 교통수단 구간을 뺀 움직인 시간(분, 내림). 하루 상한은 없다. 전기자전거(`EBikeRide`·`EMountainBikeRide`)는 `jam_activity_type`이 자전거 값이라 원본 종목(`strava_activities.source_meta.sportType`)으로 가벼움을 가린다. 종목 불일치로 걷기가 된 활동(`jam_activity_type='walking'`)은 가벼움이다. 걷기 30분 30, 러닝 30분 90, 자전거 30분 60, 전기자전거 30분 30.
+- 대상: 인정 필터와 어뷰징 필터를 모두 통과한 활동만 정산한다. 첫 동기화는 그 가운데 가장 최근 1건이다. 활동을 `strava_activities`에 저장한 뒤 그 행의 `id`를 `p_source_activity_id`로 넘겨 `jam_apply(…, 'activity_settlement', …)`를 활동마다 부른다.
+- 날짜: `p_earned_on`에는 활동한 날의 KST 날짜(활동 시작 시각을 KST로 바꾼 날짜)를 넘긴다. 늦게 동기화한 활동도 동기화한 날이 아니라 활동한 날로 `jam_daily_earned`에 잡힌다. `jam_apply`가 미래 날짜를 거절하므로 시계 어긋남으로 미래가 나오면 오늘(KST)로 맞춘다.
+- 한 활동 한 번: `source_activity_id` 유일성으로 같은 활동을 다시 정산해도 원장은 한 줄이다. 동기화 뒤 Strava에서 활동을 고치거나 지워도 다시 계산하지 않는다. 정산이 실패한 활동을 다시 정산하는 보정 경로는 없다.
+- 실패 격리: 정산 실패는 로그만 남기고 동기화를 막지 않는다. 동기화 응답(`POST /api/strava/sync`)에는 이번 동기화로 받은 잼 합계 `jamEarned`(없으면 0)만 더하고 활동별 잼은 돌려주지 않는다. 화면 표시는 2-5·묶음 3의 몫이다.
+- 대량 수령 경보: 이번 동기화의 잼 합계가 지난 `mass_earn_alert_weeks`주(오늘 KST 포함 7×N일) `jam_daily_earned` 합계의 주간 평균 × `mass_earn_alert_multiplier`를 **넘으면**(같으면 아니다) `#jam-alert`에 중단 신호 글 형식으로 알린다. 지난 기록이 없으면 `mass_earn_alert_no_history_amount`를 넘을 때 알린다. 이번 동기화의 정산 행이 평균에 섞이지 않도록 기준선은 활동 저장·정산 전에 읽는다. 기준선을 읽지 못하면 경보를 건너뛴다. 발송 실패는 동기화 응답을 바꾸지 않는다. 자동 제재는 하지 않는다.
+- 이 티켓이 하지 않는 것: 이용 정지 중 정산 차단(2-6), 챕터 점수 가산(묶음 5), 아이템 배지 개수에 잼 쓰기(2-4). 활동별 잼 값은 정산 단계 결과(`jamSettlements`)로만 남겨 2-4가 쓸 수 있게 한다.
 
 ### 9-3. 챕터 (JAM 2.0) — 마이그레이션 221, 티켓 20261016_2339
 운영 로직 12장 "챕터"가 근거다. 2026-10-17 기준 SQL 파일만 작성됨(적용 전). 점수를 주는 연결·연출·소식·챕터 배지·프로필 표시는 묶음 5.
