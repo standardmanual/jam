@@ -173,6 +173,35 @@ export function computeBookCompletion(
   return result
 }
 
+/** 조회 API가 돌려주는 등급별 진행. `recorded`는 그 등급의 완성 기록(`user_item_book_tier_completions`) 유무다 */
+export interface TierSummary {
+  total: number
+  filled: number
+  complete: boolean
+  recorded: boolean
+}
+
+/**
+ * 조회 API 응답의 `tiers` — 등급별 `total`·`filled`·`complete`·`recorded`(티켓 20261016_2340 3회-나).
+ * `complete`는 지금 계산상 완성이고 `recorded`는 완성 기록 유무라 장착을 풀면 둘이 갈라질 수 있다.
+ * 옛 컬렉션은 `completion.tiers`가 빈 객체라 `{}`다.
+ */
+export function summarizeTiers(
+  completion: BookCompletion | undefined,
+  recordedTiers?: ReadonlySet<string>
+): Record<string, TierSummary> {
+  const out: Record<string, TierSummary> = {}
+  for (const [tier, t] of Object.entries(completion?.tiers ?? {})) {
+    out[tier] = {
+      total: t.total,
+      filled: t.filled,
+      complete: t.complete,
+      recorded: recordedTiers?.has(tier) ?? false,
+    }
+  }
+  return out
+}
+
 /**
  * 화면·API가 쓰는 완성 표시 판정: 옛 완성 기록이 있거나 계산상 완성이면 완성이다.
  * 옛 기록은 장착을 풀어도 남으므로 기록이 있으면 계산이 미완성이어도 완성으로 본다.

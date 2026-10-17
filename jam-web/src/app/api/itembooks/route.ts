@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
-import { COMPLETION_BADGE_TYPES, computeBookCompletion, isBookCompleted } from '@/lib/itembook/completion-basis'
+import { COMPLETION_BADGE_TYPES, computeBookCompletion, isBookCompleted, summarizeTiers } from '@/lib/itembook/completion-basis'
 import { buildFilledByBook } from '@/lib/itembook/filled-by-book'
 import { applyLaunchedItemBookFilter } from '@/lib/itembook/visibility'
 import type {
@@ -69,7 +69,7 @@ export async function GET() {
   if (bookIds.length === 0) return NextResponse.json({ itemBooks: [] })
 
   // 5) 전체 아이템 배지 수 + 슬롯 카운트 + 완성 여부 병렬 조회 — 걸러진 컬렉션 id로만 조회한다
-  const [{ data: allBadgesRaw }, { data: slotsRaw }, { data: compRaw }] =
+  const [{ data: allBadgesRaw }, { data: slotsRaw }, { data: compRaw }, { data: tierCompRaw }] =
     await Promise.all([
       supabase.from('badges').select('id, item_book_id, type, drop_excluded, name, rarity, deleted_at').in('item_book_id', bookIds).in('type', [...COMPLETION_BADGE_TYPES]).is('deleted_at', null),
       supabase
@@ -80,6 +80,12 @@ export async function GET() {
       supabase
         .from('user_item_book_completions')
         .select('item_book_id')
+        .eq('user_id', user.id)
+        .in('item_book_id', bookIds),
+      // 등급별 완성 기록 — tier_mode 컬렉션만 행이 있다(티켓 20261016_2340 3회-나)
+      supabase
+        .from('user_item_book_tier_completions')
+        .select('item_book_id, tier')
         .eq('user_id', user.id)
         .in('item_book_id', bookIds),
     ])
@@ -116,15 +122,27 @@ export async function GET() {
     checkinBadgesByBook,
     earnedCheckinBadgeIds: new Set(earnedCheckinRows.map((e) => e.badge_id)),
   })
+  const tierModeBookIds = new Set(books.filter((b) => (b as { tier_mode?: boolean | null }).tier_mode).map((b) => b.id))
   const completionMap = computeBookCompletion(allBadges, new Set<string>(), {
     filledByBook,
-    tierModeBookIds: new Set(books.filter((b) => (b as { tier_mode?: boolean | null }).tier_mode).map((b) => b.id)),
+    tierModeBookIds,
   })
 
-  // 완성된 북 Set
+  // 등급별 완성 기록: 컬렉션 → 기록된 등급 Set
+  const recordedTiersByBook = new Map<string, Set<string>>()
+  for (const r of (tierCompRaw ?? []) as { item_book_id: string; tier: string }[]) {
+    const set = recordedTiersByBook.get(r.item_book_id)
+    if (set) set.add(r.tier)
+    else recordedTiersByBook.set(r.item_book_id, new Set([r.tier]))
+  }
+
+  // 완성된 북 Set — 옛 완성 기록 + 등급별 완성 기록이 하나라도 있는 tier_mode 컬렉션
   const completedSet = new Set(
     ((compRaw ?? []) as Pick<UserItemBookCompletionRow, 'item_book_id'>[]).map((c) => c.item_book_id)
   )
+  for (const id of recordedTiersByBook.keys()) {
+    if (tierModeBookIds.has(id)) completedSet.add(id)
+  }
 
   // 6) 트라이브 조회
   const tribeIds = Array.from(
@@ -155,6 +173,10 @@ export async function GET() {
       discoveredBadgeCount: discoveredMap.get(book.id)?.size ?? 0,
       slottedCount: completionMap.get(book.id)?.filled ?? 0,
       isCompleted: isBookCompleted(completedSet, book.id, completionMap.get(book.id)),
+      // 새 필드(3회-나) — 옛 컬렉션은 tierMode false, tier null, tiers {}
+      tierMode: tierModeBookIds.has(book.id),
+      tier: completionMap.get(book.id)?.tier ?? null,
+      tiers: summarizeTiers(completionMap.get(book.id), recordedTiersByBook.get(book.id)),
     }
   })
 
