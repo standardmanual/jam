@@ -552,6 +552,110 @@ export type Database = {
         }
         Relationships: []
       }
+      capsule_chapter_costs: {
+        Row: {
+          chapter_no: number
+          fill_amount: number
+          updated_at: string
+        }
+        Insert: {
+          chapter_no: number
+          fill_amount: number
+          updated_at?: string
+        }
+        Update: {
+          chapter_no?: number
+          fill_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      capsule_opens: {
+        Row: {
+          chapter_no: number | null
+          filled: number
+          id: string
+          items: Json
+          opened_at: string
+          required: number
+          user_id: string
+        }
+        Insert: {
+          chapter_no?: number | null
+          filled: number
+          id?: string
+          items?: Json
+          opened_at?: string
+          required: number
+          user_id: string
+        }
+        Update: {
+          chapter_no?: number | null
+          filled?: number
+          id?: string
+          items?: Json
+          opened_at?: string
+          required?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capsule_opens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      capsule_policy: {
+        Row: {
+          bonus_count: number
+          bonus_probability: number
+          guaranteed_count: number
+          id: number
+          other_tribe_probability: number
+          pity_epic_threshold: number
+          pre_quest_fill_amount: number
+          pre_quest_unlock_required: number
+          rarity_common: number
+          rarity_epic: number
+          rarity_mystic: number
+          rarity_rare: number
+          updated_at: string
+        }
+        Insert: {
+          bonus_count?: number
+          bonus_probability?: number
+          guaranteed_count?: number
+          id?: number
+          other_tribe_probability?: number
+          pity_epic_threshold?: number
+          pre_quest_fill_amount?: number
+          pre_quest_unlock_required?: number
+          rarity_common?: number
+          rarity_epic?: number
+          rarity_mystic?: number
+          rarity_rare?: number
+          updated_at?: string
+        }
+        Update: {
+          bonus_count?: number
+          bonus_probability?: number
+          guaranteed_count?: number
+          id?: number
+          other_tribe_probability?: number
+          pity_epic_threshold?: number
+          pre_quest_fill_amount?: number
+          pre_quest_unlock_required?: number
+          rarity_common?: number
+          rarity_epic?: number
+          rarity_mystic?: number
+          rarity_rare?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chapter_definitions: {
         Row: {
           chapter_no: number
@@ -3241,6 +3345,41 @@ export type Database = {
           },
         ]
       }
+      user_capsules: {
+        Row: {
+          chapter_no: number | null
+          created_at: string
+          filled: number
+          required: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chapter_no?: number | null
+          created_at?: string
+          filled?: number
+          required: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chapter_no?: number | null
+          created_at?: string
+          filled?: number
+          required?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_capsules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_chapters: {
         Row: {
           chapter_no: number | null
@@ -3442,6 +3581,7 @@ export type Database = {
       }
       user_drop_state: {
         Row: {
+          capsule_epic_miss: number
           common_streak: number
           daily_drop_count: number
           daily_drop_date: string | null
@@ -3454,6 +3594,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          capsule_epic_miss?: number
           common_streak?: number
           daily_drop_count?: number
           daily_drop_date?: string | null
@@ -3466,6 +3607,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          capsule_epic_miss?: number
           common_streak?: number
           daily_drop_count?: number
           daily_drop_date?: string | null
@@ -4014,6 +4156,27 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "point_transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      capsule_fill: {
+        Args: { p_amount?: number | null; p_user_id: string }
+        Returns: Json
+      }
+      capsule_get_or_create: {
+        Args: { p_user_id: string }
+        Returns: {
+          chapter_no: number | null
+          created_at: string
+          filled: number
+          required: number
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "user_capsules"
           isOneToOne: true
           isSetofReturn: false
         }
