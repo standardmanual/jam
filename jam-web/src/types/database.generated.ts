@@ -4181,6 +4181,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      capsule_open: {
+        Args: { p_items: Json; p_user_id: string }
+        Returns: Json
+      }
       chapter_add_score: {
         Args: {
           p_activity_kind: string
