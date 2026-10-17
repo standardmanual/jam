@@ -2,8 +2,9 @@
 id: "20261017_1424"
 category: BadgeEngine
 priority: P2
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-10-17
+closed: 2026-10-17
 parent: "20261017_1420"
 specs:
   - "docs/plan/jam2/10 JAM 2.0 서비스 운영 로직.md"
@@ -147,13 +148,22 @@ DB는 227 적용과 생성 타입 반영을 카리나가 끝냈다. 아현은 �
 
 ### 변경된 파일
 ```
--
+(1회 8개 파일 +800 -8, 2회 24개 파일 +1,455 -302)
+[DB, 카리나] jam-web/supabase/migrations/227_item_issue_policy_and_log.sql, 228_item_issue_log_rolled_rarity.sql, jam-web/src/types/database.generated.ts
+[1회] jam-web/src/lib/drop-engine/syncIssue.ts (신규), lib/jam/policy.ts, 시험 2개, lib/admin/registerChecks/references.ts, scripts/asset-generator/__tests__/registerFlow.test.ts, lib/admin/opsInbox/execute/__tests__/fakeDb.ts, docs/service/prd/02_DATA_MODEL.md
+[2회] jam-web/src/lib/drop-engine/syncIssueRun.ts (신규), syncIssue.ts, lib/strava/sync.ts, lib/admin/badge-references.ts, 시험 16개(sync-item-issue.test.ts 신규, syncIssue.test.ts, sync-drop-order.test.ts 재작성 외 sync-* 모킹 보정), docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md, docs/service/prd/02_DATA_MODEL.md
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] 1회: 게이트 PASS(민지 1회, 재작업 0). CI `verify` 성공(run 39018159870). 분포 시험(시드 고정, 표본 200,000)이 개수·등급·보정·후보 조건을 고정한다.
+- [x] 2회: 게이트 PASS(민지 1회, 재작업 0). CI `verify` 성공(run 39020218284). `sync-item-issue.test.ts` 신규 37건(소속 트라이브 없음 건너뜀, 3건 상한 없음, 등산 개수, 소속 트라이브 후보, 폴백과 `rolled_rarity`, `common_streak` 갱신, 기록 한 줄, 가득 참, 공개 기간, 활동 실패 격리, 옛 규칙 소스 검색)과 폴백 6건, 발급 위치·순서 시험 재작성.
+- [x] 합친 상태(2026-10-17, 카리나): `npm run typecheck` 통과, `src/lib/drop-engine`·`strava`·`jam`·`admin` 시험 185파일 5,231건 통과. 로컬 `next dev`에서 홈이 200으로 응답하고 서버 오류가 없다(화면 변경이 없는 서버 변경이라 컴파일 확인).
+- [ ] 실제 동기화로 아이템 배지가 소속 트라이브에서 발급되고 `item_issue_log`에 쌓이는 확인은 하지 않았다(가짜 클라이언트 시험까지만, 공용 DB의 `tribe_id`가 전부 비어 있어 시험 계정에 넣어야 한다).
 
 ### 배포 정보
+- DB 공용: 마이그레이션 227(2026-10-17, 정책 칸 10개와 `item_issue_log`)과 228(`rolled_rarity`) 적용, 즉시 프로덕션 반영, 기존 객체 영향 없음
+- 1회: staging push 266d67b95까지 포함. 2회와 이 기록: 2026-10-17 staging(push는 이 기록과 함께)
+- 확인하지 못한 것: 실제 동기화 발급, 소속 트라이브가 있는 계정으로의 staging 시험
 
 ### 실행 지표
 > Workflow 완료 알림 `<usage>`(전체 토큰·소요·에이전트 수·도구 호출)와 결과의 `tokenUsage`
@@ -164,10 +174,16 @@ DB는 227 적용과 생성 타입 반영을 카리나가 끝냈다. 아현은 �
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
 | 1회 | 2 | 188,001 | 40,304 / 5,915 | 24분 54초 | 62 |
-| 2회 |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 2회 | 2 | 361,638 | 99,595 / 8,231 | 29분 18초 | 121 |
+| 합계 | 4 | 549,639 | 139,899 / 14,146 | 54분 12초 | 183 |
 
 ### 주요 의사결정 / 핵심 메모
+- 사용자 결정 5건(소속 트라이브 없음 건너뜀, 일련번호 방식 유지, 기존 `common_streak` 재사용, 새 기록 테이블, 후보 없으면 한 등급 내려 다시 뽑기)은 위 「사용자 결정」에 있고 모두 추천안이었다. 재작업 0회.
+- **처리 순서 변경(아현, 사유 문서화)**: 발급을 잼 정산 뒤로 옮겼다(개수가 잼에 비례하고 기록이 `strava_activities.id`를 쓴다). 아이템 수집 미션이 인벤토리를 읽으므로 `checkMissions`를 발급 뒤로 옮겼다. 거리·활동 수 미션은 `mergeActivityHistory`로 결과가 같다. 응답의 `earnedBadgeIds` 순서(체크인 → 아이템 배지 → 액티비티)는 지켰다.
+- `common_streak`는 뽑힌 등급이 아니라 받은 실제 등급으로 센다. 동기화는 옛 `user_drop_state` 칸(`last_activity_at` 등)을 더 쓰지 않는다.
+- 호출처 검색 결과(완료 기록의 표): 동기화 경로 전용이라 지울 함수·상수는 없었고 `sync.ts` 안의 것만 삭제했다. `tryItemDrop`은 어드민 시뮬레이터 라우트가, `layers`의 `selectBadge`·`rollRarityV2` 등은 어드민 미리보기(`preview.ts`)가, `fetchDropStructure`는 앰비언트 드랍이 쓰므로 유지했다.
+- **이용 정지 공백(2-6 전)**: 동기화 발급이 섀도우밴 등급 상한(`applyShadowBanCap`)을 쓰지 않는다. 옛 섀도우밴 제재를 받은 유저도 2-6의 이용 정지가 생기기 전까지 새 코드에서는 등급 상한 없이 받는다. 새 코드 경로는 섀도우밴을 읽지 않는다는 2-6의 방향과 맞고, 옛 프로덕션 코드는 그대로 상한을 적용한다.
+- 범위 밖 발견물 티켓: 동기화 발급의 후속 정리(발급 기록 중복 방지, 미션 판정 순서)와 어드민 시뮬레이터 미리보기를 새 발급 규칙에 맞추는 일, 두 건을 P3로 분리했다(아래 잔여 이슈).
 
 **옛 드랍 엔진 호출처 검색(2026-10-17, 2회, 이름마다 `jam-web/src` 전체를 단어 경계로 grep).** 결론: **동기화 경로 전용이라 지울 수 있는 함수·상수는 없었다.** 옛 규칙 코드의 다른 호출처는 어드민 테스트 시뮬레이터(`app/api/admin/test/simulate/route.ts`가 `tryItemDrop` 호출), 어드민 미리보기(`preview.ts`가 `selectBadge`·`rollRarityV2` 등을 그대로 따라감), 앰비언트 드랍(`fetchDropStructure`), 시험이다. 그래서 «삭제»는 `sync.ts` 안의 것뿐이고 나머지는 «동기화 경로에서만 안 씀» 또는 «유지»다. 동기화 경로(`sync.ts`·`syncIssueRun.ts`·`syncIssue.ts`)가 옛 규칙 모듈을 가져오지 않음은 `sync-item-issue.test.ts`가 소스를 읽어 고정한다.
 
@@ -192,4 +208,10 @@ DB는 227 적용과 생성 타입 반영을 카리나가 끝냈다. 아현은 �
 
 
 ### 잔여 이슈
--
+- **어드민 시뮬레이터 미리보기가 옛 규칙을 따른다**(`drop-engine/preview.ts`, 어드민 시뮬레이터 라우트). 새 발급과 어긋난다. 티켓 20261017_1821.
+- 발급 기록(`item_issue_log`)에 `source_activity_id` 중복 방지가 없고, 정산이 이미 정산된 활동에 기존 줄을 돌려주면 재처리 때 아이템 배지를 한 번 더 줄 수 있다. 지금 흐름은 활동을 처리 완료로 기록한 뒤에만 정산하므로 재처리는 없다. `checkMissions`가 활동 저장 뒤로 옮겨져 미션 판정이 던지면 이번 활동 기준 미션이 한 번 늦어질 수 있다. 티켓 20261017_1822.
+- 이용 정지 공백(위 «주요 의사결정»)은 2-6이 정리한다.
+- `common_streak`는 옛 프로덕션 엔진과 같은 칸이라 staging 시험 때 값이 섞일 수 있다(결정 3).
+- 공용 DB의 `users.tribe_id`가 전부 비어 있어 시험 계정에 직접 넣어야 발급이 보인다(온보딩은 묶음 6). 일련번호는 살아 있는 개체가 약 50만 개에 가까워질 때 «없어진 번호도 재사용 금지»(운영 로직 6.3절)를 다시 검토한다.
+- 실제 동기화 발급과 `item_issue_log` 기록은 staging에서 소속 트라이브가 있는 시험 계정으로 한 번 확인해야 한다.
+- 잠긴 채 배정(묶음 3), 캡슐의 `common_streak` 합산(묶음 3), 가득 참 보류(2-5)는 이 티켓 밖이다.
