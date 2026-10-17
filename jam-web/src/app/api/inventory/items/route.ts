@@ -26,6 +26,8 @@ export async function GET() {
       serial_prefix,
       serial_number,
       expires_at,
+      locked,
+      unlock_required,
       badges ( name, rarity, image_url, deleted_at )
     `)
     .eq('inventory_id', inventoryId)
@@ -47,21 +49,42 @@ export async function GET() {
     serial_prefix: string | null
     serial_number: number
     expires_at: string | null
+    locked: boolean | null
+    unlock_required: number | null
     badges: { name: string; rarity: string; image_url: string | null; deleted_at: string | null } | null
   }
 
   const items = ((data ?? []) as unknown as InventoryItemRow[])
-    .filter((d) => d.badges && !d.badges.deleted_at)
-    .map((d) => ({
-      id: d.id,
-      badge_id: d.badge_id,
-      badge_name: d.badges?.name,
-      badge_rarity: d.badges?.rarity,
-      badge_image_url: d.badges?.image_url,
-      serial_prefix: d.serial_prefix,
-      serial_number: d.serial_number,
-      expires_at: d.expires_at,
-    }))
+    .filter((row) => row.badges && !row.badges.deleted_at)
+    .map((row) => {
+      // 잠긴 개체는 어떤 아이템 배지인지 알 수 있는 값(배지 id·이름·그림·일련번호 접두사)을 내리지 않고 «잠김 표시 + 등급»만 싣는다
+      // (운영 로직 7.3절, 티켓 20261018_0051 2회). 드랍은 서버가 막지만 목록 응답이 먼저 이름을 드러내면 가림이 무의미하다.
+      // `badge_id`는 드랍 목록이 배지 종류(badge_id)별로 묶는 키라 비우면 등급이 다른 잠긴 개체가 한 카드로 섞인다 — 등급별 합성 키를 쓴다.
+      if (row.locked === true) {
+        return {
+          id: row.id,
+          badge_id: `locked:${row.badges?.rarity ?? 'common'}`,
+          badge_name: d.lockedItem.card.name,
+          badge_rarity: row.badges?.rarity,
+          badge_image_url: null,
+          serial_prefix: null,
+          serial_number: row.serial_number,
+          expires_at: row.expires_at,
+          locked: true,
+          unlock_required: row.unlock_required,
+        }
+      }
+      return {
+        id: row.id,
+        badge_id: row.badge_id,
+        badge_name: row.badges?.name,
+        badge_rarity: row.badges?.rarity,
+        badge_image_url: row.badges?.image_url,
+        serial_prefix: row.serial_prefix,
+        serial_number: row.serial_number,
+        expires_at: row.expires_at,
+      }
+    })
 
   return NextResponse.json({ items })
 }
