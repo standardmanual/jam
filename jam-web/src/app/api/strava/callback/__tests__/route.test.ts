@@ -37,7 +37,7 @@ type Row = Record<string, unknown>
 const db = vi.hoisted(() => ({
   rows: [] as Row[],
   writes: [] as { op: string; payload?: Row }[],
-  failOn: null as null | 'lookup' | 'insert' | 'update' | 'delete',
+  failOn: null as null | 'lookup' | 'insert' | 'update' | 'delete' | 'delete_old',
 }))
 
 function matcher(filters: { op: 'eq' | 'neq'; col: string; val: unknown }[]) {
@@ -56,14 +56,17 @@ vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
     from: (table: string) => {
       if (table !== 'strava_connections') throw new Error(`예상치 못한 테이블 — ${table}`)
-      const filterChain = (run: (match: (row: Row) => boolean) => { error: unknown; data?: unknown }) => {
-        const filters: { op: 'eq' | 'neq'; col: string; val: unknown }[] = []
+      type Filter = { op: 'eq' | 'neq'; col: string; val: unknown }
+      const filterChain = (
+        run: (match: (row: Row) => boolean, filters: Filter[]) => { error: unknown; data?: unknown }
+      ) => {
+        const filters: Filter[] = []
         const chain: Record<string, unknown> = {
           eq: (col: string, val: unknown) => (filters.push({ op: 'eq', col, val }), chain),
           neq: (col: string, val: unknown) => (filters.push({ op: 'neq', col, val }), chain),
-          maybeSingle: async () => run(matcher(filters)),
+          maybeSingle: async () => run(matcher(filters), filters),
           then: (onFulfilled: (v: { error: unknown }) => unknown) =>
-            Promise.resolve(run(matcher(filters))).then(onFulfilled),
+            Promise.resolve(run(matcher(filters), filters)).then(onFulfilled),
         }
         return chain
       }
@@ -91,9 +94,13 @@ vi.mock('@/lib/supabase/server', () => ({
             return { error: null }
           }),
         delete: () =>
-          filterChain((match) => {
+          filterChain((match, filters) => {
             db.writes.push({ op: 'delete' })
             if (db.failOn === 'delete') return { error: { message: 'db down' } }
+            // 'delete_old' — 이전 연결 삭제(neq 필터)만 실패하고, 새 행 되돌림(eq만)은 성공한다
+            if (db.failOn === 'delete_old' && filters.some((f) => f.op === 'neq')) {
+              return { error: { message: 'db down' } }
+            }
             db.rows = db.rows.filter((r) => !match(r))
             return { error: null }
           }),
@@ -488,6 +495,30 @@ describe('GET /api/strava/callback', () => {
 
         expect(db.rows.find((r) => r.strava_athlete_id === OTHER_ATHLETE)).toEqual(others)
         expect(db.rows.filter((r) => r.user_id === SESSION_USER_ID)).toHaveLength(1)
+      })
+
+      it('이전 연결 삭제가 실패하면 방금 넣은 새 행을 되돌려 같은 유저의 행이 둘 남지 않는다', async () => {
+        db.rows = [connRow(SESSION_USER_ID, OTHER_ATHLETE)]
+        db.failOn = 'delete_old'
+
+        const res = await GET(makeRequest())
+
+        expect(location(res)).toBe(`${BASE_URL}/profile?strava=error&reason=db_error`)
+        // 새 행(ATHLETE)은 사라지고 이전 연결만 그대로 남는다
+        expect(db.rows).toHaveLength(1)
+        expect(db.rows[0].strava_athlete_id).toBe(OTHER_ATHLETE)
+        expect(db.rows.filter((r) => r.user_id === SESSION_USER_ID)).toHaveLength(1)
+        expect(syncMock).not.toHaveBeenCalled()
+      })
+
+      it('같은 Strava 계정을 다시 연결하는 경로에서는 되돌림이 기존 행을 지우지 않는다', async () => {
+        db.rows = [connRow(SESSION_USER_ID, ATHLETE, { disconnected_at: '2026-10-10T00:00:00.000Z' })]
+        db.failOn = 'delete_old'
+
+        await GET(makeRequest())
+
+        expect(db.rows).toHaveLength(1)
+        expect(db.rows[0].strava_athlete_id).toBe(ATHLETE)
       })
 
       it('새 행 저장이 실패하면 이전 연결을 지우지 않는다', async () => {

@@ -130,6 +130,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. DB 저장 (service client — RLS 우회). 한 JAM 계정에는 연결이 하나뿐이다(운영 로직 3.2절).
+    let insertedNewRow = false
     if (existingByAthlete) {
       // 같은 유저가 같은 Strava 계정을 다시 연결 — 토큰을 갱신하고 끊김을 지운다.
       // first_sync_pending·last_synced_at은 그대로 둬 마지막 동기화 뒤부터 이어서 가져온다.
@@ -158,6 +159,7 @@ export async function GET(request: NextRequest) {
         console.error('[JAM! Strava] strava_connections insert 오류:', insertError)
         return redirectAndClearState('/profile?strava=error&reason=db_error')
       }
+      insertedNewRow = true
     }
 
     // 이 유저의 이전 연결(다른 Strava 계정) 행을 지운다 — 같은 user_id의 행이 둘이면 조회가 오류를 낸다.
@@ -169,6 +171,18 @@ export async function GET(request: NextRequest) {
       .neq('strava_athlete_id', athleteId)
     if (deleteError) {
       console.error('[JAM! Strava] 이전 연결 삭제 오류:', deleteError)
+      // 방금 넣은 새 행을 되돌려 같은 user_id의 행이 둘 남지 않게 한다(티켓 20261017_1422 서버 보정 b).
+      // 되돌림이 실패해도 원래 오류 응답은 그대로 보낸다 — 로그로만 남긴다.
+      if (insertedNewRow) {
+        const { error: rollbackError } = await supabase
+          .from('strava_connections')
+          .delete()
+          .eq('user_id', userId)
+          .eq('strava_athlete_id', athleteId)
+        if (rollbackError) {
+          console.error('[JAM! Strava] 새 연결 되돌림 실패:', rollbackError)
+        }
+      }
       return redirectAndClearState('/profile?strava=error&reason=db_error')
     }
 
