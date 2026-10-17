@@ -2414,11 +2414,13 @@ export type Database = {
         Row: {
           created_at: string
           distance_km: number | null
+          filter_reason: string | null
           id: string
           jam_activity_type: string | null
           normalized: Json
           processed_at: string
           processed_via: string
+          source_meta: Json | null
           start_date: string
           strava_id: number
           user_id: string
@@ -2426,11 +2428,13 @@ export type Database = {
         Insert: {
           created_at?: string
           distance_km?: number | null
+          filter_reason?: string | null
           id?: string
           jam_activity_type?: string | null
           normalized?: Json
           processed_at?: string
           processed_via?: string
+          source_meta?: Json | null
           start_date: string
           strava_id: number
           user_id: string
@@ -2438,11 +2442,13 @@ export type Database = {
         Update: {
           created_at?: string
           distance_km?: number | null
+          filter_reason?: string | null
           id?: string
           jam_activity_type?: string | null
           normalized?: Json
           processed_at?: string
           processed_via?: string
+          source_meta?: Json | null
           start_date?: string
           strava_id?: number
           user_id?: string
