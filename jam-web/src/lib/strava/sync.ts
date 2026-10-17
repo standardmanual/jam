@@ -21,7 +21,7 @@ import { qualifyActivity, MIN_QUALIFIED_MOVING_TIME_SEC, type FilterReason, type
 import { detectAndExcludeTransitSegments, needsTransitStreams } from '@/lib/strava/transitSegment'
 import { applyTypeMismatch } from '@/lib/strava/typeMismatch'
 import { evaluateBadges } from '@/lib/badge-engine/index'
-import { tryItemDrop } from '@/lib/drop-engine/index'
+import { issueSyncItemBadges } from '@/lib/drop-engine/syncIssueRun'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { checkItemBookCompletion } from '@/lib/itembook/checker'
 import { findCompletableItemBooks } from '@/lib/itembook/completable'
@@ -31,7 +31,6 @@ import { createNotification, dailyGroupKey } from '@/lib/notifications'
 import { recordActivityRecap } from '@/lib/notifications/recap'
 import { selectCompletableDrafts } from '@/lib/notifications/batch/collections'
 import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
-import { logEngineDecision } from '@/lib/engine-log'
 import { getAbusingPolicy, DEFAULT_POLICY, effectiveVehicleSpeedFilterKmh } from '@/lib/abusing/policy'
 import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
@@ -70,8 +69,6 @@ import type {
   StravaActivityRow,
 } from '@/types/database'
 
-/** 싱크 1회당 아이템 드랍을 시도할 최대 활동 수 (최신순). 백필 시 드랍 폭주·타임아웃 방지 */
-const MAX_DROP_ACTIVITIES_PER_SYNC = 3
 /** 싱크 1회당 POI 매칭(Streams API)을 수행할 최대 활동 수 (최신순). Strava rate limit·타임아웃 방지 */
 const MAX_POI_MATCH_ACTIVITIES_PER_SYNC = 10
 /** 어뷰징 필터(구간 검사용 Streams 조회 포함)를 한 번에 병렬로 검사하는 활동 수 — Strava 호출 폭주 방지 */
@@ -690,7 +687,7 @@ interface ProcessFetchedResult {
   badges: number
   itemBooksCompleted: number
   missionsCompleted: number
-  /** 이번 처리에서 발급된 배지 id — 획득 순서(체크인 → 아이템 드랍 → 액티비티 → 컬렉션·미션 보상 → 사용량 → JAM! 행동 지표) */
+  /** 이번 처리에서 발급된 배지 id — 획득 순서(체크인 → 아이템 배지 → 액티비티 → 컬렉션·미션 보상 → 사용량 → JAM! 행동 지표) */
   earnedBadgeIds: string[]
   /** 이번 처리에서 새로 완료된 미션 id — GA4 mission_complete 계측용 (20260903_1034) */
   completedMissionIds: string[]
@@ -713,7 +710,7 @@ interface ProcessFetchedResult {
  * 활동까지 배지 엔진이 단 한 번도 돌지 않는 사고(jamfather 22일 미발급, 티켓
  * 20260906_1426 실측)의 원인이 바로 이 이른 반환이다.
  *
- * 드랍(tryItemDrop)·미션(checkMissions)·아이템북 완성 체크는 "활동 1건마다 시도"가
+ * 아이템 배지 발급(issueSyncItemBadges)·미션(checkMissions)·아이템북 완성 체크는 "활동 1건마다 시도"가
  * 전제라 이 이른 반환을 그대로 유지해 건너뛴다 — 배지 평가와 그 직접 부수효과(결산
  * 소식)만 벗긴다. evaluateBadges는 내부에서 이력 전체를 다시 읽으므로 빈 배열을
  * 넘겨도 이미 조건을 채운 배지를 잡아낼 수 있다.
@@ -864,7 +861,7 @@ export async function processFetchedActivities(
   // 가운데 가장 최근 1건**만 반영한다(운영 로직 3.4절). 최신 활동부터 차례로 검사해 통과한 첫 활동에서 멈추고,
   // 가장 최근 활동이 걸러지면 그 전 활동을 본다(필요한 활동만 Streams를 조회한다). 통과한 활동이 없으면 아래에서
   // 첫 동기화를 마친 것으로 보지 않는다. (배지 평가가 과거 이력 전체를 한 번에 넣으면 온보딩 순간 여러 등급이
-  // 동시에 터져 나오는 등 성장 경험이 왜곡되는 문제가 있었음 — 드랍엔진은 이미 1건 제한 중)
+  // 동시에 터져 나오는 등 성장 경험이 왜곡되는 문제가 있었음 — 아이템 배지도 정산한 그 1건에만 발급한다)
   const checkedEntries: AbusingChecked[] = []
   if (isFirstSync) {
     const newestFirst = [...qualifiedEntries].sort((a, b) => {
@@ -1129,90 +1126,16 @@ export async function processFetchedActivities(
     })
   }
 
-  // 활동별 아이템 드랍 시도
-  //   - 첫 싱크(백필): "10초 첫 보상" — 최신 활동 1건만 드랍
-  //   - 일반 싱크: 최신 활동 최대 3건까지 드랍
-  //   - 드랍 대상 "선정"은 최신순(내림차순)으로 상위 N건을 고르되, 실제 tryItemDrop
-  //     "처리 순서"는 그 N건을 다시 오래된 순(오름차순)으로 뒤집어서 진행한다.
-  //     tryItemDrop은 매 호출마다 user_drop_state를 읽고 갱신해 마지막 호출의 결과가
-  //     최종 저장되는데, 내림차순 그대로 처리하면 배치 중 가장 오래된 활동이 맨 나중에
-  //     처리되어 last_activity_at/daily_drop_date/last_drop_tribe_id가 실제 최신
-  //     활동이 아니라 배치 내 가장 오래된 활동 기준으로 저장되는 순서 역전 버그가 있었다
-  //     (2026-08-11 점검 티켓 20260811_009). 다음 싱크의 복귀(comeback) 판정·일일 카운터가
-  //     실제보다 더 오래 쉰 것처럼 잘못 계산될 수 있었다.
-  const dropTargets = [...activitiesFiltered]
-    .filter((a) => a.jamActivityType)
-    .sort((a, b) => {
-      const diff = new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-      // start_date가 동일한 활동(초 단위까지 같은 케이스)이 섞이면 정렬 결과가
-      // 실행마다 달라질 수 있어(Array.sort는 동일 키 순서를 보장하지 않는 엔진도 있음),
-      // stravaId를 보조 키로 둬 정렬을 결정론적으로 고정한다.
-      return diff !== 0 ? diff : b.stravaId - a.stravaId
-    })
-    .slice(0, isFirstSync ? 1 : MAX_DROP_ACTIVITIES_PER_SYNC)
-    .reverse()
-  for (const activity of dropTargets) {
-    try {
-      // 순차 처리 유지 필수 — tryItemDrop이 user_drop_state를 읽고 쓰므로 병렬화하면 안 된다.
-      // (반환값이 생겼다고 Promise.all로 바꾸지 말 것 — 위 주석의 순서 역전 버그가 재발한다)
-      earnedBadgeIds.push(...(await tryItemDrop(userId, activity, activitiesFiltered)))
-    } catch (err) {
-      // 배치 중 한 건의 드랍 시도가 실패해도 나머지 활동 처리를 막지 않는다 —
-      // 실패는 로깅만 하고 다음 활동으로 계속 진행한다.
-      console.error(
-        `[processFetchedActivities] tryItemDrop 실패 — userId: ${userId}, stravaId: ${activity.stravaId}:`,
-        err
-      )
-      // 이 활동은 아래에서 처리 완료로 표시되어 다음 동기화에서 다시 처리되지 않으므로, 누락을
-      // 운영자가 볼 수 있게 실패 기록 테이블에 남긴다(티켓 20261014_1320). 기록 함수가 자체적으로
-      // 예외를 흡수하므로 여기서 try/catch를 더하지 않는다. 드랍 시도는 순차 처리라 await 한다.
-      await recordStravaSyncFailure(
-        supabase,
-        userId,
-        'drop_attempt_failed',
-        `stravaId=${activity.stravaId}: ${err instanceof Error ? err.message : String(err)}`
-      )
-    }
-  }
-
-  // 가드 — 배치 처리 후 저장된 user_drop_state.last_activity_at이 이번 배치에서
-  // 실제로 가장 최신인 활동(dropTargets 마지막 원소, 오름차순 처리이므로 최신)과
-  // 일치하는지 확인한다. 불일치하면 처리 순서 역전 회귀나 최신 활동의 드랍 실패(위
-  // try/catch로 흡수된 경우) 등을 의미하므로 경고 로그를 남긴다(흐름은 막지 않음).
-  if (dropTargets.length > 0) {
-    const latestTarget = dropTargets[dropTargets.length - 1]
-    // 20260824_006 — drop-engine의 activityStartDate가 startDate(진짜 UTC) 기준으로
-    // 바뀌었으므로, 그 값과 비교하는 이 가드도 동일한 기준으로 맞춰야 한다. 그대로
-    // startDateLocal을 쓰면 실제로는 정상인데도 매 싱크마다 불일치 경고가 계속 찍힌다.
-    const expectedLastActivityAt = latestTarget.startDate
-    const { data: dropStateRow, error: dropStateError } = await supabase
-      .from('user_drop_state')
-      .select('last_activity_at')
-      .eq('user_id', userId)
-      .maybeSingle()
-    if (dropStateError) {
-      console.error('[processFetchedActivities] 드랍 상태 검증 조회 오류:', dropStateError)
-    } else {
-      const savedLastActivityAt =
-        (dropStateRow as { last_activity_at: string | null } | null)?.last_activity_at ?? null
-      if (savedLastActivityAt !== expectedLastActivityAt) {
-        console.warn(
-          `[processFetchedActivities] last_activity_at 불일치 — userId: ${userId}, ` +
-          `expected: ${expectedLastActivityAt}, saved: ${savedLastActivityAt}`
-        )
-        await logEngineDecision('drop', 'drop_state_last_activity_mismatch', userId, {
-          expectedLastActivityAt,
-          savedLastActivityAt,
-          dropTargetsCount: dropTargets.length,
-        })
-      }
-    }
-  }
+  // 아이템 배지 발급 자리 표시 — 티켓 20261017_1424 2회
+  // 발급은 잼 정산(아래 settleActivities) 뒤에 한다. 개수가 활동의 잼에 비례하고, 발급 기록이 `strava_activities.id`를 키로 쓰는데
+  // 활동은 정산 직전에야 저장되기 때문이다. 획득 순서(체크인 → 아이템 배지 → 액티비티 → …)는 응답 계약이라, 여기의 위치를 기억해 두었다가
+  // 발급한 배지 id를 그 자리에 끼워 넣는다.
+  const itemBadgeInsertAt = earnedBadgeIds.length
 
   // 일반 배지 엔진 호출 — 새 활동이 0건이어도 항상 실행한다 (티켓 20260906_1430).
   // evaluateBadgesDetailed는 내부에서 이력 전체(getActivityHistory)를 이번 배치와 합쳐
   // 평가하므로, 빈 배치를 넘겨도 "카탈로그가 늘어난 뒤 조건은 충족인데 미발급"인 배지를
-  // 이 호출 한 번으로 따라잡을 수 있다. 드랍(tryItemDrop)·미션(checkMissions)은 "활동
+  // 이 호출 한 번으로 따라잡을 수 있다. 아이템 배지 발급(issueSyncItemBadges)·미션(checkMissions)은 "활동
   // 1건마다 시도"가 전제라 이 게이트를 그대로 유지한다 — 배지 평가만 벗긴다.
   const activityBadgeIds = await evaluateBadges(userId, activitiesFiltered)
   const badgesEarned = activityBadgeIds.length
@@ -1239,13 +1162,6 @@ export async function processFetchedActivities(
   // 함수**를 쓴다: 두 경로가 각자 키를 만들면 같은 상태가 두 행이 된다.
   for (const draft of selectCompletableDrafts(userId, await findCompletableItemBooks(userId))) {
     await createNotification(draft as CreateNotificationInput<NotificationType>)
-  }
-
-  // Phase 16: 다이나믹 미션 달성 체크
-  const { completedMissionIds, awardedBadgeIds } = await checkMissions(userId, activitiesFiltered)
-  earnedBadgeIds.push(...awardedBadgeIds)
-  if (completedMissionIds.length > 0) {
-    console.info(`[processFetchedActivities] 미션 달성 — userId: ${userId}, 수: ${completedMissionIds.length}`)
   }
 
   // 멱등 처리 기준 데이터 기록 — 이번에 "새로" 확인된 활동을 처리 완료로 표시.
@@ -1285,6 +1201,51 @@ export async function processFetchedActivities(
     jamPolicy
   )
   await alertMassEarnIfNeeded({ userId, earned: jamSettlement.total, baseline: massEarnBaseline, policy: jamPolicy })
+
+  // 정산한 모든 활동에 아이템 배지를 발급한다(티켓 20261017_1424 2회, 운영 로직 6.2절). 소속 트라이브가 없으면 아이템 배지만 건너뛴다.
+  // 던지지 않는다 — 활동 하나의 실패는 실패 기록 테이블에 남기고 다음 활동으로 계속한다(티켓 20261014_1320).
+  // 순차 처리 유지 필수 — 발급이 user_drop_state(common_streak)와 인벤토리 슬롯을 읽고 쓰므로 병렬화하면 안 된다.
+  const passedActivityByStravaId = new Map(passedEntries.map((c) => [c.activity.stravaId, c.activity]))
+  const issueTargets = jamSettlement.items.map((item) => {
+    const activity = passedActivityByStravaId.get(item.stravaId)
+    return {
+      stravaId: item.stravaId,
+      activityId: item.activityId,
+      startDate: activity?.startDate ?? item.earnedOn,
+      jam: item.amount,
+      isHiking: activity?.jamActivityType === 'hiking',
+    }
+  })
+  const recordDropFailure = (stravaId: number | null, err: unknown) =>
+    recordStravaSyncFailure(
+      supabase,
+      userId,
+      'drop_attempt_failed',
+      `${stravaId === null ? 'batch' : `stravaId=${stravaId}`}: ${err instanceof Error ? err.message : String(err)}`
+    )
+  let itemBadgeIds: string[] = []
+  if (issueTargets.length > 0) {
+    try {
+      itemBadgeIds = await issueSyncItemBadges(supabase, userId, jamPolicy, issueTargets, {
+        onActivityError: (target, err) => recordDropFailure(target.stravaId, err),
+      })
+    } catch (err) {
+      // 활동 단위 실패는 위 콜백이 흡수한다. 여기는 조회 단계처럼 활동 밖에서 던진 경우다 — 발급만 포기하고 동기화는 계속한다.
+      console.error(`[processFetchedActivities] 아이템 배지 발급 실패 — userId: ${userId}:`, err)
+      await recordDropFailure(null, err)
+    }
+  }
+  earnedBadgeIds.splice(itemBadgeInsertAt, 0, ...itemBadgeIds)
+
+  // Phase 16: 다이나믹 미션 달성 체크
+  // 아이템 배지 발급 **뒤**에 판정한다 — 아이템 수집 미션(`item_collect`)이 인벤토리의 보유 현황을 읽어서, 이번 동기화로 받은
+  // 개체가 반영되기 전에 판정하면 한 번 늦게 달성된다. 이전에는 발급이 미션 판정 앞에 있었다. 거리·활동 수 미션은 이력 전체로
+  // 판정하므로(`mergeActivityHistory`) 활동 기록 저장 뒤에 돌아도 같은 결과다.
+  const { completedMissionIds, awardedBadgeIds } = await checkMissions(userId, activitiesFiltered)
+  earnedBadgeIds.push(...awardedBadgeIds)
+  if (completedMissionIds.length > 0) {
+    console.info(`[processFetchedActivities] 미션 달성 — userId: ${userId}, 수: ${completedMissionIds.length}`)
+  }
 
   // 계열 진행 스냅샷 갱신 — 티켓 20260904_1156(배지트리 리뉴얼 3차 1단계). 위 호출로 이번
   // 배치가 이미 strava_activities에 기록된 직후라 getActivityHistory() 한 번으로 이번 배치까지
@@ -1518,7 +1479,7 @@ export async function syncStravaActivities(
     return { synced: 0, badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadges: [], earnedBadgesMore: 0, isFirstBadgeEver: false, completedMissionIds: [], jamEarned: 0 }
   }
 
-  // 4-2. 첫 싱크 여부 (초기화 직후·신규 연동) — 드랍 1회 제한에 사용
+  // 4-2. 첫 싱크 여부 (초기화 직후·신규 연동) — 정산·아이템 배지를 최근 1건으로 제한하는 데 사용
   const { data: userRow } = await supabase
     .from('users')
     .select('initial_sync_done')

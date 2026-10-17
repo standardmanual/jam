@@ -34,7 +34,7 @@ vi.mock('@/lib/supabase/server', () => ({
     throw new Error('createServiceClient가 호출됨 — 주입된 클라이언트가 쓰이지 않았다')
   },
 }))
-vi.mock('@/lib/drop-engine/index', () => ({ tryItemDrop: vi.fn(async () => []) }))
+vi.mock('@/lib/drop-engine/syncIssueRun', () => ({ issueSyncItemBadges: vi.fn(async () => []) }))
 vi.mock('@/lib/badge-engine/index', () => ({
   evaluateBadges: (userId: string, activities: unknown[]) => mocks.evaluateBadges(userId, activities),
 }))

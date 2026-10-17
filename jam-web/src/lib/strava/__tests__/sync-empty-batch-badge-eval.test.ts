@@ -16,7 +16,7 @@
  * 계약을 광범위하게 검증한다). 이 파일은 그 위에서 "sync.ts가 실제로 그 호출을
  * 빼먹지 않는지"만 계약으로 고정한다.
  *
- * 드랍(tryItemDrop)·미션(checkMissions)은 "활동 1건마다 시도"가 전제라 이번 티켓
+ * 아이템 배지 발급(issueSyncItemBadges)·미션(checkMissions)은 "활동 1건마다 시도"가 전제라 이번 티켓
  * 대상이 아니다 — 새 활동 0건에서는 여전히 건드리지 않아야 한다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/strava/__tests__/sync-empty-batch-badge-eval.test.ts
@@ -38,7 +38,7 @@ const { dropSpy, missionsSpy, evaluateBadgesSpy, recordActivityRecapSpy } = vi.h
   recordActivityRecapSpy: vi.fn(async () => {}),
 }))
 
-vi.mock('@/lib/drop-engine/index', () => ({ tryItemDrop: dropSpy }))
+vi.mock('@/lib/drop-engine/syncIssueRun', () => ({ issueSyncItemBadges: dropSpy }))
 vi.mock('@/lib/badge-engine/index', () => ({ evaluateBadges: evaluateBadgesSpy }))
 vi.mock('@/lib/badge-engine/jamActionBadges', () => ({ evaluateJamActionBadges: vi.fn(async () => []) })) // JAM! 행동 지표 판정은 sync-jam-action-hook.test.ts가 따로 확인한다 (티켓 20261001_0633)
 vi.mock('@/lib/poi/matcher', () => ({ matchPoisForActivity: vi.fn(async () => []) }))
@@ -182,7 +182,7 @@ describe('processFetchedActivities — 새 활동 0건이어도 배지 평가는
     )
   })
 
-  it('rawActivities가 빈 배열이면 드랍(tryItemDrop)·미션(checkMissions)은 여전히 건드리지 않는다', async () => {
+  it('rawActivities가 빈 배열이면 아이템 배지 발급(issueSyncItemBadges)·미션(checkMissions)은 여전히 건드리지 않는다', async () => {
     evaluateBadgesSpy.mockResolvedValueOnce(['badge-common-1'])
     const supabase = makeFakeSupabase([{ id: 'badge-common-1', name: '테스트배지', rarity: 'common' }])
 

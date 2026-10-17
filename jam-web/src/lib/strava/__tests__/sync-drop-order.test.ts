@@ -1,13 +1,17 @@
 /**
- * strava/sync — processFetchedActivities() 드랍 처리 순서 회귀 테스트
+ * strava/sync — 아이템 배지 발급 단계의 위치·순서·실패 처리 (티켓 20261017_1424 2회, 이전 이름: 드랍 처리 순서 회귀 테스트)
  *
- * 배경: dropTargets(드랍 대상으로 "선정"된 최신 N건)를 tryItemDrop에 넘기는 "처리 순서"가
- * 내림차순(최신 우선)이면, tryItemDrop이 호출마다 user_drop_state를 새로 읽고 저장하는
- * 특성상 배치의 마지막 호출(=배치 내 가장 오래된 활동)의 결과가 최종 저장돼 버려
- * last_activity_at이 실제 최신 활동을 반영하지 못하는 버그가 있었다
- * (2026-08-11 점검 티켓 20260811_009). 오름차순(오래된 → 최신) 처리로 수정한 뒤,
- * 서로 다른 시각의 활동 여러 건을 한 배치로 넣었을 때 최종 저장된
- * user_drop_state.last_activity_at이 항상 배치 내 가장 최신 활동과 일치하는지 검증한다.
+ * 고정하는 것:
+ * - 발급은 **잼 정산 뒤**에 돈다(개수가 활동의 잼에 비례하고 발급 기록이 활동 id를 쓴다). 정산한 모든 활동이 대상이다 —
+ *   최근 3건 상한은 없다. 첫 동기화는 정산이 최근 1건이라 발급도 1건이다.
+ * - 정산하지 못한 활동(정산 RPC 실패)은 발급 대상이 아니다.
+ * - 대상에 정산 잼과 등산 여부(`jamActivityType === 'hiking'`)가 실린다.
+ * - 발급한 배지 id는 응답 계약의 획득 순서(체크인 → 아이템 배지 → 액티비티 배지 …) 자리에 끼워진다.
+ * - 발급 실패는 동기화를 막지 않는다: 활동 단위 실패는 `drop_attempt_failed`로 기록하고(기록이 실패해도 계속),
+ *   활동 밖(조회 단계) 실패도 같은 유형으로 기록한 뒤 동기화를 이어 간다.
+ *
+ * (옛 시험은 `tryItemDrop`이 `user_drop_state.last_activity_at`을 마지막 호출 기준으로 저장하는 순서 역전을 확인했다.
+ *  동기화 경로는 더 이상 그 함수를 부르지 않고 `last_activity_at`을 쓰지 않는다.)
  *
  * 실행: cd jam-web && npx vitest run src/lib/strava/__tests__/sync-drop-order.test.ts
  */
@@ -15,37 +19,25 @@ import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } fr
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { StravaSummaryActivity } from '@/types/strava'
 
-// ── 드랍엔진 tryItemDrop 시뮬레이션 ──────────────────────────────────────
-// 실제 tryItemDrop은 호출마다 user_drop_state를 DB에서 읽고 다시 저장한다.
-// "마지막으로 호출된 활동의 값이 최종 저장된다"는 핵심 동작만 재현해,
-// processFetchedActivities가 tryItemDrop을 넘기는 "순서"가 최종 저장 결과에
-// 미치는 영향을 검증한다.
-const dropState = vi.hoisted(() => ({ current: null as string | null }))
-
 // 20261014_1320 — strava_sync_failures에 들어간 insert 페이로드를 기록한다. mode로 기록 insert가
-// 오류를 돌려주거나 예외를 던지는 상황을 재현한다(기록이 실패해도 다음 활동의 드랍이 이어져야 한다).
+// 오류를 돌려주거나 예외를 던지는 상황을 재현한다(기록이 실패해도 다음 활동의 발급이 이어져야 한다).
 const failureInserts = vi.hoisted(() => ({
   rows: [] as Array<Record<string, unknown>>,
   mode: 'ok' as 'ok' | 'error' | 'throw',
 }))
+/** 호출 순서: 'upsert'(활동 저장) · 'rpc:<이름>'(RPC 호출) · 'issue'(발급) · 'missions'(미션 판정) */
+const events = vi.hoisted(() => ({ list: [] as string[], rpcFail: false }))
 
-// 20260831_1327 — processFetchedActivities가 내부에서 호출하는 findCompletableItemBooks 등이
-// 모킹 없이 createServiceClient()로 실제 Supabase에 접속해 상시 실패(자격증명 없는 환경)·
-// 운영 DB 접속(자격증명 있는 환경) 위험을 만들었다. sync-vehicle-speed-filter.test.ts의
-// 가드 패턴을 그대로 따른다: 주입된 supabase 클라이언트를 쓰지 않고 새로 만들면 즉시 던진다.
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => {
     throw new Error('createServiceClient가 호출됨 — 주입된 클라이언트가 쓰이지 않았다')
   },
 }))
 
-// 20260824_006 — 실제 tryItemDrop은 startDate(진짜 UTC)만 쓰도록 고쳤다(startDateLocal은
-// 로컬 벽시계에 Z를 붙인 값이라 timestamptz 오해석 버그의 원인이었다). 이 모킹도 동일하게
-// 맞춰야 sync.ts의 last_activity_at 불일치 가드(같은 기준으로 함께 고쳤다)와 어긋나지 않는다.
-vi.mock('@/lib/drop-engine/index', () => ({
-  tryItemDrop: vi.fn(async (_userId: string, activity: { startDateLocal?: string; startDate: string }) => {
-    dropState.current = activity.startDate
-    return []
+vi.mock('@/lib/drop-engine/syncIssueRun', () => ({
+  issueSyncItemBadges: vi.fn(async () => {
+    events.list.push('issue')
+    return [] as string[]
   }),
 }))
 vi.mock('@/lib/badge-engine/index', () => ({ evaluateBadges: vi.fn(async () => []) }))
@@ -54,11 +46,12 @@ vi.mock('@/lib/poi/matcher', () => ({ matchPoisForActivity: vi.fn(async () => []
 vi.mock('@/lib/itembook/checker', () => ({
   checkItemBookCompletion: vi.fn(async () => ({ completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] })),
 }))
-// findCompletableItemBooks가 내부에서 createServiceClient()를 새로 만들어(주입 사슬 밖) 실제
-// Supabase에 접속하는 원인 — 이 테스트 의도(드랍 처리 순서)와 무관하므로 빈 배열로 모킹한다.
 vi.mock('@/lib/itembook/completable', () => ({ findCompletableItemBooks: vi.fn(async () => []) }))
 vi.mock('@/lib/missions/checker', () => ({
-  checkMissions: vi.fn(async () => ({ completedMissionIds: [], awardedBadgeIds: [] })),
+  checkMissions: vi.fn(async () => {
+    events.list.push('missions')
+    return { completedMissionIds: [], awardedBadgeIds: [] }
+  }),
 }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }))
 vi.mock('@/lib/notifications', () => ({
@@ -75,8 +68,8 @@ vi.mock('@/lib/strava/api', () => ({
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) }))
 
 import { processFetchedActivities } from '../sync'
-import { logEngineDecision } from '@/lib/engine-log'
-import { tryItemDrop } from '@/lib/drop-engine/index'
+import { issueSyncItemBadges, type SyncIssueTarget } from '@/lib/drop-engine/syncIssueRun'
+import { evaluateBadges } from '@/lib/badge-engine/index'
 
 // ── 픽스처 ──────────────────────────────────────────────────────────────
 
@@ -152,33 +145,34 @@ const ABUSING_POLICY_ROW: Record<string, unknown> = {
   updated_at: '2026-08-31T03:48:29+00:00',
 }
 
-/** 최소한의 supabase 클라이언트 스텁 — processFetchedActivities가 실제 조회하는
- * abusing_policy / strava_activities / user_drop_state(신규 가드) 테이블만 응답한다. */
+/** 최소한의 supabase 클라이언트 스텁 — 활동 저장·정산 RPC·실패 기록만 응답한다. */
 function makeFakeSupabase(): SupabaseClient {
+  const savedStravaIds: number[] = []
   const from = (table: string) => {
-    const builder = {
-      select: () => builder,
+    let selectedCols = ''
+    const builder: Record<string, unknown> = {
+      select: (cols?: string) => {
+        selectedCols = cols ?? ''
+        return builder
+      },
       eq: () => builder,
       in: () => builder,
+      is: () => builder,
+      not: () => builder,
+      order: () => builder,
       limit: () => builder,
       single: async () => {
-        if (table === 'abusing_policy') {
-          // 20260831_1300 — sync.ts가 정식 로더 getAbusingPolicy()로 `select('*')`을 하므로
-          // 행 전체를 돌려준다 (일부 키만 주면 로더가 기본값 폴백 로그를 남긴다)
-          return { data: { ...ABUSING_POLICY_ROW }, error: null }
-        }
+        if (table === 'abusing_policy') return { data: { ...ABUSING_POLICY_ROW }, error: null }
         return { data: null, error: null }
       },
-      maybeSingle: async () => {
-        if (table === 'user_drop_state') {
-          return {
-            data: dropState.current !== null ? { last_activity_at: dropState.current } : null,
-            error: null,
-          }
+      maybeSingle: async () => ({ data: null, error: null }),
+      upsert: async (rows?: Record<string, unknown>[]) => {
+        if (table === 'strava_activities') {
+          events.list.push('upsert')
+          for (const row of rows ?? []) savedStravaIds.push(row.strava_id as number)
         }
-        return { data: null, error: null }
+        return { error: null }
       },
-      upsert: async () => ({ error: null }),
       insert: async (payload?: Record<string, unknown>) => {
         if (table === 'strava_sync_failures') {
           failureInserts.rows.push(payload ?? {})
@@ -187,92 +181,116 @@ function makeFakeSupabase(): SupabaseClient {
         }
         return { error: null }
       },
+      then(onFulfilled: (v: { data: unknown; error: unknown }) => unknown, onRejected?: (e: unknown) => unknown) {
+        if (table === 'strava_activities' && selectedCols === 'id, strava_id') {
+          const data = savedStravaIds.map((strava_id) => ({ id: `act-${strava_id}`, strava_id }))
+          return Promise.resolve({ data, error: null }).then(onFulfilled, onRejected)
+        }
+        return Promise.resolve({ data: [], error: null }).then(onFulfilled, onRejected)
+      },
     }
     return builder
   }
-  return { from } as unknown as SupabaseClient
+  const rpc = async (_name: string, args: Record<string, unknown>) => {
+    events.list.push('rpc:' + _name)
+    if (events.rpcFail) return { data: null, error: { message: 'rpc failed' } }
+    return { data: { amount: args.p_amount }, error: null }
+  }
+  return { from, rpc } as unknown as SupabaseClient
 }
 
-describe('processFetchedActivities — 드랍 처리 순서와 last_activity_at 최종 상태', () => {
-  beforeEach(() => {
-    dropState.current = null
-    vi.clearAllMocks()
+/** 발급기가 마지막으로 받은 대상 목록 */
+function lastTargets(): SyncIssueTarget[] {
+  const calls = vi.mocked(issueSyncItemBadges).mock.calls
+  const last = calls[calls.length - 1]
+  return last ? [...last[3]] : []
+}
+
+const run = (raws: StravaSummaryActivity[], isFirstSync = false, userId = 'user-1') =>
+  processFetchedActivities(makeFakeSupabase(), userId, 'fake-access-token', raws, isFirstSync, 'sync')
+
+/** id가 클수록 최근인 러닝 30분(잼 90) */
+const dated = (id: number, overrides: Partial<StravaSummaryActivity> = {}) =>
+  makeRawActivity({
+    id,
+    start_date: `2026-07-${String(10 + id).padStart(2, '0')}T00:00:00Z`,
+    start_date_local: `2026-07-${String(10 + id).padStart(2, '0')}T09:00:00`,
+    ...overrides,
   })
 
-  it('시각이 다른 활동 3건을 뒤섞어 넣어도 최종 last_activity_at은 가장 최신 활동과 일치한다', async () => {
-    const oldest = makeRawActivity({
-      id: 1,
-      start_date: '2026-07-20T00:00:00Z',
-      start_date_local: '2026-07-20T09:00:00',
-    })
-    const middle = makeRawActivity({
-      id: 2,
-      start_date: '2026-07-25T00:00:00Z',
-      start_date_local: '2026-07-25T09:00:00',
-    })
-    const newest = makeRawActivity({
-      id: 3,
-      start_date: '2026-08-01T00:00:00Z',
-      start_date_local: '2026-08-01T09:00:00',
-    })
+beforeEach(() => {
+  events.list = []
+  events.rpcFail = false
+  failureInserts.rows = []
+  failureInserts.mode = 'ok'
+  vi.clearAllMocks()
+  vi.spyOn(console, 'info').mockImplementation(() => {})
+})
 
-    // 입력 순서를 일부러 뒤섞음(최신 → 중간 → 오래된) — 처리 순서는 sync.ts 내부에서
-    // 다시 정렬되어야 하므로 입력 순서에 의존하지 않아야 한다.
-    const rawActivities = [newest, oldest, middle]
+describe('processFetchedActivities — 아이템 배지 발급 대상과 순서', () => {
+  it('정산한 활동 5건 모두가 대상이다 — 최근 3건 상한은 없다', async () => {
+    await run([dated(1), dated(2), dated(3), dated(4), dated(5)])
 
-    const result = await processFetchedActivities(
-      makeFakeSupabase(),
-      'user-1',
-      'fake-access-token',
-      rawActivities,
-      false,
-      'sync'
-    )
-
-    expect(result).toBeDefined()
-    expect(dropState.current).toBe(newest.start_date)
-    // 순서가 정상이면(가드 통과) 불일치 경고 로그가 남지 않는다.
-    expect(logEngineDecision).not.toHaveBeenCalledWith(
-      'drop',
-      'drop_state_last_activity_mismatch',
-      expect.anything(),
-      expect.anything()
-    )
+    expect(lastTargets().map((t) => t.stravaId).sort()).toEqual([1, 2, 3, 4, 5])
   })
 
-  it('활동 2건 — 최신 활동이 최종 상태에 반영된다', async () => {
-    const older = makeRawActivity({
-      id: 10,
-      start_date: '2026-08-05T00:00:00Z',
-      start_date_local: '2026-08-05T09:00:00',
-    })
-    const newer = makeRawActivity({
-      id: 11,
-      start_date: '2026-08-09T00:00:00Z',
-      start_date_local: '2026-08-09T09:00:00',
-    })
+  it('발급은 활동 저장과 정산 뒤에 돈다', async () => {
+    await run([dated(1), dated(2)])
 
-    await processFetchedActivities(
-      makeFakeSupabase(),
-      'user-2',
-      'fake-access-token',
-      [older, newer],
-      false,
-      'sync'
-    )
+    expect(events.list.indexOf('issue')).toBeGreaterThan(events.list.lastIndexOf('rpc:jam_apply'))
+    expect(events.list.indexOf('upsert')).toBeLessThan(events.list.indexOf('rpc:jam_apply'))
+  })
 
-    expect(dropState.current).toBe(newer.start_date)
+  it('미션 판정은 발급 뒤에 돈다 — 아이템 수집 미션이 이번에 받은 개체를 보게 한다', async () => {
+    await run([dated(1)])
+
+    expect(events.list.indexOf('missions')).toBeGreaterThan(events.list.indexOf('issue'))
+  })
+
+  it('대상에 정산 잼과 저장된 활동 id, 시작 시각이 실린다', async () => {
+    await run([dated(1)])
+
+    expect(lastTargets()).toEqual([
+      { stravaId: 1, activityId: 'act-1', startDate: '2026-07-11T00:00:00Z', jam: 90, isHiking: false },
+    ])
+  })
+
+  it('등산 활동은 isHiking이 true다', async () => {
+    await run([dated(1, { type: 'Hike', sport_type: 'Hike' }), dated(2)])
+
+    expect(Object.fromEntries(lastTargets().map((t) => [t.stravaId, t.isHiking]))).toEqual({ 1: true, 2: false })
+  })
+
+  it('첫 동기화는 정산한 최근 1건만 발급 대상이다', async () => {
+    await run([dated(1), dated(2), dated(3)], true)
+
+    expect(lastTargets().map((t) => t.stravaId)).toEqual([3])
+  })
+
+  it('정산하지 못한 활동(정산 RPC 실패)이면 발급을 부르지 않는다', async () => {
+    events.rpcFail = true
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await run([dated(1)])
+
+    expect(issueSyncItemBadges).not.toHaveBeenCalled()
+    errorSpy.mockRestore()
+  })
+
+  it('발급한 배지 id는 액티비티 배지 앞 자리에 끼워진다', async () => {
+    vi.mocked(issueSyncItemBadges).mockResolvedValueOnce(['item-1', 'item-2'])
+    vi.mocked(evaluateBadges).mockResolvedValueOnce(['activity-1'])
+
+    const result = await run([dated(1)])
+
+    expect(result.earnedBadgeIds).toEqual(['item-1', 'item-2', 'activity-1'])
   })
 })
 
-describe('processFetchedActivities — 드랍 시도 실패 기록 (티켓 20261014_1320)', () => {
+describe('processFetchedActivities — 발급 실패 기록 (티켓 20261014_1320)', () => {
   let errorSpy: MockInstance
 
   beforeEach(() => {
-    dropState.current = null
-    failureInserts.rows = []
-    failureInserts.mode = 'ok'
-    vi.clearAllMocks()
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
@@ -280,66 +298,43 @@ describe('processFetchedActivities — 드랍 시도 실패 기록 (티켓 20261
     errorSpy.mockRestore()
   })
 
-  it('tryItemDrop이 던지면 drop_attempt_failed·userId·stravaId 메시지로 기록을 시도하고 반환값은 그대로다', async () => {
-    vi.mocked(tryItemDrop).mockRejectedValueOnce(new Error('드랍 상태 저장 실패'))
+  it('활동 단위 실패는 drop_attempt_failed·stravaId 메시지로 기록하고 반환값은 그대로다', async () => {
+    vi.mocked(issueSyncItemBadges).mockImplementationOnce(async (_s, _u, _p, targets, options) => {
+      await options?.onActivityError?.(targets[0], new Error('발급 상태 저장 실패'))
+      return []
+    })
 
-    const result = await processFetchedActivities(
-      makeFakeSupabase(),
-      'user-fail',
-      'fake-access-token',
-      [makeRawActivity({ id: 4242, start_date: '2026-08-10T00:00:00Z', start_date_local: '2026-08-10T09:00:00' })],
-      false,
-      'sync'
-    )
+    const result = await run([dated(4)], false, 'user-fail')
 
     expect(failureInserts.rows).toEqual([
-      {
-        user_id: 'user-fail',
-        failure_type: 'drop_attempt_failed',
-        error_message: 'stravaId=4242: 드랍 상태 저장 실패',
-      },
+      { user_id: 'user-fail', failure_type: 'drop_attempt_failed', error_message: 'stravaId=4: 발급 상태 저장 실패' },
     ])
-    // 기존 콘솔 로그는 그대로 남고, 동기화 흐름은 오류를 밖으로 던지지 않는다.
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('tryItemDrop 실패'),
-      expect.any(Error)
-    )
     expect(result).toBeDefined()
   })
 
-  it.each(['error', 'throw'] as const)(
-    '기록 insert가 %s여도 같은 배치의 다음 활동 드랍 시도가 이어진다',
-    async (mode) => {
-      failureInserts.mode = mode
-      const older = makeRawActivity({
-        id: 30,
-        start_date: '2026-08-05T00:00:00Z',
-        start_date_local: '2026-08-05T09:00:00',
-      })
-      const newer = makeRawActivity({
-        id: 31,
-        start_date: '2026-08-09T00:00:00Z',
-        start_date_local: '2026-08-09T09:00:00',
-      })
-      // 드랍은 오래된 순서로 처리되므로 첫 호출(older)이 던지고 두 번째 호출(newer)이 이어져야 한다.
-      vi.mocked(tryItemDrop).mockRejectedValueOnce(new Error('드랍 실패'))
+  it.each(['error', 'throw'] as const)('기록 insert가 %s여도 동기화는 끝까지 간다', async (mode) => {
+    failureInserts.mode = mode
+    vi.mocked(issueSyncItemBadges).mockImplementationOnce(async (_s, _u, _p, targets, options) => {
+      await options?.onActivityError?.(targets[0], new Error('발급 실패'))
+      return ['item-1']
+    })
 
-      await processFetchedActivities(
-        makeFakeSupabase(),
-        'user-chain',
-        'fake-access-token',
-        [newer, older],
-        false,
-        'sync'
-      )
+    const result = await run([dated(1)])
 
-      expect(failureInserts.rows).toHaveLength(1)
-      expect(failureInserts.rows[0]).toMatchObject({
-        failure_type: 'drop_attempt_failed',
-        error_message: 'stravaId=30: 드랍 실패',
-      })
-      expect(vi.mocked(tryItemDrop)).toHaveBeenCalledTimes(2)
-      expect(dropState.current).toBe(newer.start_date)
-    }
-  )
+    expect(failureInserts.rows).toHaveLength(1)
+    expect(result.settledCount).toBe(1)
+    expect(result.earnedBadgeIds).toContain('item-1')
+  })
+
+  it('발급기가 통째로 던져도(조회 단계 실패) 동기화는 계속되고 같은 유형으로 기록한다', async () => {
+    vi.mocked(issueSyncItemBadges).mockRejectedValueOnce(new Error('인벤토리 조회 예외'))
+
+    const result = await run([dated(1)], false, 'user-batch')
+
+    expect(failureInserts.rows).toEqual([
+      { user_id: 'user-batch', failure_type: 'drop_attempt_failed', error_message: 'batch: 인벤토리 조회 예외' },
+    ])
+    expect(result.settledCount).toBe(1)
+    expect(result.jamEarned).toBe(90)
+  })
 })

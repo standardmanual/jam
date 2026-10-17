@@ -37,7 +37,7 @@ vi.mock('@/lib/supabase/server', () => ({
   },
 }))
 
-vi.mock('@/lib/drop-engine/index', () => ({ tryItemDrop: vi.fn(async () => []) }))
+vi.mock('@/lib/drop-engine/syncIssueRun', () => ({ issueSyncItemBadges: vi.fn(async () => []) }))
 vi.mock('@/lib/badge-engine/index', () => ({ evaluateBadges: vi.fn(async () => []) }))
 vi.mock('@/lib/badge-engine/jamActionBadges', () => ({ evaluateJamActionBadges: vi.fn(async () => []) })) // JAM! 행동 지표 판정은 sync-jam-action-hook.test.ts가 따로 확인한다 (티켓 20261001_0633)
 vi.mock('@/lib/poi/matcher', () => ({ matchPoisForActivity: vi.fn(async () => []) }))
@@ -65,7 +65,6 @@ vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) })
 
 import { processFetchedActivities } from '../sync'
 import { evaluateBadges } from '@/lib/badge-engine/index'
-import { tryItemDrop } from '@/lib/drop-engine/index'
 import { checkMissions } from '@/lib/missions/checker'
 import { DEFAULT_POLICY } from '@/lib/abusing/policy'
 
@@ -198,8 +197,8 @@ describe('processFetchedActivities — 차량 속도 필터 임계값', () => {
     await processFetchedActivities(makeFakeSupabase(), 'user-1', 'token', [slow, fast], false, 'sync')
 
     expect(filteredIdsPassedToBadgeEngine()).toEqual([slow.id])
-    // 드랍·미션도 같은 필터 결과를 쓴다 — 임계값이 틀리면 보상 루프 전체가 어긋난다
-    expect(vi.mocked(tryItemDrop).mock.calls.map((c) => (c[1] as NormalizedActivity).stravaId)).toEqual([slow.id])
+    // 미션도 같은 필터 결과를 쓴다 — 임계값이 틀리면 보상 루프 전체가 어긋난다. 아이템 배지 발급은 정산한 활동에만 돌고,
+    // 정산 대상이 필터 결과와 같다는 것은 sync-jam-settlement.test.ts·sync-qualification.test.ts가 확인한다.
     expect((vi.mocked(checkMissions).mock.calls[0][1] as NormalizedActivity[]).map((a) => a.stravaId)).toEqual([slow.id])
   })
 

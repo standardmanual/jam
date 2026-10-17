@@ -20,7 +20,7 @@ vi.mock('@/lib/supabase/server', () => ({
     throw new Error('createServiceClient가 호출됨 — 주입된 클라이언트가 쓰이지 않았다')
   },
 }))
-vi.mock('@/lib/drop-engine/index', () => ({ tryItemDrop: vi.fn(async () => []) }))
+vi.mock('@/lib/drop-engine/syncIssueRun', () => ({ issueSyncItemBadges: vi.fn(async () => []) }))
 vi.mock('@/lib/badge-engine/index', () => ({ evaluateBadges: vi.fn(async () => []) }))
 vi.mock('@/lib/badge-engine/jamActionBadges', () => ({ evaluateJamActionBadges: vi.fn(async () => []) }))
 vi.mock('@/lib/badge-engine/usageBadges', () => ({
@@ -53,7 +53,7 @@ vi.mock('@/lib/poi/matcher', () => ({
 
 import { processFetchedActivities } from '../sync'
 import { evaluateBadges } from '@/lib/badge-engine/index'
-import { tryItemDrop } from '@/lib/drop-engine/index'
+import { issueSyncItemBadges } from '@/lib/drop-engine/syncIssueRun'
 import { checkMissions } from '@/lib/missions/checker'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { getActivityStreams } from '@/lib/strava/api'
@@ -66,8 +66,10 @@ interface Captured {
 
 function makeFakeSupabase(captured: Captured): SupabaseClient {
   const from = (table: string) => {
+    let selectedCols = ''
     const builder: Record<string, unknown> = {
-      select: (_cols?: string, selectOpts?: { count?: string; head?: boolean }) => {
+      select: (cols?: string, selectOpts?: { count?: string; head?: boolean }) => {
+        selectedCols = cols ?? ''
         if (table === 'user_checkin_badge_earns' && selectOpts?.head) {
           const chain = {
             eq: () => chain,
@@ -95,6 +97,11 @@ function makeFakeSupabase(captured: Captured): SupabaseClient {
         return { error: null }
       },
       then(onFulfilled: (v: { data: unknown; error: unknown }) => unknown, onRejected?: (e: unknown) => unknown) {
+        // 잼 정산이 저장된 활동 id를 읽는다 — 아이템 배지 발급은 정산한 활동에만 돈다
+        if (table === 'strava_activities' && selectedCols === 'id, strava_id') {
+          const data = captured.upsertedRows.map((r) => ({ id: `act-${r.strava_id}`, strava_id: r.strava_id }))
+          return Promise.resolve({ data, error: null }).then(onFulfilled, onRejected)
+        }
         if (table === 'badges') {
           return Promise.resolve({
             data: [{ id: 'badge-1', type: 'checkin', name: '북한산 체크인', image_url: null, rarity: 'common', category: null }],
@@ -106,7 +113,14 @@ function makeFakeSupabase(captured: Captured): SupabaseClient {
     }
     return builder
   }
-  return { from } as unknown as SupabaseClient
+  // 잼 정산 RPC — 넘긴 양을 그대로 돌려준다
+  const rpc = async (_name: string, args: Record<string, unknown>) => ({ data: { amount: args.p_amount }, error: null })
+  return { from, rpc } as unknown as SupabaseClient
+}
+
+/** 발급기에 넘어간 대상 활동의 Strava id 목록 */
+function issuedTargetIds(): number[] {
+  return (vi.mocked(issueSyncItemBadges).mock.calls[0]?.[3] ?? []).map((t) => t.stravaId)
 }
 
 /** 인정 기준을 모두 갖춘 활동(기본값). 필요한 칸만 덮어써서 한 기준씩 깬다 */
@@ -193,7 +207,7 @@ describe('processFetchedActivities — 인정 기준을 못 갖춘 활동은 어
       expect(getActivityStreams).not.toHaveBeenCalled()
       expect(matchPoisForActivity).not.toHaveBeenCalled()
       expect(captured.inserts.filter((i) => i.table === 'user_checkin_badge_earns')).toEqual([])
-      expect(tryItemDrop).not.toHaveBeenCalled()
+      expect(issueSyncItemBadges).not.toHaveBeenCalled()
       expect(checkMissions).not.toHaveBeenCalled()
       // 배지 엔진은 «새 활동 없음» 평가(빈 배열)로만 돈다 — 걸러진 활동은 넘어가지 않는다
       expect(vi.mocked(evaluateBadges).mock.calls).toEqual([[ 'user-1', [] ]])
@@ -211,7 +225,8 @@ describe('processFetchedActivities — 인정 기준을 못 갖춘 활동은 어
     const result = await processFetchedActivities(makeFakeSupabase(captured), 'user-1', 'token', [raw], false, 'sync')
 
     expect(result.settledCount).toBe(1)
-    expect(vi.mocked(tryItemDrop)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(issueSyncItemBadges)).toHaveBeenCalledTimes(1)
+    expect(issuedTargetIds()).toEqual([8])
     expect(vi.mocked(checkMissions)).toHaveBeenCalledTimes(1)
     expect(vi.mocked(evaluateBadges).mock.calls[0][1]).toHaveLength(1)
     expect(captured.upsertedRows).toHaveLength(1)
@@ -244,7 +259,7 @@ describe('processFetchedActivities — 인정 기준을 못 갖춘 활동은 어
     const result = await processFetchedActivities(makeFakeSupabase(captured), 'user-1', 'token', [manual, ok], false, 'sync')
 
     expect(result.settledCount).toBe(1)
-    expect(vi.mocked(tryItemDrop).mock.calls.map((c) => (c[1] as NormalizedActivity).stravaId)).toEqual([2])
+    expect(issuedTargetIds()).toEqual([2])
     expect(captured.upsertedRows.map((r) => [r.strava_id, r.filter_reason]).sort()).toEqual([
       [1, 'manual_entry'],
       [2, null],
@@ -260,7 +275,7 @@ describe('processFetchedActivities — 체크인은 어뷰징 필터(차량 속�
     expect(matchPoisForActivity).not.toHaveBeenCalled()
     expect(captured.inserts.filter((i) => i.table === 'user_checkin_badge_earns')).toEqual([])
     expect(result.earnedBadgeIds).toEqual([])
-    expect(tryItemDrop).not.toHaveBeenCalled()
+    expect(issueSyncItemBadges).not.toHaveBeenCalled()
     expect(captured.upsertedRows[0]).toMatchObject({ strava_id: 1, filter_reason: 'vehicle_speed' })
   })
 
@@ -294,7 +309,7 @@ describe('processFetchedActivities — 첫 동기화', () => {
     )
 
     expect(result.settledCount).toBe(1)
-    expect(vi.mocked(tryItemDrop).mock.calls.map((c) => (c[1] as NormalizedActivity).stravaId)).toEqual([4])
+    expect(issuedTargetIds()).toEqual([4])
     // 정산한 1건과 걸러진 1건만 기록한다 — 정산하지 않은 옛 활동(3)은 지금처럼 기록하지 않는다
     expect(captured.upsertedRows.map((r) => [r.strava_id, r.filter_reason]).sort()).toEqual([
       [4, null],
@@ -360,7 +375,7 @@ describe('processFetchedActivities — 첫 동기화의 «최근 1건» 선택�
     )
 
     expect(result.settledCount).toBe(1)
-    expect(vi.mocked(tryItemDrop).mock.calls.map((c) => (c[1] as NormalizedActivity).stravaId)).toEqual([4])
+    expect(issuedTargetIds()).toEqual([4])
     // 정산한 1건과 걸러진 1건만 기록한다 — 정산하지 않은 옛 활동(3)은 기록하지 않는다
     expect(captured.upsertedRows.map((r) => [r.strava_id, r.filter_reason]).sort()).toEqual([
       [4, null],
@@ -382,7 +397,7 @@ describe('processFetchedActivities — 첫 동기화의 «최근 1건» 선택�
 
     expect(result.settledCount).toBe(0)
     expect(vi.mocked(evaluateBadges).mock.calls).toEqual([['user-1', [], { skipInitialSyncFlagUpdate: true }]])
-    expect(vi.mocked(tryItemDrop)).not.toHaveBeenCalled()
+    expect(vi.mocked(issueSyncItemBadges)).not.toHaveBeenCalled()
     expect(matchPoisForActivity).not.toHaveBeenCalled()
     expect(captured.upsertedRows.map((r) => r.filter_reason)).toEqual(['vehicle_speed', 'vehicle_speed'])
   })
