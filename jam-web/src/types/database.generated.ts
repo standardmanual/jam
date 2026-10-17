@@ -55,6 +55,8 @@ export type Database = {
           hard_mystic_rate: number
           hard_rare_rate: number
           id: number
+          mismatch_cycling_min_speed_kmh: number
+          mismatch_run_min_speed_kmh: number
           poi_block_hours: number
           soft_common_rate: number
           soft_epic_rate: number
@@ -75,6 +77,8 @@ export type Database = {
           hard_mystic_rate?: number
           hard_rare_rate?: number
           id?: number
+          mismatch_cycling_min_speed_kmh?: number
+          mismatch_run_min_speed_kmh?: number
           poi_block_hours?: number
           soft_common_rate?: number
           soft_epic_rate?: number
@@ -95,6 +99,8 @@ export type Database = {
           hard_mystic_rate?: number
           hard_rare_rate?: number
           id?: number
+          mismatch_cycling_min_speed_kmh?: number
+          mismatch_run_min_speed_kmh?: number
           poi_block_hours?: number
           soft_common_rate?: number
           soft_epic_rate?: number
