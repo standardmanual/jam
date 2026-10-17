@@ -40,6 +40,7 @@ export const BADGE_UNDO_REFERENCE_TABLES: BadgeUndoReferenceSpec[] = [
   { table: 'user_item_book_slots', column: 'badge_id', effect: '연쇄 삭제' },
   { table: 'item_books', column: 'reward_badge_id', effect: '연결 해제' },
   { table: 'item_books', column: 'required_activity_badge_id', effect: '연결 해제' },
+  { table: 'item_book_tier_rewards', column: 'reward_badge_id', effect: '연결 해제' },
   { table: 'missions', column: 'gated_badge_id', effect: '연결 해제' },
 ]
 
@@ -96,10 +97,10 @@ export const MISSION_UNDO_REFERENCE_TABLES: UndoReferenceSpec[] = [
 export const HOME_FEED_UNDO_REFERENCE_TABLES: UndoReferenceSpec[] = [{ table: 'today_card_events', column: 'card_id' }]
 
 /**
- * 되돌림 전에 «이 컬렉션이 아직 아무 데도 쓰이지 않았는지» 읽는 관계 표(티켓 20261004_2039 가정 7). `item_books`를 가리키는 외래 키 6곳이다
- * (운영 DB `information_schema` 조회 2026-10-04, 생성 타입 `database.generated.ts`와 테스트로 대조한다).
+ * 되돌림 전에 «이 컬렉션이 아직 아무 데도 쓰이지 않았는지» 읽는 관계 표(티켓 20261004_2039 가정 7). `item_books`를 가리키는 외래 키 8곳이다
+ * (운영 DB `information_schema` 조회 2026-10-04, 마이그레이션 222의 두 표는 2026-10-17에 더했다. 생성 타입 `database.generated.ts`와 테스트로 대조한다).
  * - 삭제 차단(NO ACTION): user_drop_state.last_drop_book_id · point_transactions.source_item_book_id
- * - 연쇄 삭제(CASCADE, 지우면 유저 기록이 경고 없이 함께 사라짐): user_item_book_slots · user_item_book_completions
+ * - 연쇄 삭제(CASCADE, 지우면 유저 기록이 경고 없이 함께 사라짐): user_item_book_slots · user_item_book_completions · item_book_tier_rewards · user_item_book_tier_completions
  * - 연결 해제(SET NULL, 조용히 연결이 끊김): badges.item_book_id · today_cards.item_book_id
  * `badges.item_book_id`는 소프트 삭제된 배지도 센다(`deleted_at`을 보지 않는다): 아이템 배지가 붙은 컬렉션은 기존 어드민에서 아이템을 먼저 빼야 지울 수 있다.
  * 어드민 삭제 가드(`reference-guards.ts`의 `ITEM_BOOK_REFERENCE_SOURCES`)는 이 표와 다른 질의 방식이고 합치지 않았다(그쪽은 `point_transactions`·드랍 배열 칸이 빠져 있다. 고치지 않는다).
@@ -110,6 +111,8 @@ export const ITEM_BOOK_UNDO_REFERENCE_TABLES: BadgeUndoReferenceSpec[] = [
   { table: 'today_cards', column: 'item_book_id', effect: '연결 해제' },
   { table: 'user_item_book_slots', column: 'item_book_id', effect: '연쇄 삭제' },
   { table: 'user_item_book_completions', column: 'item_book_id', effect: '연쇄 삭제' },
+  { table: 'item_book_tier_rewards', column: 'item_book_id', effect: '연쇄 삭제' },
+  { table: 'user_item_book_tier_completions', column: 'item_book_id', effect: '연쇄 삭제' },
   { table: 'user_drop_state', column: 'last_drop_book_id', effect: '삭제 차단' },
   { table: 'point_transactions', column: 'source_item_book_id', effect: '삭제 차단' },
 ]

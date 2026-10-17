@@ -239,6 +239,8 @@ export class FakeDb {
     // 컬렉션 핸들러(티켓 20261004_2039): 트라이브 존재 확인과 되돌림·취소 전 컬렉션 참조 확인(`ITEM_BOOK_UNDO_REFERENCES`)이 읽는 표. 나머지(`badges`·`today_cards`·`user_item_book_slots`·`point_transactions`·`ambient_drop_schedules`)는 위에 있다.
     tribes: [],
     user_item_book_completions: [],
+    item_book_tier_rewards: [],
+    user_item_book_tier_completions: [],
     user_drop_state: [],
     ambient_drop_config: [],
   }

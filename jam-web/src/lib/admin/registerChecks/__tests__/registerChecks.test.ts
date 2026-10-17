@@ -528,7 +528,7 @@ describe('runCollectionDbChecks (티켓 20261004_2039)', () => {
 })
 
 describe('컬렉션 되돌림 참조 확인 (티켓 20261004_2039 가정 7)', () => {
-  it('item_books를 가리키는 외래 키 6곳과 같다(생성 타입 대조)', () => {
+  it('item_books를 가리키는 외래 키 8곳과 같다(생성 타입 대조)', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'types', 'database.generated.ts'), 'utf8')
     const found: string[] = []
     const starts = [...source.matchAll(/^ {6}(\w+): \{\n {8}Row: \{/gm)].map((m) => ({ name: m[1], index: m.index }))
@@ -538,7 +538,7 @@ describe('컬렉션 되돌림 참조 확인 (티켓 20261004_2039 가정 7)', ()
     })
     const declared = ITEM_BOOK_UNDO_REFERENCE_TABLES.map((r) => `${r.table}.${r.column}`)
     expect(declared.sort()).toEqual(found.sort())
-    expect(found).toHaveLength(6)
+    expect(found).toHaveLength(8)
   })
 
   it('외래 키는 eq, 배열 칸은 contains로 목록 순서대로 읽고, 드랍 예약은 끝나지 않은 상태(scheduled·running)만 센다', async () => {
@@ -562,6 +562,8 @@ describe('컬렉션 되돌림 참조 확인 (티켓 20261004_2039 가정 7)', ()
       'today_cards.item_book_id',
       'user_item_book_slots.item_book_id',
       'user_item_book_completions.item_book_id',
+      'item_book_tier_rewards.item_book_id',
+      'user_item_book_tier_completions.item_book_id',
       'user_drop_state.last_drop_book_id',
       'point_transactions.source_item_book_id',
       'ambient_drop_config.collection_ids',
