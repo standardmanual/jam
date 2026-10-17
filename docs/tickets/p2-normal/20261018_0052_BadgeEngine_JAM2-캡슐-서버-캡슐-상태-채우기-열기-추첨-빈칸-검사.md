@@ -37,6 +37,13 @@ specs:
 3. **열기의 계산 위치**: 추첨은 앱 코드(기존 추첨 모듈 재사용), 잼 확인·상태 갱신·개체 지급·기록은 DB 함수 한 번으로 한다(추천: 같은 캡슐을 두 번 여는 경쟁과 반쯤 열린 상태를 막는다). 대안은 앱 코드가 전부 순서대로 부르는 것이다.
 4. **퀘스트 전 첫 캡슐**: 챕터가 없는 유저의 캡슐은 필요량 5이고 잠긴 아이템 배지가 반드시 하나 나온다(5.2절). 이 티켓은 규칙을 구현하고 온보딩 연결은 묶음 6이 한다(추천). 대안은 이 규칙을 묶음 6으로 미루는 것이다.
 
+## 사용자 결정 (2026-10-18, 질문창, 모두 추천안)
+
+1. **캡슐 상태와 기록의 저장**: 새 테이블 둘(`user_capsules` 유저당 한 행, `capsule_opens` 열 때마다 한 줄). 잼 원장에는 채우기 때마다 `capsule_fill` 한 줄이 남는다.
+2. **수치 설정**: 새 설정 행 `capsule_policy`(한 행)와 챕터별 채울 양 표 `capsule_chapter_costs`. 챕터 정의는 건드리지 않고, Common 연속 보정(10번)과 잠길 확률(25%)은 동기화와 합산하는 값이라 `jam_policy`의 것을 그대로 쓴다. 설정 화면은 묶음 7.
+3. **열기의 계산 위치**: 추첨은 앱 코드(기존 추첨 모듈 재사용), 채운 양 확인·빈칸 확인·개체 지급·기록·다음 캡슐 생성은 DB 함수 한 번으로 한다(같은 캡슐을 두 번 열거나 반쯤 열린 상태를 막는다).
+4. **퀘스트 전 첫 캡슐**: 규칙(필요량 5, 잠긴 아이템 배지 하나가 반드시 나옴)만 서버에 구현하고 온보딩 연결은 묶음 6.
+
 ## 상세 요구사항
 
 ### 서비스/코드베이스 관점
@@ -56,10 +63,23 @@ specs:
 
 ## 구현 계획 (회차)
 
-규모가 커서 처음부터 2회로 나눠 돌리고 회마다 게이트를 돌린다. 시작 때 파일 단위 계획을 이 절에 옮겨 쓰고 `planOnlyWaiver`를 넘긴다. 요약은 2,500자 이내.
+규모가 커서 처음부터 2회로 나눠 돌리고 회마다 게이트를 돌린다. 요약은 2,500자 이내. 각 회의 SQL은 카리나가 먼저 승인·롤백 실측·적용하고 생성 타입을 맞춘다. 아현은 SQL을 만들지 않는다. `planOnlyWaiver`를 넘긴다. tsc 메모리 한도는 이미 올라가 있다(티켓 20261018_0051).
 
-### 1회: 저장(SQL), 설정 행, 채우기, 조회 API
+### 1회: 저장(SQL 232), 설정, 채우기, 조회 API
+
+SQL(마이그레이션 `232_capsule_storage_and_fill.sql`)이 만드는 것: 새 테이블 `capsule_policy`(한 행), `capsule_chapter_costs`(챕터 1~10: 90·100·110·120·135·150·165·180·200·220), `user_capsules`, `capsule_opens`, `user_drop_state.capsule_epic_miss`(보정 1 카운터), 새 함수 `capsule_get_or_create(p_user_id)`(없으면 그때의 챕터로 필요량을 정해 만듦, 챕터가 없으면 퀘스트 전 값 5, 표의 마지막보다 높으면 마지막 양), `capsule_fill(p_user_id, p_amount)`(기본값은 남은 양, 가진 잼이 모자라면 가진 만큼, 남은 양 초과 거부, `jam_apply(capsule_fill)` 한 줄과 캡슐 갱신이 한 트랜잭션, 이용 정지 중 거부). 오류 코드: `user_suspended`, `already_full`, `invalid_amount`, `exceeds_remaining`, `insufficient_jam`.
+
+1. `jam-web/src/lib/capsule/capsule-contract.ts`(새 순수 파일, import 없음): 응답 타입(`CapsuleStatus`: `required`, `filled`, `remaining`, `balance`, `openable`, `notOpenableReason`), 오류 코드 상수와 타입. 클라이언트도 가져올 수 있어야 한다.
+2. `jam-web/src/lib/capsule/policy.ts`(서버, `lib/jam/policy.ts`의 `getJamPolicy` 패턴): `DEFAULT_CAPSULE_POLICY`(232 기본값과 같게)와 `getCapsulePolicy(supabase)`(칸 단위 폴백). 챕터별 양 표는 DB 함수가 읽으므로 앱은 정책 행만 읽는다. 2회의 추첨이 이 값을 쓴다.
+3. `jam-web/src/lib/capsule/capsule.ts`(서버 전용): `getCapsuleStatus(supabase, userId)`는 `capsule_get_or_create`와 `jam_wallets` 잔액을 읽어 `CapsuleStatus`를 만든다(1회의 `openable`은 `filled >= required` 여부만, 빈칸 검사는 2회). `fillCapsule(supabase, userId, amount?)`는 `capsule_fill` RPC를 부르고 오류 코드를 `CapsuleError`로 바꾼다. RPC 호출 전에 `assertNotSuspended`(`lib/suspension/suspension.ts`)를 먼저 부른다.
+4. `jam-web/src/app/api/capsule/route.ts`(GET)와 `jam-web/src/app/api/capsule/fill/route.ts`(POST `{ amount?: number }`): 세션으로 유저를 확인하고(401) 서비스 클라이언트로 부른다. 오류 매핑: `user_suspended` 403(`code: 'user_suspended'`, 2-6과 같은 모양), `already_full`·`exceeds_remaining`·`invalid_amount` 400, `insufficient_jam` 409, 나머지 500. `amount`는 양의 정수만(상한은 필요량 이내는 DB가 판정).
+5. `jam-web/src/lib/i18n/ko.ts`: `d.capsule.*`(채우기 오류 문구와 안내). 부추기는 말, 꽝 표현 금지, `fluent-korean` 지침.
+6. 시험: 정책 기본값(232와 같음)과 칸 단위 폴백, `capsule.ts`(가짜 RPC로 오류 코드 변환, 이용 정지가 RPC 호출 전에 막음), 두 라우트(401, 400, 403, 409, 정상), 클라이언트·서버 경계(`capsule-contract.ts`에 import 없음, 클라이언트 사슬에 서버 모듈 없음).
+7. 문서: `docs/service/prd/02_DATA_MODEL.md`(새 테이블·함수·칸), `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md`(캡슐 채우기 규칙 절, 열기는 2회), 비교표 3.5절 진행 상황.
+
 ### 2회: 열기(추첨, 보정, 빈칸 검사, 기록), 열기 API
+
+SQL(마이그레이션 233, 1회 뒤에 카리나가 쓴다): 열기 함수 `capsule_open(p_user_id, p_items JSONB, p_guaranteed_locked BOOLEAN ...)`가 캡슐 행을 잠그고 채운 양과 이용 정지를 확인하고, 빈칸이 `p_items` 개수 상한(`guaranteed_count + bonus_count`)보다 적으면 거부하고, 개체마다 `grant_inventory_item_locked`로 지급하고 `item_issue_log`(route `capsule`)와 `capsule_opens`에 쓰고, `user_drop_state`의 `common_streak`·`capsule_epic_miss`를 갱신하고, 다음 캡슐을 만든다. 파일 단위 계획은 1회 뒤에 이 절에 옮겨 쓴다.
 
 ## 완료 조건
 
