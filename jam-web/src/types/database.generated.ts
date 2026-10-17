@@ -1121,6 +1121,63 @@ export type Database = {
         }
         Relationships: []
       }
+      item_book_tier_default_rewards: {
+        Row: {
+          reward_points: number
+          tier: Database["public"]["Enums"]["badge_rarity"]
+          updated_at: string
+        }
+        Insert: {
+          reward_points: number
+          tier: Database["public"]["Enums"]["badge_rarity"]
+          updated_at?: string
+        }
+        Update: {
+          reward_points?: number
+          tier?: Database["public"]["Enums"]["badge_rarity"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      item_book_tier_rewards: {
+        Row: {
+          item_book_id: string
+          reward_badge_id: string | null
+          reward_points: number | null
+          tier: Database["public"]["Enums"]["badge_rarity"]
+          updated_at: string
+        }
+        Insert: {
+          item_book_id: string
+          reward_badge_id?: string | null
+          reward_points?: number | null
+          tier: Database["public"]["Enums"]["badge_rarity"]
+          updated_at?: string
+        }
+        Update: {
+          item_book_id?: string
+          reward_badge_id?: string | null
+          reward_points?: number | null
+          tier?: Database["public"]["Enums"]["badge_rarity"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_book_tier_rewards_item_book_id_fkey"
+            columns: ["item_book_id"]
+            isOneToOne: false
+            referencedRelation: "item_books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_book_tier_rewards_reward_badge_id_fkey"
+            columns: ["reward_badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       item_books: {
         Row: {
           background_animation: Json | null
@@ -1141,6 +1198,7 @@ export type Database = {
           reward_badge_id: string | null
           reward_points: number
           story_text: string | null
+          tier_mode: boolean
           tribe_id: string | null
           valid_from: string | null
           valid_until: string | null
@@ -1164,6 +1222,7 @@ export type Database = {
           reward_badge_id?: string | null
           reward_points?: number
           story_text?: string | null
+          tier_mode?: boolean
           tribe_id?: string | null
           valid_from?: string | null
           valid_until?: string | null
@@ -1187,6 +1246,7 @@ export type Database = {
           reward_badge_id?: string | null
           reward_points?: number
           story_text?: string | null
+          tier_mode?: boolean
           tribe_id?: string | null
           valid_from?: string | null
           valid_until?: string | null
@@ -3360,6 +3420,42 @@ export type Database = {
           },
         ]
       }
+      user_item_book_tier_completions: {
+        Row: {
+          completed_at: string
+          item_book_id: string
+          tier: Database["public"]["Enums"]["badge_rarity"]
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          item_book_id: string
+          tier: Database["public"]["Enums"]["badge_rarity"]
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          item_book_id?: string
+          tier?: Database["public"]["Enums"]["badge_rarity"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_item_book_tier_completions_item_book_id_fkey"
+            columns: ["item_book_id"]
+            isOneToOne: false
+            referencedRelation: "item_books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_item_book_tier_completions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_mission_completions: {
         Row: {
           completed_at: string
@@ -3784,7 +3880,24 @@ export type Database = {
         }
         Returns: Json
       }
+      slot_item_into_book_tiered: {
+        Args: {
+          p_inventory_item_id: string
+          p_item_book_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       swap_item_in_book: {
+        Args: {
+          p_item_book_id: string
+          p_new_inventory_item_id: string
+          p_slot_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      swap_item_in_book_tiered: {
         Args: {
           p_item_book_id: string
           p_new_inventory_item_id: string
