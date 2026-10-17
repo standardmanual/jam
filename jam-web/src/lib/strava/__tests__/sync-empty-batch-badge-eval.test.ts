@@ -32,7 +32,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 const { dropSpy, missionsSpy, evaluateBadgesSpy, recordActivityRecapSpy } = vi.hoisted(() => ({
-  dropSpy: vi.fn(async () => []),
+  dropSpy: vi.fn(async () => ({ issuedBadgeIds: [] as string[], pendingCount: 0 })),
   missionsSpy: vi.fn(async () => ({ completedMissionIds: [], awardedBadgeIds: [] })),
   evaluateBadgesSpy: vi.fn(async () => [] as string[]),
   recordActivityRecapSpy: vi.fn(async () => {}),
@@ -161,6 +161,7 @@ describe('processFetchedActivities — 새 활동 0건이어도 배지 평가는
       completedMissionIds: [],
       settledCount: 0,
       jamEarned: 0,
+      pendingItems: 0,
       jamSettlements: [],
     })
   })

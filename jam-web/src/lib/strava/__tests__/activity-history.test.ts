@@ -13,7 +13,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // sync.ts가 끌어오는 무거운 모듈은 이 시험과 무관하다 — getProcessedStravaIds만 쓴다
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: vi.fn() }))
 vi.mock('@/lib/badge-engine/index', () => ({ evaluateBadges: vi.fn() }))
-vi.mock('@/lib/drop-engine/syncIssueRun', () => ({ issueSyncItemBadges: vi.fn(async () => []) }))
+vi.mock('@/lib/drop-engine/syncIssueRun', () => ({ issueSyncItemBadges: vi.fn(async () => ({ issuedBadgeIds: [], pendingCount: 0 })) }))
 vi.mock('@/lib/poi/matcher', () => ({ matchPoisForActivity: vi.fn() }))
 vi.mock('@/lib/itembook/checker', () => ({ checkItemBookCompletion: vi.fn() }))
 vi.mock('@/lib/itembook/completable', () => ({ findCompletableItemBooks: vi.fn() }))

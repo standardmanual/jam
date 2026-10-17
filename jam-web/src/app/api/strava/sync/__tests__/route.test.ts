@@ -5,6 +5,7 @@
  *  - 비로그인은 401
  *  - 정상 동기화는 결과를 그대로 200으로 돌려준다
  *  - 연결이 끊긴 상태(StravaDisconnectedError)는 500이 아니라 409와 구분 값(`code`, `connectionState`)이다
+ *  - 고르지 않은 보류가 남아 있으면(SyncPendingItemsError) 409와 구분 값(`code: 'sync_pending_items'`, `pendingCount`)이다 (티켓 20261017_1425)
  *  - 그 밖의 오류는 지금처럼 500이다
  *
  * 실행: cd jam-web && npx vitest run src/app/api/strava/sync/__tests__/route.test.ts
@@ -12,6 +13,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { d } from '@/lib/i18n'
 import { StravaDisconnectedError } from '@/lib/strava/connection-state'
+import { SyncPendingItemsError } from '@/lib/strava/pending-items'
 
 const USER_ID = '11111111-1111-4111-8111-111111111111'
 const state = vi.hoisted(() => ({ authenticated: true }))
@@ -73,6 +75,29 @@ describe('POST /api/strava/sync', () => {
       code: 'strava_disconnected',
       connectionState: 'disconnected',
     })
+  })
+
+  it('고르지 않은 보류가 남아 있으면 409와 구분 값, 보류 개수로 알린다', async () => {
+    syncMock.mockRejectedValue(new SyncPendingItemsError(3))
+
+    const res = await POST()
+
+    expect(res.status).toBe(409)
+    await expect(res.json()).resolves.toEqual({
+      error: d.syncPending.syncBlocked,
+      code: 'sync_pending_items',
+      pendingCount: 3,
+    })
+  })
+
+  it('정상 동기화 결과의 기존 필드와 pendingItems를 그대로 돌려준다', async () => {
+    const result = { synced: 1, badges: 0, earnedBadges: [], earnedBadgesMore: 0, jamEarned: 90, pendingItems: 2 }
+    syncMock.mockResolvedValue(result)
+
+    const res = await POST()
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual(result)
   })
 
   it('그 밖의 오류는 500이다', async () => {

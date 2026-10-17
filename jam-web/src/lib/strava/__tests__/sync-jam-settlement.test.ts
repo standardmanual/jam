@@ -42,7 +42,7 @@ vi.mock('@/lib/admin/opsInbox/slack', async () => {
   const actual = await vi.importActual<typeof import('@/lib/admin/opsInbox/slack')>('@/lib/admin/opsInbox/slack')
   return { ...actual, postOpsSlack: postOpsSlackMock }
 })
-vi.mock('@/lib/drop-engine/syncIssueRun', () => ({ issueSyncItemBadges: vi.fn(async () => []) }))
+vi.mock('@/lib/drop-engine/syncIssueRun', () => ({ issueSyncItemBadges: vi.fn(async () => ({ issuedBadgeIds: [], pendingCount: 0 })) }))
 vi.mock('@/lib/badge-engine/index', () => ({ evaluateBadges: vi.fn(async () => []) }))
 vi.mock('@/lib/badge-engine/jamActionBadges', () => ({ evaluateJamActionBadges: vi.fn(async () => []) }))
 vi.mock('@/lib/badge-engine/usageBadges', () => ({
@@ -470,6 +470,7 @@ describe('syncStravaActivities — 응답의 jamEarned', () => {
       isFirstBadgeEver: false,
       completedMissionIds: [],
       jamEarned: 180,
+      pendingItems: 0,
     })
   })
 

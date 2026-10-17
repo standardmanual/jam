@@ -6,10 +6,13 @@
  *
  * 규칙
  *  - 소속 트라이브(`users.tribe_id`)가 없으면 아이템 배지만 건너뛴다(로그). 잼 정산 등 다른 보상은 이 모듈 밖이라 그대로다.
- *  - 지급은 기존 `grant_inventory_item` RPC 그대로. 인벤토리가 가득 차면 지금처럼 멈춘다(보류는 2-5의 몫).
+ *  - 계획 → 지급 또는 보류(티켓 20261017_1425, 운영 로직 6.4절). 먼저 정산한 모든 활동의 개수·등급·후보를 굴려 이번 동기화의
+ *    발급 목록을 만든다. 목록 전체가 빈칸(`max_slots - used_slots`) 이하이면 기존 `grant_inventory_item` RPC로 바로 지급한다.
+ *    빈칸보다 많으면 **하나도 지급하지 않고 전부** `sync_pending_items`(status pending)에 넣는다. 유저가 빈칸만큼 고른다
+ *    (`resolve_sync_pending_items`, `lib/strava/pending-items.ts`). 지급 도중 경합으로 `slot_full`이 나면 그 개체와 남은 개체도 보류한다.
  *  - 동기화로 받은 배지의 기한을 공개 종료일로 두지 않는다(`p_expires_at` null). 공개 기간이 끝난 배지는 후보에서 빠진다.
  *  - `user_drop_state.common_streak`를 갱신한다(없는 행은 만든다). 줄 때 받은 **실제 등급**이 Common이면 +1, 아니면 0이다.
- *    개체를 못 줬으면(후보 없음, 가득 참) 값은 그대로다.
+ *    계획 단계에서 굴린 순서대로 이어 센다. 후보가 없어 건너뛴 개체는 세지 않는다. 보류한 개체도 센다(받을 개체가 정해진 것이다).
  *  - 줄 때마다 `item_issue_log`에 한 줄(경로 `sync`, 대상 활동, 배지, 등급, `rolled_rarity`, 잠김 false, 일련번호, 개체 id)을 남긴다.
  *    기록 실패는 지급과 동기화를 막지 않는다.
  *  - 활동 하나의 실패는 그 활동만 건너뛰고 `onActivityError`로 알린다. 던지지 않는다.
@@ -21,7 +24,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { fetchAllRows } from '@/lib/db/fetchAllRows'
 import { logEngineDecision } from '@/lib/engine-log'
-import { isInventoryFull, type GrantInventoryItemResult } from '@/lib/inventory/slots'
+import type { GrantInventoryItemResult } from '@/lib/inventory/slots'
 import type { JamPolicy } from '@/lib/jam/policy'
 import { recordActivityRecap } from '@/lib/notifications/recap'
 import type { RecapItemBadge } from '@/lib/notifications/types'
@@ -59,6 +62,27 @@ export interface SyncIssueOptions {
   onActivityError?: (target: SyncIssueTarget, error: unknown) => Promise<void> | void
 }
 
+/** 발급 결과 — 바로 지급한 배지 id와 보류한 개수 */
+export interface SyncIssueOutcome {
+  /** 이번 호출에서 실제로 지급된 배지 id (지급 순서, 없으면 빈 배열) */
+  issuedBadgeIds: string[]
+  /** 이번 호출에서 새로 보류한 아이템 배지 개수. 0이면 보류가 없다 */
+  pendingCount: number
+}
+
+/** 계획 단계가 정한 개체 1개 — 지급하거나 보류한다 */
+interface PlannedItem {
+  /** `ordered`에서 이 개체가 속한 활동의 위치 */
+  activityIndex: number
+  badge: SyncIssueBadge
+  /** 실제 받는 등급 */
+  rarity: NonNullable<IssueBadge['rarity']>
+  /** 처음 뽑힌 등급 */
+  rolledRarity: NonNullable<IssueBadge['rarity']>
+  /** 이 개체까지 세었을 때의 `common_streak` */
+  streakAfter: number
+}
+
 type SyncIssueBadge = IssueBadge & {
   name: string
   image_url: string | null
@@ -85,8 +109,8 @@ async function logOutcome(userId: string, outcome: string, extra: Record<string,
 }
 
 /**
- * 정산한 활동들에 아이템 배지를 발급한다.
- * @returns 이번 호출에서 실제로 지급된 배지 id (지급 순서, 없으면 빈 배열)
+ * 정산한 활동들에 아이템 배지를 발급한다. 먼저 이번 동기화의 발급 목록 전체를 만들고(계획), 빈칸에 들어가면 지급하고 모자라면 보류한다.
+ * @returns 바로 지급한 배지 id(지급 순서)와 새로 보류한 개수
  */
 export async function issueSyncItemBadges(
   supabase: SupabaseClient,
@@ -94,9 +118,9 @@ export async function issueSyncItemBadges(
   policy: SyncPolicy,
   targets: readonly SyncIssueTarget[],
   options: SyncIssueOptions = {}
-): Promise<string[]> {
-  const issuedBadgeIds: string[] = []
-  if (targets.length === 0) return issuedBadgeIds
+): Promise<SyncIssueOutcome> {
+  const outcome: SyncIssueOutcome = { issuedBadgeIds: [], pendingCount: 0 }
+  if (targets.length === 0) return outcome
   const rand = options.rand ?? Math.random
   const now = options.now ?? new Date()
 
@@ -105,13 +129,13 @@ export async function issueSyncItemBadges(
   if (userError) {
     console.error(`[syncIssue] 소속 트라이브 조회 실패 — 아이템 배지 발급 건너뜀 (userId: ${userId}):`, userError)
     await logOutcome(userId, 'tribe_lookup_failed')
-    return issuedBadgeIds
+    return outcome
   }
   const tribeId = (userRow as { tribe_id?: string | null } | null)?.tribe_id ?? null
   if (!tribeId) {
     console.info(`[syncIssue] 소속 트라이브 없음 — 아이템 배지 발급 건너뜀 (userId: ${userId}, 대상 활동 ${targets.length}건)`)
     await logOutcome(userId, 'no_tribe', { activities: targets.length })
-    return issuedBadgeIds
+    return outcome
   }
 
   // ② 활동마다 개수 — 오래된 활동부터 처리한다(지급 순서가 시간 순서가 되게)
@@ -119,7 +143,7 @@ export async function issueSyncItemBadges(
     (a, b) => Date.parse(a.startDate) - Date.parse(b.startDate) || a.stravaId - b.stravaId
   )
   const counts = ordered.map((t) => rollItemCount(policy, { jam: t.jam, isHiking: t.isHiking }, rand))
-  if (counts.every((c) => c === 0)) return issuedBadgeIds
+  if (counts.every((c) => c === 0)) return outcome
 
   // ③ 인벤토리·후보·보정 카운터를 한 번만 읽는다
   const { data: inventoryRaw } = await supabase.from('inventory').select('id, used_slots, max_slots').eq('user_id', userId).maybeSingle()
@@ -127,7 +151,7 @@ export async function issueSyncItemBadges(
   if (!inventory) {
     console.error(`[syncIssue] 인벤토리 없음 (userId: ${userId})`)
     await logOutcome(userId, 'no_inventory')
-    return issuedBadgeIds
+    return outcome
   }
 
   let books: IssueBook[]
@@ -153,7 +177,7 @@ export async function issueSyncItemBadges(
   } catch (e) {
     console.error(`[syncIssue] 발급 후보 조회 실패 — 아이템 배지 발급 건너뜀 (userId: ${userId}):`, e)
     await logOutcome(userId, 'candidate_lookup_failed')
-    return issuedBadgeIds
+    return outcome
   }
 
   const { data: stateRow, error: stateError } = await supabase
@@ -171,82 +195,145 @@ export async function issueSyncItemBadges(
   const { data: tribeRow } = await supabase.from('tribes').select('name').eq('id', tribeId).maybeSingle()
   const tribeName = (tribeRow as { name?: string } | null)?.name ?? ''
 
-  let usedSlots = inventory.used_slots
-  let slotFull = false
-
-  /** 값이 바뀌었을 때만 쓴다. 없는 행은 upsert가 만든다. 던지지 않는다. */
-  const saveStreak = async (): Promise<void> => {
+  /** 값을 쓴다. 없는 행은 upsert가 만든다. 던지지 않는다. */
+  const saveStreak = async (value: number): Promise<void> => {
     if (!streakWritable) return
     try {
       const { error } = await supabase
         .from('user_drop_state')
-        .upsert({ user_id: userId, common_streak: commonStreak, updated_at: new Date().toISOString() })
+        .upsert({ user_id: userId, common_streak: value, updated_at: new Date().toISOString() })
       if (error) console.error(`[syncIssue] common_streak 저장 실패 (userId: ${userId}):`, error)
     } catch (e) {
       console.error(`[syncIssue] common_streak 저장 예외 (userId: ${userId}):`, e)
     }
   }
 
-  // ④ 활동마다 발급
+  // ④ 계획 — 이번 동기화에서 받을 개체 전체를 먼저 정한다(지급·보류는 그 뒤)
+  const planned: PlannedItem[] = []
   for (let index = 0; index < ordered.length; index++) {
-    const target = ordered[index]
-    const count = counts[index]
-    if (count === 0) continue
-    if (slotFull) break
+    for (let i = 0; i < counts[index]; i++) {
+      const rolled = rollRarity(policy, commonStreak, rand)
+      const pick = pickWithRarityFallback<SyncIssueBadge>(
+        { tribeId, rolledRarity: rolled.rarity, books, badges, now },
+        rand
+      )
+      if (!pick) {
+        // 모든 등급에 후보가 없다 — 이 개체는 건너뛴다
+        console.warn(`[syncIssue] 후보 없음 — 개체 건너뜀 (userId: ${userId}, tribe: ${tribeId}, 뽑힌 등급: ${rolled.rarity})`)
+        await logOutcome(userId, 'no_candidate', { attempt: i, rolledRarity: rolled.rarity, tribeId })
+        continue
+      }
+      // 받은 실제 등급 기준으로 센다 — 뽑힌 등급이 높아도 Common을 받았다면 Common 연속이다
+      commonStreak = pick.rarity === 'common' ? commonStreak + 1 : 0
+      planned.push({
+        activityIndex: index,
+        badge: pick.badge,
+        rarity: pick.rarity,
+        rolledRarity: pick.rolledRarity,
+        streakAfter: commonStreak,
+      })
+    }
+  }
+  if (planned.length === 0) return outcome
+  const finalStreak = planned[planned.length - 1].streakAfter
 
-    const recapItems: RecapItemBadge[] = []
-    let streakChanged = false
+  /** 보류에 넣는다. 던지지 않고, 실패하면 첫 개체의 활동으로 `onActivityError`에 알린다. 성공 여부를 돌려준다. */
+  const persistPending = async (items: readonly PlannedItem[]): Promise<boolean> => {
     try {
-      for (let i = 0; i < count; i++) {
-        // 슬롯 사전 확인 — 가득 차면 지금처럼 멈춘다(보류는 2-5)
-        if (isInventoryFull({ used_slots: usedSlots, max_slots: inventory.max_slots })) {
-          slotFull = true
-          console.info(`[syncIssue] 슬롯 초과 — 발급 멈춤 (userId: ${userId}, ${usedSlots}/${inventory.max_slots})`)
-          await logOutcome(userId, 'slot_full', { attempt: i, usedSlots, maxSlots: inventory.max_slots })
-          break
-        }
+      const { error } = await supabase.from('sync_pending_items').insert(
+        items.map((item) => ({
+          user_id: userId,
+          source_activity_id: ordered[item.activityIndex].activityId,
+          badge_id: item.badge.id,
+          rarity: item.rarity,
+          rolled_rarity: item.rolledRarity,
+          locked: false,
+        }))
+      )
+      if (error) throw new Error(`sync_pending_items 저장 실패: ${error.message}`)
+      outcome.pendingCount = items.length
+      await logOutcome(userId, 'pending', {
+        pendingCount: items.length,
+        usedSlots: inventory.used_slots,
+        maxSlots: inventory.max_slots,
+        tribeId,
+      })
+      return true
+    } catch (e) {
+      console.error(`[syncIssue] 보류 저장 실패 — 받을 아이템 배지 ${items.length}개를 잃었다 (userId: ${userId}):`, e)
+      try {
+        await options.onActivityError?.(ordered[items[0].activityIndex], e)
+      } catch {
+        // 실패 기록이 실패해도 흐름을 막지 않는다
+      }
+      return false
+    }
+  }
 
-        const rolled = rollRarity(policy, commonStreak, rand)
-        const pick = pickWithRarityFallback<SyncIssueBadge>(
-          { tribeId, rolledRarity: rolled.rarity, books, badges, now },
-          rand
-        )
-        if (!pick) {
-          // 모든 등급에 후보가 없다 — 이 개체는 건너뛴다
-          console.warn(`[syncIssue] 후보 없음 — 개체 건너뜀 (userId: ${userId}, tribe: ${tribeId}, 뽑힌 등급: ${rolled.rarity})`)
-          await logOutcome(userId, 'no_candidate', { attempt: i, rolledRarity: rolled.rarity, tribeId })
+  // ⑤ 전체가 빈칸보다 많으면 하나도 지급하지 않고 전부 보류한다
+  const freeSlots = Math.max(0, inventory.max_slots - inventory.used_slots)
+  if (planned.length > freeSlots) {
+    console.info(
+      `[syncIssue] 빈칸 부족 — 전부 보류 (userId: ${userId}, 받을 ${planned.length}개, 빈칸 ${freeSlots}개)`
+    )
+    if (await persistPending(planned)) await saveStreak(finalStreak)
+    return outcome
+  }
+
+  // ⑥ 빈칸에 다 들어간다 — 활동마다 바로 지급한다. 경합으로 slot_full이 나면 그 개체와 남은 개체는 보류한다.
+  const spill: PlannedItem[] = []
+  let slotFull = false
+  for (let index = 0; index < ordered.length; index++) {
+    const group = planned.filter((p) => p.activityIndex === index)
+    if (group.length === 0) continue
+    if (slotFull) {
+      spill.push(...group)
+      continue
+    }
+
+    const target = ordered[index]
+    const recapItems: RecapItemBadge[] = []
+    let streakToSave: number | null = null
+    try {
+      let skipRest = false
+      for (const [i, item] of group.entries()) {
+        if (slotFull) {
+          spill.push(item)
           continue
         }
+        if (skipRest) continue
 
         const { data: rpcResult, error: rpcError } = await supabase.rpc('grant_inventory_item', {
           p_inventory_id: inventory.id,
-          p_badge_id: pick.badge.id,
+          p_badge_id: item.badge.id,
           p_obtained_by: 'drop',
           p_expires_at: null,
         })
         const grant: GrantInventoryItemResult = rpcError
           ? { ok: false, reason: 'inventory_not_found' }
           : (rpcResult as GrantInventoryItemResult)
-        if (rpcError) console.error(`[syncIssue] grant_inventory_item RPC 오류 (badge_id: ${pick.badge.id}):`, rpcError)
+        if (rpcError) console.error(`[syncIssue] grant_inventory_item RPC 오류 (badge_id: ${item.badge.id}):`, rpcError)
         if (!grant.ok) {
-          if (grant.reason === 'slot_full') slotFull = true
+          if (grant.reason === 'slot_full') {
+            slotFull = true
+            spill.push(item)
+          } else {
+            skipRest = true
+          }
           await logOutcome(userId, grant.reason === 'slot_full' ? 'slot_full' : 'insert_failed', {
             attempt: i,
-            badgeId: pick.badge.id,
-            rolledRarity: pick.rolledRarity,
+            badgeId: item.badge.id,
+            rolledRarity: item.rolledRarity,
           })
-          break
+          continue
         }
-        usedSlots = grant.usedSlots
-        issuedBadgeIds.push(pick.badge.id)
-        // 받은 실제 등급 기준으로 센다 — 뽑힌 등급이 높아도 Common을 받았다면 Common 연속이다
-        commonStreak = pick.rarity === 'common' ? commonStreak + 1 : 0
-        streakChanged = true
+        outcome.issuedBadgeIds.push(item.badge.id)
+        streakToSave = item.streakAfter
         recapItems.push({
           inventory_item_id: grant.itemId,
-          badge_id: pick.badge.id,
-          name: pick.badge.name,
-          rarity: pick.rarity,
+          badge_id: item.badge.id,
+          name: item.badge.name,
+          rarity: item.rarity,
         })
 
         await recordIssued({
@@ -255,15 +342,15 @@ export async function issueSyncItemBadges(
           target,
           tribeName,
           inventoryItemId: grant.itemId,
-          badge: pick.badge,
-          rarity: pick.rarity,
-          rolledRarity: pick.rolledRarity,
+          badge: item.badge,
+          rarity: item.rarity,
+          rolledRarity: item.rolledRarity,
         })
         await logOutcome(userId, 'issued', {
           attempt: i,
-          badgeId: pick.badge.id,
-          rarity: pick.rarity,
-          rolledRarity: pick.rolledRarity,
+          badgeId: item.badge.id,
+          rarity: item.rarity,
+          rolledRarity: item.rolledRarity,
           tribeId,
           activityId: target.activityId,
         })
@@ -277,7 +364,7 @@ export async function issueSyncItemBadges(
       }
     }
 
-    if (streakChanged) await saveStreak()
+    if (streakToSave !== null) await saveStreak(streakToSave)
     if (recapItems.length > 0) {
       try {
         await recordActivityRecap(userId, { activity_ids: [target.stravaId], item_badges: recapItems })
@@ -287,7 +374,12 @@ export async function issueSyncItemBadges(
     }
   }
 
-  return issuedBadgeIds
+  if (spill.length > 0) {
+    console.info(`[syncIssue] 지급 도중 슬롯 초과 — 남은 ${spill.length}개 보류 (userId: ${userId})`)
+    if (await persistPending(spill)) await saveStreak(finalStreak)
+  }
+
+  return outcome
 }
 
 interface RecordIssuedInput {

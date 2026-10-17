@@ -37,7 +37,7 @@ vi.mock('@/lib/strava/api', () => ({
   refreshStravaToken: vi.fn(),
 }))
 vi.mock('@/lib/badge-engine/index', () => ({ evaluateBadges: evaluateBadgesMock }))
-vi.mock('@/lib/drop-engine/syncIssueRun', () => ({ issueSyncItemBadges: vi.fn(async () => []) }))
+vi.mock('@/lib/drop-engine/syncIssueRun', () => ({ issueSyncItemBadges: vi.fn(async () => ({ issuedBadgeIds: [], pendingCount: 0 })) }))
 vi.mock('@/lib/poi/matcher', () => ({ matchPoisForActivity: vi.fn(async () => []) }))
 vi.mock('@/lib/badge-engine/jamActionBadges', () => ({ evaluateJamActionBadges: vi.fn(async () => []) })) // JAM! 행동 지표 판정은 sync-jam-action-hook.test.ts가 따로 확인한다 (티켓 20261001_0633)
 vi.mock('@/lib/itembook/checker', () => ({
@@ -165,6 +165,10 @@ function makeFakeSupabase(opts: {
         }),
       }
     }
+    // 동기화 시작 전 보류 개수 확인(티켓 20261017_1425) — 이 시험은 보류가 없는 유저다
+    if (table === 'sync_pending_items') {
+      return { select: () => ({ eq: () => ({ eq: async () => ({ count: 0, error: null }) }) }) }
+    }
     throw new Error(`makeFakeSupabase: 예상치 못한 테이블 — ${table}`)
   }
 
@@ -233,6 +237,7 @@ describe('syncStravaActivities — 조회 커서는 마지막으로 가져온 �
       isFirstBadgeEver: false,
       completedMissionIds: [],
       jamEarned: 0,
+      pendingItems: 0,
     })
     // 잠금에서 이미 조기 종료했으므로 Strava API 조회까지 가지 않는다
     expect(getActivitiesMock).not.toHaveBeenCalled()

@@ -9,7 +9,8 @@
  * - `common_streak`는 받은 실제 등급이 Common이면 +1, 아니면 0으로 저장한다(없는 행은 만든다). 못 줬으면 쓰지 않는다.
  * - 줄 때마다 `item_issue_log`에 한 줄(경로 sync, 대상 활동, 배지, 등급, 뽑힌 등급, 잠김 false, 일련번호, 개체 id).
  *   기록 실패는 지급을 막지 않는다.
- * - 인벤토리가 가득 차면 멈춘다. 동기화로 받은 배지의 기한은 공개 종료일로 두지 않고(`p_expires_at` null),
+ * - 이번 동기화로 받을 개수 전체가 빈칸보다 많으면 지급하지 않고 전부 보류한다(보류 계획·지급 시험은 `syncIssueRun-pending.test.ts`).
+ *   동기화로 받은 배지의 기한은 공개 종료일로 두지 않고(`p_expires_at` null),
  *   공개 기간이 끝난 배지·컬렉션은 후보가 아니다.
  * - 활동 하나의 실패는 그 활동만 건너뛰고 `onActivityError`로 알린다.
  * - 동기화 경로(`sync.ts`·`syncIssueRun.ts`·`syncIssue.ts`)는 옛 규칙 모듈(트라이브 고르기·등급 보정 셋·컬렉션 보정·
@@ -82,6 +83,7 @@ interface World {
   /** n번째(1부터) 지급 호출의 결과를 바꾼다 */
   grantOverride: (n: number) => 'slot_full' | 'throw' | null
   logRows: Record<string, unknown>[]
+  pendingRows: Record<string, unknown>[]
   logInsert: 'ok' | 'error' | 'throw'
   streakUpserts: Record<string, unknown>[]
   /** item_books 조회에 건 tribe_id 조건 */
@@ -100,6 +102,7 @@ function makeWorld(overrides: Partial<World> = {}): World {
     rpcCalls: [],
     grantOverride: () => null,
     logRows: [],
+    pendingRows: [],
     logInsert: 'ok',
     streakUpserts: [],
     bookTribeFilters: [],
@@ -171,8 +174,9 @@ function makeFakeSupabase(world: World): SupabaseClient {
         if (table === 'user_drop_state') world.streakUpserts.push(payload)
         return { error: null }
       },
-      insert: async (payload: Record<string, unknown>) => {
-        if (table === 'item_issue_log') {
+      insert: async (payload: Record<string, unknown> | Record<string, unknown>[]) => {
+        if (table === 'sync_pending_items') world.pendingRows.push(...(Array.isArray(payload) ? payload : [payload]))
+        if (table === 'item_issue_log' && !Array.isArray(payload)) {
           if (world.logInsert === 'throw') throw new Error('기록 insert 예외')
           if (world.logInsert === 'error') return { error: { message: '기록 insert 오류' } }
           world.logRows.push(payload)
@@ -237,8 +241,11 @@ function target(n: number, overrides: Partial<SyncIssueTarget> = {}): SyncIssueT
 
 const rand = () => 0.3
 
-const run = (world: World, targets: SyncIssueTarget[], policy = policyWith(), onActivityError?: (t: SyncIssueTarget, e: unknown) => void) =>
+const runOutcome = (world: World, targets: SyncIssueTarget[], policy = policyWith(), onActivityError?: (t: SyncIssueTarget, e: unknown) => void) =>
   issueSyncItemBadges(makeFakeSupabase(world), USER_ID, policy, targets, { rand, now: NOW, onActivityError })
+
+/** 지급한 배지 id만 돌려준다 — 보류 개수가 필요한 시험은 `runOutcome`을 쓴다 */
+const run = async (...args: Parameters<typeof runOutcome>) => (await runOutcome(...args)).issuedBadgeIds
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -273,7 +280,7 @@ describe('소속 트라이브', () => {
     const supabase = makeFakeSupabase(world)
     const fromSpy = vi.spyOn(supabase, 'from')
 
-    await expect(issueSyncItemBadges(supabase, USER_ID, policyWith(), [], { rand, now: NOW })).resolves.toEqual([])
+    await expect(issueSyncItemBadges(supabase, USER_ID, policyWith(), [], { rand, now: NOW })).resolves.toEqual({ issuedBadgeIds: [], pendingCount: 0 })
     expect(fromSpy).not.toHaveBeenCalled()
   })
 })
@@ -508,27 +515,31 @@ describe('발급 기록(item_issue_log)', () => {
   })
 })
 
-describe('인벤토리 가득 참', () => {
-  it('사전 확인에서 가득 차면 멈춘다 — 이후 활동도 지급을 시도하지 않는다', async () => {
+describe('인벤토리 가득 참 (보류 — 티켓 20261017_1425)', () => {
+  it('받을 개수 전체가 빈칸보다 많으면 하나도 지급하지 않고 전부 보류한다', async () => {
     const world = makeWorld({ inventory: { id: 'inv-1', used_slots: 3, max_slots: 4 } })
 
-    const ids = await run(world, [target(1), target(2), target(3)], policyWith({ sync_item_guaranteed: 2 }))
+    const outcome = await runOutcome(world, [target(1), target(2), target(3)], policyWith({ sync_item_guaranteed: 2 }))
 
-    expect(ids).toHaveLength(1)
-    expect(world.rpcCalls).toHaveLength(1)
-    expect(logEngineDecision).toHaveBeenCalledWith('drop', 'drop_attempt', USER_ID, expect.objectContaining({ outcome: 'slot_full' }))
-    // 줄 수 있었던 1개는 연속 값에 반영된다
-    expect(world.streakUpserts).toEqual([expect.objectContaining({ common_streak: 1 })])
+    expect(outcome).toEqual({ issuedBadgeIds: [], pendingCount: 6 })
+    expect(world.rpcCalls).toEqual([])
+    expect(world.logRows).toEqual([])
+    expect(world.pendingRows).toHaveLength(6)
+    expect(logEngineDecision).toHaveBeenCalledWith('drop', 'drop_attempt', USER_ID, expect.objectContaining({ outcome: 'pending', pendingCount: 6 }))
+    // 받을 개체가 정해졌으므로 보류한 6개도 연속 값에 반영된다
+    expect(world.streakUpserts).toEqual([expect.objectContaining({ common_streak: 6 })])
   })
 
-  it('RPC가 slot_full을 돌려줘도(동시 요청) 멈추고 나머지 활동을 시도하지 않는다', async () => {
+  it('RPC가 slot_full을 돌려주면(동시 요청) 그 개체와 남은 개체를 보류한다', async () => {
     const world = makeWorld({ grantOverride: (n) => (n === 2 ? 'slot_full' : null) })
 
-    const ids = await run(world, [target(1), target(2), target(3)])
+    const outcome = await runOutcome(world, [target(1), target(2), target(3)])
 
-    expect(ids).toHaveLength(1)
+    expect(outcome.issuedBadgeIds).toHaveLength(1)
+    expect(outcome.pendingCount).toBe(2)
     expect(world.rpcCalls).toHaveLength(2)
     expect(world.logRows).toHaveLength(1)
+    expect(world.pendingRows.map((r) => r.source_activity_id)).toEqual(['act-2', 'act-3'])
   })
 })
 

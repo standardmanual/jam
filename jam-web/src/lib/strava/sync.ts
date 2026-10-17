@@ -17,6 +17,7 @@ import {
   type StravaDisconnectReason,
 } from '@/lib/strava/connection-state'
 import { markStravaDisconnected } from '@/lib/strava/connection-write'
+import { countPendingItems, SyncPendingItemsError } from '@/lib/strava/pending-items'
 import { qualifyActivity, MIN_QUALIFIED_MOVING_TIME_SEC, type FilterReason, type SourceMeta } from '@/lib/strava/qualification'
 import { detectAndExcludeTransitSegments, needsTransitStreams } from '@/lib/strava/transitSegment'
 import { applyTypeMismatch } from '@/lib/strava/typeMismatch'
@@ -695,7 +696,9 @@ interface ProcessFetchedResult {
   settledCount: number
   /** 이번 동기화로 원장에 기록된 잼의 합계. 정산할 활동이 없는 경로는 0이다(티켓 20261017_1423) */
   jamEarned: number
-  /** 활동별 잼 정산 결과 — 아이템 배지 발급(2-4)이 개수 계산에 쓸 수 있게 남긴다. 응답에는 싣지 않는다 */
+  /** 이번 동기화로 새로 보류된 아이템 배지 개수. 보류가 없으면 0이다(티켓 20261017_1425) */
+  pendingItems: number
+  /** 활동별 잼 정산 결과— 아이템 배지 발급(2-4)이 개수 계산에 쓸 수 있게 남긴다. 응답에는 싣지 않는다 */
   jamSettlements: JamSettlementItem[]
 }
 
@@ -739,6 +742,7 @@ async function evaluateWithoutNewActivities(
     completedMissionIds: [],
     settledCount: 0,
     jamEarned: 0,
+    pendingItems: 0,
     jamSettlements: [],
   }
 }
@@ -1223,12 +1227,16 @@ export async function processFetchedActivities(
       'drop_attempt_failed',
       `${stravaId === null ? 'batch' : `stravaId=${stravaId}`}: ${err instanceof Error ? err.message : String(err)}`
     )
+  // 이번 동기화로 받을 아이템 배지 전체가 빈칸보다 많으면 지급하지 않고 전부 보류한다(티켓 20261017_1425, 운영 로직 6.4절).
   let itemBadgeIds: string[] = []
+  let pendingItems = 0
   if (issueTargets.length > 0) {
     try {
-      itemBadgeIds = await issueSyncItemBadges(supabase, userId, jamPolicy, issueTargets, {
+      const issued = await issueSyncItemBadges(supabase, userId, jamPolicy, issueTargets, {
         onActivityError: (target, err) => recordDropFailure(target.stravaId, err),
       })
+      itemBadgeIds = issued.issuedBadgeIds
+      pendingItems = issued.pendingCount
     } catch (err) {
       // 활동 단위 실패는 위 콜백이 흡수한다. 여기는 조회 단계처럼 활동 밖에서 던진 경우다 — 발급만 포기하고 동기화는 계속한다.
       console.error(`[processFetchedActivities] 아이템 배지 발급 실패 — userId: ${userId}:`, err)
@@ -1300,6 +1308,7 @@ export async function processFetchedActivities(
     completedMissionIds,
     settledCount: passedEntries.length,
     jamEarned: jamSettlement.total,
+    pendingItems,
     jamSettlements: jamSettlement.items,
   }
 }
@@ -1342,6 +1351,8 @@ async function recordStravaDisconnect(
  *          isFirstBadgeEver: 이번에 받은 배지가 유저의 전체 첫 배지인지 (GA4 first_badge_earned),
  *          completedMissionIds: 이번에 새로 완료된 미션 id (GA4 mission_complete)
  *          jamEarned: 이번 동기화로 받은 잼의 합계(받은 잼이 없으면 0, 티켓 20261017_1423)
+ *          pendingItems: 이번 동기화로 새로 보류된 아이템 배지 개수(없으면 0, 티켓 20261017_1425)
+ * @throws SyncPendingItemsError 고르지 않은 보류가 남아 있으면 가져오기·정산 없이 던진다(`/api/strava/sync`가 409로 알린다)
  */
 export async function syncStravaActivities(
   userId: string
@@ -1356,6 +1367,8 @@ export async function syncStravaActivities(
   completedMissionIds: string[]
   /** 이번 동기화로 받은 잼의 합계. 받은 잼이 없으면 0 (티켓 20261017_1423) */
   jamEarned: number
+  /** 이번 동기화로 새로 보류된 아이템 배지 개수. 보류가 없으면 0 (티켓 20261017_1425) */
+  pendingItems: number
 }> {
   const supabase = createServiceClient()
 
@@ -1376,6 +1389,14 @@ export async function syncStravaActivities(
   // (티켓 20261017_1422). 수동 경로(/api/strava/sync)가 이 오류를 409로 알린다.
   if (connection.disconnected_at) {
     throw new StravaDisconnectedError(connection.disconnect_reason)
+  }
+
+  // 고르지 않은 보류가 있으면 동기화하지 않는다(티켓 20261017_1425, 운영 로직 6.4절). 새 보류가 더 쌓이면 한 번의 고르기가
+  // 그것까지 «고르지 않음»으로 닫아 버리므로, 가져오기·정산 전에 막는다. 보류 개수를 읽지 못하면 던져 동기화하지 않는다.
+  const pendingBefore = await countPendingItems(supabase, userId)
+  if (pendingBefore > 0) {
+    console.info(`[syncStravaActivities] 보류 ${pendingBefore}개가 남아 있어 동기화하지 않음 (userId: ${userId})`)
+    throw new SyncPendingItemsError(pendingBefore)
   }
 
   // 2. 토큰 복호화
@@ -1476,7 +1497,7 @@ export async function syncStravaActivities(
   const { data: lockRows, error: lockError } = await lockQuery.select('user_id')
   if (lockError || !lockRows || lockRows.length === 0) {
     console.info(`[syncStravaActivities] 동시 싱크 감지 — 건너뜀 (userId: ${userId})`)
-    return { synced: 0, badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadges: [], earnedBadgesMore: 0, isFirstBadgeEver: false, completedMissionIds: [], jamEarned: 0 }
+    return { synced: 0, badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadges: [], earnedBadgesMore: 0, isFirstBadgeEver: false, completedMissionIds: [], jamEarned: 0, pendingItems: 0 }
   }
 
   // 4-2. 첫 싱크 여부 (초기화 직후·신규 연동) — 정산·아이템 배지를 최근 1건으로 제한하는 데 사용
@@ -1511,7 +1532,7 @@ export async function syncStravaActivities(
       `${isFirstSync ? ' (첫 싱크 — 인정 활동 최근 1건 제한)' : ''}`
     )
 
-    const { badges, itemBooksCompleted, missionsCompleted, earnedBadgeIds, completedMissionIds, settledCount, jamEarned } = await processFetchedActivities(
+    const { badges, itemBooksCompleted, missionsCompleted, earnedBadgeIds, completedMissionIds, settledCount, jamEarned, pendingItems } = await processFetchedActivities(
       supabase,
       userId,
       accessToken,
@@ -1563,6 +1584,7 @@ export async function syncStravaActivities(
       isFirstBadgeEver,
       completedMissionIds,
       jamEarned,
+      pendingItems,
     }
   } catch (err) {
     console.error(`[syncStravaActivities] 처리 중 오류 — last_synced_at 롤백 (userId: ${userId}):`, err)

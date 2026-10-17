@@ -8,6 +8,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { syncStravaActivities } from '@/lib/strava/sync'
 import { StravaDisconnectedError } from '@/lib/strava/connection-state'
+import { SyncPendingItemsError } from '@/lib/strava/pending-items'
+import { SYNC_PENDING_ITEMS_CODE } from '@/lib/strava/pending-items-contract'
 import { d } from '@/lib/i18n'
 
 // 백필(최초 연동) 시 Strava Streams 조회 + 드랍/배지 평가로 수 초~수십 초가 걸릴 수 있어
@@ -32,6 +34,13 @@ export async function POST() {
     if (err instanceof StravaDisconnectedError) {
       return NextResponse.json(
         { error: d.auth.stravaSyncError, code: 'strava_disconnected', connectionState: 'disconnected' },
+        { status: 409 }
+      )
+    }
+    // 고르지 않은 보류가 남아 있으면 가져오기·정산 없이 409로 알린다 — 화면(2회)이 고르기를 먼저 보여 준다 (티켓 20261017_1425)
+    if (err instanceof SyncPendingItemsError) {
+      return NextResponse.json(
+        { error: d.syncPending.syncBlocked, code: SYNC_PENDING_ITEMS_CODE, pendingCount: err.pendingCount },
         { status: 409 }
       )
     }

@@ -37,7 +37,7 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/drop-engine/syncIssueRun', () => ({
   issueSyncItemBadges: vi.fn(async () => {
     events.list.push('issue')
-    return [] as string[]
+    return { issuedBadgeIds: [] as string[], pendingCount: 0 }
   }),
 }))
 vi.mock('@/lib/badge-engine/index', () => ({ evaluateBadges: vi.fn(async () => []) }))
@@ -278,7 +278,7 @@ describe('processFetchedActivities — 아이템 배지 발급 대상과 순서'
   })
 
   it('발급한 배지 id는 액티비티 배지 앞 자리에 끼워진다', async () => {
-    vi.mocked(issueSyncItemBadges).mockResolvedValueOnce(['item-1', 'item-2'])
+    vi.mocked(issueSyncItemBadges).mockResolvedValueOnce({ issuedBadgeIds: ['item-1', 'item-2'], pendingCount: 0 })
     vi.mocked(evaluateBadges).mockResolvedValueOnce(['activity-1'])
 
     const result = await run([dated(1)])
@@ -301,7 +301,7 @@ describe('processFetchedActivities — 발급 실패 기록 (티켓 20261014_132
   it('활동 단위 실패는 drop_attempt_failed·stravaId 메시지로 기록하고 반환값은 그대로다', async () => {
     vi.mocked(issueSyncItemBadges).mockImplementationOnce(async (_s, _u, _p, targets, options) => {
       await options?.onActivityError?.(targets[0], new Error('발급 상태 저장 실패'))
-      return []
+      return { issuedBadgeIds: [], pendingCount: 0 }
     })
 
     const result = await run([dated(4)], false, 'user-fail')
@@ -316,7 +316,7 @@ describe('processFetchedActivities — 발급 실패 기록 (티켓 20261014_132
     failureInserts.mode = mode
     vi.mocked(issueSyncItemBadges).mockImplementationOnce(async (_s, _u, _p, targets, options) => {
       await options?.onActivityError?.(targets[0], new Error('발급 실패'))
-      return ['item-1']
+      return { issuedBadgeIds: ['item-1'], pendingCount: 0 }
     })
 
     const result = await run([dated(1)])

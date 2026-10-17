@@ -24,7 +24,7 @@ vi.mock('@/lib/supabase/server', () => ({
     throw new Error('createServiceClient가 호출됨 — 이 테스트는 DB에 접근하지 않는다')
   },
 }))
-vi.mock('@/lib/drop-engine/syncIssueRun', () => ({ issueSyncItemBadges: vi.fn(async () => []) }))
+vi.mock('@/lib/drop-engine/syncIssueRun', () => ({ issueSyncItemBadges: vi.fn(async () => ({ issuedBadgeIds: [], pendingCount: 0 })) }))
 vi.mock('@/lib/badge-engine/index', () => ({ evaluateBadges: vi.fn(async () => []) }))
 vi.mock('@/lib/poi/matcher', () => ({ matchPoisForActivity: vi.fn(async () => []) }))
 vi.mock('@/lib/itembook/checker', () => ({
