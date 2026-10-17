@@ -23,7 +23,7 @@ specs:
   - `jam-web/src/lib/strava/sync.ts`: 토큰 갱신(1200-1246, 실패 시 `strava_disconnected` 알림과 `strava_sync_failures` 기록 후 예외, 행은 그대로), `isFirstSync` 결정(1291-1296, `users.initial_sync_done`), 커서(1255-1270, `strava_activities` 최신 `start_date` 기준이라 계정이 바뀌면 새 계정의 오래된 활동이 조회에서 빠질 수 있음, 추측).
   - 표시: `jam-web/src/app/(main)/page.tsx`(33-43, 행이 있으면 끊김 카드를 안 보임), `app/(main)/layout.tsx`(35, 48, `stravaConnected = Boolean(row)`), `components/ui/TopNav.tsx`(145), `TodayStatusStrip.tsx`(32), `lib/notifications/warning.ts`(62-66), 미사용 `components/strava/StravaStatusCard.tsx`.
   - `jam-web/src/lib/badge-engine/index.ts:1586`(`initial_sync_done`를 true로 바꿈), `jam-web/src/lib/admin/user-actions.ts:148`(어드민 리셋이 false로 되돌림).
-  - `jam-web/supabase/migrations/001`(`strava_connections.strava_athlete_id UNIQUE`, `user_id`에는 유니크 없음), 032(`users.initial_sync_done`).
+  - `jam-web/supabase/migrations/001_initial_schema.sql`(`strava_connections.strava_athlete_id UNIQUE`, `user_id`에는 유니크 없음), `032_badge_system_v3.sql`(`users.initial_sync_done`).
   - 스펙: 운영 로직 3.1·3.2·3.4절, 비교표 3.12절.
 
 ## 배경 / 문제 정의

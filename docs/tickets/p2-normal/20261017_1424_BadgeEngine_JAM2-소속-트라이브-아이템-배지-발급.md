@@ -21,7 +21,7 @@ specs:
   - `jam-web/src/lib/drop-engine/index.ts`: `tryItemDrop`(568), `selectBadge`(311), 온보딩 첫 3드랍 제한(329-335), `applyShadowBanCap`(472), `insertDrop`(494, RPC `grant_inventory_item`), 가득 참 사전 확인 `isInventoryFull`(624), 639.
   - `jam-web/src/lib/drop-engine/layers.ts`: `rollRarityV2`(26, 복귀·연속 보정·일일 하향·주간 첫 활동 배수 포함), `rollBonusDrop`(76), `pickTribe`(129, 미스터리 → 맥락 → 모멘텀·인접·탐험), `pickBook`(188, 마지막 조각 보정). `context.ts`(맥락 규칙), `constants.ts:29`(걷기 가중 0.4), `policy.ts:38`(DB `drop_policy` 읽기, 실패 시 기본값).
   - `jam-web/src/lib/strava/sync.ts`: 호출 상한 상수 `MAX_DROP_ACTIVITIES_PER_SYNC=3`(61), 드랍 단계(995-1028, 첫 동기화는 1건 1004).
-  - `jam-web/supabase/migrations/173`(`grant_inventory_item`, 락·슬롯 확인·`slot_full`), 034와 108(일련번호 트리거 `trg_random_serial`, `assign_random_serial`: 1~999999, `destroyed_at IS NULL` 개체 사이 유일, 50회 재시도).
+  - `jam-web/supabase/migrations/173_atomic_inventory_slot_grant.sql`(`grant_inventory_item`, 락·슬롯 확인·`slot_full`), `034_drop_engine_v2_schema.sql`과 `108_item_identity_custody_model.sql`(일련번호 트리거 `trg_random_serial`, `assign_random_serial`: 1~999999, `destroyed_at IS NULL` 개체 사이 유일, 50회 재시도).
   - 소속 트라이브: `users.tribe_id`는 온보딩이 저장하지만(`app/api/onboarding/complete/route.ts:117`) `tryItemDrop`과 동기화는 읽지 않는다.
   - 스펙: 운영 로직 6장, 비교표 3.7절, 게이미피케이션 밸런스 4절, `docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md`.
 
