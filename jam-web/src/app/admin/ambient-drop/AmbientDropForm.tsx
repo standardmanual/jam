@@ -210,18 +210,6 @@ export default function AmbientDropForm({
         </div>
       </section>
 
-      {/* 메타 옵션 */}
-      <section className="bg-white border border-border rounded-2xl p-6">
-        <div className="flex items-center gap-3">
-          <Switch checked={values.all_random} onCheckedChange={(checked) => set('all_random', checked)} />
-          <span className="text-sm font-bold">전체 무작위</span>
-        </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          켜면 아래 3축을 실행 시점에 전부 무작위로 취급해요. 아래 저장된 값은 그대로 남아있고,
-          꺼지면 다시 적용돼요.
-        </p>
-      </section>
-
       {/* 축 1: 카테고리 */}
       <section className="bg-white border border-border rounded-2xl p-6">
         <div className="flex items-center justify-between mb-3">
