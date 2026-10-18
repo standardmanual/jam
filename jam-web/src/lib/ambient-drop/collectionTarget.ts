@@ -15,7 +15,7 @@
  */
 
 export interface ResolveAmbientTargetInput {
-  /** 이번 실행이 컬렉션 축을 무작위로 정하는가(`all_random` 또는 `collection_mode='random'`) */
+  /** 이번 실행이 컬렉션 축을 무작위로 정하는가(`collection_mode='random'`) */
   useRandom: boolean
   /** 설정된 `collection_ids`. 빈 배열은 「전체 컬렉션」 */
   configIds: readonly string[]

@@ -14,7 +14,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAmbientDropConfig } from './config'
 import { logAmbientBatchResult, type AmbientDropSkipReason } from './index'
-import { placeAmbientDrops, type SpawnedAmbientDrop } from './placement'
+import { placeAmbientDrops } from './placeAmbientDrops'
+import type { SpawnedAmbientDrop } from './placement'
 import { pickRandom, randomRarityDistribution, type RarityDistribution } from './rarity'
 import { planScheduleDrops } from './schedulePlan'
 import {
@@ -174,7 +175,7 @@ export async function runAmbientDropSpec(
   let distribution: RarityDistribution | undefined
   if (config && spec.itemMode === 'collections') {
     distribution =
-      config.all_random || config.rarity_mode === 'random'
+      config.rarity_mode === 'random'
         ? randomRarityDistribution()
         : {
             common: config.rarity_common,

@@ -11,7 +11,8 @@
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { planScheduleDrops } from '../schedulePlan'
-import { distributePoiSlots, placeAmbientDrops } from '../placement'
+import { distributePoiSlots } from '../placement'
+import { placeAmbientDrops } from '../placeAmbientDrops'
 import type { AmbientDropScheduleSpec } from '../scheduleSpec'
 import type { ScheduleTargetBadge, ScheduleTargetPoi } from '../scheduleTargets'
 import { createFakeDb, type FakeDb } from './schedule-test-db'

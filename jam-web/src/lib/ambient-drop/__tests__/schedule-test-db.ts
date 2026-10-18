@@ -22,7 +22,7 @@ export interface DbCall {
 
 export interface RpcCall {
   name: string
-  args: { p_poi_id: string; p_badge_id: string }
+  args: { p_poi_id: string; p_badge_id: string; p_lock_reason?: string; p_unlock_required?: number }
 }
 
 export interface FakeDb {

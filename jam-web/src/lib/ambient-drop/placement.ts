@@ -3,12 +3,8 @@
  *
  * `index.ts`의 정기 배포가 쓰던 두 덩어리를 동작 변경 없이 옮긴 것이다(티켓 20261001_2051).
  *  - `distributePoiSlots`: 활성 드랍이 0인 지점을 우선하고, 한도 미만인 지점으로 흩어 자리를 정한다
- *  - `placeAmbientDrops`: 정해진 (지점, 배지) 쌍마다 `mint_and_place_ambient_drop` RPC로 놓는다
+ *  - 실제로 놓는 `placeAmbientDrops`는 `placeAmbientDrops.ts`에 있다(서버 모듈을 가져오므로 순수 계획 코드와 나눴다, 티켓 20261018_1813)
  */
-import type { createServiceClient } from '@/lib/supabase/server'
-
-type ServiceClient = ReturnType<typeof createServiceClient>
-
 export interface DistributePoiSlotsInput {
   /** 놓을 수 있는 지점 후보(이미 한도 미만인 지점만 담아 온다) */
   candidatePoiIds: readonly string[]
@@ -55,42 +51,4 @@ export interface SpawnedAmbientDrop {
   id: string
   inventory_item_id: string
   poi_id: string
-}
-
-/**
- * 정해진 (지점, 배지) 쌍마다 `mint_and_place_ambient_drop` RPC로 놓는다.
- *
- * 20260829_2101: 개체 정체성 모델 — 일련번호가 확정되는 시점은 정확히 ①드랍엔진 직접지급 ②시스템(앰비언트)
- * 드랍이 POI에 「배치되는 순간」 둘뿐이다. 선발급(개별 INSERT)과 poi_drops INSERT를 애플리케이션 레벨에서
- * 분리하면 도중 실패 때 발급된 개체가 어디에도 연결되지 못한 채 영구 고아로 남는다(2026-08-29 게이트 리뷰
- * 지적). RPC가 개체 1건 단위(선발급+poi_drops 연결+Minted 기록)를 원자적 트랜잭션으로 묶는다
- * (migrations/108). 한 건이 실패해도 나머지는 계속 놓는다.
- */
-export async function placeAmbientDrops(
-  supabase: ServiceClient,
-  rows: readonly AmbientPlacementRow[]
-): Promise<{ spawned: SpawnedAmbientDrop[]; failedCount: number }> {
-  const spawned: SpawnedAmbientDrop[] = []
-
-  for (const row of rows) {
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('mint_and_place_ambient_drop', {
-      p_poi_id: row.poi_id,
-      p_badge_id: row.badge_id,
-    })
-
-    if (rpcError) {
-      console.error('[ambient-drop] mint_and_place_ambient_drop RPC 오류:', rpcError.message, row)
-      continue
-    }
-
-    const result = rpcResult as { ok: boolean; drop_id?: string; inventory_item_id?: string }
-    if (!result.ok || !result.drop_id || !result.inventory_item_id) {
-      console.error('[ambient-drop] 개체 선발급+배치 실패:', result, row)
-      continue
-    }
-
-    spawned.push({ id: result.drop_id, inventory_item_id: result.inventory_item_id, poi_id: row.poi_id })
-  }
-
-  return { spawned, failedCount: rows.length - spawned.length }
 }

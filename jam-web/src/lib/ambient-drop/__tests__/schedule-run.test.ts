@@ -33,6 +33,15 @@ const logMock = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => ctx.db.client }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: logMock }))
 vi.mock('@/lib/notifications/batch/shared', async () => (await import('./schedule-test-db')).sharedMock)
+vi.mock('@/lib/jam/policy', () => ({
+  getJamPolicy: async () => ({
+    locked_min_common: 3,
+    locked_min_rare: 5,
+    locked_min_epic: 8,
+    locked_min_mystic: 12,
+    locked_roll_probability: 0,
+  }),
+}))
 
 import { runAmbientDropSpec, runDueAmbientDropSchedules } from '../scheduleRun'
 import { AMBIENT_SCHEDULE_LATE_WINDOW_MS } from '../scheduleSpec'
@@ -176,6 +185,38 @@ describe('runDueAmbientDropSchedules — 도래 전후', () => {
     await runDueAmbientDropSchedules(RUN_AT)
     expect(placed()).toHaveLength(4)
     expect(placed().every((p) => p.badge === uuid(42))).toBe(true)
+  })
+
+  it('종류+개수 × 컬렉션 — all_random이 켜져 있어도 설정의 등급 분포를 따른다 (티켓 20261018_1813)', async () => {
+    db.tables.badges.push(badge(uuid(42), BOOK_LIVE, { rarity: 'rare' }))
+    setConfig({ all_random: true, rarity_common: 0, rarity_rare: 1, max_active_per_poi: 5 })
+    insertSchedule({
+      poi_mode: 'category',
+      poi_ids: [],
+      poi_category: 'cafe',
+      item_mode: 'collections',
+      badge_ids: [],
+      collection_ids: [BOOK_LIVE],
+      per_poi_count: null,
+      total_count: 4,
+    })
+    await runDueAmbientDropSchedules(RUN_AT)
+    expect(placed()).toHaveLength(4)
+    expect(placed().every((p) => p.badge === uuid(42))).toBe(true)
+  })
+
+  it('행사 지정 — 잠김으로 만든 배지는 잠긴 채 놓고 필요한 양을 고정한다 (티켓 20261018_1813)', async () => {
+    const lockedId = uuid(43)
+    db.tables.badges.push(badge(lockedId, BOOK_LIVE, { always_locked: true, unlock_required: 6 }))
+    insertSchedule({ badge_ids: [B_LIVE, lockedId], poi_ids: [P1, P2], per_poi_count: 1 })
+    const summary = await runDueAmbientDropSchedules(RUN_AT)
+    expect(summary.done).toBe(1)
+    const byBadge = Object.fromEntries(db.rpcCalls.map((c) => [c.args.p_badge_id, c]))
+    expect(byBadge[B_LIVE].name).toBe('mint_and_place_ambient_drop')
+    expect(byBadge[lockedId]).toEqual({
+      name: 'mint_and_place_ambient_drop_locked',
+      args: { p_poi_id: expect.any(String), p_badge_id: lockedId, p_lock_reason: 'badge_locked', p_unlock_required: 6 },
+    })
   })
 
   it('지점 직접은 활성 드랍이 있어도 지정 개수만큼 놓고 겹친 지점 수를 결과에 남긴다', async () => {

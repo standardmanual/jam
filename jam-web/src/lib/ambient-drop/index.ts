@@ -17,7 +17,8 @@ import { applyDroppableItemBookFilter } from '@/lib/itembook/visibility'
 import type { AmbientDropConfig } from './config'
 import { getAmbientDropConfig } from './config'
 import { resolveAmbientTargetCollections } from './collectionTarget'
-import { distributePoiSlots, placeAmbientDrops } from './placement'
+import { distributePoiSlots } from './placement'
+import { placeAmbientDrops } from './placeAmbientDrops'
 import {
   fallbackPickBadge,
   pickRandom,
@@ -54,15 +55,17 @@ export interface AmbientDropBatchResult {
   reason?: AmbientDropSkipReason
 }
 
-/** 배치 1회 실행 — 카테고리/등급비율/대상컬렉션을 config·all_random에 따라 확정한 뒤 배치한다 */
+/** 배치 1회 실행 — 카테고리/등급비율/대상컬렉션을 각 축의 설정(모드)에 따라 확정한 뒤 배치한다 */
 export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<AmbientDropBatchResult> {
   const supabase = createServiceClient()
   const config = await getAmbientDropConfig()
   const ranAt = new Date().toISOString()
 
-  const useRandomCategory = config.all_random || config.category_mode === 'random'
-  const useRandomRarity = config.all_random || config.rarity_mode === 'random'
-  const useRandomCollection = config.all_random || config.collection_mode === 'random'
+  // `all_random`은 더는 보지 않는다 — 세 축이 각자의 모드(무작위/지정)만 따른다(티켓 20261018_1813).
+  // 옛 프로덕션 코드가 읽으므로 DB 칸과 값은 그대로 둔다.
+  const useRandomCategory = config.category_mode === 'random'
+  const useRandomRarity = config.rarity_mode === 'random'
+  const useRandomCollection = config.collection_mode === 'random'
 
   // ── 축 1: 카테고리 ──────────────────────────────────────────
   let effectiveCategorySlug: string | null

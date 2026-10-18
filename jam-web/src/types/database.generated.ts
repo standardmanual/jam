@@ -4502,6 +4502,15 @@ export type Database = {
         Args: { p_badge_id: string; p_poi_id: string }
         Returns: Json
       }
+      mint_and_place_ambient_drop_locked: {
+        Args: {
+          p_badge_id: string
+          p_lock_reason: string
+          p_poi_id: string
+          p_unlock_required: number
+        }
+        Returns: Json
+      }
       pickup_drop: {
         Args: { p_drop_id: string; p_inventory_id: string; p_picker_id: string }
         Returns: Json
