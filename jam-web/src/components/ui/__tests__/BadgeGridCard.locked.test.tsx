@@ -53,3 +53,30 @@ describe.each(implementations)('BadgeGridCard locked — $label', ({ render }) =
     expect(html).not.toContain('×3')
   })
 })
+
+/**
+ * 이름 줄의 줄바꿈 (티켓 20261018_0056) — 공백에서만 줄을 바꾸고(`break-keep`), 공백 없는 긴 이름은 안전하게 꺾는다(`wrap-break-word`).
+ * 3열 카드는 안쪽 폭이 좁아 «잠긴 아이템 배지»가 단어 중간에서 끊기던 것을 막는다. 두 줄을 넘으면 기존대로 말줄임이다.
+ */
+describe('BadgeGridCard 이름 줄 — 서비스', () => {
+  const nameClass = (html: string): string => {
+    const match = html.match(/<p class="([^"]*font-bold[^"]*line-clamp-2[^"]*)"/)
+    expect(match, '이름 줄(<p>)을 찾지 못했다').not.toBeNull()
+    return match![1]
+  }
+
+  it('열린 카드의 이름 줄에 break-keep과 wrap-break-word가 있고 두 줄 말줄임은 그대로다', () => {
+    const cls = nameClass(renderToStaticMarkup(<ServiceBadgeGridCard rarity="epic" name="아주 긴 아이템 배지 이름입니다" imageUrl={null} />))
+    expect(cls).toContain('break-keep')
+    expect(cls).toContain('wrap-break-word')
+    expect(cls).toContain('line-clamp-2')
+    expect(cls).toContain('text-center')
+  })
+
+  it('잠긴 카드의 이름 줄에도 같은 클래스가 있다', () => {
+    const cls = nameClass(renderToStaticMarkup(<ServiceBadgeGridCard rarity="epic" locked fillPercent={40} />))
+    expect(cls).toContain('break-keep')
+    expect(cls).toContain('wrap-break-word')
+  })
+})
+

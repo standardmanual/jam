@@ -15,6 +15,14 @@ export function isInventoryFull(inventory: InventorySlotState): boolean {
   return inventory.used_slots >= inventory.max_slots
 }
 
+/** 남은 칸이 «적다»고 보는 경계(남은 칸 3개 이하). 알림 단계(3·1)와 `warning.ts`의 경고 경계와 같은 값이다 */
+export const INVENTORY_SLOTS_LOW_MAX = 3
+
+/** 남은 칸이 1~3개이면 true. 0개는 «가득 참»이라 따로 다루고(안내 카드), 4개 이상은 평소 표시다(티켓 20261018_0056) */
+export function isInventorySlotsLow(remainingSlots: number): boolean {
+  return remainingSlots >= 1 && remainingSlots <= INVENTORY_SLOTS_LOW_MAX
+}
+
 /**
  * `grant_inventory_item()` RPC(마이그레이션 173, 티켓 20260914_1813)의 반환 형태.
  * "지급 + used_slots 증가"를 한 트랜잭션으로 묶어 read-then-write 레이스를 없앤다 —

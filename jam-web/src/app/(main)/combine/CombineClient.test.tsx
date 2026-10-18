@@ -827,15 +827,25 @@ describe('CombineClient — 받지 않은 믹스 결과 (티켓 20261018_0055 2�
     expect(refreshMock).toHaveBeenCalledTimes(1)
   })
 
-  it('잠긴 재료 409(locked_item_not_allowed)는 지금처럼 오버레이 셸에 문구를 보인다', async () => {
+  it('잠긴 재료 409(locked_item_not_allowed)는 info 토스트이고 결과 오버레이를 열지 않는다(티켓 20261018_0056)', async () => {
     stubFetch(() => ({
       status: 409,
       body: { success: false, reason: 'locked_item_not_allowed', code: 'locked_item_not_allowed', message: d.lockedItem.combine, pointsAwarded: 0 },
     }))
     const screen = createScreen(recipeFixture())
     const shown = screen.overlay(await screen.post())
-    expect(shown.props.open).toBe(true)
-    expect(shown.props.emptyMessage).toBe(d.lockedItem.combine)
+    expect(toastMock).toHaveBeenCalledWith(d.lockedItem.combine, 'info')
+    expect(toastMock).not.toHaveBeenCalledWith(expect.anything(), 'error')
+    expect(shown.props.open).toBe(false)
+    // 소각 전 거절이라 화면 데이터를 다시 받지 않는다
+    expect(refreshMock).not.toHaveBeenCalled()
+  })
+
+  it('잠긴 재료 409 응답에 문구가 없으면 사전의 믹스 잠김 문구를 쓴다', async () => {
+    stubFetch(() => ({ status: 409, body: { success: false, code: 'locked_item_not_allowed' } }))
+    const screen = createScreen(recipeFixture())
+    await screen.post()
+    expect(toastMock).toHaveBeenCalledWith(d.lockedItem.combine, 'info')
   })
 
   // ── 받기 시트 ─────────────────────────────────────────────────────────────

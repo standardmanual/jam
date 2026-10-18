@@ -17,6 +17,7 @@ import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
 import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
+import { isLockedItemBody } from '@/lib/inventory/locked-item-block'
 import { StepSaveFailedError } from '@/lib/onboarding-quest/step-error'
 import { trackQuestStepComplete } from '@/lib/onboarding-quest/analytics'
 // 타입만 가져온다 — `lib/combine/pending.ts`는 서버 전용이라 값을 가져오면 번들링에서 터진다.
@@ -666,6 +667,13 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
       if (res.status === 409 && data.code === PENDING_RESULTS_EXIST) {
         toast(data.message ?? d.combine.pendingResultsExist, 'info')
         await refreshPendingCount()
+        return
+      }
+
+      // 잠긴 개체가 재료에 섞였다 — 소각 전에 거절됐다. 재료 후보는 잠긴 개체를 이미 빼므로 경합 때만 닿는 안전망이다.
+      // 오류가 아니라 안내라 결과 오버레이를 열지 않고 슬롯도 그대로 둔다(티켓 20261018_0056).
+      if (isLockedItemBody(res.status, data)) {
+        toast(data.message ?? d.lockedItem.combine, 'info')
         return
       }
 

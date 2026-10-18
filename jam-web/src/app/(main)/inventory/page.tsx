@@ -11,6 +11,7 @@ import { PackageIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 import { lockedFillPercent } from '@/lib/inventory/lockedItemFill-contract'
+import { isInventorySlotsLow } from '@/lib/inventory/slots'
 
 type InventoryItemWithBadge = InventoryItemRow & {
   badge: BadgeRow
@@ -100,16 +101,24 @@ export default async function InventoryPage() {
           height={6}
           labelType="none"
         />
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          {t(d.inventory.slotsDetail, { used: usedSlots, max: maxSlots, remaining: remainingSlots })}
-        </p>
+        {/* 20261018_0056: 남은 칸 1~3개는 줄 전체를 --foreground로 올리고 «N개만 남았어요» 구간만 굵게 한다. 새 색·카드 없음 */}
+        {isInventorySlotsLow(remainingSlots) ? (
+          <p className="mt-1 text-sm text-foreground break-keep wrap-break-word">
+            {t(d.inventory.slotsDetailLowLead, { used: usedSlots, max: maxSlots })}
+            <span className="font-bold">{t(d.inventory.slotsDetailLowEmphasis, { remaining: remainingSlots })}</span>
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-[var(--muted)] break-keep wrap-break-word">
+            {t(d.inventory.slotsDetail, { used: usedSlots, max: maxSlots, remaining: remainingSlots })}
+          </p>
+        )}
 
         {/* 20260912_1940: 슬롯 포화 상시 안내 — 가득 찼을 때만 노출, 카드형 인셋(edge-to-edge 금지) */}
         {remainingSlots === 0 && (
           <div
             className="mt-3 rounded-2xl px-4 py-3 bg-surface border border-border"
           >
-            <p className="text-base text-foreground">
+            <p className="text-base text-foreground break-keep wrap-break-word">
               {t(d.inventory.fullNoticeBody, { max: maxSlots })}
             </p>
             <Link

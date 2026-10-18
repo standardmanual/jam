@@ -20,6 +20,7 @@ import type { NearbyPoi } from '@/types/drops'
 import type { BadgeRarity } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
+import { isLockedItemBody } from '@/lib/inventory/locked-item-block'
 
 // 20260820_018: 드랍(지도) POI 모달 캐러셀 개편
 // 기존 하단 고정 바텀시트를 대체하는 화면 중앙 모달 — 캐러셀 아이템 자체가
@@ -473,7 +474,9 @@ export default function PoiCarouselModal({
         // ADR 0001(티켓 20260915_2241): 서버(api/drops POST)가 이미 완성된 사용자 문구를
         // 돌려준다 — 여기서 코드를 문구로 재매핑하지 않고 그대로 신뢰해 노출한다.
         const err = await res.json()
-        toast(err.error ?? d.drops.dropFailed, 'error')
+        // 잠긴 개체는 «지금은 드랍할 수 없다»는 안내다 — 사용자가 잘못한 것이 아니라 error 톤으로 내지 않는다(티켓 20261018_0056).
+        // 그 밖의 실패는 기존대로 error다.
+        toast(err.error ?? d.drops.dropFailed, isLockedItemBody(res.status, err) ? 'info' : 'error')
         return
       }
       toast(d.drops.dropSuccess, 'success')

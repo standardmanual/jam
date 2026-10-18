@@ -333,6 +333,16 @@ describe('DELETE(해제)·PATCH(교체)에서는 판정·보상 배지 발급을
     expect(state.afterCallbacks).toHaveLength(0)
   })
 
+  it('DELETE 가득 참 거절은 409에 code(inventory_full)를 싣고 문구에 칸 수 숫자가 없다(티켓 20261018_0056)', async () => {
+    state.rpc.unslot_item_from_book = { data: { ok: false, error: 'inventory_full' }, error: null }
+    const res = await DELETE(request('DELETE', { slot_id: 'slot-1' }), PARAMS)
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as { error: string; code: string }
+    expect(body).toEqual({ error: d.itembooks.inventoryFullForUnslot, code: 'inventory_full' })
+    expect(body.error).not.toMatch(/\d/)
+    expect(state.afterCallbacks).toHaveLength(0)
+  })
+
   it('PATCH ok:false', async () => {
     state.rpc.swap_item_in_book = { data: { ok: false, error: 'same_item' }, error: null }
     const res = await PATCH(request('PATCH', { slot_id: 'slot-1', new_inventory_item_id: 'item-2' }), PARAMS)

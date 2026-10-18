@@ -9,8 +9,10 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-/** 잠긴 개체를 쓸 수 없을 때 응답이 싣는 `code`(`reason`) 값 — 장착·믹스·드랍이 같은 코드를 쓴다 */
-export const LOCKED_ITEM_NOT_ALLOWED_CODE = 'locked_item_not_allowed'
+import { LOCKED_ITEM_NOT_ALLOWED_CODE } from './locked-item-block'
+
+/** 잠긴 개체를 쓸 수 없을 때 응답이 싣는 `code`(`reason`) 값 — 장착·믹스·드랍이 같은 코드를 쓴다. 원천은 클라이언트도 쓰는 순수 모듈이다 */
+export { LOCKED_ITEM_NOT_ALLOWED_CODE }
 
 /** 마이그레이션 231 트리거가 올리는 오류 메시지 — 장착과 드랍 */
 export const LOCKED_ITEM_TRIGGER_MESSAGES = ['locked_item_cannot_be_slotted', 'locked_item_cannot_be_dropped'] as const

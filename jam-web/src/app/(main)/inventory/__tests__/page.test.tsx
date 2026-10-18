@@ -167,3 +167,52 @@ describe('인벤토리 페이지 — 잠긴 개체는 이름·그림이 서버�
     expect((state.gridProps?.items[0] as Record<string, unknown>).locked).toBeUndefined()
   })
 })
+
+/**
+ * 남은 칸 표시 — 세 갈래 (티켓 20261018_0056, 채원 사전 판정)
+ *  - 4개 이상: 평소 줄(--muted), 카드 없음
+ *  - 1~3개: «N개만 남았어요» 줄(--foreground, 그 구간만 굵게), 카드 없음
+ *  - 0개: 평소 줄 + 안내 카드(본문에 장착·믹스·드랍)
+ */
+describe('인벤토리 페이지 — 남은 칸 표시', () => {
+  beforeEach(() => {
+    state.inventory = null
+    state.gridProps = null
+    state.gridPropsRaw = null
+  })
+
+  function withUsed(used: number, max = 50): Row {
+    return { id: 'inv-1', used_slots: used, max_slots: max, inventory_items: [inventoryItem('item-ok', OK_BADGE)] }
+  }
+
+  it('남은 칸이 4개 이상이면 평소 줄이고 강조도 카드도 없다', async () => {
+    state.inventory = withUsed(46)
+    const html = await render()
+    expect(html).toContain('46/50개 사용 중 · 4개 남음')
+    expect(html).not.toContain('개만 남았어요')
+    expect(html).not.toContain(d.inventory.fullNoticeCta)
+  })
+
+  it.each([3, 2, 1])('남은 칸이 %i개이면 «N개만 남았어요»만 굵게 하고 줄을 foreground로 올리며 카드는 없다', async (remaining) => {
+    state.inventory = withUsed(50 - remaining)
+    const html = await render()
+    expect(html).toContain(`<span class="font-bold">${remaining}개만 남았어요</span>`)
+    expect(html).toContain(`${50 - remaining}/50개 사용 중 · `)
+    expect(html).not.toContain('개 남음')
+    // 줄 전체의 색은 --foreground이고 새 색(warning 등)은 쓰지 않는다
+    expect(html).toMatch(/<p class="mt-1 text-sm text-foreground[^"]*">/)
+    expect(html).not.toContain('--warning')
+    expect(html).not.toContain(d.inventory.fullNoticeCta)
+  })
+
+  it('남은 칸이 0개이면 평소 줄(0개 남음)에 안내 카드를 더하고 본문에 장착·믹스·드랍이 모두 들어 있다', async () => {
+    state.inventory = withUsed(50)
+    const html = await render()
+    expect(html).toContain('50/50개 사용 중 · 0개 남음')
+    expect(html).not.toContain('개만 남았어요')
+    expect(html).toContain(d.inventory.fullNoticeCta)
+    const body = d.inventory.fullNoticeBody
+    for (const word of ['장착', '믹스', '드랍']) expect(body).toContain(word)
+    expect(html).toContain('인벤토리가 꽉 찼어요. 50개까지만 보관할 수 있어서 새 아이템 배지를 바로 받을 수 없어요')
+  })
+})

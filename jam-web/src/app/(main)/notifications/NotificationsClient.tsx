@@ -49,6 +49,7 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
     case 'following_rare_badge':
       return <MedalIcon className={className} />
     case 'inventory_full':
+    case 'inventory_slots_low':
       return <PackageIcon className={className} />
     case 'admin_points_changed':
       return <CoinIcon className={className} />

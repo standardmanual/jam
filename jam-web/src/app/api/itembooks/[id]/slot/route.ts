@@ -6,6 +6,7 @@ import { jamTriggersForSlot } from '@/lib/badge-engine/jamActionProgressTriggers
 import { isItemBookLaunched, type ItemBookVisibilityFields } from '@/lib/itembook/visibility'
 import { d } from '@/lib/i18n'
 import { findLockedItemIds, isLockedItemTriggerError, LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
+import { INVENTORY_FULL_CODE } from '@/lib/inventory/locked-item-block'
 
 // 티켓 20260830_0057: 장착/해제는 각각 원자적 RPC(slot_item_into_book/
 // unslot_item_from_book, SELECT ... FOR UPDATE 기반) 한 번 호출로 처리한다.
@@ -190,7 +191,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       console.error('[itembooks/slot] unslot_item_from_book 알 수 없는 에러 코드:', result.error)
       return NextResponse.json({ error: d.itembooks.unslotFailed }, { status: 500 })
     }
-    return NextResponse.json({ error: mapped.message }, { status: mapped.status })
+    // 가득 참으로 막힌 해제는 `code`를 실어 화면이 일반 실패와 구분하게 한다(티켓 20261018_0056). 문구에는 칸 수를 쓰지 않는다.
+    return NextResponse.json(
+      { error: mapped.message, ...(result.error === 'inventory_full' ? { code: INVENTORY_FULL_CODE } : {}) },
+      { status: mapped.status }
+    )
   }
 
   // DELETE에서 itemBookId 사용이 없어도 파라미터는 유지 (라우트 일관성)
