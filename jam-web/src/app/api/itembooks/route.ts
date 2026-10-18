@@ -34,6 +34,8 @@ export async function GET() {
     .from('inventory_items')
     .select('badge_id')
     .eq('inventory_id', inventoryId)
+    // 잠긴 개체는 어떤 아이템 배지인지(→ 어느 컬렉션인지) 드러나므로 컬렉션 발견 판정에서 뺀다(운영 로직 7.3절, 티켓 20261018_0054 2회). 열면 센다.
+    .eq('locked', false)
   const ownedBadgeIds = Array.from(
     new Set(((invItemsRaw ?? []) as Pick<InventoryItemRow, 'badge_id'>[]).map((i) => i.badge_id))
   )

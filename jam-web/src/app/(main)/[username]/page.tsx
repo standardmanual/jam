@@ -124,6 +124,8 @@ export default async function UserProfilePage({ params }: Props) {
       .select('badge_id')
       .eq('inventory_id', inventoryId)
       .is('dropped_at', null)
+      // 잠긴 개체는 어떤 아이템 배지인지(→ 어느 컬렉션인지) 드러나므로 센 대상에서 뺀다(운영 로직 7.3절, 티켓 20261018_0054 2회). 열면 센다.
+      .eq('locked', false)
     if (invItemsForCountError) console.error('[[username]/page] 아이템북 카운트용 inventory_items 조회 실패', invItemsForCountError)
     const ownedBadgeIds = [...new Set(((invItemsForCount ?? []) as { badge_id: string }[]).map((i) => i.badge_id))]
     if (ownedBadgeIds.length > 0) {
@@ -178,6 +180,8 @@ export default async function UserProfilePage({ params }: Props) {
         .select('id, badge_id, obtained_at, badges(id, name, image_url, rarity, deleted_at)')
         .eq('inventory_id', inventoryId)
         .eq('obtained_by', 'drop')
+        // 잠긴 개체는 피드에 올리지 않는다(`issueFollowUp`) — 이 합성 경로가 이름·그림을 대신 드러내지 않게 뺀다(운영 로직 7.3절, 티켓 20261018_0054 2회)
+        .eq('locked', false)
         .order('obtained_at', { ascending: false })
         .limit(100)
     : Promise.resolve({ data: [] as LegacyActDropRow[], error: null })

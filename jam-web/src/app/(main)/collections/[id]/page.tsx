@@ -138,6 +138,8 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
           .eq('inventory_id', inventory.id)
           .in('badge_id', badgeIds)
           .is('dropped_at', null)
+          // 잠긴 개체는 장착할 수 없고(운영 로직 7.2절), 일련번호가 어떤 아이템 배지인지 드러내므로(7.3절) 후보에서 뺀다 — 티켓 20261018_0054 2회.
+          .eq('locked', false)
           // 파괴된 개체(조합 소모/미픽업 만료)는 장착 후보가 될 수 없다 — 20260907_2059.
           // 이전에도 RPC가 거절했지만, 이제 후보를 시트에 나열하므로 목록 단계에서 걸러낸다.
           .is('destroyed_at', null)

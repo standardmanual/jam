@@ -214,6 +214,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     dropped_at: string | null
     /** 파괴(조합 소모/미픽업 만료)된 개체 — `?item`으로 지목돼도 대표로 쓰지 않는다(20260907_2059) */
     destroyed_at: string | null
+    /** 잠긴 개체(마이그레이션 231) — 이 화면의 어떤 값에도 쓰지 않는다(아래 가림) */
+    locked?: boolean
   }
   let allItemInventory: ItemInventoryInfo[] = []
   let itemBook: ItemBookRow | null = null
@@ -227,12 +229,23 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     if (subjectInventory) {
             const { data: itemsRaw, error: itemsError } = await service
         .from('inventory_items')
-        .select('id, serial_number, serial_prefix, obtained_at, expires_at, obtained_by, dropped_at, destroyed_at')
+        .select('id, serial_number, serial_prefix, obtained_at, expires_at, obtained_by, dropped_at, destroyed_at, locked')
         .eq('inventory_id', (subjectInventory as { id: string }).id)
         .eq('badge_id', id)
         .order('obtained_at', { ascending: false })
       if (itemsError) console.error('[badges/[id]/page] inventory_items(보유 개체) 조회 실패', itemsError)
-      allItemInventory = (itemsRaw ?? []) as ItemInventoryInfo[]
+      const subjectItems = (itemsRaw ?? []) as ItemInventoryInfo[]
+      // 잠긴 개체는 열기 전에 이름·그림·설명·컬렉션·트라이브·일련번호를 어느 화면에도 보이지 않는다(운영 로직 7.3절, 티켓 20261018_0054 2회).
+      // `?item`이 내 잠긴 개체를 가리키면 이 화면(배지 이름·그림·일련번호)을 그리지 않고 잠긴 상세로 보낸다.
+      // 그 밖의 경우에도 잠긴 개체는 보유 목록에서 뺀다 — 대표 개체(일련번호), 이력 목록, 획득 여부, 만료 안내가 잠긴 개체의 값으로 채워지지 않게 한다.
+      if (
+        isOwnBadge &&
+        requestedItemId &&
+        subjectItems.some((item) => item.id === requestedItemId && item.locked === true && !item.dropped_at && !item.destroyed_at)
+      ) {
+        redirect(`/inventory/${encodeURIComponent(requestedItemId)}`)
+      }
+      allItemInventory = subjectItems.filter((item) => item.locked !== true)
     }
 
     if (badgeRow.item_book_id) {

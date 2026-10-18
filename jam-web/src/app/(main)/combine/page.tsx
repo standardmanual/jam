@@ -152,6 +152,8 @@ export default async function CombinePage() {
       .eq('inventory_id', inv.id)
       .is('dropped_at', null)
       .is('slotted_in', null)
+      // 잠긴 개체는 믹스 재료로 쓸 수 없고(운영 로직 7.2절) 이름이 드러나므로(7.3절) 후보에서 뺀다 — 티켓 20261018_0054 2회.
+      .eq('locked', false)
       .order('obtained_at', { ascending: false })
     if (itemsError) console.error('[combine/page] inventory_items(조합 재료) 조회 실패', itemsError)
 

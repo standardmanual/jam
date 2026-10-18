@@ -48,6 +48,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
     // 그사이 열렸다면 아래 리다이렉트가 맡는다. 잠겼는데 필요량이 없는 비정상 개체(DB 제약상 없다)는 이름이 드러나지 않게 404로 닫는다
     if (status.locked && status.required === null) notFound()
     if (status.locked && status.required !== null) {
+      // 내가 이미 가진 개체의 등급 하나만 읽는다. 배지가 소프트 삭제(deleted_at)돼도 보유 개체는 그대로 보여야 하므로 deleted_at 필터를 두지 않는다.
       const { data: badgeRow, error: badgeError } = await service.from('badges').select('rarity').eq('id', itemData.badge_id).maybeSingle()
       if (badgeError) throw new Error(`badges 조회 실패: ${badgeError.message}`)
       const rarity = (badgeRow as { rarity: LockedItemRarity | null } | null)?.rarity ?? null

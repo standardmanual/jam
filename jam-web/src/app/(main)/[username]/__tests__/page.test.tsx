@@ -64,7 +64,7 @@ const stravaRow = {
 const state = vi.hoisted(() => ({
   loginUserId: '' as string,
   targetRow: null as Record<string, unknown> | null,
-  calls: [] as { table: string; select: string | undefined }[],
+  calls: [] as { table: string; select: string | undefined; eqs: [string, unknown][] }[],
 }))
 
 const getWalletMock = vi.hoisted(() => vi.fn<(userId: string) => Promise<number>>())
@@ -73,6 +73,7 @@ const getCapsuleStatusMock = vi.hoisted(() => vi.fn<(client: unknown, userId: st
 // 테이블별 응답 — 모르는 테이블은 빈 결과. strava_connections는 읽히면 토큰 행을 돌려준다.
 function singleResponse(table: string) {
   if (table === 'users') return { data: state.targetRow, error: null }
+  if (table === 'inventory') return { data: { id: 'inv-target' }, error: null }
   if (table === 'strava_connections') return { data: stravaRow, error: null }
   return { data: null, error: null }
 }
@@ -82,11 +83,15 @@ function listResponse(table: string) {
 }
 
 function makeQuery(table: string) {
-  const call = { table, select: undefined as string | undefined }
+  const call = { table, select: undefined as string | undefined, eqs: [] as [string, unknown][] }
   state.calls.push(call)
   const query: Record<string, unknown> = {}
   const chain = () => query
-  for (const name of ['eq', 'in', 'is', 'not', 'or', 'order', 'limit']) query[name] = chain
+  for (const name of ['in', 'is', 'not', 'or', 'order', 'limit']) query[name] = chain
+  query.eq = (column: string, value: unknown) => {
+    call.eqs.push([column, value])
+    return query
+  }
   query.select = (columns?: string) => {
     call.select = columns
     return query
@@ -287,5 +292,28 @@ describe('/{username} 프로필 페이지 — ProfileClient prop 노출 방지',
   it('로그인하지 않았으면 로그인 페이지로 보낸다', async () => {
     state.loginUserId = ''
     await expect(renderPage('target')).rejects.toThrow('NEXT_REDIRECT:/login')
+  })
+})
+
+/**
+ * 잠긴 개체는 컬렉션 수·레거시 피드로 새지 않는다 (티켓 20261018_0054 2회, 운영 로직 7.3절)
+ *
+ * 잠긴 개체의 배지 id로 아이템북을 찾아 세면 «어떤 컬렉션의 배지를 얻었는지»가 드러나고, 피드 합성이 개체 행의 배지 이름·그림을 읽으면
+ * 이름이 드러난다. 두 `inventory_items` 조회 모두 `locked = false`로 걸러야 한다(서버에서 거른다 — 화면에서 가리지 않는다).
+ */
+describe('/{username} 프로필 페이지 — 잠긴 개체 가림', () => {
+  it('(e) 인벤토리 개체를 읽는 모든 조회가 locked=false 조건을 건다(타인이 볼 때와 내가 볼 때 모두)', async () => {
+    for (const viewer of [LOGIN_USER_ID, TARGET_USER_ID]) {
+      state.loginUserId = viewer
+      state.calls = []
+      await renderPage('target')
+
+      const itemCalls = state.calls.filter((c) => c.table === 'inventory_items')
+      // 아이템북 카운트용 조회와 레거시 피드(활동 드랍)용 조회 둘이다
+      expect(itemCalls.length).toBe(2)
+      for (const call of itemCalls) {
+        expect(call.eqs, `${call.select} 조회에 locked=false가 없다`).toContainEqual(['locked', false])
+      }
+    }
   })
 })

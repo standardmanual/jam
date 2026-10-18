@@ -49,7 +49,7 @@ export default async function BadgesPage({ searchParams }: Props) {
       .order('earned_at', { ascending: false }),
     supabase
       .from('inventory')
-      .select('id, inventory_items(id, badge_id, serial_number, expires_at, dropped_at, badge:badges(id, name, image_url, rarity, deleted_at))')
+      .select('id, inventory_items(id, badge_id, serial_number, expires_at, dropped_at, locked, badge:badges(id, name, image_url, rarity, deleted_at))')
       .eq('user_id', user.id)
       .maybeSingle(),
     // 체크인 배지 — 반복 획득이 가능해 이력이 여러 행일 수 있음. 화면에는
@@ -87,6 +87,8 @@ export default async function BadgesPage({ searchParams }: Props) {
     id: string
     badge_id: string
     serial_number: number
+    /** 잠긴 개체인가(마이그레이션 231) — 컬렉션 발견 판정에서 뺀다 */
+    locked?: boolean
     expires_at: string | null
     dropped_at: string | null
     badge: { id: string; name: string; image_url: string | null; rarity: BadgeRarity; deleted_at: string | null }
@@ -96,8 +98,9 @@ export default async function BadgesPage({ searchParams }: Props) {
   const inventory = inventoryData as RawInventory | null
   // 아이템배지 탭: 드랍(양도)한 건 제외하고, 아이템북 슬롯에 넣었든 안 넣었든 소유 중인 건 전부 표시
   // (단, 소프트 삭제된 배지는 제외)
+  // 잠긴 개체는 어떤 아이템 배지인지(→ 어느 컬렉션인지) 드러나므로 뺀다 — 열면 센다(운영 로직 7.3절, 티켓 20261018_0054 2회).
   const rawItems: RawInventoryItem[] = (inventory?.inventory_items ?? []).filter(
-    (item) => item.dropped_at === null && item.badge && !item.badge.deleted_at
+    (item) => item.dropped_at === null && item.locked !== true && item.badge && !item.badge.deleted_at
   )
 
   // 보유한 아이템 배지에 연결된 아이템북만 표시

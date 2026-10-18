@@ -44,6 +44,8 @@ export async function GET(
     .select('badge_id, badge:badges(item_book_id, type, deleted_at)')
     .eq('inventory_id', inventory.id)
     .is('dropped_at', null)
+    // 잠긴 개체는 어떤 아이템 배지인지(→ 어느 컬렉션인지) 드러나므로 컬렉션 발견 판정에서 뺀다(운영 로직 7.3절, 티켓 20261018_0054 2회). 열면 센다.
+    .eq('locked', false)
   if (invItemsError) console.error('[api/users/[username]/itembooks] inventory_items 조회 실패', invItemsError)
 
   type InvItemJoin = { badge_id: string; badge: { item_book_id: string | null; type: string; deleted_at: string | null } | null }
