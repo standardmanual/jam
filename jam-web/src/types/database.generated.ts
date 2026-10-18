@@ -1145,6 +1145,67 @@ export type Database = {
           },
         ]
       }
+      inventory_item_events: {
+        Row: {
+          amount: number | null
+          badge_id: string | null
+          created_at: string
+          event_type: string
+          filled_after: number | null
+          id: string
+          inventory_item_id: string | null
+          points_awarded: number | null
+          serial_number: number | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          badge_id?: string | null
+          created_at?: string
+          event_type: string
+          filled_after?: number | null
+          id?: string
+          inventory_item_id?: string | null
+          points_awarded?: number | null
+          serial_number?: number | null
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          badge_id?: string | null
+          created_at?: string
+          event_type?: string
+          filled_after?: number | null
+          id?: string
+          inventory_item_id?: string | null
+          points_awarded?: number | null
+          serial_number?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_item_events_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_item_events_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_item_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           badge_id: string
@@ -1158,6 +1219,7 @@ export type Database = {
           locked: boolean
           obtained_at: string
           obtained_by: string
+          point_awarded_at: string | null
           serial_number: number
           serial_prefix: string | null
           slotted_in: string | null
@@ -1177,6 +1239,7 @@ export type Database = {
           locked?: boolean
           obtained_at?: string
           obtained_by?: string
+          point_awarded_at?: string | null
           serial_number: number
           serial_prefix?: string | null
           slotted_in?: string | null
@@ -1196,6 +1259,7 @@ export type Database = {
           locked?: boolean
           obtained_at?: string
           obtained_by?: string
+          point_awarded_at?: string | null
           serial_number?: number
           serial_prefix?: string | null
           slotted_in?: string | null
@@ -4317,7 +4381,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      jam_fill_decide: {
+        Args: { p_amount?: number | null; p_balance: number; p_remaining: number }
+        Returns: Json
+      }
       jsonb_as_array: { Args: { p_value: Json }; Returns: Json }
+      locked_item_fill: {
+        Args: { p_amount?: number | null; p_item_id: string; p_user_id: string }
+        Returns: Json
+      }
+      locked_item_open: {
+        Args: { p_item_id: string; p_user_id: string }
+        Returns: Json
+      }
       jsonb_merge_sum: {
         Args: {
           p_append_keys?: string[]
