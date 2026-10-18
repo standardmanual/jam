@@ -15,6 +15,12 @@ parent: "20261018_0050"
 - 구현 계획: 묶음 4(장소·드랍·픽업)가 드랍 경로를 다시 쓰기 전에, 이 티켓을 3-3 뒤 또는 묶음 4 시작에 함께 처리한다. 새 마이그레이션으로 `create_user_drop`에 잠긴 개체 거부를 더한다(옛 함수 교체가 아니라 같은 이름의 `CREATE OR REPLACE`가 옛 프로덕션 코드에도 영향을 주므로, 새 함수를 만들고 새 코드만 그것을 부르거나, 옛 함수에 «잠긴 개체만 거부»를 더하는 방식을 시작 전에 사용자에게 묻는다).
 - 관련 파일: `jam-web/supabase/migrations/108_*.sql`·`109_*.sql`·`181_function_search_path_hardening.sql`(`create_user_drop`), `jam-web/supabase/migrations/231_locked_item_badges.sql`(트리거 `trg_inventory_items_reject_locked`), `jam-web/src/app/api/drops/route.ts`(사전 확인 351·354줄 근처).
 
+## 사용자 결정과 진행 (2026-10-18)
+
+- 결정: **기존 `create_user_drop`에 잠긴 개체 거부 한 단계만 더한다**(새 함수를 만들지 않는다). 잠긴 개체는 새 코드만 만들므로 옛 프로덕션 코드의 열린 개체 드랍 동작은 그대로다.
+- DB(마이그레이션 238) 적용 완료: 소유권·장착 확인을 지난 뒤 `v_item.locked`이면 `{ok:false, error:'locked_item'}`을 돌려준다. 롤백 실측 13건 통과(열린 개체 드랍·드랍 기록·이력, 잠긴 개체 거부와 소유·칸 수·드랍 기록·이력 그대로, 남의 개체·파괴된 개체, 이미 드랍함, 연 개체 드랍, 인벤토리 없음, 권한). 적용 뒤 확인: 함수 SECURITY DEFINER, 잠김 확인 포함, `authenticated` 실행 권한 없음, 오버로드 1개.
+- 남은 일(앱): `jam-web/src/app/api/drops/route.ts`의 사전 확인(`findLockedItemIds`)이 소유권 확인보다 먼저라 남의 개체 id로 잠김 여부를 알아낼 수 있다. DB가 소유권을 먼저 확인하고 잠김을 거부하므로 이 사전 확인을 없애고 RPC 응답 `error: 'locked_item'`을 409 `locked_item_not_allowed`(문구 `d.lockedItem.drop`)로 매핑한다. 남의 개체는 `item_not_found`로 돌아가 정보가 새지 않는다. 시험(`app/api/drops/__tests__/route.test.ts`)을 이에 맞게 바꾸고 DB 거절 응답 시험을 더한다.
+
 ## 완료 조건
 
 - 잠긴 개체의 유저 드랍이 DB 함수에서도 거부된다(시험 포함).
