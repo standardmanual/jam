@@ -817,8 +817,8 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 > - 점수 가산을 부를지 말지(챕터 배지·포인트 조건 배지 제외, 자기 드랍 줍기 제외, 이용 정지 중 차단)는 부르는 쪽 책임이다.
 
 
-### 9-4. 캡슐 (JAM 2.0) — 마이그레이션 232, 티켓 20261018_0052
-운영 로직 5.2·5.4절이 근거다. 2026-10-18 공용 DB에 적용했다(1회: 저장·설정·채우기). 열기(추첨·지급·기록·다음 캡슐 생성)는 2회 마이그레이션이 만든다. 전부 덧붙이기이고 옛 객체의 뜻은 바꾸지 않았다. 새 표는 모두 RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
+### 9-4. 캡슐 (JAM 2.0) — 마이그레이션 232·233, 티켓 20261018_0052
+운영 로직 5.2·5.4절이 근거다. 2026-10-18 공용 DB에 적용했다(232: 저장·설정·채우기, 233: 열기). 전부 덧붙이기이고 옛 객체의 뜻은 바꾸지 않았다. 새 표는 모두 RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
 
 #### capsule_policy
 한 행 싱글톤(`id = 1`). 칸과 기본값: `guaranteed_count` 1, `bonus_count` 1, `bonus_probability` 0.2, `other_tribe_probability` 0.2, `rarity_common`/`_rare`/`_epic`/`_mystic` 70/22/6/2(합계 100, DB 제약 `capsule_policy_rarity_sum_100`), `pity_epic_threshold` 15(보정 1), `pre_quest_fill_amount` 5, `pre_quest_unlock_required` 5(퀘스트 전 첫 캡슐에서 반드시 나오는 잠긴 아이템 배지를 여는 데 필요한 양). Common 연속 보정(10번)과 잠길 확률은 동기화와 합산하는 값이라 `jam_policy`의 것을 그대로 쓴다. 코드는 `src/lib/capsule/policy.ts`의 `getCapsulePolicy`로 읽고, 조회 실패·비정상 칸은 기본값(`DEFAULT_CAPSULE_POLICY`)으로 대체하고 로그를 남긴다(등급 확률 네 칸은 묶음 단위). 기본값을 바꾸면 이 상수도 같은 티켓에서 함께 바꾼다. 설정 화면은 묶음 7.
@@ -830,15 +830,16 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 유저당 한 행(`user_id` PK). `required`(필요량, 캡슐이 생길 때 정해 고정), `filled`(채운 양, 0~`required`), `chapter_no`(만들 때의 챕터, NULL이면 퀘스트 전), `created_at`, `updated_at`. 처음 필요할 때 만든다(지연 생성).
 
 #### capsule_opens
-열 때마다 한 줄(append-only): `opened_at`, `chapter_no`, `required`, `filled`, `items`(나온 개체 목록 JSONB). 캡슐 연 횟수는 이 표로 센다. 2회의 열기 함수가 쓴다.
+열 때마다 한 줄(append-only): `opened_at`, `chapter_no`, `required`, `filled`, `items`(나온 개체 목록 JSONB). 캡슐 연 횟수는 이 표로 센다. `capsule_open`이 열 때마다 한 줄 쓴다.
 
 #### user_drop_state.capsule_epic_miss
-새 칸(INTEGER, 기본 0). Epic 이상이 나오지 않은 채 연 횟수(보정 1). `pity_epic_threshold` 이상이면 다음 캡슐은 Epic 이상이고, Epic 이상이 나오면 0이 된다. 2회의 열기 함수가 갱신한다.
+새 칸(INTEGER, 기본 0). Epic 이상이 나오지 않은 채 연 횟수(보정 1). `pity_epic_threshold` 이상이면 다음 캡슐은 Epic 이상이고, Epic 이상이 나오면 0이 된다. `capsule_open`이 갱신한다.
 
-> 캡슐 변경은 두 RPC(SECURITY DEFINER, service_role 전용, `authenticated` 실행 권한 없음)로만 처리한다.
+> 캡슐 변경은 세 RPC(SECURITY DEFINER, service_role 전용, `authenticated` 실행 권한 없음)로만 처리한다.
 > - `capsule_get_or_create(p_user_id) → user_capsules`: 없으면 그때의 챕터(`user_chapters.chapter_no`)로 필요량을 정해 만든다. 챕터가 없으면 `pre_quest_fill_amount`다. 필요량은 이후 챕터가 올라도 바뀌지 않는다.
 > - `capsule_fill(p_user_id, p_amount DEFAULT NULL) → jsonb`: 이용 정지 중이면 `user_suspended`로 거절하고, 캡슐 행을 잠근 뒤 `already_full`, `invalid_amount`, `exceeds_remaining`, `insufficient_jam` 순으로 검사한다. 기본값은 남은 양이고 가진 잼이 모자라면 가진 만큼 채운다. `jam_apply(capsule_fill, 음수)` 한 줄과 `filled` 갱신이 한 트랜잭션이다. 성공하면 `applied`·`required`·`filled`·`remaining`·`balance`를 돌려준다.
-> - API: `GET /api/capsule`(캡슐 상태, 이용 정지 중에도 허용), `POST /api/capsule/fill { amount? }`(양의 정수만, 이용 정지 중 403 `user_suspended`, 거절 400·409). 응답 모양은 `src/lib/capsule/capsule-contract.ts`다. `openable`은 1회에서 `filled >= required` 여부만이고 인벤토리 빈칸 검사는 2회다.
+> - `capsule_open(p_user_id, p_items JSONB) → jsonb`(233): 추첨은 앱이 하고 이 함수는 정해진 결과를 한 트랜잭션으로 확정한다. 순서는 이용 정지 확인(`user_suspended`) → 항목 검사(`invalid_items`, 항목 수는 0 이상 `guaranteed_count + bonus_count` 이하) → 캡슐 행 잠금과 가득 참 확인(`not_full`) → 인벤토리 행 잠금과 빈칸 확인(`inventory_not_found`, `insufficient_slots`와 지금 빈칸 `free`·필요한 빈칸 `needed`) → 개체마다 `grant_inventory_item_locked`와 `item_issue_log`(route `capsule`) → 보정 카운터(`common_streak`는 받은 순서대로, `capsule_epic_miss`는 Epic 이상이 있으면 0, 없으면 +1) → `capsule_opens` 한 줄 → 캡슐 행을 지우고 `capsule_get_or_create`로 다음 캡슐 생성(그때의 챕터로 필요량 고정). 항목은 `{badge_id, rarity, rolled_rarity?, locked, lock_reason, unlock_required}`이고, 성공하면 `openId`·`itemIds`·`items`(`inventoryItemId`, `badgeId`, `rarity`, `locked`, `serialNumber`)·`next`(`required`, `filled`)를 돌려준다. 한 단계라도 실패하면 전체가 되돌려진다. 되돌림은 함수만 지우며 이미 연 기록과 지급된 개체는 남는다.
+> - API: `GET /api/capsule`(캡슐 상태, 이용 정지 중에도 허용), `POST /api/capsule/fill { amount? }`(양의 정수만, 이용 정지 중 403 `user_suspended`, 거절 400·409), `POST /api/capsule/open`(이용 정지 중 403, `not_full`·`insufficient_slots`·`no_tribe` 409, 그 밖의 오류 500). 응답 모양은 `src/lib/capsule/capsule-contract.ts`다. `openable`은 다 채웠고 인벤토리 빈칸이 나올 수 있는 최대 개수 이상일 때만 참이며, 못 여는 까닭(`not_full`·`no_free_slots`)과 `freeSlots`·`neededSlots`를 함께 싣는다.
 > - 채운 잼은 되돌리지 않는다. 마이그레이션을 되돌리면 원장(`jam_transactions`)의 `capsule_fill` 줄은 남지만 그 잼은 지갑으로 돌아오지 않는다.
 
 ---
