@@ -1681,7 +1681,7 @@ POST /api/admin/badges/reevaluate-all
 - 섀도우밴은 rarity 상한으로 작동 — 최소 1개 약속과 충돌하지 않음 (common은 허용).
 - **인벤토리 슬롯 초과 시 드랍 불가** — "최소 1개"의 유일한 예외. 슬롯 정리를 유도하는 investment 장치.
   (믹스 보상 지급의 슬롯 부족 처리는 이와 다르다 — §3.5 "믹스(`Consume`) 판정" 참고: 드랍
-  자체를 취소하는 대신 매칭은 성공 처리하고 슬롯이 없는 보상 배지만 개별 생략한다.)
+  자체를 취소하는 대신 매칭은 성공 처리하고 결과 전부를 «받지 않은 결과»로 남긴다.)
 
 ### 3.2 Layer 2 — 트라이브 선택: 서사 모멘텀 (마르코프 가중 추첨)
 
@@ -1749,7 +1749,7 @@ POST /api/admin/badges/reevaluate-all
 - **믹스(`Consume`) 판정은 슬롯 기반 OR 매칭이다** (2026-09-17, 티켓 20260917_1427이
   2026-09-10 티켓 20260910_1408의 "정확 집합 일치" 구조를 대체 — 상세 정책은
   `docs/service/content/COMBINE_RECIPES.md`가 단일 출처):
-  레시피는 `combination_recipe_slots`(슬롯 2~10개)로 구성되고, 슬롯 하나는 `badge_type`
+  레시피는 `combination_recipe_slots`(슬롯 2~5개)로 구성되고, 슬롯 하나는 `badge_type`
   (item/activity/checkin 중 하나로 고정)과 `allowed_badge_ids`(같은 타입 배지 후보, OR)를
   가진다. **유저가 레시피를 먼저 선택**하고(전체 레시피 스캔은 하지 않음) 슬롯마다 후보 중
   배지 하나씩 채워 시도한다.
@@ -1775,12 +1775,17 @@ POST /api/admin/badges/reevaluate-all
   `recipe_not_found`가 빠져 있어 저장이 조용히 실패했다 — 같은 마이그레이션에서 4값
   (`no_recipe_match`·`items_not_found`·`invalid_count`·`recipe_not_found`)으로 고쳤다
   (티켓 20261001_0636). 이 기록은 JAM! 행동 지표의 원천이다(위 ③ 참고).
-- **인벤토리 슬롯 처리** (2026-09-12, 티켓 20260912_2101): 재료 소각 직후 그 개수만큼
-  `inventory.used_slots`를 반환한다. 보상 배지(①의 `reward_badge_ids`)를 지급하는
-  시점에 슬롯이 가득 차 있으면(`used_slots >= max_slots`) — 소각한 재료 수보다 보상 배지
-  수가 많은 레시피에서 발생할 수 있다 — 드랍 엔진처럼 지급 자체를 취소하지 않고, **그 보상
-  배지만 조용히 생략**한다(레시피 매칭은 그대로 성공 처리, `reward_points`는 슬롯과 무관하게
-  정상 지급). 미션 아이템배지 보상(`missions/rewards.ts`)과 동일한 정책이다.
+- **인벤토리 슬롯 처리** (2026-09-12, 티켓 20260912_2101; 2026-10-18 티켓 20261018_0055가 바꿨다):
+  재료 소각 직후 그 개수만큼 `inventory.used_slots`를 반환한다. 보상 배지(①의 `reward_badge_ids`)는
+  `combine_grant_results` RPC **한 번**으로 지급한다(마이그레이션 236, 앱은 빈칸을 세지 않는다).
+  빈칸이 결과 개수 이상이면 전부 **기한 없이**(`expires_at` NULL) 지급하고, 모자라면 일부만 주지
+  않고 **전부 `combine_pending_results`에 «받지 않은 결과»로 남긴다**(재료는 이미 소모됐고
+  `reward_points`는 슬롯과 무관하게 정상 지급). 예전의 «슬롯이 없는 보상 배지만 조용히 생략»과
+  30일 기한은 없어졌다. 받지 않은 결과가 있으면 새 믹스는 소각 전에 `pending_results_exist`(409)로
+  거절되고, 빈칸을 만든 뒤 `POST /api/combine/pending`(`combine_claim_pending`)으로 모두 받으면
+  지급된다. 결과의 잠김은 레시피의 `reward_locked`와 배지의 `always_locked`가 정한다(믹스는 무작위로
+  잠그지 않는다). 소각 앞에서 이용 정지(403 `user_suspended`)와 결과 배지의 공개 기간 종료
+  (`badges.valid_until <= now` → `recipe_not_found`)도 거절한다. 상세는 `docs/service/prd/02_DATA_MODEL.md` §7.
 
 #### 3.5-1 `custody_events` — 점유(custody) 이력 (어드민 조회용, 신규)
 

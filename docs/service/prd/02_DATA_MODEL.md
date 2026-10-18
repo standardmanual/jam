@@ -44,7 +44,8 @@ code:
                 users ─1:1─ user_drop_state (드랍 모멘텀/피티 상태)
                 drop_policy (싱글톤 파라미터)
 
-[조합]          combination_recipes (보상만) + combination_recipe_slots (슬롯 2~10개, OR 후보)
+[조합]          combination_recipes (보상만) + combination_recipe_slots (슬롯 2~5개, OR 후보)
+                combine_pending_results (빈칸이 모자라 받지 않은 믹스 결과, 마이그레이션 236)
                 combine_policy (싱글톤 — 실패 시 고정 포인트)
                 user_combine_fail_logs · user_combine_success_logs (유저별 믹스 실패·성공 이력)
 
@@ -630,6 +631,14 @@ CHECK `combination_recipes_valid_period_check`). 재료 배열 컬럼(`ingredien
 비공개 레시피 컬럼(`is_public`·`hint_text`)은 제거됐다 — 재료는 아래 `combination_recipe_slots`로
 옮겨졌다.
 
+**JAM 2.0 믹스 고치기 (마이그레이션 236, 티켓 20261018_0055)**: 새 칸 셋을 덧붙였다. `description`(TEXT, nullable —
+레시피 설명, 유저에게 보인다), `reward_locked`(BOOLEAN NOT NULL 기본 false — 결과 아이템 배지를 잠긴 채 지급할지.
+잠김으로 만든 배지 `badges.always_locked`는 이 값과 상관없이 늘 잠긴다), `allow_no_reward`(BOOLEAN NOT NULL 기본
+false — 보상 없음 허용). CHECK `combination_recipes_reward_present_check`는 «`allow_no_reward`이거나 포인트가 있거나
+보상 배지가 하나 이상»으로 바뀌었다. 기본값이 false라 옛 행과 옛 어드민의 저장은 지금처럼 보상 하나 이상을 요구하고,
+새 어드민 저장 라우트만 `allow_no_reward`를 켠다(운영 로직 8.4절). 레시피당 슬롯 상한은 5다(운영 로직 8.6절, 코드 상수
+`MAX_SLOTS`·`MAX_ITEMS`).
+
 **삭제 가드** (`recipe-references.ts`, 티켓 20261001_1200): `combination_recipes.id`를 FK로 참조하는
 테이블은 없다. 대신 삭제되지 않은(`deleted_at IS NULL`) 배지의 조건
 `condition_json.recipe_first_success.recipe_id`가 레시피를 가리키면 단건·일괄 삭제를 막는다(단건
@@ -637,7 +646,7 @@ CHECK `combination_recipes_valid_period_check`). 재료 배열 컬럼(`ingredien
 삭제를 막는다(fail-closed).
 
 ### combination_recipe_slots (신규, 티켓 20260917_1427)
-레시피당 슬롯 2~10개(최소 1개는 아이템 타입). `slot_order`, `badge_type`(item/activity/checkin,
+레시피당 슬롯 2~5개(최소 1개는 아이템 타입, 상한은 티켓 20261018_0055에서 10에서 5로 낮췄다. 공용 DB의 기존 레시피 3개는 모두 3개 이하라 영향이 없다). `slot_order`, `badge_type`(item/activity/checkin,
 슬롯 단위로 고정), `allowed_badge_ids[]`(같은 타입 배지 후보, OR — 유저는 슬롯당 하나만 채운다).
 
 ### combine_policy (싱글톤)
@@ -790,6 +799,21 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 | `serial_number` | 개체의 일련번호 |
 
 인덱스: `(user_id, created_at DESC)`, 대상 활동(`source_activity_id`, NULL 제외).
+
+#### combine_pending_results — 마이그레이션 236, 티켓 20261018_0055
+믹스 결과가 들어갈 인벤토리 빈칸이 모자랄 때 결과를 지급하지 않고 남겨 두는 «받지 않은 믹스 결과»(운영 로직 8.4·6.4절). 재료는 이미 소모됐다. `sync_pending_items`와 같은 모양으로 만들어 묶음 5에서 미션 보상·프로모션과 구조를 합칠 때 옮기기 쉽게 했다. RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
+
+| 칸 | 뜻 |
+|---|---|
+| `user_id` | 주인. 유저 삭제 시 함께 삭제(`ON DELETE CASCADE`) |
+| `recipe_id` | 결과를 낸 레시피(`ON DELETE SET NULL`) |
+| `badge_id` | 받을 아이템 배지 |
+| `locked`·`lock_reason`·`unlock_required` | 믹스 때 정한 잠김. 잠겼으면 까닭(`badge_locked`·`designated`)과 필요한 양이 있어야 한다. 받을 때 그대로 지급한다 |
+| `status` | `pending`(받지 않음) 또는 `claimed`(받음) |
+| `inventory_item_id` | 받아서 생긴 개체(받은 뒤에만) |
+| `created_at`·`resolved_at` | 생긴 때, 받은 때(8.5절) |
+
+함수: `combine_grant_results(p_user_id, p_recipe_id, p_badge_ids, p_locked)`는 결과 지급의 단일 경로다. 결과 개수 이상의 빈칸이 있으면 모두 기한 없이(`expires_at` NULL) 지급하고 `{status: 'granted', itemIds}`, 모자라면 일부만 주지 않고 전부 이 표에 남기며 `{status: 'pending', pendingCount, free, needed}`, 지급할 결과가 없으면 `{status: 'none'}`을 돌려준다. 삭제된 배지는 건너뛴다. `combine_claim_pending(p_user_id)`는 받지 않은 결과를 모두 받는다 — 모두 들어갈 빈칸이 있어야 하고(`insufficient_slots`, free·needed), 이용 정지 중이면 `user_suspended`, 받을 것이 없으면 `no_pending`이다. 인벤토리 행과 결과 행을 잠그고 `pending → claimed`로 바꾸므로 같은 결과를 두 번 지급하지 않는다. 앱은 두 함수를 한 번씩 부르기만 하고 빈칸을 나눠 세지 않는다(`lib/combine/index.ts`·`lib/combine/pending.ts`, API `GET·POST /api/combine/pending`). 받지 않은 결과가 있는 동안 새 믹스를 막는 것은 앱 코드의 몫이다(`/api/combine` 409 `pending_results_exist`).
 
 #### sync_pending_items — 마이그레이션 229, 티켓 20261017_1425
 동기화로 받을 아이템 배지 전체가 인벤토리 빈칸보다 많을 때 지급하지 않고 모두 담아 두는 보류 목록(운영 로직 6.4절). RLS만 켜고 정책이 없어 service_role만 읽고 쓴다. 동기화(`syncIssueRun.ts`)가 쓰고, 고르기(`resolve_sync_pending_items`)가 닫는다. 동기화 보류만 위한 작은 테이블이며 미션 보상·프로모션·믹스 결과의 «받지 않은 보상»은 그 기능을 만드는 묶음 3·5에서 같은 패턴으로 잇는다.
