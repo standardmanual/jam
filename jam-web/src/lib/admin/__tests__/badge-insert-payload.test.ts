@@ -50,6 +50,8 @@ describe('buildBadgeInsertPayload — 기본값', () => {
       background_animation: null,
       always_locked: false,
       unlock_required: null,
+      is_hidden: false,
+      branch_key: null,
     })
   })
 })
@@ -179,5 +181,18 @@ describe('buildBadgeInsertPayload — 잠금 칸 (티켓 20261018_0051 2회)', (
         unlock_required: null,
       })
     }
+  })
+})
+
+describe('buildBadgeInsertPayload — 숨김·가지(티켓 20261018_1816)', () => {
+  it('숨김은 true일 때만 켜지고 가지는 비우면 null이다', () => {
+    expect(buildBadgeInsertPayload({ ...BASE, is_hidden: true, branch_key: 'milestone' })).toMatchObject({
+      is_hidden: true,
+      branch_key: 'milestone',
+    })
+    expect(buildBadgeInsertPayload({ ...BASE, is_hidden: 'true', branch_key: '' })).toMatchObject({
+      is_hidden: false,
+      branch_key: null,
+    })
   })
 })

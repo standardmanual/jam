@@ -7,6 +7,7 @@ import {
   findRecipeFirstSuccessNotFoundError,
   findRarityLevelError,
 } from '@/lib/admin/badge-validation'
+import { findBranchKeyError, findHiddenBadgeError, normalizeBranchKey, normalizeIsHidden } from '@/lib/admin/badge-hidden-guard'
 import {
   findUnlockRequiredError,
   lockedMinimumsFrom,
@@ -59,6 +60,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (rarityLevelError) {
     return NextResponse.json({ error: rarityLevelError }, { status: 400 })
   }
+
+  // 숨김·가지도 부분 body 병합 규칙을 따른다 — 없는(undefined) 값은 기존 값을 유지한다. 병합한 값에 마이그레이션 243의
+  // DB 제약과 같은 규칙을 먼저 건다(티켓 20261018_1816). 칸이 없는 옛 행은 «숨김 아님·분류 없음»이다.
+  const isHidden = normalizeIsHidden(body.is_hidden !== undefined ? body.is_hidden : existing.is_hidden)
+  const branchKeyInput = body.branch_key !== undefined ? body.branch_key : (existing.branch_key ?? null)
+  const branchKeyError = findBranchKeyError(branchKeyInput)
+  if (branchKeyError) return NextResponse.json({ error: branchKeyError }, { status: 400 })
+  const mergedPointReward =
+    body.point_reward !== undefined ? Math.max(0, Math.trunc(Number(body.point_reward) || 0)) : existing.point_reward
+  const hiddenError = findHiddenBadgeError({ isHidden, type, rarity: rarity || null, pointReward: mergedPointReward })
+  if (hiddenError) return NextResponse.json({ error: hiddenError }, { status: 400 })
 
   // 「저장은 되는데 영원히 안 나오는 배지」 3경로 차단 (티켓 20260905_0032 A-1).
   // 교차 게이트의 «자기 계열 지정» 판정에 필요하므로 이 배지의 name·family_key를 함께 넘긴다.
@@ -141,10 +153,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       drop_weight: body.drop_weight !== undefined ? body.drop_weight : existing.drop_weight,
       valid_from: body.valid_from !== undefined ? body.valid_from : existing.valid_from,
       valid_until: body.valid_until !== undefined ? body.valid_until : existing.valid_until,
-      point_reward:
-        body.point_reward !== undefined
-          ? Math.max(0, Math.trunc(Number(body.point_reward) || 0))
-          : existing.point_reward,
+      point_reward: mergedPointReward,
+      is_hidden: isHidden,
+      branch_key: normalizeBranchKey(branchKeyInput),
       background_color: body.background_color !== undefined ? body.background_color : existing.background_color,
       background_shader_id:
         body.background_shader_id !== undefined ? body.background_shader_id : existing.background_shader_id,

@@ -9,6 +9,7 @@ import {
 } from '@/lib/admin/badge-validation'
 import { isValidFamilyKey } from '@/lib/admin/badge-families'
 import { buildBadgeInsertPayload, normalizeFamilyKey } from '@/lib/admin/badge-insert-payload'
+import { findBranchKeyError, findHiddenBadgeError } from '@/lib/admin/badge-hidden-guard'
 import { findUnlockRequiredError, lockedMinimumsFrom, parseUnlockRequired } from '@/lib/admin/badge-lock-guard'
 import { getJamPolicy } from '@/lib/jam/policy'
 import type { BadgeRow } from '@/types/database'
@@ -76,6 +77,17 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     )
   }
+
+  // 가지 값과 숨김 배지 규칙 — 마이그레이션 243의 DB 제약과 같은 규칙을 한국어 문구로 먼저 막는다(티켓 20261018_1816).
+  const branchKeyError = findBranchKeyError(body.branch_key)
+  if (branchKeyError) return NextResponse.json({ error: branchKeyError }, { status: 400 })
+  const hiddenError = findHiddenBadgeError({
+    isHidden: body.is_hidden,
+    type,
+    rarity: rarity || null,
+    pointReward: Math.max(0, Math.trunc(Number(body.point_reward) || 0)),
+  })
+  if (hiddenError) return NextResponse.json({ error: hiddenError }, { status: 400 })
 
   // 「저장은 되는데 영원히 안 나오는 배지」 3경로를 저장 시점에 막는다(티켓 20260905_0032 A-1).
   // 교차 게이트의 «자기 계열 지정» 판정에 쓰이므로 이번 요청에 실린 계열 키를 함께 넘긴다.

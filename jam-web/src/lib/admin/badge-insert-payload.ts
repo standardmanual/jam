@@ -1,5 +1,6 @@
 import type { Database } from '@/types/database.generated'
 import { normalizeLockFields } from './badge-lock-guard'
+import { normalizeBranchKey, normalizeIsHidden } from './badge-hidden-guard'
 
 /**
  * 배지 insert 페이로드 매핑 — 어드민 배지 생성 라우트(POST `/api/admin/badges`)와 에셋 제너레이터
@@ -44,6 +45,10 @@ export interface BadgeInsertBody {
   always_locked?: BodyField
   /** 여는 데 필요한 양. 비우면 null(발급 때 등급 최소값을 쓴다) */
   unlock_required?: BodyField
+  /** 숨김 배지(마이그레이션 243, 티켓 20261018_1816). 비우면 숨김 아님 */
+  is_hidden?: BodyField
+  /** 배지 트리의 가지 분류(마이그레이션 243). 비우면 분류 없음(null) */
+  branch_key?: BodyField
 }
 
 type BadgeInsert = Database['public']['Tables']['badges']['Insert']
@@ -84,6 +89,8 @@ export function buildBadgeInsertPayload(body: BadgeInsertBody): BadgeInsert {
     background_animation,
     always_locked,
     unlock_required,
+    is_hidden,
+    branch_key,
   } = body
 
   const lock = normalizeLockFields(type, always_locked, unlock_required)
@@ -142,5 +149,8 @@ export function buildBadgeInsertPayload(body: BadgeInsertBody): BadgeInsert {
     // 잠금 칸 두 개는 아이템 배지에만 저장한다. 검증(최소값 미만 거부)은 라우트가 먼저 끝낸다(티켓 20261018_0051 2회).
     always_locked: lock.always_locked,
     unlock_required: lock.unlock_required,
+    // 숨김·가지 검증(규칙은 마이그레이션 243의 제약과 같다)은 라우트가 먼저 끝낸다(티켓 20261018_1816).
+    is_hidden: normalizeIsHidden(is_hidden),
+    branch_key: normalizeBranchKey(branch_key),
   }
 }
