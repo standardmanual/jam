@@ -249,6 +249,17 @@ badges / item_books / tribes 세 테이블이 같은 배경 컬럼 세트를 갖
 > `notification_type` `'poi_badge_earned'` → `'checkin_badge_earned'`,
 > `missions.mission_type` `'poi_visit'` → `'checkin'`으로 함께 개명됐다.
 
+**방문 기록과 처음 받을 때 포인트 (JAM 2.0, 마이그레이션 241, 티켓 20261018_1814, 운영 로직 11장)**: 방문 기록은
+DB 함수 `record_checkin_earn(p_user_id, p_badge_id, p_poi_id, p_strava_id, p_activity_name, p_distance_km, p_activity_date)`
+하나로 넣는다(SECURITY DEFINER, `service_role`만 실행). 같은 유저·배지의 호출은 `pg_advisory_xact_lock` 안에서 순서대로
+돌며 «이전 방문 수 세기 → 한 줄 넣기 → 처음인지 판정»을 한 번에 하고 `{ok, duplicate, earn_id, visit_count, is_first}`를
+돌려준다. 같은 활동·장소·배지를 다시 넣으면(UNIQUE) 줄을 만들지 않고 `duplicate:true`다. 포인트는 함수 안에서 주지
+않는다 — `sync.ts`가 `is_first`일 때만 `badges.point_reward`를 `awardPoints(…, 'badge_point_reward')`로 한 번 준다
+(다시 지나가면 방문 기록만). 공개 기간(`valid_from`~`valid_until`)은 앱이 활동 시작 시각(`start_date`)으로 판정한 뒤
+함수를 부른다 — 기간 밖 활동은 방문 기록도 남기지 않는다(받은 배지에는 기한이 없다). 옛 코드는 이 함수를 쓰지 않고
+테이블에 직접 넣으며 두 방식의 줄은 같은 모양이다. 장소에 연결된 `type != 'checkin'` 배지를 `user_activity_badges`에
+`triggered_by='poi_match'`로 발급하던 옛 경로는 삭제했다(이미 발급된 행은 그대로).
+
 **JAM! 행동 지표의 원천**: 같은 지점 체크인 일수(`same_spot_checkin_days`)는 `poi_id`별
 `triggered_by_activity_date`(체크인을 만든 활동의 시각)의 서로 다른 KST 날짜 수의 최댓값이다. 동기화 시각
 (`earned_at`)이 아니라 활동 날짜로 센다 — 며칠 뒤에 동기화한 체크인이 있기 때문이다. 활동 날짜가 없는 행은 세지

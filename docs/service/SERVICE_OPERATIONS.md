@@ -210,8 +210,10 @@ strava_connections UPSERT
 
 6. POI 매칭
    → matchPoisForActivity: 활동 경로 ↔ POI 반경 교차 체크
-   → 매칭된 POI의 linked_badge_id → user_activity_badges INSERT
-   → triggered_by: 'poi_match', triggered_by_poi_id: poi.id
+   → 매칭된 POI의 linked_badge_id가 체크인 배지이고 활동 시작 시각이 배지의 공개 기간 안이면
+     record_checkin_earn(DB 함수)으로 user_checkin_badge_earns에 방문 기록 한 줄을 넣고,
+     처음 받을 때(is_first)만 배지의 point_reward를 awardPoints로 준다(티켓 20261018_1814)
+   → 체크인이 아닌 배지가 연결돼 있어도 발급하지 않는다(옛 'poi_match' 경로 삭제)
 
 7. 아이템 드랍 추첨
    → jamActivityType이 있는 활동에만 tryItemDrop 호출
@@ -388,9 +390,9 @@ PROGRESSION_MODIFIERS(`elevation_gain_m`, `min_speed_kmh`, `streak_days`, `durat
 matchPoisForActivity(latlngPath, pois):
   각 POI에 대해:
   → 활동 경로의 GPS 좌표 중 POI 반경 내 진입 여부 체크
-  → 매칭 시 poi.linked_badge_id → user_activity_badges INSERT
-     triggered_by: 'poi_match'
-     triggered_by_poi_id: poi.id
+  → 매칭 시 poi.linked_badge_id(체크인 배지, 공개 기간 안) → record_checkin_earn으로
+     user_checkin_badge_earns에 방문 기록 INSERT, 처음 받을 때만 point_reward 지급
+     (옛 user_activity_badges 'poi_match' 발급은 티켓 20261018_1814에서 삭제)
 ```
 
 ### 4-8. 아이템북 완성 보상 배지
