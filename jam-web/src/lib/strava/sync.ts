@@ -26,6 +26,8 @@ import { applyTypeMismatch } from '@/lib/strava/typeMismatch'
 import { evaluateBadges } from '@/lib/badge-engine/index'
 import { issueSyncItemBadges } from '@/lib/drop-engine/syncIssueRun'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
+import { isActivityWithinBadgeWindow } from '@/lib/poi/checkin-window'
+import { awardPoints } from '@/lib/points'
 import { checkItemBookCompletion } from '@/lib/itembook/checker'
 import { findCompletableItemBooks } from '@/lib/itembook/completable'
 import { checkMissions } from '@/lib/missions/checker'
@@ -955,12 +957,23 @@ export async function processFetchedActivities(
   )
   // `category`(어드민 직접 지정 카테고리) — 체크인 배지 발급 직후 JAM! 카테고리 체크인 지표
   // (`checkin_category_count`, 티켓 20260914_1725)를 평가할 때 effective category 판정에 쓴다.
-  type LinkedBadge = { id: string; type: BadgeType; name: string; image_url: string | null; rarity: BadgeRarity; category: string | null }
+  // `valid_from`·`valid_until`(공개 기간)·`point_reward`(처음 받을 때 포인트)는 체크인 발급 판정에 쓴다(티켓 20261018_1814).
+  type LinkedBadge = {
+    id: string
+    type: BadgeType
+    name: string
+    image_url: string | null
+    rarity: BadgeRarity
+    category: string | null
+    valid_from: string | null
+    valid_until: string | null
+    point_reward: number
+  }
   const badgeById = new Map<string, LinkedBadge>()
   if (linkedBadgeIds.length > 0) {
     const { data: linkedBadgesRaw, error: linkedBadgeError } = await supabase
       .from('badges')
-      .select('id, type, name, image_url, rarity, category')
+      .select('id, type, name, image_url, rarity, category, valid_from, valid_until, point_reward')
       .in('id', linkedBadgeIds)
       .is('deleted_at', null)
     if (linkedBadgeError) {
@@ -976,7 +989,8 @@ export async function processFetchedActivities(
 
   // 배지 타입별 발급
   //   - checkin 타입: user_checkin_badge_earns에 매번 새 행(반복 획득). 보유 여부 체크 없음.
-  //   - 그 외(레거시 activity): 기존 user_activity_badges 경로 그대로(1인 1회)
+  //     공개 기간 안일 때만 기록하고, 처음 받을 때만 배지 등급 포인트를 준다(티켓 20261018_1814).
+  //   - 그 외(activity 등): 장소 연결로는 발급하지 않는다 — 장소 연결은 체크인 배지로만 한다(옛 poi_match 경로 삭제).
   for (const { rawActivity, matchedPois } of poiMatchResults) {
     const normalized = activitiesFiltered.find((a) => a.stravaId === rawActivity.id)
 
@@ -984,113 +998,82 @@ export async function processFetchedActivities(
       if (!poi.linked_badge_id) continue
       const badge = badgeById.get(poi.linked_badge_id)
       if (!badge) continue
+      if (badge.type !== 'checkin') continue
 
-      if (badge.type === 'checkin') {
-        // 이 유저가 이 배지를 이전에 몇 번 획득했는지 먼저 확인한다. 체크인 배지는
-        // 체크인할 때마다 반복 획득되는 설계라(badge_id 단위 — 배지 상세 화면 PoiEarnHistory도
-        // 같은 기준으로 이력을 모은다), 20260826_001부터는 최초 획득이든 반복 획득이든
-        // 항상 피드에 남기되 "몇 번째 체크인인지"를 함께 기록해 문구를 구분한다.
-        const { count: priorEarnCount, error: priorEarnError } = await supabase
-          .from('user_checkin_badge_earns')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', userId)
-          .eq('badge_id', badge.id)
-        if (priorEarnError) {
-          console.error(`[processFetchedActivities] 체크인 배지 이전 획득 수 조회 오류 (badge_id: ${badge.id}):`, priorEarnError)
-        }
-        const visitCount = (priorEarnCount ?? 0) + 1
-        const isFirstEarn = visitCount === 1
+      // 공개 기간은 «새로 받을 수 있는 기간»이다. 활동 시작 시각이 기간 밖이면 방문 기록·포인트·피드 모두
+      // 남기지 않고 없던 일로 넘긴다(결정 3·4). 이미 받은 배지에는 기한이 없다.
+      if (!isActivityWithinBadgeWindow(rawActivity.start_date, badge.valid_from, badge.valid_until)) continue
 
-        const earnPayload = {
-          user_id: userId,
-          badge_id: badge.id,
-          poi_id: poi.id,
-          triggered_by_strava_id: rawActivity.id,
-          triggered_by_activity_name: rawActivity.name,
-          triggered_by_distance_km: normalized?.distanceKm ?? null,
-          // 20260824_006 — start_date_local은 로컬 벽시계에 Z를 붙인 값이라(진짜 UTC 아님)
-          // 그대로 넣으면 최대 +9시간 미래로 오해석된다. 이 필드는 체크인 배지 상세 화면
-          // (PoiEarnHistory)에 체크인 일시로 노출되므로 반드시 진짜 UTC인 start_date만 쓴다.
-          triggered_by_activity_date: rawActivity.start_date,
-        }
-        const { error: earnError } = await supabase
-          .from('user_checkin_badge_earns')
-          .insert(earnPayload)
-
-        if (earnError) {
-          if (earnError.code !== '23505') {
-            console.error(`[processFetchedActivities] 체크인 배지 이력 기록 오류 (poi_id: ${poi.id}):`, earnError)
-          }
-          continue
-        }
-
-        poiBadgesEarned++
-        earnedBadgeIds.push(badge.id)
-        const poiEarn = poiEarnsByActivity.get(rawActivity.id) ?? { badgeIds: [], poiNames: [], isFirstEarns: [], visitCounts: [] }
-        poiEarn.badgeIds.push(badge.id)
-        poiEarn.poiNames.push(poi.name)
-        poiEarn.isFirstEarns.push(isFirstEarn)
-        poiEarn.visitCounts.push(visitCount)
-        poiEarnsByActivity.set(rawActivity.id, poiEarn)
-        console.info(`[processFetchedActivities] 체크인 배지 획득 — userId: ${userId}, poi: ${poi.name}, badge_id: ${badge.id}, visitCount: ${visitCount}`)
-
-        // JAM! 카테고리 — 체크인 배지 보유 조건 2종 (티켓 20260914_1725). 이 체크인 배지
-        // insert가 DB에 커밋된 직후라 「지정 카테고리 n개 이상」·「지정 목록 중 n개 이상」
-        // 판정이 이번 건까지 반영된 최신 보유 현황을 본다. 실패해도 체크인 배지 자체의 발급·
-        // 동기화 API 응답은 계속 진행돼야 하므로 try/catch로 격리한다(daily_sync_count와
-        // 같은 패턴, 위 recordDailySyncAndEvaluate 주석 참고).
-        try {
-          const checkinUsageEarned = await evaluateCheckinUsageBadges(userId, supabase)
-          earnedBadgeIds.push(...checkinUsageEarned.map((b) => b.id))
-        } catch (checkinUsageBadgeError) {
-          console.error(`[processFetchedActivities] 체크인 사용량 배지 평가 실패 (userId: ${userId}):`, checkinUsageBadgeError)
-        }
-
-        // 20260826_001 — isFirstEarn 여부와 무관하게 항상 기록한다. poi_name·visit_count를
-        // 함께 실어 프론트(FeedSection)가 "체크인 했어요" / "N번째 체크인 했어요"로
-        // 분기하게 한다(20260826_004).
-        // ⚠️ 체크인 배지는 별도 feed_event_type이 아니라 badge_earned + metadata로 남는다.
-        //    이 두 필드가 곧 "이 badge_earned는 체크인"이라는 유일한 표식이다.
-        await recordFeedEvent(userId, 'badge_earned', {
-          badge_id: badge.id,
-          badge_name: badge.name,
-          badge_image_url: badge.image_url ?? '',
-          rarity: badge.rarity,
-          poi_name: poi.name,
-          visit_count: visitCount,
-        }, rawActivity.start_date, rawActivity.id)
+      // 방문 기록 한 줄 넣기와 «이 배지를 처음 받는지» 판정은 DB 함수 한 번으로 한다(마이그레이션 241) — 유저·배지
+      // 단위 잠금 안에서 세고 넣으므로 동시 동기화에서도 «처음»이 한 번만 나온다. 체크인 배지는 체크인할 때마다
+      // 반복 획득되는 설계라(badge_id 단위 — 배지 상세 화면 PoiEarnHistory도 같은 기준으로 이력을 모은다),
+      // 20260826_001부터는 최초 획득이든 반복 획득이든 항상 피드에 남기되 "몇 번째 체크인인지"를 함께 기록해
+      // 문구를 구분한다.
+      // 20260824_006 — start_date_local은 로컬 벽시계에 Z를 붙인 값이라(UTC가 아님) 그대로 넣으면 최대
+      // +9시간 미래로 오해석된다. 이 필드는 체크인 배지 상세 화면(PoiEarnHistory)에 체크인 일시로 노출되므로
+      // 반드시 UTC 값인 start_date만 쓴다.
+      const { data: earnResult, error: earnError } = await supabase.rpc('record_checkin_earn', {
+        p_user_id: userId,
+        p_badge_id: badge.id,
+        p_poi_id: poi.id,
+        p_strava_id: rawActivity.id,
+        p_activity_name: rawActivity.name,
+        // 생성 타입은 NUMERIC 인자를 null 불허로 옮기지만 DB 칸(triggered_by_distance_km)은 NULL을 받는다 —
+        // 거리를 모르면 예전처럼 NULL로 남긴다(0으로 지어내지 않는다). 이 한 인자만 좁혀 단언한다.
+        p_distance_km: (normalized?.distanceKm ?? null) as number,
+        p_activity_date: rawActivity.start_date,
+      })
+      if (earnError) {
+        console.error(`[processFetchedActivities] 체크인 배지 이력 기록 오류 (poi_id: ${poi.id}):`, earnError)
         continue
       }
+      const earn = (earnResult ?? {}) as { duplicate?: boolean; visit_count?: number; is_first?: boolean }
+      // 같은 활동을 다시 동기화한 경우 — 방문 기록·포인트·피드 모두 새로 만들지 않는다.
+      if (earn.duplicate) continue
+      const visitCount = earn.visit_count ?? 1
+      const isFirstEarn = earn.is_first === true
 
-      // 레거시 호환 — activity 타입 배지에 linked_badge_id가 붙어있는 과거 데이터
-      const { data: existing } = await supabase
-        .from('user_activity_badges')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('badge_id', poi.linked_badge_id)
-        .maybeSingle()
-
-      if (existing) continue
-
-      const legacyEarnPayload = {
-        user_id: userId,
-        badge_id: poi.linked_badge_id,
-        triggered_by: 'poi_match',
-        triggered_by_poi_id: poi.id,
-      }
-      const { error: insertError } = await supabase
-        .from('user_activity_badges')
-        .insert(legacyEarnPayload)
-
-      if (insertError) {
-        if (insertError.code === '23505') continue
-        console.error(`[processFetchedActivities] POI 배지 발급 오류 (poi_id: ${poi.id}):`, insertError)
-        continue
+      // 처음 받을 때만 배지 등급 포인트를 준다. 실패해도 방문 기록·피드는 그대로 진행한다
+      // (awardPoints가 실패를 기록하고 null을 돌려준다 — 수동 재처리 대상).
+      if (isFirstEarn) {
+        await awardPoints(userId, badge.point_reward, 'badge_point_reward', { sourceBadgeId: badge.id })
       }
 
       poiBadgesEarned++
-      earnedBadgeIds.push(poi.linked_badge_id)
-      console.info(`[processFetchedActivities] POI 배지 발급 — userId: ${userId}, poi: ${poi.name}, badge_id: ${poi.linked_badge_id}`)
+      earnedBadgeIds.push(badge.id)
+      const poiEarn = poiEarnsByActivity.get(rawActivity.id) ?? { badgeIds: [], poiNames: [], isFirstEarns: [], visitCounts: [] }
+      poiEarn.badgeIds.push(badge.id)
+      poiEarn.poiNames.push(poi.name)
+      poiEarn.isFirstEarns.push(isFirstEarn)
+      poiEarn.visitCounts.push(visitCount)
+      poiEarnsByActivity.set(rawActivity.id, poiEarn)
+      console.info(`[processFetchedActivities] 체크인 배지 획득 — userId: ${userId}, poi: ${poi.name}, badge_id: ${badge.id}, visitCount: ${visitCount}`)
+
+      // JAM! 카테고리 — 체크인 배지 보유 조건 2종 (티켓 20260914_1725). 이 체크인 배지
+      // insert가 DB에 커밋된 직후라 「지정 카테고리 n개 이상」·「지정 목록 중 n개 이상」
+      // 판정이 이번 건까지 반영된 최신 보유 현황을 본다. 실패해도 체크인 배지 자체의 발급·
+      // 동기화 API 응답은 계속 진행돼야 하므로 try/catch로 격리한다(daily_sync_count와
+      // 같은 패턴, 위 recordDailySyncAndEvaluate 주석 참고).
+      try {
+        const checkinUsageEarned = await evaluateCheckinUsageBadges(userId, supabase)
+        earnedBadgeIds.push(...checkinUsageEarned.map((b) => b.id))
+      } catch (checkinUsageBadgeError) {
+        console.error(`[processFetchedActivities] 체크인 사용량 배지 평가 실패 (userId: ${userId}):`, checkinUsageBadgeError)
+      }
+
+      // 20260826_001 — isFirstEarn 여부와 무관하게 항상 기록한다. poi_name·visit_count를
+      // 함께 실어 프론트(FeedSection)가 "체크인 했어요" / "N번째 체크인 했어요"로
+      // 분기하게 한다(20260826_004).
+      // ⚠️ 체크인 배지는 별도 feed_event_type이 아니라 badge_earned + metadata로 남는다.
+      //    이 두 필드가 곧 "이 badge_earned는 체크인"이라는 유일한 표식이다.
+      await recordFeedEvent(userId, 'badge_earned', {
+        badge_id: badge.id,
+        badge_name: badge.name,
+        badge_image_url: badge.image_url ?? '',
+        rarity: badge.rarity,
+        poi_name: poi.name,
+        visit_count: visitCount,
+      }, rawActivity.start_date, rawActivity.id)
     }
   }
 

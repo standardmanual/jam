@@ -47,11 +47,13 @@ vi.mock('@/lib/strava/api', () => ({
   refreshStravaToken: vi.fn(),
 }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) }))
+vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => null) }))
 vi.mock('@/lib/poi/matcher', () => ({
   matchPoisForActivity: vi.fn(async () => [{ id: 'poi-1', name: '북한산', linked_badge_id: 'badge-1' }]),
 }))
 
 import { processFetchedActivities } from '../sync'
+import { makeRecordCheckinEarn, earnArgsToRow } from './fake-checkin-earn'
 import { evaluateBadges } from '@/lib/badge-engine/index'
 import { issueSyncItemBadges } from '@/lib/drop-engine/syncIssueRun'
 import { checkMissions } from '@/lib/missions/checker'
@@ -104,7 +106,7 @@ function makeFakeSupabase(captured: Captured): SupabaseClient {
         }
         if (table === 'badges') {
           return Promise.resolve({
-            data: [{ id: 'badge-1', type: 'checkin', name: '북한산 체크인', image_url: null, rarity: 'common', category: null }],
+            data: [{ id: 'badge-1', type: 'checkin', name: '북한산 체크인', image_url: null, rarity: 'common', category: null, valid_from: null, valid_until: null, point_reward: 10 }],
             error: null,
           }).then(onFulfilled, onRejected)
         }
@@ -113,8 +115,12 @@ function makeFakeSupabase(captured: Captured): SupabaseClient {
     }
     return builder
   }
-  // 잼 정산 RPC — 넘긴 양을 그대로 돌려준다
-  const rpc = async (_name: string, args: Record<string, unknown>) => ({ data: { amount: args.p_amount }, error: null })
+  // 체크인 방문 기록 함수는 DB 규칙대로 흉내 내고(insert 자리에 기록), 잼 정산 RPC는 넘긴 양을 그대로 돌려준다
+  const recordEarn = makeRecordCheckinEarn((a) =>
+    captured.inserts.push({ table: 'user_checkin_badge_earns', payload: earnArgsToRow(a) })
+  )
+  const rpc = async (name: string, args: Record<string, unknown>) =>
+    name === 'record_checkin_earn' ? recordEarn(args as never) : { data: { amount: args.p_amount }, error: null }
   return { from, rpc } as unknown as SupabaseClient
 }
 

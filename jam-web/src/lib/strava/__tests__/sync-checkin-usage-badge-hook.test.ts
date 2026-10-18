@@ -52,6 +52,7 @@ vi.mock('@/lib/strava/api', () => ({
   refreshStravaToken: vi.fn(),
 }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) }))
+vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => null) }))
 vi.mock('@/lib/abusing/shadow-ban', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/abusing/shadow-ban')>()
   return { ...actual, getUserBanLevel: vi.fn(async () => 'none' as const) }
@@ -63,6 +64,7 @@ vi.mock('@/lib/poi/matcher', () => ({
 }))
 
 import { processFetchedActivities } from '../sync'
+import { makeRecordCheckinEarn, earnArgsToRow } from './fake-checkin-earn'
 
 type Badge = { id: string; type: 'checkin' | 'activity'; name: string; image_url: string | null; rarity: BadgeRarity }
 
@@ -100,14 +102,20 @@ function makeFakeSupabase(opts: {
         onRejected?: (e: unknown) => unknown
       ) {
         if (table === 'badges') {
-          return Promise.resolve({ data: opts.badges, error: null }).then(onFulfilled, onRejected)
+          // 공개 기간 없음·포인트 10 — 체크인 발급 판정이 읽는 칸의 기본값
+          const rows = opts.badges.map((b) => ({ valid_from: null, valid_until: null, point_reward: 10, ...b }))
+          return Promise.resolve({ data: rows, error: null }).then(onFulfilled, onRejected)
         }
         return Promise.resolve({ data: [], error: null }).then(onFulfilled, onRejected)
       },
     }
     return builder
   }
-  return { from } as unknown as SupabaseClient
+  // 체크인 방문 기록 함수(record_checkin_earn)는 DB 규칙대로 흉내 내고 insert 자리에 기록한다
+  const recordEarn = makeRecordCheckinEarn((a) => opts.inserts.push({ table: 'user_checkin_badge_earns', payload: earnArgsToRow(a) }))
+  const rpc = async (name: string, args: Record<string, unknown>) =>
+    name === 'record_checkin_earn' ? recordEarn(args as never) : { data: null, error: { message: `알 수 없는 rpc ${name}` } }
+  return { from, rpc } as unknown as SupabaseClient
 }
 
 function makeRawActivity(id: number): StravaSummaryActivity {

@@ -78,12 +78,14 @@ vi.mock('@/lib/strava/api', () => ({
   refreshStravaToken: vi.fn(),
 }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) }))
+vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => null) }))
 vi.mock('@/lib/abusing/shadow-ban', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/abusing/shadow-ban')>()
   return { ...actual, getUserBanLevel: vi.fn(async () => 'none' as const) }
 })
 
 import { processFetchedActivities } from '../sync'
+import { makeRecordCheckinEarn } from './fake-checkin-earn'
 import { JAM_EMPTY_SYNC_TRIGGERS, JAM_SYNC_TRIGGERS } from '@/lib/badge-engine/jamActionProgressTriggers'
 
 /**
@@ -120,6 +122,9 @@ function makeFakeSupabase(): SupabaseClient {
             rarity: 'common',
             type: id.startsWith('checkin-') ? 'checkin' : 'activity',
             image_url: null,
+            valid_from: null,
+            valid_until: null,
+            point_reward: 10,
           }))
           return Promise.resolve({ data: rows, error: null }).then(onFulfilled, onRejected)
         }
@@ -128,7 +133,11 @@ function makeFakeSupabase(): SupabaseClient {
     }
     return builder
   }
-  return { from } as unknown as SupabaseClient
+  // 체크인 방문 기록 함수(record_checkin_earn)는 DB 규칙대로 흉내 낸다
+  const recordEarn = makeRecordCheckinEarn(() => {})
+  const rpc = async (name: string, args: Record<string, unknown>) =>
+    name === 'record_checkin_earn' ? recordEarn(args as never) : { data: null, error: { message: `알 수 없는 rpc ${name}` } }
+  return { from, rpc } as unknown as SupabaseClient
 }
 
 function makeRawActivity(id: number): StravaSummaryActivity {

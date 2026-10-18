@@ -1,9 +1,10 @@
 /**
  * POI·체크인 배지 발급 경로 — 섀도우밴을 읽지 않는다 (티켓 20261017_1426, 옛 티켓 20260910_1804를 대체)
  *
- * JAM 2.0의 제재는 이용 정지 하나다. `processFetchedActivities`의 POI 매칭 후 지급 블록(`type='checkin'` 반복 획득 경로,
- * 레거시 `type='activity'`+`poi_id` 경로)은 예전에 섀도우밴 등급으로 발급을 막았지만 이제는 `getUserBanLevel`을 부르지 않는다.
+ * JAM 2.0의 제재는 이용 정지 하나다. `processFetchedActivities`의 POI 매칭 후 지급 블록(`type='checkin'` 반복 획득 경로)은
+ * 예전에 섀도우밴 등급으로 발급을 막았지만 이제는 `getUserBanLevel`을 부르지 않는다.
  * 옛 테이블 `user_shadow_bans`에 hard 밴이 남아 있어도 발급은 평소대로다.
+ * 옛 `type='activity'`+`poi_id` 경로는 티켓 20261018_1814에서 지웠다 — 연결된 activity 타입 배지는 발급하지 않는다.
  *
  * `getUserBanLevel` 모킹은 «불리지 않음»을 고정하려고 남겼다.
  *
@@ -49,6 +50,7 @@ vi.mock('@/lib/strava/api', () => ({
   refreshStravaToken: vi.fn(),
 }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) }))
+vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => null) })) // 처음 받을 때 포인트는 sync-checkin-earn.test.ts가 확인한다
 // getUserBanLevel만 모킹하고 shouldAllowDrop·DEFAULT_POLICY는 실제 구현을 쓴다 — rate
 // 테이블이 결정론적이라(hard_mystic_rate=0.0) Math.random()에 기대지 않고도 고정할 수 있다.
 vi.mock('@/lib/abusing/shadow-ban', async (importOriginal) => {
@@ -63,39 +65,20 @@ vi.mock('@/lib/poi/matcher', () => ({
 }))
 
 import { processFetchedActivities } from '../sync'
+import { makeRecordCheckinEarn, earnArgsToRow } from './fake-checkin-earn'
 
 type Badge = { id: string; type: 'checkin' | 'activity'; name: string; image_url: string | null; rarity: BadgeRarity }
 
 /** 테이블별 최소 동작을 흉내내는 페이크 supabase. */
 function makeFakeSupabase(opts: {
   badges: Badge[]
-  /** user_checkin_badge_earns 이전 획득 수(count) — 배지 id별 */
+  /** 이 배지로 이미 가진 방문 기록 수 — record_checkin_earn이 방문 수 계산에 쓴다 */
   priorCheckinCounts?: Record<string, number>
-  /** user_activity_badges 기존 보유 여부 — 배지 id별 */
-  existingActivityBadges?: Record<string, boolean>
   inserts: { table: string; payload: Record<string, unknown> }[]
 }): SupabaseClient {
   const from = (table: string) => {
     const builder: Record<string, unknown> = {
-      select: (_cols?: string, selectOpts?: { count?: string; head?: boolean }) => {
-        if (table === 'user_checkin_badge_earns' && selectOpts?.head) {
-          // eq().eq()로 이어지는 count 조회 체인
-          let badgeId: string | undefined
-          const chain = {
-            eq: (col: string, val: string) => {
-              if (col === 'badge_id') badgeId = val
-              return chain
-            },
-            then: (onFulfilled: (v: { count: number; error: null }) => unknown) =>
-              Promise.resolve({
-                count: opts.priorCheckinCounts?.[badgeId ?? ''] ?? 0,
-                error: null,
-              }).then(onFulfilled),
-          }
-          return chain
-        }
-        return builder
-      },
+      select: () => builder,
       eq: () => builder,
       in: () => builder,
       is: () => builder,
@@ -103,15 +86,7 @@ function makeFakeSupabase(opts: {
       limit: () => builder,
       upsert: async () => ({ error: null }),
       single: async () => ({ data: null, error: null }),
-      maybeSingle: async () => {
-        if (table === 'user_activity_badges') {
-          // 마지막에 걸린 badge_id는 추적하지 않으므로 existingActivityBadges의 값들 중 하나라도
-          // true면 그 배지로 간주 — 테스트에서는 배지 1개씩만 다루므로 충분하다.
-          const anyExisting = Object.values(opts.existingActivityBadges ?? {}).some(Boolean)
-          return { data: anyExisting ? { id: 'existing-row' } : null, error: null }
-        }
-        return { data: null, error: null }
-      },
+      maybeSingle: async () => ({ data: null, error: null }),
       insert: async (payload: Record<string, unknown>) => {
         opts.inserts.push({ table, payload })
         return { error: null }
@@ -121,14 +96,23 @@ function makeFakeSupabase(opts: {
         onRejected?: (e: unknown) => unknown
       ) {
         if (table === 'badges') {
-          return Promise.resolve({ data: opts.badges, error: null }).then(onFulfilled, onRejected)
+          // 공개 기간 없음·포인트 10 — 체크인 발급 판정이 읽는 칸의 기본값
+          const rows = opts.badges.map((b) => ({ valid_from: null, valid_until: null, point_reward: 10, ...b }))
+          return Promise.resolve({ data: rows, error: null }).then(onFulfilled, onRejected)
         }
         return Promise.resolve({ data: [], error: null }).then(onFulfilled, onRejected)
       },
     }
     return builder
   }
-  return { from } as unknown as SupabaseClient
+  // 체크인 방문 기록 함수(record_checkin_earn)는 DB 규칙대로 흉내 내고 insert 자리에 기록한다
+  const recordEarn = makeRecordCheckinEarn(
+    (a) => opts.inserts.push({ table: 'user_checkin_badge_earns', payload: earnArgsToRow(a) }),
+    opts.priorCheckinCounts
+  )
+  const rpc = async (name: string, args: Record<string, unknown>) =>
+    name === 'record_checkin_earn' ? recordEarn(args as never) : { data: null, error: { message: `알 수 없는 rpc ${name}` } }
+  return { from, rpc } as unknown as SupabaseClient
 }
 
 function makeRawActivity(id: number): StravaSummaryActivity {
@@ -245,8 +229,8 @@ describe('POI 체크인 배지 발급 — 섀도우밴을 읽지 않는다', () 
   })
 })
 
-describe('레거시 activity+poi_id 배지 발급 — 섀도우밴을 읽지 않는다', () => {
-  it('hard 밴이 남아 있어도 mystic 등급 레거시 POI 배지를 정상 획득하고 밴 조회를 하지 않는다', async () => {
+describe('장소에 연결된 액티비티 배지 — 옛 poi_match 경로가 없어 발급하지 않는다 (티켓 20261018_1814)', () => {
+  it('hard 밴이 남아 있어도 연결된 activity 타입 배지는 발급하지 않고 밴 조회도 하지 않는다', async () => {
     const badge: Badge = { id: 'badge-5', type: 'activity', name: '레거시 배지', image_url: null, rarity: 'mystic' }
     matchedPoisFixture = [{ id: 'poi-5', name: '경복궁', linked_badge_id: badge.id }]
     getUserBanLevelMock.mockResolvedValue('hard')
@@ -255,12 +239,13 @@ describe('레거시 activity+poi_id 배지 발급 — 섀도우밴을 읽지 않
 
     const result = await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
 
-    expect(inserts.some((i) => i.table === 'user_activity_badges')).toBe(true)
-    expect(result.earnedBadgeIds).toContain(badge.id)
+    expect(inserts.some((i) => i.table === 'user_activity_badges')).toBe(false)
+    expect(inserts.some((i) => i.table === 'user_checkin_badge_earns')).toBe(false)
+    expect(result.earnedBadgeIds).not.toContain(badge.id)
     expect(getUserBanLevelMock).not.toHaveBeenCalled()
   })
 
-  it('밴 없는 유저도 레거시 POI 배지를 정상 획득한다', async () => {
+  it('밴 없는 유저도 연결된 activity 타입 배지는 발급하지 않는다', async () => {
     const badge: Badge = { id: 'badge-6', type: 'activity', name: '레거시 배지2', image_url: null, rarity: 'mystic' }
     matchedPoisFixture = [{ id: 'poi-6', name: '광화문', linked_badge_id: badge.id }]
     const inserts: { table: string; payload: Record<string, unknown> }[] = []
@@ -268,7 +253,7 @@ describe('레거시 activity+poi_id 배지 발급 — 섀도우밴을 읽지 않
 
     const result = await processFetchedActivities(supabase, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
 
-    expect(inserts.some((i) => i.table === 'user_activity_badges')).toBe(true)
-    expect(result.earnedBadgeIds).toContain(badge.id)
+    expect(inserts.some((i) => i.table === 'user_activity_badges')).toBe(false)
+    expect(result.earnedBadgeIds).not.toContain(badge.id)
   })
 })
