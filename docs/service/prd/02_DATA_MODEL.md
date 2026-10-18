@@ -303,6 +303,9 @@ badges / item_books / tribes 세 테이블이 같은 배경 컬럼 세트를 갖
   - API(앱은 위 함수를 부르기만 한다, 응답 모양은 `src/lib/inventory/lockedItemFill-contract.ts`): `GET /api/inventory/items/[itemId]/lock`(채운 양·필요량·남은 양·잼·`openable`, 이용 정지 중에도 허용), `POST .../fill { amount? }`(양의 정수만, 이용 정지 중 403 `user_suspended`,
     `already_full`·`exceeds_remaining`·`invalid_amount` 400, `insufficient_jam`·`not_locked` 409, `item_not_found` 404), `POST .../open`(이용 정지 중 403, `not_full`(채운 양·필요량 포함)·`not_locked` 409, `item_not_found` 404, 그 밖의 오류 500).
     열기 전에는 이름·그림·설명·컬렉션·트라이브·일련번호를 어떤 응답에도 싣지 않고, 열기 성공 응답에만 개체 정보를 싣는다(7.3절).
+    열기 성공 응답에는 `serialPrefix`(`inventory_items.serial_prefix`, 읽지 못하면 null)도 싣는다 — 화면이 `ItemSerialCode`로 번호를 그리는 데 쓴다(티켓 20261018_0054 2회, SQL 변경 없음).
+  - **잠긴 개체를 읽는 조회(티켓 20261018_0054 2회, 7.3절)**: `inventory_items.badge_id`로 배지·컬렉션·트라이브·일련번호를 드러내는 조회는 `locked = false` 개체만 읽는다 — 프로필 컬렉션 수·레거시 피드 합성, 컬렉션 목록·장착 후보, 믹스 재료,
+    `/api/itembooks`·`/api/users/[username]/itembooks`, `/badges`의 컬렉션 발견 판정, 배지 상세의 보유 개체 목록. 인벤토리 서버 페이지는 잠긴 개체의 이름·그림을 클라이언트 props에서 비운다.
   - 되돌림: 새 객체만 지운다. 채운 잼은 원장에 남아 지갑으로 돌아오지 않고, 열어서 준 포인트도 회수되지 않는다.
 
 ### custody_events (신규, 2026-08-29 — 티켓 20260829_2101)

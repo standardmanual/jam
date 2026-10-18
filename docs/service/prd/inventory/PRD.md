@@ -206,3 +206,28 @@ code:
 - 이용 정지 중에는 채우기와 열기를 막고 채운 양은 그대로 남는다. 트라이브가 바뀌어도 잠긴 개체와 채운 양은 그대로다.
 - 포인트: 배지 포인트는 열린 상태가 될 때 연 유저에게 한 번만 준다(`inventory_items.point_awarded_at`이 «이미 줬다» 기록). DB 안에서 주므로 포인트 알림(`notifyPointChange`)은 나가지 않는다.
 - 이력: 채울 때마다 `filled`, 열 때 `unlocked`를 `inventory_item_events`에 남긴다. 열 때의 피드·알림과 화면은 3-4에서 정한다.
+
+### 잠긴 아이템 배지 화면 (티켓 20261018_0054 2회, 채원 판정 2026-10-18)
+
+화면은 서버(3-1~3-3)가 정한 값(필요량·채운 양·열 수 있는지)을 그대로 그린다. 규칙을 다시 계산하지 않는다. 문구는 `d.lockedItem`(카드·상세)과 `d.capsule`(채우기 입력·가진 잼)이 원천이다.
+
+- **인벤토리 그리드의 잠김 카드**: 서버 페이지(`inventory/page.tsx`)가 잠긴 개체의 이름·그림을 **클라이언트로 내리는 props에서 비운다**(등급과 채운 비율 `fillPercent = unlock_filled / unlock_required`만 싣는다).
+  화면에서 가리는 것이 아니라 RSC 페이로드에 값이 없다. 카드는 MODULAR `BadgeGridCard`의 `locked`다: 같은 면(`--surface`·1px `--border`·`--radius-2xl`), 썸네일 자리에 `LockedTile`, 이름 줄은 «잠긴 아이템 배지»,
+  등급 칩 아래 `ProgressBar outlined`(높이 6, 숫자 없음). `locked`이면 `name`·`imageUrl`이 넘어와도 그리지 않는다(서비스 사본과 MODULAR 원본 모두).
+- **잠긴 상세** `/inventory/[itemId]`: 잠긴 개체면 `/badges/...`로 리다이렉트하지 않고 `LockedItemDetail`을 그린다(주소에 배지 id가 실리면 이름·그림이 드러나기 때문이다).
+  클라이언트 props는 등급·필요량·채운 양·가진 잼·얻은 날과 경로뿐이고 배지 id·이름·그림·설명·일련번호는 없다. 화면: 큰 `LockedTile`, 등급 칩과 «잠김» 칩, «잠긴 아이템 배지»(제목), «여는 데 잼 {n}만큼 채워야 해요»,
+  외곽선 게이지(캡슐과 같은 모양), 가진 잼 숫자, «획득일 · 경로» 한 줄, 주 버튼(다 채우지 못했으면 «채우기», 다 채웠으면 «열기»). 이력 시트는 잠긴 상태에서 노출하지 않는다.
+  채우기는 캡슐과 같은 `JamFillPanel`을 `BottomSheet`로 띄워 한다(기본값 `min(남은 양, 가진 잼)`). 가진 잼이 0이면 «채우기»가 비활성이고 이유 문구가 보인다.
+  가진 잼 숫자는 캡슐 시트, 잠긴 상세, 채우기 입력 단계 세 곳에만 보인다.
+- **열기 뒤 제자리 전환**: 같은 화면에서 타일이 그림으로 크로스페이드하고(그림은 scale .96 → 1), 제목과 설명이 이름과 설명으로 바뀐다. 게이지와 가진 잼 줄은 접히고, «잠김» 칩은 사라지며, 등급 칩은 그대로다.
+  일련번호(`ItemSerialCode`, 열기 응답의 `serialPrefix`+`serialNumber`), 컬렉션·트라이브 한 줄씩, 받은 포인트(`pointsAwarded > 0`), «배지 상세 보기» 링크(`/badges/{badgeId}?item={itemId}&from=inventory`)가 나온다.
+  응답의 `item`이 null이면 전환 없이 서버 페이지를 다시 읽어 열린 개체를 배지 상세로 보낸다. 높은 등급 축하 연출은 없다.
+- **응답 처리**: 이용 정지 403은 일반 실패가 아니라 info 토스트다(`d.suspension.lockedItemFillBlocked`·`lockedItemOpenBlocked`, 버튼은 미리 막지 않는다). 거절은 서버 문구를 그대로 보여 주고 서버 값을 다시 읽는다.
+  `not_locked`는 안내 뒤 다시 읽어 서버 페이지가 배지 상세로 보내고, `item_not_found`는 안내 뒤 인벤토리로 이동한다. 그 밖의 실패는 `d.lockedItem.fill.failed`·`open.failed`다.
+- **열기 응답의 일련번호 접두사**: `POST .../open` 성공 응답에 `serialPrefix`(앞 4자, 읽지 못하면 null)를 더했다. 화면의 `ItemSerialCode`가 번호와 함께 쓴다. 거절 응답에는 싣지 않는다.
+
+**가림 보강**(열기 전에는 이름·그림·설명·컬렉션·트라이브·일련번호를 어느 화면에도 보이지 않는다, 운영 로직 7.3절). 서버에서 잠긴 개체를 거르는 곳:
+- 배지 상세 `/badges/[id]?item=`: `?item`이 내 잠긴 개체면 화면을 그리지 않고 `/inventory/[itemId]`로 보낸다. 그 밖의 경우에도 잠긴 개체는 보유 목록에서 빠져 대표 일련번호·이력 목록·획득 여부·만료 안내에 쓰이지 않는다.
+- 프로필 `/{username}`(발견한 컬렉션 수, 레거시 피드 합성), `/{username}/collections`, `GET /api/users/[username]/itembooks`, `GET /api/itembooks`, `/badges`의 컬렉션 발견 판정: 잠긴 개체는 «어느 컬렉션의 배지를 얻었는지»가 드러나므로 세지 않는다(열면 센다).
+- 컬렉션 상세 `/collections/[id]`의 장착 후보, 믹스 `/combine`의 재료 후보: 잠긴 개체는 쓸 수 없고 일련번호·이름이 드러나므로 후보에서 뺀다.
+- 이력 API `GET /api/inventory/items/[itemId]/history`: 응답은 얻은 날과 경로, 드랍·픽업 이벤트(지점·유저 이름)만 싣고 개체 정보 표를 읽지 않아 가림 대상 값이 구조상 없다(시험으로 고정).
