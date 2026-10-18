@@ -170,7 +170,7 @@ status: active
 
 **현재 서비스 (service)**
 
-- [POI.md](service/content/POI.md) — 지점(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
+- [POI.md](service/content/POI.md) — 장소(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
 
 **JAM 2.0 (plan/jam2)**
 
@@ -181,7 +181,7 @@ status: active
 
 **현재 서비스 (service)**
 
-- [POI.md](service/content/POI.md) — 지점(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
+- [POI.md](service/content/POI.md) — 장소(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
 
 **JAM 2.0 (plan/jam2)**
 
@@ -194,7 +194,7 @@ status: active
 
 - [BADGE_ENGINE_UNIFIED.md](service/badge-engine/BADGE_ENGINE_UNIFIED.md) — 액티비티배지 엔진과 아이템배지 드랍 엔진의 배지 획득·드랍 판정 로직과 두 엔진의 역할 분담을 정의한 통합 문서다.
 - [OPS_PATTERNS.md](service/content/OPS_PATTERNS.md) — 라이브 운영 에이전트가 매주 새 운영을 기획할 때 쓰는 운영 패턴 18개의 원고다. 06 플랜의 채택 아이디어 63개를 작동 원리로 묶었다. 2026-10-07 운영툴(DB)에 입력했고, 지금은 입력일 기준 사본이다.
-- [POI.md](service/content/POI.md) — 지점(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
+- [POI.md](service/content/POI.md) — 장소(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
 - [TRIBES.md](service/content/TRIBES.md) — 세계관 트라이브의 캐치프레이즈·컬렉션·아이템배지, 인접 그래프, 소재·시간대·POI 유형 매핑, 데이터 소스를 정리한 목록이다.
 - [PRD.md](service/prd/inventory/PRD.md) — 인벤토리가 가득 찼을 때 원인과 해결책을 안내하고 드랍 지도 화면(`/drops`)으로 이동시키는 상시 안내를 정의한 PRD다.
 - [PRD.md](service/prd/ops-tool/PRD.md) — 에이전트가 제출한 운영 묶음을 사용자가 어드민에서 보고 고치고 승인하면 예약 공개하고 모든 결정을 기록하는 어드민 운영툴의 스펙이다. 07 라이브 운영 블루프린트 4절을 개발 단위로 옮겼다.
@@ -789,7 +789,7 @@ status: active
 - [COMBINE_RECIPES.md](service/content/COMBINE_RECIPES.md) — 믹스 결과의 두 갈래, 레시피 슬롯 구조, 실패 처리, 등록 레시피 현황과 레시피 결과물의 범위를 정리한 정책 문서다.
 - [ITEMBOOK_TIERS.md](service/content/ITEMBOOK_TIERS.md) — 컬렉션 4등급 구조(tier_mode)를 쓰는 컬렉션의 배지 이름 맞추기 규칙과, tier_mode를 켜기 전에 꽂힌 등급 분포를 점검하는 절차를 컨텐츠 입력자용으로 정리한 문서다.
 - [OPS_PATTERNS.md](service/content/OPS_PATTERNS.md) — 라이브 운영 에이전트가 매주 새 운영을 기획할 때 쓰는 운영 패턴 18개의 원고다. 06 플랜의 채택 아이디어 63개를 작동 원리로 묶었다. 2026-10-07 운영툴(DB)에 입력했고, 지금은 입력일 기준 사본이다.
-- [POI.md](service/content/POI.md) — 지점(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
+- [POI.md](service/content/POI.md) — 장소(POI)의 데이터 소스, 티어 구조, 신규 등록 정책과 채워야 할 항목을 모은 컨텐츠 관리 문서다.
 - [SPECIAL_DAYS.md](service/content/SPECIAL_DAYS.md) — 특일정보 API가 조회하는 2026년 공휴일·24절기·기념일·잡절 전체 목록과, 어떤 날에 어떤 노출 태그를 켤지 사용자가 고르는 선택표다.
 - [TRIBES.md](service/content/TRIBES.md) — 세계관 트라이브의 캐치프레이즈·컬렉션·아이템배지, 인접 그래프, 소재·시간대·POI 유형 매핑, 데이터 소스를 정리한 목록이다.
 - [v5_badge_name_split.md](service/content/v5_badge_name_split.md) — v5 액티비티배지에서 종목마다 계열 이름을 다르게 짓는 이름 분화의 근거, 후보안, 승인 후 검증 결과를 기록한 문서다.
