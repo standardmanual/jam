@@ -66,6 +66,7 @@ import { isLeveledBadge } from '@/lib/badge-engine/badgeKind'
 // 저장 API가 쓰는 것과 **같은 판정·같은 문구**. 서버 전용 의존(drop-engine → next/headers)이
 // 없는 파일로 갈라 두었기에 클라이언트 컴포넌트에서 그대로 쓸 수 있다.
 import { findConditionShapeSaveError, findRarityLevelError } from '@/lib/admin/badge-condition-guards'
+import { findPoiLinksNotLoadedError, mergeLoadedPoiLinks, type PoiLinksLoadState } from '@/lib/admin/badge-poi-links-guard'
 import { findUnlockRequiredError, normalizeLockFields, type LockedMinimums } from '@/lib/admin/badge-lock-guard'
 // 배지 트리 화면(BadgeTreeClient 등)의 진행률 분류와 동일한 함수 — 어드민 경고가 화면
 // 렌더링과 다른 판정 로직을 갖지 않도록 재사용한다(제안서 §08 H, 티켓 20260904_1426).
@@ -246,21 +247,30 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
   const [poiResults, setPoiResults] = useState<LinkablePoi[]>([])
   const [poiSearching, setPoiSearching] = useState(false)
   const [poiSearched, setPoiSearched] = useState(false)
+  // 불러오기 상태 — 'loaded'가 아니면 저장 때 poi-links PUT을 보내지 않는다(티켓 20261018_1813).
+  const [poiLinksState, setPoiLinksState] = useState<PoiLinksLoadState>('idle')
+  // 불러오기에 «성공했을 때만» true로 만든다. 요청 전에 true로 두면 개발 모드의 이중 실행(첫 실행의
+  // 결과는 cleanup으로 버려진다)에서 두 번째 실행이 건너뛰어져 목록이 영영 빈 채로 남는다(티켓 20261006_1028).
   const poiLinksLoadedRef = useRef(false)
 
-  // 수정 모드에서 checkin 타입일 때 현재 연결된 지점을 최초 1회 불러온다
+  // 수정 모드에서 checkin 타입일 때 현재 연결된 장소를 불러온다(성공하면 다시 부르지 않는다)
   useEffect(() => {
     if (!isEdit || !badge || type !== 'checkin' || poiLinksLoadedRef.current) return
-    poiLinksLoadedRef.current = true
     let cancelled = false
+    setPoiLinksState('loading')
     ;(async () => {
       try {
         const res = await fetch(`/api/admin/badges/${badge.id}/poi-links`)
         const data = await res.json()
         if (!res.ok) throw new Error(data.error ?? '장소 연결 목록 조회 실패')
-        if (!cancelled) setLinkedPois((data.pois ?? []) as LinkablePoi[])
+        if (cancelled) return
+        poiLinksLoadedRef.current = true
+        setLinkedPois((prev) => mergeLoadedPoiLinks((data.pois ?? []) as LinkablePoi[], prev))
+        setPoiLinksState('loaded')
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : '장소 연결 목록 조회 실패')
+        if (cancelled) return
+        setPoiLinksState('failed')
+        setError(err instanceof Error ? err.message : '장소 연결 목록 조회 실패')
       }
     })()
     return () => {
@@ -447,6 +457,13 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
     const unlockRequiredError = findUnlockRequiredError(type, isLeveled ? null : rarity, unlockRequired, lockedMinimums)
     if (unlockRequiredError) {
       setError(unlockRequiredError)
+      return
+    }
+
+    // 수정 화면이 연결된 장소를 아직 불러오지 못했으면 저장하지 않는다 — 빈 목록이 전송되면 기존 연결이 지워진다(티켓 20261006_1028).
+    const poiLinksError = findPoiLinksNotLoadedError(type, isEdit, poiLinksState)
+    if (poiLinksError) {
+      setError(poiLinksError)
       return
     }
 
