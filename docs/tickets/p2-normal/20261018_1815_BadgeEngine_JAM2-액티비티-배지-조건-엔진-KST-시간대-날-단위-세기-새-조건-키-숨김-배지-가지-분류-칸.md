@@ -2,7 +2,7 @@
 id: "20261018_1815"
 category: BadgeEngine
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-10-18
 parent: "20261018_1811"
 specs:
@@ -94,29 +94,51 @@ specs:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 액티비티 배지 조건 엔진을 운영 로직 10장에 맞춰 3회로 나눠 마쳤다.
+- **1회(시간대·날 단위 세기)**: 시간대 구간 상수 하나(`lib/badge-engine/timeBands.ts`, 새벽 5~7·오전 7~11·점심 11~14·오후 14~18·저녁 18~22·밤 22~5시, KST)를 판정·문구·드랍 엔진이 같이 쓴다. 횟수 5종(`total_count`, `weekly_count`, `monthly_count`, `season_count`, `season_count_all`)이 활동한 날(KST) 수를 센다. 진행 계산과 회차 계산도 같은 단위다.
+- **2회(새 조건 키)**: 새 JAM 조건 5가지와 잼 2종·챕터 1종, 모두 8개를 레지스트리·어드민 폼·유저 노출 문구·판정 모듈에 연결했다. 캡슐 열기·잠긴 개체 열기·픽업·믹스 성공 직후와 동기화 끝에 판정한다. 이용 조건(하루 동기화)은 새 활동 있는 동기화만 센다는 것을 확인했고 비교표 서술을 고쳤다. 마이그레이션 242(조건 허용 키 72→80).
+- **3회(숨김·가지·막힌 조건·교통수단)**: 마이그레이션 243(`badges.is_hidden`, `badges.branch_key`와 제약 4개). 숨김 배지(받기 전)를 배지 트리·상세·공유 데이터·계열 진행 스냅샷에서 내리지 않는다(`lib/badge-engine/hiddenBadges.ts`). 막힌 조건 3종(`route`, `daily_once_count`, `negative_split`)은 pending 유지를 주석·문서에 명시했다. 교통수단 구간은 최고 속도 판정에서만 빠져 있어 고쳤다(`transitSegment.ts`, `backfill.ts`).
 
 ### 변경된 파일
 ```
--
+마이그레이션: 242_condition_json_new_jam_keys.sql, 243_badges_hidden_and_branch.sql (공용 DB 적용 완료)
+jam-web/src/lib/badge-engine/{timeBands, hiddenBadges, jamActionItemMetrics, jamActionJamMetrics}.ts (신규)
+jam-web/src/lib/badge-engine/{activityFilters, index, badgeProgress, repeatOccurrences, conditionRegistry, jamActionKeys, jamActionBadges, jamActionRoute, jamActionProgressTriggers, jamActionDropTriggers}.ts
+jam-web/src/lib/{badgeConditionText, combine/index, drop-engine/context, strava/{sync, transitSegment, backfill}}.ts
+jam-web/src/app/{(main)/badges/tree/page, (main)/badges/[id]/page, api/badges/[id]/share-data/route, admin/badges/conditionFormFields, api/capsule/open, api/inventory/items/[itemId]/open}
+jam-web/src/types/{database.generated, database, strava}.ts
+시험 다수(신규: time-bands-day-count, jam-action-new-metrics, jam-action-new-keys-evaluate, hidden-badges, transitSegment 등), 문서(badge-engine, prd, 현재 서비스 비교)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] SQL 242 롤백 실측(제약 교체 후 기존 배지 통과, 새 키 8종 통과, 옛 키 통과, 미등록 키 거부), SQL 243 롤백 실측 9건
+- [x] 1·2·3회 모두 `scripts/verify.sh` 전항목 통과, CI 성공, 게이트 PASS(1회는 WARN: 문서 한 줄은 카리나가 고침)
+- [x] 로컬 실렌더: 어드민 배지 등록 폼, 배지 트리가 오류 없이 열림
+- [ ] 숨김 배지가 실제로 가려지는 화면 확인은 못 했다(공용 DB에 숨김 배지를 만들 수 없어 시험 행 없이 순수 판정 시험으로만 확인)
 
 ### 배포 정보
+- 마이그레이션 242·243은 공용 DB에 적용 완료(2026-10-18~19). 코드는 staging에 fast-forward 머지 후 push, Vercel `jam`·`jam-stage` 성공.
 
 ### 실행 지표
-> Workflow 완료 알림 `<usage>`(전체 토큰·소요·에이전트 수·도구 호출)와 결과의 `tokenUsage`
-> (출력 토큰)로 채운다. 재작업이 있으면 실행 행을 추가한다(사유는 「주요 의사결정」에 적는다).
-> `scripts/ticket-metrics.mjs`가 이 고정 헤더로 티켓을 찾아 집계하므로 헤더는 글자 단위로
-> 그대로 쓴다.
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1회 시간대·날 단위 세기 | 2 | 259,457 | 56,501 / 8,750 | 25분 53초 | 109 |
+| 2회 첫 시도(SQL 필요로 중단) | 1 | 111,430 | 13,677 / - | 2분 25초 | 38 |
+| 2회 새 조건 키 | 2 | 354,449 | 85,850 / 7,792 | 27분 16초 | 128 |
+| 3회 숨김·가지·막힌 조건·교통수단 | 2 | 276,794 | 57,379 / 7,945 | 25분 34초 | 145 |
+| 합계 | 7 | 1,002,130 | 213,407 / 24,487 | 81분 8초 | 420 |
 
 ### 주요 의사결정 / 핵심 메모
+- 사용자 결정 1~4와 카리나가 정한 5~11은 위 「사용자 결정」 절.
+- 2회에서 아현이 «티켓에 SQL이 없다고 했는데 CHECK 확장이 필요하다»며 구현 전에 멈췄다. 티켓의 계획 오류였고 242를 따로 두기로 했다.
+- 숨김 배지는 발급·평가 경로가 칸을 보지 않는다(조건을 채우면 받는다). 노출만 서버가 거른다.
+- 소급하지 않는다(이미 받은 배지 154건).
 
 ### 잔여 이슈
--
+- 범위 밖 발견물 티켓: `20261018_2303`(날 기준 KST 통일 후속), `20261018_2304`(노출용 시간대 경계), `20261019_0012`(숨김 배지가 미션 보상·선행 잠금칩으로 새는 경로).
+- 배지 진행 화면의 주·달 리셋 표기(KST 자정으로 바뀜)는 사용자 확인 필요.
+- 픽업 당시 잠김은 기록 없이 개체의 현재 상태로 역산한다(개체 행이 지워지면 세지 않는 쪽으로 틀림).
+- 고도·심박·파워·케이던스는 구간별로 뺄 수 없어 교통수단 구간을 포함한 활동 전체 값이다.
+- 챕터 조건의 챕터 오름 직후 판정은 호출부(묶음 5)가 생기면 연결한다. 그때까지는 동기화 끝에서만 돈다.
+- 가지 분류와 숨김 칸의 어드민 입력은 4-5, 화면 표시는 4-6.
