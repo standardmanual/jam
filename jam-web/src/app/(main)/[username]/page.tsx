@@ -4,6 +4,7 @@ import type { ActivityFeedRow } from '@/types/database'
 import ProfileClient, { type ProfileClientProfile } from '../profile/ProfileClient'
 import { hydrateFeedBadgeInfo } from '@/lib/activity-feed/hydrate'
 import { getWallet } from '@/lib/points'
+import { getCapsuleStatus } from '@/lib/capsule/capsule'
 import { d, t } from '@/lib/i18n'
 
 interface Props {
@@ -58,12 +59,23 @@ export default async function UserProfilePage({ params }: Props) {
   // 타인 프로필 조회 시엔 조회조차 하지 않는다.
   const pointBalance = isOwnProfile ? await getWallet(user.id) : null
 
+  // 캡슐 초기값 — 내 프로필에서만 조회한다(티켓 20261018_0054). 타인이 보는 프로필은 조회도, prop 전달도 하지 않아
+  // DOM과 RSC 페이로드에 캡슐 값이 실리지 않는다(클라이언트에서 숨기는 방식은 쓰지 않는다). 조회가 실패하면 null로 접고
+  // 위젯이 클라이언트에서 다시 가져온다.
+  const capsulePromise = isOwnProfile
+    ? getCapsuleStatus(service, user.id).catch((err: unknown) => {
+        console.error('[[username]/page] 캡슐 조회 실패 — 위젯이 클라이언트에서 다시 가져온다', err)
+        return null
+      })
+    : Promise.resolve(undefined)
+
   // ─── 통계 (팔로워/팔로잉/뱃지 + isFollowing) ──────────────────
   const [
     followerCountResult,
     followingCountResult,
     badgeCountResult,
     isFollowingResult,
+    capsuleInitial,
   ] = await Promise.all([
     service.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', subjectId),
     service.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', subjectId),
@@ -76,6 +88,7 @@ export default async function UserProfilePage({ params }: Props) {
     isOwnProfile
       ? Promise.resolve({ data: null, error: null })
       : service.from('user_follows').select('id').eq('follower_id', user.id).eq('following_id', subjectId).maybeSingle(),
+    capsulePromise,
   ])
 
   if (followerCountResult.error) console.error('[[username]/page] 팔로워 카운트 조회 실패', followerCountResult.error)
@@ -378,6 +391,7 @@ export default async function UserProfilePage({ params }: Props) {
       currentUserId={user.id}
       pointBalance={pointBalance}
       activityNames={activityNames}
+      {...(isOwnProfile ? { capsuleInitial: capsuleInitial ?? null } : {})}
     />
   )
 }

@@ -10,6 +10,8 @@
  *    `strava` prop이 없고, prop 전체를 직렬화한 문자열에 민감 값이 없다
  *  - `users` 조회의 select 인자가 `*`가 아니고 민감 열을 고르지 않으며, `strava_connections`를 읽지 않는다
  *  - 본인 프로필도 같은 prop 모양이다
+ *  - 캡슐(티켓 20261018_0054): 내 프로필에서만 조회해 `capsuleInitial` prop을 내리고, 타인이 보는 프로필에는 조회도 prop 자체도 없다
+ *    (직렬화한 prop·RSC 페이로드에 캡슐 값이 실리지 않는다 — 클라이언트에서 숨기는 방식이 아니다)
  *
  * 모킹한 DB 가짜는 select에서 고른 열을 무시하고 행 전체를 돌려준다 — 조회가 넓어졌을 때
  * prop에서 새는지까지 잡으려는 최악의 경우 흉내다.
@@ -66,6 +68,7 @@ const state = vi.hoisted(() => ({
 }))
 
 const getWalletMock = vi.hoisted(() => vi.fn<(userId: string) => Promise<number>>())
+const getCapsuleStatusMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<unknown>>())
 
 // 테이블별 응답 — 모르는 테이블은 빈 결과. strava_connections는 읽히면 토큰 행을 돌려준다.
 function singleResponse(table: string) {
@@ -108,6 +111,10 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('@/lib/points', () => ({
   getWallet: (userId: string) => getWalletMock(userId),
+}))
+
+vi.mock('@/lib/capsule/capsule', () => ({
+  getCapsuleStatus: (client: unknown, userId: string) => getCapsuleStatusMock(client, userId),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -155,12 +162,24 @@ const FORBIDDEN_STRINGS = [
   'email',
 ]
 
+// 캡슐 값에서만 나오는 글자 — 타인 프로필의 직렬화에 이 값이 있으면 캡슐이 새는 것이다
+const CAPSULE_STATUS = {
+  required: 987654,
+  filled: 123456,
+  remaining: 864198,
+  balance: 55555,
+  openable: false,
+  notOpenableReason: 'not_full',
+}
+
 beforeEach(() => {
   state.loginUserId = LOGIN_USER_ID
   state.targetRow = userRow(TARGET_USER_ID)
   state.calls = []
   getWalletMock.mockReset()
   getWalletMock.mockResolvedValue(1234)
+  getCapsuleStatusMock.mockReset()
+  getCapsuleStatusMock.mockResolvedValue(CAPSULE_STATUS)
 })
 
 describe('/{username} 프로필 페이지 — ProfileClient prop 노출 방지', () => {
@@ -222,6 +241,42 @@ describe('/{username} 프로필 페이지 — ProfileClient prop 노출 방지',
       expect(serialized, `직렬화된 prop에 "${forbidden}"가 있다`).not.toContain(forbidden)
     }
     expect(state.calls.some((c) => c.table === 'strava_connections')).toBe(false)
+  })
+
+  it('(d) 타인이 보는 프로필: 캡슐을 조회하지 않고 capsuleInitial prop 자체를 내리지 않는다', async () => {
+    const props = await renderPage('target')
+
+    expect(props.isOwnProfile).toBe(false)
+    expect('capsuleInitial' in props).toBe(false)
+    expect(getCapsuleStatusMock).not.toHaveBeenCalled()
+    // 직렬화(= RSC 페이로드)에 캡슐 값이 없다
+    const serialized = JSON.stringify(props)
+    for (const secret of ['987654', '123456', '864198', '55555', 'notOpenableReason', 'capsule']) {
+      expect(serialized, `타인 프로필의 직렬화된 prop에 "${secret}"가 있다`).not.toContain(secret)
+    }
+  })
+
+  it('(d) 내 프로필: 캡슐을 내 계정으로 조회해 capsuleInitial로 내린다', async () => {
+    state.loginUserId = TARGET_USER_ID
+    const props = await renderPage('target')
+
+    expect(props.isOwnProfile).toBe(true)
+    expect(props.capsuleInitial).toEqual(CAPSULE_STATUS)
+    expect(getCapsuleStatusMock).toHaveBeenCalledTimes(1)
+    expect(getCapsuleStatusMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
+  })
+
+  it('(d) 내 프로필에서 캡슐 조회가 실패하면 null로 접고 화면은 그대로 그려진다(위젯이 다시 가져온다)', async () => {
+    state.loginUserId = TARGET_USER_ID
+    getCapsuleStatusMock.mockRejectedValue(new Error('rpc 실패'))
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const props = await renderPage('target')
+
+    expect('capsuleInitial' in props).toBe(true)
+    expect(props.capsuleInitial).toBeNull()
+    expect(props.isOwnProfile).toBe(true)
+    errorSpy.mockRestore()
   })
 
   it('존재하지 않는 유저는 404 처리한다', async () => {

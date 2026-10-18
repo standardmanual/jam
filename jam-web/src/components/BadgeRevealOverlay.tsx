@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { BadgeRevealCarousel } from '@ds/components/patterns/BadgeRevealCarousel'
 import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
@@ -48,6 +48,28 @@ export interface RevealBadge {
   level?: number | null
   /** 지금까지 이 배지를 획득한 횟수. 2 이상이면 카드에 ×N이 붙는다 */
   earnCount?: number
+  /**
+   * 잠긴 아이템 배지(티켓 20261018_0054, 운영 로직 7.3절). `true`이면 `name`·`description`·`imageUrl`을 무시하고
+   * 가린 이름(`d.lockedItem.card.name`)과 여는 데 필요한 양 문구, 그림 자리의 잠금 타일로 그린다.
+   * 호출부 실수로 이름·그림이 새지 않게 래퍼가 막는다. 서버도 잠긴 개체에는 이 값들을 내리지 않는다.
+   */
+  locked?: boolean
+  /** 잠긴 개체를 여는 데 필요한 잼. 없거나 0 이하이면 설명 줄을 생략한다 */
+  unlockRequired?: number
+}
+
+/** 캐러셀 항목 — 잠긴 개체는 가린 이름과 필요한 양 문구로 바꾸고 그림을 비운다 */
+export function toCarouselItem(item: RevealBadge): RevealBadge {
+  if (item.locked !== true) return item
+  const hasRequired = Number.isFinite(item.unlockRequired) && (item.unlockRequired ?? 0) > 0
+  return {
+    id: item.id,
+    name: d.lockedItem.card.name,
+    description: hasRequired ? t(d.lockedItem.card.description, { n: item.unlockRequired as number }) : '',
+    imageUrl: null,
+    rarity: item.rarity,
+    locked: true,
+  }
 }
 
 interface Props {
@@ -70,6 +92,12 @@ interface Props {
    * 처리해야 한다. 지정하지 않으면 기존 동작(0장 시 미노출)을 그대로 유지한다.
    */
   emptyMessage?: string
+  /**
+   * 카드 위에 한 줄로 보여 줄 결과 문구(티켓 20261018_0054). 캡슐 열기 결과(«캡슐을 열었어요. 아이템 배지 {n}개를 얻었어요.»)처럼
+   * 획득 연출에 맥락 문장이 필요한 호출부가 쓴다. 지정하면 오버레이가 열릴 때 라이브 리전이 개수 문구 대신 이 문구를 알린다.
+   * 지정하지 않으면 기존 화면 그대로다(헤더 슬롯 없음).
+   */
+  resultMessage?: string
 }
 
 /** 캐러셀 오버레이(zIndex 60)와 같은 층에 두는 대기 화면 */
@@ -86,8 +114,11 @@ export default function BadgeRevealOverlay({
   profileHref,
   onClose,
   emptyMessage,
+  resultMessage,
 }: Props) {
   const router = useRouter()
+  // 항목 배열의 정체성을 유지한다 — 잠긴 개체를 가린 문구로 바꾸는 변환이 렌더마다 새 배열을 만들지 않게 한다.
+  const carouselItems = useMemo(() => items.map((item) => toCarouselItem(item)), [items])
 
   // 오버레이가 떠 있는 동안 플로팅 탭바를 DOM에서 제거한다(닫히면 정리 함수가 복원).
   useEffect(() => {
@@ -112,7 +143,8 @@ export default function BadgeRevealOverlay({
      중에 파생시킨다(이미 떠 있는 노드의 내용이 바뀌는 것이므로 별도 커밋이 필요 없다). */
   const revealing = open && !loading
   const cardCount = items.length + moreCount
-  const announcement = revealing && cardCount > 0 ? t(d.badgeReveal.opened, { count: cardCount }) : ''
+  const announcement =
+    revealing && cardCount > 0 ? (resultMessage ?? t(d.badgeReveal.opened, { count: cardCount })) : ''
   const showEmptyState = revealing && cardCount === 0 && Boolean(emptyMessage)
 
   function handleMoreClick() {
@@ -179,7 +211,7 @@ export default function BadgeRevealOverlay({
 
       <BadgeRevealCarousel
         open={revealing && !showEmptyState}
-        items={items}
+        items={carouselItems}
         moreCount={moreCount}
         onMoreClick={handleMoreClick}
         onClose={onClose}
@@ -189,6 +221,26 @@ export default function BadgeRevealOverlay({
         moreMessage={(n: number) => t(d.badgeReveal.moreMessage, { count: n })}
         earnCountMessage={(n: number) => t(d.badges.earnCountAria, { count: n })}
         style={COLUMN_STYLE}
+        header={
+          resultMessage ? (
+            // 흰 글자를 --backdrop 위에 직접 놓으면 크림 바탕 위에서 대비가 모자라 --surface 패널에 올린다(보류 고르기 헤더와 같은 방식).
+            <div
+              style={{
+                background: 'var(--surface)',
+                borderRadius: '0 0 var(--radius-2xl) var(--radius-2xl)',
+                padding: 'max(var(--spacing-16), env(safe-area-inset-top)) var(--spacing-24) var(--spacing-16)',
+                textAlign: 'left',
+              }}
+            >
+              <p
+                className="m-0 break-keep wrap-break-word text-balance"
+                style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)', fontWeight: 700 }}
+              >
+                {resultMessage}
+              </p>
+            </div>
+          ) : undefined
+        }
       />
     </>
   )

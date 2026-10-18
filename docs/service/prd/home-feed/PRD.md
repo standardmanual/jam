@@ -9,6 +9,8 @@ code:
   - "jam-web/src/app/(main)/page.tsx"
   - "jam-web/src/app/(main)/TodayCardStack.tsx"
   - "jam-web/src/app/(main)/TodayStatusStrip.tsx"
+  - "jam-web/src/components/capsule"
+  - "jam-web/src/lib/capsule/capsule-client.ts"
   - "jam-web/src/components/today"
   - "jam-web/src/app/(main)/OnboardingQuestCard.tsx"
   - "jam-web/src/lib/onboarding-quest/status.ts"
@@ -48,7 +50,8 @@ code:
 | 4 | 온보딩 퀘스트 카드 | `user_onboarding_quests` 행이 있고 `completed_at`이 비어 있는 유저에게만. 아래 표 |
 | 5 | Strava 동기화 끊김 카드 | 토큰 갱신 실패·Strava 철회로 끊긴 유저에게만(전체 폭). 정상 연결·미연동·유저가 직접 끊은 경우·조회 실패에는 DOM에 없다. 아래 표 |
 | 6 | 오늘의 현황 스트립 | 2칸. 왼쪽 「내 진행도」, 오른쪽 「친구 활동」(아래 표) |
-| 7 | 투데이 카드 스택 | 제목 「투데이」·부제 「오늘의 소식」. 노출할 카드가 0장이면 영역 전체를 그리지 않는다 |
+| 7 | 캡슐 | 가로 알약 한 개. 누르면 시트가 떠서 그 안에서 채우기·열기를 한다. 아래 설명 |
+| 8 | 투데이 카드 스택 | 제목 「투데이」·부제 「오늘의 소식」. 노출할 카드가 0장이면 영역 전체를 그리지 않는다 |
 
 **이용 정지 배너**(티켓 20261017_1426)는 `user_suspensions`에 진행 중인 정지(`lifted_at` 없음)가 있는 유저의 홈 맨 위(상단 바 바로 아래, 인사말 줄 위)에 그린다.
 흰 카드에 칩 「이용 정지」, 제목 「이용이 정지된 계정이에요」, 정지 사유(운영자가 쓴 전문), 정지일, 정지 중 일어나는 일과 해제 방법 안내, 검정 알약 「문의하기」(→ `/voc`) 순이다.
@@ -114,6 +117,26 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 | | 오늘 배지를 얻은 팔로잉 있음 | 인원 수. 정확히 1명이고 username을 알면 그 프로필, 그 외 `/feed` |
 
 근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/TodayStatusStrip.tsx`, `jam-web/src/lib/today/status.ts`, `jam-web/src/app/(main)/TodayCardStack.tsx`, 문구 `jam-web/src/lib/i18n/ko.ts`(`today.cardStackTitle`·`cardStackSubtitle`)
+
+**캡슐 위젯**(티켓 20261018_0054 1회, 운영 로직 5.2절)은 오늘의 현황 스트립 아래에 둔다. 내 프로필에도 같은 위젯이 헤더와 통계 탭 사이에 한 번 놓이고,
+**타인이 보는 프로필에는 서버가 값을 내려주지 않아** DOM과 RSC 페이로드에 캡슐이 없다(클라이언트에서 숨기지 않는다).
+알약 모양은 임시 디자인이라 `CapsulePill.tsx` 한 파일만 모양을 안다.
+
+| 상태 | 알약(1행 오른쪽 문구) | 시트 |
+|---|---|---|
+| 채우는 중 | 「채우기 ›」 | 외곽선 게이지, 「가진 잼 {n}」, 주 버튼 「채우기」. 가진 잼이 0이면 버튼이 비활성이고 이유 문구가 아래에 있다 |
+| 열 수 있음 | 「열 수 있어요 ›」(점·펄스·색 강조 없음) | 「열기」 버튼. 누르면 시트가 닫히고 닫힘이 끝난 뒤 획득 연출 오버레이가 열린다 |
+| 인벤토리 빈칸 모자람 | 「빈칸이 모자라요 ›」 | 열기 버튼 대신 안내(지금 빈칸 수·열려면 필요한 빈칸 수·채운 잼은 그대로)와 「인벤토리 보기」 링크 |
+| 로딩 | 같은 높이의 Skeleton 알약 | — |
+| 조회 실패 | 같은 알약 안에서 「캡슐을 불러오지 못했어요 · 다시 시도」(누르면 다시 조회) | — |
+
+- 게이지는 외곽선 있는 `ProgressBar`(`outlined`, `track-gradient`)이고 숫자·퍼센트가 어디에도 없다(운영 로직 4.3절). 가진 잼 숫자는 시트와 채우기 입력 단계에만 보이고 위젯에는 없다.
+- 채우기 단계는 시트 안에서 본문과 갈아 끼운다(제목 「잼 채우기」, 「취소」). 숫자 입력창의 기본값은 `min(남은 양, 가진 잼)`이고 줄일 수 있으며, 그 상한을 넘기면 상한으로 맞춘다. 입력이 비었거나 0이면 버튼이 막힌다.
+- 열기 결과 오버레이는 카드 위에 한 줄 「캡슐을 열었어요. 아이템 배지 {n}개를 얻었어요.」가 나오고, 잠긴 채 나온 개체는 잠금 타일 카드로 보인다. 높은 등급 축하 연출은 없다. 오버레이를 닫으면 게이지가 다음 캡슐의 값으로 옮겨 간다.
+- 이용 정지 중 채우기·열기가 403(`user_suspended`)을 받으면 일반 실패가 아니라 안내(info) 토스트다. 버튼을 미리 막지 않고 서버 응답으로 판단한다.
+- 서버 조회가 실패하면 투데이는 위젯을 그대로 그리고(초기값 없음), 위젯이 클라이언트에서 `GET /api/capsule`로 다시 가져온다.
+
+근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/app/(main)/[username]/page.tsx`, `jam-web/src/app/(main)/profile/ProfileClient.tsx`(`capsuleInitial`), `jam-web/src/components/capsule/`(`CapsulePill`·`CapsuleWidget`·`CapsuleSheet`), `jam-web/src/components/jam/JamFillPanel.tsx`, `jam-web/src/lib/capsule/capsule-client.ts`·`capsule-flow.ts`·`capsule-view.ts`, `jam-web/src/components/BadgeRevealOverlay.tsx`(`resultMessage`·`locked`), 문구 `jam-web/src/lib/i18n/ko.ts`(`capsule`·`suspension`)
 
 ## 3. 카드 노출 규칙
 

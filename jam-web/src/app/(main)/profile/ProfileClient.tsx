@@ -28,6 +28,8 @@ import type { UserRow, ActivityFeedRow, ActivityFeedEventType, BadgeRarity } fro
 import FeedSection, { DetailSheet, earnCountOf, badgeLevelOf } from '../FeedSection'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { useToast } from '@/components/ui/Toast'
+import CapsuleWidget from '@/components/capsule/CapsuleWidget'
+import type { CapsuleStatus } from '@/lib/capsule/capsule-contract'
 
 /** `POST /api/follows` 응답 중 배지 리빌 연출에 필요한 조각(sync.ts EarnedBadgePayload와 동일 계약) */
 interface FollowResponse {
@@ -103,6 +105,12 @@ interface Props {
    * 옵셔널이다 — 안 넘겨도 묶음은 이름 없이 그대로 동작한다.
    */
   activityNames?: Record<string, string>
+  /**
+   * 캡슐 위젯의 서버 초기값(티켓 20261018_0054). **내 프로필에서만 내려온다 — 타인이 보는 프로필에는 prop 자체가 없다(`undefined`).**
+   * 그래서 타인에게는 DOM과 RSC 페이로드에 캡슐 값이 실리지 않는다(클라이언트에서 숨기는 방식이 아니다).
+   * `null`은 «내 프로필인데 서버 조회가 실패했다»이고 위젯이 클라이언트에서 다시 가져온다.
+   */
+  capsuleInitial?: CapsuleStatus | null
 }
 
 export default function ProfileClient({
@@ -119,6 +127,7 @@ export default function ProfileClient({
   currentUserId,
   pointBalance,
   activityNames,
+  capsuleInitial,
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -649,6 +658,10 @@ export default function ProfileClient({
             </Button>
           )}
         </div>
+
+        {/* 캡슐 위젯 (티켓 20261018_0054) — 내 프로필에서만. 프로필 헤더와 통계 탭 사이다.
+            렌더 조건은 서버가 prop을 내려줬는지(`capsuleInitial !== undefined`)이고, 타인 프로필에는 prop이 없다. */}
+        {isOwnProfile && capsuleInitial !== undefined && <CapsuleWidget initial={capsuleInitial} />}
 
         {/* 통계 바 — Tabs sliding (16-tabs-sliding.md).
             기본뷰(해시 없음)에서는 선택된 탭이 없어야 하므로 value에 빈 값을 넘겨

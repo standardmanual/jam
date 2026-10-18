@@ -152,3 +152,57 @@ describe('서버 전용 모듈은 클라이언트 컴포넌트에서 가져오�
     }
   })
 })
+
+// ─── 캡슐 화면(티켓 20261018_0054 1회) ─────────────────────────────────────────────
+
+describe('캡슐 클라이언트와 화면의 import 사슬에 서버 전용 모듈이 없다 (정적·동적 모두)', () => {
+  const ENTRIES = [
+    'lib/capsule/capsule-client.ts',
+    'lib/capsule/capsule-view.ts',
+    'lib/jam/jam-fill.ts',
+    'lib/suspension/suspended-block.ts',
+    'components/capsule/CapsulePill.tsx',
+    'components/capsule/CapsuleSheet.tsx',
+    'components/capsule/CapsuleWidget.tsx',
+    'components/capsule/capsuleReveal.ts',
+    'components/jam/JamFillPanel.tsx',
+    'components/jam/JamBalance.tsx',
+  ]
+
+  it.each(ENTRIES)('%s', (entry) => {
+    const { files, packages } = crawl(join(srcRoot, entry))
+    const reached = [...files].map(rel)
+    for (const forbidden of FORBIDDEN_FILES) {
+      expect(reached.filter((f) => f.endsWith(forbidden)), `${entry}가 ${forbidden}을 끌어온다`).toEqual([])
+    }
+    for (const forbidden of FORBIDDEN_PACKAGES) {
+      expect([...packages].filter((p) => p === forbidden), `${entry}가 ${forbidden}을 끌어온다`).toEqual([])
+    }
+  })
+
+  it('capsule-client.ts는 계약 파일과 정지 판별만 가져온다', () => {
+    const specs = specifiersOf(readFileSync(join(srcRoot, 'lib/capsule/capsule-client.ts'), 'utf8')).sort()
+    expect(specs).toEqual(['@/lib/capsule/capsule-contract', '@/lib/suspension/suspended-block'])
+  })
+
+  it('capsule-client.ts에 서버 전용 모듈 이름이 코드로 나오지 않는다(주석 제외)', () => {
+    const code = readFileSync(join(srcRoot, 'lib/capsule/capsule-client.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+    expect(code).not.toMatch(/supabase\/server|next\/headers|server-only|createServiceClient/)
+  })
+})
+
+describe('알약 모양은 CapsulePill.tsx 한 파일만 안다', () => {
+  // 알약 모양을 만드는 값(전체 둥근 모서리)이 위젯·시트에 나오면 모양이 바뀔 때 고칠 곳이 둘 이상이 된다
+  it.each(['components/capsule/CapsuleWidget.tsx', 'components/capsule/CapsuleSheet.tsx'])('%s에 알약 모서리·알약 높이 값이 없다', (file) => {
+    const code = readFileSync(join(srcRoot, file), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+    expect(code).not.toMatch(/rounded-full|radius-full|PILL_HEIGHT/)
+  })
+
+  it('CapsulePill.tsx에는 알약 모서리가 있다', () => {
+    expect(readFileSync(join(srcRoot, 'components/capsule/CapsulePill.tsx'), 'utf8')).toMatch(/rounded-full/)
+  })
+})

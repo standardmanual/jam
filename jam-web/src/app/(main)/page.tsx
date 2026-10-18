@@ -11,6 +11,8 @@ import StravaDisconnectedCard from '@/components/strava/StravaDisconnectedCard'
 import SuspensionBanner from './SuspensionBanner'
 import { loadHomeSuspensionBanner } from '@/lib/suspension/home-banner'
 import HomeViewTracker from './HomeViewTracker'
+import CapsuleWidget from '@/components/capsule/CapsuleWidget'
+import { getCapsuleStatus } from '@/lib/capsule/capsule'
 import { getTodayCards } from '@/lib/today/cards'
 import { getTodayLeftStatus, getTodayRightStatus, type TodayLeftStatus } from '@/lib/today/status'
 import { getOnboardingQuestCard } from '@/lib/onboarding-quest/status'
@@ -50,6 +52,12 @@ export default async function HomePage() {
   // 이용 정지 배너 값(티켓 20261017_1426). 다른 조회와 함께 시작해 홈 응답을 늦추지 않는다.
   // user_suspensions는 service_role 전용이라 서비스 클라이언트로 읽는다. 조회가 실패하면 배너만 생략한다(던지지 않는다).
   const suspensionPromise = loadHomeSuspensionBanner(createServiceClient(), userId)
+  // 캡슐 초기값(티켓 20261018_0054). 조회가 실패하면 null로 접고 던지지 않는다 — 위젯이 클라이언트에서 다시 가져오고 오류 상태를 보여 준다.
+  // 캡슐이 없으면 서버가 이때 만든다(`capsule_get_or_create`).
+  const capsulePromise = getCapsuleStatus(createServiceClient(), userId).catch((err: unknown) => {
+    console.error('[home/page] 캡슐 조회 실패 — 위젯이 클라이언트에서 다시 가져온다', err)
+    return null
+  })
 
   const { data: stravaConn, error: stravaConnError } = await stravaConnPromise
   if (stravaConnError) console.error('[home/page] strava_connections 조회 실패', stravaConnError)
@@ -72,6 +80,7 @@ export default async function HomePage() {
     onboardingQuestCard,
     onboardingQuestGate,
     suspension,
+    capsuleInitial,
   ] = await Promise.all([
     profilePromise,
     rightStatusPromise,
@@ -79,6 +88,7 @@ export default async function HomePage() {
     onboardingQuestPromise,
     onboardingQuestGatePromise,
     suspensionPromise,
+    capsulePromise,
   ])
   if (profileError) console.error('[home/page] users 프로필 조회 실패', profileError)
 
@@ -134,6 +144,10 @@ export default async function HomePage() {
       {/* "오늘의 현황" 스트립 (신규) — 좌: 내 진행도 / 우: 친구 활동. 큐레이션 없음(today_cards
           CMS와 역할 분리, 완료 기록 참고). */}
       <TodayStatusStrip left={leftStatus} right={rightStatus} />
+
+      {/* 캡슐 위젯 (티켓 20261018_0054) — 현황 스트립 아래라 퀘스트 중에도 퀘스트 카드가 먼저 읽힌다.
+          감싸는 곳에 z-index를 주지 않는다(시트가 탭바에 가려진 2026-08-25 사고). 조회가 실패했으면 위젯이 직접 가져온다. */}
+      <CapsuleWidget initial={capsuleInitial} />
 
       {/* 투데이 카드 스택 (Phase 15) — 조건 매칭 카드 0개면 자동 미노출 */}
       <TodayCardStack cards={todayCards} currentUserId={userId} />
