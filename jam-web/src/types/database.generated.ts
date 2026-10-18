@@ -820,28 +820,37 @@ export type Database = {
       }
       combination_recipes: {
         Row: {
+          allow_no_reward: boolean
           created_at: string
+          description: string | null
           id: string
           name: string | null
           reward_badge_ids: string[]
+          reward_locked: boolean
           reward_points: number
           valid_from: string | null
           valid_until: string | null
         }
         Insert: {
+          allow_no_reward?: boolean
           created_at?: string
+          description?: string | null
           id?: string
           name?: string | null
           reward_badge_ids?: string[]
+          reward_locked?: boolean
           reward_points?: number
           valid_from?: string | null
           valid_until?: string | null
         }
         Update: {
+          allow_no_reward?: boolean
           created_at?: string
+          description?: string | null
           id?: string
           name?: string | null
           reward_badge_ids?: string[]
+          reward_locked?: boolean
           reward_points?: number
           valid_from?: string | null
           valid_until?: string | null
@@ -876,6 +885,77 @@ export type Database = {
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "combination_recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      combine_pending_results: {
+        Row: {
+          badge_id: string
+          created_at: string
+          id: string
+          inventory_item_id: string | null
+          lock_reason: string | null
+          locked: boolean
+          recipe_id: string | null
+          resolved_at: string | null
+          status: string
+          unlock_required: number | null
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          lock_reason?: string | null
+          locked?: boolean
+          recipe_id?: string | null
+          resolved_at?: string | null
+          status?: string
+          unlock_required?: number | null
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          lock_reason?: string | null
+          locked?: boolean
+          recipe_id?: string | null
+          resolved_at?: string | null
+          status?: string
+          unlock_required?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "combine_pending_results_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "combine_pending_results_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "combine_pending_results_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "combination_recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "combine_pending_results_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -4254,6 +4334,14 @@ export type Database = {
       }
       capsule_open: {
         Args: { p_items: Json; p_user_id: string }
+        Returns: Json
+      }
+      combine_claim_pending: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
+      combine_grant_results: {
+        Args: { p_badge_ids: string[]; p_locked?: boolean; p_recipe_id: string | null; p_user_id: string }
         Returns: Json
       }
       chapter_add_score: {
