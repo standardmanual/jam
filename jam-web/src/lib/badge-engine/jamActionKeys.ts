@@ -25,6 +25,15 @@ export const JAM_ACTION_CONDITION_KEYS = [
   'days_since_signup',
   'weekly_active_days',
   'same_spot_checkin_days',
+  // 새 JAM 조건 5종과 잼·챕터 3종 (티켓 20261018_1815 2회, 운영 로직 10.2절)
+  'capsule_open_count',
+  'locked_item_open_count',
+  'locked_item_pickup_count',
+  'other_tribe_item_kinds_count',
+  'cross_tribe_combine_success_count',
+  'jam_total_earned',
+  'jam_weekly_earned',
+  'chapter_reached',
 ] as const
 
 /**

@@ -161,6 +161,15 @@ describe('condition_json ↔ 폼 라운드트립 (티켓 20260905_0032)', () => 
     signup_recent_active_days: 4,
     weekly_active_days: 3,
     same_spot_checkin_days: 10,
+    // JAM! 카테고리 — 새 JAM 조건 5종과 잼·챕터 3종 (티켓 20261018_1815)
+    capsule_open_count: 5,
+    locked_item_open_count: 3,
+    locked_item_pickup_count: 3,
+    other_tribe_item_kinds_count: 5,
+    cross_tribe_combine_success_count: 3,
+    jam_total_earned: 1000,
+    jam_weekly_earned: 300,
+    chapter_reached: 3,
   }
 
   it('표본이 폼 지원 필드를 전부 덮는다 — 새 필드를 추가하면 여기도 채워야 한다', () => {
@@ -444,6 +453,8 @@ describe('조건 폼 그룹 재편 (티켓 20260911_0901)', () => {
         'drop_item_count', 'pickup_item_count', 'pickup_from_user_count', 'picked_up_by_user_count',
         'mission_complete_count', 'collection_complete_count', 'days_since_signup', 'signup_recent_active_days',
         'weekly_active_days', 'same_spot_checkin_days',
+        'capsule_open_count', 'locked_item_open_count', 'locked_item_pickup_count', 'other_tribe_item_kinds_count',
+        'cross_tribe_combine_success_count', 'jam_total_earned', 'jam_weekly_earned', 'chapter_reached',
       ])
     )
   })
@@ -566,5 +577,38 @@ describe('미션·컬렉션·가입 경과일·활동일·체크인 일수 지�
     expect(fields.missionCompleteCount).toBe('')
     expect(fields.collectionCompleteCount).toBe('')
     expect(fields.sameSpotCheckinDays).toBe('')
+  })
+})
+
+describe('새 JAM 조건 5종과 잼·챕터 3종 — 폼 입력·저장·복원 (티켓 20261018_1815)', () => {
+  it('폼 입력이 condition_json으로 조립된다', () => {
+    const fields = emptyFields({
+      capsuleOpenCount: '5',
+      lockedItemOpenCount: '3',
+      lockedItemPickupCount: '3',
+      otherTribeItemKindsCount: '5',
+      crossTribeCombineSuccessCount: '3',
+      jamTotalEarned: '1000',
+      jamWeeklyEarned: '300',
+      chapterReached: '3',
+    })
+    expect(buildConditionJsonFromFields(fields)).toEqual({
+      capsule_open_count: 5,
+      locked_item_open_count: 3,
+      locked_item_pickup_count: 3,
+      other_tribe_item_kinds_count: 5,
+      cross_tribe_combine_success_count: 3,
+      jam_total_earned: 1000,
+      jam_weekly_earned: 300,
+      chapter_reached: 3,
+    })
+  })
+
+  it('저장된 값을 폼 입력으로 되돌린다 — 저장하지 않은 키는 빈 문자열이다', () => {
+    const fields = conditionFormFieldsFrom({ jam_weekly_earned: 300, chapter_reached: 3 })
+    expect(fields.jamWeeklyEarned).toBe('300')
+    expect(fields.chapterReached).toBe('3')
+    expect(fields.capsuleOpenCount).toBe('')
+    expect(fields.jamTotalEarned).toBe('')
   })
 })

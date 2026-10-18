@@ -208,6 +208,18 @@ const USER_PHRASE: Partial<Record<ConditionKey, (c: BadgeCondition) => string | 
   signup_recent_active_days: (c) => `최근 30일 동안 ${c.signup_recent_active_days}일 이상 활동`,
   weekly_active_days: (c) => `한 주(월~일)에 ${c.weekly_active_days}일 이상 활동`,
   same_spot_checkin_days: (c) => `같은 장소에 ${c.same_spot_checkin_days}일 이상 체크인`,
+
+  // ── 새 JAM 조건 5종과 잼·챕터 3종 (티켓 20261018_1815) ─
+  // 문구는 모두 명사구로 끝나 「… 조건을 채우면 획득할 수 있어요.」와 이어진다. 고정 용어 「잼」·「챕터」·「트라이브」·「아이템 배지」·「캡슐」·
+  // 「픽업」만 쓴다(UX Writing). 「주」에는 (월~일)을 붙인다.
+  capsule_open_count: (c) => `캡슐 ${c.capsule_open_count}번 이상 열기`,
+  locked_item_open_count: (c) => `잠긴 아이템 배지 ${c.locked_item_open_count}번 이상 열기`,
+  locked_item_pickup_count: (c) => `잠긴 아이템 배지 ${c.locked_item_pickup_count}개 이상 픽업`,
+  other_tribe_item_kinds_count: (c) => `다른 트라이브의 아이템 배지 ${c.other_tribe_item_kinds_count}종 이상 보유`,
+  cross_tribe_combine_success_count: (c) => `트라이브를 넘나드는 믹스 ${c.cross_tribe_combine_success_count}번 이상 성공`,
+  jam_total_earned: (c) => `잼 ${c.jam_total_earned} 이상 모으기`,
+  jam_weekly_earned: (c) => `한 주(월~일)에 잼 ${c.jam_weekly_earned} 이상 모으기`,
+  chapter_reached: (c) => `챕터 ${c.chapter_reached} 도달`,
 }
 
 /**

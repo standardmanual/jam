@@ -14,8 +14,9 @@
  * 3. `jamActionMetrics.ts`(또는 별도 파일)에 계산 함수 1개
  * 4. CHECK 키 확장 마이그레이션 1개(199 복사), `types/database.ts`·`conditionFormFields.ts`
  * 5. 호출 지점: 라우트는 `runJamActionEvaluation(userId, [키…])`(jamActionRoute.ts) — 믹스 `/api/combine`,
- *    드랍·픽업 라우트, 컬렉션 장착 `/api/itembooks/[id]/slot`(③의 `after()`). 동기화는 `sync.ts`의
- *    `evaluateJamActionSafely`가 새 활동이 있을 때 5키(`JAM_SYNC_TRIGGERS`), 없을 때 가입 경과일
+ *    드랍·픽업 라우트, 컬렉션 장착 `/api/itembooks/[id]/slot`(③의 `after()`), 캡슐 열기 `/api/capsule/open`·
+ *    잠긴 개체 열기 `/api/inventory/items/[itemId]/open`(티켓 20261018_1815의 `after()`). 동기화는 `sync.ts`의
+ *    `evaluateJamActionSafely`가 새 활동이 있을 때 8키(`JAM_SYNC_TRIGGERS`), 없을 때 가입 경과일
  *    (`JAM_EMPTY_SYNC_TRIGGERS`)을 판정하고 획득 id를 결산에 합친다. 어느 호출 지점에 어떤 키를 넘기는지는
  *    `jamActionDropTriggers.ts`·`jamActionProgressTriggers.ts`가 정한다. 기존 유저 재평가 배치
  *    (`reevaluateCatalog.ts`, 티켓 20261001_0634)도 호출 지점이다 — 키 전부(`JAM_ACTION_CONDITION_KEYS`)를
@@ -49,6 +50,14 @@ import {
   countPickupFromUsers,
 } from './jamActionDropMetrics'
 import { countCollectionCompletions, countMissionCompletions } from './jamActionCompletionMetrics'
+import {
+  countCapsuleOpens,
+  countCrossTribeCombineSuccess,
+  countLockedItemOpens,
+  countLockedItemPickups,
+  countOtherTribeItemKinds,
+} from './jamActionItemMetrics'
+import { readChapterReached, readJamTotalEarned, readJamWeeklyEarned } from './jamActionJamMetrics'
 import {
   countDaysSinceSignup,
   countRecentActiveDays,
@@ -88,6 +97,14 @@ const METRIC_COMPUTERS: Record<JamActionMetric, MetricComputer> = {
   collection_complete_count: countCollectionCompletions,
   weekly_active_days: countWeeklyActiveDays,
   same_spot_checkin_days: countSameSpotCheckinDays,
+  capsule_open_count: countCapsuleOpens,
+  locked_item_open_count: countLockedItemOpens,
+  locked_item_pickup_count: countLockedItemPickups,
+  other_tribe_item_kinds_count: countOtherTribeItemKinds,
+  cross_tribe_combine_success_count: countCrossTribeCombineSuccess,
+  jam_total_earned: readJamTotalEarned,
+  jam_weekly_earned: readJamWeeklyEarned,
+  chapter_reached: readChapterReached,
 }
 
 function isRecipeFirstSuccessValue(v: unknown): v is { recipe_id: string } {

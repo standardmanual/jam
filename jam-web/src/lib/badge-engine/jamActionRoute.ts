@@ -5,7 +5,7 @@
  * 한 줄로 배지 판정·발급과 알림 생성을 처리한다. 동기화(`sync.ts`)는 이 파일이 아니라 `sync.ts` 안의
  * `evaluateJamActionSafely`(→ `evaluateJamActionBadges`)를 쓴다 — 이 파일이 `sync.ts`의
  * `notifyActivityBadgesEarned`를 import하므로 `sync.ts`가 이 파일을 import하면 순환이 생기고, 동기화는 획득
- * 배지를 자기 결산에 직접 합치기 때문이다. `evaluateJamActionSafely`는 새 활동이 있는 동기화가 끝날 때 주 키 5개
+ * 배지를 자기 결산에 직접 합치기 때문이다. `evaluateJamActionSafely`는 새 활동이 있는 동기화가 끝날 때 주 키 8개
  * (`JAM_SYNC_TRIGGERS`), 새 활동이 없는 동기화가 끝날 때 가입 경과일(`JAM_EMPTY_SYNC_TRIGGERS`)을 판정한다.
  *
  * **어떤 예외도 밖으로 던지지 않는다.** 배지 판정·알림이 실패해도 원본 행동(믹스 결과·드랍·픽업)의

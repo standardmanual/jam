@@ -1591,6 +1591,28 @@ export interface BadgeCondition {
   weekly_active_days?: number
   /** [JAM!] 지점(`poi_id`)별 체크인한 서로 다른 날(KST) 수의 최댓값 ≥ 값. 합이 아니다. 가입한 날부터 센다. */
   same_spot_checkin_days?: number
+
+  // ── JAM! 카테고리 — 새 JAM 조건 5종과 잼·챕터 3종 (티켓 20261018_1815 2회, 마이그레이션 242) ──
+  //
+  // 위 조건들과 같은 `evaluation: 'external'`이다. 판정·발급은 `jamActionBadges.ts`, 값 계산은 `jamActionItemMetrics.ts`
+  // (새 JAM 조건 5종)·`jamActionJamMetrics.ts`(잼·챕터 3종)가 전담한다.
+
+  /** [JAM!] 캡슐을 연 횟수 ≥ 값. `capsule_opens` 행 수. */
+  capsule_open_count?: number
+  /** [JAM!] 잠긴 아이템 배지를 연 횟수 ≥ 값. 개체 이력(`inventory_item_events`)의 `unlocked` 행 수. */
+  locked_item_open_count?: number
+  /** [JAM!] 픽업 당시 잠겨 있던 서로 다른 개체 수 ≥ 값. 자기 드랍은 세지 않는다. */
+  locked_item_pickup_count?: number
+  /** [JAM!] 지금 가진 개체 가운데 내 트라이브와 다른 트라이브 아이템 배지의 서로 다른 종류 수 ≥ 값. */
+  other_tribe_item_kinds_count?: number
+  /** [JAM!] 재료가 트라이브 2개 이상에 걸친 믹스 성공 횟수 ≥ 값. */
+  cross_tribe_combine_success_count?: number
+  /** [JAM!] 지금까지 모은 잼 ≥ 값. `jam_wallets.total_earned`(가진 양이 아니다). */
+  jam_total_earned?: number
+  /** [JAM!] 월~일(KST) 한 주에 모은 잼의 역대 최고 주 값 ≥ 값. */
+  jam_weekly_earned?: number
+  /** [JAM!] 도달한 챕터 번호 ≥ 값. `user_chapters.chapter_no`(퀘스트 전은 0). */
+  chapter_reached?: number
 }
 
 // =========================================

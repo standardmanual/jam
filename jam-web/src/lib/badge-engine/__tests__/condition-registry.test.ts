@@ -200,7 +200,7 @@ const V5_SAMPLE_VALUES: Record<(typeof V5_NEW_20_KEYS)[number], unknown> = {
 }
 
 describe('레지스트리 — 필드 구성', () => {
-  it('72종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1 + 체크인 배지 보유 2 + 믹스 행동 지표 4 + 드랍·픽업 지표 4 + 미션·컬렉션·가입·활동일·체크인 일수 지표 6)을 선언한다', () => {
+  it('80종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3 + 연속 동기화 일수 1 + 체크인 배지 보유 2 + 믹스 행동 지표 4 + 드랍·픽업 지표 4 + 미션·컬렉션·가입·활동일·체크인 일수 지표 6 + 새 JAM 조건 5 + 잼·챕터 3)을 선언한다', () => {
     // v5 확장 3종(티켓 20260906_0110) — cumulative_duration_hours · monthly_count ·
     // personal_record_break_metric. 서비스 사용량 3종(티켓 20260910_1557, JAM! 카테고리) —
     // follower_count · following_count · daily_sync_count. 연속 동기화 일수 1종
@@ -211,10 +211,13 @@ describe('레지스트리 — 필드 구성', () => {
     // pickup_item_count · pickup_from_user_count · picked_up_by_user_count. 미션·컬렉션·가입 경과일·
     // 활동일·체크인 일수 지표 6종(티켓 20261001_0633) — mission_complete_count ·
     // collection_complete_count · days_since_signup · signup_recent_active_days(보조 키) ·
-    // weekly_active_days · same_spot_checkin_days.
-    expect(CONDITION_FIELDS.length).toBe(72)
-    expect(ALL_CONDITION_KEYS.length).toBe(72)
-    expect(new Set(ALL_CONDITION_KEYS).size).toBe(72) // 중복 키 없음
+    // weekly_active_days · same_spot_checkin_days. 새 JAM 조건 5종과 잼·챕터 3종(티켓 20261018_1815,
+    // 마이그레이션 242) — capsule_open_count · locked_item_open_count · locked_item_pickup_count ·
+    // other_tribe_item_kinds_count · cross_tribe_combine_success_count · jam_total_earned ·
+    // jam_weekly_earned · chapter_reached.
+    expect(CONDITION_FIELDS.length).toBe(80)
+    expect(ALL_CONDITION_KEYS.length).toBe(80)
+    expect(new Set(ALL_CONDITION_KEYS).size).toBe(80) // 중복 키 없음
   })
 
   it('기존 25종이 전부 들어 있고, route를 뺀 24종은 평가 주체가 있다', () => {
@@ -242,6 +245,8 @@ describe('레지스트리 — 필드 구성', () => {
     // 직접 수치·필터 검사」를 뜻하는 값이라, 유저 보유 배지를 봐야 하는 이 넷은 external이다
     // (티켓 20260905_0030 B2). 실질 효과는 동일 — fail-closed를 통과하고 엔진이 실제로 본다.
     expect(byEval('external').sort()).toEqual([
+      'capsule_open_count',
+      'chapter_reached',
       'checkin_badge_count',
       'checkin_category_count',
       'collection_complete_count',
@@ -250,6 +255,7 @@ describe('레지스트리 — 필드 구성', () => {
       'combine_success_count',
       'cross_between_axis',
       'cross_in_axis',
+      'cross_tribe_combine_success_count',
       'daily_sync_count',
       'daily_sync_streak_days',
       'days_since_signup',
@@ -257,8 +263,13 @@ describe('레지스트리 — 필드 구성', () => {
       'follower_count',
       'following_count',
       'gate_mission_badge',
+      'jam_total_earned',
+      'jam_weekly_earned',
+      'locked_item_open_count',
+      'locked_item_pickup_count',
       'mission_complete_count',
       'mission_reward',
+      'other_tribe_item_kinds_count',
       'picked_up_by_user_count',
       'pickup_from_user_count',
       'pickup_item_count',
@@ -592,6 +603,14 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
       'signup_recent_active_days',
       'weekly_active_days',
       'same_spot_checkin_days',
+      'capsule_open_count',
+      'locked_item_open_count',
+      'locked_item_pickup_count',
+      'other_tribe_item_kinds_count',
+      'cross_tribe_combine_success_count',
+      'jam_total_earned',
+      'jam_weekly_earned',
+      'chapter_reached',
     ]) {
       expect(checkKeys, `${key}가 CHECK 제약에 없다`).toContain(key)
       expect(measurableKeys, `${key}가 measurable_keys에 들어갔다`).not.toContain(key)
@@ -1042,6 +1061,60 @@ describe('미션·컬렉션·가입 경과일·활동일·체크인 일수 지�
 
   it('메인 엔진은 이 지표만 든 조건을 항상 fail 처리한다 — 실제 판정은 jamActionBadges.ts 몫', () => {
     for (const key of MAIN_KEYS) {
+      const r = evaluateConditionDetailed({ [key]: 1 } as BadgeCondition, activities)
+      expect(r.pass, key).toBe(false)
+    }
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// 새 JAM 조건 5종과 잼·챕터 3종 (티켓 20261018_1815 2회, 마이그레이션 242)
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('새 JAM 조건 5종과 잼·챕터 3종 (티켓 20261018_1815)', () => {
+  const NEW_KEYS = [
+    'capsule_open_count',
+    'locked_item_open_count',
+    'locked_item_pickup_count',
+    'other_tribe_item_kinds_count',
+    'cross_tribe_combine_success_count',
+    'jam_total_earned',
+    'jam_weekly_earned',
+    'chapter_reached',
+  ] as const
+
+  it('8키 모두 role: meta + evaluation: external + 정수 ≥ 1 입력이고 어드민 폼에서 입력할 수 있다', () => {
+    for (const key of NEW_KEYS) {
+      const field = getConditionField(key)
+      expect(field, key).toBeDefined()
+      expect(field?.role, key).toBe('meta')
+      expect(field?.evaluation, key).toBe('external')
+      expect(field?.input, key).toBe('integer')
+      expect(field?.min, key).toBe(1)
+      expect(field?.direction, key).toBe('higher')
+      expect(field?.form?.section, key).toBe('meta')
+    }
+  })
+
+  it('8키 모두 사용량 지표 목록에 있다 — 한 배지에 사용량 지표 하나 가드가 따라온다', () => {
+    for (const key of NEW_KEYS) expect(USAGE_METRIC_CONDITION_KEYS, key).toContain(key)
+  })
+
+  it('칩·상세 문구가 값을 넣어 나온다', () => {
+    expect(formatConditionChips({ capsule_open_count: 5 })).toEqual(['캡슐 열기 5번↑'])
+    expect(formatConditionChips({ locked_item_open_count: 3 })).toEqual(['잠긴 배지 열기 3번↑'])
+    expect(formatConditionChips({ locked_item_pickup_count: 3 })).toEqual(['잠긴 배지 픽업 3개↑'])
+    expect(formatConditionChips({ other_tribe_item_kinds_count: 5 })).toEqual(['다른 트라이브 5종↑'])
+    expect(formatConditionChips({ cross_tribe_combine_success_count: 3 })).toEqual(['트라이브 믹스 성공 3번↑'])
+    expect(formatConditionChips({ jam_total_earned: 1000 })).toEqual(['모은 잼 1000↑'])
+    expect(formatConditionChips({ jam_weekly_earned: 300 })).toEqual(['주간 모은 잼 300↑'])
+    expect(formatConditionChips({ chapter_reached: 3 })).toEqual(['챕터 3↑'])
+    expect(formatConditionDetail({ jam_weekly_earned: 300 })).toEqual(['한 주(월~일, 한국 시간)에 모은 잼 300 이상'])
+    expect(formatConditionDetail({ chapter_reached: 3 })).toEqual(['챕터 3 이상 도달'])
+  })
+
+  it('메인 엔진은 이 지표만 든 조건을 항상 fail 처리한다 — 실제 판정은 jamActionBadges.ts 몫', () => {
+    for (const key of NEW_KEYS) {
       const r = evaluateConditionDetailed({ [key]: 1 } as BadgeCondition, activities)
       expect(r.pass, key).toBe(false)
     }

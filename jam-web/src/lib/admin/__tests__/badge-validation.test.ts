@@ -280,6 +280,15 @@ describe('findBadgeConditionSaveError — 미션·컬렉션·가입 경과일·�
     'days_since_signup',
     'weekly_active_days',
     'same_spot_checkin_days',
+    // 새 JAM 조건 5종과 잼·챕터 3종 (티켓 20261018_1815)
+    'capsule_open_count',
+    'locked_item_open_count',
+    'locked_item_pickup_count',
+    'other_tribe_item_kinds_count',
+    'cross_tribe_combine_success_count',
+    'jam_total_earned',
+    'jam_weekly_earned',
+    'chapter_reached',
   ] as const
 
   it.each(MAIN_KEYS)('%s 단독 조건은 저장된다', (key) => {

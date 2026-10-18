@@ -128,6 +128,15 @@ export type ConditionFormFields = {
   signupRecentActiveDays: string
   weeklyActiveDays: string
   sameSpotCheckinDays: string
+  // JAM! 카테고리 — 새 JAM 조건 5종과 잼·챕터 3종 (티켓 20261018_1815)
+  capsuleOpenCount: string
+  lockedItemOpenCount: string
+  lockedItemPickupCount: string
+  otherTribeItemKindsCount: string
+  crossTribeCombineSuccessCount: string
+  jamTotalEarned: string
+  jamWeeklyEarned: string
+  chapterReached: string
 }
 
 /** 빈 폼(신규 등록)의 초기값. 조건 폼 state의 단일 출처다 */
@@ -212,6 +221,14 @@ export function emptyConditionFormFields(): ConditionFormFields {
     signupRecentActiveDays: '',
     weeklyActiveDays: '',
     sameSpotCheckinDays: '',
+    capsuleOpenCount: '',
+    lockedItemOpenCount: '',
+    lockedItemPickupCount: '',
+    otherTribeItemKindsCount: '',
+    crossTribeCombineSuccessCount: '',
+    jamTotalEarned: '',
+    jamWeeklyEarned: '',
+    chapterReached: '',
   }
 }
 
