@@ -1,0 +1,481 @@
+/**
+ * lib/inventory/lockedItemFill — 잠긴 아이템 배지 채우기·열기·조회 (티켓 20261018_0053)
+ *
+ * 고정하는 것:
+ * - 채우기: 이용 정지 확인(`assertNotSuspended`)이 RPC보다 먼저다. 정지 중이면 RPC를 부르지 않는다. 양을 생략하면 `p_amount: null`(남은 양 기본값),
+ *   줄인 양은 그대로 넘긴다. DB 함수의 거절 코드(`already_full`·`exceeds_remaining`(남은 양 포함)·`invalid_amount`·`insufficient_jam`·`not_locked`·
+ *   `item_not_found`·`user_suspended`)를 `LockedItemError`로 바꾼다. 알 수 없는 코드·열기 전용 코드·RPC 오류·해석할 수 없는 응답은 일반 오류다.
+ *   성공 응답에는 개체를 알 수 있는 값(이름·그림·일련번호 등)이 없다.
+ * - 열기: 정지 확인이 RPC보다 먼저다. 성공하면 같은 개체의 일련번호와 포인트, 열린 뒤의 개체 정보(이름·그림·설명·컬렉션·트라이브)를 싣는다.
+ *   `not_full`은 채운 양·필요한 양을 싣는다. 열기가 확정된 뒤 정보 조회가 실패해도 열기를 실패로 돌려주지 않는다(`item: null`).
+ *   열기 거절 응답에는 개체 정보를 읽는 조회가 아예 나가지 않는다.
+ * - 조회: 채운 양·필요량·남은 양·잔액·열 수 있는지만 싣고 `badges` 등 개체 정보 표는 읽지 않는다. 내 것이 아니거나 버려지거나 드랍된 개체는
+ *   `item_not_found`다. 이용 정지 중에도 막지 않는다. 지갑 행이 없으면 잔액 0이다.
+ * - 경계: 계약 파일은 아무것도 가져오지 않고, 서버 전용 모듈은 클라이언트 파일의 import 사슬에 없다.
+ * 공용 DB와 실제 RPC는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
+ *
+ * 실행: cd jam-web && npx vitest run src/lib/inventory/__tests__/lockedItemFill.test.ts
+ */
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { UserSuspendedError } from '@/lib/suspension/suspension'
+
+const calls = vi.hoisted(() => ({ order: [] as string[] }))
+const assertNotSuspendedMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/lib/supabase/server', () => ({
+  createServiceClient: () => {
+    throw new Error('createServiceClient가 호출됨 — 주입된 클라이언트가 쓰이지 않았다')
+  },
+}))
+vi.mock('@/lib/suspension/suspension', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/suspension/suspension')>()
+  return {
+    ...actual,
+    assertNotSuspended: async (...args: unknown[]) => {
+      calls.order.push('assertNotSuspended')
+      return assertNotSuspendedMock(...args)
+    },
+  }
+})
+
+import { fillLockedItem, getLockedItemStatus, LockedItemError, openLockedItem } from '../lockedItemFill'
+
+const USER_ID = '11111111-1111-4111-8111-111111111111'
+const ITEM_ID = '22222222-2222-4222-8222-222222222222'
+const BADGE_ID = '33333333-3333-4333-8333-333333333333'
+const BOOK_ID = '44444444-4444-4444-8444-444444444444'
+const TRIBE_ID = '55555555-5555-4555-8555-555555555555'
+
+type Result = { data: unknown; error: unknown }
+
+interface FakeOptions {
+  rpc?: Record<string, Result>
+  tables?: Record<string, Result>
+}
+
+function fakeClient(options: FakeOptions) {
+  const rpc = vi.fn(async (name: string) => {
+    calls.order.push(`rpc:${name}`)
+    return options.rpc?.[name] ?? { data: null, error: { message: `unexpected rpc ${name}` } }
+  })
+  const reads: string[] = []
+  const client = {
+    rpc,
+    from: (table: string) => {
+      reads.push(table)
+      const result = options.tables?.[table] ?? { data: null, error: { message: `unexpected table ${table}` } }
+      const builder: Record<string, unknown> = {
+        select: () => builder,
+        eq: () => builder,
+        maybeSingle: async () => result,
+      }
+      return builder
+    },
+  } as unknown as SupabaseClient
+  return { client, rpc, reads }
+}
+
+beforeEach(() => {
+  calls.order = []
+  assertNotSuspendedMock.mockReset()
+  assertNotSuspendedMock.mockResolvedValue(undefined)
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+})
+
+const FILL_OK = { ok: true, applied: 30, required: 100, filled: 60, remaining: 40, balance: 12 }
+
+describe('fillLockedItem', () => {
+  it('양을 생략하면 p_amount null(남은 양 기본값)로 부르고 채운 결과만 싣는다', async () => {
+    const { client, rpc } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
+
+    const payload = await fillLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(rpc).toHaveBeenCalledWith('locked_item_fill', { p_user_id: USER_ID, p_item_id: ITEM_ID, p_amount: null })
+    expect(payload).toEqual({ itemId: ITEM_ID, applied: 30, required: 100, filled: 60, remaining: 40, balance: 12, openable: false })
+  })
+
+  it('줄인 양은 그대로 넘긴다', async () => {
+    const { client, rpc } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
+
+    await fillLockedItem(client, USER_ID, ITEM_ID, 30)
+
+    expect(rpc).toHaveBeenCalledWith('locked_item_fill', { p_user_id: USER_ID, p_item_id: ITEM_ID, p_amount: 30 })
+  })
+
+  it('다 채운 응답은 openable true이고 개체를 알 수 있는 값을 싣지 않는다', async () => {
+    const full = { ok: true, applied: 40, required: 100, filled: 100, remaining: 0, balance: 0 }
+    const { client } = fakeClient({ rpc: { locked_item_fill: { data: { ...full, badgeId: BADGE_ID, serialNumber: 7, name: '비밀' }, error: null } } })
+
+    const payload = await fillLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(payload.openable).toBe(true)
+    expect(Object.keys(payload).sort()).toEqual(['applied', 'balance', 'filled', 'itemId', 'openable', 'remaining', 'required'])
+  })
+
+  it('이용 정지 확인이 RPC보다 먼저이고, 정지 중이면 RPC를 부르지 않는다', async () => {
+    assertNotSuspendedMock.mockRejectedValue(new UserSuspendedError({ reason: '어뷰징', suspendedAt: '2026-10-18T00:00:00Z' }))
+    const { client, rpc } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
+
+    await expect(fillLockedItem(client, USER_ID, ITEM_ID, 10)).rejects.toBeInstanceOf(UserSuspendedError)
+
+    expect(rpc).not.toHaveBeenCalled()
+    expect(calls.order).toEqual(['assertNotSuspended'])
+  })
+
+  it('정지 여부를 읽지 못해도 RPC를 부르지 않는다', async () => {
+    assertNotSuspendedMock.mockRejectedValue(new Error('user_suspensions 조회 실패: down'))
+    const { client, rpc } = fakeClient({ rpc: { locked_item_fill: { data: FILL_OK, error: null } } })
+
+    await expect(fillLockedItem(client, USER_ID, ITEM_ID)).rejects.toThrow('user_suspensions 조회 실패')
+
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it.each(['user_suspended', 'item_not_found', 'not_locked', 'already_full', 'invalid_amount', 'insufficient_jam'] as const)(
+    'DB 거절 %s는 같은 코드의 LockedItemError다',
+    async (code) => {
+      const { client } = fakeClient({ rpc: { locked_item_fill: { data: { ok: false, error: code }, error: null } } })
+
+      const err = await fillLockedItem(client, USER_ID, ITEM_ID, 10).catch((e) => e)
+
+      expect(err).toBeInstanceOf(LockedItemError)
+      expect(err.code).toBe(code)
+      expect(err.remaining).toBeUndefined()
+    }
+  )
+
+  it('exceeds_remaining은 남은 양을 싣는다', async () => {
+    const { client } = fakeClient({ rpc: { locked_item_fill: { data: { ok: false, error: 'exceeds_remaining', remaining: 40 }, error: null } } })
+
+    const err = await fillLockedItem(client, USER_ID, ITEM_ID, 999).catch((e) => e)
+
+    expect(err).toBeInstanceOf(LockedItemError)
+    expect(err.code).toBe('exceeds_remaining')
+    expect(err.remaining).toBe(40)
+  })
+
+  it('알 수 없는 코드·열기 전용 코드·RPC 오류·해석할 수 없는 응답은 일반 오류다', async () => {
+    const reject = (data: unknown, error: unknown = null) => fakeClient({ rpc: { locked_item_fill: { data, error } } }).client
+
+    const unknown = await fillLockedItem(reject({ ok: false, error: 'weird' }), USER_ID, ITEM_ID).catch((e) => e)
+    expect(unknown).not.toBeInstanceOf(LockedItemError)
+    expect(unknown.message).toContain('알 수 없는 거절 코드')
+
+    const openOnly = await fillLockedItem(reject({ ok: false, error: 'not_full' }), USER_ID, ITEM_ID).catch((e) => e)
+    expect(openOnly).not.toBeInstanceOf(LockedItemError)
+
+    await expect(fillLockedItem(reject(null, { message: 'boom' }), USER_ID, ITEM_ID)).rejects.toThrow('locked_item_fill RPC 오류')
+    await expect(fillLockedItem(reject(null), USER_ID, ITEM_ID)).rejects.toThrow('해석할 수 없는 응답')
+    await expect(fillLockedItem(reject({ ok: true, applied: 1 }), USER_ID, ITEM_ID)).rejects.toThrow('해석할 수 없는 응답')
+  })
+})
+
+const OPEN_OK = { ok: true, itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, pointsAwarded: 50 }
+
+const INFO_TABLES: Record<string, Result> = {
+  badges: {
+    data: { name: '새벽의 첫 바퀴', image_url: 'https://img/x.png', description: '새벽에 달린 기록', rarity: 'epic', item_book_id: BOOK_ID, tribe_id: null },
+    error: null,
+  },
+  item_books: { data: { id: BOOK_ID, name: '새벽 컬렉션', tribe_id: TRIBE_ID }, error: null },
+  tribes: { data: { id: TRIBE_ID, name: '러너' }, error: null },
+}
+
+describe('openLockedItem', () => {
+  it('열면 같은 일련번호와 준 포인트, 열린 뒤의 개체 정보를 싣는다(트라이브는 컬렉션 것으로 보충)', async () => {
+    const { client, rpc } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+
+    const payload = await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(rpc).toHaveBeenCalledWith('locked_item_open', { p_user_id: USER_ID, p_item_id: ITEM_ID })
+    expect(payload).toEqual({
+      itemId: ITEM_ID,
+      badgeId: BADGE_ID,
+      serialNumber: 7,
+      pointsAwarded: 50,
+      item: {
+        name: '새벽의 첫 바퀴',
+        imageUrl: 'https://img/x.png',
+        description: '새벽에 달린 기록',
+        rarity: 'epic',
+        collection: { id: BOOK_ID, name: '새벽 컬렉션' },
+        tribe: { id: TRIBE_ID, name: '러너' },
+      },
+    })
+  })
+
+  it('컬렉션·트라이브가 없는 배지는 그 칸이 null이고 조회도 나가지 않는다', async () => {
+    const { client, reads } = fakeClient({
+      rpc: { locked_item_open: { data: { ...OPEN_OK, pointsAwarded: 0 }, error: null } },
+      tables: { badges: { data: { name: 'N', image_url: null, description: null, rarity: null, item_book_id: null, tribe_id: null }, error: null } },
+    })
+
+    const payload = await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(payload.pointsAwarded).toBe(0)
+    expect(payload.item).toEqual({ name: 'N', imageUrl: null, description: '', rarity: null, collection: null, tribe: null })
+    expect(reads).toEqual(['badges'])
+  })
+
+  it('이용 정지 확인이 RPC보다 먼저이고, 정지 중이면 RPC를 부르지 않는다', async () => {
+    assertNotSuspendedMock.mockRejectedValue(new UserSuspendedError({ reason: '어뷰징', suspendedAt: '2026-10-18T00:00:00Z' }))
+    const { client, rpc } = fakeClient({ rpc: { locked_item_open: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
+
+    await expect(openLockedItem(client, USER_ID, ITEM_ID)).rejects.toBeInstanceOf(UserSuspendedError)
+
+    expect(rpc).not.toHaveBeenCalled()
+    expect(calls.order).toEqual(['assertNotSuspended'])
+  })
+
+  it('not_full은 채운 양과 필요한 양을 싣고, 개체 정보 조회는 나가지 않는다', async () => {
+    const { client, reads } = fakeClient({
+      rpc: { locked_item_open: { data: { ok: false, error: 'not_full', required: 100, filled: 60 }, error: null } },
+      tables: INFO_TABLES,
+    })
+
+    const err = await openLockedItem(client, USER_ID, ITEM_ID).catch((e) => e)
+
+    expect(err).toBeInstanceOf(LockedItemError)
+    expect(err.code).toBe('not_full')
+    expect(err.required).toBe(100)
+    expect(err.filled).toBe(60)
+    expect(reads).toEqual([])
+  })
+
+  it.each(['user_suspended', 'item_not_found', 'not_locked'] as const)('DB 거절 %s는 같은 코드의 LockedItemError이고 개체 정보 조회가 없다', async (code) => {
+    const { client, reads } = fakeClient({ rpc: { locked_item_open: { data: { ok: false, error: code }, error: null } }, tables: INFO_TABLES })
+
+    const err = await openLockedItem(client, USER_ID, ITEM_ID).catch((e) => e)
+
+    expect(err).toBeInstanceOf(LockedItemError)
+    expect(err.code).toBe(code)
+    expect(reads).toEqual([])
+  })
+
+  it('열기가 확정된 뒤 개체 정보 조회가 실패해도 열기는 성공이고 item은 null이다', async () => {
+    const { client } = fakeClient({
+      rpc: { locked_item_open: { data: OPEN_OK, error: null } },
+      tables: { badges: { data: null, error: { message: 'down' } } },
+    })
+
+    const payload = await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(payload).toEqual({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, pointsAwarded: 50, item: null })
+  })
+
+  it('채우기 전용 코드·알 수 없는 코드·RPC 오류·해석할 수 없는 응답은 일반 오류다', async () => {
+    const reject = (data: unknown, error: unknown = null) => fakeClient({ rpc: { locked_item_open: { data, error } } }).client
+
+    const fillOnly = await openLockedItem(reject({ ok: false, error: 'insufficient_jam' }), USER_ID, ITEM_ID).catch((e) => e)
+    expect(fillOnly).not.toBeInstanceOf(LockedItemError)
+
+    await expect(openLockedItem(reject(null, { message: 'boom' }), USER_ID, ITEM_ID)).rejects.toThrow('locked_item_open RPC 오류')
+    await expect(openLockedItem(reject(null), USER_ID, ITEM_ID)).rejects.toThrow('해석할 수 없는 응답')
+    await expect(openLockedItem(reject({ ok: true }), USER_ID, ITEM_ID)).rejects.toThrow('해석할 수 없는 응답')
+  })
+})
+
+const ITEM_ROW = {
+  id: ITEM_ID,
+  inventory_id: 'inv-1',
+  locked: true,
+  unlock_required: 100,
+  unlock_filled: 60,
+  destroyed_at: null,
+  dropped_at: null,
+}
+
+function statusTables(overrides: Partial<Record<string, Result>> = {}): Record<string, Result> {
+  return {
+    inventory_items: { data: ITEM_ROW, error: null },
+    inventory: { data: { user_id: USER_ID }, error: null },
+    jam_wallets: { data: { balance: 45 }, error: null },
+    ...overrides,
+  }
+}
+
+describe('getLockedItemStatus', () => {
+  it('덜 찬 개체는 남은 양과 열 수 없음을 싣고, 개체 정보 표는 읽지 않는다', async () => {
+    const { client, reads } = fakeClient({ tables: statusTables() })
+
+    const status = await getLockedItemStatus(client, USER_ID, ITEM_ID)
+
+    expect(status).toEqual({ itemId: ITEM_ID, locked: true, required: 100, filled: 60, remaining: 40, balance: 45, openable: false })
+    expect(reads).toEqual(['inventory_items', 'inventory', 'jam_wallets'])
+    expect(reads).not.toContain('badges')
+  })
+
+  it('다 채운 잠긴 개체는 열 수 있다(인벤토리 빈칸은 보지 않는다)', async () => {
+    const { client, reads } = fakeClient({ tables: statusTables({ inventory_items: { data: { ...ITEM_ROW, unlock_filled: 100 }, error: null } }) })
+
+    const status = await getLockedItemStatus(client, USER_ID, ITEM_ID)
+
+    expect(status).toMatchObject({ filled: 100, remaining: 0, openable: true })
+    expect(reads).toEqual(['inventory_items', 'inventory', 'jam_wallets'])
+  })
+
+  it('이미 열린 개체는 가득 차 있어도 열 수 있다고 하지 않는다', async () => {
+    const { client } = fakeClient({
+      tables: statusTables({ inventory_items: { data: { ...ITEM_ROW, locked: false, unlock_filled: 100 }, error: null } }),
+    })
+
+    expect(await getLockedItemStatus(client, USER_ID, ITEM_ID)).toMatchObject({ locked: false, openable: false })
+  })
+
+  it('필요량이 없는 개체는 남은 양 0이고 열 수 없다', async () => {
+    const { client } = fakeClient({
+      tables: statusTables({ inventory_items: { data: { ...ITEM_ROW, locked: false, unlock_required: null, unlock_filled: 0 }, error: null } }),
+    })
+
+    expect(await getLockedItemStatus(client, USER_ID, ITEM_ID)).toMatchObject({ required: null, remaining: 0, openable: false })
+  })
+
+  it('지갑 행이 없으면 잔액 0이다', async () => {
+    const { client } = fakeClient({ tables: statusTables({ jam_wallets: { data: null, error: null } }) })
+
+    expect((await getLockedItemStatus(client, USER_ID, ITEM_ID)).balance).toBe(0)
+  })
+
+  it.each([
+    ['개체 없음', { inventory_items: { data: null, error: null } }],
+    ['인벤토리에서 빠진 개체', { inventory_items: { data: { ...ITEM_ROW, inventory_id: null }, error: null } }],
+    ['버려진 개체', { inventory_items: { data: { ...ITEM_ROW, destroyed_at: '2026-10-18T00:00:00Z' }, error: null } }],
+    ['드랍된 개체', { inventory_items: { data: { ...ITEM_ROW, dropped_at: '2026-10-18T00:00:00Z' }, error: null } }],
+    ['남의 개체', { inventory: { data: { user_id: 'other-user' }, error: null } }],
+    ['인벤토리 행 없음', { inventory: { data: null, error: null } }],
+  ])('%s는 item_not_found다', async (_label, overrides) => {
+    const { client } = fakeClient({ tables: statusTables(overrides) })
+
+    const err = await getLockedItemStatus(client, USER_ID, ITEM_ID).catch((e) => e)
+
+    expect(err).toBeInstanceOf(LockedItemError)
+    expect(err.code).toBe('item_not_found')
+  })
+
+  it('조회 오류는 던진다', async () => {
+    await expect(
+      getLockedItemStatus(fakeClient({ tables: statusTables({ inventory_items: { data: null, error: { message: 'down' } } }) }).client, USER_ID, ITEM_ID)
+    ).rejects.toThrow('inventory_items 조회 실패')
+    await expect(
+      getLockedItemStatus(fakeClient({ tables: statusTables({ inventory: { data: null, error: { message: 'down' } } }) }).client, USER_ID, ITEM_ID)
+    ).rejects.toThrow('inventory 조회 실패')
+    await expect(
+      getLockedItemStatus(fakeClient({ tables: statusTables({ jam_wallets: { data: null, error: { message: 'down' } } }) }).client, USER_ID, ITEM_ID)
+    ).rejects.toThrow('jam_wallets 조회 실패')
+  })
+
+  it('이용 정지 확인을 하지 않는다(내 상태 보기)', async () => {
+    const { client } = fakeClient({ tables: statusTables() })
+
+    await getLockedItemStatus(client, USER_ID, ITEM_ID)
+
+    expect(assertNotSuspendedMock).not.toHaveBeenCalled()
+  })
+})
+
+// ── 클라이언트·서버 경계 ────────────────────────────────────────────────────────────────
+const srcRoot = fileURLToPath(new URL('../../../', import.meta.url))
+const dsRoot = join(srcRoot, '../design-system')
+const EXTENSIONS = ['', '.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js', '/index.jsx']
+
+function resolveLocal(from: string, spec: string): string | null {
+  let base: string
+  if (spec.startsWith('@/')) base = join(srcRoot, spec.slice(2))
+  else if (spec.startsWith('@ds/')) base = join(dsRoot, spec.slice(4))
+  else if (spec.startsWith('.')) base = join(dirname(from), spec)
+  else return null
+  for (const ext of EXTENSIONS) {
+    const candidate = base + ext
+    if (existsSync(candidate) && statSync(candidate).isFile()) return candidate
+  }
+  return null
+}
+
+function specifiersOf(source: string): string[] {
+  const out: string[] = []
+  const pattern = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*)['"]([^'"]+)['"]/g
+  for (const match of source.matchAll(pattern)) out.push(match[1])
+  return out
+}
+
+function crawl(entry: string): Set<string> {
+  const files = new Set<string>()
+  const queue = [entry]
+  while (queue.length > 0) {
+    const file = queue.pop() as string
+    if (files.has(file)) continue
+    files.add(file)
+    for (const spec of specifiersOf(readFileSync(file, 'utf8'))) {
+      const resolved = resolveLocal(file, spec)
+      if (resolved) queue.push(resolved)
+    }
+  }
+  return files
+}
+
+function walk(dir: string, out: string[] = []): string[] {
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name)
+    if (statSync(full).isDirectory()) walk(full, out)
+    else if (/\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name)) out.push(full)
+  }
+  return out
+}
+
+describe('클라이언트·서버 경계', () => {
+  it('계약 파일은 아무것도 가져오지 않는다', () => {
+    const contract = join(srcRoot, 'lib/inventory/lockedItemFill-contract.ts')
+    expect(specifiersOf(readFileSync(contract, 'utf8'))).toEqual([])
+  })
+
+  it("'use client' 파일의 사슬에 lockedItemFill.ts(서버 전용)가 없다", () => {
+    const clientFiles = walk(srcRoot).filter((file) => /^\s*['"]use client['"]/m.test(readFileSync(file, 'utf8')))
+    expect(clientFiles.length, '크롤러가 클라이언트 파일을 찾지 못했다').toBeGreaterThan(0)
+
+    for (const entry of clientFiles) {
+      for (const file of crawl(entry)) {
+        expect(file.replace(srcRoot, 'src/'), `${entry.replace(srcRoot, 'src/')}가 서버 전용 잠긴 개체 모듈을 끌어온다`).not.toMatch(
+          /lib\/inventory\/lockedItemFill\.ts$/
+        )
+      }
+    }
+  })
+})
+
+// ── 열기 전 가림(7.3절) — 소스 검색 경계 ─────────────────────────────────────────────────
+describe('열기 전에는 개체를 알 수 있는 값을 읽지도 싣지도 않는다(소스 검색)', () => {
+  const source = readFileSync(join(srcRoot, 'lib/inventory/lockedItemFill.ts'), 'utf8')
+
+  /** `export async function <name>` 시작부터 다음 `export`·`async function` 직전까지 */
+  function bodyOf(name: string): string {
+    const start = source.indexOf(`async function ${name}`)
+    expect(start, `${name}을 찾지 못했다`).toBeGreaterThanOrEqual(0)
+    const rest = source.slice(start + 1)
+    const next = rest.search(/\n(?:export )?async function /)
+    return next === -1 ? rest : rest.slice(0, next)
+  }
+
+  it('조회(getLockedItemStatus)는 badges·item_books·tribes 표를 읽지 않고 일련번호·배지 칸을 고르지 않는다', () => {
+    const body = bodyOf('getLockedItemStatus')
+    expect(body).not.toMatch(/from\(\s*['"](badges|item_books|tribes)['"]/)
+    expect(body).not.toMatch(/serial_number|badge_id|image_url|description/)
+  })
+
+  it('채우기(fillLockedItem)는 개체 정보 표를 읽지 않고 RPC 응답의 개체 값을 옮기지 않는다', () => {
+    const body = bodyOf('fillLockedItem')
+    expect(body).not.toMatch(/from\(\s*['"](badges|item_books|tribes)['"]/)
+    expect(body).not.toMatch(/serialNumber|badgeId/)
+  })
+
+  it('개체 정보 조회(loadOpenedInfo)는 열기 성공 뒤 한 곳에서만 불린다', () => {
+    const calls = [...source.matchAll(/loadOpenedInfo\(/g)]
+    // 정의 1회 + 열기 안의 호출 1회
+    expect(calls.length).toBe(2)
+    const openBody = bodyOf('openLockedItem')
+    expect(openBody.indexOf('throwRejection')).toBeLessThan(openBody.indexOf('loadOpenedInfo'))
+  })
+})
