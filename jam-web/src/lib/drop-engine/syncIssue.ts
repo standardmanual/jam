@@ -71,8 +71,8 @@ export interface RarityRollResult {
   nextCommonStreak: number
 }
 
-/** 가중치 추첨. 가중치 0인 항목은 뽑지 않는다(rand()가 정확히 0이어도). rand()는 [0, 1)이다. */
-function pickWeighted<T>(entries: Array<[T, number]>, rand: Rand): T {
+/** 가중치 추첨. 가중치 0인 항목은 뽑지 않는다(rand()가 정확히 0이어도). rand()는 [0, 1)이다. 캡슐 등급 추첨(`capsuleRoll.ts`)도 쓴다. */
+export function pickWeighted<T>(entries: Array<[T, number]>, rand: Rand): T {
   const positive = entries.filter(([, w]) => w > 0)
   // 전부 0인 퇴화 설정 — 첫 항목으로 대체한다(정책 로더가 합계 100을 보장하므로 정상 경로에서는 오지 않는다)
   if (positive.length === 0) return entries[0][0]
