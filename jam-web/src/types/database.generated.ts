@@ -4515,6 +4515,18 @@ export type Database = {
         Args: { p_drop_id: string; p_inventory_id: string; p_picker_id: string }
         Returns: Json
       }
+      record_checkin_earn: {
+        Args: {
+          p_activity_date: string
+          p_activity_name: string
+          p_badge_id: string
+          p_distance_km: number
+          p_poi_id: string
+          p_strava_id: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
       record_combine_success: {
         Args: {
           p_ingredient_badge_ids: string[]

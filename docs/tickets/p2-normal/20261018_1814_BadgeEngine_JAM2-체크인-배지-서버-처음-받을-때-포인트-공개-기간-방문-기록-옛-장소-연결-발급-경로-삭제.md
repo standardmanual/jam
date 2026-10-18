@@ -30,6 +30,15 @@ specs:
 2. **옛 장소 연결 발급 경로의 삭제**: 코드 경로(`sync.ts` 1066~1094줄)를 지우고 이미 이 경로로 발급된 `user_activity_badges`(`triggered_by='poi_match'`) 행은 그대로 둔다(추천). 대안은 옛 행도 정리하는 것이다(공용 DB 데이터 변경이라 신중해야 한다).
 3. **공개 기간 밖 체크인**: 기간 밖에서는 새로 받지 않지만 방문 기록은 남긴다(추천, 이미 받은 배지에는 기한이 없다). 대안은 방문 기록도 남기지 않는 것이다.
 
+## 사용자 결정 (2026-10-18 질문창 답, 카리나 기록)
+
+1. **처음 받을 때 포인트의 중복 방지**: 새 DB 함수 `record_checkin_earn`(마이그레이션 241)이 유저·배지 단위 잠금 안에서 «이전 방문 수 세기 → 방문 기록 넣기 → 처음인지 판정»을 한 번에 하고 `{duplicate, visit_count, is_first}`를 돌려준다(추천). 포인트 지급은 함수 안에서 하지 않고 앱이 `is_first`일 때만 `awardPoints`로 준다(포인트 알림·실패 기록을 그대로 쓴다). 옛 테이블·칸·제약은 그대로이고 옛 코드는 함수를 쓰지 않는다.
+2. **옛 장소 연결 발급 경로**: 코드(`sync.ts`의 레거시 호환 구간, 1066~1094줄 근처)만 지우고, 이미 `triggered_by='poi_match'`로 발급된 `user_activity_badges` 행은 그대로 둔다(추천).
+3. **공개 기간 밖 체크인의 방문 기록**: 새로 받지 않고 **방문 기록도 남기지 않는다**(추천과 다른 사용자 선택). 기간 밖 체크인은 없던 일로 처리하며, 나중에 기간이 다시 열려도 그때 지나간 기록은 없다.
+4. **공개 기간 판정 기준(카리나가 추가로 물음)**: 활동이 시작된 시각(`rawActivity.start_date`)이 `valid_from`~`valid_until` 안인지로 본다(추천). 기간 안에 달린 활동은 기간이 끝난 뒤 동기화해도 인정된다.
+- 체크인 판정이 최신 활동 10건만 보는 점(`MAX_POI_MATCH_ACTIVITIES_PER_SYNC = 10`, 백필 시 Strava API 폭주 방지 주석)은 의도된 제한이라 그대로 둔다.
+- SQL 241은 롤백 실측 8건(첫 호출 first·count 1, 다른 활동 count 2·first 아님, 같은 활동 재호출 duplicate·줄 수 불변, 다른 배지·다른 유저 각각 first, 같은 활동 다른 장소 count 3, 권한 service_role만, SECURITY DEFINER)이 모두 통과한 뒤 공용 DB에 적용했다. 동시 호출의 진짜 경합은 DB 한 연결로 시험하지 못했다(잠금 호출이 직렬화한다는 것은 코드 읽기로만 확인).
+
 ## 상세 요구사항
 
 ### 서비스/코드베이스 관점
@@ -47,7 +56,15 @@ specs:
 
 ## 구현 계획 (회차)
 
-규모에 따라 시작 때 정한다. 1회로 돌린다(파일이 30개를 넘으면 2회로 나눈다).
+1회로 돌린다. 마이그레이션 241(`record_checkin_earn`)은 이미 공용 DB에 적용했고 생성 타입(`database.generated.ts`)도 반영했다. 아현이 할 일은 앱 코드와 시험, 문서다.
+
+- `jam-web/src/lib/strava/sync.ts` `processFetchedActivities`(945~1095줄 근처):
+  - 연결 배지 조회(`badges` select, 963줄 근처)에 `valid_from`, `valid_until`을 더하고 `LinkedBadge` 타입에도 반영한다.
+  - 체크인 구간(`badge.type === 'checkin'`, 990줄 근처 이후): ① 공개 기간 판정을 가장 먼저 한다. `rawActivity.start_date`가 기간 밖이면 방문 기록·포인트·피드 모두 없이 `continue`(결정 3·4). ② 이전 방문 수 조회(`priorEarnCount`)와 `user_checkin_badge_earns` insert를 `supabase.rpc('record_checkin_earn', ...)` 한 번으로 바꾼다. `duplicate:true`면 `continue`(지금의 23505 처리와 같은 효과), 아니면 `visit_count`와 `is_first`를 그 응답으로 쓴다. ③ `is_first`일 때만 `awardPoints(userId, badge.point_reward, 'badge_point_reward', { sourceBadgeId: badge.id })`를 부른다. `badges` select에 `point_reward`를 더한다. 지급이 실패해도 방문 기록·피드는 그대로 진행한다(`awardPoints`가 실패를 기록하고 null을 돌려준다). 이용 정지·인정 판정은 이미 입구에서 처리되므로 이 구간에서 새로 하지 않는다.
+  - 레거시 호환 구간(`// 레거시 호환 — activity 타입 배지에 linked_badge_id가 붙어있는 과거 데이터` 이하 `poi_match` 발급, 1066~1094줄 근처)을 지운다. 체크인이 아닌 연결 배지는 건너뛴다(`continue`).
+- 시험: `sync` 쪽 체크인 구간 시험(있으면 갱신), 공개 기간 판정을 순수 함수로 빼서 단위 시험(경계: 시작 직전·직후, 끝 직전·직후, 둘 다 NULL, 한쪽만 NULL), 첫 방문일 때만 포인트가 나가는지·`duplicate`일 때 포인트와 피드가 없는지.
+- 문서: `docs/service/prd/02_DATA_MODEL.md`(새 함수와 체크인 방문 기록 규칙), 엔진 문서(`docs/service/badge-engine/`의 체크인 발급 판정), `docs/plan/jam2/service-redesign/현재 서비스 비교.md`(체크인 배지 서버 변경), 해당 컨텐츠 문서에서 «장소 연결 액티비티 배지 한 번 발급» 서술이 있으면 갱신한다.
+- 호출 인자: `workType: 'engine'`, 표준 경로(채원은 호출되지 않는다).
 
 ## 완료 조건
 
