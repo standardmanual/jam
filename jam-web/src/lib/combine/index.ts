@@ -68,6 +68,16 @@ import type {
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
+/** 믹스 응답의 결과 배지 한 줄 */
+export interface CombineResultBadge {
+  id: string
+  name: string
+  rarity: string
+  locked?: true
+  /** 잠긴 결과를 여는 데 필요한 양(티켓 20261018_0055 2회). 열린 결과와 읽지 못한 경우에는 키가 없다 */
+  unlockRequired?: number
+}
+
 export type CombineResult =
   | {
       success: true
@@ -75,8 +85,9 @@ export type CombineResult =
       /**
        * 지급된 결과 배지. 잠긴 채 나온 것은 `locked: true`이고 `id`·`name`을 빈 문자열로 가린다(운영 로직 7.3절).
        * 받지 않은 결과(`resultStatus: 'pending'`)와 지급할 결과가 없는 경우는 빈 배열이다.
+       * 잠긴 항목에는 선택 칸 `unlockRequired`(여는 데 필요한 양)가 실린다. 읽지 못하면 키가 없다.
        */
-      resultBadges: { id: string; name: string; rarity: string; locked?: true }[]
+      resultBadges: CombineResultBadge[]
       pointsAwarded: number
       /** 결과 지급 상태 — `granted`(인벤토리에 지급), `pending`(빈칸이 모자라 받지 않은 결과로 남김), `none`(지급한 결과 없음) */
       resultStatus: 'granted' | 'pending' | 'none'
@@ -454,11 +465,31 @@ interface RewardBadgeInfo {
 
 interface GrantResultsOutcome {
   status: 'granted' | 'pending' | 'none'
-  resultBadges: { id: string; name: string; rarity: string; locked?: true }[]
+  resultBadges: CombineResultBadge[]
   /** 성공 기록(`record_combine_success`)에 남길 결과 배지 id — 받지 않은 결과도 이번 믹스의 결과이므로 포함한다 */
   recordedBadgeIds: string[]
   pendingCount: number
   freeSlots: number
+}
+
+/**
+ * 지급된 개체의 «여는 데 필요한 양»을 `itemIds`와 같은 순서로 돌려준다(`combine_grant_results`가 입력 순서대로 개체 id를 준다).
+ * 선택 칸이라 읽지 못하면 던지지 않고 빈 배열을 돌려준다 — 값을 추측해 채우지 않고 응답에서 칸을 뺀다(티켓 20261018_0055 2회).
+ */
+async function readUnlockRequired(supabase: ServiceClient, itemIds: string[]): Promise<(number | undefined)[]> {
+  if (itemIds.length === 0) return []
+  const { data, error } = await supabase.from('inventory_items').select('id, unlock_required').in('id', itemIds)
+  if (error) {
+    console.error('[combineRecipeAttempt] 잠긴 결과의 필요한 양 조회 실패 — 응답에서 unlockRequired를 뺀다:', error.message)
+    return []
+  }
+  const byId = new Map(
+    ((data ?? []) as { id: string; unlock_required: number | null }[]).map((r) => [r.id, r.unlock_required])
+  )
+  return itemIds.map((id) => {
+    const required = byId.get(id)
+    return typeof required === 'number' ? required : undefined
+  })
 }
 
 /**
@@ -488,6 +519,7 @@ async function grantResults(
     status?: string
     pendingCount?: number
     free?: number
+    itemIds?: string[]
   } | null
   if (error || !result || result.ok !== true) {
     console.error('[combineRecipeAttempt] combine_grant_results 실패 — 재료만 소각된 빈손 성공 발생:', {
@@ -513,13 +545,23 @@ async function grantResults(
   }
 
   if (result.status === 'granted') {
+    const isLocked = (b: RewardBadgeInfo) => recipe.reward_locked === true || b.always_locked === true
+    const unlockRequiredByIndex = grantable.some(isLocked)
+      ? await readUnlockRequired(supabase, Array.isArray(result.itemIds) ? result.itemIds : [])
+      : []
     return {
       status: 'granted',
-      resultBadges: grantable.map((b) =>
-        recipe.reward_locked === true || b.always_locked === true
-          ? { id: '', name: '', rarity: b.rarity, locked: true as const }
-          : { id: b.id, name: b.name, rarity: b.rarity }
-      ),
+      resultBadges: grantable.map((b, index): CombineResultBadge => {
+        if (!isLocked(b)) return { id: b.id, name: b.name, rarity: b.rarity }
+        const unlockRequired = unlockRequiredByIndex[index]
+        return {
+          id: '',
+          name: '',
+          rarity: b.rarity,
+          locked: true as const,
+          ...(unlockRequired !== undefined ? { unlockRequired } : {}),
+        }
+      }),
       recordedBadgeIds: grantable.map((b) => b.id),
       pendingCount: 0,
       freeSlots: 0,

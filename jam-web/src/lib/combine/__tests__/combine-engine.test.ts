@@ -78,6 +78,10 @@ const stub = vi.hoisted(() => ({
   badgeValidUntil: null as string | null,
   /** 잠김으로 만든 배지(`badges.always_locked`) id */
   alwaysLockedBadgeIds: [] as string[],
+  /** 지급된 개체(`generated-item-N`)의 `inventory_items.unlock_required` — 잠긴 결과의 필요한 양 */
+  unlockRequiredByItemId: {} as Record<string, number>,
+  /** 필요한 양을 읽다가 나는 DB 오류 — null이면 정상 */
+  unlockReadError: null as { message: string } | null,
   /** inventory.used_slots — 조합 전 초기값. 소각/지급마다 이 값이 갱신된다(20260912_2101). */
   usedSlots: 5,
   maxSlots: 10,
@@ -199,7 +203,16 @@ function makeBuilder(table: string) {
     switch (table) {
       case 'inventory':
         return { data: { id: INVENTORY_ID, used_slots: stub.usedSlots, max_slots: stub.maxSlots }, error: null }
-      case 'inventory_items':
+      case 'inventory_items': {
+        // 지급 직후 잠긴 결과의 필요한 양을 읽는 조회(`.in('id', itemIds)`) — 소각 전 재료 조회와 구분한다
+        const requested = state.inFilters.id as string[] | undefined
+        if (requested?.some((id) => id.startsWith('generated-item-'))) {
+          if (stub.unlockReadError) return { data: null, error: stub.unlockReadError }
+          return {
+            data: requested.map((id) => ({ id, unlock_required: stub.unlockRequiredByItemId[id] ?? null })),
+            error: null,
+          }
+        }
         return {
           data: [
             { id: ITEM_1, badge_id: BADGE_A, locked: stub.lockedItemIds.includes(ITEM_1) },
@@ -207,6 +220,7 @@ function makeBuilder(table: string) {
           ],
           error: null,
         }
+      }
       case 'combination_recipes': {
         // `.eq('id', recipeId).maybeSingle()` — 티켓 20260917_1427: 선택된 레시피 하나만 조회
         if ('id' in state.eqFilters) {
@@ -319,6 +333,8 @@ beforeEach(() => {
   stub.grantRpcError = null
   stub.badgeValidUntil = null
   stub.alwaysLockedBadgeIds = []
+  stub.unlockRequiredByItemId = {}
+  stub.unlockReadError = null
   stub.destroyedItemIds = []
   stub.failRewardPoints = 0
   stub.lockedItemIds = []
@@ -1157,6 +1173,42 @@ describe('JAM 2.0 믹스 고치기 — 결과 지급 (티켓 20261018_0055)', ()
 
     expect(stub.grantResultCalls[0]).toMatchObject({ p_locked: false })
     expect(result.success && result.resultBadges).toEqual([{ id: '', name: '', rarity: 'rare', locked: true }])
+  })
+
+  it('잠긴 채 나온 결과에는 필요한 양(unlockRequired)을 싣는다 — 지급된 개체의 값을 읽어 같은 순서로 붙인다', async () => {
+    stub.recipes = [recipe({ reward_locked: true })]
+    stub.slots = itemSlots()
+    stub.unlockRequiredByItemId = { 'generated-item-1': 300 }
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success && result.resultBadges).toEqual([
+      { id: '', name: '', rarity: 'rare', locked: true, unlockRequired: 300 },
+    ])
+  })
+
+  it('필요한 양을 읽지 못하면 응답은 그대로 두고 unlockRequired 키만 뺀다 — 값을 추측해 채우지 않는다', async () => {
+    stub.recipes = [recipe({ reward_locked: true })]
+    stub.slots = itemSlots()
+    stub.unlockReadError = { message: 'db down' }
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+    errorSpy.mockRestore()
+
+    expect(result.success).toBe(true)
+    expect(result.success && result.resultBadges).toEqual([{ id: '', name: '', rarity: 'rare', locked: true }])
+    expect(result.success && 'unlockRequired' in result.resultBadges[0]).toBe(false)
+  })
+
+  it('열린 결과는 필요한 양을 읽지 않고 unlockRequired 키도 없다', async () => {
+    stub.recipes = [recipe()]
+    stub.slots = itemSlots()
+    stub.unlockRequiredByItemId = { 'generated-item-1': 300 }
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success && result.resultBadges).toEqual([{ id: REWARD, name: '보상 배지', rarity: 'rare' }])
   })
 
   it('열린 결과는 이름과 등급을 그대로 싣는다(locked 키 없음)', async () => {
