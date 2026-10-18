@@ -4,13 +4,17 @@ import SafeImage from '@/components/SafeImage'
 import Link from 'next/link'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
+import { LockedTile } from '@ds/components/cards/LockedTile'
+import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { MedalIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
 import type { ReactNode } from 'react'
 
 export interface BadgeGridCardProps {
-  name: string
+  /** 배지 이름. `locked`이면 그리지 않는다(가린 이름이 대신 나온다) — 그래서 `locked`일 때는 생략해도 된다 */
+  name?: string
+  /** 배지 그림. `locked`이면 넘어와도 그리지 않는다 */
   imageUrl?: string | null
   /**
    * 배지 등급. **null이면 무한레벨형이라 등급 칩을 그리지 않는다**
@@ -57,6 +61,14 @@ export interface BadgeGridCardProps {
    * (알림함 배지/인벤토리 목록 착지 시의 최근 획득 하이라이트는 20260826_006에서 제거됨)
    */
   highlighted?: boolean
+  /**
+   * 잠긴 아이템 배지(열기 전, 티켓 20261018_0054 2회). 썸네일 자리에 `LockedTile`, 이름 줄은 `d.lockedItem.card.name`,
+   * 등급 칩 아래에 `ProgressBar outlined`(높이 6)가 붙는다. `imageUrl`·`name`이 넘어와도 그리지 않는다 —
+   * 호출부 실수로 가림이 뚫리지 않게 컴포넌트가 막는다(DS `BadgeGridCard`와 같은 규칙).
+   */
+  locked?: boolean
+  /** `locked`일 때 게이지의 채운 비율(0~100). 서버가 준 값을 그대로 그린다. 숫자는 화면에 쓰지 않는다 */
+  fillPercent?: number
   className?: string
   /** 희귀도 배지 아래 추가 콘텐츠 (만료일, 슬롯 버튼 등). */
   children?: ReactNode
@@ -68,7 +80,7 @@ const BASE =
   'flex flex-col items-center border border-border rounded-2xl p-3 overflow-hidden'
 
 export default function BadgeGridCard({
-  name,
+  name = '',
   imageUrl,
   rarity,
   level = null,
@@ -81,6 +93,8 @@ export default function BadgeGridCard({
   undiscovered = false,
   selected = false,
   highlighted = false,
+  locked = false,
+  fillPercent = 0,
   className = '',
   children,
 }: BadgeGridCardProps) {
@@ -109,7 +123,7 @@ export default function BadgeGridCard({
     .filter(Boolean)
     .join(' ')
 
-  const showCount = !undiscovered && typeof count === 'number' && count > 1
+  const showCount = !locked && !undiscovered && typeof count === 'number' && count > 1
 
   const content = (
     <>
@@ -121,16 +135,21 @@ export default function BadgeGridCard({
         (티켓 20260907_2138, 직전 시도 게이트 리뷰 FAIL 사유).
       */}
       <div className="relative w-full max-w-[90px]">
-        <div className={thumbnailCls}>
-          <SafeImage
-            src={imageUrl}
-            alt={undiscovered ? '???' : name}
-            width={90}
-            height={90}
-            className="w-full h-full object-contain p-1"
-            fallback={<MedalIcon className="w-10 h-10 text-muted" />}
-          />
-        </div>
+        {locked ? (
+          // 잠긴 개체는 어떤 배지인지 알 수 있는 그림을 그리지 않는다(운영 로직 7.3절). 호출부가 URL을 넘겨도 쓰지 않는다
+          <LockedTile size={90} />
+        ) : (
+          <div className={thumbnailCls}>
+            <SafeImage
+              src={imageUrl}
+              alt={undiscovered ? '???' : name}
+              width={90}
+              height={90}
+              className="w-full h-full object-contain p-1"
+              fallback={<MedalIcon className="w-10 h-10 text-muted" />}
+            />
+          </div>
+        )}
         {showCount && (
           // 피드 카드의 카운터 필과 같은 시각 문법(20260905_0038 B). 횟수는 아래 이름 줄이
           // 아니라 썸네일에 붙어야 「이 배지를」 몇 번인지가 한눈에 붙는다.
@@ -144,13 +163,19 @@ export default function BadgeGridCard({
       </div>
       <div className="flex flex-col items-center gap-1 pt-2 w-full">
         <p className="text-sm font-bold text-foreground text-center line-clamp-2 w-full leading-tight">
-          {undiscovered ? '???' : name}
+          {locked ? d.lockedItem.card.name : undiscovered ? '???' : name}
         </p>
         {/* ×N은 aria-hidden이라 보조기술에는 이 문장만이 횟수를 전달한다 */}
         {showCount && (
           <span className="sr-only">{countAriaText ?? t(d.badges.earnCountAria, { count: String(count) })}</span>
         )}
         {!undiscovered && (level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={rarity ?? undefined} size="md" />)}
+        {locked && (
+          // 채운 비율은 게이지로만 보인다 — 숫자와 퍼센트는 화면에도 보조기술에도 싣지 않는다(운영 로직 4.3절)
+          <div aria-hidden="true" className="w-full pt-1">
+            <ProgressBar outlined percent={fillPercent} fillMode="track-gradient" trackColor="var(--background)" height={6} labelType="none" />
+          </div>
+        )}
       </div>
       {children && <div className="w-full mt-1">{children}</div>}
     </>

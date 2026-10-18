@@ -1,7 +1,9 @@
 import type { ReactNode, CSSProperties } from 'react';
 
 export interface BadgeGridCardProps {
-  name: string;
+  /** 배지 이름. `locked`이면 그리지 않는다(가린 이름 «잠긴 아이템 배지»가 대신 나온다) — 그래서 `locked`일 때는 생략해도 된다. */
+  name?: string;
+  /** 배지 그림. `locked`이면 넘어와도 그리지 않는다. */
   imageUrl?: string | null;
   /** 등급형 배지의 등급. 레벨형(v5)은 `null`이고 대신 `level`을 넘긴다. */
   rarity?: 'common' | 'rare' | 'epic' | 'mystic' | null;
@@ -26,6 +28,13 @@ export interface BadgeGridCardProps {
   selected?: boolean;
   /** 컬렉션 슬롯 장착 모드에서 "지금 넣을 수 있는 칸"을 짚어주는 강조 링. */
   highlighted?: boolean;
+  /**
+   * 잠긴 아이템 배지(열기 전). 썸네일 자리에 `LockedTile`, 이름 줄은 «잠긴 아이템 배지», 등급 칩 아래에 `ProgressBar outlined`(높이 6).
+   * `imageUrl`·`name`이 넘어와도 그리지 않는다. 기본 false.
+   */
+  locked?: boolean;
+  /** `locked`일 때 게이지의 채운 비율(0~100). 서버가 준 값을 그대로 그린다. 숫자는 화면에 쓰지 않는다. */
+  fillPercent?: number;
   className?: string;
   style?: CSSProperties;
   /** 희귀도 배지 아래 추가 콘텐츠 (만료일, 슬롯 버튼 등). */

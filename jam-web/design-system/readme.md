@@ -99,11 +99,11 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
 * `tokens/` — 색상, 타이포그래피, 간격, 반경, 모션, 재질(materials), 폰트
 * `assets/logo/` — JAM! 워드마크, 블랙 + 화이트
 * `components/buttons/` — Button, IconButton
-* `components/cards/` — Card, RarityBadge, BadgeLevelChip(무한레벨형 Lv.N 칩), MissionCard, ShapeTag, BadgeFrame, LabelChip(카드 좌상단 라벨 필, tone default·inverse)
+* `components/cards/` — Card, RarityBadge, BadgeLevelChip(무한레벨형 Lv.N 칩), MissionCard, ShapeTag, BadgeFrame, LabelChip(카드 좌상단 라벨 필, tone default·inverse), LockedTile(잠긴 아이템 배지의 잠금 타일)
 * `components/navigation/` — TopNav, TabBar (JAM! 자체 TabBar.tsx에서 1:1 재현), BottomSheet, SlidingTabs, Accordion, Carousel(센터 포커스·무한 루프 카드 캐러셀)
 * `components/feedback/` — Toast, ModalToast, WanderingEyesLoader, Skeleton, EmptyState, ProgressBar
 * `components/forms/` — Input, Textarea, Select, Checkbox
-* `components/patterns/` — BadgeGridCard, ListRowCard, CollectionGridCard, BadgeRevealCarousel(선택 모드·위아래 슬롯·closeDisabled 포함), ItemSerialCode, MixerSlot (서비스 공통 UI 패턴)
+* `components/patterns/` — BadgeGridCard(`locked` 잠김 카드 포함), ListRowCard, CollectionGridCard, BadgeRevealCarousel(선택 모드·위아래 슬롯·closeDisabled 포함), ItemSerialCode, MixerSlot (서비스 공통 UI 패턴)
 * `components/patterns/` 배지 트리 — **BadgeFamilyCardHeader(계열 카드 공유 헤더 — 새 계열 카드를 만들면 헤더는 반드시 이걸 쓴다)**, BadgeStageRail(등급형 4눈금 레일), BadgeProgressRingCard(등급형 눈금 1개 · 진행을 라운드 사각 테두리로), BadgeLevelGauge(무한레벨형 · 레벨 수와 무관하게 높이 고정), BadgeStampRow(반복형 · 누적을 ×N 칩 하나로), BadgeStatusSection(「다음 목표」·「받은 배지」 · `collapsible={false}`로 접지 않는 모드), BadgeTreeSummaryHeader, UnlockConditionSheetContent, DualAxisGauge(레일 카드 안의 구획), RecentSyncBanner
 * `components/icons/` — IconCatalog (라인 아이콘 세트 + 전체 카탈로그 그리드. 서비스
   `src/components/ui/icons.tsx`를 이식한 Storybook 전용 사본 — 서비스는 계속 원본을 단일

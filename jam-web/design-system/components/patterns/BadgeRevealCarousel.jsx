@@ -3,7 +3,7 @@ import { RarityBadge, getRarityLabel } from '../cards/RarityBadge.jsx';
 import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
 import { IconButton } from '../buttons/IconButton.jsx';
 import { Button } from '../buttons/Button.jsx';
-import { LockIcon } from '../icons/IconCatalog.jsx';
+import { LockedTile } from '../cards/LockedTile.jsx';
 
 /**
  * BadgeRevealCarousel — 배지 획득 연출용 3D 코버플로우 캐러셀 (오버레이 포함 패턴).
@@ -603,8 +603,6 @@ const SELECT_IMAGE_SIZE_RATIO = 0.5;
 const SELECT_RESERVE_PX = 72;
 /** 잠금 타일 크기 — 이미지 영역(imageSize) 대비 비율. 선택 모드에서 0.5 × 0.8 = 카드 폭의 0.4 */
 const LOCK_TILE_RATIO = 0.8;
-/** 잠금 타일 안 자물쇠 크기 — 타일 대비 비율 */
-const LOCK_ICON_RATIO = 0.45;
 
 /** 배지 카드 — 이미지 → 칩 줄(등급 또는 Lv.N, ×N) → 이름 → 설명(3줄) */
 function BadgeCard({ item, foldedCount = 1, cardWidth, selectable = false }) {
@@ -659,25 +657,7 @@ function BadgeCard({ item, foldedCount = 1, cardWidth, selectable = false }) {
         {locked ? (
           /* 잠금 타일 — 차분한 중립 타일. 등급 색·그라데이션·글로우를 더하지 않는다(등급은 칩 하나로만 전달).
              자물쇠는 장식이라 카드 전체의 aria-hidden에 맡기고 라이브 리전이 읽는다. */
-          <div
-            style={{
-              width: Math.round(imageSize * LOCK_TILE_RATIO),
-              height: Math.round(imageSize * LOCK_TILE_RATIO),
-              boxSizing: 'border-box',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 'var(--radius-2xl)',
-              background: 'var(--background)',
-              border: '1px solid var(--border)',
-              color: 'var(--muted)',
-            }}
-          >
-            <LockIcon
-              width={Math.round(imageSize * LOCK_TILE_RATIO * LOCK_ICON_RATIO)}
-              height={Math.round(imageSize * LOCK_TILE_RATIO * LOCK_ICON_RATIO)}
-            />
-          </div>
+          <LockedTile size={Math.round(imageSize * LOCK_TILE_RATIO)} />
         ) : imageUrl ? (
           <img
             src={imageUrl}

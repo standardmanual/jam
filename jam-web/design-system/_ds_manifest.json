@@ -172,6 +172,10 @@
     {
       "name": "LabelChip",
       "sourcePath": "components/cards/LabelChip.jsx"
+    },
+    {
+      "name": "LockedTile",
+      "sourcePath": "components/cards/LockedTile.jsx"
     }
   ],
   "startingPoints": [],

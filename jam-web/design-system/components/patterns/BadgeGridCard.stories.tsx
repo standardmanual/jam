@@ -321,3 +321,80 @@ export const RepeatCount: Story = {
     expect(getComputedStyle(pill).color).toBe('rgb(23, 23, 23)');
   },
 };
+
+/**
+ * 잠김 — 열기 전의 아이템 배지(티켓 20261018_0054 2회). 일반 카드와 같은 면, 썸네일 자리에 LockedTile, 이름 줄은 가린 이름,
+ * 등급 칩 아래에 `ProgressBar outlined` 한 줄. 이름·그림은 넘기지 않는다.
+ */
+export const Locked: Story = {
+  name: '잠김 — 채운 비율 0 · 40 · 100',
+  render: () => (
+    <div data-testid="cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 120px)', gap: 'var(--spacing-8)' }}>
+      <BadgeGridCard locked rarity="common" fillPercent={0} />
+      <BadgeGridCard locked rarity="rare" fillPercent={40} />
+      <BadgeGridCard locked rarity="mystic" fillPercent={100} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const cards = canvasElement.querySelector('[data-testid="cards"]')!;
+    for (const card of Array.from(cards.children)) {
+      expect(card.textContent).toContain('잠긴 아이템 배지');
+      expect(card.querySelector('img')).toBeNull();
+      // 진행 수치는 글자로 쓰지 않는다
+      expect(card.textContent).not.toMatch(/\d+\s*%|\d+\s*\/\s*\d+/);
+    }
+  },
+};
+
+/** 가림은 컴포넌트가 막는다 — `locked`인데 이름과 그림이 넘어와도 그리지 않는다. */
+export const LockedIgnoresNameAndImage: Story = {
+  name: '잠김 — 이름·그림이 넘어와도 그리지 않는다',
+  render: () => (
+    <div data-testid="card" style={{ width: 120 }}>
+      <BadgeGridCard locked name="새어 나가면 안 되는 이름" imageUrl={SAMPLE_IMAGES.epic} rarity="epic" fillPercent={30} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const card = canvasElement.querySelector('[data-testid="card"]')!;
+    expect(card.textContent).not.toContain('새어 나가면 안 되는 이름');
+    expect(card.querySelector('img')).toBeNull();
+    expect(card.textContent).toContain('잠긴 아이템 배지');
+  },
+};
+
+/** 일반 카드와 잠긴 카드를 한 그리드에 섞는다 — 같은 면, 같은 행 높이(그리드가 행 높이를 맞춘다). */
+export const LockedMixedGrid: Story = {
+  name: '잠김 — 일반 카드와 한 그리드(3열, 만료 칩 포함)',
+  parameters: { layout: 'fullscreen' },
+  render: () => (
+    <div
+      data-testid="grid"
+      style={{
+        width: 393, boxSizing: 'border-box', background: 'var(--background)', padding: 16,
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
+      }}
+    >
+      <BadgeGridCard name="첫 러닝" imageUrl={SAMPLE_IMAGES.common} rarity="common" />
+      <BadgeGridCard locked rarity="rare" fillPercent={40} />
+      <BadgeGridCard name="한강 마스터" imageUrl={SAMPLE_IMAGES.epic} rarity="epic">
+        <p style={{ margin: 0, fontSize: 'var(--text-xs)', fontWeight: 700, textAlign: 'center' }}>3/14 만료</p>
+      </BadgeGridCard>
+      <BadgeGridCard locked rarity="mystic" fillPercent={100}>
+        <p style={{ margin: 0, fontSize: 'var(--text-xs)', fontWeight: 700, textAlign: 'center' }}>3/14 만료</p>
+      </BadgeGridCard>
+      <BadgeGridCard name="10km 완주" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" />
+      <BadgeGridCard locked rarity="common" fillPercent={0} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const grid = canvasElement.querySelector('[data-testid="grid"]')!;
+    const cards = Array.from(grid.children) as HTMLElement[];
+    // 같은 행의 카드는 높이가 같다(그리드가 맞춘다) — 잠긴 카드만 튀어나오지 않는다
+    expect(Math.round(cards[0].getBoundingClientRect().height)).toBe(Math.round(cards[1].getBoundingClientRect().height));
+    expect(Math.round(cards[1].getBoundingClientRect().height)).toBe(Math.round(cards[2].getBoundingClientRect().height));
+    expect(Math.round(cards[3].getBoundingClientRect().height)).toBe(Math.round(cards[4].getBoundingClientRect().height));
+    // 면은 일반 카드와 같다
+    expect(getComputedStyle(cards[1]).backgroundColor).toBe(getComputedStyle(cards[0]).backgroundColor);
+    expect(getComputedStyle(cards[1]).borderTopLeftRadius).toBe(getComputedStyle(cards[0]).borderTopLeftRadius);
+  },
+};

@@ -594,6 +594,15 @@ export const SelectModeLocked: Story = {
       expect(card?.querySelector('svg')).toBeTruthy();
     });
 
+    await step('잠금 타일은 LockedTile 한 컴포넌트다 — 정사각형, 1px 테두리, --radius-2xl, 크림 면', async () => {
+      const tile = canvasElement.querySelector<HTMLElement>('[aria-hidden="false"] svg')!.parentElement as HTMLElement;
+      const rect = tile.getBoundingClientRect();
+      expect(Math.round(rect.width)).toBe(Math.round(rect.height));
+      const style = getComputedStyle(tile);
+      expect(style.borderTopWidth).toBe('1px');
+      expect(style.borderTopLeftRadius).not.toBe('0px');
+    });
+
     await step('잠긴 카드도 해제할 수 있다', async () => {
       await userEvent.click(centerToggle(canvasElement)!);
       await waitFor(() => expect(centerToggle(canvasElement)!.getAttribute('aria-pressed')).toBe('false'));

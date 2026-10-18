@@ -1,6 +1,11 @@
 import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
 import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
+import { LockedTile } from '../cards/LockedTile.jsx';
+import { ProgressBar } from '../feedback/ProgressBar.jsx';
+
+/** 잠긴 카드의 이름 줄 — 서비스 `d.lockedItem.card.name`과 같은 문구다(이 DS 파일은 서비스 사전을 가져오지 않는다) */
+const LOCKED_NAME = '잠긴 아이템 배지';
 
 /**
  * BadgeGridCard — 배지 그리드 셀 패턴.
@@ -27,6 +32,11 @@ import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
  * **2026-09-06 사용자 확정으로 되돌렸다**: 외형을 감추는 것보다 어떤 배지인지 알아볼 수
  * 있는 쪽을 택한다(v5는 조건도 전면 공개한다).
  *
+ * 잠김 (`locked`, 티켓 20261018_0054 2회) — 열기 전의 아이템 배지. 같은 면 위에서 썸네일 자리에 `LockedTile`,
+ *   이름 줄은 가린 이름(«잠긴 아이템 배지»), 등급 칩 아래에 `ProgressBar outlined` 한 줄(높이 6, 숫자 없음)이 붙는다.
+ *   `fillPercent`(0~100)는 서버가 준 채운 비율이다. **이름과 그림은 받지 않는다** — `locked`이면 `imageUrl`·`name`이
+ *   넘어와도 그리지 않는다(호출부 실수로 가림이 뚫리지 않게 컴포넌트가 막는다). `rarity`·`level`은 그대로 그린다.
+ *
  * 인터랙션 모드 (상호 배타):
  *   href   → <a> 래핑
  *   onClick → <button> 래핑
@@ -38,7 +48,7 @@ import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
  *     강조 링. `selected`(배경톤 채움)와 시각적으로 다르다.
  */
 export function BadgeGridCard({
-  name,
+  name = '',
   imageUrl,
   rarity = 'common',
   level = null,
@@ -50,6 +60,8 @@ export function BadgeGridCard({
   undiscovered = false,
   selected = false,
   highlighted = false,
+  locked = false,
+  fillPercent = 0,
   className = '',
   style = {},
   children,
@@ -91,12 +103,15 @@ export function BadgeGridCard({
     flexShrink: 0,
   };
 
-  const showCount = !undiscovered && typeof count === 'number' && count > 1;
+  const showCount = !locked && !undiscovered && typeof count === 'number' && count > 1;
 
   const content = (
     <>
       {/* 카운터 필의 기준점 — 썸네일 자체가 아니라 래퍼에 건다(필이 grayscale을 먹지 않게) */}
       <div style={{ position: 'relative' }}>
+        {locked ? (
+          <LockedTile size={90} />
+        ) : (
         <div style={thumbnailStyle}>
           {imageUrl ? (
             <img
@@ -114,6 +129,7 @@ export function BadgeGridCard({
             </svg>
           )}
         </div>
+        )}
         {showCount && (
           <span
             aria-hidden="true"
@@ -141,9 +157,15 @@ export function BadgeGridCard({
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
         }}>
-          {undiscovered ? '???' : name}
+          {locked ? LOCKED_NAME : undiscovered ? '???' : name}
         </p>
         {!undiscovered && (level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={rarity} size="md" />)}
+        {locked && (
+          // 채운 비율은 게이지로만 보인다 — 숫자와 퍼센트는 화면에도 보조기술에도 싣지 않는다(운영 로직 4.3절)
+          <div aria-hidden="true" style={{ width: '100%', paddingTop: 'var(--spacing-4)' }}>
+            <ProgressBar outlined percent={fillPercent} fillMode="track-gradient" trackColor="var(--background)" height={6} labelType="none" />
+          </div>
+        )}
       </div>
       {children && <div style={{ width: '100%', marginTop: 'var(--spacing-4)' }}>{children}</div>}
     </>
