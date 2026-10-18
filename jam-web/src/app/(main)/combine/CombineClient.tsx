@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import SafeImage from '@/components/SafeImage'
 import TopNav from '@/components/ui/TopNav'
@@ -8,14 +8,19 @@ import { useToast } from '@/components/ui/Toast'
 import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { MixerSlot } from '@ds/components/patterns/MixerSlot'
+import { Button } from '@ds/components/buttons/Button'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { SearchIcon, PackageIcon } from '@/components/ui/icons'
 import RecipeRewardRow from './RecipeRewardRow'
+import PendingResultsSheet, { type PendingSheetView } from './PendingResultsSheet'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
+import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
 import { StepSaveFailedError } from '@/lib/onboarding-quest/step-error'
 import { trackQuestStepComplete } from '@/lib/onboarding-quest/analytics'
+// 타입만 가져온다 — `lib/combine/pending.ts`는 서버 전용이라 값을 가져오면 번들링에서 터진다.
+import type { PendingResultView, PendingResultsPayload } from '@/lib/combine/pending'
 import type { BadgeRow, CombinationRecipeRow, CombineSlotBadgeType, InventoryItemRow } from '@/types/database'
 
 /** 온보딩 퀘스트 4~5단계(T4)의 demo-data.ts가 연출 재료 타입으로도 쓴다(export). */
@@ -58,6 +63,130 @@ interface Props {
    * 그대로다(결정 22).
    */
   questStep?: 'mix_fail' | 'mix_success' | null
+  /**
+   * 받지 않은 믹스 결과 개수 — 서버(`page.tsx`)가 읽어 내려준다(티켓 20261018_0055 2회). 0보다 크면 배너를 띄우고 새 믹스를
+   * 막는다. 온보딩 연출 모드에서는 서버가 0을 내리고, 클라이언트도 0으로 본다.
+   */
+  pendingCount?: number
+}
+
+/** 받지 않은 결과 목록을 기다리는 최대 시간 — 넘으면 오류로 넘어가 «다시 불러오기»를 보인다 */
+const PENDING_LOAD_TIMEOUT_MS = 8000
+/** 서버 응답 `code` — `/api/combine`(409)과 `/api/combine/pending`(409) */
+const PENDING_RESULTS_EXIST = 'pending_results_exist'
+const INSUFFICIENT_SLOTS = 'insufficient_slots'
+const NO_PENDING = 'no_pending'
+
+const INITIAL_SHEET: PendingSheetView = { status: 'loading', items: [], freeSlots: 0, neededSlots: 0, claiming: false }
+
+/** 믹스 응답의 결과 배지 한 줄(`CombineResult.resultBadges`) — 잠긴 것은 `locked`가 참이고 id·이름이 빈 문자열이다 */
+interface MixResultBadge {
+  id: string
+  name: string
+  rarity?: RevealBadge['rarity']
+  locked?: boolean
+  unlockRequired?: number
+}
+
+/**
+ * 순수 변환 — 믹스 응답의 결과 배지를 결과 캐러셀 항목으로 바꾼다. 열린 결과는 이미 로드해 둔 보상 배지 상세에서 찾고(API는
+ * id·name·rarity만 준다), 잠긴 결과는 id가 비어 있어 상세를 찾을 수 없으므로 등급과(응답에 있으면) 필요한 양만 싣는다.
+ * 잠긴 항목의 id는 캐러셀 키 용도의 합성 값이다. 필요한 양이 응답에 없으면 싣지 않는다 — 추측해 채우지 않는다(티켓 20261018_0055 2회).
+ */
+export function toMixRevealBadges(resultBadges: MixResultBadge[], rewardBadges: BadgeDetail[]): RevealBadge[] {
+  return resultBadges.map((b, index): RevealBadge => {
+    if (b.locked === true) {
+      return {
+        id: `locked-${index}`,
+        name: '',
+        description: '',
+        rarity: b.rarity,
+        locked: true,
+        ...(typeof b.unlockRequired === 'number' ? { unlockRequired: b.unlockRequired } : {}),
+      }
+    }
+    const detail = rewardBadges.find((rb) => rb.id === b.id)
+    return {
+      id: b.id,
+      name: detail?.name ?? b.name,
+      description: detail?.description ?? '',
+      imageUrl: detail?.image_url,
+      rarity: detail?.rarity,
+    }
+  })
+}
+
+/** 순수 변환 — 받은 «받지 않은 결과» 목록을 결과 캐러셀 항목으로 바꾼다. 잠긴 결과를 열린 척 보이지 않는다. */
+export function toPendingRevealBadges(items: PendingResultView[]): RevealBadge[] {
+  return items.map((item): RevealBadge => {
+    const rarity = item.rarity as RevealBadge['rarity']
+    if (item.locked) {
+      return {
+        id: `locked-${item.id}`,
+        name: '',
+        description: '',
+        rarity,
+        locked: true,
+        ...(typeof item.unlockRequired === 'number' && item.unlockRequired > 0 ? { unlockRequired: item.unlockRequired } : {}),
+      }
+    }
+    return { id: item.badgeId, name: item.name, description: '', imageUrl: item.imageUrl, rarity }
+  })
+}
+
+/**
+ * 순수 문구 — 믹스 직후 결과가 받지 않은 상태로 남았을 때의 오버레이 문구. 서버 `message`를 쓰지 않고 숫자를 넣어 만든다.
+ * 포인트는 결과와 별개로 먼저 지급되므로 있으면 한 문장을 더한다.
+ */
+export function pendingResultMessage(params: { pendingCount: number; freeSlots: number; points: number }): string {
+  const base = t(d.combine.resultPendingCounts, { count: params.pendingCount, free: params.freeSlots })
+  if (params.points <= 0) return base
+  return `${base} ${t(d.combine.resultPendingPoints, { points: params.points.toLocaleString() })}`
+}
+
+/**
+ * 레시피 설명 — 믹서 화면의 요약 행 아래. 3줄까지 보이고, 넘칠 때만 «더 보기»가 붙는다. 높이 전환 없이 줄임만 풀고 접는다.
+ * 넘침은 접힌 상태의 실제 높이로 잰다(글자 수로 추측하지 않는다). 레시피를 바꾸면 `key`로 다시 접힌다.
+ */
+export function RecipeDescription({ text }: { text: string }) {
+  const ref = useRef<HTMLParagraphElement>(null)
+  const [expanded, setExpanded] = useState(false)
+  const [overflowing, setOverflowing] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el || expanded || typeof ResizeObserver === 'undefined') return
+    const measure = () => setOverflowing(el.scrollHeight > el.clientHeight + 1)
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [expanded, text])
+
+  return (
+    <div className="px-4 pb-4 flex flex-col items-start">
+      <p
+        ref={ref}
+        className={[
+          'm-0 w-full text-sm text-foreground whitespace-pre-line break-keep wrap-break-word text-pretty',
+          expanded ? '' : 'line-clamp-3',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        {text}
+      </p>
+      {(overflowing || expanded) && (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+          className="min-h-11 text-sm whitespace-nowrap text-[color:var(--link)]"
+        >
+          {expanded ? d.combine.descriptionLess : d.combine.descriptionMore}
+        </button>
+      )}
+    </div>
+  )
 }
 
 /** 슬롯을 채운 값 — item 타입은 인벤토리 개체 id, activity/checkin은 배지 id가 refId다 */
@@ -90,6 +219,11 @@ interface BagRow {
  */
 export function testMixNoticeOnClose(result: { testMix?: boolean } | null): string | null {
   return result?.testMix ? d.combine.testMixNotice : null
+}
+
+/** 보상 없음으로 정한 레시피 — 보상 배지 없음, 포인트 0(서버 응답의 `noReward`와 같은 기준) */
+function isNoRewardRecipe(recipe: RecipeWithSlots): boolean {
+  return (recipe.reward_badge_ids ?? []).length === 0 && recipe.reward_points <= 0
 }
 
 /** 표시용 이름 — 기존 레시피(마이그레이션 175 이전 데이터)는 name이 NULL일 수 있다(티켓 20260917_1828) */
@@ -200,7 +334,7 @@ export function computeQuestPulseTarget(params: {
   return empty ? { type: 'slot', slotId: empty.id } : null
 }
 
-export default function CombineClient({ items, publicRecipes, ownedConditionBadgeIds, questStep = null }: Props) {
+export default function CombineClient({ items, publicRecipes, ownedConditionBadgeIds, questStep = null, pendingCount: serverPendingCount = 0 }: Props) {
   const [search, setSearch] = useState('')
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
   const [fills, setFills] = useState<Record<string, SlotFill>>({})
@@ -213,13 +347,29 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
     message?: string
     /** 서버 응답의 testMix — 운영자의 공개 전 시험 믹스(티켓 20261001_1159) */
     testMix?: boolean
+    /** 오버레이 위 한 줄 결과 문구(받기 성공 연출) — `emptyMessage`와 달리 캐러셀 위에 얹힌다 */
+    resultMessage?: string
+    /** 어디서 온 결과인가 — `claim`(받지 않은 결과 받기)은 믹서의 채운 슬롯을 건드리지 않는다 */
+    kind?: 'mix' | 'claim'
+    /** 오버레이를 닫는 순간 배너가 가리킬 받지 않은 결과 개수(닫은 뒤 서버 값을 다시 읽는다) */
+    pendingAfterClose?: number
   } | null>(null)
+  /**
+   * 받지 않은 결과 개수 — 서버 값(`pendingCount` prop)이 기준이고, 이 화면에서 개수가 바뀌는 순간(받기 성공·목록 읽기·409·믹스 직후
+   * 결과가 받지 않은 상태로 남음)에만 덮어쓴다. 덮어쓰는 모든 곳이 `router.refresh()`로 서버 값을 다시 받는다.
+   */
+  const [pendingOverride, setPendingOverride] = useState<number | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [sheet, setSheet] = useState<PendingSheetView>(INITIAL_SHEET)
   const { toast } = useToast()
   const router = useRouter()
 
   /** 온보딩 퀘스트 4~5단계 연출 모드 — 실제 `/api/combine`·`trackEvent`·`router.refresh()`를 부르지 않는다. */
   const demoMode = questStep === 'mix_fail' || questStep === 'mix_success'
   const [mixFailRecorded, setMixFailRecorded] = useState(false)
+  /** 연출 모드에서는 받지 않은 결과를 0으로 본다 — 배너·받기·CTA 차단 모두 비활성(채원 판정) */
+  const pendingCount = demoMode ? 0 : (pendingOverride ?? serverPendingCount)
+  const pendingBlocked = pendingCount > 0
 
   const ownedConditionSet = useMemo(() => new Set(ownedConditionBadgeIds), [ownedConditionBadgeIds])
   const itemsByBadgeId = useMemo(() => {
@@ -358,8 +508,101 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
     }
   }
 
+  /** 화면이 낡아 배너가 없던 경우(409) — 서버의 지금 개수를 읽어 배너를 띄운다. 읽지 못하면 서버 값을 다시 받는다. */
+  async function refreshPendingCount() {
+    try {
+      const res = await fetch('/api/combine/pending')
+      if (!res.ok) throw new Error('pending list failed')
+      const payload = (await res.json()) as Partial<PendingResultsPayload>
+      if (typeof payload.pendingCount !== 'number') throw new Error('pending list malformed')
+      setPendingOverride(payload.pendingCount)
+    } catch {
+      router.refresh()
+    }
+  }
+
+  /** 받지 않은 결과 시트를 열 때마다 목록과 지금 빈칸 수를 새로 읽는다. 8초 안에 응답이 없으면 오류로 넘어간다. */
+  async function loadPending() {
+    setSheet((prev) => ({ ...prev, status: 'loading' }))
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), PENDING_LOAD_TIMEOUT_MS)
+    try {
+      const res = await fetch('/api/combine/pending', { signal: controller.signal })
+      if (!res.ok) throw new Error('pending list failed')
+      const payload = (await res.json()) as Partial<PendingResultsPayload>
+      const list = payload.items ?? []
+      setSheet({ status: 'ready', items: list, freeSlots: Number(payload.freeSlots ?? 0), neededSlots: list.length, claiming: false })
+      if (list.length === 0) {
+        // 다른 기기에서 이미 받았다 — 배너를 지운다
+        setPendingOverride(0)
+        router.refresh()
+      } else {
+        setPendingOverride(list.length)
+      }
+    } catch {
+      setSheet((prev) => ({ ...prev, status: 'error' }))
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  function openPendingSheet() {
+    setSheetOpen(true)
+    void loadPending()
+  }
+
+  /** 받지 않은 결과를 전부 한 번에 받는다. 같은 요청을 두 번 보내지 않는다(제출 중 재클릭 막힘). */
+  async function handleClaim() {
+    if (sheet.claiming) return
+    const claimed = sheet.items
+    setSheet((prev) => ({ ...prev, claiming: true }))
+    try {
+      const res = await fetch('/api/combine/pending', { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+
+      if (res.ok) {
+        const count = typeof data.granted === 'number' && data.granted > 0 ? data.granted : claimed.length
+        setSheetOpen(false)
+        setResult({
+          success: true,
+          badges: toPendingRevealBadges(claimed),
+          points: 0,
+          resultMessage: t(d.combine.claimedToast, { count }),
+          kind: 'claim',
+          pendingAfterClose: 0,
+        })
+        return
+      }
+      if (res.status === 403 && data.code === USER_SUSPENDED_CODE) {
+        toast(data.error ?? d.suspension.combineClaimBlocked, 'info')
+        return
+      }
+      if (res.status === 409 && data.code === INSUFFICIENT_SLOTS) {
+        // 토스트 없이 부족 블록으로 바꾼다
+        setSheet((prev) => ({
+          ...prev,
+          freeSlots: typeof data.free === 'number' ? data.free : prev.freeSlots,
+          neededSlots: typeof data.needed === 'number' ? data.needed : prev.neededSlots,
+        }))
+        return
+      }
+      if (res.status === 409 && data.code === NO_PENDING) {
+        toast(data.error ?? d.combine.claim.noPending, 'info')
+        setSheetOpen(false)
+        setPendingOverride(0)
+        router.refresh()
+        return
+      }
+      toast(data.error ?? d.combine.claim.failed, 'error')
+    } catch {
+      toast(d.combine.claim.failed, 'error')
+    } finally {
+      setSheet((prev) => ({ ...prev, claiming: false }))
+    }
+  }
+
   async function handleCombine() {
-    if (!selectedRecipe || !canSubmit) return
+    if (!selectedRecipe || !canSubmit || pendingBlocked) return
 
     // 온보딩 퀘스트 4~5단계 연출 분기 — 실제 /api/combine·trackEvent·router.refresh()를
     // 전혀 부르지 않는다(티켓 20260927_2127). mix_fail을 멱등 호출하는 것은 가방 시트를
@@ -414,37 +657,55 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
       })
       const data = await res.json()
 
-      const resultBadges = (data.resultBadges ?? []) as { id: string; name: string }[]
+      // 이용 정지 — 소각 전에 거절됐다. 오버레이를 열지 않고 채운 슬롯도 그대로 둔다.
+      if (res.status === 403 && data.code === USER_SUSPENDED_CODE) {
+        toast(data.error ?? d.suspension.combineBlocked, 'info')
+        return
+      }
+      // 받지 않은 결과가 남아 있다 — 소각 전에 거절됐다. 슬롯은 그대로 두고 화면이 낡았을 수 있으니 배너 개수를 다시 읽는다.
+      if (res.status === 409 && data.code === PENDING_RESULTS_EXIST) {
+        toast(data.message ?? d.combine.pendingResultsExist, 'info')
+        await refreshPendingCount()
+        return
+      }
+
+      const resultBadges = (data.resultBadges ?? []) as MixResultBadge[]
       const points = data.pointsAwarded ?? 0
       // 20260910_1408: 레시피 보상은 배지·포인트를 함께 줄 수 있다. 캐러셀에 넘길 상세는
       // 이미 로드해 둔 selectedRecipe.rewardBadges에서 찾는다(API는 id·name·rarity만 준다).
-      const revealBadges: RevealBadge[] = resultBadges.map((b) => {
-        const detail = selectedRecipe.rewardBadges.find((rb) => rb.id === b.id)
-        return {
-          id: b.id,
-          name: detail?.name ?? b.name,
-          description: detail?.description ?? '',
-          imageUrl: detail?.image_url,
-          rarity: detail?.rarity,
-        }
-      })
+      // 잠긴 채 나온 결과는 id가 빈 문자열이라 상세를 찾지 않고 가린 카드로 바꾼다.
+      const revealBadges = toMixRevealBadges(resultBadges, selectedRecipe.rewardBadges)
 
       if (data.success) {
         trackEvent('combine_success', {
           item_count: itemIds.length,
-          result_badge_ids: resultBadges.map((b) => b.id).join(','),
+          result_badge_ids: resultBadges.map((b) => b.id).filter(Boolean).join(','),
         })
       }
 
       // 성공(배지 없이 포인트만) · 실패 모두 message는 서버가 완성해 내려준다(ADR 0001, 티켓 20260915_2240).
-      const message =
-        revealBadges.length === 0
-          ? data.success
-            ? t(d.combine.successPointsOnly, { points })
-            : (data.message ?? d.combine.genericFail)
-          : undefined
+      // 단 받지 않은 결과로 남은 성공과 보상 없음 성공은 서버 문구를 쓰지 않고 숫자·상황을 넣어 만든다.
+      // 결과 배지가 비어 있다는 이유만으로 «포인트만 받음»으로 보내지 않는다 — pending·noReward를 먼저 가른다.
+      const pendingResult = data.success === true && data.resultStatus === 'pending'
+      const pendingTotal = Number(data.pendingCount ?? 0)
+      let message: string | undefined
+      if (pendingResult) {
+        message = pendingResultMessage({ pendingCount: pendingTotal, freeSlots: Number(data.freeSlots ?? 0), points })
+      } else if (revealBadges.length === 0) {
+        if (data.success && data.noReward === true) message = d.combine.noRewardResult
+        else if (data.success) message = t(d.combine.successPointsOnly, { points })
+        else message = data.message ?? d.combine.genericFail
+      }
 
-      setResult({ success: !!data.success, badges: revealBadges, points, message, testMix: data.testMix === true })
+      setResult({
+        success: !!data.success,
+        badges: revealBadges,
+        points,
+        message,
+        testMix: data.testMix === true,
+        kind: 'mix',
+        ...(pendingResult ? { pendingAfterClose: pendingTotal } : {}),
+      })
       // 재료 소각·조합 결과 반영 — 슬롯만 비우고 같은 레시피 화면은 유지한다(오버레이를 닫을 때 처리).
       router.refresh()
     } catch {
@@ -456,6 +717,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
 
   function closeResult() {
     const testMixNotice = testMixNoticeOnClose(result)
+    const closing = result
     setResult(null)
     if (demoMode) {
       // 온보딩 퀘스트 4~5단계 완료 — 같은 화면에 남지 않고 홈으로 이동한다(사용자 결정 3).
@@ -463,7 +725,13 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
       return
     }
     // 티켓 요구사항: 오버레이를 닫으면 같은 레시피 화면에 슬롯만 비운 채로 남는다.
-    setFills({})
+    // 받지 않은 결과를 받은 연출은 믹서의 채운 슬롯과 무관하므로 건드리지 않는다.
+    if (closing?.kind !== 'claim') setFills({})
+    // 받지 않은 결과 개수가 바뀌었다 — 오버레이를 닫은 뒤에 배너를 나타내거나 지운다.
+    if (closing?.pendingAfterClose !== undefined) {
+      setPendingOverride(closing.pendingAfterClose)
+      router.refresh()
+    }
     // 시험 믹스 안내는 오버레이를 닫은 뒤에 띄운다 — 오버레이가 떠 있는 동안 토스트(z-60)가 올라오면
     // 같은 z의 캐러셀 하단 조작을 가로챌 수 있다(티켓 20261001_1159).
     if (testMixNotice) toast(testMixNotice, 'info')
@@ -478,6 +746,8 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
         badges={recipe.rewardBadges}
         points={recipe.reward_points}
         releaseAt={recipe.releaseAt}
+        noReward={isNoRewardRecipe(recipe)}
+        rewardLocked={recipe.reward_locked === true}
         onClick={() => onPick(recipe.id)}
         className={pulseTarget?.type === 'recipe' ? 'jam-quest-pulse' : ''}
       />
@@ -512,6 +782,23 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
         title={d.combine.title}
         onBack={selectedRecipe ? closeMixer : undefined}
       />
+
+      {/* 받지 않은 믹스 결과 배너 — 탐색·믹서 두 화면 모두 TopNav 바로 아래. 오류가 아니라 «할 일»이라 경고색을 쓰지 않는다(티켓 20261018_0055 2회). */}
+      {pendingBlocked && (
+        <div className="px-4 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-2xl bg-surface px-4 py-4">
+            <div className="flex min-w-0 flex-1 basis-48 flex-col gap-1">
+              <p className="m-0 text-base font-bold text-foreground break-keep wrap-break-word text-balance">
+                {t(d.combine.pendingBanner.title, { count: pendingCount })}
+              </p>
+              <p className="m-0 text-sm text-muted break-keep wrap-break-word text-pretty">{d.combine.pendingBanner.body}</p>
+            </div>
+            <Button variant="primary" className="ml-auto whitespace-nowrap" onClick={openPendingSheet}>
+              {d.combine.pendingBanner.action}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {!selectedRecipe ? (
         <>
@@ -556,12 +843,20 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
               badges={selectedRecipe.rewardBadges}
               points={selectedRecipe.reward_points}
               releaseAt={selectedRecipe.releaseAt}
+              noReward={isNoRewardRecipe(selectedRecipe)}
+              rewardLocked={selectedRecipe.reward_locked === true}
             />
           </div>
 
+          {/* 레시피 설명 — 없으면 영역 자체를 그리지 않는다. 탐색 목록 행에는 싣지 않는다 */}
+          {selectedRecipe.description?.trim() && (
+            <RecipeDescription key={selectedRecipe.id} text={selectedRecipe.description} />
+          )}
+
           {/* 믹서 슬롯 그리드 */}
           <div className="flex-1 px-4 pb-6">
-            <div className="grid grid-cols-4 gap-2">
+            {/* 5칸은 3열(3+2)로 둔다 — 5열은 360px에서 칸이 약 59px라 썸네일과 이름이 읽히지 않는다. 4칸 이하는 지금처럼 4열 */}
+            <div className={selectedRecipe.slots.length > 4 ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-4 gap-2'}>
               {selectedRecipe.slots.map((slot) => {
                 const fill = fills[slot.id]
                 const hasOwnedCandidate =
@@ -591,7 +886,8 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
           <div className="px-4 pb-6 flex flex-col items-center gap-2">
             <button
               onClick={handleCombine}
-              disabled={loading || !canSubmit}
+              disabled={loading || !canSubmit || pendingBlocked}
+              aria-describedby={pendingBlocked ? 'combine-pending-note' : undefined}
               className={[
                 'w-full max-w-[220px] py-4 rounded-full bg-foreground text-background text-base active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2',
                 pulseTarget?.type === 'submit' ? 'jam-quest-pulse' : '',
@@ -602,6 +898,12 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
               {loading && <span className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />}
               {loading ? d.combine.combineButtonLoading : d.combine.combineButton}
             </button>
+            {/* 새 믹스가 막힌 이유 — 말 없이 막지 않는다. 읽혀야 하는 정보라 muted가 아니라 foreground로 둔다 */}
+            {pendingBlocked && (
+              <p id="combine-pending-note" className="m-0 self-stretch text-sm text-foreground break-keep wrap-break-word text-pretty">
+                {d.combine.pendingBlockedNote}
+              </p>
+            )}
             {/* 재료 소각 안내 — 아이템 슬롯이 있는 레시피에서만, 버튼 아래 상시 노출(티켓 20260924_0813) */}
             {hasItemSlot && (
               <p className="text-xs text-muted text-center">{d.combine.burnNotice}</p>
@@ -680,6 +982,15 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
         </>
       )}
 
+      {/* 받지 않은 믹스 결과 받기 시트 — 탐색·믹서 어느 화면에서든 배너의 «받기»로 연다 */}
+      <PendingResultsSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        view={sheet}
+        onClaim={handleClaim}
+        onRetry={loadPending}
+      />
+
       {/* 결과 오버레이 — 성공 시 BadgeRevealCarousel, 실패(또는 배지 없이 포인트만)는 같은 셸에 메시지 */}
       <BadgeRevealOverlay
         open={!!result}
@@ -687,6 +998,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
         profileHref="/profile"
         onClose={closeResult}
         emptyMessage={result?.message}
+        resultMessage={result?.resultMessage}
       />
     </div>
   )

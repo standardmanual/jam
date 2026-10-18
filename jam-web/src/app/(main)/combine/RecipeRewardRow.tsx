@@ -1,6 +1,7 @@
 import SafeImage from '@/components/SafeImage'
 import ListRowCard from '@/components/ui/ListRowCard'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { LabelChip } from '@ds/components/cards/LabelChip'
 import { CoinIcon, PackageIcon } from '@/components/ui/icons'
 import { formatKoreanDateTime } from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
@@ -29,6 +30,13 @@ interface Props {
    * 내려주므로 여기서 `new Date()`로 다시 계산하지 않는다. 없으면 지금과 똑같은 렌더다.
    */
   releaseAt?: string | null
+  /**
+   * 보상 없음으로 정한 레시피(보상 배지 0개, 포인트 0) — 코인 아이콘 대신 중립 아이콘과 «보상 없음» 부제를 그린다.
+   * 이 값이 없으면 보상이 비어 있어도 지금과 똑같이 그린다(티켓 20261018_0055 2회).
+   */
+  noReward?: boolean
+  /** 결과를 잠긴 채 지급하는 레시피 — 부제의 등급 칩 옆에 «잠김» 칩을 붙인다(티켓 20261018_0055 2회) */
+  rewardLocked?: boolean
 }
 
 /**
@@ -41,6 +49,9 @@ interface Props {
  * - 배지 + 포인트: icon=배지 이미지, subtitle=등급 칩+배지명, trailing=포인트 값
  * - 배지만: icon=배지 이미지, subtitle=등급 칩+배지명, trailing 없음
  * - 포인트만: icon=포인트 아이콘, subtitle 없음, trailing=포인트 값
+ *
+ * 4번째 케이스(티켓 20261018_0055 2회): `noReward`면 중립 아이콘(`PackageIcon`)과 부제 «보상 없음»만 그린다.
+ * `rewardLocked`면 배지 부제의 등급 칩 옆에 «잠김» 칩을 붙인다.
  *
  * `releaseAt`이 있으면 위 3케이스 어느 쪽이든 텍스트 영역 맨 아래에 「공개 예정」 줄을 하나 더 그린다.
  * 보상 배지가 여러 개면 대표(첫 번째)만 노출하고 "+N"을 붙인다.
@@ -55,11 +66,15 @@ export default function RecipeRewardRow({
   onClick,
   className = '',
   releaseAt,
+  noReward = false,
+  rewardLocked = false,
 }: Props) {
   const hasBadges = badges.length > 0
   const hasPoints = points > 0
   const primary = badges[0]
   const extraCount = badges.length - 1
+
+  const showNoReward = noReward && !hasBadges && !hasPoints
 
   const icon =
     hasBadges && primary ? (
@@ -73,6 +88,10 @@ export default function RecipeRewardRow({
           fallback={<PackageIcon className="w-5 h-5 text-muted" />}
         />
       </div>
+    ) : showNoReward ? (
+      <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center">
+        <PackageIcon className="w-5 h-5 text-muted" />
+      </div>
     ) : (
       <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center">
         <CoinIcon className="w-5 h-5 text-muted" />
@@ -83,11 +102,14 @@ export default function RecipeRewardRow({
     hasBadges && primary ? (
       <div className="flex items-center gap-1 min-w-0">
         <RarityBadge rarity={primary.rarity} />
+        {rewardLocked && <LabelChip className="shrink-0">{d.lockedItem.detail.chip}</LabelChip>}
         <span className="truncate">
           {primary.name}
           {extraCount > 0 ? ` +${extraCount}` : ''}
         </span>
       </div>
+    ) : showNoReward ? (
+      <span className="text-xs text-muted break-keep wrap-break-word">{d.combine.noRewardLabel}</span>
     ) : undefined
 
   const trailing = hasPoints ? (

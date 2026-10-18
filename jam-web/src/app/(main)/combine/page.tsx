@@ -12,6 +12,7 @@ import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
 import { filterRecipesWithLiveResults, filterReleasedRecipes, recipeReleaseState } from '@/lib/combine/visibility'
 import { hasAdminAccess } from '@/lib/admin/auth'
+import { getPendingCount } from '@/lib/combine/pending'
 
 export default async function CombinePage() {
   const supabase = await createClient()
@@ -207,12 +208,17 @@ export default async function CombinePage() {
   const questGate = await getOnboardingQuestGate(user.id, 'combine')
   const questStep = questGate === 'mix_fail' || questGate === 'mix_success' ? questGate : null
 
+  // 받지 않은 믹스 결과 개수(티켓 20261018_0055 2회) — 있으면 배너를 띄우고 새 믹스를 막는다. 온보딩 연출 모드는 0이다.
+  // 읽지 못하면 던진다: 있는데 없다고 보여 주면 재료가 또 소모되고 결과가 더 쌓인다(서버도 소각 앞에서 한 번 더 거절한다).
+  const pendingCount = questStep ? 0 : await getPendingCount(service, user.id)
+
   return (
     <CombineClient
       items={questStep ? DEMO_MIX_ITEMS : items}
       publicRecipes={questStep ? [DEMO_MIX_RECIPE] : publicRecipes}
       ownedConditionBadgeIds={questStep ? [] : ownedConditionBadgeIds}
       questStep={questStep}
+      pendingCount={pendingCount}
     />
   )
 }

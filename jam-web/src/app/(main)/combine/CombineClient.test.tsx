@@ -22,6 +22,7 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 const toastMock = vi.hoisted(() => vi.fn())
+const refreshMock = vi.hoisted(() => vi.fn())
 
 /** 손으로 돌리는 훅 저장소 — `active`일 때만 `useState`·`useMemo`를 대신한다(티켓 20261001_1159). */
 const hooks = vi.hoisted(() => ({
@@ -50,7 +51,7 @@ vi.mock('react', async (importOriginal) => {
 })
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn(), refresh: refreshMock }),
   usePathname: () => '/combine',
   useSearchParams: () => new URLSearchParams(),
 }))
@@ -65,11 +66,17 @@ import CombineClient, {
   computeQuestPulseTarget,
   resolveQuestPulseStep,
   testMixNoticeOnClose,
+  toMixRevealBadges,
+  toPendingRevealBadges,
+  pendingResultMessage,
+  RecipeDescription,
   type RecipeWithSlots,
 } from './CombineClient'
 import RecipeRewardRow from './RecipeRewardRow'
+import PendingResultsSheet from './PendingResultsSheet'
 import BadgeRevealOverlay from '@/components/BadgeRevealOverlay'
-import { d } from '@/lib/i18n'
+import { Button } from '@ds/components/buttons/Button'
+import { d, t } from '@/lib/i18n'
 import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
 
 describe('shouldRecordMixFail', () => {
@@ -482,5 +489,521 @@ describe('testMixNoticeOnClose', () => {
     expect(testMixNoticeOnClose({ testMix: false })).toBeNull()
     expect(testMixNoticeOnClose({})).toBeNull()
     expect(testMixNoticeOnClose(null)).toBeNull()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 티켓 20261018_0055 2회 — 받지 않은 믹스 결과, 잠긴 결과, 보상 없음, 설명, 5칸
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('toMixRevealBadges — 잠긴 결과 변환 (티켓 20261018_0055 2회)', () => {
+  const rewardBadges = [
+    { id: 'reward-1', name: '보상 배지', image_url: 'https://img/reward-1.png', rarity: 'rare' as const, description: '설명' },
+  ]
+
+  it('열린 결과는 이미 로드한 보상 배지 상세에서 이름·그림·설명·등급을 찾는다', () => {
+    const [item] = toMixRevealBadges([{ id: 'reward-1', name: '서버 이름', rarity: 'rare' }], rewardBadges)
+    expect(item).toEqual({ id: 'reward-1', name: '보상 배지', description: '설명', imageUrl: 'https://img/reward-1.png', rarity: 'rare' })
+  })
+
+  it('잠긴 결과는 빈 id로 상세를 찾지 않고 가린 항목이 된다 — 이름 없는 카드가 나오지 않는다', () => {
+    const [item] = toMixRevealBadges([{ id: '', name: '', rarity: 'rare', locked: true, unlockRequired: 300 }], rewardBadges)
+    expect(item).toEqual({ id: 'locked-0', name: '', description: '', rarity: 'rare', locked: true, unlockRequired: 300 })
+    expect('imageUrl' in item).toBe(false)
+  })
+
+  it('필요한 양이 응답에 없으면 싣지 않는다 — 추측해 채우지 않는다', () => {
+    const [item] = toMixRevealBadges([{ id: '', name: '', rarity: 'epic', locked: true }], rewardBadges)
+    expect('unlockRequired' in item).toBe(false)
+  })
+
+  it('잠긴 결과가 여럿이어도 캐러셀 키(id)가 겹치지 않는다', () => {
+    const items = toMixRevealBadges(
+      [
+        { id: '', name: '', rarity: 'rare', locked: true },
+        { id: '', name: '', rarity: 'rare', locked: true },
+      ],
+      rewardBadges,
+    )
+    expect(new Set(items.map((i) => i.id)).size).toBe(2)
+  })
+})
+
+describe('toPendingRevealBadges — 받은 결과를 연출 항목으로 (티켓 20261018_0055 2회)', () => {
+  it('잠긴 결과는 이름·그림을 싣지 않고 등급과 필요한 양만 싣는다', () => {
+    const [locked, open] = toPendingRevealBadges([
+      { id: 'p1', badgeId: '', name: '', imageUrl: null, rarity: 'epic', locked: true, unlockRequired: 600, createdAt: '2026-10-18T00:00:00Z' },
+      { id: 'p2', badgeId: 'b2', name: '열린 배지', imageUrl: 'https://img/b2.png', rarity: 'rare', locked: false, unlockRequired: null, createdAt: '2026-10-18T00:00:00Z' },
+    ])
+    expect(locked).toMatchObject({ locked: true, rarity: 'epic', unlockRequired: 600, name: '' })
+    expect(open).toMatchObject({ id: 'b2', name: '열린 배지', imageUrl: 'https://img/b2.png', rarity: 'rare' })
+    expect(open.locked).toBeUndefined()
+  })
+})
+
+describe('pendingResultMessage', () => {
+  it('결과 개수와 지금 빈칸 수를 숫자로 넣고 서버 일반 문구를 쓰지 않는다', () => {
+    const message = pendingResultMessage({ pendingCount: 3, freeSlots: 1, points: 0 })
+    expect(message).toContain('믹스 결과 3개를 아직 받지 못했어요')
+    expect(message).toContain('지금 빈칸 1개, 받으려면 3개가 필요해요')
+    expect(message).not.toContain('포인트')
+  })
+
+  it('포인트가 있으면 먼저 받았다는 한 문장을 더한다', () => {
+    expect(pendingResultMessage({ pendingCount: 2, freeSlots: 0, points: 1200 })).toContain('1,200 포인트는 먼저 받았어요.')
+  })
+})
+
+describe('RecipeRewardRow — 보상 없음·잠김 칩 (티켓 20261018_0055 2회)', () => {
+  const badge = { id: 'b1', name: '결과 배지', image_url: null, rarity: 'rare' as const }
+
+  it('noReward면 «보상 없음» 부제가 보인다', () => {
+    const html = renderToStaticMarkup(<RecipeRewardRow title="레시피" slotCount={2} badges={[]} points={0} noReward />)
+    expect(html).toContain(d.combine.noRewardLabel)
+  })
+
+  it('noReward가 없으면 보상이 비어 있어도 «보상 없음»을 쓰지 않는다(회귀 방지)', () => {
+    const base = renderToStaticMarkup(<RecipeRewardRow title="레시피" slotCount={2} badges={[]} points={0} />)
+    expect(base).not.toContain(d.combine.noRewardLabel)
+  })
+
+  it('보상이 있으면 noReward여도 «보상 없음»을 쓰지 않는다', () => {
+    const html = renderToStaticMarkup(<RecipeRewardRow title="레시피" slotCount={2} badges={[]} points={50} noReward />)
+    expect(html).not.toContain(d.combine.noRewardLabel)
+  })
+
+  it('rewardLocked면 등급 칩 옆에 «잠김» 칩이 붙고, 아니면 없다', () => {
+    const locked = renderToStaticMarkup(<RecipeRewardRow title="레시피" slotCount={2} badges={[badge]} points={0} rewardLocked />)
+    const open = renderToStaticMarkup(<RecipeRewardRow title="레시피" slotCount={2} badges={[badge]} points={0} />)
+    expect(locked).toContain(d.lockedItem.detail.chip)
+    expect(open).not.toContain(d.lockedItem.detail.chip)
+  })
+})
+
+describe('RecipeDescription — 설명 3줄 접힘 (티켓 20261018_0055 2회)', () => {
+  it('줄바꿈을 살리고 3줄로 접힌 채 그린다 — 서버 렌더에는 «더 보기»가 없다(넘침은 실제 높이로 잰다)', () => {
+    const html = renderToStaticMarkup(<RecipeDescription text={'첫 줄\n둘째 줄'} />)
+    expect(html).toContain('line-clamp-3')
+    expect(html).toContain('whitespace-pre-line')
+    expect(html).toContain('break-keep')
+    expect(html).not.toContain(d.combine.descriptionMore)
+  })
+})
+
+describe('CombineClient — 받지 않은 믹스 결과 (티켓 20261018_0055 2회)', () => {
+  beforeEach(() => {
+    toastMock.mockClear()
+    refreshMock.mockClear()
+    hooks.active = true
+    hooks.store = []
+  })
+
+  afterEach(() => {
+    hooks.active = false
+    vi.unstubAllGlobals()
+  })
+
+  function createScreen(recipe: RecipeWithSlots, extra: { pendingCount?: number; questStep?: 'mix_fail' | 'mix_success' | null } = {}) {
+    const props = { items: [], publicRecipes: [recipe], ownedConditionBadgeIds: [], ...extra }
+    const render = () => {
+      hooks.cursor = 0
+      return CombineClient(props)
+    }
+    const overlay = (tree: ReactNode) => findAll(tree, (el) => el.type === BadgeRevealOverlay)[0]
+    const sheetEl = (tree: ReactNode) => findAll(tree, (el) => el.type === PendingResultsSheet)[0]
+    const ctaButton = (tree: ReactNode) =>
+      findAll(tree, (el) => el.type === 'button' && String(el.props.className).includes('max-w-[220px]'))[0]
+    const bannerButton = (tree: ReactNode) =>
+      findAll(tree, (el) => el.type === Button && textOf(el) === d.combine.pendingBanner.action)[0]
+    const openMixer = () => {
+      const row = findAll(render(), (el) => el.type === RecipeRewardRow)[0]
+      ;(row.props.onClick as () => void)()
+      return render()
+    }
+    const post = async () => {
+      await (ctaButton(openMixer()).props.onClick as () => Promise<void>)()
+      return render()
+    }
+    return { render, overlay, sheetEl, ctaButton, bannerButton, openMixer, post }
+  }
+
+  /** URL·메서드별 응답을 돌려주는 fetch 대역 */
+  function stubFetch(handler: (url: string, init?: RequestInit) => { status?: number; body: unknown }) {
+    const fn = vi.fn(async (url: string, init?: RequestInit) => {
+      const out = handler(url, init)
+      const status = out.status ?? 200
+      return { ok: status >= 200 && status < 300, status, json: async () => out.body }
+    })
+    vi.stubGlobal('fetch', fn)
+    return fn
+  }
+
+  const bannerText = (count: number) => t(d.combine.pendingBanner.title, { count })
+  /** 배너 «받기»는 시트를 열고 목록 읽기를 기다리지 않는다 — 읽기가 끝날 때까지 한 번 비운다 */
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
+  const openSheet = async (screen: ReturnType<typeof createScreen>) => {
+    ;(screen.bannerButton(screen.render()).props.onClick as () => void)()
+    await flush()
+  }
+
+  // ── (e) 배너·CTA 차단 ──────────────────────────────────────────────────────
+
+  it('받지 않은 결과가 있으면 탐색 화면에 배너와 «받기»가 보인다', () => {
+    const screen = createScreen(recipeFixture(), { pendingCount: 3 })
+    const tree = screen.render()
+    expect(textOf(tree)).toContain(bannerText(3))
+    expect(textOf(tree)).toContain(d.combine.pendingBanner.body)
+    expect(screen.bannerButton(tree)).toBeDefined()
+  })
+
+  it('믹서 화면에도 같은 배너가 있고, 믹스하기는 비활성이며 이유 한 줄이 버튼에 연결된다', () => {
+    const screen = createScreen(recipeFixture(), { pendingCount: 3 })
+    const mixer = screen.openMixer()
+    expect(textOf(mixer)).toContain(bannerText(3))
+
+    const cta = screen.ctaButton(mixer)
+    expect(cta.props.disabled).toBe(true)
+    expect(cta.props['aria-describedby']).toBe('combine-pending-note')
+    const notes = findAll(mixer, (el) => el.type === 'p' && el.props.id === 'combine-pending-note')
+    expect(notes).toHaveLength(1)
+    expect(textOf(notes[0])).toBe(d.combine.pendingBlockedNote)
+    // 비활성 이유는 읽혀야 하는 정보라 muted가 아니다
+    expect(String(notes[0].props.className)).toContain('text-foreground')
+    expect(String(notes[0].props.className)).not.toContain('text-muted')
+  })
+
+  it('받지 않은 결과가 없으면 배너도 이유 문구도 없고 믹스하기가 활성이다', () => {
+    const screen = createScreen(recipeFixture(), { pendingCount: 0 })
+    const mixer = screen.openMixer()
+    expect(textOf(mixer)).not.toContain(d.combine.pendingBanner.body)
+    expect(textOf(mixer)).not.toContain(d.combine.pendingBlockedNote)
+    expect(screen.ctaButton(mixer).props.disabled).toBe(false)
+    expect(screen.ctaButton(mixer).props['aria-describedby']).toBeUndefined()
+  })
+
+  it('온보딩 연출 모드에서는 받지 않은 결과가 있다고 서버가 알려 와도 배너·차단이 없다', () => {
+    const screen = createScreen(recipeFixture(), { pendingCount: 3, questStep: 'mix_fail' })
+    const mixer = screen.openMixer()
+    expect(textOf(mixer)).not.toContain(d.combine.pendingBanner.body)
+    expect(screen.ctaButton(mixer).props.disabled).toBe(false)
+  })
+
+  it('막힌 상태에서 믹스하기 핸들러가 불려도 요청을 보내지 않는다', async () => {
+    const fetchMock = stubFetch(() => ({ body: {} }))
+    const screen = createScreen(recipeFixture(), { pendingCount: 2 })
+    await (screen.ctaButton(screen.openMixer()).props.onClick as () => Promise<void>)()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  // ── (a) 믹스 직후 받지 않은 결과 ───────────────────────────────────────────
+
+  it('믹스 직후 결과가 받지 않은 상태로 남으면 숫자가 든 안내가 나오고 «0 포인트 획득»·서버 일반 문구가 나오지 않는다', async () => {
+    stubFetch(() => ({
+      body: {
+        success: true,
+        resultStatus: 'pending',
+        resultBadges: [],
+        pointsAwarded: 0,
+        pendingCount: 3,
+        freeSlots: 1,
+        message: d.combine.resultPending,
+      },
+    }))
+    const screen = createScreen(recipeFixture())
+    const tree = await screen.post()
+    const shown = screen.overlay(tree)
+    expect(shown.props.open).toBe(true)
+    expect(shown.props.emptyMessage).toBe(pendingResultMessage({ pendingCount: 3, freeSlots: 1, points: 0 }))
+    expect(String(shown.props.emptyMessage)).not.toContain('0 포인트 획득')
+    expect(shown.props.emptyMessage).not.toBe(d.combine.resultPending)
+  })
+
+  it('받지 않은 결과로 남았어도 포인트가 있으면 안내에 같이 알린다', async () => {
+    stubFetch(() => ({
+      body: { success: true, resultStatus: 'pending', resultBadges: [], pointsAwarded: 50, pendingCount: 2, freeSlots: 0 },
+    }))
+    const screen = createScreen(recipeFixture())
+    const shown = screen.overlay(await screen.post())
+    expect(String(shown.props.emptyMessage)).toContain('50 포인트는 먼저 받았어요.')
+  })
+
+  it('받지 않은 결과로 남은 오버레이를 닫으면 배너가 나타나고 믹스하기가 막히며 서버 값을 다시 받는다', async () => {
+    stubFetch(() => ({
+      body: { success: true, resultStatus: 'pending', resultBadges: [], pointsAwarded: 0, pendingCount: 3, freeSlots: 1 },
+    }))
+    const screen = createScreen(recipeFixture())
+    const shown = screen.overlay(await screen.post())
+    // 오버레이가 떠 있는 동안에는 배너가 아직 없다
+    expect(textOf(screen.render())).not.toContain(d.combine.pendingBanner.body)
+
+    refreshMock.mockClear()
+    ;(shown.props.onClose as () => void)()
+    const after = screen.render()
+    expect(textOf(after)).toContain(bannerText(3))
+    expect(screen.ctaButton(after).props.disabled).toBe(true)
+    expect(refreshMock).toHaveBeenCalledTimes(1)
+  })
+
+  // ── (b) 보상 없음 ─────────────────────────────────────────────────────────
+
+  it('보상 없음 성공은 «0 포인트 획득!»이 아니라 안내 문구가 나온다', async () => {
+    stubFetch(() => ({
+      body: { success: true, resultStatus: 'none', resultBadges: [], pointsAwarded: 0, noReward: true },
+    }))
+    const screen = createScreen(recipeFixture({ reward_badge_ids: [], reward_points: 0, rewardBadges: [], allow_no_reward: true }))
+    const shown = screen.overlay(await screen.post())
+    expect(shown.props.open).toBe(true)
+    expect(shown.props.emptyMessage).toBe(d.combine.noRewardResult)
+    expect(String(shown.props.emptyMessage)).not.toContain('포인트 획득')
+  })
+
+  it('포인트만 주는 성공은 지금처럼 «N 포인트 획득!»이다(회귀 방지)', async () => {
+    stubFetch(() => ({ body: { success: true, resultStatus: 'none', resultBadges: [], pointsAwarded: 100 } }))
+    const screen = createScreen(recipeFixture())
+    const shown = screen.overlay(await screen.post())
+    expect(shown.props.emptyMessage).toBe(t(d.combine.successPointsOnly, { points: 100 }))
+  })
+
+  // ── (c) 잠긴 결과 ─────────────────────────────────────────────────────────
+
+  it('잠긴 채 나온 결과는 이름 없는 카드가 아니라 잠긴 항목으로 오버레이에 넘어간다', async () => {
+    stubFetch(() => ({
+      body: {
+        success: true,
+        resultStatus: 'granted',
+        resultBadges: [{ id: '', name: '', rarity: 'rare', locked: true, unlockRequired: 300 }],
+        pointsAwarded: 0,
+      },
+    }))
+    const screen = createScreen(recipeFixture())
+    const shown = screen.overlay(await screen.post())
+    expect(shown.props.items).toEqual([
+      { id: 'locked-0', name: '', description: '', rarity: 'rare', locked: true, unlockRequired: 300 },
+    ])
+    expect(shown.props.emptyMessage).toBeUndefined()
+  })
+
+  // ── (d) 이용 정지·409 ─────────────────────────────────────────────────────
+
+  it('이용 정지 403은 info 토스트이고 오버레이를 열지 않으며 요청은 한 번뿐이다', async () => {
+    const fetchMock = stubFetch(() => ({ status: 403, body: { error: '이용이 정지된 계정이에요', code: 'user_suspended' } }))
+    const screen = createScreen(recipeFixture())
+    const tree = await screen.post()
+    expect(toastMock).toHaveBeenCalledWith('이용이 정지된 계정이에요', 'info')
+    expect(screen.overlay(tree).props.open).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(refreshMock).not.toHaveBeenCalled()
+  })
+
+  it('이용 정지 응답에 문구가 없으면 사전의 믹스 정지 문구를 쓴다', async () => {
+    stubFetch(() => ({ status: 403, body: { code: 'user_suspended' } }))
+    const screen = createScreen(recipeFixture())
+    await screen.post()
+    expect(toastMock).toHaveBeenCalledWith(d.suspension.combineBlocked, 'info')
+  })
+
+  it('409 pending_results_exist는 info 토스트이고 오버레이 없이 배너 개수를 다시 읽는다', async () => {
+    const fetchMock = stubFetch((url) =>
+      url === '/api/combine'
+        ? { status: 409, body: { success: false, code: 'pending_results_exist', message: d.combine.pendingResultsExist } }
+        : { body: { pendingCount: 2, freeSlots: 0, items: [] } },
+    )
+    const screen = createScreen(recipeFixture())
+    const tree = await screen.post()
+    expect(toastMock).toHaveBeenCalledWith(d.combine.pendingResultsExist, 'info')
+    expect(screen.overlay(tree).props.open).toBe(false)
+    expect(fetchMock.mock.calls.map((c) => c[0])).toEqual(['/api/combine', '/api/combine/pending'])
+    expect(textOf(tree)).toContain(bannerText(2))
+  })
+
+  it('409 pending_results_exist 뒤 개수를 읽지 못하면 서버 값을 다시 받는다(router.refresh)', async () => {
+    stubFetch((url) =>
+      url === '/api/combine'
+        ? { status: 409, body: { success: false, code: 'pending_results_exist', message: d.combine.pendingResultsExist } }
+        : { status: 500, body: { error: 'x' } },
+    )
+    const screen = createScreen(recipeFixture())
+    await screen.post()
+    expect(refreshMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('잠긴 재료 409(locked_item_not_allowed)는 지금처럼 오버레이 셸에 문구를 보인다', async () => {
+    stubFetch(() => ({
+      status: 409,
+      body: { success: false, reason: 'locked_item_not_allowed', code: 'locked_item_not_allowed', message: d.lockedItem.combine, pointsAwarded: 0 },
+    }))
+    const screen = createScreen(recipeFixture())
+    const shown = screen.overlay(await screen.post())
+    expect(shown.props.open).toBe(true)
+    expect(shown.props.emptyMessage).toBe(d.lockedItem.combine)
+  })
+
+  // ── 받기 시트 ─────────────────────────────────────────────────────────────
+
+  const lockedPending = { id: 'p1', badgeId: '', name: '', imageUrl: null, rarity: 'epic', locked: true, unlockRequired: 600, createdAt: '2026-10-18T00:00:00Z' }
+  const openPending = { id: 'p2', badgeId: 'b2', name: '열린 배지', imageUrl: null, rarity: 'rare', locked: false, unlockRequired: null, createdAt: '2026-10-18T00:00:00Z' }
+
+  it('배너의 «받기»를 누르면 시트가 열리고 목록과 지금 빈칸 수를 새로 읽는다', async () => {
+    const fetchMock = stubFetch(() => ({ body: { pendingCount: 2, freeSlots: 5, items: [lockedPending, openPending] } }))
+    const screen = createScreen(recipeFixture(), { pendingCount: 2 })
+    await openSheet(screen)
+    const sheet = screen.sheetEl(screen.render())
+    expect(sheet.props.open).toBe(true)
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/combine/pending')
+    expect(sheet.props.view).toEqual({ status: 'ready', items: [lockedPending, openPending], freeSlots: 5, neededSlots: 2, claiming: false })
+  })
+
+  it('목록을 읽지 못하면 시트가 오류 상태가 된다', async () => {
+    stubFetch(() => ({ status: 500, body: { error: 'x' } }))
+    const screen = createScreen(recipeFixture(), { pendingCount: 2 })
+    await openSheet(screen)
+    expect((screen.sheetEl(screen.render()).props.view as { status: string }).status).toBe('error')
+  })
+
+  it('목록이 비었으면(다른 기기에서 이미 받음) 빈 상태가 되고 배너가 사라지며 서버 값을 다시 받는다', async () => {
+    stubFetch(() => ({ body: { pendingCount: 0, freeSlots: 5, items: [] } }))
+    const screen = createScreen(recipeFixture(), { pendingCount: 2 })
+    await openSheet(screen)
+    const tree = screen.render()
+    expect(textOf(tree)).not.toContain(d.combine.pendingBanner.body)
+    expect((screen.sheetEl(tree).props.view as { items: unknown[] }).items).toEqual([])
+    expect(refreshMock).toHaveBeenCalledTimes(1)
+  })
+
+  async function openSheetThen(handler: (url: string, init?: RequestInit) => { status?: number; body: unknown }) {
+    const list = [lockedPending, openPending]
+    const fetchMock = stubFetch((url, init) =>
+      init?.method === 'POST' ? handler(url, init) : { body: { pendingCount: list.length, freeSlots: 5, items: list } },
+    )
+    const screen = createScreen(recipeFixture(), { pendingCount: list.length })
+    await openSheet(screen)
+    return { screen, fetchMock }
+  }
+
+  const claimOf = (screen: ReturnType<typeof createScreen>) => screen.sheetEl(screen.render()).props.onClaim as () => Promise<void>
+
+  it('받기에 성공하면 시트를 닫고 «믹스 결과 N개를 받았어요»와 함께 연출한다 — 잠긴 결과는 잠긴 채 보인다', async () => {
+    const { screen } = await openSheetThen(() => ({ body: { granted: 2, itemIds: ['i1', 'i2'] } }))
+    await claimOf(screen)()
+    const tree = screen.render()
+    expect(screen.sheetEl(tree).props.open).toBe(false)
+    const shown = screen.overlay(tree)
+    expect(shown.props.open).toBe(true)
+    expect(shown.props.resultMessage).toBe(t(d.combine.claimedToast, { count: 2 }))
+    const items = shown.props.items as { locked?: boolean; name: string; id: string }[]
+    expect(items[0]).toMatchObject({ locked: true, name: '', rarity: 'epic', unlockRequired: 600 })
+    expect(items[1]).toMatchObject({ id: 'b2', name: '열린 배지' })
+    expect(items[1].locked).toBeUndefined()
+  })
+
+  it('받은 연출을 닫으면 배너가 사라지고 믹스하기가 활성이 되며 서버 값을 다시 받는다', async () => {
+    const { screen } = await openSheetThen(() => ({ body: { granted: 2, itemIds: ['i1', 'i2'] } }))
+    await claimOf(screen)()
+    refreshMock.mockClear()
+    ;(screen.overlay(screen.render()).props.onClose as () => void)()
+    const mixer = screen.openMixer()
+    expect(textOf(mixer)).not.toContain(d.combine.pendingBanner.body)
+    expect(screen.ctaButton(mixer).props.disabled).toBe(false)
+    expect(refreshMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('제출 중에는 같은 요청을 다시 보내지 않는다', async () => {
+    const { screen, fetchMock } = await openSheetThen(() => ({ body: { granted: 2, itemIds: [] } }))
+    const first = claimOf(screen)()
+    // 첫 요청이 끝나기 전에 다시 렌더한 트리의 핸들러를 부른다
+    const second = claimOf(screen)()
+    await Promise.all([first, second])
+    expect(fetchMock.mock.calls.filter((c) => (c[1] as RequestInit | undefined)?.method === 'POST')).toHaveLength(1)
+  })
+
+  it('받기 409 insufficient_slots는 토스트 없이 시트의 빈칸·필요 칸 수를 바꾼다', async () => {
+    const { screen } = await openSheetThen(() => ({ status: 409, body: { code: 'insufficient_slots', error: 'x', free: 1, needed: 3 } }))
+    await claimOf(screen)()
+    const sheet = screen.sheetEl(screen.render())
+    expect(sheet.props.open).toBe(true)
+    expect(sheet.props.view).toMatchObject({ freeSlots: 1, neededSlots: 3, claiming: false })
+    expect(toastMock).not.toHaveBeenCalled()
+  })
+
+  it('받기 409 no_pending은 info 토스트, 시트 닫기, 배너 제거(서버 값 다시 받기)다', async () => {
+    const { screen } = await openSheetThen(() => ({ status: 409, body: { code: 'no_pending', error: d.combine.claim.noPending } }))
+    await claimOf(screen)()
+    const tree = screen.render()
+    expect(toastMock).toHaveBeenCalledWith(d.combine.claim.noPending, 'info')
+    expect(screen.sheetEl(tree).props.open).toBe(false)
+    expect(textOf(tree)).not.toContain(d.combine.pendingBanner.body)
+    expect(refreshMock).toHaveBeenCalled()
+  })
+
+  it('받기 403 user_suspended는 info 토스트이고 시트를 열어 둔다', async () => {
+    const { screen } = await openSheetThen(() => ({ status: 403, body: { code: 'user_suspended', error: d.suspension.combineClaimBlocked } }))
+    await claimOf(screen)()
+    expect(toastMock).toHaveBeenCalledWith(d.suspension.combineClaimBlocked, 'info')
+    expect(screen.sheetEl(screen.render()).props.open).toBe(true)
+    expect(screen.overlay(screen.render()).props.open).toBe(false)
+  })
+
+  it('받기 500은 error 토스트이고 시트를 열어 둔 채 버튼이 다시 활성이 된다', async () => {
+    const { screen } = await openSheetThen(() => ({ status: 500, body: { error: d.combine.claim.failed } }))
+    await claimOf(screen)()
+    expect(toastMock).toHaveBeenCalledWith(d.combine.claim.failed, 'error')
+    const sheet = screen.sheetEl(screen.render())
+    expect(sheet.props.open).toBe(true)
+    expect(sheet.props.view).toMatchObject({ claiming: false })
+  })
+})
+
+describe('CombineClient — 믹서 칸 수와 설명 (티켓 20261018_0055 2회)', () => {
+  beforeEach(() => {
+    hooks.active = true
+    hooks.store = []
+  })
+
+  afterEach(() => {
+    hooks.active = false
+  })
+
+  function mixerFor(recipe: RecipeWithSlots) {
+    hooks.store = []
+    const props = { items: [], publicRecipes: [recipe], ownedConditionBadgeIds: [] }
+    const render = () => {
+      hooks.cursor = 0
+      return CombineClient(props)
+    }
+    ;(findAll(render(), (el) => el.type === RecipeRewardRow)[0].props.onClick as () => void)()
+    return render()
+  }
+
+  const slots = (n: number): RecipeWithSlots['slots'] =>
+    Array.from({ length: n }, (_, i) => ({ id: `slot-${i}`, slot_order: i, badge_type: 'item' as const, candidates: [] }))
+
+  const gridClass = (tree: ReactNode) =>
+    String(findAll(tree, (el) => el.type === 'div' && String(el.props.className).includes('grid-cols'))[0].props.className)
+
+  it('5칸은 3열(3+2)이고 4칸 이하는 지금처럼 4열이다', () => {
+    expect(gridClass(mixerFor(recipeFixture({ slots: slots(5) })))).toContain('grid-cols-3')
+    expect(gridClass(mixerFor(recipeFixture({ slots: slots(4) })))).toContain('grid-cols-4')
+    expect(gridClass(mixerFor(recipeFixture({ slots: slots(2) })))).toContain('grid-cols-4')
+  })
+
+  it('설명이 있으면 요약 행 아래에 설명 영역이 있고, 없거나 공백뿐이면 영역이 없다', () => {
+    const find = (tree: ReactNode) => findAll(tree, (el) => el.type === RecipeDescription)
+    const withText = find(mixerFor(recipeFixture({ description: '설명 문단' })))
+    expect(withText).toHaveLength(1)
+    expect(withText[0].props.text).toBe('설명 문단')
+    expect(find(mixerFor(recipeFixture({ description: null })))).toHaveLength(0)
+    expect(find(mixerFor(recipeFixture({ description: '   ' })))).toHaveLength(0)
+  })
+
+  it('요약 행에 보상 없음·잠김 여부가 전달된다', () => {
+    const noReward = findAll(
+      mixerFor(recipeFixture({ reward_badge_ids: [], reward_points: 0, rewardBadges: [], reward_locked: true })),
+      (el) => el.type === RecipeRewardRow,
+    )[0]
+    expect(noReward.props.noReward).toBe(true)
+    expect(noReward.props.rewardLocked).toBe(true)
+    const normal = findAll(mixerFor(recipeFixture({ reward_points: 50 })), (el) => el.type === RecipeRewardRow)[0]
+    expect(normal.props.noReward).toBe(false)
+    expect(normal.props.rewardLocked).toBe(false)
   })
 })
