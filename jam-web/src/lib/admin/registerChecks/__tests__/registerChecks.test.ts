@@ -161,7 +161,7 @@ describe('runMissionDbChecks', () => {
     expect(entries.map((e) => e.table)).toEqual(['missions', 'badges'])
   })
 
-  it('통과: 조건 유형에 따라 조건 배지(item_collect)·조건 지점(checkin)을 읽는다', async () => {
+  it('통과: 조건 유형에 따라 조건 배지(item_collect)·조건 장소(checkin)을 읽는다', async () => {
     const collect = await runMissionDbChecks({
       supabase: createStub(allPresent).client,
       mission: { title: 'm', mission_type: 'item_collect', condition_json: { badge_id: ID_A } },
@@ -171,10 +171,10 @@ describe('runMissionDbChecks', () => {
       supabase: createStub(allPresent).client,
       mission: { title: 'm', mission_type: 'checkin', condition_json: { poi_id: ID_B } },
     })
-    expect(checkin.checks[3]).toEqual({ label: '조건 지점 존재', status: '통과', detail: '' })
+    expect(checkin.checks[3]).toEqual({ label: '조건 장소 존재', status: '통과', detail: '' })
   })
 
-  it('실패: 같은 제목·없는 보상 배지·없는 조건 지점을 각각 문장으로 알려 준다', async () => {
+  it('실패: 같은 제목·없는 보상 배지·없는 조건 장소를 각각 문장으로 알려 준다', async () => {
     const dup = await runMissionDbChecks({
       supabase: createStub((e) => (e.table === 'missions' ? { data: [{ id: 'dup' }] } : { data: [] })).client,
       mission: { title: '미션' },
@@ -196,7 +196,7 @@ describe('runMissionDbChecks', () => {
       supabase: createStub(() => ({ data: null })).client,
       mission: { title: '미션', mission_type: 'checkin', condition_json: { poi_id: ID_A } },
     })
-    expect(missingPoi.checks[3].detail).toBe(`condition_json.poi_id에 해당하는 지점이 없어요: ${ID_A}`)
+    expect(missingPoi.checks[3].detail).toBe(`condition_json.poi_id에 해당하는 장소가 없어요: ${ID_A}`)
   })
 
   it('조회 오류: error 응답을 «DB 조회에 실패했어요»로 기록한다', async () => {

@@ -120,7 +120,7 @@ export default function BadgeImagePage() {
       <Card>
         <CardHeader>
           <CardTitle>배지 검색</CardTitle>
-          <CardDescription>배지 이름 또는 연결된 POI 이름으로 검색합니다.</CardDescription>
+          <CardDescription>배지 이름 또는 연결된 장소 이름으로 검색합니다.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
@@ -182,7 +182,7 @@ export default function BadgeImagePage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>배지 이름</TableHead>
-                      <TableHead>연결 POI</TableHead>
+                      <TableHead>연결 장소</TableHead>
                       <TableHead>이미지</TableHead>
                       <TableHead className="text-right">선택</TableHead>
                     </TableRow>

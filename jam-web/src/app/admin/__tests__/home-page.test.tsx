@@ -87,7 +87,7 @@ describe('구역 순서 (승인 #18)', () => {
     const shortcuts = out.slice(out.indexOf('빠른 실행'))
     for (const [href, label] of [
       ['/admin/badges/new', '배지 등록'],
-      ['/admin/poi/new', 'POI 등록'],
+      ['/admin/poi/new', '장소 등록'],
       ['/admin/itembooks/new', '컬렉션 등록'],
       ['/admin/simulator', '시뮬레이터 실행'],
     ]) {

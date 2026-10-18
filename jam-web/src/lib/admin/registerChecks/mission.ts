@@ -86,10 +86,10 @@ export async function runMissionDbChecks({
   })
 
   const conditionPoiId = mission.mission_type === 'checkin' ? mission.condition_json?.poi_id : null
-  await add('조건 지점 존재', typeof conditionPoiId === 'string', async (client) => {
+  await add('조건 장소 존재', typeof conditionPoiId === 'string', async (client) => {
     const { data, error } = await client.from('poi').select('id').eq('id', conditionPoiId).maybeSingle()
     if (error) return `DB 조회에 실패했어요: ${error.message}`
-    return data ? null : `condition_json.poi_id에 해당하는 지점이 없어요: ${conditionPoiId}`
+    return data ? null : `condition_json.poi_id에 해당하는 장소가 없어요: ${conditionPoiId}`
   })
 
   return { checks, errors }

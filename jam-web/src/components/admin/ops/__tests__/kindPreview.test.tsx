@@ -105,7 +105,7 @@ describe('OpsCardPreview 레시피·드랍 (티켓 20261007_1401)', () => {
     expect(out).not.toContain('비 맞은 러너')
   })
 
-  it('드랍은 제목·공개 시각·지점·놓을 것을 보이고 이미지 안내는 없다', () => {
+  it('드랍은 제목·공개 시각·장소·놓을 것을 보이고 이미지 안내는 없다', () => {
     const out = html(
       <OpsCardPreview
         item={item('drop_schedule', {
@@ -118,7 +118,7 @@ describe('OpsCardPreview 레시피·드랍 (티켓 20261007_1401)', () => {
     )
     expect(out).toContain('한강 드랍')
     expect(out).toContain('공개 2026.10.10 09:00')
-    expect(out).toContain('지점: 한강공원, (이름을 읽지 못함) × 지점당 3개')
+    expect(out).toContain('장소: 한강공원, (이름을 읽지 못함) × 장소당 3개')
     expect(out).toContain('놓을 것: 비 맞은 러너')
     expect(out).not.toContain(PREVIEW_IMAGE_PENDING_TEXT)
   })

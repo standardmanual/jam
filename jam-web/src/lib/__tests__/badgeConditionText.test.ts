@@ -170,7 +170,7 @@ describe('미션·컬렉션·가입 경과일·활동일·체크인 일수 지�
       '한 주(월~일)에 3일 이상 활동 조건을 채우면 획득할 수 있어요.'
     )
     expect(formatBadgeConditionText({ same_spot_checkin_days: 10 }, '단골')).toBe(
-      '같은 지점에 10일 이상 체크인 조건을 채우면 획득할 수 있어요.'
+      '같은 장소에 10일 이상 체크인 조건을 채우면 획득할 수 있어요.'
     )
   })
 
@@ -180,7 +180,7 @@ describe('미션·컬렉션·가입 경과일·활동일·체크인 일수 지�
     )
   })
 
-  it('금지 용어(방문·POI·장소·위치·충족·달성·아이템북·슬롯·놓기·수집·회수·배치)를 쓰지 않는다', () => {
+  it('금지 용어(방문·POI·위치·충족·달성·아이템북·슬롯·놓기·수집·회수·배치)를 쓰지 않는다', () => {
     const conditions: BadgeCondition[] = [
       { mission_complete_count: 3 },
       { collection_complete_count: 2 },
@@ -190,7 +190,7 @@ describe('미션·컬렉션·가입 경과일·활동일·체크인 일수 지�
     ]
     for (const c of conditions) {
       const text = formatBadgeConditionText(c, '지표 배지')
-      for (const banned of ['방문', 'POI', '장소', '위치', '충족', '달성', '아이템북', '슬롯', '놓', '수집', '회수', '배치']) {
+      for (const banned of ['방문', 'POI', '위치', '충족', '달성', '아이템북', '슬롯', '놓', '수집', '회수', '배치']) {
         expect(text).not.toContain(banned)
       }
     }

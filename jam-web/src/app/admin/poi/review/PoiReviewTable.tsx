@@ -47,14 +47,14 @@ type BulkConfirmAction = 'approve' | 'reject'
 
 const CONFIRM_META: Record<BulkConfirmAction, { title: string; verb: string; note: string }> = {
   approve: {
-    title: 'POI 일괄 활성화',
+    title: '장소 일괄 활성화',
     verb: '활성화',
     note: '현재 배정된 카테고리 그대로 활성화합니다.',
   },
   reject: {
-    title: 'POI 일괄 거부',
+    title: '장소 일괄 거부',
     verb: '거부',
-    note: '미분류(거부됨) 카테고리로 이관되고 지도에서 숨겨집니다. 필요하면 나중에 POI 상세 화면에서 다시 되돌릴 수 있습니다.',
+    note: '미분류(거부됨) 카테고리로 이관되고 지도에서 숨겨집니다. 필요하면 나중에 장소 상세 화면에서 다시 되돌릴 수 있습니다.',
   },
 }
 
@@ -322,7 +322,7 @@ export function PoiReviewTable({ pois, categories, totalCount }: PoiReviewTableP
       <DataTable
         table={table}
         columnCount={columns.length}
-        emptyMessage="검토 대기 중인 POI가 없습니다."
+        emptyMessage="검토 대기 중인 장소가 없습니다."
         getRowHref={(row) => `/admin/poi/${row.original.id}`}
       />
 

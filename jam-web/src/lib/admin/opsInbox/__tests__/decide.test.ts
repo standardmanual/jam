@@ -867,9 +867,9 @@ describe('직접 수정', () => {
   })
 })
 
-describe('패턴 번호·지점 카테고리 다시 검사 (티켓 20261007_1745)', () => {
+describe('패턴 번호·장소 카테고리 다시 검사 (티켓 20261007_1745)', () => {
   const PATTERN_ERROR = 'items[0].pattern_no: 패턴 사전에 없는 번호예요(받은 값: "P99"). 패턴 번호를 확인해 주세요.'
-  const CATEGORY_ERROR = 'items[0].knobs.place_category: 없는 지점 카테고리예요 — "zoo". 카테고리 slug를 확인해 주세요.'
+  const CATEGORY_ERROR = 'items[0].knobs.place_category: 없는 장소 카테고리예요 — "zoo". 카테고리 slug를 확인해 주세요.'
   const edit = () =>
     editItem(service, { bundleId: B, itemId: I1, actor: 'admin-1', values: { 'copy.title': '새 제목' }, expectedUpdatedAt: item(I1).updated_at })
   const seedWith = (original: Record<string, unknown>, columns: Record<string, unknown> = {}) =>
@@ -900,7 +900,7 @@ describe('패턴 번호·지점 카테고리 다시 검사 (티켓 20261007_1745
     expect(item(I1).pattern_no).toBeNull()
   })
 
-  it('없는 지점 카테고리 slug를 가진 항목을 고쳐도 저장되고 오류만 붙는다', async () => {
+  it('없는 장소 카테고리 slug를 가진 항목을 고쳐도 저장되고 오류만 붙는다', async () => {
     seedWith(makeOriginal({ knobs: { place_category: ['cafe', 'zoo'] } }))
 
     expect((await edit()).ok).toBe(true)

@@ -84,7 +84,7 @@ export function OpsKindPreview({ preview }: { preview: KindPreview }) {
       <div className="space-y-1 rounded-lg border border-border p-3">
         <h3 className="m-0 text-base font-bold leading-tight">{preview.title}</h3>
         <Summary
-          lines={[preview.scheduledAtText ? `공개 ${preview.scheduledAtText}` : '', `지점: ${preview.poiLine}`, `놓을 것: ${preview.itemLine}`]}
+          lines={[preview.scheduledAtText ? `공개 ${preview.scheduledAtText}` : '', `장소: ${preview.poiLine}`, `놓을 것: ${preview.itemLine}`]}
         />
       </div>
     )

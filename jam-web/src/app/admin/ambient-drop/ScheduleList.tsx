@@ -34,7 +34,7 @@ function summarizeNames(ids: string[], names: Record<string, string>, unit: stri
 function poiText(item: AmbientDropScheduleListItem, names: AmbientDropScheduleNames, categories: ScheduleListProps['categories']): string {
   if (item.poiMode === 'list') {
     const perPoi = item.perPoiCount ?? 0
-    return `${summarizeNames(item.poiIds, names.pois, '곳')} × 지점당 ${perPoi}개`
+    return `${summarizeNames(item.poiIds, names.pois, '곳')} × 장소당 ${perPoi}개`
   }
   const label = item.poiCategory ? (categories.find((c) => c.slug === item.poiCategory)?.label ?? item.poiCategory) : '전체 종류'
   return `${label} × 총 ${item.totalCount ?? 0}개`
@@ -60,7 +60,7 @@ export default function ScheduleList({ items, names, categories, onCancel, onRes
         <TableRow>
           <TableHead>드랍 시각(KST)</TableHead>
           <TableHead>이름</TableHead>
-          <TableHead>지점</TableHead>
+          <TableHead>장소</TableHead>
           <TableHead>놓을 것</TableHead>
           <TableHead>상태</TableHead>
           <TableHead>결과</TableHead>

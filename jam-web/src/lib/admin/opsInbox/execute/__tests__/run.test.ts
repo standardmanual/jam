@@ -1649,7 +1649,7 @@ describe('실제 레지스트리: 레시피 핸들러 (티켓 20261002_2221)', (
 
 describe('실제 레지스트리: 드랍 예약 핸들러 (티켓 20261002_2306)', () => {
   const DROP = uid(40)
-  const POI = uid(41)
+  const 장소 = uid(41)
   const BOOK = uid(42)
   const COLLECTION_ITEM = uid(44)
   const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -1663,7 +1663,7 @@ describe('실제 레지스트리: 드랍 예약 핸들러 (티켓 20261002_2306)
     key: 'drop',
     kind: 'drop_schedule',
     original: { copy: { title: '가을 아침 드랍' } },
-    resource: { poi_ids: [POI], per_poi_count: 2, collection_ids: [BOOK] },
+    resource: { poi_ids: [장소], per_poi_count: 2, collection_ids: [BOOK] },
     ...over,
   })
   /** 드랍과 같은 그룹인 카드. 카드 → 드랍 쌍은 칸을 채우지 않아 그룹으로만 묶인다(PRD §8.3). 드랍이 카드보다 먼저 만들어진다. */
@@ -1696,7 +1696,7 @@ describe('실제 레지스트리: 드랍 예약 핸들러 (티켓 20261002_2306)
       title: '가을 아침 드랍',
       scheduled_at: '2026-10-10T00:00:00.000Z',
       poi_mode: 'list',
-      poi_ids: [POI],
+      poi_ids: [장소],
       per_poi_count: 2,
       item_mode: 'collections',
       collection_ids: [BOOK],
@@ -1733,7 +1733,7 @@ describe('실제 레지스트리: 드랍 예약 핸들러 (티켓 20261002_2306)
     for (const call of h.loadScheduleTargets.mock.calls) expect(call[2]).toBe('2026-10-10T00:00:00.000Z')
   })
 
-  it('종류+개수 × 컬렉션도 예약된다. 지점 종류는 확인한다', async () => {
+  it('종류+개수 × 컬렉션도 예약된다. 장소 종류는 확인한다', async () => {
     const { db, run } = setupReal([drop({ resource: { poi_category: 'cafe', total_count: 3, collection_ids: [BOOK] } })])
     db.tables.poi_categories = [{ slug: 'cafe' }]
     const result = ok(await run([DROP]))
@@ -1742,14 +1742,14 @@ describe('실제 레지스트리: 드랍 예약 핸들러 (티켓 20261002_2306)
     expect(db.tables.ambient_drop_schedules[0]).toMatchObject({ poi_mode: 'category', poi_category: 'cafe', total_count: 3, per_poi_count: null })
   })
 
-  it('없는 지점 종류는 고정 사유로 실패하고 아무것도 만들지 않는다', async () => {
+  it('없는 장소 종류는 고정 사유로 실패하고 아무것도 만들지 않는다', async () => {
     const { db, run } = setupReal([drop({ resource: { poi_category: 'nowhere', total_count: 3, collection_ids: [BOOK] } })])
     const result = ok(await run([DROP]))
 
-    expect(result.body.failed).toEqual([{ id: DROP, reason: '지점 종류를 찾을 수 없어요' }])
+    expect(result.body.failed).toEqual([{ id: DROP, reason: '장소 종류를 찾을 수 없어요' }])
     expect(statusOf(db, DROP)).toBe('failed')
     expect(scheduleWrites(db)).toEqual([])
-    expect(db.decisions('fail').map((entry) => entry.reason)).toEqual(['지점 종류를 찾을 수 없어요'])
+    expect(db.decisions('fail').map((entry) => entry.reason)).toEqual(['장소 종류를 찾을 수 없어요'])
   })
 
   it('예정 시각에 놓을 대상이 걸리면 쉬운 문장으로 실패하고 아무것도 만들지 않는다. 컬렉션 ID는 응답·기록·슬랙에 없다', async () => {
@@ -1819,8 +1819,8 @@ describe('실제 레지스트리: 드랍 예약 핸들러 (티켓 20261002_2306)
     expect(db.tables.ambient_drop_schedules).toEqual([])
   })
 
-  it('지점과 아이템을 정하는 방식이 섞이면 형식 오류로 실패한다', async () => {
-    const { db, run } = setupReal([drop({ resource: { poi_ids: [POI], per_poi_count: 2, collection_ids: [BOOK], badge_ids: [uid(43)] } })])
+  it('장소와 아이템을 정하는 방식이 섞이면 형식 오류로 실패한다', async () => {
+    const { db, run } = setupReal([drop({ resource: { poi_ids: [장소], per_poi_count: 2, collection_ids: [BOOK], badge_ids: [uid(43)] } })])
     const result = ok(await run([DROP]))
 
     expect(result.body.failed).toHaveLength(1)
@@ -1941,7 +1941,7 @@ describe('실제 레지스트리: 드랍 예약 핸들러 (티켓 20261002_2306)
       original: { copy: { name: '가을 컬렉션', description: '가을 길에서 모아요.' } },
       ...over,
     })
-    const linkedDrop = (over: Partial<ItemSpec> = {}) => drop({ links: ['collection'], resource: { poi_ids: [POI], per_poi_count: 2 }, ...over })
+    const linkedDrop = (over: Partial<ItemSpec> = {}) => drop({ links: ['collection'], resource: { poi_ids: [장소], per_poi_count: 2 }, ...over })
     /** `loadScheduleTargets` mock이 받은 마지막 인자의 미룰 ID 목록. 판정은 mock이라 넘긴 값만 본다. */
     const deferredArgs = () => h.loadScheduleTargets.mock.calls.map((args) => (args[3] as { deferredCollectionIds?: string[] } | undefined)?.deferredCollectionIds)
 

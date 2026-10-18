@@ -108,11 +108,11 @@ describe('describeScheduleOutcome — 결과 문장', () => {
         spawned: 4,
         failed: 2,
         overlappedPoiCount: 1,
-        excludedSummary: '운영이 끝난 지점 1건, 노출 중이 아닌 컬렉션 2건',
+        excludedSummary: '운영이 끝난 장소 1건, 노출 중이 아닌 컬렉션 2건',
       }),
     })
     expect(text).toBe(
-      '4개를 드랍했어요(요청 6개). 2개는 만들지 못했어요. 이미 드랍이 있던 지점 1곳에 겹쳐 드랍했어요. 실행 때 빠진 대상: 운영이 끝난 지점 1건, 노출 중이 아닌 컬렉션 2건.'
+      '4개를 드랍했어요(요청 6개). 2개는 만들지 못했어요. 이미 드랍이 있던 장소 1곳에 겹쳐 드랍했어요. 실행 때 빠진 대상: 운영이 끝난 장소 1건, 노출 중이 아닌 컬렉션 2건.'
     )
   })
 
@@ -121,7 +121,7 @@ describe('describeScheduleOutcome — 결과 문장', () => {
   })
 
   it.each([
-    ['no_eligible_poi', '드랍하지 않았어요. 실행 시각에 드랍할 수 있는 지점이 없었어요. 지점을 바꿔 새 예약을 등록해 주세요.'],
+    ['no_eligible_poi', '드랍하지 않았어요. 실행 시각에 드랍할 수 있는 장소가 없었어요. 장소를 바꿔 새 예약을 등록해 주세요.'],
     ['no_candidate_badges', '드랍하지 않았어요. 실행 시각에 유효한 아이템이 없었어요. 아이템을 바꿔 새 예약을 등록해 주세요.'],
     ['no_eligible_collection', '드랍하지 않았어요. 실행 시각에 노출 중인 컬렉션이 없었어요. 컬렉션을 바꿔 새 예약을 등록해 주세요.'],
   ])('skipped · %s', (reason, sentence) => {
@@ -135,8 +135,8 @@ describe('describeScheduleOutcome — 결과 문장', () => {
   })
 
   it.each([
-    ['target_lookup', '드랍하지 못했어요. 실행 때 지점·아이템 정보를 읽지 못했어요. 잠시 뒤 같은 내용으로 새 예약을 등록해 주세요.'],
-    ['insert', '드랍하지 못했어요. 지점에 드랍을 만드는 중 오류가 났어요. 같은 일이 반복되면 개발팀에 알려 주세요.'],
+    ['target_lookup', '드랍하지 못했어요. 실행 때 장소·아이템 정보를 읽지 못했어요. 잠시 뒤 같은 내용으로 새 예약을 등록해 주세요.'],
+    ['insert', '드랍하지 못했어요. 장소에 드랍을 만드는 중 오류가 났어요. 같은 일이 반복되면 개발팀에 알려 주세요.'],
     ['unexpected', '드랍하지 못했어요. 실행 중 예기치 못한 오류가 났어요. 개발팀에 알리고 새 예약을 등록해 주세요.'],
   ] as const)('failed · %s', (failureKind, sentence) => {
     expect(describeScheduleOutcome({ state: 'failed', outcome: outcome({ spawned: 0, failureKind }) })).toBe(sentence)
@@ -169,7 +169,7 @@ describe('describeScheduleOutcome — 결과 문장', () => {
 })
 
 describe('scheduleRequestedCount·formatScheduleAt', () => {
-  it('지점 직접은 지점 수 × 지점당 개수, 종류+개수는 총 개수다', () => {
+  it('장소 직접은 장소 수 × 장소당 개수, 종류+개수는 총 개수다', () => {
     expect(scheduleRequestedCount({ poiMode: 'list', poiIds: ['a', 'b', 'c'], perPoiCount: 2 })).toBe(6)
     expect(scheduleRequestedCount({ poiMode: 'category', totalCount: 5 })).toBe(5)
   })
@@ -200,7 +200,7 @@ describe('등록 폼 규칙 (티켓 20261001_2154)', () => {
   }
   const AT = '2026-10-05T09:00:00+09:00'
 
-  it('buildScheduleBody: 지점 직접 × 아이템 직접은 그 모드의 칸만 담는다', () => {
+  it('buildScheduleBody: 장소 직접 × 아이템 직접은 그 모드의 칸만 담는다', () => {
     expect(buildScheduleBody(base)).toEqual({
       scheduled_at: AT,
       poi_ids: ['p1', 'p2'],
@@ -226,17 +226,17 @@ describe('등록 폼 규칙 (티켓 20261001_2154)', () => {
     const base = { requested: 4, spawned: 4, failedCount: 0, overlappedPoiCount: 0 }
     expect(describeNowRunOutcome({ ...base, status: 'done' })).toBe('4개를 드랍했어요(요청 4개).')
     expect(describeNowRunOutcome({ ...base, status: 'done', spawned: 3, failedCount: 1, overlappedPoiCount: 2 })).toBe(
-      '3개를 드랍했어요(요청 4개). 1개는 만들지 못했어요. 이미 드랍이 있던 지점 2곳에 겹쳐 드랍했어요.'
+      '3개를 드랍했어요(요청 4개). 1개는 만들지 못했어요. 이미 드랍이 있던 장소 2곳에 겹쳐 드랍했어요.'
     )
     expect(describeNowRunOutcome({ ...base, status: 'skipped', spawned: 0, reason: 'no_eligible_poi' })).toContain(
-      '드랍하지 않았어요. 놓을 대상이 없어요(드랍할 지점 없음)'
+      '드랍하지 않았어요. 놓을 대상이 없어요(드랍할 장소 없음)'
     )
     expect(describeNowRunOutcome({ ...base, status: 'failed', spawned: 0, reason: 'insert_failed' })).toContain(
       '드랍하지 못했어요(드랍 생성 실패)'
     )
   })
 
-  it('buildScheduleBody: 지점 직접 × 컬렉션', () => {
+  it('buildScheduleBody: 장소 직접 × 컬렉션', () => {
     expect(buildScheduleBody({ ...base, itemMode: 'collections' })).toEqual({
       scheduled_at: AT,
       poi_ids: ['p1', 'p2'],
@@ -294,10 +294,10 @@ describe('등록 폼 규칙 (티켓 20261001_2154)', () => {
       '[수동] 카테고리: 전체 · 전체 컬렉션 · 배치 0개 (자동 배포 꺼짐)'
     )
     expect(formatAmbientBatchSummary({ trigger: 'scheduled', requested: 4, spawned: 3, overlappedPoiCount: 1 })).toBe(
-      '[예약] 요청 4개 · 드랍 3개 · 겹친 지점 1곳'
+      '[예약] 요청 4개 · 드랍 3개 · 겹친 장소 1곳'
     )
     expect(
       formatAmbientBatchSummary({ trigger: 'scheduled', requested: 4, spawned: 0, overlappedPoiCount: 0, reason: 'no_eligible_poi' })
-    ).toBe('[예약] 요청 4개 · 드랍 0개 · 겹친 지점 0곳 (드랍할 지점 없음)')
+    ).toBe('[예약] 요청 4개 · 드랍 0개 · 겹친 장소 0곳 (드랍할 장소 없음)')
   })
 })

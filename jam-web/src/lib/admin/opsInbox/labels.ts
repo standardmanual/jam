@@ -107,7 +107,7 @@ const FORMAT_ERROR_PATH_LABELS: Record<string, string> = {
   tribe_id: '트라이브',
   color_pending: '색 대기',
   excluded_items: '뺀 항목',
-  place_category: '지점 카테고리',
+  place_category: '장소 카테고리',
 }
 
 // 뺀 항목(`excluded_items[n].<키>`)의 원소 칸. `reason`·`kind`·`item_key`는 다른 곳에서 쓰는 이름표(검수 이유·종류·항목 키)와 헷갈리지

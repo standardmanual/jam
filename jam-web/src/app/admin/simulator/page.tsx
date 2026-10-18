@@ -328,10 +328,10 @@ export default function SimulatorPage() {
               {/* POI 매칭 */}
               <div>
                 <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-2">
-                  POI 매칭 ({result.poisMatched.length}개)
+                  장소 매칭 ({result.poisMatched.length}개)
                 </p>
                 {result.poisMatched.length === 0 ? (
-                  <p className="text-muted-foreground text-xs">통과한 POI 없음</p>
+                  <p className="text-muted-foreground text-xs">통과한 장소 없음</p>
                 ) : (
                   <div className="space-y-1.5">
                     {result.poisMatched.map((p) => (

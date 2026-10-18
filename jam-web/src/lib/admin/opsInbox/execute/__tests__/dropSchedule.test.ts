@@ -196,11 +196,11 @@ describe('prepare', () => {
       expect(failureOf(dropItem({}, { starts_at: '내일 아침' })).reason).toContain('놓을 시각 형식이 올바르지 않아요')
     })
 
-    it('지점·아이템을 정하는 방식이 섞이거나 비어 있으면 형식 오류다', () => {
-      expect(failureOf(dropItem({ total_count: 3 })).reason).toContain('지점을 정하는 방식이 섞여 있어요')
+    it('장소·아이템을 정하는 방식이 섞이거나 비어 있으면 형식 오류다', () => {
+      expect(failureOf(dropItem({ total_count: 3 })).reason).toContain('장소를 정하는 방식이 섞여 있어요')
       expect(failureOf(dropItem({ badge_ids: [B_LIVE] })).reason).toContain('놓을 것을 정하는 방식이 섞여 있어요')
       expect(failureOf(dropItem({ collection_ids: undefined })).reason).toContain('놓을 것이 없어요')
-      expect(failureOf(dropItem({ per_poi_count: undefined })).reason).toContain('지점당 개수가 없어요')
+      expect(failureOf(dropItem({ per_poi_count: undefined })).reason).toContain('장소당 개수가 없어요')
     })
 
     it('같은 묶음의 컬렉션이 연결로 채워도 아이템 직접 선택과 섞이면 형식 오류다', () => {
@@ -217,7 +217,7 @@ describe('prepare', () => {
     it('개수 상한·제목 길이·잘못된 ID', () => {
       expect(failureOf(dropItem({ per_poi_count: 60 })).reason).toContain('한 예약에 놓을 수 있는 드랍은 100개까지예요')
       expect(failureOf(dropItem({}, {}, { title: '가'.repeat(101) })).reason).toContain('이름이 너무 길어요')
-      expect(failureOf(dropItem({ poi_ids: ['not-a-uuid'] })).reason).toContain('지점 목록에 올바르지 않은 ID가 있어요')
+      expect(failureOf(dropItem({ poi_ids: ['not-a-uuid'] })).reason).toContain('장소 목록에 올바르지 않은 ID가 있어요')
     })
 
     it('형식 오류 사유에는 입력한 ID가 없다', () => {
@@ -233,26 +233,26 @@ describe('prepare', () => {
   })
 })
 
-describe('check — 지점 종류와 예정 시각 기준 대상 판정', () => {
+describe('check — 장소 종류와 예정 시각 기준 대상 판정', () => {
   it('모두 있으면 통과하고 읽기만 한다', async () => {
     expect(await checkOf(db)).toBeNull()
     expect(db.calls.filter((call) => call.op !== 'select')).toEqual([])
     expect(schedules(db)).toEqual([])
   })
 
-  it('종류+개수 × 컬렉션: 지점 종류가 있으면 통과한다. 종류를 비우면 전체 종류다', async () => {
+  it('종류+개수 × 컬렉션: 장소 종류가 있으면 통과한다. 종류를 비우면 전체 종류다', async () => {
     expect(await checkOf(db, dropItem({ poi_ids: undefined, per_poi_count: undefined, poi_category: 'cafe', total_count: 3 }))).toBeNull()
     expect(await checkOf(db, dropItem({ poi_ids: undefined, per_poi_count: undefined, total_count: 3 }))).toBeNull()
     expect(db.calls.some((call) => call.table === 'poi_categories')).toBe(true)
   })
 
-  it('지점 종류가 없으면 고정 문장이고, 놓을 대상은 읽지 않는다', async () => {
+  it('장소 종류가 없으면 고정 문장이고, 놓을 대상은 읽지 않는다', async () => {
     const failure = await checkOf(db, dropItem({ poi_ids: undefined, per_poi_count: undefined, poi_category: 'nowhere', total_count: 3 }))
-    expect(failure?.reason).toBe('지점 종류를 찾을 수 없어요')
+    expect(failure?.reason).toBe('장소 종류를 찾을 수 없어요')
     expect(db.calls.filter((call) => call.table === 'item_books')).toEqual([])
   })
 
-  it('지점 종류를 읽지 못하면 「드랍 대상을 확인하지 못했어요」이고 원문은 detail에만 있다', async () => {
+  it('장소 종류를 읽지 못하면 「드랍 대상을 확인하지 못했어요」이고 원문은 detail에만 있다', async () => {
     db.failReads.add('poi_categories')
     const failure = await checkOf(db, dropItem({ poi_ids: undefined, per_poi_count: undefined, poi_category: 'cafe', total_count: 3 }))
     expect(failure?.reason).toBe('드랍 대상을 확인하지 못했어요')
@@ -345,41 +345,41 @@ describe('check — 지점 종류와 예정 시각 기준 대상 판정', () => 
       expect(failure?.reason).toContain('놓을 수 있는 아이템이 없어요')
     })
 
-    it('지점 쪽 문제는 연결 컬렉션이 있어도 막는다', async () => {
+    it('장소 쪽 문제는 연결 컬렉션이 있어도 막는다', async () => {
       const failure = await checkOf(db, dropItem({ poi_ids: [P1, P_INACTIVE], collection_ids: undefined }), { collection_ids: [futureBook] })
-      expect(failure?.reason).toContain('운영이 끝난 지점 1건')
+      expect(failure?.reason).toContain('운영이 끝난 장소 1건')
       expectClean(failure?.reason)
     })
 
-    it('운영 중인 지점이 없으면 연결 컬렉션이 있어도 「놓을 수 있는 지점이 없어요」다', async () => {
+    it('운영 중인 장소가 없으면 연결 컬렉션이 있어도 「놓을 수 있는 장소가 없어요」다', async () => {
       db.tables.poi = db.tables.poi.map((row) => ({ ...row, is_active: false }))
       const failure = await checkOf(
         db,
         dropItem({ poi_ids: undefined, per_poi_count: undefined, collection_ids: undefined, poi_category: 'cafe', total_count: 3 }),
         { collection_ids: [futureBook] }
       )
-      expect(failure?.reason).toContain('놓을 수 있는 지점이 없어요')
+      expect(failure?.reason).toContain('놓을 수 있는 장소가 없어요')
     })
 
     it('판정 문장에 연결 컬렉션 ID가 없다', async () => {
       const failure = await checkOf(db, dropItem({ poi_ids: [P_MISSING], collection_ids: undefined }), { collection_ids: [futureBook] })
-      expect(failure?.reason).toContain('찾을 수 없는 지점 1건')
+      expect(failure?.reason).toContain('찾을 수 없는 장소 1건')
       expect(failure?.reason).not.toContain(futureBook)
     })
   })
 
-  describe('지점·아이템 판정', () => {
-    it('없는 지점·운영이 끝난 지점이 있으면 막고 개수를 알린다', async () => {
+  describe('장소·아이템 판정', () => {
+    it('없는 장소·운영이 끝난 장소가 있으면 막고 개수를 알린다', async () => {
       const failure = await checkOf(db, dropItem({ poi_ids: [P1, P_INACTIVE, P_MISSING] }))
-      expect(failure?.reason).toContain('찾을 수 없는 지점 1건')
-      expect(failure?.reason).toContain('운영이 끝난 지점 1건')
+      expect(failure?.reason).toContain('찾을 수 없는 장소 1건')
+      expect(failure?.reason).toContain('운영이 끝난 장소 1건')
       expectClean(failure?.reason)
     })
 
-    it('지점 종류에 운영 중인 지점이 없으면 「놓을 수 있는 지점이 없어요」다', async () => {
+    it('장소 종류에 운영 중인 장소가 없으면 「놓을 수 있는 장소가 없어요」다', async () => {
       db.tables.poi = db.tables.poi.map((row) => ({ ...row, is_active: false }))
       const failure = await checkOf(db, dropItem({ poi_ids: undefined, per_poi_count: undefined, poi_category: 'cafe', total_count: 3 }))
-      expect(failure?.reason).toContain('놓을 수 있는 지점이 없어요')
+      expect(failure?.reason).toContain('놓을 수 있는 장소가 없어요')
     })
 
     it('아이템 직접 선택에서 삭제된 아이템은 막는다', async () => {
@@ -468,11 +468,11 @@ describe('create — 정한 ID로 만든다', () => {
       expect(scheduleWrites(db)).toEqual([])
     })
 
-    it('지점 쪽 문제는 연결 컬렉션이 있어도 막는다', async () => {
+    it('장소 쪽 문제는 연결 컬렉션이 있어도 막는다', async () => {
       const outcome = await createOf(db, dropItem({ poi_ids: [P_INACTIVE], collection_ids: undefined }), { collection_ids: [futureBook] })
       expect(outcome.ok).toBe(false)
       if (outcome.ok) return
-      expect(outcome.failure.reason).toContain('운영이 끝난 지점 1건')
+      expect(outcome.failure.reason).toContain('운영이 끝난 장소 1건')
       expect(scheduleWrites(db)).toEqual([])
     })
   })
@@ -492,10 +492,10 @@ describe('create — 정한 ID로 만든다', () => {
     expect(scheduleWrites(db)).toEqual([])
   })
 
-  it('지점 종류가 없으면(400) 서버 함수의 쉬운 문장이고 아무것도 쓰지 않는다', async () => {
+  it('장소 종류가 없으면(400) 서버 함수의 쉬운 문장이고 아무것도 쓰지 않는다', async () => {
     const outcome = await createOf(db, dropItem({ poi_ids: undefined, per_poi_count: undefined, poi_category: 'nowhere', total_count: 3 }))
     expect(outcome.ok).toBe(false)
-    if (!outcome.ok) expect(outcome.failure.reason).toContain('지점 종류를 찾을 수 없어요')
+    if (!outcome.ok) expect(outcome.failure.reason).toContain('장소 종류를 찾을 수 없어요')
     expect(scheduleWrites(db)).toEqual([])
   })
 

@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     ids
   )
   if (read.error) {
-    return NextResponse.json({ error: `POI 차단을 불러오지 못했어요. (${read.error})` }, { status: 500 })
+    return NextResponse.json({ error: `장소 차단을 불러오지 못했어요. (${read.error})` }, { status: 500 })
   }
 
   if (action === 'release') {

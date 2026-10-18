@@ -234,12 +234,12 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
       {badge.type === 'checkin' ? (
         <>
           <ReadOnlyGrid>
-            <ReadOnlyItem label="지점 카테고리">{poiCategoryLabel(badge.category) ?? <Empty>연결된 지점을 따름</Empty>}</ReadOnlyItem>
+            <ReadOnlyItem label="장소 카테고리">{poiCategoryLabel(badge.category) ?? <Empty>연결된 장소를 따름</Empty>}</ReadOnlyItem>
           </ReadOnlyGrid>
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-medium text-muted-foreground">연결된 지점 {linkedPois.length}곳</p>
+            <p className="text-xs font-medium text-muted-foreground">연결된 장소 {linkedPois.length}곳</p>
             {linkedPois.length === 0 ? (
-              <p className="rounded-lg bg-muted px-4 py-4 text-center text-sm text-muted-foreground">아직 연결한 지점이 없어요.</p>
+              <p className="rounded-lg bg-muted px-4 py-4 text-center text-sm text-muted-foreground">아직 연결한 장소가 없어요.</p>
             ) : (
               <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
                 {linkedPois.map((poi) => (

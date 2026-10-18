@@ -27,7 +27,7 @@ export function PoiList({ pois, badgeMap, categoryLabelMap, categories, totalCou
       <div className="grid grid-cols-1 gap-3">
         {pois.length === 0 ? (
           <div className="rounded-lg border border-border bg-muted/50 py-10 text-center">
-            <p className="text-sm text-muted-foreground">등록된 POI가 없습니다.</p>
+            <p className="text-sm text-muted-foreground">등록된 장소가 없습니다.</p>
           </div>
         ) : (
           pois.map((poi) => (

@@ -756,7 +756,7 @@ describe('normalizeOpsPatternNo (티켓 20261007_1745)', () => {
   })
 })
 
-describe('지점 카테고리 — knobs.place_category (티켓 20261007_1745)', () => {
+describe('장소 카테고리 — knobs.place_category (티켓 20261007_1745)', () => {
   const SLUGS = new Set(['cafe', 'park', 'library'])
 
   function errorsOf(knobs: unknown, withSlugs = true, removeKnobs = false) {
@@ -786,23 +786,23 @@ describe('지점 카테고리 — knobs.place_category (티켓 20261007_1745)', 
     for (const bad of ['cafe', 7, { a: 1 }, ['cafe', 3], [null], [''], ['  ']]) {
       const errors = errorsOf({ place_category: bad })
       expect(errors).toHaveLength(1)
-      expect(errors[0]).toMatch(/^items\[0\]\.knobs\.place_category: 지점 카테고리 slug를 문자열로 넣은 배열이어야 해요\(받은 값: /)
+      expect(errors[0]).toMatch(/^items\[0\]\.knobs\.place_category: 장소 카테고리 slug를 문자열로 넣은 배열이어야 해요\(받은 값: /)
     }
     expect(errorsOf({ place_category: 'cafe' })).toEqual([
-      'items[0].knobs.place_category: 지점 카테고리 slug를 문자열로 넣은 배열이어야 해요(받은 값: "cafe").',
+      'items[0].knobs.place_category: 장소 카테고리 slug를 문자열로 넣은 배열이어야 해요(받은 값: "cafe").',
     ])
   })
 
   it('없는 slug는 모아서 한 줄로 알린다', () => {
     expect(errorsOf({ place_category: ['cafe', 'zoo', 'mall'] })).toEqual([
-      'items[0].knobs.place_category: 없는 지점 카테고리예요 — "zoo", "mall". 카테고리 slug를 확인해 주세요.',
+      'items[0].knobs.place_category: 없는 장소 카테고리예요 — "zoo", "mall". 카테고리 slug를 확인해 주세요.',
     ])
   })
 
   it('없는 slug가 많으면 앞의 5개만 늘어놓고 나머지는 개수로 적는다', () => {
     const many = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
     expect(errorsOf({ place_category: many })).toEqual([
-      'items[0].knobs.place_category: 없는 지점 카테고리예요 — "a", "b", "c", "d", "e" 외 2개. 카테고리 slug를 확인해 주세요.',
+      'items[0].knobs.place_category: 없는 장소 카테고리예요 — "a", "b", "c", "d", "e" 외 2개. 카테고리 slug를 확인해 주세요.',
     ])
   })
 

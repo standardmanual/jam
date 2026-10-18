@@ -124,7 +124,7 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
             poi_categories의 실제 카테고리가 아니라 전용 sentinel 값이다. */}
         {currentType === 'checkin' && (
           <DataTableFacetedFilter
-            title="지점 카테고리"
+            title="장소 카테고리"
             options={[
               ...poiCategories.map((c) => ({ value: c.slug, label: c.label })),
               { value: UNASSIGNED_POI_CATEGORY, label: '미할당' },

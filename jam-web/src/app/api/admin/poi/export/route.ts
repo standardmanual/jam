@@ -14,14 +14,14 @@ import { POI_EXPORT_COLUMNS, type PoiExportRow } from '@/lib/admin/poi-list-quer
 const CHUNK_SIZE = 200
 
 // DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1603). 현상 → 원인 → 해결책 순서.
-const READ_ERROR_MESSAGE = '내보낼 POI 정보를 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const READ_ERROR_MESSAGE = '내보낼 장소 정보를 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
 
 export async function POST(req: NextRequest) {
   const authError = await requireAdmin()
   if (authError) return authError
 
   const body = await req.json().catch(() => null)
-  const parsed = parseExportIds(body, '내보낼 POI를 선택해주세요.')
+  const parsed = parseExportIds(body, '내보낼 장소를 선택해주세요.')
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status })
 
   const supabase = createServiceClient()

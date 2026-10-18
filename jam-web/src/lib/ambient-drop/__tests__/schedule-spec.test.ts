@@ -43,8 +43,8 @@ function errorOf(body: unknown, opts?: { allowNow?: boolean }): string {
 
 const LIST_ITEMS = { scheduled_at: AT, poi_ids: [POI_A, POI_B], per_poi_count: 2, badge_ids: [BADGE_A] }
 
-describe('parseAmbientDropScheduleInput — 지점 2모드 × 아이템 2모드', () => {
-  it('지점 직접 × 아이템 직접', () => {
+describe('parseAmbientDropScheduleInput — 장소 2모드 × 아이템 2모드', () => {
+  it('장소 직접 × 아이템 직접', () => {
     const parsed = ok(LIST_ITEMS)
     expect(parsed.scheduledAt).toBe(AT_ISO)
     expect(parsed.spec).toEqual({
@@ -56,7 +56,7 @@ describe('parseAmbientDropScheduleInput — 지점 2모드 × 아이템 2모드'
     })
   })
 
-  it('지점 직접 × 컬렉션', () => {
+  it('장소 직접 × 컬렉션', () => {
     const parsed = ok({ scheduled_at: AT, poi_ids: [POI_A], per_poi_count: 1, collection_ids: [BOOK_A] })
     expect(parsed.spec).toEqual({
       poiMode: 'list',
@@ -67,7 +67,7 @@ describe('parseAmbientDropScheduleInput — 지점 2모드 × 아이템 2모드'
     })
   })
 
-  it('지점 종류+개수 × 아이템 직접', () => {
+  it('장소 종류+개수 × 아이템 직접', () => {
     const parsed = ok({ scheduled_at: AT, poi_category: 'cafe', total_count: 10, badge_ids: [BADGE_A, BADGE_B] })
     expect(parsed.spec).toEqual({
       poiMode: 'category',
@@ -78,7 +78,7 @@ describe('parseAmbientDropScheduleInput — 지점 2모드 × 아이템 2모드'
     })
   })
 
-  it('지점 종류+개수 × 컬렉션 — 종류가 없으면(null·빈 문자열·키 없음) 「전체 종류」다', () => {
+  it('장소 종류+개수 × 컬렉션 — 종류가 없으면(null·빈 문자열·키 없음) 「전체 종류」다', () => {
     for (const category of [null, '', undefined]) {
       const parsed = ok({ scheduled_at: AT, poi_category: category, total_count: 5, collection_ids: [BOOK_A] })
       expect(parsed.spec).toMatchObject({ poiMode: 'category', poiCategory: null, totalCount: 5, itemMode: 'collections' })
@@ -115,12 +115,12 @@ describe('parseAmbientDropScheduleInput — 400', () => {
     }
   })
 
-  it('지점 모드가 섞이면 거절한다 — 지점 직접인데 총 개수·지점 종류가 있음', () => {
+  it('장소 모드가 섞이면 거절한다 — 장소 직접인데 총 개수·장소 종류가 있음', () => {
     expect(errorOf({ ...LIST_ITEMS, total_count: 5 })).toContain('섞여 있어요')
     expect(errorOf({ ...LIST_ITEMS, poi_category: 'cafe' })).toContain('섞여 있어요')
   })
 
-  it('지점 모드가 섞이면 거절한다 — 지점이 없는데 지점당 개수가 있음', () => {
+  it('장소 모드가 섞이면 거절한다 — 장소가 없는데 장소당 개수가 있음', () => {
     expect(errorOf({ scheduled_at: AT, per_poi_count: 2, total_count: 3, badge_ids: [BADGE_A] })).toContain('섞여 있어요')
     expect(errorOf({ scheduled_at: AT, per_poi_count: 2, badge_ids: [BADGE_A] })).toContain('섞여 있어요')
   })
@@ -132,13 +132,13 @@ describe('parseAmbientDropScheduleInput — 400', () => {
   })
 
   it('필수 개수가 없으면 거절한다', () => {
-    expect(errorOf({ ...LIST_ITEMS, per_poi_count: undefined })).toContain('지점당 개수가 없어요')
+    expect(errorOf({ ...LIST_ITEMS, per_poi_count: undefined })).toContain('장소당 개수가 없어요')
     expect(errorOf({ scheduled_at: AT, badge_ids: [BADGE_A] })).toContain('총 개수가 없어요')
   })
 
   it('개수는 1 이상의 정수여야 한다 — 0·소수·음수·문자열', () => {
     for (const bad of [0, 1.5, -1, '3', Number.NaN, Number.POSITIVE_INFINITY]) {
-      expect(errorOf({ ...LIST_ITEMS, per_poi_count: bad })).toContain('지점당 개수가 올바르지 않아요')
+      expect(errorOf({ ...LIST_ITEMS, per_poi_count: bad })).toContain('장소당 개수가 올바르지 않아요')
       expect(errorOf({ scheduled_at: AT, total_count: bad, badge_ids: [BADGE_A] })).toContain('총 개수가 올바르지 않아요')
     }
   })
@@ -153,10 +153,10 @@ describe('parseAmbientDropScheduleInput — 400', () => {
   })
 
   it('UUID 형식이 아닌 ID를 거절한다', () => {
-    expect(errorOf({ ...LIST_ITEMS, poi_ids: ['not-a-uuid'] })).toContain('지점 목록에 올바르지 않은 ID')
+    expect(errorOf({ ...LIST_ITEMS, poi_ids: ['not-a-uuid'] })).toContain('장소 목록에 올바르지 않은 ID')
     expect(errorOf({ ...LIST_ITEMS, badge_ids: [123] })).toContain('아이템 목록에 올바르지 않은 ID')
     expect(errorOf({ scheduled_at: AT, poi_ids: [POI_A], per_poi_count: 1, collection_ids: ['x'] })).toContain('컬렉션 목록에 올바르지 않은 ID')
-    expect(errorOf({ ...LIST_ITEMS, poi_ids: 'abc' })).toContain('지점 목록 형식이 올바르지 않아요')
+    expect(errorOf({ ...LIST_ITEMS, poi_ids: 'abc' })).toContain('장소 목록 형식이 올바르지 않아요')
   })
 
   it('정시가 아니면 거절한다 — 10:30 KST', () => {
@@ -234,7 +234,7 @@ describe('parseAmbientDropScheduleInput — allowNow (「지금」 1회 배포)'
     expect(errorOf({ ...LIST_ITEMS, scheduled_at: '2026-09-30T09:00:00+09:00' }, { allowNow: true })).toContain('이미 지났어요')
   })
 
-  it('allowNow여도 지점·아이템 규칙은 그대로다', () => {
+  it('allowNow여도 장소·아이템 규칙은 그대로다', () => {
     expect(errorOf({ scheduled_at: 'now', badge_ids: [BADGE_A] }, { allowNow: true })).toContain('총 개수가 없어요')
   })
 })

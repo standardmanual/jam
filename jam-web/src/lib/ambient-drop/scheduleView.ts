@@ -154,7 +154,7 @@ export function formatScheduleAt(iso: string): string {
 }
 
 const SKIPPED_BY_REASON: Record<string, string> = {
-  no_eligible_poi: '드랍하지 않았어요. 실행 시각에 드랍할 수 있는 지점이 없었어요. 지점을 바꿔 새 예약을 등록해 주세요.',
+  no_eligible_poi: '드랍하지 않았어요. 실행 시각에 드랍할 수 있는 장소가 없었어요. 장소를 바꿔 새 예약을 등록해 주세요.',
   no_candidate_badges: '드랍하지 않았어요. 실행 시각에 유효한 아이템이 없었어요. 아이템을 바꿔 새 예약을 등록해 주세요.',
   no_eligible_collection:
     '드랍하지 않았어요. 실행 시각에 노출 중인 컬렉션이 없었어요. 컬렉션을 바꿔 새 예약을 등록해 주세요.',
@@ -163,8 +163,8 @@ const SKIPPED_BY_REASON: Record<string, string> = {
 const SKIPPED_OTHER = '드랍하지 않았어요. 실행 시각에 놓을 대상이 없었어요. 내용을 바꿔 새 예약을 등록해 주세요.'
 
 const FAILED_BY_KIND: Record<ScheduleFailureKind, string> = {
-  target_lookup: '드랍하지 못했어요. 실행 때 지점·아이템 정보를 읽지 못했어요. 잠시 뒤 같은 내용으로 새 예약을 등록해 주세요.',
-  insert: '드랍하지 못했어요. 지점에 드랍을 만드는 중 오류가 났어요. 같은 일이 반복되면 개발팀에 알려 주세요.',
+  target_lookup: '드랍하지 못했어요. 실행 때 장소·아이템 정보를 읽지 못했어요. 잠시 뒤 같은 내용으로 새 예약을 등록해 주세요.',
+  insert: '드랍하지 못했어요. 장소에 드랍을 만드는 중 오류가 났어요. 같은 일이 반복되면 개발팀에 알려 주세요.',
   unexpected: '드랍하지 못했어요. 실행 중 예기치 못한 오류가 났어요. 개발팀에 알리고 새 예약을 등록해 주세요.',
 }
 
@@ -196,7 +196,7 @@ export function describeScheduleOutcome(item: {
       if (!outcome) return '드랍을 마쳤어요. 결과 요약이 남아 있지 않아요.'
       let text = `${outcome.spawned}개를 드랍했어요(요청 ${outcome.requested}개).`
       if (outcome.failed > 0) text += ` ${outcome.failed}개는 만들지 못했어요.`
-      if (outcome.overlappedPoiCount > 0) text += ` 이미 드랍이 있던 지점 ${outcome.overlappedPoiCount}곳에 겹쳐 드랍했어요.`
+      if (outcome.overlappedPoiCount > 0) text += ` 이미 드랍이 있던 장소 ${outcome.overlappedPoiCount}곳에 겹쳐 드랍했어요.`
       if (outcome.excludedSummary) text += ` 실행 때 빠진 대상: ${outcome.excludedSummary}.`
       return text
     }
@@ -291,7 +291,7 @@ export function bookExposure(
 export const SKIP_REASON_SHORT: Record<string, string> = {
   auto_disabled: '자동 배포 꺼짐',
   no_eligible_collection: '노출 중인 컬렉션 없음',
-  no_eligible_poi: '드랍할 지점 없음',
+  no_eligible_poi: '드랍할 장소 없음',
   no_candidate_badges: '유효한 아이템 없음',
   insert_failed: '드랍 생성 실패',
 }
@@ -309,7 +309,7 @@ export function formatAmbientBatchSummary(payload: Record<string, unknown>): str
   if (trigger === 'scheduled') {
     const requested = typeof payload.requested === 'number' ? payload.requested : 0
     const overlapped = typeof payload.overlappedPoiCount === 'number' ? payload.overlappedPoiCount : 0
-    return `[예약] 요청 ${requested}개 · 드랍 ${spawned}개 · 겹친 지점 ${overlapped}곳${reasonText}`
+    return `[예약] 요청 ${requested}개 · 드랍 ${spawned}개 · 겹친 장소 ${overlapped}곳${reasonText}`
   }
 
   const category = (payload.effectiveCategorySlug as string | null | undefined) ?? '전체'
@@ -336,11 +336,11 @@ export function describeNowRunOutcome(outcome: NowRunOutcomeView): string {
     case 'done': {
       let text = `${outcome.spawned}개를 드랍했어요(요청 ${outcome.requested}개).`
       if (outcome.failedCount > 0) text += ` ${outcome.failedCount}개는 만들지 못했어요.`
-      if (outcome.overlappedPoiCount > 0) text += ` 이미 드랍이 있던 지점 ${outcome.overlappedPoiCount}곳에 겹쳐 드랍했어요.`
+      if (outcome.overlappedPoiCount > 0) text += ` 이미 드랍이 있던 장소 ${outcome.overlappedPoiCount}곳에 겹쳐 드랍했어요.`
       return text
     }
     case 'skipped':
-      return `드랍하지 않았어요. 놓을 대상이 없어요${reasonText ? `(${reasonText})` : ''}. 지점이나 아이템을 바꿔 다시 시도해 주세요.`
+      return `드랍하지 않았어요. 놓을 대상이 없어요${reasonText ? `(${reasonText})` : ''}. 장소나 아이템을 바꿔 다시 시도해 주세요.`
     case 'failed':
       return `드랍하지 못했어요${reasonText ? `(${reasonText})` : ''}. 잠시 뒤 다시 시도하고, 같은 일이 반복되면 개발팀에 알려 주세요.`
   }

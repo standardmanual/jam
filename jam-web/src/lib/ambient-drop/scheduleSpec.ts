@@ -200,13 +200,13 @@ export function parseAmbientDropScheduleInput(
   }
 
   // 칸 읽기
-  const poiIds = readUuidList(input.poi_ids, '지점 목록')
+  const poiIds = readUuidList(input.poi_ids, '장소 목록')
   if (!poiIds.ok) return poiIds
   const badgeIds = readUuidList(input.badge_ids, '아이템 목록')
   if (!badgeIds.ok) return badgeIds
   const collectionIds = readUuidList(input.collection_ids, '컬렉션 목록')
   if (!collectionIds.ok) return collectionIds
-  const perPoiCount = readCount(input.per_poi_count, '지점당 개수')
+  const perPoiCount = readCount(input.per_poi_count, '장소당 개수')
   if (!perPoiCount.ok) return perPoiCount
   const totalCount = readCount(input.total_count, '총 개수')
   if (!totalCount.ok) return totalCount
@@ -214,7 +214,7 @@ export function parseAmbientDropScheduleInput(
   let poiCategory: string | null = null
   if (!isAbsent(input.poi_category)) {
     if (typeof input.poi_category !== 'string') {
-      return fail('지점 종류 형식이 올바르지 않아요. 종류는 글자로만 쓸 수 있어요. 지점 종류를 다시 선택해 주세요.')
+      return fail('장소 종류 형식이 올바르지 않아요. 종류는 글자로만 쓸 수 있어요. 장소 종류를 다시 선택해 주세요.')
     }
     poiCategory = input.poi_category.trim() === '' ? null : input.poi_category.trim()
   }
@@ -224,27 +224,27 @@ export function parseAmbientDropScheduleInput(
   if (poiIds.value.length > 0) {
     if (totalCount.value !== null || poiCategory !== null) {
       return fail(
-        '지점을 정하는 방식이 섞여 있어요. 지점을 직접 골랐는데 지점 종류나 총 개수도 들어 있어요. 지점 직접 선택과 종류+개수 중 하나만 남겨 주세요.'
+        '장소를 정하는 방식이 섞여 있어요. 장소를 직접 골랐는데 장소 종류나 총 개수도 들어 있어요. 장소 직접 선택과 종류+개수 중 하나만 남겨 주세요.'
       )
     }
     if (perPoiCount.value === null) {
-      return fail('지점당 개수가 없어요. 지점을 직접 고르면 지점마다 놓을 개수가 필요해요. 지점당 개수를 입력해 주세요.')
+      return fail('장소당 개수가 없어요. 장소를 직접 고르면 장소마다 놓을 개수가 필요해요. 장소당 개수를 입력해 주세요.')
     }
     const total = poiIds.value.length * perPoiCount.value
     if (total > AMBIENT_SCHEDULE_MAX_TOTAL) {
       return fail(
-        `한 예약에 놓을 수 있는 드랍은 ${AMBIENT_SCHEDULE_MAX_TOTAL}개까지예요. 지점 ${poiIds.value.length}곳에 ${perPoiCount.value}개씩이면 ${total}개라 상한을 넘어요. 지점 수나 지점당 개수를 줄여 주세요.`
+        `한 예약에 놓을 수 있는 드랍은 ${AMBIENT_SCHEDULE_MAX_TOTAL}개까지예요. 장소 ${poiIds.value.length}곳에 ${perPoiCount.value}개씩이면 ${total}개라 상한을 넘어요. 장소 수나 장소당 개수를 줄여 주세요.`
       )
     }
     poiSpec = { poiMode: 'list', poiIds: poiIds.value, perPoiCount: perPoiCount.value }
   } else {
     if (perPoiCount.value !== null) {
       return fail(
-        '지점을 정하는 방식이 섞여 있어요. 지점당 개수가 있는데 고른 지점이 없어요. 지점을 고르거나 지점당 개수를 빼고 총 개수를 입력해 주세요.'
+        '장소를 정하는 방식이 섞여 있어요. 장소당 개수가 있는데 고른 장소가 없어요. 장소를 고르거나 장소당 개수를 빼고 총 개수를 입력해 주세요.'
       )
     }
     if (totalCount.value === null) {
-      return fail('총 개수가 없어요. 지점 종류로 정하면 놓을 총 개수가 필요해요. 총 개수를 입력해 주세요.')
+      return fail('총 개수가 없어요. 장소 종류로 정하면 놓을 총 개수가 필요해요. 총 개수를 입력해 주세요.')
     }
     if (totalCount.value > AMBIENT_SCHEDULE_MAX_TOTAL) {
       return fail(
@@ -304,10 +304,10 @@ type SpecRowInput = Pick<
 export function specFromRow(row: SpecRowInput): AmbientDropScheduleSpec {
   let poiSpec: AmbientDropPoiSpec
   if (row.poi_mode === 'list') {
-    if (row.per_poi_count === null) throw new Error('예약 행이 올바르지 않아요: 지점 직접 선택인데 per_poi_count가 없어요')
+    if (row.per_poi_count === null) throw new Error('예약 행이 올바르지 않아요: 장소 직접 선택인데 per_poi_count가 없어요')
     poiSpec = { poiMode: 'list', poiIds: row.poi_ids, perPoiCount: row.per_poi_count }
   } else {
-    if (row.total_count === null) throw new Error('예약 행이 올바르지 않아요: 지점 종류 선택인데 total_count가 없어요')
+    if (row.total_count === null) throw new Error('예약 행이 올바르지 않아요: 장소 종류 선택인데 total_count가 없어요')
     poiSpec = { poiMode: 'category', poiCategory: row.poi_category, totalCount: row.total_count }
   }
   const itemSpec: AmbientDropItemSpec =

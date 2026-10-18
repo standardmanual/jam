@@ -26,7 +26,7 @@ export function CustodyTimeline({ events, poiNameById }: CustodyTimelineProps) {
   return (
     <div className="space-y-0">
       {events.map((event) => {
-        const poiName = event.poi_id ? poiNameById.get(event.poi_id) ?? '(삭제된 POI)' : null
+        const poiName = event.poi_id ? poiNameById.get(event.poi_id) ?? '(삭제된 장소)' : null
         return (
           <div key={event.id} className="border-l-2 border-neutral-200 pl-4 py-3">
             <div className="flex items-baseline gap-2 flex-wrap">
@@ -72,7 +72,7 @@ export function CustodyTimeline({ events, poiNameById }: CustodyTimelineProps) {
               )}
               {poiName && (
                 <span>
-                  지점:{' '}
+                  장소:{' '}
                   {event.poi_id && poiNameById.has(event.poi_id) ? (
                     <Link href={`/admin/poi/${event.poi_id}`} className="text-foreground hover:underline">
                       {poiName}

@@ -322,7 +322,7 @@ export async function StatsSection() {
     logQueryError(u.error, 'dashboard/user-count')
     stats = [
       { label: '배지', value: b.error ? null : (b.count ?? 0), href: '/admin/badges', icon: IconAward },
-      { label: 'POI', value: p.error ? null : (p.count ?? 0), href: '/admin/poi', icon: IconMapPin },
+      { label: '장소', value: p.error ? null : (p.count ?? 0), href: '/admin/poi', icon: IconMapPin },
       { label: '컬렉션', value: ib.error ? null : (ib.count ?? 0), href: '/admin/itembooks', icon: IconBook },
       { label: '유저', value: u.error ? null : (u.count ?? 0), href: '/admin/users', icon: IconUsers },
     ]

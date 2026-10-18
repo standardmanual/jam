@@ -318,7 +318,7 @@ function dropPreviewOf(resource: Record<string, unknown>, title: string, startsA
   const poiIds = idList(resource.poi_ids)
   let poiLine: string
   if (poiIds.length > 0) {
-    poiLine = `${summarizeNames(poiIds, (id) => names.pois[id], '곳')} × 지점당 ${count('per_poi_count')}개`
+    poiLine = `${summarizeNames(poiIds, (id) => names.pois[id], '곳')} × 장소당 ${count('per_poi_count')}개`
   } else {
     const slug = typeof resource.poi_category === 'string' ? resource.poi_category.trim() : ''
     poiLine = `${slug ? (names.categories[slug] ?? slug) : '전체 종류'} × 총 ${count('total_count')}개`

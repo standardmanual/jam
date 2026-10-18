@@ -239,7 +239,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (hardBlocking > 0) {
     return NextResponse.json(
       {
-        error: `삭제할 수 없습니다. 이미 ${hardBlocking}건의 발급·드랍·지점 연결 이력이 있는 배지입니다(${hitLabels}). 비활성화를 이용해주세요.`,
+        error: `삭제할 수 없습니다. 이미 ${hardBlocking}건의 발급·드랍·장소 연결 이력이 있는 배지입니다(${hitLabels}). 비활성화를 이용해주세요.`,
       },
       { status: 409 }
     )

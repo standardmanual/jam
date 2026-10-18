@@ -81,8 +81,8 @@ describe('computeBadgeSectionStatuses', () => {
     expect(computeBadgeSectionStatuses({ ...base, conditionCount: 3, missionReward: true }).cond.text).toBe('미션 보상')
     expect(computeBadgeSectionStatuses({ ...base, type: 'item' }).cond.text).toBe('없음 · 모두에게 드랍')
   })
-  it('연결 정보 — 체크인은 지점 수, 그 외는 트라이브·컬렉션 수', () => {
-    expect(computeBadgeSectionStatuses({ ...base, type: 'checkin', poiCount: 2 }).link.text).toBe('지점 2곳')
+  it('연결 정보 — 체크인은 장소 수, 그 외는 트라이브·컬렉션 수', () => {
+    expect(computeBadgeSectionStatuses({ ...base, type: 'checkin', poiCount: 2 }).link.text).toBe('장소 2곳')
     expect(computeBadgeSectionStatuses({ ...base, tribeId: 't', itemBookId: 'b' }).link.text).toBe('2개 연결')
     expect(computeBadgeSectionStatuses(base).link).toEqual({ tone: 'idle', text: '선택' })
   })
@@ -107,14 +107,14 @@ describe('previewConditionText — 레일 미리보기의 조건 줄', () => {
       previewConditionText({ type: 'activity', isJam: false, condition: { mission_reward: true, distance_km: 5 }, poiNames: [] })
     ).toBe('미션 완료 시 지급')
   })
-  it('체크인은 연결된 지점 이름으로 말한다', () => {
+  it('체크인은 연결된 장소 이름으로 말한다', () => {
     expect(previewConditionText({ type: 'checkin', isJam: false, condition: null, poiNames: ['북한산 백운대'] })).toBe(
       '북한산 백운대 통과 시 획득'
     )
     expect(previewConditionText({ type: 'checkin', isJam: false, condition: null, poiNames: ['가', '나', '다', '라'] })).toBe(
       '가, 나 외 2곳 통과 시 획득'
     )
-    expect(previewConditionText({ type: 'checkin', isJam: false, condition: null, poiNames: [] })).toBe('연결된 지점 통과 시 획득')
+    expect(previewConditionText({ type: 'checkin', isJam: false, condition: null, poiNames: [] })).toBe('연결된 장소 통과 시 획득')
   })
   it('조건이 없으면 안내 문구를 보인다', () => {
     expect(previewConditionText({ type: 'item', isJam: false, condition: null, poiNames: [] })).toBe('조건을 넣으면 여기에 표시돼요')

@@ -11,12 +11,12 @@ export async function GET(req: NextRequest) {
 
   const params = parseAbusingListParams(pickSingleQueryParamsFromURL(req.nextUrl.searchParams), 'poi-blocks')
   const { ids, total, error } = await fetchAbusingListIds(createServiceClient(), 'poi-blocks', params)
-  if (error) return NextResponse.json({ error: `POI 차단 목록을 불러오지 못했어요. (${error})` }, { status: 500 })
+  if (error) return NextResponse.json({ error: `장소 차단 목록을 불러오지 못했어요. (${error})` }, { status: 500 })
 
   if (total > ABUSING_SELECT_ALL_CAP) {
     return NextResponse.json(
       {
-        error: `조건에 맞는 POI 차단이 ${total}건이라 한 번에 선택할 수 있는 상한(${ABUSING_SELECT_ALL_CAP}건)을 넘어요. 필터를 좁혀 주세요.`,
+        error: `조건에 맞는 장소 차단이 ${total}건이라 한 번에 선택할 수 있는 상한(${ABUSING_SELECT_ALL_CAP}건)을 넘어요. 필터를 좁혀 주세요.`,
       },
       { status: 422 }
     )

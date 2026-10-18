@@ -119,7 +119,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .eq('id', id)
       .maybeSingle()
     if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
-    if (!existing) return NextResponse.json({ error: 'POI를 찾을 수 없습니다.' }, { status: 404 })
+    if (!existing) return NextResponse.json({ error: '장소를 찾을 수 없습니다.' }, { status: 404 })
 
     updatePayload.category = category
     updatePayload.radius_meters = resolvePoiRadiusMeters(category, existing.radius_meters)
@@ -157,7 +157,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { data: existing, error: fetchError } = await supabase.from('poi').select('id').eq('id', id).single()
   if (fetchError || !existing) {
-    return NextResponse.json({ error: 'POI를 찾을 수 없습니다.' }, { status: 404 })
+    return NextResponse.json({ error: '장소를 찾을 수 없습니다.' }, { status: 404 })
   }
 
   const references = await collectPoiReferences(supabase, [id])
@@ -178,7 +178,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     console.error(`[poi DELETE] 참조가 있어 하드 삭제를 차단합니다 (poi=${id}): ${hitLabels}`)
     return NextResponse.json(
       {
-        error: `삭제할 수 없습니다. 이미 ${references.total}건의 드랍·체크인·조회 이력이 있는 POI입니다(${hitLabels}). 비활성화를 이용해주세요.`,
+        error: `삭제할 수 없습니다. 이미 ${references.total}건의 드랍·체크인·조회 이력이 있는 장소입니다(${hitLabels}). 비활성화를 이용해주세요.`,
       },
       { status: 409 }
     )

@@ -302,7 +302,7 @@ describe('구역 안의 일부 출처만 실패하면 구역은 안내 카드가
     expect(out.service).toContain('ops-service-check-heading')
     expect(out.service).not.toContain(SECTION_NOTICE_TITLES.service)
     expect(out.service).toContain('불러오지 못했어요 — user_suspensions')
-    expect(out.service).toContain('차단 POI 수')
+    expect(out.service).toContain('차단 장소 수')
     expect(out.service).toContain('미션 공백')
   })
 
@@ -502,14 +502,14 @@ describe('SampleSwitchSection', () => {
 // ── 옛 화면과 같은 링크·승인 항목 ────────────────────────────────────────────────────────────────
 
 describe('옛 화면과 같은 링크 (완료 조건)', () => {
-  it('이상 신호 3장: Strava·제재·차단 POI 링크가 같고, 미션 공백이 넷째 칸이다(승인 #16)', async () => {
+  it('이상 신호 3장: Strava·제재·차단 장소 링크가 같고, 미션 공백이 넷째 칸이다(승인 #16)', async () => {
     const out = (await renderAll()).service
     expect(out).toContain('href="/admin/strava-backfill"')
     expect(out.match(/href="\/admin\/abusing"/g)).toHaveLength(2)
     expect(out).toContain('href="/admin/missions"')
     expect(out).toContain('Strava 동기화 실패 건수')
     expect(out).toContain('유효 제재 수')
-    expect(out).toContain('차단 POI 수')
+    expect(out).toContain('차단 장소 수')
     expect(out).toContain('미션 공백')
     expect(out).toContain('lg:grid-cols-4')
   })
@@ -556,7 +556,7 @@ describe('옛 화면과 같은 링크 (완료 조건)', () => {
   it('통계 4칸: 링크가 같다', async () => {
     const out = (await renderAll()).stats
     for (const href of ['/admin/badges', '/admin/poi', '/admin/itembooks', '/admin/users']) expect(out).toContain(`href="${href}"`)
-    for (const label of ['배지', 'POI', '컬렉션', '유저']) expect(out).toContain(`>${label}<`)
+    for (const label of ['배지', '장소', '컬렉션', '유저']) expect(out).toContain(`>${label}<`)
   })
 })
 

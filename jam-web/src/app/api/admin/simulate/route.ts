@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     if (earnedBadgeIds.has(poi.linked_badge_id)) continue
     const badge = poiBadgesById.get(poi.linked_badge_id)
     if (badge) {
-      badgesEarned.push({ id: badge.id, name: badge.name, rarity: badge.rarity, reason: `POI 통과: ${poi.name}` })
+      badgesEarned.push({ id: badge.id, name: badge.name, rarity: badge.rarity, reason: `장소 통과: ${poi.name}` })
       earnedBadgeIds.add(badge.id)
       if (!dryRun) {
         // checkin 타입 배지(POI 연결 배지는 항상 이 타입)는 반복 획득 이력 테이블에 기록한다.

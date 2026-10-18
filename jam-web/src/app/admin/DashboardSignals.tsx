@@ -150,7 +150,7 @@ export function ServiceCheckRow({ stravaSyncFailures, suspensions, blockedPoi, m
           metric={stravaSyncFailures}
         />
         <AnomalyCard label="유효 제재 수" href="/admin/abusing" icon={IconShieldOff} metric={suspensions} />
-        <AnomalyCard label="차단 POI 수" href="/admin/abusing" icon={IconMapPinOff} metric={blockedPoi} />
+        <AnomalyCard label="차단 장소 수" href="/admin/abusing" icon={IconMapPinOff} metric={blockedPoi} />
         <MissionGapCard source={missionGaps} />
       </div>
     </section>

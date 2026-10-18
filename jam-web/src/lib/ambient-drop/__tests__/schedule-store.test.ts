@@ -101,8 +101,8 @@ function scheduleRow(id = SCHEDULE_ID): Row {
 
 describe('createAmbientDropSchedule — 네 조합 등록', () => {
   it.each([
-    ['지점 직접 × 아이템 직접', LIST_ITEMS, { poi_mode: 'list', item_mode: 'items', per_poi_count: 2, total_count: null }],
-    ['지점 직접 × 컬렉션', LIST_COLLECTIONS, { poi_mode: 'list', item_mode: 'collections', per_poi_count: 1, total_count: null }],
+    ['장소 직접 × 아이템 직접', LIST_ITEMS, { poi_mode: 'list', item_mode: 'items', per_poi_count: 2, total_count: null }],
+    ['장소 직접 × 컬렉션', LIST_COLLECTIONS, { poi_mode: 'list', item_mode: 'collections', per_poi_count: 1, total_count: null }],
     ['종류+개수 × 아이템 직접', CATEGORY_ITEMS, { poi_mode: 'category', item_mode: 'items', per_poi_count: null, total_count: 5 }],
     ['종류+개수 × 컬렉션', CATEGORY_COLLECTIONS, { poi_mode: 'category', item_mode: 'collections', per_poi_count: null, total_count: 5 }],
   ])('%s', async (_name, body, expected) => {
@@ -147,14 +147,14 @@ describe('createAmbientDropSchedule — 네 조합 등록', () => {
     expect(db.writesTo('ambient_drop_schedules')).toEqual([])
   })
 
-  it('존재하지 않는 지점 종류는 400이다', async () => {
+  it('존재하지 않는 장소 종류는 400이다', async () => {
     const result = await createAmbientDropSchedule(sb(), { ...CATEGORY_ITEMS, poi_category: 'nowhere' }, null, NOW)
     expect(result).toMatchObject({ ok: false, status: 400 })
-    expect(!result.ok && result.error).toContain('지점 종류를 찾을 수 없어요')
+    expect(!result.ok && result.error).toContain('장소 종류를 찾을 수 없어요')
     expect(db.writesTo('ambient_drop_schedules')).toEqual([])
   })
 
-  it('지점 종류 확인이 실패하면 500이고 쓰지 않는다 (fail-closed)', async () => {
+  it('장소 종류 확인이 실패하면 500이고 쓰지 않는다 (fail-closed)', async () => {
     const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
     db.failReads.add('poi_categories')
     const result = await createAmbientDropSchedule(sb(), CATEGORY_ITEMS, null, NOW)
@@ -213,13 +213,13 @@ describe('createAmbientDropSchedule — 예정 시각 기준 노출 판정', () 
     expect(db.writesTo('ambient_drop_schedules')).toEqual([])
   })
 
-  it('비활성 지점·없는 지점은 400이다', async () => {
+  it('비활성 장소·없는 장소는 400이다', async () => {
     const inactive = await createAmbientDropSchedule(sb(), { ...LIST_ITEMS, poi_ids: [P1, P_INACTIVE] }, null, NOW)
     expect(inactive).toMatchObject({ ok: false, status: 400 })
-    expect(!inactive.ok && inactive.error).toContain('운영이 끝난 지점 1건')
+    expect(!inactive.ok && inactive.error).toContain('운영이 끝난 장소 1건')
     const missing = await createAmbientDropSchedule(sb(), { ...LIST_ITEMS, poi_ids: [P_MISSING] }, null, NOW)
     expect(missing).toMatchObject({ ok: false, status: 400 })
-    expect(!missing.ok && missing.error).toContain('찾을 수 없는 지점 1건')
+    expect(!missing.ok && missing.error).toContain('찾을 수 없는 장소 1건')
   })
 
   it('삭제된 아이템·컬렉션에 속하지 않은 아이템·없는 아이템은 400이다', async () => {
@@ -253,11 +253,11 @@ describe('createAmbientDropSchedule — 예정 시각 기준 노출 판정', () 
     expect(!result.ok && result.error).toContain('놓을 수 있는 아이템이 없어요')
   })
 
-  it('종류에 운영 중인 지점이 없으면 400이다', async () => {
+  it('종류에 운영 중인 장소가 없으면 400이다', async () => {
     db.tables.poi_categories.push({ slug: 'park' })
     const result = await createAmbientDropSchedule(sb(), { ...CATEGORY_ITEMS, poi_category: 'park' }, null, NOW)
     expect(result).toMatchObject({ ok: false, status: 400 })
-    expect(!result.ok && result.error).toContain('놓을 수 있는 지점이 없어요')
+    expect(!result.ok && result.error).toContain('놓을 수 있는 장소가 없어요')
   })
 })
 
@@ -335,7 +335,7 @@ describe('미룬 컬렉션(deferredCollectionIds) — 운영툴이 연결로 채
     expect(plain.reason).toBe('no_candidate_badges')
   })
 
-  it('지점 쪽 판정은 그대로다 — 운영 중인 지점이 없으면 미룬 컬렉션이 있어도 no_eligible_poi다', async () => {
+  it('장소 쪽 판정은 그대로다 — 운영 중인 장소가 없으면 미룬 컬렉션이 있어도 no_eligible_poi다', async () => {
     const targets = await loadScheduleTargets(db.client as Parameters<typeof loadScheduleTargets>[0], specOf({ ...LIST_COLLECTIONS, poi_ids: [P_INACTIVE], collection_ids: [FUTURE_BOOK] }), AT_ISO, {
       deferredCollectionIds: [FUTURE_BOOK],
     })
@@ -538,7 +538,7 @@ describe('rescheduleAmbientDrop — 공개 전 시각 수정', () => {
     expect(scheduleRow().scheduled_at).toBe(AT_ISO)
   })
 
-  it('지점·아이템 내용은 바꾸지 않는다', async () => {
+  it('장소·아이템 내용은 바꾸지 않는다', async () => {
     insertSchedule()
     const before = { ...scheduleRow() }
     await rescheduleAmbientDrop(sb(), SCHEDULE_ID, NEW_AT, NOW)

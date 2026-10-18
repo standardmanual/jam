@@ -238,7 +238,7 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
             <tr className="border-b border-border text-muted-foreground text-left">
               <th className="px-5 py-3 font-medium">slug</th>
               <th className="px-5 py-3 font-medium">표시 이름</th>
-              <th className="px-5 py-3 font-medium">사용 중인 POI</th>
+              <th className="px-5 py-3 font-medium">사용 중인 장소</th>
               <th className="px-5 py-3 font-medium">연동</th>
               <th className="px-5 py-3 font-medium">티어</th>
               <th className="px-5 py-3 font-medium">키워드</th>

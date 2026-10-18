@@ -15,7 +15,7 @@ type ServiceClient = ReturnType<typeof createServiceClient>
 /** `poi_categories`에 있는 지점 카테고리 slug 전체. 조회가 실패하면 예외를 던진다. */
 export async function loadPoiCategorySlugs(service: ServiceClient): Promise<Set<string>> {
   const { data, error } = await service.from('poi_categories').select('slug')
-  if (error) throw new Error(`지점 카테고리 목록 조회 실패: ${error.message}`)
+  if (error) throw new Error(`장소 카테고리 목록 조회 실패: ${error.message}`)
   return new Set((data ?? []).map((row) => row.slug))
 }
 

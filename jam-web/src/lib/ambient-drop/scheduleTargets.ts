@@ -130,7 +130,7 @@ async function loadPoiTargets(
   spec: AmbientDropScheduleSpec
 ): Promise<{ pois: ScheduleTargetPoi[]; excluded: ScheduleExcluded[] }> {
   if (spec.poiMode === 'list') {
-    const rows = await fetchAllRowsIn<PoiRow, string>('poi(예약 지점)', 'id', spec.poiIds, (chunk) =>
+    const rows = await fetchAllRowsIn<PoiRow, string>('poi(예약 장소)', 'id', spec.poiIds, (chunk) =>
       supabase.from('poi').select('id, is_active').in('id', chunk)
     )
     const byId = new Map(rows.map((r) => [r.id, r]))
@@ -358,8 +358,8 @@ export async function loadScheduleTargets(
 
 /** 대상에서 빠진 이유의 한국어 이름(셀 수 있는 명사구) — 등록 거절 문장과 결과 화면이 함께 쓴다 */
 export const SCHEDULE_EXCLUDE_REASON_LABEL: Record<ScheduleExcludeReason, string> = {
-  poi_not_found: '찾을 수 없는 지점',
-  poi_inactive: '운영이 끝난 지점',
+  poi_not_found: '찾을 수 없는 장소',
+  poi_inactive: '운영이 끝난 장소',
   badge_not_found: '찾을 수 없는 아이템',
   badge_not_item: '아이템 배지가 아닌 배지',
   badge_deleted: '삭제된 아이템',
@@ -388,7 +388,7 @@ export function describeScheduleTargetProblems(targets: ScheduleTargets): string
     case 'no_eligible_collection':
       return '예정 시각에 노출 중인 컬렉션이 없어요. 공개 전이거나 기간이 끝난 컬렉션은 놓을 수 없어요. 컬렉션이나 시각을 바꿔서 다시 시도해 주세요.'
     case 'no_eligible_poi':
-      return '놓을 수 있는 지점이 없어요. 선택한 종류에 운영 중인 지점이 없어요. 지점 종류를 바꿔서 다시 시도해 주세요.'
+      return '놓을 수 있는 장소가 없어요. 선택한 종류에 운영 중인 장소가 없어요. 장소 종류를 바꿔서 다시 시도해 주세요.'
     case 'no_candidate_badges':
       return '놓을 수 있는 아이템이 없어요. 예정 시각에 유효하면서 드랍 제외가 아닌 아이템 배지가 없어요. 아이템이나 시각을 바꿔서 다시 시도해 주세요.'
     default:

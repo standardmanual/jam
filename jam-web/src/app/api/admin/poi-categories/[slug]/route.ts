@@ -102,7 +102,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     .eq('category', slug)
   if (count && count > 0) {
     return NextResponse.json(
-      { error: `이 카테고리를 사용 중인 POI가 ${count}개 있어 삭제할 수 없습니다.` },
+      { error: `이 카테고리를 사용 중인 장소가 ${count}개 있어 삭제할 수 없습니다.` },
       { status: 400 }
     )
   }

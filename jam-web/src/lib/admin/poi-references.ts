@@ -95,7 +95,7 @@ export const POI_REFERENCE_SOURCES: PoiReferenceSource[] = [
   },
   {
     key: 'poi_views',
-    label: 'POI 열람 계측 기록',
+    label: '장소 열람 계측 기록',
     location: 'poi_views.poi_id',
     blocksDelete: false,
     cascades: true,

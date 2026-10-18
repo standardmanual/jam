@@ -32,7 +32,7 @@ export async function DELETE(req: NextRequest) {
     // 어드민 화면이므로 운영자가 원인을 특정할 수 있게 DB 오류 메시지를 함께 노출한다
     const detail = e instanceof Error ? e.message : String(e)
     return NextResponse.json(
-      { error: `POI 블록이 해제되지 않았어요. 데이터베이스가 요청을 거부했어요. (${detail})` },
+      { error: `장소 블록이 해제되지 않았어요. 데이터베이스가 요청을 거부했어요. (${detail})` },
       { status: 500 }
     )
   }

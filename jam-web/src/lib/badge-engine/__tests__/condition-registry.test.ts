@@ -978,7 +978,7 @@ describe('미션·컬렉션·가입 경과일·활동일·체크인 일수 지�
     }
   })
 
-  it('값 범위: 주간 활동일 1~7, 최근 30일 활동일 1~30, 가입 경과일·같은 지점 체크인 일수 1~3650', () => {
+  it('값 범위: 주간 활동일 1~7, 최근 30일 활동일 1~30, 가입 경과일·같은 장소 체크인 일수 1~3650', () => {
     expect(getConditionField('weekly_active_days')?.max).toBe(7)
     expect(getConditionField('signup_recent_active_days')?.max).toBe(30)
     expect(getConditionField('days_since_signup')?.max).toBe(3650)
@@ -990,7 +990,7 @@ describe('미션·컬렉션·가입 경과일·활동일·체크인 일수 지�
     expect(formatConditionChips({ collection_complete_count: 2 })).toEqual(['컬렉션 완성 2개↑'])
     expect(formatConditionChips({ days_since_signup: 100 })).toEqual(['가입 100일↑'])
     expect(formatConditionChips({ weekly_active_days: 3 })).toEqual(['주 활동 3일↑'])
-    expect(formatConditionChips({ same_spot_checkin_days: 10 })).toEqual(['같은 지점 10일↑'])
+    expect(formatConditionChips({ same_spot_checkin_days: 10 })).toEqual(['같은 장소 10일↑'])
     expect(formatConditionChips({ days_since_signup: 100, signup_recent_active_days: 4 })).toEqual([
       '가입 100일↑',
       '최근 30일 4일↑',
@@ -1000,11 +1000,11 @@ describe('미션·컬렉션·가입 경과일·활동일·체크인 일수 지�
     expect(formatConditionDetail({ days_since_signup: 100 })).toEqual(['가입 후 100일 이상 경과(한국 날짜 기준)'])
     expect(formatConditionDetail({ signup_recent_active_days: 4 })).toEqual(['최근 30일 동안 활동한 날 4일 이상'])
     expect(formatConditionDetail({ weekly_active_days: 3 })).toEqual(['한 주(월~일, 한국 시간)에 활동한 날 3일 이상'])
-    expect(formatConditionDetail({ same_spot_checkin_days: 10 })).toEqual(['같은 지점에 서로 다른 10일 이상 체크인'])
+    expect(formatConditionDetail({ same_spot_checkin_days: 10 })).toEqual(['같은 장소에 서로 다른 10일 이상 체크인'])
   })
 
-  it('라벨·칩·상세·도움말에 금지어(방문·POI·장소·위치·충족·달성·아이템북·슬롯·수집·회수·배치)가 없다', () => {
-    const banned = ['방문', 'POI', '장소', '위치', '충족', '달성', '아이템북', '슬롯', '수집', '회수', '배치', '놓']
+  it('라벨·칩·상세·도움말에 금지어(방문·POI·위치·충족·달성·아이템북·슬롯·수집·회수·배치)가 없다', () => {
+    const banned = ['방문', 'POI', '위치', '충족', '달성', '아이템북', '슬롯', '수집', '회수', '배치', '놓']
     const sample: Record<(typeof SIX_KEYS)[number], BadgeCondition> = {
       mission_complete_count: { mission_complete_count: 3 },
       collection_complete_count: { collection_complete_count: 2 },

@@ -167,7 +167,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
       )}
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-foreground">POI 이름 *</span>
+        <span className="text-sm text-foreground">장소 이름 *</span>
         <input
           required
           value={name}
@@ -245,7 +245,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
         <>
           {poi?.pending_review && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-amber-700 text-sm">
-              검토 대기 중인 임시등록 POI입니다. 정보를 확인·수정한 뒤 아래 활성화 스위치를 켜고
+              검토 대기 중인 임시등록 장소입니다. 정보를 확인·수정한 뒤 아래 활성화 스위치를 켜고
               저장하면 검토가 완료되며 지도·드랍에 노출됩니다.
             </div>
           )}
@@ -290,7 +290,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-bold mb-2">POI 삭제</h3>
+            <h3 className="text-lg font-bold mb-2">장소 삭제</h3>
             <p className="text-muted-foreground text-sm mb-5">
               &apos;{poi?.name}&apos;을 삭제합니다. 이 작업은 되돌릴 수 없습니다.
             </p>

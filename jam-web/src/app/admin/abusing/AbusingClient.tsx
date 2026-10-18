@@ -167,7 +167,7 @@ export default function AbusingClient({
   const tabs: { key: Tab; label: string; href: string; count: number | null }[] = [
     { key: 'policy', label: '정책 설정', href: ABUSING_PATH, count: null },
     { key: 'suspensions', label: '이용 정지', href: `${ABUSING_PATH}?tab=suspensions`, count: counts.suspensions },
-    { key: 'poi-blocks', label: 'POI 블록', href: `${ABUSING_PATH}?tab=poi-blocks`, count: counts.poiBlocks },
+    { key: 'poi-blocks', label: '장소 블록', href: `${ABUSING_PATH}?tab=poi-blocks`, count: counts.poiBlocks },
   ]
 
   return (
@@ -175,7 +175,7 @@ export default function AbusingClient({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">어뷰징 정책 관리</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">투트랙 섀도우밴 + POI GPS 조작 감지</p>
+          <p className="text-muted-foreground text-sm mt-0.5">투트랙 섀도우밴 + 장소 GPS 조작 감지</p>
         </div>
         {msg && (
           <div className={`flex items-start gap-2 text-sm font-medium px-4 py-2 rounded-xl max-w-md ${msg.type === 'ok' ? 'bg-primary/10 text-foreground' : 'bg-red-50 text-red-600'}`}>
@@ -385,7 +385,7 @@ export default function AbusingClient({
               </div>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">POI 블록 지속 시간 (시간)</span>
+              <span className="text-xs text-muted-foreground">장소 블록 지속 시간 (시간)</span>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
@@ -459,7 +459,7 @@ export default function AbusingClient({
       {tab === 'poi-blocks' && (
         <Suspense>
           <div className="space-y-3">
-            <AbusingFilterBar placeholder="유저 이름, 이메일, POI 이름으로 검색..." />
+            <AbusingFilterBar placeholder="유저 이름, 이메일, 장소 이름으로 검색..." />
             <p className="text-sm text-muted-foreground">총 {listTotal}건</p>
             <PoiBlockTable poiBlocks={poiBlocks} totalCount={listTotal} />
             <DataTablePagination page={page} totalPages={totalPages} />

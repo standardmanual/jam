@@ -45,7 +45,7 @@ export default function PoiFilters({ categories }: PoiFiltersProps) {
 
   return (
     <DataTableToolbar actions={<DataTableSortSelect options={SORT_OPTIONS} defaultValue="created_desc" />}>
-      <DataTableSearch placeholder="지점 이름으로 검색..." />
+      <DataTableSearch placeholder="장소 이름으로 검색..." />
 
       <DataTableFacetedFilter
         title="카테고리"

@@ -134,7 +134,7 @@ const FAQ_ITEMS: { title: string; content: ReactNode }[] = [
     title: '이미 얻은 배지를 또 얻을 수 있나요?',
     content: (
       <p className={FAQ_ANSWER_CLASS}>
-        체크인 배지는 같은 지점을 다시 방문할 때마다 반복해서 얻을 수 있어요. 두 번째
+        체크인 배지는 같은 장소를 다시 방문할 때마다 반복해서 얻을 수 있어요. 두 번째
         획득부터는 &apos;N번째 체크인 했어요&apos;로 기록돼요. 반면 등급이 있는 활동
         배지는 계열마다 한 번씩, 다음 등급으로만 올라가요.
       </p>
@@ -151,10 +151,10 @@ const FAQ_ITEMS: { title: string; content: ReactNode }[] = [
     ),
   },
   {
-    title: '지점에서 배지를 받으려면 어떻게 하나요?',
+    title: '장소에서 배지를 받으려면 어떻게 하나요?',
     content: (
       <p className={FAQ_ANSWER_CLASS}>
-        지도에 표시된 지점 근처를 실제로 지나가면 자동으로 체크인되면서 그 지점의 배지를
+        지도에 표시된 장소 근처를 실제로 지나가면 자동으로 체크인되면서 그 장소의 배지를
         받아요. 따로 인증하거나 신청할 필요는 없어요.
       </p>
     ),

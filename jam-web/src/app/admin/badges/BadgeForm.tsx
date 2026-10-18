@@ -257,10 +257,10 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
       try {
         const res = await fetch(`/api/admin/badges/${badge.id}/poi-links`)
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error ?? '지점 연결 목록 조회 실패')
+        if (!res.ok) throw new Error(data.error ?? '장소 연결 목록 조회 실패')
         if (!cancelled) setLinkedPois((data.pois ?? []) as LinkablePoi[])
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : '지점 연결 목록 조회 실패')
+        if (!cancelled) setError(err instanceof Error ? err.message : '장소 연결 목록 조회 실패')
       }
     })()
     return () => {
@@ -279,11 +279,11 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
     try {
       const res = await fetch(`/api/admin/poi/search?query=${encodeURIComponent(q)}`)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? '지점 검색 실패')
+      if (!res.ok) throw new Error(data.error ?? '장소 검색 실패')
       setPoiResults((data.pois ?? []) as LinkablePoi[])
       setPoiSearched(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '지점 검색 실패')
+      setError(err instanceof Error ? err.message : '장소 검색 실패')
     } finally {
       setPoiSearching(false)
     }
@@ -521,14 +521,14 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
       // 체크인 배지: 저장된 배지 id로 연결 지점 목록을 통째로 반영
       if (type === 'checkin') {
         const savedBadgeId: string | undefined = data.badge?.id ?? (isEdit ? badge.id : undefined)
-        if (!savedBadgeId) throw new Error('저장된 배지 ID를 확인할 수 없어 지점 연결에 실패했습니다.')
+        if (!savedBadgeId) throw new Error('저장된 배지 ID를 확인할 수 없어 장소 연결에 실패했습니다.')
         const linkRes = await fetch(`/api/admin/badges/${savedBadgeId}/poi-links`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ poi_ids: linkedPois.map((p) => p.id) }),
         })
         const linkData = await linkRes.json()
-        if (!linkRes.ok) throw new Error(linkData.error ?? '지점 연결 저장 실패')
+        if (!linkRes.ok) throw new Error(linkData.error ?? '장소 연결 저장 실패')
       }
 
       router.push('/admin/badges')
@@ -974,13 +974,13 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
           <div className="@container">
             <div className={FIELD_GRID_CLASS}>
               <div className="flex min-w-0 flex-col gap-1.5">
-                <FieldLabel htmlFor="badge-poi-category">지점 카테고리</FieldLabel>
+                <FieldLabel htmlFor="badge-poi-category">장소 카테고리</FieldLabel>
                 <Select value={category || NONE_VALUE} onValueChange={(v) => setCategory(v === NONE_VALUE ? '' : v)}>
                   <SelectTrigger id="badge-poi-category" aria-describedby="badge-poi-category-help">
                     <SelectValue placeholder="카테고리를 선택해주세요" />
                   </SelectTrigger>
                   <SelectContent container={themeContainer ?? undefined}>
-                    <SelectItem value={NONE_VALUE}>연결된 지점을 따름</SelectItem>
+                    <SelectItem value={NONE_VALUE}>연결된 장소를 따름</SelectItem>
                     {poiCategories.map((c) => (
                       <SelectItem key={c.slug} value={c.slug}>
                         {c.label}
@@ -991,7 +991,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
               </div>
               <div className={cn('flex min-w-0 flex-col justify-end pb-1', fieldSpanClass(2))}>
                 <FieldMessage id="badge-poi-category-help">
-                  값을 고르면 연결된 지점의 카테고리 대신 이 값으로 목록과 배지함에서 분류돼요.
+                  값을 고르면 연결된 장소의 카테고리 대신 이 값으로 목록과 배지함에서 분류돼요.
                 </FieldMessage>
               </div>
             </div>
@@ -1006,7 +1006,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <FieldLabel htmlFor="badge-poi-search">연결된 지점</FieldLabel>
+            <FieldLabel htmlFor="badge-poi-search">연결된 장소</FieldLabel>
             <div className="flex items-center gap-2">
               <Input
                 id="badge-poi-search"
@@ -1018,7 +1018,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
                     searchPois()
                   }
                 }}
-                placeholder="등록된 지점 이름으로 검색"
+                placeholder="등록된 장소 이름으로 검색"
                 autoComplete="off"
                 aria-describedby="badge-poi-search-help"
               />
@@ -1027,8 +1027,8 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
               </Button>
             </div>
             <FieldMessage id="badge-poi-search-help">
-              GPS 경로가 연결한 지점의 반경을 지나면 획득해요. 여러 곳을 연결할 수 있고 체크인할 때마다 반복 획득돼요. 판정
-              반경은 각 지점에 등록된 값을 그대로 쓰고, POI 관리 화면에서 바꿔요.
+              GPS 경로가 연결한 장소의 반경을 지나면 획득해요. 여러 곳을 연결할 수 있고 체크인할 때마다 반복 획득돼요. 판정
+              반경은 각 장소에 등록된 값을 그대로 쓰고, 장소 관리 화면에서 바꿔요.
             </FieldMessage>
           </div>
 
@@ -1064,10 +1064,10 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
 
           {/* 연결 목록 */}
           <div className="flex flex-col gap-2">
-            <p className="text-xs text-muted-foreground">연결된 지점 {linkedPois.length}곳</p>
+            <p className="text-xs text-muted-foreground">연결된 장소 {linkedPois.length}곳</p>
             {linkedPois.length === 0 ? (
               <p className="rounded-lg border border-border bg-muted px-4 py-5 text-center text-sm text-muted-foreground">
-                아직 연결한 지점이 없어요. 위에서 검색해 추가하세요.
+                아직 연결한 장소가 없어요. 위에서 검색해 추가하세요.
               </p>
             ) : (
               <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">

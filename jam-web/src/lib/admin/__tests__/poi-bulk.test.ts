@@ -23,10 +23,10 @@ describe('buildPoiCategoryPatch', () => {
 
 describe('classifyPoiDeletion', () => {
   function candidate(overrides: Partial<PoiDeletionCandidate> = {}): PoiDeletionCandidate {
-    return { id: 'p1', name: 'POI', counts: emptyCounts(), total: 0, ...overrides }
+    return { id: 'p1', name: '장소', counts: emptyCounts(), total: 0, ...overrides }
   }
 
-  it('참조가 없는 POI는 삭제 가능으로 분류한다', () => {
+  it('참조가 없는 장소는 삭제 가능으로 분류한다', () => {
     const candidates = new Map([['p1', candidate({ id: 'p1' })]])
     const result = classifyPoiDeletion(['p1'], candidates)
     expect(result).toEqual({ deletable: ['p1'], skipped: [] })
@@ -44,7 +44,7 @@ describe('classifyPoiDeletion', () => {
       {
         id: 'p1',
         label: '성수 카페',
-        reason: '이미 4건의 드랍·체크인·조회 이력이 있는 POI입니다(월드 드랍 기록 3건, 체크인 배지 획득 이력 1건). 비활성화를 이용해주세요.',
+        reason: '이미 4건의 드랍·체크인·조회 이력이 있는 장소입니다(월드 드랍 기록 3건, 체크인 배지 획득 이력 1건). 비활성화를 이용해주세요.',
       },
     ])
   })
@@ -52,7 +52,7 @@ describe('classifyPoiDeletion', () => {
   it('존재하지 않는(candidates에 없는) id는 건너뛴다', () => {
     const result = classifyPoiDeletion(['missing'], new Map())
     expect(result.deletable).toEqual([])
-    expect(result.skipped).toEqual([{ id: 'missing', reason: 'POI를 찾을 수 없습니다.' }])
+    expect(result.skipped).toEqual([{ id: 'missing', reason: '장소를 찾을 수 없습니다.' }])
   })
 
   it('여러 id를 섞어도 각각 올바르게 분류한다', () => {

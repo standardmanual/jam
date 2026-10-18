@@ -121,7 +121,7 @@ describe('비관리자는 403이고 DB를 읽지 않는다', () => {
 
 describe('GET — 목록', () => {
   it('최근순 목록과 이름 맵을 200으로 준다', async () => {
-    for (const p of db.tables.poi) p.name = `지점-${String(p.id).slice(-2)}`
+    for (const p of db.tables.poi) p.name = `장소-${String(p.id).slice(-2)}`
     for (const b of db.tables.badges) b.name = `아이템-${String(b.id).slice(-2)}`
     addSchedule({ title: '이른', scheduled_at: '2026-10-03T00:00:00.000Z' })
     addSchedule({ title: '늦은', scheduled_at: '2026-10-09T00:00:00.000Z' })
@@ -131,13 +131,13 @@ describe('GET — 목록', () => {
     const body = await res.json()
     expect(body.schedules.map((s: { title: string }) => s.title)).toEqual(['늦은', '이른'])
     expect(body.schedules[0]).toMatchObject({ status: 'scheduled', state: 'scheduled', poiMode: 'list', outcome: null })
-    expect(body.names).toEqual({ pois: { [P1]: '지점-01' }, badges: { [B_LIVE]: '아이템-11' }, collections: {} })
+    expect(body.names).toEqual({ pois: { [P1]: '장소-01' }, badges: { [B_LIVE]: '아이템-11' }, collections: {} })
     // 읽기만 한다
     expect(db.calls.every((c) => c.op === 'select')).toBe(true)
   })
 
   it('실행에 실패한 예약의 DB 오류 원문은 응답 어디에도 없다', async () => {
-    const raw = '대상 조회 실패: poi(예약 지점)[0~0] 조회 실패: permission denied for table poi'
+    const raw = '대상 조회 실패: poi(예약 장소)[0~0] 조회 실패: permission denied for table poi'
     addSchedule({
       status: 'failed',
       finished_at: AT_ISO,
@@ -170,8 +170,8 @@ describe('GET — 목록', () => {
 
 describe('POST — 등록', () => {
   it.each([
-    ['지점 직접 × 아이템 직접', LIST_ITEMS, { poiMode: 'list', itemMode: 'items', perPoiCount: 2, totalCount: null }],
-    ['지점 직접 × 컬렉션', LIST_COLLECTIONS, { poiMode: 'list', itemMode: 'collections', perPoiCount: 1, totalCount: null }],
+    ['장소 직접 × 아이템 직접', LIST_ITEMS, { poiMode: 'list', itemMode: 'items', perPoiCount: 2, totalCount: null }],
+    ['장소 직접 × 컬렉션', LIST_COLLECTIONS, { poiMode: 'list', itemMode: 'collections', perPoiCount: 1, totalCount: null }],
     ['종류+개수 × 아이템 직접', CATEGORY_ITEMS, { poiMode: 'category', itemMode: 'items', perPoiCount: null, totalCount: 5 }],
     ['종류+개수 × 컬렉션', CATEGORY_COLLECTIONS, { poiMode: 'category', itemMode: 'collections', perPoiCount: null, totalCount: 5 }],
   ])('%s → 201', async (_name, body, expected) => {
@@ -201,12 +201,12 @@ describe('POST — 등록', () => {
 
   it.each([
     ['깨진 JSON', '{broken', '예약 내용을 읽지 못했어요'],
-    ['지점 수 × 개수가 101개', { ...CATEGORY_ITEMS, total_count: 101 }, '100개까지예요'],
+    ['장소 수 × 개수가 101개', { ...CATEGORY_ITEMS, total_count: 101 }, '100개까지예요'],
     ['지난 시각', { ...LIST_ITEMS, scheduled_at: '2026-10-01T09:00:00+09:00' }, '이미 지났어요'],
     ['정시가 아닌 시각', { ...LIST_ITEMS, scheduled_at: '2026-10-05T09:30:00+09:00' }, '정시가 아니에요'],
-    ['지점 모드 섞임', { ...LIST_ITEMS, total_count: 3 }, '섞여 있어요'],
+    ['장소 모드 섞임', { ...LIST_ITEMS, total_count: 3 }, '섞여 있어요'],
     ['아이템 모드 섞임', { ...LIST_ITEMS, collection_ids: [BOOK_LIVE] }, '섞여 있어요'],
-    ['비활성 지점', { ...LIST_ITEMS, poi_ids: [P_INACTIVE] }, '운영이 끝난 지점 1건'],
+    ['비활성 장소', { ...LIST_ITEMS, poi_ids: [P_INACTIVE] }, '운영이 끝난 장소 1건'],
   ])('%s → 400이고 아무것도 쓰지 않는다', async (_name, body, message) => {
     const res = await POST(post(body))
     expect(res.status).toBe(400)
@@ -242,7 +242,7 @@ describe('POST preview — 미리 확인', () => {
       poiMode: 'list',
       eligiblePoiCount: 2,
       overlappedPoiCount: 1,
-      overlapNotice: '이미 드랍이 있는 지점이 1곳이에요. 이 지점에는 있던 드랍 위에 겹쳐서 놓여요.',
+      overlapNotice: '이미 드랍이 있는 장소가 1곳이에요. 이 장소에는 있던 드랍 위에 겹쳐서 놓여요.',
       candidateBadgeCount: 1,
       problem: null,
     })
@@ -253,13 +253,13 @@ describe('POST preview — 미리 확인', () => {
   it('예정 시각에 놓을 수 없는 대상은 200의 problem이다', async () => {
     const res = await PREVIEW(post({ ...LIST_ITEMS, poi_ids: [P_INACTIVE] }, '/preview'))
     expect(res.status).toBe(200)
-    expect((await res.json()).preview.problem).toContain('운영이 끝난 지점 1건')
+    expect((await res.json()).preview.problem).toContain('운영이 끝난 장소 1건')
   })
 
   it.each([
     ['깨진 JSON', '{broken'],
     ['시각 없음', { poi_ids: [P1], per_poi_count: 1, badge_ids: [B_LIVE] }],
-    ['없는 지점 종류', { ...CATEGORY_ITEMS, poi_category: 'nowhere' }],
+    ['없는 장소 종류', { ...CATEGORY_ITEMS, poi_category: 'nowhere' }],
   ])('%s → 400', async (_name, body) => {
     const res = await PREVIEW(post(body, '/preview'))
     expect(res.status).toBe(400)

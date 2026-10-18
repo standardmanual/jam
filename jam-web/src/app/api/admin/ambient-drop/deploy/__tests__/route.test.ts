@@ -168,12 +168,12 @@ describe('본문 있는 POST — 지정 배포', () => {
     expect(res.status).toBe(400)
   })
 
-  it('없는 지점 종류는 400이다', async () => {
+  it('없는 장소 종류는 400이다', async () => {
     const res = await POST(
       post({ scheduled_at: 'now', poi_category: 'nowhere', total_count: 2, badge_ids: [B_LIVE] })
     )
     expect(res.status).toBe(400)
-    expect((await res.json()).error).toContain('지점 종류를 찾을 수 없어요')
+    expect((await res.json()).error).toContain('장소 종류를 찾을 수 없어요')
     expect(db.rpcCalls).toEqual([])
   })
 })

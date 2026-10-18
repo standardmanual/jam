@@ -97,7 +97,7 @@ export async function loadReclassifyTargets(service: SupabaseClient): Promise<Re
     .select('id, name, latitude, longitude, category')
     .eq('poi_tier', 2)
     .not('category', 'in', `(${RECLASSIFY_EXCLUDED_CATEGORIES.join(',')})`)
-  if (error) throw new Error(`재분류 대상 POI 조회 실패: ${error.message}`)
+  if (error) throw new Error(`재분류 대상 장소 조회 실패: ${error.message}`)
   return (data ?? []) as ReclassifyTargetPoi[]
 }
 

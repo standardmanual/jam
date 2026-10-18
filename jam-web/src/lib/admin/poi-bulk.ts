@@ -43,7 +43,7 @@ export function classifyPoiDeletion(
   for (const id of ids) {
     const candidate = candidates.get(id)
     if (!candidate) {
-      skipped.push({ id, reason: 'POI를 찾을 수 없습니다.' })
+      skipped.push({ id, reason: '장소를 찾을 수 없습니다.' })
       continue
     }
 
@@ -54,7 +54,7 @@ export function classifyPoiDeletion(
       skipped.push({
         id,
         label: candidate.name ?? undefined,
-        reason: `이미 ${candidate.total}건의 드랍·체크인·조회 이력이 있는 POI입니다(${hitLabels}). 비활성화를 이용해주세요.`,
+        reason: `이미 ${candidate.total}건의 드랍·체크인·조회 이력이 있는 장소입니다(${hitLabels}). 비활성화를 이용해주세요.`,
       })
       continue
     }

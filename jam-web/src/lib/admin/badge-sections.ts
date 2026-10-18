@@ -37,7 +37,7 @@ export function adminActivityTypeLabel(type: string): string {
 /** 배지 타입 세그먼트 순서와 칸 아래 한 줄 설명 */
 export const BADGE_TYPE_SEGMENTS: readonly { value: BadgeType; description: string }[] = [
   { value: 'activity', description: '활동 기록으로 획득' },
-  { value: 'checkin', description: '지점을 지나며 획득' },
+  { value: 'checkin', description: '장소를 지나며 획득' },
   { value: 'item', description: '활동 후 드랍' },
 ]
 
@@ -106,7 +106,7 @@ export function badgeSectionDescription(id: BadgeSectionId, ctx: BadgeSectionCon
       if (jam) return '팔로워 수·하루 동기화 횟수 같은 서비스 사용량이 이 값에 닿으면 바로 발급돼요.'
       return '활동 기록이 이 조건을 채우면 동기화 때 자동으로 발급돼요.'
     case 'link':
-      if (ctx.type === 'checkin') return '어느 지점을 지날 때 발급할지 정해요.'
+      if (ctx.type === 'checkin') return '어느 장소를 지날 때 발급할지 정해요.'
       if (ctx.type === 'item') return '드랍 풀을 정하는 컬렉션과 뽑힐 확률이에요.'
       return '이 배지가 속한 트라이브와 컬렉션이에요.'
     case 'reward':
@@ -164,7 +164,7 @@ export function computeBadgeSectionStatuses(s: BadgeSectionSnapshot): Record<Bad
   else cond = { tone: 'idle', text: s.type === 'item' ? '없음 · 모두에게 드랍' : '비어 있음' }
 
   let link: BadgeSectionStatus
-  if (s.type === 'checkin') link = s.poiCount > 0 ? { tone: 'set', text: `지점 ${s.poiCount}곳` } : { tone: 'idle', text: '지점 없음' }
+  if (s.type === 'checkin') link = s.poiCount > 0 ? { tone: 'set', text: `장소 ${s.poiCount}곳` } : { tone: 'idle', text: '장소 없음' }
   else link = linkCount > 0 ? { tone: 'set', text: `${linkCount}개 연결` } : { tone: 'idle', text: '선택' }
 
   let design: BadgeSectionStatus
@@ -204,7 +204,7 @@ export function previewConditionText(input: {
   if (input.type === 'checkin') {
     const shown = input.poiNames.slice(0, 2).join(', ')
     const rest = input.poiNames.length - 2
-    if (!shown) return '연결된 지점 통과 시 획득'
+    if (!shown) return '연결된 장소 통과 시 획득'
     return `${shown}${rest > 0 ? ` 외 ${rest}곳` : ''} 통과 시 획득`
   }
   if (input.type === 'activity' && !input.isJam && input.condition?.mission_reward === true) {

@@ -193,7 +193,7 @@ export const BADGE_REFERENCE_SOURCES: BadgeReferenceSource[] = [
   {
     key: 'poi',
     group: 'content',
-    label: '지점 연결',
+    label: '장소 연결',
     location: 'poi.linked_badge_id',
     blocksDelete: true,
     cascades: false,

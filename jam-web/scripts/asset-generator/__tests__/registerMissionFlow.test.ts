@@ -261,7 +261,7 @@ describe('runMissionDbChecks', () => {
       ['제목 중복', '건너뜀'],
       ['보상 배지 존재', '건너뜀'],
       ['조건 배지 존재', '해당 없음'],
-      ['조건 지점 존재', '해당 없음'],
+      ['조건 장소 존재', '해당 없음'],
     ]);
   });
 
@@ -302,14 +302,14 @@ describe('runMissionDbChecks', () => {
     expect(badgeQuery.filters).toContainEqual(['in', 'id', [badgeId, otherBadgeId]]);
   });
 
-  it('item_collect의 조건 배지와 checkin의 조건 지점이 실제로 있는지 읽는다', async () => {
+  it('item_collect의 조건 배지와 checkin의 조건 장소가 실제로 있는지 읽는다', async () => {
     const itemStub = createStub({ resolve: () => ({ data: null }) });
     const item = await runMissionDbChecks({ supabase: itemStub.supabase, mission: { title: 't', mission_type: 'item_collect', condition_json: { badge_id: badgeId } } });
     expect(item.errors).toEqual([expect.stringContaining(`조건 배지 존재: condition_json.badge_id에 해당하는 배지가 없거나 삭제됐어요: ${badgeId}`)]);
 
     const poiStub = createStub({ resolve: (e) => (e.table === 'poi' ? { data: null } : { data: [] }) });
     const poi = await runMissionDbChecks({ supabase: poiStub.supabase, mission: { title: 't', mission_type: 'checkin', condition_json: { poi_id: poiId } } });
-    expect(poi.errors).toEqual([`조건 지점 존재: condition_json.poi_id에 해당하는 지점이 없어요: ${poiId}`]);
+    expect(poi.errors).toEqual([`조건 장소 존재: condition_json.poi_id에 해당하는 장소가 없어요: ${poiId}`]);
   });
 
   it('DB 읽기 오류는 실패로 알린다(확인하지 못한 채 통과시키지 않는다)', async () => {

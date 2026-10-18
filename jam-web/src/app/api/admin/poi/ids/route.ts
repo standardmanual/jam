@@ -12,7 +12,7 @@ import { parsePoiListParams, applyPoiListQuery, type PoiListQuery } from '@/lib/
 const SELECT_ALL_CAP = 1000
 
 // DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1603). 현상 → 원인 → 해결책 순서.
-const READ_ERROR_MESSAGE = 'POI 목록을 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
+const READ_ERROR_MESSAGE = '장소 목록을 불러오지 못했어요. 서버에서 조회 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
 
 export async function GET(req: NextRequest) {
   const authError = await requireAdmin()
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   if ((count ?? 0) > SELECT_ALL_CAP) {
     return NextResponse.json(
       {
-        error: `조건에 맞는 POI가 ${count}건이라 한 번에 선택할 수 있는 상한(${SELECT_ALL_CAP}건)을 넘습니다. 필터를 좁혀주세요.`,
+        error: `조건에 맞는 장소가 ${count}건이라 한 번에 선택할 수 있는 상한(${SELECT_ALL_CAP}건)을 넘습니다. 필터를 좁혀주세요.`,
       },
       { status: 422 }
     )

@@ -69,8 +69,8 @@ async function ok(body: unknown) {
   return result.preview
 }
 
-describe('지점 모드 — 겹침 알림', () => {
-  it('지점 직접: 이미 드랍이 있는 지점 수와 안내 문장을 낸다', async () => {
+describe('장소 모드 — 겹침 알림', () => {
+  it('장소 직접: 이미 드랍이 있는 장소 수와 안내 문장을 낸다', async () => {
     // P1에는 활성 시스템 드랍이 1개(drop-existing) 있고 P2에는 없다
     const p = await ok(LIST_ITEMS)
     expect(p).toMatchObject({
@@ -82,15 +82,15 @@ describe('지점 모드 — 겹침 알림', () => {
       candidateBadgeCount: 1,
       problem: null,
     })
-    expect(p.overlapNotice).toBe('이미 드랍이 있는 지점이 1곳이에요. 이 지점에는 있던 드랍 위에 겹쳐서 놓여요.')
+    expect(p.overlapNotice).toBe('이미 드랍이 있는 장소가 1곳이에요. 이 장소에는 있던 드랍 위에 겹쳐서 놓여요.')
   })
 
-  it('지점 직접: 드랍이 없는 지점만 고르면 겹침 0이고 안내 문장도 없다', async () => {
+  it('장소 직접: 드랍이 없는 장소만 고르면 겹침 0이고 안내 문장도 없다', async () => {
     const p = await ok(LIST_COLLECTIONS)
     expect(p).toMatchObject({ requested: 1, overlappedPoiCount: 0, overlapNotice: null, problem: null })
   })
 
-  it('종류+개수: 이미 드랍이 있는 지점이 있어도 겹침은 0이다', async () => {
+  it('종류+개수: 이미 드랍이 있는 장소가 있어도 겹침은 0이다', async () => {
     const p = await ok(CATEGORY_ITEMS)
     expect(p).toMatchObject({
       requested: 5,
@@ -111,9 +111,9 @@ describe('지점 모드 — 겹침 알림', () => {
 })
 
 describe('대상 판정 — 예정 시각 기준, 문제는 200의 problem', () => {
-  it('운영이 끝난 지점은 problem이다', async () => {
+  it('운영이 끝난 장소는 problem이다', async () => {
     const p = await ok({ ...LIST_ITEMS, poi_ids: [P1, P_INACTIVE] })
-    expect(p.problem).toContain('운영이 끝난 지점 1건')
+    expect(p.problem).toContain('운영이 끝난 장소 1건')
     expect(p.eligiblePoiCount).toBe(1)
   })
 
@@ -183,10 +183,10 @@ describe('입력 오류와 읽기 실패', () => {
     expect(await preview(null)).toMatchObject({ ok: false, status: 400 })
   })
 
-  it('없는 지점 종류는 400이다', async () => {
+  it('없는 장소 종류는 400이다', async () => {
     const result = await preview({ ...CATEGORY_ITEMS, poi_category: 'nowhere' })
     expect(result).toMatchObject({ ok: false, status: 400 })
-    expect(!result.ok && result.error).toContain('지점 종류를 찾을 수 없어요')
+    expect(!result.ok && result.error).toContain('장소 종류를 찾을 수 없어요')
   })
 
   it('대상 읽기가 실패하면 500이고 DB 원문은 응답에 없다', async () => {
@@ -196,7 +196,7 @@ describe('입력 오류와 읽기 실패', () => {
     expect(!result.ok && result.error).toBe('예약 대상을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.')
   })
 
-  it('지점 종류 확인이 실패해도 500이다', async () => {
+  it('장소 종류 확인이 실패해도 500이다', async () => {
     db.failReads.add('poi_categories')
     const result = await preview(CATEGORY_ITEMS)
     expect(result).toMatchObject({ ok: false, status: 500 })
@@ -216,24 +216,24 @@ describe('summarizeSchedulePreview — 순수 요약', () => {
     ...overrides,
   })
 
-  it('지점 직접은 활성 드랍이 있는 지점 수를 센다', () => {
+  it('장소 직접은 활성 드랍이 있는 장소 수를 센다', () => {
     const p = summarizeSchedulePreview({ poiMode: 'list', poiIds: [P1, P2], perPoiCount: 3, itemMode: 'items', badgeIds: [B_LIVE] }, AT_ISO, targets())
     expect(p).toMatchObject({ requested: 6, eligiblePoiCount: 2, overlappedPoiCount: 1, candidateBadgeCount: 1, problem: null })
   })
 
-  it('종류+개수는 활성 드랍이 있는 지점이 있어도 겹침을 세지 않는다', () => {
+  it('종류+개수는 활성 드랍이 있는 장소가 있어도 겹침을 세지 않는다', () => {
     const p = summarizeSchedulePreview({ poiMode: 'category', poiCategory: null, totalCount: 4, itemMode: 'items', badgeIds: [B_LIVE] }, AT_ISO, targets())
     expect(p).toMatchObject({ requested: 4, overlappedPoiCount: 0, overlapNotice: null })
   })
 
-  it('종류+개수는 maxActivePerPoi를 주면 한도 미만 지점만 센다', () => {
+  it('종류+개수는 maxActivePerPoi를 주면 한도 미만 장소만 센다', () => {
     const spec: AmbientDropScheduleSpec = { poiMode: 'category', poiCategory: null, totalCount: 4, itemMode: 'items', badgeIds: [B_LIVE] }
     expect(summarizeSchedulePreview(spec, AT_ISO, targets(), 1).eligiblePoiCount).toBe(1)
     expect(summarizeSchedulePreview(spec, AT_ISO, targets(), 3).eligiblePoiCount).toBe(2)
     expect(summarizeSchedulePreview(spec, AT_ISO, targets()).eligiblePoiCount).toBe(2)
   })
 
-  it('지점 직접은 maxActivePerPoi를 줘도 한도를 적용하지 않는다', () => {
+  it('장소 직접은 maxActivePerPoi를 줘도 한도를 적용하지 않는다', () => {
     const spec: AmbientDropScheduleSpec = { poiMode: 'list', poiIds: [P1, P2], perPoiCount: 1, itemMode: 'items', badgeIds: [B_LIVE] }
     expect(summarizeSchedulePreview(spec, AT_ISO, targets(), 1).eligiblePoiCount).toBe(2)
   })
@@ -244,7 +244,7 @@ describe('summarizeSchedulePreview — 순수 요약', () => {
       AT_ISO,
       targets({ pois: [], reason: 'no_eligible_poi' })
     )
-    expect(p.problem).toContain('놓을 수 있는 지점이 없어요')
+    expect(p.problem).toContain('놓을 수 있는 장소가 없어요')
     expect(p.eligiblePoiCount).toBe(0)
   })
 })

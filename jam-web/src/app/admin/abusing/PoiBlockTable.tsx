@@ -41,7 +41,7 @@ export function PoiBlockTable({ poiBlocks, totalCount }: PoiBlockTableProps) {
   const bulk = useSanctionBulk({
     bulkEndpoint: '/api/admin/abusing/poi-blocks/bulk',
     idsEndpoint: '/api/admin/abusing/poi-blocks/ids',
-    noun: 'POI 블록',
+    noun: '장소 블록',
     selectedIds,
     clear,
     filterQuery,
@@ -72,9 +72,9 @@ export function PoiBlockTable({ poiBlocks, totalCount }: PoiBlockTableProps) {
         }),
         columnHelper.accessor((r) => r.poi?.name ?? r.poi_id, {
           id: 'poi',
-          header: 'POI',
+          header: '장소',
           enableSorting: false,
-          meta: { label: 'POI' },
+          meta: { label: '장소' },
           cell: ({ row }) => <span>{row.original.poi?.name ?? row.original.poi_id.slice(0, 8)}</span>,
         }),
         columnHelper.accessor('reason', {
@@ -134,7 +134,7 @@ export function PoiBlockTable({ poiBlocks, totalCount }: PoiBlockTableProps) {
       <DataTable
         table={table}
         columnCount={columns.length}
-        emptyMessage="조건에 맞는 POI 블록이 없어요."
+        emptyMessage="조건에 맞는 장소 블록이 없어요."
         getRowHref={(row) => `/admin/users/${row.original.user_id}`}
       />
 

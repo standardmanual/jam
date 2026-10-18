@@ -74,18 +74,18 @@ export function SchedulePreviewNotice({
   } else if (preview.poiMode === 'category') {
     body = (
       <p className="text-sm text-foreground">
-        운영 중인 지점 {preview.eligiblePoiCount}곳에 흩어 드랍해요. 한도를 넘는 지점은 건너뛰고, 자리가 모자라면
+        운영 중인 장소 {preview.eligiblePoiCount}곳에 흩어 드랍해요. 한도를 넘는 장소는 건너뛰고, 자리가 모자라면
         있는 만큼만 드랍해요.
       </p>
     )
   } else if (preview.overlappedPoiCount > 0) {
     body = (
       <p className="text-sm text-amber-700">
-        이미 드랍이 있는 지점 {preview.overlappedPoiCount}곳(겹쳐서 놓여요)
+        이미 드랍이 있는 장소 {preview.overlappedPoiCount}곳(겹쳐서 놓여요)
       </p>
     )
   } else {
-    body = <p className="text-sm text-foreground">이미 드랍이 있는 지점은 없어요. 겹치지 않고 놓여요.</p>
+    body = <p className="text-sm text-foreground">이미 드랍이 있는 장소는 없어요. 겹치지 않고 놓여요.</p>
   }
 
   return (
@@ -297,23 +297,23 @@ export default function ScheduleForm({ nowIso, categories, books, tribes, onRegi
           </TabsContent>
           <TabsContent value="now">
             <p className="text-xs text-muted-foreground">
-              저장하지 않고 지정한 지점·아이템으로 지금 한 번만 드랍해요. 매일 배포 설정은 바뀌지 않아요.
+              저장하지 않고 지정한 장소·아이템으로 지금 한 번만 드랍해요. 매일 배포 설정은 바뀌지 않아요.
             </p>
           </TabsContent>
         </Tabs>
       </div>
 
       <div>
-        <span className="text-sm text-foreground">지점</span>
+        <span className="text-sm text-foreground">장소</span>
         <Tabs value={poiMode} onValueChange={(v) => setPoiMode(v as AmbientDropPoiMode)} className="mt-1">
           <TabsList>
-            <TabsTrigger value="list">지점 직접 선택</TabsTrigger>
-            <TabsTrigger value="category">지점 종류+개수</TabsTrigger>
+            <TabsTrigger value="list">장소 직접 선택</TabsTrigger>
+            <TabsTrigger value="category">장소 종류+개수</TabsTrigger>
           </TabsList>
           <TabsContent value="list" className="space-y-2">
             <PoiMultiSearchSelect selected={pois} onChange={setPois} />
             <label className="block max-w-[10rem]">
-              <span className="text-xs text-foreground">지점당 개수</span>
+              <span className="text-xs text-foreground">장소당 개수</span>
               <Input
                 type="number"
                 min={1}
@@ -329,7 +329,7 @@ export default function ScheduleForm({ nowIso, categories, books, tribes, onRegi
               value={poiCategory ?? ALL_CATEGORY_VALUE}
               onValueChange={(v) => setPoiCategory(v === ALL_CATEGORY_VALUE ? null : v)}
             >
-              <SelectTrigger className="w-auto min-w-[10rem]" aria-label="지점 종류 선택">
+              <SelectTrigger className="w-auto min-w-[10rem]" aria-label="장소 종류 선택">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent container={themeContainer ?? undefined}>

@@ -218,7 +218,7 @@ export async function POST(req: NextRequest) {
         .join(', ')
       const hardBlocking = references.blockingTotal + references.cascadeTotal
       if (hardBlocking > 0) {
-        skipped.push({ id, reason: `발급·드랍·지점 연결 이력 ${hardBlocking}건(${hitLabels})` })
+        skipped.push({ id, reason: `발급·드랍·장소 연결 이력 ${hardBlocking}건(${hitLabels})` })
       } else if (references.total > 0) {
         skipped.push({ id, reason: `콘텐츠 참조 ${references.total}건 남음(${hitLabels}) — 참조 정리 먼저 필요` })
       } else {

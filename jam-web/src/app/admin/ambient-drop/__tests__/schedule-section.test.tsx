@@ -126,9 +126,9 @@ describe('ScheduleList', () => {
 
   it('결과 문장: 완료는 드랍 수·겹침, 건너뜀·실패는 오류 원문 없이 사유 문장', () => {
     expect(rowOf(html, 'r-done')).toContain('5개를 드랍했어요(요청 6개).')
-    expect(rowOf(html, 'r-done')).toContain('이미 드랍이 있던 지점 2곳에 겹쳐 드랍했어요.')
-    expect(rowOf(html, 'r-skipped')).toContain('실행 시각에 드랍할 수 있는 지점이 없었어요')
-    expect(rowOf(html, 'r-failed')).toContain('지점에 드랍을 만드는 중 오류가 났어요')
+    expect(rowOf(html, 'r-done')).toContain('이미 드랍이 있던 장소 2곳에 겹쳐 드랍했어요.')
+    expect(rowOf(html, 'r-skipped')).toContain('실행 시각에 드랍할 수 있는 장소가 없었어요')
+    expect(rowOf(html, 'r-failed')).toContain('장소에 드랍을 만드는 중 오류가 났어요')
     expect(rowOf(html, 'r-missed')).toContain('3시간이 지나도록 실행되지 않았어요')
   })
 
@@ -138,7 +138,7 @@ describe('ScheduleList', () => {
     expect(rowOf(html, 'r-scheduled')).not.toContain('title=')
   })
 
-  it('지점·아이템은 이름 2개까지 보이고 나머지는 「외 N」이다', () => {
+  it('장소·아이템은 이름 2개까지 보이고 나머지는 「외 N」이다', () => {
     const row = rowOf(html, 'r-scheduled')
     expect(row).toContain('성수 카페, 서울숲 외 1곳')
     expect(row).toContain('커피콩')
@@ -183,20 +183,20 @@ describe('SchedulePreviewNotice', () => {
     expect(renderToStaticMarkup(<SchedulePreviewNotice preview={null} />)).toBe('')
   })
 
-  it('지점 직접 + 겹침이면 「이미 드랍이 있는 지점 N곳(겹쳐서 놓여요)」를 보인다', () => {
+  it('장소 직접 + 겹침이면 「이미 드랍이 있는 장소 N곳(겹쳐서 놓여요)」를 보인다', () => {
     const out = renderToStaticMarkup(<SchedulePreviewNotice preview={{ ...base, overlappedPoiCount: 2 }} />)
-    expect(out).toContain('이미 드랍이 있는 지점 2곳(겹쳐서 놓여요)')
+    expect(out).toContain('이미 드랍이 있는 장소 2곳(겹쳐서 놓여요)')
   })
 
   it('종류+개수 모드는 흩어 드랍하는 안내를 보인다', () => {
     const out = renderToStaticMarkup(<SchedulePreviewNotice preview={{ ...base, poiMode: 'category', eligiblePoiCount: 7 }} />)
-    expect(out).toContain('운영 중인 지점 7곳에 흩어 드랍해요. 한도를 넘는 지점은 건너뛰고, 자리가 모자라면 있는 만큼만 드랍해요.')
+    expect(out).toContain('운영 중인 장소 7곳에 흩어 드랍해요. 한도를 넘는 장소는 건너뛰고, 자리가 모자라면 있는 만큼만 드랍해요.')
   })
 
   it('problem이면 빨간 경고로 그 문장을 보인다', () => {
-    const out = renderToStaticMarkup(<SchedulePreviewNotice preview={{ ...base, problem: '예정 시각에 놓을 수 없는 대상이 있어요(운영이 끝난 지점 1건).' }} />)
+    const out = renderToStaticMarkup(<SchedulePreviewNotice preview={{ ...base, problem: '예정 시각에 놓을 수 없는 대상이 있어요(운영이 끝난 장소 1건).' }} />)
     expect(out).toContain('text-red-600')
-    expect(out).toContain('운영이 끝난 지점 1건')
+    expect(out).toContain('운영이 끝난 장소 1건')
   })
 
   it('입력이 바뀌어 낡았으면 흐리게 하고 다시 확인하라고 알린다', () => {
@@ -219,8 +219,8 @@ describe('ScheduleForm 첫 렌더', () => {
 
   it('시각·두 탭·합계 줄이 보이고 등록 버튼은 막혀 있다', () => {
     const out = renderToStaticMarkup(form)
-    expect(out).toContain('지점 직접 선택')
-    expect(out).toContain('지점 종류+개수')
+    expect(out).toContain('장소 직접 선택')
+    expect(out).toContain('장소 종류+개수')
     expect(out).toContain('아이템 직접 선택')
     expect(out).toContain('컬렉션 선택')
     expect(out).toContain('한 예약 최대 100개')
@@ -235,9 +235,9 @@ describe('ScheduleForm 첫 렌더', () => {
     expect(preview).toContain('disabled=""')
   })
 
-  it('첫 화면에는 지점 직접 모드의 칸만 있고 종류+개수 칸은 본문에 없다', () => {
+  it('첫 화면에는 장소 직접 모드의 칸만 있고 종류+개수 칸은 본문에 없다', () => {
     const out = renderToStaticMarkup(form)
-    expect(out).toContain('지점당 개수')
+    expect(out).toContain('장소당 개수')
     expect(out).not.toContain('총 개수')
   })
 })
@@ -264,7 +264,7 @@ describe('AmbientDropForm 이력·구역 위치', () => {
   )
 
   it('이력의 예약 실행은 [예약] 요청·드랍·겹침 줄로 보인다', () => {
-    expect(out).toContain('[예약] 요청 4개 · 드랍 3개 · 겹친 지점 1곳')
+    expect(out).toContain('[예약] 요청 4개 · 드랍 3개 · 겹친 장소 1곳')
     expect(out).toContain('[자동]')
   })
 

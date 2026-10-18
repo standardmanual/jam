@@ -165,7 +165,7 @@ const USER_PHRASE: Partial<Record<ConditionKey, (c: BadgeCondition) => string | 
   // 「충족」은 폐지어다(UX_WRITING_GUIDELINE.md, 커밋 00ead78f) — `DualAxisGauge`의
   // "두 조건을 동시에 채워야 해요"와 같은 어순으로 맞춘다.
   same_activity: (c) => (c.same_activity === true ? '한 번의 활동에서 동시에 채워야 해요' : null),
-  poi_id: () => '지정된 지점에서 체크인',
+  poi_id: () => '지정된 장소에서 체크인',
   // 코드값(single_distance_km 등)을 그대로 노출하지 않는다 — 레지스트리 select 라벨로 치환
   // (레지스트리 `detail`과 같은 폴백 패턴: 못 찾으면 원래 값)
   personal_record_break_metric: (c) =>
@@ -211,7 +211,7 @@ const USER_PHRASE: Partial<Record<ConditionKey, (c: BadgeCondition) => string | 
   days_since_signup: (c) => `가입 후 ${c.days_since_signup}일 이상`,
   signup_recent_active_days: (c) => `최근 30일 동안 ${c.signup_recent_active_days}일 이상 활동`,
   weekly_active_days: (c) => `한 주(월~일)에 ${c.weekly_active_days}일 이상 활동`,
-  same_spot_checkin_days: (c) => `같은 지점에 ${c.same_spot_checkin_days}일 이상 체크인`,
+  same_spot_checkin_days: (c) => `같은 장소에 ${c.same_spot_checkin_days}일 이상 체크인`,
 }
 
 /**

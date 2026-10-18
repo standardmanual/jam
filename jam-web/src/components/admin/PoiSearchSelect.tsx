@@ -89,7 +89,7 @@ export default function PoiSearchSelect({
             setOpen(true)
             setQuery('')
           }}
-          placeholder={placeholder ?? '지점 이름 검색...'}
+          placeholder={placeholder ?? '장소 이름 검색...'}
           className="flex-1 bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
         />
         {allowClear && value && (

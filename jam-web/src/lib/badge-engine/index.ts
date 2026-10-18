@@ -405,7 +405,7 @@ export function evaluateConditionDetailed(
 
   // poi_id는 GPS 경로 매칭 파이프라인(matchPoisForActivity)에서만 발급 — 엔진 내 평가 불가
   if (condition.poi_id !== undefined) {
-    return { pass: false, reason: 'GPS 경로 매칭으로 별도 발급', actual: '-', required: 'POI 반경 내 경유' }
+    return { pass: false, reason: 'GPS 경로 매칭으로 별도 발급', actual: '-', required: '장소 반경 내 경유' }
   }
 
   // 수치 검사 필드가 하나도 없는 조건은 발급하지 않는다 — 알 수 없는 필드나 필터 성격 필드만

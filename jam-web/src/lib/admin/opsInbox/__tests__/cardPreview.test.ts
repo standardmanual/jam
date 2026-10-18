@@ -198,7 +198,7 @@ describe('previewOf — 레시피 (티켓 20261007_1401)', () => {
 })
 
 describe('previewOf — 드랍 (티켓 20261007_1401)', () => {
-  it('지점 직접은 이름·지점당 개수, 배지는 이름 두 개와 외 N개로 요약한다', () => {
+  it('장소 직접은 이름·장소당 개수, 배지는 이름 두 개와 외 N개로 요약한다', () => {
     const view = previewOf(
       card(
         { starts_at: '2026-10-10T00:00:00.000Z', copy: { title: '한강 드랍' }, resource: { poi_ids: ['p-1', 'p-2', 'p-3'], per_poi_count: 2, badge_ids: [B1, B2, B3] } },
@@ -212,7 +212,7 @@ describe('previewOf — 드랍 (티켓 20261007_1401)', () => {
       type: 'drop',
       title: '한강 드랍',
       scheduledAtText: '2026.10.10 09:00',
-      poiLine: '한강공원, 서울숲 외 1곳 × 지점당 2개',
+      poiLine: '한강공원, 서울숲 외 1곳 × 장소당 2개',
       itemLine: '비 맞은 러너, 우산 수집가 외 1개',
     })
   })

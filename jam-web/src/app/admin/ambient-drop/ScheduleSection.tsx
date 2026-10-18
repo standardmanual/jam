@@ -165,7 +165,7 @@ export default function ScheduleSection({
       <div>
         <h2 className="font-bold mb-1">날짜 예약</h2>
         <p className="text-muted-foreground text-xs">
-          날짜(한국 시각 정시)·지점·아이템을 정해 두면 그 시각에 한 번 드랍해요. 예약 배포 설정은 쓰지도 바꾸지도
+          날짜(한국 시각 정시)·장소·아이템을 정해 두면 그 시각에 한 번 드랍해요. 예약 배포 설정은 쓰지도 바꾸지도
           않아요. 드랍한 뒤에는 내리지 않아요. 실행 전에는 취소하거나 시각을 바꿀 수 있고, 내용을 바꾸려면
           취소하고 새로 등록해요. 「지금」을 고르면 저장 없이 바로 한 번 드랍해요.
         </p>
@@ -227,7 +227,7 @@ export default function ScheduleSection({
           <DialogHeader>
             <DialogTitle>드랍 시각 수정</DialogTitle>
             <DialogDescription>
-              지점·아이템은 바꾸지 않고 시각만 바꿔요. 내용을 바꾸려면 취소하고 새로 등록해 주세요.
+              장소·아이템은 바꾸지 않고 시각만 바꿔요. 내용을 바꾸려면 취소하고 새로 등록해 주세요.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-wrap items-center gap-2">

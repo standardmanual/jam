@@ -84,7 +84,7 @@ export default function PoiMultiSearchSelect({ selected, onChange, placeholder }
             setOpen(true)
           }}
           onFocus={() => setOpen(true)}
-          placeholder={placeholder ?? '지점 이름 검색...'}
+          placeholder={placeholder ?? '장소 이름 검색...'}
         />
         {open && hasCriteria && (
           <div className="absolute z-20 mt-1 w-full bg-white border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto">
@@ -117,7 +117,7 @@ export default function PoiMultiSearchSelect({ selected, onChange, placeholder }
       </div>
 
       {selected.length === 0 ? (
-        <p className="text-xs text-muted-foreground">선택한 지점이 없어요.</p>
+        <p className="text-xs text-muted-foreground">선택한 장소가 없어요.</p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {selected.map((s) => (

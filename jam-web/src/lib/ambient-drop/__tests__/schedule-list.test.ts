@@ -77,7 +77,7 @@ async function listItems() {
 }
 
 describe('실행 결과 — 오류 원문은 버리고 분류만 남긴다', () => {
-  const RAW_LOOKUP = '대상 조회 실패: poi(예약 지점)[0~0] 조회 실패: permission denied for table poi'
+  const RAW_LOOKUP = '대상 조회 실패: poi(예약 장소)[0~0] 조회 실패: permission denied for table poi'
   const RAW_UNEXPECTED = 'duplicate key value violates unique constraint "poi_drops_pkey"'
   const RAW_INSERT = '개체 선발급+배치 전부 실패'
 
@@ -139,11 +139,11 @@ describe('실행 결과 — 오류 원문은 버리고 분류만 남긴다', () 
     const { schedules } = await listItems()
     expect(schedules[0].outcome).toMatchObject({
       reason: 'no_eligible_poi',
-      excludedSummary: '운영이 끝난 지점 1건, 노출 중이 아닌 컬렉션 2건',
+      excludedSummary: '운영이 끝난 장소 1건, 노출 중이 아닌 컬렉션 2건',
     })
   })
 
-  it('겹쳐 놓은 지점 수와 만들지 못한 개수를 그대로 싣는다', async () => {
+  it('겹쳐 놓은 장소 수와 만들지 못한 개수를 그대로 싣는다', async () => {
     addSchedule({ status: 'done', result: failedResult({ requested: 6, spawned: 4, failed: 2, overlappedPoiCount: 1 }) })
     const { schedules } = await listItems()
     expect(schedules[0].outcome).toMatchObject({ requested: 6, spawned: 4, failed: 2, overlappedPoiCount: 1 })
@@ -273,18 +273,18 @@ describe('listAmbientDropSchedules — 목록', () => {
 
 describe('이름 맵', () => {
   function nameTheWorld() {
-    for (const p of db.tables.poi) p.name = `지점-${String(p.id).slice(-2)}`
+    for (const p of db.tables.poi) p.name = `장소-${String(p.id).slice(-2)}`
     for (const b of db.tables.badges) b.name = `아이템-${String(b.id).slice(-2)}`
     for (const c of db.tables.item_books) c.name = `컬렉션-${String(c.id).slice(-2)}`
   }
 
-  it('목록에 나온 지점·아이템·컬렉션의 이름만 읽는다', async () => {
+  it('목록에 나온 장소·아이템·컬렉션의 이름만 읽는다', async () => {
     nameTheWorld()
     addSchedule({ poi_ids: [P1, P2], badge_ids: [B_LIVE] })
     addSchedule({ item_mode: 'collections', badge_ids: [], collection_ids: [BOOK_LIVE] })
     const { names } = await listItems()
     expect(names).toEqual({
-      pois: { [P1]: '지점-01', [P2]: '지점-02' },
+      pois: { [P1]: '장소-01', [P2]: '장소-02' },
       badges: { [B_LIVE]: '아이템-11' },
       collections: { [BOOK_LIVE]: '컬렉션-21' },
     })

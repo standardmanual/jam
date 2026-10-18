@@ -170,14 +170,14 @@ export default function MissionConditionSection({
         )}
         {missionType === 'checkin' && (
           <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2">
-            <FieldLabel htmlFor="mc-poi">목표 지점</FieldLabel>
+            <FieldLabel htmlFor="mc-poi">목표 장소</FieldLabel>
             <PoiSearchSelect
               value={fields.poiId}
               initialLabel={poiIdInitialLabel}
-              placeholder="지점 이름 검색..."
+              placeholder="장소 이름 검색..."
               onChange={(id) => setField('poiId', id)}
             />
-            <FieldMessage>이 지점에 체크인(매칭 배지 발급)하면 달성돼요.</FieldMessage>
+            <FieldMessage>이 장소에 체크인(매칭 배지 발급)하면 달성돼요.</FieldMessage>
           </div>
         )}
         {missionType === 'item_collect' && (

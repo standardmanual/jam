@@ -150,7 +150,7 @@ export function formatMissionDryRunSummary({ bundle, payload, errors, warnings =
         : '결과: 통과'
   )
   if (dbChecksSkipped) {
-    lines.push('※ DB 읽기 검사(제목 중복·보상 배지·조건 배지·조건 지점 존재)가 빠진 요약이에요. 컨펌 근거로 쓰지 말고, 서비스 키가 있는 환경(메인 폴더)에서 다시 돌려요.')
+    lines.push('※ DB 읽기 검사(제목 중복·보상 배지·조건 배지·조건 장소 존재)가 빠진 요약이에요. 컨펌 근거로 쓰지 말고, 서비스 키가 있는 환경(메인 폴더)에서 다시 돌려요.')
   }
 
   if (errors.length > 0) {

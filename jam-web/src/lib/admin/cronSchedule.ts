@@ -42,7 +42,7 @@ export interface CronOccurrence {
 }
 
 const CRON_LABELS: Record<string, string> = {
-  '/api/cron/poi-cleanup': 'POI 정리',
+  '/api/cron/poi-cleanup': '장소 정리',
   '/api/cron/notifications': '알림 발송',
   '/api/cron/ambient-drop': '앰비언트 드랍',
   '/api/cron/external-inputs': '외부 입력 동기화',

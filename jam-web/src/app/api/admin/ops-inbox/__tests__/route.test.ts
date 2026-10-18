@@ -689,7 +689,7 @@ describe('POST /api/admin/ops-inbox', () => {
     })
   })
 
-  describe('패턴 번호·지점 카테고리 (티켓 20261007_1745)', () => {
+  describe('패턴 번호·장소 카테고리 (티켓 20261007_1745)', () => {
     it('형식이 틀린 번호(P-07·7·p07)는 201이고 항목 형식 오류로 남으며 열은 NULL, 원본에는 그대로 있다', async () => {
       const body = makeBundle({
         items: [
@@ -741,7 +741,7 @@ describe('POST /api/admin/ops-inbox', () => {
       expect(h.state.tables.ops_bundle_items[0].pattern_no).toBeNull()
     })
 
-    it('없는 지점 카테고리 slug는 201이고 항목 형식 오류이며, 있는 slug와 빈 배열은 오류가 없다', async () => {
+    it('없는 장소 카테고리 slug는 201이고 항목 형식 오류이며, 있는 slug와 빈 배열은 오류가 없다', async () => {
       const res = await submit(
         makeBundle({
           items: [
@@ -755,7 +755,7 @@ describe('POST /api/admin/ops-inbox', () => {
       expect(res.status).toBe(201)
       const json = await res.json()
       expect(json.format_errors).toHaveLength(1)
-      expect(json.format_errors[0]).toMatch(/^items\[2\]\.knobs\.place_category: 없는 지점 카테고리예요 — "zoo"/)
+      expect(json.format_errors[0]).toMatch(/^items\[2\]\.knobs\.place_category: 없는 장소 카테고리예요 — "zoo"/)
       expect(h.state.tables.ops_bundle_items.map((row) => (row.format_errors as string[]).length)).toEqual([0, 0, 1])
     })
 
@@ -774,7 +774,7 @@ describe('POST /api/admin/ops-inbox', () => {
       expect((await submit(makeBundle())).status).toBe(201)
     })
 
-    it('지점 카테고리 목록을 읽지 못하면 500이고 아무것도 저장하지 않으며 슬랙 글도 없다(같은 본문을 다시 내면 받는다)', async () => {
+    it('장소 카테고리 목록을 읽지 못하면 500이고 아무것도 저장하지 않으며 슬랙 글도 없다(같은 본문을 다시 내면 받는다)', async () => {
       h.state.failCategories = true
       const res = await submit(makeBundle())
 

@@ -257,14 +257,14 @@ export function validateOpsPlaceCategory(knobs: unknown, path: string, slugs?: R
   const at = `${path}.knobs.place_category`
   const value = knobs.place_category
   if (!Array.isArray(value) || !value.every(isNonEmptyString)) {
-    return [`${at}: 지점 카테고리 slug를 문자열로 넣은 배열이어야 해요(받은 값: ${describeShort(value)}).`]
+    return [`${at}: 장소 카테고리 slug를 문자열로 넣은 배열이어야 해요(받은 값: ${describeShort(value)}).`]
   }
   if (!slugs) return []
   const missing = value.filter((slug) => !slugs.has(slug))
   if (missing.length === 0) return []
   const listed = missing.slice(0, MAX_LISTED_VALUES).map(describeValue).join(', ')
   const rest = missing.length > MAX_LISTED_VALUES ? ` 외 ${missing.length - MAX_LISTED_VALUES}개` : ''
-  return [`${at}: 없는 지점 카테고리예요 — ${listed}${rest}. 카테고리 slug를 확인해 주세요.`]
+  return [`${at}: 없는 장소 카테고리예요 — ${listed}${rest}. 카테고리 slug를 확인해 주세요.`]
 }
 
 /**

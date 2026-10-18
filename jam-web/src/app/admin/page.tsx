@@ -33,7 +33,7 @@ interface AdminDashboardPageProps {
 
 const SHORTCUTS = [
   { label: '배지 등록', href: '/admin/badges/new', icon: IconPlus },
-  { label: 'POI 등록', href: '/admin/poi/new', icon: IconMapPinPlus },
+  { label: '장소 등록', href: '/admin/poi/new', icon: IconMapPinPlus },
   { label: '컬렉션 등록', href: '/admin/itembooks/new', icon: IconNotes },
   { label: '시뮬레이터 실행', href: '/admin/simulator', icon: IconDeviceGamepad2 },
 ]

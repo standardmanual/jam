@@ -39,7 +39,7 @@ export default function PoiReviewFilters({ categories, naverCategories }: PoiRev
 
   return (
     <DataTableToolbar actions={<DataTableSortSelect options={SORT_OPTIONS} defaultValue="created_desc" />}>
-      <DataTableSearch placeholder="POI 이름으로 검색..." />
+      <DataTableSearch placeholder="장소 이름으로 검색..." />
 
       <DataTableFacetedFilter
         title="배정 카테고리"

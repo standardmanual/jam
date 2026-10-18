@@ -65,9 +65,9 @@ export default async function AdminPoiReviewPage({ searchParams }: AdminPoiRevie
     <div className="space-y-6 p-4 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold md:text-3xl">POI 검토 큐</h1>
+          <h1 className="text-2xl font-bold md:text-3xl">장소 검토 큐</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            자동수집은 중단됐습니다(티켓 20260907_1811) — 신규 항목은 대부분 &apos;POI
+            자동수집은 중단됐습니다(티켓 20260907_1811) — 신규 항목은 대부분 &apos;장소
             임시등록&apos;으로 만든 비활성 건입니다. 이름을 눌러 편집 화면에서 정보를 확인·수정한
             뒤 이 목록의 &apos;활성화&apos; 버튼을 눌러주세요. 배정 카테고리가 지도 노출 대상이면
             바로 노출되고, 아니면 검토 완료 처리만 됩니다 — 노출 여부를 다시 조정하려면 편집
@@ -76,7 +76,7 @@ export default async function AdminPoiReviewPage({ searchParams }: AdminPoiRevie
         </div>
         <Link href="/admin/poi">
           <Button variant="outline" className="w-full sm:w-auto">
-            POI 관리로 돌아가기
+            장소 관리로 돌아가기
           </Button>
         </Link>
       </div>

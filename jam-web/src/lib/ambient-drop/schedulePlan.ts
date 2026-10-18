@@ -92,7 +92,7 @@ export function planScheduleDrops(input: PlanScheduleDropsInput): ScheduledDropP
     poiSlots = targets.pois.flatMap((poi) => Array.from({ length: spec.perPoiCount }, () => poi.id))
     overlappedPoiCount = targets.pois.filter((poi) => poi.activeSystemCount > 0).length
   } else {
-    if (maxActivePerPoi === undefined) throw new Error('종류+개수 모드의 배치 계획에는 지점당 한도(maxActivePerPoi)가 필요해요')
+    if (maxActivePerPoi === undefined) throw new Error('종류+개수 모드의 배치 계획에는 장소당 한도(maxActivePerPoi)가 필요해요')
     const activeByPoi = new Map(targets.pois.map((poi) => [poi.id, poi.activeSystemCount]))
     const candidatePoiIds = targets.pois.filter((poi) => poi.activeSystemCount < maxActivePerPoi).map((poi) => poi.id)
     eligiblePoiCount = candidatePoiIds.length

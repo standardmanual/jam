@@ -188,7 +188,7 @@ describe('check — 가정 3의 고정 문장', () => {
   it.each([
     ['보상 배지 존재', missionItem({ reward_badge_ids: [BADGE_ID] }), '보상으로 정한 배지가 없거나 삭제됐어요', BADGE_ID],
     ['조건 배지 존재', missionItem({ mission_type: 'item_collect', condition_json: { badge_id: BADGE_ID } }), '달성 조건의 배지가 없거나 삭제됐어요', BADGE_ID],
-    ['조건 지점 존재', missionItem({ mission_type: 'checkin', condition_json: { poi_id: POI_ID } }), '달성 조건의 지점을 찾을 수 없어요', POI_ID],
+    ['조건 장소 존재', missionItem({ mission_type: 'checkin', condition_json: { poi_id: POI_ID } }), '달성 조건의 장소를 찾을 수 없어요', POI_ID],
   ])('%s 실패 → 「%s」이고 칼럼 이름·ID는 detail에만 있다', async (_label, item, reason, missingId) => {
     const db = new FakeDb()
     const failure = await checkOf(db, item)

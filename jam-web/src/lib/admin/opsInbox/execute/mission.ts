@@ -37,7 +37,7 @@ const MISSION_MESSAGES = {
   duplicate: '같은 제목의 미션이 이미 있고 기간이 겹쳐요',
   rewardBadgeMissing: '보상으로 정한 배지가 없거나 삭제됐어요',
   conditionBadgeMissing: '달성 조건의 배지가 없거나 삭제됐어요',
-  conditionPoiMissing: '달성 조건의 지점을 찾을 수 없어요',
+  conditionPoiMissing: '달성 조건의 장소를 찾을 수 없어요',
   checkReadFailed: '등록 전 확인 중 DB를 읽지 못했어요',
   checkFailed: '등록 전 확인을 통과하지 못했어요',
   createFailed: '미션을 만들지 못했어요',
@@ -55,7 +55,7 @@ const REASON_BY_CHECK_LABEL: Readonly<Record<string, string>> = {
   '제목 중복': MISSION_MESSAGES.duplicate,
   '보상 배지 존재': MISSION_MESSAGES.rewardBadgeMissing,
   '조건 배지 존재': MISSION_MESSAGES.conditionBadgeMissing,
-  '조건 지점 존재': MISSION_MESSAGES.conditionPoiMissing,
+  '조건 장소 존재': MISSION_MESSAGES.conditionPoiMissing,
 }
 
 /** DB를 읽지 못했을 때 검사가 남기는 실패 문장의 앞부분(`registerChecks/shared.ts`·`mission.ts`). */

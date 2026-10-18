@@ -48,9 +48,9 @@ const ACTION_VERB: Record<string, string> = {
 type ConfirmAction = 'activate' | 'deactivate' | 'delete'
 
 const CONFIRM_META: Record<ConfirmAction, { level: 1 | 2 | 3; title: string; verb: string }> = {
-  activate: { level: 1, title: 'POI 활성화', verb: '활성화' },
-  deactivate: { level: 2, title: 'POI 비활성화', verb: '비활성화' },
-  delete: { level: 3, title: 'POI 삭제', verb: '삭제' },
+  activate: { level: 1, title: '장소 활성화', verb: '활성화' },
+  deactivate: { level: 2, title: '장소 비활성화', verb: '비활성화' },
+  delete: { level: 3, title: '장소 삭제', verb: '삭제' },
 }
 
 export function PoiTable({ pois, badgeMap, categoryLabelMap, categories, totalCount }: PoiTableProps) {
@@ -279,7 +279,7 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap, categories, totalCo
       <DataTable
         table={table}
         columnCount={columns.length}
-        emptyMessage="등록된 POI가 없습니다."
+        emptyMessage="등록된 장소가 없습니다."
         getRowHref={(row) => `/admin/poi/${row.original.id}`}
       />
 
@@ -293,7 +293,7 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap, categories, totalCo
             }
           }}
           level={2}
-          title="POI 비활성화"
+          title="장소 비활성화"
           verb="비활성화"
           count={1}
           impact={<>지도·체크인·드랍에서 제외됩니다.</>}
@@ -317,12 +317,12 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap, categories, totalCo
           count={confirmAction === 'delete' ? (deletePreview?.processed.length ?? selectedIds.length) : selectedIds.length}
           impact={
             confirmAction === 'deactivate' && dryRunImpact ? (
-              <>선택한 POI 중 지금 활성 상태인 POI {dryRunImpact.activeCount}개가 비활성화됩니다.</>
+              <>선택한 장소 중 지금 활성 상태인 장소 {dryRunImpact.activeCount}개가 비활성화됩니다.</>
             ) : confirmAction === 'delete' && deletePreview ? (
               deletePreview.skipped.length > 0 ? (
-                <>선택한 POI 중 {deletePreview.skipped.length}건은 참조 이력이 있어 삭제에서 제외됩니다.</>
+                <>선택한 장소 중 {deletePreview.skipped.length}건은 참조 이력이 있어 삭제에서 제외됩니다.</>
               ) : (
-                <>선택한 POI를 모두 삭제할 수 있습니다.</>
+                <>선택한 장소를 모두 삭제할 수 있습니다.</>
               )
             ) : null
           }
@@ -347,7 +347,7 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap, categories, totalCo
           }
         }}
         level={1}
-        title="POI 카테고리 일괄 변경"
+        title="장소 카테고리 일괄 변경"
         verb="카테고리 변경"
         count={selectedIds.length}
         confirmDisabled={!bulkCategory}

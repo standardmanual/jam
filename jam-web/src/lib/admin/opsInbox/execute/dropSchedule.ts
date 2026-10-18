@@ -35,7 +35,7 @@ export type DropSchedulePayload = DropScheduleRegisterPayload & { created_by: st
 /** 응답·결정 기록·슬랙에 나가는 사유(티켓 20261002_2306 가정 3). */
 const DROP_MESSAGES = {
   formatInvalid: '드랍 예약 형식이 맞지 않아요',
-  poiCategoryNotFound: '지점 종류를 찾을 수 없어요',
+  poiCategoryNotFound: '장소 종류를 찾을 수 없어요',
   targetReadFailed: '드랍 대상을 확인하지 못했어요',
   createFailed: '드랍 예약을 만들지 못했어요',
   undoStarted: '이미 실행이 시작돼 드랍 예약을 지우지 않았어요',
@@ -106,8 +106,8 @@ export const DROP_SCHEDULE_HANDLER: ExecuteHandler<DropSchedulePayload> = {
     // 지점 종류. 종류가 없으면 놓을 지점도 없다. 읽지 못하면 통과시키지 않는다.
     if (spec.poiMode === 'category' && spec.poiCategory) {
       const read = await service.from('poi_categories').select('slug').eq('slug', spec.poiCategory).maybeSingle()
-      if (read.error) return { reason: DROP_MESSAGES.targetReadFailed, detail: `지점 종류 확인 실패: ${read.error.message}` }
-      if (!read.data) return { reason: DROP_MESSAGES.poiCategoryNotFound, detail: '지점 종류 행이 없어요' }
+      if (read.error) return { reason: DROP_MESSAGES.targetReadFailed, detail: `장소 종류 확인 실패: ${read.error.message}` }
+      if (!read.data) return { reason: DROP_MESSAGES.poiCategoryNotFound, detail: '장소 종류 행이 없어요' }
     }
 
     // 예정 시각 기준 대상 판정. 걸린 대상이 하나라도 있거나 놓을 대상이 없으면 그 문장이 사유다(쉬운 문장, ID 없음).

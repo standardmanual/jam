@@ -105,7 +105,7 @@ export async function createAmbientDropSchedule(
       return {
         ok: false,
         status: 400,
-        error: '지점 종류를 찾을 수 없어요. 선택한 종류가 지워졌거나 잘못된 값이에요. 지점 종류를 다시 선택해 주세요.',
+        error: '장소 종류를 찾을 수 없어요. 선택한 종류가 지워졌거나 잘못된 값이에요. 장소 종류를 다시 선택해 주세요.',
       }
     }
   }

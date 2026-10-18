@@ -956,7 +956,7 @@ export const CONDITION_FIELDS = [
   }),
   field({
     key: 'poi_id',
-    label: '지점',
+    label: '장소',
     unit: null,
     role: 'filter',
     input: 'text',
@@ -964,8 +964,8 @@ export const CONDITION_FIELDS = [
     // 엔진 내 평가 불가지만 «모르는 필드»가 아니다 — evaluateConditionDetailed가 전용
     // 분기로 항상 fail 처리하고, GPS 경로 매칭 파이프라인이 별도로 발급한다.
     evaluation: 'external',
-    chip: () => '지점 지정',
-    detail: () => '지점 지정 (체크인으로 발급)',
+    chip: () => '장소 지정',
+    detail: () => '장소 지정 (체크인으로 발급)',
   }),
   field({
     key: 'prerequisite_badge_names',
@@ -1784,7 +1784,7 @@ export const CONDITION_FIELDS = [
         {
           field: 'checkinCategoryCountCategory',
           kind: 'select',
-          label: '지점 카테고리',
+          label: '장소 카테고리',
           // 실제 선택지(poi_categories)는 DB 테이블 기준이라 정적으로 선언할 수 없다 —
           // 어드민 화면(BadgeConditionSection.tsx)이 이 필드만 동적으로 주입한다.
           options: [],
@@ -2142,7 +2142,7 @@ export const CONDITION_FIELDS = [
   }),
   field({
     key: 'same_spot_checkin_days',
-    label: '같은 지점 체크인 일수',
+    label: '같은 장소 체크인 일수',
     unit: '일',
     role: 'meta',
     input: 'integer',
@@ -2151,13 +2151,13 @@ export const CONDITION_FIELDS = [
     step: 1,
     direction: 'higher',
     evaluation: 'external',
-    chip: (c) => `같은 지점 ${c.same_spot_checkin_days}일↑`,
-    detail: (c) => `같은 지점에 서로 다른 ${c.same_spot_checkin_days}일 이상 체크인`,
+    chip: (c) => `같은 장소 ${c.same_spot_checkin_days}일↑`,
+    detail: (c) => `같은 장소에 서로 다른 ${c.same_spot_checkin_days}일 이상 체크인`,
     form: integerForm('sameSpotCheckinDays', {
       section: 'meta',
-      label: '같은 지점 체크인 일수',
+      label: '같은 장소 체크인 일수',
       placeholder: '10',
-      help: '지점마다 체크인한 날짜를 세고, 가장 많은 지점의 일수로 판정해요. 같은 날 여러 번 체크인해도 1일이에요. 가입한 날부터 세요.',
+      help: '장소마다 체크인한 날짜를 세고, 가장 많은 장소의 일수로 판정해요. 같은 날 여러 번 체크인해도 1일이에요. 가입한 날부터 세요.',
     }),
   }),
 ] as const

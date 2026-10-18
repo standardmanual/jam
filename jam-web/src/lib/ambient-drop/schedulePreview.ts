@@ -23,7 +23,7 @@ export type PreviewAmbientDropScheduleResult =
 // 아래 두 문장은 `createAmbientDropSchedule`(scheduleStore.ts)과 같다 — 등록과 미리 확인이 다른 말을 하지 않게 한다
 const TARGET_CHECK_FAILED = '예약 대상을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.'
 const CATEGORY_NOT_FOUND =
-  '지점 종류를 찾을 수 없어요. 선택한 종류가 지워졌거나 잘못된 값이에요. 지점 종류를 다시 선택해 주세요.'
+  '장소 종류를 찾을 수 없어요. 선택한 종류가 지워졌거나 잘못된 값이에요. 장소 종류를 다시 선택해 주세요.'
 
 /**
  * 종류+개수 모드에서 고른 지점 종류가 있는지 확인한다. 문제가 없으면 null.
@@ -69,7 +69,7 @@ export function summarizeSchedulePreview(
     overlappedPoiCount,
     overlapNotice:
       overlappedPoiCount > 0
-        ? `이미 드랍이 있는 지점이 ${overlappedPoiCount}곳이에요. 이 지점에는 있던 드랍 위에 겹쳐서 놓여요.`
+        ? `이미 드랍이 있는 장소가 ${overlappedPoiCount}곳이에요. 이 장소에는 있던 드랍 위에 겹쳐서 놓여요.`
         : null,
     candidateBadgeCount: targets.badgePool.length,
     problem: describeScheduleTargetProblems(targets),

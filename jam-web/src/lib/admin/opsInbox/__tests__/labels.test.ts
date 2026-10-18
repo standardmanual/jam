@@ -158,10 +158,10 @@ describe('formatErrorPathLabel · parseFormatErrorPath', () => {
     expect(parseFormatErrorPath('items[2].shape')).toEqual({ itemPosition: 2, label: '카드 모양' })
   })
 
-  it('패턴 번호·지점 카테고리 이름표(티켓 20261007_1745)', () => {
+  it('패턴 번호·장소 카테고리 이름표(티켓 20261007_1745)', () => {
     expect(formatErrorPathLabel('items[0].pattern_no')).toBe('패턴 번호')
-    expect(formatErrorPathLabel('items[0].knobs.place_category')).toBe('지점 카테고리')
-    expect(parseFormatErrorPath('items[4].knobs.place_category')).toEqual({ itemPosition: 4, label: '지점 카테고리' })
+    expect(formatErrorPathLabel('items[0].knobs.place_category')).toBe('장소 카테고리')
+    expect(parseFormatErrorPath('items[4].knobs.place_category')).toEqual({ itemPosition: 4, label: '장소 카테고리' })
   })
 
   it('제안 패턴 이름표(티켓 20261007_1746): resource.pattern… 경로는 「제안 패턴」을 앞에 붙여 원고 용어로 부른다', () => {

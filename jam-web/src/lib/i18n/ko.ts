@@ -159,9 +159,9 @@ export const ko = {
 
     // 상세 시트 라벨
     /** 드랍/픽업이 일어난 지점 — '체크인'이 아니라 지점 정보다(20260826_004 경계 규칙 3) */
-    rowPlace: '지점',
+    rowPlace: '장소',
     /** 체크인 배지 획득 이벤트에서 체크인한 지점 */
-    rowCheckinPlace: '체크인 지점',
+    rowCheckinPlace: '체크인 장소',
     rowResult: '결과',
     rowRewardBadges: '보상 배지',
     rowRewardPoints: '보상 포인트',
@@ -238,7 +238,7 @@ export const ko = {
       pickup: { title: '픽업', description: '근처에 누군가 흘리고 간 아이템이 있어요. 먼저 픽업하는 사람이 임자예요.' },
       mix_fail: { title: '믹스', description: '재료 두 개를 믹스하면 무엇이 나올지 아무도 몰라요.' },
       mix_success: { title: '레시피', description: '레시피를 알면 결과가 달라져요. 이번엔 제대로 믹스해 봐요.' },
-      drop: { title: '드랍', description: '내가 만든 아이템을 지점에 드랍하면, 지나가던 누군가가 픽업해 가요.' },
+      drop: { title: '드랍', description: '내가 만든 아이템을 장소에 드랍하면, 지나가던 누군가가 픽업해 가요.' },
       browse: { title: '둘러보기', description: '다음에 도전할 미션과 내 트라이브의 이야기를 미리 살펴봐요.' },
     },
     /** 2단계 그리드 아래 연출 표시 한 줄(2026-09-28 확정, 티켓 20260927_2125 T2b) —
@@ -250,7 +250,7 @@ export const ko = {
     /** 2단계 단계 기록 실패 토스트 — 위와 같은 이유로 배지를 다시 누르면 재시도된다. */
     bagStepSaveFailed: '저장에 실패했어요. 배지를 다시 눌러 주세요.',
     /** 3단계 가상 지도 POI 마커 이름(신규 문구, 2026-09-28 확정, 티켓 20260927_2126). */
-    pickupMarkerLabel: '근처 드랍 지점',
+    pickupMarkerLabel: '근처 드랍 장소',
     /** 3단계 단계 기록 실패 토스트 — 위와 같은 이유로 다시 누르면 재시도된다. */
     pickupStepSaveFailed: '저장에 실패했어요. 다시 눌러 주세요.',
     /** 4~5단계(mix_fail·mix_success) 단계 기록 실패 토스트 — 위와 같은 이유로 다시 누르면
@@ -397,7 +397,7 @@ export const ko = {
     emptyActivityTitle: '아직 획득한 배지가 없어요',
     emptyActivityBody: 'Strava를 동기화하고 활동하면 배지를 획득할 수 있어요',
     emptyCheckinTitle: '아직 획득한 체크인 배지가 없어요',
-    emptyCheckinBody: '산, 지하철역 같은 지점을 지나는 활동이 기록되면 자동으로 획득돼요',
+    emptyCheckinBody: '산, 지하철역 같은 장소를 지나는 활동이 기록되면 자동으로 획득돼요',
     emptyItembookTitle: '아직 컬렉션이 없어요',
     emptyItembookBody: '아이템배지를 획득하면 컬렉션이 나타납니다',
 
@@ -410,7 +410,7 @@ export const ko = {
     conditionTitle: '획득 조건',
     /** 체크인 배지 획득 조건 — 이 한 문장이 유일한 정본이다(20260826_004).
      *  이전에는 배지 상세·컬렉션 힌트·빈 상태에 6가지 버전이 흩어져 있었다. */
-    conditionCheckinBody: '연결된 지점을 지나는 활동이 기록되면 자동으로 획득돼요. 체크인할 때마다 이력이 쌓여요.',
+    conditionCheckinBody: '연결된 장소를 지나는 활동이 기록되면 자동으로 획득돼요. 체크인할 때마다 이력이 쌓여요.',
 
     earnHistoryTitle: '획득 이력',
     earnHistoryCount: '총 {count}회',
@@ -588,10 +588,10 @@ export const ko = {
     historyUnknownUser: '알 수 없는 유저',
     obtainByDrop: '활동 드랍',
     obtainByDropEvent: '이벤트 드랍',
-    obtainByPickup: '지점 픽업',
+    obtainByPickup: '장소 픽업',
     obtainBySystem: '시스템 지급',
-    eventDropped: '지점 드랍',
-    eventPickedUp: '지점 픽업',
+    eventDropped: '장소 드랍',
+    eventPickedUp: '장소 픽업',
 
     /**
      * ADR 0001 — /api/inventory/items GET 500 응답 (티켓 20260915_2243)
@@ -622,15 +622,15 @@ export const ko = {
   drops: {
     // 20260908_1754: PoiCarouselModal의 dialog aria-label — 화면에 노출되지 않고
     // 스크린리더에만 전달된다.
-    poiCarouselAriaLabel: '지점 드랍·픽업',
+    poiCarouselAriaLabel: '장소 드랍·픽업',
     /** 캐러셀 내부 지점 목록 자체의 aria-label(티켓 20260915_2237) — 위 다이얼로그 라벨과는
      *  별개로, 목록을 순회하는 캐러셀 요소에 붙는다. */
-    poiCarouselListAriaLabel: '근처 지점 목록',
+    poiCarouselListAriaLabel: '근처 장소 목록',
     locationUnsupported: '이 브라우저는 위치 기능을 지원하지 않아요',
     locationDenied: '위치 권한을 허용해 주세요',
     retry: '다시 시도',
     locating: '위치 확인 중',
-    loadPoiFailed: '주변 지점을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+    loadPoiFailed: '주변 장소를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
     // 20260826_002: '드랍 목록 로드 실패'·'인벤토리 로드 실패'는 개발자용 축약 문구였다.
     // 가이드의 [현상]→[원인/해결책] 구조 + 해요체로 다시 썼다.
     // 20260916_0825: "드랍된 아이템"은 §1.1 사용자 언어 원칙과 어긋나는 시스템 시점 표현이라
@@ -647,8 +647,8 @@ export const ko = {
     // 문구에 숫자를 박지 말고 상수를 주입한다({m}).
     outOfRange: '{name}까지 {distance}m 남았어요. {m}m 이내로 이동하면 드랍하거나 픽업할 수 있어요.',
     exploring: '주변 탐색 중',
-    noNearbyPlaces: '주변 {m}m에 드랍/픽업할 수 있는 지점이 없어요',
-    moveCloser: '지점에서 {m}m 이내로 가면 드랍/픽업할 수 있어요',
+    noNearbyPlaces: '주변 {m}m에 드랍/픽업할 수 있는 장소가 없어요',
+    moveCloser: '장소에서 {m}m 이내로 가면 드랍/픽업할 수 있어요',
     checking: '확인 중',
     droppedBy: '{name}이(가) 드랍',
     anonymous: '익명',
@@ -664,8 +664,8 @@ export const ko = {
     dropFailed: '지금은 드랍할 수 없어요. 잠시 후 다시 시도해 주세요.',
     // 반경은 pickupOutOfRange와 같은 이유로 DROP_RADIUS_METERS 상수를 주입한다.
     // 20260916_0825: pickupOutOfRange와 표현이 어긋나 있던 것을 같은 문형으로 통일.
-    dropOutOfRange: '여기서는 아직 드랍할 수 없어요. 지점에서 {m}m 안에 들어와야 해요.',
-    dropPoiNotFound: '이 지점 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+    dropOutOfRange: '여기서는 아직 드랍할 수 없어요. 장소에서 {m}m 안에 들어와야 해요.',
+    dropPoiNotFound: '이 장소 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
     // 20260916_0825: "찾을 수 없어요"는 원인을 말하지 않는 직역 반복이었다 — 실제로는
     // 인벤토리에서 이미 빠진 상태라는 뜻이라 그 사실을 그대로 말한다.
     dropItemNotFound: '이 아이템이 인벤토리에 없어요. 인벤토리를 새로고침해 주세요.',
@@ -717,12 +717,12 @@ export const ko = {
     // 상수가 바뀔 때 조용히 어긋난다(실제로 서버 에러 문구가 500m를 '50m'로 잘못 적고 있었다).
     // 20260916_0825: "드랍 지점"은 §1.3에 없는 조어라 "지점"으로 통일하고, dropOutOfRange와
     // 같은 문형으로 맞췄다.
-    pickupOutOfRange: '여기서는 아직 픽업할 수 없어요. 지점에서 {m}m 안에 들어와야 해요.',
+    pickupOutOfRange: '여기서는 아직 픽업할 수 없어요. 장소에서 {m}m 안에 들어와야 해요.',
     // 20260826_002 후속: 서버 원문으로 남아 있던 나머지 픽업 실패 경로를 코드화하면서 옮긴 문구.
     // 20260916_0825: "찾을 수 없어요"/"확인해 주세요" 직역 반복을 정리하고, §1.3에서 확정한
     // "새로고침" 표기로 고정했다(재요청인 "다시 시도"와는 구분되는 동작이라 뒤에 붙이지 않는다).
     pickupDropNotFound: '이 아이템은 벌써 사라졌어요. 목록을 새로고침해 주세요.',
-    pickupPoiNotFound: '이 지점 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+    pickupPoiNotFound: '이 장소 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
     // 20260830_1424: GPS 조작 감지 시 뜨는 문구지만 오탐(실내·터널 등 GPS 불안정) 가능성이
     // 낮지 않아 비난조를 피한다. 다만 "다른 지점 이용 가능" 같은 무마성 문구 대신, 실제
     // 상황([현상]: 비정상적으로 빠른 이동이 감지됨 — 이동속도 기준 노출은 UX_WRITING_GUIDELINE.md
@@ -731,7 +731,7 @@ export const ko = {
     // 타이밍을 계산할 수 있어서다.
     // 20260916_0825: 원인을 "비정상적으로 빠른 이동이 확인돼"로만 뭉뚱그리지 않고 실제
     // 판정 기준(이동 속도)을 그대로 드러내 [현상]→[원인]→[해결책] 구조를 갖춘다.
-    pickupPoiBlocked: '이 지점 근처에서 이동 속도가 너무 빨라 픽업을 인정하지 않았어요. 확인이 필요하면 문의해 주세요.',
+    pickupPoiBlocked: '이 장소 근처에서 이동 속도가 너무 빨라 픽업을 인정하지 않았어요. 확인이 필요하면 문의해 주세요.',
     // 20260916_0825: locationMissing과 "위치를 확인하지 못했어요/확인할 수 없어요" 직역이
     // 반복돼 표현을 통일했다.
     pickupLocationUnverified: '위치를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
@@ -1405,7 +1405,7 @@ export const ko = {
     noBadgesTitle: '아직 이 컬렉션에 등록된 배지가 없어요.',
     noBadgesBody: '관리자가 배지를 등록하면 여기에 표시돼요',
     checkinSectionTitle: '체크인 배지',
-    checkinHint: '체크인 배지는 연결된 지점을 지나는 활동이 기록되면 자동으로 채워져요',
+    checkinHint: '체크인 배지는 연결된 장소를 지나는 활동이 기록되면 자동으로 채워져요',
     checkinEarned: '획득',
     checkinNotEarned: '미획득',
     completedTitle: '컬렉션 완성!',
@@ -1452,7 +1452,7 @@ export const ko = {
     swapMissingParams: '요청이 제대로 전달되지 않았어요. 화면을 새로고침한 뒤 다시 골라 주세요.',
     inventoryNotFound: '인벤토리를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.',
     itemNotFound: '인벤토리에 없는 아이템이에요. 목록을 새로고침해 주세요.',
-    alreadyDropped: '장착할 수 없어요. 지점에 드랍해 둔 아이템이라, 픽업한 뒤에 장착할 수 있어요.',
+    alreadyDropped: '장착할 수 없어요. 장소에 드랍해 둔 아이템이라, 픽업한 뒤에 장착할 수 있어요.',
     notOwner: '내 아이템만 장착할 수 있어요',
     /** 다른 자리에 이미 장착 — 같은 자리에 이미 장착된 경우(`sameItem`)와 뜻이 뭉개지지
      *  않도록 "그 자리"를 명시해 구분한다 */
