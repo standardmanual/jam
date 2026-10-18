@@ -45,6 +45,8 @@ specs:
 9. **트라이브를 넘는 믹스 성공**: 성공 로그(`user_combine_success_logs.ingredient_badge_ids`)의 재료가 `badges.tribe_id` 기준 2개 이상 트라이브에 걸친 성공 횟수(추천).
 10. **챕터 조건의 판정 시점(카리나 기본값)**: 키는 등록하고 값은 `user_chapters.chapter_no`에서 읽는다. 챕터가 오르는 호출부(`chapter_add_score`·`chapter_start`를 부르는 앱 코드)는 아직 src에 없다(묶음 5). 그 호출부가 생기기 전에는 동기화 끝 판정(`JAM_SYNC_TRIGGERS`)에 얹고, 챕터 오름 직후 판정은 묶음 5가 연결한다.
 
+11. **3회 숨김·가지 SQL 243**: `badges.is_hidden`(기본 false), `badges.branch_key`(기본 NULL)을 덧붙이고 위 제약 4개를 둔다. 기존 배지는 기본값으로 모두 통과한다. 롤백 실측 9건(기존 행 숨김·가지 0, 옛 방식 INSERT 통과, 숨김+포인트 0+Common+가지 통과, 숨김+포인트 10 거부, 숨김+Epic 거부, 숨김+아이템 타입 거부, 잘못된 가지 거부, 숨김+레벨형(등급 없음) 통과)을 통과해 적용했다.
+
 ## 상세 요구사항
 
 ### 서비스/코드베이스 관점
@@ -68,7 +70,7 @@ specs:
 
 - **1회 시간대와 날 단위 세기** (`jam-web/src/lib/badge-engine/`): ① 시간대 구간 상수 한 곳(예: `timeBands.ts`)을 새로 만들고 KST 변환 함수를 둔다. `activityFilters.ts`의 `timeBandOf`(155~170줄, 새벽 4~8·아침 8~11·심야 22~4, `startDateLocal` 기준)·`inTimeRange`·`matchesDayOfMonth`·요일·월·계절 판정이 KST 기준 `startDate`를 쓰도록 바꾼다(시간대 이름은 스펙의 «새벽·오전·점심·오후·저녁·밤»으로 맞추고 `distinct_time_bands`의 개수 6은 그대로). `badgeConditionText.ts`의 `timeSlotLabel`(time_range 칩 표기)도 같은 상수를 쓴다. 드랍 엔진의 시간대 구간(`jamActionDropMetrics.ts` 근처 또는 `lib/ambient-drop`)을 같은 상수로 교체한다. ② `index.ts` `evaluateConditionDetailed`의 횟수 5종(`total_count` 636~641줄과 요일별 카운터 470~493줄, `season_count_all` 496~513줄, `weekly_count` 718~744줄, `monthly_count`, `season_count`)이 활동 건수가 아니라 고유 활동일(KST 날짜) 수를 센다. ③ 시험: 경계값 5·7·11·14·18·22시(KST, 해외 활동 포함), 같은 날 여러 번이 1로 세어지는지, 요일별 카운터, 소급 없음. 문서: `docs/service/badge-engine/`의 시간대·횟수 서술, `docs/service/content/ACTIVITY_BADGES.md`.
 - **2회 새 조건 키와 이용 조건 확인**: 새 JAM 조건 5가지(캡슐을 연 횟수, 잠긴 아이템 배지를 연 횟수, 잠긴 아이템 배지를 픽업한 횟수, 모은 다른 트라이브 아이템 배지의 종류 수, 트라이브를 넘는 믹스 레시피를 성공한 횟수)와 잼(지금까지 모은 잼, 한 주에 모은 잼)·챕터(도달한 챕터) 조건 키를 `conditionRegistry.ts`에 `evaluation: 'external'`로 더하고(`jamActionKeys.ts`·`jamActionMetrics.ts` 계열, `jamAction*.ts` 평가 모듈), 잼 값은 묶음 1의 잼 원장(마이그레이션 220), 챕터는 챕터 저장(221), 잠긴 개체 열기는 `inventory_item_events`(235)에서 읽는다. 판정 시점(캡슐 열기·잠긴 배지 열기·챕터 오르기 직후)은 `jamActionProgressTriggers.ts` 계열에 연결한다. 이용 조건(`daily_sync_count`, `sync.ts` 1249~1260줄)은 새 활동 있는 동기화만 센다는 것을 확인하고 비교표 서술이 낡았으면 고친다. 필요한 DB 읽기는 새 SQL 없이 되는지 확인하고, 안 되면 아현이 멈추고 보고한다(새 함수가 필요하면 SQL 승인 절차).
-- **3회 숨김·가지 칸과 막힌 조건·교통수단 구간**: 마이그레이션 242(`badges`에 `is_hidden`, 가지 분류 칸, 숨김이면 포인트 0 제약)를 카리나가 쓰고 승인·롤백 실측 뒤 적용한다. 앱: 배지함·트리·다음 목표·상세 응답을 만드는 서버 코드가 숨김 배지(받기 전)를 내리지 않는다(`badgeProgress.ts`와 `app/api/badges*`, 정확한 위치는 아현이 찾는다). 막힌 조건 세 가지는 pending 유지를 코드 주석과 문서에 명시한다. 모든 조건의 판정에서 교통수단 구간이 빠지는지 확인하고 빠진 곳을 고친다.
+- **3회 숨김·가지 칸과 막힌 조건·교통수단 구간**: 마이그레이션 243(`badges`에 `is_hidden`, `branch_key`(가지 7개 또는 NULL)와 제약 4개: 가지 값 제한, 숨김은 액티비티 배지만, 숨김이면 포인트 0, 숨김이면 등급은 Common 또는 없음)은 카리나가 쓰고 롤백 실측 9건 통과 뒤 공용 DB에 적용했고 생성 타입도 반영했다(242는 2회의 허용 키 확장에 쓰였다). 아현은 SQL을 새로 쓰지 않는다. 앱: 배지함·트리·다음 목표·상세 응답을 만드는 서버 코드가 숨김 배지(받기 전)를 내리지 않는다(`badgeProgress.ts`와 `app/api/badges*`, 정확한 위치는 아현이 찾는다). 막힌 조건 세 가지는 pending 유지를 코드 주석과 문서에 명시한다. 모든 조건의 판정에서 교통수단 구간이 빠지는지 확인하고 빠진 곳을 고친다.
 
 ### 회차 진행 기록
 

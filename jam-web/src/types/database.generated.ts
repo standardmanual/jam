@@ -357,6 +357,7 @@ export type Database = {
           background_image_url: string | null
           background_shader_id: string | null
           background_video_url: string | null
+          branch_key: string | null
           category: string | null
           condition_json: Json | null
           created_at: string
@@ -370,6 +371,7 @@ export type Database = {
           image_gen_params: Json | null
           image_source: string | null
           image_url: string | null
+          is_hidden: boolean
           item_book_id: string | null
           level: number | null
           name: string
@@ -394,6 +396,7 @@ export type Database = {
           background_image_url?: string | null
           background_shader_id?: string | null
           background_video_url?: string | null
+          branch_key?: string | null
           category?: string | null
           condition_json?: Json | null
           created_at?: string
@@ -407,6 +410,7 @@ export type Database = {
           image_gen_params?: Json | null
           image_source?: string | null
           image_url?: string | null
+          is_hidden?: boolean
           item_book_id?: string | null
           level?: number | null
           name: string
@@ -431,6 +435,7 @@ export type Database = {
           background_image_url?: string | null
           background_shader_id?: string | null
           background_video_url?: string | null
+          branch_key?: string | null
           category?: string | null
           condition_json?: Json | null
           created_at?: string
@@ -444,6 +449,7 @@ export type Database = {
           image_gen_params?: Json | null
           image_source?: string | null
           image_url?: string | null
+          is_hidden?: boolean
           item_book_id?: string | null
           level?: number | null
           name?: string
