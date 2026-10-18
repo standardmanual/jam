@@ -138,6 +138,10 @@ export async function GET(
       .maybeSingle()
     const earn = earnRaw as UserActivityBadgeRow | null
     if (!earn) {
+      // 받기 전 숨김 배지는 존재 자체를 알리지 않는다 — 없는 배지와 같은 응답이다(티켓 20261018_1815 3회)
+      if (badge.is_hidden === true) {
+        return NextResponse.json({ error: 'badge_not_found' }, { status: 404 })
+      }
       return NextResponse.json({ error: 'not_earned' }, { status: 404 })
     }
     stravaId = earn.triggered_by_strava_id

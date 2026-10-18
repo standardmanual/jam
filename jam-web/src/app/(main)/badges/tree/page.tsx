@@ -24,6 +24,8 @@ import {
 // (티켓 20260905_0031).
 import { badgeKindOf } from '@/lib/badge-engine/badgeKind'
 import { getMetricLabels } from '@/lib/badge-engine/metricLabels'
+// 숨김 배지(받기 전)는 이름·조건이 트리·다음 목표·개수 어디에도 내려가지 않게 여기서 거른다(티켓 20261018_1815 3회).
+import { excludeHiddenUnearned } from '@/lib/badge-engine/hiddenBadges'
 import type { SearchParamValue } from '@/lib/searchParams'
 import type { ActivityType, BadgeCondition, MissionExposureMode } from '@/types/database'
 import BadgeTreeClient from './BadgeTreeClient'
@@ -37,9 +39,9 @@ import { d } from '@/lib/i18n'
 const BADGE_PAGE_SIZE = 1000
 
 const BADGE_TREE_SELECT =
-  'id, name, rarity, level, family_key, description, image_url, activity_types, condition_json, sort_order'
+  'id, name, rarity, level, family_key, description, image_url, activity_types, condition_json, sort_order, is_hidden'
 
-type RawBadge = BadgeTreeSourceBadge & { level: number | null }
+type RawBadge = BadgeTreeSourceBadge & { level: number | null; is_hidden: boolean }
 
 /**
  * 활동 배지 전량을 페이지네이션으로 읽는다 — `badges/page.tsx`의 청킹 선례와 같은 태도.
@@ -150,18 +152,6 @@ export default async function BadgeTreePage({ searchParams }: Props) {
   if (missionsError) console.error('[badges/tree/page] missions(게이트 배지용) 조회 실패', missionsError)
   if (earnedBadgesError) console.error('[badges/tree/page] user_activity_badges(획득여부) 조회 실패', earnedBadgesError)
 
-  const badges: BadgeTreeSourceBadge[] = badgesRaw.map((b) => ({
-    id: b.id,
-    name: b.name,
-    rarity: b.rarity,
-    level: b.level,
-    family_key: b.family_key,
-    description: b.description,
-    image_url: b.image_url,
-    activity_types: b.activity_types,
-    condition_json: b.condition_json,
-    sort_order: b.sort_order,
-  }))
   // 숨김 게이트 미션(exposure_mode='hidden' 등)의 제목·이미지를 그대로 노출하지 않는다
   // (티켓 20260912_0158). 항목 자체는 남긴다 — 지워버리면 `missionByGatedBadgeId`에서
   // 빠져 이 배지의 게이트 그룹 자체가 사라지고, `hasUnfulfilledGate`가 «게이트 없음»으로
@@ -185,6 +175,22 @@ export default async function BadgeTreePage({ searchParams }: Props) {
       .map((r) => r.badge_id)
   )
   const earnedBadgeIds = Array.from(earnedBadgeIdSet)
+
+  // 받기 전 숨김 배지를 서버에서 뺀다 — 이후 트리·진행 후보(다음 목표)·선행 배지 잠금칩·조건 판정이 전부 이 목록만 본다.
+  // 이미 받은 숨김 배지는 남아 다른 배지처럼 그려진다. 숨김 배지가 다른 배지의 선행 조건이면 그 잠금칩도 함께 빠진다.
+  const visibleBadgesRaw = excludeHiddenUnearned(badgesRaw, earnedBadgeIdSet)
+  const badges: BadgeTreeSourceBadge[] = visibleBadgesRaw.map((b) => ({
+    id: b.id,
+    name: b.name,
+    rarity: b.rarity,
+    level: b.level,
+    family_key: b.family_key,
+    description: b.description,
+    image_url: b.image_url,
+    activity_types: b.activity_types,
+    condition_json: b.condition_json,
+    sort_order: b.sort_order,
+  }))
 
   // earnedBadgeIdSet도 선행 배지 잠금칩의 "이미 획득함" 판정에 쓰인다.
   const trees = buildBadgeActivityTrees(badges, missions, earnedBadgeIdSet)
@@ -221,7 +227,7 @@ export default async function BadgeTreePage({ searchParams }: Props) {
     candidates: ProgressCandidate[]
   }
   // 배지 종류 판정은 `badgeKind.ts` 한 곳이다 — 여기서 다시 선언하면 발급 엔진과 갈라진다.
-  const badgeById = new Map(badgesRaw.map((b) => [b.id, b]))
+  const badgeById = new Map(visibleBadgesRaw.map((b) => [b.id, b]))
   const progressOptionsFor = (id: string): BadgeProgressOptions => {
     const row = badgeById.get(id)
     if (!row) return {}

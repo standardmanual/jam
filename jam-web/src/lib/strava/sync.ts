@@ -55,6 +55,7 @@ import { computeUserPeriodMetrics, computeBadgeProgress } from '@/lib/badge-engi
 // 배지 «종류» 판정의 단일 출처 — 계열 프런티어 산출이 발급 엔진과 같은 기준을 본다
 // (티켓 20260905_0031, 0030이 넘긴 「레벨형 계열 통째 누락」 항목).
 import { badgeKindOf, isLeveledBadge, familyKeyOf } from '@/lib/badge-engine/badgeKind'
+import { excludeHiddenUnearned } from '@/lib/badge-engine/hiddenBadges'
 import {
   getJamActivityType,
   metersToKm,
@@ -450,6 +451,8 @@ interface FamilyProgressBadgeRow {
   family_key: string | null
   activity_types: ActivityType[] | null
   condition_json: BadgeCondition | null
+  /** 숨김 배지 — 받기 전에는 계열 진행 스냅샷(다음 목표)에도 싣지 않는다(티켓 20261018_1815 3회) */
+  is_hidden?: boolean | null
 }
 
 /**
@@ -545,7 +548,7 @@ async function updateFamilyProgressSnapshots(
     //    페이지네이션이나 「보유 계열만」 조회로 좁혀야 한다 (티켓 20260905_0031 재검증).
     const { data: badgesRaw, error: badgesError } = await supabase
       .from('badges')
-      .select('id, name, rarity, level, family_key, activity_types, condition_json')
+      .select('id, name, rarity, level, family_key, activity_types, condition_json, is_hidden')
       .eq('type', 'activity')
       .is('deleted_at', null)
       .not('activity_types', 'is', null)
@@ -581,7 +584,8 @@ async function updateFamilyProgressSnapshots(
     // 폴백 값에 `#name:` 접두어가 붙어 있어(`familyKeyOf`) 실제 이름과 충돌하지 않는다.
     type Family = { activityType: ActivityType; familyName: string; variants: FamilyProgressBadgeRow[] }
     const families = new Map<string, Family>()
-    for (const b of badges) {
+    // 받기 전 숨김 배지는 계열 그룹에서 뺀다 — 진행 스냅샷(`user_family_progress`)에 이름이 남지 않게 한다.
+    for (const b of excludeHiddenUnearned(badges, earnedBadgeIds)) {
       if (b.condition_json?.mission_reward) continue
       const activityType = b.activity_types?.[0]
       if (!activityType) continue

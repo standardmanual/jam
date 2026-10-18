@@ -183,6 +183,8 @@ Strava 동기화 실패 기록(마이그레이션 176, 값 추가 218). `failure
 | level | 무한레벨형의 레벨(Lv.1~∞). 등급형은 NULL. `level >= 1` |
 | family_key | 계열 식별자. 이름 문자열 대신 쓰는 안정적인 키. 활동 배지에만 채운다 |
 | sort_order | 표시 순서(오름차순). 계열 레일 1~99(계열 안 모든 등급이 같은 값을 공유) / 독립 발급 배지 101~ . **`0`은 «아직 설정하지 않음»이며 화면에서 맨 뒤로 밀린다** — 저장소의 다른 `sort_order`(`today_cards`·`tribes`·`item_books`)는 0이 앞이라는 반대 관습이므로, 배지에 한해 이 규약을 따른다 |
+| is_hidden | 숨김 배지(마이그레이션 243, 티켓 20261018_1815 3회). 기본 false. true이면 **받기 전까지** 배지 트리·다음 목표·상세·공유 응답·개수 어디에도 이름·조건이 내려가지 않는다(서버가 거른다 — BADGE_ENGINE_UNIFIED §2.18). 이미 받았으면 다른 배지와 같다. DB 제약: 액티비티 배지만(`badges_hidden_activity_only`), 포인트 0(`badges_hidden_no_points`), 등급은 Common 또는 없음(`badges_hidden_common_only`) |
+| branch_key | 배지 트리의 가지 분류(마이그레이션 243). 기본 NULL(분류 없음). 값: `rhythm`·`recovery`·`time_season`·`explore`·`attribute`·`milestone`·`jam_activity` 중 하나(`badges_branch_key_known`). 어드민 입력은 4-5, 화면 표기는 4-6 |
 | tribe_id | 소속 트라이브 (아이템 배지) |
 | item_book_id | 소속 컬렉션 (구조 역전 — 컬렉션이 배지 목록을 갖는 게 아니라 배지가 소속 컬렉션을 가짐) |
 | drop_weight / drop_condition_json | 드랍엔진 판정용 |

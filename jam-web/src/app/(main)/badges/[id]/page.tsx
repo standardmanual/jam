@@ -23,6 +23,7 @@ import { resolveStravaConnectionState } from '@/lib/strava/connection-state'
 import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
+import { excludeHiddenUnearned, isHiddenUnearned } from '@/lib/badge-engine/hiddenBadges'
 
 function isExpiringSoon(expiresAt: string | null): boolean {
   if (!expiresAt) return false
@@ -112,6 +113,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
   const badgeRow = badge as BadgeRow
   const earned = earnedRow as (UserActivityBadgeRow & { poi: PoiRow | null }) | null
+
+  // 숨김 배지는 받기 전까지 존재하지 않는 배지와 같은 404다 — 이름·조건·그림이 어디에도 내려가지 않는다
+  // (티켓 20261018_1815 3회). 조회 주체(`?u=` 대상 또는 나)가 받았으면 다른 배지처럼 보인다.
+  if (isHiddenUnearned(badgeRow, new Set(earned ? [badgeRow.id] : []))) notFound()
 
   // [20260819_011] 배경은 아래 고정 배경 레이어 한 곳에서만 그린다. TopNav에 배경을 한 번 더
   // 주입하면(20260818_003 동작) 헤더 박스와 레이어 박스의 비율이 달라 같은 이미지가 서로 다른
@@ -285,17 +290,22 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     // 아래 map에서 해당 항목만 걸러내 목록에서 빠지고 나머지 선행 배지는 그대로 유지한다.
     const { data: prereqBadgesRaw, error: prereqBadgesError } = await supabase
       .from('badges')
-      .select('id, name, image_url, description, rarity')
+      .select('id, name, image_url, description, rarity, is_hidden')
       .in('name', prereqs)
       .is('deleted_at', null)
     if (prereqBadgesError) console.error('[badges/[id]/page] 선행 배지 조회 실패', prereqBadgesError)
-    const prereqBadges = (prereqBadgesRaw ?? []) as {
-      id: string
-      name: string
-      image_url: string | null
-      description: string | null
-      rarity: string
-    }[]
+    // 받기 전 숨김 배지는 선행 배지 목록에서도 뺀다 — 이름·그림·설명이 이 화면으로 새지 않게 한다(티켓 20261018_1815 3회)
+    const prereqBadges = excludeHiddenUnearned(
+      (prereqBadgesRaw ?? []) as {
+        id: string
+        name: string
+        image_url: string | null
+        description: string | null
+        rarity: string
+        is_hidden: boolean
+      }[],
+      ownedBadgeIds
+    )
     prereqStatus = prereqs
       .map((name) => {
         const match = prereqBadges.find((b) => b.name === name)
