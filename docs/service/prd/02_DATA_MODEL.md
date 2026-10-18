@@ -275,7 +275,7 @@ badges / item_books / tribes 세 테이블이 같은 배경 컬럼 세트를 갖
   전부 덧붙이기이고 기본값이 «열림»이라 옛 프로덕션 코드와 이미 있는 개체(적용 당시 1,343행, 잠긴 개체 0행)는 그대로다.
   - `locked`(boolean, 기본 false): 잠긴 개체인가. 한 번 열면 false가 되고 다시 잠기지 않는다.
   - `unlock_required`(integer, nullable): 여는 데 필요한 잼의 양. **배정될 때 고정**하고 이후 어드민이 배지 값을 바꿔도 바뀌지 않는다. 열린 채 받은 개체는 NULL.
-  - `unlock_filled`(integer, 기본 0): 지금까지 채운 양. 채우기는 3-3이 만든다.
+  - `unlock_filled`(integer, 기본 0): 지금까지 채운 양. `locked_item_fill`이 올린다(마이그레이션 235).
   - `lock_reason`(`badge_locked` 잠김으로 만든 배지 / `rolled` 잠긴 채 배정됨 / `designated` 운영자가 지정함): 연 뒤에도 이력으로 남는다.
   - `unlocked_at`(timestamptz, nullable): 연 시각.
   - CHECK `inventory_items_lock_consistent`: 잠긴 개체는 `unlock_required`·`lock_reason`이 있고 `unlock_filled <= unlock_required`, `unlocked_at`이 비어 있다.
@@ -288,6 +288,22 @@ badges / item_books / tribes 세 테이블이 같은 배경 컬럼 세트를 갖
     `inventory_id`만 비우므로 이 트리거가 막지 못한다** — 드랍은 `/api/drops`가 호출 전에 잠김을 확인해 거절한다(묶음 4가 잠긴 채 드랍을 열 때 함께 고친다).
   - **잠긴 동안의 제한**(서버가 거절, 코드 `locked_item_not_allowed`): 컬렉션 장착·교체(`/api/itembooks/[id]/slot`), 믹스 재료(`combineRecipeAttempt`, 소각 전에 거절),
     드랍(`/api/drops`, 묶음 4 전까지). 트리거 오류 메시지도 같은 코드로 바꿔 응답한다. 화면의 안내는 3-6이다.
+- **채우기·열기 (JAM 2.0, 마이그레이션 235, 티켓 20261018_0053, 운영 로직 7.2·8.5절)** — 전부 덧붙이기다. 옛 테이블·함수·칸의 뜻은 바꾸지 않고 232·234의 캡슐 함수도 건드리지 않는다.
+  - 새 칸 `inventory_items.point_awarded_at`(timestamptz, nullable): 잠긴 개체를 열 때 배지 포인트를 준 시각. «한 일련번호에 한 번만» 주는 기록이다. 열린 채 받아 지급한 개체는 이 칸을 쓰지 않는다.
+  - 새 표 `inventory_item_events`(append-only, RLS만 켜고 클라이언트 정책 없음, service_role 전용): 개체가 거쳐 간 이력. `inventory_item_id`·`badge_id`(ON DELETE SET NULL), `serial_number`, `user_id`(그 일을 한 유저),
+    `event_type`(`received`·`slotted`·`unslotted`·`dropped`·`picked_up`·`consumed`·`locked`·`filled`·`unlocked`), `amount`(filled일 때 그 번에 채운 양), `filled_after`(채운 뒤 누적), `points_awarded`(unlocked일 때 준 포인트), `created_at`.
+    이번에는 `filled`·`unlocked`만 쓰고 나머지 종류는 묶음 4 이후가 이어 쓴다. 잠긴 아이템 배지를 연 횟수는 `event_type = 'unlocked'`를 세어 얻는다.
+  - 새 함수 `jam_fill_decide(p_remaining, p_balance, p_amount DEFAULT NULL) → jsonb`(IMMUTABLE, service_role만 실행): 얼마를 채울지 판정하는 읽기 전용 순수 함수다. `already_full`, `invalid_amount`, `exceeds_remaining`(남은 양 포함), `insufficient_jam` 순으로 검사하고
+    기본값은 남은 양, 가진 잼이 모자라면 가진 만큼이다. `capsule_fill`과 같은 규칙이고, 두 함수의 판정이 같은지는 롤백 실측이 같은 표로 비교한다. `capsule_fill`은 이 함수를 쓰지 않는다(캡슐 쪽 통일은 3-4 이후 필요하면).
+  - 새 함수 `locked_item_fill(p_user_id, p_item_id, p_amount DEFAULT NULL) → jsonb`(SECURITY DEFINER, service_role만 실행): 이용 정지 확인(`user_suspended`) → 개체 행 잠금(내 것이고 버려지거나 드랍되지 않은 개체가 아니면 `item_not_found`, 열린 개체면 `not_locked`)
+    → `jam_fill_decide` → `jam_apply(locked_item_badge_fill, 음수)` 한 줄 + `unlock_filled` 갱신 + 이력(`filled`) 한 줄이 한 트랜잭션. 성공하면 `applied`·`required`·`filled`·`remaining`·`balance`를 돌려준다.
+  - 새 함수 `locked_item_open(p_user_id, p_item_id) → jsonb`(SECURITY DEFINER, service_role만 실행): 이용 정지 확인 → 개체 행 잠금(`item_not_found`·`not_locked`) → 다 채웠는지 확인(`not_full`, `required`·`filled` 포함) → 같은 개체를 `locked = false`, `unlocked_at = now()`로 바꾼다(일련번호 그대로, 새로 뽑지 않음, 인벤토리 빈칸 불필요).
+    배지에 `point_reward`가 있고 `point_awarded_at`이 비어 있으면 `award_points(badge_point_reward)`로 연 유저에게 한 번 주고 칸을 채운다. 이력(`unlocked`) 한 줄까지 한 트랜잭션이다. 동시에 두 번 열어도 행 잠금 때문에 두 번째는 `not_locked`다. 포인트 지급이 실패하면 열기 전체가 되돌려진다.
+    성공하면 `itemId`·`badgeId`·`serialNumber`·`pointsAwarded`를 돌려준다. DB 안에서 포인트를 주므로 `awardPoints`의 알림(`notifyPointChange`)은 이 경로에서 나가지 않는다.
+  - API(앱은 위 함수를 부르기만 한다, 응답 모양은 `src/lib/inventory/lockedItemFill-contract.ts`): `GET /api/inventory/items/[itemId]/lock`(채운 양·필요량·남은 양·잼·`openable`, 이용 정지 중에도 허용), `POST .../fill { amount? }`(양의 정수만, 이용 정지 중 403 `user_suspended`,
+    `already_full`·`exceeds_remaining`·`invalid_amount` 400, `insufficient_jam`·`not_locked` 409, `item_not_found` 404), `POST .../open`(이용 정지 중 403, `not_full`(채운 양·필요량 포함)·`not_locked` 409, `item_not_found` 404, 그 밖의 오류 500).
+    열기 전에는 이름·그림·설명·컬렉션·트라이브·일련번호를 어떤 응답에도 싣지 않고, 열기 성공 응답에만 개체 정보를 싣는다(7.3절).
+  - 되돌림: 새 객체만 지운다. 채운 잼은 원장에 남아 지갑으로 돌아오지 않고, 열어서 준 포인트도 회수되지 않는다.
 
 ### custody_events (신규, 2026-08-29 — 티켓 20260829_2101)
 `InventoryItem` 한 개체의 점유(custody) 변화 이력(append-only). `Minted`/`UserDrop`/

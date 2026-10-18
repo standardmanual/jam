@@ -1648,6 +1648,21 @@ POST /api/admin/badges/reevaluate-all
 | 열기 응답 | 열린 개체는 이름·그림·등급·일련번호, 잠긴 개체는 이름·그림·일련번호·`badgeId` 없이 `locked`·등급·`unlockRequired`만 싣는다. 다음 캡슐의 `required`·`filled`를 함께 싣는다 |
 | 열기 거절 | 이용 정지 중 403(`user_suspended`), 다 채우지 못함(`not_full`)·빈칸 모자람(`insufficient_slots`, 응답에 `freeSlots`·`neededSlots`)·소속 트라이브 없음(`no_tribe`) 409, 그 밖의 오류(DB의 `invalid_items`·`inventory_not_found` 포함)는 500이고 내부 오류 원문은 싣지 않는다 |
 
+### 3.0-2 JAM 2.0 잠긴 아이템 배지 채우기와 열기 규칙 (2026-10-18, 티켓 20261018_0053, 운영 로직 7.2절)
+
+잠긴 개체의 채우기와 열기는 캡슐(§3.0-1)과 같은 규칙이다. 열기는 **획득이 아니고 새로 뽑지 않는다**(발급 엔진·드랍 정책·확률이 들어가지 않는다). 무엇이 나올지는 얻을 때 이미 정해져 있고 열기는 그것을 드러낸다.
+
+| 항목 | 규칙 |
+|---|---|
+| 채우기 | `locked_item_fill`. 판정은 `jam_fill_decide`(기본값 남은 양, 가진 잼이 모자라면 가진 만큼, 줄인 양, 남은 양 초과 거부)이고 `capsule_fill`과 같은 규칙이다. 한 번에 개체 하나, 나눠 채울 수 있고 채운 잼은 되돌리지 않는다. `jam_apply(locked_item_badge_fill, 음수)` 한 줄, 개체의 `unlock_filled` 갱신, 이력(`filled`) 한 줄이 한 트랜잭션이다 |
+| 열기 | `locked_item_open`. 다 채웠으면 같은 개체를 열린 상태로 바꾼다(`locked = false`, `unlocked_at` 기록, 일련번호 그대로). 이미 인벤토리 칸을 차지하므로 **빈칸이 필요 없다**(캡슐과 다른 점). 개체 행 잠금으로 동시에 두 번 열어도 한 번만 열리고, 다시 잠기지 않는다 |
+| 필요한 양 | 배정 때 개체에 고정된 `unlock_required`다(§3.0 «잠김 배정»). 열 때 배지 값을 다시 읽지 않는다 |
+| 포인트 | 배지의 `point_reward`는 열린 상태가 될 때 **연 유저에게 한 번만** 준다(`award_points`, 사유 `badge_point_reward`). `inventory_items.point_awarded_at`이 «이미 줬다» 기록이고 열기와 같은 트랜잭션에서 채운다. 잠긴 채 받은 개체는 연 때 주고, 열린 채 받은 개체는 받을 때 준다(`recordIssuedRewards`). 포인트 지급이 실패하면 열기 전체가 되돌려진다. DB 안에서 주므로 포인트 알림은 나가지 않는다 |
+| 이용 정지 | 앱이 `assertNotSuspended`로 RPC보다 먼저 막고 DB 함수가 한 번 더 막는다(403 `user_suspended`). 채운 양은 그대로 남는다. 상태 조회는 정지 중에도 허용한다 |
+| 이력 | `inventory_item_events`에 `filled`(그 번에 채운 양, 채운 뒤 누적)와 `unlocked`(준 포인트)를 남긴다. 잠긴 아이템 배지를 연 횟수(액티비티 배지 조건)는 `unlocked` 행을 센다 |
+| 응답 | 열기 전에는 이름·그림·설명·컬렉션·트라이브·일련번호를 어떤 응답에도 싣지 않는다(조회·채우기·거절 응답). 열기 성공 응답에만 개체 정보를 싣는다 |
+| 거절 | 이용 정지 403(`user_suspended`), `already_full`·`exceeds_remaining`·`invalid_amount` 400, `insufficient_jam`·`not_locked`·`not_full` 409, `item_not_found` 404 |
+
 ### 3.1 Layer 1 — 드랍 발생: 활동당 최소 1개 확정, 변동성은 희귀도로
 
 > 정책: **활동 1건 = 아이템배지 최소 1개 확정.** 변동보상의 불확실성은 "나오느냐"가 아니라 "무엇이·얼마나 좋은 게·몇 개 나오느냐"에 둔다.
