@@ -2,7 +2,7 @@
 id: "20261018_1814"
 category: BadgeEngine
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-10-18
 parent: "20261018_1811"
 specs:
@@ -83,16 +83,31 @@ specs:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 체크인 배지 서버를 운영 로직 11장에 맞췄다. 마이그레이션 241의 새 함수 `record_checkin_earn`이 유저·배지 단위 잠금 안에서 «이전 방문 수 세기, 방문 기록 넣기, 처음인지 판정»을 한 번에 한다(같은 활동 재호출은 `duplicate`).
+- 앱(`sync.ts` `processFetchedActivities`)은 `is_first`일 때만 `awardPoints(badge.point_reward)`를 한 번 준다. 지급이 실패해도 방문 기록·피드는 진행한다(실패는 `awardPoints`가 기록).
+- 공개 기간은 활동 시작 시각(`start_date`) 기준 «새로 받을 수 있는 기간»이다(순수 함수 `lib/poi/checkin-window.ts`, 경계 포함, NULL은 제한 없음). 기간 밖이면 방문 기록·포인트·피드 모두 남기지 않는다(사용자 결정 3).
+- 장소 연결 `poi_match` 발급 경로(레거시 호환 구간)를 지웠다. 이미 발급된 `user_activity_badges` 행은 그대로 둔다. 이용 정지·인정 판정·교통수단 구간은 입구와 `passedEntries`에서 이미 걸러진 뒤에 도는 것을 코드로 확인했다. 최신 10건 제한은 그대로다.
 
 ### 변경된 파일
 ```
--
+jam-web/supabase/migrations/241_checkin_earn_record.sql (카리나, 공용 DB 적용 완료)
+jam-web/src/types/database.generated.ts (카리나, record_checkin_earn 반영)
+jam-web/src/lib/strava/sync.ts
+jam-web/src/lib/poi/checkin-window.ts
+jam-web/src/lib/poi/__tests__/checkin-window.test.ts
+jam-web/src/lib/strava/__tests__/{sync-checkin-earn.test.ts, fake-checkin-earn.ts}
+jam-web/src/lib/strava/__tests__/{sync-checkin-usage-badge-hook, sync-jam-action-hook, sync-poi-checkin-shadow-ban, sync-qualification}.test.ts
+docs/service/prd/02_DATA_MODEL.md, docs/service/badge-engine/BADGE_ENGINE_UNIFIED.md, docs/service/SERVICE_OPERATIONS.md, docs/plan/jam2/service-redesign/현재 서비스 비교.md
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] SQL 241 롤백 실측 8건 통과(첫 호출, 두 번째 활동, 같은 활동 재호출, 다른 배지, 다른 유저, 같은 활동 다른 장소, 권한, SECURITY DEFINER), 적용 후 확인 쿼리 정상
+- [x] `scripts/verify.sh` 전항목 통과, CI verify 성공(커밋 `78338d59f`), 게이트(민지) PASS
+- [x] 공개 기간 경계 5건, 체크인 구간 10건(첫 방문 포인트, 반복, 같은 동기화 두 번째 활동, duplicate, 포인트 실패, RPC 오류, 기간 밖, 기간 종료 뒤 동기화, 기간 혼합), 옛 레거시 시험은 «발급되지 않는다»로 반전
+- [ ] 동시 동기화의 진짜 경합은 DB 한 연결로 시험하지 못했다(잠금 직렬화는 SQL 읽기로만 확인)
 
 ### 배포 정보
+- 마이그레이션 241은 공용 DB에 적용 완료(2026-10-18). 코드는 staging에 fast-forward 머지 후 push.
 
 ### 실행 지표
 > Workflow 완료 알림 `<usage>`(전체 토큰·소요·에이전트 수·도구 호출)와 결과의 `tokenUsage`
@@ -102,10 +117,15 @@ specs:
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
-| 합계 |  |  |  |  |  |
+| 1회 | 2 | 198,850 | 53,268 / 5,010 | 22분 55초 | 117 |
+| 합계 | 2 | 198,850 | 53,268 / 5,010 | 22분 55초 | 117 |
 
 ### 주요 의사결정 / 핵심 메모
+- 사용자 결정 1~4는 위 「사용자 결정」 절. 3번(기간 밖 방문 기록도 남기지 않음)은 추천과 다른 선택이다.
+- 포인트 지급은 DB 함수 안이 아니라 앱 `awardPoints`로 했다(포인트 알림·실패 기록 재사용). 단점: 판정 뒤 지급 호출 전에 프로세스가 죽으면 그 한 번의 포인트가 빠진다(재처리 대상).
+- 이미 받은 사용자에게 소급 지급하지 않는다(이전 방문 수가 1 이상이면 «처음»이 아니다).
 
 ### 잔여 이슈
--
+- 동시 동기화 경합은 실제 DB로 시험하지 못했다(위).
+- `SERVICE_OPERATIONS.md` 약 935줄의 섀도우밴 게이트 서술은 티켓 20261017_1426부터 낡았다(범위 밖, 후속 문서 정리).
+- 체크인 판정이 최신 10건만 보는 제한은 의도된 것으로 두었다. 옛 `poi_match` 발급 행 정리는 묶음 6.
