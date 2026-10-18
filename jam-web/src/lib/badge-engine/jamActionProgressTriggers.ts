@@ -18,8 +18,12 @@
 import type { JamActionTrigger } from './jamActionBadges'
 
 /**
- * 새 활동이 있는 동기화가 끝날 때 다시 볼 지표 — 주 키 5개.
+ * 새 활동이 있는 동기화가 끝날 때 다시 볼 지표 — 주 키 8개.
  * 보조 키(`signup_recent_active_days`)는 트리거가 아니라 `days_since_signup` 배지를 거르는 조건이라 넣지 않는다.
+ *
+ * 잼 2종(`jam_total_earned`·`jam_weekly_earned`)은 잼 정산(`settleActivities`)이 동기화 안에서 일어나므로 정산 뒤 여기서 본다.
+ * 챕터(`chapter_reached`)는 챕터를 올리는 호출부(`chapter_add_score`·`chapter_start`를 부르는 앱 코드)가 아직 없어(묶음 5)
+ * 그 전까지 동기화 끝에서 읽는다 — 챕터 오름 직후 판정은 묶음 5가 그 호출부에 연결한다(티켓 20261018_1815 결정 10).
  */
 export const JAM_SYNC_TRIGGERS: readonly JamActionTrigger[] = [
   'mission_complete_count',
@@ -27,6 +31,9 @@ export const JAM_SYNC_TRIGGERS: readonly JamActionTrigger[] = [
   'days_since_signup',
   'weekly_active_days',
   'same_spot_checkin_days',
+  'jam_total_earned',
+  'jam_weekly_earned',
+  'chapter_reached',
 ]
 
 /**
@@ -42,4 +49,18 @@ export const JAM_EMPTY_SYNC_TRIGGERS: readonly JamActionTrigger[] = ['days_since
  */
 export function jamTriggersForSlot(): JamActionTrigger[] {
   return ['collection_complete_count']
+}
+
+/**
+ * 캡슐을 열면 연 횟수와 다른 트라이브 아이템 종류 수를 다시 본다.
+ * 열면 개체가 인벤토리에 들어오고 캡슐은 트라이브를 가리지 않고 뽑으므로 두 값이 모두 바뀔 수 있다.
+ * 잠긴 채 나온 개체는 열지 않았으므로 `locked_item_open_count`는 보지 않는다.
+ */
+export function jamTriggersForCapsuleOpen(): JamActionTrigger[] {
+  return ['capsule_open_count', 'other_tribe_item_kinds_count']
+}
+
+/** 잠긴 아이템 배지를 열면 잠긴 개체를 연 횟수를 다시 본다. 가진 개체는 그대로라 종류 수는 보지 않는다 */
+export function jamTriggersForLockedItemOpen(): JamActionTrigger[] {
+  return ['locked_item_open_count']
 }

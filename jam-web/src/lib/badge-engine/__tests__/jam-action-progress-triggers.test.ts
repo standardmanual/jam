@@ -9,13 +9,22 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { JAM_EMPTY_SYNC_TRIGGERS, JAM_SYNC_TRIGGERS, jamTriggersForSlot } from '../jamActionProgressTriggers'
+import {
+  JAM_EMPTY_SYNC_TRIGGERS,
+  JAM_SYNC_TRIGGERS,
+  jamTriggersForCapsuleOpen,
+  jamTriggersForLockedItemOpen,
+  jamTriggersForSlot,
+} from '../jamActionProgressTriggers'
 import { JAM_ACTION_CONDITION_KEYS, JAM_ACTION_MODIFIER_KEYS } from '../jamActionBadges'
 
 describe('JAM_SYNC_TRIGGERS — 새 활동이 있는 동기화가 끝날 때', () => {
-  it('주 키 5개를 한 번에 판정한다', () => {
+  it('주 키 8개를 한 번에 판정한다 — 잼 2종·챕터는 챕터 호출부가 생기기 전까지 동기화 끝에서 읽는다(티켓 20261018_1815 결정 10)', () => {
     expect([...JAM_SYNC_TRIGGERS].sort()).toEqual(
       [
+        'chapter_reached',
+        'jam_total_earned',
+        'jam_weekly_earned',
         'collection_complete_count',
         'days_since_signup',
         'mission_complete_count',
@@ -52,10 +61,34 @@ describe('jamTriggersForSlot — 컬렉션 장착이 성공했을 때', () => {
   })
 })
 
+describe('jamTriggersForCapsuleOpen — 캡슐을 열었을 때 (티켓 20261018_1815)', () => {
+  it('캡슐 연 횟수와 다른 트라이브 아이템 종류 수를 다시 본다', () => {
+    expect(jamTriggersForCapsuleOpen()).toEqual(['capsule_open_count', 'other_tribe_item_kinds_count'])
+  })
+
+  it('호출할 때마다 새 배열을 돌려준다', () => {
+    const first = jamTriggersForCapsuleOpen()
+    first.push('chapter_reached')
+    expect(jamTriggersForCapsuleOpen()).toEqual(['capsule_open_count', 'other_tribe_item_kinds_count'])
+  })
+})
+
+describe('jamTriggersForLockedItemOpen — 잠긴 아이템 배지를 열었을 때 (티켓 20261018_1815)', () => {
+  it('잠긴 개체를 연 횟수만 다시 본다', () => {
+    expect(jamTriggersForLockedItemOpen()).toEqual(['locked_item_open_count'])
+  })
+})
+
 describe('돌려주는 모든 키는 JAM! 행동 지표 키다', () => {
-  it('세 규칙의 키가 JAM_ACTION_CONDITION_KEYS에 있다', () => {
+  it('모든 규칙의 키가 JAM_ACTION_CONDITION_KEYS에 있다', () => {
     const judged = new Set<string>(JAM_ACTION_CONDITION_KEYS)
-    for (const key of [...JAM_SYNC_TRIGGERS, ...JAM_EMPTY_SYNC_TRIGGERS, ...jamTriggersForSlot()]) {
+    for (const key of [
+      ...JAM_SYNC_TRIGGERS,
+      ...JAM_EMPTY_SYNC_TRIGGERS,
+      ...jamTriggersForSlot(),
+      ...jamTriggersForCapsuleOpen(),
+      ...jamTriggersForLockedItemOpen(),
+    ]) {
       expect(judged.has(key), `${key}가 JAM_ACTION_CONDITION_KEYS에 없다`).toBe(true)
     }
   })

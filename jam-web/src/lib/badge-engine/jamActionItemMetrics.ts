@@ -143,7 +143,11 @@ export function countCrossTribeCombines(
 
 // ── DB 읽기 ───────────────────────────────────────────────────────────────
 
-/** 배지 id → 소속 트라이브 id. 여러 번에 나눠 읽는다. 배지 행을 못 찾으면 맵에 없다 */
+/**
+ * 배지 id → 소속 트라이브 id. 여러 번에 나눠 읽는다. 배지 행을 못 찾으면 맵에 없다.
+ * `deleted_at` 필터를 걸지 않는다 — 노출·지급 판정이 아니라 «이미 가진 개체·이미 성공한 믹스의 재료가 어느 트라이브였나»를 읽는 이력성 조회이고,
+ * 소프트 삭제된 배지의 개체도 지금 가진 개체다(`destroyed_at`이 비어 있는 한).
+ */
 async function fetchBadgeTribes(supabase: SupabaseClient, badgeIds: readonly string[]): Promise<Map<string, string | null>> {
   const tribeOf = new Map<string, string | null>()
   for (const chunk of chunksOf([...new Set(badgeIds)], ID_CHUNK_SIZE)) {

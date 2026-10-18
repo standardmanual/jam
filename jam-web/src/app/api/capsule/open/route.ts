@@ -8,12 +8,14 @@
  * 거절: `not_full`·`insufficient_slots`·`no_tribe` 409(`insufficient_slots`는 응답에 지금 빈칸 수 `freeSlots`와 필요한 빈칸 수 `neededSlots`).
  * 그 밖의 오류는 500이고 내부 오류 원문은 싣지 않는다. 채운 잼은 거절·오류에서 그대로 남는다.
  */
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
 import { CapsuleError } from '@/lib/capsule/capsule'
 import type { CapsuleErrorResponse } from '@/lib/capsule/capsule-contract'
 import { openCapsule } from '@/lib/capsule/open'
+import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
+import { jamTriggersForCapsuleOpen } from '@/lib/badge-engine/jamActionProgressTriggers'
 import { UserSuspendedError } from '@/lib/suspension/suspension'
 import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
 
@@ -34,6 +36,9 @@ export async function POST() {
 
   try {
     const payload = await openCapsule(createServiceClient(), user.id)
+    // JAM! 행동 지표(캡슐 연 횟수·다른 트라이브 아이템 종류 수) — 열기가 확정된 뒤 응답을 보내고 판정한다(티켓 20261018_1815).
+    // `runJamActionEvaluation`은 예외를 던지지 않아 열기 응답은 그대로다.
+    after(() => runJamActionEvaluation(user.id, jamTriggersForCapsuleOpen()))
     return NextResponse.json(payload)
   } catch (err) {
     const suspended = err instanceof UserSuspendedError || (err instanceof CapsuleError && err.code === 'user_suspended')

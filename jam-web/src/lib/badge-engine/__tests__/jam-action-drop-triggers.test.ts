@@ -20,13 +20,16 @@ describe('jamTriggersForPickup', () => {
     expect(jamTriggersForPickup('user-a', 'user-a')).toEqual({ picker: [], dropper: [] })
   })
 
-  it('시스템·탈퇴한 놓은 사람의 드랍(dropperId null) → 줍는 사람의 pickup_item_count만', () => {
-    expect(jamTriggersForPickup('user-a', null)).toEqual({ picker: ['pickup_item_count'], dropper: [] })
+  it('시스템·탈퇴한 놓은 사람의 드랍(dropperId null) → 줍는 사람의 픽업 개체·잠긴 개체 픽업·다른 트라이브 종류 수만', () => {
+    expect(jamTriggersForPickup('user-a', null)).toEqual({
+      picker: ['pickup_item_count', 'locked_item_pickup_count', 'other_tribe_item_kinds_count'],
+      dropper: [],
+    })
   })
 
-  it('다른 유저의 드랍 → 줍는 사람은 픽업 개체·함께 픽업, 놓은 사람은 주워짐', () => {
+  it('다른 유저의 드랍 → 줍는 사람은 픽업 개체·함께 픽업·잠긴 개체 픽업·다른 트라이브 종류 수, 놓은 사람은 주워짐', () => {
     expect(jamTriggersForPickup('user-a', 'user-b')).toEqual({
-      picker: ['pickup_item_count', 'pickup_from_user_count'],
+      picker: ['pickup_item_count', 'pickup_from_user_count', 'locked_item_pickup_count', 'other_tribe_item_kinds_count'],
       dropper: ['picked_up_by_user_count'],
     })
   })

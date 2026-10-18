@@ -1025,12 +1025,14 @@ describe('운영자 시험 믹스 — 공개 전 레시피 (티켓 20261001_1159
 })
 
 describe('jamTriggersForCombineResult — 결과별로 다시 판정할 지표', () => {
-  it('성공은 시도·성공·레시피 최초 성공', () => {
+  it('성공은 시도·성공·레시피 최초 성공·트라이브를 넘는 성공 수·다른 트라이브 아이템 종류 수', () => {
     const result: CombineResult = { success: true, path: 'recipe', resultBadges: [], pointsAwarded: 0, resultStatus: 'none' }
     expect(jamTriggersForCombineResult(result)).toEqual([
       'combine_attempt_count',
       'combine_success_count',
       'recipe_first_success',
+      'cross_tribe_combine_success_count',
+      'other_tribe_item_kinds_count',
     ])
   })
 

@@ -3,7 +3,7 @@
  * (티켓 20261001_0633, 상위 20260930_1456 ③)
  *
  * `processFetchedActivities()`가 동기화가 끝나는 자리에서 `evaluateJamActionBadges`를 부르는지 고정한다:
- *  - 새 활동이 1건 이상이면 1회, 인자는 (userId, 주 키 5개, 주입된 supabase)
+ *  - 새 활동이 1건 이상이면 1회, 인자는 (userId, 주 키 8개, 주입된 supabase)
  *  - 호출 순서: 활동 기록 upsert → recordDailySyncAndEvaluate → JAM! 판정 → 결산(recordActivityRecap)
  *  - 획득 id는 결산에 활동·사용량·JAM! id가 한 번에 실리고 earnedBadgeIds에 합류하며, 반환의 `badges` 수에는 없다
  *  - 판정이 던져도 동기화는 정상 완료된다, 체크인이 여러 건이어도 판정은 1회다
@@ -211,7 +211,7 @@ beforeEach(() => {
 })
 
 describe('processFetchedActivities — 새 활동이 있는 동기화가 끝날 때 JAM! 행동 지표를 판정한다', () => {
-  it('새 활동이 1건 이상이면 evaluateJamActionBadges를 1회 부른다 — 인자는 (userId, 주 키 5개, 주입된 supabase)', async () => {
+  it('새 활동이 1건 이상이면 evaluateJamActionBadges를 1회 부른다 — 인자는 (userId, 주 키 8개, 주입된 supabase)', async () => {
     const injected = makeFakeSupabase()
     await processFetchedActivities(injected, 'user-1', 'token', [makeRawActivity(1)], false, 'sync')
 
@@ -220,8 +220,11 @@ describe('processFetchedActivities — 새 활동이 있는 동기화가 끝날 
     expect(userId).toBe('user-1')
     expect([...triggers].sort()).toEqual(
       [
+        'chapter_reached',
         'collection_complete_count',
         'days_since_signup',
+        'jam_total_earned',
+        'jam_weekly_earned',
         'mission_complete_count',
         'same_spot_checkin_days',
         'weekly_active_days',

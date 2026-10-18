@@ -9,10 +9,12 @@
  * 거절: `not_full`(응답에 채운 양 `filled`·필요한 양 `required`)·`not_locked` 409, `item_not_found` 404, 그 밖의 오류는 500이고 내부 오류 원문은 싣지 않는다.
  * 열기 성공 응답에만 이름·그림 등 개체 정보를 싣는다. 거절 응답에는 싣지 않는다(7.3절).
  */
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
 import { LockedItemError, openLockedItem } from '@/lib/inventory/lockedItemFill'
+import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
+import { jamTriggersForLockedItemOpen } from '@/lib/badge-engine/jamActionProgressTriggers'
 import { isLockedItemId, type LockedItemErrorResponse } from '@/lib/inventory/lockedItemFill-contract'
 import { UserSuspendedError } from '@/lib/suspension/suspension'
 import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
@@ -34,6 +36,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ it
 
   try {
     const payload = await openLockedItem(createServiceClient(), user.id, itemId)
+    // JAM! 행동 지표(잠긴 아이템 배지를 연 횟수) — 열기가 확정된 뒤 응답을 보내고 판정한다(티켓 20261018_1815).
+    // `runJamActionEvaluation`은 예외를 던지지 않아 열기 응답은 그대로다.
+    after(() => runJamActionEvaluation(user.id, jamTriggersForLockedItemOpen()))
     return NextResponse.json(payload)
   } catch (err) {
     const suspended = err instanceof UserSuspendedError || (err instanceof LockedItemError && err.code === 'user_suspended')

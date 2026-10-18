@@ -628,14 +628,22 @@ async function recordCombineSuccess(
 
 /**
  * 믹스 결과에 따라 JAM! 행동 지표 중 다시 판정할 것을 고른다 — `/api/combine` 라우트가 결과에 이어 부른다.
- *  - 성공: 시도·성공·레시피 최초 성공
+ *  - 성공: 시도·성공·레시피 최초 성공, 트라이브를 넘는 성공 수·다른 트라이브 아이템 종류 수(티켓 20261018_1815)
  *  - `no_recipe_match`(재료가 소각된 실패): 시도·실패
  *  - 그 밖의 실패(`invalid_count`·`items_not_found`·`recipe_not_found`·`locked_item_not_allowed`·`pending_results_exist`)는 재료가 소각되기 전에 끝났으므로 판정하지 않는다
  *  - 시험 믹스(`testMix`)는 성공·실패와 관계없이 판정하지 않는다(티켓 20261001_1159)
  */
 export function jamTriggersForCombineResult(result: CombineResult): JamActionTrigger[] {
   if (result.testMix) return []
-  if (result.success) return ['combine_attempt_count', 'combine_success_count', 'recipe_first_success']
+  if (result.success) {
+    return [
+      'combine_attempt_count',
+      'combine_success_count',
+      'recipe_first_success',
+      'cross_tribe_combine_success_count',
+      'other_tribe_item_kinds_count',
+    ]
+  }
   if (result.reason === 'no_recipe_match') return ['combine_attempt_count', 'combine_fail_count']
   return []
 }

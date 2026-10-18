@@ -18,7 +18,8 @@ import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
 const USER_ID = '11111111-1111-4111-8111-111111111111'
 const ITEM_ID = '22222222-2222-4222-8222-222222222222'
 
-const state = vi.hoisted(() => ({ authenticated: true }))
+const state = vi.hoisted(() => ({ authenticated: true, afterCallbacks: [] as Array<() => unknown> }))
+const runJamActionMock = vi.hoisted(() => vi.fn())
 const openMock = vi.hoisted(() => vi.fn())
 const serviceClient = vi.hoisted(() => ({ marker: 'service-role-client' }))
 
@@ -33,6 +34,13 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
   createServiceClient: () => serviceClient,
 }))
+vi.mock('@/lib/badge-engine/jamActionRoute', () => ({
+  runJamActionEvaluation: (userId: string, triggers: readonly string[]) => runJamActionMock(userId, triggers),
+}))
+vi.mock('next/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/server')>()
+  return { ...actual, after: (cb: () => unknown) => void state.afterCallbacks.push(cb) }
+})
 vi.mock('@/lib/inventory/lockedItemFill', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/inventory/lockedItemFill')>()
   return { ...actual, openLockedItem: (...args: unknown[]) => openMock(...args) }
@@ -65,6 +73,8 @@ const REVEALING_KEYS = ['name', 'imageUrl', 'description', 'collection', 'tribe'
 
 beforeEach(() => {
   state.authenticated = true
+  state.afterCallbacks = []
+  runJamActionMock.mockReset()
   openMock.mockReset()
   openMock.mockResolvedValue(OPENED)
   vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -95,6 +105,25 @@ describe('POST /api/inventory/items/[itemId]/open', () => {
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual(OPENED)
     expect(openMock).toHaveBeenCalledWith(serviceClient, USER_ID, ITEM_ID)
+  })
+
+  it('열기가 성공하면 응답 뒤에 잠긴 아이템 배지를 연 횟수를 판정한다(티켓 20261018_1815)', async () => {
+    const res = await post()
+
+    expect(res.status).toBe(200)
+    expect(runJamActionMock).not.toHaveBeenCalled() // 응답을 보내기 전에는 부르지 않는다
+    expect(state.afterCallbacks).toHaveLength(1)
+    await state.afterCallbacks[0]()
+    expect(runJamActionMock).toHaveBeenCalledWith(USER_ID, ['locked_item_open_count'])
+  })
+
+  it('열기가 거절되면 판정을 예약하지 않는다', async () => {
+    openMock.mockRejectedValue(new LockedItemError('not_locked'))
+
+    const res = await post()
+
+    expect(res.status).toBe(409)
+    expect(state.afterCallbacks).toHaveLength(0)
   })
 
   it('앱 코드의 이용 정지는 403 user_suspended다', async () => {
