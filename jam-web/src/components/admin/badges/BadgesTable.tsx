@@ -135,9 +135,16 @@ export default function BadgesTable({ badges, tribeMap = new Map(), totalCount }
           header: ({ column }) => <DataTableColumnHeader column={column} title="이름" />,
           enableHiding: false,
           cell: ({ row }) => (
-            <Link href={`/admin/badges/${row.original.id}`} className="font-medium hover:underline">
-              {row.original.name}
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href={`/admin/badges/${row.original.id}`} className="font-medium hover:underline">
+                {row.original.name}
+              </Link>
+              {row.original.is_hidden && (
+                <span className="inline-block rounded bg-slate-800 px-1.5 py-0.5 text-xs font-semibold text-white whitespace-nowrap break-keep wrap-break-word">
+                  숨김
+                </span>
+              )}
+            </div>
           ),
         }),
         columnHelper.accessor('deleted_at', {

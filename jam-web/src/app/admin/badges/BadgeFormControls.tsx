@@ -19,11 +19,14 @@ export function FieldLabel({
   id,
   children,
   required,
+  className: extraClassName,
 }: {
   htmlFor?: string
   id?: string
   children: ReactNode
   required?: boolean
+  /** 추가 클래스 — 새로 만드는 문구에 한국어 줄바꿈 클래스를 붙일 때 쓴다 */
+  className?: string
 }) {
   const content = (
     <>
@@ -31,7 +34,7 @@ export function FieldLabel({
       {required && <span className="ml-1 text-[11px] font-normal text-muted-foreground">필수</span>}
     </>
   )
-  const className = 'text-[13px] font-medium text-foreground/80'
+  const className = cn('text-[13px] font-medium text-foreground/80', extraClassName)
   return htmlFor ? (
     <label htmlFor={htmlFor} id={id} className={className}>
       {content}
@@ -44,9 +47,20 @@ export function FieldLabel({
 }
 
 /** 입력 아래 한 줄 — `tone="error"`면 빨간 안내 */
-export function FieldMessage({ id, tone = 'help', children }: { id?: string; tone?: 'help' | 'error'; children: ReactNode }) {
+export function FieldMessage({
+  id,
+  tone = 'help',
+  className,
+  children,
+}: {
+  id?: string
+  tone?: 'help' | 'error'
+  /** 추가 클래스 — 새로 만드는 문구에 한국어 줄바꿈 클래스를 붙일 때 쓴다 */
+  className?: string
+  children: ReactNode
+}) {
   return (
-    <span id={id} className={cn('text-xs', tone === 'error' ? 'text-destructive' : 'text-muted-foreground')}>
+    <span id={id} className={cn('text-xs', tone === 'error' ? 'text-destructive' : 'text-muted-foreground', className)}>
       {children}
     </span>
   )

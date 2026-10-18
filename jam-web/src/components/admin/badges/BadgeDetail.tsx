@@ -47,6 +47,7 @@ import {
   formatConditionDetailEntries,
 } from '@/lib/badge-engine/conditionRegistry'
 import { isLeveledBadge } from '@/lib/badge-engine/badgeKind'
+import { BRANCH_LABEL, isBranchKey } from '@/lib/admin/badge-hidden-guard'
 import { parseBlobAnimation } from '@/lib/blobAnimation'
 
 const RARITY_LABEL: Record<BadgeRarity, string> = {
@@ -175,6 +176,14 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
           <ReadOnlyItem label="등급">
             {badge.rarity ? (RARITY_LABEL[badge.rarity] ?? badge.rarity) : <Empty />}
           </ReadOnlyItem>
+        )}
+        {badge.type === 'activity' && (
+          <ReadOnlyItem label="가지">
+            {badge.branch_key ? (isBranchKey(badge.branch_key) ? BRANCH_LABEL[badge.branch_key] : badge.branch_key) : <Empty>분류 없음</Empty>}
+          </ReadOnlyItem>
+        )}
+        {badge.type === 'activity' && (
+          <ReadOnlyItem label="숨김">{badge.is_hidden ? '숨김 배지' : <Empty>숨기지 않음</Empty>}</ReadOnlyItem>
         )}
       </ReadOnlyGrid>
     </BadgeSectionCard>

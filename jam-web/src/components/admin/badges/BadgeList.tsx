@@ -12,6 +12,7 @@ export type BadgeListRow = Pick<
   BadgeRow,
   | 'id' | 'name' | 'description' | 'type' | 'rarity' | 'image_url' | 'image_source' | 'condition_json'
   | 'activity_types' | 'patch_available' | 'patch_price_krw' | 'tribe_id' | 'deleted_at'
+  | 'is_hidden' | 'branch_key'
 >
 
 interface BadgeListProps {

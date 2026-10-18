@@ -393,6 +393,8 @@ describe('buildBadgeInsertPayload', () => {
       background_animation: null,
       always_locked: false,
       unlock_required: null,
+      is_hidden: false,
+      branch_key: null,
     });
   });
 

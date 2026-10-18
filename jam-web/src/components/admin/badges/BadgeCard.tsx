@@ -70,6 +70,11 @@ export default function BadgeCard({ badge }: BadgeCardProps) {
               <span className="inline-block px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded">
                 {contentImageSourceLabel(badge.image_source)}
               </span>
+              {badge.is_hidden && (
+                <span className="inline-block px-2 py-1 text-xs font-semibold bg-slate-800 text-white rounded whitespace-nowrap break-keep wrap-break-word">
+                  숨김
+                </span>
+              )}
               {badge.deleted_at && (
                 <span className="inline-block px-2 py-1 text-xs font-semibold bg-red-50 border border-red-200 text-red-600 rounded-full whitespace-nowrap">
                   비활성화됨 · {formatKstYmd(badge.deleted_at)} 회수

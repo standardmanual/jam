@@ -68,6 +68,7 @@ import { isLeveledBadge } from '@/lib/badge-engine/badgeKind'
 import { findConditionShapeSaveError, findRarityLevelError } from '@/lib/admin/badge-condition-guards'
 import { findPoiLinksNotLoadedError, mergeLoadedPoiLinks, type PoiLinksLoadState } from '@/lib/admin/badge-poi-links-guard'
 import { findUnlockRequiredError, normalizeLockFields, type LockedMinimums } from '@/lib/admin/badge-lock-guard'
+import { BRANCH_KEYS, BRANCH_LABEL, findHiddenBadgeError, isBranchKey } from '@/lib/admin/badge-hidden-guard'
 // 배지 트리 화면(BadgeTreeClient 등)의 진행률 분류와 동일한 함수 — 어드민 경고가 화면
 // 렌더링과 다른 판정 로직을 갖지 않도록 재사용한다(제안서 §08 H, 티켓 20260904_1426).
 // `next/headers` 등 서버 전용 의존을 물지 않는 순수 함수라 이 클라이언트 컴포넌트에서
@@ -129,6 +130,9 @@ const EMPTY_CONDITION: BadgeCondition = {}
 // Radix Select는 SelectItem value=""를 허용하지 않는다 — "선택 안 함"을 나타내는 전용 값.
 const NONE_VALUE = '__none__'
 
+/** 새로 만드는 한국어 문구의 줄바꿈 클래스(UX_WRITING_GUIDELINE §3.2) */
+const KO_BREAK = 'break-keep wrap-break-word'
+
 /** 저장 시 누락 필드로 포커스를 옮길 때 쓰는 DOM id */
 const FOCUS_ID = {
   activityTypes: `badge-activity-type-${ADMIN_ACTIVITY_TYPES[0]}`,
@@ -158,6 +162,9 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
   const [leveledKind, setLeveledKind] = useState<boolean>(() => (badge ? isLeveledBadge(badge) : false))
   const [rarity, setRarity] = useState<BadgeRarity>(badge?.rarity ?? 'common')
   const [level, setLevel] = useState<string>(badge?.level?.toString() ?? '1')
+  // 숨김 배지와 가지(마이그레이션 243, 티켓 20261018_1816). 칸이 없는 옛 행은 숨김 아님·분류 없음이다.
+  const [isHidden, setIsHidden] = useState<boolean>(badge?.is_hidden ?? false)
+  const [branchKey, setBranchKey] = useState<string>(badge?.branch_key ?? '')
   // 레벨형은 활동 배지 전용이다 — 타입을 바꾸면 종류 state를 건드리지 않고 «파생값»에서만
   // 등급형으로 되돌린다(되돌아올 때 사용자가 고른 값이 그대로 살아 있어야 한다).
   const isLeveled = type === 'activity' && leveledKind
@@ -314,10 +321,23 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
   const changeType = (next: BadgeType) => {
     setType(next)
     if (next !== 'activity') setAdminCategory('')
+    // 숨김 배지와 가지는 액티비티 배지 입력이다 — 다른 종류로 바꾸면 화면에서 사라지는 값이 저장되지 않게 비운다(티켓 20261018_1816).
+    if (next !== 'activity') {
+      setIsHidden(false)
+      setBranchKey('')
+    }
     // 아이템에서는 발급 방식 전환이 숨겨진다. `{mission_reward: true}`는 드랍 엔진에서 「평가할
     // 수 있는 조건 없음」으로 판정돼 영구히 드랍되지 않는데 서버 검증도 막지 않으므로, 액티비티에서
     // 켜 둔 값이 숨은 채 따라가지 않게 비운다(티켓 20260911_0901 D-1).
     if (next === 'item') setCondField('missionReward', false)
+  }
+
+  // 숨김을 켜면 마이그레이션 243의 제약에 맞게 등급은 Common, 포인트는 0으로 맞춘다(티켓 20261018_1816).
+  const changeHidden = (next: boolean) => {
+    setIsHidden(next)
+    if (!next) return
+    setRarity('common')
+    setPointReward('0')
   }
 
   const toggleActivityType = (t: ActivityType) => {
@@ -453,6 +473,18 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
       return
     }
 
+    // 숨김 배지 규칙(액티비티만·포인트 0·Common만): 저장 API와 같은 함수·같은 문구로 먼저 막는다(티켓 20261018_1816).
+    const hiddenError = findHiddenBadgeError({
+      isHidden,
+      type,
+      rarity: isLeveled ? null : rarity,
+      pointReward: Math.max(0, parseInt(pointReward, 10) || 0),
+    })
+    if (hiddenError) {
+      setError(hiddenError)
+      return
+    }
+
     // 여는 데 필요한 양: 저장 API와 같은 함수·같은 문구로 먼저 막는다(티켓 20261018_0051). 아이템 배지가 아니면 검사하지 않는다.
     const unlockRequiredError = findUnlockRequiredError(type, isLeveled ? null : rarity, unlockRequired, lockedMinimums)
     if (unlockRequiredError) {
@@ -519,6 +551,8 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
         valid_from: resolvePeriodInputIso(badge?.valid_from, validFrom),
         valid_until: resolvePeriodInputIso(badge?.valid_until, validUntil),
         point_reward: Math.max(0, parseInt(pointReward, 10) || 0),
+        is_hidden: isHidden,
+        branch_key: isBranchKey(branchKey) ? branchKey : null,
         // background_shader_id/background_image_url/background_video_url은 보내지 않는다
         // (티켓 20260901_1929) — 저장 API는 누락된 필드를 기존 DB 값 그대로 둔다.
         // [20260901_1944] 애니메이션 모드에서는 배경색 검증을 건너뛰므로 hex가 아닌 값은 null로 정리한다.
@@ -754,13 +788,66 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent container={themeContainer ?? undefined}>
-                  {RARITIES.map((r) => (
+                  {/* 숨김 배지는 Common만 둔다(마이그레이션 243의 badges_hidden_common_only) */}
+                  {(isHidden ? (['common'] as BadgeRarity[]) : RARITIES).map((r) => (
                     <SelectItem key={r} value={r}>
                       {RARITY_LABEL[r]}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {isHidden && (
+                <FieldMessage id="badge-rarity-hidden-help" className={KO_BREAK}>
+                  숨김 배지는 Common만 고를 수 있어요.
+                </FieldMessage>
+              )}
+            </div>
+          )}
+
+          {/* 가지 — 배지 트리의 분류. 비우면 분류 없음이다(티켓 20261018_1816, 운영 로직 10.2절) */}
+          {type === 'activity' && (
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <FieldLabel htmlFor="badge-branch-key" className={KO_BREAK}>
+                가지
+              </FieldLabel>
+              <Select value={branchKey || NONE_VALUE} onValueChange={(v) => setBranchKey(v === NONE_VALUE ? '' : v)}>
+                <SelectTrigger id="badge-branch-key" aria-describedby="badge-branch-key-help">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent container={themeContainer ?? undefined}>
+                  <SelectItem value={NONE_VALUE}>분류 없음</SelectItem>
+                  {BRANCH_KEYS.map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {BRANCH_LABEL[k]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldMessage id="badge-branch-key-help" className={KO_BREAK}>
+                배지 트리에서 묶어 보여 줄 가지예요. 비워 두면 분류하지 않아요.
+              </FieldMessage>
+            </div>
+          )}
+
+          {/* 숨김 여부 — 액티비티 배지 전용. 켜면 받기 전까지 배지함·트리·다음 목표·상세 어디에도 이름과 조건이 보이지 않는다.
+              등급은 Common, 포인트는 0으로 고정된다(마이그레이션 243의 DB 제약과 같은 규칙, 티켓 20261018_1816). */}
+          {type === 'activity' && (
+            <div className={cn('flex min-w-0 flex-col gap-1.5', fieldSpanClass(2))}>
+              <FieldLabel htmlFor="badge-is-hidden" className={KO_BREAK}>
+                숨김
+              </FieldLabel>
+              <label className="flex cursor-pointer items-center gap-3" htmlFor="badge-is-hidden">
+                <Switch
+                  id="badge-is-hidden"
+                  checked={isHidden}
+                  onCheckedChange={changeHidden}
+                  aria-describedby="badge-is-hidden-help"
+                />
+                <span className={cn('text-sm text-foreground', KO_BREAK)}>숨김 배지로 만들어요</span>
+              </label>
+              <FieldMessage id="badge-is-hidden-help" className={KO_BREAK}>
+                받기 전에는 이름·조건·개수가 어디에도 보이지 않아요. 켜면 등급은 Common, 포인트 보상은 0으로 고정돼요.
+              </FieldMessage>
             </div>
           )}
         </div>
@@ -1127,10 +1214,13 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
               onChange={(e) => setPointReward(e.target.value)}
               placeholder="0"
               suffix="포인트"
+              disabled={isHidden}
               describedBy="badge-point-reward-help"
             />
-            <FieldMessage id="badge-point-reward-help">
-              획득 시점 값으로 1번 지급돼요. 나중에 바꿔도 이미 지급한 포인트는 그대로예요. 0이면 지급하지 않아요.
+            <FieldMessage id="badge-point-reward-help" className={KO_BREAK}>
+              {isHidden
+                ? '숨김 배지는 포인트를 지급하지 않아요. 0으로 고정돼요.'
+                : '획득 시점 값으로 1번 지급돼요. 나중에 바꿔도 이미 지급한 포인트는 그대로예요. 0이면 지급하지 않아요.'}
             </FieldMessage>
           </div>
 
