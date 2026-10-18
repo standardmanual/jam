@@ -12,13 +12,13 @@ import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
 import { CapsuleError, fillCapsule } from '@/lib/capsule/capsule'
-import { CAPSULE_AMOUNT_MAX, type CapsuleErrorCode, type CapsuleErrorResponse } from '@/lib/capsule/capsule-contract'
+import { CAPSULE_AMOUNT_MAX, type CapsuleErrorResponse, type CapsuleFillErrorCode } from '@/lib/capsule/capsule-contract'
 import { UserSuspendedError } from '@/lib/suspension/suspension'
 import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
 
 export const dynamic = 'force-dynamic'
 
-const FILL_ERRORS: Record<Exclude<CapsuleErrorCode, 'user_suspended'>, { status: number; message: string }> = {
+const FILL_ERRORS: Record<Exclude<CapsuleFillErrorCode, 'user_suspended'>, { status: number; message: string }> = {
   already_full: { status: 400, message: d.capsule.alreadyFull },
   exceeds_remaining: { status: 400, message: d.capsule.exceedsRemaining },
   invalid_amount: { status: 400, message: d.capsule.invalidAmount },
@@ -66,8 +66,9 @@ export async function POST(request: Request) {
       const body: UserSuspendedResponse = { error: d.suspension.capsuleBlocked, code: USER_SUSPENDED_CODE }
       return NextResponse.json(body, { status: 403 })
     }
-    if (err instanceof CapsuleError && err.code !== 'user_suspended') {
-      const { status, message } = FILL_ERRORS[err.code]
+    // 열기 거절 코드(`not_full` 등)는 채우기에서 나오지 않는다. 나오면 500으로 둔다.
+    if (err instanceof CapsuleError && err.code in FILL_ERRORS) {
+      const { status, message } = FILL_ERRORS[err.code as keyof typeof FILL_ERRORS]
       const body: CapsuleErrorResponse = {
         error: message,
         code: err.code,

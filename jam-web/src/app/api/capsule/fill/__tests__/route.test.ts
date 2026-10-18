@@ -149,6 +149,15 @@ describe('POST /api/capsule/fill — 거절과 오류', () => {
     expect(await res.json()).toEqual({ error: d.capsule.exceedsRemaining, code: 'exceeds_remaining', remaining: 40 })
   })
 
+  it('열기 전용 거절 코드가 채우기에서 나오면 500이다(채우기 문구로 오인하지 않는다)', async () => {
+    fillMock.mockRejectedValue(new CapsuleError('not_full'))
+
+    const res = await post({ amount: 10 })
+
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: d.capsule.fillFailed })
+  })
+
   it('그 밖의 오류는 500이고 원문 오류를 내려보내지 않는다', async () => {
     fillMock.mockRejectedValue(new Error('capsule_fill RPC 오류: secret detail'))
 
