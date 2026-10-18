@@ -10,10 +10,10 @@
  *    마치든 «나중에»로 닫든 결과로 이어간다.
  *  - `pendingItems`가 없는 이전 응답에서는 기존 동작 그대로다.
  *
- * 클라이언트·서버 경계: 순수 모듈이다. `pending-items-contract`(상수)·`suspension-contract`(상수)와 `pending-pick`(타입)만 가져온다.
+ * 클라이언트·서버 경계: 순수 모듈이다. `pending-items-contract`(상수)·`suspended-block`(정지 403 판별)과 `pending-pick`(타입)만 가져온다.
  */
 import { SYNC_PENDING_ITEMS_CODE } from '@/lib/strava/pending-items-contract'
-import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
+import { isSuspendedBlock } from '@/lib/suspension/suspended-block'
 import type { PickResult } from '@/lib/strava/pending-pick'
 
 export type SyncFlowResult<T> =
@@ -40,13 +40,6 @@ async function isPendingItemsBlock(res: Response): Promise<boolean> {
   if (res.status !== 409) return false
   const body = (await res.json().catch(() => null)) as { code?: string } | null
   return body?.code === SYNC_PENDING_ITEMS_CODE
-}
-
-/** 403 + `code: 'user_suspended'`인가. 403의 본문만 읽는다. */
-async function isSuspendedBlock(res: Response): Promise<boolean> {
-  if (res.status !== 403) return false
-  const body = (await res.json().catch(() => null)) as { code?: string } | null
-  return body?.code === USER_SUSPENDED_CODE
 }
 
 export async function runSyncFlow<T extends { pendingItems?: number }>(deps: Deps): Promise<SyncFlowResult<T>> {
