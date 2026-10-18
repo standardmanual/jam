@@ -38,6 +38,13 @@ specs:
 3. **숨김 배지**: `badges`에 `is_hidden` 칸(기본 false)을 새로 더한다(추천). 서버가 배지함·트리·다음 목표·상세 응답에서 숨김을 거른다. 숨김 배지는 포인트 0, 등급형·반복형이면 Common만. 가지 분류 칸도 같은 마이그레이션에서 덧붙인다.
 4. **막힌 조건**: `route`·`daily_once_count`·`negative_split`는 pending으로 두고 이번엔 풀지 않는다(추천). 코드와 문서에 «막힘»을 명시만 한다. 55개 계열 중 이 조건이 꼭 필요한 배지는 4-5에서 걸러낸다.
 
+5. **2회 허용 키 확장(SQL 242)**: 새 조건 키 8개를 어드민에서 저장하려면 CHECK 제약 `badges_condition_json_known_keys`를 넓혀야 해서 마이그레이션 242를 따로 둔다(추천). 기존 객체(제약)를 지우고 다시 거는 일이라 사용자 승인을 받았다(허용 키만 72→80으로 넓히고 기존 `condition_json`은 바뀌지 않는다). 롤백 실측(제약 교체 후 기존 배지 전부 통과, 새 키 8종 INSERT 통과, 옛 키 통과, 미등록 키 거부)을 마치고 공용 DB에 적용했다. 숨김·가지 칸 SQL은 3회에서 243으로 따로 쓴다.
+6. **새 키 이름(카리나가 정함, 아현은 이 이름을 쓴다)**: `capsule_open_count`, `locked_item_open_count`, `locked_item_pickup_count`, `other_tribe_item_kinds_count`, `cross_tribe_combine_success_count`, `jam_total_earned`, `jam_weekly_earned`, `chapter_reached`. 모두 `role: 'meta'`, `evaluation: 'external'`, 값은 정수 ≥ 1이다.
+7. **잠긴 아이템 배지 픽업 횟수**: 픽업 당시 잠겨 있던 서로 다른 개체 수(추천). 드랍·픽업 왕복으로 부풀리지 못하고 자기 드랍은 세지 않는다.
+8. **모은 다른 트라이브 아이템 배지의 종류 수**: 지금 가진 개체(`inventory_id`가 있고 `destroyed_at`이 비어 있음) 가운데 내 소속과 다른 트라이브 배지의 서로 다른 종류 수(추천).
+9. **트라이브를 넘는 믹스 성공**: 성공 로그(`user_combine_success_logs.ingredient_badge_ids`)의 재료가 `badges.tribe_id` 기준 2개 이상 트라이브에 걸친 성공 횟수(추천).
+10. **챕터 조건의 판정 시점(카리나 기본값)**: 키는 등록하고 값은 `user_chapters.chapter_no`에서 읽는다. 챕터가 오르는 호출부(`chapter_add_score`·`chapter_start`를 부르는 앱 코드)는 아직 src에 없다(묶음 5). 그 호출부가 생기기 전에는 동기화 끝 판정(`JAM_SYNC_TRIGGERS`)에 얹고, 챕터 오름 직후 판정은 묶음 5가 연결한다.
+
 ## 상세 요구사항
 
 ### 서비스/코드베이스 관점
