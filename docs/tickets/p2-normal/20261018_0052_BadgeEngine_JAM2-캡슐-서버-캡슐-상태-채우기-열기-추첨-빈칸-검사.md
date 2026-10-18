@@ -2,7 +2,7 @@
 id: "20261018_0052"
 category: BadgeEngine
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-10-18
 parent: "20261018_0050"
 specs:
@@ -110,6 +110,12 @@ SQL(마이그레이션 `233_capsule_open.sql`)은 카리나가 먼저 끝냈다(
 
 ### 구현 내용 요약
 
+**2회 열기 완료(2026-10-18, 아현, 브랜치 `claude/jamwork-20261018_0052-capsule-open`, 게이트 WARN(SQL 233의 동시 호출), staging 로컬 머지).** SQL(마이그레이션 233)과 생성 타입은 카리나가 먼저 적용했다.
+- `capsule-contract.ts`(import 없음): 열기 거절 코드, `no_free_slots`와 `freeSlots`·`neededSlots`, `CapsuleOpenPayload`(잠긴 개체는 이름·그림·일련번호·`badgeId` 없이 등급과 `unlockRequired`만).
+- `capsuleRoll.ts`(순수, 난수 주입): 운영 로직 5.2절의 순서(개수, 트라이브, 등급, 후보, 잠김). 보정 1(`capsule_epic_miss >= pity_epic_threshold`이면 첫 개체만 Epic 이상), 보정 2(`common_streak >= common_streak_threshold`이면 Rare 이상, 개체마다 받은 등급으로 이어 셈), 후보 없음 한 등급 내림, 퀘스트 전 캡슐(`chapter_no` null)은 첫 개체를 난수 없이 잠긴 채(필요한 양 5)로 둔다. `listIssueCandidates`·`pickWithRarityFallback`·`assignLock`을 재사용하고 `syncIssue.ts`에는 `pickWeighted` export만 더했다.
+- `open.ts`(서버): `assertNotSuspended` → 상태·빈칸 사전 확인(안 되면 추첨 전 거절) → `no_tribe`·후보·카운터 조회(읽지 못하면 던짐) → 추첨 → RPC `capsule_open` → 응답 채움 → `recordIssuedRewards`(잠긴 개체는 포인트·피드 제외, 실패해도 열기 유지). `capsule.ts`의 `getCapsuleStatus`가 빈칸을 읽어 `openable`과 못 여는 까닭을 채운다. `POST /api/capsule/open`: 401, 정지 403, `not_full`·`insufficient_slots`(지금 빈칸과 필요한 빈칸)·`no_tribe` 409, 그 외 500(원문 미노출).
+- 게이트 WARN 처리: 민지가 `capsule_open`의 동시 호출 문제를 짚었다. 열기 끝에 캡슐 행을 DELETE하고 새로 만드는 방식이라, 기다리던 두 번째 호출의 `SELECT ... FOR UPDATE`가 0행을 받아 검사를 NULL로 지나친다. 확인한 결과 열기는 NOT NULL 칸에서 실패해 되돌려지지만, 채우기는 남은 양이 NULL이라 잼만 차감되고 캡슐에 안 채워질 수 있었다(열기와 채우기가 동시에 올 때). 사용자 승인 뒤 마이그레이션 234로 고쳤다: 다음 캡슐을 같은 행의 UPDATE로 초기화하고, 필요량 계산을 `capsule_next_required`로 빼고, 행을 못 찾으면 `capsule_changed`로 거절한다. 롤백 실측 5건 통과 뒤 적용했다.
+
 **1회 완료(2026-10-18, 아현, 브랜치 `claude/jamwork-20261018_0052-capsule-fill`, 게이트 PASS, staging 로컬 머지).** SQL(마이그레이션 232)과 생성 타입은 카리나가 먼저 적용했다.
 - `lib/capsule/capsule-contract.ts`(import 없는 순수 파일): `CapsuleStatus`, `CapsuleFillPayload`, 오류 코드 5종, `CAPSULE_AMOUNT_MAX`. `lib/capsule/policy.ts`: `DEFAULT_CAPSULE_POLICY`(232 기본값과 같고 시험이 SQL 파일의 DEFAULT와 대조), `getCapsulePolicy`(칸 단위 폴백, 등급 확률 네 칸은 합계 100이 필요해 묶음 단위 대체). `lib/capsule/capsule.ts`(서버 전용): `getCapsuleStatus`(RPC `capsule_get_or_create`와 지갑 잔액), `fillCapsule`(`assertNotSuspended`가 RPC보다 먼저, DB 거절은 `CapsuleError`).
 - API: `GET /api/capsule`(401, 정지 중에도 허용), `POST /api/capsule/fill`(401, 잘못된 `amount` 400, 정지 403 `user_suspended`, `already_full`·`exceeds_remaining`·`invalid_amount` 400, `insufficient_jam` 409, 그 외 500이고 내부 오류 원문은 싣지 않음). 문구 `d.capsule.*`, `d.suspension.capsuleBlocked`. 1회의 `openable`은 `filled >= required`만 본다(빈칸 검사는 2회).
@@ -122,7 +128,9 @@ SQL(마이그레이션 `233_capsule_open.sql`)은 카리나가 먼저 끝냈다(
 
 ### 테스트 결과
 - 1회: `scripts/verify.sh` 전항목 통과, CI verify 성공(커밋 `b543a712c`, run 39080311485은 아현이 in_progress에서 반환했고 민지가 성공을 확인), 격리 워크트리에서 `vitest src/lib/capsule src/app/api/capsule` 5파일 49건 통과. 시험은 정책 기본값(SQL 232와 대조)과 칸 단위 폴백, `capsule.ts`(가짜 RPC로 오류 변환, 호출 순서 [정지 확인, RPC] 고정, 정지 확인을 못 읽으면 RPC를 부르지 않음), 두 라우트(401·400·403·409·500·정상), 클라이언트·서버 경계(계약 파일 import 없음, `'use client'` 사슬에 `capsule.ts`·`policy.ts` 없음).
-- 로컬 실렌더: 하지 않았다. 캡슐 API는 처음 호출할 때 공용 DB에 캡슐 행을 만들므로 시험 계정으로 호출하지 않았다. 화면은 3-4.
+- 2회: `scripts/verify.sh` 전항목 통과, CI verify 성공(커밋 `c4bfa5598`, run 39081916945, 아현이 `gh run watch`로 실제 성공을 확인), 시험 115건(8파일): `capsuleRoll` 27건(개수·트라이브·등급 경계, 보정 1·2 임계값, 한 등급 내림, 퀘스트 전 잠금), `open.ts` 20건(가짜 RPC·결정적 난수, 정지·빈칸·`no_tribe`가 추첨 전에 막음, 후속 처리 실패 시 열기 유지, 잠긴 개체의 포인트·피드 제외), 라우트 9건, 경계 시험.
+- 234 롤백 실측 5건: 필요량 규칙(퀘스트 전 5, 챕터 3은 110), 퀘스트 전 캡슐을 채워 열기(기록·지급·카운터·다음 캡슐 110, 캡슐 행이 그대로 한 줄이고 초기화), 바로 다시 열면 `not_full`, 열기 뒤 채우기가 새 캡슐(110)에 정상으로 채움, 빈칸 부족·이용 정지는 이전과 같이 거부. 적용 뒤 확인: 함수 4개, `authenticated` 실행 권한 없음, 유저 캡슐·열기 기록 0행.
+- 1회 로컬 실렌더: 하지 않았다. 캡슐 API는 처음 호출할 때 공용 DB에 캡슐 행을 만들므로 시험 계정으로 호출하지 않았다. 화면은 3-4.
 
 ### 배포 정보
 
@@ -135,10 +143,16 @@ SQL(마이그레이션 `233_capsule_open.sql`)은 카리나가 먼저 끝냈다(
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
 | 1회 | 2 | 225,042 | 53,358 / 6,302 | 18분 5초 | 72 |
-| 합계 | 2 | 225,042 | 53,358 / 6,302 | 18분 5초 | 72 |
+| 2회 | 2 | 284,973 | 90,403 / 8,625 | 21분 17초 | 79 |
+| 합계 | 4 | 510,015 | - | 39분 22초 | 151 |
 
 ### 주요 의사결정 / 핵심 메모
 
 ### 잔여 이슈
-- `GET /api/capsule`은 캡슐이 없으면 만드는 지연 생성이라 읽기 요청이 행을 쓴다(티켓이 정한 동작). 이용 정지 중인 유저의 조회도 행을 만든다. 영향은 작다.
+- 동시 호출 보정(234) 뒤에도 같은 유저가 열기와 채우기를 정확히 같은 순간에 보내는 경우의 실제 동시 실행은 DB 한 연결로 시험하지 못했다(논리와 행 잠금 규칙으로 판단). 필요하면 staging에서 두 요청을 동시에 보내 확인한다.
+- `capsule_open`·`capsule_fill`의 `capsule_changed`는 다시 시도하면 되는 드문 거절이다. 앱은 코드 목록에 없어 500으로 돌려준다(3-4에서 «다시 시도해 주세요»로 안내할지 정한다).
+- 소속 트라이브가 없으면 `no_tribe`로 거절하는데 `openable`에는 반영되지 않는다. 3-4 화면이 `openable`만 믿으면 열기 시도에서 409를 받는다.
+- `GET /api/capsule`과 채우기가 `inventory`를 추가로 읽는다. 인벤토리 행이 없으면 빈칸 0으로 보고 `no_free_slots`로 표시한다(열기는 DB가 `inventory_not_found`로 거절).
+- 후보가 없어 한 등급 내려간 첫 개체는 보정 1이 걸려도 Rare 이하일 수 있다(동기화와 같은 방식). DB는 받은 등급으로 `capsule_epic_miss`를 센다.
+- 캡슐 연 횟수는 `capsule_opens`로 센다(액티비티 배지 조건은 묶음 4, 챕터 점수는 묶음 5). `GET /api/capsule`은 캡슐이 없으면 만드는 지연 생성이라 읽기 요청이 행을 쓴다(티켓이 정한 동작). 이용 정지 중인 유저의 조회도 행을 만든다. 영향은 작다.
 - `capsule_fill`은 `already_full`을 `invalid_amount`보다 먼저 검사한다. 가득 찬 캡슐에 `amount=0`을 보내면 DB는 `already_full`이지만 앱 라우트가 `amount<1`을 먼저 막아 사용자에게 보이는 응답은 `invalid_amount`다.

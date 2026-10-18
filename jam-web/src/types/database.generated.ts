@@ -4181,6 +4181,13 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      capsule_next_required: {
+        Args: { p_user_id: string }
+        Returns: {
+          chapter_no: number
+          required: number
+        }[]
+      }
       capsule_open: {
         Args: { p_items: Json; p_user_id: string }
         Returns: Json
