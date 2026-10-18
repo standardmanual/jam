@@ -189,6 +189,16 @@ describe('백필 모듈 — 배지 홍수를 일으킬 경로가 없다', () => 
     expect(source).not.toContain('getActivityById')
   })
 
+  it('교통수단 구간을 뺀 활동(transitExcludedSec 있음)의 최고 속도를 Strava 원본으로 되돌리지 않는다 (티켓 20261018_1815 3회)', () => {
+    const stored = { ...STORED_BEFORE, maxSpeedKmh: 5, transitExcludedSec: 120 }
+    const { normalized } = mergeExtendedFields(stored, summary())
+    expect(normalized.maxSpeedKmh).toBe(5)
+    // 다른 확장 필드는 그대로 채운다
+    expect(normalized.elapsedTimeSec).toBe(6_000)
+    // 뺀 구간이 없던 활동은 이전처럼 채운다
+    expect(mergeExtendedFields(STORED_BEFORE, summary()).normalized.maxSpeedKmh).toBe(45)
+  })
+
   it('strava_activities에 쓰는 컬럼은 normalized 하나뿐이다', () => {
     const updateBlock = source.slice(source.indexOf('for (const update of updates)'), source.indexOf('result.updated++'))
     expect(updateBlock).toContain('normalized')

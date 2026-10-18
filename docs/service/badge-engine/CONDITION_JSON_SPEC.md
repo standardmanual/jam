@@ -473,6 +473,9 @@ interface BadgeGateRequirement {
   중 하나면 됨). 사유는 「평가할 수 없는 조건 필드 — …」로 남는다. 이 규칙이 없으면
   `matchesPerActivityCondition()`이 모르는 키를 조용히 건너뛰고 마지막에 `return true` 하므로,
   미구현 필드가 «발급 안 됨»이 아니라 **«무조건 발급»**으로 뒤집힌다
+- **막힌 조건 3종**(`route`·`daily_once_count`·`negative_split`)은 `pending`을 유지한다(2026-10-18, 티켓
+  20261018_1815 3회, 사용자 결정 4). 이번에 풀지 않았고 레지스트리 항목에 «막힘» 주석을 달았다. 풀려면
+  활동 상세(스트림) 데이터가 필요해 별도 티켓이다 → BADGE_ENGINE_UNIFIED.md § 2.18
 - `repeat_count`(§2.11)는 fail-closed 대상이 **아니다** — 평가가 구현돼 있다. 활동 1건 단위
   축(v5 스칼라 7종 포함)뿐 아니라 「기간 단위 회차」(`streak_days`·`weekly_count`·
   `monthly_count`·`weekly_streak` 결합, 2026-09-06 티켓 20260906_0110 ②)도 셀 수 있다. 다만

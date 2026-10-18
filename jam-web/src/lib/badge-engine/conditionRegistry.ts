@@ -950,6 +950,9 @@ export const CONDITION_FIELDS = [
     //    그럼에도 통과시킨다 — 이 티켓(20260905_0028)은 «기존 25개 필드의 현행 동작을
     //    한 톨도 바꾸지 않는다»가 전제이고, 현재 카탈로그에 route를 쓰는 배지가 0건이라
     //    당장 오발급은 없다. 사용 시작 전에 평가 구현 또는 `false` 전환이 필요하다.
+    // ⛔ 막힌 조건 — 이 티켓(20261018_1815 3회, 사용자 결정 4)은 풀지 않고 pending을 유지한다.
+    //    경로 판정에는 활동 상세(스트림) 데이터가 필요해 별도 티켓이다. 이 조건이 든 배지는 발급되지 않는다(fail-closed).
+    //    이 조건이 꼭 필요한 배지는 4-5에서 걸러낸다. 개수가 3개로 고정되는 것은 condition-registry.test.ts가 지킨다.
     evaluation: 'pending',
     chip: (c) => `루트 ${c.route}`,
     detail: (c) => `루트 ${c.route}`,
@@ -1299,6 +1302,9 @@ export const CONDITION_FIELDS = [
     max: 3650,
     step: 1,
     direction: 'higher',
+    // ⛔ 막힌 조건 — 이 티켓(20261018_1815 3회, 사용자 결정 4)은 풀지 않고 pending을 유지한다.
+    //    풀려면 별도 설계가 필요해(티켓 결정 4: 활동 상세 데이터가 필요한 조건과 같은 묶음) 별도 티켓이다.
+    //    이 조건이 든 배지는 발급되지 않는다(fail-closed). 필요한 배지는 4-5에서 걸러낸다.
     evaluation: 'pending',
     chip: (c) => `하루 1회 ${c.daily_once_count}일`,
     detail: (c) => `하루 1회만 활동한 날 ${c.daily_once_count}일 이상`,
@@ -1312,6 +1318,9 @@ export const CONDITION_FIELDS = [
     input: 'boolean',
     pairedWith: ['total_count'],
     direction: null,
+    // ⛔ 막힌 조건 — 이 티켓(20261018_1815 3회, 사용자 결정 4)은 풀지 않고 pending을 유지한다.
+    //    전반·후반 페이스 비교에는 활동 상세(스트림) 데이터가 필요해 별도 티켓이다. 이 조건이 든 배지는 발급되지
+    //    않는다(fail-closed). 필요한 배지는 4-5에서 걸러낸다.
     evaluation: 'pending',
     chip: (c) => (c.negative_split === true ? '후반이 더 빠름' : null),
     detail: (c) => (c.negative_split === true ? '후반 구간이 전반보다 빠른 활동' : null),

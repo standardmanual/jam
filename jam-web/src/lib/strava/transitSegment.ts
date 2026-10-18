@@ -105,16 +105,25 @@ export function detectAndExcludeTransitSegments(
   let excludeDurationSec = 0
   let curDistanceM = 0
   let curDurationSec = 0
+  let curMaxSpeedMs = 0
   let inSegment = false
+  // 뺀 구간을 제외하고 남은 구간의 최대 속도(m/s) — 최고 속도 조건(`max_speed_kmh`)이 교통수단 속도를 보지 않게 한다.
+  let keptMaxSpeedMs = 0
 
   const flush = () => {
-    if (inSegment && curDurationSec >= minDurationSec) {
-      excludeDistanceM += curDistanceM
-      excludeDurationSec += curDurationSec
+    if (inSegment) {
+      if (curDurationSec >= minDurationSec) {
+        excludeDistanceM += curDistanceM
+        excludeDurationSec += curDurationSec
+      } else {
+        // 지속시간이 짧아 뺀 구간이 아니다 — 이 구간의 속도는 남는다
+        keptMaxSpeedMs = Math.max(keptMaxSpeedMs, curMaxSpeedMs)
+      }
     }
     inSegment = false
     curDistanceM = 0
     curDurationSec = 0
+    curMaxSpeedMs = 0
   }
 
   for (let i = 0; i < time.length - 1; i++) {
@@ -134,8 +143,10 @@ export function detectAndExcludeTransitSegments(
       inSegment = true
       curDistanceM += avgSpeedMs * dt
       curDurationSec += dt
+      curMaxSpeedMs = Math.max(curMaxSpeedMs, avgSpeedMs)
     } else {
       flush()
+      keptMaxSpeedMs = Math.max(keptMaxSpeedMs, avgSpeedMs)
     }
   }
   flush()
@@ -145,11 +156,18 @@ export function detectAndExcludeTransitSegments(
   const newMovingTimeSec = Math.max(0, Math.round(activity.movingTimeSec - excludeDurationSec))
   const newDistanceKm = Math.max(0, activity.distanceKm - excludeDistanceM / 1000)
   const newAverageSpeedKmh = newMovingTimeSec > 0 ? newDistanceKm / (newMovingTimeSec / 3600) : 0
+  // 최고 속도도 교통수단 구간을 뺀다(운영 로직 3장·10장: 모든 조건의 판정에서 교통수단 구간을 뺀다, 티켓 20261018_1815 3회).
+  // 남은 구간의 평균 속도 최댓값을 상한으로 쓰고, 원래 값보다 커지지는 않게 한다(스무딩 값이라 실제 순간 최고보다 낮을 수 있다).
+  // `transitExcludedSec`는 이 활동에서 구간을 뺐다는 표시다 — 확장 필드 백필이 최고 속도를 원본으로 되돌리지 않게 한다.
+  const maxSpeedKmh =
+    activity.maxSpeedKmh === undefined ? undefined : Math.min(activity.maxSpeedKmh, keptMaxSpeedMs * 3.6)
 
   return {
     ...activity,
     distanceKm: newDistanceKm,
     movingTimeSec: newMovingTimeSec,
     averageSpeedKmh: newAverageSpeedKmh,
+    ...(maxSpeedKmh === undefined ? {} : { maxSpeedKmh }),
+    transitExcludedSec: Math.round(excludeDurationSec),
   }
 }

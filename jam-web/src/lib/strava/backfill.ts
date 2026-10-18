@@ -120,6 +120,8 @@ export function mergeExtendedFields(
   for (const key of EXTENDED_ACTIVITY_FIELD_KEYS) {
     const next = extended[key]
     if (next === undefined) continue
+    // 교통수단 구간을 뺀 활동의 최고 속도는 이미 구간을 뺀 값이다 — Strava 원본으로 되돌리지 않는다(티켓 20261018_1815 3회)
+    if (key === 'maxSpeedKmh' && typeof base.transitExcludedSec === 'number') continue
     if (base[key] === next) continue
     base[key] = next
     changed = true

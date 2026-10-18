@@ -214,3 +214,62 @@ describe('needsTransitStreams — 최대 속도 사전 거름 (티켓 20261017_1
     expect(detectAndExcludeTransitSegments(activity, null, POLICY)).toBe(activity)
   })
 })
+
+describe('최고 속도(maxSpeedKmh)도 교통수단 구간을 뺀다 (티켓 20261018_1815 3회)', () => {
+  /** (속도 km/h, 지속 초) 순서대로 5초 간격 스트림을 만든다 */
+  function streamsFromSegments(segments: { kmh: number; sec: number }[]) {
+    const speeds = segments.flatMap(({ kmh, sec }) => Array.from({ length: sec / 5 }, () => kmh))
+    return makeUniformStreams(speeds, 5)
+  }
+
+  it('걷다가 지하철(60km/h)을 탄 활동의 최고 속도는 지하철 속도가 아니라 걷는 구간 속도다', () => {
+    const activity = baseActivity({ distanceKm: 5, movingTimeSec: 3000, maxSpeedKmh: 60 })
+    const result = detectAndExcludeTransitSegments(
+      activity,
+      streamsFromSegments([
+        { kmh: 5, sec: 300 },
+        { kmh: 60, sec: 120 },
+        { kmh: 5, sec: 300 },
+      ]),
+      POLICY
+    )
+    expect(result.movingTimeSec).toBeLessThan(3000)
+    expect(result.maxSpeedKmh).toBeCloseTo(5, 5)
+    expect(result.transitExcludedSec).toBeGreaterThanOrEqual(120)
+  })
+
+  it('기준을 넘었어도 30초 미만이라 뺀 구간이 아닌 순간 속도는 최고 속도로 남는다', () => {
+    const activity = baseActivity({ distanceKm: 5, movingTimeSec: 3000, maxSpeedKmh: 60 })
+    const result = detectAndExcludeTransitSegments(
+      activity,
+      streamsFromSegments([
+        { kmh: 5, sec: 60 },
+        { kmh: 25, sec: 10 }, // 20km/h 초과지만 짧다 — 구간이 아니다
+        { kmh: 5, sec: 60 },
+        { kmh: 60, sec: 120 }, // 지하철
+      ]),
+      POLICY
+    )
+    expect(result.maxSpeedKmh).toBeCloseTo(25, 5)
+  })
+
+  it('최고 속도는 원래 값보다 커지지 않는다', () => {
+    const activity = baseActivity({ maxSpeedKmh: 21 })
+    const result = detectAndExcludeTransitSegments(
+      activity,
+      streamsFromSegments([
+        { kmh: 15, sec: 60 },
+        { kmh: 80, sec: 60 },
+      ]),
+      POLICY
+    )
+    expect(result.maxSpeedKmh).toBeLessThanOrEqual(21)
+  })
+
+  it('뺀 구간이 없으면 원본 그대로이고 transitExcludedSec도 없다', () => {
+    const activity = baseActivity({ maxSpeedKmh: 40 })
+    const unchanged = detectAndExcludeTransitSegments(activity, makeUniformStreams([5, 5, 5], 30), POLICY)
+    expect(unchanged).toBe(activity)
+    expect('transitExcludedSec' in unchanged).toBe(false)
+  })
+})
