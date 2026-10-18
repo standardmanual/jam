@@ -285,11 +285,22 @@ badges / item_books / tribes 세 테이블이 같은 배경 컬럼 세트를 갖
     `p_locked`가 true인데 까닭이나 필요한 양이 없으면 `{ok: false, reason: 'invalid_lock_args'}`다. 옛 지급 경로(믹스·미션 보상·픽업·퀘스트)는
     옛 함수를 그대로 부르고 그 개체는 열린 채다. 동기화 발급(`syncIssueRun.ts`)과 보류 고르기(`resolve_sync_pending_items`)만 새 함수를 쓴다.
   - **트리거** `trg_inventory_items_reject_locked`: 잠긴 개체의 `slotted_in`(컬렉션 꽂기)·`dropped_at` 갱신을 `locked_item_cannot_be_slotted`·
-    `locked_item_cannot_be_dropped` 오류로 거부한다. 장착·교체의 마지막 방어선이다. **유저 드랍(`create_user_drop`)은 `dropped_at`을 쓰지 않고
-    `inventory_id`만 비우므로 이 트리거가 막지 못한다** — 마이그레이션 238이 `create_user_drop` 안에서 소유권·장착 확인을 지난 뒤 `locked`이면
-    `{ok:false, error:'locked_item'}`을 돌려주게 해 DB가 거절한다(티켓 20261018_0657). `/api/drops`는 이 응답을 409 `locked_item_not_allowed`로 바꾸고, 남의 개체는 `item_not_found`로 돌아가 잠김 여부가 새지 않는다.
+    `locked_item_cannot_be_dropped` 오류로 거부한다. 장착·교체의 마지막 방어선이다. 유저 드랍(`create_user_drop`)은 `dropped_at`을 쓰지 않고
+    `inventory_id`만 비우므로 이 트리거가 막지 못한다. 마이그레이션 238은 그 함수가 잠긴 개체를 `locked_item`으로 거절하게 했으나(티켓 20261018_0657, 묶음 4 전까지의 임시 방어선)
+    **마이그레이션 239가 그 거절을 없앴다** — 잠긴 채 드랍하고 줍는다(아래 «드랍·픽업»). `/api/drops`의 `locked_item` 매핑은 DB가 더는 그 코드를 돌려주지 않아 지웠고 트리거 오류 매핑만 남는다.
   - **잠긴 동안의 제한**(서버가 거절, 코드 `locked_item_not_allowed`): 컬렉션 장착·교체(`/api/itembooks/[id]/slot`), 믹스 재료(`combineRecipeAttempt`, 소각 전에 거절),
-    드랍(`/api/drops`, 묶음 4 전까지, 거절은 DB 함수). 트리거 오류 메시지도 같은 코드로 바꿔 응답한다. 화면의 안내는 3-6이다.
+    트리거 오류 메시지도 같은 코드로 바꿔 응답한다. 드랍·픽업은 막지 않는다(마이그레이션 239). 화면의 안내는 3-6이다.
+  - **드랍·픽업 (JAM 2.0, 마이그레이션 239, 티켓 20261018_1812, 운영 로직 7.2·7.3·9.3·9.5절)** — `CREATE OR REPLACE`만 쓴다(서명·`SECURITY DEFINER`·권한·반환 형식 그대로, 반환에 키만 더함).
+    - `create_user_drop`: 잠긴 개체도 드랍한다. 잠긴 개체의 `unlock_filled`를 0으로 되돌리고 `unlock_required`·`lock_reason`·`locked`·일련번호는 그대로 둔다(채운 양은 돌려주지 않는다 — 유저 사이에 잼을 옮기는 길을 막는다).
+      사라진 양이 있으면 `inventory_item_events`에 `dropped`(`amount` = 사라진 양, `filled_after` = 0) 한 줄을 남기고, 반환에 `lost_fill`(사라진 양, 열린 개체·채운 양 0이면 0)을 싣는다. 이용 정지는 `{ok:false, error:'user_suspended'}`로 거절한다.
+      드랍·픽업의 이력(드랍한 사람·장소·시각, 픽업한 사람·시각)은 지금처럼 `custody_events`(`UserDrop`·`Pickup`)와 `poi_drops`에 남고, `inventory_item_events`에는 «사라진 채운 양»만 더한다.
+    - `pickup_drop`: 이용 정지를 `user_suspended`로, 꺼진 장소(`poi.is_active = false`)를 `poi_inactive`로 거절한다. 잠긴 채 줍는다 — 소유만 옮기고 잠김·필요한 양·채운 양(0)·일련번호는 그대로다. 자기 드랍도 줍는다(거절 코드 없음).
+      꺼진 장소의 드랍은 지우지 않으므로 장소를 다시 켜면 다시 주울 수 있다. 인벤토리가 가득 차면 줍지 않고 `inventory_full`이다.
+    - 앱: `POST /api/drops`·`POST /api/drops/[dropId]/pickup`은 DB 호출 전에 `assertNotSuspended`로 먼저 막고(403 `user_suspended`, 문구 `d.suspension.dropBlocked`·`pickupBlocked`) DB의 `user_suspended`도 같은 403으로 바꾼다. 드랍 성공 응답에 `lostFill`을 싣는다.
+      픽업은 꺼진 장소를 드랍이 없을 때와 같은 404로 닫는다. `GET /api/drops/poi/[poiId]`는 꺼진 장소의 드랍을 내리지 않고(빈 목록), `GET /api/drops/[dropId]`와 함께 잠긴 개체의 이름·그림·설명·컬렉션·트라이브·일련번호·배지 id를 서버에서 비워
+      `locked: true`·등급(`badge_rarity`)·필요한 양(`unlock_required`)만 싣는다(7.3절). 잠긴 채 받은 개체는 피드(`item_picked_up`)와 놓은 사람 소식(#13)에 이름·그림을 싣지 못하므로 남기지 않는다.
+      `GET /api/inventory/items/[itemId]/drop-loss`는 내 개체를 드랍하면 사라질 양을 `{ lostFill }`로 알린다(`src/lib/drop/drop-loss-contract.ts`, 열린 개체·0이면 0, 내 것이 아니면 404). 화면(4-6)이 드랍 확인 단계에서 읽는다.
+    - 자기 드랍 줍기는 허용이지만 챕터 점수·횟수에는 세지 않는다: 횟수 지표 4종은 조회 규칙으로 이미 자기 드랍을 빼므로 새 칸을 더하지 않았고, 같은 기준을 `isSelfPickup`(`src/lib/drop/self-pickup.ts`)에 한 곳으로 두어 챕터 점수(묶음 5)가 쓴다.
 - **채우기·열기 (JAM 2.0, 마이그레이션 235, 티켓 20261018_0053, 운영 로직 7.2·8.5절)** — 전부 덧붙이기다. 옛 테이블·함수·칸의 뜻은 바꾸지 않고 232·234의 캡슐 함수도 건드리지 않는다.
   - 새 칸 `inventory_items.point_awarded_at`(timestamptz, nullable): 잠긴 개체를 열 때 배지 포인트를 준 시각. «한 일련번호에 한 번만» 주는 기록이다. 열린 채 받아 지급한 개체는 이 칸을 쓰지 않는다.
   - 새 표 `inventory_item_events`(append-only, RLS만 켜고 클라이언트 정책 없음, service_role 전용): 개체가 거쳐 간 이력. `inventory_item_id`·`badge_id`(ON DELETE SET NULL), `serial_number`, `user_id`(그 일을 한 유저),

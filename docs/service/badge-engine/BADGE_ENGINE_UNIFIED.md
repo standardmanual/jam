@@ -240,6 +240,8 @@ badge-engine 밖의 세 번째 평가 경로.
 - **`inventory_item_id`가 있는 행만 센다**(2026-08-29 이전 행은 개체 연결이 없어 자동으로 빠진다).
   원시 행 수를 세는 지표는 없다 — A·B가 개체 X를 10번 왕복해 행이 20개여도 두 유저 모두 네 지표가
   1이다. 자기 드랍을 자기가 주운 것은 드랍 수에는 세고 픽업·함께 픽업·주워짐에는 세지 않는다.
+  자기 픽업의 판별은 `src/lib/drop/self-pickup.ts`의 `isSelfPickup(drop, userId)` 한 곳이다(티켓 20261018_1812) — 챕터 점수(묶음 5)가 같은
+  기준을 쓰고, 이 지표 계산·판정 트리거와 같은 정의인지는 `src/lib/drop/__tests__/self-pickup.test.ts`가 고정한다. 잠긴 개체의 드랍·픽업도 횟수는 똑같이 센다.
 - **호출**: `POST /api/drops`가 성공한 뒤 놓은 사람의 `drop_item_count`를, `POST
   /api/drops/[dropId]/pickup`이 RPC 성공 뒤 줍는 사람과 놓은 사람을 각각 `after()`로 판정한다
   (`runJamActionEvaluation`). 실패 분기에서는 예약하지 않고 응답·상태·문구·소식 #13은 그대로다.
