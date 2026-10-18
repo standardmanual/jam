@@ -17,6 +17,8 @@ type Row = Record<string, unknown>
 const state = vi.hoisted(() => ({
   inventory: null as Row | null,
   gridProps: null as { items: { id: string; badgeName: string }[] } | null,
+  /** 그리드가 받은 props 전체(직렬화 가능한 값이 클라이언트·RSC 페이로드로 내려가는 지점) */
+  gridPropsRaw: null as unknown,
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -51,6 +53,7 @@ vi.mock('../QuestBagGrid', () => ({ default: () => <div data-stub="quest-bag-gri
 vi.mock('@/components/inventory/InventoryGrid', () => ({
   default: (props: { items: { id: string; badgeName: string }[] }) => {
     state.gridProps = props
+    state.gridPropsRaw = props
     return <div data-stub="inventory-grid" />
   },
 }))
@@ -72,6 +75,7 @@ describe('인벤토리 페이지 — 임베드 badge가 null인 행', () => {
   beforeEach(() => {
     state.inventory = null
     state.gridProps = null
+    state.gridPropsRaw = null
   })
 
   it('badge가 null인 행은 그리드에서 빠지고 나머지는 그려진다', async () => {
@@ -102,5 +106,64 @@ describe('인벤토리 페이지 — 임베드 badge가 null인 행', () => {
     expect(html).toContain(d.inventory.emptyTitle)
     expect(html).not.toContain('data-stub="inventory-grid"')
     expect(state.gridProps).toBeNull()
+  })
+})
+
+/**
+ * 잠긴 개체의 가림은 서버에서 일어난다 (티켓 20261018_0054 2회, 운영 로직 7.3절)
+ *
+ * 그리드는 클라이언트 컴포넌트라 서버 페이지가 넘기는 props가 그대로 RSC 페이로드에 직렬화돼 브라우저로 간다. 화면에서 가리는 것으로는 부족하고,
+ * 페이지가 **이름·그림·설명을 값으로 넘기지 않아야** 한다. 그래서 그리드 모의에 닿은 props 전체를 문자열로 만들어 값이 없는지 본다.
+ */
+describe('인벤토리 페이지 — 잠긴 개체는 이름·그림이 서버에서 비워진다', () => {
+  const SECRET_BADGE = {
+    id: 'badge-secret',
+    name: '새어 나가면 안 되는 이름',
+    description: '새어 나가면 안 되는 설명',
+    image_url: 'https://example.com/secret-badge.png',
+    rarity: 'epic',
+    deleted_at: null,
+  }
+
+  beforeEach(() => {
+    state.inventory = null
+    state.gridProps = null
+    state.gridPropsRaw = null
+  })
+
+  function lockedItem(id: string, extra: Row = {}): Row {
+    return { ...inventoryItem(id, SECRET_BADGE), serial_number: 4242, serial_prefix: 'ZZZZ', locked: true, unlock_required: 120, unlock_filled: 30, ...extra }
+  }
+
+  it('그리드 props 전체에 이름·그림 URL·설명·배지 id·일련번호가 없다', async () => {
+    state.inventory = { id: 'inv-1', used_slots: 2, max_slots: 50, inventory_items: [lockedItem('item-locked'), inventoryItem('item-ok', OK_BADGE)] }
+
+    await render()
+
+    const serialized = JSON.stringify(state.gridPropsRaw)
+    const locked = state.gridProps?.items.find((item) => item.id === 'item-locked') as Record<string, unknown>
+    expect(locked).toMatchObject({ id: 'item-locked', badgeName: '', badgeImageUrl: null, badgeRarity: 'epic', locked: true, fillPercent: 25 })
+    for (const secret of ['새어 나가면 안 되는 이름', '새어 나가면 안 되는 설명', 'secret-badge.png', 'badge-secret', '4242', 'ZZZZ']) {
+      expect(serialized, `그리드 props에 ${secret}이 실렸다`).not.toContain(secret)
+    }
+    // 일반 개체는 그대로 이름을 싣는다
+    expect(serialized).toContain('살아있는 배지')
+  })
+
+  it('필요량이 없는 비정상 개체는 게이지 0으로 접고 던지지 않는다', async () => {
+    state.inventory = { id: 'inv-1', used_slots: 1, max_slots: 50, inventory_items: [lockedItem('item-locked', { unlock_required: null, unlock_filled: 0 })] }
+
+    await render()
+
+    expect(state.gridProps?.items[0]).toMatchObject({ locked: true, fillPercent: 0, badgeName: '' })
+  })
+
+  it('locked가 false인 개체(열린 개체)는 이름과 그림을 그대로 싣는다', async () => {
+    state.inventory = { id: 'inv-1', used_slots: 1, max_slots: 50, inventory_items: [lockedItem('item-opened', { locked: false })] }
+
+    await render()
+
+    expect(state.gridProps?.items[0]).toMatchObject({ badgeName: SECRET_BADGE.name, badgeImageUrl: SECRET_BADGE.image_url })
+    expect((state.gridProps?.items[0] as Record<string, unknown>).locked).toBeUndefined()
   })
 })

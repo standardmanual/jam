@@ -183,6 +183,7 @@ const INFO_TABLES: Record<string, Result> = {
   },
   item_books: { data: { id: BOOK_ID, name: '새벽 컬렉션', tribe_id: TRIBE_ID }, error: null },
   tribes: { data: { id: TRIBE_ID, name: '러너' }, error: null },
+  inventory_items: { data: { serial_prefix: 'ABCD' }, error: null },
 }
 
 describe('openLockedItem', () => {
@@ -196,6 +197,7 @@ describe('openLockedItem', () => {
       itemId: ITEM_ID,
       badgeId: BADGE_ID,
       serialNumber: 7,
+      serialPrefix: 'ABCD',
       pointsAwarded: 50,
       item: {
         name: '새벽의 첫 바퀴',
@@ -218,7 +220,21 @@ describe('openLockedItem', () => {
 
     expect(payload.pointsAwarded).toBe(0)
     expect(payload.item).toEqual({ name: 'N', imageUrl: null, description: '', rarity: null, collection: null, tribe: null })
-    expect(reads).toEqual(['badges'])
+    // 접두사 조회는 따로 나가고, 이 표가 없는 가짜 클라이언트에서는 실패해 null이다(열기 결과에는 영향이 없다)
+    expect(reads).toEqual(['badges', 'inventory_items'])
+    expect(payload.serialPrefix).toBeNull()
+  })
+
+  it('일련번호 접두사를 읽어 싣는다(번호와 함께 일련번호 표시에 쓴다)', async () => {
+    const { client } = fakeClient({
+      rpc: { locked_item_open: { data: OPEN_OK, error: null } },
+      tables: { ...INFO_TABLES, inventory_items: { data: { serial_prefix: 'WXYZ' }, error: null } },
+    })
+
+    const payload = await openLockedItem(client, USER_ID, ITEM_ID)
+
+    expect(payload.serialNumber).toBe(7)
+    expect(payload.serialPrefix).toBe('WXYZ')
   })
 
   it('이용 정지 확인이 RPC보다 먼저이고, 정지 중이면 RPC를 부르지 않는다', async () => {
@@ -264,7 +280,7 @@ describe('openLockedItem', () => {
 
     const payload = await openLockedItem(client, USER_ID, ITEM_ID)
 
-    expect(payload).toEqual({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, pointsAwarded: 50, item: null })
+    expect(payload).toEqual({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, serialPrefix: null, pointsAwarded: 50, item: null })
   })
 
   it('채우기 전용 코드·알 수 없는 코드·RPC 오류·해석할 수 없는 응답은 일반 오류다', async () => {

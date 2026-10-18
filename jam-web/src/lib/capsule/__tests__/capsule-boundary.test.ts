@@ -82,6 +82,7 @@ const FORBIDDEN_FILES = [
   'lib/capsule/capsule.ts',
   'lib/capsule/policy.ts',
   'lib/capsule/open.ts',
+  'lib/inventory/lockedItemFill.ts',
   'lib/suspension/suspension.ts',
   'lib/jam/policy.ts',
   'lib/engine-log/index.ts',
@@ -167,6 +168,13 @@ describe('캡슐 클라이언트와 화면의 import 사슬에 서버 전용 모
     'components/capsule/capsuleReveal.ts',
     'components/jam/JamFillPanel.tsx',
     'components/jam/JamBalance.tsx',
+    // 잠긴 개체 화면(티켓 20261018_0054 2회)
+    'lib/inventory/lockedItemFill-client.ts',
+    'lib/inventory/lockedItemFill-flow.ts',
+    'lib/inventory/lockedItemFill-contract.ts',
+    'app/(main)/inventory/[itemId]/LockedItemDetail.tsx',
+    'components/inventory/InventoryGrid.tsx',
+    'components/ui/BadgeGridCard.tsx',
   ]
 
   it.each(ENTRIES)('%s', (entry) => {
@@ -183,6 +191,15 @@ describe('캡슐 클라이언트와 화면의 import 사슬에 서버 전용 모
   it('capsule-client.ts는 계약 파일과 정지 판별만 가져온다', () => {
     const specs = specifiersOf(readFileSync(join(srcRoot, 'lib/capsule/capsule-client.ts'), 'utf8')).sort()
     expect(specs).toEqual(['@/lib/capsule/capsule-contract', '@/lib/suspension/suspended-block'])
+  })
+
+  it('lockedItemFill-client.ts는 캡슐 클라이언트(접기)와 잠긴 개체 계약 파일만 가져온다', () => {
+    const specs = specifiersOf(readFileSync(join(srcRoot, 'lib/inventory/lockedItemFill-client.ts'), 'utf8')).sort()
+    expect(specs).toEqual(['@/lib/capsule/capsule-client', '@/lib/inventory/lockedItemFill-contract'])
+  })
+
+  it('잠긴 개체 계약 파일(lockedItemFill-contract.ts)은 아무것도 가져오지 않는다', () => {
+    expect(specifiersOf(readFileSync(join(srcRoot, 'lib/inventory/lockedItemFill-contract.ts'), 'utf8'))).toEqual([])
   })
 
   it('capsule-client.ts에 서버 전용 모듈 이름이 코드로 나오지 않는다(주석 제외)', () => {

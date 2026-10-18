@@ -387,6 +387,15 @@ export interface InventoryItemRow {
   slotted_in: string | null
   /** 개체 파괴(조합 소모/미픽업 만료) 소프트 삭제 시점 — 20260829_2101 */
   destroyed_at: string | null
+  /**
+   * 잠긴 개체인가(마이그레이션 231, 운영 로직 7장). 한 번 열면 false가 되고 다시 잠기지 않는다. 기본 false.
+   * 잠긴 동안은 이름·그림·설명·컬렉션·트라이브·일련번호를 어느 화면에도 내리지 않는다.
+   */
+  locked?: boolean
+  /** 여는 데 필요한 잼. 배정 때 고정. 열린 채 받은 개체는 null */
+  unlock_required?: number | null
+  /** 지금까지 채운 잼 */
+  unlock_filled?: number
 }
 
 /**

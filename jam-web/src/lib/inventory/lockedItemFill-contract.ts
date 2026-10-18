@@ -37,6 +37,16 @@ export function isLockedItemId(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
 }
 
+/**
+ * 게이지의 채운 비율(0~100). 서버가 읽은 값(`unlock_filled`·`unlock_required`)을 그대로 비율로 옮길 뿐 새 규칙이 아니다.
+ * 필요량이 없거나 0 이하면 0이다. 화면에 숫자로 내보내지 않는다(운영 로직 4.3절).
+ */
+export function lockedFillPercent(filled: number | null | undefined, required: number | null | undefined): number {
+  if (typeof required !== 'number' || !(required > 0)) return 0
+  const f = typeof filled === 'number' && Number.isFinite(filled) ? Math.max(0, filled) : 0
+  return Math.min(100, (f / required) * 100)
+}
+
 /** 조회 응답 — 채운 양·필요량·가진 잼·열 수 있는지만 싣는다(이름·그림 등은 싣지 않는다) */
 export interface LockedItemStatus {
   itemId: string
@@ -83,6 +93,8 @@ export interface LockedItemOpenPayload {
   badgeId: string
   /** 열려도 그대로인 일련번호 */
   serialNumber: number | null
+  /** 일련번호 앞 4자(알파벳). 화면의 일련번호 표시(`ItemSerialCode`)가 번호와 함께 쓴다. 읽지 못하면 null이다(티켓 20261018_0054 2회) */
+  serialPrefix: string | null
   /** 이번 열기로 준 포인트. 줄 포인트가 없었거나 이미 준 개체면 0 */
   pointsAwarded: number
   /** 개체 정보. 열기는 이미 확정됐고 정보 조회만 실패한 드문 경우에는 null이다 */

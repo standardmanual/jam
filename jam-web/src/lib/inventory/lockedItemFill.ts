@@ -148,6 +148,17 @@ async function loadOpenedInfo(supabase: SupabaseClient, badgeId: string): Promis
 }
 
 /**
+ * 열린 개체의 일련번호 접두사(앞 4자). 열기 응답이 `ItemSerialCode`로 번호를 그릴 수 있게 싣는다 — 열린 뒤에만 읽는다.
+ * 읽지 못하면 던진다(호출부가 null로 받아 낸다).
+ */
+async function loadSerialPrefix(supabase: SupabaseClient, itemId: string): Promise<string | null> {
+  const { data, error } = await supabase.from('inventory_items').select('serial_prefix').eq('id', itemId).maybeSingle()
+  if (error) throw new Error(`inventory_items 조회 실패: ${error.message}`)
+  const prefix = (data as { serial_prefix?: string | null } | null)?.serial_prefix
+  return typeof prefix === 'string' && prefix !== '' ? prefix : null
+}
+
+/**
  * 가득 찬 잠긴 개체를 연다. 인벤토리 빈칸은 필요 없고 새로 뽑지 않는다. 이용 정지 중이면 RPC를 부르기 전에 `UserSuspendedError`를 던진다.
  * DB 함수의 거절은 `LockedItemError`다. 열기가 확정된 뒤 개체 정보를 읽지 못하면 열기를 되돌리지 않고 `item: null`로 돌려준다.
  */
@@ -170,10 +181,17 @@ export async function openLockedItem(supabase: SupabaseClient, userId: string, i
   } catch (e) {
     console.error(`[locked-item] 열기 뒤 개체 정보 조회 실패 — 정보 없이 돌려준다 (userId: ${userId}, itemId: ${itemId}):`, e)
   }
+  let serialPrefix: string | null = null
+  try {
+    serialPrefix = await loadSerialPrefix(supabase, itemId)
+  } catch (e) {
+    console.error(`[locked-item] 열기 뒤 일련번호 접두사 조회 실패 — 접두사 없이 돌려준다 (userId: ${userId}, itemId: ${itemId}):`, e)
+  }
   return {
     itemId,
     badgeId: result.badgeId,
     serialNumber: typeof result.serialNumber === 'number' ? result.serialNumber : null,
+    serialPrefix,
     pointsAwarded: result.pointsAwarded,
     item: info,
   }

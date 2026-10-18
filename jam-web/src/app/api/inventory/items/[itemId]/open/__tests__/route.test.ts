@@ -48,6 +48,7 @@ const OPENED = {
   itemId: ITEM_ID,
   badgeId: '33333333-3333-4333-8333-333333333333',
   serialNumber: 7,
+  serialPrefix: 'ABCD',
   pointsAwarded: 50,
   item: {
     name: '새벽의 첫 바퀴',
@@ -60,7 +61,7 @@ const OPENED = {
 }
 
 /** 거절 응답에 있으면 안 되는 개체 정보 키 */
-const REVEALING_KEYS = ['name', 'imageUrl', 'description', 'collection', 'tribe', 'serialNumber', 'badgeId', 'item', 'rarity']
+const REVEALING_KEYS = ['name', 'imageUrl', 'description', 'collection', 'tribe', 'serialNumber', 'serialPrefix', 'badgeId', 'item', 'rarity']
 
 beforeEach(() => {
   state.authenticated = true

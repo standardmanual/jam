@@ -76,3 +76,43 @@ describe('InventoryGrid leadingItem', () => {
     expect(html).not.toContain('jam-quest-pulse')
   })
 })
+
+describe('InventoryGrid 잠긴 개체 (티켓 20261018_0054 2회)', () => {
+  const LOCKED_ITEM: InventoryGridItem = {
+    id: 'locked-item-1',
+    // 서버가 비워서 내린 값 — 카드가 이 값에 기대지 않는다
+    badgeName: '',
+    badgeImageUrl: null,
+    badgeRarity: 'rare',
+    locked: true,
+    fillPercent: 40,
+  }
+
+  it('잠긴 개체는 가린 이름과 /inventory/[id] 링크로 그려지고 게이지 비율만 싣는다', () => {
+    const html = renderToStaticMarkup(<InventoryGrid items={[REAL_ITEM, LOCKED_ITEM]} mode="navigate" />)
+    expect(html).toContain(`href="/inventory/${LOCKED_ITEM.id}"`)
+    expect(html).toContain('잠긴 아이템 배지')
+    expect(html).toContain('--ds-progress-fill:40%')
+    // 일반 카드는 그대로다
+    expect(html).toContain(REAL_ITEM.badgeName)
+  })
+
+  it('호출부가 실수로 이름과 그림 URL을 넘겨도 잠긴 카드의 DOM에 없다', () => {
+    const leaky: InventoryGridItem = { ...LOCKED_ITEM, badgeName: '새어 나가면 안 되는 이름', badgeImageUrl: 'https://example.com/secret.png' }
+    const html = renderToStaticMarkup(<InventoryGrid items={[leaky]} mode="navigate" />)
+    expect(html).not.toContain('새어 나가면 안 되는 이름')
+    expect(html).not.toContain('secret.png')
+    expect(html).not.toContain('<img')
+  })
+
+  it('select 모드에서도 잠긴 개체는 잠김 카드로 그려진다', () => {
+    const html = renderToStaticMarkup(<InventoryGrid items={[LOCKED_ITEM]} mode="select" onSelect={() => {}} />)
+    expect(html).toContain('잠긴 아이템 배지')
+    expect(html).toContain('<button')
+  })
+
+  it('locked가 없는 항목에는 게이지가 없다', () => {
+    const html = renderToStaticMarkup(<InventoryGrid items={[REAL_ITEM]} mode="navigate" />)
+    expect(html).not.toContain('--ds-progress-fill')
+  })
+})

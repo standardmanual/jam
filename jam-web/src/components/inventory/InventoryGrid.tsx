@@ -26,6 +26,14 @@ export interface InventoryGridItem {
    * 이 파일이 직접 알지 않는다, 20260908_0040).
    */
   countAriaText?: string
+  /**
+   * 잠긴 아이템 배지(열기 전, 티켓 20261018_0054 2회, 운영 로직 7.3절). `true`이면 카드는 `BadgeGridCard locked`로 그려지고
+   * `badgeName`·`badgeImageUrl`은 쓰지 않는다. **서버가 이 두 값을 비워서 내려야 한다** — 값이 클라이언트 props와 RSC 페이로드에
+   * 실리면 화면에서 가려도 소용이 없다(호출부가 `''`·`null`을 넣는다). `badgeRarity`는 등급 칩으로 그린다.
+   */
+  locked?: boolean
+  /** `locked`일 때 게이지의 채운 비율(0~100). 서버가 `unlock_filled / unlock_required`로 계산한 값을 그대로 그린다 */
+  fillPercent?: number
 }
 
 interface InventoryGridProps {
@@ -95,13 +103,17 @@ export default function InventoryGrid({
         // 장착 개체 선택 시트가 `ListRowCard` 목록으로 바뀌면서 제거했다(20260907_2221).
         const cardChildren = expiryNode
 
+        // 잠긴 개체는 이름·그림을 카드에 넘기지 않는다(카드도 막지만 호출부에서 먼저 끊는다) — 운영 로직 7.3절
+        const identity = item.locked
+          ? { locked: true, fillPercent: item.fillPercent ?? 0 }
+          : { name: item.badgeName, imageUrl: item.badgeImageUrl }
+
         if (mode === 'navigate') {
           return (
             <BadgeGridCard
               key={item.id}
               href={`/inventory/${item.id}`}
-              name={item.badgeName}
-              imageUrl={item.badgeImageUrl}
+              {...identity}
               rarity={item.badgeRarity as import('@/types/database').BadgeRarity | null}
             >
               {cardChildren}
@@ -113,8 +125,7 @@ export default function InventoryGrid({
           <BadgeGridCard
             key={item.id}
             onClick={() => onSelect?.(item)}
-            name={item.badgeName}
-            imageUrl={item.badgeImageUrl}
+            {...identity}
             rarity={item.badgeRarity as import('@/types/database').BadgeRarity | null}
             count={item.count}
             countAriaText={item.countAriaText}

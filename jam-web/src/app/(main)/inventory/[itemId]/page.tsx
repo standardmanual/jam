@@ -1,6 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import type { InventoryItemRow } from '@/types/database'
+import { getLockedItemStatus, LockedItemError } from '@/lib/inventory/lockedItemFill'
+import type { LockedItemRarity } from '@/lib/inventory/lockedItemFill-contract'
+import LockedItemDetail from './LockedItemDetail'
 
 export default async function InventoryItemPage({ params }: { params: Promise<{ itemId: string }> }) {
   const { itemId } = await params
@@ -10,11 +13,11 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
 
   const { data: itemRaw } = await supabase
     .from('inventory_items')
-    .select('badge_id, inventory_id')
+    .select('badge_id, inventory_id, locked, obtained_at, obtained_by')
     .eq('id', itemId)
     .single()
   if (!itemRaw) notFound()
-  const itemData = itemRaw as Pick<InventoryItemRow, 'badge_id' | 'inventory_id'>
+  const itemData = itemRaw as Pick<InventoryItemRow, 'badge_id' | 'inventory_id' | 'locked' | 'obtained_at' | 'obtained_by'>
 
   // 20260829_2101: inventory_id가 nullable화됨 — 현재 소유자가 없는 개체(드랍/고아 상태)는
   // 조회 대상이 아니므로 자연히 notFound() 처리한다(기존과 동일한 원칙: 본인이 지금
@@ -28,6 +31,42 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
     .eq('user_id', user.id)
     .single()
   if (!inventoryCheck) notFound()
+
+  // 잠긴 개체는 배지 상세로 보내지 않고 이 자리에서 그린다(티켓 20261018_0054 2회, 운영 로직 7.3절).
+  // 배지 상세(`/badges/{badge_id}`)로 보내면 주소에 배지 id가 실려 이름·그림이 드러난다.
+  // 클라이언트로 내리는 props에는 등급·필요량·채운 양·가진 잼·얻은 날과 경로만 싣는다 — 배지 id·이름·그림·설명·일련번호는 싣지 않는다.
+  if (itemData.locked === true) {
+    const service = createServiceClient()
+    let status
+    try {
+      status = await getLockedItemStatus(service, user.id, itemId)
+    } catch (err) {
+      // 내 것이 아니거나 이미 없는 개체다. 읽기 실패는 던져서 오류 화면으로 보낸다(없는 개체로 위장하지 않는다)
+      if (err instanceof LockedItemError && err.code === 'item_not_found') notFound()
+      throw err
+    }
+    // 그사이 열렸다면 아래 리다이렉트가 맡는다. 잠겼는데 필요량이 없는 비정상 개체(DB 제약상 없다)는 이름이 드러나지 않게 404로 닫는다
+    if (status.locked && status.required === null) notFound()
+    if (status.locked && status.required !== null) {
+      const { data: badgeRow, error: badgeError } = await service.from('badges').select('rarity').eq('id', itemData.badge_id).maybeSingle()
+      if (badgeError) throw new Error(`badges 조회 실패: ${badgeError.message}`)
+      const rarity = (badgeRow as { rarity: LockedItemRarity | null } | null)?.rarity ?? null
+
+      return (
+        <LockedItemDetail
+          // 서버 값이 바뀌면(채우기 뒤 새로 읽기) 클라이언트 상태를 새 값에서 다시 시작한다
+          key={`${status.filled}:${status.required}:${status.balance}`}
+          itemId={itemId}
+          rarity={rarity}
+          required={status.required}
+          filled={status.filled}
+          balance={status.balance}
+          obtainedAt={itemData.obtained_at}
+          obtainedBy={itemData.obtained_by}
+        />
+      )
+    }
+  }
 
   // 20260907_2059: 개체 id를 `?item`으로 실어 보낸다. 이 redirect가 없으면 "인벤토리에서
   // 어느 개체를 눌렀는가"가 배지 상세에 도달하기 전에 사라져, 같은 배지를 여러 개 보유한
