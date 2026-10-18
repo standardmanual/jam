@@ -15,6 +15,11 @@ import React from 'react';
  *
  * [20260905_0036] `fillMode="track-gradient"` 추가 — **기본 동작은 그대로다.**
  * 서비스 8곳 + `DualAxisGauge`가 이 컴포넌트를 쓰므로 새 표현은 새 prop으로만 켠다.
+ *
+ * [20261018_0054] `outlined` 추가 — **기본 false라 기존 호출부는 그대로다.** true이면 트랙에 1px `--border`
+ * 외곽선을 둔다(`box-sizing: border-box`라 `height`가 외곽선을 포함한다). 채움은 절대 배치(`inset: 0`)라
+ * 테두리 안쪽에만 그려져 외곽선이 가려지지 않는다. 기본 `trackColor`가 `--border`와 같은 색이라 외곽선이 보이려면
+ * 호출부가 트랙 면을 따로 정해야 한다(예: `trackColor="var(--background)"`).
  */
 /**
  * [20260906_2140] 그라데이션 정의를 `--progress-sweep` 토큰 하나로 모았다.
@@ -39,6 +44,7 @@ export function ProgressBar({
   radius = 'var(--radius-full)',
   fillMode = 'solid',
   gradient = PROGRESS_TRACK_GRADIENT,
+  outlined = false,
   className = '',
 }) {
   const computedPercent =
@@ -85,6 +91,7 @@ export function ProgressBar({
         borderRadius: radius,
         overflow: 'hidden',
         background: trackColor,
+        ...(outlined ? { boxSizing: 'border-box', border: '1px solid var(--border)' } : null),
       }}
     >
       {fillMode === 'track-gradient' ? (

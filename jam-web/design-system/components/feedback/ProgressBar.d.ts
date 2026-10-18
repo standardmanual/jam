@@ -33,6 +33,12 @@ export interface ProgressBarProps {
   fillMode?: ProgressBarFillMode;
   /** fillMode='track-gradient'일 때 트랙에 깔 그라데이션. 기본 PROGRESS_TRACK_GRADIENT */
   gradient?: string;
+  /**
+   * 트랙에 1px `--border` 외곽선을 둔다. 기본 false(기존 모양 그대로).
+   * `box-sizing: border-box`라 `height`가 외곽선을 포함한다(`height={10}`이면 안쪽 8px). 채움은 외곽선 안쪽에만 그려진다.
+   * 기본 `trackColor`(`--border`)로는 외곽선이 안 보이므로 `trackColor`를 따로 정한다.
+   */
+  outlined?: boolean;
   className?: string;
 }
 

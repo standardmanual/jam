@@ -21,3 +21,12 @@ MissionStatusClient의 3px 임의값 등).
 
 ⚠️ **기본 동작을 바꾸지 마라.** 서비스 8곳과 `DualAxisGauge`가 이 컴포넌트를 쓴다.
 새 표현은 `fillMode`로만 켠다.
+
+## 추가 — 외곽선 (티켓 20261018_0054)
+
+- `outlined` — 기본 `false`(예전과 완전히 동일). `true`이면 트랙에 1px `--border` 외곽선을 둔다.
+  `box-sizing: border-box`라 `height`가 외곽선을 포함한다(`height={10}`이면 채움이 그려지는 안쪽은 8px).
+  채움은 외곽선 안쪽에만 그려진다.
+- 기본 `trackColor`가 `--border`와 같은 색이라 외곽선만 켜서는 보이지 않는다. 트랙 면을 따로 정한다.
+  서비스(캡슐·잠긴 아이템 배지)의 호출: `<ProgressBar outlined percent={n} fillMode="track-gradient" trackColor="var(--background)" height={10} labelType="none" />`.
+- 숫자가 필요한 자리에는 쓰지 않는다(`labelType="none"`로 둔다). 캡슐은 진행 수치를 화면에 내지 않는다.

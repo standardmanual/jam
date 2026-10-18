@@ -151,3 +151,36 @@ export const TrackGradientToken: Story = {
     expect(PROGRESS_TRACK_GRADIENT).toBe('var(--progress-sweep)');
   },
 };
+
+/**
+ * outlined — 트랙 외곽선 (티켓 20261018_0054).
+ *
+ * `outlined`(기본 false)가 켜지면 트랙에 1px `--border`를 두고 `box-sizing: border-box`라서 `height`가 외곽선을 포함한다
+ * (`height={10}`이면 채움이 그려지는 안쪽은 8px). 채움은 외곽선 안쪽에만 그려져 외곽선이 가려지지 않는다.
+ * 기본 `trackColor`가 `--border`와 같은 색이라 외곽선이 보이려면 `trackColor`를 따로 정한다 —
+ * 위 두 줄이 서비스 캡슐과 잠긴 아이템 배지가 쓰는 호출이다(`track-gradient`, `--background` 트랙, 라벨 없음).
+ * 맨 아래 줄은 `outlined`를 생략한 기존 호출이고, 위 두 줄과 달리 외곽선이 없어야 한다.
+ */
+export const Outlined: Story = {
+  name: 'outlined — 외곽선 있는 게이지, 기본 호출은 그대로',
+  render: () => (
+    <div
+      data-testid="outlined-bars"
+      style={{ width: 280, display: 'flex', flexDirection: 'column', gap: 12, padding: 16, background: 'var(--surface)' }}
+    >
+      <ProgressBar outlined percent={35} fillMode="track-gradient" trackColor="var(--background)" height={10} labelType="none" />
+      <ProgressBar outlined percent={100} fillMode="track-gradient" trackColor="var(--background)" height={10} labelType="none" />
+      <ProgressBar percent={35} fillMode="track-gradient" trackColor="var(--progress-track)" height={10} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const tracks = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-testid="outlined-bars"] > div > div'));
+    const [first, second, plain] = tracks.map((track) => getComputedStyle(track));
+    expect(first.borderTopWidth).toBe('1px');
+    expect(second.borderTopWidth).toBe('1px');
+    // 기본 호출은 외곽선이 없다 — 기존 호출부가 그대로라는 근거
+    expect(plain.borderTopWidth).toBe('0px');
+    // border-box라 height 10이 외곽선을 포함한다
+    expect(tracks[0].offsetHeight).toBe(10);
+  },
+};
