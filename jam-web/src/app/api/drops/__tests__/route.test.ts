@@ -5,8 +5,11 @@
  *  - 드랍 성공 뒤 `after()`로 놓은 사람의 `drop_item_count` 판정을 1회 예약한다(콜백이 `runJamActionEvaluation`을 부른다)
  *  - 401·400·404·403·500·`ok: false` 실패 분기에서는 예약하지 않는다
  *  - 응답 본문·상태 코드·에러 문구는 변경 전과 같다. 판정이 거부돼도 응답은 그대로다
- *  - 잠긴 개체(티켓 20261018_0051·0657)는 DB 함수(마이그레이션 238)가 `locked_item`으로 거절하고, 라우트가 409 `locked_item_not_allowed`로 바꾼다. 트리거 오류도 같은 코드다.
+ *  - 잠긴 개체(티켓 20261018_1812)도 잠긴 채 드랍한다. 채운 양이 사라졌으면 응답이 `lostFill`로 알린다(열린 개체·채운 양 0이면 0).
+ *    트리거 오류(`locked_item_cannot_be_dropped`)는 마지막 방어선으로 409 `locked_item_not_allowed`를 유지한다.
  *  - 소유권 확인보다 앞선 잠김 사전 조회는 없다 — `inventory_items`를 읽으면 시험이 실패한다
+ *  - 이용 정지 중이면 403 `user_suspended`이고 위치·장소 검증·RPC 모두 부르지 않는다. DB 함수가 `user_suspended`로 거절해도 같은 403이다.
+ *    정지 여부를 읽지 못하면 500이고 드랍하지 않는다.
  *
  * `after()`는 요청 범위 밖에서 부를 수 없다. 콜백을 모아 두었다가 테스트가 「응답이 끝난 뒤」를 직접 흉내 낸다
  * (선례: `src/app/api/admin/ops-inbox/__tests__/route.test.ts`).
@@ -29,6 +32,11 @@ const state = vi.hoisted(() => ({
   /** `inventory_items`를 읽은 횟수 — 잠김 사전 조회가 없어야 하므로 항상 0이어야 한다 */
   inventoryItemReads: 0,
   rpcCalls: 0,
+  poiReads: 0,
+  /** 이용 정지 중인가 */
+  suspended: false,
+  /** 정지 여부 조회가 실패하는가 */
+  suspensionReadFails: false,
   afterCallbacks: [] as (() => unknown)[],
 }))
 
@@ -47,6 +55,7 @@ vi.mock('@/lib/supabase/server', () => ({
     from: (table: string) => {
       if (table === 'inventory_items') state.inventoryItemReads += 1
       if (table !== 'poi') throw new Error(`예상하지 못한 테이블: ${table}`)
+      state.poiReads += 1
       const builder: Record<string, unknown> = {}
       builder.select = () => builder
       builder.eq = () => builder
@@ -64,6 +73,16 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/poi/proximity', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/poi/proximity')>()
   return { ...actual, isUserNearPoi: () => state.near }
+})
+vi.mock('@/lib/suspension/suspension', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/suspension/suspension')>()
+  return {
+    ...actual,
+    assertNotSuspended: async () => {
+      if (state.suspensionReadFails) throw new Error('user_suspensions 조회 실패')
+      if (state.suspended) throw new actual.UserSuspendedError({ reason: '시험', suspendedAt: '2026-10-18T00:00:00Z' })
+    },
+  }
 })
 vi.mock('@/lib/inventory/get-or-create', () => ({ getOrCreateInventoryId: async () => state.inventoryId }))
 vi.mock('@/lib/badge-engine/jamActionRoute', () => ({
@@ -97,6 +116,9 @@ beforeEach(() => {
   state.rpcResult = { data: { ok: true, drop_id: 'drop-1' }, error: null }
   state.inventoryItemReads = 0
   state.rpcCalls = 0
+  state.poiReads = 0
+  state.suspended = false
+  state.suspensionReadFails = false
   state.afterCallbacks = []
   runJamActionMock.mockResolvedValue(undefined)
 })
@@ -106,7 +128,7 @@ describe('성공 — after()로 놓은 사람의 drop_item_count를 판정한다
     const res = await POST(request(VALID_BODY))
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ drop_id: 'drop-1' })
+    expect(await res.json()).toEqual({ drop_id: 'drop-1', lostFill: 0 })
     expect(state.afterCallbacks).toHaveLength(1)
     // 응답을 보내기 전에는 판정을 돌리지 않는다 — after 콜백이 실행될 때만 부른다
     expect(runJamActionMock).not.toHaveBeenCalled()
@@ -121,7 +143,7 @@ describe('성공 — after()로 놓은 사람의 drop_item_count를 판정한다
 
     const res = await POST(request(VALID_BODY))
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ drop_id: 'drop-1' })
+    expect(await res.json()).toEqual({ drop_id: 'drop-1', lostFill: 0 })
 
     // 콜백이 거부돼도 이미 보낸 응답에는 영향이 없다(테스트 헬퍼가 거부를 삼킨다)
     await flushAfter()
@@ -207,13 +229,21 @@ describe('실패 분기에서는 판정을 예약하지 않는다 — 응답은 
   })
 })
 
-describe('잠긴 개체 (티켓 20261018_0051·0657)', () => {
-  it('DB가 locked_item으로 거절하면 409 locked_item_not_allowed로 바꾸고 판정을 예약하지 않는다', async () => {
+describe('잠긴 개체 (티켓 20261018_1812)', () => {
+  it('채우다 만 잠긴 개체를 드랍하면 사라진 채운 양을 lostFill로 알리고 판정을 예약한다', async () => {
+    state.rpcResult = { data: { ok: true, drop_id: 'drop-1', lost_fill: 60 }, error: null }
+    const res = await POST(request(VALID_BODY))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ drop_id: 'drop-1', lostFill: 60 })
+    expect(state.rpcCalls).toBe(1)
+    expect(state.afterCallbacks).toHaveLength(1)
+  })
+
+  it('DB가 더는 돌려주지 않는 locked_item 코드는 알 수 없는 코드로 보고 400을 낸다', async () => {
     state.rpcResult = { data: { ok: false, error: 'locked_item' }, error: null }
     const res = await POST(request(VALID_BODY))
-    expect(res.status).toBe(409)
-    expect(await res.json()).toEqual({ error: d.lockedItem.drop, code: 'locked_item_not_allowed' })
-    expect(state.rpcCalls).toBe(1)
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: d.drops.dropFailed })
     expect(state.afterCallbacks).toHaveLength(0)
   })
 
@@ -243,6 +273,43 @@ describe('잠긴 개체 (티켓 20261018_0051·0657)', () => {
     expect(res.status).toBe(409)
     expect(await res.json()).toEqual({ error: d.lockedItem.drop, code: 'locked_item_not_allowed' })
     expect(state.afterCallbacks).toHaveLength(0)
+    consoleError.mockRestore()
+  })
+})
+
+describe('이용 정지 (티켓 20261018_1812, 운영 로직 9.3절)', () => {
+  it('정지 중이면 403 user_suspended이고 장소 조회·RPC를 부르지 않는다', async () => {
+    state.suspended = true
+    const res = await POST(request(VALID_BODY))
+    expect(res.status).toBe(403)
+    expect(await res.json()).toEqual({ error: d.suspension.dropBlocked, code: 'user_suspended' })
+    expect(state.poiReads).toBe(0)
+    expect(state.rpcCalls).toBe(0)
+    expect(state.afterCallbacks).toHaveLength(0)
+  })
+
+  it('입력 오류보다 정지가 먼저 막는다', async () => {
+    state.suspended = true
+    const res = await POST(request({ ...VALID_BODY, poi_id: '' }))
+    expect(res.status).toBe(403)
+    expect(state.rpcCalls).toBe(0)
+  })
+
+  it('RPC가 user_suspended로 거절해도 같은 403이다(앱 검사와 RPC 사이에 정지가 걸린 경우)', async () => {
+    state.rpcResult = { data: { ok: false, error: 'user_suspended' }, error: null }
+    const res = await POST(request(VALID_BODY))
+    expect(res.status).toBe(403)
+    expect(await res.json()).toEqual({ error: d.suspension.dropBlocked, code: 'user_suspended' })
+    expect(state.afterCallbacks).toHaveLength(0)
+  })
+
+  it('정지 여부를 읽지 못하면 500이고 드랍하지 않는다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.suspensionReadFails = true
+    const res = await POST(request(VALID_BODY))
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: d.drops.dropFailed })
+    expect(state.rpcCalls).toBe(0)
     consoleError.mockRestore()
   })
 })

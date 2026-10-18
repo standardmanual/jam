@@ -10,6 +10,8 @@ import { classifyNaverCategory } from '@/lib/poi/category-gate'
 import type { PoiRow } from '@/types/database'
 import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
 import { isLockedItemTriggerError, LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
+import { assertNotSuspended, UserSuspendedError } from '@/lib/suspension/suspension'
+import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { jamTriggersForDrop } from '@/lib/badge-engine/jamActionDropTriggers'
 import { d, t } from '@/lib/i18n'
@@ -300,14 +302,28 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: d.drops.sessionExpired }, { status: 401 })
 
+  const service = createServiceClient()
+
+  // 이용 정지 중이면 드랍하지 않는다(티켓 20261018_1812, 운영 로직 9.3절). 위치·장소 검증보다 앞서 막는다.
+  // 정지 여부를 읽지 못하면 던져 드랍하지 않는다 — 정지 중인 유저가 조회 실패 틈에 드랍하면 안 된다.
+  const suspendedResponse = () => {
+    const suspended: UserSuspendedResponse = { error: d.suspension.dropBlocked, code: USER_SUSPENDED_CODE }
+    return NextResponse.json(suspended, { status: 403 })
+  }
+  try {
+    await assertNotSuspended(service, user.id)
+  } catch (err) {
+    if (err instanceof UserSuspendedError) return suspendedResponse()
+    console.error('[drops] 이용 정지 조회 오류:', err)
+    return NextResponse.json({ error: d.drops.dropFailed }, { status: 500 })
+  }
+
   const body = await req.json()
   const { poi_id, inventory_item_id, user_lat, user_lng } = body
 
   if (!poi_id || !inventory_item_id || isNaN(user_lat) || isNaN(user_lng)) {
     return NextResponse.json({ error: d.drops.locationMissing }, { status: 400 })
   }
-
-  const service = createServiceClient()
 
   // POI 조회 + 드랍 반경(DROP_RADIUS_METERS = 500m) 검증.
   // 20260826_002 이전에는 주석·에러 문구가 '50m'라고 적혀 있었으나 상수는 처음부터
@@ -348,9 +364,8 @@ export async function POST(req: NextRequest) {
   // 비우기 + custody_events 기록을 전부 create_user_drop() RPC 하나의 트랜잭션으로 처리한다.
   // 기존처럼 inventory_items를 소프트 삭제(dropped_at/drop_id)하지 않는다 — 개체는 그대로
   // 남고 poi_drops.inventory_item_id로 연결될 뿐이다(일련번호 유지).
-  // 잠긴 개체는 드랍할 수 없다 — 잠긴 채 드랍과 가린 모습은 묶음 4가 만든다(티켓 20261018_0051, 운영 로직 7.2절).
-  // 잠김 거부는 DB 함수가 한다(마이그레이션 238): 소유권·장착 확인을 지난 뒤에 `locked_item`을 돌려주므로
-  // 남의 개체 id는 잠김 여부와 상관없이 `item_not_found`로 돌아가 정보가 새지 않는다(티켓 20261018_0657).
+  // 잠긴 개체도 잠긴 채 드랍한다(티켓 20261018_1812, 운영 로직 7.2절). 채우다 만 양은 DB 함수가 0으로 되돌리고 돌려주지 않으며,
+  // 사라진 양(`lost_fill`)을 응답에 싣는다. 이용 정지는 DB 함수도 한 번 더 막는다(`user_suspended`, 마이그레이션 239).
   const rpcArgs = {
     p_dropper_id: user.id,
     p_poi_id: poi_id,
@@ -366,13 +381,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: d.drops.dropFailed }, { status: 500 })
   }
 
-  const result = rpcResult as { ok: boolean; error?: string; drop_id?: string }
+  const result = rpcResult as { ok: boolean; error?: string; drop_id?: string; lost_fill?: number }
 
   if (!result.ok) {
     const code = result.error ?? ''
-    if (code === 'locked_item') {
-      return NextResponse.json({ error: d.lockedItem.drop, code: LOCKED_ITEM_NOT_ALLOWED_CODE }, { status: 409 })
-    }
+    // DB 함수도 정지를 검사한다(방어). 위 검사와 이 호출 사이에 정지가 걸린 경우다.
+    if (code === 'user_suspended') return suspendedResponse()
     // RPC가 돌려주는 값은 snake_case 코드다 — 여기서 사용자 문구로 완성해 돌려준다
     // (ADR 0001, 클라이언트는 이 문구를 그대로 신뢰해 노출한다).
     const messageMap: Record<string, string> = {
@@ -397,5 +411,6 @@ export async function POST(req: NextRequest) {
   // 성공 분기에서만 예약한다. `runJamActionEvaluation`은 예외를 던지지 않아 드랍 응답은 그대로다.
   after(() => runJamActionEvaluation(user.id, jamTriggersForDrop()))
 
-  return NextResponse.json({ drop_id: result.drop_id })
+  // `lostFill`: 잠긴 개체를 드랍하며 사라진 채운 양. 열린 개체이거나 채운 양이 없었으면 0이다.
+  return NextResponse.json({ drop_id: result.drop_id, lostFill: result.lost_fill ?? 0 })
 }

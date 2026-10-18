@@ -10,6 +10,9 @@ import { isPoiBlocked, blockPoiForUser } from '@/lib/abusing/poi-block'
 import { checkAndUpdateLocation } from '@/lib/abusing/gps-detector'
 import { applyBan, logAbusingEvent } from '@/lib/abusing/shadow-ban'
 import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
+import { findLockedItemIds } from '@/lib/inventory/lockedItem'
+import { assertNotSuspended, UserSuspendedError } from '@/lib/suspension/suspension'
+import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { jamTriggersForPickup } from '@/lib/badge-engine/jamActionDropTriggers'
 import { d, t } from '@/lib/i18n'
@@ -28,14 +31,28 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: d.drops.sessionExpired }, { status: 401 })
 
+  const service = createServiceClient()
+
+  // 이용 정지 중이면 줍지 않는다(티켓 20261018_1812, 운영 로직 9.5절). 위치·GPS 판정보다 앞서 막아 GPS 제재 기록도 남기지 않는다.
+  // 정지 여부를 읽지 못하면 던져 줍지 않는다 — 정지 중인 유저가 조회 실패 틈에 줍는 일이 없어야 한다.
+  const suspendedResponse = () => {
+    const suspended: UserSuspendedResponse = { error: d.suspension.pickupBlocked, code: USER_SUSPENDED_CODE }
+    return NextResponse.json(suspended, { status: 403 })
+  }
+  try {
+    await assertNotSuspended(service, user.id)
+  } catch (err) {
+    if (err instanceof UserSuspendedError) return suspendedResponse()
+    console.error('[pickup] 이용 정지 조회 오류:', err)
+    return NextResponse.json({ error: d.drops.pickupFailed }, { status: 500 })
+  }
+
   const body = await req.json()
   const { user_lat, user_lng } = body
 
   if (isNaN(user_lat) || isNaN(user_lng)) {
     return NextResponse.json({ error: d.drops.locationMissing }, { status: 400 })
   }
-
-  const service = createServiceClient()
 
   // 드랍 레코드 조회
   const { data: dropRaw, error: dropError } = await service
@@ -64,6 +81,12 @@ export async function POST(
 
   if (poiError || !poiRaw) {
     return NextResponse.json({ error: d.drops.pickupPoiNotFound }, { status: 404 })
+  }
+
+  // 꺼진 장소(`is_active = false`)에서는 줍지 못한다. 드랍은 지우지 않으므로 장소를 다시 켜면 다시 주울 수 있다.
+  // 드랍이 없을 때(`drop_not_found`)와 같은 404·문구로 닫아 꺼진 장소에 드랍이 남아 있다는 정보를 주지 않는다.
+  if (!(poiRaw as PoiRow).is_active) {
+    return NextResponse.json({ error: d.drops.pickupDropNotFound }, { status: 404 })
   }
 
   if (!isUserNearPoi(user_lat, user_lng, poiRaw as PoiRow)) {
@@ -140,11 +163,14 @@ export async function POST(
 
   if (!result.ok) {
     const code = result.error ?? ''
+    // DB 함수도 정지를 검사한다(방어). 위 검사와 이 호출 사이에 정지가 걸린 경우다.
+    if (code === 'user_suspended') return suspendedResponse()
     // RPC가 돌려주는 값은 snake_case 코드다 — 여기서 사용자 문구로 완성해 돌려준다
     // (ADR 0001, 클라이언트는 이 문구를 그대로 신뢰해 노출한다).
+    // 자기 드랍 줍기는 허용이라 «자기 드랍» 거절 코드는 없다(티켓 20261018_1812). 꺼진 장소(`poi_inactive`)는 위 검사와 같은 문구다.
     const messageMap: Record<string, string> = {
       already_picked_up: d.drops.pickupAlreadyDone,
-      cannot_pickup_own_drop: d.drops.pickupOwnDrop,
+      poi_inactive: d.drops.pickupDropNotFound,
       inventory_not_found: d.drops.loadInventoryFailed,
       inventory_full: d.drops.pickupInventoryFull,
       // 20260829_2101: pickup_drop() 재작성 — 신규 INSERT를 제거하고 기존 개체를 재사용한다.
@@ -153,7 +179,7 @@ export async function POST(
     }
     const statusMap: Record<string, number> = {
       already_picked_up: 409,
-      cannot_pickup_own_drop: 403,
+      poi_inactive: 404,
       inventory_not_found: 404,
       inventory_full: 422,
       item_not_found: 404,
@@ -179,9 +205,22 @@ export async function POST(
     })
   }
 
+  // 잠긴 채 받은 개체는 어떤 아이템 배지인지 알 수 있는 값(이름·그림)을 피드와 소식에 싣지 않는다(운영 로직 7.3절, 티켓 20261018_1812).
+  // 응답은 개체 id뿐이라 이미 비어 있다. 잠김 여부를 읽지 못하면 잠긴 것으로 본다 — 드러내는 쪽이 되돌릴 수 없다.
+  let pickedLocked = true
+  if (result.inventory_item_id) {
+    try {
+      pickedLocked = (await findLockedItemIds(service, [result.inventory_item_id])).length > 0
+    } catch (err) {
+      console.error('[pickup] 잠긴 개체 조회 실패 — 잠긴 것으로 보고 피드·소식을 남기지 않는다:', err)
+    }
+  }
+
   // 피드 기록 (배지 + POI 정보 조회)
   const poi = poiRaw as PoiRow
-  const { data: badgeRaw } = await service.from('badges').select('id, name, image_url, rarity').eq('id', drop.badge_id).single()
+  const { data: badgeRaw } = pickedLocked
+    ? { data: null }
+    : await service.from('badges').select('id, name, image_url, rarity').eq('id', drop.badge_id).single()
   if (badgeRaw) {
     const b = badgeRaw as { id: string; name: string; image_url: string; rarity: string }
     await recordFeedEvent(user.id, 'item_picked_up', {
