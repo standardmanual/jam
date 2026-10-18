@@ -286,9 +286,10 @@ badges / item_books / tribes 세 테이블이 같은 배경 컬럼 세트를 갖
     옛 함수를 그대로 부르고 그 개체는 열린 채다. 동기화 발급(`syncIssueRun.ts`)과 보류 고르기(`resolve_sync_pending_items`)만 새 함수를 쓴다.
   - **트리거** `trg_inventory_items_reject_locked`: 잠긴 개체의 `slotted_in`(컬렉션 꽂기)·`dropped_at` 갱신을 `locked_item_cannot_be_slotted`·
     `locked_item_cannot_be_dropped` 오류로 거부한다. 장착·교체의 마지막 방어선이다. **유저 드랍(`create_user_drop`)은 `dropped_at`을 쓰지 않고
-    `inventory_id`만 비우므로 이 트리거가 막지 못한다** — 드랍은 `/api/drops`가 호출 전에 잠김을 확인해 거절한다(묶음 4가 잠긴 채 드랍을 열 때 함께 고친다).
+    `inventory_id`만 비우므로 이 트리거가 막지 못한다** — 마이그레이션 238이 `create_user_drop` 안에서 소유권·장착 확인을 지난 뒤 `locked`이면
+    `{ok:false, error:'locked_item'}`을 돌려주게 해 DB가 거절한다(티켓 20261018_0657). `/api/drops`는 이 응답을 409 `locked_item_not_allowed`로 바꾸고, 남의 개체는 `item_not_found`로 돌아가 잠김 여부가 새지 않는다.
   - **잠긴 동안의 제한**(서버가 거절, 코드 `locked_item_not_allowed`): 컬렉션 장착·교체(`/api/itembooks/[id]/slot`), 믹스 재료(`combineRecipeAttempt`, 소각 전에 거절),
-    드랍(`/api/drops`, 묶음 4 전까지). 트리거 오류 메시지도 같은 코드로 바꿔 응답한다. 화면의 안내는 3-6이다.
+    드랍(`/api/drops`, 묶음 4 전까지, 거절은 DB 함수). 트리거 오류 메시지도 같은 코드로 바꿔 응답한다. 화면의 안내는 3-6이다.
 - **채우기·열기 (JAM 2.0, 마이그레이션 235, 티켓 20261018_0053, 운영 로직 7.2·8.5절)** — 전부 덧붙이기다. 옛 테이블·함수·칸의 뜻은 바꾸지 않고 232·234의 캡슐 함수도 건드리지 않는다.
   - 새 칸 `inventory_items.point_awarded_at`(timestamptz, nullable): 잠긴 개체를 열 때 배지 포인트를 준 시각. «한 일련번호에 한 번만» 주는 기록이다. 열린 채 받아 지급한 개체는 이 칸을 쓰지 않는다.
   - 새 표 `inventory_item_events`(append-only, RLS만 켜고 클라이언트 정책 없음, service_role 전용): 개체가 거쳐 간 이력. `inventory_item_id`·`badge_id`(ON DELETE SET NULL), `serial_number`, `user_id`(그 일을 한 유저),

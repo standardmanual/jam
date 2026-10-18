@@ -9,7 +9,7 @@ import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
 import { classifyNaverCategory } from '@/lib/poi/category-gate'
 import type { PoiRow } from '@/types/database'
 import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
-import { findLockedItemIds, isLockedItemTriggerError, LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
+import { isLockedItemTriggerError, LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { jamTriggersForDrop } from '@/lib/badge-engine/jamActionDropTriggers'
 import { d, t } from '@/lib/i18n'
@@ -349,17 +349,8 @@ export async function POST(req: NextRequest) {
   // 기존처럼 inventory_items를 소프트 삭제(dropped_at/drop_id)하지 않는다 — 개체는 그대로
   // 남고 poi_drops.inventory_item_id로 연결될 뿐이다(일련번호 유지).
   // 잠긴 개체는 드랍할 수 없다 — 잠긴 채 드랍과 가린 모습은 묶음 4가 만든다(티켓 20261018_0051, 운영 로직 7.2절).
-  // 마이그레이션 231 트리거는 `dropped_at` 갱신만 막는데 `create_user_drop`은 `inventory_id`만 비우므로, 이 서버 확인이 실제 방어선이다.
-  // 소유권을 확인하는 RPC보다 앞이라, 남의 개체 id를 보내도 잠김 여부만 알 수 있고 그 외 정보는 새지 않는다.
-  try {
-    if ((await findLockedItemIds(service, [inventory_item_id])).length > 0) {
-      return NextResponse.json({ error: d.lockedItem.drop, code: LOCKED_ITEM_NOT_ALLOWED_CODE }, { status: 409 })
-    }
-  } catch (lockCheckError) {
-    console.error('[drops] 잠긴 개체 조회 오류:', lockCheckError)
-    return NextResponse.json({ error: d.drops.dropFailed }, { status: 500 })
-  }
-
+  // 잠김 거부는 DB 함수가 한다(마이그레이션 238): 소유권·장착 확인을 지난 뒤에 `locked_item`을 돌려주므로
+  // 남의 개체 id는 잠김 여부와 상관없이 `item_not_found`로 돌아가 정보가 새지 않는다(티켓 20261018_0657).
   const rpcArgs = {
     p_dropper_id: user.id,
     p_poi_id: poi_id,
@@ -379,6 +370,9 @@ export async function POST(req: NextRequest) {
 
   if (!result.ok) {
     const code = result.error ?? ''
+    if (code === 'locked_item') {
+      return NextResponse.json({ error: d.lockedItem.drop, code: LOCKED_ITEM_NOT_ALLOWED_CODE }, { status: 409 })
+    }
     // RPC가 돌려주는 값은 snake_case 코드다 — 여기서 사용자 문구로 완성해 돌려준다
     // (ADR 0001, 클라이언트는 이 문구를 그대로 신뢰해 노출한다).
     const messageMap: Record<string, string> = {

@@ -5,7 +5,8 @@
  *  - 드랍 성공 뒤 `after()`로 놓은 사람의 `drop_item_count` 판정을 1회 예약한다(콜백이 `runJamActionEvaluation`을 부른다)
  *  - 401·400·404·403·500·`ok: false` 실패 분기에서는 예약하지 않는다
  *  - 응답 본문·상태 코드·에러 문구는 변경 전과 같다. 판정이 거부돼도 응답은 그대로다
- *  - 잠긴 개체(티켓 20261018_0051)는 RPC 전에 409 `locked_item_not_allowed`로 거절한다. 트리거 오류도 같은 코드로 바꾼다.
+ *  - 잠긴 개체(티켓 20261018_0051·0657)는 DB 함수(마이그레이션 238)가 `locked_item`으로 거절하고, 라우트가 409 `locked_item_not_allowed`로 바꾼다. 트리거 오류도 같은 코드다.
+ *  - 소유권 확인보다 앞선 잠김 사전 조회는 없다 — `inventory_items`를 읽으면 시험이 실패한다
  *
  * `after()`는 요청 범위 밖에서 부를 수 없다. 콜백을 모아 두었다가 테스트가 「응답이 끝난 뒤」를 직접 흉내 낸다
  * (선례: `src/app/api/admin/ops-inbox/__tests__/route.test.ts`).
@@ -25,9 +26,8 @@ const state = vi.hoisted(() => ({
   near: true,
   inventoryId: 'inv-1' as string | null,
   rpcResult: { data: { ok: true, drop_id: 'drop-1' } as unknown, error: null as unknown },
-  /** `inventory_items`에서 locked = true로 조회되는 행 */
-  lockedRows: [] as { id: string }[],
-  lockedError: null as { message: string } | null,
+  /** `inventory_items`를 읽은 횟수 — 잠김 사전 조회가 없어야 하므로 항상 0이어야 한다 */
+  inventoryItemReads: 0,
   rpcCalls: 0,
   afterCallbacks: [] as (() => unknown)[],
 }))
@@ -45,15 +45,7 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
   createServiceClient: () => ({
     from: (table: string) => {
-      if (table === 'inventory_items') {
-        const lockedBuilder: Record<string, unknown> = {}
-        lockedBuilder.select = () => lockedBuilder
-        lockedBuilder.in = () => lockedBuilder
-        lockedBuilder.eq = () => lockedBuilder
-        lockedBuilder.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
-          Promise.resolve({ data: state.lockedRows, error: state.lockedError }).then(onFulfilled, onRejected)
-        return lockedBuilder
-      }
+      if (table === 'inventory_items') state.inventoryItemReads += 1
       if (table !== 'poi') throw new Error(`예상하지 못한 테이블: ${table}`)
       const builder: Record<string, unknown> = {}
       builder.select = () => builder
@@ -103,8 +95,7 @@ beforeEach(() => {
   state.near = true
   state.inventoryId = 'inv-1'
   state.rpcResult = { data: { ok: true, drop_id: 'drop-1' }, error: null }
-  state.lockedRows = []
-  state.lockedError = null
+  state.inventoryItemReads = 0
   state.rpcCalls = 0
   state.afterCallbacks = []
   runJamActionMock.mockResolvedValue(undefined)
@@ -216,14 +207,27 @@ describe('실패 분기에서는 판정을 예약하지 않는다 — 응답은 
   })
 })
 
-describe('잠긴 개체 (티켓 20261018_0051)', () => {
-  it('잠긴 개체는 RPC를 부르기 전에 409 locked_item_not_allowed로 거절하고 판정을 예약하지 않는다', async () => {
-    state.lockedRows = [{ id: 'item-1' }]
+describe('잠긴 개체 (티켓 20261018_0051·0657)', () => {
+  it('DB가 locked_item으로 거절하면 409 locked_item_not_allowed로 바꾸고 판정을 예약하지 않는다', async () => {
+    state.rpcResult = { data: { ok: false, error: 'locked_item' }, error: null }
     const res = await POST(request(VALID_BODY))
     expect(res.status).toBe(409)
     expect(await res.json()).toEqual({ error: d.lockedItem.drop, code: 'locked_item_not_allowed' })
-    expect(state.rpcCalls).toBe(0)
+    expect(state.rpcCalls).toBe(1)
     expect(state.afterCallbacks).toHaveLength(0)
+  })
+
+  it('남의 개체는 item_not_found로 돌아가 잠김 여부가 새지 않는다', async () => {
+    state.rpcResult = { data: { ok: false, error: 'item_not_found' }, error: null }
+    const res = await POST(request(VALID_BODY))
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ error: d.drops.dropItemNotFound })
+  })
+
+  it('소유권 확인보다 앞선 잠김 사전 조회는 하지 않는다', async () => {
+    await POST(request(VALID_BODY))
+    expect(state.inventoryItemReads).toBe(0)
+    expect(state.rpcCalls).toBe(1)
   })
 
   it('열린 개체는 그대로 드랍한다', async () => {
@@ -239,16 +243,6 @@ describe('잠긴 개체 (티켓 20261018_0051)', () => {
     expect(res.status).toBe(409)
     expect(await res.json()).toEqual({ error: d.lockedItem.drop, code: 'locked_item_not_allowed' })
     expect(state.afterCallbacks).toHaveLength(0)
-    consoleError.mockRestore()
-  })
-
-  it('잠김 여부를 읽지 못하면 드랍하지 않고 500으로 닫는다', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    state.lockedError = { message: 'db down' }
-    const res = await POST(request(VALID_BODY))
-    expect(res.status).toBe(500)
-    expect(await res.json()).toEqual({ error: d.drops.dropFailed })
-    expect(state.rpcCalls).toBe(0)
     consoleError.mockRestore()
   })
 })

@@ -1,7 +1,7 @@
 /**
  * 잠긴 개체의 사용 제한 — 거부 코드와 판정 (티켓 20261018_0051 1회, 운영 로직 7.2절)
  *
- * 잠긴 개체(`inventory_items.locked`)는 컬렉션 장착·교체, 믹스 재료, 드랍에 쓸 수 없다(드랍은 묶음 4가 잠긴 채 드랍을 열 때까지).
+ * 잠긴 개체(`inventory_items.locked`)는 컬렉션 장착·교체, 믹스 재료, 드랍에 쓸 수 없다(드랍은 묶음 4가 잠긴 채 드랍을 열 때까지. 드랍은 사전 조회 없이 `create_user_drop`이 `locked_item`으로 거절한다, 마이그레이션 238).
  * 거절은 서버가 한다. 마이그레이션 231의 트리거(`locked_item_cannot_be_slotted`, `locked_item_cannot_be_dropped`)는 `slotted_in`·`dropped_at`
  * 갱신만 막는 마지막 방어선이라, 각 경로는 호출 전에 `findLockedItemIds`로 먼저 거르고, 트리거 오류가 올라오면 같은 코드로 바꾼다.
  *
