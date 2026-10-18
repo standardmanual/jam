@@ -153,6 +153,72 @@ describe('buildRecipeRow — 슬롯 타입 일치 + 보상 배지는 아이템 �
   })
 })
 
+describe('buildRecipeRow — 설명·결과 잠김·보상 없음 허용(티켓 20261018_0055)', () => {
+  const base = { name: '테스트 레시피', slots: [itemSlot([ITEM_A]), activitySlot([ACT])] }
+
+  it('제출하지 않으면 행에 세 칸을 넣지 않는다(수정 때 기존 값을 건드리지 않는다)', async () => {
+    const result = await buildRecipeRow(makeClient(), { ...base, reward_points: 10 })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect('description' in result.row).toBe(false)
+      expect('reward_locked' in result.row).toBe(false)
+      expect('allow_no_reward' in result.row).toBe(false)
+    }
+  })
+
+  it('제출한 설명·잠김·보상 없음 허용을 행에 넣고 설명은 앞뒤 공백을 지운다', async () => {
+    const result = await buildRecipeRow(makeClient(), {
+      ...base,
+      reward_points: 10,
+      description: '  같은 등급 5개를 모아 위 등급으로 올려요  ',
+      reward_locked: true,
+      allow_no_reward: false,
+    })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.row.description).toBe('같은 등급 5개를 모아 위 등급으로 올려요')
+      expect(result.row.reward_locked).toBe(true)
+      expect(result.row.allow_no_reward).toBe(false)
+    }
+  })
+
+  it('빈 설명은 null로 넣는다(설명 없음)', async () => {
+    const result = await buildRecipeRow(makeClient(), { ...base, reward_points: 10, description: '   ' })
+
+    expect(result.ok && result.row.description).toBeNull()
+  })
+
+  it('설명이 500자를 넘으면 거부한다', async () => {
+    const result = await buildRecipeRow(makeClient(), { ...base, reward_points: 10, description: 'ㄱ'.repeat(501) })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toContain('500자')
+  })
+
+  it('allow_no_reward가 true이면 포인트와 보상 배지가 모두 없어도 저장 행이 만들어진다', async () => {
+    const result = await buildRecipeRow(makeClient(), { ...base, allow_no_reward: true })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.row.reward_points).toBe(0)
+      expect(result.row.reward_badge_ids).toEqual([])
+      expect(result.row.allow_no_reward).toBe(true)
+    }
+  })
+
+  it('allow_no_reward가 없거나 false이면 옛 검증(보상 하나 이상)이 그대로다', async () => {
+    const missing = await buildRecipeRow(makeClient(), { ...base })
+    const off = await buildRecipeRow(makeClient(), { ...base, allow_no_reward: false })
+
+    for (const result of [missing, off]) {
+      expect(result.ok).toBe(false)
+      if (!result.ok) expect(result.error).toContain('보상을 하나 이상')
+    }
+  })
+})
+
 describe('buildRecipeRow — 공개 시각(valid_from)', () => {
   const NOW = new Date('2026-10-01T00:00:00Z')
   const base = { name: '테스트 레시피', slots: [itemSlot([ITEM_A]), activitySlot([ACT])], reward_points: 10 }

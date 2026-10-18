@@ -334,3 +334,47 @@ describe('PATCH /api/admin/recipes/[id] — 종료 시각 (티켓 20261002_0710)
     expect(state.updates).toHaveLength(0)
   })
 })
+
+describe('PATCH /api/admin/recipes/[id] — 설명·결과 잠김·보상 없음 허용 (티켓 20261018_0055)', () => {
+  it('새 칸 세 개를 update 행에 싣는다', async () => {
+    state.existingValidFrom = inDays(-3)
+
+    const res = await patch({ description: '설명이에요', reward_locked: true, allow_no_reward: true, reward_points: 0 })
+
+    expect(res.status).toBe(200)
+    expect(state.updates[0].description).toBe('설명이에요')
+    expect(state.updates[0].reward_locked).toBe(true)
+    expect(state.updates[0].allow_no_reward).toBe(true)
+  })
+
+  it('새 칸을 보내지 않으면 update 행에 넣지 않는다(옛 어드민 요청은 기존 값을 건드리지 않는다)', async () => {
+    state.existingValidFrom = inDays(-3)
+
+    const res = await patch()
+
+    expect(res.status).toBe(200)
+    expect('description' in state.updates[0]).toBe(false)
+    expect('reward_locked' in state.updates[0]).toBe(false)
+    expect('allow_no_reward' in state.updates[0]).toBe(false)
+  })
+
+  it('보상이 없는데 allow_no_reward가 없으면 옛 검증대로 400이고 저장하지 않는다', async () => {
+    state.existingValidFrom = inDays(-3)
+
+    const res = await patch({ reward_points: 0 })
+    const body = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(body.error).toContain('보상을 하나 이상')
+    expect(state.updates).toHaveLength(0)
+  })
+
+  it('500자를 넘는 설명은 400이고 저장하지 않는다', async () => {
+    state.existingValidFrom = inDays(-3)
+
+    const res = await patch({ description: 'ㄱ'.repeat(501) })
+
+    expect(res.status).toBe(400)
+    expect(state.updates).toHaveLength(0)
+  })
+})

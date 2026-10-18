@@ -6,7 +6,9 @@ import Link from 'next/link'
 import type { BadgeRow, CombinationRecipeRow, CombinationRecipeSlotRow, CombineSlotBadgeType } from '@/types/database'
 import MultiBadgeSearchSelect, { badgeLabel, type SelectedBadge } from '@/components/admin/MultiBadgeSearchSelect'
 import { Input } from '@/components/admin/ui/input'
-import { MAX_SLOTS, MIN_ITEM_SLOTS, MIN_SLOTS } from '@/lib/combine/recipe-payload'
+import { Textarea } from '@/components/admin/ui/textarea'
+import { Checkbox } from '@/components/admin/ui/checkbox'
+import { MAX_DESCRIPTION_LENGTH, MAX_SLOTS, MIN_ITEM_SLOTS, MIN_SLOTS } from '@/lib/combine/recipe-payload'
 import { recipeReleaseState } from '@/lib/combine/visibility'
 import { assertValidPeriod } from '@/lib/admin/recipe-write'
 import { cancelReleaseConfirmMessage } from '@/lib/admin/recipe-bulk'
@@ -75,6 +77,10 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
   const badgeMap = useMemo(() => new Map(badges.map((b) => [b.id, b])), [badges])
 
   const [name, setName] = useState(recipe?.name ?? '')
+  // 설명·보상 없음·결과 잠김(티켓 20261018_0055, 마이그레이션 236) — 설명 최대 길이는 서버 검증과 같은 상수를 쓴다.
+  const [description, setDescription] = useState(recipe?.description ?? '')
+  const [allowNoReward, setAllowNoReward] = useState(recipe?.allow_no_reward ?? false)
+  const [rewardLocked, setRewardLocked] = useState(recipe?.reward_locked ?? false)
   const [slots, setSlots] = useState<SlotState[]>(
     initialSlotsRaw && initialSlotsRaw.length > 0
       ? slotsFromRecipe(initialSlotsRaw, badgeMap)
@@ -137,7 +143,11 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
       setError('보상 포인트는 0 이상의 정수여야 해요.')
       return
     }
-    if (points === 0 && rewardBadges.length === 0) {
+    if (description.trim().length > MAX_DESCRIPTION_LENGTH) {
+      setError(`레시피 설명은 ${MAX_DESCRIPTION_LENGTH}자까지 쓸 수 있어요. 줄여서 다시 입력해 주세요.`)
+      return
+    }
+    if (!allowNoReward && points === 0 && rewardBadges.length === 0) {
       setError('보상을 하나 이상 지정해 주세요. 포인트나 배지 중 최소 하나가 필요해요.')
       return
     }
@@ -201,6 +211,9 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
       })),
       reward_points: points,
       reward_badge_ids: rewardBadges.map((b) => b.id),
+      description: description.trim() === '' ? null : description.trim(),
+      reward_locked: rewardLocked,
+      allow_no_reward: allowNoReward,
       ...(validFrom !== undefined ? { valid_from: validFrom } : {}),
       ...(validUntil !== undefined ? { valid_until: validUntil } : {}),
     }
@@ -284,6 +297,26 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
           placeholder="예: 체크섬 조각 세트"
           className="max-w-md"
         />
+      </div>
+
+      {/* 설명(티켓 20261018_0055) — 유저에게 보이는 레시피 설명. 비우면 설명 없음 */}
+      <div>
+        <label htmlFor="recipe-description" className="text-xs text-muted-foreground mb-2 block break-keep wrap-break-word">
+          레시피 설명 (선택) — 유저 화면에 노출돼요. 비워 두면 설명 없이 보여요
+        </label>
+        <Textarea
+          id="recipe-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          maxLength={MAX_DESCRIPTION_LENGTH}
+          placeholder="레시피 설명을 입력하세요"
+          aria-describedby="recipe-description-count"
+          className="max-w-md resize-y"
+        />
+        <p id="recipe-description-count" className="text-xs text-muted-foreground mt-1">
+          {description.length}/{MAX_DESCRIPTION_LENGTH}자
+        </p>
       </div>
 
       {/* 슬롯 — 슬롯 하나에 후보 배지(OR)를 여러 개 담는다. 첫 후보로 타입이 고정된다 */}
@@ -379,6 +412,48 @@ export default function RecipeForm({ recipe, slots: initialSlotsRaw, badges, tri
             badgeType="item"
             placeholder="보상 배지 검색..."
           />
+        </div>
+        {/* 보상 없음(티켓 20261018_0055) — 켠 레시피만 포인트 0·보상 배지 없음으로 저장된다. 꺼 두면 보상 하나 이상이 필요하다 */}
+        <div className="flex items-start gap-2.5">
+          <Checkbox
+            id="recipe-allow-no-reward"
+            checked={allowNoReward}
+            onCheckedChange={(v) => setAllowNoReward(v === true)}
+            aria-describedby="recipe-allow-no-reward-help"
+            className="mt-0.5"
+          />
+          <div className="flex flex-col gap-0.5">
+            <label
+              htmlFor="recipe-allow-no-reward"
+              className="cursor-pointer text-sm font-medium text-foreground break-keep wrap-break-word"
+            >
+              보상 없음
+            </label>
+            <p id="recipe-allow-no-reward-help" className="text-xs text-muted-foreground break-keep wrap-break-word text-pretty">
+              켜면 포인트와 보상 배지를 모두 비워도 저장돼요. 끄면 보상을 하나 이상 지정해야 해요.
+            </p>
+          </div>
+        </div>
+        {/* 결과 잠김 — 켠 레시피의 보상 아이템 배지는 잠긴 채 지급된다. 끄면 열린 채 지급된다 */}
+        <div className="flex items-start gap-2.5">
+          <Checkbox
+            id="recipe-reward-locked"
+            checked={rewardLocked}
+            onCheckedChange={(v) => setRewardLocked(v === true)}
+            aria-describedby="recipe-reward-locked-help"
+            className="mt-0.5"
+          />
+          <div className="flex flex-col gap-0.5">
+            <label
+              htmlFor="recipe-reward-locked"
+              className="cursor-pointer text-sm font-medium text-foreground break-keep wrap-break-word"
+            >
+              결과를 잠긴 채 지급
+            </label>
+            <p id="recipe-reward-locked-help" className="text-xs text-muted-foreground break-keep wrap-break-word text-pretty">
+              켜면 이 레시피로 받는 아이템 배지가 잠긴 채 나와요. 끄면 열린 채 나와요.
+            </p>
+          </div>
         </div>
       </div>
 

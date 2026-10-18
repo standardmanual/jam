@@ -42,6 +42,12 @@ export interface RecipeRow {
   valid_from?: string | null
   /** 제출하지 않으면 행에 넣지 않는다(수정 때 기존 종료 시각을 그대로 둔다). `null`은 종료 없음(상시) */
   valid_until?: string | null
+  /** 제출하지 않으면 행에 넣지 않는다(수정 때 기존 설명을 그대로 둔다). `null`은 설명 없음(마이그레이션 236) */
+  description?: string | null
+  /** 제출하지 않으면 행에 넣지 않는다(수정 때 기존 값을 그대로 둔다) */
+  reward_locked?: boolean
+  /** 제출하지 않으면 행에 넣지 않는다(수정 때 기존 값을 그대로 둔다). 새 어드민만 보낸다 */
+  allow_no_reward?: boolean
 }
 
 export interface RecipeSlotRow {
@@ -58,7 +64,8 @@ export async function buildRecipeRow(
   const normalized = normalizeRecipePayload(body, now)
   if (!normalized.ok) return normalized
 
-  const { name, slots, rewardPoints, rewardBadgeIds, validFrom, validUntil } = normalized.value
+  const { name, slots, rewardPoints, rewardBadgeIds, validFrom, validUntil, description, rewardLocked, allowNoReward } =
+    normalized.value
 
   // 슬롯 후보 배지 전체의 실제 타입 조회 — 삭제된 배지는 후보로 쓸 수 없다.
   const allowedBadgeIds = [...new Set(slots.flatMap((s) => s.allowedBadgeIds))]
@@ -114,6 +121,9 @@ export async function buildRecipeRow(
       reward_badge_ids: rewardBadgeIds,
       ...(validFrom !== undefined ? { valid_from: validFrom } : {}),
       ...(validUntil !== undefined ? { valid_until: validUntil } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(rewardLocked !== undefined ? { reward_locked: rewardLocked } : {}),
+      ...(allowNoReward !== undefined ? { allow_no_reward: allowNoReward } : {}),
     },
     slots: slots.map((s, idx) => ({
       slot_order: idx,
