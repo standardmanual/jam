@@ -370,6 +370,14 @@ interface BadgeGateRequirement {
 | `signup_recent_active_days` | `number`(정수 1~30) | [JAM! 카테고리] `days_since_signup`의 **보조 키**(선택). 오늘(KST)을 포함한 최근 30일 가운데 활동한 날 수 ≥ 조건값. 있으면 가입 일수와 이 조건을 둘 다 채워야 발급한다 | 지표가 아니라 `days_since_signup` 배지를 거르는 조건이다 — 단독으로 저장할 수 없다(짝 필드 `days_since_signup`) |
 | `weekly_active_days` | `number`(정수 1~7) | [JAM! 카테고리] 주간 활동일 ≥ 조건값. 월~일(KST) 한 주 안의 활동한 날 수의 **역대 최고 주** 값. 가입한 날부터 센다 | 위와 동일 — 동기화 끝에서 판정 |
 | `same_spot_checkin_days` | `number`(정수 ≥1) | [JAM! 카테고리] 같은 지점 체크인 일수 ≥ 조건값. 지점(`poi_id`)별 체크인한 서로 다른 날(KST) 수의 **최댓값**(합이 아니다). 가입한 날부터 센다 | 위와 동일 — 동기화 끝에서 판정 |
+| `capsule_open_count` | `number`(정수 ≥1) | [JAM! 카테고리] 캡슐을 연 횟수 ≥ 조건값. `capsule_opens` 행 수(열 때마다 한 줄) | badge-engine 내 **항상 fail** — `jamActionBadges.ts`의 `evaluateJamActionBadges()`가 `POST /api/capsule/open` 성공 뒤 `after()`로 판정(티켓 20261018_1815) |
+| `locked_item_open_count` | `number`(정수 ≥1) | [JAM! 카테고리] 잠긴 아이템 배지를 연 횟수 ≥ 조건값. 개체 이력 `inventory_item_events`의 `unlocked` 행 수. 한 번 연 개체는 다시 잠기지 않는다 | 위와 동일 — `POST /api/inventory/items/[itemId]/open` 성공 뒤 `after()`에서 판정 |
+| `locked_item_pickup_count` | `number`(정수 ≥1) | [JAM! 카테고리] 픽업 **당시 잠겨 있던 서로 다른 개체** 수 ≥ 조건값. 자기 드랍은 세지 않고 같은 개체는 몇 번 주워도 1이다. 픽업 당시 잠김은 개체의 현재 잠김과 `unlocked_at`·픽업 시각(`poi_drops.picked_up_at`)으로 가린다 | 위와 동일 — `POST /api/drops/[dropId]/pickup` 성공 뒤 줍는 사람을 판정 |
+| `other_tribe_item_kinds_count` | `number`(정수 ≥1) | [JAM! 카테고리] 지금 가진 개체(`inventory_id`가 내 인벤토리, `destroyed_at` 없음) 가운데 내 소속(`users.tribe_id`)과 다른 트라이브 배지의 **서로 다른 종류**(`badge_id`) 수 ≥ 조건값. 잠긴 개체도 센다. 내 소속이나 배지의 트라이브가 없으면 세지 않는다 | 위와 동일 — 캡슐 열기·픽업·믹스 성공 뒤 판정 |
+| `cross_tribe_combine_success_count` | `number`(정수 ≥1) | [JAM! 카테고리] 믹스 성공 기록(`user_combine_success_logs`) 중 재료(`ingredient_badge_ids`)가 `badges.tribe_id` 기준 **2개 이상 트라이브**에 걸친 행 수 ≥ 조건값. 트라이브가 없는 재료는 트라이브로 세지 않는다 | 위와 동일 — `POST /api/combine` 성공 뒤 판정 |
+| `jam_total_earned` | `number`(정수 ≥1) | [JAM! 카테고리] 지금까지 **모은** 잼 ≥ 조건값. `jam_wallets.total_earned`(가진 양 `balance`이 아니라 쓴 잼이 줄이지 않는다). 지갑이 없으면 0 | 위와 동일 — 잼 정산이 있는 동기화 끝(`JAM_SYNC_TRIGGERS`)에서 판정 |
+| `jam_weekly_earned` | `number`(정수 ≥1) | [JAM! 카테고리] 월~일(KST) 한 주에 모은 잼의 **역대 최고 주** 값 ≥ 조건값. `jam_daily_earned`(활동한 날(KST)별 모은 양)를 주별로 합산한다 | 위와 동일 — 동기화 끝에서 판정 |
+| `chapter_reached` | `number`(정수 ≥1) | [JAM! 카테고리] 도달한 챕터 번호 ≥ 조건값. `user_chapters.chapter_no`(행이 없거나 퀘스트 전 NULL이면 0) | 위와 동일 — 챕터를 올리는 호출부(`chapter_add_score`·`chapter_start`를 부르는 앱 코드)가 아직 없어 그 전까지는 동기화 끝에서 읽는다. 챕터 오름 직후 판정은 묶음 5가 연결한다 |
 
 > ⚠️ 배경(티켓 20260825_028): 마이그레이션 `084_badge_condition_cleanup.sql`이 배지 상세화면
 > 표시용으로 미션보상배지 15종에 `{"mission_reward": true}`를 넣었는데, 당시 badge-engine은
@@ -436,6 +444,11 @@ interface BadgeGateRequirement {
 > (`USAGE_METRIC_CONDITION_KEYS`에서 뺀다). 예) `{ "days_since_signup": 100, "signup_recent_active_days": 4 }`는
 > 「가입 100일 이상 + 최근 30일 중 4일 이상 활동」이다. 세부 규칙·호출 지점·한계(수동 입력 활동을 가를 수 없다)는
 > [BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) ③ JAM! 카테고리의 해당 절에 있다.
+>
+> **새 JAM 조건 5종과 잼·챕터 3종** (2026-10-18, 티켓 20261018_1815, JAM 2.0 운영 로직 10.2절): 같은 틀에 키 8개와
+> 계산 모듈(`jamActionItemMetrics.ts`·`jamActionJamMetrics.ts`)을 더한 정수형이다. 허용 키는 마이그레이션 242가 DB CHECK에
+> 넓혔다(72 → 80, 기존 `condition_json`은 바뀌지 않는다). 값의 정의는 위 표와 두 계산 파일의 머리 주석이 단일 원천이다.
+> 새 SQL 없이 supabase-js 읽기만 쓴다.
 
 ---
 
@@ -467,18 +480,20 @@ interface BadgeGateRequirement {
 - 휴식 4종(§2.13)은 **`repeat_count`와 휴식 키 1개까지 조합 가능하다**(2026-09-06, 티켓
   20260906_2056) — 전용 술어가 "휴식 조건을 만족한 복귀 사건"만 센다. 휴식 키 2개 이상은
   사건 경계가 정의되지 않아 여전히 「회차와 함께 쓸 수 없는 조건」으로 막힌다
-- **사용량 지표 19종(§3 — `follower_count`·`following_count`·`daily_sync_count`·
+- **사용량 지표 27종(§3 — `follower_count`·`following_count`·`daily_sync_count`·
   `daily_sync_streak_days`·`checkin_category_count`·`checkin_badge_count`·
   `combine_attempt_count`·`combine_success_count`·`combine_fail_count`·`recipe_first_success`·
   `drop_item_count`·`pickup_item_count`·`pickup_from_user_count`·`picked_up_by_user_count`·
   `mission_complete_count`·`collection_complete_count`·`days_since_signup`·`weekly_active_days`·
-  `same_spot_checkin_days`. 단일 출처는 `conditionRegistry.ts`의 `USAGE_METRIC_CONDITION_KEYS` —
+  `same_spot_checkin_days`·`capsule_open_count`·`locked_item_open_count`·`locked_item_pickup_count`·
+  `other_tribe_item_kinds_count`·`cross_tribe_combine_success_count`·`jam_total_earned`·`jam_weekly_earned`·
+  `chapter_reached`. 단일 출처는 `conditionRegistry.ts`의 `USAGE_METRIC_CONDITION_KEYS` —
   메타 키에서 `mission_reward`와 보조 키 `signup_recent_active_days`를 뺀 목록이라 지표를 더하면 이 규칙이
   자동으로 붙는다. 보조 키는 사용량 지표가 아니다)은 `repeat_count`와
   함께 쓸 수 없다**(2026-09-10, 티켓 20260910_1719; 20260911_2304에서 4번째 키로 확장;
   20260914_1725에서 체크인 배지 보유 2종 추가; 20261001_0631에서 믹스 행동 지표 4종 추가;
   20261001_0632에서 드랍·픽업 행동 지표 4종 추가; 20261001_0633에서 미션·컬렉션·가입 경과일·활동일·체크인 일수
-  지표 5종 추가) —
+  지표 5종 추가; 20261018_1815에서 새 JAM 조건 5종과 잼·챕터 3종 추가, 마이그레이션 242) —
   `usageBadges.ts`·`jamActionBadges.ts`의
   발급 경로는 등급형(이름 그룹 내 최상위 tier 1개만)·레벨형(family_key 연속 발급)만
   구현돼 있다. `badgeKindOf()`가 아니라 `isLeveledBadge()`(rarity==null 이진 판정)로만
