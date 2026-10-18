@@ -564,20 +564,20 @@ Step 8. initial_sync_done 갱신
 | `activity_type` | 활동을 해당 타입으로 필터링 |
 | `distance_km` / `elevation_gain_m` | **누적 합계** ≥ 조건값 (기본값). `same_activity: true`가 함께 있으면 예외적으로 **한 활동에서 동시/단독 충족**해야 한다 — 현재 카탈로그에서는 T1 `야생의 첫발`(두 필드 복합)과 T23 `그냥 나갔다 옴`(단독 `distance_km`) 2건이 이 플래그를 쓴다(2026-08-31 복원, 티켓 20260831_2100 및 후속). 자세한 배경은 §2.3-1 참고 |
 | `same_activity` (2026-08-31 신규) | 그 자체로는 pass/fail을 만들지 않는 필터 성격 플래그. `distance_km`/`elevation_gain_m`과 함께 있을 때만 의미를 가지며, 이 필드(들)의 평가 방식을 "누적 합계"에서 "한 활동 동시/단독 충족"으로 전환한다. 필드가 하나뿐이어도(T23) 적용 가능 — 필드 조합만으로는 판별 불가하므로 명시적 플래그가 필수다 |
-| `total_count` | 필터된 활동 건수 ≥ 조건값 |
+| `total_count` | 필터된 활동의 **활동한 날의 수**(KST 날짜, 같은 날 여러 건은 1회) ≥ 조건값 (2026-10-18, 티켓 20261018_1815 — 이미 받은 배지에는 소급하지 않는다) |
 | `min_speed_kmh` / `duration_minutes` | **단일 활동 최고값** ≥ 조건값 (min_speed_kmh는 cycling 등 속도 단위) |
 | `max_pace_sec_per_km` | **단일 활동 최고 페이스** ≤ 조건값 — 값이 작을수록 빠름(km/h와 부등호 반대). running 등 페이스 단위 종목에 사용 |
 | `streak_days` | 최장 연속 활동일 ≥ 조건값 |
-| `weekly_count` | 한 주 내 활동 횟수 최대값 — `time_range` 동반 시 **시간대 내 활동만 카운트** (엄격 평가) |
+| `weekly_count` | 한 주(월~일, KST) 내 **활동한 날의 수** 최대값 — `time_range` 동반 시 **시간대 내 활동만 카운트** (엄격 평가) |
 | `weekend_duration_hours` | 주말(토·일) 활동 이동시간 최대값(시간) ≥ 조건값 |
 | `month` + `monthly_km` | 월별 누적 거리 최대값 ≥ 조건값 (month 없으면 전체 연-월 그룹 최대) |
-| `season` + `season_count` | 해당 계절 활동 횟수 ≥ 조건값 |
+| `season` + `season_count` | 해당 계절(KST 월 기준) **활동한 날의 수** ≥ 조건값 |
 | `temperature_min_c` / `temperature_max_c` | Strava average_temp ≥/≤ 조건값 (폭염/혹한) — 날씨 데이터 없으면 fail |
-| `time_range` | startDateLocal의 HH:MM이 {start,end} 범위 내 (자정 걸침 지원) |
+| `time_range` | UTC `startDate`를 한국 시각(KST)으로 바꾼 HH:MM이 {start,end} 범위 내 (자정 걸침 지원). 시간대 6구간(새벽 5~7·오전 7~11·점심 11~14·오후 14~18·저녁 18~22·밤 22~5시)은 `timeBands.ts` 한 곳이 단일 출처이고 조건 문구·드랍 엔진도 같은 상수를 쓴다 (2026-10-18, 티켓 20261018_1815) |
 | `poi_id` | ⚠️ 엔진 내 평가 불가 — GPS 경로 매칭(matchPoisForActivity)으로 별도 발급. **체크인 발급 (2026-10-18, 티켓 20261018_1814)**: `processFetchedActivities`의 POI 매칭 후 블록은 연결 배지가 `type='checkin'`일 때만 발급한다. ① 활동 시작 시각(`start_date`)이 배지의 `valid_from`~`valid_until`(경계 포함, NULL은 제한 없음) 밖이면 방문 기록·포인트·피드를 모두 남기지 않는다. ② `record_checkin_earn`(마이그레이션 241)으로 방문 기록과 «처음인지» 판정을 한 번에 한다(`duplicate`면 아무것도 새로 만들지 않음). ③ 처음 받을 때만 `badge.point_reward`를 `awardPoints`로 준다. 섀도우밴 게이트는 없다(티켓 20261017_1426). 장소에 연결된 `type!='checkin'` 배지를 `user_activity_badges`에 `triggered_by='poi_match'`로 한 번 발급하던 옛 경로는 삭제했다(이미 발급된 행은 그대로). 어드민 시뮬레이터(`/api/admin/simulate`)는 실유저 발급 경로와 분리된 별도 함수다 |
 | `day_of_week` (2026-08-08 신규) | 단일값: `time_range`처럼 AND 필터. 배열+`total_count` 동시 지정 시 "요일별 독립 카운터" 특수모드(배열의 각 요일이 각각 `total_count` 충족 필요) — 현재 T08 전용 |
 | `active_days_count` (2026-08-08 신규) | 축1 게이트 통과 활동의 `(startDateLocal ?? startDate).slice(0,10)` 고유 날짜 `Set` 크기 ≥ 조건값 (연속 아님) |
-| `season_count_all` (2026-08-08 신규) | 봄/여름/가을/겨울 각 계절 활동 횟수가 전부 조건값 이상 (계절별 독립 카운터, `season`+`season_count`와 별개 필드) |
+| `season_count_all` (2026-08-08 신규) | 봄/여름/가을/겨울 각 계절 **활동한 날의 수**가 전부 조건값 이상 (계절별 독립 카운터, `season`+`season_count`와 별개 필드) |
 | `month` (2026-08-08 확장) | 기존 `number`에서 `number | number[]`로 확장 — 배열이면 여러 달을 OR로 묶어 `monthly_km`와 결합(예: 장마철 6~7월) |
 | `repeat_count` (2026-09-05 신규) | **기준 조건을 통째로 만족한 활동 건수** ≥ 조건값. `total_count`(필터 통과 건수)와 다르다 — 회차 정의는 `collectRepeatOccurrences()` 한 곳. 활동 1건 단위 축(`PER_ACTIVITY_KEYS`, v5 스칼라 7종 포함)뿐 아니라 **「기간 단위 회차」**(`streak_days`·`weekly_count`·`monthly_count`·`weekly_streak`와 결합 — 예: 「주 3회를 채운 주가 5번」)도 2026-09-06(티켓 20260906_0110 ②)부터, `streak_days`+`distinct_time_bands`·`activities_within_hours`(2026-09-08, 티켓 20260908_1318)·`month`+`monthly_km`(2026-09-08, 티켓 20260908_1536, 「그 달을 채운 연-월의 수」, `month` 배열은 각 달 독립 카운트)도 셀 수 있다. §2.14 · CONDITION_JSON_SPEC §2.11 |
 | `prerequisite_badge_names` | Step 3 C-1에서 처리 (OR 매칭). **보유한 등급형의 이름만** 대상이다 — v5는 레벨형·반복형이 등급형과 이름을 공유할 수 있어 이름이 배지를 유일하게 식별하지 못한다 (§2.15) |
@@ -1723,8 +1723,8 @@ POST /api/admin/badges/reevaluate-all
 | 활동 맥락 | 오버라이드 트라이브 | 예시 컬렉션 |
 |-----------|-----------------|--------------|
 | 강수·태풍 / 기온 ≤ -10°C·≥ 33°C | 아스팔트 레인저 | 폭우 속의 질주, 영하 15도의 호흡 |
-| 새벽 (05~07시) | 비트 마에스트로 / 셔터 마피아 | 새벽의 Lo-Fi, 새벽 물안개 몽환 |
-| 심야 (23~04시) | 낭만 미식가 / 숲속의 갱단 | 편의점 심야 만찬, 은밀한 밤의 무도회 |
+| 새벽 (KST 05~07시) | 비트 마에스트로 / 셔터 마피아 | 새벽의 Lo-Fi, 새벽 물안개 몽환 |
+| 밤 (KST 22~05시) | 낭만 미식가 / 숲속의 갱단 | 편의점 심야 만찬, 은밀한 밤의 무도회 |
 | 고고도 상승 | 낭만 미식가 / 비트 마에스트로 | 업힐 끝의 단맛, 업힐의 하드락 |
 | **7일+ 공백 복귀** (최우선) | **작심삼일 클럽** | 결계 '섬데이' 돌파 |
 | 러너스 하이 (고강도 장시간) | 미스터리 헌터 (rare+ 한정) | 차원의 틈새 |

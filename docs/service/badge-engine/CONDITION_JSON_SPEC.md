@@ -51,7 +51,7 @@ code:
 | 필드 | 타입 | 설명 |
 |------|------|------|
 | `activity_type` | `string` | Strava 활동 타입. 유효값: `"walking"` `"running"` `"cycling"` `"hiking"` `"trail_running"` |
-| `day_of_week` | `DayOfWeek \| DayOfWeek[]` | 활동 시작 요일(로컬 기준, `startDateLocal`) 필터. **단일값**: `time_range`처럼 다른 필드와 AND 결합되는 필터 (예: `day_of_week:"sunday"` + `total_count:1000`). **배열 + `total_count` 동시 지정**: "요일별 독립 카운터" 모드로 전환 — 배열의 각 요일이 각각 독립적으로 `total_count`를 만족해야 발급 (예: 평일 5일 각각 300회 — W08 "평일의 성실함") |
+| `day_of_week` | `DayOfWeek \| DayOfWeek[]` | 활동 시작 요일(**한국 시각 KST 기준**, UTC `startDate`를 변환 — 티켓 20261018_1815) 필터. **단일값**: `time_range`처럼 다른 필드와 AND 결합되는 필터 (예: `day_of_week:"sunday"` + `total_count:1000`). **배열 + `total_count` 동시 지정**: "요일별 독립 카운터" 모드로 전환 — 배열의 각 요일이 각각 독립적으로 `total_count`를 만족해야 발급 (예: 평일 5일 각각 300회 — W08 "평일의 성실함"). 각 요일의 횟수는 «그 요일에 활동한 날의 수»다 |
 | `route` | `string` | 특정 루트 이름 필터용으로 스키마(`condition-schema.ts`의 `FILTER_ONLY_CONDITION_KEYS`)에 정의돼 있으나 **badge-engine 평가 로직에 실제 구현이 없다** — `src/lib/badge-engine/index.ts` 전체에 참조가 없어 조건에 넣어도 필터링 효과가 없다(무시됨). 어드민 폼에는 입력 UI가 없지만, 값이 있는 배지를 폼에서 저장해도 유실되지는 않는다(티켓 20260825_032에서 보존 로직 적용 완료). §6 참조 |
 
 ### 2.2 누적 통계 필드 (전체 이력 합산)
@@ -60,9 +60,9 @@ code:
 |------|------|------|-----------|
 | `distance_km` | `number` | km | `activity_type` 필터 후 **전체 누적 거리** ≥ 조건값. `same_activity: true`가 함께 있으면 예외(§2.2-1) |
 | `elevation_gain_m` | `number` | m | `activity_type` 필터 후 **전체 누적 고도** ≥ 조건값. `same_activity: true`가 함께 있으면 예외(§2.2-1) |
-| `total_count` | `number` | 회 | 필터된 활동 **건수** ≥ 조건값 |
+| `total_count` | `number` | 회 | 필터된 활동의 **활동한 날의 수**(KST 날짜 기준, 같은 날 여러 건은 1회) ≥ 조건값. 이미 받은 배지에는 소급하지 않는다(티켓 20261018_1815) |
 | `cumulative_duration_hours` (2026-09-06 신규, 티켓 20260906_0110 ①) | `number` | 시간 | `activity_type` 필터 후 **전체 누적 이동시간** ≥ 조건값. `duration_minutes`(§2.3, 단일 활동 전용)와 달리 이력 전체 합산이다. 레지스트리에 키가 없어 v5 카탈로그 시딩(0035)에서 빠졌던 `walking:K2`·`running:K2`·`hiking:K2`(3계열)를 복구하기 위해 추가됨 — `evaluation: 'engine'` |
-| `monthly_count` (2026-09-06 신규, 티켓 20260906_0110 ①) | `number` | 회 | 월별(연-월 그룹) 활동 횟수 최대값 ≥ 조건값. `monthly_km`(거리)·`weekly_count`(주 단위)와 구분되는 «월 단위 활동 횟수» 필드. `repeat_count`와 결합하면 「그 횟수를 채운 달의 수」를 센다(§2.11). `cycling:G2`·`hiking:C2`(2계열)를 복구하기 위해 추가됨 — `evaluation: 'engine'` |
+| `monthly_count` (2026-09-06 신규, 티켓 20260906_0110 ①) | `number` | 회 | 월별(KST 연-월 그룹) **활동한 날의 수** 최대값 ≥ 조건값. `monthly_km`(거리)·`weekly_count`(주 단위)와 구분되는 «월 단위 활동 횟수» 필드. `repeat_count`와 결합하면 「그 횟수를 채운 달의 수」를 센다(§2.11). `cycling:G2`·`hiking:C2`(2계열)를 복구하기 위해 추가됨 — `evaluation: 'engine'` |
 
 #### 2.2-1 `same_activity` — "동시 충족" 예외 플래그 (2026-08-31 신규)
 
@@ -97,7 +97,7 @@ code:
 | 필드 | 타입 | 단위 | 평가 방식 |
 |------|------|------|-----------|
 | `streak_days` | `number` | 일 | 전체 이력 기준 최장 연속 활동일 수 ≥ 조건값 |
-| `weekly_count` | `number` | 회 | 한 주(월–일) 내 활동 횟수 최대값 ≥ 조건값. `time_range` 동반 시 해당 시간대 활동만 카운트 |
+| `weekly_count` | `number` | 회 | 한 주(월–일, KST) 내 **활동한 날의 수** 최대값 ≥ 조건값. `time_range` 동반 시 해당 시간대 활동만 카운트 |
 | `weekend_duration_hours` | `number` | 시간 | 토·일 활동 이동시간(시간) 최대값 ≥ 조건값 |
 | `active_days_count` | `number` | 일 | 걷기(축1 게이트 통과) 활동의 누적 **고유** 활동일수 ≥ 조건값 — `COUNT(DISTINCT date)`. `streak_days`(연속 일수)와 달리 연속일 필요 없음 |
 
@@ -108,8 +108,8 @@ code:
 | `month` | `number` (1–12) 또는 `number[]` | 특정 달(들) 지정. `monthly_km`과 함께 사용. 배열이면 각 달을 OR로 묶는다(예: 장마철 6~7월) |
 | `monthly_km` | `number` | 월별 누적 거리 최대값 ≥ 조건값. `month` 없으면 전체 연-월 그룹 최대. `repeat_count`와 결합하면(2026-09-08, 티켓 20260908_1536) 「그 임계값을 채운 연-월의 수」를 센다 — `month`가 배열이면 **각 달을 독립적으로** 카운트한다(`walking:W4` 실측: Epic 1개월·Mystic 2개월 = `month:[6,7]` 중 한 달/두 달). 판정은 `repeatOccurrences.ts`의 `collectMonthlyKmOccurrences()`, 단발 판정(`index.ts`)과 같은 연-월 그룹핑 규칙 공유 |
 | `season` | `"spring"` \| `"summer"` \| `"autumn"` \| `"winter"` | 해당 계절 지정 |
-| `season_count` | `number` | 해당 계절 활동 횟수 ≥ 조건값 |
-| `season_count_all` | `number` | 사계절(봄/여름/가을/겨울) **각각 독립 카운터**로 활동 횟수 ≥ 조건값이어야 함 — 4개 계절 모두 충족해야 통과(T15 "사계절의 발걸음"). `season_count`(지정 계절 1개만 검사)와 달리 `season` 필드 지정이 불필요. **어드민 폼에 입력 UI가 없다** — 값이 있는 배지를 폼에서 저장해도 유실되지는 않지만(티켓 20260825_032 보존 로직), 폼에서 직접 편집은 불가하다(DB 직접 수정 필요) |
+| `season_count` | `number` | 해당 계절(KST 월 기준) **활동한 날의 수** ≥ 조건값 |
+| `season_count_all` | `number` | 사계절(봄/여름/가을/겨울) **각각 독립 카운터**로 활동한 날의 수 ≥ 조건값이어야 함 — 4개 계절 모두 충족해야 통과(T15 "사계절의 발걸음"). `season_count`(지정 계절 1개만 검사)와 달리 `season` 필드 지정이 불필요. **어드민 폼에 입력 UI가 없다** — 값이 있는 배지를 폼에서 저장해도 유실되지는 않지만(티켓 20260825_032 보존 로직), 폼에서 직접 편집은 불가하다(DB 직접 수정 필요) |
 
 ### 2.6 환경 조건 필드
 
@@ -122,7 +122,7 @@ code:
 
 | 필드 | 타입 | 형식 | 평가 방식 |
 |------|------|------|-----------|
-| `time_range` | `{ start: "HH:MM", end: "HH:MM" }` | 24시간 | `startDateLocal`의 HH:MM이 범위 내인 활동만 카운트. 자정 걸침 지원 (예: `{start:"22:00", end:"06:00"}`) |
+| `time_range` | `{ start: "HH:MM", end: "HH:MM" }` | 24시간 | UTC `startDate`를 **한국 시각(KST)** 으로 바꾼 HH:MM이 범위 내인 활동만 카운트(해외 활동도 한국 시각, `startDateLocal`은 보지 않는다 — 티켓 20261018_1815). 자정 걸침 지원 (예: `{start:"22:00", end:"06:00"}`) |
 
 ### 2.8 선행 배지 필드
 
@@ -187,7 +187,7 @@ code:
 | `daily_once_count` | `number` | 일 | 하루에 1회만 활동한 날의 수 | — |
 | `negative_split` | `boolean` | — | 후반 구간이 전반보다 빠른 활동으로 한정하는 **필터**. Strava `splits_metric`이 필요한데 Summary 응답엔 없다 — **티켓 20260905_0029에서 v5 1차 범위 밖으로 확정**됐다(활동 1건당 상세 호출 1회 × 백필 697회). `evaluation: 'pending'` 그대로이고 별도 티켓으로 분리됐다 | `total_count` |
 | `weekly_streak` ✅ (2026-09-06, 티켓 20260906_0110 ②) | `number` | 주 | 연속한 주(월~일)의 수. 단독으로 쓰면 `calcMaxWeeklyStreak`가 최장 길이를 계산, `repeat_count`와 결합하면 그 길이 이상인 «주 스트릭»이 몇 번 끊겼다 다시 만들어졌는지를 센다 | — |
-| `distinct_time_bands` ✅ (2026-09-08, 티켓 20260908_1318) | `number` | 개 | 서로 다른 시간대의 수. `badgeConditionText.ts`와 같은 시간대 6구간(새벽·아침·점심·오후·저녁·심야) 경계로 판정. `streak_days`와 결합하면 그 스트릭 창 **안에서만** 시간대 수를 센다(`repeatOccurrences.ts`) | — |
+| `distinct_time_bands` ✅ (2026-09-08, 티켓 20260908_1318) | `number` | 개 | 서로 다른 시간대의 수. 시간대 6구간은 `timeBands.ts`가 단일 출처다 — 새벽 5~7, 오전 7~11, 점심 11~14, 오후 14~18, 저녁 18~22, 밤 22~5시(시작 포함·끝 미포함, KST). 조건 문구(`badgeConditionText.ts`)와 드랍 엔진(`drop-engine/context.ts`)도 같은 상수를 읽는다. `streak_days`와 결합하면 그 스트릭 창 **안에서만** 시간대 수를 센다(`repeatOccurrences.ts`) | — |
 | `day_of_month` ✅ (2026-09-08, 티켓 20260908_1318) | `number` (1–31) | — | 매달 지정일 **필터**. `day_of_week`와 같은 성격 — `filtered`를 좁히고 걷기 하루 1회 상한도 동일 적용 | `total_count` |
 | `activities_within_hours` ✅ (2026-09-08, 티켓 20260908_1318) | `{ hours: number; count: number }` | 회 | 지정한 시간 창 안에 활동이 `count`회 이상. `startDate` 기준 슬라이딩 윈도우로 판정(`maxActivitiesWithinHours`), 걷기 하루 1회 상한은 **의도적으로 적용하지 않음**(하루 여러 번이 핵심 의도). `repeat_count`와 결합하면 창을 채울 때마다 리셋하는 전용 회차 계산(`repeatOccurrences.ts`) | — |
 | `personal_record_break` ✅ (2026-09-06, 티켓 20260906_2055) | `number` | 회 | 개인 기록 갱신 횟수. **가입 이후 활동만으로 직접 계산한다** — Strava `pr_count`는 계정 전체 이력 기준이라 v5의 «가입 시점 카운트»와 충돌해 쓰지 않는다. 판정은 `activityFilters.ts`의 `countPersonalRecordBreaks()` — 지표 값이 그때까지의 최고 기록을 엄격히 초과할 때마다 1회(최초 활동은 항상 1회) | `personal_record_break_metric` (**필수**) |
@@ -548,4 +548,4 @@ interface BadgeGateRequirement {
 | `poi_id` badge-engine 평가 | ❌ 항상 fail — GPS 파이프라인 전용 |
 | `mission_reward` badge-engine 평가 | ❌ 항상 fail — 미션 완료(`grantMissionRewards`)로만 지급, §3 참조. 온보딩 퀘스트 완료 배지도 이 플래그를 쓴다(지급 경로는 온보딩 완료 판정, 티켓 20260927_2130 T7b) |
 | `temperature_*` (날씨 데이터 없는 활동) | ⚠️ fail — Strava average_temp 의존 |
-| UTC vs KST 경계 | ⚠️ `streak_days`·`weekly_count`·`time_range`는 UTC 기준 — KST 자정 경계 오차 가능 |
+| UTC vs KST 경계 | ✅ 시간대(`time_range`·`distinct_time_bands`)·요일·월·계절·`day_of_month`와 횟수 5종(`total_count`·`weekly_count`·`monthly_count`·`season_count`·`season_count_all`)은 KST 날짜 기준이다(티켓 20261018_1815 1회). ⚠️ `streak_days`·`weekly_streak`·`active_days_count`는 아직 현지 날짜(`startDateLocal`) 기준 |
