@@ -21,13 +21,14 @@ export interface BadgeUndoReferenceSpec extends UndoReferenceSpec {
 
 /**
  * 되돌림 전에 «이 배지가 아직 아무 데도 쓰이지 않았는지» 읽는 관계 표(티켓 20260925_0540). `badges`를 가리키는 외래 키
- * 13곳 전부다(운영 DB `pg_constraint` 조회 2026-09-25 + 마이그레이션 227의 `item_issue_log` + 마이그레이션 229의 `sync_pending_items`, 생성 타입 `database.generated.ts`와 테스트로 대조한다).
+ * 14곳 전부다(운영 DB `pg_constraint` 조회 2026-09-25 + 마이그레이션 227의 `item_issue_log` + 마이그레이션 229의 `sync_pending_items` + 마이그레이션 235의 `inventory_item_events`, 생성 타입 `database.generated.ts`와 테스트로 대조한다).
  * - 삭제 차단(NO ACTION, DB가 막아 주지만 --undo가 중간에 실패하면 저장소 파일과 행이 어긋날 수 있어 미리 읽는다):
  *   user_activity_badges · inventory_items · poi_drops · poi.linked_badge_id · point_transactions.source_badge_id
  * - 연쇄 삭제(CASCADE, 지우면 유저 기록이 경고 없이 함께 사라짐): user_checkin_badge_earns · user_item_book_slots
  *   · sync_pending_items.badge_id(마이그레이션 229, 티켓 20261017_1425 — 고르기를 기다리는 보류가 배지와 함께 사라짐)
  * - 연결 해제(SET NULL, 조용히 연결이 끊김): item_books.reward_badge_id · item_books.required_activity_badge_id · missions.gated_badge_id
  *   · item_book_tier_rewards.reward_badge_id · item_issue_log.badge_id(마이그레이션 227, 티켓 20261017_1424 — 발급 기록의 배지 칸)
+ *   · inventory_item_events.badge_id(마이그레이션 235, 티켓 20261018_0053 — 개체 이력의 배지 칸)
  * 조회는 각 표의 배지 id 컬럼으로 센다(표마다 `id` 컬럼 유무가 달라 컬럼을 그대로 쓴다).
  * 참조 표를 바꿀 때는 이 목록만 고친다 — 코드·SQL 기록 주석은 이 상수에서 나온다.
  * (`as const`를 쓰지 않는다: 스크립트 테스트가 `{ table: string; column: string }[]`로 단언한다.)
@@ -46,6 +47,7 @@ export const BADGE_UNDO_REFERENCE_TABLES: BadgeUndoReferenceSpec[] = [
   { table: 'item_book_tier_rewards', column: 'reward_badge_id', effect: '연결 해제' },
   { table: 'missions', column: 'gated_badge_id', effect: '연결 해제' },
   { table: 'item_issue_log', column: 'badge_id', effect: '연결 해제' },
+  { table: 'inventory_item_events', column: 'badge_id', effect: '연결 해제' },
 ]
 
 /**

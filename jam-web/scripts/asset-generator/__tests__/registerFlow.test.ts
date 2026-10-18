@@ -496,7 +496,7 @@ describe('UNDO_ARRAY_REFERENCE_COLUMNS', () => {
 });
 
 describe('UNDO_REFERENCE_TABLES', () => {
-  it('badges를 참조하는 외래 키 13곳과 같다(생성 타입 대조 — 스키마가 바뀌면 여기서 알아챈다)', () => {
+  it('badges를 참조하는 외래 키 14곳과 같다(생성 타입 대조 — 스키마가 바뀌면 여기서 알아챈다)', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'src', 'types', 'database.generated.ts'), 'utf8');
     // 표별로 잘라서 referencedRelation: "badges"인 FK의 표·컬럼을 뽑는다.
     const found: string[] = [];
@@ -510,13 +510,13 @@ describe('UNDO_REFERENCE_TABLES', () => {
     });
     const declared = UNDO_REFERENCE_TABLES.map((r: { table: string; column: string }) => `${r.table}.${r.column}`);
     expect(declared.sort()).toEqual(found.sort());
-    expect(found).toHaveLength(13);
+    expect(found).toHaveLength(14);
   });
 
-  it('효과 분류는 연쇄 삭제 3곳·연결 해제 5곳·삭제 차단 5곳이다', () => {
+  it('효과 분류는 연쇄 삭제 3곳·연결 해제 6곳·삭제 차단 5곳이다', () => {
     const tally: Record<string, number> = {};
     for (const r of UNDO_REFERENCE_TABLES as { effect: string }[]) tally[r.effect] = (tally[r.effect] ?? 0) + 1;
-    expect(tally).toEqual({ '삭제 차단': 5, '연쇄 삭제': 3, '연결 해제': 5 });
+    expect(tally).toEqual({ '삭제 차단': 5, '연쇄 삭제': 3, '연결 해제': 6 });
   });
 });
 
