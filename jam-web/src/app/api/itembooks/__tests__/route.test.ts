@@ -113,10 +113,10 @@ beforeEach(() => {
     inventory: [{ id: 'inv-1', user_id: USER_ID }],
     // 유저는 네 컬렉션의 아이템을 모두 가지고 있다
     inventory_items: [
-      { inventory_id: 'inv-1', badge_id: 'badge-live' },
-      { inventory_id: 'inv-1', badge_id: 'badge-ended' },
-      { inventory_id: 'inv-1', badge_id: 'badge-future' },
-      { inventory_id: 'inv-1', badge_id: 'badge-inactive' },
+      { inventory_id: 'inv-1', badge_id: 'badge-live', locked: false },
+      { inventory_id: 'inv-1', badge_id: 'badge-ended', locked: false },
+      { inventory_id: 'inv-1', badge_id: 'badge-future', locked: false },
+      { inventory_id: 'inv-1', badge_id: 'badge-inactive', locked: false },
     ],
     badges: [
       itemBadge('badge-live', 'book-live'),
@@ -160,6 +160,19 @@ describe('GET /api/itembooks', () => {
     for (const call of bookScopedIn) {
       expect(call.ids.sort()).toEqual(['book-ended', 'book-live'])
     }
+  })
+
+  it('잠긴 개체만 가진 컬렉션은 목록에 없다(열기 전에는 어떤 컬렉션의 배지인지 드러나지 않는다, 티켓 20261018_0054 2회)', async () => {
+    // book-live의 개체 하나가 잠겨 있고, 다른 컬렉션 개체는 열려 있다
+    state.tables.inventory_items = [
+      { inventory_id: 'inv-1', badge_id: 'badge-live', locked: true },
+      { inventory_id: 'inv-1', badge_id: 'badge-ended', locked: false },
+    ]
+
+    const res = await GET()
+    const { itemBooks } = (await res.json()) as { itemBooks: { id: string }[] }
+
+    expect(itemBooks.map((b) => b.id)).toEqual(['book-ended'])
   })
 
   it('모든 컬렉션이 공개 전이면 빈 목록을 돌려준다', async () => {
@@ -212,8 +225,8 @@ describe('GET /api/itembooks — 등급 필드(티켓 20261016_2340 3회-나)', 
 
   it('옛 컬렉션은 기존 필드의 이름과 값이 그대로이고 새 필드는 tierMode false·tier null·tiers {}다', async () => {
     state.tables.inventory_items = [
-      { inventory_id: 'inv-1', badge_id: 'old-a' },
-      { inventory_id: 'inv-1', badge_id: 'old-b' },
+      { inventory_id: 'inv-1', badge_id: 'old-a', locked: false },
+      { inventory_id: 'inv-1', badge_id: 'old-b', locked: false },
     ]
     state.tables.badges = [itemBadge('old-a', 'book-old'), itemBadge('old-b', 'book-old')]
     state.tables.item_books = [book('book-old')]
@@ -240,7 +253,7 @@ describe('GET /api/itembooks — 등급 필드(티켓 20261016_2340 3회-나)', 
   })
 
   it('옛 완성 기록이 있는 옛 컬렉션은 장착을 풀어도 isCompleted true이고 새 필드는 그대로다', async () => {
-    state.tables.inventory_items = [{ inventory_id: 'inv-1', badge_id: 'old-a' }]
+    state.tables.inventory_items = [{ inventory_id: 'inv-1', badge_id: 'old-a', locked: false }]
     state.tables.badges = [itemBadge('old-a', 'book-old')]
     state.tables.item_books = [book('book-old')]
     state.tables.user_item_book_completions = [{ user_id: USER_ID, item_book_id: 'book-old' }]
@@ -254,8 +267,8 @@ describe('GET /api/itembooks — 등급 필드(티켓 20261016_2340 3회-나)', 
   describe('tier_mode 컬렉션', () => {
     beforeEach(() => {
       state.tables.inventory_items = [
-        { inventory_id: 'inv-1', badge_id: 'c-a' },
-        { inventory_id: 'inv-1', badge_id: 'r-a' },
+        { inventory_id: 'inv-1', badge_id: 'c-a', locked: false },
+        { inventory_id: 'inv-1', badge_id: 'r-a', locked: false },
       ]
       // 이름 두 개(가·나)가 common·rare 두 등급으로 있다
       state.tables.badges = [
