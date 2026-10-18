@@ -601,8 +601,16 @@ describe('⑧ 계정·시스템', () => {
     )
   })
 
+  it('남은 칸 알림 — 2개는 «2개로»를 말하고 «다 차기 전에» 문구를 쓴다 (20261018_1613)', () => {
+    expect(text(view('inventory_slots_low', { remaining_slots: 2, max_slots: 50 }))).toBe(
+      '인벤토리 남은 칸이 2개로 줄었어요. 다 차기 전에 장착·믹스·드랍으로 자리를 만들어 보세요'
+    )
+  })
+
   it('남은 칸 알림 — 단계 값이 비정상이면 3개 단계 문구로 접는다', () => {
     expect(text(view('inventory_slots_low', {}))).toContain('3개로 줄었어요')
+    expect(text(view('inventory_slots_low', { remaining_slots: 0 }))).toContain('3개로 줄었어요')
+    expect(text(view('inventory_slots_low', { remaining_slots: 9 }))).toContain('3개로 줄었어요')
   })
 
   it('남은 칸 알림 — 탭하면 인벤토리로 간다', () => {

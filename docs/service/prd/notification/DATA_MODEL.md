@@ -62,7 +62,7 @@ CREATE TYPE notification_type AS ENUM (
   -- ⑧ 계정·시스템
   'strava_disconnected', 'sync_stalled', 'inventory_full',
   'admin_points_changed', 'announcement',
-  'inventory_slots_low'  -- 20261018_0056 마이그레이션 237. 남은 칸 3개·1개 단계 알림. payload { remaining_slots: 3|1, max_slots }
+  'inventory_slots_low'  -- 20261018_0056 마이그레이션 237. 남은 칸 3개 이하 단계 알림. payload { remaining_slots: 1|2|3(실제 남은 칸, 20261018_1613), max_slots }. 남은 칸 0개는 만들지 않는다
 );
 
 CREATE TABLE public.notifications (

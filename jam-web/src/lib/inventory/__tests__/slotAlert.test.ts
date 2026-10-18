@@ -50,15 +50,20 @@ beforeEach(() => {
 })
 
 describe('parseSlotAlertStep', () => {
-  it('ok이고 notify이고 단계가 3 또는 1일 때만 단계를 돌려준다', () => {
-    expect(parseSlotAlertStep({ ok: true, notify: true, stage: 3, free: 3 })).toBe(3)
-    expect(parseSlotAlertStep({ ok: true, notify: true, stage: 1, free: 0 })).toBe(1)
+  it('ok이고 notify이고 단계가 3 또는 1일 때만 단계와 실제 남은 칸을 돌려준다', () => {
+    expect(parseSlotAlertStep({ ok: true, notify: true, stage: 3, free: 3 })).toEqual({ stage: 3, free: 3 })
+    expect(parseSlotAlertStep({ ok: true, notify: true, stage: 3, free: 2 })).toEqual({ stage: 3, free: 2 })
+    expect(parseSlotAlertStep({ ok: true, notify: true, stage: 1, free: 1 })).toEqual({ stage: 1, free: 1 })
+    expect(parseSlotAlertStep({ ok: true, notify: true, stage: 1, free: 0 })).toEqual({ stage: 1, free: 0 })
   })
 
   it('알릴 필요가 없거나 실패이거나 모양이 다르면 null이다', () => {
     expect(parseSlotAlertStep({ ok: true, notify: false, stage: 3, free: 3 })).toBeNull()
-    expect(parseSlotAlertStep({ ok: true, notify: true, stage: 0 })).toBeNull()
-    expect(parseSlotAlertStep({ ok: true, notify: true, stage: 2 })).toBeNull()
+    expect(parseSlotAlertStep({ ok: true, notify: true, stage: 0, free: 5 })).toBeNull()
+    expect(parseSlotAlertStep({ ok: true, notify: true, stage: 2, free: 2 })).toBeNull()
+    expect(parseSlotAlertStep({ ok: true, notify: true, stage: 3 })).toBeNull()
+    expect(parseSlotAlertStep({ ok: true, notify: true, stage: 3, free: 7 })).toBeNull()
+    expect(parseSlotAlertStep({ ok: true, notify: true, stage: 3, free: -1 })).toBeNull()
     expect(parseSlotAlertStep({ ok: false, error: 'inventory_not_found' })).toBeNull()
     expect(parseSlotAlertStep(null)).toBeNull()
     expect(parseSlotAlertStep('x')).toBeNull()
@@ -66,7 +71,13 @@ describe('parseSlotAlertStep', () => {
 })
 
 describe('notifyInventorySlotsLow', () => {
-  it('notify이면 단계와 최대 칸 수를 담아 inventory_slots_low 알림을 한 번 만든다', async () => {
+  async function payloadFor(data: unknown) {
+    const { client } = fakeClient({ rpc: { data, error: null }, maxSlots: 50 })
+    await notifyInventorySlotsLow('user-1', client)
+    return createNotificationMock.mock.calls.map((c) => (c as unknown as [{ payload: unknown }])[0].payload)
+  }
+
+  it('notify이면 실제 남은 칸과 최대 칸 수를 담아 inventory_slots_low 알림을 한 번 만든다', async () => {
     const { client, rpcCalls } = fakeClient({ rpc: { data: { ok: true, notify: true, stage: 3, free: 3 }, error: null }, maxSlots: 50 })
     await notifyInventorySlotsLow('user-1', client)
     expect(rpcCalls).toEqual([{ name: 'inventory_slot_alert_step', args: { p_user_id: 'user-1' } }])
@@ -78,10 +89,35 @@ describe('notifyInventorySlotsLow', () => {
     })
   })
 
-  it('1개 단계도 같은 모양으로 만든다', async () => {
-    const { client } = fakeClient({ rpc: { data: { ok: true, notify: true, stage: 1, free: 1 }, error: null }, maxSlots: 50 })
-    await notifyInventorySlotsLow('user-1', client)
-    expect(createNotificationMock).toHaveBeenCalledWith(expect.objectContaining({ payload: { remaining_slots: 1, max_slots: 50 } }))
+  it('남은 칸 3·2·1개는 단계가 아니라 실제 남은 칸을 payload에 싣는다', async () => {
+    expect(await payloadFor({ ok: true, notify: true, stage: 3, free: 3 })).toEqual([{ remaining_slots: 3, max_slots: 50 }])
+    createNotificationMock.mockClear()
+    expect(await payloadFor({ ok: true, notify: true, stage: 3, free: 2 })).toEqual([{ remaining_slots: 2, max_slots: 50 }])
+    createNotificationMock.mockClear()
+    expect(await payloadFor({ ok: true, notify: true, stage: 1, free: 1 })).toEqual([{ remaining_slots: 1, max_slots: 50 }])
+  })
+
+  it('남은 칸이 0개이면 inventory_slots_low를 만들지 않는다 (0개는 inventory_full이 맡는다)', async () => {
+    // 5개 → 0개로 한 번에 줄어도 단계 1(notify)로 오지만 알림은 나가지 않는다
+    expect(await payloadFor({ ok: true, notify: true, stage: 1, free: 0 })).toEqual([])
+    expect(createNotificationMock).not.toHaveBeenCalled()
+  })
+
+  it('단계 전이마다 알림이 나간다: 0→3(3개), 3→1(1개), 1→0(없음)', async () => {
+    const steps = [
+      { ok: true, notify: true, stage: 3, free: 3 },
+      { ok: true, notify: true, stage: 1, free: 1 },
+      { ok: true, notify: true, stage: 1, free: 0 },
+    ]
+    const sent: unknown[] = []
+    for (const step of steps) {
+      createNotificationMock.mockClear()
+      sent.push(...(await payloadFor(step)))
+    }
+    expect(sent).toEqual([
+      { remaining_slots: 3, max_slots: 50 },
+      { remaining_slots: 1, max_slots: 50 },
+    ])
   })
 
   it('notify가 false이면 알림을 만들지 않고 인벤토리도 다시 읽지 않는다', async () => {
