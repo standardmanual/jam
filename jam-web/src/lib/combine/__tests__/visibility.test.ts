@@ -4,7 +4,13 @@
  * 실행: cd jam-web && npx vitest run src/lib/combine/__tests__/visibility.test.ts
  */
 import { describe, it, expect } from 'vitest'
-import { filterReleasedRecipes, isRecipeReleased, recipeReleaseState } from '../visibility'
+import {
+  filterRecipesWithLiveResults,
+  filterReleasedRecipes,
+  hasEndedResultBadge,
+  isRecipeReleased,
+  recipeReleaseState,
+} from '../visibility'
 
 const NOW = new Date('2026-10-10T03:00:00.000Z')
 
@@ -149,5 +155,55 @@ describe('종료 시각(valid_until) — 티켓 20261002_0710', () => {
       { id: 'no-until-column', valid_from: null },
     ]
     expect(filterReleasedRecipes(recipes, NOW).map((r) => r.id)).toEqual(['always', 'running', 'no-until-column'])
+  })
+})
+
+describe('hasEndedResultBadge — 결과 배지의 공개 기간이 끝난 레시피 (티켓 20261018_0055)', () => {
+  const PAST = '2026-10-10T02:59:59.999Z'
+  const FUTURE = '2026-10-10T03:00:00.001Z'
+
+  it('종료 시각이 지났으면 끝났다', () => {
+    expect(hasEndedResultBadge(['b1'], [{ id: 'b1', valid_until: PAST }], NOW)).toBe(true)
+  })
+
+  it('경계 — 종료 시각이 지금과 같으면 끝났고, 1ms 뒤면 아직이다', () => {
+    expect(hasEndedResultBadge(['b1'], [{ id: 'b1', valid_until: NOW.toISOString() }], NOW)).toBe(true)
+    expect(hasEndedResultBadge(['b1'], [{ id: 'b1', valid_until: FUTURE }], NOW)).toBe(false)
+  })
+
+  it('종료 시각이 null·undefined면 종료 없음이다', () => {
+    expect(hasEndedResultBadge(['b1'], [{ id: 'b1', valid_until: null }], NOW)).toBe(false)
+    expect(hasEndedResultBadge(['b1'], [{ id: 'b1' }], NOW)).toBe(false)
+  })
+
+  it('해석할 수 없는 종료 시각은 끝난 것으로 본다(fail-closed)', () => {
+    expect(hasEndedResultBadge(['b1'], [{ id: 'b1', valid_until: 'not-a-date' }], NOW)).toBe(true)
+  })
+
+  it('결과 배지 중 하나라도 끝났으면 끝난 레시피다. 레시피와 상관없는 배지는 보지 않는다', () => {
+    const badges = [
+      { id: 'b1', valid_until: FUTURE },
+      { id: 'b2', valid_until: PAST },
+      { id: 'other', valid_until: PAST },
+    ]
+    expect(hasEndedResultBadge(['b1', 'b2'], badges, NOW)).toBe(true)
+    expect(hasEndedResultBadge(['b1'], badges, NOW)).toBe(false)
+  })
+
+  it('결과 배지가 없거나 조회되지 않은 배지(삭제)는 판정하지 않는다', () => {
+    expect(hasEndedResultBadge([], [{ id: 'b1', valid_until: PAST }], NOW)).toBe(false)
+    expect(hasEndedResultBadge(null, [{ id: 'b1', valid_until: PAST }], NOW)).toBe(false)
+    expect(hasEndedResultBadge(['gone'], [], NOW)).toBe(false)
+  })
+
+  it('filterRecipesWithLiveResults는 끝난 결과가 있는 레시피만 빼고 순서를 지키며 입력을 바꾸지 않는다', () => {
+    const recipes = [
+      { id: 'r1', reward_badge_ids: ['b1'] },
+      { id: 'r2', reward_badge_ids: ['b2'] },
+      { id: 'r3', reward_badge_ids: [] },
+    ]
+    const badges = [{ id: 'b2', valid_until: PAST }]
+    expect(filterRecipesWithLiveResults(recipes, badges, NOW).map((r) => r.id)).toEqual(['r1', 'r3'])
+    expect(recipes).toHaveLength(3)
   })
 })

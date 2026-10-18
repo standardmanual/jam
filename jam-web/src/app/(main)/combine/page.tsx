@@ -10,7 +10,7 @@ import type {
 import CombineClient, { type RecipeWithSlots } from './CombineClient'
 import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
 import { DEMO_MIX_RECIPE, DEMO_MIX_ITEMS } from '@/lib/onboarding-quest/demo-data'
-import { filterReleasedRecipes, recipeReleaseState } from '@/lib/combine/visibility'
+import { filterRecipesWithLiveResults, filterReleasedRecipes, recipeReleaseState } from '@/lib/combine/visibility'
 import { hasAdminAccess } from '@/lib/admin/auth'
 
 export default async function CombinePage() {
@@ -47,9 +47,25 @@ export default async function CombinePage() {
   // 목적(공개 전 확인)과 맞춘다.
   // 서버 정렬 순서는 그대로 둔다: 공개 뒤 일반 유저가 보게 될 순서와 같아야 한다.
   const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
-  const publicRecipeRows = isAdmin
+  const releasedRecipes = isAdmin
     ? recipes.filter((r) => recipeReleaseState(r) !== 'ended')
     : filterReleasedRecipes(recipes)
+
+  // 결과 아이템 배지의 공개 기간이 끝난 레시피는 운영자에게도 내린다(티켓 20261018_0055, 운영 로직 8.4절). 믹스는 실패해도 재료가
+  // 소모되므로 결과가 나올 수 없는 레시피를 남겨 두면 재료만 잃는다. 믹스 시도(`combineRecipeAttempt`)도 같은 판정으로 소각 앞에서 거절한다.
+  // 조회가 실패하면 목록을 막지 않는다 — 서버가 소각 앞에서 한 번 더 거절하므로 재료는 안전하다.
+  const resultBadgeIds = [...new Set(releasedRecipes.flatMap((r) => r.reward_badge_ids ?? []))]
+  let resultBadgeWindows: { id: string; valid_until: string | null }[] = []
+  if (resultBadgeIds.length > 0) {
+    const { data: windowsRaw, error: windowsError } = await service
+      .from('badges')
+      .select('id, valid_until')
+      .in('id', resultBadgeIds)
+      .is('deleted_at', null)
+    if (windowsError) console.error('[combine/page] 결과 배지 공개 기간 조회 실패', windowsError)
+    resultBadgeWindows = (windowsRaw ?? []) as { id: string; valid_until: string | null }[]
+  }
+  const publicRecipeRows = filterRecipesWithLiveResults(releasedRecipes, resultBadgeWindows)
   const publicRecipeIds = publicRecipeRows.map((r) => r.id)
 
   // 유저 화면이 레시피 선택형 플로우로 바뀌면서, 레시피는 슬롯 목록과 슬롯별 후보 배지

@@ -62,3 +62,45 @@ export function isRecipeReleased(recipe: RecipeReleaseInput, now: Date = new Dat
 export function filterReleasedRecipes<T extends RecipeReleaseInput>(recipes: T[], now: Date = new Date()): T[] {
   return recipes.filter((recipe) => isRecipeReleased(recipe, now))
 }
+
+/**
+ * 결과 배지의 공개 기간이 끝난 레시피 판정 (티켓 20261018_0055, 운영 로직 8.4절)
+ *
+ * 믹스는 실패해도 재료가 소모된다. 결과 아이템 배지의 공개 기간(`badges.valid_until`)이 끝난 레시피를 남겨 두면
+ * 유저가 재료만 잃으므로 믹스 화면에서 내리고 믹스 시도도 소각 앞에서 거절한다. 판정은 이 두 함수 하나로 한다.
+ *
+ * - `valid_until`이 `null`/`undefined`이면 종료 없음이다. `valid_until <= now`이면 끝났다(종료 시각 그 순간부터).
+ * - `valid_until`을 해석할 수 없는 문자열이면 끝난 것으로 본다(fail-closed, 레시피 종료 판정과 같다).
+ * - 결과 배지 중 하나라도 끝났으면 그 레시피는 쓸 수 없다. 조회되지 않은 배지(삭제 등)는 판정하지 않는다.
+ * - 공개 시작 전(`valid_from`)인 결과 배지는 건드리지 않는다 — 스펙은 «끝난» 것만 말한다.
+ * - 재료 쪽은 공개 기간과 상관없이 가진 것이면 쓸 수 있다. 이 판정은 «결과» 쪽만 본다.
+ */
+export interface ResultBadgeWindow {
+  id: string
+  valid_until?: string | null
+}
+
+export function hasEndedResultBadge(
+  rewardBadgeIds: readonly string[] | null | undefined,
+  badges: readonly ResultBadgeWindow[],
+  now: Date = new Date()
+): boolean {
+  if (!rewardBadgeIds || rewardBadgeIds.length === 0) return false
+  const wanted = new Set(rewardBadgeIds)
+  const nowMs = now.getTime()
+  return badges.some((badge) => {
+    if (!wanted.has(badge.id)) return false
+    if (badge.valid_until === null || badge.valid_until === undefined) return false
+    const endAt = new Date(badge.valid_until).getTime()
+    return Number.isNaN(endAt) || endAt <= nowMs
+  })
+}
+
+/** 결과 배지의 공개 기간이 끝난 레시피를 뺀다. 입력 배열은 바꾸지 않고 순서를 유지한다. */
+export function filterRecipesWithLiveResults<T extends { reward_badge_ids?: string[] | null }>(
+  recipes: T[],
+  badges: readonly ResultBadgeWindow[],
+  now: Date = new Date()
+): T[] {
+  return recipes.filter((recipe) => !hasEndedResultBadge(recipe.reward_badge_ids, badges, now))
+}
