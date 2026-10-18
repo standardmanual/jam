@@ -301,6 +301,11 @@ badges / item_books / tribes 세 테이블이 같은 배경 컬럼 세트를 갖
       `locked: true`·등급(`badge_rarity`)·필요한 양(`unlock_required`)만 싣는다(7.3절). 잠긴 채 받은 개체는 피드(`item_picked_up`)와 놓은 사람 소식(#13)에 이름·그림을 싣지 못하므로 남기지 않는다.
       `GET /api/inventory/items/[itemId]/drop-loss`는 내 개체를 드랍하면 사라질 양을 `{ lostFill }`로 알린다(`src/lib/drop/drop-loss-contract.ts`, 열린 개체·0이면 0, 내 것이 아니면 404). 화면(4-6)이 드랍 확인 단계에서 읽는다.
     - 자기 드랍 줍기는 허용이지만 챕터 점수·횟수에는 세지 않는다: 횟수 지표 4종은 조회 규칙으로 이미 자기 드랍을 빼므로 새 칸을 더하지 않았고, 같은 기준을 `isSelfPickup`(`src/lib/drop/self-pickup.ts`)에 한 곳으로 두어 챕터 점수(묶음 5)가 쓴다.
+- **시스템 드랍 잠긴 채 놓기 (JAM 2.0, 마이그레이션 240, 티켓 20261018_1813, 운영 로직 7.2·9.4절)** — 새 함수 하나만 덧붙인다. 옛 `mint_and_place_ambient_drop`(108)은 그대로다(옛 프로덕션 코드가 쓴다).
+  - `mint_and_place_ambient_drop_locked(p_poi_id, p_badge_id, p_lock_reason, p_unlock_required)` → JSONB `{ok, drop_id, inventory_item_id}`. `SECURITY DEFINER`, `authenticated` 실행 권한 없음(서버만).
+    개체를 `locked = true`·`lock_reason`·`unlock_required`(놓을 때 고정)·`unlock_filled = 0`·소유자 없음(`inventory_id` NULL)·`obtained_by = 'ambient_drop'`으로 만들고, 옛 함수와 같게 `poi_drops`(`source = 'system'`, 만료 없음)와 `custody_events` `Minted`를 남긴다.
+    잘못된 까닭(`badge_locked`·`rolled`·`designated` 밖)·양수가 아닌 필요한 양·NULL은 `{ok:false, error:'invalid_lock_args'}`로 거절하고 개체를 만들지 않는다.
+  - 앱(`placeAmbientDrops.ts`)이 `badges.always_locked`인 배지만 이 함수로(까닭 `badge_locked`, 필요한 양 = 배지의 `unlock_required`, 없으면 `jam_policy.locked_min_*`) 놓고 나머지는 옛 함수로 놓는다. 생성 타입(`database.generated.ts`)에 새 함수를 맞췄다.
 - **채우기·열기 (JAM 2.0, 마이그레이션 235, 티켓 20261018_0053, 운영 로직 7.2·8.5절)** — 전부 덧붙이기다. 옛 테이블·함수·칸의 뜻은 바꾸지 않고 232·234의 캡슐 함수도 건드리지 않는다.
   - 새 칸 `inventory_items.point_awarded_at`(timestamptz, nullable): 잠긴 개체를 열 때 배지 포인트를 준 시각. «한 일련번호에 한 번만» 주는 기록이다. 열린 채 받아 지급한 개체는 이 칸을 쓰지 않는다.
   - 새 표 `inventory_item_events`(append-only, RLS만 켜고 클라이언트 정책 없음, service_role 전용): 개체가 거쳐 간 이력. `inventory_item_id`·`badge_id`(ON DELETE SET NULL), `serial_number`, `user_id`(그 일을 한 유저),
@@ -594,7 +599,7 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 ### ambient_drop_config (재도입 — 2026-08-26, 마이그레이션 104)
 앰비언트(시스템) POI 드랍 배치 설정 싱글톤(id=1). 카테고리(`poi_categories` 13종 또는 전체)·
 등급비율(4종 합=1)·대상 컬렉션(`item_books` 단독/멀티/전체) 3축을 각각 명시값 또는 무작위로
-설정하고, `all_random`으로 3축을 한 번에 무작위 처리할 수 있다. `auto_enabled`(예약 배포
+설정한다. `all_random` 칸은 옛 프로덕션 코드용으로 남아 있고 엔진은 읽지 않는다(티켓 20261018_1813 — 세 축은 각자의 모드만 따른다). `auto_enabled`(예약 배포
 사용 여부)·`schedule_hour_kst`(예약 배포 시각 — **KST 정시 0~23**)·`exclusion_window_minutes`
 (그 시각 전후 즉시 배포 차단 창)로 예약 배포/즉시 배포 트리거의 상호 배제를 관리한다.
 `last_auto_run_on`(KST 날짜)은 매시 도는 cron이 하루 2회 배포하지 않도록 조건부 UPDATE로

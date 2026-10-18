@@ -2016,7 +2016,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
     (18:00 UTC)을 그대로 승계한 값이다.
 - **즉시 배포**: 어드민 `/admin/ambient-drop`의 「지금 배포」 버튼(`POST /api/admin/ambient-drop/deploy`).
   저장된 설정값으로 그 자리에서 1회 배포한다.
-- 두 갈래는 **같은 설정값**(3축 + `all_random` + `batch_size` + `max_active_per_poi`)을 쓴다.
+- 두 갈래는 **같은 설정값**(3축 + `batch_size` + `max_active_per_poi`)을 쓴다.
   설정은 하나이고 실행 시점만 다르다. 날짜 예약 배포(아래)는 이 설정을 쓰지 않는다 — 등급 비율과
   지점당 한도만 읽기 전용으로 빌려 쓴다.
 - 상호 배제: `auto_enabled=true`일 때, **설정된 배포 시각** 전후 `exclusion_window_minutes`분
@@ -2082,7 +2082,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
   취소만). API는 `GET·POST /api/admin/ambient-drop/schedules`, `POST …/schedules/preview`, `PATCH·DELETE …/schedules/[id]` 세 경로이고 DELETE는 취소이며 행은
   `canceled`로 남는다. 종류+개수 모드의 미리 확인 지점 수는 지점당 한도(`max_active_per_poi`) 미만인 지점만 센다.
 
-**배포 옵션 — 3축, 축별 명시/무작위 + 전체 무작위 메타 옵션** (`ambient_drop_config` 싱글톤):
+**배포 옵션 — 3축, 축별 명시/무작위** (`ambient_drop_config` 싱글톤):
 
 | 축 | 명시 모드 | 무작위 모드 |
 |---|---|---|
@@ -2090,8 +2090,17 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 | 등급(rarity) 비율 | `rarity_common/rare/epic/mystic`(합=1)로 가중 추첨 | 실행 시점에 4개 등급 비율 자체를 무작위로 생성해 그 실행 전체에 적용 |
 | 대상 컬렉션(`item_books`) | 단독 또는 멀티 선택(`collection_ids`), 빈 배열은 "전체 컬렉션" | 실행 시점에 노출 중 컬렉션 1개를 무작위로 선택 |
 
-`all_random=true`면 저장된 축별 모드와 무관하게 실행 시점에 3축을 전부 무작위로 취급한다
-(비파괴적 오버라이드 — 저장값은 그대로 남는다).
+세 축은 각자의 모드(명시/무작위)만 따른다. «전체 무작위» 메타 옵션은 없어졌다(티켓 20261018_1813, 사용자 결정 2026-10-18).
+엔진(`runAmbientDropBatch`·날짜 예약의 `runAmbientDropSpec`)은 `ambient_drop_config.all_random`을 더는 읽지 않고, 어드민 폼에도 스위치가 없으며 저장 라우트는
+본문의 `all_random`을 받지 않는다. 옛 프로덕션 코드가 읽는 칸이라 DB 칸과 값은 그대로 둔다(`true`로 남아 있어도 새 엔진은 무시한다).
+공개 중인 컬렉션 전체에서 고르되 양·주기·장소당 상한·등급 비율은 어드민 설정을 따른다는 운영 로직 9.4절의 뜻이다.
+
+**잠긴 채 놓기** (티켓 20261018_1813, 운영 로직 7.2·9.4절): 놓기 직전(`placeAmbientDrops`, `src/lib/ambient-drop/placeAmbientDrops.ts`)에 후보 배지의
+`badges.always_locked`를 읽는다. «잠김으로 만듦»인 배지만 `mint_and_place_ambient_drop_locked`(마이그레이션 240, 까닭 `badge_locked`)로 잠긴 개체로 놓고,
+아니면 옛 `mint_and_place_ambient_drop`(108)으로 열린 채 놓는다. 여는 데 필요한 양은 배지의 `unlock_required`, 값이 없으면 등급 최소값(`jam_policy.locked_min_*`)이고
+놓을 때 고정한다 — 동기화·캡슐의 잠김 배정(`lib/drop-engine/lockAssignment.ts`)과 같은 규칙이다. 무작위로 잠그지는 않는다. 배지를 읽지 못하면 그 묶음을 전부 실패로 세고
+열린 채 놓지 않는다. 값도 등급도 없어 필요한 양을 못 정하는 잠긴 배지는 건너뛴다. 정기 배포와 날짜 예약(행사 지정)이 같은 함수를 쓴다.
+공개 기간이 끝난 배지·`drop_excluded` 배지·꺼진 컬렉션·꺼진 장소는 후보에서 빠지는 현재 동작 그대로다.
 
 **대상 컬렉션 축은 노출 중 컬렉션에만 드랍한다** (티켓 [20260930_1516](../../tickets/p1-high/20260930_1516_Service_컬렉션-노출-판정을-모든-화면과-드랍-경로에서-같게.md)):
 공개 전(비활성·시작 전)이거나 기간이 끝난 컬렉션, 드랍 제외(`item_books.drop_excluded`) 컬렉션에는 드랍하지 않는다. 「노출 중」의 정의는

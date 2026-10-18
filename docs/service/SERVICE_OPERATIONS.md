@@ -544,7 +544,7 @@ inventory_items (슬롯당 1개)
 | 발급 경로 | obtained_by | expires_at | 코드 |
 |---|---|---|---|
 | 동기화 드랍 (5-2) | `drop` | 그 아이템 배지의 공개 종료일(`badges.valid_until`). 공개 종료일이 없으면 NULL | `jam-web/src/lib/drop-engine/index.ts` `insertDrop()` |
-| 시스템 드랍 (POI에 미리 배치) | `ambient_drop` | NULL | `mint_and_place_ambient_drop()` (마이그레이션 108) |
+| 시스템 드랍 (POI에 미리 배치) | `ambient_drop` | NULL | `mint_and_place_ambient_drop()` (마이그레이션 108). 잠김으로 만든 배지는 `mint_and_place_ambient_drop_locked()` (마이그레이션 240) |
 | 믹스 보상 (8-1 6-a단계) | `system_event` | 지급 시점 + 30일 | `jam-web/src/lib/combine/index.ts` 보상 지급 |
 | 미션 보상 (9장) | `system_event` | NULL (`p_expires_at`을 넘기지 않는다) | `jam-web/src/lib/missions/rewards.ts` `grantMissionRewards()` |
 | POI 픽업 (6-2) | 바꾸지 않음 | 바꾸지 않음 (소유자와 `obtained_at`만 옮긴다) | `pickup_drop()` (마이그레이션 108) |
