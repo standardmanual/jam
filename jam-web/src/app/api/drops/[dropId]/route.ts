@@ -32,7 +32,7 @@ export async function GET(
       *,
       badges ( name, rarity, image_url ),
       users!dropper_user_id ( username, display_name ),
-      inventory_items!poi_drops_inventory_item_id_fkey ( serial_prefix, serial_number )
+      inventory_items!poi_drops_inventory_item_id_fkey ( serial_prefix, serial_number, locked )
     `)
     .eq('id', dropId)
     .single()
@@ -49,7 +49,24 @@ export async function GET(
     // 20260829_2101: 개체 정체성 모델 — poi_drops가 항상 이미 발급된 inventory_items를
     // 가리키므로 픽업 전에도 일련번호가 이미 확정돼 있다. 마이그레이션 이전에 완료된
     // (is_available=false) 과거 드랍은 소급 연결되지 않아 null일 수 있다.
-    inventory_items: { serial_prefix: string | null; serial_number: number } | null
+    inventory_items: { serial_prefix: string | null; serial_number: number; locked: boolean | null } | null
+  }
+
+  // 잠긴 개체는 이름·그림·일련번호를 싣지 않고 «잠김 표시 + 등급»만 싣는다(티켓 20261018_1812, 운영 로직 7.3절).
+  if (drop.inventory_items?.locked === true) {
+    return NextResponse.json({
+      id: drop.id,
+      poi_id: drop.poi_id,
+      badge_name: d.lockedItem.card.name,
+      badge_rarity: drop.badges.rarity,
+      badge_image_url: null,
+      dropper_name: (drop.users && getDisplayName(drop.users)) || d.drops.anonymous,
+      dropped_at: drop.dropped_at,
+      is_available: drop.is_available,
+      is_own: drop.dropper_user_id === user.id,
+      serial: null,
+      locked: true,
+    })
   }
 
   return NextResponse.json({

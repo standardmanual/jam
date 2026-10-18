@@ -3,6 +3,10 @@
 // 20260915_2241 — ADR 0001에 따라 `error` 필드는 `src/lib/i18n/ko.ts`의 drops 네임스페이스로
 // 완성한 사용자 문구를 담는다. 클라이언트는 이 문구를 그대로 신뢰해 노출한다. DB 원문
 // 오류(detail)는 여전히 응답에 싣지 않고 서버 로그로만 남긴다.
+//
+// 티켓 20261018_1812 — (1) 꺼진 장소(`poi.is_active = false`)는 드랍을 내리지 않는다(드랍 데이터는 지우지 않아
+// 장소를 다시 켜면 목록에 돌아온다). (2) 잠긴 개체는 서버에서 이름·그림·설명·컬렉션·트라이브·일련번호를 비우고
+// «잠김 표시 + 등급»만 싣는다(운영 로직 7.3절, `api/inventory/items`의 가림과 같은 방식). 클라이언트로 내려가는 값에 없다.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
@@ -24,6 +28,14 @@ export async function GET(
 
   const service = createServiceClient()
 
+  // 꺼진 장소는 드랍이 남아 있어도 목록에 내리지 않는다. 장소가 없어도 빈 목록이다(이전 동작 그대로).
+  const { data: poiRow, error: poiError } = await service.from('poi').select('is_active').eq('id', poiId).maybeSingle()
+  if (poiError) {
+    console.error('[poi drops] 장소 조회 오류:', poiError.message)
+    return NextResponse.json({ error: dict.drops.loadDropsFailed }, { status: 500 })
+  }
+  if (!poiRow || (poiRow as { is_active: boolean }).is_active !== true) return NextResponse.json({ drops: [] })
+
   // poi_drops + badges 조인 (users 조인은 FK 중복으로 별도 조회)
   // 20260829_2101: inventory_items(serial_prefix, serial_number)도 함께 조회한다 — 개체
   // 정체성 모델에서는 poi_drops가 항상 이미 발급된 개체를 가리키므로 픽업 전에도
@@ -36,7 +48,7 @@ export async function GET(
     // 20260829_2101 개체정체성 모델의 poi_drops.inventory_item_id(현재 드랍이 가리키는
     // 개체). 관계명을 명시하지 않으면 PostgREST가 PGRST201로 거부해 목록 조회 자체가
     // 실패한다 — 여기서는 후자를 써야 하므로 명시적으로 지정한다.
-    .select(`id, badge_id, dropped_at, dropper_user_id, badges ( name, rarity, image_url ), inventory_items!poi_drops_inventory_item_id_fkey ( serial_prefix, serial_number, expires_at )`)
+    .select(`id, badge_id, dropped_at, dropper_user_id, badges ( name, rarity, image_url ), inventory_items!poi_drops_inventory_item_id_fkey ( serial_prefix, serial_number, expires_at, locked, unlock_required )`)
     .eq('poi_id', poiId)
     .eq('is_available', true)
     .order('dropped_at', { ascending: true })
@@ -55,7 +67,13 @@ export async function GET(
     dropper_user_id: string | null
     badges: { name: string; rarity: string; image_url: string | null } | null
     // 마이그레이션 이전에 완료된 과거 드랍은 소급 연결되지 않아 null일 수 있다.
-    inventory_items: { serial_prefix: string | null; serial_number: number; expires_at: string | null } | null
+    inventory_items: {
+      serial_prefix: string | null
+      serial_number: number
+      expires_at: string | null
+      locked: boolean | null
+      unlock_required: number | null
+    } | null
   }
   const rows = (data ?? []) as unknown as PoiDropRow[]
 
@@ -76,24 +94,46 @@ export async function GET(
   const nameById: Record<string, string> = {}
   for (const u of usersData) nameById[u.id] = getDisplayName(u)
 
-  const drops = rows.map((d) => ({
-    id: d.id,
-    badge_id: d.badge_id,
-    badge_name: d.badges?.name,
-    badge_rarity: d.badges?.rarity,
-    badge_image_url: d.badges?.image_url,
-    dropper_name: (d.dropper_user_id ? nameById[d.dropper_user_id] : undefined) ?? dict.drops.anonymous,
-    dropped_at: d.dropped_at,
-    serial: d.inventory_items
-      ? `${d.inventory_items.serial_prefix ?? '????'}${String(d.inventory_items.serial_number).padStart(6, '0')}`
-      : null,
-    // 20260908_0223: 픽업 목록도 badge_id별로 그룹핑해 개체 선택 시트(ItemCandidateRow)를
-    // 열 수 있도록 원본 serial_prefix/serial_number/expires_at을 함께 내려준다. 기존
-    // 포맷된 `serial` 필드는 그대로 유지 — BadgeDetailSheet.tsx가 계속 그 필드만 쓴다.
-    serial_prefix: d.inventory_items?.serial_prefix ?? null,
-    serial_number: d.inventory_items?.serial_number ?? null,
-    expires_at: d.inventory_items?.expires_at ?? null,
-  }))
+  const drops = rows.map((d) => {
+    const dropperName = (d.dropper_user_id ? nameById[d.dropper_user_id] : undefined) ?? dict.drops.anonymous
+    // 잠긴 개체: 어떤 아이템 배지인지 알 수 있는 값(배지 id·이름·그림·일련번호)을 읽은 값에서도 옮기지 않는다.
+    // `badge_id`는 목록이 배지 종류별로 묶는 키라 비우면 등급이 다른 잠긴 개체가 한 카드로 섞인다 — 등급별 합성 키를 쓴다.
+    if (d.inventory_items?.locked === true) {
+      return {
+        id: d.id,
+        badge_id: `locked:${d.badges?.rarity ?? 'common'}`,
+        badge_name: dict.lockedItem.card.name,
+        badge_rarity: d.badges?.rarity,
+        badge_image_url: null,
+        dropper_name: dropperName,
+        dropped_at: d.dropped_at,
+        serial: null,
+        serial_prefix: null,
+        serial_number: null,
+        expires_at: d.inventory_items.expires_at,
+        locked: true,
+        unlock_required: d.inventory_items.unlock_required,
+      }
+    }
+    return {
+      id: d.id,
+      badge_id: d.badge_id,
+      badge_name: d.badges?.name,
+      badge_rarity: d.badges?.rarity,
+      badge_image_url: d.badges?.image_url,
+      dropper_name: dropperName,
+      dropped_at: d.dropped_at,
+      serial: d.inventory_items
+        ? `${d.inventory_items.serial_prefix ?? '????'}${String(d.inventory_items.serial_number).padStart(6, '0')}`
+        : null,
+      // 20260908_0223: 픽업 목록도 badge_id별로 그룹핑해 개체 선택 시트(ItemCandidateRow)를
+      // 열 수 있도록 원본 serial_prefix/serial_number/expires_at을 함께 내려준다. 기존
+      // 포맷된 `serial` 필드는 그대로 유지 — BadgeDetailSheet.tsx가 계속 그 필드만 쓴다.
+      serial_prefix: d.inventory_items?.serial_prefix ?? null,
+      serial_number: d.inventory_items?.serial_number ?? null,
+      expires_at: d.inventory_items?.expires_at ?? null,
+    }
+  })
 
   return NextResponse.json({ drops })
 }
