@@ -637,6 +637,9 @@ export type CombineFailReason =
   | 'recipe_not_found'
   /** 재료에 잠긴 개체가 섞였다(티켓 20261018_0051). 재료가 소각되기 전에 거절하므로 실패 기록(`user_combine_fail_log`)은 남기지 않는다 */
   | 'locked_item_not_allowed'
+  /** 받지 않은 믹스 결과가 남아 있어 새 믹스를 시작하지 않았다(티켓 20261018_0055). 소각 전에 거절하므로 실패 기록은 남기지 않는다 */
+  | 'pending_results_exist'
+
 export interface UserCombineFailLogRow {
   id: string
   user_id: string

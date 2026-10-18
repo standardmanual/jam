@@ -12,16 +12,22 @@
  *  - 실패: { success: false, reason: 'no_recipe_match'|'items_not_found'|'invalid_count'|
  *    'recipe_not_found'|'locked_item_not_allowed', pointsAwarded, message }
  *    (`locked_item_not_allowed`는 재료에 잠긴 개체가 섞인 경우다. 소각 전에 거절하고 `code` 키를 더해 409로 내린다, 티켓 20261018_0051)
+ *    (`pending_results_exist`는 받지 않은 믹스 결과가 남은 경우다. 소각 전에 거절하고 `code` 키를 더해 409로 내린다, 티켓 20261018_0055)
+ *  - 이용 정지 중이면 소각 전에 403 `{ error, code: 'user_suspended' }`로 막는다(티켓 20261018_0055)
+ *  - 성공 응답에는 결과 지급 상태 `resultStatus`('granted'|'pending'|'none')가 있다. 빈칸이 모자라 결과를 받지 않은 상태로 남기면
+ *    `pending`이고 `pendingCount`·`freeSlots`와 안내 `message`가 붙는다. 받기는 `POST /api/combine/pending`이다.
  *  - 시험 믹스(티켓 20261001_1159): 운영자가 공개 전 레시피를 믹스하면 위 응답에 `testMix: true`가
  *    더해진다. 일반 믹스에는 이 키가 없다. 일반 유저가 공개 전 레시피를 보내면 `recipe_not_found`다.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { hasAdminAccess } from '@/lib/admin/auth'
-import { combineRecipeAttempt, jamTriggersForCombineResult } from '@/lib/combine/index'
+import { combineRecipeAttempt, jamTriggersForCombineResult, MAX_ITEMS } from '@/lib/combine/index'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { d, t } from '@/lib/i18n'
 import { LOCKED_ITEM_NOT_ALLOWED_CODE } from '@/lib/inventory/lockedItem'
+import { UserSuspendedError } from '@/lib/suspension/suspension'
+import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
 import type { CombineFailReason } from '@/types/database'
 
 const FAIL_REASON_MESSAGE: Record<CombineFailReason, string> = {
@@ -30,7 +36,11 @@ const FAIL_REASON_MESSAGE: Record<CombineFailReason, string> = {
   no_recipe_match: d.combine.recipeFail,
   recipe_not_found: d.combine.recipeNotFound,
   locked_item_not_allowed: d.lockedItem.combine,
+  pending_results_exist: d.combine.pendingResultsExist,
 }
+
+/** 받지 않은 결과가 있어 새 믹스를 거절할 때 `code` 키로 내리는 값 — 클라이언트가 «받기»로 안내한다(`reason`과 같은 값) */
+const PENDING_RESULTS_EXIST_CODE = 'pending_results_exist'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -51,7 +61,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  if (!Array.isArray(itemIds) || itemIds.length < 1 || itemIds.length > 10) {
+  if (!Array.isArray(itemIds) || itemIds.length < 1 || itemIds.length > MAX_ITEMS) {
     return NextResponse.json(
       { success: false, reason: 'invalid_count', pointsAwarded: 0, message: d.combine.selectRangeError },
       { status: 400 }
@@ -66,7 +76,18 @@ export async function POST(req: NextRequest) {
     console.error('[combine] 운영자 판정 실패 — 일반 유저로 처리합니다:', adminError)
   }
 
-  const result = await combineRecipeAttempt(user.id, recipeId, itemIds as string[], { allowUnreleased: isAdmin })
+  let result: Awaited<ReturnType<typeof combineRecipeAttempt>>
+  try {
+    result = await combineRecipeAttempt(user.id, recipeId, itemIds as string[], { allowUnreleased: isAdmin })
+  } catch (attemptError) {
+    // 이용 정지 중이면 소각 전에 던진다 — 재료·포인트가 그대로다. 정지 여부를 읽지 못해도 던지므로 아래에서 500으로 닫힌다.
+    if (attemptError instanceof UserSuspendedError) {
+      const body: UserSuspendedResponse = { error: d.suspension.combineBlocked, code: USER_SUSPENDED_CODE }
+      return NextResponse.json(body, { status: 403 })
+    }
+    console.error('[combine] 믹스 처리 오류:', attemptError)
+    return NextResponse.json({ error: d.combine.genericFail }, { status: 500 })
+  }
 
   // JAM! 행동 지표(믹스 시도·성공·실패·레시피 최초 성공) 배지 판정 — 응답을 만들기 전에 한 번 돌린다
   // (티켓 20261001_0631). 래퍼가 예외를 던지지 않지만 트리거 계산까지 한 번 더 감싼다: 판정·알림이
@@ -80,6 +101,11 @@ export async function POST(req: NextRequest) {
   // 잠긴 개체가 섞인 재료는 소각 전에 거절된다 — 장착·드랍과 같은 코드(`code`)와 409로 알린다(티켓 20261018_0051)
   if (!result.success && result.reason === LOCKED_ITEM_NOT_ALLOWED_CODE) {
     return NextResponse.json({ ...result, code: LOCKED_ITEM_NOT_ALLOWED_CODE, message: d.lockedItem.combine }, { status: 409 })
+  }
+
+  // 받지 않은 결과가 남아 있으면 소각 전에 거절된다 — 받은 뒤에 새 믹스를 할 수 있다(티켓 20261018_0055)
+  if (!result.success && result.reason === PENDING_RESULTS_EXIST_CODE) {
+    return NextResponse.json({ ...result, code: PENDING_RESULTS_EXIST_CODE, message: d.combine.pendingResultsExist }, { status: 409 })
   }
 
   if (!result.success) {
@@ -97,7 +123,11 @@ export async function POST(req: NextRequest) {
   // 20260910_1515: 레시피는 매칭됐지만(success: true) 보상 배지가 전부 지급되지 않고
   // 포인트도 0인 경우 — 재료는 이미 소각됐으니 유저에게는 실패에 가깝다. 서버가 이 상태를
   // 판단해 메시지를 붙인다(과거에는 CombineClient.tsx가 이 조건을 직접 재판정했다).
-  if (result.resultBadges.length === 0 && result.pointsAwarded === 0) {
+  // 받지 않은 결과가 남은 성공과 보상 없음으로 정한 레시피는 빈손이 아니다(티켓 20261018_0055).
+  if (result.resultStatus === 'pending') {
+    return NextResponse.json({ ...result, message: d.combine.resultPending })
+  }
+  if (result.resultBadges.length === 0 && result.pointsAwarded === 0 && !result.noReward) {
     return NextResponse.json({ ...result, message: d.combine.recipeFail })
   }
 

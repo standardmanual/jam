@@ -41,17 +41,24 @@
  * (`user_combine_success_logs`·`user_combine_fail_logs`)과 JAM! 믹스 지표 판정은 남기지 않는다.
  * 공개 시각이 지난 레시피는 `allowUnreleased`여도 일반 믹스다(기록이 정상으로 남는다).
  * 종료된 레시피는 `allowUnreleased`여도 거절한다 — 시험 믹스는 «공개 전 확인»이 목적이다(티켓 20261002_0710 G7).
+ *
+ * JAM 2.0 믹스 고치기(티켓 20261018_0055, 운영 로직 8.4절·마이그레이션 236):
+ *  - 믹스 칸은 최대 5칸(`MAX_ITEMS`)이다.
+ *  - 이용 정지 중이면 `UserSuspendedError`를 던지고(라우트가 403), 받지 않은 결과가 남아 있으면 소각 전에
+ *    `pending_results_exist`로 거절한다(라우트가 409). 둘 다 재료·포인트·실패 기록이 없다.
+ *  - 결과 아이템 배지의 공개 기간이 끝난 레시피는 소각 전에 `recipe_not_found`로 거절한다(`hasEndedResultBadge`).
+ *  - 결과 지급은 `combine_grant_results` 한 번이다. 빈칸이 모자라면 DB가 결과 전부를 받지 않은 결과로 남기고(재료는 소모됨)
+ *    `resultStatus: 'pending'`으로 알린다. 결과에는 기한이 없고 잠김은 레시피(`reward_locked`)와 배지(`always_locked`)가 정한다.
+ *    앱은 빈칸을 세지 않는다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
 import { getCombinePolicy } from '@/lib/combine/policy'
-import { recipeReleaseState } from '@/lib/combine/visibility'
+import { getPendingCount } from '@/lib/combine/pending'
+import { hasEndedResultBadge, recipeReleaseState } from '@/lib/combine/visibility'
+import { assertNotSuspended } from '@/lib/suspension/suspension'
 import type { JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
-import {
-  isInventoryFull,
-  type GrantInventoryItemResult,
-  type ReleaseInventorySlotsResult,
-} from '@/lib/inventory/slots'
+import type { ReleaseInventorySlotsResult } from '@/lib/inventory/slots'
 import type {
   CombinationRecipeRow,
   CombinationRecipeSlotRow,
@@ -65,8 +72,20 @@ export type CombineResult =
   | {
       success: true
       path: 'recipe'
-      resultBadges: { id: string; name: string; rarity: string }[]
+      /**
+       * 지급된 결과 배지. 잠긴 채 나온 것은 `locked: true`이고 `id`·`name`을 빈 문자열로 가린다(운영 로직 7.3절).
+       * 받지 않은 결과(`resultStatus: 'pending'`)와 지급할 결과가 없는 경우는 빈 배열이다.
+       */
+      resultBadges: { id: string; name: string; rarity: string; locked?: true }[]
       pointsAwarded: number
+      /** 결과 지급 상태 — `granted`(인벤토리에 지급), `pending`(빈칸이 모자라 받지 않은 결과로 남김), `none`(지급한 결과 없음) */
+      resultStatus: 'granted' | 'pending' | 'none'
+      /** `pending`일 때 받지 않은 결과 개수(= 받으려면 필요한 빈칸 수) */
+      pendingCount?: number
+      /** `pending`일 때 믹스 시점의 인벤토리 빈칸 수 */
+      freeSlots?: number
+      /** 레시피가 보상 없음(포인트 0, 보상 배지 없음)으로 정해져 있다 — 빈손이어도 이상 상황이 아니다 */
+      noReward?: true
       /** 공개 전 레시피를 운영자가 믹스한 시험 믹스 — 기록·지표에 남지 않는다. 일반 믹스에는 키가 없다. */
       testMix?: true
     }
@@ -78,7 +97,8 @@ export type CombineResult =
       testMix?: true
     }
 
-const MAX_ITEMS = 10
+/** 믹스 칸 상한 — 운영 로직 8.6절의 코드 상수(티켓 20261018_0055) */
+export const MAX_ITEMS = 5
 
 /** `combineRecipeAttempt()` 호출 옵션 */
 export interface CombineAttemptOptions {
@@ -119,6 +139,14 @@ export async function combineRecipeAttempt(
 
   const supabase = createServiceClient()
 
+  // 소각 앞의 두 관문(티켓 20261018_0055) — 둘 다 재료·포인트·실패 기록 없이 끝난다.
+  // 이용 정지 중이면 던지고(라우트가 403), 읽지 못해도 던진다(정지 유저가 조회 실패 틈에 믹스하면 안 된다).
+  await assertNotSuspended(supabase, userId)
+  // 받지 않은 결과가 있으면 새 믹스를 막는다(운영 로직 8.4·6.4절). 결과를 받아야 새 재료를 쓸 수 있다.
+  if ((await getPendingCount(supabase, userId)) > 0) {
+    return { success: false, reason: 'pending_results_exist', pointsAwarded: 0 }
+  }
+
   // 0. 선택된 레시피 존재·공개 확인 — 여기서부터는 이 레시피 하나만 검증 대상이다.
   // 공개 전·종료된 레시피는 없는 레시피와 같다(재료 소각보다 반드시 앞에서 거절한다). 운영자
   // (`allowUnreleased`)만 공개 전(`scheduled`) 레시피를 통과한다. 종료된(`ended`) 레시피는 운영자도
@@ -134,6 +162,29 @@ export async function combineRecipeAttempt(
   if (!recipe || !(released || (releaseState === 'scheduled' && options.allowUnreleased))) {
     await logFailure(supabase, userId, [], 'recipe_not_found', 0)
     return { success: false, reason: 'recipe_not_found', pointsAwarded: 0 }
+  }
+
+  // 결과 아이템 배지의 공개 기간이 끝난 레시피는 없는 레시피와 같다(티켓 20261018_0055, 운영 로직 8.4절) — 재료만 잃는 일을
+  // 막으려고 소각 앞에서 거절한다. 운영자(`allowUnreleased`)도 같다. 조회가 실패하면 닫는다(fail-closed).
+  // 같은 조회 결과를 아래 결과 지급 뒤 응답용 이름·등급·잠김에도 쓴다.
+  const rewardBadgeIds = recipe.reward_badge_ids ?? []
+  let rewardBadges: RewardBadgeInfo[] = []
+  if (rewardBadgeIds.length > 0) {
+    const { data: rewardBadgesRaw, error: rewardBadgesError } = await supabase
+      .from('badges')
+      .select('id, name, rarity, always_locked, valid_until')
+      .in('id', rewardBadgeIds)
+      .is('deleted_at', null)
+    if (rewardBadgesError) {
+      console.error('[combineRecipeAttempt] 결과 배지 조회 실패 — 레시피를 쓸 수 없는 것으로 처리:', rewardBadgesError)
+      await logFailure(supabase, userId, [], 'recipe_not_found', 0)
+      return { success: false, reason: 'recipe_not_found', pointsAwarded: 0 }
+    }
+    rewardBadges = (Array.isArray(rewardBadgesRaw) ? rewardBadgesRaw : []) as RewardBadgeInfo[]
+    if (hasEndedResultBadge(rewardBadgeIds, rewardBadges)) {
+      await logFailure(supabase, userId, [], 'recipe_not_found', 0)
+      return { success: false, reason: 'recipe_not_found', pointsAwarded: 0 }
+    }
   }
 
   // 여기까지 왔는데 공개 전이면 운영자의 시험 믹스다. 이후 결과는 전부 `testMix`를 달고 나가며,
@@ -263,22 +314,10 @@ export async function combineRecipeAttempt(
 
   // 5-a. 매칭 성공 — 지정 보상 확정 지급 (확률 없음)
   if (matched) {
-    const resultBadges: { id: string; name: string; rarity: string }[] = []
-    for (const badgeId of matched.reward_badge_ids ?? []) {
-      const granted = await grantBadge(supabase, inventory, badgeId)
-      if (granted) resultBadges.push(granted)
-    }
-
-    // 20260910_1515: reward_badge_ids가 비어있지 않은데 실제 지급이 전부 비었으면(보상 배지가
-    // 전부 소프트 삭제됐거나 슬롯 부족 등으로 skip됨) 재료만 소각되고 빈손이 되는 사고다.
-    // 운영이 탐지할 수 있게 레시피 id·의도했던 배지 id를 로그로 남긴다.
-    if ((matched.reward_badge_ids ?? []).length > 0 && resultBadges.length === 0) {
-      console.error('[combineRecipeAttempt] 레시피 보상 배지가 전부 지급되지 않음 — 재료만 소각된 빈손 성공 발생:', {
-        recipeId: matched.id,
-        rewardBadgeIds: matched.reward_badge_ids,
-        userId,
-      })
-    }
+    // 결과 지급은 `combine_grant_results` 한 번이다(마이그레이션 236). 빈칸이 결과 개수 이상이면 모두 기한 없이 지급하고,
+    // 모자라면 일부만 주지 않고 전부 받지 않은 결과로 남긴다. 잠김은 레시피(`reward_locked`)와 배지(`always_locked`)가 정한다.
+    // 앱은 빈칸을 세지 않는다 — 소각으로 칸이 반환된 뒤의 값은 DB가 인벤토리 행을 잠그고 읽는다.
+    const grant = await grantResults(supabase, userId, matched, rewardBadgeIds, rewardBadges)
 
     let pointsAwarded = 0
     if (matched.reward_points > 0) {
@@ -297,12 +336,21 @@ export async function combineRecipeAttempt(
         userId,
         matched.id,
         badgeIds,
-        resultBadges.map((b) => b.id),
+        grant.recordedBadgeIds,
         pointsAwarded
       )
     }
 
-    return withTestMix({ success: true, path: 'recipe', resultBadges, pointsAwarded })
+    const noReward = rewardBadgeIds.length === 0 && matched.reward_points <= 0
+    return withTestMix({
+      success: true,
+      path: 'recipe',
+      resultBadges: grant.resultBadges,
+      pointsAwarded,
+      resultStatus: grant.status,
+      ...(grant.status === 'pending' ? { pendingCount: grant.pendingCount, freeSlots: grant.freeSlots } : {}),
+      ...(noReward ? { noReward: true as const } : {}),
+    })
   }
 
   // 5-b. 미매칭 — 배지 없이 고정 포인트만
@@ -395,63 +443,96 @@ async function getOwnedConditionBadgeIds(
   ])
 }
 
-async function grantBadge(
+/** 결과 배지 조회 한 줄 — 응답용 이름·등급·잠김과 공개 기간 판정에 쓴다 */
+interface RewardBadgeInfo {
+  id: string
+  name: string
+  rarity: string
+  always_locked?: boolean | null
+  valid_until?: string | null
+}
+
+interface GrantResultsOutcome {
+  status: 'granted' | 'pending' | 'none'
+  resultBadges: { id: string; name: string; rarity: string; locked?: true }[]
+  /** 성공 기록(`record_combine_success`)에 남길 결과 배지 id — 받지 않은 결과도 이번 믹스의 결과이므로 포함한다 */
+  recordedBadgeIds: string[]
+  pendingCount: number
+  freeSlots: number
+}
+
+/**
+ * 결과 배지를 `combine_grant_results` 한 번으로 지급한다(마이그레이션 236). 지급할 결과가 없으면 부르지 않는다.
+ * RPC 오류·실패 응답이면 재료가 이미 소각된 뒤라 되돌릴 수 없으므로, 운영이 탐지할 수 있게 로그를 남기고 빈 결과로 이어 간다
+ * (지금까지 «지급 실패 = 빈손 성공»과 같다). 삭제된 배지는 DB가 건너뛴다 — 응답도 조회된(삭제되지 않은) 배지만 싣는다.
+ */
+async function grantResults(
   supabase: ServiceClient,
-  inventory: InventorySlotState,
-  badgeId: string
-): Promise<{ id: string; name: string; rarity: string } | null> {
-  // 지급 전에 배지 존재/삭제 여부를 먼저 확인한다 — INSERT를 먼저 하고 나중에
-  // deleted_at 필터로 조회하면, 결과가 소프트 삭제 상태일 때 inventory_items 행은
-  // 이미 커밋됐는데 API는 실패로 응답하는 지급-응답 불일치가 발생한다(017 게이트 리뷰
-  // FAIL 사유). 삭제된 배지면 INSERT 자체를 생략해 "지급 안 함 = 실패 응답"을 일치시킨다.
-  const { data: badgeRaw } = await supabase
-    .from('badges')
-    .select('id, name, rarity')
-    .eq('id', badgeId)
-    .is('deleted_at', null)
-    .single()
-  const badge = (badgeRaw as { id: string; name: string; rarity: string } | null) ?? null
+  userId: string,
+  recipe: CombinationRecipeRow,
+  rewardBadgeIds: string[],
+  rewardBadges: RewardBadgeInfo[]
+): Promise<GrantResultsOutcome> {
+  const empty: GrantResultsOutcome = { status: 'none', resultBadges: [], recordedBadgeIds: [], pendingCount: 0, freeSlots: 0 }
+  if (rewardBadgeIds.length === 0) return empty
 
-  if (!badge) {
-    console.error('[combineRecipeAttempt] 보상 배지가 삭제 상태라 지급을 생략함:', badgeId)
-    return null
-  }
-
-  // 재료 소각으로 칸이 반환되긴 하지만, 레시피가 소각한 재료 수보다 많은 보상 배지를
-  // 지급하는 경우(reward_badge_ids 배열)엔 그래도 칸이 모자랄 수 있다. 미션 보상 지급
-  // (missions/rewards.ts)과 동일하게 "슬롯 부족 → 조용히 skip" 정책을 따른다 — 인벤토리
-  // 칸을 초과해서 지급하지 않는다(20260912_2101).
-  if (isInventoryFull(inventory)) {
-    console.info('[combineRecipeAttempt] 인벤토리 슬롯 부족으로 보상 배지 지급을 생략함:', badgeId)
-    return null
-  }
-
-  // "삽입 + used_slots 증가"를 원자 트랜잭션으로 묶은 grant_inventory_item() RPC
-  // (마이그레이션 173, 티켓 20260914_1813) — 위 사전 체크와 이 RPC 사이의 레이스는
-  // RPC 내부 SELECT ... FOR UPDATE 재확인이 최종적으로 막는다.
-  const { data: rpcResult, error: rpcError } = await supabase.rpc('grant_inventory_item', {
-    p_inventory_id: inventory.id,
-    p_badge_id: badgeId,
-    p_obtained_by: 'system_event',
-    p_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  const { data, error } = await supabase.rpc('combine_grant_results', {
+    p_user_id: userId,
+    p_recipe_id: recipe.id,
+    p_badge_ids: rewardBadgeIds,
+    p_locked: recipe.reward_locked === true,
   })
-  if (rpcError) {
-    console.error('[combineRecipeAttempt] grant_inventory_item RPC 오류:', rpcError)
-    return null
+  const result = data as {
+    ok?: boolean
+    error?: string
+    status?: string
+    pendingCount?: number
+    free?: number
+  } | null
+  if (error || !result || result.ok !== true) {
+    console.error('[combineRecipeAttempt] combine_grant_results 실패 — 재료만 소각된 빈손 성공 발생:', {
+      recipeId: recipe.id,
+      rewardBadgeIds,
+      userId,
+      rpcError: error?.message ?? result?.error ?? 'unknown',
+    })
+    return empty
   }
-  const result = rpcResult as GrantInventoryItemResult
-  if (!result.ok) {
-    // slot_full: 다른 지급 경로와 동시에 슬롯이 찬 경우 — 정책대로 조용히 skip
-    if (result.reason === 'slot_full') {
-      console.info('[combineRecipeAttempt] 인벤토리 슬롯 부족으로 보상 배지 지급을 생략함:', badgeId)
-    } else {
-      console.error('[combineRecipeAttempt] 보상 아이템 추가 오류:', result.reason)
-    }
-    return null
-  }
-  inventory.used_slots = result.usedSlots
 
-  return badge
+  const badgeById = new Map(rewardBadges.map((b) => [b.id, b]))
+  const grantable = rewardBadgeIds.map((id) => badgeById.get(id)).filter((b): b is RewardBadgeInfo => b !== undefined)
+
+  if (result.status === 'pending') {
+    return {
+      status: 'pending',
+      resultBadges: [],
+      recordedBadgeIds: grantable.map((b) => b.id),
+      pendingCount: Number(result.pendingCount ?? grantable.length),
+      freeSlots: Number(result.free ?? 0),
+    }
+  }
+
+  if (result.status === 'granted') {
+    return {
+      status: 'granted',
+      resultBadges: grantable.map((b) =>
+        recipe.reward_locked === true || b.always_locked === true
+          ? { id: '', name: '', rarity: b.rarity, locked: true as const }
+          : { id: b.id, name: b.name, rarity: b.rarity }
+      ),
+      recordedBadgeIds: grantable.map((b) => b.id),
+      pendingCount: 0,
+      freeSlots: 0,
+    }
+  }
+
+  // status 'none' — 결과 배지가 전부 삭제돼 지급할 것이 없었다
+  console.error('[combineRecipeAttempt] 레시피 보상 배지가 전부 지급되지 않음 — 재료만 소각된 빈손 성공 발생:', {
+    recipeId: recipe.id,
+    rewardBadgeIds,
+    userId,
+  })
+  return empty
 }
 
 /** 실패 이력 적재 — 어드민 유저 상세에서만 조회한다(유저 화면 비노출). 실패해도 응답을 막지 않는다. */
@@ -504,7 +585,7 @@ async function recordCombineSuccess(
  * 믹스 결과에 따라 JAM! 행동 지표 중 다시 판정할 것을 고른다 — `/api/combine` 라우트가 결과에 이어 부른다.
  *  - 성공: 시도·성공·레시피 최초 성공
  *  - `no_recipe_match`(재료가 소각된 실패): 시도·실패
- *  - 그 밖의 실패(`invalid_count`·`items_not_found`·`recipe_not_found`·`locked_item_not_allowed`)는 재료가 소각되기 전에 끝났으므로 판정하지 않는다
+ *  - 그 밖의 실패(`invalid_count`·`items_not_found`·`recipe_not_found`·`locked_item_not_allowed`·`pending_results_exist`)는 재료가 소각되기 전에 끝났으므로 판정하지 않는다
  *  - 시험 믹스(`testMix`)는 성공·실패와 관계없이 판정하지 않는다(티켓 20261001_1159)
  */
 export function jamTriggersForCombineResult(result: CombineResult): JamActionTrigger[] {

@@ -8,6 +8,9 @@
  *  - 응답 JSON 키 집합과 「빈손 성공」 메시지는 변경 전과 같다
  *  - 401·400 입력 오류에서는 믹스도 판정도 하지 않는다
  *  - 재료에 잠긴 개체가 섞여 엔진이 `locked_item_not_allowed`를 돌려주면 `code`를 더해 409로 내리고 지표는 판정하지 않는다(티켓 20261018_0051)
+ *  - 받지 않은 믹스 결과가 남아 엔진이 `pending_results_exist`를 돌려주면 `code`를 더해 409로 내린다. 이용 정지 중이면 엔진이 던지는
+ *    `UserSuspendedError`를 403(`code: 'user_suspended'`)으로 바꾼다. 결과가 받지 않은 상태로 남은 성공(`resultStatus: 'pending'`)은
+ *    빈손이 아니라 안내 문구를 붙이고, 보상 없음 레시피(`noReward`)의 빈손은 실패 문구를 붙이지 않는다. 믹스 칸 상한은 5다(티켓 20261018_0055)
  *  - 운영자 판정(`hasAdminAccess`)을 `allowUnreleased`로 믹스 엔진에 넘기고, 시험 믹스(`testMix`) 응답은
  *    키만 더해지며 지표 판정을 하지 않는다. 판정이 실패하면 일반 유저처럼 닫는다(티켓 20261001_1159)
  *
@@ -17,6 +20,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import type { CombineResult } from '@/lib/combine/index'
 import { d } from '@/lib/i18n'
+import { UserSuspendedError } from '@/lib/suspension/suspension'
+import { USER_SUSPENDED_CODE } from '@/lib/suspension/suspension-contract'
 
 const USER_ID = 'user-1'
 
@@ -88,8 +93,9 @@ const SUCCESS: CombineResult = {
   path: 'recipe',
   resultBadges: [{ id: 'b1', name: '보상 배지', rarity: 'rare' }],
   pointsAwarded: 120,
+  resultStatus: 'granted',
 }
-const EMPTY_HANDED: CombineResult = { success: true, path: 'recipe', resultBadges: [], pointsAwarded: 0 }
+const EMPTY_HANDED: CombineResult = { success: true, path: 'recipe', resultBadges: [], pointsAwarded: 0, resultStatus: 'none' }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -166,11 +172,11 @@ describe('판정이 실패해도 응답은 그대로다', () => {
 })
 
 describe('응답 JSON 계약은 변경 전과 같다', () => {
-  it('성공 응답의 키 집합은 success·path·resultBadges·pointsAwarded다(message 없음)', async () => {
+  it('성공 응답의 키 집합은 success·path·resultBadges·pointsAwarded·resultStatus다(message 없음)', async () => {
     const res = await POST(request(VALID_BODY))
     const body = await res.json()
     expect(res.status).toBe(200)
-    expect(Object.keys(body).sort()).toEqual(['path', 'pointsAwarded', 'resultBadges', 'success'])
+    expect(Object.keys(body).sort()).toEqual(['path', 'pointsAwarded', 'resultBadges', 'resultStatus', 'success'])
     expect(body).toEqual(SUCCESS)
   })
 
@@ -178,7 +184,7 @@ describe('응답 JSON 계약은 변경 전과 같다', () => {
     combineMock.mockResolvedValue(EMPTY_HANDED)
     const res = await POST(request(VALID_BODY))
     const body = await res.json()
-    expect(Object.keys(body).sort()).toEqual(['message', 'path', 'pointsAwarded', 'resultBadges', 'success'])
+    expect(Object.keys(body).sort()).toEqual(['message', 'path', 'pointsAwarded', 'resultBadges', 'resultStatus', 'success'])
     expect(body.message).toBe(d.combine.recipeFail)
   })
 
@@ -220,6 +226,17 @@ describe('판정 없이 끝나는 요청', () => {
     expect(combineMock).not.toHaveBeenCalled()
     expect(runJamActionMock).not.toHaveBeenCalled()
   })
+
+  it('item_ids가 5개를 넘으면 400(믹스 칸 5, 운영 로직 8.6절)이고 5개는 믹스를 진행한다', async () => {
+    const six = await POST(request({ recipe_id: 'recipe-1', item_ids: ['1', '2', '3', '4', '5', '6'] }))
+    expect(six.status).toBe(400)
+    expect((await six.json()).message).toBe(d.combine.selectRangeError)
+    expect(combineMock).not.toHaveBeenCalled()
+
+    const five = await POST(request({ recipe_id: 'recipe-1', item_ids: ['1', '2', '3', '4', '5'] }))
+    expect(five.status).toBe(200)
+    expect(combineMock).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('운영자 시험 믹스 (티켓 20261001_1159)', () => {
@@ -250,7 +267,7 @@ describe('운영자 시험 믹스 (티켓 20261001_1159)', () => {
     combineMock.mockResolvedValue({ ...SUCCESS, testMix: true })
     const res = await POST(request(VALID_BODY))
     const body = await res.json()
-    expect(Object.keys(body).sort()).toEqual(['path', 'pointsAwarded', 'resultBadges', 'success', 'testMix'])
+    expect(Object.keys(body).sort()).toEqual(['path', 'pointsAwarded', 'resultBadges', 'resultStatus', 'success', 'testMix'])
     expect(body.testMix).toBe(true)
     expect(runJamActionMock).toHaveBeenCalledWith(USER_ID, [])
   })
@@ -305,5 +322,78 @@ describe('잠긴 재료 (티켓 20261018_0051)', () => {
       message: d.lockedItem.combine,
     })
     expect(runJamActionMock).toHaveBeenCalledWith(USER_ID, [])
+  })
+})
+
+describe('JAM 2.0 믹스 고치기 — 받지 않은 결과·이용 정지·보상 없음 (티켓 20261018_0055)', () => {
+  it('pending_results_exist는 409와 code·message를 내리고 지표를 판정하지 않는다', async () => {
+    combineMock.mockResolvedValue({ success: false, reason: 'pending_results_exist', pointsAwarded: 0 })
+
+    const res = await POST(request(VALID_BODY))
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({
+      success: false,
+      reason: 'pending_results_exist',
+      code: 'pending_results_exist',
+      pointsAwarded: 0,
+      message: d.combine.pendingResultsExist,
+    })
+    expect(runJamActionMock).toHaveBeenCalledWith(USER_ID, [])
+  })
+
+  it('이용 정지 중이면 403과 code: user_suspended를 내리고 지표를 판정하지 않는다', async () => {
+    combineMock.mockRejectedValue(new UserSuspendedError({ reason: '운영 정책 위반', suspendedAt: '2026-10-01T00:00:00.000Z' }))
+
+    const res = await POST(request(VALID_BODY))
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toEqual({ error: d.suspension.combineBlocked, code: USER_SUSPENDED_CODE })
+    expect(runJamActionMock).not.toHaveBeenCalled()
+  })
+
+  it('정지 여부 등 처리 중 예외는 500이고 지표를 판정하지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    combineMock.mockRejectedValue(new Error('user_suspensions 조회 실패'))
+
+    const res = await POST(request(VALID_BODY))
+
+    expect(res.status).toBe(500)
+    expect(runJamActionMock).not.toHaveBeenCalled()
+    errorSpy.mockRestore()
+  })
+
+  it('결과가 받지 않은 상태로 남은 성공은 빈손이 아니라 안내 문구와 개수·빈칸 수를 싣는다', async () => {
+    const pending: CombineResult = {
+      success: true,
+      path: 'recipe',
+      resultBadges: [],
+      pointsAwarded: 0,
+      resultStatus: 'pending',
+      pendingCount: 2,
+      freeSlots: 1,
+    }
+    combineMock.mockResolvedValue(pending)
+
+    const res = await POST(request(VALID_BODY))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body).toEqual({ ...pending, message: d.combine.resultPending })
+    // 성공이므로 지표는 성공으로 판정한다
+    expect(runJamActionMock).toHaveBeenCalledWith(USER_ID, [
+      'combine_attempt_count',
+      'combine_success_count',
+      'recipe_first_success',
+    ])
+  })
+
+  it('보상 없음 레시피(noReward)의 빈손 성공에는 실패 문구를 붙이지 않는다', async () => {
+    const noReward: CombineResult = { ...EMPTY_HANDED, noReward: true }
+    combineMock.mockResolvedValue(noReward)
+
+    const res = await POST(request(VALID_BODY))
+
+    expect(await res.json()).toEqual(noReward)
   })
 })

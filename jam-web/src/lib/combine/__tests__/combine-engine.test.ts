@@ -16,6 +16,10 @@
  *  8) 종료 시각(valid_until, 티켓 20261002_0710) — 종료된 레시피는 일반 유저·운영자 모두 recipe_not_found이고
  *     재료 소각이 없다(종료 시각 그 순간부터). 종료 시각이 비어 있거나 칸이 없는 응답은 동작이 같다
  *
+ *  9) JAM 2.0 믹스 고치기(티켓 20261018_0055) — 믹스 칸 5, 이용 정지(소각 전 던짐), 받지 않은 결과가 있으면 소각 전 거절,
+ *     결과 지급은 `combine_grant_results` 한 번(기한 없음·잠김은 레시피가 정함), 빈칸이 모자라면 받지 않은 결과로 남김,
+ *     결과 배지의 공개 기간이 끝난 레시피는 소각 전 거절
+ *
  * 실행: cd jam-web && npx vitest run src/lib/combine/__tests__/combine-engine.test.ts
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -32,6 +36,8 @@ const REWARD = 'badge-reward'
 
 interface RecipeStub {
   id: string
+  /** 결과를 잠긴 채 지급할지(마이그레이션 236) — 칸이 없는 응답은 열림으로 본다 */
+  reward_locked?: boolean
   reward_points: number
   reward_badge_ids: string[]
   /** 공개 시각 — null이면 처음부터 공개(마이그레이션 204) */
@@ -60,6 +66,18 @@ const stub = vi.hoisted(() => ({
   failRewardPoints: 0,
   /** 잠긴 개체 id(`inventory_items.locked = true`, 티켓 20261018_0051) */
   lockedItemIds: [] as string[],
+  /** 이용 정지 중인 유저(`user_suspensions`에 진행 중인 정지가 있다) */
+  suspended: false,
+  /** DB의 `combine_pending_results`(status = pending) 행 — `combine_grant_results`가 빈칸이 모자라면 쌓는다 */
+  pendingResults: [] as { badge_id: string; recipe_id: string; locked: boolean }[],
+  /** `combine_grant_results` 호출 인자 */
+  grantResultCalls: [] as Record<string, unknown>[],
+  /** `combine_grant_results`가 돌려줄 RPC 오류. null이면 정상 */
+  grantRpcError: null as { message: string } | null,
+  /** 결과 배지의 공개 종료 시각(`badges.valid_until`) — null이면 종료 없음 */
+  badgeValidUntil: null as string | null,
+  /** 잠김으로 만든 배지(`badges.always_locked`) id */
+  alwaysLockedBadgeIds: [] as string[],
   /** inventory.used_slots — 조합 전 초기값. 소각/지급마다 이 값이 갱신된다(20260912_2101). */
   usedSlots: 5,
   maxSlots: 10,
@@ -110,15 +128,28 @@ async function rpcStub(fnName: string, args: Record<string, unknown>): Promise<{
     stub.successRpcResults.push(isFirst)
     return { data: isFirst, error: null }
   }
-  if (fnName === 'grant_inventory_item') {
-    if (stub.usedSlots >= stub.maxSlots) {
-      return { data: { ok: false, reason: 'slot_full' }, error: null }
+  if (fnName === 'combine_grant_results') {
+    // 마이그레이션 236의 함수를 흉내낸다 — 빈칸이 결과 개수 이상이면 모두 지급하고, 모자라면 일부만 주지 않고 전부 받지 않은 결과로 남긴다.
+    stub.grantResultCalls.push(args)
+    if (stub.grantRpcError) return { data: null, error: stub.grantRpcError }
+    const ids = args.p_badge_ids as string[]
+    const free = Math.max(0, stub.maxSlots - stub.usedSlots)
+    if (ids.length === 0) return { data: { ok: true, status: 'none', itemIds: [], pendingCount: 0 }, error: null }
+    if (free >= ids.length) {
+      const itemIds: string[] = []
+      for (const id of ids) {
+        stub.usedSlots += 1
+        stub.usedSlotsHistory.push(stub.usedSlots)
+        stub.grantedBadgeIds.push(id)
+        itemIds.push(`generated-item-${stub.grantedBadgeIds.length}`)
+      }
+      return { data: { ok: true, status: 'granted', itemIds, pendingCount: 0 }, error: null }
     }
-    stub.usedSlots += 1
-    stub.usedSlotsHistory.push(stub.usedSlots)
-    stub.grantedBadgeIds.push(args.p_badge_id as string)
+    for (const id of ids) {
+      stub.pendingResults.push({ badge_id: id, recipe_id: args.p_recipe_id as string, locked: args.p_locked === true })
+    }
     return {
-      data: { ok: true, itemId: `generated-item-${stub.grantedBadgeIds.length}`, usedSlots: stub.usedSlots },
+      data: { ok: true, status: 'pending', itemIds: [], pendingCount: ids.length, free, needed: ids.length },
       error: null,
     }
   }
@@ -142,9 +173,15 @@ vi.mock('@/lib/supabase/server', () => ({
  * 결과를 돌려주는 최소 스텁. 체이닝 순서는 검증하지 않는다(엔진의 결과 분기만 본다).
  */
 function makeBuilder(table: string) {
-  const state: { op: 'select' | 'insert' | 'update'; payload?: unknown; eqFilters: Record<string, unknown> } = {
+  const state: {
+    op: 'select' | 'insert' | 'update'
+    payload?: unknown
+    eqFilters: Record<string, unknown>
+    inFilters: Record<string, unknown>
+  } = {
     op: 'select',
     eqFilters: {},
+    inFilters: {},
   }
 
   const resolve = async (): Promise<{ data: unknown; error: unknown }> => {
@@ -190,8 +227,27 @@ function makeBuilder(table: string) {
         return { data: stub.ownedCheckinBadgeIds.map((badge_id) => ({ badge_id })), error: null }
       case 'users':
         return { data: { username: '테스터' }, error: null }
-      case 'badges':
-        return { data: { id: REWARD, name: '보상 배지', rarity: 'rare' }, error: null }
+      case 'badges': {
+        // 결과 배지 조회 — `.in('id', ids)`로 요청한 id마다 한 줄씩 돌려준다(삭제되지 않은 배지)
+        const ids = (state.inFilters.id as string[] | undefined) ?? [REWARD]
+        return {
+          data: ids.map((id) => ({
+            id,
+            name: id === REWARD ? '보상 배지' : `배지 ${id}`,
+            rarity: 'rare',
+            always_locked: stub.alwaysLockedBadgeIds.includes(id),
+            valid_until: stub.badgeValidUntil,
+          })),
+          error: null,
+        }
+      }
+      case 'user_suspensions':
+        return {
+          data: stub.suspended ? { id: 'suspension-1', reason: '운영 정책 위반', suspended_at: '2026-10-01T00:00:00.000Z' } : null,
+          error: null,
+        }
+      case 'combine_pending_results':
+        return { data: null, count: stub.pendingResults.length, error: null } as { data: unknown; error: unknown }
       default:
         return { data: null, error: null }
     }
@@ -203,7 +259,10 @@ function makeBuilder(table: string) {
       state.eqFilters[column] = value
       return builder
     },
-    in: () => builder,
+    in: (column: string, values: unknown) => {
+      state.inFilters[column] = values
+      return builder
+    },
     is: () => builder,
     order: () => builder,
     limit: () => builder,
@@ -225,6 +284,7 @@ function makeBuilder(table: string) {
   return builder
 }
 
+import { UserSuspendedError } from '@/lib/suspension/suspension'
 import { combineRecipeAttempt, jamTriggersForCombineResult, type CombineResult } from '../index'
 
 function recipe(overrides: Partial<RecipeStub> = {}): RecipeStub {
@@ -253,6 +313,12 @@ beforeEach(() => {
   stub.ownedCheckinBadgeIds = []
   stub.failLogs = []
   stub.grantedBadgeIds = []
+  stub.suspended = false
+  stub.pendingResults = []
+  stub.grantResultCalls = []
+  stub.grantRpcError = null
+  stub.badgeValidUntil = null
+  stub.alwaysLockedBadgeIds = []
   stub.destroyedItemIds = []
   stub.failRewardPoints = 0
   stub.lockedItemIds = []
@@ -588,8 +654,8 @@ describe('잠긴 재료 (티켓 20261018_0051)', () => {
 })
 
 describe('재료 개수 오류', () => {
-  it('10개를 초과해 넣으면 invalid_count로 거부하고 소각하지 않는다(레시피 조회 이전에 차단)', async () => {
-    const tooMany = Array.from({ length: 11 }, (_, i) => `item-${i}`)
+  it('5개를 초과해 넣으면 invalid_count로 거부하고 소각하지 않는다(레시피 조회 이전에 차단, 운영 로직 8.6절)', async () => {
+    const tooMany = Array.from({ length: 6 }, (_, i) => `item-${i}`)
     const result = await combineRecipeAttempt(USER, 'recipe-1', tooMany)
     expect(result.success).toBe(false)
     if (!result.success) expect(result.reason).toBe('invalid_count')
@@ -635,9 +701,9 @@ describe('인벤토리 used_slots 카운터 (티켓 20260912_2101)', () => {
     expect(stub.usedSlots).toBe(3)
   })
 
-  it('소각으로 반환된 칸보다 보상 배지가 많으면 칸이 찬 시점부터 지급을 생략한다', async () => {
-    // 조합 전 이미 가득 찬 인벤토리(7/7) — 재료 2개를 소각해 5/7로 여유가 2칸 생기지만,
-    // 레시피가 보상 배지 3개를 지정해 세 번째 지급 시점엔 다시 가득 차 지급을 생략해야 한다.
+  it('소각으로 반환된 칸보다 보상 배지가 많으면 일부만 주지 않고 전부 받지 않은 결과로 남긴다 (티켓 20261018_0055)', async () => {
+    // 조합 전 이미 가득 찬 인벤토리(7/7) — 재료 2개를 소각해 5/7로 여유가 2칸 생기지만 레시피 보상 배지는 3개다.
+    // 예전에는 앞의 둘만 지급하고 셋째를 조용히 건너뛰었다. 이제는 하나도 주지 않고 셋 모두 받지 않은 결과로 남는다.
     stub.usedSlots = 7
     stub.maxSlots = 7
     const REWARD_2 = 'badge-reward-2'
@@ -648,12 +714,14 @@ describe('인벤토리 used_slots 카운터 (티켓 20260912_2101)', () => {
     const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
 
     expect(result.success).toBe(true)
-    // 소각 직후 7 - 2 = 5 → 지급 1(=6) → 지급 2(=7, 가득 참) → 지급 3은 생략(칸 미소비)
-    expect(stub.usedSlotsHistory).toEqual([5, 6, 7])
-    expect(stub.usedSlots).toBe(7)
-    expect(stub.grantedBadgeIds).toEqual([REWARD, REWARD_2])
+    // 소각 직후 7 - 2 = 5 — 지급이 없으므로 더 늘지 않는다
+    expect(stub.usedSlotsHistory).toEqual([5])
+    expect(stub.grantedBadgeIds).toEqual([])
+    expect(stub.pendingResults.map((r) => r.badge_id)).toEqual([REWARD, REWARD_2, REWARD_3])
     if (result.success) {
-      expect(result.resultBadges).toHaveLength(2)
+      expect(result.resultStatus).toBe('pending')
+      expect(result.resultBadges).toHaveLength(0)
+      expect(result.pendingCount).toBe(3)
     }
   })
 
@@ -696,7 +764,7 @@ describe('성공 기록 — record_combine_success (티켓 20261001_0631)', () =
 
     await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
 
-    expect(stub.callOrder).toEqual(['release_inventory_slots', 'grant_inventory_item', 'award_points', 'record_combine_success'])
+    expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'award_points', 'record_combine_success'])
   })
 
   it('빈손 성공(보상 배지·포인트가 없는 레시피)도 성공 1건으로 기록한다', async () => {
@@ -710,8 +778,8 @@ describe('성공 기록 — record_combine_success (티켓 20261001_0631)', () =
     expect(stub.successRpcCalls[0]).toMatchObject({ p_result_badge_ids: [], p_points_awarded: 0 })
   })
 
-  it('보상 배지 지급이 전부 생략된 빈손 성공(인벤토리가 가득 참)도 성공 1건으로 기록한다', async () => {
-    // 재료 2개를 소각해도 10 - 2 = 8칸이 차 있어 한도 2를 넘으므로 보상 배지 지급이 생략된다
+  it('결과가 받지 않은 상태로 남은 성공(인벤토리가 가득 참)도 성공 1건으로 기록하고 결과 배지 id를 남긴다', async () => {
+    // 재료 2개를 소각해도 10 - 2 = 8칸이 차 있어 한도 2를 넘으므로 결과가 받지 않은 결과로 남는다
     stub.usedSlots = 10
     stub.maxSlots = 2
     stub.recipes = [recipe({ reward_badge_ids: [REWARD] })]
@@ -722,7 +790,7 @@ describe('성공 기록 — record_combine_success (티켓 20261001_0631)', () =
     expect(result.success).toBe(true)
     if (result.success) expect(result.resultBadges).toHaveLength(0)
     expect(stub.successRpcCalls).toHaveLength(1)
-    expect(stub.successRpcCalls[0]).toMatchObject({ p_result_badge_ids: [] })
+    expect(stub.successRpcCalls[0]).toMatchObject({ p_result_badge_ids: [REWARD] })
   })
 
   it('레시피가 일치하지 않으면(no_recipe_match) 성공 기록을 남기지 않는다', async () => {
@@ -831,7 +899,7 @@ describe('운영자 시험 믹스 — 공개 전 레시피 (티켓 20261001_1159
     expect(stub.usedSlotsHistory).toEqual([3, 4])
     // 기록에서 빠진다 — record_combine_success 0회, 실패 로그 0건
     expect(stub.successRpcCalls).toHaveLength(0)
-    expect(stub.callOrder).toEqual(['release_inventory_slots', 'grant_inventory_item', 'award_points'])
+    expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'award_points'])
     expect(stub.failLogs).toHaveLength(0)
   })
 
@@ -888,7 +956,7 @@ describe('운영자 시험 믹스 — 공개 전 레시피 (티켓 20261001_1159
     expect(result.success).toBe(true)
     expect('testMix' in result).toBe(false)
     expect(stub.successRpcCalls).toHaveLength(1)
-    expect(stub.callOrder).toEqual(['release_inventory_slots', 'grant_inventory_item', 'award_points', 'record_combine_success'])
+    expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'award_points', 'record_combine_success'])
   })
 
   it('공개 시각이 없는 레시피(처음부터 공개)도 운영자 믹스는 일반 믹스다 — 실패 로그가 정상으로 남는다', async () => {
@@ -942,7 +1010,7 @@ describe('운영자 시험 믹스 — 공개 전 레시피 (티켓 20261001_1159
 
 describe('jamTriggersForCombineResult — 결과별로 다시 판정할 지표', () => {
   it('성공은 시도·성공·레시피 최초 성공', () => {
-    const result: CombineResult = { success: true, path: 'recipe', resultBadges: [], pointsAwarded: 0 }
+    const result: CombineResult = { success: true, path: 'recipe', resultBadges: [], pointsAwarded: 0, resultStatus: 'none' }
     expect(jamTriggersForCombineResult(result)).toEqual([
       'combine_attempt_count',
       'combine_success_count',
@@ -966,10 +1034,222 @@ describe('jamTriggersForCombineResult — 결과별로 다시 판정할 지표',
 
   it('시험 믹스(testMix)는 성공이든 실패든 판정할 지표가 없다 (티켓 20261001_1159)', () => {
     expect(
-      jamTriggersForCombineResult({ success: true, path: 'recipe', resultBadges: [], pointsAwarded: 0, testMix: true })
+      jamTriggersForCombineResult({ success: true, path: 'recipe', resultBadges: [], pointsAwarded: 0, resultStatus: 'none', testMix: true })
     ).toEqual([])
     expect(
       jamTriggersForCombineResult({ success: false, reason: 'no_recipe_match', pointsAwarded: 5, testMix: true })
     ).toEqual([])
+  })
+})
+
+describe('JAM 2.0 믹스 고치기 — 소각 앞 관문 (티켓 20261018_0055)', () => {
+  it('이용 정지 중이면 UserSuspendedError를 던지고 소각·포인트·지급·실패 이력을 남기지 않는다', async () => {
+    stub.suspended = true
+    stub.recipes = [recipe({ reward_points: 120 })]
+    stub.slots = itemSlots()
+
+    await expect(combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])).rejects.toBeInstanceOf(UserSuspendedError)
+
+    expect(stub.destroyedItemIds).toEqual([])
+    expect(stub.grantResultCalls).toHaveLength(0)
+    expect(stub.failLogs).toHaveLength(0)
+    expect(awardPointsMock).not.toHaveBeenCalled()
+    expect(stub.usedSlotsHistory).toEqual([])
+  })
+
+  it('받지 않은 결과가 있으면 pending_results_exist로 거절하고 소각·포인트·지급·실패 이력·성공 기록을 남기지 않는다', async () => {
+    stub.pendingResults = [{ badge_id: REWARD, recipe_id: 'recipe-0', locked: false }]
+    stub.recipes = [recipe({ reward_points: 120 })]
+    stub.slots = itemSlots()
+    stub.failRewardPoints = 50
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result).toEqual({ success: false, reason: 'pending_results_exist', pointsAwarded: 0 })
+    expect(stub.destroyedItemIds).toEqual([])
+    expect(stub.grantResultCalls).toHaveLength(0)
+    expect(stub.failLogs).toHaveLength(0)
+    expect(stub.successRpcCalls).toHaveLength(0)
+    expect(awardPointsMock).not.toHaveBeenCalled()
+    expect(stub.usedSlotsHistory).toEqual([])
+  })
+
+  it('받지 않은 결과 거절은 JAM! 지표를 다시 판정하지 않는다', () => {
+    expect(jamTriggersForCombineResult({ success: false, reason: 'pending_results_exist', pointsAwarded: 0 })).toEqual([])
+  })
+
+  it('빈칸이 모자라 결과가 남은 직후의 새 믹스는 거절되고, 받지 않은 결과가 사라지면 다시 믹스된다', async () => {
+    stub.usedSlots = 7
+    stub.maxSlots = 7
+    stub.recipes = [recipe({ reward_badge_ids: [REWARD, 'badge-reward-2', 'badge-reward-3'] })]
+    stub.slots = itemSlots()
+
+    const first = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+    expect(first.success && first.resultStatus).toBe('pending')
+
+    const second = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+    expect(second).toEqual({ success: false, reason: 'pending_results_exist', pointsAwarded: 0 })
+    // 재료는 첫 믹스에서만 소각됐고 결과 지급 호출도 한 번뿐이다
+    expect(stub.grantResultCalls).toHaveLength(1)
+
+    stub.pendingResults = [] // 받기(combine_claim_pending)가 끝난 상태
+    stub.usedSlots = 3
+    const third = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+    expect(third.success && third.resultStatus).toBe('granted')
+  })
+})
+
+describe('JAM 2.0 믹스 고치기 — 결과 지급 (티켓 20261018_0055)', () => {
+  it('결과 지급은 combine_grant_results 한 번이고 결과 배지 전부를 한꺼번에 넘긴다 — 슬롯을 나눠 세지 않고 기한도 두지 않는다', async () => {
+    const REWARD_2 = 'badge-reward-2'
+    stub.recipes = [recipe({ reward_badge_ids: [REWARD, REWARD_2] })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(stub.grantResultCalls).toEqual([
+      { p_user_id: USER, p_recipe_id: 'recipe-1', p_badge_ids: [REWARD, REWARD_2], p_locked: false },
+    ])
+    // 옛 지급 함수(30일 기한)는 더 부르지 않는다
+    expect(stub.callOrder).not.toContain('grant_inventory_item')
+    expect(stub.grantResultCalls[0]).not.toHaveProperty('p_expires_at')
+    expect(stub.grantedBadgeIds).toEqual([REWARD, REWARD_2])
+    expect(result.success && result.resultStatus).toBe('granted')
+    if (result.success) expect(result.resultBadges.map((b) => b.id)).toEqual([REWARD, REWARD_2])
+  })
+
+  it('받지 않은 결과로 남아도 재료는 소모되고 포인트는 지급되며 pending 응답에 개수와 빈칸 수가 실린다', async () => {
+    stub.usedSlots = 10
+    stub.maxSlots = 9 // 재료 2개를 소각해도 8/9 — 결과 2개가 들어갈 빈칸(1)이 모자라다
+    stub.recipes = [recipe({ reward_points: 40, reward_badge_ids: [REWARD, 'badge-reward-2'] })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(stub.destroyedItemIds).toEqual([ITEM_1, ITEM_2])
+    expect(awardPointsMock).toHaveBeenCalledWith(USER, 40, 'combine_recipe_reward')
+    expect(result).toMatchObject({
+      success: true,
+      resultStatus: 'pending',
+      resultBadges: [],
+      pointsAwarded: 40,
+      pendingCount: 2,
+      freeSlots: 1,
+    })
+  })
+
+  it('결과의 잠김은 레시피(reward_locked)가 정한다 — 잠긴 채 나온 결과는 id·이름을 가리고 locked: true를 단다', async () => {
+    stub.recipes = [recipe({ reward_locked: true })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(stub.grantResultCalls[0]).toMatchObject({ p_locked: true })
+    expect(result.success && result.resultBadges).toEqual([{ id: '', name: '', rarity: 'rare', locked: true }])
+  })
+
+  it('잠김으로 만든 배지(always_locked)는 레시피가 열림이어도 잠긴 채 나온다', async () => {
+    stub.alwaysLockedBadgeIds = [REWARD]
+    stub.recipes = [recipe()]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(stub.grantResultCalls[0]).toMatchObject({ p_locked: false })
+    expect(result.success && result.resultBadges).toEqual([{ id: '', name: '', rarity: 'rare', locked: true }])
+  })
+
+  it('열린 결과는 이름과 등급을 그대로 싣는다(locked 키 없음)', async () => {
+    stub.recipes = [recipe()]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success && result.resultBadges).toEqual([{ id: REWARD, name: '보상 배지', rarity: 'rare' }])
+  })
+
+  it('combine_grant_results가 오류를 돌려주면 재료는 이미 소각된 뒤라 resultStatus none으로 이어 가고 성공 기록은 남는다', async () => {
+    stub.grantRpcError = { message: 'boom' }
+    stub.recipes = [recipe({ reward_points: 20 })]
+    stub.slots = itemSlots()
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result).toMatchObject({ success: true, resultStatus: 'none', resultBadges: [], pointsAwarded: 20 })
+    expect(stub.destroyedItemIds).toEqual([ITEM_1, ITEM_2])
+    expect(errorSpy).toHaveBeenCalled()
+    errorSpy.mockRestore()
+  })
+
+  it('보상 없음 레시피(포인트 0, 결과 배지 없음)는 지급 함수를 부르지 않고 noReward: true를 단다', async () => {
+    stub.recipes = [recipe({ reward_points: 0, reward_badge_ids: [] })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(stub.grantResultCalls).toHaveLength(0)
+    expect(result).toMatchObject({ success: true, resultStatus: 'none', noReward: true })
+  })
+
+  it('포인트만 주는 레시피는 noReward가 아니다', async () => {
+    stub.recipes = [recipe({ reward_points: 30, reward_badge_ids: [] })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result.success && 'noReward' in result).toBe(false)
+  })
+})
+
+describe('JAM 2.0 믹스 고치기 — 결과 배지의 공개 기간이 끝난 레시피 (티켓 20261018_0055)', () => {
+  it('결과 배지의 종료 시각이 지났으면 recipe_not_found로 거절하고 소각·포인트·지급 없이 실패 이력 1건만 남긴다', async () => {
+    stub.badgeValidUntil = new Date(Date.now() - 60_000).toISOString()
+    stub.recipes = [recipe({ reward_points: 120 })]
+    stub.slots = itemSlots()
+    stub.failRewardPoints = 50
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result).toEqual({ success: false, reason: 'recipe_not_found', pointsAwarded: 0 })
+    expect(stub.destroyedItemIds).toEqual([])
+    expect(stub.grantResultCalls).toHaveLength(0)
+    expect(awardPointsMock).not.toHaveBeenCalled()
+    expect(stub.failLogs).toHaveLength(1)
+    expect(stub.failLogs[0].fail_reason).toBe('recipe_not_found')
+  })
+
+  it('운영자(allowUnreleased)도 결과 배지가 끝난 레시피는 믹스할 수 없다', async () => {
+    stub.badgeValidUntil = new Date(Date.now() - 60_000).toISOString()
+    stub.recipes = [recipe({ valid_from: new Date(Date.now() + 3_600_000).toISOString() })]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2], { allowUnreleased: true })
+
+    expect(result).toMatchObject({ success: false, reason: 'recipe_not_found' })
+    expect(stub.destroyedItemIds).toEqual([])
+  })
+
+  it('종료 시각을 해석할 수 없으면 끝난 것으로 본다(fail-closed)', async () => {
+    stub.badgeValidUntil = '내일쯤'
+    stub.recipes = [recipe()]
+    stub.slots = itemSlots()
+
+    const result = await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
+
+    expect(result).toMatchObject({ success: false, reason: 'recipe_not_found' })
+    expect(stub.destroyedItemIds).toEqual([])
+  })
+
+  it('결과 배지의 종료 시각이 미래이거나 없으면 정상으로 믹스된다', async () => {
+    stub.recipes = [recipe()]
+    stub.slots = itemSlots()
+
+    stub.badgeValidUntil = new Date(Date.now() + 3_600_000).toISOString()
+    expect((await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])).success).toBe(true)
+
+    stub.usedSlots = 5
+    stub.badgeValidUntil = null
+    expect((await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])).success).toBe(true)
   })
 })
