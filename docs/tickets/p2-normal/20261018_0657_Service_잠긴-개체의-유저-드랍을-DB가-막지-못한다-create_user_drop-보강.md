@@ -2,7 +2,7 @@
 id: "20261018_0657"
 category: Service
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-10-18
 parent: "20261018_0050"
 ---
@@ -25,3 +25,16 @@ parent: "20261018_0050"
 
 - 잠긴 개체의 유저 드랍이 DB 함수에서도 거부된다(시험 포함).
 - `/api/drops`가 소유권을 먼저 확인하고 잠김을 확인한다.
+
+---
+## 완료 기록
+
+**완료(2026-10-18, 카리나·아현).**
+- DB: 마이그레이션 238(`create_user_drop`에 «잠긴 개체면 `locked_item`으로 거절» 한 단계, 사용자 승인 뒤 롤백 실측 13건 통과, 공용 DB 적용). 서명·반환 형식·권한은 그대로다.
+- 앱: 브랜치 `claude/jamwork-20261018_0657-locked-drop-app`(게이트 PASS, staging 로컬 머지). `app/api/drops/route.ts`의 소유권 확인보다 앞선 잠김 사전 조회를 없애고 RPC 응답 `locked_item`을 409 `locked_item_not_allowed`로 매핑했다. 남의 개체는 DB가 `item_not_found`(404)로 돌려줘 잠김 여부가 새지 않는다. 시험 갱신(DB 거절 응답 → 409·판정 예약 없음, 남의 개체 404, `inventory_items` 읽기 0회). `docs/service/prd/02_DATA_MODEL.md` 정정.
+- 검증: `scripts/verify.sh` 전항목 통과, CI verify 성공(커밋 `e96b16df2`, run 39113405141, 민지가 실제 성공 확인).
+- 실행 지표: 아현·게이트 2에이전트 89,185토큰 13분 26초 도구 36(출력 8,823 / 3,775).
+
+### 잔여 이슈
+- 저장소에는 DB 함수 자체의 자동 시험이 없다. 묶음 4가 `create_user_drop`을 다시 고칠 때 `locked_item` 거절을 롤백 실측으로 함께 확인해야 한다.
+- `lib/inventory/lockedItem.ts` 머리 주석의 «각 경로는 호출 전에 `findLockedItemIds`로 먼저 거르고»는 드랍 경로에는 이제 맞지 않는다(같은 주석에 드랍은 사전 조회가 없다고 이미 적혀 있어 오해 소지는 작다).
