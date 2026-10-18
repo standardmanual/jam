@@ -25,6 +25,7 @@
  */
 import type { BadgeCondition } from '@/types/database'
 import { formatPaceSecPerKm } from '@/types/strava'
+import { timeBandOfHour } from '@/lib/badge-engine/timeBands'
 import {
   CONDITION_FIELDS,
   PERSONAL_RECORD_METRIC_FORM_OPTIONS,
@@ -79,16 +80,11 @@ function monthLabel(month: number | number[]): string {
   return MONTH_LABELS[month] ?? `${month}월`
 }
 
-/** "HH:MM" 시작 시각을 사람이 읽는 시간대 이름으로 */
+/** "HH:MM" 시작 시각을 사람이 읽는 시간대 이름으로 — 구간은 `timeBands.ts` 한 곳(티켓 20261018_1815) */
 function timeSlotLabel(start: string): string {
   const [h] = start.split(':').map(Number)
   if (Number.isNaN(h)) return ''
-  if (h >= 4 && h < 8) return '새벽'
-  if (h >= 8 && h < 11) return '아침'
-  if (h >= 11 && h < 14) return '점심'
-  if (h >= 14 && h < 18) return '오후'
-  if (h >= 18 && h < 22) return '저녁'
-  return '심야'
+  return timeBandOfHour(h)
 }
 
 /**

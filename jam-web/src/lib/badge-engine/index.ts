@@ -68,7 +68,15 @@ import {
   maxActivitiesWithinHours,
   bestMonthOverMonthRatio,
   bestVsPersonalAverage,
+  // 횟수 조건 5종은 «활동한 날의 수»(KST 날짜)로 센다 — 티켓 20261018_1815 1회
+  countActiveDays,
+  countActiveDaysByPeriod,
+  kstWeekKeyOf,
+  kstMonthKeyOf,
+  kstMonthOf,
+  isKstWeekend,
 } from './activityFilters'
+import { kstClockOfStart } from './timeBands'
 import { isLeveledBadge, familyKeyOf, badgeKindLabel, badgeKindOf, repeatCountOf } from './badgeKind'
 // 2단 교차 게이트(v5 B2, 티켓 20260905_0030 §3)는 순수 함수로 분리돼 있다 —
 // 보유 컨텍스트를 인자로 받으므로 이 파일의 클로저 밖에서도 단위 테스트가 가능하다.
@@ -199,8 +207,7 @@ function describePerActivity(condition: BadgeCondition, a: NormalizedActivity): 
     required.push(`주말활동시간: ${condition.weekend_duration_hours}시간`)
   }
   if (condition.time_range !== undefined && condition.weekly_count === undefined) {
-    const local = a.startDateLocal ?? a.startDate
-    actual.push(`활동시각: ${local.slice(11, 16)}`)
+    actual.push(`활동시각: ${kstClockOfStart(a.startDate)}`)
     required.push(`시간대: ${condition.time_range.start}~${condition.time_range.end}`)
   }
   return { actual, required }
@@ -273,7 +280,7 @@ function singleFieldFailure(
     }
     case 'weekend_duration_hours': {
       const best = Math.max(
-        ...filtered.filter((a) => { const d = new Date(a.startDateLocal ?? a.startDate).getDay(); return d === 0 || d === 6 }).map((a) => a.movingTimeSec / 3600),
+        ...filtered.filter(isKstWeekend).map((a) => a.movingTimeSec / 3600),
         0
       )
       return { pass: false, reason: '주말 활동 시간 부족', actual: `${best.toFixed(1)}시간`, required: `${condition.weekend_duration_hours}시간` }
@@ -476,7 +483,7 @@ export function evaluateConditionDetailed(
           matchesDayOfWeek(a, day)
       )
       if (condition.activity_type === 'walking') pool = dedupeOnePerDay(pool)
-      return { day, count: pool.length }
+      return { day, count: countActiveDays(pool) }
     })
     const failing = perDay.filter((r) => r.count < condition.total_count!)
     if (failing.length > 0) {
@@ -497,7 +504,7 @@ export function evaluateConditionDetailed(
     const seasons: Array<'spring' | 'summer' | 'fall' | 'winter'> = ['spring', 'summer', 'fall', 'winter']
     const perSeason = seasons.map((s) => ({
       season: s,
-      count: filtered.filter((a) => SEASON_MONTHS[s].includes(new Date(a.startDateLocal ?? a.startDate).getMonth() + 1)).length,
+      count: countActiveDays(filtered.filter((a) => SEASON_MONTHS[s].includes(kstMonthOf(a)))),
     }))
     const failing = perSeason.filter((r) => r.count < condition.season_count_all!)
     if (failing.length > 0) {
@@ -634,10 +641,12 @@ export function evaluateConditionDetailed(
   }
 
   if (condition.total_count !== undefined && !totalCountHandledByDayOfWeek) {
-    if (filtered.length < condition.total_count) {
-      return { pass: false, reason: '활동 횟수 부족', actual: `${filtered.length}회`, required: `${condition.total_count}회` }
+    // «활동한 날의 수» — 같은 KST 날짜의 여러 활동은 한 번이다(티켓 20261018_1815 1회)
+    const totalDays = countActiveDays(filtered)
+    if (totalDays < condition.total_count) {
+      return { pass: false, reason: '활동 횟수 부족', actual: `${totalDays}회`, required: `${condition.total_count}회` }
     }
-    actualParts.push(`횟수: ${filtered.length}회`)
+    actualParts.push(`횟수: ${totalDays}회`)
     requiredParts.push(`횟수: ${condition.total_count}회`)
   }
 
@@ -719,23 +728,13 @@ export function evaluateConditionDetailed(
     // time_range와 함께 쓰이면 해당 시간대 활동만 주간 집계 ("새벽 주 N회" 엄격 의미)
     let weeklyPool = filtered
     if (condition.time_range) {
-      const { start, end } = condition.time_range
-      const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m }
-      const startMin = toMin(start)
-      const endMin = toMin(end)
-      const cross = startMin > endMin
-      weeklyPool = filtered.filter((a) => {
-        const t = toMin((a.startDateLocal ?? a.startDate).slice(11, 16))
-        return cross ? t >= startMin || t <= endMin : t >= startMin && t <= endMin
-      })
+      const range = condition.time_range
+      weeklyPool = filtered.filter((a) => inTimeRange(a, range))
     }
     // 걷기 빈도 조건 하루 1회 상한 — 같은 날 여러 번 걸어도 주간 집계엔 1회만 반영 (W3/W4에도 소급 적용)
     if (condition.activity_type === 'walking') weeklyPool = dedupeOnePerDay(weeklyPool)
-    const weekCounts = new Map<string, number>()
-    for (const a of weeklyPool) {
-      const key = getMondayKey(new Date(a.startDateLocal ?? a.startDate))
-      weekCounts.set(key, (weekCounts.get(key) ?? 0) + 1)
-    }
+    // 주(KST 월~일)마다 «활동한 날의 수»를 센다
+    const weekCounts = countActiveDaysByPeriod(weeklyPool, kstWeekKeyOf)
     const maxWeek = weekCounts.size > 0 ? Math.max(...weekCounts.values()) : 0
     if (maxWeek < condition.weekly_count) {
       return { pass: false, reason: '주간 활동 횟수 부족', actual: `${maxWeek}회`, required: `${condition.weekly_count}회` }
@@ -747,12 +746,8 @@ export function evaluateConditionDetailed(
   // ── monthly_count — 특정 달의 최소 활동 횟수. monthly_km(거리)의 횟수 버전(티켓 20260906_0110 ①)
   if (condition.monthly_count !== undefined) {
     const monthlyCountPool = condition.activity_type === 'walking' ? dedupeOnePerDay(filtered) : filtered
-    const monthCounts = new Map<string, number>()
-    for (const a of monthlyCountPool) {
-      const d = new Date(a.startDateLocal ?? a.startDate)
-      const key = `${d.getFullYear()}-${d.getMonth() + 1}`
-      monthCounts.set(key, (monthCounts.get(key) ?? 0) + 1)
-    }
+    // 달(KST)마다 «활동한 날의 수»를 센다
+    const monthCounts = countActiveDaysByPeriod(monthlyCountPool, kstMonthKeyOf)
     const maxMonth = monthCounts.size > 0 ? Math.max(...monthCounts.values()) : 0
     if (maxMonth < condition.monthly_count) {
       return { pass: false, reason: '월간 활동 횟수 부족', actual: `${maxMonth}회`, required: `${condition.monthly_count}회` }
@@ -767,13 +762,12 @@ export function evaluateConditionDetailed(
       // 배열이면 "그중 한 달" — monthly_km는 아래에서 연-월별로 묶어 최댓값을 취하므로
       // 여러 달을 합산하지 않고 개별 월 단위로 평가된다 (예: T20 장마철 6~7월 중 한 달 150km)
       const months = Array.isArray(condition.month) ? condition.month : [condition.month]
-      monthFiltered = filtered.filter((a) => months.includes(new Date(a.startDateLocal ?? a.startDate).getMonth() + 1))
+      monthFiltered = filtered.filter((a) => months.includes(kstMonthOf(a)))
     }
     if (condition.monthly_km !== undefined) {
       const monthKm = new Map<string, number>()
       for (const a of monthFiltered) {
-        const d = new Date(a.startDateLocal ?? a.startDate)
-        const key = `${d.getFullYear()}-${d.getMonth() + 1}`
+        const key = kstMonthKeyOf(a)
         monthKm.set(key, (monthKm.get(key) ?? 0) + a.distanceKm)
       }
       const maxKm = monthKm.size > 0 ? Math.max(...monthKm.values()) : 0
@@ -794,14 +788,15 @@ export function evaluateConditionDetailed(
     const seasonFiltered = condition.season === 'all'
       ? filtered
       : filtered.filter((a) => {
-          const m = new Date(a.startDateLocal ?? a.startDate).getMonth() + 1
-          return (SEASON_MONTHS[condition.season as 'spring' | 'summer' | 'fall' | 'winter'] ?? []).includes(m)
+          return (SEASON_MONTHS[condition.season as 'spring' | 'summer' | 'fall' | 'winter'] ?? []).includes(kstMonthOf(a))
         })
-    if (seasonFiltered.length < condition.season_count) {
+    // «활동한 날의 수» — 같은 KST 날짜의 여러 활동은 한 번이다(티켓 20261018_1815 1회)
+    const seasonDays = countActiveDays(seasonFiltered)
+    if (seasonDays < condition.season_count) {
       const label = condition.season === 'all' ? '전체' : (SEASON_LABEL_KO[condition.season as 'spring' | 'summer' | 'fall' | 'winter'] ?? condition.season)
-      return { pass: false, reason: `${label} 활동 횟수 부족`, actual: `${seasonFiltered.length}회`, required: `${condition.season_count}회` }
+      return { pass: false, reason: `${label} 활동 횟수 부족`, actual: `${seasonDays}회`, required: `${condition.season_count}회` }
     }
-    actualParts.push(`계절활동: ${seasonFiltered.length}회`)
+    actualParts.push(`계절활동: ${seasonDays}회`)
     requiredParts.push(`계절활동: ${condition.season_count}회`)
   }
 

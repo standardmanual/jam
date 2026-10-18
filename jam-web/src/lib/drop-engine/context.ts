@@ -9,6 +9,7 @@
  */
 import type { NormalizedActivity } from '@/types/strava'
 import { MYSTERY_TRIBE_ID, RESOLUTION_TRIBE_ID } from './constants'
+import { timeBandOfHour, kstHourOfStart } from '@/lib/badge-engine/timeBands'
 
 // 019_seed_worldview.sql 고정 UUID
 export const RANGER = '7a91727e-e2e1-b7f7-45f0-899ce04716bd' // 아스팔트 레인저
@@ -53,14 +54,15 @@ export function matchContextTribes(
     return { tribeIds: [RANGER], always: false, reason: temp <= COLD_MAX_C ? 'cold' : 'hot' }
   }
 
-  // 3. 시간대 (startDateLocal 우선, 없으면 startDate)
-  const local = activity.startDateLocal ?? activity.startDate
-  const hour = parseInt(local.slice(11, 13), 10)
+  // 3. 시간대 — 배지 조건 판정과 같은 구간 상수(`badge-engine/timeBands.ts`), 활동 시작 시각의
+  //    KST 기준. 새벽(5~7시)은 dawn, 밤(22~5시)은 late_night (티켓 20261018_1815).
+  const hour = kstHourOfStart(activity.startDate)
   if (!Number.isNaN(hour)) {
-    if (hour >= 5 && hour < 7) {
+    const band = timeBandOfHour(hour)
+    if (band === '새벽') {
       return { tribeIds: [BEAT, SHUTTER], always: false, reason: 'dawn' }
     }
-    if (hour >= 23 || hour < 4) {
+    if (band === '밤') {
       return { tribeIds: [GOURMET, GANG], always: false, reason: 'late_night' }
     }
   }

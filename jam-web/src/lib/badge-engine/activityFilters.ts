@@ -19,6 +19,21 @@ import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition, DayOfWeek } from '@/types/database'
 import { getConditionField } from './conditionRegistry'
 import { kmhToPaceSecPerKm } from '@/types/strava'
+import {
+  TIME_BANDS,
+  timeBandOfHour,
+  kstDateKeyOfStart,
+  kstHourOfStart,
+  kstMinuteOfDayOfStart,
+  kstDayOfWeekOfStart,
+  kstMonthOfStart,
+  kstYearMonthKeyOfStart,
+  kstMondayKeyOfStart,
+  type TimeBand,
+} from './timeBands'
+
+export { TIME_BANDS }
+export type { TimeBand }
 
 // ── 축1 게이트 (걷기 전용 "진짜 걷기" 판정) ────────────────────────────────
 // 걷기(activity_type='walking') 활동이 이 네 값을 모두 통과해야 어떤 걷기 배지
@@ -47,18 +62,69 @@ const DAY_INDEX: Record<DayOfWeek, number> = {
   sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
 }
 
-/** 활동의 (로컬 기준) 요일이 지정한 day_of_week와 일치하는지 */
-export function matchesDayOfWeek(a: NormalizedActivity, day: DayOfWeek): boolean {
-  const dateOnly = (a.startDateLocal ?? a.startDate).slice(0, 10)
-  return new Date(`${dateOnly}T00:00:00Z`).getUTCDay() === DAY_INDEX[day]
+// ── KST 날짜·요일·월 (티켓 20261018_1815 1회) ───────────────────────────────
+// 「날」은 활동 시작 시각(UTC `startDate`)을 한국 시각으로 바꾼 날짜다. 해외 활동도 한국 시각의
+// 날로 센다(사용자 결정 1·2). 변환은 `timeBands.ts` 한 곳이 맡는다.
+
+/** 활동이 속한 KST 날짜 `YYYY-MM-DD` */
+export function kstDateKeyOf(a: NormalizedActivity): string {
+  return kstDateKeyOfStart(a.startDate)
+}
+/** 활동이 속한 KST 월요일 날짜(주 키) */
+export function kstWeekKeyOf(a: NormalizedActivity): string {
+  return kstMondayKeyOfStart(a.startDate)
+}
+/** 활동이 속한 KST 연-월 키 `YYYY-M` */
+export function kstMonthKeyOf(a: NormalizedActivity): string {
+  return kstYearMonthKeyOfStart(a.startDate)
+}
+/** 활동의 KST 월(1~12) */
+export function kstMonthOf(a: NormalizedActivity): number {
+  return kstMonthOfStart(a.startDate)
+}
+/** 활동의 KST 요일(0=일 ~ 6=토) */
+export function kstDayOfWeekOf(a: NormalizedActivity): number {
+  return kstDayOfWeekOfStart(a.startDate)
+}
+/** KST 주말(토·일) 활동인지 */
+export function isKstWeekend(a: NormalizedActivity): boolean {
+  const d = kstDayOfWeekOf(a)
+  return d === 0 || d === 6
+}
+/**
+ * 활동한 «날»의 수 — 같은 KST 날짜의 활동은 한 번으로 센다. 횟수 조건 5종(`total_count`·
+ * `weekly_count`·`monthly_count`·`season_count`·`season_count_all`)이 쓰는 단위다.
+ * 하루를 인정하는 기준은 인정된 활동 1건이다(호출부가 이미 걸러 둔 활동만 넘긴다).
+ */
+export function countActiveDays(activities: NormalizedActivity[]): number {
+  return new Set(activities.map(kstDateKeyOf)).size
+}
+/** 키 함수(주·월)별로 묶어 그룹마다 «활동한 날의 수»를 센다 */
+export function countActiveDaysByPeriod(
+  activities: NormalizedActivity[],
+  periodKeyFn: (a: NormalizedActivity) => string
+): Map<string, number> {
+  const days = new Map<string, Set<string>>()
+  for (const a of activities) {
+    const key = periodKeyFn(a)
+    const set = days.get(key)
+    if (set) set.add(kstDateKeyOf(a))
+    else days.set(key, new Set([kstDateKeyOf(a)]))
+  }
+  return new Map([...days].map(([k, v]) => [k, v.size]))
 }
 
-/** 같은 날짜(로컬 기준)의 활동을 1건으로 압축 — 걷기 빈도 조건 하루 1회 상한용 */
+/** 활동의 (KST 기준) 요일이 지정한 day_of_week와 일치하는지 */
+export function matchesDayOfWeek(a: NormalizedActivity, day: DayOfWeek): boolean {
+  return kstDayOfWeekOf(a) === DAY_INDEX[day]
+}
+
+/** 같은 날짜(KST 기준)의 활동을 1건으로 압축 — 걷기 빈도 조건 하루 1회 상한용 */
 export function dedupeOnePerDay(activities: NormalizedActivity[]): NormalizedActivity[] {
   const seen = new Set<string>()
   const result: NormalizedActivity[] = []
   for (const a of activities) {
-    const key = (a.startDateLocal ?? a.startDate).slice(0, 10)
+    const key = kstDateKeyOf(a)
     if (seen.has(key)) continue
     seen.add(key)
     result.push(a)
@@ -66,14 +132,13 @@ export function dedupeOnePerDay(activities: NormalizedActivity[]): NormalizedAct
   return result
 }
 
-/** 활동 시작시각(로컬)이 {start,end} 시간대 범위 내인지 (자정 걸침 지원) */
+/** 활동 시작시각(KST)이 {start,end} 시간대 범위 내인지 (자정 걸침 지원, 끝 시각 포함) */
 export function inTimeRange(activity: NormalizedActivity, range: { start: string; end: string }): boolean {
   const toMin = (hhmm: string) => {
     const [h, m] = hhmm.split(':').map(Number)
     return h * 60 + m
   }
-  const local = activity.startDateLocal ?? activity.startDate
-  const t = toMin(local.slice(11, 16))
+  const t = kstMinuteOfDayOfStart(activity.startDate)
   const s = toMin(range.start)
   const e = toMin(range.end)
   return s > e ? (t >= s || t <= e) : (t >= s && t <= e)
@@ -140,31 +205,20 @@ export function calcMaxWeeklyStreak(activities: NormalizedActivity[]): number {
   return maxStreak
 }
 
-/** 활동의 (로컬 기준) 「일(day of month)」이 지정한 값과 일치하는지 — `day_of_month` 조건(티켓 20260908_1318) */
+/** 활동의 (KST 기준) 「일(day of month)」이 지정한 값과 일치하는지 — `day_of_month` 조건(티켓 20260908_1318) */
 export function matchesDayOfMonth(a: NormalizedActivity, day: number): boolean {
-  const dateOnly = (a.startDateLocal ?? a.startDate).slice(0, 10)
-  return new Date(`${dateOnly}T00:00:00Z`).getUTCDate() === day
+  return Number(kstDateKeyOf(a).slice(8, 10)) === day
 }
 
 // ── 서로 다른 시간대 판정 (`distinct_time_bands`, 티켓 20260908_1318) ─────────
 //
-// 시간대 6구간 경계는 `badgeConditionText.ts`의 `timeSlotLabel`(time_range 칩 표기용)과
-// **똑같다** — 두 곳이 다른 경계를 쓰면 「시간대 문구」와 「시간대 개수 판정」이 어긋난다.
-// `distinct_time_bands`의 min:2~max:6(conditionRegistry.ts)이 이 6구간 수와 정확히
-// 일치하는 것도 같은 경계를 의도했다는 근거다.
-export const TIME_BANDS = ['새벽', '아침', '점심', '오후', '저녁', '심야'] as const
-export type TimeBand = (typeof TIME_BANDS)[number]
+// 시간대 6구간 경계는 `timeBands.ts`가 단일 출처다(티켓 20261018_1815) — 조건 문구
+// (`badgeConditionText.ts`)·드랍 엔진도 같은 상수를 읽는다. `distinct_time_bands`의
+// min:2~max:6(conditionRegistry.ts)이 이 6구간 수와 정확히 일치한다.
 
-/** 활동 시작시각(로컬)이 속하는 시간대(6구간 중 하나) */
+/** 활동 시작시각(KST)이 속하는 시간대(6구간 중 하나) */
 export function timeBandOf(a: NormalizedActivity): TimeBand {
-  const local = a.startDateLocal ?? a.startDate
-  const h = Number(local.slice(11, 13))
-  if (h >= 4 && h < 8) return '새벽'
-  if (h >= 8 && h < 11) return '아침'
-  if (h >= 11 && h < 14) return '점심'
-  if (h >= 14 && h < 18) return '오후'
-  if (h >= 18 && h < 22) return '저녁'
-  return '심야'
+  return timeBandOfHour(kstHourOfStart(a.startDate))
 }
 
 /** 활동 목록이 서로 다른 시간대를 몇 개나 포함하는지 (`distinct_time_bands` 조건 평가) */

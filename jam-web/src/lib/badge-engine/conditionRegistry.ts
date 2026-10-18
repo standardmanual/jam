@@ -1356,7 +1356,7 @@ export const CONDITION_FIELDS = [
     step: 1,
     direction: 'higher',
     // 티켓 20260908_1318 — `countDistinctTimeBands`(activityFilters.ts)가 시간대 6구간
-    // (새벽·아침·점심·오후·저녁·심야, `badgeConditionText.ts`의 `timeSlotLabel`과 같은 경계)
+    // (새벽·오전·점심·오후·저녁·밤, `timeBands.ts`가 단일 출처 — 문구·드랍 엔진도 같은 경계)
     // 중 몇 개에서 활동이 있었는지 센다. `streak_days`와 결합되면(walking:A3) 그 스트릭 창
     // 안으로 좁힌 판정을 `repeatOccurrences.ts`가 추가로 수행한다.
     evaluation: 'engine',

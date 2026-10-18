@@ -11,6 +11,7 @@
  */
 
 import { evaluateConditionDetailed } from '../index'
+import { kstIso } from './kstFixture'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition } from '@/types/database'
 
@@ -127,25 +128,25 @@ describe('temperature_max_c', () => {
 describe('time_range', () => {
   it('새벽(04:00~07:00) — 범위 내 시각이면 pass', () => {
     const cond: BadgeCondition = { time_range: { start: '04:00', end: '07:00' } }
-    const acts = [makeActivity({ startDateLocal: '2026-07-20T05:30:00' })]
+    const acts = [makeActivity({ startDate: kstIso('2026-07-20T05:30') })]
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
   })
 
   it('범위 시작 경계값 pass', () => {
     const cond: BadgeCondition = { time_range: { start: '04:00', end: '07:00' } }
-    const acts = [makeActivity({ startDateLocal: '2026-07-20T04:00:00' })]
+    const acts = [makeActivity({ startDate: kstIso('2026-07-20T04:00') })]
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
   })
 
   it('범위 종료 경계값 pass', () => {
     const cond: BadgeCondition = { time_range: { start: '04:00', end: '07:00' } }
-    const acts = [makeActivity({ startDateLocal: '2026-07-20T07:00:00' })]
+    const acts = [makeActivity({ startDate: kstIso('2026-07-20T07:00') })]
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
   })
 
   it('범위 외 시각이면 fail', () => {
     const cond: BadgeCondition = { time_range: { start: '04:00', end: '07:00' } }
-    const acts = [makeActivity({ startDateLocal: '2026-07-20T10:00:00' })]
+    const acts = [makeActivity({ startDate: kstIso('2026-07-20T10:00') })]
     const result = evaluateConditionDetailed(cond, acts)
     expect(result.pass).toBe(false)
     expect(result.reason).toContain('시간대 불일치')
@@ -153,33 +154,34 @@ describe('time_range', () => {
 
   it('자정 걸치는 범위(22:00~02:00) — 23:00 활동은 pass', () => {
     const cond: BadgeCondition = { time_range: { start: '22:00', end: '02:00' } }
-    const acts = [makeActivity({ startDateLocal: '2026-07-20T23:30:00' })]
+    const acts = [makeActivity({ startDate: kstIso('2026-07-20T23:30') })]
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
   })
 
   it('자정 걸치는 범위(22:00~02:00) — 01:00 활동은 pass', () => {
     const cond: BadgeCondition = { time_range: { start: '22:00', end: '02:00' } }
-    const acts = [makeActivity({ startDateLocal: '2026-07-21T01:00:00' })]
+    const acts = [makeActivity({ startDate: kstIso('2026-07-21T01:00') })]
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
   })
 
   it('자정 걸치는 범위(22:00~02:00) — 10:00 활동은 fail', () => {
     const cond: BadgeCondition = { time_range: { start: '22:00', end: '02:00' } }
-    const acts = [makeActivity({ startDateLocal: '2026-07-20T10:00:00' })]
+    const acts = [makeActivity({ startDate: kstIso('2026-07-20T10:00') })]
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(false)
   })
 
-  it('startDateLocal 없으면 startDate(UTC)로 폴백', () => {
+  it('시간대는 UTC startDate를 한국 시각으로 바꿔 판정한다 — 현지 시각(startDateLocal)은 보지 않는다', () => {
     const cond: BadgeCondition = { time_range: { start: '04:00', end: '07:00' } }
-    const acts = [makeActivity({ startDateLocal: undefined, startDate: '2026-07-20T05:00:00Z' })]
+    // UTC 20:00 = KST 05:00(다음 날). 해외 활동이라 현지 시각이 정오여도 한국 시각 05:00이 기준이다.
+    const acts = [makeActivity({ startDate: '2026-07-19T20:00:00Z', startDateLocal: '2026-07-19T12:00:00' })]
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
   })
 
   it('여러 활동 중 하나라도 범위 내이면 pass', () => {
     const cond: BadgeCondition = { time_range: { start: '04:00', end: '07:00' } }
     const acts = [
-      makeActivity({ startDateLocal: '2026-07-20T10:00:00' }),
-      makeActivity({ startDateLocal: '2026-07-21T06:00:00' }),
+      makeActivity({ startDate: kstIso('2026-07-20T10:00') }),
+      makeActivity({ startDate: kstIso('2026-07-21T06:00') }),
     ]
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
   })

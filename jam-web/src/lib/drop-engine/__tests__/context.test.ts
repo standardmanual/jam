@@ -4,6 +4,7 @@
 import { matchContextTribes } from '../context'
 import { MYSTERY_TRIBE_ID, RESOLUTION_TRIBE_ID } from '../constants'
 import type { NormalizedActivity } from '@/types/strava'
+import { kstIso } from '@/lib/badge-engine/__tests__/kstFixture'
 
 const base: NormalizedActivity = {
   stravaId: 1,
@@ -33,20 +34,36 @@ describe('matchContextTribes', () => {
     expect(matchContextTribes({ ...base, weatherTempC: 20 }, false)).toBeNull()
   })
 
-  it('새벽(05~07시 local)은 비트 마에스트로/셔터 마피아', () => {
-    const m = matchContextTribes({ ...base, startDateLocal: '2026-07-21T05:30:00Z' }, false)
+  // 시간대 구간은 배지 조건과 같은 상수(`badge-engine/timeBands.ts`)다 — 활동 시작 시각의 KST 기준(티켓 20261018_1815)
+  it('새벽(KST 05~07시)은 비트 마에스트로/셔터 마피아', () => {
+    const m = matchContextTribes({ ...base, startDate: kstIso('2026-07-21T05:30') }, false)
     expect(m?.reason).toBe('dawn')
     expect(m?.tribeIds).toHaveLength(2)
   })
 
-  it('심야(23~04시 local)는 낭만 미식가/숲속의 갱단', () => {
-    expect(matchContextTribes({ ...base, startDateLocal: '2026-07-21T23:10:00Z' }, false)?.reason).toBe('late_night')
-    expect(matchContextTribes({ ...base, startDateLocal: '2026-07-21T02:00:00Z' }, false)?.reason).toBe('late_night')
+  it('밤(KST 22~05시)은 낭만 미식가/숲속의 갱단', () => {
+    expect(matchContextTribes({ ...base, startDate: kstIso('2026-07-21T23:10') }, false)?.reason).toBe('late_night')
+    expect(matchContextTribes({ ...base, startDate: kstIso('2026-07-21T02:00') }, false)?.reason).toBe('late_night')
+  })
+
+  it('경계값: 05:00 새벽 시작, 07:00 새벽 끝, 22:00 밤 시작, 04:59 밤 끝', () => {
+    const reasonAt = (hhmm: string) => matchContextTribes({ ...base, startDate: kstIso(`2026-07-21T${hhmm}`) }, false)?.reason
+    expect(reasonAt('04:59')).toBe('late_night')
+    expect(reasonAt('05:00')).toBe('dawn')
+    expect(reasonAt('06:59')).toBe('dawn')
+    expect(reasonAt('07:00')).toBeUndefined()
+    expect(reasonAt('21:59')).toBeUndefined()
+    expect(reasonAt('22:00')).toBe('late_night')
+  })
+
+  it('현지 시각(startDateLocal)이 아니라 UTC startDate의 한국 시각을 본다', () => {
+    // KST 19:00(저녁)인 활동이 현지 시각 05:30(해외)이어도 새벽이 아니다
+    expect(matchContextTribes({ ...base, startDateLocal: '2026-07-21T05:30:00Z' }, false)).toBeNull()
   })
 
   it('온도 매칭이 시간대보다 우선한다', () => {
     const m = matchContextTribes(
-      { ...base, weatherTempC: -15, startDateLocal: '2026-07-21T05:30:00Z' },
+      { ...base, weatherTempC: -15, startDate: kstIso('2026-07-21T05:30') },
       false
     )
     expect(m?.reason).toBe('cold')

@@ -13,6 +13,7 @@
 
 import { isDroppableForActivity, hasCumulativeCondition } from '../index'
 import type { NormalizedActivity } from '@/types/strava'
+import { kstIso } from '@/lib/badge-engine/__tests__/kstFixture'
 import type { BadgeCondition } from '@/types/database'
 
 function makeActivity(overrides: Partial<NormalizedActivity> = {}): NormalizedActivity {
@@ -91,7 +92,7 @@ describe('단일 활동 평가 가능 조건', () => {
 
   it('time_range 충족 → 드랍 가능', () => {
     const cond: BadgeCondition = { time_range: { start: '04:00', end: '07:00' } }
-    const acts = [makeActivity({ startDateLocal: '2026-07-20T05:30:00' })]
+    const acts = [makeActivity({ startDate: kstIso('2026-07-20T05:30') })]
     expect(isDroppableForActivity(cond, acts)).toBe(true)
   })
 })

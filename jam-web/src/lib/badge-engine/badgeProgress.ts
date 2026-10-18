@@ -65,6 +65,8 @@ import {
   hasBlockingConditionKeys,
   describeBlockingConditionKeys,
 } from './conditionRegistry'
+import { KST_OFFSET_MS } from '@/lib/notifications/kst'
+import { kstMondayKeyOfStart, kstYearMonthKeyOfStart, kstMonthOfStart } from './timeBands'
 import {
   calcMaxStreak,
   passesWalkingGate,
@@ -72,7 +74,12 @@ import {
   matchesDayOfWeekFilter,
   inTimeRange,
   dedupeOnePerDay,
-  getMondayKey,
+  // 횟수 조건은 «활동한 날의 수»(KST 날짜)로 센다 — 발급 판정(index.ts)과 같은 함수(티켓 20261018_1815 1회)
+  countActiveDays,
+  kstWeekKeyOf,
+  kstMonthKeyOf,
+  kstMonthOf,
+  isKstWeekend,
   // weekly_streak(연속 주) 단독 축 — 발급 판정(index.ts)과 같은 함수를 본다(티켓 20260906_0110 ②).
   calcMaxWeeklyStreak,
   // 「무엇이 휴식 조건인가」는 `activityFilters.ts`에 한 번만 적혀 있다 — 발급 판정(index.ts)과
@@ -326,43 +333,38 @@ function dateOf(a: NormalizedActivity): Date {
 function dateKey(a: NormalizedActivity): string {
   return (a.startDateLocal ?? a.startDate).slice(0, 10)
 }
-function isWeekend(d: Date): boolean {
-  const day = d.getDay()
-  return day === 0 || day === 6
-}
 function clamp01(n: number): number {
   if (Number.isNaN(n) || !Number.isFinite(n)) return 0
   return Math.min(1, Math.max(0, n))
 }
 
-/** 걷기 하루 1회 상한(엔진 weekly_count 블록과 동일 규칙) 적용 후 지정 주(월요일 키) 카운트 */
+/** 걷기 하루 1회 상한(엔진 weekly_count 블록과 동일 규칙) 적용 후 지정 주(KST 월요일 키)의 «활동한 날의 수» */
 function countInWeek(activities: NormalizedActivity[], mondayKey: string, activityType: ActivityType): number {
   const pool = activityType === 'walking' ? dedupeOnePerDay(activities) : activities
-  return pool.filter((a) => getMondayKey(dateOf(a)) === mondayKey).length
+  return countActiveDays(pool.filter((a) => kstWeekKeyOf(a) === mondayKey))
 }
 
-function sumKmInMonth(activities: NormalizedActivity[], year: number, month0: number): number {
+function sumKmInMonth(activities: NormalizedActivity[], monthKey: string): number {
   return activities
-    .filter((a) => { const d = dateOf(a); return d.getFullYear() === year && d.getMonth() === month0 })
+    .filter((a) => kstMonthKeyOf(a) === monthKey)
     .reduce((s, a) => s + a.distanceKm, 0)
 }
 
-/** 걷기 하루 1회 상한(엔진 monthly_count 블록과 동일 규칙) 적용 후 지정 달의 활동 횟수 */
-function countInMonth(activities: NormalizedActivity[], year: number, month0: number, activityType: ActivityType): number {
+/** 걷기 하루 1회 상한(엔진 monthly_count 블록과 동일 규칙) 적용 후 지정 달(KST 연-월 키)의 «활동한 날의 수» */
+function countInMonth(activities: NormalizedActivity[], monthKey: string, activityType: ActivityType): number {
   const pool = activityType === 'walking' ? dedupeOnePerDay(activities) : activities
-  return pool.filter((a) => { const d = dateOf(a); return d.getFullYear() === year && d.getMonth() === month0 }).length
+  return countActiveDays(pool.filter((a) => kstMonthKeyOf(a) === monthKey))
 }
 
-/** 다음 주 월요일 00:00 ISO 문자열 — getMondayKey와 동일한 "naive local" 규약(index.ts) */
+/** 다음 주 월요일 00:00(KST) ISO 문자열 — 주 경계가 KST 월~일이다(티켓 20261018_1815) */
 function nextMondayIso(mondayKey: string): string {
-  const monday = new Date(`${mondayKey}T00:00:00`)
-  monday.setDate(monday.getDate() + 7)
-  return monday.toISOString()
+  return new Date(Date.parse(`${mondayKey}T00:00:00Z`) + 7 * 86_400_000 - KST_OFFSET_MS).toISOString()
 }
 
-/** 다음 달 1일 00:00 ISO 문자열(달력 기준) */
-function nextMonthStartIso(now: Date): string {
-  return new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0).toISOString()
+/** 다음 달 1일 00:00(KST) ISO 문자열(달력 기준) */
+function nextMonthStartIso(monthKey: string): string {
+  const [y, m] = monthKey.split('-').map(Number)
+  return new Date(Date.UTC(y, m, 1) - KST_OFFSET_MS).toISOString()
 }
 
 /**
@@ -413,7 +415,7 @@ export function computeUserPeriodMetrics(
   const byType = allActivities.filter((a) => a.jamActivityType === activityType)
   const activities = activityType === 'walking' ? byType.filter(passesWalkingGate) : byType
 
-  const totalCount = activities.length
+  const totalCount = countActiveDays(activities)
   const totalDistanceKm = activities.reduce((s, a) => s + a.distanceKm, 0)
   const totalElevationGainM = activities.reduce((s, a) => s + a.elevationGainM, 0)
   const totalDurationHours = activities.reduce((s, a) => s + a.movingTimeSec / 3600, 0)
@@ -421,25 +423,26 @@ export function computeUserPeriodMetrics(
   const weeklyStreakDays = calcMaxWeeklyStreak(activities)
   const activeDaysCount = new Set(activities.map(dateKey)).size
 
-  const currentWeekMondayKey = getMondayKey(now)
+  const nowIso = now.toISOString()
+  const currentWeekMondayKey = kstMondayKeyOfStart(nowIso)
   const weeklyCountCurrent = countInWeek(activities, currentWeekMondayKey, activityType)
   const weekEndsAt = nextMondayIso(currentWeekMondayKey)
 
-  const currentYear = now.getFullYear()
-  const currentMonthNumber = now.getMonth() + 1
-  const monthlyKmCurrent = sumKmInMonth(activities, currentYear, now.getMonth())
-  const monthlyCountCurrent = countInMonth(activities, currentYear, now.getMonth(), activityType)
-  const monthEndsAt = nextMonthStartIso(now)
+  const currentMonthKey = kstYearMonthKeyOfStart(nowIso)
+  const currentYear = Number(currentMonthKey.split('-')[0])
+  const currentMonthNumber = kstMonthOfStart(nowIso)
+  const monthlyKmCurrent = sumKmInMonth(activities, currentMonthKey)
+  const monthlyCountCurrent = countInMonth(activities, currentMonthKey, activityType)
+  const monthEndsAt = nextMonthStartIso(currentMonthKey)
 
   const dayOfWeekCounts = ALL_DAYS.reduce((acc, day) => {
-    const pool = activities.filter((a) => matchesDayOfWeek(a, day))
-    // 요일 단일값으로 이미 좁힌 뒤라 "하루 1회 상한"은 "그 요일의 고유 날짜 수"와 동치
-    acc[day] = activityType === 'walking' ? new Set(pool.map(dateKey)).size : pool.length
+    // «활동한 날의 수» — 요일 단일값으로 좁힌 뒤 고유 KST 날짜를 센다
+    acc[day] = countActiveDays(activities.filter((a) => matchesDayOfWeek(a, day)))
     return acc
   }, {} as Record<DayOfWeek, number>)
 
   const seasonCounts = ALL_SEASONS.reduce((acc, season) => {
-    acc[season] = activities.filter((a) => SEASON_MONTHS[season].includes(dateOf(a).getMonth() + 1)).length
+    acc[season] = countActiveDays(activities.filter((a) => SEASON_MONTHS[season].includes(kstMonthOf(a))))
     return acc
   }, {} as Record<Season, number>)
 
@@ -858,7 +861,7 @@ function getFieldValue(field: ScalarAxisKey, a: NormalizedActivity): number {
     case 'max_pace_sec_per_km': return kmhToPaceSecPerKm(a.averageSpeedKmh)
     case 'temperature_min_c': return a.weatherTempC ?? -Infinity
     case 'temperature_max_c': return a.weatherTempC ?? Infinity
-    case 'weekend_duration_hours': return isWeekend(dateOf(a)) ? a.movingTimeSec / 3600 : -Infinity
+    case 'weekend_duration_hours': return isKstWeekend(a) ? a.movingTimeSec / 3600 : -Infinity
     // v5 스칼라 7종 (티켓 20260906_0110 ②) — 값이 없는 활동(심박계·파워미터 없음 등)은
     // -Infinity로 «최댓값 계산에서 제외»한다. weekend_duration_hours와 같은 태도다.
     case 'max_elevation_m': return a.maxElevationM ?? -Infinity
@@ -887,7 +890,7 @@ function poolForScalarField(field: ScalarAxisKey, condition: BadgeCondition, met
     return metrics.activities.filter((a) => inTimeRange(a, condition.time_range!))
   }
   if (field === 'weekend_duration_hours') {
-    return metrics.activities.filter((a) => isWeekend(dateOf(a)))
+    return metrics.activities.filter(isKstWeekend)
   }
   return metrics.activities
 }
@@ -1008,7 +1011,7 @@ function buildCumulativeAxis(condition: BadgeCondition, metrics: UserPeriodMetri
   if (metrics.activityType === 'walking' && condition.day_of_week !== undefined && !Array.isArray(condition.day_of_week)) {
     pool = dedupeOnePerDay(pool)
   }
-  return makeHigherBetterAxis(key, pool.length, condition.total_count ?? 0, labelMap)
+  return makeHigherBetterAxis(key, countActiveDays(pool), condition.total_count ?? 0, labelMap)
 }
 
 /**

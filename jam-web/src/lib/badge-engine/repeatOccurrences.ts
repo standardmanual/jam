@@ -37,6 +37,12 @@ import {
   type RestInterval,
   // distinct_time_bands + streak_days 조합(walking:A3, 티켓 20260908_1318)의 창 안 판정에 쓴다.
   countDistinctTimeBands,
+  // 횟수 조건은 «활동한 날의 수»(KST 날짜)로 센다 — 단발 판정(index.ts)과 같은 함수(티켓 20261018_1815 1회)
+  countActiveDays,
+  kstWeekKeyOf,
+  kstMonthKeyOf,
+  kstMonthOf,
+  isKstWeekend,
 } from './activityFilters'
 import { GATE_CONDITION_KEYS } from './crossGate'
 import { PER_ACTIVITY_KEYS, CUMULATIVE_SAME_ACTIVITY_KEYS, type ScalarAxisKey } from './conditionAxes'
@@ -55,9 +61,7 @@ export function matchesPerActivityCondition(condition: BadgeCondition, a: Normal
     if (a.weatherTempC == null || a.weatherTempC > condition.temperature_max_c) return false
   }
   if (condition.weekend_duration_hours !== undefined) {
-    const day = new Date(a.startDateLocal ?? a.startDate).getDay()
-    const isWeekend = day === 0 || day === 6
-    if (!isWeekend || a.movingTimeSec / 3600 < condition.weekend_duration_hours) return false
+    if (!isKstWeekend(a) || a.movingTimeSec / 3600 < condition.weekend_duration_hours) return false
   }
   if (condition.time_range !== undefined && condition.weekly_count === undefined) {
     if (!inTimeRange(a, condition.time_range)) return false
@@ -192,10 +196,8 @@ function dateKeyOf(a: NormalizedActivity): string {
 function weekKeyOf(a: NormalizedActivity): string {
   return getMondayKey(new Date(a.startDateLocal ?? a.startDate))
 }
-function monthKeyOf(a: NormalizedActivity): string {
-  const d = new Date(a.startDateLocal ?? a.startDate)
-  return `${d.getFullYear()}-${d.getMonth() + 1}`
-}
+// 월 키는 KST 기준이다 — `monthly_count`·`monthly_km`가 단발 판정(index.ts)과 같은 달 경계를 본다.
+const monthKeyOf = kstMonthKeyOf
 
 /** activity_type 필터 + 걷기 축1 게이트 — 다른 술어들과 같은 규칙 */
 function typeFilteredPool(condition: BadgeCondition, activities: NormalizedActivity[]): NormalizedActivity[] {
@@ -350,7 +352,8 @@ function collectPeriodCountOccurrences(
   }
   const reps: NormalizedActivity[] = []
   for (const acts of byPeriod.values()) {
-    if (acts.length >= threshold) {
+    // 기간 안에서 «활동한 날의 수»가 임계값을 채웠는가(같은 날 여러 활동은 한 번)
+    if (countActiveDays(acts) >= threshold) {
       // 그 기간을 «채운» 시점 — 마지막(=임계값을 완성한) 활동을 대표로 삼는다
       reps.push(acts.reduce((last, a) => (a.startDate > last.startDate ? a : last)))
     }
@@ -376,7 +379,7 @@ function collectMonthlyKmOccurrences(condition: BadgeCondition, activities: Norm
   let pool = typeFilteredPool(condition, activities)
   if (condition.month !== undefined) {
     const months = Array.isArray(condition.month) ? condition.month : [condition.month]
-    pool = pool.filter((a) => months.includes(new Date(a.startDateLocal ?? a.startDate).getMonth() + 1))
+    pool = pool.filter((a) => months.includes(kstMonthOf(a)))
   }
   const byMonth = new Map<string, NormalizedActivity[]>()
   for (const a of pool) {
@@ -449,7 +452,7 @@ function detectPeriodOccurrenceDriver(condition: BadgeCondition): PeriodOccurren
     case 'weekly_streak':
       return collectWeeklyStreakOccurrences
     case 'weekly_count':
-      return (c, activities) => collectPeriodCountOccurrences(c, activities, weekKeyOf, c.weekly_count as number)
+      return (c, activities) => collectPeriodCountOccurrences(c, activities, kstWeekKeyOf, c.weekly_count as number)
     case 'monthly_count':
       return (c, activities) => collectPeriodCountOccurrences(c, activities, monthKeyOf, c.monthly_count as number)
   }

@@ -11,6 +11,7 @@
  */
 
 import { evaluateConditionDetailed } from '../index'
+import { kstIso } from './kstFixture'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition } from '@/types/database'
 
@@ -96,8 +97,8 @@ describe('time_range + weekly_count (엄격 평가)', () => {
     }
     // 2026-07-20(월) 06:00, 07-21(화) 07:00 — 같은 주, 모두 05:00~08:00 범위
     const acts = [
-      makeActivity({ startDate: '2026-07-20T06:00:00Z', startDateLocal: '2026-07-20T06:00:00' }),
-      makeActivity({ startDate: '2026-07-21T07:00:00Z', startDateLocal: '2026-07-21T07:00:00' }),
+      makeActivity({ startDate: kstIso('2026-07-20T06:00') }),
+      makeActivity({ startDate: kstIso('2026-07-21T07:00') }),
     ]
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
   })
@@ -110,8 +111,8 @@ describe('time_range + weekly_count (엄격 평가)', () => {
     }
     // 두 활동 모두 15:00~16:00 — 시간대 필터 후 집계 0회 → 주간 횟수 부족
     const acts = [
-      makeActivity({ startDate: '2026-07-20T15:00:00Z', startDateLocal: '2026-07-20T15:00:00' }),
-      makeActivity({ startDate: '2026-07-21T16:00:00Z', startDateLocal: '2026-07-21T16:00:00' }),
+      makeActivity({ startDate: kstIso('2026-07-20T15:00') }),
+      makeActivity({ startDate: kstIso('2026-07-21T16:00') }),
     ]
     const result = evaluateConditionDetailed(cond, acts)
     expect(result.pass).toBe(false)
@@ -126,8 +127,8 @@ describe('time_range + weekly_count (엄격 평가)', () => {
     }
     // 서로 다른 주에 1회씩 (07-20 월, 07-28 다음주 화) — 새벽
     const acts = [
-      makeActivity({ startDate: '2026-07-20T06:00:00Z', startDateLocal: '2026-07-20T06:00:00' }),
-      makeActivity({ startDate: '2026-07-28T06:00:00Z', startDateLocal: '2026-07-28T06:00:00' }),
+      makeActivity({ startDate: kstIso('2026-07-20T06:00') }),
+      makeActivity({ startDate: kstIso('2026-07-28T06:00') }),
     ]
     const result = evaluateConditionDetailed(cond, acts)
     expect(result.pass).toBe(false)

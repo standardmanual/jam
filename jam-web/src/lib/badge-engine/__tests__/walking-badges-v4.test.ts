@@ -14,6 +14,7 @@ import {
   WALKING_GATE_MIN_SPEED_KMH,
   WALKING_GATE_MAX_SPEED_KMH,
 } from '../index'
+import { kstIso } from './kstFixture'
 import { rollBonusDrop } from '@/lib/drop-engine/layers'
 import { DEFAULT_DROP_POLICY } from '@/lib/drop-engine/policy'
 import type { NormalizedActivity } from '@/types/strava'
@@ -305,9 +306,9 @@ describe('하루 1회 상한 — weekly_count (W3 회귀)', () => {
     const cond: BadgeCondition = { activity_type: 'walking', weekly_count: 2 }
     // 2026-07-20(월) 하루에 3번 — 하루 1회 상한 적용 시 그 주는 1회만 인정되어 미달
     const acts = [
-      makeGatedWalk({ startDate: '2026-07-20T05:00:00Z', startDateLocal: '2026-07-20T05:00:00' }),
-      makeGatedWalk({ startDate: '2026-07-20T12:00:00Z', startDateLocal: '2026-07-20T12:00:00' }),
-      makeGatedWalk({ startDate: '2026-07-20T18:00:00Z', startDateLocal: '2026-07-20T18:00:00' }),
+      makeGatedWalk({ startDate: kstIso('2026-07-20T05:00') }),
+      makeGatedWalk({ startDate: kstIso('2026-07-20T12:00') }),
+      makeGatedWalk({ startDate: kstIso('2026-07-20T18:00') }),
     ]
     const result = evaluateConditionDetailed(cond, acts)
     expect(result.pass).toBe(false)
@@ -480,7 +481,10 @@ describe('버그 회귀 — temperature_min_c + total_count 누수 (T12)', () =>
 
   it('33도+ 활동이 5회 모두 충족되면 pass', () => {
     const cond: BadgeCondition = { activity_type: 'walking', temperature_min_c: 33, total_count: 5 }
-    const acts = Array.from({ length: 5 }, () => makeGatedWalk({ weatherTempC: 34 }))
+    // 횟수는 «활동한 날의 수»라 서로 다른 날 5일이어야 채운다(티켓 20261018_1815)
+    const acts = Array.from({ length: 5 }, (_, i) =>
+      makeGatedWalk({ weatherTempC: 34, startDate: kstIso(`2026-07-0${i + 1}T09:00`) })
+    )
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
   })
 })

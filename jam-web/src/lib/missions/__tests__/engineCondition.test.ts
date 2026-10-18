@@ -11,6 +11,7 @@ import assert from 'node:assert'
 import { evaluateEngineMissionCondition } from '../engineCondition'
 import type { MissionCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
+import { kstIso } from '@/lib/badge-engine/__tests__/kstFixture'
 
 let seq = 0
 function act(startDateLocal: string, overrides: Partial<NormalizedActivity> = {}): NormalizedActivity {
@@ -22,7 +23,8 @@ function act(startDateLocal: string, overrides: Partial<NormalizedActivity> = {}
     movingTimeSec: 3600,
     elevationGainM: 100,
     jamActivityType: 'running',
-    startDate: `${startDateLocal}Z`,
+    // 배지 조건 판정은 UTC startDate를 한국 시각으로 바꿔 읽는다 — 인자는 한국 시각으로 본다(티켓 20261018_1815)
+    startDate: kstIso(startDateLocal),
     startDateLocal,
     averageSpeedKmh: 10,
     startLatLng: null,
