@@ -1198,6 +1198,7 @@ export type Database = {
           created_at: string
           id: string
           max_slots: number
+          slot_alert_stage: number
           used_slots: number
           user_id: string
         }
@@ -1205,6 +1206,7 @@ export type Database = {
           created_at?: string
           id?: string
           max_slots?: number
+          slot_alert_stage?: number
           used_slots?: number
           user_id: string
         }
@@ -1212,6 +1214,7 @@ export type Database = {
           created_at?: string
           id?: string
           max_slots?: number
+          slot_alert_stage?: number
           used_slots?: number
           user_id?: string
         }
@@ -4440,6 +4443,10 @@ export type Database = {
         Args: { p_sync_date: string; p_user_id: string }
         Returns: number
       }
+      inventory_slot_alert_step: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       jam_apply: {
         Args: {
           p_admin_reason_label?: string
@@ -4600,6 +4607,7 @@ export type Database = {
         | "admin_points_changed"
         | "announcement"
         | "activity_recap"
+        | "inventory_slots_low"
       trade_status: "pending" | "accepted" | "rejected" | "expired"
     }
     CompositeTypes: {
@@ -4768,6 +4776,7 @@ export const Constants = {
         "admin_points_changed",
         "announcement",
         "activity_recap",
+        "inventory_slots_low",
       ],
       trade_status: ["pending", "accepted", "rejected", "expired"],
     },
