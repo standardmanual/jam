@@ -4,6 +4,7 @@ import { getAdminUser } from '@/lib/admin/auth'
 import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
 import { POI_REFERENCE_SOURCES, collectPoiReferences } from '@/lib/admin/poi-references'
 import { validatePoiCategoryExists } from '@/lib/admin/poi-category-validation'
+import { validatePoiLinkedBadge } from '@/lib/admin/poi-linked-badge-validation'
 
 /**
  * pending_review는 마이그레이션 143에서 추가된 컬럼이라 생성 타입(database.generated.ts)에
@@ -41,6 +42,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const categoryValidation = await validatePoiCategoryExists(supabase, category)
   if (!categoryValidation.valid) {
     return NextResponse.json({ error: categoryValidation.error }, { status: categoryValidation.status })
+  }
+
+  // 연결 배지는 체크인 배지만 허용한다(티켓 20261018_1813). 이미 연결돼 있던 배지를 그대로 두는 저장은 막지 않는다.
+  const linkedBadgeValidation = await validatePoiLinkedBadge(supabase, linked_badge_id, { poiId: id })
+  if (!linkedBadgeValidation.valid) {
+    return NextResponse.json({ error: linkedBadgeValidation.error }, { status: linkedBadgeValidation.status })
   }
 
   const resolvedIsActive = is_active !== undefined ? is_active : true

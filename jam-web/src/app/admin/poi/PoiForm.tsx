@@ -236,7 +236,8 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
           key={poi?.id ?? 'new'}
           value={linkedBadgeId}
           initialLabel={linkedBadgeLabel}
-          placeholder="배지 이름 검색..."
+          typeFilter="checkin"
+          placeholder="체크인 배지 이름 검색..."
           onChange={(id) => setLinkedBadgeId(id)}
         />
       </label>

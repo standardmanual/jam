@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
 import { validatePoiCategoryExists } from '@/lib/admin/poi-category-validation'
+import { validatePoiLinkedBadge } from '@/lib/admin/poi-linked-badge-validation'
 
 export async function GET() {
   const admin = await getAdminUser()
@@ -49,6 +50,12 @@ export async function POST(req: NextRequest) {
   const categoryValidation = await validatePoiCategoryExists(supabase, category)
   if (!categoryValidation.valid) {
     return NextResponse.json({ error: categoryValidation.error }, { status: categoryValidation.status })
+  }
+
+  // 연결 배지는 체크인 배지만 허용한다(티켓 20261018_1813) — 화면 제한과 별개로 서버가 거절한다.
+  const linkedBadgeValidation = await validatePoiLinkedBadge(supabase, linked_badge_id)
+  if (!linkedBadgeValidation.valid) {
+    return NextResponse.json({ error: linkedBadgeValidation.error }, { status: linkedBadgeValidation.status })
   }
 
   // 티켓 20260907_1811 — 자동수집 중단·수동등록 전환에 따라, 어드민에서 신규 등록하는 모든
