@@ -153,6 +153,8 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
       .in('badge_id', allBadgeIds)
       .is('dropped_at', null)
       .is('slotted_in', null)
+      // 잠긴 개체는 장착할 수 없어 «넣으면 완성» 판정에 세지 않는다(티켓 20261018_0056, 운영 로직 8.3절)
+      .eq('locked', false)
 
     if (invItemsError) {
       console.error('[findCompletableItemBooks] inventory_items 조회 오류:', invItemsError)

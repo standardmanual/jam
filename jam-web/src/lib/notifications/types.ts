@@ -255,6 +255,11 @@ export interface NotificationPayloadMap {
   sync_stalled: { days: number }
   /** 42 인벤토리 포화 */
   inventory_full: { max_slots: number; used_slots: number }
+  /**
+   * 남은 칸 알림 — 남은 칸이 3개, 1개 단계에 들어선 순간 지급 직후 한 번(티켓 20261018_0056, 운영 로직 6.4절).
+   * `remaining_slots`는 단계(3 또는 1)이고 지금 남은 칸이 아니다. 문구가 과거형(「줄었어요」)이라 시간이 지나도 거짓이 되지 않는다.
+   */
+  inventory_slots_low: { remaining_slots: 3 | 1; max_slots: number }
   /** 45 공지·점검 — 투데이 카드 CMS를 착지점으로 재사용한다 */
   announcement: { today_card_id: string; title: string }
 }

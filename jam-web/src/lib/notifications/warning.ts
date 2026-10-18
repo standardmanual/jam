@@ -14,15 +14,17 @@
  * | 40 Strava 끊김 | Strava 동기화 연결이 여전히 없음 | 강등 |
  * | 41 동기화 지연 | 마지막 sync가 여전히 3일+ 경과 | 강등 |
  * | 42 인벤토리 포화 | 잔여 슬롯이 여전히 부족 | 강등 |
+ * | 남은 칸 알림 | 잔여 슬롯이 여전히 3 이하 (42와 같은 규칙) | 강등 |
  * | 44 포인트가 빠져나감 | 항상 유지 (되돌릴 수 없는 사건) | — |
  */
 import type { NotificationType } from '@/types/database'
 
-/** 경고 스타일 후보 4종. 실제 적용 여부는 아래 판정 함수가 현재 상태로 결정한다 */
+/** 경고 스타일 후보 5종. 실제 적용 여부는 아래 판정 함수가 현재 상태로 결정한다 */
 export const WARNING_CANDIDATE_TYPES: ReadonlySet<NotificationType> = new Set<NotificationType>([
   'strava_disconnected',
   'sync_stalled',
   'inventory_full',
+  'inventory_slots_low',
   'admin_points_changed',
 ])
 
@@ -72,6 +74,8 @@ export function isWarningNotification(
       return now.getTime() - last >= SYNC_STALLED_DAYS * DAY_MS
     }
     case 'inventory_full':
+    case 'inventory_slots_low':
+      // 남은 칸이 여전히 적을 때만 경고면을 유지하고, 칸이 늘면 일반 아이콘으로 강등한다
       if (state.inventoryRemainingSlots === undefined) return true
       return state.inventoryRemainingSlots <= INVENTORY_LOW_SLOTS_THRESHOLD
     case 'admin_points_changed':

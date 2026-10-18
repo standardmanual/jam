@@ -348,6 +348,8 @@ export async function buildCollectionDrafts(ctx: BatchContext): Promise<StepOutp
       .in('badge_id', chunk)
       .is('dropped_at', null)
       .is('slotted_in', null)
+      // 잠긴 개체는 장착할 수 없어 «장착 가능·완성 임박·완성 가능» 소식에 세지 않는다(티켓 20261018_0056, 운영 로직 8.3절)
+      .eq('locked', false)
   )
 
   const stateByUser = new Map<string, UserCollectionState>()

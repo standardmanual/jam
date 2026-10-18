@@ -36,6 +36,8 @@ interface RecordedQuery {
   orders: string[]
   /** `.in(col, values)`로 실은 값들 */
   inValues: { column: string; values: unknown[] }[]
+  /** `.eq(col, value)`로 건 조건들 */
+  eqs: [string, unknown][]
   range: [number, number]
 }
 
@@ -53,6 +55,7 @@ function createStubClient(tables: Record<string, Row[]>) {
   function from(table: string) {
     const orders: string[] = []
     const inValues: RecordedQuery['inValues'] = []
+    const eqs: RecordedQuery['eqs'] = []
 
     const builder = {
       // 인자는 쓰지 않지만 시그니처는 실제 호출 형태(`.select('id')`)에 맞춰 둔다 —
@@ -61,7 +64,10 @@ function createStubClient(tables: Record<string, Row[]>) {
         void columns // 시그니처만 실제 호출 형태에 맞춘다 (스텁은 컬럼을 거르지 않는다)
         return builder
       },
-      eq: () => builder,
+      eq: (column: string, value: unknown) => {
+        eqs.push([column, value])
+        return builder
+      },
       is: () => builder,
       not: () => builder,
       gte: () => builder,
@@ -80,7 +86,7 @@ function createStubClient(tables: Record<string, Row[]>) {
         return builder
       },
       range: (from_: number, to: number) => {
-        queries.push({ table, orders: [...orders], inValues: [...inValues], range: [from_, to] })
+        queries.push({ table, orders: [...orders], inValues: [...inValues], eqs: [...eqs], range: [from_, to] })
 
         let rows = tables[table] ?? []
         for (const f of inValues) rows = rows.filter((r) => f.values.includes(r[f.column]))
@@ -379,6 +385,15 @@ describe('7개 단계 로더', () => {
     }
     // 쪼개도 배지가 하나도 빠지지 않는다
     expect(new Set(carried).size).toBe(IN_CHUNK_SIZE + 50)
+  })
+
+  it('컬렉션 소식의 미장착 보유 조회는 잠긴 개체를 뺀다 (티켓 20261018_0056)', async () => {
+    const stub = createStubClient(fixtures())
+    await buildCollectionDrafts(ctxOf(stub.client))
+
+    const invQueries = stub.paged().filter((q) => q.table === 'inventory_items')
+    expect(invQueries.length).toBeGreaterThan(0)
+    for (const q of invQueries) expect(q.eqs).toContainEqual(['locked', false])
   })
 
   it('모든 .in() 조회가 청크 상한을 지킨다', async () => {

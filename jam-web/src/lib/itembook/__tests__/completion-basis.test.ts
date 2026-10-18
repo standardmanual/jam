@@ -2,6 +2,7 @@
  * computeBookCompletion — 컬렉션 완성 분모 통일 (티켓 20260921_1110)
  */
 import { computeBookCompletion } from '../completion-basis'
+import { buildFilledByBook } from '../filled-by-book'
 
 function badge(id: string, drop_excluded = false, type = 'item', book = 'book-a') {
   return { id, item_book_id: book, type, drop_excluded }
@@ -163,6 +164,41 @@ describe('computeBookCompletion', () => {
       const r = computeBookCompletion(badges, new Set(['x'])).get('book-b')!
       expect(r.filled).toBe(1)
       expect(r.complete).toBe(true)
+    })
+  })
+
+  /**
+   * 잠긴 개체는 완성으로 치지 않는다 (티켓 20261018_0056, 운영 로직 8.3절)
+   *
+   * 분자(채운 배지)는 장착 슬롯과 체크인 획득에서만 온다 — 인벤토리에 가진 개체를 세지 않는다. 잠긴 개체는 장착할 수 없으므로(서버 거절 + 마이그레이션 231 트리거)
+   * 슬롯에 들지 않아 분자에도 들지 않는다. 이 시험은 «잠긴 채 인벤토리에만 있는 배지는 완성에 보태지 않는다»는 계약을 고정한다.
+   */
+  describe('잠긴 개체', () => {
+    it('인벤토리에 잠긴 채 가진 배지는 슬롯이 없으므로 분자에 들지 않아 완성이 아니다', () => {
+      const badges = [badge('b0'), badge('b1')]
+      // b0은 장착했고 b1은 잠긴 채 인벤토리에만 있다(슬롯 없음)
+      const filledByBook = buildFilledByBook({
+        slots: [{ item_book_id: 'book-a', badge_id: 'b0' }],
+        checkinBadgesByBook: new Map(),
+        earnedCheckinBadgeIds: new Set(),
+      })
+      const r = computeBookCompletion(badges, new Set(), { filledByBook }).get('book-a')!
+      expect(r.filledIds).toEqual(['b0'])
+      expect(r.total).toBe(2)
+      expect(r.complete).toBe(false)
+    })
+
+    it('열어서 장착하면 그때부터 분자에 든다', () => {
+      const badges = [badge('b0'), badge('b1')]
+      const filledByBook = buildFilledByBook({
+        slots: [
+          { item_book_id: 'book-a', badge_id: 'b0' },
+          { item_book_id: 'book-a', badge_id: 'b1' },
+        ],
+        checkinBadgesByBook: new Map(),
+        earnedCheckinBadgeIds: new Set(),
+      })
+      expect(computeBookCompletion(badges, new Set(), { filledByBook }).get('book-a')!.complete).toBe(true)
     })
   })
 })

@@ -220,7 +220,9 @@ describe('openCapsule — 성공', () => {
 
     const payload = await openCapsule(client, USER_ID, { rand: seq(...TWO_ITEMS) })
 
-    expect(order.calls).toEqual(['assertNotSuspended', 'getCapsuleState', 'badges', 'rpc:capsule_open'])
+    // 열기가 확정된 직후 남은 칸 알림을 검사한다(티켓 20261018_0056)
+    expect(order.calls).toEqual(['assertNotSuspended', 'getCapsuleState', 'badges', 'rpc:capsule_open', 'rpc:inventory_slot_alert_step'])
+    expect(rpc).toHaveBeenCalledWith('inventory_slot_alert_step', { p_user_id: USER_ID })
     expect(rpc).toHaveBeenCalledWith('capsule_open', {
       p_user_id: USER_ID,
       p_items: [
@@ -413,6 +415,8 @@ describe('openCapsule — DB 응답 변환', () => {
     expect(followUpMock).not.toHaveBeenCalled()
     expect(awardPointsMock).not.toHaveBeenCalled()
     expect(feedMock).not.toHaveBeenCalled()
+    // 열리지 않았으니 남은 칸 알림도 검사하지 않는다(티켓 20261018_0056)
+    expect(order.calls).not.toContain('rpc:inventory_slot_alert_step')
   })
 })
 

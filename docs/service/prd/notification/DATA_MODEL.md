@@ -61,7 +61,8 @@ CREATE TYPE notification_type AS ENUM (
   'nearby_drops',                                          -- ⚠️ 예약됐으나 사용하지 않음
   -- ⑧ 계정·시스템
   'strava_disconnected', 'sync_stalled', 'inventory_full',
-  'admin_points_changed', 'announcement'
+  'admin_points_changed', 'announcement',
+  'inventory_slots_low'  -- 20261018_0056 마이그레이션 237. 남은 칸 3개·1개 단계 알림. payload { remaining_slots: 3|1, max_slots }
 );
 
 CREATE TABLE public.notifications (
@@ -447,6 +448,7 @@ SELECT로 존재를 확인해야 하고 그 확인과 INSERT 사이에 재시도
 | 31 팔로잉 미션 완료 | `following_mission_complete:{mission_id}:{YYYY-MM-DD}` | 다음 날 |
 | 41 동기화 지연 | `sync_stalled:{정체 시작 KST일자}` | **다시 동기화한 뒤 또 정체됐을 때** |
 | 42 인벤토리 포화 | `inventory_full:{YYYY-MM-DD}` | 7일 뒤 (배치가 최근 발송 이력을 확인) |
+| 46 남은 칸 알림 | 없음(`group_key` NULL, 항상 새 행) | `inventory.slot_alert_stage`가 단계(0·3·1)를 기억한다. 단계가 나빠질 때만 알리고 좋아지면 낮춰 다시 알릴 수 있다 |
 
 > **#9·#41의 키에 날짜가 아니라 "상태의 시작 시점"이 들어간 이유.** 일자 키를 쓰면 상태가
 > 유지되는 동안 매일 새 소식이 나간다. 상태가 바뀔 때만 키가 바뀌도록 만들면 `once` 하나로

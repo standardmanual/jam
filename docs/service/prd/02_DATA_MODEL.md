@@ -800,6 +800,10 @@ append-only 원장. `amount`는 늘어난 양 +, 쓴 양 -, 0 불가. `reason` 5
 
 인덱스: `(user_id, created_at DESC)`, 대상 활동(`source_activity_id`, NULL 제외).
 
+#### inventory.slot_alert_stage — 마이그레이션 237, 티켓 20261018_0056
+
+`inventory`에 새 칸 `slot_alert_stage`(SMALLINT NOT NULL DEFAULT 0, 값 0·3·1)를 덧붙였다. 남은 칸 알림의 마지막 단계다: 0은 남은 칸 4개 이상, 3은 2~3개, 1은 0~1개. 새 함수 `inventory_slot_alert_step(p_user_id)`(SECURITY DEFINER, service_role 전용)가 인벤토리 행을 잠그고 지금 남은 칸으로 단계를 정해 갱신하고, 단계가 나빠졌으면(0→3, 0→1, 3→1) `{ok, notify: true, stage, free}`를 돌려준다. 알림 행(`inventory_slots_low`)은 앱이 `createNotification`으로 만든다. 알림 종류 enum `notification_type`에 `inventory_slots_low`를 더했다. 옛 칸·옛 함수·옛 알림 종류는 바꾸지 않는다.
+
 #### combine_pending_results — 마이그레이션 236, 티켓 20261018_0055
 믹스 결과가 들어갈 인벤토리 빈칸이 모자랄 때 결과를 지급하지 않고 남겨 두는 «받지 않은 믹스 결과»(운영 로직 8.4·6.4절). 재료는 이미 소모됐다. `sync_pending_items`와 같은 모양으로 만들어 묶음 5에서 미션 보상·프로모션과 구조를 합칠 때 옮기기 쉽게 했다. RLS만 켜고 정책이 없어 service_role만 읽고 쓴다.
 

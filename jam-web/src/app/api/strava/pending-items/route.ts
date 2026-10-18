@@ -14,6 +14,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { d } from '@/lib/i18n'
 import { getPendingItems, resolvePendingItems, type ResolvePendingErrorCode } from '@/lib/strava/pending-items'
 import { runPendingFollowUps } from '@/lib/strava/pending-followups'
+import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
 import { PENDING_CHOSEN_IDS_MAX } from '@/lib/strava/pending-items-contract'
 import { assertNotSuspended, UserSuspendedError } from '@/lib/suspension/suspension'
 import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
@@ -92,6 +93,8 @@ export async function POST(request: Request) {
     } catch (followUpError) {
       console.error('[/api/strava/pending-items] 보류 후속 처리 오류:', followUpError)
     }
+    // 받은 만큼 칸이 찼으니 남은 칸 알림을 검사한다(티켓 20261018_0056). 던지지 않는다.
+    if (result.granted > 0) await notifyInventorySlotsLow(user.id, service)
     return NextResponse.json({ granted: result.granted, discarded: result.discarded, itemIds: result.itemIds })
   } catch (err) {
     if (err instanceof UserSuspendedError) {

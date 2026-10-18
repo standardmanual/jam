@@ -181,7 +181,7 @@ export async function hydrateNotifications(
   // ── 2) 경고 판정에 필요한 상태 — 필요한 종류가 있을 때만 조회 ──
   const types = new Set(rows.map((r) => r.type))
   const needsStrava = types.has('strava_disconnected') || types.has('sync_stalled')
-  const needsInventory = types.has('inventory_full')
+  const needsInventory = types.has('inventory_full') || types.has('inventory_slots_low')
   const hasWarningCandidate = rows.some((r) => WARNING_CANDIDATE_TYPES.has(r.type))
 
   const [usersRes, stravaRes, inventoryRes] = await Promise.all([

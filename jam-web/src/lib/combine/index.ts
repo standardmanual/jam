@@ -52,6 +52,7 @@
  *    앱은 빈칸을 세지 않는다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
 import { awardPoints } from '@/lib/points'
 import { getCombinePolicy } from '@/lib/combine/policy'
 import { getPendingCount } from '@/lib/combine/pending'
@@ -329,6 +330,8 @@ export async function combineRecipeAttempt(
     // 모자라면 일부만 주지 않고 전부 받지 않은 결과로 남긴다. 잠김은 레시피(`reward_locked`)와 배지(`always_locked`)가 정한다.
     // 앱은 빈칸을 세지 않는다 — 소각으로 칸이 반환된 뒤의 값은 DB가 인벤토리 행을 잠그고 읽는다.
     const grant = await grantResults(supabase, userId, matched, rewardBadgeIds, rewardBadges)
+    // 결과를 바로 지급했으면 남은 칸 알림을 검사한다(티켓 20261018_0056). 던지지 않는다.
+    if (grant.status === 'granted') await notifyInventorySlotsLow(userId, supabase)
 
     let pointsAwarded = 0
     if (matched.reward_points > 0) {

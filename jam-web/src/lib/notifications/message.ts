@@ -729,6 +729,14 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
         template: n.msgInventoryFull,
         vars: { maxSlots: t(n.slotCount, { count: num(p, 'max_slots') }) },
       }
+    case 'inventory_slots_low': {
+      // 단계(3 또는 1)로 문구가 갈린다. 3개 단계는 해결 경로를, 1개 단계는 다 찼을 때의 결과를 말한다
+      const step = num(p, 'remaining_slots') === 1 ? 1 : 3
+      return {
+        template: step === 1 ? n.msgInventorySlotsLowOne : n.msgInventorySlotsLowThree,
+        vars: { remaining: t(n.slotCount, { count: step }) },
+      }
+    }
     case 'admin_points_changed': {
       const deduct = str(p, 'direction') === 'deduct'
       // reason은 **분류 코드**다 — 코드가 그대로 노출되면 가이드 위반이라 반드시 라벨을 경유한다.

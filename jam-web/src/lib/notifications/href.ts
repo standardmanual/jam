@@ -169,6 +169,7 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
     case 'sync_stalled':
       return single('/')
     case 'inventory_full':
+    case 'inventory_slots_low':
       return single('/inventory')
     case 'admin_points_changed':
       return single('/points')

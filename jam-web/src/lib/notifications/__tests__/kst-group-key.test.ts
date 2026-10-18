@@ -124,7 +124,7 @@ describe('bumps_badge 파생 — ① 보상 획득(활동 결산)만 false', () 
     'followed',
     'following_rare_badge', 'following_collection_complete',
     'following_mission_complete',
-    'strava_disconnected', 'sync_stalled', 'inventory_full',
+    'strava_disconnected', 'sync_stalled', 'inventory_full', 'inventory_slots_low',
     'admin_points_changed', 'announcement',
   ]
 
@@ -137,9 +137,9 @@ describe('bumps_badge 파생 — ① 보상 획득(활동 결산)만 false', () 
     for (const type of OTHER_TYPES) expect(bumpsBadgeFor(type)).toBe(true)
   })
 
-  it('쓰는 종류 전부를 빠짐없이 분류한다 (20260827_016 — 레거시 6종 제거 후 20종)', () => {
-    expect(REWARD_TYPES.length + OTHER_TYPES.length).toBe(20)
-    expect(new Set([...REWARD_TYPES, ...OTHER_TYPES]).size).toBe(20)
+  it('쓰는 종류 전부를 빠짐없이 분류한다 (20260827_016 — 레거시 6종 제거 후 20종, 20261018_0056 남은 칸 알림으로 21종)', () => {
+    expect(REWARD_TYPES.length + OTHER_TYPES.length).toBe(21)
+    expect(new Set([...REWARD_TYPES, ...OTHER_TYPES]).size).toBe(21)
   })
 })
 

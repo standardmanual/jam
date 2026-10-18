@@ -588,8 +588,26 @@ describe('⑧ 계정·시스템', () => {
       '3일째 새 활동이 없어요. Strava에 활동이 기록됐는지 확인해보세요'
     )
     expect(text(view('inventory_full', { max_slots: 50, used_slots: 50 }))).toBe(
-      '인벤토리가 꽉 찼어요. 50개까지만 보관할 수 있어서 픽업이 안 될 수 있어요'
+      '인벤토리가 꽉 찼어요. 50개까지만 보관할 수 있어서 새 아이템 배지를 바로 받을 수 없어요'
     )
+  })
+
+  it('남은 칸 알림 — 3개·1개 단계별 문구는 사건을 말하는 과거형이고 칸 수를 «개»로 쓴다 (20261018_0056)', () => {
+    expect(text(view('inventory_slots_low', { remaining_slots: 3, max_slots: 50 }))).toBe(
+      '인벤토리 남은 칸이 3개로 줄었어요. 다 차기 전에 장착·믹스·드랍으로 자리를 만들어 보세요'
+    )
+    expect(text(view('inventory_slots_low', { remaining_slots: 1, max_slots: 50 }))).toBe(
+      '인벤토리 남은 칸이 1개로 줄었어요. 다 차면 새 아이템 배지를 바로 받을 수 없어요'
+    )
+  })
+
+  it('남은 칸 알림 — 단계 값이 비정상이면 3개 단계 문구로 접는다', () => {
+    expect(text(view('inventory_slots_low', {}))).toContain('3개로 줄었어요')
+  })
+
+  it('남은 칸 알림 — 탭하면 인벤토리로 간다', () => {
+    const v = view('inventory_slots_low', { remaining_slots: 3, max_slots: 50 })
+    expect(notificationTarget(v)).toEqual({ href: '/inventory', avatarHref: null })
   })
 
   it('#44 — reason은 코드다. 유저 노출용 라벨을 경유한다(어드민 원장 라벨과 분리)', () => {
@@ -781,6 +799,15 @@ describe('⑧ 경고 스타일 — 저장하지 않고 렌더 시점에 재평�
   it('#42 인벤토리를 비우면 강등된다 — "비웠는데 경고가 남아 있는" 상태 방지', () => {
     expect(isWarningNotification('inventory_full', {}, { inventoryRemainingSlots: 0 }, now)).toBe(true)
     expect(isWarningNotification('inventory_full', {}, { inventoryRemainingSlots: 20 }, now)).toBe(false)
+  })
+
+  it('남은 칸 알림 — 남은 칸이 3개 이하이면 경고면을 유지하고 4개 이상이면 강등된다 (20261018_0056)', () => {
+    const payload = { remaining_slots: 3, max_slots: 50 }
+    expect(isWarningNotification('inventory_slots_low', payload, { inventoryRemainingSlots: 3 }, now)).toBe(true)
+    expect(isWarningNotification('inventory_slots_low', payload, { inventoryRemainingSlots: 0 }, now)).toBe(true)
+    expect(isWarningNotification('inventory_slots_low', payload, { inventoryRemainingSlots: 4 }, now)).toBe(false)
+    // 현재 상태를 조회하지 않았으면 보수적으로 경고를 유지한다
+    expect(isWarningNotification('inventory_slots_low', payload, {}, now)).toBe(true)
   })
 
   it('#44 빠져나간 포인트는 되돌릴 수 없어 항상 유지, 들어온 포인트는 경고가 아니다', () => {

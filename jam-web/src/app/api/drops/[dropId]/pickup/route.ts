@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isUserNearPoi, DROP_RADIUS_METERS } from '@/lib/poi/proximity'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { createNotification, sixHourGroupKey } from '@/lib/notifications'
+import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
 import type { PoiRow, PoiDropRow } from '@/types/database'
 import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { isPoiBlocked, blockPoiForUser } from '@/lib/abusing/poi-block'
@@ -217,6 +218,9 @@ export async function POST(
       })
     }
   }
+
+  // 주운 배지로 칸이 찼으니 남은 칸 알림을 검사한다(티켓 20261018_0056). 던지지 않는다.
+  await notifyInventorySlotsLow(user.id, service)
 
   return NextResponse.json({ inventory_item_id: result.inventory_item_id })
 }

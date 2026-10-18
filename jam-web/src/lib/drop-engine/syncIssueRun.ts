@@ -26,6 +26,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchAllRows } from '@/lib/db/fetchAllRows'
 import { logEngineDecision } from '@/lib/engine-log'
+import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
 import { recordIssuedRewards } from './issueFollowUp'
 import { assignLock, type LockAssignment, type LockPolicy } from './lockAssignment'
 import type { GrantInventoryItemResult } from '@/lib/inventory/slots'
@@ -406,6 +407,9 @@ export async function issueSyncItemBadges(
     console.info(`[syncIssue] 지급 도중 슬롯 초과 — 남은 ${spill.length}개 보류 (userId: ${userId})`)
     if (await persistPending(spill)) await saveStreak(finalStreak)
   }
+
+  // 바로 지급한 것이 있으면 남은 칸 알림을 검사한다(티켓 20261018_0056). 실패해도 던지지 않는다.
+  if (outcome.issuedBadgeIds.length > 0) await notifyInventorySlotsLow(userId, supabase)
 
   return outcome
 }

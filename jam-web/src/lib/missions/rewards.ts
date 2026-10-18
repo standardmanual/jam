@@ -9,6 +9,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
 import { logEngineDecision } from '@/lib/engine-log'
+import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
 import { isInventoryFull, type GrantInventoryItemResult } from '@/lib/inventory/slots'
 import type { MissionRow } from '@/types/database'
 
@@ -37,6 +38,8 @@ export async function grantMissionRewards(
   const awardedBadgeIds: string[] = []
   const awardedBadgeNames: string[] = []
   let totalAwardedPoints = 0
+  // 아이템 배지를 인벤토리에 지급했는가 — 남은 칸 알림을 검사할지 정한다
+  let itemBadgeGranted = false
 
   if (badgeIds.length > 0) {
     // 1. 보상 배지 정보 조회
@@ -140,6 +143,7 @@ export async function grantMissionRewards(
         }
         inventory.used_slots = result.usedSlots
         ownedInventoryBadgeIds.add(badge.id)
+        itemBadgeGranted = true
         granted = true
       }
 
@@ -165,6 +169,9 @@ export async function grantMissionRewards(
       }
     }
   }
+
+  // 아이템 배지를 인벤토리에 지급했으면 남은 칸 알림을 검사한다(티켓 20261018_0056). 던지지 않는다.
+  if (itemBadgeGranted) await notifyInventorySlotsLow(userId, supabase)
 
   // 미션 자체 포인트 — 배지 포인트와 별개 사유로 추가 지급
   const missionPoints = mission.reward_points ?? 0

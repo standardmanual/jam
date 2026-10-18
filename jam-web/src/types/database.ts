@@ -1818,6 +1818,8 @@ export type NotificationType =
   | 'strava_disconnected'
   | 'sync_stalled'
   | 'inventory_full'
+  // 남은 인벤토리 칸 3개·1개 단계에 들어선 순간 한 번(티켓 20261018_0056). 0개일 때의 상태 알림은 inventory_full이 맡는다
+  | 'inventory_slots_low'
   | 'admin_points_changed'
   | 'announcement'
 

@@ -780,7 +780,7 @@ describe('성공 기록 — record_combine_success (티켓 20261001_0631)', () =
 
     await combineRecipeAttempt(USER, 'recipe-1', [ITEM_1, ITEM_2])
 
-    expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'award_points', 'record_combine_success'])
+    expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'inventory_slot_alert_step', 'award_points', 'record_combine_success'])
   })
 
   it('빈손 성공(보상 배지·포인트가 없는 레시피)도 성공 1건으로 기록한다', async () => {
@@ -915,7 +915,7 @@ describe('운영자 시험 믹스 — 공개 전 레시피 (티켓 20261001_1159
     expect(stub.usedSlotsHistory).toEqual([3, 4])
     // 기록에서 빠진다 — record_combine_success 0회, 실패 로그 0건
     expect(stub.successRpcCalls).toHaveLength(0)
-    expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'award_points'])
+    expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'inventory_slot_alert_step', 'award_points'])
     expect(stub.failLogs).toHaveLength(0)
   })
 
@@ -972,7 +972,7 @@ describe('운영자 시험 믹스 — 공개 전 레시피 (티켓 20261001_1159
     expect(result.success).toBe(true)
     expect('testMix' in result).toBe(false)
     expect(stub.successRpcCalls).toHaveLength(1)
-    expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'award_points', 'record_combine_success'])
+    expect(stub.callOrder).toEqual(['release_inventory_slots', 'combine_grant_results', 'inventory_slot_alert_step', 'award_points', 'record_combine_success'])
   })
 
   it('공개 시각이 없는 레시피(처음부터 공개)도 운영자 믹스는 일반 믹스다 — 실패 로그가 정상으로 남는다', async () => {

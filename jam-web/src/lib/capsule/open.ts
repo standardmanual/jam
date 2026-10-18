@@ -19,6 +19,7 @@ import { fetchAllRowsIn } from '@/lib/db/fetchAllRows'
 import { recordIssuedRewards } from '@/lib/drop-engine/issueFollowUp'
 import type { IssueBadge, IssueBook, Rand } from '@/lib/drop-engine/syncIssue'
 import { logEngineDecision } from '@/lib/engine-log'
+import { notifyInventorySlotsLow } from '@/lib/inventory/slotAlert'
 import { getJamPolicy } from '@/lib/jam/policy'
 import { assertNotSuspended } from '@/lib/suspension/suspension'
 import { CapsuleError, getCapsuleState } from './capsule'
@@ -235,6 +236,9 @@ export async function openCapsule(supabase: SupabaseClient, userId: string, opti
       console.error(`[capsule-open] 후속 처리 실패 — 열기는 유지한다 (userId: ${userId}, badge_id: ${planned.badge.id}):`, e)
     }
   }
+
+  // 열어서 받은 만큼 칸이 찼으니 남은 칸 알림을 검사한다(티켓 20261018_0056). 던지지 않는다.
+  await notifyInventorySlotsLow(userId, supabase)
 
   try {
     await logEngineDecision('drop', 'drop_attempt', userId, {

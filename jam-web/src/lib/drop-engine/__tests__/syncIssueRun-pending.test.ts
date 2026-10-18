@@ -48,6 +48,8 @@ interface World {
   pendingInsert: 'ok' | 'error' | 'throw'
   pendingRows: Record<string, unknown>[]
   rpcCalls: Record<string, unknown>[]
+  /** 남은 칸 알림 검사(`inventory_slot_alert_step`) 호출 인자 */
+  alertCalls: Record<string, unknown>[]
   logRows: Record<string, unknown>[]
   streakUpserts: Record<string, unknown>[]
 }
@@ -62,6 +64,7 @@ function makeWorld(overrides: Partial<World> = {}): World {
     pendingInsert: 'ok',
     pendingRows: [],
     rpcCalls: [],
+    alertCalls: [],
     logRows: [],
     streakUpserts: [],
     ...overrides,
@@ -125,6 +128,10 @@ function makeFakeSupabase(world: World): SupabaseClient {
   }
 
   const rpc = async (name: string, args: Record<string, unknown>) => {
+    if (name === 'inventory_slot_alert_step') {
+      world.alertCalls.push(args)
+      return { data: { ok: true, notify: false, stage: 0, free: 0 }, error: null }
+    }
     if (name !== 'grant_inventory_item_locked') return { data: null, error: { message: `알 수 없는 rpc ${name}` } }
     grants += 1
     world.rpcCalls.push(args)
@@ -186,6 +193,22 @@ describe('전체 개수와 빈칸 비교', () => {
     expect(outcome.pendingCount).toBe(0)
     expect(world.rpcCalls).toHaveLength(2)
     expect(world.pendingRows).toEqual([])
+  })
+
+  it('바로 지급했으면 지급 직후 남은 칸 알림을 한 번 검사한다(티켓 20261018_0056)', async () => {
+    const world = makeWorld({ inventory: { id: 'inv-1', used_slots: 8, max_slots: 10 } })
+
+    await run(world, [target(1), target(2)])
+
+    expect(world.alertCalls).toEqual([{ p_user_id: expect.any(String) }])
+  })
+
+  it('전부 보류했으면 지급이 없으니 남은 칸 알림을 검사하지 않는다', async () => {
+    const world = makeWorld({ inventory: { id: 'inv-1', used_slots: 8, max_slots: 10 } })
+
+    await run(world, [target(1), target(2), target(3)])
+
+    expect(world.alertCalls).toEqual([])
   })
 
   it('받을 개수가 빈칸보다 하나 많으면 하나도 지급하지 않고 전부 보류한다', async () => {
