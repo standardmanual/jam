@@ -60,7 +60,7 @@ describe.each(implementations)('BadgeGridCard locked — $label', ({ render }) =
  */
 describe('BadgeGridCard 이름 줄 — 서비스', () => {
   const nameClass = (html: string): string => {
-    const match = html.match(/<p class="([^"]*font-bold[^"]*line-clamp-2[^"]*)"/)
+    const match = html.match(/<p class="([^"]*font-bold[^"]*line-clamp-[23][^"]*)"/)
     expect(match, '이름 줄(<p>)을 찾지 못했다').not.toBeNull()
     return match![1]
   }
@@ -73,10 +73,12 @@ describe('BadgeGridCard 이름 줄 — 서비스', () => {
     expect(cls).toContain('text-center')
   })
 
-  it('잠긴 카드의 이름 줄에도 같은 클래스가 있다', () => {
+  it('잠긴 카드의 이름 줄에도 같은 클래스가 있고 «잠긴 아이템 배지»가 잘리지 않도록 세 줄까지 허용한다', () => {
     const cls = nameClass(renderToStaticMarkup(<ServiceBadgeGridCard rarity="epic" locked fillPercent={40} />))
     expect(cls).toContain('break-keep')
     expect(cls).toContain('wrap-break-word')
+    expect(cls).toContain('line-clamp-3')
+    expect(cls).not.toContain('line-clamp-2')
   })
 })
 

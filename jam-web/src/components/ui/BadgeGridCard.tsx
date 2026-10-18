@@ -162,7 +162,7 @@ export default function BadgeGridCard({
         )}
       </div>
       <div className="flex flex-col items-center gap-1 pt-2 w-full">
-        <p className="text-sm font-bold text-foreground text-center line-clamp-2 w-full leading-tight break-keep wrap-break-word">
+        <p className={`text-sm font-bold text-foreground text-center ${locked ? 'line-clamp-3' : 'line-clamp-2'} w-full leading-tight break-keep wrap-break-word`}>
           {locked ? d.lockedItem.card.name : undiscovered ? '???' : name}
         </p>
         {/* ×N은 aria-hidden이라 보조기술에는 이 문장만이 횟수를 전달한다 */}
