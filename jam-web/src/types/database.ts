@@ -587,6 +587,12 @@ export interface CombinationRecipeRow {
    * 판정은 `lib/combine/visibility.ts`의 `isRecipeReleased`·`recipeReleaseState` 하나로 한다.
    */
   valid_until: string | null
+  /** 레시피 설명(마이그레이션 236, 티켓 20261018_0055) — 유저에게 보인다. null이면 설명 없음 */
+  description: string | null
+  /** 결과 아이템 배지를 잠긴 채 지급할지(마이그레이션 236). 기본 false(열림). 잠김으로 만든 배지(`always_locked`)는 이 값과 상관없이 늘 잠긴다 */
+  reward_locked: boolean
+  /** 보상 없음(포인트 0, 보상 배지 없음)을 허용한 레시피(마이그레이션 236). 새 어드민만 켠다. 기본 false라 옛 레시피는 보상 하나 이상을 요구한다 */
+  allow_no_reward: boolean
   created_at: string
 }
 
@@ -631,7 +637,6 @@ export type CombineFailReason =
   | 'recipe_not_found'
   /** 재료에 잠긴 개체가 섞였다(티켓 20261018_0051). 재료가 소각되기 전에 거절하므로 실패 기록(`user_combine_fail_log`)은 남기지 않는다 */
   | 'locked_item_not_allowed'
-
 export interface UserCombineFailLogRow {
   id: string
   user_id: string

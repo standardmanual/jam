@@ -22,9 +22,14 @@ export interface NormalizedSlot {
   allowedBadgeIds: string[]
 }
 
-/** 레시피당 슬롯 개수 — 최소 2개, 최대 10개 (구 MIN_INGREDIENTS/MAX_INGREDIENTS를 슬롯 개수 기준으로 재정의) */
+/**
+ * 레시피당 슬롯 개수 — 최소 2개, 최대 5개 (구 MIN_INGREDIENTS/MAX_INGREDIENTS를 슬롯 개수 기준으로 재정의).
+ * 상한 5는 운영 로직 8.6절의 «믹스 칸» 코드 상수다(티켓 20261018_0055, 이전 10). 믹스 실행 상한(`lib/combine/index.ts`의 `MAX_ITEMS`)과 같은 값이다.
+ */
 export const MIN_SLOTS = 2
-export const MAX_SLOTS = 10
+export const MAX_SLOTS = 5
+/** 레시피 설명 최대 글자 수(마이그레이션 236 `description`) */
+export const MAX_DESCRIPTION_LENGTH = 500
 /** 소각되는 재료가 전혀 없는 레시피 방지 — 최소 1개의 아이템 타입 슬롯이 있어야 한다 */
 export const MIN_ITEM_SLOTS = 1
 
@@ -51,6 +56,15 @@ export interface RecipePayloadInput {
    * `lib/admin/recipe-write.ts`의 `assertValidPeriod`가 기존 행과 함께 본다.
    */
   valid_until?: unknown
+  /** 레시피 설명(마이그레이션 236, 티켓 20261018_0055) — 칸이 없으면 건드리지 않고, 빈 값·null이면 설명 없음 */
+  description?: unknown
+  /** 결과를 잠긴 채 지급할지(마이그레이션 236) — 칸이 없으면 건드리지 않는다 */
+  reward_locked?: unknown
+  /**
+   * 보상 없음 허용(마이그레이션 236) — 칸이 없으면 건드리지 않는다. `true`일 때만 «보상 하나 이상» 검증을 건너뛴다.
+   * 새 어드민만 보낸다. 옛 어드민 요청에는 이 칸이 없어 옛 검증(보상 하나 이상)이 그대로다.
+   */
+  allow_no_reward?: unknown
 }
 
 export interface NormalizedRecipePayload {
@@ -62,6 +76,12 @@ export interface NormalizedRecipePayload {
   validFrom: string | null | undefined
   /** `undefined`는 제출하지 않음(행을 바꾸지 않는다), `null`은 종료 없음(상시), 문자열은 UTC ISO 종료 시각 */
   validUntil: string | null | undefined
+  /** `undefined`는 제출하지 않음(행을 바꾸지 않는다), `null`은 설명 없음 */
+  description: string | null | undefined
+  /** `undefined`는 제출하지 않음(행을 바꾸지 않는다) */
+  rewardLocked: boolean | undefined
+  /** `undefined`는 제출하지 않음(행을 바꾸지 않는다) */
+  allowNoReward: boolean | undefined
 }
 
 /** 시간대가 붙은 ISO 8601 — 시간대가 없는 값은 서버 시간대로 해석돼 예약이 어긋나므로 받지 않는다 */
@@ -178,7 +198,15 @@ export function normalizeRecipePayload(
     return { ok: false, error: '보상 포인트는 0 이상의 정수여야 해요.' }
   }
 
-  if (rewardPoints === 0 && rewardBadgeIds.length === 0) {
+  // allow_no_reward가 true로 온 요청만 보상 없음을 허용한다(티켓 20261018_0055 결정 3). 칸이 없거나 false면 옛 검증 그대로다.
+  const allowNoReward = normalizeOptionalBoolean(body.allow_no_reward)
+  if (allowNoReward === 'invalid') return { ok: false, error: '보상 없음 허용 값이 올바르지 않아요. 켜기 또는 끄기로 다시 선택해 주세요.' }
+  const rewardLocked = normalizeOptionalBoolean(body.reward_locked)
+  if (rewardLocked === 'invalid') return { ok: false, error: '결과 잠김 값이 올바르지 않아요. 켜기 또는 끄기로 다시 선택해 주세요.' }
+  const description = normalizeDescription(body.description)
+  if (!description.ok) return description
+
+  if (allowNoReward !== true && rewardPoints === 0 && rewardBadgeIds.length === 0) {
     return { ok: false, error: '보상을 하나 이상 지정해 주세요. 포인트나 배지 중 최소 하나가 필요해요.' }
   }
 
@@ -190,8 +218,37 @@ export function normalizeRecipePayload(
 
   return {
     ok: true,
-    value: { name, slots, rewardPoints, rewardBadgeIds, validFrom: validFrom.value, validUntil: validUntil.value },
+    value: {
+      name,
+      slots,
+      rewardPoints,
+      rewardBadgeIds,
+      validFrom: validFrom.value,
+      validUntil: validUntil.value,
+      description: description.value,
+      rewardLocked,
+      allowNoReward,
+    },
   }
+}
+
+/** 칸 없음(`undefined`·`null`)은 `undefined`, boolean은 그대로, 그 밖의 값은 `'invalid'` */
+function normalizeOptionalBoolean(value: unknown): boolean | undefined | 'invalid' {
+  if (value === undefined || value === null) return undefined
+  return typeof value === 'boolean' ? value : 'invalid'
+}
+
+/** 설명 — 칸 없음(`undefined`)은 그대로, 빈 문자열·공백·null은 설명 없음(`null`), 문자열은 앞뒤 공백을 지운 값 */
+function normalizeDescription(value: unknown): { ok: true; value: string | null | undefined } | { ok: false; error: string } {
+  if (value === undefined) return { ok: true, value: undefined }
+  if (value === null) return { ok: true, value: null }
+  if (typeof value !== 'string') return { ok: false, error: '레시피 설명이 올바르지 않아요. 글로 다시 입력해 주세요.' }
+  const trimmed = value.trim()
+  if (trimmed === '') return { ok: true, value: null }
+  if (trimmed.length > MAX_DESCRIPTION_LENGTH) {
+    return { ok: false, error: `레시피 설명은 ${MAX_DESCRIPTION_LENGTH}자까지 쓸 수 있어요. 줄여서 다시 입력해 주세요.` }
+  }
+  return { ok: true, value: trimmed }
 }
 
 /**

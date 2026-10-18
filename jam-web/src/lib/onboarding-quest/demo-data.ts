@@ -133,6 +133,9 @@ export const DEMO_MIX_RECIPE: RecipeWithSlots = {
   reward_badge_ids: [CATNIP_BUNDLE_ID],
   valid_from: null,
   valid_until: null,
+  description: null,
+  reward_locked: false,
+  allow_no_reward: false,
   created_at: '2026-01-01T00:00:00.000Z',
   slots: [
     {

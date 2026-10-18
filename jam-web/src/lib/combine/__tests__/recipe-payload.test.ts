@@ -45,10 +45,14 @@ describe('normalizeRecipePayload — 슬롯 구조·개수·보상 3분기 검�
     if (!result.ok) expect(result.error).toContain('2개 이상')
   })
 
-  it('슬롯이 11개면 거부한다', () => {
-    const slots = Array.from({ length: 11 }, (_, i) => itemSlot([`item-${i}`]))
-    const result = normalizeRecipePayload({ name: '테스트 레시피', slots, reward_points: 10 })
-    expect(result.ok).toBe(false)
+  it('슬롯이 6개면 거부하고 5개까지는 받는다 (믹스 칸 5, 티켓 20261018_0055)', () => {
+    const six = Array.from({ length: 6 }, (_, i) => itemSlot([`item-${i}`]))
+    const rejected = normalizeRecipePayload({ name: '테스트 레시피', slots: six, reward_points: 10 })
+    expect(rejected.ok).toBe(false)
+    if (!rejected.ok) expect(rejected.error).toContain('최대 5개')
+
+    const five = six.slice(0, 5)
+    expect(normalizeRecipePayload({ name: '테스트 레시피', slots: five, reward_points: 10 }).ok).toBe(true)
   })
 
   it('슬롯 안 후보가 비어 있으면 거부한다', () => {
@@ -338,5 +342,61 @@ describe('normalizeRecipePayload — valid_until 전달', () => {
     const result = normalizeRecipePayload({ ...base, valid_until: '2026-10-12 09:00' }, NOW)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.error).toContain('종료 시각 형식이 올바르지 않아요')
+  })
+})
+
+describe('normalizeRecipePayload — 설명·결과 잠김·보상 없음 (티켓 20261018_0055)', () => {
+  const base = { name: '테스트 레시피', slots: [itemSlot([ITEM_A]), activitySlot([ACT])] }
+
+  it('옛 어드민 요청(allow_no_reward 칸 없음)은 보상이 없으면 옛 검증대로 거부한다', () => {
+    const result = normalizeRecipePayload({ ...base, reward_points: 0, reward_badge_ids: [] })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toContain('보상을 하나 이상')
+  })
+
+  it('allow_no_reward가 false여도 보상이 없으면 거부한다', () => {
+    expect(normalizeRecipePayload({ ...base, reward_points: 0, reward_badge_ids: [], allow_no_reward: false }).ok).toBe(false)
+  })
+
+  it('allow_no_reward가 true면 보상 없음을 받고 값이 정규화에 실린다', () => {
+    const result = normalizeRecipePayload({ ...base, reward_points: 0, reward_badge_ids: [], allow_no_reward: true })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.allowNoReward).toBe(true)
+      expect(result.value.rewardPoints).toBe(0)
+      expect(result.value.rewardBadgeIds).toEqual([])
+    }
+  })
+
+  it('새 칸을 보내지 않으면 undefined라 저장 때 행을 바꾸지 않는다', () => {
+    const result = normalizeRecipePayload({ ...base, reward_points: 10 })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.description).toBeUndefined()
+      expect(result.value.rewardLocked).toBeUndefined()
+      expect(result.value.allowNoReward).toBeUndefined()
+    }
+  })
+
+  it('allow_no_reward·reward_locked는 boolean만 받는다', () => {
+    expect(normalizeRecipePayload({ ...base, reward_points: 10, allow_no_reward: 'true' }).ok).toBe(false)
+    expect(normalizeRecipePayload({ ...base, reward_points: 10, reward_locked: 1 }).ok).toBe(false)
+    const locked = normalizeRecipePayload({ ...base, reward_points: 10, reward_locked: true })
+    expect(locked.ok && locked.value.rewardLocked).toBe(true)
+  })
+
+  it('설명은 앞뒤 공백을 지우고, 빈 값·null은 설명 없음(null)이다', () => {
+    const text = normalizeRecipePayload({ ...base, reward_points: 10, description: '  단서 다섯 개를 모아 보세요  ' })
+    expect(text.ok && text.value.description).toBe('단서 다섯 개를 모아 보세요')
+    const blank = normalizeRecipePayload({ ...base, reward_points: 10, description: '   ' })
+    expect(blank.ok && blank.value.description).toBeNull()
+    const nulled = normalizeRecipePayload({ ...base, reward_points: 10, description: null })
+    expect(nulled.ok && nulled.value.description).toBeNull()
+  })
+
+  it('설명이 문자열이 아니거나 500자를 넘으면 거부한다', () => {
+    expect(normalizeRecipePayload({ ...base, reward_points: 10, description: 123 }).ok).toBe(false)
+    expect(normalizeRecipePayload({ ...base, reward_points: 10, description: 'ㄱ'.repeat(500) }).ok).toBe(true)
+    expect(normalizeRecipePayload({ ...base, reward_points: 10, description: 'ㄱ'.repeat(501) }).ok).toBe(false)
   })
 })
