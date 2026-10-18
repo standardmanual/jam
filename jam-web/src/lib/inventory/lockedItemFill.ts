@@ -96,7 +96,10 @@ export async function fillLockedItem(supabase: SupabaseClient, userId: string, i
   }
 }
 
-/** 열린 뒤 보여 줄 개체 정보. 읽지 못하면 던진다(호출부가 «열기는 확정됨»으로 받아 낸다). */
+/**
+ * 열린 뒤 보여 줄 개체 정보. 읽지 못하면 던진다(호출부가 «열기는 확정됨»으로 받아 낸다).
+ * 이미 내가 가진 개체의 정보라 `deleted_at` 필터를 걸지 않는다 — 배지가 소프트 삭제돼도 연 개체의 이름·그림은 그대로 보여 준다.
+ */
 async function loadOpenedInfo(supabase: SupabaseClient, badgeId: string): Promise<LockedItemOpenedInfo | null> {
   const { data: badgeRow, error: badgeError } = await supabase
     .from('badges')
