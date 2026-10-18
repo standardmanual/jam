@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { ActivityFeedRow } from '@/types/database'
 import ProfileClient, { type ProfileClientProfile } from '../profile/ProfileClient'
 import { hydrateFeedBadgeInfo } from '@/lib/activity-feed/hydrate'
+import { isDropRowLocked, lockedDropFeedMeta, type DropRowLockInfo } from '@/lib/activity-feed/lockedDrop'
 import { getWallet } from '@/lib/points'
 import { getCapsuleStatus } from '@/lib/capsule/capsule'
 import { d, t } from '@/lib/i18n'
@@ -206,14 +207,16 @@ export default async function UserProfilePage({ params }: Props) {
 
     service
       .from('poi_drops')
-      .select('id, badge_id, dropped_at, poi(name), badges(id, name, image_url, rarity, deleted_at)')
+      // 개체의 잠김을 함께 읽는다 — 잠긴 개체는 아래 합성에서 이름·그림·배지 id를 비운다(티켓 20261018_1837, 운영 로직 7.3절).
+      // inventory_items는 FK가 두 갈래라 관계명을 명시한다(`api/drops/poi/[poiId]`와 같은 이유).
+      .select('id, badge_id, dropped_at, poi(name), badges(id, name, image_url, rarity, deleted_at), inventory_item_id, inventory_items!poi_drops_inventory_item_id_fkey(locked)')
       .eq('dropper_user_id', subjectId)
       .order('dropped_at', { ascending: false })
       .limit(50),
 
     service
       .from('poi_drops')
-      .select('id, badge_id, picked_up_at, dropper_user_id, poi(name), badges(id, name, image_url, rarity, deleted_at)')
+      .select('id, badge_id, picked_up_at, dropper_user_id, poi(name), badges(id, name, image_url, rarity, deleted_at), inventory_item_id, inventory_items!poi_drops_inventory_item_id_fkey(locked)')
       .eq('picked_up_by', subjectId)
       .not('picked_up_at', 'is', null)
       .order('picked_up_at', { ascending: false })
@@ -271,8 +274,8 @@ export default async function UserProfilePage({ params }: Props) {
   type BadgeJoin = { id: string; name: string; image_url: string; rarity: string | null; level: number | null; deleted_at: string | null } | null
   type BadgesHistoryRow = { badge_id: string; earned_at: string; earn_count: number | null; badges: BadgeJoin }
   type ActDropRow = { id: string; badge_id: string; obtained_at: string; badges: BadgeJoin }
-  type PoiDropRow = { id: string; badge_id: string; dropped_at: string; poi: { name: string } | null; badges: BadgeJoin }
-  type PickupRow = { id: string; badge_id: string; picked_up_at: string; dropper_user_id: string; poi: { name: string } | null; badges: BadgeJoin }
+  type PoiDropRow = { id: string; badge_id: string; dropped_at: string; poi: { name: string } | null; badges: BadgeJoin } & DropRowLockInfo
+  type PickupRow = { id: string; badge_id: string; picked_up_at: string; dropper_user_id: string; poi: { name: string } | null; badges: BadgeJoin } & DropRowLockInfo
   type CompletionRow = { id: string; mission_id: string; completed_at: string; missions: { title: string; reward_type: string; reward_points: number | null } | null }
   type ParticipationRow = { mission_id: string; joined_at: string; missions: { title: string } | null }
   type PoiBadgeEarnRow = { badge_id: string; earned_at: string; badges: BadgeJoin }
@@ -302,7 +305,11 @@ export default async function UserProfilePage({ params }: Props) {
     const b = row.badges
     const poiName = row.poi?.name ?? ''
     if (!b || b.deleted_at) continue
-    legacyItems.push(makeFeedItem(`legacy_poidrop_${row.id}`, 'item_dropped', row.dropped_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity, poi_name: poiName }))
+    // 잠긴 개체는 이름·그림·배지 id를 서버에서 비운다 — 등급과 «잠긴 아이템 배지»만 싣는다(운영 로직 7.3절, 티켓 20261018_1837)
+    const shown = isDropRowLocked(row)
+      ? lockedDropFeedMeta(b.rarity)
+      : { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity }
+    legacyItems.push(makeFeedItem(`legacy_poidrop_${row.id}`, 'item_dropped', row.dropped_at, { ...shown, poi_name: poiName }))
   }
 
   for (const row of (pickupsResult.data ?? []) as unknown as PickupRow[]) {
@@ -310,7 +317,10 @@ export default async function UserProfilePage({ params }: Props) {
     const b = row.badges
     const poiName = row.poi?.name ?? ''
     if (!b || b.deleted_at) continue
-    legacyItems.push(makeFeedItem(`legacy_pickup_${row.id}`, 'item_picked_up', row.picked_up_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity, poi_name: poiName, dropper_user_id: row.dropper_user_id }))
+    const shown = isDropRowLocked(row)
+      ? lockedDropFeedMeta(b.rarity)
+      : { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity }
+    legacyItems.push(makeFeedItem(`legacy_pickup_${row.id}`, 'item_picked_up', row.picked_up_at, { ...shown, poi_name: poiName, dropper_user_id: row.dropper_user_id }))
   }
 
   for (const row of (completionsResult.data ?? []) as unknown as CompletionRow[]) {

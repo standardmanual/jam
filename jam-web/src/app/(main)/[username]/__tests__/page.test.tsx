@@ -65,6 +65,11 @@ const state = vi.hoisted(() => ({
   loginUserId: '' as string,
   targetRow: null as Record<string, unknown> | null,
   calls: [] as { table: string; select: string | undefined; eqs: [string, unknown][] }[],
+  // poi_drops 조회가 돌려줄 행 — 놓은 드랍(dropper_user_id 조건)과 주운 드랍(picked_up_by 조건)을 따로 둔다
+  droppedRows: [] as unknown[],
+  pickedRows: [] as unknown[],
+  // true면 poi_drops 조회가 오류를 돌려준다
+  poiDropsError: false,
 }))
 
 const getWalletMock = vi.hoisted(() => vi.fn<(userId: string) => Promise<number>>())
@@ -77,7 +82,12 @@ function singleResponse(table: string) {
   if (table === 'strava_connections') return { data: stravaRow, error: null }
   return { data: null, error: null }
 }
-function listResponse(table: string) {
+function listResponse(table: string, eqs: [string, unknown][] = []) {
+  if (table === 'poi_drops') {
+    if (state.poiDropsError) return { data: null, count: 0, error: { message: 'poi_drops 조회 실패' } }
+    if (eqs.some(([column]) => column === 'dropper_user_id')) return { data: state.droppedRows, count: 0, error: null }
+    if (eqs.some(([column]) => column === 'picked_up_by')) return { data: state.pickedRows, count: 0, error: null }
+  }
   if (table === 'strava_connections') return { data: [stravaRow], count: 1, error: null }
   return { data: [], count: 0, error: null }
 }
@@ -98,7 +108,7 @@ function makeQuery(table: string) {
   }
   query.maybeSingle = async () => singleResponse(table)
   query.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
-    Promise.resolve(listResponse(table)).then(resolve, reject)
+    Promise.resolve(listResponse(table, call.eqs)).then(resolve, reject)
   return query
 }
 
@@ -181,6 +191,9 @@ beforeEach(() => {
   state.loginUserId = LOGIN_USER_ID
   state.targetRow = userRow(TARGET_USER_ID)
   state.calls = []
+  state.droppedRows = []
+  state.pickedRows = []
+  state.poiDropsError = false
   getWalletMock.mockReset()
   getWalletMock.mockResolvedValue(1234)
   getCapsuleStatusMock.mockReset()
@@ -314,6 +327,112 @@ describe('/{username} 프로필 페이지 — 잠긴 개체 가림', () => {
       for (const call of itemCalls) {
         expect(call.eqs, `${call.select} 조회에 locked=false가 없다`).toContainEqual(['locked', false])
       }
+    }
+  })
+})
+
+/**
+ * 잠긴 채 드랍·픽업된 개체의 이름·그림 가림 (티켓 20261018_1837, 운영 로직 7.3절)
+ *
+ * 프로필 페이지가 `poi_drops`를 훑어 «놓은 드랍»·«주운 드랍» 피드 항목을 합성한다. 개체의 잠김(`poi_drops.inventory_item_id →
+ * inventory_items.locked`)을 보지 않으면 잠긴 개체의 이름·그림·배지 id가 클라이언트로 내려가는 prop에 실린다.
+ * 모킹한 DB 가짜는 잠긴 개체의 행에도 이름·그림을 그대로 실어 돌려준다 — 서버가 비우지 않으면 그대로 새는 최악의 경우다.
+ */
+describe('/{username} 프로필 페이지 — 잠긴 채 드랍·픽업된 개체 가림', () => {
+  const SECRET_NAME = '비밀배지이름-QWERTY'
+  const SECRET_IMAGE = 'https://example.com/secret-image-qwerty.png'
+  const SECRET_BADGE_ID = 'secret-badge-id-qwerty'
+  const OPEN_NAME = '열린배지이름-ASDF'
+
+  function dropRow(id: string, locked: boolean | null | 'no-embed', opts: { badgeId: string; name: string; image: string }) {
+    return {
+      id,
+      badge_id: opts.badgeId,
+      dropped_at: '2026-10-18T01:00:00Z',
+      picked_up_at: '2026-10-18T02:00:00Z',
+      dropper_user_id: 'dropper-uuid-0009',
+      poi: { name: '남산 지점' },
+      badges: { id: opts.badgeId, name: opts.name, image_url: opts.image, rarity: 'rare', deleted_at: null },
+      inventory_item_id: `item-${id}`,
+      inventory_items: locked === 'no-embed' ? null : { locked },
+    }
+  }
+  const lockedOpts = { badgeId: SECRET_BADGE_ID, name: SECRET_NAME, image: SECRET_IMAGE }
+  const openOpts = { badgeId: 'open-badge-id-1', name: OPEN_NAME, image: 'https://example.com/open.png' }
+
+  type FeedProp = { id: string; event_type: string; metadata: Record<string, unknown> }
+  async function feedOf(viewer: string) {
+    state.loginUserId = viewer
+    const props = await renderPage('target')
+    return { props, feed: props.feedItems as FeedProp[] }
+  }
+
+  it('(f) 잠긴 개체의 놓은·주운 드랍은 이름·그림·배지 id가 prop 어디에도 없고 «잠긴 아이템 배지»와 등급만 싣는다(타인·본인 모두)', async () => {
+    state.droppedRows = [dropRow('d1', true, lockedOpts)]
+    state.pickedRows = [dropRow('p1', true, lockedOpts)]
+
+    for (const viewer of [LOGIN_USER_ID, TARGET_USER_ID]) {
+      const { props, feed } = await feedOf(viewer)
+      const serialized = JSON.stringify(props)
+      for (const secret of [SECRET_NAME, SECRET_IMAGE, SECRET_BADGE_ID]) {
+        expect(serialized, `${viewer} 시점 prop에 ${secret}이 있다`).not.toContain(secret)
+      }
+      for (const id of ['legacy_poidrop_d1', 'legacy_pickup_p1']) {
+        const item = feed.find((f) => f.id === id)
+        expect(item, `${viewer} 시점에 ${id} 항목이 없다`).toBeDefined()
+        expect(item?.metadata.badge_name).toBe('잠긴 아이템 배지')
+        expect(item?.metadata.rarity).toBe('rare')
+        expect(item?.metadata.badge_id).toBe('')
+        expect(item?.metadata.badge_image_url).toBe('')
+      }
+    }
+  })
+
+  it('(g) 열린 개체의 놓은·주운 드랍은 지금처럼 이름·그림·배지 id를 싣는다', async () => {
+    state.droppedRows = [dropRow('d2', false, openOpts)]
+    state.pickedRows = [dropRow('p2', false, openOpts)]
+
+    const { feed } = await feedOf(LOGIN_USER_ID)
+    for (const id of ['legacy_poidrop_d2', 'legacy_pickup_p2']) {
+      const item = feed.find((f) => f.id === id)
+      expect(item?.metadata).toMatchObject({
+        badge_id: 'open-badge-id-1',
+        badge_name: OPEN_NAME,
+        badge_image_url: 'https://example.com/open.png',
+        rarity: 'rare',
+        poi_name: '남산 지점',
+      })
+    }
+  })
+
+  it('(h) 개체는 연결돼 있는데 잠김을 읽지 못하면(inventory_items·locked가 비었다) 잠긴 것으로 본다', async () => {
+    state.droppedRows = [dropRow('d3', 'no-embed', lockedOpts)]
+    state.pickedRows = [dropRow('p3', null, lockedOpts)]
+
+    const { props, feed } = await feedOf(LOGIN_USER_ID)
+    const serialized = JSON.stringify(props)
+    for (const secret of [SECRET_NAME, SECRET_IMAGE, SECRET_BADGE_ID]) expect(serialized).not.toContain(secret)
+    expect(feed.find((f) => f.id === 'legacy_poidrop_d3')?.metadata.badge_name).toBe('잠긴 아이템 배지')
+    expect(feed.find((f) => f.id === 'legacy_pickup_p3')?.metadata.badge_name).toBe('잠긴 아이템 배지')
+  })
+
+  it('(i) poi_drops 조회가 실패하면 놓은·주운 드랍 항목을 만들지 않는다(이름이 실릴 길이 없다)', async () => {
+    state.droppedRows = [dropRow('d4', true, lockedOpts)]
+    state.pickedRows = [dropRow('p4', true, lockedOpts)]
+    state.poiDropsError = true
+
+    const { props, feed } = await feedOf(LOGIN_USER_ID)
+    expect(feed.some((f) => f.id.startsWith('legacy_poidrop_') || f.id.startsWith('legacy_pickup_'))).toBe(false)
+    expect(JSON.stringify(props)).not.toContain(SECRET_NAME)
+  })
+
+  it('(j) poi_drops 조회가 개체의 잠김(inventory_item_id → inventory_items.locked)을 함께 읽는다', async () => {
+    await renderPage('target')
+    const dropCalls = state.calls.filter((c) => c.table === 'poi_drops')
+    expect(dropCalls.length).toBe(2)
+    for (const call of dropCalls) {
+      expect(call.select).toContain('inventory_item_id')
+      expect(call.select).toMatch(/inventory_items!poi_drops_inventory_item_id_fkey\s*\(\s*locked\s*\)/)
     }
   })
 })
