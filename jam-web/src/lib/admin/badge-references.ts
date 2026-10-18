@@ -49,6 +49,8 @@ export type BadgeReferenceKey =
   | 'inventory_items'
   | 'poi_drops'
   | 'item_issue_log'
+  | 'inventory_item_events'
+  | 'combine_pending_results'
   | 'sync_pending_items'
   | 'user_item_book_slots'
   | 'point_transactions'
@@ -136,6 +138,26 @@ export const BADGE_REFERENCE_SOURCES: BadgeReferenceSource[] = [
     label: '아이템 배지 발급 기록',
     location: 'item_issue_log.badge_id',
     blocksDelete: false,
+    cascades: false,
+    detachable: false,
+  },
+  {
+    // 마이그레이션 235(티켓 20261018_0053): 삭제하면 이 칸만 NULL이 되고 개체 이력은 남는다(ON DELETE SET NULL) — 삭제를 막지 않는다.
+    key: 'inventory_item_events',
+    group: 'earn',
+    label: '아이템 개체 이력',
+    location: 'inventory_item_events.badge_id',
+    blocksDelete: false,
+    cascades: false,
+    detachable: false,
+  },
+  {
+    // 마이그레이션 236(티켓 20261018_0055): 받지 않은 믹스 결과는 ON DELETE 규칙이 없어(NO ACTION) 이 배지를 지우면 FK 위반으로 실패한다.
+    key: 'combine_pending_results',
+    group: 'earn',
+    label: '받지 않은 믹스 결과',
+    location: 'combine_pending_results.badge_id',
+    blocksDelete: true,
     cascades: false,
     detachable: false,
   },
@@ -391,6 +413,16 @@ export async function collectBadgeReferences(
       key: 'item_issue_log',
       run: (chunk) =>
         supabase.from('item_issue_log').select('*', { count: 'exact', head: true }).in('badge_id', chunk),
+    },
+    {
+      key: 'inventory_item_events',
+      run: (chunk) =>
+        supabase.from('inventory_item_events').select('*', { count: 'exact', head: true }).in('badge_id', chunk),
+    },
+    {
+      key: 'combine_pending_results',
+      run: (chunk) =>
+        supabase.from('combine_pending_results').select('*', { count: 'exact', head: true }).in('badge_id', chunk),
     },
     {
       key: 'sync_pending_items',
