@@ -308,6 +308,7 @@ export async function fetchMissionsById(supabase: ServiceClient, missionIds: str
 
   // 숨김 보상 배지는 개수에도 넣지 않는다(티켓 20261019_1313 2회, 운영 로직 10.3절) — 카드가 «배지 N개»로 숨김 배지의 존재를 알리면 안 된다.
   // 보상 배지를 가진 미션이 있을 때만 한 번 더 읽는다. 읽지 못하면 어느 배지가 숨김인지 모르므로 보상 배지 개수를 싣지 않는다.
+  // 삭제된 배지(deleted_at)도 일부러 거르지 않는다: 삭제된 숨김 배지의 id도 개수에 넣지 않아야 숨김 배지의 존재가 새지 않는다.
   const rewardIds = [...new Set(missions.flatMap((m) => m.reward_badge_ids ?? []))]
   let hiddenIds: ReadonlySet<string> = new Set()
   if (rewardIds.length > 0) {
