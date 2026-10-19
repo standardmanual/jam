@@ -369,7 +369,7 @@ Rare 이상 배지에 `condition_json.prerequisite_badge_names: string[]`를 설
 | `season` + `season_count` | 해당 계절 활동 횟수 ≥ 조건값 |
 | `temperature_min_c` | 활동 중 기온 ≥ 조건값 (폭염 배지, Strava 온도 의존) |
 | `temperature_max_c` | 활동 중 기온 ≤ 조건값 (한파 배지, Strava 온도 의존) |
-| `time_range` | startDateLocal의 HH:MM이 {start, end} 범위 내 (자정 경계 지원) |
+| `time_range` | 한국 시각(KST) 시작 시각의 HH:MM이 {start, end} 범위 내 (자정 경계 지원, 양 끝 포함, `24:00`·`HH:MM:SS`도 읽는다) |
 | `poi_id` | 항상 false — GPS 경로 매칭(sync.ts)으로만 발급 |
 | `prerequisite_badge_names` | 엔진 Step 1에서 처리 (이 함수에서는 무시) |
 
