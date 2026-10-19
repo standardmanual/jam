@@ -15,6 +15,7 @@ import { assertNotSuspended, UserSuspendedError } from '@/lib/suspension/suspens
 import { USER_SUSPENDED_CODE, type UserSuspendedResponse } from '@/lib/suspension/suspension-contract'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
 import { jamTriggersForPickup } from '@/lib/badge-engine/jamActionDropTriggers'
+import { PICKUP_BLOCK_CODE } from '@/lib/drop/pickup-block-contract'
 import { d, t } from '@/lib/i18n'
 
 // 20260915_2241 — ADR 0001에 따라 이 라우트의 `error` 필드는 `src/lib/i18n/ko.ts`의 drops
@@ -62,14 +63,14 @@ export async function POST(
     .single()
 
   if (dropError || !dropRaw) {
-    return NextResponse.json({ error: d.drops.pickupDropNotFound }, { status: 404 })
+    return NextResponse.json({ error: d.drops.pickupDropNotFound, code: PICKUP_BLOCK_CODE.dropGone }, { status: 404 })
   }
 
   const drop = dropRaw as PoiDropRow
 
   if (!drop.is_available) {
     // 20260825_039: RPC 경로(already_picked_up)와 같은 문구로 맞춘다.
-    return NextResponse.json({ error: d.drops.pickupAlreadyDone }, { status: 409 })
+    return NextResponse.json({ error: d.drops.pickupAlreadyDone, code: PICKUP_BLOCK_CODE.alreadyPickedUp }, { status: 409 })
   }
 
   // POI 조회 + 드랍 반경(DROP_RADIUS_METERS) 검증
@@ -86,7 +87,7 @@ export async function POST(
   // 꺼진 장소(`is_active = false`)에서는 줍지 못한다. 드랍은 지우지 않으므로 장소를 다시 켜면 다시 주울 수 있다.
   // 드랍이 없을 때(`drop_not_found`)와 같은 404·문구로 닫아 꺼진 장소에 드랍이 남아 있다는 정보를 주지 않는다.
   if (!(poiRaw as PoiRow).is_active) {
-    return NextResponse.json({ error: d.drops.pickupDropNotFound }, { status: 404 })
+    return NextResponse.json({ error: d.drops.pickupDropNotFound, code: PICKUP_BLOCK_CODE.dropGone }, { status: 404 })
   }
 
   if (!isUserNearPoi(user_lat, user_lng, poiRaw as PoiRow)) {
@@ -98,7 +99,7 @@ export async function POST(
   // POI 블록 확인 (GPS 조작 감지 후 차단된 경우)
   const blocked = await isPoiBlocked(user.id, drop.poi_id)
   if (blocked) {
-    return NextResponse.json({ error: d.drops.pickupPoiBlocked }, { status: 403 })
+    return NextResponse.json({ error: d.drops.pickupPoiBlocked, code: PICKUP_BLOCK_CODE.poiBlocked }, { status: 403 })
   }
 
   // GPS 조작 감지
@@ -184,8 +185,14 @@ export async function POST(
       inventory_full: 422,
       item_not_found: 404,
     }
+    // 화면이 안내 방식을 가르는 막힘만 `code`를 싣는다(`pickup-block-contract.ts`). 꺼진 장소(`poi_inactive`)는 없는 드랍과 같은 코드다.
+    const codeMap: Record<string, string> = {
+      already_picked_up: PICKUP_BLOCK_CODE.alreadyPickedUp,
+      poi_inactive: PICKUP_BLOCK_CODE.dropGone,
+      inventory_full: PICKUP_BLOCK_CODE.inventoryFull,
+    }
     return NextResponse.json(
-      { error: messageMap[code] ?? d.drops.pickupFailed },
+      { error: messageMap[code] ?? d.drops.pickupFailed, ...(codeMap[code] ? { code: codeMap[code] } : {}) },
       { status: statusMap[code] ?? 400 }
     )
   }
@@ -206,6 +213,7 @@ export async function POST(
   }
 
   // 잠긴 채 받은 개체는 어떤 아이템 배지인지 알 수 있는 값(이름·그림)을 피드와 소식에 싣지 않는다(운영 로직 7.3절, 티켓 20261018_1812).
+  // 피드는 올리지 않고, 놓은 사람에게는 이름 없이 «잠긴 아이템 배지를 픽업했어요» 소식만 보낸다(티켓 20261018_1817).
   // 응답은 개체 id뿐이라 이미 비어 있다. 잠김 여부를 읽지 못하면 잠긴 것으로 본다 — 드러내는 쪽이 되돌릴 수 없다.
   let pickedLocked = true
   if (result.inventory_item_id) {
@@ -256,6 +264,23 @@ export async function POST(
         appendKeys: ['actor_ids', 'badge_ids'],
       })
     }
+  }
+
+  // 잠긴 채 픽업된 소식 #13 — 놓은 사람에게 간다. 배지 id·이름 대신 드랍 id만 `locked_item_ids`에 쌓아 개수를 센다(묶음 문구가 쓴다).
+  // 같은 6시간 묶음에 열린 개체 픽업이 섞여도 `badge_ids`와 합쳐 센다. 자기 드랍이거나 시스템 드랍이면 보낼 사람이 없다.
+  if (pickedLocked && drop.dropper_user_id && drop.dropper_user_id !== user.id) {
+    await createNotification({
+      userId: drop.dropper_user_id,
+      type: 'drop_picked_up',
+      actorUserId: user.id,
+      groupKey: sixHourGroupKey('drop_picked_up'),
+      payload: {
+        actor_ids: [user.id],
+        locked_item_ids: [dropId],
+        poi_id: drop.poi_id,
+      },
+      appendKeys: ['actor_ids', 'locked_item_ids'],
+    })
   }
 
   // 주운 배지로 칸이 찼으니 남은 칸 알림을 검사한다(티켓 20261018_0056). 던지지 않는다.

@@ -123,10 +123,15 @@ export interface NotificationPayloadMap {
   drop_picked_up: {
     /** 픽업한 사람들. 중복 제거 후 길이가 곧 `actor_count`(고유 인원)다 */
     actor_ids: string[]
-    /** 픽업된 배지들. 개수 렌더는 이 배열의 길이를 쓴다 */
-    badge_ids: string[]
-    /** 병합 시 최신 값으로 덮어써진다 — **`badge_ids.length === 1`일 때만** 렌더에 쓴다 */
-    badge_name: string
+    /** 픽업된 열린 배지들. 개수 렌더는 이 배열과 `locked_item_ids`의 길이 합을 쓴다. 잠긴 개체만 픽업됐으면 없다 */
+    badge_ids?: string[]
+    /**
+     * 잠긴 채 픽업된 드랍 id들(티켓 20261018_1817, 운영 로직 7.3절) — 어떤 아이템 배지인지 알 수 있는 값을 싣지 않으려고 배지 id 대신 센다.
+     * `appendKeys`로 누적한다. 열린 개체만 픽업됐으면 없다.
+     */
+    locked_item_ids?: string[]
+    /** 병합 시 최신 값으로 덮어써진다 — **열린 개체 1개만 픽업됐을 때만** 렌더에 쓴다. 잠긴 개체만 픽업됐으면 없다 */
+    badge_name?: string
     poi_id: string | null
   }
   /** 20 미션 진행도 마일스톤 — 50%·80% 돌파, 구간당 1회 */

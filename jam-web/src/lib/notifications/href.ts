@@ -113,7 +113,10 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
     // ── ③ 내가 드랍한 아이템 배지 ──────────────────────────────────────────
     case 'drop_picked_up': {
       const badgeIds = idList(p, 'badge_ids')
-      if (badgeIds.length <= 1) {
+      const lockedCount = idList(p, 'locked_item_ids').length
+      // 잠긴 채 픽업된 개체는 이름·그림을 싣지 않아 갈 곳이 없다 — 단건·묶음 모두 이동하지 않는다(티켓 20261018_1817)
+      if (lockedCount === 1 && badgeIds.length === 0) return single(null)
+      if (badgeIds.length + lockedCount <= 1) {
         // 픽업된 아이템은 이미 내 손을 떠나 인벤토리가 소프트 삭제 상태다 → 본문은 배지 상세로
         return { href: badgeIds[0] ? `/badges/${badgeIds[0]}` : meHref, avatarHref: withNotifSource(actorHref) }
       }
