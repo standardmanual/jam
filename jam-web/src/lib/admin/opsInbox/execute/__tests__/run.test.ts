@@ -1152,7 +1152,7 @@ describe('실제 레지스트리: 미션 핸들러와 카드↔미션 연결 (�
 
   it('미션 하나만 있어도 예약된다. 보상 배지는 resource가 정한 것을 존재 확인한 뒤 담는다', async () => {
     const { db, run } = setupReal([mission({ resource: { mission_type: 'distance', condition_json: { distance_km: 30 }, reward_badge_ids: [ID.badge] } })])
-    db.tables.badges = [{ id: ID.badge, deleted_at: null }]
+    db.tables.badges = [{ id: ID.badge, deleted_at: null, type: 'activity', is_hidden: false }]
     const result = ok(await run([ID.mission]))
 
     expect(result.body.scheduled).toEqual([ID.mission])

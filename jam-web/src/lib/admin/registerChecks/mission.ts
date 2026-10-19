@@ -3,6 +3,8 @@
  * 동작·라벨·오류 문장·질의 순서는 그대로다. 스크립트는 같은 이름의 얇은 JS 래퍼로 이 함수를 부른다.
  * 「제목 중복」은 스크립트와 운영툴 예약 등록(티켓 20261002_1944)이 같은 규칙이다 — 같은 제목의 기존 미션과 기간이 겹칠 때만 막는다(티켓 20261002_2024).
  */
+import { judgeRewardBadgeRows } from '@/lib/missions/reward-badges'
+import type { RewardBadgeRow } from '@/lib/missions/reward-badges'
 import { createCheckCollector } from './shared'
 import type { RegisterChecksClient, RegisterDbCheckResult } from './shared'
 
@@ -67,13 +69,28 @@ export async function runMissionDbChecks({
     return overlapping ? `같은 제목의 미션이 이미 있고 기간이 겹쳐요(id: ${overlapping.id}).` : null
   })
 
+  // 보상 배지는 한 번만 읽는다: 있는지·삭제됐는지를 «보상 배지 존재»가, 유형·숨김을 «보상 배지 종류»가 같은 행으로 가른다.
+  // 라벨을 둘로 나눠 운영툴 핸들러가 고정 문장을 고르게 한다(`collection.ts`와 같은 방식). 있는 배지일 때만 종류를 본다.
+  // 숨김 배지와 체크인 배지는 미션 보상으로 쓸 수 없다(티켓 20261019_1313 2회, `lib/missions/reward-badges.ts`가 판정의 단일 출처다).
   const rewardBadgeIds = mission.reward_badge_ids ?? []
+  const read: { rows?: RewardBadgeRow[] } = {}
   await add('보상 배지 존재', rewardBadgeIds.length > 0, async (client) => {
-    const { data, error } = await client.from('badges').select('id').in('id', rewardBadgeIds).is('deleted_at', null)
+    const { data, error } = await client.from('badges').select('id, name, type, is_hidden').in('id', rewardBadgeIds).is('deleted_at', null)
     if (error) return `DB 조회에 실패했어요: ${error.message}`
     const found = new Set((data ?? []).map((row) => String(row.id).toLowerCase()))
     const missing = rewardBadgeIds.filter((id) => !found.has(id.toLowerCase()))
-    return missing.length === 0 ? null : `reward_badge_ids에 해당하는 배지가 없거나 삭제됐어요: ${missing.join(', ')}`
+    if (missing.length > 0) return `reward_badge_ids에 해당하는 배지가 없거나 삭제됐어요: ${missing.join(', ')}`
+    read.rows = (data ?? []).map((row) => ({
+      id: String(row.id),
+      name: row.name as string | null | undefined,
+      type: row.type as string | null | undefined,
+      is_hidden: row.is_hidden as boolean | null | undefined,
+    }))
+    return null
+  })
+
+  await add('보상 배지 종류', rewardBadgeIds.length > 0 && read.rows !== undefined, async () => {
+    return judgeRewardBadgeRows(rewardBadgeIds, read.rows ?? [])
   })
 
   // 조건 값 검증(`checkMissionConditionValue`)은 UUID 형식만 본다 — 실제 행이 있는지는 DB를 읽어야 안다.

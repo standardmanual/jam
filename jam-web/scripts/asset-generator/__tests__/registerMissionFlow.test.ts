@@ -260,6 +260,7 @@ describe('runMissionDbChecks', () => {
     expect(checks.map((c) => [c.label, c.status])).toEqual([
       ['제목 중복', '건너뜀'],
       ['보상 배지 존재', '건너뜀'],
+      ['보상 배지 종류', '해당 없음'],
       ['조건 배지 존재', '해당 없음'],
       ['조건 장소 존재', '해당 없음'],
     ]);
@@ -270,7 +271,7 @@ describe('runMissionDbChecks', () => {
   const T2 = '2026-10-20T00:00:00.000Z';
   const T3 = '2026-10-30T00:00:00.000Z';
   const withExisting = (existing: { id: string; starts_at: string | null; ends_at: string | null }) =>
-    createStub({ resolve: (e) => (e.table === 'missions' ? { data: [existing] } : { data: [{ id: badgeId }] }) });
+    createStub({ resolve: (e) => (e.table === 'missions' ? { data: [existing] } : { data: [{ id: badgeId, name: '보상', type: 'activity', is_hidden: false }] }) });
 
   it('같은 제목의 미션과 기간이 겹치면 중복으로 거절한다', async () => {
     const stub = withExisting({ id: 'existing-id', starts_at: T1, ends_at: T3 });
@@ -300,6 +301,19 @@ describe('runMissionDbChecks', () => {
     const badgeQuery = stub.entries.find((e) => e.table === 'badges')!;
     expect(badgeQuery.filters).toContainEqual(['is', 'deleted_at', null]);
     expect(badgeQuery.filters).toContainEqual(['in', 'id', [badgeId, otherBadgeId]]);
+  });
+
+  // 숨김 배지와 체크인 배지는 미션 보상으로 쓸 수 없다(티켓 20261019_1313 2회). 운영툴 예약 등록과 같은 판정(`reward-badges.ts`)이다.
+  it('보상 배지가 숨김이면 등록 전 검사에서 거절한다', async () => {
+    const stub = createStub({ resolve: (e) => (e.table === 'badges' ? { data: [{ id: badgeId, name: '비밀 배지', type: 'activity', is_hidden: true }] } : { data: [] }) });
+    const { errors } = await runMissionDbChecks({ supabase: stub.supabase, mission });
+    expect(errors).toEqual([expect.stringContaining('보상 배지 종류: 저장할 수 없습니다. 미션 보상으로 쓸 수 없는 숨김 배지가 있어요(「비밀 배지」)')]);
+  });
+
+  it('보상 배지가 체크인 배지면 등록 전 검사에서 거절한다', async () => {
+    const stub = createStub({ resolve: (e) => (e.table === 'badges' ? { data: [{ id: badgeId, name: '카페 체크인', type: 'checkin', is_hidden: false }] } : { data: [] }) });
+    const { errors } = await runMissionDbChecks({ supabase: stub.supabase, mission });
+    expect(errors).toEqual([expect.stringContaining('보상 배지 종류: 저장할 수 없습니다. 미션 보상으로 쓸 수 없는 배지가 있어요(체크인 배지: 「카페 체크인」)')]);
   });
 
   it('item_collect의 조건 배지와 checkin의 조건 장소가 실제로 있는지 읽는다', async () => {

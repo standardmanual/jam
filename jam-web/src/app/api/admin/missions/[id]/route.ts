@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
 import { checkMissionCondition, checkMissionConditionValue, rankingConditionError } from '@/lib/missions/condition-keys'
 import { findGateMissionSaveError } from '@/lib/missions/gateMissions'
+import { validateGatedBadge, validateMissionRewardBadges } from '@/lib/missions/reward-badges'
 import { collectMissionReferences, MISSION_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
 import { imageSourceReset, imageUrlTypeError } from '@/lib/admin/imageSourceReset'
 import type { MissionRow } from '@/types/database'
@@ -111,6 +112,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  // 보상 배지·게이트 배지 검증 (티켓 20261019_1313 2회, 티켓 20261019_0012). PATCH는 부분 갱신이라 본문에 있을 때만 본다 —
+  // 이 칸을 건드리지 않는 수정은 기존 값을 검사하지 않는다. 존재·삭제 제외·유형(액티비티·아이템만)·숨김 거절·중복 제거.
+  const rewardCheck = await validateMissionRewardBadges(supabase, body.reward_badge_ids)
+  if (!rewardCheck.ok) return NextResponse.json({ error: rewardCheck.error }, { status: rewardCheck.status })
+  const gatedCheck = await validateGatedBadge(supabase, body.gated_badge_id)
+  if (!gatedCheck.ok) return NextResponse.json({ error: gatedCheck.error }, { status: gatedCheck.status })
+
   // 이미지(썸네일)가 실제로 바뀔 때만 제작 경로를 NULL(미상)로 되돌린다(티켓 20260925_1940
   // 방침 A). 폼은 매번 전체 필드를 보내므로 기존 값과 비교하고, 본문에 image_url이 없으면
   // 기존 행을 조회하지 않는다.
@@ -135,6 +143,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // 스크립트로만 바뀐다(티켓 20260925_2003 방침 A). 배지·컬렉션·홈피드 저장 라우트와 같은 규칙이다.
   const safeBody = { ...body }
   delete safeBody.image_source
+  // 중복을 없앤 보상 배지 목록을 저장한다(보내지 않았으면 본문 그대로).
+  if (rewardCheck.ids !== null) safeBody.reward_badge_ids = rewardCheck.ids
 
   const { data, error } = await supabase
     .from('missions')

@@ -142,7 +142,7 @@ describe('prepare', () => {
 describe('check — 가정 3의 고정 문장', () => {
   it('모두 있으면 통과하고, 제목은 같은 제목의 기존 미션 전부(id·공개·종료)를 읽는다', async () => {
     const db = new FakeDb()
-    db.tables.badges = [{ id: BADGE_ID, deleted_at: null }]
+    db.tables.badges = [{ id: BADGE_ID, deleted_at: null, type: 'activity', is_hidden: false }]
     db.tables.poi = [{ id: POI_ID }]
     expect(await checkOf(db, missionItem({ reward_badge_ids: [BADGE_ID] }))).toBeNull()
     expect(await checkOf(db, missionItem({ mission_type: 'item_collect', condition_json: { badge_id: BADGE_ID } }))).toBeNull()
@@ -220,8 +220,28 @@ describe('check — 가정 3의 고정 문장', () => {
     expect(failure?.detail).not.toContain(BADGE_ID)
 
     const present = new FakeDb()
-    present.tables.badges = [{ id: OTHER_BADGE_ID, deleted_at: null }]
+    present.tables.badges = [{ id: OTHER_BADGE_ID, deleted_at: null, type: 'activity', is_hidden: false }]
     expect(await checkOf(present, item, { reward_badge_ids: [BADGE_ID] })).toBeNull()
+  })
+
+  // 숨김 배지와 체크인 배지는 미션 보상으로 쓸 수 없다(티켓 20261019_1313 2회). 사유는 고정 문장이고 배지 이름·ID는 detail에만 있다.
+  it.each([
+    ['숨김 배지', { id: BADGE_ID, name: '비밀 배지', deleted_at: null, type: 'activity', is_hidden: true }],
+    ['체크인 배지', { id: BADGE_ID, name: '카페 체크인', deleted_at: null, type: 'checkin', is_hidden: false }],
+  ])('보상 배지가 %s이면 「보상으로 정한 배지는 숨김이 아닌 액티비티·아이템 배지여야 해요」이고 이름·ID는 detail에만 있다', async (_kind, badge) => {
+    const db = new FakeDb()
+    db.tables.badges = [badge]
+    const failure = await checkOf(db, missionItem({ reward_badge_ids: [BADGE_ID] }))
+    expect(failure?.reason).toBe('보상으로 정한 배지는 숨김이 아닌 액티비티·아이템 배지여야 해요')
+    expect(failure?.reason).not.toContain(BADGE_ID)
+    expect(failure?.reason).not.toContain(badge.name)
+    expect(failure?.detail).toContain(badge.name)
+  })
+
+  it('아이템 배지는 보상으로 쓸 수 있다', async () => {
+    const db = new FakeDb()
+    db.tables.badges = [{ id: BADGE_ID, deleted_at: null, type: 'item', is_hidden: false }]
+    expect(await checkOf(db, missionItem({ reward_badge_ids: [BADGE_ID] }))).toBeNull()
   })
 
   it('DB를 읽지 못하면 라벨과 상관없이 「등록 전 확인 중 DB를 읽지 못했어요」이고 원문은 detail에만 있다', async () => {

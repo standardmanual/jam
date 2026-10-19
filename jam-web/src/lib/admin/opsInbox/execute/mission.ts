@@ -36,6 +36,8 @@ const MISSION_MESSAGES = {
   formatInvalid: '미션 형식이 맞지 않아요',
   duplicate: '같은 제목의 미션이 이미 있고 기간이 겹쳐요',
   rewardBadgeMissing: '보상으로 정한 배지가 없거나 삭제됐어요',
+  // 숨김 배지와 체크인 배지는 미션 보상으로 쓸 수 없다(티켓 20261019_1313 2회). 어느 배지인지는 detail(서버 로그)에만 둔다.
+  rewardBadgeNotAllowed: '보상으로 정한 배지는 숨김이 아닌 액티비티·아이템 배지여야 해요',
   conditionBadgeMissing: '달성 조건의 배지가 없거나 삭제됐어요',
   conditionPoiMissing: '달성 조건의 장소를 찾을 수 없어요',
   checkReadFailed: '등록 전 확인 중 DB를 읽지 못했어요',
@@ -54,6 +56,7 @@ const OBSERVE_BAD_TIME = '미션 시각을 읽을 수 없어요'
 const REASON_BY_CHECK_LABEL: Readonly<Record<string, string>> = {
   '제목 중복': MISSION_MESSAGES.duplicate,
   '보상 배지 존재': MISSION_MESSAGES.rewardBadgeMissing,
+  '보상 배지 종류': MISSION_MESSAGES.rewardBadgeNotAllowed,
   '조건 배지 존재': MISSION_MESSAGES.conditionBadgeMissing,
   '조건 장소 존재': MISSION_MESSAGES.conditionPoiMissing,
 }

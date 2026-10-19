@@ -153,12 +153,48 @@ describe('runBadgeDbChecks', () => {
 describe('runMissionDbChecks', () => {
   it('통과: 보상 배지 id는 대소문자를 가리지 않고 찾는다', async () => {
     const { client, entries } = createStub((e) => {
-      if (e.table === 'badges' && e.filters.some((f) => f[0] === 'in')) return { data: [{ id: ID_A.toUpperCase() }] }
+      if (e.table === 'badges' && e.filters.some((f) => f[0] === 'in')) return { data: [{ id: ID_A.toUpperCase(), name: '보상', type: 'activity', is_hidden: false }] }
       return allPresent(e)
     })
     const result = await runMissionDbChecks({ supabase: client, mission: { title: '미션', reward_badge_ids: [ID_A] } })
-    expect(statuses(result)).toEqual(['통과', '통과', '해당 없음', '해당 없음'])
+    expect(statuses(result)).toEqual(['통과', '통과', '통과', '해당 없음', '해당 없음'])
     expect(entries.map((e) => e.table)).toEqual(['missions', 'badges'])
+  })
+
+  // 숨김 배지와 체크인 배지는 미션 보상으로 쓸 수 없다(티켓 20261019_1313 2회). 존재 확인과 같은 행으로 가르므로 배지는 한 번만 읽는다.
+  const rewardRows = (...rows: Array<{ id: string; name: string; type: string; is_hidden: boolean }>) =>
+    createStub((e) => (e.table === 'badges' ? { data: rows } : allPresent(e)))
+
+  it('통과: 숨김이 아닌 액티비티·아이템 배지는 보상으로 쓸 수 있다', async () => {
+    const { client, entries } = rewardRows(
+      { id: ID_A, name: '액티비티 보상', type: 'activity', is_hidden: false },
+      { id: ID_B, name: '아이템 보상', type: 'item', is_hidden: false }
+    )
+    const result = await runMissionDbChecks({ supabase: client, mission: { title: '미션', reward_badge_ids: [ID_A, ID_B] } })
+    expect(result.errors).toEqual([])
+    expect(result.checks.slice(1, 3).map((c) => [c.label, c.status])).toEqual([['보상 배지 존재', '통과'], ['보상 배지 종류', '통과']])
+    expect(entries.filter((e) => e.table === 'badges')).toHaveLength(1)
+  })
+
+  it('실패: 숨김 배지는 보상으로 쓸 수 없다', async () => {
+    const { client } = rewardRows({ id: ID_A, name: '비밀 배지', type: 'activity', is_hidden: true })
+    const result = await runMissionDbChecks({ supabase: client, mission: { title: '미션', reward_badge_ids: [ID_A] } })
+    expect(result.checks[1].status).toBe('통과')
+    expect(result.checks[2]).toMatchObject({ label: '보상 배지 종류', status: '실패' })
+    expect(result.checks[2].detail).toContain('숨김 배지가 있어요(「비밀 배지」)')
+  })
+
+  it('실패: 체크인 배지는 보상으로 쓸 수 없다', async () => {
+    const { client } = rewardRows({ id: ID_A, name: '카페 체크인', type: 'checkin', is_hidden: false })
+    const result = await runMissionDbChecks({ supabase: client, mission: { title: '미션', reward_badge_ids: [ID_A] } })
+    expect(result.checks[2]).toMatchObject({ label: '보상 배지 종류', status: '실패' })
+    expect(result.checks[2].detail).toContain('체크인 배지: 「카페 체크인」')
+  })
+
+  it('보상 배지가 없거나 삭제돼 존재 검사가 실패하면 종류 검사는 «해당 없음»이다', async () => {
+    const { client } = rewardRows()
+    const result = await runMissionDbChecks({ supabase: client, mission: { title: '미션', reward_badge_ids: [ID_A] } })
+    expect(result.checks.slice(1, 3).map((c) => [c.label, c.status])).toEqual([['보상 배지 존재', '실패'], ['보상 배지 종류', '해당 없음']])
   })
 
   it('통과: 조건 유형에 따라 조건 배지(item_collect)·조건 장소(checkin)을 읽는다', async () => {
@@ -166,12 +202,12 @@ describe('runMissionDbChecks', () => {
       supabase: createStub(allPresent).client,
       mission: { title: 'm', mission_type: 'item_collect', condition_json: { badge_id: ID_A } },
     })
-    expect(statuses(collect)).toEqual(['통과', '해당 없음', '통과', '해당 없음'])
+    expect(statuses(collect)).toEqual(['통과', '해당 없음', '해당 없음', '통과', '해당 없음'])
     const checkin = await runMissionDbChecks({
       supabase: createStub(allPresent).client,
       mission: { title: 'm', mission_type: 'checkin', condition_json: { poi_id: ID_B } },
     })
-    expect(checkin.checks[3]).toEqual({ label: '조건 장소 존재', status: '통과', detail: '' })
+    expect(checkin.checks[4]).toEqual({ label: '조건 장소 존재', status: '통과', detail: '' })
   })
 
   it('실패: 같은 제목·없는 보상 배지·없는 조건 장소를 각각 문장으로 알려 준다', async () => {
@@ -196,7 +232,7 @@ describe('runMissionDbChecks', () => {
       supabase: createStub(() => ({ data: null })).client,
       mission: { title: '미션', mission_type: 'checkin', condition_json: { poi_id: ID_A } },
     })
-    expect(missingPoi.checks[3].detail).toBe(`condition_json.poi_id에 해당하는 장소가 없어요: ${ID_A}`)
+    expect(missingPoi.checks[4].detail).toBe(`condition_json.poi_id에 해당하는 장소가 없어요: ${ID_A}`)
   })
 
   it('조회 오류: error 응답을 «DB 조회에 실패했어요»로 기록한다', async () => {
