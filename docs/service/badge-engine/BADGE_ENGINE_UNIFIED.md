@@ -1074,7 +1074,13 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 
 ### 2.13 진행 계산 계층 — `computeBadgeProgress()` (2026-09-04, 티켓 20260904_0631)
 
-배지 트리 화면(`/badges/tree`)에 진행률·잔여값·병목 축을 보여주기 위한 **표시 전용 계층**.
+배지 트리 화면(`/badges/tree`)에 진행률·잔여값·병목 축을 보여주기 위한 **표시 전용 계층**이었다.
+
+> **2026-10-19 갱신(티켓 20261018_1817 2회)**: 이 값을 그리던 배지 트리 화면과 «다음 목표»는 사용자 결정으로
+> 제거했다. 지금 유저 화면에는 진행 표시가 어디에도 없다. 이 계층의 계산 함수는 계열 진행 스냅샷
+> (`user_family_progress`, `sync.ts`의 `updateFamilyProgressSnapshots`)이 아직 부르지만, 그 스냅샷을 읽는 곳이
+> 없어졌다 — 정리는 후속 티켓으로 남겼다. 아래 소비처·화면 서술은 제거 전 기록이다.
+
 `evaluateConditionDetailed`/`checkCondition`(§2.2 발급 파이프라인)은 이 계층이 존재하기 전과
 **완전히 동일하게 동작**한다 — 발급 판정에 영향을 주지 않는 별도 함수를 옆에 추가했을 뿐이다.
 
@@ -1106,7 +1112,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
   `index.ts`가 최상단에서 `@/lib/supabase/server`(→`next/headers`)를 무조건 import해서
   분리 없이는 전이 의존이 생겼다(1차 게이트 리뷰 FAIL로 발견 — 하루 전 티켓 20260903_2329의
   `badgeTreeConditionStatus.ts`/`.server.ts` 분리와 동일 유형 문제).
-- **소비처(2c·2d, 티켓 20260904_0921/1058) — 다섯 유형 전부 화면 연결 완료.** 배지 트리
+- **소비처(2c·2d, 티켓 20260904_0921/1058) — 다섯 유형 전부 화면 연결 완료(제거 전 기록).** 배지 트리
   레일(`BadgeStageRail`)·트로피그리드(`BadgeTrophyGridCard`)에 누적·기록·주기(단일 축,
   170개)를 2c가, 2축형(dual, 20개)을 2d가 신규 MODULAR 패턴 `DualAxisGauge`로 연결했다.
   숫자→한국어 문구 변환은 계산 계층에 섞지 않고 별도 표시 레이어 `src/lib/
@@ -1665,12 +1671,12 @@ POST /api/admin/badges/reevaluate-all
 
 - **발급은 그대로다.** 평가·발급 경로(`evaluateBadgesDetailed`, JAM! 행동 지표, 재평가)는 숨김 칸을 보지 않는다. 숨김 배지도 조건을 채우면 받는다.
 - **받기 전에는 보이지 않는다.** 화면용 배지 목록을 만드는 서버 코드가 `lib/badge-engine/hiddenBadges.ts`의 `excludeHiddenUnearned`/`isHiddenUnearned` 한 곳으로 거른다. 거르는 위치:
-  - 배지 트리 `/badges/tree`(트리·다음 목표 진행 후보·선행 배지 잠금칩·조건 판정). 걸러낸 목록으로 트리를 만들어 이름·설명이 트리 어디에도 없다.
+  - 배지 트리 `/badges/tree`는 2026-10-19(티켓 20261018_1817 2회)에 제거했다. 화면이 없어졌으므로 이 위치는 더 걸러낼 곳이 없다.
   - 배지 상세 `/badges/[id]` — 조회 대상 유저가 받지 않았으면 없는 배지와 같은 404. 다른 배지의 선행 배지 목록에서도 뺀다.
   - 공유 데이터 `/api/badges/[id]/share-data` — 받기 전이면 없는 배지와 같은 `badge_not_found`(404). `not_earned`로 응답하면 존재를 알리기 때문이다.
   - 계열 진행 스냅샷(`updateFamilyProgressSnapshots`, `user_family_progress`) — 받기 전 숨김 배지의 계열은 싣지 않는다.
 - **배지함·프로필·피드·획득 연출은 받은 배지만 읽는다.** 이미 받은 숨김 배지는 다른 배지와 똑같이 보인다. 개수는 받은 배지 기준이라 받기 전 숨김 배지가 들어가지 않는다.
-- **한계**: 숨김 배지가 다른 배지의 선행 조건이면 그 배지의 트리 잠금칩도 같이 빠진다(엔진은 선행 조건을 계속 본다). 숨김 배지를 선행 조건으로 쓰는 카탈로그를 만들 때는 4-5·4-6에서 이 표시를 정한다. 미션 보상으로 지급하는 배지(`/missions`의 보상 표시)는 이번 범위가 아니다.
+- **한계**: 숨김 배지가 다른 배지의 선행 조건이면 그 배지 상세의 선행 배지 목록에서도 같이 빠진다(엔진은 선행 조건을 계속 본다). 숨김 배지를 선행 조건으로 쓰는 카탈로그를 만들 때는 4-5·4-6에서 이 표시를 정한다. 미션 보상으로 지급하는 배지(`/missions`의 보상 표시)는 이번 범위가 아니다.
 - 숨김 배지는 액티비티 배지만, 포인트 0, 등급은 Common 또는 없음이다(DB 제약, `02_DATA_MODEL.md` badges). 어드민 양식의 입력 칸은 4-5다.
 
 #### 막힌 조건 — `route`·`daily_once_count`·`negative_split`는 pending을 유지한다
