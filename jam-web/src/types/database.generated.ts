@@ -1800,6 +1800,97 @@ export type Database = {
           },
         ]
       }
+      mission_allowed_tribes: {
+        Row: {
+          created_at: string
+          mission_id: string
+          tribe_id: string
+        }
+        Insert: {
+          created_at?: string
+          mission_id: string
+          tribe_id: string
+        }
+        Update: {
+          created_at?: string
+          mission_id?: string
+          tribe_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_allowed_tribes_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_allowed_tribes_tribe_id_fkey"
+            columns: ["tribe_id"]
+            isOneToOne: false
+            referencedRelation: "tribes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mission_participation_cancellations: {
+        Row: {
+          cancelled_at: string
+          id: string
+          joined_at: string
+          mission_id: string
+          new_tribe_id: string | null
+          progress_value: number
+          reason: string
+          user_id: string
+          was_completed: boolean
+        }
+        Insert: {
+          cancelled_at?: string
+          id?: string
+          joined_at: string
+          mission_id: string
+          new_tribe_id?: string | null
+          progress_value?: number
+          reason?: string
+          user_id: string
+          was_completed?: boolean
+        }
+        Update: {
+          cancelled_at?: string
+          id?: string
+          joined_at?: string
+          mission_id?: string
+          new_tribe_id?: string | null
+          progress_value?: number
+          reason?: string
+          user_id?: string
+          was_completed?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_participation_cancellations_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_participation_cancellations_new_tribe_id_fkey"
+            columns: ["new_tribe_id"]
+            isOneToOne: false
+            referencedRelation: "tribes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_participation_cancellations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_rank_snapshots: {
         Row: {
           captured_at: string
@@ -4515,6 +4606,17 @@ export type Database = {
           p_poi_id: string
           p_unlock_required: number
         }
+        Returns: Json
+      }
+      mission_cancel_for_tribe_change: {
+        Args: { p_user_id: string }
+        Returns: {
+          out_mission_id: string
+          out_mission_title: string
+        }[]
+      }
+      mission_complete: {
+        Args: { p_mission_id: string; p_user_id: string }
         Returns: Json
       }
       pickup_drop: {
