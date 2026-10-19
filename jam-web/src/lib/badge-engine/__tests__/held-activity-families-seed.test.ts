@@ -295,8 +295,8 @@ describe('생성기 — 보류 13계열의 번호 대조와 행 규칙', () => {
     const brokenJam = manuscript.replace('한 주에 모은 잼 200 이상 1주', '한 주에 모은 잼 300 이상 1주')
     expect(brokenJam).not.toBe(manuscript)
     expect(build(brokenJam)).toThrow(/번호 대조 7-3.*보조 값/)
-    // 2-2의 «14일 이상 휴식»이 바뀌면 엔진 상수(7일)와의 어긋남을 다시 판단하도록 던진다
-    const brokenRest = manuscript.replace('14일 이상 휴식 후 매주 활동 2주 연속', '7일 이상 휴식 후 매주 활동 2주 연속')
+    // 2-2의 «7일 이상 휴식»이 바뀌면 엔진 상수(7일)와의 어긋남을 다시 판단하도록 던진다
+    const brokenRest = manuscript.replace('7일 이상 휴식 후 매주 활동 2주 연속', '14일 이상 휴식 후 매주 활동 2주 연속')
     expect(brokenRest).not.toBe(manuscript)
     expect(build(brokenRest)).toThrow(/번호 대조 2-2.*보조 값/)
     // 2절 단계 값이 다르다 (5-1 레벨형)
@@ -779,9 +779,9 @@ describe('엔진 평가 — 활동·체크인·드랍·잼 12계열(실제 발�
     }
   })
 
-  it('2-2의 원고 «14일 이상 휴식»과 엔진 상수 7일의 어긋남이 기록된 그대로다(바뀌면 이 시험이 알린다)', () => {
+  it('2-2의 원고 «7일 이상 휴식»과 엔진 상수 7일이 같다(바뀌면 이 시험이 알린다)', () => {
     expect(RETURN_REST_DAYS).toBe(7)
-    expect(FAMILY_DEFS['2-2'].aux?.expected).toBe(14)
+    expect(FAMILY_DEFS['2-2'].aux?.expected).toBe(RETURN_REST_DAYS)
     expect(FAMILY_DEFS['2-2'].aux?.key).toBeNull()
   })
 })
