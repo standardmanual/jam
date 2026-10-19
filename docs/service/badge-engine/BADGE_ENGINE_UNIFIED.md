@@ -638,7 +638,7 @@ Step 8. initial_sync_done 갱신
 | `total_count` | 필터된 활동의 **활동한 날의 수**(KST 날짜, 같은 날 여러 건은 1회) ≥ 조건값 (2026-10-18, 티켓 20261018_1815 — 이미 받은 배지에는 소급하지 않는다) |
 | `min_speed_kmh` / `duration_minutes` | **단일 활동 최고값** ≥ 조건값 (min_speed_kmh는 cycling 등 속도 단위) |
 | `max_pace_sec_per_km` | **단일 활동 최고 페이스** ≤ 조건값 — 값이 작을수록 빠름(km/h와 부등호 반대). running 등 페이스 단위 종목에 사용 |
-| `streak_days` | 최장 연속 활동일 ≥ 조건값 |
+| `streak_days` | 최장 연속 활동일 ≥ 조건값. 날은 KST 날짜다(`calcMaxStreak`, 티켓 20261019_1312 2회) |
 | `weekly_count` | 한 주(월~일, KST) 내 **활동한 날의 수** 최대값 — `time_range` 동반 시 **시간대 내 활동만 카운트** (엄격 평가) |
 | `weekend_duration_hours` | 주말(토·일) 활동 이동시간 최대값(시간) ≥ 조건값 |
 | `month` + `monthly_km` | 월별 누적 거리 최대값 ≥ 조건값 (month 없으면 전체 연-월 그룹 최대) |
@@ -647,7 +647,7 @@ Step 8. initial_sync_done 갱신
 | `time_range` | UTC `startDate`를 한국 시각(KST)으로 바꾼 HH:MM이 {start,end} 범위 내 (자정 걸침 지원). 시간대 6구간(새벽 5~7·오전 7~11·점심 11~14·오후 14~18·저녁 18~22·밤 22~5시)은 `timeBands.ts` 한 곳이 단일 출처이고 조건 문구·드랍 엔진도 같은 상수를 쓴다 (2026-10-18, 티켓 20261018_1815) |
 | `poi_id` | ⚠️ 엔진 내 평가 불가 — GPS 경로 매칭(matchPoisForActivity)으로 별도 발급. **체크인 발급 (2026-10-18, 티켓 20261018_1814)**: `processFetchedActivities`의 POI 매칭 후 블록은 연결 배지가 `type='checkin'`일 때만 발급한다. ① 활동 시작 시각(`start_date`)이 배지의 `valid_from`~`valid_until`(경계 포함, NULL은 제한 없음) 밖이면 방문 기록·포인트·피드를 모두 남기지 않는다. ② `record_checkin_earn`(마이그레이션 241)으로 방문 기록과 «처음인지» 판정을 한 번에 한다(`duplicate`면 아무것도 새로 만들지 않음). ③ 처음 받을 때만 `badge.point_reward`를 `awardPoints`로 준다. 섀도우밴 게이트는 없다(티켓 20261017_1426). 장소에 연결된 `type!='checkin'` 배지를 `user_activity_badges`에 `triggered_by='poi_match'`로 한 번 발급하던 옛 경로는 삭제했다(이미 발급된 행은 그대로). 어드민 시뮬레이터(`/api/admin/simulate`)는 실유저 발급 경로와 분리된 별도 함수다 |
 | `day_of_week` (2026-08-08 신규) | 단일값: `time_range`처럼 AND 필터. 배열+`total_count` 동시 지정 시 "요일별 독립 카운터" 특수모드(배열의 각 요일이 각각 `total_count` 충족 필요) — 현재 T08 전용 |
-| `active_days_count` (2026-08-08 신규) | 축1 게이트 통과 활동의 `(startDateLocal ?? startDate).slice(0,10)` 고유 날짜 `Set` 크기 ≥ 조건값 (연속 아님) |
+| `active_days_count` (2026-08-08 신규) | 축1 게이트 통과 활동의 고유 활동일(KST 날짜, `countActiveDays`) 수 ≥ 조건값 (연속 아님). 2026-10-19(티켓 20261019_1312 2회)부터 `startDateLocal`이 아니라 KST 날짜로 센다 |
 | `season_count_all` (2026-08-08 신규) | 봄/여름/가을/겨울 각 계절 **활동한 날의 수**가 전부 조건값 이상 (계절별 독립 카운터, `season`+`season_count`와 별개 필드) |
 | `month` (2026-08-08 확장) | 기존 `number`에서 `number | number[]`로 확장 — 배열이면 여러 달을 OR로 묶어 `monthly_km`와 결합(예: 장마철 6~7월) |
 | `repeat_count` (2026-09-05 신규) | **기준 조건을 통째로 만족한 활동 건수** ≥ 조건값. `total_count`(필터 통과 건수)와 다르다 — 회차 정의는 `collectRepeatOccurrences()` 한 곳. 활동 1건 단위 축(`PER_ACTIVITY_KEYS`, v5 스칼라 7종 포함)뿐 아니라 **「기간 단위 회차」**(`streak_days`·`weekly_count`·`monthly_count`·`weekly_streak`와 결합 — 예: 「주 3회를 채운 주가 5번」)도 2026-09-06(티켓 20260906_0110 ②)부터, `streak_days`+`distinct_time_bands`·`activities_within_hours`(2026-09-08, 티켓 20260908_1318)·`month`+`monthly_km`(2026-09-08, 티켓 20260908_1536, 「그 달을 채운 연-월의 수」, `month` 배열은 각 달 독립 카운트)도 셀 수 있다. §2.14 · CONDITION_JSON_SPEC §2.11 |
@@ -886,8 +886,7 @@ CHECK 제약·어드민 API 검증과 단일 소스를 공유한다(전체 허�
 | 항목 | 내용 | 위험도 |
 |------|------|--------|
 | temperature 조건 | Strava가 average_temp를 제공하지 않는 활동은 날씨 배지 미발급 | 데이터 의존 |
-| 주말 판정 | UTC 기준 — KST 주말 경계(토 09시 이전 등) 오차 가능 | 낮음 |
-| streak 판정 | UTC 기준 — 자정 직후 활동의 날짜 귀속 오차 가능 | 낮음 |
+| 날 기준 | 요일·주말·주·월·계절·연속·휴식 공백·활동일·전월 대비 배수·회차의 일·주 키는 활동 시작 시각(UTC `startDate`)을 한국 시각으로 바꾼 날을 쓴다. 해외 활동도 한국 시각의 날이고 `startDateLocal`은 쓰지 않는다(`timeBands.ts`, 티켓 20261018_1815·20261019_1312). 랭킹 `total_count`는 활동 건수를 세어 단위가 다르다(티켓 20261018_2303) | 낮음 |
 | poi_id | badge-engine 내 항상 fail — GPS 매칭 파이프라인으로만 발급 | 스켈레톤 |
 
 ### 2.9 배지 구성 (v5 — 2026-09-05 전면 교체)

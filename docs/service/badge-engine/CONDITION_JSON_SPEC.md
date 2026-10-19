@@ -590,7 +590,7 @@ interface BadgeGateRequirement {
 | `poi_id` badge-engine 평가 | ❌ 항상 fail — GPS 파이프라인 전용 |
 | `mission_reward` badge-engine 평가 | ❌ 항상 fail — 미션 완료(`grantMissionRewards`)로만 지급, §3 참조. 온보딩 퀘스트 완료 배지도 이 플래그를 쓴다(지급 경로는 온보딩 완료 판정, 티켓 20260927_2130 T7b) |
 | `temperature_*` (날씨 데이터 없는 활동) | ⚠️ fail — Strava average_temp 의존. 미션 조건으로는 쓰지 않는다(저장 거절, §7.2) |
-| UTC vs KST 경계 | ✅ 시간대(`time_range`·`distinct_time_bands`)·요일·월·계절·`day_of_month`와 횟수 5종(`total_count`·`weekly_count`·`monthly_count`·`season_count`·`season_count_all`)은 KST 날짜 기준이다(티켓 20261018_1815 1회). ⚠️ `streak_days`·`weekly_streak`·`active_days_count`는 아직 현지 날짜(`startDateLocal`) 기준 |
+| UTC vs KST 경계 | ✅ 시간대(`time_range`·`distinct_time_bands`)·요일·월·계절·`day_of_month`와 횟수 5종(`total_count`·`weekly_count`·`monthly_count`·`season_count`·`season_count_all`)은 KST 날짜 기준이다(티켓 20261018_1815 1회). 연속(`streak_days`·`weekly_streak`)·휴식 4종(공백 일수)·활동일(`active_days_count`)·전월 대비 배수(`month_over_month_ratio`)와 회차 계산(`repeat_count`)의 일·주 키, 미션 복합 조건의 주·달·요일 개수도 같은 KST 날짜를 쓴다(티켓 20261019_1312 2회). 해외 활동도 한국 시각의 날로 세고 `startDateLocal`은 날 기준에 쓰지 않는다. 랭킹 `total_count`는 활동 건수를 세므로 이 기준과 단위가 다르다(티켓 20261018_2303) |
 
 ---
 

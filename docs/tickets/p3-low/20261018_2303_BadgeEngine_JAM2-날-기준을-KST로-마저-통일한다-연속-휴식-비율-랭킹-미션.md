@@ -14,7 +14,8 @@ specs:
 
 ## 핵심 요약
 
-- 진행 메모 (2026-10-19 사용자 결정): 묶음 5의 5-2(티켓 `20261019_1312`)에서 함께 처리한다. 그 티켓이 끝나면 이 티켓을 CLOSED로 바꾼다.
+- 진행 메모 (2026-10-19 사용자 결정): 묶음 5의 5-2(티켓 `20261019_1312`)에서 랭킹 `total_count`의 단위를 뺀 나머지를 함께 처리한다. 랭킹 `total_count` 단위(활동 건수 대 활동일 수)는 랭킹이 2.0에서 어떻게 쓰이는지 확인한 뒤 정해야 하므로 이 티켓은 5-2가 끝나도 OPEN으로 둔다.
+- 진행 기록 (2026-10-19, 5-2 2회): 아래 목록 가운데 `activityFilters.ts`(연속·연속 주·휴식 공백·전월 대비 배수), `index.ts`·`badgeProgress.ts`(활동일 `active_days_count`), `repeatOccurrences.ts`(회차의 일·주 키), `missions/engineCondition.ts`(주·달·요일 개수)를 KST 날짜로 바꿨고 해외 활동 경계 시험과 한국 활동 회귀 시험을 더했다. 랭킹의 활동일(`active_days_count`)과 연속(`streak_days`)도 같은 KST 날짜를 쓴다(`lib/ranking/metricValues.ts`의 활동일 키 한 줄). **남은 일: 랭킹 `total_count`(`metricValues.ts`의 `computeActivityMetricValue`, 활동 건수)의 단위 하나뿐이다.** 명세의 날 기준 ⚠️ 표기는 지웠다.
 - 요구사항: 4-4 1회가 시간대·요일·월·계절·횟수 5종을 한국 시각(KST) 날로 바꿨지만, 아래는 아직 활동 지역의 현지 날(`startDateLocal`)을 쓴다. 해외에서 한 활동에서만 같은 활동이 어떤 조건에서는 KST 날, 어떤 조건에서는 현지 날로 갈린다. 스펙은 «시간대와 날짜는 한국 시각으로 판정한다. 해외에서 한 활동도 한국 시각으로 본다»이다.
 - 구현 계획: 아래 목록을 `timeBands.ts`의 KST 헬퍼로 바꾸고 시험의 시각 입력을 맞춘다. 마이그레이션은 없다.
 - 관련 파일(2026-10-18 4-4 1회 게이트 지적): `jam-web/src/lib/badge-engine/activityFilters.ts` 148·159·193·399·724·725줄 근처(`calcMaxStreak`, `getMondayKey`, 휴식·연속·`active_days_count`, `monthKeyOf`), `lib/badge-engine/repeatOccurrences.ts` 196줄 근처(`weekKeyOf`), `lib/ranking/metricValues.ts` 87줄(랭킹 `total_count`가 활동 건수를 세는데 배지 `total_count`는 이제 활동일 수라 어긋남), `lib/missions/engineCondition.ts`(`countDistinctWeekdays`·`monthOrdinal`·`weekOrdinal`이 현지 기준이라 한 미션 안에서 시간대·요일만 KST).
