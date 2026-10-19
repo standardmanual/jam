@@ -7,6 +7,8 @@
  *   - 레벨업 트리 3단계: 다음 1단계만 open, 그 다음 1개는 locked, 그 위는 hidden
  *   - Common 미보유 신규 유저에게도 첫 레벨업 미션(Rare용)은 open
  *   - 게이트 배지를 찾을 수 없으면(삭제·오설정) 게이팅 없이 open (fail-open)
+ *   - 트라이브 제한 (티켓 20261019_1311): 대상이 아니면 hidden(참가 이력이 있어도 locked로 완화하지 않음),
+ *     완료한 미션은 completed 유지, `tribeAccess`가 없으면 기존과 같다
  *
  * 실행: `npx tsx src/lib/missions/__tests__/visibility-logic.test.ts`
  *       (테스트 러너 불필요 — node assert 사용. vitest.config.ts에서 이 디렉터리는 제외됨)
@@ -48,6 +50,8 @@ function ctx(options?: {
   ownedRarity?: BadgeRarity | null
   gatedBadges?: Map<string, GatedBadgeInfo>
   participated?: string[]
+  /** 트라이브 제한 (티켓 20261019_1311). 생략하면 `tribeAccess` 필드 자체가 없는 컨텍스트다 */
+  tribe?: { userTribeId: string | null; allowed: Record<string, string[]> }
 }): MissionVisibilityContext {
   const owned = new Map<string, number>()
   if (options?.ownedRarity) owned.set('첫 숨결', RARITY_TIER[options.ownedRarity])
@@ -57,6 +61,14 @@ function ctx(options?: {
     ownedTierByBadgeName: owned,
     ownedFamilyTiers: new Map<string, number>(),
     participatedMissionIds: new Set(options?.participated ?? []),
+    ...(options?.tribe
+      ? {
+          tribeAccess: {
+            userTribeId: options.tribe.userTribeId,
+            allowedTribeIdsByMission: new Map(Object.entries(options.tribe.allowed)),
+          },
+        }
+      : {}),
   }
 }
 
@@ -182,6 +194,52 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(map.get('m-epic')?.visibility, 'locked')
     assert.strictEqual(map.get('m-mystic')?.visibility, 'hidden')
     assert.strictEqual(map.get('m-plain')?.visibility, 'open')
+  }],
+
+  // ── 트라이브 제한 (티켓 20261019_1311) ─────────────────────────────────────
+  ['트라이브 제한: 허용 목록에 내 트라이브가 있으면 open', () => {
+    const c = ctx({ tribe: { userTribeId: 't-a', allowed: { 'm-plain': ['t-a', 't-b'] } } })
+    assert.strictEqual(resolveMissionVisibility(MISSION_PLAIN, c).visibility, 'open')
+  }],
+
+  ['트라이브 제한: 대상이 아닌 트라이브는 hidden', () => {
+    const c = ctx({ tribe: { userTribeId: 't-c', allowed: { 'm-plain': ['t-a', 't-b'] } } })
+    assert.deepStrictEqual(resolveMissionVisibility(MISSION_PLAIN, c), { visibility: 'hidden', requiredBadge: null })
+  }],
+
+  ['트라이브 제한: 트라이브가 없는 유저는 제한 미션이 hidden이고 공통 미션은 open', () => {
+    const c = ctx({ tribe: { userTribeId: null, allowed: { 'm-plain': ['t-a'] } } })
+    assert.strictEqual(resolveMissionVisibility(MISSION_PLAIN, c).visibility, 'hidden')
+    assert.strictEqual(resolveMissionVisibility({ ...MISSION_PLAIN, id: 'm-common' }, c).visibility, 'open')
+  }],
+
+  ['트라이브 제한: 이미 완료한 미션은 트라이브가 달라도 completed 유지', () => {
+    const c = ctx({ completed: ['m-plain'], tribe: { userTribeId: 't-c', allowed: { 'm-plain': ['t-a'] } } })
+    assert.strictEqual(resolveMissionVisibility(MISSION_PLAIN, c).visibility, 'completed')
+  }],
+
+  ['트라이브 제한: 참가 이력이 있어도 locked로 완화하지 않고 hidden', () => {
+    const c = ctx({ participated: ['m-plain'], tribe: { userTribeId: 't-c', allowed: { 'm-plain': ['t-a'] } } })
+    assert.strictEqual(resolveMissionVisibility(MISSION_PLAIN, c).visibility, 'hidden')
+  }],
+
+  ['트라이브 제한: 게이트가 열려 있어도 대상이 아니면 hidden (게이트 판정보다 앞선다)', () => {
+    const c = ctx({ ownedRarity: null, tribe: { userTribeId: 't-c', allowed: { 'm-rare': ['t-a'] } } })
+    assert.strictEqual(resolveMissionVisibility(MISSION_RARE, c).visibility, 'hidden')
+  }],
+
+  ['tribeAccess가 없으면 트라이브 제한을 보지 않는다 (기존 호출부·시험과 같다)', () => {
+    const c = ctx({ ownedRarity: null })
+    assert.strictEqual(c.tribeAccess, undefined)
+    assert.strictEqual(resolveMissionVisibility(MISSION_PLAIN, c).visibility, 'open')
+    assert.strictEqual(resolveMissionVisibility(MISSION_RARE, c).visibility, 'open')
+  }],
+
+  ['resolveMissionVisibilityMap도 트라이브 제한을 미션별로 적용한다', () => {
+    const c = ctx({ tribe: { userTribeId: 't-a', allowed: { 'm-plain': ['t-b'] } } })
+    const map = resolveMissionVisibilityMap([MISSION_PLAIN, MISSION_RARE], c)
+    assert.strictEqual(map.get('m-plain')?.visibility, 'hidden')
+    assert.strictEqual(map.get('m-rare')?.visibility, 'open')
   }],
 ]
 

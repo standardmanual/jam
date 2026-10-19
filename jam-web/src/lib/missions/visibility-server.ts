@@ -12,6 +12,7 @@ import {
   type MissionVisibilityInput,
 } from './visibility'
 import { collectRuleFamilyKeys } from './gateMissions'
+import type { MissionTribeAccess } from './tribe-access'
 import { rarityTier } from '@/lib/rarity'
 import { familyKeyOf } from '@/lib/badge-engine/badgeKind'
 import type { BadgeRarity } from '@/types/database'
@@ -147,6 +148,48 @@ async function loadOwnedFamilyTiers(
   return ownedFamilyTiers
 }
 
+/** 한 번에 `in()`으로 묻는 미션 수. URL이 길어지지 않게, 행 수가 PostgREST 응답 상한(1000행)을 넘지 않게 나눈다 */
+const TRIBE_ACCESS_MISSION_CHUNK = 50
+
+/**
+ * 유저의 트라이브와 주어진 미션들의 참가 가능 트라이브 목록을 읽는다 (티켓 20261019_1311).
+ * 판정 규칙은 `tribe-access.ts`에 있다.
+ *
+ * 조회가 하나라도 실패하면 «제한 없음»으로 보지 않고 던진다(fail-closed) — 제한 미션이 새는 것보다
+ * 오류 화면이 낫다. 위 `fetchAllPages`가 실패를 삼켜 부분 목록을 돌려주는 것과 일부러 다르게 간다.
+ */
+export async function loadMissionTribeAccess(
+  userId: string,
+  missionIds: readonly string[],
+): Promise<MissionTribeAccess> {
+  const supabase = createServiceClient()
+
+  const { data: userRow, error: userError } = await supabase
+    .from('users')
+    .select('tribe_id')
+    .eq('id', userId)
+    .maybeSingle()
+  if (userError) throw new Error(`users.tribe_id 조회 실패: ${userError.message}`)
+
+  const allowedTribeIdsByMission = new Map<string, string[]>()
+  const uniqueMissionIds = [...new Set(missionIds)]
+  for (let i = 0; i < uniqueMissionIds.length; i += TRIBE_ACCESS_MISSION_CHUNK) {
+    const chunk = uniqueMissionIds.slice(i, i + TRIBE_ACCESS_MISSION_CHUNK)
+    const { data, error } = await supabase
+      .from('mission_allowed_tribes')
+      .select('mission_id, tribe_id')
+      .in('mission_id', chunk)
+    if (error) throw new Error(`mission_allowed_tribes 조회 실패: ${error.message}`)
+    for (const row of data ?? []) {
+      const list = allowedTribeIdsByMission.get(row.mission_id)
+      if (list) list.push(row.tribe_id)
+      else allowedTribeIdsByMission.set(row.mission_id, [row.tribe_id])
+    }
+  }
+
+  return { userTribeId: userRow?.tribe_id ?? null, allowedTribeIdsByMission }
+}
+
 /**
  * 주어진 미션 목록을 판정하는 데 필요한 컨텍스트를 조회한다.
  *
@@ -161,6 +204,12 @@ export async function loadMissionVisibilityContext(
   options?: { completedMissionIds?: ReadonlySet<string>; participatedMissionIds?: ReadonlySet<string> },
 ): Promise<MissionVisibilityContext> {
   const supabase = createServiceClient()
+
+  // ── 트라이브 제한 (티켓 20261019_1311) — 목록·상세·참가·오늘카드가 같은 규칙을 쓴다 ──
+  const tribeAccess = await loadMissionTribeAccess(
+    userId,
+    missions.map((m) => m.id),
+  )
 
   // ── 완료 기록 (완료 판정의 단일 기준) ──────────────────────────────────
   let completedMissionIds = options?.completedMissionIds
@@ -197,7 +246,7 @@ export async function loadMissionVisibilityContext(
   const gatedBadgeIds = [...new Set(missions.map((m) => m.gated_badge_id).filter((id): id is string => !!id))]
   if (gatedBadgeIds.length === 0) {
     // 레거시 게이팅이 걸린 미션이 하나도 없으면 배지 조회 자체가 불필요하다
-    return { completedMissionIds, participatedMissionIds, ownedFamilyTiers, ...emptyBadgeContext() }
+    return { completedMissionIds, participatedMissionIds, ownedFamilyTiers, tribeAccess, ...emptyBadgeContext() }
   }
 
   const gatedRaw = await fetchAllPages<GatedBadgeInfo>((from, to) =>
@@ -216,7 +265,7 @@ export async function loadMissionVisibilityContext(
 
   const gatedNames = [...new Set([...gatedBadges.values()].map((b) => b.name))]
   if (gatedNames.length === 0) {
-    return { completedMissionIds, participatedMissionIds, ownedFamilyTiers, ...emptyBadgeContext() }
+    return { completedMissionIds, participatedMissionIds, ownedFamilyTiers, tribeAccess, ...emptyBadgeContext() }
   }
 
   // ── 유저가 보유한 게이트 배지 이름의 최고 등급 (레거시 경로 전용) ────────
@@ -260,5 +309,5 @@ export async function loadMissionVisibilityContext(
     }
   }
 
-  return { completedMissionIds, participatedMissionIds, ownedFamilyTiers, gatedBadges, ownedTierByBadgeName }
+  return { completedMissionIds, participatedMissionIds, ownedFamilyTiers, tribeAccess, gatedBadges, ownedTierByBadgeName }
 }

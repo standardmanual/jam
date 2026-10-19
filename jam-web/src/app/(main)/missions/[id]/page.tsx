@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { MissionRow, UserMissionParticipationRow, UserMissionCompletionRow } from '@/types/database'
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
 import { isMissionExposed, resolveMissionVisibility } from '@/lib/missions/visibility'
+import { isMissionOpenToUser } from '@/lib/missions/tribe-access'
 import MissionDetailClient from './MissionDetailClient'
 
 type Props = { params: Promise<{ id: string }> }
@@ -46,6 +47,15 @@ export default async function MissionDetailPage({ params }: Props) {
   const visibilityContext = await loadMissionVisibilityContext(user.id, [mission], {
     participatedMissionIds: new Set(participation ? [mission.id] : []),
   })
+  // 참가할 수 있는 트라이브가 아닌 미션은 «없는 미션»이다(티켓 20261019_1311) — 존재를 알리지 않는다.
+  // 이미 완료한 미션은 트라이브가 바뀌어도 완료 이력으로 본다(resolveMissionVisibility의 completed 우선).
+  if (
+    visibilityContext.tribeAccess &&
+    !visibilityContext.completedMissionIds.has(mission.id) &&
+    !isMissionOpenToUser(visibilityContext.tribeAccess, mission.id)
+  ) {
+    notFound()
+  }
   const visibilityResult = resolveMissionVisibility(mission, visibilityContext)
   const locked = visibilityResult.visibility === 'locked' || visibilityResult.visibility === 'hidden'
 

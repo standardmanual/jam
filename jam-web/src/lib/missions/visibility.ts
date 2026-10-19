@@ -10,6 +10,8 @@
  *  1. `user_mission_completions`에 기록이 있으면 → `completed` (완료 판정의 단일 기준.
  *     "보상배지 보유"를 기준으로 쓰면 배지 소프트삭제로 지급이 스킵된 경우
  *     완료한 미션이 되살아난다 — 티켓 20260825_016·018)
+ *  1-1. **트라이브 제한** — 참가할 수 있는 트라이브가 정해진 미션인데 내 트라이브가 거기 없으면 →
+ *     `hidden` (참가 이력으로 완화하지 않는다). 완료 판정 바로 다음, 게이트 판정 앞이다 (티켓 20261019_1311)
  *  2. **`gate_axis`가 있으면 게이트 미션** → 축·단계 기반 노출 규칙
  *     (`visibility_rule_json`)으로 판정한다. 아래 §게이트 미션 참조 (티켓 20260905_0033)
  *  3. `gated_badge_id`가 없으면 → `open` (게이팅 없는 일반 기간형 미션)
@@ -67,6 +69,8 @@ import type { BadgeRarity, MissionExposureMode, MissionGateStage, MissionVisibil
 import { RARITY_TIER, rarityTier } from '@/lib/rarity'
 // 계열 요구의 형태 검증은 2단 교차 게이트와 같은 함수를 쓴다 — 재선언하지 않는다
 import { normalizeGateRequirement, type NormalizedGateRequirement } from '@/lib/badge-engine/crossGate'
+// 트라이브 제한 판정 (티켓 20261019_1311) — 판정 규칙은 tribe-access.ts 한 곳에만 둔다
+import { isMissionOpenToUser, type MissionTribeAccess } from './tribe-access'
 
 /** 티어 값 → 배지 등급 (잠금 안내에 쓸 "먼저 획득해야 하는 등급" 역산용) */
 const RARITY_BY_TIER: Record<number, BadgeRarity> = { 1: 'common', 2: 'rare', 3: 'epic', 4: 'mystic' }
@@ -127,6 +131,11 @@ export interface MissionVisibilityContext {
    * 그대로 유지한다(티켓 20260825_029).
    */
   participatedMissionIds: ReadonlySet<string>
+  /**
+   * 유저의 트라이브와 미션별 참가 가능 트라이브 (티켓 20261019_1311). **없으면 트라이브 제한을 보지 않는다** —
+   * 이 필드가 없던 때의 호출부·시험과 같게 동작한다. 서버 조회(`loadMissionVisibilityContext`)는 항상 채운다.
+   */
+  tribeAccess?: MissionTribeAccess
 }
 
 export interface MissionVisibilityResult {
@@ -256,6 +265,12 @@ export function resolveMissionVisibility(
   if (ctx.completedMissionIds.has(mission.id)) {
     return { visibility: 'completed', requiredBadge: null }
   }
+
+  // ── 트라이브 제한 (티켓 20261019_1311) ───────────────────────────────────
+  // 참가할 수 있는 트라이브가 정해진 미션은 다른 트라이브 유저에게 보이지 않는다. 완료한 미션은 위에서 이미
+  // completed로 돌아가므로 트라이브가 바뀌어도 완료 이력은 남는다. `softenHidden`을 거치지 않는다 —
+  // 트라이브가 바뀌면 참가가 취소되므로 locked로 완화할 참가 이력이 남지 않는다.
+  if (ctx.tribeAccess && !isMissionOpenToUser(ctx.tribeAccess, mission.id)) return HIDDEN
 
   // ── 게이트 미션 (v5) — 축·단계 기반 ──────────────────────────────────────
   // 마이그레이션 135의 CHECK가 `gate_axis`와 `gated_badge_id`의 공존을 막으므로 두 경로가
