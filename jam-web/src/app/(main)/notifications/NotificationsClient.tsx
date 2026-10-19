@@ -67,6 +67,7 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
     case 'mission_completed':
     case 'mission_rank_up':
     case 'mission_ended':
+    case 'mission_participation_cancelled':
     case 'following_mission_complete':
       return <TargetIcon className={className} />
     case 'followed':

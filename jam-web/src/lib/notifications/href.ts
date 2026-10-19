@@ -144,6 +144,9 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
       const id = typeof p.mission_id === 'string' ? p.mission_id : ''
       return single(id ? `/missions/${id}/status` : '/missions')
     }
+    // 대상이 아닌 트라이브가 된 미션의 상세는 404(없는 미션)라 단건이어도 목록으로 보낸다(티켓 20261019_1313)
+    case 'mission_participation_cancelled':
+      return single('/missions')
 
     // ── ⑤ 소셜 — 나에게 ───────────────────────────────────────────────────
     case 'followed': {

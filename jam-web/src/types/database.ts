@@ -1902,12 +1902,14 @@ export type NotificationType =
   // ③ 내 드랍 (2)
   | 'drop_picked_up'
   | 'drop_spot_active'
-  // ④ 미션 (5)
+  // ④ 미션 (6)
   | 'mission_milestone'
   | 'mission_deadline'
   | 'mission_completed'
   | 'mission_rank_up'
   | 'mission_ended'
+  // 트라이브가 바뀌어 미션 참가가 취소됐어요(티켓 20261019_1313, 마이그레이션 251)
+  | 'mission_participation_cancelled'
   // ⑤ 소셜(나에게) (1) — #27 맞팔(`mutual_follow`)은 20260827_014에서 제거됐다
   //    (자기 행동의 메아리. 되팔로우당한 쪽에는 `followed`가 대신 나간다)
   | 'followed'

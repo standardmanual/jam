@@ -1602,6 +1602,9 @@ export const ko = {
     msgMissionEnded: '{missionTitle}{이/가} 끝났어요. 결과를 확인해보세요',
     msgMissionEndedDoneGrouped: '축하해요! 미션 {count}{을/를} 끝냈어요. 결과를 확인해보세요',
     msgMissionEndedGrouped: '미션 {count}{이/가} 끝났어요. 결과를 확인해보세요',
+    /** 트라이브 변경에 따른 참가 취소(운영 로직 13.2절 문구). 이미 받은 보상은 그대로라 보상은 말하지 않는다. 착지는 목록이다(상세는 대상이 아니면 404) */
+    msgMissionParticipationCancelled: '트라이브가 바뀌어 「{missionTitle}」 미션 참가가 취소됐어요',
+    msgMissionParticipationCancelledGrouped: '트라이브가 바뀌어 미션 {count} 참가가 취소됐어요',
 
     // ── ⑤ 소셜 — 나에게 ──
     /** R14 — 내 알림함이라 대상은 나로 확정돼 있다. 「시현님을」을 부르지 않는다 */

@@ -234,6 +234,14 @@ export interface NotificationPayloadMap {
     target_count?: number
   }
   /**
+   * 트라이브 변경에 따른 미션 참가 취소(티켓 20261019_1313, 운영 로직 13.2절).
+   * `mission_cancel_for_tribe_change`가 돌려준 (미션 id, 이름) 목록이 한 번의 변경분이다.
+   * 개수는 **`missions` 배열 길이**로 센다(`target_count`를 두지 않는다). 여러 개면 한 행으로 접는다.
+   */
+  mission_participation_cancelled: {
+    missions: { mission_id: string; title: string }[]
+  }
+  /**
    * 29 팔로잉 희귀 배지 — Epic·Mystic **또는** 무한레벨형 Lv.6 이상
    * (`FOLLOWING_LEVEL_THRESHOLD`, 티켓 20260905_0038).
    * `more_count`는 R15(사람 단위 묶음) — 「소식이 N건 더 있어요」

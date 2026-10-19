@@ -207,6 +207,14 @@ function dayWord(days: number): string {
   return t(d.notifications.slotDayN, { days })
 }
 
+/** 트라이브 변경으로 참가가 취소된 미션들 — payload `missions`(JSONB)에서만 읽는다 */
+function cancelledMissions(payload: Record<string, unknown>): { missionId: string; title: string }[] {
+  return objList(payload, 'missions').map((raw) => ({
+    missionId: str(raw, 'mission_id'),
+    title: str(raw, 'title'),
+  }))
+}
+
 /** R11 묶음 행인가 — 대상 2건 이상이라 한 행으로 접힌 소식 */
 function isGrouped(payload: Record<string, unknown>): boolean {
   return num(payload, 'target_count') >= 2
@@ -643,6 +651,21 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
         template: boolField(p, 'completed', false) ? n.msgMissionEndedDone : n.msgMissionEnded,
         vars: { missionTitle: str(p, 'mission_title') },
       }
+    case 'mission_participation_cancelled': {
+      // 개수는 배열 길이로 센다. 제목이 하나뿐일 때만 이름을 말하고, 그 밖에는 개수로 접는다
+      // (제목이 비면 「」만 남으므로 이름 문구를 쓰지 않는다)
+      const cancelled = cancelledMissions(p)
+      if (cancelled.length === 1 && cancelled[0].title) {
+        return {
+          template: n.msgMissionParticipationCancelled,
+          vars: { missionTitle: cancelled[0].title },
+        }
+      }
+      return {
+        template: n.msgMissionParticipationCancelledGrouped,
+        vars: { count: t(n.slotCount, { count: Math.max(cancelled.length, 1) }) },
+      }
+    }
 
     // ── ⑤ 소셜 — 나에게 ───────────────────────────────────────────────────
     case 'followed': {

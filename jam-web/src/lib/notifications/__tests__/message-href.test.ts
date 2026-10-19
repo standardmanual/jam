@@ -10,6 +10,7 @@ import {
   buildNotificationMessage,
   hasBatchim,
   notificationPlainText,
+  notificationTokens,
   tokenizeMessage,
   type NotificationView,
 } from '../message'
@@ -449,6 +450,68 @@ describe('④ 미션', () => {
     expect(text(view('mission_ended', { target_count: 3, all_completed: false }))).toBe(
       '미션 3개가 끝났어요. 결과를 확인해보세요'
     )
+  })
+
+  describe('트라이브 변경에 따른 참가 취소 (티켓 20261019_1313)', () => {
+    const one = { missions: [{ mission_id: 'm1', title: '한강 100km' }] }
+    const many = {
+      missions: [
+        { mission_id: 'm1', title: '한강 100km' },
+        { mission_id: 'm2', title: '남산 오르기' },
+        { mission_id: 'm3', title: '주말 러닝' },
+      ],
+    }
+
+    it('한 개면 미션 이름을 「」로 감싸 말한다', () => {
+      expect(text(view('mission_participation_cancelled', one))).toBe(
+        '트라이브가 바뀌어 「한강 100km」 미션 참가가 취소됐어요'
+      )
+    })
+
+    it('이름은 payload 슬롯이라 볼드, 고정 문구는 일반이다', () => {
+      const bold = notificationTokens(view('mission_participation_cancelled', one))
+        .filter((token) => token.bold)
+        .map((token) => token.text)
+      expect(bold).toEqual(['한강 100km'])
+    })
+
+    it('여러 개면 한 행으로 접고 개수를 배열 길이로 센다', () => {
+      expect(text(view('mission_participation_cancelled', many))).toBe(
+        '트라이브가 바뀌어 미션 3개 참가가 취소됐어요'
+      )
+      // 병합으로 남은 옛 스칼라(target_count)는 개수에 쓰지 않는다
+      expect(text(view('mission_participation_cancelled', { ...many, target_count: 9 }))).toBe(
+        '트라이브가 바뀌어 미션 3개 참가가 취소됐어요'
+      )
+    })
+
+    it('이름이 비었거나 payload가 손상돼도 「」만 남는 문장을 만들지 않는다', () => {
+      const blankTitle = { missions: [{ mission_id: 'm1', title: '' }] }
+      expect(text(view('mission_participation_cancelled', blankTitle))).toBe(
+        '트라이브가 바뀌어 미션 1개 참가가 취소됐어요'
+      )
+      expect(text(view('mission_participation_cancelled', {}))).toBe(
+        '트라이브가 바뀌어 미션 1개 참가가 취소됐어요'
+      )
+      expect(text(view('mission_participation_cancelled', { missions: 'm1' }))).not.toContain('「」')
+    })
+
+    it('채워진 슬롯만 있어 빈 슬롯으로 보고되지 않는다', () => {
+      expect(missingMessageSlots(view('mission_participation_cancelled', one))).toEqual([])
+      expect(missingMessageSlots(view('mission_participation_cancelled', many))).toEqual([])
+    })
+
+    it('착지는 한 개여도 목록이다 — 대상이 아닌 미션의 상세는 404다', () => {
+      expect(notificationTarget(view('mission_participation_cancelled', one))).toEqual({
+        href: '/missions',
+        avatarHref: null,
+      })
+      expect(notificationTarget(view('mission_participation_cancelled', many)).href).toBe('/missions')
+    })
+
+    it('경고 후보가 아니다', () => {
+      expect(isWarningNotification('mission_participation_cancelled', one, {})).toBe(false)
+    })
   })
 })
 
