@@ -299,10 +299,10 @@ badge-engine 밖의 세 번째 평가 경로.
     체크인이 있기 때문이다(2026-10-01 라이브 71행 중 45행이 `earned_at`의 KST 날짜와 활동 날짜가 다르다).
     체크인한 날에는 ①의 필터를 적용하지 않는다. 같은 날 활동과 체크인이 함께 있으면 1일이다.
   - **동기화만 한 날은 세지 않는다**: `user_daily_sync_counts`(동기화한 날)는 읽지 않는다 — 코드 구조로 보장한다.
-- **주 경계는 KST다**: 일요일 23:00 KST는 지난 주이고 월요일 00:00 KST는 새 주다. `activityFilters.ts`의
-  `getMondayKey`는 서버 로컬 시간대로 자정을 만들고(`setHours`·`getDay`) UTC로 날짜를 읽어(`toISOString`)
-  서버 시간대가 바뀌면 같은 입력의 주 경계가 달라지므로 쓰지 않는다. `jamActionDayMetrics.ts`의
-  `kstWeekStartKey`가 `YYYY-MM-DD` 문자열을 `Date.UTC`로만 계산해 `process.env.TZ`와 무관하다.
+- **주 경계는 KST다**: 일요일 23:00 KST는 지난 주이고 월요일 00:00 KST는 새 주다. 예전 `activityFilters.ts`의
+  `getMondayKey`는 서버 로컬 시간대로 자정을 만들어(`setHours`·`getDay`) 서버 시간대가 바뀌면 같은 입력의 주 경계가
+  달라졌고, 티켓 20261019_1312 2회에 제거했다(활동 판정의 주 키는 `kstWeekKeyOf`). `jamActionDayMetrics.ts`의
+  `kstWeekStartKey`는 `YYYY-MM-DD` 문자열을 `Date.UTC`로만 계산해 `process.env.TZ`와 무관하다.
   활동은 `strava_activities.start_date`(timestamptz, 현지 시각 열은 없다)를 KST 날짜로 옮긴다.
 - **보조 키(R3)**: `days_since_signup` 배지에 `signup_recent_active_days`가 있으면 가입 일수와 최근 30일
   활동일을 둘 다 채워야 발급한다. 비우면 가입 일수만 본다. 전용 분기가 가입 경과일을 한 번 계산하고, 후보 중
@@ -1104,7 +1104,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
   (`fulfilled`→`met`). **라벨**도 이 함수 내부에서 조회하지 않는다 — 호출부가
   `getMetricLabels()`(§5, `metricLabels.ts`)로 한 계열당 1회 배치 조회한 결과를 `labelMap`
   인자로 주입한다.
-- **`index.ts` 구조 변경**: `matchesDayOfWeek`·`inTimeRange`·`dedupeOnePerDay`·`getMondayKey`·
+- **`index.ts` 구조 변경**: `matchesDayOfWeek`·`inTimeRange`·`dedupeOnePerDay`·`getMondayKey`(2026-10-19 제거, 티켓 20261019_1312 2회)·
   `calcMaxStreak`·`passesWalkingGate`(+ 걷기 게이트 상수 4개)를 `activityFilters.ts`로 이전했다
   (로직 변경 없음 — 순수 이동). `index.ts`는 이 이름들을 다시 `export`해 기존 소비처는 그대로
   동작한다. 계기: `badgeProgress.ts`가 이 헬퍼들을 재사용하려면 클라이언트 세이프해야 하는데,

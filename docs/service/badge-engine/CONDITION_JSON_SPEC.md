@@ -609,7 +609,7 @@ interface BadgeGateRequirement {
 | | 요일: `day_of_week` | §2.1 — KST 요일 기준. 단일 값은 거르는 조건이다. 배열은 `weekly_streak`와 함께 쓸 때만 반영된다(`total_count`는 미션에 없다) |
 | | 계절: `season`, `season_count`, `season_count_all` | §2.5 — KST 월 기준, 활동한 날의 수. `season_count`는 `season`과 함께 쓴다 |
 | | 운동 속성: `max_speed_kmh`, `avg_heartrate_bpm`, `avg_watts`, `avg_cadence`, `cumulative_duration_hours`, `weekend_duration_hours` | `cumulative_duration_hours`는 §2.2(전체 이력 합계), `weekend_duration_hours`는 §2.4(주말 활동 1건), 나머지 넷은 §2.10(활동 1건의 값) |
-| 미션 전용 (9개) | `weekly_streak_min_count`, `monthly_streak`, `monthly_streak_min_count`, `streak_subset`, `distinct_weekday_count`, `distinct_months_required`, `distinct_months_metric`, `distinct_months_threshold`, `time_band_counts` | `engineCondition.ts`가 직접 판정 |
+| 미션 전용 (9개) | `weekly_streak_min_count`, `monthly_streak`, `monthly_streak_min_count`, `streak_subset`, `distinct_weekday_count`, `distinct_months_required`, `distinct_months_metric`, `distinct_months_threshold`, `time_band_counts` | `engineCondition.ts`가 직접 판정. 주(월~일)·달·요일 개수는 KST 날짜 기준이다(해외 활동도 한국 시각의 날, 티켓 20261019_1312 2회) |
 
 `day_of_week`·`season`은 «거르는 조건»(`role: 'filter'`)이라 혼자서는 판정할 값이 없다. 거리·`season_count` 같은 판정할 값과 함께 써야 하고, 미션 전용 키하고만 짝지으면 배지 엔진이 「평가 가능한 조건 없음」으로 막는다(영구 미달성, 필터를 조용히 무시하지 않는다).
 

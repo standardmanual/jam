@@ -31,10 +31,10 @@
  *  - `weekly_active_days`: 월~일(KST) 한 주 안의 활동한 날 수의 **역대 최고 주** 값.
  *  - `same_spot_checkin_days`: 지점(`poi_id`)별 체크인한 서로 다른 날(KST) 수의 최댓값. 합이 아니다.
  *
- * ## 왜 `getMondayKey`를 쓰지 않는가
- * `activityFilters.ts`의 `getMondayKey`는 서버 로컬 시간대로 자정을 만들고(`setHours`·`getDay`) UTC로 날짜를
- * 읽는다(`toISOString`). 서버 시간대가 바뀌면 같은 입력의 주 경계가 달라진다. 이 모듈은 날짜 문자열
- * (`YYYY-MM-DD`, KST)을 `Date.UTC`로만 계산하므로 `process.env.TZ`와 무관하다(`kstWeekStartKey`).
+ * ## 주 키를 날짜 문자열로 직접 계산하는 이유
+ * 예전 `activityFilters.ts`의 `getMondayKey`는 서버 로컬 시간대로 자정을 만들어(`setHours`·`getDay`) 서버 시간대가
+ * 바뀌면 같은 입력의 주 경계가 달라졌다(티켓 20261019_1312 2회에 제거 — 활동 판정은 `kstWeekKeyOf`를 쓴다). 이 모듈은
+ * 날짜 문자열(`YYYY-MM-DD`, KST)을 `Date.UTC`로만 계산하므로 `process.env.TZ`와 무관하다(`kstWeekStartKey`).
  *
  * ## 날짜 열을 이렇게 고른 이유
  *  - 활동: `strava_activities`에는 현지 시각 열이 없고 `start_date`(timestamptz)만 있다. 이를 KST 날짜로 옮긴다.
