@@ -73,9 +73,11 @@ export const BADGE_UNDO_REFERENCES: Array<BadgeUndoReferenceSpec & { isArray: bo
 
 /**
  * 되돌림 전에 «이미 사용자 데이터가 붙었는지» 읽는 곳(테이블과 미션 id를 가진 컬럼). 티켓 20260925_1412.
- * 근거: `src/types/database.generated.ts`에서 `referencedRelation: "missions"`인 외래 키 6곳(2026-09-25 확인) —
- * 삭제 규칙은 `src/lib/admin/reference-guards.ts` 머리말(011·012·048·080·099)과 마이그레이션 158 참고.
- * - CASCADE(지우면 사용자 기록이 함께 사라짐): user_mission_completions · user_mission_participations · mission_rank_snapshots
+ * 근거: `src/types/database.generated.ts`에서 `referencedRelation: "missions"`인 외래 키 8곳(2026-09-25 확인 6곳, 마이그레이션 249로 2곳 추가 — 2026-10-19) —
+ * 삭제 규칙은 `src/lib/admin/reference-guards.ts` 머리말(011·012·048·080·099)과 마이그레이션 158·249 참고.
+ * - CASCADE(지우면 사용자 기록이 함께 사라짐): user_mission_completions · user_mission_participations · mission_rank_snapshots ·
+ *   mission_participation_cancellations(트라이브 변경으로 취소된 참가 기록)
+ * - CASCADE(지우면 설정이 함께 사라짐): mission_allowed_tribes(참가할 수 있는 트라이브 — 사용자 기록은 아니지만 운영자가 정한 값이라 붙어 있으면 중단한다)
  * - NO ACTION(지우면 삭제 자체가 실패): point_transactions.source_mission_id
  * - SET NULL(조용히 연결이 끊김): today_cards.mission_id · ranking_modes.target_mission_id
  * SET NULL 두 곳은 어드민 삭제 가드(`MISSION_REFERENCE_SOURCES`)에서 차단 사유가 아니지만, 이 스크립트의 되돌림은
@@ -86,6 +88,8 @@ export const MISSION_UNDO_REFERENCE_TABLES: UndoReferenceSpec[] = [
   { table: 'user_mission_completions', column: 'mission_id' },
   { table: 'user_mission_participations', column: 'mission_id' },
   { table: 'mission_rank_snapshots', column: 'mission_id' },
+  { table: 'mission_participation_cancellations', column: 'mission_id' },
+  { table: 'mission_allowed_tribes', column: 'mission_id' },
   { table: 'point_transactions', column: 'source_mission_id' },
   { table: 'today_cards', column: 'mission_id' },
   { table: 'ranking_modes', column: 'target_mission_id' },
