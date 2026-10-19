@@ -59,8 +59,45 @@ export function activeMissionsQueryFilter(now: string): { startsAtLte: string; e
   }
 }
 
+/**
+ * `mission_complete` RPC(마이그레이션 249)의 응답을 앱이 다루는 모양으로 읽는다.
+ *
+ * 계약: `{ok:true, status:'completed', completion_id}` / `{ok:true, status:'already_completed'}` /
+ * `{ok:false, error:'mission_not_found'|'user_suspended'|'not_participating'|'tribe_not_allowed'|'mission_full'}`.
+ * 이 모양이 아니면 `invalid`다 — 호출부가 완료시키지 않는다(상한 검사를 건너뛰던 `count ?? 0`과 같은 실패를 만들지 않는다).
+ */
+export type MissionCompleteOutcome =
+  | { kind: 'completed'; completionId: string }
+  | { kind: 'already_completed' }
+  | { kind: 'rejected'; reason: string }
+  | { kind: 'invalid' }
+
+export function parseMissionCompleteResult(raw: unknown): MissionCompleteOutcome {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return { kind: 'invalid' }
+  const r = raw as Record<string, unknown>
+  if (r.ok === true) {
+    if (r.status === 'completed' && typeof r.completion_id === 'string' && r.completion_id.length > 0) {
+      return { kind: 'completed', completionId: r.completion_id }
+    }
+    if (r.status === 'already_completed') return { kind: 'already_completed' }
+    return { kind: 'invalid' }
+  }
+  if (r.ok === false && typeof r.error === 'string' && r.error.length > 0) {
+    return { kind: 'rejected', reason: r.error }
+  }
+  return { kind: 'invalid' }
+}
+
+/** 정상 경로에서 일어나는 거절 — 로그를 남기지 않는다 */
+const QUIET_REJECTIONS: ReadonlySet<string> = new Set(['mission_full', 'tribe_not_allowed', 'not_participating', 'user_suspended'])
+
 export interface MissionCheckResult {
   completedMissionIds: string[]
+  /**
+   * 이번 호출에서 새로 완료된 미션과 그 **완료 기록 id**(`user_mission_completions.id`) — 티켓 20261019_1311.
+   * 챕터 점수(5-5)가 이 id를 원천 id로 쓴다. `completedMissionIds`와 같은 미션을 같은 순서로 담는다.
+   */
+  completedMissions: { missionId: string; completionId: string }[]
   /**
    * 이번 호출에서 미션 보상으로 발급된 배지 id 목록 (발급 순서).
    * 20260823_007 — 동기화 응답에 획득 배지 상세를 실어보내기 위해 추가.
@@ -85,7 +122,7 @@ export async function checkMissions(
     .or(activeFilter.endsAtOrExpr)
 
   const missions = (missionsRaw ?? []) as MissionRow[]
-  if (missions.length === 0) return { completedMissionIds: [], awardedBadgeIds: [] }
+  if (missions.length === 0) return { completedMissionIds: [], completedMissions: [], awardedBadgeIds: [] }
 
   // 2. 유저가 이미 완료한 미션
   const { data: completedRaw } = await supabase
@@ -108,6 +145,7 @@ export async function checkMissions(
 
   const pendingMissions = missions.filter((m) => !completedSet.has(m.id))
   const completedMissionIds: string[] = []
+  const completedMissions: { missionId: string; completionId: string }[] = []
   const awardedBadgeIds: string[] = []
   /**
    * R11 — 마일스톤·완료 소식은 미션 2건 이상이면 한 행으로 접는다(20260827_014).
@@ -160,28 +198,35 @@ export async function checkMissions(
       continue
     }
 
-    // 선착순 체크
-    if (mission.max_completions !== null) {
-      const { count } = await supabase
-        .from('user_mission_completions')
-        .select('id', { count: 'exact', head: true })
-        .eq('mission_id', mission.id)
-
-      if ((count ?? 0) >= mission.max_completions) continue
-    }
-
-    // 완료 INSERT
-    const { error } = await supabase
-      .from('user_mission_completions')
-      .insert({ user_id: userId, mission_id: mission.id })
-
-    if (error) {
-      if (error.code === '23505') continue
-      console.error('[checkMissions] 완료 INSERT 오류:', error)
+    // 완료 기록 — 선착순 상한 검사·참가/이용 정지/트라이브 재확인·INSERT를 DB 함수 하나가 한 트랜잭션에서
+    // 한다(티켓 20261019_1311, 마이그레이션 249). 예전에는 «개수 세기 → INSERT» 사이에 잠금이 없어 동시에
+    // 동기화한 두 유저가 둘 다 `상한 - 1`을 읽고 상한을 넘겼고, 개수 조회가 실패해도 `count ?? 0`으로
+    // 상한이 무시됐다. 호출이 실패하거나 응답이 계약과 다르면 완료시키지 않는다(fail-closed).
+    const { data: completeRaw, error: completeError } = await supabase.rpc('mission_complete', {
+      p_user_id: userId,
+      p_mission_id: mission.id,
+    })
+    if (completeError) {
+      console.error('[checkMissions] mission_complete 호출 오류:', completeError)
       continue
     }
+    const outcome = parseMissionCompleteResult(completeRaw)
+    if (outcome.kind === 'invalid') {
+      console.error('[checkMissions] mission_complete 응답이 계약과 다름:', completeRaw)
+      continue
+    }
+    if (outcome.kind === 'rejected') {
+      // 선착순 마감·대상 아님·미참가·이용 정지는 정상 경로의 거절이라 조용히 넘긴다. 그 밖은 예상 밖이다.
+      if (!QUIET_REJECTIONS.has(outcome.reason)) {
+        console.error(`[checkMissions] mission_complete 거절(예상 밖) — reason: ${outcome.reason}, mission: ${mission.id}`)
+      }
+      continue
+    }
+    // 같은 유저의 중복 완료 — 이미 보상·피드를 처리한 완료라 다시 하지 않는다
+    if (outcome.kind === 'already_completed') continue
 
     completedMissionIds.push(mission.id)
+    completedMissions.push({ missionId: mission.id, completionId: outcome.completionId })
     console.info(`[checkMissions] 미션 달성 — userId: ${userId}, mission: ${mission.title}`)
 
     // 보상 지급 (Phase13) — 설정된 배지 전부(타입별 분기·중복 스킵) + 배지 포인트 + 미션 포인트
@@ -209,7 +254,7 @@ export async function checkMissions(
     await createNotification(draft as CreateNotificationInput<NotificationType>)
   }
 
-  return { completedMissionIds, awardedBadgeIds }
+  return { completedMissionIds, completedMissions, awardedBadgeIds }
 }
 
 /**
