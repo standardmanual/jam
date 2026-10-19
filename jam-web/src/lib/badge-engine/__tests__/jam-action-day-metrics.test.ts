@@ -31,6 +31,7 @@ const state = vi.hoisted(() => ({
     nots: [string, string, unknown][]
     iss: [string, unknown][]
     gtes: [string, unknown][]
+    ltes: [string, unknown][]
     ordered: string | null
     range: [number, number] | null
   }[],
@@ -48,11 +49,12 @@ function mockSupabase(): SupabaseClient {
     const nots: [string, string, unknown][] = []
     const iss: [string, unknown][] = []
     const gtes: [string, unknown][] = []
+    const ltes: [string, unknown][] = []
     let ordered: string | null = null
     let range: [number, number] | null = null
     const builder: Record<string, unknown> = {}
     const run = (single: boolean) => {
-      state.queries.push({ table, cols, eqs, nots, iss, gtes, ordered, range })
+      state.queries.push({ table, cols, eqs, nots, iss, gtes, ltes, ordered, range })
       if (state.error) return { data: null, error: state.error }
       let rows = (state.tables[table] ?? []).filter(
         (r) =>
@@ -60,7 +62,8 @@ function mockSupabase(): SupabaseClient {
           // `.is(col, null)` — 칸이 없는 옛 행(undefined)도 NULL로 본다
           iss.every(([c, v]) => (r[c] ?? null) === v) &&
           nots.every(([c, op, v]) => (op === 'is' && v === null ? r[c] !== null && r[c] !== undefined : true)) &&
-          gtes.every(([c, v]) => Date.parse(String(r[c])) >= Date.parse(String(v)))
+          gtes.every(([c, v]) => Date.parse(String(r[c])) >= Date.parse(String(v))) &&
+          ltes.every(([c, v]) => Date.parse(String(r[c])) <= Date.parse(String(v)))
       )
       if (ordered) {
         const key = ordered
@@ -89,6 +92,10 @@ function mockSupabase(): SupabaseClient {
     }
     builder.gte = (col: string, val: unknown) => {
       gtes.push([col, val])
+      return builder
+    }
+    builder.lte = (col: string, val: unknown) => {
+      ltes.push([col, val])
       return builder
     }
     builder.order = (col: string) => {
@@ -790,5 +797,148 @@ describe('조회 — 페이징·오류', () => {
     }
     const broken = { from: failingFrom } as unknown as SupabaseClient
     await expect(countSameSpotCheckinDays(broken, ME)).rejects.toThrow(/체크인 기록 조회 오류: DB 장애/)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// ④ 기간 한정 — 선택 인자 `window` (티켓 20261019_1445 2회)
+//
+// 미션은 «참가한 뒤, 미션 기간 안»의 활동일만 센다. 인자를 주지 않으면 위 ②·③ 시험이 그대로 통과한다(배지 엔진 회귀 방지).
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('기간 한정 — weekly_active_days·same_spot_checkin_days', () => {
+  // 월 2026-09-14 00:00 ~ 일 2026-09-20 23:59:59 (KST)
+  const FROM = kst('2026-09-14', '00:00:00')
+  const TO = kst('2026-09-20', '23:59:59')
+  const WINDOW = { fromIso: FROM, toIso: TO }
+
+  it('weekly_active_days: 기간 밖의 주(앞·뒤)가 더 높아도 기간 안의 날만 센다 / 인자가 없으면 모든 주 중 최고', async () => {
+    for (const d of ['08', '09', '10', '11']) addActivity(kst(`2026-09-${d}`)) // 기간 전 주 4일
+    addActivity(kst('2026-09-14')) // 기간 안 2일
+    addActivity(kst('2026-09-16'))
+    for (const d of ['21', '22', '23', '24', '25']) addActivity(kst(`2026-09-${d}`)) // 기간 뒤 주 5일
+
+    expect(await countWeeklyActiveDays(mockSupabase(), ME, WINDOW)).toBe(2)
+    expect(await countWeeklyActiveDays(mockSupabase(), ME)).toBe(5)
+  })
+
+  it('weekly_active_days: 기간 경계에 걸친 주는 잘린 대로 센다 (수요일에 시작하는 기간)', async () => {
+    addActivity(kst('2026-09-14')) // 월 — 기간 전
+    addActivity(kst('2026-09-15')) // 화 — 기간 전
+    addActivity(kst('2026-09-16')) // 수
+    addActivity(kst('2026-09-17')) // 목
+    addActivity(kst('2026-09-18')) // 금
+    const window = { fromIso: kst('2026-09-16', '00:00:00'), toIso: TO }
+
+    expect(await countWeeklyActiveDays(mockSupabase(), ME, window)).toBe(3)
+    expect(await countWeeklyActiveDays(mockSupabase(), ME)).toBe(5)
+  })
+
+  it('weekly_active_days: 하한·상한 시각은 포함한다 (경계 활동은 세고 1ms 밖은 세지 않는다)', async () => {
+    // 모두 같은 주(월 09-14 ~ 일 09-20)다. 하한은 수요일 00:00 KST, 상한은 금요일 23:59:59 KST
+    addActivity('2026-09-15T14:59:59.999Z') // 하한 1ms 전 — 화요일 23:59:59.999 KST → 세지 않는다
+    addActivity('2026-09-15T15:00:00Z') // 하한 정각 — 수요일 00:00 KST → 센다
+    addActivity('2026-09-18T14:59:59Z') // 상한 정각 — 금요일 23:59:59 KST → 센다
+    addActivity('2026-09-18T15:00:00Z') // 상한 1초 뒤 — 토요일 00:00 KST → 세지 않는다
+    const window = { fromIso: '2026-09-15T15:00:00+00:00', toIso: '2026-09-18T14:59:59+00:00' }
+
+    expect(await countWeeklyActiveDays(mockSupabase(), ME, window)).toBe(2)
+  })
+
+  it('weekly_active_days: 상한이 없으면(상시 미션) 하한 이후를 끝까지 센다', async () => {
+    addActivity(kst('2026-09-10')) // 하한 전
+    addActivity(kst('2026-09-14'))
+    addActivity(kst('2026-09-30'))
+    addActivity(kst('2026-10-15'))
+
+    const window = { fromIso: FROM, toIso: null }
+    expect(await countWeeklyActiveDays(mockSupabase(), ME, window)).toBe(1) // 각각 다른 주라 최고 주는 1일
+    expect(state.queries.find((q) => q.table === 'strava_activities')!.ltes).toEqual([])
+  })
+
+  it('weekly_active_days: 기간 안의 체크인한 날도 활동한 날이고 기간 밖 체크인은 세지 않는다', async () => {
+    addActivity(kst('2026-09-14'))
+    addCheckin('p1', kst('2026-09-16')) // 기간 안 — 체크인만 한 날
+    addCheckin('p2', kst('2026-09-18')) // 기간 안
+    addCheckin('p3', kst('2026-09-12')) // 기간 전
+    addCheckin('p3', kst('2026-09-22')) // 기간 뒤
+
+    expect(await countWeeklyActiveDays(mockSupabase(), ME, WINDOW)).toBe(3)
+  })
+
+  it('weekly_active_days: 기간 하한이 가입한 날보다 앞이면 가입한 날 이전은 여전히 세지 않는다 (R1)', async () => {
+    setSignup(ME, kst('2026-09-16', '18:00:00'))
+    addActivity(kst('2026-09-14')) // 가입 전
+    addActivity(kst('2026-09-15')) // 가입 전
+    addActivity(kst('2026-09-16', '09:00:00')) // 가입한 날 당일
+    addActivity(kst('2026-09-17'))
+
+    expect(await countWeeklyActiveDays(mockSupabase(), ME, { fromIso: kst('2026-09-01'), toIso: TO })).toBe(2)
+  })
+
+  it('weekly_active_days: 기간 안에서도 R2(종목·차량 속도·걷기 게이트)를 그대로 적용한다', async () => {
+    addActivity(kst('2026-09-14'))
+    addActivity(kst('2026-09-15'), { ...RUN, averageSpeedKmh: 61 }) // 차량 속도 — 세지 않는다
+    addActivity(kst('2026-09-16'), { ...WALK, distanceKm: 0.4 }) // 걷기 게이트 탈락
+    expect(await countWeeklyActiveDays(mockSupabase(), ME, WINDOW)).toBe(1)
+  })
+
+  it('same_spot_checkin_days: 기간 안의 체크인만 보고 지점별 서로 다른 날의 최댓값을 센다', async () => {
+    for (const d of ['10', '11', '12']) addCheckin('p1', kst(`2026-09-${d}`)) // 기간 전
+    addCheckin('p1', kst('2026-09-15')) // 기간 안
+    addCheckin('p1', kst('2026-09-16'))
+    addCheckin('p2', kst('2026-09-15'))
+    addCheckin('p1', kst('2026-09-25')) // 기간 뒤
+
+    expect(await countSameSpotCheckinDays(mockSupabase(), ME, WINDOW)).toBe(2)
+    expect(await countSameSpotCheckinDays(mockSupabase(), ME)).toBe(6)
+  })
+
+  it('same_spot_checkin_days: 활동 날짜가 없는 체크인은 기간 안에서도 세지 않는다', async () => {
+    addCheckin('p1', null)
+    addCheckin('p1', kst('2026-09-15'))
+    expect(await countSameSpotCheckinDays(mockSupabase(), ME, WINDOW)).toBe(1)
+  })
+
+  it('same_spot_checkin_days: 참가 전(기간 하한 전) 같은 지점 체크인은 세지 않는다', async () => {
+    for (const d of ['01', '02', '03', '04']) addCheckin('p1', kst(`2026-09-${d}`))
+    addCheckin('p1', kst('2026-09-15'))
+    expect(await countSameSpotCheckinDays(mockSupabase(), ME, WINDOW)).toBe(1)
+  })
+
+  it('조회: 하한은 가입한 날 0시와 기간 하한 중 늦은 쪽, 상한은 기간 상한이다 / 인자가 없으면 상한 필터가 없다', async () => {
+    setSignup(ME, kst('2026-09-16', '18:00:00')) // 가입한 날 0시 = 2026-09-15T15:00:00Z
+    addActivity(kst('2026-09-17'))
+
+    // ① 기간 하한이 더 늦다
+    await countWeeklyActiveDays(mockSupabase(), ME, { fromIso: kst('2026-09-17', '00:00:00'), toIso: kst('2026-09-20', '23:59:59') })
+    let act = state.queries.find((q) => q.table === 'strava_activities')!
+    let chk = state.queries.find((q) => q.table === 'user_checkin_badge_earns')!
+    expect(act.gtes).toEqual([['start_date', kst('2026-09-17', '00:00:00')]])
+    expect(act.ltes).toEqual([['start_date', kst('2026-09-20', '23:59:59')]])
+    expect(chk.gtes).toEqual([['triggered_by_activity_date', kst('2026-09-17', '00:00:00')]])
+    expect(chk.ltes).toEqual([['triggered_by_activity_date', kst('2026-09-20', '23:59:59')]])
+
+    // ② 가입한 날 0시가 더 늦다 — 기간 하한이 가입 이전을 가리켜도 가입 하한이 이긴다
+    state.queries = []
+    await countWeeklyActiveDays(mockSupabase(), ME, { fromIso: kst('2026-09-01'), toIso: null })
+    act = state.queries.find((q) => q.table === 'strava_activities')!
+    expect(act.gtes).toEqual([['start_date', '2026-09-15T15:00:00.000Z']])
+    expect(act.ltes).toEqual([])
+
+    // ③ 인자가 없으면 예전 조회(가입 하한만)다
+    state.queries = []
+    await countWeeklyActiveDays(mockSupabase(), ME)
+    act = state.queries.find((q) => q.table === 'strava_activities')!
+    chk = state.queries.find((q) => q.table === 'user_checkin_badge_earns')!
+    expect(act.gtes).toEqual([['start_date', '2026-09-15T15:00:00.000Z']])
+    expect(act.ltes).toEqual([])
+    expect(chk.ltes).toEqual([])
+  })
+
+  it('기간 하한이 시각으로 읽히지 않으면 가입 하한으로 조용히 넘어가지 않고 조회 쪽에 그대로 넘긴다', async () => {
+    await countWeeklyActiveDays(mockSupabase(), ME, { fromIso: 'not-a-date', toIso: null })
+    const act = state.queries.find((q) => q.table === 'strava_activities')!
+    expect(act.gtes).toEqual([['start_date', 'not-a-date']])
   })
 })

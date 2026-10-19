@@ -31,6 +31,17 @@
  *  - `weekly_active_days`: 월~일(KST) 한 주 안의 활동한 날 수의 **역대 최고 주** 값.
  *  - `same_spot_checkin_days`: 지점(`poi_id`)별 체크인한 서로 다른 날(KST) 수의 최댓값. 합이 아니다.
  *
+ * ## 기간 한정 (선택 인자 `window`, 티켓 20261019_1445 2회)
+ * 미션은 «참가한 뒤, 미션 기간 안»의 값만 센다. `weekly_active_days`·`same_spot_checkin_days`(와 이 둘이 쓰는 읽기 함수)에
+ * 선택 인자 `window`(`jamActionWindow.ts`, 하한·상한 모두 포함)를 더했다. 인자를 주지 않으면 지금 동작 그대로이고
+ * 배지 엔진 호출처(`jamActionBadges.ts`)는 이 인자를 모른다.
+ *  - 기간 밖 활동·체크인은 «활동한 날»에 넣지 않는다. 날짜는 활동 시각(`start_date`·`triggered_by_activity_date`)으로 정하므로
+ *    늦게 동기화한 옛 활동은 활동 시각이 기간 전이면 세지 않는다.
+ *  - 하한은 «가입한 날(KST) 0시»(R1)와 `window.fromIso` 가운데 **늦은 쪽**이다 — 미션 기간이 가입 이전을 가리켜도 R1이 이긴다.
+ *  - 기간 경계에 걸친 주(월~일)는 **잘린 대로** 센다: 기간 안에 든 날만 그 주의 활동일이다. `weekly_active_days`는
+ *    «기간 안의 활동일이 가장 많은 주» 하나의 날 수(역대 최고 주의 기간 한정판)이고, 이어진 주를 합치지 않는다.
+ *  - `same_spot_checkin_days`는 «기간 안의 체크인만 보고 지점별 서로 다른 날 수의 최댓값»이다.
+ *
  * ## 주 키를 날짜 문자열로 직접 계산하는 이유
  * 예전 `activityFilters.ts`의 `getMondayKey`는 서버 로컬 시간대로 자정을 만들어(`setHours`·`getDay`) 서버 시간대가
  * 바뀌면 같은 입력의 주 경계가 달라졌다(티켓 20261019_1312 2회에 제거 — 활동 판정은 `kstWeekKeyOf`를 쓴다). 이 모듈은
@@ -70,6 +81,7 @@ import { getSignupAnchorDate } from '@/lib/strava/activity-history'
 import type { NormalizedActivity } from '@/types/strava'
 import { passesWalkingGate } from './activityFilters'
 import { selectAllPages } from './jamActionPaging'
+import { applyMetricWindow, type MetricWindow } from './jamActionWindow'
 
 /** 오류 메시지 접두어 — 로그에서 어느 계산인지 알아보도록 공용 페이징에 넘긴다 */
 const TAG = 'jamActionDayMetrics'
@@ -227,47 +239,67 @@ interface ActivityRow {
   normalized: unknown
 }
 
-/** 가입한 날 이후의 체크인 행 — 활동 날짜가 있는 행만 */
+/**
+ * 조회 범위 — «가입한 날(KST) 0시» 하한(R1)에 호출자의 기간을 합친다. 하한은 둘 중 늦은 쪽이고 상한은 기간의 상한이다.
+ * `window`가 없으면 하한만 있다(예전 동작). 기간 하한이 시각으로 읽히지 않으면 그대로 DB에 넘겨 조회 오류로 드러나게 한다 —
+ * 조용히 가입 하한만 쓰면 참가 전 기록이 섞이기 때문이다.
+ */
+function queryRange(signupDay: string, window?: MetricWindow): MetricWindow {
+  const signupFromIso = kstDayStartIso(signupDay)
+  if (!window) return { fromIso: signupFromIso }
+  const fromIso = Date.parse(signupFromIso) > Date.parse(window.fromIso) ? signupFromIso : window.fromIso
+  return { fromIso, toIso: window.toIso }
+}
+
+/** 가입한 날 이후(와 선택 기간 안)의 체크인 행 — 활동 날짜가 있는 행만 */
 export async function fetchCheckinRows(
   supabase: SupabaseClient,
   userId: string,
-  signupDay: string
+  signupDay: string,
+  window?: MetricWindow
 ): Promise<CheckinRow[]> {
-  const sinceIso = kstDayStartIso(signupDay)
+  const range = queryRange(signupDay, window)
   return selectAllPages<CheckinRow>(TAG, '체크인 기록', (from, to) =>
-    supabase
-      .from('user_checkin_badge_earns')
-      .select('poi_id, triggered_by_activity_date')
-      .eq('user_id', userId)
-      .not('triggered_by_activity_date', 'is', null)
-      .gte('triggered_by_activity_date', sinceIso)
+    applyMetricWindow(
+      supabase
+        .from('user_checkin_badge_earns')
+        .select('poi_id, triggered_by_activity_date')
+        .eq('user_id', userId)
+        .not('triggered_by_activity_date', 'is', null),
+      'triggered_by_activity_date',
+      range
+    )
       .order('id')
       .range(from, to)
   )
 }
 
 /**
- * 「활동한 날」 집합(KST 날짜 키) — R2를 통과한 활동의 시작 날짜 ∪ 체크인한 날. 가입한 날 이후만 읽는다.
+ * 「활동한 날」 집합(KST 날짜 키) — R2를 통과한 활동의 시작 날짜 ∪ 체크인한 날. 가입한 날 이후(와 선택 기간 안)만 읽는다.
  * 차량 속도 상한은 `getAbusingPolicy` + `effectiveVehicleSpeedFilterKmh`로 정한다(동기화와 같은 해석).
  */
 export async function fetchActivityDayKeys(
   supabase: SupabaseClient,
   userId: string,
-  signupDay: string
+  signupDay: string,
+  window?: MetricWindow
 ): Promise<Set<string>> {
-  const sinceIso = kstDayStartIso(signupDay)
+  const range = queryRange(signupDay, window)
   const [activityRows, checkinRows, policy] = await Promise.all([
     selectAllPages<ActivityRow>(TAG, '활동 기록', (from, to) =>
-      supabase
-        .from('strava_activities')
-        .select('start_date, normalized')
-        .eq('user_id', userId)
-        .is('filter_reason', null) // 걸러진 활동은 «활동한 날»에 넣지 않는다(티켓 20261017_1421)
-        .gte('start_date', sinceIso)
+      applyMetricWindow(
+        supabase
+          .from('strava_activities')
+          .select('start_date, normalized')
+          .eq('user_id', userId)
+          .is('filter_reason', null), // 걸러진 활동은 «활동한 날»에 넣지 않는다(티켓 20261017_1421)
+        'start_date',
+        range
+      )
         .order('id')
         .range(from, to)
     ),
-    fetchCheckinRows(supabase, userId, signupDay),
+    fetchCheckinRows(supabase, userId, signupDay, window),
     getAbusingPolicy(supabase),
   ])
   const vehicleMaxKmh = effectiveVehicleSpeedFilterKmh(policy)
@@ -307,16 +339,19 @@ export async function countRecentActiveDays(
   return recentActiveDays(dayKeys, kstDateString(now), RECENT_ACTIVE_WINDOW_DAYS)
 }
 
-/** 주간 활동일 — 월~일(KST) 한 주 안의 활동한 날 수의 역대 최고 주 값 */
-export async function countWeeklyActiveDays(supabase: SupabaseClient, userId: string): Promise<number> {
+/**
+ * 주간 활동일 — 월~일(KST) 한 주 안의 활동한 날 수의 역대 최고 주 값.
+ * `window`를 주면 기간 안의 활동일만으로 «가장 활동일이 많은 주»를 고른다(경계의 주는 잘린 대로 센다).
+ */
+export async function countWeeklyActiveDays(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
   const signupDay = await readSignupDay(supabase, userId)
-  const dayKeys = await fetchActivityDayKeys(supabase, userId, signupDay)
+  const dayKeys = await fetchActivityDayKeys(supabase, userId, signupDay, window)
   return bestWeekActiveDays(dayKeys)
 }
 
-/** 같은 지점 체크인 일수 — 지점별 체크인한 서로 다른 날(KST) 수의 최댓값 */
-export async function countSameSpotCheckinDays(supabase: SupabaseClient, userId: string): Promise<number> {
+/** 같은 지점 체크인 일수 — 지점별 체크인한 서로 다른 날(KST) 수의 최댓값. `window`를 주면 기간 안의 체크인만 본다 */
+export async function countSameSpotCheckinDays(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
   const signupDay = await readSignupDay(supabase, userId)
-  const rows = await fetchCheckinRows(supabase, userId, signupDay)
+  const rows = await fetchCheckinRows(supabase, userId, signupDay, window)
   return maxSpotCheckinDays(rows)
 }
