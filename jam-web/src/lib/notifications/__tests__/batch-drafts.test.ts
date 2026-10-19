@@ -625,6 +625,40 @@ describe('#23 mission_rank_up', () => {
     const out = selectMissionRankDrafts({ ...common, previousRank: new Map([['m1:u2', 3]]) })
     expect(out.drafts[0].groupKey).toBe(`mission_rank_up:m1:${kstDateString(BATCH_AT)}`)
   })
+
+  // 티켓 20261019_1311 — 화면(/api/missions/[id]/status)과 같은 목록으로 순위를 매긴다
+  it('이용 정지 중인 유저는 순위 입력에서 빠져 다른 유저의 순위가 올라가고, 정지 유저의 스냅샷·소식은 없다', () => {
+    const out = selectMissionRankDrafts({
+      ...common,
+      suspendedUserIds: new Set(['u1']),
+      previousRank: new Map([
+        ['m1:u1', 1],
+        ['m1:u2', 2], // u1이 빠지며 1위가 된다 → 상승
+        ['m1:u3', 3], // 2위가 된다 → 상승
+      ]),
+    })
+    expect(out.snapshots).toEqual([
+      { mission_id: 'm1', user_id: 'u2', rank: 1 },
+      { mission_id: 'm1', user_id: 'u3', rank: 2 },
+    ])
+    expect(out.drafts.map((d) => d.userId).sort()).toEqual(['u2', 'u3'])
+    expect(out.drafts.find((d) => d.userId === 'u2')?.payload).toMatchObject({ rank: 1 })
+  })
+
+  it('정지 중인 유저만 참가한 미션은 건너뛴다', () => {
+    const out = selectMissionRankDrafts({
+      ...common,
+      suspendedUserIds: new Set(['u1', 'u2', 'u3']),
+      previousRank: new Map([['m1:u2', 3]]),
+    })
+    expect(out.drafts).toHaveLength(0)
+    expect(out.snapshots).toHaveLength(0)
+  })
+
+  it('suspendedUserIds를 생략하면 아무도 빼지 않는다', () => {
+    const out = selectMissionRankDrafts({ ...common, previousRank: new Map() })
+    expect(out.snapshots).toHaveLength(3)
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

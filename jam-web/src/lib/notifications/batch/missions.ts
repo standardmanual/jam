@@ -17,7 +17,7 @@
 import { groupedTargetsKey, scopedGroupKey } from '@/lib/notifications/groupKey'
 import { kstDateString } from '@/lib/notifications/kst'
 import { MISSION_PROGRESS_UNIT, getTarget } from '@/lib/missions/checker'
-import { rankMissionParticipants } from '@/lib/missions/ranking'
+import { filterRankableParticipants, rankMissionParticipants } from '@/lib/missions/ranking'
 import type { MissionCondition, MissionStatusDisplayType, MissionType } from '@/types/database'
 import {
   DAY_MS,
@@ -189,6 +189,12 @@ export interface MissionRankInput {
   completedAt: Map<string, string>
   /** `{missionId}:{userId}` → 직전 배치가 남긴 순위 */
   previousRank: Map<string, number>
+  /**
+   * 지금 이용 정지 중인 유저 id (티켓 20261019_1311). 순위 입력에서 뺀다 — `/api/missions/[id]/status`가
+   * 다른 유저에게 보여 주는 순위와 같은 목록으로 순위를 매겨야 «5위로 올라섰어요»와 화면이 어긋나지 않는다.
+   * 생략하면 아무도 빼지 않는다.
+   */
+  suspendedUserIds?: ReadonlySet<string>
   startedAt: Date
   today: string
 }
@@ -227,7 +233,8 @@ export function selectMissionRankDrafts(input: MissionRankInput): MissionRankOut
   }
 
   for (const mission of active) {
-    const list = byMission.get(mission.id) ?? []
+    // 이용 정지 중인 유저는 순위 입력에서 뺀다(정지 유저의 스냅샷·소식도 만들지 않는다)
+    const list = filterRankableParticipants(byMission.get(mission.id) ?? [], input.suspendedUserIds ?? new Set())
     if (list.length === 0) continue
 
     const ranked = rankMissionParticipants(
@@ -386,11 +393,19 @@ export async function buildMissionRankDrafts(ctx: BatchContext): Promise<StepOut
   )
   const previousRank = new Map(snapshotRows.map((r) => [`${r.mission_id}:${r.user_id}`, r.rank]))
 
+  // 지금 이용 정지 중인 유저(`lifted_at IS NULL`) — 순위 입력에서 뺀다(티켓 20261019_1311).
+  // 읽지 못하면 이 단계가 실패한다(runStep 격리) — 정지 유저를 넣은 채 순위·소식을 만들지 않는다.
+  const suspendedRows = await fetchAllRows<{ user_id: string }>('user_suspensions', 'id', () =>
+    supabase.from('user_suspensions').select('user_id').is('lifted_at', null)
+  )
+  const suspendedUserIds = new Set(suspendedRows.map((r) => r.user_id))
+
   const { drafts, snapshots } = selectMissionRankDrafts({
     missions,
     participations,
     completedAt,
     previousRank,
+    suspendedUserIds,
     startedAt: ctx.startedAt,
     today: ctx.today,
   })

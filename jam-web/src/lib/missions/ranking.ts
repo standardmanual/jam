@@ -37,3 +37,18 @@ export function rankMissionParticipants(list: RankableParticipant[]): RankedPart
     .sort(compareMissionRank)
     .map((e, i) => ({ ...e, isCompleted: e.completedAt !== null, rank: i + 1 }))
 }
+
+/**
+ * 이용 정지 중인 유저를 순위·달성자 목록에서 뺀다 (티켓 20261019_1311, 운영 로직 13.2절).
+ * 다른 유저가 보는 목록에서만 빠진다 — `viewerUserId` 본인은 정지 중이어도 남겨 자기 화면에는 보인다.
+ * 정지가 풀리면(`suspendedUserIds`에서 빠지면) 다시 포함된다. 순위 번호는 걸러낸 뒤의 목록으로 매긴다.
+ *
+ * `/api/missions/[id]/status`(화면)와 025 배치의 소식 #23(순위 상승)이 **같은 목록**을 순위 입력으로 써야 한다.
+ */
+export function filterRankableParticipants<T extends { userId: string }>(
+  list: readonly T[],
+  suspendedUserIds: ReadonlySet<string>,
+  viewerUserId?: string,
+): T[] {
+  return list.filter((p) => !suspendedUserIds.has(p.userId) || p.userId === viewerUserId)
+}

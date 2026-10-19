@@ -48,6 +48,28 @@ export async function getActiveSuspension(supabase: SupabaseClient, userId: stri
   return { id: row.id, reason: row.reason, suspendedAt: row.suspended_at }
 }
 
+/** 한 번에 `in()`으로 묻는 유저 수. URL이 길어지지 않게 나눈다 */
+const SUSPENDED_LOOKUP_CHUNK = 100
+
+/**
+ * 주어진 유저 가운데 지금 이용 정지 중인 유저의 id (티켓 20261019_1311, 미션 순위에서 정지 유저를 빼는 데 쓴다).
+ * 진행 중인 정지(`lifted_at IS NULL`)만 센다 — 풀린 유저는 다시 포함된다. 읽지 못하면 던진다.
+ */
+export async function getSuspendedUserIds(supabase: SupabaseClient, userIds: readonly string[]): Promise<Set<string>> {
+  const suspended = new Set<string>()
+  const uniqueIds = [...new Set(userIds)]
+  for (let i = 0; i < uniqueIds.length; i += SUSPENDED_LOOKUP_CHUNK) {
+    const { data, error } = await supabase
+      .from('user_suspensions')
+      .select('user_id')
+      .in('user_id', uniqueIds.slice(i, i + SUSPENDED_LOOKUP_CHUNK))
+      .is('lifted_at', null)
+    if (error) throw new Error(`user_suspensions 목록 조회 실패: ${error.message}`)
+    for (const row of (data ?? []) as { user_id: string }[]) suspended.add(row.user_id)
+  }
+  return suspended
+}
+
 /** 지금까지 건 모든 정지의 구간(끝난 것과 진행 중인 것). 없으면 빈 배열. 읽지 못하면 던진다. */
 export async function getSuspensionPeriods(supabase: SupabaseClient, userId: string): Promise<SuspensionPeriod[]> {
   const { data, error } = await supabase
