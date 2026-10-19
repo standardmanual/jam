@@ -7,7 +7,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { createNotification, groupedTargetsKey, scopedGroupKey } from '@/lib/notifications'
 import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
-import { grantMissionRewards } from '@/lib/missions/rewards'
+import { grantMissionRewards, type MissionRewardResult } from '@/lib/missions/rewards'
 import { getActivityHistory, getSignupAnchorDate, mergeActivityHistory } from '@/lib/strava/activity-history'
 import { evaluateConditionDetailed, calcMaxStreak, passesWalkingGate } from '@/lib/badge-engine'
 import {
@@ -104,6 +104,11 @@ export interface MissionCheckResult {
    * 20260823_007 — 동기화 응답에 획득 배지 상세를 실어보내기 위해 추가.
    */
   awardedBadgeIds: string[]
+  /**
+   * 이번 호출에서 인벤토리 빈칸이 모자라 받지 않은 상태로 남은 아이템 배지 보상 id (티켓 20261019_1313).
+   * 미션 상세에서 받는다. 잠긴 배지 id도 들어 있는 서버 내부 값이다 — 유저에게 내리거나 공개 기록에 싣기 전에 가린다(7.3절).
+   */
+  pendingItemBadgeIds: string[]
 }
 
 export async function checkMissions(
@@ -123,7 +128,7 @@ export async function checkMissions(
     .or(activeFilter.endsAtOrExpr)
 
   const missions = (missionsRaw ?? []) as MissionRow[]
-  if (missions.length === 0) return { completedMissionIds: [], completedMissions: [], awardedBadgeIds: [] }
+  if (missions.length === 0) return { completedMissionIds: [], completedMissions: [], awardedBadgeIds: [], pendingItemBadgeIds: [] }
 
   // 2. 유저가 이미 완료한 미션
   const { data: completedRaw } = await supabase
@@ -148,6 +153,7 @@ export async function checkMissions(
   const completedMissionIds: string[] = []
   const completedMissions: { missionId: string; completionId: string }[] = []
   const awardedBadgeIds: string[] = []
+  const pendingItemBadgeIds: string[] = []
   /**
    * R11 — 마일스톤·완료 소식은 미션 2건 이상이면 한 행으로 접는다(20260827_014).
    * 루프 안에서 바로 보내면 미션 수만큼 행이 생기므로 **후보만 모아 두고 끝에서 한 번** 만든다.
@@ -232,9 +238,20 @@ export async function checkMissions(
     completedMissions.push({ missionId: mission.id, completionId: outcome.completionId })
     console.info(`[checkMissions] 미션 달성 — userId: ${userId}, mission: ${mission.title}`)
 
-    // 보상 지급 (Phase13) — 설정된 배지 전부(타입별 분기·중복 스킵) + 배지 포인트 + 미션 포인트
-    const reward = await grantMissionRewards(userId, mission)
+    // 보상 지급 (Phase13) — 설정된 배지 전부(활동 배지는 중복 스킵, 아이템 배지는 새 개체로 지급 또는 받지 않은 보상으로 기록) + 배지 포인트 + 미션 포인트.
+    // 완료 기록은 위에서 이미 남았다. 지급이 던져도 이 미션만 기록하고 다음 미션을 이어 판정한다(티켓 20261019_1313).
+    let reward: MissionRewardResult
+    try {
+      reward = await grantMissionRewards(userId, mission)
+    } catch (err) {
+      console.error(`[checkMissions] 보상 지급 실패 — 완료 기록은 남음 (userId: ${userId}, mission: ${mission.id}):`, err)
+      continue
+    }
     awardedBadgeIds.push(...reward.awardedBadgeIds)
+    pendingItemBadgeIds.push(...reward.pendingItemBadgeIds)
+    // 피드는 공개 기록이라 잠긴 배지는 id도 싣지 않는다(7.3절)
+    const lockedPending = new Set(reward.pendingLockedBadgeIds)
+    const openPendingItemBadgeIds = reward.pendingItemBadgeIds.filter((id) => !lockedPending.has(id))
 
     await recordFeedEvent(userId, 'mission_completed', {
       mission_id: mission.id,
@@ -242,6 +259,7 @@ export async function checkMissions(
       reward_points: reward.totalAwardedPoints > 0 ? reward.totalAwardedPoints : null,
       awarded_badge_ids: reward.awardedBadgeIds,
       awarded_badge_names: reward.awardedBadgeNames,
+      ...(openPendingItemBadgeIds.length > 0 ? { pending_item_badge_ids: openPendingItemBadgeIds } : {}),
       final_progress_value: progressValue,
       target_value: getTarget(mission.mission_type, mission.condition_json as MissionCondition),
     })
@@ -257,7 +275,7 @@ export async function checkMissions(
     await createNotification(draft as CreateNotificationInput<NotificationType>)
   }
 
-  return { completedMissionIds, completedMissions, awardedBadgeIds }
+  return { completedMissionIds, completedMissions, awardedBadgeIds, pendingItemBadgeIds }
 }
 
 /**

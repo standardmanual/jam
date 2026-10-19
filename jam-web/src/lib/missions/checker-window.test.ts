@@ -47,7 +47,7 @@ vi.mock('@/lib/notifications', async (importOriginal) => {
   return { ...actual, createNotification: vi.fn(async () => {}) }
 })
 vi.mock('@/lib/missions/rewards', () => ({
-  grantMissionRewards: vi.fn(async () => ({ awardedBadgeIds: [], awardedBadgeNames: [], totalAwardedPoints: 0 })),
+  grantMissionRewards: vi.fn(async () => ({ awardedBadgeIds: [], awardedBadgeNames: [], totalAwardedPoints: 0, pendingItemBadgeIds: [], pendingLockedBadgeIds: [] })),
 }))
 vi.mock('@/lib/strava/activity-history', () => ({
   getSignupAnchorDate: async () => null,

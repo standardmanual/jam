@@ -83,6 +83,11 @@ export interface FeedEventMeta {
     awarded_badge_ids: string[]
     /** 표시용 배지 이름 목록 (Phase13) */
     awarded_badge_names: string[]
+    /**
+     * 인벤토리 빈칸이 모자라 아직 받지 않은 아이템 배지 보상 id (티켓 20261019_1313). 미션 상세에서 받는다.
+     * 잠긴 배지는 id도 싣지 않는다(공개 기록, 7.3절). 없으면 필드가 없다. 이 필드가 없는 과거 행도 같다.
+     */
+    pending_item_badge_ids?: string[]
     /** 완료 시점 진행값 — "결과 요약"용 (Phase13) */
     final_progress_value: number
     /** 완료 당시 목표치 스냅샷 (Phase13) */

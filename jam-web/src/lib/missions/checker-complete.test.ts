@@ -26,10 +26,15 @@ const state = vi.hoisted(() => ({
   completionCountReads: 0,
 }))
 
-const grantMock = vi.hoisted(() =>
-  vi.fn(async () => ({ awardedBadgeIds: ['badge-1'], awardedBadgeNames: ['배지'], totalAwardedPoints: 10 })),
-)
-const recordFeedEventMock = vi.hoisted(() => vi.fn(async () => {}))
+const defaultReward = vi.hoisted(() => ({
+  awardedBadgeIds: ['badge-1'],
+  awardedBadgeNames: ['배지'],
+  totalAwardedPoints: 10,
+  pendingItemBadgeIds: [] as string[],
+  pendingLockedBadgeIds: [] as string[],
+}))
+const grantMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<typeof defaultReward>>(async () => defaultReward))
+const recordFeedEventMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>(async () => {}))
 const createNotificationMock = vi.hoisted(() => vi.fn(async () => {}))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -122,7 +127,8 @@ beforeEach(() => {
   state.rpcCalls = []
   state.completionInserts = 0
   state.completionCountReads = 0
-  grantMock.mockClear()
+  grantMock.mockReset()
+  grantMock.mockImplementation(async () => defaultReward)
   recordFeedEventMock.mockClear()
   createNotificationMock.mockClear()
   errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -237,7 +243,75 @@ describe('checkMissions — mission_complete 연결', () => {
 
   it('활성 미션이 없으면 빈 결과다', async () => {
     const result = await checkMissions(USER, [ACTIVITY])
-    expect(result).toEqual({ completedMissionIds: [], completedMissions: [], awardedBadgeIds: [] })
+    expect(result).toEqual({ completedMissionIds: [], completedMissions: [], awardedBadgeIds: [], pendingItemBadgeIds: [] })
+  })
+})
+
+describe('checkMissions — 받지 않은 아이템 배지 보상 (티켓 20261019_1313)', () => {
+  it('받지 않은 보상 배지 id를 결과에 싣고, 피드에는 잠긴 배지를 뺀 id만 싣는다', async () => {
+    setMissions(['m1'])
+    rpcReturns('m1', { ok: true, status: 'completed', completion_id: 'c1' })
+    grantMock.mockResolvedValueOnce({
+      awardedBadgeIds: [],
+      awardedBadgeNames: [],
+      totalAwardedPoints: 0,
+      pendingItemBadgeIds: ['item-open', 'item-locked'],
+      pendingLockedBadgeIds: ['item-locked'],
+    })
+
+    const result = await checkMissions(USER, [ACTIVITY])
+
+    expect(result.pendingItemBadgeIds).toEqual(['item-open', 'item-locked'])
+    expect(result.awardedBadgeIds).toEqual([])
+    expect(recordFeedEventMock).toHaveBeenCalledWith(
+      USER,
+      'mission_completed',
+      expect.objectContaining({ mission_id: 'm1', pending_item_badge_ids: ['item-open'] }),
+    )
+  })
+
+  it('받지 않은 보상이 없으면 피드에 pending_item_badge_ids 필드를 만들지 않는다', async () => {
+    setMissions(['m1'])
+    rpcReturns('m1', { ok: true, status: 'completed', completion_id: 'c1' })
+
+    const result = await checkMissions(USER, [ACTIVITY])
+
+    expect(result.pendingItemBadgeIds).toEqual([])
+    const meta = recordFeedEventMock.mock.calls[0][2] as Record<string, unknown>
+    expect(meta).not.toHaveProperty('pending_item_badge_ids')
+  })
+
+  it('잠긴 보상만 받지 않은 상태면 피드에 id를 싣지 않는다', async () => {
+    setMissions(['m1'])
+    rpcReturns('m1', { ok: true, status: 'completed', completion_id: 'c1' })
+    grantMock.mockResolvedValueOnce({
+      awardedBadgeIds: [],
+      awardedBadgeNames: [],
+      totalAwardedPoints: 0,
+      pendingItemBadgeIds: ['item-locked'],
+      pendingLockedBadgeIds: ['item-locked'],
+    })
+
+    await checkMissions(USER, [ACTIVITY])
+
+    const meta = recordFeedEventMock.mock.calls[0][2] as Record<string, unknown>
+    expect(meta).not.toHaveProperty('pending_item_badge_ids')
+  })
+
+  it('보상 지급이 던지면 오류를 남기고 다음 미션을 이어 판정한다(완료 기록은 이미 남았다)', async () => {
+    setMissions(['m1', 'm2'])
+    rpcReturns('m1', { ok: true, status: 'completed', completion_id: 'c1' })
+    rpcReturns('m2', { ok: true, status: 'completed', completion_id: 'c2' })
+    grantMock.mockRejectedValueOnce(new Error('지급 실패'))
+
+    const result = await checkMissions(USER, [ACTIVITY])
+
+    expect(errorSpy).toHaveBeenCalledTimes(1)
+    expect(result.completedMissionIds).toEqual(['m1', 'm2'])
+    expect(grantMock).toHaveBeenCalledTimes(2)
+    // 지급이 실패한 m1은 피드에 «보상을 받았다»고 쓰지 않는다. m2만 기록한다.
+    expect(recordFeedEventMock).toHaveBeenCalledTimes(1)
+    expect(recordFeedEventMock).toHaveBeenCalledWith(USER, 'mission_completed', expect.objectContaining({ mission_id: 'm2' }))
   })
 })
 
