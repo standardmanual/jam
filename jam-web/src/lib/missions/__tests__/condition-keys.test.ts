@@ -274,7 +274,10 @@ const cases: Array<[string, () => void]> = [
     for (const key of Object.keys(everyField)) {
       assert.ok(MISSION_ALLOWED_CONDITION_KEYS.has(key), `허용 키에 없다: ${key}`)
     }
-    assert.deepStrictEqual(checkMissionCondition('distance', everyField), { error: null, warning: null })
+    // 키는 모두 저장된다. DB 기록 키 20개는 distance 타입이 판정하지 않아 고지만 한다 (티켓 20261019_1445 4회)
+    const everyFieldCheck = checkMissionCondition('distance', everyField)
+    assert.strictEqual(everyFieldCheck.error, null)
+    assert.ok(everyFieldCheck.warning?.includes('DB 기록으로 세는 조건'), String(everyFieldCheck.warning))
   }],
 
   // ── 위임 키 정본 (티켓 20261019_1312) ─────────────────────────────────
@@ -629,6 +632,58 @@ const cases: Array<[string, () => void]> = [
     assert.ok(error!.includes('days_since_signup') && error!.includes('signup_recent_active_days'))
     assert.ok(!error!.includes('combine_success_count'), `판정하는 키까지 문제로 적었다: ${error}`)
   }],
+  // ── 엔진 조건이 아닌 타입에 DB 기록 키가 들어간 경우 (티켓 20261019_1445 4회) ──────────────
+  ['엔진 조건이 아닌 타입 + DB 기록 키 20개 각각 → 저장은 허용하고 «이 타입은 판정하지 않는다»고 고지한다', () => {
+    const valueOf = (key: string): unknown => {
+      if (key === 'recipe_first_success') return { recipe_id: 'recipe' }
+      if (key === 'checkin_category_count') return { category: 'train_subway', count: 3 }
+      if (key === 'checkin_badge_count') return { checkin_badge_names: ['성수역'], count: 1 }
+      return 3
+    }
+    assert.strictEqual(MISSION_DB_CONDITION_KEY_LIST.length, 20)
+    const types: MissionType[] = ['distance', 'activity_count', 'checkin', 'item_collect', 'streak_days', 'duration_minutes', 'elevation_gain_m']
+    for (const key of MISSION_DB_CONDITION_KEY_LIST) {
+      for (const type of types) {
+        const { error, warning } = checkMissionCondition(type, { [key]: valueOf(key) } as unknown as MissionCondition, 'achievement')
+        assert.strictEqual(error, null, `${type}/${key}: 저장이 막혔다 — ${error}`)
+        assert.ok(warning, `${type}/${key}: 경고가 없다`)
+        assert.ok(warning!.includes(key), `${type}/${key}: 문제 키가 경고에 없다 — ${warning}`)
+        assert.ok(warning!.includes('판정하지 않아서'), `${type}/${key}: 경고 취지가 없다 — ${warning}`)
+        assert.ok(warning!.includes('복합 조건'), `${type}/${key}: 대안 안내가 없다 — ${warning}`)
+      }
+    }
+  }],
+  ['순위 기준으로 쓰이는 jam_period_earned를 distance 미션에 넣으면 라벨과 함께 경고한다 (순위형 틀에서도 저장은 막지 않는다)', () => {
+    for (const frame of ['ranking', 'achievement', 'individual']) {
+      const { error, warning } = checkMissionCondition('distance', { distance_km: 10, jam_period_earned: 500 }, frame)
+      assert.strictEqual(error, null, `${frame}: ${error}`)
+      assert.ok(warning?.includes('기간 동안 모은 잼(jam_period_earned)'), String(warning))
+      assert.ok(warning?.includes('「거리」'), String(warning))
+    }
+  }],
+  ['엔진 조건 타입의 DB 기록 키와 DB 키가 없는 다른 타입은 이 고지가 없다', () => {
+    assert.deepStrictEqual(checkMissionCondition('engine_condition', { combine_success_count: 3 }, 'achievement'), { error: null, warning: null })
+    assert.deepStrictEqual(checkMissionCondition('distance', { distance_km: 10 }, 'achievement'), { error: null, warning: null })
+  }],
+  ['DB 기록 키와 판정 준비가 안 된 필드가 함께 있으면 두 고지를 모두 싣는다', () => {
+    const { error, warning } = checkMissionCondition(
+      'distance',
+      { distance_km: 10, [PENDING_KEY]: 'x', combine_success_count: 3 } as unknown as MissionCondition,
+      'achievement'
+    )
+    assert.strictEqual(error, null)
+    assert.ok(warning?.includes(PENDING_KEY) && warning.includes('combine_success_count'), String(warning))
+  }],
+  ['엔진 위임 타입(streak_days 등)이 판정 준비가 안 된 필드로 막히면 오류가 우선한다 (고지로 낮추지 않는다)', () => {
+    const { error, warning } = checkMissionCondition(
+      'streak_days',
+      { streak_days: 3, [PENDING_KEY]: 'x', combine_success_count: 3 } as unknown as MissionCondition,
+      'achievement'
+    )
+    assert.ok(error?.includes(PENDING_KEY), String(error))
+    assert.strictEqual(warning, null)
+  }],
+
   ['pending 키는 engine_condition에서 여전히 거부한다 (경고로 낮추지 않는다)', () => {
     const { error } = checkMissionCondition('engine_condition', { distance_km: 10, [PENDING_KEY]: 'x' } as unknown as MissionCondition)
     assert.ok(error, 'pending 키가 통과됐다')

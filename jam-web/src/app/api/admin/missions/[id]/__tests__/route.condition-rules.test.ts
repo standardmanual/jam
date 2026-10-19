@@ -185,3 +185,64 @@ describe('PATCH /api/admin/missions/[id] — 기온 키·경고', () => {
     expect(state.updates).toHaveLength(1)
   })
 })
+
+describe('PATCH /api/admin/missions/[id] — DB 기록 키 기준 값 검증 (티켓 20261019_1445 4회)', () => {
+  it('condition_json을 보낸 수정은 기준 값이 0 이하·소수·숫자가 아니면 400이고 저장하지 않는다', async () => {
+    existing({ mission_type: 'engine_condition', condition_json: { distance_km: 5 }, status_display_type: 'achievement' })
+    for (const bad of [0, -1, 0.5, '3', null]) {
+      const res = await patch({ condition_json: { distance_km: 5, combine_success_count: bad } })
+      expect(res.status, String(bad)).toBe(400)
+      const error = (await res.json()).error as string
+      expect(error).toContain('combine_success_count')
+      expect(error).toContain('1 이상의 정수로 고쳐서 다시 저장해주세요')
+    }
+    expect(state.updates).toHaveLength(0)
+  })
+
+  it('객체형 키는 안의 count를 검사한다', async () => {
+    existing({ mission_type: 'engine_condition', condition_json: { distance_km: 5 }, status_display_type: 'achievement' })
+    const res = await patch({ condition_json: { checkin_badge_count: { checkin_badge_names: ['성수역'], count: 0 } } })
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('checkin_badge_count')
+    expect(state.updates).toHaveLength(0)
+  })
+
+  it('조건과 타입을 함께 보내도 «갱신 후 타입»으로 검사한다 (타입을 engine_condition으로 바꾸는 수정)', async () => {
+    const res = await patch({
+      mission_type: 'engine_condition',
+      status_display_type: 'achievement',
+      condition_json: { jam_period_earned: 0 },
+    })
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('jam_period_earned')
+  })
+
+  it('조건을 건드리지 않는 수정은 기준 값을 보지 않는다 — 기존 행에 잘못된 값이 있어도 제목 수정은 막히지 않는다', async () => {
+    existing({ mission_type: 'engine_condition', condition_json: { combine_success_count: 0 }, status_display_type: 'achievement' })
+    const res = await patch({ title: '이름만 바꿈' })
+    expect(res.status).toBe(200)
+    expect(state.updates).toEqual([{ title: '이름만 바꿈' }])
+    expect(state.selects).toBe(0)
+  })
+
+  it('틀만 바꾸는 수정도 기존 조건의 기준 값은 다시 검사하지 않는다 (순위형 금지만 본다)', async () => {
+    existing({ mission_type: 'engine_condition', condition_json: { combine_success_count: 0 }, status_display_type: 'achievement' })
+    const res = await patch({ status_display_type: 'individual' })
+    expect(res.status).toBe(200)
+  })
+
+  it('잘못된 기준 값을 1 이상의 정수로 고치는 수정은 통과한다 (복구 경로)', async () => {
+    existing({ mission_type: 'engine_condition', condition_json: { combine_success_count: 0 }, status_display_type: 'achievement' })
+    const res = await patch({ condition_json: { combine_success_count: 2 } })
+    expect(res.status).toBe(200)
+    expect(state.updates).toHaveLength(1)
+  })
+
+  it('다른 타입에 든 DB 키는 저장하고 경고를 싣는다', async () => {
+    existing({ mission_type: 'distance', condition_json: { distance_km: 5 }, status_display_type: 'achievement' })
+    const res = await patch({ condition_json: { distance_km: 5, combine_success_count: 0 } })
+    expect(res.status).toBe(200)
+    expect((await res.json()).warning).toContain('combine_success_count')
+    expect(state.updates).toHaveLength(1)
+  })
+})

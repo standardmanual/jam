@@ -1,6 +1,7 @@
 /**
  * POST /api/admin/missions — 순위형 금지·기온 키 거부·판정 불가 키 경고의 라우트 배선 (티켓 20261019_1312).
  * 기간을 걸 수 없는 키 5개의 거절과 DB 기록 키의 경고 없는 저장도 함께 고정한다 (티켓 20261019_1445).
+ * 4회: 복합 조건 DB 기록 키의 기준 값 거절(0 이하·소수·숫자가 아닌 값)과 다른 타입에 든 DB 키의 경고도 고정한다.
  * 순수 함수(`condition-keys.test.ts`)만으로는 라우트가 틀을 넘기지 않아도 통과하므로 라우트 단위로 고정한다.
  * DB는 기록형 스텁이다.
  * 실행: cd jam-web && npx vitest run "src/app/api/admin/missions/route.condition-rules.test.ts"
@@ -205,5 +206,63 @@ describe('POST /api/admin/missions — 판정하지 않는 조건 경고', () =>
     })
     expect(res.status).toBe(200)
     expect(await res.json()).not.toHaveProperty('warning')
+  })
+})
+
+describe('POST /api/admin/missions — DB 기록 키 기준 값 검증 (티켓 20261019_1445 4회)', () => {
+  it.each([
+    ['combine_success_count', 0],
+    ['jam_period_earned', -5],
+    ['capsule_open_count', 1.5],
+    ['mission_complete_count', '3'],
+    ['weekly_active_days', null],
+  ])('%s=%j 은(는) [현상] → [원인] → [해결책] 문구로 400이고 저장하지 않는다', async (key, value) => {
+    const res = await post({ ...base, status_display_type: 'achievement', condition_json: { [key]: value } })
+    expect(res.status).toBe(400)
+    const error = (await res.json()).error as string
+    expect(error).toContain(key)
+    expect(error).toContain('기준 값이 올바르지 않아요')
+    expect(error).toContain('참가하자마자 달성')
+    expect(error).toContain('1 이상의 정수로 고쳐서 다시 저장해주세요')
+    expect(state.inserts).toHaveLength(0)
+  })
+
+  it('객체형 checkin_category_count·checkin_badge_count는 안의 count를 검사한다', async () => {
+    const category = await post({
+      ...base,
+      status_display_type: 'achievement',
+      condition_json: { checkin_category_count: { category: 'train_subway', count: 0 } },
+    })
+    expect(category.status).toBe(400)
+    expect((await category.json()).error).toContain('checkin_category_count')
+    const names = await post({
+      ...base,
+      status_display_type: 'achievement',
+      condition_json: { checkin_badge_count: { checkin_badge_names: ['성수역'], count: 2.5 } },
+    })
+    expect(names.status).toBe(400)
+    expect(state.inserts).toHaveLength(0)
+  })
+
+  it('1 이상의 정수 기준 값은 그대로 저장한다', async () => {
+    const condition = { combine_success_count: 1, jam_period_earned: 500, checkin_category_count: { category: 'train_subway', count: 2 } }
+    const res = await post({ ...base, status_display_type: 'achievement', condition_json: condition })
+    expect(res.status).toBe(200)
+    expect(state.inserts[0].condition_json).toEqual(condition)
+  })
+
+  it('다른 타입에 든 DB 키는 저장하고 응답에 «판정하지 않는다»는 경고를 싣는다 (기준 값 검사 대상이 아니다)', async () => {
+    const res = await post({
+      ...base,
+      mission_type: 'distance',
+      status_display_type: 'achievement',
+      condition_json: { distance_km: 10, jam_period_earned: 500 },
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.warning).toContain('기간 동안 모은 잼(jam_period_earned)')
+    expect(body.warning).toContain('판정하지 않아서')
+    expect(state.inserts).toHaveLength(1)
+    expect(state.inserts[0]).not.toHaveProperty('warning')
   })
 })

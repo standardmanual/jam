@@ -241,7 +241,7 @@ const NON_ENGINE_MISSION_ONLY_KEYS: ReadonlySet<string> = new Set(['count', 'bad
  * 이 밖의 키는 저장은 되지만 판정에 쓰이지 않는다 — `checkMissionCondition`이 경고로 알린다.
  * `evaluateEngineMissionCondition`의 「알려진 필드가 하나라도 있는가」 검사(fail-closed)도 이 집합을 쓴다 —
  * 두 곳이 갈리면 «경고는 없는데 판정은 안 하는» 조건이 생긴다.
- * 5-2b(DB 기록 조건)가 키를 판정 가능하게 만들 때마다 여기에 더하면 경고 대상에서 빠진다. **판정 구현과 같은 변경에서** 더한다 —
+ * 키를 판정 가능하게 만들 때마다 여기에 더하면 경고 대상에서 빠진다(5-2b 1~3회가 DB 기록 키 20개를 더했다). **판정 구현과 같은 변경에서** 더한다 —
  * 판정 없이 키만 옮기면 그 키만 든 미션이 알려진 키가 있다고 보고 참가 즉시 완료된다.
  */
 export const ENGINE_CONDITION_JUDGED_KEYS: ReadonlySet<string> = new Set<string>([
@@ -439,6 +439,21 @@ export function rankingConditionError(
 }
 
 /**
+ * `engine_condition`이 아닌 타입에 DB 기록 키가 들어 있으면 «이 타입은 그 키를 판정하지 않는다»는 고지를 돌려준다 (티켓 20261019_1445 4회).
+ *
+ * DB 기록 키는 `engine_condition`만 `loadMissionDbMetrics`로 읽어 비교한다. `distance`·`activity_count`처럼 `progressValue >= target`으로
+ * 판정하는 타입과 배지엔진에 조건을 넘기는 타입(`streak_days` 등)은 이 키를 읽지 않아서, 오류도 경고도 없이 저장되면 어드민이 효과를 기대하기
+ * 쉽다(특히 순위 기준으로 쓰이는 `jam_period_earned`). 저장은 막지 않는다 — 효과가 없을 뿐 미션이 깨지지는 않는다.
+ */
+function ignoredDbKeysWarning(missionType: MissionType, condition: unknown): string | null {
+  if (missionType === 'engine_condition') return null
+  const dbKeys = dbConditionKeysIn(condition)
+  if (dbKeys.length === 0) return null
+  const names = dbKeys.map((k) => `${missionConditionValueLabel(k)}(${k})`).join(', ')
+  return `DB 기록으로 세는 조건이 있어요 — ${names}. 「${missionTypeLabel(missionType)}」 타입은 이 조건을 판정하지 않아서 저장은 되지만 달성 판정에 아무 영향도 주지 않아요. 이 조건으로 달성을 판정하려면 미션 타입을 「${missionTypeLabel('engine_condition')}」으로 바꿔 주세요.`
+}
+
+/**
  * 미션 저장 전 `condition_json` 검증. 순수 함수 — API 라우트(POST/PATCH)와 어드민 폼이
  * 같은 판정을 공유한다(`badge-validation.ts`의 `findUnknownConditionKeyError`와 같은 패턴).
  *
@@ -455,7 +470,9 @@ export function rankingConditionError(
  *   (선례 20260904_1426은 「저장은 막지 않고 고지」였다 — 그 건은 발급 자체는 되는 경우였고,
  *   엔진 위임 타입은 저장하면 그 미션이 영원히 달성되지 않으므로 막는 쪽이 맞다)
  * - `engine_condition`에 판정하지 않는 키(`ENGINE_CONDITION_JUDGED_KEYS` 밖)가 있으면 저장은 허용하고
- *   고지한다 — 5-2b가 키를 판정 가능하게 만들 때까지 JAM 조건 같은 키는 이 경로를 탄다
+ *   고지한다 — 5-2b 4회 뒤 이 경로를 타는 키는 판정 범위 밖으로 둔 9개(`active_week_streak` 등)뿐이다
+ * - `engine_condition`이 아닌 타입에 DB 기록 키(`MISSION_DB_CONDITION_KEY_LIST` 20개)가 있으면 저장은 허용하고
+ *   고지한다 — 그 타입은 DB 기록을 읽지 않아 키가 판정에 쓰이지 않는다(티켓 20261019_1445 4회)
  */
 export function checkMissionCondition(
   missionType: MissionType,
@@ -526,6 +543,7 @@ export function checkMissionCondition(
   if (rankingError) return { error: rankingError, warning: null }
 
   const typeLabel = missionTypeLabel(missionType)
+  const dbKeyWarning = ignoredDbKeysWarning(missionType, condition)
   if (blocking.pending.length > 0) {
     if (ENGINE_DELEGATED_MISSION_TYPES.has(missionType)) {
       return {
@@ -534,10 +552,8 @@ export function checkMissionCondition(
       }
     }
 
-    return {
-      error: null,
-      warning: `아직 판정이 준비되지 않은 필드가 있어요 — ${labelKeys(blocking.pending)}. 「${typeLabel}」 타입은 진행값으로 달성을 판정하기 때문에 저장은 되지만, 이 필드는 달성 판정에 아무 영향도 주지 않아요. 조건에서 빼도 결과는 같아요.`,
-    }
+    const pendingWarning = `아직 판정이 준비되지 않은 필드가 있어요 — ${labelKeys(blocking.pending)}. 「${typeLabel}」 타입은 진행값으로 달성을 판정하기 때문에 저장은 되지만, 이 필드는 달성 판정에 아무 영향도 주지 않아요. 조건에서 빼도 결과는 같아요.`
+    return { error: null, warning: dbKeyWarning ? `${pendingWarning} ${dbKeyWarning}` : pendingWarning }
   }
 
   if (missionType === 'engine_condition') {
@@ -551,6 +567,8 @@ export function checkMissionCondition(
       }
     }
   }
+
+  if (dbKeyWarning) return { error: null, warning: dbKeyWarning }
 
   return OK
 }
@@ -606,9 +624,9 @@ export interface MissionConditionValueRule {
 
 /**
  * `Partial`인 이유 — `engine_condition`(티켓 20260906_2231)은 여러 필드를 조합하는 복합
- * 조건이라 "달성 판정에 쓰이는 필드 하나"가 없다. 값 검증 대상이 아니므로 규칙을 아예
- * 두지 않는다 — `checkMissionConditionValue`가 `!rule`이면 통과(OK)로 처리한다(그 함수의
- * 방어적 처리 규칙 참고). 형태·허용 키 검증은 `checkMissionCondition`(위)이 이미 맡는다.
+ * 조건이라 "달성 판정에 쓰이는 필드 하나"가 없다. 그래서 이 표에 규칙을 두지 않는다.
+ * 다만 DB 기록 키 20개의 기준 값(횟수·개수·잼 양)은 `checkMissionConditionValue`가 따로 본다
+ * (아래 `engineDbThresholdError`, 티켓 20261019_1445 4회). 형태·허용 키 검증은 `checkMissionCondition`(위)이 맡는다.
  */
 export const MISSION_CONDITION_VALUE_RULE: Partial<Record<MissionType, MissionConditionValueRule>> = {
   item_collect: { key: 'badge_id', kind: 'uuid' },
@@ -622,6 +640,48 @@ export const MISSION_CONDITION_VALUE_RULE: Partial<Record<MissionType, MissionCo
 
 /** RFC4122 형태 검사만 한다 — 버전 비트까지는 보지 않는다(`notifications/feed.ts`의 UUID_RE와 동일 패턴) */
 const MISSION_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** 기준 값(임계값)이 따로 없는 DB 기록 키 — 레시피 id만 든 객체라 «얼마 이상인가»가 없다 */
+const DB_KEYS_WITHOUT_THRESHOLD: ReadonlySet<string> = new Set<MissionDbConditionKey>(['recipe_first_success'])
+
+/** 기준 값이 객체 안의 `count`인 DB 기록 키 — 값 모양은 배지 조건 레지스트리의 `input: 'object'` 정의를 따른다 */
+const DB_KEYS_WITH_COUNT_FIELD: ReadonlySet<string> = new Set<MissionDbConditionKey>(['checkin_category_count', 'checkin_badge_count'])
+
+/** 기준 값이 «1 이상의 정수»인가 — DB 기록 키는 모두 개수나 잼 양을 센다 */
+function isPositiveIntegerThreshold(value: unknown): boolean {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+}
+
+function describeThreshold(value: unknown): string {
+  if (value === undefined) return '비어 있음'
+  if (typeof value === 'number') return String(value)
+  return JSON.stringify(value) ?? String(value)
+}
+
+/**
+ * `engine_condition`의 DB 기록 키 20개(`MISSION_DB_CONDITION_KEY_LIST`) 기준 값 검사 (티켓 20261019_1445 4회).
+ *
+ * 검사 규칙이 없으면 0 이하의 값이 그대로 저장되고, 0이면 `actual >= 0`이라 첫 동기화에서 바로 완료된다(진행률의 목표도 0이 된다).
+ * 소수나 숫자가 아닌 값은 비교가 어긋나거나(`"3"`은 숫자가 아니라 영원히 충족하지 못한다) 횟수로 셀 수 없다.
+ * 모든 키가 개수나 잼 양이라 기준은 «1 이상의 정수»다. 객체형 `checkin_category_count`·`checkin_badge_count`는 안의 `count`를 본다.
+ * `recipe_first_success`는 기준 값이 없어 건너뛴다. 문제가 있는 키를 한 번에 모두 알린다.
+ */
+function engineDbThresholdError(condition: Record<string, unknown>): string | null {
+  const problems: string[] = []
+  for (const key of MISSION_DB_CONDITION_KEY_LIST) {
+    const raw = condition[key]
+    if (raw === undefined || DB_KEYS_WITHOUT_THRESHOLD.has(key)) continue
+    const label = `${missionConditionValueLabel(key)}(${key})`
+    if (DB_KEYS_WITH_COUNT_FIELD.has(key)) {
+      const count = typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>).count : undefined
+      if (!isPositiveIntegerThreshold(count)) problems.push(`${label}의 count: ${describeThreshold(count)}`)
+      continue
+    }
+    if (!isPositiveIntegerThreshold(raw)) problems.push(`${label}: ${describeThreshold(raw)}`)
+  }
+  if (problems.length === 0) return null
+  return `조건 JSON을 저장하지 못했어요. DB 기록으로 세는 조건의 기준 값이 올바르지 않아요 — ${problems.join(', ')}. 이 값은 횟수나 개수, 잼의 양이라 1 이상의 정수여야 해요. 0 이하면 참가하자마자 달성되고, 소수나 숫자가 아닌 값은 비교할 수 없어 달성되지 않아요. 1 이상의 정수로 고쳐서 다시 저장해주세요.`
+}
 
 /**
  * 미션 저장 전 `condition_json`의 «값» 검증. 순수 함수 — API 라우트(POST/PATCH)가
@@ -637,6 +697,8 @@ const MISSION_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-
  *   않는 UUID를 저장하면 그 미션도 똑같이 영구 미달성되지만, 어드민이 목록에서 고르는 UI가
  *   아니라 자유 textarea로 입력하는 한 이 위험은 남는다 — 이 티켓(6건의 `null` 재발 방지)의
  *   범위 밖이라 후속 과제로 남긴다.
+ * - `engine_condition`: 조건에 든 DB 기록 키의 기준 값이 1 이상의 정수가 아니면 거부(`engineDbThresholdError`, 티켓 20261019_1445 4회).
+ *   그 밖의 필드 값은 검사하지 않는다.
  * - `condition`이 `undefined`(PATCH 부분 갱신)이거나 객체가 아니면 검사하지 않는다 — 형태
  *   검증은 `checkMissionCondition`의 책임이라 여기서 중복하지 않는다.
  * - 그 미션 타입에 대응 규칙이 없으면(존재하지 않는 값 — 방어적 처리) 통과시킨다.
@@ -647,6 +709,11 @@ export function checkMissionConditionValue(
 ): MissionConditionCheck {
   if (condition === undefined) return OK
   if (typeof condition !== 'object' || condition === null || Array.isArray(condition)) return OK
+
+  if (missionType === 'engine_condition') {
+    const thresholdError = engineDbThresholdError(condition as Record<string, unknown>)
+    return thresholdError ? { error: thresholdError, warning: null } : OK
+  }
 
   const rule = MISSION_CONDITION_VALUE_RULE[missionType]
   if (!rule) return OK
