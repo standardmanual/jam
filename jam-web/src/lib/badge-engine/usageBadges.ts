@@ -34,6 +34,16 @@ import { kstDateString } from '@/lib/notifications/kst'
 import { isLeveledBadge, familyKeyOf } from './badgeKind'
 import { rarityTier } from '@/lib/rarity'
 import { calcLongestSyncStreakDays, fetchCurrentSyncStreakDays } from './dailySyncStreak'
+import {
+  countBadgesByCategory,
+  countListedNamesOwned,
+  isCheckinBadgeCountValue,
+  isCheckinCategoryCountValue,
+  ownedCheckinBadgeNames,
+  type CheckinBadgeCategoryRow,
+  type CheckinBadgeNameRow,
+  type LinkedPoiCategoryRow,
+} from './checkinHoldings'
 import type { BadgeRow } from '@/types/database'
 
 /** 이 파일이 판정하는 서비스 사용량 지표 4종 — `conditionRegistry.ts` 선언과 1:1 대응.
@@ -265,26 +275,6 @@ export async function issueQualifyingBadges(
   return earned
 }
 
-/** `checkin_category_count` 값 형태 가드 — jsonb라 형태 보장이 없다(카탈로그 오류 방어) */
-function isCheckinCategoryCountValue(v: unknown): v is { category: string; count: number } {
-  return (
-    !!v &&
-    typeof v === 'object' &&
-    typeof (v as { category?: unknown }).category === 'string' &&
-    typeof (v as { count?: unknown }).count === 'number'
-  )
-}
-
-/** `checkin_badge_count` 값 형태 가드 — jsonb라 형태 보장이 없다(카탈로그 오류 방어) */
-function isCheckinBadgeCountValue(v: unknown): v is { checkin_badge_names: string[]; count: number } {
-  return (
-    !!v &&
-    typeof v === 'object' &&
-    Array.isArray((v as { checkin_badge_names?: unknown }).checkin_badge_names) &&
-    typeof (v as { count?: unknown }).count === 'number'
-  )
-}
-
 /**
  * JAM! 카테고리 — 체크인 배지 보유 조건 2종 판정·발급 (티켓 20260914_1725)
  *
@@ -350,8 +340,10 @@ export async function evaluateCheckinUsageBadges(
 
   // ① 카테고리 지표 — effective category(badges.category 우선, 없으면 연결된 poi.category)별
   // distinct 보유 개수. `admin/badges/page.tsx`의 effectiveCategory 정의와 동일한 우선순위.
+  // 계산은 순수 함수(`checkinHoldings.ts`)가 하고, 이 함수는 읽기와 읽기 오류 처리만 한다
+  // (같은 계산을 미션 판정도 쓴다 — 티켓 20261019_1445 2회).
   const categoryCandidates = candidates.filter((b) => isCheckinCategoryCountValue(b.condition_json?.checkin_category_count))
-  const categoryCounts = new Map<string, number>()
+  let categoryCounts = new Map<string, number>()
   if (categoryCandidates.length > 0 && earnedBadgeIds.size > 0) {
     const earnedIdList = [...earnedBadgeIds]
     const [{ data: earnedBadgesRaw, error: earnedBadgesError }, { data: linkedPoiRaw, error: linkedPoiError }] = await Promise.all([
@@ -361,20 +353,15 @@ export async function evaluateCheckinUsageBadges(
     if (earnedBadgesError) console.error('[evaluateCheckinUsageBadges] 보유 체크인 배지 카테고리 조회 오류:', earnedBadgesError)
     if (linkedPoiError) console.error('[evaluateCheckinUsageBadges] 연결 지점 카테고리 조회 오류:', linkedPoiError)
 
-    const poiCategoryByBadge = new Map<string, string>()
-    for (const row of (linkedPoiRaw ?? []) as { linked_badge_id: string; category: string }[]) {
-      if (!poiCategoryByBadge.has(row.linked_badge_id)) poiCategoryByBadge.set(row.linked_badge_id, row.category)
-    }
-    for (const row of (earnedBadgesRaw ?? []) as { id: string; category: string | null }[]) {
-      const effectiveCategory = row.category ?? poiCategoryByBadge.get(row.id) ?? null
-      if (!effectiveCategory) continue
-      categoryCounts.set(effectiveCategory, (categoryCounts.get(effectiveCategory) ?? 0) + 1)
-    }
+    categoryCounts = countBadgesByCategory(
+      (earnedBadgesRaw ?? []) as CheckinBadgeCategoryRow[],
+      (linkedPoiRaw ?? []) as LinkedPoiCategoryRow[]
+    )
   }
 
   // ② 목록 지표 — CSV로 지정한 체크인 배지 이름 중 실제로 보유(이름→id 해석 후 매칭)한 이름 집합.
   const listCandidates = candidates.filter((b) => isCheckinBadgeCountValue(b.condition_json?.checkin_badge_count))
-  const ownedNames = new Set<string>()
+  let ownedNames = new Set<string>()
   if (listCandidates.length > 0) {
     const allNames = [
       ...new Set(
@@ -390,15 +377,7 @@ export async function evaluateCheckinUsageBadges(
       if (namedBadgesError) {
         console.error('[evaluateCheckinUsageBadges] 배지 이름 조회 오류:', namedBadgesError)
       } else {
-        const idsByName = new Map<string, string[]>()
-        for (const row of (namedBadgesRaw ?? []) as { id: string; name: string }[]) {
-          if (!idsByName.has(row.name)) idsByName.set(row.name, [])
-          idsByName.get(row.name)!.push(row.id)
-        }
-        for (const name of allNames) {
-          const ids = idsByName.get(name) ?? [] // 카탈로그에 없는 이름 — 무시하고 나머지로 판정
-          if (ids.some((id) => earnedBadgeIds.has(id))) ownedNames.add(name)
-        }
+        ownedNames = ownedCheckinBadgeNames(allNames, (namedBadgesRaw ?? []) as CheckinBadgeNameRow[], earnedBadgeIds)
       }
     }
   }
@@ -414,7 +393,7 @@ export async function evaluateCheckinUsageBadges(
     const cat = b.condition_json?.checkin_category_count
     if (isCheckinCategoryCountValue(cat)) return categoryCounts.get(cat.category) ?? 0
     const list = b.condition_json?.checkin_badge_count
-    if (isCheckinBadgeCountValue(list)) return list.checkin_badge_names.filter((n) => ownedNames.has(n)).length
+    if (isCheckinBadgeCountValue(list)) return countListedNamesOwned(list.checkin_badge_names, ownedNames)
     return 0
   }
   const triggeredByOf = (b: BadgeRow): string => {
