@@ -374,7 +374,7 @@ actor_count = jsonb_array_length(payload->'actor_ids')   -- 중복 제거 후
 
 | 소식 | `append_keys` | 렌더 |
 |---|---|---|
-| 13 픽업됨 | `actor_ids`, `badge_ids` | 인원 2명까지 나열, 배지 개수는 `badge_ids` 길이 |
+| 13 픽업됨 | `actor_ids`, `badge_ids`, `locked_item_ids` | 인원 2명까지 나열, 배지 개수는 `badge_ids`와 `locked_item_ids` 길이의 합 |
 | 26 팔로우 | `actor_ids` | 2명까지 나열 → 3명+ "외 N명" |
 | 31 팔로잉 미션 완료 | `actor_ids` | 동일 |
 
@@ -497,7 +497,7 @@ Strava 동기화는 webhook이 없어 100% 수동이다. 유저가 버튼을 눌
 |---|---|
 | `activity_recap` | `{ activity_ids: [...], activity_badges: [...], checkin_badges: [...], item_badges: [...], first_badge_id, points }` — 배열은 전부 append, `points`만 `sum_keys`. `item_badges[].inventory_item_id`가 축인 이유는 착지점이 도감이 아니라 **내가 받은 개체**여서다. `checkin_badges[].poi_name`은 체크인한 **지점** 이름이라 키명을 유지한다 |
 | `collection_completable` | `{ item_book_id, book_name }` |
-| `drop_picked_up` | `{ actor_ids: [...], badge_ids: [...], poi_id }` — 둘 다 append. 단건일 때만 `badge_name` |
+| `drop_picked_up` | `{ actor_ids: [...], badge_ids: [...], locked_item_ids: [...], poi_id }` — `actor_ids`·`badge_ids`·`locked_item_ids` 모두 append. 단건일 때만 `badge_name`. 잠긴 채 픽업된 개체는 `badge_ids`·`badge_name` 없이 `locked_item_ids`(드랍 id)만 싣는다 |
 | `mission_milestone` | `{ mission_id, mission_title, current, target, unit, milestone: 50\|80 }` |
 | `mission_completed` | `{ mission_id, mission_title, reward_badge_count, reward_points }` |
 | `mission_rank_up` | `{ mission_id, mission_title, rank }` |
