@@ -28,11 +28,27 @@
  * chapter_reached   = coalesce((SELECT chapter_no FROM user_chapters WHERE user_id = :u), 0)
  * ```
  * `jam_daily_earned`는 유저당 하루 한 행이라 약 82년치(30,000행)가 쌓여야 `MAX_PAGES`를 넘는다 — 넘으면 오류를 던지고 그 지표만 건너뛴다.
+ *
+ * ## 기간 동안 모은 잼 (티켓 20261019_1445 3-A회, 미션 전용 키 `jam_period_earned`)
+ * `readJamEarnedWithin`이 «참가한 뒤, 미션 기간 안»에 모은 잼을 읽는다. 배지 엔진은 이 함수를 부르지 않는다(미션 전용, `lib/missions/dbMetrics.ts`).
+ * 기준 시각은 `jam_transactions.created_at`(정산·동기화 시각)이 **아니다** — 참가 전에 한 활동을 늦게 동기화하면 참가 뒤에 번 잼으로 섞이기 때문이다.
+ * 정산된 활동의 시작 시각(`strava_activities.start_date`)이 기간 안인 활동의 잼만 센다(운영 로직 13.2절의 «참가한 뒤에 한 활동만 반영»,
+ * 활동 선택 `lib/missions/window.ts`와 같은 기준).
+ * ```
+ * jam_period_earned = coalesce(sum(t.amount), 0)
+ *   FROM jam_transactions t
+ *   WHERE t.user_id = :u AND t.reason = 'activity_settlement'
+ *     AND t.source_activity_id IN (SELECT a.id FROM strava_activities a
+ *                                  WHERE a.user_id = :u AND a.start_date BETWEEN :from AND :to)   -- 하한·상한 포함, 상한 없으면 하한만
+ * ```
+ * 채움(`capsule_fill`·`locked_item_badge_fill`, 음수)과 운영자 지급·회수(`admin_grant`·`admin_deduct`)는 `reason`이 달라 합계에 들지 않는다 —
+ * 모은 양은 쓴 양으로 줄지 않는다. 정산되지 않은 활동은 원장에 줄이 없어 0이다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { longestWeekRun } from './jamActionActivityMetrics'
 import { kstWeekStartKey } from './jamActionDayMetrics'
 import { selectAllPages } from './jamActionPaging'
+import { applyMetricWindow, type MetricWindow } from './jamActionWindow'
 
 /** 오류 메시지 접두어 — 로그에서 어느 계산인지 알아보도록 공용 페이징에 넘긴다 */
 const TAG = 'jamActionJamMetrics'
@@ -124,4 +140,44 @@ export async function readChapterReached(supabase: SupabaseClient, userId: strin
   if (error) throwQueryError('챕터', error)
   const chapterNo = (data as { chapter_no: number | null } | null)?.chapter_no
   return typeof chapterNo === 'number' ? chapterNo : 0
+}
+
+/** `.in()`에 한 번에 넘기는 활동 id 수 — URL이 길어지지 않게 나눠 읽는다(`jamActionCheckinMetrics.ts`·`jamActionItemMetrics.ts`와 같은 값) */
+const IN_CHUNK_SIZE = 200
+
+/**
+ * 참가한 뒤 기간 안에 모은 잼 — `jam_period_earned`.
+ *
+ * (1) `strava_activities`에서 시작 시각이 기간 안(하한·상한 포함)인 활동 id를 끝까지 읽고(`selectAllPages`, 30,000행을 넘으면 던진다),
+ * (2) `jam_transactions`에서 그 활동 id(200개씩)의 `reason = 'activity_settlement'` 줄의 `amount`를 더한다. 같은 활동은 한 번만
+ * 정산되므로(`source_activity_id` 부분 유일 인덱스) 한 묶음의 줄 수는 200을 넘지 않는다. 정산되지 않은 활동은 줄이 없어 0이다.
+ *
+ * `window`는 필수다 — 기간 없이 부르면 평생 합이 되어 참가 전에 모은 잼이 섞인다(이 키의 의미가 아니다).
+ * 읽지 못하면 던진다(0으로 바꿔 돌려주면 «모은 양이 0»과 «세지 못함»이 구분되지 않는다) — `checkMissions`가 그 미션만 건너뛴다.
+ */
+export async function readJamEarnedWithin(supabase: SupabaseClient, userId: string, window: MetricWindow): Promise<number> {
+  const activityRows = await selectAllPages<{ id: string }>(TAG, '기간 안 활동', (from, to) =>
+    applyMetricWindow(supabase.from('strava_activities').select('id').eq('user_id', userId), 'start_date', window)
+      .order('id')
+      .range(from, to)
+  )
+  const activityIds = activityRows.map((row) => row.id)
+
+  let total = 0
+  for (let i = 0; i < activityIds.length; i += IN_CHUNK_SIZE) {
+    const chunk = activityIds.slice(i, i + IN_CHUNK_SIZE)
+    const { data, error } = await supabase
+      .from('jam_transactions')
+      .select('amount')
+      .eq('user_id', userId)
+      .eq('reason', 'activity_settlement')
+      .in('source_activity_id', chunk)
+    if (error) throwQueryError('활동 정산 잼', error)
+    for (const row of (data ?? []) as { amount: number | string }[]) {
+      const amount = Number(row.amount)
+      if (!Number.isFinite(amount)) throw new Error(`[${TAG}] 활동 정산 잼의 양을 숫자로 읽지 못했다 (userId: ${userId})`)
+      total += amount
+    }
+  }
+  return total
 }
