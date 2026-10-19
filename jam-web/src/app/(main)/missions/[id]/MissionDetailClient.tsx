@@ -181,7 +181,9 @@ export default function MissionDetailClient({
   const isActive = new Date(mission.starts_at) <= new Date() && (mission.ends_at === null || new Date(mission.ends_at) > new Date())
   const isAchievementType = mission.mission_type === 'checkin' || mission.mission_type === 'item_collect' || mission.mission_type === 'engine_condition'
   const isStreakType = mission.mission_type === 'streak_days'
-  const achieved = isCompleted || progressValue >= 1
+  // 티켓 20261019_1445 3-B: 달성은 완료 기록(isCompleted)으로만 판정한다. 예전에는 `|| progressValue >= 1`도 달성으로 봤지만, 복합 조건에
+  // «기간 동안 모은 잼»(jam_period_earned) 같은 새 키가 있으면 진행값이 모은 양이라 1잼만 모아도 달성으로 그려졌다.
+  const achieved = isCompleted
 
   const confirmPanelRef = useRevealOnMount<HTMLDivElement>(confirming)
 
