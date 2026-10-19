@@ -824,7 +824,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
                 </SelectContent>
               </Select>
               <FieldMessage id="badge-branch-key-help" className={KO_BREAK}>
-                배지 트리에서 묶어 보여 줄 가지예요. 비워 두면 분류하지 않아요.
+                배지를 나누는 분류예요. 어드민에서만 쓰이고 유저 화면에는 보이지 않아요. 비워 두면 분류하지 않아요.
               </FieldMessage>
             </div>
           )}
