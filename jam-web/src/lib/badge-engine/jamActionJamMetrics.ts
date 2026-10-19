@@ -13,6 +13,9 @@
  *  - `jam_weekly_earned`: 월~일(KST) 한 주에 모은 잼의 **역대 최고 주** 값. 원천은 `jam_daily_earned`(날짜(KST)별 모은 양)를 한 주씩 합산한 값이다.
  *    날짜는 활동한 날(KST)이라 늦게 동기화한 활동의 잼이 동기화한 날의 주에 잡히지 않는다. 주 경계는 `weekly_active_days`와 같은
  *    `kstWeekStartKey`(서버 시간대와 무관)를 쓴다.
+ *  - `jam_week_count`·`jam_week_streak`(티켓 20261019_0542 2회, 7-3·7-4): 같은 원천(`jam_daily_earned`)을 월~일(KST) 주로 합산해, 합이
+ *    `jam_week_min_earned`(보조 키, 없으면 1) 이상인 주를 «채운 주»로 본다. `jam_week_count`는 채운 주의 수, `jam_week_streak`는 채운 주가
+ *    바로 다음 주끼리 이어진 최장 주 수다. 잼을 못 모은 주(행 없음)가 끼면 연속이 끊긴다.
  *  - `chapter_reached`: 도달한 챕터 번호. 원천은 `user_chapters.chapter_no`(마이그레이션 221)다. 행이 없거나 `chapter_no`가 NULL이면(퀘스트 전) 0이다.
  *    판정 시점: 챕터를 올리는 호출부(`chapter_add_score`·`chapter_start`)는 아직 앱 코드에 없다(JAM 2.0 묶음 5). 그 전에는 동기화 끝
  *    판정(`JAM_SYNC_TRIGGERS`)에서 읽고, 챕터 오름 직후 판정은 묶음 5가 연결한다.
@@ -27,6 +30,7 @@
  * `jam_daily_earned`는 유저당 하루 한 행이라 약 82년치(30,000행)가 쌓여야 `MAX_PAGES`를 넘는다 — 넘으면 오류를 던지고 그 지표만 건너뛴다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { longestWeekRun } from './jamActionActivityMetrics'
 import { kstWeekStartKey } from './jamActionDayMetrics'
 import { selectAllPages } from './jamActionPaging'
 
@@ -57,6 +61,49 @@ export function bestWeekJamEarned(rows: readonly DailyEarnedRow[]): number {
   return best
 }
 
+/** `jam_week_min_earned`가 없을 때의 기본값 — 잼을 1이라도 모은 주 */
+export const DEFAULT_JAM_WEEK_MIN_EARNED = 1
+
+/** 날짜별 모은 잼 → 주(월요일 키)별 합. 같은 날 행이 여럿이어도 모두 더한다 */
+function jamEarnedPerWeek(rows: readonly DailyEarnedRow[]): Map<string, number> {
+  const perWeek = new Map<string, number>()
+  for (const row of rows) {
+    if (typeof row.earned_on !== 'string' || !Number.isFinite(row.amount)) continue
+    const week = kstWeekStartKey(row.earned_on)
+    perWeek.set(week, (perWeek.get(week) ?? 0) + row.amount)
+  }
+  return perWeek
+}
+
+/** 한 주(월~일, KST)에 `minEarned` 이상 모은 주(월요일 키) 목록 */
+function filledJamWeeks(rows: readonly DailyEarnedRow[], minEarned: number): string[] {
+  const filled: string[] = []
+  for (const [week, sum] of jamEarnedPerWeek(rows)) if (sum >= minEarned) filled.push(week)
+  return filled
+}
+
+/** 한 주에 `minEarned` 이상 잼을 모은 주의 수 — `jam_week_count` */
+export function countJamWeeks(rows: readonly DailyEarnedRow[], minEarned: number = DEFAULT_JAM_WEEK_MIN_EARNED): number {
+  return filledJamWeeks(rows, minEarned).length
+}
+
+/** 한 주에 `minEarned` 이상 잼을 모은 주가 이어진 최장 주 수 — `jam_week_streak` */
+export function jamWeekStreak(rows: readonly DailyEarnedRow[], minEarned: number = DEFAULT_JAM_WEEK_MIN_EARNED): number {
+  return longestWeekRun(filledJamWeeks(rows, minEarned))
+}
+
+/** 날짜(KST)별 모은 잼 전부 — 한 유저당 하루 한 행 */
+export async function fetchDailyEarnedRows(supabase: SupabaseClient, userId: string): Promise<DailyEarnedRow[]> {
+  return selectAllPages<DailyEarnedRow>(TAG, '날짜별 모은 잼', (from, to) =>
+    supabase
+      .from('jam_daily_earned')
+      .select('earned_on, amount')
+      .eq('user_id', userId)
+      .order('earned_on')
+      .range(from, to)
+  )
+}
+
 /** 지금까지 모은 잼 — `jam_wallets.total_earned`. 지갑이 없으면 0 */
 export async function readJamTotalEarned(supabase: SupabaseClient, userId: string): Promise<number> {
   const { data, error } = await supabase.from('jam_wallets').select('total_earned').eq('user_id', userId).maybeSingle()
@@ -68,15 +115,7 @@ export async function readJamTotalEarned(supabase: SupabaseClient, userId: strin
 
 /** 한 주에 모은 잼 — 날짜별 모은 양을 월~일(KST) 주로 합산한 역대 최고 값 */
 export async function readJamWeeklyEarned(supabase: SupabaseClient, userId: string): Promise<number> {
-  const rows = await selectAllPages<DailyEarnedRow>(TAG, '날짜별 모은 잼', (from, to) =>
-    supabase
-      .from('jam_daily_earned')
-      .select('earned_on, amount')
-      .eq('user_id', userId)
-      .order('earned_on')
-      .range(from, to)
-  )
-  return bestWeekJamEarned(rows)
+  return bestWeekJamEarned(await fetchDailyEarnedRows(supabase, userId))
 }
 
 /** 도달한 챕터 — `user_chapters.chapter_no`. 행이 없거나 퀘스트 전(NULL)이면 0 */

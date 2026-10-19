@@ -40,6 +40,12 @@ export const JAM_ACTION_CONDITION_KEYS = [
   'full_week_count',
   'full_season_year_count',
   'distinct_activity_type_count',
+  // 체크인·드랍·잼 새 지표 5종 (티켓 20261019_0542 2회, 마이그레이션 247) — 보조 키 `jam_week_min_earned`는 아래 MODIFIER_KEYS
+  'new_checkin_badge_count',
+  'checkin_season_year_count',
+  'dropped_item_picked_up_count',
+  'jam_week_count',
+  'jam_week_streak',
 ] as const
 
 /**
@@ -48,7 +54,12 @@ export const JAM_ACTION_CONDITION_KEYS = [
  *  - `signup_recent_active_days`: 값이 있으면 `days_since_signup` 배지는 «오늘(KST)을 포함한 최근 30일 가운데
  *    활동한 날 수 ≥ 값»도 채워야 발급한다.
  *  - `active_week_min_days`: `active_week_streak` 배지가 «채운 주»로 치는 한 주(월~일, KST)의 최소 활동일(1~7, 없으면 1).
+ *  - `jam_week_min_earned`: `jam_week_count`·`jam_week_streak` 배지가 «채운 주»로 치는 한 주(월~일, KST)의 최소 모은 잼(없으면 1).
  */
-export const JAM_ACTION_MODIFIER_KEYS = ['signup_recent_active_days', 'active_week_min_days'] as const
+export const JAM_ACTION_MODIFIER_KEYS = [
+  'signup_recent_active_days',
+  'active_week_min_days',
+  'jam_week_min_earned',
+] as const
 
 export type JamActionConditionKey = (typeof JAM_ACTION_CONDITION_KEYS)[number]

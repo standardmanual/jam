@@ -2463,6 +2463,137 @@ export const CONDITION_FIELDS = [
       help: '같은 종목을 여러 번 해도 1종목이에요.',
     }),
   }),
+
+  // ── JAM! 카테고리 — 체크인·드랍·잼 새 지표 6종 (티켓 20261019_0542 2회, 마이그레이션 247) ──
+  //
+  // 1회 6종과 같은 `role: 'meta'` + `evaluation: 'external'`이다(측정 키 트리거 140에는 넣지 않는다). 판정·발급은 `jamActionBadges.ts`,
+  // 값 계산은 `jamActionCheckinMetrics.ts`(체크인 2종)·`jamActionDropMetrics.ts`(드랍 1종)·`jamActionJamMetrics.ts`(잼 2종)가 전담한다.
+  // 「새로 받은 체크인 배지」는 유저가 그 배지를 `user_checkin_badge_earns`에서 **처음 받은 줄**이다(같은 배지를 다시 받아도 새 배지가 아니다).
+  // `jam_week_min_earned`는 `jam_week_count`·`jam_week_streak`의 **보조 키**(선택)다 — `USAGE_METRIC_CONDITION_KEYS`에서 뺀다(아래).
+  field({
+    key: 'new_checkin_badge_count',
+    label: '새로 받은 체크인 배지 수',
+    unit: '종류',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 100000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `새 체크인 배지 ${c.new_checkin_badge_count}종류↑`,
+    detail: (c) => `체크인 배지를 서로 다른 ${c.new_checkin_badge_count}종류 이상 처음 받음(같은 배지를 다시 받은 것은 세지 않음)`,
+    form: integerForm('newCheckinBadgeCount', {
+      section: 'meta',
+      label: '새로 받은 체크인 배지 수',
+      placeholder: '3',
+      help: '체크인 배지를 처음 받은 서로 다른 종류의 수예요. 같은 배지를 여러 번 받아도 1종류예요.',
+    }),
+  }),
+  field({
+    key: 'checkin_season_year_count',
+    label: '네 계절 모두 새 체크인 배지를 받은 해',
+    unit: '해',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 100,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `네 계절 새 체크인 배지 ${c.checkin_season_year_count}해↑`,
+    detail: (c) =>
+      `한 해(달력 연도, 한국 시간) 안에 봄·여름·가을·겨울마다 새 체크인 배지를 받은 해 ${c.checkin_season_year_count}해 이상`,
+    form: integerForm('checkinSeasonYearCount', {
+      section: 'meta',
+      label: '네 계절 모두 새 체크인 배지를 받은 해',
+      placeholder: '1',
+      help: '봄(3~5월)·여름(6~8월)·가을(9~11월)·겨울(12~2월) 네 계절 모두에서 체크인 배지를 처음 받은 해의 수예요. 1월·2월과 12월은 같은 해의 겨울이에요.',
+    }),
+  }),
+  field({
+    key: 'dropped_item_picked_up_count',
+    label: '내가 드랍해 다른 유저가 픽업한 아이템 수',
+    unit: '개',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `내 드랍 픽업됨 ${c.dropped_item_picked_up_count}개↑`,
+    detail: (c) =>
+      `내가 드랍한 서로 다른 아이템 ${c.dropped_item_picked_up_count}개 이상을 다른 유저가 픽업(같은 아이템이 왕복해도 1개, 내가 주운 것은 제외)`,
+    form: integerForm('droppedItemPickedUpCount', {
+      section: 'meta',
+      label: '내가 드랍해 다른 유저가 픽업한 아이템 수',
+      placeholder: '5',
+      help: '내가 드랍한 서로 다른 아이템 가운데 다른 유저가 픽업한 수예요. 같은 아이템이 여러 번 오가도 1개예요.',
+    }),
+  }),
+  field({
+    key: 'jam_week_count',
+    label: '잼을 채워 모은 주',
+    unit: '주',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `잼 ${c.jam_week_min_earned ?? 1}↑ 모은 주 ${c.jam_week_count}주↑`,
+    detail: (c) => `한 주(월~일, 한국 시간)에 잼 ${c.jam_week_min_earned ?? 1} 이상 모은 주 ${c.jam_week_count}주 이상`,
+    form: integerForm('jamWeekCount', {
+      section: 'meta',
+      label: '잼을 채워 모은 주',
+      placeholder: '5',
+      help: '한 주(월~일)에 모은 잼이 «한 주 최소 잼» 이상이면 그 주를 채운 주로 보고, 채운 주의 수로 판정해요.',
+    }),
+  }),
+  field({
+    key: 'jam_week_streak',
+    label: '잼을 채워 모은 주의 연속',
+    unit: '주',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `잼 ${c.jam_week_min_earned ?? 1}↑ 모은 주 ${c.jam_week_streak}주↑ 연속`,
+    detail: (c) =>
+      `한 주(월~일, 한국 시간)에 잼 ${c.jam_week_min_earned ?? 1} 이상 모은 주가 ${c.jam_week_streak}주 이상 연속`,
+    form: integerForm('jamWeekStreak', {
+      section: 'meta',
+      label: '잼을 채워 모은 주의 연속',
+      placeholder: '3',
+      help: '한 주(월~일)에 모은 잼이 «한 주 최소 잼» 이상인 주가 가장 길게 이어진 주 수로 판정해요.',
+    }),
+  }),
+  field({
+    key: 'jam_week_min_earned',
+    label: '한 주 최소 잼',
+    unit: '잼',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 100000000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    pairedWith: ['jam_week_count', 'jam_week_streak'],
+    chip: (c) => `주 잼 ${c.jam_week_min_earned}↑`,
+    detail: (c) => `한 주(월~일, 한국 시간)에 모은 잼 ${c.jam_week_min_earned} 이상을 채운 주로 침`,
+    form: integerForm('jamWeekMinEarned', {
+      section: 'meta',
+      label: '한 주 최소 잼',
+      placeholder: '200',
+      help: '잼을 채워 모은 주(또는 그 연속)와 함께 써요. 비워 두면 1잼으로 봐요.',
+    }),
+  }),
 ] as const
 
 // ── 파생 목록 ────────────────────────────────────────────────────────────
@@ -2499,12 +2630,16 @@ export const CONDITION_META_KEYS: readonly ConditionKey[] = CONDITION_FIELDS.fil
  *
  * `signup_recent_active_days`도 뺀다(티켓 20261001_0633): 이 키는 `days_since_signup`의 **보조 키**라
  * 혼자서는 지표가 아니고 `pairedWith`로 짝(`days_since_signup`)과 함께 저장된다. `active_week_min_days`(티켓 20261019_0542)도
- * 같은 이유로 뺀다(짝은 `active_week_streak`). 빼지 않으면 「한 배지에
+ * 같은 이유로 뺀다(짝은 `active_week_streak`). `jam_week_min_earned`(티켓 20261019_0542 2회)도 같은 이유다(짝은 `jam_week_count`·`jam_week_streak`). 빼지 않으면 「한 배지에
  * 사용량 지표 하나」 가드(티켓 20261001_0712)가 `days_since_signup` + 보조 키 조합을 두 지표로 보고 막는다.
  * `mission_reward`와 같은 이유로 지표 목록에서 빠지는 메타 키다.
  */
 export const USAGE_METRIC_CONDITION_KEYS: readonly ConditionKey[] = CONDITION_META_KEYS.filter(
-  (k) => k !== 'mission_reward' && k !== 'signup_recent_active_days' && k !== 'active_week_min_days'
+  (k) =>
+    k !== 'mission_reward' &&
+    k !== 'signup_recent_active_days' &&
+    k !== 'active_week_min_days' &&
+    k !== 'jam_week_min_earned'
 )
 
 /** 발급 판정에 실제로 관여하는 «조건 필드» 전체 — 수치 검사 필드 + 필터 전용 필드 */
@@ -2649,6 +2784,8 @@ export const PAIR_ENFORCED_CONDITION_KEYS: readonly ConditionKey[] = [
   // 티켓 20261019_0542 — 연속으로 채운 주(`active_week_streak`)의 보조 키. 신규 키라 실적이 0건이다. 짝 없이 저장되면 발급 경로가
   // 후보로 보지 않아 영원히 발급되지 않으므로 저장 시점에 막는다.
   'active_week_min_days',
+  // 티켓 20261019_0542 2회 — 잼을 채워 모은 주(`jam_week_count`)·그 연속(`jam_week_streak`)의 보조 키. 신규 키라 실적이 0건이다. 둘 중 하나는 있어야 한다(OR).
+  'jam_week_min_earned',
 ]
 
 /**

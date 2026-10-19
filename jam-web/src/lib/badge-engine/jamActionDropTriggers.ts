@@ -26,7 +26,8 @@ export function jamTriggersForDrop(): JamActionTrigger[] {
  *
  *  - 자기 드랍을 자기가 주웠다 → 어느 쪽도 세지 않는다(`{ picker: [], dropper: [] }`)
  *  - 놓은 사람이 없다(시스템 드랍·탈퇴) → 줍는 사람의 `pickup_item_count`만. 함께 줍기·주워짐은 상대가 없어 세지 않는다
- *  - 다른 유저의 드랍 → 줍는 사람은 `pickup_item_count`·`pickup_from_user_count`, 놓은 사람은 `picked_up_by_user_count`
+ *  - 다른 유저의 드랍 → 줍는 사람은 `pickup_item_count`·`pickup_from_user_count`, 놓은 사람은 `picked_up_by_user_count`·
+ *    `dropped_item_picked_up_count`(티켓 20261019_0542 2회, 8-4)
  *
  * 줍는 사람은 어느 쪽이든 `locked_item_pickup_count`(픽업 당시 잠긴 개체)와 `other_tribe_item_kinds_count`(가진 개체가 늘어남)도
  * 다시 본다(티켓 20261018_1815). 놓은 사람의 가진 개체는 줄기만 하므로 보지 않는다.
@@ -36,6 +37,6 @@ export function jamTriggersForPickup(pickerId: string, dropperId: string | null)
   if (dropperId === null) return { picker: ['pickup_item_count', ...PICKER_HELD_ITEM_TRIGGERS], dropper: [] }
   return {
     picker: ['pickup_item_count', 'pickup_from_user_count', ...PICKER_HELD_ITEM_TRIGGERS],
-    dropper: ['picked_up_by_user_count'],
+    dropper: ['picked_up_by_user_count', 'dropped_item_picked_up_count'],
   }
 }

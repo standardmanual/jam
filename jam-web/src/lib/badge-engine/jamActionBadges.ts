@@ -28,6 +28,7 @@
  * 하나»를 모든 후보에 비교하는 `METRIC_COMPUTERS` 흐름에 맞지 않는다(`recipe_first_success`처럼 전용 분기).
  * 보조 키는 트리거가 아니라 후보를 거르는 조건이라 `JAM_ACTION_CONDITION_KEYS`가 아닌
  * `JAM_ACTION_MODIFIER_KEYS`에 둔다. `active_week_streak`도 보조 키(`active_week_min_days`)에 따라 후보마다 값이 달라 전용 분기다.
+ * `jam_week_count`·`jam_week_streak`도 보조 키(`jam_week_min_earned`)에 따라 후보마다 값이 달라 전용 분기다(티켓 20261019_0542 2회).
  *
  * ⚠️ 이 파일은 `@/lib/strava/sync`도, `sync.ts`를 import하는 `jamActionRoute.ts`도 import하지 않는다 —
  * `sync.ts`가 이 파일을 import하므로 순환을 막기 위해서다. 알림 생성은 호출부(`jamActionRoute.ts`와 `sync.ts`)가 맡는다.
@@ -44,6 +45,7 @@ import {
   fetchFirstSuccessRecipeIds,
 } from './jamActionMetrics'
 import {
+  countDroppedItemPickedUpCount,
   countDroppedItems,
   countPickedUpByUsers,
   countPickedUpItems,
@@ -57,7 +59,16 @@ import {
   countLockedItemPickups,
   countOtherTribeItemKinds,
 } from './jamActionItemMetrics'
-import { readChapterReached, readJamTotalEarned, readJamWeeklyEarned } from './jamActionJamMetrics'
+import {
+  countJamWeeks,
+  DEFAULT_JAM_WEEK_MIN_EARNED,
+  fetchDailyEarnedRows,
+  jamWeekStreak,
+  readChapterReached,
+  readJamTotalEarned,
+  readJamWeeklyEarned,
+} from './jamActionJamMetrics'
+import { countCheckinSeasonYearCount, countNewCheckinBadgeCount } from './jamActionCheckinMetrics'
 import {
   countDaysSinceSignup,
   countRecentActiveDays,
@@ -82,11 +93,11 @@ export type { JamActionConditionKey }
 
 /**
  * 「유저 단위로 한 번 계산한 숫자 하나」를 모든 후보에 비교하는 수치형 지표.
- * `recipe_first_success`(후보마다 레시피가 다르다)와 `days_since_signup`·`active_week_streak`(후보마다 보조 키가 다르다)은 전용 분기라 뺀다.
+ * `recipe_first_success`(후보마다 레시피가 다르다)와 `days_since_signup`·`active_week_streak`·`jam_week_count`·`jam_week_streak`(후보마다 보조 키가 다르다)은 전용 분기라 뺀다.
  */
 export type JamActionMetric = Exclude<
   JamActionConditionKey,
-  'recipe_first_success' | 'days_since_signup' | 'active_week_streak'
+  'recipe_first_success' | 'days_since_signup' | 'active_week_streak' | 'jam_week_count' | 'jam_week_streak'
 >
 
 /** 호출부가 「이번 행동으로 다시 볼 지표」로 넘기는 키 */
@@ -122,6 +133,9 @@ const METRIC_COMPUTERS: Record<JamActionMetric, MetricComputer> = {
   full_week_count: countFullWeekCount,
   full_season_year_count: countFullSeasonYearCount,
   distinct_activity_type_count: countDistinctActivityTypeCount,
+  new_checkin_badge_count: countNewCheckinBadgeCount,
+  checkin_season_year_count: countCheckinSeasonYearCount,
+  dropped_item_picked_up_count: countDroppedItemPickedUpCount,
 }
 
 function isRecipeFirstSuccessValue(v: unknown): v is { recipe_id: string } {
@@ -290,6 +304,37 @@ export async function evaluateJamActionBadges(
           (b) => streakByMinDays.get(minDaysOf(b)) ?? 0,
           () => 'jam_action:active_week_streak',
           'evaluateJamActionBadges(active_week_streak)',
+          options
+        )
+        earned.push(...issued)
+        continue
+      }
+
+      if (trigger === 'jam_week_count' || trigger === 'jam_week_streak') {
+        // 후보마다 «채운 주»의 기준(보조 키 `jam_week_min_earned`)이 다르므로 지표 하나로 비교할 수 없다 — 날짜별 모은 잼은 한 번만 읽고
+        // 기준값별로 한 번씩 계산한다
+        const candidates = allBadges.filter((b) => typeof b.condition_json?.[trigger] === 'number')
+        if (candidates.length === 0) continue
+
+        const minEarnedOf = (b: BadgeRow): number => {
+          const minEarned = b.condition_json?.jam_week_min_earned
+          return typeof minEarned === 'number' ? minEarned : DEFAULT_JAM_WEEK_MIN_EARNED
+        }
+        const compute = trigger === 'jam_week_count' ? countJamWeeks : jamWeekStreak
+        const rows = await fetchDailyEarnedRows(supabase, userId)
+        const valueByMinEarned = new Map<number, number>()
+        for (const b of candidates) {
+          const minEarned = minEarnedOf(b)
+          if (!valueByMinEarned.has(minEarned)) valueByMinEarned.set(minEarned, compute(rows, minEarned))
+        }
+        const issued = await issueQualifyingBadges(
+          supabase,
+          userId,
+          candidates,
+          (b) => b.condition_json?.[trigger] as number,
+          (b) => valueByMinEarned.get(minEarnedOf(b)) ?? 0,
+          () => `jam_action:${trigger}`,
+          `evaluateJamActionBadges(${trigger})`,
           options
         )
         earned.push(...issued)

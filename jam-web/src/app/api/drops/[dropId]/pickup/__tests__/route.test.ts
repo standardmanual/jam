@@ -2,7 +2,7 @@
  * POST /api/drops/[dropId]/pickup — JAM! 행동 지표(드랍·픽업 4종) 판정 연동 테스트 (티켓 20261001_0632)
  *
  * 검증 대상:
- *  - 성공 뒤 `after()`로 판정을 예약한다. 다른 유저의 드랍 → 줍는 사람 4키(픽업 개체·함께 픽업·잠긴 개체 픽업·다른 트라이브 종류 수)와 놓은 사람 1키(주워짐),
+ *  - 성공 뒤 `after()`로 판정을 예약한다. 다른 유저의 드랍 → 줍는 사람 4키(픽업 개체·함께 픽업·잠긴 개체 픽업·다른 트라이브 종류 수)와 놓은 사람 2키(주워짐·내 드랍이 픽업된 아이템 수, 티켓 20261019_0542),
  *    시스템 드랍 → 줍는 사람 1키(픽업 개체)만, **자기 드랍 → 예약하지 않는다**
  *  - RPC 실패(409·422·403)·위치 검증 실패·GPS 의심·POI 블록 등 실패 분기에서는 예약하지 않는다
  *  - 응답 본문·상태 코드·에러 문구와 소식 #13(드랍한 사람에게 가는 알림)은 변경 전과 같다
@@ -183,7 +183,7 @@ beforeEach(() => {
 })
 
 describe('성공 — 드랍 출처별로 판정할 지표', () => {
-  it('다른 유저의 드랍 → 줍는 사람 4키와 놓은 사람 1키를 판정한다', async () => {
+  it('다른 유저의 드랍 → 줍는 사람 4키와 놓은 사람 2키(주워짐·내 드랍이 픽업된 아이템 수)를 판정한다', async () => {
     const res = await POST(request(), params())
 
     expect(res.status).toBe(200)
@@ -199,7 +199,7 @@ describe('성공 — 드랍 출처별로 판정할 지표', () => {
       'locked_item_pickup_count',
       'other_tribe_item_kinds_count',
     ])
-    expect(runJamActionMock).toHaveBeenCalledWith(DROPPER, ['picked_up_by_user_count'])
+    expect(runJamActionMock).toHaveBeenCalledWith(DROPPER, ['picked_up_by_user_count', 'dropped_item_picked_up_count'])
   })
 
   it('시스템 드랍(놓은 사람 없음) → 줍는 사람의 픽업 개체·잠긴 개체 픽업·다른 트라이브 종류 수만 판정한다', async () => {
@@ -235,7 +235,7 @@ describe('성공 — 드랍 출처별로 판정할 지표', () => {
     expect(await res.json()).toEqual({ inventory_item_id: 'item-1' })
 
     await flushAfter()
-    expect(runJamActionMock).toHaveBeenCalledWith(DROPPER, ['picked_up_by_user_count'])
+    expect(runJamActionMock).toHaveBeenCalledWith(DROPPER, ['picked_up_by_user_count', 'dropped_item_picked_up_count'])
   })
 
   it('놓은 사람 판정이 거부돼도 응답은 그대로고 줍는 사람 판정은 돈다', async () => {

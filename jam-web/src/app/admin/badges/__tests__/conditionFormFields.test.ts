@@ -177,6 +177,13 @@ describe('condition_json ↔ 폼 라운드트립 (티켓 20260905_0032)', () => 
     full_week_count: 3,
     full_season_year_count: 1,
     distinct_activity_type_count: 3,
+    // JAM! 카테고리 — 체크인·드랍·잼 새 지표 6종 (티켓 20261019_0542 2회)
+    new_checkin_badge_count: 3,
+    checkin_season_year_count: 1,
+    dropped_item_picked_up_count: 5,
+    jam_week_count: 5,
+    jam_week_streak: 3,
+    jam_week_min_earned: 200,
   }
 
   it('표본이 폼 지원 필드를 전부 덮는다 — 새 필드를 추가하면 여기도 채워야 한다', () => {
@@ -464,6 +471,8 @@ describe('조건 폼 그룹 재편 (티켓 20260911_0901)', () => {
         'cross_tribe_combine_success_count', 'jam_total_earned', 'jam_weekly_earned', 'chapter_reached',
         'active_week_streak', 'active_week_min_days', 'return_streak_weeks', 'full_week_count',
         'full_season_year_count', 'distinct_activity_type_count',
+        'new_checkin_badge_count', 'checkin_season_year_count', 'dropped_item_picked_up_count',
+        'jam_week_count', 'jam_week_streak', 'jam_week_min_earned',
       ])
     )
   })
@@ -595,6 +604,34 @@ describe('미션·컬렉션·가입 경과일·활동일·체크인 일수 지�
       fullWeekCount: '10',
       fullSeasonYearCount: '3',
       distinctActivityTypeCount: '5',
+    })
+  })
+
+  it('체크인·드랍·잼 새 지표 6종(티켓 20261019_0542 2회)이 폼 입력에서 condition_json으로 조립되고 되돌아온다', () => {
+    const fields = emptyFields({
+      newCheckinBadgeCount: '25',
+      checkinSeasonYearCount: '3',
+      droppedItemPickedUpCount: '30',
+      jamWeekCount: '20',
+      jamWeekStreak: '4',
+      jamWeekMinEarned: '200',
+    })
+    const cond = {
+      new_checkin_badge_count: 25,
+      checkin_season_year_count: 3,
+      dropped_item_picked_up_count: 30,
+      jam_week_count: 20,
+      jam_week_streak: 4,
+      jam_week_min_earned: 200,
+    }
+    expect(buildConditionJsonFromFields(fields)).toEqual(cond)
+    expect(conditionFormFieldsFrom(cond)).toMatchObject({
+      newCheckinBadgeCount: '25',
+      checkinSeasonYearCount: '3',
+      droppedItemPickedUpCount: '30',
+      jamWeekCount: '20',
+      jamWeekStreak: '4',
+      jamWeekMinEarned: '200',
     })
   })
 

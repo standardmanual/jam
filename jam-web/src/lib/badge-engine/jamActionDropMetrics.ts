@@ -17,6 +17,8 @@
  *  - `pickup_item_count`: 내가 주운 서로 다른 개체 수. 자기 드랍은 뺀다. 시스템 드랍·놓은 사람이 탈퇴한 드랍은 포함한다.
  *  - `pickup_from_user_count`: 내가 주운 드랍을 놓은 서로 다른 유저 수. 자기·시스템·탈퇴 유저는 뺀다.
  *  - `picked_up_by_user_count`: 내가 놓은 드랍을 주운 서로 다른 유저 수. 자기·탈퇴 유저(`picked_up_by` NULL)는 뺀다.
+ *  - `dropped_item_picked_up_count`: 내가 놓은 서로 다른 개체 가운데 다른 유저가 주운 개체 수(티켓 20261019_0542 2회, 8-4).
+ *    주운 사람이 없거나(미픽업·탈퇴) 나 자신인 드랍은 뺀다. 같은 개체가 왕복해도 1이다.
  *
  * ## SQL 등가식 (읽기 전용 기준값 — 마이그레이션 202의 검증 주석과 같다)
  * ```
@@ -29,6 +31,9 @@
  *                             WHERE picked_up_by = :u AND inventory_item_id IS NOT NULL
  *                               AND dropper_user_id IS NOT NULL AND dropper_user_id <> :u
  * picked_up_by_user_count = count(DISTINCT picked_up_by) FROM poi_drops
+ *                             WHERE dropper_user_id = :u AND inventory_item_id IS NOT NULL
+ *                               AND picked_up_by IS NOT NULL AND picked_up_by <> :u
+ * dropped_item_picked_up_count = count(DISTINCT inventory_item_id) FROM poi_drops
  *                             WHERE dropper_user_id = :u AND inventory_item_id IS NOT NULL
  *                               AND picked_up_by IS NOT NULL AND picked_up_by <> :u
  * ```
@@ -103,6 +108,18 @@ export function computeDropPickupMetrics(
   }
 }
 
+/**
+ * 내가 놓은 서로 다른 개체 가운데 다른 유저가 주운 개체 수(순수 함수). 같은 개체를 몇 번 놓아도, 몇 명이 주워도 1이다.
+ * 한 번은 자기가 줍고 다음에 다른 유저가 주운 개체는 세지만, 자기만 주운 개체는 세지 않는다.
+ */
+export function countDroppedItemsPickedUpByOthers(userId: string, myDrops: readonly MyDropRow[]): number {
+  const items = new Set<string>()
+  for (const row of myDrops) {
+    if (row.picked_up_by !== null && row.picked_up_by !== userId) items.add(row.inventory_item_id)
+  }
+  return items.size
+}
+
 /** 내가 놓은 드랍 행 — `inventory_item_id`가 있는 행만(옛 행 제외) */
 export async function fetchMyDropRows(supabase: SupabaseClient, userId: string): Promise<MyDropRow[]> {
   return selectAllPages<MyDropRow>(TAG, '내가 놓은 드랍', (from, to) =>
@@ -151,4 +168,10 @@ export async function countPickupFromUsers(supabase: SupabaseClient, userId: str
 export async function countPickedUpByUsers(supabase: SupabaseClient, userId: string): Promise<number> {
   const drops = await fetchMyDropRows(supabase, userId)
   return computeDropPickupMetrics(userId, drops, []).pickedUpByUserCount
+}
+
+/** 내 드랍이 다른 유저에게 픽업된 아이템 수 — 내가 놓은 서로 다른 개체 가운데 다른 유저가 주운 수(자기·탈퇴 제외) */
+export async function countDroppedItemPickedUpCount(supabase: SupabaseClient, userId: string): Promise<number> {
+  const drops = await fetchMyDropRows(supabase, userId)
+  return countDroppedItemsPickedUpByOthers(userId, drops)
 }

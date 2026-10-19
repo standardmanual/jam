@@ -27,10 +27,10 @@ describe('jamTriggersForPickup', () => {
     })
   })
 
-  it('다른 유저의 드랍 → 줍는 사람은 픽업 개체·함께 픽업·잠긴 개체 픽업·다른 트라이브 종류 수, 놓은 사람은 주워짐', () => {
+  it('다른 유저의 드랍 → 줍는 사람은 픽업 개체·함께 픽업·잠긴 개체 픽업·다른 트라이브 종류 수, 놓은 사람은 주워짐·내 드랍이 픽업된 아이템 수(티켓 20261019_0542 2회)', () => {
     expect(jamTriggersForPickup('user-a', 'user-b')).toEqual({
       picker: ['pickup_item_count', 'pickup_from_user_count', 'locked_item_pickup_count', 'other_tribe_item_kinds_count'],
-      dropper: ['picked_up_by_user_count'],
+      dropper: ['picked_up_by_user_count', 'dropped_item_picked_up_count'],
     })
   })
 
