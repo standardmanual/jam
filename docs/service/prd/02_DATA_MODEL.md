@@ -52,7 +52,8 @@ code:
 [미션]          missions ─1:N─ user_mission_participations (참가+진행도)
                           ├─1:N─ user_mission_completions   (완료 기록)
                           ├─1:N─ mission_allowed_tribes     (참가할 수 있는 트라이브, 마이그레이션 249 — 행이 없으면 공통 미션)
-                          └─1:N─ mission_participation_cancellations (트라이브 변경으로 취소된 참가 기록, 마이그레이션 249)
+                          ├─1:N─ mission_participation_cancellations (트라이브 변경으로 취소된 참가 기록, 마이그레이션 249)
+                          └─1:N─ mission_item_rewards       (받은·받지 않은 아이템 배지 보상, 마이그레이션 250) ──badge_id──> badges
 
 [포인트]        users ─1:1─ point_wallets ─1:N─ point_transactions (append-only 원장)
                 point_treasury (전체 발행/회수 싱글톤 장부)
@@ -780,6 +781,34 @@ JAM 2.0 운영 로직 13.2절(트라이브 미션과 선착순 동시 완료)의
 
 #### mission_cancel_for_tribe_change(p_user_id) → (out_mission_id, out_mission_title)*
 유저의 현재 트라이브가 대상이 아닌 트라이브 제한 미션의 참가를 취소하고(참가 행 삭제, `mission_participation_cancellations`에 기록) 취소한 미션마다 한 행을 돌려준다(호출한 쪽이 소식을 보낸다). 공통 미션과 새 트라이브가 대상인 미션은 그대로이고, 트라이브가 없는 유저는 제한 미션을 모두 취소한다. **이미 완료한 미션의 참가도 취소하지만 완료 기록과 받은 보상은 지우지 않는다**(선착순 자리를 센 완료 기록도 남아 상한에 계속 들어간다). 참가 행이 지워지므로 순위에서 빠진다. **부르는 곳은 아직 없다** — 유저의 트라이브를 바꾸는 경로가 생기는 묶음 6에서 연결한다.
+
+### mission_item_rewards / mission_grant_item_rewards / mission_claim_item_rewards — 마이그레이션 250, 티켓 20261019_1313
+JAM 2.0 운영 로직 13.2절·6.4절(미션 보상의 새 개체 복사, 가득 참 보류와 받기)의 서버 쪽 바탕이다. **새 표 1개와 새 함수 2개만 더했고 옛 표·칸·함수는 바꾸지 않았다.** 2026-10-19 공용 DB에 적용했다. 본보기는 믹스의 `combine_pending_results`·`combine_grant_results`·`combine_claim_pending`(마이그레이션 236)이다. 동기화 보류(`sync_pending_items`)는 «고른 것만 받고 나머지는 폐기»라 미션 보상이 섞이면 영구 폐기되므로 합치지 않고 미션 전용 표를 따로 뒀다.
+
+#### mission_item_rewards
+미션이 유저에게 준(`claimed`) 또는 인벤토리 빈칸이 모자라 아직 못 준(`pending`) 아이템 배지 보상의 기록. 미션 하나가 유저에게 주는 배지마다 한 행이고 `(user_id, mission_id, badge_id)`가 유일해 같은 미션의 같은 배지를 두 번 기록하지 않는다. 기한이 없다(미션 기간이 끝난 뒤에도 받는다). RLS를 켜고 anon·authenticated 권한을 모두 회수했다(서버 service_role만 읽고 쓴다).
+
+| 칸 | 뜻 |
+|---|---|
+| `user_id` | 주인. 유저 삭제 시 함께 삭제(`ON DELETE CASCADE`) |
+| `mission_id` | 보상을 준 미션. 미션을 지우면 기록도 함께 지워진다(`ON DELETE CASCADE`) — 받지 않은 보상도 사라진다 |
+| `badge_id` | 아이템 배지. 규칙 없음(NO ACTION)이라 기록이 남은 배지는 지울 수 없다 |
+| `locked`·`lock_reason`·`unlock_required` | 잠김. 지급할 때가 아니라 **기록할 때** 배지 설정(`badges.always_locked`)으로 고정한다(받기 전에 배지 설정이 바뀌어도 그대로). 잠겼으면 까닭(`badge_locked`)과 필요한 양이 있어야 한다. 미션에는 잠김 칸이 없다 |
+| `status` | `pending`(받지 않음) 또는 `claimed`(받음) |
+| `inventory_item_id` | 받아서 생긴 개체(`ON DELETE SET NULL`) |
+| `created_at`·`resolved_at` | 기록한 때, 받은 때 |
+
+#### mission_grant_item_rewards(p_user_id, p_mission_id, p_badge_ids) → jsonb
+아이템 배지(`badges.type = 'item'`, 삭제되지 않음)만 처리하는 SECURITY DEFINER 함수(service_role만 실행). 이 미션에서 이미 기록된 배지는 건너뛰어 다시 불러도 중복 지급이 없다. **이미 가진 배지도 새 개체로 준다**(일련번호는 새로 매겨진다). 남은 배지가 **모두 들어갈 빈칸이 있으면 전부** `grant_inventory_item_locked`로 줘서 `claimed`로 기록하고 개체 이력(`inventory_item_events` `received`)을 남긴다. **모자라면 아무것도 주지 않고 전부** `pending`으로 기록한다(일부만 주지 않는다).
+- 반환: `{ok:true, status:'none'|'granted'|'pending', itemIds, pendingCount[, free, needed]}` / `{ok:false, error:'mission_not_found'|'inventory_not_found'}`.
+- 앱은 `grantMissionRewards`(`src/lib/missions/rewards.ts`)가 미션 완료 때 부른다. 액티비티 배지는 지금처럼 `user_activity_badges`에 넣고, 액티비티·아이템 외 유형(체크인 등)과 숨김 배지(`badges.is_hidden`)는 지급하지 않는다(경고만 남긴다). 반환 계약은 `src/lib/missions/claim-contract.ts`가 읽고, 계약 밖 응답은 성공으로 보지 않는다.
+- **포인트는 이 함수가 주지 않는다.** 아이템 배지의 포인트는 열린 개체를 받을 때 한 번, 잠긴 개체는 열 때(`locked_item_open`) 준다. 앱이 `granted` 결과의 개체 id로 `inventory_items.locked`·`point_awarded_at`을 읽어 열린 개체에만 `badge_point_reward`를 주고 `point_awarded_at`을 적는다(`src/lib/missions/itemRewardFollowUp.ts`). 남은 칸 알림도 이 후속이 부른다.
+- `pending` 결과는 `MissionRewardResult.pendingItemBadgeIds`(잠긴 배지는 `pendingLockedBadgeIds`에도)로 돌아가 `checkMissions`가 `MissionCheckResult.pendingItemBadgeIds`와 `mission_completed` 피드의 `pending_item_badge_ids`(잠긴 배지 제외)에 싣는다.
+
+#### mission_claim_item_rewards(p_user_id, p_mission_id) → jsonb
+한 미션의 `pending` 보상을 모두 받는 SECURITY DEFINER 함수(service_role만 실행). **모두 들어갈 빈칸이 있어야 한다**(일부만 받기 없음). 이용 정지 중이면 거부하고, 인벤토리 행과 보상 행을 잠그고 `pending → claimed`로 바꾸므로 같은 보상을 두 번 주지 않는다. 기록해 둔 잠김을 그대로 개체로 옮긴다.
+- 반환: `{ok:true, granted, itemIds}` / `{ok:false, error:'user_suspended'|'inventory_not_found'|'no_pending'|'insufficient_slots'[, free, needed]}`.
+- API: `POST /api/missions/[id]/claim`(`src/app/api/missions/[id]/claim/route.ts`). 401 → 미션 id가 UUID가 아니면 404 → 이용 정지 403 `user_suspended`(`d.suspension.missionClaimBlocked`) → 함수 호출. 거절은 `no_pending` 409, `insufficient_slots` 409(`free`·`needed` 포함), `inventory_not_found` 404로 옮기고 오류 응답에 내부 정보를 싣지 않는다. 성공이면 위 후속(열린 개체의 배지 포인트·남은 칸 알림)을 처리하고 `{granted, itemIds}`를 돌려준다. 받기에는 트라이브 접근 검사를 하지 않는다(완료한 유저는 상세를 계속 볼 수 있다). 받는 화면은 후속(5-7)이다.
 
 #### 이용 정지와 순위
 이용 정지 중인 유저는 미션에 참가할 수 없고(`POST /api/missions/[id]/join` 403 `user_suspended`), 다른 유저가 보는 순위·달성자 목록과 `totalParticipants`에서 빠진다. 본인 화면에는 본인이 계속 보이고, 정지가 풀리면(`user_suspensions.lifted_at`) 다시 보인다. 순위 상승 소식(#23) 배치도 같은 목록으로 순위를 매긴다. 판정은 `filterRankableParticipants`(`src/lib/missions/ranking.ts`)와 `getSuspendedUserIds`(`src/lib/suspension/suspension.ts`)다.

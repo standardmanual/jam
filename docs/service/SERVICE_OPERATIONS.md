@@ -548,7 +548,7 @@ inventory_items (슬롯당 1개)
 | 동기화 드랍 (5-2) | `drop` | 그 아이템 배지의 공개 종료일(`badges.valid_until`). 공개 종료일이 없으면 NULL | `jam-web/src/lib/drop-engine/index.ts` `insertDrop()` |
 | 시스템 드랍 (POI에 미리 배치) | `ambient_drop` | NULL | `mint_and_place_ambient_drop()` (마이그레이션 108). 잠김으로 만든 배지는 `mint_and_place_ambient_drop_locked()` (마이그레이션 240) |
 | 믹스 보상 (8-1 6-a단계) | `system_event` | 지급 시점 + 30일 | `jam-web/src/lib/combine/index.ts` 보상 지급 |
-| 미션 보상 (9장) | `system_event` | NULL (`p_expires_at`을 넘기지 않는다) | `jam-web/src/lib/missions/rewards.ts` `grantMissionRewards()` |
+| 미션 보상 (9장) | `system_event` | NULL (`p_expires_at`을 넘기지 않는다) | `jam-web/src/lib/missions/rewards.ts` `grantMissionRewards()` → DB 함수 `mission_grant_item_rewards`(마이그레이션 250), 받지 않은 보상은 `mission_claim_item_rewards` |
 | POI 픽업 (6-2) | 바꾸지 않음 | 바꾸지 않음 (소유자와 `obtained_at`만 옮긴다) | `pickup_drop()` (마이그레이션 108) |
 | 어드민 시뮬레이션 (`dryRun`이 아닐 때) | `drop` | 지급 시점 + 30일 | `jam-web/src/app/api/admin/simulate/route.ts` |
 
@@ -745,6 +745,17 @@ progress 계산 (calculateProgress):
     RPC 호출 실패·계약과 다른 응답은 완료시키지 않는다.
   반환값에 완료 기록 id가 든 completedMissions: [{ missionId, completionId }]를 싣는다.
 ```
+
+보상 지급(티켓 20261019_1313, 운영 로직 13.2절·6.4절): 완료 기록 뒤 `grantMissionRewards`가 보상 배지를 유형으로 가른다.
+- 액티비티 배지는 `user_activity_badges`에 넣는다(이미 가졌으면 건너뛴다).
+- 아이템 배지는 DB 함수 `mission_grant_item_rewards` 한 번으로 준다. **이미 가진 아이템 배지도 새 개체로 주고**, 인벤토리 빈칸이
+  보상 전부가 들어갈 만큼 없으면 아무것도 주지 않고 «받지 않은 보상»(`mission_item_rewards.status = 'pending'`)으로 기록한다.
+  예전의 «이미 가졌거나 가득 차면 흔적 없이 건너뜀»은 없앴다. 잠김은 배지의 «잠김으로 만든 아이템 배지»(`badges.always_locked`) 설정을 따른다.
+- 열린 개체의 배지 포인트는 지급할 때(또는 받을 때) 한 번, 잠긴 개체는 열 때 준다. 미션 포인트(`reward_points`)는 예전처럼 바로 준다.
+- 체크인 등 액티비티·아이템 외 유형과 숨김 배지(`is_hidden`)는 보상으로 지급하지 않고 경고만 남긴다.
+- 받지 않은 보상은 기한이 없고, 미션 기간이 끝난 뒤에도 `POST /api/missions/[id]/claim`으로 받는다(이용 정지 중 403, 빈칸 부족 409
+  `insufficient_slots`, 받을 보상 없음 409 `no_pending`). 받기 화면은 미션 상세에 들어간다(후속 5-7).
+- 보상 지급이 던져도 완료 기록은 이미 남아 있다. `checkMissions`는 오류를 남기고 그 미션의 피드·소식을 건너뛴 채 다음 미션을 이어 판정한다.
 
 참가·노출 규칙(티켓 20261019_1311): 이용 정지 중이면 참가가 403이고, 참가할 수 있는 트라이브가 정해진
 미션은 대상이 아닌 트라이브 유저에게 목록·상세에 보이지 않으며 참가·상황 조회가 404다.

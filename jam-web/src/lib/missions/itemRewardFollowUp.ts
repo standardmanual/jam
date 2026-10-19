@@ -63,6 +63,7 @@ export async function followUpItemRewards(
       console.error(`[missionItemRewardFollowUp] 개체 조회 실패 (mission: ${missionId}):`, itemError)
     } else {
       const items = (itemRaw ?? []) as ItemRow[]
+      // 삭제된 배지(`deleted_at`)는 지급 함수가 이미 걸렀다. 여기서는 방금 받은 개체의 배지 이름·포인트만 읽으므로 삭제 필터를 걸지 않는다.
       const badgeIds = [...new Set(items.map((i) => i.badge_id))]
       const { data: badgeRaw, error: badgeError } =
         badgeIds.length > 0
