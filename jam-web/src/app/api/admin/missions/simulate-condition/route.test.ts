@@ -51,6 +51,14 @@ describe('POST /api/admin/missions/simulate-condition — DB 기록 키 안내',
     expect(body.missionDbKeysPresent).toEqual(['weekly_active_days', 'new_checkin_badge_count', 'checkin_category_count'])
   })
 
+  it('3-A회(티켓 20261019_1445): 미션 전용 jam_period_earned도 DB 기록 키로 안내한다 (미션 전용 키 목록에도 함께 실린다)', async () => {
+    const res = await post({ condition: { distance_km: 10, jam_period_earned: 100 }, userId: 'u1' })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.missionDbKeysPresent).toEqual(['jam_period_earned'])
+    expect(body.missionOnlyKeysPresent).toEqual(['jam_period_earned'])
+  })
+
   it('DB 기록 키가 없으면 빈 목록이다', async () => {
     const res = await post({ condition: { distance_km: 10, weekly_streak_min_count: 2 }, userId: 'u1' })
     const body = await res.json()

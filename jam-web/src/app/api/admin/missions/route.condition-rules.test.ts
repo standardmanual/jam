@@ -153,6 +153,32 @@ describe('POST /api/admin/missions — DB 기록 키', () => {
   })
 })
 
+describe('POST /api/admin/missions — 기간 동안 모은 잼 (티켓 20261019_1445 3-A회)', () => {
+  it('순위형·달성형·개인형 어느 틀로든 경고 없이 저장한다 (모은 잼은 순위 기준으로 쓸 수 있다)', async () => {
+    for (const frame of ['ranking', 'achievement', 'individual']) {
+      state.inserts = []
+      const condition = { jam_period_earned: 500 }
+      const res = await post({ ...base, status_display_type: frame, condition_json: condition })
+      expect(res.status, frame).toBe(200)
+      expect(await res.json(), frame).not.toHaveProperty('warning')
+      expect(state.inserts[0].condition_json, frame).toEqual(condition)
+    }
+  })
+
+  it('틀을 비워도(DB 기본값 순위형) 저장한다', async () => {
+    const res = await post({ ...base, condition_json: { jam_period_earned: 500 } })
+    expect(res.status).toBe(200)
+  })
+
+  it('순위형이어도 밤 조건·캡슐 연 횟수는 계속 거부한다 (순위형 금지는 바뀌지 않았다)', async () => {
+    const night = await post({ ...base, status_display_type: 'ranking', condition_json: { jam_period_earned: 500, ...NIGHT } })
+    expect(night.status).toBe(400)
+    const capsule = await post({ ...base, status_display_type: 'ranking', condition_json: { jam_period_earned: 500, capsule_open_count: 3 } })
+    expect(capsule.status).toBe(400)
+    expect(state.inserts).toEqual([])
+  })
+})
+
 describe('POST /api/admin/missions — 판정하지 않는 조건 경고', () => {
   it('저장은 하고 응답에 경고를 싣는다', async () => {
     const res = await post({

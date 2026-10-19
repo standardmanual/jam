@@ -16,7 +16,7 @@
  *
  * ## `time_band_counts`는 입력 UI가 없다
  * 이 키는 배열의 배열이라 그리기 비용이 크고, 실제 카탈로그에 쓰는 미션이 드물어 전용 UI가 없다.
- * 시간대·요일·계절·운동 속성 위임 키(티켓 20261019_1312)와 DB 기록으로 세는 키 19개(티켓 20261019_1445,
+ * 시간대·요일·계절·운동 속성 위임 키(티켓 20261019_1312)와 DB 기록으로 세는 키 20개(티켓 20261019_1445,
  * `MISSION_ENGINE_DB_PRESERVED_KEYS`)도 아직 입력 칸이 없다.
  * 값이 있으면 배지 폼의 `FORM_UNSUPPORTED_CONDITION_KEYS` 보존 패턴과 같은 방식으로
  * **원본 그대로 보존**한다 — 열어서 저장해도 사라지지 않는다.
@@ -31,7 +31,7 @@
  */
 import type { ActivityType, DayOfWeek, MissionCondition, MissionType, MissionStreakSubset } from '@/types/database'
 import { getConditionField, type ConditionFormValues } from '@/lib/badge-engine/conditionRegistry'
-import { ENGINE_DELEGATED_CONDITION_KEY_LIST, ENGINE_DELEGATED_DB_CONDITION_KEY_LIST } from '@/lib/missions/condition-keys'
+import { ENGINE_DELEGATED_CONDITION_KEY_LIST, MISSION_DB_CONDITION_KEY_LIST } from '@/lib/missions/condition-keys'
 
 /**
  * 폼이 입력 칸을 그리는 엔진 위임 키. 정본(`ENGINE_DELEGATED_CONDITION_KEY_LIST`)의 부분집합이어야 한다 —
@@ -67,13 +67,15 @@ export const MISSION_ENGINE_PRESERVED_KEYS: readonly (typeof ENGINE_DELEGATED_CO
   )
 
 /**
- * DB 기록으로 세는 키 19개(믹스·드랍·픽업·완료 수·캡슐·잠긴 개체·날짜·체크인 등, 정본 `ENGINE_DELEGATED_DB_CONDITION_KEY_LIST`) —
+ * DB 기록으로 세는 키 20개 — 믹스·드랍·픽업·완료 수·캡슐·잠긴 개체·날짜·체크인 등 배지 조건과 이름이 같은 19개와 미션 전용
+ * `jam_period_earned`(기간 동안 모은 잼) 1개. 정본은 둘을 합친 `MISSION_DB_CONDITION_KEY_LIST`다 —
  * 이 폼에 입력 칸이 없다(입력 칸은 5-8 티켓에서 만든다). 폼을 열어 저장하면 `buildEngineConditionJson`이 `initCondition`의
  * 값을 그대로 보존한다. 안 그러면 이 화면에서 열어 저장하는 순간 DB 키가 사라져 미션이 다른 조건이 된다(티켓 20261019_1445).
+ * 배지 레지스트리 쪽 목록(`ENGINE_DELEGATED_DB_CONDITION_KEY_LIST`)만 별칭으로 쓰면 미션 전용 키가 빠져 사라지므로 합집합을 쓴다(3-A회).
  * 위임 키 보존 목록(`MISSION_ENGINE_PRESERVED_KEYS`)과 다른 점: 이 키들은 배지엔진에 위임되지 않고 DB를 읽어 판정한다.
  */
-export const MISSION_ENGINE_DB_PRESERVED_KEYS: readonly (typeof ENGINE_DELEGATED_DB_CONDITION_KEY_LIST)[number][] =
-  ENGINE_DELEGATED_DB_CONDITION_KEY_LIST
+export const MISSION_ENGINE_DB_PRESERVED_KEYS: readonly (typeof MISSION_DB_CONDITION_KEY_LIST)[number][] =
+  MISSION_DB_CONDITION_KEY_LIST
 
 const VALID_DAY_OF_WEEK: readonly DayOfWeek[] = [
   'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',

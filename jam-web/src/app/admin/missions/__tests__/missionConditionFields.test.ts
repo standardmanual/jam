@@ -23,6 +23,7 @@ import {
 import {
   ENGINE_DELEGATED_CONDITION_KEY_LIST,
   ENGINE_DELEGATED_DB_CONDITION_KEY_LIST,
+  MISSION_DB_CONDITION_KEY_LIST,
   MISSION_FORBIDDEN_CONDITION_KEYS,
   checkMissionCondition,
   checkMissionConditionValue,
@@ -231,16 +232,21 @@ const cases: Array<[string, () => void]> = [
     assert.deepStrictEqual(cond, { distance_km: 10 })
   }],
 
-  // ── DB 기록 키 19개 보존 (티켓 20261019_1445 1회 14개 + 2회 날짜·체크인 5개) ──────────
-  ['DB 기록 보존 키 = 정본(ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) 19개이고 배지엔진 위임 키와 겹치지 않는다', () => {
-    assert.deepStrictEqual([...MISSION_ENGINE_DB_PRESERVED_KEYS].sort(), [...ENGINE_DELEGATED_DB_CONDITION_KEY_LIST].sort())
-    assert.strictEqual(MISSION_ENGINE_DB_PRESERVED_KEYS.length, 19)
+  // ── DB 기록 키 20개 보존 (티켓 20261019_1445 1회 14개 + 2회 날짜·체크인 5개 + 3-A회 미션 전용 jam_period_earned 1개) ──────────
+  ['DB 기록 보존 키 = 정본 합집합(MISSION_DB_CONDITION_KEY_LIST) 20개 = 배지 쪽 19개 + jam_period_earned이고 배지엔진 위임 키와 겹치지 않는다', () => {
+    assert.deepStrictEqual([...MISSION_ENGINE_DB_PRESERVED_KEYS].sort(), [...MISSION_DB_CONDITION_KEY_LIST].sort())
+    assert.deepStrictEqual(
+      [...MISSION_ENGINE_DB_PRESERVED_KEYS].sort(),
+      [...ENGINE_DELEGATED_DB_CONDITION_KEY_LIST, 'jam_period_earned'].sort(),
+      '배지 쪽 DB 키 목록만 별칭으로 쓰면 미션 전용 키가 빠져 저장 때 사라진다'
+    )
+    assert.strictEqual(MISSION_ENGINE_DB_PRESERVED_KEYS.length, 20)
     for (const key of MISSION_ENGINE_DB_PRESERVED_KEYS) {
       assert.ok(!(ENGINE_DELEGATED_CONDITION_KEY_LIST as readonly string[]).includes(key), `위임 키와 겹친다: ${key}`)
       assert.ok(!(MISSION_ENGINE_DELEGATED_KEYS as readonly string[]).includes(key as never), `폼 입력 칸 키와 겹친다: ${key}`)
     }
   }],
-  ['engine_condition: DB 기록 키 19개도 열었다 저장하면 그대로 남고 저장 검증을 통과한다', () => {
+  ['engine_condition: DB 기록 키 20개도 열었다 저장하면 그대로 남고 저장 검증을 통과한다', () => {
     const init: MissionCondition = {
       activity_type: 'running',
       distance_km: 20,
@@ -264,6 +270,8 @@ const cases: Array<[string, () => void]> = [
       new_checkin_badge_count: 4,
       checkin_category_count: { category: 'train_subway', count: 2 },
       checkin_badge_count: { checkin_badge_names: ['성수역', '왕십리역'], count: 1 },
+      // 3-A회 — 미션 전용 키(배지 레지스트리에 없다)도 사라지지 않아야 한다
+      jam_period_earned: 300,
     }
     const f = missionConditionFieldsFrom(init)
     const rebuilt = buildMissionConditionJson('engine_condition', f, init)
@@ -284,6 +292,14 @@ const cases: Array<[string, () => void]> = [
     }
     const f = { ...missionConditionFieldsFrom(init), distanceKm: '15' }
     assert.deepStrictEqual(buildMissionConditionJson('engine_condition', f, init), { distance_km: 15, ...init })
+  }],
+  ['engine_condition: jam_period_earned만 든 미션을 열어 다른 칸을 고쳐도 모은 잼 조건은 남고, 순위형으로도 저장 검증을 통과한다 (3-A회)', () => {
+    const init: MissionCondition = { jam_period_earned: 300 }
+    const f = { ...missionConditionFieldsFrom(init), distanceKm: '15' }
+    const rebuilt = buildMissionConditionJson('engine_condition', f, init)
+    assert.deepStrictEqual(rebuilt, { distance_km: 15, jam_period_earned: 300 })
+    assert.deepStrictEqual(checkMissionCondition('engine_condition', rebuilt, 'ranking'), { error: null, warning: null })
+    assert.deepStrictEqual(unsupportedMissionConditionKeys(init), ['jam_period_earned'])
   }],
   ['engine_condition: 원본이 없으면(새 미션) DB 기록 키를 만들지 않는다', () => {
     assert.deepStrictEqual(buildMissionConditionJson('engine_condition', fields({ distanceKm: '10' }), null), { distance_km: 10 })
