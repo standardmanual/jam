@@ -733,6 +733,30 @@ describe('착지점 — type + payload로 런타임 계산 (PRD §3)', () => {
     )
   })
 
+  it('#13 잠긴 채 픽업되면 단건은 이름 없이 말하고 묶음은 열린 개수와 합쳐 세며 어디로도 가지 않는다 (티켓 20261018_1817)', () => {
+    const one = view('drop_picked_up', { actor_ids: ['a1'], locked_item_ids: ['d1'], poi_id: 'p1' }, { actor: ACTOR })
+    expect(text(one)).toBe('예린님이 잠긴 아이템 배지를 픽업했어요')
+    expect(notificationTarget(one).href).toBeNull()
+    expect(notificationTarget(one).avatarHref).toBeNull()
+
+    const many = view(
+      'drop_picked_up',
+      { actor_ids: ['a1', 'a2'], locked_item_ids: ['d1', 'd2'], poi_id: 'p1' },
+      { actor: ACTOR, actorCount: 2 }
+    )
+    expect(text(many)).toBe('드랍한 아이템 배지 2개가 픽업됐어요')
+    expect(notificationTarget(many).href).toBeNull()
+
+    // 열린 1개 + 잠긴 1개가 한 묶음이면 개수 2다. 이름 슬롯을 쓰지 않는다
+    const mixed = view(
+      'drop_picked_up',
+      { actor_ids: ['a1'], badge_ids: ['b1'], badge_name: '멈춘 초시계', locked_item_ids: ['d1'] },
+      { actor: ACTOR }
+    )
+    expect(text(mixed)).toBe('드랍한 아이템 배지 2개가 픽업됐어요')
+    expect(notificationTarget(mixed).href).toBeNull()
+  })
+
   it('#18은 지도 카메라 이동(`/drops?poi=`)', () => {
     expect(notificationTarget(view('drop_spot_active', { poi_id: 'p1' })).href).toBe('/drops?poi=p1')
   })

@@ -1595,6 +1595,8 @@ export const ko = {
 
     // ── ③ 내가 드랍한 아이템 배지 ──
     msgDropPickedUpOne: '{actor}님이 {badgeName}{을/를} 픽업했어요',
+    /** 잠긴 채 픽업된 단건 — 이름을 싣지 않는다(운영 로직 7.3절). 묶음은 아래 `msgDropPickedUpMany`를 쓴다 */
+    msgDropPickedUpLocked: '{actor}님이 잠긴 아이템 배지를 픽업했어요',
     /** 묶음은 착지가 없다 — 픽업된 아이템은 소프트 삭제 상태라 갈 곳이 없다 */
     msgDropPickedUpMany: '드랍한 {itemCount}{이/가} 픽업됐어요',
     /** R14 — 본인 닉네임을 부르지 않는다. 「자리」→「곳」 */

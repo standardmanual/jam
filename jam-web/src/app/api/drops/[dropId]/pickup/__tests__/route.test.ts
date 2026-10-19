@@ -55,7 +55,9 @@ const state = vi.hoisted(() => ({
 }))
 
 const runJamActionMock = vi.hoisted(() => vi.fn<(userId: string, triggers: readonly string[]) => Promise<void>>())
-const createNotificationMock = vi.hoisted(() => vi.fn(async () => {}))
+const createNotificationMock = vi.hoisted(() =>
+  vi.fn(async (_input: { payload?: Record<string, unknown>; appendKeys?: string[] } & Record<string, unknown>) => {}),
+)
 const recordFeedEventMock = vi.hoisted(() => vi.fn(async () => {}))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -288,7 +290,7 @@ describe('자기 드랍 줍기는 허용이다 (티켓 20261018_1812)', () => {
 })
 
 describe('잠긴 채 받은 개체는 이름·그림을 싣지 않는다 (티켓 20261018_1812, 운영 로직 7.3절)', () => {
-  it('응답은 개체 id뿐이고 피드·소식을 남기지 않으며 배지를 읽지도 않는다', async () => {
+  it('응답은 개체 id뿐이고 피드를 남기지 않으며 배지를 읽지도 않는다', async () => {
     state.pickedLocked = true
     const res = await POST(request(), params())
 
@@ -296,6 +298,28 @@ describe('잠긴 채 받은 개체는 이름·그림을 싣지 않는다 (티켓
     expect(await res.json()).toEqual({ inventory_item_id: 'item-1' })
     expect(state.badgeReads).toBe(0)
     expect(recordFeedEventMock).not.toHaveBeenCalled()
+  })
+
+  it('놓은 사람에게는 배지 id·이름 없이 잠긴 개체 소식만 간다 (티켓 20261018_1817)', async () => {
+    state.pickedLocked = true
+    await POST(request(), params())
+
+    expect(createNotificationMock).toHaveBeenCalledTimes(1)
+    const input = createNotificationMock.mock.calls[0][0]
+    expect(input).toMatchObject({ userId: DROPPER, type: 'drop_picked_up', actorUserId: PICKER })
+    expect(input.appendKeys).toEqual(['actor_ids', 'locked_item_ids'])
+    expect(input.payload).toEqual({ actor_ids: [PICKER], locked_item_ids: [expect.any(String)], poi_id: expect.anything() })
+    expect(input.payload).not.toHaveProperty('badge_ids')
+    expect(input.payload).not.toHaveProperty('badge_name')
+  })
+
+  it('자기 드랍이나 시스템 드랍이면 잠긴 소식도 보내지 않는다', async () => {
+    state.pickedLocked = true
+    state.drop = dropOf(PICKER)
+    await POST(request(), params())
+    state.drop = dropOf(null)
+    await POST(request(), params())
+
     expect(createNotificationMock).not.toHaveBeenCalled()
   })
 
@@ -321,14 +345,14 @@ describe('잠긴 채 받은 개체는 이름·그림을 싣지 않는다 (티켓
     expect(createNotificationMock).toHaveBeenCalledTimes(1)
   })
 
-  it('잠김 여부를 읽지 못하면 잠긴 것으로 보고 피드·소식을 남기지 않는다', async () => {
+  it('잠김 여부를 읽지 못하면 잠긴 것으로 보고 피드를 남기지 않고 이름 없는 소식만 보낸다', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     state.lockLookupFails = true
     const res = await POST(request(), params())
 
     expect(res.status).toBe(200)
     expect(recordFeedEventMock).not.toHaveBeenCalled()
-    expect(createNotificationMock).not.toHaveBeenCalled()
+    expect(createNotificationMock.mock.calls[0][0].payload).not.toHaveProperty('badge_name')
     consoleError.mockRestore()
   })
 })
@@ -373,7 +397,7 @@ describe('꺼진 장소 (티켓 20261018_1812)', () => {
     const res = await POST(request(), params())
 
     expect(res.status).toBe(404)
-    expect(await res.json()).toEqual({ error: d.drops.pickupDropNotFound })
+    expect(await res.json()).toEqual({ error: d.drops.pickupDropNotFound, code: 'drop_gone' })
     expect(state.gpsCalls).toBe(0)
     expect(state.rpcCalls).toBe(0)
     expect(state.afterCallbacks).toHaveLength(0)
@@ -410,7 +434,7 @@ describe('실패 분기에서는 판정을 예약하지 않는다 — 응답은 
     state.drop = null
     const res = await POST(request(), params())
     expect(res.status).toBe(404)
-    expect(await res.json()).toEqual({ error: d.drops.pickupDropNotFound })
+    expect(await res.json()).toEqual({ error: d.drops.pickupDropNotFound, code: 'drop_gone' })
     expect(state.afterCallbacks).toHaveLength(0)
   })
 
@@ -418,7 +442,7 @@ describe('실패 분기에서는 판정을 예약하지 않는다 — 응답은 
     state.drop = dropOf(DROPPER, { is_available: false })
     const res = await POST(request(), params())
     expect(res.status).toBe(409)
-    expect(await res.json()).toEqual({ error: d.drops.pickupAlreadyDone })
+    expect(await res.json()).toEqual({ error: d.drops.pickupAlreadyDone, code: 'already_picked_up' })
     expect(state.afterCallbacks).toHaveLength(0)
   })
 
@@ -442,7 +466,7 @@ describe('실패 분기에서는 판정을 예약하지 않는다 — 응답은 
     state.blocked = true
     const res = await POST(request(), params())
     expect(res.status).toBe(403)
-    expect(await res.json()).toEqual({ error: d.drops.pickupPoiBlocked })
+    expect(await res.json()).toEqual({ error: d.drops.pickupPoiBlocked, code: 'poi_blocked' })
     expect(state.afterCallbacks).toHaveLength(0)
   })
 
@@ -473,17 +497,17 @@ describe('실패 분기에서는 판정을 예약하지 않는다 — 응답은 
   })
 
   it.each([
-    ['already_picked_up', 409, d.drops.pickupAlreadyDone],
-    ['poi_inactive', 404, d.drops.pickupDropNotFound],
-    ['inventory_not_found', 404, d.drops.loadInventoryFailed],
-    ['inventory_full', 422, d.drops.pickupInventoryFull],
-    ['item_not_found', 404, d.drops.pickupFailed],
-    ['unknown_code', 400, d.drops.pickupFailed],
-  ])('ok:false(%s) → %i', async (code, status, message) => {
+    ['already_picked_up', 409, d.drops.pickupAlreadyDone, 'already_picked_up'],
+    ['poi_inactive', 404, d.drops.pickupDropNotFound, 'drop_gone'],
+    ['inventory_not_found', 404, d.drops.loadInventoryFailed, undefined],
+    ['inventory_full', 422, d.drops.pickupInventoryFull, 'inventory_full'],
+    ['item_not_found', 404, d.drops.pickupFailed, undefined],
+    ['unknown_code', 400, d.drops.pickupFailed, undefined],
+  ])('ok:false(%s) → %i, 화면이 가르는 막힘만 code를 싣는다 (티켓 20261018_1817)', async (code, status, message, blockCode) => {
     state.rpcResult = { data: { ok: false, error: code }, error: null }
     const res = await POST(request(), params())
     expect(res.status).toBe(status)
-    expect(await res.json()).toEqual({ error: message })
+    expect(await res.json()).toEqual(blockCode ? { error: message, code: blockCode } : { error: message })
     expect(state.afterCallbacks).toHaveLength(0)
     expect(createNotificationMock).not.toHaveBeenCalled()
   })

@@ -547,8 +547,13 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
 
     // ── ③ 내가 드랍한 아이템 배지 ──────────────────────────────────────────
     case 'drop_picked_up': {
-      const badgeCount = idList(p, 'badge_ids').length
+      const lockedCount = idList(p, 'locked_item_ids').length
+      // 잠긴 개체는 이름·그림을 싣지 않으므로 열린 배지 수와 잠긴 개수를 합쳐 센다(티켓 20261018_1817)
+      const badgeCount = idList(p, 'badge_ids').length + lockedCount
       if (badgeCount <= 1) {
+        if (lockedCount === 1) {
+          return { template: n.msgDropPickedUpLocked, vars: { actor: nameOf(view.actor) } }
+        }
         return {
           template: n.msgDropPickedUpOne,
           vars: { actor: nameOf(view.actor), badgeName: str(p, 'badge_name') },
