@@ -15,6 +15,7 @@ import {
   MISSION_ONLY_CONDITION_KEYS,
 } from '@/lib/missions/condition-keys'
 import { evaluateEngineMissionCondition } from '@/lib/missions/engineCondition'
+import { activitiesWithinMissionWindow } from '@/lib/missions/window'
 import type { MissionRow, MissionCondition, MissionType, BadgeCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 
@@ -175,13 +176,15 @@ export async function checkMissions(
     const isParticipating = participationSet.has(mission.id)
     if (!isParticipating) continue
 
-    // distance/activity_count/streak_days/duration_minutes/elevation_gain_m은 참가 시점 이후
-    // 전체 이력으로 판정해야 한다(연속일수·단일활동 최고기록 모두 배치 하나로는 정확히 계산 불가).
+    // distance/activity_count/streak_days/duration_minutes/elevation_gain_m은 미션 기간 안(참가·시작 뒤,
+    // 종료 전)의 전체 이력으로 판정해야 한다(연속일수·단일활동 최고기록 모두 배치 하나로는 정확히 계산 불가).
+    // 기간 경계는 `activitiesWithinMissionWindow`가 한 곳에서 정한다 — 미리 보여 주는 미션에 시작 전에
+    // 참가했어도 시작 전 활동은 반영하지 않는다(티켓 20261019_1312).
     // 그 외(checkin/item_collect)는 보유 현황 기반이라 activities 자체는 안 쓰이므로
     // 배치를 그대로 넘겨도 무방.
     const joinedAt = joinedAtByMission.get(mission.id)
     const missionActivities = ENGINE_DELEGATED_MISSION_TYPES.has(mission.mission_type) || mission.mission_type === 'distance' || mission.mission_type === 'activity_count'
-      ? (joinedAt ? fullHistory.filter((a) => a.startDate >= joinedAt) : fullHistory)
+      ? activitiesWithinMissionWindow(fullHistory, { joinedAt, startsAt: mission.starts_at, endsAt: mission.ends_at })
       : activities
 
     const { progressValue, target, achieved } = evaluateMission(mission, missionActivities, ownership, isParticipating)
@@ -440,9 +443,9 @@ export function evaluateMission(
   // 배열만으로 판정하는 순수 함수라 참가 이전 활동이 섞여 들어오면 그대로 반영된다. "참가 시점
   // 이후만" 보장하는 건 이 함수의 호출자(checkMissions)가 joinedAt으로 activities를 미리
   // 필터링해서 넘기기 때문 — 실제로 ENGINE_DELEGATED_MISSION_TYPES는 checkMissions에서
-  // fullHistory.filter((a) => a.startDate >= joinedAt)를 거친 배열만 받는다(distance/
+  // activitiesWithinMissionWindow(참가·시작 이후, 종료 이전)를 거친 배열만 받는다(distance/
   // activity_count와 동일 취급). evaluateMission을 다른 곳에서 재사용할 땐 activities를
-  // 반드시 참가 시점 이후로 걸러서 넘겨야 한다.
+  // 반드시 미션 기간 안으로 걸러서 넘겨야 한다.
   const achieved = ENGINE_DELEGATED_MISSION_TYPES.has(mission.mission_type)
     ? evaluateConditionDetailed(condition as BadgeCondition, activities, {
         extraAllowedKeys: MISSION_ONLY_CONDITION_KEYS,
