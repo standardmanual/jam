@@ -27,6 +27,9 @@ export async function GET(req: NextRequest) {
   const tribeId = req.nextUrl.searchParams.get('tribe_id')
   const itemBookId = req.nextUrl.searchParams.get('item_book_id')
   const rarity = req.nextUrl.searchParams.get('rarity') as BadgeRarity | null
+  // 숨김 배지를 결과에서 뺀다(`excludeHidden=1`). 미션 보상·게이트 배지 선택은 숨김 배지를 쓸 수 없어서 이 값을 보낸다
+  // (티켓 20261019_1313 2회). 보내지 않는 기존 호출부는 숨김 배지도 그대로 검색된다.
+  const excludeHidden = req.nextUrl.searchParams.get('excludeHidden') === '1'
   // PostgREST 필터 문법(쉼표/괄호)과 LIKE 와일드카드를 깨뜨리는 문자는 제거
   const query = raw.replace(/[,()%_*\\]/g, ' ').trim()
   // 필터(트라이브·컬렉션·등급)가 하나라도 걸려 있으면 이름 없이도 후보를 훑을 수 있게 한다.
@@ -45,7 +48,8 @@ export async function GET(req: NextRequest) {
     // 라벨만 붙인다(게이트미션·아이템북과 같은 정책, 티켓 20260910_2055).
     // image_url: 투데이 카드 폼의 레일 실시간 미리보기가 배지 썸네일을 그리는 데 쓴다
     // (티켓 20260911_1454). 나머지 호출부는 무시하면 그만이라 부작용 없음.
-    .select('id, name, rarity, type, point_reward, admin_category, image_url')
+    // is_hidden: 숨김 배지를 구분하는 데 쓴다(티켓 20261019_1313 2회). 나머지 호출부는 무시하면 그만이다.
+    .select('id, name, rarity, type, point_reward, admin_category, image_url, is_hidden')
     .is('deleted_at', null)
     .order('name', { ascending: true })
     .limit(MAX_RESULTS + 1)
@@ -56,6 +60,7 @@ export async function GET(req: NextRequest) {
   if (tribeId) q = q.eq('tribe_id', tribeId)
   if (itemBookId) q = q.eq('item_book_id', itemBookId)
   if (rarity) q = q.eq('rarity', rarity)
+  if (excludeHidden) q = q.eq('is_hidden', false)
 
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

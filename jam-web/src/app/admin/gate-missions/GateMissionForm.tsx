@@ -609,6 +609,7 @@ export default function GateMissionForm({ mission, existingAxes, families, rewar
           </p>
           <BadgeMultiSearchSelect
             selected={rewardChips}
+            excludeHidden
             placeholder="배지 이름 검색..."
             onSelect={(b) => {
               setForm((f) =>

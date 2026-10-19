@@ -322,6 +322,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
               selected={rewardBadgeChips}
               onSelect={addRewardBadge}
               onRemove={removeRewardBadge}
+              excludeHidden
               placeholder="배지 이름 검색..."
             />
           </div>
@@ -347,6 +348,7 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
             initialLabel={formatBadgeLabel(badgeLabelCache.get(form.gated_badge_id))}
             placeholder="본 배지 이름 검색..."
             onChange={setGatedBadge}
+            excludeHidden
           />
         </div>
 

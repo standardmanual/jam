@@ -21,6 +21,8 @@ interface BadgeMultiSearchSelectProps {
   typeFilter?: BadgeType
   /** 아이템북에 아직 배정되지 않은 아이템 배지만 검색 (ItemBookForm 전용) */
   unassigned?: boolean
+  /** 숨김 배지를 검색 결과에서 뺀다. 미션 보상처럼 숨김 배지를 쓸 수 없는 자리에서 켠다(티켓 20261019_1313 2회) */
+  excludeHidden?: boolean
   placeholder?: string
 }
 
@@ -40,6 +42,7 @@ export default function BadgeMultiSearchSelect({
   excludeIds,
   typeFilter,
   unassigned,
+  excludeHidden,
   placeholder,
 }: BadgeMultiSearchSelectProps) {
   const [query, setQuery] = useState('')
@@ -64,6 +67,7 @@ export default function BadgeMultiSearchSelect({
         const params = new URLSearchParams({ query })
         if (typeFilter) params.set('type', typeFilter)
         if (unassigned) params.set('unassigned', 'true')
+        if (excludeHidden) params.set('excludeHidden', '1')
         const res = await fetch(`/api/admin/badges/search?${params.toString()}`)
         const data = await res.json()
         setResults((data.badges ?? []) as BadgeSearchResult[])
@@ -74,7 +78,7 @@ export default function BadgeMultiSearchSelect({
       }
     }, 250)
     return () => clearTimeout(handle)
-  }, [query, typeFilter, unassigned, open])
+  }, [query, typeFilter, unassigned, excludeHidden, open])
 
   const excluded = new Set([...(excludeIds ?? []), ...(selected ?? []).map((b) => b.id)])
   const displayResults = query.trim() ? results.filter((b) => !excluded.has(b.id)) : []

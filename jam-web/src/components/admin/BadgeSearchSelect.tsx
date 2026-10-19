@@ -19,6 +19,8 @@ export interface BadgeSearchResult {
    *  /api/admin/badges/search가 항상 내려주지만, 다른 호출부(MissionList 등)는 이 필드 없이
    *  직접 구성한 목록을 같은 타입으로 써 왔으므로 선택 필드로 둔다. */
   image_url?: string | null
+  /** 숨김 배지 여부. /api/admin/badges/search가 내려준다(티켓 20261019_1313 2회) */
+  is_hidden?: boolean
 }
 
 interface BadgeSearchSelectProps {
@@ -27,6 +29,8 @@ interface BadgeSearchSelectProps {
   /** 이미 값이 있을 때(수정 화면) 처음 보여줄 라벨 — 부모가 알고 있는 배지 이름 */
   initialLabel?: string
   typeFilter?: BadgeType
+  /** 숨김 배지를 검색 결과에서 뺀다. 게이트 배지처럼 숨김 배지를 쓸 수 없는 자리에서 켠다(티켓 20261019_1313 2회) */
+  excludeHidden?: boolean
   placeholder?: string
   allowClear?: boolean
 }
@@ -46,6 +50,7 @@ export default function BadgeSearchSelect({
   onChange,
   initialLabel,
   typeFilter,
+  excludeHidden,
   placeholder,
   allowClear = true,
 }: BadgeSearchSelectProps) {
@@ -72,6 +77,7 @@ export default function BadgeSearchSelect({
       try {
         const params = new URLSearchParams({ query })
         if (typeFilter) params.set('type', typeFilter)
+        if (excludeHidden) params.set('excludeHidden', '1')
         const res = await fetch(`/api/admin/badges/search?${params.toString()}`)
         const data = await res.json()
         setResults((data.badges ?? []) as BadgeSearchResult[])
@@ -84,7 +90,7 @@ export default function BadgeSearchSelect({
       }
     }, 250)
     return () => clearTimeout(handle)
-  }, [query, typeFilter, open])
+  }, [query, typeFilter, excludeHidden, open])
 
   // query가 비면(방금 포커스했거나 지웠을 때) 직전 검색 결과를 그대로 안 보여준다
   const displayResults = query.trim() ? results : []
