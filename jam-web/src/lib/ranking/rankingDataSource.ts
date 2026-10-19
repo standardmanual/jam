@@ -12,8 +12,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
-import { rankMissionParticipants, type RankableParticipant } from '@/lib/missions/ranking'
+import { filterRankableParticipants, rankMissionParticipants, type RankableParticipant } from '@/lib/missions/ranking'
 import { hasPeriodEarnedKey } from '@/lib/missions/condition-keys'
+import { getSuspendedUserIds } from '@/lib/suspension/suspension'
 import { rankByMetricValue, type RankableValueEntry } from './rankingCalculator'
 import { computeActivityMetricValue, isRankingActivityMetric, isRankingUsageMetric } from './metricValues'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
@@ -88,10 +89,16 @@ function toEntry(userId: string, value: number, rank: number, profiles: Map<stri
   }
 }
 
-/** 대상이 미션 참가자일 때 — 미션의 기존 순위 비교 규칙(완료 여부 → 완료 시각 → 진행도)을 그대로 감싼다 */
+/**
+ * 대상이 미션 참가자일 때 — 미션의 기존 순위 비교 규칙(완료 여부 → 완료 시각 → 진행도)을 그대로 감싼다.
+ *
+ * 이용 정지 중인 유저는 순위에서 뺀다(티켓 20261019_1400, 운영 로직 13.2절 — 미션 현황 화면·순위 상승 소식과 같은 규칙).
+ * `viewerUserId`는 보는 사람 본인이다: 정지 중이어도 본인 화면에는 남긴다. 어드민 미리보기처럼 보는 사람이 없으면 모든 정지 유저를 뺀다.
+ */
 async function computeMissionParticipantsResult(
   supabase: SupabaseClient,
-  missionId: string
+  missionId: string,
+  viewerUserId?: string
 ): Promise<RankingBoardResult> {
   const { data: missionRaw } = await supabase
     .from('missions')
@@ -127,7 +134,17 @@ async function computeMissionParticipantsResult(
     progressValue: p.progress_value ?? 0,
     completedAt: completionMap.get(p.user_id) ?? null,
   }))
-  const ranked = rankMissionParticipants(rankable)
+
+  // 이용 정지 유저 제외(티켓 20261019_1400). 정지 여부를 읽지 못하면 정지 유저가 노출될 수 있으므로 순위를 내리지 않는다(fail-closed) —
+  // 홈 전체가 오류 화면이 되지 않게 이 보드만 빈 순위로 돌려준다.
+  let suspendedIds: Set<string>
+  try {
+    suspendedIds = await getSuspendedUserIds(supabase, rankable.map((p) => p.userId))
+  } catch (err) {
+    console.error('[computeMissionParticipantsResult] 이용 정지 조회 오류 — 순위를 비워 둡니다:', err)
+    return { entries: [], totalParticipants: 0, metricType: 'mission_progress', missionType, conditionFieldKey: null }
+  }
+  const ranked = rankMissionParticipants(filterRankableParticipants(rankable, suspendedIds, viewerUserId))
 
   const profiles = await fetchUserProfiles(supabase, ranked.map((r) => r.userId))
   const entries = ranked.map((r) => toEntry(r.userId, r.progressValue, r.rank, profiles))
@@ -294,13 +311,15 @@ async function computeManualUsersResult(
  */
 export async function computeRankingModeResult(
   mode: RankingModeRow,
-  client?: SupabaseClient
+  client?: SupabaseClient,
+  /** `viewerUserId`: 보는 사람 id — 이용 정지 중인 본인을 본인 화면에는 남기는 데 쓴다(티켓 20261019_1400). 어드민 미리보기는 넘기지 않는다 */
+  options?: { viewerUserId?: string }
 ): Promise<RankingBoardResult> {
   const supabase = client ?? createServiceClient()
 
   const result =
     mode.target_type === 'mission_participants' && mode.target_mission_id
-      ? await computeMissionParticipantsResult(supabase, mode.target_mission_id)
+      ? await computeMissionParticipantsResult(supabase, mode.target_mission_id, options?.viewerUserId)
       : mode.target_type === 'manual_users'
         ? await computeManualUsersResult(supabase, mode)
         : {

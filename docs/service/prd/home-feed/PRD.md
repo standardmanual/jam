@@ -145,15 +145,15 @@ Strava 미동기화·첫 활동 대기 카드와 `TopNav` 동기화 버튼·하�
 1. 유저의 현재 태그를 계산한다(§4).
 2. `today_cards`에서 `is_active = true`이고 `starts_at ≤ 지금 ≤ ends_at`이며 `exposure_tags`가 유저 태그와 **하나라도 겹치는**(OR) 카드를 읽는다. `all`은 모든 유저가 가지므로 `all`이 붙은 카드는 기간 안이면 모두에게 보인다.
 3. 정렬은 `sort_order` 오름차순, 같으면 `starts_at` 내림차순이다.
-4. `mission_spotlight` 카드 중 가리키는 미션이 이 유저에게 공개 상태가 아닌 것(어드민 수동 비노출, 이미 완료, 잠김·숨김)을 뺀다. 판정은 미션 목록·상세·참가 API와 같은 `isMissionExposed`·`resolveMissionVisibility`이며 `open`인 미션만 남는다. `mission_id`가 없는 미션 카드는 그대로 둔다.
+4. `mission_spotlight` 카드 중 가리키는 미션이 이 유저에게 공개 상태가 아닌 것(어드민 수동 비노출, 이미 완료, 잠김·숨김)을 뺀다. 판정은 미션 목록·상세·참가 API와 같은 `isMissionExposed`·`resolveMissionVisibility`이며 `open`인 미션만 남는다. `mission_id`가 없는 미션 카드는 그대로 둔다. 같은 단계에서, 참가할 수 있는 트라이브가 정해진 미션을 가리키는 `ranking_board` 카드는 보는 유저가 대상 트라이브가 아니면 뺀다(`filterRankingBoardCardsByTribe`, 미션 목록에서 숨기는 규칙과 같다. 카드를 눌러 미션으로 가면 404가 나는 상황을 없앤다). 트라이브 접근을 읽지 못하면 미션 참가자 대상 랭킹 보드 카드를 내린다. 수동 지정 유저 대상과 허용 트라이브가 없는 공통 미션 카드는 그대로 둔다(티켓 20261019_1400).
 5. 카드의 `badge_ids`를 배지 정보로 바꾸고, 유저가 그 배지를 **이미 가졌는지**(활동·미션·컬렉션 보상, 체크인, 인벤토리 세 곳)를 함께 붙인다. 삭제된 배지는 빠진다. 보유 조회가 실패해도 카드는 노출되고 그 배지가 미보유로 그려진다.
-6. `ranking_board` 카드는 랭킹모드 순위를 미리 계산해 붙인다.
+6. `ranking_board` 카드는 랭킹모드 순위를 미리 계산해 붙인다. 미션 참가자 대상 순위에서는 이용 정지 중인 유저를 뺀다(보는 유저 본인은 정지 중이어도 자기 화면에는 남고, 정지가 풀리면 다시 포함된다. 읽지 못하면 그 보드는 빈 순위다). 조건에 «기간 동안 모은 잼»이 든 미션은 모은 양이 홈 방문자 전원에게 드러나지 않도록 순위를 빈 결과로 돌려주고, 화면은 「아직 랭킹이 없어요」를 그린다(티켓 20261019_1400, 20261019_1445).
 7. 카드마다 이동 경로를 계산한다(§7).
 
 - 노출 수 상한은 없다. 조건에 맞는 카드는 모두 쌓인다.
 - 조회가 실패하면 카드 0장(영역 숨김)으로 처리한다.
 
-근거: `jam-web/src/lib/today/cards.ts`(`getTodayCards`·`filterMissionSpotlightCards`·`fetchBadgesById`·`fetchRankingBoardData`)
+근거: `jam-web/src/lib/today/cards.ts`(`getTodayCards`·`filterMissionSpotlightCards`·`filterRankingBoardCardsByTribe`·`fetchBadgesById`·`fetchRankingBoardData`), `jam-web/src/lib/ranking/rankingDataSource.ts`(`computeMissionParticipantsResult`)
 
 ## 4. 노출 태그
 

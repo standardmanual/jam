@@ -127,3 +127,80 @@ describe('computeRankingModeResult — 기간 동안 모은 잼 미션은 순위
     expect(reads).toEqual(['missions'])
   })
 })
+
+describe('computeRankingModeResult — 이용 정지 유저 제외 (티켓 20261019_1400)', () => {
+  /** b가 정지 중이고, c는 정지가 풀렸다(lifted_at 있음) */
+  function suspendedTables(): Record<string, Row[]> {
+    return {
+      ...baseTables(),
+      user_suspensions: [
+        { user_id: 'b', lifted_at: null },
+        { user_id: 'c', lifted_at: '2026-10-15T00:00:00Z' },
+      ],
+    }
+  }
+
+  it('다른 유저가 보는 순위에서 정지 중인 참가자를 뺀다', async () => {
+    const result = await computeRankingModeResult(missionMode(), fakeClient(suspendedTables()), { viewerUserId: 'a' })
+
+    expect(result.entries.map((e) => e.userId)).toEqual(['a', 'c'])
+    expect(result.totalParticipants).toBe(2)
+  })
+
+  it('순위 번호는 걸러낸 뒤의 목록으로 매긴다', async () => {
+    const result = await computeRankingModeResult(missionMode(), fakeClient(suspendedTables()), { viewerUserId: 'a' })
+
+    expect(result.entries.map((e) => [e.userId, e.rank])).toEqual([
+      ['a', 1],
+      ['c', 2],
+    ])
+  })
+
+  it('보는 사람 본인은 정지 중이어도 자기 화면에는 남는다', async () => {
+    const result = await computeRankingModeResult(missionMode(), fakeClient(suspendedTables()), { viewerUserId: 'b' })
+
+    expect(result.entries.map((e) => e.userId)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('보는 사람이 없으면(어드민 미리보기) 정지 중인 참가자를 모두 뺀다', async () => {
+    const result = await computeRankingModeResult(missionMode(), fakeClient(suspendedTables()))
+
+    expect(result.entries.map((e) => e.userId)).toEqual(['a', 'c'])
+  })
+
+  it('정지가 풀린 유저는 다시 포함된다', async () => {
+    const result = await computeRankingModeResult(missionMode(), fakeClient(suspendedTables()), { viewerUserId: 'a' })
+
+    expect(result.entries.map((e) => e.userId)).toContain('c')
+  })
+
+  it('공개 인원 제한은 걸러낸 뒤의 순위에 적용되고 전체 인원은 제한 전 값이다', async () => {
+    const result = await computeRankingModeResult(
+      missionMode({ visible_rank_count: 1 }),
+      fakeClient(suspendedTables()),
+      { viewerUserId: 'a' }
+    )
+
+    expect(result.entries.map((e) => e.userId)).toEqual(['a'])
+    expect(result.totalParticipants).toBe(2)
+  })
+
+  it('정지 여부를 읽지 못하면 순위를 비우고 오류를 로그로 남긴다(fail-closed)', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const client = fakeClient(suspendedTables(), { user_suspensions: { message: 'connection reset' } })
+
+    const result = await computeRankingModeResult(missionMode(), client, { viewerUserId: 'a' })
+
+    expect(result.entries).toEqual([])
+    expect(result.totalParticipants).toBe(0)
+    expect(result.metricType).toBe('mission_progress')
+    expect(errorSpy).toHaveBeenCalledTimes(1)
+    errorSpy.mockRestore()
+  })
+
+  it('정지 유저가 없으면 기준선과 같은 순위를 돌려준다', async () => {
+    const result = await computeRankingModeResult(missionMode(), fakeClient(baseTables()), { viewerUserId: 'a' })
+
+    expect(result.entries.map((e) => e.userId)).toEqual(['a', 'b', 'c'])
+  })
+})

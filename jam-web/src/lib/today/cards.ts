@@ -9,7 +9,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import type { RankingModeRow, TodayCardRow } from '@/types/database'
 import { computeUserExposureTags } from './exposure'
-import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
+import { loadMissionTribeAccess, loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
+import { isMissionOpenToUser } from '@/lib/missions/tribe-access'
 import { withoutHiddenRewardBadgeIds } from '@/lib/missions/reward-badges'
 import { isMissionExposed, resolveMissionVisibility, type MissionVisibilityInput } from '@/lib/missions/visibility'
 import { computeRankingModeResult, type RankingBoardResult } from '@/lib/ranking/rankingDataSource'
@@ -166,13 +167,16 @@ export async function getTodayCards(
   const missionsById = await fetchMissionsById(supabase, missionIdsToResolve(allCards))
   // 20260825_028: 미션 소개 카드도 미션 목록과 같은 노출 규칙을 따른다 —
   // 이미 완료했거나 아직 열리지 않은 미션은 오늘 카드로도 권하지 않는다.
-  const cards = await filterMissionSpotlightCards(userId, allCards, missionsById)
+  const spotlightFiltered = await filterMissionSpotlightCards(userId, allCards, missionsById)
+  // 티켓 20261019_1400: 트라이브 제한 미션의 랭킹 보드 카드는 대상이 아닌 트라이브 유저에게 내리지 않는다(5-1 규칙과 같다).
+  const cards = await filterRankingBoardCardsByTribe(supabase, userId, spotlightFiltered)
   // 레시피 공개 카드의 레시피는 공개 뒤 재료 타일의 후보 배지 id를 알아야 배지 조회에 합칠 수 있어서 배지 조회보다 먼저 읽는다.
   // 레시피 공개 카드가 없으면 아무것도 읽지 않는다.
   const recipesById = await fetchRecipesById(supabase, recipeIdsToResolve(cards), now)
   const [badgesById, rankingByModeId, collectionsById] = await Promise.all([
     fetchBadgesById(supabase, [...cards.flatMap((c) => c.badge_ids ?? []), ...recipeCandidateBadgeIds(recipesById)], userId),
-    fetchRankingBoardData(supabase, cards),
+    // 보는 사람 id를 내려 이용 정지 중인 본인을 본인 화면의 순위에는 남긴다(티켓 20261019_1400).
+    fetchRankingBoardData(supabase, cards, userId),
     fetchCollectionsById(supabase, collectionIdsToResolve(cards), nowIso),
   ])
 
@@ -204,11 +208,15 @@ export async function getTodayCards(
  * export하는 이유: 어드민 날짜별 미리보기(`lib/admin/todayPreview.ts`)도 같은 배치 조회가
  * 필요하다 — 그 파일은 유저 개인화(참가 여부 등)는 의도적으로 생략하지만, 랭킹 계산 자체는
  * 유저 컨텍스트가 필요 없어(팔로워 수·활동 이력 등은 대상 유저 자신의 것) 그대로 재사용할 수 있다.
+ *
+ * `viewerUserId`: 보는 사람 id. 미션 참가자 순위에서 이용 정지 중인 유저는 빠지지만 보는 사람 본인은 남는다(티켓 20261019_1400).
+ * 어드민 미리보기는 넘기지 않는다 — 어느 유저의 화면도 아니므로 정지 유저를 모두 뺀다.
  */
 export async function fetchRankingBoardData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   cards: TodayCardRow[],
+  viewerUserId?: string,
 ): Promise<Map<string, { mode: RankingModeRow; result: RankingBoardResult }>> {
   const modeIds = [
     ...new Set(
@@ -229,11 +237,70 @@ export async function fetchRankingBoardData(
   const modes = (data ?? []) as RankingModeRow[]
   await Promise.all(
     modes.map(async (mode) => {
-      const result = await computeRankingModeResult(mode, supabase)
+      const result = await computeRankingModeResult(mode, supabase, { viewerUserId })
       map.set(mode.id, { mode, result })
     })
   )
   return map
+}
+
+/**
+ * 트라이브 제한 미션을 가리키는 랭킹 보드 카드 중 보는 사람이 대상 트라이브가 아닌 카드를 내린다 (티켓 20261019_1400).
+ *
+ * 미션 목록·상세·참가·순위가 쓰는 규칙(`isMissionOpenToUser`)을 그대로 쓴다. 대상이 아니면 순위만 숨기는 것이 아니라 카드를 내린다 —
+ * 카드를 눌러 미션으로 가면 상세가 404가 되는 상황을 없앤다(사용자 결정 2026-10-20, 미션 목록에서 숨기는 5-1 규칙과 같다).
+ * 허용 트라이브가 없는 공통 미션과 미션 참가자 순위가 아닌 카드(수동 지정 유저 등)는 그대로 둔다.
+ *
+ * 접근 정보를 읽지 못하면 «제한 없음»으로 보지 않는다(fail-closed): 미션을 가리키는 랭킹 보드 카드를 이 유저에게는 내린다.
+ * 랭킹 모드 자체를 읽지 못하면 순위 조회(`fetchRankingBoardData`)도 같은 이유로 비어 미션 링크·순위가 실리지 않으므로 카드를 그대로 둔다.
+ */
+async function filterRankingBoardCardsByTribe(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string,
+  cards: TodayCardRow[],
+): Promise<TodayCardRow[]> {
+  const modeIds = [
+    ...new Set(
+      cards
+        .filter((c) => c.template_type === 'ranking_board' && c.ranking_mode_id)
+        .map((c) => c.ranking_mode_id as string)
+    ),
+  ]
+  if (modeIds.length === 0) return cards
+
+  const { data, error } = await supabase
+    .from('ranking_modes')
+    .select('id, target_type, target_mission_id')
+    .in('id', modeIds)
+  if (error) {
+    console.error('[filterRankingBoardCardsByTribe] 랭킹모드 조회 오류:', error.message)
+    return cards
+  }
+
+  const missionIdByModeId = new Map<string, string>()
+  for (const mode of (data ?? []) as Pick<RankingModeRow, 'id' | 'target_type' | 'target_mission_id'>[]) {
+    if (mode.target_type === 'mission_participants' && mode.target_mission_id) {
+      missionIdByModeId.set(mode.id, mode.target_mission_id)
+    }
+  }
+  if (missionIdByModeId.size === 0) return cards
+
+  let closedModeIds: Set<string>
+  try {
+    const access = await loadMissionTribeAccess(userId, [...missionIdByModeId.values()])
+    closedModeIds = new Set(
+      [...missionIdByModeId].filter(([, missionId]) => !isMissionOpenToUser(access, missionId)).map(([modeId]) => modeId)
+    )
+  } catch (err) {
+    console.error('[filterRankingBoardCardsByTribe] 트라이브 접근 조회 오류 — 미션 랭킹 보드 카드를 내립니다:', err)
+    closedModeIds = new Set(missionIdByModeId.keys())
+  }
+  if (closedModeIds.size === 0) return cards
+
+  return cards.filter(
+    (c) => !(c.template_type === 'ranking_board' && c.ranking_mode_id && closedModeIds.has(c.ranking_mode_id))
+  )
 }
 
 /** 미션 행 중 이 파일이 읽는 칸 — 노출 판정(`MissionVisibilityInput`)과 표시 값을 함께 쓴다 */
