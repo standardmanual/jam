@@ -50,7 +50,9 @@ code:
                 user_combine_fail_logs · user_combine_success_logs (유저별 믹스 실패·성공 이력)
 
 [미션]          missions ─1:N─ user_mission_participations (참가+진행도)
-                          └─1:N─ user_mission_completions   (완료 기록)
+                          ├─1:N─ user_mission_completions   (완료 기록)
+                          ├─1:N─ mission_allowed_tribes     (참가할 수 있는 트라이브, 마이그레이션 249 — 행이 없으면 공통 미션)
+                          └─1:N─ mission_participation_cancellations (트라이브 변경으로 취소된 참가 기록, 마이그레이션 249)
 
 [포인트]        users ─1:1─ point_wallets ─1:N─ point_transactions (append-only 원장)
                 point_treasury (전체 발행/회수 싱글톤 장부)
@@ -757,6 +759,30 @@ service_role만 접근한다.
 
 **JAM! 행동 지표의 원천**: 완료한 미션 수(`mission_complete_count`)가 `user_mission_completions`에서 `user_id`로 거른
 행 수를 센다. `UNIQUE(user_id, mission_id)`라 행 수가 서로 다른 미션 수이고, 가입 이전 기록도 센다(티켓 20261001_0633).
+
+유저가 직접 참가를 취소하는 길은 없다. 트라이브가 바뀌어 대상이 아니게 된 미션의 참가만 서버가 취소한다(`mission_cancel_for_tribe_change`, 아래).
+
+### mission_allowed_tribes / mission_participation_cancellations / mission_complete / mission_cancel_for_tribe_change — 마이그레이션 249, 티켓 20261019_1311
+JAM 2.0 운영 로직 13.2절(트라이브 미션과 선착순 동시 완료)의 서버 쪽 바탕이다. **새 표 2개와 새 함수 2개만 더했고 옛 표·칸·함수는 바꾸지 않았다**(공용 DB라 옛 프로덕션 코드가 같은 표를 쓴다). 2026-10-19 공용 DB에 적용했다.
+
+#### mission_allowed_tribes
+미션에 참가할 수 있는 트라이브. `(mission_id, tribe_id)` 복합 PK, 미션 하나에 트라이브마다 한 행이다. **행이 하나도 없는 미션은 모든 유저가 하는 공통 미션**이다. 미션을 지우면 연결도 함께 지워지고(`ON DELETE CASCADE`), 연결된 트라이브는 지울 수 없다(`ON DELETE RESTRICT` — 연결이 조용히 사라져 트라이브 미션이 공통 미션으로 넓어지는 것을 막는다). RLS를 켜고 anon·authenticated의 권한을 모두 회수했다(서버 service_role만 읽고 쓴다).
+판정은 `src/lib/missions/tribe-access.ts`의 `isMissionOpenToTribe` 한 곳이다: 허용 목록이 비었거나 없으면 열림, 있으면 유저의 `users.tribe_id`가 들어 있을 때만 열림, 트라이브가 아직 없는 유저(온보딩 전)는 목록이 있는 미션이 닫혀 공통 미션만 본다. 목록(`/missions`)·상세·참가·오늘카드가 `loadMissionVisibilityContext`로 같은 규칙을 쓰고(`visibility.ts`가 완료 판정 다음·게이트 판정 앞에서 `hidden`), 상황 조회(`/api/missions/[id]/status`)도 같은 판정을 쓴다. 대상이 아니면 상세·참가·상황 조회는 404(없는 미션)이고, 이미 완료한 미션은 완료 이력으로 계속 본다. 허용 목록을 읽지 못하면 «제한 없음»으로 보지 않고 오류로 끝낸다.
+
+#### mission_participation_cancellations
+트라이브가 바뀌어 취소된 참가의 기록. `id`, `user_id`(CASCADE), `mission_id`(CASCADE), `joined_at`, `progress_value`, `was_completed`(취소 당시 완료 여부), `new_tribe_id`(SET NULL), `reason`(기본 `tribe_changed`), `cancelled_at`. RLS를 켜고 anon·authenticated 권한을 모두 회수했다.
+
+#### mission_complete(p_user_id, p_mission_id) → jsonb
+완료 기록을 한 트랜잭션에서 남기는 SECURITY DEFINER 함수(service_role만 실행). `checkMissions`(`src/lib/missions/checker.ts`)가 조건을 채운 미션마다 부른다. 선착순(`max_completions`)이 있는 미션이면 미션마다 어드바이저리 잠금을 잡은 뒤 완료 수를 세고 기록해 **동시에 동기화해도 상한을 넘지 않는다**(상한이 없는 미션은 잠금 없음). 이용 정지·미참가·트라이브 불일치는 앱이 먼저 막고 함수가 한 번 더 막는다.
+- 반환: `{ok:true, status:'completed', completion_id}` / `{ok:true, status:'already_completed'}` / `{ok:false, error:'mission_not_found'|'user_suspended'|'not_participating'|'tribe_not_allowed'|'mission_full'}`.
+- 앱은 `completed`일 때만 보상·피드·소식을 이어가고, 그 밖의 응답과 RPC 호출 실패, 계약과 다른 응답은 완료시키지 않는다. 예전의 «개수 세기 → INSERT»와 개수 조회 실패 때의 `count ?? 0`(상한 무시)은 없앴다.
+- `checkMissions`는 완료 기록 id를 `completedMissions: { missionId, completionId }[]`로 돌려준다(챕터 점수가 원천 id로 쓴다). 기존 `completedMissionIds`는 그대로다.
+
+#### mission_cancel_for_tribe_change(p_user_id) → (out_mission_id, out_mission_title)*
+유저의 현재 트라이브가 대상이 아닌 트라이브 제한 미션의 참가를 취소하고(참가 행 삭제, `mission_participation_cancellations`에 기록) 취소한 미션마다 한 행을 돌려준다(호출한 쪽이 소식을 보낸다). 공통 미션과 새 트라이브가 대상인 미션은 그대로이고, 트라이브가 없는 유저는 제한 미션을 모두 취소한다. **이미 완료한 미션의 참가도 취소하지만 완료 기록과 받은 보상은 지우지 않는다**(선착순 자리를 센 완료 기록도 남아 상한에 계속 들어간다). 참가 행이 지워지므로 순위에서 빠진다. **부르는 곳은 아직 없다** — 유저의 트라이브를 바꾸는 경로가 생기는 묶음 6에서 연결한다.
+
+#### 이용 정지와 순위
+이용 정지 중인 유저는 미션에 참가할 수 없고(`POST /api/missions/[id]/join` 403 `user_suspended`), 다른 유저가 보는 순위·달성자 목록과 `totalParticipants`에서 빠진다. 본인 화면에는 본인이 계속 보이고, 정지가 풀리면(`user_suspensions.lifted_at`) 다시 보인다. 순위 상승 소식(#23) 배치도 같은 목록으로 순위를 매긴다. 판정은 `filterRankableParticipants`(`src/lib/missions/ranking.ts`)와 `getSuspendedUserIds`(`src/lib/suspension/suspension.ts`)다.
 
 ---
 

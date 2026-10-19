@@ -736,14 +736,19 @@ progress 계산 (calculateProgress):
     distance: condition_json.distance_km
     count: condition_json.count
 
-선착순 미션:
-  missions.max_completions IS NOT NULL →
-  현재 완료자 수 >= max_completions → skip
-
-달성 시:
-  user_mission_completions INSERT
-  recordFeedEvent: 'mission_completed'
+달성 시 (티켓 20261019_1311):
+  supabase.rpc('mission_complete', { p_user_id, p_mission_id }) 한 번으로 완료를 기록한다.
+    선착순 미션(missions.max_completions IS NOT NULL)이면 DB 함수가 미션 잠금 아래에서
+    완료자 수를 세고 기록하므로 동시에 동기화해도 상한을 넘지 않는다.
+    응답이 completed(+ completion_id)일 때만 보상 지급 → recordFeedEvent: 'mission_completed' → 소식으로 이어간다.
+    already_completed·mission_full·tribe_not_allowed·not_participating·user_suspended는 건너뛴다.
+    RPC 호출 실패·계약과 다른 응답은 완료시키지 않는다.
+  반환값에 완료 기록 id가 든 completedMissions: [{ missionId, completionId }]를 싣는다.
 ```
+
+참가·노출 규칙(티켓 20261019_1311): 이용 정지 중이면 참가가 403이고, 참가할 수 있는 트라이브가 정해진
+미션은 대상이 아닌 트라이브 유저에게 목록·상세에 보이지 않으며 참가·상황 조회가 404다.
+이용 정지 중인 유저는 다른 유저가 보는 순위에서 빠진다. 규칙 상세는 `docs/service/prd/02_DATA_MODEL.md` §8.
 
 ### 9-4. 미션 타입
 
@@ -1170,6 +1175,8 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | `missions` | 미션 정의 (type, condition_json, starts/ends_at, max_completions) | 011 |
 | `user_mission_participations` | 미션 참가 기록 | 012 |
 | `user_mission_completions` | 미션 완료 기록 | 011 |
+| `mission_allowed_tribes` | 미션에 참가할 수 있는 트라이브 (행이 없으면 공통 미션) | 249 |
+| `mission_participation_cancellations` | 트라이브 변경으로 취소된 미션 참가 기록 | 249 |
 | `user_activity_feed` | 활동 피드 (event_type, metadata JSONB) | 013 |
 | `user_item_book_slots` | 아이템북 슬롯 장착 현황 | 017 |
 | `user_item_book_completions` | 아이템북 완성 기록 | 017 |
