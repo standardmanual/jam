@@ -761,13 +761,13 @@ badge-engine에 `condition.route` 참조가 **0건**이라(실측 2026-09-05) `p
 상위 레벨만 주면 레일에 획득하지 않은 하위 레벨 구멍이 영구히 남기 때문이다(다음 평가에서는
 보유 최고 레벨이 이미 그 위라 하위가 다시 후보가 되지 않는다). 폭주는 첫 싱크 게이트(Lv.1만)와
 가입 시점 앵커가 함께 막는다. 배지 종류 판정 기준은 **`rarity IS NULL` 하나뿐**이며
-(`isLeveledBadge()`), 보유 배지 집계에서도 레벨형은 `highestOwnedTierByName`에 섞지 않는다 —
-레벨형이 등급형 계열과 같은 이름을 쓸 수 있어 0이 섞이면 티어 판정이 오염된다.
+(`isLeveledBadge()`), 보유 배지 집계에서도 레벨형은 `highestOwnedTierByGroup`에 섞지 않는다 —
+레벨형이 등급형 계열과 같은 계열 키나 이름을 쓸 수 있어 0이 섞이면 티어 판정이 오염된다.
 
 **반복형(`rarity` + `condition_json.repeat_count`)에도 적용하지 않는다** (v5 B1). 반복형의
 등급 사다리는 같은 이름의 4장이 임계값만 1·5·20·50회로 다른 형태라, 성장 티어를 적용하면
 Rare를 얻는 순간 Common이 후보에서 빠져 **하위 등급의 회차 카운터가 멈춘다**. 보유 배지 집계
-(`highestOwnedTierByName`)에도 넣지 않는다.
+(`highestOwnedTierByGroup`)에도 넣지 않는다.
 
 ### 2.5 진행 트랙 정책
 
@@ -1220,7 +1220,7 @@ import한다** — `badgeKind.ts`·`activityFilters.ts`·`crossGate.ts`와 같�
 
 | 종류 | 판정 | 묶는 축 | 보유하면 |
 |---|---|---|---|
-| 등급형 `graded` | 그 외 전부 | 이름 (`badgesByName`) | 후보 제외 |
+| 등급형 `graded` | 그 외 전부 | 계열 (`family_key`, 없으면 이름) (`badgesByGradedGroup`) | 후보 제외 |
 | 무한레벨형 `leveled` | `rarity IS NULL` | 계열 (`family_key`) | 후보 제외 (다음 레벨로 넘어감) |
 | 반복형 `repeatable` | `rarity` 있음 **+** `condition_json.repeat_count` | 배지 하나하나 | **후보로 남는다** |
 
