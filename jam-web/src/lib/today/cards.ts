@@ -10,6 +10,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { RankingModeRow, TodayCardRow } from '@/types/database'
 import { computeUserExposureTags } from './exposure'
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
+import { withoutHiddenRewardBadgeIds } from '@/lib/missions/reward-badges'
 import { isMissionExposed, resolveMissionVisibility, type MissionVisibilityInput } from '@/lib/missions/visibility'
 import { computeRankingModeResult, type RankingBoardResult } from '@/lib/ranking/rankingDataSource'
 import { COMPLETION_BADGE_TYPES, computeBookCompletion, type CompletionBadgeInput } from '@/lib/itembook/completion-basis'
@@ -303,7 +304,24 @@ export async function fetchMissionsById(supabase: ServiceClient, missionIds: str
     console.error('[fetchMissionsById] 미션 조회 오류:', error.message)
     return map
   }
-  for (const m of (data ?? []) as unknown as FetchedMission[]) map.set(m.id, m)
+  const missions = (data ?? []) as unknown as FetchedMission[]
+
+  // 숨김 보상 배지는 개수에도 넣지 않는다(티켓 20261019_1313 2회, 운영 로직 10.3절) — 카드가 «배지 N개»로 숨김 배지의 존재를 알리면 안 된다.
+  // 보상 배지를 가진 미션이 있을 때만 한 번 더 읽는다. 읽지 못하면 어느 배지가 숨김인지 모르므로 보상 배지 개수를 싣지 않는다.
+  const rewardIds = [...new Set(missions.flatMap((m) => m.reward_badge_ids ?? []))]
+  let hiddenIds: ReadonlySet<string> = new Set()
+  if (rewardIds.length > 0) {
+    const { data: badgeRows, error: badgeError } = await supabase.from('badges').select('id, is_hidden').in('id', rewardIds)
+    if (badgeError) {
+      console.error('[fetchMissionsById] 보상 배지 숨김 조회 오류:', badgeError.message)
+      hiddenIds = new Set(rewardIds)
+    } else {
+      hiddenIds = new Set(
+        ((badgeRows ?? []) as { id: string; is_hidden?: boolean | null }[]).filter((b) => b.is_hidden === true).map((b) => b.id)
+      )
+    }
+  }
+  for (const m of missions) map.set(m.id, withoutHiddenRewardBadgeIds(m, hiddenIds))
   return map
 }
 

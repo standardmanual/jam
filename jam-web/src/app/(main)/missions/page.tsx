@@ -5,6 +5,7 @@ import type { BadgeRarity, MissionRow, UserMissionCompletionRow, UserMissionPart
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
 import { isMissionExposed, resolveMissionVisibilityMap } from '@/lib/missions/visibility'
 import { dedupeByRewardBadge } from '@/lib/missions/dedupeReward'
+import { withoutHiddenRewardBadgeIds } from '@/lib/missions/reward-badges'
 import MissionsListClient, { type MissionListItem, type RewardBadgeInfo } from './MissionsListClient'
 import MissionsBrowseTracker from './MissionsBrowseTracker'
 import { getOnboardingQuestGate } from '@/lib/onboarding-quest/screen-gate'
@@ -82,22 +83,28 @@ export default async function MissionsPage() {
   const visibleOngoing = dedupeByRewardBadge(visibleOngoingRaw, participationSet, visibilityMap)
 
   // 보상 배지 이름 일괄 fetch — 목록에서 "배지명 배지" 형식으로 표시하기 위해
+  // 숨김 배지(badges.is_hidden)는 이름·id·개수를 내리지 않는다(티켓 20261019_1313 2회, 운영 로직 10.3절) — 이름 맵에서 빼고
+  // 미션 행의 reward_badge_ids에서도 뺀다. 빼지 않으면 목록 화면이 «배지 1개» 폴백으로 숨김 배지의 개수를 알린다.
   const allMissions = [...visibleOngoing, ...endedMissions, ...completedMissions]
   const allRewardBadgeIds = [...new Set(allMissions.flatMap((m) => (m.reward_badge_ids ?? []).filter(Boolean)))]
   let rewardBadgeNames: Record<string, RewardBadgeInfo> = {}
+  const hiddenRewardBadgeIds = new Set<string>()
   if (allRewardBadgeIds.length > 0) {
-    const { data: badgeRows, error: badgeRowsError } = await service.from('badges').select('id, name, rarity, level').in('id', allRewardBadgeIds).is('deleted_at', null)
+    const { data: badgeRows, error: badgeRowsError } = await service.from('badges').select('id, name, rarity, level, is_hidden').in('id', allRewardBadgeIds).is('deleted_at', null)
     if (badgeRowsError) console.error('[missions/page] 보상 배지 이름 조회 실패', badgeRowsError)
+    const rows = (badgeRows ?? []) as { id: string; name: string; rarity: BadgeRarity | null; level: number | null; is_hidden?: boolean | null }[]
+    for (const b of rows) if (b.is_hidden === true) hiddenRewardBadgeIds.add(b.id)
+    // 숨김 여부를 읽지 못했으면 어느 배지가 숨김인지 모른다 — 모두 숨김으로 보고 내리지 않는다.
+    if (badgeRowsError) for (const id of allRewardBadgeIds) hiddenRewardBadgeIds.add(id)
     rewardBadgeNames = Object.fromEntries(
-      ((badgeRows ?? []) as { id: string; name: string; rarity: BadgeRarity | null; level: number | null }[])
-        .map((b) => [b.id, { name: b.name, rarity: b.rarity, level: b.level }]),
+      rows.filter((b) => !hiddenRewardBadgeIds.has(b.id)).map((b) => [b.id, { name: b.name, rarity: b.rarity, level: b.level }]),
     )
   }
 
   const toItem = (m: MissionRow): MissionListItem => {
     const result = visibilityMap.get(m.id)
     return {
-      ...m,
+      ...withoutHiddenRewardBadgeIds(m, hiddenRewardBadgeIds),
       joined: participationSet.has(m.id),
       done: completionMap.has(m.id),
       completedAt: completionMap.get(m.id) ?? null,

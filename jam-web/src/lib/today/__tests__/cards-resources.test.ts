@@ -207,7 +207,54 @@ describe('getTodayCards — 표시 데이터용 자원 값', () => {
     expect(count('today_cards')).toBe(1)
     expect(count('missions')).toBe(1) // 노출 판정과 표시 값이 같은 읽기를 쓴다
     expect(count('item_books')).toBe(1)
-    expect(count('badges')).toBe(1) // 컬렉션 아이템 수 (카드 배지 id가 없어 배지 조회는 없다)
+    // 컬렉션 아이템 수 1번 + 미션 보상 배지의 숨김 확인 1번 (카드 배지 id가 없어 카드 배지 조회는 없다)
+    expect(count('badges')).toBe(2)
+  })
+
+  // 숨김 배지는 받기 전에 이름·그림·id·개수를 내리지 않는다(티켓 20261019_1313 2회, 운영 로직 10.3절).
+  it('숨김 보상 배지는 카드의 보상 배지 개수에 넣지 않는다', async () => {
+    fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'mission_spotlight', layout_type: 'large_thumbnail', mission_id: 'm1' })]
+    fx.tables.missions = [missionRow('m1', { reward_badge_ids: ['b1', 'b2', 'b3'] })]
+    fx.tables.badges = [
+      { id: 'b1', is_hidden: true },
+      { id: 'b2', is_hidden: false },
+      { id: 'b3', is_hidden: false },
+    ]
+
+    const [card] = await getTodayCards('u1', null, NOW)
+
+    expect(card.resolved_mission).toMatchObject({ reward_badge_count: 2 })
+  })
+
+  it('보상 배지가 모두 숨김이면 개수는 0이다', async () => {
+    fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'mission_spotlight', layout_type: 'large_thumbnail', mission_id: 'm1' })]
+    fx.tables.missions = [missionRow('m1', { reward_badge_ids: ['b1'] })]
+    fx.tables.badges = [{ id: 'b1', is_hidden: true }]
+
+    const [card] = await getTodayCards('u1', null, NOW)
+
+    expect(card.resolved_mission).toMatchObject({ reward_badge_count: 0, reward_points: 300 })
+  })
+
+  it('보상 배지의 숨김 여부를 읽지 못하면 개수를 싣지 않는다(어느 배지가 숨김인지 모른다)', async () => {
+    fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'mission_spotlight', layout_type: 'large_thumbnail', mission_id: 'm1' })]
+    fx.tables.missions = [missionRow('m1', { reward_badge_ids: ['b1', 'b2'] })]
+    fx.errors.badges = { message: 'boom' }
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const [card] = await getTodayCards('u1', null, NOW)
+
+    expect(card.resolved_mission).toMatchObject({ reward_badge_count: 0 })
+    errorSpy.mockRestore()
+  })
+
+  it('보상 배지가 없는 미션이면 배지를 읽지 않는다', async () => {
+    fx.tables.today_cards = [cardRow({ id: 'a', template_type: 'mission_spotlight', layout_type: 'large_thumbnail', mission_id: 'm1' })]
+    fx.tables.missions = [missionRow('m1', { reward_badge_ids: [] })]
+
+    await getTodayCards('u1', null, NOW)
+
+    expect(fx.reads.filter((t) => t === 'badges')).toHaveLength(0)
   })
 
   it('읽을 자원이 없으면 미션·컬렉션을 읽지 않는다', async () => {
