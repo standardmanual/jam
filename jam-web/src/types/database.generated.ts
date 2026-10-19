@@ -1833,6 +1833,77 @@ export type Database = {
           },
         ]
       }
+      mission_item_rewards: {
+        Row: {
+          badge_id: string
+          created_at: string
+          id: string
+          inventory_item_id: string | null
+          lock_reason: string | null
+          locked: boolean
+          mission_id: string
+          resolved_at: string | null
+          status: string
+          unlock_required: number | null
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          lock_reason?: string | null
+          locked?: boolean
+          mission_id: string
+          resolved_at?: string | null
+          status?: string
+          unlock_required?: number | null
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          lock_reason?: string | null
+          locked?: boolean
+          mission_id?: string
+          resolved_at?: string | null
+          status?: string
+          unlock_required?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_item_rewards_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_item_rewards_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_item_rewards_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_item_rewards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_participation_cancellations: {
         Row: {
           cancelled_at: string
@@ -4615,8 +4686,16 @@ export type Database = {
           out_mission_title: string
         }[]
       }
+      mission_claim_item_rewards: {
+        Args: { p_mission_id: string; p_user_id: string }
+        Returns: Json
+      }
       mission_complete: {
         Args: { p_mission_id: string; p_user_id: string }
+        Returns: Json
+      }
+      mission_grant_item_rewards: {
+        Args: { p_badge_ids: string[]; p_mission_id: string; p_user_id: string }
         Returns: Json
       }
       pickup_drop: {
@@ -4737,6 +4816,7 @@ export type Database = {
         | "announcement"
         | "activity_recap"
         | "inventory_slots_low"
+        | "mission_participation_cancelled"
       trade_status: "pending" | "accepted" | "rejected" | "expired"
     }
     CompositeTypes: {
@@ -4906,6 +4986,7 @@ export const Constants = {
         "announcement",
         "activity_recap",
         "inventory_slots_low",
+        "mission_participation_cancelled",
       ],
       trade_status: ["pending", "accepted", "rejected", "expired"],
     },
