@@ -375,7 +375,7 @@ Rare 이상 배지에 `condition_json.prerequisite_badge_names: string[]`를 설
 
 ### 4-6. 성장 티어 · 진행 트랙 · 홍수 방지 정책
 
-**성장 티어:** 같은 이름 그룹에서 이미 보유한 티어보다 낮거나 같은 배지는 평가 대상 제외.  
+**성장 티어:** 같은 계열(`family_key`, 없으면 같은 이름) 그룹에서 이미 보유한 티어보다 낮거나 같은 배지는 평가 대상 제외.  
 Common 보유 시 → Rare부터 평가. Epic 이미 보유 시 → Mystic만 평가.
 
 **진행 트랙:** 순수 거리 또는 횟수 조건만 있는 배지는 `actType:distance_km` 또는 `actType:total_count` 키로 묶여 최고값 1개만 발급.  
