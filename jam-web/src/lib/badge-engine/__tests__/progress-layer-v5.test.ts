@@ -30,7 +30,6 @@ import { collectRepeatOccurrences, repeatConsumedAxisKeys } from '../repeatOccur
 import { restConsumedPairKeys } from '../activityFilters'
 import { crossGateKeysIn } from '../crossGate'
 import { checkCondition } from '../index'
-import { computeConditionMetBadgeIds } from '@/lib/badgeTreeConditionCheck.server'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition, BadgeGateRequirement } from '@/types/database'
 import type { BadgeTreeLock } from '@/lib/badgeTree'
@@ -162,9 +161,8 @@ describe('기록형 — 표시값은 마지막 활동, 판정은 역대 최고',
 
     expect(axis.met).toBe(true)
     expect(axis.remaining).toBe(0)
-    // 「조건 충족」 집합(트리 레일의 라임 상태)도 같은 답을 낸다
-    const met = computeConditionMetBadgeIds(['record'], new Map([['record', condition]]), activities)
-    expect(met.has('record')).toBe(true)
+    // 발급 판정(checkCondition)도 같은 답을 낸다
+    expect(checkCondition(condition, activities)).toBe(true)
   })
 
   it('아쉬움 줄과 축이 같은 «마지막 활동»을 본다', () => {
@@ -453,17 +451,5 @@ describe('교차 게이트 — 축이 다 차도 발급되지 않을 수 있다'
     const plain = computeBadgeProgress({ activity_type: 'running', distance_km: 10 }, metrics, noLabels, NO_LOCKS)
     if (plain.kind === 'unsupported') throw new Error('unreachable')
     expect(plain.crossGated).toBe(false)
-  })
-
-  it('배지 트리의 「조건 충족」 집합에서 제외된다 — checkCondition이 교차 게이트를 보지 않기 때문', () => {
-    const activities = [run('2026-06-01', { distanceKm: 50 })]
-    const conditionById = new Map<string, BadgeCondition | null>([
-      ['gated', gatedCondition],
-      ['plain', { activity_type: 'running', distance_km: 10 }],
-    ])
-    const met = computeConditionMetBadgeIds(['gated', 'plain'], conditionById, activities)
-
-    expect(met.has('plain')).toBe(true)
-    expect(met.has('gated')).toBe(false)
   })
 })

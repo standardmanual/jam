@@ -461,25 +461,8 @@ export const ko = {
     sortCheckinLatest: '최신순',
     sortCheckinName: '이름순',
 
-    // 배지 트리 (/badges/tree) — 티켓 20260831_2208, 20260903_2329, 20260905_0037(전면 리뉴얼),
-    // 20260906_1323(「받은 배지」 섹션 제거)
-    treeButton: '배지 트리',
-    // 섹션은 「다음 목표」 하나다 — 설계 분류(누적·주기·시간대)는 화면에 노출하지 않고,
-    // 이미 받은 배지는 `/badges`가 담당한다. 이 화면의 질문은 "다음에 뭘 하면 되나" 하나뿐.
-    treeSectionNext: '다음 목표',
-    treeSectionNextEmpty: '이 종목의 배지를 모두 받았어요',
-    // 잠금 해제 조건 시트 — 미션 게이트일 때만 붙는 하단 CTA (§5.1 예측 가능한 행동 동사)
-    treeUnlockMissionCta: '미션 하러 가기',
-    /** 트레일러닝 탭 전용 축약 라벨 — 5탭 균등분할 폭에서 "트레일러닝"(5자)이 넘친다 (티켓 20260915_2238) */
-    treeTabTrailShort: '트레일',
-    /** 눈금 1개 계열을 묶는 그리드 카드 제목 — §1.3 고정 용어 "한 번에 끝나는 배지" (티켓 20260915_2238) */
-    treeOneShotSectionTitle: '한 번에 끝나는 배지',
-    /** 「다음 목표」 섹션의 정렬 기준 안내 */
-    treeSortNoteHighest: '진행률 높은 순',
-    /** 무한레벨형 계열 헤더 2행 — "다음 Lv.N" */
-    treeNextLevelMeta: '다음 Lv.{level}',
-    /** 계열 카드(레벨 게이지·스탬프 행) 전체를 감싸는 잠금 버튼의 aria-label */
-    treeUnlockAriaLabel: '{label} 받는 방법 보기',
+    // 배지 트리 화면(/badges/tree)은 티켓 20261018_1817에서 제거했다. 아래 «받는 방법» note 3개는
+    // `lib/badgeTree.ts`의 게이트 그룹이 아직 쓴다(안 쓰이게 되면 후속 정리에서 함께 지운다).
     /** 「받는 방법」 시트 — 선행 배지 잠금 항목 하단 note. 등급 제한 유무로 갈린다 */
     unlockNoteMinRarity: '배지 · {rarity} 이상',
     unlockNoteAnyRarity: '배지 · 어느 등급이든 1개',
@@ -489,53 +472,12 @@ export const ko = {
      * (티켓 20260916_0734)
      */
     unlockNoteMinCount: '{count}개 이상 모으면 열려요',
-    /** 게이트 미션이 숨김(exposure_mode) 상태일 때 배지 트리에 노출하는 대체 제목 */
-    gatedMissionHiddenTitle: '다음 미션은 곧 열려요',
 
     // 공유 시트 캐러셀(20260911_1102) — 스크린리더 전용 aria-label
     shareCarouselAriaLabel: '공유 이미지 선택',
     /** '통계'는 배지 트리의 '지표'/'축'과 갈라지는 미등록 용어라 이미 쓰는 '기록'으로 통일 (티켓 20260916_0734) */
     shareCardGroupLabel: '기록이 담긴 공유 카드',
     shareBadgeGroupLabel: '배지 이미지만',
-
-    // 배지 트리 진행 표시 — badgeProgressText.ts 전용 (티켓 20260915_2238)
-    /** §08 H(진행 미지원) 공통 임시 상태 표기. '진행 표시'는 내부 용어라 사용자 시점으로 교체(티켓 20260916_0734) */
-    progressUnsupported: '진행률을 표시할 수 없어요',
-    /** 배지 트리 그리드 셀 상태 라벨 — §1.3 고정 용어와 동일 */
-    statusEarned: '획득',
-    statusReady: '조건을 다 채웠어요',
-    statusLocked: '잠김',
-    statusNotReached: '—',
-    /** not-reached 상태의 스크린리더 전용 라벨 — §1.3 "아직" 행 참고 */
-    statusAriaNotReached: '아직',
-    /** 주기형(월간/주간) 진행 캡션의 기간 명사 */
-    periodMonthNoun: '이번 달',
-    periodWeekNoun: '이번 주',
-    /** 주기형 진행 캡션 — "{노운} {현재/목표} · {일수}일 남음" */
-    periodicCaption: '{noun} {range} · {days}일 남음',
-    /** 2축형(dual) 게이지 — 두 조건을 같은 활동에서 채워야 하는지 여부 */
-    dualAxisRuleSame: '한 번의 활동에서 두 조건을 동시에 채워야 해요',
-    dualAxisRuleDifferent: '두 조건은 각각 다른 활동에서 채워도 돼요',
-    /** 2축형 게이지 — 한 축만 이미 채웠을 때 남은 축을 가리키는 보조 문구 */
-    dualAxisBottleneckNote: '{label} 조건은 이미 채웠어요',
-    /** 계열 카드 헤더 2행(메타 줄) — "다음 {등급}" */
-    familyMetaNextRarity: '다음 {rarity}',
-    /** 휴식 축 진행 표기 접두어 — §1.3 "휴식"은 상태만 표기(권유형 금지) */
-    restCounterPrefix: '휴식 {range}',
-    /** 남은 양 한 줄 — 페이스 축은 초 단위로 표기 */
-    remainingSecSuffix: '{sec}초 남음',
-    remainingSuffix: '{value} 남음',
-    /** 기록형 "아쉬움 줄" — 페이스 축과 그 외 축은 단위 표기가 달라 분리한다 */
-    // 명사로 끊고 마침표를 찍으면 문장이 토막나 보여 완성 문장으로 교정 (티켓 20260916_0734)
-    regretLinePace: '지난 활동 페이스는 {current}였어요. {rarity}까지 {diff}초 모자랐어요.',
-    regretLineGeneral: '지난 활동 {label} 기록은 {current}였어요. {rarity}까지 {diff} 모자랐어요.',
-    /**
-     * 직전 동기화 대비 진전 배너(RecentSyncBanner) 비교 문장. "직전 동기화보다"는 시스템
-     * 이벤트 시점 언어라 "지난번보다"로, 목적어 누락은 이미 쓰는 '기록' 용어를 끼워
-     * 보완했다 (티켓 20260916_0734)
-     */
-    syncComparisonPace: '지난번보다 {label} 기록이 {delta}초 가까워졌어요',
-    syncComparisonGeneral: '지난번보다 {label} 기록이 {delta} 가까워졌어요',
 
     // 체크인 배지 지도 마커 API(/api/checkin-badges) — 서버 에러 메시지 단일 소스(ADR 0001)
     /**

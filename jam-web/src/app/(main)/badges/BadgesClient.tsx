@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import { BADGE_ACTIVITY_FILTER_LABELS } from '@/lib/utils'
 import { matchesActivityFilter, type ActivityFilterValue } from './activityFilter'
@@ -59,7 +58,7 @@ export interface ItemBookProgress {
 }
 
 interface BadgesClientProps {
-  /** 획득한 액티비티 배지만 전달된다(티켓 20260901_0911) — 미획득분은 /badges/tree가 전담 */
+  /** 획득한 액티비티 배지만 전달된다(티켓 20260901_0911). 받지 않은 배지는 상세에서 조건을 본다 */
   badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow }>
   itemBooks: ItemBookRow[]
   itemBookProgress: ItemBookProgress[]
@@ -181,15 +180,9 @@ export default function BadgesClient({
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
       <TopNav logo />
 
-      {/* 헤더 — 인벤토리/미션과 동일한 크기의 타이틀. 우측 끝에 배지 트리 진입 버튼(요구사항 9) */}
-      <div className="px-4 pt-6 flex justify-between items-center gap-3">
-        <h1 className="text-5xl">{d.badges.title}</h1>
-        <Link
-          href="/badges/tree"
-          className="inline-flex items-center justify-center shrink-0 min-h-11 px-4 rounded-full bg-default border border-transparent text-base text-foreground active:scale-95 transition-transform duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]"
-        >
-          {d.badges.treeButton}
-        </Link>
+      {/* 헤더 — 인벤토리/미션과 동일한 크기의 타이틀 */}
+      <div className="px-4 pt-6">
+        <h1 className="text-5xl break-keep wrap-break-word">{d.badges.title}</h1>
       </div>
 
       {/* 탭 헤더 — Tabs sliding (16-tabs-sliding.md) */}

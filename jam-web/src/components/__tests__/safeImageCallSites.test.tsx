@@ -25,7 +25,6 @@ vi.mock('@/components/ui/Toast', () => ({
 
 import SafeImage from '@/components/SafeImage'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
-import BadgeTrophyGridCard from '@/components/badges/BadgeTrophyGridCard'
 import RecipeRewardRow from '@/app/(main)/combine/RecipeRewardRow'
 import FeedSection, { DetailSheet } from '@/app/(main)/FeedSection'
 import MissionDetailClient from '@/app/(main)/missions/[id]/MissionDetailClient'
@@ -77,14 +76,6 @@ describe('미등록 호스트 이미지 URL이어도 컴포넌트가 예외 없�
     const html = renderToStaticMarkup(<BadgeGridCard name="테스트 배지" imageUrl={null} rarity="common" href="/badges/1" />)
     expect(html).not.toContain('<img')
     expect(html).toContain('<svg')
-  })
-
-  it('BadgeTrophyGridCard (배지 트리 트로피 그리드)', () => {
-    const html = renderToStaticMarkup(
-      <BadgeTrophyGridCard name="테스트 배지" imageUrl={UNREGISTERED} rarity="rare" href="/badges/1" earned />
-    )
-    expect(html).toContain('<img')
-    expect(html).toContain(UNREGISTERED)
   })
 
   it('RecipeRewardRow (컴바인 레시피 보상 행)', () => {

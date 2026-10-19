@@ -37,9 +37,8 @@ const FILES = [
   'app/globals.css',
   'lib/badgeBackgroundTheme.ts',
   'lib/blobAnimation.ts',
-  // 채원① 권고로 2회에 편입한 13개 파일
+  // 채원① 권고로 2회에 편입한 파일(BadgeTrophyGridCard는 티켓 20261018_1817에서 화면과 함께 삭제)
   'components/BadgeRevealOverlay.tsx',
-  'components/badges/BadgeTrophyGridCard.tsx',
   'components/inventory/ItemCandidateSheet.tsx',
   'components/today/ArticleView.tsx',
   'components/today/CardImageSlot.tsx',

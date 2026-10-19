@@ -930,7 +930,7 @@ export default function CombineClient({ items, publicRecipes, ownedConditionBadg
           */}
           <BottomSheet open={!!bagSlot} onClose={() => setBagSlotId(null)} title={d.combine.bagTitle}>
             {/*
-              여백은 앱 내 다른 BottomSheet 사용처(예: BadgeUnlockSheet)와 동일하게 맞춘다
+              여백은 앱 내 다른 BottomSheet 사용처와 동일하게 맞춘다
               (티켓 20260917_1828, 요구사항 4) — 이 시트만 좌우 패딩이 빠져 있었다.
             */}
             <div className="px-4 pt-2 pb-6">

@@ -37,7 +37,6 @@ import { BadgeLevelGauge } from '@ds/components/patterns/BadgeLevelGauge'
 import { BadgeStampRow } from '@ds/components/patterns/BadgeStampRow'
 import { BadgeStageRail } from '@ds/components/patterns/BadgeStageRail'
 import { RecentSyncBanner } from '@ds/components/patterns/RecentSyncBanner'
-import BadgeTrophyGridCard from '@/components/badges/BadgeTrophyGridCard'
 import RankingListRow from '@/components/ranking/RankingListRow'
 import UserSearchBar from '@/app/(main)/UserSearchBar'
 import BadgeConditionCard from '@/app/(main)/badges/[id]/BadgeConditionCard'
@@ -216,15 +215,6 @@ describe('흰 면 위 흰 그라디언트·inset 흰 하이라이트는 걷고 �
     // 윤곽을 만들던 inset 링(--progress-latest-soft)은 면에서 걷혔다. 점의 후광만 남는다
     expect(html).not.toContain('box-shadow:inset')
     expect(html).toContain('width:8px;height:8px')
-  })
-
-  it('서비스 BadgeTrophyGridCard — bg-surface + border이고 인라인 그라디언트가 없다', () => {
-    const html = renderToStaticMarkup(
-      <BadgeTrophyGridCard name="배지" rarity="rare" href="/badges/1" earned />,
-    )
-    expect(html).toContain('bg-surface border border-border')
-    for (const needle of NO_WHITE_HIGHLIGHT) expect(html).not.toContain(needle)
-    expect(html).not.toContain('style="background')
   })
 })
 

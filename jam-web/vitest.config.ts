@@ -20,9 +20,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      // 20260906_2140 — `badgeProgressText.ts`가 MODULAR의 진행 램프 임계값
-      // (`NEAR_THRESHOLD`)을 단일 출처로 재수출한다. 서비스 tsconfig에는 이미 있던
-      // 별칭인데 vitest에는 없어서 그 테스트가 해석 실패로 죽는다.
+      // 서비스 코드가 `@ds/...`로 MODULAR 컴포넌트를 가져온다. 서비스 tsconfig에는 이미 있던
+      // 별칭인데 vitest에는 없으면 그 테스트가 해석 실패로 죽는다(티켓 20260906_2140).
       '@ds': path.resolve(__dirname, './design-system')
     }
   },

@@ -40,8 +40,8 @@ export default async function BadgesPage({ searchParams }: Props) {
     { data: checkinEarns, error: checkinEarnsError },
     { data: poiCategories, error: poiCategoriesError },
   ] = await Promise.all([
-    // 액티비티 배지 — 어떤 배지를 어떻게 얻는지는 /badges/tree가 전담하게 됐으므로
-    // (티켓 20260901_0911) 이 탭은 체크인 탭과 동일하게 획득분만 조회한다.
+    // 액티비티 배지 — 이 탭은 체크인 탭과 동일하게 획득분만 조회한다(티켓 20260901_0911).
+    // 받지 않은 배지의 조건은 배지 상세에서 본다(배지 트리 화면은 티켓 20261018_1817에서 제거).
     supabase
       .from('user_activity_badges')
       .select('*, badge:badges(*)')

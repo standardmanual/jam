@@ -71,6 +71,14 @@ const nextConfig: NextConfig = {
         destination: '/api/checkin-badges',
         permanent: false,
       },
+      // 20261018_1817: 배지 트리 화면을 걷어냈다. 이미 발송된 알림·공유한 주소가 404가 되지
+      // 않도록 배지함으로 임시(307) 이동시킨다. 영구(308)로 두지 않는 이유는 브라우저가
+      // 영구 이동을 오래 기억해, 나중에 이 주소를 다시 쓰고 싶을 때 되돌릴 수 없기 때문이다.
+      {
+        source: '/badges/tree',
+        destination: '/badges',
+        permanent: false,
+      },
     ];
   },
 };

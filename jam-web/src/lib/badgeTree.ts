@@ -13,6 +13,11 @@ import { formatStopConditionValue } from '@/lib/badgeProgressText'
 import { d, t } from '@/lib/i18n'
 
 /**
+ * ⚠️ 서비스의 배지 트리 화면(`/badges/tree`)은 티켓 20261018_1817(2회)에서 제거됐다. 지금 이 파일을
+ * 쓰는 곳은 어드민(`TREE_ACTIVITY_ORDER`·`sortRank`·`BadgeFamily` 타입)과 진행 계산 엔진(`BadgeTreeLock`)이다.
+ * `buildBadgeActivityTrees`는 시험(`badgeTree.test.ts`·`hidden-badges.test.ts`)만 부른다 — 파일 이름 변경과
+ * 남은 정리는 후속 티켓이다. 아래 서술은 제거 전 화면을 기준으로 쓴 이력이다.
+ *
  * 배지 트리(`/badges/tree`) 전용 그래프 빌더 — 티켓 20260831_2208, 20260905_0037(전면 리뉴얼).
  *
  * ## 20260905_0037에서 무엇이 바뀌었나
@@ -58,7 +63,7 @@ const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
  * 4회 루프가 상한을 «구조적으로» 보장했다. 이번 리뉴얼이 그 루프를 걷어냈으므로 상한을
  * 명시적으로 자른다(티켓 20260905_0037이 0036에게서 넘겨받은 항목 1).
  */
-export const MAX_FAMILY_STAGES = 4
+const MAX_FAMILY_STAGES = 4
 
 /** 화면에 보여줄 종목 탭 순서 — 티켓 배경 문단의 순서(걷기/러닝/사이클링/등산/트레일러닝) */
 export const TREE_ACTIVITY_ORDER: ActivityType[] = [
@@ -197,50 +202,6 @@ export interface BadgeActivityTree {
    * 화면의 「다음 목표가 가까운 순」 재정렬은 진행 계산을 아는 클라이언트가 한다.
    */
   families: BadgeFamily[]
-}
-
-/**
- * 계열의 «다음 목표» 눈금 — 첫 미획득 눈금. **서버(진행 계산 대상 선정)와 화면(정렬·행
- * 렌더)이 같은 눈금을 봐야** 하므로 여기 한 곳에 둔다.
- *
- * ⚠️ **이 함수는 «획득» 기준 프런티어다 — 진행 표시 앵커와 다를 수 있다**(티켓 20260906_1323 §8).
- * 조건은 이미 채웠지만 아직 발급되지 않은 눈금(다음 동기화에서 발급될 눈금)도 여기서는
- * 프런티어로 남는다. 그 눈금에 진행 수치를 붙이면 「22/1일」처럼 **이미 넘긴 조건에 카운트가
- * 뜨는** 표시가 된다. 그래서 진행 표시가 붙을 자리(앵커)는 서버(`badges/tree/page.tsx`)가
- * 「첫 미충족」 기준으로 따로 정해 `frontierBadgeIdByFamilyKey`로 내려보낸다.
- * 게이트 자리·「앞 구간 꽉 채움」 같은 **획득 여부** 판정은 계속 이 함수를 기준으로 한다.
- *
- * 예외는 반복형이다: 전부 획득한 뒤에도 **다음 회차가 계속 진행 중**이라 마지막 눈금을
- * 그대로 목표로 둔다(티켓 20260905_0031 — 「이미 획득했지만 다음 카운트가 진행 중」인
- * 상태가 정상이고, 미획득만 프런티어로 보던 선정 로직이 그 진행을 통째로 숨기고 있었다).
- * 등급형·레벨형은 다 받으면 목표가 없다 — `undefined`.
- */
-export function frontierStageOf(
-  family: BadgeFamily,
-  earnedBadgeIds: Set<string>
-): BadgeFamilyStage | undefined {
-  const unearned = family.stages.find((s) => !earnedBadgeIds.has(s.id))
-  if (unearned) return unearned
-  return family.kind === 'repeatable' ? family.stages[family.stages.length - 1] : undefined
-}
-
-/**
- * 계열에 «다음 단계»가 남아 있는지 — 등급형·레벨형·반복형 세 분기가 각각 다른 방식으로
- * 판정하던 것을 하나로 합친다(티켓 20260908_1733, 20260908_1727의 후속 정리).
- *
- * `frontierStageOf`가 돌려준 프런티어 눈금을 받아 그 눈금이 «아직 갈 곳»인지만 가른다.
- * 등급형·레벨형은 `frontierStageOf`가 이미 `undefined`로 「다 받음」을 표현하지만, 반복형은
- * 다 받은 뒤에도 마지막 눈금을 계속 프런티어로 돌려준다(다음 회차가 진행 중이라서) — 그래서
- * 반복형만 한 번 더 획득 여부를 확인해야 「다음 등급」이 없는데 칩이 뜨는 사고가 안 난다.
- */
-export function hasNextStage(
-  family: BadgeFamily,
-  frontierStage: BadgeFamilyStage | undefined,
-  earnedBadgeIds: Set<string>
-): boolean {
-  if (!frontierStage) return false
-  if (family.kind === 'repeatable') return !earnedBadgeIds.has(frontierStage.id)
-  return true
 }
 
 /** 계열의 «입구» 눈금 — 잠금 칩이 링크할 대표 배지(등급형은 Common, 레벨형은 Lv.1) */
