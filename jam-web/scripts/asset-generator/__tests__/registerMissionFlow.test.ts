@@ -552,7 +552,7 @@ describe('runMissionRegister — 실제 등록', () => {
 });
 
 describe('UNDO_REFERENCE_TABLES', () => {
-  it('missions를 참조하는 외래 키 8곳과 같다(생성 타입 대조)', () => {
+  it('missions를 참조하는 외래 키 9곳과 같다(생성 타입 대조)', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'src', 'types', 'database.generated.ts'), 'utf8');
     // 표별로 잘라서 referencedRelation: "missions"인 FK의 표·컬럼을 뽑는다.
     const found: string[] = [];
@@ -566,7 +566,7 @@ describe('UNDO_REFERENCE_TABLES', () => {
     });
     const declared = UNDO_REFERENCE_TABLES.map((r: { table: string; column: string }) => `${r.table}.${r.column}`);
     expect(declared.sort()).toEqual(found.sort());
-    expect(found).toHaveLength(8);
+    expect(found).toHaveLength(9);
   });
 });
 

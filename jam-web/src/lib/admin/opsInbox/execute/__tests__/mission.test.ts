@@ -339,6 +339,7 @@ describe('undo — 참조를 확인한 뒤 ID로 지운다', () => {
     ['mission_rank_snapshots', { mission_id: MISSION_ID }],
     ['mission_participation_cancellations', { mission_id: MISSION_ID }],
     ['mission_allowed_tribes', { mission_id: MISSION_ID }],
+    ['mission_item_rewards', { mission_id: MISSION_ID }],
     ['point_transactions', { source_mission_id: MISSION_ID }],
     ['today_cards', { id: CARD_ID, mission_id: MISSION_ID }],
     ['ranking_modes', { id: 'rank-1', target_mission_id: MISSION_ID }],

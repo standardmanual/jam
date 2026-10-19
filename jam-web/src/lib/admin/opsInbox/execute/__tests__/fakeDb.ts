@@ -224,6 +224,7 @@ export class FakeDb {
     mission_rank_snapshots: [],
     mission_participation_cancellations: [], // 마이그레이션 249(티켓 20261019_1311) — 미션 참조 확인 목록에 들어왔다
     mission_allowed_tribes: [], // 마이그레이션 249(티켓 20261019_1311) — 미션 참조 확인 목록에 들어왔다
+    mission_item_rewards: [], // 마이그레이션 250(티켓 20261019_1313) — 미션·배지 참조 확인 목록에 모두 들어왔다
     point_transactions: [],
     poi: [],
     // 레시피 핸들러(티켓 20261002_2221): 레시피와 슬롯. 레시피 참조 확인은 `badges`의 JSON 경로를 읽는다.

@@ -51,6 +51,7 @@ export type BadgeReferenceKey =
   | 'item_issue_log'
   | 'inventory_item_events'
   | 'combine_pending_results'
+  | 'mission_item_rewards'
   | 'sync_pending_items'
   | 'user_item_book_slots'
   | 'point_transactions'
@@ -157,6 +158,16 @@ export const BADGE_REFERENCE_SOURCES: BadgeReferenceSource[] = [
     group: 'earn',
     label: '받지 않은 믹스 결과',
     location: 'combine_pending_results.badge_id',
+    blocksDelete: true,
+    cascades: false,
+    detachable: false,
+  },
+  {
+    // 마이그레이션 250(티켓 20261019_1313): 미션이 준(claimed)·못 준(pending) 아이템 배지 보상 기록은 ON DELETE 규칙이 없어(NO ACTION) 이 배지를 지우면 FK 위반으로 실패한다.
+    key: 'mission_item_rewards',
+    group: 'earn',
+    label: '미션 아이템 배지 보상 기록',
+    location: 'mission_item_rewards.badge_id',
     blocksDelete: true,
     cascades: false,
     detachable: false,
@@ -423,6 +434,11 @@ export async function collectBadgeReferences(
       key: 'combine_pending_results',
       run: (chunk) =>
         supabase.from('combine_pending_results').select('*', { count: 'exact', head: true }).in('badge_id', chunk),
+    },
+    {
+      key: 'mission_item_rewards',
+      run: (chunk) =>
+        supabase.from('mission_item_rewards').select('*', { count: 'exact', head: true }).in('badge_id', chunk),
     },
     {
       key: 'sync_pending_items',

@@ -21,10 +21,11 @@ export interface BadgeUndoReferenceSpec extends UndoReferenceSpec {
 
 /**
  * 되돌림 전에 «이 배지가 아직 아무 데도 쓰이지 않았는지» 읽는 관계 표(티켓 20260925_0540). `badges`를 가리키는 외래 키
- * 15곳 전부다(운영 DB `pg_constraint` 조회 2026-09-25 + 마이그레이션 227의 `item_issue_log` + 마이그레이션 229의 `sync_pending_items` + 마이그레이션 235의 `inventory_item_events` + 마이그레이션 236의 `combine_pending_results`, 생성 타입 `database.generated.ts`와 테스트로 대조한다).
+ * 16곳 전부다(운영 DB `pg_constraint` 조회 2026-09-25 + 마이그레이션 227의 `item_issue_log` + 마이그레이션 229의 `sync_pending_items` + 마이그레이션 235의 `inventory_item_events` + 마이그레이션 236의 `combine_pending_results` + 마이그레이션 250의 `mission_item_rewards`, 생성 타입 `database.generated.ts`와 테스트로 대조한다).
  * - 삭제 차단(NO ACTION, DB가 막아 주지만 --undo가 중간에 실패하면 저장소 파일과 행이 어긋날 수 있어 미리 읽는다):
  *   user_activity_badges · inventory_items · poi_drops · poi.linked_badge_id · point_transactions.source_badge_id
  *   · combine_pending_results.badge_id(마이그레이션 236, 티켓 20261018_0055 — 받지 않은 믹스 결과는 `ON DELETE` 규칙이 없어 NO ACTION이다)
+ *   · mission_item_rewards.badge_id(마이그레이션 250, 티켓 20261019_1313 — 미션이 준·못 준 아이템 배지 보상 기록도 `ON DELETE` 규칙이 없어 NO ACTION이다)
  * - 연쇄 삭제(CASCADE, 지우면 유저 기록이 경고 없이 함께 사라짐): user_checkin_badge_earns · user_item_book_slots
  *   · sync_pending_items.badge_id(마이그레이션 229, 티켓 20261017_1425 — 고르기를 기다리는 보류가 배지와 함께 사라짐)
  * - 연결 해제(SET NULL, 조용히 연결이 끊김): item_books.reward_badge_id · item_books.required_activity_badge_id · missions.gated_badge_id
@@ -41,6 +42,7 @@ export const BADGE_UNDO_REFERENCE_TABLES: BadgeUndoReferenceSpec[] = [
   { table: 'poi', column: 'linked_badge_id', effect: '삭제 차단' },
   { table: 'point_transactions', column: 'source_badge_id', effect: '삭제 차단' },
   { table: 'combine_pending_results', column: 'badge_id', effect: '삭제 차단' },
+  { table: 'mission_item_rewards', column: 'badge_id', effect: '삭제 차단' },
   { table: 'user_checkin_badge_earns', column: 'badge_id', effect: '연쇄 삭제' },
   { table: 'user_item_book_slots', column: 'badge_id', effect: '연쇄 삭제' },
   { table: 'sync_pending_items', column: 'badge_id', effect: '연쇄 삭제' },
@@ -73,10 +75,10 @@ export const BADGE_UNDO_REFERENCES: Array<BadgeUndoReferenceSpec & { isArray: bo
 
 /**
  * 되돌림 전에 «이미 사용자 데이터가 붙었는지» 읽는 곳(테이블과 미션 id를 가진 컬럼). 티켓 20260925_1412.
- * 근거: `src/types/database.generated.ts`에서 `referencedRelation: "missions"`인 외래 키 8곳(2026-09-25 확인 6곳, 마이그레이션 249로 2곳 추가 — 2026-10-19) —
+ * 근거: `src/types/database.generated.ts`에서 `referencedRelation: "missions"`인 외래 키 9곳(2026-09-25 확인 6곳, 마이그레이션 249로 2곳, 마이그레이션 250으로 1곳 추가 — 2026-10-19) —
  * 삭제 규칙은 `src/lib/admin/reference-guards.ts` 머리말(011·012·048·080·099)과 마이그레이션 158·249 참고.
  * - CASCADE(지우면 사용자 기록이 함께 사라짐): user_mission_completions · user_mission_participations · mission_rank_snapshots ·
- *   mission_participation_cancellations(트라이브 변경으로 취소된 참가 기록)
+ *   mission_participation_cancellations(트라이브 변경으로 취소된 참가 기록) · mission_item_rewards(미션이 준·못 준 아이템 배지 보상 — 받지 않은 보상이 함께 사라진다, 마이그레이션 250)
  * - CASCADE(지우면 설정이 함께 사라짐): mission_allowed_tribes(참가할 수 있는 트라이브 — 사용자 기록은 아니지만 운영자가 정한 값이라 붙어 있으면 중단한다)
  * - NO ACTION(지우면 삭제 자체가 실패): point_transactions.source_mission_id
  * - SET NULL(조용히 연결이 끊김): today_cards.mission_id · ranking_modes.target_mission_id
@@ -89,6 +91,7 @@ export const MISSION_UNDO_REFERENCE_TABLES: UndoReferenceSpec[] = [
   { table: 'user_mission_participations', column: 'mission_id' },
   { table: 'mission_rank_snapshots', column: 'mission_id' },
   { table: 'mission_participation_cancellations', column: 'mission_id' },
+  { table: 'mission_item_rewards', column: 'mission_id' },
   { table: 'mission_allowed_tribes', column: 'mission_id' },
   { table: 'point_transactions', column: 'source_mission_id' },
   { table: 'today_cards', column: 'mission_id' },
