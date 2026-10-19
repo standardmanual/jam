@@ -780,7 +780,7 @@ JAM 2.0 운영 로직 13.2절(트라이브 미션과 선착순 동시 완료)의
 - `checkMissions`는 완료 기록 id를 `completedMissions: { missionId, completionId }[]`로 돌려준다(챕터 점수가 원천 id로 쓴다). 기존 `completedMissionIds`는 그대로다.
 
 #### mission_cancel_for_tribe_change(p_user_id) → (out_mission_id, out_mission_title)*
-유저의 현재 트라이브가 대상이 아닌 트라이브 제한 미션의 참가를 취소하고(참가 행 삭제, `mission_participation_cancellations`에 기록) 취소한 미션마다 한 행을 돌려준다(호출한 쪽이 소식을 보낸다). 공통 미션과 새 트라이브가 대상인 미션은 그대로이고, 트라이브가 없는 유저는 제한 미션을 모두 취소한다. **이미 완료한 미션의 참가도 취소하지만 완료 기록과 받은 보상은 지우지 않는다**(선착순 자리를 센 완료 기록도 남아 상한에 계속 들어간다). 참가 행이 지워지므로 순위에서 빠진다. **부르는 곳은 아직 없다** — 유저의 트라이브를 바꾸는 경로가 생기는 묶음 6에서 연결한다.
+유저의 현재 트라이브가 대상이 아닌 트라이브 제한 미션의 참가를 취소하고(참가 행 삭제, `mission_participation_cancellations`에 기록) 취소한 미션마다 한 행을 돌려준다(호출한 쪽이 소식을 보낸다). 공통 미션과 새 트라이브가 대상인 미션은 그대로이고, 트라이브가 없는 유저는 제한 미션을 모두 취소한다. **이미 완료한 미션의 참가도 취소하지만 완료 기록과 받은 보상은 지우지 않는다**(선착순 자리를 센 완료 기록도 남아 상한에 계속 들어간다). 참가 행이 지워지므로 순위에서 빠진다. **부르는 곳은 아직 없다** — 유저의 트라이브를 바꾸는 경로가 생기는 묶음 6에서 연결한다. 돌려준 목록으로 소식을 만드는 함수(`notifyMissionParticipationCancelled`)는 아래 마이그레이션 251 절에 있다.
 
 ### mission_item_rewards / mission_grant_item_rewards / mission_claim_item_rewards — 마이그레이션 250, 티켓 20261019_1313
 JAM 2.0 운영 로직 13.2절·6.4절(미션 보상의 새 개체 복사, 가득 참 보류와 받기)의 서버 쪽 바탕이다. **새 표 1개와 새 함수 2개만 더했고 옛 표·칸·함수는 바꾸지 않았다.** 2026-10-19 공용 DB에 적용했다. 본보기는 믹스의 `combine_pending_results`·`combine_grant_results`·`combine_claim_pending`(마이그레이션 236)이다. 동기화 보류(`sync_pending_items`)는 «고른 것만 받고 나머지는 폐기»라 미션 보상이 섞이면 영구 폐기되므로 합치지 않고 미션 전용 표를 따로 뒀다.
@@ -812,6 +812,13 @@ JAM 2.0 운영 로직 13.2절·6.4절(미션 보상의 새 개체 복사, 가득
 
 #### 이용 정지와 순위
 이용 정지 중인 유저는 미션에 참가할 수 없고(`POST /api/missions/[id]/join` 403 `user_suspended`), 다른 유저가 보는 순위·달성자 목록과 `totalParticipants`에서 빠진다. 본인 화면에는 본인이 계속 보이고, 정지가 풀리면(`user_suspensions.lifted_at`) 다시 보인다. 순위 상승 소식(#23) 배치도 같은 목록으로 순위를 매긴다. 판정은 `filterRankableParticipants`(`src/lib/missions/ranking.ts`)와 `getSuspendedUserIds`(`src/lib/suspension/suspension.ts`)다.
+
+### notification_type `mission_participation_cancelled` — 마이그레이션 251, 티켓 20261019_1313
+알림 종류 enum `notification_type`에 `mission_participation_cancelled`를 더했다(트라이브 변경에 따른 미션 참가 취소, 운영 로직 13.2절). 옛 알림 종류는 바꾸지 않았다. 2026-10-19 공용 DB에 적용했다.
+- 만드는 곳: `notifyMissionParticipationCancelled(userId, cancelled)`(`src/lib/missions/participation-cancel.ts`)가 `mission_cancel_for_tribe_change`가 돌려준 (미션 id, 이름) 목록으로 `createNotification`을 부른다. **부르는 곳은 아직 없다**(호출 연결은 묶음 6). 목록이 비면 만들지 않는다.
+- payload: `{ missions: [{ mission_id, title }] }`. 한 번의 변경으로 취소된 미션 전부가 한 행이고, 개수는 배열 길이로 센다. 같은 미션 id는 한 번만 싣는다.
+- 키: `once`. 미션 1개면 `mission_participation_cancelled:{mission_id}:{KST 날짜}`, 2개 이상이면 `mission_participation_cancelled:group:{KST 날짜}:{지문}`이다. 같은 날 같은 묶음은 한 번만, 날이 다르면 새로 만든다.
+- 알림함: 문구 «트라이브가 바뀌어 「○○」 미션 참가가 취소됐어요», 여러 개면 «트라이브가 바뀌어 미션 N개 참가가 취소됐어요». 이동 위치는 단건도 `/missions`다(대상이 아닌 트라이브의 미션 상세는 404). 자세한 문구는 `notification/PRD.md` §3 ④(#47)다.
 
 ---
 

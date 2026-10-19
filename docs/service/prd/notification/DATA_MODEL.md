@@ -62,7 +62,8 @@ CREATE TYPE notification_type AS ENUM (
   -- ⑧ 계정·시스템
   'strava_disconnected', 'sync_stalled', 'inventory_full',
   'admin_points_changed', 'announcement',
-  'inventory_slots_low'  -- 20261018_0056 마이그레이션 237. 남은 칸 3개 이하 단계 알림. payload { remaining_slots: 1|2|3(실제 남은 칸, 20261018_1613), max_slots }. 남은 칸 0개는 만들지 않는다
+  'inventory_slots_low',  -- 20261018_0056 마이그레이션 237. 남은 칸 3개 이하 단계 알림. payload { remaining_slots: 1|2|3(실제 남은 칸, 20261018_1613), max_slots }. 남은 칸 0개는 만들지 않는다
+  'mission_participation_cancelled'  -- 20261019_1313 마이그레이션 251. ④ 미션. 트라이브 변경에 따른 참가 취소. payload { missions: [{ mission_id, title }] } — 개수는 배열 길이
 );
 
 CREATE TABLE public.notifications (
@@ -79,7 +80,7 @@ CREATE TABLE public.notifications (
 );
 ```
 
-> **⚠️ 예약됐으나 사용하지 않는 값 — ENUM 29값 중 9값 (실사용 20종)**
+> **⚠️ 예약됐으나 사용하지 않는 값 — ENUM 31값 중 9값 (실사용 22종)**
 >
 > | 값 | 사용 중단 시점 | 사유 |
 > |---|---|---|
@@ -87,7 +88,7 @@ CREATE TABLE public.notifications (
 > | `mutual_follow` | 2026-08-27 (20260827_014) | #27 맞팔은 자기 행동의 메아리다. 되팔로우당한 쪽에는 `followed`가 대신 나간다 |
 > | `badge_earned`·`rare_badge_earned`·`item_badge_earned`·`checkin_badge_earned`·`points_earned`·`first_badge` | 2026-08-27 (20260827_014) | ① 보상 획득 6종을 활동 결산(`activity_recap`) 1종으로 재편 |
 >
-> **실제로 쓰는 종류는 20종**이다(28 − 9 + `activity_recap` 1 = 20).
+> **실제로 쓰는 종류는 22종**이다(28 − 9 + `activity_recap` 1 + `inventory_slots_low` 1 + `mission_participation_cancelled` 1 = 22).
 >
 > **DDL로 지우지 않는다.** Postgres에는 `ALTER TYPE … DROP VALUE`가 없고, 타입을 새로 만들어
 > 갈아끼우는 우회는 컬럼·인덱스·RLS를 전부 재생성해야 하는 위험한 작업이다. 해당 타입 소식은
@@ -99,7 +100,7 @@ CREATE TABLE public.notifications (
 > 죽은 코드다. `NotificationType`·`NotificationPayloadMap`·`buildNotificationMessage`·
 > `notificationTarget`·`TypeIcon`·`ko.ts`에서 전부 제거했다.
 >
-> TS 쪽(`src/types/database.ts`의 `NotificationType`)에서는 20종만 노출해 컴파일러가 재사용을
+> TS 쪽(`src/types/database.ts`의 `NotificationType`)에서는 22종만 노출해 컴파일러가 재사용을
 > 막는다. 만에 하나 이 타입의 행이 존재하면 렌더러의 `default` 분기가 받는다.
 >
 > **`default` 분기는 컴파일 타임 안전망을 겸한다 (2026-08-27 / 티켓 20260827_021).**
@@ -133,7 +134,7 @@ CREATE TABLE public.notifications (
 | 필드 | 설명 |
 |---|---|
 | `user_id` | **받는 사람.** 행위자가 아니다 |
-| `type` | ENUM 29값 중 **실사용 20종**. 문구 템플릿과 착지점 계산의 분기 키 (나머지 9값은 위의 「예약됐으나 사용하지 않는 값」 표 참고) |
+| `type` | ENUM 31값 중 **실사용 22종**. 문구 템플릿과 착지점 계산의 분기 키 (나머지 9값은 위의 「예약됐으나 사용하지 않는 값」 표 참고) |
 | `actor_user_id` | 아바타 탭 대상. 팔로우·픽업됨·팔로잉 활동에만 존재, 나머지는 NULL |
 | `actor_count` | 묶음 **고유 인원** — "**예린**님 외 **3명**"의 N. 기본 1. 병합 횟수가 아니라 `payload.actor_ids`의 고유 개수와 일치해야 한다 (§4-1) |
 | `group_key` | 묶음 병합 키. NULL이면 묶지 않는 소식 (§4 참고) |
@@ -443,6 +444,7 @@ SELECT로 존재를 확인해야 하고 그 확인과 INSERT 사이에 재시도
 | 21 마감 임박 | `mission_deadline:{mission_id}:{YYYY-MM-DD}` | D-2는 하루뿐이라 사실상 미션당 1회 |
 | 23 순위 상승 | `mission_rank_up:{mission_id}:{YYYY-MM-DD}` | 다음 날 다시 올랐을 때 |
 | 24 종료 결과 | `mission_ended:{mission_id}` | 없음 (미션당 1회) |
+| 47 트라이브 변경 참가 취소 | 1개: `mission_participation_cancelled:{mission_id}:{YYYY-MM-DD}`<br>2개+: `mission_participation_cancelled:group:{YYYY-MM-DD}:{지문}` | 같은 날 같은 미션 묶음은 한 번만, **다른 날 다시 취소되면 새로 만든다** (T2 배치가 아니라 앱이 트라이브 변경 때 만든다 — `notifyMissionParticipationCancelled`, 티켓 20261019_1313) |
 | 29 팔로잉 희귀 배지 | `following_rare_badge:{badge_id}:{actor_id}` | 없음 |
 | 30 팔로잉 컬렉션 완성 | `following_collection_complete:{item_book_id}:{actor_id}` | 없음 |
 | 31 팔로잉 미션 완료 | `following_mission_complete:{mission_id}:{YYYY-MM-DD}` | 다음 날 |
@@ -501,6 +503,7 @@ Strava 동기화는 webhook이 없어 100% 수동이다. 유저가 버튼을 눌
 | `mission_milestone` | `{ mission_id, mission_title, current, target, unit, milestone: 50\|80 }` |
 | `mission_completed` | `{ mission_id, mission_title, reward_badge_count, reward_points }` |
 | `mission_rank_up` | `{ mission_id, mission_title, rank }` |
+| `mission_participation_cancelled` | `{ missions: [{ mission_id, title }] }` — 한 번의 트라이브 변경으로 취소된 미션 전부. 개수는 배열 길이로 세고 `target_count`는 두지 않는다 |
 | `followed` | `{ actor_ids: [...] }` — append. 2명까지 이름 나열에 필요 (§4-1) |
 | `sync_stalled` | `{ days: 3 }` |
 | `admin_points_changed` | `{ amount, direction: 'grant'\|'deduct', reason }` — `reason`은 **코드**다. 렌더 시 `adminReasonLabel()`을 반드시 경유할 것 |
