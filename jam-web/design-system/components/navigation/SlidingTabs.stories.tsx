@@ -74,7 +74,7 @@ export const OnCardVariant: Story = {
     const tablist = canvasElement.querySelector('[role="tablist"]') as HTMLElement;
     expect(tablist).toBeTruthy();
     // 흰 카드 위 비outlined 트랙은 --background-secondary(#e9e7e0)다. 검정 반투명(rgba(0,0,0,0.06))을 쓰지 않는다.
-    expect(getComputedStyle(tablist).backgroundColor).toBe('rgb(242, 242, 242)');
+    expect(getComputedStyle(tablist).backgroundColor).toBe('rgb(233, 231, 224)');
   },
 };
 
