@@ -231,6 +231,15 @@ const USER_PHRASE: Partial<Record<ConditionKey, (c: BadgeCondition) => string | 
   full_week_count: (c) => `한 주(월~일) 7일 모두 활동한 주 ${c.full_week_count}주 이상`,
   full_season_year_count: (c) => `네 계절 모두 활동한 해 ${c.full_season_year_count}해 이상`,
   distinct_activity_type_count: (c) => `서로 다른 종목 ${c.distinct_activity_type_count}종목 이상 활동`,
+
+  // ── 체크인·드랍·잼 새 지표 6종 (티켓 20261019_0542 2회) ─
+  // 보조 키(한 주 최소 잼)는 `jam_week_count`·`jam_week_streak` 문구가 값을 함께 말한다.
+  new_checkin_badge_count: (c) => `체크인 배지를 ${c.new_checkin_badge_count}종류 이상 처음 받기`,
+  checkin_season_year_count: (c) => `네 계절 모두 체크인 배지를 처음 받은 해 ${c.checkin_season_year_count}해 이상`,
+  dropped_item_picked_up_count: (c) => `내가 드랍한 아이템 ${c.dropped_item_picked_up_count}개 이상이 다른 유저에게 픽업되기`,
+  jam_week_min_earned: () => null, // 보조 키 — `jam_week_count`·`jam_week_streak` 문구가 값을 함께 말한다
+  jam_week_count: (c) => `한 주(월~일)에 잼 ${c.jam_week_min_earned ?? 1} 이상 모은 주 ${c.jam_week_count}주 이상`,
+  jam_week_streak: (c) => `한 주(월~일)에 잼 ${c.jam_week_min_earned ?? 1} 이상 모은 주 ${c.jam_week_streak}주 연속`,
 }
 
 /**

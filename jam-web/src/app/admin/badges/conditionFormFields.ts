@@ -144,6 +144,13 @@ export type ConditionFormFields = {
   fullWeekCount: string
   fullSeasonYearCount: string
   distinctActivityTypeCount: string
+  // JAM! 카테고리 — 체크인·드랍·잼 새 지표 6종 (티켓 20261019_0542 2회)
+  newCheckinBadgeCount: string
+  checkinSeasonYearCount: string
+  droppedItemPickedUpCount: string
+  jamWeekCount: string
+  jamWeekStreak: string
+  jamWeekMinEarned: string
 }
 
 /** 빈 폼(신규 등록)의 초기값. 조건 폼 state의 단일 출처다 */
@@ -242,6 +249,12 @@ export function emptyConditionFormFields(): ConditionFormFields {
     fullWeekCount: '',
     fullSeasonYearCount: '',
     distinctActivityTypeCount: '',
+    newCheckinBadgeCount: '',
+    checkinSeasonYearCount: '',
+    droppedItemPickedUpCount: '',
+    jamWeekCount: '',
+    jamWeekStreak: '',
+    jamWeekMinEarned: '',
   }
 }
 

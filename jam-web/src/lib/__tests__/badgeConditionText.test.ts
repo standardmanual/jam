@@ -28,6 +28,8 @@ const INTENTIONALLY_SILENT: ConditionKey[] = [
   'gate_mission_badge',
   // 보조 키 — `active_week_streak` 문구가 값을 함께 말한다(`USER_PHRASE`에 이유가 있다)
   'active_week_min_days',
+  // 보조 키 — `jam_week_count`·`jam_week_streak` 문구가 값을 함께 말한다(티켓 20261019_0542 2회)
+  'jam_week_min_earned',
 ]
 
 /** 필드 하나만 든 조건을 만든다 — 타입별로 «말이 되는 최소값» */

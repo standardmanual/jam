@@ -77,7 +77,7 @@ function activeDaysPerWeek(dayKeys: Iterable<string>): Map<string, number> {
 }
 
 /** 주(월요일 키) 목록에서 바로 다음 주끼리 이어진 가장 긴 길이. 비어 있으면 0 */
-function longestWeekRun(weekKeys: Iterable<string>): number {
+export function longestWeekRun(weekKeys: Iterable<string>): number {
   const sorted = [...new Set(weekKeys)].sort()
   let best = 0
   let run = 0

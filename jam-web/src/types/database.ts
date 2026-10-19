@@ -1639,6 +1639,24 @@ export interface BadgeCondition {
   full_season_year_count?: number
   /** [JAM!] 인정된 활동의 서로 다른 종목 수 ≥ 값. */
   distinct_activity_type_count?: number
+
+  // ── JAM! 카테고리 — 체크인·드랍·잼 새 지표 6종 (티켓 20261019_0542 2회, 마이그레이션 247) ──
+  //
+  // 위 조건들과 같은 `evaluation: 'external'`이다. 판정·발급은 `jamActionBadges.ts`가 전담한다. 「새로 받은 체크인 배지」는
+  // `user_checkin_badge_earns`에서 배지별로 처음 받은 줄이고, 날짜·주는 KST(주는 월~일)다.
+
+  /** [JAM!] 새로 받은 체크인 배지의 서로 다른 종류 수 ≥ 값(같은 배지를 다시 받아도 1종류). */
+  new_checkin_badge_count?: number
+  /** [JAM!] 달력 연도(KST) 안에 네 계절(1·2월과 12월은 겨울) 모두에서 새 체크인 배지를 받은 해의 수 ≥ 값. */
+  checkin_season_year_count?: number
+  /** [JAM!] 내가 드랍한 서로 다른 아이템(`poi_drops.inventory_item_id`) 가운데 다른 유저가 픽업한 수 ≥ 값. */
+  dropped_item_picked_up_count?: number
+  /** [JAM!] 한 주(월~일, KST)에 `jam_week_min_earned` 이상 잼을 모은 주의 수 ≥ 값. */
+  jam_week_count?: number
+  /** [JAM!] 한 주에 `jam_week_min_earned` 이상 잼을 모은 주가 이어진 최장 주 수 ≥ 값. */
+  jam_week_streak?: number
+  /** [JAM!] `jam_week_count`·`jam_week_streak`의 보조 키(선택, 단독 저장 불가). 채운 주의 최소 잼. 없으면 1. */
+  jam_week_min_earned?: number
 }
 
 // =========================================

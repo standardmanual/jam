@@ -18,8 +18,8 @@
 import type { JamActionTrigger } from './jamActionBadges'
 
 /**
- * 새 활동이 있는 동기화가 끝날 때 다시 볼 지표 — 주 키 13개.
- * 보조 키(`signup_recent_active_days`·`active_week_min_days`)는 트리거가 아니라 짝 지표 배지를 거르거나 정하는 조건이라 넣지 않는다.
+ * 새 활동이 있는 동기화가 끝날 때 다시 볼 지표 — 주 키 17개.
+ * 보조 키(`signup_recent_active_days`·`active_week_min_days`·`jam_week_min_earned`)는 트리거가 아니라 짝 지표 배지를 거르거나 정하는 조건이라 넣지 않는다.
  *
  * 잼 2종(`jam_total_earned`·`jam_weekly_earned`)은 잼 정산(`settleActivities`)이 동기화 안에서 일어나므로 정산 뒤 여기서 본다.
  * 챕터(`chapter_reached`)는 챕터를 올리는 호출부(`chapter_add_score`·`chapter_start`를 부르는 앱 코드)가 아직 없어(묶음 5)
@@ -40,6 +40,12 @@ export const JAM_SYNC_TRIGGERS: readonly JamActionTrigger[] = [
   'full_week_count',
   'full_season_year_count',
   'distinct_activity_type_count',
+  // 체크인·잼 새 지표 4종 (티켓 20261019_0542 2회) — 체크인 배지 발급은 동기화 안의 체크인 루프에서, 잼 정산은 동기화 안에서 일어나므로
+  // 둘 다 끝난 뒤 동기화 끝에서 본다. 드랍 픽업 지표(`dropped_item_picked_up_count`)는 픽업 라우트가 정한다(`jamActionDropTriggers.ts`).
+  'new_checkin_badge_count',
+  'checkin_season_year_count',
+  'jam_week_count',
+  'jam_week_streak',
 ]
 
 /**
