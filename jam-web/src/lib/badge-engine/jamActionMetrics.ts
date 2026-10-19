@@ -14,57 +14,74 @@
  *  - 레시피 최초 성공: 그 레시피의 `is_recipe_first = true` 행이 내 것인가.
  *
  * 성공 기록은 이 기능을 배포한 날부터, 실패 로그는 2026-09-10부터 쌓였다 — 과거 구간은 소급되지 않는다.
+ *
+ * 선택 인자 `window`(티켓 20261019_1445): 주면 `attempted_at`이 그 범위 안인 행만 센다(미션의 «참가한 뒤, 기간 안»).
+ * 주지 않으면 예전 그대로 평생값이다 — 배지 엔진 호출처는 이 인자를 쓰지 않는다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { applyMetricWindow, type MetricWindow } from './jamActionWindow'
 
 function throwQueryError(label: string, error: { message?: string }): never {
   throw new Error(`[jamActionMetrics] ${label} 조회 오류: ${error.message ?? '알 수 없는 오류'}`)
 }
 
 /** 믹스 성공 횟수 — `user_combine_success_logs` 행 수 */
-export async function countCombineSuccess(supabase: SupabaseClient, userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('user_combine_success_logs')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
+export async function countCombineSuccess(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
+  const { count, error } = await applyMetricWindow(
+    supabase.from('user_combine_success_logs').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    'attempted_at',
+    window
+  )
   if (error) throwQueryError('믹스 성공 기록', error)
   return count ?? 0
 }
 
 /** 믹스 실패 횟수 — 재료가 소각된 실패(`no_recipe_match`)만 센다 */
-export async function countCombineFail(supabase: SupabaseClient, userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('user_combine_fail_logs')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('fail_reason', 'no_recipe_match')
+export async function countCombineFail(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
+  const { count, error } = await applyMetricWindow(
+    supabase
+      .from('user_combine_fail_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('fail_reason', 'no_recipe_match'),
+    'attempted_at',
+    window
+  )
   if (error) throwQueryError('믹스 실패 로그', error)
   return count ?? 0
 }
 
 /** 믹스 시도 횟수 — 성공 기록 수 + `no_recipe_match` 실패 수 */
-export async function countCombineAttempts(supabase: SupabaseClient, userId: string): Promise<number> {
-  const [success, fail] = await Promise.all([countCombineSuccess(supabase, userId), countCombineFail(supabase, userId)])
+export async function countCombineAttempts(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
+  const [success, fail] = await Promise.all([
+    countCombineSuccess(supabase, userId, window),
+    countCombineFail(supabase, userId, window),
+  ])
   return success + fail
 }
 
 /**
  * `recipeIds` 중 내가 «최초 성공자»인 레시피 id 집합 — `is_recipe_first = true` 행이 내 것인 레시피.
  * 최초 표시는 레시피마다 DB가 1행만 허용하므로(부분 유니크 인덱스, 마이그레이션 200) 같은 레시피가
- * 두 유저의 집합에 동시에 들어가는 일은 없다.
+ * 두 유저의 집합에 동시에 들어가는 일은 없다. `window`를 주면 그 최초 성공 행의 `attempted_at`이 범위 안일 때만 넣는다.
  */
 export async function fetchFirstSuccessRecipeIds(
   supabase: SupabaseClient,
   userId: string,
-  recipeIds: readonly string[]
+  recipeIds: readonly string[],
+  window?: MetricWindow
 ): Promise<Set<string>> {
   if (recipeIds.length === 0) return new Set()
-  const { data, error } = await supabase
-    .from('user_combine_success_logs')
-    .select('recipe_id')
-    .eq('user_id', userId)
-    .eq('is_recipe_first', true)
-    .in('recipe_id', [...recipeIds])
+  const { data, error } = await applyMetricWindow(
+    supabase
+      .from('user_combine_success_logs')
+      .select('recipe_id')
+      .eq('user_id', userId)
+      .eq('is_recipe_first', true)
+      .in('recipe_id', [...recipeIds]),
+    'attempted_at',
+    window
+  )
   if (error) throwQueryError('레시피 최초 성공 기록', error)
   return new Set(((data ?? []) as { recipe_id: string }[]).map((r) => r.recipe_id))
 }

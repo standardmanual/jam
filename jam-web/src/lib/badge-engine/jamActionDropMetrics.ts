@@ -44,9 +44,19 @@
  * 대상 행이 작다(마이그레이션 202의 부분 인덱스가 조회를 받친다). **한 유저의 대상 행이 약 2,000을 넘으면**
  * `COUNT(DISTINCT)` RPC로 옮긴다. 그 전에라도 행이 `MAX_PAGES` 페이지(30,000행)를 넘으면 조회가 오류를 던지고
  * 그 지표만 건너뛴다 — 잘린 값으로 임계를 잘못 넘기지 않도록 fail-closed다.
+ *
+ * ## 선택 인자 `window` (티켓 20261019_1445)
+ * 미션의 «참가한 뒤, 기간 안»을 세려고 읽기 함수마다 기간 인자를 선택으로 더했다. 주지 않으면 필터가 없어 예전과 같다.
+ * 어느 시각을 기준으로 거르는지는 지표마다 다르다.
+ *  - `drop_item_count`: 놓은 때(`dropped_at`)
+ *  - `pickup_item_count`·`pickup_from_user_count`: 주운 때(`picked_up_at`)
+ *  - `picked_up_by_user_count`: 놓은 때가 아니라 **주워진 때**(`picked_up_at`) — 참가 전에 놓은 아이템이라도 참가 뒤에 다른 유저가
+ *    주워 가면 «참가 뒤의 나눔»이다(티켓 20261019_1445 사용자 결정 5). 아직 줍지 않은 드랍은 `picked_up_at`이 비어 빠진다.
+ *  - `dropped_item_picked_up_count`는 기간 인자를 받지 않는다(이번 범위 밖 키).
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { selectAllPages } from './jamActionPaging'
+import { applyMetricWindow, type MetricWindow } from './jamActionWindow'
 
 /** 오류 메시지 접두어 — 로그에서 어느 계산인지 알아보도록 공용 페이징에 넘긴다 */
 const TAG = 'jamActionDropMetrics'
@@ -120,53 +130,69 @@ export function countDroppedItemsPickedUpByOthers(userId: string, myDrops: reado
   return items.size
 }
 
-/** 내가 놓은 드랍 행 — `inventory_item_id`가 있는 행만(옛 행 제외) */
-export async function fetchMyDropRows(supabase: SupabaseClient, userId: string): Promise<MyDropRow[]> {
+/**
+ * 내가 놓은 드랍 행 — `inventory_item_id`가 있는 행만(옛 행 제외).
+ * `window`를 주면 `timeColumn` 시각이 범위 안인 행만 읽는다(기본은 놓은 때 `dropped_at`).
+ */
+export async function fetchMyDropRows(
+  supabase: SupabaseClient,
+  userId: string,
+  window?: MetricWindow,
+  timeColumn: 'dropped_at' | 'picked_up_at' = 'dropped_at'
+): Promise<MyDropRow[]> {
   return selectAllPages<MyDropRow>(TAG, '내가 놓은 드랍', (from, to) =>
-    supabase
-      .from('poi_drops')
-      .select('inventory_item_id, picked_up_by')
-      .eq('dropper_user_id', userId)
-      .not('inventory_item_id', 'is', null)
+    applyMetricWindow(
+      supabase
+        .from('poi_drops')
+        .select('inventory_item_id, picked_up_by')
+        .eq('dropper_user_id', userId)
+        .not('inventory_item_id', 'is', null),
+      timeColumn,
+      window
+    )
       .order('id')
       .range(from, to)
   )
 }
 
-/** 내가 주운 드랍 행 — `inventory_item_id`가 있는 행만(옛 행 제외) */
-export async function fetchMyPickupRows(supabase: SupabaseClient, userId: string): Promise<MyPickupRow[]> {
+/** 내가 주운 드랍 행 — `inventory_item_id`가 있는 행만(옛 행 제외). `window`를 주면 주운 때(`picked_up_at`)가 범위 안인 행만 읽는다 */
+export async function fetchMyPickupRows(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<MyPickupRow[]> {
   return selectAllPages<MyPickupRow>(TAG, '내가 주운 드랍', (from, to) =>
-    supabase
-      .from('poi_drops')
-      .select('inventory_item_id, dropper_user_id')
-      .eq('picked_up_by', userId)
-      .not('inventory_item_id', 'is', null)
+    applyMetricWindow(
+      supabase
+        .from('poi_drops')
+        .select('inventory_item_id, dropper_user_id')
+        .eq('picked_up_by', userId)
+        .not('inventory_item_id', 'is', null),
+      'picked_up_at',
+      window
+    )
       .order('id')
       .range(from, to)
   )
 }
 
 /** 드랍한 아이템 수 — 내가 놓은 서로 다른 개체 수 */
-export async function countDroppedItems(supabase: SupabaseClient, userId: string): Promise<number> {
-  const drops = await fetchMyDropRows(supabase, userId)
+export async function countDroppedItems(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
+  const drops = await fetchMyDropRows(supabase, userId, window)
   return computeDropPickupMetrics(userId, drops, []).dropItemCount
 }
 
 /** 픽업한 아이템 수 — 내가 주운 서로 다른 개체 수(자기 드랍 제외) */
-export async function countPickedUpItems(supabase: SupabaseClient, userId: string): Promise<number> {
-  const pickups = await fetchMyPickupRows(supabase, userId)
+export async function countPickedUpItems(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
+  const pickups = await fetchMyPickupRows(supabase, userId, window)
   return computeDropPickupMetrics(userId, [], pickups).pickupItemCount
 }
 
 /** 함께 줍기 — 내가 주운 드랍을 놓은 서로 다른 유저 수(자기·시스템·탈퇴 제외) */
-export async function countPickupFromUsers(supabase: SupabaseClient, userId: string): Promise<number> {
-  const pickups = await fetchMyPickupRows(supabase, userId)
+export async function countPickupFromUsers(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
+  const pickups = await fetchMyPickupRows(supabase, userId, window)
   return computeDropPickupMetrics(userId, [], pickups).pickupFromUserCount
 }
 
-/** 나눔가 — 내가 놓은 드랍을 주운 서로 다른 유저 수(자기·탈퇴 제외) */
-export async function countPickedUpByUsers(supabase: SupabaseClient, userId: string): Promise<number> {
-  const drops = await fetchMyDropRows(supabase, userId)
+/** 나눔가 — 내가 놓은 드랍을 주운 서로 다른 유저 수(자기·탈퇴 제외). `window`는 주워진 때(`picked_up_at`) 기준이다 */
+export async function countPickedUpByUsers(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
+  const drops = await fetchMyDropRows(supabase, userId, window, 'picked_up_at')
   return computeDropPickupMetrics(userId, drops, []).pickedUpByUserCount
 }
 

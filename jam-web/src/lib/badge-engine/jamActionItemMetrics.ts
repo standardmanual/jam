@@ -39,9 +39,16 @@
  *
  * 행을 끌어와 세는 지표(잠긴 픽업·다른 트라이브 종류·트라이브를 넘는 믹스)는 `MAX_PAGES` 페이지(30,000행)를 넘으면 오류를 던지고 그 지표만
  * 건너뛴다(`jamActionPaging.ts`). 규칙은 vitest로 직접 검증하도록 순수 함수로 분리했다.
+ *
+ * ## 선택 인자 `window` (티켓 20261019_1445)
+ * 미션의 «참가한 뒤, 기간 안»을 세려고 네 함수(`countCapsuleOpens`·`countLockedItemOpens`·`countLockedItemPickups`·
+ * `countCrossTribeCombineSuccess`)에 기간 인자를 선택으로 더했다. 주지 않으면 필터가 없어 예전과 같다. 기준 시각은
+ * 캡슐 열기 `opened_at`, 잠긴 개체 열기 `created_at`(개체 이력), 잠긴 개체 픽업 `picked_up_at`, 트라이브를 넘는 믹스 `attempted_at`이다.
+ * `countOtherTribeItemKinds`는 «지금 가진 개체»의 스냅샷이라 기간을 걸 수 없어 이 인자를 받지 않는다(미션 조건으로 저장도 거절한다).
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { selectAllPages } from './jamActionPaging'
+import { applyMetricWindow, type MetricWindow } from './jamActionWindow'
 
 /** 오류 메시지 접두어 — 로그에서 어느 계산인지 알아보도록 공용 페이징에 넘긴다 */
 const TAG = 'jamActionItemMetrics'
@@ -161,34 +168,43 @@ async function fetchBadgeTribes(supabase: SupabaseClient, badgeIds: readonly str
 // ── 지표 계산 ─────────────────────────────────────────────────────────────
 
 /** 캡슐 연 횟수 — `capsule_opens` 행 수(열 때마다 한 줄) */
-export async function countCapsuleOpens(supabase: SupabaseClient, userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('capsule_opens')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
+export async function countCapsuleOpens(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
+  const { count, error } = await applyMetricWindow(
+    supabase.from('capsule_opens').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    'opened_at',
+    window
+  )
   if (error) throwQueryError('캡슐 열기 기록', error)
   return count ?? 0
 }
 
 /** 잠긴 아이템 배지를 연 횟수 — 개체 이력(`inventory_item_events`)의 `unlocked` 행 수 */
-export async function countLockedItemOpens(supabase: SupabaseClient, userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('inventory_item_events')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('event_type', 'unlocked')
+export async function countLockedItemOpens(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
+  const { count, error } = await applyMetricWindow(
+    supabase
+      .from('inventory_item_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('event_type', 'unlocked'),
+    'created_at',
+    window
+  )
   if (error) throwQueryError('잠긴 개체 열기 기록', error)
   return count ?? 0
 }
 
 /** 잠긴 아이템 배지 픽업 횟수 — 픽업 당시 잠겨 있던 서로 다른 개체 수(자기 드랍 제외) */
-export async function countLockedItemPickups(supabase: SupabaseClient, userId: string): Promise<number> {
+export async function countLockedItemPickups(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
   const pickups = await selectAllPages<LockedPickupRow>(TAG, '내가 주운 드랍', (from, to) =>
-    supabase
-      .from('poi_drops')
-      .select('inventory_item_id, dropper_user_id, picked_up_at')
-      .eq('picked_up_by', userId)
-      .not('inventory_item_id', 'is', null)
+    applyMetricWindow(
+      supabase
+        .from('poi_drops')
+        .select('inventory_item_id, dropper_user_id, picked_up_at')
+        .eq('picked_up_by', userId)
+        .not('inventory_item_id', 'is', null),
+      'picked_up_at',
+      window
+    )
       .order('id')
       .range(from, to)
   )
@@ -229,12 +245,13 @@ export async function countOtherTribeItemKinds(supabase: SupabaseClient, userId:
 }
 
 /** 트라이브를 넘는 믹스 성공 횟수 — 재료가 트라이브 2개 이상에 걸친 성공 기록 수 */
-export async function countCrossTribeCombineSuccess(supabase: SupabaseClient, userId: string): Promise<number> {
+export async function countCrossTribeCombineSuccess(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
   const rows = await selectAllPages<{ ingredient_badge_ids: string[] | null }>(TAG, '믹스 성공 기록', (from, to) =>
-    supabase
-      .from('user_combine_success_logs')
-      .select('ingredient_badge_ids')
-      .eq('user_id', userId)
+    applyMetricWindow(
+      supabase.from('user_combine_success_logs').select('ingredient_badge_ids').eq('user_id', userId),
+      'attempted_at',
+      window
+    )
       .order('id')
       .range(from, to)
   )

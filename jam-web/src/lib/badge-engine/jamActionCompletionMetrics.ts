@@ -20,29 +20,35 @@
  * collection_complete_count = count(*) FROM user_item_book_completions    WHERE user_id = :u
  * ```
  * 두 테이블 모두 `user_id` 선두 인덱스가 있어(`idx_user_mission_completions_user`, PK) 별도 인덱스를 만들지 않는다.
+ *
+ * 선택 인자 `window`(티켓 20261019_1445): 주면 `completed_at`이 그 범위 안인 행만 센다(미션의 «참가한 뒤, 기간 안»).
+ * 주지 않으면 위의 전체 기록 그대로다 — 배지 엔진 호출처는 이 인자를 쓰지 않는다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { applyMetricWindow, type MetricWindow } from './jamActionWindow'
 
 function throwQueryError(label: string, error: { message?: string }): never {
   throw new Error(`[jamActionCompletionMetrics] ${label} 조회 오류: ${error.message ?? '알 수 없는 오류'}`)
 }
 
 /** 완료한 미션 수 — `user_mission_completions` 행 수(`UNIQUE(user_id, mission_id)`라 서로 다른 미션 수) */
-export async function countMissionCompletions(supabase: SupabaseClient, userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('user_mission_completions')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
+export async function countMissionCompletions(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
+  const { count, error } = await applyMetricWindow(
+    supabase.from('user_mission_completions').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    'completed_at',
+    window
+  )
   if (error) throwQueryError('미션 완료 기록', error)
   return count ?? 0
 }
 
 /** 완성한 컬렉션 수 — `user_item_book_completions` 행 수(PK `(user_id, item_book_id)`라 서로 다른 컬렉션 수) */
-export async function countCollectionCompletions(supabase: SupabaseClient, userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('user_item_book_completions')
-    .select('item_book_id', { count: 'exact', head: true })
-    .eq('user_id', userId)
+export async function countCollectionCompletions(supabase: SupabaseClient, userId: string, window?: MetricWindow): Promise<number> {
+  const { count, error } = await applyMetricWindow(
+    supabase.from('user_item_book_completions').select('item_book_id', { count: 'exact', head: true }).eq('user_id', userId),
+    'completed_at',
+    window
+  )
   if (error) throwQueryError('컬렉션 완성 기록', error)
   return count ?? 0
 }
