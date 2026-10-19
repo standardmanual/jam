@@ -282,6 +282,31 @@ describe('발급 정책은 usageBadges의 것을 그대로 쓴다', () => {
     expect((await evaluateJamActionBadges('user-1', ['combine_success_count'])).map((b) => b.id)).toEqual(['g-rare'])
   })
 
+  it('등급형: 이름이 같아도 family_key가 다르면 계열마다 최상위 1개씩 발급된다 (티켓 20261019_0542)', async () => {
+    const tier = (id: string, fam: string, rarity: 'common' | 'rare', n: number) =>
+      makeBadge({ id, name: '남은 재료의 저녁', rarity, family_key: fam, condition_json: { combine_success_count: n } })
+    setBadges(tier('a-common', 'run:E1', 'common', 1), tier('a-rare', 'run:E1', 'rare', 5), tier('b-common', 'cycle:E1', 'common', 1), tier('b-rare', 'cycle:E1', 'rare', 50))
+    for (let i = 0; i < 6; i++) addSuccess('user-1', RECIPE_A)
+    expect((await evaluateJamActionBadges('user-1', ['combine_success_count'])).map((b) => b.id).sort()).toEqual(['a-rare', 'b-common'])
+  })
+
+  it('등급형: 한 계열의 상위 등급 보유가 이름이 같은 다른 계열의 하위 등급을 막지 않고, 같은 계열 하위는 막는다', async () => {
+    const tier = (id: string, fam: string, rarity: 'common' | 'rare', n: number) =>
+      makeBadge({ id, name: '남은 재료의 저녁', rarity, family_key: fam, condition_json: { combine_success_count: n } })
+    setBadges(tier('a-common', 'run:E1', 'common', 1), tier('a-rare', 'run:E1', 'rare', 5), tier('b-common', 'cycle:E1', 'common', 1))
+    for (let i = 0; i < 6; i++) addSuccess('user-1', RECIPE_A)
+    own('user-1', 'a-rare')
+    expect((await evaluateJamActionBadges('user-1', ['combine_success_count'])).map((b) => b.id)).toEqual(['b-common'])
+  })
+
+  it('등급형: 단계마다 이름이 다른 같은 계열은 한 번에 가장 높은 단계 하나만 발급된다', async () => {
+    const step = (id: string, name: string, rarity: 'common' | 'rare', n: number) =>
+      makeBadge({ id, name, rarity, family_key: 'run:F6', condition_json: { combine_success_count: n } })
+    setBadges(step('s1', '첫 구간', 'common', 1), step('s2', '둘째 구간', 'rare', 5))
+    for (let i = 0; i < 6; i++) addSuccess('user-1', RECIPE_A)
+    expect((await evaluateJamActionBadges('user-1', ['combine_success_count'])).map((b) => b.id)).toEqual(['s2'])
+  })
+
   it('레벨형: 보유 레벨 + 1부터 조건을 채우는 동안 연속 발급된다', async () => {
     const fam = 'combine-family'
     setBadges(

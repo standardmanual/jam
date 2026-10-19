@@ -1051,7 +1051,12 @@ export async function evaluateBadgesDetailed(
   // 이름이 겹치는 순간 게이트가 자동 통과된다. 신규 교차 게이트는 애초에 `family_key`
   // 기준이라(`crossGate.ts`) 이 모호성이 없다.
   const ownedBadgeNames = new Set<string>()
-  const highestOwnedTierByName = new Map<string, number>()
+  /**
+   * 등급형 보유 최고 등급 — **계열(`family_key`) 단위**, `family_key`가 없는 행은 이름 단위(`familyKeyOf`의 `#name:` 폴백).
+   * 이름으로만 묶으면 이름 하나에 종목마다 계열 여러 개를 두는 배지(3-2·3-3)에서 한 종목의 상위 등급이 다른 종목의
+   * 하위 등급을 막는다(티켓 20261019_0542 사용자 결정 1).
+   */
+  const highestOwnedTierByGroup = new Map<string, number>()
   /** 무한레벨형 계열별 보유 최고 레벨. 다음 후보는 항상 이 값 + 1이다 (v5, 티켓 20260905_0030 §1) */
   const highestOwnedLevelByFamily = new Map<string, number>()
   /**
@@ -1082,7 +1087,7 @@ export async function evaluateBadgesDetailed(
         const key = familyKeyOf(b)
         const current = highestOwnedLevelByFamily.get(key) ?? 0
         if ((b.level ?? 0) > current) highestOwnedLevelByFamily.set(key, b.level ?? 0)
-        // 레벨형은 등급 서열에 속하지 않는다 — highestOwnedTierByName에 넣지 않는다.
+        // 레벨형은 등급 서열에 속하지 않는다 — highestOwnedTierByGroup에 넣지 않는다.
         // (같은 이름을 등급형 계열과 공유할 수 있어, 0을 섞으면 판정이 오염된다)
         continue
       }
@@ -1093,16 +1098,17 @@ export async function evaluateBadgesDetailed(
         continue
       }
       const tier = b.rarity ? RARITY_TIER[b.rarity] : 0
-      const current = highestOwnedTierByName.get(b.name) ?? 0
-      if (tier > current) highestOwnedTierByName.set(b.name, tier)
+      const groupKey = familyKeyOf(b)
+      const current = highestOwnedTierByGroup.get(groupKey) ?? 0
+      if (tier > current) highestOwnedTierByGroup.set(groupKey, tier)
     }
   }
 
-  // 세 종류는 **묶는 축이 다르다.** 등급형은 이름당 최상위 1개(성장 티어), 레벨형은
+  // 세 종류는 **묶는 축이 다르다.** 등급형은 계열(`family_key`, 없으면 이름)당 최상위 1개(성장 티어), 레벨형은
   // 계열(family_key)당 보유 레벨 + 1, 반복형은 배지 하나하나가 독립 카운터다.
   // 한 맵에 섞으면 레벨형이 등급형 계열의 티어 비교에 끌려 들어가 `0 <= 0`으로 매번
   // 탈락하고(마스터 티켓 20260905_0026 B-1), 반복형은 보유 즉시 후보에서 사라진다(B-2).
-  const badgesByName = new Map<string, BadgeRow[]>()
+  const badgesByGradedGroup = new Map<string, BadgeRow[]>()
   const badgesByFamily = new Map<string, BadgeRow[]>()
   const repeatableBadges: BadgeRow[] = []
   for (const badge of allBadges) {
@@ -1117,12 +1123,13 @@ export async function evaluateBadgesDetailed(
       repeatableBadges.push(badge)
       continue
     }
-    if (!badgesByName.has(badge.name)) badgesByName.set(badge.name, [])
-    badgesByName.get(badge.name)!.push(badge)
+    const groupKey = familyKeyOf(badge)
+    if (!badgesByGradedGroup.has(groupKey)) badgesByGradedGroup.set(groupKey, [])
+    badgesByGradedGroup.get(groupKey)!.push(badge)
   }
 
   // ── 1단계: 후보 선정 ─────────────────────────────────────────────────
-  //   1-A 등급형 — 이름당 최상위 티어 1개
+  //   1-A 등급형 — 계열(`family_key`, 없으면 이름)당 최상위 티어 1개
   //   1-B 무한레벨형 — 계열당 «보유 레벨 + 1»부터 연속으로 통과하는 레벨 전부
   //   1-C 반복형 — 보유 여부와 무관하게 전부. 미보유는 «발급», 보유는 «카운터 증가»
   type Candidate = {
@@ -1167,8 +1174,8 @@ export async function evaluateBadgesDetailed(
     return null
   }
 
-  for (const [, group] of badgesByName) {
-    const highestOwned = highestOwnedTierByName.get(group[0].name) ?? 0
+  for (const [groupKey, group] of badgesByGradedGroup) {
+    const highestOwned = highestOwnedTierByGroup.get(groupKey) ?? 0
 
     const eligible: { badge: BadgeRow; evalResult: EvalConditionResult }[] = []
     for (const badge of group) {

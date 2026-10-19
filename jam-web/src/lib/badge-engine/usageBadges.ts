@@ -13,7 +13,7 @@
  * 이력·선행 배지 게이트·2단 교차 게이트·홍수 방지·첫 싱크 게이트까지 한 몸으로 얽혀 있어
  * (badge-engine/index.ts 전체 구조), 이 서비스 사용량 지표(게이트 없는 단독 조건 전제 —
  * Out of Scope)만 떼어 쓸 수 있는 형태가 아니기 때문이다. 옮긴 정책은 둘뿐이다:
- *   - 등급형(`rarity` 있음): 같은 이름(name) 그룹에서 미보유 + 조건 충족 중 최상위 tier
+ *   - 등급형(`rarity` 있음): 같은 계열(family_key, 없으면 이름) 그룹에서 미보유 + 조건 충족 중 최상위 tier
  *     1개만 발급한다(성장 티어). 선택되지 않은 하위 tier는 이번 호출에서 발급되지 않고,
  *     다음 호출에서도 "보유 tier 이하"로 걸려 영구히 스킵된다(main 엔진과 동일한 특성).
  *   - 레벨형(`rarity` NULL): 같은 계열(`family_key`) 안에서 보유 레벨 + 1부터 조건을
@@ -115,7 +115,7 @@ export async function evaluateUsageBadges(
 }
 
 /**
- * 등급형(이름 그룹 최상위 tier 1개)·레벨형(family_key 보유 레벨+1부터 연속) 순차 발급 —
+ * 등급형(계열 그룹 최상위 tier 1개, family_key 없으면 이름 그룹)·레벨형(family_key 보유 레벨+1부터 연속) 순차 발급 —
  * `evaluateUsageBadges`(팔로워·팔로잉·동기화 4종)와 `evaluateCheckinUsageBadges`(체크인
  * 카테고리·목록 2종, 티켓 20260914_1725)가 공유하는 발급 로직. JAM! 행동 지표
  * (`jamActionBadges.ts`, 티켓 20261001_0631)도 이 함수를 불러 같은 발급 정책을 쓴다(export).
@@ -152,9 +152,10 @@ export async function issueQualifyingBadges(
   }
   const ownedIds = new Set((ownedRaw ?? []).map((r: { badge_id: string }) => r.badge_id))
 
-  // 종류별로 그룹핑 — 등급형은 이름(name) 단위(성장 티어), 레벨형은 계열(family_key) 단위.
+  // 종류별로 그룹핑 — 등급형·레벨형 모두 계열(family_key) 단위. `family_key`가 없는 등급형은 이름 단위(성장 티어)로 묶는다
+  // (`familyKeyOf`의 `#name:` 폴백, 티켓 20261019_0542 사용자 결정 1).
   // (`badgeKind.ts`의 판정 기준 그대로 — rarity IS NULL이면 레벨형)
-  const gradedByName = new Map<string, BadgeRow[]>()
+  const gradedByGroup = new Map<string, BadgeRow[]>()
   const leveledByFamily = new Map<string, BadgeRow[]>()
   for (const b of candidates) {
     if (isLeveledBadge(b)) {
@@ -162,15 +163,16 @@ export async function issueQualifyingBadges(
       if (!leveledByFamily.has(key)) leveledByFamily.set(key, [])
       leveledByFamily.get(key)!.push(b)
     } else {
-      if (!gradedByName.has(b.name)) gradedByName.set(b.name, [])
-      gradedByName.get(b.name)!.push(b)
+      const key = familyKeyOf(b)
+      if (!gradedByGroup.has(key)) gradedByGroup.set(key, [])
+      gradedByGroup.get(key)!.push(b)
     }
   }
 
   const toIssue: BadgeRow[] = []
 
-  // ── 등급형 — 이름 그룹 안에서 미보유 + 조건 충족 중 최상위 tier 1개만 (§Step 3-A) ──
-  for (const [, group] of gradedByName) {
+  // ── 등급형 — 계열(없으면 이름) 그룹 안에서 미보유 + 조건 충족 중 최상위 tier 1개만 (§Step 3-A) ──
+  for (const [, group] of gradedByGroup) {
     const highestOwned = Math.max(
       0,
       ...group.filter((b) => ownedIds.has(b.id)).map((b) => rarityTier(b.rarity))

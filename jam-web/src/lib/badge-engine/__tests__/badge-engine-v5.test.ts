@@ -16,7 +16,7 @@ import { recordFeedEvent } from '@/lib/activity-feed'
 import { awardPoints } from '@/lib/points'
 import { recordActivityRecap } from '@/lib/notifications/recap'
 import type { NormalizedActivity } from '@/types/strava'
-import type { BadgeEarnHistoryEntry, BadgeRarity, BadgeRow } from '@/types/database'
+import type { ActivityType, BadgeEarnHistoryEntry, BadgeRarity, BadgeRow } from '@/types/database'
 import { findCrossGateShapeError } from '@/lib/badge-engine/crossGate'
 
 // ── 픽스처 ───────────────────────────────────────────────────────────────
@@ -334,7 +334,7 @@ describe('무한레벨 발급 — 성장 티어 비교에 걸려 탈락하지 �
   })
 
   it('같은 이름의 등급형 계열이 함께 있어도 레벨형이 티어 비교에 오염되지 않는다', async () => {
-    // 등급형 Common('무한 러너')을 이미 보유 → highestOwnedTierByName['무한 러너'] = 1.
+    // 등급형 Common('무한 러너')을 이미 보유 → highestOwnedTierByGroup['#name:무한 러너'] = 1.
     // 예전 구조라면 같은 이름 그룹에 묶인 레벨형이 rarityTier(null)=0 <= 1로 탈락했다.
     const commonTwin = makeBadge({
       id: 'twin-common',
@@ -1199,5 +1199,105 @@ describe('게이트 키가 붙은 반복형의 회차가 0이 되지 않는다 (
     const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
     expect(earned).toHaveLength(0)
     expect(missed.find((x) => x.id === 'REP-BLOCK')?.reason).toBe('축 내 교차 미충족')
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// 등급형 묶음 기준 — 이름이 아니라 계열(family_key) (티켓 20261019_0542 사용자 결정 1)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('등급형 묶음 — family_key가 있으면 계열 단위, 없으면 이름 단위', () => {
+  const NAME = '남은 재료의 저녁'
+  /** 종목마다 계열이 따로인 등급형 한 칸 — 이름은 모든 종목이 같다(3-2·3-3 모양) */
+  const graded = (id: string, familyKey: string, activityType: ActivityType, rarity: BadgeRarity, totalCount: number) =>
+    makeBadge({
+      id,
+      name: NAME,
+      rarity,
+      family_key: familyKey,
+      activity_types: [activityType],
+      condition_json: { activity_type: activityType, total_count: totalCount },
+    })
+  const twoFamilies = () => [
+    graded('run-common', 'running:E1', 'running', 'common', 1),
+    graded('run-rare', 'running:E1', 'running', 'rare', 3),
+    graded('cyc-common', 'cycling:E1', 'cycling', 'common', 1),
+    graded('cyc-rare', 'cycling:E1', 'cycling', 'rare', 3),
+  ]
+  const stored = (type: 'running' | 'cycling', day: number) => {
+    const startDate = `2026-04-${String(day).padStart(2, '0')}T05:00:00Z`
+    return { normalized: makeRun(startDate, { jamActivityType: type }), start_date: startDate }
+  }
+
+  it('이름이 같아도 계열이 다르면 두 종목 하위 등급이 한 번에 함께 발급된다', async () => {
+    state.badges = twoFamilies()
+    state.storedActivities = [stored('running', 10), stored('cycling', 11)]
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id).sort()).toEqual(['cyc-common', 'run-common'])
+  })
+
+  it('한 종목의 상위 등급 보유가 다른 종목의 하위 등급을 막지 않는다', async () => {
+    state.badges = twoFamilies()
+    state.ownedBadgeIds = ['run-rare'] // 러닝 계열은 최상위까지 보유
+    state.storedActivities = [stored('running', 10), stored('cycling', 11)]
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id)).toEqual(['cyc-common'])
+  })
+
+  it('한 계열 안에서는 조건을 넘은 가장 높은 등급 하나만 발급한다', async () => {
+    state.badges = twoFamilies()
+    state.storedActivities = [stored('cycling', 10), stored('cycling', 11), stored('cycling', 12)]
+
+    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id)).toEqual(['cyc-rare'])
+    expect(missed.find((m) => m.id === 'cyc-common')?.reason).toBe('성장 티어 — 상위 레어리티 발급됨')
+  })
+
+  it('같은 계열에서 상위 등급을 보유하면 같은 계열의 하위 등급은 다시 후보가 되지 않는다', async () => {
+    state.badges = twoFamilies()
+    state.ownedBadgeIds = ['cyc-rare']
+    state.storedActivities = [stored('cycling', 10), stored('cycling', 11), stored('cycling', 12)]
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned).toHaveLength(0)
+  })
+
+  it('단계마다 이름이 다른 구간 계열은 같은 family_key라 한 번에 가장 높은 단계 하나만 발급한다', async () => {
+    const step = (id: string, name: string, rarity: BadgeRarity, totalCount: number) =>
+      makeBadge({
+        id,
+        name,
+        rarity,
+        family_key: 'running:F6',
+        condition_json: { activity_type: 'running', total_count: totalCount },
+      })
+    state.badges = [step('s1', '첫 구간', 'common', 1), step('s2', '둘째 구간', 'rare', 2), step('s3', '셋째 구간', 'epic', 9)]
+    state.storedActivities = [stored('running', 10), stored('running', 11)]
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id)).toEqual(['s2'])
+  })
+
+  it('family_key가 없는 행은 지금처럼 이름으로 묶는다', async () => {
+    const named = (id: string, rarity: BadgeRarity, totalCount: number) =>
+      makeBadge({ id, name: '이름 묶음', rarity, family_key: null, condition_json: { activity_type: 'running', total_count: totalCount } })
+    state.badges = [named('n1', 'common', 1), named('n2', 'rare', 2)]
+    state.storedActivities = [stored('running', 10), stored('running', 11)]
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id)).toEqual(['n2'])
+  })
+
+  it('family_key가 없는 같은 이름 행과 family_key가 있는 행은 서로 묶이지 않는다', async () => {
+    state.badges = [
+      makeBadge({ id: 'free', name: '겹친 이름', rarity: 'common', family_key: null, condition_json: { activity_type: 'running', total_count: 1 } }),
+      makeBadge({ id: 'keyed', name: '겹친 이름', rarity: 'common', family_key: 'running:Z1', condition_json: { activity_type: 'running', total_count: 1 } }),
+    ]
+    state.storedActivities = [stored('running', 10)]
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id).sort()).toEqual(['free', 'keyed'])
   })
 })

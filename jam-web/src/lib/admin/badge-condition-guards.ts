@@ -98,7 +98,7 @@ export function findRepeatRestConflictError(condition: BadgeCondition | null): s
  *
  * `isLeveledBadge()`가 `rarity == null` 여부로만 이진 판정하기 때문에, rarity가 있는(등급형)
  * 배지에 이 지표 조건과 `repeat_count`를 함께 넣으면 에러 없이 저장은 되지만 실제로는
- * 등급형 경로(`gradedByName`)로 흘러간다 — "이름 그룹 내 최상위 tier 1개만 발급,
+ * 등급형 경로(`gradedByGroup`)로 흘러간다 — "계열(없으면 이름) 그룹 내 최상위 tier 1개만 발급,
  * repeat_count 무시, 재발급 없음"으로 조용히 오처리된다(티켓 20260910_1719).
  */
 export function findUsageMetricRepeatConflictError(condition: BadgeCondition | null): string | null {
