@@ -28,7 +28,7 @@
  * `rankingDataSource.ts`(서버 전용)가 담당하고, 그 결과를 이 파일의 계산 함수에 넘긴다.
  */
 import type { NormalizedActivity } from '@/types/strava'
-import { calcMaxStreak } from '@/lib/badge-engine/activityFilters'
+import { calcMaxStreak, kstDateKeyOf } from '@/lib/badge-engine/activityFilters'
 
 /** 활동 이력만으로 계산되는 1차 지원 지표 — 배지 진행률 표시와 같은 계산을 쓴다(누적 목표 그룹) */
 export const RANKING_ACTIVITY_METRIC_KEYS = [
@@ -63,9 +63,13 @@ export function isRankingUsageMetric(key: string): key is RankingUsageMetricKey 
   return (RANKING_USAGE_METRIC_KEYS as readonly string[]).includes(key)
 }
 
-/** 활동 시작일(현지시간 우선) — YYYY-MM-DD. `computeUserPeriodMetrics`의 dateKey와 동일 규칙 */
+/**
+ * 활동 시작일(KST) — YYYY-MM-DD. `computeUserPeriodMetrics`의 활동일(`countActiveDays`)과 같은 규칙이다.
+ * 해외 활동도 한국 시각의 날로 센다(티켓 20261019_1312 2회). `total_count`의 단위(활동 건수 대 활동일 수)는
+ * 이 변경과 무관하게 그대로 남겨 두었다 — 티켓 20261018_2303에서 랭킹 용도를 확인한 뒤 정한다.
+ */
 function dateKey(a: NormalizedActivity): string {
-  return (a.startDateLocal ?? a.startDate).slice(0, 10)
+  return kstDateKeyOf(a)
 }
 
 /**

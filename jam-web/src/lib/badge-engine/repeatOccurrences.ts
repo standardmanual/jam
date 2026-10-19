@@ -23,7 +23,6 @@ import {
   matchesDayOfWeekFilter,
   dedupeOnePerDay,
   inTimeRange,
-  getMondayKey,
   // 휴식 4종 + repeat_count 조합(티켓 20260906_2056) — 사건 하나를 활동 기반이 아니라
   // 활동 "사이의 간격"(RestInterval)으로 세야 하므로, evaluateRestConditions와 같은 눈으로
   // 구간을 만드는 이 세 조각을 그대로 가져다 쓴다. 둘이 각자 구간을 만들면 「진행률은
@@ -39,6 +38,7 @@ import {
   countDistinctTimeBands,
   // 횟수 조건은 «활동한 날의 수»(KST 날짜)로 센다 — 단발 판정(index.ts)과 같은 함수(티켓 20261018_1815 1회)
   countActiveDays,
+  kstDateKeyOf,
   kstWeekKeyOf,
   kstMonthKeyOf,
   kstMonthOf,
@@ -190,13 +190,9 @@ export function repeatConsumedAxisKeys(condition: BadgeCondition): readonly Scal
 const DAY_MS = 86_400_000
 const WEEK_MS = 7 * DAY_MS
 
-function dateKeyOf(a: NormalizedActivity): string {
-  return (a.startDateLocal ?? a.startDate).slice(0, 10)
-}
-function weekKeyOf(a: NormalizedActivity): string {
-  return getMondayKey(new Date(a.startDateLocal ?? a.startDate))
-}
-// 월 키는 KST 기준이다 — `monthly_count`·`monthly_km`가 단발 판정(index.ts)과 같은 달 경계를 본다.
+// 일·주·월 키는 모두 KST 기준이다 — 단발 판정(index.ts)과 같은 날·주·달 경계를 본다(티켓 20261019_1312 2회).
+const dateKeyOf = kstDateKeyOf
+const weekKeyOf = kstWeekKeyOf
 const monthKeyOf = kstMonthKeyOf
 
 /** activity_type 필터 + 걷기 축1 게이트 — 다른 술어들과 같은 규칙 */

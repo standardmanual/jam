@@ -14,6 +14,7 @@
  */
 import { evaluateConditionDetailed, checkCondition } from '../index'
 import { classifyBadgeProgressKind } from '../badgeProgress'
+import { kstIso } from './kstFixture'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition } from '@/types/database'
 
@@ -63,19 +64,20 @@ describe('distinct_time_bands + streak_days + repeat_count — walking:A3 「리
   const cond: BadgeCondition = { activity_type: 'walking', streak_days: 3, distinct_time_bands: 3, repeat_count: 1 }
 
   it('3일 연속이어도 그 3일 안에서 시간대가 2개뿐이면 회차로 세지 않는다', () => {
+    // 날은 KST 날짜로 센다(티켓 20261019_1312 2회) — 한국 시각으로 사흘 연속 날에 시각을 맞춘다
     const acts = [
-      act({ startDate: '2026-07-01T05:00:00Z', startDateLocal: '2026-07-01T05:00:00' }), // 새벽
-      act({ startDate: '2026-07-02T05:30:00Z', startDateLocal: '2026-07-02T05:30:00' }), // 새벽
-      act({ startDate: '2026-07-03T09:00:00Z', startDateLocal: '2026-07-03T09:00:00' }), // 아침
+      act({ startDate: kstIso('2026-07-01T05:00') }), // 새벽
+      act({ startDate: kstIso('2026-07-02T05:30') }), // 새벽
+      act({ startDate: kstIso('2026-07-03T09:00') }), // 오전
     ]
     expect(checkCondition(cond, acts)).toBe(false)
   })
 
   it('3일 연속 + 그 3일이 전부 다른 시간대면 회차 1로 통과', () => {
     const acts = [
-      act({ startDate: '2026-07-01T05:00:00Z', startDateLocal: '2026-07-01T05:00:00' }), // 새벽
-      act({ startDate: '2026-07-02T09:00:00Z', startDateLocal: '2026-07-02T09:00:00' }), // 아침
-      act({ startDate: '2026-07-03T19:00:00Z', startDateLocal: '2026-07-03T19:00:00' }), // 저녁
+      act({ startDate: kstIso('2026-07-01T05:00') }), // 새벽
+      act({ startDate: kstIso('2026-07-02T09:00') }), // 오전
+      act({ startDate: kstIso('2026-07-03T19:00') }), // 저녁
     ]
     expect(checkCondition(cond, acts)).toBe(true)
     expect(classifyBadgeProgressKind(cond)).toBe('repeat')

@@ -14,7 +14,7 @@
  *
  * ## activityFilters.ts 헬퍼 재사용 (티켓 지시 — 같은 필터 규칙 복제 금지)
  * `calcMaxStreak`·`passesWalkingGate`·`matchesDayOfWeek`·`inTimeRange`·`dedupeOnePerDay`·
- * `getMondayKey`를 그대로 import해 재사용한다 — 요일 판정·시간대 판정·걷기 하루 1회 상한·
+ * `kstWeekKeyOf`를 그대로 import해 재사용한다 — 요일 판정·시간대 판정·걷기 하루 1회 상한·
  * 주(월요일) 키 규칙이 발급 판정과 단 한 글자도 다르면 "3일 남음"이라고 표시해놓고 실제로는
  * 다른 날짜가 되는 사고로 이어지기 때문이다.
  *
@@ -326,12 +326,12 @@ const SEASON_MONTHS: Record<Season, number[]> = {
   spring: [3, 4, 5], summer: [6, 7, 8], fall: [9, 10, 11], winter: [12, 1, 2],
 }
 
-/** index.ts 전체가 이 "naive local" 규약을 쓴다 — startDateLocal은 Z 없는 로컬 벽시계 문자열 */
+/**
+ * «마지막 활동» 고르기(`latestScalarValue`)에만 쓰는 순서 비교용 시각 — startDateLocal은 현지 벽시계 문자열이다.
+ * «날» 기준(연속·활동일·주·월)은 이 값이 아니라 KST 날짜(`kstDateKeyOf` 등)를 쓴다(티켓 20261019_1312 2회).
+ */
 function dateOf(a: NormalizedActivity): Date {
   return new Date(a.startDateLocal ?? a.startDate)
-}
-function dateKey(a: NormalizedActivity): string {
-  return (a.startDateLocal ?? a.startDate).slice(0, 10)
 }
 function clamp01(n: number): number {
   if (Number.isNaN(n) || !Number.isFinite(n)) return 0
@@ -421,7 +421,8 @@ export function computeUserPeriodMetrics(
   const totalDurationHours = activities.reduce((s, a) => s + a.movingTimeSec / 3600, 0)
   const streakDays = calcMaxStreak(activities)
   const weeklyStreakDays = calcMaxWeeklyStreak(activities)
-  const activeDaysCount = new Set(activities.map(dateKey)).size
+  // 활동일도 KST 날짜로 센다 — 발급 판정(index.ts `active_days_count`)과 같은 함수(티켓 20261019_1312 2회)
+  const activeDaysCount = countActiveDays(activities)
 
   const nowIso = now.toISOString()
   const currentWeekMondayKey = kstMondayKeyOfStart(nowIso)

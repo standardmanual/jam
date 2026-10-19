@@ -1385,7 +1385,7 @@ export interface BadgeCondition {
   /** 활동 시작 시간대 조건 { start: "HH:MM", end: "HH:MM" } */
   time_range?: { start: string; end: string }
   /**
-   * 활동 시작 요일 조건 (활동의 startDateLocal 기준).
+   * 활동 시작 요일 조건 (활동 시작 시각을 KST로 바꾼 요일 기준).
    * - 단일 값: time_range와 동일하게 AND 결합되는 필터 (예: day_of_week:'sunday' + total_count:1000)
    * - 배열 + total_count 동시 지정: "요일별 독립 카운터" 모드 — 배열의 각 요일이 각각
    *   독립적으로 total_count를 만족해야 함 (예: 평일 5일 각각 300회, W08 "평일의 성실함")

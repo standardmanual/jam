@@ -257,7 +257,7 @@ export interface NormalizedActivity {
   elevationGainM: number
   jamActivityType: string | null  // cycling | running | hiking | walking | null
   startDate: string               // ISO 8601 UTC
-  startDateLocal?: string         // Strava start_date_local (현지시간, time_range 평가에 사용)
+  startDateLocal?: string         // Strava start_date_local (현지 벽시계 — 시간대·날짜 판정에는 쓰지 않는다. KST는 startDate에서 구한다)
   averageSpeedKmh: number
   startLatLng: [number, number] | null
   endLatLng: [number, number] | null

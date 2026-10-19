@@ -343,6 +343,59 @@ const cases: Array<[string, () => void]> = [
     const cond = { activity_type: 'running' } as MissionCondition
     assert.strictEqual(evaluateEngineMissionCondition(cond, [act('2026-01-05T06:00:00')]), false)
   }],
+
+  // ── 날 기준 KST (티켓 20261019_1312 2회, 티켓 20261018_2303) ─────────────────────────────
+  // 해외(미국 서부, 한국보다 16시간 늦음)에서 한 활동은 현지 벽시계(`startDateLocal`)의 날이 한국 시각의 날과 갈린다.
+  // 주·달·요일 개수는 한국 시각의 날로 센다 — 같은 조건 안에서 시간대·요일 판정(KST)과 같은 날을 본다.
+  ['weekly_streak_min_count — 주는 한국 시각 월~일이다 (한국 월요일 7/6과 일요일 7/12는 현지 주가 갈려도 같은 주)', () => {
+    const cond: MissionCondition = { weekly_streak: 1, weekly_streak_min_count: 2 }
+    const sameKstWeek = [
+      act('2026-07-06T10:00:00', { startDateLocal: '2026-07-05T18:00:00' }), // 현지 일요일 → 현지 주는 6/29 주
+      act('2026-07-12T20:00:00', { startDateLocal: '2026-07-12T04:00:00' }), // 현지도 일요일 → 7/6 주
+    ]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, sameKstWeek), true, '한국 시각으로 같은 주의 두 활동이 세어지지 않았다')
+    const otherKstWeek = [
+      act('2026-07-05T20:00:00', { startDateLocal: '2026-07-05T04:00:00' }), // 한국 일요일 → 6/29 주
+      act('2026-07-06T10:00:00', { startDateLocal: '2026-07-05T18:00:00' }), // 한국 월요일 → 7/6 주 (현지는 같은 일요일)
+    ]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, otherKstWeek), false, '한국 시각으로 다른 주인 활동이 한 주로 세어졌다')
+  }],
+  ['monthly_streak_min_count·distinct_months — 달은 한국 시각 기준이다 (한국 8/1은 현지 7/31이어도 8월)', () => {
+    const monthly: MissionCondition = { monthly_streak: 1, monthly_streak_min_count: 2 }
+    const acts = [
+      act('2026-08-01T10:00:00', { startDateLocal: '2026-07-31T18:00:00', distanceKm: 10 }),
+      act('2026-08-20T10:00:00', { startDateLocal: '2026-08-19T18:00:00', distanceKm: 10 }),
+    ]
+    assert.strictEqual(evaluateEngineMissionCondition(monthly, acts), true, '한국 시각 8월의 두 활동이 한 달로 세어지지 않았다')
+    const months: MissionCondition = { distinct_months_required: 1, distinct_months_metric: 'distance_km', distinct_months_threshold: 20 }
+    assert.strictEqual(evaluateEngineMissionCondition(months, acts), true, '한국 시각 8월 합계 20km가 문턱을 넘지 못했다')
+  }],
+  ['distinct_weekday_count — 요일은 한국 시각 기준이다 (한국 월요일 두 번은 현지 일·월이어도 요일 1개)', () => {
+    const cond: MissionCondition = { distinct_weekday_count: 2 }
+    const sameKstDay = [
+      act('2026-07-06T10:00:00', { startDateLocal: '2026-07-05T18:00:00' }), // 현지 일요일
+      act('2026-07-06T20:00:00', { startDateLocal: '2026-07-06T04:00:00' }), // 현지 월요일
+    ]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, sameKstDay), false, '한국 시각으로 같은 요일이 둘로 세어졌다')
+    const nextKstDay = [...sameKstDay, act('2026-07-07T10:00:00', { startDateLocal: '2026-07-06T18:00:00' })]
+    assert.strictEqual(evaluateEngineMissionCondition(cond, nextKstDay), true, '한국 시각으로 다른 요일 둘이 세어지지 않았다')
+  }],
+  ['한국 활동은 startDateLocal이 한국 시각 그대로여도, 없어도 주·달·요일 판정이 같다 (회귀)', () => {
+    const korean = [act('2026-07-06T06:00:00'), act('2026-07-14T21:30:00'), act('2026-07-22T00:10:00'), act('2026-08-03T12:00:00')]
+    const withoutLocal = korean.map((a) => ({ ...a, startDateLocal: undefined }))
+    const conds: Array<[string, MissionCondition, boolean]> = [
+      ['weekly 3주 연속', { weekly_streak: 3, weekly_streak_min_count: 1 }, true],
+      ['weekly 4주 연속', { weekly_streak: 4, weekly_streak_min_count: 1 }, false],
+      ['monthly 2달 연속', { monthly_streak: 2, monthly_streak_min_count: 1 }, true],
+      ['monthly 7월 3회', { monthly_streak: 1, monthly_streak_min_count: 3 }, true],
+      ['요일 3개', { distinct_weekday_count: 3 }, true],
+      ['요일 4개', { distinct_weekday_count: 4 }, false],
+    ]
+    for (const [name, cond, expected] of conds) {
+      assert.strictEqual(evaluateEngineMissionCondition(cond, korean), expected, `${name}: startDateLocal 있음`)
+      assert.strictEqual(evaluateEngineMissionCondition(cond, withoutLocal), expected, `${name}: startDateLocal 없음`)
+    }
+  }],
 ]
 
 let passed = 0

@@ -26,7 +26,8 @@
 import type { BadgeCondition, MissionCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 import { evaluateConditionDetailed } from '@/lib/badge-engine'
-import { passesWalkingGate, inTimeRange, matchesDayOfWeekFilter, getMondayKey } from '@/lib/badge-engine/activityFilters'
+import { passesWalkingGate, inTimeRange, matchesDayOfWeekFilter } from '@/lib/badge-engine/activityFilters'
+import { kstDayOfWeekOfStart, kstMondayKeyOfStart, kstYearMonthKeyOfStart } from '@/lib/badge-engine/timeBands'
 // 미션 전용 어휘 목록은 `condition-keys.ts`(서버 의존 없음)가 정본이다 — 이 파일이 그쪽을
 // 참조하는 방향이어야 한다. 반대로 두면(이 파일이 정본) `condition-keys.ts`를 import하는
 // 클라이언트 컴포넌트가 이 파일의 `@/lib/badge-engine`(→ `next/headers`) 전이 의존까지
@@ -45,19 +46,18 @@ function typeFiltered(condition: MissionCondition, activities: NormalizedActivit
     : activities
 }
 
-function activityDate(a: NormalizedActivity): Date {
-  return new Date(a.startDateLocal ?? a.startDate)
-}
+// 주·달·요일은 모두 KST 날짜 기준이다 — 시간대·요일 판정(`inTimeRange`·`matchesDayOfWeekFilter`)과 한 조건 안에서
+// 같은 날을 본다. 해외 활동도 한국 시각의 날로 센다(티켓 20261019_1312 2회, 티켓 20261018_2303).
 
 /** 월 단위 정렬 가능한 정수 키 — 연도*12+월(0-11), 연속 여부를 뺄셈 1로 판정 가능 */
 function monthOrdinal(a: NormalizedActivity): number {
-  const d = activityDate(a)
-  return d.getFullYear() * 12 + d.getMonth()
+  const [year, month] = kstYearMonthKeyOfStart(a.startDate).split('-').map(Number)
+  return year * 12 + (month - 1)
 }
 
 /** 주 단위(월요일 기준) 정렬 가능한 정수 키 — 7일 간격이면 연속 */
 function weekOrdinal(a: NormalizedActivity): number {
-  const key = getMondayKey(activityDate(a))
+  const key = kstMondayKeyOfStart(a.startDate)
   return Math.round(Date.parse(`${key}T00:00:00Z`) / WEEK_MS)
 }
 
@@ -113,7 +113,7 @@ function maxPeriodStreak(
 /** 서로 다른 요일(월~일)의 수 — 특정 요일을 지정하지 않고 「며칠에 나눠 했는지」만 센다 */
 function countDistinctWeekdays(activities: NormalizedActivity[]): number {
   const seen = new Set<number>()
-  for (const a of activities) seen.add(activityDate(a).getDay())
+  for (const a of activities) seen.add(kstDayOfWeekOfStart(a.startDate))
   return seen.size
 }
 

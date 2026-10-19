@@ -112,10 +112,11 @@ describe('passesWalkingGate — 축1 게이트', () => {
 describe('active_days_count', () => {
   it('같은 날 여러 번 걸어도 고유일수는 1로 카운트', () => {
     const cond: BadgeCondition = { activity_type: 'walking', active_days_count: 1 }
+    // 날은 KST 날짜로 센다(티켓 20261019_1312 2회) — 같은 KST 날(7/20)의 세 시각
     const acts = [
-      makeGatedWalk({ startDate: '2026-07-20T05:00:00Z', startDateLocal: '2026-07-20T05:00:00' }),
-      makeGatedWalk({ startDate: '2026-07-20T18:00:00Z', startDateLocal: '2026-07-20T18:00:00' }),
-      makeGatedWalk({ startDate: '2026-07-20T20:00:00Z', startDateLocal: '2026-07-20T20:00:00' }),
+      makeGatedWalk({ startDate: kstIso('2026-07-20T05:00') }),
+      makeGatedWalk({ startDate: kstIso('2026-07-20T18:00') }),
+      makeGatedWalk({ startDate: kstIso('2026-07-20T20:00') }),
     ]
     // 하루에 3번 걸었어도 active_days_count=2는 미달이어야 함
     const failCond: BadgeCondition = { activity_type: 'walking', active_days_count: 2 }

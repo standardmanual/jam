@@ -139,19 +139,13 @@ export function inTimeRange(activity: NormalizedActivity, range: { start: string
   return isMinuteInTimeRange(kstMinuteOfDayOfStart(activity.startDate), range)
 }
 
-/** 주어진 날짜가 속한 주의 월요일 날짜(YYYY-MM-DD)를 키로 반환. */
-export function getMondayKey(date: Date): string {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  const day = d.getDay()
-  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
-  return d.toISOString().slice(0, 10)
-}
-
-/** 활동 목록에서 가장 긴 "연속 일수"를 계산. 미션 엔진(streak_days 타입)에서도 재사용. */
+/**
+ * 활동 목록에서 가장 긴 "연속 일수"를 계산. 미션 엔진(streak_days 타입)에서도 재사용.
+ * 날은 KST 날짜다(`kstDateKeyOf`) — 해외 활동도 한국 시각의 날로 센다(티켓 20261019_1312 2회).
+ */
 export function calcMaxStreak(activities: NormalizedActivity[]): number {
   if (activities.length === 0) return 0
-  const dates = activities.map((a) => (a.startDateLocal ?? a.startDate).slice(0, 10)).sort()
+  const dates = activities.map(kstDateKeyOf).sort()
   const uniqueDates = [...new Set(dates)]
   let maxStreak = 1
   let currentStreak = 1
@@ -185,7 +179,7 @@ export function matchesDayOfWeekFilter(a: NormalizedActivity, days: DayOfWeek | 
  */
 export function calcMaxWeeklyStreak(activities: NormalizedActivity[]): number {
   if (activities.length === 0) return 0
-  const weekKeys = [...new Set(activities.map((a) => getMondayKey(new Date(a.startDateLocal ?? a.startDate))))].sort()
+  const weekKeys = [...new Set(activities.map(kstWeekKeyOf))].sort()
   let maxStreak = 1
   let currentStreak = 1
   for (let i = 1; i < weekKeys.length; i++) {
@@ -390,10 +384,6 @@ function dayMs(dateKey: string): number {
   return Date.parse(`${dateKey}T00:00:00Z`)
 }
 
-function localDateKey(a: NormalizedActivity): string {
-  return (a.startDateLocal ?? a.startDate).slice(0, 10)
-}
-
 /**
  * 휴식 판정용 활동 풀 — 앵커 하한 → 종목 필터 + 걷기 축1 게이트.
  * `evaluateConditionDetailed`의 `filtered`를 재사용하지 않고 **원본 배열에서 다시 만든다** —
@@ -410,10 +400,10 @@ export function restPool(
     const anchorMs = Date.parse(anchorDate)
     // 파싱 불가한 앵커는 «필터 없음»으로 폴백한다 — getSignupAnchorDate의 폴백과 같은 태도.
     if (Number.isFinite(anchorMs)) {
-      // ⚠️ 공백 계산의 날짜 키가 `startDateLocal`(localDateKey)이므로 앵커 컷도 같은 값을 쓴다.
-      //    `startDate`(UTC)로 자르면 앵커 경계 ±9시간에 걸친 활동 1건이 «창 안에 있는데
-      //    공백 계산에서는 빠지는» 식으로 기준이 갈린다(게이트 리뷰 지적).
-      pool = pool.filter((a) => Date.parse(a.startDateLocal ?? a.startDate) >= anchorMs)
+      // 공백 계산의 날짜 키(`kstDateKeyOf`)도 활동 시작 시각(`startDate`)에서 나오므로 앵커 컷도 같은 값을 쓴다.
+      // 날짜 키와 컷이 서로 다른 값(예: 현지 벽시계)을 보면 앵커 경계에 걸친 활동 1건이 «창 안에 있는데
+      // 공백 계산에서는 빠지는» 식으로 기준이 갈린다(게이트 리뷰 지적, 티켓 20261019_1312 2회에 KST로 통일).
+      pool = pool.filter((a) => Date.parse(a.startDate) >= anchorMs)
     }
   }
   if (condition.activity_type) {
@@ -436,7 +426,7 @@ export function restPool(
 export function buildRestIntervals(pool: NormalizedActivity[]): RestInterval[] {
   const byDate = new Map<string, NormalizedActivity[]>()
   for (const a of pool) {
-    const key = localDateKey(a)
+    const key = kstDateKeyOf(a)
     const list = byDate.get(key)
     if (list) list.push(a)
     else byDate.set(key, [a])
@@ -716,12 +706,7 @@ export function countPersonalRecordBreaks(
 // 2배」)에 따라 두 필드 모두 **거리(distanceKm)** 를 지표로 고정한다. `personal_record_break`와
 // 달리 지표를 고르는 짝 필드가 레지스트리에 없다 — 카탈로그가 거리 외 지표를 쓸 계획이 없다는 뜻이다.
 
-function monthKeyOf(a: NormalizedActivity): string {
-  const d = new Date(a.startDateLocal ?? a.startDate)
-  return `${d.getFullYear()}-${d.getMonth() + 1}`
-}
-
-/** `monthKeyOf`가 만드는 「YYYY-M」 키의 바로 전월 키 */
+/** `kstMonthKeyOf`가 만드는 「YYYY-M」 키의 바로 전월 키 */
 function prevMonthKeyOf(key: string): string {
   const [y, m] = key.split('-').map(Number)
   return m === 1 ? `${y - 1}-12` : `${y}-${m - 1}`
@@ -739,7 +724,7 @@ function prevMonthKeyOf(key: string): string {
 export function bestMonthOverMonthRatio(activities: NormalizedActivity[]): number {
   const monthKm = new Map<string, number>()
   for (const a of activities) {
-    const key = monthKeyOf(a)
+    const key = kstMonthKeyOf(a)
     monthKm.set(key, (monthKm.get(key) ?? 0) + a.distanceKm)
   }
   let best = 0

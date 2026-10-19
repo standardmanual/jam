@@ -42,7 +42,6 @@ import {
   matchesDayOfWeek,
   dedupeOnePerDay,
   inTimeRange,
-  getMondayKey,
   calcMaxStreak,
   // weekly_streak(연속 주) 단독 평가 — 티켓 20260906_0110 ②. 회차 계산(repeatOccurrences.ts)과
   // 같은 함수를 본다.
@@ -100,7 +99,6 @@ export {
   matchesDayOfWeek,
   dedupeOnePerDay,
   inTimeRange,
-  getMondayKey,
   calcMaxStreak,
   WALKING_GATE_MIN_DISTANCE_KM,
   WALKING_GATE_MIN_DURATION_MIN,
@@ -521,7 +519,7 @@ export function evaluateConditionDetailed(
 
   // ── active_days_count — 걷기(축1 게이트 통과) 누적 고유 활동일수. COUNT(DISTINCT date), 연속 아님.
   if (condition.active_days_count !== undefined) {
-    const uniqueDays = new Set(filtered.map((a) => (a.startDateLocal ?? a.startDate).slice(0, 10))).size
+    const uniqueDays = countActiveDays(filtered)
     if (uniqueDays < condition.active_days_count) {
       return { pass: false, reason: '누적 활동일수 부족', actual: `${uniqueDays}일`, required: `${condition.active_days_count}일` }
     }
@@ -1597,8 +1595,7 @@ export async function evaluateBadges(
 }
 
 // ── 헬퍼 ─────────────────────────────────────────────────────────────────
-// getMondayKey/calcMaxStreak는 activityFilters.ts로 이전(티켓 20260904_0631) — 상단에서
-// import + 재export 처리했다.
+// calcMaxStreak는 activityFilters.ts로 이전(티켓 20260904_0631) — 상단에서 import + 재export 처리했다.
 
 /**
  * 발급의 «계기 활동» 선정 — 배지 상세의 「계기 활동일」·피드 `event_at`·조건 스냅샷의 근거다.

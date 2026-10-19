@@ -108,3 +108,26 @@ describe('computeActivityMetricValue — computeUserPeriodMetrics(배지 진행�
     expect(computeActivityMetricValue('streak_days', activities)).toBe(periodMetrics.streakDays)
   })
 })
+
+describe('computeActivityMetricValue — 날 기준은 KST (티켓 20261019_1312 2회)', () => {
+  // 한국 시각 7/6 10:00(= 7/6 01:00Z)과 20:00(= 7/6 11:00Z). 미국 서부에서 한 활동이면 현지 벽시계는 7/5 18:00·7/6 04:00이다
+  const abroad = [
+    makeActivity({ stravaId: 1, startDate: '2026-07-06T01:00:00Z', startDateLocal: '2026-07-05T18:00:00' }),
+    makeActivity({ stravaId: 2, startDate: '2026-07-06T11:00:00Z', startDateLocal: '2026-07-06T04:00:00' }),
+  ]
+
+  it('active_days_count — 현지 날짜가 갈려도 한국 시각으로 같은 날이면 1일이다', () => {
+    expect(computeActivityMetricValue('active_days_count', abroad)).toBe(1)
+  })
+  it('streak_days — 현지 날짜가 갈려도 한국 시각으로 같은 날이면 연속 1일이다', () => {
+    expect(computeActivityMetricValue('streak_days', abroad)).toBe(1)
+  })
+  it('해외 활동에서도 배지 진행률 표시(computeUserPeriodMetrics)와 활동일·연속 값이 같다', () => {
+    const periodMetrics = computeUserPeriodMetrics('running', abroad, new Date('2026-09-01T00:00:00Z'))
+    expect(computeActivityMetricValue('active_days_count', abroad)).toBe(periodMetrics.activeDaysCount)
+    expect(computeActivityMetricValue('streak_days', abroad)).toBe(periodMetrics.streakDays)
+  })
+  it('total_count는 이 변경과 무관하게 활동 건수를 센다 (단위는 티켓 20261018_2303에서 따로 정한다)', () => {
+    expect(computeActivityMetricValue('total_count', abroad)).toBe(2)
+  })
+})
