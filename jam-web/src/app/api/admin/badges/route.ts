@@ -4,12 +4,14 @@ import { getAdminUser, requireAdminRead } from '@/lib/admin/auth'
 import {
   findBadgeConditionSaveError,
   findCheckinBadgeNamesNotFoundError,
+  findHiddenBadgeReferenceError,
   findRecipeFirstSuccessNotFoundError,
   findRarityLevelError,
 } from '@/lib/admin/badge-validation'
 import { isValidFamilyKey } from '@/lib/admin/badge-families'
 import { buildBadgeInsertPayload, normalizeFamilyKey } from '@/lib/admin/badge-insert-payload'
-import { findBranchKeyError, findHiddenBadgeError } from '@/lib/admin/badge-hidden-guard'
+import { findBranchKeyError, findHiddenBadgeError, normalizeIsHidden } from '@/lib/admin/badge-hidden-guard'
+import { checkHiddenBadgeUsage } from '@/lib/missions/reward-badges'
 import { findUnlockRequiredError, lockedMinimumsFrom, parseUnlockRequired } from '@/lib/admin/badge-lock-guard'
 import { getJamPolicy } from '@/lib/jam/policy'
 import type { BadgeRow } from '@/types/database'
@@ -101,6 +103,18 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServiceClient()
+
+  // 숨김 배지 사용처 검사 (티켓 20261019_1313 2회, 티켓 20261019_0012) — 숨김 배지는 받기 전에 이름이 보이면 안 되므로
+  // ① 선행 배지·교차 게이트가 숨김 배지를 가리키면 저장하지 않고, ② 숨김으로 만드는 배지의 이름·계열이 이미
+  // 다른 배지의 선행 배지·교차 게이트로 쓰이고 있어도 저장하지 않는다.
+  const hiddenReferenceError = await findHiddenBadgeReferenceError({ name, family_key: familyKey }, condition_json ?? null, supabase)
+  if (hiddenReferenceError) {
+    return NextResponse.json({ error: hiddenReferenceError.error }, { status: hiddenReferenceError.status })
+  }
+  if (normalizeIsHidden(body.is_hidden)) {
+    const usage = await checkHiddenBadgeUsage(supabase, { name, familyKey })
+    if (!usage.ok) return NextResponse.json({ error: usage.error }, { status: usage.status })
+  }
 
   // 아이템 배지의 «여는 데 필요한 양»은 등급 최소값(jam_policy.locked_min_*)보다 적으면 저장하지 않는다.
   // 비우면 통과(발급 때 등급 최소값을 쓴다) — 값이 있을 때만 정책을 읽는다(티켓 20261018_0051 2회).

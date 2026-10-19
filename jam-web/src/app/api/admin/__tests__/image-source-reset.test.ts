@@ -61,6 +61,7 @@ vi.mock('@/lib/admin/badge-validation', () => ({
   findCheckinBadgeNamesNotFoundError: async () => null,
   findRecipeFirstSuccessNotFoundError: async () => null,
   findRarityLevelError: () => null,
+  findHiddenBadgeReferenceError: async () => null,
 }))
 
 const OLD = 'https://cdn.test.jam.app/old.png'

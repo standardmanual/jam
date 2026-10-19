@@ -4,6 +4,7 @@ import { getAdminUser } from '@/lib/admin/auth'
 import {
   findBadgeConditionSaveError,
   findCheckinBadgeNamesNotFoundError,
+  findHiddenBadgeReferenceError,
   findRecipeFirstSuccessNotFoundError,
   findRarityLevelError,
 } from '@/lib/admin/badge-validation'
@@ -14,6 +15,7 @@ import {
   normalizeLockFields,
   parseUnlockRequired,
 } from '@/lib/admin/badge-lock-guard'
+import { checkHiddenBadgeUsage } from '@/lib/missions/reward-badges'
 import { getJamPolicy } from '@/lib/jam/policy'
 import { invalidateUnclaimedDrops } from '@/lib/admin/poi-drops'
 import { BADGE_REFERENCE_SOURCES, collectBadgeReferences } from '@/lib/admin/badge-references'
@@ -81,6 +83,23 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   )
   if (conditionError) {
     return NextResponse.json({ error: conditionError }, { status: 400 })
+  }
+
+  // 숨김 배지 사용처 검사 (티켓 20261019_1313 2회, 티켓 20261019_0012) — 숨김 배지는 받기 전에 이름이 보이면 안 되므로
+  // ① 선행 배지·교차 게이트가 숨김 배지를 가리키면 저장하지 않고, ② 숨김이 아니던 배지를 숨김으로 바꿀 때 그 배지가
+  // 이미 미션 보상·게이트 배지·다른 배지의 선행 배지·교차 게이트로 쓰이고 있으면 사용처를 알리며 저장하지 않는다.
+  // 이미 숨김인 배지의 다른 칸 수정은 ②를 보지 않는다(막으면 숨김 배지를 아예 고칠 수 없다).
+  const hiddenReferenceError = await findHiddenBadgeReferenceError(
+    { name: body.name !== undefined ? body.name : existing.name, family_key: existing.family_key },
+    conditionJson ?? null,
+    supabase
+  )
+  if (hiddenReferenceError) {
+    return NextResponse.json({ error: hiddenReferenceError.error }, { status: hiddenReferenceError.status })
+  }
+  if (isHidden && existing.is_hidden !== true) {
+    const usage = await checkHiddenBadgeUsage(supabase, { id, name: existing.name, familyKey: existing.family_key })
+    if (!usage.ok) return NextResponse.json({ error: usage.error }, { status: usage.status })
   }
 
   // 잠금 칸은 부분 body 병합 규칙을 따른다 — 없는(undefined) 값은 기존 값을 유지한다. 아이템 배지가 아니면 항상 «잠그지 않음·값 없음»이다.

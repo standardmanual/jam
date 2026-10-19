@@ -17,6 +17,7 @@ import {
   findBadgeConditionSaveError,
   findCheckinBadgeNamesNotFoundError,
   findRecipeFirstSuccessNotFoundError,
+  findHiddenBadgeReferenceError,
 } from '../badge-validation'
 import { CONDITION_META_KEYS, USAGE_METRIC_CONDITION_KEYS } from '@/lib/badge-engine/conditionRegistry'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -435,5 +436,115 @@ describe('findRecipeFirstSuccessNotFoundError', () => {
       }),
     } as unknown as SupabaseClient
     expect(await findRecipeFirstSuccessNotFoundError({ recipe_first_success: { recipe_id: EXISTING_ID } }, failing)).toBeNull()
+  })
+})
+
+// 숨김 배지는 받기 전에 이름이 보이면 안 되므로 선행 배지·교차 게이트로 쓸 수 없다 (티켓 20261019_1313 2회, 티켓 20261019_0012)
+describe('findHiddenBadgeReferenceError — 선행 배지·교차 게이트가 숨김·없는 배지를 가리키는 저장', () => {
+  type Row = Record<string, unknown>
+  type Call = { table: string; calls: { method: string; args: unknown[] }[] }
+
+  /** 선행 배지 질의(`in('name')`)와 교차 게이트 계열 질의(`in('family_key')`)에 각각 답하는 기록형 가짜 */
+  function makeDb(rows: { byName?: Row[]; byFamily?: Row[]; error?: boolean }) {
+    const reads: Call[] = []
+    const builder = (table: string, calls: Call['calls']): unknown =>
+      new Proxy(
+        {},
+        {
+          get(_target, method) {
+            if (typeof method !== 'string') return undefined
+            if (method === 'then') {
+              return (resolve: (value: unknown) => unknown) => {
+                reads.push({ table, calls })
+                if (rows.error) return resolve({ data: null, error: { message: 'db-internal-host timeout' } })
+                const byName = calls.some((c) => c.method === 'in' && c.args[0] === 'name')
+                return resolve({ data: (byName ? rows.byName : rows.byFamily) ?? [], error: null })
+              }
+            }
+            return (...args: unknown[]) => builder(table, [...calls, { method, args }])
+          },
+        }
+      )
+    return { client: { from: (table: string) => builder(table, []) } as unknown as SupabaseClient, reads }
+  }
+
+  const SELF = { name: '이 배지', family_key: 'running:oath' }
+
+  it('조건이 없거나 선행 배지·교차 게이트가 없으면 DB를 읽지 않고 통과한다', async () => {
+    const { client, reads } = makeDb({})
+    expect(await findHiddenBadgeReferenceError(SELF, null, client)).toBeNull()
+    expect(await findHiddenBadgeReferenceError(SELF, { distance_km: 10 }, client)).toBeNull()
+    expect(reads).toEqual([])
+  })
+
+  it('선행 배지 이름이 모두 있고 숨김이 아니면 통과한다. 삭제되지 않은 배지만 읽는다', async () => {
+    const { client, reads } = makeDb({ byName: [{ name: 'A', is_hidden: false }, { name: 'B', is_hidden: false }] })
+    expect(await findHiddenBadgeReferenceError(SELF, { prerequisite_badge_names: ['A', 'B'] }, client)).toBeNull()
+    expect(reads).toHaveLength(1)
+    expect(reads[0].calls).toContainEqual({ method: 'is', args: ['deleted_at', null] })
+  })
+
+  it('선행 배지 이름의 배지가 숨김이면 400이고, 이름과 해결책을 알린다', async () => {
+    const { client } = makeDb({ byName: [{ name: 'A', is_hidden: false }, { name: '비밀 배지', is_hidden: true }] })
+    const result = await findHiddenBadgeReferenceError(SELF, { prerequisite_badge_names: ['A', '비밀 배지'] }, client)
+    expect(result?.status).toBe(400)
+    expect(result?.error).toContain('선행 배지로 쓸 수 없는 숨김 배지가 있어요(비밀 배지)')
+    expect(result?.error).toContain('숨김이 아닌 배지로 바꿔 주세요')
+  })
+
+  it('선행 배지 이름이 없거나 삭제된 배지를 가리키면 400이다', async () => {
+    const { client } = makeDb({ byName: [{ name: 'A', is_hidden: false }] })
+    const result = await findHiddenBadgeReferenceError(SELF, { prerequisite_badge_names: ['A', '없는 배지'] }, client)
+    expect(result?.status).toBe(400)
+    expect(result?.error).toContain('없는 배지')
+    expect(result?.error).toContain('없거나 삭제된 배지')
+  })
+
+  it.each([
+    ['cross_in_axis', '축 내 교차'],
+    ['cross_between_axis', '축 간 교차'],
+    ['gate_mission_badge', '미션 보상 배지'],
+  ] as const)('%s가 가리키는 계열에 숨김 배지가 있으면 400이다', async (key, label) => {
+    const { client } = makeDb({ byFamily: [{ name: '비밀 배지', family_key: 'walking:secret', is_hidden: true }] })
+    const result = await findHiddenBadgeReferenceError(SELF, { [key]: { family_keys: ['walking:secret'] } } as BadgeCondition, client)
+    expect(result?.status).toBe(400)
+    expect(result?.error).toContain(`${label} 게이트가 가리키는 계열에 숨김 배지가 있어요(비밀 배지)`)
+  })
+
+  it('숨김 배지가 없는 계열을 가리키면 통과한다. 읽은 행에 숨김이 아닌 것이 섞여 있어도 숨김만 본다', async () => {
+    const { client } = makeDb({ byFamily: [{ name: '일반 배지', family_key: 'walking:oath', is_hidden: false }] })
+    expect(
+      await findHiddenBadgeReferenceError(SELF, { cross_in_axis: { family_keys: ['walking:oath'] } } as BadgeCondition, client)
+    ).toBeNull()
+  })
+
+  it('자기 계열은 대상에서 빠지므로 읽지 않는다(숨김 배지가 자기 계열을 함께 적어도 막지 않는다)', async () => {
+    const { client, reads } = makeDb({ byFamily: [{ name: '이 배지', family_key: 'running:oath', is_hidden: true }] })
+    const result = await findHiddenBadgeReferenceError(
+      SELF,
+      { cross_in_axis: { family_keys: ['running:oath'] } } as BadgeCondition,
+      client
+    )
+    expect(result).toBeNull()
+    expect(reads).toEqual([])
+  })
+
+  it('선행 배지와 교차 게이트를 함께 걸면 각각 한 번씩 읽는다', async () => {
+    const { client, reads } = makeDb({ byName: [{ name: 'A', is_hidden: false }], byFamily: [] })
+    const cond = { prerequisite_badge_names: ['A'], cross_in_axis: { family_keys: ['walking:oath'] }, cross_between_axis: { family_keys: ['walking:x'] } }
+    expect(await findHiddenBadgeReferenceError(SELF, cond as BadgeCondition, client)).toBeNull()
+    expect(reads).toHaveLength(2)
+  })
+
+  it('읽기에 실패하면 통과시키지 않고 500이다. DB 오류 원문은 싣지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { client } = makeDb({ error: true })
+    const byName = await findHiddenBadgeReferenceError(SELF, { prerequisite_badge_names: ['A'] }, client)
+    const byFamily = await findHiddenBadgeReferenceError(SELF, { cross_in_axis: { family_keys: ['walking:oath'] } } as BadgeCondition, client)
+    for (const result of [byName, byFamily]) {
+      expect(result?.status).toBe(500)
+      expect(result?.error).not.toContain('db-internal-host')
+    }
+    errorSpy.mockRestore()
   })
 })
