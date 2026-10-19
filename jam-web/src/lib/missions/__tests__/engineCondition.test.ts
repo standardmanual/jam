@@ -502,6 +502,38 @@ const cases: Array<[string, () => void]> = [
     // 위임했다면 evaluateConditionDetailed가 «외부 판정 키»로 막았을 것이다
     assert.strictEqual(evaluateEngineMissionCondition({ mission_complete_count: 2, drop_item_count: 1 }, [], { mission_complete_count: 2, drop_item_count: 1 }), true)
   }],
+
+  // ── 기간 동안 모은 잼 (티켓 20261019_1445 3-A회) — 미션 전용 DB 키, 배지 레지스트리에는 없다 ──
+  ['jam_period_earned: 모은 잼이 조건 이상이면 통과하고 미만이면 통과하지 않는다 (경계 포함)', () => {
+    const cond: MissionCondition = { jam_period_earned: 100 }
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { jam_period_earned: 99 }), false)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { jam_period_earned: 100 }), true)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { jam_period_earned: 250 }), true)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { jam_period_earned: 0 }), false)
+  }],
+  ['jam_period_earned: 값을 주지 않으면 통과하지 않는다 (fail-closed — 참가 즉시 완료 방지)', () => {
+    const cond: MissionCondition = { jam_period_earned: 1 }
+    assert.strictEqual(evaluateEngineMissionCondition(cond, []), false)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], {}), false)
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { jam_period_earned: Number.NaN }), false)
+  }],
+  ['jam_period_earned: 조건 값이 숫자가 아니면(문자열·null) 읽은 값이 커도 통과하지 않는다', () => {
+    assert.strictEqual(evaluateEngineMissionCondition({ jam_period_earned: '100' } as unknown as MissionCondition, [], { jam_period_earned: 999 }), false)
+    assert.strictEqual(evaluateEngineMissionCondition({ jam_period_earned: null } as unknown as MissionCondition, [], { jam_period_earned: 999 }), false)
+  }],
+  ['jam_period_earned: 활동 기록 조건·다른 DB 키와 AND로 묶인다', () => {
+    const cond: MissionCondition = { distance_km: 5, combine_success_count: 2, jam_period_earned: 100 }
+    const acts = [act('2026-07-02T08:00:00')] // 10km
+    assert.strictEqual(evaluateEngineMissionCondition(cond, acts, { combine_success_count: 2, jam_period_earned: 99 }), false, '잼이 모자란데 통과했다')
+    assert.strictEqual(evaluateEngineMissionCondition(cond, acts, { combine_success_count: 1, jam_period_earned: 100 }), false, '믹스가 모자란데 통과했다')
+    assert.strictEqual(evaluateEngineMissionCondition(cond, [], { combine_success_count: 2, jam_period_earned: 100 }), false, '활동 조건이 모자란데 통과했다')
+    assert.strictEqual(evaluateEngineMissionCondition(cond, acts, { combine_success_count: 2, jam_period_earned: 100 }), true)
+  }],
+  ['jam_period_earned만 든 조건은 활동이 없어도 값만으로 판정한다 (배지엔진에 위임하지 않는다)', () => {
+    assert.strictEqual(evaluateEngineMissionCondition({ jam_period_earned: 30 }, [], { jam_period_earned: 30 }), true)
+    assert.strictEqual(evaluateEngineMissionCondition({ activity_type: 'running', jam_period_earned: 30 }, [], { jam_period_earned: 30 }), true)
+    assert.strictEqual(evaluateEngineMissionCondition({ activity_type: 'running', jam_period_earned: 30 }, [], { jam_period_earned: 29 }), false)
+  }],
 ]
 
 let passed = 0

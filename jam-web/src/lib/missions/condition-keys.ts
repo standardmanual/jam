@@ -88,6 +88,10 @@ const MISSION_ONLY_CONDITION_KEY_LIST = [
   'distinct_months_required',
   'distinct_months_metric',
   'distinct_months_threshold',
+  // 티켓 20261019_1445 3-A — 참가한 뒤 미션 기간 안에 모은 잼(정산된 활동의 시작 시각이 기간 안인 활동의 잼). 배지 조건 레지스트리에는 없는
+  // 미션 전용 키라 여기에 둔다. DB를 읽어 세는 키라서 `MISSION_ONLY_DB_CONDITION_KEY_LIST`에도 있다(아래).
+  // 판정 키 집합(`ENGINE_CONDITION_JUDGED_KEYS`)에 이 목록이 통째로 들어가므로, 판정 구현(`dbMetrics.ts`·`engineCondition.ts`)과 같은 변경에서 더했다.
+  'jam_period_earned',
 ] as const satisfies readonly (keyof MissionCondition)[]
 
 export type MissionOnlyConditionKey = (typeof MISSION_ONLY_CONDITION_KEY_LIST)[number]
@@ -176,18 +180,43 @@ export const ENGINE_DELEGATED_DB_CONDITION_KEY_LIST = [
 
 export type EngineDelegatedDbConditionKey = (typeof ENGINE_DELEGATED_DB_CONDITION_KEY_LIST)[number]
 
-const ENGINE_DELEGATED_DB_CONDITION_KEY_SET: ReadonlySet<string> = new Set<string>(ENGINE_DELEGATED_DB_CONDITION_KEY_LIST)
+/**
+ * DB를 읽어 세는 **미션 전용** 키 (티켓 20261019_1445 3-A) — `engine_condition` 전용.
+ *
+ * `ENGINE_DELEGATED_DB_CONDITION_KEY_LIST`에는 넣지 못한다. 그 목록은 아래 컴파일 장치(`AssertDbKeysAreInRegistry`)로 «전부 배지 조건
+ * 레지스트리의 키»임을 지키는데, 이 키들은 레지스트리에 없는 미션 전용 어휘(`MISSION_ONLY_CONDITION_KEY_LIST`)이기 때문이다. 그래서 DB 읽기 대상은
+ * 두 목록의 합집합(`MISSION_DB_CONDITION_KEY_LIST`)으로 따로 둔다. 장치는 배지 레지스트리 쪽 목록에만 걸리므로 약해지지 않는다.
+ * 허용 키와 판정 키 집합에는 `MISSION_ONLY_CONDITION_KEY_LIST`를 통해 이미 들어 있다 — 이 목록은 «읽는 방식»만 가린다.
+ *
+ * `satisfies readonly MissionOnlyConditionKey[]`: 여기 키는 반드시 미션 전용 목록에도 있어야 한다(없으면 컴파일 오류).
+ */
+export const MISSION_ONLY_DB_CONDITION_KEY_LIST = [
+  // 참가한 뒤 기간 안에 모은 잼 — 정산된 활동의 시작 시각이 기간 안인 활동의 `activity_settlement` 잼만 센다
+  'jam_period_earned',
+] as const satisfies readonly MissionOnlyConditionKey[]
 
-/** 조건에 값이 들어 있는 DB 기록 키들. 객체가 아니면 빈 배열 */
-export function dbConditionKeysIn(condition: unknown): EngineDelegatedDbConditionKey[] {
+export type MissionOnlyDbConditionKey = (typeof MISSION_ONLY_DB_CONDITION_KEY_LIST)[number]
+
+/** DB를 읽어 세는 모든 키 = 배지 조건과 이름이 같은 DB 키 + 미션 전용 DB 키. 읽기 표(`dbMetrics.ts`)·판정(`engineCondition.ts`)이 이 합집합을 쓴다 */
+export const MISSION_DB_CONDITION_KEY_LIST = [
+  ...ENGINE_DELEGATED_DB_CONDITION_KEY_LIST,
+  ...MISSION_ONLY_DB_CONDITION_KEY_LIST,
+] as const
+
+export type MissionDbConditionKey = EngineDelegatedDbConditionKey | MissionOnlyDbConditionKey
+
+const MISSION_DB_CONDITION_KEY_SET: ReadonlySet<string> = new Set<string>(MISSION_DB_CONDITION_KEY_LIST)
+
+/** 조건에 값이 들어 있는 DB 기록 키들(배지 조건과 이름이 같은 키 + 미션 전용 키). 객체가 아니면 빈 배열 */
+export function dbConditionKeysIn(condition: unknown): MissionDbConditionKey[] {
   if (typeof condition !== 'object' || condition === null || Array.isArray(condition)) return []
   const record = condition as Record<string, unknown>
-  return ENGINE_DELEGATED_DB_CONDITION_KEY_LIST.filter((key) => record[key] !== undefined)
+  return MISSION_DB_CONDITION_KEY_LIST.filter((key) => record[key] !== undefined)
 }
 
-/** 키가 DB 기록으로 세는 키(`ENGINE_DELEGATED_DB_CONDITION_KEY_LIST`)인가 */
-export function isDbConditionKey(key: string): key is EngineDelegatedDbConditionKey {
-  return ENGINE_DELEGATED_DB_CONDITION_KEY_SET.has(key)
+/** 키가 DB 기록으로 세는 키(`MISSION_DB_CONDITION_KEY_LIST`)인가 */
+export function isDbConditionKey(key: string): key is MissionDbConditionKey {
+  return MISSION_DB_CONDITION_KEY_SET.has(key)
 }
 
 /**
@@ -197,7 +226,7 @@ export function isDbConditionKey(key: string): key is EngineDelegatedDbCondition
 const NON_ENGINE_MISSION_ONLY_KEYS: ReadonlySet<string> = new Set(['count', 'badge_id'])
 
 /**
- * `engine_condition` 미션이 달성 판정에 실제로 쓰는 키 = 위임 키(26개) + 복합 조건 전용 키(9개) + DB 기록 키(19개).
+ * `engine_condition` 미션이 달성 판정에 실제로 쓰는 키 = 위임 키(26개) + 복합 조건 전용 키(9개) + 미션 전용 DB 키(`jam_period_earned` 1개) + DB 기록 키(19개).
  * 이 밖의 키는 저장은 되지만 판정에 쓰이지 않는다 — `checkMissionCondition`이 경고로 알린다.
  * `evaluateEngineMissionCondition`의 「알려진 필드가 하나라도 있는가」 검사(fail-closed)도 이 집합을 쓴다 —
  * 두 곳이 갈리면 «경고는 없는데 판정은 안 하는» 조건이 생긴다.
@@ -477,7 +506,7 @@ export function checkMissionCondition(
   if (periodUnsupported.length > 0) {
     const reasons = periodUnsupported.map((k) => `${k}: ${MISSION_PERIOD_UNSUPPORTED_CONDITION_KEYS[k]}`).join(' ')
     return {
-      error: `조건 JSON을 저장하지 못했어요. 미션 기간 안의 값으로 셀 수 없는 조건이 있어요 — ${labelKeys(periodUnsupported)}. ${reasons} 이 필드를 빼고, 기간 안에 쌓이는 조건(믹스 성공 횟수·캡슐 연 횟수·드랍한 아이템 수 등)으로 바꿔 다시 저장해주세요.`,
+      error: `조건 JSON을 저장하지 못했어요. 미션 기간 안의 값으로 셀 수 없는 조건이 있어요 — ${labelKeys(periodUnsupported)}. ${reasons} 이 필드를 빼고, 기간 안에 쌓이는 조건(믹스 성공 횟수·캡슐 연 횟수·드랍한 아이템 수·기간 동안 모은 잼 등)으로 바꿔 다시 저장해주세요.`,
       warning: null,
     }
   }
@@ -530,6 +559,7 @@ export function checkMissionCondition(
 const MISSION_ONLY_KEY_LABEL: Record<string, string> = {
   count: '목표 횟수',
   badge_id: '목표 배지',
+  jam_period_earned: '기간 동안 모은 잼',
 }
 
 function missionConditionValueLabel(key: string): string {

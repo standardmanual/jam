@@ -10,6 +10,8 @@
  *   - 저장 허용 목록 ↔ checker.ts의 fail-closed 통과 목록이 같은 값인지
  *   - 순위형 금지(밤 조건·캡슐 연 횟수)·기온 키 거부·판정하지 않는 키 경고 (티켓 20261019_1312)
  *   - DB 기록 키 14개의 판정 가능 집합 편입, 기간을 걸 수 없는 키 5개의 저장 거절 (티켓 20261019_1445)
+ *   - 미션 전용 DB 키 `jam_period_earned`(3-A회): 배지 레지스트리에 없는 키가 DB 읽기 목록(합집합)과 판정 가능 집합에 들어가고,
+ *     순위형을 포함한 어떤 틀에서도 저장되며, 배지 레지스트리 쪽 DB 키 목록(19개)에는 섞이지 않는다
  *
  * `MissionCondition`에 필드를 추가했을 때 허용 키 누락이 «컴파일 에러»로 드러나는지는
  * 런타임에서 확인할 수 없다(타입은 런타임에 없다). `condition-keys.ts` 끝의
@@ -27,11 +29,14 @@ import {
   ENGINE_DELEGATED_DB_CONDITION_KEY_LIST,
   ENGINE_DELEGATED_MISSION_TYPES,
   MISSION_ALLOWED_CONDITION_KEYS,
+  MISSION_DB_CONDITION_KEY_LIST,
   MISSION_FORBIDDEN_CONDITION_KEYS,
   MISSION_ONLY_CONDITION_KEYS,
+  MISSION_ONLY_DB_CONDITION_KEY_LIST,
   MISSION_PERIOD_UNSUPPORTED_CONDITION_KEYS,
   checkMissionCondition,
   dbConditionKeysIn,
+  isDbConditionKey,
   rankingConditionError,
   suggestMissionConditionKey,
   usesNightCondition,
@@ -263,6 +268,8 @@ const cases: Array<[string, () => void]> = [
       new_checkin_badge_count: 1,
       checkin_category_count: { category: 'train_subway', count: 1 },
       checkin_badge_count: { checkin_badge_names: ['성수역'], count: 1 },
+      // 티켓 20261019_1445 3-A — 미션 전용 DB 키(배지 레지스트리에는 없다)
+      jam_period_earned: 1,
     }
     for (const key of Object.keys(everyField)) {
       assert.ok(MISSION_ALLOWED_CONDITION_KEYS.has(key), `허용 키에 없다: ${key}`)
@@ -284,17 +291,18 @@ const cases: Array<[string, () => void]> = [
       assert.ok(!(ENGINE_DELEGATED_CONDITION_KEY_LIST as readonly string[]).includes(key), `기온 키가 위임된다: ${key}`)
     }
   }],
-  ['판정 가능 키 = 위임 키 26개 + 복합 조건 전용 키 9개 + DB 기록 키 19개 (count·badge_id는 다른 타입의 목표 값이라 뺀다)', () => {
+  ['판정 가능 키 = 위임 키 26개 + 복합 조건 전용 키 10개(jam_period_earned 포함) + DB 기록 키 19개 (count·badge_id는 다른 타입의 목표 값이라 뺀다)', () => {
     for (const key of ENGINE_DELEGATED_CONDITION_KEY_LIST) assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has(key), key)
     for (const key of ENGINE_DELEGATED_DB_CONDITION_KEY_LIST) assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has(key), key)
     const engineOnly = [...MISSION_ONLY_CONDITION_KEYS].filter((key) => key !== 'count' && key !== 'badge_id')
-    assert.strictEqual(engineOnly.length, 9)
+    assert.strictEqual(engineOnly.length, 10)
+    assert.ok(engineOnly.includes('jam_period_earned'))
     for (const key of engineOnly) assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has(key), key)
     assert.ok(!ENGINE_CONDITION_JUDGED_KEYS.has('count'))
     assert.ok(!ENGINE_CONDITION_JUDGED_KEYS.has('badge_id'))
     assert.strictEqual(ENGINE_DELEGATED_CONDITION_KEY_LIST.length, 26)
     assert.strictEqual(ENGINE_DELEGATED_DB_CONDITION_KEY_LIST.length, 19)
-    assert.strictEqual(ENGINE_CONDITION_JUDGED_KEYS.size, 26 + 9 + 19, '위임 키·복합 조건 전용 키·DB 기록 키가 겹치거나 빠졌다')
+    assert.strictEqual(ENGINE_CONDITION_JUDGED_KEYS.size, 26 + 10 + 19, '위임 키·복합 조건 전용 키·DB 기록 키가 겹치거나 빠졌다')
   }],
   ['DB 기록 키 19개: 믹스 4·드랍·픽업 4·완료 수 2·새 키 4·날짜·체크인 5이고 위임 키·기간 불가 키와 겹치지 않는다', () => {
     assert.deepStrictEqual([...ENGINE_DELEGATED_DB_CONDITION_KEY_LIST].sort(), [
@@ -309,10 +317,41 @@ const cases: Array<[string, () => void]> = [
       assert.ok(!(key in MISSION_PERIOD_UNSUPPORTED_CONDITION_KEYS), `기간 불가 키와 겹친다: ${key}`)
     }
   }],
+  ['미션 전용 DB 키: jam_period_earned는 배지 레지스트리에 없고, 배지 쪽 DB 키 목록(19개)이 아니라 합집합(20개)에만 있다', () => {
+    assert.deepStrictEqual([...MISSION_ONLY_DB_CONDITION_KEY_LIST], ['jam_period_earned'])
+    // 레지스트리에 없는 키 — 있으면 미션 전용 목록에 두면 안 된다(AssertMissionOnlyKeysAreNotInRegistry가 컴파일로도 막는다)
+    assert.ok(!ALL_CONDITION_KEYS.includes('jam_period_earned' as never), '배지 레지스트리에 있다')
+    // 미션 전용 목록에도 있다 — 허용 키·판정 키 집합이 이 목록에서 나온다
+    assert.ok(MISSION_ONLY_CONDITION_KEYS.has('jam_period_earned'))
+    assert.ok(MISSION_ALLOWED_CONDITION_KEYS.has('jam_period_earned'))
+    assert.ok(ENGINE_CONDITION_JUDGED_KEYS.has('jam_period_earned'))
+    // 배지 레지스트리 쪽 DB 키 목록에는 섞이지 않는다 — 19개 그대로
+    assert.ok(!(ENGINE_DELEGATED_DB_CONDITION_KEY_LIST as readonly string[]).includes('jam_period_earned'))
+    assert.strictEqual(ENGINE_DELEGATED_DB_CONDITION_KEY_LIST.length, 19)
+    // 합집합 = 19 + 1, 겹치지 않는다
+    assert.strictEqual(MISSION_DB_CONDITION_KEY_LIST.length, 20)
+    assert.strictEqual(new Set<string>(MISSION_DB_CONDITION_KEY_LIST).size, 20)
+    assert.deepStrictEqual(
+      [...MISSION_DB_CONDITION_KEY_LIST].sort(),
+      [...ENGINE_DELEGATED_DB_CONDITION_KEY_LIST, ...MISSION_ONLY_DB_CONDITION_KEY_LIST].sort()
+    )
+    // 기간 불가 키·배지엔진 위임 키와도 겹치지 않는다
+    assert.ok(!('jam_period_earned' in MISSION_PERIOD_UNSUPPORTED_CONDITION_KEYS))
+    assert.ok(!(ENGINE_DELEGATED_CONDITION_KEY_LIST as readonly string[]).includes('jam_period_earned'))
+    assert.ok(isDbConditionKey('jam_period_earned'))
+    assert.ok(isDbConditionKey('combine_success_count'))
+    assert.ok(!isDbConditionKey('jam_total_earned'))
+  }],
   ['dbConditionKeysIn: 값이 있는 DB 키만 돌려주고 객체가 아니면 빈 배열', () => {
     assert.deepStrictEqual(
       dbConditionKeysIn({ distance_km: 10, combine_success_count: 3, capsule_open_count: 0, jam_total_earned: 5 }),
       ['combine_success_count', 'capsule_open_count']
+    )
+    // 미션 전용 DB 키(3-A)도 읽을 키로 돌려준다 — 안 그러면 checker가 로더를 부르지 않아 이 키가 든 미션이 영원히 완료되지 않는다
+    assert.deepStrictEqual(dbConditionKeysIn({ jam_period_earned: 100 }), ['jam_period_earned'])
+    assert.deepStrictEqual(
+      dbConditionKeysIn({ jam_period_earned: 100, combine_success_count: 1 }).sort(),
+      ['combine_success_count', 'jam_period_earned']
     )
     assert.deepStrictEqual(dbConditionKeysIn({ combine_success_count: undefined }), [])
     assert.deepStrictEqual(dbConditionKeysIn(null), [])
@@ -518,6 +557,24 @@ const cases: Array<[string, () => void]> = [
       assert.deepStrictEqual(result, { error: null, warning: null }, `${key}: ${JSON.stringify(result)}`)
     }
   }],
+  ['engine_condition + jam_period_earned → 경고도 오류도 없다 (순위형·달성형·개인형 어느 틀이든 저장할 수 있다)', () => {
+    for (const frame of ['ranking', 'achievement', 'individual']) {
+      const result = checkMissionCondition('engine_condition', { jam_period_earned: 500 }, frame)
+      assert.deepStrictEqual(result, { error: null, warning: null }, `${frame}: ${JSON.stringify(result)}`)
+    }
+    // 다른 조건과 AND로 묶어도 같다
+    assert.deepStrictEqual(
+      checkMissionCondition('engine_condition', { activity_type: 'running', jam_period_earned: 500, combine_success_count: 2 }, 'ranking'),
+      { error: null, warning: null }
+    )
+  }],
+  ['순위형 금지는 그대로다 — 모은 잼이 든 순위형에서도 밤 조건·캡슐 연 횟수는 계속 거부한다', () => {
+    const night = checkMissionCondition('engine_condition', { jam_period_earned: 500, time_range: { start: '22:00', end: '05:00' } }, 'ranking')
+    assert.ok(night.error?.includes('밤'), String(night.error))
+    const capsule = checkMissionCondition('engine_condition', { jam_period_earned: 500, capsule_open_count: 3 }, 'ranking')
+    assert.ok(capsule.error?.includes('capsule_open_count'), String(capsule.error))
+    assert.strictEqual(rankingConditionError({ jam_period_earned: 500 }, 'ranking'), null)
+  }],
   ['2회로 판정하게 된 날짜·체크인 5개는 더 이상 «판정하지 않는 조건» 경고에 나오지 않는다', () => {
     const condition = {
       weekly_active_days: 3,
@@ -556,6 +613,7 @@ const cases: Array<[string, () => void]> = [
     const fix = error!.indexOf('다시 저장해주세요')
     assert.ok(symptom >= 0 && cause > symptom && fix > cause, `3단계 순서가 아니다: ${error}`)
     assert.ok(error!.includes('기간 안에 쌓이는 조건'), `대안 안내가 없다: ${error}`)
+    assert.ok(error!.includes('기간 동안 모은 잼'), `기간 동안 모은 잼이 대안으로 안내되지 않는다: ${error}`)
     assert.ok(!error!.includes('날씨와 기온'), `기온 키 문구가 섞였다: ${error}`)
     // 키마다 자기 이유를 말한다
     const chapter = checkMissionCondition('engine_condition', { chapter_reached: 2 } as unknown as MissionCondition, 'achievement').error

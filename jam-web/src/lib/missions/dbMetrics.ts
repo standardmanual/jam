@@ -1,9 +1,9 @@
 /**
  * 미션 DB 기록 조건의 지표 읽기 (서버 사이드 전용, 티켓 20261019_1445 1·2회)
  *
- * `engine_condition` 미션의 조건 가운데 활동 기록이 아니라 **DB 행**을 세는 키 19개
- * (`ENGINE_DELEGATED_DB_CONDITION_KEY_LIST`: 믹스·드랍·픽업·미션/컬렉션 완료·캡슐 열기·잠긴 개체·트라이브를 넘는 믹스 +
- * 2회의 날짜·체크인 5개)를 «참가한 뒤, 미션 기간 안»의 값으로 읽어 `{ 키: 값 }`을 돌려준다. 비교는 순수 함수 `evaluateEngineMissionCondition`이
+ * `engine_condition` 미션의 조건 가운데 활동 기록이 아니라 **DB 행**을 세는 키 20개
+ * (`MISSION_DB_CONDITION_KEY_LIST`: 배지 조건과 이름이 같은 19개 — 믹스·드랍·픽업·미션/컬렉션 완료·캡슐 열기·잠긴 개체·트라이브를 넘는 믹스 +
+ * 2회의 날짜·체크인 5개 — 와 미션 전용 `jam_period_earned` 1개)를 «참가한 뒤, 미션 기간 안»의 값으로 읽어 `{ 키: 값 }`을 돌려준다. 비교는 순수 함수 `evaluateEngineMissionCondition`이
  * 한다 — 이 파일은 읽기만 한다.
  *
  * ## 기간
@@ -22,6 +22,11 @@
  * 객체 값을 가진 `checkin_category_count`(`{ category, count }`)·`checkin_badge_count`(`{ checkin_badge_names, count }`)는
  * «지정한 장소 종류·이름 목록에 든 배지가 몇 개인가»를 숫자로 돌려주고, `count`와의 비교는 `engineCondition.ts`가 한다.
  * 값 모양이 틀린 조건은 읽지 않고 0을 돌려준다 — 비교 쪽도 모양이 틀리면 충족하지 못하므로 결과가 같다.
+ *
+ * ## 기간 동안 모은 잼 (3-A회)
+ *  - `jam_period_earned`(미션 전용 키, 배지 레지스트리에 없다): 정산된 활동의 **시작 시각**이 기간 안인 활동의 잼만 센다. 잼 원장의 정산 시각
+ *    (`jam_transactions.created_at`)이 아니다 — 참가 전에 한 활동을 늦게 동기화해도 참가 뒤에 번 잼으로 섞이지 않게 하려는 것이다
+ *    (사용자 결정 2). 읽기는 `readJamEarnedWithin`이 한다. 채움·운영자 지급·회수 줄은 합계에 들지 않는다.
  *
  * ## 날짜·체크인 키 (2회)
  *  - `weekly_active_days`·`same_spot_checkin_days`: 기간 밖 활동·체크인은 세지 않는다. 기간 경계의 주는 잘린 대로 센다.
@@ -53,6 +58,7 @@ import {
   countNewCheckinBadgeCount,
 } from '@/lib/badge-engine/jamActionCheckinMetrics'
 import { countSameSpotCheckinDays, countWeeklyActiveDays } from '@/lib/badge-engine/jamActionDayMetrics'
+import { readJamEarnedWithin } from '@/lib/badge-engine/jamActionJamMetrics'
 import { isCheckinBadgeCountValue, isCheckinCategoryCountValue } from '@/lib/badge-engine/checkinHoldings'
 import {
   countCapsuleOpens,
@@ -61,11 +67,11 @@ import {
   countLockedItemPickups,
 } from '@/lib/badge-engine/jamActionItemMetrics'
 import type { MetricWindow } from '@/lib/badge-engine/jamActionWindow'
-import { dbConditionKeysIn, type EngineDelegatedDbConditionKey } from '@/lib/missions/condition-keys'
+import { dbConditionKeysIn, type MissionDbConditionKey } from '@/lib/missions/condition-keys'
 import { missionWindowIsoBounds, type MissionWindow } from '@/lib/missions/window'
 
 /** 조건에 든 DB 키의 현재값. 조건에 없는 키는 들어 있지 않다 */
-export type MissionDbMetrics = Partial<Record<EngineDelegatedDbConditionKey, number>>
+export type MissionDbMetrics = Partial<Record<MissionDbConditionKey, number>>
 
 type MetricReader = (
   supabase: SupabaseClient,
@@ -75,10 +81,10 @@ type MetricReader = (
 ) => Promise<number>
 
 /**
- * 키별 읽기. `Record<EngineDelegatedDbConditionKey, …>`라 키를 더하고 읽기를 빠뜨리면 컴파일 오류다.
+ * 키별 읽기. `Record<MissionDbConditionKey, …>`(배지 조건과 이름이 같은 키 + 미션 전용 키)라 키를 더하고 읽기를 빠뜨리면 컴파일 오류다.
  * 읽기 함수는 DB 오류를 던진다.
  */
-const READERS: Record<EngineDelegatedDbConditionKey, MetricReader> = {
+const READERS: Record<MissionDbConditionKey, MetricReader> = {
   combine_attempt_count: (s, u, w) => countCombineAttempts(s, u, w),
   combine_success_count: (s, u, w) => countCombineSuccess(s, u, w),
   combine_fail_count: (s, u, w) => countCombineFail(s, u, w),
@@ -116,6 +122,8 @@ const READERS: Record<EngineDelegatedDbConditionKey, MetricReader> = {
     const names = value.checkin_badge_names.filter((name): name is string => typeof name === 'string')
     return countCheckinListedBadges(s, u, names, w)
   },
+  // ── 미션 전용 DB 키 (3-A회) ──
+  jam_period_earned: (s, u, w) => readJamEarnedWithin(s, u, w),
 }
 
 /**

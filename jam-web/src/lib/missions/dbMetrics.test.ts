@@ -6,6 +6,7 @@
  *  - 기간 하한 = max(참가 시각, 미션 시작), 상한 = 미션 종료(없으면 상한 없음) — 참가 전·기간 밖 기록은 세지 않는다
  *  - 14개 키(1회)와 날짜·체크인 5개 키(2회)가 각자 알맞은 값을 돌려준다(recipe_first_success는 1/0)
  *  - 읽지 못하면 던진다(0으로 폴백하지 않는다) — 하한을 정할 수 없을 때도 마찬가지
+ *  - 미션 전용 DB 키 `jam_period_earned`(3-A회): 정산된 활동의 시작 시각이 기간 안인 활동의 잼만 센다(정산 시각이 아니다)
  *
  * 위치: `__tests__/`는 vitest에서 제외돼 있어(node assert 시험 전용) 모조 DB를 쓰는 이 파일은 옆에 둔다.
  * 실행: cd jam-web && npx vitest run src/lib/missions/dbMetrics.test.ts
@@ -372,5 +373,95 @@ describe('loadMissionDbMetrics — 날짜·체크인 5개 키', () => {
   it('가입 시각을 읽지 못하면 날짜 지표는 던진다 (가입한 날 하한을 정할 수 없다)', async () => {
     const db = makeFakeDb({ ...tables(), users: [] })
     await expect(loadMissionDbMetrics(db.client, U, { weekly_active_days: 1 }, window)).rejects.toThrow('가입 시각')
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// 기간 동안 모은 잼 — 미션 전용 DB 키 (3-A회)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('loadMissionDbMetrics — jam_period_earned (기간 동안 모은 잼)', () => {
+  const SYNCED_AT = '2026-10-16T05:00:00.000Z' // 모든 정산이 기간 안의 같은 시각에 이뤄졌다 — 정산 시각으로는 구분되지 않는다
+  const activity = (id: string, startDate: string, userId = U) => ({ id, user_id: userId, start_date: startDate })
+  const settlement = (activityId: string, amount: number, userId = U) => ({
+    id: `tx-${activityId}`,
+    user_id: userId,
+    amount,
+    reason: 'activity_settlement',
+    source_activity_id: activityId,
+    created_at: SYNCED_AT,
+  })
+
+  const tables = () => ({
+    strava_activities: [
+      activity('a-before-start', T_BEFORE_START), // 미션 시작 전
+      activity('a-before-join', T_AFTER_START_BEFORE_LATE_JOIN), // 시작 뒤지만 참가 전
+      activity('a-inside', T_INSIDE),
+      activity('a-after-end', T_AFTER_END), // 종료 뒤
+      activity('a-other-user', T_INSIDE, OTHER),
+    ],
+    jam_transactions: [
+      settlement('a-before-start', 1000),
+      settlement('a-before-join', 100), // 참가 전 활동을 늦게(기간 안에) 정산했다 — 세면 안 된다
+      settlement('a-inside', 10),
+      settlement('a-after-end', 10000),
+      settlement('a-other-user', 99999, OTHER),
+      { id: 'fill', user_id: U, amount: -4, reason: 'capsule_fill', source_activity_id: null, created_at: SYNCED_AT },
+      { id: 'grant', user_id: U, amount: 500, reason: 'admin_grant', source_activity_id: null, created_at: SYNCED_AT },
+    ],
+  })
+
+  it('늦게 참가했으면 하한은 참가 시각이다 — 참가 전 활동의 잼은 늦게 정산돼도 세지 않고, 종료 뒤 활동과 채움·운영자 지급도 뺀다', async () => {
+    const db = makeFakeDb(tables())
+    const result = await loadMissionDbMetrics(db.client, U, { jam_period_earned: 10 }, { joinedAt: JOINED_LATE, startsAt: STARTS, endsAt: ENDS })
+    expect(result).toEqual({ jam_period_earned: 10 })
+  })
+
+  it('시작 전에 참가했으면 하한은 미션 시작이다 — 시작 뒤 활동은 센다', async () => {
+    const db = makeFakeDb(tables())
+    const result = await loadMissionDbMetrics(db.client, U, { jam_period_earned: 1 }, { joinedAt: JOINED_EARLY, startsAt: STARTS, endsAt: ENDS })
+    expect(result.jam_period_earned).toBe(110) // a-before-join(100) + a-inside(10). 시작 전(1000)·종료 뒤(10000)는 뺀다
+  })
+
+  it('종료가 없으면(상시 미션) 상한 없이 센다', async () => {
+    const db = makeFakeDb(tables())
+    const result = await loadMissionDbMetrics(db.client, U, { jam_period_earned: 1 }, { joinedAt: JOINED_LATE, startsAt: STARTS, endsAt: null })
+    expect(result.jam_period_earned).toBe(10010) // a-inside + a-after-end
+  })
+
+  it('이 키만 든 조건은 활동 표와 잼 원장만 읽는다', async () => {
+    const db = makeFakeDb(tables())
+    await loadMissionDbMetrics(db.client, U, { jam_period_earned: 10 }, { joinedAt: JOINED_LATE, startsAt: STARTS, endsAt: ENDS })
+    expect(new Set(db.queried)).toEqual(new Set(['strava_activities', 'jam_transactions']))
+  })
+
+  it('배지 조건과 이름이 같은 DB 키와 함께 쓰면 한 번에 읽는다', async () => {
+    const db = makeFakeDb({ ...tables(), user_combine_success_logs: successLogs([T_INSIDE]) })
+    const result = await loadMissionDbMetrics(
+      db.client,
+      U,
+      { jam_period_earned: 10, combine_success_count: 1 },
+      { joinedAt: JOINED_LATE, startsAt: STARTS, endsAt: ENDS }
+    )
+    expect(result).toEqual({ jam_period_earned: 10, combine_success_count: 1 })
+  })
+
+  it('정산된 활동이 없으면 0이다', async () => {
+    const db = makeFakeDb({ strava_activities: [activity('a1', T_INSIDE)], jam_transactions: [] })
+    const result = await loadMissionDbMetrics(db.client, U, { jam_period_earned: 1 }, { joinedAt: JOINED_LATE, startsAt: STARTS, endsAt: ENDS })
+    expect(result).toEqual({ jam_period_earned: 0 })
+  })
+
+  it('읽지 못하면 0으로 바꾸지 않고 던진다 (잼 원장·활동 표 각각, 하한을 정할 수 없을 때도)', async () => {
+    const window = { joinedAt: JOINED_LATE, startsAt: STARTS, endsAt: ENDS }
+    const ledgerFail = makeFakeDb({ strava_activities: [activity('a1', T_INSIDE)] }, { errors: { jam_transactions: '원장 장애' } })
+    await expect(loadMissionDbMetrics(ledgerFail.client, U, { jam_period_earned: 1 }, window)).rejects.toThrow('원장 장애')
+    const activityFail = makeFakeDb({}, { errors: { strava_activities: '활동 장애' } })
+    await expect(loadMissionDbMetrics(activityFail.client, U, { jam_period_earned: 1 }, window)).rejects.toThrow('활동 장애')
+    const noLower = makeFakeDb(tables())
+    await expect(
+      loadMissionDbMetrics(noLower.client, U, { jam_period_earned: 1 }, { joinedAt: null, startsAt: '깨진 값', endsAt: null })
+    ).rejects.toThrow('시작 시각을 정하지 못해')
+    expect(noLower.queried).toEqual([])
   })
 })

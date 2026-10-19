@@ -888,6 +888,15 @@ export interface MissionCondition {
   checkin_category_count?: BadgeCondition['checkin_category_count']
   /** 기간 안에 처음 받은 체크인 배지 가운데 지정한 이름 목록에 든 이름의 수 ≥ count */
   checkin_badge_count?: BadgeCondition['checkin_badge_count']
+
+  // 3-A회(티켓 20261019_1445): 새 미션 전용 키. 배지 조건 레지스트리에는 없다.
+
+  /**
+   * `engine_condition` 타입: 참가한 뒤 미션 기간 안에 모은 잼 ≥ 이 값. 정산된 활동의 시작 시각(`strava_activities.start_date`)이
+   * 기간 안인 활동의 잼(`jam_transactions.reason = 'activity_settlement'`)만 센다 — 정산 시각이 아니다.
+   * 모은 양은 그 미션 화면에서만 보이고 순위 기준으로 쓸 수 있다.
+   */
+  jam_period_earned?: number
 }
 
 /** 게이트 미션의 단계 — 마스터 티켓 20260905_0026의 2단 게이트 표를 그대로 옮긴 두 값 */
