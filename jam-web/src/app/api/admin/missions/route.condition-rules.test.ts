@@ -137,6 +137,20 @@ describe('POST /api/admin/missions — DB 기록 키', () => {
     expect(await res.json()).not.toHaveProperty('warning')
     expect(state.inserts[0].condition_json).toEqual(condition)
   })
+
+  it('2회(티켓 20261019_1445): 날짜·체크인 5개 키도 경고 없이 저장한다 (객체 값은 모양 그대로)', async () => {
+    const condition = {
+      weekly_active_days: 3,
+      same_spot_checkin_days: 2,
+      new_checkin_badge_count: 4,
+      checkin_category_count: { category: 'train_subway', count: 2 },
+      checkin_badge_count: { checkin_badge_names: ['성수역', '왕십리역'], count: 1 },
+    }
+    const res = await post({ ...base, status_display_type: 'achievement', condition_json: condition })
+    expect(res.status).toBe(200)
+    expect(await res.json()).not.toHaveProperty('warning')
+    expect(state.inserts[0].condition_json).toEqual(condition)
+  })
 })
 
 describe('POST /api/admin/missions — 판정하지 않는 조건 경고', () => {

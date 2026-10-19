@@ -174,4 +174,14 @@ describe('PATCH /api/admin/missions/[id] — 기온 키·경고', () => {
     expect(await res.json()).not.toHaveProperty('warning')
     expect(state.updates).toHaveLength(1)
   })
+
+  it('2회(티켓 20261019_1445): 날짜·체크인 키도 경고 없이 저장한다', async () => {
+    existing({ mission_type: 'engine_condition', condition_json: { distance_km: 5 }, status_display_type: 'achievement' })
+    const res = await patch({
+      condition_json: { distance_km: 5, weekly_active_days: 3, checkin_category_count: { category: 'train_subway', count: 2 } },
+    })
+    expect(res.status).toBe(200)
+    expect(await res.json()).not.toHaveProperty('warning')
+    expect(state.updates).toHaveLength(1)
+  })
 })

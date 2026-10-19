@@ -42,6 +42,15 @@ describe('POST /api/admin/missions/simulate-condition — DB 기록 키 안내',
     expect(body.missionDbKeysPresent).toEqual(['combine_success_count', 'recipe_first_success'])
   })
 
+  it('2회(티켓 20261019_1445): 날짜·체크인 키도 안내한다', async () => {
+    const res = await post({
+      condition: { weekly_active_days: 3, checkin_category_count: { category: 'train_subway', count: 2 }, new_checkin_badge_count: 1 },
+      userId: 'u1',
+    })
+    const body = await res.json()
+    expect(body.missionDbKeysPresent).toEqual(['weekly_active_days', 'new_checkin_badge_count', 'checkin_category_count'])
+  })
+
   it('DB 기록 키가 없으면 빈 목록이다', async () => {
     const res = await post({ condition: { distance_km: 10, weekly_streak_min_count: 2 }, userId: 'u1' })
     const body = await res.json()
