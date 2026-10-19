@@ -414,6 +414,10 @@ export const ko = {
 
     earnHistoryTitle: '획득 이력',
     earnHistoryCount: '총 {count}회',
+    /** 체크인 배지 상세 — 같은 장소를 다시 지날 때마다 쌓이는 기록. 아이템 배지의 «획득 이력»과 제목이 다르다(티켓 20261018_1817) */
+    visitHistoryTitle: '방문 기록',
+    /** 방문 기록에서 가장 오래된 행에 붙는 칩 */
+    firstEarnedChip: '처음 받은 날',
 
     earnInfoTitle: '획득 정보',
     earnedAt: '획득 일시',
